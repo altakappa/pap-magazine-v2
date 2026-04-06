@@ -597,7 +597,7 @@ button{cursor:pointer;font-family:inherit}
   .footer-marquee{border-top:none;border-bottom:none;margin-bottom:24px;padding:20px 0}
   .footer-marquee-track span{font-size:1.5rem;padding:0 16px}
   .footer-marquee-track .sep{display:none}
-  .footer-marquee-track{animation:marquee 8s linear infinite;will-change:transform;transform:translateZ(0)}
+  .footer-marquee-track{animation:marquee 5.3s linear 30;will-change:transform;transform:translateZ(0)}
   .footer-bottom-links{gap:16px;flex-wrap:wrap;justify-content:center}
 
   /* Page overlay */
