@@ -230,9 +230,15 @@ a{color:#fff;text-decoration:none}
       <p id="step2Email" style="font-size:12px;color:rgba(255,255,255,.4);margin-top:-6px;margin-bottom:0"></p>
     </div>
 
-    <div class="form-group">
-      <label class="form-label" data-i18n="labelName">이름</label>
-      <input type="text" class="form-input" id="signupName" data-i18n-ph="phName" placeholder="이름">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" data-i18n="labelLastName">성</label>
+        <input type="text" class="form-input" id="signupLastName" data-i18n-ph="phLastName" placeholder="성">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-i18n="labelFirstName">이름</label>
+        <input type="text" class="form-input" id="signupFirstName" data-i18n-ph="phFirstName" placeholder="이름">
+      </div>
     </div>
     <div class="form-group">
       <label class="form-label" data-i18n="labelPw">비밀번호</label>
@@ -381,37 +387,54 @@ function showSuccess() {
 // ======== STEP ACTIONS ========
 function goToStep2() {
   var email = document.getElementById('signupEmail').value.trim();
-  if (!email) { PAP.ui.toast('이메일을 입력해주세요', 'error'); return; }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { PAP.ui.toast('올바른 이메일을 입력해주세요', 'error'); return; }
+  var lang = localStorage.getItem('pap-lang') || 'ko';
+  var msgs = ERR[lang] || ERR.ko;
+  if (!email) { PAP.ui.toast(msgs.emailEmpty, 'error'); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { PAP.ui.toast(msgs.emailInvalid, 'error'); return; }
   document.getElementById('step2Email').textContent = email;
   showStep(2);
 }
 
 function goToStep3() {
-  var name = document.getElementById('signupName').value.trim();
+  var lastName = document.getElementById('signupLastName').value.trim();
+  var firstName = document.getElementById('signupFirstName').value.trim();
   var pw = document.getElementById('signupPw').value;
-  if (!name) { PAP.ui.toast('이름을 입력해주세요', 'error'); return; }
-  if (pw.length < 8) { PAP.ui.toast('비밀번호는 8자 이상이어야 합니다', 'error'); return; }
-  if (!/[A-Z]/.test(pw) || !/[0-9]/.test(pw)) { PAP.ui.toast('대문자 1개, 숫자 1개 이상 포함해주세요', 'error'); return; }
+  var lang = localStorage.getItem('pap-lang') || 'ko';
+  var msgs = ERR[lang] || ERR.ko;
+  if (!lastName) { PAP.ui.toast(msgs.lastNameEmpty, 'error'); return; }
+  if (!firstName) { PAP.ui.toast(msgs.firstNameEmpty, 'error'); return; }
+  if (pw.length < 8) { PAP.ui.toast(msgs.pwShort, 'error'); return; }
+  if (!/[A-Z]/.test(pw)) { PAP.ui.toast(msgs.pwNoUpper, 'error'); return; }
+  if (!/[0-9]/.test(pw)) { PAP.ui.toast(msgs.pwNoNumber, 'error'); return; }
   showStep(3);
 }
 
 async function completeSignup() {
   var email = document.getElementById('signupEmail').value.trim();
-  var name = document.getElementById('signupName').value.trim();
+  var lastName = document.getElementById('signupLastName').value.trim();
+  var firstName = document.getElementById('signupFirstName').value.trim();
+  var fullName = lastName + ' ' + firstName;
   var pw = document.getElementById('signupPw').value;
   var btn = document.getElementById('btnComplete');
+  var lang = localStorage.getItem('pap-lang') || 'ko';
+  var msgs = ERR[lang] || ERR.ko;
 
   btn.disabled = true;
   btn.textContent = '...';
 
   try {
-    await PAP.auth.signup({ name: name, email: email, password: pw });
+    await PAP.auth.signup({ name: fullName, email: email, password: pw });
     showSuccess();
   } catch (e) {
-    PAP.ui.toast(e.message || 'Registration failed', 'error');
+    var msg = e.message || '';
+    if (msg.includes('already registered') || msg.includes('already')) {
+      PAP.ui.toast(msgs.emailDuplicate, 'error');
+    } else if (msg.includes('network') || msg.includes('fetch')) {
+      PAP.ui.toast(msgs.networkError, 'error');
+    } else {
+      PAP.ui.toast(msgs.signupFail, 'error');
+    }
     btn.disabled = false;
-    var lang = localStorage.getItem('pap-lang') || 'ko';
     btn.textContent = (L[lang] && L[lang].btnComplete) || '가입 완료';
   }
 }
@@ -442,13 +465,25 @@ function checkPwStrength(pw) {
 async function doLogin() {
   var email = document.getElementById('loginEmail').value.trim();
   var pw = document.getElementById('loginPw').value;
-  if (!email || !pw) { PAP.ui.toast('모든 항목을 입력해주세요', 'error'); return; }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { PAP.ui.toast('올바른 이메일을 입력해주세요', 'error'); return; }
+  var lang = localStorage.getItem('pap-lang') || 'ko';
+  var msgs = ERR[lang] || ERR.ko;
+  if (!email) { PAP.ui.toast(msgs.emailEmpty, 'error'); return; }
+  if (!pw) { PAP.ui.toast(msgs.pwEmpty, 'error'); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { PAP.ui.toast(msgs.emailInvalid, 'error'); return; }
   try {
     await PAP.auth.login(email, pw);
     showSuccess();
   } catch (e) {
-    PAP.ui.toast(e.message || 'Login failed', 'error');
+    var msg = e.message || '';
+    if (msg.includes('Invalid') || msg.includes('credentials') || msg.includes('password')) {
+      PAP.ui.toast(msgs.loginWrong, 'error');
+    } else if (msg.includes('not found') || msg.includes('No user')) {
+      PAP.ui.toast(msgs.loginNoUser, 'error');
+    } else if (msg.includes('network') || msg.includes('fetch')) {
+      PAP.ui.toast(msgs.networkError, 'error');
+    } else {
+      PAP.ui.toast(msgs.loginFail, 'error');
+    }
   }
 }
 
@@ -458,6 +493,138 @@ function socialLogin(provider) {
   else if (provider === 'apple') PAP.auth.loginWithApple();
   else PAP.ui.toast('Coming soon', 'error');
 }
+
+// ======== ERROR MESSAGES (8 LANGUAGES) ========
+var ERR = {
+ko: {
+  emailEmpty:'이메일 주소를 입력해주세요.',
+  emailInvalid:'올바른 이메일 형식이 아닙니다. (예: name@example.com)',
+  emailDuplicate:'이미 가입된 이메일입니다. 로그인을 시도해주세요.',
+  lastNameEmpty:'성을 입력해주세요.',
+  firstNameEmpty:'이름을 입력해주세요.',
+  pwEmpty:'비밀번호를 입력해주세요.',
+  pwShort:'비밀번호는 최소 8자 이상이어야 합니다.',
+  pwNoUpper:'비밀번호에 대문자(A-Z)를 1개 이상 포함해주세요.',
+  pwNoNumber:'비밀번호에 숫자(0-9)를 1개 이상 포함해주세요.',
+  networkError:'네트워크 연결을 확인해주세요. 인터넷에 연결되어 있나요?',
+  signupFail:'회원가입 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+  loginWrong:'이메일 또는 비밀번호가 올바르지 않습니다.',
+  loginNoUser:'등록되지 않은 이메일입니다. 회원가입을 먼저 해주세요.',
+  loginFail:'로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+},
+en: {
+  emailEmpty:'Please enter your email address.',
+  emailInvalid:'Invalid email format. (e.g. name@example.com)',
+  emailDuplicate:'This email is already registered. Try logging in instead.',
+  lastNameEmpty:'Please enter your last name.',
+  firstNameEmpty:'Please enter your first name.',
+  pwEmpty:'Please enter your password.',
+  pwShort:'Password must be at least 8 characters.',
+  pwNoUpper:'Password must include at least 1 uppercase letter (A-Z).',
+  pwNoNumber:'Password must include at least 1 number (0-9).',
+  networkError:'Please check your internet connection.',
+  signupFail:'Something went wrong. Please try again in a moment.',
+  loginWrong:'Incorrect email or password.',
+  loginNoUser:'No account found with this email. Please sign up first.',
+  loginFail:'Login failed. Please try again in a moment.'
+},
+it: {
+  emailEmpty:'Inserisci il tuo indirizzo email.',
+  emailInvalid:'Formato email non valido. (es. nome@example.com)',
+  emailDuplicate:'Questa email è già registrata. Prova ad accedere.',
+  lastNameEmpty:'Inserisci il cognome.',
+  firstNameEmpty:'Inserisci il nome.',
+  pwEmpty:'Inserisci la password.',
+  pwShort:'La password deve contenere almeno 8 caratteri.',
+  pwNoUpper:'La password deve includere almeno 1 lettera maiuscola (A-Z).',
+  pwNoNumber:'La password deve includere almeno 1 numero (0-9).',
+  networkError:'Verifica la tua connessione internet.',
+  signupFail:'Si è verificato un errore. Riprova tra poco.',
+  loginWrong:'Email o password non corretti.',
+  loginNoUser:'Nessun account trovato. Registrati prima.',
+  loginFail:'Accesso fallito. Riprova tra poco.'
+},
+fr: {
+  emailEmpty:'Veuillez entrer votre adresse email.',
+  emailInvalid:'Format d\'email invalide. (ex. nom@example.com)',
+  emailDuplicate:'Cet email est déjà enregistré. Essayez de vous connecter.',
+  lastNameEmpty:'Veuillez entrer votre nom de famille.',
+  firstNameEmpty:'Veuillez entrer votre prénom.',
+  pwEmpty:'Veuillez entrer votre mot de passe.',
+  pwShort:'Le mot de passe doit contenir au moins 8 caractères.',
+  pwNoUpper:'Le mot de passe doit contenir au moins 1 majuscule (A-Z).',
+  pwNoNumber:'Le mot de passe doit contenir au moins 1 chiffre (0-9).',
+  networkError:'Vérifiez votre connexion internet.',
+  signupFail:'Une erreur est survenue. Veuillez réessayer.',
+  loginWrong:'Email ou mot de passe incorrect.',
+  loginNoUser:'Aucun compte trouvé. Inscrivez-vous d\'abord.',
+  loginFail:'Échec de connexion. Veuillez réessayer.'
+},
+es: {
+  emailEmpty:'Ingrese su dirección de correo electrónico.',
+  emailInvalid:'Formato de email inválido. (ej. nombre@example.com)',
+  emailDuplicate:'Este email ya está registrado. Intente iniciar sesión.',
+  lastNameEmpty:'Ingrese su apellido.',
+  firstNameEmpty:'Ingrese su nombre.',
+  pwEmpty:'Ingrese su contraseña.',
+  pwShort:'La contraseña debe tener al menos 8 caracteres.',
+  pwNoUpper:'La contraseña debe incluir al menos 1 mayúscula (A-Z).',
+  pwNoNumber:'La contraseña debe incluir al menos 1 número (0-9).',
+  networkError:'Verifique su conexión a internet.',
+  signupFail:'Ocurrió un error. Intente de nuevo en un momento.',
+  loginWrong:'Email o contraseña incorrectos.',
+  loginNoUser:'No se encontró cuenta. Regístrese primero.',
+  loginFail:'Error al iniciar sesión. Intente de nuevo.'
+},
+ja: {
+  emailEmpty:'メールアドレスを入力してください。',
+  emailInvalid:'正しいメール形式で入力してください。(例: name@example.com)',
+  emailDuplicate:'このメールは既に登録されています。ログインしてください。',
+  lastNameEmpty:'姓を入力してください。',
+  firstNameEmpty:'名を入力してください。',
+  pwEmpty:'パスワードを入力してください。',
+  pwShort:'パスワードは8文字以上必要です。',
+  pwNoUpper:'パスワードに大文字(A-Z)を1つ以上含めてください。',
+  pwNoNumber:'パスワードに数字(0-9)を1つ以上含めてください。',
+  networkError:'インターネット接続を確認してください。',
+  signupFail:'エラーが発生しました。しばらくしてからお試しください。',
+  loginWrong:'メールまたはパスワードが正しくありません。',
+  loginNoUser:'アカウントが見つかりません。先に会員登録してください。',
+  loginFail:'ログインに失敗しました。しばらくしてからお試しください。'
+},
+zh: {
+  emailEmpty:'请输入您的邮箱地址。',
+  emailInvalid:'邮箱格式不正确。(例: name@example.com)',
+  emailDuplicate:'该邮箱已注册。请尝试登录。',
+  lastNameEmpty:'请输入您的姓氏。',
+  firstNameEmpty:'请输入您的名字。',
+  pwEmpty:'请输入密码。',
+  pwShort:'密码至少需要8个字符。',
+  pwNoUpper:'密码必须包含至少1个大写字母(A-Z)。',
+  pwNoNumber:'密码必须包含至少1个数字(0-9)。',
+  networkError:'请检查您的网络连接。',
+  signupFail:'发生错误，请稍后重试。',
+  loginWrong:'邮箱或密码不正确。',
+  loginNoUser:'未找到账户，请先注册。',
+  loginFail:'登录失败，请稍后重试。'
+},
+ru: {
+  emailEmpty:'Введите адрес электронной почты.',
+  emailInvalid:'Неверный формат email. (напр. name@example.com)',
+  emailDuplicate:'Этот email уже зарегистрирован. Попробуйте войти.',
+  lastNameEmpty:'Введите вашу фамилию.',
+  firstNameEmpty:'Введите ваше имя.',
+  pwEmpty:'Введите пароль.',
+  pwShort:'Пароль должен содержать не менее 8 символов.',
+  pwNoUpper:'Пароль должен содержать хотя бы 1 заглавную букву (A-Z).',
+  pwNoNumber:'Пароль должен содержать хотя бы 1 цифру (0-9).',
+  networkError:'Проверьте подключение к интернету.',
+  signupFail:'Произошла ошибка. Попробуйте позже.',
+  loginWrong:'Неверный email или пароль.',
+  loginNoUser:'Аккаунт не найден. Сначала зарегистрируйтесь.',
+  loginFail:'Ошибка входа. Попробуйте позже.'
+}
+};
 
 // ======== i18n (8 LANGUAGES) ========
 var L = {
@@ -469,8 +636,8 @@ ko: {
   benefit2:'<strong>커뮤니티</strong> — 전 세계 크리에이터들과 연결하고 협업하세요',
   benefit3:'<strong>독점 콘텐츠</strong> — 프리미엄 에디토리얼과 비하인드 스토리를 확인하세요',
   signupGoogle:'Google로 시작하기', signupApple:'Apple로 시작하기',
-  or:'또는', labelEmail:'이메일', labelPw:'비밀번호', labelName:'이름',
-  phPw:'비밀번호 입력', phPwSet:'8자 이상, 대문자+숫자 포함', phName:'이름',
+  or:'또는', labelEmail:'이메일', labelPw:'비밀번호', labelLastName:'성', labelFirstName:'이름',
+  phPw:'비밀번호 입력', phPwSet:'8자 이상, 대문자+숫자 포함', phLastName:'성', phFirstName:'이름',
   pwHint:'대문자 1개 + 숫자 1개 이상 포함',
   btnStart:'시작하기', btnNext:'다음', btnComplete:'가입 완료', btnLogin:'로그인',
   hasAccount:'이미 회원이신가요? <a href="#" onclick="showLogin();return false;">로그인</a>',
@@ -498,8 +665,8 @@ en: {
   benefit2:'<strong>Community</strong> — Connect and collaborate with creatives worldwide',
   benefit3:'<strong>Exclusive Content</strong> — Access premium editorials and behind-the-scenes',
   signupGoogle:'Start with Google', signupApple:'Start with Apple',
-  or:'OR', labelEmail:'EMAIL', labelPw:'PASSWORD', labelName:'NAME',
-  phPw:'Enter password', phPwSet:'Min. 8 chars, uppercase + number', phName:'Full name',
+  or:'OR', labelEmail:'EMAIL', labelPw:'PASSWORD', labelLastName:'LAST NAME', labelFirstName:'FIRST NAME',
+  phPw:'Enter password', phPwSet:'Min. 8 chars, uppercase + number', phLastName:'Last name', phFirstName:'First name',
   pwHint:'At least 1 uppercase letter + 1 number',
   btnStart:'GET STARTED', btnNext:'NEXT', btnComplete:'COMPLETE SIGNUP', btnLogin:'LOG IN',
   hasAccount:'Already a member? <a href="#" onclick="showLogin();return false;">Log in</a>',
@@ -527,8 +694,8 @@ it: {
   benefit2:'<strong>Community</strong> — Connettiti e collabora con creativi in tutto il mondo',
   benefit3:'<strong>Contenuti Esclusivi</strong> — Accedi a editoriali premium e dietro le quinte',
   signupGoogle:'Inizia con Google', signupApple:'Inizia con Apple',
-  or:'OPPURE', labelEmail:'EMAIL', labelPw:'PASSWORD', labelName:'NOME',
-  phPw:'Inserisci password', phPwSet:'Min. 8 caratteri, maiuscola + numero', phName:'Nome completo',
+  or:'OPPURE', labelEmail:'EMAIL', labelPw:'PASSWORD', labelLastName:'COGNOME', labelFirstName:'NOME',
+  phPw:'Inserisci password', phPwSet:'Min. 8 caratteri, maiuscola + numero', phLastName:'Cognome', phFirstName:'Nome',
   pwHint:'Almeno 1 maiuscola + 1 numero',
   btnStart:'INIZIA', btnNext:'AVANTI', btnComplete:'COMPLETA REGISTRAZIONE', btnLogin:'ACCEDI',
   hasAccount:'Già membro? <a href="#" onclick="showLogin();return false;">Accedi</a>',
@@ -556,8 +723,8 @@ fr: {
   benefit2:'<strong>Communauté</strong> — Connectez-vous et collaborez avec des créatifs du monde entier',
   benefit3:'<strong>Contenu Exclusif</strong> — Accédez aux éditoriaux premium et aux coulisses',
   signupGoogle:'Commencer avec Google', signupApple:'Commencer avec Apple',
-  or:'OU', labelEmail:'EMAIL', labelPw:'MOT DE PASSE', labelName:'NOM',
-  phPw:'Entrez le mot de passe', phPwSet:'Min. 8 caractères, majuscule + chiffre', phName:'Nom complet',
+  or:'OU', labelEmail:'EMAIL', labelPw:'MOT DE PASSE', labelLastName:'NOM', labelFirstName:'PRÉNOM',
+  phPw:'Entrez le mot de passe', phPwSet:'Min. 8 caractères, majuscule + chiffre', phLastName:'Nom', phFirstName:'Prénom',
   pwHint:'Au moins 1 majuscule + 1 chiffre',
   btnStart:'COMMENCER', btnNext:'SUIVANT', btnComplete:'TERMINER L\'INSCRIPTION', btnLogin:'CONNEXION',
   hasAccount:'Déjà membre ? <a href="#" onclick="showLogin();return false;">Connexion</a>',
@@ -585,8 +752,8 @@ es: {
   benefit2:'<strong>Comunidad</strong> — Conéctate y colabora con creativos de todo el mundo',
   benefit3:'<strong>Contenido Exclusivo</strong> — Accede a editoriales premium y detrás de escena',
   signupGoogle:'Empezar con Google', signupApple:'Empezar con Apple',
-  or:'O', labelEmail:'EMAIL', labelPw:'CONTRASEÑA', labelName:'NOMBRE',
-  phPw:'Ingrese contraseña', phPwSet:'Mín. 8 caracteres, mayúscula + número', phName:'Nombre completo',
+  or:'O', labelEmail:'EMAIL', labelPw:'CONTRASEÑA', labelLastName:'APELLIDO', labelFirstName:'NOMBRE',
+  phPw:'Ingrese contraseña', phPwSet:'Mín. 8 caracteres, mayúscula + número', phLastName:'Apellido', phFirstName:'Nombre',
   pwHint:'Al menos 1 mayúscula + 1 número',
   btnStart:'EMPEZAR', btnNext:'SIGUIENTE', btnComplete:'COMPLETAR REGISTRO', btnLogin:'INICIAR SESIÓN',
   hasAccount:'¿Ya eres miembro? <a href="#" onclick="showLogin();return false;">Inicia sesión</a>',
@@ -614,8 +781,8 @@ ja: {
   benefit2:'<strong>コミュニティ</strong> — 世界中のクリエイターと繋がり、コラボレーション',
   benefit3:'<strong>限定コンテンツ</strong> — プレミアムエディトリアルと舞台裏にアクセス',
   signupGoogle:'Googleで始める', signupApple:'Appleで始める',
-  or:'または', labelEmail:'メール', labelPw:'パスワード', labelName:'名前',
-  phPw:'パスワード入力', phPwSet:'8文字以上、大文字+数字', phName:'フルネーム',
+  or:'または', labelEmail:'メール', labelPw:'パスワード', labelLastName:'姓', labelFirstName:'名',
+  phPw:'パスワード入力', phPwSet:'8文字以上、大文字+数字', phLastName:'姓', phFirstName:'名',
   pwHint:'大文字1つ + 数字1つ以上',
   btnStart:'始める', btnNext:'次へ', btnComplete:'登録完了', btnLogin:'ログイン',
   hasAccount:'すでにメンバーですか？ <a href="#" onclick="showLogin();return false;">ログイン</a>',
@@ -643,8 +810,8 @@ zh: {
   benefit2:'<strong>社区</strong> — 与全球创意人士连接和协作',
   benefit3:'<strong>独家内容</strong> — 访问高级专题和幕后故事',
   signupGoogle:'使用Google开始', signupApple:'使用Apple开始',
-  or:'或', labelEmail:'邮箱', labelPw:'密码', labelName:'姓名',
-  phPw:'输入密码', phPwSet:'至少8位，含大写字母+数字', phName:'全名',
+  or:'或', labelEmail:'邮箱', labelPw:'密码', labelLastName:'姓', labelFirstName:'名',
+  phPw:'输入密码', phPwSet:'至少8位，含大写字母+数字', phLastName:'姓', phFirstName:'名',
   pwHint:'至少1个大写字母 + 1个数字',
   btnStart:'开始', btnNext:'下一步', btnComplete:'完成注册', btnLogin:'登录',
   hasAccount:'已经是会员？ <a href="#" onclick="showLogin();return false;">登录</a>',
@@ -672,8 +839,8 @@ ru: {
   benefit2:'<strong>Сообщество</strong> — Общайтесь и сотрудничайте с креативщиками по всему миру',
   benefit3:'<strong>Эксклюзив</strong> — Доступ к премиум-материалам и закулисным историям',
   signupGoogle:'Начать с Google', signupApple:'Начать с Apple',
-  or:'ИЛИ', labelEmail:'EMAIL', labelPw:'ПАРОЛЬ', labelName:'ИМЯ',
-  phPw:'Введите пароль', phPwSet:'Мин. 8 символов, заглавная + цифра', phName:'Полное имя',
+  or:'ИЛИ', labelEmail:'EMAIL', labelPw:'ПАРОЛЬ', labelLastName:'ФАМИЛИЯ', labelFirstName:'ИМЯ',
+  phPw:'Введите пароль', phPwSet:'Мин. 8 символов, заглавная + цифра', phLastName:'Фамилия', phFirstName:'Имя',
   pwHint:'Минимум 1 заглавная буква + 1 цифра',
   btnStart:'НАЧАТЬ', btnNext:'ДАЛЕЕ', btnComplete:'ЗАВЕРШИТЬ РЕГИСТРАЦИЮ', btnLogin:'ВОЙТИ',
   hasAccount:'Уже участник? <a href="#" onclick="showLogin();return false;">Войти</a>',
