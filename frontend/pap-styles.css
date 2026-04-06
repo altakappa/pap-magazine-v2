@@ -137,7 +137,7 @@ button{cursor:pointer;font-family:inherit}
 .hero-issue{font-size:11px;font-weight:600;letter-spacing:.25em;text-transform:uppercase;color:rgba(255,255,255,.7);margin-bottom:8px}
 .hero-title{font-size:clamp(2rem,5vw,4rem);font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#fff;line-height:1.05}
 
-.hero-symbol{position:absolute;bottom:48px;right:48px;z-index:2;width:clamp(40px,5.3vw,67px);height:auto;opacity:.85;pointer-events:none}
+.hero-symbol{position:absolute;bottom:40px;right:48px;z-index:2;width:clamp(40px,5.3vw,67px);height:auto;opacity:.85;pointer-events:none}
 .hero-watermark{position:absolute;bottom:40px;right:48px;z-index:2;width:48px;height:48px;border:1.5px solid rgba(255,255,255,.3);border-radius:50%;display:flex;align-items:center;justify-content:center;display:none}
 .hero-watermark span{font-family:var(--serif);font-size:11px;color:rgba(255,255,255,.5);font-weight:700;letter-spacing:.05em}
 
@@ -555,7 +555,7 @@ button{cursor:pointer;font-family:inherit}
   .hero{margin-top:60px;height:60vh}
   .hero-content{left:20px;bottom:28px}
   .hero-title{font-size:clamp(1.6rem,6vw,2.5rem)}
-  .hero-symbol{right:20px;bottom:20px}
+  .hero-symbol{right:20px;bottom:12px}
   .hero-watermark{right:20px;bottom:28px;width:40px;height:40px}
 
   /* Reduce all 48px track/section paddings */
@@ -641,7 +641,7 @@ button{cursor:pointer;font-family:inherit}
   .hero-content{left:16px;bottom:24px}
   .hero-title{font-size:clamp(1.4rem,7vw,2rem)}
   .hero-issue{font-size:10px;letter-spacing:.2em}
-  .hero-symbol{right:16px;bottom:16px}
+  .hero-symbol{right:16px;bottom:8px}
   .hero-watermark{right:16px;bottom:16px;width:36px;height:36px}
   .hero-watermark span{font-size:10px}
 
