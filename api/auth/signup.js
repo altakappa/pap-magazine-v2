@@ -19,6 +19,8 @@ module.exports = async function handler(req, res) {
 
   if (rateLimit(req, res, RATE_LIMITS.auth)) return;
 
+  let createdUserId = null;
+
   try {
     const { email, password, name } = req.body;
 
@@ -38,18 +40,19 @@ module.exports = async function handler(req, res) {
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
-      email_confirm: true, // Auto-confirm for now; enable email verification later
+      email_confirm: true,
       user_metadata: { name: name || '' },
     });
 
     if (authError) {
-      if (authError.message.includes('already registered')) {
+      if (authError.message && authError.message.includes('already registered')) {
         return res.status(409).json({ message: 'Email already registered' });
       }
       throw authError;
     }
 
     const userId = authData.user.id;
+    createdUserId = userId; // Track for rollback on failure
 
     // Profile is auto-created by the database trigger (handle_new_user)
     // But let's ensure it exists and fetch it
@@ -75,6 +78,17 @@ module.exports = async function handler(req, res) {
     return res.status(201).json({ token, user });
   } catch (error) {
     console.error('Signup error:', error.message || error);
+
+    // Rollback: delete the user from Supabase if it was created
+    if (createdUserId) {
+      try {
+        await supabaseAdmin.auth.admin.deleteUser(createdUserId);
+        console.log('Rolled back user:', createdUserId);
+      } catch (delErr) {
+        console.error('Rollback failed:', delErr.message || delErr);
+      }
+    }
+
     // Handle "already registered" even when thrown as exception
     if (error.message && error.message.includes('already registered')) {
       return res.status(409).json({ message: 'Email already registered' });
