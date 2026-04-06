@@ -556,7 +556,7 @@ button{cursor:pointer;font-family:inherit}
   .hero{margin-top:60px;height:60vh}
   .hero-content{left:20px;bottom:28px}
   .hero-title{font-size:clamp(1.6rem,6vw,2.5rem)}
-  .hero-symbol{right:20px;bottom:-3px}
+  .hero-symbol{right:20px;bottom:-18px}
   .hero-watermark{right:20px;bottom:28px;width:40px;height:40px}
 
   /* Reduce all 48px track/section paddings */
@@ -640,7 +640,7 @@ button{cursor:pointer;font-family:inherit}
   .hero-content{left:16px;bottom:24px}
   .hero-title{font-size:clamp(1.4rem,7vw,2rem)}
   .hero-issue{font-size:10px;letter-spacing:.2em}
-  .hero-symbol{right:16px;bottom:-7px}
+  .hero-symbol{right:16px;bottom:-22px}
   .hero-watermark{right:16px;bottom:16px;width:36px;height:36px}
   .hero-watermark span{font-size:10px}
 
