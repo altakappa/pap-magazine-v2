@@ -1,6 +1,9 @@
 User-agent: *
 Allow: /
+
 Disallow: /admin.html
-Disallow: /*.json$
-Disallow: /api/
+Disallow: /content-admin.html
+Disallow: /data-migration.html
+Disallow: /auth.html
+
 Sitemap: https://pap-magazine.com/sitemap.xml
