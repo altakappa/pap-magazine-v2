@@ -844,3 +844,16 @@ button{cursor:pointer;font-family:inherit}
   .cc-actions{width:100%;justify-content:center}
   .cc-text-ko{text-align:center}
 }
+
+/* Auth Button in Header */
+.auth-btn-header{
+  display:inline-flex;align-items:center;justify-content:center;
+  color:rgba(255,255,255,.4);text-decoration:none;transition:color .2s;
+  margin-left:12px;
+}
+.auth-btn-header:hover{color:#fff}
+.auth-btn-header svg{width:20px;height:20px}
+@media(max-width:600px){
+  .auth-btn-header svg{width:18px;height:18px}
+  .auth-btn-header{margin-left:8px}
+}
