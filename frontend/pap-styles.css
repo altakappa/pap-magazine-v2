@@ -595,7 +595,7 @@ button{cursor:pointer;font-family:inherit}
   .footer{padding:32px 20px 16px}
   .footer-top{display:none}
   .footer-marquee{border-top:none;border-bottom:none}
-  .footer-marquee-track span{font-size:1rem;padding:28px 16px 0}
+  .footer-marquee-track span{font-size:1.5rem;padding:28px 16px 0}
   .footer-marquee-track .sep{display:none}
   .footer-marquee-track{animation:marquee 12s linear infinite;will-change:transform;transform:translateZ(0)}
   .footer-bottom-links{gap:16px;flex-wrap:wrap;justify-content:center}
@@ -742,7 +742,7 @@ button{cursor:pointer;font-family:inherit}
 
   /* Footer */
   .footer-legal{font-size:10px}
-  .footer-marquee-track span{font-size:.85rem}
+  .footer-marquee-track span{font-size:1.275rem}
 
   /* Editorial detail */
   .ed-hero-title{font-size:clamp(13px,3.2vw,16px)}
