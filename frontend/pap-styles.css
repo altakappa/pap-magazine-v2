@@ -59,8 +59,8 @@ button{cursor:pointer;font-family:inherit}
 .logo-trail img{height:96px;width:auto}
 @keyframes trailFade{0%{opacity:.35;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(.6)}}
 
-.header-right{display:flex;align-items:center;gap:16px}
-.lang-btn{display:flex;align-items:center;gap:6px;background:none;border:none;padding:6px 4px;font-size:11px;font-weight:500;color:#fff}
+.header-right{display:flex;align-items:center;gap:6px}
+.lang-btn{display:flex;align-items:center;gap:4px;background:none;border:none;border-radius:0;padding:4px 2px;font-size:11px;font-weight:500;color:#fff}
 .header-right-item{display:inline-flex;align-items:center;justify-content:center;padding:4px;color:rgba(255,255,255,.4);text-decoration:none;transition:color .2s}
 .header-right-item:hover{color:#fff}
 .header-right-item svg{width:20px;height:20px}
@@ -713,8 +713,8 @@ button{cursor:pointer;font-family:inherit}
   .header{padding:0 10px;height:54px}
   .header-left{gap:2px}
   .header-left-item svg{width:16px;height:16px}
-  .header-right{gap:6px}
-  .lang-btn{padding:2px 4px;font-size:9px}
+  .header-right{gap:4px}
+  .lang-btn{padding:2px 2px;font-size:9px}
   .lang-btn svg{width:12px;height:12px}
   .lang-btn select{font-size:9px}
   .header-right-item svg{width:16px;height:16px}
