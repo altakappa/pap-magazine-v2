@@ -575,6 +575,7 @@ button{cursor:pointer;font-family:inherit}
 
   /* Cards */
   .fashion-card{min-width:calc(75% - 12px)}
+  .carousel-arrow{top:50%;transform:translateY(-50%)}
   .ed-carousel-card{min-width:calc(50% - 14px)}
   .ed-row-card{min-width:180px;max-width:180px}
   .fashion-card-img{aspect-ratio:1/1}
