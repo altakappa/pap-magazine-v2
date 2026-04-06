@@ -594,7 +594,7 @@ button{cursor:pointer;font-family:inherit}
   /* Footer */
   .footer{padding:32px 20px 16px}
   .footer-top{display:none}
-  .footer-marquee{border-top:none;border-bottom:none;margin-bottom:24px;padding:20px 0}
+  .footer-marquee{border-top:none;border-bottom:none;margin-bottom:20px;padding:20px 0}
   .footer-marquee-track span{font-size:1.5rem;padding:0 16px}
   .footer-marquee-track .sep{display:none}
   .footer-marquee-track{animation:marquee 5.3s linear 30;will-change:transform;transform:translateZ(0)}
@@ -674,7 +674,7 @@ button{cursor:pointer;font-family:inherit}
 
   /* Footer */
   .footer{padding:24px 16px 12px}
-  .footer-marquee{margin-bottom:16px;padding:16px 0}
+  .footer-marquee{margin-bottom:16px;padding:16px 0 16px}
   .footer-top{margin-bottom:16px}
   .footer-bottom-links{gap:12px}
   .footer-bottom-links a{font-size:10px}
