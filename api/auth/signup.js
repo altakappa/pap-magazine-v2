@@ -3,12 +3,15 @@
  * Register a new user via Supabase Auth
  */
 
+const jwt = require('jsonwebtoken');
 const { supabaseAdmin } = require('../_lib/supabase');
 const { generateToken } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { sendEmail, templates } = require('../_lib/email');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { isValidEmail } = require('../_lib/validate');
+
+const JWT_SECRET = process.env.JWT_SECRET;
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -22,7 +25,7 @@ module.exports = async function handler(req, res) {
   let createdUserId = null;
 
   try {
-    const { email, password, name } = req.body;
+    const { email, password, name, verifiedToken } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ message: 'Email and password are required' });
@@ -30,6 +33,18 @@ module.exports = async function handler(req, res) {
 
     if (!isValidEmail(email)) {
       return res.status(400).json({ message: 'Invalid email format' });
+    }
+
+    // Verify the email was confirmed via verification code
+    if (verifiedToken) {
+      try {
+        const decoded = jwt.verify(verifiedToken, JWT_SECRET);
+        if (!decoded.verified || decoded.email !== email.trim().toLowerCase()) {
+          return res.status(400).json({ message: 'Email verification mismatch' });
+        }
+      } catch (err) {
+        return res.status(400).json({ message: 'Email verification expired. Please verify again.' });
+      }
     }
 
     if (password.length < 8) {

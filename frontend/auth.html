@@ -176,6 +176,7 @@ a{color:#fff;text-decoration:none}
     <div class="step-dot active" data-step="1"></div>
     <div class="step-dot" data-step="2"></div>
     <div class="step-dot" data-step="3"></div>
+    <div class="step-dot" data-step="4"></div>
   </div>
 
   <!-- ============ STEP 1: WELCOME + EMAIL ============ -->
@@ -223,11 +224,25 @@ a{color:#fff;text-decoration:none}
     <div class="auth-link" data-i18n="hasAccount">이미 회원이신가요? <a href="#" onclick="showLogin();return false;">로그인</a></div>
   </div>
 
-  <!-- ============ STEP 2: PASSWORD + NAME ============ -->
+  <!-- ============ STEP 2: EMAIL VERIFICATION CODE ============ -->
   <div class="step-panel" id="step2">
     <div class="step-hero">
-      <h2 data-i18n="step2Title">계정 설정</h2>
-      <p id="step2Email" style="font-size:12px;color:rgba(255,255,255,.4);margin-top:-6px;margin-bottom:0"></p>
+      <h2 data-i18n="step2Title">인증 코드 입력</h2>
+      <p id="step2EmailMsg" style="font-size:12px;color:rgba(255,255,255,.4);margin-top:-6px;margin-bottom:0"></p>
+    </div>
+
+    <div class="form-group" style="text-align:center">
+      <input type="text" class="form-input" id="verifyCode" maxlength="6" placeholder="000000" style="text-align:center;font-size:28px;font-weight:800;letter-spacing:12px;font-family:monospace;padding:16px" oninput="this.value=this.value.replace(/[^0-9]/g,'');if(this.value.length===6)verifyEmailCode()" onkeydown="if(event.key==='Enter')verifyEmailCode()">
+      <div class="form-hint" data-i18n="codeHint">이메일로 전송된 6자리 코드를 입력하세요.</div>
+    </div>
+    <button class="auth-btn" id="btnVerify" onclick="verifyEmailCode()" data-i18n="btnVerify">인증하기</button>
+    <div class="auth-link" onclick="resendCode()" style="cursor:pointer" data-i18n="resendCode">코드를 받지 못하셨나요? 다시 보내기</div>
+  </div>
+
+  <!-- ============ STEP 3: PASSWORD + NAME ============ -->
+  <div class="step-panel" id="step3">
+    <div class="step-hero">
+      <h2 data-i18n="step3Title_account">계정 설정</h2>
     </div>
 
     <div class="form-row">
@@ -246,11 +261,11 @@ a{color:#fff;text-decoration:none}
       <div class="pw-strength"><div class="pw-strength-bar" id="pwBar"></div></div>
       <div class="form-hint" data-i18n="pwHint">대문자 1개 + 숫자 1개 이상 포함</div>
     </div>
-    <button class="auth-btn" onclick="goToStep3()" data-i18n="btnNext">다음</button>
+    <button class="auth-btn" onclick="goToStep4()" data-i18n="btnNext">다음</button>
   </div>
 
-  <!-- ============ STEP 3: PLAN SELECTION ============ -->
-  <div class="step-panel" id="step3">
+  <!-- ============ STEP 4: PLAN SELECTION ============ -->
+  <div class="step-panel" id="step4">
     <div class="step-hero">
       <h2 data-i18n="step3Title">플랜 선택</h2>
       <p data-i18n="step3Desc">언제든지 변경할 수 있습니다. Free로 시작하고 나중에 업그레이드하세요.</p>
@@ -331,6 +346,8 @@ a{color:#fff;text-decoration:none}
 var currentStep = 1;
 var selectedPlan = 'free';
 var isLoginView = false;
+var verificationToken = '';
+var verifiedToken = '';
 
 // ======== NAVIGATION ========
 function goBack() {
@@ -385,17 +402,84 @@ function showSuccess() {
 }
 
 // ======== STEP ACTIONS ========
-function goToStep2() {
+async function goToStep2() {
   var email = document.getElementById('signupEmail').value.trim();
   var lang = localStorage.getItem('pap-lang') || 'ko';
   var msgs = ERR[lang] || ERR.ko;
   if (!email) { PAP.ui.toast(msgs.emailEmpty, 'error'); return; }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { PAP.ui.toast(msgs.emailInvalid, 'error'); return; }
-  document.getElementById('step2Email').textContent = email;
-  showStep(2);
+
+  // Send verification code
+  var btn = document.querySelector('#step1 .auth-btn');
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    var resp = await fetch((window._PAP_API_BASE || '') + '/api/auth/send-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email })
+    });
+    var data = await resp.json();
+    if (!resp.ok) throw new Error(data.message || 'Failed');
+    verificationToken = data.verificationToken;
+    var d = (L[lang] || L.ko);
+    document.getElementById('step2EmailMsg').textContent = email + (d.codeSentTo || ' 으로 인증 코드를 보냈습니다.');
+    showStep(2);
+  } catch (e) {
+    PAP.ui.toast(e.message || msgs.networkError, 'error');
+  }
+  btn.disabled = false;
+  btn.textContent = (L[lang] && L[lang].btnStart) || '시작하기';
 }
 
-function goToStep3() {
+async function verifyEmailCode() {
+  var code = document.getElementById('verifyCode').value.trim();
+  var lang = localStorage.getItem('pap-lang') || 'ko';
+  var msgs = ERR[lang] || ERR.ko;
+  if (code.length !== 6) { PAP.ui.toast(msgs.codeInvalid || '6자리 코드를 입력해주세요.', 'error'); return; }
+
+  var btn = document.getElementById('btnVerify');
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    var resp = await fetch((window._PAP_API_BASE || '') + '/api/auth/verify-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: code, verificationToken: verificationToken })
+    });
+    var data = await resp.json();
+    if (!resp.ok) {
+      if (resp.status === 410) throw new Error(msgs.codeExpired || '인증 코드가 만료되었습니다. 다시 요청해주세요.');
+      if (resp.status === 401) throw new Error(msgs.codeWrong || '인증 코드가 올바르지 않습니다.');
+      throw new Error(data.message || 'Verification failed');
+    }
+    verifiedToken = data.verifiedToken;
+    showStep(3);
+  } catch (e) {
+    PAP.ui.toast(e.message, 'error');
+  }
+  btn.disabled = false;
+  btn.textContent = (L[lang] && L[lang].btnVerify) || '인증하기';
+}
+
+async function resendCode() {
+  var email = document.getElementById('signupEmail').value.trim();
+  var lang = localStorage.getItem('pap-lang') || 'ko';
+  var msgs = ERR[lang] || ERR.ko;
+  try {
+    var resp = await fetch((window._PAP_API_BASE || '') + '/api/auth/send-code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email })
+    });
+    var data = await resp.json();
+    if (!resp.ok) throw new Error(data.message || 'Failed');
+    verificationToken = data.verificationToken;
+    PAP.ui.toast(msgs.codeResent || '인증 코드를 다시 보냈습니다.', 'success');
+  } catch (e) {
+    PAP.ui.toast(e.message || msgs.networkError, 'error');
+  }
+}
+
+function goToStep4() {
   var lastName = document.getElementById('signupLastName').value.trim();
   var firstName = document.getElementById('signupFirstName').value.trim();
   var pw = document.getElementById('signupPw').value;
@@ -406,7 +490,7 @@ function goToStep3() {
   if (pw.length < 8) { PAP.ui.toast(msgs.pwShort, 'error'); return; }
   if (!/[A-Z]/.test(pw)) { PAP.ui.toast(msgs.pwNoUpper, 'error'); return; }
   if (!/[0-9]/.test(pw)) { PAP.ui.toast(msgs.pwNoNumber, 'error'); return; }
-  showStep(3);
+  showStep(4);
 }
 
 async function completeSignup() {
@@ -423,7 +507,7 @@ async function completeSignup() {
   btn.textContent = '...';
 
   try {
-    await PAP.auth.signup({ name: fullName, email: email, password: pw });
+    await PAP.auth.signup({ name: fullName, email: email, password: pw, verifiedToken: verifiedToken });
     showSuccess();
   } catch (e) {
     var msg = e.message || '';
@@ -506,6 +590,10 @@ ko: {
   pwShort:'비밀번호는 최소 8자 이상이어야 합니다.',
   pwNoUpper:'비밀번호에 대문자(A-Z)를 1개 이상 포함해주세요.',
   pwNoNumber:'비밀번호에 숫자(0-9)를 1개 이상 포함해주세요.',
+  codeInvalid:'6자리 인증 코드를 입력해주세요.',
+  codeExpired:'인증 코드가 만료되었습니다. 다시 요청해주세요.',
+  codeWrong:'인증 코드가 올바르지 않습니다.',
+  codeResent:'인증 코드를 다시 보냈습니다.',
   networkError:'네트워크 연결을 확인해주세요. 인터넷에 연결되어 있나요?',
   signupFail:'회원가입 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
   loginWrong:'이메일 또는 비밀번호가 올바르지 않습니다.',
@@ -522,6 +610,10 @@ en: {
   pwShort:'Password must be at least 8 characters.',
   pwNoUpper:'Password must include at least 1 uppercase letter (A-Z).',
   pwNoNumber:'Password must include at least 1 number (0-9).',
+  codeInvalid:'Please enter the 6-digit code.',
+  codeExpired:'Verification code has expired. Please request a new one.',
+  codeWrong:'Incorrect verification code.',
+  codeResent:'Verification code has been resent.',
   networkError:'Please check your internet connection.',
   signupFail:'Something went wrong. Please try again in a moment.',
   loginWrong:'Incorrect email or password.',
@@ -538,6 +630,10 @@ it: {
   pwShort:'La password deve contenere almeno 8 caratteri.',
   pwNoUpper:'La password deve includere almeno 1 lettera maiuscola (A-Z).',
   pwNoNumber:'La password deve includere almeno 1 numero (0-9).',
+  codeInvalid:'Inserisci il codice a 6 cifre.',
+  codeExpired:'Il codice è scaduto. Richiedine uno nuovo.',
+  codeWrong:'Codice di verifica errato.',
+  codeResent:'Codice inviato di nuovo.',
   networkError:'Verifica la tua connessione internet.',
   signupFail:'Si è verificato un errore. Riprova tra poco.',
   loginWrong:'Email o password non corretti.',
@@ -554,6 +650,10 @@ fr: {
   pwShort:'Le mot de passe doit contenir au moins 8 caractères.',
   pwNoUpper:'Le mot de passe doit contenir au moins 1 majuscule (A-Z).',
   pwNoNumber:'Le mot de passe doit contenir au moins 1 chiffre (0-9).',
+  codeInvalid:'Veuillez entrer le code à 6 chiffres.',
+  codeExpired:'Le code a expiré. Veuillez en demander un nouveau.',
+  codeWrong:'Code de vérification incorrect.',
+  codeResent:'Le code a été renvoyé.',
   networkError:'Vérifiez votre connexion internet.',
   signupFail:'Une erreur est survenue. Veuillez réessayer.',
   loginWrong:'Email ou mot de passe incorrect.',
@@ -570,6 +670,10 @@ es: {
   pwShort:'La contraseña debe tener al menos 8 caracteres.',
   pwNoUpper:'La contraseña debe incluir al menos 1 mayúscula (A-Z).',
   pwNoNumber:'La contraseña debe incluir al menos 1 número (0-9).',
+  codeInvalid:'Ingrese el código de 6 dígitos.',
+  codeExpired:'El código ha expirado. Solicite uno nuevo.',
+  codeWrong:'Código de verificación incorrecto.',
+  codeResent:'El código ha sido reenviado.',
   networkError:'Verifique su conexión a internet.',
   signupFail:'Ocurrió un error. Intente de nuevo en un momento.',
   loginWrong:'Email o contraseña incorrectos.',
@@ -586,6 +690,10 @@ ja: {
   pwShort:'パスワードは8文字以上必要です。',
   pwNoUpper:'パスワードに大文字(A-Z)を1つ以上含めてください。',
   pwNoNumber:'パスワードに数字(0-9)を1つ以上含めてください。',
+  codeInvalid:'6桁のコードを入力してください。',
+  codeExpired:'認証コードの有効期限が切れました。再度リクエストしてください。',
+  codeWrong:'認証コードが正しくありません。',
+  codeResent:'認証コードを再送しました。',
   networkError:'インターネット接続を確認してください。',
   signupFail:'エラーが発生しました。しばらくしてからお試しください。',
   loginWrong:'メールまたはパスワードが正しくありません。',
@@ -602,6 +710,10 @@ zh: {
   pwShort:'密码至少需要8个字符。',
   pwNoUpper:'密码必须包含至少1个大写字母(A-Z)。',
   pwNoNumber:'密码必须包含至少1个数字(0-9)。',
+  codeInvalid:'请输入6位验证码。',
+  codeExpired:'验证码已过期，请重新获取。',
+  codeWrong:'验证码不正确。',
+  codeResent:'验证码已重新发送。',
   networkError:'请检查您的网络连接。',
   signupFail:'发生错误，请稍后重试。',
   loginWrong:'邮箱或密码不正确。',
@@ -618,6 +730,10 @@ ru: {
   pwShort:'Пароль должен содержать не менее 8 символов.',
   pwNoUpper:'Пароль должен содержать хотя бы 1 заглавную букву (A-Z).',
   pwNoNumber:'Пароль должен содержать хотя бы 1 цифру (0-9).',
+  codeInvalid:'Введите 6-значный код.',
+  codeExpired:'Код подтверждения истёк. Запросите новый.',
+  codeWrong:'Неверный код подтверждения.',
+  codeResent:'Код подтверждения отправлен повторно.',
   networkError:'Проверьте подключение к интернету.',
   signupFail:'Произошла ошибка. Попробуйте позже.',
   loginWrong:'Неверный email или пароль.',
@@ -639,10 +755,12 @@ ko: {
   or:'또는', labelEmail:'이메일', labelPw:'비밀번호', labelLastName:'성', labelFirstName:'이름',
   phPw:'비밀번호 입력', phPwSet:'8자 이상, 대문자+숫자 포함', phLastName:'성', phFirstName:'이름',
   pwHint:'대문자 1개 + 숫자 1개 이상 포함',
-  btnStart:'시작하기', btnNext:'다음', btnComplete:'가입 완료', btnLogin:'로그인',
+  btnStart:'시작하기', btnVerify:'인증하기', btnNext:'다음', btnComplete:'가입 완료', btnLogin:'로그인',
+  step2Title:'인증 코드 입력', codeHint:'이메일로 전송된 6자리 코드를 입력하세요.', resendCode:'코드를 받지 못하셨나요? 다시 보내기', codeSentTo:' 으로 인증 코드를 보냈습니다.',
+  step3Title_account:'계정 설정',
   hasAccount:'이미 회원이신가요? <a href="#" onclick="showLogin();return false;">로그인</a>',
   noAccount:'회원이 아니신가요? <a href="#" onclick="showSignup();return false;">가입하기</a>',
-  step2Title:'계정 설정', step3Title:'플랜 선택',
+  step3Title:'플랜 선택',
   step3Desc:'언제든지 변경할 수 있습니다. Free로 시작하고 나중에 업그레이드하세요.',
   planFreeName:'Free', planFreePrice:'무료',
   planFreeFeatures:'작품 제출 · 커뮤니티 참여 · 기본 콘텐츠 접근',
@@ -668,10 +786,12 @@ en: {
   or:'OR', labelEmail:'EMAIL', labelPw:'PASSWORD', labelLastName:'LAST NAME', labelFirstName:'FIRST NAME',
   phPw:'Enter password', phPwSet:'Min. 8 chars, uppercase + number', phLastName:'Last name', phFirstName:'First name',
   pwHint:'At least 1 uppercase letter + 1 number',
-  btnStart:'GET STARTED', btnNext:'NEXT', btnComplete:'COMPLETE SIGNUP', btnLogin:'LOG IN',
+  btnStart:'GET STARTED', btnVerify:'VERIFY', btnNext:'NEXT', btnComplete:'COMPLETE SIGNUP', btnLogin:'LOG IN',
+  step2Title:'Enter Verification Code', codeHint:'Enter the 6-digit code sent to your email.', resendCode:'Didn\'t receive the code? Resend', codeSentTo:': verification code sent.',
+  step3Title_account:'Set Up Account',
   hasAccount:'Already a member? <a href="#" onclick="showLogin();return false;">Log in</a>',
   noAccount:'Not a member? <a href="#" onclick="showSignup();return false;">Sign up</a>',
-  step2Title:'Set up your account', step3Title:'Choose your plan',
+  step3Title:'Choose your plan',
   step3Desc:'You can change your plan anytime. Start free and upgrade later.',
   planFreeName:'Free', planFreePrice:'Free',
   planFreeFeatures:'Submit work · Join community · Basic content access',
@@ -697,10 +817,12 @@ it: {
   or:'OPPURE', labelEmail:'EMAIL', labelPw:'PASSWORD', labelLastName:'COGNOME', labelFirstName:'NOME',
   phPw:'Inserisci password', phPwSet:'Min. 8 caratteri, maiuscola + numero', phLastName:'Cognome', phFirstName:'Nome',
   pwHint:'Almeno 1 maiuscola + 1 numero',
-  btnStart:'INIZIA', btnNext:'AVANTI', btnComplete:'COMPLETA REGISTRAZIONE', btnLogin:'ACCEDI',
+  btnStart:'INIZIA', btnVerify:'VERIFICA', btnNext:'AVANTI', btnComplete:'COMPLETA REGISTRAZIONE', btnLogin:'ACCEDI',
+  step2Title:'Inserisci Codice', codeHint:'Inserisci il codice a 6 cifre inviato alla tua email.', resendCode:'Non hai ricevuto il codice? Invia di nuovo', codeSentTo:': codice inviato.',
+  step3Title_account:'Configura Account',
   hasAccount:'Già membro? <a href="#" onclick="showLogin();return false;">Accedi</a>',
   noAccount:'Non sei membro? <a href="#" onclick="showSignup();return false;">Registrati</a>',
-  step2Title:'Configura account', step3Title:'Scegli il piano',
+  step3Title:'Scegli il piano',
   step3Desc:'Puoi cambiare piano in qualsiasi momento. Inizia gratis e aggiorna dopo.',
   planFreeName:'Free', planFreePrice:'Gratuito',
   planFreeFeatures:'Invia lavori · Unisciti alla community · Accesso base',
@@ -726,10 +848,12 @@ fr: {
   or:'OU', labelEmail:'EMAIL', labelPw:'MOT DE PASSE', labelLastName:'NOM', labelFirstName:'PRÉNOM',
   phPw:'Entrez le mot de passe', phPwSet:'Min. 8 caractères, majuscule + chiffre', phLastName:'Nom', phFirstName:'Prénom',
   pwHint:'Au moins 1 majuscule + 1 chiffre',
-  btnStart:'COMMENCER', btnNext:'SUIVANT', btnComplete:'TERMINER L\'INSCRIPTION', btnLogin:'CONNEXION',
+  btnStart:'COMMENCER', btnVerify:'VÉRIFIER', btnNext:'SUIVANT', btnComplete:'TERMINER L\'INSCRIPTION', btnLogin:'CONNEXION',
+  step2Title:'Entrer le Code', codeHint:'Entrez le code à 6 chiffres envoyé à votre email.', resendCode:'Code non reçu ? Renvoyer', codeSentTo:' : code envoyé.',
+  step3Title_account:'Configurer le Compte',
   hasAccount:'Déjà membre ? <a href="#" onclick="showLogin();return false;">Connexion</a>',
   noAccount:'Pas encore membre ? <a href="#" onclick="showSignup();return false;">S\'inscrire</a>',
-  step2Title:'Configurer le compte', step3Title:'Choisir le plan',
+  step3Title:'Choisir le plan',
   step3Desc:'Vous pouvez changer de plan à tout moment. Commencez gratuitement.',
   planFreeName:'Free', planFreePrice:'Gratuit',
   planFreeFeatures:'Soumettre · Rejoindre la communauté · Accès de base',
@@ -755,10 +879,12 @@ es: {
   or:'O', labelEmail:'EMAIL', labelPw:'CONTRASEÑA', labelLastName:'APELLIDO', labelFirstName:'NOMBRE',
   phPw:'Ingrese contraseña', phPwSet:'Mín. 8 caracteres, mayúscula + número', phLastName:'Apellido', phFirstName:'Nombre',
   pwHint:'Al menos 1 mayúscula + 1 número',
-  btnStart:'EMPEZAR', btnNext:'SIGUIENTE', btnComplete:'COMPLETAR REGISTRO', btnLogin:'INICIAR SESIÓN',
+  btnStart:'EMPEZAR', btnVerify:'VERIFICAR', btnNext:'SIGUIENTE', btnComplete:'COMPLETAR REGISTRO', btnLogin:'INICIAR SESIÓN',
+  step2Title:'Ingresa el Código', codeHint:'Ingresa el código de 6 dígitos enviado a tu email.', resendCode:'¿No recibiste el código? Reenviar', codeSentTo:': código enviado.',
+  step3Title_account:'Configura tu Cuenta',
   hasAccount:'¿Ya eres miembro? <a href="#" onclick="showLogin();return false;">Inicia sesión</a>',
   noAccount:'¿No eres miembro? <a href="#" onclick="showSignup();return false;">Regístrate</a>',
-  step2Title:'Configura tu cuenta', step3Title:'Elige tu plan',
+  step3Title:'Elige tu plan',
   step3Desc:'Puedes cambiar tu plan en cualquier momento. Empieza gratis y actualiza después.',
   planFreeName:'Free', planFreePrice:'Gratis',
   planFreeFeatures:'Enviar trabajo · Unirse a la comunidad · Acceso básico',
@@ -784,10 +910,12 @@ ja: {
   or:'または', labelEmail:'メール', labelPw:'パスワード', labelLastName:'姓', labelFirstName:'名',
   phPw:'パスワード入力', phPwSet:'8文字以上、大文字+数字', phLastName:'姓', phFirstName:'名',
   pwHint:'大文字1つ + 数字1つ以上',
-  btnStart:'始める', btnNext:'次へ', btnComplete:'登録完了', btnLogin:'ログイン',
+  btnStart:'始める', btnVerify:'認証する', btnNext:'次へ', btnComplete:'登録完了', btnLogin:'ログイン',
+  step2Title:'認証コード入力', codeHint:'メールに送信された6桁のコードを入力してください。', resendCode:'コードが届きませんか？再送する', codeSentTo:'に認証コードを送信しました。',
+  step3Title_account:'アカウント設定',
   hasAccount:'すでにメンバーですか？ <a href="#" onclick="showLogin();return false;">ログイン</a>',
   noAccount:'メンバーではありませんか？ <a href="#" onclick="showSignup();return false;">登録する</a>',
-  step2Title:'アカウント設定', step3Title:'プランを選択',
+  step3Title:'プランを選択',
   step3Desc:'いつでもプランを変更できます。無料で始めて、後でアップグレード。',
   planFreeName:'Free', planFreePrice:'無料',
   planFreeFeatures:'作品提出 · コミュニティ参加 · 基本コンテンツ',
@@ -813,10 +941,12 @@ zh: {
   or:'或', labelEmail:'邮箱', labelPw:'密码', labelLastName:'姓', labelFirstName:'名',
   phPw:'输入密码', phPwSet:'至少8位，含大写字母+数字', phLastName:'姓', phFirstName:'名',
   pwHint:'至少1个大写字母 + 1个数字',
-  btnStart:'开始', btnNext:'下一步', btnComplete:'完成注册', btnLogin:'登录',
+  btnStart:'开始', btnVerify:'验证', btnNext:'下一步', btnComplete:'完成注册', btnLogin:'登录',
+  step2Title:'输入验证码', codeHint:'请输入发送到您邮箱的6位验证码。', resendCode:'没收到验证码？重新发送', codeSentTo:'：验证码已发送。',
+  step3Title_account:'设置账户',
   hasAccount:'已经是会员？ <a href="#" onclick="showLogin();return false;">登录</a>',
   noAccount:'还不是会员？ <a href="#" onclick="showSignup();return false;">注册</a>',
-  step2Title:'设置账户', step3Title:'选择计划',
+  step3Title:'选择计划',
   step3Desc:'随时可以更改计划。从免费开始，之后再升级。',
   planFreeName:'Free', planFreePrice:'免费',
   planFreeFeatures:'提交作品 · 加入社区 · 基础内容访问',
@@ -842,10 +972,12 @@ ru: {
   or:'ИЛИ', labelEmail:'EMAIL', labelPw:'ПАРОЛЬ', labelLastName:'ФАМИЛИЯ', labelFirstName:'ИМЯ',
   phPw:'Введите пароль', phPwSet:'Мин. 8 символов, заглавная + цифра', phLastName:'Фамилия', phFirstName:'Имя',
   pwHint:'Минимум 1 заглавная буква + 1 цифра',
-  btnStart:'НАЧАТЬ', btnNext:'ДАЛЕЕ', btnComplete:'ЗАВЕРШИТЬ РЕГИСТРАЦИЮ', btnLogin:'ВОЙТИ',
+  btnStart:'НАЧАТЬ', btnVerify:'ПОДТВЕРДИТЬ', btnNext:'ДАЛЕЕ', btnComplete:'ЗАВЕРШИТЬ РЕГИСТРАЦИЮ', btnLogin:'ВОЙТИ',
+  step2Title:'Введите Код', codeHint:'Введите 6-значный код, отправленный на вашу почту.', resendCode:'Не получили код? Отправить повторно', codeSentTo:': код отправлен.',
+  step3Title_account:'Настройка Аккаунта',
   hasAccount:'Уже участник? <a href="#" onclick="showLogin();return false;">Войти</a>',
   noAccount:'Ещё не участник? <a href="#" onclick="showSignup();return false;">Зарегистрироваться</a>',
-  step2Title:'Настройка аккаунта', step3Title:'Выберите план',
+  step3Title:'Выберите план',
   step3Desc:'Вы можете изменить план в любое время. Начните бесплатно.',
   planFreeName:'Free', planFreePrice:'Бесплатно',
   planFreeFeatures:'Отправка работ · Сообщество · Базовый контент',
