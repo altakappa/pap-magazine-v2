@@ -1531,12 +1531,12 @@ if(shortsSec) shortsObserver.observe(shortsSec);
 // Define render callbacks BEFORE lazy loading so they're available when JSON arrives
 window._papShortsRender = function(){ buildShortsCarousel(); };
 
-// Auto-play first film in main player when film data loads
+// Auto-play first film in main player when film data loads (muted for autoplay policy)
 window._papFilmAutoPlay = function(){
   if(filmAllData.length > 0){
     var fp = document.getElementById('filmMainPlayer');
-    if(fp && fp.src === 'about:blank'){
-      fp.src = 'https://www.youtube.com/embed/' + filmAllData[0].yt + '?rel=0&autoplay=0';
+    if(fp && (fp.src === 'about:blank' || fp.src === '')){
+      fp.src = 'https://www.youtube.com/embed/' + filmAllData[0].yt + '?rel=0&autoplay=1&mute=1&loop=1&playlist=' + filmAllData[0].yt;
     }
   }
 };
