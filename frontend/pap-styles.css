@@ -576,7 +576,8 @@ button{cursor:pointer;font-family:inherit}
   /* Cards */
   .fashion-card{min-width:calc(75% - 12px)}
   .ed-carousel-card{min-width:calc(50% - 14px)}
-  .ed-row-card{min-width:180px;max-width:180px}
+  .ed-row-card{min-width:130px;max-width:130px}
+  .ed-row-card-img{aspect-ratio:1/1}
   .nf-card{min-width:260px;max-width:260px}
   .nf-card-img{aspect-ratio:1/1}
   .editorial-grid{grid-template-columns:repeat(2,1fr)}
@@ -664,7 +665,7 @@ button{cursor:pointer;font-family:inherit}
 
   /* Cards — smaller for phone screens */
   .fashion-card{min-width:calc(85% - 8px)}
-  .ed-row-card{min-width:120px;max-width:120px}
+  .ed-row-card{min-width:105px;max-width:105px}
   .nf-card{min-width:240px;max-width:240px}
   .creator-card{min-width:160px;max-width:160px;padding:12px}
 
@@ -730,7 +731,7 @@ button{cursor:pointer;font-family:inherit}
   .fashion-heading,.carousel-track,.ed-row-label,.ed-row-track,.nf-top,.nf-track,.ai-rec-badge,.creator-results,.ed-search-grid{padding-left:12px;padding-right:12px}
 
   /* Cards */
-  .ed-row-card{min-width:110px;max-width:110px}
+  .ed-row-card{min-width:100px;max-width:100px}
   .nf-card{min-width:220px;max-width:220px}
   .fashion-card{min-width:calc(90% - 8px)}
   .creator-card{min-width:150px;max-width:150px}
@@ -760,7 +761,7 @@ button{cursor:pointer;font-family:inherit}
   .hero-title{font-size:1.25rem}
   .hero-issue{font-size:9px}
 
-  .ed-row-card{min-width:105px;max-width:105px}
+  .ed-row-card{min-width:90px;max-width:90px}
   .nf-card{min-width:200px;max-width:200px}
   .ed-row-track{gap:6px}
   .nf-track{gap:4px}
@@ -797,7 +798,7 @@ button{cursor:pointer;font-family:inherit}
 
   .fashion-heading,.carousel-track,.ed-row-label,.ed-row-track,.nf-top,.nf-track,.ai-rec-badge,.creator-results,.ed-search-grid{padding-left:8px;padding-right:8px}
 
-  .ed-row-card{min-width:95px;max-width:95px}
+  .ed-row-card{min-width:80px;max-width:80px}
   .nf-card{min-width:180px;max-width:180px}
   .fashion-card{min-width:95%}
 
