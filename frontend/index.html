@@ -593,13 +593,26 @@
 
 <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="pap-api.js"></script><script src="pap-app.js"></script>
 <script>
-// AI Recommendation Fallback: runs if pap-app.js AI engine didn't populate
+// AI Recommendation Fallback: reads theme tags from DOM ed-row-card elements
 try{
 (function(){
   var c1=document.getElementById('aiThemeRows1');
   var c2=document.getElementById('aiThemeRows2');
-  if((c1 && c1.innerHTML.trim()!=='')||(c2 && c2.innerHTML.trim()!=='')) return; // Already populated
-  if(typeof edData==='undefined'||!edData||!edData.length) return;
+  if((c1 && c1.innerHTML.trim()!=='')||(c2 && c2.innerHTML.trim()!=='')) return;
+
+  // Build editorial list from DOM cards with data-tags
+  var cards=document.querySelectorAll('.ed-row-card[data-tags]');
+  var domEds=[];
+  cards.forEach(function(card){
+    var tags=(card.getAttribute('data-tags')||'').split(',').map(function(t){return t.trim();}).filter(Boolean);
+    var titleEl=card.querySelector('.ed-row-card-title');
+    var imgEl=card.querySelector('.ed-row-card-img img');
+    var catEl=card.querySelector('.ed-row-card-cat');
+    if(titleEl && imgEl){
+      domEds.push({title:titleEl.textContent.trim(), img:imgEl.src, tags:tags, date:catEl?catEl.textContent.replace(/^EDITORIAL\s*[&-]?\s*/i,'').trim():''});
+    }
+  });
+  if(!domEds.length) return;
 
   var themes=[
     {id:'dreamy',tags:['dreamy','romantic','soft','ethereal','pastel','gentle','tender','nostalgia','light','spiritual','peaceful'],
@@ -610,9 +623,9 @@ try{
      labels:{ko:'다크 & 시네마틱',en:'Dark & Cinematic',it:'Dark & Cinematico',fr:'Sombre & Cinématique',es:'Oscuro & Cinemático',ja:'ダーク＆シネマティック',zh:'暗黑电影风格',ru:'Тёмный и кинематографичный'}},
     {id:'nature',tags:['warm','natural','organic','earthy','golden','desert','landscape','bohemian','flowing','sand'],
      labels:{ko:'자연과 따뜻함',en:'Warm & Organic',it:'Caldo & Organico',fr:'Chaleureux & Organique',es:'Cálido & Orgánico',ja:'自然と温もり',zh:'自然温暖风格',ru:'Тёплый и органичный'}},
-    {id:'modern',tags:['futuristic','modern','geometric','structured','clean','sleek','chrome','metallic','industrial','space','precision'],
+    {id:'modern',tags:['futuristic','modern','geometric','structured','clean','sleek','chrome','metallic','industrial','space','precision','minimal'],
      labels:{ko:'미래적이고 모던한',en:'Futuristic & Modern',it:'Futuristico & Moderno',fr:'Futuriste & Moderne',es:'Futurista & Moderno',ja:'未来的でモダンな',zh:'未来摩登风格',ru:'Футуристичный и современный'}},
-    {id:'classic',tags:['elegant','classic','refined','sophisticated','timeless','minimal','grace','beauty','muse','feminine'],
+    {id:'classic',tags:['elegant','classic','refined','sophisticated','timeless','grace','beauty','muse','feminine'],
      labels:{ko:'클래식 & 엘레강스',en:'Classic & Elegance',it:'Classico & Eleganza',fr:'Classique & Élégance',es:'Clásico & Elegancia',ja:'クラシック＆エレガンス',zh:'经典优雅风格',ru:'Классика и элегантность'}},
     {id:'surreal',tags:['surreal','dreamlike','fantasy','conceptual','whimsical','artistic','abstract','creative','imaginative'],
      labels:{ko:'초현실적 판타지',en:'Surreal Fantasy',it:'Fantasia Surrealista',fr:'Fantaisie Surréaliste',es:'Fantasía Surrealista',ja:'シュールファンタジー',zh:'超现实幻想',ru:'Сюрреалистическая фантазия'}},
@@ -623,9 +636,8 @@ try{
   var lang=localStorage.getItem('pap-lang')||'ko';
   var scored=themes.map(function(theme){
     var matched=[];
-    edData.forEach(function(ed){
-      var edTags=ed.tags||[];
-      var overlap=edTags.filter(function(t){return theme.tags.indexOf(t)>-1;}).length;
+    domEds.forEach(function(ed){
+      var overlap=ed.tags.filter(function(t){return theme.tags.indexOf(t)>-1;}).length;
       if(overlap>=1) matched.push({ed:ed,score:overlap});
     });
     matched.sort(function(a,b){return b.score-a.score;});
