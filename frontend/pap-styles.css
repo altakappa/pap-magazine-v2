@@ -316,13 +316,12 @@ button{cursor:pointer;font-family:inherit}
 .footer-social{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
 .footer-social a{font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#fff;opacity:.7;transition:opacity .2s}
 .footer-social a:hover{opacity:1}
-.footer-marquee{overflow:hidden;margin-bottom:48px;border-top:1px solid rgba(255,255,255,.1);border-bottom:1px solid rgba(255,255,255,.1);padding:16px 0}
-.footer-marquee-track{display:flex;animation:marquee 20s linear infinite;white-space:nowrap}
-.footer-marquee-track span{font-size:clamp(1.5rem,3.5vw,3rem);font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#fff;padding:0 16px}
-.footer-marquee-track .sep{color:rgba(255,255,255,.2);font-weight:300}
+.footer-marquee{overflow:hidden;margin-bottom:48px;padding:16px 0}
+.footer-marquee-track{display:flex;animation:marquee 12s linear infinite;white-space:nowrap}
+.footer-marquee-track span{font-size:clamp(1.5rem,3.5vw,3rem);font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#fff;padding:0 24px}
 .footer-marquee-track a{color:#fff;text-decoration:none;transition:opacity .2s}
 .footer-marquee-track a:hover{opacity:.5}
-@keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+@keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-33.333%)}}
 .footer-legal{text-align:center;font-size:8px;color:rgba(255,255,255,.2);line-height:1.7;margin-top:200px}
 .footer-legal strong{font-weight:500;color:rgba(255,255,255,.35)}
 .footer-legal a{color:rgba(255,255,255,.25)}
@@ -543,9 +542,10 @@ button{cursor:pointer;font-family:inherit}
 /* --- 768px: Small tablet / Large phone landscape --- */
 @media(max-width:768px){
   .header{padding:0 16px;height:60px}
-  .hero{margin-top:60px;height:calc(100vh - 60px)}
+  .hero{margin-top:60px;height:60vh}
   .hero-content{left:20px;bottom:28px}
   .hero-title{font-size:clamp(1.6rem,6vw,2.5rem)}
+  .hero-symbol{right:20px;bottom:28px}
   .hero-watermark{right:20px;bottom:28px;width:40px;height:40px}
 
   /* Reduce all 48px track/section paddings */
@@ -566,6 +566,7 @@ button{cursor:pointer;font-family:inherit}
   .ed-carousel-card{min-width:calc(50% - 14px)}
   .ed-row-card{min-width:180px;max-width:180px}
   .nf-card{min-width:260px;max-width:260px}
+  .nf-card-img{aspect-ratio:1/1}
   .editorial-grid{grid-template-columns:repeat(2,1fr)}
 
   /* Nav overlay — single column on mobile */
@@ -581,9 +582,13 @@ button{cursor:pointer;font-family:inherit}
 
   /* Footer */
   .footer{padding:32px 20px 16px}
-  .footer-top{flex-direction:column;align-items:center;gap:16px}
-  .footer-social{align-items:center}
+  .footer-top{flex-direction:row;align-items:flex-start;gap:16px}
+  .footer-links-left{align-items:flex-start}
+  .footer-social{align-items:flex-end}
+  .footer-marquee{border-top:none;border-bottom:none}
   .footer-marquee-track span{font-size:1rem}
+  .footer-marquee-track .sep{display:none}
+  .footer-marquee-track{animation:marquee 12s linear infinite}
   .footer-bottom-links{gap:16px;flex-wrap:wrap;justify-content:center}
 
   /* Page overlay */
@@ -622,10 +627,11 @@ button{cursor:pointer;font-family:inherit}
 /* --- 480px: Large phones (iPhone Plus/Max 428px, Galaxy A 384px) --- */
 @media(max-width:480px){
   .header{padding:0 12px;height:56px}
-  .hero{margin-top:56px;height:calc(100vh - 56px)}
+  .hero{margin-top:56px;height:60vh}
   .hero-content{left:16px;bottom:24px}
   .hero-title{font-size:clamp(1.4rem,7vw,2rem)}
   .hero-issue{font-size:10px;letter-spacing:.2em}
+  .hero-symbol{right:16px;bottom:24px}
   .hero-watermark{right:16px;bottom:24px;width:36px;height:36px}
   .hero-watermark span{font-size:10px}
 
@@ -695,10 +701,12 @@ button{cursor:pointer;font-family:inherit}
 /* --- 390px: iPhone 12/13/14 (390px), Galaxy S21-S24 (360-384px) --- */
 @media(max-width:390px){
   .header{padding:0 10px;height:54px}
-  .header-right{gap:8px}
-  .lang-btn{padding:5px 10px;font-size:10px}
-  .lang-btn select{font-size:10px}
-  .hero{margin-top:54px;height:calc(100vh - 54px)}
+  .header-right{gap:6px}
+  .lang-btn{padding:4px 8px;font-size:9px}
+  .lang-btn svg{width:14px;height:14px}
+  .lang-btn select{font-size:9px}
+  .logo-wrap img,.floating-logo.in-header img{height:24px}
+  .hero{margin-top:54px;height:60vh}
   .hero-content{left:14px;bottom:20px}
   .hero-title{font-size:1.4rem}
 
@@ -732,7 +740,7 @@ button{cursor:pointer;font-family:inherit}
 /* --- 360px: iPhone SE (375px), Galaxy A series (360px), small devices --- */
 @media(max-width:375px){
   .header{height:52px}
-  .hero{margin-top:52px;height:calc(100vh - 52px)}
+  .hero{margin-top:52px;height:60vh}
   .hero-title{font-size:1.25rem}
   .hero-issue{font-size:9px}
 
@@ -766,7 +774,7 @@ button{cursor:pointer;font-family:inherit}
 @media(max-width:320px){
   .header{height:48px;padding:0 8px}
   .hamburger span{width:20px}
-  .hero{margin-top:48px;height:calc(100vh - 48px)}
+  .hero{margin-top:48px;height:60vh}
   .hero-title{font-size:1.1rem}
   .hero-content{left:10px;bottom:16px}
 
