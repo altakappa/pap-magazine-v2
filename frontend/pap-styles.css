@@ -593,9 +593,7 @@ button{cursor:pointer;font-family:inherit}
 
   /* Footer */
   .footer{padding:32px 20px 16px}
-  .footer-top{flex-direction:row;align-items:flex-start;gap:16px}
-  .footer-links-left{align-items:flex-start}
-  .footer-social{align-items:flex-end}
+  .footer-top{display:none}
   .footer-marquee{border-top:none;border-bottom:none}
   .footer-marquee-track span{font-size:1rem;padding:28px 16px 0}
   .footer-marquee-track .sep{display:none}
