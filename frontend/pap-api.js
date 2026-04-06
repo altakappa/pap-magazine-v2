@@ -283,18 +283,51 @@ const PAP = (function() {
     }
   };
 
-  // ======== SUBSCRIPTIONS ========
+  // ======== SUBSCRIPTIONS (PortOne V2) ========
   const subscriptions = {
+    /**
+     * Issue billing key via PortOne popup, then create subscription on backend
+     */
     async checkout(plan, billing) {
-      const res = await request('POST', '/subscriptions/checkout', { plan, billing });
-      if (res.url) window.location.href = res.url; // Redirect to Stripe
+      if (typeof PortOne === 'undefined') {
+        throw new Error('Payment SDK not loaded. Please refresh the page.');
+      }
+      var storeId = window._PAP_PORTONE_STORE_ID;
+      var channelKey = window._PAP_PORTONE_CHANNEL_KEY;
+      if (!storeId || !channelKey) {
+        throw new Error('Payment configuration missing');
+      }
+
+      // 1) Request billing key via PortOne popup (card registration)
+      var issueResponse = await PortOne.requestIssueBillingKey({
+        storeId: storeId,
+        channelKey: channelKey,
+        billingKeyMethod: 'CARD',
+      });
+
+      if (issueResponse.code != null) {
+        throw new Error(issueResponse.message || 'Payment cancelled');
+      }
+
+      // 2) Send billing key + plan to backend for payment
+      var res = await request('POST', '/subscriptions/checkout', {
+        billingKey: issueResponse.billingKey,
+        plan: plan,
+        billing: billing,
+      });
       return res;
     },
 
+    async cancelSubscription() {
+      return await request('POST', '/subscriptions/portal', { action: 'cancel' });
+    },
+
+    async getSubscription() {
+      return await request('GET', '/subscriptions/portal');
+    },
+
     async manageSubscription() {
-      const res = await request('POST', '/subscriptions/portal');
-      if (res.url) window.location.href = res.url; // Redirect to Stripe Portal
-      return res;
+      return this.cancelSubscription();
     }
   };
 

@@ -851,7 +851,7 @@ function renderLookThumbs(n){
     var isCover=(selectedCoverLook===n&&selectedCoverIdx===i);
     h+='<div class="look-thumb" draggable="true" data-look="'+n+'" data-idx="'+i+'" ondragstart="thumbDragStart(event,'+n+','+i+')" ondragover="thumbDragOver(event)" ondragenter="thumbDragEnter(event)" ondragleave="thumbDragLeave(event)" ondrop="thumbDrop(event,'+n+','+i+')" ondragend="thumbDragEnd(event)">';
     if(isCover) h+='<div class="cover-badge">COVER</div>';
-    h+='<img loading="lazy" loading="lazy" src="'+url+'"><div class="lt-order">'+(i+1)+'</div><button class="lt-remove" onclick="event.stopPropagation();removeLookFile('+n+','+i+')">×</button></div>';
+    h+='<img loading="lazy" src="'+url+'"><div class="lt-order">'+(i+1)+'</div><button class="lt-remove" onclick="event.stopPropagation();removeLookFile('+n+','+i+')">×</button></div>';
   }
   el.innerHTML=h;
 }

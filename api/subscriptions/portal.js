@@ -1,16 +1,24 @@
 /**
- * POST /api/subscriptions/portal — Create Stripe Customer Portal session
+ * POST /api/subscriptions/portal — Manage subscription (cancel / info)
+ * Since PortOne doesn't have a hosted portal like Stripe,
+ * we handle subscription management directly.
+ *
+ * Actions:
+ *   - GET:  returns current subscription info
+ *   - POST: { action: 'cancel' } → cancels subscription
  */
 
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAuth } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 
+const PORTONE_API_BASE = 'https://api.portone.io';
+const PORTONE_API_SECRET = process.env.PORTONE_API_SECRET;
+
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
 
-  if (req.method !== 'POST') {
+  if (req.method !== 'POST' && req.method !== 'GET') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
@@ -18,27 +26,66 @@ module.exports = async function handler(req, res) {
   if (!user) return;
 
   try {
-    // Get Stripe customer ID from database
+    // Get current subscription
     const { data: subscriber } = await supabaseAdmin
       .from('subscribers')
-      .select('stripe_customer_id')
+      .select('*')
       .eq('user_id', user.id)
       .single();
 
-    if (!subscriber || !subscriber.stripe_customer_id) {
-      return res.status(404).json({ message: 'No active subscription found' });
+    if (!subscriber) {
+      return res.status(404).json({ message: 'No subscription found' });
     }
 
-    const frontendUrl = process.env.NEXT_PUBLIC_URL || 'https://www.pap-magazine.com';
+    // GET → return subscription info
+    if (req.method === 'GET') {
+      return res.status(200).json({
+        plan: subscriber.plan,
+        billing_cycle: subscriber.billing_cycle,
+        status: subscriber.status,
+        current_period_start: subscriber.current_period_start,
+        current_period_end: subscriber.current_period_end,
+      });
+    }
 
-    const portalSession = await stripe.billingPortal.sessions.create({
-      customer: subscriber.stripe_customer_id,
-      return_url: `${frontendUrl}/subscribe.html`,
-    });
+    // POST → handle action
+    const { action } = req.body;
 
-    return res.status(200).json({ url: portalSession.url });
+    if (action === 'cancel') {
+      // Delete billing key from PortOne to stop future payments
+      if (subscriber.portone_billing_key) {
+        try {
+          await fetch(
+            `${PORTONE_API_BASE}/billing-keys/${encodeURIComponent(subscriber.portone_billing_key)}`,
+            {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `PortOne ${PORTONE_API_SECRET}`,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+        } catch (err) {
+          console.warn('Failed to delete billing key:', err.message);
+        }
+      }
+
+      // Update subscription status — keep active until period end
+      await supabaseAdmin.from('subscribers').update({
+        status: 'cancel_scheduled',
+        cancel_at: subscriber.current_period_end,
+      }).eq('user_id', user.id);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Subscription will be canceled at end of current period',
+        cancel_at: subscriber.current_period_end,
+      });
+    }
+
+    return res.status(400).json({ message: 'Invalid action' });
   } catch (error) {
     console.error('Portal error:', error);
-    return res.status(500).json({ message: 'Failed to create portal session' });
+    return res.status(500).json({ message: 'Failed to manage subscription' });
   }
 };

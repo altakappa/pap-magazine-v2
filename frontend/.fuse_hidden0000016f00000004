@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.portone.io; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co https://api.portone.io https://api.pap-magazine.com; frame-src https://service.portone.io;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co https://api.stripe.com https://api.pap-magazine.com; frame-src https://js.stripe.com;">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="PAP Magazine 멤버십 구독. 에디토리얼, 필름, 아티클 등 모든 콘텐츠를 가장 먼저 만나보세요.">
 <meta property="og:title" content="Subscribe | PAP Magazine">
@@ -276,15 +276,14 @@ a{color:#fff;text-decoration:none}
   <div class="payment-info">
     <h3 data-i18n="paymentTitle">결제 수단</h3>
     <div class="payment-logos">
+      <div class="payment-logo">STRIPE</div>
       <div class="payment-logo">VISA</div>
       <div class="payment-logo">MASTERCARD</div>
       <div class="payment-logo">AMEX</div>
       <div class="payment-logo">APPLE PAY</div>
       <div class="payment-logo">GOOGLE PAY</div>
-      <div class="payment-logo">KAKAO PAY</div>
-      <div class="payment-logo">NAVER PAY</div>
     </div>
-    <p class="payment-note" data-i18n="paymentNote">전 세계 어디서나 안전하게 결제할 수 있습니다. 구독은 월 단위로 갱신되며, 언제든지 해지할 수 있습니다.</p>
+    <p class="payment-note" data-i18n="paymentNote">Stripe를 통해 전 세계 어디서나 안전하게 결제할 수 있습니다. 구독은 월 단위로 갱신되며, 언제든지 해지할 수 있습니다.</p>
   </div>
 
 </main>
@@ -297,13 +296,6 @@ a{color:#fff;text-decoration:none}
   <symbol id="icon-cross" viewBox="0 0 16 16"><line x1="4" y1="4" x2="12" y2="12" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="4" x2="4" y2="12" stroke-width="2" stroke-linecap="round"/></symbol>
 </svg>
 
-<!-- PortOne V2 Browser SDK -->
-<script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
-<!-- PortOne config (storeId & channelKey set from Vercel env at build, or inline) -->
-<script>
-window._PAP_PORTONE_STORE_ID = 'store-pap-magazine'; /* Replace after PortOne registration */
-window._PAP_PORTONE_CHANNEL_KEY = ''; /* Replace after PG channel setup */
-</script>
 <script src="pap-api.js" defer></script>
 <script>
 var checkSvg = '<svg class="tbl-check" viewBox="0 0 16 16" width="16" height="16"><polyline points="3 8 7 12 13 4" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -328,7 +320,7 @@ ko: {
   ctaFree:'둘러보기', ctaStd:'가입 후 구독하기', ctaPrem:'가입 후 구독하기',
   compareTitle:'플랜 비교',
   paymentTitle:'결제 수단',
-  paymentNote:'전 세계 어디서나 안전하게 결제할 수 있습니다. 구독은 월 단위로 갱신되며, 언제든지 해지할 수 있습니다.',
+  paymentNote:'Stripe를 통해 전 세계 어디서나 안전하게 결제할 수 있습니다. 구독은 월 단위로 갱신되며, 언제든지 해지할 수 있습니다.',
   features: {
     free: [
       {on:true, text:'회원가입 없이 이용 가능'},
@@ -382,7 +374,7 @@ en: {
   ctaFree:'Browse Now', ctaStd:'Sign Up & Subscribe', ctaPrem:'Sign Up & Subscribe',
   compareTitle:'COMPARE PLANS',
   paymentTitle:'PAYMENT METHODS',
-  paymentNote:'Pay securely from anywhere in the world . Subscriptions renew monthly and can be cancelled anytime.',
+  paymentNote:'Pay securely from anywhere in the world via Stripe. Subscriptions renew monthly and can be cancelled anytime.',
   features: {
     free: [
       {on:true, text:'No sign-up required'},
@@ -436,7 +428,7 @@ it: {
   ctaFree:'Esplora Ora', ctaStd:'Registrati e Abbonati', ctaPrem:'Registrati e Abbonati',
   compareTitle:'CONFRONTA I PIANI',
   paymentTitle:'METODI DI PAGAMENTO',
-  paymentNote:'Paga in sicurezza da qualsiasi parte del mondo . Gli abbonamenti si rinnovano mensilmente e possono essere cancellati in qualsiasi momento.',
+  paymentNote:'Paga in sicurezza da qualsiasi parte del mondo tramite Stripe. Gli abbonamenti si rinnovano mensilmente e possono essere cancellati in qualsiasi momento.',
   features: {
     free: [
       {on:true, text:'Nessuna registrazione richiesta'},
@@ -489,7 +481,7 @@ fr: {
   ctaFree:'Explorer', ctaStd:'S\'inscrire', ctaPrem:'S\'inscrire',
   compareTitle:'COMPARER LES PLANS',
   paymentTitle:'MOYENS DE PAIEMENT',
-  paymentNote:'Payez en toute sécurité depuis n\'importe où dans le monde . Les abonnements sont renouvelés mensuellement et peuvent être annulés à tout moment.',
+  paymentNote:'Payez en toute sécurité depuis n\'importe où dans le monde via Stripe. Les abonnements sont renouvelés mensuellement et peuvent être annulés à tout moment.',
   features: {
     free: [
       {on:true, text:'Aucune inscription requise'},
@@ -543,7 +535,7 @@ es: {
   ctaFree:'Explorar', ctaStd:'Registrarse y Suscribirse', ctaPrem:'Registrarse y Suscribirse',
   compareTitle:'COMPARAR PLANES',
   paymentTitle:'MÉTODOS DE PAGO',
-  paymentNote:'Pague de forma segura desde cualquier parte del mundo . Las suscripciones se renuevan mensualmente y pueden cancelarse en cualquier momento.',
+  paymentNote:'Pague de forma segura desde cualquier parte del mundo a través de Stripe. Las suscripciones se renuevan mensualmente y pueden cancelarse en cualquier momento.',
   features: {
     free: [
       {on:true, text:'Sin registro requerido'},
@@ -597,7 +589,7 @@ ja: {
   ctaFree:'今すぐ見る', ctaStd:'登録して購読', ctaPrem:'登録して購読',
   compareTitle:'プラン比較',
   paymentTitle:'お支払い方法',
-  paymentNote:'世界中どこからでも世界中どこからでも安全にお支払いいただけます。購読は月単位で更新され、いつでもキャンセルできます。',
+  paymentNote:'Stripeを通じて世界中どこからでも安全にお支払いいただけます。購読は月単位で更新され、いつでもキャンセルできます。',
   features: {
     free: [
       {on:true, text:'会員登録不要'},
@@ -651,7 +643,7 @@ zh: {
   ctaFree:'立即浏览', ctaStd:'注册并订阅', ctaPrem:'注册并订阅',
   compareTitle:'方案对比',
   paymentTitle:'支付方式',
-  paymentNote:'在全球任何地方安全支付。订阅按月续订，可随时取消。',
+  paymentNote:'通过Stripe在全球任何地方安全支付。订阅按月续订，可随时取消。',
   features: {
     free: [
       {on:true, text:'无需注册'},
@@ -705,7 +697,7 @@ ru:{
   ctaFree:'Смотреть сейчас', ctaStd:'Зарегистрироваться и подписаться', ctaPrem:'Зарегистрироваться и подписаться',
   compareTitle:'СРАВНЕНИЕ ПЛАНОВ',
   paymentTitle:'СПОСОБЫ ОПЛАТЫ',
-  paymentNote:'Платите безопасно со всего мира . Подписки обновляются ежемесячно и могут быть отменены в любой момент.',
+  paymentNote:'Платите безопасно со всего мира через Stripe. Подписки обновляются ежемесячно и могут быть отменены в любой момент.',
   features: {
     free: [
       {on:true, text:'Регистрация не требуется'},
