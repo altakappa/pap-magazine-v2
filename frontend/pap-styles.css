@@ -496,10 +496,11 @@ button{cursor:pointer;font-family:inherit}
 
 /* --- TOUCH DEVICE SUPPORT --- */
 @media(hover:none) and (pointer:coarse){
-  /* Disable floating cursor logo, trail & game on touch */
+  /* Disable floating cursor logo, trail & game on touch — fix logo in header center */
   .floating-logo.on-cursor{display:none}
   .logo-trail{display:none!important}
-  .floating-logo{position:fixed!important;transition:none!important}
+  .floating-logo{position:fixed!important;left:50%!important;top:auto!important;transform:translateX(-50%)!important;transition:none!important;pointer-events:none}
+  .floating-logo.in-header{position:fixed!important;left:50%!important;transform:translateX(-50%)!important;transition:none!important}
   .floating-logo img{height:32px!important}
   #bounceScore,.bounce-plus-one,.bounce-combo{display:none!important}
 
@@ -556,7 +557,7 @@ button{cursor:pointer;font-family:inherit}
   .hero{margin-top:60px;height:60vh}
   .hero-content{left:20px;bottom:28px}
   .hero-title{font-size:clamp(1.6rem,6vw,2.5rem)}
-  .hero-symbol{right:20px;bottom:-29px}
+  .hero-symbol{right:20px;bottom:-105px}
   .hero-watermark{right:20px;bottom:28px;width:40px;height:40px}
 
   /* Reduce all 48px track/section paddings */
@@ -594,10 +595,10 @@ button{cursor:pointer;font-family:inherit}
   /* Footer */
   .footer{padding:32px 20px 16px}
   .footer-top{display:none}
-  .footer-marquee{border-top:none;border-bottom:none;margin-bottom:20px;padding:20px 0}
+  .footer-marquee{border-top:none;border-bottom:none;margin-bottom:20px;margin-top:113px;padding:20px 0}
   .footer-marquee-track span{font-size:1.5rem;padding:0 16px}
   .footer-marquee-track .sep{display:none}
-  .footer-marquee-track{animation:marquee 5.3s linear 30;will-change:transform;transform:translateZ(0)}
+  .footer-marquee-track{animation:marquee 5.3s linear 60;will-change:transform;transform:translateZ(0)}
   .footer-bottom-links{gap:16px;flex-wrap:wrap;justify-content:center}
 
   /* Page overlay */
@@ -640,7 +641,7 @@ button{cursor:pointer;font-family:inherit}
   .hero-content{left:16px;bottom:24px}
   .hero-title{font-size:clamp(1.4rem,7vw,2rem)}
   .hero-issue{font-size:10px;letter-spacing:.2em}
-  .hero-symbol{right:16px;bottom:-33px}
+  .hero-symbol{right:16px;bottom:-109px}
   .hero-watermark{right:16px;bottom:16px;width:36px;height:36px}
   .hero-watermark span{font-size:10px}
 
@@ -721,7 +722,7 @@ button{cursor:pointer;font-family:inherit}
   .logo-wrap img,.floating-logo.in-header img{height:24px}
   .hero{margin-top:54px;height:60vh}
   .hero-content{left:14px;bottom:20px}
-  .hero-symbol{right:14px;bottom:-37px}
+  .hero-symbol{right:14px;bottom:-113px}
   .hero-title{font-size:1.4rem}
 
   /* Track paddings — minimal */
@@ -791,7 +792,7 @@ button{cursor:pointer;font-family:inherit}
   .hero{margin-top:48px;height:60vh}
   .hero-title{font-size:1.1rem}
   .hero-content{left:10px;bottom:16px}
-  .hero-symbol{right:10px;bottom:-41px}
+  .hero-symbol{right:10px;bottom:-117px}
 
   .fashion-heading,.carousel-track,.ed-row-label,.ed-row-track,.nf-top,.nf-track,.ai-rec-badge,.creator-results,.ed-search-grid{padding-left:8px;padding-right:8px}
 

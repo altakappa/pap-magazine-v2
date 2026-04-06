@@ -903,6 +903,15 @@ function scrollFilm(dir){
 (function(){
   const fLogo = document.getElementById('floatingLogo');
   if(!fLogo) return;
+  // On mobile/touch devices, keep logo fixed in header — skip all floating logic
+  if('ontouchstart' in window || navigator.maxTouchPoints > 0){
+    fLogo.classList.add('in-header');
+    fLogo.style.left = '50%';
+    fLogo.style.top = '';
+    fLogo.style.transform = 'translateX(-50%)';
+    fLogo.style.position = 'fixed';
+    return;
+  }
   const header = document.querySelector('.header');
   const heroEl = document.querySelector('.hero');
   const headerLogo = document.querySelector('.logo-wrap');
