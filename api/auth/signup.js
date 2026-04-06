@@ -74,7 +74,11 @@ module.exports = async function handler(req, res) {
 
     return res.status(201).json({ token, user });
   } catch (error) {
-    console.error('Signup error:', error);
+    console.error('Signup error:', error.message || error);
+    // Handle "already registered" even when thrown as exception
+    if (error.message && error.message.includes('already registered')) {
+      return res.status(409).json({ message: 'Email already registered' });
+    }
     return res.status(500).json({ message: 'Registration failed. Please try again.' });
   }
 };
