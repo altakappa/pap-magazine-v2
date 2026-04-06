@@ -907,7 +907,7 @@ function scrollFilm(dir){
   if('ontouchstart' in window || navigator.maxTouchPoints > 0){
     fLogo.classList.add('in-header');
     fLogo.style.left = '50%';
-    fLogo.style.top = '';
+    fLogo.style.top = '0';
     fLogo.style.transform = 'translateX(-50%)';
     fLogo.style.position = 'fixed';
     return;

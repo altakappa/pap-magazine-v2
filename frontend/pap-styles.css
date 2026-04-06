@@ -499,8 +499,8 @@ button{cursor:pointer;font-family:inherit}
   /* Disable floating cursor logo, trail & game on touch — fix logo in header center */
   .floating-logo.on-cursor{display:none}
   .logo-trail{display:none!important}
-  .floating-logo{position:fixed!important;left:50%!important;top:auto!important;transform:translateX(-50%)!important;transition:none!important;pointer-events:none}
-  .floating-logo.in-header{position:fixed!important;left:50%!important;transform:translateX(-50%)!important;transition:none!important}
+  .floating-logo{position:fixed!important;left:50%!important;top:0!important;transform:translateX(-50%)!important;transition:none!important;pointer-events:none;height:60px;display:flex!important;align-items:center}
+  .floating-logo.in-header{position:fixed!important;left:50%!important;top:0!important;transform:translateX(-50%)!important;transition:none!important}
   .floating-logo img{height:32px!important}
   #bounceScore,.bounce-plus-one,.bounce-combo{display:none!important}
 
