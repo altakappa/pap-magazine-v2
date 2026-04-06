@@ -556,7 +556,7 @@ button{cursor:pointer;font-family:inherit}
   .hero{margin-top:60px;height:60vh}
   .hero-content{left:20px;bottom:28px}
   .hero-title{font-size:clamp(1.6rem,6vw,2.5rem)}
-  .hero-symbol{right:20px;bottom:-10px}
+  .hero-symbol{right:20px;bottom:-29px}
   .hero-watermark{right:20px;bottom:28px;width:40px;height:40px}
 
   /* Reduce all 48px track/section paddings */
@@ -640,7 +640,7 @@ button{cursor:pointer;font-family:inherit}
   .hero-content{left:16px;bottom:24px}
   .hero-title{font-size:clamp(1.4rem,7vw,2rem)}
   .hero-issue{font-size:10px;letter-spacing:.2em}
-  .hero-symbol{right:16px;bottom:-14px}
+  .hero-symbol{right:16px;bottom:-33px}
   .hero-watermark{right:16px;bottom:16px;width:36px;height:36px}
   .hero-watermark span{font-size:10px}
 
@@ -721,7 +721,7 @@ button{cursor:pointer;font-family:inherit}
   .logo-wrap img,.floating-logo.in-header img{height:24px}
   .hero{margin-top:54px;height:60vh}
   .hero-content{left:14px;bottom:20px}
-  .hero-symbol{right:14px;bottom:-18px}
+  .hero-symbol{right:14px;bottom:-37px}
   .hero-title{font-size:1.4rem}
 
   /* Track paddings — minimal */
@@ -791,7 +791,7 @@ button{cursor:pointer;font-family:inherit}
   .hero{margin-top:48px;height:60vh}
   .hero-title{font-size:1.1rem}
   .hero-content{left:10px;bottom:16px}
-  .hero-symbol{right:10px;bottom:-22px}
+  .hero-symbol{right:10px;bottom:-41px}
 
   .fashion-heading,.carousel-track,.ed-row-label,.ed-row-track,.nf-top,.nf-track,.ai-rec-badge,.creator-results,.ed-search-grid{padding-left:8px;padding-right:8px}
 
