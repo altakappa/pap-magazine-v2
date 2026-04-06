@@ -939,6 +939,7 @@ function scrollFilm(dir){
 
   function triggerBounceScore(){
     if(bounceCooldown) return;
+    if('ontouchstart' in window || navigator.maxTouchPoints > 0) return;
     bounceCooldown = true;
     bounceCount++;
     // Position score below header logo
@@ -1116,6 +1117,7 @@ function scrollFilm(dir){
 
   function initGame(){
     if(gameActive) return;
+    if('ontouchstart' in window || navigator.maxTouchPoints > 0) return;
     gameActive = true;
     gameLevel = 1;
     gameScore = 0;

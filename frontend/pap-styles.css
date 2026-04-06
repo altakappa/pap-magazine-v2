@@ -496,11 +496,12 @@ button{cursor:pointer;font-family:inherit}
 
 /* --- TOUCH DEVICE SUPPORT --- */
 @media(hover:none) and (pointer:coarse){
-  /* Disable floating cursor logo & trail on touch */
+  /* Disable floating cursor logo, trail & game on touch */
   .floating-logo.on-cursor{display:none}
   .logo-trail{display:none!important}
   .floating-logo{position:fixed!important;transition:none!important}
   .floating-logo img{height:32px!important}
+  #bounceScore,.bounce-plus-one,.bounce-combo{display:none!important}
 
   /* Always show nav arrows on touch (no hover) */
   .ed-row-arrow{opacity:.7}
@@ -555,7 +556,7 @@ button{cursor:pointer;font-family:inherit}
   .hero{margin-top:60px;height:60vh}
   .hero-content{left:20px;bottom:28px}
   .hero-title{font-size:clamp(1.6rem,6vw,2.5rem)}
-  .hero-symbol{right:20px;bottom:12px}
+  .hero-symbol{right:20px;bottom:-3px}
   .hero-watermark{right:20px;bottom:28px;width:40px;height:40px}
 
   /* Reduce all 48px track/section paddings */
@@ -641,7 +642,7 @@ button{cursor:pointer;font-family:inherit}
   .hero-content{left:16px;bottom:24px}
   .hero-title{font-size:clamp(1.4rem,7vw,2rem)}
   .hero-issue{font-size:10px;letter-spacing:.2em}
-  .hero-symbol{right:16px;bottom:8px}
+  .hero-symbol{right:16px;bottom:-7px}
   .hero-watermark{right:16px;bottom:16px;width:36px;height:36px}
   .hero-watermark span{font-size:10px}
 
