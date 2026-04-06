@@ -189,7 +189,7 @@ button{cursor:pointer;font-family:inherit}
 .ed-row-card{min-width:calc((100vw - 96px - 56px) / 7);max-width:calc((100vw - 96px - 56px) / 7);flex-shrink:0;cursor:pointer;transition:transform .3s;position:relative}
 @media(max-width:1200px){.ed-row-card{min-width:calc((100vw - 96px - 40px) / 5);max-width:calc((100vw - 96px - 40px) / 5)}}
 @media(max-width:768px){.ed-row-card{min-width:calc((100vw - 96px - 24px) / 3);max-width:calc((100vw - 96px - 24px) / 3)}}
-@media(max-width:480px){.ed-row-card{min-width:calc((100vw - 32px - 16px) / 3.3);max-width:calc((100vw - 32px - 16px) / 3.3)}}
+@media(max-width:480px){.ed-row-card{min-width:calc((100vw - 96px - 16px) / 2.3);max-width:calc((100vw - 96px - 16px) / 2.3)}}
 .ed-row-card:hover{transform:scale(1.05)}
 .ed-row-card-img{width:100%;aspect-ratio:3/4;overflow:hidden;border-radius:4px;background:#1a1a1a}
 .ed-row-card-img img{width:100%;height:100%;object-fit:cover;transition:transform .4s}
@@ -557,7 +557,7 @@ button{cursor:pointer;font-family:inherit}
   .hero{margin-top:60px;height:60vh}
   .hero-content{left:20px;bottom:28px}
   .hero-title{font-size:clamp(1.6rem,6vw,2.5rem)}
-  .hero-symbol{right:20px;bottom:16px}
+  .hero-symbol{right:20px;bottom:24px}
   .hero-watermark{right:20px;bottom:28px;width:40px;height:40px}
 
   /* Reduce all 48px track/section paddings */
@@ -576,8 +576,8 @@ button{cursor:pointer;font-family:inherit}
   /* Cards */
   .fashion-card{min-width:calc(75% - 12px)}
   .ed-carousel-card{min-width:calc(50% - 14px)}
-  .ed-row-card{min-width:130px;max-width:130px}
-  .ed-row-card-img{aspect-ratio:1/1}
+  .ed-row-card{min-width:180px;max-width:180px}
+  .fashion-card-img{aspect-ratio:1/1}
   .nf-card{min-width:260px;max-width:260px}
   .nf-card-img{aspect-ratio:1/1}
   .editorial-grid{grid-template-columns:repeat(2,1fr)}
@@ -643,7 +643,7 @@ button{cursor:pointer;font-family:inherit}
   .hero-content{left:16px;bottom:24px}
   .hero-title{font-size:clamp(1.4rem,7vw,2rem)}
   .hero-issue{font-size:10px;letter-spacing:.2em}
-  .hero-symbol{right:16px;bottom:14px}
+  .hero-symbol{right:16px;bottom:22px}
   .hero-watermark{right:16px;bottom:16px;width:36px;height:36px}
   .hero-watermark span{font-size:10px}
 
@@ -665,7 +665,7 @@ button{cursor:pointer;font-family:inherit}
 
   /* Cards — smaller for phone screens */
   .fashion-card{min-width:calc(85% - 8px)}
-  .ed-row-card{min-width:105px;max-width:105px}
+  .ed-row-card{min-width:155px;max-width:155px}
   .nf-card{min-width:240px;max-width:240px}
   .creator-card{min-width:160px;max-width:160px;padding:12px}
 
@@ -724,14 +724,14 @@ button{cursor:pointer;font-family:inherit}
   .logo-wrap img,.floating-logo.in-header img{height:24px}
   .hero{margin-top:54px;height:60vh}
   .hero-content{left:14px;bottom:20px}
-  .hero-symbol{right:14px;bottom:12px}
+  .hero-symbol{right:14px;bottom:20px}
   .hero-title{font-size:1.4rem}
 
   /* Track paddings — minimal */
   .fashion-heading,.carousel-track,.ed-row-label,.ed-row-track,.nf-top,.nf-track,.ai-rec-badge,.creator-results,.ed-search-grid{padding-left:12px;padding-right:12px}
 
   /* Cards */
-  .ed-row-card{min-width:100px;max-width:100px}
+  .ed-row-card{min-width:140px;max-width:140px}
   .nf-card{min-width:220px;max-width:220px}
   .fashion-card{min-width:calc(90% - 8px)}
   .creator-card{min-width:150px;max-width:150px}
@@ -761,7 +761,7 @@ button{cursor:pointer;font-family:inherit}
   .hero-title{font-size:1.25rem}
   .hero-issue{font-size:9px}
 
-  .ed-row-card{min-width:90px;max-width:90px}
+  .ed-row-card{min-width:130px;max-width:130px}
   .nf-card{min-width:200px;max-width:200px}
   .ed-row-track{gap:6px}
   .nf-track{gap:4px}
@@ -794,11 +794,11 @@ button{cursor:pointer;font-family:inherit}
   .hero{margin-top:48px;height:60vh}
   .hero-title{font-size:1.1rem}
   .hero-content{left:10px;bottom:16px}
-  .hero-symbol{right:10px;bottom:10px}
+  .hero-symbol{right:10px;bottom:18px}
 
   .fashion-heading,.carousel-track,.ed-row-label,.ed-row-track,.nf-top,.nf-track,.ai-rec-badge,.creator-results,.ed-search-grid{padding-left:8px;padding-right:8px}
 
-  .ed-row-card{min-width:80px;max-width:80px}
+  .ed-row-card{min-width:115px;max-width:115px}
   .nf-card{min-width:180px;max-width:180px}
   .fashion-card{min-width:95%}
 
