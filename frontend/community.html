@@ -321,6 +321,123 @@ button{cursor:pointer;font-family:var(--sans)}
 .checkin-calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
 .checkin-day{padding:12px 6px;text-align:center;font-size:11px;font-weight:600;border:1px solid var(--border);border-radius:3px;color:var(--text4)}
 .checkin-day.checked{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* ===== MOBILE BOTTOM TAB BAR ===== */
+.m-tab-bar{display:none}
+
+/* ===== MOBILE RESPONSIVE ===== */
+@media(max-width:768px){
+  /* HEADER — simplified */
+  .c-header{padding:0 12px;height:50px}
+  .c-logo span{display:none}
+  .c-logo{margin-right:12px}
+  .c-nav{display:none}
+  .c-header-right{gap:8px}
+  .c-back{display:none}
+  .lang-select{padding:4px 6px;font-size:10px}
+  .c-write-btn{padding:6px 12px;font-size:9px;letter-spacing:.08em}
+
+  /* LAYOUT — single column, no sidebars */
+  .c-body{flex-direction:column;padding-top:50px;padding-bottom:60px}
+  .c-sidebar-left{display:none}
+  .c-sidebar-right{display:none}
+  .c-main{border-right:none;max-width:100%}
+  .c-main-content{padding:12px 14px 80px}
+
+  /* MOBILE CATEGORY CHIPS — horizontal scroll */
+  .m-cat-chips{display:flex!important;gap:6px;overflow-x:auto;padding:8px 14px;-ms-overflow-style:none;scrollbar-width:none;white-space:nowrap;border-bottom:1px solid var(--border);background:var(--surface)}
+  .m-cat-chips::-webkit-scrollbar{display:none}
+  .m-cat-chip{flex-shrink:0;padding:6px 14px;font-size:10px;font-weight:600;letter-spacing:.06em;border:1px solid var(--border);background:var(--surface);color:var(--text3);cursor:pointer;border-radius:20px;transition:all .2s}
+  .m-cat-chip.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+  /* TABS NAV — hide on mobile (replaced by bottom tab bar) */
+  .c-tabs-nav{display:none}
+
+  /* POST TABLE — card-based list */
+  .post-table{display:block;border:none;background:transparent}
+  .post-table thead{display:none}
+  .post-table tbody{display:flex;flex-direction:column;gap:8px}
+  .post-table tbody tr{display:flex;flex-direction:column;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:6px;cursor:pointer}
+  .post-table tbody tr.pinned{border-left:3px solid #f0c040}
+  .post-table td{padding:0;border:none;font-size:12px}
+  .post-row-category{font-size:9px;margin-bottom:4px}
+  .post-row-title{font-size:13px;font-weight:600;margin-bottom:6px}
+  .post-row-author{text-align:left;font-size:11px;color:var(--text3)}
+  .post-row-date{text-align:left;font-size:10px;display:inline;margin-right:8px}
+  .post-row-views{display:inline;font-size:10px;min-width:auto}
+  .post-row-likes{display:inline;font-size:10px;min-width:auto}
+  .post-table td:nth-child(n+3){display:inline}
+
+  /* SEARCH BAR */
+  .search-bar{flex-direction:column;gap:6px}
+  .search-filter{width:100%}
+
+  /* PAGINATION */
+  .pagination{flex-wrap:wrap}
+
+  /* PROJECTS */
+  .proj{padding:16px}
+  .proj-title{font-size:13px}
+  .proj-desc{font-size:11px}
+  .proj-bottom{flex-direction:column;gap:10px;align-items:flex-start}
+
+  /* AI MATCH */
+  .ai-hero{padding:24px 0 20px}
+  .ai-hero h2{font-size:18px}
+  .ai-form{padding:0 4px}
+  .ai-card{flex-direction:column;gap:10px;padding:14px}
+  .ai-connect{align-self:stretch;text-align:center}
+
+  /* DIRECTORY */
+  .dir-grid{grid-template-columns:repeat(2,1fr);gap:8px}
+  .dir-card{padding:14px}
+  .dir-bar{flex-direction:column;gap:8px}
+  .dir-search{min-width:100%}
+  .dir-filters{overflow-x:auto;flex-wrap:nowrap;-ms-overflow-style:none;scrollbar-width:none}
+  .dir-filters::-webkit-scrollbar{display:none}
+
+  /* DETAIL OVERLAY */
+  .detail-header{padding:0 14px;height:50px}
+  .detail-body{padding:20px 14px 60px}
+  .detail-title{font-size:20px}
+  .detail-content{font-size:14px}
+  .detail-stats{flex-wrap:wrap;gap:12px}
+
+  /* WRITE OVERLAY */
+  .write-header{padding:0 14px;height:50px}
+  .write-body{padding:16px 14px}
+  .rte-content{min-height:250px;font-size:14px}
+
+  /* COMMENTS */
+  .comment.nested{margin-left:20px}
+  .comment-input-wrap{flex-direction:column;gap:6px}
+  .comment-send{width:100%}
+
+  /* PROFILE POPUP */
+  .profile-popup{width:96%;max-width:none}
+  .profile-popup-top{padding:20px 16px 14px;flex-direction:column;align-items:center;text-align:center}
+  .profile-popup-stats{flex-wrap:wrap;padding:12px 16px;gap:16px;justify-content:center}
+
+  /* CHECKIN MODAL */
+  .checkin-overlay .checkin-popup{width:94%;max-width:none;padding:20px}
+
+  /* BOTTOM TAB BAR */
+  .m-tab-bar{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:2000;background:rgba(255,255,255,.97);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--border);height:56px;align-items:center;justify-content:space-around;padding:0 8px}
+  .m-tab{display:flex;flex-direction:column;align-items:center;gap:2px;text-decoration:none;color:var(--text4);font-size:9px;font-weight:600;letter-spacing:.04em;transition:color .2s;padding:6px 0;flex:1}
+  .m-tab svg{width:20px;height:20px}
+  .m-tab.active{color:var(--text)}
+  .m-tab.active svg{stroke-width:2.2}
+}
+
+@media(max-width:480px){
+  .c-header{padding:0 10px;height:48px}
+  .c-main-content{padding:10px 10px 80px}
+  .dir-grid{grid-template-columns:1fr}
+  .detail-title{font-size:18px}
+  .proj-roles{gap:4px}
+  .proj-role{font-size:9px;padding:4px 8px}
+  .m-cat-chip{font-size:9px;padding:5px 12px}
+}
 </style>
 <!-- Favicon & PWA -->
 <link rel="icon" type="image/x-icon" href="favicon.ico">
@@ -458,6 +575,18 @@ button{cursor:pointer;font-family:var(--sans)}
   <!-- MAIN AREA -->
   <div class="c-main">
     <div class="c-main-content">
+
+      <!-- MOBILE CATEGORY CHIPS (hidden on desktop) -->
+      <div class="m-cat-chips" style="display:none">
+        <span class="m-cat-chip active" onclick="filterCategory('all',this)">전체</span>
+        <span class="m-cat-chip" onclick="filterCategory('notice',this)">공지</span>
+        <span class="m-cat-chip" onclick="filterCategory('free',this)">자유</span>
+        <span class="m-cat-chip" onclick="filterCategory('behind',this)">촬영후기</span>
+        <span class="m-cat-chip" onclick="filterCategory('qa',this)">Q&A</span>
+        <span class="m-cat-chip" onclick="filterCategory('equipment',this)">장비</span>
+        <span class="m-cat-chip" onclick="filterCategory('jobs',this)">모집</span>
+        <span class="m-cat-chip" onclick="filterCategory('portfolio',this)">작품</span>
+      </div>
 
       <!-- CAFE TAB -->
       <div class="c-tab active" id="t-cafe">
@@ -798,13 +927,22 @@ function goTab(tab,el){
   currentTab=tab;currentPage=1;
   document.querySelectorAll('.c-tab').forEach(function(e){e.classList.remove('active');});
   document.querySelectorAll('.c-nav a').forEach(function(e){e.classList.remove('active');});
+  document.querySelectorAll('.m-tab').forEach(function(e){e.classList.remove('active');});
   var tabEl=document.getElementById('t-'+tab);
   if(tabEl)tabEl.classList.add('active');
   if(el)el.classList.add('active');
+  // Sync mobile bottom tab bar
+  document.querySelectorAll('.m-tab[data-tab="'+tab+'"]').forEach(function(e){e.classList.add('active');});
+  // Sync desktop header nav
+  document.querySelectorAll('.c-nav a[onclick*="'+tab+'"]').forEach(function(e){e.classList.add('active');});
+  // Show/hide mobile category chips (only for cafe tab)
+  var mChips=document.querySelector('.m-cat-chips');
+  if(mChips){mChips.style.display=(tab==='cafe')?'':'none';}
   if(tab==='cafe'){updatePostTable();}
   if(tab==='projects'){renderProjects();}
   var mainContent=document.querySelector('.c-main-content');
   if(mainContent)mainContent.scrollTop=0;
+  window.scrollTo(0,0);
 }
 
 // ======== CAFE TAB SWITCHING ========
@@ -814,8 +952,20 @@ function switchCafeTab(tab,el){currentCafeTab=tab;currentPage=1;document.querySe
 function filterCategory(cat,el){
   currentCategory=cat;currentPage=1;
   document.querySelectorAll('.cat-item').forEach(function(e){e.classList.remove('active');});
-  if(el){var item=el.closest?el.closest('.cat-item'):el;if(item)item.classList.add('active');}
+  document.querySelectorAll('.m-cat-chip').forEach(function(e){e.classList.remove('active');});
+  if(el){
+    var item=el.closest?el.closest('.cat-item'):el;
+    if(item)item.classList.add('active');
+    if(el.classList.contains('m-cat-chip'))el.classList.add('active');
+  }
   else{var found=document.querySelector('.cat-item[data-category="'+cat+'"]');if(found)found.classList.add('active');}
+  // Sync sidebar cat-item
+  var sideItem=document.querySelector('.cat-item[data-category="'+cat+'"]');
+  if(sideItem)sideItem.classList.add('active');
+  // Sync mobile chip
+  document.querySelectorAll('.m-cat-chip').forEach(function(chip){
+    if(chip.getAttribute('onclick') && chip.getAttribute('onclick').indexOf("'"+cat+"'")!==-1) chip.classList.add('active');
+  });
   if(currentTab!=='cafe'){
     var cafeTabEl=document.querySelector('.c-nav a[onclick*="cafe"]');
     goTab('cafe',cafeTabEl);
@@ -1505,5 +1655,24 @@ PAP COMMUNITY<br>
 <a href="business.html" style="color:rgba(0,0,0,.35);text-decoration:underline;text-underline-offset:2px">Business</a>
 <br>© 2026 ALTAKAPPA Co., Ltd.
 </div>
+<!-- MOBILE BOTTOM TAB BAR -->
+<nav class="m-tab-bar" id="mobileTabBar">
+  <a href="#" class="m-tab active" onclick="goTab('cafe',this);return false" data-tab="cafe">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    <span data-i18n="tabCafe">게시판</span>
+  </a>
+  <a href="#" class="m-tab" onclick="goTab('projects',this);return false" data-tab="projects">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+    <span data-i18n="tabProjects">프로젝트</span>
+  </a>
+  <a href="#" class="m-tab" onclick="goTab('aimatch',this);return false" data-tab="aimatch">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="17" r=".5"/></svg>
+    <span data-i18n="tabAiMatch">AI매칭</span>
+  </a>
+  <a href="#" class="m-tab" onclick="goTab('directory',this);return false" data-tab="directory">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <span data-i18n="tabDirectory">디렉토리</span>
+  </a>
+</nav>
 </body>
 </html>
