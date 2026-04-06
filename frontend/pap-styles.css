@@ -672,7 +672,7 @@ button{cursor:pointer;font-family:inherit}
 
   /* Editorial detail */
   .ed-hero-info{min-height:35vh;padding:24px 16px}
-  .ed-hero-title{font-size:clamp(22px,6vw,32px)}
+  .ed-hero-title{font-size:clamp(14px,3.5vw,18px)}
   .ed-gallery{padding:24px 12px}
   .ed-credits-wrap{padding:32px 16px}
   .ed-cred-row{font-size:13px}
@@ -732,7 +732,7 @@ button{cursor:pointer;font-family:inherit}
   .footer-marquee-track span{font-size:.85rem}
 
   /* Editorial detail */
-  .ed-hero-title{font-size:clamp(18px,5.5vw,26px)}
+  .ed-hero-title{font-size:clamp(13px,3.2vw,16px)}
   .ed-gallery-grid{gap:8px}
   .creator-works-grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
 }
