@@ -21,6 +21,9 @@ button{cursor:pointer;font-family:inherit}
 /* HEADER */
 .header{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(0,0,0,.97);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:0 40px;display:flex;align-items:center;justify-content:space-between;height:72px}
 .header-left{display:flex;align-items:center;gap:24px}
+.header-left-item{background:none;border:none;padding:4px;display:inline-flex;align-items:center;justify-content:center;color:rgba(255,255,255,.4);text-decoration:none;transition:color .2s}
+.header-left-item:hover{color:#fff}
+.header-left-item svg{width:20px;height:20px}
 .hamburger{background:none;border:none;display:flex;flex-direction:column;gap:6px;padding:8px 4px}
 .hamburger span{width:24px;height:2px;background:#fff;transition:all .3s}
 .logo-wrap{position:absolute;left:50%;transform:translateX(-50%)}
@@ -541,11 +544,15 @@ button{cursor:pointer;font-family:inherit}
 
 /* --- 768px: Small tablet / Large phone landscape --- */
 @media(max-width:768px){
+  .nav-extra-links{display:none}
+  .nav-bottom-row{display:none}
   .header{padding:0 16px;height:60px}
+  .header-left{gap:4px}
+  .header-left-item svg{width:18px;height:18px}
   .hero{margin-top:60px;height:60vh}
   .hero-content{left:20px;bottom:28px}
   .hero-title{font-size:clamp(1.6rem,6vw,2.5rem)}
-  .hero-symbol{right:20px;bottom:28px}
+  .hero-symbol{right:20px;bottom:20px}
   .hero-watermark{right:20px;bottom:28px;width:40px;height:40px}
 
   /* Reduce all 48px track/section paddings */
@@ -586,9 +593,9 @@ button{cursor:pointer;font-family:inherit}
   .footer-links-left{align-items:flex-start}
   .footer-social{align-items:flex-end}
   .footer-marquee{border-top:none;border-bottom:none}
-  .footer-marquee-track span{font-size:1rem}
+  .footer-marquee-track span{font-size:1rem;padding:28px 16px 0}
   .footer-marquee-track .sep{display:none}
-  .footer-marquee-track{animation:marquee 12s linear infinite}
+  .footer-marquee-track{animation:marquee 12s linear infinite;will-change:transform;transform:translateZ(0)}
   .footer-bottom-links{gap:16px;flex-wrap:wrap;justify-content:center}
 
   /* Page overlay */
@@ -631,8 +638,8 @@ button{cursor:pointer;font-family:inherit}
   .hero-content{left:16px;bottom:24px}
   .hero-title{font-size:clamp(1.4rem,7vw,2rem)}
   .hero-issue{font-size:10px;letter-spacing:.2em}
-  .hero-symbol{right:16px;bottom:24px}
-  .hero-watermark{right:16px;bottom:24px;width:36px;height:36px}
+  .hero-symbol{right:16px;bottom:16px}
+  .hero-watermark{right:16px;bottom:16px;width:36px;height:36px}
   .hero-watermark span{font-size:10px}
 
   /* Track paddings — tighter */
@@ -701,10 +708,12 @@ button{cursor:pointer;font-family:inherit}
 /* --- 390px: iPhone 12/13/14 (390px), Galaxy S21-S24 (360-384px) --- */
 @media(max-width:390px){
   .header{padding:0 10px;height:54px}
+  .header-left{gap:2px}
+  .header-left-item svg{width:16px;height:16px}
   .header-right{gap:6px}
-  .lang-btn{padding:4px 8px;font-size:9px}
-  .lang-btn svg{width:14px;height:14px}
-  .lang-btn select{font-size:9px}
+  .lang-btn{padding:3px 7px;font-size:8px;border-radius:14px}
+  .lang-btn svg{width:12px;height:12px}
+  .lang-btn select{font-size:8px}
   .logo-wrap img,.floating-logo.in-header img{height:24px}
   .hero{margin-top:54px;height:60vh}
   .hero-content{left:14px;bottom:20px}
@@ -853,15 +862,14 @@ button{cursor:pointer;font-family:inherit}
   .cc-text-ko{text-align:center}
 }
 
-/* Auth Button in Header */
+/* Auth Button in Header — now inside header-left as .header-left-item */
 .auth-btn-header{
   display:inline-flex;align-items:center;justify-content:center;
   color:rgba(255,255,255,.4);text-decoration:none;transition:color .2s;
-  margin-left:12px;
+  margin-left:0;
 }
 .auth-btn-header:hover{color:#fff}
 .auth-btn-header svg{width:20px;height:20px}
 @media(max-width:600px){
   .auth-btn-header svg{width:18px;height:18px}
-  .auth-btn-header{margin-left:8px}
 }
