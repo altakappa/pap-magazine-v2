@@ -1531,6 +1531,16 @@ if(shortsSec) shortsObserver.observe(shortsSec);
 // Define render callbacks BEFORE lazy loading so they're available when JSON arrives
 window._papShortsRender = function(){ buildShortsCarousel(); };
 
+// Auto-play first film in main player when film data loads
+window._papFilmAutoPlay = function(){
+  if(filmAllData.length > 0){
+    var fp = document.getElementById('filmMainPlayer');
+    if(fp && fp.src === 'about:blank'){
+      fp.src = 'https://www.youtube.com/embed/' + filmAllData[0].yt + '?rel=0&autoplay=0';
+    }
+  }
+};
+
 // ======== LAZY DATA LOADING ========
 (function(){
   function loadJSON(url, target, renderCb){
@@ -1546,7 +1556,7 @@ window._papShortsRender = function(){ buildShortsCarousel(); };
   // Only load JSON if not running from file:// protocol
   if(window.location.protocol !== 'file:'){
     // Use late-binding wrappers so callbacks are resolved when JSON arrives, not when loadJSON is called
-    loadJSON('data/films.json', filmAllData, function(){ if(window._papFilmRenderCards) window._papFilmRenderCards(); });
+    loadJSON('data/films.json', filmAllData, function(){ if(window._papFilmRenderCards) window._papFilmRenderCards(); if(window._papFilmAutoPlay) window._papFilmAutoPlay(); });
     loadJSON('data/articles.json', artData, function(){ if(window._papArticleRenderCards) window._papArticleRenderCards(); });
     loadJSON('data/editorials.json', edData);
     loadJSON('data/creators.json', creatorData);
