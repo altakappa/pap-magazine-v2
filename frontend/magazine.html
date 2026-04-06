@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="PAP Magazine 디지털 매거진 아카이브. 2019년부터 현재까지의 모든 이슈를 확인하세요.">
+<meta property="og:title" content="PAP Magazine — Digital Archive">
+<meta property="og:description" content="PAP Magazine 디지털 매거진 아카이브. 2019년부터 현재까지의 모든 이슈를 확인하세요.">
+<meta property="og:image" content="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_0281a06055.jpg">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://pap-magazine.com/magazine.html">
+<title>PAP Magazine — Digital Archive</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#060606;--accent:#891717;--text:#e8e8e8;--dim:rgba(255,255,255,0.6);--dimmer:rgba(255,255,255,0.35);--border:rgba(255,255,255,0.06);--display:'Syne',sans-serif;--sans:'DM Sans','Segoe UI',sans-serif}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{text-decoration:none;color:inherit}
+@keyframes pulse{0%,100%{opacity:.3}50%{opacity:.8}}
+
+nav{position:fixed;top:0;width:100%;height:64px;background:rgba(6,6,6,.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,4vw,48px);z-index:100;border-bottom:1px solid var(--border)}
+.nav-back{font-size:12px;letter-spacing:2px;color:var(--dim);font-weight:400;transition:color .3s}
+.nav-back:hover{color:#fff}
+.nav-logo{height:28px;width:auto}
+.nav-right{font-size:10px;letter-spacing:3px;color:var(--dim);transition:color .3s}
+.nav-right:hover{color:#fff}
+
+.hero{height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative;overflow:hidden;padding-top:64px}
+.hero-bg{position:absolute;inset:0;z-index:0}
+.hero-bg-img{position:absolute;inset:0;background-size:cover;background-position:center;filter:blur(50px) brightness(.15) saturate(.5);transform:scale(1.3);opacity:0;transition:opacity 1.5s ease}
+.hero-bg-img.active{opacity:1}
+.grain{position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.04'/%3E%3C/svg%3E");pointer-events:none;z-index:1}
+.hero-content{position:relative;z-index:2;text-align:center}
+.hero-content.vis .h-el{opacity:1;transform:translateY(0)}
+.h-el{opacity:0;transform:translateY(20px)}
+.h-el:nth-child(1){transition:all .8s ease .1s}
+.h-el:nth-child(2){transition:all .8s ease .25s}
+.h-el:nth-child(3){transition:all .8s ease .4s}
+.h-el:nth-child(4){transition:all .8s ease .55s}
+.h-el:nth-child(5){transition:all .8s ease .7s}
+.hero-pap{height:64px;width:auto;margin-bottom:20px;opacity:.85}
+.hero-label{font-size:10px;letter-spacing:8px;color:var(--dimmer);font-weight:300;margin-bottom:28px}
+.hero-title{font-family:var(--display);font-size:clamp(48px,10vw,110px);font-weight:800;letter-spacing:-2px;line-height:.88;text-transform:uppercase}
+.hero-div{width:40px;height:1px;background:rgba(255,255,255,.2);margin:28px auto}
+.hero-badge{font-size:11px;letter-spacing:3px;color:var(--dim);font-weight:500}
+.scroll-hint{position:absolute;bottom:36px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;z-index:2;animation:pulse 2.5s ease infinite}
+.scroll-hint span{font-size:9px;letter-spacing:3px;color:rgba(255,255,255,.55)}
+.scroll-hint-line{width:1px;height:24px;background:linear-gradient(to bottom,rgba(255,255,255,.45),transparent)}
+
+.issues{padding:0 clamp(20px,5vw,80px) 60px}
+.sec-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:50px;border-bottom:1px solid var(--border);padding-bottom:16px}
+.sec-title{font-family:var(--display);font-size:clamp(26px,3.5vw,42px);font-weight:700;letter-spacing:-.5px}
+.sec-count{font-size:10px;letter-spacing:2px;color:var(--dimmer)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(16px,2.5vw,36px)}
+.card{cursor:pointer;opacity:0;transform:translateY(24px);display:block}
+.card.vis{opacity:1;transform:translateY(0);transition:opacity .6s ease,transform .6s ease}
+.card:hover .cover img{transform:scale(1.04)}
+.card:hover .rd{opacity:1;transform:translateY(0)}
+.card:hover .hov{opacity:1}
+.cover{position:relative;aspect-ratio:3/4;overflow:hidden;margin-bottom:16px}
+.cover img{width:100%;height:100%;object-fit:cover;transition:transform .7s cubic-bezier(.16,1,.3,1)}
+.covlay{position:absolute;inset:0;z-index:2;pointer-events:none}
+.mo-badge{position:absolute;top:20px;right:20px;font-size:9px;letter-spacing:2px;color:rgba(255,255,255,.8);background:rgba(0,0,0,.5);backdrop-filter:blur(8px);padding:4px 10px}
+.latest-badge{position:absolute;top:20px;right:20px;font-size:8px;letter-spacing:3px;color:#fff;background:var(--accent);padding:3px 10px;font-weight:500;z-index:4}
+.cov-bot{position:absolute;bottom:0;left:0;right:0;padding:60px 20px 20px;background:linear-gradient(to top,rgba(0,0,0,.75),transparent)}
+.cov-title{font-size:clamp(10px,1vw,12px);font-weight:400;letter-spacing:3px;color:rgba(255,255,255,.75);text-transform:uppercase}
+.cov-ct{font-size:9px;letter-spacing:2px;color:rgba(255,255,255,.5);margin-top:4px}
+.hov{position:absolute;inset:0;background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .35s;z-index:3}
+.rd{border:1px solid rgba(255,255,255,.6);padding:10px 28px;font-size:10px;letter-spacing:4px;color:#fff;font-weight:400;transform:translateY(8px);opacity:0;transition:all .35s ease .08s}
+.card:hover .rd{background:var(--accent);border-color:var(--accent)}
+.meta{display:flex;justify-content:space-between}
+.vol{font-size:10px;letter-spacing:2px;color:var(--dim);font-weight:300}
+.dt{font-size:10px;color:var(--dimmer)}
+
+.year-divider{padding:80px clamp(20px,5vw,80px) 0}
+.year-divider-line{height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent)}
+
+.sub-cta{padding:80px clamp(20px,5vw,80px);text-align:center;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin:40px clamp(20px,5vw,80px) 80px}
+.sub-cta h3{font-family:var(--display);font-size:clamp(24px,3vw,36px);font-weight:700;letter-spacing:-.5px;margin-bottom:12px}
+.sub-cta p{font-size:13px;color:var(--dim);font-weight:300;line-height:1.6;max-width:480px;margin:0 auto 28px}
+.sub-btn{display:inline-block;padding:13px 40px;border:1px solid rgba(255,255,255,.3);color:#fff;font-size:11px;letter-spacing:4px;font-family:var(--sans);font-weight:400;cursor:pointer;transition:all .3s;background:transparent}
+.sub-btn:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+
+footer{padding:40px clamp(20px,5vw,80px);text-align:center;border-top:1px solid var(--border)}
+footer p{font-size:11px;color:var(--dimmer);letter-spacing:1px;margin-bottom:6px}
+footer a{color:var(--dim);transition:color .3s}
+footer a:hover{color:#fff}
+
+
+/* ══════ SUBSCRIBE MODAL ══════ */
+.sub-modal-overlay{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:none;align-items:center;justify-content:center;opacity:0;transition:opacity .35s}
+.sub-modal-overlay.active{display:flex;opacity:1}
+.sub-modal{background:#111;border:1px solid rgba(255,255,255,.08);max-width:520px;width:90%;padding:48px 40px;position:relative;text-align:center;animation:modalIn .4s ease}
+@keyframes modalIn{from{opacity:0;transform:translateY(20px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.sub-modal-close{position:absolute;top:16px;right:20px;background:none;border:none;color:rgba(255,255,255,.4);font-size:24px;cursor:pointer;transition:color .3s;line-height:1}
+.sub-modal-close:hover{color:#fff}
+.sub-modal-issue{font-size:10px;letter-spacing:4px;color:rgba(255,255,255,.45);margin-bottom:8px}
+.sub-modal-title{font-family:var(--display);font-size:28px;font-weight:700;letter-spacing:-.5px;margin-bottom:6px}
+.sub-modal-count{font-size:12px;color:rgba(255,255,255,.5);margin-bottom:28px}
+.sub-modal-divider{width:40px;height:1px;background:rgba(255,255,255,.15);margin:0 auto 28px}
+.sub-modal-desc{font-size:14px;color:rgba(255,255,255,.65);line-height:1.6;margin-bottom:32px}
+.sub-modal-plans{display:flex;gap:12px;justify-content:center;margin-bottom:24px;flex-wrap:wrap}
+.sub-modal-plan{border:1px solid rgba(255,255,255,.12);padding:20px 24px;min-width:190px;text-align:center;transition:all .3s;cursor:pointer;background:rgba(255,255,255,.02)}
+.sub-modal-plan:hover{border-color:rgba(255,255,255,.3);background:rgba(255,255,255,.05)}
+.sub-modal-plan.rec{border-color:rgba(137,23,23,.5)}
+.sub-modal-plan.rec::after{content:'RECOMMENDED';display:block;font-size:8px;letter-spacing:2px;color:rgba(255,255,255,.4);margin-top:8px}
+.smp-name{font-size:10px;letter-spacing:3px;color:rgba(255,255,255,.5);margin-bottom:6px}
+.smp-price{font-size:24px;font-weight:300;color:#fff}
+.smp-price span{font-size:12px;color:rgba(255,255,255,.35)}
+.sub-modal-cta{display:block;width:100%;padding:14px;border:1px solid rgba(255,255,255,.4);color:#fff;font-size:12px;letter-spacing:4px;font-family:var(--sans);font-weight:400;cursor:pointer;transition:all .3s;background:transparent;margin-bottom:16px}
+.sub-modal-cta:hover{background:#891717;border-color:#891717}
+.sub-modal-preview{background:none;border:none;color:rgba(255,255,255,.5);font-size:12px;letter-spacing:2px;font-family:var(--sans);cursor:pointer;transition:color .3s;padding:8px 0}
+.sub-modal-preview:hover{color:#fff}
+.sub-modal-note{font-size:10px;color:rgba(255,255,255,.3);margin-top:16px;letter-spacing:.5px}
+
+@media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.grid{grid-template-columns:1fr;max-width:360px;margin:0 auto}.sec-head{flex-direction:column;align-items:flex-start;gap:6px}}
+</style>
+<!-- Favicon & PWA -->
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000000">
+<!-- Open Graph / Social -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="PAP Magazine">
+<meta property="og:title" content="Magazine | PAP Magazine">
+<meta property="og:description" content="Browse PAP Magazine editorials. Fashion, beauty, art, and culture photography.">
+<meta property="og:url" content="https://pap-magazine.com/magazine.html">
+<meta property="og:image" content="https://pap-magazine.com/apple-touch-icon.png">
+<meta property="og:locale" content="ko_KR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Magazine | PAP Magazine">
+<meta name="twitter:description" content="Browse PAP Magazine editorials. Fashion, beauty, art, and culture photography.">
+<meta name="twitter:image" content="https://pap-magazine.com/apple-touch-icon.png">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"CollectionPage","name":"Magazine - PAP Magazine","description":"Browse fashion, beauty, art and culture editorials"}</script>
+<!-- Google Analytics (replace G-XXXXXXXXXX with your ID) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-XXXXXXXXXX');</script>
+<!-- Print Styles -->
+<style media="print">
+@media print{
+  body{background:#fff!important;color:#000!important}
+  .side-nav,.nav-overlay,.header,.footer-legal,.lang-selector,#cookieConsent,#backToTop,.mobile-menu-btn,.hamburger,.search-container{display:none!important}
+  .content,.main-content{margin-left:0!important;padding:20px!important}
+  a{color:#000!important;text-decoration:underline}
+  img{max-width:100%!important}
+  *{box-shadow:none!important;text-shadow:none!important}
+}
+</style>
+</head>
+<body>
+<nav role="navigation" aria-label="Main navigation">
+  <a href="pap-magazine-v5.html" class="nav-back">← PAP HOME</a>
+  <svg class="nav-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080"><path d="M561.17,469.89c0-149.59-154.73-203.94-217.77-210.51-49.65-5.17-157.16-6.14-219.44-4.63-25.56,.62-45.96,21.47-45.96,47.04v476.06c0,26.53,21.51,48.05,48.04,48.05h113.05c33.8,0,61.2-27.4,61.2-61.2v-103.3c0-15.18,11.45-27.96,26.55-29.5,66.39-6.75,234.32-36.24,234.32-162.01Zm-242.69,58.55c-9.52,1.59-18.18-5.7-18.18-15.35v-100.95c47.95,0,86.2,10.27,86.2,62.61,0,36.85-42.73,49.45-68.02,53.69Z" fill="#fff"/><path d="M647.91,476.34h-58.25c-7.14,97.82-78.44,130.59-78.44,130.59l-88.5,186.53c-7.15,15.06,3.84,32.43,20.51,32.43h51.45c24.64,0,31.82-6.58,31.82-6.58,36.3-21.02,29.99-39.45,42.92-48.68,12.93-9.22,26.43-8.58,52.02-8.58s34.1,8.57,34.1,8.57c18.42,14.95,21.77,29.39,21.77,29.39V505.74c0-16.24-13.16-29.4-29.4-29.4Zm-25.19,201.49c-4.38,5.58-21.05,12.57-30.33,4.67-19.18-16.32,1.85-73.19,4.34-79.44,2.49-6.25,18.42-19.5,25.98,14.48,7.56,33.98,4.38,54.7,0,60.29Z" fill="#fff"/><path d="M868.87,479.57c-30.36-3.16-96.08-3.75-134.15-2.83-15.63,.38-28.1,13.13-28.1,28.76v291.03c0,16.22,13.15,29.37,29.37,29.37h69.11c20.66,0,37.41-16.75,37.41-37.41v-63.15c0-9.28,7-17.09,16.23-18.03,40.59-4.12,143.25-22.15,143.25-99.04,0-91.45-94.59-124.67-133.13-128.69Zm-15.24,164.48c-5.82,.97-11.11-3.48-11.11-9.38v-61.71c29.31,0,52.69,6.28,52.69,38.27,0,22.53-26.12,30.23-41.58,32.82Z" fill="#fff"/></svg>
+  <a href="subscribe.html" class="nav-right">SUBSCRIBE</a>
+</nav>
+
+<section class="hero">
+  <div class="hero-bg">
+    <div class="hero-bg-img active" style="background-image:url('https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_1b257ccd25.jpg')"></div>
+    <div class="hero-bg-img" style="background-image:url('https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_3e0960b1dd.jpg')"></div>
+    <div class="hero-bg-img" style="background-image:url('https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_315b741e2a.jpg')"></div>
+    <div class="hero-bg-img" style="background-image:url('https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_6955d3ff32.jpg')"></div>
+  </div>
+  <div class="grain"></div>
+  <div class="hero-content" id="hc">
+    <svg class="hero-pap h-el" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080"><path d="M561.17,469.89c0-149.59-154.73-203.94-217.77-210.51-49.65-5.17-157.16-6.14-219.44-4.63-25.56,.62-45.96,21.47-45.96,47.04v476.06c0,26.53,21.51,48.05,48.04,48.05h113.05c33.8,0,61.2-27.4,61.2-61.2v-103.3c0-15.18,11.45-27.96,26.55-29.5,66.39-6.75,234.32-36.24,234.32-162.01Zm-242.69,58.55c-9.52,1.59-18.18-5.7-18.18-15.35v-100.95c47.95,0,86.2,10.27,86.2,62.61,0,36.85-42.73,49.45-68.02,53.69Z" fill="#fff"/><path d="M647.91,476.34h-58.25c-7.14,97.82-78.44,130.59-78.44,130.59l-88.5,186.53c-7.15,15.06,3.84,32.43,20.51,32.43h51.45c24.64,0,31.82-6.58,31.82-6.58,36.3-21.02,29.99-39.45,42.92-48.68,12.93-9.22,26.43-8.58,52.02-8.58s34.1,8.57,34.1,8.57c18.42,14.95,21.77,29.39,21.77,29.39V505.74c0-16.24-13.16-29.4-29.4-29.4Zm-25.19,201.49c-4.38,5.58-21.05,12.57-30.33,4.67-19.18-16.32,1.85-73.19,4.34-79.44,2.49-6.25,18.42-19.5,25.98,14.48,7.56,33.98,4.38,54.7,0,60.29Z" fill="#fff"/><path d="M868.87,479.57c-30.36-3.16-96.08-3.75-134.15-2.83-15.63,.38-28.1,13.13-28.1,28.76v291.03c0,16.22,13.15,29.37,29.37,29.37h69.11c20.66,0,37.41-16.75,37.41-37.41v-63.15c0-9.28,7-17.09,16.23-18.03,40.59-4.12,143.25-22.15,143.25-99.04,0-91.45-94.59-124.67-133.13-128.69Zm-15.24,164.48c-5.82,.97-11.11-3.48-11.11-9.38v-61.71c29.31,0,52.69,6.28,52.69,38.27,0,22.53-26.12,30.23-41.58,32.82Z" fill="#fff"/></svg>
+    <div class="hero-label h-el">DIGITAL MAGAZINE ARCHIVE</div>
+    <h1 class="hero-title h-el">THE COLLECTION</h1>
+    <div class="hero-div h-el"></div>
+    <div class="hero-badge h-el">86 ISSUES · 2,114+ EDITORIALS</div>
+  </div>
+  <div class="scroll-hint"><span>SCROLL</span><div class="scroll-hint-line"></div></div>
+</section>
+
+
+<!-- 2026 -->
+<section class="issues">
+  <div class="sec-head"><h2 class="sec-title">2026</h2><span class="sec-count">3 ISSUES</span></div>
+  <div class="grid">
+    <div data-href="PAP_Magazine_March_2026.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_1b257ccd25.jpg" alt="Mar 2026" loading="lazy"><div class="covlay"><span class="latest-badge">LATEST</span><div class="cov-bot"><div class="cov-title">March 2026</div><div class="cov-ct">19 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 86</span><span class="dt">MAR 2026</span></div></div>
+    <div data-href="PAP_Magazine_February_2026.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_3e0960b1dd.jpg" alt="Feb 2026" loading="lazy"><div class="covlay"><span class="mo-badge">FEB 2026</span><div class="cov-bot"><div class="cov-title">February 2026</div><div class="cov-ct">23 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 85</span><span class="dt">FEB 2026</span></div></div>
+    <div data-href="PAP_Magazine_January_2026.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_b4400e3ec5.jpg" alt="Jan 2026" loading="lazy"><div class="covlay"><span class="mo-badge">JAN 2026</span><div class="cov-bot"><div class="cov-title">January 2026</div><div class="cov-ct">22 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 84</span><span class="dt">JAN 2026</span></div></div>
+  </div>
+</section>
+
+<div class="year-divider"><div class="year-divider-line"></div></div>
+
+<!-- 2025 -->
+<section class="issues">
+  <div class="sec-head"><h2 class="sec-title">2025</h2><span class="sec-count">12 ISSUES</span></div>
+  <div class="grid">
+    <div data-href="PAP_Magazine_December_2025.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_8c49128632.jpg" alt="Dec 2025" loading="lazy"><div class="covlay"><span class="mo-badge">DEC 2025</span><div class="cov-bot"><div class="cov-title">December 2025</div><div class="cov-ct">22 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 83</span><span class="dt">DEC 2025</span></div></div>
+    <div data-href="PAP_Magazine_November_2025.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_0281a06055.jpg" alt="Nov 2025" loading="lazy"><div class="covlay"><span class="mo-badge">NOV 2025</span><div class="cov-bot"><div class="cov-title">November 2025</div><div class="cov-ct">20 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 82</span><span class="dt">NOV 2025</span></div></div>
+    <div data-href="PAP_Magazine_October_2025.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_3964c677ce.jpg" alt="Oct 2025" loading="lazy"><div class="covlay"><span class="mo-badge">OCT 2025</span><div class="cov-bot"><div class="cov-title">October 2025</div><div class="cov-ct">15 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 81</span><span class="dt">OCT 2025</span></div></div>
+    <div data-href="PAP_Magazine_September_2025.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_aeaeff24eb.jpg" alt="Sep 2025" loading="lazy"><div class="covlay"><span class="mo-badge">SEP 2025</span><div class="cov-bot"><div class="cov-title">September 2025</div><div class="cov-ct">19 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 80</span><span class="dt">SEP 2025</span></div></div>
+    <div data-href="PAP_Magazine_August_2025.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover2_70fd7644cd.jpg" alt="Aug 2025" loading="lazy"><div class="covlay"><span class="mo-badge">AUG 2025</span><div class="cov-bot"><div class="cov-title">August 2025</div><div class="cov-ct">21 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 79</span><span class="dt">AUG 2025</span></div></div>
+    <div data-href="PAP_Magazine_July_2025.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_45b4f12f70.jpg" alt="Jul 2025" loading="lazy"><div class="covlay"><span class="mo-badge">JUL 2025</span><div class="cov-bot"><div class="cov-title">July 2025</div><div class="cov-ct">17 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 78</span><span class="dt">JUL 2025</span></div></div>
+    <div data-href="PAP_Magazine_June_2025.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_315b741e2a.jpg" alt="Jun 2025" loading="lazy"><div class="covlay"><span class="mo-badge">JUN 2025</span><div class="cov-bot"><div class="cov-title">June 2025</div><div class="cov-ct">24 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 77</span><span class="dt">JUN 2025</span></div></div>
+    <div data-href="PAP_Magazine_May_2025.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_36364fafb4.jpg" alt="May 2025" loading="lazy"><div class="covlay"><span class="mo-badge">MAY 2025</span><div class="cov-bot"><div class="cov-title">May 2025</div><div class="cov-ct">22 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 76</span><span class="dt">MAY 2025</span></div></div>
+    <div data-href="PAP_Magazine_April_2025.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_d9d08db712.jpg" alt="Apr 2025" loading="lazy"><div class="covlay"><span class="mo-badge">APR 2025</span><div class="cov-bot"><div class="cov-title">April 2025</div><div class="cov-ct">21 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 75</span><span class="dt">APR 2025</span></div></div>
+    <div data-href="PAP_Magazine_March_2025.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_52bc068db3.jpg" alt="Mar 2025" loading="lazy"><div class="covlay"><span class="mo-badge">MAR 2025</span><div class="cov-bot"><div class="cov-title">March 2025</div><div class="cov-ct">18 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 74</span><span class="dt">MAR 2025</span></div></div>
+    <div data-href="PAP_Magazine_February_2025.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover2_fec77f6045.jpg" alt="Feb 2025" loading="lazy"><div class="covlay"><span class="mo-badge">FEB 2025</span><div class="cov-bot"><div class="cov-title">February 2025</div><div class="cov-ct">20 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 73</span><span class="dt">FEB 2025</span></div></div>
+    <div data-href="PAP_Magazine_January_2025.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_2f96d4c28f.jpg" alt="Jan 2025" loading="lazy"><div class="covlay"><span class="mo-badge">JAN 2025</span><div class="cov-bot"><div class="cov-title">January 2025</div><div class="cov-ct">24 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 72</span><span class="dt">JAN 2025</span></div></div>
+  </div>
+</section>
+
+<div class="year-divider"><div class="year-divider-line"></div></div>
+
+<!-- 2024 -->
+<section class="issues">
+  <div class="sec-head"><h2 class="sec-title">2024</h2><span class="sec-count">12 ISSUES</span></div>
+  <div class="grid">
+    <div data-href="PAP_Magazine_December_2024.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_1ee4cfc7e0.jpg" alt="Dec 2024" loading="lazy"><div class="covlay"><span class="mo-badge">DEC 2024</span><div class="cov-bot"><div class="cov-title">December 2024</div><div class="cov-ct">20 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 71</span><span class="dt">DEC 2024</span></div></div>
+    <div data-href="PAP_Magazine_November_2024.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_8c7ba13b86.jpg" alt="Nov 2024" loading="lazy"><div class="covlay"><span class="mo-badge">NOV 2024</span><div class="cov-bot"><div class="cov-title">November 2024</div><div class="cov-ct">20 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 70</span><span class="dt">NOV 2024</span></div></div>
+    <div data-href="PAP_Magazine_October_2024.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_e389083cff.jpg" alt="Oct 2024" loading="lazy"><div class="covlay"><span class="mo-badge">OCT 2024</span><div class="cov-bot"><div class="cov-title">October 2024</div><div class="cov-ct">21 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 69</span><span class="dt">OCT 2024</span></div></div>
+    <div data-href="PAP_Magazine_September_2024.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_ce249419c8.jpg" alt="Sep 2024" loading="lazy"><div class="covlay"><span class="mo-badge">SEP 2024</span><div class="cov-bot"><div class="cov-title">September 2024</div><div class="cov-ct">18 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 68</span><span class="dt">SEP 2024</span></div></div>
+    <div data-href="PAP_Magazine_August_2024.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_dbd583d9ff.jpg" alt="Aug 2024" loading="lazy"><div class="covlay"><span class="mo-badge">AUG 2024</span><div class="cov-bot"><div class="cov-title">August 2024</div><div class="cov-ct">22 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 67</span><span class="dt">AUG 2024</span></div></div>
+    <div data-href="PAP_Magazine_July_2024.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_21e4b56624.jpg" alt="Jul 2024" loading="lazy"><div class="covlay"><span class="mo-badge">JUL 2024</span><div class="cov-bot"><div class="cov-title">July 2024</div><div class="cov-ct">23 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 66</span><span class="dt">JUL 2024</span></div></div>
+    <div data-href="PAP_Magazine_June_2024.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_f17f49f387.jpg" alt="Jun 2024" loading="lazy"><div class="covlay"><span class="mo-badge">JUN 2024</span><div class="cov-bot"><div class="cov-title">June 2024</div><div class="cov-ct">14 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 65</span><span class="dt">JUN 2024</span></div></div>
+    <div data-href="PAP_Magazine_May_2024.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_6955d3ff32.jpg" alt="May 2024" loading="lazy"><div class="covlay"><span class="mo-badge">MAY 2024</span><div class="cov-bot"><div class="cov-title">May 2024</div><div class="cov-ct">28 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 64</span><span class="dt">MAY 2024</span></div></div>
+    <div data-href="PAP_Magazine_April_2024.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_f59a892d6b.jpg" alt="Apr 2024" loading="lazy"><div class="covlay"><span class="mo-badge">APR 2024</span><div class="cov-bot"><div class="cov-title">April 2024</div><div class="cov-ct">23 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 63</span><span class="dt">APR 2024</span></div></div>
+    <div data-href="PAP_Magazine_March_2024.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover2_099a56af1b.jpg" alt="Mar 2024" loading="lazy"><div class="covlay"><span class="mo-badge">MAR 2024</span><div class="cov-bot"><div class="cov-title">March 2024</div><div class="cov-ct">21 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 62</span><span class="dt">MAR 2024</span></div></div>
+    <div data-href="PAP_Magazine_February_2024.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_886cfcd885.jpg" alt="Feb 2024" loading="lazy"><div class="covlay"><span class="mo-badge">FEB 2024</span><div class="cov-bot"><div class="cov-title">February 2024</div><div class="cov-ct">19 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 61</span><span class="dt">FEB 2024</span></div></div>
+    <div data-href="PAP_Magazine_January_2024.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover3_879d20482b.jpg" alt="Jan 2024" loading="lazy"><div class="covlay"><span class="mo-badge">JAN 2024</span><div class="cov-bot"><div class="cov-title">January 2024</div><div class="cov-ct">23 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 60</span><span class="dt">JAN 2024</span></div></div>
+  </div>
+</section>
+
+<div class="year-divider"><div class="year-divider-line"></div></div>
+
+<!-- 2023 -->
+<section class="issues">
+  <div class="sec-head"><h2 class="sec-title">2023</h2><span class="sec-count">12 ISSUES</span></div>
+  <div class="grid">
+    <div data-href="PAP_Magazine_December_2023.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_ae60e0c125.jpg" alt="Dec 2023" loading="lazy"><div class="covlay"><span class="mo-badge">DEC 2023</span><div class="cov-bot"><div class="cov-title">December 2023</div><div class="cov-ct">24 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 59</span><span class="dt">DEC 2023</span></div></div>
+    <div data-href="PAP_Magazine_November_2023.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_92322326c7.jpg" alt="Nov 2023" loading="lazy"><div class="covlay"><span class="mo-badge">NOV 2023</span><div class="cov-bot"><div class="cov-title">November 2023</div><div class="cov-ct">25 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 58</span><span class="dt">NOV 2023</span></div></div>
+    <div data-href="PAP_Magazine_October_2023.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_72e7b7fd02.jpg" alt="Oct 2023" loading="lazy"><div class="covlay"><span class="mo-badge">OCT 2023</span><div class="cov-bot"><div class="cov-title">October 2023</div><div class="cov-ct">20 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 57</span><span class="dt">OCT 2023</span></div></div>
+    <div data-href="PAP_Magazine_September_2023.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover_f218f7f478.jpg" alt="Sep 2023" loading="lazy"><div class="covlay"><span class="mo-badge">SEP 2023</span><div class="cov-bot"><div class="cov-title">September 2023</div><div class="cov-ct">30 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 56</span><span class="dt">SEP 2023</span></div></div>
+    <div data-href="PAP_Magazine_August_2023.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_bde5512d85.jpg" alt="Aug 2023" loading="lazy"><div class="covlay"><span class="mo-badge">AUG 2023</span><div class="cov-bot"><div class="cov-title">August 2023</div><div class="cov-ct">24 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 55</span><span class="dt">AUG 2023</span></div></div>
+    <div data-href="PAP_Magazine_July_2023.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_82e14b8386.jpg" alt="Jul 2023" loading="lazy"><div class="covlay"><span class="mo-badge">JUL 2023</span><div class="cov-bot"><div class="cov-title">July 2023</div><div class="cov-ct">27 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 54</span><span class="dt">JUL 2023</span></div></div>
+    <div data-href="PAP_Magazine_June_2023.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_e2b9cde336.jpg" alt="Jun 2023" loading="lazy"><div class="covlay"><span class="mo-badge">JUN 2023</span><div class="cov-bot"><div class="cov-title">June 2023</div><div class="cov-ct">30 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 53</span><span class="dt">JUN 2023</span></div></div>
+    <div data-href="PAP_Magazine_May_2023.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover4_e8f2329e0b.jpg" alt="May 2023" loading="lazy"><div class="covlay"><span class="mo-badge">MAY 2023</span><div class="cov-bot"><div class="cov-title">May 2023</div><div class="cov-ct">26 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 52</span><span class="dt">MAY 2023</span></div></div>
+    <div data-href="PAP_Magazine_April_2023.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover_19c6439f20.png" alt="Apr 2023" loading="lazy"><div class="covlay"><span class="mo-badge">APR 2023</span><div class="cov-bot"><div class="cov-title">April 2023</div><div class="cov-ct">26 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 51</span><span class="dt">APR 2023</span></div></div>
+    <div data-href="PAP_Magazine_March_2023.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1FwAqPW8jHvhyfEAvb_6g9w9SFMJYa_2A&sz=w1600" alt="Mar 2023" loading="lazy"><div class="covlay"><span class="mo-badge">MAR 2023</span><div class="cov-bot"><div class="cov-title">March 2023</div><div class="cov-ct">27 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 50</span><span class="dt">MAR 2023</span></div></div>
+    <div data-href="PAP_Magazine_February_2023.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1W8TSM4hF2kM6Yo9a5SLCJCXMmXycequ3&sz=w1600" alt="Feb 2023" loading="lazy"><div class="covlay"><span class="mo-badge">FEB 2023</span><div class="cov-bot"><div class="cov-title">February 2023</div><div class="cov-ct">24 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 49</span><span class="dt">FEB 2023</span></div></div>
+    <div data-href="PAP_Magazine_January_2023.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1FsBDyeQnUyHuIyaInED-H5Kh4IEkM-Ik&sz=w1600" alt="Jan 2023" loading="lazy"><div class="covlay"><span class="mo-badge">JAN 2023</span><div class="cov-bot"><div class="cov-title">January 2023</div><div class="cov-ct">42 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 48</span><span class="dt">JAN 2023</span></div></div>
+  </div>
+</section>
+
+<div class="year-divider"><div class="year-divider-line"></div></div>
+
+<!-- 2022 -->
+<section class="issues">
+  <div class="sec-head"><h2 class="sec-title">2022</h2><span class="sec-count">12 ISSUES</span></div>
+  <div class="grid">
+    <div data-href="PAP_Magazine_December_2022.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1zgnc1-oCTfsEU-JRPnPwHGsQOegU9J6u&sz=w1600" alt="Dec 2022" loading="lazy"><div class="covlay"><span class="mo-badge">DEC 2022</span><div class="cov-bot"><div class="cov-title">December 2022</div><div class="cov-ct">29 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 47</span><span class="dt">DEC 2022</span></div></div>
+    <div data-href="PAP_Magazine_November_2022.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1RYLQ39OCRPhfJ-UucDq931EwE6jNKD7g&sz=w1600" alt="Nov 2022" loading="lazy"><div class="covlay"><span class="mo-badge">NOV 2022</span><div class="cov-bot"><div class="cov-title">November 2022</div><div class="cov-ct">22 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 46</span><span class="dt">NOV 2022</span></div></div>
+    <div data-href="PAP_Magazine_October_2022.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1dG2gOPXM5IwpSKIYb4C6vwGp6ICpOqxS&sz=w1600" alt="Oct 2022" loading="lazy"><div class="covlay"><span class="mo-badge">OCT 2022</span><div class="cov-bot"><div class="cov-title">October 2022</div><div class="cov-ct">21 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 45</span><span class="dt">OCT 2022</span></div></div>
+    <div data-href="PAP_Magazine_September_2022.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1ym-ZYuJ21S-x6juR-m_91yOptX5Acef3&sz=w1600" alt="Sep 2022" loading="lazy"><div class="covlay"><span class="mo-badge">SEP 2022</span><div class="cov-bot"><div class="cov-title">September 2022</div><div class="cov-ct">25 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 44</span><span class="dt">SEP 2022</span></div></div>
+    <div data-href="PAP_Magazine_August_2022.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1fMrLD8O5Wecdwh9qDvKzWs52s8LNDLQv&sz=w1600" alt="Aug 2022" loading="lazy"><div class="covlay"><span class="mo-badge">AUG 2022</span><div class="cov-bot"><div class="cov-title">August 2022</div><div class="cov-ct">28 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 43</span><span class="dt">AUG 2022</span></div></div>
+    <div data-href="PAP_Magazine_July_2022.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=15izP8un4SzU0ibNZQK5n6F9TmSAgBAix&sz=w1600" alt="Jul 2022" loading="lazy"><div class="covlay"><span class="mo-badge">JUL 2022</span><div class="cov-bot"><div class="cov-title">July 2022</div><div class="cov-ct">21 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 42</span><span class="dt">JUL 2022</span></div></div>
+    <div data-href="PAP_Magazine_June_2022.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1tdQPHtJZeF1Z9EGSxz-4R3FUbgW_8jKf&sz=w1600" alt="Jun 2022" loading="lazy"><div class="covlay"><span class="mo-badge">JUN 2022</span><div class="cov-bot"><div class="cov-title">June 2022</div><div class="cov-ct">28 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 41</span><span class="dt">JUN 2022</span></div></div>
+    <div data-href="PAP_Magazine_May_2022.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1kYmvOkZwehnNdjyoIpQXee616rcXr88S&sz=w1600" alt="May 2022" loading="lazy"><div class="covlay"><span class="mo-badge">MAY 2022</span><div class="cov-bot"><div class="cov-title">May 2022</div><div class="cov-ct">27 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 40</span><span class="dt">MAY 2022</span></div></div>
+    <div data-href="PAP_Magazine_April_2022.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1PzWZ_nfHqr6-BxNocDmG6foRe6BCLV_x&sz=w1600" alt="Apr 2022" loading="lazy"><div class="covlay"><span class="mo-badge">APR 2022</span><div class="cov-bot"><div class="cov-title">April 2022</div><div class="cov-ct">25 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 39</span><span class="dt">APR 2022</span></div></div>
+    <div data-href="PAP_Magazine_March_2022.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1On3kN9fkiluUI4_czdpXlnQISGIZ8mt1&sz=w1600" alt="Mar 2022" loading="lazy"><div class="covlay"><span class="mo-badge">MAR 2022</span><div class="cov-bot"><div class="cov-title">March 2022</div><div class="cov-ct">25 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 38</span><span class="dt">MAR 2022</span></div></div>
+    <div data-href="PAP_Magazine_February_2022.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1OA39d6PIAk98zzpPd9MlrpKgHG65g-6g&sz=w1600" alt="Feb 2022" loading="lazy"><div class="covlay"><span class="mo-badge">FEB 2022</span><div class="cov-bot"><div class="cov-title">February 2022</div><div class="cov-ct">26 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 37</span><span class="dt">FEB 2022</span></div></div>
+    <div data-href="PAP_Magazine_January_2022.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1KZGjnmn4Z7kUJz3q19YD-eU_flGchB3p&sz=w1600" alt="Jan 2022" loading="lazy"><div class="covlay"><span class="mo-badge">JAN 2022</span><div class="cov-bot"><div class="cov-title">January 2022</div><div class="cov-ct">26 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 36</span><span class="dt">JAN 2022</span></div></div>
+  </div>
+</section>
+
+<div class="year-divider"><div class="year-divider-line"></div></div>
+
+<!-- 2021 -->
+<section class="issues">
+  <div class="sec-head"><h2 class="sec-title">2021</h2><span class="sec-count">12 ISSUES</span></div>
+  <div class="grid">
+    <div data-href="PAP_Magazine_December_2021.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1ahZiKkn-1cmqGZF-u3zyADGabf7mEwD0&sz=w1600" alt="Dec 2021" loading="lazy"><div class="covlay"><span class="mo-badge">DEC 2021</span><div class="cov-bot"><div class="cov-title">December 2021</div><div class="cov-ct">23 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 35</span><span class="dt">DEC 2021</span></div></div>
+    <div data-href="PAP_Magazine_November_2021.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1iXOnItkuEZJXkI1VMXvk-qUsiVUo86OE&sz=w1600" alt="Nov 2021" loading="lazy"><div class="covlay"><span class="mo-badge">NOV 2021</span><div class="cov-bot"><div class="cov-title">November 2021</div><div class="cov-ct">26 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 34</span><span class="dt">NOV 2021</span></div></div>
+    <div data-href="PAP_Magazine_October_2021.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1lgC5CYmoAoFqfNZHxa-ovwC4pIvwN_tj&sz=w1600" alt="Oct 2021" loading="lazy"><div class="covlay"><span class="mo-badge">OCT 2021</span><div class="cov-bot"><div class="cov-title">October 2021</div><div class="cov-ct">29 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 33</span><span class="dt">OCT 2021</span></div></div>
+    <div data-href="PAP_Magazine_September_2021.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1EA86TBuTzuH_-TM5_GYVQ0j3pRYOnVC4&sz=w1600" alt="Sep 2021" loading="lazy"><div class="covlay"><span class="mo-badge">SEP 2021</span><div class="cov-bot"><div class="cov-title">September 2021</div><div class="cov-ct">29 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 32</span><span class="dt">SEP 2021</span></div></div>
+    <div data-href="PAP_Magazine_August_2021.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1BL4og4R_CBjCliZVX-uLyN73CfBAmpl8&sz=w1600" alt="Aug 2021" loading="lazy"><div class="covlay"><span class="mo-badge">AUG 2021</span><div class="cov-bot"><div class="cov-title">August 2021</div><div class="cov-ct">30 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 31</span><span class="dt">AUG 2021</span></div></div>
+    <div data-href="PAP_Magazine_July_2021.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1Eh43wwiJ-f6LSuozfVMHGkSZMaFSZuHk&sz=w1600" alt="Jul 2021" loading="lazy"><div class="covlay"><span class="mo-badge">JUL 2021</span><div class="cov-bot"><div class="cov-title">July 2021</div><div class="cov-ct">24 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 30</span><span class="dt">JUL 2021</span></div></div>
+    <div data-href="PAP_Magazine_June_2021.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1Exw2S6KJwkAchw2KbtnKuP1N42VelaMB&sz=w1600" alt="Jun 2021" loading="lazy"><div class="covlay"><span class="mo-badge">JUN 2021</span><div class="cov-bot"><div class="cov-title">June 2021</div><div class="cov-ct">26 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 29</span><span class="dt">JUN 2021</span></div></div>
+    <div data-href="PAP_Magazine_May_2021.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1b2BBUUqfC8fzf73Xmn9hFUwCZq-IPs2h&sz=w1600" alt="May 2021" loading="lazy"><div class="covlay"><span class="mo-badge">MAY 2021</span><div class="cov-bot"><div class="cov-title">May 2021</div><div class="cov-ct">30 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 28</span><span class="dt">MAY 2021</span></div></div>
+    <div data-href="PAP_Magazine_April_2021.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1sbeMUsaYLcfDdwppJC5AbP5BW0vf_xM3&sz=w1600" alt="Apr 2021" loading="lazy"><div class="covlay"><span class="mo-badge">APR 2021</span><div class="cov-bot"><div class="cov-title">April 2021</div><div class="cov-ct">21 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 27</span><span class="dt">APR 2021</span></div></div>
+    <div data-href="PAP_Magazine_March_2021.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1gBwbBFUQafdutDMTXu9msaQ8rDT_AZMg&sz=w1600" alt="Mar 2021" loading="lazy"><div class="covlay"><span class="mo-badge">MAR 2021</span><div class="cov-bot"><div class="cov-title">March 2021</div><div class="cov-ct">26 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 26</span><span class="dt">MAR 2021</span></div></div>
+    <div data-href="PAP_Magazine_February_2021.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1Rua-h5q_JT2GfU1hkV5PMsTk9tHkgvPd&sz=w1600" alt="Feb 2021" loading="lazy"><div class="covlay"><span class="mo-badge">FEB 2021</span><div class="cov-bot"><div class="cov-title">February 2021</div><div class="cov-ct">26 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 25</span><span class="dt">FEB 2021</span></div></div>
+    <div data-href="PAP_Magazine_January_2021.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1AbDfKf_c0OieC_R66R99xvnOmw9puM4s&sz=w1600" alt="Jan 2021" loading="lazy"><div class="covlay"><span class="mo-badge">JAN 2021</span><div class="cov-bot"><div class="cov-title">January 2021</div><div class="cov-ct">22 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 24</span><span class="dt">JAN 2021</span></div></div>
+  </div>
+</section>
+
+<div class="year-divider"><div class="year-divider-line"></div></div>
+
+<!-- 2020 -->
+<section class="issues">
+  <div class="sec-head"><h2 class="sec-title">2020</h2><span class="sec-count">12 ISSUES</span></div>
+  <div class="grid">
+    <div data-href="PAP_Magazine_December_2020.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1_k-k_9PG0OHvTSWd8eZHvVh3CKUtNZqc&sz=w1600" alt="Dec 2020" loading="lazy"><div class="covlay"><span class="mo-badge">DEC 2020</span><div class="cov-bot"><div class="cov-title">December 2020</div><div class="cov-ct">26 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 23</span><span class="dt">DEC 2020</span></div></div>
+    <div data-href="PAP_Magazine_November_2020.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1Jf0Hgvzz_yxTiGQyKBjZ2iyH3qdHQw-K&sz=w1600" alt="Nov 2020" loading="lazy"><div class="covlay"><span class="mo-badge">NOV 2020</span><div class="cov-bot"><div class="cov-title">November 2020</div><div class="cov-ct">31 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 22</span><span class="dt">NOV 2020</span></div></div>
+    <div data-href="PAP_Magazine_October_2020.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=10V01vLouKPvl_lIfhyuTQqNZaToG6dC6&sz=w1600" alt="Oct 2020" loading="lazy"><div class="covlay"><span class="mo-badge">OCT 2020</span><div class="cov-bot"><div class="cov-title">October 2020</div><div class="cov-ct">22 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 21</span><span class="dt">OCT 2020</span></div></div>
+    <div data-href="PAP_Magazine_September_2020.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1Aj1wmHYBjWsLigmoPs3UdsQW4AqKM2Ad&sz=w1600" alt="Sep 2020" loading="lazy"><div class="covlay"><span class="mo-badge">SEP 2020</span><div class="cov-bot"><div class="cov-title">September 2020</div><div class="cov-ct">23 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 20</span><span class="dt">SEP 2020</span></div></div>
+    <div data-href="PAP_Magazine_August_2020.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/KOREAN_GYMNAS_Ti_CS_d3ff607095.jpg" alt="Aug 2020" loading="lazy"><div class="covlay"><span class="mo-badge">AUG 2020</span><div class="cov-bot"><div class="cov-title">August 2020</div><div class="cov-ct">23 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 19</span><span class="dt">AUG 2020</span></div></div>
+    <div data-href="PAP_Magazine_July_2020.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=14p_UKqqhPDi7kPg-54TJq-6JiyGG1FU-&sz=w1600" alt="Jul 2020" loading="lazy"><div class="covlay"><span class="mo-badge">JUL 2020</span><div class="cov-bot"><div class="cov-title">July 2020</div><div class="cov-ct">5 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 18</span><span class="dt">JUL 2020</span></div></div>
+    <div data-href="PAP_Magazine_June_2020.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1jQ2r2ntXOAIO7z1tFSVe9DPLQCJjcuzu&sz=w1600" alt="Jun 2020" loading="lazy"><div class="covlay"><span class="mo-badge">JUN 2020</span><div class="cov-bot"><div class="cov-title">June 2020</div><div class="cov-ct">28 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 17</span><span class="dt">JUN 2020</span></div></div>
+    <div data-href="PAP_Magazine_May_2020.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1osSElRgNKImRqibwyvWen5ogcUwwjh-5&sz=w1600" alt="May 2020" loading="lazy"><div class="covlay"><span class="mo-badge">MAY 2020</span><div class="cov-bot"><div class="cov-title">May 2020</div><div class="cov-ct">28 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 16</span><span class="dt">MAY 2020</span></div></div>
+    <div data-href="PAP_Magazine_April_2020.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1jR1mnS1gIG4XCeSf7ehP-sWVDSvPS549&sz=w1600" alt="Apr 2020" loading="lazy"><div class="covlay"><span class="mo-badge">APR 2020</span><div class="cov-bot"><div class="cov-title">April 2020</div><div class="cov-ct">31 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 15</span><span class="dt">APR 2020</span></div></div>
+    <div data-href="PAP_Magazine_March_2020.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1jsx7FqmiL0PyT3denqtASR3E4kDniJ1t&sz=w1600" alt="Mar 2020" loading="lazy"><div class="covlay"><span class="mo-badge">MAR 2020</span><div class="cov-bot"><div class="cov-title">March 2020</div><div class="cov-ct">29 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 14</span><span class="dt">MAR 2020</span></div></div>
+    <div data-href="PAP_Magazine_February_2020.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1rtFmphC8kHHKODZQDov8nV3GVC5x1lch&sz=w1600" alt="Feb 2020" loading="lazy"><div class="covlay"><span class="mo-badge">FEB 2020</span><div class="cov-bot"><div class="cov-title">February 2020</div><div class="cov-ct">28 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 13</span><span class="dt">FEB 2020</span></div></div>
+    <div data-href="PAP_Magazine_January_2020.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1AktORC_2Oqx7zp3gB6w8Qk2XetnNCUDm&sz=w1600" alt="Jan 2020" loading="lazy"><div class="covlay"><span class="mo-badge">JAN 2020</span><div class="cov-bot"><div class="cov-title">January 2020</div><div class="cov-ct">32 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 12</span><span class="dt">JAN 2020</span></div></div>
+  </div>
+</section>
+
+<div class="year-divider"><div class="year-divider-line"></div></div>
+
+<!-- 2019 -->
+<section class="issues">
+  <div class="sec-head"><h2 class="sec-title">2019</h2><span class="sec-count">11 ISSUES</span></div>
+  <div class="grid">
+    <div data-href="PAP_Magazine_December_2019.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1UQhojFszH7GWYNsRc-qombRjRQrRlkko&sz=w1600" alt="Dec 2019" loading="lazy"><div class="covlay"><span class="mo-badge">DEC 2019</span><div class="cov-bot"><div class="cov-title">December 2019</div><div class="cov-ct">31 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 11</span><span class="dt">DEC 2019</span></div></div>
+    <div data-href="PAP_Magazine_November_2019.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1EHlnrIQHjZQj2bfd616W72H8vuin4u6b&sz=w1600" alt="Nov 2019" loading="lazy"><div class="covlay"><span class="mo-badge">NOV 2019</span><div class="cov-bot"><div class="cov-title">November 2019</div><div class="cov-ct">30 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 10</span><span class="dt">NOV 2019</span></div></div>
+    <div data-href="PAP_Magazine_October_2019.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1qK76QqEXrYsU3WXjbgEUGcyUQMeoMBDv&sz=w1600" alt="Oct 2019" loading="lazy"><div class="covlay"><span class="mo-badge">OCT 2019</span><div class="cov-bot"><div class="cov-title">October 2019</div><div class="cov-ct">27 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 09</span><span class="dt">OCT 2019</span></div></div>
+    <div data-href="PAP_Magazine_September_2019.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1OztnKUF0lktNa5z3FLnQEGlOhg43Zo00&sz=w1600" alt="Sep 2019" loading="lazy"><div class="covlay"><span class="mo-badge">SEP 2019</span><div class="cov-bot"><div class="cov-title">September 2019</div><div class="cov-ct">30 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 08</span><span class="dt">SEP 2019</span></div></div>
+    <div data-href="PAP_Magazine_August_2019.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1RAeIvVTXCsTMdIn9fH4fCtXPTW4q3dfR&sz=w1600" alt="Aug 2019" loading="lazy"><div class="covlay"><span class="mo-badge">AUG 2019</span><div class="cov-bot"><div class="cov-title">August 2019</div><div class="cov-ct">29 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 07</span><span class="dt">AUG 2019</span></div></div>
+    <div data-href="PAP_Magazine_July_2019.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1BbcGGDUnnV3XXSU4xADPiZgbzJgDFeLr&sz=w1600" alt="Jul 2019" loading="lazy"><div class="covlay"><span class="mo-badge">JUL 2019</span><div class="cov-bot"><div class="cov-title">July 2019</div><div class="cov-ct">32 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 06</span><span class="dt">JUL 2019</span></div></div>
+    <div data-href="PAP_Magazine_June_2019.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1Xi5is7CrxJyC2C8r2aGRr3NWhOu99haN&sz=w1600" alt="Jun 2019" loading="lazy"><div class="covlay"><span class="mo-badge">JUN 2019</span><div class="cov-bot"><div class="cov-title">June 2019</div><div class="cov-ct">29 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 05</span><span class="dt">JUN 2019</span></div></div>
+    <div data-href="PAP_Magazine_May_2019.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=18Ky2GeG6sCarxN4tEN81HrhOHZbPMjM9&sz=w1600" alt="May 2019" loading="lazy"><div class="covlay"><span class="mo-badge">MAY 2019</span><div class="cov-bot"><div class="cov-title">May 2019</div><div class="cov-ct">26 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 04</span><span class="dt">MAY 2019</span></div></div>
+    <div data-href="PAP_Magazine_April_2019.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1O600ShrvX0HG2tjtnsEEQyby9i1z73eH&sz=w1600" alt="Apr 2019" loading="lazy"><div class="covlay"><span class="mo-badge">APR 2019</span><div class="cov-bot"><div class="cov-title">April 2019</div><div class="cov-ct">30 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 03</span><span class="dt">APR 2019</span></div></div>
+    <div data-href="PAP_Magazine_March_2019.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1CkHaes2FJG5AD9oiuBVVEQGMcrm9aZ9H&sz=w1600" alt="Mar 2019" loading="lazy"><div class="covlay"><span class="mo-badge">MAR 2019</span><div class="cov-bot"><div class="cov-title">March 2019</div><div class="cov-ct">31 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 02</span><span class="dt">MAR 2019</span></div></div>
+    <div data-href="PAP_Magazine_February_2019.html" class="card" onclick="openModal(this)"><div class="cover"><img src="https://drive.google.com/thumbnail?id=1NKDNBwPaGn1AZeoc0aq2J2-OADEVnrmt&sz=w1600" alt="Feb 2019" loading="lazy"><div class="covlay"><span class="mo-badge">FEB 2019</span><div class="cov-bot"><div class="cov-title">February 2019</div><div class="cov-ct">21 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. 01</span><span class="dt">FEB 2019</span></div></div>
+  </div>
+</section>
+
+<div class="sub-cta">
+  <h3>Unlock the Full Archive</h3>
+  <p>Subscribe to PAP Premium for unlimited access to all 86 issues, 2,114+ editorials, and every future release. New issues drop monthly.</p>
+  <a href="subscribe.html" class="sub-btn">VIEW PLANS</a>
+</div>
+
+<footer>
+  <p><a href="pap-magazine-v5.html">HOME</a> &nbsp;·&nbsp; <a href="about.html">ABOUT</a> &nbsp;·&nbsp; <a href="contact.html">CONTACT</a> &nbsp;·&nbsp; <a href="subscribe.html">SUBSCRIBE</a></p>
+  <p>&copy; 2026 PAP MAGAZINE. All rights reserved.</p>
+</footer>
+
+<script>
+setTimeout(function(){document.getElementById('hc').classList.add('vis')},200);
+(function(){var b=document.querySelectorAll('.hero-bg-img'),i=0;setInterval(function(){b[i].classList.remove('active');i=(i+1)%b.length;b[i].classList.add('active')},4000)})();
+(function(){var c=document.querySelectorAll('.card');var o=new IntersectionObserver(function(e){e.forEach(function(en){if(en.isIntersecting){var idx=Array.from(c).indexOf(en.target);setTimeout(function(){en.target.classList.add('vis')},idx*80);o.unobserve(en.target)}})},{threshold:.08});c.forEach(function(x){o.observe(x)})})();
+
+function openModal(el){
+  var href=el.getAttribute('data-href');
+  var covTitle=el.querySelector('.cov-title');
+  var covCt=el.querySelector('.cov-ct');
+  var title=covTitle?covTitle.textContent:'';
+  var count=covCt?covCt.textContent:'';
+  document.getElementById('modalIssue').textContent=title.toUpperCase();
+  document.getElementById('modalTitle').textContent=title;
+  document.getElementById('modalCount').textContent=count.toLowerCase();
+  document.getElementById('modalPreview').onclick=function(){location.href=href};
+  var m=document.getElementById('subModal');
+  m.classList.add('active');
+  document.body.style.overflow='hidden';
+}
+function closeModal(){
+  document.getElementById('subModal').classList.remove('active');
+  document.body.style.overflow='';
+}
+document.getElementById('subModal').addEventListener('click',function(e){
+  if(e.target===this)closeModal();
+});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal()});
+</script>
+
+<!-- Subscribe Modal -->
+<div class="sub-modal-overlay" id="subModal">
+  <div class="sub-modal">
+    <button class="sub-modal-close" onclick="closeModal()">&times;</button>
+    <div class="sub-modal-issue" id="modalIssue">MARCH 2026</div>
+    <div class="sub-modal-title" id="modalTitle">March 2026</div>
+    <div class="sub-modal-count" id="modalCount">19 editorials</div>
+    <div class="sub-modal-divider"></div>
+    <p class="sub-modal-desc">Subscribe to unlock this issue and the full PAP archive — 86 issues, 2,109+ editorials.</p>
+    <div class="sub-modal-plans">
+      <div class="sub-modal-plan" onclick="location.href='subscribe.html'">
+        <div class="smp-name">STANDARD</div>
+        <div class="smp-price">₩8,500<span> /mo</span></div>
+      </div>
+      <div class="sub-modal-plan rec" onclick="location.href='subscribe.html'">
+        <div class="smp-name">PREMIUM</div>
+        <div class="smp-price">₩13,500<span> /mo</span></div>
+      </div>
+    </div>
+    <button class="sub-modal-cta" onclick="location.href='subscribe.html'">SUBSCRIBE NOW</button>
+    <button class="sub-modal-preview" id="modalPreview">Preview 3 editorials free →</button>
+    <div class="sub-modal-note">Cancel anytime · Instant access to all issues</div>
+  </div>
+</div>
+
+</body>
+</html>

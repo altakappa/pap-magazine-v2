@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PAP Magazine - July 2020</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background-color:#0a0a0a;color:#e8e8e8;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;line-height:1.6;overflow-x:hidden}
+nav{position:fixed;top:0;width:100%;height:70px;background:rgba(10,10,10,.95);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:space-between;padding:0 40px;z-index:1000;border-bottom:1px solid rgba(201,169,110,.2)}
+.nav-logo{height:40px;width:auto}.nav-title{font-size:16px;font-weight:300;letter-spacing:2px;color:#d0d0d0}
+.nav-scroll-indicator{height:2px;background:linear-gradient(90deg,#d0d0d0,transparent);position:fixed;top:70px;left:0;width:0;z-index:999;transition:width .3s ease}
+.cover-page{height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;background:linear-gradient(135deg,#1a1a1a 0%,#0a0a0a 100%);padding-top:70px;position:relative;overflow:hidden}
+.cover-page::before{content:'';position:absolute;top:0;left:0;width:100%;height:100%;background:url('https://drive.google.com/thumbnail?id=14p_UKqqhPDi7kPg-54TJq-6JiyGG1FU-&sz=w1600') center/cover no-repeat;filter:blur(3px) brightness(.6);transform:scale(1.05)}
+.cover-page::after{content:'';position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(10,10,10,.15)}
+.cover-content{position:relative;z-index:10;display:flex;flex-direction:column;align-items:center;gap:0}
+.cover-logo{height:200px;width:auto;animation:fadeInScale 1s ease-out;filter:drop-shadow(0 10px 40px rgba(201,169,110,.3));margin-bottom:-15px}
+@keyframes fadeInScale{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+.cover-title{font-size:16px;font-weight:300;letter-spacing:8px;color:#d0d0d0;margin-top:20px;animation:fadeInUp 1s ease-out .2s both}
+.cover-subtitle{font-size:14px;letter-spacing:3px;color:#888;margin-top:20px;animation:fadeInUp 1s ease-out .4s both}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.editorial-section{min-height:100vh;padding:100px 80px;background-color:#0a0a0a;position:relative}
+.editorial-header{margin-bottom:60px;animation:fadeInUp .8s ease-out}
+.editorial-date{font-size:12px;letter-spacing:2px;color:#888;margin-bottom:10px}
+.editorial-title{font-size:48px;font-weight:300;margin-bottom:15px;color:#e8e8e8;letter-spacing:1px}
+.editorial-subtitle{font-size:18px;color:#d0d0d0;font-weight:300}
+.editorial-gallery{max-width:65%;margin:0 auto 60px;display:grid;gap:16px;grid-template-columns:1fr 1fr;animation:fadeInUp .8s ease-out .2s both}
+.gallery-item{overflow:hidden;border-radius:4px;background:#1a1a1a}
+.gallery-item img{width:100%;height:auto;display:block;transition:transform .4s cubic-bezier(.25,.46,.45,.94)}
+.gallery-item:hover img{transform:scale(1.05)}
+.editorial-credits{padding:40px 0;border-top:1px solid rgba(201,169,110,.2);border-bottom:1px solid rgba(201,169,110,.2);margin-bottom:100px;animation:fadeInUp .8s ease-out .4s both}
+.editorial-credits p{margin-bottom:12px;font-size:14px;color:#b8b8b8}
+.editorial-credits strong{color:#d0d0d0;font-weight:600}
+.editorial-credits a{color:#d0d0d0;text-decoration:none;transition:all .3s ease;border-bottom:1px solid transparent}
+.editorial-credits a:hover{border-bottom-color:#d0d0d0}
+.editorial-spread{display:grid;grid-template-columns:1fr 1fr;gap:50px;margin-bottom:60px;align-items:start;animation:fadeInUp .8s ease-out .2s both;max-width:90%;margin-left:auto;margin-right:auto}
+.editorial-cover-img{width:100%;height:auto;border-radius:4px;display:block}
+.editorial-spread .editorial-info{display:flex;flex-direction:column;justify-content:center;padding:20px 0}
+.editorial-spread .editorial-info .editorial-subtitle{font-size:16px;color:#d0d0d0;font-weight:300;line-height:1.8;margin-bottom:30px}
+.editorial-spread .editorial-info .editorial-desc-kr{font-size:14px;line-height:1.8;color:#999;font-style:italic}
+.section-divider{height:1px;background:linear-gradient(90deg,transparent,rgba(201,169,110,.3),transparent);margin:80px 0;animation:fadeIn .8s ease-out}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+footer{padding:60px 80px;text-align:center;border-top:1px solid rgba(201,169,110,.2);background:#0a0a0a}
+footer p{color:#666;font-size:14px;margin-bottom:10px}
+@media(max-width:1024px){.editorial-section{padding:80px 60px}.editorial-title{font-size:36px}}
+@media(max-width:768px){nav{padding:0 20px;height:60px}.nav-title{font-size:14px}.cover-logo{height:100px}.cover-title{font-size:14px}.editorial-section{padding:60px 30px}.editorial-title{font-size:28px}.editorial-subtitle{font-size:16px}.editorial-gallery{max-width:85%;grid-template-columns:1fr}.editorial-spread{grid-template-columns:1fr}.editorial-spread .editorial-info .editorial-subtitle{font-size:15px}}
+@media(max-width:480px){nav{padding:0 15px;justify-content:center}.nav-title{display:none}.cover-logo{height:80px}.cover-subtitle{font-size:12px}.editorial-section{padding:40px 20px}.editorial-title{font-size:24px}.editorial-gallery{max-width:100%}}
+</style>
+</head>
+<body>
+<nav><img class="nav-logo" src="data:image/png;base64,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IJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACDS/wAnhBsZTvHTagAAAABJRU5ErkJggg==" alt="PAP"><div class="nav-title">PAP MAGAZINE</div></nav>
+<div class="nav-scroll-indicator"></div>
+<div class="cover-page"><div class="cover-content"><img class="cover-logo" src="data:image/png;base64,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IJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACDS/wAnhBsZTvHTagAAAABJRU5ErkJggg==" alt="PAP" style="filter:drop-shadow(0 10px 40px rgba(201,169,110,.3))"><h1 class="cover-title">MAGAZINE</h1><p class="cover-subtitle">JULY 2020</p></div></div>
+
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-04</p>
+        <h1 class="editorial-title">CELESTIAL</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=14p_UKqqhPDi7kPg-54TJq-6JiyGG1FU-&sz=w1600" alt="CELESTIAL" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-subtitle">&#x27;CELESTIAL&#x27; possesses that rare quality of feeling both timeless and urgently contemporary, as if it exists in a space where all of fashion&#x27;s past and future converge.</p>
+            <p class="editorial-desc-kr">&#x27;CELESTIAL&#x27;는 시대를 초월하면서도 긴급하게 동시대적인 그 드문 특질을 소유하며, 패션의 모든 과거와 미래가 수렴하는 공간에 존재하는 듯하다.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1jXeNoCqG-XuC-I0KVxDUt9syoBtTbrzk&sz=w1600" alt="CELESTIAL" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1NGPOijHEp6TlaDGSSWDjqcWGroJLhy5C&sz=w1600" alt="CELESTIAL" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1eXj4Smzk5KuKETLuF_FR03ptucnw5VXj&sz=w1600" alt="CELESTIAL" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1CskCR02HBmU1V2EOjB1673cnctvpndFQ&sz=w1600" alt="CELESTIAL" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1YxGUw5lMGk_ggn010IdC_gOuNDFBQ-Fz&sz=w1600" alt="CELESTIAL" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1-RZYCx06XBB2GTITZsfCqkCXi_o-WRXn&sz=w1600" alt="CELESTIAL" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1NrbafmkUWDLKDhWfpTZYgZUzbQ_Roahf&sz=w1600" alt="CELESTIAL" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=172GpNIAGz4cfYW-d_WEAFqF5TnLdLAay&sz=w1600" alt="CELESTIAL" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-05</p>
+        <h1 class="editorial-title">MIDSUMMER</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1GexSi4u5-hgjEgHtFxRjHGbfA8Ijg1S-&sz=w1600" alt="MIDSUMMER" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-subtitle">The world of &#x27;MIDSUMMER&#x27; is one of heightened reality—familiar enough to feel grounded, yet elevated by a creative vision that transforms the ordinary into the extraordinary.</p>
+            <p class="editorial-desc-kr">&#x27;MIDSUMMER&#x27;의 세계는 고양된 현실의 세계다—기반이 느껴질 만큼 친숙하면서도, 평범한 것을 비범한 것으로 변환하는 창의적 비전에 의해 격상된.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1QJA5UoVMXBnmo8dDl0K3OF6hRZi5oImN&sz=w1600" alt="MIDSUMMER" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1oeNMjJG8z66CXh81_SLR9xD7sSZvQKZ5&sz=w1600" alt="MIDSUMMER" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1xSRA4-MCyCMp5ZuEG-l2rCXkqOYIJ6s1&sz=w1600" alt="MIDSUMMER" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1sQCZZnTTDD71pm1X3dmbUApi7coGRfwB&sz=w1600" alt="MIDSUMMER" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1uV-08dCDpWLQDc6z-Gvp-zDkAiIkNrvy&sz=w1600" alt="MIDSUMMER" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1eR8sTbQ8zmmxZRlYvTIQUYO5N8-XeJvG&sz=w1600" alt="MIDSUMMER" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1VxaojxpwFFxOdk6ad4BHBp7DY1a_1eaZ&sz=w1600" alt="MIDSUMMER" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1TXOm3wmj6eol2HHvGoBVZMQHgewNTRVY&sz=w1600" alt="MIDSUMMER" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1Ecjqw5merZOINc22iBnEDCTGlJT1BpmN&sz=w1600" alt="MIDSUMMER" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1g3XB7XvkIN_GCnIeLFXoPGjzgmqKBd91&sz=w1600" alt="MIDSUMMER" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=10SONEXtiG2rlrDpN5EcGxciAk9muQR9k&sz=w1600" alt="MIDSUMMER" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=17Hd9YoGRdNgEia0KZZgKzKfTGJ7_IGDV&sz=w1600" alt="MIDSUMMER" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1J6XXGjwp5Hc7PI9olWzUf6Odc_76U-wv&sz=w1600" alt="MIDSUMMER" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-08</p>
+        <h1 class="editorial-title">NEON JUNGLE</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1ezw7zxUy5FtyNF9mfOwfaDTvxszIEBT6&sz=w1600" alt="NEON JUNGLE" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-subtitle">&#x27;NEON JUNGLE&#x27; operates at the intersection of fine art and fashion, refusing to acknowledge any boundary between them. The result is imagery that transcends both disciplines entirely.</p>
+            <p class="editorial-desc-kr">&#x27;NEON JUNGLE&#x27;는 순수 예술과 패션의 교차점에서 작동하며, 둘 사이의 어떤 경계도 인정하기를 거부한다. 그 결과는 두 분야를 완전히 초월하는 이미지다.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1fdAX6ejQyGvH5TUj38ezzW8QinII177N&sz=w1600" alt="NEON JUNGLE" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=107D_ih7R333ihHr_bveWF9e1EDPrkEYn&sz=w1600" alt="NEON JUNGLE" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1BSK-fmKgzDJA_Nq0KCERXA5VWNvaCt9o&sz=w1600" alt="NEON JUNGLE" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1HW1zVDK7pA_WO5MtYdYDC4yLBPE6LCXJ&sz=w1600" alt="NEON JUNGLE" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1SlUWb3vjax6UKAZfpyoAEA5o64cMu8iA&sz=w1600" alt="NEON JUNGLE" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=19Dyk79wGvUBFGiLlsWe5hUnXgRl_IpwU&sz=w1600" alt="NEON JUNGLE" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1-zSsQ97eZgpUe25ZoRx-Hu1FoktHZria&sz=w1600" alt="NEON JUNGLE" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1_0V86lAqLgWWnQWGE6ucVlyigKwhHViW&sz=w1600" alt="NEON JUNGLE" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-10</p>
+        <h1 class="editorial-title">ELECTRIC DREAMS</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1jcZopt9D9KyUCIMOEQiw7195oqyN_Ygi&sz=w1600" alt="ELECTRIC DREAMS" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-subtitle">The editorial logic of &#x27;ELECTRIC DREAMS&#x27; follows its own internal rhythm, creating a visual cadence that draws the viewer deeper into its world with each successive frame.</p>
+            <p class="editorial-desc-kr">&#x27;ELECTRIC DREAMS&#x27;의 에디토리얼 논리는 자체적인 내적 리듬을 따르며, 연속된 각 프레임으로 시청자를 그 세계 깊숙이 끌어들이는 시각적 운율을 만든다.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1kzcwx9NZjYviCGQMmoZ6xrl4DNcl321v&sz=w1600" alt="ELECTRIC DREAMS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1ajC7Csr5Jti9HCIeKQp4f8jsFw7NgIQG&sz=w1600" alt="ELECTRIC DREAMS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1bPwNjjm8Od45Aey_THesbIO0H6WmSPBL&sz=w1600" alt="ELECTRIC DREAMS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1n2QHsXvRs_Z79adJVsbI6nJFIZCPE0De&sz=w1600" alt="ELECTRIC DREAMS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1wPmNXlwIlTQWH1RK-AC6882-SSkdc_Lq&sz=w1600" alt="ELECTRIC DREAMS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1zGzvavzz3u4E5C_l7xzG7xwPwrLFjGxa&sz=w1600" alt="ELECTRIC DREAMS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1aCCOgJiPe9Zc_ZuFzd3lfmQobL7ak9FL&sz=w1600" alt="ELECTRIC DREAMS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1tSra_ZO4BHtlOTQsfWeH4ukrRAR47OfY&sz=w1600" alt="ELECTRIC DREAMS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1aKctFwG_pjJcxwa_GQXLBrrlyxavIExd&sz=w1600" alt="ELECTRIC DREAMS" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-12</p>
+        <h1 class="editorial-title">SUMMER HAZE</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1-EFXLq1nOFgrPUsJ_idNMMJPnOoZGYcY&sz=w1600" alt="SUMMER HAZE" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-subtitle">&#x27;SUMMER HAZE&#x27; doesn&#x27;t follow trends; it exists outside of time. Each image occupies its own eternal present, where style becomes a conversation between past aspirations and future possibilities.</p>
+            <p class="editorial-desc-kr">&#x27;SUMMER HAZE&#x27;는 트렌드를 따르지 않는다; 시간 밖에 존재한다. 각 이미지는 자신만의 영원한 현재를 점유하며, 스타일은 과거의 열망과 미래의 가능성 사이의 대화가 된다.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1zFMqyDXVJZPXcGLm9KJWirZ5Z16riJCO&sz=w1600" alt="SUMMER HAZE" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=10J9Dr5ZQdFue5xFI7hWCIaX1b5satqZV&sz=w1600" alt="SUMMER HAZE" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1lemdF0RnG3m1yQ3xWyyvB06b4VwC2RtF&sz=w1600" alt="SUMMER HAZE" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1gs3Uyui7GwjyA2JdcFtR13Vk8pe9NFoR&sz=w1600" alt="SUMMER HAZE" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1HgdyqQP_qgHJNfORzQy_Qr_1-ixjy-5p&sz=w1600" alt="SUMMER HAZE" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1ND_igAXoyAlhss2nX7RmqZSu77rtXv2z&sz=w1600" alt="SUMMER HAZE" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1CrU59fqzyLX8ycOgAc7aizfcp8PCbbFN&sz=w1600" alt="SUMMER HAZE" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1wk0XgUPtuu-jLGa8_Y-NF5E2iXvEYCjL&sz=w1600" alt="SUMMER HAZE" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<footer><p>PAP MAGAZINE</p><p>&copy; 2020 PAP MAGAZINE. All rights reserved.</p></footer>
+<script>
+window.addEventListener('scroll',function(){const s=document.querySelector('.nav-scroll-indicator');s.style.width=(window.scrollY/(document.documentElement.scrollHeight-window.innerHeight))*100+'%'});
+const o=new IntersectionObserver(function(e){e.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)'}})},{threshold:.1,rootMargin:'0px 0px -100px 0px'});
+document.querySelectorAll('.editorial-section').forEach(s=>o.observe(s));
+</script>
+</body>
+</html>

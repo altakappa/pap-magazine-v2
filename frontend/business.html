@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Business | PAP Magazine</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Montserrat',sans-serif;background:#000;color:#fff;min-height:100vh;overflow-x:hidden}
+a{color:#fff;text-decoration:none}
+.side-nav{position:fixed;left:0;top:0;width:80px;height:100vh;display:flex;flex-direction:column;align-items:center;padding-top:32px;z-index:100}
+.nav-dots{width:36px;height:36px;border-radius:50%;border:1.5px solid rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;cursor:pointer;margin-bottom:48px;transition:border-color .3s}
+.nav-dots:hover{border-color:#fff}
+.nav-dots span{font-size:18px;letter-spacing:2px;color:rgba(255,255,255,.6)}
+.nav-links{display:flex;flex-direction:column;gap:32px}
+.nav-links a{writing-mode:vertical-rl;font-size:13px;font-weight:700;letter-spacing:5px;text-transform:uppercase;color:rgba(255,255,255,.35);transition:color .3s}
+.nav-links a:hover{color:rgba(255,255,255,.7)}
+.nav-links a.active{color:#fff}
+.content{margin-left:120px;padding:80px 60px 80px 0}
+.biz-section{display:flex;align-items:center;gap:24px;margin-bottom:120px;max-width:900px}
+.biz-section.reverse{flex-direction:row-reverse}
+.biz-text{flex:1}
+.biz-text h2{font-size:clamp(24px,4vw,40px);font-weight:800;letter-spacing:0;text-transform:uppercase;margin-bottom:32px;line-height:1.2}
+.biz-text p{font-size:14px;line-height:2.2;color:rgba(255,255,255,.75);margin-bottom:16px}
+.biz-text .email{font-size:14px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:#fff;margin-top:24px}
+.biz-text .email a{text-decoration:underline;text-underline-offset:3px}
+.biz-text .media-kit{margin-top:32px;padding-top:24px;border-top:1px solid rgba(255,255,255,.1)}
+.biz-text .media-kit h3{font-size:12px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:8px}
+.biz-text .media-kit a{font-size:14px;text-decoration:underline;text-underline-offset:3px;color:rgba(255,255,255,.75);transition:color .2s}
+.biz-text .media-kit a:hover{color:#fff}
+.badge-wrap{flex-shrink:0;width:120px;height:120px}
+.spinning-badge{width:120px;height:120px;animation:spin 10s linear infinite}
+@keyframes spin{100%{transform:rotate(360deg)}}
+.lang-selector{position:fixed;top:32px;right:40px;z-index:100}
+.lang-selector select{background:transparent;color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.2);padding:6px 12px;font-size:11px;font-family:'Montserrat',sans-serif;letter-spacing:.1em;cursor:pointer}
+.lang-selector select option{background:#000;color:#fff}
+.footer-legal{margin-left:120px;padding:40px 60px 40px 0;border-top:1px solid rgba(255,255,255,.1);font-size:11px;color:rgba(255,255,255,.3);line-height:2}
+.footer-legal a{color:rgba(255,255,255,.3)}
+@media(max-width:768px){
+  .side-nav{width:50px;padding-top:20px}
+  .content{margin-left:60px;padding:60px 20px}
+  .biz-section,.biz-section.reverse{flex-direction:column;gap:32px;margin-bottom:60px}
+  .badge-wrap{width:80px;height:80px}
+  .spinning-badge{width:80px;height:80px}
+  .footer-legal{margin-left:60px;padding:20px 20px}
+}
+</style>
+<!-- Favicon & PWA -->
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000000">
+<!-- Open Graph / Social -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="PAP Magazine">
+<meta property="og:title" content="Business | PAP Magazine">
+<meta property="og:description" content="PAP Magazine business partnerships, advertising, and collaboration opportunities.">
+<meta property="og:url" content="https://pap-magazine.com/business.html">
+<meta property="og:image" content="https://pap-magazine.com/apple-touch-icon.png">
+<meta property="og:locale" content="ko_KR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Business | PAP Magazine">
+<meta name="twitter:description" content="PAP Magazine business partnerships, advertising, and collaboration opportunities.">
+<meta name="twitter:image" content="https://pap-magazine.com/apple-touch-icon.png">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Business - PAP Magazine","description":"Business partnerships and collaboration opportunities"}</script>
+<!-- Google Analytics (replace G-XXXXXXXXXX with your ID) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-XXXXXXXXXX');</script>
+<!-- Print Styles -->
+<style media="print">
+@media print{
+  body{background:#fff!important;color:#000!important}
+  .side-nav,.nav-overlay,.header,.footer-legal,.lang-selector,#cookieConsent,#backToTop,.mobile-menu-btn,.hamburger,.search-container{display:none!important}
+  .content,.main-content{margin-left:0!important;padding:20px!important}
+  a{color:#000!important;text-decoration:underline}
+  img{max-width:100%!important}
+  *{box-shadow:none!important;text-shadow:none!important}
+}
+</style>
+</head>
+<body>
+<!-- Loading State -->
+<div id="pageLoader" style="position:fixed;inset:0;z-index:10000;background:#000;display:flex;align-items:center;justify-content:center;transition:opacity .4s">
+<div style="text-align:center"><div style="font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;letter-spacing:.3em;color:rgba(255,255,255,.4);text-transform:uppercase">PAP</div>
+<div style="margin-top:12px;width:40px;height:1px;background:rgba(255,255,255,.1);position:relative;overflow:hidden;margin-left:auto;margin-right:auto"><div style="position:absolute;width:50%;height:100%;background:rgba(255,255,255,.5);animation:loaderSlide 1s ease infinite"></div></div></div></div>
+<style>@keyframes loaderSlide{0%{left:-50%}100%{left:100%}}</style>
+<script>window.addEventListener('load',function(){var l=document.getElementById('pageLoader');if(l){l.style.opacity='0';setTimeout(function(){l.remove();},400);}});</script>
+<div class="lang-selector"><select id="langSelect" onchange="setLang(this.value)"><option value="ko">KO</option><option value="en">EN</option><option value="it">IT</option><option value="fr">FR</option><option value="es">ES</option><option value="ja">JA</option><option value="zh">ZH</option><option value="ru">RU</option></select></div>
+<nav role="navigation" aria-label="Main navigation" class="side-nav">
+  <a href="index.html" class="nav-dots"><span>&#8942;</span></a>
+  <div class="nav-links">
+    <a href="business.html" class="active" data-i18n="business">BUSINESS</a>
+    <a href="about.html" data-i18n="about">ABOUT</a>
+    <a href="contact.html" data-i18n="contact">CONTACT</a>
+    <a href="subscribe.html" data-i18n="subscribe">SUBSCRIBE</a>
+    <a href="submission.html" data-i18n="submission">SUBMISSION</a>
+    <a href="pullletter.html" data-i18n="pullletter">PULL-LETTER</a>
+  </div>
+</nav>
+<main role="main" class="content">
+  <div class="biz-section">
+    <div class="biz-text">
+      <h2 data-i18n="brandTitle">BRAND CONTENT ADVERTISING</h2>
+      <div id="brandBody"></div>
+      <div class="email" id="brandEmail"></div>
+      <div class="media-kit">
+        <h3 data-i18n="mediaKit">MEDIA KIT</h3>
+        <div id="mediaKitBtns" style="display:flex;gap:10px;margin-top:8px;">
+          <a href="#" onclick="event.preventDefault();downloadMediaKit('en')" style="display:inline-block;padding:8px 20px;border:1px solid #fff;color:#fff;font-size:10px;font-weight:700;letter-spacing:.1em;text-decoration:none;transition:all .3s;" onmouseover="this.style.background='#fff';this.style.color='#000'" onmouseout="this.style.background='transparent';this.style.color='#fff'">ENGLISH</a>
+          <a href="#" onclick="event.preventDefault();downloadMediaKit('ko')" style="display:inline-block;padding:8px 20px;border:1px solid #fff;color:#fff;font-size:10px;font-weight:700;letter-spacing:.1em;text-decoration:none;transition:all .3s;" onmouseover="this.style.background='#fff';this.style.color='#000'" onmouseout="this.style.background='transparent';this.style.color='#fff'">한국어</a>
+        </div>
+      </div>
+    </div>
+    <div class="badge-wrap">
+      <svg class="spinning-badge" viewBox="0 0 120 120"><defs><path id="p1" d="M60,60 m-45,0 a45,45 0 1,1 90,0 a45,45 0 1,1 -90,0"/></defs><circle cx="60" cy="60" r="56" fill="none" stroke="#fff" stroke-width="1"/><text font-family="Montserrat,sans-serif" font-size="11" font-weight="700" fill="#fff" letter-spacing="8"><textPath href="#p1">PROMOTE · PROMOTE · PROMOTE · </textPath></text></svg>
+    </div>
+  </div>
+  <div class="biz-section reverse">
+    <div class="biz-text">
+      <h2 data-i18n="workTitle">MAKE CONTENTS WITH PAP</h2>
+      <div id="workBody"></div>
+      <div class="email" id="workEmail"></div>
+    </div>
+    <div class="badge-wrap">
+      <svg class="spinning-badge" viewBox="0 0 120 120" style="animation-direction:reverse"><defs><path id="p2" d="M60,60 m-45,0 a45,45 0 1,1 90,0 a45,45 0 1,1 -90,0"/></defs><circle cx="60" cy="60" r="56" fill="none" stroke="#fff" stroke-width="1"/><text font-family="Montserrat,sans-serif" font-size="11" font-weight="700" fill="#fff" letter-spacing="8"><textPath href="#p2">CONTACT · CONTACT · CONTACT · </textPath></text></svg>
+    </div>
+  </div>
+</main>
+<div class="footer-legal" id="footerLegal"></div>
+<script>
+var koMail='contact@papkorea.com';
+var intlMail='contact@pap-magazine.com';
+
+// Media Kit download via Google Drive direct download links
+// Replace these IDs with the actual Google Drive file IDs for each language version
+var mediaKitFiles={
+  en:'1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF', // English media kit file ID
+  ko:'1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF'  // Korean media kit file ID
+};
+function downloadMediaKit(lang){
+  var fileId=mediaKitFiles[lang]||mediaKitFiles.en;
+  // Use Google Drive export/download URL for direct download
+  var url='https://drive.google.com/uc?export=download&id='+fileId;
+  var a=document.createElement('a');
+  a.href=url;a.target='_blank';a.rel='noopener';
+  document.body.appendChild(a);a.click();a.remove();
+}
+
+var L={
+ko:{about:'ABOUT',contact:'CONTACT',business:'BUSINESS',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
+brandTitle:'BRAND CONTENT ADVERTISING',
+workTitle:'MAKE CONTENTS WITH PAP',
+mediaKit:'MEDIA KIT',downloadLink:'Download Link',
+brand:'<p>PAP는 귀하의 브랜드에서<br>제공하는 컨텐츠를 홍보합니다.</p><p>관심 있는 브랜드 및 홍보 담당자들은<br>아래 이메일을 통해 문의해주세요.</p>',
+work:'<p>PAP는 캠페인, 룩북부터, 브랜디드 컨텐츠,<br>현장 취재등 다양한 컨텐츠를 만들고 있습니다.</p><p>관심있는 브랜드 및 홍보 담당자들은<br>아래 이메일을 통해 문의해주세요.</p>',
+mail:koMail,
+ft:'<strong>주식회사 알타카파</strong> | CEO : 강동민 | 사업자번호 192-88-02644<br>서울특별시 강남구 논현로146길 18, 1F PAP 매거진 | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+en:{about:'ABOUT',contact:'CONTACT',business:'BUSINESS',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
+brandTitle:'BRAND CONTENT ADVERTISING',
+workTitle:'MAKE CONTENTS WITH PAP',
+mediaKit:'MEDIA KIT',downloadLink:'Download Link',
+brand:'<p>PAP promotes the content<br>provided by your brand.</p><p>Interested brands and PR representatives,<br>please contact us via the email below.</p>',
+work:'<p>PAP creates a wide range of content from campaigns<br>and lookbooks to branded content and on-site coverage.</p><p>Interested brands and PR representatives,<br>please contact us via the email below.</p>',
+mail:intlMail,
+ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+it:{about:'CHI SIAMO',contact:'CONTATTI',business:'BUSINESS',subscribe:'ABBONATI',
+brandTitle:'BRAND CONTENT ADVERTISING',
+workTitle:'CREA CONTENUTI CON PAP',
+mediaKit:'MEDIA KIT',downloadLink:'Link per il Download',
+brand:'<p>PAP promuove i contenuti<br>forniti dal vostro brand.</p><p>Brand interessati e responsabili PR,<br>contattateci tramite l\'email qui sotto.</p>',
+work:'<p>PAP crea un\'ampia gamma di contenuti, dalle campagne<br>e lookbook ai contenuti brandizzati e alla copertura sul campo.</p><p>Brand interessati e responsabili PR,<br>contattateci tramite l\'email qui sotto.</p>',
+mail:intlMail,
+ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | P. IVA: 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Corea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+fr:{about:'À PROPOS',contact:'CONTACT',business:'BUSINESS',subscribe:"S'ABONNER",
+brandTitle:'BRAND CONTENT ADVERTISING',
+workTitle:'CRÉER DU CONTENU AVEC PAP',
+mediaKit:'DOSSIER DE PRESSE',downloadLink:'Lien de Téléchargement',
+brand:'<p>PAP promeut le contenu<br>fourni par votre marque.</p><p>Marques intéressées et responsables RP,<br>veuillez nous contacter par email ci-dessous.</p>',
+work:'<p>PAP crée une large gamme de contenus, des campagnes<br>et lookbooks au contenu de marque et à la couverture sur site.</p><p>Marques intéressées et responsables RP,<br>veuillez nous contacter par email ci-dessous.</p>',
+mail:intlMail,
+ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | PDG : Domenico Kang | N&#176; 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Séoul, Corée | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+es:{about:'ACERCA DE',contact:'CONTACTO',business:'NEGOCIOS',subscribe:'SUSCRIBIRSE',
+brandTitle:'BRAND CONTENT ADVERTISING',
+workTitle:'CREA CONTENIDO CON PAP',
+mediaKit:'KIT DE PRENSA',downloadLink:'Enlace de Descarga',
+brand:'<p>PAP promueve el contenido<br>proporcionado por su marca.</p><p>Marcas interesadas y representantes de PR,<br>contáctenos a través del email a continuación.</p>',
+work:'<p>PAP crea una amplia gama de contenidos, desde campañas<br>y lookbooks hasta contenido de marca y cobertura en sitio.</p><p>Marcas interesadas y representantes de PR,<br>contáctenos a través del email a continuación.</p>',
+mail:intlMail,
+ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seúl, Corea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+ja:{about:'ABOUT',contact:'CONTACT',business:'BUSINESS',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
+brandTitle:'BRAND CONTENT ADVERTISING',
+workTitle:'PAPとコンテンツを作る',
+mediaKit:'メディアキット',downloadLink:'ダウンロードリンク',
+brand:'<p>PAPは貴社ブランドが提供する<br>コンテンツをプロモーションします。</p><p>ご興味のあるブランドおよびPR担当者の方は<br>下記メールまでお問い合わせください。</p>',
+work:'<p>PAPはキャンペーン、ルックブックから<br>ブランデッドコンテンツ、現場取材まで<br>多様なコンテンツを制作しています。</p><p>ご興味のあるブランドおよびPR担当者の方は<br>下記メールまでお問い合わせください。</p>',
+mail:intlMail,
+ft:'<strong>株式会社アルタカッパ</strong> | CEO : カン・ドンミン | 事業者番号 192-88-02644<br>ソウル特別市江南区論峴路146キル18, 1F | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+zh:{about:'关于',contact:'联系',business:'商务',subscribe:'订阅',
+brandTitle:'BRAND CONTENT ADVERTISING',
+workTitle:'与PAP共创内容',
+mediaKit:'媒体资料',downloadLink:'下载链接',
+brand:'<p>PAP推广您品牌<br>提供的内容。</p><p>有兴趣的品牌和公关代表，<br>请通过以下邮箱联系我们。</p>',
+work:'<p>PAP制作从广告活动、造型手册到品牌内容、<br>现场采访等多种内容。</p><p>有兴趣的品牌和公关代表，<br>请通过以下邮箱联系我们。</p>',
+mail:intlMail,
+ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | 营业执照号 192-88-02644<br>首尔特别市江南区论岘路146街18, 1F | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},ru:{business:'БИЗНЕС',about:'О НАС',contact:'КОНТАКТ',subscribe:'ПОДПИСКА',submission:'ПОДАЧА',pullletter:'PULL-LETTER',
+brandTitle:'BRAND CONTENT ADVERTISING',
+workTitle:'СОЗДАВАЙТЕ КОНТЕНТ С PAP',
+mediaKit:'МЕДИА КИТ',downloadLink:'Ссылка для скачивания',
+brand:'<p>PAP продвигает контент,<br>предоставленный вашим брендом.</p><p>Заинтересованные бренды и PR-представители,<br>свяжитесь с нами по электронной почте ниже.</p>',
+work:'<p>PAP создаёт широкий спектр контента:<br>от кампаний и лукбуков до брендированного контента.</p><p>Заинтересованные бренды и PR-представители,<br>свяжитесь с нами по электронной почте ниже.</p>',
+mail:'contact@pap-magazine.com',
+ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'}
+};
+
+function setLang(l){
+  localStorage.setItem('pap-lang',l);
+  var d=L[l]||L.ko;
+  document.querySelectorAll('[data-i18n]').forEach(function(e){
+    var k=e.getAttribute('data-i18n');
+    if(d[k]) e.textContent=d[k];
+  });
+  document.getElementById('brandBody').innerHTML=d.brand;
+  document.getElementById('workBody').innerHTML=d.work;
+  var mailHtml='<a href="mailto:'+d.mail+'">'+d.mail.toUpperCase()+'</a>';
+  document.getElementById('brandEmail').innerHTML=mailHtml;
+  document.getElementById('workEmail').innerHTML=mailHtml;
+  document.getElementById('footerLegal').innerHTML=d.ft;
+  document.getElementById('langSelect').value=l;
+}
+// AUTO LANGUAGE DETECTION
+(function(){
+  var saved=localStorage.getItem('pap-lang');
+  if(!saved){
+    var tz=Intl.DateTimeFormat().resolvedOptions().timeZone||'';
+    var lang=navigator.language||navigator.userLanguage||'';
+    lang=lang.toLowerCase();
+    if(lang.startsWith('ko')||tz.indexOf('Seoul')>-1) saved='ko';
+    else if(lang.startsWith('ja')||tz.indexOf('Tokyo')>-1) saved='ja';
+    else if(lang.startsWith('zh')||tz.indexOf('Shanghai')>-1||tz.indexOf('Beijing')>-1||tz.indexOf('Chongqing')>-1||tz.indexOf('Hong_Kong')>-1||tz.indexOf('Taipei')>-1) saved='zh';
+    else if(lang.startsWith('it')||tz.indexOf('Rome')>-1) saved='it';
+    else if(lang.startsWith('fr')||tz.indexOf('Paris')>-1) saved='fr';
+    else if(lang.startsWith('es')||tz.indexOf('Madrid')>-1||tz.indexOf('Mexico')>-1) saved='es';
+    else if(lang.startsWith('ru')||tz.indexOf('Moscow')>-1||tz.indexOf('Petersburg')>-1) saved='ru';
+    else saved='en';
+    localStorage.setItem('pap-lang',saved);
+  }
+  setLang(saved);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline' https://cdn.cloudflare.com https://cdn-cgi.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; media-src 'self' https:; frame-src 'self' https:; connect-src 'self' https:;">
+<title>404 - PAGE NOT FOUND | PAP Magazine</title>
+<meta name="description" content="The page you are looking for could not be found. Explore PAP Magazine's other content.">
+<meta name="robots" content="noindex, follow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&family=Playfair+Display:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --black: #000;
+  --white: #fff;
+  --gray-400: #999;
+  --gray-500: #777;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--black);
+  color: var(--white);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+  transition: opacity 0.2s;
+}
+
+a:hover {
+  opacity: 0.6;
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* HEADER */
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.97);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 0 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 72px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.hamburger {
+  background: none;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 4px;
+}
+
+.hamburger span {
+  width: 24px;
+  height: 2px;
+  background: var(--white);
+  transition: all 0.3s;
+}
+
+.hamburger.active span:nth-child(1) {
+  transform: rotate(45deg) translate(10px, 10px);
+}
+
+.hamburger.active span:nth-child(2) {
+  opacity: 0;
+}
+
+.hamburger.active span:nth-child(3) {
+  transform: rotate(-45deg) translate(7px, -7px);
+}
+
+.logo-wrap {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.logo-wrap img {
+  height: 32px;
+  width: auto;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.lang-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--white);
+  transition: border-color 0.2s;
+}
+
+.lang-btn:hover {
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.lang-btn select {
+  border: none;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--white);
+  outline: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.lang-btn select option {
+  color: #111;
+  background: var(--white);
+}
+
+/* MOBILE NAV OVERLAY */
+.nav-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  background: var(--white);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s;
+}
+
+.nav-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.nav-overlay-inner {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  padding: 80px 60px 60px;
+  flex-direction: column;
+}
+
+.nav-close {
+  position: absolute;
+  top: 24px;
+  right: 40px;
+  background: none;
+  border: none;
+  font-size: 32px;
+  color: var(--black);
+  cursor: pointer;
+  padding: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-left-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.nav-left-top {
+  margin-bottom: 48px;
+}
+
+.nav-left-top a,
+.nav-left-links a {
+  font-family: 'Montserrat', sans-serif;
+  font-size: clamp(18px, 2.5vw, 24px);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--black);
+  transition: opacity 0.2s;
+  display: inline-block;
+}
+
+.nav-left-top a:hover,
+.nav-left-links a:hover {
+  opacity: 0.4;
+}
+
+.nav-left-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 32px;
+}
+
+.nav-bottom-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: auto;
+}
+
+.nav-left-dots {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  background: none;
+  flex-shrink: 0;
+}
+
+.nav-left-dots.open {
+  transform: rotate(90deg);
+}
+
+.nav-left-dots span {
+  font-size: 26px;
+  font-weight: 900;
+  color: rgba(0, 0, 0, 0.8);
+  line-height: 1;
+}
+
+.nav-socials {
+  display: none;
+  flex-direction: row;
+  gap: 12px;
+  align-items: center;
+  margin-left: 12px;
+}
+
+.nav-socials.active {
+  display: flex;
+}
+
+.nav-social-icon {
+  display: block;
+  transition: opacity 0.2s;
+}
+
+.nav-social-icon:hover {
+  opacity: 0.5;
+}
+
+/* 404 CONTENT */
+main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 120px 40px 80px;
+  margin-top: 72px;
+  text-align: center;
+}
+
+.error-container {
+  max-width: 800px;
+  width: 100%;
+}
+
+.error-code {
+  font-size: clamp(80px, 20vw, 200px);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  margin-bottom: 16px;
+  color: var(--white);
+  font-family: 'Montserrat', sans-serif;
+}
+
+.error-title {
+  font-size: clamp(24px, 5vw, 48px);
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+  color: var(--white);
+  font-family: 'Montserrat', sans-serif;
+}
+
+.error-subtitle {
+  font-size: clamp(14px, 2vw, 18px);
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 32px;
+  color: var(--gray-400);
+  font-family: 'Montserrat', sans-serif;
+}
+
+.error-message {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--gray-500);
+  margin-bottom: 48px;
+  font-weight: 400;
+}
+
+.error-message-ko {
+  margin-bottom: 16px;
+}
+
+.error-links {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 48px;
+}
+
+.error-link {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 12px 32px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  transition: all 0.2s;
+  display: inline-block;
+}
+
+.error-link:hover {
+  border-color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.error-link.primary {
+  background: var(--white);
+  color: var(--black);
+  border-color: var(--white);
+}
+
+.error-link.primary:hover {
+  background: var(--gray-400);
+  border-color: var(--gray-400);
+}
+
+/* FOOTER */
+.footer {
+  margin-top: auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 40px;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.footer-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 40px;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+.footer-links-left {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.footer-links-left a {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gray-500);
+  transition: color 0.2s;
+}
+
+.footer-links-left a:hover {
+  color: var(--white);
+}
+
+.footer-social {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.footer-social a {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gray-500);
+  transition: color 0.2s;
+}
+
+.footer-social a:hover {
+  color: var(--white);
+}
+
+.footer-legal {
+  font-size: 11px;
+  line-height: 1.8;
+  color: var(--gray-500);
+  margin-bottom: 24px;
+}
+
+.footer-legal a {
+  color: var(--gray-500);
+  transition: color 0.2s;
+}
+
+.footer-legal a:hover {
+  color: var(--white);
+}
+
+.footer-bottom-links {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.footer-bottom-links a {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--gray-500);
+  transition: color 0.2s;
+}
+
+.footer-bottom-links a:hover {
+  color: var(--white);
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .header {
+    padding: 0 20px;
+  }
+
+  main {
+    padding: 100px 20px 60px;
+  }
+
+  .nav-overlay-inner {
+    padding: 80px 30px 60px;
+  }
+
+  .nav-close {
+    right: 20px;
+  }
+
+  .error-code {
+    font-size: clamp(60px, 18vw, 140px);
+  }
+
+  .error-title {
+    font-size: clamp(20px, 4vw, 32px);
+  }
+
+  .footer {
+    padding: 24px 20px;
+  }
+
+  .footer-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .footer-links-left,
+  .footer-social {
+    gap: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    height: 56px;
+  }
+
+  main {
+    margin-top: 56px;
+    padding: 80px 16px 40px;
+  }
+
+  .error-code {
+    font-size: clamp(48px, 16vw, 100px);
+    margin-bottom: 8px;
+  }
+
+  .error-title {
+    font-size: clamp(18px, 3vw, 24px);
+    margin-bottom: 16px;
+  }
+
+  .error-message {
+    font-size: 12px;
+    margin-bottom: 32px;
+  }
+
+  .error-links {
+    gap: 8px;
+    margin-bottom: 32px;
+  }
+
+  .error-link {
+    font-size: 11px;
+    padding: 10px 24px;
+  }
+
+  .lang-btn {
+    font-size: 10px;
+    padding: 4px 10px;
+  }
+}
+</style>
+<!-- Favicon & PWA -->
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000000">
+<!-- Open Graph / Social -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="PAP Magazine">
+<meta property="og:title" content="Page Not Found | PAP Magazine">
+<meta property="og:description" content="The page you're looking for doesn't exist. Return to PAP Magazine.">
+<meta property="og:url" content="https://pap-magazine.com/404.html">
+<meta property="og:image" content="https://pap-magazine.com/apple-touch-icon.png">
+<meta property="og:locale" content="ko_KR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Page Not Found | PAP Magazine">
+<meta name="twitter:description" content="The page you're looking for doesn't exist. Return to PAP Magazine.">
+<meta name="twitter:image" content="https://pap-magazine.com/apple-touch-icon.png">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Page Not Found - PAP Magazine"}</script>
+<!-- Google Analytics (replace G-XXXXXXXXXX with your ID) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-XXXXXXXXXX');</script>
+<!-- Print Styles -->
+<style media="print">
+@media print{
+  body{background:#fff!important;color:#000!important}
+  .side-nav,.nav-overlay,.header,.footer-legal,.lang-selector,#cookieConsent,#backToTop,.mobile-menu-btn,.hamburger,.search-container{display:none!important}
+  .content,.main-content{margin-left:0!important;padding:20px!important}
+  a{color:#000!important;text-decoration:underline}
+  img{max-width:100%!important}
+  *{box-shadow:none!important;text-shadow:none!important}
+}
+</style>
+</head>
+<body>
+<!-- Loading State -->
+<div id="pageLoader" style="position:fixed;inset:0;z-index:10000;background:#000;display:flex;align-items:center;justify-content:center;transition:opacity .4s">
+<div style="text-align:center"><div style="font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;letter-spacing:.3em;color:rgba(255,255,255,.4);text-transform:uppercase">PAP</div>
+<div style="margin-top:12px;width:40px;height:1px;background:rgba(255,255,255,.1);position:relative;overflow:hidden;margin-left:auto;margin-right:auto"><div style="position:absolute;width:50%;height:100%;background:rgba(255,255,255,.5);animation:loaderSlide 1s ease infinite"></div></div></div></div>
+<style>@keyframes loaderSlide{0%{left:-50%}100%{left:100%}}</style>
+<script>window.addEventListener('load',function(){var l=document.getElementById('pageLoader');if(l){l.style.opacity='0';setTimeout(function(){l.remove();},400);}});</script>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <button class="hamburger" onclick="toggleNav()">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+  </div>
+  <div class="logo-wrap">
+    <a href="index.html">
+      <img loading="lazy" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 32'%3E%3Ctext x='10' y='22' font-family='Montserrat,sans-serif' font-size='24' font-weight='800' fill='%23fff' letter-spacing='2'%3EPAP%3C/text%3E%3C/svg%3E" alt="PAP Magazine">
+    </a>
+  </div>
+  <div class="header-right">
+    <div class="lang-btn">
+      <select onchange="changeLanguage(this.value)">
+        <option value="ko">한국어</option>
+        <option value="en">English</option>
+        <option value="it">Italiano</option>
+        <option value="fr">Français</option>
+        <option value="es">Español</option>
+        <option value="ja">日本語</option>
+        <option value="zh">中文</option>
+        <option value="ru">Русский</option>
+      </select>
+    </div>
+  </div>
+</header>
+
+<!-- MOBILE NAV OVERLAY -->
+<div class="nav-overlay" id="navOverlay">
+  <button class="nav-close" onclick="toggleNav()">&times;</button>
+  <div class="nav-overlay-inner">
+    <div class="nav-left-col">
+      <div class="nav-left-top">
+        <a href="subscribe.html">SUBSCRIBE</a>
+      </div>
+      <div class="nav-left-links">
+        <a href="submission.html">SUBMISSION</a>
+        <a href="pullletter.html">PULL-LETTER</a>
+      </div>
+      <div class="nav-left-links" style="margin-top: auto;">
+        <a href="contact.html">CONTACT</a>
+        <a href="business.html">BUSINESS</a>
+        <a href="about.html">ABOUT</a>
+      </div>
+      <div class="nav-bottom-row">
+        <div class="nav-left-dots" onclick="this.classList.toggle('open');document.getElementById('navSocials').classList.toggle('active')"><span>&#8942;</span></div>
+        <div class="nav-socials" id="navSocials">
+          <a href="https://www.instagram.com/pap_magazine/" target="_blank" class="nav-social-icon" title="Instagram">Instagram</a>
+          <a href="https://www.facebook.com/papmagazine/" target="_blank" class="nav-social-icon" title="Facebook">Facebook</a>
+          <a href="https://www.youtube.com/@pap-magazine" target="_blank" class="nav-social-icon" title="YouTube">YouTube</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<main role="main">
+  <div class="error-container">
+    <div class="error-code">404</div>
+    <div class="error-title">PAGE NOT FOUND</div>
+    <div class="error-subtitle">페이지를 찾을 수 없습니다</div>
+
+    <div class="error-message">
+      <div class="error-message-ko">
+        죄송합니다. 요청하신 페이지를 찾을 수 없습니다.<br>
+        다른 페이지를 탐색하거나 홈으로 돌아가주세요.
+      </div>
+      <div>
+        We apologize. The page you requested could not be found.<br>
+        Please explore other pages or return to the home page.
+      </div>
+    </div>
+
+    <div class="error-links">
+      <a href="index.html" class="error-link primary">GO HOME</a>
+      <a href="magazine.html" class="error-link">MAGAZINE</a>
+      <a href="about.html" class="error-link">ABOUT</a>
+      <a href="contact.html" class="error-link">CONTACT</a>
+    </div>
+  </div>
+</main>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-top">
+    <div class="footer-links-left">
+      <a href="about.html">ABOUT</a>
+      <a href="contact.html">CONTACT</a>
+      <a href="business.html">BUSINESS</a>
+    </div>
+    <div class="footer-social">
+      <a href="https://www.instagram.com/pap_magazine/" target="_blank">INSTAGRAM</a>
+      <a href="https://www.facebook.com/papmagazine/" target="_blank">FACEBOOK</a>
+      <a href="https://www.youtube.com/@pap-magazine" target="_blank">YOUTUBE</a>
+    </div>
+  </div>
+  <div class="footer-legal">
+    <strong>주식회사 알타카파</strong><br>
+    CEO: 강동민 | 사업자번호: 192-88-02644<br>
+    서울특별시 강남구 논현로146길 18, 1F PAP 매거진 | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>
+  </div>
+  <div class="footer-bottom-links">
+    <a href="index.html#terms">TERMS</a>
+    <a href="index.html#privacy">PRIVACY POLICY</a>
+  </div>
+</footer>
+
+<script src="pap-api.js"></script>
+<script>
+function toggleNav() {
+  const navOverlay = document.getElementById('navOverlay');
+  const hamburger = document.querySelector('.hamburger');
+  navOverlay.classList.toggle('active');
+  hamburger.classList.toggle('active');
+}
+
+function changeLanguage(lang) {
+  localStorage.setItem('pap-lang', lang);
+  // Language change would be handled by pap-api.js
+  window.location.reload();
+}
+
+// Close nav when clicking links
+document.querySelectorAll('.nav-overlay a').forEach(link => {
+  if (!link.classList.contains('nav-social-icon')) {
+    link.addEventListener('click', () => {
+      toggleNav();
+    });
+  }
+});
+</script>
+</body>
+</html>

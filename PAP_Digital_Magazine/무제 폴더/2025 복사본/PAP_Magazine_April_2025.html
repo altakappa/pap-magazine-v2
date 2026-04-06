@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PAP Magazine - April 2025</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background-color:#0a0a0a;color:#e8e8e8;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;line-height:1.6;overflow-x:hidden}
+nav{position:fixed;top:0;width:100%;height:70px;background:rgba(10,10,10,.95);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:space-between;padding:0 40px;z-index:1000;border-bottom:1px solid rgba(201,169,110,.2)}
+.nav-logo{height:40px;width:auto}.nav-title{font-size:16px;font-weight:300;letter-spacing:2px;color:#d0d0d0}
+.nav-scroll-indicator{height:2px;background:linear-gradient(90deg,#d0d0d0,transparent);position:fixed;top:70px;left:0;width:0;z-index:999;transition:width .3s ease}
+.cover-page{height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;background:linear-gradient(135deg,#1a1a1a 0%,#0a0a0a 100%);padding-top:70px;position:relative;overflow:hidden}
+.cover-page::before{content:'';position:absolute;top:0;left:0;width:100%;height:100%;background:url('https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_d9d08db712.jpg') center/cover no-repeat;filter:blur(3px) brightness(.6);transform:scale(1.05)}
+.cover-page::after{content:'';position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(10,10,10,.15)}
+.cover-content{position:relative;z-index:10;display:flex;flex-direction:column;align-items:center;gap:0}
+.cover-logo{height:200px;width:auto;animation:fadeInScale 1s ease-out;filter:drop-shadow(0 10px 40px rgba(201,169,110,.3));margin-bottom:-15px}
+@keyframes fadeInScale{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+.cover-title{font-size:16px;font-weight:300;letter-spacing:8px;color:#d0d0d0;margin-top:20px;animation:fadeInUp 1s ease-out .2s both}
+.cover-subtitle{font-size:14px;letter-spacing:3px;color:#888;margin-top:20px;animation:fadeInUp 1s ease-out .4s both}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.editorial-section{min-height:100vh;padding:100px 80px;background-color:#0a0a0a;position:relative}
+.editorial-header{margin-bottom:60px;animation:fadeInUp .8s ease-out}
+.editorial-date{font-size:12px;letter-spacing:2px;color:#888;margin-bottom:10px}
+.editorial-title{font-size:48px;font-weight:300;margin-bottom:15px;color:#e8e8e8;letter-spacing:1px}
+.editorial-subtitle{font-size:18px;color:#d0d0d0;font-weight:300}
+.editorial-gallery{max-width:65%;margin:0 auto 60px;display:grid;gap:16px;grid-template-columns:1fr 1fr;animation:fadeInUp .8s ease-out .2s both}
+.gallery-item{overflow:hidden;border-radius:4px;background:#1a1a1a}
+.gallery-item img{width:100%;height:auto;display:block;transition:transform .4s cubic-bezier(.25,.46,.45,.94)}
+.gallery-item:hover img{transform:scale(1.05)}
+.editorial-credits{padding:40px 0;border-top:1px solid rgba(201,169,110,.2);border-bottom:1px solid rgba(201,169,110,.2);margin-bottom:100px;animation:fadeInUp .8s ease-out .4s both}
+.editorial-credits p{margin-bottom:12px;font-size:14px;color:#b8b8b8}
+.editorial-credits strong{color:#d0d0d0;font-weight:600}
+.editorial-credits a{color:#d0d0d0;text-decoration:none;transition:all .3s ease;border-bottom:1px solid transparent}
+.editorial-credits a:hover{border-bottom-color:#d0d0d0}
+.editorial-spread{display:grid;grid-template-columns:1fr 1fr;gap:50px;margin-bottom:60px;align-items:start;animation:fadeInUp .8s ease-out .2s both;max-width:90%;margin-left:auto;margin-right:auto}
+.editorial-cover-img{width:100%;height:auto;border-radius:4px;display:block}
+.editorial-spread .editorial-info{display:flex;flex-direction:column;justify-content:center;padding:20px 0}
+.editorial-spread .editorial-info .editorial-subtitle{font-size:16px;color:#d0d0d0;font-weight:300;line-height:1.8;margin-bottom:30px}
+.editorial-spread .editorial-info .editorial-desc-kr{font-size:14px;line-height:1.8;color:#999;font-style:italic}
+.section-divider{height:1px;background:linear-gradient(90deg,transparent,rgba(201,169,110,.3),transparent);margin:80px 0;animation:fadeIn .8s ease-out}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+footer{padding:60px 80px;text-align:center;border-top:1px solid rgba(201,169,110,.2);background:#0a0a0a}
+footer p{color:#666;font-size:14px;margin-bottom:10px}
+@media(max-width:1024px){.editorial-section{padding:80px 60px}.editorial-title{font-size:36px}}
+@media(max-width:768px){nav{padding:0 20px;height:60px}.nav-title{font-size:14px}.cover-logo{height:100px}.cover-title{font-size:14px}.editorial-section{padding:60px 30px}.editorial-title{font-size:28px}.editorial-subtitle{font-size:16px}.editorial-gallery{max-width:85%;grid-template-columns:1fr}.editorial-spread{grid-template-columns:1fr}.editorial-spread .editorial-info .editorial-subtitle{font-size:15px}}
+@media(max-width:480px){nav{padding:0 15px;justify-content:center}.nav-title{display:none}.cover-logo{height:80px}.cover-subtitle{font-size:12px}.editorial-section{padding:40px 20px}.editorial-title{font-size:24px}.editorial-gallery{max-width:100%}}
+</style>
+</head>
+<body>
+<nav><svg class="nav-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" height="40"><path d="M561.17,469.89c0-149.59-154.73-203.94-217.77-210.51-49.65-5.17-157.16-6.14-219.44-4.63-25.56,.62-45.96,21.47-45.96,47.04v476.06c0,26.53,21.51,48.05,48.04,48.05h113.05c33.8,0,61.2-27.4,61.2-61.2v-103.3c0-15.18,11.45-27.96,26.55-29.5,66.39-6.75,234.32-36.24,234.32-162.01Zm-242.69,58.55c-9.52,1.59-18.18-5.7-18.18-15.35v-100.95c47.95,0,86.2,10.27,86.2,62.61,0,36.85-42.73,49.45-68.02,53.69Z" fill="#fff"/><path d="M647.91,476.34h-58.25c-7.14,97.82-78.44,130.59-78.44,130.59l-88.5,186.53c-7.15,15.06,3.84,32.43,20.51,32.43h51.45c24.64,0,31.82-6.58,31.82-6.58,36.3-21.02,29.99-39.45,42.92-48.68,12.93-9.22,26.43-8.58,52.02-8.58s34.1,8.57,34.1,8.57c18.42,14.95,21.77,29.39,21.77,29.39V505.74c0-16.24-13.16-29.4-29.4-29.4Zm-25.19,201.49c-4.38,5.58-21.05,12.57-30.33,4.67-19.18-16.32,1.85-73.19,4.34-79.44,2.49-6.25,18.42-19.5,25.98,14.48,7.56,33.98,4.38,54.7,0,60.29Z" fill="#fff"/><path d="M868.87,479.57c-30.36-3.16-96.08-3.75-134.15-2.83-15.63,.38-28.1,13.13-28.1,28.76v291.03c0,16.22,13.15,29.37,29.37,29.37h69.11c20.66,0,37.41-16.75,37.41-37.41v-63.15c0-9.28,7-17.09,16.23-18.03,40.59-4.12,143.25-22.15,143.25-99.04,0-91.45-94.59-124.67-133.13-128.69Zm-15.24,164.48c-5.82,.97-11.11-3.48-11.11-9.38v-61.71c29.31,0,52.69,6.28,52.69,38.27,0,22.53-26.12,30.23-41.58,32.82Z" fill="#fff"/></svg><div class="nav-title">PAP MAGAZINE</div></nav>
+<div class="nav-scroll-indicator"></div>
+<div class="cover-page"><div class="cover-content"><svg class="cover-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" height="200"><defs><filter id="logoShadow" x="-10%" y="-10%" width="130%" height="130%"><feDropShadow dx="0" dy="6" stdDeviation="15" flood-color="rgba(0,0,0,0.5)"/></filter></defs><g filter="url(#logoShadow)"><path d="M561.17,469.89c0-149.59-154.73-203.94-217.77-210.51-49.65-5.17-157.16-6.14-219.44-4.63-25.56,.62-45.96,21.47-45.96,47.04v476.06c0,26.53,21.51,48.05,48.04,48.05h113.05c33.8,0,61.2-27.4,61.2-61.2v-103.3c0-15.18,11.45-27.96,26.55-29.5,66.39-6.75,234.32-36.24,234.32-162.01Zm-242.69,58.55c-9.52,1.59-18.18-5.7-18.18-15.35v-100.95c47.95,0,86.2,10.27,86.2,62.61,0,36.85-42.73,49.45-68.02,53.69Z" fill="#fff"/><path d="M647.91,476.34h-58.25c-7.14,97.82-78.44,130.59-78.44,130.59l-88.5,186.53c-7.15,15.06,3.84,32.43,20.51,32.43h51.45c24.64,0,31.82-6.58,31.82-6.58,36.3-21.02,29.99-39.45,42.92-48.68,12.93-9.22,26.43-8.58,52.02-8.58s34.1,8.57,34.1,8.57c18.42,14.95,21.77,29.39,21.77,29.39V505.74c0-16.24-13.16-29.4-29.4-29.4Zm-25.19,201.49c-4.38,5.58-21.05,12.57-30.33,4.67-19.18-16.32,1.85-73.19,4.34-79.44,2.49-6.25,18.42-19.5,25.98,14.48,7.56,33.98,4.38,54.7,0,60.29Z" fill="#fff"/><path d="M868.87,479.57c-30.36-3.16-96.08-3.75-134.15-2.83-15.63,.38-28.1,13.13-28.1,28.76v291.03c0,16.22,13.15,29.37,29.37,29.37h69.11c20.66,0,37.41-16.75,37.41-37.41v-63.15c0-9.28,7-17.09,16.23-18.03,40.59-4.12,143.25-22.15,143.25-99.04,0-91.45-94.59-124.67-133.13-128.69Zm-15.24,164.48c-5.82,.97-11.11-3.48-11.11-9.38v-61.71c29.31,0,52.69,6.28,52.69,38.27,0,22.53-26.12,30.23-41.58,32.82Z" fill="#fff"/></g></svg><h1 class="cover-title">MAGAZINE</h1><p class="cover-subtitle">APRIL 2025</p></div></div>
+
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2025-04-01</p>
+        <h1 class="editorial-title">LET&#x27;S CIRCLE BACK ON THAT</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_d9d08db712.jpg" alt="Let&#x27;s Circle Back On That" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-subtitle">Inspired by a blend of the 80&#x27;s and 90&#x27;s, I wanted to create a shoot based on a very stylish office worker named &quot;Anita Rayze&quot; who works a 9am-5pm job whose office space is a bit messy and untidy. &quot;Anita Rayze&quot; is chaotically and playfully disorganized about their job but also deserves a pay raise.</p>
+            <p class="editorial-desc-kr">80~90년대의 감성을 섞어 영감을 얻은 이번 촬영은, &quot;Anita Rayze&quot; 라는 이름의 매우 스타일리시한 오피스 워커를 중심으로 전개됩니다. 그녀는 아침 9시부터 저녁 5시까지 일하지만,사무실은 어딘가 정리되지 않은 듯한 혼란스러움이 가득하죠. Anita Rayze는 일에 대해 어딘가 엉뚱하고 장난기 있게 무질서하지만, 그 누구보다 연봉 인상이 절실한 인물이기도 합니다.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1_8ddb49b180.png" alt="Let&#x27;s Circle Back On That" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/2_82da16dfa5.png" alt="Let&#x27;s Circle Back On That" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/3_75e6631cb5.png" alt="Let&#x27;s Circle Back On That" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/4_b9b531656a.png" alt="Let&#x27;s Circle Back On That" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/5_d97203d89f.png" alt="Let&#x27;s Circle Back On That" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/6_f1bacd9344.png" alt="Let&#x27;s Circle Back On That" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/7_ed68165ca8.png" alt="Let&#x27;s Circle Back On That" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/8_5891c1709b.png" alt="Let&#x27;s Circle Back On That" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/9_29d61938c8.png" alt="Let&#x27;s Circle Back On That" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/10_8f89073cbb.png" alt="Let&#x27;s Circle Back On That" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/12_c673ee0634.png" alt="Let&#x27;s Circle Back On That" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/13_e072ada1a3.png" alt="Let&#x27;s Circle Back On That" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/14_b881f72d83.png" alt="Let&#x27;s Circle Back On That" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/15_82c06e97f6.png" alt="Let&#x27;s Circle Back On That" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/16_4a03e4efdd.png" alt="Let&#x27;s Circle Back On That" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/17_c2a5f1cc2f.png" alt="Let&#x27;s Circle Back On That" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/18_f31af195f4.png" alt="Let&#x27;s Circle Back On That" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/19_f96cbd5dcb.png" alt="Let&#x27;s Circle Back On That" loading="lazy"></div>
+    </div>
+<div class="editorial-credits">
+<p><strong>Photographer:</strong> <a href="https://www.instagram.com/diegocamposphoto" target="_blank">diegocamposphoto</a></p>
+    <p><strong>Photo Asst:</strong> <a href="https://www.instagram.com/weddingbellsassists" target="_blank">weddingbellsassists</a></p>
+    <p><strong>Prop Stylist:</strong> <a href="https://www.instagram.com/planetsandie" target="_blank">planetsandie</a></p>
+    <p><strong>Wardrobe Stylist:</strong> <a href="https://www.instagram.com/iigalinaii" target="_blank">iigalinaii</a>, <a href="https://www.instagram.com/labartists" target="_blank">labartists</a></p>
+    <p><strong>Wardrobe Asst :</strong> <a href="https://www.instagram.com/gia.tummillo" target="_blank">gia.tummillo</a></p>
+    <p><strong>Hair &amp; Makeup:</strong> <a href="https://www.instagram.com/kerreberryhmua" target="_blank">kerreberryhmua</a>, <a href="https://www.instagram.com/labartists" target="_blank">labartists</a></p>
+    <p><strong>Nail:</strong> <a href="https://www.instagram.com/jenilea" target="_blank">jenilea</a>, <a href="https://www.instagram.com/labartists" target="_blank">labartists</a></p>
+    <p><strong>Starring:</strong> <a href="https://www.instagram.com/eva.juliet" target="_blank">eva.juliet</a>, <a href="https://www.instagram.com/mothermodel" target="_blank">mothermodel</a></p>
+    <p><strong>Fashion by:</strong> <a href="https://www.instagram.com/ysl" target="_blank">ysl</a>, <a href="https://www.instagram.com/thefrankieshop" target="_blank">thefrankieshop</a>, <a href="https://www.instagram.com/hue" target="_blank">hue</a>, <a href="https://www.instagram.com/saks" target="_blank">saks</a>, <a href="https://www.instagram.com/2ndstreetusa" target="_blank">2ndstreetusa</a>, <a href="https://www.instagram.com/alexandermcqueen" target="_blank">alexandermcqueen</a>, <a href="https://www.instagram.com/jwpei_official" target="_blank">jwpei_official</a>, <a href="https://www.instagram.com/ikramchicago" target="_blank">ikramchicago</a>, <a href="https://www.instagram.com/stellamccartney" target="_blank">stellamccartney</a>, <a href="https://www.instagram.com/sacaiofficial" target="_blank">sacaiofficial</a>, <a href="https://www.instagram.com/therow" target="_blank">therow</a>, <a href="https://www.instagram.com/hm" target="_blank">hm</a>, <a href="https://www.instagram.com/balenciaga" target="_blank">balenciaga</a>, <a href="https://www.instagram.com/everlane" target="_blank">everlane</a></p>
+</div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2025-04-03</p>
+        <h1 class="editorial-title">TRAS BAMBALINAS</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover_1ad0f012c7.jpg" alt="Tras Bambalinas" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-subtitle">The backstage is a realm of controlled chaos, where reality and appearance collide. Shadows flicker between flashes, lost gazes drown in the noise. Here, models are not just flawless figures under the lights but presences caught between the vertigo of transformation and the rawness of the moment. This is the side few get to see: the tension before stepping out, the reflection of an identity that blurs and rebuilds with every outfit change, with every whispered command. A world where beauty is fleeting, but truth seeps through every crack.</p>
+            <p class="editorial-desc-kr">백스테이지는 통제된 혼란의 세계, 현실과 환상이 맞부딪히는 공간이다. 플래시 사이로 그림자가 흔들리고, 시선은 소음 속에 잠긴다. 이곳에서 모델은 단지 조명 아래의 완벽한 실루엣이 아니다. 변신의 현기증과 찰나의 생생함 사이에 존재하는, 살아 있는 존재다. 무대에 오르기 직전의 긴장, 의상이 바뀔 때마다 흐려지고 다시 구축되는 정체성, 속삭이듯 전달되는 명령 속에서 흔들리는 자아. 이 모든 것을 담은 이곳은, 누구나 보는 런웨이의 반대편, 오직 일부만이 마주하는 진짜 얼굴이다. 이 세계에서 아름다움은 덧없지만, 진실은 틈새를 타고 스며든다.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1_83b4cb0911.png" alt="Tras Bambalinas" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/2_43850c98de.png" alt="Tras Bambalinas" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/3_a9af389840.png" alt="Tras Bambalinas" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/4_acf7400aa5.png" alt="Tras Bambalinas" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/5_67936b235d.png" alt="Tras Bambalinas" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/6_9ae6f075ea.png" alt="Tras Bambalinas" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/7_7247a832a3.png" alt="Tras Bambalinas" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/8_7dd78cb4a4.png" alt="Tras Bambalinas" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/9_6b572a7fc1.png" alt="Tras Bambalinas" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/10_bad6343b51.png" alt="Tras Bambalinas" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/12_f6e4ab9b2e.png" alt="Tras Bambalinas" loading="lazy"></div>
+    </div>
+<div class="editorial-credits">
+<p><strong>Creative Direction:</strong> <a href="https://www.instagram.com/magucaffoz" target="_blank">magucaffoz</a></p>
+    <p><strong>Photographer:</strong> <a href="https://www.instagram.com/ricardoramirez___" target="_blank">ricardoramirez___</a></p>
+    <p><strong>Styling:</strong> <a href="https://www.instagram.com/magucaffoz" target="_blank">magucaffoz</a></p>
+    <p><strong>Makeup &amp; Hair:</strong> <a href="https://www.instagram.com/sax_makeup" target="_blank">sax_makeup</a></p>
+    <p><strong>Assistant Light:</strong> <a href="https://www.instagram.com/grivettal" target="_blank">grivettal</a></p>
+    <p><strong>Videomaker:</strong> <a href="https://www.instagram.com/samuele_donghia" target="_blank">samuele_donghia</a></p>
+    <p><strong>Starring:</strong> <a href="https://www.instagram.com/e.mh.ily" target="_blank">e.mh.ily</a></p>
+    <p><strong>Fashion by:</strong> <a href="https://www.instagram.com/Sonoraboots" target="_blank">Sonoraboots</a>, <a href="https://www.instagram.com/virtumaison" target="_blank">virtumaison</a>, <a href="https://www.instagram.com/matinkim_flagshipstore" target="_blank">matinkim_flagshipstore</a>, <a href="https://www.instagram.com/ecatecouture" target="_blank">ecatecouture</a></p>
+</div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2025-04-07</p>
+        <h1 class="editorial-title">LE MÉTRO</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover_596eaaad57.jpg" alt="Le Métro" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-subtitle">&#x27;Le Métro&#x27; is less an editorial and more an atmosphere captured on film. lamour_brut, not.le.y.la, letsbeglorious pieces dissolve into the mood rather than standing apart from it.</p>
+            <p class="editorial-desc-kr">&#x27;Le Métro&#x27; 안에서 조용한 혁명이 일어나고 있다. lamour_brut, not.le.y.la, letsbeglorious이(가) 변화의 유니폼이 된다.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/2_f6a131e080.png" alt="Le Métro" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/3_2f312c86e2.png" alt="Le Métro" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/4_327e923122.png" alt="Le Métro" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/5_268072aed0.png" alt="Le Métro" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/6_ead07ec88f.png" alt="Le Métro" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/7_61b95d6669.png" alt="Le Métro" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/8_13bd351686.png" alt="Le Métro" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/9_7c04c877aa.png" alt="Le Métro" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/10_93195d35fe.png" alt="Le Métro" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/11_32f10921ae.png" alt="Le Métro" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/12_17a352350b.png" alt="Le Métro" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/13_97d3e1b69a.png" alt="Le Métro" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/14_23dd1642b0.png" alt="Le Métro" loading="lazy"></div>
+    </div>
+<div class="editorial-credits">
+<p><strong>Brand:</strong> <a href="https://www.instagram.com/lamour_brut" target="_blank">lamour_brut</a>, <a href="https://www.instagram.com/not.le.y.la" target="_blank">not.le.y.la</a></p>
+    <p><strong>Photographer:</strong> <a href="https://www.instagram.com/nomzoa" target="_blank">nomzoa</a></p>
+    <p><strong>Art director:</strong> <a href="https://www.instagram.com/nomzoa" target="_blank">nomzoa</a></p>
+    <p><strong>Retoucher:</strong> <a href="https://www.instagram.com/nomzoa" target="_blank">nomzoa</a></p>
+    <p><strong>Stylist:</strong> <a href="https://www.instagram.com/letsbeglorious" target="_blank">letsbeglorious</a>, <a href="https://www.instagram.com/mmwlea" target="_blank">mmwlea</a></p>
+    <p><strong>Hair:</strong> <a href="https://www.instagram.com/beauty_lheyti" target="_blank">beauty_lheyti</a></p>
+    <p><strong>Makeup:</strong> <a href="https://www.instagram.com/sherley.dubost" target="_blank">sherley.dubost</a>, <a href="https://www.instagram.com/khadidja.brahimi" target="_blank">khadidja.brahimi</a>, <a href="https://www.instagram.com/mael__mua" target="_blank">mael__mua</a></p>
+    <p><strong>Casting:</strong> <a href="https://www.instagram.com/svn_studio_" target="_blank">svn_studio_</a>, <a href="https://www.instagram.com/so_velor_" target="_blank">so_velor_</a>, <a href="https://www.instagram.com/62.03" target="_blank">62.03</a></p>
+    <p><strong>Creative Agency:</strong> <a href="https://www.instagram.com/svn_studio_" target="_blank">svn_studio_</a>, <a href="https://www.instagram.com/creativestudioparis" target="_blank">creativestudioparis</a>, <a href="https://www.instagram.com/thepurlpleprint" target="_blank">thepurlpleprint</a></p>
+    <p><strong>Production:</strong> <a href="https://www.instagram.com/so_velor_" target="_blank">so_velor_</a>, <a href="https://www.instagram.com/62.03" target="_blank">62.03</a></p>
+    <p><strong>Dop:</strong> <a href="https://www.instagram.com/stephane.mvrtins" target="_blank">stephane.mvrtins</a></p>
+    <p><strong>Gaffers:</strong> <a href="https://www.instagram.com/teckquentin" target="_blank">teckquentin</a>, <a href="https://www.instagram.com/ley1ley" target="_blank">ley1ley</a></p>
+    <p><strong>Producer Assist:</strong> <a href="https://www.instagram.com/a.hcia" target="_blank">a.hcia</a>, <a href="https://www.instagram.com/andrea_laborie" target="_blank">andrea_laborie</a></p>
+    <p><strong>Set Assist:</strong> <a href="https://www.instagram.com/lifestoryofvbe" target="_blank">lifestoryofvbe</a></p>
+    <p><strong>Starring:</strong> <a href="https://www.instagram.com/cherine_hanique" target="_blank">cherine_hanique</a>, <a href="https://www.instagram.com/kianacretet" target="_blank">kianacretet</a>, <a href="https://www.instagram.com/meriem_kni" target="_blank">meriem_kni</a>, <a href="https://www.instagram.com/_nastyboii_" target="_blank">_nastyboii_</a>, <a href="https://www.instagram.com/steven_brg83" target="_blank">steven_brg83</a>, <a href="https://www.instagram.com/tdnsouley" target="_blank">tdnsouley</a></p>
+</div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2025-04-07</p>
+        <h1 class="editorial-title">PAPARATZI</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover_ad8b45187b.jpg" alt="Paparatzi" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-subtitle">Image as a weapon. The street as a stage. Desire as a spectacle.
+A flash, a glance, a stolen moment. Fashion doesn’t wait—it showcases itself, weaving through the chaos of the city, becoming an icon in the lens of those who dare to look. In a world where everything is visible, pop voyeurism sets the rules: being seen is the new luxury, being captured, the new immortality.
+A game of excess and spontaneity, of intimacy and exposure, of provocation and irony. Who is watching whom? Who holds the power?
+Lights, streets, action. PAPARATZI has arrived.</p>
+            <p class="editorial-desc-kr">이미지는 무기이고, 거리는 무대이며, 욕망은 하나의 연출이 된다. 이번 에디토리얼은 도시라는 배경 속에서, 찰나의 순간과 시선 속에 존재하는 패션의 즉흥성과 과감함을 포착한다.
+보이는 것이 사치가 되고, 찍히는 것이 불멸이 되는 시대. 팝 보이어리즘이 룰을 바꾸고, 패션은 노출과 친밀함, 도발과 아이러니가 공존하는 게임이 된다.
+누가 누구를 바라보는가. 그리고 누가 그 장면을 만들어내는가. 패션은 이제 하나의 사건이고, 그 중심에 PAPARATZI가 있다.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1_df73f47eb2.png" alt="Paparatzi" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/2_b8c450d6e6.png" alt="Paparatzi" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/4_0bc6fb8cd5.png" alt="Paparatzi" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/5_421f8de47f.png" alt="Paparatzi" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/6_f2641a834d.png" alt="Paparatzi" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/7_d214af0c56.png" alt="Paparatzi" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/8_8f079b9c1f.png" alt="Paparatzi" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/9_cdd7948f4a.png" alt="Paparatzi" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/10_52e9b8be21.png" alt="Paparatzi" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/11_2c56b9838e.png" alt="Paparatzi" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/12_af24b72902.png" alt="Paparatzi" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/13_4fccd9338e.png" alt="Paparatzi" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/14_b362abd477.png" alt="Paparatzi" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/15_24e6f220ca.png" alt="Paparatzi" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/16_58bf72557b.png" alt="Paparatzi" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/17_a7038e239f.png" alt="Paparatzi" loading="lazy"></div>
+    </div>
+<div class="editorial-credits">
+<p><strong>Creative Director:</strong> <a href="https://www.instagram.com/ivanaguilera.style" target="_blank">ivanaguilera.style</a></p>
+    <p><strong>Photography:</strong> <a href="https://www.instagram.com/irinaguemez" target="_blank">irinaguemez</a></p>
+    <p><strong>Retouch:</strong> <a href="https://www.instagram.com/irinaguemez" target="_blank">irinaguemez</a></p>
+    <p><strong>Photo Assist:</strong> <a href="https://www.instagram.com/marissa.illust" target="_blank">marissa.illust</a></p>
+    <p><strong>Styling:</strong> <a href="https://www.instagram.com/ivanaguilera.style" target="_blank">ivanaguilera.style</a></p>
+    <p><strong>Styling Assist:</strong> <a href="https://www.instagram.com/laurins13" target="_blank">laurins13</a></p>
+    <p><strong>Starring:</strong> <a href="https://www.instagram.com/dragchacha" target="_blank">dragchacha</a></p>
+    <p><strong>Fashion by:</strong> <a href="https://www.instagram.com/womensecretofficial" target="_blank">womensecretofficial</a>, <a href="https://www.instagram.com/weili_zheng" target="_blank">weili_zheng</a>, <a href="https://www.instagram.com/akep_official" target="_blank">akep_official</a>, <a href="https://www.instagram.com/dsquared2" target="_blank">dsquared2</a>, <a href="https://www.instagram.com/dirkbikkembergs" target="_blank">dirkbikkembergs</a>, <a href="https://www.instagram.com/pinkoofficial" target="_blank">pinkoofficial</a>, <a href="https://www.instagram.com/moschino" target="_blank">moschino</a>, <a href="https://www.instagram.com/alvaro.vilares" target="_blank">alvaro.vilares</a>, <a href="https://www.instagram.com/kurtgeiger" target="_blank">kurtgeiger</a>, <a href="https://www.instagram.com/almaenpenashoes" target="_blank">almaenpenashoes</a>, <a href="https://www.instagram.com/karllagerfeld" target="_blank">karllagerfeld</a>, <a href="https://www.instagram.com/almadiversajoyeria" target="_blank">almadiversajoyeria</a>, <a href="https://www.instagram.com/galfer_eyewear" target="_blank">galfer_eyewear</a>, <a href="https://www.instagram.com/tamara_press" target="_blank">tamara_press</a>, <a href="https://www.instagram.com/twentyfourhaitch" target="_blank">twentyfourhaitch</a>, <a href="https://www.instagram.com/nabelostudio" target="_blank">nabelostudio</a></p>
+</div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2025-04-08</p>
+        <h1 class="editorial-title">LATEST FANTASIES</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover_0254ad2b6b.jpg" alt="Latest Fantasies" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-subtitle">&#x27;Latest Fantasies&#x27; makes a compelling case that the best fashion photography is the kind you can hear. martinaacasiraghi, biancamagni_, marsell.official pieces practically rustle in the frame.</p>
+            <p class="editorial-desc-kr">&#x27;Latest Fantasies&#x27;은(는) 익숙한 패션 트로프를 인식할 수 없는 무언가로 변모시킨다. martinaacasiraghi, biancamagni_, marsell.official이(가) 인식 가능한 참조점을 제공하면서도.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/PAP_19_Dec240001_copy_06ce36772d.jpg" alt="Latest Fantasies" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/PAP_19_Dec240076_1_copy_9bd5b735de.jpg" alt="Latest Fantasies" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/PAP_19_Dec240109_copy_d1077113af.jpg" alt="Latest Fantasies" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/PAP_19_Dec240137_copy_df0e2bdf60.jpg" alt="Latest Fantasies" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/PAP_19_Dec240181_copy_2c0c22c9ef.jpg" alt="Latest Fantasies" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/PAP_19_Dec240183_copy_2_57b0d8b2c0.jpg" alt="Latest Fantasies" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/PAP_19_Dec240254_copy_7ffb15a62f.jpg" alt="Latest Fantasies" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/PAP_19_Dec240287_copy_0a6a543290.jpg" alt="Latest Fantasies" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/PAP_19_Dec240304_copy_6e40d4172c.jpg" alt="Latest Fantasies" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/PAP_19_Dec240372_copy_fc38efba26.jpg" alt="Latest Fantasies" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/PAP_19_Dec240425_copy_d50fe09db2.jpg" alt="Latest Fantasies" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/PAP_19_Dec240494_copy_9cfe94ff23.jpg" alt="Latest Fantasies" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/PAP_19_Dec240516_copy_fd64e58518.jpg" alt="Latest Fantasies" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/PAP_19_Dec240548_copy_24403b9c55.jpg" alt="Latest Fantasies" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/PAP_19_Dec240555_copy_d78e60d6c1.jpg" alt="Latest Fantasies" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/PAP_19_Dec240652_copy_f0c575aa80.jpg" alt="Latest Fantasies" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/PAP_19_Dec240752_copy_1_69da81e62d.jpg" alt="Latest Fantasies" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/PAP_19_Dec240785_copy_c311c38360.jpg" alt="Latest Fantasies" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/PAP_19_Dec240886_copy_9197a54495.jpg" alt="Latest Fantasies" loading="lazy"></div>
+    </div>
+<div class="editorial-credits">
+<p><strong>Creative direction:</strong> <a href="https://www.instagram.com/martinaacasiraghi" target="_blank">martinaacasiraghi</a></p>
+    <p><strong>Photographer:</strong> <a href="https://www.instagram.com/jacopo.pls" target="_blank">jacopo.pls</a></p>
+    <p><strong>Stylist:</strong> <a href="https://www.instagram.com/martinaacasiraghi" target="_blank">martinaacasiraghi</a></p>
+    <p><strong>Makeup:</strong> <a href="https://www.instagram.com/alice.donadio_mua" target="_blank">alice.donadio_mua</a></p>
+    <p><strong>Photo assist:</strong> <a href="https://www.instagram.com/davidee_ci" target="_blank">davidee_ci</a></p>
+    <p><strong>Stylist assist:</strong> <a href="https://www.instagram.com/biancamagni_" target="_blank">biancamagni_</a></p>
+    <p><strong>Starring:</strong> <a href="https://www.instagram.com/malamannaa" target="_blank">malamannaa</a>, <a href="https://www.instagram.com/monster_mgmt" target="_blank">monster_mgmt</a></p>
+    <p><strong>Fashion by:</strong> <a href="https://www.instagram.com/marsell.official" target="_blank">marsell.official</a>, <a href="https://www.instagram.com/matinkim_magazine" target="_blank">matinkim_magazine</a>, <a href="https://www.instagram.com/ainteija" target="_blank">ainteija</a>, <a href="https://www.instagram.com/calvinklein" target="_blank">calvinklein</a>, <a href="https://www.instagram.com/balestra_official" target="_blank">balestra_official</a>, <a href="https://www.instagram.com/dolcegabbana" target="_blank">dolcegabbana</a>, <a href="https://www.instagram.com/pdpaola_jewelry" target="_blank">pdpaola_jewelry</a>, <a href="https://www.instagram.com/intimissimi" target="_blank">intimissimi</a>, <a href="https://www.instagram.com/calzedonia" target="_blank">calzedonia</a>, <a href="https://www.instagram.com/romeogigliofficial" target="_blank">romeogigliofficial</a>, <a href="https://www.instagram.com/tpnofficial" target="_blank">tpnofficial</a></p>
+</div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2025-04-11</p>
+        <h1 class="editorial-title">GUILTY OF INFATUATION</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover_d2c723f829.jpg" alt="Guilty of Infatuation" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-subtitle">We wanted to add charismatic characters to the chess world and, with their help, recreate the atmosphere of adventure, excitement, and bandit romanticism that so often accompanies gambling.
+
+All the characters are completely different, each with their own story. But in the end, they all end their day at the chess table. You don&#x27;t have to be an attentive viewer to notice that there are many characters, but there is only one model! So the question arises — perhaps it&#x27;s just mind games in the head of one single girl? And, I wonder, what does it all look like in reality?</p>
+            <p class="editorial-desc-kr">우리는 체스의 세계에 매력적인 캐릭터들을 더하고, 그들을 통해 모험과 긴장감, 그리고 도박에 어울리는 로맨틱한 반항의 분위기를 다시 만들어보고 싶었습니다.
+
+모든 캐릭터들은 서로 전혀 다른 개성과 이야기를 지니고 있지만, 결국 하루의 끝은 체스 테이블 앞에서 마무리되죠.
+
+흥미로운 건, 많은 캐릭터가 등장함에도 단 한 명의 모델만 등장한다는 사실. 그래서 이런 질문이 생깁니다— 어쩌면 이 모든 건, 한 소녀의 머릿속에서 벌어지는 ‘마음속 체스’일지도 모릅니다. 그렇다면, 현실에서는 과연 어떤 모습일까요?</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1_87660432af.png" alt="Guilty of Infatuation" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/2_95d189cb0d.png" alt="Guilty of Infatuation" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/3_fa551b09fd.png" alt="Guilty of Infatuation" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/4_df3bc66644.png" alt="Guilty of Infatuation" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/5_5d2798f872.png" alt="Guilty of Infatuation" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/6_e38538ee5e.png" alt="Guilty of Infatuation" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/8_5926e0d953.png" alt="Guilty of Infatuation" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/9_040f615ef6.png" alt="Guilty of Infatuation" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/10_51b7856f6e.png" alt="Guilty of Infatuation" loading="lazy"></div>
+    </div>
+<div class="editorial-credits">
+<p><strong>Photography:</strong> <a href="https://www.instagram.com/natasha.yankelevich" target="_blank">natasha.yankelevich</a></p>
+    <p><strong>Styling:</strong> <a href="https://www.instagram.com/elenatashstyle" target="_blank">elenatashstyle</a></p>
+    <p><strong>Makeup &amp; Hair:</strong> <a href="https://www.instagram.com/_di_st0_" target="_blank">_di_st0_</a></p>
+    <p><strong>Post-Production:</strong> <a href="https://www.instagram.com/kyssa.sv" target="_blank">kyssa.sv</a></p>
+    <p><strong>Starring:</strong> <a href="https://www.instagram.com/ana_lucky_bastard" target="_blank">ana_lucky_bastard</a></p>
+    <p><strong>Fashion by:</strong> <a href="https://www.instagram.com/ooonsitsa" target="_blank">ooonsitsa</a>, <a href="https://www.instagram.com/prada" target="_blank">prada</a>, <a href="https://www.instagram.com/anndemeulemeester_official" target="_blank">anndemeulemeester_official</a>, <a href="https://www.instagram.com/smog_jewelry" target="_blank">smog_jewelry</a>, <a href="https://www.instagram.com/chanelofficial" target="_blank">chanelofficial</a>, <a href="https://www.instagram.com/sagrad.01" target="_blank">sagrad.01</a>, <a href="https://www.instagram.com/master___bo" target="_blank">master___bo</a>, <a href="https://www.instagram.com/loewe" target="_blank">loewe</a>, <a href="https://www.instagram.com/adidasoriginals" target="_blank">adidasoriginals</a>, <a href="https://www.instagram.com/resobjects" target="_blank">resobjects</a>, <a href="https://www.instagram.com/ossa_jewelry" target="_blank">ossa_jewelry</a>, <a href="https://www.instagram.com/jp.clo" target="_blank">jp.clo</a>, <a href="https://www.instagram.com/elisabettafranchi" target="_blank">elisabettafranchi</a>, <a href="https://www.instagram.com/sonyalavdanskaya" target="_blank">sonyalavdanskaya</a></p>
+</div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2025-04-12</p>
+        <h1 class="editorial-title">WONDER WOMAN</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover_65f15876be.jpg" alt="Wonder Woman" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-subtitle">It ́s not uncommon knowledge that in the dance industry it is necessary to wear many different hats. Greek Artist, Xristina Prompona - a versatile freelance
+Dance Artist, Life Model, and Movement Director amongst many other things is an example of this.
+Created with a talented all female team, this editorial is a fun take on the different personalities that come to life navigating an expansive and dynamic career,
+effortlessly shifting between roles and creative expressions.</p>
+            <p class="editorial-desc-kr">무용계에서 여러 가지 역할을 동시에 해내야 한다는 건 익히 알려진 사실입니다. 그리스 아티스트 Xristina Prompona는 그 대표적인 예로, 프리랜스 무용가이자 라이프 모델, 무브먼트 디렉터 등 다양한 정체성을 유연하게 넘나드는 다재다능한 예술가입니다.
+
+이번 에디토리얼은 전원 여성 크루와 함께 제작되었으며, 역할과 표현을 유연하게 넘나들며 살아가는 예술가의 다층적인 모습을 유쾌하게 담아낸 시리즈입니다. 하나의 정체성에 머무르지 않고, 확장된 커리어 속에서 자유롭게 움직이며 살아 숨 쉬는 수많은 캐릭터들을 시각적으로 풀어냈습니다.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1_6183994093.png" alt="Wonder Woman" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/2_6d870befe8.png" alt="Wonder Woman" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/4_c03fe653e3.png" alt="Wonder Woman" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/5_343a30cc37.png" alt="Wonder Woman" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/6_791e12b405.png" alt="Wonder Woman" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/7_0548962d2b.png" alt="Wonder Woman" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/8_bbcbfbeb69.png" alt="Wonder Woman" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/9_2cc77900f2.png" alt="Wonder Woman" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/10_883f7a6c42.png" alt="Wonder Woman" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/11_a86af2f5fa.png" alt="Wonder Woman" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/12_335bfcdd00.png" alt="Wonder Woman" loading="lazy"></div>
+    </div>
+<div class="editorial-credits">
+<p><strong>Art Direction :</strong> <a href="https://www.instagram.com/artherd.co" target="_blank">artherd.co</a></p>
+    <p><strong>Photography:</strong> <a href="https://www.instagram.com/artherd.co" target="_blank">artherd.co</a></p>
+    <p><strong>Movement:</strong> <a href="https://www.instagram.com/xristinaprompona" target="_blank">xristinaprompona</a></p>
+    <p><strong>Stylist:</strong> <a href="https://www.instagram.com/meggie_hethie" target="_blank">meggie_hethie</a></p>
+    <p><strong>Makeup:</strong> <a href="https://www.instagram.com/kadirya666" target="_blank">kadirya666</a></p>
+    <p><strong>Hair:</strong> <a href="https://www.instagram.com/__u_r_s__" target="_blank">__u_r_s__</a></p>
+    <p><strong>Assistant:</strong> <a href="https://www.instagram.com/marthagentely" target="_blank">marthagentely</a></p>
+    <p><strong>Starring:</strong> <a href="https://www.instagram.com/xristinaprompona" target="_blank">xristinaprompona</a></p>
+    <p><strong>Fashion by:</strong> <a href="https://www.instagram.com/diesel" target="_blank">diesel</a>, <a href="https://www.instagram.com/meggie_hethie" target="_blank">meggie_hethie</a>, <a href="https://www.instagram.com/tommyhilfiger" target="_blank">tommyhilfiger</a>, <a href="https://www.instagram.com/calzedonia" target="_blank">calzedonia</a>, <a href="https://www.instagram.com/ietsfransofficial" target="_blank">ietsfransofficial</a>, <a href="https://www.instagram.com/nasiliajewelry" target="_blank">nasiliajewelry</a>, <a href="https://www.instagram.com/msgm" target="_blank">msgm</a>, <a href="https://www.instagram.com/andotherstories" target="_blank">andotherstories</a>, <a href="https://www.instagram.com/missoni" target="_blank">missoni</a>, <a href="https://www.instagram.com/ralphlauren" target="_blank">ralphlauren</a>, <a href="https://www.instagram.com/moschino" target="_blank">moschino</a>, <a href="https://www.instagram.com/emporioarmani" target="_blank">emporioarmani</a>, <a href="https://www.instagram.com/weareivypark" target="_blank">weareivypark</a>, <a href="https://www.instagram.com/stellamccartney" target="_blank">stellamccartney</a>, <a href="https://www.instagram.com/Adidas" target="_blank">Adidas</a>, <a href="https://www.instagram.com/zara" target="_blank">zara</a>, <a href="https://www.instagram.com/stinegoyastudio" target="_blank">stinegoyastudio</a></p>
+</div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2025-04-13</p>
+        <h1 class="editorial-title">BABY B</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover_3139a6d736.jpg" alt="Baby B" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-subtitle">In &#x27;Baby B&#x27;, every frame is a deliberate act of visual storytelling, with clabacetti, isabellapetrocchi, martina_.musmarra._ anchoring the narrative in tangible luxury.</p>
+            <p class="editorial-desc-kr">&#x27;Baby B&#x27;에서의 절제가 가장 큰 도발이다. clabacetti, isabellapetrocchi, martina_.musmarra._이(가) 외과적 정밀함으로 등장한다.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1_4420589d1c.png" alt="Baby B" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/2_bd8b7751fe.png" alt="Baby B" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/3_95a3bd8fe2.png" alt="Baby B" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/4_30429ae3ee.png" alt="Baby B" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/5_905d6f8bf3.png" alt="Baby B" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/6_c56348ba5b.png" alt="Baby B" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/7_3d7e69748d.png" alt="Baby B" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/8_bbf625d681.png" alt="Baby B" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/9_6ee6788a65.png" alt="Baby B" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/10_eda53ad1ab.png" alt="Baby B" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/12_6ca805f34f.png" alt="Baby B" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/13_fc6f87487d.png" alt="Baby B" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/14_e433cd8a60.png" alt="Baby B" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/15_e9e8422b23.png" alt="Baby B" loading="lazy"></div>
+    </div>
+<div class="editorial-credits">
+<p><strong>Photograpy:</strong> <a href="https://www.instagram.com/michelearrabito" target="_blank">michelearrabito</a>, <a href="https://www.instagram.com/michelearrabitoph" target="_blank">michelearrabitoph</a></p>
+    <p><strong>Styling:</strong> <a href="https://www.instagram.com/lindaripaa" target="_blank">lindaripaa</a></p>
+    <p><strong>Makeup &amp; Hair:</strong> <a href="https://www.instagram.com/nicolac.mua" target="_blank">nicolac.mua</a></p>
+    <p><strong>Stylist assist:</strong> <a href="https://www.instagram.com/clabacetti" target="_blank">clabacetti</a>, <a href="https://www.instagram.com/isabellapetrocchi" target="_blank">isabellapetrocchi</a>, <a href="https://www.instagram.com/martina_.musmarra._" target="_blank">martina_.musmarra._</a></p>
+    <p><strong>Starring:</strong> <a href="https://www.instagram.com/___ilariagobbato" target="_blank">___ilariagobbato</a>, <a href="https://www.instagram.com/ilenia.gobbato" target="_blank">ilenia.gobbato</a></p>
+    <p><strong>Special thanks to:</strong> <a href="https://www.instagram.com/maximilianlinz" target="_blank">maximilianlinz</a>, <a href="https://www.instagram.com/negrifirmanpr" target="_blank">negrifirmanpr</a>, <a href="https://www.instagram.com/pariniassociati" target="_blank">pariniassociati</a>, <a href="https://www.instagram.com/eplusestudio" target="_blank">eplusestudio</a>, <a href="https://www.instagram.com/claudioleoni" target="_blank">claudioleoni</a></p>
+    <p><strong>Fashion by:</strong> <a href="https://www.instagram.com/vivetta" target="_blank">vivetta</a>, <a href="https://www.instagram.com/dilara_ovet" target="_blank">dilara_ovet</a>, <a href="https://www.instagram.com/daviiofficiel" target="_blank">daviiofficiel</a>, <a href="https://www.instagram.com/_pronounce" target="_blank">_pronounce</a>, <a href="https://www.instagram.com/giuseppe.cocconcelli" target="_blank">giuseppe.cocconcelli</a>, <a href="https://www.instagram.com/mondo_polidora" target="_blank">mondo_polidora</a>, <a href="https://www.instagram.com/balestra_official" target="_blank">balestra_official</a>, <a href="https://www.instagram.com/marcoberardi__" target="_blank">marcoberardi__</a>, <a href="https://www.instagram.com/ports1961" target="_blank">ports1961</a>, <a href="https://www.instagram.com/tytm8" target="_blank">tytm8</a>, <a href="https://www.instagram.com/arthurarbesser" target="_blank">arthurarbesser</a>, <a href="https://www.instagram.com/albertozambelli__" target="_blank">albertozambelli__</a>, <a href="https://www.instagram.com/wegan_official" target="_blank">wegan_official</a>, <a href="https://www.instagram.com/angelosfrentzos" target="_blank">angelosfrentzos</a>, <a href="https://www.instagram.com/matinkim_magazine" target="_blank">matinkim_magazine</a>, <a href="https://www.instagram.com/leonardvalentini" target="_blank">leonardvalentini</a></p>
+</div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2025-04-14</p>
+        <h1 class="editorial-title">HARLEQUIN &amp; PIERROT</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover_29efa81cad.jpg" alt="Harlequin &amp; Pierrot" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-subtitle">The choreography of &#x27;Harlequin &amp; Pierrot&#x27; is meticulous, with julie_michelet, letsgetflashy, versace cast in starring roles.</p>
+            <p class="editorial-desc-kr">&#x27;Harlequin &amp; Pierrot&#x27;은(는) 옷이 착용자를 선택한 것처럼 보이는 드문 에디토리얼 품질을 포착한다. julie_michelet, letsgetflashy, versace의 선택이 운명적이다.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Arlequin_1_cacdbf8356.jpg" alt="Harlequin &amp; Pierrot" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Arlequin_2_79bf993508.jpg" alt="Harlequin &amp; Pierrot" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Arlequin_3_92d5953bde.jpg" alt="Harlequin &amp; Pierrot" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Arlequin_5_5e0b2d10b5.jpg" alt="Harlequin &amp; Pierrot" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Arlequin_6_fa9fad5da2.jpg" alt="Harlequin &amp; Pierrot" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Pierrot_2_aef9c7b6d6.jpg" alt="Harlequin &amp; Pierrot" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Pierrot_3_1ee80cda6f.jpg" alt="Harlequin &amp; Pierrot" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Pierrot_4_331d232dc1.jpg" alt="Harlequin &amp; Pierrot" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Pierrot_5_db8a30df47.jpg" alt="Harlequin &amp; Pierrot" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Pierrot_6_936f3ffcfd.jpg" alt="Harlequin &amp; Pierrot" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Pierrot_7_aa39181e68.jpg" alt="Harlequin &amp; Pierrot" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Pierrot_8_cdeab80eb6.jpg" alt="Harlequin &amp; Pierrot" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Pierrot_9_0e4f2a0d27.jpg" alt="Harlequin &amp; Pierrot" loading="lazy"></div>
+    </div>
+<div class="editorial-credits">
+<p><strong>Photographer:</strong> <a href="https://www.instagram.com/julie_michelet" target="_blank">julie_michelet</a></p>
+    <p><strong>Set designer:</strong> <a href="https://www.instagram.com/julie_michelet" target="_blank">julie_michelet</a></p>
+    <p><strong>Stylist:</strong> <a href="https://www.instagram.com/letsgetflashy" target="_blank">letsgetflashy</a></p>
+    <p><strong>Makeup:</strong> <a href="https://www.instagram.com/oceane_mua" target="_blank">oceane_mua</a></p>
+    <p><strong>Hair:</strong> <a href="https://www.instagram.com/fannyfraslin" target="_blank">fannyfraslin</a></p>
+    <p><strong>Nails:</strong> <a href="https://www.instagram.com/goodnailsonly_" target="_blank">goodnailsonly_</a></p>
+    <p><strong>Starring:</strong> <a href="https://www.instagram.com/redveronika" target="_blank">redveronika</a>, <a href="https://www.instagram.com/dianagrnv" target="_blank">dianagrnv</a>, <a href="https://www.instagram.com/elite_paris" target="_blank">elite_paris</a></p>
+    <p><strong>Fashion by:</strong> <a href="https://www.instagram.com/versace" target="_blank">versace</a>, <a href="https://www.instagram.com/ysl" target="_blank">ysl</a>, <a href="https://www.instagram.com/sineadgoreylondon" target="_blank">sineadgoreylondon</a>, <a href="https://www.instagram.com/mirandabananashop" target="_blank">mirandabananashop</a>, <a href="https://www.instagram.com/sergiorossi" target="_blank">sergiorossi</a>, <a href="https://www.instagram.com/kenzo" target="_blank">kenzo</a>, <a href="https://www.instagram.com/evenandodd_official" target="_blank">evenandodd_official</a>, <a href="https://www.instagram.com/laboutiquedejul" target="_blank">laboutiquedejul</a>, <a href="https://www.instagram.com/viviennewestwood" target="_blank">viviennewestwood</a>, <a href="https://www.instagram.com/miista" target="_blank">miista</a>, <a href="https://www.instagram.com/etiennejeanson" target="_blank">etiennejeanson</a>, <a href="https://www.instagram.com/buffaloshoes" target="_blank">buffaloshoes</a>, <a href="https://www.instagram.com/dior" target="_blank">dior</a>, <a href="https://www.instagram.com/newyorkjoeexchange" target="_blank">newyorkjoeexchange</a></p>
+</div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2025-04-16</p>
+        <h1 class="editorial-title">THE FAUST</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover_a679e5e0c7.jpg" alt="The Faust" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-subtitle">Inspired by the literary work Faust, this editorial offers a contemporary exploration of power, desire and inner duality. Rather than literally retrace the tale, I imagined three symbolic phases (conjuration, temptation and damnation) as narrative anchors to guide the visual narrative through the various looks. The result is a journey through ambition and consequence, filtered through my personal interpretation of a soul in search of something greater.</p>
+            <p class="editorial-desc-kr">괴테의 『파우스트』에서 영감을 받은 이번 에디토리얼은, 권력과 욕망, 그리고 내면의 이중성을 현대적으로 재해석한 비주얼 탐구입니다. 원작의 이야기를 그대로 따라가기보다는, ‘소환(Conjuration)’, ‘유혹(Temptation)’, ‘파멸(Damnation)’ 이라는 세 가지 상징적 단계를 중심으로 각 룩에 서사를 부여하며 전개해 나갔습니다. 결과적으로 이는, 무언가 더 크고 본질적인 것을 갈망하는 한 영혼이 야망과 그에 따르는 대가를 마주하며 나아가는 여정이자, 저만의 시선으로 풀어낸 내면의 초상화입니다.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1_dfffb38b39.png" alt="The Faust" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/2_12b764c83d.png" alt="The Faust" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/3_598c645aca.png" alt="The Faust" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/4_e7d347cbb4.png" alt="The Faust" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/5_21d9ebad9c.png" alt="The Faust" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/6_31f0e1161d.png" alt="The Faust" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/7_014ebda023.png" alt="The Faust" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/8_2202ca7e8d.png" alt="The Faust" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/9_09404b45ea.png" alt="The Faust" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/10_47060dad34.png" alt="The Faust" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/12_4a613f3303.png" alt="The Faust" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/13_5f6258f7d3.png" alt="The Faust" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/14_ce228f3a13.png" alt="The Faust" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/15_0526a8c32b.png" alt="The Faust" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/16_ff354455ed.png" alt="The Faust" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/17_280b95c167.png" alt="The Faust" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/18_ea8573335c.png" alt="The Faust" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/19_8de14ba1a5.png" alt="The Faust" loading="lazy"></div>
+    </div>
+<div class="editorial-credits">
+<p><strong>Photographer:</strong> <a href="https://www.instagram.com/taniabettiphotography" target="_blank">taniabettiphotography</a></p>
+    <p><strong>Creative Director:</strong> <a href="https://www.instagram.com/taniabettiphotography" target="_blank">taniabettiphotography</a></p>
+    <p><strong>Makeup:</strong> <a href="https://www.instagram.com/veronicacasanova_makeupartist" target="_blank">veronicacasanova_makeupartist</a></p>
+    <p><strong>Hair:</strong> <a href="https://www.instagram.com/dario_delia_hairstylist" target="_blank">dario_delia_hairstylist</a></p>
+    <p><strong>Styling:</strong> <a href="https://www.instagram.com/federicacunsolo" target="_blank">federicacunsolo</a>, <a href="https://www.instagram.com/sofiaterlizzi" target="_blank">sofiaterlizzi</a>, <a href="https://www.instagram.com/ciootti" target="_blank">ciootti</a></p>
+    <p><strong>Photo assist:</strong> <a href="https://www.instagram.com/alicebaldii_ph" target="_blank">alicebaldii_ph</a>, <a href="https://www.instagram.com/andrea___antonelli" target="_blank">andrea___antonelli</a></p>
+    <p><strong>Location:</strong> <a href="https://www.instagram.com/nopestudio2.0" target="_blank">nopestudio2.0</a></p>
+    <p><strong>Starring:</strong> <a href="https://www.instagram.com/gianmarco_costella" target="_blank">gianmarco_costella</a>, <a href="https://www.instagram.com/timothy_reyna_is_here" target="_blank">timothy_reyna_is_here</a></p>
+    <p><strong>Fashion by:</strong> <a href="https://www.instagram.com/rickowensonline" target="_blank">rickowensonline</a>, <a href="https://www.instagram.com/avavav" target="_blank">avavav</a>, <a href="https://www.instagram.com/chronos.corps" target="_blank">chronos.corps</a>, <a href="https://www.instagram.com/commedesgarcons" target="_blank">commedesgarcons</a>, <a href="https://www.instagram.com/guido.fronza" target="_blank">guido.fronza</a>, <a href="https://www.instagram.com/maison_gioffre" target="_blank">maison_gioffre</a>, <a href="https://www.instagram.com/xiaotiiing" target="_blank">xiaotiiing</a>, <a href="https://www.instagram.com/beatrice_gallo" target="_blank">beatrice_gallo</a>, <a href="https://www.instagram.com/sofiaterlizzi" target="_blank">sofiaterlizzi</a>, <a href="https://www.instagram.com/mattiabriganti_" target="_blank">mattiabriganti_</a>, <a href="https://www.instagram.com/zanaxztuff" target="_blank">zanaxztuff</a>, <a href="https://www.instagram.com/streetchic_by_katuscia" target="_blank">streetchic_by_katuscia</a>, <a href="https://www.instagram.com/_______esk_______" target="_blank">_______esk_______</a>, <a href="https://www.instagram.com/namilia" target="_blank">namilia</a>, <a href="https://www.instagram.com/nico_meoli_" target="_blank">nico_meoli_</a></p>
+</div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2025-04-17</p>
+        <h1 class="editorial-title">VIENTO NEGRO</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover_5e57f188d3.jpg" alt="Viento Negro" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-subtitle">“Black Wind” is a reflection on the era we are living in, and how it subtly—yet inevitably—affects us all. Wars, discrimination, and dehumanization create an atmosphere of constant tension, a &quot;black wind&quot; that slowly seeps into society, poisoning it and pushing it toward collective madness.
+
+With this editorial, I sought to capture that process visually, dividing the stages of this growing intoxication into distinct, narrative-driven scenes. It is a portrayal of how darkness creeps in—not all at once, but gradually—until it becomes inescapable.</p>
+            <p class="editorial-desc-kr">“Black Wind”는 우리가 살아가는 시대와 그 시대가 어떻게 조용히, 그러나 피할 수 없이 우리 모두에게 영향을 미치는지를 되돌아보는 작업입니다. 전쟁, 차별, 비인간화는 점점 사회를 병들게 하는 긴장감의 공기, 즉 &#x27;검은 바람(Black Wind)&#x27;을 만들어내고, 결국 그 바람은 집단적 광기로 이어집니다.
+
+이번 에디토리얼은 그러한 중독의 과정을 여러 장면으로 나누어 시각적으로 담아낸 시도입니다. &#x27;검은 바람&#x27;이 어떻게 스며들고, 퍼지고, 결국 정신을 잠식하는지를 단계적으로 보여주고자 했습니다.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1_f1d401b86e.png" alt="Viento Negro" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/2_d38135f3dd.png" alt="Viento Negro" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/4_7b8e9dbf31.png" alt="Viento Negro" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/5_7a7b13b235.png" alt="Viento Negro" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/6_9cc129ae2f.png" alt="Viento Negro" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/7_75fb4495de.png" alt="Viento Negro" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/8_72a2633d1f.png" alt="Viento Negro" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/9_09a585891d.png" alt="Viento Negro" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/10_178a6a9daa.png" alt="Viento Negro" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/11_681eae7bf8.png" alt="Viento Negro" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/12_aa9bf7c6dc.png" alt="Viento Negro" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/13_d8fc3f46e9.png" alt="Viento Negro" loading="lazy"></div>
+    </div>
+<div class="editorial-credits">
+<p><strong>Creative Director:</strong> <a href="https://www.instagram.com/ismaelnasrollah" target="_blank">ismaelnasrollah</a>, <a href="https://www.instagram.com/andreacoret" target="_blank">andreacoret</a></p>
+    <p><strong>Photographer:</strong> <a href="https://www.instagram.com/ismaelnasrollah" target="_blank">ismaelnasrollah</a></p>
+    <p><strong>Stylist:</strong> <a href="https://www.instagram.com/andreacoret" target="_blank">andreacoret</a></p>
+    <p><strong>Makeup &amp; Hair:</strong> <a href="https://www.instagram.com/__just_sasha__" target="_blank">__just_sasha__</a></p>
+    <p><strong>Photo Assist:</strong> <a href="https://www.instagram.com/soybernatperez" target="_blank">soybernatperez</a></p>
+    <p><strong>Starring:</strong> <a href="https://www.instagram.com/bella.buccito" target="_blank">bella.buccito</a></p>
+    <p><strong>Fashion by:</strong> <a href="https://www.instagram.com/patequilux" target="_blank">patequilux</a>, <a href="https://www.instagram.com/mrjuanvidal" target="_blank">mrjuanvidal</a>, <a href="https://www.instagram.com/hispanitasshoes" target="_blank">hispanitasshoes</a>, <a href="https://www.instagram.com/bimbaylola" target="_blank">bimbaylola</a>, <a href="https://www.instagram.com/gant" target="_blank">gant</a>, <a href="https://www.instagram.com/hunterboots" target="_blank">hunterboots</a>, <a href="https://www.instagram.com/zahati_" target="_blank">zahati_</a>, <a href="https://www.instagram.com/singularu" target="_blank">singularu</a>, <a href="https://www.instagram.com/palomospain" target="_blank">palomospain</a>, <a href="https://www.instagram.com/robertoverinooficial" target="_blank">robertoverinooficial</a>, <a href="https://www.instagram.com/tommyhilfiger" target="_blank">tommyhilfiger</a>, <a href="https://www.instagram.com/desigual" target="_blank">desigual</a>, <a href="https://www.instagram.com/luxenteroficial" target="_blank">luxenteroficial</a>, <a href="https://www.instagram.com/simorraofficial" target="_blank">simorraofficial</a>, <a href="https://www.instagram.com/drmartensofficial" target="_blank">drmartensofficial</a></p>
+</div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2025-04-18</p>
+        <h1 class="editorial-title">ÉCHEC ET MAT!</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover_fe5cc02959.jpg" alt="Échec et mat!" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-subtitle">&#x27;Échec et mat!&#x27; rewrites its own rules with each successive image. calzedonia, essence_cosmetics, w7makeupes is the constant in an evolving equation.</p>
+            <p class="editorial-desc-kr">&#x27;Échec et mat!&#x27;에는 화면을 초월하는 촉각적 품질이 있다. calzedonia, essence_cosmetics, w7makeupes의 텍스처가 거의 물리적으로 느껴진다.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1_e1d46d5ebe.jpg" alt="Échec et mat!" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/2_472a48a8fa.jpg" alt="Échec et mat!" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/4_870ace66eb.jpg" alt="Échec et mat!" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/5_2667c4d0a2.jpg" alt="Échec et mat!" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/6_1632d9f6da.png" alt="Échec et mat!" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/7_20222c2111.jpg" alt="Échec et mat!" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/8_19ba381408.jpg" alt="Échec et mat!" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/9_cc1a649fd4.jpg" alt="Échec et mat!" loading="lazy"></div>
+    </div>
+<div class="editorial-credits">
+<p><strong>Art direction :</strong> <a href="https://www.instagram.com/mar.sfab" target="_blank">mar.sfab</a></p>
+    <p><strong>Styling:</strong> <a href="https://www.instagram.com/mar.sfab" target="_blank">mar.sfab</a></p>
+    <p><strong>Photography:</strong> <a href="https://www.instagram.com/grimpet" target="_blank">grimpet</a></p>
+    <p><strong>Makeup:</strong> <a href="https://www.instagram.com/otroplano.lab" target="_blank">otroplano.lab</a>, <a href="https://www.instagram.com/gatti.bugatti" target="_blank">gatti.bugatti</a></p>
+    <p><strong>Hair:</strong> <a href="https://www.instagram.com/melsy.muah" target="_blank">melsy.muah</a></p>
+    <p><strong>Starring:</strong> <a href="https://www.instagram.com/jesstravers" target="_blank">jesstravers</a>, <a href="https://www.instagram.com/twomanagementbarcelona" target="_blank">twomanagementbarcelona</a></p>
+    <p><strong>Fashion by:</strong> <a href="https://www.instagram.com/calzedonia" target="_blank">calzedonia</a>, <a href="https://www.instagram.com/essence_cosmetics" target="_blank">essence_cosmetics</a>, <a href="https://www.instagram.com/w7makeupes" target="_blank">w7makeupes</a>, <a href="https://www.instagram.com/nyxcosmetics" target="_blank">nyxcosmetics</a>, <a href="https://www.instagram.com/ddona_cosmetics" target="_blank">ddona_cosmetics</a>, <a href="https://www.instagram.com/leona.jwlz" target="_blank">leona.jwlz</a>, <a href="https://www.instagram.com/adolfodominguezofficial" target="_blank">adolfodominguezofficial</a>, <a href="https://www.instagram.com/pullandbear" target="_blank">pullandbear</a>, <a href="https://www.instagram.com/mancillada_" target="_blank">mancillada_</a>, <a href="https://www.instagram.com/comollamoesto" target="_blank">comollamoesto</a>, <a href="https://www.instagram.com/parfois" target="_blank">parfois</a>, <a href="https://www.instagram.com/heyharper" target="_blank">heyharper</a>, <a href="https://www.instagram.com/simmilondon" target="_blank">simmilondon</a>, <a href="https://www.instagram.com/carlamancebo_" target="_blank">carlamancebo_</a>, <a href="https://www.instagram.com/salt_kissed" target="_blank">salt_kissed</a>, <a href="https://www.instagram.com/mango" target="_blank">mango</a>, <a href="https://www.instagram.com/zara" target="_blank">zara</a></p>
+</div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2025-04-20</p>
+        <h1 class="editorial-title">EASTER</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover_2126c171a0.jpg" alt="Easter" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-subtitle">Somewhere between documentation and dream, &#x27;Easter&#x27; finds its visual language. charlotteelizabet, khaosbykalani, whilechape1 appears throughout, grounding the ethereal in the wearable.</p>
+            <p class="editorial-desc-kr">&#x27;Easter&#x27;의 감정적 레지스터는 페이지를 넘길 때마다 변한다. charlotteelizabet, khaosbykalani, whilechape1이(가) 모든 톤 변화에 적응한다.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1_293c85be3e.png" alt="Easter" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/2_97a7652f17.png" alt="Easter" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/3_526cf6ab00.png" alt="Easter" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/5_968695e7b5.png" alt="Easter" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/6_06e69f36bd.png" alt="Easter" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/7_f609458f6b.png" alt="Easter" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/8_c44d6afe67.png" alt="Easter" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/9_9dce092b67.png" alt="Easter" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/10_f4f312de3c.png" alt="Easter" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/11_7b95a90fb6.png" alt="Easter" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/12_c0bfdef4c5.png" alt="Easter" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/13_351e5f5426.png" alt="Easter" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/14_5dd551fb3b.png" alt="Easter" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/15_b76573ca92.png" alt="Easter" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/16_45a8183570.png" alt="Easter" loading="lazy"></div>
+    </div>
+<div class="editorial-credits">
+<p><strong>Photographer:</strong> <a href="https://www.instagram.com/danniijopbotography" target="_blank">danniijopbotography</a></p>
+    <p><strong>Creative director:</strong> <a href="https://www.instagram.com/danniijopbotography" target="_blank">danniijopbotography</a></p>
+    <p><strong>Set design:</strong> <a href="https://www.instagram.com/charlotteelizabet" target="_blank">charlotteelizabet</a></p>
+    <p><strong>Assistant:</strong> <a href="https://www.instagram.com/fizzyschweizer" target="_blank">fizzyschweizer</a>, <a href="https://www.instagram.com/shotbygreyy" target="_blank">shotbygreyy</a></p>
+    <p><strong>Stylist:</strong> <a href="https://www.instagram.com/khaosbykalani" target="_blank">khaosbykalani</a></p>
+    <p><strong>Makeup:</strong> <a href="https://www.instagram.com/megan.hulacka" target="_blank">megan.hulacka</a></p>
+    <p><strong>Stylist assist:</strong> <a href="https://www.instagram.com/whilechape1" target="_blank">whilechape1</a></p>
+    <p><strong>Photo assist:</strong> <a href="https://www.instagram.com/brittnishaw_" target="_blank">brittnishaw_</a></p>
+    <p><strong>Starring:</strong> <a href="https://www.instagram.com/chloevalentinax" target="_blank">chloevalentinax</a>, <a href="https://www.instagram.com/yasyamazi" target="_blank">yasyamazi</a></p>
+    <p><strong>Location:</strong> <a href="https://www.instagram.com/bethbrandy" target="_blank">bethbrandy</a></p>
+    <p><strong>Fashion by:</strong> <a href="https://www.instagram.com/viviennewestwood" target="_blank">viviennewestwood</a>, <a href="https://www.instagram.com/anniesibizia" target="_blank">anniesibizia</a>, <a href="https://www.instagram.com/givenchy" target="_blank">givenchy</a>, <a href="https://www.instagram.com/versace" target="_blank">versace</a>, <a href="https://www.instagram.com/loubiton" target="_blank">loubiton</a>, <a href="https://www.instagram.com/alexandermcqueen" target="_blank">alexandermcqueen</a>, <a href="https://www.instagram.com/prada" target="_blank">prada</a>, <a href="https://www.instagram.com/sophrobson_" target="_blank">sophrobson_</a>, <a href="https://www.instagram.com/cultofshane" target="_blank">cultofshane</a></p>
+</div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2025-04-21</p>
+        <h1 class="editorial-title">FROST AND SHADOWS</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover_9940a2871c.jpg" alt="Frost and Shadows" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-subtitle">In a world of stark contrasts, &quot;Frost and Shadow&quot; captures the tension between light and dark, where the cold, white backdrop evokes the chill of winter. Voluminous, sculptural garments in black or white create a striking balance, with soft whites glowing with icy radiance. The models’ makeup, shimmering in silver and white, adds an ethereal, almost frozen quality to their porcelain skin, while their intense gazes cut through the atmosphere. This fascinating duality between frost and darkness gives Frost and Shadow a spectral elegance, where every detail evokes a beauty both fragile and powerful. In this play of contrasts, fashion becomes a sculptural work, frozen in time like a fleeting moment of eternal winter.</p>
+            <p class="editorial-desc-kr">극명한 대비의 세계 속에서, “Frost and Shadow”는 빛과 어둠 사이의 긴장감을 섬세하게 포착합니다. 차가운 흰색 배경은 겨울의 냉기를 불러일으키고, 검정과 흰색의 조형적인 실루엣은 시선을 사로잡는 균형감을 만들어냅니다.
+
+부드러운 화이트는 얼음처럼 은은하게 빛나며, 모델들의 실버와 화이트 톤의 메이크업은 도자기 같은 피부에 몽환적이고 서늘한 분위기를 더합니다. 강렬한 눈빛은 정적을 뚫고 나아가며, 서리와 그림자 사이의 이중성은 섬세하면서도 힘 있는 아름다움을 드러냅니다.
+
+이처럼 상반된 요소들이 조화를 이루는 가운데, 패션은 마치 시간 속에 멈춰 선 겨울의 한 순간처럼, 조각처럼 정제된 아름다움으로 재탄생합니다.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1_6cb27bf0fb.png" alt="Frost and Shadows" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/2_d40679ad22.png" alt="Frost and Shadows" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/4_533e6921c8.png" alt="Frost and Shadows" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/5_8c367f372c.png" alt="Frost and Shadows" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/6_b7f7cabdd8.png" alt="Frost and Shadows" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/7_4f8e7e18e8.png" alt="Frost and Shadows" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/8_0bb3df571e.png" alt="Frost and Shadows" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/9_2b2dc61ee8.png" alt="Frost and Shadows" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/10_83934435b3.png" alt="Frost and Shadows" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/11_0e4598dc9f.png" alt="Frost and Shadows" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/12_923e25e896.png" alt="Frost and Shadows" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/13_573f5a5f37.png" alt="Frost and Shadows" loading="lazy"></div>
+    </div>
+<div class="editorial-credits">
+<p><strong>Photographer:</strong> <a href="https://www.instagram.com/thomashrtt" target="_blank">thomashrtt</a></p>
+    <p><strong>Makeup &amp; Hair:</strong> <a href="https://www.instagram.com/laila.mkp" target="_blank">laila.mkp</a></p>
+    <p><strong>Stylist:</strong> <a href="https://www.instagram.com/bereniceravaille" target="_blank">bereniceravaille</a></p>
+    <p><strong>Starring:</strong> <a href="https://www.instagram.com/lunacornelissen" target="_blank">lunacornelissen</a>, <a href="https://www.instagram.com/adelischaa" target="_blank">adelischaa</a></p>
+    <p><strong>Fashion by:</strong> <a href="https://www.instagram.com/amelieowski" target="_blank">amelieowski</a>, <a href="https://www.instagram.com/zuccochristopher" target="_blank">zuccochristopher</a>, <a href="https://www.instagram.com/adriansansonconstruction" target="_blank">adriansansonconstruction</a>, <a href="https://www.instagram.com/bereniceravaille" target="_blank">bereniceravaille</a>, <a href="https://www.instagram.com/zara" target="_blank">zara</a>, <a href="https://www.instagram.com/occidente_ecocollection" target="_blank">occidente_ecocollection</a>, <a href="https://www.instagram.com/thomashrtt" target="_blank">thomashrtt</a>, <a href="https://www.instagram.com/tinabenmorad" target="_blank">tinabenmorad</a>, <a href="https://www.instagram.com/balenciaga" target="_blank">balenciaga</a></p>
+</div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2025-04-22</p>
+        <h1 class="editorial-title">STILL SHARP</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover_7118c00e14.jpg" alt="Still Sharp" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-subtitle">Somewhere between documentation and dream, &#x27;Still Sharp&#x27; finds its visual language. alinafaceart, boss, cosstores appears throughout, grounding the ethereal in the wearable.</p>
+            <p class="editorial-desc-kr">&#x27;Still Sharp&#x27;은(는) 재즈 뮤지션이 솔로를 구축하듯 내러티브를 구성한다. alinafaceart, boss, cosstores이(가) 즉흥 아래의 코드 진행이다.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1_7e710cbb39.png" alt="Still Sharp" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/2_ad645df5f1.png" alt="Still Sharp" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/3_2ce9c2c087.png" alt="Still Sharp" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/4_6338c0bb80.png" alt="Still Sharp" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/5_935458e907.png" alt="Still Sharp" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/7_dffc2e0a45.png" alt="Still Sharp" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/8_da1e97197c.png" alt="Still Sharp" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/9_c3682a16d3.png" alt="Still Sharp" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/10_6e25a8b095.png" alt="Still Sharp" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/11_4e78043aec.png" alt="Still Sharp" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/12_4f75ae6a42.png" alt="Still Sharp" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/13_bcc8aa9545.png" alt="Still Sharp" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/14_c965a9f237.png" alt="Still Sharp" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/15_5cc91b4e5d.png" alt="Still Sharp" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/16_3d2409df42.png" alt="Still Sharp" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/17_17b22b1903.png" alt="Still Sharp" loading="lazy"></div>
+    </div>
+<div class="editorial-credits">
+<p><strong>Photographer:</strong> <a href="https://www.instagram.com/maxim.millerr" target="_blank">maxim.millerr</a></p>
+    <p><strong>Hair &amp; Makeup :</strong> <a href="https://www.instagram.com/alinafaceart" target="_blank">alinafaceart</a></p>
+    <p><strong>Stylist:</strong> <a href="https://www.instagram.com/alinafaceart" target="_blank">alinafaceart</a></p>
+    <p><strong>Post-production:</strong> <a href="https://www.instagram.com/retush.agency" target="_blank">retush.agency</a></p>
+    <p><strong>Starring:</strong> <a href="https://www.instagram.com/fav_falone" target="_blank">fav_falone</a></p>
+    <p><strong>Fashion by:</strong> <a href="https://www.instagram.com/boss" target="_blank">boss</a>, <a href="https://www.instagram.com/cosstores" target="_blank">cosstores</a>, <a href="https://www.instagram.com/nicolaslee.de" target="_blank">nicolaslee.de</a>, <a href="https://www.instagram.com/zara" target="_blank">zara</a>, <a href="https://www.instagram.com/miista" target="_blank">miista</a>, <a href="https://www.instagram.com/wrstbhvr" target="_blank">wrstbhvr</a>, <a href="https://www.instagram.com/jp1880menswear" target="_blank">jp1880menswear</a>, <a href="https://www.instagram.com/cesaregaspari.official" target="_blank">cesaregaspari.official</a>, <a href="https://www.instagram.com/ysl" target="_blank">ysl</a>, <a href="https://www.instagram.com/Jexter" target="_blank">Jexter</a>, <a href="https://www.instagram.com/off___white" target="_blank">off___white</a>, <a href="https://www.instagram.com/timberland" target="_blank">timberland</a></p>
+</div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2025-04-23</p>
+        <h1 class="editorial-title">URBAN FANTASY</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover_8b78cb9443.jpg" alt="Urban fantasy" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-subtitle">The casting of &#x27;Urban fantasy&#x27; is as much a statement as the clothes, and pedrochalbert, drionadream, pipilarpi rises to match.</p>
+            <p class="editorial-desc-kr">&#x27;Urban fantasy&#x27;의 각 프레임은 질문이자 답변으로 기능한다. pedrochalbert, drionadream, pipilarpi이(가) 그 구두점이다.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1_09cb696061.png" alt="Urban fantasy" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/2_348b18f5b8.png" alt="Urban fantasy" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/3_4b39f6c4df.png" alt="Urban fantasy" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/4_8542d6548b.png" alt="Urban fantasy" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/5_fdbae82872.png" alt="Urban fantasy" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/6_32d187567f.png" alt="Urban fantasy" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/7_63497679a6.png" alt="Urban fantasy" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/8_c5fd379f1a.png" alt="Urban fantasy" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/9_e2731889f9.png" alt="Urban fantasy" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/10_e36485b612.png" alt="Urban fantasy" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/11_69112586fc.png" alt="Urban fantasy" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/12_72dce7e5b2.png" alt="Urban fantasy" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/13_2e6598de46.png" alt="Urban fantasy" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/14_9e6c0c7189.png" alt="Urban fantasy" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/15_512f1db140.png" alt="Urban fantasy" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/17_cc38bfa326.png" alt="Urban fantasy" loading="lazy"></div>
+    </div>
+<div class="editorial-credits">
+<p><strong>Photographer:</strong> <a href="https://www.instagram.com/just.zames" target="_blank">just.zames</a></p>
+    <p><strong>Stylist:</strong> <a href="https://www.instagram.com/pedrochalbert" target="_blank">pedrochalbert</a></p>
+    <p><strong>Hair:</strong> <a href="https://www.instagram.com/angiehairart_" target="_blank">angiehairart_</a></p>
+    <p><strong>MakeUp:</strong> <a href="https://www.instagram.com/marceloduartmua" target="_blank">marceloduartmua</a></p>
+    <p><strong>Starring:</strong> <a href="https://www.instagram.com/__muuna___gallery" target="_blank">__muuna___gallery</a></p>
+    <p><strong>Fashion by:</strong> <a href="https://www.instagram.com/drionadream" target="_blank">drionadream</a>, <a href="https://www.instagram.com/pipilarpi" target="_blank">pipilarpi</a>, <a href="https://www.instagram.com/franciscanabinho_studio" target="_blank">franciscanabinho_studio</a>, <a href="https://www.instagram.com/fiodentale" target="_blank">fiodentale</a>, <a href="https://www.instagram.com/_annafreri" target="_blank">_annafreri</a>, <a href="https://www.instagram.com/seaside.oficial" target="_blank">seaside.oficial</a>, <a href="https://www.instagram.com/balenciaga" target="_blank">balenciaga</a>, <a href="https://www.instagram.com/oculistavalbom" target="_blank">oculistavalbom</a>, <a href="https://www.instagram.com/calpfungs" target="_blank">calpfungs</a>, <a href="https://www.instagram.com/jacquemus" target="_blank">jacquemus</a>, <a href="https://www.instagram.com/toderastoderas" target="_blank">toderastoderas</a>, <a href="https://www.instagram.com/gcdswear" target="_blank">gcdswear</a>, <a href="https://www.instagram.com/mestre_studio" target="_blank">mestre_studio</a>, <a href="https://www.instagram.com/dolcegabbana" target="_blank">dolcegabbana</a>, <a href="https://www.instagram.com/artbyvitoria_" target="_blank">artbyvitoria_</a>, <a href="https://www.instagram.com/shaiwai__" target="_blank">shaiwai__</a>, <a href="https://www.instagram.com/celine" target="_blank">celine</a></p>
+</div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2025-04-24</p>
+        <h1 class="editorial-title">BE WITCHED</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover_e79fdd6cc7.jpg" alt="Be Witched" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-subtitle">&#x27;Be Witched&#x27; turns the editorial format inside out, using dajungson, nowk.iss, nickels_blancs as both texture and text.</p>
+            <p class="editorial-desc-kr">&#x27;Be Witched&#x27;은(는) 가장 강력한 패션 이미지가 잊히지 않는 것임을 이해한다. dajungson, nowk.iss, nickels_blancs이(가) 여기서 기억의 직물이 된다.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1_1dee236670.png" alt="Be Witched" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/2_fd6eceea6a.png" alt="Be Witched" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/3_36a85427bd.png" alt="Be Witched" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/5_62f5b0f6a3.png" alt="Be Witched" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/6_d0dd918cba.png" alt="Be Witched" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/7_c74db58b28.png" alt="Be Witched" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/8_195f13e8da.png" alt="Be Witched" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/9_3ebc154af2.png" alt="Be Witched" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/10_cf41f32200.png" alt="Be Witched" loading="lazy"></div>
+    </div>
+<div class="editorial-credits">
+<p><strong>Photographer:</strong> <a href="https://www.instagram.com/sebnemdemirelphotos" target="_blank">sebnemdemirelphotos</a></p>
+    <p><strong>Makeup:</strong> <a href="https://www.instagram.com/ephemerea.universe" target="_blank">ephemerea.universe</a></p>
+    <p><strong>Starring:</strong> <a href="https://www.instagram.com/charissa.egger" target="_blank">charissa.egger</a>, <a href="https://www.instagram.com/feiinfei" target="_blank">feiinfei</a>, <a href="https://www.instagram.com/ustkris" target="_blank">ustkris</a></p>
+    <p><strong>Fashion by:</strong> <a href="https://www.instagram.com/dajungson" target="_blank">dajungson</a>, <a href="https://www.instagram.com/nowk.iss" target="_blank">nowk.iss</a>, <a href="https://www.instagram.com/nickels_blancs" target="_blank">nickels_blancs</a>, <a href="https://www.instagram.com/saussogod" target="_blank">saussogod</a>, <a href="https://www.instagram.com/xanaduparis" target="_blank">xanaduparis</a>, <a href="https://www.instagram.com/jm.diamant" target="_blank">jm.diamant</a>, <a href="https://www.instagram.com/nodaleto" target="_blank">nodaleto</a>, <a href="https://www.instagram.com/mokouso" target="_blank">mokouso</a>, <a href="https://www.instagram.com/crocs" target="_blank">crocs</a>, <a href="https://www.instagram.com/fengchenwang" target="_blank">fengchenwang</a>, <a href="https://www.instagram.com/loe.studio.bijou" target="_blank">loe.studio.bijou</a>, <a href="https://www.instagram.com/courreges" target="_blank">courreges</a></p>
+</div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2025-04-25</p>
+        <h1 class="editorial-title">FORTUNE TELLING</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover_447aee1554.jpg" alt="Fortune Telling" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-subtitle">The visual grammar of &#x27;Fortune Telling&#x27; is precise without being rigid, incorporating emma_onfire into its syntax naturally.</p>
+            <p class="editorial-desc-kr">&#x27;Fortune Telling&#x27;은(는) 에디토리얼이라기보다 필름에 포착된 하나의 분위기에 가깝다. emma_onfire의 피스들은 분위기 속에 녹아든다.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1_e97c47bfc2.png" alt="Fortune Telling" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/2_feaf400c25.png" alt="Fortune Telling" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/4_747bb01e09.png" alt="Fortune Telling" loading="lazy"></div>
+    </div>
+<div class="editorial-credits">
+<p><strong>Art Director:</strong> <a href="https://www.instagram.com/emma_onfire" target="_blank">emma_onfire</a></p>
+    <p><strong>Photographer:</strong> <a href="https://www.instagram.com/yasmine_bennis" target="_blank">yasmine_bennis</a></p>
+    <p><strong>Makeup:</strong> <a href="https://www.instagram.com/emma_onfire" target="_blank">emma_onfire</a></p>
+    <p><strong>Acc Designer:</strong> <a href="https://www.instagram.com/emma_onfire" target="_blank">emma_onfire</a></p>
+    <p><strong>Retoucher:</strong> <a href="https://www.instagram.com/abdelkebdani" target="_blank">abdelkebdani</a></p>
+    <p><strong>Starring:</strong> <a href="https://www.instagram.com/teline_feerie" target="_blank">teline_feerie</a></p>
+</div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2025-04-26</p>
+        <h1 class="editorial-title">THE TIDES WHISPER YOUR NAME</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover_7c77a0de0d.jpg" alt="The tides whisper your name" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-subtitle">&#x27;The tides whisper your name&#x27; invites the viewer into a carefully constructed world where fashion serves as both passport and map. _giulia_gagliardi__, rosselladattoli, chapterybrand dresses the journey.</p>
+            <p class="editorial-desc-kr">&#x27;The tides whisper your name&#x27;은(는) 다큐멘터리 사진의 엄밀함으로 패션에 접근한다. _giulia_gagliardi__, rosselladattoli, chapterybrand은(는) 전시되기보다 관찰된다.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1_1c3e5bba70.png" alt="The tides whisper your name" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/2_edf5ff60d8.png" alt="The tides whisper your name" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/3_198e0f43f3.png" alt="The tides whisper your name" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/4_1cb70c1148.png" alt="The tides whisper your name" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/5_fd61e0dbeb.png" alt="The tides whisper your name" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/6_3280b6e62e.png" alt="The tides whisper your name" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/7_63fbacf719.png" alt="The tides whisper your name" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/8_aabf3e45f9.png" alt="The tides whisper your name" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/9_86f217b955.png" alt="The tides whisper your name" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/11_c52c1e5862.png" alt="The tides whisper your name" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/12_c7c4f450c7.png" alt="The tides whisper your name" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/13_401b327750.png" alt="The tides whisper your name" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/14_d06f121e3d.png" alt="The tides whisper your name" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/15_2ad1659910.png" alt="The tides whisper your name" loading="lazy"></div>
+    </div>
+<div class="editorial-credits">
+<p><strong>Photography:</strong> <a href="https://www.instagram.com/in.costante_" target="_blank">in.costante_</a></p>
+    <p><strong>Styling:</strong> <a href="https://www.instagram.com/eyesonthe.world" target="_blank">eyesonthe.world</a></p>
+    <p><strong>Makeup:</strong> <a href="https://www.instagram.com/flamiao" target="_blank">flamiao</a></p>
+    <p><strong>Hair:</strong> <a href="https://www.instagram.com/fedetibi_mua" target="_blank">fedetibi_mua</a></p>
+    <p><strong>Backstage video:</strong> <a href="https://www.instagram.com/durbanoserena" target="_blank">durbanoserena</a></p>
+    <p><strong>Light assist:</strong> <a href="https://www.instagram.com/mattbe___" target="_blank">mattbe___</a></p>
+    <p><strong>Starring:</strong> <a href="https://www.instagram.com/michelagrimm" target="_blank">michelagrimm</a></p>
+    <p><strong>Fashion by:</strong> <a href="https://www.instagram.com/_giulia_gagliardi__" target="_blank">_giulia_gagliardi__</a>, <a href="https://www.instagram.com/rosselladattoli" target="_blank">rosselladattoli</a>, <a href="https://www.instagram.com/chapterybrand" target="_blank">chapterybrand</a>, <a href="https://www.instagram.com/chiarabcn_official" target="_blank">chiarabcn_official</a>, <a href="https://www.instagram.com/invaerso" target="_blank">invaerso</a></p>
+</div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2025-04-27</p>
+        <h1 class="editorial-title">DOLCHE DISSENSO</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover_cd22985f84.jpg" alt="Dolche Dissenso" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-subtitle">&#x27;Dolche Dissenso&#x27; approaches fashion with the rigor of documentary photography. gant, yollo, poisondropru is observed rather than displayed.</p>
+            <p class="editorial-desc-kr">&#x27;Dolche Dissenso&#x27;의 시퀀싱은 흠잡을 데 없다. gant, yollo, poisondropru의 피스들이 정확히 적절한 순간에 배치된다.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1_eec1a42a1e.png" alt="Dolche Dissenso" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/2_e9ca231730.png" alt="Dolche Dissenso" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/3_c0375fd5be.png" alt="Dolche Dissenso" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/4_8ada916835.png" alt="Dolche Dissenso" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/5_91ee061c84.png" alt="Dolche Dissenso" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/6_79a1e04085.png" alt="Dolche Dissenso" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/7_1c5b95c2a0.png" alt="Dolche Dissenso" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/8_389e181e52.png" alt="Dolche Dissenso" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/10_5fe343d065.png" alt="Dolche Dissenso" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/11_2d85ad9ee0.png" alt="Dolche Dissenso" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/12_35d8208f41.png" alt="Dolche Dissenso" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/13_1e71cb3fc6.png" alt="Dolche Dissenso" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/14_3981f03676.png" alt="Dolche Dissenso" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/15_e531bbe06e.png" alt="Dolche Dissenso" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/16_8c585b2117.png" alt="Dolche Dissenso" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/17_1748d97b67.png" alt="Dolche Dissenso" loading="lazy"></div>
+    </div>
+<div class="editorial-credits">
+<p><strong>Photography:</strong> <a href="https://www.instagram.com/MarieSchuldigen" target="_blank">MarieSchuldigen</a></p>
+    <p><strong>Art direction:</strong> <a href="https://www.instagram.com/MarieSchuldigen" target="_blank">MarieSchuldigen</a></p>
+    <p><strong>Styling:</strong> <a href="https://www.instagram.com/anyuta_one_only" target="_blank">anyuta_one_only</a></p>
+    <p><strong>Makeup &amp; Hair:</strong> <a href="https://www.instagram.com/darnelka_mua" target="_blank">darnelka_mua</a></p>
+    <p><strong>Assist &amp; light:</strong> <a href="https://www.instagram.com/focfocus" target="_blank">focfocus</a></p>
+    <p><strong>Backstage:</strong> <a href="https://www.instagram.com/stu.grom" target="_blank">stu.grom</a></p>
+    <p><strong>Retouch:</strong> <a href="https://www.instagram.com/rrina_retouch" target="_blank">rrina_retouch</a></p>
+    <p><strong>Starring:</strong> <a href="https://www.instagram.com/PavelZaretsky" target="_blank">PavelZaretsky</a></p>
+    <p><strong>Fashion by:</strong> <a href="https://www.instagram.com/gant" target="_blank">gant</a>, <a href="https://www.instagram.com/yollo" target="_blank">yollo</a>, <a href="https://www.instagram.com/poisondropru" target="_blank">poisondropru</a>, <a href="https://www.instagram.com/hatparad" target="_blank">hatparad</a>, <a href="https://www.instagram.com/tunkina" target="_blank">tunkina</a>, <a href="https://www.instagram.com/salvatorebrunacci" target="_blank">salvatorebrunacci</a>, <a href="https://www.instagram.com/tarajarmon" target="_blank">tarajarmon</a>, <a href="https://www.instagram.com/kasumovbrand" target="_blank">kasumovbrand</a>, <a href="https://www.instagram.com/gucci" target="_blank">gucci</a>, <a href="https://www.instagram.com/pro.mamarazreshila" target="_blank">pro.mamarazreshila</a>, <a href="https://www.instagram.com/rokoko.brand" target="_blank">rokoko.brand</a>, <a href="https://www.instagram.com/oodji.official" target="_blank">oodji.official</a>, <a href="https://www.instagram.com/closer.moscow" target="_blank">closer.moscow</a>, <a href="https://www.instagram.com/calliopeofficial" target="_blank">calliopeofficial</a>, <a href="https://www.instagram.com/henderson_fashion" target="_blank">henderson_fashion</a>, <a href="https://www.instagram.com/canali" target="_blank">canali</a>, <a href="https://www.instagram.com/Recast" target="_blank">Recast</a>, <a href="https://www.instagram.com/Coton" target="_blank">Coton</a>, <a href="https://www.instagram.com/LecticoRisus" target="_blank">LecticoRisus</a>, <a href="https://www.instagram.com/Libero" target="_blank">Libero</a>, <a href="https://www.instagram.com/Pitas" target="_blank">Pitas</a>, <a href="https://www.instagram.com/Raf" target="_blank">Raf</a></p>
+</div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2025-04-28</p>
+        <h1 class="editorial-title">AEQUOREAL, A SIREN&#x27;S WHISPER</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover_420fb0af6c.jpg" alt="Aequoreal, A Siren&#x27;s Whisper" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-subtitle">In a realm suspended between seafoam and stardust, emerges the vision of a futuristic siren — a being woven from dreams, water, and light. This editorial explores the transcendence of form through fluid fabrics and organic silhouettes that melt and merge into one another, creating movement that feels alive, weightless, and eternal.
+
+Innovation pulses subtly beneath the surface — unexpected textures and unconventional cuts echo a future not yet lived, but deeply felt. The garments do not simply adorn; they breathe, they flow, they speak.
+
+Bathed in soft, diffused lighting and enveloped in a lingering energy, the atmosphere evokes a translucent, iridescent world where the intangible becomes tangible. Like bioluminescence in the deep, details shimmer and dissolve, blurring boundaries between body and space, material and illusion.
+
+This is not just fashion. It is a mirage you can wear — a whisper of what’s to come.</p>
+            <p class="editorial-desc-kr">바다거품과 별먼지가 만나는 경계에서, 꿈과 물, 빛으로 탄생한 미래적 세이렌의 비전이 펼쳐집니다. 이번 에디토리얼은 흐르는 듯한 소재와 유기적인 실루엣을 통해 형태의 경계를 허물고, 살아 있는 듯한 무중력의 움직임을 만들어냅니다.
+
+옷은 단순히 몸을 꾸미는 것을 넘어, 숨쉬고 흐르며, 이야기를 건네는 존재로 변합니다. 예상치 못한 텍스처와 비범한 커팅은, 아직 오지 않았지만 분명히 느껴지는 미래의 감각을 전합니다.
+
+부드러운 빛과 퍼지는 에너지 속에서, 비현실이 현실이 되는 투명한 세계가 펼쳐지고, 몸과 공간, 물질과 환영의 경계는 흐려집니다.
+
+이것은 단순한 패션이 아닙니다. 입을 수 있는 신기루, 다가올 미래의 조용한 속삭임입니다.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1_2baebfb71a.png" alt="Aequoreal, A Siren&#x27;s Whisper" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/2_2ccca9f148.png" alt="Aequoreal, A Siren&#x27;s Whisper" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/3_ac3be8a36f.png" alt="Aequoreal, A Siren&#x27;s Whisper" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/4_20f58beba6.png" alt="Aequoreal, A Siren&#x27;s Whisper" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/5_dd87f59447.png" alt="Aequoreal, A Siren&#x27;s Whisper" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/6_cc35273c02.png" alt="Aequoreal, A Siren&#x27;s Whisper" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/7_d9d5ca2011.png" alt="Aequoreal, A Siren&#x27;s Whisper" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/8_70e6fcee18.png" alt="Aequoreal, A Siren&#x27;s Whisper" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/9_943fa741a8.png" alt="Aequoreal, A Siren&#x27;s Whisper" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/10_f73b6652a8.png" alt="Aequoreal, A Siren&#x27;s Whisper" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/11_679d5aeeef.png" alt="Aequoreal, A Siren&#x27;s Whisper" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/13_c74e165c87.png" alt="Aequoreal, A Siren&#x27;s Whisper" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/14_512359ceb8.png" alt="Aequoreal, A Siren&#x27;s Whisper" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/15_250a10e42c.png" alt="Aequoreal, A Siren&#x27;s Whisper" loading="lazy"></div>
+    </div>
+<div class="editorial-credits">
+<p><strong>Photographer:</strong> <a href="https://www.instagram.com/yousefbabb" target="_blank">yousefbabb</a></p>
+    <p><strong>Art Direction:</strong> <a href="https://www.instagram.com/steph.abrajan" target="_blank">steph.abrajan</a></p>
+    <p><strong>Stylist:</strong> <a href="https://www.instagram.com/steph.abrajan" target="_blank">steph.abrajan</a></p>
+    <p><strong>Makeup:</strong> <a href="https://www.instagram.com/santanamakeup_" target="_blank">santanamakeup_</a></p>
+    <p><strong>Hair:</strong> <a href="https://www.instagram.com/mannymarciall" target="_blank">mannymarciall</a></p>
+    <p><strong>Production:</strong> <a href="https://www.instagram.com/Stevid Studio" target="_blank">Stevid Studio</a>, <a href="https://www.instagram.com/At Foro Radi" target="_blank">At Foro Radi</a>, <a href="https://www.instagram.com/Mexico City" target="_blank">Mexico City</a></p>
+    <p><strong>Starring:</strong> <a href="https://www.instagram.com/alerojas24" target="_blank">alerojas24</a></p>
+    <p><strong>Fashion by:</strong> <a href="https://www.instagram.com/aritos_rd" target="_blank">aritos_rd</a>, <a href="https://www.instagram.com/blanco.abrajan" target="_blank">blanco.abrajan</a>, <a href="https://www.instagram.com/lacstudioo" target="_blank">lacstudioo</a>, <a href="https://www.instagram.com/ulises.gaarcia" target="_blank">ulises.gaarcia</a>, <a href="https://www.instagram.com/falc0nmx" target="_blank">falc0nmx</a></p>
+</div>
+</section>
+<div class="section-divider"></div>
+<footer><p>PAP MAGAZINE</p><p>&copy; 2025 PAP MAGAZINE. All rights reserved.</p></footer>
+<script>
+window.addEventListener('scroll',function(){const s=document.querySelector('.nav-scroll-indicator');s.style.width=(window.scrollY/(document.documentElement.scrollHeight-window.innerHeight))*100+'%'});
+const o=new IntersectionObserver(function(e){e.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)'}}},{threshold:.1,rootMargin:'0px 0px -100px 0px'});
+document.querySelectorAll('.editorial-section').forEach(s=>o.observe(s));
+</script>
+</body>
+</html>

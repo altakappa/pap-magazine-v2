@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="PAP Magazine의 최신 패션, 뷰티, 라이프스타일 아티클을 만나보세요. Fashion, beauty, and lifestyle articles from PAP Magazine.">
+<meta property="og:title" content="Articles | PAP Magazine">
+<meta property="og:description" content="PAP Magazine의 최신 패션, 뷰티, 라이프스타일 아티클을 만나보세요. Fashion, beauty, and lifestyle articles from PAP Magazine.">
+<meta property="og:image" content="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_0281a06055.jpg">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://pap-magazine.com/articles.html">
+<title>Articles | PAP Magazine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="pap-styles.css">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-height:100vh; }
+.page-header {
+  padding:20px 40px; display:flex; align-items:center; justify-content:space-between;
+  border-bottom:1px solid rgba(255,255,255,.06);
+}
+.page-header a { color:#fff; text-decoration:none; font-size:11px; letter-spacing:.15em; font-weight:700; }
+.page-logo { font-size:14px; font-weight:800; letter-spacing:.2em; color:#fff; text-decoration:none; }
+.page-title {
+  font-size:28px; font-weight:800; letter-spacing:.15em; padding:40px 48px 8px; color:#fff;
+}
+.page-count { font-size:11px; color:#666; letter-spacing:.12em; padding:0 48px 24px; }
+.filter-wrap { padding:0 48px 24px; display:flex; flex-wrap:wrap; gap:6px; }
+.filter-btn {
+  background:transparent; border:1px solid #333; color:#888; padding:6px 14px;
+  font-size:10px; font-weight:600; letter-spacing:.1em; cursor:pointer; transition:all .2s;
+  font-family:'Montserrat',sans-serif;
+}
+.filter-btn:hover { border-color:#666; color:#fff; }
+.filter-btn.active { background:#fff; color:#000; border-color:#fff; }
+.card-grid {
+  display:grid; grid-template-columns:repeat(3,1fr); gap:20px; padding:0 48px 60px;
+}
+.card { cursor:pointer; transition:opacity .2s; }
+.card:hover { opacity:.85; }
+.card-img { width:100%; aspect-ratio:3/2; overflow:hidden; border-radius:2px; background:#111; }
+.card-img img { width:100%; height:100%; object-fit:cover; display:block; }
+.card-cat { font-size:10px; color:#666; letter-spacing:.08em; margin-top:10px; }
+.card-title { font-size:13px; font-weight:700; letter-spacing:.06em; margin-top:4px; color:#fff; }
+.page-footer { padding:40px 48px; border-top:1px solid rgba(255,255,255,.06); text-align:center; }
+.page-footer p { font-size:10px; color:#444; letter-spacing:.1em; }
+@media(max-width:900px) { .card-grid{grid-template-columns:repeat(2,1fr);gap:16px;} .page-title,.filter-wrap,.card-grid,.page-count{padding-left:24px;padding-right:24px;} }
+@media(max-width:500px) { .card-grid{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <a href="index.html">&larr; BACK</a>
+  <a href="index.html" class="page-logo">PAP MAGAZINE</a>
+  <div style="width:60px"></div>
+</div>
+
+<div class="page-title">ARTICLE</div>
+<div class="page-count" id="artCount"></div>
+
+<div class="filter-wrap" id="filterWrap"></div>
+
+<div class="card-grid" id="cardGrid"></div>
+
+<div class="page-footer">
+  <p>&copy; 2026 PAP Magazine. All rights reserved.</p>
+</div>
+
+<!-- Article Detail Overlay -->
+<div class="art-detail-overlay" id="artDetailOverlay">
+  <button class="ed-all-close" onclick="closeArticleDetail()" style="position:absolute;top:16px;right:20px;z-index:10">&times;</button>
+  <div style="width:100%;max-width:800px;margin:40px auto;padding:0 20px">
+    <div style="width:100%;aspect-ratio:3/2;background:#111;border-radius:4px;overflow:hidden">
+      <img id="artDetailImg" src="" alt="" style="width:100%;height:100%;object-fit:cover">
+    </div>
+    <div style="padding:20px 0">
+      <div id="artDetailTitle" style="font-family:'Montserrat',sans-serif;font-size:22px;font-weight:700;color:#fff;letter-spacing:.06em"></div>
+      <div id="artDetailSub" style="font-size:13px;color:#aaa;margin-top:6px"></div>
+      <div id="artDetailCat" style="font-size:11px;color:#888;letter-spacing:.08em;margin-top:6px"></div>
+    </div>
+    <div id="artDetailDesc" style="padding:0 0 16px;font-size:14px;line-height:1.8;color:#ccc;letter-spacing:.02em"></div>
+    <div id="artDetailTags" style="padding:8px 0"></div>
+    <div id="artDetailCredits" style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08);font-size:12px;line-height:1.8"></div>
+    <div id="artDetailGallery" style="display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:16px 0"></div>
+    <div id="artDetailLink" style="padding:16px 0;text-align:center"></div>
+  </div>
+</div>
+
+<script src="pap-app.js"></script>
+<script>
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  var d = new Date(dateStr);
+  var months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  var day = String(d.getDate()).padStart(2, '0');
+  var month = months[d.getMonth()];
+  var year = d.getFullYear();
+  return day + ' ' + month + ' ' + year;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof artData === 'undefined') {
+    console.error('artData not found');
+    return;
+  }
+
+  // Extract unique categories
+  var cats = {};
+  artData.forEach(function(a) {
+    (a.cat || '').split(',').forEach(function(c) {
+      c = c.trim();
+      if (c) cats[c] = 1;
+    });
+  });
+
+  var catList = Object.keys(cats).sort();
+  var activeFilter = 'ALL';
+
+  // Build filter buttons
+  var filterWrap = document.getElementById('filterWrap');
+  var allBtn = document.createElement('button');
+  allBtn.className = 'filter-btn active';
+  allBtn.textContent = 'ALL';
+  allBtn.onclick = function() {
+    activeFilter = 'ALL';
+    updateFilterButtons();
+    renderCards();
+  };
+  filterWrap.appendChild(allBtn);
+
+  catList.forEach(function(cat) {
+    var btn = document.createElement('button');
+    btn.className = 'filter-btn';
+    btn.textContent = cat.toUpperCase();
+    btn.onclick = function() {
+      activeFilter = cat;
+      updateFilterButtons();
+      renderCards();
+    };
+    filterWrap.appendChild(btn);
+  });
+
+  function updateFilterButtons() {
+    var btns = filterWrap.querySelectorAll('.filter-btn');
+    btns.forEach(function(btn) {
+      if (btn.textContent === activeFilter || (activeFilter === 'ALL' && btn.textContent === 'ALL')) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+  }
+
+  // Expose renderCards globally so API sync can trigger re-render
+  window._papArticleRenderCards = renderCards;
+
+  function renderCards() {
+    var grid = document.getElementById('cardGrid');
+    grid.innerHTML = '';
+
+    var filtered = artData.filter(function(a) {
+      if (activeFilter === 'ALL') return true;
+      return (a.cat || '').split(',').some(function(c) {
+        return c.trim().toLowerCase() === activeFilter.toLowerCase();
+      });
+    });
+
+    filtered.forEach(function(a, i) {
+      var origIdx = artData.indexOf(a);
+      var card = document.createElement('div');
+      card.className = 'card';
+      card.onclick = function() { openArticleDetail(origIdx); };
+
+      var img = document.createElement('div');
+      img.className = 'card-img';
+      var imgEl = document.createElement('img');
+      imgEl.src = a.th || a.img || '';
+      imgEl.onerror = function() { edImgError(this); };
+      img.appendChild(imgEl);
+
+      var cat = document.createElement('div');
+      cat.className = 'card-cat';
+      cat.textContent = (a.cat || 'ARTICLE') + ' - ' + formatDate(a.d);
+
+      var title = document.createElement('div');
+      title.className = 'card-title';
+      title.textContent = (a.t || '').toUpperCase();
+
+      card.appendChild(img);
+      card.appendChild(cat);
+      card.appendChild(title);
+      grid.appendChild(card);
+    });
+
+    // Update count
+    var countEl = document.getElementById('artCount');
+    countEl.textContent = filtered.length + ' ARTICLES';
+  }
+
+  renderCards();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,1537 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="PAP Magazine 커뮤니티. 크리에이터들과 소통하고, 프로젝트를 공유하세요.">
+<meta property="og:title" content="커뮤니티 | PAP Magazine">
+<meta property="og:description" content="PAP Magazine 커뮤니티. 크리에이터들과 소통하고, 프로젝트를 공유하세요.">
+<meta property="og:image" content="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_0281a06055.jpg">
+<meta property="og:type" content="website">
+<link rel="canonical" href="https://pap-magazine.com/community.html">
+<title>커뮤니티 | PAP Magazine</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root{--bg:#fafafa;--surface:#fff;--surface2:#f2f2f2;--border:rgba(0,0,0,.08);--border2:rgba(0,0,0,.15);--text:#111;--text2:rgba(0,0,0,.6);--text3:rgba(0,0,0,.4);--text4:rgba(0,0,0,.25);--accent:#000;--sans:'Inter','Montserrat',sans-serif;--display:'Montserrat',sans-serif}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+a{color:var(--text);text-decoration:none}
+button{cursor:pointer;font-family:var(--sans)}
+
+/* TOP HEADER */
+.c-header{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(255,255,255,.97);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border);height:56px;display:flex;align-items:center;padding:0 32px}
+.c-logo{margin-right:40px;flex-shrink:0;display:flex;align-items:center;gap:10px}
+.c-logo img{height:22px;width:auto;filter:invert(1)}
+.c-logo span{color:var(--text3);font-family:var(--display);font-weight:500;font-size:11px;letter-spacing:.15em;text-transform:uppercase}
+.c-nav{display:flex;gap:0;height:100%}
+.c-nav a{display:flex;align-items:center;padding:0 18px;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);border-bottom:2px solid transparent;transition:all .3s;height:100%}
+.c-nav a:hover{color:var(--text2)}
+.c-nav a.active{color:var(--text);border-bottom-color:var(--text)}
+.c-header-right{margin-left:auto;display:flex;align-items:center;gap:16px}
+.c-back{font-size:11px;font-weight:600;letter-spacing:.1em;color:var(--text3);transition:color .2s}
+.c-back:hover{color:var(--text)}
+.c-write-btn{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:8px 18px;background:var(--accent);color:#fff;border:none;transition:opacity .3s}
+.c-write-btn:hover{opacity:.8}
+.lang-select{padding:6px 10px;font-size:11px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;outline:none}
+
+/* MAIN LAYOUT - 3 COLUMN */
+.c-body{padding-top:56px;display:flex;min-height:100vh}
+.c-sidebar-left{width:220px;flex-shrink:0;border-right:1px solid var(--border);padding:24px 18px;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto}
+.c-main{flex:1;min-width:0;border-right:1px solid var(--border);max-width:1200px;display:flex;flex-direction:column}
+.c-sidebar-right{width:280px;flex-shrink:0;padding:24px 18px;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto}
+
+/* LEFT SIDEBAR */
+.cafe-header{margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.cafe-title{font-family:var(--display);font-size:13px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+.cafe-members{font-size:9px;color:var(--text4);letter-spacing:.05em}
+.cafe-categories{margin-bottom:24px}
+.cat-item{display:flex;align-items:center;justify-content:space-between;padding:10px 8px;font-size:11px;cursor:pointer;border-radius:3px;transition:all .2s;color:var(--text2)}
+.cat-item:hover{background:rgba(0,0,0,.04);color:var(--text)}
+.cat-item.active{background:rgba(0,0,0,.08);color:var(--text);font-weight:600}
+.cat-count{font-size:9px;color:var(--text4)}
+.checkin-btn{width:100%;padding:10px;font-size:10px;font-weight:700;text-transform:uppercase;border:1px solid var(--border);background:var(--surface);color:var(--text3);margin-bottom:20px;transition:all .2s}
+.checkin-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.cafe-stats{font-size:10px;color:var(--text3);line-height:1.8}
+.stat-row{display:flex;justify-content:space-between;margin-bottom:8px}
+
+/* CENTER MAIN AREA */
+.c-main-content{flex:1;padding:24px 28px 60px;overflow-y:auto}
+.c-tab{display:none}
+.c-tab.active{display:block}
+.c-tabs-nav{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:20px}
+.c-tabs-nav a{padding:12px 20px;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);border-bottom:2px solid transparent;cursor:pointer;transition:all .2s}
+.c-tabs-nav a:hover{color:var(--text2)}
+.c-tabs-nav a.active{color:var(--text);border-bottom-color:var(--text)}
+
+/* SEARCH BAR */
+.search-bar{display:flex;gap:8px;margin-bottom:20px}
+.search-input{flex:1;padding:10px 14px;border:1px solid var(--border);background:var(--surface);font-size:12px;font-family:var(--sans);outline:none}
+.search-input:focus{border-color:var(--border2)}
+.search-filter{padding:10px 14px;border:1px solid var(--border);background:var(--surface);font-size:11px;font-family:var(--sans);color:var(--text);outline:none;cursor:pointer}
+
+/* POST TABLE */
+.post-table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border);margin-bottom:20px}
+.post-table th{padding:12px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);background:var(--surface2);border-bottom:1px solid var(--border);text-align:left}
+.post-table td{padding:12px 14px;border-bottom:1px solid var(--border);font-size:12px}
+.post-table tbody tr{cursor:pointer;transition:background .2s}
+.post-table tbody tr:hover{background:rgba(0,0,0,.02)}
+.post-table tbody tr.pinned{background:rgba(255,193,7,.08)}
+.post-table tbody tr.pinned:hover{background:rgba(255,193,7,.15)}
+.post-row-category{font-size:9px;font-weight:600;text-transform:uppercase;color:var(--text4);min-width:70px}
+.post-row-title{font-weight:600;color:var(--text);flex:1;display:flex;align-items:center;gap:8px}
+.post-row-badge{font-size:9px;background:var(--surface2);padding:2px 6px;border-radius:2px;color:var(--text4);margin-left:4px;white-space:nowrap}
+.post-row-badge.new{background:rgba(0,0,0,.15);color:var(--text2)}
+.post-row-badge.hot{color:#e74c3c}
+.post-row-author{color:var(--text2);min-width:80px;text-align:center}
+.post-author-badge{display:inline-block;font-size:8px;padding:2px 5px;border:1px solid var(--border);border-radius:2px;margin-left:4px}
+.post-author-badge.bronze{color:#cd7f32;border-color:rgba(205,127,50,.3)}
+.post-author-badge.silver{color:#888;border-color:rgba(136,136,136,.3)}
+.post-author-badge.gold{color:#b8860b;border-color:rgba(184,134,11,.3)}
+.post-author-badge.platinum{color:#666;border-color:rgba(102,102,102,.4)}
+.post-author-badge.diamond{color:#4a9eff;border-color:rgba(74,158,255,.4)}
+.post-row-date{color:var(--text4);min-width:70px;text-align:center;font-size:11px}
+.post-row-views{color:var(--text4);min-width:50px;text-align:center}
+.post-row-likes{color:var(--text4);min-width:50px;text-align:center}
+
+/* PAGINATION */
+.pagination{display:flex;justify-content:center;gap:4px;margin:24px 0}
+.pag-btn{padding:6px 10px;font-size:11px;border:1px solid var(--border);background:var(--surface);color:var(--text3);cursor:pointer;transition:all .2s}
+.pag-btn:hover{border-color:var(--border2);color:var(--text)}
+.pag-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* ORIGINAL/TRANSLATION TOGGLE */
+.orig-toggle-mini{display:inline-block;font-size:9px;font-weight:600;color:var(--text3);background:var(--surface2);padding:2px 8px;border-radius:2px;margin-left:8px;cursor:pointer;transition:all .2s;white-space:nowrap;vertical-align:middle}
+.orig-toggle-mini:hover{background:rgba(0,0,0,.12);color:var(--text)}
+.orig-toggle-wrap{display:flex;align-items:center;gap:8px;margin:12px 0 8px}
+.orig-toggle-btn{font-size:11px;font-weight:600;letter-spacing:.05em;padding:6px 16px;border:1px solid var(--border2);background:var(--surface);color:var(--text2);cursor:pointer;transition:all .2s}
+.orig-toggle-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.orig-lang-label{font-size:10px;color:var(--text4);font-weight:500}
+
+/* PROJECTS */
+.proj{background:var(--surface);border:1px solid var(--border);margin-bottom:16px;padding:24px;transition:border-color .3s}
+.proj:hover{border-color:var(--border2)}
+.proj-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.proj-title{font-family:var(--display);font-size:15px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;line-height:1.3;flex:1;margin-right:12px}
+.proj-badge{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:4px 10px;flex-shrink:0}
+.proj-badge.open{border:1px solid rgba(0,150,80,.3);color:rgba(0,130,70,.8)}
+.proj-badge.closed{border:1px solid var(--border);color:var(--text4)}
+.proj-desc{font-size:12px;color:var(--text3);line-height:1.9;margin-bottom:14px}
+.proj-roles{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.proj-role{font-size:10px;font-weight:600;letter-spacing:.06em;padding:5px 10px;background:var(--surface2);color:var(--text3)}
+.proj-role.filled{text-decoration:line-through;color:var(--text4);background:transparent;border:1px solid var(--border)}
+.proj-bottom{display:flex;justify-content:space-between;align-items:center}
+.proj-loc{font-size:10px;color:var(--text4)}
+.proj-apply{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:8px 18px;border:1px solid var(--border2);background:transparent;color:var(--text2);transition:all .3s}
+.proj-apply:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* AI MATCH */
+.ai-hero{text-align:center;padding:40px 0 32px}
+.ai-hero h2{font-family:var(--display);font-size:clamp(20px,3vw,32px);font-weight:900;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px}
+.ai-hero p{font-size:12px;color:var(--text3);line-height:1.8}
+.ai-form{max-width:480px;margin:0 auto 32px}
+.ai-label{font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--text4);margin:16px 0 8px}
+.ai-sel{width:100%;background:var(--surface);border:1px solid var(--border);padding:11px 14px;font-size:12px;font-family:var(--sans);color:var(--text);outline:none;-webkit-appearance:none;appearance:none;cursor:pointer}
+.ai-sel option{background:#fff;color:#111}
+.ai-aes{display:flex;flex-wrap:wrap;gap:6px}
+.ai-aes-tag{font-size:10px;font-weight:500;padding:6px 12px;border:1px solid var(--border);color:var(--text3);cursor:pointer;transition:all .2s}
+.ai-aes-tag.sel{background:rgba(0,0,0,.08);border-color:var(--border2);color:var(--text)}
+.ai-go{width:100%;padding:14px;font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;background:var(--accent);color:#fff;border:none;margin-top:24px;transition:opacity .3s}
+.ai-go:hover{opacity:.85}
+.ai-loader{display:none;text-align:center;padding:48px 0}
+.ai-loader .ld{display:inline-flex;gap:6px}
+.ai-loader .d{width:8px;height:8px;border-radius:50%;background:var(--text4);animation:aip 1.2s ease infinite}
+.ai-loader .d:nth-child(2){animation-delay:.2s}
+.ai-loader .d:nth-child(3){animation-delay:.4s}
+@keyframes aip{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.1)}}
+.ai-loader p{font-size:11px;color:var(--text4);margin-top:14px}
+.ai-res{display:none;max-width:560px;margin:0 auto}
+.ai-res-title{font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--text4);margin-bottom:16px}
+.ai-card{background:var(--surface);border:1px solid var(--border);padding:20px;margin-bottom:10px;display:flex;gap:16px;align-items:flex-start;transition:border-color .3s}
+.ai-card:hover{border-color:var(--border2)}
+.ai-score{width:48px;height:48px;border-radius:50%;border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;flex-shrink:0}
+.ai-score.hi{border-color:rgba(0,150,80,.5);color:rgba(0,130,70,.9)}
+.ai-score.md{border-color:var(--border2);color:var(--text2)}
+.ai-info{flex:1}
+.ai-info-name{font-size:14px;font-weight:700;margin-bottom:2px}
+.ai-info-role{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
+.ai-info-why{font-size:11px;color:var(--text3);line-height:1.7}
+.ai-info-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.ai-info-tags span{font-size:9px;padding:2px 7px;background:var(--surface2);color:var(--text4)}
+.ai-connect{padding:8px 16px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--border2);background:transparent;color:var(--text3);align-self:center;flex-shrink:0;transition:all .3s}
+.ai-connect:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* DIRECTORY */
+.dir-bar{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center}
+.dir-search{flex:1;min-width:200px;background:var(--surface);border:1px solid var(--border);padding:10px 14px;font-size:12px;font-family:var(--sans);color:var(--text);outline:none}
+.dir-search:focus{border-color:var(--border2)}
+.dir-search::placeholder{color:var(--text4)}
+.dir-filters{display:flex;gap:6px;flex-wrap:wrap}
+.dir-f{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:7px 12px;border:1px solid var(--border);color:var(--text4);cursor:pointer;transition:all .2s;background:transparent}
+.dir-f:hover{border-color:var(--border2);color:var(--text3)}
+.dir-f.on{background:rgba(0,0,0,.08);border-color:var(--border2);color:var(--text)}
+.dir-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.dir-card{background:var(--surface);border:1px solid var(--border);padding:20px;transition:all .3s;cursor:pointer}
+.dir-card:hover{border-color:var(--border2);background:var(--surface2)}
+.dir-av{width:44px;height:44px;border-radius:50%;background:var(--surface2);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:14px;font-weight:800;color:var(--text3);margin-bottom:12px}
+.dir-nm{font-size:13px;font-weight:700;letter-spacing:.03em;margin-bottom:2px}
+.dir-rl{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
+.dir-loc{font-size:10px;color:var(--text4);margin-bottom:8px}
+.dir-tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+.dir-tags span{font-size:9px;padding:3px 7px;background:rgba(0,0,0,.04);color:var(--text4)}
+.dir-ed{font-size:10px;color:var(--text4)}
+
+/* RIGHT SIDEBAR */
+.sw{margin-bottom:28px}
+.sw-title{font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--text4);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.sw-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:opacity .2s}
+.sw-item:hover{opacity:.7}
+.sw-item:last-child{border-bottom:none}
+.sw-rank{font-family:var(--display);font-size:13px;font-weight:900;color:var(--text4);width:20px}
+.sw-av{width:28px;height:28px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:var(--text4);flex-shrink:0}
+.sw-nm{font-size:11px;font-weight:600}
+.sw-sub{font-size:10px;color:var(--text4)}
+.sw-tag{display:inline-block;font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;background:var(--surface2);color:var(--text3);margin-right:4px;margin-bottom:4px}
+
+/* WRITE POST MODAL */
+.write-overlay{position:fixed;inset:0;z-index:5000;background:var(--bg);overflow-y:auto;display:none}
+.write-overlay.active{display:block}
+.write-header{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.97);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);height:56px;display:flex;align-items:center;padding:0 32px}
+.write-header-title{font-size:13px;font-weight:700;letter-spacing:.06em}
+.write-header-right{margin-left:auto;display:flex;gap:8px}
+.write-cancel{padding:8px 20px;font-size:11px;font-weight:600;background:none;border:1px solid var(--border2);color:var(--text2);letter-spacing:.06em}
+.write-submit{padding:8px 24px;font-size:11px;font-weight:700;background:var(--accent);color:#fff;border:none;letter-spacing:.08em;text-transform:uppercase}
+.write-submit:hover{opacity:.8}
+.write-body{max-width:720px;margin:0 auto;padding:32px}
+.write-section{margin-bottom:24px}
+.write-label{font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--text3);margin-bottom:8px}
+.write-input{width:100%;padding:12px 16px;font-size:15px;font-weight:600;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:var(--sans);outline:none;transition:border-color .2s}
+.write-input:focus{border-color:var(--text)}
+.write-input::placeholder{color:var(--text4)}
+.write-tag-select{display:flex;gap:6px;flex-wrap:wrap}
+.write-tag{padding:6px 14px;font-size:11px;font-weight:600;border:1px solid var(--border);background:var(--surface);color:var(--text3);cursor:pointer;transition:all .2s;letter-spacing:.04em}
+.write-tag.sel{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* RICH TEXT EDITOR TOOLBAR */
+.rte-toolbar{display:flex;gap:2px;padding:8px 12px;border:1px solid var(--border);border-bottom:none;background:var(--surface2);flex-wrap:wrap;align-items:center}
+.rte-btn{width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:none;border:1px solid transparent;color:var(--text2);font-size:14px;cursor:pointer;border-radius:3px;transition:all .15s}
+.rte-btn:hover{background:var(--surface);border-color:var(--border)}
+.rte-btn.active{background:var(--accent);color:#fff}
+.rte-sep{width:1px;height:24px;background:var(--border);margin:0 4px}
+.rte-select{padding:4px 8px;font-size:11px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:var(--sans);cursor:pointer;outline:none}
+.rte-color{width:26px;height:26px;border:2px solid var(--border);cursor:pointer;padding:0;border-radius:3px}
+
+/* EDITOR CONTENT AREA */
+.rte-content{min-height:400px;padding:20px;border:1px solid var(--border);background:#fff;font-size:15px;line-height:1.8;color:var(--text);outline:none;overflow-y:auto;font-family:var(--sans)}
+.rte-content:empty::before{content:attr(data-placeholder);color:var(--text4);pointer-events:none}
+.rte-content img{max-width:100%;height:auto;margin:12px 0;border-radius:4px}
+.rte-content blockquote{border-left:3px solid var(--accent);padding:12px 20px;margin:16px 0;background:var(--surface2);font-style:italic;color:var(--text2)}
+.rte-content h2{font-size:20px;font-weight:700;margin:20px 0 8px}
+.rte-content h3{font-size:16px;font-weight:700;margin:16px 0 6px}
+.rte-content a{color:#2563eb;text-decoration:underline}
+.rte-content ul,.rte-content ol{margin:8px 0;padding-left:24px}
+.rte-content hr{border:none;border-top:1px solid var(--border);margin:24px 0}
+
+/* IMAGE UPLOAD IN EDITOR */
+.rte-img-upload{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;font-size:11px;font-weight:600;background:var(--surface);border:1px solid var(--border);cursor:pointer;color:var(--text2);transition:all .2s}
+.rte-img-upload:hover{border-color:var(--text)}
+.rte-img-upload input{display:none}
+
+/* POST DETAIL VIEW */
+.detail-overlay{position:fixed;inset:0;z-index:4000;background:var(--bg);overflow-y:auto;display:none}
+.detail-overlay.active{display:block}
+.detail-header{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.97);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);height:56px;display:flex;align-items:center;padding:0 32px}
+.detail-back{font-size:11px;font-weight:600;letter-spacing:.08em;color:var(--text3);background:none;border:none;cursor:pointer;transition:color .2s}
+.detail-back:hover{color:var(--text)}
+.detail-body{max-width:720px;margin:0 auto;padding:40px 32px 80px}
+.detail-tag{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:4px 10px;background:var(--surface2);color:var(--text3);margin-bottom:12px}
+.detail-title{font-family:var(--display);font-size:28px;font-weight:800;letter-spacing:.02em;margin-bottom:12px;line-height:1.3}
+.detail-meta{display:flex;align-items:center;gap:12px;margin-bottom:32px;padding-bottom:20px;border-bottom:1px solid var(--border)}
+.detail-author-av{width:40px;height:40px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0}
+.detail-author-name{font-size:14px;font-weight:700}
+.detail-author-role{font-size:11px;color:var(--text3)}
+.detail-author-time{font-size:11px;color:var(--text4);margin-left:auto}
+.detail-content{font-size:15px;line-height:1.9;color:var(--text)}
+.detail-content img{max-width:100%;height:auto;margin:20px 0;border-radius:4px}
+.detail-content blockquote{border-left:3px solid var(--accent);padding:12px 20px;margin:20px 0;background:var(--surface2);font-style:italic;color:var(--text2)}
+.detail-content h2{font-size:22px;font-weight:700;margin:28px 0 12px}
+.detail-content h3{font-size:18px;font-weight:700;margin:24px 0 8px}
+.detail-stats{display:flex;gap:20px;padding:20px 0;border-top:1px solid var(--border);margin-top:32px;font-size:13px;color:var(--text3)}
+.detail-stats span{display:flex;align-items:center;gap:4px}
+.detail-action-bar{display:flex;gap:16px;padding:20px 0;border-top:1px solid var(--border);font-size:11px}
+.detail-action-bar button{padding:8px 16px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;transition:all .2s}
+.detail-action-bar button:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* COMMENT SECTION */
+.comments-section{margin-top:32px;border-top:1px solid var(--border);padding-top:24px}
+.comments-title{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:16px}
+.comment{display:flex;gap:12px;margin-bottom:20px}
+.comment.nested{margin-left:40px;margin-top:-12px;margin-bottom:8px}
+.comment-av{width:32px;height:32px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text3);flex-shrink:0}
+.comment-body{flex:1}
+.comment-name{font-size:12px;font-weight:700}
+.comment-time{font-size:10px;color:var(--text4);margin-left:8px}
+.comment-text{font-size:13px;line-height:1.6;color:var(--text2);margin-top:4px}
+.comment-action{font-size:10px;color:var(--text4);margin-top:6px;cursor:pointer}
+.comment-action:hover{color:var(--text2)}
+.comment-input-wrap{display:flex;gap:10px;margin-top:16px}
+.comment-input{flex:1;padding:10px 14px;border:1px solid var(--border);font-size:13px;font-family:var(--sans);outline:none;background:var(--surface)}
+.comment-input:focus{border-color:var(--text)}
+.comment-send{padding:10px 20px;font-size:11px;font-weight:700;background:var(--accent);color:#fff;border:none;letter-spacing:.06em}
+
+/* PROFILE POPUP */
+.profile-popup-bg{position:fixed;inset:0;z-index:6000;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center}
+.profile-popup-bg.active{display:flex}
+.profile-popup{background:#fff;max-width:560px;width:92%;max-height:85vh;overflow-y:auto;border:1px solid var(--border);position:relative}
+.profile-popup-close{position:absolute;top:12px;right:16px;background:none;border:none;font-size:22px;color:var(--text3);cursor:pointer}
+.profile-popup-close:hover{color:var(--text)}
+.profile-popup-top{padding:32px 28px 20px;border-bottom:1px solid var(--border);display:flex;gap:16px;align-items:flex-start}
+.profile-popup-avatar{width:56px;height:56px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;flex-shrink:0}
+.profile-popup-name{font-size:20px;font-weight:800;letter-spacing:.02em}
+.profile-popup-role{font-size:11px;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-top:2px}
+.profile-popup-level{display:inline-flex;align-items:center;gap:4px;margin-top:8px;padding:3px 10px;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;border:1px solid var(--border)}
+.profile-popup-level.lvl-bronze{color:#cd7f32;border-color:rgba(205,127,50,.3)}
+.profile-popup-level.lvl-silver{color:#888;border-color:rgba(136,136,136,.3)}
+.profile-popup-level.lvl-gold{color:#b8860b;border-color:rgba(184,134,11,.3)}
+.profile-popup-level.lvl-platinum{color:#666;border-color:rgba(102,102,102,.4)}
+.profile-popup-level.lvl-diamond{color:#4a9eff;border-color:rgba(74,158,255,.4)}
+.profile-popup-stats{display:flex;gap:24px;padding:16px 28px;border-bottom:1px solid var(--border)}
+.profile-popup-stat{text-align:center}
+.profile-popup-stat-num{font-size:18px;font-weight:800}
+.profile-popup-stat-label{font-size:9px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-top:2px}
+.profile-popup-works{padding:20px 28px 28px}
+.profile-popup-works-title{font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--text4);margin-bottom:12px}
+.profile-popup-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.profile-popup-card{cursor:pointer;overflow:hidden;position:relative}
+.profile-popup-card img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block;transition:opacity .2s}
+.profile-popup-card:hover img{opacity:.8}
+.profile-popup-card-title{position:absolute;bottom:0;left:0;right:0;padding:8px 6px;background:linear-gradient(transparent,rgba(0,0,0,.7));font-size:8px;font-weight:700;color:#fff;letter-spacing:.04em;text-transform:uppercase}
+
+/* CHECKIN MODAL */
+.checkin-modal-bg{position:fixed;inset:0;z-index:5500;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center}
+.checkin-modal-bg.active{display:flex}
+.checkin-modal{background:#fff;width:90%;max-width:400px;border:1px solid var(--border);padding:28px}
+.checkin-modal-close{float:right;background:none;border:none;font-size:20px;color:var(--text3);cursor:pointer;margin-bottom:16px}
+.checkin-modal-close:hover{color:var(--text)}
+.checkin-title{font-size:16px;font-weight:700;margin-bottom:20px;clear:both}
+.checkin-streak{font-size:13px;margin-bottom:24px}
+.checkin-btn-main{width:100%;padding:14px;font-size:11px;font-weight:700;background:var(--accent);color:#fff;border:none;text-transform:uppercase;margin-bottom:20px}
+.checkin-btn-main:hover{opacity:.85}
+.checkin-btn-main.done{background:rgba(0,150,80,.7)}
+.checkin-calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.checkin-day{padding:12px 6px;text-align:center;font-size:11px;font-weight:600;border:1px solid var(--border);border-radius:3px;color:var(--text4)}
+.checkin-day.checked{background:var(--accent);color:#fff;border-color:var(--accent)}
+</style>
+<!-- Favicon & PWA -->
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000000">
+<!-- Open Graph / Social -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="PAP Magazine">
+<meta property="og:title" content="Community | PAP Magazine">
+<meta property="og:description" content="PAP Magazine creative community. Connect with photographers, models, stylists worldwide.">
+<meta property="og:url" content="https://pap-magazine.com/community.html">
+<meta property="og:image" content="https://pap-magazine.com/apple-touch-icon.png">
+<meta property="og:locale" content="ko_KR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Community | PAP Magazine">
+<meta name="twitter:description" content="PAP Magazine creative community. Connect with photographers, models, stylists worldwide.">
+<meta name="twitter:image" content="https://pap-magazine.com/apple-touch-icon.png">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Community - PAP Magazine","description":"Creative community for photographers, models, and stylists"}</script>
+<!-- Google Analytics (replace G-XXXXXXXXXX with your ID) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-XXXXXXXXXX');</script>
+<!-- Print Styles -->
+<style media="print">
+@media print{
+  body{background:#fff!important;color:#000!important}
+  .side-nav,.nav-overlay,.header,.footer-legal,.lang-selector,#cookieConsent,#backToTop,.mobile-menu-btn,.hamburger,.search-container{display:none!important}
+  .content,.main-content{margin-left:0!important;padding:20px!important}
+  a{color:#000!important;text-decoration:underline}
+  img{max-width:100%!important}
+  *{box-shadow:none!important;text-shadow:none!important}
+}
+</style>
+</head>
+<body>
+<!-- Loading State -->
+<div id="pageLoader" style="position:fixed;inset:0;z-index:10000;background:#000;display:flex;align-items:center;justify-content:center;transition:opacity .4s">
+<div style="text-align:center"><div style="font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;letter-spacing:.3em;color:rgba(255,255,255,.4);text-transform:uppercase">PAP</div>
+<div style="margin-top:12px;width:40px;height:1px;background:rgba(255,255,255,.1);position:relative;overflow:hidden;margin-left:auto;margin-right:auto"><div style="position:absolute;width:50%;height:100%;background:rgba(255,255,255,.5);animation:loaderSlide 1s ease infinite"></div></div></div></div>
+<style>@keyframes loaderSlide{0%{left:-50%}100%{left:100%}}</style>
+<script>window.addEventListener('load',function(){var l=document.getElementById('pageLoader');if(l){l.style.opacity='0';setTimeout(function(){l.remove();},400);}});</script>
+
+<!-- HEADER -->
+<div class="c-header">
+  <div class="c-logo"><img loading="lazy" src="pap-logo.png" alt="PAP"> <span>COMMUNITY</span></div>
+  <nav role="navigation" aria-label="Main navigation" class="c-nav">
+    <a href="#" onclick="goTab('cafe',this);return false" class="active" data-i18n="tabCafe">게시판</a>
+    <a href="#" onclick="goTab('projects',this);return false" data-i18n="tabProjects">프로젝트</a>
+    <a href="#" onclick="goTab('aimatch',this);return false" data-i18n="tabAiMatch">AI 매칭</a>
+    <a href="#" onclick="goTab('directory',this);return false" data-i18n="tabDirectory">디렉토리</a>
+  </nav>
+  <div class="c-header-right">
+    <select id="langSelect" class="lang-select" onchange="setLang(this.value)">
+      <option value="ko">한국어</option>
+      <option value="en">English</option>
+      <option value="it">Italiano</option>
+      <option value="fr">Français</option>
+      <option value="es">Español</option>
+      <option value="ja">日本語</option>
+      <option value="zh">中文</option>
+      <option value="ru">Русский</option>
+    </select>
+    <a href="index.html" class="c-back" data-i18n="backMag">← 매거진</a>
+    <button class="c-write-btn" onclick="openWrite()" data-i18n="writeBtn">글쓰기</button>
+  </div>
+</div>
+
+<!-- MAIN BODY -->
+<div class="c-body">
+
+  <!-- LEFT SIDEBAR -->
+  <div class="c-sidebar-left">
+    <div class="cafe-header">
+      <div class="cafe-title" data-i18n="tabCafe">게시판</div>
+      <div class="cafe-members" data-i18n="membersCount">멤버 2,847명</div>
+    </div>
+
+    <div class="cafe-categories">
+      <div class="cat-item active" onclick="filterCategory('all',this)" data-category="all">
+        <span data-i18n="catAll">전체글</span>
+        <span class="cat-count" id="count-all">25</span>
+      </div>
+      <div class="cat-item" onclick="filterCategory('notice',this)" data-category="notice">
+        <span data-i18n="catNotice">공지사항</span>
+        <span class="cat-count" id="count-notice">3</span>
+      </div>
+      <div class="cat-item" onclick="filterCategory('free',this)" data-category="free">
+        <span data-i18n="catFree">자유게시판</span>
+        <span class="cat-count" id="count-free">3</span>
+      </div>
+      <div class="cat-item" onclick="filterCategory('behind',this)" data-category="behind">
+        <span data-i18n="catBehind">촬영후기</span>
+        <span class="cat-count" id="count-behind">4</span>
+      </div>
+      <div class="cat-item" onclick="filterCategory('qa',this)" data-category="qa">
+        <span data-i18n="catQA">질문답변</span>
+        <span class="cat-count" id="count-qa">4</span>
+      </div>
+      <div class="cat-item" onclick="filterCategory('equipment',this)" data-category="equipment">
+        <span data-i18n="catEquipment">장비·스튜디오</span>
+        <span class="cat-count" id="count-equipment">3</span>
+      </div>
+      <div class="cat-item" onclick="filterCategory('jobs',this)" data-category="jobs">
+        <span data-i18n="catJobs">팀 모집</span>
+        <span class="cat-count" id="count-jobs">2</span>
+      </div>
+      <div class="cat-item" onclick="filterCategory('portfolio',this)" data-category="portfolio">
+        <span data-i18n="catPortfolio">작품공유</span>
+        <span class="cat-count" id="count-portfolio">9</span>
+      </div>
+    </div>
+
+    <button class="checkin-btn" onclick="openCheckin()" data-i18n="checkinBtn">출석체크</button>
+
+    <div class="cafe-stats">
+      <div class="stat-row"><span data-i18n="statsMembers">회원 수:</span><strong>2,847명</strong></div>
+      <div class="stat-row"><span data-i18n="statsToday">오늘 글:</span><strong>23개</strong></div>
+      <div class="stat-row"><span data-i18n="statsTotal">전체 글:</span><strong>2,847개</strong></div>
+    </div>
+
+    <div class="cafe-nav" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+      <div style="font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--text4);margin-bottom:10px">QUICK LINKS</div>
+      <a href="index.html" style="display:block;padding:6px 0;font-size:11px;color:var(--text3)">← Magazine</a>
+      <a href="about.html" style="display:block;padding:6px 0;font-size:11px;color:var(--text3)">About PAP</a>
+      <a href="submission.html" style="display:block;padding:6px 0;font-size:11px;color:var(--text3)">Submit Work</a>
+      <a href="subscribe.html" style="display:block;padding:6px 0;font-size:11px;color:var(--text3)">Subscribe</a>
+      <a href="contact.html" style="display:block;padding:6px 0;font-size:11px;color:var(--text3)">Contact</a>
+    </div>
+  </div>
+
+  <!-- MAIN AREA -->
+  <div class="c-main">
+    <div class="c-main-content">
+
+      <!-- CAFE TAB -->
+      <div class="c-tab active" id="t-cafe">
+        <div class="c-tabs-nav">
+          <a href="#" class="active" onclick="switchCafeTab('all',this);return false" data-i18n="cafeAll">전체글</a>
+          <a href="#" onclick="switchCafeTab('popular',this);return false" data-i18n="cafePopular">인기글</a>
+          <a href="#" onclick="switchCafeTab('notice',this);return false" data-i18n="cafeNotice">공지</a>
+        </div>
+
+        <div class="search-bar">
+          <input class="search-input" type="text" id="searchInput" placeholder="제목, 내용, 작성자 검색..." data-i18n-ph="searchPh" oninput="updatePostTable()">
+        </div>
+
+        <!-- POST TABLE -->
+        <table class="post-table" id="postTable">
+          <thead>
+            <tr>
+              <th style="width:70px" data-i18n="tableCategory">카테고리</th>
+              <th data-i18n="tableTitle">제목</th>
+              <th style="width:80px;text-align:center" data-i18n="tableAuthor">작성자</th>
+              <th style="width:70px;text-align:center" data-i18n="tableDate">날짜</th>
+              <th style="width:50px;text-align:center" data-i18n="tableViews">조회</th>
+              <th style="width:50px;text-align:center" data-i18n="tableLikes">좋아요</th>
+            </tr>
+          </thead>
+          <tbody id="postTableBody">
+          </tbody>
+        </table>
+
+        <!-- PAGINATION -->
+        <div class="pagination" id="pagination"></div>
+      </div>
+
+      <!-- PROJECTS TAB -->
+      <div class="c-tab" id="t-projects">
+        <div class="c-tabs-nav">
+          <a href="#" class="active" onclick="return false" data-i18n="projAll">전체 프로젝트</a>
+        </div>
+        <div id="projectsList"></div>
+      </div>
+
+      <!-- AI MATCH TAB -->
+      <div class="c-tab" id="t-aimatch">
+        <div class="ai-hero"><h2 data-i18n="aiTitle">AI TEAM MATCHING</h2><p data-i18n="aiDesc">역할, 위치, 미학을 기반으로 이상적인 협업 파트너를 AI가 추천합니다.</p></div>
+        <div class="ai-form" id="aiForm">
+          <div class="ai-label" data-i18n="aiMyRole">나의 역할</div>
+          <select class="ai-sel" id="aiRole"><option value="">선택...</option><option>Photographer</option><option>Stylist</option><option>Makeup Artist</option><option>Model</option><option>Art Director</option><option>Retoucher</option><option>Videographer</option></select>
+          <div class="ai-label" data-i18n="aiLocation">위치</div>
+          <select class="ai-sel" id="aiLoc"><option value="">선택...</option><option>Seoul</option><option>Milano</option><option>Paris</option><option>London</option><option>New York</option><option>Barcelona</option><option>Tokyo</option><option>Berlin</option></select>
+          <div class="ai-label" data-i18n="aiAesthetic">추구하는 미학 (복수 선택)</div>
+          <div class="ai-aes" id="aiAes">
+            <div class="ai-aes-tag" onclick="this.classList.toggle('sel')">Minimal</div>
+            <div class="ai-aes-tag" onclick="this.classList.toggle('sel')">Avant-Garde</div>
+            <div class="ai-aes-tag" onclick="this.classList.toggle('sel')">Surreal</div>
+            <div class="ai-aes-tag" onclick="this.classList.toggle('sel')">Dark / Moody</div>
+            <div class="ai-aes-tag" onclick="this.classList.toggle('sel')">Romantic</div>
+            <div class="ai-aes-tag" onclick="this.classList.toggle('sel')">Street</div>
+            <div class="ai-aes-tag" onclick="this.classList.toggle('sel')">Ethereal</div>
+            <div class="ai-aes-tag" onclick="this.classList.toggle('sel')">Bold / Maximalist</div>
+            <div class="ai-aes-tag" onclick="this.classList.toggle('sel')">Organic / Natural</div>
+            <div class="ai-aes-tag" onclick="this.classList.toggle('sel')">Futuristic</div>
+            <div class="ai-aes-tag" onclick="this.classList.toggle('sel')">Editorial Classic</div>
+            <div class="ai-aes-tag" onclick="this.classList.toggle('sel')">Retro / Vintage</div>
+          </div>
+          <div class="ai-label" data-i18n="aiLookingFor">찾는 역할</div>
+          <select class="ai-sel" id="aiSeek"><option value="">선택...</option><option>Photographer</option><option>Stylist</option><option>Makeup Artist</option><option>Model</option><option>Art Director</option><option>Retoucher</option><option>Videographer</option><option>Anyone compatible</option></select>
+          <button class="ai-go" onclick="runMatch()" data-i18n="aiFindBtn">매칭 시작</button>
+        </div>
+        <div class="ai-loader" id="aiLoad"><div class="ld"><div class="d"></div><div class="d"></div><div class="d"></div></div><p data-i18n="aiLoading">AI가 최적의 파트너를 분석 중...</p></div>
+        <div class="ai-res" id="aiRes"></div>
+      </div>
+
+      <!-- DIRECTORY TAB -->
+      <div class="c-tab" id="t-directory">
+        <div class="dir-bar">
+          <input class="dir-search" data-i18n-ph="dirSearchPh" placeholder="이름, 역할, 위치, 미학으로 검색..." id="ds" oninput="fDir()">
+        </div>
+        <div class="dir-filters" id="dfl">
+          <div class="dir-f on" onclick="sdf(this,'all')">All</div>
+          <div class="dir-f" onclick="sdf(this,'photographer')">Photographer</div>
+          <div class="dir-f" onclick="sdf(this,'stylist')">Stylist</div>
+          <div class="dir-f" onclick="sdf(this,'makeup')">Makeup</div>
+          <div class="dir-f" onclick="sdf(this,'model')">Model</div>
+          <div class="dir-f" onclick="sdf(this,'artdirector')">Art Dir.</div>
+          <div class="dir-f" onclick="sdf(this,'retoucher')">Retoucher</div>
+          <div class="dir-f" onclick="sdf(this,'production')">Production</div>
+        </div>
+        <div class="dir-grid" id="dg"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- RIGHT SIDEBAR -->
+  <div class="c-sidebar-right">
+    <!-- TOP 5 POSTS -->
+    <div class="sw">
+      <div class="sw-title" data-i18n="topPopular">인기글 TOP 5</div>
+      <div id="topPosts"></div>
+    </div>
+
+    <!-- TRENDING CREATORS -->
+    <div class="sw">
+      <div class="sw-title" data-i18n="swTrending">인기 크리에이터</div>
+      <div id="trendingCreators"></div>
+    </div>
+
+    <!-- OPEN PROJECTS -->
+    <div class="sw">
+      <div class="sw-title" data-i18n="swOpenProj">진행 중인 프로젝트</div>
+      <div id="openProjects"></div>
+    </div>
+
+    <!-- POPULAR AESTHETICS -->
+    <div class="sw">
+      <div class="sw-title" data-i18n="swPopAes">인기 미학 태그</div>
+      <div id="popAesthetics"></div>
+    </div>
+
+    <!-- RECENT VISITORS -->
+    <div class="sw">
+      <div class="sw-title" data-i18n="recentVisitors">최근 방문자</div>
+      <div id="recentVisitors"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- WRITE POST OVERLAY -->
+<div class="write-overlay" id="writeOverlay">
+  <div class="write-header">
+    <span class="write-header-title" data-i18n="writeTitle">새 게시물</span>
+    <div class="write-header-right">
+      <button class="write-cancel" onclick="closeWrite()" data-i18n="cancelBtn">취소</button>
+      <button class="write-submit" onclick="submitPost()" data-i18n="submitBtn">발행</button>
+    </div>
+  </div>
+  <div class="write-body">
+    <div class="write-section">
+      <div class="write-label" data-i18n="writeCategory">카테고리</div>
+      <select class="write-input" id="postCategory" style="height:auto;padding:11px 16px">
+        <option value="free">자유게시판</option>
+        <option value="behind">촬영후기</option>
+        <option value="qa">질문답변</option>
+        <option value="equipment">장비·스튜디오</option>
+        <option value="jobs">팀 모집</option>
+        <option value="portfolio">작품공유</option>
+      </select>
+    </div>
+    <div class="write-section">
+      <div class="write-label" data-i18n="writeTitle2">제목</div>
+      <input class="write-input" id="postTitle" type="text" placeholder="제목을 입력하세요..." data-i18n-ph="writeTitlePh">
+    </div>
+    <div class="write-section">
+      <div class="write-label" data-i18n="writeContent">본문</div>
+      <div class="rte-toolbar">
+        <button class="rte-btn" onclick="execCommand('bold')" title="Bold"><strong>B</strong></button>
+        <button class="rte-btn" onclick="execCommand('italic')" title="Italic"><em>I</em></button>
+        <button class="rte-btn" onclick="execCommand('underline')" title="Underline"><u>U</u></button>
+        <div class="rte-sep"></div>
+        <button class="rte-btn" onclick="execCommand('insertUnorderedList')" title="Bullet List">•</button>
+        <button class="rte-btn" onclick="execCommand('insertOrderedList')" title="Numbered List">1.</button>
+        <button class="rte-btn" onclick="execCommand('createLink',prompt('URL:'))" title="Link">🔗</button>
+        <div class="rte-sep"></div>
+        <select class="rte-select" onchange="execCommand('formatBlock','<'+this.value+'>')">
+          <option value="">Heading</option>
+          <option value="h2">Heading 2</option>
+          <option value="h3">Heading 3</option>
+        </select>
+        <button class="rte-btn" onclick="document.getElementById('rteImg').click()" title="Insert Image">🖼</button>
+        <input id="rteImg" type="file" accept="image/*" onchange="insertImageSupabase(this)">
+      </div>
+      <div class="rte-content" id="postContent" contenteditable="true" data-placeholder="내용을 입력하세요..."></div>
+    </div>
+  </div>
+</div>
+
+<!-- POST DETAIL OVERLAY -->
+<div class="detail-overlay" id="detailOverlay">
+  <div class="detail-header">
+    <button class="detail-back" onclick="closeDetail()" data-i18n="backBtn">← 목록으로</button>
+  </div>
+  <div class="detail-body" id="detailContent"></div>
+</div>
+
+<!-- PROFILE POPUP -->
+<div class="profile-popup-bg" id="profilePopupBg" onclick="if(event.target===this)closeProfile()">
+  <div class="profile-popup">
+    <button class="profile-popup-close" onclick="closeProfile()">×</button>
+    <div class="profile-popup-top">
+      <div class="profile-popup-avatar" id="ppAvatar">PA</div>
+      <div>
+        <div class="profile-popup-name" id="ppName">Name</div>
+        <div class="profile-popup-role" id="ppRole">Role</div>
+        <div class="profile-popup-level" id="ppLevel">Level</div>
+      </div>
+    </div>
+    <div class="profile-popup-stats">
+      <div class="profile-popup-stat">
+        <div class="profile-popup-stat-num" id="ppPosts">0</div>
+        <div class="profile-popup-stat-label" data-i18n="statsPostCount">작품</div>
+      </div>
+      <div class="profile-popup-stat">
+        <div class="profile-popup-stat-num" id="ppFollowers">0</div>
+        <div class="profile-popup-stat-label" data-i18n="statsFollowers">팔로워</div>
+      </div>
+      <div class="profile-popup-stat">
+        <div class="profile-popup-stat-num" id="ppLikes">0</div>
+        <div class="profile-popup-stat-label" data-i18n="statsLikes">좋아요</div>
+      </div>
+    </div>
+    <div class="profile-popup-works">
+      <div class="profile-popup-works-title" data-i18n="recentWorks">최근 작품</div>
+      <div class="profile-popup-grid" id="ppWorks"></div>
+    </div>
+  </div>
+</div>
+
+<!-- CHECKIN MODAL -->
+<div class="checkin-modal-bg" id="checkinModalBg" onclick="if(event.target===this)closeCheckin()">
+  <div class="checkin-modal" id="checkinModal">
+    <button class="checkin-modal-close" onclick="closeCheckin()">×</button>
+    <div class="checkin-title" data-i18n="checkinTitle">출석체크</div>
+    <div class="checkin-streak"><span data-i18n="streak">현재 연속:</span> <strong id="streakCount">0</strong> <span data-i18n="days">일</span></div>
+    <button class="checkin-btn-main" id="checkinMainBtn" onclick="doCheckin()" data-i18n="checkinGo">오늘 체크인</button>
+    <div class="checkin-calendar" id="checkinCalendar"></div>
+  </div>
+</div>
+
+<script src="pap-api.js"></script>
+<script>
+// ======== TRANSLATION HELPER ========
+function t(obj){
+  if(typeof obj==='string') return obj;
+  if(typeof obj==='object' && obj!==null) return obj[lang]||obj['en']||obj['ko']||'';
+  return '';
+}
+
+function tPost(obj, post){
+  if(typeof obj==='string') return obj;
+  if(typeof obj==='object' && obj!==null){
+    if(showOriginal[post.id] && post.originalLang){
+      return obj[post.originalLang]||obj['en']||obj['ko']||'';
+    }
+    return obj[lang]||obj['en']||obj['ko']||'';
+  }
+  return '';
+}
+
+// ======== STATE ========
+var lang='ko',currentTab='cafe',currentCafeTab='all',currentCategory='all',currentPage=1,currentDirFilter='all';
+var showOriginal={};
+var checkedInDates=[];
+var allPosts=[
+{id:1,cat:'notice',title:{ko:'PAP Community 공식 출범!',en:'Official Launch of PAP Community!',it:'Lancio ufficiale della PAP Community!',fr:'Lancement officiel de la communauté PAP !',es:'¡Lanzamiento oficial de la comunidad PAP!',ja:'PAPコミュニティ公式ローンチ！',zh:'PAP社区正式上线！',ru:'Официальный запуск сообщества PAP!'},author:'PAP Admin',role:'Administrator',avatar:'PA',level:'diamond',content:{ko:'안녕하세요. PAP Magazine의 새로운 커뮤니티 서비스가 출범했습니다. 이곳에서 다양한 프로젝트 정보, 협업 기회, 그리고 멋진 작품들을 공유할 수 있습니다.',en:'Hello. The new community service of PAP Magazine has launched. Here you can share various project information, collaboration opportunities, and amazing works.',it:'Ciao. Il nuovo servizio di comunità di PAP Magazine è stato lanciato. Qui puoi condividere informazioni su progetti, opportunità di collaborazione e straordinari lavori.',fr:'Bonjour. Le nouveau service communautaire de PAP Magazine est lancé. Vous pouvez y partager diverses informazioni di progetto, opportunità di collaborazione e creazioni remarquables.',es:'Hola. Se ha lanzado el nuevo servicio de comunidad de PAP Magazine. Aquí puedes compartir información sobre proyectos, oportunidades de colaboración y trabajos excepcionales.',ja:'こんにちは。PAP Magazineの新しいコミュニティサービスが立ち上がりました。ここでは、様々なプロジェクト情報、協業機会、そして素晴らしい作品を共有できます。',zh:'你好。PAP Magazine的新社区服务已上线。在这里，您可以分享各种项目信息、合作机会和精美作品。',ru:'Привет. Новый сервис сообщества PAP Magazine запущен. Здесь вы можете делиться информацией о проектах, возможностями сотрудничества и замечательными работами.'},time:'2h ago',views:245,likes:89,comments:12,pinned:true,newBadge:true,originalLang:'ko'},
+{id:2,cat:'notice',title:{ko:'2026 Spring Photography Challenge 안내',en:'2026 Spring Photography Challenge Guide',it:'Guida della Spring Photography Challenge 2026',fr:'Guide du défi photographique printemps 2026',es:'Guía del desafío de fotografía de primavera 2026',ja:'2026年春の写真チャレンジガイド',zh:'2026年春季摄影挑战指南',ru:'Руководство весеннего фотографического конкурса 2026'},author:'PAP Events',role:'Editor',avatar:'PE',level:'platinum',content:{ko:'봄 시즌 사진 공모전이 개최됩니다. 테마는 \"Natural Light\"입니다.',en:'A spring photography competition is being held. The theme is "Natural Light".',it:'Un concorso fotografico primaverile si sta svolgendo. Il tema è "Natural Light".',fr:'Un concours de photographie printanière se déroule. Le thème est « Lumière naturelle ».',es:'Se está llevando a cabo un concurso de fotografía de primavera. El tema es "Luz Natural".',ja:'春の写真コンテストが開催されています。テーマは「Natural Light」です。',zh:'春季摄影比赛正在进行。主题是"自然光"。',ru:'Проводится весенний фотографический конкурс. Тема: «Естественный свет».'},time:'18h ago',views:412,likes:156,comments:23,pinned:true,originalLang:'ko'},
+{id:3,cat:'notice',title:{ko:'Community Guidelines 업데이트',en:'Community Guidelines Update',it:'Aggiornamento delle linee guida della comunità',fr:'Mise à jour des directives communautaires',es:'Actualización de las directrices de la comunidad',ja:'コミュニティガイドラインの更新',zh:'社区指南更新',ru:'Обновление руководящих принципов сообщества'},author:'PAP Admin',role:'Administrator',avatar:'PA',level:'diamond',content:{ko:'커뮤니티 가이드라인이 업데이트되었습니다. 모두가 존중하는 환경을 위해 꼭 읽어주세요.',en:'Community guidelines have been updated. Please read to ensure a respectful environment for everyone.',it:'Le linee guida della comunità sono state aggiornate. Leggi per garantire un ambiente rispettoso per tutti.',fr:'Les directives communautaires ont été mises à jour. Veuillez lire pour assurer un environnement respectueux pour tous.',es:'Las directrices de la comunidad han sido actualizadas. Lea para garantizar un ambiente respetuoso para todos.',ja:'コミュニティガイドラインが更新されました。すべての人にとって尊重される環境を確保するために、お読みください。',zh:'社区指南已更新。请阅读以确保为所有人创建尊重的环境。',ru:'Руководящие принципы сообщества обновлены. Пожалуйста, прочитайте, чтобы обеспечить уважительную среду для всех.'},time:'3d ago',views:187,likes:45,comments:8,originalLang:'ko'},
+{id:4,cat:'behind',title:{ko:'밀라노에서의 비하인드 촬영 현장',en:'Behind-the-Scenes from Milan Shoot',it:'Dietro le quinte dal set di Milano',fr:'Coulisses de la séance photo à Milan',es:'Detrás de cámaras de la sesión en Milán',ja:'ミラノ撮影の舞台裏',zh:'米兰摄影的幕后花絮',ru:'Закулисье сессии в Милане'},author:'Judith Moreno',role:'Photographer',avatar:'JM',level:'bronze',content:{ko:'지난주 밀라노에서의 에디토리얼 촬영 비하인드입니다. 자연광 활용법과 로케이션 선택의 중요성에 대해 공유합니다.',en:'Behind-the-scenes from last week\'s editorial shoot in Milan. Sharing insights on natural light usage and location selection importance.',it:'Dietro le quinte della sessione editoriale di Milano della scorsa settimana. Condividendo spunti sull\'uso della luce naturale e l\'importanza della scelta della posizione.',fr:'Coulisses de la séance éditoriale de Milan de la semaine dernière. Partage des perspectives sur l\'utilisation de la lumière naturelle et l\'importance du choix de la localisation.',es:'Detrás de cámaras de la sesión editorial en Milán de la semana pasada. Compartiendo perspectivas sobre el uso de la luz natural y la importancia de la selección de ubicación.',ja:'先週のミラノ編集撮影の舞台裏。自然光の使用と場所の選択の重要性についての洞察を共有します。',zh:'上周米兰编辑拍摄的幕后花絮。分享自然光使用和地点选择重要性的见解。',ru:'Закулисье редакционной сессии в Милане на прошлой неделе. Обмен информацией об использовании естественного света и важности выбора местоположения.'},time:'4d ago',views:523,likes:234,comments:34,originalLang:'es'},
+{id:5,cat:'qa',title:{ko:'촬영 후 컬러 그레이딩 팁 있으신가요?',en:'Tips on Post-Shoot Color Grading?',it:'Consigli sulla correzione colore post-produzione?',fr:'Conseils sur l\'étalonnage des couleurs post-production?',es:'¿Consejos sobre la gradación de color postproducción?',ja:'ポスト撮影カラーグレーディングのコツ？',zh:'拍摄后色彩分级的提示？',ru:'Советы по цветокоррекции после съемок?'},author:'Clara Chen',role:'Photographer',avatar:'CC',level:'gold',content:{ko:'최근 콜드톤 이미지 작업을 많이 하고 있는데, 효과적인 컬러 그레이딩 워크플로우를 알고 싶습니다. 추천해주실 분?',en:'I\'ve been working with cool-toned images recently. Looking for an effective color grading workflow. Any recommendations?',it:'Ho lavorato recentemente con immagini dal tono freddo. Cerco un flusso di lavoro efficace per la correzione colore. Qualche raccomandazione?',fr:'J\'ai travaillé récemment avec des images aux tons froids. À la recherche d\'un flux de travail efficace pour l\'étalonnage des couleurs. Des recommandations?',es:'He estado trabajando recientemente con imágenes de tonos fríos. Buscando un flujo de trabajo eficaz para la gradación de color. ¿Recomendaciones?',ja:'最近、コールドトーンの画像を扱っています。効果的な色補正ワークフローを探しています。推奨事項は？',zh:'我最近一直在使用冷调图像。寻求有效的色彩分级工作流程。有什么建议吗？',ru:'Недавно я работал с холодными изображениями. Ищу эффективный рабочий процесс цветокоррекции. Какие-нибудь рекомендации?'},time:'5d ago',views:298,likes:127,comments:19,originalLang:'en'},
+{id:6,cat:'free',title:{ko:'다음 달 콜라보레이션 파트너 찾습니다!',en:'Looking for Collaboration Partner Next Month!',it:'Cerco partner per collaborazione il prossimo mese!',fr:'Cherche partenaire de collaboration le mois prochain!',es:'¡Buscando socio de colaboración el próximo mes!',ja:'来月のコラボレーションパートナーを探しています！',zh:'寻求下个月的合作伙伴！',ru:'Ищу партнера по сотрудничеству в следующем месяце!'},author:'Elena Rodriguez',role:'Stylist',avatar:'ER',level:'silver',content:{ko:'4월 중순 서울에서 진행할 에디토리얼 프로젝트의 협업 파트너를 찾고 있습니다. 포토그래퍼와 메이크업 아티스트를 모집 중입니다.',en:'Seeking collaboration partners for an editorial project in Seoul mid-April. Recruiting photographers and makeup artists.',it:'Cerco partner per un progetto editoriale a Seoul a metà aprile. Reclutamento di fotografi e truccatori.',fr:'Cherche des partenaires pour un projet éditorial à Séoul à la mi-avril. Recrutement de photographes et maquilleurs.',es:'Busco socios para un proyecto editorial en Seúl a mediados de abril. Reclutamiento de fotógrafos y maquilladores.',ja:'4月中旬にソウルで行うエディトリアルプロジェクトのコラボレーションパートナーを募集しています。写真家とメイクアップアーティストを募集中。',zh:'为4月中旬在首尔进行的编辑项目寻求合作伙伴。招聘摄影师和化妆师。',ru:'Ищу партнеров для редакционного проекта в Сеуле в середине апреля. Набор фотографов и визажистов.'},time:'6d ago',views:189,likes:82,comments:15,originalLang:'es'},
+{id:7,cat:'equipment',title:{ko:'신형 카메라 렌즈에 대한 경험 공유',en:'Experience with New Camera Lens',it:'Esperienza con il nuovo obiettivo della fotocamera',fr:'Expérience avec le nouvel objectif de l\'appareil photo',es:'Experiencia con nuevo lente de cámara',ja:'新しいカメラレンズの経験',zh:'新相机镜头的经验',ru:'Опыт с новым объективом камеры'},author:'Marco Bellini',role:'Art Director',avatar:'MB',level:'gold',content:{ko:'최근 구입한 85mm f/1.2 렌즈의 첫 인상입니다. 포트레이트 촬영에 최고의 선택이 되어줄 것 같습니다.',en:'My first impressions with the recently purchased 85mm f/1.2 lens. It seems like the perfect choice for portrait photography.',it:'Le mie prime impressioni con l\'obiettivo 85mm f/1.2 acquistato di recente. Sembra la scelta perfetta per la fotografia di ritratti.',fr:'Mes premières impressions avec l\'objectif 85mm f/1.2 récemment acheté. Cela semble être le choix parfait pour la photographie de portrait.',es:'Mis primeras impresiones con el lente 85mm f/1.2 adquirido recientemente. Parece ser la opción perfecta para la fotografía de retratos.',ja:'最近購入した85mm f/1.2レンズの最初の印象です。ポートレート写真に最適な選択のようです。',zh:'最近购买的85mm f/1.2镜头的第一印象。这似乎是肖像摄影的完美选择。',ru:'Мои первые впечатления от недавно приобретенного объектива 85mm f/1.2. Это кажется идеальным выбором для портретной фотографии.'},time:'1w ago',views:412,likes:198,comments:28,originalLang:'it'},
+{id:8,cat:'qa',title:{ko:'스튜디오 조명 세팅 기초',en:'Studio Lighting Setup Basics',it:'Nozioni di base sulla configurazione dell\'illuminazione dello studio',fr:'Les bases de la configuration de l\'éclairage de studio',es:'Conceptos básicos de la configuración de la iluminación de estudio',ja:'スタジオライティング設定の基本',zh:'工作室照明设置基础',ru:'Основы установки студийного освещения'},author:'David Lee',role:'Photographer',avatar:'DL',level:'gold',content:{ko:'처음 스튜디오 촬영을 하는데 조명 세팅이 어렵습니다. 기초부터 배우고 싶어요.',en:'Doing studio photography for the first time and finding lighting setup challenging. Want to learn the basics.',it:'Faccio fotografia da studio per la prima volta e trovo difficile la configurazione dell\'illuminazione. Voglio imparare le basi.',fr:'Je fais de la photographie en studio pour la première fois et je trouve la configuration de l\'éclairage difficile. Veux apprendre les bases.',es:'Haciendo fotografía de estudio por primera vez y encontrando desafiante la configuración de iluminación. Quiero aprender lo básico.',ja:'スタジオ写真を初めて行っており、照明設定が難しいです。基本を学びたいです。',zh:'第一次进行工作室摄影，发现照明设置很有挑战性。想学习基础知识。',ru:'Впервые занимаюсь студийной фотографией и нахожу установку освещения сложной. Хочу выучить основы.'},time:'1w ago',views:267,likes:114,comments:16,originalLang:'en'},
+{id:9,cat:'portfolio',title:{ko:'2026 Spring Collection - Editorial',en:'2026 Spring Collection - Editorial',it:'2026 Spring Collection - Editoriale',fr:'Collection printemps 2026 - Éditorial',es:'Colección de primavera 2026 - Editorial',ja:'2026年春コレクション - エディトリアル',zh:'2026年春季系列 - 编辑',ru:'Весенняя коллекция 2026 - Редакционное'},author:'Lena Park',role:'Photographer',avatar:'LP',level:'gold',content:{ko:'최근 완성한 봄 컬렉션 에디토리얼입니다. 자연과 도시의 조화를 표현했습니다.',en:'Recently completed spring collection editorial. Expressing harmony between nature and urban elements.',it:'Editoriale della collezione primaverile completato di recente. Esprimendo l\'armonia tra natura e elementi urbani.',fr:'Éditorial de collection printanière récemment complété. Exprimant l\'harmonie entre la nature et les éléments urbains.',es:'Editorial de colección de primavera completado recientemente. Expresando la armonía entre la naturaleza y los elementos urbanos.',ja:'最近完成した春コレクションエディトリアル。自然と都市要素の調和を表現しています。',zh:'最近完成的春季系列编辑。表达自然与城市元素的和谐。',ru:'Недавно завершенный редакционный материал весенней коллекции. Выражение гармонии между природой и городскими элементами.'},time:'1w ago',views:534,likes:287,comments:41,originalLang:'ko'},
+{id:10,cat:'jobs',title:{ko:'서울 에디토리얼 촬영 — 스타일리스트 & 메이크업 팀원 모집',en:'Seoul Editorial Shoot - Stylist & Makeup Team Recruiting',it:'Servizio fotografico editoriale di Seoul - Reclutamento di team stilista e trucco',fr:'Séance éditoriale Séoul - Recrutement d\'équipe styliste et maquillage',es:'Sesión editorial de Seúl - Reclutamiento de equipo de estilista y maquillaje',ja:'ソウルエディトリアル撮影 - スタイリスト＆メイクアップチーム募集',zh:'首尔编辑拍摄 - 招聘造型师和化妆师团队',ru:'Редакционная фотосессия в Сеуле - Набор команды стилиста и макияжа'},author:'Sergi Padial',role:'Stylist',avatar:'SP',level:'silver',content:{ko:'4월 중순 서울 성수동에서 진행하는 에디토리얼 촬영 프로젝트의 팀원을 모집합니다. 스타일리스트 1명, 메이크업 아티스트 1명이 필요합니다. 컨셉은 \"Urban Minimal\"이며, 촬영 후 PAP 매거진 서브미션 예정입니다. 포트폴리오와 함께 DM 부탁드려요!',en:'Recruiting team members for an editorial shoot in Seoul Seongsu-dong mid-April. Need 1 stylist and 1 makeup artist. Concept is "Urban Minimal" with PAP Magazine submission planned. Please send portfolio via DM!',it:'Reclutamento di membri del team per una sessione editoriale a Seoul Seongsu-dong a metà aprile. Servono 1 stilista e 1 truccatrice. Il concetto è "Urban Minimal" con submissione prevista per PAP Magazine. Inviare portfolio tramite DM!',fr:'Recrutement de membres d\'équipe pour une séance éditoriale à Seoul Seongsu-dong à la mi-avril. Besoin 1 styliste et 1 maquilleuse. Le concept est "Urban Minimal" avec soumission à PAP Magazine prévue. Veuillez envoyer le portfolio par DM!',es:'Reclutamiento de miembros del equipo para una sesión editorial en Seoul Seongsu-dong a mediados de abril. Necesita 1 estilista y 1 maquilladora. El concepto es "Urban Minimal" con presentación a PAP Magazine planeada. ¡Envíe el portafolio por DM!',ja:'4月中旬にソウルソンスドンで行うエディトリアル撮影プロジェクトのチームメンバーを募集しています。スタイリスト1名、メイクアップアーティスト1名が必要です。コンセプトは「Urban Minimal」で、PAP Magazine提出予定です。DMでポートフォリオを送信してください！',zh:'4月中旬在首尔城郊地区招聘编辑拍摄项目的团队成员。需要1名造型师和1名化妆师。概念是"Urban Minimal"，计划提交给PAP Magazine。请通过DM发送作品集！',ru:'Набор членов команды для редакционной фотосессии в Сеуле Сеонгсу-дон в середине апреля. Требуется 1 стилист и 1 визажист. Концепция «Urban Minimal» с планируемой отправкой в журнал PAP. Пожалуйста, отправьте портфолио через DM!'},time:'2w ago',views:621,likes:312,comments:52,originalLang:'es'},
+{id:11,cat:'behind',title:{ko:'야외 촬영에서의 조명 노하우',en:'Lighting Tips for Outdoor Shoots',it:'Consigli di illuminazione per scatti all\'aperto',fr:'Conseils d\'éclairage pour les séances en extérieur',es:'Consejos de iluminación para disparos al aire libre',ja:'屋外撮影の照明のコツ',zh:'户外拍摄的照明技巧',ru:'Советы по освещению для уличных съемок'},author:'Michael Brown',role:'Retoucher',avatar:'MB',level:'platinum',content:{ko:'햇빛과 반사판만으로 놀라운 결과를 만드는 방법을 공유합니다.',en:'Sharing techniques to create amazing results using just sunlight and reflectors.',it:'Condividendo tecniche per creare risultati straordinari usando solo luce solare e riflettori.',fr:'Partage de techniques pour créer des résultats étonnants en utilisant uniquement la lumière du soleil et des réflecteurs.',es:'Compartiendo técnicas para crear resultados sorprendentes usando solo luz solar y reflectores.',ja:'太陽光と反射板だけを使って素晴らしい結果を作成する方法を共有しています。',zh:'分享仅使用阳光和反射器创建令人惊叹的结果的技术。',ru:'Поделитесь техниками создания поразительных результатов, используя только солнечный свет и отражатели.'},time:'2w ago',views:445,likes:201,comments:31,originalLang:'en'},
+{id:12,cat:'free',title:{ko:'AI 이미지 생성 도구, 어떻게 생각하세요?',en:'What Do You Think About AI Image Generation Tools?',it:'Cosa ne pensi degli strumenti di generazione di immagini AI?',fr:'Que pensez-vous des outils de génération d\'images IA?',es:'¿Qué piensas de las herramientas de generación de imágenes de IA?',ja:'AI画像生成ツールをどう思いますか？',zh:'您对AI图像生成工具有什么看法？',ru:'Что вы думаете об инструментах создания изображений на основе искусственного интеллекта?'},author:'Nina Park',role:'Art Director',avatar:'NP',level:'gold',content:{ko:'최근 AI 이미지 생성 도구가 발전하고 있는데, 이것이 우리 작업에 미치는 영향에 대해 논의하고 싶습니다.',en:'AI image generation tools are advancing rapidly. I\'d like to discuss their impact on our creative work.',it:'Gli strumenti di generazione di immagini AI stanno progredendo rapidamente. Vorrei discutere il loro impatto sul nostro lavoro creativo.',fr:'Les outils de génération d\'images IA progressent rapidement. J\'aimerais discuter de leur impact sur notre travail créatif.',es:'Las herramientas de generación de imágenes de IA avanzan rápidamente. Me gustaría discutir su impacto en nuestro trabajo creativo.',ja:'AI画像生成ツールが急速に進んでいます。創造的な仕事への影響について論じたいです。',zh:'AI图像生成工具正在迅速发展。我想讨论它们对我们创意工作的影响。',ru:'Инструменты создания изображений на основе искусственного интеллекта быстро развиваются. Мне хотелось бы обсудить их влияние на нашу творческую работу.'},time:'2w ago',views:356,likes:167,comments:42,originalLang:'ko'},
+{id:13,cat:'equipment',title:{ko:'짐벌과 드론 추천 부탁드립니다',en:'Gimbal and Drone Recommendations Please',it:'Consigli su gimbal e drone',fr:'Recommandations de cardan et drone',es:'Recomendaciones de cardán y dron',ja:'ジンバルとドローンの推奨事項',zh:'万向节和无人机建议',ru:'Рекомендации по стабилизаторам и дронам'},author:'Tom Anderson',role:'Videographer',avatar:'TA',level:'silver',content:{ko:'비디오그래퍼를 위한 짐벌과 드론을 찾고 있습니다. 예산 범위 내에서 최고의 품질을 원합니다.',en:'Looking for gimbal and drone for videographer use. Want best quality within budget.',it:'Alla ricerca di gimbal e drone per uso da videografo. Voglio la migliore qualità entro il budget.',fr:'À la recherche de cardan et drone pour utilisation vidéographe. Voulez la meilleure qualité dans le budget.',es:'Buscando cardán y dron para uso de videógrafo. Quiero la mejor calidad dentro del presupuesto.',ja:'ビデオグラファー用のジンバルとドローンを探しています。予算内で最高の品質が必要です。',zh:'正在为视频摄影师寻找万向节和无人机。想要预算内的最佳质量。',ru:'Ищу стабилизатор и дрон для видеографа. Хотите лучшее качество в рамках бюджета.'},time:'2w ago',views:'278',likes:118,comments:19,originalLang:'en'},
+{id:14,cat:'qa',title:{ko:'뷰티 에디토리얼에서의 스킨톤 보정',en:'Skin Tone Correction in Beauty Editorial',it:'Correzione del tono della pelle nell\'editoriale di bellezza',fr:'Correction du teint dans l\'éditorial beauté',es:'Corrección del tono de piel en editorial de belleza',ja:'ビューティエディトリアルのスキントーン補正',zh:'美妆编辑中的肤色修正',ru:'Коррекция тона кожи в редакционных материалах красоты'},author:'Sophie Martin',role:'Makeup Artist',avatar:'SM',level:'gold',content:{ko:'다양한 스킨톤의 모델들과 작업할 때 컬러 보정 팁을 공유해주실 분이 있나요?',en:'Does anyone have color correction tips when working with models of various skin tones?',it:'Qualcuno ha consigli di correzione del colore quando lavora con modelli di vari toni della pelle?',fr:'Quelqu\'un a-t-il des conseils de correction des couleurs en travaillant avec des modèles de différents tons de peau?',es:'¿Alguien tiene consejos de corrección de color al trabajar con modelos de varios tonos de piel?',ja:'さまざまなスキントーンのモデルと連携する際の色補正のヒントはありますか？',zh:'与不同肤色模特合作时，有色彩校正技巧吗？',ru:'У кого-нибудь есть советы по коррекции цвета при работе с моделями разных тонов кожи?'},time:'3w ago',views:267,likes:142,comments:24,originalLang:'fr'},
+{id:15,cat:'portfolio',title:{ko:'Monochrome Series - My Latest Work',en:'Monochrome Series - My Latest Work',it:'Serie monocromatica - Il mio ultimo lavoro',fr:'Série monochrome - Mon dernier travail',es:'Serie monocromática - Mi último trabajo',ja:'モノクロシリーズ - 私の最新作品',zh:'单色系列 - 我的最新作品',ru:'Монохромная серия - Мой последний работ'},author:'Julia White',role:'Photographer',avatar:'JW',level:'gold',content:{ko:'흑백 시리즈를 완성했습니다. 명암과 질감에 집중한 작업입니다.',en:'Completed my monochrome series. Focused on contrast and texture.',it:'Completata la mia serie monocromatica. Concentrato su contrasto e texture.',fr:'Série monochrome complétée. Axé sur le contraste et la texture.',es:'Serie monocromática completada. Enfocado en contraste y textura.',ja:'モノクロシリーズを完成させました。コントラストとテクスチャに焦点を当てています。',zh:'完成了我的单色系列。专注于对比和纹理。',ru:'Завершена моя монохромная серия. Сосредоточено на контрасте и текстуре.'},time:'3w ago',views:478,likes:256,comments:38,originalLang:'en'},
+{id:16,cat:'free',title:{ko:'커뮤니티 오프라인 모임 계획 중입니다',en:'Planning Community Offline Meetup',it:'Pianificazione incontro offline della comunità',fr:'Planification de la réunion hors ligne de la communité',es:'Planificación de reunión comunitaria fuera de línea',ja:'コミュニティオフラインミートアップの計画',zh:'规划社区线下聚会',ru:'Планирование встречи сообщества в режиме оффлайн'},author:'PAP Events',role:'Editor',avatar:'PE',level:'platinum',content:{ko:'4월 셋째 주에 서울에서 오프라인 모임을 계획 중입니다. 관심 있으신 분들 댓글로 신청해주세요!',en:'Planning an offline meetup in Seoul for the third week of April. Interested members, please apply in comments!',it:'Pianificazione di un incontro offline a Seoul per la terza settimana di aprile. Membri interessati, si prega di candidarsi nei commenti!',fr:'Planification d\'une réunion hors ligne à Seoul pour la troisième semaine d\'avril. Les membres intéressés, veuillez postuler dans les commentaires!',es:'Planificación de una reunión fuera de línea en Seúl para la tercera semana de abril. Miembros interesados, ¡solicite en los comentarios!',ja:'4月の第3週のソウルでのオフラインミートアップを計画しています。興味のあるメンバーはコメントで申請してください！',zh:'为4月第三周在首尔规划线下聚会。感兴趣的成员，请在评论中申请！',ru:'Планирование встречи в режиме оффлайн в Сеуле на третьей неделе апреля. Заинтересованные участники, пожалуйста, подайте заявку в комментариях!'},time:'3w ago',views:312,likes:189,comments:26,originalLang:'ko'},
+{id:17,cat:'behind',title:{ko:'스튜디오 렌트 팁과 예약 현황',en:'Studio Rental Tips and Booking Status',it:'Suggerimenti per l\'affitto dello studio e lo stato della prenotazione',fr:'Conseils de location de studio et statut de réservation',es:'Consejos de alquiler de estudio y estado de reserva',ja:'スタジオレンタルのコツと予約状況',zh:'工作室租赁提示和预订状态',ru:'Советы по аренде студии и статус бронирования'},author:'Rachel Green',role:'Stylist',avatar:'RG',level:'silver',content:{ko:'여러 스튜디오를 사용해본 경험을 바탕으로 렌트 팁을 공유합니다.',en:'Sharing studio rental tips based on experience with multiple studios.',it:'Condividere suggerimenti di affitto dello studio in base all\'esperienza con più studi.',fr:'Partage de conseils de location de studio basés sur l\'expérience avec plusieurs studios.',es:'Compartiendo consejos de alquiler de estudio basados en la experiencia con múltiples estudios.',ja:'複数のスタジオの経験に基づいてスタジオレンタルのコツを共有します。',zh:'根据多个工作室的经验分享工作室租赁提示。',ru:'Поделитесь советами по аренде студии на основе опыта работы с несколькими студиями.'},time:'3w ago',views:234,likes:105,comments:17,originalLang:'en'},
+{id:18,cat:'jobs',title:{ko:'London 패션필름 프로젝트 — 촬영감독 & 모델 함께하실 분',en:'London Fashion Film - Director of Photography & Models Needed',it:'Film di moda londra - Direttore della fotografia e modelli necessari',fr:'Film de mode à Londres - Directeur de la photographie et modèles requis',es:'Película de moda de Londres - Se necesita director de fotografía y modelos',ja:'ロンドンファッションフィルム - 撮影監督とモデルが必要',zh:'伦敦时尚短片 - 需要摄影指导和模特',ru:'Лондонский модный фильм - Требуется оператор и модели'},author:'Alex Turner',role:'Videographer',avatar:'AT',level:'platinum',content:{ko:'5월 런던에서 3분짜리 패션 단편영상을 제작합니다. 촬영감독과 모델 2명을 찾고 있어요. 네온과 스트릿 컬처를 결합한 무드입니다. 커머셜이 아닌 개인 크리에이티브 프로젝트이며, 완성 후 PAP Film 섹션에 업로드 예정입니다.',en:'Producing a 3-minute fashion film in London this May. Seeking director of photography and 2 models. Mood combines neon and street culture. Creative project for PAP Film showcase.',it:'Produzione di un film di moda di 3 minuti a Londra questo maggio. Cerco direttore della fotografia e 2 modelli. Lo stile combina neon e cultura di strada. Progetto creativo per la vetrina PAP Film.',fr:'Production d\'un film de mode de 3 minutes à Londres en mai. À la recherche d\'un directeur de la photographie et 2 modèles. Le style combine le néon et la culture de rue. Projet créatif pour la vitrine PAP Film.',es:'Producción de una película de moda de 3 minutos en Londres este mayo. Buscando director de fotografía y 2 modelos. El estilo combina neón y cultura callejera. Proyecto creativo para la vitrina de película PAP.',ja:'5月にロンドンで3分間のファッション映画を制作しています。撮影監督と2人のモデルを探しています。ネオンとストリートカルチャーを組み合わせたムード。PAP Filmショーケース用のクリエイティブプロジェクト。',zh:'今年5月在伦敦制作3分钟的时尚短片。寻求摄影指导和2名模特。风格融合霓虹灯和街头文化。PAP电影展示的创意项目。',ru:'Производство 3-минутного модного фильма в Лондоне в этом мае. Ищу оператора и 2 моделей. Стиль сочетает неон и уличную культуру. Творческий проект для витрины PAP Film.'},time:'3w ago',views:523,likes:278,comments:44,originalLang:'en'},
+{id:19,cat:'qa',title:{ko:'RAW 파일 처리 워크플로우',en:'RAW File Processing Workflow',it:'Flusso di lavoro di elaborazione file RAW',fr:'Flux de travail de traitement de fichier RAW',es:'Flujo de trabajo de procesamiento de archivos RAW',ja:'RAWファイル処理ワークフロー',zh:'RAW文件处理工作流程',ru:'Рабочий процесс обработки файлов RAW'},author:'Clara Chen',role:'Photographer',avatar:'CC',level:'gold',content:{ko:'RAW 파일을 처리하는 최적의 워크플로우는 무엇인가요? 시간을 절약할 수 있는 팁이 있다면?',en:'What\'s the optimal workflow for RAW file processing? Any tips to save time?',it:'Qual è il flusso di lavoro ottimale per l\'elaborazione di file RAW? Qualche consiglio per risparmiare tempo?',fr:'Quel est le flux de travail optimal pour le traitement des fichiers RAW? Des conseils pour gagner du temps?',es:'¿Cuál es el flujo de trabajo óptimo para el procesamiento de archivos RAW? ¿Algún consejo para ahorrar tiempo?',ja:'RAWファイル処理の最適なワークフローは何ですか？時間を節約するためのコツはありますか？',zh:'RAW文件处理的最佳工作流程是什么？有节省时间的技巧吗？',ru:'Какой оптимальный рабочий процесс для обработки файлов RAW? Есть ли советы по экономии времени?'},time:'4w ago',views:289,likes:156,comments:22,originalLang:'en'},
+{id:20,cat:'portfolio',title:{ko:'Texture Exploration - Abstract Series',en:'Texture Exploration - Abstract Series',it:'Esplorazione di trame - Serie astratta',fr:'Exploration de texture - Série abstraite',es:'Exploración de texturas - Serie abstracta',ja:'テクスチャー探索 - 抽象シリーズ',zh:'纹理探索 - 抽象系列',ru:'Исследование текстур - Абстрактная серия'},author:'Nicolas Dupont',role:'Photographer',avatar:'ND',level:'gold',content:{ko:'추상적인 질감 탐구 시리즈입니다. 카메라와 렌즈의 한계를 넘어섭니다.',en:'Abstract texture exploration series. Pushing the boundaries of camera and lens.',it:'Serie di esplorazione di trame astratte. Spingere i limiti della fotocamera e dell\'obiettivo.',fr:'Série d\'exploration de texture abstraite. Repousser les limites de l\'appareil photo et de l\'objectif.',es:'Serie de exploración de textura abstracta. Empujando los límites de la cámara y la lente.',ja:'抽象的なテクスチャー探索シリーズ。カメラとレンズの限界を押し広げます。',zh:'抽象纹理探索系列。突破相机和镜头的极限。',ru:'Серия исследования абстрактной текстуры. Расширение возможностей камеры и линзы.'},time:'4w ago',views:412,likes:234,comments:33,originalLang:'fr'},
+{id:21,cat:'free',title:{ko:'패션 산업 트렌드 2026 상반기',en:'Fashion Industry Trends H1 2026',it:'Tendenze dell\'industria della moda H1 2026',fr:'Tendances de l\'industrie de la mode H1 2026',es:'Tendencias de la industria de la moda H1 2026',ja:'ファッション業界トレンド2026年上半期',zh:'时尚行业趋势2026年上半年',ru:'Тенденции модной индустрии H1 2026'},author:'Elisa V',role:'Makeup Artist',avatar:'EV',level:'silver',content:{ko:'올해 상반기 패션 산업의 주요 트렌드와 우리가 놓치면 안 될 것들을 분석했습니다.',en:'Analyzed major fashion industry trends for H1 2026 and what we shouldn\'t miss.',it:'Analizzate le principali tendenze dell\'industria della moda per H1 2026 e cosa non dovremmo perdere.',fr:'Analysé les principales tendances de l\'industrie de la mode pour H1 2026 et ce que nous ne devrions pas manquer.',es:'Analicé las principales tendencias de la industria de la moda para H1 2026 y lo que no deberíamos perdernos.',ja:'2026年上半期の主要なファッション業界トレンドと、見逃してはいけないものを分析しました。',zh:'分析了2026年上半年的主要时尚行业趋势和我们不应该错过的东西。',ru:'Проанализировал основные тенденции модной индустрии в H1 2026 и то, что мы не должны пропустить.'},time:'1mo ago',views:356,likes:178,comments:29,originalLang:'ko'},
+{id:22,cat:'equipment',title:{ko:'백그라운드와 세팅용품 추천',en:'Background and Setup Supplies Recommendations',it:'Raccomandazioni di sfondo e forniture di configurazione',fr:'Recommandations de fond et de fournitures de configuration',es:'Recomendaciones de fondo y suministros de configuración',ja:'背景とセットアップサプライの推奨事項',zh:'背景和设置用品建议',ru:'Рекомендации по фону и принадлежностям для установки'},author:'David Lee',role:'Photographer',avatar:'DL',level:'gold',content:{ko:'스튜디오 촬영을 위한 백그라운드와 세팅 용품 추천을 부탁드립니다. 예산 범위는?',en:'Looking for background and setup supplies recommendations for studio shooting. What\'s your budget range?',it:'Alla ricerca di raccomandazioni di sfondo e forniture di configurazione per la ripresa in studio. Quale è il vostro intervallo di budget?',fr:'À la recherche de recommandations de fond et de fournitures de configuration pour la prise de vue en studio. Quel est votre budget?',es:'Buscando recomendaciones de fondo y suministros de configuración para la fotografía de estudio. ¿Cuál es su rango de presupuesto?',ja:'スタジオ撮影用の背景とセットアップサプライの推奨事項を探しています。ご予算の範囲は？',zh:'寻找工作室拍摄的背景和设置用品建议。您的预算范围是多少？',ru:'Ищу рекомендации по фону и принадлежностям для установки для студийной фотосъемки. Какой у вас диапазон бюджета?'},time:'1mo ago',views:267,likes:134,comments:19,originalLang:'en'},
+{id:23,cat:'behind',title:{ko:'새벽 촬영 현장 스토리',en:'Dawn Shoot Behind-the-Scenes Story',it:'Storia dietro le quinte della ripresa all\'alba',fr:'Histoire coulisses de la séance à l\'aube',es:'Historia detrás de cámaras de la sesión del amanecer',ja:'夜明け撮影の舞台裏ストーリー',zh:'黎明拍摄的幕后花絮故事',ru:'Закулисная история съемки на рассвете'},author:'Marco Bellini',role:'Art Director',avatar:'MB',level:'gold',content:{ko:'새벽 4시부터 시작한 촬영 현장의 이야기와 얻은 경험들을 공유합니다.',en:'Sharing the story of an early morning 4am shoot and the lessons learned.',it:'Condividendo la storia di una ripresa al mattino presto alle 4 del mattino e le lezioni apprese.',fr:'Partage de l\'histoire d\'une séance matinale à 4h du matin et des leçons apprises.',es:'Compartiendo la historia de una sesión matutina a las 4 am y las lecciones aprendidas.',ja:'午前4時から始まった撮影現場のストーリーと学んだ経験を共有します。',zh:'分享早上4点开始的拍摄现场的故事和学到的经验。',ru:'Рассказываю о съемке в 4 часа утра и полученных уроках.'},time:'1mo ago',views:398,likes:212,comments:28,originalLang:'it'},
+{id:24,cat:'qa',title:{ko:'모델 섭외는 어떻게 하나요?',en:'How Do You Find and Hire Models?',it:'Come trovi e assumi i modelli?',fr:'Comment trouvez-vous et embauchez-vous des modèles?',es:'¿Cómo encuentra y contrata modelos?',ja:'モデルをどうやって見つけて雇いますか？',zh:'您如何找到和雇用模特？',ru:'Как вы находите и нанимаете моделей?'},author:'Nina Park',role:'Art Director',avatar:'NP',level:'gold',content:{ko:'처음으로 본인의 프로젝트를 진행하려는데 모델 섭외 과정을 알고 싶습니다.',en:'Doing my first independent project and want to know the model sourcing process.',it:'Fare il mio primo progetto indipendente e voglio conoscere il processo di approvvigionamento dei modelli.',fr:'Faire mon premier projet indépendant et je veux connaître le processus de sourcing des modèles.',es:'Realizando mi primer proyecto independiente y quiero conocer el proceso de búsqueda de modelos.',ja:'初めての独立プロジェクトを進めており、モデルソーシング プロセスを知りたいです。',zh:'进行我的第一个独立项目，想了解模特采购流程。',ru:'Я делаю свой первый независимый проект и хочу узнать процесс поиска моделей.'},time:'1mo ago',views:234,likes:142,comments:25,originalLang:'ko'},
+{id:25,cat:'portfolio',title:{ko:'Urban Exploration Photography',en:'Urban Exploration Photography',it:'Fotografia di esplorazione urbana',fr:'Photographie d\'exploration urbaine',es:'Fotografía de exploración urbana',ja:'都市探検写真',zh:'城市探索摄影',ru:'Фотография городских исследований'},author:'Michael Brown',role:'Retoucher',avatar:'MB',level:'platinum',content:{ko:'도시 탐험을 통해 만든 사진 시리즈입니다. 숨겨진 아름다움을 찾는 것이 주제입니다.',en:'Photo series created through urban exploration. Theme is discovering hidden beauty in cities.',it:'Serie fotografica creata attraverso l\'esplorazione urbana. Il tema è scoprire la bellezza nascosta nelle città.',fr:'Série photographique créée par l\'exploration urbaine. Le thème est de découvrir la beauté cachée des villes.',es:'Serie de fotos creada mediante exploración urbana. El tema es descubrir la belleza oculta en las ciudades.',ja:'都市探検を通じて作成した写真シリーズ。都市の隠された美を発見することが主なテーマです。',zh:'通过城市探索创建的摄影系列。主题是发现城市中隐藏的美。',ru:'Серия фотографий, созданная посредством городских исследований. Тема - открыть скрытую красоту городов.'},time:'1mo ago',views:567,likes:301,comments:47,originalLang:'en'}
+];
+
+// ======== TRANSLATIONS ========
+var L={
+ko:{
+  tabCafe:'게시판',tabProjects:'프로젝트',tabAiMatch:'AI 매칭',tabDirectory:'디렉토리',
+  backMag:'← 매거진',writeBtn:'글쓰기',
+  cafeAll:'전체글',cafePopular:'인기글',cafeNotice:'공지',
+  searchPh:'제목, 내용, 작성자 검색...',
+  tableCategory:'카테고리',tableTitle:'제목',tableAuthor:'작성자',tableDate:'날짜',tableViews:'조회',tableLikes:'좋아요',
+  catAll:'전체글',catNotice:'공지사항',catFree:'자유게시판',catBehind:'촬영후기',catQA:'질문답변',catEquipment:'장비·스튜디오',catJobs:'팀 모집',catPortfolio:'작품공유',
+  membersCount:'멤버 2,847명',statsMembers:'회원 수:',statsToday:'오늘 글:',statsTotal:'전체 글:',
+  checkinBtn:'출석체크',checkinTitle:'출석체크',checkinGo:'오늘 체크인',streak:'현재 연속:',days:'일',
+  topPopular:'인기글 TOP 5',swTrending:'인기 크리에이터',swOpenProj:'진행 중인 프로젝트',swPopAes:'인기 미학 태그',recentVisitors:'최근 방문자',
+  aiTitle:'AI TEAM MATCHING',aiDesc:'역할, 위치, 미학을 기반으로 이상적인 협업 파트너를 AI가 추천합니다.',aiMyRole:'나의 역할',aiLocation:'위치',aiAesthetic:'추구하는 미학 (복수 선택)',aiLookingFor:'찾는 역할',aiFindBtn:'매칭 시작',aiLoading:'AI가 최적의 파트너를 분석 중...',
+  dirSearchPh:'이름, 역할, 위치, 미학으로 검색...',
+  projAll:'전체 프로젝트',
+  writeTitle:'새 게시물',writeTitle2:'제목',writeContent:'본문',cancelBtn:'취소',submitBtn:'발행',writeCategory:'카테고리',writeTitlePh:'제목을 입력하세요...',
+  backBtn:'← 목록으로',
+  statsPostCount:'작품',statsFollowers:'팔로워',statsLikes:'좋아요',recentWorks:'최근 작품',
+  loginAlert:'로그인 후 이용 가능합니다',
+  btnScrap:'스크랩',btnShare:'공유',btnReport:'신고',commentPlaceholder:'댓글을 입력하세요...',commentSubmit:'등록',prevPost:'이전 글',nextPost:'다음 글',
+  viewOriginal:'원문보기',viewTranslation:'번역보기',originalLabel:'원문'
+},
+en:{
+  tabCafe:'FEED',tabProjects:'PROJECTS',tabAiMatch:'AI MATCH',tabDirectory:'DIRECTORY',
+  backMag:'← MAGAZINE',writeBtn:'WRITE',
+  cafeAll:'ALL',cafePopular:'POPULAR',cafeNotice:'NOTICES',
+  searchPh:'Search title, content, author...',
+  tableCategory:'CATEGORY',tableTitle:'TITLE',tableAuthor:'AUTHOR',tableDate:'DATE',tableViews:'VIEWS',tableLikes:'LIKES',
+  catAll:'All',catNotice:'Notices',catFree:'Free Board',catBehind:'Shoot Reviews',catQA:'Q&A',catEquipment:'Equipment',catJobs:'Team Up',catPortfolio:'Portfolio',
+  membersCount:'Members: 2,847',statsMembers:'Members:',statsToday:'Today:',statsTotal:'Total:',
+  checkinBtn:'Check In',checkinTitle:'Check In',checkinGo:'Check In Today',streak:'Streak:',days:'days',
+  topPopular:'TOP 5 POSTS',swTrending:'TRENDING CREATORS',swOpenProj:'OPEN PROJECTS',swPopAes:'POPULAR AESTHETICS',recentVisitors:'RECENT VISITORS',
+  aiTitle:'AI TEAM MATCHING',aiDesc:'AI recommends ideal partners based on role, location, and aesthetics.',aiMyRole:'MY ROLE',aiLocation:'LOCATION',aiAesthetic:'AESTHETIC',aiLookingFor:'LOOKING FOR',aiFindBtn:'FIND MATCH',aiLoading:'Analyzing best partners...',
+  dirSearchPh:'Search name, role, location, aesthetic...',
+  projAll:'ALL PROJECTS',
+  writeTitle:'New Post',writeTitle2:'Title',writeContent:'Content',cancelBtn:'Cancel',submitBtn:'Publish',writeCategory:'Category',writeTitlePh:'Enter title...',
+  backBtn:'← Back',
+  statsPostCount:'Posts',statsFollowers:'Followers',statsLikes:'Likes',recentWorks:'Recent Works',
+  loginAlert:'Login required',
+  btnScrap:'Save',btnShare:'Share',btnReport:'Report',commentPlaceholder:'Add a comment...',commentSubmit:'Post',prevPost:'Previous',nextPost:'Next',
+  viewOriginal:'View Original',viewTranslation:'View Translation',originalLabel:'Original'
+},
+it:{tabCafe:'FORUM',tabProjects:'PROGETTI',tabAiMatch:'AI MATCH',tabDirectory:'DIRECTORY',backMag:'← RIVISTA',writeBtn:'SCRIVI',cafeAll:'TUTTI',cafePopular:'POPOLARE',cafeNotice:'AVVISI',searchPh:'Cerca titolo, contenuto, autore...',tableCategory:'CATEGORIA',tableTitle:'TITOLO',tableAuthor:'AUTORE',tableDate:'DATA',tableViews:'VISUALIZZAZIONI',tableLikes:'MI PIACE',catAll:'Tutti',catNotice:'Avvisi',catFree:'Forum Libero',catBehind:'Dietro le Quinte',catQA:'Domande',catEquipment:'Attrezzature',catJobs:'Cerca Team',catPortfolio:'Portfolio',membersCount:'Membri: 2.847',statsMembers:'Membri:',statsToday:'Oggi:',statsTotal:'Totale:',checkinBtn:'Check In',checkinTitle:'Check In',checkinGo:'Accedi Oggi',streak:'Sequenza:',days:'giorni',topPopular:'TOP 5 POST',swTrending:'CREATORI EMERGENTI',swOpenProj:'PROGETTI APERTI',swPopAes:'ESTETICHE POPOLARI',recentVisitors:'VISITATORI RECENTI',aiTitle:'AI TEAM MATCHING',aiDesc:'L\'IA consiglia partner ideali in base a ruolo, posizione ed estetica.',aiMyRole:'MIO RUOLO',aiLocation:'POSIZIONE',aiAesthetic:'ESTETICA',aiLookingFor:'CERCO',aiFindBtn:'TROVA MATCH',aiLoading:'Analizzando i migliori partner...',dirSearchPh:'Cerca nome, ruolo, posizione, estetica...',projAll:'TUTTI I PROGETTI',writeTitle:'Nuovo Post',writeTitle2:'Titolo',writeContent:'Contenuto',cancelBtn:'Annulla',submitBtn:'Pubblica',writeCategory:'Categoria',writeTitlePh:'Inserisci titolo...',backBtn:'← Indietro',statsPostCount:'Post',statsFollowers:'Seguaci',statsLikes:'Mi Piace',recentWorks:'Lavori Recenti',loginAlert:'Accesso richiesto',btnScrap:'Salva',btnShare:'Condividi',btnReport:'Segnala',commentPlaceholder:'Aggiungi un commento...',commentSubmit:'Invia',prevPost:'Precedente',nextPost:'Successivo',viewOriginal:'Vedi originale',viewTranslation:'Vedi traduzione',originalLabel:'Originale'},
+fr:{tabCafe:'FORUM',tabProjects:'PROJETS',tabAiMatch:'AI MATCH',tabDirectory:'ANNUAIRE',backMag:'← MAGAZINE',writeBtn:'ÉCRIRE',cafeAll:'TOUS',cafePopular:'POPULAIRE',cafeNotice:'ANNONCES',searchPh:'Rechercher titre, contenu, auteur...',tableCategory:'CATÉGORIE',tableTitle:'TITRE',tableAuthor:'AUTEUR',tableDate:'DATE',tableViews:'VUES',tableLikes:'J\'AIME',catAll:'Tous',catNotice:'Annonces',catFree:'Forum Libre',catBehind:'Coulisses',catQA:'Q&A',catEquipment:'Équipements',catJobs:'Chercher Équipe',catPortfolio:'Portfolio',membersCount:'Membres: 2 847',statsMembers:'Membres:',statsToday:'Aujourd\'hui:',statsTotal:'Total:',checkinBtn:'Pointer',checkinTitle:'Pointer',checkinGo:'Pointez Aujourd\'hui',streak:'Série:',days:'jours',topPopular:'TOP 5 POSTS',swTrending:'CRÉATEURS TENDANCE',swOpenProj:'PROJETS OUVERTS',swPopAes:'ESTHÉTIQUES POPULAIRES',recentVisitors:'VISITEURS RÉCENTS',aiTitle:'AI TEAM MATCHING',aiDesc:'L\'IA recommande des partenaires idéaux selon le rôle, la localisation et l\'esthétique.',aiMyRole:'MON RÔLE',aiLocation:'LOCALISATION',aiAesthetic:'ESTHÉTIQUE',aiLookingFor:'CHERCHE',aiFindBtn:'TROUVER MATCH',aiLoading:'Analyse des meilleurs partenaires...',dirSearchPh:'Rechercher nom, rôle, localisation, esthétique...',projAll:'TOUS LES PROJETS',writeTitle:'Nouveau Post',writeTitle2:'Titre',writeContent:'Contenu',cancelBtn:'Annuler',submitBtn:'Publier',writeCategory:'Catégorie',writeTitlePh:'Entrez le titre...',backBtn:'← Retour',statsPostCount:'Posts',statsFollowers:'Abonnés',statsLikes:'J\'Aime',recentWorks:'Travaux Récents',loginAlert:'Connexion requise',btnScrap:'Enregistrer',btnShare:'Partager',btnReport:'Signaler',commentPlaceholder:'Ajouter un commentaire...',commentSubmit:'Envoyer',prevPost:'Précédent',nextPost:'Suivant',viewOriginal:'Voir l\'original',viewTranslation:'Voir la traduction',originalLabel:'Original'},
+es:{tabCafe:'FORO',tabProjects:'PROYECTOS',tabAiMatch:'AI MATCH',tabDirectory:'DIRECTORIO',backMag:'← REVISTA',writeBtn:'ESCRIBIR',cafeAll:'TODOS',cafePopular:'POPULAR',cafeNotice:'AVISOS',searchPh:'Buscar título, contenido, autor...',tableCategory:'CATEGORÍA',tableTitle:'TÍTULO',tableAuthor:'AUTOR',tableDate:'FECHA',tableViews:'VISTAS',tableLikes:'ME GUSTA',catAll:'Todos',catNotice:'Avisos',catFree:'Foro Libre',catBehind:'Detrás de Cámaras',catQA:'Preguntas',catEquipment:'Equipo',catJobs:'Buscar Equipo',catPortfolio:'Portafolio',membersCount:'Miembros: 2.847',statsMembers:'Miembros:',statsToday:'Hoy:',statsTotal:'Total:',checkinBtn:'Marcar',checkinTitle:'Marcar',checkinGo:'Marque Hoy',streak:'Racha:',days:'días',topPopular:'TOP 5 POSTS',swTrending:'CREADORES TENDENCIA',swOpenProj:'PROYECTOS ABIERTOS',swPopAes:'ESTÉTICAS POPULARES',recentVisitors:'VISITANTES RECIENTES',aiTitle:'AI TEAM MATCHING',aiDesc:'La IA recomienda socios ideales según rol, ubicación y estética.',aiMyRole:'MI ROL',aiLocation:'UBICACIÓN',aiAesthetic:'ESTÉTICA',aiLookingFor:'BUSCANDO',aiFindBtn:'ENCONTRAR MATCH',aiLoading:'Analizando mejores socios...',dirSearchPh:'Buscar nombre, rol, ubicación, estética...',projAll:'TODOS LOS PROYECTOS',writeTitle:'Nuevo Post',writeTitle2:'Título',writeContent:'Contenido',cancelBtn:'Cancelar',submitBtn:'Publicar',writeCategory:'Categoría',writeTitlePh:'Ingrese título...',backBtn:'← Atrás',statsPostCount:'Posts',statsFollowers:'Seguidores',statsLikes:'Me Gusta',recentWorks:'Trabajos Recientes',loginAlert:'Se requiere iniciar sesión',btnScrap:'Guardar',btnShare:'Compartir',btnReport:'Denunciar',commentPlaceholder:'Agregar comentario...',commentSubmit:'Enviar',prevPost:'Anterior',nextPost:'Siguiente',viewOriginal:'Ver original',viewTranslation:'Ver traducción',originalLabel:'Original'},
+ja:{tabCafe:'フォーラム',tabProjects:'プロジェクト',tabAiMatch:'AI マッチング',tabDirectory:'ディレクトリ',backMag:'← マガジン',writeBtn:'投稿',cafeAll:'すべて',cafePopular:'人気',cafeNotice:'お知らせ',searchPh:'タイトル、内容、著者を検索...',tableCategory:'カテゴリー',tableTitle:'タイトル',tableAuthor:'著者',tableDate:'日付',tableViews:'表示',tableLikes:'いいね',catAll:'すべて',catNotice:'お知らせ',catFree:'フリーフォーラム',catBehind:'制作の裏側',catQA:'質問',catEquipment:'機器',catJobs:'チーム募集',catPortfolio:'ポートフォリオ',membersCount:'メンバー: 2,847人',statsMembers:'メンバー:',statsToday:'今日:',statsTotal:'合計:',checkinBtn:'チェックイン',checkinTitle:'チェックイン',checkinGo:'今日チェックイン',streak:'ストリーク:',days:'日',topPopular:'トップ5投稿',swTrending:'トレンドクリエイター',swOpenProj:'オープンプロジェクト',swPopAes:'人気エステティック',recentVisitors:'最近の訪問者',aiTitle:'AI チームマッチング',aiDesc:'AIはロール、場所、美学に基づいて理想的なパートナーを推奨します。',aiMyRole:'私のロール',aiLocation:'場所',aiAesthetic:'美学',aiLookingFor:'探しています',aiFindBtn:'マッチを検索',aiLoading:'最適なパートナーを分析中...',dirSearchPh:'名前、ロール、場所、美学で検索...',projAll:'すべてのプロジェクト',writeTitle:'新規投稿',writeTitle2:'タイトル',writeContent:'コンテンツ',cancelBtn:'キャンセル',submitBtn:'公開',writeCategory:'カテゴリー',writeTitlePh:'タイトルを入力...',backBtn:'← 戻る',statsPostCount:'投稿',statsFollowers:'フォロワー',statsLikes:'いいね',recentWorks:'最近の作品',loginAlert:'ログイン必須',btnScrap:'保存',btnShare:'共有',btnReport:'報告',commentPlaceholder:'コメントを追加...',commentSubmit:'投稿',prevPost:'前へ',nextPost:'次へ',viewOriginal:'原文を表示',viewTranslation:'翻訳を表示',originalLabel:'原文'},
+zh:{tabCafe:'论坛',tabProjects:'项目',tabAiMatch:'AI匹配',tabDirectory:'目录',backMag:'← 杂志',writeBtn:'发布',cafeAll:'全部',cafePopular:'热门',cafeNotice:'公告',searchPh:'搜索标题、内容、作者...',tableCategory:'分类',tableTitle:'标题',tableAuthor:'作者',tableDate:'日期',tableViews:'浏览',tableLikes:'赞',catAll:'全部',catNotice:'公告',catFree:'自由论坛',catBehind:'幕后花絮',catQA:'问题',catEquipment:'设备',catJobs:'组建团队',catPortfolio:'作品集',membersCount:'成员: 2,847',statsMembers:'成员:',statsToday:'今天:',statsTotal:'总计:',checkinBtn:'签到',checkinTitle:'签到',checkinGo:'今日签到',streak:'连续:',days:'天',topPopular:'热门TOP5',swTrending:'热门创意人',swOpenProj:'进行中的项目',swPopAes:'热门美学',recentVisitors:'最近访问者',aiTitle:'AI 团队匹配',aiDesc:'AI根据角色、位置和美学推荐理想的合作伙伴。',aiMyRole:'我的角色',aiLocation:'位置',aiAesthetic:'美学',aiLookingFor:'寻找',aiFindBtn:'找到匹配',aiLoading:'正在分析最佳合作伙伴...',dirSearchPh:'按名称、角色、位置、美学搜索...',projAll:'所有项目',writeTitle:'新建帖子',writeTitle2:'标题',writeContent:'内容',cancelBtn:'取消',submitBtn:'发布',writeCategory:'分类',writeTitlePh:'输入标题...',backBtn:'← 返回',statsPostCount:'帖子',statsFollowers:'粉丝',statsLikes:'赞',recentWorks:'最近作品',loginAlert:'需要登录',btnScrap:'保存',btnShare:'分享',btnReport:'举报',commentPlaceholder:'添加评论...',commentSubmit:'发送',prevPost:'上一篇',nextPost:'下一篇',viewOriginal:'查看原文',viewTranslation:'查看翻译',originalLabel:'原文'},
+ru:{tabCafe:'ФОРУМ',tabProjects:'ПРОЕКТЫ',tabAiMatch:'AI ПОДБОР',tabDirectory:'КАТАЛОГ',backMag:'← ЖУРНАЛ',writeBtn:'НАПИСАТЬ',cafeAll:'ВСЕ',cafePopular:'ПОПУЛЯРНЫЕ',cafeNotice:'ОБЪЯВЛЕНИЯ',searchPh:'Поиск по названию, содержанию, автору...',tableCategory:'КАТЕГОРИЯ',tableTitle:'НАЗВАНИЕ',tableAuthor:'АВТОР',tableDate:'ДАТА',tableViews:'ПРОСМОТРЫ',tableLikes:'НРАВИТСЯ',catAll:'Все',catNotice:'Объявления',catFree:'Свободный форум',catBehind:'За кулисами',catQA:'Вопросы',catEquipment:'Оборудование',catJobs:'Набор команды',catPortfolio:'Портфолио',membersCount:'Участников: 2 847',statsMembers:'Участники:',statsToday:'Сегодня:',statsTotal:'Всего:',checkinBtn:'Отметиться',checkinTitle:'Отметиться',checkinGo:'Отметиться Сегодня',streak:'Серия:',days:'дней',topPopular:'ТОП 5 ПОСТОВ',swTrending:'ПОПУЛЯРНЫЕ АВТОРЫ',swOpenProj:'ОТКРЫТЫЕ ПРОЕКТЫ',swPopAes:'ПОПУЛЯРНАЯ ЭСТЕТИКА',recentVisitors:'НЕДАВНИЕ ПОСЕТИТЕЛИ',aiTitle:'AI ПОДБОР КОМАНДЫ',aiDesc:'ИИ рекомендует идеальных партнеров на основе роли, локации и эстетики.',aiMyRole:'МОЯ РОЛЬ',aiLocation:'ЛОКАЦИЯ',aiAesthetic:'ЭСТЕТИКА',aiLookingFor:'ИЩУ',aiFindBtn:'НАЙТИ ПАРТНЕРА',aiLoading:'Анализируем лучших партнеров...',dirSearchPh:'Поиск по имени, роли, локации, эстетике...',projAll:'ВСЕ ПРОЕКТЫ',writeTitle:'Новый пост',writeTitle2:'Название',writeContent:'Содержание',cancelBtn:'Отмена',submitBtn:'Опубликовать',writeCategory:'Категория',writeTitlePh:'Введите название...',backBtn:'← Назад',statsPostCount:'Посты',statsFollowers:'Подписчики',statsLikes:'Нравится',recentWorks:'Недавние работы',loginAlert:'Требуется вход',btnScrap:'Сохранить',btnShare:'Поделиться',btnReport:'Пожаловаться',commentPlaceholder:'Добавить комментарий...',commentSubmit:'Отправить',prevPost:'Предыдущий',nextPost:'Следующий',viewOriginal:'Показать оригинал',viewTranslation:'Показать перевод',originalLabel:'Оригинал'}
+};
+
+function toggleOriginal(postId, btn){
+  if(showOriginal[postId]){
+    delete showOriginal[postId];
+  } else {
+    showOriginal[postId]=true;
+  }
+  if(document.getElementById('detailOverlay').classList.contains('active')){
+    openPost(postId);
+  }
+  updatePostTable();
+}
+
+// ======== LANGUAGE ========
+function setLang(l){
+  lang=l;
+  localStorage.setItem('pap-lang',l);
+  var sel=document.getElementById('langSelect');
+  if(sel) sel.value=l;
+  updateTranslations();
+  if(document.getElementById('postTableBody')) updatePostTable();
+  if(document.getElementById('topPosts')) renderSidebars();
+}
+
+function updateTranslations(){
+  document.querySelectorAll('[data-i18n]').forEach(function(e){var key=e.getAttribute('data-i18n');if(L[lang][key])e.textContent=L[lang][key];});
+  document.querySelectorAll('[data-i18n-ph]').forEach(function(e){var key=e.getAttribute('data-i18n-ph');if(L[lang][key])e.placeholder=L[lang][key];});
+}
+
+// ======== TABS ========
+function goTab(tab,el){
+  currentTab=tab;currentPage=1;
+  document.querySelectorAll('.c-tab').forEach(function(e){e.classList.remove('active');});
+  document.querySelectorAll('.c-nav a').forEach(function(e){e.classList.remove('active');});
+  var tabEl=document.getElementById('t-'+tab);
+  if(tabEl)tabEl.classList.add('active');
+  if(el)el.classList.add('active');
+  if(tab==='cafe'){updatePostTable();}
+  if(tab==='projects'){renderProjects();}
+  var mainContent=document.querySelector('.c-main-content');
+  if(mainContent)mainContent.scrollTop=0;
+}
+
+// ======== CAFE TAB SWITCHING ========
+function switchCafeTab(tab,el){currentCafeTab=tab;currentPage=1;document.querySelectorAll('.c-tabs-nav a').forEach(function(e){e.classList.remove('active');});el.classList.add('active');updatePostTable();}
+
+// ======== CATEGORY FILTERING ========
+function filterCategory(cat,el){
+  currentCategory=cat;currentPage=1;
+  document.querySelectorAll('.cat-item').forEach(function(e){e.classList.remove('active');});
+  if(el){var item=el.closest?el.closest('.cat-item'):el;if(item)item.classList.add('active');}
+  else{var found=document.querySelector('.cat-item[data-category="'+cat+'"]');if(found)found.classList.add('active');}
+  if(currentTab!=='cafe'){
+    var cafeTabEl=document.querySelector('.c-nav a[onclick*="cafe"]');
+    goTab('cafe',cafeTabEl);
+  }
+  updatePostTable();
+}
+
+// ======== POST TABLE ========
+function updatePostTable(){
+  var posts=allPosts.slice();
+  if(currentCategory!=='all'){posts=posts.filter(function(p){return p.cat===currentCategory;});}
+  if(currentCafeTab==='popular'){posts.sort(function(a,b){return b.likes-a.likes;});}
+  if(currentCafeTab==='notice'){posts=posts.filter(function(p){return p.cat==='notice';});}
+  var search=document.getElementById('searchInput')?document.getElementById('searchInput').value.toLowerCase():'';
+  if(search){posts=posts.filter(function(p){var ts=tPost(p.title,p);var cs=tPost(p.content,p);return ts.toLowerCase().includes(search)||cs.toLowerCase().includes(search)||p.author.toLowerCase().includes(search);});}
+  filteredPosts=posts;
+  var start=(currentPage-1)*10,end=start+10,pagePosts=posts.slice(start,end);
+  var html='';
+  pagePosts.forEach(function(p){
+    var isNew=p.newBadge||p.time.includes('h ago')||p.time.includes('min');
+    var pin=p.pinned?'📌 ':'';
+    var hotBadge=p.hot?'<span class="post-row-badge hot">🔥</span>':'';
+    var newBadge=isNew?'<span class="post-row-badge new">NEW</span>':'';
+    html+='<tr class="'+(p.pinned?'pinned':'')+'" onclick="openPost('+p.id+')">';
+    html+='<td class="post-row-category">'+p.cat.toUpperCase()+'</td>';
+    var origBtn='';
+    if(p.originalLang && p.originalLang!==lang){
+      var isOrig=showOriginal[p.id];
+      origBtn='<span class="orig-toggle-mini" onclick="event.stopPropagation();toggleOriginal('+p.id+',this)">'+(isOrig?L[lang].viewTranslation:L[lang].viewOriginal)+'</span>';
+    }
+    html+='<td class="post-row-title">'+pin+tPost(p.title,p)+' <span class="post-row-badge">['+p.comments+']</span> '+newBadge+hotBadge+origBtn+'</td>';
+    html+='<td class="post-row-author"><span onclick="event.stopPropagation();openProfile(\''+p.author+'\',event)">'+p.author+'</span><span class="post-author-badge '+p.level+'">●</span></td>';
+    html+='<td class="post-row-date">'+p.time+'</td>';
+    html+='<td class="post-row-views">'+p.views+'</td>';
+    html+='<td class="post-row-likes">'+p.likes+'</td>';
+    html+='</tr>';
+  });
+  document.getElementById('postTableBody').innerHTML=html;
+  renderPagination(Math.ceil(posts.length/10));
+  var cats={all:allPosts.length,notice:0,free:0,behind:0,qa:0,equipment:0,jobs:0,portfolio:0};
+  allPosts.forEach(function(p){if(cats[p.cat]!==undefined)cats[p.cat]++;});
+  Object.keys(cats).forEach(function(k){var el=document.getElementById('count-'+k);if(el)el.textContent=cats[k];});
+}
+
+function renderPagination(pages){
+  var html='';
+  if(currentPage>1){html+='<button class="pag-btn" onclick="currentPage--;updatePostTable()">«</button>';}
+  for(var i=1;i<=pages;i++){html+='<button class="pag-btn '+(i===currentPage?'active':'')+'" onclick="currentPage='+i+';updatePostTable()">'+i+'</button>';}
+  if(currentPage<pages){html+='<button class="pag-btn" onclick="currentPage++;updatePostTable()">»</button>';}
+  document.getElementById('pagination').innerHTML=html;
+}
+
+// ======== POST DETAIL ========
+function openPost(id){
+  var post=allPosts.find(function(p){return p.id===id;});
+  if(!post)return;
+  var commentTexts={ko:['정말 좋은 글이네요! 많은 도움이 됐습니다.','이것이 정확히 제가 필요했던 것입니다. 공유해주셔서 감사합니다!','@Marco 동의합니다! 이 접근법이 제 작업 흐름을 바꿔놨어요.'],en:['Great post! This was really helpful.','This is exactly what I needed. Thank you for sharing!','@Marco I agree! This approach changed my workflow.'],it:['Ottimo post! Mi è stato davvero utile.','Questo è esattamente ciò di cui avevo bisogno. Grazie per la condivisione!','@Marco Sono d\'accordo! Questo approccio ha cambiato il mio flusso di lavoro.'],fr:['Super article ! Vraiment utile.','C\'est exactement ce dont j\'avais besoin. Merci pour le partage !','@Marco Je suis d\'accord ! Cette approche a changé mon workflow.'],es:['¡Gran publicación! Fue muy útil.','Esto es exactamente lo que necesitaba. ¡Gracias por compartir!','@Marco ¡Estoy de acuerdo! Este enfoque cambió mi flujo de trabajo.'],ja:['素晴らしい投稿ですね！とても参考になりました。','まさに必要としていた情報です。共有ありがとうございます！','@Marco 同意です！このアプローチでワークフローが変わりました。'],zh:['很棒的帖子！非常有帮助。','这正是我需要的。感谢分享！','@Marco 我同意！这个方法改变了我的工作流程。'],ru:['Отличный пост! Очень полезно.','Это именно то, что мне было нужно. Спасибо за информацию!','@Marco Согласен! Этот подход изменил мой рабочий процесс.']};
+  var ct=commentTexts[lang]||commentTexts['en'];
+  var html='<div class="detail-tag">'+post.cat.toUpperCase()+'</div><h1 class="detail-title">'+tPost(post.title,post)+'</h1>'+(post.originalLang && post.originalLang!==lang?'<div class="orig-toggle-wrap"><button class="orig-toggle-btn" onclick="toggleOriginal('+post.id+',this)">'+(showOriginal[post.id]?L[lang].viewTranslation:L[lang].viewOriginal)+'</button><span class="orig-lang-label">'+(showOriginal[post.id]?'('+post.originalLang.toUpperCase()+')':'')+'</span></div>':'')+'<div class="detail-meta"><div class="detail-author-av">'+post.avatar+'</div><div><div class="detail-author-name" onclick="openProfile(\''+post.author+'\',event);event.stopPropagation()">'+post.author+'<span class="post-author-badge '+post.level+'">●</span></div><div class="detail-author-role">'+post.role+'</div></div><div class="detail-author-time">'+post.time+'</div></div><div class="detail-content">'+tPost(post.content,post)+'</div><div class="detail-stats"><span>💬 '+post.comments+'</span><span>▲ '+post.likes+'</span><span>👁 '+post.views+'</span></div><div class="detail-action-bar"><button onclick="toggleLikePost(\''+post.id+'\')">▲ '+L[lang].btnScrap+'</button><button onclick="alertLogin()">'+L[lang].btnShare+'</button><button onclick="alertLogin()">'+L[lang].btnReport+'</button></div><div class="comments-section"><div class="comments-title">'+L[lang].commentPlaceholder+' '+post.comments+'</div><div class="comment"><div class="comment-av">SP</div><div class="comment-body"><div class="comment-name">Sergi Padial <span class="post-author-badge silver">●</span> <span class="comment-time">30m ago</span></div><div class="comment-text">'+ct[0]+'</div><div class="comment-action" onclick="alertLogin()">답글</div></div></div><div class="comment"><div class="comment-av">MB</div><div class="comment-body"><div class="comment-name">Marco Bellini <span class="post-author-badge gold">●</span> <span class="comment-time">1h ago</span></div><div class="comment-text">'+ct[1]+'</div><div class="comment-action" onclick="alertLogin()">답글</div></div></div><div class="comment nested"><div class="comment-av">LP</div><div class="comment-body"><div class="comment-name">Lena Park <span class="post-author-badge gold">●</span> <span class="comment-time">45m ago</span></div><div class="comment-text">'+ct[2]+'</div><div class="comment-action" onclick="alertLogin()">답글</div></div></div><div class="comment-input-wrap" style="margin-top:20px"><input class="comment-input" placeholder="'+L[lang].commentPlaceholder+'" oninput=""><button class="comment-send" onclick="submitComment('+post.id+')">'+L[lang].commentSubmit+'</button></div></div>';
+  document.getElementById('detailContent').innerHTML=html;
+  document.getElementById('detailOverlay').classList.add('active');
+}
+
+function closeDetail(){document.getElementById('detailOverlay').classList.remove('active');}
+
+// ======== PROFILE POPUP ========
+function openProfile(name,e){
+  if(e)e.stopPropagation();
+  var users={'Judith Moreno':{role:'Photographer',level:'bronze',posts:34,followers:'2.3k',likes:'12k'},'Sergi Padial':{role:'Stylist',level:'silver',posts:48,followers:'3.2k',likes:'18k'},'Lena Park':{role:'Photographer',level:'gold',posts:67,followers:'5.1k',likes:'34k'},'Elisa V':{role:'Makeup Artist',level:'silver',posts:52,followers:'2.8k',likes:'15k'},'Marco Bellini':{role:'Art Director',level:'gold',posts:78,followers:'6.2k',likes:'42k'},'PAP Admin':{role:'Administrator',level:'diamond',posts:156,followers:'12k',likes:'89k'},'PAP Events':{role:'Editor',level:'platinum',posts:98,followers:'8.3k',likes:'56k'}};
+  var u=users[name]||{role:'Member',level:'bronze',posts:12,followers:'500',likes:'2.3k'};
+  var levelNames={bronze:'NEWCOMER',silver:'MEMBER',gold:'CONTRIBUTOR',platinum:'EDITOR',diamond:'CREATIVE LEAD'};
+  document.getElementById('ppName').textContent=name;
+  document.getElementById('ppRole').textContent=u.role;
+  document.getElementById('ppAvatar').textContent=name.split(' ').map(function(w){return w[0];}).join('').substring(0,2);
+  document.getElementById('ppLevel').textContent='● '+(levelNames[u.level]||u.level);
+  document.getElementById('ppLevel').className='profile-popup-level lvl-'+u.level;
+  document.getElementById('ppPosts').textContent=u.posts;
+  document.getElementById('ppFollowers').textContent=u.followers;
+  document.getElementById('ppLikes').textContent=u.likes;
+  var grids='<div class="profile-popup-card"><img loading="lazy" src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27200%27 height=%27300%27%3E%3Crect fill=%27%23ddd%27 width=%27200%27 height=%27300%27/%3E%3C/svg%3E"><div class="profile-popup-card-title">Work 1</div></div><div class="profile-popup-card"><img loading="lazy" src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27200%27 height=%27300%27%3E%3Crect fill=%27%23ccc%27 width=%27200%27 height=%27300%27/%3E%3C/svg%3E"><div class="profile-popup-card-title">Work 2</div></div><div class="profile-popup-card"><img loading="lazy" src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27200%27 height=%27300%27%3E%3Crect fill=%27%23bbb%27 width=%27200%27 height=%27300%27/%3E%3C/svg%3E"><div class="profile-popup-card-title">Work 3</div></div>';
+  document.getElementById('ppWorks').innerHTML=grids;
+  document.getElementById('profilePopupBg').classList.add('active');
+}
+
+function closeProfile(){document.getElementById('profilePopupBg').classList.remove('active');}
+
+// ======== WRITE POST ========
+function openWrite(){document.getElementById('writeOverlay').classList.add('active');}
+function closeWrite(){document.getElementById('writeOverlay').classList.remove('active');document.getElementById('postTitle').value='';document.getElementById('postContent').innerHTML='';}
+function submitPost(){alertLogin();}
+
+// ======== EDITOR FUNCTIONS ========
+function execCommand(cmd,val){document.execCommand(cmd,false,val);}
+function insertImage(input){if(input.files[0]){var reader=new FileReader();reader.onload=function(e){document.execCommand('insertImage',false,e.target.result);};reader.readAsDataURL(input.files[0]);}}
+
+// ======== CHECKIN ========
+var streakDays=0;
+function openCheckin(){
+  document.getElementById('checkinModalBg').classList.add('active');
+  document.getElementById('streakCount').textContent=streakDays;
+  renderCheckinCalendar();
+}
+function closeCheckin(){document.getElementById('checkinModalBg').classList.remove('active');}
+function doCheckin(){
+  streakDays++;
+  document.getElementById('streakCount').textContent=streakDays;
+  document.getElementById('checkinMainBtn').classList.add('done');
+  document.getElementById('checkinMainBtn').textContent='✓ 오늘 완료';
+  document.getElementById('checkinMainBtn').disabled=true;
+  renderCheckinCalendar();
+}
+function renderCheckinCalendar(){
+  var cal='';for(var i=1;i<=30;i++){cal+='<div class="checkin-day '+(checkedInDates.includes(i)?'checked':'')+'">'+i+'</div>';}
+  document.getElementById('checkinCalendar').innerHTML=cal;
+}
+
+// ======== PROJECTS ========
+var projects=[
+  {title:'Surrealist Editorial',desc:'Dreamy landscape concept',location:'Seoul, KR',status:'open'},
+  {title:'Milan Fashion Week SS27',desc:'Street style coverage',location:'Milano, IT',status:'open'},
+  {title:'Beauty Editorial - Monochrome',desc:'Minimal skin series',location:'Barcelona, ES',status:'open'},
+  {title:'Tokyo Night - Neon Fashion Film',desc:'Neon & street culture',location:'Tokyo, JP',status:'open'},
+  {title:'Avant-Garde Fashion Film',desc:'3-min short completed',location:'Paris, FR',status:'closed'}
+];
+function renderProjects(){
+  var html='';
+  projects.forEach(function(p){
+    html+='<div class="proj"><div class="proj-top"><div class="proj-title">'+p.title+'</div><div class="proj-badge '+p.status+'">'+p.status.toUpperCase()+'</div></div><div class="proj-desc">'+p.desc+'</div><div class="proj-roles"><span class="proj-role">Photographer</span><span class="proj-role">Stylist</span><span class="proj-role">Makeup Artist</span></div><div class="proj-bottom"><div class="proj-loc">📍 '+p.location+'</div><button class="proj-apply" onclick="alertLogin()">'+(p.status==='open'?'APPLY':'CLOSED')+'</button></div></div>';
+  });
+  document.getElementById('projectsList').innerHTML=html;
+}
+
+// ======== AI MATCH ========
+function runMatch(){
+  document.getElementById('aiForm').style.display='none';
+  document.getElementById('aiLoad').style.display='block';
+  setTimeout(function(){
+    document.getElementById('aiLoad').style.display='none';
+    var matches=[{s:92,d:{n:'Sergi Padial',r:'Stylist',l:'Milano',a:['Minimal','Editorial']}},{s:87,d:{n:'Lena Park',r:'Photographer',l:'Seoul',a:['Natural','Documentary']}},{s:81,d:{n:'Marco Bellini',r:'Art Director',l:'Milano',a:['Avant-Garde','Surreal']}}];
+    var h='<div class="ai-res-title">Top Matches</div>';
+    matches.forEach(function(m){h+='<div class="ai-card"><div class="ai-score '+(m.s>85?'hi':'md')+'">'+m.s+'%</div><div class="ai-info"><div class="ai-info-name">'+m.d.n+'</div><div class="ai-info-role">'+m.d.r+' · '+m.d.l+'</div><div class="ai-info-why">Shared aesthetics & location match</div><div class="ai-info-tags">'+m.d.a.map(function(x){return '<span>'+x+'</span>';}).join('')+'</div></div><button class="ai-connect" onclick="alertLogin()">CONNECT</button></div>';});
+    h+='<div style="text-align:center;margin-top:24px"><button class="ai-go" style="max-width:200px" onclick="resetAi()">SEARCH AGAIN</button></div>';
+    document.getElementById('aiRes').innerHTML=h;
+    document.getElementById('aiRes').style.display='block';
+  },2200);
+}
+function resetAi(){document.getElementById('aiForm').style.display='block';document.getElementById('aiRes').style.display='none';}
+
+// ======== DIRECTORY ========
+var DD=[
+  {n:'Judith Moreno',r:'photographer',l:'Milan, IT',a:['Minimal','Editorial','Natural'],c:34},
+  {n:'Sergi Padial',r:'stylist',l:'Barcelona, ES',a:['Bold','Maximalist','Color'],c:48},
+  {n:'Lena Park',r:'photographer',l:'Seoul, KR',a:['Documentary','Street','Natural'],c:67},
+  {n:'Elisa V',r:'makeup',l:'London, UK',a:['Beauty','Minimal','Gloss'],c:52},
+  {n:'Marco Bellini',r:'artdirector',l:'Milano, IT',a:['Avant-Garde','Surreal','Dark'],c:78},
+  {n:'Clara Chen',r:'photographer',l:'Shanghai, CN',a:['Editorial','Fashion','Color'],c:45},
+  {n:'David Lee',r:'photographer',l:'Seoul, KR',a:['Landscape','Nature','Clean'],c:56},
+  {n:'Nina Park',r:'artdirector',l:'Seoul, KR',a:['Minimal','Digital','Futuristic'],c:39},
+  {n:'Tom Anderson',r:'videographer',l:'London, UK',a:['Motion','Dynamic','Music'],c:41},
+  {n:'Sophie Martin',r:'makeup',l:'Paris, FR',a:['Beauty','Fine Art','Ethereal'],c:63},
+  {n:'Alex Turner',r:'photographer',l:'New York, US',a:['Urban','Street','Bold'],c:58},
+  {n:'Rachel Green',r:'stylist',l:'Seoul, KR',a:['Fashion','Modern','Trendy'],c:44},
+  {n:'Michael Brown',r:'retoucher',l:'Barcelona, ES',a:['Digital','Clean','Precise'],c:72},
+  {n:'Julia White',r:'photographer',l:'Paris, FR',a:['Editorial','Fine Art','Timeless'],c:61},
+  {n:'Nicolas Dupont',r:'photographer',l:'Paris, FR',a:['Fine Art','Conceptual','Artistic'],c:55}
+];
+var dCurFilter='all';
+function sdf(e,f){dCurFilter=f;document.querySelectorAll('.dir-f').forEach(function(x){x.classList.remove('on');});e.classList.add('on');fDir();}
+function fDir(){
+  var q=document.getElementById('ds').value.toLowerCase();
+  var d=DD.filter(function(x){if(dCurFilter!=='all'&&x.r!==dCurFilter)return false;if(q&&!x.n.toLowerCase().includes(q)&&!x.l.toLowerCase().includes(q)&&!x.a.join(' ').toLowerCase().includes(q))return false;return true;});
+  var h='';
+  d.forEach(function(x){h+='<div class="dir-card" onclick="openProfile(\''+x.n+'\',event)"><div class="dir-av">'+x.n.split(' ').map(function(w){return w[0];}).join('').substring(0,2)+'</div><div class="dir-nm">'+x.n+'</div><div class="dir-rl">'+x.r.toUpperCase()+'</div><div class="dir-loc">📍 '+x.l+'</div><div class="dir-tags">'+x.a.map(function(t){return '<span>'+t+'</span>';}).join('')+'</div><div class="dir-ed">'+x.c+' posts</div></div>';});
+  document.getElementById('dg').innerHTML=h;
+}
+
+// ======== SIDEBARS ========
+function renderSidebars(){
+  var topPosts=allPosts.sort(function(a,b){return b.likes-a.likes;}).slice(0,5);
+  var h='';
+  topPosts.forEach(function(p,i){h+='<div class="sw-item" onclick="openPost('+p.id+')"><div class="sw-rank">'+(i+1)+'</div><div style="flex:1"><div class="sw-nm">'+t(p.title)+'</div><div class="sw-sub">'+p.author+'</div></div></div>';});
+  document.getElementById('topPosts').innerHTML=h;
+
+  var creators=[{n:'Lena Park',r:'Photographer',f:'5.1k'},{n:'Marco Bellini',r:'Art Director',f:'6.2k'},{n:'Sergi Padial',r:'Stylist',f:'3.2k'},{n:'Michael Brown',r:'Retoucher',f:'4.1k'},{n:'Julia White',r:'Photographer',f:'3.8k'}];
+  h='';creators.forEach(function(c){h+='<div class="sw-item" onclick="openProfile(\''+c.n+'\',event)"><div class="sw-av">'+c.n.split(' ').map(function(w){return w[0];}).join('').substring(0,2)+'</div><div style="flex:1"><div class="sw-nm">'+c.n+'</div><div class="sw-sub">'+c.r+'</div></div><div class="sw-sub">'+c.f+'</div></div>';});
+  document.getElementById('trendingCreators').innerHTML=h;
+
+  h='';projects.filter(function(p){return p.status==='open';}).slice(0,4).forEach(function(p){h+='<div class="sw-item" onclick="goTab(\'projects\',document.querySelector(\'[onclick*=\\\"projects\\\"]\'));event.stopPropagation()"><div style="flex:1"><div class="sw-nm" style="font-size:10px">'+p.title+'</div><div class="sw-sub">'+p.location+'</div></div></div>';});
+  document.getElementById('openProjects').innerHTML=h;
+
+  var tags=['Minimal','Editorial','Surreal','Avant-Garde','Dark','Romantic','Street','Ethereal'];
+  h='';tags.forEach(function(t){h+='<span class="sw-tag">'+t+'</span>';});
+  document.getElementById('popAesthetics').innerHTML=h;
+
+  var visitors=[{n:'Park Min'},{n:'Kim Jun'},{n:'Lee Su'},{n:'Choi Ha'},{n:'Jung Min'}];
+  h='';visitors.forEach(function(v){h+='<div class="sw-item"><div class="sw-av">'+v.n.substring(0,2)+'</div><div class="sw-nm">'+v.n+'</div></div>';});
+  document.getElementById('recentVisitors').innerHTML=h;
+}
+
+// ======== ALERTS ========
+function alertLogin(){
+  if(SB.user) return true;
+  window.location.href='auth.html';
+  return false;
+}
+
+// ================================================================
+// ======== SUPABASE INTEGRATION MODULE ========
+// ================================================================
+var SB = {
+  client: null,
+  user: null,
+  SUPABASE_URL: '', // Set in Supabase dashboard
+  SUPABASE_ANON_KEY: '', // Set in Supabase dashboard
+
+  init: function(){
+    // Auto-detect config from meta tags or window globals
+    if(window.SUPABASE_URL) this.SUPABASE_URL = window.SUPABASE_URL;
+    if(window.SUPABASE_ANON_KEY) this.SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY;
+    var metaUrl = document.querySelector('meta[name="supabase-url"]');
+    var metaKey = document.querySelector('meta[name="supabase-anon-key"]');
+    if(metaUrl) this.SUPABASE_URL = metaUrl.content;
+    if(metaKey) this.SUPABASE_ANON_KEY = metaKey.content;
+
+    if(!this.SUPABASE_URL || !this.SUPABASE_ANON_KEY){
+      console.warn('[PAP Community] Supabase not configured. Running in demo mode with local data.');
+      return false;
+    }
+    if(typeof supabase === 'undefined'){
+      console.warn('[PAP Community] Supabase JS library not loaded.');
+      return false;
+    }
+    this.client = supabase.createClient(this.SUPABASE_URL, this.SUPABASE_ANON_KEY);
+    this.checkSession();
+    return true;
+  },
+
+  checkSession: async function(){
+    if(!this.client) return;
+    try {
+      var { data } = await this.client.auth.getSession();
+      if(data.session) {
+        this.user = data.session.user;
+        this.onAuthChange();
+      }
+      this.client.auth.onAuthStateChange(function(event, session){
+        SB.user = session ? session.user : null;
+        SB.onAuthChange();
+      });
+    } catch(e){ console.error('[SB] Session check error:', e); }
+  },
+
+  onAuthChange: function(){
+    // Update UI for logged-in state
+    var writeBtn = document.querySelector('.c-write-btn');
+    if(writeBtn && this.user){
+      writeBtn.style.opacity = '1';
+    }
+    // Update checkin button
+    if(this.user) this.loadCheckins();
+  },
+
+  // ---- POSTS CRUD ----
+  fetchPosts: async function(opts){
+    if(!this.client) return null;
+    opts = opts || {};
+    var query = this.client.from('community_posts').select('*, profiles(display_name, avatar_url, role)');
+    if(opts.category && opts.category !== 'all') query = query.eq('category', opts.category);
+    if(opts.search) query = query.or('title.ilike.%'+opts.search+'%,content.ilike.%'+opts.search+'%');
+    query = query.order('created_at', { ascending: false });
+    if(opts.limit) query = query.limit(opts.limit);
+    if(opts.offset) query = query.range(opts.offset, opts.offset + (opts.limit||20) - 1);
+    var { data, error, count } = await query;
+    if(error){ console.error('[SB] fetchPosts:', error); return null; }
+    return data;
+  },
+
+  createPost: async function(title, content, category, imageUrl){
+    if(!this.client || !this.user) return null;
+    var { data, error } = await this.client.from('community_posts').insert({
+      user_id: this.user.id,
+      title: title,
+      content: content,
+      category: category || 'free',
+      image_url: imageUrl || null
+    }).select().single();
+    if(error){ console.error('[SB] createPost:', error); return null; }
+    return data;
+  },
+
+  updatePost: async function(postId, updates){
+    if(!this.client || !this.user) return null;
+    updates.updated_at = new Date().toISOString();
+    var { data, error } = await this.client.from('community_posts').update(updates).eq('id', postId).select().single();
+    if(error){ console.error('[SB] updatePost:', error); return null; }
+    return data;
+  },
+
+  deletePost: async function(postId){
+    if(!this.client || !this.user) return false;
+    var { error } = await this.client.from('community_posts').delete().eq('id', postId).eq('user_id', this.user.id);
+    if(error){ console.error('[SB] deletePost:', error); return false; }
+    return true;
+  },
+
+  // ---- COMMENTS ----
+  fetchComments: async function(postId){
+    if(!this.client) return [];
+    var { data, error } = await this.client.from('community_comments').select('*, profiles(display_name, avatar_url, role)').eq('post_id', postId).order('created_at', { ascending: true });
+    if(error){ console.error('[SB] fetchComments:', error); return []; }
+    return data || [];
+  },
+
+  createComment: async function(postId, content){
+    if(!this.client || !this.user) return null;
+    var { data, error } = await this.client.from('community_comments').insert({
+      post_id: postId,
+      user_id: this.user.id,
+      content: content
+    }).select('*, profiles(display_name, avatar_url, role)').single();
+    if(error){ console.error('[SB] createComment:', error); return null; }
+    return data;
+  },
+
+  deleteComment: async function(commentId){
+    if(!this.client || !this.user) return false;
+    var { error } = await this.client.from('community_comments').delete().eq('id', commentId).eq('user_id', this.user.id);
+    if(error){ console.error('[SB] deleteComment:', error); return false; }
+    return true;
+  },
+
+  // ---- LIKES ----
+  toggleLike: async function(postId){
+    if(!this.client || !this.user) return null;
+    // Check if already liked
+    var { data: existing } = await this.client.from('community_likes').select('id').eq('post_id', postId).eq('user_id', this.user.id).maybeSingle();
+    if(existing){
+      await this.client.from('community_likes').delete().eq('id', existing.id);
+      return { liked: false };
+    } else {
+      await this.client.from('community_likes').insert({ post_id: postId, user_id: this.user.id });
+      return { liked: true };
+    }
+  },
+
+  checkLiked: async function(postId){
+    if(!this.client || !this.user) return false;
+    var { data } = await this.client.from('community_likes').select('id').eq('post_id', postId).eq('user_id', this.user.id).maybeSingle();
+    return !!data;
+  },
+
+  // ---- VIEWS ----
+  recordView: async function(postId){
+    if(!this.client) return;
+    await this.client.from('community_post_views').insert({
+      post_id: postId,
+      viewer_id: this.user ? this.user.id : null
+    });
+  },
+
+  // ---- PROJECTS ----
+  fetchProjects: async function(){
+    if(!this.client) return null;
+    var { data, error } = await this.client.from('community_projects').select('*, profiles(display_name, avatar_url)').order('created_at', { ascending: false });
+    if(error){ console.error('[SB] fetchProjects:', error); return null; }
+    return data;
+  },
+
+  applyToProject: async function(projectId, role, message){
+    if(!this.client || !this.user) return null;
+    var { data, error } = await this.client.from('community_applications').insert({
+      project_id: projectId,
+      user_id: this.user.id,
+      role: role,
+      message: message
+    }).select().single();
+    if(error){ console.error('[SB] applyToProject:', error); return null; }
+    return data;
+  },
+
+  // ---- CHECKIN ----
+  loadCheckins: async function(){
+    if(!this.client || !this.user) return [];
+    var { data, error } = await this.client.from('community_checkins').select('checked_at').eq('user_id', this.user.id).order('checked_at', { ascending: false });
+    if(error){ console.error('[SB] loadCheckins:', error); return []; }
+    checkedInDates = (data||[]).map(function(r){ return new Date(r.checked_at).getDate(); });
+    streakDays = this.calcStreak(data||[]);
+    return data || [];
+  },
+
+  doCheckin: async function(){
+    if(!this.client || !this.user) return false;
+    var today = new Date().toISOString().split('T')[0];
+    var { data, error } = await this.client.from('community_checkins').insert({
+      user_id: this.user.id,
+      checked_at: today
+    }).select().single();
+    if(error){
+      if(error.code === '23505') { console.log('[SB] Already checked in today'); return 'already'; }
+      console.error('[SB] doCheckin:', error);
+      return false;
+    }
+    await this.loadCheckins();
+    return true;
+  },
+
+  calcStreak: function(records){
+    if(!records || records.length === 0) return 0;
+    var dates = records.map(function(r){ return r.checked_at; }).sort().reverse();
+    var streak = 1;
+    for(var i = 1; i < dates.length; i++){
+      var d1 = new Date(dates[i-1]), d2 = new Date(dates[i]);
+      var diff = (d1 - d2) / (1000*60*60*24);
+      if(diff === 1) streak++;
+      else break;
+    }
+    return streak;
+  },
+
+  // ---- IMAGE UPLOAD ----
+  uploadImage: async function(file){
+    if(!this.client || !this.user) return null;
+    var ext = file.name.split('.').pop();
+    var path = 'community/' + this.user.id + '/' + Date.now() + '.' + ext;
+    var { data, error } = await this.client.storage.from('media').upload(path, file, { cacheControl: '3600', upsert: false });
+    if(error){ console.error('[SB] uploadImage:', error); return null; }
+    var { data: urlData } = this.client.storage.from('media').getPublicUrl(path);
+    return urlData.publicUrl;
+  }
+};
+
+// ================================================================
+// ======== OVERRIDE FUNCTIONS WITH SUPABASE SUPPORT ========
+// ================================================================
+
+// Override submitPost
+function submitPost(){
+  if(!alertLogin()) return;
+  var title = document.getElementById('postTitle').value.trim();
+  var content = document.getElementById('postContent').innerHTML.trim();
+  var catSel = document.getElementById('postCategory');
+  var category = catSel ? catSel.value : 'free';
+  if(!title || !content){ alert(lang==='ko'?'제목과 내용을 입력하세요':'Please enter title and content'); return; }
+
+  if(SB.client){
+    SB.createPost(title, content, category).then(function(post){
+      if(post){
+        // Add to local array for immediate display
+        allPosts.unshift({
+          id: post.id, cat: post.category, pinned: false,
+          title: { [lang]: title }, author: SB.user.email.split('@')[0],
+          role: 'Member', avatar: (SB.user.email||'??').substring(0,2).toUpperCase(),
+          level: 'bronze', content: { [lang]: content },
+          time: 'just now', views: 0, likes: 0, comments: 0,
+          originalLang: lang, _db: true
+        });
+        closeWrite();
+        updatePostTable();
+        renderSidebars();
+      }
+    });
+  } else {
+    // Demo mode - add locally
+    allPosts.unshift({
+      id: Date.now(), cat: category, pinned: false,
+      title: { [lang]: title }, author: 'You',
+      role: 'Member', avatar: 'YO', level: 'bronze',
+      content: { [lang]: content }, time: 'just now',
+      views: 0, likes: 0, comments: 0, originalLang: lang
+    });
+    closeWrite();
+    updatePostTable();
+    renderSidebars();
+  }
+}
+
+// Override doCheckin
+function doCheckin(){
+  if(!alertLogin()) return;
+  if(SB.client){
+    SB.doCheckin().then(function(result){
+      if(result === true || result === 'already'){
+        streakDays = SB.calcStreak([]);
+        SB.loadCheckins().then(function(){
+          document.getElementById('streakCount').textContent = streakDays;
+          document.getElementById('checkinMainBtn').classList.add('done');
+          document.getElementById('checkinMainBtn').textContent = '✓ ' + (L[lang].checkinDone||'오늘 완료');
+          document.getElementById('checkinMainBtn').disabled = true;
+          renderCheckinCalendar();
+        });
+      }
+    });
+  } else {
+    // Demo mode
+    streakDays++;
+    document.getElementById('streakCount').textContent = streakDays;
+    document.getElementById('checkinMainBtn').classList.add('done');
+    document.getElementById('checkinMainBtn').textContent = '✓ 오늘 완료';
+    document.getElementById('checkinMainBtn').disabled = true;
+    renderCheckinCalendar();
+  }
+}
+
+// Override openPost to record view and load real comments
+var _origOpenPost = openPost;
+openPost = function(id){
+  _origOpenPost(id);
+  if(SB.client){
+    SB.recordView(id);
+    // Load real comments
+    SB.fetchComments(id).then(function(comments){
+      if(comments && comments.length > 0){
+        var commentHtml = '';
+        comments.forEach(function(c){
+          var name = c.profiles ? c.profiles.display_name : 'User';
+          var av = name.split(' ').map(function(w){return w[0];}).join('').substring(0,2);
+          var canDelete = SB.user && c.user_id === SB.user.id;
+          commentHtml += '<div class="comment"><div class="comment-av">'+av+'</div><div class="comment-body"><div class="comment-name">'+name+' <span class="comment-time">'+new Date(c.created_at).toLocaleDateString()+'</span></div><div class="comment-text">'+c.content+'</div>'+(canDelete?'<div class="comment-action" onclick="deleteComment(\''+c.id+'\',\''+id+'\')">삭제</div>':'')+'</div></div>';
+        });
+        var section = document.querySelector('.comments-section');
+        if(section){
+          var titleEl = section.querySelector('.comments-title');
+          var inputWrap = section.querySelector('.comment-input-wrap');
+          section.innerHTML = '';
+          if(titleEl) section.appendChild(titleEl);
+          section.insertAdjacentHTML('beforeend', commentHtml);
+          if(inputWrap) section.appendChild(inputWrap);
+        }
+      }
+    });
+    // Check if liked
+    SB.checkLiked(id).then(function(liked){
+      if(liked){
+        var likeBtn = document.querySelector('.detail-action-bar button');
+        if(likeBtn) likeBtn.style.fontWeight = '900';
+      }
+    });
+  }
+};
+
+// Comment submission from detail view
+function submitComment(postId){
+  var input = document.querySelector('.comment-input');
+  if(!input || !input.value.trim()) return;
+  if(!alertLogin()) return;
+  var content = input.value.trim();
+
+  if(SB.client){
+    SB.createComment(postId, content).then(function(comment){
+      if(comment){
+        var name = comment.profiles ? comment.profiles.display_name : SB.user.email.split('@')[0];
+        var av = name.split(' ').map(function(w){return w[0];}).join('').substring(0,2);
+        var html = '<div class="comment"><div class="comment-av">'+av+'</div><div class="comment-body"><div class="comment-name">'+name+' <span class="comment-time">just now</span></div><div class="comment-text">'+content+'</div><div class="comment-action" onclick="deleteComment(\''+comment.id+'\',\''+postId+'\')">삭제</div></div></div>';
+        var inputWrap = document.querySelector('.comment-input-wrap');
+        if(inputWrap) inputWrap.insertAdjacentHTML('beforebegin', html);
+        input.value = '';
+        // Update comment count in local data
+        var post = allPosts.find(function(p){ return p.id == postId; });
+        if(post) post.comments = (post.comments||0) + 1;
+      }
+    });
+  }
+}
+
+function deleteComment(commentId, postId){
+  if(!SB.client) return;
+  SB.deleteComment(commentId).then(function(ok){
+    if(ok) openPost(postId); // Refresh
+  });
+}
+
+// Like toggle from detail view
+function toggleLikePost(postId){
+  if(!alertLogin()) return;
+  if(SB.client){
+    SB.toggleLike(postId).then(function(result){
+      if(result){
+        var post = allPosts.find(function(p){ return p.id == postId; });
+        if(post){
+          post.likes = result.liked ? (post.likes||0)+1 : Math.max(0,(post.likes||0)-1);
+          openPost(postId); // Refresh detail
+        }
+      }
+    });
+  }
+}
+
+// Image upload in editor
+function insertImageSupabase(input){
+  if(!input.files[0]) return;
+  var file = input.files[0];
+  if(SB.client && SB.user){
+    SB.uploadImage(file).then(function(url){
+      if(url){
+        document.execCommand('insertImage', false, url);
+      } else {
+        // Fallback to base64
+        var reader = new FileReader();
+        reader.onload = function(e){ document.execCommand('insertImage', false, e.target.result); };
+        reader.readAsDataURL(file);
+      }
+    });
+  } else {
+    var reader = new FileReader();
+    reader.onload = function(e){ document.execCommand('insertImage', false, e.target.result); };
+    reader.readAsDataURL(file);
+  }
+}
+
+// ======== LOAD DB DATA ON INIT ========
+async function loadFromSupabase(){
+  if(!SB.client) return;
+  try {
+    // Load posts from DB
+    var dbPosts = await SB.fetchPosts({ limit: 100 });
+    if(dbPosts && dbPosts.length > 0){
+      var dbConverted = dbPosts.map(function(p){
+        var authorName = p.profiles ? p.profiles.display_name : 'User';
+        var authorRole = p.profiles ? (p.profiles.role || 'Member') : 'Member';
+        var av = authorName.split(' ').map(function(w){return w[0];}).join('').substring(0,2);
+        return {
+          id: p.id, cat: p.category || 'free', pinned: false,
+          title: { [lang]: p.title }, author: authorName,
+          role: authorRole, avatar: av, level: 'bronze',
+          content: { [lang]: p.content },
+          time: timeAgo(p.created_at),
+          views: p.view_count || 0,
+          likes: p.like_count || 0,
+          comments: p.comment_count || 0,
+          originalLang: lang, _db: true
+        };
+      });
+      // Merge: DB posts first, then sample data
+      allPosts = dbConverted.concat(allPosts.filter(function(p){ return !p._db; }));
+      updatePostTable();
+      renderSidebars();
+    }
+
+    // Load projects from DB
+    var dbProjects = await SB.fetchProjects();
+    if(dbProjects && dbProjects.length > 0){
+      var dbProjConverted = dbProjects.map(function(p){
+        return {
+          title: p.title, desc: p.description,
+          location: p.location || '', status: p.status || 'open',
+          roles: p.roles_needed || [], _db: true
+        };
+      });
+      projects = dbProjConverted.concat(projects.filter(function(p){ return !p._db; }));
+      renderProjects();
+    }
+  } catch(e){ console.error('[SB] loadFromSupabase error:', e); }
+}
+
+function timeAgo(dateStr){
+  var now = new Date(), then = new Date(dateStr);
+  var diff = Math.floor((now - then) / 1000);
+  if(diff < 60) return 'just now';
+  if(diff < 3600) return Math.floor(diff/60) + 'm ago';
+  if(diff < 86400) return Math.floor(diff/3600) + 'h ago';
+  if(diff < 604800) return Math.floor(diff/86400) + 'd ago';
+  return Math.floor(diff/604800) + 'w ago';
+}
+
+// ======== INIT ========
+window.addEventListener('load',function(){
+  updateTranslations();
+  currentCategory='all';
+  updatePostTable();
+  renderProjects();
+  renderSidebars();
+
+  // Initialize Supabase
+  var sbReady = SB.init();
+  if(sbReady){
+    loadFromSupabase();
+  }
+});
+
+var savedLang=localStorage.getItem('pap-lang');
+if(savedLang){lang=savedLang;var sel=document.getElementById('langSelect');if(sel)sel.value=savedLang;}
+fDir();
+</script>
+
+<div style="text-align:center;padding:32px 20px;border-top:1px solid rgba(0,0,0,.08);font-size:10px;color:rgba(0,0,0,.4);line-height:2.2;letter-spacing:.05em">
+PAP COMMUNITY<br>
+<a href="index.html" style="color:rgba(0,0,0,.35);text-decoration:underline;text-underline-offset:2px">Magazine</a> ·
+<a href="about.html" style="color:rgba(0,0,0,.35);text-decoration:underline;text-underline-offset:2px">About</a> ·
+<a href="contact.html" style="color:rgba(0,0,0,.35);text-decoration:underline;text-underline-offset:2px">Contact</a> ·
+<a href="subscribe.html" style="color:rgba(0,0,0,.35);text-decoration:underline;text-underline-offset:2px">Subscribe</a> ·
+<a href="submission.html" style="color:rgba(0,0,0,.35);text-decoration:underline;text-underline-offset:2px">Submission</a> ·
+<a href="pullletter.html" style="color:rgba(0,0,0,.35);text-decoration:underline;text-underline-offset:2px">Pull-letter</a> ·
+<a href="business.html" style="color:rgba(0,0,0,.35);text-decoration:underline;text-underline-offset:2px">Business</a>
+<br>© 2026 ALTAKAPPA Co., Ltd.
+</div>
+</body>
+</html>

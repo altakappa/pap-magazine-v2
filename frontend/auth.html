@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co https://api.stripe.com https://api.pap-magazine.com; frame-src https://js.stripe.com;">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="PAP Magazine 로그인 및 회원가입">
+<meta name="robots" content="noindex">
+<title>Login | PAP Magazine</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Montserrat',sans-serif;background:#000;color:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center}
+a{color:#fff;text-decoration:none}
+
+.auth-wrapper{width:100%;max-width:440px;padding:20px}
+.auth-logo{text-align:center;margin-bottom:40px}
+.auth-logo a{display:inline-block}
+.auth-logo img{height:48px;width:auto}
+
+/* TABS */
+.auth-tabs{display:flex;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:32px}
+.auth-tab{flex:1;text-align:center;padding:14px 0;font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.3);cursor:pointer;border-bottom:2px solid transparent;transition:all .3s}
+.auth-tab:hover{color:rgba(255,255,255,.6)}
+.auth-tab.active{color:#fff;border-bottom-color:#fff}
+
+/* PANELS */
+.auth-panel{display:none}
+.auth-panel.active{display:block}
+
+/* SOCIAL BUTTONS */
+.social-btns{display:flex;flex-direction:column;gap:10px;margin-bottom:28px}
+.social-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px;font-size:12px;font-weight:600;letter-spacing:.05em;border:1px solid rgba(255,255,255,.15);background:transparent;color:#fff;cursor:pointer;font-family:'Montserrat',sans-serif;transition:all .3s}
+.social-btn:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.3)}
+.social-btn svg{width:18px;height:18px;flex-shrink:0}
+
+/* DIVIDER */
+.divider{display:flex;align-items:center;gap:16px;margin-bottom:28px}
+.divider-line{flex:1;height:1px;background:rgba(255,255,255,.1)}
+.divider-text{font-size:10px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.2)}
+
+/* FORM */
+.form-group{margin-bottom:18px}
+.form-label{display:block;font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:8px}
+.form-input{width:100%;background:transparent;border:1px solid rgba(255,255,255,.15);padding:13px 16px;font-size:13px;font-family:'Montserrat',sans-serif;color:#fff;outline:none;transition:border-color .3s}
+.form-input:focus{border-color:rgba(255,255,255,.5)}
+.form-input::placeholder{color:rgba(255,255,255,.2)}
+.form-select{width:100%;background:transparent;border:1px solid rgba(255,255,255,.15);padding:13px 16px;font-size:13px;font-family:'Montserrat',sans-serif;color:#fff;outline:none;-webkit-appearance:none;appearance:none;cursor:pointer;transition:border-color .3s}
+.form-select:focus{border-color:rgba(255,255,255,.5)}
+.form-select option{background:#111;color:#fff}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-hint{font-size:10px;color:rgba(255,255,255,.2);margin-top:4px}
+
+/* SUBMIT */
+.auth-btn{width:100%;padding:14px;font-size:11px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;background:#fff;color:#000;border:1.5px solid #fff;cursor:pointer;font-family:'Montserrat',sans-serif;transition:all .3s;margin-top:8px}
+.auth-btn:hover{background:transparent;color:#fff}
+
+/* FORGOT / LINK */
+.auth-link{display:block;text-align:center;margin-top:20px;font-size:11px;color:rgba(255,255,255,.35);transition:color .2s;cursor:pointer}
+.auth-link:hover{color:rgba(255,255,255,.7)}
+
+/* TERMS */
+.auth-terms{font-size:10px;color:rgba(255,255,255,.2);line-height:1.8;text-align:center;margin-top:16px}
+.auth-terms a{color:rgba(255,255,255,.4);text-decoration:underline;text-underline-offset:2px}
+
+/* BACK */
+.auth-back{position:fixed;top:28px;left:32px;font-size:11px;font-weight:600;letter-spacing:.1em;color:rgba(255,255,255,.3);transition:color .2s}
+.auth-back:hover{color:#fff}
+
+/* LANG */
+.auth-lang{position:fixed;top:28px;right:32px}
+.auth-lang select{background:transparent;color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.12);padding:5px 10px;font-size:10px;font-family:'Montserrat',sans-serif;letter-spacing:.1em;cursor:pointer}
+.auth-lang select option{background:#000;color:#fff}
+
+/* SUCCESS */
+.auth-success{display:none;text-align:center;padding:40px 0}
+.auth-success svg{width:56px;height:56px;stroke:#fff;margin-bottom:20px}
+.auth-success h2{font-size:18px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
+.auth-success p{font-size:12px;color:rgba(255,255,255,.4);line-height:1.9;margin-bottom:24px}
+.auth-success .auth-btn{max-width:280px;margin:0 auto}
+
+@media(max-width:500px){
+  .auth-wrapper{padding:20px 16px}
+  .form-row{grid-template-columns:1fr}
+}
+</style>
+<!-- Favicon & PWA -->
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000000">
+<!-- Open Graph / Social -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="PAP Magazine">
+<meta property="og:title" content="Login | PAP Magazine">
+<meta property="og:description" content="Sign in or create your PAP Magazine account to access exclusive content and features.">
+<meta property="og:url" content="https://pap-magazine.com/auth.html">
+<meta property="og:image" content="https://pap-magazine.com/apple-touch-icon.png">
+<meta property="og:locale" content="ko_KR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Login | PAP Magazine">
+<meta name="twitter:description" content="Sign in or create your PAP Magazine account to access exclusive content and features.">
+<meta name="twitter:image" content="https://pap-magazine.com/apple-touch-icon.png">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Login - PAP Magazine"}</script>
+<!-- Google Analytics (replace G-XXXXXXXXXX with your ID) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-XXXXXXXXXX');</script>
+<!-- Print Styles -->
+<style media="print">
+@media print{
+  body{background:#fff!important;color:#000!important}
+  .side-nav,.nav-overlay,.header,.footer-legal,.lang-selector,#cookieConsent,#backToTop,.mobile-menu-btn,.hamburger,.search-container{display:none!important}
+  .content,.main-content{margin-left:0!important;padding:20px!important}
+  a{color:#000!important;text-decoration:underline}
+  img{max-width:100%!important}
+  *{box-shadow:none!important;text-shadow:none!important}
+}
+</style>
+</head>
+<body>
+<!-- Loading State -->
+<div id="pageLoader" style="position:fixed;inset:0;z-index:10000;background:#000;display:flex;align-items:center;justify-content:center;transition:opacity .4s">
+<div style="text-align:center"><div style="font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;letter-spacing:.3em;color:rgba(255,255,255,.4);text-transform:uppercase">PAP</div>
+<div style="margin-top:12px;width:40px;height:1px;background:rgba(255,255,255,.1);position:relative;overflow:hidden;margin-left:auto;margin-right:auto"><div style="position:absolute;width:50%;height:100%;background:rgba(255,255,255,.5);animation:loaderSlide 1s ease infinite"></div></div></div></div>
+<style>@keyframes loaderSlide{0%{left:-50%}100%{left:100%}}</style>
+<script>window.addEventListener('load',function(){var l=document.getElementById('pageLoader');if(l){l.style.opacity='0';setTimeout(function(){l.remove();},400);}});</script>
+
+<a href="index.html" class="auth-back" data-i18n="back">← 돌아가기</a>
+<div class="auth-lang"><select id="langSelect" onchange="setLang(this.value)"><option value="ko">KO</option><option value="en">EN</option><option value="it">IT</option><option value="fr">FR</option><option value="es">ES</option><option value="ja">JA</option><option value="zh">ZH</option><option value="ru">RU</option></select></div>
+
+<div class="auth-wrapper">
+  <div class="auth-logo"><a href="index.html"><img loading="lazy" src="pap-logo.png" alt="PAP Magazine"></a></div>
+
+  <!-- TABS -->
+  <div class="auth-tabs">
+    <div class="auth-tab active" onclick="switchAuth('login')" data-i18n="tabLogin">로그인</div>
+    <div class="auth-tab" onclick="switchAuth('signup')" data-i18n="tabSignup">회원가입</div>
+  </div>
+
+  <!-- LOGIN PANEL -->
+  <div class="auth-panel active" id="panelLogin">
+    <div class="social-btns">
+      <button class="social-btn" onclick="socialLogin('google')">
+        <svg viewBox="0 0 18 18"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
+        <span data-i18n="loginGoogle">Google로 계속하기</span>
+      </button>
+      <button class="social-btn" onclick="socialLogin('apple')">
+        <svg viewBox="0 0 18 18" fill="#fff"><path d="M14.94 9.88c-.02-2.15 1.75-3.18 1.83-3.23-1-1.46-2.55-1.66-3.1-1.68-1.32-.13-2.57.78-3.24.78-.67 0-1.7-.76-2.8-.74-1.44.02-2.77.84-3.51 2.13-1.5 2.6-.38 6.45 1.07 8.56.72 1.03 1.57 2.19 2.68 2.15 1.08-.04 1.49-.7 2.79-.7 1.3 0 1.67.7 2.8.67 1.16-.02 1.89-1.05 2.6-2.09.82-1.2 1.16-2.36 1.18-2.42-.03-.01-2.26-.87-2.28-3.43zM12.83 3.32c.59-.72 1-1.72.89-2.72-.86.04-1.9.57-2.52 1.3-.55.64-1.03 1.66-.9 2.64.96.07 1.94-.49 2.53-1.22z"/></svg>
+        <span data-i18n="loginApple">Apple로 계속하기</span>
+      </button>
+      <button class="social-btn" onclick="socialLogin('instagram')">
+        <svg viewBox="0 0 18 18" fill="none"><rect x="1" y="1" width="16" height="16" rx="4" stroke="#fff" stroke-width="1.2"/><circle cx="9" cy="9" r="3.5" stroke="#fff" stroke-width="1.2"/><circle cx="13.5" cy="4.5" r="1" fill="#fff"/></svg>
+        <span data-i18n="loginInsta">Instagram으로 계속하기</span>
+      </button>
+    </div>
+    <div class="divider"><div class="divider-line"></div><div class="divider-text" data-i18n="or">또는</div><div class="divider-line"></div></div>
+    <div class="form-group">
+      <label class="form-label" data-i18n="labelEmail">이메일</label>
+      <input type="email" class="form-input" placeholder="email@example.com">
+    </div>
+    <div class="form-group">
+      <label class="form-label" data-i18n="labelPw">비밀번호</label>
+      <input type="password" class="form-input" data-i18n-ph="phPw" placeholder="비밀번호 입력">
+    </div>
+    <button class="auth-btn" data-i18n="btnLogin" onclick="doLogin()">로그인</button>
+    <div class="auth-link" data-i18n="forgot">비밀번호를 잊으셨나요?</div>
+  </div>
+
+  <!-- SIGNUP PANEL -->
+  <div class="auth-panel" id="panelSignup">
+    <div class="social-btns">
+      <button class="social-btn" onclick="socialLogin('google')">
+        <svg viewBox="0 0 18 18"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
+        <span data-i18n="signupGoogle">Google로 가입하기</span>
+      </button>
+      <button class="social-btn" onclick="socialLogin('apple')">
+        <svg viewBox="0 0 18 18" fill="#fff"><path d="M14.94 9.88c-.02-2.15 1.75-3.18 1.83-3.23-1-1.46-2.55-1.66-3.1-1.68-1.32-.13-2.57.78-3.24.78-.67 0-1.7-.76-2.8-.74-1.44.02-2.77.84-3.51 2.13-1.5 2.6-.38 6.45 1.07 8.56.72 1.03 1.57 2.19 2.68 2.15 1.08-.04 1.49-.7 2.79-.7 1.3 0 1.67.7 2.8.67 1.16-.02 1.89-1.05 2.6-2.09.82-1.2 1.16-2.36 1.18-2.42-.03-.01-2.26-.87-2.28-3.43zM12.83 3.32c.59-.72 1-1.72.89-2.72-.86.04-1.9.57-2.52 1.3-.55.64-1.03 1.66-.9 2.64.96.07 1.94-.49 2.53-1.22z"/></svg>
+        <span data-i18n="signupApple">Apple로 가입하기</span>
+      </button>
+    </div>
+    <div class="divider"><div class="divider-line"></div><div class="divider-text" data-i18n="or">또는</div><div class="divider-line"></div></div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" data-i18n="labelName">이름</label>
+        <input type="text" class="form-input" data-i18n-ph="phName" placeholder="이름">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-i18n="labelEmail">이메일</label>
+        <input type="email" class="form-input" placeholder="email@example.com">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" data-i18n="labelPw">비밀번호</label>
+      <input type="password" class="form-input" data-i18n-ph="phPwSet" placeholder="8자 이상">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" data-i18n="labelRole">역할</label>
+        <select class="form-select" id="signupRole">
+          <option value="" data-i18n="roleSelect">선택</option>
+          <option value="photographer">Photographer</option>
+          <option value="stylist">Stylist</option>
+          <option value="makeup">Makeup Artist</option>
+          <option value="model">Model</option>
+          <option value="artdirector">Art Director</option>
+          <option value="retoucher">Retoucher</option>
+          <option value="videographer">Videographer</option>
+          <option value="production">Production</option>
+          <option value="other" data-i18n="roleOther">기타</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-i18n="labelLocation">위치</label>
+        <select class="form-select" id="signupLocation">
+          <option value="" data-i18n="locSelect">선택</option>
+          <option value="seoul">Seoul, KR</option>
+          <option value="tokyo">Tokyo, JP</option>
+          <option value="milano">Milano, IT</option>
+          <option value="paris">Paris, FR</option>
+          <option value="london">London, UK</option>
+          <option value="newyork">New York, US</option>
+          <option value="barcelona">Barcelona, ES</option>
+          <option value="berlin">Berlin, DE</option>
+          <option value="moscow">Moscow, RU</option>
+          <option value="beijing">Beijing, CN</option>
+          <option value="other" data-i18n="locOther">기타</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" data-i18n="labelInsta">인스타그램 (선택)</label>
+      <input type="text" class="form-input" placeholder="@username">
+    </div>
+    <button class="auth-btn" data-i18n="btnSignup" onclick="doSignup()">회원가입</button>
+    <div class="auth-terms" data-i18n="termsNotice">가입 시 <a href="#">이용약관</a> 및 <a href="#">개인정보처리방침</a>에 동의합니다.</div>
+  </div>
+
+  <!-- SUCCESS -->
+  <div class="auth-success" id="authSuccess">
+    <svg viewBox="0 0 56 56" fill="none"><circle cx="28" cy="28" r="26" stroke-width="2"/><polyline points="17 29 24 36 39 21" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <h2 data-i18n="successTitle">환영합니다!</h2>
+    <p data-i18n="successDesc">PAP Magazine 회원이 되신 것을 환영합니다. 이제 서브미션 제출, 커뮤니티 참여 등 다양한 혜택을 이용할 수 있습니다.</p>
+    <button class="auth-btn" onclick="location.href='index.html'" data-i18n="successBtn">매거진으로 이동</button>
+  </div>
+</div>
+
+<script src="pap-api.js"></script>
+<script>
+function switchAuth(mode){
+  document.querySelectorAll('.auth-tab').forEach(function(t){t.classList.remove('active');});
+  document.querySelectorAll('.auth-panel').forEach(function(p){p.classList.remove('active');});
+  if(mode==='login'){
+    document.querySelectorAll('.auth-tab')[0].classList.add('active');
+    document.getElementById('panelLogin').classList.add('active');
+  } else {
+    document.querySelectorAll('.auth-tab')[1].classList.add('active');
+    document.getElementById('panelSignup').classList.add('active');
+  }
+}
+
+function socialLogin(provider){
+  if(provider==='google') PAP.auth.loginWithGoogle();
+  else if(provider==='apple') PAP.auth.loginWithApple();
+  else PAP.ui.toast('Instagram login coming soon','error');
+}
+
+async function doLogin(){
+  var email=document.querySelector('#panelLogin input[type="email"]').value;
+  var pw=document.querySelector('#panelLogin input[type="password"]').value;
+  if(!email||!pw){PAP.ui.toast('Please fill in all fields','error');return;}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){PAP.ui.toast('Please enter a valid email','error');return;}
+  try{
+    await PAP.auth.login(email,pw);
+    document.getElementById('panelLogin').style.display='none';
+    document.querySelector('.auth-tabs').style.display='none';
+    document.getElementById('authSuccess').style.display='block';
+  }catch(e){
+    PAP.ui.toast(e.message||'Login failed','error');
+  }
+}
+
+async function doSignup(){
+  var name=document.querySelector('#panelSignup input[type="text"]').value;
+  var email=document.querySelector('#panelSignup input[type="email"]').value;
+  var pw=document.querySelector('#panelSignup input[type="password"]').value;
+  var role=document.getElementById('signupRole').value;
+  var location=document.getElementById('signupLocation').value;
+  var insta=document.querySelector('#panelSignup input[placeholder="@username"]').value;
+  if(!name||!email||!pw){PAP.ui.toast('Please fill in required fields','error');return;}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){PAP.ui.toast('Please enter a valid email','error');return;}
+  if(pw.length<8){PAP.ui.toast('Password must be at least 8 characters','error');return;}
+  if(!/[A-Z]/.test(pw)||!/[0-9]/.test(pw)){PAP.ui.toast('Password needs at least 1 uppercase letter and 1 number','error');return;}
+  try{
+    await PAP.auth.signup({name,email,password:pw,role,location,instagram:insta});
+    document.getElementById('panelSignup').style.display='none';
+    document.querySelector('.auth-tabs').style.display='none';
+    document.getElementById('authSuccess').style.display='block';
+  }catch(e){
+    PAP.ui.toast(e.message||'Signup failed','error');
+  }
+}
+
+// ======== i18n (8 LANGUAGES) ========
+var L={
+ko:{back:'← 돌아가기',tabLogin:'로그인',tabSignup:'회원가입',loginGoogle:'Google로 계속하기',loginApple:'Apple로 계속하기',loginInsta:'Instagram으로 계속하기',signupGoogle:'Google로 가입하기',signupApple:'Apple로 가입하기',or:'또는',labelEmail:'이메일',labelPw:'비밀번호',labelName:'이름',labelRole:'역할',labelLocation:'위치',labelInsta:'인스타그램 (선택)',phPw:'비밀번호 입력',phPwSet:'8자 이상',phName:'이름',roleSelect:'선택',roleOther:'기타',locSelect:'선택',locOther:'기타',btnLogin:'로그인',btnSignup:'회원가입',forgot:'비밀번호를 잊으셨나요?',termsNotice:'가입 시 <a href="#">이용약관</a> 및 <a href="#">개인정보처리방침</a>에 동의합니다.',successTitle:'환영합니다!',successDesc:'PAP Magazine 회원이 되신 것을 환영합니다. 이제 서브미션 제출, 커뮤니티 참여 등 다양한 혜택을 이용할 수 있습니다.',successBtn:'매거진으로 이동'},
+en:{back:'← Back',tabLogin:'LOG IN',tabSignup:'SIGN UP',loginGoogle:'Continue with Google',loginApple:'Continue with Apple',loginInsta:'Continue with Instagram',signupGoogle:'Sign up with Google',signupApple:'Sign up with Apple',or:'OR',labelEmail:'EMAIL',labelPw:'PASSWORD',labelName:'NAME',labelRole:'ROLE',labelLocation:'LOCATION',labelInsta:'INSTAGRAM (optional)',phPw:'Enter password',phPwSet:'Min. 8 characters',phName:'Full name',roleSelect:'Select',roleOther:'Other',locSelect:'Select',locOther:'Other',btnLogin:'LOG IN',btnSignup:'SIGN UP',forgot:'Forgot your password?',termsNotice:'By signing up, you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.',successTitle:'Welcome!',successDesc:'Welcome to PAP Magazine. You can now submit work, join the community, and enjoy all member benefits.',successBtn:'Go to Magazine'},
+it:{back:'← Indietro',tabLogin:'ACCEDI',tabSignup:'REGISTRATI',loginGoogle:'Continua con Google',loginApple:'Continua con Apple',loginInsta:'Continua con Instagram',signupGoogle:'Registrati con Google',signupApple:'Registrati con Apple',or:'OPPURE',labelEmail:'EMAIL',labelPw:'PASSWORD',labelName:'NOME',labelRole:'RUOLO',labelLocation:'POSIZIONE',labelInsta:'INSTAGRAM (opzionale)',phPw:'Inserisci password',phPwSet:'Min. 8 caratteri',phName:'Nome completo',roleSelect:'Seleziona',roleOther:'Altro',locSelect:'Seleziona',locOther:'Altro',btnLogin:'ACCEDI',btnSignup:'REGISTRATI',forgot:'Password dimenticata?',termsNotice:'Registrandoti accetti i <a href="#">Termini</a> e l\'<a href="#">Informativa Privacy</a>.',successTitle:'Benvenuto!',successDesc:'Benvenuto su PAP Magazine. Ora puoi inviare lavori, unirti alla community e godere di tutti i vantaggi.',successBtn:'Vai alla Rivista'},
+fr:{back:'← Retour',tabLogin:'CONNEXION',tabSignup:'INSCRIPTION',loginGoogle:'Continuer avec Google',loginApple:'Continuer avec Apple',loginInsta:'Continuer avec Instagram',signupGoogle:"S'inscrire avec Google",signupApple:"S'inscrire avec Apple",or:'OU',labelEmail:'EMAIL',labelPw:'MOT DE PASSE',labelName:'NOM',labelRole:'RÔLE',labelLocation:'LOCALISATION',labelInsta:'INSTAGRAM (optionnel)',phPw:'Entrez le mot de passe',phPwSet:'Min. 8 caractères',phName:'Nom complet',roleSelect:'Sélectionner',roleOther:'Autre',locSelect:'Sélectionner',locOther:'Autre',btnLogin:'CONNEXION',btnSignup:"S'INSCRIRE",forgot:'Mot de passe oublié ?',termsNotice:'En vous inscrivant, vous acceptez nos <a href="#">Conditions</a> et notre <a href="#">Politique de confidentialité</a>.',successTitle:'Bienvenue !',successDesc:'Bienvenue sur PAP Magazine. Vous pouvez maintenant soumettre des travaux et rejoindre la communauté.',successBtn:'Aller au Magazine'},
+es:{back:'← Volver',tabLogin:'INICIAR SESIÓN',tabSignup:'REGISTRARSE',loginGoogle:'Continuar con Google',loginApple:'Continuar con Apple',loginInsta:'Continuar con Instagram',signupGoogle:'Registrarse con Google',signupApple:'Registrarse con Apple',or:'O',labelEmail:'EMAIL',labelPw:'CONTRASEÑA',labelName:'NOMBRE',labelRole:'ROL',labelLocation:'UBICACIÓN',labelInsta:'INSTAGRAM (opcional)',phPw:'Ingrese contraseña',phPwSet:'Mín. 8 caracteres',phName:'Nombre completo',roleSelect:'Seleccionar',roleOther:'Otro',locSelect:'Seleccionar',locOther:'Otro',btnLogin:'INICIAR SESIÓN',btnSignup:'REGISTRARSE',forgot:'¿Olvidó su contraseña?',termsNotice:'Al registrarse, acepta nuestros <a href="#">Términos</a> y <a href="#">Política de Privacidad</a>.',successTitle:'¡Bienvenido!',successDesc:'Bienvenido a PAP Magazine. Ahora puede enviar trabajos, unirse a la comunidad y disfrutar de todos los beneficios.',successBtn:'Ir a la Revista'},
+ja:{back:'← 戻る',tabLogin:'ログイン',tabSignup:'会員登録',loginGoogle:'Googleで続ける',loginApple:'Appleで続ける',loginInsta:'Instagramで続ける',signupGoogle:'Googleで登録',signupApple:'Appleで登録',or:'または',labelEmail:'メール',labelPw:'パスワード',labelName:'名前',labelRole:'役割',labelLocation:'場所',labelInsta:'Instagram（任意）',phPw:'パスワード入力',phPwSet:'8文字以上',phName:'フルネーム',roleSelect:'選択',roleOther:'その他',locSelect:'選択',locOther:'その他',btnLogin:'ログイン',btnSignup:'会員登録',forgot:'パスワードをお忘れですか？',termsNotice:'登録により<a href="#">利用規約</a>と<a href="#">プライバシーポリシー</a>に同意します。',successTitle:'ようこそ！',successDesc:'PAP Magazineへようこそ。サブミッション提出やコミュニティ参加などの特典をご利用いただけます。',successBtn:'マガジンへ'},
+zh:{back:'← 返回',tabLogin:'登录',tabSignup:'注册',loginGoogle:'使用Google继续',loginApple:'使用Apple继续',loginInsta:'使用Instagram继续',signupGoogle:'使用Google注册',signupApple:'使用Apple注册',or:'或',labelEmail:'邮箱',labelPw:'密码',labelName:'姓名',labelRole:'角色',labelLocation:'位置',labelInsta:'Instagram（可选）',phPw:'输入密码',phPwSet:'至少8位',phName:'全名',roleSelect:'选择',roleOther:'其他',locSelect:'选择',locOther:'其他',btnLogin:'登录',btnSignup:'注册',forgot:'忘记密码？',termsNotice:'注册即表示同意<a href="#">使用条款</a>和<a href="#">隐私政策</a>。',successTitle:'欢迎！',successDesc:'欢迎加入PAP Magazine。现在您可以提交作品、参与社区并享受所有会员权益。',successBtn:'前往杂志'},
+ru:{back:'← Назад',tabLogin:'ВХОД',tabSignup:'РЕГИСТРАЦИЯ',loginGoogle:'Продолжить через Google',loginApple:'Продолжить через Apple',loginInsta:'Продолжить через Instagram',signupGoogle:'Зарегистрироваться через Google',signupApple:'Зарегистрироваться через Apple',or:'ИЛИ',labelEmail:'EMAIL',labelPw:'ПАРОЛЬ',labelName:'ИМЯ',labelRole:'РОЛЬ',labelLocation:'МЕСТОПОЛОЖЕНИЕ',labelInsta:'INSTAGRAM (необязательно)',phPw:'Введите пароль',phPwSet:'Мин. 8 символов',phName:'Полное имя',roleSelect:'Выбрать',roleOther:'Другое',locSelect:'Выбрать',locOther:'Другое',btnLogin:'ВОЙТИ',btnSignup:'РЕГИСТРАЦИЯ',forgot:'Забыли пароль?',termsNotice:'Регистрируясь, вы принимаете <a href="#">Условия</a> и <a href="#">Политику конфиденциальности</a>.',successTitle:'Добро пожаловать!',successDesc:'Добро пожаловать в PAP Magazine. Теперь вы можете подавать работы, участвовать в сообществе и пользоваться всеми привилегиями.',successBtn:'Перейти в журнал'}
+};
+
+function setLang(l){
+  localStorage.setItem('pap-lang',l);
+  var d=L[l]||L.ko;
+  document.querySelectorAll('[data-i18n]').forEach(function(e){
+    var k=e.getAttribute('data-i18n');
+    if(d[k]){
+      if(k==='termsNotice') e.innerHTML=d[k];
+      else e.textContent=d[k];
+    }
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(function(e){
+    var k=e.getAttribute('data-i18n-ph');
+    if(d[k]) e.placeholder=d[k];
+  });
+  document.getElementById('langSelect').value=l;
+}
+
+// AUTO LANGUAGE DETECTION
+(function(){
+  var saved=localStorage.getItem('pap-lang');
+  if(!saved){
+    var tz=Intl.DateTimeFormat().resolvedOptions().timeZone||'';
+    var lang=navigator.language||navigator.userLanguage||'';
+    lang=lang.toLowerCase();
+    if(lang.startsWith('ko')||tz.indexOf('Seoul')>-1) saved='ko';
+    else if(lang.startsWith('ja')||tz.indexOf('Tokyo')>-1) saved='ja';
+    else if(lang.startsWith('zh')||tz.indexOf('Shanghai')>-1||tz.indexOf('Beijing')>-1) saved='zh';
+    else if(lang.startsWith('it')||tz.indexOf('Rome')>-1) saved='it';
+    else if(lang.startsWith('fr')||tz.indexOf('Paris')>-1) saved='fr';
+    else if(lang.startsWith('es')||tz.indexOf('Madrid')>-1) saved='es';
+    else if(lang.startsWith('ru')||tz.indexOf('Moscow')>-1) saved='ru';
+    else saved='en';
+    localStorage.setItem('pap-lang',saved);
+  }
+  setLang(saved);
+})();
+</script>
+</body>
+</html>

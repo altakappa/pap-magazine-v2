@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact | PAP Magazine</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Montserrat',sans-serif;background:#000;color:#fff;min-height:100vh;overflow-x:hidden}
+a{color:#fff;text-decoration:none}
+.side-nav{position:fixed;left:0;top:0;width:80px;height:100vh;display:flex;flex-direction:column;align-items:center;padding-top:32px;z-index:100}
+.nav-dots{width:36px;height:36px;border-radius:50%;border:1.5px solid rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;cursor:pointer;margin-bottom:48px;transition:border-color .3s}
+.nav-dots:hover{border-color:#fff}
+.nav-dots span{font-size:18px;letter-spacing:2px;color:rgba(255,255,255,.6)}
+.nav-links{display:flex;flex-direction:column;gap:32px}
+.nav-links a{writing-mode:vertical-rl;font-size:13px;font-weight:700;letter-spacing:5px;text-transform:uppercase;color:rgba(255,255,255,.35);transition:color .3s}
+.nav-links a:hover{color:rgba(255,255,255,.7)}
+.nav-links a.active{color:#fff}
+.content{margin-left:120px;padding:80px 60px 80px 0;max-width:900px}
+h1{font-size:clamp(48px,8vw,90px);font-weight:800;letter-spacing:5px;text-transform:uppercase;margin-bottom:60px;line-height:1}
+.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:60px}
+.contact-block{font-size:14px;line-height:2.2;color:rgba(255,255,255,.75)}
+.contact-block h3{font-size:12px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:8px}
+.contact-block p{margin-bottom:24px}
+.contact-block a{text-decoration:underline;text-underline-offset:3px;transition:opacity .2s}
+.contact-block a:hover{opacity:.6}
+.lang-selector{position:fixed;top:32px;right:40px;z-index:100}
+.lang-selector select{background:transparent;color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.2);padding:6px 12px;font-size:11px;font-family:'Montserrat',sans-serif;letter-spacing:.1em;cursor:pointer}
+.lang-selector select option{background:#000;color:#fff}
+.footer-legal{margin-left:120px;padding:40px 60px 40px 0;border-top:1px solid rgba(255,255,255,.1);font-size:11px;color:rgba(255,255,255,.3);line-height:2}
+.footer-legal a{color:rgba(255,255,255,.3)}
+@media(max-width:768px){
+  .side-nav{width:50px;padding-top:20px}
+  .content{margin-left:60px;padding:60px 20px}
+  h1{font-size:36px}
+  .contact-grid{grid-template-columns:1fr;gap:32px}
+  .footer-legal{margin-left:60px;padding:20px 20px}
+}
+</style>
+<!-- Favicon & PWA -->
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000000">
+<!-- Open Graph / Social -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="PAP Magazine">
+<meta property="og:title" content="Contact | PAP Magazine">
+<meta property="og:description" content="Get in touch with PAP Magazine. Editorial inquiries, collaborations, and partnerships.">
+<meta property="og:url" content="https://pap-magazine.com/contact.html">
+<meta property="og:image" content="https://pap-magazine.com/apple-touch-icon.png">
+<meta property="og:locale" content="ko_KR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Contact | PAP Magazine">
+<meta name="twitter:description" content="Get in touch with PAP Magazine. Editorial inquiries, collaborations, and partnerships.">
+<meta name="twitter:image" content="https://pap-magazine.com/apple-touch-icon.png">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"ContactPage","name":"Contact PAP Magazine","publisher":{"@type":"Organization","name":"PAP Magazine","contactPoint":{"@type":"ContactPoint","email":"contact@pap-magazine.com","contactType":"editorial"}}}</script>
+<!-- Google Analytics (replace G-XXXXXXXXXX with your ID) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-XXXXXXXXXX');</script>
+<!-- Print Styles -->
+<style media="print">
+@media print{
+  body{background:#fff!important;color:#000!important}
+  .side-nav,.nav-overlay,.header,.footer-legal,.lang-selector,#cookieConsent,#backToTop,.mobile-menu-btn,.hamburger,.search-container{display:none!important}
+  .content,.main-content{margin-left:0!important;padding:20px!important}
+  a{color:#000!important;text-decoration:underline}
+  img{max-width:100%!important}
+  *{box-shadow:none!important;text-shadow:none!important}
+}
+</style>
+</head>
+<body>
+<!-- Loading State -->
+<div id="pageLoader" style="position:fixed;inset:0;z-index:10000;background:#000;display:flex;align-items:center;justify-content:center;transition:opacity .4s">
+<div style="text-align:center"><div style="font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;letter-spacing:.3em;color:rgba(255,255,255,.4);text-transform:uppercase">PAP</div>
+<div style="margin-top:12px;width:40px;height:1px;background:rgba(255,255,255,.1);position:relative;overflow:hidden;margin-left:auto;margin-right:auto"><div style="position:absolute;width:50%;height:100%;background:rgba(255,255,255,.5);animation:loaderSlide 1s ease infinite"></div></div></div></div>
+<style>@keyframes loaderSlide{0%{left:-50%}100%{left:100%}}</style>
+<script>window.addEventListener('load',function(){var l=document.getElementById('pageLoader');if(l){l.style.opacity='0';setTimeout(function(){l.remove();},400);}});</script>
+<div class="lang-selector"><select id="langSelect" onchange="setLang(this.value)"><option value="ko">KO</option><option value="en">EN</option><option value="it">IT</option><option value="fr">FR</option><option value="es">ES</option><option value="ja">JA</option><option value="zh">ZH</option><option value="ru">RU</option></select></div>
+<nav role="navigation" aria-label="Main navigation" class="side-nav">
+  <a href="index.html" class="nav-dots"><span>&#8942;</span></a>
+  <div class="nav-links">
+    <a href="business.html" data-i18n="business">BUSINESS</a>
+    <a href="about.html" data-i18n="about">ABOUT</a>
+    <a href="contact.html" class="active" data-i18n="contact">CONTACT</a>
+    <a href="subscribe.html" data-i18n="subscribe">SUBSCRIBE</a>
+    <a href="submission.html" data-i18n="submission">SUBMISSION</a>
+    <a href="pullletter.html" data-i18n="pullletter">PULL-LETTER</a>
+  </div>
+</nav>
+<main role="main" class="content">
+  <h1 data-i18n="contactTitle">CONTACT US</h1>
+  <div id="contactBody"></div>
+</main>
+<div class="footer-legal" id="footerLegal"></div>
+<script>
+var L={
+ko:{about:'ABOUT',contact:'CONTACT',business:'BUSINESS',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',contactTitle:'CONTACT',
+body:'<div class="contact-grid"><div class="contact-block"><h3>IT Office</h3><p>Via San Vincenzo 18B,<br>20123 Milano</p><h3>KR Office</h3><p>서울특별시 강남구 논현로146길 18, 1F</p></div><div class="contact-block"><h3>PAP MAGAZINE (Italy)</h3><p><a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a></p><h3>PAP KOREA</h3><p><a href="mailto:contact@papkorea.com">contact@papkorea.com</a></p><h3>MEDIA KIT</h3><p style="display:flex;gap:8px"><a href="#" onclick="event.preventDefault();downloadMediaKit(\'en\')" style="border:1px solid #333;padding:4px 12px;font-size:10px;letter-spacing:.1em">ENGLISH</a><a href="#" onclick="event.preventDefault();downloadMediaKit(\'ko\')" style="border:1px solid #333;padding:4px 12px;font-size:10px;letter-spacing:.1em">한국어</a></p></div></div>',
+ft:'<strong>주식회사 알타카파</strong> | CEO : 강동민 | 사업자번호 192-88-02644<br>서울특별시 강남구 논현로146길 18, 1F PAP 매거진 | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+en:{about:'ABOUT',contact:'CONTACT',business:'BUSINESS',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',contactTitle:'CONTACT',
+body:'<div class="contact-grid"><div class="contact-block"><h3>IT Office</h3><p>Via San Vincenzo 18B,<br>20123 Milano, Italy</p><h3>KR Office</h3><p>1F, 18, Nonhyeon-ro 146-gil,<br>Gangnam-gu, Seoul, Korea</p></div><div class="contact-block"><h3>PAP MAGAZINE (Italy)</h3><p><a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a></p><h3>PAP KOREA</h3><p><a href="mailto:contact@papkorea.com">contact@papkorea.com</a></p><h3>MEDIA KIT</h3><p style="display:flex;gap:8px"><a href="#" onclick="event.preventDefault();downloadMediaKit(\'en\')" style="border:1px solid #333;padding:4px 12px;font-size:10px;letter-spacing:.1em">ENGLISH</a><a href="#" onclick="event.preventDefault();downloadMediaKit(\'ko\')" style="border:1px solid #333;padding:4px 12px;font-size:10px;letter-spacing:.1em">한국어</a></p></div></div>',
+ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+it:{about:'CHI SIAMO',contact:'CONTATTI',business:'BUSINESS',subscribe:'ABBONATI',contactTitle:'CONTATTACI',
+body:'<div class="contact-grid"><div class="contact-block"><h3>IT Office</h3><p>Via San Vincenzo 18B,<br>20123 Milano, Italia</p><h3>KR Office</h3><p>1F, 18, Nonhyeon-ro 146-gil,<br>Gangnam-gu, Seoul, Corea</p></div><div class="contact-block"><h3>PAP MAGAZINE (Italia)</h3><p><a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a></p><h3>PAP KOREA</h3><p><a href="mailto:contact@papkorea.com">contact@papkorea.com</a></p><h3>MEDIA KIT</h3><p style="display:flex;gap:8px"><a href="#" onclick="event.preventDefault();downloadMediaKit(\'en\')" style="border:1px solid #333;padding:4px 12px;font-size:10px;letter-spacing:.1em">ENGLISH</a><a href="#" onclick="event.preventDefault();downloadMediaKit(\'ko\')" style="border:1px solid #333;padding:4px 12px;font-size:10px;letter-spacing:.1em">한국어</a></p></div></div>',
+ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | P. IVA: 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Corea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+fr:{about:'À PROPOS',contact:'CONTACT',business:'BUSINESS',subscribe:"S'ABONNER",contactTitle:'CONTACTEZ-NOUS',
+body:'<div class="contact-grid"><div class="contact-block"><h3>IT Office</h3><p>Via San Vincenzo 18B,<br>20123 Milan, Italie</p><h3>KR Office</h3><p>1F, 18, Nonhyeon-ro 146-gil,<br>Gangnam-gu, Séoul, Corée</p></div><div class="contact-block"><h3>PAP MAGAZINE (Italie)</h3><p><a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a></p><h3>PAP KOREA</h3><p><a href="mailto:contact@papkorea.com">contact@papkorea.com</a></p><h3>DOSSIER DE PRESSE</h3><p style="display:flex;gap:8px"><a href="#" onclick="event.preventDefault();downloadMediaKit(\'en\')" style="border:1px solid #333;padding:4px 12px;font-size:10px;letter-spacing:.1em">ENGLISH</a><a href="#" onclick="event.preventDefault();downloadMediaKit(\'ko\')" style="border:1px solid #333;padding:4px 12px;font-size:10px;letter-spacing:.1em">한국어</a></p></div></div>',
+ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | PDG : Domenico Kang | N&#176; 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Séoul, Corée | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+es:{about:'ACERCA DE',contact:'CONTACTO',business:'NEGOCIOS',subscribe:'SUSCRIBIRSE',contactTitle:'CONTÁCTENOS',
+body:'<div class="contact-grid"><div class="contact-block"><h3>IT Office</h3><p>Via San Vincenzo 18B,<br>20123 Milán, Italia</p><h3>KR Office</h3><p>1F, 18, Nonhyeon-ro 146-gil,<br>Gangnam-gu, Seúl, Corea</p></div><div class="contact-block"><h3>PAP MAGAZINE (Italia)</h3><p><a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a></p><h3>PAP KOREA</h3><p><a href="mailto:contact@papkorea.com">contact@papkorea.com</a></p><h3>KIT DE PRENSA</h3><p style="display:flex;gap:8px"><a href="#" onclick="event.preventDefault();downloadMediaKit(\'en\')" style="border:1px solid #333;padding:4px 12px;font-size:10px;letter-spacing:.1em">ENGLISH</a><a href="#" onclick="event.preventDefault();downloadMediaKit(\'ko\')" style="border:1px solid #333;padding:4px 12px;font-size:10px;letter-spacing:.1em">한국어</a></p></div></div>',
+ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seúl, Corea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+ja:{about:'ABOUT',contact:'CONTACT',business:'BUSINESS',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',contactTitle:'お問い合わせ',
+body:'<div class="contact-grid"><div class="contact-block"><h3>IT Office</h3><p>Via San Vincenzo 18B,<br>20123 ミラノ、イタリア</p><h3>KR Office</h3><p>ソウル特別市江南区論峴路146キル18, 1F</p></div><div class="contact-block"><h3>PAP MAGAZINE (イタリア)</h3><p><a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a></p><h3>PAP KOREA</h3><p><a href="mailto:contact@papkorea.com">contact@papkorea.com</a></p><h3>メディアキット</h3><p style="display:flex;gap:8px"><a href="#" onclick="event.preventDefault();downloadMediaKit(\'en\')" style="border:1px solid #333;padding:4px 12px;font-size:10px;letter-spacing:.1em">ENGLISH</a><a href="#" onclick="event.preventDefault();downloadMediaKit(\'ko\')" style="border:1px solid #333;padding:4px 12px;font-size:10px;letter-spacing:.1em">한국어</a></p></div></div>',
+ft:'<strong>株式会社アルタカッパ</strong> | CEO : カン・ドンミン | 事業者番号 192-88-02644<br>ソウル特別市江南区論峴路146キル18, 1F | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+zh:{about:'关于',contact:'联系',business:'商务',subscribe:'订阅',contactTitle:'联系我们',
+body:'<div class="contact-grid"><div class="contact-block"><h3>IT Office</h3><p>Via San Vincenzo 18B,<br>20123 米兰，意大利</p><h3>KR Office</h3><p>首尔特别市江南区论岘路146街18, 1F</p></div><div class="contact-block"><h3>PAP MAGAZINE (意大利)</h3><p><a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a></p><h3>PAP KOREA</h3><p><a href="mailto:contact@papkorea.com">contact@papkorea.com</a></p><h3>媒体资料</h3><p style="display:flex;gap:8px"><a href="#" onclick="event.preventDefault();downloadMediaKit(\'en\')" style="border:1px solid #333;padding:4px 12px;font-size:10px;letter-spacing:.1em">ENGLISH</a><a href="#" onclick="event.preventDefault();downloadMediaKit(\'ko\')" style="border:1px solid #333;padding:4px 12px;font-size:10px;letter-spacing:.1em">한국어</a></p></div></div>',
+ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | 营业执照号 192-88-02644<br>首尔特别市江南区论岘路146街18, 1F | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},ru:{business:'БИЗНЕС',about:'О НАС',contact:'КОНТАКТ',subscribe:'ПОДПИСКА',submission:'ПОДАЧА',pullletter:'PULL-LETTER',contactTitle:'КОНТАКТ',
+body:'<div class="contact-grid"><div class="contact-block"><h3>IT Office</h3><p>Via San Vincenzo 18B,<br>20123 Milano</p><h3>KR Office</h3><p>Seoul, Gangnam-gu, Nonhyeon-ro 146-gil 18, 1F</p></div><div class="contact-block"><h3>PAP MAGAZINE (Italy)</h3><p><a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a></p><h3>PAP KOREA</h3><p><a href="mailto:contact@papkorea.com">contact@papkorea.com</a></p><h3>MEDIA KIT</h3><p style="display:flex;gap:8px"><a href="#" onclick="event.preventDefault();downloadMediaKit(\'en\')" style="border:1px solid #333;padding:4px 12px;font-size:10px;letter-spacing:.1em">ENGLISH</a><a href="#" onclick="event.preventDefault();downloadMediaKit(\'ko\')" style="border:1px solid #333;padding:4px 12px;font-size:10px;letter-spacing:.1em">한국어</a></p></div></div>',
+ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'}
+};
+function setLang(l){localStorage.setItem('pap-lang',l);var d=L[l]||L.ko;document.querySelectorAll('[data-i18n]').forEach(function(e){var k=e.getAttribute('data-i18n');if(d[k])e.textContent=d[k];});document.getElementById('contactBody').innerHTML=d.body;document.getElementById('footerLegal').innerHTML=d.ft;document.getElementById('langSelect').value=l;}
+// AUTO LANGUAGE DETECTION
+(function(){
+  var saved=localStorage.getItem('pap-lang');
+  if(!saved){
+    var tz=Intl.DateTimeFormat().resolvedOptions().timeZone||'';
+    var lang=navigator.language||navigator.userLanguage||'';
+    lang=lang.toLowerCase();
+    if(lang.startsWith('ko')||tz.indexOf('Seoul')>-1) saved='ko';
+    else if(lang.startsWith('ja')||tz.indexOf('Tokyo')>-1) saved='ja';
+    else if(lang.startsWith('zh')||tz.indexOf('Shanghai')>-1||tz.indexOf('Beijing')>-1||tz.indexOf('Chongqing')>-1||tz.indexOf('Hong_Kong')>-1||tz.indexOf('Taipei')>-1) saved='zh';
+    else if(lang.startsWith('it')||tz.indexOf('Rome')>-1) saved='it';
+    else if(lang.startsWith('fr')||tz.indexOf('Paris')>-1) saved='fr';
+    else if(lang.startsWith('es')||tz.indexOf('Madrid')>-1||tz.indexOf('Mexico')>-1) saved='es';
+    else if(lang.startsWith('ru')||tz.indexOf('Moscow')>-1||tz.indexOf('Petersburg')>-1) saved='ru';
+    else saved='en';
+    localStorage.setItem('pap-lang',saved);
+  }
+  setLang(saved);
+})();
+</script>
+</body>
+</html>

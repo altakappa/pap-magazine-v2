@@ -1,0 +1,1878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co https://api.stripe.com https://api.pap-magazine.com; frame-src https://js.stripe.com;">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>PAP 관리자</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f5f5f7;--surface:#fff;--surface2:#f0f0f3;--border:rgba(0,0,0,.06);--border2:rgba(0,0,0,.12);--text:#111;--text2:rgba(0,0,0,.55);--text3:rgba(0,0,0,.35);--green:#16a34a;--red:#dc2626;--yellow:#ca8a04;--blue:#2563eb;--purple:#7c3aed;--sans:'Inter',sans-serif;--display:'Montserrat',sans-serif}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;display:flex;font-size:13px}
+a{color:var(--text);text-decoration:none}
+button{cursor:pointer;font-family:var(--sans);font-size:12px}
+input,select,textarea{font-family:var(--sans);font-size:12px}
+
+/* SIDEBAR */
+.sb{width:240px;background:#fff;border-right:1px solid var(--border);height:100vh;position:fixed;display:flex;flex-direction:column;overflow-y:auto}
+.sb-logo{padding:20px;border-bottom:1px solid var(--border)}
+.sb-logo img{height:24px;width:auto;filter:invert(1)}
+.sb-logo small{display:block;font-family:var(--sans);font-size:9px;font-weight:500;color:var(--text3);letter-spacing:.15em;margin-top:6px}
+.sb-section{padding:16px 0 8px}
+.sb-section-title{padding:0 16px 8px;font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--text3)}
+.sb a{display:flex;align-items:center;gap:8px;padding:8px 16px;color:var(--text2);font-size:12px;font-weight:500;transition:all .15s;border-left:2px solid transparent}
+.sb a:hover{color:var(--text);background:rgba(0,0,0,.02)}
+.sb a.on{color:var(--text);background:rgba(0,0,0,.04);border-left-color:var(--text)}
+.sb a .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.sb-bottom{margin-top:auto;padding:16px;border-top:1px solid var(--border);font-size:11px}
+.sb-bottom a{padding:6px 0;border:none;font-size:11px}
+
+/* MAIN */
+.mn{margin-left:240px;flex:1;min-height:100vh}
+.mn-header{padding:20px 28px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:#fff}
+.mn-title{font-family:var(--display);font-size:18px;font-weight:800;letter-spacing:.03em}
+.mn-actions{display:flex;gap:8px}
+.mn-body{padding:28px}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:28px}
+.stat{background:var(--surface);border:1px solid var(--border);padding:18px}
+.stat-n{font-size:26px;font-weight:800;line-height:1;margin-bottom:4px}
+.stat-l{font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--text3)}
+.stat-c{font-size:10px;margin-top:6px}
+
+/* TABLE */
+.tbl-wrap{background:var(--surface);border:1px solid var(--border);overflow-x:auto}
+.tbl-top{padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)}
+.tbl-top h3{font-size:13px;font-weight:700}
+.tbl-filters{display:flex;gap:4px}
+.tf{padding:5px 10px;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--border);background:transparent;color:var(--text3);transition:all .15s}
+.tf:hover{border-color:var(--border2);color:var(--text2)}
+.tf.on{background:rgba(0,0,0,.05);border-color:var(--border2);color:var(--text)}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;padding:10px 14px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:10px 14px;border-bottom:1px solid var(--border);color:var(--text2);white-space:nowrap}
+tr:hover td{background:rgba(0,0,0,.02)}
+.td-title{color:var(--text);font-weight:600;cursor:pointer;max-width:200px;overflow:hidden;text-overflow:ellipsis}
+.td-title:hover{text-decoration:underline}
+.td-thumb{width:36px;height:45px;object-fit:cover;border:1px solid var(--border)}
+
+/* BADGES */
+.badge{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 7px;display:inline-block;white-space:nowrap}
+.b-pending{border:1px solid rgba(202,138,4,.35);color:var(--yellow);background:rgba(202,138,4,.06)}
+.b-approved,.b-published{border:1px solid rgba(22,163,74,.3);color:var(--green);background:rgba(22,163,74,.06)}
+.b-declined{border:1px solid rgba(220,38,38,.25);color:var(--red);background:rgba(220,38,38,.06)}
+.b-revision{border:1px solid rgba(37,99,235,.3);color:var(--blue);background:rgba(37,99,235,.06)}
+.b-draft{border:1px solid var(--border2);color:var(--text3);background:rgba(0,0,0,.03)}
+.b-free{border:1px solid var(--border2);color:var(--text3);background:rgba(0,0,0,.03)}
+.b-standard{border:1px solid rgba(202,138,4,.3);color:var(--yellow);background:rgba(202,138,4,.06)}
+.b-premium{border:1px solid rgba(124,58,237,.3);color:var(--purple);background:rgba(124,58,237,.06)}
+
+/* BUTTONS */
+.btn{padding:7px 14px;font-weight:600;letter-spacing:.05em;border:1px solid var(--border2);background:transparent;color:var(--text2);transition:all .15s}
+.btn:hover{color:var(--text);border-color:rgba(255,255,255,.25)}
+.btn-sm{padding:4px 10px;font-size:10px}
+.btn-primary{background:#111;color:#fff;border-color:#111}
+.btn-primary:hover{opacity:.85}
+.btn-green{border-color:rgba(74,222,128,.3);color:var(--green)}
+.btn-green:hover{background:rgba(22,163,74,.08)}
+.btn-red{border-color:rgba(248,113,113,.3);color:var(--red)}
+.btn-red:hover{background:rgba(220,38,38,.08)}
+.btn-blue{border-color:rgba(96,165,250,.3);color:var(--blue)}
+.btn-blue:hover{background:rgba(37,99,235,.08)}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:1000}
+.modal-bg.show{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border2);max-width:640px;width:95%;max-height:85vh;overflow-y:auto;padding:28px;position:relative}
+.modal h2{font-size:16px;font-weight:700;margin-bottom:4px}
+.modal .sub{font-size:11px;color:var(--text3);margin-bottom:20px}
+.modal-section{margin-bottom:16px}
+.modal-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:6px}
+.modal-val{font-size:12px;color:var(--text2);line-height:1.8}
+.modal-ta{width:100%;background:#fafafa;border:1px solid var(--border2);padding:10px;color:var(--text);outline:none;min-height:80px;resize:vertical}
+.modal-ta:focus{border-color:var(--border2)}
+.modal-close{position:absolute;top:14px;right:16px;background:none;border:none;color:var(--text3);font-size:18px}
+.modal-foot{display:flex;gap:6px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+
+/* TABS */
+.tab{display:none}.tab.on{display:block}
+
+
+/* AI TRANSLATE BADGE */
+.ai-badge{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;background:linear-gradient(135deg,rgba(124,58,237,.1),rgba(37,99,235,.1));border:1px solid rgba(124,58,237,.2);color:var(--purple);margin-left:8px}
+.ai-lang-preview{margin-top:12px;padding:14px;background:var(--surface2);border:1px solid var(--border)}
+.ai-lang-tabs{display:flex;gap:0;margin-bottom:10px;border-bottom:1px solid var(--border)}
+.ai-lang-tab{padding:6px 12px;font-size:10px;font-weight:600;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+.ai-lang-tab:hover{color:var(--text2)}
+.ai-lang-tab.on{color:var(--text);border-bottom-color:var(--purple)}
+.ai-lang-body{font-size:12px;color:var(--text2);line-height:1.9;max-height:120px;overflow-y:auto}
+/* POST EDITOR */
+.pe{max-width:800px}
+.pe-section{margin-bottom:24px}
+.pe-label{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--text2);margin-bottom:8px}
+.pe-opt{font-weight:400;color:var(--text3);font-size:10px;margin-left:6px}
+.pe-hint{font-size:10px;color:var(--text3);margin-top:4px}
+.pe-input{width:100%;background:var(--surface);border:1px solid var(--border2);padding:10px 14px;color:var(--text);outline:none;transition:border-color .2s}
+.pe-input:focus{border-color:rgba(0,0,0,.3)}
+.pe-select{width:100%;background:var(--surface);border:1px solid var(--border2);padding:10px 14px;color:var(--text);outline:none;-webkit-appearance:none;appearance:none;cursor:pointer}
+.pe-select option{background:#fff;color:#111}
+.pe-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.pe-half{min-width:0}
+
+.pe-radios{display:flex;gap:8px}
+.pe-radio{font-size:12px;font-weight:500;padding:8px 16px;border:1px solid var(--border2);cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:6px;color:var(--text2)}
+.pe-radio input{display:none}
+.pe-radio.sel{background:rgba(0,0,0,.06);border-color:rgba(0,0,0,.2);color:var(--text);font-weight:600}
+
+.pe-upload{border:2px dashed var(--border2);padding:32px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface)}
+.pe-upload:hover{border-color:rgba(0,0,0,.25);background:var(--surface2)}
+.pe-upload-icon{font-size:28px;margin-bottom:8px}
+.pe-upload-text{font-size:12px;font-weight:600;color:var(--text2)}
+.pe-upload-hint{font-size:10px;color:var(--text3);margin-top:4px}
+.pe-upload img{max-width:200px;max-height:250px;object-fit:cover}
+
+.pe-gallery{display:flex;flex-wrap:wrap;gap:8px}
+.pe-gallery-item{width:100px;height:125px;border:1px solid var(--border2);position:relative;overflow:hidden;cursor:grab}
+.pe-gallery-item img{width:100%;height:100%;object-fit:cover}
+.pe-gallery-item .pe-gallery-del{position:absolute;top:2px;right:2px;width:20px;height:20px;background:rgba(0,0,0,.6);color:#fff;border:none;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s}
+.pe-gallery-item:hover .pe-gallery-del{opacity:1}
+.pe-gallery-item .pe-gallery-num{position:absolute;bottom:2px;left:4px;font-size:9px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.pe-gallery-add{width:100px;height:125px;border:2px dashed var(--border2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;color:var(--text3);font-weight:600;transition:all .2s;text-align:center;padding:8px}
+.pe-gallery-add:hover{border-color:rgba(0,0,0,.25);color:var(--text2)}
+
+.pe-credit-row,.pe-brand-row{display:flex;gap:8px;margin-bottom:8px;align-items:center}
+.pe-credit-role{width:170px;flex-shrink:0}
+.pe-credit-name,.pe-brand-name{flex:1}
+.pe-credit-ig,.pe-brand-ig{width:160px;flex-shrink:0}
+
+.pe-checks{display:flex;gap:16px}
+.pe-check{font-size:12px;font-weight:500;color:var(--text2);display:flex;align-items:center;gap:6px;cursor:pointer}
+.pe-check input{accent-color:#111}
+
+.pe-actions{display:flex;gap:8px;padding-top:24px;border-top:1px solid var(--border)}
+.pe-tag{display:inline-block;font-size:10px;font-weight:600;padding:3px 8px;background:rgba(0,0,0,.05);border:1px solid var(--border);color:var(--text2);border-radius:2px}
+
+@media(max-width:768px){.sb{width:56px;overflow:hidden}.sb a span,.sb-section-title,.sb-logo small,.sb-bottom span{display:none}.mn{margin-left:56px}.pe-row{grid-template-columns:1fr}.pe-credit-row,.pe-brand-row{flex-wrap:wrap}}
+</style>
+<!-- Favicon & PWA -->
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000000">
+<!-- Open Graph / Social -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="PAP Magazine">
+<meta property="og:title" content="Admin | PAP Magazine">
+<meta property="og:description" content="PAP Magazine administration dashboard.">
+<meta property="og:url" content="https://pap-magazine.com/admin.html">
+<meta property="og:image" content="https://pap-magazine.com/apple-touch-icon.png">
+<meta property="og:locale" content="ko_KR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Admin | PAP Magazine">
+<meta name="twitter:description" content="PAP Magazine administration dashboard.">
+<meta name="twitter:image" content="https://pap-magazine.com/apple-touch-icon.png">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Admin - PAP Magazine"}</script>
+<!-- Google Analytics (replace G-XXXXXXXXXX with your ID) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-XXXXXXXXXX');</script>
+<!-- Print Styles -->
+<style media="print">
+@media print{
+  body{background:#fff!important;color:#000!important}
+  .side-nav,.nav-overlay,.header,.footer-legal,.lang-selector,#cookieConsent,#backToTop,.mobile-menu-btn,.hamburger,.search-container{display:none!important}
+  .content,.main-content{margin-left:0!important;padding:20px!important}
+  a{color:#000!important;text-decoration:underline}
+  img{max-width:100%!important}
+  *{box-shadow:none!important;text-shadow:none!important}
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav role="navigation" aria-label="Main navigation" class="sb">
+  <div class="sb-logo"><img loading="lazy" src="pap-logo.png" alt="PAP Magazine"><small>관리자 대시보드</small></div>
+
+  <div class="sb-section">
+    <div class="sb-section-title">개요</div>
+    <a class="on" href="#" onclick="go('home',this)"><span>🏠</span> <span>홈</span></a>
+    <a href="https://analytics.google.com" target="_blank"><span>📊</span> <span>통계</span></a>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-section-title">Main</div>
+    <a href="#" onclick="go('menucats',this)"><span>🗂️</span> <span>메뉴 카테고리 관리</span></a>
+    <a href="#" onclick="go('cover',this)"><span>🎨</span> <span>커버 설정</span></a>
+    <a href="#" onclick="go('categories',this)"><span>📁</span> <span>게시글 카테고리</span></a>
+    <a href="#" onclick="go('loading',this)"><span>🖼️</span> <span>로딩 이미지 관리</span></a>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-section-title">게시글 관리</div>
+    <a href="#" onclick="go('editorials',this)"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0"></span> <span>에디토리얼</span></a>
+    <a href="#" onclick="go('news',this)"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--blue);flex-shrink:0"></span> <span>뉴스</span></a>
+    <a href="#" onclick="go('film',this)"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--purple);flex-shrink:0"></span> <span>필름</span></a>
+    <a href="#" onclick="go('shorts',this)"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--yellow);flex-shrink:0"></span> <span>숏츠</span></a>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-section-title">배너 관리</div>
+    <a href="#" onclick="go('banners',this)"><span>🎯</span> <span>배너 관리</span></a>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-section-title">서브미션 / Pull-Letter</div>
+    <a href="#" onclick="go('submissions',this)"><span>📝</span> <span>서브미션 심사</span></a>
+    <a href="#" onclick="go('pullletters',this)"><span>⭐</span> <span>Pull-Letter 심사</span></a>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-section-title">회원 / 커뮤니티</div>
+    <a href="#" onclick="go('users',this)"><span>👤</span> <span>회원 관리</span></a>
+    <a href="#" onclick="go('community',this)"><span>💬</span> <span>커뮤니티 관리</span></a>
+    <a href="#" onclick="go('subscriptions',this)"><span>💳</span> <span>구독 / 결제</span></a>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-section-title">회사 정보</div>
+    <a href="#" onclick="go('about',this)"><span>ℹ️</span> <span>회사 소개</span></a>
+    <a href="#" onclick="go('business',this)"><span>💼</span> <span>비즈니스</span></a>
+    <a href="#" onclick="go('contact',this)"><span>📧</span> <span>문의하기</span></a>
+  </div>
+
+  <div class="sb-bottom">
+    <a href="index.html"><span>←</span> <span>사이트로 이동</span></a>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main role="main" class="mn">
+
+  <!-- HOME -->
+  <div class="tab on" id="t-home">
+    <div class="mn-header"><div class="mn-title">대시보드</div><div style="font-size:11px;color:var(--text3)">2026년 3월 20일</div></div>
+    <div class="mn-body">
+      <div class="stats">
+        <div class="stat"><div class="stat-n">247</div><div class="stat-l">전체 회원</div><div class="stat-c" style="color:var(--green)">↑ 이번 주 +12</div></div>
+        <div class="stat"><div class="stat-n">89</div><div class="stat-l">게시된 에디토리얼</div><div class="stat-c" style="color:var(--green)">↑ 이번 달 +4</div></div>
+        <div class="stat"><div class="stat-n">18</div><div class="stat-l">대기 중 서브미션</div><div class="stat-c">오늘 +3</div></div>
+        <div class="stat"><div class="stat-n">5</div><div class="stat-l">대기 중 Pull-Letter</div><div class="stat-c">오늘 +1</div></div>
+        <div class="stat"><div class="stat-n">42</div><div class="stat-l">Standard 구독</div></div>
+        <div class="stat"><div class="stat-n">15</div><div class="stat-l">Premium 구독</div></div>
+        <div class="stat"><div class="stat-n">156</div><div class="stat-l">커뮤니티 게시글</div></div>
+        <div class="stat"><div class="stat-n">₩2.4M</div><div class="stat-l">월 매출</div><div class="stat-c" style="color:var(--green)">↑ 18%</div></div>
+      </div>
+
+      <div class="tbl-wrap">
+        <div class="tbl-top"><h3>최근 서브미션</h3></div>
+        <table><thead><tr><th>제목</th><th>제출자</th><th>룩 수</th><th>날짜</th><th>상태</th></tr></thead>
+        <tbody>
+          <tr><td class="td-title" onclick="openModal()">Neon Dreams</td><td>Lena Park</td><td>6</td><td>3월 20일</td><td><span class="badge b-pending">대기 중</span></td></tr>
+          <tr><td class="td-title" onclick="openModal()">Urban Decay</td><td>Marco Bellini</td><td>8</td><td>3월 19일</td><td><span class="badge b-pending">대기 중</span></td></tr>
+          <tr><td class="td-title">Silk & Shadow</td><td>Clara Fontaine</td><td>4</td><td>3월 18일</td><td><span class="badge b-approved">승인</span></td></tr>
+          <tr><td class="td-title">Primal Force</td><td>Judith Moreno</td><td>6</td><td>3월 17일</td><td><span class="badge b-approved">승인</span></td></tr>
+          <tr><td class="td-title">Faded Glory</td><td>Yuki Tanaka</td><td>4</td><td>3월 16일</td><td><span class="badge b-declined">거절</span></td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDITORIALS -->
+  <div class="tab" id="t-editorials">
+    <div class="mn-header"><div class="mn-title">에디토리얼 관리</div><div class="mn-actions"><button class="btn btn-primary" onclick="go('newpost')">+ 새 게시글</button></div></div>
+    <div class="mn-body">
+      <div class="tbl-wrap">
+        <div class="tbl-top"><h3>에디토리얼 목록 (<span id="edCountLabel">0</span>개)</h3><input style="background:#f5f5f7;border:1px solid var(--border2);padding:6px 12px;color:var(--text);outline:none;width:200px;border-radius:4px" placeholder="검색..." id="edSearchAdmin" oninput="renderEditorialList()"></div>
+        <table><thead><tr><th>ID</th><th>썸네일</th><th>제목</th><th>태그</th><th>상태</th><th>날짜</th><th>작업</th></tr></thead>
+        <tbody id="edListBody"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEW / EDIT POST -->
+  <div class="tab" id="t-newpost">
+    <div class="mn-header"><div class="mn-title">게시글 작성</div><div class="mn-actions"><button class="btn" onclick="go('editorials')">← 목록으로</button></div></div>
+    <div class="mn-body">
+      <div class="pe">
+
+        <!-- 제목 -->
+        <div class="pe-section">
+          <div class="pe-label">제목</div>
+          <input class="pe-input" id="postTitle" placeholder="제목을 입력하세요">
+          <div class="pe-hint">한국어로 작성하면 AI가 자동으로 8개 언어로 번역합니다.</div>
+        </div>
+
+        <!-- 부제 -->
+        <div class="pe-section">
+          <div class="pe-label">부제 <span class="pe-opt">선택</span></div>
+          <input class="pe-input" id="postSubtitle" placeholder="예: 3월호">
+        </div>
+
+        <!-- 카테고리 & 슬러그 -->
+        <div class="pe-row">
+          <div class="pe-section pe-half">
+            <div class="pe-label">카테고리</div>
+            <select class="pe-select">
+              <option value="">선택</option>
+              <option value="editorial" selected>에디토리얼</option>
+              <option value="news">뉴스</option>
+              <option value="film">필름</option>
+              <option value="shorts">숏츠</option>
+            </select>
+          </div>
+          <div class="pe-section pe-half">
+            <div class="pe-label">슬러그 (URL)</div>
+            <input class="pe-input" placeholder="예: hit-the-jackpot">
+            <div class="pe-hint">영문 소문자, 하이픈 사용. 비워두면 자동 생성됩니다.</div>
+          </div>
+        </div>
+
+        <!-- 썸네일 -->
+        <div class="pe-section">
+          <div class="pe-label">썸네일 이미지</div>
+          <div class="pe-upload" onclick="document.getElementById('thumbInput').click()">
+            <input type="file" id="thumbInput" accept="image/*" style="display:none" onchange="previewThumb(this)">
+            <div class="pe-upload-inner" id="thumbPreview">
+              <div class="pe-upload-icon">📷</div>
+              <div class="pe-upload-text">클릭하여 이미지를 업로드하세요</div>
+              <div class="pe-upload-hint">JPG, PNG · 권장 1080×1350px</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 화보 이미지 (여러 장) -->
+        <div class="pe-section">
+          <div class="pe-label">화보 이미지 <span class="pe-opt">여러 장 가능 · 드래그로 순서 변경</span></div>
+          <div class="pe-gallery" id="galleryGrid">
+            <div class="pe-gallery-add" onclick="document.getElementById('galleryInput').click()">
+              <input type="file" id="galleryInput" accept="image/*" multiple style="display:none" onchange="addGallery(this)">
+              <span>+ 이미지 추가</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 에디토리얼 설명 -->
+        <div class="pe-section" id="editorialDescSection">
+          <div class="pe-label">에디토리얼 설명 <span class="pe-opt">이미지 갤러리 바로 아래에 표시됩니다</span></div>
+          <textarea class="modal-ta" id="postDescription" style="min-height:120px" placeholder="에디토리얼에 대한 설명을 작성하세요. 촬영 컨셉, 스토리, 영감 등을 자유롭게 서술할 수 있습니다."></textarea>
+          <div class="pe-hint">한국어로 작성하면 AI가 8개 언어로 자동 번역합니다. 프론트엔드에서 이미지 갤러리 바로 아래에 표시됩니다.</div>
+        </div>
+
+        <!-- 크레딧 정보 -->
+        <div class="pe-section">
+          <div class="pe-label">크레딧 정보</div>
+          <div id="creditsArea">
+            <div class="pe-credit-row">
+              <select class="pe-select pe-credit-role">
+                <option>Photographer</option><option>Stylist</option><option>Stylist assist</option><option>Make Up</option><option>Hair</option><option>Set Design</option><option>Set designe assist</option><option>Producer</option><option>Starring</option><option>Creative Director</option><option>Art Director</option><option>Model</option><option>Video Director</option>
+              </select>
+              <input class="pe-input pe-credit-name" placeholder="이름">
+              <input class="pe-input pe-credit-ig" placeholder="@instagram">
+              <button class="btn btn-sm btn-red" onclick="this.parentElement.remove()">삭제</button>
+            </div>
+          </div>
+          <button class="btn btn-sm" onclick="addCredit()" style="margin-top:8px">+ 크레딧 추가</button>
+        </div>
+
+        <!-- 패션 브랜드 태그 -->
+        <div class="pe-section">
+          <div class="pe-label">패션 브랜드 태그</div>
+          <div id="brandsArea">
+            <div class="pe-brand-row">
+              <input class="pe-input pe-brand-name" placeholder="브랜드명 (예: Balenciaga)">
+              <input class="pe-input pe-brand-ig" placeholder="@instagram">
+              <button class="btn btn-sm btn-red" onclick="this.parentElement.remove()">삭제</button>
+            </div>
+          </div>
+          <button class="btn btn-sm" onclick="addBrand()" style="margin-top:8px">+ 브랜드 추가</button>
+        </div>
+
+        <!-- 이미지별 착장 크레딧 -->
+        <div class="pe-section">
+          <div class="pe-label">이미지별 착장 크레딧 <span class="pe-opt">각 이미지 호버 시 표시될 브랜드/아이템</span></div>
+          <div id="imgCreditsArea">
+            <div style="font-size:11px;color:var(--text3);padding:8px 0">위에서 화보 이미지를 추가하면 각 이미지마다 착장 크레딧을 입력할 수 있습니다.</div>
+          </div>
+        </div>
+
+        <!-- 검색 태그 -->
+        <div class="pe-section">
+          <div class="pe-label">검색 태그 <span class="pe-opt">쉼표(,)로 구분 · 에디토리얼 검색 및 분류에 사용</span></div>
+          <input class="pe-input" id="postTags" placeholder="예: bold, colorful, retro, maximalist, street, minimal, dark, moody">
+          <div class="pe-hint">관련 키워드를 입력하면 메인 페이지 검색과 AI 추천에 활용됩니다.</div>
+          <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px" id="tagPreview"></div>
+        </div>
+
+        <!-- 영상 링크 -->
+        <div class="pe-section" id="videoSection">
+          <div class="pe-label">영상 링크 <span class="pe-opt">YouTube, Vimeo, Instagram Reel 등</span></div>
+          <input class="pe-input" id="postVideoUrl" placeholder="https://youtube.com/watch?v=...">
+          <div class="pe-hint">에디토리얼 비하인드, 뉴스 영상, 패션 필름, 숏츠 등 모든 게시글에 영상 링크를 첨부할 수 있습니다.</div>
+        </div>
+
+        <!-- 공개 설정 -->
+        <div class="pe-section">
+          <div class="pe-label">게시 설정</div>
+          <div class="pe-checks">
+            <label class="pe-check"><input type="checkbox" checked id="postPublish" onchange="toggleSchedule()"> 공개</label>
+            <label class="pe-check"><input type="checkbox"> 추천 (Featured)</label>
+            <label class="pe-check"><input type="checkbox" id="postSchedule" onchange="toggleSchedule()"> 예약 게시</label>
+          </div>
+          <div id="scheduleArea" style="display:none;margin-top:12px;padding:12px;background:var(--surface);border:1px solid var(--border)">
+            <div class="pe-label" style="margin-bottom:6px">예약 일시</div>
+            <div style="display:flex;gap:8px">
+              <input type="date" class="pe-input" id="scheduleDate" style="flex:1">
+              <input type="time" class="pe-input" id="scheduleTime" style="width:120px" value="09:00">
+            </div>
+            <div class="pe-hint" style="margin-top:6px">지정한 날짜/시간에 자동으로 공개됩니다. (서버 시간 기준 KST)</div>
+          </div>
+        </div>
+
+        <!-- 버튼 -->
+        <div class="pe-actions">
+          <button class="btn btn-primary" onclick="savePost()">저장</button>
+          <button class="btn" onclick="alert('미리보기는 실제 운영 시 사이트에서 확인 가능합니다.')">미리보기</button>
+          <button class="btn" onclick="go('editorials')">취소</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- SUBMISSIONS -->
+  <div class="tab" id="t-submissions">
+    <div class="mn-header"><div class="mn-title">서브미션 심사</div></div>
+    <div class="mn-body">
+      <div class="tbl-wrap">
+        <div class="tbl-top"><h3>서브미션 목록</h3><div class="tbl-filters"><button class="tf on">전체</button><button class="tf">대기 중</button><button class="tf">승인</button><button class="tf">거절</button></div></div>
+        <table><thead><tr><th>제목</th><th>프로덕션</th><th>제출자</th><th>구독 등급</th><th>룩 수</th><th>날짜</th><th>상태</th><th>작업</th></tr></thead>
+        <tbody>
+          <tr><td class="td-title" onclick="openModal()">Neon Dreams</td><td>Studio Lux</td><td>Lena Park</td><td><span class="badge b-premium">Premium</span></td><td>6</td><td>3월 20일</td><td><span class="badge b-pending">대기 중</span></td><td><button class="btn btn-sm" onclick="openModal()">심사</button></td></tr>
+          <tr><td class="td-title" onclick="openModal()">Urban Decay</td><td>Bellini Prod.</td><td>Marco Bellini</td><td><span class="badge b-premium">Premium</span></td><td>8</td><td>3월 19일</td><td><span class="badge b-pending">대기 중</span></td><td><button class="btn btn-sm" onclick="openModal()">심사</button></td></tr>
+          <tr><td class="td-title" onclick="openModal()">Glass Ceiling</td><td>ThePinkBang</td><td>Judith Moreno</td><td><span class="badge b-standard">Standard</span></td><td>5</td><td>3월 18일</td><td><span class="badge b-pending">대기 중</span></td><td><button class="btn btn-sm" onclick="openModal()">심사</button></td></tr>
+          <tr><td class="td-title">Morning Haze</td><td>Osei Creative</td><td>Amara Osei</td><td><span class="badge b-standard">Standard</span></td><td>5</td><td>3월 17일</td><td><span class="badge b-revision">보완 필요</span></td><td><button class="btn btn-sm" onclick="openModal()">심사</button></td></tr>
+          <tr><td>Silk & Shadow</td><td>Fontaine Studio</td><td>Clara Fontaine</td><td><span class="badge b-standard">Standard</span></td><td>4</td><td>3월 16일</td><td><span class="badge b-approved">승인</span></td><td>—</td></tr>
+          <tr><td>Faded Glory</td><td>Tanaka Studio</td><td>Yuki Tanaka</td><td><span class="badge b-standard">Standard</span></td><td>4</td><td>3월 15일</td><td><span class="badge b-declined">거절</span></td><td>—</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PULL-LETTERS -->
+  <div class="tab" id="t-pullletters">
+    <div class="mn-header"><div class="mn-title">Pull-Letter 심사</div></div>
+    <div class="mn-body">
+      <div class="tbl-wrap">
+        <div class="tbl-top"><h3>Pull-Letter 요청 목록</h3></div>
+        <table><thead><tr><th>요청자</th><th>포토그래퍼</th><th>스타일리스트</th><th>무드보드</th><th>날짜</th><th>상태</th><th>작업</th></tr></thead>
+        <tbody>
+          <tr><td>Lena Park</td><td>Lena Park / @lenapark</td><td>Clara Fontaine / @clarafontaine</td><td>3개 파일</td><td>3월 20일</td><td><span class="badge b-pending">대기 중</span></td><td><button class="btn btn-sm" onclick="openModal()">심사</button></td></tr>
+          <tr><td>Marco Bellini</td><td>Judith Moreno / @judith.moreno</td><td>Sergi Padial / @sergipadial</td><td>5개 파일</td><td>3월 18일</td><td><span class="badge b-pending">대기 중</span></td><td><button class="btn btn-sm" onclick="openModal()">심사</button></td></tr>
+          <tr><td>ThePinkBang</td><td>Judith Moreno</td><td>Sergi Padial</td><td>4개 파일</td><td>3월 15일</td><td><span class="badge b-approved">발급 완료</span></td><td>—</td></tr>
+          <tr><td>Yuki Tanaka</td><td>Yuki Tanaka</td><td>Sophie Laurent</td><td>2개 파일</td><td>3월 12일</td><td><span class="badge b-declined">거절</span></td><td>—</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- USERS -->
+  <div class="tab" id="t-users">
+    <div class="mn-header"><div class="mn-title">회원 관리</div><div class="mn-actions"><button class="btn" onclick="loadMembers()">↻ 새로고침</button><button class="btn" onclick="exportMembersCSV()">⬇ CSV 내보내기</button></div></div>
+    <div class="mn-body">
+      <div class="stats" style="grid-template-columns:repeat(4,1fr)">
+        <div class="stat"><div class="stat-n" id="statTotal">—</div><div class="stat-l">전체</div></div>
+        <div class="stat"><div class="stat-n" id="statFree">—</div><div class="stat-l">무료 회원</div></div>
+        <div class="stat"><div class="stat-n" id="statStandard">—</div><div class="stat-l">스탠다드</div></div>
+        <div class="stat"><div class="stat-n" id="statPremium">—</div><div class="stat-l">프리미엄</div></div>
+      </div>
+      <div class="tbl-wrap">
+        <div class="tbl-top"><h3>회원 목록</h3><div class="tbl-filters"><button class="tf on" onclick="filterMembers('all',this)">전체</button><button class="tf" onclick="filterMembers('free',this)">무료</button><button class="tf" onclick="filterMembers('standard',this)">스탠다드</button><button class="tf" onclick="filterMembers('premium',this)">프리미엄</button></div></div>
+        <table><thead><tr><th>이름</th><th>이메일</th><th>역할</th><th>위치</th><th>구독</th><th>가입일</th></tr></thead>
+        <tbody id="memberTableBody">
+          <tr><td colspan="6" style="text-align:center;color:var(--text4);padding:40px">데이터를 불러오는 중...</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- CATEGORIES -->
+  <!-- MENU CATEGORIES (hamburger nav) -->
+  <div class="tab" id="t-menucats">
+    <div class="mn-header"><div class="mn-title">메뉴 카테고리 관리</div><div class="mn-actions"><button class="btn btn-primary" onclick="addMenuCat()">+ 새 메뉴 추가</button></div></div>
+    <div class="mn-body">
+      <p style="color:var(--text3);margin-bottom:16px">햄버거 메뉴(≡)를 눌렀을 때 우측에 표시되는 카테고리 목록을 관리합니다. 드래그로 순서를 변경할 수 있습니다.</p>
+      <div class="tbl-wrap">
+        <table><thead><tr><th>순서</th><th>메뉴 이름</th><th>링크</th><th>스타일</th><th>활성</th><th>작업</th></tr></thead>
+        <tbody id="menuCatBody"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- COVER SETTINGS -->
+  <div class="tab" id="t-cover">
+    <div class="mn-header"><div class="mn-title">커버 설정</div><div class="mn-actions"><button class="btn btn-primary" onclick="addCoverSlide()">+ 슬라이드 추가</button></div></div>
+    <div class="mn-body">
+      <p style="color:var(--text3);margin-bottom:20px">메인 페이지 최상단의 커버 슬라이드를 관리합니다. 이미지, 발행호, 제목을 설정하세요.</p>
+      <div id="coverList"></div>
+    </div>
+  </div>
+
+  <!-- POST CATEGORIES -->
+  <div class="tab" id="t-categories">
+    <div class="mn-header"><div class="mn-title">카테고리 관리</div><div class="mn-actions"><button class="btn btn-primary" onclick="openCatModal(-1)">+ 새 카테고리</button></div></div>
+    <div class="mn-body">
+      <div class="tbl-wrap"><table><thead><tr><th>순서</th><th>한국어</th><th>영어</th><th>슬러그</th><th>활성</th><th>작업</th></tr></thead>
+      <tbody id="catTableBody"></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- BANNERS -->
+  <div class="tab" id="t-banners">
+    <div class="mn-header"><div class="mn-title">배너 관리</div><div class="mn-actions"><button class="btn btn-primary" onclick="openBannerModal(-1)">+ 새 배너</button></div></div>
+    <div class="mn-body">
+      <div class="tbl-wrap">
+        <div class="tbl-top"><h3>배너 목록</h3><div class="tbl-filters"><button class="tf on" onclick="filterBanners('메인',this)">메인</button><button class="tf" onclick="filterBanners('이벤트',this)">이벤트</button><button class="tf" onclick="filterBanners('서브',this)">서브</button></div></div>
+        <table><thead><tr><th>순서</th><th>이미지</th><th>제목</th><th>링크</th><th>활성</th><th>작업</th></tr></thead>
+        <tbody id="bannerTableBody"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOADING IMAGES -->
+  <div class="tab" id="t-loading">
+    <div class="mn-header"><div class="mn-title">로딩 이미지 관리</div><div class="mn-actions"><button class="btn btn-primary" onclick="addLoadingImg()">+ 새 이미지</button></div></div>
+    <div class="mn-body">
+      <p style="color:var(--text3);margin-bottom:16px">로딩 화면에 표시되는 이미지를 관리합니다.</p>
+      <div id="loadingGrid" style="display:flex;flex-wrap:wrap;gap:12px"></div>
+    </div>
+  </div>
+
+  <!-- NEWS -->
+  <div class="tab" id="t-news">
+    <div class="mn-header"><div class="mn-title">뉴스 관리</div><div class="mn-actions"><button class="btn btn-primary" onclick="go('newnews')">+ 새 뉴스</button></div></div>
+    <div class="mn-body">
+      <div class="tbl-wrap">
+        <div class="tbl-top"><h3>뉴스 목록</h3></div>
+        <table><thead><tr><th>ID</th><th>제목</th><th>상태</th><th>날짜</th><th>작업</th></tr></thead>
+        <tbody>
+          <tr><td>52</td><td class="td-title" onclick="go('newnews')">밀란 패션위크 FW26 스트릿 스타일 Part.2</td><td><span class="badge b-published">공개</span></td><td>3월 17일</td><td><button class="btn btn-sm" onclick="go('newnews')">편집</button> <button class="btn btn-sm btn-red" onclick="if(confirm('삭제하시겠습니까?'))this.closest('tr').remove()">삭제</button></td></tr>
+          <tr><td>51</td><td class="td-title" onclick="go('newnews')">루이사 베카리아 FW26 백스테이지</td><td><span class="badge b-published">공개</span></td><td>3월 15일</td><td><button class="btn btn-sm" onclick="go('newnews')">편집</button> <button class="btn btn-sm btn-red" onclick="if(confirm('삭제하시겠습니까?'))this.closest('tr').remove()">삭제</button></td></tr>
+          <tr><td>50</td><td class="td-title" onclick="go('newnews')">밀란 패션위크 FW26 스트릿 스타일 Part.1</td><td><span class="badge b-published">공개</span></td><td>3월 10일</td><td><button class="btn btn-sm" onclick="go('newnews')">편집</button> <button class="btn btn-sm btn-red" onclick="if(confirm('삭제하시겠습니까?'))this.closest('tr').remove()">삭제</button></td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEWS EDITOR -->
+  <div class="tab" id="t-newnews">
+    <div class="mn-header"><div class="mn-title">뉴스 작성</div><div class="mn-actions"><button class="btn" onclick="go('news')">← 목록으로</button></div></div>
+    <div class="mn-body">
+      <div class="pe">
+        <div class="pe-section">
+          <div class="pe-label">제목</div>
+          <input class="pe-input" placeholder="뉴스 제목을 입력하세요">
+          <div class="pe-hint">한국어로 작성 → AI가 8개 언어로 자동 번역</div>
+        </div>
+        <div class="pe-section">
+          <div class="pe-label">썸네일 이미지</div>
+          <div class="pe-upload" onclick="this.querySelector('input').click()" style="padding:20px">
+            <input type="file" accept="image/*" style="display:none">
+            <div class="pe-upload-text">클릭하여 썸네일 업로드</div>
+          </div>
+        </div>
+        <div class="pe-section">
+          <div class="pe-label">본문 구성 <span class="pe-opt">이미지와 텍스트를 자유롭게 조합하세요</span></div>
+          <div id="newsBlocks" style="display:flex;flex-direction:column;gap:12px">
+            <div class="news-block" style="background:var(--surface);border:1px solid var(--border);padding:14px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:10px;font-weight:700;color:var(--text3)">블록 1 — 텍스트</span><button class="btn btn-sm btn-red" onclick="this.closest('.news-block').remove()">삭제</button></div>
+              <textarea class="modal-ta" style="min-height:100px" placeholder="본문 텍스트를 입력하세요..."></textarea>
+            </div>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:12px">
+            <button class="btn btn-sm" onclick="addNewsBlock('text')">+ 텍스트 블록</button>
+            <button class="btn btn-sm" onclick="addNewsBlock('image')">+ 이미지 블록</button>
+            <button class="btn btn-sm" onclick="addNewsBlock('quote')">+ 인용구 블록</button>
+            <button class="btn btn-sm" onclick="addNewsBlock('video')">+ 영상 블록</button>
+          </div>
+          <div class="pe-hint" style="margin-top:8px">블록을 추가하여 이미지와 텍스트를 자유롭게 배치할 수 있습니다. 프론트엔드에서 추가한 순서대로 표시됩니다.</div>
+        </div>
+        <div class="pe-section">
+          <div class="pe-label">게시 설정</div>
+          <div class="pe-checks">
+            <label class="pe-check"><input type="checkbox" checked> 공개</label>
+          </div>
+        </div>
+        <div class="pe-actions">
+          <!-- TODO: Replace alert with PAP API call when backend endpoints are ready -->
+          <button class="btn btn-primary" onclick="alert('✓ 뉴스가 저장되었습니다.\n\nAI 자동 번역 적용: → EN, IT, FR, ES, JA, ZH, RU');go('news')">저장</button>
+          <button class="btn" onclick="go('news')">취소</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FILM -->
+  <div class="tab" id="t-film">
+    <div class="mn-header"><div class="mn-title">필름 관리</div><div class="mn-actions"><button class="btn btn-primary" onclick="openFilmModal(-1)">+ 새 필름</button></div></div>
+    <div class="mn-body">
+      <p style="color:var(--text3);margin-bottom:16px">필름 클릭 시 새 팝업창에서 YouTube 영상이 재생됩니다.</p>
+      <div class="tbl-wrap">
+        <table><thead><tr><th>ID</th><th>썸네일</th><th>제목</th><th>YouTube URL</th><th>재생 방식</th><th>상태</th><th>작업</th></tr></thead>
+        <tbody id="filmListBody"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- SHORTS -->
+  <div class="tab" id="t-shorts">
+    <div class="mn-header"><div class="mn-title">숏츠 관리</div><div class="mn-actions"><button class="btn btn-primary" onclick="openShortsModal(-1)">+ 새 숏츠</button></div></div>
+    <div class="mn-body">
+      <p style="color:var(--text3);margin-bottom:16px">숏츠 클릭 시 메인 화면에서 바로 인라인 재생됩니다.</p>
+      <div class="tbl-wrap">
+        <table><thead><tr><th>ID</th><th>제목</th><th>YouTube URL</th><th>재생 방식</th><th>상태</th><th>작업</th></tr></thead>
+        <tbody id="shortsListBody"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMMUNITY -->
+  <div class="tab" id="t-community">
+    <div class="mn-header"><div class="mn-title">커뮤니티 관리</div></div>
+    <div class="mn-body">
+      <div class="stats" style="grid-template-columns:repeat(3,1fr)">
+        <div class="stat"><div class="stat-n">156</div><div class="stat-l">게시글</div></div>
+        <div class="stat"><div class="stat-n">23</div><div class="stat-l">프로젝트</div></div>
+        <div class="stat"><div class="stat-n">412</div><div class="stat-l">댓글</div></div>
+      </div>
+      <div class="tbl-wrap" style="margin-bottom:20px">
+        <div class="tbl-top"><h3>최근 게시글</h3><div class="tbl-filters"><button class="tf on">전체</button><button class="tf">토론</button><button class="tf">팁</button><button class="tf">Q&A</button><button class="tf">자료</button></div></div>
+        <table><thead><tr><th>제목</th><th>작성자</th><th>태그</th><th>좋아요</th><th>댓글</th><th>조회</th><th>날짜</th><th>작업</th></tr></thead>
+        <tbody>
+          <tr><td class="td-title">밀라노 로케이션 허가 팁</td><td>Judith Moreno</td><td>토론</td><td>34</td><td>12</td><td>289</td><td>3월 20일</td><td><button class="btn btn-sm btn-red" onclick="if(confirm('이 게시글을 삭제하시겠습니까?'))this.closest('tr').remove()">삭제</button></td></tr>
+          <tr><td class="td-title">하이엔드 + 신진 브랜드 믹스</td><td>Sergi Padial</td><td>팁</td><td>91</td><td>28</td><td>1.2k</td><td>3월 20일</td><td><button class="btn btn-sm btn-red" onclick="if(confirm('이 게시글을 삭제하시겠습니까?'))this.closest('tr').remove()">삭제</button></td></tr>
+          <tr><td class="td-title">한남동 스튜디오 비하인드</td><td>Lena Park</td><td>비하인드</td><td>112</td><td>45</td><td>2.1k</td><td>3월 19일</td><td><button class="btn btn-sm btn-red" onclick="if(confirm('이 게시글을 삭제하시겠습니까?'))this.closest('tr').remove()">삭제</button></td></tr>
+          <tr><td class="td-title">2026 컬러 트렌드 SS27</td><td>Marco Bellini</td><td>자료</td><td>156</td><td>33</td><td>3.4k</td><td>3월 19일</td><td><button class="btn btn-sm btn-red" onclick="if(confirm('이 게시글을 삭제하시겠습니까?'))this.closest('tr').remove()">삭제</button></td></tr>
+          <tr><td class="td-title">자연광 vs 스튜디오 조명</td><td>Elisa V</td><td>Q&A</td><td>89</td><td>67</td><td>890</td><td>3월 18일</td><td><button class="btn btn-sm btn-red" onclick="if(confirm('이 게시글을 삭제하시겠습니까?'))this.closest('tr').remove()">삭제</button></td></tr>
+        </tbody></table>
+      </div>
+      <div class="tbl-wrap">
+        <div class="tbl-top"><h3>프로젝트 목록</h3></div>
+        <table><thead><tr><th>제목</th><th>작성자</th><th>위치</th><th>상태</th><th>지원자</th><th>날짜</th><th>작업</th></tr></thead>
+        <tbody>
+          <tr><td class="td-title">초현실주의 에디토리얼</td><td>Lena Park</td><td>서울</td><td><span class="badge b-approved" style="border-color:rgba(22,163,74,.3)">모집 중</span></td><td>4명</td><td>3월 18일</td><td><button class="btn btn-sm btn-red" onclick="if(confirm('이 프로젝트를 삭제하시겠습니까?'))this.closest('tr').remove()">삭제</button></td></tr>
+          <tr><td class="td-title">MFW SS27 커버리지</td><td>Marco Bellini</td><td>밀라노</td><td><span class="badge b-approved" style="border-color:rgba(22,163,74,.3)">모집 중</span></td><td>7명</td><td>3월 16일</td><td><button class="btn btn-sm btn-red" onclick="if(confirm('이 프로젝트를 삭제하시겠습니까?'))this.closest('tr').remove()">삭제</button></td></tr>
+          <tr><td class="td-title">아방가르드 패션 필름</td><td>Clara Fontaine</td><td>파리</td><td><span class="badge b-draft">마감</span></td><td>12명</td><td>3월 10일</td><td><button class="btn btn-sm btn-red" onclick="if(confirm('이 프로젝트를 삭제하시겠습니까?'))this.closest('tr').remove()">삭제</button></td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUBSCRIPTIONS -->
+  <div class="tab" id="t-subscriptions">
+    <div class="mn-header"><div class="mn-title">구독 / 결제</div></div>
+    <div class="mn-body">
+      <div class="stats" style="grid-template-columns:repeat(4,1fr)">
+        <div class="stat"><div class="stat-n">42</div><div class="stat-l">스탠다드</div></div>
+        <div class="stat"><div class="stat-n">15</div><div class="stat-l">프리미엄</div></div>
+        <div class="stat"><div class="stat-n">₩2.4M</div><div class="stat-l">월간 반복 매출</div></div>
+        <div class="stat"><div class="stat-n">93%</div><div class="stat-l">갱신율</div></div>
+      </div>
+      <div class="tbl-wrap" style="margin-bottom:20px">
+        <div class="tbl-top"><h3>최근 결제 내역</h3></div>
+        <table><thead><tr><th>회원</th><th>플랜</th><th>주기</th><th>금액</th><th>상태</th><th>결제일</th></tr></thead>
+        <tbody>
+          <tr><td>Lena Park</td><td><span class="badge b-premium">Premium</span></td><td>연간</td><td>₩135,000</td><td><span class="badge b-approved">완료</span></td><td>3월 15일</td></tr>
+          <tr><td>Marco Bellini</td><td><span class="badge b-premium">Premium</span></td><td>월간</td><td>€8.99</td><td><span class="badge b-approved">완료</span></td><td>3월 14일</td></tr>
+          <tr><td>Judith Moreno</td><td><span class="badge b-standard">Standard</span></td><td>월간</td><td>€5.49</td><td><span class="badge b-approved">완료</span></td><td>3월 12일</td></tr>
+          <tr><td>Yuki Tanaka</td><td><span class="badge b-standard">Standard</span></td><td>연간</td><td>¥7,400</td><td><span class="badge b-approved">완료</span></td><td>3월 10일</td></tr>
+          <tr><td>Deborah O</td><td><span class="badge b-standard">Standard</span></td><td>월간</td><td>$5.99</td><td><span class="badge b-pending">대기 중</span></td><td>3월 20일</td></tr>
+        </tbody></table>
+      </div>
+      <p style="color:var(--text3)">Stripe 대시보드에서 상세 결제 내역, 환불, 분쟁 등을 관리하세요: <a href="https://dashboard.stripe.com" target="_blank" style="color:var(--blue);text-decoration:underline">dashboard.stripe.com</a></p>
+    </div>
+  </div>
+
+  <!-- ABOUT -->
+  <div class="tab" id="t-about">
+    <div class="mn-header"><div class="mn-title">회사 소개 편집</div><div class="mn-actions"><button class="btn" onclick="window.open('about.html','_blank')">미리보기</button> <button class="btn btn-primary" onclick="saveCompanyInfo('about')">저장</button></div></div>
+    <div class="mn-body" style="max-width:800px">
+      <div class="pe-section">
+        <div class="pe-label">콘텐츠 <span class="pe-opt">한국어로 작성 → AI가 8개 언어로 자동 번역</span></div>
+        <textarea class="modal-ta" id="aboutKo" style="min-height:200px">PAP 매거진은 2017년 12월에 런칭한 서울과 밀라노를 기반으로 전개되는 글로벌 디지털 매거진으로, 아트를 기반으로 패션, 뷰티, 그리고 컬처 전반을 다루는 미디어 플랫폼입니다. 단순한 트렌드 전달을 넘어, 시각적 언어와 이미지, 그리고 서사를 통해 동시대 문화를 해석하고 재구성하는 데 집중하고 있습니다.
+
+PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술적 표현의 확장된 형태로 바라보고 있습니다. 브랜드, 디자이너, 아티스트가 가진 고유한 세계관을 깊이 있게 분석하고, 이를 감각적인 비주얼과 콘텐츠로 풀어내어 하나의 완성도 높은 이미지로 구현하고 있습니다.
+
+또한 PAP는 패션과 뷰티를 중심으로 음악, 서브컬처, 현대 미술 등 다양한 문화적 요소를 유기적으로 연결하고 있습니다. 서로 다른 영역 간의 경계를 허물고 새로운 맥락을 만들어내며, 콘텐츠를 통해 하나의 문화적 흐름을 제안하는 것을 지향하고 있습니다.
+
+매거진의 역할에 머무르지 않고, PAP는 크리에이티브 스튜디오로서의 기능도 함께 수행하고 있습니다. 글로벌 브랜드와의 협업을 통해 에디토리얼, 캠페인, 영상 콘텐츠를 제작하며, 브랜드의 아이덴티티를 PAP만의 시선으로 재해석하고 있습니다.
+
+특히 서울과 밀라노를 축으로, 아시아와 유럽의 감각이 교차하는 지점을 포착하고 있습니다. 빠르게 변화하는 글로벌 트렌드 속에서 PAP는 흐름을 단순히 반영하는 것을 넘어, 새로운 방향성과 시각을 제시하는 플랫폼으로 자리하고 있습니다.
+
+결과적으로 PAP는 단순한 매거진을 넘어, 아트를 기반으로 패션, 뷰티, 컬처를 연결하는 커뮤니티 플랫폼이자, 동시대의 감각을 시각적으로 기록하고 제안하는 미디어로 기능하고 있습니다.</textarea>
+      </div>
+      
+      <div class="pe-section">
+        <div class="pe-label">관련 이미지</div>
+        <div id="aboutImages" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BUSINESS -->
+  <div class="tab" id="t-business">
+    <div class="mn-header"><div class="mn-title">비즈니스 편집</div><div class="mn-actions"><button class="btn" onclick="window.open('business.html','_blank')">미리보기</button> <button class="btn btn-primary" onclick="saveCompanyInfo('business')">저장</button></div></div>
+    <div class="mn-body" style="max-width:800px">
+      <div class="pe-section">
+        <div class="pe-label">콘텐츠 <span class="pe-opt">한국어로 작성 → AI가 8개 언어로 자동 번역</span></div>
+        <textarea class="modal-ta" id="businessKo" style="min-height:200px">[BRAND CONTENT ADVERTISING]
+
+PAP는 귀하의 브랜드에서 제공하는 컨텐츠를 홍보합니다.
+관심 있는 브랜드 및 홍보 담당자들은 아래 이메일을 통해 문의해주세요.
+
+이메일: contact@papkorea.com (한국)
+이메일: contact@pap-magazine.com (해외)
+
+MEDIA KIT: https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF
+
+
+[MAKE CONTENTS WITH PAP]
+
+PAP는 캠페인, 룩북부터, 브랜디드 컨텐츠, 현장 취재등 다양한 컨텐츠를 만들고 있습니다.
+관심있는 브랜드 및 홍보 담당자들은 아래 이메일을 통해 문의해주세요.
+
+이메일: contact@papkorea.com (한국)
+이메일: contact@pap-magazine.com (해외)</textarea>
+      </div>
+      
+      <div class="pe-section">
+        <div class="pe-label">관련 이미지</div>
+        <div id="businessImages" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTACT -->
+  <div class="tab" id="t-contact">
+    <div class="mn-header"><div class="mn-title">문의하기 편집</div><div class="mn-actions"><button class="btn" onclick="window.open('contact.html','_blank')">미리보기</button> <button class="btn btn-primary" onclick="saveCompanyInfo('contact')">저장</button></div></div>
+    <div class="mn-body" style="max-width:800px">
+      <div class="pe-section">
+        <div class="pe-label">콘텐츠 <span class="pe-opt">한국어로 작성 → AI가 8개 언어로 자동 번역</span></div>
+        <textarea class="modal-ta" id="contactKo" style="min-height:180px">[IT]
+Via San Vincenzo 18B,
+20123 Milano
+
+[KR]
+서울특별시 강남구 논현로146길 18, 1F
+
+[PAP MAGAZINE (Italy)]
+contact@pap-magazine.com
+
+[PAP KOREA]
+contact@papkorea.com
+
+[MEDIA KIT]
+https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textarea>
+      </div>
+      
+      <div class="pe-section">
+        <div class="pe-label">관련 이미지</div>
+        <div id="contactImages" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- FILM EDIT MODAL -->
+<div class="modal-bg" id="filmModal">
+  <div class="modal" style="max-width:520px">
+    <button class="modal-close" onclick="closeFilmModal()">×</button>
+    <h2 id="filmModalTitle">필름 추가</h2>
+    <div class="sub">클릭 시 새 팝업창에서 YouTube 영상이 재생됩니다.</div>
+    <div class="modal-section">
+      <div class="modal-label">제목</div>
+      <input class="pe-input" id="filmTitle" placeholder="예: Silent Gaze — Behind the Scenes">
+    </div>
+    <div class="modal-section">
+      <div class="modal-label">YouTube URL</div>
+      <input class="pe-input" id="filmYouTube" placeholder="https://www.youtube.com/watch?v=xxxx 또는 YouTube ID">
+      <div class="pe-hint">YouTube 영상 URL 또는 ID를 입력하세요. 클릭 시 새 팝업창(640×360)으로 재생됩니다.</div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-label">썸네일 이미지 URL <span class="pe-opt">선택</span></div>
+      <input class="pe-input" id="filmThumb" placeholder="비워두면 YouTube 썸네일 자동 사용">
+    </div>
+    <div class="modal-section">
+      <div class="modal-label">재생 방식</div>
+      <div class="pe-radios">
+        <label class="pe-radio sel"><input type="radio" name="filmPlayType" value="popup" checked onchange="selectRadio(this)"> 새 팝업창</label>
+        <label class="pe-radio"><input type="radio" name="filmPlayType" value="overlay" onchange="selectRadio(this)"> 오버레이</label>
+      </div>
+    </div>
+    <div class="modal-section">
+      <label class="pe-check"><input type="checkbox" id="filmActive" checked> 공개</label>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-primary" onclick="saveFilm()">저장</button>
+      <button class="btn" onclick="closeFilmModal()">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHORTS EDIT MODAL -->
+<div class="modal-bg" id="shortsModal">
+  <div class="modal" style="max-width:520px">
+    <button class="modal-close" onclick="closeShortsModal()">×</button>
+    <h2 id="shortsModalTitle">숏츠 추가</h2>
+    <div class="sub">클릭 시 메인 화면에서 바로 인라인 재생됩니다.</div>
+    <div class="modal-section">
+      <div class="modal-label">제목</div>
+      <input class="pe-input" id="shortsTitle" placeholder="예: Primal Spectrum — 30s Teaser">
+    </div>
+    <div class="modal-section">
+      <div class="modal-label">YouTube Shorts URL</div>
+      <input class="pe-input" id="shortsYouTube" placeholder="https://www.youtube.com/shorts/xxxx 또는 YouTube ID">
+      <div class="pe-hint">YouTube Shorts URL 또는 ID를 입력하세요. 메인 화면에서 바로 인라인 재생됩니다.</div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-label">재생 방식</div>
+      <div class="pe-radios">
+        <label class="pe-radio sel"><input type="radio" name="shortsPlayType" value="inline" checked onchange="selectRadio(this)"> 메인 화면 인라인</label>
+        <label class="pe-radio"><input type="radio" name="shortsPlayType" value="expand" onchange="selectRadio(this)"> 확대 재생</label>
+      </div>
+    </div>
+    <div class="modal-section">
+      <label class="pe-check"><input type="checkbox" id="shortsActive" checked> 공개</label>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-primary" onclick="saveShorts()">저장</button>
+      <button class="btn" onclick="closeShortsModal()">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- CATEGORY EDIT MODAL -->
+<div class="modal-bg" id="catModal">
+  <div class="modal" style="max-width:480px">
+    <button class="modal-close" onclick="closeCatModal()">×</button>
+    <h2 id="catModalTitle">카테고리 추가</h2>
+    <div class="sub">카테고리 정보를 입력하세요.</div>
+    <div class="modal-section">
+      <div class="modal-label">한국어 이름</div>
+      <input class="pe-input" id="catNameKo" placeholder="예: 에디토리얼">
+    </div>
+    <div class="modal-section">
+      <div class="modal-label">영어 이름</div>
+      <input class="pe-input" id="catNameEn" placeholder="예: Editorial">
+    </div>
+    <div class="modal-section">
+      <div class="modal-label">슬러그 (URL)</div>
+      <input class="pe-input" id="catSlug" placeholder="예: editorial">
+      <div class="pe-hint">영문 소문자, 하이픈만 사용</div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-label">정렬 순서</div>
+      <input class="pe-input" id="catOrder" type="number" value="0" min="0">
+    </div>
+    <div class="modal-section">
+      <label class="pe-check"><input type="checkbox" id="catActive" checked> 활성화</label>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-primary" onclick="saveCat()">저장</button>
+      <button class="btn" onclick="closeCatModal()">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- BANNER EDIT MODAL -->
+<div class="modal-bg" id="bannerModal">
+  <div class="modal" style="max-width:520px">
+    <button class="modal-close" onclick="closeBannerModal()">×</button>
+    <h2 id="bannerModalTitle">배너 추가</h2>
+    <div class="sub">배너 정보를 입력하세요.</div>
+    <div class="modal-section">
+      <div class="modal-label">배너 타입</div>
+      <div class="pe-radios">
+        <label class="pe-radio sel"><input type="radio" name="bannerType" value="메인" checked onchange="selectRadio(this)"> 메인</label>
+        <label class="pe-radio"><input type="radio" name="bannerType" value="이벤트" onchange="selectRadio(this)"> 이벤트</label>
+        <label class="pe-radio"><input type="radio" name="bannerType" value="서브" onchange="selectRadio(this)"> 서브</label>
+      </div>
+    </div>
+    <div class="pe-row">
+      <div class="modal-section pe-half">
+        <div class="modal-label">제목 (한국어)</div>
+        <input class="pe-input" id="bannerTitleKo" placeholder="배너 제목">
+      </div>
+      <div class="modal-section pe-half">
+        <div class="modal-label">제목 (영어)</div>
+        <input class="pe-input" id="bannerTitleEn" placeholder="Banner title">
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-label">이미지</div>
+      <div class="pe-upload" style="padding:20px" onclick="document.getElementById('bannerImgInput').click()">
+        <input type="file" id="bannerImgInput" accept="image/*" style="display:none" onchange="previewBannerImg(this)">
+        <div id="bannerImgPreview">
+          <div class="pe-upload-text">클릭하여 배너 이미지 업로드</div>
+          <div class="pe-upload-hint">권장: 1920×600px 이상</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-label">링크 URL</div>
+      <input class="pe-input" id="bannerLink" placeholder="클릭 시 이동할 URL (예: /editorial/215)">
+    </div>
+    <div class="pe-row" id="bannerDateRow" style="display:none">
+      <div class="modal-section pe-half">
+        <div class="modal-label">노출 시작일</div>
+        <input class="pe-input" id="bannerStart" type="date">
+      </div>
+      <div class="modal-section pe-half">
+        <div class="modal-label">노출 종료일</div>
+        <input class="pe-input" id="bannerEnd" type="date">
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-label">정렬 순서</div>
+      <input class="pe-input" id="bannerOrder" type="number" value="1" min="0">
+    </div>
+    <div class="modal-section">
+      <label class="pe-check"><input type="checkbox" id="bannerActive" checked> 활성화</label>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-primary" onclick="saveBanner()">저장</button>
+      <button class="btn" onclick="closeBannerModal()">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- REVIEW MODAL -->
+<div class="modal-bg" id="reviewModal">
+  <div class="modal" style="max-height:90vh;overflow-y:auto">
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <h2>서브미션 심사</h2>
+    <div class="sub" id="reviewModalHeader">Neon Dreams — Lena Park · 2026년 3월 20일</div>
+    <div class="modal-section"><div class="modal-label">프로덕션</div><div class="modal-val" id="reviewModalProduction">Studio Lux · lena@studioplus.com</div></div>
+    <div class="modal-section"><div class="modal-label">팀 크레딧</div><div class="modal-val" id="reviewModalCredits">포토: Lena Park @lenapark<br>스타일링: Clara Fontaine @clarafontaine<br>메이크업: Sophie Laurent @sophielaurent<br>모델: Diego Ruiz @diegoruiz</div></div>
+    <div class="modal-section"><div class="modal-label">룩 정보</div><div class="modal-val" id="reviewModalLooks">6개 룩 · 18개 이미지 · 24개 브랜드 크레딧</div></div>
+    <div class="modal-section"><div class="modal-label">링크</div><div class="modal-val" id="reviewModalLinks">전송 링크: <a href="#" style="color:var(--blue)">wetransfer.com/...</a><br>영상: <a href="#" style="color:var(--blue)">youtube.com/...</a></div></div>
+
+    <div class="modal-section" style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px">
+      <div class="modal-label">표지 이미지 선택</div>
+      <div id="reviewImageGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-top:12px;padding:12px;background:var(--surface2);border-radius:8px;max-height:300px;overflow-y:auto">
+        <!-- Images will be populated here -->
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:8px">★ 클릭하여 표지 이미지로 설정합니다</div>
+    </div>
+
+    <div class="modal-section"><div class="modal-label">심사 의견</div><textarea class="modal-ta" id="reviewNote" placeholder="심사 의견을 작성하세요. 이 내용은 제출자에게 이메일로 전달됩니다."></textarea></div>
+    <div class="modal-foot">
+      <button class="btn btn-green" onclick="doReview('approved')">✓ 승인</button>
+      <button class="btn btn-red" onclick="doReview('rejected')">✗ 거절</button>
+      <div style="flex:1"></div>
+      <button class="btn" onclick="closeModal()">취소</button>
+    </div>
+  </div>
+</div>
+
+<script src="pap-api.js"></script>
+
+<script>
+// Admin auth + role check
+document.addEventListener('DOMContentLoaded',function(){
+  if(typeof PAP!=='undefined'){
+    if(!PAP.auth.isLoggedIn()){
+      window.location.href='auth.html';
+      return;
+    }
+    var user=PAP.auth.getUser();
+    if(!user||user.role!=='admin'){
+      document.body.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:Montserrat,sans-serif;color:#fff;background:#000;flex-direction:column"><h1 style="font-size:18px;letter-spacing:.15em">ACCESS DENIED</h1><p style="margin-top:12px;font-size:12px;color:rgba(255,255,255,.4)">Admin privileges required.</p><a href="index.html" style="margin-top:24px;color:#fff;font-size:11px;letter-spacing:.1em">← BACK TO MAGAZINE</a></div>';
+      return;
+    }
+  }
+});
+
+// ======== MEMBER MANAGEMENT (Supabase) ========
+var allMembers=[];
+var memberFilter='all';
+
+async function loadMembers(){
+  var tbody=document.getElementById('memberTableBody');
+  tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text4);padding:40px">불러오는 중...</td></tr>';
+  try{
+    var res=await PAP.auth.getProfile(); // Admin endpoint - returns all profiles for admins
+    // Fallback: use direct Supabase query if pap-api doesn't have admin list endpoint
+    if(!res||!res.members){
+      // Try fetching from API
+      var resp=await fetch((window.PAP_CONFIG&&window.PAP_CONFIG.API_BASE||'/api')+'/admin/members',{
+        headers:{'Authorization':'Bearer '+sessionStorage.getItem('pap-token'),'X-Requested-With':'XMLHttpRequest'}
+      });
+      if(resp.ok){var data=await resp.json();allMembers=data.members||data||[];}
+      else throw new Error('Failed to load');
+    } else {
+      allMembers=res.members;
+    }
+    updateMemberStats();
+    renderMembers();
+  }catch(e){
+    tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:#ff6b6b;padding:40px">⚠ 회원 데이터를 불러올 수 없습니다.<br><small style="color:var(--text4)">백엔드 API 연결을 확인하세요. ('+((e&&e.message)||'Unknown error')+')</small></td></tr>';
+  }
+}
+
+function updateMemberStats(){
+  var total=allMembers.length;
+  var free=allMembers.filter(m=>!m.subscription_plan||m.subscription_plan==='free').length;
+  var std=allMembers.filter(m=>m.subscription_plan&&m.subscription_plan.indexOf('standard')>-1).length;
+  var prem=allMembers.filter(m=>m.subscription_plan&&m.subscription_plan.indexOf('premium')>-1).length;
+  document.getElementById('statTotal').textContent=total;
+  document.getElementById('statFree').textContent=free;
+  document.getElementById('statStandard').textContent=std;
+  document.getElementById('statPremium').textContent=prem;
+}
+
+function renderMembers(){
+  var filtered=memberFilter==='all'?allMembers:allMembers.filter(function(m){
+    if(memberFilter==='free') return !m.subscription_plan||m.subscription_plan==='free';
+    return m.subscription_plan&&m.subscription_plan.indexOf(memberFilter)>-1;
+  });
+  var tbody=document.getElementById('memberTableBody');
+  if(!filtered.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text4);padding:40px">회원이 없습니다</td></tr>';return;}
+  var h='';
+  var esc=function(s){var d=document.createElement('div');d.textContent=s||'';return d.innerHTML;};
+  for(var i=0;i<filtered.length;i++){
+    var m=filtered[i];
+    var plan=m.subscription_plan||'free';
+    var cls=plan.indexOf('premium')>-1?'b-premium':plan.indexOf('standard')>-1?'b-standard':'b-free';
+    var label=plan.indexOf('premium')>-1?'Premium':plan.indexOf('standard')>-1?'Standard':'Free';
+    var date=m.created_at?new Date(m.created_at).toLocaleDateString('ko-KR',{year:'numeric',month:'short'}):'—';
+    h+='<tr><td>'+esc(m.name)+'</td><td>'+esc(m.email)+'</td><td>'+esc(m.role||'member')+'</td><td>'+esc(m.location)+'</td><td><span class="badge '+cls+'">'+label+'</span></td><td>'+date+'</td></tr>';
+  }
+  tbody.innerHTML=h;
+}
+
+function filterMembers(plan,btn){
+  memberFilter=plan;
+  document.querySelectorAll('#t-users .tf').forEach(function(b){b.classList.remove('on');});
+  if(btn) btn.classList.add('on');
+  renderMembers();
+}
+
+function exportMembersCSV(){
+  if(!allMembers.length){alert('내보낼 데이터가 없습니다.');return;}
+  var rows=[['이름','이메일','역할','위치','구독','가입일']];
+  allMembers.forEach(function(m){
+    rows.push([m.name||'',m.email||'',m.role||'member',m.location||'',m.subscription_plan||'free',m.created_at?new Date(m.created_at).toISOString().split('T')[0]:'']);
+  });
+  var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
+  var blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='pap_members_'+new Date().toISOString().split('T')[0]+'.csv';a.click();
+}
+
+// Auto-load members when users tab is shown
+var _origGo;
+function go(id,el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('t-'+id).classList.add('on');
+  document.querySelectorAll('.sb a').forEach(a=>a.classList.remove('on'));
+  if(el) el.classList.add('on');
+  if(id==='users'&&!allMembers.length) loadMembers();
+}
+// Review submission tracking
+var currentReviewSubmission=null;
+var selectedCoverImageIndex=0;
+
+function openModal(submissionId){
+  if(submissionId){
+    currentReviewSubmission={id:submissionId};
+    selectedCoverImageIndex=0;
+    // Populate modal with actual submission data if available
+    loadSubmissionForReview(submissionId);
+  }
+  document.getElementById('reviewModal').classList.add('show');
+}
+
+function closeModal(){
+  document.getElementById('reviewModal').classList.remove('show');
+  currentReviewSubmission=null;
+  selectedCoverImageIndex=0;
+}
+
+async function loadSubmissionForReview(submissionId){
+  try{
+    var apiBase=window.PAP_CONFIG&&window.PAP_CONFIG.API_BASE||'/api';
+    var token=sessionStorage.getItem('pap-token');
+    var resp=await fetch(apiBase+'/submissions/'+submissionId,{
+      headers:{'Authorization':'Bearer '+token,'X-Requested-With':'XMLHttpRequest'}
+    });
+    if(!resp.ok) throw new Error('Failed to load submission');
+    var data=await resp.json();
+    var sub=data.data||data;
+    if(sub){
+      currentReviewSubmission=sub;
+      populateReviewModal(sub);
+      renderReviewImageGrid(sub.file_urls||[]);
+    }
+  }catch(err){
+    console.error('Error loading submission:',err);
+  }
+}
+
+function populateReviewModal(submission){
+  var desc=submission.description?JSON.parse(submission.description):{};
+  var createdDate=submission.created_at?new Date(submission.created_at).toLocaleDateString('ko-KR',{month:'long',day:'numeric'}):'-';
+  document.getElementById('reviewModalHeader').textContent=submission.title+' — '+submission.submitted_by+' · '+createdDate;
+  document.getElementById('reviewModalProduction').textContent=submission.company_name+' · '+(submission.company_email||'');
+  document.getElementById('reviewModalCredits').textContent=submission.credits||'—';
+  var looks=submission.file_urls?submission.file_urls.length:'?';
+  document.getElementById('reviewModalLooks').textContent=looks+'개 이미지';
+  document.getElementById('reviewModalLinks').textContent=submission.notes||'—';
+}
+
+function renderReviewImageGrid(fileUrls){
+  var grid=document.getElementById('reviewImageGrid');
+  grid.innerHTML='';
+  if(!fileUrls||!Array.isArray(fileUrls)||fileUrls.length===0){
+    grid.innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--text3);padding:20px">이미지가 없습니다</div>';
+    return;
+  }
+  fileUrls.forEach(function(url,idx){
+    var div=document.createElement('div');
+    div.style.cssText='cursor:pointer;border:3px solid transparent;border-radius:6px;overflow:hidden;position:relative;transition:all 0.2s';
+    if(idx===selectedCoverImageIndex){
+      div.style.borderColor='var(--green)';
+      div.style.boxShadow='0 0 8px rgba(76,175,80,0.4)';
+    }
+    var img=document.createElement('img');
+    img.src=url;
+    img.style.cssText='width:100%;height:100px;object-fit:cover;display:block';
+    div.appendChild(img);
+    var label=document.createElement('div');
+    label.textContent='#'+(idx+1);
+    label.style.cssText='position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,0.6);color:#fff;font-size:10px;padding:2px 6px;border-radius:3px';
+    div.appendChild(label);
+    div.onclick=function(){selectCoverImage(idx);};
+    grid.appendChild(div);
+  });
+}
+
+function selectCoverImage(idx){
+  selectedCoverImageIndex=idx;
+  renderReviewImageGrid(currentReviewSubmission.file_urls||[]);
+}
+
+async function doReview(status){
+  if(!currentReviewSubmission){
+    alert('심사 대상 서브미션을 불러올 수 없습니다.');
+    return;
+  }
+  var note=document.getElementById('reviewNote').value;
+  var labels={approved:'승인',rejected:'거절'};
+
+  if(!confirm(labels[status]+' 처리하시겠습니까?\n의견: '+(note||'(없음)'))){
+    return;
+  }
+
+  try{
+    var apiBase=window.PAP_CONFIG&&window.PAP_CONFIG.API_BASE||'/api';
+    var token=sessionStorage.getItem('pap-token');
+    var payload={
+      status:status,
+      reviewNote:note,
+      coverImageIndex:selectedCoverImageIndex
+    };
+    var resp=await fetch(apiBase+'/submissions/'+currentReviewSubmission.id+'/review',{
+      method:'PUT',
+      headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'},
+      body:JSON.stringify(payload)
+    });
+    if(!resp.ok){
+      var errData=await resp.json();
+      throw new Error(errData.message||'심사 처리 실패');
+    }
+    var result=await resp.json();
+    alert('심사가 완료되었습니다.');
+    closeModal();
+    // Optionally reload submissions list
+    if(window.loadSubmissions) loadSubmissions();
+  }catch(err){
+    console.error('Review submission error:',err);
+    alert('오류: '+err.message);
+  }
+}
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
+// ======== SUBMISSIONS MANAGEMENT ========
+async function loadSubmissions(statusFilter){
+  // This function can be called to load actual submissions from the API
+  // Currently the table has hardcoded data, but this provides the infrastructure
+  try{
+    var apiBase=window.PAP_CONFIG&&window.PAP_CONFIG.API_BASE||'/api';
+    var token=sessionStorage.getItem('pap-token');
+    var query=statusFilter?'?status='+statusFilter:'';
+    var resp=await fetch(apiBase+'/submissions'+query,{
+      headers:{'Authorization':'Bearer '+token,'X-Requested-With':'XMLHttpRequest'}
+    });
+    if(!resp.ok) throw new Error('Failed to load submissions');
+    var result=await resp.json();
+    var submissions=result.data||result||[];
+    // TODO: Render submissions in table
+    console.log('Loaded submissions:',submissions);
+  }catch(err){
+    console.error('Error loading submissions:',err);
+  }
+}
+
+// POST EDITOR FUNCTIONS
+function selectRadio(input){
+  document.querySelectorAll('.pe-radio').forEach(r=>r.classList.remove('sel'));
+  input.parentElement.classList.add('sel');
+}
+
+function previewThumb(input){
+  if(input.files&&input.files[0]){
+    var reader=new FileReader();
+    reader.onload=function(e){
+      document.getElementById('thumbPreview').innerHTML='<img loading="lazy" src="'+e.target.result+'" style="max-width:200px;max-height:250px;object-fit:cover"><div class="pe-upload-text" style="margin-top:8px">클릭하여 변경</div>';
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+var galleryCount=0;
+var galleryImages=[];
+
+function addGallery(input){
+  if(!input.files) return;
+  var grid=document.getElementById('galleryGrid');
+  var addBtn=grid.querySelector('.pe-gallery-add');
+  for(var i=0;i<input.files.length;i++){
+    galleryCount++;
+    var file=input.files[i];
+    var reader=new FileReader();
+    (function(num){
+      reader.onload=function(e){
+        galleryImages.push({num:num,src:e.target.result,credits:''});
+        var div=document.createElement('div');
+        div.className='pe-gallery-item';
+        div.setAttribute('data-img-num',num);
+        div.innerHTML='<img loading="lazy" src="'+e.target.result+'"><button class="pe-gallery-del" onclick="removeGalleryImg('+num+')">×</button><span class="pe-gallery-num">#'+num+'</span>';
+        grid.insertBefore(div,addBtn);
+        updateImgCredits();
+      };
+    })(galleryCount);
+    reader.readAsDataURL(file);
+  }
+  input.value='';
+}
+
+function removeGalleryImg(num){
+  // Remove from DOM
+  var el=document.querySelector('.pe-gallery-item[data-img-num="'+num+'"]');
+  if(el) el.remove();
+  // Remove from array
+  galleryImages=galleryImages.filter(function(g){return g.num!==num;});
+  updateImgCredits();
+}
+
+function updateImgCredits(){
+  var area=document.getElementById('imgCreditsArea');
+  if(!area) return;
+  area.innerHTML='';
+  if(galleryImages.length===0){
+    area.innerHTML='<div style="font-size:11px;color:var(--text3);padding:8px 0">위에서 화보 이미지를 추가하면 각 이미지마다 착장 크레딧을 입력할 수 있습니다.</div>';
+    return;
+  }
+  galleryImages.forEach(function(img,i){
+    var div=document.createElement('div');
+    div.style.cssText='display:flex;gap:8px;margin-bottom:8px;align-items:flex-start';
+    div.innerHTML='<div style="flex-shrink:0;width:60px;height:75px;border:1px solid var(--border);overflow:hidden"><img loading="lazy" src="'+img.src+'" style="width:100%;height:100%;object-fit:cover"></div>'
+      +'<div style="flex:1">'
+      +'<div style="font-size:10px;font-weight:700;color:var(--text3);margin-bottom:4px">이미지 #'+img.num+' 착장 크레딧</div>'
+      +'<input class="pe-input" placeholder="@brand1 Jacket, @brand2 Pants, @brand3 Shoes..." style="padding:7px 10px;font-size:11px" value="'+(img.credits||'')+'" oninput="galleryImages['+i+'].credits=this.value">'
+      +'<div style="font-size:9px;color:var(--text3);margin-top:3px">형식: @인스타그램 아이템명 (쉼표로 구분)</div>'
+      +'</div>';
+    area.appendChild(div);
+  });
+}
+
+function addCredit(){
+  var area=document.getElementById('creditsArea');
+  var row=document.createElement('div');
+  row.className='pe-credit-row';
+  row.innerHTML='<select class="pe-select pe-credit-role"><option>Photographer</option><option>Stylist</option><option>Stylist assist</option><option>Make Up</option><option>Hair</option><option>Set Design</option><option>Set designe assist</option><option>Producer</option><option>Starring</option><option>Creative Director</option><option>Art Director</option><option>Model</option><option>Video Director</option></select><input class="pe-input pe-credit-name" placeholder="이름"><input class="pe-input pe-credit-ig" placeholder="@instagram"><button class="btn btn-sm btn-red" onclick="this.parentElement.remove()">삭제</button>';
+  area.appendChild(row);
+}
+
+function addBrand(){
+  var area=document.getElementById('brandsArea');
+  var row=document.createElement('div');
+  row.className='pe-brand-row';
+  row.innerHTML='<input class="pe-input pe-brand-name" placeholder="브랜드명 (예: Balenciaga)"><input class="pe-input pe-brand-ig" placeholder="@instagram"><button class="btn btn-sm btn-red" onclick="this.parentElement.remove()">삭제</button>';
+  area.appendChild(row);
+}
+
+function toggleSchedule(){
+  var pub=document.getElementById('postPublish');
+  var sched=document.getElementById('postSchedule');
+  var area=document.getElementById('scheduleArea');
+  if(sched.checked){
+    pub.checked=false;
+    area.style.display='block';
+    // Set default to tomorrow 9:00 AM
+    var tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);
+    document.getElementById('scheduleDate').value=tomorrow.toISOString().split('T')[0];
+  } else {
+    area.style.display='none';
+  }
+}
+
+// TODO: Replace alert with PAP API call when backend endpoints are ready
+function savePost(){
+  var title=document.getElementById('postTitle')?document.getElementById('postTitle').value:'';
+  var tags=document.getElementById('postTags')?document.getElementById('postTags').value:'';
+  if(!title){alert('제목을 입력해 주세요.');return;}
+  editorials.push({
+    id:editorials.length?Math.max.apply(null,editorials.map(function(e){return e.id;}))+1:1,
+    title:title,
+    thumb:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/yo_10_c3a703df29.jpg',
+    tags:tags,
+    status:'공개',
+    date:new Date().toLocaleDateString('ko',{month:'long',day:'numeric'})
+  });
+  renderEditorialList();
+  var imgCreds=galleryImages.filter(function(g){return g.credits;}).length;
+  alert('✓ 게시글이 저장되었습니다.\n\n제목: '+title+'\n태그: '+(tags||'(없음)')+'\n이미지: '+galleryImages.length+'장 (착장 크레딧: '+imgCreds+'장 입력됨)\n\nAI 자동 번역 적용:\n  → EN, IT, FR, ES, JA, ZH, RU');
+  go('editorials');
+}
+
+// ======== EDITORIAL LIST (unlimited) ========
+var editorials=[
+  {id:215,title:'HIT THE JACKPOT',thumb:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/yo_10_c3a703df29.jpg',tags:'bold, colorful, retro, maximalist, pop',status:'공개',date:'3월 17일'},
+  {id:214,title:'AFTER AMERICA',thumb:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_c226c10e48.jpg',tags:'dark, urban, street, moody, cinematic',status:'공개',date:'3월 16일'},
+  {id:213,title:'VOYAGE IN THE BOX',thumb:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/5_bebe037f57.png',tags:'surreal, dreamlike, fantasy, conceptual',status:'공개',date:'3월 15일'},
+  {id:212,title:'I DAYDREAM ABOUT YOU ONLINE',thumb:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_692bb76d77.jpg',tags:'dreamy, romantic, soft, ethereal, pastel',status:'공개',date:'3월 14일'},
+  {id:211,title:'THE MODERN MUSE',thumb:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_9a20ac2301.jpg',tags:'elegant, classic, minimal, refined',status:'비공개',date:'3월 13일'},
+  {id:210,title:'SILENT GAZE',thumb:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_d8f1c7b63f.jpg',tags:'moody, dark, mysterious, noir',status:'공개',date:'3월 12일'},
+  {id:209,title:'CANDELARIA DEL DESIERTO',thumb:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_6ca1f35669.jpg',tags:'warm, desert, earthy, natural',status:'공개',date:'3월 11일'},
+  {id:208,title:'PRIMAL SPECTRUM',thumb:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/02_2e92f91be0.jpg',tags:'colorful, bold, vibrant, artistic',status:'공개',date:'3월 10일'},
+  {id:207,title:'AXIS',thumb:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/00005_AXIS_HP_02_06_2026_30130_3_944de93435.jpg',tags:'geometric, structured, clean, modern',status:'공개',date:'3월 9일'},
+  {id:206,title:'SILVER',thumb:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_6f6822bfdd.jpg',tags:'metallic, futuristic, silver, chrome',status:'공개',date:'3월 8일'},
+  {id:205,title:'INSIDE THE CASTLE',thumb:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_63589ea3fe.jpg',tags:'royal, gothic, dark, castle',status:'공개',date:'3월 7일'},
+  {id:204,title:'THE WEIGHT OF CONTROL',thumb:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/AMALIA_LOOK_2_02_c81a703dd3.jpg',tags:'powerful, structured, strong',status:'공개',date:'3월 6일'},
+  {id:203,title:'ORGANIC SCULPTURE',thumb:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_ceb593230e.jpg',tags:'natural, organic, sculptural, soft',status:'공개',date:'3월 5일'},
+  {id:202,title:'LIFE AFTER',thumb:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_3e6818c9ce.jpg',tags:'ethereal, dreamlike, rebirth',status:'공개',date:'3월 4일'},
+  {id:201,title:'DATES TO REMEMBER',thumb:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_a5efb78a79.jpg',tags:'romantic, nostalgic, warm, vintage',status:'공개',date:'3월 3일'}
+];
+
+function renderEditorialList(){
+  var q=(document.getElementById('edSearchAdmin')?document.getElementById('edSearchAdmin').value:'').toLowerCase();
+  var filtered=editorials.filter(function(e){return !q||e.title.toLowerCase().indexOf(q)>-1||e.tags.toLowerCase().indexOf(q)>-1;});
+  var tb=document.getElementById('edListBody');
+  if(!tb) return;
+  tb.innerHTML='';
+  filtered.forEach(function(e,i){
+    var idx=editorials.indexOf(e);
+    var tagBadges=e.tags?e.tags.split(',').slice(0,3).map(function(t){return '<span class="pe-tag">'+t.trim()+'</span>';}).join(' '):'';
+    var cls=e.status==='공개'?'b-published':'b-draft';
+    tb.innerHTML+='<tr><td>'+e.id+'</td><td><img loading="lazy" class="td-thumb" src="'+e.thumb+'"></td><td class="td-title" onclick="go(\'newpost\')">'+e.title+'</td><td>'+tagBadges+'</td><td><span class="badge '+cls+'">'+e.status+'</span></td><td>'+e.date+'</td><td><button class="btn btn-sm" onclick="go(\'newpost\')">편집</button> <button class="btn btn-sm btn-red" onclick="deleteEditorial('+idx+')">삭제</button></td></tr>';
+  });
+  if(document.getElementById('edCountLabel')) document.getElementById('edCountLabel').textContent=editorials.length;
+}
+function deleteEditorial(i){
+  if(!confirm('"'+editorials[i].title+'" 에디토리얼을 삭제하시겠습니까?')) return;
+  editorials.splice(i,1);
+  renderEditorialList();
+}
+renderEditorialList();
+
+// TAG PREVIEW
+document.addEventListener('DOMContentLoaded',function(){
+  var tagInput=document.getElementById('postTags');
+  if(tagInput){
+    tagInput.addEventListener('input',function(){
+      var preview=document.getElementById('tagPreview');
+      var val=this.value;
+      if(!val.trim()){preview.innerHTML='';return;}
+      preview.innerHTML=val.split(',').map(function(t){return t.trim()?'<span class="pe-tag">'+t.trim()+'</span>':'';}).join('');
+    });
+  }
+});
+
+// ======== NEWS BLOCK BUILDER ========
+var newsBlockCount=1;
+function addNewsBlock(type){
+  newsBlockCount++;
+  var area=document.getElementById('newsBlocks');if(!area)return;
+  var div=document.createElement('div');
+  div.className='news-block';
+  div.style.cssText='background:var(--surface);border:1px solid var(--border);padding:14px';
+  var label={text:'텍스트',image:'이미지',quote:'인용구',video:'영상'}[type];
+  var inner='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:10px;font-weight:700;color:var(--text3)">블록 '+newsBlockCount+' — '+label+'</span><button class="btn btn-sm btn-red" onclick="this.closest(\'.news-block\').remove()">삭제</button></div>';
+  if(type==='text') inner+='<textarea class="modal-ta" style="min-height:100px" placeholder="본문 텍스트를 입력하세요..."></textarea>';
+  else if(type==='image') inner+='<div class="pe-upload" onclick="this.querySelector(\'input\').click()" style="padding:16px"><input type="file" accept="image/*" style="display:none"><div class="pe-upload-text">클릭하여 이미지 업로드</div></div><input class="pe-input" placeholder="이미지 캡션 (선택)" style="margin-top:8px">';
+  else if(type==='quote') inner+='<textarea class="modal-ta" style="min-height:60px;font-style:italic" placeholder="인용구 내용..."></textarea><input class="pe-input" placeholder="출처 (선택)" style="margin-top:8px">';
+  else if(type==='video') inner+='<input class="pe-input" placeholder="YouTube URL (예: https://youtube.com/watch?v=...)">';
+  div.innerHTML=inner;
+  area.appendChild(div);
+}
+
+// ======== FILM CRUD ========
+var films=[
+  {id:12,title:'Silent Gaze — Behind the Scenes',yt:'m7aQkN6biUk',thumb:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_d8f1c7b63f.jpg',play:'새 팝업창',active:true},
+  {id:11,title:'Candelaria — Fashion Film',yt:'cGbRlXwBM4Q',thumb:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_6ca1f35669.jpg',play:'새 팝업창',active:true},
+  {id:10,title:'Inside the Castle',yt:'HYXZ5XMb7pE',thumb:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_63589ea3fe.jpg',play:'새 팝업창',active:false}
+];
+var editFilmIdx=-1;
+function renderFilms(){
+  var tb=document.getElementById('filmListBody');if(!tb)return;tb.innerHTML='';
+  films.forEach(function(f,i){
+    tb.innerHTML+='<tr><td>'+f.id+'</td><td><img loading="lazy" class="td-thumb" src="'+(f.thumb||'https://img.youtube.com/vi/'+f.yt+'/mqdefault.jpg')+'"></td><td class="td-title" onclick="openFilmModal('+i+')">'+f.title+'</td><td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis">youtube.com/watch?v='+f.yt+'</td><td><span style="font-size:10px;color:var(--purple)">'+f.play+'</span></td><td><span class="badge '+(f.active?'b-published':'b-draft')+'">'+(f.active?'공개':'비공개')+'</span></td><td><button class="btn btn-sm" onclick="openFilmModal('+i+')">편집</button> <button class="btn btn-sm btn-red" onclick="deleteFilm('+i+')">삭제</button></td></tr>';
+  });
+}
+function openFilmModal(idx){
+  editFilmIdx=idx;
+  document.getElementById('filmModalTitle').textContent=idx>=0?'필름 편집':'필름 추가';
+  if(idx>=0){var f=films[idx];document.getElementById('filmTitle').value=f.title;document.getElementById('filmYouTube').value=f.yt;document.getElementById('filmThumb').value=f.thumb||'';document.getElementById('filmActive').checked=f.active;}
+  else{document.getElementById('filmTitle').value='';document.getElementById('filmYouTube').value='';document.getElementById('filmThumb').value='';document.getElementById('filmActive').checked=true;}
+  document.querySelectorAll('#filmModal .pe-radio').forEach(function(r){r.classList.remove('sel');});
+  document.querySelector('#filmModal .pe-radio').classList.add('sel');
+  document.getElementById('filmModal').classList.add('show');
+}
+function closeFilmModal(){document.getElementById('filmModal').classList.remove('show');}
+function saveFilm(){
+  var title=document.getElementById('filmTitle').value;var yt=document.getElementById('filmYouTube').value;
+  if(!title||!yt){alert('제목과 YouTube URL을 입력해 주세요.');return;}
+  var ytId=yt.replace(/.*[?&]v=([^&]+).*/,'$1').replace(/.*youtu\.be\//,'').replace(/.*shorts\//,'');if(ytId.indexOf('http')>-1)ytId=yt;
+  var play='새 팝업창';document.querySelectorAll('#filmModal input[name=filmPlayType]').forEach(function(r){if(r.checked)play=r.value==='popup'?'새 팝업창':'오버레이';});
+  var obj={title:title,yt:ytId,thumb:document.getElementById('filmThumb').value,play:play,active:document.getElementById('filmActive').checked};
+  if(editFilmIdx>=0){obj.id=films[editFilmIdx].id;films[editFilmIdx]=obj;}
+  else{obj.id=films.length?Math.max.apply(null,films.map(function(f){return f.id;}))+1:1;films.push(obj);}
+  renderFilms();closeFilmModal();
+}
+function deleteFilm(i){if(!confirm('"'+films[i].title+'" 을 삭제하시겠습니까?'))return;films.splice(i,1);renderFilms();}
+renderFilms();
+
+// ======== SHORTS CRUD ========
+var shortsList=[
+  {id:8,title:'Primal Spectrum — 30s Teaser',yt:'1hf9bVf3uCU',play:'메인 화면 인라인',active:true},
+  {id:7,title:'Silver — Quick Look',yt:'4Pnn8jwLhTo',play:'메인 화면 인라인',active:true},
+  {id:6,title:'Candelaria — Teaser',yt:'TWUkJCiq9zc',play:'메인 화면 인라인',active:true},
+  {id:5,title:'Life After — 15s',yt:'0tfGIgX848E',play:'메인 화면 인라인',active:true},
+  {id:4,title:'Aurora — Short',yt:'kSZLefkAClU',play:'메인 화면 인라인',active:true},
+  {id:3,title:'Silent Gaze — Teaser',yt:'m7aQkN6biUk',play:'메인 화면 인라인',active:true}
+];
+var editShortsIdx=-1;
+function renderShorts(){
+  var tb=document.getElementById('shortsListBody');if(!tb)return;tb.innerHTML='';
+  shortsList.forEach(function(s,i){
+    tb.innerHTML+='<tr><td>'+s.id+'</td><td class="td-title" onclick="openShortsModal('+i+')">'+s.title+'</td><td style="font-size:11px">youtube.com/shorts/'+s.yt+'</td><td><span style="font-size:10px;color:var(--green)">'+s.play+'</span></td><td><span class="badge '+(s.active?'b-published':'b-draft')+'">'+(s.active?'공개':'비공개')+'</span></td><td><button class="btn btn-sm" onclick="openShortsModal('+i+')">편집</button> <button class="btn btn-sm btn-red" onclick="deleteShorts('+i+')">삭제</button></td></tr>';
+  });
+}
+function openShortsModal(idx){
+  editShortsIdx=idx;
+  document.getElementById('shortsModalTitle').textContent=idx>=0?'숏츠 편집':'숏츠 추가';
+  if(idx>=0){var s=shortsList[idx];document.getElementById('shortsTitle').value=s.title;document.getElementById('shortsYouTube').value=s.yt;document.getElementById('shortsActive').checked=s.active;}
+  else{document.getElementById('shortsTitle').value='';document.getElementById('shortsYouTube').value='';document.getElementById('shortsActive').checked=true;}
+  document.querySelectorAll('#shortsModal .pe-radio').forEach(function(r){r.classList.remove('sel');});
+  document.querySelector('#shortsModal .pe-radio').classList.add('sel');
+  document.getElementById('shortsModal').classList.add('show');
+}
+function closeShortsModal(){document.getElementById('shortsModal').classList.remove('show');}
+function saveShorts(){
+  var title=document.getElementById('shortsTitle').value;var yt=document.getElementById('shortsYouTube').value;
+  if(!title||!yt){alert('제목과 YouTube URL을 입력해 주세요.');return;}
+  var ytId=yt.replace(/.*[?&]v=([^&]+).*/,'$1').replace(/.*youtu\.be\//,'').replace(/.*shorts\//,'');if(ytId.indexOf('http')>-1)ytId=yt;
+  var play='메인 화면 인라인';document.querySelectorAll('#shortsModal input[name=shortsPlayType]').forEach(function(r){if(r.checked)play=r.value==='inline'?'메인 화면 인라인':'확대 재생';});
+  var obj={title:title,yt:ytId,play:play,active:document.getElementById('shortsActive').checked};
+  if(editShortsIdx>=0){obj.id=shortsList[editShortsIdx].id;shortsList[editShortsIdx]=obj;}
+  else{obj.id=shortsList.length?Math.max.apply(null,shortsList.map(function(s){return s.id;}))+1:1;shortsList.push(obj);}
+  renderShorts();closeShortsModal();
+}
+function deleteShorts(i){if(!confirm('"'+shortsList[i].title+'" 을 삭제하시겠습니까?'))return;shortsList.splice(i,1);renderShorts();}
+renderShorts();
+
+// ======== CATEGORY CRUD ========
+var categories=[
+  {id:1,nameKo:'에디토리얼',nameEn:'Editorial',slug:'editorial',order:1,active:true},
+  {id:2,nameKo:'뉴스',nameEn:'News',slug:'news',order:2,active:true},
+  {id:3,nameKo:'필름',nameEn:'Film',slug:'film',order:3,active:true},
+  {id:4,nameKo:'숏츠',nameEn:'Shorts',slug:'shorts',order:4,active:true}
+];
+var editCatIdx=-1;
+
+function renderCats(){
+  var tb=document.getElementById('catTableBody');
+  tb.innerHTML='';
+  categories.forEach(function(c,i){
+    tb.innerHTML+='<tr><td>'+c.order+'</td><td>'+c.nameKo+'</td><td>'+c.nameEn+'</td><td>'+c.slug+'</td><td>'+(c.active?'✓':'✗')+'</td><td><button class="btn btn-sm" onclick="openCatModal('+i+')">편집</button> <button class="btn btn-sm btn-red" onclick="deleteCat('+i+')">삭제</button></td></tr>';
+  });
+}
+
+function openCatModal(idx){
+  editCatIdx=idx;
+  if(idx>=0){
+    var c=categories[idx];
+    document.getElementById('catModalTitle').textContent='카테고리 편집';
+    document.getElementById('catNameKo').value=c.nameKo;
+    document.getElementById('catNameEn').value=c.nameEn;
+    document.getElementById('catSlug').value=c.slug;
+    document.getElementById('catOrder').value=c.order;
+    document.getElementById('catActive').checked=c.active;
+  } else {
+    document.getElementById('catModalTitle').textContent='카테고리 추가';
+    document.getElementById('catNameKo').value='';
+    document.getElementById('catNameEn').value='';
+    document.getElementById('catSlug').value='';
+    document.getElementById('catOrder').value=categories.length+1;
+    document.getElementById('catActive').checked=true;
+  }
+  document.getElementById('catModal').classList.add('show');
+}
+
+function closeCatModal(){document.getElementById('catModal').classList.remove('show');}
+
+function saveCat(){
+  var obj={
+    nameKo:document.getElementById('catNameKo').value,
+    nameEn:document.getElementById('catNameEn').value,
+    slug:document.getElementById('catSlug').value||document.getElementById('catNameEn').value.toLowerCase().replace(/[^a-z0-9]+/g,'-'),
+    order:Number(document.getElementById('catOrder').value),
+    active:document.getElementById('catActive').checked
+  };
+  if(!obj.nameKo||!obj.nameEn){alert('한국어와 영어 이름을 모두 입력해 주세요.');return;}
+  if(editCatIdx>=0){
+    obj.id=categories[editCatIdx].id;
+    categories[editCatIdx]=obj;
+  } else {
+    obj.id=categories.length?Math.max(...categories.map(c=>c.id))+1:1;
+    categories.push(obj);
+  }
+  categories.sort(function(a,b){return a.order-b.order;});
+  renderCats();
+  closeCatModal();
+}
+
+function deleteCat(idx){
+  if(!confirm('"'+categories[idx].nameKo+'" 카테고리를 삭제하시겠습니까?\n이 카테고리에 속한 게시글이 있으면 먼저 이동시켜야 합니다.')) return;
+  categories.splice(idx,1);
+  renderCats();
+}
+
+renderCats();
+
+// ======== BANNER CRUD ========
+var banners=[
+  {id:1,type:'메인',titleKo:'3월호',titleEn:'March Issue',img:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/yo_10_c3a703df29.jpg',link:'/editorial/215',order:1,active:true,start:'',end:''},
+  {id:2,type:'메인',titleKo:'After America',titleEn:'After America',img:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_c226c10e48.jpg',link:'/editorial/214',order:2,active:true,start:'',end:''},
+  {id:3,type:'이벤트',titleKo:'봄맞이 이벤트',titleEn:'Spring Event',img:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/5_bebe037f57.png',link:'/event/spring',order:1,active:true,start:'2026-03-01',end:'2026-04-30'},
+  {id:4,type:'서브',titleKo:'구독 안내',titleEn:'Subscribe',img:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_9a20ac2301.jpg',link:'/subscribe',order:1,active:true,start:'',end:''}
+];
+var currentBannerFilter='메인';
+var editBannerIdx=-1;
+
+function renderBanners(){
+  var tb=document.getElementById('bannerTableBody');
+  tb.innerHTML='';
+  banners.forEach(function(b,i){
+    if(b.type!==currentBannerFilter) return;
+    tb.innerHTML+='<tr><td>'+b.order+'</td><td><img loading="lazy" class="td-thumb" src="'+b.img+'" style="width:80px;height:40px"></td><td>'+b.titleKo+'</td><td>'+b.link+'</td><td>'+(b.active?'✓':'✗')+'</td><td><button class="btn btn-sm" onclick="openBannerModal('+i+')">편집</button> <button class="btn btn-sm btn-red" onclick="deleteBanner('+i+')">삭제</button></td></tr>';
+  });
+}
+
+function filterBanners(type,el){
+  currentBannerFilter=type;
+  el.parentElement.querySelectorAll('.tf').forEach(function(f){f.classList.remove('on');});
+  el.classList.add('on');
+  renderBanners();
+}
+
+function openBannerModal(idx){
+  editBannerIdx=idx;
+  // Reset radio
+  document.querySelectorAll('#bannerModal .pe-radio').forEach(function(r){r.classList.remove('sel');});
+  if(idx>=0){
+    var b=banners[idx];
+    document.getElementById('bannerModalTitle').textContent='배너 편집';
+    document.getElementById('bannerTitleKo').value=b.titleKo;
+    document.getElementById('bannerTitleEn').value=b.titleEn;
+    document.getElementById('bannerLink').value=b.link;
+    document.getElementById('bannerOrder').value=b.order;
+    document.getElementById('bannerActive').checked=b.active;
+    document.getElementById('bannerStart').value=b.start||'';
+    document.getElementById('bannerEnd').value=b.end||'';
+    // Set type radio
+    document.querySelectorAll('#bannerModal input[name=bannerType]').forEach(function(r){
+      if(r.value===b.type){r.checked=true;r.parentElement.classList.add('sel');}
+    });
+    document.getElementById('bannerImgPreview').innerHTML='<img loading="lazy" src="'+b.img+'" style="max-width:100%;max-height:120px;object-fit:cover"><div class="pe-upload-text" style="margin-top:6px;font-size:10px">클릭하여 변경</div>';
+    document.getElementById('bannerDateRow').style.display=b.type==='이벤트'?'grid':'none';
+  } else {
+    document.getElementById('bannerModalTitle').textContent='배너 추가';
+    document.getElementById('bannerTitleKo').value='';
+    document.getElementById('bannerTitleEn').value='';
+    document.getElementById('bannerLink').value='';
+    document.getElementById('bannerOrder').value=banners.filter(function(b){return b.type===currentBannerFilter}).length+1;
+    document.getElementById('bannerActive').checked=true;
+    document.getElementById('bannerStart').value='';
+    document.getElementById('bannerEnd').value='';
+    document.getElementById('bannerImgPreview').innerHTML='<div class="pe-upload-text">클릭하여 배너 이미지 업로드</div><div class="pe-upload-hint">권장: 1920×600px 이상</div>';
+    // Set current filter type
+    document.querySelectorAll('#bannerModal input[name=bannerType]').forEach(function(r){
+      if(r.value===currentBannerFilter){r.checked=true;r.parentElement.classList.add('sel');}
+    });
+    document.getElementById('bannerDateRow').style.display=currentBannerFilter==='이벤트'?'grid':'none';
+  }
+  // Show/hide date row based on type
+  document.querySelectorAll('#bannerModal input[name=bannerType]').forEach(function(r){
+    r.addEventListener('change',function(){document.getElementById('bannerDateRow').style.display=this.value==='이벤트'?'grid':'none';});
+  });
+  document.getElementById('bannerModal').classList.add('show');
+}
+
+function closeBannerModal(){document.getElementById('bannerModal').classList.remove('show');}
+
+function previewBannerImg(input){
+  if(input.files&&input.files[0]){
+    var reader=new FileReader();
+    reader.onload=function(e){
+      document.getElementById('bannerImgPreview').innerHTML='<img loading="lazy" src="'+e.target.result+'" style="max-width:100%;max-height:120px;object-fit:cover"><div class="pe-upload-text" style="margin-top:6px;font-size:10px">클릭하여 변경</div>';
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+function saveBanner(){
+  var type='메인';
+  document.querySelectorAll('#bannerModal input[name=bannerType]').forEach(function(r){if(r.checked) type=r.value;});
+  var obj={
+    type:type,
+    titleKo:document.getElementById('bannerTitleKo').value,
+    titleEn:document.getElementById('bannerTitleEn').value,
+    link:document.getElementById('bannerLink').value,
+    order:Number(document.getElementById('bannerOrder').value),
+    active:document.getElementById('bannerActive').checked,
+    start:document.getElementById('bannerStart').value,
+    end:document.getElementById('bannerEnd').value
+  };
+  if(!obj.titleKo){alert('제목을 입력해 주세요.');return;}
+  if(editBannerIdx>=0){
+    obj.id=banners[editBannerIdx].id;
+    obj.img=banners[editBannerIdx].img;
+    banners[editBannerIdx]=obj;
+  } else {
+    obj.id=banners.length?Math.max(...banners.map(b=>b.id))+1:1;
+    obj.img='https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/yo_10_c3a703df29.jpg'; // placeholder
+    banners.push(obj);
+  }
+  currentBannerFilter=obj.type;
+  // Update filter buttons
+  document.querySelectorAll('#t-banners .tf').forEach(function(f){
+    f.classList.remove('on');
+    if(f.textContent===currentBannerFilter) f.classList.add('on');
+  });
+  renderBanners();
+  closeBannerModal();
+}
+
+function deleteBanner(idx){
+  if(!confirm('"'+banners[idx].titleKo+'" 배너를 삭제하시겠습니까?')) return;
+  banners.splice(idx,1);
+  renderBanners();
+}
+
+renderBanners();
+
+// ======== LOADING IMAGES ========
+var loadingImgs=[
+  {id:1,url:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/yo_10_c3a703df29.jpg',active:true},
+  {id:2,url:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_c226c10e48.jpg',active:true},
+  {id:3,url:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/5_bebe037f57.png',active:false}
+];
+function renderLoadingImgs(){
+  var grid=document.getElementById('loadingGrid');if(!grid)return;
+  grid.innerHTML='';
+  loadingImgs.forEach(function(img,i){
+    grid.innerHTML+='<div style="width:150px;background:var(--surface);border:1px solid var(--border);padding:10px;text-align:center"><img loading="lazy" src="'+img.url+'" style="width:100%;height:110px;object-fit:cover;margin-bottom:8px;border:1px solid var(--border)"><div style="font-size:10px;font-weight:600;margin-bottom:8px;color:'+(img.active?'var(--green)':'var(--red)')+'">'+(img.active?'✓ 활성':'✗ 비활성')+'</div><div style="display:flex;gap:4px;justify-content:center"><button class="btn btn-sm" onclick="loadingImgs['+i+'].active=!loadingImgs['+i+'].active;renderLoadingImgs()">'+(img.active?'비활성화':'활성화')+'</button><button class="btn btn-sm btn-red" onclick="if(confirm(\'삭제하시겠습니까?\')){loadingImgs.splice('+i+',1);renderLoadingImgs();}">삭제</button></div></div>';
+  });
+}
+function addLoadingImg(){
+  alert('이미지 업로드 (실제 운영 시 S3에 업로드됩니다)');
+  loadingImgs.push({id:Date.now(),url:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_9a20ac2301.jpg',active:true});
+  renderLoadingImgs();
+}
+renderLoadingImgs();
+
+// ======== COMPANY INFO (About / Business / Contact) ========
+var companyImages={
+  about:['https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/yo_10_c3a703df29.jpg','https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_c226c10e48.jpg'],
+  business:['https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/5_bebe037f57.png'],
+  contact:[]
+};
+
+function renderCompanyImages(page){
+  var container=document.getElementById(page+'Images');
+  if(!container) return;
+  container.innerHTML='';
+  (companyImages[page]||[]).forEach(function(url,i){
+    container.innerHTML+='<div class="pe-gallery-item" style="width:120px;height:80px"><img loading="lazy" src="'+url+'" style="width:100%;height:100%;object-fit:cover"><button class="pe-gallery-del" onclick="removeCompanyImage(\''+page+'\','+i+')">×</button></div>';
+  });
+  container.innerHTML+='<div class="pe-gallery-add" style="width:120px;height:80px" onclick="addCompanyImage(\''+page+'\')"><span>+ 추가</span></div>';
+}
+
+function addCompanyImage(page){
+  var input=document.createElement('input');
+  input.type='file';input.accept='image/*';
+  input.onchange=function(){
+    if(this.files&&this.files[0]){
+      var reader=new FileReader();
+      reader.onload=function(e){
+        companyImages[page].push(e.target.result);
+        renderCompanyImages(page);
+      };
+      reader.readAsDataURL(this.files[0]);
+    }
+  };
+  input.click();
+}
+
+function removeCompanyImage(page,idx){
+  if(!confirm('이 이미지를 삭제하시겠습니까?')) return;
+  companyImages[page].splice(idx,1);
+  renderCompanyImages(page);
+}
+
+function saveCompanyInfo(page){
+  var labels={about:'회사 소개',business:'비즈니스',contact:'문의하기'};
+  var koEl=document.getElementById(page+'Ko');
+  var enEl=document.getElementById(page+'En');
+  if(!koEl||!enEl){alert('오류가 발생했습니다.');return;}
+  var ko=koEl.value.trim();
+  var en=enEl.value.trim();
+  if(!ko&&!en){alert('콘텐츠를 입력해 주세요.');return;}
+  var imgCount=companyImages[page].length;
+  var msg='✓ '+labels[page]+' 페이지가 저장되었습니다.\n\n';
+  msg+='한국어: '+ko.substring(0,50)+(ko.length>50?'...':'')+'\n';
+  msg+='영어: '+en.substring(0,50)+(en.length>50?'...':'')+'\n';
+  msg+='이미지: '+imgCount+'개\n\n';
+  msg+='→ 실제 운영 시: API를 통해 DB에 저장되고 프론트엔드에 즉시 반영됩니다.';
+  alert(msg);
+}
+
+renderCompanyImages('about');
+renderCompanyImages('business');
+renderCompanyImages('contact');
+
+// ======== MENU CATEGORIES (Hamburger Nav) ========
+var menuCats=[
+  {id:1,name:'COMMUNITY',link:'community.html',style:'빨간색 (강조)',active:true,order:1},
+  {id:2,name:'EDITORIAL',link:'#editorials',style:'기본 (검정)',active:true,order:2},
+  {id:3,name:'ARTICLE',link:'#',style:'기본 (검정)',active:true,order:3},
+  {id:4,name:'FILM',link:'#films',style:'기본 (검정)',active:true,order:4}
+];
+
+function renderMenuCats(){
+  var tb=document.getElementById('menuCatBody');
+  tb.innerHTML='';
+  menuCats.sort(function(a,b){return a.order-b.order;});
+  menuCats.forEach(function(m,i){
+    tb.innerHTML+='<tr><td>'+m.order+'</td><td style="font-weight:700;letter-spacing:.04em'+(m.style.indexOf('빨간')>-1?';color:var(--red)':'')+'">'+m.name+'</td><td><input class="pe-input" value="'+m.link+'" style="width:200px;padding:5px 8px" onchange="menuCats['+i+'].link=this.value"></td><td><select class="pe-select" style="width:140px;padding:5px 8px" onchange="menuCats['+i+'].style=this.value;renderMenuCats()"><option'+(m.style.indexOf('기본')>-1?' selected':'')+'>기본 (검정)</option><option'+(m.style.indexOf('빨간')>-1?' selected':'')+'>빨간색 (강조)</option><option'+(m.style.indexOf('회색')>-1?' selected':'')+'>회색 (비활성)</option></select></td><td><label class="pe-check" style="justify-content:center"><input type="checkbox" '+(m.active?'checked':'')+' onchange="menuCats['+i+'].active=this.checked"></label></td><td><button class="btn btn-sm" onclick="editMenuCat('+i+')">편집</button> <button class="btn btn-sm btn-red" onclick="deleteMenuCat('+i+')">삭제</button></td></tr>';
+  });
+}
+
+function addMenuCat(){
+  var name=prompt('메뉴 이름을 입력하세요 (예: BEAUTY, INTERVIEW):');
+  if(!name) return;
+  var link=prompt('링크 URL을 입력하세요 (예: #beauty, beauty.html):','#');
+  menuCats.push({id:Date.now(),name:name.toUpperCase(),link:link||'#',style:'기본 (검정)',active:true,order:menuCats.length+1});
+  renderMenuCats();
+}
+
+function editMenuCat(i){
+  var name=prompt('메뉴 이름:',menuCats[i].name);
+  if(name) menuCats[i].name=name.toUpperCase();
+  var order=prompt('순서 (숫자):',menuCats[i].order);
+  if(order) menuCats[i].order=Number(order);
+  renderMenuCats();
+}
+
+function deleteMenuCat(i){
+  if(!confirm('"'+menuCats[i].name+'" 메뉴를 삭제하시겠습니까?')) return;
+  menuCats.splice(i,1);
+  renderMenuCats();
+}
+
+renderMenuCats();
+
+// ======== COVER SETTINGS ========
+var coverSlides=[
+  {id:1,img:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/c_1_7c42a14014.jpg',issue:'MARCH ISSUE COVER STORY.',title:'COVER STORY',link:'',active:true},
+  {id:2,img:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/c_2_118217f21c.jpg',issue:'MARCH ISSUE COVER STORY.',title:'COVER STORY',link:'',active:true},
+  {id:3,img:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/c_3_41f6c03312.jpg',issue:'MARCH ISSUE COVER STORY.',title:'COVER STORY',link:'',active:true},
+  {id:4,img:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/c_4_b4bf1e9441.jpg',issue:'MARCH ISSUE COVER STORY.',title:'COVER STORY',link:'',active:true}
+];
+
+function renderCovers(){
+  var el=document.getElementById('coverList');
+  el.innerHTML='';
+  coverSlides.forEach(function(s,i){
+    el.innerHTML+='<div style="background:var(--surface);border:1px solid var(--border);padding:20px;margin-bottom:12px;display:flex;gap:20px;align-items:flex-start">'
+      +'<div style="flex-shrink:0;position:relative;cursor:pointer" onclick="changeCoverImg('+i+')">'
+      +'<img loading="lazy" src="'+s.img+'" style="width:180px;height:110px;object-fit:cover;border:1px solid var(--border)">'
+      +'<div style="position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,.6);color:#fff;font-size:9px;padding:2px 6px">변경</div></div>'
+      +'<div style="flex:1">'
+      +'<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center"><span style="font-size:10px;font-weight:700;color:var(--text3);width:50px">발행호</span><input class="pe-input" value="'+s.issue+'" style="padding:6px 10px" onchange="coverSlides['+i+'].issue=this.value"></div>'
+      +'<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center"><span style="font-size:10px;font-weight:700;color:var(--text3);width:50px">제목</span><input class="pe-input" value="'+s.title+'" style="padding:6px 10px" onchange="coverSlides['+i+'].title=this.value"></div>'
+      +'<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center"><span style="font-size:10px;font-weight:700;color:var(--text3);width:50px">링크</span><input class="pe-input" value="'+(s.link||'')+'" placeholder="클릭 시 이동할 URL (선택)" style="padding:6px 10px" onchange="coverSlides['+i+'].link=this.value"></div>'
+      +'<div style="display:flex;gap:6px;align-items:center">'
+      +'<label class="pe-check"><input type="checkbox" '+(s.active?'checked':'')+' onchange="coverSlides['+i+'].active=this.checked"> 활성</label>'
+      +'<div style="flex:1"></div>'
+      +'<button class="btn btn-sm" onclick="moveCover('+i+',-1)">↑</button>'
+      +'<button class="btn btn-sm" onclick="moveCover('+i+',1)">↓</button>'
+      +'<button class="btn btn-sm btn-red" onclick="deleteCover('+i+')">삭제</button>'
+      +'</div></div></div>';
+  });
+}
+
+function changeCoverImg(i){
+  var input=document.createElement('input');
+  input.type='file';input.accept='image/*';
+  input.onchange=function(){
+    if(this.files&&this.files[0]){
+      var reader=new FileReader();
+      reader.onload=function(e){coverSlides[i].img=e.target.result;renderCovers();};
+      reader.readAsDataURL(this.files[0]);
+    }
+  };
+  input.click();
+}
+
+function addCoverSlide(){
+  coverSlides.push({id:Date.now(),img:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/yo_10_c3a703df29.jpg',issue:'NEW ISSUE',title:'새 커버',link:'',active:true});
+  renderCovers();
+}
+
+function deleteCover(i){
+  if(!confirm('이 커버 슬라이드를 삭제하시겠습니까?')) return;
+  coverSlides.splice(i,1);
+  renderCovers();
+}
+
+function moveCover(i,dir){
+  var j=i+dir;
+  if(j<0||j>=coverSlides.length) return;
+  var tmp=coverSlides[i];
+  coverSlides[i]=coverSlides[j];
+  coverSlides[j]=tmp;
+  renderCovers();
+}
+
+renderCovers();
+</script>
+</body>
+</html>

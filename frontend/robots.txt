@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /*.json$
+Disallow: /api/
+Sitemap: https://pap-magazine.com/sitemap.xml

@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co https://api.stripe.com https://api.pap-magazine.com; frame-src https://js.stripe.com;">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Submission | PAP Magazine</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Montserrat',sans-serif;background:#000;color:#fff;min-height:100vh;overflow-x:hidden}
+a{color:#fff;text-decoration:none}
+.side-nav{position:fixed;left:0;top:0;width:80px;height:100vh;display:flex;flex-direction:column;align-items:center;padding-top:32px;z-index:100}
+.nav-dots{width:36px;height:36px;border-radius:50%;border:1.5px solid rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;cursor:pointer;margin-bottom:48px;transition:border-color .3s}
+.nav-dots:hover{border-color:#fff}
+.nav-dots span{font-size:18px;letter-spacing:2px;color:rgba(255,255,255,.6)}
+.nav-links{display:flex;flex-direction:column;gap:32px}
+.nav-links a{writing-mode:vertical-rl;font-size:13px;font-weight:700;letter-spacing:5px;text-transform:uppercase;color:rgba(255,255,255,.35);transition:color .3s}
+.nav-links a:hover{color:rgba(255,255,255,.7)}
+.nav-links a.active{color:#fff}
+.lang-selector{position:fixed;top:32px;right:40px;z-index:100}
+.lang-selector select{background:transparent;color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.2);padding:6px 12px;font-size:11px;font-family:'Montserrat',sans-serif;letter-spacing:.1em;cursor:pointer}
+.lang-selector select option{background:#000;color:#fff}
+.content{margin-left:120px;padding:80px 60px 60px 0;max-width:900px}
+.page-hero{margin-bottom:48px}
+.page-hero h1{font-size:clamp(32px,5vw,56px);font-weight:900;letter-spacing:.04em;text-transform:uppercase;line-height:1;margin-bottom:20px}
+.page-hero p{font-size:13px;line-height:2.2;color:rgba(255,255,255,.5);max-width:600px}
+
+/* ACCESS GATE */
+.access-gate-overlay{position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);display:flex;align-items:center;justify-content:center}
+.access-gate-overlay.hidden{display:none}
+.access-gate{border:1px solid rgba(255,255,255,.15);padding:56px 48px;text-align:center;max-width:480px;width:90%}
+.access-gate h2{font-size:16px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
+.access-gate p{font-size:13px;color:rgba(255,255,255,.45);line-height:1.8;margin-bottom:28px}
+.access-gate .gate-btn{display:inline-block;padding:12px 32px;font-size:11px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;border:1.5px solid rgba(255,255,255,.3);transition:all .3s;cursor:pointer;background:transparent;color:#fff;font-family:'Montserrat',sans-serif}
+.access-gate .gate-btn:hover{background:#fff;color:#000;border-color:#fff}
+
+/* STEPS */
+.step-bar{display:flex;gap:4px;margin-bottom:48px}
+.step-pip{flex:1;height:3px;background:rgba(255,255,255,.1);transition:background .3s}
+.step-pip.done{background:rgba(255,255,255,.6)}
+.step-pip.active{background:#fff}
+.form-section{display:none}
+.form-section.active{display:block}
+.section-title{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:24px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.08)}
+.form-group{margin-bottom:20px}
+.form-label{display:block;font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:8px}
+.form-label .req{color:rgba(255,255,255,.6)}
+.form-input{width:100%;background:transparent;border:1px solid rgba(255,255,255,.15);padding:12px 14px;font-size:13px;font-family:'Montserrat',sans-serif;color:#fff;letter-spacing:.02em;transition:border-color .3s;outline:none}
+.form-input:focus{border-color:rgba(255,255,255,.5)}
+.form-input::placeholder{color:rgba(255,255,255,.2)}
+textarea.form-input{min-height:100px;resize:vertical;line-height:1.8}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.form-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.form-hint{font-size:10px;color:rgba(255,255,255,.2);margin-top:5px;letter-spacing:.03em}
+
+/* TEAM MEMBER ROW */
+.team-row{display:grid;grid-template-columns:120px 1fr 1fr 1fr;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.team-role{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.5)}
+.team-input{background:transparent;border:1px solid rgba(255,255,255,.12);padding:10px 12px;font-size:12px;font-family:'Montserrat',sans-serif;color:#fff;outline:none;width:100%;transition:border-color .3s}
+.team-input:focus{border-color:rgba(255,255,255,.4)}
+.team-input::placeholder{color:rgba(255,255,255,.15);font-size:11px}
+.team-header{display:grid;grid-template-columns:120px 1fr 1fr 1fr;gap:12px;padding:0 0 8px;margin-bottom:4px;border-bottom:1px solid rgba(255,255,255,.12)}
+.team-header span{font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.3)}
+
+/* LOOK CREDITS */
+.look-block{border:1px solid rgba(255,255,255,.1);padding:24px 20px;margin-bottom:16px;position:relative}
+.look-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.look-title{font-size:14px;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+.look-remove{background:none;border:none;color:rgba(255,255,255,.25);font-size:18px;cursor:pointer;padding:4px 8px;transition:color .2s}
+.look-remove:hover{color:#fff}
+.look-item{display:grid;grid-template-columns:140px 1fr 1fr;gap:10px;align-items:center;margin-bottom:8px}
+.look-item-header{display:grid;grid-template-columns:140px 1fr 1fr;gap:10px;margin-bottom:6px}
+.look-item-header span{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25)}
+.look-select{background:transparent;border:1px solid rgba(255,255,255,.12);padding:9px 10px;font-size:12px;font-family:'Montserrat',sans-serif;color:#fff;outline:none;width:100%;-webkit-appearance:none;appearance:none;cursor:pointer}
+.look-select option{background:#111;color:#fff}
+.look-input{background:transparent;border:1px solid rgba(255,255,255,.12);padding:9px 10px;font-size:12px;font-family:'Montserrat',sans-serif;color:#fff;outline:none;width:100%;transition:border-color .3s}
+.look-input:focus{border-color:rgba(255,255,255,.4)}
+.look-input::placeholder{color:rgba(255,255,255,.15);font-size:11px}
+.add-btn{background:transparent;border:1px dashed rgba(255,255,255,.15);padding:10px 20px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.35);cursor:pointer;font-family:'Montserrat',sans-serif;transition:all .3s;width:100%}
+.add-btn:hover{border-color:rgba(255,255,255,.4);color:rgba(255,255,255,.7)}
+.add-btn-sm{background:transparent;border:1px dashed rgba(255,255,255,.1);padding:8px 14px;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.25);cursor:pointer;font-family:'Montserrat',sans-serif;transition:all .3s;margin-top:8px}
+.add-btn-sm:hover{border-color:rgba(255,255,255,.3);color:rgba(255,255,255,.5)}
+
+/* LOOK IMAGE UPLOAD */
+.look-images{margin-bottom:16px}
+.look-img-label{font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.25);margin-bottom:8px}
+.look-img-zone{border:1px dashed rgba(255,255,255,.12);padding:16px;cursor:pointer;position:relative;transition:all .3s;text-align:center}
+.look-img-zone:hover{border-color:rgba(255,255,255,.3);background:rgba(255,255,255,.02)}
+.look-img-zone input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.look-img-zone .liz-text{font-size:10px;color:rgba(255,255,255,.3)}
+.look-img-zone .liz-text strong{color:rgba(255,255,255,.5);text-decoration:underline;text-underline-offset:2px}
+.look-thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.look-thumb{width:64px;height:80px;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.1)}
+.look-thumb img{width:100%;height:100%;object-fit:cover}
+.look-thumb .lt-remove{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.7);border:none;color:rgba(255,255,255,.6);font-size:12px;cursor:pointer;width:18px;height:18px;display:flex;align-items:center;justify-content:center;line-height:1}
+.look-thumb .lt-remove:hover{color:#fff}
+
+.item-remove{background:none;border:none;color:rgba(255,255,255,.2);font-size:14px;cursor:pointer;padding:2px 6px;transition:color .2s;position:absolute;right:4px;top:50%;transform:translateY(-50%)}
+.item-remove:hover{color:#fff}
+.look-item-wrap{position:relative}
+
+/* FILE UPLOAD */
+.upload-zone{border:1.5px dashed rgba(255,255,255,.15);padding:40px 32px;text-align:center;cursor:pointer;transition:all .3s;position:relative}
+.upload-zone:hover,.upload-zone.dragover{border-color:rgba(255,255,255,.4);background:rgba(255,255,255,.03)}
+.upload-icon svg{width:32px;height:32px;stroke:rgba(255,255,255,.3);margin-bottom:10px}
+.upload-text{font-size:12px;color:rgba(255,255,255,.4)}
+.upload-text strong{color:rgba(255,255,255,.7);text-decoration:underline;text-underline-offset:3px}
+.upload-hint{font-size:10px;color:rgba(255,255,255,.2);margin-top:6px}
+.upload-input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.file-list{margin-top:10px;display:flex;flex-direction:column;gap:4px}
+.file-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);font-size:11px;color:rgba(255,255,255,.5)}
+.file-item .fn{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-right:12px}
+.file-item .fs{color:rgba(255,255,255,.25);margin-right:12px;flex-shrink:0}
+.file-item .fr{background:none;border:none;color:rgba(255,255,255,.25);cursor:pointer;font-size:15px;padding:0 4px;transition:color .2s}
+.file-item .fr:hover{color:#fff}
+
+/* NAV BUTTONS */
+.form-nav{display:flex;gap:16px;margin-top:40px;padding-top:28px;border-top:1px solid rgba(255,255,255,.08)}
+.btn{padding:13px 28px;font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;border:1.5px solid rgba(255,255,255,.25);cursor:pointer;font-family:'Montserrat',sans-serif;transition:all .3s}
+.btn-back{background:transparent;color:rgba(255,255,255,.5)}
+.btn-back:hover{color:#fff;border-color:rgba(255,255,255,.5)}
+.btn-next,.btn-submit{background:#fff;color:#000;border-color:#fff}
+.btn-next:hover,.btn-submit:hover{background:transparent;color:#fff}
+
+/* SUCCESS */
+.submit-success{display:none;text-align:center;padding:60px 0}
+.success-icon svg{width:64px;height:64px;stroke:#fff;margin-bottom:24px}
+.submit-success h2{font-size:20px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
+.submit-success p{font-size:13px;color:rgba(255,255,255,.45);line-height:2;max-width:500px;margin:0 auto}
+
+/* GUIDELINES */
+.guidelines{margin-top:60px;border-top:1px solid rgba(255,255,255,.08);padding-top:40px}
+.guidelines-title{font-size:12px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:24px}
+.gl-item{border-bottom:1px solid rgba(255,255,255,.06);padding:14px 0}
+.gl-head{display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+.gl-head h3{font-size:13px;font-weight:700;letter-spacing:.05em;color:rgba(255,255,255,.6);transition:color .2s}
+.gl-head:hover h3{color:#fff}
+.gl-toggle{font-size:18px;color:rgba(255,255,255,.3);transition:transform .3s}
+.gl-item.open .gl-toggle{transform:rotate(45deg)}
+.gl-body{max-height:0;overflow:hidden;transition:max-height .4s ease}
+.gl-item.open .gl-body{max-height:600px}
+.gl-body-inner{padding:14px 0 8px;font-size:12px;color:rgba(255,255,255,.4);line-height:2}
+.gl-body-inner ul{padding-left:16px;margin:8px 0}
+.gl-body-inner li{margin-bottom:4px}
+
+/* TERMS AGREEMENT */
+.terms-section{margin-top:32px;border:1px solid rgba(255,255,255,.1);padding:24px}
+.terms-title{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:16px}
+.terms-box{max-height:240px;overflow-y:auto;padding:16px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);margin-bottom:20px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.15) transparent}
+.terms-box::-webkit-scrollbar{width:4px}
+.terms-box::-webkit-scrollbar-track{background:transparent}
+.terms-box::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:2px}
+.terms-box ol{padding-left:20px;margin:0}
+.terms-box li{font-size:12px;color:rgba(255,255,255,.5);line-height:2;margin-bottom:8px}
+.terms-box li strong{color:rgba(255,255,255,.7);font-weight:700}
+.terms-check{display:flex;align-items:flex-start;gap:12px;cursor:pointer}
+.terms-check input[type="checkbox"]{width:18px;height:18px;margin-top:2px;accent-color:#fff;cursor:pointer;flex-shrink:0}
+.terms-check label{font-size:12px;color:rgba(255,255,255,.5);line-height:1.7;cursor:pointer}
+.terms-check label strong{color:rgba(255,255,255,.8)}
+.terms-error{font-size:11px;color:rgba(255,100,100,.8);margin-top:8px;display:none}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+
+/* GENRE TAGS */
+.genre-tags{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.genre-tag{padding:8px 16px;border:1px solid rgba(255,255,255,.12);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:all .3s;color:rgba(255,255,255,.4);font-family:'Montserrat',sans-serif;background:transparent}
+.genre-tag:hover{border-color:rgba(255,255,255,.3);color:rgba(255,255,255,.6)}
+.genre-tag.selected{border-color:#fff;color:#fff;background:rgba(255,255,255,.06)}
+
+/* SUBMISSION DASHBOARD */
+.my-subs-section{margin-bottom:40px;border:1px solid rgba(255,255,255,.08);padding:24px}
+.my-subs-title{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+.my-subs-toggle{background:transparent;border:1px solid rgba(255,255,255,.15);padding:5px 12px;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.4);cursor:pointer;font-family:'Montserrat',sans-serif;transition:all .3s}
+.my-subs-toggle:hover{border-color:rgba(255,255,255,.4);color:rgba(255,255,255,.7)}
+.sub-item{display:grid;grid-template-columns:1fr 100px 120px 80px;gap:12px;align-items:center;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.sub-item:last-child{border-bottom:none}
+.sub-item-title{font-size:12px;font-weight:700;letter-spacing:.04em}
+.sub-item-date{font-size:10px;color:rgba(255,255,255,.3)}
+.sub-item-status{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:4px 10px;text-align:center;border:1px solid}
+.status-reviewing{color:rgba(255,180,50,.8);border-color:rgba(255,180,50,.25);background:rgba(255,180,50,.05)}
+.status-accepted{color:rgba(100,255,150,.8);border-color:rgba(100,255,150,.25);background:rgba(100,255,150,.05)}
+.status-published{color:rgba(100,200,255,.8);border-color:rgba(100,200,255,.25);background:rgba(100,200,255,.05)}
+.status-rejected{color:rgba(255,100,100,.6);border-color:rgba(255,100,100,.2);background:rgba(255,100,100,.03)}
+.sub-item-action{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3);cursor:pointer;text-align:center;transition:color .2s}
+.sub-item-action:hover{color:#fff}
+.sub-empty{font-size:11px;color:rgba(255,255,255,.25);text-align:center;padding:20px 0}
+
+/* IMAGE REORDER */
+.look-thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.look-thumb{width:64px;height:80px;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.1);cursor:grab;transition:transform .2s,box-shadow .2s}
+.look-thumb:active{cursor:grabbing}
+.look-thumb.dragging{opacity:.4;transform:scale(.9)}
+.look-thumb.drag-over{border-color:#fff;box-shadow:0 0 8px rgba(255,255,255,.2)}
+.look-thumb .lt-order{position:absolute;bottom:2px;left:2px;background:rgba(0,0,0,.8);font-size:8px;font-weight:700;padding:1px 4px;color:rgba(255,255,255,.6)}
+.cover-badge{position:absolute;top:0;left:0;right:0;background:rgba(255,255,255,.9);color:#000;font-size:7px;font-weight:800;letter-spacing:.1em;text-align:center;padding:2px 0;text-transform:uppercase}
+
+/* COVER SELECTOR */
+.cover-select-row{display:flex;align-items:center;gap:12px;margin-top:12px;padding:10px 14px;border:1px dashed rgba(255,255,255,.1);background:rgba(255,255,255,.02)}
+.cover-select-row label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.35)}
+.cover-select-row select{background:transparent;border:1px solid rgba(255,255,255,.15);padding:6px 10px;font-size:11px;font-family:'Montserrat',sans-serif;color:#fff;cursor:pointer;outline:none}
+.cover-select-row select option{background:#111;color:#fff}
+
+/* TIMELINE */
+.timeline-visual{display:flex;align-items:center;gap:0;margin:24px 0;padding:20px 0}
+.tl-step{flex:1;text-align:center;position:relative}
+.tl-dot{width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,.15);margin:0 auto 8px;position:relative;z-index:1;background:#000}
+.tl-step.active .tl-dot{border-color:#fff;background:#fff}
+.tl-step.done .tl-dot{border-color:rgba(255,255,255,.5);background:rgba(255,255,255,.5)}
+.tl-label{font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.25)}
+.tl-step.active .tl-label{color:#fff}
+.tl-step.done .tl-label{color:rgba(255,255,255,.5)}
+.tl-date{font-size:8px;color:rgba(255,255,255,.2);margin-top:3px}
+.tl-line{width:100%;height:1px;background:rgba(255,255,255,.1);position:absolute;top:6px;left:50%;z-index:0}
+.tl-step.done .tl-line{background:rgba(255,255,255,.4)}
+
+/* COPYRIGHT CHECK */
+.copyright-check{display:flex;align-items:flex-start;gap:12px;padding:16px;border:1px solid rgba(255,255,255,.1);margin-top:16px;background:rgba(255,255,255,.02)}
+.copyright-check input[type="checkbox"]{width:18px;height:18px;margin-top:2px;accent-color:#fff;cursor:pointer;flex-shrink:0}
+.copyright-check label{font-size:11px;color:rgba(255,255,255,.45);line-height:1.8;cursor:pointer}
+
+/* ADD MULTIPLE MODELS */
+.multi-model-wrap{border:1px solid rgba(255,255,255,.06);padding:12px;margin-top:4px}
+.model-row{display:grid;grid-template-columns:1fr 1fr 1fr 30px;gap:10px;align-items:center;margin-bottom:6px}
+.model-row .team-input{padding:8px 10px;font-size:11px}
+.model-remove{background:none;border:none;color:rgba(255,255,255,.2);font-size:14px;cursor:pointer;padding:2px 4px;transition:color .2s}
+.model-remove:hover{color:#fff}
+
+.footer-legal{margin-left:120px;padding:40px 60px 40px 0;border-top:1px solid rgba(255,255,255,.1);font-size:11px;color:rgba(255,255,255,.3);line-height:2}
+.footer-legal a{color:rgba(255,255,255,.3)}
+@media(max-width:768px){
+  .side-nav{width:50px;padding-top:20px}
+  .content{margin-left:60px;padding:60px 20px}
+  .form-row,.form-row3{grid-template-columns:1fr}
+  .team-row,.team-header{grid-template-columns:1fr}
+  .team-role{margin-bottom:4px}
+  .look-item,.look-item-header{grid-template-columns:1fr}
+  .footer-legal{margin-left:60px;padding:20px 20px}
+  .genre-tags{gap:6px}
+  .sub-item{grid-template-columns:1fr 80px;gap:8px}
+  .sub-item-date,.sub-item-action{display:none}
+  .model-row{grid-template-columns:1fr 1fr 30px}
+  .model-row .team-input:nth-child(3){display:none}
+  .timeline-visual{flex-wrap:wrap;gap:4px}
+  .cover-select-row{flex-direction:column;gap:8px}
+}
+</style>
+<!-- Favicon & PWA -->
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000000">
+<!-- Open Graph / Social -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="PAP Magazine">
+<meta property="og:title" content="Submission | PAP Magazine">
+<meta property="og:description" content="Submit your editorial to PAP Magazine. Open for photographers, stylists, and creative teams.">
+<meta property="og:url" content="https://pap-magazine.com/submission.html">
+<meta property="og:image" content="https://pap-magazine.com/apple-touch-icon.png">
+<meta property="og:locale" content="ko_KR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Submission | PAP Magazine">
+<meta name="twitter:description" content="Submit your editorial to PAP Magazine. Open for photographers, stylists, and creative teams.">
+<meta name="twitter:image" content="https://pap-magazine.com/apple-touch-icon.png">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Submission - PAP Magazine","description":"Submit your editorial to PAP Magazine"}</script>
+<!-- Google Analytics (replace G-XXXXXXXXXX with your ID) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-XXXXXXXXXX');</script>
+<!-- Print Styles -->
+<style media="print">
+@media print{
+  body{background:#fff!important;color:#000!important}
+  .side-nav,.nav-overlay,.header,.footer-legal,.lang-selector,#cookieConsent,#backToTop,.mobile-menu-btn,.hamburger,.search-container{display:none!important}
+  .content,.main-content{margin-left:0!important;padding:20px!important}
+  a{color:#000!important;text-decoration:underline}
+  img{max-width:100%!important}
+  *{box-shadow:none!important;text-shadow:none!important}
+}
+</style>
+</head>
+<body>
+<!-- Loading State -->
+<div id="pageLoader" style="position:fixed;inset:0;z-index:10000;background:#000;display:flex;align-items:center;justify-content:center;transition:opacity .4s">
+<div style="text-align:center"><div style="font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;letter-spacing:.3em;color:rgba(255,255,255,.4);text-transform:uppercase">PAP</div>
+<div style="margin-top:12px;width:40px;height:1px;background:rgba(255,255,255,.1);position:relative;overflow:hidden;margin-left:auto;margin-right:auto"><div style="position:absolute;width:50%;height:100%;background:rgba(255,255,255,.5);animation:loaderSlide 1s ease infinite"></div></div></div></div>
+<style>@keyframes loaderSlide{0%{left:-50%}100%{left:100%}}</style>
+<script>window.addEventListener('load',function(){var l=document.getElementById('pageLoader');if(l){l.style.opacity='0';setTimeout(function(){l.remove();},400);}});</script>
+<div class="lang-selector"><select id="langSelect" onchange="setLang(this.value)"><option value="ko">KO</option><option value="en">EN</option><option value="it">IT</option><option value="fr">FR</option><option value="es">ES</option><option value="ja">JA</option><option value="zh">ZH</option><option value="ru">RU</option></select></div>
+<nav role="navigation" aria-label="Main navigation" class="side-nav">
+  <a href="index.html" class="nav-dots"><span>&#8942;</span></a>
+  <div class="nav-links">
+    <a href="business.html" data-i18n="business">BUSINESS</a>
+    <a href="about.html" data-i18n="about">ABOUT</a>
+    <a href="contact.html" data-i18n="contact">CONTACT</a>
+    <a href="subscribe.html" data-i18n="subscribe">SUBSCRIBE</a>
+    <a href="submission.html" class="active" data-i18n="submission">SUBMISSION</a>
+    <a href="pullletter.html" data-i18n="pullletter">PULL-LETTER</a>
+  </div>
+</nav>
+
+<main role="main" class="content">
+  <div class="page-hero">
+    <h1>SUBMISSION</h1>
+    <p data-i18n="pageDesc">PAP 매거진에 에디토리얼을 제출하세요. 작품 정보, 팀 크레딧, 룩별 의상 크레딧, 고해상도 이미지를 제출해 주세요. 심사는 접수일로부터 1~3 영업일이 소요됩니다.</p>
+  </div>
+
+  <!-- ACCESS GATE -->
+  <div class="access-gate-overlay" id="accessGateOverlay">
+    <div class="access-gate">
+      <h2 data-i18n="gateTitle">회원 전용</h2>
+      <p data-i18n-html="gateDesc">이 서비스는 무료 회원 이상만 이용할 수 있습니다.<br>로그인하거나 회원가입 후 이용해 주세요.</p>
+      <button class="gate-btn" data-i18n="gateLogin" onclick="simulateLogin()">로그인 / 회원가입</button>
+    </div>
+  </div>
+
+  <!-- MY SUBMISSIONS DASHBOARD -->
+  <div class="my-subs-section" id="mySubsSection" style="display:none">
+    <div class="my-subs-title">
+      <span>MY SUBMISSIONS</span>
+      <button class="my-subs-toggle" onclick="toggleMySubmissions()">HIDE</button>
+    </div>
+    <div id="mySubsList">
+      <div class="sub-empty" id="subEmpty">아직 제출한 서브미션이 없습니다. / No submissions yet.</div>
+    </div>
+  </div>
+
+  <!-- FORM -->
+  <div id="formArea" style="display:none">
+
+    <!-- STEP BAR -->
+    <div class="step-bar">
+      <div class="step-pip active" id="pip1"></div>
+      <div class="step-pip" id="pip2"></div>
+      <div class="step-pip" id="pip3"></div>
+      <div class="step-pip" id="pip4"></div>
+      <div class="step-pip" id="pip5"></div>
+    </div>
+
+    <!-- STEP 1: Category -->
+    <div class="form-section active" id="step1">
+      <div class="section-title">카테고리 / Category <span class="req">*</span></div>
+      <p style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:16px;line-height:1.8">에디토리얼에 해당하는 카테고리를 선택하세요 (복수 선택 가능).<br>Select the categories that apply to your editorial (multiple allowed).</p>
+      <div class="genre-tags" id="genreTags">
+        <button class="genre-tag" onclick="selectGenre(this)">FASHION</button>
+        <button class="genre-tag" onclick="selectGenre(this)">BEAUTY</button>
+        <button class="genre-tag" onclick="selectGenre(this)">ART</button>
+        <button class="genre-tag" onclick="selectGenre(this)">CONCEPTUAL</button>
+        <button class="genre-tag" onclick="selectGenre(this)">PORTRAIT</button>
+        <button class="genre-tag" onclick="selectGenre(this)">STREET</button>
+        <button class="genre-tag" onclick="selectGenre(this)">FILM</button>
+      </div>
+      <div class="form-hint">에디토리얼에 해당하는 카테고리를 선택하세요 (복수 선택 가능). / Select categories that apply (multiple allowed).</div>
+
+      <div class="form-nav">
+        <div style="flex:1"></div>
+        <button class="btn btn-next" onclick="goStep(2)">NEXT</button>
+      </div>
+    </div>
+
+    <!-- STEP 2: Production & Title -->
+    <div class="form-section" id="step2">
+      <div class="section-title">작품 정보 / Production Info</div>
+      <div class="form-group">
+        <label class="form-label">Editorial Title <span class="req">*</span></label>
+        <input type="text" class="form-input" id="editorialTitle" placeholder="Editorial Title (e.g. GAS)">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Production / Studio Name <span class="req">*</span></label>
+          <input type="text" class="form-input" id="studioName" placeholder="e.g. ThePinkBang Productions">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email <span class="req">*</span></label>
+          <input type="email" class="form-input" id="contactEmail" placeholder="hello@example.com">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Website</label>
+          <input type="url" class="form-input" id="studioWebsite" placeholder="https://...">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Instagram</label>
+          <input type="text" class="form-input" id="studioInsta" placeholder="@yourstudio">
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:8px">
+        <label class="form-label">Artist Statement / 작품 설명 <span class="req">*</span></label>
+        <textarea class="form-input" id="artistStatement" placeholder="작품의 컨셉, 영감, 스토리를 간략히 설명해 주세요. / Briefly describe the concept, inspiration, and story behind your editorial." style="min-height:120px"></textarea>
+        <div class="form-hint">200~500자 권장 / 200-500 characters recommended</div>
+      </div>
+
+      <div class="copyright-check">
+        <input type="checkbox" id="copyrightConfirm">
+        <label for="copyrightConfirm">본인은 제출하는 모든 이미지와 콘텐츠에 대한 적법한 저작권을 보유하고 있으며, 제3자의 권리를 침해하지 않음을 확인합니다.<br><strong>I confirm that I hold the legal copyright to all submitted images and content, and that they do not infringe any third-party rights.</strong></label>
+      </div>
+
+      <div class="form-nav">
+        <button class="btn btn-back" onclick="goStep(1)">BACK</button>
+        <div style="flex:1"></div>
+        <button class="btn btn-next" onclick="goStep(3)">NEXT</button>
+      </div>
+    </div>
+
+    <!-- STEP 3: Team Credits -->
+    <div class="form-section" id="step3">
+      <div class="section-title">팀 크레딧 / Team Credits</div>
+      <p style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:20px;line-height:1.8">각 팀원의 이름, 인스타그램, 웹사이트를 입력해 주세요. 인스타그램 핸들은 소셜 미디어 크레딧에 사용됩니다.<br>Enter each team member's name, Instagram, and website. Instagram handles are used for social media credits.</p>
+      <div class="team-header">
+        <span>ROLE</span><span>NAME</span><span>INSTAGRAM</span><span>WEBSITE</span>
+      </div>
+      <div id="teamList">
+        <div class="team-row"><div class="team-role">Photo</div><input class="team-input" placeholder="Name"><input class="team-input" placeholder="@instagram"><input class="team-input" placeholder="website"></div>
+        <div class="team-row"><div class="team-role">Art Dir.</div><input class="team-input" placeholder="Name"><input class="team-input" placeholder="@instagram"><input class="team-input" placeholder=""></div>
+        <div class="team-row"><div class="team-role">Styling</div><input class="team-input" placeholder="Name"><input class="team-input" placeholder="@instagram"><input class="team-input" placeholder=""></div>
+        <div class="team-row"><div class="team-role">MUAH</div><input class="team-input" placeholder="Name"><input class="team-input" placeholder="@instagram"><input class="team-input" placeholder=""></div>
+        <div class="team-row"><div class="team-role">Set Design</div><input class="team-input" placeholder="Name"><input class="team-input" placeholder="@instagram"><input class="team-input" placeholder=""></div>
+        <div class="team-row"><div class="team-role">Styling Asst.</div><input class="team-input" placeholder="Name"><input class="team-input" placeholder="@instagram"><input class="team-input" placeholder=""></div>
+        <div class="team-row"><div class="team-role">Retouch</div><input class="team-input" placeholder="Name / Studio"><input class="team-input" placeholder="@instagram"><input class="team-input" placeholder="website"></div>
+        <div class="team-row"><div class="team-role">Production</div><input class="team-input" placeholder="Name / Studio"><input class="team-input" placeholder="@instagram"><input class="team-input" placeholder="website"></div>
+      </div>
+      <button class="add-btn" style="margin-top:12px" onclick="addTeamRow()">+ Add Team Member</button>
+
+      <!-- MODELS (Multiple) -->
+      <div style="margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,.08)">
+        <div class="section-title" style="border-bottom:none;padding-bottom:0">모델 / Models</div>
+        <p style="font-size:10px;color:rgba(255,255,255,.25);margin-bottom:12px;line-height:1.8">모든 모델의 이름, 인스타그램, 소속 에이전시를 입력하세요. / Enter all models with their agency info.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 30px;gap:10px;margin-bottom:6px">
+          <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25)">NAME</span>
+          <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25)">INSTAGRAM</span>
+          <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25)">AGENCY</span>
+          <span></span>
+        </div>
+        <div id="modelList">
+          <div class="model-row">
+            <input class="team-input" placeholder="Model Name">
+            <input class="team-input" placeholder="@instagram">
+            <input class="team-input" placeholder="Agency (optional)">
+            <span></span>
+          </div>
+        </div>
+        <button class="add-btn" style="margin-top:8px" onclick="addModelRow()">+ Add Model</button>
+      </div>
+
+      <div class="form-nav">
+        <button class="btn btn-back" onclick="goStep(2)">BACK</button>
+        <div style="flex:1"></div>
+        <button class="btn btn-next" onclick="goStep(4)">NEXT</button>
+      </div>
+    </div>
+
+    <!-- STEP 4: Look Credits -->
+    <div class="form-section" id="step4">
+      <div class="section-title">룩별 크레딧 / Look Credits</div>
+      <p style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:20px;line-height:1.8">각 룩(착장)에 해당하는 이미지를 업로드하고, 사용된 의상·액세서리의 브랜드명과 인스타그램을 입력해 주세요. 최소 4개 이상의 룩이 필요합니다. 이미지를 드래그하여 순서를 변경할 수 있습니다. 하단에서 크레딧 파일(PDF/Word)과 추가 이미지도 함께 첨부할 수 있습니다.<br>Upload images for each look and enter brand/accessory credits. Minimum 4 looks required. Drag thumbnails to reorder. You can also attach a credit file (PDF/Word) and additional images below.</p>
+      <div id="lookList"></div>
+      <button class="add-btn" onclick="addLook()">+ Add Look</button>
+
+      <!-- ADDITIONAL IMAGES -->
+      <div style="margin-top:32px;padding-top:24px;border-top:1px solid rgba(255,255,255,.08)">
+        <div class="section-title" style="border-bottom:none;padding-bottom:0">추가 이미지 / Additional Images</div>
+        <div class="form-group">
+          <label class="form-label">고해상도 이미지 — 룩에 포함되지 않는 추가 이미지 (선택)</label>
+          <div class="upload-zone" id="uploadZone">
+            <input type="file" class="upload-input" id="fileInput" multiple accept="image/*">
+            <div class="upload-icon"><svg viewBox="0 0 32 32" fill="none"><path d="M16 24V8M16 8L10 14M16 8L22 14" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 24v2a2 2 0 002 2h20a2 2 0 002-2v-2" stroke-width="2" stroke-linecap="round"/></svg></div>
+            <div class="upload-text"><strong>Click</strong> or drag additional images</div>
+            <div class="upload-hint">JPG · Max 25MB · 1080×1350px recommended</div>
+          </div>
+          <div class="file-list" id="fileList"></div>
+          <div class="form-hint">커버 이미지, 비하인드 컷 등 룩에 포함되지 않는 추가 이미지가 있으면 첨부해 주세요.</div>
+        </div>
+      </div>
+
+      <!-- COVER IMAGE SELECTOR -->
+      <div class="cover-select-row" id="coverSelectRow" style="display:none">
+        <label>COVER IMAGE / 커버 이미지:</label>
+        <select id="coverImageSelect" onchange="setCoverImage()">
+          <option value="">자동 선택 (첫 번째 이미지) / Auto (first image)</option>
+        </select>
+        <div style="font-size:9px;color:rgba(255,255,255,.2)">커버로 사용할 이미지를 지정하세요. 미선택 시 첫 이미지가 사용됩니다.</div>
+      </div>
+
+      <div class="form-nav">
+        <button class="btn btn-back" onclick="goStep(3)">BACK</button>
+        <div style="flex:1"></div>
+        <button class="btn btn-next" onclick="goStep(5)">NEXT</button>
+      </div>
+    </div>
+
+    <!-- STEP 5: Links & Terms -->
+    <div class="form-section" id="step5">
+      <div class="section-title">추가 정보 및 약관 / Additional Info & Terms</div>
+      <div class="form-group">
+        <label class="form-label">대용량 파일 전송 링크 (선택)</label>
+        <input type="url" class="form-input" placeholder="Dropbox / WeTransfer / Swisstransfer URL">
+        <div class="form-hint">파일이 큰 경우 Dropbox, WeTransfer, Swisstransfer 링크를 첨부해주세요.</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">영상 링크 — 백스테이지, 스케치, 숏클립 (선택)</label>
+        <input type="url" class="form-input" placeholder="YouTube / Vimeo URL">
+        <div class="form-hint">백스테이지 영상, 스케치, 숏클립 등 소셜 미디어 콘텐츠용 영상을 첨부해 주세요.</div>
+      </div>
+      <!-- TERMS AGREEMENT -->
+      <div class="terms-section">
+        <div class="terms-title">서브미션 이용약관 / Submission Terms & Conditions</div>
+        <div class="terms-box" style="max-height:320px">
+          <ol>
+            <li><strong>제1조 (작품의 독점 게재)</strong><br>
+            ① 본 서브미션을 통해 제출된 에디토리얼(이하 "작품")은 PAP Magazine(이하 "PAP")에 독점적으로 게재됩니다. 제출자는 동일한 작품을 다른 매거진, 온라인 미디어, 출판물 또는 이에 준하는 플랫폼에 게재하거나 배포할 수 없습니다.<br>
+            ② 본 조항을 위반하여 작품이 타 매체에 중복 게재된 사실이 확인될 경우, PAP는 해당 작품을 즉시 삭제할 수 있으며, 제출자에 대한 향후 서브미션 접수 제한, 법적 조치를 포함한 제재를 취할 수 있습니다.<br>
+            ③ 독점 게재 기간은 PAP 웹사이트에 작품이 게시된 날로부터 무기한으로 적용됩니다.<br>
+            <em style="color:rgba(255,255,255,.3)">The submitted editorial is exclusive to PAP Magazine. The submitter may not publish, distribute, or display the same work in any other magazine, online media, publication, or comparable platform. Violation of this clause may result in immediate removal of the content, restriction of future submissions, and potential legal action. The exclusivity period applies indefinitely from the date of publication on PAP's website.</em></li>
+
+            <li><strong>제2조 (웹사이트 및 소셜 미디어 활용 동의)</strong><br>
+            ① 제출된 작품은 PAP의 공식 웹사이트(pap-magazine.com)에 게재되며, PAP의 공식 소셜 미디어 계정(Instagram, Facebook, YouTube 등)을 통해 게재 전후로 홍보 및 소개 목적으로 사용될 수 있습니다.<br>
+            ② PAP는 작품의 홍보를 위해 이미지의 크롭, 리사이즈, 필터 적용 등 합리적인 범위 내의 편집을 수행할 수 있습니다. 단, 작품의 본질적인 내용을 훼손하는 변경은 하지 않습니다.<br>
+            ③ 모든 소셜 미디어 게시물에는 제출자 및 팀원의 크레딧이 적절히 표기됩니다.<br>
+            <em style="color:rgba(255,255,255,.3)">Submitted works will be published on PAP's official websites and may be used for promotional purposes on PAP's social media accounts before and after publication. PAP may perform reasonable edits such as cropping, resizing, or filtering for promotional purposes, without altering the essential content. All social media posts will include proper credits for the submitter and team members.</em></li>
+
+            <li><strong>제3조 (크레딧 정보의 정확성 및 수정 수수료)</strong><br>
+            ① 제출자는 모든 크레딧 정보(팀원 이름, 인스타그램 핸들, 브랜드명, 룩별 의상 크레딧 등)가 정확하고 최신 상태임을 보증합니다.<br>
+            ② 게재 이후 제출자의 귀책사유로 인한 크레딧 정보 수정이 필요한 경우, 건당 €100의 수정 수수료가 부과됩니다. 수수료는 수정 작업 착수 전에 결제되어야 합니다.<br>
+            ③ PDF 또는 Word 형식의 크레딧 파일에 포함되지 않은 정보는 누락될 수 있으며, 이에 대해 PAP는 책임을 지지 않습니다.<br>
+            ④ 크레딧 작성 시 전체 대문자(ALL CAPS)를 사용하지 마십시오.<br>
+            <em style="color:rgba(255,255,255,.3)">The submitter guarantees that all credit information is accurate and up-to-date. Post-publication corrections due to submitter error will incur a fee of €100 per correction, payable before work commences. Information not included in the submitted PDF or Word credit file may be omitted, and PAP assumes no responsibility for such omissions. Do not use ALL CAPS in credits.</em></li>
+
+            <li><strong>제4조 (콘텐츠 사용 권한 및 수익 배분)</strong><br>
+            ① 제출된 작품이 PAP의 디지털 매거진(웹사이트, 앱 등) 또는 인쇄물(종이 매거진, 인쇄 출판물 등)로 발행되는 경우, 이로 인해 발생하는 모든 수익(구독료, 판매 수익, 광고 수익 등)은 PAP가 전액 귀속합니다. 제출자 및 크리에이티브 팀은 매거진 발행에 따른 수익에 대해 별도의 보상을 청구할 수 없습니다.<br>
+            ② 매거진 발행(디지털 및 인쇄물) 범위를 벗어난 2차 가공 또는 파생적 상업 활동(광고 캠페인, 브랜드 콜라보레이션, 라이선싱, 전시, 상품화 등)으로 작품이 사용되어 수익이 발생할 경우, 해당 활동에서 발생하는 순이익(총수익에서 직접 비용을 차감한 금액)은 PAP와 크리에이티브 팀 사이에서 50:50의 비율로 배분됩니다.<br>
+            ③ 크리에이티브 팀에 배분되는 수익은 제출자 또는 팀 대표자에게 일괄 지급됩니다. 팀 대표자가 해당 수익을 팀원들과 분배하는 방식, 비율 및 시기는 전적으로 팀 대표자의 재량에 따르며, PAP는 팀 내부 수익 분배 과정에 일체 관여하지 않고 이에 대한 어떠한 책임도 부담하지 않습니다.<br>
+            ④ 2차 가공을 통한 상업적 사용이 발생할 경우, PAP는 사전에 제출자에게 서면(이메일 포함)으로 통지합니다.<br>
+            <em style="color:rgba(255,255,255,.3)">Article 4 (Content Usage Rights and Revenue Sharing)<br>
+            ① All revenue generated from publication of submitted works in PAP's digital magazine (website, app, etc.) or print publications (print magazine, printed publications, etc.), including subscription fees, sales revenue, and advertising revenue, shall belong entirely to PAP. The submitter and creative team may not claim separate compensation for revenue arising from magazine publication.<br>
+            ② If the work is used for secondary processing or derivative commercial activities beyond magazine publication (digital and print), such as advertising campaigns, brand collaborations, licensing, exhibitions, or merchandising, the net profit (gross revenue minus direct costs) from such activities shall be split 50:50 between PAP and the creative team.<br>
+            ③ The creative team's share of revenue shall be paid in a lump sum to the submitter or team representative. The manner, ratio, and timing in which the team representative distributes such revenue among team members is entirely at the team representative's discretion. PAP shall have no involvement whatsoever in the internal revenue distribution process within the team and assumes no liability in this regard.<br>
+            ④ PAP will provide prior written notice (including email) to the submitter before any secondary commercial use occurs.</em></li>
+
+            <li><strong>제5조 (저작권 및 지적재산권)</strong><br>
+            ① 제출된 작품의 저작권은 원저작자에게 귀속됩니다. 단, 제출자는 PAP에 대해 본 약관에 명시된 범위 내에서의 독점적 이용 권한을 부여합니다.<br>
+            ② 제출자는 제출된 모든 콘텐츠(사진, 영상, 텍스트 등)에 대한 적법한 권리를 보유하고 있으며, 해당 콘텐츠가 제3자의 저작권, 초상권, 상표권, 기타 지적재산권 또는 개인의 권리를 침해하지 않음을 보증합니다.<br>
+            ③ 제3자의 권리 침해로 인해 PAP에 손해가 발생할 경우, 제출자는 이에 대한 모든 책임을 부담합니다.<br>
+            <em style="color:rgba(255,255,255,.3)">Copyright of submitted works remains with the original creator. The submitter grants PAP exclusive usage rights as specified in these terms. The submitter warrants that all content does not infringe any third-party copyrights, portrait rights, trademarks, or other intellectual property rights. The submitter assumes all liability for any damages to PAP resulting from third-party rights infringement.</em></li>
+
+            <li><strong>제6조 (자료 제출 기한 및 게재 일정)</strong><br>
+            ① 서브미션이 승인된 후, 제출자는 최종 자료(고해상도 이미지, 크레딧 파일, 영상 등)를 승인 통지일로부터 1주(7일) 이내에 제출해야 합니다.<br>
+            ② 기한 내 최종 자료가 제출되지 않을 경우, PAP는 별도의 통지 없이 해당 게재 일정을 취소할 수 있습니다.<br>
+            ③ 에디토리얼 게재까지는 최종 자료 수령일로부터 2~3주가 소요될 수 있으며, 구체적인 게재 일정은 PAP의 편집 일정에 따라 조정될 수 있습니다.<br>
+            <em style="color:rgba(255,255,255,.3)">Final materials must be submitted within 7 days of approval notification. Failure to submit within the deadline may result in cancellation without further notice. Publication takes approximately 2-3 weeks from receipt of final materials, subject to PAP's editorial schedule.</em></li>
+
+            <li><strong>제7조 (브랜드 포함 기준 및 브랜디드 콘텐츠)</strong><br>
+            ① 에디토리얼에는 최소 4개 이상의 서로 다른 의류 브랜드가 포함되어야 합니다.<br>
+            ② 단일 브랜드만을 사용하거나, 특정 브랜드의 홍보를 주된 목적으로 하는 에디토리얼은 "브랜디드 콘텐츠(Branded Content)"로 분류됩니다.<br>
+            ③ 브랜디드 콘텐츠의 경우 별도의 게재비가 부과되며, 구체적인 금액은 PAP와 사전 협의를 통해 결정됩니다.<br>
+            ④ 브랜드 포함 기준의 충족 여부는 PAP의 에디토리얼 팀이 최종 판단합니다.<br>
+            <em style="color:rgba(255,255,255,.3)">Editorials must include at least 4 different clothing brands. Single-brand or brand-promotional editorials are classified as Branded Content and require a separate posting fee determined through prior consultation with PAP. Compliance with brand inclusion criteria is determined by PAP's editorial team.</em></li>
+
+            <li><strong>제8조 (게재 후 수정 및 삭제)</strong><br>
+            ① 에디토리얼이 PAP 웹사이트 및 소셜 미디어에 게재 완료된 이후에는 원칙적으로 수정, 교체 또는 삭제가 불가합니다.<br>
+            ② 다만, 다음 각 호에 해당하는 중대한 사유가 있는 경우에 한하여 PAP와의 협의를 통해 처리할 수 있습니다: (a) 법적 분쟁 또는 법원의 명령, (b) 제3자의 권리 침해가 확인된 경우, (c) 중대한 사실 오류가 발견된 경우.<br>
+            ③ 상기 사유에 의한 수정·삭제 요청 시에도 별도의 처리 비용이 발생할 수 있습니다.<br>
+            <em style="color:rgba(255,255,255,.3)">Once published, editorials cannot be modified, replaced, or removed in principle. Exceptions may be made through consultation with PAP only for: (a) legal disputes or court orders, (b) confirmed third-party rights infringement, or (c) critical factual errors. Additional processing fees may apply.</em></li>
+
+            <li><strong>제9조 (개인정보의 수집 및 이용)</strong><br>
+            ① PAP는 서브미션 접수 및 심사, 게재, 크레딧 표기, 연락 등의 목적으로 제출자 및 팀원의 개인정보(이름, 이메일 주소, 인스타그램 핸들, 웹사이트 URL 등)를 수집·이용합니다.<br>
+            ② 수집된 개인정보는 상기 목적 외의 용도로 사용되지 않으며, PAP의 개인정보처리방침에 따라 안전하게 관리됩니다.<br>
+            ③ 제출자는 팀원의 개인정보를 제출하기 전에 해당 팀원으로부터 정보 제공에 대한 동의를 받았음을 확인합니다.<br>
+            ④ 개인정보와 관련된 문의 사항은 contact@pap-magazine.com으로 연락해 주시기 바랍니다.<br>
+            <em style="color:rgba(255,255,255,.3)">PAP collects and uses personal information (names, email addresses, Instagram handles, website URLs, etc.) for submission review, publication, credit attribution, and communication. Information is managed per PAP's privacy policy and will not be used for other purposes. The submitter confirms that consent has been obtained from all team members whose information is submitted. For inquiries regarding personal information, please contact contact@pap-magazine.com.</em></li>
+
+            <li><strong>제10조 (면책 및 책임 제한)</strong><br>
+            ① PAP는 서브미션 심사 결과에 대한 이의 신청을 수락하지 않습니다. 심사 기준 및 결과는 PAP 에디토리얼 팀의 전문적 판단에 따릅니다.<br>
+            ② PAP는 천재지변, 시스템 장애, 네트워크 오류 등 불가항력적 사유로 인한 서비스 중단이나 데이터 손실에 대해 책임을 지지 않습니다.<br>
+            ③ 제출자가 본 약관을 위반하여 발생하는 모든 분쟁 및 손해에 대한 책임은 제출자에게 있습니다.<br>
+            <em style="color:rgba(255,255,255,.3)">PAP does not accept appeals regarding submission review results. Review criteria and results are at the professional discretion of PAP's editorial team. PAP is not liable for service interruptions or data loss due to force majeure, system failures, or network errors. The submitter is responsible for all disputes and damages arising from violations of these terms.</em></li>
+
+            <li><strong>제11조 (약관의 변경)</strong><br>
+            ① PAP는 관련 법령의 변경, 서비스 정책의 변경 등 합리적인 사유가 있는 경우 본 약관을 변경할 수 있습니다.<br>
+            ② 변경된 약관은 PAP 웹사이트에 공지한 날로부터 7일 후 효력이 발생합니다.<br>
+            ③ 제출자가 변경된 약관에 동의하지 않는 경우, 서브미션 제출을 중단할 수 있습니다.<br>
+            <em style="color:rgba(255,255,255,.3)">PAP may modify these terms when reasonable grounds exist, such as changes in applicable laws or service policies. Modified terms take effect 7 days after posting on PAP's website. Submitters who disagree with modified terms may discontinue their submissions.</em></li>
+
+            <li><strong>제12조 (준거법 및 관할)</strong><br>
+            ① 본 약관의 해석 및 적용에 관하여는 대한민국 법률을 준거법으로 합니다.<br>
+            ② 본 약관과 관련하여 발생하는 모든 분쟁에 대해서는 서울중앙지방법원을 제1심 전속 관할 법원으로 합니다.<br>
+            <em style="color:rgba(255,255,255,.3)">These terms shall be governed by and construed in accordance with the laws of the Republic of Korea. The Seoul Central District Court shall have exclusive jurisdiction over any disputes arising from these terms.</em></li>
+          </ol>
+          <p style="margin-top:16px;font-size:11px;color:rgba(255,255,255,.3);text-align:center">시행일: 2026년 1월 1일 | 최종 수정일: 2026년 3월 1일<br>Effective: January 1, 2026 | Last Updated: March 1, 2026</p>
+        </div>
+        <div class="terms-check">
+          <input type="checkbox" id="termsAgree">
+          <label for="termsAgree">본인은 위 서브미션 이용약관(제1조~제12조)의 모든 내용을 충분히 읽고 이해하였으며, 이에 동의합니다.<br><strong>I have thoroughly read and understood all terms (Articles 1–12) above and agree to be bound by them.</strong></label>
+        </div>
+        <div class="terms-error" id="termsError">약관에 동의해야 제출할 수 있습니다. / You must agree to the terms to submit.</div>
+      </div>
+
+      <div class="form-nav">
+        <button class="btn btn-back" onclick="goStep(4)">BACK</button>
+        <div style="flex:1"></div>
+        <button class="btn btn-submit" onclick="submitForm()">SUBMIT</button>
+      </div>
+    </div>
+
+    <!-- SUCCESS -->
+    <div class="submit-success" id="submitSuccess">
+      <div class="success-icon"><svg viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="30" stroke-width="2"/><polyline points="20 34 28 42 44 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <h2>SUBMITTED</h2>
+      <p data-i18n="successMsg">서브미션이 성공적으로 접수되었습니다. 심사 결과는 이메일로 안내드리겠습니다.</p>
+
+      <!-- SUBMISSION TIMELINE -->
+      <div class="timeline-visual" style="max-width:500px;margin:28px auto">
+        <div class="tl-step done" style="flex:1;position:relative">
+          <div class="tl-dot"></div>
+          <div class="tl-label">접수 완료<br>Submitted</div>
+          <div class="tl-date" id="tlDateSubmit">Today</div>
+          <div class="tl-line"></div>
+        </div>
+        <div class="tl-step active" style="flex:1;position:relative">
+          <div class="tl-dot"></div>
+          <div class="tl-label">심사 중<br>Under Review</div>
+          <div class="tl-date" id="tlDateReview"></div>
+          <div class="tl-line"></div>
+        </div>
+        <div class="tl-step" style="flex:1;position:relative">
+          <div class="tl-dot"></div>
+          <div class="tl-label">결과 통지<br>Decision</div>
+          <div class="tl-date" id="tlDateDecision"></div>
+          <div class="tl-line"></div>
+        </div>
+        <div class="tl-step" style="flex:1;position:relative">
+          <div class="tl-dot"></div>
+          <div class="tl-label">게재<br>Published</div>
+          <div class="tl-date" id="tlDatePublish"></div>
+        </div>
+      </div>
+
+      <p style="font-size:11px;color:rgba(255,255,255,.3);margin-top:16px;line-height:2">
+        <span id="reviewTimeNote">심사 결과: 1~3 영업일 이내 이메일 통지 / Review: 1-3 business days</span><br>
+        승인 후 최종 자료 제출 → 게재까지 2~3주 소요<br>
+        <strong style="color:rgba(255,255,255,.5)">MY SUBMISSIONS</strong> 탭에서 실시간 상태를 확인할 수 있습니다.
+      </p>
+    </div>
+  </div>
+
+  <!-- GUIDELINES -->
+  <div class="guidelines">
+    <div class="guidelines-title">SUBMISSION GUIDELINES</div>
+    <div class="gl-item"><div class="gl-head" onclick="this.parentElement.classList.toggle('open')"><h3>필수 제출 자료 / Required Materials</h3><span class="gl-toggle">+</span></div><div class="gl-body"><div class="gl-body-inner"><ul><li>고해상도 사진 (JPG) — PAP Magazine 독점</li><li>크레딧: 브랜드명, 팀원 이름을 영문으로, 인스타그램 핸들 포함</li><li>룩별 의상/뷰티 브랜드 크레딧과 인스타그램 핸들</li><li>크레딧 파일은 사진과 같은 폴더에 PDF 또는 Word로 제출</li><li>크레딧에 전체 대문자 사용 금지</li><li>권장 이미지 사이즈: 1080×1350px · 이미지당 최대 25MB</li></ul></div></div></div>
+    <div class="gl-item"><div class="gl-head" onclick="this.parentElement.classList.toggle('open')"><h3>제출 및 게재 절차 / Process</h3><span class="gl-toggle">+</span></div><div class="gl-body"><div class="gl-body-inner"><ul><li>Dropbox, WeTransfer, Swisstransfer를 통해 파일 전송</li><li>에디토리얼 게재까지 2~3주 소요</li><li>모든 에디토리얼은 인스타그램에도 게시됩니다</li><li>자료는 1주 이내에 제출해야 게재 일정이 유지됩니다</li><li>백스테이지 영상, 스케치 등 소셜 미디어 콘텐츠용 영상을 함께 제출해 주세요</li></ul></div></div></div>
+    <div class="gl-item"><div class="gl-head" onclick="this.parentElement.classList.toggle('open')"><h3>이용 약관 / Terms</h3><span class="gl-toggle">+</span></div><div class="gl-body"><div class="gl-body-inner"><ul><li>제출된 작품은 PAP의 웹사이트와 소셜 미디어에 게재 전후로 소개될 수 있습니다</li><li>에디토리얼은 PAP 독점이며 다른 매거진에 중복 게재 불가</li><li>제출 정보 오류로 인한 수정 시 €100 수수료 부과</li><li>PAP 주도의 상업적 이미지 사용 시 수익은 50:50 배분</li><li>단일 브랜드 에디토리얼은 브랜디드 콘텐츠로 분류 (게재비 별도)</li><li>4개 이상의 의류 브랜드 포함 필수</li></ul></div></div></div>
+    <div class="gl-item"><div class="gl-head" onclick="this.parentElement.classList.toggle('open')"><h3>추가 옵션 (유료) / Additional Options</h3><span class="gl-toggle">+</span></div><div class="gl-body"><div class="gl-body-inner"><ul><li>커버 및 특정 이미지 선택: €200 (피드당)</li><li>인스타그램 콜라보레이터 태그: €100 (피드당)</li><li>게시 날짜 지정: €100 (피드당)</li></ul><p style="margin-top:12px">매월 최우수 에디토리얼 선정 → 한 달간 홈페이지 메인 노출</p></div></div></div>
+  </div>
+</main>
+<div class="footer-legal" id="footerLegal"></div>
+
+<script src="pap-api.js"></script>
+<script>
+var lookCount=0;
+var files1=[];
+var selectedGenres=[];
+var selectedCoverLook=0;
+var selectedCoverIdx=0;
+
+// GENRE SELECTION
+function selectGenre(el){
+  el.classList.toggle('selected');
+  selectedGenres=[];
+  document.querySelectorAll('.genre-tag.selected').forEach(function(g){ selectedGenres.push(g.textContent); });
+}
+
+// MY SUBMISSIONS DASHBOARD
+function toggleMySubmissions(){
+  var list=document.getElementById('mySubsList');
+  var btn=document.querySelector('.my-subs-toggle');
+  if(list.style.display==='none'){ list.style.display='block'; btn.textContent='HIDE'; }
+  else{ list.style.display='none'; btn.textContent='SHOW'; }
+}
+
+function loadMySubmissions(){
+  if(typeof PAP==='undefined'||!PAP.auth.isLoggedIn()) return;
+  var section=document.getElementById('mySubsSection');
+  section.style.display='block';
+  // Load from API if available
+  if(PAP.submissions&&PAP.submissions.list){
+    PAP.submissions.list().then(function(subs){
+      if(!subs||subs.length===0) return;
+      document.getElementById('subEmpty').style.display='none';
+      var html='';
+      subs.forEach(function(s){
+        var statusClass='status-reviewing';
+        var statusText='REVIEWING';
+        if(s.status==='accepted'){statusClass='status-accepted';statusText='ACCEPTED';}
+        else if(s.status==='published'){statusClass='status-published';statusText='PUBLISHED';}
+        else if(s.status==='rejected'){statusClass='status-rejected';statusText='REJECTED';}
+        html+='<div class="sub-item"><div><div class="sub-item-title">'+PAP.sanitize(s.title||'Untitled')+'</div></div><div class="sub-item-date">'+PAP.sanitize(s.created_at||'')+'</div><div class="sub-item-status '+statusClass+'">'+statusText+'</div><div class="sub-item-action" onclick="viewSubmission(\''+s.id+'\')">VIEW</div></div>';
+      });
+      document.getElementById('mySubsList').innerHTML=html;
+    }).catch(function(){});
+  }
+}
+
+function viewSubmission(id){
+  if(typeof PAP!=='undefined') PAP.ui.toast('서브미션 상세 보기는 곧 지원됩니다.','info');
+}
+
+// ADD MODEL ROW
+function addModelRow(){
+  var list=document.getElementById('modelList');
+  var row=document.createElement('div');
+  row.className='model-row';
+  row.innerHTML='<input class="team-input" placeholder="Model Name"><input class="team-input" placeholder="@instagram"><input class="team-input" placeholder="Agency (optional)"><button class="model-remove" onclick="this.parentElement.remove()">×</button>';
+  list.appendChild(row);
+}
+
+// STEP NAVIGATION
+var curStep=1;
+var totalSteps=5;
+function goStep(n){
+  // Validation before proceeding
+  if(n>curStep){
+    if(curStep===1&&selectedGenres.length===0){
+      if(typeof PAP!=='undefined') PAP.ui.toast('카테고리를 최소 1개 선택하세요. / Select at least one category.','error');
+      return;
+    }
+    if(curStep===2){
+      var title=document.getElementById('editorialTitle').value.trim();
+      var email=document.getElementById('contactEmail').value.trim();
+      var statement=document.getElementById('artistStatement').value.trim();
+      var copyright=document.getElementById('copyrightConfirm').checked;
+      if(!title||!email){
+        if(typeof PAP!=='undefined') PAP.ui.toast('제목과 이메일은 필수입니다. / Title and email are required.','error');
+        return;
+      }
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+        if(typeof PAP!=='undefined') PAP.ui.toast('유효한 이메일을 입력하세요. / Enter a valid email.','error');
+        return;
+      }
+      if(!statement){
+        if(typeof PAP!=='undefined') PAP.ui.toast('작품 설명을 입력하세요. / Please enter an artist statement.','error');
+        return;
+      }
+      if(!copyright){
+        if(typeof PAP!=='undefined') PAP.ui.toast('저작권 확인에 동의해 주세요. / Please confirm copyright ownership.','error');
+        return;
+      }
+    }
+  }
+  document.getElementById('step'+curStep).classList.remove('active');
+  curStep=n;
+  document.getElementById('step'+n).classList.add('active');
+  for(var i=1;i<=totalSteps;i++){
+    var p=document.getElementById('pip'+i);
+    p.classList.remove('active','done');
+    if(i<n) p.classList.add('done');
+    else if(i===n) p.classList.add('active');
+  }
+  window.scrollTo({top:0,behavior:'smooth'});
+  // Update cover image selector when entering look step
+  if(n===4) updateCoverSelector();
+}
+
+// ADD TEAM ROW
+function addTeamRow(){
+  var list=document.getElementById('teamList');
+  var row=document.createElement('div');
+  row.className='team-row';
+  row.innerHTML='<input class="team-input" placeholder="Role" style="font-weight:700;text-transform:uppercase;letter-spacing:.1em"><input class="team-input" placeholder="Name"><input class="team-input" placeholder="@instagram"><input class="team-input" placeholder="website">';
+  list.appendChild(row);
+}
+
+// LOOK CREDITS
+var lookFiles={};
+function addLook(){
+  lookCount++;
+  var list=document.getElementById('lookList');
+  var block=document.createElement('div');
+  block.className='look-block';
+  block.id='look'+lookCount;
+  var n=lookCount;
+  lookFiles[n]=[];
+  block.innerHTML='<div class="look-header"><div class="look-title">LOOK '+n+'</div><button class="look-remove" onclick="removeLook('+n+')">×</button></div>'
+    +'<div class="look-images"><div class="look-img-label">LOOK '+n+' IMAGES</div><div class="look-img-zone" id="liz'+n+'"><input type="file" multiple accept="image/*" onchange="addLookFiles('+n+',this.files)"><div class="liz-text"><strong>Click</strong> or drag images for Look '+n+'</div></div><div class="look-thumbs" id="lookThumbs'+n+'"></div></div>'
+    +'<div class="look-item-header"><span>ITEM TYPE</span><span>BRAND NAME</span><span>INSTAGRAM</span></div>'
+    +'<div class="look-items" id="lookItems'+n+'">'
+    +'<div class="look-item"><select class="look-select">'+itemOptions()+'</select><input class="look-input" placeholder="Brand Name"><input class="look-input" placeholder="@instagram"></div>'
+    +'</div>'
+    +'<button class="add-btn-sm" onclick="addLookItem('+n+')">+ Add Item</button>';
+  list.appendChild(block);
+  // Setup drag events
+  var zone=document.getElementById('liz'+n);
+  zone.addEventListener('dragover',function(e){e.preventDefault();zone.classList.add('dragover');});
+  zone.addEventListener('dragleave',function(){zone.classList.remove('dragover');});
+  zone.addEventListener('drop',function(e){e.preventDefault();zone.classList.remove('dragover');addLookFiles(n,e.dataTransfer.files);});
+}
+
+function itemOptions(){
+  return '<option value="">Select...</option><option>Jacket</option><option>Top</option><option>Shirt</option><option>Sweater</option><option>Dress</option><option>Pants</option><option>Skirt</option><option>Bodysuit</option><option>Costume</option><option>Coat</option><option>Shoes</option><option>Boots</option><option>Bag</option><option>Glasses</option><option>Sunglasses</option><option>Hat</option><option>Belt</option><option>Ring</option><option>Necklace</option><option>Earrings</option><option>Watch</option><option>Scarf</option><option>Gloves</option><option>Other</option>';
+}
+
+function addLookFiles(n,fl){
+  if(!lookFiles[n]) lookFiles[n]=[];
+  var allowed=['image/jpeg','image/png','image/tiff','image/webp'];
+  var maxSize=25*1024*1024;
+  for(var i=0;i<fl.length;i++){
+    if(allowed.indexOf(fl[i].type)===-1){
+      if(typeof PAP!=='undefined') PAP.ui.toast('JPG/PNG/TIFF/WebP만 가능: '+fl[i].name,'error');
+      continue;
+    }
+    if(fl[i].size>maxSize){
+      if(typeof PAP!=='undefined') PAP.ui.toast('25MB 초과: '+fl[i].name,'error');
+      continue;
+    }
+    lookFiles[n].push(fl[i]);
+    // Check image dimensions
+    checkImageDimensions(fl[i]);
+  }
+  renderLookThumbs(n);
+  updateCoverSelector();
+}
+
+function checkImageDimensions(file){
+  var img=new Image();
+  img.onload=function(){
+    var longest=Math.max(img.width,img.height);
+    if(longest<1500){
+      if(typeof PAP!=='undefined') PAP.ui.toast('권장: 긴 변 1500px 이상 (현재 '+longest+'px) — '+file.name,'error');
+    }
+    URL.revokeObjectURL(img.src);
+  };
+  img.src=URL.createObjectURL(file);
+}
+
+function removeLookFile(n,idx){
+  lookFiles[n].splice(idx,1);
+  renderLookThumbs(n);
+  updateCoverSelector();
+}
+
+// Drag and drop reorder state
+var dragLookN=null, dragIdx=null;
+
+function renderLookThumbs(n){
+  var el=document.getElementById('lookThumbs'+n);
+  if(!el) return;
+  var h='';
+  for(var i=0;i<lookFiles[n].length;i++){
+    var url=URL.createObjectURL(lookFiles[n][i]);
+    var isCover=(selectedCoverLook===n&&selectedCoverIdx===i);
+    h+='<div class="look-thumb" draggable="true" data-look="'+n+'" data-idx="'+i+'" ondragstart="thumbDragStart(event,'+n+','+i+')" ondragover="thumbDragOver(event)" ondragenter="thumbDragEnter(event)" ondragleave="thumbDragLeave(event)" ondrop="thumbDrop(event,'+n+','+i+')" ondragend="thumbDragEnd(event)">';
+    if(isCover) h+='<div class="cover-badge">COVER</div>';
+    h+='<img loading="lazy" src="'+url+'"><div class="lt-order">'+(i+1)+'</div><button class="lt-remove" onclick="event.stopPropagation();removeLookFile('+n+','+i+')">×</button></div>';
+  }
+  el.innerHTML=h;
+}
+
+function thumbDragStart(e,n,idx){ dragLookN=n; dragIdx=idx; e.target.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; }
+function thumbDragOver(e){ e.preventDefault(); e.dataTransfer.dropEffect='move'; }
+function thumbDragEnter(e){ e.preventDefault(); var t=e.currentTarget; if(t.classList.contains('look-thumb')) t.classList.add('drag-over'); }
+function thumbDragLeave(e){ var t=e.currentTarget; if(t.classList.contains('look-thumb')) t.classList.remove('drag-over'); }
+function thumbDragEnd(e){ e.target.classList.remove('dragging'); document.querySelectorAll('.look-thumb').forEach(function(el){el.classList.remove('drag-over');}); }
+function thumbDrop(e,targetN,targetIdx){
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if(dragLookN===targetN&&dragIdx!==targetIdx){
+    var arr=lookFiles[targetN];
+    var item=arr.splice(dragIdx,1)[0];
+    arr.splice(targetIdx,0,item);
+    // Update cover if it was the dragged item
+    if(selectedCoverLook===targetN&&selectedCoverIdx===dragIdx) selectedCoverIdx=targetIdx;
+    renderLookThumbs(targetN);
+  }
+  dragLookN=null; dragIdx=null;
+}
+
+// Cover image selector
+function updateCoverSelector(){
+  var sel=document.getElementById('coverImageSelect');
+  var row=document.getElementById('coverSelectRow');
+  if(!sel||!row) return;
+  var totalImages=0;
+  var html='<option value="">자동 선택 (첫 번째 이미지) / Auto (first image)</option>';
+  var keys=Object.keys(lookFiles).sort(function(a,b){return parseInt(a)-parseInt(b);});
+  keys.forEach(function(k){
+    var n=parseInt(k);
+    if(!lookFiles[n]) return;
+    for(var i=0;i<lookFiles[n].length;i++){
+      totalImages++;
+      html+='<option value="'+n+'-'+i+'">Look '+n+' — Image '+(i+1)+' ('+lookFiles[n][i].name+')</option>';
+    }
+  });
+  sel.innerHTML=html;
+  row.style.display=totalImages>0?'flex':'none';
+}
+
+function setCoverImage(){
+  var val=document.getElementById('coverImageSelect').value;
+  if(!val){ selectedCoverLook=0; selectedCoverIdx=0; }
+  else{
+    var parts=val.split('-');
+    selectedCoverLook=parseInt(parts[0]);
+    selectedCoverIdx=parseInt(parts[1]);
+  }
+  // Re-render all thumbs to show cover badge
+  Object.keys(lookFiles).forEach(function(k){ renderLookThumbs(parseInt(k)); });
+}
+
+function removeLook(n){
+  var el=document.getElementById('look'+n);
+  if(el) el.remove();
+  delete lookFiles[n];
+}
+
+function addLookItem(lookNum){
+  var items=document.getElementById('lookItems'+lookNum);
+  var item=document.createElement('div');
+  item.className='look-item';
+  item.innerHTML='<select class="look-select">'+itemOptions()+'</select><input class="look-input" placeholder="Brand Name"><input class="look-input" placeholder="@instagram">';
+  items.appendChild(item);
+}
+
+// Initialize with 4 looks (minimum required)
+addLook();addLook();addLook();addLook();
+
+// FILE UPLOADS
+var fi1=document.getElementById('fileInput');
+var uz1=document.getElementById('uploadZone');
+fi1.addEventListener('change',function(e){addF(e.target.files);});
+uz1.addEventListener('dragover',function(e){e.preventDefault();uz1.classList.add('dragover');});
+uz1.addEventListener('dragleave',function(){uz1.classList.remove('dragover');});
+uz1.addEventListener('drop',function(e){e.preventDefault();uz1.classList.remove('dragover');addF(e.dataTransfer.files);});
+
+function addF(fl){
+  var allowed=['image/jpeg','image/png','image/tiff','image/webp'];
+  var maxSize=20*1024*1024;
+  var maxFiles=30;
+  for(var i=0;i<fl.length;i++){
+    if(allowed.indexOf(fl[i].type)===-1){
+      if(typeof PAP!=='undefined') PAP.ui.toast('Invalid file type: '+fl[i].name,'error');
+      continue;
+    }
+    if(fl[i].size>maxSize){
+      if(typeof PAP!=='undefined') PAP.ui.toast('File too large (max 20MB): '+fl[i].name,'error');
+      continue;
+    }
+    if(files1.length>=maxFiles){
+      if(typeof PAP!=='undefined') PAP.ui.toast('Maximum '+maxFiles+' files allowed','error');
+      break;
+    }
+    files1.push(fl[i]);
+  }
+  renderF();
+}
+function removeF(idx){
+  files1.splice(idx,1);renderF();
+}
+function renderF(){
+  var el=document.getElementById('fileList');
+  var h='';
+  for(var i=0;i<files1.length;i++){
+    var s=(files1[i].size/1024/1024).toFixed(1)+' MB';
+    h+='<div class="file-item"><span class="fn">'+files1[i].name+'</span><span class="fs">'+s+'</span><button class="fr" onclick="removeF('+i+')">×</button></div>';
+  }
+  el.innerHTML=h;
+}
+
+// SUBMIT
+async function submitForm(){
+  var cb=document.getElementById('termsAgree');
+  var err=document.getElementById('termsError');
+  if(!cb.checked){
+    err.style.display='block';
+    cb.parentElement.style.animation='none';
+    cb.offsetHeight;
+    cb.parentElement.style.animation='shake .4s ease';
+    return;
+  }
+  err.style.display='none';
+
+  // Count total look images
+  var totalLookImages=0;
+  Object.keys(lookFiles).forEach(function(k){ if(lookFiles[k]) totalLookImages+=lookFiles[k].length; });
+  if(totalLookImages<4){
+    if(typeof PAP!=='undefined') PAP.ui.toast('최소 4개 이상의 룩 이미지가 필요합니다. / At least 4 look images required.','error');
+    return;
+  }
+
+  // Collect form data
+  var data={
+    genres: selectedGenres,
+    title: document.getElementById('editorialTitle').value.trim(),
+    studio: document.getElementById('studioName').value.trim(),
+    email: document.getElementById('contactEmail').value.trim(),
+    website: document.getElementById('studioWebsite').value.trim(),
+    instagram: document.getElementById('studioInsta').value.trim(),
+    artistStatement: document.getElementById('artistStatement').value.trim(),
+    coverLook: selectedCoverLook,
+    coverIndex: selectedCoverIdx
+  };
+
+  // Collect team credits
+  data.team=[];
+  document.querySelectorAll('#teamList .team-row').forEach(function(row){
+    var inputs=row.querySelectorAll('.team-input');
+    var roleEl=row.querySelector('.team-role');
+    var role=roleEl?roleEl.textContent:inputs[0].value;
+    data.team.push({
+      role: role,
+      name: inputs[roleEl?0:1].value,
+      instagram: inputs[roleEl?1:2].value,
+      website: inputs[roleEl?2:3]?inputs[roleEl?2:3].value:''
+    });
+  });
+
+  // Collect models
+  data.models=[];
+  document.querySelectorAll('#modelList .model-row').forEach(function(row){
+    var inputs=row.querySelectorAll('.team-input');
+    if(inputs[0].value.trim()) data.models.push({ name:inputs[0].value, instagram:inputs[1].value, agency:inputs[2]?inputs[2].value:'' });
+  });
+
+  try{
+    await PAP.submissions.create(data, files1||[]);
+    document.getElementById('step5').style.display='none';
+    document.querySelector('.step-bar').style.display='none';
+    document.getElementById('submitSuccess').style.display='block';
+    // Update timeline dates
+    var today=new Date();
+    document.getElementById('tlDateSubmit').textContent=today.toLocaleDateString();
+    var reviewDate=new Date(today.getTime()+3*86400000);
+    document.getElementById('tlDateReview').textContent='~'+reviewDate.toLocaleDateString();
+    var decisionDate=new Date(today.getTime()+7*86400000);
+    document.getElementById('tlDateDecision').textContent='~'+decisionDate.toLocaleDateString();
+    var pubDate=new Date(today.getTime()+28*86400000);
+    document.getElementById('tlDatePublish').textContent='~'+pubDate.toLocaleDateString();
+    window.scrollTo({top:0,behavior:'smooth'});
+  }catch(e){
+    if(typeof PAP!=='undefined') PAP.ui.toast(e.message||'Submission failed','error');
+  }
+}
+
+// LOGIN
+function simulateLogin(){
+  if(PAP.auth.isLoggedIn()){
+    document.getElementById('accessGateOverlay').classList.add('hidden');
+    document.getElementById('formArea').style.display='block';
+  } else {
+    window.location.href='auth.html';
+  }
+}
+
+// LANGUAGE (simplified - ko/en)
+var L={
+ko:{business:'BUSINESS',about:'ABOUT',contact:'CONTACT',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',pageDesc:'PAP 매거진에 에디토리얼을 제출하세요. 서브미션 유형을 선택하고, 작품 정보·팀 크레딧·룩별 의상 크레딧·고해상도 이미지를 제출해 주세요. MY SUBMISSIONS에서 실시간 심사 상태를 확인할 수 있습니다.',gateLogin:'로그인 / 회원가입',gateTitle:'회원 전용',gateDesc:'이 서비스는 무료 회원 이상만 이용할 수 있습니다.\n로그인하거나 회원가입 후 이용해 주세요.',successMsg:'서브미션이 성공적으로 접수되었습니다. 심사 결과는 이메일로 안내드리겠습니다.',ft:'<strong>주식회사 알타카파</strong> | CEO : 강동민 | 사업자번호 192-88-02644<br>서울특별시 강남구 논현로146길 18, 1F PAP 매거진 | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+en:{business:'BUSINESS',about:'ABOUT',contact:'CONTACT',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',pageDesc:'Submit your editorial to PAP Magazine. Choose your submission type, provide production info, team credits, look-by-look garment credits, and high-resolution images. Track your submission status in MY SUBMISSIONS.',gateLogin:'LOG IN / SIGN UP',gateTitle:'MEMBERS ONLY',gateDesc:'This service is available to registered members only.\nPlease log in or sign up to continue.',successMsg:'Your submission has been received successfully. Review results will be sent via email.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+it:{business:'BUSINESS',about:'CHI SIAMO',contact:'CONTATTI',subscribe:'ABBONATI',submission:'SUBMISSION',pullletter:'PULL-LETTER',pageDesc:'Invia il tuo editoriale a PAP Magazine. Fornisci informazioni sulla produzione, crediti del team, crediti per look e immagini ad alta risoluzione.',gateLogin:'ACCEDI / REGISTRATI',gateTitle:'SOLO MEMBRI',gateDesc:'Questo servizio è disponibile solo per i membri registrati.',successMsg:'La tua submission è stata ricevuta. I risultati saranno inviati via email entro 1-3 giorni lavorativi.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | P. IVA: 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Corea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+fr:{business:'BUSINESS',about:'À PROPOS',contact:'CONTACT',subscribe:"S'ABONNER",submission:'SOUMISSION',pullletter:'PULL-LETTER',pageDesc:'Soumettez votre éditorial à PAP Magazine. Fournissez les informations de production, crédits d\'équipe, crédits par look et images haute résolution.',gateLogin:'CONNEXION / INSCRIPTION',gateTitle:'RÉSERVÉ AUX MEMBRES',gateDesc:'Ce service est réservé aux membres inscrits.',successMsg:'Votre soumission a été reçue. Les résultats seront envoyés par email sous 1 à 3 jours ouvrés.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | PDG : Domenico Kang | N&#176; 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Séoul, Corée | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+es:{business:'NEGOCIOS',about:'ACERCA DE',contact:'CONTACTO',subscribe:'SUSCRIBIRSE',submission:'ENVÍO',pullletter:'PULL-LETTER',pageDesc:'Envíe su editorial a PAP Magazine. Proporcione información de producción, créditos del equipo, créditos por look e imágenes de alta resolución.',gateLogin:'INICIAR SESIÓN / REGISTRARSE',gateTitle:'SOLO MIEMBROS',gateDesc:'Este servicio está disponible solo para miembros registrados.',successMsg:'Su envío ha sido recibido. Los resultados se enviarán por email en 1-3 días hábiles.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seúl, Corea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+ja:{business:'BUSINESS',about:'ABOUT',contact:'CONTACT',subscribe:'購読',submission:'サブミッション',pullletter:'PULL-LETTER',pageDesc:'PAP Magazineにエディトリアルを提出してください。作品情報、チームクレジット、ルック別クレジット、高解像度画像をご提出ください。',gateLogin:'ログイン / 会員登録',gateTitle:'会員専用',gateDesc:'このサービスは会員のみご利用いただけます。',successMsg:'サブミッションが正常に受け付けられました。審査結果は1〜3営業日以内にメールでお知らせします。',ft:'<strong>株式会社アルタカッパ</strong> | CEO : カン・ドンミン | 事業者番号 192-88-02644<br>ソウル特別市江南区論峴路146キル18, 1F | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+zh:{business:'商务',about:'关于',contact:'联系',subscribe:'订阅',submission:'投稿',pullletter:'PULL-LETTER',pageDesc:'向PAP Magazine提交您的编辑作品。请提供制作信息、团队名单、各造型名单和高分辨率图片。',gateLogin:'登录 / 注册',gateTitle:'仅限会员',gateDesc:'此服务仅限注册会员使用。',successMsg:'您的投稿已成功接收。审核结果将在1-3个工作日内通过邮件通知。',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | 营业执照号 192-88-02644<br>首尔特别市江南区论岘路146街18, 1F | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},ru:{business:'БИЗНЕС',about:'О НАС',contact:'КОНТАКТ',subscribe:'ПОДПИСКА',submission:'ПОДАЧА',pullletter:'PULL-LETTER',pageDesc:'Отправьте ваш эдиториал в PAP Magazine. Укажите информацию о работе, кредиты команды, кредиты по образам и загрузите изображения высокого разрешения.',gateLogin:'ВОЙТИ / РЕГИСТРАЦИЯ',gateTitle:'ТОЛЬКО ДЛЯ УЧАСТНИКОВ',gateDesc:'Этот сервис доступен только зарегистрированным участникам.\nВойдите или зарегистрируйтесь.',successMsg:'Ваша подача успешно принята. Результаты рассмотрения будут отправлены на email в течение 1-3 рабочих дней.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Рег. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'}
+};
+function setLang(l){
+  localStorage.setItem('pap-lang',l);var d=L[l]||L.ko;
+  document.querySelectorAll('[data-i18n]').forEach(function(e){var k=e.getAttribute('data-i18n');if(d[k])e.textContent=d[k];});
+  document.querySelectorAll('[data-i18n-html]').forEach(function(e){var k=e.getAttribute('data-i18n-html');if(d[k])e.innerHTML=d[k].replace(/\\n/g,'<br>');});
+  if(document.getElementById('footerLegal')&&d.ft) document.getElementById('footerLegal').innerHTML=d.ft;
+  document.getElementById('langSelect').value=l;
+}
+// AUTO LANGUAGE DETECTION
+(function(){
+  var saved=localStorage.getItem('pap-lang');
+  if(!saved){
+    var tz=Intl.DateTimeFormat().resolvedOptions().timeZone||'';
+    var lang=navigator.language||navigator.userLanguage||'';
+    lang=lang.toLowerCase();
+    if(lang.startsWith('ko')||tz.indexOf('Seoul')>-1) saved='ko';
+    else if(lang.startsWith('ja')||tz.indexOf('Tokyo')>-1) saved='ja';
+    else if(lang.startsWith('zh')||tz.indexOf('Shanghai')>-1||tz.indexOf('Beijing')>-1||tz.indexOf('Chongqing')>-1||tz.indexOf('Hong_Kong')>-1||tz.indexOf('Taipei')>-1) saved='zh';
+    else if(lang.startsWith('it')||tz.indexOf('Rome')>-1) saved='it';
+    else if(lang.startsWith('fr')||tz.indexOf('Paris')>-1) saved='fr';
+    else if(lang.startsWith('es')||tz.indexOf('Madrid')>-1||tz.indexOf('Mexico')>-1) saved='es';
+    else if(lang.startsWith('ru')||tz.indexOf('Moscow')>-1||tz.indexOf('Petersburg')>-1) saved='ru';
+    else saved='en';
+    localStorage.setItem('pap-lang',saved);
+  }
+  setLang(saved);
+})();
+
+// Auto-check login on load
+document.addEventListener('DOMContentLoaded',function(){
+  if(typeof PAP!=='undefined'&&PAP.auth.isLoggedIn()){
+    document.getElementById('accessGateOverlay').classList.add('hidden');
+    document.getElementById('formArea').style.display='block';
+    loadMySubmissions();
+  }
+});
+</script>
+</body>
+</html>

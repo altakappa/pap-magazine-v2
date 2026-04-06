@@ -1,0 +1,5 @@
+-- ============================================================================
+-- DEPRECATED: Use 001_create_tables.sql instead
+-- This file is kept for reference only. Do NOT run this migration.
+-- The 001_create_tables.sql file contains the correct schema (UUID primary keys).
+-- ============================================================================

@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PAP Magazine - June 2020</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background-color:#0a0a0a;color:#e8e8e8;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;line-height:1.6;overflow-x:hidden}
+nav{position:fixed;top:0;width:100%;height:70px;background:rgba(10,10,10,.95);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:space-between;padding:0 40px;z-index:1000;border-bottom:1px solid rgba(201,169,110,.2)}
+.nav-logo{height:40px;width:auto}.nav-title{font-size:16px;font-weight:300;letter-spacing:2px;color:#d0d0d0}
+.nav-scroll-indicator{height:2px;background:linear-gradient(90deg,#d0d0d0,transparent);position:fixed;top:70px;left:0;width:0;z-index:999;transition:width .3s ease}
+.cover-page{height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;background:linear-gradient(135deg,#1a1a1a 0%,#0a0a0a 100%);padding-top:70px;position:relative;overflow:hidden}
+.cover-page::before{content:'';position:absolute;top:0;left:0;width:100%;height:100%;background:url('https://drive.google.com/thumbnail?id=1jQ2r2ntXOAIO7z1tFSVe9DPLQCJjcuzu&sz=w1600') center/cover no-repeat;filter:blur(3px) brightness(.6);transform:scale(1.05)}
+.cover-page::after{content:'';position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(10,10,10,.15)}
+.cover-content{position:relative;z-index:10;display:flex;flex-direction:column;align-items:center;gap:0}
+.cover-logo{height:160px;width:auto;animation:fadeInScale 1s ease-out;filter:drop-shadow(0 10px 40px rgba(201,169,110,.3));margin-bottom:-15px}
+@keyframes fadeInScale{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+.cover-title{font-size:16px;font-weight:300;letter-spacing:8px;color:#d0d0d0;margin-top:5px;animation:fadeInUp 1s ease-out .2s both}
+.cover-subtitle{font-size:14px;letter-spacing:3px;color:#888;margin-top:5px;animation:fadeInUp 1s ease-out .4s both}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.editorial-section{min-height:100vh;padding:100px 80px;background-color:#0a0a0a;position:relative}
+.editorial-header{margin-bottom:60px;animation:fadeInUp .8s ease-out}
+.editorial-date{font-size:12px;letter-spacing:2px;color:#888;margin-bottom:10px}
+.editorial-title{font-size:48px;font-weight:300;margin-bottom:15px;color:#e8e8e8;letter-spacing:1px}
+.editorial-desc[data-lang="en"]{font-size:18px;color:#d0d0d0;font-weight:300}.editorial-desc[data-lang="ko"]{font-size:14px;line-height:1.8;color:#999;font-style:italic}.editorial-desc[data-lang="it"],.editorial-desc[data-lang="fr"],.editorial-desc[data-lang="es"]{font-size:16px;line-height:1.8;color:#bbb;font-weight:300}.editorial-desc[data-lang="ja"],.editorial-desc[data-lang="zh"],.editorial-desc[data-lang="ru"]{font-size:15px;line-height:1.9;color:#bbb;font-weight:300}
+.editorial-gallery{max-width:65%;margin:0 auto 60px;display:grid;gap:16px;grid-template-columns:1fr 1fr;animation:fadeInUp .8s ease-out .2s both}
+.gallery-item{overflow:hidden;border-radius:4px;background:#1a1a1a}
+.gallery-item img{width:100%;height:auto;display:block;transition:transform .4s cubic-bezier(.25,.46,.45,.94)}
+.gallery-item:hover img{transform:scale(1.05)}
+.editorial-credits{padding:40px 0;border-top:1px solid rgba(201,169,110,.2);border-bottom:1px solid rgba(201,169,110,.2);margin-bottom:100px;animation:fadeInUp .8s ease-out .4s both}
+.editorial-credits p{margin-bottom:12px;font-size:14px;color:#b8b8b8}
+.editorial-credits strong{color:#d0d0d0;font-weight:600}
+.editorial-credits a{color:#d0d0d0;text-decoration:none;transition:all .3s ease;border-bottom:1px solid transparent}
+.editorial-credits a:hover{border-bottom-color:#d0d0d0}
+.editorial-spread{display:grid;grid-template-columns:1fr 1fr;gap:50px;margin-bottom:60px;align-items:start;animation:fadeInUp .8s ease-out .2s both;max-width:90%;margin-left:auto;margin-right:auto}
+.editorial-cover-img{width:100%;height:auto;border-radius:4px;display:block}
+.editorial-spread .editorial-info{display:flex;flex-direction:column;justify-content:center;padding:20px 0}
+.editorial-spread .editorial-info .editorial-desc[data-lang="en"]{font-size:16px;color:#d0d0d0;font-weight:300;line-height:1.8;margin-bottom:30px}
+.editorial-spread .editorial-info .editorial-desc[data-lang="ko"]{font-size:14px;line-height:1.8;color:#999;font-style:italic}.editorial-spread .editorial-info .editorial-desc[data-lang="it"],.editorial-spread .editorial-info .editorial-desc[data-lang="fr"],.editorial-spread .editorial-info .editorial-desc[data-lang="es"],.editorial-spread .editorial-info .editorial-desc[data-lang="ja"],.editorial-spread .editorial-info .editorial-desc[data-lang="zh"],.editorial-spread .editorial-info .editorial-desc[data-lang="ru"]{font-size:14px;line-height:1.8;color:#bbb;font-weight:300}
+.section-divider{height:1px;background:linear-gradient(90deg,transparent,rgba(201,169,110,.3),transparent);margin:80px 0;animation:fadeIn .8s ease-out}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+footer{padding:60px 80px;text-align:center;border-top:1px solid rgba(201,169,110,.2);background:#0a0a0a}
+footer p{color:#666;font-size:14px;margin-bottom:10px}
+@media(max-width:1024px){.editorial-section{padding:80px 60px}.editorial-title{font-size:36px}}
+@media(max-width:768px){nav{padding:0 20px;height:60px}.nav-title{font-size:14px}.cover-logo{height:80px}.cover-title{font-size:14px}.editorial-section{padding:60px 30px}.editorial-title{font-size:28px}.editorial-desc[data-lang="en"]{font-size:16px}.editorial-gallery{max-width:85%;grid-template-columns:1fr}.editorial-spread{grid-template-columns:1fr}.editorial-spread .editorial-info .editorial-desc[data-lang="en"]{font-size:15px}}
+@media(max-width:480px){nav{padding:0 15px;justify-content:center}.nav-title{display:none}.cover-logo{height:64px}.cover-subtitle{font-size:12px}.editorial-section{padding:40px 20px}.editorial-title{font-size:24px}.editorial-gallery{max-width:100%}}
+.lang-selector-wrap{position:relative;margin-left:10px}.lang-btn{background:transparent;border:1px solid rgba(201,169,110,.4);color:#c9a96e;padding:4px 12px;font-size:12px;letter-spacing:1px;cursor:pointer;border-radius:2px;transition:all .3s}.lang-btn:hover{background:rgba(201,169,110,.15)}.lang-dropdown{display:none;position:absolute;top:100%;right:0;margin-top:8px;background:rgba(10,10,10,.97);border:1px solid rgba(201,169,110,.3);border-radius:4px;min-width:80px;z-index:2000;backdrop-filter:blur(10px)}.lang-dropdown.show{display:block}.lang-option{padding:8px 16px;color:#999;font-size:12px;letter-spacing:1px;cursor:pointer;transition:all .2s;white-space:nowrap}.lang-option:hover{color:#c9a96e;background:rgba(201,169,110,.1)}.lang-option.active{color:#c9a96e}.editorial-desc[data-lang]{display:none}.editorial-desc[data-lang].active-lang{display:block}</style>
+</head>
+<body>
+<nav><img class="nav-logo" src="data:image/png;base64,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IJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACDS/wAnhBsZTvHTagAAAABJRU5ErkJggg==" alt="PAP"><div class="nav-title">PAP MAGAZINE</div><div class="lang-selector-wrap"><button class="lang-btn" onclick="toggleLangMenu()" id="langBtn">EN</button><div class="lang-dropdown" id="langDropdown"><div class="lang-option active" data-lang="en" onclick="switchLang('en')">EN</div><div class="lang-option" data-lang="ko" onclick="switchLang('ko')">한국어</div><div class="lang-option" data-lang="it" onclick="switchLang('it')">IT</div><div class="lang-option" data-lang="fr" onclick="switchLang('fr')">FR</div><div class="lang-option" data-lang="es" onclick="switchLang('es')">ES</div><div class="lang-option" data-lang="ja" onclick="switchLang('ja')">日本語</div><div class="lang-option" data-lang="zh" onclick="switchLang('zh')">中文</div><div class="lang-option" data-lang="ru" onclick="switchLang('ru')">RU</div></div></div></nav>
+<div class="nav-scroll-indicator"></div>
+<div class="cover-page"><div class="cover-content"><img class="cover-logo" src="data:image/png;base64,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IJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACDS/wAnhBsZTvHTagAAAABJRU5ErkJggg==" alt="PAP" style="filter:drop-shadow(0 10px 40px rgba(201,169,110,.3))"><h1 class="cover-title">MAGAZINE</h1><p class="cover-subtitle">JUNE 2020</p></div></div>
+
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-06-01</p>
+        <h1 class="editorial-title">CORONA GLOW</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1jQ2r2ntXOAIO7z1tFSVe9DPLQCJjcuzu&sz=w1600" alt="CORONA GLOW" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;CORONA GLOW&#x27;, contrast is everything, between light and dark, structure and flow, concealment and revelation, creating a dynamic tension that electrifies every single frame.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;CORONA GLOW&#x27;에서 대비가 전부다, 빛과 어둠, 구조와 흐름, 은폐와 드러냄 사이의, 모든 단일 프레임을 전기 충전시키는 역동적 긴장을 만들며.</p>
+            <p class="editorial-desc" data-lang="it">In 'CORONA GLOW', contrast is everything, between light and dark, structure and flow, concealment and revelation, creating a dynamic tension that electrifies every single frame.</p>
+            <p class="editorial-desc" data-lang="fr">In 'CORONA GLOW', contrast is everything, between light and dark, structure and flow, concealment and revelation, creating a dynamic tension that electrifies every single frame.</p>
+            <p class="editorial-desc" data-lang="es">In 'CORONA GLOW', contrast is everything, between light and dark, structure and flow, concealment and revelation, creating a dynamic tension that electrifies every single frame.</p>
+            <p class="editorial-desc" data-lang="ja">In 'CORONA GLOW', contrast is everything, between light and dark, structure and flow, concealment and revelation, creating a dynamic tension that electrifies every single frame.</p>
+            <p class="editorial-desc" data-lang="zh">In 'CORONA GLOW', contrast is everything, between light and dark, structure and flow, concealment and revelation, creating a dynamic tension that electrifies every single frame.</p>
+            <p class="editorial-desc" data-lang="ru">In 'CORONA GLOW', contrast is everything, between light and dark, structure and flow, concealment and revelation, creating a dynamic tension that electrifies every single frame.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1xbq3vrh7piUMihJIQNS2SSgFeXhKuY35&sz=w1600" alt="CORONA GLOW" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1SCeFweqJwEtorUgfJDz3NVM0QEN9pCV-&sz=w1600" alt="CORONA GLOW" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=13FBO0INKLYQIvYeVNQgT4b_ZAG396CB_&sz=w1600" alt="CORONA GLOW" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=19wQq9D3eLiK7bSc7s3QmyvPo404uiu9i&sz=w1600" alt="CORONA GLOW" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1sBwuKIVBdH0kmjEv20-rwjY5HUFJuuIq&sz=w1600" alt="CORONA GLOW" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1TYSAfLpLPBD4A7E6lG_gyibi1he5M1p6&sz=w1600" alt="CORONA GLOW" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1lWsf-iexvPYR17hFgYT7_aSiwKmcwtGy&sz=w1600" alt="CORONA GLOW" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1rvhSkg6VC9oH5xDXb5j3kLYlRetddyDn&sz=w1600" alt="CORONA GLOW" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1dC2d17ori1Y47FhDBW46hc8fCvlR3DqS&sz=w1600" alt="CORONA GLOW" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1FGTJAPTxaD5_iG4f8F-9MnAtTwiJdMyw&sz=w1600" alt="CORONA GLOW" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-06-02</p>
+        <h1 class="editorial-title">BROUK</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1onVTAy3kRpNQZOLwh-bE9p8m18yrw7bl&sz=w1600" alt="BROUK" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In the world of &#x27;BROUK&#x27;, clothing becomes armor and vulnerability simultaneously, a paradox rendered in exquisite detail across every carefully constructed moment.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;BROUK&#x27;의 세계에서 의복은 갑옷이자 동시에 취약성이 된다, 세심하게 구성된 모든 순간에 걸쳐 정교한 디테일로 렌더링된 역설.</p>
+            <p class="editorial-desc" data-lang="it">In the world of 'BROUK', clothing becomes armor and vulnerability simultaneously, a paradox rendered in exquisite detail across every carefully constructed moment.</p>
+            <p class="editorial-desc" data-lang="fr">In the world of 'BROUK', clothing becomes armor and vulnerability simultaneously, a paradox rendered in exquisite detail across every carefully constructed moment.</p>
+            <p class="editorial-desc" data-lang="es">In the world of 'BROUK', clothing becomes armor and vulnerability simultaneously, a paradox rendered in exquisite detail across every carefully constructed moment.</p>
+            <p class="editorial-desc" data-lang="ja">In the world of 'BROUK', clothing becomes armor and vulnerability simultaneously, a paradox rendered in exquisite detail across every carefully constructed moment.</p>
+            <p class="editorial-desc" data-lang="zh">In the world of 'BROUK', clothing becomes armor and vulnerability simultaneously, a paradox rendered in exquisite detail across every carefully constructed moment.</p>
+            <p class="editorial-desc" data-lang="ru">In the world of 'BROUK', clothing becomes armor and vulnerability simultaneously, a paradox rendered in exquisite detail across every carefully constructed moment.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1FYqkHo3AqrizqocZx_H7ZwsDVEkNoMub&sz=w1600" alt="BROUK" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1pQG_J8ru5LA4p8LLOXQfDGgLYMmd0t6_&sz=w1600" alt="BROUK" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1gmAkXqDTpxEImNI0uiOD5wlrxyOJ8ewg&sz=w1600" alt="BROUK" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1vv2ZYBRoMs4zk1Zzd0K_He3C4XxklMtd&sz=w1600" alt="BROUK" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1E-EpYJKBozcxyV7Z5cJr8-YbfS0Vj0Lu&sz=w1600" alt="BROUK" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1FaI6T2KAc1fgtZUrfmYxX3dRiTUuFA9F&sz=w1600" alt="BROUK" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1Xp2llFiC97tcMpSPYRJJMOygURFv9_mR&sz=w1600" alt="BROUK" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1VmnTysFkj23xPZENrLNhsg1DIWKJUR8z&sz=w1600" alt="BROUK" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1VyEEpNTJGQwd9dOMAWEcKeb4fecrOVOq&sz=w1600" alt="BROUK" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1Rd3r6pYUUA_ctnLouW33qKa9-kepVKzH&sz=w1600" alt="BROUK" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-06-03</p>
+        <h1 class="editorial-title">I HEAR NOTHING BUT ECHO</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1A-K3yOq909dgMnhvT4lTicG1lDZEeq2Y&sz=w1600" alt="I HEAR NOTHING BUT ECHO" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">&#x27;I HEAR NOTHING BUT ECHO&#x27; orchestrates light and shadow into a symphony of textures, building a narrative that speaks through fabric, skin, and the spaces between them.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;I HEAR NOTHING BUT ECHO&#x27;는 빛과 그림자를 텍스처의 교향곡으로 조율하며, 직물과 피부, 그리고 그 사이의 공간을 통해 말하는 서사를 구축한다.</p>
+            <p class="editorial-desc" data-lang="it">'I HEAR NOTHING BUT ECHO' orchestrates light and shadow into a symphony of textures, building a narrative that speaks through fabric, skin, and the spaces between them.</p>
+            <p class="editorial-desc" data-lang="fr">'I HEAR NOTHING BUT ECHO' orchestrates light and shadow into a symphony of textures, building a narrative that speaks through fabric, skin, and the spaces between them.</p>
+            <p class="editorial-desc" data-lang="es">'I HEAR NOTHING BUT ECHO' orchestrates light and shadow into a symphony of textures, building a narrative that speaks through fabric, skin, and the spaces between them.</p>
+            <p class="editorial-desc" data-lang="ja">'I HEAR NOTHING BUT ECHO' orchestrates light and shadow into a symphony of textures, building a narrative that speaks through fabric, skin, and the spaces between them.</p>
+            <p class="editorial-desc" data-lang="zh">'I HEAR NOTHING BUT ECHO' orchestrates light and shadow into a symphony of textures, building a narrative that speaks through fabric, skin, and the spaces between them.</p>
+            <p class="editorial-desc" data-lang="ru">'I HEAR NOTHING BUT ECHO' orchestrates light and shadow into a symphony of textures, building a narrative that speaks through fabric, skin, and the spaces between them.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1DgEtXuuIOCNv95hHu1GeV0cnJ0Qla071&sz=w1600" alt="I HEAR NOTHING BUT ECHO" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1053AYuZ--csoq2JyuWi1K0CVTEZ2QzlT&sz=w1600" alt="I HEAR NOTHING BUT ECHO" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1tHNRlRq9wOa43cMlyAQGlIxqYIR-pASd&sz=w1600" alt="I HEAR NOTHING BUT ECHO" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=15YNDo2rBBt0JcsmBeeKfqBs9rYCeeTtB&sz=w1600" alt="I HEAR NOTHING BUT ECHO" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=14MP6AKrJvWivIc7knl5zTK1oF6-PKoQe&sz=w1600" alt="I HEAR NOTHING BUT ECHO" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1mU43zBkSLxP_kwTDjqk8br15oTl8fHmO&sz=w1600" alt="I HEAR NOTHING BUT ECHO" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-06-04</p>
+        <h1 class="editorial-title">SNEAKERS CLUB</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1wt9xJk1AWDVinqlaGEsc_M_cjfrMETwb&sz=w1600" alt="SNEAKERS CLUB" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">&#x27;SNEAKERS CLUB&#x27; crafts a visual sanctuary where aesthetics rule with quiet authority, each image a carefully placed stone in an ever-expanding mosaic of style and substance.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;SNEAKERS CLUB&#x27;는 미학이 조용한 권위로 지배하는 시각적 성소를 만들며, 각 이미지는 끊임없이 확장되는 스타일과 본질의 모자이크에 세심하게 놓인 돌이다.</p>
+            <p class="editorial-desc" data-lang="it">'SNEAKERS CLUB' crafts a visual sanctuary where aesthetics rule with quiet authority, each image a carefully placed stone in an ever-expanding mosaic of style and substance.</p>
+            <p class="editorial-desc" data-lang="fr">'SNEAKERS CLUB' crafts a visual sanctuary where aesthetics rule with quiet authority, each image a carefully placed stone in an ever-expanding mosaic of style and substance.</p>
+            <p class="editorial-desc" data-lang="es">'SNEAKERS CLUB' crafts a visual sanctuary where aesthetics rule with quiet authority, each image a carefully placed stone in an ever-expanding mosaic of style and substance.</p>
+            <p class="editorial-desc" data-lang="ja">'SNEAKERS CLUB' crafts a visual sanctuary where aesthetics rule with quiet authority, each image a carefully placed stone in an ever-expanding mosaic of style and substance.</p>
+            <p class="editorial-desc" data-lang="zh">'SNEAKERS CLUB' crafts a visual sanctuary where aesthetics rule with quiet authority, each image a carefully placed stone in an ever-expanding mosaic of style and substance.</p>
+            <p class="editorial-desc" data-lang="ru">'SNEAKERS CLUB' crafts a visual sanctuary where aesthetics rule with quiet authority, each image a carefully placed stone in an ever-expanding mosaic of style and substance.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1oSmU8dJEODyOCWhUW8mXTmgRzLC373G9&sz=w1600" alt="SNEAKERS CLUB" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1pRBtHSqqLe9hqF7YViXXb1YGncPv5AE1&sz=w1600" alt="SNEAKERS CLUB" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1VrgdmxTtJAatwMxquq914_ZBGTUb4432&sz=w1600" alt="SNEAKERS CLUB" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1e6DA-jjF1y1Ww2wj4iqD869wsAKt--0D&sz=w1600" alt="SNEAKERS CLUB" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=16TOcld44Y3V0qENrpaNE4pjbi11lTOxq&sz=w1600" alt="SNEAKERS CLUB" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1l7lT5_Ao-xXwhteCAFi2Jl4QQBassZwQ&sz=w1600" alt="SNEAKERS CLUB" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1ycGLjXPvaVvKrcj1dB6JlgCQ8UfHg6YQ&sz=w1600" alt="SNEAKERS CLUB" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1ksm4W2jNl8SZgBesf2vdTcuS5T3vD4wn&sz=w1600" alt="SNEAKERS CLUB" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1CgttTSePVyUeQpOo8_Se0B5s34e8nLfI&sz=w1600" alt="SNEAKERS CLUB" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1VxF5LdYMyerj4IR19kN8qZDf3bXybQTA&sz=w1600" alt="SNEAKERS CLUB" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1cmZQQvfqFnuqg551ym3AbukHGhwtBdl8&sz=w1600" alt="SNEAKERS CLUB" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1RGBGmRhD4j1Z1ZKAvTJgCqOygGts4Z4j&sz=w1600" alt="SNEAKERS CLUB" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1pGX6YZnlgViaZJok6g3REijs3vXABDQv&sz=w1600" alt="SNEAKERS CLUB" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1Nq1mLSks4Kd2RYAlbeiOhKz_1_hIMBaZ&sz=w1600" alt="SNEAKERS CLUB" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1_viGzkcCYTE7Y5f26fb7_EwShaFi-Ojj&sz=w1600" alt="SNEAKERS CLUB" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1ZkhPjeVFr3BTlKjPbQQffuHRcG4-vztJ&sz=w1600" alt="SNEAKERS CLUB" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1qZrflW1nNUfvVRPuOScbvKjJC4ZW2VCY&sz=w1600" alt="SNEAKERS CLUB" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1qfxhisNbsPTe9yQmlMQ3cnuxFjIRMGcx&sz=w1600" alt="SNEAKERS CLUB" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1wt9xJk1AWDVinqlaGEsc_M_cjfrMETwb&sz=w1600" alt="SNEAKERS CLUB" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-06-05</p>
+        <h1 class="editorial-title">PLANETARY TWINS</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1FLXM9u8l1l5kMSQaOwZ_VISR3jEUGNOB&sz=w1600" alt="PLANETARY TWINS" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">&#x27;PLANETARY TWINS&#x27; doesn&#x27;t follow trends; it exists outside of time. Each image occupies its own eternal present, where style becomes a conversation between past aspirations and future possibilities.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;PLANETARY TWINS&#x27;는 트렌드를 따르지 않는다; 시간 밖에 존재한다. 각 이미지는 자신만의 영원한 현재를 점유하며, 스타일은 과거의 열망과 미래의 가능성 사이의 대화가 된다.</p>
+            <p class="editorial-desc" data-lang="it">'PLANETARY TWINS' doesn't follow trends; it exists outside of time. Each image occupies its own eternal present, where style becomes a conversation between past aspirations and future possibilities.</p>
+            <p class="editorial-desc" data-lang="fr">'PLANETARY TWINS' doesn't follow trends; it exists outside of time. Each image occupies its own eternal present, where style becomes a conversation between past aspirations and future possibilities.</p>
+            <p class="editorial-desc" data-lang="es">'PLANETARY TWINS' doesn't follow trends; it exists outside of time. Each image occupies its own eternal present, where style becomes a conversation between past aspirations and future possibilities.</p>
+            <p class="editorial-desc" data-lang="ja">'PLANETARY TWINS' doesn't follow trends; it exists outside of time. Each image occupies its own eternal present, where style becomes a conversation between past aspirations and future possibilities.</p>
+            <p class="editorial-desc" data-lang="zh">'PLANETARY TWINS' doesn't follow trends; it exists outside of time. Each image occupies its own eternal present, where style becomes a conversation between past aspirations and future possibilities.</p>
+            <p class="editorial-desc" data-lang="ru">'PLANETARY TWINS' doesn't follow trends; it exists outside of time. Each image occupies its own eternal present, where style becomes a conversation between past aspirations and future possibilities.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1f7Cx-6vsqD7gToqujPfUy0n7Sv6tZyEd&sz=w1600" alt="PLANETARY TWINS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1J0m_d7IoaZ_nendeXWFcGH_bU1bR0LzN&sz=w1600" alt="PLANETARY TWINS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1WdiCrBGj0kJj9mhaKhbrt9bE142DszgJ&sz=w1600" alt="PLANETARY TWINS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1kFqvdqVuWR5oa6xm7mYepANpdRnn2Ufg&sz=w1600" alt="PLANETARY TWINS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1sf7SHBHXwathbK9uWdrE6CqtOBMcyCDe&sz=w1600" alt="PLANETARY TWINS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1hKI4KcYlE7vcgP3Bpihv9mXE9EnNknW3&sz=w1600" alt="PLANETARY TWINS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1dzuLpDvsdL78sSTf6RFibqY6mPsq1JUP&sz=w1600" alt="PLANETARY TWINS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1Y-LUj_uz3b_2KJazoG1t94Y9I4y5V--7&sz=w1600" alt="PLANETARY TWINS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1b54cLk_uP5SpgmG7UWnD6wNrdOkE05nq&sz=w1600" alt="PLANETARY TWINS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1doeiXe2vGBd7UJ_0yEyw07TV0z385B-I&sz=w1600" alt="PLANETARY TWINS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1ea1nuEjUAb3dlpoaJ3twKUHMHaiR8wC6&sz=w1600" alt="PLANETARY TWINS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1JChgaqsQS9LEU2bBhpfUn0MaBpqi83MO&sz=w1600" alt="PLANETARY TWINS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=12TU-L3GC-Kx-TA5zOM2tB_dhe9ACN9il&sz=w1600" alt="PLANETARY TWINS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=142HFqagQHBtoMXm5pjCwIUo1kV1aBXs8&sz=w1600" alt="PLANETARY TWINS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1UqOkukSn9NpRegns3jfsKKbghahNFPTM&sz=w1600" alt="PLANETARY TWINS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1PhQVlZ9KxIrFfNGg_aab3hwfKBHGzWZx&sz=w1600" alt="PLANETARY TWINS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=11Qi85bNUpWcW5spox8S3XBlgR9N1ENOG&sz=w1600" alt="PLANETARY TWINS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1EXhW18xocNuCqO1F4qU1GvboOMV_sTfw&sz=w1600" alt="PLANETARY TWINS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1FLXM9u8l1l5kMSQaOwZ_VISR3jEUGNOB&sz=w1600" alt="PLANETARY TWINS" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-06-06</p>
+        <h1 class="editorial-title">INTO THE LIGHT</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1aRyvUHrVQLPvvI4quhS3bHu6AOpf3rsV&sz=w1600" alt="INTO THE LIGHT" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">&#x27;INTO THE LIGHT&#x27; moves with the confidence of a visual essay that knows exactly what it wants to say, delivering each frame with precision and an unerring sense of purpose.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;INTO THE LIGHT&#x27;는 자신이 정확히 무엇을 말하고 싶은지 아는 비주얼 에세이의 자신감으로 움직이며, 각 프레임을 정밀함과 확실한 목적의식으로 전달한다.</p>
+            <p class="editorial-desc" data-lang="it">'INTO THE LIGHT' moves with the confidence of a visual essay that knows exactly what it wants to say, delivering each frame with precision and an unerring sense of purpose.</p>
+            <p class="editorial-desc" data-lang="fr">'INTO THE LIGHT' moves with the confidence of a visual essay that knows exactly what it wants to say, delivering each frame with precision and an unerring sense of purpose.</p>
+            <p class="editorial-desc" data-lang="es">'INTO THE LIGHT' moves with the confidence of a visual essay that knows exactly what it wants to say, delivering each frame with precision and an unerring sense of purpose.</p>
+            <p class="editorial-desc" data-lang="ja">'INTO THE LIGHT' moves with the confidence of a visual essay that knows exactly what it wants to say, delivering each frame with precision and an unerring sense of purpose.</p>
+            <p class="editorial-desc" data-lang="zh">'INTO THE LIGHT' moves with the confidence of a visual essay that knows exactly what it wants to say, delivering each frame with precision and an unerring sense of purpose.</p>
+            <p class="editorial-desc" data-lang="ru">'INTO THE LIGHT' moves with the confidence of a visual essay that knows exactly what it wants to say, delivering each frame with precision and an unerring sense of purpose.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1DDSecO6tD3l5OR7dscexSKtNv9h2mrL5&sz=w1600" alt="INTO THE LIGHT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1pNAqtgG-jVdER0pyir__bJvWD9MpCQAh&sz=w1600" alt="INTO THE LIGHT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1mQn4rs5rVZ_99sl9XdDOJImtwtyHJfM-&sz=w1600" alt="INTO THE LIGHT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1Un4zn-Kc1i47o6i1nGNp3491QLyF4Osk&sz=w1600" alt="INTO THE LIGHT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1zvOkSb5pflpvpjYLfUrJFNTL0h1TbCa4&sz=w1600" alt="INTO THE LIGHT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1F2qf-hk0MBC9CazDV8f4Mz1vq1MqKi_Y&sz=w1600" alt="INTO THE LIGHT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1CgECfBWg_NQQqfVWVSHyP8rajG3XpVqn&sz=w1600" alt="INTO THE LIGHT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1mlP5ydbdG3s_fnBg13HE6-FDnkfFeQIB&sz=w1600" alt="INTO THE LIGHT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1t5JPu6btOyAuaBoZu6CLsVOkQMVP5rOM&sz=w1600" alt="INTO THE LIGHT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1iRp_juzNMWkiOR8cYQxQp5kB54BnfjXu&sz=w1600" alt="INTO THE LIGHT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1edr7NY3LCOP_y3PY1dOB-9mF3a5l_9E4&sz=w1600" alt="INTO THE LIGHT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1BJY_OggPUl5mmvFagSRSYr4UNcyG2hgd&sz=w1600" alt="INTO THE LIGHT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1aRyvUHrVQLPvvI4quhS3bHu6AOpf3rsV&sz=w1600" alt="INTO THE LIGHT" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-06-07</p>
+        <h1 class="editorial-title">ARMY</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1ZM9ZubOWmFMvS6qfjs1CymEu6Ehm2X_Z&sz=w1600" alt="ARMY" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">&#x27;ARMY&#x27; refuses easy categorization. It inhabits a space between dream and documentation, producing images that linger in the mind long after the page is turned.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;ARMY&#x27;는 쉬운 분류를 거부한다. 꿈과 기록 사이의 공간에 거주하며, 페이지를 넘긴 후에도 오래 마음에 머무는 이미지를 생산한다.</p>
+            <p class="editorial-desc" data-lang="it">'ARMY' refuses easy categorization. It inhabits a space between dream and documentation, producing images that linger in the mind long after the page is turned.</p>
+            <p class="editorial-desc" data-lang="fr">'ARMY' refuses easy categorization. It inhabits a space between dream and documentation, producing images that linger in the mind long after the page is turned.</p>
+            <p class="editorial-desc" data-lang="es">'ARMY' refuses easy categorization. It inhabits a space between dream and documentation, producing images that linger in the mind long after the page is turned.</p>
+            <p class="editorial-desc" data-lang="ja">'ARMY' refuses easy categorization. It inhabits a space between dream and documentation, producing images that linger in the mind long after the page is turned.</p>
+            <p class="editorial-desc" data-lang="zh">'ARMY' refuses easy categorization. It inhabits a space between dream and documentation, producing images that linger in the mind long after the page is turned.</p>
+            <p class="editorial-desc" data-lang="ru">'ARMY' refuses easy categorization. It inhabits a space between dream and documentation, producing images that linger in the mind long after the page is turned.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1kkq8SWgMI1DZ4SUFiIgwifD6oa4DDNCH&sz=w1600" alt="ARMY" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1psp0WcYi28srfa_Fsq6YuZrTGr70fit0&sz=w1600" alt="ARMY" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1HSTMp75ftMpyiUTwLGuSxTGDH1kTCI2P&sz=w1600" alt="ARMY" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1j-DI3pRl_WnvaSOnqOl2eo48cIj7Dcuw&sz=w1600" alt="ARMY" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1qHwyl7RmDmYhPIjZJizPjCehL9nn8HBD&sz=w1600" alt="ARMY" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1NNZcFQYVco43N7ulwSF8YcJPMy0GPmjh&sz=w1600" alt="ARMY" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1Ga9y2QpYaH2WY5iI4ttaoryK-2rPKWyF&sz=w1600" alt="ARMY" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1ZAsfHBT6sx78xnrHSHFXN4YF9x_DhpZH&sz=w1600" alt="ARMY" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1TCpQVGXcdHMby_6TMOXat4wtX0MVdaBm&sz=w1600" alt="ARMY" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1YSXDXZIPOzAOJKY8N9_tSmhFZxVlK-m4&sz=w1600" alt="ARMY" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1b27WrDTSltG8ifDJbWj3isodD95VQjP5&sz=w1600" alt="ARMY" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1cTlzvMt81Q0Wb5uDVW_cv8UCjcesI4es&sz=w1600" alt="ARMY" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-06-08</p>
+        <h1 class="editorial-title">ROOM CARTEL</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1RSPs-vuA701Ojq_02QDAqy6tk4tWtC-2&sz=w1600" alt="ROOM CARTEL" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">&#x27;ROOM CARTEL&#x27; orchestrates light and shadow into a symphony of textures, building a narrative that speaks through fabric, skin, and the spaces between them.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;ROOM CARTEL&#x27;는 빛과 그림자를 텍스처의 교향곡으로 조율하며, 직물과 피부, 그리고 그 사이의 공간을 통해 말하는 서사를 구축한다.</p>
+            <p class="editorial-desc" data-lang="it">'ROOM CARTEL' orchestrates light and shadow into a symphony of textures, building a narrative that speaks through fabric, skin, and the spaces between them.</p>
+            <p class="editorial-desc" data-lang="fr">'ROOM CARTEL' orchestrates light and shadow into a symphony of textures, building a narrative that speaks through fabric, skin, and the spaces between them.</p>
+            <p class="editorial-desc" data-lang="es">'ROOM CARTEL' orchestrates light and shadow into a symphony of textures, building a narrative that speaks through fabric, skin, and the spaces between them.</p>
+            <p class="editorial-desc" data-lang="ja">'ROOM CARTEL' orchestrates light and shadow into a symphony of textures, building a narrative that speaks through fabric, skin, and the spaces between them.</p>
+            <p class="editorial-desc" data-lang="zh">'ROOM CARTEL' orchestrates light and shadow into a symphony of textures, building a narrative that speaks through fabric, skin, and the spaces between them.</p>
+            <p class="editorial-desc" data-lang="ru">'ROOM CARTEL' orchestrates light and shadow into a symphony of textures, building a narrative that speaks through fabric, skin, and the spaces between them.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1pwxdaLhhyzxznDU7QuExjg4lYdrCZo5Z&sz=w1600" alt="ROOM CARTEL" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1mq6z6ZK0uDuhMAG-IyzBzQ3br3plJpik&sz=w1600" alt="ROOM CARTEL" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1EdVZQPnf4l4QH_c4a63iLkBxM6ME6eaQ&sz=w1600" alt="ROOM CARTEL" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=12BOG-YuiMDu72QmsYwIiy5w2P21Y8W1O&sz=w1600" alt="ROOM CARTEL" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1-jJ13FokKUgyZHqqoyLHu7j6nEBoQw9S&sz=w1600" alt="ROOM CARTEL" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1GpPAfHkZhdXmQVzjbM6ymEU4gAmdanUs&sz=w1600" alt="ROOM CARTEL" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1BGRx2JQcv7jETF1odKuHUW5DgH9zi871&sz=w1600" alt="ROOM CARTEL" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1TSuUvZKeCoWgcLtq2nTOQPkIsL-vKR0b&sz=w1600" alt="ROOM CARTEL" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1Jgy945jkeQtdvfwZ3FPfHw21aCu-dWaF&sz=w1600" alt="ROOM CARTEL" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1cVQkw8WtdtJs6vgPyR9nVXBmaXoNZNWR&sz=w1600" alt="ROOM CARTEL" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1ysrhpl77GG6giEkjg0OjowcTt0PbRQTt&sz=w1600" alt="ROOM CARTEL" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1EDbo9t7kBW0xykUFRtudSQl5gL-uBsf7&sz=w1600" alt="ROOM CARTEL" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1YVljxrBjubbdCeW8Spd3-KUV_y9ye_5E&sz=w1600" alt="ROOM CARTEL" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1RSPs-vuA701Ojq_02QDAqy6tk4tWtC-2&sz=w1600" alt="ROOM CARTEL" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-06-09</p>
+        <h1 class="editorial-title">FREEDOM OF STRANGERS</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=12mLnxAMleCq-Bwt6ZgKmok47yRbzFiSF&sz=w1600" alt="FREEDOM OF STRANGERS" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">THESE WORKS EXPRESSES THE FREEDOM OF STRANGERS.
+LONG-BRIMMED HAT TO HIDE HIS PALE FACE AND MARKINGS OF BLUE STARS STIMULATES THE FIRST STEP TAKEN IN A NEW LAND.
+WE ARE SEARCHING FOR DEVIATIONS TO BREAK THE BORING DAILY LIFE THAT
+GOES AROUND AND ROUND LIKE A HAMSTER WHEEL, AND TO HOPE TO ACHIEVE IT.
+THE STRANGERS WHO LANDED ON A STRANGE LAND FOUND THE REAL FREEDOM HE ALWAYS WISHED FOR WHAT HE COULDN&#x27;T FIND IN HIS HOMELAND.
+EVERYTHING IS STRANGE AND NEW TO HIM, BUT IT MAKES HIM BIT EXCITED.
+WE ARE EXPRESSING THE FREEDOM HE IS EXPERIENCING.</p>
+            <p class="editorial-desc" data-lang="ko">이 작품들은 낯선 사람들의 자유를 표현한다.
+긴 챙의 모자는 창백한 얼굴을 가리고, 푸른 별들은 새로운 땅으로의 첫 걸음을 자극한다.
+우리는 지루한 일상을 깨기 위해 일탈한다.
+쳇바퀴처럼 빙글빙글 돌고, 성취하기를 희망한다.
+낯선 땅에 상륙한 낯선 사람들이 조국에서 찾을 수 없었던, 항상 바라던 진정한 자유.
+모든 게 낯설고 새롭지만 이것은 그를 흥분시킨다.
+우리는 그가 경험하고 있는 자유를 표현하고 있다.</p>
+            <p class="editorial-desc" data-lang="it">THESE WORKS EXPRESSES THE FREEDOM OF STRANGERS.
+LONG-BRIMMED HAT TO HIDE HIS PALE FACE AND MARKINGS OF BLUE STARS STIMULATES THE FIRST STEP TAKEN IN A NEW LAND.
+WE ARE SEARCHING FOR DEVIATIONS TO BREAK THE BORING DAILY LIFE THAT
+GOES AROUND AND ROUND LIKE A HAMSTER WHEEL, AND TO HOPE TO ACHIEVE IT.
+THE STRANGERS WHO LANDED ON A STRANGE LAND FOUND THE REAL FREEDOM HE ALWAYS WISHED FOR WHAT HE COULDN'T FIND IN HIS HOMELAND.
+EVERYTHING IS STRANGE AND NEW TO HIM, BUT IT MAKES HIM BIT EXCITED.
+WE ARE EXPRESSING THE FREEDOM HE IS EXPERIENCING.</p>
+            <p class="editorial-desc" data-lang="fr">THESE WORKS EXPRESSES THE FREEDOM OF STRANGERS.
+LONG-BRIMMED HAT TO HIDE HIS PALE FACE AND MARKINGS OF BLUE STARS STIMULATES THE FIRST STEP TAKEN IN A NEW LAND.
+WE ARE SEARCHING FOR DEVIATIONS TO BREAK THE BORING DAILY LIFE THAT
+GOES AROUND AND ROUND LIKE A HAMSTER WHEEL, AND TO HOPE TO ACHIEVE IT.
+THE STRANGERS WHO LANDED ON A STRANGE LAND FOUND THE REAL FREEDOM HE ALWAYS WISHED FOR WHAT HE COULDN'T FIND IN HIS HOMELAND.
+EVERYTHING IS STRANGE AND NEW TO HIM, BUT IT MAKES HIM BIT EXCITED.
+WE ARE EXPRESSING THE FREEDOM HE IS EXPERIENCING.</p>
+            <p class="editorial-desc" data-lang="es">THESE WORKS EXPRESSES THE FREEDOM OF STRANGERS.
+LONG-BRIMMED HAT TO HIDE HIS PALE FACE AND MARKINGS OF BLUE STARS STIMULATES THE FIRST STEP TAKEN IN A NEW LAND.
+WE ARE SEARCHING FOR DEVIATIONS TO BREAK THE BORING DAILY LIFE THAT
+GOES AROUND AND ROUND LIKE A HAMSTER WHEEL, AND TO HOPE TO ACHIEVE IT.
+THE STRANGERS WHO LANDED ON A STRANGE LAND FOUND THE REAL FREEDOM HE ALWAYS WISHED FOR WHAT HE COULDN'T FIND IN HIS HOMELAND.
+EVERYTHING IS STRANGE AND NEW TO HIM, BUT IT MAKES HIM BIT EXCITED.
+WE ARE EXPRESSING THE FREEDOM HE IS EXPERIENCING.</p>
+            <p class="editorial-desc" data-lang="ja">THESE WORKS EXPRESSES THE FREEDOM OF STRANGERS.
+LONG-BRIMMED HAT TO HIDE HIS PALE FACE AND MARKINGS OF BLUE STARS STIMULATES THE FIRST STEP TAKEN IN A NEW LAND.
+WE ARE SEARCHING FOR DEVIATIONS TO BREAK THE BORING DAILY LIFE THAT
+GOES AROUND AND ROUND LIKE A HAMSTER WHEEL, AND TO HOPE TO ACHIEVE IT.
+THE STRANGERS WHO LANDED ON A STRANGE LAND FOUND THE REAL FREEDOM HE ALWAYS WISHED FOR WHAT HE COULDN'T FIND IN HIS HOMELAND.
+EVERYTHING IS STRANGE AND NEW TO HIM, BUT IT MAKES HIM BIT EXCITED.
+WE ARE EXPRESSING THE FREEDOM HE IS EXPERIENCING.</p>
+            <p class="editorial-desc" data-lang="zh">THESE WORKS EXPRESSES THE FREEDOM OF STRANGERS.
+LONG-BRIMMED HAT TO HIDE HIS PALE FACE AND MARKINGS OF BLUE STARS STIMULATES THE FIRST STEP TAKEN IN A NEW LAND.
+WE ARE SEARCHING FOR DEVIATIONS TO BREAK THE BORING DAILY LIFE THAT
+GOES AROUND AND ROUND LIKE A HAMSTER WHEEL, AND TO HOPE TO ACHIEVE IT.
+THE STRANGERS WHO LANDED ON A STRANGE LAND FOUND THE REAL FREEDOM HE ALWAYS WISHED FOR WHAT HE COULDN'T FIND IN HIS HOMELAND.
+EVERYTHING IS STRANGE AND NEW TO HIM, BUT IT MAKES HIM BIT EXCITED.
+WE ARE EXPRESSING THE FREEDOM HE IS EXPERIENCING.</p>
+            <p class="editorial-desc" data-lang="ru">THESE WORKS EXPRESSES THE FREEDOM OF STRANGERS.
+LONG-BRIMMED HAT TO HIDE HIS PALE FACE AND MARKINGS OF BLUE STARS STIMULATES THE FIRST STEP TAKEN IN A NEW LAND.
+WE ARE SEARCHING FOR DEVIATIONS TO BREAK THE BORING DAILY LIFE THAT
+GOES AROUND AND ROUND LIKE A HAMSTER WHEEL, AND TO HOPE TO ACHIEVE IT.
+THE STRANGERS WHO LANDED ON A STRANGE LAND FOUND THE REAL FREEDOM HE ALWAYS WISHED FOR WHAT HE COULDN'T FIND IN HIS HOMELAND.
+EVERYTHING IS STRANGE AND NEW TO HIM, BUT IT MAKES HIM BIT EXCITED.
+WE ARE EXPRESSING THE FREEDOM HE IS EXPERIENCING.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Freedom_of_Strangers_2_6b4ee98ccc.jpg" alt="FREEDOM OF STRANGERS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Freedom_of_Strangers_3_a0c08e1ba4.jpg" alt="FREEDOM OF STRANGERS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1_131d668b07.png" alt="FREEDOM OF STRANGERS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Freedom_of_Strangers_5_5c92fc1665.jpg" alt="FREEDOM OF STRANGERS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Freedom_of_Strangers_6_d7fa8c5f85.jpg" alt="FREEDOM OF STRANGERS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Freedom_of_Strangers_9_702912ccab.jpg" alt="FREEDOM OF STRANGERS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Freedom_of_Strangers_10_350350234d.jpg" alt="FREEDOM OF STRANGERS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Freedom_of_Strangers_15_91164486cf.jpg" alt="FREEDOM OF STRANGERS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Freedom_of_Strangers_17_c97e3103c6.jpg" alt="FREEDOM OF STRANGERS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Freedom_of_Strangers_20_22acdd07f0.jpg" alt="FREEDOM OF STRANGERS" loading="lazy"></div>
+    </div>
+<div class="editorial-credits">
+<p><strong>포토그래퍼:</strong> <a href="https://www.instagram.com/____su.un____" target="_blank">____su.un____</a></p>
+    <p><strong>아트디렉터:</strong> <a href="https://www.instagram.com/whitepapermodelbest" target="_blank">whitepapermodelbest</a></p>
+    <p><strong>에디터:</strong> <a href="https://www.instagram.com/whitepapermodelbest" target="_blank">whitepapermodelbest</a></p>
+    <p><strong>헤어:</strong> <a href="https://www.instagram.com/hongju823" target="_blank">hongju823</a></p>
+    <p><strong>메이크업:</strong> <a href="https://www.instagram.com/hongju823" target="_blank">hongju823</a></p>
+    <p><strong>스타일리스트:</strong> <a href="https://www.instagram.com/i_mrmrmr" target="_blank">i_mrmrmr</a></p>
+    <p><strong>모델:</strong> <a href="https://www.instagram.com/whitepapermodelbest" target="_blank">whitepapermodelbest</a></p>
+    <p><strong>함께한 브랜드:</strong> <a href="https://www.instagram.com/lacoste" target="_blank">lacoste</a>, <a href="https://www.instagram.com/uniqlo" target="_blank">uniqlo</a>, <a href="https://www.instagram.com/hm" target="_blank">hm</a>, <a href="https://www.instagram.com/shoopen_official" target="_blank">shoopen_official</a></p>
+</div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-06-09</p>
+        <h1 class="editorial-title">THERE IS LOVE IN YOU</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1a4ZYK3kvkpj-9IjyNnGRQTxTG0YRpXuW&sz=w1600" alt="THERE IS LOVE IN YOU" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">The editorial logic of &#x27;THERE IS LOVE IN YOU&#x27; follows its own internal rhythm, creating a visual cadence that draws the viewer deeper into its world with each successive frame.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;THERE IS LOVE IN YOU&#x27;의 에디토리얼 논리는 자체적인 내적 리듬을 따르며, 연속된 각 프레임으로 시청자를 그 세계 깊숙이 끌어들이는 시각적 운율을 만든다.</p>
+            <p class="editorial-desc" data-lang="it">The editorial logic of 'THERE IS LOVE IN YOU' follows its own internal rhythm, creating a visual cadence that draws the viewer deeper into its world with each successive frame.</p>
+            <p class="editorial-desc" data-lang="fr">The editorial logic of 'THERE IS LOVE IN YOU' follows its own internal rhythm, creating a visual cadence that draws the viewer deeper into its world with each successive frame.</p>
+            <p class="editorial-desc" data-lang="es">The editorial logic of 'THERE IS LOVE IN YOU' follows its own internal rhythm, creating a visual cadence that draws the viewer deeper into its world with each successive frame.</p>
+            <p class="editorial-desc" data-lang="ja">The editorial logic of 'THERE IS LOVE IN YOU' follows its own internal rhythm, creating a visual cadence that draws the viewer deeper into its world with each successive frame.</p>
+            <p class="editorial-desc" data-lang="zh">The editorial logic of 'THERE IS LOVE IN YOU' follows its own internal rhythm, creating a visual cadence that draws the viewer deeper into its world with each successive frame.</p>
+            <p class="editorial-desc" data-lang="ru">The editorial logic of 'THERE IS LOVE IN YOU' follows its own internal rhythm, creating a visual cadence that draws the viewer deeper into its world with each successive frame.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1hUH7Rvv9P2AvWofCsA-9DX745PvQVWM0&sz=w1600" alt="THERE IS LOVE IN YOU" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1I04UHECmOXMXH61kBzUZkf9I2pVrCkD5&sz=w1600" alt="THERE IS LOVE IN YOU" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=129lCFM09f054xjEr3ci2VBHXriJUlGS6&sz=w1600" alt="THERE IS LOVE IN YOU" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1aw2E4CArpeqbvn4xoGAwEjNLRaCWKqoG&sz=w1600" alt="THERE IS LOVE IN YOU" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1ih6vkTlMlekC6Ug6YAozKRXthFOYGl-Y&sz=w1600" alt="THERE IS LOVE IN YOU" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1k40C_vkpMDbY5Ewtaw3t6ZuiVhu3LgfA&sz=w1600" alt="THERE IS LOVE IN YOU" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1YG2FoV5FDKlSkFqCYycGf_TCSvWXkHQD&sz=w1600" alt="THERE IS LOVE IN YOU" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=10ryHn5unV4R-J3k8DUr0iYIUl3HZ19Te&sz=w1600" alt="THERE IS LOVE IN YOU" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1iGyIqY85rYjjdNhFtKMvWeKCnjUvblxr&sz=w1600" alt="THERE IS LOVE IN YOU" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1FkNIbKW4-sVa0JXXtHPThhHvlecyPblL&sz=w1600" alt="THERE IS LOVE IN YOU" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1kdM9WrZkwGtfJDfwZCfHf0EzcxRVIuKN&sz=w1600" alt="THERE IS LOVE IN YOU" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1f3kdiMBvaK18UYKLDiHZDSQeaxnyISTw&sz=w1600" alt="THERE IS LOVE IN YOU" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1zwELO8RpsRVHk2dPB9iujY3p_iDpzk-2&sz=w1600" alt="THERE IS LOVE IN YOU" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1Ewgiameaemmb0q9IkBv-yeIufKHmyfin&sz=w1600" alt="THERE IS LOVE IN YOU" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1tLDjEkaynUdB-qmZCy4JuRPZT8ocK3iL&sz=w1600" alt="THERE IS LOVE IN YOU" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-06-10</p>
+        <h1 class="editorial-title">THE EARTH CRISIS</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1XQYlX0llXwKWtlIo-VYKV7OgQZTJQKyO&sz=w1600" alt="THE EARTH CRISIS" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">The visual vocabulary of &#x27;THE EARTH CRISIS&#x27; is rich and expansive, drawing from cinema, sculpture, and street culture to create a language all its own within the editorial space.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;THE EARTH CRISIS&#x27;의 시각적 어휘는 풍부하고 광범위하다, 영화, 조각, 거리 문화에서 끌어와 에디토리얼 공간 안에서 자신만의 언어를 만든다.</p>
+            <p class="editorial-desc" data-lang="it">The visual vocabulary of 'THE EARTH CRISIS' is rich and expansive, drawing from cinema, sculpture, and street culture to create a language all its own within the editorial space.</p>
+            <p class="editorial-desc" data-lang="fr">The visual vocabulary of 'THE EARTH CRISIS' is rich and expansive, drawing from cinema, sculpture, and street culture to create a language all its own within the editorial space.</p>
+            <p class="editorial-desc" data-lang="es">The visual vocabulary of 'THE EARTH CRISIS' is rich and expansive, drawing from cinema, sculpture, and street culture to create a language all its own within the editorial space.</p>
+            <p class="editorial-desc" data-lang="ja">The visual vocabulary of 'THE EARTH CRISIS' is rich and expansive, drawing from cinema, sculpture, and street culture to create a language all its own within the editorial space.</p>
+            <p class="editorial-desc" data-lang="zh">The visual vocabulary of 'THE EARTH CRISIS' is rich and expansive, drawing from cinema, sculpture, and street culture to create a language all its own within the editorial space.</p>
+            <p class="editorial-desc" data-lang="ru">The visual vocabulary of 'THE EARTH CRISIS' is rich and expansive, drawing from cinema, sculpture, and street culture to create a language all its own within the editorial space.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1XQYlX0llXwKWtlIo-VYKV7OgQZTJQKyO&sz=w1600" alt="THE EARTH CRISIS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1fxFMlbqGTHNIQPqbOUtNVmidpEjn3HP9&sz=w1600" alt="THE EARTH CRISIS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1Eh5tJgH6ku7Fo_VRcG-mycJZYHL4_SEs&sz=w1600" alt="THE EARTH CRISIS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1ZK1-CumnfTmhu2w5L55-VNEFj5c-2xrt&sz=w1600" alt="THE EARTH CRISIS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1LXW5nLtde2zn-k67SLcZw19GjKmzG1Nd&sz=w1600" alt="THE EARTH CRISIS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1V5MpFjIljSlheVfiLRXc9Ddh0kP45xm2&sz=w1600" alt="THE EARTH CRISIS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1UYGabcUyS1ugcxEx4wJmPW5rfPcvzJYq&sz=w1600" alt="THE EARTH CRISIS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1WPec_LZF0YJsrEonhufYxwGACkLh6yxF&sz=w1600" alt="THE EARTH CRISIS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1y5HVBtv4hNDE-MOobCfIiJxOPkXgj91A&sz=w1600" alt="THE EARTH CRISIS" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-06-11</p>
+        <h1 class="editorial-title">NOBODY KNOWS WHAT HAD HAPPENED</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1Z7Y1XG3ptAIR9_qupmcjrRRj5N00Wsus&sz=w1600" alt="NOBODY KNOWS WHAT HAD HAPPENED" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">&#x27;NOBODY KNOWS WHAT HAD HAPPENED&#x27; challenges the viewer to look beyond surface aesthetics and into the conceptual framework beneath, where every choice of fabric and angle carries intentional meaning.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;NOBODY KNOWS WHAT HAD HAPPENED&#x27;는 표면적 미학 너머를 보도록 시청자에 도전하며, 그 아래의 개념적 프레임워크로, 직물과 각도의 모든 선택이 의도적 의미를 지닌 곳으로.</p>
+            <p class="editorial-desc" data-lang="it">'NOBODY KNOWS WHAT HAD HAPPENED' challenges the viewer to look beyond surface aesthetics and into the conceptual framework beneath, where every choice of fabric and angle carries intentional meaning.</p>
+            <p class="editorial-desc" data-lang="fr">'NOBODY KNOWS WHAT HAD HAPPENED' challenges the viewer to look beyond surface aesthetics and into the conceptual framework beneath, where every choice of fabric and angle carries intentional meaning.</p>
+            <p class="editorial-desc" data-lang="es">'NOBODY KNOWS WHAT HAD HAPPENED' challenges the viewer to look beyond surface aesthetics and into the conceptual framework beneath, where every choice of fabric and angle carries intentional meaning.</p>
+            <p class="editorial-desc" data-lang="ja">'NOBODY KNOWS WHAT HAD HAPPENED' challenges the viewer to look beyond surface aesthetics and into the conceptual framework beneath, where every choice of fabric and angle carries intentional meaning.</p>
+            <p class="editorial-desc" data-lang="zh">'NOBODY KNOWS WHAT HAD HAPPENED' challenges the viewer to look beyond surface aesthetics and into the conceptual framework beneath, where every choice of fabric and angle carries intentional meaning.</p>
+            <p class="editorial-desc" data-lang="ru">'NOBODY KNOWS WHAT HAD HAPPENED' challenges the viewer to look beyond surface aesthetics and into the conceptual framework beneath, where every choice of fabric and angle carries intentional meaning.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1XMmgYU8VfLNwwq-4sXiaVGo73k3kr-lx&sz=w1600" alt="NOBODY KNOWS WHAT HAD HAPPENED" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1XTP3g9veJ4wSMcHZWzj3t0IICm-297vu&sz=w1600" alt="NOBODY KNOWS WHAT HAD HAPPENED" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1OzuBfnnBEEnRlF_BZuRGKOykrwauCGHR&sz=w1600" alt="NOBODY KNOWS WHAT HAD HAPPENED" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1GX9PyIcytsZtt-09IeFCueiHRlgD1w7c&sz=w1600" alt="NOBODY KNOWS WHAT HAD HAPPENED" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1RYYjpDefPdtzoU5zkzQvGIp22b8Mm4aa&sz=w1600" alt="NOBODY KNOWS WHAT HAD HAPPENED" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1LYHrCJS2YU7T2ofXkyPK30Cng8qOIhbH&sz=w1600" alt="NOBODY KNOWS WHAT HAD HAPPENED" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1RYCsjnlKvBHa6IQd-SK7aYSv8xkURTyt&sz=w1600" alt="NOBODY KNOWS WHAT HAD HAPPENED" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1MuNHxokFfcf09xyxJvED_B5O44qxUYvo&sz=w1600" alt="NOBODY KNOWS WHAT HAD HAPPENED" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1ccGUZwoOtMyFeT24iCp9_1W5O1JHPGBg&sz=w1600" alt="NOBODY KNOWS WHAT HAD HAPPENED" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1TXVm0Y3LbBSFrnrzKPQ8GbMweIwvDJFu&sz=w1600" alt="NOBODY KNOWS WHAT HAD HAPPENED" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1dPWdMC932wtb4Ags2taTn69zdKx4-6ec&sz=w1600" alt="NOBODY KNOWS WHAT HAD HAPPENED" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1qraPqNycbXtCEc0wnU7tgp3YHWkcJUKl&sz=w1600" alt="NOBODY KNOWS WHAT HAD HAPPENED" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=10nA968NG5z6TlMg1hABtZPUTLm7-V7Og&sz=w1600" alt="NOBODY KNOWS WHAT HAD HAPPENED" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1ltpBA_RP2CR5WZ_LffA54qE8iF-ieTTY&sz=w1600" alt="NOBODY KNOWS WHAT HAD HAPPENED" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-06-12</p>
+        <h1 class="editorial-title">OFFICE HUMAN : BLINDFOLD</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1RQ_lbFUW0txFjknoLBqWMQuHHTm1uJ1y&sz=w1600" alt="OFFICE HUMAN : BLINDFOLD" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">The creative vision behind &#x27;OFFICE HUMAN : BLINDFOLD&#x27; is immediately apparent, bold without being brash, sophisticated without pretension, and utterly committed to its own unique visual perspective.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;OFFICE HUMAN : BLINDFOLD&#x27; 뒤의 창의적 비전은 즉시 명백하다, 거칠지 않으면서 대담하고, 허세 없이 세련되며, 자신만의 독특한 시각적 관점에 완전히 헌신적인.</p>
+            <p class="editorial-desc" data-lang="it">The creative vision behind 'OFFICE HUMAN : BLINDFOLD' is immediately apparent, bold without being brash, sophisticated without pretension, and utterly committed to its own unique visual perspective.</p>
+            <p class="editorial-desc" data-lang="fr">The creative vision behind 'OFFICE HUMAN : BLINDFOLD' is immediately apparent, bold without being brash, sophisticated without pretension, and utterly committed to its own unique visual perspective.</p>
+            <p class="editorial-desc" data-lang="es">The creative vision behind 'OFFICE HUMAN : BLINDFOLD' is immediately apparent, bold without being brash, sophisticated without pretension, and utterly committed to its own unique visual perspective.</p>
+            <p class="editorial-desc" data-lang="ja">The creative vision behind 'OFFICE HUMAN : BLINDFOLD' is immediately apparent, bold without being brash, sophisticated without pretension, and utterly committed to its own unique visual perspective.</p>
+            <p class="editorial-desc" data-lang="zh">The creative vision behind 'OFFICE HUMAN : BLINDFOLD' is immediately apparent, bold without being brash, sophisticated without pretension, and utterly committed to its own unique visual perspective.</p>
+            <p class="editorial-desc" data-lang="ru">The creative vision behind 'OFFICE HUMAN : BLINDFOLD' is immediately apparent, bold without being brash, sophisticated without pretension, and utterly committed to its own unique visual perspective.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1j8hTv9Wd6VZGiIVM8i4dYEK3nHfS3R1f&sz=w1600" alt="OFFICE HUMAN : BLINDFOLD" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1LdDBqbOmgDgIcMEhsV78xPfTe4nCv6ww&sz=w1600" alt="OFFICE HUMAN : BLINDFOLD" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1LOtk6mPFr8ewAXs0O3w6mh8FFmXEWLHk&sz=w1600" alt="OFFICE HUMAN : BLINDFOLD" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=18xfONamy1jqbzS5ARRrrsDHQrMtOoV7N&sz=w1600" alt="OFFICE HUMAN : BLINDFOLD" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1Dht187XqHMrR4UerBBZOoZZtaxTrKcpr&sz=w1600" alt="OFFICE HUMAN : BLINDFOLD" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1Rp27TJejwNI8sjU4whFJuEQ2zlBeNUdU&sz=w1600" alt="OFFICE HUMAN : BLINDFOLD" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1srO7F2HcqQDpA8aLXFdbR6WzX45axct8&sz=w1600" alt="OFFICE HUMAN : BLINDFOLD" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-06-13</p>
+        <h1 class="editorial-title">MEMOIRS PAS</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=12cxrG2VyHZZtWFICvnmWajZmJOLNjTku&sz=w1600" alt="MEMOIRS PAS" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">&#x27;MEMOIRS PAS&#x27; emerges as a visual meditation on identity, where each frame deconstructs conventional beauty into something far more arresting and personal.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;MEMOIRS PAS&#x27;는 정체성에 대한 시각적 명상으로, 각 프레임이 관습적 아름다움을 해체하여 훨씬 더 강렬하고 개인적인 무언가를 만들어낸다.</p>
+            <p class="editorial-desc" data-lang="it">'MEMOIRS PAS' emerges as a visual meditation on identity, where each frame deconstructs conventional beauty into something far more arresting and personal.</p>
+            <p class="editorial-desc" data-lang="fr">'MEMOIRS PAS' emerges as a visual meditation on identity, where each frame deconstructs conventional beauty into something far more arresting and personal.</p>
+            <p class="editorial-desc" data-lang="es">'MEMOIRS PAS' emerges as a visual meditation on identity, where each frame deconstructs conventional beauty into something far more arresting and personal.</p>
+            <p class="editorial-desc" data-lang="ja">'MEMOIRS PAS' emerges as a visual meditation on identity, where each frame deconstructs conventional beauty into something far more arresting and personal.</p>
+            <p class="editorial-desc" data-lang="zh">'MEMOIRS PAS' emerges as a visual meditation on identity, where each frame deconstructs conventional beauty into something far more arresting and personal.</p>
+            <p class="editorial-desc" data-lang="ru">'MEMOIRS PAS' emerges as a visual meditation on identity, where each frame deconstructs conventional beauty into something far more arresting and personal.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1RwTDGr1cJgRx45vTPHKhqBpKc6mG0ecz&sz=w1600" alt="MEMOIRS PAS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1orV6rc0OT8AMUjQfvpSFDSGwv1V3K8Rn&sz=w1600" alt="MEMOIRS PAS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=10yDjp4mzLpWJmM-0zJ0Grisxl9xhurO1&sz=w1600" alt="MEMOIRS PAS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1hqo5d_kPmh4LaOjtLtqzf_jV_Lc7X5Hc&sz=w1600" alt="MEMOIRS PAS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1Chom4V72pPzXEsmhU_ZNweDBXlPag173&sz=w1600" alt="MEMOIRS PAS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1DBQwl-3sdptnxzw2l3amGDS_0IJ56a5t&sz=w1600" alt="MEMOIRS PAS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1NouRj1KnJrApY8zUeeZrP96y3JlNUFG3&sz=w1600" alt="MEMOIRS PAS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1a01WI6k3o9alijo5X9TSDNJhg9I0X2DL&sz=w1600" alt="MEMOIRS PAS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1Gl0765-Gn_Nc_vPyOSmdCf85SLbxTF1b&sz=w1600" alt="MEMOIRS PAS" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-06-14</p>
+        <h1 class="editorial-title">ONCE UPON A TIME</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=12kmIrclCadHqLJdUMZeTOp_HCjXnV_N2&sz=w1600" alt="ONCE UPON A TIME" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">&#x27;ONCE UPON A TIME&#x27; orchestrates light and shadow into a symphony of textures, building a narrative that speaks through fabric, skin, and the spaces between them.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;ONCE UPON A TIME&#x27;는 빛과 그림자를 텍스처의 교향곡으로 조율하며, 직물과 피부, 그리고 그 사이의 공간을 통해 말하는 서사를 구축한다.</p>
+            <p class="editorial-desc" data-lang="it">'ONCE UPON A TIME' orchestrates light and shadow into a symphony of textures, building a narrative that speaks through fabric, skin, and the spaces between them.</p>
+            <p class="editorial-desc" data-lang="fr">'ONCE UPON A TIME' orchestrates light and shadow into a symphony of textures, building a narrative that speaks through fabric, skin, and the spaces between them.</p>
+            <p class="editorial-desc" data-lang="es">'ONCE UPON A TIME' orchestrates light and shadow into a symphony of textures, building a narrative that speaks through fabric, skin, and the spaces between them.</p>
+            <p class="editorial-desc" data-lang="ja">'ONCE UPON A TIME' orchestrates light and shadow into a symphony of textures, building a narrative that speaks through fabric, skin, and the spaces between them.</p>
+            <p class="editorial-desc" data-lang="zh">'ONCE UPON A TIME' orchestrates light and shadow into a symphony of textures, building a narrative that speaks through fabric, skin, and the spaces between them.</p>
+            <p class="editorial-desc" data-lang="ru">'ONCE UPON A TIME' orchestrates light and shadow into a symphony of textures, building a narrative that speaks through fabric, skin, and the spaces between them.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1TTCKFCF-qCR_XwA8HEWJt8KMG1F_lmBu&sz=w1600" alt="ONCE UPON A TIME" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1KZp2h0OQX2TX0olfZHsyd7YdumCFWtoT&sz=w1600" alt="ONCE UPON A TIME" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1t-HreiptOW6GJT0tF_yR3nNWGtJOymAc&sz=w1600" alt="ONCE UPON A TIME" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1EFoHFSz67k17uX-150MMBAanBErax5Xf&sz=w1600" alt="ONCE UPON A TIME" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1QLfLKIDOQSSqsxgmT9Nz0VpT3AIeiBbK&sz=w1600" alt="ONCE UPON A TIME" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1MDqYk7zLmH2x6faWDWzbIa-SjEPUrkxg&sz=w1600" alt="ONCE UPON A TIME" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1qlEjpk4PwZfysGncrACmc49n11Xk3_fX&sz=w1600" alt="ONCE UPON A TIME" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1OX8iwNnOLTVud8w4sgVomrBQeoRoq0A6&sz=w1600" alt="ONCE UPON A TIME" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1UZJ9JG8rEys0FOf0VhrFqnv5d10EyZZT&sz=w1600" alt="ONCE UPON A TIME" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1ThaiBc6MR-PpCGbLyc3YDM8o2EkXr-9F&sz=w1600" alt="ONCE UPON A TIME" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=10LTJxnZDPuqZtwCQnEAePey9J0569F75&sz=w1600" alt="ONCE UPON A TIME" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1T_iGhX_mdfLq9Cjdx3CDGp20ywxK7GIF&sz=w1600" alt="ONCE UPON A TIME" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1gUSHz_iU8Qcjuq4cKcqz46jeP2O5oenw&sz=w1600" alt="ONCE UPON A TIME" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1jbz386LIha0z0ZS7R2OSsNqlF7GRSSNQ&sz=w1600" alt="ONCE UPON A TIME" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1u7DQVs50vJgM4OC7O5_WuxR7vN3rNjOj&sz=w1600" alt="ONCE UPON A TIME" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=12kmIrclCadHqLJdUMZeTOp_HCjXnV_N2&sz=w1600" alt="ONCE UPON A TIME" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-06-15</p>
+        <h1 class="editorial-title">THEATRICAL DRAMA QUEEN</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1Zd-3vUy4hI_t2Brpr3ibLLmxCr0cOuhV&sz=w1600" alt="THEATRICAL DRAMA QUEEN" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">&#x27;THEATRICAL DRAMA QUEEN&#x27; approaches its subject with the curiosity of a documentary and the vision of a painting, finding in fashion a medium for exploring deeper truths about presence.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;THEATRICAL DRAMA QUEEN&#x27;는 다큐멘터리의 호기심과 회화의 비전으로 주제에 접근하며, 패션에서 존재감에 대한 더 깊은 진실을 탐구하는 매체를 발견한다.</p>
+            <p class="editorial-desc" data-lang="it">'THEATRICAL DRAMA QUEEN' approaches its subject with the curiosity of a documentary and the vision of a painting, finding in fashion a medium for exploring deeper truths about presence.</p>
+            <p class="editorial-desc" data-lang="fr">'THEATRICAL DRAMA QUEEN' approaches its subject with the curiosity of a documentary and the vision of a painting, finding in fashion a medium for exploring deeper truths about presence.</p>
+            <p class="editorial-desc" data-lang="es">'THEATRICAL DRAMA QUEEN' approaches its subject with the curiosity of a documentary and the vision of a painting, finding in fashion a medium for exploring deeper truths about presence.</p>
+            <p class="editorial-desc" data-lang="ja">'THEATRICAL DRAMA QUEEN' approaches its subject with the curiosity of a documentary and the vision of a painting, finding in fashion a medium for exploring deeper truths about presence.</p>
+            <p class="editorial-desc" data-lang="zh">'THEATRICAL DRAMA QUEEN' approaches its subject with the curiosity of a documentary and the vision of a painting, finding in fashion a medium for exploring deeper truths about presence.</p>
+            <p class="editorial-desc" data-lang="ru">'THEATRICAL DRAMA QUEEN' approaches its subject with the curiosity of a documentary and the vision of a painting, finding in fashion a medium for exploring deeper truths about presence.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1jQKhbPsp-djcpEyivxMe8yV0FQ0QwC_I&sz=w1600" alt="THEATRICAL DRAMA QUEEN" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1h19RViSAum91BmFYEJdz5loTUNFAsMw_&sz=w1600" alt="THEATRICAL DRAMA QUEEN" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=12bbvlwk-agaNuu5UjzbxvFwHBPL-bfQ1&sz=w1600" alt="THEATRICAL DRAMA QUEEN" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1NLMsLwYYbyuk3e0_V73XmWWDL99-JAPZ&sz=w1600" alt="THEATRICAL DRAMA QUEEN" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=15cVDyRSq8kWULt94OcHZSxWgVo1Gs668&sz=w1600" alt="THEATRICAL DRAMA QUEEN" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1Y_iAcN38A3s9yBJC8fX4JoCpx2SDtcU0&sz=w1600" alt="THEATRICAL DRAMA QUEEN" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1rQO9RmxhUw3IGPVvjjKq31qxmmI-jYjK&sz=w1600" alt="THEATRICAL DRAMA QUEEN" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1ONaxTqJwOO6xNejyjC4ERSOIIV7rVeCf&sz=w1600" alt="THEATRICAL DRAMA QUEEN" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1O3LBPFybkos6lfRe83nhZAcr4XEl7KwC&sz=w1600" alt="THEATRICAL DRAMA QUEEN" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=14IDevRZG195JJ5BdUN-PRv2dh4l9G3eX&sz=w1600" alt="THEATRICAL DRAMA QUEEN" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1guipVkC48fBaNZfmcqbEBFhymsG12zMm&sz=w1600" alt="THEATRICAL DRAMA QUEEN" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-06-16</p>
+        <h1 class="editorial-title">ABOAB</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1mwAKXJ2B_gwJg-UIq1SslWEfq69Fqxso&sz=w1600" alt="ABOAB" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">&#x27;ABOAB&#x27; demonstrates that true style is not about excess but about precision, each element calibrated to create maximum impact with minimum ornamentation.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;ABOAB&#x27;는 진정한 스타일이 과잉이 아닌 정밀함에 관한 것임을 보여준다, 각 요소가 최소한의 장식으로 최대의 임팩트를 만들도록 보정된.</p>
+            <p class="editorial-desc" data-lang="it">'ABOAB' demonstrates that true style is not about excess but about precision, each element calibrated to create maximum impact with minimum ornamentation.</p>
+            <p class="editorial-desc" data-lang="fr">'ABOAB' demonstrates that true style is not about excess but about precision, each element calibrated to create maximum impact with minimum ornamentation.</p>
+            <p class="editorial-desc" data-lang="es">'ABOAB' demonstrates that true style is not about excess but about precision, each element calibrated to create maximum impact with minimum ornamentation.</p>
+            <p class="editorial-desc" data-lang="ja">'ABOAB' demonstrates that true style is not about excess but about precision, each element calibrated to create maximum impact with minimum ornamentation.</p>
+            <p class="editorial-desc" data-lang="zh">'ABOAB' demonstrates that true style is not about excess but about precision, each element calibrated to create maximum impact with minimum ornamentation.</p>
+            <p class="editorial-desc" data-lang="ru">'ABOAB' demonstrates that true style is not about excess but about precision, each element calibrated to create maximum impact with minimum ornamentation.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1rRGljZAGMfpWwOhVApnt-Gkkde4U1lrV&sz=w1600" alt="ABOAB" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1wpDYcDZvnN9omkyC7iOYQr0xYv5TSTzl&sz=w1600" alt="ABOAB" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1Av45A7VMPmD9VHeC7UdnAEDpMzV7X6Wr&sz=w1600" alt="ABOAB" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1MDjImHKntEJNuQLe9zap4-IH9dxYFJOK&sz=w1600" alt="ABOAB" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=18B1MsAeSCW-QApISXFlvJA2r1q_e4eub&sz=w1600" alt="ABOAB" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1fdsmseWQzGivuW_AyTFPoVAiYuV7Q9RA&sz=w1600" alt="ABOAB" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1i6_ETWvW-X9ze9Kbsdy0AiHXe4kwxfDl&sz=w1600" alt="ABOAB" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1XYKhR730hZu5smB1e3S7Py3AQW2dqwGc&sz=w1600" alt="ABOAB" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1qIpofiYWNNmcDcAdm0ABGeigV_oOR3uk&sz=w1600" alt="ABOAB" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1XmYy5KFVGPwuEVVShE-GLdTcmS3pnAz7&sz=w1600" alt="ABOAB" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-06-18</p>
+        <h1 class="editorial-title">THE HOLY MOUNTAIN</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1Ab9kc0fU0BQIwz5Rm-DWP5NU6Jt4h7lk&sz=w1600" alt="THE HOLY MOUNTAIN" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">The genius of &#x27;THE HOLY MOUNTAIN&#x27; lies in its restraint. Where others might shout, this editorial whispers, and in that quiet confidence, discovers something truly profound.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;THE HOLY MOUNTAIN&#x27;의 천재성은 절제에 있다. 다른 이들이 소리칠 때, 이 에디토리얼은 속삭이며, 그 조용한 자신감 속에서 진정으로 심오한 것을 발견한다.</p>
+            <p class="editorial-desc" data-lang="it">The genius of 'THE HOLY MOUNTAIN' lies in its restraint. Where others might shout, this editorial whispers, and in that quiet confidence, discovers something truly profound.</p>
+            <p class="editorial-desc" data-lang="fr">The genius of 'THE HOLY MOUNTAIN' lies in its restraint. Where others might shout, this editorial whispers, and in that quiet confidence, discovers something truly profound.</p>
+            <p class="editorial-desc" data-lang="es">The genius of 'THE HOLY MOUNTAIN' lies in its restraint. Where others might shout, this editorial whispers, and in that quiet confidence, discovers something truly profound.</p>
+            <p class="editorial-desc" data-lang="ja">The genius of 'THE HOLY MOUNTAIN' lies in its restraint. Where others might shout, this editorial whispers, and in that quiet confidence, discovers something truly profound.</p>
+            <p class="editorial-desc" data-lang="zh">The genius of 'THE HOLY MOUNTAIN' lies in its restraint. Where others might shout, this editorial whispers, and in that quiet confidence, discovers something truly profound.</p>
+            <p class="editorial-desc" data-lang="ru">The genius of 'THE HOLY MOUNTAIN' lies in its restraint. Where others might shout, this editorial whispers, and in that quiet confidence, discovers something truly profound.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=155gXGLa9qnvk-WxpBhk5SJPbnkRXlgl6&sz=w1600" alt="THE HOLY MOUNTAIN" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1ySUZ5KMLV_QbFbwaMyI3PwalYS7YT8ld&sz=w1600" alt="THE HOLY MOUNTAIN" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=11O-nyLvXkAb8L74TiA3osAdizELFXdEL&sz=w1600" alt="THE HOLY MOUNTAIN" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1V_8cWOnH2feJXLOExvahc8BsW-hxOZUj&sz=w1600" alt="THE HOLY MOUNTAIN" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=17GyBIywbdmGBb2rQUfr76vTX_uG7srnk&sz=w1600" alt="THE HOLY MOUNTAIN" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=19jX4IiS3TCFPduF_gUUzHOdK4pPQcOKr&sz=w1600" alt="THE HOLY MOUNTAIN" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1WxFlMqU3G7RHJ2YDmeEVpa3uo18_oMx9&sz=w1600" alt="THE HOLY MOUNTAIN" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=15J2kvW2K-SieFOQls6CEavdAbIHozzeS&sz=w1600" alt="THE HOLY MOUNTAIN" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1GX2eLB5OviznP7_L8GzS4l9gQEAiWGQP&sz=w1600" alt="THE HOLY MOUNTAIN" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1jYv9WvaA81OenV2vqWy4HaLvyg33efu7&sz=w1600" alt="THE HOLY MOUNTAIN" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=187e7OziU3qXaGF6v0HlFZgX4wWiKFWCa&sz=w1600" alt="THE HOLY MOUNTAIN" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1WfziZ3nlcK6CmKRk8Wp-XeIs3Ext4ZFb&sz=w1600" alt="THE HOLY MOUNTAIN" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1g4GcWIoB-dJ4HpiT5s_kcbsEzcLxOMtu&sz=w1600" alt="THE HOLY MOUNTAIN" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-06-19</p>
+        <h1 class="editorial-title">MEMORIES OF ILLUSION</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1OMg3jqZQ0233l4djrmEv48j5KLFUFuZP&sz=w1600" alt="MEMORIES OF ILLUSION" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">The genius of &#x27;MEMORIES OF ILLUSION&#x27; lies in its restraint. Where others might shout, this editorial whispers, and in that quiet confidence, discovers something truly profound.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;MEMORIES OF ILLUSION&#x27;의 천재성은 절제에 있다. 다른 이들이 소리칠 때, 이 에디토리얼은 속삭이며, 그 조용한 자신감 속에서 진정으로 심오한 것을 발견한다.</p>
+            <p class="editorial-desc" data-lang="it">The genius of 'MEMORIES OF ILLUSION' lies in its restraint. Where others might shout, this editorial whispers, and in that quiet confidence, discovers something truly profound.</p>
+            <p class="editorial-desc" data-lang="fr">The genius of 'MEMORIES OF ILLUSION' lies in its restraint. Where others might shout, this editorial whispers, and in that quiet confidence, discovers something truly profound.</p>
+            <p class="editorial-desc" data-lang="es">The genius of 'MEMORIES OF ILLUSION' lies in its restraint. Where others might shout, this editorial whispers, and in that quiet confidence, discovers something truly profound.</p>
+            <p class="editorial-desc" data-lang="ja">The genius of 'MEMORIES OF ILLUSION' lies in its restraint. Where others might shout, this editorial whispers, and in that quiet confidence, discovers something truly profound.</p>
+            <p class="editorial-desc" data-lang="zh">The genius of 'MEMORIES OF ILLUSION' lies in its restraint. Where others might shout, this editorial whispers, and in that quiet confidence, discovers something truly profound.</p>
+            <p class="editorial-desc" data-lang="ru">The genius of 'MEMORIES OF ILLUSION' lies in its restraint. Where others might shout, this editorial whispers, and in that quiet confidence, discovers something truly profound.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1ZdJz3vOXMk6jZIs8SCEN61d2CMNE0Q8o&sz=w1600" alt="MEMORIES OF ILLUSION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=17yVe-OF2elpZgTbB_ajIVwM24dALkJE-&sz=w1600" alt="MEMORIES OF ILLUSION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1B2rHELdG7msJ2GrMxn93ClqYP-2DJwc4&sz=w1600" alt="MEMORIES OF ILLUSION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1gkKmEh-K3NqPo_6v6MzrP9RkIlBjAMRg&sz=w1600" alt="MEMORIES OF ILLUSION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1t5q43_MD2XhEZp1EVCV-IXHT877M3kuw&sz=w1600" alt="MEMORIES OF ILLUSION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1_bX8e07r63dKtGrHq9MVYNu3NHYIYm7P&sz=w1600" alt="MEMORIES OF ILLUSION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1itmxZpjuWAgEafPEQOl_cgIfh1T6feQS&sz=w1600" alt="MEMORIES OF ILLUSION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1itByb4kfhFQKsUJM2tFM42wERGYkYJVu&sz=w1600" alt="MEMORIES OF ILLUSION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1K35pO2Gx7Lb0KAHFr9EwbEv55-tnqXez&sz=w1600" alt="MEMORIES OF ILLUSION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=14Z8_2Yk98YQ5B1Rjtkj63HYEmQbclbmw&sz=w1600" alt="MEMORIES OF ILLUSION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1Hiu_9MoSpc5vOudbeXDc4IipUAAeQJoE&sz=w1600" alt="MEMORIES OF ILLUSION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1FN_BC693NBClbFYg14rz5VbLTwarRfAs&sz=w1600" alt="MEMORIES OF ILLUSION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=18PG67cdkD1GtfnXq7ibJJzdMmteGTiUw&sz=w1600" alt="MEMORIES OF ILLUSION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1lZtI6HlTUQwIuHpjf51O8Q_iObkU3CFJ&sz=w1600" alt="MEMORIES OF ILLUSION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=13Rry8flyTKc_Irg6u7LzGNlQ112t3NTx&sz=w1600" alt="MEMORIES OF ILLUSION" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-06-20</p>
+        <h1 class="editorial-title">OUTSHINED NIGHT</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1_RqHjuszVcTo2KniHmAvuBFfC5pFaq7A&sz=w1600" alt="OUTSHINED NIGHT" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;OUTSHINED NIGHT&#x27;, fashion becomes a vessel for storytelling, not the glossy narratives of commercial fantasy, but something darker, more personal, and infinitely more compelling.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;OUTSHINED NIGHT&#x27;에서 패션은 이야기의 그릇이 된다, 상업적 판타지의 광택 나는 서사가 아닌, 더 어둡고, 더 개인적이며, 무한히 더 매력적인 무언가.</p>
+            <p class="editorial-desc" data-lang="it">In 'OUTSHINED NIGHT', fashion becomes a vessel for storytelling, not the glossy narratives of commercial fantasy, but something darker, more personal, and infinitely more compelling.</p>
+            <p class="editorial-desc" data-lang="fr">In 'OUTSHINED NIGHT', fashion becomes a vessel for storytelling, not the glossy narratives of commercial fantasy, but something darker, more personal, and infinitely more compelling.</p>
+            <p class="editorial-desc" data-lang="es">In 'OUTSHINED NIGHT', fashion becomes a vessel for storytelling, not the glossy narratives of commercial fantasy, but something darker, more personal, and infinitely more compelling.</p>
+            <p class="editorial-desc" data-lang="ja">In 'OUTSHINED NIGHT', fashion becomes a vessel for storytelling, not the glossy narratives of commercial fantasy, but something darker, more personal, and infinitely more compelling.</p>
+            <p class="editorial-desc" data-lang="zh">In 'OUTSHINED NIGHT', fashion becomes a vessel for storytelling, not the glossy narratives of commercial fantasy, but something darker, more personal, and infinitely more compelling.</p>
+            <p class="editorial-desc" data-lang="ru">In 'OUTSHINED NIGHT', fashion becomes a vessel for storytelling, not the glossy narratives of commercial fantasy, but something darker, more personal, and infinitely more compelling.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=10o7eh4id2GowCEGjGSIc_yQm3mQHDEKF&sz=w1600" alt="OUTSHINED NIGHT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1skdojlIoanA5ja438ZDLwrpnK4tPUFZ-&sz=w1600" alt="OUTSHINED NIGHT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1D5dBkYIUjdFJ-R_rlXnHcmBWZpxGgOyu&sz=w1600" alt="OUTSHINED NIGHT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1MxfaDfyh-TCrhMF5VDjGDFZZZEmsypBt&sz=w1600" alt="OUTSHINED NIGHT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1u0I4Kf7zei1oECepcCOck33H1bUYbH9L&sz=w1600" alt="OUTSHINED NIGHT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1eDSaAfsOzrYDlWh317iczuJl9AkvemIW&sz=w1600" alt="OUTSHINED NIGHT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1jADJwqTrUhwB8Ho-ReonOPcGEj_cx5z6&sz=w1600" alt="OUTSHINED NIGHT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1sWoFVza7jEe_8zXJRRNUc8cunoc1_tj9&sz=w1600" alt="OUTSHINED NIGHT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1CGfS9Td2e0MiTWCuaAuqec8z_hHn_Crn&sz=w1600" alt="OUTSHINED NIGHT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1KGdbWIWNPa3Qp3bMTdTmEtBS1QwPnME-&sz=w1600" alt="OUTSHINED NIGHT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1mJ9Q9gZy3nTyt7ihwZ8cDElAw77tRkbp&sz=w1600" alt="OUTSHINED NIGHT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1A51VhZzh43ul6TcyN0MW3_425qmzTJGB&sz=w1600" alt="OUTSHINED NIGHT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1fEbR7WqUtJbVXqHgu0P_WteEhGG474hj&sz=w1600" alt="OUTSHINED NIGHT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1k-toqbF3hY6bkAjgj5zBfUk1xDBZ0fFj&sz=w1600" alt="OUTSHINED NIGHT" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-06-21</p>
+        <h1 class="editorial-title">PINK IS NOT FOR BARBIES</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1ZrFI3CHg9vPcH-Y-ufKtI9vIdFl7_5jD&sz=w1600" alt="PINK IS NOT FOR BARBIES" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">&#x27;PINK IS NOT FOR BARBIES&#x27; captures that elusive moment when fashion transcends function and becomes pure expression, a distillation of emotion rendered in texture, color, and form.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;PINK IS NOT FOR BARBIES&#x27;는 패션이 기능을 초월하여 순수한 표현이 되는 그 포착하기 어려운 순간을 담아낸다, 텍스처, 색상, 형태로 렌더링된 감정의 증류.</p>
+            <p class="editorial-desc" data-lang="it">'PINK IS NOT FOR BARBIES' captures that elusive moment when fashion transcends function and becomes pure expression, a distillation of emotion rendered in texture, color, and form.</p>
+            <p class="editorial-desc" data-lang="fr">'PINK IS NOT FOR BARBIES' captures that elusive moment when fashion transcends function and becomes pure expression, a distillation of emotion rendered in texture, color, and form.</p>
+            <p class="editorial-desc" data-lang="es">'PINK IS NOT FOR BARBIES' captures that elusive moment when fashion transcends function and becomes pure expression, a distillation of emotion rendered in texture, color, and form.</p>
+            <p class="editorial-desc" data-lang="ja">'PINK IS NOT FOR BARBIES' captures that elusive moment when fashion transcends function and becomes pure expression, a distillation of emotion rendered in texture, color, and form.</p>
+            <p class="editorial-desc" data-lang="zh">'PINK IS NOT FOR BARBIES' captures that elusive moment when fashion transcends function and becomes pure expression, a distillation of emotion rendered in texture, color, and form.</p>
+            <p class="editorial-desc" data-lang="ru">'PINK IS NOT FOR BARBIES' captures that elusive moment when fashion transcends function and becomes pure expression, a distillation of emotion rendered in texture, color, and form.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1HtipoIsougczS8q90I9jEM5PMxnpVvJ8&sz=w1600" alt="PINK IS NOT FOR BARBIES" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=11Dr9n_taiPAS8cCVqwv_X12Pg_Nu45In&sz=w1600" alt="PINK IS NOT FOR BARBIES" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1Ne9clGcuIse9MD1nMjsWt5iu4f1Z3fWg&sz=w1600" alt="PINK IS NOT FOR BARBIES" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1orYIvouRxPaCAqaldAYUHbDnDl-Lq1PC&sz=w1600" alt="PINK IS NOT FOR BARBIES" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=14bBJ-fqyNdi7JuBdNaFFRgPAOqqEDcmB&sz=w1600" alt="PINK IS NOT FOR BARBIES" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1FIjEa0VZEOnEDKearEPztXmZpd5UeF_Q&sz=w1600" alt="PINK IS NOT FOR BARBIES" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-06-22</p>
+        <h1 class="editorial-title">LOST IN HER DREAM</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1IpRsXPA3hKeWatWfmAtBzMyxqRkzpyQ3&sz=w1600" alt="LOST IN HER DREAM" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">&#x27;LOST IN HER DREAM&#x27; constructs a parallel universe where fashion exists not as decoration but as language, and every ensemble tells a story that words alone cannot capture.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;LOST IN HER DREAM&#x27;는 패션이 장식이 아닌 언어로 존재하는 평행 우주를 구축하며, 모든 앙상블이 말로는 담을 수 없는 이야기를 전한다.</p>
+            <p class="editorial-desc" data-lang="it">'LOST IN HER DREAM' constructs a parallel universe where fashion exists not as decoration but as language, and every ensemble tells a story that words alone cannot capture.</p>
+            <p class="editorial-desc" data-lang="fr">'LOST IN HER DREAM' constructs a parallel universe where fashion exists not as decoration but as language, and every ensemble tells a story that words alone cannot capture.</p>
+            <p class="editorial-desc" data-lang="es">'LOST IN HER DREAM' constructs a parallel universe where fashion exists not as decoration but as language, and every ensemble tells a story that words alone cannot capture.</p>
+            <p class="editorial-desc" data-lang="ja">'LOST IN HER DREAM' constructs a parallel universe where fashion exists not as decoration but as language, and every ensemble tells a story that words alone cannot capture.</p>
+            <p class="editorial-desc" data-lang="zh">'LOST IN HER DREAM' constructs a parallel universe where fashion exists not as decoration but as language, and every ensemble tells a story that words alone cannot capture.</p>
+            <p class="editorial-desc" data-lang="ru">'LOST IN HER DREAM' constructs a parallel universe where fashion exists not as decoration but as language, and every ensemble tells a story that words alone cannot capture.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1_YSpSekCcigO17qCg9378-Ax9NqjcINL&sz=w1600" alt="LOST IN HER DREAM" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=17tiQ0cZoElrtlXonyW-ATofQr2G63w5Z&sz=w1600" alt="LOST IN HER DREAM" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1V4wgq29dxNuHgq6JlaDPbqtdKp8Ygq7x&sz=w1600" alt="LOST IN HER DREAM" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1Ph3pyUbz3ePH2YtFP9KBC0_R_RGiLDLw&sz=w1600" alt="LOST IN HER DREAM" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1Bvr7BZEfaCQZONPYB3mS2jBCnN9xQp6d&sz=w1600" alt="LOST IN HER DREAM" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1j0MS1v_qBy_UECCSIOK7FsJGWB4aP4Dg&sz=w1600" alt="LOST IN HER DREAM" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1VbQ83hboA83-wQIQJq8aPrtZf3bXgX4M&sz=w1600" alt="LOST IN HER DREAM" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1HROechbinLHVulsJ1lXhNbN80K4_jP6p&sz=w1600" alt="LOST IN HER DREAM" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-06-23</p>
+        <h1 class="editorial-title">CHATEAU LIBERTÉ</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1esX9CeWyw_-b4A8B4NJbSwLeUlzy_PO_&sz=w1600" alt="CHATEAU LIBERTÉ" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">&#x27;CHATEAU LIBERTÉ&#x27; crafts a visual sanctuary where aesthetics rule with quiet authority, each image a carefully placed stone in an ever-expanding mosaic of style and substance.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;CHATEAU LIBERTÉ&#x27;는 미학이 조용한 권위로 지배하는 시각적 성소를 만들며, 각 이미지는 끊임없이 확장되는 스타일과 본질의 모자이크에 세심하게 놓인 돌이다.</p>
+            <p class="editorial-desc" data-lang="it">'CHATEAU LIBERTÉ' crafts a visual sanctuary where aesthetics rule with quiet authority, each image a carefully placed stone in an ever-expanding mosaic of style and substance.</p>
+            <p class="editorial-desc" data-lang="fr">'CHATEAU LIBERTÉ' crafts a visual sanctuary where aesthetics rule with quiet authority, each image a carefully placed stone in an ever-expanding mosaic of style and substance.</p>
+            <p class="editorial-desc" data-lang="es">'CHATEAU LIBERTÉ' crafts a visual sanctuary where aesthetics rule with quiet authority, each image a carefully placed stone in an ever-expanding mosaic of style and substance.</p>
+            <p class="editorial-desc" data-lang="ja">'CHATEAU LIBERTÉ' crafts a visual sanctuary where aesthetics rule with quiet authority, each image a carefully placed stone in an ever-expanding mosaic of style and substance.</p>
+            <p class="editorial-desc" data-lang="zh">'CHATEAU LIBERTÉ' crafts a visual sanctuary where aesthetics rule with quiet authority, each image a carefully placed stone in an ever-expanding mosaic of style and substance.</p>
+            <p class="editorial-desc" data-lang="ru">'CHATEAU LIBERTÉ' crafts a visual sanctuary where aesthetics rule with quiet authority, each image a carefully placed stone in an ever-expanding mosaic of style and substance.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1kTA41NtDASM4V0sKowxIMa5LIa-3Ma_U&sz=w1600" alt="CHATEAU LIBERTÉ" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1nFnvKMkyArxAcqoJWbaXsW_yVQz1qXXB&sz=w1600" alt="CHATEAU LIBERTÉ" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1a6RsoVk3z38Ndyxs4_WaXvfkxGZUwXN6&sz=w1600" alt="CHATEAU LIBERTÉ" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1lRNI85qlPD9mHPikFtSjwEq34vx2LYMy&sz=w1600" alt="CHATEAU LIBERTÉ" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1hrsJjSLxDIyJqqYnX-GYqhHelP8H_dJP&sz=w1600" alt="CHATEAU LIBERTÉ" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1YIy5V_Lv3eXFthANTXUaWoFET36YrQl4&sz=w1600" alt="CHATEAU LIBERTÉ" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1dgsMufrRtOKJvLaAWdJTT3mbxGSoliVd&sz=w1600" alt="CHATEAU LIBERTÉ" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-06-25</p>
+        <h1 class="editorial-title">IMOOGI</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1Z_jyGVSO7uemNuxZ-t8PxdllNzKu2zIV&sz=w1600" alt="IMOOGI" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">AFTER SPENDING A THOUSAND YEARS OF WAITING IN THE ROCKY ISLANDS IMOOGI
+FINALLY ACHIEVES ENLIGHTENMENT AND HEADS TOWARDS THE SEA.
+
+ARRIVING AT THE SEA IMOOGI BECAME A DRAGON
+AND MEETS THE SEA GOBLIN AND REACHES HARMONY.</p>
+            <p class="editorial-desc" data-lang="ko">록키 제도에서 수천 년을 기다린 후, 이무기는 마침내 깨달음을 얻고 바다로 향한다.
+
+바다에 도착한 이무기는 용이 되었고, 바다 도깨비를 만나 화합을 이뤄냈다.</p>
+            <p class="editorial-desc" data-lang="it">AFTER SPENDING A THOUSAND YEARS OF WAITING IN THE ROCKY ISLANDS IMOOGI
+FINALLY ACHIEVES ENLIGHTENMENT AND HEADS TOWARDS THE SEA.
+
+ARRIVING AT THE SEA IMOOGI BECAME A DRAGON
+AND MEETS THE SEA GOBLIN AND REACHES HARMONY.</p>
+            <p class="editorial-desc" data-lang="fr">AFTER SPENDING A THOUSAND YEARS OF WAITING IN THE ROCKY ISLANDS IMOOGI
+FINALLY ACHIEVES ENLIGHTENMENT AND HEADS TOWARDS THE SEA.
+
+ARRIVING AT THE SEA IMOOGI BECAME A DRAGON
+AND MEETS THE SEA GOBLIN AND REACHES HARMONY.</p>
+            <p class="editorial-desc" data-lang="es">AFTER SPENDING A THOUSAND YEARS OF WAITING IN THE ROCKY ISLANDS IMOOGI
+FINALLY ACHIEVES ENLIGHTENMENT AND HEADS TOWARDS THE SEA.
+
+ARRIVING AT THE SEA IMOOGI BECAME A DRAGON
+AND MEETS THE SEA GOBLIN AND REACHES HARMONY.</p>
+            <p class="editorial-desc" data-lang="ja">AFTER SPENDING A THOUSAND YEARS OF WAITING IN THE ROCKY ISLANDS IMOOGI
+FINALLY ACHIEVES ENLIGHTENMENT AND HEADS TOWARDS THE SEA.
+
+ARRIVING AT THE SEA IMOOGI BECAME A DRAGON
+AND MEETS THE SEA GOBLIN AND REACHES HARMONY.</p>
+            <p class="editorial-desc" data-lang="zh">AFTER SPENDING A THOUSAND YEARS OF WAITING IN THE ROCKY ISLANDS IMOOGI
+FINALLY ACHIEVES ENLIGHTENMENT AND HEADS TOWARDS THE SEA.
+
+ARRIVING AT THE SEA IMOOGI BECAME A DRAGON
+AND MEETS THE SEA GOBLIN AND REACHES HARMONY.</p>
+            <p class="editorial-desc" data-lang="ru">AFTER SPENDING A THOUSAND YEARS OF WAITING IN THE ROCKY ISLANDS IMOOGI
+FINALLY ACHIEVES ENLIGHTENMENT AND HEADS TOWARDS THE SEA.
+
+ARRIVING AT THE SEA IMOOGI BECAME A DRAGON
+AND MEETS THE SEA GOBLIN AND REACHES HARMONY.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1RmgeQnuPTDJ5IiosiyazUOrbOU3LFzbu&sz=w1600" alt="IMOOGI" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1K6ctCbmjo0gOHOR5J3GeMpJE8mf-n0_s&sz=w1600" alt="IMOOGI" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1k4z0Nt_E4e8aoAKN44tWDf0wdbcZkUPt&sz=w1600" alt="IMOOGI" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1yOYQoR91TnpUQETSUuei4AlT7Rp4Kpym&sz=w1600" alt="IMOOGI" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1pgMSbulLkJvECGD6s3bxwo3UK6a-Twn9&sz=w1600" alt="IMOOGI" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1B5O5D48j-HLFTgXp83B4KAQVb39NtiJV&sz=w1600" alt="IMOOGI" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1KYFZvJlizr3efn-X13IvCAQGb14FYBL_&sz=w1600" alt="IMOOGI" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1DJnC67SFGORnRpiK5zTyJAMVLaiPT3F7&sz=w1600" alt="IMOOGI" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1uLKFKTkKTj0jovu6yOpoZRcCtpoe7bOU&sz=w1600" alt="IMOOGI" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1x26hTVby9zCbJERd00AxlW4x8piaoKX6&sz=w1600" alt="IMOOGI" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1fMjVtr025NE76DAmlkJWDKhqoO8UoKbB&sz=w1600" alt="IMOOGI" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1pwd1XHweYjCjHUotIMyKUvoKv1cmplpK&sz=w1600" alt="IMOOGI" loading="lazy"></div>
+    </div>
+<div class="editorial-credits">
+<p><strong>포토그래퍼:</strong> <a href="https://www.instagram.com/c_junkies" target="_blank">c_junkies</a></p>
+    <p><strong>크리에이티브 디렉터:</strong> <a href="https://www.instagram.com/sj.beth" target="_blank">sj.beth</a></p>
+    <p><strong>헤어:</strong> <a href="https://www.instagram.com/mimi.nara" target="_blank">mimi.nara</a></p>
+    <p><strong>메이크업:</strong> <a href="https://www.instagram.com/mimi.nara" target="_blank">mimi.nara</a></p>
+    <p><strong>포토 어시스던트:</strong> <a href="https://www.instagram.com/soo_ip" target="_blank">soo_ip</a></p>
+    <p><strong>모델:</strong> <a href="https://www.instagram.com/_2sujin_" target="_blank">_2sujin_</a>, <a href="https://www.instagram.com/keemtj_" target="_blank">keemtj_</a></p>
+    <p><strong>함께한 브랜드:</strong> <a href="https://www.instagram.com/darcygom" target="_blank">darcygom</a></p>
+</div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-06-25</p>
+        <h1 class="editorial-title">FROM MARS</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1XurjTC4vK8AOYk8TtxhUX4-z-tt2IpLG&sz=w1600" alt="FROM MARS" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">&#x27;FROM MARS&#x27; challenges the viewer to look beyond surface aesthetics and into the conceptual framework beneath, where every choice of fabric and angle carries intentional meaning.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;FROM MARS&#x27;는 표면적 미학 너머를 보도록 시청자에 도전하며, 그 아래의 개념적 프레임워크로, 직물과 각도의 모든 선택이 의도적 의미를 지닌 곳으로.</p>
+            <p class="editorial-desc" data-lang="it">'FROM MARS' challenges the viewer to look beyond surface aesthetics and into the conceptual framework beneath, where every choice of fabric and angle carries intentional meaning.</p>
+            <p class="editorial-desc" data-lang="fr">'FROM MARS' challenges the viewer to look beyond surface aesthetics and into the conceptual framework beneath, where every choice of fabric and angle carries intentional meaning.</p>
+            <p class="editorial-desc" data-lang="es">'FROM MARS' challenges the viewer to look beyond surface aesthetics and into the conceptual framework beneath, where every choice of fabric and angle carries intentional meaning.</p>
+            <p class="editorial-desc" data-lang="ja">'FROM MARS' challenges the viewer to look beyond surface aesthetics and into the conceptual framework beneath, where every choice of fabric and angle carries intentional meaning.</p>
+            <p class="editorial-desc" data-lang="zh">'FROM MARS' challenges the viewer to look beyond surface aesthetics and into the conceptual framework beneath, where every choice of fabric and angle carries intentional meaning.</p>
+            <p class="editorial-desc" data-lang="ru">'FROM MARS' challenges the viewer to look beyond surface aesthetics and into the conceptual framework beneath, where every choice of fabric and angle carries intentional meaning.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1MBcC6YciHGjxKEnUpEsH0bPsVFr8GfeW&sz=w1600" alt="FROM MARS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1uiqt_mHHmteXgB9Uan6ZM_8uZTjjwjPR&sz=w1600" alt="FROM MARS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=18A2b5O1sedS8DSECS6tnjM8AFDlhQ8g3&sz=w1600" alt="FROM MARS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=16mP3UfOgv25pM9ZsuWcKzhhqtF4jUMgM&sz=w1600" alt="FROM MARS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1Pe88CKR_HtKfLs3x70nVwGeSWvYwgfbB&sz=w1600" alt="FROM MARS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1HIPOzoErByFTGQz0YKoFY2D0ALRcouW7&sz=w1600" alt="FROM MARS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1Z-zPxpz6uzAkHpbQK62x7QcsYg2_2JKV&sz=w1600" alt="FROM MARS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1tToXZorbk-NORK7lJoyWdVzpqNaTRtJD&sz=w1600" alt="FROM MARS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1hS5EzHv6qng5iZQ6d2Sa2k8EjBZ87KRh&sz=w1600" alt="FROM MARS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1McgVN3Z_-KVJ7lgNRR9pHXmCqbGCYKvG&sz=w1600" alt="FROM MARS" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=16B3C-tIsAdlpKMkE7F5rGYPpH1WEL4Tf&sz=w1600" alt="FROM MARS" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-06-26</p>
+        <h1 class="editorial-title">METACOGNITION</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1IQRZwdFwGu6hk9UvtKyiHCf1ovBMErVb&sz=w1600" alt="METACOGNITION" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">The editorial journey of &#x27;METACOGNITION&#x27; takes unexpected detours, each one revealing a new facet of its central theme and adding depth to its already rich visual narrative.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;METACOGNITION&#x27;의 에디토리얼 여정은 예상치 못한 우회를 하며, 각각이 중심 주제의 새로운 면을 드러내고 이미 풍부한 시각적 서사에 깊이를 더한다.</p>
+            <p class="editorial-desc" data-lang="it">The editorial journey of 'METACOGNITION' takes unexpected detours, each one revealing a new facet of its central theme and adding depth to its already rich visual narrative.</p>
+            <p class="editorial-desc" data-lang="fr">The editorial journey of 'METACOGNITION' takes unexpected detours, each one revealing a new facet of its central theme and adding depth to its already rich visual narrative.</p>
+            <p class="editorial-desc" data-lang="es">The editorial journey of 'METACOGNITION' takes unexpected detours, each one revealing a new facet of its central theme and adding depth to its already rich visual narrative.</p>
+            <p class="editorial-desc" data-lang="ja">The editorial journey of 'METACOGNITION' takes unexpected detours, each one revealing a new facet of its central theme and adding depth to its already rich visual narrative.</p>
+            <p class="editorial-desc" data-lang="zh">The editorial journey of 'METACOGNITION' takes unexpected detours, each one revealing a new facet of its central theme and adding depth to its already rich visual narrative.</p>
+            <p class="editorial-desc" data-lang="ru">The editorial journey of 'METACOGNITION' takes unexpected detours, each one revealing a new facet of its central theme and adding depth to its already rich visual narrative.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1tAy88_vRiJJnvWDUMjwfXDn11K2kLUvZ&sz=w1600" alt="METACOGNITION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1I0dcGF3TtuHMnGCB3qjS66O5XF_1o2fJ&sz=w1600" alt="METACOGNITION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1sm27bvkMaC7lkahoiSwsV_CWEsVjzhG4&sz=w1600" alt="METACOGNITION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1B1MEM6KxY2MwfCq_8MrYW33qwI86ApWQ&sz=w1600" alt="METACOGNITION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1OOvJsKMv4h1m4WsuaT2Ij3JFtcZT5Dja&sz=w1600" alt="METACOGNITION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1rQsLptJnLM-gFWRgrpKeBJKJPwAilfA7&sz=w1600" alt="METACOGNITION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1WG_bPa5mlWeaPWbByuIIlGH_EooMHEMI&sz=w1600" alt="METACOGNITION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=12vkdexnL840Nrmjf8XL4Sz7YCk1Gs7Xi&sz=w1600" alt="METACOGNITION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1JYjQMRktgDhSe4aT-rS-MEnQUne-x8vi&sz=w1600" alt="METACOGNITION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1auRgNOW4__MylnfSYPQh6wYqjMoDByap&sz=w1600" alt="METACOGNITION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1wYhZksX0xHq5S0zNIZmbf1ucpUdnr32R&sz=w1600" alt="METACOGNITION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1F-fPwmGSPWWkgkNYkv-nRUxbCzjjgv6f&sz=w1600" alt="METACOGNITION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1NpKlM0dVqE4LnO_QqgKJThcRmeX4QKA8&sz=w1600" alt="METACOGNITION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1tWK9L1DzUmabkkI2vRdT7F_dnbiaVYAt&sz=w1600" alt="METACOGNITION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1W_K_TgY0XKQHXP2Sotu5V7uUnsJtvSA4&sz=w1600" alt="METACOGNITION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1JXY5lw_ZenhTPhOFTNURGJqNWhXXimli&sz=w1600" alt="METACOGNITION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1RHFF-Ofo-z-sCaCZu_9k-vZvJwKCHvTe&sz=w1600" alt="METACOGNITION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1jq8WNbKNomvYeb_qAj_wnxEEZogTQGWw&sz=w1600" alt="METACOGNITION" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1B52Utt2IXdOOzorsk3QxENHUC2jn-gpk&sz=w1600" alt="METACOGNITION" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-06-27</p>
+        <h1 class="editorial-title">EPHEMERAL</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1gAcv3bX8IPx1t2OreOztqFHpQviL5xd0&sz=w1600" alt="EPHEMERAL" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">&#x27;EPHEMERAL&#x27; reimagines the relationship between model and garment, treating neither as primary but finding in their interaction a synergy that elevates both beyond their individual parts.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;EPHEMERAL&#x27;는 모델과 의복의 관계를 재상상하며, 어느 것도 주인공으로 취급하지 않고 그 상호작용에서 양쪽을 개별적 부분 이상으로 격상시키는 시너지를 발견한다.</p>
+            <p class="editorial-desc" data-lang="it">'Ephemeral' si muove al suo ritmo, senza fretta e senza scuse. chan_xinzhi si adatta perfettamente alla cadenza.</p>
+            <p class="editorial-desc" data-lang="fr">'Ephemeral' se déplace à son propre rythme, sans hâte et sans excuses. chan_xinzhi correspond parfaitement à la cadence.</p>
+            <p class="editorial-desc" data-lang="es">'Ephemeral' se mueve a su propio ritmo, sin prisa y sin disculpas. chan_xinzhi encaja perfectamente en la cadencia.</p>
+            <p class="editorial-desc" data-lang="ja">'Ephemeral'はそのペースで動き、急いでおらず、申し訳ありません。chan_xinzhiはリズムを完璧に適切にフィットします。</p>
+            <p class="editorial-desc" data-lang="zh">'Ephemeral'以自己的速度移动，不匆忙，毫无歉意。chan_xinzhi完美地契合节奏。</p>
+            <p class="editorial-desc" data-lang="ru">'Ephemeral' движется в своем собственном темпе, спешки нет и извинений нет. chan_xinzhi идеально соответствует ритму.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1jAHuYaQSVQ4WQtc_wvazUNuk-X-pbQRO&sz=w1600" alt="EPHEMERAL" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1Wlq8-YF9jWdYHrjzxucXOrLhz2P3jgqs&sz=w1600" alt="EPHEMERAL" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1jU9QInK_B5LpA8CMWKR1PKsgF4KIv6kT&sz=w1600" alt="EPHEMERAL" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1AuGTYPxs_0HQIWw3cR9jXok17qXOaSpt&sz=w1600" alt="EPHEMERAL" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-06-29</p>
+        <h1 class="editorial-title">GREEDY ELEGANT</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1fUPeux1tWELO0qRv8SGr8IZvci_lvWYq&sz=w1600" alt="GREEDY ELEGANT" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">The genius of &#x27;GREEDY ELEGANT&#x27; lies in its restraint. Where others might shout, this editorial whispers, and in that quiet confidence, discovers something truly profound.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;GREEDY ELEGANT&#x27;의 천재성은 절제에 있다. 다른 이들이 소리칠 때, 이 에디토리얼은 속삭이며, 그 조용한 자신감 속에서 진정으로 심오한 것을 발견한다.</p>
+            <p class="editorial-desc" data-lang="it">The genius of 'GREEDY ELEGANT' lies in its restraint. Where others might shout, this editorial whispers, and in that quiet confidence, discovers something truly profound.</p>
+            <p class="editorial-desc" data-lang="fr">The genius of 'GREEDY ELEGANT' lies in its restraint. Where others might shout, this editorial whispers, and in that quiet confidence, discovers something truly profound.</p>
+            <p class="editorial-desc" data-lang="es">The genius of 'GREEDY ELEGANT' lies in its restraint. Where others might shout, this editorial whispers, and in that quiet confidence, discovers something truly profound.</p>
+            <p class="editorial-desc" data-lang="ja">The genius of 'GREEDY ELEGANT' lies in its restraint. Where others might shout, this editorial whispers, and in that quiet confidence, discovers something truly profound.</p>
+            <p class="editorial-desc" data-lang="zh">The genius of 'GREEDY ELEGANT' lies in its restraint. Where others might shout, this editorial whispers, and in that quiet confidence, discovers something truly profound.</p>
+            <p class="editorial-desc" data-lang="ru">The genius of 'GREEDY ELEGANT' lies in its restraint. Where others might shout, this editorial whispers, and in that quiet confidence, discovers something truly profound.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1JphFJME4EH_NtuHf0q9qsv0_BKk-QpPk&sz=w1600" alt="GREEDY ELEGANT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1h1zAlm5rpau_Nk6w0lg_-7Eq4bgCJNHM&sz=w1600" alt="GREEDY ELEGANT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1S4H0BVRVwddX64p09Ij7v9ixzmwfoIYw&sz=w1600" alt="GREEDY ELEGANT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1BCkMvGKV1tAzcTrgAnGXYH5KO4SSD-NR&sz=w1600" alt="GREEDY ELEGANT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1qNMr79tPygq68tt6sa9ZvIsCL1AL3T7H&sz=w1600" alt="GREEDY ELEGANT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1_dhS-FbTfOyrDoSud8QFFhtKWQw3wuLN&sz=w1600" alt="GREEDY ELEGANT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=15lfYw2ueZ6IuGSyGyOQLL-gVWHh6wpYM&sz=w1600" alt="GREEDY ELEGANT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1cToEFdf3S78SHKiG4YeGjCUEe2ZYdQAd&sz=w1600" alt="GREEDY ELEGANT" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1LUOQgopajBRPbsJR-3-STUjONHZj3qwL&sz=w1600" alt="GREEDY ELEGANT" loading="lazy"></div>
+    </div>
+
+</section>
+<div class="section-divider"></div>
+<footer><p>PAP MAGAZINE</p><p>&copy; 2020 PAP MAGAZINE. All rights reserved.</p></footer>
+<script>
+window.addEventListener('scroll',function(){const s=document.querySelector('.nav-scroll-indicator');s.style.width=(window.scrollY/(document.documentElement.scrollHeight-window.innerHeight))*100+'%'});
+const o=new IntersectionObserver(function(e){e.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)'}})},{threshold:.1,rootMargin:'0px 0px -100px 0px'});
+document.querySelectorAll('.editorial-section').forEach(s=>o.observe(s));
+</script>
+<script>
+function toggleLangMenu(){var d=document.getElementById("langDropdown");d.classList.toggle("show")}
+function switchLang(lang){
+var descs=document.querySelectorAll(".editorial-desc[data-lang]");
+descs.forEach(function(el){el.classList.toggle("active-lang",el.getAttribute("data-lang")===lang)});
+var opts=document.querySelectorAll(".lang-option");
+opts.forEach(function(el){el.classList.toggle("active",el.getAttribute("data-lang")===lang)});
+document.getElementById("langBtn").textContent={"en":"EN","ko":"한국어","it":"IT","fr":"FR","es":"ES","ja":"日本語","zh":"中文","ru":"RU"}[lang]||lang.toUpperCase();
+document.getElementById("langDropdown").classList.remove("show");
+try{localStorage.setItem("pap-lang",lang)}catch(e){}
+}
+document.addEventListener("click",function(e){if(!e.target.closest(".lang-selector-wrap")){document.getElementById("langDropdown").classList.remove("show")}});
+(function(){var lang;try{lang=localStorage.getItem("pap-lang")}catch(e){}if(lang){switchLang(lang)}else{switchLang("en")}})();
+</script>
+</body>
+</html>

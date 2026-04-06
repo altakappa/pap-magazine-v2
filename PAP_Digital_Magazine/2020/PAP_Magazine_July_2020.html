@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PAP Magazine - July 2020</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background-color:#0a0a0a;color:#e8e8e8;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;line-height:1.6;overflow-x:hidden}
+nav{position:fixed;top:0;width:100%;height:70px;background:rgba(10,10,10,.95);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:space-between;padding:0 40px;z-index:1000;border-bottom:1px solid rgba(201,169,110,.2)}
+.nav-logo{height:40px;width:auto}.nav-title{font-size:16px;font-weight:300;letter-spacing:2px;color:#d0d0d0}
+.nav-scroll-indicator{height:2px;background:linear-gradient(90deg,#d0d0d0,transparent);position:fixed;top:70px;left:0;width:0;z-index:999;transition:width .3s ease}
+.cover-page{height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;background:linear-gradient(135deg,#1a1a1a 0%,#0a0a0a 100%);padding-top:70px;position:relative;overflow:hidden}
+.cover-page::before{content:'';position:absolute;top:0;left:0;width:100%;height:100%;background:url('https://drive.google.com/thumbnail?id=1qPyxdbOZRiT5_tKAIexwfdbyUSSVgYRl&sz=w1600') center/cover no-repeat;filter:blur(3px) brightness(.6);transform:scale(1.05)}
+.cover-page::after{content:'';position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(10,10,10,.15)}
+.cover-content{position:relative;z-index:10;display:flex;flex-direction:column;align-items:center;gap:0}
+.cover-logo{height:160px;width:auto;animation:fadeInScale 1s ease-out;filter:drop-shadow(0 10px 40px rgba(201,169,110,.3));margin-bottom:-15px}
+@keyframes fadeInScale{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+.cover-title{font-size:16px;font-weight:300;letter-spacing:8px;color:#d0d0d0;margin-top:5px;animation:fadeInUp 1s ease-out .2s both}
+.cover-subtitle{font-size:14px;letter-spacing:3px;color:#888;margin-top:5px;animation:fadeInUp 1s ease-out .4s both}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.editorial-section{min-height:100vh;padding:100px 80px;background-color:#0a0a0a;position:relative}
+.editorial-header{margin-bottom:60px;animation:fadeInUp .8s ease-out}
+.editorial-date{font-size:12px;letter-spacing:2px;color:#888;margin-bottom:10px}
+.editorial-title{font-size:48px;font-weight:300;margin-bottom:15px;color:#e8e8e8;letter-spacing:1px}
+.editorial-desc[data-lang="en"]{font-size:18px;color:#d0d0d0;font-weight:300}.editorial-desc[data-lang="ko"]{font-size:14px;line-height:1.8;color:#999;font-style:italic}.editorial-desc[data-lang="it"],.editorial-desc[data-lang="fr"],.editorial-desc[data-lang="es"]{font-size:16px;line-height:1.8;color:#bbb;font-weight:300}.editorial-desc[data-lang="ja"],.editorial-desc[data-lang="zh"],.editorial-desc[data-lang="ru"]{font-size:15px;line-height:1.9;color:#bbb;font-weight:300}
+.editorial-gallery{max-width:65%;margin:0 auto 60px;display:grid;gap:16px;grid-template-columns:1fr 1fr;animation:fadeInUp .8s ease-out .2s both}
+.gallery-item{overflow:hidden;border-radius:4px;background:#1a1a1a}
+.gallery-item img{width:100%;height:auto;display:block;transition:transform .4s cubic-bezier(.25,.46,.45,.94)}
+.gallery-item:hover img{transform:scale(1.05)}
+.editorial-spread{display:grid;grid-template-columns:1fr 1fr;gap:50px;margin-bottom:60px;align-items:start;animation:fadeInUp .8s ease-out .2s both;max-width:90%;margin-left:auto;margin-right:auto}
+.editorial-cover-img{width:100%;height:auto;border-radius:4px;display:block}
+.editorial-spread .editorial-info{display:flex;flex-direction:column;justify-content:center;padding:20px 0}
+.editorial-spread .editorial-info .editorial-desc[data-lang="en"]{font-size:16px;color:#d0d0d0;font-weight:300;line-height:1.8;margin-bottom:30px}
+.editorial-spread .editorial-info .editorial-desc[data-lang="ko"]{font-size:14px;line-height:1.8;color:#999;font-style:italic}.editorial-spread .editorial-info .editorial-desc[data-lang="it"],.editorial-spread .editorial-info .editorial-desc[data-lang="fr"],.editorial-spread .editorial-info .editorial-desc[data-lang="es"],.editorial-spread .editorial-info .editorial-desc[data-lang="ja"],.editorial-spread .editorial-info .editorial-desc[data-lang="zh"],.editorial-spread .editorial-info .editorial-desc[data-lang="ru"]{font-size:14px;line-height:1.8;color:#bbb;font-weight:300}
+.section-divider{height:1px;background:linear-gradient(90deg,transparent,rgba(201,169,110,.3),transparent);margin:80px 0;animation:fadeIn .8s ease-out}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+footer{padding:60px 80px;text-align:center;border-top:1px solid rgba(201,169,110,.2);background:#0a0a0a}
+footer p{color:#666;font-size:14px;margin-bottom:10px}
+@media(max-width:1024px){.editorial-section{padding:80px 60px}.editorial-title{font-size:36px}}
+@media(max-width:768px){nav{padding:0 20px;height:60px}.nav-title{font-size:14px}.cover-logo{height:80px}.cover-title{font-size:14px}.editorial-section{padding:60px 30px}.editorial-title{font-size:28px}.editorial-desc[data-lang="en"]{font-size:16px}.editorial-gallery{max-width:85%;grid-template-columns:1fr}.editorial-spread{grid-template-columns:1fr}.editorial-spread .editorial-info .editorial-desc[data-lang="en"]{font-size:15px}}
+@media(max-width:480px){nav{padding:0 15px;justify-content:center}.nav-title{display:none}.cover-logo{height:64px}.cover-subtitle{font-size:12px}.editorial-section{padding:40px 20px}.editorial-title{font-size:24px}.editorial-gallery{max-width:100%}}
+.lang-selector-wrap{position:relative;margin-left:10px}.lang-btn{background:transparent;border:1px solid rgba(201,169,110,.4);color:#c9a96e;padding:4px 12px;font-size:12px;letter-spacing:1px;cursor:pointer;border-radius:2px;transition:all .3s}.lang-btn:hover{background:rgba(201,169,110,.15)}.lang-dropdown{display:none;position:absolute;top:100%;right:0;margin-top:8px;background:rgba(10,10,10,.97);border:1px solid rgba(201,169,110,.3);border-radius:4px;min-width:80px;z-index:2000;backdrop-filter:blur(10px)}.lang-dropdown.show{display:block}.lang-option{padding:8px 16px;color:#999;font-size:12px;letter-spacing:1px;cursor:pointer;transition:all .2s;white-space:nowrap}.lang-option:hover{color:#c9a96e;background:rgba(201,169,110,.1)}.lang-option.active{color:#c9a96e}.editorial-desc[data-lang]{display:none}.editorial-desc[data-lang].active-lang{display:block}
+</style>
+</head>
+<body>
+<div class="nav-scroll-indicator"></div>
+<nav>
+<img src="data:image/png;base64,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IJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACDS/wAnhBsZTvHTagAAAABJRU5ErkJggg==" alt="PAP" class="nav-logo">
+<span class="nav-title">JULY 2020</span>
+<div class="lang-selector-wrap"><button class="lang-btn" id="langBtn" onclick="toggleLangMenu()">EN</button><div class="lang-dropdown" id="langDropdown"><div class="lang-option active" data-lang="en" onclick="switchLang('en')">EN</div><div class="lang-option" data-lang="ko" onclick="switchLang('ko')">한국어</div><div class="lang-option" data-lang="it" onclick="switchLang('it')">IT</div><div class="lang-option" data-lang="fr" onclick="switchLang('fr')">FR</div><div class="lang-option" data-lang="es" onclick="switchLang('es')">ES</div><div class="lang-option" data-lang="ja" onclick="switchLang('ja')">日本語</div><div class="lang-option" data-lang="zh" onclick="switchLang('zh')">中文</div><div class="lang-option" data-lang="ru" onclick="switchLang('ru')">RU</div></div></div>
+</nav>
+<div class="cover-page">
+<div class="cover-content">
+<img src="data:image/png;base64,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IJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACCS2AEAACKJHQAAIJLYAQAAIokdAAAgktgBAAAiiR0AACDS/wAnhBsZTvHTagAAAABJRU5ErkJggg==" alt="PAP Magazine" class="cover-logo">
+<p class="cover-title">JULY 2020</p>
+<p class="cover-subtitle">31 EDITORIALS</p>
+</div>
+</div>
+<section class="editorial-section" data-source="gdrive">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-01</p>
+        <h1 class="editorial-title">Steal The Eggs</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1qPyxdbOZRiT5_tKAIexwfdbyUSSVgYRl&sz=w1600" alt="Steal The Eggs" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;STEAL THE EGGS&#x27;, whimsy collides with defiance, a playful narrative laced with surreal undertones, where innocence and mischief intertwine in every carefully staged frame.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;STEAL THE EGGS&#x27;에서 기발함과 반항이 충돌한다, 초현실적 뉘앙스가 담긴 장난스러운 서사가 펼쳐지며, 순수함과 장난기가 세심하게 연출된 모든 프레임에서 얽힌다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;STEAL THE EGGS&#x27;, la fantasia si scontra con la sfida, una narrazione giocosa intrecciata con sottotoni surreali, dove innocenza e malizia si intrecciano in ogni inquadratura accuratamente composta.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;STEAL THE EGGS&#x27;, la fantaisie entre en collision avec la défiance, un récit ludique teinté de nuances surréalistes, où innocence et malice s&#x27;entrelacent dans chaque cadre soigneusement mis en scène.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;STEAL THE EGGS&#x27;, lo caprichoso choca con la rebeldía, una narrativa lúdica teñida de matices surrealistas, donde la inocencia y la travesura se entrelazan en cada fotograma cuidadosamente compuesto.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;STEAL THE EGGS&#x27;では、奇想天外さが反抗と衝突する, シュールな色合いを帯びた遊び心のある物語が展開され、無邪気さといたずら心が丁寧に演出されたすべてのフレームで絡み合う。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;STEAL THE EGGS&#x27;中，奇想与反叛碰撞, , 一个充满超现实色调的趣味叙事，纯真与顽皮在每一个精心策划的画面中交织。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;STEAL THE EGGS&#x27; причуда сталкивается с вызовом, игривое повествование с сюрреалистическими оттенками, где невинность и озорство переплетаются в каждом тщательно выстроенном кадре.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1NwzVL28TLJUqkp8-9cjNc8mOwsQ-GrNw&sz=w1600" alt="Steal The Eggs" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1_AR5W_8S9__rjLB_exgS4mYyhveFePMX&sz=w1600" alt="Steal The Eggs" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=17J8iezZ0CYv1dqqs1DqhZnGq7wkXfAdZ&sz=w1600" alt="Steal The Eggs" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1lMNXqYWVbwl3esXkqGbWkOpg4nWZcxHD&sz=w1600" alt="Steal The Eggs" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1NLvldjN51AXcY7F8-lSlhpTFu5_qFX22&sz=w1600" alt="Steal The Eggs" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1kUa38BZLeAa95Ijv4qPYjrtgfTF9NzcA&sz=w1600" alt="Steal The Eggs" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1YhGI3v_c3EYb89ITgLVqcEb6hHp2oySa&sz=w1600" alt="Steal The Eggs" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1ZLfbFgePwEeNQIavyc-5RsZVAN3lr8i_&sz=w1600" alt="Steal The Eggs" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="gdrive">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-03</p>
+        <h1 class="editorial-title">Wig</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1VHZcjTMY1KakSYEgDUK07hvhs6H6kA8i&sz=w1600" alt="Wig" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;WIG&#x27;, identity becomes a canvas for reinvention, layers of artifice and authenticity blur together, challenging perceptions of beauty through bold, unapologetic transformation.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;WIG&#x27;에서 정체성은 재창조의 캔버스가 된다, 인위와 진정성의 층들이 함께 흐려지며, 대담하고 거리낌 없는 변신을 통해 아름다움에 대한 인식에 도전한다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;WIG&#x27;, l&#x27;identità diventa una tela per la reinvenzione, strati di artificio e autenticità si confondono, sfidando le percezioni della bellezza attraverso una trasformazione audace e senza scuse.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;WIG&#x27;, l&#x27;identité devient un canevas de réinvention, les couches d&#x27;artifice et d&#x27;authenticité se mêlent, défiant les perceptions de la beauté à travers une transformation audacieuse et assumée.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;WIG&#x27;, la identidad se convierte en un lienzo para la reinvención, capas de artificio y autenticidad se difuminan juntas, desafiando las percepciones de la belleza a través de una transformación audaz e impenitente.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;WIG&#x27;では、アイデンティティが再発明のキャンバスとなる, 技巧と真正性のレイヤーが溶け合い、大胆で堂々とした変身を通じて美の認識に挑戦する。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;WIG&#x27;中，身份成为再创造的画布, , 人工与真实的层次交融模糊，通过大胆无畏的变革挑战对美的认知。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;WIG&#x27; идентичность становится холстом для переосмысления, слои искусственности и подлинности сливаются воедино, бросая вызов восприятию красоты через смелую, бескомпромиссную трансформацию.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=10xO-WIUV21TsXBxdooWAl16WMRTfnvK2&sz=w1600" alt="Wig" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1A_KhgltJoptQfNQxYUUcFMXPFyb2s-oS&sz=w1600" alt="Wig" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1NupJDaZXW5nR0-x-KbyjOTR6nmPKYNng&sz=w1600" alt="Wig" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=119P7k_64bUfGyzKGy7_k-8B0pia__j1D&sz=w1600" alt="Wig" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1w88tX9w3VAzmcAw2QujtMogV6fMoJ8hF&sz=w1600" alt="Wig" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=18fWWP_f8DQ5MJKRADtPctwQDhUZBmnYr&sz=w1600" alt="Wig" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1Q__UisjrUilC9LW-d44yML7vY3btgGrG&sz=w1600" alt="Wig" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1uu80XXhDs4GDVcMbnSXZ1N-IgYzKOwoz&sz=w1600" alt="Wig" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="gdrive">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-04</p>
+        <h1 class="editorial-title">Story of Mermaid</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1BVH-Tv6OlxRnIhkBe1vH3rkHVhQlf-7k&sz=w1600" alt="Story of Mermaid" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;STORY OF MERMAID&#x27;, mythology meets modernity, aquatic fantasy is reimagined through a contemporary lens, where fluidity of form and ethereal textures evoke a world between sea and sky.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;STORY OF MERMAID&#x27;에서 신화와 현대가 만난다, 수중 판타지가 현대적 시선으로 재해석되며, 형태의 유동성과 몽환적 질감이 바다와 하늘 사이의 세계를 불러일으킨다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;STORY OF MERMAID&#x27;, mitologia e modernità si incontrano, la fantasia acquatica viene reimmaginata attraverso una lente contemporanea, dove la fluidità della forma e le texture eteree evocano un mondo tra mare e cielo.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;STORY OF MERMAID&#x27;, mythologie et modernité se rencontrent, la fantaisie aquatique est réimaginée à travers un prisme contemporain, où la fluidité des formes et les textures éthérées évoquent un monde entre mer et ciel.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;STORY OF MERMAID&#x27;, la mitología se encuentra con la modernidad, la fantasía acuática se reimagina a través de una lente contemporánea, donde la fluidez de forma y las texturas etéreas evocan un mundo entre el mar y el cielo.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;STORY OF MERMAID&#x27;では、神話と現代が出会う, 水の幻想が現代的なレンズで再解釈され、形の流動性と幽玄な質感が海と空の間の世界を呼び起こす。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;STORY OF MERMAID&#x27;中，神话与现代相遇, , 水之幻想通过当代视角被重新想象，形态的流动与空灵的质感唤起一个介于海与天之间的世界。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;STORY OF MERMAID&#x27; мифология встречается с современностью, водная фантазия переосмыслена через современную призму, где текучесть формы и эфирные текстуры создают мир между морем и небом.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1caMFeM43pctJUj6FUa2y3RJETiR62Hwb&sz=w1600" alt="Story of Mermaid" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1ovmCtXNfZyIK2Y5agxMc1AmCWgCt5Pjf&sz=w1600" alt="Story of Mermaid" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1yIx0JT6vb9KTSx27S92yCgF1gYCeq8wE&sz=w1600" alt="Story of Mermaid" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=11b6eVR9xFzLeK5Fv9yWWaiKhGsVHs1th&sz=w1600" alt="Story of Mermaid" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1l1etuNwcN55EjyDd9AwwMVvFDN7hJE5X&sz=w1600" alt="Story of Mermaid" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1lDQYAqRiiyxVUMoOb-AgEIMjvOzeah89&sz=w1600" alt="Story of Mermaid" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1Vshul3Wa41RwY6gzoTsRtu1T583Y8bUc&sz=w1600" alt="Story of Mermaid" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1cWFrAx1kSTaTN5rJuZWaxAE7fJGwkBHO&sz=w1600" alt="Story of Mermaid" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="gdrive">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-05</p>
+        <h1 class="editorial-title">The First Aid World</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://drive.google.com/thumbnail?id=1YeM4KlfqCP5_M-wIzihPctkLBfrF8Fj8&sz=w1600" alt="The First Aid World" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;THE FIRST AID WORLD&#x27;, urgency becomes aesthetic, clinical precision and raw vulnerability merge into a visual statement where care, crisis, and creativity coexist in striking tension.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;THE FIRST AID WORLD&#x27;에서 긴급성이 미학이 된다, 임상적 정밀함과 날것의 취약함이 결합하여, 돌봄과 위기와 창의성이 강렬한 긴장 속에서 공존하는 시각적 선언이 탄생한다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;THE FIRST AID WORLD&#x27;, l&#x27;urgenza diventa estetica, precisione clinica e vulnerabilità cruda si fondono in una dichiarazione visiva dove cura, crisi e creatività coesistono in una tensione sorprendente.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;THE FIRST AID WORLD&#x27;, l&#x27;urgence devient esthétique, précision clinique et vulnérabilité brute fusionnent en une déclaration visuelle où soin, crise et créativité coexistent dans une tension saisissante.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;THE FIRST AID WORLD&#x27;, la urgencia se convierte en estética, precisión clínica y vulnerabilidad cruda se fusionan en una declaración visual donde el cuidado, la crisis y la creatividad coexisten en una tensión impactante.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;THE FIRST AID WORLD&#x27;では、緊急性が美学となる, 臨床的な精密さと生の脆弱性が融合し、ケア、危機、創造性が印象的な緊張感の中で共存する視覚的声明が生まれる。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;THE FIRST AID WORLD&#x27;中，紧迫感成为美学, , 临床精确与原始脆弱融合为视觉宣言，关怀、危机与创造力在惊人的张力中共存。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;THE FIRST AID WORLD&#x27; срочность становится эстетикой, клиническая точность и обнажённая уязвимость сливаются в визуальное высказывание, где забота, кризис и творчество сосуществуют в поразительном напряжении.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1GA6GIXKJkU5MKrhzY_43tQ_-in417uj5&sz=w1600" alt="The First Aid World" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=11it788Ezw97FXc91bir-UUhFA3StjRzK&sz=w1600" alt="The First Aid World" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1pEbeZFvViBEsJGe3WjMmJHMSAhSTrrvu&sz=w1600" alt="The First Aid World" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://drive.google.com/thumbnail?id=1OJgfnw8DFg7pb_0hmZ0N7nZ77s5HRhJr&sz=w1600" alt="The First Aid World" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="wix">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-06</p>
+        <h1 class="editorial-title">We&#x27;re Gonna Get Away From This Summer</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://static.wixstatic.com/media/462397_14444e447f034d178ca9e088cfd93d50~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_14444e447f034d178ca9e088cfd93d50~mv2.jpg" alt="We&#x27;re Gonna Get Away From This Summer" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;WE&#x27;RE GONNA GET AWAY FROM THIS SUMMER&#x27;, escape is not flight but transformation, the heat of the season dissolves into dreamlike compositions where longing and liberation dance together.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;WE&#x27;RE GONNA GET AWAY FROM THIS SUMMER&#x27;에서 도피는 달아남이 아니라 변신이다, 계절의 열기가 꿈결 같은 구성 속으로 녹아들며, 갈망과 해방이 함께 춤춘다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;WE&#x27;RE GONNA GET AWAY FROM THIS SUMMER&#x27;, la fuga non è volo ma trasformazione, il calore della stagione si dissolve in composizioni oniriche dove desiderio e liberazione danzano insieme.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;WE&#x27;RE GONNA GET AWAY FROM THIS SUMMER&#x27;, l&#x27;évasion n&#x27;est pas fuite mais transformation, la chaleur de la saison se dissout dans des compositions oniriques où désir et libération dansent ensemble.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;WE&#x27;RE GONNA GET AWAY FROM THIS SUMMER&#x27;, el escape no es huida sino transformación, el calor de la estación se disuelve en composiciones oníricas donde el anhelo y la liberación danzan juntos.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;WE&#x27;RE GONNA GET AWAY FROM THIS SUMMER&#x27;では、逃避は逃走ではなく変容である, 季節の熱が夢のような構図に溶け込み、憧れと解放が共に踊る。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;WE&#x27;RE GONNA GET AWAY FROM THIS SUMMER&#x27;中，逃离不是逃跑而是蜕变, , 季节的热度融入梦幻般的构图，渴望与解放共舞。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;WE&#x27;RE GONNA GET AWAY FROM THIS SUMMER&#x27; побег ,  это не бегство, а трансформация, жар сезона растворяется в сновидческих композициях, где тоска и освобождение танцуют вместе.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_151b31014ee24ff9916891d85e57f175~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_151b31014ee24ff9916891d85e57f175~mv2.jpg" alt="We&#x27;re Gonna Get Away From This Summer" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_d76365a54815418d98d2af0fb0956d82~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_d76365a54815418d98d2af0fb0956d82~mv2.jpg" alt="We&#x27;re Gonna Get Away From This Summer" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_4e510de7791a47608a5f641c262a99a3~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_4e510de7791a47608a5f641c262a99a3~mv2.jpg" alt="We&#x27;re Gonna Get Away From This Summer" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_21abf58c9c64441ca05d094bb3caa48c~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_21abf58c9c64441ca05d094bb3caa48c~mv2.jpg" alt="We&#x27;re Gonna Get Away From This Summer" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_1a739f4582cc466483eeba85206f33a8~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_1a739f4582cc466483eeba85206f33a8~mv2.jpg" alt="We&#x27;re Gonna Get Away From This Summer" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="wix">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-07</p>
+        <h1 class="editorial-title">Oxygen</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://static.wixstatic.com/media/462397_fb4c9e71936647928f8f0c42a33a6957~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_fb4c9e71936647928f8f0c42a33a6957~mv2.jpg" alt="Oxygen" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;OXYGEN&#x27;, breath becomes visible, every frame pulses with vitality, capturing the invisible essence of life itself through bold color and organic movement that refuses to be still.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;OXYGEN&#x27;에서 호흡이 눈에 보인다, 모든 프레임이 활력으로 맥동하며, 대담한 색채와 정지를 거부하는 유기적 움직임을 통해 삶 자체의 보이지 않는 본질을 포착한다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;OXYGEN&#x27;, il respiro diventa visibile, ogni inquadratura pulsa di vitalità, catturando l&#x27;essenza invisibile della vita stessa attraverso colori audaci e un movimento organico che rifiuta la staticità.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;OXYGEN&#x27;, le souffle devient visible, chaque cadre pulse de vitalité, capturant l&#x27;essence invisible de la vie elle-même à travers des couleurs audacieuses et un mouvement organique qui refuse l&#x27;immobilité.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;OXYGEN&#x27;, la respiración se hace visible, cada fotograma pulsa con vitalidad, capturando la esencia invisible de la vida misma a través de color audaz y movimiento orgánico que se niega a estar quieto.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;OXYGEN&#x27;では、呼吸が目に見えるものとなる, すべてのフレームが活力で脈動し、大胆な色彩と静止を拒む有機的な動きを通じて、生命そのものの見えない本質を捉える。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;OXYGEN&#x27;中，呼吸变得可见, , 每一帧都充满活力地脉动，通过大胆的色彩和拒绝静止的有机运动，捕捉生命本身的无形本质。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;OXYGEN&#x27; дыхание становится видимым, каждый кадр пульсирует жизненной силой, улавливая невидимую сущность самой жизни через смелый цвет и органическое движение, которое отказывается быть неподвижным.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_8fca6c4e59f5481abab1a6199a1ea171~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_8fca6c4e59f5481abab1a6199a1ea171~mv2.jpg" alt="Oxygen" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_bb2e33b590244d47b2b0399473dc6ac7~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_bb2e33b590244d47b2b0399473dc6ac7~mv2.jpg" alt="Oxygen" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_2d6ebdb2c4d54f86b039bf3b1bb6272d~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_2d6ebdb2c4d54f86b039bf3b1bb6272d~mv2.jpg" alt="Oxygen" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_df3d944064974c4aad8db4bf0b4feb57~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_df3d944064974c4aad8db4bf0b4feb57~mv2.jpg" alt="Oxygen" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_af952c8334084148bfdd6c509eb45255~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_af952c8334084148bfdd6c509eb45255~mv2.jpg" alt="Oxygen" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="wix">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-09</p>
+        <h1 class="editorial-title">Kumo No Mukou</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://static.wixstatic.com/media/462397_119f1c4b342149afb56681bb674c959d~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_119f1c4b342149afb56681bb674c959d~mv2.jpg" alt="Kumo No Mukou" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;KUMO NO MUKOU&#x27;, the horizon becomes a threshold, beyond the clouds lies a meditative space where Japanese minimalism meets cinematic grandeur in a quiet, breathtaking stillness.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;KUMO NO MUKOU&#x27;에서 지평선은 문턱이 된다, 구름 너머에는 일본의 미니멀리즘이 영화적 웅장함과 만나는 명상적 공간이 조용하고 숨 막히는 고요함 속에 펼쳐진다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;KUMO NO MUKOU&#x27;, l&#x27;orizzonte diventa una soglia, oltre le nuvole si apre uno spazio meditativo dove il minimalismo giapponese incontra la grandiosità cinematografica in una quiete mozzafiato.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;KUMO NO MUKOU&#x27;, l&#x27;horizon devient un seuil, au-delà des nuages se trouve un espace méditatif où le minimalisme japonais rencontre la grandeur cinématographique dans une immobilité silencieuse et époustouflante.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;KUMO NO MUKOU&#x27;, el horizonte se convierte en un umbral, más allá de las nubes yace un espacio meditativo donde el minimalismo japonés se encuentra con la grandeza cinematográfica en una quietud silenciosa e impresionante.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;KUMO NO MUKOU&#x27;では、地平線が境界となる, 雲の向こうには、日本のミニマリズムと映画的壮大さが静かで息をのむような静寂の中で出会う瞑想的空間が広がる。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;KUMO NO MUKOU&#x27;中，地平线成为门槛, , 云层之外是一个冥想空间，日本极简主义与电影般的宏伟在宁静而令人屏息的静谧中相遇。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;KUMO NO MUKOU&#x27; горизонт становится порогом, за облаками лежит медитативное пространство, где японский минимализм встречается с кинематографическим величием в тихой, захватывающей дух неподвижности.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_1fce47fa72c74274ae5cc99ef8405702~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_1fce47fa72c74274ae5cc99ef8405702~mv2.jpg" alt="Kumo No Mukou" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_dc2abee4e91d4627ac24ab8c194caf55~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_dc2abee4e91d4627ac24ab8c194caf55~mv2.jpg" alt="Kumo No Mukou" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_e8841aad471a48cea1b0caf18ad4715c~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_e8841aad471a48cea1b0caf18ad4715c~mv2.jpg" alt="Kumo No Mukou" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_9abce8a71cac49e69eaa216c14fbd197~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_9abce8a71cac49e69eaa216c14fbd197~mv2.jpg" alt="Kumo No Mukou" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_52f1a234d07d44e39fe7d3a2936f94ec~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_52f1a234d07d44e39fe7d3a2936f94ec~mv2.jpg" alt="Kumo No Mukou" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="wix">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-10</p>
+        <h1 class="editorial-title">Invisible Cubic Hand</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://static.wixstatic.com/media/462397_ff990c0441ef4460b29a35b3391d1276~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_ff990c0441ef4460b29a35b3391d1276~mv2.jpg" alt="Invisible Cubic Hand" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;INVISIBLE CUBIC HAND&#x27;, geometry becomes gesture, the unseen force of structure shapes every composition, creating an architectural tension between the body and the abstract.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;INVISIBLE CUBIC HAND&#x27;에서 기하학이 제스처가 된다, 보이지 않는 구조의 힘이 모든 구성을 형성하며, 신체와 추상 사이의 건축적 긴장을 만들어낸다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;INVISIBLE CUBIC HAND&#x27;, la geometria diventa gesto, la forza invisibile della struttura modella ogni composizione, creando una tensione architettonica tra il corpo e l&#x27;astratto.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;INVISIBLE CUBIC HAND&#x27;, la géométrie devient geste, la force invisible de la structure façonne chaque composition, créant une tension architecturale entre le corps et l&#x27;abstrait.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;INVISIBLE CUBIC HAND&#x27;, la geometría se convierte en gesto, la fuerza invisible de la estructura da forma a cada composición, creando una tensión arquitectónica entre el cuerpo y lo abstracto.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;INVISIBLE CUBIC HAND&#x27;では、幾何学がジェスチャーとなる, 構造の見えない力がすべての構図を形作り、身体と抽象の間に建築的な緊張を生み出す。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;INVISIBLE CUBIC HAND&#x27;中，几何成为姿态, , 结构的无形力量塑造每一个构图，在身体与抽象之间创造出建筑般的张力。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;INVISIBLE CUBIC HAND&#x27; геометрия становится жестом, невидимая сила структуры формирует каждую композицию, создавая архитектурное напряжение между телом и абстракцией.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_44e7bbe7be0243ca957f6d05570cc7d6~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_44e7bbe7be0243ca957f6d05570cc7d6~mv2.jpg" alt="Invisible Cubic Hand" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_f07ba1f719e24427b5e9c0e72178cb5e~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_f07ba1f719e24427b5e9c0e72178cb5e~mv2.jpg" alt="Invisible Cubic Hand" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_1158f0ebe80d44999ea15d901a16d6e9~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_1158f0ebe80d44999ea15d901a16d6e9~mv2.jpg" alt="Invisible Cubic Hand" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_a7767abd113b40c4bb137e48c8071977~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_a7767abd113b40c4bb137e48c8071977~mv2.jpg" alt="Invisible Cubic Hand" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_acc2b911d4a6409f86a8737c191dd40b~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_acc2b911d4a6409f86a8737c191dd40b~mv2.jpg" alt="Invisible Cubic Hand" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="wix">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-11</p>
+        <h1 class="editorial-title">Performance</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://static.wixstatic.com/media/462397_e6d11f3b28fb4da1ab8dcdffaf304992~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_e6d11f3b28fb4da1ab8dcdffaf304992~mv2.jpg" alt="Performance" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;PERFORMANCE&#x27;, the body is both instrument and stage, raw physicality meets choreographed precision in a visual symphony where every movement speaks louder than words.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;PERFORMANCE&#x27;에서 몸은 악기이자 무대이다, 날것의 신체성이 안무된 정밀함과 만나, 모든 움직임이 말보다 크게 울리는 시각적 교향곡을 만든다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;PERFORMANCE&#x27;, il corpo è sia strumento che palcoscenico, la fisicità cruda incontra la precisione coreografata in una sinfonia visiva dove ogni movimento parla più forte delle parole.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;PERFORMANCE&#x27;, le corps est à la fois instrument et scène, la physicalité brute rencontre la précision chorégraphiée dans une symphonie visuelle où chaque mouvement parle plus fort que les mots.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;PERFORMANCE&#x27;, el cuerpo es tanto instrumento como escenario, la fisicalidad cruda se encuentra con la precisión coreografiada en una sinfonía visual donde cada movimiento habla más fuerte que las palabras.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;PERFORMANCE&#x27;では、身体は楽器であり舞台でもある, 生の身体性が振り付けられた精密さと出会い、すべての動きが言葉より雄弁に語る視覚的交響曲となる。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;PERFORMANCE&#x27;中，身体既是乐器也是舞台, , 原始的肉体性与编排的精确相遇，在视觉交响曲中每一个动作都比语言更有力。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;PERFORMANCE&#x27; тело ,  и инструмент, и сцена, необработанная телесность встречается с хореографической точностью в визуальной симфонии, где каждое движение говорит громче слов.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_6d9523e3a17a4f06a2f6e4cfdc36e3a1~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_6d9523e3a17a4f06a2f6e4cfdc36e3a1~mv2.jpg" alt="Performance" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_bb21c405baf74bd7a05ef3d2163d721e~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_bb21c405baf74bd7a05ef3d2163d721e~mv2.jpg" alt="Performance" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_140bfe87270842bfb3096371ca337ad9~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_140bfe87270842bfb3096371ca337ad9~mv2.jpg" alt="Performance" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_bf67b581b0684d39bbdf21a106a6bc44~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_bf67b581b0684d39bbdf21a106a6bc44~mv2.jpg" alt="Performance" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_f7dbb15fa94e44e7aaf01f87b1137222~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_f7dbb15fa94e44e7aaf01f87b1137222~mv2.jpg" alt="Performance" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="wix">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-12</p>
+        <h1 class="editorial-title">Intimate</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://static.wixstatic.com/media/462397_a9f5ddcf1d9643b7a2edfd1afdc1d061~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_a9f5ddcf1d9643b7a2edfd1afdc1d061~mv2.jpg" alt="Intimate" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;INTIMATE&#x27;, vulnerability is power, the camera draws impossibly close, dissolving the barrier between subject and viewer in a tender, unflinching exploration of human closeness.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;INTIMATE&#x27;에서 취약함이 힘이 된다, 카메라가 불가능할 만큼 가까이 다가가, 피사체와 관객 사이의 장벽을 녹이며 인간적 친밀함을 부드럽고 굳건하게 탐구한다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;INTIMATE&#x27;, la vulnerabilità è potere, la camera si avvicina impossibilmente, dissolvendo la barriera tra soggetto e spettatore in un&#x27;esplorazione tenera e implacabile della vicinanza umana.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;INTIMATE&#x27;, la vulnérabilité est pouvoir, la caméra s&#x27;approche infiniment, dissolvant la barrière entre sujet et spectateur dans une exploration tendre et inflexible de la proximité humaine.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;INTIMATE&#x27;, la vulnerabilidad es poder, la cámara se acerca imposiblemente, disolviendo la barrera entre sujeto y espectador en una tierna e inflexible exploración de la cercanía humana.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;INTIMATE&#x27;では、脆弱さが力となる, カメラが不可能なほど近づき、被写体と観る者の間の壁を溶かしながら、人間の親密さを優しく、揺るぎなく探求する。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;INTIMATE&#x27;中，脆弱即是力量, , 镜头不可思议地贴近，融化了主体与观者之间的屏障，温柔而坚定地探索人类的亲密。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;INTIMATE&#x27; уязвимость ,  это сила, камера приближается невозможно близко, растворяя барьер между объектом и зрителем в нежном, бескомпромиссном исследовании человеческой близости.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_62ff9ff9538f4482b1d40164a6b429d0~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_62ff9ff9538f4482b1d40164a6b429d0~mv2.jpg" alt="Intimate" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_aea0e74b35da4fe8bbd8f375eddbd551~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_aea0e74b35da4fe8bbd8f375eddbd551~mv2.jpg" alt="Intimate" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_045fa30a8e394ffcb8f08f2d07bd6851~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_045fa30a8e394ffcb8f08f2d07bd6851~mv2.jpg" alt="Intimate" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_73c928808c6342fbb1e4d19d5525ef8e~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_73c928808c6342fbb1e4d19d5525ef8e~mv2.jpg" alt="Intimate" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_e5e6d0fbfbc64f3c889797443f214126~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_e5e6d0fbfbc64f3c889797443f214126~mv2.jpg" alt="Intimate" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="wix">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-13</p>
+        <h1 class="editorial-title">Enchanting Emancipation</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://static.wixstatic.com/media/462397_f323becd8230401f94cca96a5b8a77dd~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_f323becd8230401f94cca96a5b8a77dd~mv2.jpg" alt="Enchanting Emancipation" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;ENCHANTING EMANCIPATION&#x27;, freedom takes form, liberation is not an act but a state of being, rendered in sweeping visual poetry that celebrates the beauty of breaking free.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;ENCHANTING EMANCIPATION&#x27;에서 자유가 형태를 갖는다, 해방은 행위가 아닌 존재의 상태이며, 자유로워지는 아름다움을 축하하는 장대한 시각적 시로 표현된다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;ENCHANTING EMANCIPATION&#x27;, la libertà prende forma, la liberazione non è un atto ma uno stato d&#x27;essere, resa in una poesia visiva travolgente che celebra la bellezza del liberarsi.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;ENCHANTING EMANCIPATION&#x27;, la liberté prend forme, l&#x27;émancipation n&#x27;est pas un acte mais un état d&#x27;être, rendue dans une poésie visuelle ample qui célèbre la beauté de se libérer.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;ENCHANTING EMANCIPATION&#x27;, la libertad toma forma, la liberación no es un acto sino un estado del ser, plasmada en una poesía visual envolvente que celebra la belleza de liberarse.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;ENCHANTING EMANCIPATION&#x27;では、自由が形を取る, 解放は行為ではなく存在の状態であり、自由になることの美しさを祝う壮大な視覚詩として描かれる。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;ENCHANTING EMANCIPATION&#x27;中，自由成形, , 解放不是一个行为而是一种存在状态，以恢弘的视觉诗歌呈现，歌颂挣脱束缚之美。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;ENCHANTING EMANCIPATION&#x27; свобода обретает форму, освобождение ,  это не действие, а состояние бытия, воплощённое в размашистой визуальной поэзии, воспевающей красоту обретения свободы.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_e2b098c68aaf4ac59c89627d9a149f2c~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_e2b098c68aaf4ac59c89627d9a149f2c~mv2.jpg" alt="Enchanting Emancipation" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_fc68f06a50704747bf0baa3c9f25f447~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_fc68f06a50704747bf0baa3c9f25f447~mv2.jpg" alt="Enchanting Emancipation" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_8768fb29e67e4f27870064420e843e4b~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_8768fb29e67e4f27870064420e843e4b~mv2.jpg" alt="Enchanting Emancipation" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_98f45b02399345a2923029f160fbb034~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_98f45b02399345a2923029f160fbb034~mv2.jpg" alt="Enchanting Emancipation" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_9a292a76b2594f46a94824770c717067~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_9a292a76b2594f46a94824770c717067~mv2.jpg" alt="Enchanting Emancipation" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="wix">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-14</p>
+        <h1 class="editorial-title">The Seeker</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://static.wixstatic.com/media/462397_0af539120c8b4f3ead26a306a32f6fca~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_0af539120c8b4f3ead26a306a32f6fca~mv2.jpg" alt="The Seeker" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;THE SEEKER&#x27;, the journey is the destination, restless energy propels every frame as the lens follows a figure in perpetual motion, searching for something just beyond reach.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;THE SEEKER&#x27;에서 여정이 곧 목적지이다, 끊임없는 에너지가 모든 프레임을 추진하며, 렌즈가 끊임없이 움직이는 인물을 따라가며 손끝 너머에 있는 무언가를 찾는다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;THE SEEKER&#x27;, il viaggio è la destinazione, un&#x27;energia irrequieta spinge ogni inquadratura mentre l&#x27;obiettivo segue una figura in moto perpetuo, alla ricerca di qualcosa appena fuori portata.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;THE SEEKER&#x27;, le voyage est la destination, une énergie incessante propulse chaque cadre tandis que l&#x27;objectif suit une figure en mouvement perpétuel, cherchant quelque chose juste hors de portée.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;THE SEEKER&#x27;, el viaje es el destino, una energía incansable impulsa cada fotograma mientras el lente sigue a una figura en movimiento perpetuo, buscando algo justo fuera de alcance.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;THE SEEKER&#x27;では、旅が目的地である, 休みない エネルギーがすべてのフレームを推進し、レンズが絶え間なく動く人物を追い、手の届かない何かを探し続ける。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;THE SEEKER&#x27;中，旅程就是目的地, , 不安的能量推动着每一帧，镜头追随着一个永不停歇的身影，寻找着触手可及又遥不可及的东西。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;THE SEEKER&#x27; путешествие ,  это пункт назначения, неугомонная энергия движет каждым кадром, пока объектив следует за фигурой в вечном движении, ищущей что-то, находящееся за пределами досягаемости.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_faffc4549f4943cfb9367c589b6eb5c4~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_faffc4549f4943cfb9367c589b6eb5c4~mv2.jpg" alt="The Seeker" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_d8324acefb9f4c0796b54a2463277c10~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_d8324acefb9f4c0796b54a2463277c10~mv2.jpg" alt="The Seeker" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_b28cd53ff8c64ed395f938980a2dd14a~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_b28cd53ff8c64ed395f938980a2dd14a~mv2.jpg" alt="The Seeker" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_f25f6f3537694e55a5cd33a9218828df~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_f25f6f3537694e55a5cd33a9218828df~mv2.jpg" alt="The Seeker" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="wix">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-14</p>
+        <h1 class="editorial-title">My Father&#x27;s Slides</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://static.wixstatic.com/media/462397_0ef4304689be40a8bdc6a2a78a74f701~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_0ef4304689be40a8bdc6a2a78a74f701~mv2.jpg" alt="My Father&#x27;s Slides" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;MY FATHER&#x27;S SLIDES&#x27;, memory becomes tangible, faded projections and inherited images weave a deeply personal tapestry where past and present blur into a single, luminous frame.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;MY FATHER&#x27;S SLIDES&#x27;에서 기억이 실체가 된다, 바래진 투영과 물려받은 이미지들이 과거와 현재가 하나의 빛나는 프레임으로 흐려지는 깊이 개인적인 태피스트리를 짠다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;MY FATHER&#x27;S SLIDES&#x27;, la memoria diventa tangibile, proiezioni sbiadite e immagini ereditate tessono un arazzo profondamente personale dove passato e presente si fondono in un unico, luminoso fotogramma.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;MY FATHER&#x27;S SLIDES&#x27;, la mémoire devient tangible, des projections fanées et des images héritées tissent une tapisserie profondément personnelle où passé et présent se fondent en un seul cadre lumineux.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;MY FATHER&#x27;S SLIDES&#x27;, la memoria se vuelve tangible, proyecciones desvanecidas e imágenes heredadas tejen un tapiz profundamente personal donde pasado y presente se difuminan en un solo marco luminoso.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;MY FATHER&#x27;S SLIDES&#x27;では、記憶が実体化する, 色褪せた投影と受け継がれた画像が、過去と現在が一つの輝くフレームに溶け合う、深く個人的なタペストリーを織りなす。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;MY FATHER&#x27;S SLIDES&#x27;中，记忆变得有形, , 褪色的投影和继承的影像编织出深刻个人化的织锦，过去与现在融合为一个发光的画面。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;MY FATHER&#x27;S SLIDES&#x27; память становится осязаемой, выцветшие проекции и унаследованные образы сплетают глубоко личный гобелен, где прошлое и настоящее сливаются в единый, светящийся кадр.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_f7b199df88184485b6dcf91b2f4804e6~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_f7b199df88184485b6dcf91b2f4804e6~mv2.jpg" alt="My Father&#x27;s Slides" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_2521609155d345e198f7cecaa0a5a3d0~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_2521609155d345e198f7cecaa0a5a3d0~mv2.jpg" alt="My Father&#x27;s Slides" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_398998f11a9b4d32bc144b13ebe2561a~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_398998f11a9b4d32bc144b13ebe2561a~mv2.jpg" alt="My Father&#x27;s Slides" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_7f07b34ab55b482bb0f069a1014465eb~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_7f07b34ab55b482bb0f069a1014465eb~mv2.jpg" alt="My Father&#x27;s Slides" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_9d2eb2735c4c4b5d9f831146f66219aa~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_9d2eb2735c4c4b5d9f831146f66219aa~mv2.jpg" alt="My Father&#x27;s Slides" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="wix">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-15</p>
+        <h1 class="editorial-title">The Past, The Present, The Future</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://static.wixstatic.com/media/462397_177d3333834342e0b69c5f1226024ce6~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_177d3333834342e0b69c5f1226024ce6~mv2.jpg" alt="The Past, The Present, The Future" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;THE PAST, THE PRESENT, THE FUTURE&#x27;, time collapses into a single breath, three temporal states converge in a visual meditation on impermanence, memory, and the courage of forward motion.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;THE PAST, THE PRESENT, THE FUTURE&#x27;에서 시간이 한 호흡으로 축소된다, 세 가지 시간적 상태가 무상함, 기억, 그리고 앞으로 나아가는 용기에 대한 시각적 명상으로 수렴한다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;THE PAST, THE PRESENT, THE FUTURE&#x27;, il tempo collassa in un unico respiro, tre stati temporali convergono in una meditazione visiva sull&#x27;impermanenza, la memoria e il coraggio del movimento in avanti.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;THE PAST, THE PRESENT, THE FUTURE&#x27;, le temps s&#x27;effondre en un seul souffle, trois états temporels convergent dans une méditation visuelle sur l&#x27;impermanence, la mémoire et le courage d&#x27;avancer.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;THE PAST, THE PRESENT, THE FUTURE&#x27;, el tiempo colapsa en un solo aliento, tres estados temporales convergen en una meditación visual sobre la impermanencia, la memoria y el coraje del movimiento hacia adelante.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;THE PAST, THE PRESENT, THE FUTURE&#x27;では、時間が一つの呼吸に凝縮される, 三つの時間的状態が、無常、記憶、そして前進する勇気についての視覚的瞑想に収束する。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;THE PAST, THE PRESENT, THE FUTURE&#x27;中，时间坍缩为一次呼吸, , 三种时态在关于无常、记忆与前行勇气的视觉冥想中汇聚。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;THE PAST, THE PRESENT, THE FUTURE&#x27; время схлопывается в единый вдох, три временных состояния сходятся в визуальной медитации о бренности, памяти и мужестве двигаться вперёд.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_baedc5a0340a42888853228332d2a113~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_baedc5a0340a42888853228332d2a113~mv2.jpg" alt="The Past, The Present, The Future" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_506f4a4a0d8c4462886ac54d419f052a~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_506f4a4a0d8c4462886ac54d419f052a~mv2.jpg" alt="The Past, The Present, The Future" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_2fa83ce5a6554e568cd97bf682e7ce8a~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_2fa83ce5a6554e568cd97bf682e7ce8a~mv2.jpg" alt="The Past, The Present, The Future" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_99552e6c9d9f40c09a83c78c504d0d08~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_99552e6c9d9f40c09a83c78c504d0d08~mv2.jpg" alt="The Past, The Present, The Future" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_4b505340fe024472ac7fb6786009a274~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_4b505340fe024472ac7fb6786009a274~mv2.jpg" alt="The Past, The Present, The Future" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="wix">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-16</p>
+        <h1 class="editorial-title">Outland</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://static.wixstatic.com/media/462397_44e3b56a60e14a66b14a1018357f0080~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_44e3b56a60e14a66b14a1018357f0080~mv2.jpg" alt="Outland" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;OUTLAND&#x27;, the familiar dissolves, landscapes become alien, textures become foreign, and the viewer is transported to a place that exists only in the space between imagination and reality.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;OUTLAND&#x27;에서 익숙함이 녹아든다, 풍경이 이질적이 되고, 질감이 낯설어지며, 관객은 상상과 현실 사이의 공간에만 존재하는 장소로 이동한다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;OUTLAND&#x27;, il familiare si dissolve, i paesaggi diventano alieni, le texture diventano estranee, e lo spettatore viene trasportato in un luogo che esiste solo nello spazio tra immaginazione e realtà.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;OUTLAND&#x27;, le familier se dissout, les paysages deviennent étrangers, les textures deviennent inconnues, et le spectateur est transporté dans un lieu qui n&#x27;existe que dans l&#x27;espace entre imagination et réalité.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;OUTLAND&#x27;, lo familiar se disuelve, los paisajes se vuelven alienígenas, las texturas se vuelven extrañas, y el espectador es transportado a un lugar que solo existe en el espacio entre la imaginación y la realidad.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;OUTLAND&#x27;では、馴染みのものが溶ける, 風景が異質になり、質感が異国のものとなり、観る者は想像と現実の間の空間にのみ存在する場所へと運ばれる。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;OUTLAND&#x27;中，熟悉的一切消融, , 景观变得陌异，质感变得异域，观者被传送到一个只存在于想象与现实之间空间的地方。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;OUTLAND&#x27; привычное растворяется, пейзажи становятся чужими, текстуры ,  незнакомыми, а зритель переносится в место, существующее лишь в пространстве между воображением и реальностью.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_2f572140578847758aa46cfd7c763463~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_2f572140578847758aa46cfd7c763463~mv2.jpg" alt="Outland" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_ee7b0195daf4423190101c019c49e64f~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_ee7b0195daf4423190101c019c49e64f~mv2.jpg" alt="Outland" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_f5dbc3ca48844ef783cfe0d708295cc9~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_f5dbc3ca48844ef783cfe0d708295cc9~mv2.jpg" alt="Outland" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_4d7ea29265414fb899ce63e9f161b2aa~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_4d7ea29265414fb899ce63e9f161b2aa~mv2.jpg" alt="Outland" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_f25a6710eba04104b870d5fa49d5759d~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_f25a6710eba04104b870d5fa49d5759d~mv2.jpg" alt="Outland" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="wix">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-16</p>
+        <h1 class="editorial-title">San Andrès SS21</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://static.wixstatic.com/media/462397_0a07062f6ab748febfe7cc9328a93dde~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_0a07062f6ab748febfe7cc9328a93dde~mv2.jpg" alt="San Andrès SS21" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;SAN ANDRÈS SS21&#x27;, the collection unfolds like a love letter to the coast, sun-bleached palettes and architectural silhouettes capture the quiet sophistication of Mediterranean ease.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;SAN ANDRÈS SS21&#x27;에서 컬렉션이 해안에 보내는 러브레터처럼 펼쳐진다, 햇볕에 바랜 팔레트와 건축적 실루엣이 지중해의 여유로운 세련미를 포착한다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;SAN ANDRÈS SS21&#x27;, la collezione si apre come una lettera d&#x27;amore alla costa, palette sbiancate dal sole e silhouette architettoniche catturano la sofisticatezza silenziosa dell&#x27;eleganza mediterranea.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;SAN ANDRÈS SS21&#x27;, la collection se déploie comme une lettre d&#x27;amour au littoral, des palettes blanchies par le soleil et des silhouettes architecturales capturent la sophistication tranquille de l&#x27;aisance méditerranéenne.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;SAN ANDRÈS SS21&#x27;, la colección se despliega como una carta de amor a la costa, paletas blanqueadas por el sol y siluetas arquitectónicas capturan la sofisticación serena de la soltura mediterránea.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;SAN ANDRÈS SS21&#x27;では、コレクションが海岸へのラブレターのように展開される, 太陽に晒されたパレットと建築的シルエットが、地中海の穏やかな洗練を捉える。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;SAN ANDRÈS SS21&#x27;中，系列如同一封写给海岸的情书, , 被阳光漂白的色调与建筑感轮廓，捕捉地中海式从容的静谧雅致。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;SAN ANDRÈS SS21&#x27; коллекция разворачивается как любовное письмо побережью, выцветшие на солнце палитры и архитектурные силуэты передают тихую утончённость средиземноморской лёгкости.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_07740074cf59434f8aeb8934c087d2b2~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_07740074cf59434f8aeb8934c087d2b2~mv2.jpg" alt="San Andrès SS21" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_6818df90512848628e0bcf1e991e14dd~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_6818df90512848628e0bcf1e991e14dd~mv2.jpg" alt="San Andrès SS21" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_b0cf5e15a838462c9482b8277bef1ea6~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_b0cf5e15a838462c9482b8277bef1ea6~mv2.jpg" alt="San Andrès SS21" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_9b7274e952b14c4dadf27a542140874d~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_9b7274e952b14c4dadf27a542140874d~mv2.jpg" alt="San Andrès SS21" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_07099bbf1b1945b29930b246f98a8610~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_07099bbf1b1945b29930b246f98a8610~mv2.jpg" alt="San Andrès SS21" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_33da6a86c8cf4dd89a0f5e2b7fbdc56b~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_33da6a86c8cf4dd89a0f5e2b7fbdc56b~mv2.jpg" alt="San Andrès SS21" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_defe583ae692442ab009a86a3513855c~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_defe583ae692442ab009a86a3513855c~mv2.jpg" alt="San Andrès SS21" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="wix">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-16</p>
+        <h1 class="editorial-title">MRZ SS21</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://static.wixstatic.com/media/462397_764305a9830047358f5ba4d716eb0703~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_764305a9830047358f5ba4d716eb0703~mv2.jpg" alt="MRZ SS21" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;MRZ SS21&#x27;, deconstruction is a form of devotion, garments are unraveled and reassembled with meticulous care, revealing beauty in the spaces where fabric meets intention.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;MRZ SS21&#x27;에서 해체는 헌신의 한 형태이다, 의복이 세심한 정성으로 풀어지고 재조립되며, 원단이 의도와 만나는 공간에서 아름다움을 드러낸다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;MRZ SS21&#x27;, la decostruzione è una forma di devozione, i capi vengono scomposti e riassemblati con cura meticolosa, rivelando bellezza negli spazi dove il tessuto incontra l&#x27;intenzione.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;MRZ SS21&#x27;, la déconstruction est une forme de dévotion, les vêtements sont défaits et réassemblés avec un soin méticuleux, révélant la beauté dans les espaces où le tissu rencontre l&#x27;intention.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;MRZ SS21&#x27;, la deconstrucción es una forma de devoción, las prendas se desmontan y se reensamblan con cuidado meticuloso, revelando belleza en los espacios donde la tela se encuentra con la intención.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;MRZ SS21&#x27;では、脱構築が献身の一形態となる, 衣服が細心の注意を込めて解かれ再構成され、生地と意図が出会う空間に美が現れる。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;MRZ SS21&#x27;中，解构是一种虔诚, , 衣物被拆解又以精细的关怀重新组装，在面料与意图交汇的空间中显现美。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;MRZ SS21&#x27; деконструкция ,  это форма преданности, одежда разбирается и собирается заново с тщательной заботой, обнажая красоту в пространствах, где ткань встречается с замыслом.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_605cd31f105a41deba598eb009e72358~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_605cd31f105a41deba598eb009e72358~mv2.jpg" alt="MRZ SS21" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_80cdd3b484cb42da8907bd67fe5d6bfe~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_80cdd3b484cb42da8907bd67fe5d6bfe~mv2.jpg" alt="MRZ SS21" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_10245aad9ea24e178c799d408e7747e2~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_10245aad9ea24e178c799d408e7747e2~mv2.jpg" alt="MRZ SS21" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_3d81d9b2d7c0494a9934fefc65e9abc5~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_3d81d9b2d7c0494a9934fefc65e9abc5~mv2.jpg" alt="MRZ SS21" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_4ee9f0ae317b48e592d5b167cbda4d2e~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_4ee9f0ae317b48e592d5b167cbda4d2e~mv2.jpg" alt="MRZ SS21" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="wix">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-17</p>
+        <h1 class="editorial-title">Surprise Me!</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://static.wixstatic.com/media/462397_de594d0faabb4bc6a0c836c3ddac1c8f~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_de594d0faabb4bc6a0c836c3ddac1c8f~mv2.jpg" alt="Surprise Me!" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;SURPRISE ME!&#x27;, expectation shatters, the editorial thrives on the unpredictable, delivering jolts of color, form, and emotion that refuse to conform to any single narrative.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;SURPRISE ME!&#x27;에서 기대가 산산이 부서진다, 에디토리얼이 예측 불가능함을 양분 삼아, 어떤 단일 서사에도 순응하지 않는 색채, 형태, 감정의 충격을 전달한다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;SURPRISE ME!&#x27;, l&#x27;aspettativa si frantuma, l&#x27;editoriale prospera sull&#x27;imprevedibile, offrendo scariche di colore, forma ed emozione che rifiutano di conformarsi a una singola narrazione.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;SURPRISE ME!&#x27;, l&#x27;attente vole en éclats, l&#x27;éditorial prospère sur l&#x27;imprévisible, délivrant des chocs de couleur, de forme et d&#x27;émotion qui refusent de se conformer à un seul récit.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;SURPRISE ME!&#x27;, la expectativa se quiebra, el editorial prospera en lo impredecible, entregando descargas de color, forma y emoción que se niegan a conformarse con una sola narrativa.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;SURPRISE ME!&#x27;では、期待が砕ける, エディトリアルは予測不能なものを糧に繁栄し、いかなる単一の物語にも従わない色彩、形、感情の衝撃を届ける。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;SURPRISE ME!&#x27;中，期待破碎, , 编辑作品在不可预测中蓬勃发展，释放出拒绝服从任何单一叙事的色彩、形态与情感的冲击。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;SURPRISE ME!&#x27; ожидания разбиваются вдребезги, эдиториал процветает на непредсказуемости, выдавая всплески цвета, формы и эмоций, которые отказываются подчиняться единому нарративу.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_5e5f74c4ce4743249b55b49b45d36c50~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_5e5f74c4ce4743249b55b49b45d36c50~mv2.jpg" alt="Surprise Me!" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_df48929e6bb34593b9e0a512a4243706~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_df48929e6bb34593b9e0a512a4243706~mv2.jpg" alt="Surprise Me!" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_28cb417ba21949b18324a0639c59217f~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_28cb417ba21949b18324a0639c59217f~mv2.jpg" alt="Surprise Me!" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_69ef2635e8f1436ca047d864efdc6908~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_69ef2635e8f1436ca047d864efdc6908~mv2.jpg" alt="Surprise Me!" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="wix">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-18</p>
+        <h1 class="editorial-title">Lockdown</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://static.wixstatic.com/media/462397_87f1d557ac204c0894204416549e257a~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_87f1d557ac204c0894204416549e257a~mv2.jpg" alt="Lockdown" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;LOCKDOWN&#x27;, confinement becomes a creative catalyst, walls compress but imagination expands, turning isolation into an intimate laboratory where vulnerability meets visual poetry.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;LOCKDOWN&#x27;에서 격리가 창작의 촉매제가 된다, 벽은 좁혀오지만 상상력은 확장되며, 고립을 취약함과 시각적 시가 만나는 친밀한 실험실로 변모시킨다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;LOCKDOWN&#x27;, la reclusione diventa un catalizzatore creativo, le pareti comprimono ma l&#x27;immaginazione si espande, trasformando l&#x27;isolamento in un laboratorio intimo dove vulnerabilità e poesia visiva si incontrano.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;LOCKDOWN&#x27;, le confinement devient un catalyseur créatif, les murs compriment mais l&#x27;imagination s&#x27;étend, transformant l&#x27;isolement en un laboratoire intime où vulnérabilité et poésie visuelle se rencontrent.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;LOCKDOWN&#x27;, el confinamiento se convierte en catalizador creativo, las paredes comprimen pero la imaginación se expande, convirtiendo el aislamiento en un laboratorio íntimo donde la vulnerabilidad se encuentra con la poesía visual.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;LOCKDOWN&#x27;では、隔離が創造の触媒となる, 壁は圧縮するが想像力は拡張し、孤立を脆弱さと視覚詩が出会う親密な実験室に変える。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;LOCKDOWN&#x27;中，禁闭成为创作催化剂, , 围墙压缩但想象力扩展，将隔离转化为脆弱与视觉诗意相遇的亲密实验室。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;LOCKDOWN&#x27; заточение становится творческим катализатором, стены сжимаются, но воображение расширяется, превращая изоляцию в интимную лабораторию, где уязвимость встречается с визуальной поэзией.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_cad0aaf8218e42f8a1787b91404370f5~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_cad0aaf8218e42f8a1787b91404370f5~mv2.jpg" alt="Lockdown" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_c65fcd936c8a4f50a7750d3d296ae048~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_c65fcd936c8a4f50a7750d3d296ae048~mv2.jpg" alt="Lockdown" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_650f383196904ce88a0cd0795c7b6ebe~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_650f383196904ce88a0cd0795c7b6ebe~mv2.jpg" alt="Lockdown" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_5134dc45a2b44a29af7215c6199bcf4f~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_5134dc45a2b44a29af7215c6199bcf4f~mv2.jpg" alt="Lockdown" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_137af1a51d3b445fa710b4c3e7e1cb3c~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_137af1a51d3b445fa710b4c3e7e1cb3c~mv2.jpg" alt="Lockdown" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="wix">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-19</p>
+        <h1 class="editorial-title">I Will Bring You Fire</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://static.wixstatic.com/media/462397_782fc520ce5641ea872756dc5dfab93f~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_782fc520ce5641ea872756dc5dfab93f~mv2.jpg" alt="I Will Bring You Fire" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;I WILL BRING YOU FIRE&#x27;, intensity is a promise, every image burns with deliberate ferocity, capturing the Promethean spirit of creating light where none existed before.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;I WILL BRING YOU FIRE&#x27;에서 강렬함은 약속이다, 모든 이미지가 의도적인 맹렬함으로 타오르며, 전에 없던 곳에 빛을 만들어내는 프로메테우스적 정신을 포착한다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;I WILL BRING YOU FIRE&#x27;, l&#x27;intensità è una promessa, ogni immagine brucia con ferocia deliberata, catturando lo spirito prometeico di creare luce dove prima non esisteva.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;I WILL BRING YOU FIRE&#x27;, l&#x27;intensité est une promesse, chaque image brûle avec une férocité délibérée, capturant l&#x27;esprit prométhéen de créer la lumière là où il n&#x27;y en avait pas.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;I WILL BRING YOU FIRE&#x27;, la intensidad es una promesa, cada imagen arde con ferocidad deliberada, capturando el espíritu prometeico de crear luz donde antes no existía.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;I WILL BRING YOU FIRE&#x27;では、強烈さが約束となる, すべてのイメージが意図的な激しさで燃え、かつて存在しなかった場所に光を生み出すプロメテウス的精神を捉える。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;I WILL BRING YOU FIRE&#x27;中，强烈是一个承诺, , 每一幅图像以蓄意的凶猛燃烧，捕捉在虚无中创造光明的普罗米修斯精神。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;I WILL BRING YOU FIRE&#x27; интенсивность ,  это обещание, каждый образ горит намеренной свирепостью, улавливая прометеев дух создания света там, где его раньше не было.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_96dca840b12040e8b03f0a3ec170a450~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_96dca840b12040e8b03f0a3ec170a450~mv2.jpg" alt="I Will Bring You Fire" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_ee9837b9e4734a158f0c245d03ce6335~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_ee9837b9e4734a158f0c245d03ce6335~mv2.jpg" alt="I Will Bring You Fire" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_6597c964759747f3abd0015532f37031~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_6597c964759747f3abd0015532f37031~mv2.jpg" alt="I Will Bring You Fire" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_272e6f40fedf4ce2976483925145580a~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_272e6f40fedf4ce2976483925145580a~mv2.jpg" alt="I Will Bring You Fire" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_19ea83c645de42438150d0767228dc5e~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_19ea83c645de42438150d0767228dc5e~mv2.jpg" alt="I Will Bring You Fire" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="wix">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-20</p>
+        <h1 class="editorial-title">Delirium</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://static.wixstatic.com/media/462397_41de70a9334040c79be2dbea75377986~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_41de70a9334040c79be2dbea75377986~mv2.jpg" alt="Delirium" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;DELIRIUM&#x27;, reality fractures, perception spirals into a fever dream of distorted beauty, where the line between clarity and chaos dissolves into something hauntingly magnetic.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;DELIRIUM&#x27;에서 현실이 균열한다, 인식이 왜곡된 아름다움의 열병 같은 꿈 속으로 소용돌이치며, 명료함과 혼돈 사이의 경계가 으스스하게 자성적인 무언가로 녹아든다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;DELIRIUM&#x27;, la realtà si frattura, la percezione sprofonda in un sogno febbrile di bellezza distorta, dove il confine tra chiarezza e caos si dissolve in qualcosa di inquietantemente magnetico.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;DELIRIUM&#x27;, la réalité se fracture, la perception spirale dans un rêve fiévreux de beauté distordue, où la frontière entre clarté et chaos se dissout en quelque chose d&#x27;étrangement magnétique.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;DELIRIUM&#x27;, la realidad se fractura, la percepción espiralea en un sueño febril de belleza distorsionada, donde la línea entre claridad y caos se disuelve en algo inquietantemente magnético.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;DELIRIUM&#x27;では、現実が断裂する, 知覚が歪んだ美の熱病のような夢の中へ螺旋を描き、明晰と混沌の境界が不気味なまでに磁力的な何かへと溶ける。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;DELIRIUM&#x27;中，现实碎裂, , 感知旋入扭曲之美的高烧梦境，清明与混沌之间的界线融化为某种令人着迷的魅惑。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;DELIRIUM&#x27; реальность раскалывается, восприятие закручивается в лихорадочный сон искажённой красоты, где грань между ясностью и хаосом растворяется в чём-то навязчиво притягательном.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_b6fb9872088f4c5d8fc10bf0bc27c376~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_b6fb9872088f4c5d8fc10bf0bc27c376~mv2.jpg" alt="Delirium" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_cbcc9c34c4f345d79dd06b65db9e7cc5~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_cbcc9c34c4f345d79dd06b65db9e7cc5~mv2.jpg" alt="Delirium" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_69b4fb3af50e4573a617d22b06d2dd4e~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_69b4fb3af50e4573a617d22b06d2dd4e~mv2.jpg" alt="Delirium" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_e053aee47667444cba74f795cb9d4a17~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_e053aee47667444cba74f795cb9d4a17~mv2.jpg" alt="Delirium" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_211022a4c3c444dbb2082857ef180a8c~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_211022a4c3c444dbb2082857ef180a8c~mv2.jpg" alt="Delirium" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="wix">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-21</p>
+        <h1 class="editorial-title">Insect Life</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://static.wixstatic.com/media/462397_97c371e218f948f69ed579a3068c72f3~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_97c371e218f948f69ed579a3068c72f3~mv2.jpg" alt="Insect Life" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;INSECT LIFE&#x27;, the microscopic becomes monumental, chitin-inspired textures and iridescent surfaces transform fashion into an entomological wonder, revealing beauty in the overlooked.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;INSECT LIFE&#x27;에서 미시적인 것이 기념비적이 된다, 키틴에서 영감받은 질감과 무지갯빛 표면이 패션을 곤충학적 경이로 변모시키며, 간과된 것에서 아름다움을 드러낸다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;INSECT LIFE&#x27;, il microscopico diventa monumentale, texture ispirate alla chitina e superfici iridescenti trasformano la moda in una meraviglia entomologica, rivelando bellezza nel trascurato.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;INSECT LIFE&#x27;, le microscopique devient monumental, des textures inspirées de la chitine et des surfaces irisées transforment la mode en une merveille entomologique, révélant la beauté dans l&#x27;inaperçu.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;INSECT LIFE&#x27;, lo microscópico se vuelve monumental, texturas inspiradas en la quitina y superficies iridiscentes transforman la moda en una maravilla entomológica, revelando belleza en lo pasado por alto.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;INSECT LIFE&#x27;では、微視的なものが記念碑的になる, キチンに着想を得た質感と虹色の表面がファッションを昆虫学的驚異に変え、見過ごされたものに美を見出す。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;INSECT LIFE&#x27;中，微观变得宏大, , 受甲壳质启发的质感与虹彩表面将时尚转化为昆虫学奇观，在被忽视之处揭示美。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;INSECT LIFE&#x27; микроскопическое становится монументальным, хитиновые текстуры и переливающиеся поверхности превращают моду в энтомологическое чудо, открывая красоту в незамеченном.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_dd657854573443529591ff4f4aa7e0f3~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_dd657854573443529591ff4f4aa7e0f3~mv2.jpg" alt="Insect Life" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_f5eb44fc6fbf4096bf6b276085e1009a~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_f5eb44fc6fbf4096bf6b276085e1009a~mv2.jpg" alt="Insect Life" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_a4f595f0eeaa45b099885f5813ba06f9~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_a4f595f0eeaa45b099885f5813ba06f9~mv2.jpg" alt="Insect Life" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_9ec69fd82478471d8644a3affab0452b~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_9ec69fd82478471d8644a3affab0452b~mv2.jpg" alt="Insect Life" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_61e93c220c754bab9f7e63bfaaba8b48~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_61e93c220c754bab9f7e63bfaaba8b48~mv2.jpg" alt="Insect Life" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="wix">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-22</p>
+        <h1 class="editorial-title">Contemporary</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://static.wixstatic.com/media/462397_4f40639a2f6f41bc96db2c770b454db7~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_4f40639a2f6f41bc96db2c770b454db7~mv2.jpg" alt="Contemporary" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;CONTEMPORARY&#x27;, the present moment is everything, stripped of nostalgia and free of futurism, the editorial exists purely in the now, capturing the raw pulse of today&#x27;s aesthetic.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;CONTEMPORARY&#x27;에서 현재의 순간이 전부이다, 향수를 벗고 미래주의에서 자유로운 에디토리얼이 순수하게 지금에 존재하며, 오늘날 미학의 날것의 맥박을 포착한다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;CONTEMPORARY&#x27;, il momento presente è tutto, spogliato di nostalgia e libero dal futurismo, l&#x27;editoriale esiste puramente nel presente, catturando il battito crudo dell&#x27;estetica odierna.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;CONTEMPORARY&#x27;, le moment présent est tout, dépouillé de nostalgie et libre de futurisme, l&#x27;éditorial existe purement dans le maintenant, capturant le pouls brut de l&#x27;esthétique d&#x27;aujourd&#x27;hui.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;CONTEMPORARY&#x27;, el momento presente lo es todo, despojado de nostalgia y libre de futurismo, el editorial existe puramente en el ahora, capturando el pulso crudo de la estética de hoy.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;CONTEMPORARY&#x27;では、現在の瞬間がすべてである, ノスタルジアを剥ぎ取り、未来主義から自由なエディトリアルが純粋に今に存在し、今日の美学の生の鼓動を捉える。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;CONTEMPORARY&#x27;中，当下即一切, , 剥离怀旧、摆脱未来主义，编辑作品纯粹存在于此刻，捕捉当今美学的原始脉搏。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;CONTEMPORARY&#x27; настоящий момент ,  это всё, лишённый ностальгии и свободный от футуризма, эдиториал существует исключительно в сейчас, улавливая необработанный пульс сегодняшней эстетики.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_b4f56931b7764b5e9afbe8db20011bf7~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_b4f56931b7764b5e9afbe8db20011bf7~mv2.jpg" alt="Contemporary" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_0a3d913186f146b588121a9d6c3bf3a1~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_0a3d913186f146b588121a9d6c3bf3a1~mv2.jpg" alt="Contemporary" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_077b8d3f702f4a3e8c64435bf6ccc73b~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_077b8d3f702f4a3e8c64435bf6ccc73b~mv2.jpg" alt="Contemporary" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_f897f64795df4c398fdc29c2989b36ae~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_f897f64795df4c398fdc29c2989b36ae~mv2.jpg" alt="Contemporary" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_28acf06d8b2544f08c973671e6c9daff~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_28acf06d8b2544f08c973671e6c9daff~mv2.jpg" alt="Contemporary" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="wix">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-23</p>
+        <h1 class="editorial-title">Lost In Your Eyes</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://static.wixstatic.com/media/462397_e7e9c1c7c6d44f8b9da2edcbde71dd1e~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_e7e9c1c7c6d44f8b9da2edcbde71dd1e~mv2.jpg" alt="Lost In Your Eyes" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;LOST IN YOUR EYES&#x27;, the gaze is everything, an intimate dialogue between lens and subject creates a hypnotic pull, drawing the viewer into depths that words cannot reach.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;LOST IN YOUR EYES&#x27;에서 시선이 전부이다, 렌즈와 피사체 사이의 친밀한 대화가 최면적 끌림을 만들어내며, 말로는 닿을 수 없는 깊이 속으로 관객을 끌어들인다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;LOST IN YOUR EYES&#x27;, lo sguardo è tutto, un dialogo intimo tra obiettivo e soggetto crea un&#x27;attrazione ipnotica, trascinando lo spettatore in profondità che le parole non possono raggiungere.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;LOST IN YOUR EYES&#x27;, le regard est tout, un dialogue intime entre l&#x27;objectif et le sujet crée une attraction hypnotique, entraînant le spectateur dans des profondeurs que les mots ne peuvent atteindre.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;LOST IN YOUR EYES&#x27;, la mirada lo es todo, un diálogo íntimo entre lente y sujeto crea una atracción hipnótica, arrastrando al espectador a profundidades que las palabras no pueden alcanzar.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;LOST IN YOUR EYES&#x27;では、視線がすべてである, レンズと被写体の間の親密な対話が催眠的な引力を生み出し、言葉では届かない深みへと観る者を引き込む。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;LOST IN YOUR EYES&#x27;中，凝视即一切, , 镜头与主体之间的亲密对话创造出催眠般的吸引力，将观者拉入语言无法触及的深处。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;LOST IN YOUR EYES&#x27; взгляд ,  это всё, интимный диалог между объективом и субъектом создаёт гипнотическое притяжение, увлекая зрителя в глубины, недосягаемые для слов.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_0d4080851703410ab2141b4c4571c0d7~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_0d4080851703410ab2141b4c4571c0d7~mv2.jpg" alt="Lost In Your Eyes" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_b10757a7fe204a6095423c6adc085097~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_b10757a7fe204a6095423c6adc085097~mv2.jpg" alt="Lost In Your Eyes" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_22a6e6352e354ae882a3881706c94a4b~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_22a6e6352e354ae882a3881706c94a4b~mv2.jpg" alt="Lost In Your Eyes" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_398be99743434b94b823c3704003fcfe~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_398be99743434b94b823c3704003fcfe~mv2.jpg" alt="Lost In Your Eyes" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_7b44090098364cb9aa5c80a90f05a842~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_7b44090098364cb9aa5c80a90f05a842~mv2.jpg" alt="Lost In Your Eyes" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="wix">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-25</p>
+        <h1 class="editorial-title">Random Story</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://static.wixstatic.com/media/462397_76c73c6e2dce4ccf807dfb83dca87f13~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_76c73c6e2dce4ccf807dfb83dca87f13~mv2.jpg" alt="Random Story" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;RANDOM STORY&#x27;, chaos is the author, disparate elements converge without logic or apology, weaving an accidental narrative that finds unexpected beauty in pure spontaneity.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;RANDOM STORY&#x27;에서 혼돈이 저자이다, 이질적 요소들이 논리나 사과 없이 수렴하며, 순수한 자발성에서 예기치 않은 아름다움을 발견하는 우연적 서사를 짠다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;RANDOM STORY&#x27;, il caos è l&#x27;autore, elementi disparati convergono senza logica né scuse, tessendo una narrazione accidentale che trova bellezza inaspettata nella pura spontaneità.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;RANDOM STORY&#x27;, le chaos est l&#x27;auteur, des éléments disparates convergent sans logique ni excuse, tissant un récit accidentel qui trouve une beauté inattendue dans la pure spontanéité.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;RANDOM STORY&#x27;, el caos es el autor, elementos dispares convergen sin lógica ni disculpa, tejiendo una narrativa accidental que encuentra belleza inesperada en la pura espontaneidad.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;RANDOM STORY&#x27;では、混沌が著者である, 異質な要素が論理も弁明もなく収束し、純粋な自発性の中に予期せぬ美を見出す偶発的な物語を紡ぐ。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;RANDOM STORY&#x27;中，混沌是作者, , 毫无逻辑和歉意地汇聚的异质元素，编织出一个在纯粹自发中发现意外之美的偶然叙事。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;RANDOM STORY&#x27; хаос ,  автор, разрозненные элементы сходятся без логики и извинений, сплетая случайный нарратив, находящий неожиданную красоту в чистой спонтанности.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_7ca2694a981b44a2a62d3947b5f890a3~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_7ca2694a981b44a2a62d3947b5f890a3~mv2.jpg" alt="Random Story" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_420a3af65e20483c906c540461736751~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_420a3af65e20483c906c540461736751~mv2.jpg" alt="Random Story" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_b47f4e9ee47445dd972242e4837faf4e~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_b47f4e9ee47445dd972242e4837faf4e~mv2.jpg" alt="Random Story" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_f2371696aa9444059fac0d9c3f312820~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_f2371696aa9444059fac0d9c3f312820~mv2.jpg" alt="Random Story" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_5fdc269702d5404298c199067b55d960~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_5fdc269702d5404298c199067b55d960~mv2.jpg" alt="Random Story" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="wix">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-26</p>
+        <h1 class="editorial-title">Tale Portraits</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://static.wixstatic.com/media/462397_22a8bb7c54b94525b6eb4636174f00fc~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_22a8bb7c54b94525b6eb4636174f00fc~mv2.jpg" alt="Tale Portraits" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;TALE PORTRAITS&#x27;, every face tells a story, portraiture transcends documentation, becoming a narrative art form where expression, light, and composition whisper of lives unseen.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;TALE PORTRAITS&#x27;에서 모든 얼굴이 이야기를 말한다, 초상이 기록을 초월하여, 표정, 빛, 구성이 보이지 않는 삶을 속삭이는 서사적 예술 형식이 된다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;TALE PORTRAITS&#x27;, ogni volto racconta una storia, la ritrattistica trascende la documentazione, diventando una forma d&#x27;arte narrativa dove espressione, luce e composizione sussurrano di vite non viste.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;TALE PORTRAITS&#x27;, chaque visage raconte une histoire, le portrait transcende la documentation, devenant une forme d&#x27;art narratif où expression, lumière et composition murmurent des vies invisibles.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;TALE PORTRAITS&#x27;, cada rostro cuenta una historia, el retrato trasciende la documentación, convirtiéndose en una forma de arte narrativo donde expresión, luz y composición susurran sobre vidas no vistas.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;TALE PORTRAITS&#x27;では、すべての顔が物語を語る, ポートレートが記録を超越し、表情、光、構成が見えない人生を囁く物語的芸術形式となる。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;TALE PORTRAITS&#x27;中，每一张面孔都在诉说故事, , 肖像超越记录，成为一种叙事艺术形式，表情、光线与构图低语着不可见的人生。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;TALE PORTRAITS&#x27; каждое лицо рассказывает историю, портретное искусство выходит за рамки документации, становясь нарративной формой, где выражение, свет и композиция шепчут о невиданных жизнях.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_16f929fe224a4bd19c64ddc1655f1a9f~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_16f929fe224a4bd19c64ddc1655f1a9f~mv2.jpg" alt="Tale Portraits" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_267c345485ed41fdbe847f1fd95b5c7f~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_267c345485ed41fdbe847f1fd95b5c7f~mv2.jpg" alt="Tale Portraits" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_025c9e33d59f455b8c0d44fc05c19593~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_025c9e33d59f455b8c0d44fc05c19593~mv2.jpg" alt="Tale Portraits" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_d945af31a6c74b749a5bd89de4f18524~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_d945af31a6c74b749a5bd89de4f18524~mv2.jpg" alt="Tale Portraits" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_ba091a6875df44e0bf11a44f11b7beaa~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_ba091a6875df44e0bf11a44f11b7beaa~mv2.jpg" alt="Tale Portraits" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="wix">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-27</p>
+        <h1 class="editorial-title">We Are Young</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://static.wixstatic.com/media/462397_c75b115c58344767b9000a96e0c3e92d~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_c75b115c58344767b9000a96e0c3e92d~mv2.jpg" alt="We Are Young" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;WE ARE YOUNG&#x27;, youth is not an age but an energy, electric, reckless, and radiant, every frame pulses with the unapologetic vitality of those who still believe anything is possible.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;WE ARE YOUNG&#x27;에서 청춘은 나이가 아닌 에너지이다, 전기적이고, 무모하고, 빛나는 모든 프레임이 아직도 모든 것이 가능하다고 믿는 이들의 당당한 활력으로 맥동한다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;WE ARE YOUNG&#x27;, la giovinezza non è un&#x27;età ma un&#x27;energia, elettrica, spericolata e radiante, ogni inquadratura pulsa della vitalità senza scuse di chi crede ancora che tutto sia possibile.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;WE ARE YOUNG&#x27;, la jeunesse n&#x27;est pas un âge mais une énergie, électrique, téméraire et radieuse, chaque cadre pulse de la vitalité assumée de ceux qui croient encore que tout est possible.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;WE ARE YOUNG&#x27;, la juventud no es una edad sino una energía, eléctrica, temeraria y radiante, cada fotograma pulsa con la vitalidad impenitente de quienes aún creen que todo es posible.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;WE ARE YOUNG&#x27;では、若さは年齢ではなくエネルギーである, 電撃的で、無謀で、輝かしい、すべてのフレームが、まだ何でも可能だと信じる者たちの堂々とした活力で脈動する。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;WE ARE YOUNG&#x27;中，年轻不是年龄而是能量, , 带电的、鲁莽的、光芒四射的，每一帧都随着那些仍相信一切皆有可能者的无畏活力而脉动。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;WE ARE YOUNG&#x27; молодость ,  это не возраст, а энергия, электрическая, безрассудная и лучезарная, каждый кадр пульсирует бескомпромиссной жизненной силой тех, кто всё ещё верит, что возможно всё.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_38581b042639487991fc77bd24fbb592~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_38581b042639487991fc77bd24fbb592~mv2.jpg" alt="We Are Young" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_215b2434a61a4b3680a9bd230baeedd3~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_215b2434a61a4b3680a9bd230baeedd3~mv2.jpg" alt="We Are Young" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_21f8726687674c21ba3e5d82c6a4e2fd~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_21f8726687674c21ba3e5d82c6a4e2fd~mv2.jpg" alt="We Are Young" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_36a36af5f7bc4ed9ab8ed9ae80e573f5~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_36a36af5f7bc4ed9ab8ed9ae80e573f5~mv2.jpg" alt="We Are Young" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="wix">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-28</p>
+        <h1 class="editorial-title">Le Temps Des Sauterelles</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://static.wixstatic.com/media/462397_7008bbc9714a4d4f825535e139815dde~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_7008bbc9714a4d4f825535e139815dde~mv2.jpg" alt="Le Temps Des Sauterelles" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;LE TEMPS DES SAUTERELLES&#x27;, nature reclaims the frame, a plague of beauty descends, where organic forms overwhelm structure and the raw force of the natural world commands the lens.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;LE TEMPS DES SAUTERELLES&#x27;에서 자연이 프레임을 되찾는다, 아름다움의 재앙이 내리며, 유기적 형태가 구조를 압도하고 자연계의 날것의 힘이 렌즈를 지배한다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;LE TEMPS DES SAUTERELLES&#x27;, la natura riconquista il fotogramma, una piaga di bellezza discende, dove le forme organiche travolgono la struttura e la forza grezza del mondo naturale comanda l&#x27;obiettivo.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;LE TEMPS DES SAUTERELLES&#x27;, la nature reprend le cadre, un fléau de beauté descend, où les formes organiques submergent la structure et la force brute du monde naturel commande l&#x27;objectif.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;LE TEMPS DES SAUTERELLES&#x27;, la naturaleza reclama el encuadre, una plaga de belleza desciende, donde las formas orgánicas abruman la estructura y la fuerza cruda del mundo natural comanda la lente.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;LE TEMPS DES SAUTERELLES&#x27;では、自然がフレームを奪還する, 美の疫病が降り注ぎ、有機的な形が構造を圧倒し、自然界の生の力がレンズを支配する。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;LE TEMPS DES SAUTERELLES&#x27;中，自然重新占据画面, , 美的灾祸降临，有机形态压倒结构，自然界的原始力量支配镜头。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;LE TEMPS DES SAUTERELLES&#x27; природа возвращает себе кадр, нашествие красоты нисходит, где органические формы подавляют структуру, а необузданная сила природного мира повелевает объективом.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_88c91f1215624d878c81a62590e23865~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_88c91f1215624d878c81a62590e23865~mv2.jpg" alt="Le Temps Des Sauterelles" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_8e1d5fbce740481c8f58262268c85a8a~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_8e1d5fbce740481c8f58262268c85a8a~mv2.jpg" alt="Le Temps Des Sauterelles" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_82c2d433e06f466489311c577bc56e42~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_82c2d433e06f466489311c577bc56e42~mv2.jpg" alt="Le Temps Des Sauterelles" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_f0a56d5fac7244d8aa2d1dcc468e99be~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_f0a56d5fac7244d8aa2d1dcc468e99be~mv2.jpg" alt="Le Temps Des Sauterelles" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_577a66a5c17f43609d474521162643e6~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_577a66a5c17f43609d474521162643e6~mv2.jpg" alt="Le Temps Des Sauterelles" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="wix">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-29</p>
+        <h1 class="editorial-title">Yell Out</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://static.wixstatic.com/media/462397_437d485fb2384345965d2e60b95d6d81~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_437d485fb2384345965d2e60b95d6d81~mv2.jpg" alt="Yell Out" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;YELL OUT&#x27;, silence is shattered, the editorial becomes a visual scream, channeling raw emotion into compositions that demand to be heard as much as seen.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;YELL OUT&#x27;에서 침묵이 깨진다, 에디토리얼이 시각적 비명이 되어, 날것의 감정을 보여지는 만큼이나 들려지기를 요구하는 구성으로 표출한다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;YELL OUT&#x27;, il silenzio si spezza, l&#x27;editoriale diventa un urlo visivo, incanalando emozione cruda in composizioni che esigono di essere ascoltate tanto quanto viste.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;YELL OUT&#x27;, le silence est brisé, l&#x27;éditorial devient un cri visuel, canalisant l&#x27;émotion brute dans des compositions qui exigent d&#x27;être entendues autant que vues.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;YELL OUT&#x27;, el silencio se quiebra, el editorial se convierte en un grito visual, canalizando emoción cruda en composiciones que exigen ser escuchadas tanto como vistas.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;YELL OUT&#x27;では、静寂が砕ける, エディトリアルが視覚的叫びとなり、生の感情を、見られることと同じくらい聞かれることを要求する構図へと注ぎ込む。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;YELL OUT&#x27;中，沉默被打碎, , 编辑作品化为视觉的呐喊，将原始情感注入要求被听见和被看见的构图之中。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;YELL OUT&#x27; тишина разрушена, эдиториал становится визуальным криком, направляя необработанные эмоции в композиции, которые требуют быть услышанными не менее, чем увиденными.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_b43766c997884c5f89c859f864bcf62f~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_b43766c997884c5f89c859f864bcf62f~mv2.jpg" alt="Yell Out" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_faa8aaec6ddc470981217164eade4aca~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_faa8aaec6ddc470981217164eade4aca~mv2.jpg" alt="Yell Out" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_49ebdd2b06274baab4c0313481efbfd1~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_49ebdd2b06274baab4c0313481efbfd1~mv2.jpg" alt="Yell Out" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_b8784021263e482e818262b18462a132~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_b8784021263e482e818262b18462a132~mv2.jpg" alt="Yell Out" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_6ea82b7f636a44df8d86ea5b754fd993~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_6ea82b7f636a44df8d86ea5b754fd993~mv2.jpg" alt="Yell Out" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="wix">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-30</p>
+        <h1 class="editorial-title">Dangerous Unpacking</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://static.wixstatic.com/media/462397_7e7d37875c46489ebbf490a5a7d2443d~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_7e7d37875c46489ebbf490a5a7d2443d~mv2.jpg" alt="Dangerous Unpacking" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;DANGEROUS UNPACKING&#x27;, revelation is risk, each layer stripped away exposes something more volatile beneath, building a narrative tension that keeps the viewer on the edge of discovery.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;DANGEROUS UNPACKING&#x27;에서 드러냄은 위험이다, 벗겨지는 각 층이 그 아래의 더 불안정한 무언가를 노출시키며, 관객을 발견의 경계에 서게 하는 서사적 긴장을 쌓아간다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;DANGEROUS UNPACKING&#x27;, la rivelazione è rischio, ogni strato rimosso espone qualcosa di più volatile sotto, costruendo una tensione narrativa che tiene lo spettatore sul bordo della scoperta.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;DANGEROUS UNPACKING&#x27;, la révélation est risque, chaque couche retirée expose quelque chose de plus volatile en dessous, construisant une tension narrative qui tient le spectateur au bord de la découverte.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;DANGEROUS UNPACKING&#x27;, la revelación es riesgo, cada capa que se retira expone algo más volátil debajo, construyendo una tensión narrativa que mantiene al espectador al borde del descubrimiento.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;DANGEROUS UNPACKING&#x27;では、暴露がリスクとなる, 剥がされる各層がその下のより不安定なものを露出させ、観る者を発見の縁に立たせる物語的緊張を築き上げる。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;DANGEROUS UNPACKING&#x27;中，揭示即是冒险, , 每剥去一层都暴露出更为动荡的内在，构建起让观者始终处于发现边缘的叙事张力。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;DANGEROUS UNPACKING&#x27; раскрытие ,  это риск, каждый снятый слой обнажает что-то более взрывоопасное под ним, выстраивая нарративное напряжение, которое держит зрителя на грани открытия.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_d6ff6c3b9a624ccfab88134429324ecf~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_d6ff6c3b9a624ccfab88134429324ecf~mv2.jpg" alt="Dangerous Unpacking" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_509263f442e5424eb36242cff586ce6f~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_509263f442e5424eb36242cff586ce6f~mv2.jpg" alt="Dangerous Unpacking" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_2d0745f601b04c8aae96f74b0ee1f978~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_2d0745f601b04c8aae96f74b0ee1f978~mv2.jpg" alt="Dangerous Unpacking" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_ef5144337099478ba71a12252002136b~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_ef5144337099478ba71a12252002136b~mv2.jpg" alt="Dangerous Unpacking" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_fe964b8b170c488c8f984e83a7d98b61~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_fe964b8b170c488c8f984e83a7d98b61~mv2.jpg" alt="Dangerous Unpacking" loading="lazy"></div>
+    </div>
+</section>
+<div class="section-divider"></div>
+<section class="editorial-section" data-source="wix">
+    <div class="editorial-header">
+        <p class="editorial-date">2020-07-31</p>
+        <h1 class="editorial-title">Previous Space Fantasy</h1>
+    </div>
+    <div class="editorial-spread">
+        <div class="editorial-cover">
+            <img class="editorial-cover-img" src="https://static.wixstatic.com/media/462397_a6a674d0ebef49299dfece2ed7de0d6f~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_a6a674d0ebef49299dfece2ed7de0d6f~mv2.jpg" alt="Previous Space Fantasy" loading="lazy">
+        </div>
+        <div class="editorial-info">
+            <p class="editorial-desc active-lang" data-lang="en">In &#x27;PREVIOUS SPACE FANTASY&#x27;, the cosmos is memory, retro-futuristic visions and celestial imagery collide in a nostalgic odyssey where yesterday&#x27;s dreams of tomorrow still shimmer with wonder.</p>
+            <p class="editorial-desc" data-lang="ko">&#x27;PREVIOUS SPACE FANTASY&#x27;에서 우주는 기억이다, 레트로 미래주의적 비전과 천상의 이미지가 어제의 내일에 대한 꿈이 여전히 경이로움으로 빛나는 향수 어린 오디세이에서 충돌한다.</p>
+            <p class="editorial-desc" data-lang="it">In &#x27;PREVIOUS SPACE FANTASY&#x27;, il cosmo è memoria, visioni retrofuturistiche e immagini celesti si scontrano in un&#x27;odissea nostalgica dove i sogni di ieri del domani brillano ancora di meraviglia.</p>
+            <p class="editorial-desc" data-lang="fr">Dans &#x27;PREVIOUS SPACE FANTASY&#x27;, le cosmos est mémoire, des visions rétrofuturistes et des images célestes entrent en collision dans une odyssée nostalgique où les rêves d&#x27;hier sur demain scintillent encore d&#x27;émerveillement.</p>
+            <p class="editorial-desc" data-lang="es">En &#x27;PREVIOUS SPACE FANTASY&#x27;, el cosmos es memoria, visiones retrofuturistas e imágenes celestiales chocan en una odisea nostálgica donde los sueños de ayer sobre el mañana aún brillan con asombro.</p>
+            <p class="editorial-desc" data-lang="ja">&#x27;PREVIOUS SPACE FANTASY&#x27;では、宇宙は記憶である, レトロフューチャリスティックなビジョンと天体のイメージが衝突し、昨日の明日への夢がまだ驚きに輝くノスタルジックなオデッセイとなる。</p>
+            <p class="editorial-desc" data-lang="zh">在&#x27;PREVIOUS SPACE FANTASY&#x27;中，宇宙即是记忆, , 复古未来主义幻象与天体意象碰撞，在怀旧的奥德赛中，昨日对明天的梦想依然闪烁着惊奇。</p>
+            <p class="editorial-desc" data-lang="ru">В &#x27;PREVIOUS SPACE FANTASY&#x27; космос ,  это память, ретрофутуристические видения и небесные образы сталкиваются в ностальгической одиссее, где вчерашние мечты о завтра всё ещё мерцают чудом.</p>
+        </div>
+    </div>
+    <div class="editorial-gallery">
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_6bdbe84c989e40daab8865ddbb41e82a~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_6bdbe84c989e40daab8865ddbb41e82a~mv2.jpg" alt="Previous Space Fantasy" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_22eedd3b7e044ae5b9a80a994f5e7c91~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_22eedd3b7e044ae5b9a80a994f5e7c91~mv2.jpg" alt="Previous Space Fantasy" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_b954c38d06334beb9e0c5fcb7ddbde96~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_b954c38d06334beb9e0c5fcb7ddbde96~mv2.jpg" alt="Previous Space Fantasy" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_f5e39f2b2fc240f2a1d7e5e271bae17d~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_f5e39f2b2fc240f2a1d7e5e271bae17d~mv2.jpg" alt="Previous Space Fantasy" loading="lazy"></div>
+        <div class="gallery-item"><img src="https://static.wixstatic.com/media/462397_945eb30519f440c699c71c16c19d1b40~mv2.jpg/v1/fit/w_1600,h_10000,al_c,q_85/462397_945eb30519f440c699c71c16c19d1b40~mv2.jpg" alt="Previous Space Fantasy" loading="lazy"></div>
+    </div>
+</section>
+<footer>
+<p>PAP Magazine &copy; 2020 All Rights Reserved</p>
+<p>Published by Domenico Kang</p>
+</footer>
+<script>
+let currentLang='en';
+function toggleLangMenu(){document.getElementById('langDropdown').classList.toggle('show')}
+function switchLang(lang){currentLang=lang;document.querySelectorAll('.editorial-desc').forEach(el=>{el.classList.toggle('active-lang',el.dataset.lang===lang)});document.querySelectorAll('.lang-option').forEach(el=>{el.classList.toggle('active',el.dataset.lang===lang)});document.getElementById('langBtn').textContent=lang==='ko'?'한국어':lang==='ja'?'日本語':lang==='zh'?'中文':lang.toUpperCase();document.getElementById('langDropdown').classList.remove('show')}
+document.addEventListener('click',e=>{if(!e.target.closest('.lang-selector-wrap'))document.getElementById('langDropdown').classList.remove('show')});
+window.addEventListener('scroll',()=>{const s=document.documentElement,p=(s.scrollTop/(s.scrollHeight-s.clientHeight))*100;document.querySelector('.nav-scroll-indicator').style.width=p+'%'});
+</script>
+</body>
+</html>
