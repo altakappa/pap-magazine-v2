@@ -254,28 +254,24 @@ tr:hover td{background:rgba(0,0,0,.02)}
 
   <!-- HOME -->
   <div class="tab on" id="t-home">
-    <div class="mn-header"><div class="mn-title">대시보드</div><div style="font-size:11px;color:var(--text3)">2026년 3월 20일</div></div>
+    <div class="mn-header"><div class="mn-title">대시보드</div><div style="font-size:11px;color:var(--text3)" id="dashDate"></div></div>
     <div class="mn-body">
       <div class="stats">
-        <div class="stat"><div class="stat-n">247</div><div class="stat-l">전체 회원</div><div class="stat-c" style="color:var(--green)">↑ 이번 주 +12</div></div>
-        <div class="stat"><div class="stat-n">89</div><div class="stat-l">게시된 에디토리얼</div><div class="stat-c" style="color:var(--green)">↑ 이번 달 +4</div></div>
-        <div class="stat"><div class="stat-n">18</div><div class="stat-l">대기 중 서브미션</div><div class="stat-c">오늘 +3</div></div>
-        <div class="stat"><div class="stat-n">5</div><div class="stat-l">대기 중 Pull-Letter</div><div class="stat-c">오늘 +1</div></div>
-        <div class="stat"><div class="stat-n">42</div><div class="stat-l">Standard 구독</div></div>
-        <div class="stat"><div class="stat-n">15</div><div class="stat-l">Premium 구독</div></div>
-        <div class="stat"><div class="stat-n">156</div><div class="stat-l">커뮤니티 게시글</div></div>
-        <div class="stat"><div class="stat-n">₩2.4M</div><div class="stat-l">월 매출</div><div class="stat-c" style="color:var(--green)">↑ 18%</div></div>
+        <div class="stat"><div class="stat-n">0</div><div class="stat-l">전체 회원</div></div>
+        <div class="stat"><div class="stat-n">0</div><div class="stat-l">게시된 에디토리얼</div></div>
+        <div class="stat"><div class="stat-n">0</div><div class="stat-l">대기 중 서브미션</div></div>
+        <div class="stat"><div class="stat-n">0</div><div class="stat-l">대기 중 Pull-Letter</div></div>
+        <div class="stat"><div class="stat-n">0</div><div class="stat-l">Standard 구독</div></div>
+        <div class="stat"><div class="stat-n">0</div><div class="stat-l">Premium 구독</div></div>
+        <div class="stat"><div class="stat-n">0</div><div class="stat-l">커뮤니티 게시글</div></div>
+        <div class="stat"><div class="stat-n">₩0</div><div class="stat-l">월 매출</div></div>
       </div>
 
       <div class="tbl-wrap">
         <div class="tbl-top"><h3>최근 서브미션</h3></div>
         <table><thead><tr><th>제목</th><th>제출자</th><th>룩 수</th><th>날짜</th><th>상태</th></tr></thead>
         <tbody>
-          <tr><td class="td-title" onclick="openModal()">Neon Dreams</td><td>Lena Park</td><td>6</td><td>3월 20일</td><td><span class="badge b-pending">대기 중</span></td></tr>
-          <tr><td class="td-title" onclick="openModal()">Urban Decay</td><td>Marco Bellini</td><td>8</td><td>3월 19일</td><td><span class="badge b-pending">대기 중</span></td></tr>
-          <tr><td class="td-title">Silk & Shadow</td><td>Clara Fontaine</td><td>4</td><td>3월 18일</td><td><span class="badge b-approved">승인</span></td></tr>
-          <tr><td class="td-title">Primal Force</td><td>Judith Moreno</td><td>6</td><td>3월 17일</td><td><span class="badge b-approved">승인</span></td></tr>
-          <tr><td class="td-title">Faded Glory</td><td>Yuki Tanaka</td><td>4</td><td>3월 16일</td><td><span class="badge b-declined">거절</span></td></tr>
+          <tr><td colspan="5" style="text-align:center;color:var(--text3);padding:40px 0">서브미션이 없습니다</td></tr>
         </tbody></table>
       </div>
     </div>
@@ -451,12 +447,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
         <div class="tbl-top"><h3>서브미션 목록</h3><div class="tbl-filters"><button class="tf on">전체</button><button class="tf">대기 중</button><button class="tf">승인</button><button class="tf">거절</button></div></div>
         <table><thead><tr><th>제목</th><th>프로덕션</th><th>제출자</th><th>구독 등급</th><th>룩 수</th><th>날짜</th><th>상태</th><th>작업</th></tr></thead>
         <tbody>
-          <tr><td class="td-title" onclick="openModal()">Neon Dreams</td><td>Studio Lux</td><td>Lena Park</td><td><span class="badge b-premium">Premium</span></td><td>6</td><td>3월 20일</td><td><span class="badge b-pending">대기 중</span></td><td><button class="btn btn-sm" onclick="openModal()">심사</button></td></tr>
-          <tr><td class="td-title" onclick="openModal()">Urban Decay</td><td>Bellini Prod.</td><td>Marco Bellini</td><td><span class="badge b-premium">Premium</span></td><td>8</td><td>3월 19일</td><td><span class="badge b-pending">대기 중</span></td><td><button class="btn btn-sm" onclick="openModal()">심사</button></td></tr>
-          <tr><td class="td-title" onclick="openModal()">Glass Ceiling</td><td>ThePinkBang</td><td>Judith Moreno</td><td><span class="badge b-standard">Standard</span></td><td>5</td><td>3월 18일</td><td><span class="badge b-pending">대기 중</span></td><td><button class="btn btn-sm" onclick="openModal()">심사</button></td></tr>
-          <tr><td class="td-title">Morning Haze</td><td>Osei Creative</td><td>Amara Osei</td><td><span class="badge b-standard">Standard</span></td><td>5</td><td>3월 17일</td><td><span class="badge b-revision">보완 필요</span></td><td><button class="btn btn-sm" onclick="openModal()">심사</button></td></tr>
-          <tr><td>Silk & Shadow</td><td>Fontaine Studio</td><td>Clara Fontaine</td><td><span class="badge b-standard">Standard</span></td><td>4</td><td>3월 16일</td><td><span class="badge b-approved">승인</span></td><td>—</td></tr>
-          <tr><td>Faded Glory</td><td>Tanaka Studio</td><td>Yuki Tanaka</td><td><span class="badge b-standard">Standard</span></td><td>4</td><td>3월 15일</td><td><span class="badge b-declined">거절</span></td><td>—</td></tr>
+          <tr><td colspan="8" style="text-align:center;color:var(--text3);padding:40px 0">서브미션이 없습니다</td></tr>
         </tbody></table>
       </div>
     </div>
@@ -470,10 +461,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
         <div class="tbl-top"><h3>Pull-Letter 요청 목록</h3></div>
         <table><thead><tr><th>요청자</th><th>포토그래퍼</th><th>스타일리스트</th><th>무드보드</th><th>날짜</th><th>상태</th><th>작업</th></tr></thead>
         <tbody>
-          <tr><td>Lena Park</td><td>Lena Park / @lenapark</td><td>Clara Fontaine / @clarafontaine</td><td>3개 파일</td><td>3월 20일</td><td><span class="badge b-pending">대기 중</span></td><td><button class="btn btn-sm" onclick="openModal()">심사</button></td></tr>
-          <tr><td>Marco Bellini</td><td>Judith Moreno / @judith.moreno</td><td>Sergi Padial / @sergipadial</td><td>5개 파일</td><td>3월 18일</td><td><span class="badge b-pending">대기 중</span></td><td><button class="btn btn-sm" onclick="openModal()">심사</button></td></tr>
-          <tr><td>ThePinkBang</td><td>Judith Moreno</td><td>Sergi Padial</td><td>4개 파일</td><td>3월 15일</td><td><span class="badge b-approved">발급 완료</span></td><td>—</td></tr>
-          <tr><td>Yuki Tanaka</td><td>Yuki Tanaka</td><td>Sophie Laurent</td><td>2개 파일</td><td>3월 12일</td><td><span class="badge b-declined">거절</span></td><td>—</td></tr>
+          <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px 0">Pull-Letter 요청이 없습니다</td></tr>
         </tbody></table>
       </div>
     </div>
@@ -644,28 +632,22 @@ tr:hover td{background:rgba(0,0,0,.02)}
     <div class="mn-header"><div class="mn-title">커뮤니티 관리</div></div>
     <div class="mn-body">
       <div class="stats" style="grid-template-columns:repeat(3,1fr)">
-        <div class="stat"><div class="stat-n">156</div><div class="stat-l">게시글</div></div>
-        <div class="stat"><div class="stat-n">23</div><div class="stat-l">프로젝트</div></div>
-        <div class="stat"><div class="stat-n">412</div><div class="stat-l">댓글</div></div>
+        <div class="stat"><div class="stat-n">0</div><div class="stat-l">게시글</div></div>
+        <div class="stat"><div class="stat-n">0</div><div class="stat-l">프로젝트</div></div>
+        <div class="stat"><div class="stat-n">0</div><div class="stat-l">댓글</div></div>
       </div>
       <div class="tbl-wrap" style="margin-bottom:20px">
         <div class="tbl-top"><h3>최근 게시글</h3><div class="tbl-filters"><button class="tf on">전체</button><button class="tf">토론</button><button class="tf">팁</button><button class="tf">Q&A</button><button class="tf">자료</button></div></div>
         <table><thead><tr><th>제목</th><th>작성자</th><th>태그</th><th>좋아요</th><th>댓글</th><th>조회</th><th>날짜</th><th>작업</th></tr></thead>
         <tbody>
-          <tr><td class="td-title">밀라노 로케이션 허가 팁</td><td>Judith Moreno</td><td>토론</td><td>34</td><td>12</td><td>289</td><td>3월 20일</td><td><button class="btn btn-sm btn-red" onclick="if(confirm('이 게시글을 삭제하시겠습니까?'))this.closest('tr').remove()">삭제</button></td></tr>
-          <tr><td class="td-title">하이엔드 + 신진 브랜드 믹스</td><td>Sergi Padial</td><td>팁</td><td>91</td><td>28</td><td>1.2k</td><td>3월 20일</td><td><button class="btn btn-sm btn-red" onclick="if(confirm('이 게시글을 삭제하시겠습니까?'))this.closest('tr').remove()">삭제</button></td></tr>
-          <tr><td class="td-title">한남동 스튜디오 비하인드</td><td>Lena Park</td><td>비하인드</td><td>112</td><td>45</td><td>2.1k</td><td>3월 19일</td><td><button class="btn btn-sm btn-red" onclick="if(confirm('이 게시글을 삭제하시겠습니까?'))this.closest('tr').remove()">삭제</button></td></tr>
-          <tr><td class="td-title">2026 컬러 트렌드 SS27</td><td>Marco Bellini</td><td>자료</td><td>156</td><td>33</td><td>3.4k</td><td>3월 19일</td><td><button class="btn btn-sm btn-red" onclick="if(confirm('이 게시글을 삭제하시겠습니까?'))this.closest('tr').remove()">삭제</button></td></tr>
-          <tr><td class="td-title">자연광 vs 스튜디오 조명</td><td>Elisa V</td><td>Q&A</td><td>89</td><td>67</td><td>890</td><td>3월 18일</td><td><button class="btn btn-sm btn-red" onclick="if(confirm('이 게시글을 삭제하시겠습니까?'))this.closest('tr').remove()">삭제</button></td></tr>
+          <tr><td colspan="8" style="text-align:center;color:var(--text3);padding:40px 0">게시글이 없습니다</td></tr>
         </tbody></table>
       </div>
       <div class="tbl-wrap">
         <div class="tbl-top"><h3>프로젝트 목록</h3></div>
         <table><thead><tr><th>제목</th><th>작성자</th><th>위치</th><th>상태</th><th>지원자</th><th>날짜</th><th>작업</th></tr></thead>
         <tbody>
-          <tr><td class="td-title">초현실주의 에디토리얼</td><td>Lena Park</td><td>서울</td><td><span class="badge b-approved" style="border-color:rgba(22,163,74,.3)">모집 중</span></td><td>4명</td><td>3월 18일</td><td><button class="btn btn-sm btn-red" onclick="if(confirm('이 프로젝트를 삭제하시겠습니까?'))this.closest('tr').remove()">삭제</button></td></tr>
-          <tr><td class="td-title">MFW SS27 커버리지</td><td>Marco Bellini</td><td>밀라노</td><td><span class="badge b-approved" style="border-color:rgba(22,163,74,.3)">모집 중</span></td><td>7명</td><td>3월 16일</td><td><button class="btn btn-sm btn-red" onclick="if(confirm('이 프로젝트를 삭제하시겠습니까?'))this.closest('tr').remove()">삭제</button></td></tr>
-          <tr><td class="td-title">아방가르드 패션 필름</td><td>Clara Fontaine</td><td>파리</td><td><span class="badge b-draft">마감</span></td><td>12명</td><td>3월 10일</td><td><button class="btn btn-sm btn-red" onclick="if(confirm('이 프로젝트를 삭제하시겠습니까?'))this.closest('tr').remove()">삭제</button></td></tr>
+          <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px 0">프로젝트가 없습니다</td></tr>
         </tbody></table>
       </div>
     </div>
@@ -676,20 +658,16 @@ tr:hover td{background:rgba(0,0,0,.02)}
     <div class="mn-header"><div class="mn-title">구독 / 결제</div></div>
     <div class="mn-body">
       <div class="stats" style="grid-template-columns:repeat(4,1fr)">
-        <div class="stat"><div class="stat-n">42</div><div class="stat-l">스탠다드</div></div>
-        <div class="stat"><div class="stat-n">15</div><div class="stat-l">프리미엄</div></div>
-        <div class="stat"><div class="stat-n">₩2.4M</div><div class="stat-l">월간 반복 매출</div></div>
-        <div class="stat"><div class="stat-n">93%</div><div class="stat-l">갱신율</div></div>
+        <div class="stat"><div class="stat-n">0</div><div class="stat-l">스탠다드</div></div>
+        <div class="stat"><div class="stat-n">0</div><div class="stat-l">프리미엄</div></div>
+        <div class="stat"><div class="stat-n">₩0</div><div class="stat-l">월간 반복 매출</div></div>
+        <div class="stat"><div class="stat-n">0%</div><div class="stat-l">갱신율</div></div>
       </div>
       <div class="tbl-wrap" style="margin-bottom:20px">
         <div class="tbl-top"><h3>최근 결제 내역</h3></div>
         <table><thead><tr><th>회원</th><th>플랜</th><th>주기</th><th>금액</th><th>상태</th><th>결제일</th></tr></thead>
         <tbody>
-          <tr><td>Lena Park</td><td><span class="badge b-premium">Premium</span></td><td>연간</td><td>₩135,000</td><td><span class="badge b-approved">완료</span></td><td>3월 15일</td></tr>
-          <tr><td>Marco Bellini</td><td><span class="badge b-premium">Premium</span></td><td>월간</td><td>€8.99</td><td><span class="badge b-approved">완료</span></td><td>3월 14일</td></tr>
-          <tr><td>Judith Moreno</td><td><span class="badge b-standard">Standard</span></td><td>월간</td><td>€5.49</td><td><span class="badge b-approved">완료</span></td><td>3월 12일</td></tr>
-          <tr><td>Yuki Tanaka</td><td><span class="badge b-standard">Standard</span></td><td>연간</td><td>¥7,400</td><td><span class="badge b-approved">완료</span></td><td>3월 10일</td></tr>
-          <tr><td>Deborah O</td><td><span class="badge b-standard">Standard</span></td><td>월간</td><td>$5.99</td><td><span class="badge b-pending">대기 중</span></td><td>3월 20일</td></tr>
+          <tr><td colspan="6" style="text-align:center;color:var(--text3);padding:40px 0">결제 내역이 없습니다</td></tr>
         </tbody></table>
       </div>
       <p style="color:var(--text3)">Stripe 대시보드에서 상세 결제 내역, 환불, 분쟁 등을 관리하세요: <a href="https://dashboard.stripe.com" target="_blank" style="color:var(--blue);text-decoration:underline">dashboard.stripe.com</a></p>
@@ -954,10 +932,10 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
   <div class="modal" style="max-height:90vh;overflow-y:auto">
     <button class="modal-close" onclick="closeModal()">×</button>
     <h2>서브미션 심사</h2>
-    <div class="sub" id="reviewModalHeader">Neon Dreams — Lena Park · 2026년 3월 20일</div>
+    <div class="sub" id="reviewModalHeader">—</div>
     <div class="modal-section"><div class="modal-label">프로덕션</div><div class="modal-val" id="reviewModalProduction">Studio Lux · lena@studioplus.com</div></div>
-    <div class="modal-section"><div class="modal-label">팀 크레딧</div><div class="modal-val" id="reviewModalCredits">포토: Lena Park @lenapark<br>스타일링: Clara Fontaine @clarafontaine<br>메이크업: Sophie Laurent @sophielaurent<br>모델: Diego Ruiz @diegoruiz</div></div>
-    <div class="modal-section"><div class="modal-label">룩 정보</div><div class="modal-val" id="reviewModalLooks">6개 룩 · 18개 이미지 · 24개 브랜드 크레딧</div></div>
+    <div class="modal-section"><div class="modal-label">팀 크레딧</div><div class="modal-val" id="reviewModalCredits">—</div></div>
+    <div class="modal-section"><div class="modal-label">룩 정보</div><div class="modal-val" id="reviewModalLooks">—</div></div>
     <div class="modal-section"><div class="modal-label">링크</div><div class="modal-val" id="reviewModalLinks">전송 링크: <a href="#" style="color:var(--blue)">wetransfer.com/...</a><br>영상: <a href="#" style="color:var(--blue)">youtube.com/...</a></div></div>
 
     <div class="modal-section" style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px">
@@ -983,6 +961,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
 <script>
 // Admin auth + role check
 document.addEventListener('DOMContentLoaded',function(){
+  var now=new Date();var dd=document.getElementById('dashDate');if(dd)dd.textContent=now.getFullYear()+'년 '+(now.getMonth()+1)+'월 '+now.getDate()+'일';
   if(typeof PAP!=='undefined'){
     if(!PAP.auth.isLoggedIn()){
       window.location.href='auth.html';
