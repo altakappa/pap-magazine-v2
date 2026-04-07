@@ -93,6 +93,7 @@ body{font-family:'Montserrat',sans-serif;background:#0a0a0a;color:#fff;min-heigh
 <!-- NAV -->
 <div class="admin-nav">
   <button class="active" onclick="showSection('dashboard',this)">DASHBOARD</button>
+  <button onclick="showSection('editorials',this)">EDITORIALS</button>
   <button onclick="showSection('films',this)">FILMS</button>
   <button onclick="showSection('articles',this)">ARTICLES</button>
 </div>
@@ -101,10 +102,20 @@ body{font-family:'Montserrat',sans-serif;background:#0a0a0a;color:#fff;min-heigh
   <!-- DASHBOARD -->
   <div class="section active" id="sec-dashboard">
     <div class="stats-grid">
-      <div class="stat-card"><div class="num" id="statFilms">-</div><div class="label">TOTAL FILMS</div></div>
-      <div class="stat-card"><div class="num" id="statArticles">-</div><div class="label">TOTAL ARTICLES</div></div>
+      <div class="stat-card"><div class="num" id="statEditorials">-</div><div class="label">EDITORIALS</div></div>
+      <div class="stat-card"><div class="num" id="statFilms">-</div><div class="label">FILMS</div></div>
+      <div class="stat-card"><div class="num" id="statArticles">-</div><div class="label">ARTICLES</div></div>
       <div class="stat-card"><div class="num" id="statDrafts">-</div><div class="label">DRAFTS</div></div>
     </div>
+  </div>
+
+  <!-- EDITORIALS -->
+  <div class="section" id="sec-editorials">
+    <div class="section-header"><h2>Editorials</h2><button class="btn btn-primary" onclick="openEditorialForm()">+ NEW EDITORIAL</button></div>
+    <table class="data-table">
+      <thead><tr><th></th><th>TITLE</th><th>ISSUE</th><th>DATE</th><th>STATUS</th><th></th></tr></thead>
+      <tbody id="editorialsTableBody"></tbody>
+    </table>
   </div>
 
   <!-- FILMS -->
@@ -193,6 +204,42 @@ body{font-family:'Montserrat',sans-serif;background:#0a0a0a;color:#fff;min-heigh
   </div>
 </div>
 
+<!-- EDITORIAL FORM -->
+<div class="form-overlay" id="editorialFormOverlay">
+  <div class="form-panel">
+    <h3 id="editorialFormTitle">NEW EDITORIAL</h3>
+    <input type="hidden" id="eId">
+    <div class="form-group"><label>TITLE *</label><input type="text" id="eTitle" placeholder="Editorial title"></div>
+    <div class="form-row">
+      <div class="form-group"><label>SLUG</label><input type="text" id="eSlug" placeholder="editorial-url-slug"></div>
+      <div class="form-group"><label>ISSUE</label><input type="text" id="eIssue" placeholder="e.g. Vol.12 SS26"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>PUBLISHED DATE</label><input type="date" id="eDate"></div>
+      <div class="form-group"><label>CUSTOM URL</label><input type="text" id="eUrl" placeholder="https://..."></div>
+    </div>
+    <div class="form-group"><label>COVER IMAGE URL</label><input type="text" id="eCover" placeholder="https://..."></div>
+    <div class="form-group"><label>COVER IMAGE UPLOAD</label><input type="file" id="eCoverFile" accept="image/*"></div>
+    <div class="form-group"><label>THUMBNAIL URL</label><input type="text" id="eThumb" placeholder="https://..."></div>
+    <div class="form-group"><label>TAGS (comma separated)</label><input type="text" id="eTags" placeholder="Fashion, Editorial, SS26"></div>
+    <div class="form-group"><label>GALLERY URLS (one per line)</label><textarea id="eGallery" rows="4" placeholder="https://image1.jpg&#10;https://image2.jpg"></textarea></div>
+    <div class="form-group">
+      <label>CREDITS</label>
+      <div class="credits-list" id="editorialCredits"></div>
+      <button class="btn-add-credit" onclick="addCreditRow('editorialCredits')">+ Add Credit</button>
+    </div>
+    <div class="form-group"><label>FASHION DATA (JSON)</label><textarea id="eFashion" rows="3" placeholder='{"brands":["Brand A","Brand B"]}'></textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label>STATUS</label><select id="eStatus"><option value="published">Published</option><option value="draft">Draft</option></select></div>
+      <div></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-outline" onclick="closeForm('editorialFormOverlay')">CANCEL</button>
+      <button class="btn btn-primary" onclick="saveEditorial()">SAVE EDITORIAL</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -209,13 +256,20 @@ function apiPut(p,b){return fetch(API_BASE+p,{method:'PUT',headers:{'Content-Typ
 function apiDelete(p){return fetch(API_BASE+p,{method:'DELETE',headers:{'Authorization':'Bearer '+TOKEN}}).then(function(r){return r.json();});}
 async function uploadFile(fi){if(!fi.files||!fi.files[0])return null;var fd=new FormData();fd.append('file',fi.files[0]);var res=await fetch(API_BASE+'/media/upload',{method:'POST',headers:{'Authorization':'Bearer '+TOKEN},body:fd});var d=await res.json();return(d.data&&d.data[0])?d.data[0].url:null;}
 
-function showSection(n,btn){document.querySelectorAll('.section').forEach(function(s){s.classList.remove('active');});document.querySelectorAll('.admin-nav button').forEach(function(b){b.classList.remove('active');});document.getElementById('sec-'+n).classList.add('active');if(btn)btn.classList.add('active');if(n==='films')loadFilms();if(n==='articles')loadArticles();}
+function showSection(n,btn){document.querySelectorAll('.section').forEach(function(s){s.classList.remove('active');});document.querySelectorAll('.admin-nav button').forEach(function(b){b.classList.remove('active');});document.getElementById('sec-'+n).classList.add('active');if(btn)btn.classList.add('active');if(n==='editorials')loadEditorials();if(n==='films')loadFilms();if(n==='articles')loadArticles();}
 function showToast(msg,type){var t=document.getElementById('toast');t.textContent=msg;t.className='toast toast-'+(type||'success')+' show';setTimeout(function(){t.classList.remove('show');},3000);}
 function closeForm(id){document.getElementById(id).classList.remove('active');}
 function addCreditRow(cid,role,handles){var list=document.getElementById(cid);var row=document.createElement('div');row.className='credit-row';row.innerHTML='<input type="text" placeholder="Role" value="'+(role||'')+'">'+'<input type="text" placeholder="Handles (comma separated)" value="'+(handles||'')+'">'+'<button class="btn-remove" onclick="this.parentNode.remove()">&times;</button>';list.appendChild(row);}
 function getCredits(cid){var rows=document.getElementById(cid).querySelectorAll('.credit-row');var cr=[];rows.forEach(function(row){var inp=row.querySelectorAll('input');var r=inp[0].value.trim();var h=inp[1].value.trim();if(r||h)cr.push({role:r,handles:h});});return cr;}
 
-function loadDashboard(){apiGet('/films?limit=1').then(function(d){document.getElementById('statFilms').textContent=d.pagination?d.pagination.total:0;}).catch(function(){});apiGet('/articles?limit=1').then(function(d){document.getElementById('statArticles').textContent=d.pagination?d.pagination.total:0;}).catch(function(){});apiGet('/films?status=draft&limit=1').then(function(d1){apiGet('/articles?status=draft&limit=1').then(function(d2){document.getElementById('statDrafts').textContent=((d1.pagination?d1.pagination.total:0)+(d2.pagination?d2.pagination.total:0));});}).catch(function(){});}
+function loadDashboard(){apiGet('/editorials?limit=1').then(function(d){document.getElementById('statEditorials').textContent=d.pagination?d.pagination.total:0;}).catch(function(){});apiGet('/films?limit=1').then(function(d){document.getElementById('statFilms').textContent=d.pagination?d.pagination.total:0;}).catch(function(){});apiGet('/articles?limit=1').then(function(d){document.getElementById('statArticles').textContent=d.pagination?d.pagination.total:0;}).catch(function(){});apiGet('/editorials?status=draft&limit=1').then(function(de){apiGet('/films?status=draft&limit=1').then(function(d1){apiGet('/articles?status=draft&limit=1').then(function(d2){document.getElementById('statDrafts').textContent=((de.pagination?de.pagination.total:0)+(d1.pagination?d1.pagination.total:0)+(d2.pagination?d2.pagination.total:0));});});}).catch(function(){});}
+
+function loadEditorials(){apiGet('/editorials?limit=100').then(function(d){var rows=(d.data||[]).map(function(e){var th=e.cover_image?'<img class="thumb" src="'+e.cover_image+'">':e.thumbnail?'<img class="thumb" src="'+e.thumbnail+'">':'<div class="thumb"></div>';var sc=e.status==='published'?'status-published':'status-draft';return '<tr><td>'+th+'</td><td><strong>'+e.title+'</strong></td><td style="font-size:12px">'+(e.issue||'-')+'</td><td style="font-size:12px">'+(e.published_date||'-')+'</td><td><span class="status-badge '+sc+'">'+e.status+'</span></td><td><button class="btn btn-outline btn-sm" onclick="editEditorial(\''+e.id+'\')">Edit</button> <button class="btn btn-danger btn-sm" onclick="deleteEditorial(\''+e.id+'\')">Del</button></td></tr>';}).join('');document.getElementById('editorialsTableBody').innerHTML=rows||'<tr><td colspan="6" style="text-align:center;color:#888;padding:40px">No editorials yet</td></tr>';});}
+
+function openEditorialForm(d){document.getElementById('editorialFormTitle').textContent=d?'EDIT EDITORIAL':'NEW EDITORIAL';document.getElementById('eId').value=d?d.id:'';document.getElementById('eTitle').value=d?d.title:'';document.getElementById('eSlug').value=d?(d.slug||''):'';document.getElementById('eIssue').value=d?(d.issue||''):'';document.getElementById('eDate').value=d?d.published_date:'';document.getElementById('eUrl').value=d?(d.url||''):'';document.getElementById('eCover').value=d?(d.cover_image||''):'';document.getElementById('eThumb').value=d?(d.thumbnail||''):'';document.getElementById('eTags').value=d?(d.tags||[]).join(', '):'';document.getElementById('eGallery').value=d?(d.gallery||[]).join('\n'):'';document.getElementById('eFashion').value=d&&d.fashion?JSON.stringify(d.fashion,null,2):'';document.getElementById('eStatus').value=d?d.status:'published';document.getElementById('eCoverFile').value='';var cl=document.getElementById('editorialCredits');cl.innerHTML='';if(d&&d.credits){var cr=d.credits;if(Array.isArray(cr)){cr.forEach(function(c){addCreditRow('editorialCredits',c.role,c.handles);});}else if(typeof cr==='object'){Object.keys(cr).forEach(function(k){addCreditRow('editorialCredits',k,Array.isArray(cr[k])?cr[k].join(', '):cr[k]);});}}document.getElementById('editorialFormOverlay').classList.add('active');}
+function editEditorial(id){apiGet('/editorials/'+id).then(function(d){if(d.data)openEditorialForm(d.data);});}
+async function saveEditorial(){var id=document.getElementById('eId').value;var cover=document.getElementById('eCover').value;var cf=document.getElementById('eCoverFile');if(cf.files&&cf.files[0]){var u=await uploadFile(cf);if(u)cover=u;}var ts=document.getElementById('eTags').value;var ta=ts?ts.split(',').map(function(t){return t.trim();}).filter(Boolean):[];var gs=document.getElementById('eGallery').value;var ga=gs?gs.split('\n').map(function(u){return u.trim();}).filter(Boolean):[];var fashionStr=document.getElementById('eFashion').value;var fashion={};try{if(fashionStr)fashion=JSON.parse(fashionStr);}catch(e){showToast('Invalid fashion JSON','error');return;}var body={title:document.getElementById('eTitle').value,slug:document.getElementById('eSlug').value||null,issue:document.getElementById('eIssue').value||null,published_date:document.getElementById('eDate').value||null,url:document.getElementById('eUrl').value||null,cover_image:cover||null,thumbnail:document.getElementById('eThumb').value||null,tags:ta,gallery:ga,credits:getCredits('editorialCredits'),fashion:fashion,status:document.getElementById('eStatus').value};var p=id?apiPut('/editorials/'+id,body):apiPost('/editorials',body);p.then(function(d){if(d.data){showToast(id?'Editorial updated':'Editorial created');closeForm('editorialFormOverlay');loadEditorials();}else{showToast(d.error||d.message||'Error','error');}}).catch(function(){showToast('Save failed','error');});}
+function deleteEditorial(id){if(!confirm('Delete this editorial?'))return;apiDelete('/editorials/'+id).then(function(){showToast('Editorial deleted');loadEditorials();});}
 
 function loadFilms(){apiGet('/films?limit=100').then(function(d){var rows=(d.data||[]).map(function(f){var th=f.thumbnail_url?'<img class="thumb" src="'+f.thumbnail_url+'">':'<div class="thumb"></div>';var sc=f.status==='published'?'status-published':'status-draft';return '<tr><td>'+th+'</td><td><strong>'+f.title+'</strong></td><td style="color:#888;font-size:11px">'+f.youtube_id+'</td><td style="font-size:12px">'+(f.published_date||'-')+'</td><td style="font-size:12px">'+(f.categories||'')+'</td><td><span class="status-badge '+sc+'">'+f.status+'</span></td><td><button class="btn btn-outline btn-sm" onclick="editFilm('+f.id+')">Edit</button> <button class="btn btn-danger btn-sm" onclick="deleteFilm('+f.id+')">Del</button></td></tr>';}).join('');document.getElementById('filmsTableBody').innerHTML=rows||'<tr><td colspan="7" style="text-align:center;color:#888;padding:40px">No films yet</td></tr>';});}
 
