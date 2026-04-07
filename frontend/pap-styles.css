@@ -890,3 +890,8 @@ button{cursor:pointer;font-family:inherit}
 
 /* Creator popup stat num size — match work-title (11px) */
 .creator-stat-num{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+
+
+/* Footer marquee mobile fixes — infinite loop + reduce bottom space */
+.footer-marquee-track{animation:marquee 5.3s linear infinite !important;will-change:transform;transform:translateZ(0)}
+.footer-legal{margin-top:133px !important}
