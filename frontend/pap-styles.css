@@ -603,7 +603,7 @@ button{cursor:pointer;font-family:inherit}
   .footer-marquee{border-top:none;border-bottom:none;margin-bottom:0;margin-top:37px;padding:0}
   .footer-marquee-track span{font-size:1.5rem;padding:0 16px}
   .footer-marquee-track .sep{display:none}
-  .footer-marquee-track{animation:marquee 5.3s linear 60;will-change:transform;transform:translateZ(0)}
+  .footer-marquee-track{animation:marquee 5.3s linear infinite;will-change:transform;transform:translateZ(0)}
   .footer-bottom-links{gap:16px;flex-wrap:wrap;justify-content:center}
 
   /* Page overlay */
