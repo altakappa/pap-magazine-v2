@@ -1035,6 +1035,33 @@ function setLang(l) {
   var params = new URLSearchParams(window.location.search);
   if (params.get('mode') === 'login') showLogin();
   if (params.get('mode') === 'signup') showSignup();
+
+  // Handle OAuth callback (token from Google/Apple login)
+  var oauthToken = params.get('token');
+  var oauthUser = params.get('user');
+  var oauthError = params.get('error');
+  if (oauthToken) {
+    // Store token and user, then redirect to main page
+    sessionStorage.setItem('pap-token', oauthToken);
+    if (oauthUser) {
+      try {
+        var u = JSON.parse(decodeURIComponent(oauthUser));
+        sessionStorage.setItem('pap-user', JSON.stringify({id:u.id, name:u.name, role:u.role, subscription:u.subscription}));
+      } catch(e) {}
+    }
+    // Clean URL and redirect
+    window.history.replaceState({}, document.title, window.location.pathname);
+    window.location.href = 'pap-magazine-v5.html';
+  } else if (oauthError) {
+    var lang = localStorage.getItem('pap-lang') || 'ko';
+    var msgs = ERR[lang] || ERR.ko;
+    if (oauthError === 'auth_failed') {
+      PAP.ui.toast(msgs.loginFail || 'Authentication failed', 'error');
+    } else {
+      PAP.ui.toast(oauthError, 'error');
+    }
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
 })();
 </script>
 </body>

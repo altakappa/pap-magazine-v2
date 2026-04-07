@@ -14,7 +14,8 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const redirectTo = `${process.env.NEXT_PUBLIC_URL || 'https://www.pap-magazine.com'}/auth.html`;
+    const siteUrl = process.env.NEXT_PUBLIC_URL || 'https://www.papkorea.com';
+    const redirectTo = `${siteUrl}/api/auth/callback`;
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',

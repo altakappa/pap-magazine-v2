@@ -19,7 +19,8 @@ module.exports = async function handler(req, res) {
     const { code } = req.query;
 
     if (!code) {
-      return res.redirect(302, `${process.env.NEXT_PUBLIC_URL}/auth.html?error=missing_code`);
+      const frontendUrl = process.env.NEXT_PUBLIC_URL || 'https://www.papkorea.com';
+      return res.redirect(302, `${frontendUrl}/auth.html?error=missing_code&mode=login`);
     }
 
     // Exchange code for session
@@ -51,12 +52,13 @@ module.exports = async function handler(req, res) {
     };
 
     const token = generateToken(user);
-    const frontendUrl = process.env.NEXT_PUBLIC_URL || 'https://www.pap-magazine.com';
+    const frontendUrl2 = process.env.NEXT_PUBLIC_URL || 'https://www.papkorea.com';
+    const userJson = encodeURIComponent(JSON.stringify(user));
 
-    return res.redirect(302, `${frontendUrl}/auth.html?token=${token}`);
+    return res.redirect(302, `${frontendUrl2}/auth.html?token=${token}&user=${userJson}`);
   } catch (error) {
     console.error('OAuth callback error:', error);
-    const frontendUrl = process.env.NEXT_PUBLIC_URL || 'https://www.pap-magazine.com';
-    return res.redirect(302, `${frontendUrl}/auth.html?error=auth_failed`);
+    const frontendUrl2 = process.env.NEXT_PUBLIC_URL || 'https://www.papkorea.com';
+    return res.redirect(302, `${frontendUrl2}/auth.html?error=auth_failed&mode=login`);
   }
 };
