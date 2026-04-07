@@ -198,7 +198,7 @@ body{font-family:'Montserrat',sans-serif;background:#0a0a0a;color:#fff;min-heigh
 <script>
 var API_BASE='';
 var TOKEN=localStorage.getItem('pap_admin_token')||'';
-(function(){var h=window.location.hostname;if(h==='localhost'||h==='127.0.0.1'){API_BASE='http://localhost:3000/api';}else if(h.includes('vercel.app')){API_BASE=window.location.origin+'/api';}else{API_BASE='https://www.pap-magazine.com/api';}})();
+(function(){var h=window.location.hostname;if(h==='localhost'||h==='127.0.0.1'){API_BASE='http://localhost:3000/api';}else{API_BASE=window.location.origin+'/api';}})();
 
 function doLogin(){var email=document.getElementById('loginEmail').value;var pw=document.getElementById('loginPassword').value;var errEl=document.getElementById('loginError');errEl.style.display='none';fetch(API_BASE+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,password:pw})}).then(function(r){return r.json();}).then(function(data){if(data.token){TOKEN=data.token;localStorage.setItem('pap_admin_token',TOKEN);document.getElementById('loginOverlay').style.display='none';document.getElementById('userInfo').textContent=email;loadDashboard();}else{var msg=data.message||data.error||'Login failed';errEl.textContent=typeof msg==='string'?msg:JSON.stringify(msg);errEl.style.display='block';}}).catch(function(e){errEl.textContent='Connection error: '+(e.message||e);errEl.style.display='block';});}
 if(TOKEN){fetch(API_BASE+'/auth/me',{headers:{'Authorization':'Bearer '+TOKEN}}).then(function(r){return r.json();}).then(function(data){if(data.user){document.getElementById('loginOverlay').style.display='none';document.getElementById('userInfo').textContent=data.user.email;loadDashboard();}}).catch(function(){});}
