@@ -60,7 +60,7 @@ module.exports = async function handler(req, res) {
     });
 
     if (authError) {
-      if (authError.message && authError.message.includes('already registered')) {
+      if (authError.message && (authError.message.includes('already') && authError.message.includes('registered'))) {
         return res.status(409).json({ message: 'Email already registered' });
       }
       throw authError;
@@ -105,7 +105,7 @@ module.exports = async function handler(req, res) {
     }
 
     // Handle "already registered" even when thrown as exception
-    if (error.message && error.message.includes('already registered')) {
+    if (error.message && (error.message.includes('already') && error.message.includes('registered'))) {
       return res.status(409).json({ message: 'Email already registered' });
     }
     return res.status(500).json({ message: 'Registration failed. Please try again.' });
