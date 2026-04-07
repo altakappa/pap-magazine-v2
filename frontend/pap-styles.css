@@ -881,3 +881,9 @@ button{cursor:pointer;font-family:inherit}
 @media(max-width:768px){
   #artDetailDesc p{font-size:13px !important}
 }
+
+/* Creator popup text color fix */
+.creator-popup{color:rgba(255,255,255,.9)}
+.creator-popup-name{color:#fff}
+.creator-stat-num{color:#fff}
+.creator-popup-works-title{color:rgba(255,255,255,.7)}
