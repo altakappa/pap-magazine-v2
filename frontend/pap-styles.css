@@ -877,3 +877,7 @@ button{cursor:pointer;font-family:inherit}
 }
 
 /* Auth Button in Header — now inside header-right as .header-right-item */
+/* Article detail mobile title fix */
+@media(max-width:768px){
+  #artDetailDesc p{font-size:1.3rem !important}
+}
