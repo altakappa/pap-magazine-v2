@@ -583,6 +583,8 @@ button{cursor:pointer;font-family:inherit}
   .nf-card-img{aspect-ratio:1/1}
   .editorial-grid{grid-template-columns:repeat(2,1fr)}
   .ed-hero-title{font-size:clamp(14px,3vw,20px)}
+  .fashion-card-title{font-size:12px}
+  .ed-card-title{font-size:14px}
 
   /* Nav overlay — single column on mobile */
   .nav-overlay-inner{flex-direction:column;padding:70px 24px 40px}
@@ -669,6 +671,8 @@ button{cursor:pointer;font-family:inherit}
   .ed-row-card{min-width:155px;max-width:155px}
   .nf-card{min-width:240px;max-width:240px}
   .creator-card{min-width:160px;max-width:160px;padding:12px}
+  .fashion-card-title{font-size:11px}
+  .ed-card-title{font-size:13px}
 
   /* Nav overlay */
   .nav-overlay-inner{padding:60px 20px 32px}
