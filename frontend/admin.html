@@ -315,7 +315,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
             <select class="pe-select">
               <option value="">선택</option>
               <option value="editorial" selected>에디토리얼</option>
-              <option value="news">뉴스</option>
+              <option value="news">뉴스 (아티클)</option>
               <option value="film">필름</option>
               <option value="shorts">숏츠</option>
             </select>
@@ -967,6 +967,32 @@ async function apiDelete(path){var r=await fetch(API_BASE+path,{method:'DELETE',
 function esc(s){var d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
 function fmtDate(d){if(!d)return'—';var dt=new Date(d);return dt.toLocaleDateString('ko-KR',{month:'long',day:'numeric'});}
 
+// ======== IMAGE UPLOAD ========
+async function uploadFile(file){
+  var fd=new FormData();
+  fd.append('file',file);
+  var r=await fetch(API_BASE+'/media/upload',{
+    method:'POST',
+    headers:{'Authorization':'Bearer '+getToken(),'X-Requested-With':'XMLHttpRequest'},
+    body:fd
+  });
+  var res=await r.json();
+  if(res.data&&res.data.length>0)return res.data[0].url;
+  throw new Error(res.error||'Upload failed');
+}
+async function uploadFiles(files){
+  var urls=[];
+  for(var i=0;i<files.length;i++){
+    var url=await uploadFile(files[i]);
+    urls.push(url);
+  }
+  return urls;
+}
+
+// ======== LOCAL STORAGE HELPERS (for settings without DB) ========
+function lsGet(key,def){try{var v=localStorage.getItem('pap_admin_'+key);return v?JSON.parse(v):def;}catch(e){return def;}}
+function lsSet(key,val){try{localStorage.setItem('pap_admin_'+key,JSON.stringify(val));}catch(e){}}
+
 // Admin auth + role check
 document.addEventListener('DOMContentLoaded',function(){
   var now=new Date();var dd=document.getElementById('dashDate');if(dd)dd.textContent=now.getFullYear()+'년 '+(now.getMonth()+1)+'월 '+now.getDate()+'일';
@@ -1333,9 +1359,9 @@ function addGallery(input){
     galleryCount++;
     var file=input.files[i];
     var reader=new FileReader();
-    (function(num){
+    (function(num,f){
       reader.onload=function(e){
-        galleryImages.push({num:num,src:e.target.result,credits:''});
+        galleryImages.push({num:num,src:e.target.result,credits:'',file:f,isUrl:false});
         var div=document.createElement('div');
         div.className='pe-gallery-item';
         div.setAttribute('data-img-num',num);
@@ -1343,7 +1369,7 @@ function addGallery(input){
         grid.insertBefore(div,addBtn);
         updateImgCredits();
       };
-    })(galleryCount);
+    })(galleryCount,file);
     reader.readAsDataURL(file);
   }
   input.value='';
@@ -1484,17 +1510,68 @@ function editEditorial(id){
   var ed=editorials.find(function(e){return e.id===id;});
   if(!ed)return;
   editingEditorialId=id;
-  // Populate form
+  // Populate basic fields
   document.getElementById('postTitle').value=ed.title||'';
   document.getElementById('postSubtitle').value=ed.issue||'';
   var tagsStr=Array.isArray(ed.tags)?ed.tags.join(', '):ed.tags||'';
   document.getElementById('postTags').value=tagsStr;
-  // Update tag preview
   var preview=document.getElementById('tagPreview');
   if(preview&&tagsStr)preview.innerHTML=tagsStr.split(',').map(function(t){return t.trim()?'<span class="pe-tag">'+t.trim()+'</span>':'';}).join('');
   if(document.getElementById('postVideoUrl'))document.getElementById('postVideoUrl').value=ed.url||'';
   if(document.getElementById('postDescription'))document.getElementById('postDescription').value='';
   document.getElementById('postPublish').checked=(ed.status==='published');
+
+  // Populate thumbnail preview
+  var thumbPrev=document.getElementById('thumbPreview');
+  if(thumbPrev&&(ed.thumbnail||ed.cover_image)){
+    thumbPrev.innerHTML='<img loading="lazy" src="'+esc(ed.thumbnail||ed.cover_image)+'" style="max-width:200px;max-height:250px;object-fit:cover"><div class="pe-upload-text" style="margin-top:8px">클릭하여 변경</div>';
+  }
+
+  // Populate gallery
+  galleryImages=[];galleryCount=0;
+  var grid=document.getElementById('galleryGrid');
+  var addBtn=grid?grid.querySelector('.pe-gallery-add'):null;
+  if(grid)grid.querySelectorAll('.pe-gallery-item').forEach(function(el){el.remove();});
+  if(ed.gallery&&Array.isArray(ed.gallery)){
+    ed.gallery.forEach(function(url,idx){
+      galleryCount++;
+      galleryImages.push({num:galleryCount,src:url,credits:'',isUrl:true});
+      if(grid&&addBtn){
+        var div=document.createElement('div');
+        div.className='pe-gallery-item';
+        div.setAttribute('data-img-num',galleryCount);
+        div.innerHTML='<img loading="lazy" src="'+esc(url)+'"><button class="pe-gallery-del" onclick="removeGalleryImg('+galleryCount+')">×</button><span class="pe-gallery-num">#'+galleryCount+'</span>';
+        grid.insertBefore(div,addBtn);
+      }
+    });
+    updateImgCredits();
+  }
+
+  // Populate credits
+  var creditsArea=document.getElementById('creditsArea');
+  if(creditsArea&&ed.credits&&typeof ed.credits==='object'){
+    creditsArea.innerHTML='';
+    Object.entries(ed.credits).forEach(function(entry){
+      var role=entry[0];var val=entry[1];
+      var row=document.createElement('div');row.className='pe-credit-row';
+      row.innerHTML='<select class="pe-select pe-credit-role"><option>Photographer</option><option>Stylist</option><option>Stylist assist</option><option>Make Up</option><option>Hair</option><option>Set Design</option><option>Set designe assist</option><option>Producer</option><option>Starring</option><option>Creative Director</option><option>Art Director</option><option>Model</option><option>Video Director</option></select><input class="pe-input pe-credit-name" placeholder="이름" value="'+esc(val.name||val||'')+'"><input class="pe-input pe-credit-ig" placeholder="@instagram" value="'+esc(val.instagram||'')+'"><button class="btn btn-sm btn-red" onclick="this.parentElement.remove()">삭제</button>';
+      var sel=row.querySelector('select');
+      for(var i=0;i<sel.options.length;i++){if(sel.options[i].text===role)sel.selectedIndex=i;}
+      creditsArea.appendChild(row);
+    });
+  }
+
+  // Populate brands
+  var brandsArea=document.getElementById('brandsArea');
+  if(brandsArea&&ed.fashion&&ed.fashion.brands&&Array.isArray(ed.fashion.brands)){
+    brandsArea.innerHTML='';
+    ed.fashion.brands.forEach(function(b){
+      var row=document.createElement('div');row.className='pe-brand-row';
+      row.innerHTML='<input class="pe-input pe-brand-name" placeholder="브랜드명" value="'+esc(b.name||'')+'"><input class="pe-input pe-brand-ig" placeholder="@instagram" value="'+esc(b.instagram||'')+'"><button class="btn btn-sm btn-red" onclick="this.parentElement.remove()">삭제</button>';
+      brandsArea.appendChild(row);
+    });
+  }
+
   go('newpost');
 }
 
@@ -1513,26 +1590,23 @@ async function savePost(){
   var tags=document.getElementById('postTags')?document.getElementById('postTags').value:'';
   if(!title){alert('제목을 입력해 주세요.');return;}
 
-  // Determine category
   var catSelect=document.querySelector('#t-newpost select');
   var category=catSelect?catSelect.value:'editorial';
-
-  // Build tags array
   var tagsArr=tags?tags.split(',').map(function(t){return t.trim();}).filter(Boolean):[];
 
-  // Build credits from form
+  // Build credits
   var credits={};
   document.querySelectorAll('#creditsArea .pe-credit-row').forEach(function(row){
     var role=row.querySelector('.pe-credit-role');
     var name=row.querySelector('.pe-credit-name');
     var ig=row.querySelector('.pe-credit-ig');
     if(role&&name&&name.value){
-      var r=role.value||role.options[role.selectedIndex].text;
+      var r=role.options[role.selectedIndex].text;
       credits[r]={name:name.value,instagram:ig?ig.value:''};
     }
   });
 
-  // Build fashion/brands from form
+  // Build fashion/brands
   var fashion={brands:[]};
   document.querySelectorAll('#brandsArea .pe-brand-row').forEach(function(row){
     var name=row.querySelector('.pe-brand-name');
@@ -1540,23 +1614,53 @@ async function savePost(){
     if(name&&name.value)fashion.brands.push({name:name.value,instagram:ig?ig.value:''});
   });
 
+  // Image credits per gallery image
+  var imgCreditsMap={};
+  galleryImages.forEach(function(g,i){if(g.credits)imgCreditsMap['img_'+(i+1)]=g.credits;});
+  if(Object.keys(imgCreditsMap).length)fashion.imageCredits=imgCreditsMap;
+
   var isPublished=document.getElementById('postPublish').checked;
   var subtitle=document.getElementById('postSubtitle')?document.getElementById('postSubtitle').value:'';
   var videoUrl=document.getElementById('postVideoUrl')?document.getElementById('postVideoUrl').value:'';
 
-  var payload={
-    title:title,
-    slug:title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/-+$/,''),
-    tags:tagsArr,
-    credits:credits,
-    fashion:fashion,
-    issue:subtitle||null,
-    url:videoUrl||null,
-    status:isPublished?'published':'draft',
-    published_date:isPublished?new Date().toISOString():null
-  };
+  // Show saving indicator
+  var saveBtn=document.querySelector('#t-newpost .pe-actions .btn-primary');
+  if(saveBtn){saveBtn.textContent='저장 중...';saveBtn.disabled=true;}
 
   try{
+    // Upload thumbnail if new file selected
+    var thumbUrl=null;
+    var thumbInput=document.getElementById('thumbInput');
+    if(thumbInput&&thumbInput.files&&thumbInput.files[0]){
+      thumbUrl=await uploadFile(thumbInput.files[0]);
+    }
+
+    // Upload gallery images (only new files, keep existing URLs)
+    var galleryUrls=[];
+    for(var i=0;i<galleryImages.length;i++){
+      var g=galleryImages[i];
+      if(g.isUrl){galleryUrls.push(g.src);} // existing URL
+      else if(g.file){galleryUrls.push(await uploadFile(g.file));} // new file
+      else if(g.src&&g.src.indexOf('http')===0){galleryUrls.push(g.src);}
+    }
+
+    var payload={
+      title:title,
+      slug:title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/-+$/,''),
+      tags:tagsArr,
+      credits:credits,
+      fashion:fashion,
+      issue:subtitle||null,
+      url:videoUrl||null,
+      thumbnail:thumbUrl||undefined,
+      cover_image:thumbUrl||undefined,
+      gallery:galleryUrls.length?galleryUrls:undefined,
+      status:isPublished?'published':'draft',
+      published_date:isPublished?new Date().toISOString():null
+    };
+    // Remove undefined keys
+    Object.keys(payload).forEach(function(k){if(payload[k]===undefined)delete payload[k];});
+
     if(category==='editorial'){
       if(editingEditorialId){
         await apiPut('/editorials/'+editingEditorialId,payload);
@@ -1566,23 +1670,24 @@ async function savePost(){
         alert('에디토리얼이 등록되었습니다.');
       }
       editingEditorialId=null;
-      loadEditorials();
-      go('editorials');
+      loadEditorials();go('editorials');
     }else if(category==='news'){
-      var articlePayload={title:title,subtitle:subtitle,tags:tagsArr,credits:Object.entries(credits).map(function(c){return{role:c[0],name:c[1].name};}),status:isPublished?'published':'draft',published_date:isPublished?new Date().toISOString():null,category:'news'};
-      await apiPost('/articles',articlePayload);
+      await apiPost('/articles',{title:title,subtitle:subtitle,tags:tagsArr,thumbnail_url:thumbUrl,credits:Object.entries(credits).map(function(c){return{role:c[0],name:c[1].name};}),status:isPublished?'published':'draft',published_date:isPublished?new Date().toISOString():null,category:'news'});
       alert('뉴스가 등록되었습니다.');
-      loadNews();
-      go('news');
+      loadNews();go('news');
     }else if(category==='film'){
-      var filmPayload={title:title,youtube_id:videoUrl.replace(/.*[?&]v=([^&]+).*/,'$1').replace(/.*youtu\.be\//,'').replace(/.*shorts\//,''),tags:tagsArr.join(', '),status:isPublished?'published':'draft',published_date:isPublished?new Date().toISOString():null};
-      await apiPost('/films',filmPayload);
+      await apiPost('/films',{title:title,youtube_id:videoUrl.replace(/.*[?&]v=([^&]+).*/,'$1').replace(/.*youtu\.be\//,'').replace(/.*shorts\//,''),thumbnail_url:thumbUrl,tags:tagsArr.join(', '),status:isPublished?'published':'draft',published_date:isPublished?new Date().toISOString():null});
       alert('필름이 등록되었습니다.');
-      loadFilmsFromAPI();
-      go('film');
+      loadFilmsFromAPI();go('film');
+    }else if(category==='shorts'){
+      await apiPost('/shorts',{title:title,youtube_id:videoUrl.replace(/.*[?&]v=([^&]+).*/,'$1').replace(/.*youtu\.be\//,'').replace(/.*shorts\//,''),thumbnail_url:thumbUrl,tags:tagsArr.join(', '),status:isPublished?'published':'draft',published_date:isPublished?new Date().toISOString():null});
+      alert('숏츠가 등록되었습니다.');
+      loadShortsFromAPI();go('shorts');
     }
   }catch(e){
     alert('저장 실패: '+(e.message||JSON.stringify(e)));
+  }finally{
+    if(saveBtn){saveBtn.textContent='저장';saveBtn.disabled=false;}
   }
 }
 
@@ -2100,6 +2205,156 @@ function moveCover(i,dir){
 }
 
 renderCovers();
+
+// ======== SHORTS API ========
+async function loadShortsFromAPI(){
+  var tb=document.getElementById('shortsListBody');if(!tb)return;
+  tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:40px">불러오는 중...</td></tr>';
+  try{
+    var pub=await apiGet('/shorts?limit=100&status=published');
+    var draft=await apiGet('/shorts?limit=100&status=draft');
+    shortsList=(pub.data||[]).concat(draft.data||[]);
+    renderShortsFromAPI();
+  }catch(e){
+    tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:40px 0">숏츠가 없습니다</td></tr>';
+  }
+}
+function renderShortsFromAPI(){
+  var tb=document.getElementById('shortsListBody');if(!tb)return;tb.innerHTML='';
+  if(!shortsList.length){tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:40px 0">숏츠가 없습니다</td></tr>';return;}
+  shortsList.forEach(function(s,i){
+    var yt=s.youtube_id||s.yt||'';
+    var st=s.status||'published';
+    tb.innerHTML+='<tr><td style="font-size:10px">'+(s.id?s.id.substring(0,8):'—')+'</td><td class="td-title" onclick="openShortsModal('+i+')">'+esc(s.title)+'</td><td style="font-size:11px">'+esc(yt)+'</td><td><span style="font-size:10px;color:var(--green)">메인 화면 인라인</span></td><td><span class="badge '+(st==='published'?'b-published':'b-draft')+'">'+(st==='published'?'공개':'비공개')+'</span></td><td><button class="btn btn-sm" onclick="openShortsModal('+i+')">편집</button> <button class="btn btn-sm btn-red" onclick="deleteShortsAPI('+i+')">삭제</button></td></tr>';
+  });
+}
+async function deleteShortsAPI(i){
+  if(!shortsList[i])return;
+  if(!confirm('"'+shortsList[i].title+'" 을 삭제하시겠습니까?'))return;
+  try{await apiDelete('/shorts/'+shortsList[i].id);shortsList.splice(i,1);renderShortsFromAPI();}catch(e){alert('삭제 실패');}
+}
+
+// ======== COMMUNITY API ========
+async function loadCommunity(){
+  var postsTb=document.querySelector('#t-community tbody');
+  var statEls=document.querySelectorAll('#t-community .stat-n');
+  try{
+    var res=await apiGet('/community/posts?page=1');
+    var posts=res.data||res.posts||[];
+    var total=res.pagination?res.pagination.total:posts.length;
+    if(statEls[0])statEls[0].textContent=total;
+    if(!posts.length){postsTb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:40px 0">게시글이 없습니다</td></tr>';return;}
+    postsTb.innerHTML='';
+    posts.forEach(function(p){
+      var author=p.profiles?p.profiles.name:'—';
+      postsTb.innerHTML+='<tr><td class="td-title">'+esc(p.title||'')+'</td><td>'+esc(author)+'</td><td>'+esc(p.tag||'')+'</td><td>'+(p.likes_count||0)+'</td><td>'+(p.comments_count||0)+'</td><td>'+(p.views_count||0)+'</td><td>'+fmtDate(p.created_at)+'</td><td><button class="btn btn-sm btn-red" onclick="deleteCommunityPost(\''+p.id+'\')">삭제</button></td></tr>';
+    });
+  }catch(e){
+    if(postsTb)postsTb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:40px 0">게시글이 없습니다</td></tr>';
+  }
+}
+async function deleteCommunityPost(id){
+  if(!confirm('이 게시글을 삭제하시겠습니까?'))return;
+  try{await apiDelete('/community/posts/'+id);loadCommunity();}catch(e){alert('삭제 실패');}
+}
+
+// ======== SUBSCRIPTIONS ========
+async function loadSubscriptions(){
+  var statEls=document.querySelectorAll('#t-subscriptions .stat-n');
+  try{
+    // Use member data for subscription stats
+    if(!allMembers.length){
+      var resp=await apiGet('/admin/members');
+      allMembers=resp.members||resp||[];
+    }
+    var std=allMembers.filter(function(m){return m.subscription_plan&&m.subscription_plan.indexOf('standard')>-1;}).length;
+    var prem=allMembers.filter(function(m){return m.subscription_plan&&m.subscription_plan.indexOf('premium')>-1;}).length;
+    if(statEls[0])statEls[0].textContent=std;
+    if(statEls[1])statEls[1].textContent=prem;
+  }catch(e){console.error('Subscriptions load error:',e);}
+}
+
+// ======== PAGINATION SUPPORT ========
+var edPage=1,newsPage=1,filmPage=1;
+async function loadEditorialsPage(page){
+  edPage=page||1;
+  var tb=document.getElementById('edListBody');if(!tb)return;
+  tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px">불러오는 중...</td></tr>';
+  try{
+    var pub=await apiGet('/editorials?limit=25&page='+edPage+'&status=published');
+    var draft=edPage===1?await apiGet('/editorials?limit=25&status=draft'):{data:[]};
+    editorials=(pub.data||[]).concat(draft.data||[]);
+    renderEditorialList();
+    var totalPages=pub.pagination?pub.pagination.pages:1;
+    renderPagination('edPaginationArea',edPage,totalPages,function(p){loadEditorialsPage(p);});
+  }catch(e){tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:#ff6b6b;padding:40px">불러오기 실패</td></tr>';}
+}
+function renderPagination(containerId,current,total,callback){
+  var el=document.getElementById(containerId);
+  if(!el){
+    // Create pagination area
+    var parent=document.getElementById('edListBody');
+    if(!parent)return;
+    var wrap=parent.closest('.tbl-wrap');
+    if(!wrap)return;
+    el=document.createElement('div');
+    el.id=containerId;
+    el.style.cssText='padding:12px 18px;display:flex;gap:4px;justify-content:center;border-top:1px solid var(--border)';
+    wrap.appendChild(el);
+  }
+  if(total<=1){el.innerHTML='';return;}
+  var h='';
+  if(current>1)h+='<button class="btn btn-sm" onclick="window._pgCb'+containerId+'('+(current-1)+')">← 이전</button>';
+  h+='<span style="padding:5px 10px;font-size:11px;color:var(--text3)">'+current+' / '+total+'</span>';
+  if(current<total)h+='<button class="btn btn-sm" onclick="window._pgCb'+containerId+'('+(current+1)+')">다음 →</button>';
+  el.innerHTML=h;
+  window['_pgCb'+containerId]=callback;
+}
+
+// ======== SETTINGS PERSISTENCE (localStorage) ========
+// Save banners, covers, loading images, menu cats to localStorage
+function saveBannerOrig(){saveBanner();}
+var _origSaveBanner=null;
+function persistSettings(){
+  lsSet('banners',banners);
+  lsSet('coverSlides',coverSlides);
+  lsSet('loadingImgs',loadingImgs);
+  lsSet('menuCats',menuCats);
+}
+// Load settings from localStorage on init
+(function(){
+  var b=lsGet('banners',null);if(b&&b.length)banners=b;
+  var c=lsGet('coverSlides',null);if(c&&c.length)coverSlides=c;
+  var l=lsGet('loadingImgs',null);if(l&&l.length)loadingImgs=l;
+  var m=lsGet('menuCats',null);if(m&&m.length)menuCats=m;
+  renderBanners();renderCovers();renderLoadingImgs();renderMenuCats();
+})();
+// Override save functions to also persist
+var _origSaveBannerFn=saveBanner;
+saveBanner=function(){_origSaveBannerFn();persistSettings();};
+var _origSaveCat=saveCat;
+saveCat=function(){_origSaveCat();persistSettings();};
+var _origAddCoverSlide=addCoverSlide;
+addCoverSlide=function(){_origAddCoverSlide();persistSettings();};
+var _origDeleteCover=deleteCover;
+deleteCover=function(i){_origDeleteCover(i);persistSettings();};
+var _origDeleteBanner=deleteBanner;
+deleteBanner=function(i){_origDeleteBanner(i);persistSettings();};
+var _origAddMenuCat=addMenuCat;
+addMenuCat=function(){_origAddMenuCat();persistSettings();};
+var _origDeleteMenuCat=deleteMenuCat;
+deleteMenuCat=function(i){_origDeleteMenuCat(i);persistSettings();};
+var _origAddLoadingImg=addLoadingImg;
+addLoadingImg=function(){_origAddLoadingImg();persistSettings();};
+
+// ======== UPDATED GO FUNCTION FOR NEW SECTIONS ========
+var _originalGo=go;
+go=function(id,el){
+  _originalGo(id,el);
+  if(id==='shorts') loadShortsFromAPI();
+  if(id==='community') loadCommunity();
+  if(id==='subscriptions') loadSubscriptions();
+};
 </script>
 </body>
 </html>
