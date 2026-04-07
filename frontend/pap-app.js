@@ -1356,17 +1356,17 @@ function scrollFilm(dir){
     }
   }
 
-  // Double-click on HEADER LOGO to start game, single-click to reload
-  if(headerLogo){
-    headerLogo.style.cursor = 'pointer';
+  // Double-click on FLOATING LOGO (center top) to start game
+  if(fLogo){
+    fLogo.style.cursor = 'pointer';
     var logoClickTimer = null;
-    headerLogo.addEventListener('click', function(e){
+    fLogo.addEventListener('click', function(e){
       e.preventDefault();
       e.stopPropagation();
       if(logoClickTimer) clearTimeout(logoClickTimer);
       logoClickTimer = setTimeout(function(){ window.location.reload(); }, 300);
     });
-    headerLogo.addEventListener('dblclick', function(e){
+    fLogo.addEventListener('dblclick', function(e){
       e.preventDefault();
       e.stopPropagation();
       if(logoClickTimer){ clearTimeout(logoClickTimer); logoClickTimer = null; }
@@ -1378,14 +1378,14 @@ function scrollFilm(dir){
     playHint.className = 'logo-play-hint';
     playHint.textContent = 'DOUBLE CLICK TO PLAY';
     playHint.style.cssText = 'position:absolute;top:100%;left:50%;transform:translateX(-50%);white-space:nowrap;font-family:Montserrat,sans-serif;font-size:8px;font-weight:600;letter-spacing:.15em;color:rgba(255,255,255,0);padding-top:4px;pointer-events:none;transition:color .3s;';
-    headerLogo.style.position = 'relative';
-    headerLogo.appendChild(playHint);
+    fLogo.style.position = 'relative';
+    fLogo.appendChild(playHint);
 
     // Show hint on hover
-    headerLogo.addEventListener('mouseenter', function(){
+    fLogo.addEventListener('mouseenter', function(){
       playHint.style.color = 'rgba(255,255,255,0.5)';
     });
-    headerLogo.addEventListener('mouseleave', function(){
+    fLogo.addEventListener('mouseleave', function(){
       playHint.style.color = 'rgba(255,255,255,0)';
     });
   }
