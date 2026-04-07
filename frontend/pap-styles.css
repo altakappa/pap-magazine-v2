@@ -9,7 +9,7 @@
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{font-family:var(--sans);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;overflow-x:hidden}
-img{display:block;max-width:100%}
+img{display:block;max-width:100%
 a{text-decoration:none;color:inherit}
 button{cursor:pointer;font-family:inherit}
 
@@ -893,5 +893,7 @@ button{cursor:pointer;font-family:inherit}
 
 
 /* Footer marquee mobile fixes — infinite loop + reduce bottom space */
-.footer-marquee-track{animation:marquee 5.3s linear infinite !important;will-change:transform;transform:translateZ(0)}
-.footer-legal{margin-top:133px !important}
+@media(max-width:768px){
+    .footer-marquee-track{animation:marquee 5.3s linear infinite !important;will-change:transform;transform:translateZ(0)}
+    .footer-legal{margin-top:133px !important}
+}
