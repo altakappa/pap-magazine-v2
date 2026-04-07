@@ -144,9 +144,14 @@ const PAP = (function() {
       window.location.href = API_BASE + '/auth/google';
     },
 
-    // Redirect to Apple OAuth
-    loginWithApple() {
-      window.location.href = API_BASE + '/auth/apple';
+    // Redirect to Facebook OAuth
+    loginWithFacebook() {
+      window.location.href = API_BASE + '/auth/facebook';
+    },
+
+    // Redirect to Kakao OAuth
+    loginWithKakao() {
+      window.location.href = API_BASE + '/auth/kakao';
     },
 
     // Handle OAuth callback (call this on page load of auth.html)

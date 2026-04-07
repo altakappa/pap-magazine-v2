@@ -207,9 +207,13 @@ a{color:#fff;text-decoration:none}
         <svg viewBox="0 0 18 18"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
         <span data-i18n="signupGoogle">Google로 시작하기</span>
       </button>
-      <button class="social-btn" onclick="socialLogin('apple')">
-        <svg viewBox="0 0 18 18" fill="#fff"><path d="M14.94 9.88c-.02-2.15 1.75-3.18 1.83-3.23-1-1.46-2.55-1.66-3.1-1.68-1.32-.13-2.57.78-3.24.78-.67 0-1.7-.76-2.8-.74-1.44.02-2.77.84-3.51 2.13-1.5 2.6-.38 6.45 1.07 8.56.72 1.03 1.57 2.19 2.68 2.15 1.08-.04 1.49-.7 2.79-.7 1.3 0 1.67.7 2.8.67 1.16-.02 1.89-1.05 2.6-2.09.82-1.2 1.16-2.36 1.18-2.42-.03-.01-2.26-.87-2.28-3.43zM12.83 3.32c.59-.72 1-1.72.89-2.72-.86.04-1.9.57-2.52 1.3-.55.64-1.03 1.66-.9 2.64.96.07 1.94-.49 2.53-1.22z"/></svg>
-        <span data-i18n="signupApple">Apple로 시작하기</span>
+      <button class="social-btn" onclick="socialLogin('facebook')" style="background:#1877F2;">
+        <svg viewBox="0 0 18 18" fill="#fff"><path d="M18 9a9 9 0 10-10.41 8.9v-6.29h-2.28V9h2.28V7.02c0-2.25 1.34-3.5 3.39-3.5.98 0 2.01.18 2.01.18v2.21h-1.13c-1.12 0-1.46.69-1.46 1.4V9h2.49l-.4 2.61h-2.09v6.29A9 9 0 0018 9z"/></svg>
+        <span data-i18n="signupFacebook">Facebook으로 시작하기</span>
+      </button>
+      <button class="social-btn" onclick="socialLogin('kakao')" style="background:#FEE500;color:#000;">
+        <svg viewBox="0 0 18 18" fill="#000"><path d="M9 1C4.58 1 1 3.79 1 7.21c0 2.17 1.45 4.08 3.64 5.18-.16.57-.58 2.07-.67 2.39-.1.4.15.39.31.28.13-.08 2.01-1.36 2.82-1.91.6.09 1.22.13 1.9.13 4.42 0 8-2.79 8-6.21S13.42 1 9 1z"/></svg>
+        <span data-i18n="signupKakao">카카오로 시작하기</span>
       </button>
     </div>
 
@@ -318,9 +322,13 @@ a{color:#fff;text-decoration:none}
         <svg viewBox="0 0 18 18"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
         <span data-i18n="loginGoogle">Google로 로그인</span>
       </button>
-      <button class="social-btn" onclick="socialLogin('apple')">
-        <svg viewBox="0 0 18 18" fill="#fff"><path d="M14.94 9.88c-.02-2.15 1.75-3.18 1.83-3.23-1-1.46-2.55-1.66-3.1-1.68-1.32-.13-2.57.78-3.24.78-.67 0-1.7-.76-2.8-.74-1.44.02-2.77.84-3.51 2.13-1.5 2.6-.38 6.45 1.07 8.56.72 1.03 1.57 2.19 2.68 2.15 1.08-.04 1.49-.7 2.79-.7 1.3 0 1.67.7 2.8.67 1.16-.02 1.89-1.05 2.6-2.09.82-1.2 1.16-2.36 1.18-2.42-.03-.01-2.26-.87-2.28-3.43zM12.83 3.32c.59-.72 1-1.72.89-2.72-.86.04-1.9.57-2.52 1.3-.55.64-1.03 1.66-.9 2.64.96.07 1.94-.49 2.53-1.22z"/></svg>
-        <span data-i18n="loginApple">Apple로 로그인</span>
+      <button class="social-btn" onclick="socialLogin('facebook')" style="background:#1877F2;">
+        <svg viewBox="0 0 18 18" fill="#fff"><path d="M18 9a9 9 0 10-10.41 8.9v-6.29h-2.28V9h2.28V7.02c0-2.25 1.34-3.5 3.39-3.5.98 0 2.01.18 2.01.18v2.21h-1.13c-1.12 0-1.46.69-1.46 1.4V9h2.49l-.4 2.61h-2.09v6.29A9 9 0 0018 9z"/></svg>
+        <span data-i18n="loginFacebook">Facebook으로 로그인</span>
+      </button>
+      <button class="social-btn" onclick="socialLogin('kakao')" style="background:#FEE500;color:#000;">
+        <svg viewBox="0 0 18 18" fill="#000"><path d="M9 1C4.58 1 1 3.79 1 7.21c0 2.17 1.45 4.08 3.64 5.18-.16.57-.58 2.07-.67 2.39-.1.4.15.39.31.28.13-.08 2.01-1.36 2.82-1.91.6.09 1.22.13 1.9.13 4.42 0 8-2.79 8-6.21S13.42 1 9 1z"/></svg>
+        <span data-i18n="loginKakao">카카오로 로그인</span>
       </button>
     </div>
 
@@ -574,7 +582,8 @@ async function doLogin() {
 // ======== SOCIAL LOGIN ========
 function socialLogin(provider) {
   if (provider === 'google') PAP.auth.loginWithGoogle();
-  else if (provider === 'apple') PAP.auth.loginWithApple();
+  else if (provider === 'facebook') PAP.auth.loginWithFacebook();
+  else if (provider === 'kakao') PAP.auth.loginWithKakao();
   else PAP.ui.toast('Coming soon', 'error');
 }
 
@@ -751,7 +760,7 @@ ko: {
   benefit1:'<strong>작품 제출</strong> — 당신의 크리에이티브 작업을 매거진에 제출하세요',
   benefit2:'<strong>커뮤니티</strong> — 전 세계 크리에이터들과 연결하고 협업하세요',
   benefit3:'<strong>독점 콘텐츠</strong> — 프리미엄 에디토리얼과 비하인드 스토리를 확인하세요',
-  signupGoogle:'Google로 시작하기', signupApple:'Apple로 시작하기',
+  signupGoogle:'Google로 시작하기', signupFacebook:'Facebook으로 시작하기', signupKakao:'카카오로 시작하기',
   or:'또는', labelEmail:'이메일', labelPw:'비밀번호', labelLastName:'성', labelFirstName:'이름',
   phPw:'비밀번호 입력', phPwSet:'8자 이상, 대문자+숫자 포함', phLastName:'성', phFirstName:'이름',
   pwHint:'대문자 1개 + 숫자 1개 이상 포함',
@@ -768,7 +777,7 @@ ko: {
   planStdFeatures:'Free 포함 + 프리미엄 에디토리얼 · Pull Letter 발송 · 우선 리뷰',
   planPremName:'Premium', planPremPrice:'₩13,500 / 월',
   planPremFeatures:'Standard 포함 + 비하인드 콘텐츠 · 1:1 피드백 · 독점 이벤트 초대',
-  loginTitle:'다시 만나서 반가워요', loginGoogle:'Google로 로그인', loginApple:'Apple로 로그인',
+  loginTitle:'다시 만나서 반가워요', loginGoogle:'Google로 로그인', loginFacebook:'Facebook으로 로그인', loginKakao:'카카오로 로그인',
   forgot:'비밀번호를 잊으셨나요?',
   termsNotice:'가입 시 <a href="#">이용약관</a> 및 <a href="#">개인정보처리방침</a>에 동의합니다.',
   successTitle:'환영합니다!',
@@ -782,7 +791,7 @@ en: {
   benefit1:'<strong>Submit Work</strong> — Showcase your creative portfolio in the magazine',
   benefit2:'<strong>Community</strong> — Connect and collaborate with creatives worldwide',
   benefit3:'<strong>Exclusive Content</strong> — Access premium editorials and behind-the-scenes',
-  signupGoogle:'Start with Google', signupApple:'Start with Apple',
+  signupGoogle:'Start with Google', signupFacebook:'Start with Facebook', signupKakao:'Start with Kakao',
   or:'OR', labelEmail:'EMAIL', labelPw:'PASSWORD', labelLastName:'LAST NAME', labelFirstName:'FIRST NAME',
   phPw:'Enter password', phPwSet:'Min. 8 chars, uppercase + number', phLastName:'Last name', phFirstName:'First name',
   pwHint:'At least 1 uppercase letter + 1 number',
@@ -799,7 +808,7 @@ en: {
   planStdFeatures:'Free + Premium editorials · Pull Letters · Priority review',
   planPremName:'Premium', planPremPrice:'₩13,500 / mo',
   planPremFeatures:'Standard + Behind-the-scenes · 1:1 feedback · Exclusive event invites',
-  loginTitle:'Welcome back', loginGoogle:'Log in with Google', loginApple:'Log in with Apple',
+  loginTitle:'Welcome back', loginGoogle:'Log in with Google', loginFacebook:'Log in with Facebook', loginKakao:'Log in with Kakao',
   forgot:'Forgot your password?',
   termsNotice:'By signing up, you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.',
   successTitle:'Welcome!',
@@ -813,7 +822,7 @@ it: {
   benefit1:'<strong>Invia Lavori</strong> — Mostra il tuo portfolio creativo nella rivista',
   benefit2:'<strong>Community</strong> — Connettiti e collabora con creativi in tutto il mondo',
   benefit3:'<strong>Contenuti Esclusivi</strong> — Accedi a editoriali premium e dietro le quinte',
-  signupGoogle:'Inizia con Google', signupApple:'Inizia con Apple',
+  signupGoogle:'Inizia con Google', signupFacebook:'Inizia con Facebook', signupKakao:'Inizia con Kakao',
   or:'OPPURE', labelEmail:'EMAIL', labelPw:'PASSWORD', labelLastName:'COGNOME', labelFirstName:'NOME',
   phPw:'Inserisci password', phPwSet:'Min. 8 caratteri, maiuscola + numero', phLastName:'Cognome', phFirstName:'Nome',
   pwHint:'Almeno 1 maiuscola + 1 numero',
@@ -830,7 +839,7 @@ it: {
   planStdFeatures:'Free + Editoriali premium · Pull Letter · Revisione prioritaria',
   planPremName:'Premium', planPremPrice:'₩13.500 / mese',
   planPremFeatures:'Standard + Dietro le quinte · Feedback 1:1 · Inviti esclusivi',
-  loginTitle:'Bentornato', loginGoogle:'Accedi con Google', loginApple:'Accedi con Apple',
+  loginTitle:'Bentornato', loginGoogle:'Accedi con Google', loginFacebook:'Accedi con Facebook', loginKakao:'Accedi con Kakao',
   forgot:'Password dimenticata?',
   termsNotice:'Registrandoti accetti i <a href="#">Termini</a> e l\'<a href="#">Informativa Privacy</a>.',
   successTitle:'Benvenuto!',
@@ -844,7 +853,7 @@ fr: {
   benefit1:'<strong>Soumettre</strong> — Présentez votre portfolio créatif dans le magazine',
   benefit2:'<strong>Communauté</strong> — Connectez-vous et collaborez avec des créatifs du monde entier',
   benefit3:'<strong>Contenu Exclusif</strong> — Accédez aux éditoriaux premium et aux coulisses',
-  signupGoogle:'Commencer avec Google', signupApple:'Commencer avec Apple',
+  signupGoogle:'Commencer avec Google', signupFacebook:'Commencer avec Facebook', signupKakao:'Commencer avec Kakao',
   or:'OU', labelEmail:'EMAIL', labelPw:'MOT DE PASSE', labelLastName:'NOM', labelFirstName:'PRÉNOM',
   phPw:'Entrez le mot de passe', phPwSet:'Min. 8 caractères, majuscule + chiffre', phLastName:'Nom', phFirstName:'Prénom',
   pwHint:'Au moins 1 majuscule + 1 chiffre',
@@ -861,7 +870,7 @@ fr: {
   planStdFeatures:'Free + Éditoriaux premium · Pull Letters · Examen prioritaire',
   planPremName:'Premium', planPremPrice:'₩13 500 / mois',
   planPremFeatures:'Standard + Coulisses · Feedback 1:1 · Invitations exclusives',
-  loginTitle:'Content de vous revoir', loginGoogle:'Connexion avec Google', loginApple:'Connexion avec Apple',
+  loginTitle:'Content de vous revoir', loginGoogle:'Connexion avec Google', loginFacebook:'Connexion avec Facebook', loginKakao:'Connexion avec Kakao',
   forgot:'Mot de passe oublié ?',
   termsNotice:'En vous inscrivant, vous acceptez nos <a href="#">Conditions</a> et notre <a href="#">Politique de confidentialité</a>.',
   successTitle:'Bienvenue !',
@@ -875,7 +884,7 @@ es: {
   benefit1:'<strong>Enviar Trabajo</strong> — Muestra tu portafolio creativo en la revista',
   benefit2:'<strong>Comunidad</strong> — Conéctate y colabora con creativos de todo el mundo',
   benefit3:'<strong>Contenido Exclusivo</strong> — Accede a editoriales premium y detrás de escena',
-  signupGoogle:'Empezar con Google', signupApple:'Empezar con Apple',
+  signupGoogle:'Empezar con Google', signupFacebook:'Empezar con Facebook', signupKakao:'Empezar con Kakao',
   or:'O', labelEmail:'EMAIL', labelPw:'CONTRASEÑA', labelLastName:'APELLIDO', labelFirstName:'NOMBRE',
   phPw:'Ingrese contraseña', phPwSet:'Mín. 8 caracteres, mayúscula + número', phLastName:'Apellido', phFirstName:'Nombre',
   pwHint:'Al menos 1 mayúscula + 1 número',
@@ -892,7 +901,7 @@ es: {
   planStdFeatures:'Free + Editoriales premium · Pull Letters · Revisión prioritaria',
   planPremName:'Premium', planPremPrice:'₩13.500 / mes',
   planPremFeatures:'Standard + Detrás de escena · Feedback 1:1 · Invitaciones exclusivas',
-  loginTitle:'Bienvenido de vuelta', loginGoogle:'Iniciar con Google', loginApple:'Iniciar con Apple',
+  loginTitle:'Bienvenido de vuelta', loginGoogle:'Iniciar con Google', loginFacebook:'Iniciar con Facebook', loginKakao:'Iniciar con Kakao',
   forgot:'¿Olvidó su contraseña?',
   termsNotice:'Al registrarse, acepta nuestros <a href="#">Términos</a> y <a href="#">Política de Privacidad</a>.',
   successTitle:'¡Bienvenido!',
@@ -906,7 +915,7 @@ ja: {
   benefit1:'<strong>作品提出</strong> — あなたのクリエイティブ作品をマガジンに提出',
   benefit2:'<strong>コミュニティ</strong> — 世界中のクリエイターと繋がり、コラボレーション',
   benefit3:'<strong>限定コンテンツ</strong> — プレミアムエディトリアルと舞台裏にアクセス',
-  signupGoogle:'Googleで始める', signupApple:'Appleで始める',
+  signupGoogle:'Googleで始める', signupFacebook:'Facebookで始める', signupKakao:'カカオで始める',
   or:'または', labelEmail:'メール', labelPw:'パスワード', labelLastName:'姓', labelFirstName:'名',
   phPw:'パスワード入力', phPwSet:'8文字以上、大文字+数字', phLastName:'姓', phFirstName:'名',
   pwHint:'大文字1つ + 数字1つ以上',
@@ -923,7 +932,7 @@ ja: {
   planStdFeatures:'Free + プレミアム記事 · Pull Letter · 優先レビュー',
   planPremName:'Premium', planPremPrice:'₩13,500 / 月',
   planPremFeatures:'Standard + 舞台裏 · 1:1フィードバック · 限定イベント招待',
-  loginTitle:'おかえりなさい', loginGoogle:'Googleでログイン', loginApple:'Appleでログイン',
+  loginTitle:'おかえりなさい', loginGoogle:'Googleでログイン', loginFacebook:'Facebookでログイン', loginKakao:'カカオでログイン',
   forgot:'パスワードをお忘れですか？',
   termsNotice:'登録により<a href="#">利用規約</a>と<a href="#">プライバシーポリシー</a>に同意します。',
   successTitle:'ようこそ！',
@@ -937,7 +946,7 @@ zh: {
   benefit1:'<strong>提交作品</strong> — 在杂志上展示你的创意作品集',
   benefit2:'<strong>社区</strong> — 与全球创意人士连接和协作',
   benefit3:'<strong>独家内容</strong> — 访问高级专题和幕后故事',
-  signupGoogle:'使用Google开始', signupApple:'使用Apple开始',
+  signupGoogle:'使用Google开始', signupFacebook:'使用Facebook开始', signupKakao:'使用Kakao开始',
   or:'或', labelEmail:'邮箱', labelPw:'密码', labelLastName:'姓', labelFirstName:'名',
   phPw:'输入密码', phPwSet:'至少8位，含大写字母+数字', phLastName:'姓', phFirstName:'名',
   pwHint:'至少1个大写字母 + 1个数字',
@@ -954,7 +963,7 @@ zh: {
   planStdFeatures:'Free + 高级专题 · Pull Letter · 优先审核',
   planPremName:'Premium', planPremPrice:'₩13,500 / 月',
   planPremFeatures:'Standard + 幕后内容 · 1:1反馈 · 独家活动邀请',
-  loginTitle:'欢迎回来', loginGoogle:'使用Google登录', loginApple:'使用Apple登录',
+  loginTitle:'欢迎回来', loginGoogle:'使用Google登录', loginFacebook:'使用Facebook登录', loginKakao:'使用Kakao登录',
   forgot:'忘记密码？',
   termsNotice:'注册即表示同意<a href="#">使用条款</a>和<a href="#">隐私政策</a>。',
   successTitle:'欢迎！',
@@ -968,7 +977,7 @@ ru: {
   benefit1:'<strong>Отправить работу</strong> — Покажите своё портфолио в журнале',
   benefit2:'<strong>Сообщество</strong> — Общайтесь и сотрудничайте с креативщиками по всему миру',
   benefit3:'<strong>Эксклюзив</strong> — Доступ к премиум-материалам и закулисным историям',
-  signupGoogle:'Начать с Google', signupApple:'Начать с Apple',
+  signupGoogle:'Начать с Google', signupFacebook:'Начать с Facebook', signupKakao:'Начать с Kakao',
   or:'ИЛИ', labelEmail:'EMAIL', labelPw:'ПАРОЛЬ', labelLastName:'ФАМИЛИЯ', labelFirstName:'ИМЯ',
   phPw:'Введите пароль', phPwSet:'Мин. 8 символов, заглавная + цифра', phLastName:'Фамилия', phFirstName:'Имя',
   pwHint:'Минимум 1 заглавная буква + 1 цифра',
@@ -985,7 +994,7 @@ ru: {
   planStdFeatures:'Free + Премиум-статьи · Pull Letters · Приоритетный обзор',
   planPremName:'Premium', planPremPrice:'₩13 500 / мес',
   planPremFeatures:'Standard + Закулисье · Обратная связь 1:1 · Эксклюзивные приглашения',
-  loginTitle:'С возвращением', loginGoogle:'Войти через Google', loginApple:'Войти через Apple',
+  loginTitle:'С возвращением', loginGoogle:'Войти через Google', loginFacebook:'Войти через Facebook', loginKakao:'Войти через Kakao',
   forgot:'Забыли пароль?',
   termsNotice:'Регистрируясь, вы принимаете <a href="#">Условия</a> и <a href="#">Политику конфиденциальности</a>.',
   successTitle:'Добро пожаловать!',

@@ -1,6 +1,6 @@
 /**
- * GET /api/auth/apple
- * Redirect to Supabase Apple OAuth flow
+ * GET /api/auth/kakao
+ * Redirect to Supabase Kakao OAuth flow
  */
 
 const { supabase } = require('../_lib/supabase');
@@ -18,7 +18,7 @@ module.exports = async function handler(req, res) {
     const redirectTo = `${siteUrl}/api/auth/callback`;
 
     const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'apple',
+      provider: 'kakao',
       options: { redirectTo },
     });
 
@@ -26,7 +26,7 @@ module.exports = async function handler(req, res) {
 
     return res.redirect(302, data.url);
   } catch (error) {
-    console.error('Apple OAuth error:', error);
+    console.error('Kakao OAuth error:', error);
     return res.status(500).json({ message: 'OAuth initialization failed' });
   }
 };
