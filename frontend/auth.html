@@ -148,11 +148,12 @@ a{color:#fff;text-decoration:none}
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Join PAP - PAP Magazine"}</script>
 <!-- Cookie Consent + GA4 (consent-gated) -->
 <script src="cookie-consent.js"></script>
-<!-- Print Styles -->
-<style media="print">
+<!-- Hide cookie banner on auth page + print styles -->
+<style>
+#cookieConsent{display:none!important}
 @media print{
   body{background:#fff!important;color:#000!important}
-  .auth-back,.auth-lang,#cookieConsent{display:none!important}
+  .auth-back,.auth-lang{display:none!important}
   *{box-shadow:none!important;text-shadow:none!important}
 }
 </style>
