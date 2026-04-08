@@ -1047,6 +1047,11 @@ function setLang(l) {
   // Store redirect destination (e.g. ?redirect=admin)
   var _authRedirect = params.get('redirect');
   window.getRedirectUrl = function(){ return _authRedirect ? (_authRedirect + '.html') : 'index.html'; };
+  // Update success button text if redirecting to admin
+  if (_authRedirect === 'admin') {
+    var sb = document.querySelector('#stepSuccess .auth-btn');
+    if (sb) sb.textContent = '어드민으로 이동';
+  }
 
   // Handle OAuth callback (token from Google/Apple login)
   var oauthToken = params.get('token');
