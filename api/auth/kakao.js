@@ -1,6 +1,6 @@
 /**
  * GET /api/auth/kakao
- * Redirect to Supabase Kakao OAuth flow (without account_email scope)
+ * Redirect directly to Kakao OAuth (bypass Supabase to avoid account_email scope)
  */
 
 const { handleCors } = require('../_lib/cors');
@@ -13,11 +13,11 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const supabaseUrl = process.env.SUPABASE_URL || 'https://igcazquhkwxtqsaqpznx.supabase.co';
-    const redirectTo = encodeURIComponent('https://www.papkorea.com/api/auth/callback');
-    const scopes = encodeURIComponent('profile_nickname profile_image');
+    const KAKAO_CLIENT_ID = process.env.KAKAO_CLIENT_ID || '27187473a130e7e7b1fbdfd00bbf3676';
+    const siteUrl = process.env.NEXT_PUBLIC_URL || 'https://www.papkorea.com';
+    const REDIRECT_URI = `${siteUrl}/api/auth/kakao-callback`;
 
-    const authUrl = `${supabaseUrl}/auth/v1/authorize?provider=kakao&redirect_to=${redirectTo}&scopes=${scopes}`;
+    const authUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code`;
 
     return res.redirect(302, authUrl);
   } catch (error) {
