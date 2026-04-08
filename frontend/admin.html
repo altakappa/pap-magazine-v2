@@ -1112,8 +1112,8 @@ async function loadMembers(){
     var resp=await fetch(_apiBase+'/admin/members',{
       headers:{'Authorization':'Bearer '+localStorage.getItem('pap-token'),'X-Requested-With':'XMLHttpRequest'}
     });
-    if(!resp.ok) throw new Error('API returned '+resp.status);
     var data=await resp.json();
+    if(!resp.ok) throw new Error((data.detail||data.message||'API returned '+resp.status));
     allMembers=data.members||data||[];
     updateMemberStats();
     renderMembers();

@@ -13,19 +13,24 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  const admin = await requireAdmin(req, res);
-  if (!admin) return;
+  try {
+    const admin = await requireAdmin(req, res);
+    if (!admin) return;
+  } catch (authErr) {
+    console.error('Admin auth error:', authErr);
+    return res.status(401).json({ message: 'Auth failed', detail: authErr.message });
+  }
 
   try {
     const { data: members, error } = await supabaseAdmin
       .from('profiles')
-      .select(`
-        id, email, name, role, subscription_plan, subscription_status,
-        location, instagram, created_at, updated_at
-      `)
+      .select('id, email, name, role, subscription_plan, subscription_status, location, instagram, created_at, updated_at')
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Profiles query error:', error);
+      return res.status(500).json({ message: 'DB query failed', detail: error.message });
+    }
 
     // Enrich with submission and pullletter counts (non-blocking)
     const submissionMap = {};
@@ -40,9 +45,7 @@ module.exports = async function handler(req, res) {
           submissionMap[s.user_id] = (submissionMap[s.user_id] || 0) + 1;
         });
       }
-    } catch (e) {
-      console.warn('Could not load submissions counts:', e.message);
-    }
+    } catch (e) { /* table may not exist */ }
 
     try {
       const { data: plCounts } = await supabaseAdmin
@@ -53,12 +56,10 @@ module.exports = async function handler(req, res) {
           pullletterMap[p.user_id] = (pullletterMap[p.user_id] || 0) + 1;
         });
       }
-    } catch (e) {
-      console.warn('Could not load pullletter counts:', e.message);
-    }
+    } catch (e) { /* table may not exist */ }
 
     return res.status(200).json({
-      members: members.map(m => ({
+      members: (members || []).map(m => ({
         id: m.id,
         email: m.email,
         name: m.name,
@@ -74,6 +75,6 @@ module.exports = async function handler(req, res) {
     });
   } catch (error) {
     console.error('Admin members error:', error);
-    return res.status(500).json({ message: 'Failed to fetch members' });
+    return res.status(500).json({ message: 'Server error', detail: error.message });
   }
 };
