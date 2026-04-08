@@ -69,6 +69,12 @@ tr:hover td{background:rgba(0,0,0,.02)}
 .b-free{border:1px solid var(--border2);color:var(--text3);background:rgba(0,0,0,.03)}
 .b-standard{border:1px solid rgba(202,138,4,.3);color:var(--yellow);background:rgba(202,138,4,.06)}
 .b-premium{border:1px solid rgba(124,58,237,.3);color:var(--purple);background:rgba(124,58,237,.06)}
+.b-role-admin{border:1px solid rgba(220,38,38,.3);color:var(--red);background:rgba(220,38,38,.06)}
+.b-role-contributor{border:1px solid rgba(59,130,246,.3);color:var(--blue);background:rgba(59,130,246,.06)}
+.b-role-member{border:1px solid var(--border2);color:var(--text3);background:rgba(0,0,0,.03)}
+.b-active{border:1px solid rgba(22,163,74,.3);color:var(--green);background:rgba(22,163,74,.06)}
+.b-inactive{border:1px solid var(--border2);color:var(--text4);background:rgba(0,0,0,.02)}
+.b-suspended{border:1px solid rgba(220,38,38,.3);color:var(--red);background:rgba(220,38,38,.06)}
 
 /* BUTTONS */
 .btn{padding:7px 14px;font-weight:600;letter-spacing:.05em;border:1px solid var(--border2);background:transparent;color:var(--text2);transition:all .15s}
@@ -471,18 +477,101 @@ tr:hover td{background:rgba(0,0,0,.02)}
   <div class="tab" id="t-users">
     <div class="mn-header"><div class="mn-title">회원 관리</div><div class="mn-actions"><button class="btn" onclick="loadMembers()">↻ 새로고침</button><button class="btn" onclick="exportMembersCSV()">⬇ CSV 내보내기</button></div></div>
     <div class="mn-body">
-      <div class="stats" style="grid-template-columns:repeat(4,1fr)">
+      <div class="stats" style="grid-template-columns:repeat(5,1fr)">
         <div class="stat"><div class="stat-n" id="statTotal">—</div><div class="stat-l">전체</div></div>
         <div class="stat"><div class="stat-n" id="statFree">—</div><div class="stat-l">무료 회원</div></div>
         <div class="stat"><div class="stat-n" id="statStandard">—</div><div class="stat-l">스탠다드</div></div>
         <div class="stat"><div class="stat-n" id="statPremium">—</div><div class="stat-l">프리미엄</div></div>
+        <div class="stat"><div class="stat-n" id="statSuspended">—</div><div class="stat-l">정지됨</div></div>
+      </div>
+      <!-- Search -->
+      <div style="margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <input class="pe-input" id="memberSearch" placeholder="이름, 이메일, 인스타그램으로 검색..." style="max-width:320px;flex:1" oninput="renderMembers()">
+        <select class="pe-select" id="memberRoleFilter" style="max-width:140px" onchange="renderMembers()">
+          <option value="all">전체 역할</option>
+          <option value="admin">관리자</option>
+          <option value="contributor">기여자</option>
+          <option value="member">일반 회원</option>
+        </select>
+        <select class="pe-select" id="memberStatusFilter" style="max-width:160px" onchange="renderMembers()">
+          <option value="all">전체 상태</option>
+          <option value="active">활성</option>
+          <option value="inactive">비활성</option>
+          <option value="suspended">정지</option>
+        </select>
       </div>
       <div class="tbl-wrap">
         <div class="tbl-top"><h3>회원 목록</h3><div class="tbl-filters"><button class="tf on" onclick="filterMembers('all',this)">전체</button><button class="tf" onclick="filterMembers('free',this)">무료</button><button class="tf" onclick="filterMembers('standard',this)">스탠다드</button><button class="tf" onclick="filterMembers('premium',this)">프리미엄</button></div></div>
-        <table><thead><tr><th>이름</th><th>이메일</th><th>역할</th><th>위치</th><th>구독</th><th>가입일</th></tr></thead>
+        <table><thead><tr><th>이름</th><th>이메일</th><th>역할</th><th>구독</th><th>상태</th><th>가입일</th><th style="width:120px">작업</th></tr></thead>
         <tbody id="memberTableBody">
-          <tr><td colspan="6" style="text-align:center;color:var(--text4);padding:40px">데이터를 불러오는 중...</td></tr>
+          <tr><td colspan="7" style="text-align:center;color:var(--text4);padding:40px">데이터를 불러오는 중...</td></tr>
         </tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- MEMBER EDIT MODAL -->
+  <div class="modal-bg" id="memberModal">
+    <div class="modal" style="max-width:520px">
+      <button class="modal-close" onclick="closeMemberModal()">×</button>
+      <h2 id="memberModalTitle">회원 정보</h2>
+      <div class="sub" id="memberModalSub">회원의 역할과 구독 상태를 관리합니다.</div>
+      <input type="hidden" id="memberEditId">
+      <div class="modal-section">
+        <div class="modal-label">이름</div>
+        <div class="modal-val" id="memberEditName">—</div>
+      </div>
+      <div class="modal-section">
+        <div class="modal-label">이메일</div>
+        <div class="modal-val" id="memberEditEmail">—</div>
+      </div>
+      <div class="modal-section">
+        <div class="modal-label">인스타그램</div>
+        <div class="modal-val" id="memberEditInsta">—</div>
+      </div>
+      <div class="modal-section">
+        <div class="modal-label">위치</div>
+        <div class="modal-val" id="memberEditLocation">—</div>
+      </div>
+      <div class="modal-section">
+        <div class="modal-label">가입일</div>
+        <div class="modal-val" id="memberEditJoined">—</div>
+      </div>
+      <div class="modal-section">
+        <div class="modal-label">투고 / Pull-Letter</div>
+        <div class="modal-val" id="memberEditCounts">—</div>
+      </div>
+      <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
+      <div class="modal-section">
+        <div class="modal-label">역할</div>
+        <select class="pe-select" id="memberEditRole">
+          <option value="member">일반 회원 (Member)</option>
+          <option value="contributor">기여자 (Contributor)</option>
+          <option value="admin">관리자 (Admin)</option>
+        </select>
+      </div>
+      <div class="modal-section">
+        <div class="modal-label">구독 플랜</div>
+        <select class="pe-select" id="memberEditPlan">
+          <option value="free">무료 (Free)</option>
+          <option value="standard">스탠다드 (Standard)</option>
+          <option value="premium">프리미엄 (Premium)</option>
+        </select>
+      </div>
+      <div class="modal-section">
+        <div class="modal-label">구독 상태</div>
+        <select class="pe-select" id="memberEditStatus">
+          <option value="active">활성 (Active)</option>
+          <option value="inactive">비활성 (Inactive)</option>
+          <option value="suspended">정지 (Suspended)</option>
+          <option value="cancelled">취소됨 (Cancelled)</option>
+        </select>
+      </div>
+      <div class="modal-foot">
+        <button class="btn btn-primary" onclick="saveMemberEdit()">저장</button>
+        <button class="btn btn-red" onclick="suspendMemberFromModal()" id="memberSuspendBtn">정지</button>
+        <button class="btn btn-red" onclick="deleteMemberFromModal()" id="memberDeleteBtn">삭제</button>
+        <button class="btn" onclick="closeMemberModal()">취소</button>
       </div>
     </div>
   </div>
@@ -1014,16 +1103,15 @@ document.addEventListener('DOMContentLoaded',function(){
 // ======== MEMBER MANAGEMENT (Supabase) ========
 var allMembers=[];
 var memberFilter='all';
+var _apiBase=(window.PAP_CONFIG&&window.PAP_CONFIG.API_BASE)||'/api';
 
 async function loadMembers(){
   var tbody=document.getElementById('memberTableBody');
-  tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text4);padding:40px">불러오는 중...</td></tr>';
+  tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text4);padding:40px">불러오는 중...</td></tr>';
   try{
-    var res=await PAP.auth.getProfile(); // Admin endpoint - returns all profiles for admins
-    // Fallback: use direct Supabase query if pap-api doesn't have admin list endpoint
+    var res=await PAP.auth.getProfile();
     if(!res||!res.members){
-      // Try fetching from API
-      var resp=await fetch((window.PAP_CONFIG&&window.PAP_CONFIG.API_BASE||'/api')+'/admin/members',{
+      var resp=await fetch(_apiBase+'/admin/members',{
         headers:{'Authorization':'Bearer '+sessionStorage.getItem('pap-token'),'X-Requested-With':'XMLHttpRequest'}
       });
       if(resp.ok){var data=await resp.json();allMembers=data.members||data||[];}
@@ -1034,57 +1122,198 @@ async function loadMembers(){
     updateMemberStats();
     renderMembers();
   }catch(e){
-    tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:#ff6b6b;padding:40px">⚠ 회원 데이터를 불러올 수 없습니다.<br><small style="color:var(--text4)">백엔드 API 연결을 확인하세요. ('+((e&&e.message)||'Unknown error')+')</small></td></tr>';
+    tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:#ff6b6b;padding:40px">⚠ 회원 데이터를 불러올 수 없습니다.<br><small style="color:var(--text4)">백엔드 API 연결을 확인하세요. ('+((e&&e.message)||'Unknown error')+')</small></td></tr>';
   }
 }
 
 function updateMemberStats(){
   var total=allMembers.length;
-  var free=allMembers.filter(m=>!m.subscription_plan||m.subscription_plan==='free').length;
-  var std=allMembers.filter(m=>m.subscription_plan&&m.subscription_plan.indexOf('standard')>-1).length;
-  var prem=allMembers.filter(m=>m.subscription_plan&&m.subscription_plan.indexOf('premium')>-1).length;
+  var free=allMembers.filter(m=>{var p=m.subscriptionPlan||m.subscription_plan||'free';return p==='free';}).length;
+  var std=allMembers.filter(m=>{var p=m.subscriptionPlan||m.subscription_plan||'';return p.indexOf('standard')>-1;}).length;
+  var prem=allMembers.filter(m=>{var p=m.subscriptionPlan||m.subscription_plan||'';return p.indexOf('premium')>-1;}).length;
+  var susp=allMembers.filter(m=>{var s=m.subscriptionStatus||m.subscription_status||'';return s==='suspended';}).length;
   document.getElementById('statTotal').textContent=total;
   document.getElementById('statFree').textContent=free;
   document.getElementById('statStandard').textContent=std;
   document.getElementById('statPremium').textContent=prem;
+  document.getElementById('statSuspended').textContent=susp;
 }
 
+function _getMemberPlan(m){return m.subscriptionPlan||m.subscription_plan||'free';}
+function _getMemberStatus(m){return m.subscriptionStatus||m.subscription_status||'inactive';}
+function _getMemberRole(m){return m.role||'member';}
+
 function renderMembers(){
-  var filtered=memberFilter==='all'?allMembers:allMembers.filter(function(m){
-    if(memberFilter==='free') return !m.subscription_plan||m.subscription_plan==='free';
-    return m.subscription_plan&&m.subscription_plan.indexOf(memberFilter)>-1;
+  var searchVal=(document.getElementById('memberSearch')?document.getElementById('memberSearch').value:'').toLowerCase().trim();
+  var roleVal=document.getElementById('memberRoleFilter')?document.getElementById('memberRoleFilter').value:'all';
+  var statusVal=document.getElementById('memberStatusFilter')?document.getElementById('memberStatusFilter').value:'all';
+
+  var filtered=allMembers.filter(function(m){
+    // Plan filter
+    if(memberFilter!=='all'){
+      var plan=_getMemberPlan(m);
+      if(memberFilter==='free'&&plan!=='free') return false;
+      if(memberFilter!=='free'&&plan.indexOf(memberFilter)===-1) return false;
+    }
+    // Role filter
+    if(roleVal!=='all'&&_getMemberRole(m)!==roleVal) return false;
+    // Status filter
+    if(statusVal!=='all'&&_getMemberStatus(m)!==statusVal) return false;
+    // Search filter
+    if(searchVal){
+      var hay=((m.name||'')+(m.email||'')+(m.instagram||'')).toLowerCase();
+      if(hay.indexOf(searchVal)===-1) return false;
+    }
+    return true;
   });
+
   var tbody=document.getElementById('memberTableBody');
-  if(!filtered.length){tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text4);padding:40px">회원이 없습니다</td></tr>';return;}
+  if(!filtered.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text4);padding:40px">회원이 없습니다</td></tr>';return;}
   var h='';
   var esc=function(s){var d=document.createElement('div');d.textContent=s||'';return d.innerHTML;};
+  var roleLabels={admin:'관리자',contributor:'기여자',member:'회원'};
+  var statusLabels={active:'활성',inactive:'비활성',suspended:'정지',cancelled:'취소'};
   for(var i=0;i<filtered.length;i++){
     var m=filtered[i];
-    var plan=m.subscription_plan||'free';
-    var cls=plan.indexOf('premium')>-1?'b-premium':plan.indexOf('standard')>-1?'b-standard':'b-free';
-    var label=plan.indexOf('premium')>-1?'Premium':plan.indexOf('standard')>-1?'Standard':'Free';
-    var date=m.created_at?new Date(m.created_at).toLocaleDateString('ko-KR',{year:'numeric',month:'short'}):'—';
-    h+='<tr><td>'+esc(m.name)+'</td><td>'+esc(m.email)+'</td><td>'+esc(m.role||'member')+'</td><td>'+esc(m.location)+'</td><td><span class="badge '+cls+'">'+label+'</span></td><td>'+date+'</td></tr>';
+    var plan=_getMemberPlan(m);
+    var status=_getMemberStatus(m);
+    var role=_getMemberRole(m);
+    var planCls=plan.indexOf('premium')>-1?'b-premium':plan.indexOf('standard')>-1?'b-standard':'b-free';
+    var planLabel=plan.indexOf('premium')>-1?'Premium':plan.indexOf('standard')>-1?'Standard':'Free';
+    var statusCls=status==='active'?'b-active':status==='suspended'?'b-suspended':'b-inactive';
+    var statusLabel=statusLabels[status]||status;
+    var roleLabel=roleLabels[role]||role;
+    var date=(m.joinedAt||m.created_at)?new Date(m.joinedAt||m.created_at).toLocaleDateString('ko-KR',{year:'numeric',month:'short'}):'—';
+    var mid=m.id;
+    h+='<tr>';
+    h+='<td>'+esc(m.name)+'</td>';
+    h+='<td style="font-size:11px">'+esc(m.email)+'</td>';
+    h+='<td><span class="badge b-role-'+role+'">'+esc(roleLabel)+'</span></td>';
+    h+='<td><span class="badge '+planCls+'">'+planLabel+'</span></td>';
+    h+='<td><span class="badge '+statusCls+'">'+statusLabel+'</span></td>';
+    h+='<td style="font-size:11px">'+date+'</td>';
+    h+='<td><button class="btn btn-sm" onclick="openMemberModal(\''+mid+'\')">편집</button></td>';
+    h+='</tr>';
   }
   tbody.innerHTML=h;
 }
 
 function filterMembers(plan,btn){
   memberFilter=plan;
-  document.querySelectorAll('#t-users .tf').forEach(function(b){b.classList.remove('on');});
+  document.querySelectorAll('#t-users .tbl-top .tf').forEach(function(b){b.classList.remove('on');});
   if(btn) btn.classList.add('on');
   renderMembers();
 }
 
 function exportMembersCSV(){
   if(!allMembers.length){alert('내보낼 데이터가 없습니다.');return;}
-  var rows=[['이름','이메일','역할','위치','구독','가입일']];
+  var rows=[['이름','이메일','역할','위치','구독플랜','구독상태','가입일']];
   allMembers.forEach(function(m){
-    rows.push([m.name||'',m.email||'',m.role||'member',m.location||'',m.subscription_plan||'free',m.created_at?new Date(m.created_at).toISOString().split('T')[0]:'']);
+    rows.push([m.name||'',m.email||'',_getMemberRole(m),m.location||'',_getMemberPlan(m),_getMemberStatus(m),(m.joinedAt||m.created_at)?new Date(m.joinedAt||m.created_at).toISOString().split('T')[0]:'']);
   });
   var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
   var blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
   var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='pap_members_'+new Date().toISOString().split('T')[0]+'.csv';a.click();
+}
+
+/* ── Member Edit Modal ── */
+function openMemberModal(memberId){
+  var m=allMembers.find(function(x){return x.id===memberId;});
+  if(!m){alert('회원 정보를 찾을 수 없습니다.');return;}
+  document.getElementById('memberEditId').value=m.id;
+  document.getElementById('memberEditName').textContent=m.name||'(이름 없음)';
+  document.getElementById('memberEditEmail').textContent=m.email||'—';
+  document.getElementById('memberEditInsta').textContent=m.instagram||'—';
+  document.getElementById('memberEditLocation').textContent=m.location||'—';
+  document.getElementById('memberEditJoined').textContent=(m.joinedAt||m.created_at)?new Date(m.joinedAt||m.created_at).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'}):'—';
+  document.getElementById('memberEditCounts').textContent='투고 '+(m.submissionCount||0)+'건 / Pull-Letter '+(m.pullletterCount||0)+'건';
+  document.getElementById('memberEditRole').value=_getMemberRole(m);
+  document.getElementById('memberEditPlan').value=_getMemberPlan(m);
+  document.getElementById('memberEditStatus').value=_getMemberStatus(m);
+  document.getElementById('memberModalTitle').textContent=(m.name||m.email)+' 회원 관리';
+  // Hide suspend/delete for admins
+  var isAdmin=_getMemberRole(m)==='admin';
+  document.getElementById('memberSuspendBtn').style.display=isAdmin?'none':'';
+  document.getElementById('memberDeleteBtn').style.display=isAdmin?'none':'';
+  document.getElementById('memberModal').classList.add('show');
+}
+
+function closeMemberModal(){
+  document.getElementById('memberModal').classList.remove('show');
+}
+
+async function saveMemberEdit(){
+  var id=document.getElementById('memberEditId').value;
+  var role=document.getElementById('memberEditRole').value;
+  var plan=document.getElementById('memberEditPlan').value;
+  var status=document.getElementById('memberEditStatus').value;
+  if(!id) return;
+  try{
+    var resp=await fetch(_apiBase+'/admin/member-update',{
+      method:'PATCH',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionStorage.getItem('pap-token'),'X-Requested-With':'XMLHttpRequest'},
+      body:JSON.stringify({memberId:id,role:role,subscriptionPlan:plan,subscriptionStatus:status})
+    });
+    var data=await resp.json();
+    if(!resp.ok) throw new Error(data.message||'Update failed');
+    // Update local data
+    var m=allMembers.find(function(x){return x.id===id;});
+    if(m){m.role=role;m.subscriptionPlan=plan;m.subscription_plan=plan;m.subscriptionStatus=status;m.subscription_status=status;}
+    updateMemberStats();
+    renderMembers();
+    closeMemberModal();
+    alert('회원 정보가 업데이트되었습니다.');
+  }catch(e){
+    alert('오류: '+(e.message||'회원 정보 업데이트 실패'));
+  }
+}
+
+async function suspendMemberFromModal(){
+  var id=document.getElementById('memberEditId').value;
+  var name=document.getElementById('memberEditName').textContent;
+  if(!id) return;
+  if(!confirm(name+' 회원을 정지하시겠습니까?\n정지된 회원은 서비스 이용이 제한됩니다.')) return;
+  try{
+    var resp=await fetch(_apiBase+'/admin/member-delete',{
+      method:'DELETE',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionStorage.getItem('pap-token'),'X-Requested-With':'XMLHttpRequest'},
+      body:JSON.stringify({memberId:id,action:'suspend'})
+    });
+    var data=await resp.json();
+    if(!resp.ok) throw new Error(data.message||'Suspend failed');
+    var m=allMembers.find(function(x){return x.id===id;});
+    if(m){m.subscriptionStatus='suspended';m.subscription_status='suspended';}
+    updateMemberStats();
+    renderMembers();
+    closeMemberModal();
+    alert(name+' 회원이 정지되었습니다.');
+  }catch(e){
+    alert('오류: '+(e.message||'회원 정지 실패'));
+  }
+}
+
+async function deleteMemberFromModal(){
+  var id=document.getElementById('memberEditId').value;
+  var name=document.getElementById('memberEditName').textContent;
+  if(!id) return;
+  if(!confirm('⚠ '+name+' 회원을 완전히 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.')) return;
+  if(!confirm('정말로 삭제하시겠습니까? 모든 데이터가 영구적으로 삭제됩니다.')) return;
+  try{
+    var resp=await fetch(_apiBase+'/admin/member-delete',{
+      method:'DELETE',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionStorage.getItem('pap-token'),'X-Requested-With':'XMLHttpRequest'},
+      body:JSON.stringify({memberId:id,action:'delete'})
+    });
+    var data=await resp.json();
+    if(!resp.ok) throw new Error(data.message||'Delete failed');
+    allMembers=allMembers.filter(function(x){return x.id!==id;});
+    updateMemberStats();
+    renderMembers();
+    closeMemberModal();
+    alert(name+' 회원이 삭제되었습니다.');
+  }catch(e){
+    alert('오류: '+(e.message||'회원 삭제 실패'));
+  }
 }
 
 // Auto-load members when users tab is shown
