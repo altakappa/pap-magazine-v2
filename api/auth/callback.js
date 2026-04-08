@@ -1,12 +1,24 @@
 /**
  * GET /api/auth/callback
- * Handle OAuth callback from Supabase
- * Exchanges the auth code for a session, generates JWT, and redirects to frontend
+ * Handle OAuth callback from Supabase (Google/Facebook)
+ * Reads PKCE code_verifier from cookie, exchanges code for session, generates JWT
  */
 
+const { createClient } = require('@supabase/supabase-js');
 const { supabaseAdmin } = require('../_lib/supabase');
 const { generateToken } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
+
+function parseCookies(cookieHeader) {
+  const cookies = {};
+  if (!cookieHeader) return cookies;
+  cookieHeader.split(';').forEach(function (c) {
+    var parts = c.trim().split('=');
+    var key = parts.shift();
+    cookies[key] = parts.join('=');
+  });
+  return cookies;
+}
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -22,19 +34,41 @@ module.exports = async function handler(req, res) {
 
     if (oauthError) {
       console.error('OAuth error from provider:', oauthError, error_description);
-      return res.redirect(302, `${frontendUrl}/auth.html?error=auth_failed&detail=${encodeURIComponent(error_description || oauthError)}&mode=login`);
+      return res.redirect(302, `${frontendUrl}/auth?error=auth_failed&detail=${encodeURIComponent(error_description || oauthError)}&mode=login`);
     }
 
     if (!code) {
-      return res.redirect(302, `${frontendUrl}/auth.html?error=missing_code&mode=login`);
+      return res.redirect(302, `${frontendUrl}/auth?error=missing_code&mode=login`);
     }
 
-    // Exchange code for session using admin client
-    const { data: authData, error: authError } = await supabaseAdmin.auth.exchangeCodeForSession(code);
+    // Read PKCE code_verifier from cookie (set by google.js / facebook.js)
+    const cookies = parseCookies(req.headers.cookie);
+    const codeVerifier = cookies.pkce_verifier;
+
+    console.log('Callback received code, has verifier:', !!codeVerifier);
+
+    // Create supabase client with PKCE verifier in custom storage
+    const storage = {
+      getItem: function (key) {
+        if (key.includes('code-verifier')) return codeVerifier || null;
+        return null;
+      },
+      setItem: function () {},
+      removeItem: function () {},
+    };
+
+    const supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_ANON_KEY,
+      { auth: { flowType: 'pkce', storage, autoRefreshToken: false, persistSession: false, detectSessionInUrl: false } }
+    );
+
+    // Exchange the code for a session (using the PKCE verifier from cookie)
+    const { data: authData, error: authError } = await supabase.auth.exchangeCodeForSession(code);
 
     if (authError) {
-      console.error('Code exchange error:', authError);
-      return res.redirect(302, `${frontendUrl}/auth.html?error=auth_failed&detail=${encodeURIComponent(authError.message)}&mode=login`);
+      console.error('Code exchange error:', authError.message);
+      return res.redirect(302, `${frontendUrl}/auth?error=auth_failed&detail=${encodeURIComponent(authError.message)}&mode=login`);
     }
 
     const userId = authData.user.id;
@@ -49,7 +83,7 @@ module.exports = async function handler(req, res) {
         .eq('id', userId)
         .single();
       if (data) { profile = data; break; }
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise(function (r) { setTimeout(r, 500); });
     }
 
     // If no profile exists yet, create one
@@ -79,9 +113,11 @@ module.exports = async function handler(req, res) {
     const token = generateToken(user);
     const userJson = encodeURIComponent(JSON.stringify(user));
 
-    return res.redirect(302, `${frontendUrl}/auth.html?token=${token}&user=${userJson}`);
+    // Clear the PKCE cookie and redirect with token
+    res.setHeader('Set-Cookie', 'pkce_verifier=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
+    return res.redirect(302, `${frontendUrl}/auth?token=${token}&user=${userJson}`);
   } catch (error) {
     console.error('OAuth callback error:', error);
-    return res.redirect(302, `${frontendUrl}/auth.html?error=auth_failed&detail=${encodeURIComponent(error.message || 'Unknown')}&mode=login`);
+    return res.redirect(302, `${frontendUrl}/auth?error=auth_failed&detail=${encodeURIComponent(error.message || 'Unknown')}&mode=login`);
   }
 };

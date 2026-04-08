@@ -1,9 +1,10 @@
 /**
  * GET /api/auth/facebook
  * Redirect to Supabase Facebook OAuth flow
+ * Stores PKCE code_verifier in a cookie so callback.js can use it
  */
 
-const { supabase } = require('../_lib/supabase');
+const { createClient } = require('@supabase/supabase-js');
 const { handleCors } = require('../_lib/cors');
 
 module.exports = async function handler(req, res) {
@@ -17,16 +18,36 @@ module.exports = async function handler(req, res) {
     const siteUrl = process.env.NEXT_PUBLIC_URL || 'https://www.papkorea.com';
     const redirectTo = `${siteUrl}/api/auth/callback`;
 
+    // Custom storage to capture PKCE code_verifier
+    let codeVerifier = null;
+    const storage = {
+      getItem: () => null,
+      setItem: (key, value) => { if (key.includes('code-verifier')) codeVerifier = value; },
+      removeItem: () => {},
+    };
+
+    const supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_ANON_KEY,
+      { auth: { flowType: 'pkce', storage, autoRefreshToken: false, persistSession: false, detectSessionInUrl: false } }
+    );
+
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'facebook',
-      options: { redirectTo },
+      options: { redirectTo, skipBrowserRedirect: true },
     });
 
     if (error) throw error;
 
+    // Pass code_verifier to callback via secure cookie
+    const cookieOptions = 'Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600';
+    if (codeVerifier) {
+      res.setHeader('Set-Cookie', `pkce_verifier=${codeVerifier}; ${cookieOptions}`);
+    }
+
     return res.redirect(302, data.url);
   } catch (error) {
     console.error('Facebook OAuth error:', error);
-    return res.status(500).json({ message: 'OAuth initialization failed' });
+    return res.status(500).json({ message: 'OAuth initialization failed', detail: error.message });
   }
 };
