@@ -1089,6 +1089,16 @@ function scrollFilm(dir){
     }
   });
 
+  // Update floating logo on scroll (hero may move out from under cursor)
+  window.addEventListener('scroll', function(){
+    if(!rafId){
+      rafId = requestAnimationFrame(function(){
+        updateFloatingLogo();
+        rafId = null;
+      });
+    }
+  }, {passive: true});
+
   // Initial position
   window.addEventListener('load', function(){
     const hp = getHeaderLogoPos();
