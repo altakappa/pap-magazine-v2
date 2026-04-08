@@ -67,7 +67,7 @@ module.exports = async function handler(req, res) {
       .from('profiles')
       .update(updates)
       .eq('id', memberId)
-      .select('id, email, display_name, role, subscription_plan, subscription_status')
+      .select('*')
       .single();
 
     if (error) throw error;
@@ -81,10 +81,10 @@ module.exports = async function handler(req, res) {
       member: {
         id: data.id,
         email: data.email,
-        name: data.display_name,
+        name: data.display_name || data.name || data.email,
         role: data.role,
-        subscriptionPlan: data.subscription_plan,
-        subscriptionStatus: data.subscription_status,
+        subscriptionPlan: data.subscription_plan || data.plan,
+        subscriptionStatus: data.subscription_status || data.status,
       },
     });
   } catch (error) {

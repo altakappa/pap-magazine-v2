@@ -24,7 +24,7 @@ module.exports = async function handler(req, res) {
   try {
     const { data: members, error } = await supabaseAdmin
       .from('profiles')
-      .select('id, email, display_name, role, subscription_plan, subscription_status, location, instagram, created_at, updated_at')
+      .select('*')
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -62,12 +62,12 @@ module.exports = async function handler(req, res) {
       members: (members || []).map(m => ({
         id: m.id,
         email: m.email,
-        name: m.display_name || m.email,
-        role: m.role,
-        subscriptionPlan: m.subscription_plan,
-        subscriptionStatus: m.subscription_status,
-        location: m.location,
-        instagram: m.instagram,
+        name: m.display_name || m.name || m.email,
+        role: m.role || 'member',
+        subscriptionPlan: m.subscription_plan || m.plan || 'free',
+        subscriptionStatus: m.subscription_status || m.status || 'inactive',
+        location: m.location || '',
+        instagram: m.instagram || '',
         joinedAt: m.created_at,
         submissionCount: submissionMap[m.id] || 0,
         pullletterCount: pullletterMap[m.id] || 0,
