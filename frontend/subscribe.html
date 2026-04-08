@@ -868,8 +868,8 @@ function setLang(l) {
   localStorage.setItem('pap-lang', l);
   var d = L[l] || L.ko;
 
-  // Check login state for CTA button text
-  var isLoggedIn = typeof PAP !== 'undefined' && PAP.auth && PAP.auth.isLoggedIn && PAP.auth.isLoggedIn();
+  // Check login state for CTA button text (check localStorage directly since pap-api.js may not be loaded yet)
+  var isLoggedIn = !!localStorage.getItem('pap-token');
 
   // Text replacements
   document.querySelectorAll('[data-i18n]').forEach(function(e) {
