@@ -26,7 +26,17 @@ const PAP = (function() {
   }
 
   // ======== TOKEN MANAGEMENT ========
-  // Note: For production, consider migrating to httpOnly cookies managed by backend
+  // Migrate old sessionStorage tokens to localStorage (one-time)
+  (function migrateTokens(){
+    try {
+      var oldT = sessionStorage.getItem('pap-token');
+      var oldU = sessionStorage.getItem('pap-user');
+      if (oldT && !localStorage.getItem('pap-token')) { localStorage.setItem('pap-token', oldT); }
+      if (oldU && !localStorage.getItem('pap-user')) { localStorage.setItem('pap-user', oldU); }
+      if (oldT) sessionStorage.removeItem('pap-token');
+      if (oldU) sessionStorage.removeItem('pap-user');
+    } catch(e){}
+  })();
   function getToken() { return localStorage.getItem('pap-token'); }
   function setToken(token) { localStorage.setItem('pap-token', token); }
   function removeToken() { localStorage.removeItem('pap-token'); }
