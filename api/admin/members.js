@@ -27,29 +27,34 @@ module.exports = async function handler(req, res) {
 
     if (error) throw error;
 
-    // Enrich with subscription and submission counts
-    const { data: subCounts } = await supabaseAdmin
-      .from('submissions')
-      .select('user_id')
-      .then(r => r);
-
-    const { data: plCounts } = await supabaseAdmin
-      .from('pullletters')
-      .select('user_id')
-      .then(r => r);
-
-    // Count submissions per user
+    // Enrich with submission and pullletter counts (non-blocking)
     const submissionMap = {};
     const pullletterMap = {};
-    if (subCounts) {
-      subCounts.forEach(s => {
-        submissionMap[s.user_id] = (submissionMap[s.user_id] || 0) + 1;
-      });
+
+    try {
+      const { data: subCounts } = await supabaseAdmin
+        .from('submissions')
+        .select('user_id');
+      if (subCounts) {
+        subCounts.forEach(s => {
+          submissionMap[s.user_id] = (submissionMap[s.user_id] || 0) + 1;
+        });
+      }
+    } catch (e) {
+      console.warn('Could not load submissions counts:', e.message);
     }
-    if (plCounts) {
-      plCounts.forEach(p => {
-        pullletterMap[p.user_id] = (pullletterMap[p.user_id] || 0) + 1;
-      });
+
+    try {
+      const { data: plCounts } = await supabaseAdmin
+        .from('pullletters')
+        .select('user_id');
+      if (plCounts) {
+        plCounts.forEach(p => {
+          pullletterMap[p.user_id] = (pullletterMap[p.user_id] || 0) + 1;
+        });
+      }
+    } catch (e) {
+      console.warn('Could not load pullletter counts:', e.message);
     }
 
     return res.status(200).json({
