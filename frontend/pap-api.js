@@ -46,7 +46,7 @@ const PAP = (function() {
   }
   function setUser(user) {
     // Store only non-sensitive user fields
-    var safe = { id: user.id, name: user.name, role: user.role, subscription: user.subscription };
+    var safe = { id: user.id, email: user.email, name: user.name, role: user.role, subscription: user.subscription };
     localStorage.setItem('pap-user', JSON.stringify(safe));
   }
   function removeUser() { localStorage.removeItem('pap-user'); }
@@ -364,9 +364,29 @@ const PAP = (function() {
         if (popup) popup.style.display = 'none';
       }
 
+      // Update header auth button: link to mypage when logged in
+      const authBtn = document.querySelector('.auth-btn-header');
+      if (authBtn) {
+        if (loggedIn) {
+          authBtn.href = 'mypage.html';
+          authBtn.style.opacity = '1';
+          // Change icon to filled circle to indicate logged-in
+          authBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="0"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>';
+        } else {
+          authBtn.href = 'auth.html';
+        }
+      }
+
+      // Update nav LOGIN / JOIN link
+      const navLogin = document.querySelector('[data-i18n="navLogin"]');
+      if (navLogin && loggedIn && user) {
+        navLogin.textContent = user.name || 'MY PAGE';
+        navLogin.href = 'mypage.html';
+        navLogin.style.color = 'rgba(255,255,255,.9)';
+      }
+
       // Show user info in header if available
       if (loggedIn && user) {
-        // Add user menu to pages that have it
         const writeBtn = document.querySelector('.c-write-btn');
         if (writeBtn) writeBtn.textContent = user.name;
       }

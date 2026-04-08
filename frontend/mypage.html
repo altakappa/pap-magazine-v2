@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="PAP Magazine - My Page">
+<meta name="robots" content="noindex">
+<title>My Page | PAP Magazine</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Montserrat',sans-serif;background:#000;color:#fff;min-height:100vh}
+a{color:#fff;text-decoration:none}
+
+.mp-back{position:fixed;top:28px;left:32px;font-size:11px;font-weight:600;letter-spacing:.1em;color:rgba(255,255,255,.3);transition:color .2s;cursor:pointer;background:none;border:none;font-family:'Montserrat',sans-serif;z-index:10}
+.mp-back:hover{color:#fff}
+
+.mp-wrapper{width:100%;max-width:480px;margin:0 auto;padding:80px 20px 40px}
+
+/* AVATAR */
+.mp-avatar{width:72px;height:72px;border-radius:50%;border:2px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;overflow:hidden;background:rgba(255,255,255,.04)}
+.mp-avatar svg{width:32px;height:32px;stroke:rgba(255,255,255,.4);stroke-width:1.5;fill:none}
+.mp-avatar img{width:100%;height:100%;object-fit:cover}
+
+.mp-name{text-align:center;font-size:18px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+.mp-email{text-align:center;font-size:11px;color:rgba(255,255,255,.35);letter-spacing:.04em;margin-bottom:32px}
+
+/* SECTIONS */
+.mp-section{margin-bottom:28px}
+.mp-section-title{font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.25);margin-bottom:14px}
+
+.mp-card{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);padding:18px 20px;margin-bottom:10px;transition:border-color .3s}
+.mp-card:hover{border-color:rgba(255,255,255,.2)}
+
+.mp-row{display:flex;justify-content:space-between;align-items:center}
+.mp-label{font-size:11px;color:rgba(255,255,255,.4);letter-spacing:.04em}
+.mp-value{font-size:12px;font-weight:600;letter-spacing:.04em}
+
+.mp-badge{display:inline-block;padding:3px 10px;font-size:9px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;border:1px solid rgba(255,255,255,.15)}
+.mp-badge.free{color:rgba(255,255,255,.5)}
+.mp-badge.standard{color:#4dabf7;border-color:#4dabf7}
+.mp-badge.premium{color:#ffd43b;border-color:#ffd43b}
+.mp-badge.admin{color:#ff6b6b;border-color:#ff6b6b}
+
+/* MENU ITEMS */
+.mp-menu{display:flex;flex-direction:column;gap:2px}
+.mp-menu-item{display:flex;align-items:center;justify-content:space-between;padding:15px 20px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02);cursor:pointer;transition:all .3s;font-size:12px;font-weight:500;letter-spacing:.04em;color:rgba(255,255,255,.7)}
+.mp-menu-item:hover{border-color:rgba(255,255,255,.2);color:#fff;background:rgba(255,255,255,.04)}
+.mp-menu-item svg{width:16px;height:16px;stroke:rgba(255,255,255,.3);stroke-width:2;fill:none}
+.mp-menu-item.danger{color:#ff6b6b}
+.mp-menu-item.danger:hover{border-color:rgba(255,107,107,.3);background:rgba(255,107,107,.04)}
+
+/* LANG */
+.mp-lang{position:fixed;top:28px;right:32px;z-index:10}
+.mp-lang select{background:transparent;color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.12);padding:5px 10px;font-size:10px;font-family:'Montserrat',sans-serif;letter-spacing:.1em;cursor:pointer}
+.mp-lang select option{background:#000;color:#fff}
+
+@media(max-width:500px){
+  .mp-wrapper{padding:70px 16px 30px}
+  .mp-back{top:20px;left:16px}
+}
+</style>
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#000000">
+<script src="cookie-consent.js"></script>
+<style>#cookieConsent{display:none!important}</style>
+</head>
+<body>
+
+<a href="/" class="mp-back">← 돌아가기</a>
+
+<div class="mp-lang">
+  <select id="langSelect" onchange="setLang(this.value)">
+    <option value="ko">KO</option>
+    <option value="en">EN</option>
+    <option value="it">IT</option>
+    <option value="fr">FR</option>
+    <option value="es">ES</option>
+    <option value="ja">JA</option>
+    <option value="zh">ZH</option>
+    <option value="ru">RU</option>
+  </select>
+</div>
+
+<div class="mp-wrapper">
+  <!-- AVATAR + NAME -->
+  <div class="mp-avatar" id="mpAvatar">
+    <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+  </div>
+  <div class="mp-name" id="mpName">—</div>
+  <div class="mp-email" id="mpEmail">—</div>
+
+  <!-- ACCOUNT INFO -->
+  <div class="mp-section">
+    <div class="mp-section-title" data-i18n="sectionAccount">계정 정보</div>
+    <div class="mp-card">
+      <div class="mp-row">
+        <span class="mp-label" data-i18n="labelRole">역할</span>
+        <span class="mp-badge" id="mpRole">—</span>
+      </div>
+    </div>
+    <div class="mp-card">
+      <div class="mp-row">
+        <span class="mp-label" data-i18n="labelPlan">구독 플랜</span>
+        <span class="mp-badge" id="mpPlan">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MENU -->
+  <div class="mp-section">
+    <div class="mp-section-title" data-i18n="sectionMenu">메뉴</div>
+    <div class="mp-menu">
+      <a href="submission.html" class="mp-menu-item">
+        <span data-i18n="menuSubmission">작품 제출</span>
+        <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+      </a>
+      <a href="pullletter.html" class="mp-menu-item">
+        <span data-i18n="menuPullletter">Pull-Letter</span>
+        <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+      </a>
+      <a href="community.html" class="mp-menu-item">
+        <span data-i18n="menuCommunity">커뮤니티</span>
+        <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+      </a>
+      <a href="subscribe.html" class="mp-menu-item">
+        <span data-i18n="menuSubscribe">구독 관리</span>
+        <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+      </a>
+      <div class="mp-menu-item" id="mpAdminLink" style="display:none">
+        <a href="admin.html" style="color:inherit;display:flex;justify-content:space-between;align-items:center;width:100%">
+          <span data-i18n="menuAdmin">관리자 페이지</span>
+          <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:rgba(255,255,255,.3);stroke-width:2;fill:none"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOGOUT -->
+  <div class="mp-section">
+    <div class="mp-menu">
+      <div class="mp-menu-item danger" onclick="doLogout()" data-i18n="menuLogout">로그아웃</div>
+    </div>
+  </div>
+</div>
+
+<script src="pap-api.js?v=2" defer></script>
+<script>
+var LANG = {
+  ko: { sectionAccount:'계정 정보', labelRole:'역할', labelPlan:'구독 플랜', sectionMenu:'메뉴', menuSubmission:'작품 제출', menuPullletter:'Pull-Letter', menuCommunity:'커뮤니티', menuSubscribe:'구독 관리', menuAdmin:'관리자 페이지', menuLogout:'로그아웃', roleAdmin:'관리자', roleMember:'회원', roleContributor:'기여자', planFree:'Free', planStandard:'Standard', planPremium:'Premium', notLoggedIn:'로그인이 필요합니다' },
+  en: { sectionAccount:'Account Info', labelRole:'Role', labelPlan:'Subscription', sectionMenu:'Menu', menuSubmission:'Submit Work', menuPullletter:'Pull-Letter', menuCommunity:'Community', menuSubscribe:'Manage Subscription', menuAdmin:'Admin Panel', menuLogout:'Log Out', roleAdmin:'Admin', roleMember:'Member', roleContributor:'Contributor', planFree:'Free', planStandard:'Standard', planPremium:'Premium', notLoggedIn:'Please log in' },
+  it: { sectionAccount:'Info Account', labelRole:'Ruolo', labelPlan:'Abbonamento', sectionMenu:'Menu', menuSubmission:'Invia Lavori', menuPullletter:'Pull-Letter', menuCommunity:'Community', menuSubscribe:'Gestisci Abbonamento', menuAdmin:'Pannello Admin', menuLogout:'Esci', roleAdmin:'Admin', roleMember:'Membro', roleContributor:'Collaboratore', planFree:'Free', planStandard:'Standard', planPremium:'Premium', notLoggedIn:'Effettua il login' },
+  fr: { sectionAccount:'Informations', labelRole:'Rôle', labelPlan:'Abonnement', sectionMenu:'Menu', menuSubmission:'Soumettre', menuPullletter:'Pull-Letter', menuCommunity:'Communauté', menuSubscribe:'Gérer l\'abonnement', menuAdmin:'Admin', menuLogout:'Déconnexion', roleAdmin:'Admin', roleMember:'Membre', roleContributor:'Contributeur', planFree:'Free', planStandard:'Standard', planPremium:'Premium', notLoggedIn:'Veuillez vous connecter' },
+  es: { sectionAccount:'Información', labelRole:'Rol', labelPlan:'Suscripción', sectionMenu:'Menú', menuSubmission:'Enviar Trabajo', menuPullletter:'Pull-Letter', menuCommunity:'Comunidad', menuSubscribe:'Gestionar Suscripción', menuAdmin:'Admin', menuLogout:'Cerrar Sesión', roleAdmin:'Admin', roleMember:'Miembro', roleContributor:'Colaborador', planFree:'Free', planStandard:'Standard', planPremium:'Premium', notLoggedIn:'Inicia sesión' },
+  ja: { sectionAccount:'アカウント情報', labelRole:'役割', labelPlan:'プラン', sectionMenu:'メニュー', menuSubmission:'作品提出', menuPullletter:'Pull-Letter', menuCommunity:'コミュニティ', menuSubscribe:'サブスク管理', menuAdmin:'管理画面', menuLogout:'ログアウト', roleAdmin:'管理者', roleMember:'メンバー', roleContributor:'コントリビューター', planFree:'Free', planStandard:'Standard', planPremium:'Premium', notLoggedIn:'ログインが必要です' },
+  zh: { sectionAccount:'账户信息', labelRole:'角色', labelPlan:'订阅', sectionMenu:'菜单', menuSubmission:'提交作品', menuPullletter:'Pull-Letter', menuCommunity:'社区', menuSubscribe:'管理订阅', menuAdmin:'管理后台', menuLogout:'退出登录', roleAdmin:'管理员', roleMember:'会员', roleContributor:'贡献者', planFree:'Free', planStandard:'Standard', planPremium:'Premium', notLoggedIn:'请登录' },
+  ru: { sectionAccount:'Аккаунт', labelRole:'Роль', labelPlan:'Подписка', sectionMenu:'Меню', menuSubmission:'Отправить работу', menuPullletter:'Pull-Letter', menuCommunity:'Сообщество', menuSubscribe:'Управление подпиской', menuAdmin:'Админ', menuLogout:'Выйти', roleAdmin:'Админ', roleMember:'Участник', roleContributor:'Автор', planFree:'Free', planStandard:'Standard', planPremium:'Premium', notLoggedIn:'Войдите в систему' }
+};
+
+function setLang(l) {
+  localStorage.setItem('pap-lang', l);
+  var d = LANG[l] || LANG.ko;
+  document.querySelectorAll('[data-i18n]').forEach(function(el){
+    var k = el.getAttribute('data-i18n');
+    if (d[k]) el.textContent = d[k];
+  });
+  document.getElementById('langSelect').value = l;
+  loadProfile(l);
+}
+
+function loadProfile(lang) {
+  var d = LANG[lang] || LANG.ko;
+  var userStr = localStorage.getItem('pap-user');
+  var token = localStorage.getItem('pap-token');
+
+  if (!token || !userStr) {
+    // Not logged in — redirect to auth
+    window.location.href = 'auth.html?mode=login';
+    return;
+  }
+
+  try {
+    var user = JSON.parse(userStr);
+    document.getElementById('mpName').textContent = user.name || user.email || '—';
+    document.getElementById('mpEmail').textContent = user.email || '';
+
+    // Role badge
+    var roleEl = document.getElementById('mpRole');
+    var role = user.role || 'member';
+    roleEl.textContent = d['role' + role.charAt(0).toUpperCase() + role.slice(1)] || role;
+    roleEl.className = 'mp-badge';
+    if (role === 'admin') roleEl.classList.add('admin');
+
+    // Plan badge
+    var planEl = document.getElementById('mpPlan');
+    var plan = user.subscription || 'free';
+    planEl.textContent = d['plan' + plan.charAt(0).toUpperCase() + plan.slice(1)] || plan;
+    planEl.className = 'mp-badge';
+    if (plan === 'standard') planEl.classList.add('standard');
+    else if (plan === 'premium') planEl.classList.add('premium');
+    else planEl.classList.add('free');
+
+    // Show admin link for admins
+    if (role === 'admin') {
+      document.getElementById('mpAdminLink').style.display = 'block';
+    }
+  } catch(e) {
+    window.location.href = 'auth.html?mode=login';
+  }
+}
+
+function doLogout() {
+  localStorage.removeItem('pap-token');
+  localStorage.removeItem('pap-user');
+  window.location.href = '/';
+}
+
+// Init
+(function(){
+  var saved = localStorage.getItem('pap-lang') || 'ko';
+  setLang(saved);
+})();
+</script>
+</body>
+</html>

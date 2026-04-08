@@ -46,9 +46,9 @@ module.exports = async function handler(req, res) {
     const user = {
       id: userId,
       email: profile?.email || email,
-      name: profile?.name || '',
+      name: profile?.display_name || profile?.name || '',
       role: profile?.role || 'member',
-      subscription: profile?.subscription_plan || 'free',
+      subscription: profile?.subscription_plan || profile?.plan || 'free',
     };
 
     const token = generateToken(user);

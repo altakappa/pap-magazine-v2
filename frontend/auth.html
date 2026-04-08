@@ -1060,6 +1060,16 @@ function setLang(l) {
 
 // AUTO LANGUAGE DETECTION
 (function() {
+  // If already logged in, redirect to mypage (unless coming for admin redirect)
+  var params = new URLSearchParams(window.location.search);
+  if (!params.get('error') && !params.get('token') && !window.location.hash) {
+    var existingToken = localStorage.getItem('pap-token');
+    if (existingToken && !params.get('redirect')) {
+      window.location.href = 'mypage.html';
+      return;
+    }
+  }
+
   var saved = localStorage.getItem('pap-lang');
   if (!saved) {
     var tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
@@ -1082,7 +1092,7 @@ function setLang(l) {
   if (params.get('mode') === 'signup') showSignup();
   // Store redirect destination (e.g. ?redirect=admin)
   var _authRedirect = params.get('redirect');
-  window.getRedirectUrl = function(){ return _authRedirect ? (_authRedirect + '.html') : 'index.html'; };
+  window.getRedirectUrl = function(){ return _authRedirect ? (_authRedirect + '.html') : 'mypage.html'; };
   // Update success button text if redirecting to admin
   if (_authRedirect === 'admin') {
     var sb = document.querySelector('#stepSuccess .auth-btn');
