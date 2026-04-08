@@ -19,7 +19,10 @@ module.exports = async function handler(req, res) {
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'kakao',
-      options: { redirectTo },
+      options: {
+        redirectTo,
+        scopes: 'profile_nickname profile_image',
+      },
     });
 
     if (error) throw error;
