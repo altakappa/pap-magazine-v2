@@ -921,9 +921,8 @@ function scrollFilm(dir){
   let rafId = null;
 
   function getHeaderLogoPos(){
-    const headerEl = document.querySelector('.header');
-    const headerH = headerEl ? headerEl.getBoundingClientRect().height : 72;
-    return { x: window.innerWidth / 2, y: headerH / 2 };
+    const r = headerLogo.getBoundingClientRect();
+    return { x: window.innerWidth / 2, y: r.top + r.height/2 };
   }
 
   var edgeBouncing = false;
@@ -1003,10 +1002,7 @@ function scrollFilm(dir){
   function updateFloatingLogo(){
     if(!heroEl) return;
     const heroRect = heroEl.getBoundingClientRect();
-    // Account for hero padding-top (behind the fixed header) — only detect cursor in visible content area
-    const heroPadTop = parseFloat(window.getComputedStyle(heroEl).paddingTop) || 0;
-    const heroVisibleTop = heroRect.top + heroPadTop;
-    const isInHero = heroVisibleTop <= mouseY && mouseY <= heroRect.bottom && heroRect.left <= mouseX && mouseX <= heroRect.right;
+    const isInHero = heroRect.top <= mouseY && mouseY <= heroRect.bottom && heroRect.left <= mouseX && mouseX <= heroRect.right;
 
     // Detect if cursor is near left or right edge of hero
     var nearLeftEdge = isInHero && (mouseX - heroRect.left) < EDGE_THRESHOLD;

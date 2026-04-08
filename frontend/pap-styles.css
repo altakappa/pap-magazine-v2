@@ -15,7 +15,7 @@ button{cursor:pointer;font-family:inherit}
 
 /* LOADER */
 .loader{position:fixed;inset:0;background:var(--black);z-index:9999;display:flex;align-items:center;justify-content:center;transition:opacity .6s,visibility .6s}
-.loader.hidden{opacity:0;visibility:hidden;pointer-events:none;display:none}
+.loader.hidden{opacity:0;visibility:hidden;pointer-events:none}
 .loader-logo img{height:clamp(40px,8vw,67px);width:auto}
 
 /* HEADER */
@@ -57,7 +57,7 @@ button{cursor:pointer;font-family:inherit}
 /* LOGO TRAIL / AFTERIMAGE */
 .logo-trail{position:fixed;z-index:1099;pointer-events:none;opacity:0;will-change:transform,opacity}
 .logo-trail img{height:96px;width:auto}
-@keyframes trailFade{0%{opacity:.18;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(.6)}}
+@keyframes trailFade{0%{opacity:.35;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(.6)}}
 
 .header-right{display:flex;align-items:center;gap:6px}
 .lang-btn{display:flex;align-items:center;gap:4px;background:none;border:none;border-radius:0;padding:4px 2px;font-size:11px;font-weight:500;color:#fff}
@@ -128,7 +128,7 @@ button{cursor:pointer;font-family:inherit}
 .nav-close{position:absolute;top:24px;right:40px;background:none;border:none;font-size:32px;color:var(--text)}
 
 /* HERO */
-.hero{margin-top:0;padding-top:72px;position:relative;height:100vh;min-height:500px;overflow:hidden;background:#000}
+.hero{margin-top:72px;position:relative;height:calc(100vh - 72px);min-height:500px;overflow:hidden;background:#000}
 .hero-slide{position:absolute;inset:0;opacity:0;transition:opacity 1s ease}
 .hero-slide.active{opacity:1}
 .hero-slide-img{width:100%;height:100%;object-fit:cover}
@@ -554,7 +554,7 @@ button{cursor:pointer;font-family:inherit}
   .header{padding:0 16px;height:60px}
   .header-left{gap:4px}
   .header-left-item svg{width:18px;height:18px}
-  .hero{margin-top:0;padding-top:60px;height:60vh}
+  .hero{margin-top:60px;height:60vh}
   .hero-content{left:20px;bottom:28px}
   .hero-title{font-size:clamp(1.6rem,6vw,2.5rem)}
   .hero-symbol{right:20px;bottom:28px}
@@ -642,7 +642,7 @@ button{cursor:pointer;font-family:inherit}
 /* --- 480px: Large phones (iPhone Plus/Max 428px, Galaxy A 384px) --- */
 @media(max-width:480px){
   .header{padding:0 12px;height:56px}
-  .hero{margin-top:0;padding-top:56px;height:60vh}
+  .hero{margin-top:56px;height:60vh}
   .hero-content{left:16px;bottom:24px}
   .hero-title{font-size:clamp(1.4rem,7vw,2rem)}
   .hero-issue{font-size:10px;letter-spacing:.2em}
@@ -727,7 +727,7 @@ button{cursor:pointer;font-family:inherit}
   .lang-btn select{font-size:9px}
   .header-right-item svg{width:16px;height:16px}
   .logo-wrap img,.floating-logo.in-header img{height:19px}
-  .hero{margin-top:0;padding-top:54px;height:60vh}
+  .hero{margin-top:54px;height:60vh}
   .hero-content{left:14px;bottom:20px}
   .hero-symbol{right:14px;bottom:24px}
   .hero-title{font-size:1.4rem}
@@ -762,7 +762,7 @@ button{cursor:pointer;font-family:inherit}
 /* --- 360px: iPhone SE (375px), Galaxy A series (360px), small devices --- */
 @media(max-width:375px){
   .header{height:52px}
-  .hero{margin-top:0;padding-top:52px;height:60vh}
+  .hero{margin-top:52px;height:60vh}
   .hero-title{font-size:1.25rem}
   .hero-issue{font-size:9px}
 
@@ -796,7 +796,7 @@ button{cursor:pointer;font-family:inherit}
 @media(max-width:320px){
   .header{height:48px;padding:0 8px}
   .hamburger span{width:20px}
-  .hero{margin-top:0;padding-top:48px;height:60vh}
+  .hero{margin-top:48px;height:60vh}
   .hero-title{font-size:1.1rem}
   .hero-content{left:10px;bottom:16px}
   .hero-symbol{right:10px;bottom:22px}
