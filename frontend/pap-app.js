@@ -1378,7 +1378,6 @@ function scrollFilm(dir){
     playHint.className = 'logo-play-hint';
     playHint.textContent = 'DOUBLE CLICK TO PLAY';
     playHint.style.cssText = 'position:absolute;top:100%;left:50%;transform:translateX(-50%);white-space:nowrap;font-family:Montserrat,sans-serif;font-size:8px;font-weight:600;letter-spacing:.15em;color:rgba(255,255,255,0);padding-top:4px;pointer-events:none;transition:color .3s;';
-    fLogo.style.position = 'relative';
     fLogo.appendChild(playHint);
 
     // Show hint on hover
