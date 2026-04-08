@@ -147,6 +147,7 @@ a{color:#fff;text-decoration:none}
 <link rel="canonical" href="https://pap-magazine.com/auth.html">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Join PAP - PAP Magazine"}</script>
 <!-- Cookie Consent + GA4 (consent-gated) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="cookie-consent.js"></script>
 <!-- Hide cookie banner on auth page + print styles -->
 <style>
@@ -580,12 +581,46 @@ async function doLogin() {
   }
 }
 
-// ======== SOCIAL LOGIN ========
-function socialLogin(provider) {
-  if (provider === 'google') PAP.auth.loginWithGoogle();
-  else if (provider === 'facebook') PAP.auth.loginWithFacebook();
-  else if (provider === 'kakao') PAP.auth.loginWithKakao();
-  else PAP.ui.toast('Coming soon', 'error');
+// ======== SUPABASE CLIENT (for OAuth only) ========
+var _supabaseClient = null;
+function getSupabase() {
+  if (!_supabaseClient && typeof supabase !== 'undefined') {
+    _supabaseClient = supabase.createClient(
+      'https://igcazquhkwxtqsaqpznx.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnY2F6cXVoa3d4dHFzYXFwem54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMzg2MjgsImV4cCI6MjA4OTkxNDYyOH0.oCl_Rq1dSoM1Q67sJnp1YrO2rN_2N5XmxAkVFk_hAa8'
+    );
+  }
+  return _supabaseClient;
+}
+
+// ======== SOCIAL LOGIN (frontend Supabase OAuth) ========
+async function socialLogin(provider) {
+  if (provider === 'kakao') {
+    // Kakao uses custom server-side flow
+    if (typeof PAP !== 'undefined' && PAP.auth && PAP.auth.loginWithKakao) {
+      PAP.auth.loginWithKakao();
+    } else {
+      window.location.href = '/api/auth/kakao';
+    }
+    return;
+  }
+
+  var sb = getSupabase();
+  if (!sb) {
+    alert('Supabase client not loaded. Please refresh and try again.');
+    return;
+  }
+
+  var opts = { redirectTo: window.location.origin + '/auth' };
+  if (provider === 'google') {
+    opts.queryParams = { access_type: 'offline', prompt: 'consent' };
+  }
+
+  var result = await sb.auth.signInWithOAuth({ provider: provider, options: opts });
+  if (result.error) {
+    alert('OAuth error: ' + result.error.message);
+  }
+  // Browser will redirect to provider, then back to /auth with session
 }
 
 // ======== ERROR MESSAGES (8 LANGUAGES) ========
@@ -1054,12 +1089,11 @@ function setLang(l) {
     if (sb) sb.textContent = '어드민으로 이동';
   }
 
-  // Handle OAuth callback (token from Google/Apple login)
+  // Handle server-side OAuth callback (token from URL params - legacy)
   var oauthToken = params.get('token');
   var oauthUser = params.get('user');
   var oauthError = params.get('error');
   if (oauthToken) {
-    // Store token and user, then redirect to main page
     localStorage.setItem('pap-token', oauthToken);
     if (oauthUser) {
       try {
@@ -1067,24 +1101,51 @@ function setLang(l) {
         localStorage.setItem('pap-user', JSON.stringify({id:u.id, name:u.name, role:u.role, subscription:u.subscription}));
       } catch(e) {}
     }
-    // Clean URL and redirect
     window.history.replaceState({}, document.title, window.location.pathname);
     window.location.href = (window.getRedirectUrl?window.getRedirectUrl():'index.html');
   } else if (oauthError) {
-    var lang = localStorage.getItem('pap-lang') || 'ko';
-    var msgs = ERR[lang] || ERR.ko;
     var detail = params.get('detail') || '';
-    var errText = (oauthError === 'auth_failed' ? (msgs.loginFail || 'Authentication failed') : oauthError);
-    if (detail) errText += ' (' + detail + ')';
-    // Show error - use PAP.ui.toast if available, otherwise alert
-    try {
-      if (typeof PAP !== 'undefined' && PAP.ui && PAP.ui.toast) {
-        PAP.ui.toast(errText, 'error');
-      } else {
-        alert(errText);
-      }
-    } catch(e) { alert(errText); }
+    var errText = oauthError;
+    if (detail) errText += ': ' + detail;
+    alert(errText);
     window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
+  // Handle Supabase OAuth return (session in URL hash after redirect)
+  var hashStr = window.location.hash;
+  if (hashStr && (hashStr.indexOf('access_token') > -1 || hashStr.indexOf('error') > -1)) {
+    // Supabase returns tokens in hash fragment - let the client handle it
+    var sb = getSupabase();
+    if (sb) {
+      (async function() {
+        try {
+          // getSession picks up the tokens from the URL hash automatically
+          var result = await sb.auth.getSession();
+          var session = result.data && result.data.session;
+          if (session && session.access_token) {
+            // Exchange Supabase token for PAP JWT
+            var resp = await fetch('/api/auth/exchange', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ access_token: session.access_token }),
+            });
+            var data = await resp.json();
+            if (resp.ok && data.token) {
+              localStorage.setItem('pap-token', data.token);
+              localStorage.setItem('pap-user', JSON.stringify({id:data.user.id, name:data.user.name, role:data.user.role, subscription:data.user.subscription}));
+              window.history.replaceState({}, document.title, window.location.pathname);
+              window.location.href = (window.getRedirectUrl?window.getRedirectUrl():'index.html');
+              return;
+            } else {
+              alert('Login failed: ' + (data.detail || data.message || 'Unknown error'));
+            }
+          }
+        } catch(e) {
+          alert('OAuth error: ' + e.message);
+        }
+        window.history.replaceState({}, document.title, window.location.pathname);
+      })();
+    }
   }
 })();
 </script>
