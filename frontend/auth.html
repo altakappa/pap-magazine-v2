@@ -1073,11 +1073,17 @@ function setLang(l) {
   } else if (oauthError) {
     var lang = localStorage.getItem('pap-lang') || 'ko';
     var msgs = ERR[lang] || ERR.ko;
-    if (oauthError === 'auth_failed') {
-      PAP.ui.toast(msgs.loginFail || 'Authentication failed', 'error');
-    } else {
-      PAP.ui.toast(oauthError, 'error');
-    }
+    var detail = params.get('detail') || '';
+    var errText = (oauthError === 'auth_failed' ? (msgs.loginFail || 'Authentication failed') : oauthError);
+    if (detail) errText += ' (' + detail + ')';
+    // Show error - use PAP.ui.toast if available, otherwise alert
+    try {
+      if (typeof PAP !== 'undefined' && PAP.ui && PAP.ui.toast) {
+        PAP.ui.toast(errText, 'error');
+      } else {
+        alert(errText);
+      }
+    } catch(e) { alert(errText); }
     window.history.replaceState({}, document.title, window.location.pathname);
   }
 })();

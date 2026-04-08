@@ -1,16 +1,15 @@
 /**
  * GET /api/auth/callback
  * Handle OAuth callback from Supabase (Google/Facebook)
- * Reads PKCE code_verifier from cookie, exchanges code for session, generates JWT
+ * Exchanges code for tokens via direct HTTP (no Supabase JS client needed)
  */
 
-const { createClient } = require('@supabase/supabase-js');
 const { supabaseAdmin } = require('../_lib/supabase');
 const { generateToken } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 
 function parseCookies(cookieHeader) {
-  const cookies = {};
+  var cookies = {};
   if (!cookieHeader) return cookies;
   cookieHeader.split(';').forEach(function (c) {
     var parts = c.trim().split('=');
@@ -22,74 +21,67 @@ function parseCookies(cookieHeader) {
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
+  if (req.method !== 'GET') return res.status(405).json({ message: 'Method not allowed' });
 
-  if (req.method !== 'GET') {
-    return res.status(405).json({ message: 'Method not allowed' });
-  }
-
-  const frontendUrl = process.env.NEXT_PUBLIC_URL || 'https://www.papkorea.com';
+  var frontendUrl = process.env.NEXT_PUBLIC_URL || 'https://www.papkorea.com';
 
   try {
-    const { code, error: oauthError, error_description } = req.query;
+    var code = req.query.code;
+    var oauthError = req.query.error;
+    var errorDesc = req.query.error_description;
 
     if (oauthError) {
-      console.error('OAuth error from provider:', oauthError, error_description);
-      return res.redirect(302, `${frontendUrl}/auth?error=auth_failed&detail=${encodeURIComponent(error_description || oauthError)}&mode=login`);
+      console.error('OAuth error from provider:', oauthError, errorDesc);
+      return res.redirect(302, frontendUrl + '/auth?error=oauth_provider&detail=' + encodeURIComponent(errorDesc || oauthError) + '&mode=login');
     }
 
     if (!code) {
-      return res.redirect(302, `${frontendUrl}/auth?error=missing_code&mode=login`);
+      return res.redirect(302, frontendUrl + '/auth?error=missing_code&mode=login');
     }
 
-    // Read PKCE code_verifier from cookie (set by google.js / facebook.js)
-    const cookies = parseCookies(req.headers.cookie);
-    const codeVerifier = cookies.pkce_verifier;
+    // Read PKCE code_verifier from cookie
+    var cookies = parseCookies(req.headers.cookie);
+    var codeVerifier = cookies.pkce_verifier;
 
-    console.log('Callback received code, has verifier:', !!codeVerifier);
+    console.log('Callback: has code=' + (!!code) + ', has verifier=' + (!!codeVerifier));
 
-    // Create supabase client with PKCE verifier in custom storage
-    const storage = {
-      getItem: function (key) {
-        if (key.includes('code-verifier')) return codeVerifier || null;
-        return null;
+    // Exchange code for tokens via direct HTTP call to Supabase
+    var tokenUrl = process.env.SUPABASE_URL + '/auth/v1/token?grant_type=pkce';
+    var tokenResp = await fetch(tokenUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': process.env.SUPABASE_ANON_KEY,
       },
-      setItem: function () {},
-      removeItem: function () {},
-    };
+      body: JSON.stringify({
+        auth_code: code,
+        code_verifier: codeVerifier || '',
+      }),
+    });
 
-    const supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_ANON_KEY,
-      { auth: { flowType: 'pkce', storage, autoRefreshToken: false, persistSession: false, detectSessionInUrl: false } }
-    );
+    var tokenData = await tokenResp.json();
 
-    // Exchange the code for a session (using the PKCE verifier from cookie)
-    const { data: authData, error: authError } = await supabase.auth.exchangeCodeForSession(code);
-
-    if (authError) {
-      console.error('Code exchange error:', authError.message);
-      return res.redirect(302, `${frontendUrl}/auth?error=auth_failed&detail=${encodeURIComponent(authError.message)}&mode=login`);
+    if (!tokenResp.ok || tokenData.error) {
+      var errMsg = tokenData.error_description || tokenData.msg || tokenData.error || 'Token exchange failed';
+      console.error('Token exchange failed:', errMsg);
+      return res.redirect(302, frontendUrl + '/auth?error=token_exchange&detail=' + encodeURIComponent(errMsg) + '&mode=login');
     }
 
-    const userId = authData.user.id;
-    const email = authData.user.email;
+    var userId = tokenData.user.id;
+    var email = tokenData.user.email;
 
-    // Fetch or wait for profile (trigger may take a moment)
-    let profile;
-    for (let i = 0; i < 3; i++) {
-      const { data } = await supabaseAdmin
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-      if (data) { profile = data; break; }
+    // Fetch or wait for profile
+    var profile = null;
+    for (var i = 0; i < 3; i++) {
+      var result = await supabaseAdmin.from('profiles').select('*').eq('id', userId).single();
+      if (result.data) { profile = result.data; break; }
       await new Promise(function (r) { setTimeout(r, 500); });
     }
 
-    // If no profile exists yet, create one
+    // If no profile exists, create one
     if (!profile) {
-      const meta = authData.user.user_metadata || {};
-      const { data: newProfile } = await supabaseAdmin
+      var meta = tokenData.user.user_metadata || {};
+      var insertResult = await supabaseAdmin
         .from('profiles')
         .insert({
           id: userId,
@@ -99,25 +91,25 @@ module.exports = async function handler(req, res) {
         })
         .select('*')
         .single();
-      profile = newProfile;
+      profile = insertResult.data;
     }
 
-    const user = {
+    var user = {
       id: userId,
-      email,
-      name: profile?.display_name || profile?.name || authData.user.user_metadata?.name || '',
-      role: profile?.role || 'member',
-      subscription: profile?.subscription_plan || profile?.plan || 'free',
+      email: email,
+      name: (profile && (profile.display_name || profile.name)) || (tokenData.user.user_metadata && tokenData.user.user_metadata.name) || '',
+      role: (profile && profile.role) || 'member',
+      subscription: (profile && (profile.subscription_plan || profile.plan)) || 'free',
     };
 
-    const token = generateToken(user);
-    const userJson = encodeURIComponent(JSON.stringify(user));
+    var token = generateToken(user);
+    var userJson = encodeURIComponent(JSON.stringify(user));
 
-    // Clear the PKCE cookie and redirect with token
+    // Clear PKCE cookie
     res.setHeader('Set-Cookie', 'pkce_verifier=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
-    return res.redirect(302, `${frontendUrl}/auth?token=${token}&user=${userJson}`);
+    return res.redirect(302, frontendUrl + '/auth?token=' + token + '&user=' + userJson);
   } catch (error) {
     console.error('OAuth callback error:', error);
-    return res.redirect(302, `${frontendUrl}/auth?error=auth_failed&detail=${encodeURIComponent(error.message || 'Unknown')}&mode=login`);
+    return res.redirect(302, frontendUrl + '/auth?error=callback_error&detail=' + encodeURIComponent(error.message || 'Unknown') + '&mode=login');
   }
 };
