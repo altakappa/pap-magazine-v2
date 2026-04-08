@@ -1,9 +1,8 @@
 /**
  * GET /api/auth/kakao
- * Redirect to Supabase Kakao OAuth flow
+ * Redirect to Supabase Kakao OAuth flow (without account_email scope)
  */
 
-const { supabase } = require('../_lib/supabase');
 const { handleCors } = require('../_lib/cors');
 
 module.exports = async function handler(req, res) {
@@ -14,20 +13,13 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const siteUrl = process.env.NEXT_PUBLIC_URL || 'https://www.papkorea.com';
-    const redirectTo = `${siteUrl}/api/auth/callback`;
+    const supabaseUrl = process.env.SUPABASE_URL || 'https://igcazquhkwxtqsaqpznx.supabase.co';
+    const redirectTo = encodeURIComponent('https://www.papkorea.com/api/auth/callback');
+    const scopes = encodeURIComponent('profile_nickname profile_image');
 
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'kakao',
-      options: {
-        redirectTo,
-        scopes: 'profile_nickname profile_image',
-      },
-    });
+    const authUrl = `${supabaseUrl}/auth/v1/authorize?provider=kakao&redirect_to=${redirectTo}&scopes=${scopes}`;
 
-    if (error) throw error;
-
-    return res.redirect(302, data.url);
+    return res.redirect(302, authUrl);
   } catch (error) {
     console.error('Kakao OAuth error:', error);
     return res.status(500).json({ message: 'OAuth initialization failed' });
