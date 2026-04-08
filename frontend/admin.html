@@ -1109,16 +1109,12 @@ async function loadMembers(){
   var tbody=document.getElementById('memberTableBody');
   tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text4);padding:40px">불러오는 중...</td></tr>';
   try{
-    var res=await PAP.auth.getProfile();
-    if(!res||!res.members){
-      var resp=await fetch(_apiBase+'/admin/members',{
-        headers:{'Authorization':'Bearer '+localStorage.getItem('pap-token'),'X-Requested-With':'XMLHttpRequest'}
-      });
-      if(resp.ok){var data=await resp.json();allMembers=data.members||data||[];}
-      else throw new Error('Failed to load');
-    } else {
-      allMembers=res.members;
-    }
+    var resp=await fetch(_apiBase+'/admin/members',{
+      headers:{'Authorization':'Bearer '+localStorage.getItem('pap-token'),'X-Requested-With':'XMLHttpRequest'}
+    });
+    if(!resp.ok) throw new Error('API returned '+resp.status);
+    var data=await resp.json();
+    allMembers=data.members||data||[];
     updateMemberStats();
     renderMembers();
   }catch(e){
