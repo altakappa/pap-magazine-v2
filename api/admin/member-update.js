@@ -67,7 +67,7 @@ module.exports = async function handler(req, res) {
       .from('profiles')
       .update(updates)
       .eq('id', memberId)
-      .select('id, email, name, role, subscription_plan, subscription_status')
+      .select('id, email, display_name, role, subscription_plan, subscription_status')
       .single();
 
     if (error) throw error;
@@ -81,7 +81,7 @@ module.exports = async function handler(req, res) {
       member: {
         id: data.id,
         email: data.email,
-        name: data.name,
+        name: data.display_name,
         role: data.role,
         subscriptionPlan: data.subscription_plan,
         subscriptionStatus: data.subscription_status,

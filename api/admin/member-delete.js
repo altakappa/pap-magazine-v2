@@ -37,7 +37,7 @@ module.exports = async function handler(req, res) {
     // Check member exists
     const { data: member, error: fetchError } = await supabaseAdmin
       .from('profiles')
-      .select('id, email, name, role')
+      .select('id, email, display_name, role')
       .eq('id', memberId)
       .single();
 
