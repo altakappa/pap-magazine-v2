@@ -1047,7 +1047,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
 <script>
 // ======== API HELPERS ========
 var API_BASE=window.location.origin+'/api';
-function getToken(){return sessionStorage.getItem('pap-token');}
+function getToken(){return localStorage.getItem('pap-token');}
 function apiHeaders(){return {'Authorization':'Bearer '+getToken(),'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'};}
 async function apiGet(path){var r=await fetch(API_BASE+path,{headers:apiHeaders()});return r.json();}
 async function apiPost(path,body){var r=await fetch(API_BASE+path,{method:'POST',headers:apiHeaders(),body:JSON.stringify(body)});return r.json();}
@@ -1112,7 +1112,7 @@ async function loadMembers(){
     var res=await PAP.auth.getProfile();
     if(!res||!res.members){
       var resp=await fetch(_apiBase+'/admin/members',{
-        headers:{'Authorization':'Bearer '+sessionStorage.getItem('pap-token'),'X-Requested-With':'XMLHttpRequest'}
+        headers:{'Authorization':'Bearer '+localStorage.getItem('pap-token'),'X-Requested-With':'XMLHttpRequest'}
       });
       if(resp.ok){var data=await resp.json();allMembers=data.members||data||[];}
       else throw new Error('Failed to load');
@@ -1251,7 +1251,7 @@ async function saveMemberEdit(){
   try{
     var resp=await fetch(_apiBase+'/admin/member-update',{
       method:'PATCH',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionStorage.getItem('pap-token'),'X-Requested-With':'XMLHttpRequest'},
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('pap-token'),'X-Requested-With':'XMLHttpRequest'},
       body:JSON.stringify({memberId:id,role:role,subscriptionPlan:plan,subscriptionStatus:status})
     });
     var data=await resp.json();
@@ -1276,7 +1276,7 @@ async function suspendMemberFromModal(){
   try{
     var resp=await fetch(_apiBase+'/admin/member-delete',{
       method:'DELETE',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionStorage.getItem('pap-token'),'X-Requested-With':'XMLHttpRequest'},
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('pap-token'),'X-Requested-With':'XMLHttpRequest'},
       body:JSON.stringify({memberId:id,action:'suspend'})
     });
     var data=await resp.json();
@@ -1301,7 +1301,7 @@ async function deleteMemberFromModal(){
   try{
     var resp=await fetch(_apiBase+'/admin/member-delete',{
       method:'DELETE',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionStorage.getItem('pap-token'),'X-Requested-With':'XMLHttpRequest'},
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('pap-token'),'X-Requested-With':'XMLHttpRequest'},
       body:JSON.stringify({memberId:id,action:'delete'})
     });
     var data=await resp.json();
@@ -1363,7 +1363,7 @@ function closeModal(){
 async function loadSubmissionForReview(submissionId){
   try{
     var apiBase=window.PAP_CONFIG&&window.PAP_CONFIG.API_BASE||'/api';
-    var token=sessionStorage.getItem('pap-token');
+    var token=localStorage.getItem('pap-token');
     var resp=await fetch(apiBase+'/submissions/'+submissionId,{
       headers:{'Authorization':'Bearer '+token,'X-Requested-With':'XMLHttpRequest'}
     });
@@ -1437,7 +1437,7 @@ async function doReview(status){
 
   try{
     var apiBase=window.PAP_CONFIG&&window.PAP_CONFIG.API_BASE||'/api';
-    var token=sessionStorage.getItem('pap-token');
+    var token=localStorage.getItem('pap-token');
     var payload={
       status:status,
       reviewNote:note,

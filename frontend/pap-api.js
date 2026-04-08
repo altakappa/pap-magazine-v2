@@ -27,19 +27,19 @@ const PAP = (function() {
 
   // ======== TOKEN MANAGEMENT ========
   // Note: For production, consider migrating to httpOnly cookies managed by backend
-  function getToken() { return sessionStorage.getItem('pap-token'); }
-  function setToken(token) { sessionStorage.setItem('pap-token', token); }
-  function removeToken() { sessionStorage.removeItem('pap-token'); }
+  function getToken() { return localStorage.getItem('pap-token'); }
+  function setToken(token) { localStorage.setItem('pap-token', token); }
+  function removeToken() { localStorage.removeItem('pap-token'); }
   function getUser() {
-    const u = sessionStorage.getItem('pap-user');
+    const u = localStorage.getItem('pap-user');
     try { return u ? JSON.parse(u) : null; } catch(e) { return null; }
   }
   function setUser(user) {
     // Store only non-sensitive user fields
     var safe = { id: user.id, name: user.name, role: user.role, subscription: user.subscription };
-    sessionStorage.setItem('pap-user', JSON.stringify(safe));
+    localStorage.setItem('pap-user', JSON.stringify(safe));
   }
-  function removeUser() { sessionStorage.removeItem('pap-user'); }
+  function removeUser() { localStorage.removeItem('pap-user'); }
 
   // ======== HTTP HELPER ========
   async function request(method, endpoint, data, isFormData) {

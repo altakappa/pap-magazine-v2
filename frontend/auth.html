@@ -1051,11 +1051,11 @@ function setLang(l) {
   var oauthError = params.get('error');
   if (oauthToken) {
     // Store token and user, then redirect to main page
-    sessionStorage.setItem('pap-token', oauthToken);
+    localStorage.setItem('pap-token', oauthToken);
     if (oauthUser) {
       try {
         var u = JSON.parse(decodeURIComponent(oauthUser));
-        sessionStorage.setItem('pap-user', JSON.stringify({id:u.id, name:u.name, role:u.role, subscription:u.subscription}));
+        localStorage.setItem('pap-user', JSON.stringify({id:u.id, name:u.name, role:u.role, subscription:u.subscription}));
       } catch(e) {}
     }
     // Clean URL and redirect

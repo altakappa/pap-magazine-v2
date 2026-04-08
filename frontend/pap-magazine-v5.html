@@ -1324,8 +1324,8 @@ var edLogoFolders={
 function getLogoFolderId(t){if(edLogoFolders[t])return edLogoFolders[t];var tL=t.toLowerCase();for(var k in edLogoFolders){if(k.toLowerCase()===tL)return edLogoFolders[k];}return null;}
 
 // Global auth helpers (needed by openEditorial for premium logo section)
-function isPremium(){try{var u=sessionStorage.getItem('pap-user');if(!u)return false;var user=JSON.parse(u);return user&&user.subscription==='premium';}catch(e){return false;}}
-function isStandardOrAbove(){try{var u=sessionStorage.getItem('pap-user');if(!u)return false;var user=JSON.parse(u);return user&&(user.subscription==='standard'||user.subscription==='premium');}catch(e){return false;}}
+function isPremium(){try{var u=localStorage.getItem('pap-user');if(!u)return false;var user=JSON.parse(u);return user&&user.subscription==='premium';}catch(e){return false;}}
+function isStandardOrAbove(){try{var u=localStorage.getItem('pap-user');if(!u)return false;var user=JSON.parse(u);return user&&(user.subscription==='standard'||user.subscription==='premium');}catch(e){return false;}}
 
 function openEditorial(title,thumb){
   var d=edDetails[title];
@@ -2759,7 +2759,7 @@ try{
 (function(){
   function isStandardOrAbove(){
     try{
-      var u=sessionStorage.getItem('pap-user');
+      var u=localStorage.getItem('pap-user');
       if(!u) return false;
       var user=JSON.parse(u);
       return user && (user.subscription==='standard'||user.subscription==='premium');
@@ -2767,7 +2767,7 @@ try{
   }
   function isPremium(){
     try{
-      var u=sessionStorage.getItem('pap-user');
+      var u=localStorage.getItem('pap-user');
       if(!u) return false;
       var user=JSON.parse(u);
       return user && user.subscription==='premium';
