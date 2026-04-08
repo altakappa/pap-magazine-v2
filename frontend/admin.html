@@ -1087,7 +1087,7 @@ document.addEventListener('DOMContentLoaded',function(){
   var now=new Date();var dd=document.getElementById('dashDate');if(dd)dd.textContent=now.getFullYear()+'년 '+(now.getMonth()+1)+'월 '+now.getDate()+'일';
   if(typeof PAP!=='undefined'){
     if(!PAP.auth.isLoggedIn()){
-      window.location.href='auth.html';
+      window.location.href='auth.html?redirect=admin';
       return;
     }
     var user=PAP.auth.getUser();
