@@ -79,8 +79,13 @@ const PAP = (function() {
         clearTimeout(timeoutId);
         const json = await res.json();
 
-        // Handle expired sessions
+        // Handle 401 responses
         if (res.status === 401) {
+          // If this is a login attempt, pass the error through (don't treat as expired session)
+          if (endpoint === '/auth/login') {
+            throw new Error(json.message || json.code || 'Invalid credentials');
+          }
+          // Otherwise treat as expired session
           removeToken();
           removeUser();
           if (window.location.pathname.indexOf('auth.html') === -1) {

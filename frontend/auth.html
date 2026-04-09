@@ -362,7 +362,9 @@ var verifiedToken = '';
 // ======== NAVIGATION ========
 function goBack() {
   if (isLoginView) {
-    showSignup();
+    // Stay on login view if there's a login error showing, otherwise go to main
+    window.location.href = (window.getRedirectUrl?window.getRedirectUrl():'index.html');
+    return;
   } else if (currentStep > 1) {
     showStep(currentStep - 1);
   } else {
@@ -569,15 +571,19 @@ async function doLogin() {
     showSuccess();
   } catch (e) {
     var msg = e.message || '';
-    if (msg.includes('Invalid') || msg.includes('credentials') || msg.includes('password')) {
-      PAP.ui.toast(msgs.loginWrong, 'error');
-    } else if (msg.includes('not found') || msg.includes('No user')) {
+    // Clear only password, keep email for retry
+    document.getElementById('loginPw').value = '';
+    // Show specific error based on failure reason
+    if (msg.includes('not found') || msg.includes('No user') || msg.includes('USER_NOT_FOUND')) {
       PAP.ui.toast(msgs.loginNoUser, 'error');
+    } else if (msg.includes('password') || msg.includes('WRONG_PASSWORD')) {
+      PAP.ui.toast(msgs.loginWrong, 'error');
     } else if (msg.includes('network') || msg.includes('fetch')) {
       PAP.ui.toast(msgs.networkError, 'error');
     } else {
       PAP.ui.toast(msgs.loginFail, 'error');
     }
+    // Stay on login view — do NOT redirect
   }
 }
 
