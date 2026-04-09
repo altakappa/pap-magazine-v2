@@ -10,10 +10,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Montserrat',sans-serif;background:#000;color:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center;overflow-x:hidden;scrollbar-gutter:stable}
+body{font-family:'Montserrat',sans-serif;background:#000;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden;scrollbar-gutter:stable}
 a{color:#fff;text-decoration:none}
 
-.auth-wrapper{width:100%;max-width:460px;padding:20px}
+.auth-wrapper{width:100%;max-width:460px;padding:20px;flex:1;display:flex;flex-direction:column;justify-content:center;margin:0 auto}
 .auth-logo{text-align:center;margin-bottom:32px}
 .auth-logo a{display:inline-block}
 .auth-logo img{height:48px;width:auto}
@@ -97,12 +97,13 @@ a{color:#fff;text-decoration:none}
 .auth-terms{font-size:10px;color:rgba(255,255,255,.2);line-height:1.8;text-align:center;margin-top:16px}
 .auth-terms a{color:rgba(255,255,255,.4);text-decoration:underline;text-underline-offset:2px}
 
-/* BACK */
-.auth-back{position:fixed;top:28px;left:32px;font-size:11px;font-weight:600;letter-spacing:.1em;color:rgba(255,255,255,.3);transition:color .2s;cursor:pointer;background:none;border:none;font-family:'Montserrat',sans-serif}
-.auth-back:hover{color:#fff}
+/* HEADER BAR - sticky */
+.auth-header{position:sticky;top:0;left:0;right:0;width:100%;flex-shrink:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:16px 32px;background:rgba(0,0,0,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.06)}
+.auth-header-logo a{display:flex;align-items:center}
+.auth-header-logo img{height:24px;width:auto}
+.auth-header-right{display:flex;align-items:center;gap:16px}
 
 /* LANG */
-.auth-lang{position:fixed;top:28px;right:32px}
 .auth-lang select{background:transparent;color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.12);padding:5px 10px;font-size:10px;font-family:'Montserrat',sans-serif;letter-spacing:.1em;cursor:pointer}
 .auth-lang select option{background:#000;color:#fff}
 
@@ -119,6 +120,7 @@ a{color:#fff;text-decoration:none}
 .login-panel.active{display:block}
 
 @media(max-width:500px){
+  .auth-header{padding:12px 16px}
   .auth-wrapper{padding:20px 16px}
   .form-row{grid-template-columns:1fr}
   .step-hero h2{font-size:18px}
@@ -149,12 +151,11 @@ a{color:#fff;text-decoration:none}
 <!-- Cookie Consent + GA4 (consent-gated) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="cookie-consent.js"></script>
-<!-- Hide cookie banner on auth page + print styles -->
+<!-- print styles -->
 <style>
-#cookieConsent{display:none!important}
 @media print{
   body{background:#fff!important;color:#000!important}
-  .auth-back,.auth-lang{display:none!important}
+  .auth-header,.auth-lang{display:none!important}
   *{box-shadow:none!important;text-shadow:none!important}
 }
 </style>
@@ -167,11 +168,14 @@ a{color:#fff;text-decoration:none}
 <style>@keyframes loaderSlide{0%{left:-50%}100%{left:100%}}</style>
 <script>window.addEventListener('load',function(){var l=document.getElementById('pageLoader');if(l){l.style.opacity='0';setTimeout(function(){l.remove();},400);}});</script>
 
-<button class="auth-back" id="backBtn" onclick="goBack()" data-i18n="back">&#8592; 돌아가기</button>
-<div class="auth-lang"><select id="langSelect" onchange="setLang(this.value)"><option value="ko">KO</option><option value="en">EN</option><option value="it">IT</option><option value="fr">FR</option><option value="es">ES</option><option value="ja">JA</option><option value="zh">ZH</option><option value="ru">RU</option></select></div>
+<header class="auth-header">
+  <div class="auth-header-logo"><a href="index.html"><img loading="lazy" src="pap-logo.png" alt="PAP Magazine"></a></div>
+  <div class="auth-header-right">
+    <div class="auth-lang"><select id="langSelect" onchange="setLang(this.value)"><option value="ko">KO</option><option value="en">EN</option><option value="it">IT</option><option value="fr">FR</option><option value="es">ES</option><option value="ja">JA</option><option value="zh">ZH</option><option value="ru">RU</option></select></div>
+  </div>
+</header>
 
 <div class="auth-wrapper">
-  <div class="auth-logo"><a href="index.html"><img loading="lazy" src="pap-logo.png" alt="PAP Magazine"></a></div>
 
   <!-- STEP INDICATOR (for signup flow) -->
   <div class="step-indicator" id="stepIndicator">
