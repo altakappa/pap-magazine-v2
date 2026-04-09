@@ -400,15 +400,45 @@ const PAP = (function() {
       return tiers[user.subscription] >= tiers[requiredTier];
     },
 
-    // Show toast notification
+    // Show modal notification (center screen with confirm button)
     toast(message, type) {
-      const t = document.createElement('div');
-      t.style.cssText = 'position:fixed;bottom:24px;right:24px;padding:14px 24px;font-size:12px;font-weight:600;letter-spacing:.05em;z-index:9999;transition:all .3s;font-family:Montserrat,sans-serif;';
-      t.style.background = type === 'error' ? '#ff4444' : type === 'success' ? '#44bb66' : '#333';
-      t.style.color = '#fff';
-      t.textContent = message;
-      document.body.appendChild(t);
-      setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3000);
+      // Overlay
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:9998;display:flex;align-items:center;justify-content:center;animation:papFadeIn .2s ease;';
+      // Modal box
+      const modal = document.createElement('div');
+      modal.style.cssText = 'background:#111;border:1px solid rgba(255,255,255,.12);padding:32px 28px 24px;max-width:380px;width:90%;text-align:center;font-family:Montserrat,sans-serif;animation:papSlideUp .25s ease;';
+      // Icon
+      const icon = document.createElement('div');
+      icon.style.cssText = 'font-size:28px;margin-bottom:16px;';
+      icon.textContent = type === 'error' ? '⚠' : type === 'success' ? '✓' : 'ℹ';
+      // Message
+      const msg = document.createElement('div');
+      msg.style.cssText = 'font-size:13px;font-weight:500;color:#fff;line-height:1.7;letter-spacing:.02em;margin-bottom:24px;word-break:keep-all;';
+      msg.textContent = message;
+      // Confirm button
+      const btn = document.createElement('button');
+      btn.style.cssText = 'background:#fff;color:#000;border:none;padding:11px 40px;font-size:12px;font-weight:700;letter-spacing:.08em;cursor:pointer;font-family:Montserrat,sans-serif;transition:opacity .2s;';
+      btn.textContent = '확인';
+      btn.onmouseenter = function(){ btn.style.opacity='.8'; };
+      btn.onmouseleave = function(){ btn.style.opacity='1'; };
+      btn.onclick = function(){ overlay.style.opacity='0'; setTimeout(function(){ overlay.remove(); }, 200); };
+      // Also close on overlay click
+      overlay.onclick = function(e){ if(e.target===overlay){ btn.onclick(); } };
+      // Assemble
+      modal.appendChild(icon);
+      modal.appendChild(msg);
+      modal.appendChild(btn);
+      overlay.appendChild(modal);
+      // Inject keyframe animations if not already present
+      if (!document.getElementById('papModalStyles')) {
+        const style = document.createElement('style');
+        style.id = 'papModalStyles';
+        style.textContent = '@keyframes papFadeIn{from{opacity:0}to{opacity:1}}@keyframes papSlideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}';
+        document.head.appendChild(style);
+      }
+      document.body.appendChild(overlay);
+      btn.focus();
     }
   };
 
