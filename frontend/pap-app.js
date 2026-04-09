@@ -1077,7 +1077,22 @@ function scrollFilm(dir){
     t.style.animation = 'trailFade .5s ease forwards';
   }
 
+  // Check if any modal/popup/overlay is active (disable cursor interaction)
+  function isModalActive(){
+    var signupPopup = document.getElementById('signupPopup');
+    var creatorPopup = document.getElementById('creatorPopup');
+    var cookieBanner = document.getElementById('cookieConsent');
+    var papModal = document.querySelector('.pap-modal-overlay');
+    if(signupPopup && signupPopup.classList.contains('active')) return true;
+    if(creatorPopup && creatorPopup.classList.contains('active')) return true;
+    if(cookieBanner) return true;
+    if(papModal) return true;
+    return false;
+  }
+
   document.addEventListener('mousemove', function(e){
+    // Skip cursor tracking when any modal/popup is active
+    if(isModalActive()) return;
     mouseX = e.clientX;
     mouseY = e.clientY;
     if(onHero) spawnTrail(mouseX, mouseY);
