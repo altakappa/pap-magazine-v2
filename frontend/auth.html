@@ -587,22 +587,41 @@ async function doLogin() {
   }
 }
 
+// ======== COOKIE HELPERS (for PKCE verifier backup) ========
+function setCookie(name, value, minutes) {
+  var d = new Date(); d.setTime(d.getTime() + minutes * 60 * 1000);
+  document.cookie = name + '=' + encodeURIComponent(value) + ';expires=' + d.toUTCString() + ';path=/;SameSite=Lax';
+}
+function getCookie(name) {
+  var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  return match ? decodeURIComponent(match[2]) : null;
+}
+function deleteCookie(name) {
+  document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Lax';
+}
+
 // ======== SUPABASE CLIENT (for OAuth only) ========
+var SUPABASE_URL = 'https://igcazquhkwxtqsaqpznx.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnY2F6cXVoa3d4dHFzYXFwem54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMzg2MjgsImV4cCI6MjA4OTkxNDYyOH0.oCl_Rq1dSoM1Q67sJnp1YrO2rN_2N5XmxAkVFk_hAa8';
+var VERIFIER_KEY = 'sb-igcazquhkwxtqsaqpznx-auth-token-code-verifier';
+
 var _supabaseClient = null;
 function getSupabase() {
   if (!_supabaseClient && typeof supabase !== 'undefined') {
-    _supabaseClient = supabase.createClient(
-      'https://igcazquhkwxtqsaqpznx.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnY2F6cXVoa3d4dHFzYXFwem54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQzMzg2MjgsImV4cCI6MjA4OTkxNDYyOH0.oCl_Rq1dSoM1Q67sJnp1YrO2rN_2N5XmxAkVFk_hAa8',
-      {
-        auth: {
-          flowType: 'pkce',
-          detectSessionInUrl: true,
-          autoRefreshToken: false,
-          persistSession: true,
-        }
+    // Restore code_verifier from cookie if localStorage lost it (Safari ITP fix)
+    var cookieVerifier = getCookie('pap-pkce-verifier');
+    if (cookieVerifier && !localStorage.getItem(VERIFIER_KEY)) {
+      localStorage.setItem(VERIFIER_KEY, cookieVerifier);
+    }
+
+    _supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: {
+        flowType: 'pkce',
+        detectSessionInUrl: true,
+        autoRefreshToken: false,
+        persistSession: true,
       }
-    );
+    });
   }
   return _supabaseClient;
 }
@@ -610,7 +629,6 @@ function getSupabase() {
 // ======== SOCIAL LOGIN (frontend Supabase OAuth with PKCE) ========
 async function socialLogin(provider) {
   if (provider === 'kakao') {
-    // Kakao uses custom server-side flow
     if (typeof PAP !== 'undefined' && PAP.auth && PAP.auth.loginWithKakao) {
       PAP.auth.loginWithKakao();
     } else {
@@ -625,8 +643,6 @@ async function socialLogin(provider) {
     return;
   }
 
-  // Use PKCE flow: client stores code_verifier in localStorage,
-  // Supabase returns ?code=xxx after provider auth, then we exchange it
   var opts = {
     redirectTo: window.location.origin + '/auth',
     skipBrowserRedirect: false,
@@ -638,8 +654,16 @@ async function socialLogin(provider) {
   var result = await sb.auth.signInWithOAuth({ provider: provider, options: opts });
   if (result.error) {
     alert('OAuth error: ' + result.error.message);
+    return;
   }
-  // Browser will redirect to provider, then back to /auth with ?code= (PKCE) or #access_token= (implicit)
+
+  // Backup PKCE code_verifier to cookie (Safari ITP may clear localStorage on redirect)
+  setTimeout(function() {
+    var verifier = localStorage.getItem(VERIFIER_KEY);
+    if (verifier) {
+      setCookie('pap-pkce-verifier', verifier, 10); // 10 min expiry
+    }
+  }, 100);
 }
 
 // ======== ERROR MESSAGES (8 LANGUAGES) ========
@@ -1119,60 +1143,92 @@ function setLang(l) {
   }
 
   // ===== HANDLE SUPABASE OAUTH RETURN =====
-  // Supabase can return via: ?code=xxx (PKCE), #access_token=xxx (implicit), or ?error=xxx
   var oauthCode = params.get('code');
   var oauthToken = params.get('token');
   var oauthUser = params.get('user');
   var oauthError = params.get('error');
   var hashStr = window.location.hash;
+  var _oauthHandled = false;
 
   // Helper: exchange Supabase session for PAP JWT
   async function exchangeSupabaseForPAP(session) {
-    var resp = await fetch('/api/auth/exchange', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ access_token: session.access_token }),
-    });
-    var data = await resp.json();
-    if (resp.ok && data.token) {
-      localStorage.setItem('pap-token', data.token);
-      localStorage.setItem('pap-user', JSON.stringify({
-        id: data.user.id, email: data.user.email, name: data.user.name,
-        role: data.user.role, subscription: data.user.subscription
-      }));
-      window.history.replaceState({}, document.title, window.location.pathname);
-      window.location.href = (window.getRedirectUrl ? window.getRedirectUrl() : 'mypage.html');
-      return true;
-    } else {
-      alert('Login failed: ' + (data.detail || data.message || 'Unknown error'));
+    if (_oauthHandled) return false;
+    _oauthHandled = true;
+    try {
+      var resp = await fetch('/api/auth/exchange', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ access_token: session.access_token }),
+      });
+      var data = await resp.json();
+      if (resp.ok && data.token) {
+        localStorage.setItem('pap-token', data.token);
+        localStorage.setItem('pap-user', JSON.stringify({
+          id: data.user.id, email: data.user.email, name: data.user.name,
+          role: data.user.role, subscription: data.user.subscription
+        }));
+        // Clean up PKCE cookie
+        deleteCookie('pap-pkce-verifier');
+        window.history.replaceState({}, document.title, window.location.pathname);
+        window.location.href = (window.getRedirectUrl ? window.getRedirectUrl() : 'mypage.html');
+        return true;
+      } else {
+        if (typeof PAP !== 'undefined') { PAP.ui.toast('Login failed: ' + (data.detail || data.message || 'Unknown error'), 'error'); }
+        else { alert('Login failed: ' + (data.detail || data.message || 'Unknown error')); }
+        return false;
+      }
+    } catch(e) {
+      if (typeof PAP !== 'undefined') { PAP.ui.toast('OAuth error: ' + e.message, 'error'); }
+      else { alert('OAuth error: ' + e.message); }
       return false;
     }
   }
 
-  if (oauthCode) {
-    // PKCE flow: Supabase returned ?code=xxx — exchange it for a session
-    (async function() {
-      try {
-        var sb = getSupabase();
-        if (!sb) { alert('Supabase client not loaded'); return; }
-        var result = await sb.auth.exchangeCodeForSession(oauthCode);
-        if (result.error) {
-          alert('OAuth code exchange error: ' + result.error.message);
-          window.history.replaceState({}, document.title, window.location.pathname);
-          return;
+  // For PKCE flow (?code=xxx) or hash tokens (#access_token=xxx):
+  // Let Supabase JS handle the code exchange automatically via detectSessionInUrl,
+  // then use onAuthStateChange to catch the SIGNED_IN event.
+  if (oauthCode || (hashStr && hashStr.indexOf('access_token') > -1)) {
+    var sb = getSupabase();
+    if (sb) {
+      // Listen for auth state change — Supabase auto-exchanges the code
+      sb.auth.onAuthStateChange(function(event, session) {
+        if (event === 'SIGNED_IN' && session && session.access_token) {
+          exchangeSupabaseForPAP(session);
         }
-        var session = result.data && result.data.session;
-        if (session && session.access_token) {
-          await exchangeSupabaseForPAP(session);
-        } else {
-          alert('No session received from OAuth');
-          window.history.replaceState({}, document.title, window.location.pathname);
-        }
-      } catch(e) {
-        alert('OAuth error: ' + e.message);
-        window.history.replaceState({}, document.title, window.location.pathname);
-      }
-    })();
+      });
+
+      // Fallback: if onAuthStateChange doesn't fire within 5s, try manual exchange
+      setTimeout(function() {
+        if (_oauthHandled) return;
+        (async function() {
+          try {
+            var result = await sb.auth.getSession();
+            var session = result.data && result.data.session;
+            if (session && session.access_token) {
+              await exchangeSupabaseForPAP(session);
+            } else if (!_oauthHandled) {
+              // Last resort: if we have a code, try manual exchange
+              if (oauthCode) {
+                var exResult = await sb.auth.exchangeCodeForSession(oauthCode);
+                if (exResult.data && exResult.data.session) {
+                  await exchangeSupabaseForPAP(exResult.data.session);
+                } else {
+                  if (typeof PAP !== 'undefined') { PAP.ui.toast('OAuth code exchange error: ' + (exResult.error ? exResult.error.message : 'Unknown'), 'error'); }
+                  else { alert('OAuth code exchange error: ' + (exResult.error ? exResult.error.message : 'Unknown')); }
+                }
+              }
+              window.history.replaceState({}, document.title, window.location.pathname);
+            }
+          } catch(e) {
+            if (!_oauthHandled) {
+              if (typeof PAP !== 'undefined') { PAP.ui.toast('OAuth error: ' + e.message, 'error'); }
+              else { alert('OAuth error: ' + e.message); }
+              window.history.replaceState({}, document.title, window.location.pathname);
+            }
+          }
+        })();
+      }, 5000);
+    }
   } else if (oauthToken) {
     // Legacy server-side callback: ?token=xxx&user=xxx
     localStorage.setItem('pap-token', oauthToken);
@@ -1184,40 +1240,13 @@ function setLang(l) {
     }
     window.history.replaceState({}, document.title, window.location.pathname);
     window.location.href = (window.getRedirectUrl ? window.getRedirectUrl() : 'mypage.html');
-  } else if (hashStr && (hashStr.indexOf('access_token') > -1 || hashStr.indexOf('error') > -1)) {
-    // Implicit flow: tokens in hash fragment #access_token=xxx
-    (async function() {
-      try {
-        var sb = getSupabase();
-        if (!sb) { alert('Supabase client not loaded'); return; }
-        var result = await sb.auth.getSession();
-        var session = result.data && result.data.session;
-        if (session && session.access_token) {
-          await exchangeSupabaseForPAP(session);
-        } else {
-          // Try parsing hash manually as fallback
-          var hashParams = new URLSearchParams(hashStr.substring(1));
-          var accessToken = hashParams.get('access_token');
-          if (accessToken) {
-            await exchangeSupabaseForPAP({ access_token: accessToken });
-          } else {
-            var hashError = hashParams.get('error_description') || hashParams.get('error') || 'Unknown error';
-            alert('OAuth error: ' + hashError);
-          }
-        }
-      } catch(e) {
-        alert('OAuth error: ' + e.message);
-      }
-      window.history.replaceState({}, document.title, window.location.pathname);
-    })();
   } else if (oauthError) {
-    // Error from Supabase or callback
     var detail = params.get('detail') || params.get('error_description') || '';
     var errText = oauthError;
     if (detail) errText += ': ' + detail;
-    // Don't show alert for flow state errors on fresh page load (stale URL)
     if (detail.indexOf('flow state') === -1) {
-      alert(errText);
+      if (typeof PAP !== 'undefined') { PAP.ui.toast(errText, 'error'); }
+      else { alert(errText); }
     }
     window.history.replaceState({}, document.title, window.location.pathname);
   }
