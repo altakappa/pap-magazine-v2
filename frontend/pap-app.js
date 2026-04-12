@@ -38,7 +38,21 @@ var _si=document.getElementById('searchInput');if(_si)_si.addEventListener('inpu
 document.addEventListener('keydown',e=>{if(e.key==='Escape'||e.key==='Backspace'){var isInput=e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.isContentEditable;if(e.key==='Backspace'&&isInput)return;var _sb=document.getElementById('searchBar');if(_sb)_sb.classList.remove('active');document.getElementById('navOverlay').classList.remove('active');var edOv=document.getElementById('edOverlay');if(edOv&&edOv.classList.contains('active')){closeEditorial();e.preventDefault();return;}closeAllEditorials();closeAllFilms();closeAllArticles();if(document.getElementById('filmDetailOverlay'))document.getElementById('filmDetailOverlay').classList.remove('active');if(document.getElementById('artDetailOverlay'))document.getElementById('artDetailOverlay').classList.remove('active');if(e.key==='Backspace')e.preventDefault();}});
 
 // ======== NAV ========
-function toggleNav(){var _n=document.getElementById('navOverlay');if(_n)_n.classList.toggle('active')}
+function toggleNav(){
+  var _n=document.getElementById('navOverlay');
+  if(!_n) return;
+  _n.classList.toggle('active');
+  var fLogo=document.getElementById('floatingLogo');
+  var heroEl=document.getElementById('hero');
+  if(fLogo){
+    if(_n.classList.contains('active')){
+      fLogo.style.display='none';
+      if(heroEl) heroEl.style.cursor='';
+    } else {
+      fLogo.style.display='';
+    }
+  }
+}
 
 // ======== FASHION CAROUSEL ========
 let fPos=0;
@@ -1082,9 +1096,11 @@ function scrollFilm(dir){
     var signupPopup = document.getElementById('signupPopup');
     var creatorPopup = document.getElementById('creatorPopup');
     var cookieBanner = document.getElementById('cookieConsent');
+    var navOverlay = document.getElementById('navOverlay');
     var papModal = document.querySelector('.pap-modal-overlay');
     if(signupPopup && signupPopup.classList.contains('active')) return true;
     if(creatorPopup && creatorPopup.classList.contains('active')) return true;
+    if(navOverlay && navOverlay.classList.contains('active')) return true;
     if(cookieBanner) return true;
     if(papModal) return true;
     return false;
@@ -1379,7 +1395,7 @@ function scrollFilm(dir){
       e.preventDefault();
       e.stopPropagation();
       if(logoClickTimer) clearTimeout(logoClickTimer);
-      logoClickTimer = setTimeout(function(){ window.location.reload(); }, 300);
+      logoClickTimer = setTimeout(function(){ toggleNav(); }, 300);
     });
     fLogo.addEventListener('dblclick', function(e){
       e.preventDefault();
