@@ -17,25 +17,34 @@
 body{font-family:'Montserrat',sans-serif;background:#000;color:#fff;min-height:100vh;overflow-x:hidden}
 a{color:#fff;text-decoration:none}
 
-.side-nav{position:fixed;left:0;top:0;width:80px;height:100vh;display:flex;flex-direction:column;align-items:center;padding-top:32px;z-index:100}
-.nav-dots{width:36px;height:36px;border-radius:50%;border:1.5px solid rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;cursor:pointer;margin-bottom:48px;transition:border-color .3s}
+.side-nav{position:fixed;left:0;top:0;width:80px;height:100vh;display:flex;flex-direction:column;align-items:center;padding-top:32px;z-index:100;transition:transform .4s cubic-bezier(.22,1,.36,1)}
+.side-nav.collapsed .nav-links{opacity:0;pointer-events:none;transform:translateX(-8px)}
+.nav-dots{width:36px;height:36px;border-radius:50%;border:1.5px solid rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;cursor:pointer;margin-bottom:36px;transition:border-color .3s,background .3s}
 .nav-dots:hover{border-color:#fff}
-.nav-dots span{font-size:18px;letter-spacing:2px;color:rgba(255,255,255,.6)}
-.nav-links{display:flex;flex-direction:column;gap:32px}
-.nav-links a{writing-mode:vertical-rl;font-size:13px;font-weight:700;letter-spacing:5px;text-transform:uppercase;color:rgba(255,255,255,.35);transition:color .3s}
+.nav-dots.open{border-color:rgba(255,255,255,.7);background:rgba(255,255,255,.08)}
+.nav-dots span{font-size:18px;letter-spacing:2px;color:rgba(255,255,255,.6);transition:color .3s}
+.nav-dots.open span{color:#fff}
+.nav-links{display:flex;flex-direction:column;gap:0;opacity:1;transition:opacity .3s,transform .3s;overflow-y:auto;max-height:calc(100vh - 100px);-ms-overflow-style:none;scrollbar-width:none}
+.nav-links::-webkit-scrollbar{display:none}
+.nav-group-label{writing-mode:vertical-rl;font-size:9px;font-weight:600;letter-spacing:.25em;text-transform:uppercase;color:rgba(255,255,255,.18);padding:16px 0 10px;pointer-events:none}
+.nav-links a{writing-mode:vertical-rl;font-size:12px;font-weight:700;letter-spacing:4px;text-transform:uppercase;color:rgba(255,255,255,.3);transition:color .3s;padding:12px 0}
 .nav-links a:hover{color:rgba(255,255,255,.7)}
 .nav-links a.active{color:#fff}
+.nav-divider{width:1px;height:20px;background:rgba(255,255,255,.1);margin:8px auto}
 
 .lang-selector{position:fixed;top:32px;right:40px;z-index:100}
 .lang-selector select{background:transparent;color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.2);padding:6px 12px;font-size:11px;font-family:'Montserrat',sans-serif;letter-spacing:.1em;cursor:pointer}
 .lang-selector select option{background:#000;color:#fff}
 
-.content{margin-left:120px;padding:80px 60px 60px 0;max-width:760px}
+.content{margin-left:120px;padding:100px 60px 80px 0;max-width:800px}
 
 /* PAGE HERO */
-.page-hero{margin-bottom:60px}
-.page-hero h1{font-size:clamp(32px,5vw,56px);font-weight:900;letter-spacing:.04em;text-transform:uppercase;line-height:1;margin-bottom:20px}
-.page-hero p{font-size:13px;line-height:2;color:rgba(255,255,255,.5);max-width:560px}
+.page-hero{margin-bottom:64px}
+.page-hero h1{font-size:clamp(36px,5vw,56px);font-weight:900;letter-spacing:.04em;text-transform:uppercase;line-height:1.05;margin-bottom:24px}
+.page-hero p{font-size:14px;line-height:2;color:rgba(255,255,255,.5);max-width:600px}
+
+/* FORM SECTION TITLES */
+.form-section-title{font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.06)}
 
 /* PREMIUM BADGE */
 .premium-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 16px;border:1px solid rgba(255,255,255,.2);margin-bottom:32px;font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.5)}
@@ -60,6 +69,10 @@ a{color:#fff;text-decoration:none}
 .form-label .required{color:rgba(255,255,255,.6)}
 .form-input{width:100%;background:transparent;border:1px solid rgba(255,255,255,.15);padding:14px 16px;font-size:13px;font-family:'Montserrat',sans-serif;color:#fff;letter-spacing:.02em;transition:border-color .3s;outline:none}
 .form-input:focus{border-color:rgba(255,255,255,.5)}
+.form-input.error{border-color:rgba(255,80,80,.7)}
+.form-input.error:focus{border-color:rgba(255,80,80,.9)}
+.field-error{display:none;font-size:10px;color:rgba(255,80,80,.85);margin-top:6px;letter-spacing:.04em;line-height:1.6}
+.field-error.visible{display:block}
 .form-input::placeholder{color:rgba(255,255,255,.2)}
 textarea.form-input{min-height:200px;resize:vertical;line-height:1.8}
 select.form-input{cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' fill='none' stroke='rgba(255,255,255,0.4)' stroke-width='1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
@@ -127,6 +140,8 @@ select.form-input option{background:#111;color:#fff}
 
 @media(max-width:768px){
   .side-nav{width:50px;padding-top:20px}
+  .side-nav .nav-group-label{font-size:8px;letter-spacing:.15em;padding:10px 0 6px}
+  .side-nav .nav-links a{font-size:10px;letter-spacing:3px;padding:8px 0}
   .content{margin-left:60px;padding:60px 20px}
   .form-row{grid-template-columns:1fr}
   .fl-info-grid{grid-template-columns:1fr}
@@ -177,17 +192,29 @@ select.form-input option{background:#111;color:#fff}
 
 <div class="lang-selector"><select id="langSelect" onchange="setLang(this.value)"><option value="ko">KO</option><option value="en">EN</option><option value="it">IT</option><option value="fr">FR</option><option value="es">ES</option><option value="ja">JA</option><option value="zh">ZH</option><option value="ru">RU</option></select></div>
 
-<nav role="navigation" aria-label="Main navigation" class="side-nav">
-  <a href="index.html" class="nav-dots"><span>&#8942;</span></a>
+<nav role="navigation" aria-label="Main navigation" class="side-nav" id="sideNav">
+  <div class="nav-dots open" id="navToggle" onclick="toggleSideNav()"><span>&#8942;</span></div>
   <div class="nav-links">
-    <a href="business.html" data-i18n="business">BUSINESS</a>
-    <a href="about.html" data-i18n="about">ABOUT</a>
-    <a href="contact.html" data-i18n="contact">CONTACT</a>
+    <div class="nav-group-label">MEMBERS</div>
     <a href="subscribe.html" data-i18n="subscribe">SUBSCRIBE</a>
     <a href="submission.html" data-i18n="submission">SUBMISSION</a>
     <a href="pullletter.html" class="active" data-i18n="pullletter">PULL-LETTER</a>
+    <div class="nav-divider"></div>
+    <div class="nav-group-label">ABOUT</div>
+    <a href="business.html" data-i18n="business">BUSINESS</a>
+    <a href="about.html" data-i18n="about">ABOUT</a>
+    <a href="contact.html" data-i18n="contact">CONTACT</a>
   </div>
 </nav>
+<script>
+function toggleSideNav(){
+  var nav=document.getElementById('sideNav');
+  var btn=document.getElementById('navToggle');
+  if(!nav) return;
+  nav.classList.toggle('collapsed');
+  if(btn) btn.classList.toggle('open');
+}
+</script>
 
 <main role="main" class="content">
 
@@ -225,28 +252,29 @@ select.form-input option{background:#111;color:#fff}
   <div class="pl-form" id="flForm">
     <div class="form-section-title" data-i18n="secPhotographer">포토그래퍼 정보</div>
     <div class="form-row">
-      <div class="form-group"><label class="form-label"><span data-i18n="labelPhName">포토그래퍼 이름</span> <span class="required">*</span></label><input type="text" class="form-input" id="phName" placeholder="Full Name"></div>
-      <div class="form-group"><label class="form-label"><span data-i18n="labelPhInsta">인스타그램</span> <span class="required">*</span></label><input type="text" class="form-input" id="phInsta" placeholder="@username"></div>
+      <div class="form-group"><label class="form-label"><span data-i18n="labelPhName">포토그래퍼 이름</span> <span class="required">*</span></label><input type="text" class="form-input" id="phName" placeholder="Full Name"><div class="field-error" id="err-phName"></div></div>
+      <div class="form-group"><label class="form-label"><span data-i18n="labelPhInsta">인스타그램</span> <span class="required">*</span></label><input type="text" class="form-input" id="phInsta" placeholder="@username"><div class="field-error" id="err-phInsta"></div></div>
     </div>
-    <div class="form-group"><label class="form-label"><span data-i18n="labelPhPortfolio">포트폴리오 사이트</span> <span class="required">*</span></label><input type="url" class="form-input" id="phPortfolio" placeholder="https://..."></div>
+    <div class="form-group"><label class="form-label"><span data-i18n="labelPhPortfolio">포트폴리오 사이트</span> <span class="required">*</span></label><input type="url" class="form-input" id="phPortfolio" placeholder="https://..."><div class="field-error" id="err-phPortfolio"></div></div>
 
     <div class="form-section-title" style="margin-top:40px" data-i18n="secStylist">스타일리스트 정보</div>
     <div class="form-row">
-      <div class="form-group"><label class="form-label"><span data-i18n="labelStName">스타일리스트 이름</span> <span class="required">*</span></label><input type="text" class="form-input" id="stName" placeholder="Full Name"></div>
-      <div class="form-group"><label class="form-label"><span data-i18n="labelStInsta">인스타그램</span> <span class="required">*</span></label><input type="text" class="form-input" id="stInsta" placeholder="@username"></div>
+      <div class="form-group"><label class="form-label"><span data-i18n="labelStName">스타일리스트 이름</span> <span class="required">*</span></label><input type="text" class="form-input" id="stName" placeholder="Full Name"><div class="field-error" id="err-stName"></div></div>
+      <div class="form-group"><label class="form-label"><span data-i18n="labelStInsta">인스타그램</span> <span class="required">*</span></label><input type="text" class="form-input" id="stInsta" placeholder="@username"><div class="field-error" id="err-stInsta"></div></div>
     </div>
-    <div class="form-group"><label class="form-label"><span data-i18n="labelStPortfolio">포트폴리오 사이트</span> <span class="required">*</span></label><input type="url" class="form-input" id="stPortfolio" placeholder="https://..."></div>
+    <div class="form-group"><label class="form-label"><span data-i18n="labelStPortfolio">포트폴리오 사이트</span> <span class="required">*</span></label><input type="url" class="form-input" id="stPortfolio" placeholder="https://..."><div class="field-error" id="err-stPortfolio"></div></div>
 
     <div class="form-section-title" style="margin-top:40px" data-i18n="secContact">연락처</div>
     <div class="form-row">
-      <div class="form-group"><label class="form-label"><span data-i18n="labelContactName">요청자 이름</span> <span class="required">*</span></label><input type="text" class="form-input" id="contactName" placeholder="Full Name"></div>
-      <div class="form-group"><label class="form-label"><span data-i18n="labelContactEmail">이메일</span> <span class="required">*</span></label><input type="email" class="form-input" id="contactEmail" placeholder="email@example.com"></div>
+      <div class="form-group"><label class="form-label"><span data-i18n="labelContactName">요청자 이름</span> <span class="required">*</span></label><input type="text" class="form-input" id="contactName" placeholder="Full Name"><div class="field-error" id="err-contactName"></div></div>
+      <div class="form-group"><label class="form-label"><span data-i18n="labelContactEmail">이메일</span> <span class="required">*</span></label><input type="email" class="form-input" id="contactEmail" placeholder="email@example.com"><div class="field-error" id="err-contactEmail"></div></div>
     </div>
 
     <div class="form-section-title" style="margin-top:40px" data-i18n="secMoodboard">무드보드</div>
     <div class="form-group"><label class="form-label"><span data-i18n="labelMoodboard">무드보드 파일 업로드</span> <span class="required">*</span></label>
       <div class="upload-zone" id="uploadZone"><input type="file" class="upload-input" id="fileInput" multiple accept="image/*,.pdf,.doc,.docx,.pptx"><div class="upload-icon"><svg viewBox="0 0 36 36" fill="none"><path d="M18 26V10M18 10L12 16M18 10L24 16" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 26v3a2 2 0 002 2h22a2 2 0 002-2v-3" stroke-width="2" stroke-linecap="round"/></svg></div><div class="upload-text"><strong data-i18n="uploadClick">클릭</strong> <span data-i18n="uploadOr">또는 파일을 드래그하세요</span></div><div class="upload-hint" data-i18n="uploadSpec">JPG, PNG, PDF, PPT · 파일당 최대 25MB</div></div>
       <div class="file-list" id="fileList"></div>
+      <div class="field-error" id="err-moodboard"></div>
       <div class="form-hint" data-i18n="moodboardHint">촬영 방향성이 담긴 무드보드, 레퍼런스 이미지, 컨셉 자료 등을 첨부해 주세요.</div>
     </div>
     <div class="form-group"><label class="form-label"><span data-i18n="labelAdditional">추가 메시지 (선택)</span></label><textarea class="form-input" id="additionalMsg" placeholder="" style="min-height:80px"></textarea></div>
@@ -369,9 +397,108 @@ function addFiles(files){
 function removeFile(idx){uploadedFiles.splice(idx,1);renderFileList();}
 function renderFileList(){var html='';for(var i=0;i<uploadedFiles.length;i++){var f=uploadedFiles[i];var size=(f.size/1024/1024).toFixed(1)+' MB';html+='<div class="file-item"><span class="file-name">'+f.name+'</span><span class="file-size">'+size+'</span><button class="file-remove" onclick="removeFile('+i+')">×</button></div>';}fileListEl.innerHTML=html;}
 
+// ======== VALIDATION HELPERS ========
+function _showFieldError(id,msg){
+  var input=document.getElementById(id);
+  var errEl=document.getElementById('err-'+id);
+  if(input) input.classList.add('error');
+  if(errEl){errEl.textContent=msg;errEl.classList.add('visible');}
+}
+function _clearFieldError(id){
+  var input=document.getElementById(id);
+  var errEl=document.getElementById('err-'+id);
+  if(input) input.classList.remove('error');
+  if(errEl) errEl.classList.remove('visible');
+}
+function _clearAllErrors(){
+  document.querySelectorAll('.form-input.error').forEach(function(el){el.classList.remove('error');});
+  document.querySelectorAll('.field-error.visible').forEach(function(el){el.classList.remove('visible');});
+}
+function _getValText(key,fallback){
+  var lang=localStorage.getItem('pap-lang')||'ko';
+  var msgs={
+    required:{ko:'필수 입력 항목입니다',en:'This field is required',it:'Campo obbligatorio',fr:'Champ obligatoire',es:'Campo obligatorio',ja:'必須項目です',zh:'必填项',ru:'Обязательное поле'},
+    invalidEmail:{ko:'올바른 이메일 형식이 아닙니다',en:'Please enter a valid email',it:'Email non valida',fr:'Veuillez entrer un email valide',es:'Ingrese un email válido',ja:'有効なメールアドレスを入力してください',zh:'请输入有效的邮箱',ru:'Введите корректный email'},
+    invalidUrl:{ko:'올바른 URL 형식이 아닙니다 (https://...)',en:'Please enter a valid URL (https://...)',it:'Inserisci un URL valido (https://...)',fr:'Veuillez entrer une URL valide (https://...)',es:'Ingrese una URL válida (https://...)',ja:'有効なURLを入力してください (https://...)',zh:'请输入有效的URL (https://...)',ru:'Введите корректный URL (https://...)'},
+    invalidInsta:{ko:'@ 포함 인스타그램 핸들을 입력해주세요',en:'Enter an Instagram handle starting with @',it:"Inserisci un handle Instagram che inizi con @",fr:"Entrez un identifiant Instagram commençant par @",es:'Ingrese un handle de Instagram que comience con @',ja:'@から始まるInstagramハンドルを入力してください',zh:'请输入以@开头的Instagram用户名',ru:'Введите Instagram-аккаунт, начинающийся с @'},
+    noFiles:{ko:'무드보드 파일을 1개 이상 업로드해주세요',en:'Please upload at least one mood board file',it:'Carica almeno un file mood board',fr:'Veuillez télécharger au moins un fichier mood board',es:'Cargue al menos un archivo de mood board',ja:'ムードボードファイルを1つ以上アップロードしてください',zh:'请至少上传一个情绪板文件',ru:'Загрузите хотя бы один файл мудборда'},
+    premiumRequired:{ko:'프리미엄 구독자만 이용 가능한 기능입니다',en:'This feature is available only for Premium subscribers',it:'Funzione disponibile solo per abbonati Premium',fr:'Fonctionnalité réservée aux abonnés Premium',es:'Función disponible solo para suscriptores Premium',ja:'Premium会員限定の機能です',zh:'此功能仅限Premium订阅用户使用',ru:'Функция доступна только для подписчиков Premium'}
+  };
+  var m=msgs[key];if(!m) return fallback||'';
+  return m[lang]||m.en||fallback||'';
+}
+function _isValidEmail(v){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);}
+function _isValidUrl(v){return /^https?:\/\/.+\..+/.test(v);}
+
 // ======== SUBMIT ========
 async function submitFL(){
-  // Collect form data
+  // 1) Premium subscription check FIRST
+  if(typeof PAP!=='undefined' && !PAP.auth.isPremium()){
+    document.getElementById('accessGateOverlay').classList.remove('hidden');
+    document.getElementById('flForm').style.display='none';
+    PAP.ui.toast(_getValText('premiumRequired'),'error');
+    return;
+  }
+
+  // 2) Field-level validation
+  _clearAllErrors();
+  var valid=true;
+  var firstErr=null;
+
+  var requiredFields=[
+    {id:'phName',type:'text'},
+    {id:'phInsta',type:'insta'},
+    {id:'phPortfolio',type:'url'},
+    {id:'stName',type:'text'},
+    {id:'stInsta',type:'insta'},
+    {id:'stPortfolio',type:'url'},
+    {id:'contactName',type:'text'},
+    {id:'contactEmail',type:'email'}
+  ];
+
+  for(var i=0;i<requiredFields.length;i++){
+    var f=requiredFields[i];
+    var el=document.getElementById(f.id);
+    if(!el) continue;
+    var v=el.value.trim();
+
+    if(!v){
+      _showFieldError(f.id,_getValText('required'));
+      valid=false;
+      if(!firstErr) firstErr=el;
+      continue;
+    }
+    if(f.type==='email' && !_isValidEmail(v)){
+      _showFieldError(f.id,_getValText('invalidEmail'));
+      valid=false;
+      if(!firstErr) firstErr=el;
+    } else if(f.type==='url' && !_isValidUrl(v)){
+      _showFieldError(f.id,_getValText('invalidUrl'));
+      valid=false;
+      if(!firstErr) firstErr=el;
+    } else if(f.type==='insta' && !v.startsWith('@')){
+      _showFieldError(f.id,_getValText('invalidInsta'));
+      valid=false;
+      if(!firstErr) firstErr=el;
+    }
+  }
+
+  // File upload check
+  if(!uploadedFiles || uploadedFiles.length===0){
+    var moodErr=document.getElementById('err-moodboard');
+    if(moodErr){moodErr.textContent=_getValText('noFiles');moodErr.classList.add('visible');}
+    var uz=document.getElementById('uploadZone');
+    if(uz) uz.style.borderColor='rgba(255,80,80,.7)';
+    valid=false;
+    if(!firstErr && uz) firstErr=uz;
+  }
+
+  if(!valid){
+    if(firstErr) firstErr.scrollIntoView({behavior:'smooth',block:'center'});
+    return;
+  }
+
+  // 3) Collect and submit
   var data={};
   document.querySelectorAll('#flForm input, #flForm select, #flForm textarea').forEach(function(el){
     if(el.name||el.id) data[el.name||el.id]=el.value;
@@ -386,6 +513,17 @@ async function submitFL(){
     PAP.ui.toast(e.message||'Submission failed','error');
   }
 }
+
+// Clear error on input
+document.querySelectorAll('#flForm .form-input').forEach(function(el){
+  el.addEventListener('input',function(){
+    var id=this.id;
+    _clearFieldError(id);
+    // Reset upload zone border
+    var uz=document.getElementById('uploadZone');
+    if(uz) uz.style.borderColor='';
+  });
+});
 
 // ======== REVIEW RESULT DISPLAY ========
 function showReview(type){
@@ -458,11 +596,20 @@ function setLang(l){
   setLang(saved);
 })();
 
-// Auto-check login on load
+// Auto-check login + premium on load
 document.addEventListener('DOMContentLoaded',function(){
   if(typeof PAP!=='undefined'&&PAP.auth.isLoggedIn()){
-    document.getElementById('accessGateOverlay').classList.add('hidden');
-    document.getElementById('flForm').style.display='block';
+    if(PAP.auth.isPremium()){
+      document.getElementById('accessGateOverlay').classList.add('hidden');
+      document.getElementById('flForm').style.display='block';
+    } else {
+      // Logged in but not premium — show gate with upgrade message
+      var gate=document.getElementById('accessGate');
+      if(gate){
+        var loginBtn=gate.querySelector('[data-i18n="gateLogin"]');
+        if(loginBtn) loginBtn.style.display='none';
+      }
+    }
   }
 });
 </script>
