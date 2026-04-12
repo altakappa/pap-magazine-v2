@@ -14,8 +14,12 @@ a{text-decoration:none;color:inherit}
 button{cursor:pointer;font-family:inherit}
 
 /* LOADER */
-.loader{position:fixed;inset:0;background:var(--black);z-index:9999;display:flex;align-items:center;justify-content:center;transition:opacity .6s,visibility .6s}
+.loader{position:fixed;inset:0;background:var(--black);z-index:9999;display:flex;align-items:center;justify-content:center;transition:opacity .6s,visibility .6s;overflow:hidden}
 .loader.hidden{opacity:0;visibility:hidden;pointer-events:none}
+.loader-bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transition:opacity .8s ease}
+.loader-bg.loaded{opacity:1}
+.loader-bg::after{content:'';position:absolute;inset:0;background:rgba(0,0,0,.45)}
+.loader-logo{position:relative;z-index:2}
 .loader-logo img{height:clamp(40px,8vw,67px);width:auto}
 
 /* HEADER */

@@ -21,6 +21,18 @@ function setLang(l){localStorage.setItem('pap-lang',l);
 }
 
 // ======== LOADER ========
+(function(){
+  var bg=document.getElementById('loaderBg');
+  if(bg){
+    var slides=document.querySelectorAll('.hero-slide-img');
+    if(slides.length){
+      var src=slides[Math.floor(Math.random()*slides.length)].src;
+      var img=new Image();
+      img.onload=function(){bg.style.backgroundImage='url('+src+')';bg.classList.add('loaded');};
+      img.src=src;
+    }
+  }
+})();
 window.addEventListener('load',()=>{var _l=document.getElementById('loader');if(_l)setTimeout(()=>_l.classList.add('hidden'),800);});
 setTimeout(()=>{var _l=document.getElementById('loader');if(_l)_l.classList.add('hidden');},3000);
 
@@ -605,7 +617,7 @@ window.addEventListener('popstate',function(e){
   if(edAll && edAll.classList.contains('active')){closeAllEditorials(true);return;}
   // Close film/article overlays on back button
   var filmDet=document.getElementById('filmDetailOverlay');
-  if(filmDet && filmDet.classList.contains('active')){closeFilmDetail();return;}
+  if(filmDet && filmDet.classList.contains('active')){closeFilmDetail(true);return;}
   var filmAll=document.getElementById('filmAllOverlay');
   if(filmAll && filmAll.classList.contains('active')){closeAllFilms();return;}
   var artDet=document.getElementById('artDetailOverlay');
@@ -776,6 +788,7 @@ function _openFilmDetailInner(idx){
   }
   overlay.classList.add('active');
   document.body.style.overflow='hidden';
+  try{history.pushState({film:true,idx:idx},'',window.location.pathname+'#film/'+encodeURIComponent(f.t||''));}catch(e){}
 }
 function _findFilmByTitle(title){
   if(!title) return -1;
@@ -785,12 +798,19 @@ function _findFilmByTitle(title){
   }
   return -1;
 }
-function closeFilmDetail(){
+function closeFilmDetail(skipHistory){
   var overlay=document.getElementById('filmDetailOverlay');
-  if(overlay){
+  if(overlay&&overlay.classList.contains('active')){
     overlay.classList.remove('active');
     document.getElementById('filmDetailPlayer').src='about:blank';
-    document.body.style.overflow='hidden'; // keep films overlay scroll
+    // Check if films list overlay is open underneath
+    var filmAll=document.getElementById('filmAllOverlay');
+    if(filmAll&&filmAll.classList.contains('active')){
+      document.body.style.overflow='hidden';
+    } else {
+      document.body.style.overflow='';
+    }
+    if(!skipHistory){try{history.back();}catch(e){}}
   }
 }
 
