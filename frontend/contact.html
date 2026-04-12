@@ -145,6 +145,8 @@ body:'<div class="contact-grid"><div class="contact-block"><h3>IT Office</h3><p>
 ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'}
 };
 function setLang(l){localStorage.setItem('pap-lang',l);var d=L[l]||L.ko;document.querySelectorAll('[data-i18n]').forEach(function(e){var k=e.getAttribute('data-i18n');if(d[k])e.textContent=d[k];});document.getElementById('contactBody').innerHTML=d.body;document.getElementById('footerLegal').innerHTML=d.ft;document.getElementById('langSelect').value=l;}
+// Media Kit — open Google Drive folder directly
+function downloadMediaKit(lang){window.open('https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF','_blank','noopener');}
 // AUTO LANGUAGE DETECTION
 (function(){
   var saved=localStorage.getItem('pap-lang');
