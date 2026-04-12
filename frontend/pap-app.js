@@ -1303,7 +1303,10 @@ function scrollFilm(dir){
   function updateFloatingLogo(){
     if(!heroEl) return;
     const heroRect = heroEl.getBoundingClientRect();
-    const isInHero = heroRect.top <= mouseY && mouseY <= heroRect.bottom && heroRect.left <= mouseX && mouseX <= heroRect.right;
+    // Exclude header area — cursor must be below header to activate custom cursor
+    var headerEl = document.querySelector('.header');
+    var headerBottom = headerEl ? headerEl.getBoundingClientRect().bottom + 8 : 80; // +8px buffer
+    const isInHero = heroRect.top <= mouseY && mouseY <= heroRect.bottom && heroRect.left <= mouseX && mouseX <= heroRect.right && mouseY > headerBottom;
 
     // Detect if cursor is near left or right edge of hero
     var nearLeftEdge = isInHero && (mouseX - heroRect.left) < EDGE_THRESHOLD;
