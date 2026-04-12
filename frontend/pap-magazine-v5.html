@@ -35,7 +35,7 @@ button{cursor:pointer;font-family:inherit}
 
 /* FLOATING CURSOR LOGO */
 .floating-logo{position:fixed;z-index:1100;pointer-events:none;transition:none;will-change:transform,left,top}
-.floating-logo a{pointer-events:auto;display:block;cursor:none}
+.floating-logo a{pointer-events:auto;display:block;cursor:pointer}
 .floating-logo img{height:32px;width:auto}
 .floating-logo.in-header{transition:left .4s cubic-bezier(.25,.46,.45,.94),top .4s cubic-bezier(.25,.46,.45,.94),transform .4s cubic-bezier(.25,.46,.45,.94)}
 .floating-logo.on-cursor{cursor:none}
@@ -189,7 +189,7 @@ button{cursor:pointer;font-family:inherit}
 .ed-row-arrow:hover{background:rgba(0,0,0,.8)}
 .ed-row-left{left:0}
 .ed-row-right{right:0}
-.ed-row-track{display:flex;gap:8px;overflow-x:auto;padding:0 48px;scroll-behavior:smooth;-ms-overflow-style:none;scrollbar-width:none}
+.ed-row-track{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;padding:0 48px;scroll-behavior:smooth;overscroll-behavior-x:contain;-ms-overflow-style:none;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .ed-row-track::-webkit-scrollbar{display:none}
 .ed-row-card{min-width:calc((100vw - 96px - 56px) / 7);max-width:calc((100vw - 96px - 56px) / 7);flex-shrink:0;cursor:pointer;transition:transform .3s;position:relative}
 @media(max-width:1200px){.ed-row-card{min-width:calc((100vw - 96px - 40px) / 5);max-width:calc((100vw - 96px - 40px) / 5)}}
@@ -2027,6 +2027,19 @@ function scrollFilm(dir){
       if(curTitle){var fi=_findFilmByTitle(curTitle);if(fi>=0)openFilmDetail(fi);}
     });
   }
+  // ⓘ Info button — navigate to films page
+  var popInfo=popup.querySelector('.nf-popup-info');
+  if(popInfo){
+    popInfo.addEventListener('click',function(){
+      if(curTitle){
+        var fi=_findFilmByTitle(curTitle);
+        if(fi>=0) openFilmDetail(fi);
+        else window.location.href='films.html';
+      } else {
+        window.location.href='films.html';
+      }
+    });
+  }
 })();
 
 
@@ -2205,6 +2218,16 @@ function scrollFilm(dir){
       });
     }
   });
+
+  // Re-evaluate floating logo on scroll (cursor may have left hero due to scroll)
+  document.addEventListener('scroll', function(){
+    if(onHero && !rafId){
+      rafId = requestAnimationFrame(function(){
+        updateFloatingLogo();
+        rafId = null;
+      });
+    }
+  }, {passive: true});
 
   // Initial position
   window.addEventListener('load', function(){

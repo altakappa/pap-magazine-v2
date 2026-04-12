@@ -1220,6 +1220,19 @@ function scrollFilm(dir){
       if(curTitle){var fi=_findFilmByTitle(curTitle);if(fi>=0)openFilmDetail(fi);}
     });
   }
+  // ⓘ Info button — navigate to films page
+  var popInfo=popup.querySelector('.nf-popup-info');
+  if(popInfo){
+    popInfo.addEventListener('click',function(){
+      if(curTitle){
+        var fi=_findFilmByTitle(curTitle);
+        if(fi>=0) openFilmDetail(fi);
+        else window.location.href='films.html';
+      } else {
+        window.location.href='films.html';
+      }
+    });
+  }
 })();
 
 
@@ -1451,6 +1464,16 @@ function scrollFilm(dir){
       });
     }
   });
+
+  // Re-evaluate floating logo on scroll (cursor may have left hero due to scroll)
+  document.addEventListener('scroll', function(){
+    if(onHero && !rafId){
+      rafId = requestAnimationFrame(function(){
+        updateFloatingLogo();
+        rafId = null;
+      });
+    }
+  }, {passive: true});
 
   // Initial position
   window.addEventListener('load', function(){
