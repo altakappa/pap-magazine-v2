@@ -54,17 +54,17 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
   <div class="nav-overlay-inner">
     <div class="nav-left-col">
       <div class="nav-left-top">
-        <a href="subscribe.html" data-i18n="subscribe">SUBSCRIBE</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();navigateWithInterstitial('subscribe.html');" data-i18n="subscribe">SUBSCRIBE</a>
       </div>
       <div class="nav-left-links">
-        <a href="submission.html" data-i18n="submission">SUBMISSION</a>
-        <a href="pullletter.html" data-i18n="pullletter">PULL-LETTER</a>
-        <a href="auth.html" data-i18n="navLogin" style="color:rgba(255,255,255,.6)">LOGIN / JOIN</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();navigateWithInterstitial('submission.html');" data-i18n="submission">SUBMISSION</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();navigateWithInterstitial('pullletter.html');" data-i18n="pullletter">PULL-LETTER</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();navigateWithInterstitial('auth.html');" data-i18n="navLogin" style="color:rgba(255,255,255,.6)">LOGIN / JOIN</a>
       </div>
       <div class="nav-left-links nav-extra-links" style="margin-top:auto">
-        <a href="contact.html" data-i18n="contact">CONTACT</a>
-        <a href="business.html" data-i18n="business">BUSINESS</a>
-        <a href="about.html" data-i18n="about">ABOUT</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();navigateWithInterstitial('contact.html');" data-i18n="contact">CONTACT</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();navigateWithInterstitial('business.html');" data-i18n="business">BUSINESS</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();navigateWithInterstitial('about.html');" data-i18n="about">ABOUT</a>
       </div>
       <div class="nav-bottom-row">
         <div class="nav-left-dots" onclick="this.classList.toggle('open');document.getElementById('navSocials').classList.toggle('active')"><span>&#8942;</span></div>
@@ -82,11 +82,11 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
       </div>
     </div>
     <div class="nav-right-col">
-      <a href="community.html" data-i18n="navCommunity" style="color:#891717">COMMUNITY</a>
-      <a href="/" data-i18n="navMagazine" style="color:#c9a96e">MAGAZINE</a>
-      <a href="/" data-i18n="navEditorial">EDITORIAL</a>
-      <a href="articles.html" data-i18n="navArticle">ARTICLE</a>
-      <a href="films.html" data-i18n="navFilm">FILM</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();navigateWithInterstitial('community.html');" data-i18n="navCommunity" style="color:#891717">COMMUNITY</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();navigateWithInterstitial('magazine.html');" data-i18n="navMagazine" style="color:#c9a96e">MAGAZINE</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();openAllEditorials();" data-i18n="navEditorial">EDITORIAL</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();navigateWithInterstitial('articles.html');" data-i18n="navArticle">ARTICLE</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();navigateWithInterstitial('films.html');" data-i18n="navFilm">FILM</a>
     </div>
   </div>
 </div>
