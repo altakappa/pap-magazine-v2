@@ -331,6 +331,11 @@ button{cursor:pointer;font-family:inherit}
 .footer-legal{text-align:center;font-size:8px;color:rgba(255,255,255,.2);line-height:1.7;margin-top:200px}
 .footer-legal strong{font-weight:500;color:rgba(255,255,255,.35)}
 .footer-legal a{color:rgba(255,255,255,.25)}
+.footer-bottom-nav{display:flex;justify-content:space-between;align-items:center;margin-top:24px;padding-top:16px;border-top:1px solid rgba(255,255,255,.06)}
+.footer-bottom-nav-links{display:flex;gap:16px}
+.footer-bottom-nav-links a,.footer-bottom-nav-social a{font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.35);text-decoration:none;transition:color .2s}
+.footer-bottom-nav-links a:hover,.footer-bottom-nav-social a:hover{color:#fff}
+.footer-bottom-nav-social{display:flex;gap:16px}
 .footer-bottom-links{display:flex;justify-content:center;gap:20px;margin-top:8px;padding-bottom:24px}
 .footer-bottom-links a{font-size:8px;color:rgba(255,255,255,.2);transition:color .2s}
 .footer-bottom-links a:hover{color:#fff}
@@ -604,6 +609,8 @@ button{cursor:pointer;font-family:inherit}
   .footer-marquee-track span{font-size:1.5rem;padding:0 16px}
   .footer-marquee-track .sep{display:none}
   .footer-marquee-track{animation:marquee 5.3s linear infinite;will-change:transform;transform:translateZ(0)}
+  .footer-bottom-nav{flex-direction:column;align-items:center;gap:12px}
+  .footer-bottom-nav-links,.footer-bottom-nav-social{gap:12px}
   .footer-bottom-links{gap:16px;flex-wrap:wrap;justify-content:center}
 
   /* Page overlay */
