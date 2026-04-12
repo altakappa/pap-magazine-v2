@@ -96,6 +96,20 @@ a{color:#fff;text-decoration:none}
 /* TERMS */
 .auth-terms{font-size:10px;color:rgba(255,255,255,.2);line-height:1.8;text-align:center;margin-top:16px}
 .auth-terms a{color:rgba(255,255,255,.4);text-decoration:underline;text-underline-offset:2px}
+/* Consent checkboxes */
+.consent-section{margin:20px 0 24px;border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:16px 18px;background:rgba(255,255,255,.02)}
+.consent-row{display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:9px 0;font-family:Montserrat,sans-serif;position:relative}
+.consent-row input[type="checkbox"]{position:absolute;opacity:0;width:0;height:0}
+.consent-check{flex-shrink:0;width:16px;height:16px;border:1.5px solid rgba(255,255,255,.2);border-radius:3px;margin-top:1px;transition:all .2s;display:flex;align-items:center;justify-content:center}
+.consent-check::after{content:'';display:block;width:8px;height:5px;border-left:1.5px solid #fff;border-bottom:1.5px solid #fff;transform:rotate(-45deg) translateY(-1px);opacity:0;transition:opacity .2s}
+.consent-row input:checked ~ .consent-check{background:#fff;border-color:#fff}
+.consent-row input:checked ~ .consent-check::after{opacity:1}
+.consent-row input:checked ~ .consent-check::after{border-color:#000}
+.consent-text{font-size:11px;color:rgba(255,255,255,.6);line-height:1.5;letter-spacing:.02em}
+.consent-all .consent-text{font-weight:700;color:rgba(255,255,255,.85);font-size:12px}
+.consent-divider{height:1px;background:rgba(255,255,255,.06);margin:4px 0 2px}
+.consent-link{font-size:10px;color:rgba(255,255,255,.25);text-decoration:underline;text-underline-offset:2px;margin-left:4px;transition:color .2s}
+.consent-link:hover{color:rgba(255,255,255,.6)}
 
 /* HEADER BAR - sticky */
 .auth-header{position:sticky;top:0;left:0;right:0;width:100%;flex-shrink:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:16px 32px;background:rgba(0,0,0,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.06)}
@@ -305,8 +319,42 @@ a{color:#fff;text-decoration:none}
       </div>
     </div>
 
+    <!-- ======== CONSENT CHECKBOXES ======== -->
+    <div class="consent-section">
+      <label class="consent-row consent-all" id="consentAllRow">
+        <input type="checkbox" id="consentAll" onchange="toggleAllConsent(this.checked)">
+        <span class="consent-check"></span>
+        <span class="consent-text" data-i18n="consentAll">전체 동의</span>
+      </label>
+      <div class="consent-divider"></div>
+      <label class="consent-row">
+        <input type="checkbox" class="consent-required" id="consentTerms" onchange="updateConsentAll()">
+        <span class="consent-check"></span>
+        <span class="consent-text"><span data-i18n="consentTerms">[필수] 이용약관 동의</span> <a href="#" onclick="event.preventDefault();event.stopPropagation();openPage('termsPage');" class="consent-link" data-i18n="consentView">보기</a></span>
+      </label>
+      <label class="consent-row">
+        <input type="checkbox" class="consent-required" id="consentPrivacy" onchange="updateConsentAll()">
+        <span class="consent-check"></span>
+        <span class="consent-text"><span data-i18n="consentPrivacy">[필수] 개인정보 수집 및 이용 동의</span> <a href="#" onclick="event.preventDefault();event.stopPropagation();openPage('privacyPage');" class="consent-link" data-i18n="consentView">보기</a></span>
+      </label>
+      <label class="consent-row">
+        <input type="checkbox" class="consent-required" id="consentAge" onchange="updateConsentAll()">
+        <span class="consent-check"></span>
+        <span class="consent-text" data-i18n="consentAge">[필수] 만 14세 이상입니다</span>
+      </label>
+      <label class="consent-row">
+        <input type="checkbox" id="consentMarketing" onchange="updateConsentAll()">
+        <span class="consent-check"></span>
+        <span class="consent-text" data-i18n="consentMarketing">[선택] 마케팅 정보 수신 동의</span>
+      </label>
+      <label class="consent-row">
+        <input type="checkbox" id="consentEmail" onchange="updateConsentAll()">
+        <span class="consent-check"></span>
+        <span class="consent-text" data-i18n="consentEmail">[선택] 이메일 알림 수신 동의</span>
+      </label>
+    </div>
+
     <button class="auth-btn" id="btnComplete" onclick="completeSignup()" data-i18n="btnComplete">가입 완료</button>
-    <div class="auth-terms" data-i18n="termsNotice">가입 시 <a href="#">이용약관</a> 및 <a href="#">개인정보처리방침</a>에 동의합니다.</div>
   </div>
 
   <!-- ============ SUCCESS ============ -->
@@ -509,7 +557,33 @@ function goToStep4() {
   showStep(4);
 }
 
+// ======== CONSENT FUNCTIONS ========
+function toggleAllConsent(checked) {
+  document.querySelectorAll('.consent-section input[type="checkbox"]').forEach(function(cb){ cb.checked = checked; });
+}
+function updateConsentAll() {
+  var all = document.querySelectorAll('.consent-section input[type="checkbox"]:not(#consentAll)');
+  var allChecked = true;
+  all.forEach(function(cb){ if(!cb.checked) allChecked = false; });
+  document.getElementById('consentAll').checked = allChecked;
+}
+function validateConsent() {
+  var lang = localStorage.getItem('pap-lang') || 'ko';
+  var msgs = ERR[lang] || ERR.ko;
+  var required = document.querySelectorAll('.consent-required');
+  for(var i = 0; i < required.length; i++){
+    if(!required[i].checked){
+      PAP.ui.toast(msgs.consentRequired || '필수 동의 항목에 모두 동의해주세요.', 'error');
+      return false;
+    }
+  }
+  return true;
+}
+
 async function completeSignup() {
+  // Validate consent first
+  if(!validateConsent()) return;
+
   var email = document.getElementById('signupEmail').value.trim();
   var lastName = document.getElementById('signupLastName').value.trim();
   var firstName = document.getElementById('signupFirstName').value.trim();
@@ -519,11 +593,20 @@ async function completeSignup() {
   var lang = localStorage.getItem('pap-lang') || 'ko';
   var msgs = ERR[lang] || ERR.ko;
 
+  // Gather consent data
+  var consentData = {
+    terms: document.getElementById('consentTerms').checked,
+    privacy: document.getElementById('consentPrivacy').checked,
+    age: document.getElementById('consentAge').checked,
+    marketing: document.getElementById('consentMarketing').checked,
+    emailNotification: document.getElementById('consentEmail').checked
+  };
+
   btn.disabled = true;
   btn.textContent = '...';
 
   try {
-    await PAP.auth.signup({ name: fullName, email: email, password: pw, verifiedToken: verifiedToken });
+    await PAP.auth.signup({ name: fullName, email: email, password: pw, verifiedToken: verifiedToken, consent: consentData });
     showSuccess();
   } catch (e) {
     var msg = e.message || '';
@@ -688,6 +771,7 @@ ko: {
   codeResent:'인증 코드를 다시 보냈습니다.',
   networkError:'네트워크 연결을 확인해주세요. 인터넷에 연결되어 있나요?',
   signupFail:'회원가입 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
+  consentRequired:'필수 동의 항목에 모두 동의해주세요.',
   loginWrong:'이메일 또는 비밀번호가 올바르지 않습니다.',
   loginNoUser:'등록되지 않은 이메일입니다. 회원가입을 먼저 해주세요.',
   loginFail:'로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
@@ -708,6 +792,7 @@ en: {
   codeResent:'Verification code has been resent.',
   networkError:'Please check your internet connection.',
   signupFail:'Something went wrong. Please try again in a moment.',
+  consentRequired:'Please agree to all required terms to continue.',
   loginWrong:'Incorrect email or password.',
   loginNoUser:'No account found with this email. Please sign up first.',
   loginFail:'Login failed. Please try again in a moment.'
@@ -728,6 +813,7 @@ it: {
   codeResent:'Codice inviato di nuovo.',
   networkError:'Verifica la tua connessione internet.',
   signupFail:'Si è verificato un errore. Riprova tra poco.',
+  consentRequired:'Accetta tutti i termini obbligatori per continuare.',
   loginWrong:'Email o password non corretti.',
   loginNoUser:'Nessun account trovato. Registrati prima.',
   loginFail:'Accesso fallito. Riprova tra poco.'
@@ -748,6 +834,7 @@ fr: {
   codeResent:'Le code a été renvoyé.',
   networkError:'Vérifiez votre connexion internet.',
   signupFail:'Une erreur est survenue. Veuillez réessayer.',
+  consentRequired:'Veuillez accepter toutes les conditions obligatoires.',
   loginWrong:'Email ou mot de passe incorrect.',
   loginNoUser:'Aucun compte trouvé. Inscrivez-vous d\'abord.',
   loginFail:'Échec de connexion. Veuillez réessayer.'
@@ -768,6 +855,7 @@ es: {
   codeResent:'El código ha sido reenviado.',
   networkError:'Verifique su conexión a internet.',
   signupFail:'Ocurrió un error. Intente de nuevo en un momento.',
+  consentRequired:'Acepte todos los términos obligatorios para continuar.',
   loginWrong:'Email o contraseña incorrectos.',
   loginNoUser:'No se encontró cuenta. Regístrese primero.',
   loginFail:'Error al iniciar sesión. Intente de nuevo.'
@@ -788,6 +876,7 @@ ja: {
   codeResent:'認証コードを再送しました。',
   networkError:'インターネット接続を確認してください。',
   signupFail:'エラーが発生しました。しばらくしてからお試しください。',
+  consentRequired:'必須項目にすべて同意してください。',
   loginWrong:'メールまたはパスワードが正しくありません。',
   loginNoUser:'アカウントが見つかりません。先に会員登録してください。',
   loginFail:'ログインに失敗しました。しばらくしてからお試しください。'
@@ -808,6 +897,7 @@ zh: {
   codeResent:'验证码已重新发送。',
   networkError:'请检查您的网络连接。',
   signupFail:'发生错误，请稍后重试。',
+  consentRequired:'请同意所有必选项后继续。',
   loginWrong:'邮箱或密码不正确。',
   loginNoUser:'未找到账户，请先注册。',
   loginFail:'登录失败，请稍后重试。'
@@ -828,6 +918,7 @@ ru: {
   codeResent:'Код подтверждения отправлен повторно.',
   networkError:'Проверьте подключение к интернету.',
   signupFail:'Произошла ошибка. Попробуйте позже.',
+  consentRequired:'Пожалуйста, примите все обязательные условия.',
   loginWrong:'Неверный email или пароль.',
   loginNoUser:'Аккаунт не найден. Сначала зарегистрируйтесь.',
   loginFail:'Ошибка входа. Попробуйте позже.'
@@ -862,7 +953,7 @@ ko: {
   planPremFeatures:'Standard 포함 + 비하인드 콘텐츠 · 1:1 피드백 · 독점 이벤트 초대',
   loginTitle:'다시 만나서 반가워요', loginGoogle:'Google로 로그인', loginFacebook:'Facebook으로 로그인', loginKakao:'카카오로 로그인',
   forgot:'비밀번호를 잊으셨나요?',
-  termsNotice:'가입 시 <a href="#">이용약관</a> 및 <a href="#">개인정보처리방침</a>에 동의합니다.',
+  consentAll:'전체 동의', consentTerms:'[필수] 이용약관 동의', consentPrivacy:'[필수] 개인정보 수집 및 이용 동의', consentAge:'[필수] 만 14세 이상입니다', consentMarketing:'[선택] 마케팅 정보 수신 동의', consentEmail:'[선택] 이메일 알림 수신 동의', consentView:'보기',
   successTitle:'환영합니다!',
   successDesc:'PAP Magazine 회원이 되신 것을 환영합니다.<br>이제 서브미션 제출, 커뮤니티 참여 등 다양한 혜택을 이용할 수 있습니다.',
   successBtn:'매거진으로 이동'
@@ -893,7 +984,7 @@ en: {
   planPremFeatures:'Standard + Behind-the-scenes · 1:1 feedback · Exclusive event invites',
   loginTitle:'Welcome back', loginGoogle:'Log in with Google', loginFacebook:'Log in with Facebook', loginKakao:'Log in with Kakao',
   forgot:'Forgot your password?',
-  termsNotice:'By signing up, you agree to our <a href="#">Terms</a> and <a href="#">Privacy Policy</a>.',
+  consentAll:'Agree to all', consentTerms:'[Required] Terms of Service', consentPrivacy:'[Required] Privacy Policy', consentAge:'[Required] I am 14 years or older', consentMarketing:'[Optional] Marketing communications', consentEmail:'[Optional] Email notifications', consentView:'View',
   successTitle:'Welcome!',
   successDesc:'Welcome to PAP Magazine.<br>You can now submit work, join the community, and enjoy all member benefits.',
   successBtn:'Go to Magazine'
@@ -924,7 +1015,7 @@ it: {
   planPremFeatures:'Standard + Dietro le quinte · Feedback 1:1 · Inviti esclusivi',
   loginTitle:'Bentornato', loginGoogle:'Accedi con Google', loginFacebook:'Accedi con Facebook', loginKakao:'Accedi con Kakao',
   forgot:'Password dimenticata?',
-  termsNotice:'Registrandoti accetti i <a href="#">Termini</a> e l\'<a href="#">Informativa Privacy</a>.',
+  consentAll:'Accetta tutto', consentTerms:'[Obbligatorio] Termini di servizio', consentPrivacy:'[Obbligatorio] Informativa sulla privacy', consentAge:'[Obbligatorio] Ho almeno 14 anni', consentMarketing:'[Facoltativo] Comunicazioni di marketing', consentEmail:'[Facoltativo] Notifiche email', consentView:'Vedi',
   successTitle:'Benvenuto!',
   successDesc:'Benvenuto su PAP Magazine.<br>Ora puoi inviare lavori, unirti alla community e godere di tutti i vantaggi.',
   successBtn:'Vai alla Rivista'
@@ -955,7 +1046,7 @@ fr: {
   planPremFeatures:'Standard + Coulisses · Feedback 1:1 · Invitations exclusives',
   loginTitle:'Content de vous revoir', loginGoogle:'Connexion avec Google', loginFacebook:'Connexion avec Facebook', loginKakao:'Connexion avec Kakao',
   forgot:'Mot de passe oublié ?',
-  termsNotice:'En vous inscrivant, vous acceptez nos <a href="#">Conditions</a> et notre <a href="#">Politique de confidentialité</a>.',
+  consentAll:'Tout accepter', consentTerms:'[Obligatoire] Conditions d\'utilisation', consentPrivacy:'[Obligatoire] Politique de confidentialité', consentAge:'[Obligatoire] J\'ai 14 ans ou plus', consentMarketing:'[Facultatif] Communications marketing', consentEmail:'[Facultatif] Notifications par email', consentView:'Voir',
   successTitle:'Bienvenue !',
   successDesc:'Bienvenue sur PAP Magazine.<br>Vous pouvez maintenant soumettre des travaux et rejoindre la communauté.',
   successBtn:'Aller au Magazine'
@@ -986,7 +1077,7 @@ es: {
   planPremFeatures:'Standard + Detrás de escena · Feedback 1:1 · Invitaciones exclusivas',
   loginTitle:'Bienvenido de vuelta', loginGoogle:'Iniciar con Google', loginFacebook:'Iniciar con Facebook', loginKakao:'Iniciar con Kakao',
   forgot:'¿Olvidó su contraseña?',
-  termsNotice:'Al registrarse, acepta nuestros <a href="#">Términos</a> y <a href="#">Política de Privacidad</a>.',
+  consentAll:'Aceptar todo', consentTerms:'[Obligatorio] Términos de servicio', consentPrivacy:'[Obligatorio] Política de privacidad', consentAge:'[Obligatorio] Tengo 14 años o más', consentMarketing:'[Opcional] Comunicaciones de marketing', consentEmail:'[Opcional] Notificaciones por email', consentView:'Ver',
   successTitle:'¡Bienvenido!',
   successDesc:'Bienvenido a PAP Magazine.<br>Ahora puede enviar trabajos y unirse a la comunidad.',
   successBtn:'Ir a la Revista'
@@ -1017,7 +1108,7 @@ ja: {
   planPremFeatures:'Standard + 舞台裏 · 1:1フィードバック · 限定イベント招待',
   loginTitle:'おかえりなさい', loginGoogle:'Googleでログイン', loginFacebook:'Facebookでログイン', loginKakao:'カカオでログイン',
   forgot:'パスワードをお忘れですか？',
-  termsNotice:'登録により<a href="#">利用規約</a>と<a href="#">プライバシーポリシー</a>に同意します。',
+  consentAll:'すべてに同意', consentTerms:'[必須] 利用規約', consentPrivacy:'[必須] プライバシーポリシー', consentAge:'[必須] 14歳以上です', consentMarketing:'[任意] マーケティング情報の受信', consentEmail:'[任意] メール通知の受信', consentView:'表示',
   successTitle:'ようこそ！',
   successDesc:'PAP Magazineへようこそ。<br>作品提出やコミュニティ参加などの特典をご利用いただけます。',
   successBtn:'マガジンへ'
@@ -1048,7 +1139,7 @@ zh: {
   planPremFeatures:'Standard + 幕后内容 · 1:1反馈 · 独家活动邀请',
   loginTitle:'欢迎回来', loginGoogle:'使用Google登录', loginFacebook:'使用Facebook登录', loginKakao:'使用Kakao登录',
   forgot:'忘记密码？',
-  termsNotice:'注册即表示同意<a href="#">使用条款</a>和<a href="#">隐私政策</a>。',
+  consentAll:'全部同意', consentTerms:'[必选] 服务条款', consentPrivacy:'[必选] 隐私政策', consentAge:'[必选] 我已年满14周岁', consentMarketing:'[可选] 营销信息接收', consentEmail:'[可选] 邮件通知接收', consentView:'查看',
   successTitle:'欢迎！',
   successDesc:'欢迎加入PAP Magazine。<br>现在您可以提交作品、参与社区并享受所有会员权益。',
   successBtn:'前往杂志'
@@ -1079,7 +1170,7 @@ ru: {
   planPremFeatures:'Standard + Закулисье · Обратная связь 1:1 · Эксклюзивные приглашения',
   loginTitle:'С возвращением', loginGoogle:'Войти через Google', loginFacebook:'Войти через Facebook', loginKakao:'Войти через Kakao',
   forgot:'Забыли пароль?',
-  termsNotice:'Регистрируясь, вы принимаете <a href="#">Условия</a> и <a href="#">Политику конфиденциальности</a>.',
+  consentAll:'Принять всё', consentTerms:'[Обязательно] Условия использования', consentPrivacy:'[Обязательно] Политика конфиденциальности', consentAge:'[Обязательно] Мне 14 лет или больше', consentMarketing:'[Необязательно] Маркетинговые сообщения', consentEmail:'[Необязательно] Уведомления по email', consentView:'Просмотр',
   successTitle:'Добро пожаловать!',
   successDesc:'Добро пожаловать в PAP Magazine.<br>Теперь вы можете подавать работы и участвовать в сообществе.',
   successBtn:'Перейти в журнал'
@@ -1093,7 +1184,7 @@ function setLang(l) {
     var k = e.getAttribute('data-i18n');
     if (d[k]) {
       // Keys with HTML content
-      var htmlKeys = ['heroTitle','benefit1','benefit2','benefit3','termsNotice','hasAccount','noAccount','successDesc'];
+      var htmlKeys = ['heroTitle','benefit1','benefit2','benefit3','hasAccount','noAccount','successDesc'];
       if (htmlKeys.indexOf(k) > -1) e.innerHTML = d[k];
       else e.textContent = d[k];
     }
