@@ -338,9 +338,9 @@ function _showBrandAdInterstitial(ad, callback){
   var skipLabel = skipTexts[lang] || skipTexts.en;
 
   var skip = document.createElement('button');
-  skip.style.cssText = 'position:absolute;bottom:24px;right:24px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.4);font-size:11px;font-weight:600;letter-spacing:.1em;cursor:pointer;font-family:Montserrat,sans-serif;padding:8px 20px;border-radius:2px;transition:all .2s;z-index:2;';
-  skip.onmouseover = function(){ this.style.background='rgba(255,255,255,.15)'; this.style.color='rgba(255,255,255,.8)'; };
-  skip.onmouseout = function(){ this.style.background='rgba(255,255,255,.1)'; this.style.color='rgba(255,255,255,.4)'; };
+  skip.style.cssText = 'position:absolute;bottom:24px;right:24px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.55);font-size:11px;font-weight:600;letter-spacing:.1em;cursor:pointer;font-family:Montserrat,sans-serif;padding:8px 20px;border-radius:2px;transition:all .2s;z-index:2;';
+  skip.onmouseover = function(){ this.style.background='rgba(255,255,255,.15)'; this.style.color='rgba(255,255,255,.9)'; };
+  skip.onmouseout = function(){ this.style.background='rgba(255,255,255,.1)'; this.style.color='rgba(255,255,255,.55)'; };
 
   var _countdown = duration;
   var _timer = null;
@@ -431,9 +431,9 @@ function _showPremiumUpsellInterstitial(callback){
   // Skip button
   var skip = document.createElement('button');
   skip.textContent = t.skip;
-  skip.style.cssText = 'display:block;margin:16px auto 0;background:none;border:none;color:rgba(255,255,255,.3);font-size:11px;font-weight:600;letter-spacing:.1em;cursor:pointer;font-family:Montserrat,sans-serif;transition:color .2s;padding:8px 16px;';
-  skip.onmouseover = function(){ this.style.color='rgba(255,255,255,.7)'; };
-  skip.onmouseout = function(){ this.style.color='rgba(255,255,255,.3)'; };
+  skip.style.cssText = 'display:block;margin:16px auto 0;background:none;border:none;color:rgba(255,255,255,.55);font-size:11px;font-weight:600;letter-spacing:.1em;cursor:pointer;font-family:Montserrat,sans-serif;transition:color .2s;padding:8px 16px;';
+  skip.onmouseover = function(){ this.style.color='rgba(255,255,255,.9)'; };
+  skip.onmouseout = function(){ this.style.color='rgba(255,255,255,.55)'; };
 
   var _countdown = 5;
   var _timer = null;
