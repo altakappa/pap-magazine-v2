@@ -1423,7 +1423,7 @@ function scrollFilm(dir){
     }
   });
 
-  // ======== PAP CATCH GAME (double-click on header logo) ========
+  // ======== PAP PONG GAME (double-click on header logo) ========
   var gameActive = false;
   var gameCanvas = null;
   var gameCtx = null;
@@ -1433,10 +1433,13 @@ function scrollFilm(dir){
   var gameScore = 0;
   var gameLives = 3;
   var gamePaddle = null;
-  var gameFallingLogos = [];
-  var gameSpawnTimer = 0;
+  var gameBalls = [];
   var gameLogoImg = null;
   var gameStarted = false;
+  var gameLevelUpTimer = 0;
+  var gameParticles = [];
+  var gameCombo = 0;
+  var gameMaxCombo = 0;
 
   // Preload logo image for the game
   gameLogoImg = new Image();
@@ -1449,6 +1452,10 @@ function scrollFilm(dir){
     gameLevel = 1;
     gameScore = 0;
     gameLives = 3;
+    gameCombo = 0;
+    gameMaxCombo = 0;
+    gameLevelUpTimer = 0;
+    gameParticles = [];
 
     gameCanvas = document.createElement('canvas');
     gameCanvas.id = 'papGameCanvas';
@@ -1486,27 +1493,66 @@ function scrollFilm(dir){
   function setupGameLevel(level){
     var cw = gameCanvas.width;
     var ch = gameCanvas.height;
-    gameFallingLogos = [];
-    gameSpawnTimer = 0;
+    gameBalls = [];
+    gameLevelUpTimer = 0;
     gamePaddle = {
-      x: cw / 2 - 60, y: ch - 60,
-      w: Math.max(80, 140 - level * 5), h: 16
+      x: cw / 2 - 60, y: ch - 50,
+      w: Math.max(80, 150 - level * 6), h: 14
     };
+    // Start with 1 ball, add more as level increases
+    var ballCount = Math.min(level, 6);
+    for(var i = 0; i < ballCount; i++){
+      spawnBall(cw, ch, level, i === 0);
+    }
   }
 
-  function spawnFallingLogo(cw, level){
-    var size = 28 + Math.random() * 20;
-    var speed = 1.5 + level * 0.5 + Math.random() * 1.5;
-    gameFallingLogos.push({
-      x: 30 + Math.random() * (cw - 60),
-      y: -size,
+  function spawnBall(cw, ch, level, isFirst){
+    var size = 32 + Math.random() * 12;
+    var baseSpeed = 2.5 + level * 0.4;
+    // Random angle upward (between -30deg and -150deg from horizontal)
+    var angle = -(0.3 + Math.random() * 0.4) * Math.PI;
+    if(Math.random() > 0.5) angle = Math.PI + angle;
+    var vx = Math.cos(angle) * baseSpeed * (0.8 + Math.random() * 0.4);
+    var vy = -Math.abs(Math.sin(angle) * baseSpeed * (0.8 + Math.random() * 0.4));
+    // First ball starts from paddle area, others from random top positions
+    var startX, startY;
+    if(isFirst){
+      startX = cw / 2;
+      startY = ch - 100;
+      vy = -Math.abs(vy); // ensure going up
+    } else {
+      startX = 60 + Math.random() * (cw - 120);
+      startY = 60 + Math.random() * (ch * 0.3);
+      // Random direction but with some downward component
+      vy = Math.abs(vy) * (Math.random() > 0.5 ? 1 : -1);
+    }
+    gameBalls.push({
+      x: startX,
+      y: startY,
+      vx: vx,
+      vy: vy,
       size: size,
-      speed: speed,
       rotation: Math.random() * Math.PI * 2,
-      rotSpeed: (Math.random() - 0.5) * 0.08,
-      caught: false,
-      missed: false
+      rotSpeed: (Math.random() - 0.5) * 0.06,
+      trail: [],
+      bounceFlash: 0
     });
+  }
+
+  function spawnParticles(x, y, color, count){
+    for(var i = 0; i < count; i++){
+      var angle = Math.random() * Math.PI * 2;
+      var speed = 1 + Math.random() * 3;
+      gameParticles.push({
+        x: x, y: y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 1,
+        decay: 0.02 + Math.random() * 0.03,
+        size: 2 + Math.random() * 3,
+        color: color
+      });
+    }
   }
 
   function gameLoop(){
@@ -1517,8 +1563,29 @@ function scrollFilm(dir){
     var ch = gameCanvas.height;
 
     ctx.clearRect(0, 0, cw, ch);
-    ctx.fillStyle = 'rgba(0,0,0,0.8)';
+
+    // Background with subtle gradient
+    var bgGrad = ctx.createRadialGradient(cw/2, ch/2, 0, cw/2, ch/2, cw * 0.7);
+    bgGrad.addColorStop(0, 'rgba(15,15,15,0.92)');
+    bgGrad.addColorStop(1, 'rgba(0,0,0,0.95)');
+    ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, cw, ch);
+
+    // Subtle grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+    ctx.lineWidth = 1;
+    for(var gx = 0; gx < cw; gx += 80){
+      ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, ch); ctx.stroke();
+    }
+    for(var gy = 0; gy < ch; gy += 80){
+      ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(cw, gy); ctx.stroke();
+    }
+
+    // Center line
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.setLineDash([8, 12]);
+    ctx.beginPath(); ctx.moveTo(0, ch/2); ctx.lineTo(cw, ch/2); ctx.stroke();
+    ctx.setLineDash([]);
 
     // HUD
     ctx.fillStyle = '#fff';
@@ -1529,144 +1596,276 @@ function scrollFilm(dir){
     ctx.fillText('SCORE: ' + gameScore, cw / 2, 30);
     ctx.textAlign = 'right';
     var heartsStr = '';
-    for(var h = 0; h < gameLives; h++) heartsStr += '\u2665 ';
+    for(var hi = 0; hi < gameLives; hi++) heartsStr += '\u2665 ';
     ctx.fillStyle = '#ff6b6b';
     ctx.fillText(heartsStr, cw - 20, 30);
 
-    // Level goal
+    // Combo display
+    if(gameCombo > 1){
+      ctx.fillStyle = 'rgba(255,215,0,' + Math.min(1, 0.4 + gameCombo * 0.1) + ')';
+      ctx.font = 'bold ' + (12 + gameCombo) + 'px Montserrat, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('COMBO x' + gameCombo, cw / 2, 55);
+    }
+
+    // Ball count & ESC hint
     ctx.fillStyle = 'rgba(255,255,255,0.25)';
     ctx.font = '400 11px Montserrat, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('GOAL: ' + (gameLevel * 100) + ' PTS  |  ESC TO EXIT', cw / 2, 50);
+    ctx.fillText('BALLS: ' + gameBalls.length + '  |  ESC TO EXIT', cw / 2, ch - 15);
 
-    // Spawn logos
-    var spawnRate = Math.max(15, 50 - gameLevel * 4);
-    gameSpawnTimer++;
-    if(gameSpawnTimer >= spawnRate){
-      gameSpawnTimer = 0;
-      var count = 1 + Math.floor(gameLevel / 4);
-      for(var s = 0; s < count; s++) spawnFallingLogo(cw, gameLevel);
+    // Level up flash
+    if(gameLevelUpTimer > 0){
+      gameLevelUpTimer--;
+      var flashAlpha = gameLevelUpTimer / 60;
+      ctx.fillStyle = 'rgba(255,215,0,' + (flashAlpha * 0.15) + ')';
+      ctx.fillRect(0, 0, cw, ch);
+      ctx.fillStyle = 'rgba(255,215,0,' + flashAlpha + ')';
+      ctx.font = 'bold 42px Montserrat, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('LEVEL ' + gameLevel + '!', cw / 2, ch / 2 - 40);
+      if(gameLevel > 1){
+        ctx.font = '400 14px Montserrat, sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,' + (flashAlpha * 0.7) + ')';
+        ctx.fillText('+1 BALL', cw / 2, ch / 2);
+      }
     }
 
-    // Draw & update falling logos
-    for(var i = gameFallingLogos.length - 1; i >= 0; i--){
-      var logo = gameFallingLogos[i];
-      if(logo.caught || logo.missed){
-        gameFallingLogos.splice(i, 1);
+    // Update & draw particles
+    for(var pi = gameParticles.length - 1; pi >= 0; pi--){
+      var p = gameParticles[pi];
+      p.x += p.vx; p.y += p.vy;
+      p.life -= p.decay;
+      if(p.life <= 0){ gameParticles.splice(pi, 1); continue; }
+      ctx.globalAlpha = p.life;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // Update & draw bouncing logo balls
+    for(var i = gameBalls.length - 1; i >= 0; i--){
+      var ball = gameBalls[i];
+
+      // Physics: move
+      ball.x += ball.vx;
+      ball.y += ball.vy;
+      // Slight gravity pull
+      ball.vy += 0.04;
+      ball.rotation += ball.rotSpeed;
+      if(ball.bounceFlash > 0) ball.bounceFlash -= 0.05;
+
+      // Wall bounces (left, right, top)
+      var r = ball.size / 2;
+      if(ball.x - r <= 0){
+        ball.x = r;
+        ball.vx = Math.abs(ball.vx);
+        ball.rotSpeed = -ball.rotSpeed;
+        spawnParticles(ball.x, ball.y, 'rgba(255,255,255,0.5)', 3);
+      }
+      if(ball.x + r >= cw){
+        ball.x = cw - r;
+        ball.vx = -Math.abs(ball.vx);
+        ball.rotSpeed = -ball.rotSpeed;
+        spawnParticles(ball.x, ball.y, 'rgba(255,255,255,0.5)', 3);
+      }
+      if(ball.y - r <= 0){
+        ball.y = r;
+        ball.vy = Math.abs(ball.vy);
+        spawnParticles(ball.x, ball.y, 'rgba(255,255,255,0.5)', 3);
+      }
+
+      // Paddle collision
+      if(ball.vy > 0 &&
+         ball.y + r >= gamePaddle.y &&
+         ball.y - r <= gamePaddle.y + gamePaddle.h &&
+         ball.x + r >= gamePaddle.x &&
+         ball.x - r <= gamePaddle.x + gamePaddle.w){
+        // Bounce up
+        ball.y = gamePaddle.y - r;
+        // Angle depends on where ball hits paddle
+        var hitPos = (ball.x - gamePaddle.x) / gamePaddle.w; // 0 to 1
+        var bounceAngle = (hitPos - 0.5) * 1.2; // -0.6 to 0.6
+        var speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+        speed = Math.min(speed * 1.02, 8 + gameLevel * 0.5); // slight acceleration, cap speed
+        ball.vx = Math.sin(bounceAngle) * speed;
+        ball.vy = -Math.abs(Math.cos(bounceAngle) * speed);
+        ball.rotSpeed = bounceAngle * 0.1;
+        ball.bounceFlash = 1;
+
+        // Score & combo
+        gameCombo++;
+        if(gameCombo > gameMaxCombo) gameMaxCombo = gameCombo;
+        var pts = 10 * Math.min(gameCombo, 5);
+        gameScore += pts;
+
+        spawnParticles(ball.x, gamePaddle.y, '#FFD700', 8);
+
+        // Show points popup
+        gameParticles.push({
+          x: ball.x, y: gamePaddle.y - 20,
+          vx: 0, vy: -1,
+          life: 1, decay: 0.025,
+          size: 0, color: '#FFD700',
+          text: '+' + pts
+        });
+      }
+
+      // Missed — fell below screen
+      if(ball.y - r > ch + 20){
+        gameBalls.splice(i, 1);
+        gameLives--;
+        gameCombo = 0;
+        spawnParticles(ball.x, ch, '#ff4444', 12);
+        // Respawn if still alive
+        if(gameLives > 0 && gameBalls.length === 0){
+          setTimeout(function(){
+            if(gameActive){
+              var bc = Math.min(gameLevel, 6);
+              for(var bi = 0; bi < bc; bi++) spawnBall(cw, ch, gameLevel, bi === 0);
+            }
+          }, 500);
+        }
         continue;
       }
 
-      logo.y += logo.speed;
-      logo.rotation += logo.rotSpeed;
+      // Ball trail
+      ball.trail.push({x: ball.x, y: ball.y, a: 0.4});
+      if(ball.trail.length > 8) ball.trail.shift();
 
-      // Draw rotating logo
+      // Draw trail
+      for(var ti = 0; ti < ball.trail.length; ti++){
+        var t = ball.trail[ti];
+        t.a *= 0.85;
+        ctx.globalAlpha = t.a * 0.3;
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, ball.size * 0.3 * (ti / ball.trail.length), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      // Draw rotating logo ball
       ctx.save();
-      ctx.translate(logo.x, logo.y);
-      ctx.rotate(logo.rotation);
-      ctx.globalAlpha = 0.9;
+      ctx.translate(ball.x, ball.y);
+      ctx.rotate(ball.rotation);
+
+      // Glow effect on bounce
+      if(ball.bounceFlash > 0){
+        ctx.shadowColor = '#FFD700';
+        ctx.shadowBlur = 20 * ball.bounceFlash;
+      }
+
+      ctx.globalAlpha = 0.92;
       if(gameLogoImg.complete && gameLogoImg.naturalWidth > 0){
-        ctx.drawImage(gameLogoImg, -logo.size / 2, -logo.size / 2, logo.size, logo.size);
+        ctx.drawImage(gameLogoImg, -ball.size / 2, -ball.size / 2, ball.size, ball.size);
       } else {
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold ' + Math.floor(logo.size * 0.5) + 'px Montserrat, sans-serif';
+        ctx.font = 'bold ' + Math.floor(ball.size * 0.45) + 'px Montserrat, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('PAP', 0, 0);
         ctx.textBaseline = 'alphabetic';
       }
       ctx.globalAlpha = 1;
+      ctx.shadowBlur = 0;
       ctx.restore();
-
-      // Check paddle collision
-      if(logo.y + logo.size / 2 >= gamePaddle.y &&
-         logo.y - logo.size / 2 <= gamePaddle.y + gamePaddle.h &&
-         logo.x + logo.size / 2 >= gamePaddle.x &&
-         logo.x - logo.size / 2 <= gamePaddle.x + gamePaddle.w){
-        logo.caught = true;
-        gameScore += 10;
-
-        // Catch effect
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(logo.x, logo.y, logo.size, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,215,0,0.3)';
-        ctx.fill();
-        ctx.restore();
-      }
-
-      // Missed — fell below screen
-      if(logo.y - logo.size / 2 > ch){
-        logo.missed = true;
-        gameLives--;
-      }
     }
 
+    // Draw text particles (score popups)
+    for(var tpi = gameParticles.length - 1; tpi >= 0; tpi--){
+      var tp = gameParticles[tpi];
+      if(tp.text){
+        ctx.globalAlpha = tp.life;
+        ctx.fillStyle = tp.color;
+        ctx.font = 'bold 16px Montserrat, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(tp.text, tp.x, tp.y);
+        tp.y += tp.vy;
+        tp.life -= tp.decay;
+        if(tp.life <= 0) gameParticles.splice(tpi, 1);
+      }
+    }
+    ctx.globalAlpha = 1;
+
     // Draw paddle (stylized PAP bar)
-    var grad = ctx.createLinearGradient(gamePaddle.x, gamePaddle.y, gamePaddle.x + gamePaddle.w, gamePaddle.y);
-    grad.addColorStop(0, '#fff');
-    grad.addColorStop(0.5, '#e0e0e0');
-    grad.addColorStop(1, '#fff');
-    ctx.fillStyle = grad;
+    ctx.save();
+    var padGrad = ctx.createLinearGradient(gamePaddle.x, gamePaddle.y, gamePaddle.x + gamePaddle.w, gamePaddle.y);
+    padGrad.addColorStop(0, 'rgba(255,255,255,0.9)');
+    padGrad.addColorStop(0.5, '#fff');
+    padGrad.addColorStop(1, 'rgba(255,255,255,0.9)');
+    ctx.fillStyle = padGrad;
+    // Glow under paddle
+    ctx.shadowColor = 'rgba(255,255,255,0.4)';
+    ctx.shadowBlur = 12;
     ctx.beginPath();
     ctx.roundRect(gamePaddle.x, gamePaddle.y, gamePaddle.w, gamePaddle.h, 4);
     ctx.fill();
+    ctx.shadowBlur = 0;
     ctx.fillStyle = '#000';
-    ctx.font = 'bold 10px Montserrat, sans-serif';
+    ctx.font = 'bold 9px Montserrat, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('PAP', gamePaddle.x + gamePaddle.w / 2, gamePaddle.y + 12);
+    ctx.fillText('PAP', gamePaddle.x + gamePaddle.w / 2, gamePaddle.y + 11);
     ctx.textAlign = 'left';
+    ctx.restore();
 
-    // Check level clear: each level needs (level * 100) cumulative score
-    var levelGoal = gameLevel * 100;
+    // Check level clear
+    var levelGoal = gameLevel * 150;
     if(gameScore >= levelGoal){
       if(gameLevel >= gameMaxLevel){
+        // WIN!
         gameActive = false;
         cancelAnimationFrame(gameRaf);
-        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
         ctx.fillRect(0, 0, cw, ch);
         ctx.fillStyle = '#FFD700';
         ctx.font = 'bold 48px Montserrat, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('YOU WIN!', cw / 2, ch / 2 - 30);
+        ctx.fillText('YOU WIN!', cw / 2, ch / 2 - 50);
         ctx.fillStyle = '#fff';
         ctx.font = '600 20px Montserrat, sans-serif';
-        ctx.fillText('FINAL SCORE: ' + gameScore, cw / 2, ch / 2 + 20);
-        ctx.font = '400 14px Montserrat, sans-serif';
-        ctx.fillText('CLICK TO CLOSE', cw / 2, ch / 2 + 60);
+        ctx.fillText('FINAL SCORE: ' + gameScore, cw / 2, ch / 2);
+        ctx.font = '400 13px Montserrat, sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.fillText('MAX COMBO: x' + gameMaxCombo, cw / 2, ch / 2 + 30);
+        ctx.fillText('CLICK TO CLOSE', cw / 2, ch / 2 + 65);
         gameCanvas.onclick = function(){ closeGame(); };
         return;
       }
+      // Level up!
       gameLevel++;
-      setupGameLevel(gameLevel);
-      // Flash level up
-      ctx.fillStyle = 'rgba(255,215,0,0.15)';
-      ctx.fillRect(0, 0, cw, ch);
-      ctx.fillStyle = '#FFD700';
-      ctx.font = 'bold 36px Montserrat, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('LEVEL ' + gameLevel + '!', cw / 2, ch / 2);
-      return;
+      gameLevelUpTimer = 60;
+      // Keep existing balls, add a new one
+      spawnBall(cw, ch, gameLevel, false);
+      // Shrink paddle slightly
+      gamePaddle.w = Math.max(80, 150 - gameLevel * 6);
     }
 
     // Game over
     if(gameLives <= 0){
       gameActive = false;
       cancelAnimationFrame(gameRaf);
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillStyle = 'rgba(0,0,0,0.7)';
       ctx.fillRect(0, 0, cw, ch);
       ctx.fillStyle = '#ff4444';
       ctx.font = 'bold 48px Montserrat, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('GAME OVER', cw / 2, ch / 2 - 30);
+      ctx.fillText('GAME OVER', cw / 2, ch / 2 - 50);
       ctx.fillStyle = '#fff';
       ctx.font = '600 20px Montserrat, sans-serif';
-      ctx.fillText('SCORE: ' + gameScore + '  LEVEL: ' + gameLevel, cw / 2, ch / 2 + 20);
-      ctx.font = '400 14px Montserrat, sans-serif';
-      ctx.fillText('CLICK TO RESTART', cw / 2, ch / 2 + 60);
+      ctx.fillText('SCORE: ' + gameScore + '  |  LEVEL: ' + gameLevel, cw / 2, ch / 2);
+      ctx.font = '400 13px Montserrat, sans-serif';
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.fillText('MAX COMBO: x' + gameMaxCombo, cw / 2, ch / 2 + 30);
+      ctx.fillText('CLICK TO RESTART', cw / 2, ch / 2 + 65);
       gameCanvas.onclick = function(){
         gameCanvas.onclick = null;
         gameActive = true;
         gameLevel = 1; gameScore = 0; gameLives = 3;
+        gameCombo = 0; gameMaxCombo = 0;
+        gameParticles = [];
         setupGameLevel(gameLevel);
         gameLoop();
       };
