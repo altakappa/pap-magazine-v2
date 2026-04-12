@@ -541,6 +541,37 @@
   </div>
 </section>
 
+<!-- Premium Upsell Banner (non-premium only) -->
+<div id="premiumUpsellBanner" style="display:none;"></div>
+<script>
+(function(){
+  function isPrem(){try{var u=localStorage.getItem('pap-user');if(!u)return false;return JSON.parse(u).subscription==='premium';}catch(e){return false;}}
+  if(isPrem()) return;
+  var lang=localStorage.getItem('pap-lang')||'ko';
+  var t={
+    ko:{tag:'PAP PREMIUM',title:'더 깊은 크리에이티브 경험',desc:'프리미엄 구독으로 모든 에디토리얼, 독점 매거진, 로고 파일을 제한 없이 이용하세요.',btn:'구독하기'},
+    en:{tag:'PAP PREMIUM',title:'A deeper creative experience',desc:'Subscribe to Premium for unlimited access to all editorials, exclusive magazines, and logo files.',btn:'Subscribe'},
+    it:{tag:'PAP PREMIUM',title:'Un\'esperienza creativa più profonda',desc:'Abbonati a Premium per accesso illimitato a tutti gli editoriali, riviste esclusive e file logo.',btn:'Abbonati'},
+    fr:{tag:'PAP PREMIUM',title:'Une expérience créative plus profonde',desc:'Abonnez-vous au Premium pour un accès illimité à tous les éditoriaux, magazines exclusifs et fichiers logo.',btn:'S\'abonner'},
+    es:{tag:'PAP PREMIUM',title:'Una experiencia creativa más profunda',desc:'Suscríbete a Premium para acceso ilimitado a todos los editoriales, revistas exclusivas y archivos de logo.',btn:'Suscríbete'},
+    ja:{tag:'PAP PREMIUM',title:'より深いクリエイティブ体験',desc:'プレミアム購読ですべてのエディトリアル、限定マガジン、ロゴファイルに無制限アクセス。',btn:'購読する'},
+    zh:{tag:'PAP PREMIUM',title:'更深入的创意体验',desc:'订阅Premium，无限访问所有社论、独家杂志和标志文件。',btn:'订阅'}
+  };
+  var tx=t[lang]||t.en;
+  var el=document.getElementById('premiumUpsellBanner');
+  el.style.display='block';
+  el.style.cssText='display:block;max-width:1200px;margin:0 auto 40px;padding:0 24px;';
+  el.innerHTML='<div style="border:1px solid rgba(255,255,255,.1);padding:40px 32px;text-align:center;background:linear-gradient(135deg,rgba(255,255,255,.02),rgba(255,255,255,.05));position:relative;overflow:hidden;">'+
+    '<div style="font-size:9px;font-weight:800;letter-spacing:.35em;color:rgba(255,255,255,.3);margin-bottom:16px;">'+tx.tag+'</div>'+
+    '<div style="font-size:18px;font-weight:800;letter-spacing:.06em;color:#fff;margin-bottom:12px;font-family:Montserrat,sans-serif;">'+tx.title+'</div>'+
+    '<div style="font-size:11px;color:rgba(255,255,255,.45);line-height:1.9;margin-bottom:24px;max-width:480px;margin-left:auto;margin-right:auto;font-family:Montserrat,sans-serif;">'+tx.desc+'</div>'+
+    '<a href="subscribe.html" style="display:inline-block;padding:12px 36px;border:1.5px solid rgba(255,255,255,.3);color:#fff;font-size:10px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;text-decoration:none;font-family:Montserrat,sans-serif;transition:all .3s;" onmouseover="this.style.borderColor=\'#fff\';this.style.background=\'#fff\';this.style.color=\'#000\'" onmouseout="this.style.borderColor=\'rgba(255,255,255,.3)\';this.style.background=\'transparent\';this.style.color=\'#fff\'">'+tx.btn+'</a>'+
+    '<div style="position:absolute;top:-30px;right:-30px;width:120px;height:120px;background:radial-gradient(circle,rgba(255,255,255,.04),transparent);border-radius:50%;pointer-events:none;"></div>'+
+    '<div style="position:absolute;bottom:-20px;left:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(255,255,255,.03),transparent);border-radius:50%;pointer-events:none;"></div>'+
+  '</div>';
+})();
+</script>
+
 <section class="shorts-section" id="shortsSection">
   <div class="shorts-title">SHORTS</div>
   <div class="shorts-carousel">

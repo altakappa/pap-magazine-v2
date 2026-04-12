@@ -243,8 +243,120 @@ function getLogoFolderId(t){if(edLogoFolders[t])return edLogoFolders[t];var tL=t
 // Global auth helpers (needed by openEditorial for premium logo section)
 function isPremium(){try{var u=localStorage.getItem('pap-user');if(!u)return false;var user=JSON.parse(u);return user&&user.subscription==='premium';}catch(e){return false;}}
 function isStandardOrAbove(){try{var u=localStorage.getItem('pap-user');if(!u)return false;var user=JSON.parse(u);return user&&(user.subscription==='standard'||user.subscription==='premium');}catch(e){return false;}}
+function isLoggedIn(){return !!localStorage.getItem('pap-token');}
+
+// ======== INTERSTITIAL PREMIUM UPSELL ========
+var _interstitialCount = 0;
+var _INTERSTITIAL_MAX = 2; // max per session
+
+function showPremiumInterstitial(callback){
+  // Skip for premium users
+  if(isPremium()){ if(callback) callback(); return; }
+  // Session limit
+  if(_interstitialCount >= _INTERSTITIAL_MAX){ if(callback) callback(); return; }
+  _interstitialCount++;
+
+  var lang = localStorage.getItem('pap-lang') || 'ko';
+  var texts = {
+    ko: { tag:'PREMIUM', title:'광고 없이\n모든 콘텐츠를 즐기세요', desc:'프리미엄 구독으로 에디토리얼, 매거진,\n독점 콘텐츠를 제한 없이 감상하세요.', btn:'프리미엄 구독하기', skip:'건너뛰기' },
+    en: { tag:'PREMIUM', title:'Enjoy all content\nwithout interruptions', desc:'Subscribe to Premium for unlimited access\nto editorials, magazines, and exclusive content.', btn:'Subscribe to Premium', skip:'Skip' },
+    it: { tag:'PREMIUM', title:'Goditi tutti i contenuti\nsenza interruzioni', desc:'Abbonati a Premium per accesso illimitato\na editoriali, riviste e contenuti esclusivi.', btn:'Abbonati a Premium', skip:'Salta' },
+    fr: { tag:'PREMIUM', title:'Profitez de tout le contenu\nsans interruption', desc:'Abonnez-vous au Premium pour un accès illimité\naux éditoriaux, magazines et contenus exclusifs.', btn:'S\'abonner au Premium', skip:'Passer' },
+    es: { tag:'PREMIUM', title:'Disfruta todo el contenido\nsin interrupciones', desc:'Suscríbete a Premium para acceso ilimitado\na editoriales, revistas y contenido exclusivo.', btn:'Suscríbete a Premium', skip:'Saltar' },
+    ja: { tag:'PREMIUM', title:'すべてのコンテンツを\n中断なくお楽しみください', desc:'プレミアム購読でエディトリアル、マガジン、\n限定コンテンツに無制限アクセス。', btn:'プレミアム購読', skip:'スキップ' },
+    zh: { tag:'PREMIUM', title:'无干扰地\n享受所有内容', desc:'订阅Premium，无限访问\n社论、杂志和独家内容。', btn:'订阅Premium', skip:'跳过' }
+  };
+  var t = texts[lang] || texts.en;
+
+  var overlay = document.createElement('div');
+  overlay.id = 'premiumInterstitial';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .4s;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);';
+
+  var box = document.createElement('div');
+  box.style.cssText = 'text-align:center;max-width:420px;padding:48px 32px;';
+
+  // Tag
+  var tag = document.createElement('div');
+  tag.textContent = t.tag;
+  tag.style.cssText = 'font-size:10px;font-weight:800;letter-spacing:.3em;color:rgba(255,255,255,.4);margin-bottom:24px;';
+
+  // Title
+  var h = document.createElement('h2');
+  h.textContent = t.title;
+  h.style.cssText = 'font-size:22px;font-weight:800;letter-spacing:.06em;line-height:1.5;color:#fff;margin-bottom:16px;white-space:pre-line;font-family:Montserrat,sans-serif;';
+
+  // Description
+  var desc = document.createElement('p');
+  desc.textContent = t.desc;
+  desc.style.cssText = 'font-size:12px;color:rgba(255,255,255,.5);line-height:1.9;margin-bottom:32px;white-space:pre-line;font-family:Montserrat,sans-serif;';
+
+  // CTA button
+  var btn = document.createElement('a');
+  btn.href = 'subscribe.html';
+  btn.textContent = t.btn;
+  btn.style.cssText = 'display:inline-block;padding:14px 40px;background:#fff;color:#000;font-size:11px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;text-decoration:none;font-family:Montserrat,sans-serif;transition:all .3s;border:1.5px solid #fff;';
+  btn.onmouseover = function(){ this.style.background='transparent'; this.style.color='#fff'; };
+  btn.onmouseout = function(){ this.style.background='#fff'; this.style.color='#000'; };
+
+  // Skip button
+  var skip = document.createElement('button');
+  skip.textContent = t.skip;
+  skip.style.cssText = 'display:block;margin:16px auto 0;background:none;border:none;color:rgba(255,255,255,.3);font-size:11px;font-weight:600;letter-spacing:.1em;cursor:pointer;font-family:Montserrat,sans-serif;transition:color .2s;padding:8px 16px;';
+  skip.onmouseover = function(){ this.style.color='rgba(255,255,255,.7)'; };
+  skip.onmouseout = function(){ this.style.color='rgba(255,255,255,.3)'; };
+
+  var _countdown = 3;
+  var _timer = null;
+  skip.textContent = t.skip + ' (' + _countdown + ')';
+  skip.disabled = true;
+  skip.style.opacity = '0.4';
+
+  function closeInterstitial(){
+    if(_timer) clearInterval(_timer);
+    overlay.style.opacity = '0';
+    setTimeout(function(){ if(overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 400);
+    if(callback) callback();
+  }
+
+  skip.onclick = function(){ closeInterstitial(); };
+
+  box.appendChild(tag);
+  box.appendChild(h);
+  box.appendChild(desc);
+  box.appendChild(btn);
+  box.appendChild(skip);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+  // Fade in
+  requestAnimationFrame(function(){ overlay.style.opacity = '1'; });
+
+  // Countdown then enable skip
+  _timer = setInterval(function(){
+    _countdown--;
+    if(_countdown > 0){
+      skip.textContent = t.skip + ' (' + _countdown + ')';
+    } else {
+      clearInterval(_timer);
+      skip.textContent = t.skip;
+      skip.disabled = false;
+      skip.style.opacity = '1';
+    }
+  }, 1000);
+}
 
 function openEditorial(title,thumb){
+  // Show interstitial for non-premium users (session limited)
+  if(!isPremium() && _interstitialCount < _INTERSTITIAL_MAX){
+    showPremiumInterstitial(function(){
+      _openEditorialInner(title,thumb);
+    });
+    return;
+  }
+  _openEditorialInner(title,thumb);
+}
+
+function _openEditorialInner(title,thumb){
   var d=edDetails[title];
   if(!d){var titleLower=title.toLowerCase();for(var key in edDetails){if(key.toLowerCase()===titleLower){d=edDetails[key];break;}}}
   d=d||{};
