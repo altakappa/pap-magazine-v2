@@ -7,6 +7,12 @@
 <meta name="description" content="PAP Magazine - Join the creative community">
 <meta name="robots" content="noindex">
 <title>Join PAP | PAP Magazine</title>
+<!-- Resource Hints: preconnect & dns-prefetch -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="dns-prefetch" href="https://igcazquhkwxtqsaqpznx.supabase.co">
+<link rel="dns-prefetch" href="https://accounts.google.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -146,6 +152,12 @@ a{color:#fff;text-decoration:none}
 .login-panel{display:none;animation:fadeUp .4s ease}
 .login-panel.active{display:block}
 
+/* GPU-accelerated animations */
+.step-panel,.login-panel,.step-success{will-change:opacity,transform;contain:content}
+/* Reduce layout thrashing on hidden panels */
+.step-panel:not(.active),.login-panel:not(.active),.step-success:not(.active){content-visibility:hidden;contain-intrinsic-size:0 500px}
+/* Optimize paint for static elements */
+.consent-section,.plan-cards,.benefits{contain:layout style}
 @media(max-width:500px){
   .auth-header{padding:12px 16px}
   .auth-wrapper{padding:20px 16px}
@@ -181,8 +193,8 @@ a{color:#fff;text-decoration:none}
 <link rel="canonical" href="https://pap-magazine.com/auth.html">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Join PAP - PAP Magazine"}</script>
 <!-- Cookie Consent + GA4 (consent-gated) -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="cookie-consent.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
+<script src="cookie-consent.js" defer></script>
 <!-- print styles -->
 <style>
 @media print{
@@ -201,7 +213,7 @@ a{color:#fff;text-decoration:none}
 <script>window.addEventListener('load',function(){var l=document.getElementById('pageLoader');if(l){l.style.opacity='0';setTimeout(function(){l.remove();},400);}});</script>
 
 <header class="auth-header">
-  <div class="auth-header-logo"><a href="index.html"><img loading="lazy" src="pap-logo.png" alt="PAP Magazine"></a></div>
+  <div class="auth-header-logo"><a href="index.html"><img src="pap-logo.png" alt="PAP Magazine" fetchpriority="high" decoding="async" width="120" height="24"></a></div>
   <div class="auth-header-right">
     <div class="auth-lang"><select id="langSelect" onchange="setLang(this.value)"><option value="ko">KO</option><option value="en">EN</option><option value="it">IT</option><option value="fr">FR</option><option value="es">ES</option><option value="ja">JA</option><option value="zh">ZH</option><option value="ru">RU</option></select></div>
   </div>
@@ -1214,10 +1226,10 @@ function setLang(l) {
   document.getElementById('langSelect').value = l;
 }
 
-// AUTO LANGUAGE DETECTION
-(function() {
-  // If already logged in, redirect to mypage (unless coming for admin redirect)
+// === EARLY REDIRECT: run synchronously before anything else ===
+(function(){
   var params = new URLSearchParams(window.location.search);
+  // If already logged in, redirect immediately (skip full init)
   if (!params.get('error') && !params.get('token') && !params.get('code') && !window.location.hash) {
     var existingToken = localStorage.getItem('pap-token');
     if (existingToken && !params.get('redirect')) {
@@ -1225,7 +1237,7 @@ function setLang(l) {
       return;
     }
   }
-
+  // Language detection runs early for fast FCP
   var saved = localStorage.getItem('pap-lang');
   if (!saved) {
     var tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
@@ -1242,20 +1254,20 @@ function setLang(l) {
   }
   setLang(saved);
 
-  // Check URL params for direct login/signup view
-  var params = new URLSearchParams(window.location.search);
+  // Mode & redirect setup (lightweight, no DOM-heavy ops)
   if (params.get('mode') === 'login') showLogin();
   if (params.get('mode') === 'signup') showSignup();
-  // Store redirect destination (e.g. ?redirect=admin)
   var _authRedirect = params.get('redirect');
   window.getRedirectUrl = function(){ return _authRedirect ? (_authRedirect + '.html') : 'mypage.html'; };
-  // Update success button text if redirecting to admin
   if (_authRedirect === 'admin') {
     var sb = document.querySelector('#stepSuccess .auth-btn');
     if (sb) sb.textContent = '어드민으로 이동';
   }
+})();
 
-  // ===== HANDLE SUPABASE OAUTH RETURN =====
+// === DEFERRED OAUTH: wait for Supabase SDK (loaded with defer) ===
+document.addEventListener('DOMContentLoaded', function() {
+  var params = new URLSearchParams(window.location.search);
   var oauthCode = params.get('code');
   var oauthToken = params.get('token');
   var oauthUser = params.get('user');
@@ -1263,7 +1275,9 @@ function setLang(l) {
   var hashStr = window.location.hash;
   var _oauthHandled = false;
 
-  // Helper: exchange Supabase session for PAP JWT
+  // No OAuth params? Skip heavy processing entirely
+  if (!oauthCode && !oauthToken && !oauthError && !(hashStr && hashStr.indexOf('access_token') > -1)) return;
+
   async function exchangeSupabaseForPAP(session) {
     if (_oauthHandled) return false;
     _oauthHandled = true;
@@ -1280,7 +1294,6 @@ function setLang(l) {
           id: data.user.id, email: data.user.email, name: data.user.name,
           role: data.user.role, subscription: data.user.subscription
         }));
-        // Clean up PKCE cookie
         deleteCookie('pap-pkce-verifier');
         window.history.replaceState({}, document.title, window.location.pathname);
         window.location.href = (window.getRedirectUrl ? window.getRedirectUrl() : 'mypage.html');
@@ -1297,20 +1310,16 @@ function setLang(l) {
     }
   }
 
-  // For PKCE flow (?code=xxx) or hash tokens (#access_token=xxx):
-  // Let Supabase JS handle the code exchange automatically via detectSessionInUrl,
-  // then use onAuthStateChange to catch the SIGNED_IN event.
   if (oauthCode || (hashStr && hashStr.indexOf('access_token') > -1)) {
     var sb = getSupabase();
     if (sb) {
-      // Listen for auth state change — Supabase auto-exchanges the code
       sb.auth.onAuthStateChange(function(event, session) {
         if (event === 'SIGNED_IN' && session && session.access_token) {
           exchangeSupabaseForPAP(session);
         }
       });
 
-      // Fallback: if onAuthStateChange doesn't fire within 5s, try manual exchange
+      // Reduced fallback timeout: 3s (was 5s)
       setTimeout(function() {
         if (_oauthHandled) return;
         (async function() {
@@ -1320,7 +1329,6 @@ function setLang(l) {
             if (session && session.access_token) {
               await exchangeSupabaseForPAP(session);
             } else if (!_oauthHandled) {
-              // Last resort: if we have a code, try manual exchange
               if (oauthCode) {
                 var exResult = await sb.auth.exchangeCodeForSession(oauthCode);
                 if (exResult.data && exResult.data.session) {
@@ -1340,10 +1348,9 @@ function setLang(l) {
             }
           }
         })();
-      }, 5000);
+      }, 3000);
     }
   } else if (oauthToken) {
-    // Legacy server-side callback: ?token=xxx&user=xxx
     localStorage.setItem('pap-token', oauthToken);
     if (oauthUser) {
       try {
@@ -1363,7 +1370,7 @@ function setLang(l) {
     }
     window.history.replaceState({}, document.title, window.location.pathname);
   }
-})();
+});
 </script>
 </body>
 </html>
