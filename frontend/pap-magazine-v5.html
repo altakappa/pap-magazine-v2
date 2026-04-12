@@ -820,9 +820,16 @@ button{cursor:pointer;font-family:inherit}
         <option value="zh">中文</option>
       </select>
     </div>
-    <a href="auth.html" class="auth-btn-header header-right-item" aria-label="Login">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-    </a>
+    <div class="auth-btn-wrap">
+      <button class="header-right-item" onclick="toggleAccountMenu(event)" aria-label="Account" style="cursor:pointer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </button>
+      <div class="account-dropdown" id="accountDropdown" style="cursor:default">
+        <a href="auth.html" data-i18n="navLogin">로그인 / 회원가입</a>
+        <div class="dropdown-divider"></div>
+        <a href="subscribe.html" data-i18n="subscribe">구독하기</a>
+      </div>
+    </div>
     </div>
   </div>
 </header>
@@ -1161,8 +1168,8 @@ function toggleNav(){
 }
 
 // ======== ACCOUNT MENU ========
-function toggleAccountMenu(e){if(e)e.stopPropagation();var d=document.getElementById('accountDropdown');if(!d)return;d.classList.toggle('active');if(d.classList.contains('active')){setTimeout(function(){document.addEventListener('click',_closeAcct)},10)}else{document.removeEventListener('click',_closeAcct)}}
-function _closeAcct(e){var d=document.getElementById('accountDropdown');if(d&&!d.contains(e.target)){d.classList.remove('active');document.removeEventListener('click',_closeAcct)}}
+function toggleAccountMenu(e){if(e)e.stopPropagation();var d=document.getElementById('accountDropdown');if(!d)return;d.classList.toggle('active');var fL=document.getElementById('floatingLogo');if(d.classList.contains('active')){if(fL)fL.style.display='none';setTimeout(function(){document.addEventListener('click',_closeAcct)},10)}else{if(fL)fL.style.display='';document.removeEventListener('click',_closeAcct)}}
+function _closeAcct(e){var d=document.getElementById('accountDropdown');if(d&&!d.contains(e.target)){d.classList.remove('active');var fL=document.getElementById('floatingLogo');if(fL)fL.style.display='';document.removeEventListener('click',_closeAcct)}}
 
 // ======== FASHION CAROUSEL ========
 let fPos=0;
