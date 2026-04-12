@@ -245,17 +245,147 @@ function isPremium(){try{var u=localStorage.getItem('pap-user');if(!u)return fal
 function isStandardOrAbove(){try{var u=localStorage.getItem('pap-user');if(!u)return false;var user=JSON.parse(u);return user&&(user.subscription==='standard'||user.subscription==='premium');}catch(e){return false;}}
 function isLoggedIn(){return !!localStorage.getItem('pap-token');}
 
-// ======== INTERSTITIAL PREMIUM UPSELL ========
+// ======== INTERSTITIAL AD + PREMIUM UPSELL ========
 var _interstitialCount = 0;
 var _INTERSTITIAL_MAX = 2; // max per session
 
+// ---- BRAND AD CONFIGURATION ----
+// To add a brand ad, add an object to this array.
+// type: 'image' or 'video'
+// src: image URL or video URL (mp4/webm)
+// poster: (video only) poster image while loading
+// link: click-through URL (opens in new tab)
+// brand: brand name for "AD · BRAND" label
+// duration: seconds before skip is enabled (default 5 for video, 3 for image)
+//
+// Example:
+// { type:'video', src:'https://cdn.example.com/gucci-fw26.mp4', poster:'https://cdn.example.com/gucci-poster.jpg', link:'https://www.gucci.com', brand:'GUCCI', duration:5 }
+// { type:'image', src:'https://cdn.example.com/prada-campaign.jpg', link:'https://www.prada.com', brand:'PRADA', duration:3 }
+//
+// When this array is empty, the premium upsell is shown instead.
+var _brandAds = [];
+
+function _getNextBrandAd(){
+  if(!_brandAds || _brandAds.length === 0) return null;
+  // Rotate through ads sequentially per session
+  if(typeof _brandAdIdx === 'undefined') _brandAdIdx = 0;
+  var ad = _brandAds[_brandAdIdx % _brandAds.length];
+  _brandAdIdx++;
+  return ad;
+}
+
 function showPremiumInterstitial(callback){
-  // Skip for premium users
-  if(isPremium()){ if(callback) callback(); return; }
+  // Skip for standard+ members (ad-free benefit)
+  if(isStandardOrAbove()){ if(callback) callback(); return; }
   // Session limit
   if(_interstitialCount >= _INTERSTITIAL_MAX){ if(callback) callback(); return; }
   _interstitialCount++;
 
+  var brandAd = _getNextBrandAd();
+  if(brandAd){
+    _showBrandAdInterstitial(brandAd, callback);
+  } else {
+    _showPremiumUpsellInterstitial(callback);
+  }
+}
+
+// ---- BRAND AD INTERSTITIAL (image or video) ----
+function _showBrandAdInterstitial(ad, callback){
+  var overlay = document.createElement('div');
+  overlay.id = 'premiumInterstitial';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.95);display:flex;align-items:center;justify-content:center;flex-direction:column;opacity:0;transition:opacity .4s;';
+
+  // AD label
+  var label = document.createElement('div');
+  label.textContent = 'AD' + (ad.brand ? ' · ' + ad.brand : '');
+  label.style.cssText = 'position:absolute;top:16px;left:20px;font-size:9px;font-weight:700;letter-spacing:.2em;color:rgba(255,255,255,.35);font-family:Montserrat,sans-serif;z-index:2;';
+  overlay.appendChild(label);
+
+  // Media container
+  var mediaWrap = document.createElement('div');
+  mediaWrap.style.cssText = 'position:relative;max-width:90vw;max-height:75vh;display:flex;align-items:center;justify-content:center;cursor:pointer;';
+
+  var duration = ad.duration || (ad.type === 'video' ? 5 : 3);
+
+  if(ad.type === 'video'){
+    var video = document.createElement('video');
+    video.src = ad.src;
+    if(ad.poster) video.poster = ad.poster;
+    video.autoplay = true;
+    video.muted = true;
+    video.playsInline = true;
+    video.loop = true;
+    video.style.cssText = 'max-width:90vw;max-height:75vh;object-fit:contain;border-radius:2px;';
+    mediaWrap.appendChild(video);
+  } else {
+    var img = document.createElement('img');
+    img.src = ad.src;
+    img.alt = ad.brand || 'Ad';
+    img.style.cssText = 'max-width:90vw;max-height:75vh;object-fit:contain;border-radius:2px;';
+    mediaWrap.appendChild(img);
+  }
+
+  // Click-through
+  if(ad.link){
+    mediaWrap.onclick = function(){ window.open(ad.link, '_blank'); };
+  }
+
+  overlay.appendChild(mediaWrap);
+
+  // Skip button
+  var lang = localStorage.getItem('pap-lang') || 'ko';
+  var skipTexts = { ko:'건너뛰기', en:'Skip', it:'Salta', fr:'Passer', es:'Saltar', ja:'スキップ', zh:'跳过' };
+  var skipLabel = skipTexts[lang] || skipTexts.en;
+
+  var skip = document.createElement('button');
+  skip.style.cssText = 'position:absolute;bottom:24px;right:24px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.4);font-size:11px;font-weight:600;letter-spacing:.1em;cursor:pointer;font-family:Montserrat,sans-serif;padding:8px 20px;border-radius:2px;transition:all .2s;z-index:2;';
+  skip.onmouseover = function(){ this.style.background='rgba(255,255,255,.15)'; this.style.color='rgba(255,255,255,.8)'; };
+  skip.onmouseout = function(){ this.style.background='rgba(255,255,255,.1)'; this.style.color='rgba(255,255,255,.4)'; };
+
+  var _countdown = duration;
+  var _timer = null;
+  skip.textContent = skipLabel + ' (' + _countdown + ')';
+  skip.disabled = true;
+
+  function closeAd(){
+    if(_timer) clearInterval(_timer);
+    if(ad.type === 'video'){ var v=overlay.querySelector('video'); if(v) v.pause(); }
+    overlay.style.opacity = '0';
+    setTimeout(function(){ if(overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 400);
+    if(callback) callback();
+  }
+
+  skip.onclick = function(){ closeAd(); };
+  overlay.appendChild(skip);
+
+  // Premium badge (bottom left)
+  var premBadge = document.createElement('a');
+  premBadge.href = 'subscribe.html';
+  var premTexts = { ko:'광고 없이 즐기기', en:'Go ad-free', it:'Senza pubblicità', fr:'Sans publicité', es:'Sin anuncios', ja:'広告なし', zh:'去除广告' };
+  premBadge.textContent = premTexts[lang] || premTexts.en;
+  premBadge.style.cssText = 'position:absolute;bottom:26px;left:24px;font-size:10px;font-weight:600;letter-spacing:.08em;color:rgba(255,255,255,.3);text-decoration:none;font-family:Montserrat,sans-serif;transition:color .2s;z-index:2;';
+  premBadge.onmouseover = function(){ this.style.color='rgba(255,255,255,.7)'; };
+  premBadge.onmouseout = function(){ this.style.color='rgba(255,255,255,.3)'; };
+  overlay.appendChild(premBadge);
+
+  document.body.appendChild(overlay);
+  requestAnimationFrame(function(){ overlay.style.opacity = '1'; });
+
+  _timer = setInterval(function(){
+    _countdown--;
+    if(_countdown > 0){
+      skip.textContent = skipLabel + ' (' + _countdown + ')';
+    } else {
+      clearInterval(_timer);
+      skip.textContent = skipLabel;
+      skip.disabled = false;
+      skip.style.color = 'rgba(255,255,255,.7)';
+    }
+  }, 1000);
+}
+
+// ---- PREMIUM UPSELL INTERSTITIAL (fallback when no brand ads) ----
+function _showPremiumUpsellInterstitial(callback){
   var lang = localStorage.getItem('pap-lang') || 'ko';
   var texts = {
     ko: { tag:'PREMIUM', title:'광고 없이\n모든 콘텐츠를 즐기세요', desc:'프리미엄 구독으로 에디토리얼, 매거진,\n독점 콘텐츠를 제한 없이 감상하세요.', btn:'프리미엄 구독하기', skip:'건너뛰기' },
@@ -347,7 +477,7 @@ function showPremiumInterstitial(callback){
 
 // Navigate to page with interstitial check
 function navigateWithInterstitial(url){
-  if(!isPremium() && _interstitialCount < _INTERSTITIAL_MAX){
+  if(!isStandardOrAbove() && _interstitialCount < _INTERSTITIAL_MAX){
     showPremiumInterstitial(function(){ window.location.href=url; });
     return;
   }
@@ -355,8 +485,8 @@ function navigateWithInterstitial(url){
 }
 
 function openEditorial(title,thumb){
-  // Show interstitial for non-premium users (session limited)
-  if(!isPremium() && _interstitialCount < _INTERSTITIAL_MAX){
+  // Show interstitial for free users (session limited)
+  if(!isStandardOrAbove() && _interstitialCount < _INTERSTITIAL_MAX){
     showPremiumInterstitial(function(){
       _openEditorialInner(title,thumb);
     });
@@ -492,8 +622,8 @@ function edImgError(img){
 // ======== ALL EDITORIALS OVERLAY ========
 var edAllBuilt=false;
 function openAllEditorials(){
-  // Show interstitial for non-premium users (session limited)
-  if(!isPremium() && _interstitialCount < _INTERSTITIAL_MAX){
+  // Show interstitial for free users (session limited)
+  if(!isStandardOrAbove() && _interstitialCount < _INTERSTITIAL_MAX){
     showPremiumInterstitial(function(){ _openAllEditorialsInner(); });
     return;
   }
@@ -544,7 +674,7 @@ function closeAllEditorials(skipHistory){
 
 // ======== ALL FILMS OVERLAY ========
 function openAllFilms(){
-  if(!isPremium() && _interstitialCount < _INTERSTITIAL_MAX){
+  if(!isStandardOrAbove() && _interstitialCount < _INTERSTITIAL_MAX){
     showPremiumInterstitial(function(){ _openAllFilmsInner(); });
     return;
   }
@@ -604,7 +734,7 @@ function closeAllFilms(){
   }
 }
 function openFilmDetail(idx){
-  if(!isPremium() && _interstitialCount < _INTERSTITIAL_MAX){
+  if(!isStandardOrAbove() && _interstitialCount < _INTERSTITIAL_MAX){
     showPremiumInterstitial(function(){ _openFilmDetailInner(idx); });
     return;
   }
@@ -663,7 +793,7 @@ function closeFilmDetail(){
 
 // ======== ALL ARTICLES OVERLAY ========
 function openAllArticles(){
-  if(!isPremium() && _interstitialCount < _INTERSTITIAL_MAX){
+  if(!isStandardOrAbove() && _interstitialCount < _INTERSTITIAL_MAX){
     showPremiumInterstitial(function(){ _openAllArticlesInner(); });
     return;
   }
@@ -794,7 +924,7 @@ function _renderArticleDetail(a,det){
 }
 /* PAP API fetch removed - using local gallery data */
 function openArticleDetail(idx){
-  if(!isPremium() && _interstitialCount < _INTERSTITIAL_MAX){
+  if(!isStandardOrAbove() && _interstitialCount < _INTERSTITIAL_MAX){
     showPremiumInterstitial(function(){ _openArticleDetailInner(idx); });
     return;
   }
