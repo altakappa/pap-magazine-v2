@@ -402,13 +402,13 @@ function _showBrandAdInterstitial(ad, callback){
 function _showPremiumUpsellInterstitial(callback){
   var lang = localStorage.getItem('pap-lang') || 'ko';
   var texts = {
-    ko: { tag:'PREMIUM', title:'광고 없이\n모든 콘텐츠를 즐기세요', desc:'프리미엄 구독으로 에디토리얼, 매거진,\n독점 콘텐츠를 제한 없이 감상하세요.', btn:'프리미엄 구독하기', skip:'건너뛰기' },
-    en: { tag:'PREMIUM', title:'Enjoy all content\nwithout interruptions', desc:'Subscribe to Premium for unlimited access\nto editorials, magazines, and exclusive content.', btn:'Subscribe to Premium', skip:'Skip' },
-    it: { tag:'PREMIUM', title:'Goditi tutti i contenuti\nsenza interruzioni', desc:'Abbonati a Premium per accesso illimitato\na editoriali, riviste e contenuti esclusivi.', btn:'Abbonati a Premium', skip:'Salta' },
-    fr: { tag:'PREMIUM', title:'Profitez de tout le contenu\nsans interruption', desc:'Abonnez-vous au Premium pour un accès illimité\naux éditoriaux, magazines et contenus exclusifs.', btn:'S\'abonner au Premium', skip:'Passer' },
-    es: { tag:'PREMIUM', title:'Disfruta todo el contenido\nsin interrupciones', desc:'Suscríbete a Premium para acceso ilimitado\na editoriales, revistas y contenido exclusivo.', btn:'Suscríbete a Premium', skip:'Saltar' },
-    ja: { tag:'PREMIUM', title:'すべてのコンテンツを\n中断なくお楽しみください', desc:'プレミアム購読でエディトリアル、マガジン、\n限定コンテンツに無制限アクセス。', btn:'プレミアム購読', skip:'スキップ' },
-    zh: { tag:'PREMIUM', title:'无干扰地\n享受所有内容', desc:'订阅Premium，无限访问\n社论、杂志和独家内容。', btn:'订阅Premium', skip:'跳过' }
+    ko: { tag:'SUBSCRIBE', title:'광고 없이\n모든 콘텐츠를 즐기세요', desc:'구독으로 에디토리얼, 매거진,\n독점 콘텐츠를 제한 없이 감상하세요.', btn:'구독하기', skip:'건너뛰기' },
+    en: { tag:'SUBSCRIBE', title:'Enjoy all content\nwithout interruptions', desc:'Subscribe for unlimited access\nto editorials, magazines, and exclusive content.', btn:'Subscribe', skip:'Skip' },
+    it: { tag:'SUBSCRIBE', title:'Goditi tutti i contenuti\nsenza interruzioni', desc:'Abbonati per accesso illimitato\na editoriali, riviste e contenuti esclusivi.', btn:'Abbonati', skip:'Salta' },
+    fr: { tag:'SUBSCRIBE', title:'Profitez de tout le contenu\nsans interruption', desc:'Abonnez-vous pour un accès illimité\naux éditoriaux, magazines et contenus exclusifs.', btn:'S\'abonner', skip:'Passer' },
+    es: { tag:'SUBSCRIBE', title:'Disfruta todo el contenido\nsin interrupciones', desc:'Suscríbete para acceso ilimitado\na editoriales, revistas y contenido exclusivo.', btn:'Suscríbete', skip:'Saltar' },
+    ja: { tag:'SUBSCRIBE', title:'すべてのコンテンツを\n中断なくお楽しみください', desc:'購読でエディトリアル、マガジン、\n限定コンテンツに無制限アクセス。', btn:'購読する', skip:'スキップ' },
+    zh: { tag:'SUBSCRIBE', title:'无干扰地\n享受所有内容', desc:'订阅后无限访问\n社论、杂志和独家内容。', btn:'订阅', skip:'跳过' }
   };
   var t = texts[lang] || texts.en;
 
