@@ -10,8 +10,20 @@
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Montserrat',sans-serif;background:#000;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden}
-#cookieConsent{position:fixed;bottom:0;left:0;right:0;z-index:10000;pointer-events:auto}
+body{font-family:'Montserrat',sans-serif;background:#000;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;overflow-x:hidden;scrollbar-gutter:stable}
+#cookieConsent{position:fixed;bottom:0;left:0;right:0;z-index:10000;pointer-events:auto;background:rgba(0,0,0,.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:20px 24px;border-top:1px solid rgba(255,255,255,.1);animation:ccSlideUp .4s ease;font-family:'Montserrat',sans-serif}
+#cookieConsent.cc-hide{animation:ccSlideDown .4s ease forwards}
+.cc-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.cc-text{color:rgba(255,255,255,.85);font-size:13px;line-height:1.6;flex:1;min-width:240px}
+.cc-text-ko{color:rgba(255,255,255,.5);font-size:11px;line-height:1.5;margin-top:4px;flex-basis:100%}
+.cc-actions{display:flex;gap:12px;flex-shrink:0}
+.cc-btn{padding:10px 24px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;border:1.5px solid rgba(255,255,255,.3);cursor:pointer;font-family:'Montserrat',sans-serif;transition:all .25s}
+.cc-reject{background:transparent;color:rgba(255,255,255,.6)}
+.cc-reject:hover{border-color:rgba(255,255,255,.6);color:#fff}
+.cc-accept{background:#fff;color:#000;border-color:#fff}
+.cc-accept:hover{background:transparent;color:#fff}
+@keyframes ccSlideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes ccSlideDown{from{transform:translateY(0);opacity:1}to{transform:translateY(100%);opacity:0}}
 a{color:#fff;text-decoration:none}
 
 .auth-wrapper{width:100%;max-width:460px;padding:20px;flex:1;display:flex;flex-direction:column;justify-content:center;margin:0 auto}
@@ -140,6 +152,11 @@ a{color:#fff;text-decoration:none}
   .form-row{grid-template-columns:1fr}
   .step-hero h2{font-size:18px}
   .plan-card{padding:16px}
+}
+@media(max-width:600px){
+  .cc-inner{flex-direction:column;text-align:center}
+  .cc-actions{width:100%;justify-content:center}
+  .cc-text-ko{text-align:center}
 }
 </style>
 <!-- Favicon & PWA -->

@@ -575,6 +575,7 @@ function _openEditorialInner(title,thumb){
   document.getElementById('edOverlay').classList.add('active');
   document.getElementById('edOverlay').scrollTop=0;
   document.body.style.overflow='hidden';
+  if(typeof _resetCursorForModal==='function') _resetCursorForModal();
   try{history.pushState({editorial:true,title:title},'',window.location.pathname+'#editorial/'+encodeURIComponent(title));}catch(e){window.location.hash='#editorial/'+encodeURIComponent(title);}
 }
 
@@ -1093,6 +1094,7 @@ function openCreatorPopup(cr){
   });
   
   document.getElementById('creatorPopup').classList.add('active');
+  if(typeof _resetCursorForModal==='function') _resetCursorForModal();
 }
 
 function closeCreatorPopup(){
@@ -1414,7 +1416,7 @@ function scrollFilm(dir){
         fLogo.style.left = hp.x + 'px';
         fLogo.style.top = hp.y + 'px';
         fLogo.classList.add('in-header');
-        fLogo.classList.remove('on-hero');
+        fLogo.classList.remove('on-cursor');
         if(heroEl) heroEl.style.cursor = '';
       }
       return;
@@ -1931,6 +1933,25 @@ function scrollFilm(dir){
 })();
 
 
+// ======== MODAL CURSOR RESET (proactively disable floating cursor when popup opens) ========
+function _resetCursorForModal(){
+  var fLogo=document.getElementById('floatingLogo');
+  var heroEl=document.querySelector('.hero');
+  if(fLogo){
+    fLogo.classList.add('in-header');
+    fLogo.classList.remove('on-cursor');
+    fLogo.style.transition='all .4s cubic-bezier(.22,1,.36,1)';
+    var hLogo=document.querySelector('.logo-wrap');
+    if(hLogo){
+      var r=hLogo.getBoundingClientRect();
+      fLogo.style.left=(window.innerWidth/2)+'px';
+      fLogo.style.top=(r.top+r.height/2)+'px';
+    }
+    fLogo.style.transform='translate(-50%,-50%)';
+  }
+  if(heroEl) heroEl.style.cursor='';
+}
+
 // ======== SIGNUP POPUP ========
 function _hideCookieBanner(){
   var cc=document.getElementById('cookieConsent');
@@ -1946,6 +1967,7 @@ function _showCookieBanner(){
     setTimeout(function(){
       document.getElementById('signupPopup').classList.add('active');
       _hideCookieBanner();
+      _resetCursorForModal();
     }, 2500);
   }
 })();
