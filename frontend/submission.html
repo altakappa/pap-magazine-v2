@@ -60,6 +60,22 @@ textarea.form-input{min-height:100px;resize:vertical;line-height:1.8}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .form-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
 .form-hint{font-size:10px;color:rgba(255,255,255,.2);margin-top:5px;letter-spacing:.03em}
+/* VALIDATION */
+.form-input.error{border-color:rgba(255,80,80,.7)}
+.form-input.error:focus{border-color:rgba(255,80,80,.9)}
+.field-helper{font-size:10px;color:rgba(255,255,255,.25);margin-top:5px;letter-spacing:.03em;line-height:1.6}
+.field-error{display:none;font-size:10px;color:rgba(255,80,80,.85);margin-top:5px;letter-spacing:.04em;line-height:1.6}
+.field-error.visible{display:block}
+.error-summary{display:none;border:1px solid rgba(255,80,80,.3);background:rgba(255,80,80,.05);padding:16px 20px;margin-bottom:24px;font-size:11px;line-height:2}
+.error-summary.visible{display:block}
+.error-summary strong{color:rgba(255,80,80,.85);font-weight:700;letter-spacing:.05em}
+.error-summary ul{padding-left:16px;margin:8px 0 0;color:rgba(255,80,80,.75)}
+.error-summary li{margin-bottom:2px;cursor:pointer;transition:color .2s}
+.error-summary li:hover{color:rgba(255,130,130,1)}
+.copyright-check.error{border-color:rgba(255,80,80,.5)}
+.genre-tags.error .genre-tag:not(.selected){border-color:rgba(255,80,80,.4)}
+.char-count{font-size:9px;color:rgba(255,255,255,.2);margin-top:4px;text-align:right}
+.char-count.over{color:rgba(255,80,80,.7)}
 
 /* TEAM MEMBER ROW */
 .team-row{display:grid;grid-template-columns:120px 1fr 1fr 1fr;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.06)}
@@ -362,7 +378,8 @@ function toggleSideNav(){
     <!-- STEP 1: Category -->
     <div class="form-section active" id="step1">
       <div class="section-title">카테고리 / Category <span class="req">*</span></div>
-      <p style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:16px;line-height:1.8">에디토리얼에 해당하는 카테고리를 선택하세요 (복수 선택 가능).<br>Select the categories that apply to your editorial (multiple allowed).</p>
+      <div class="error-summary" id="errSummary1"></div>
+      <p style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:16px;line-height:1.8" data-i18n-html="step1Desc">에디토리얼에 해당하는 카테고리를 선택하세요 (복수 선택 가능).<br>Select the categories that apply to your editorial (multiple allowed).</p>
       <div class="genre-tags" id="genreTags">
         <button class="genre-tag" onclick="selectGenre(this)">FASHION</button>
         <button class="genre-tag" onclick="selectGenre(this)">BEAUTY</button>
@@ -372,7 +389,7 @@ function toggleSideNav(){
         <button class="genre-tag" onclick="selectGenre(this)">STREET</button>
         <button class="genre-tag" onclick="selectGenre(this)">FILM</button>
       </div>
-      <div class="form-hint">에디토리얼에 해당하는 카테고리를 선택하세요 (복수 선택 가능). / Select categories that apply (multiple allowed).</div>
+      <div class="field-error" id="err-genre"></div>
 
       <div class="form-nav">
         <div style="flex:1"></div>
@@ -383,41 +400,55 @@ function toggleSideNav(){
     <!-- STEP 2: Production & Title -->
     <div class="form-section" id="step2">
       <div class="section-title">작품 정보 / Production Info</div>
+      <div class="error-summary" id="errSummary2"></div>
       <div class="form-group">
         <label class="form-label">Editorial Title <span class="req">*</span></label>
-        <input type="text" class="form-input" id="editorialTitle" placeholder="Editorial Title (e.g. GAS)">
+        <input type="text" class="form-input" id="editorialTitle" data-field="editorialTitle">
+        <div class="field-helper" id="helper-editorialTitle"></div>
+        <div class="field-error" id="err-editorialTitle"></div>
       </div>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Production / Studio Name <span class="req">*</span></label>
-          <input type="text" class="form-input" id="studioName" placeholder="e.g. ThePinkBang Productions">
+          <input type="text" class="form-input" id="studioName" data-field="studioName">
+          <div class="field-helper" id="helper-studioName"></div>
+          <div class="field-error" id="err-studioName"></div>
         </div>
         <div class="form-group">
           <label class="form-label">Email <span class="req">*</span></label>
-          <input type="email" class="form-input" id="contactEmail" placeholder="hello@example.com">
+          <input type="email" class="form-input" id="contactEmail" data-field="contactEmail">
+          <div class="field-helper" id="helper-contactEmail"></div>
+          <div class="field-error" id="err-contactEmail"></div>
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Website</label>
-          <input type="url" class="form-input" id="studioWebsite" placeholder="https://...">
+          <input type="url" class="form-input" id="studioWebsite" data-field="studioWebsite">
+          <div class="field-helper" id="helper-studioWebsite"></div>
+          <div class="field-error" id="err-studioWebsite"></div>
         </div>
         <div class="form-group">
           <label class="form-label">Instagram</label>
-          <input type="text" class="form-input" id="studioInsta" placeholder="@yourstudio">
+          <input type="text" class="form-input" id="studioInsta" data-field="studioInsta">
+          <div class="field-helper" id="helper-studioInsta"></div>
+          <div class="field-error" id="err-studioInsta"></div>
         </div>
       </div>
 
       <div class="form-group" style="margin-top:8px">
         <label class="form-label">Artist Statement / 작품 설명 <span class="req">*</span></label>
-        <textarea class="form-input" id="artistStatement" placeholder="작품의 컨셉, 영감, 스토리를 간략히 설명해 주세요. / Briefly describe the concept, inspiration, and story behind your editorial." style="min-height:120px"></textarea>
-        <div class="form-hint">200~500자 권장 / 200-500 characters recommended</div>
+        <textarea class="form-input" id="artistStatement" data-field="artistStatement" style="min-height:120px"></textarea>
+        <div class="char-count" id="charCount-artistStatement">0 / 500</div>
+        <div class="field-helper" id="helper-artistStatement"></div>
+        <div class="field-error" id="err-artistStatement"></div>
       </div>
 
-      <div class="copyright-check">
+      <div class="copyright-check" id="copyrightWrap">
         <input type="checkbox" id="copyrightConfirm">
-        <label for="copyrightConfirm">본인은 제출하는 모든 이미지와 콘텐츠에 대한 적법한 저작권을 보유하고 있으며, 제3자의 권리를 침해하지 않음을 확인합니다.<br><strong>I confirm that I hold the legal copyright to all submitted images and content, and that they do not infringe any third-party rights.</strong></label>
+        <label for="copyrightConfirm" id="copyrightLabel"></label>
       </div>
+      <div class="field-error" id="err-copyrightConfirm" style="margin-top:6px"></div>
 
       <div class="form-nav">
         <button class="btn btn-back" onclick="goStep(1)">BACK</button>
@@ -690,6 +721,8 @@ function selectGenre(el){
   el.classList.toggle('selected');
   selectedGenres=[];
   document.querySelectorAll('.genre-tag.selected').forEach(function(g){ selectedGenres.push(g.textContent); });
+  _clearErr('genre');var _gt=document.getElementById('genreTags');if(_gt)_gt.classList.remove('error');
+  var _s1=document.getElementById('errSummary1');if(_s1){_s1.classList.remove('visible');_s1.innerHTML='';}
 }
 
 // MY SUBMISSIONS DASHBOARD
@@ -736,39 +769,207 @@ function addModelRow(){
   list.appendChild(row);
 }
 
+// ═══════════════════════════════════════
+// MULTILINGUAL FIELD TEXTS (placeholder / helper / error)
+// ═══════════════════════════════════════
+var _curLang='ko';
+var _FT={
+ko:{
+  errorSummaryTitle:'다음 항목을 확인해주세요:',
+  genreError:'카테고리를 최소 1개 선택해주세요.',
+  editorialTitle:{ph:'예: GAS',helper:'작품명은 2~50자 이내로 입력해주세요.',err:'작품명을 입력해주세요.',errLen:'작품명은 2~50자 이내로 입력해주세요.'},
+  studioName:{ph:'예: ThePinkBang Productions',helper:'스튜디오 또는 제작사명을 입력해주세요.',err:'제작사명을 입력해주세요.'},
+  contactEmail:{ph:'예: hello@example.com',helper:'회신 가능한 이메일 주소를 입력해주세요.',err:'이메일을 입력해주세요.',errFmt:'올바른 이메일 형식으로 입력해주세요.'},
+  studioWebsite:{ph:'예: https://yourstudio.com',helper:'https://를 포함하여 입력해주세요.',err:'웹사이트 주소는 https://로 시작해야 합니다.'},
+  studioInsta:{ph:'예: @yourstudio',helper:'@username 형식으로 입력해주세요.',err:'인스타그램 아이디는 @로 시작해야 합니다.'},
+  artistStatement:{ph:'예: 작품의 컨셉, 영감, 스토리를 200~500자 이내로 작성해주세요.',helper:'200~500자 권장',err:'작품 설명을 입력해주세요.',errLen:'500자 이하로 작성해주세요.'},
+  copyrightConfirm:{text:'제출한 이미지 및 콘텐츠의 저작권을 보유하고 있으며, 제3자의 권리를 침해하지 않음을 확인합니다.',err:'저작권 확인에 동의해주세요.'}
+},
+en:{
+  errorSummaryTitle:'Please check the following:',
+  genreError:'Please select at least one category.',
+  editorialTitle:{ph:'e.g. GAS',helper:'Please enter a title between 2 and 50 characters.',err:'Please enter the editorial title.',errLen:'Title must be between 2 and 50 characters.'},
+  studioName:{ph:'e.g. ThePinkBang Productions',helper:'Enter the name of your studio or production company.',err:'Please enter your production or studio name.'},
+  contactEmail:{ph:'e.g. hello@example.com',helper:'Please enter a valid email address.',err:'Please enter your email address.',errFmt:'Please enter a valid email address.'},
+  studioWebsite:{ph:'e.g. https://yourstudio.com',helper:'Include https:// in the URL.',err:'Website URL must start with https://'},
+  studioInsta:{ph:'e.g. @yourstudio',helper:'Please enter in @username format.',err:'Instagram username must start with @'},
+  artistStatement:{ph:'e.g. Briefly describe the concept, inspiration, and story behind your editorial.',helper:'Recommended length: 200\u2013500 characters',err:'Please enter an artist statement.',errLen:'Please keep it under 500 characters.'},
+  copyrightConfirm:{text:'I confirm that I own the rights to the submitted content and that it does not infringe any third-party rights.',err:'Please confirm the copyright agreement.'}
+},
+ja:{
+  errorSummaryTitle:'\u4ee5\u4e0b\u306e\u9805\u76ee\u3092\u3054\u78ba\u8a8d\u304f\u3060\u3055\u3044:',
+  genreError:'\u30ab\u30c6\u30b4\u30ea\u30fc\u30921\u3064\u4ee5\u4e0a\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044\u3002',
+  editorialTitle:{ph:'\u4f8b: GAS',helper:'\u30bf\u30a4\u30c8\u30eb\u306f2\u301c50\u6587\u5b57\u3067\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002',err:'\u30bf\u30a4\u30c8\u30eb\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002',errLen:'\u30bf\u30a4\u30c8\u30eb\u306f2\u301c50\u6587\u5b57\u3067\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002'},
+  studioName:{ph:'\u4f8b: ThePinkBang Productions',helper:'\u30b9\u30bf\u30b8\u30aa\u307e\u305f\u306f\u5236\u4f5c\u4f1a\u793e\u540d\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002',err:'\u5236\u4f5c\u4f1a\u793e\u540d\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002'},
+  contactEmail:{ph:'\u4f8b: hello@example.com',helper:'\u8fd4\u4fe1\u53ef\u80fd\u306a\u30e1\u30fc\u30eb\u30a2\u30c9\u30ec\u30b9\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002',err:'\u30e1\u30fc\u30eb\u30a2\u30c9\u30ec\u30b9\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002',errFmt:'\u6b63\u3057\u3044\u30e1\u30fc\u30eb\u5f62\u5f0f\u3067\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002'},
+  studioWebsite:{ph:'\u4f8b: https://yourstudio.com',helper:'https://\u3092\u542b\u3081\u3066\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002',err:'URL\u306fhttps://\u3067\u59cb\u307e\u308b\u5fc5\u8981\u304c\u3042\u308a\u307e\u3059\u3002'},
+  studioInsta:{ph:'\u4f8b: @yourstudio',helper:'@username\u5f62\u5f0f\u3067\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002',err:'Instagram\u306f@\u3067\u59cb\u307e\u308b\u5fc5\u8981\u304c\u3042\u308a\u307e\u3059\u3002'},
+  artistStatement:{ph:'\u4f8b: \u4f5c\u54c1\u306e\u30b3\u30f3\u30bb\u30d7\u30c8\u3001\u30a4\u30f3\u30b9\u30d4\u30ec\u30fc\u30b7\u30e7\u30f3\u3001\u30b9\u30c8\u30fc\u30ea\u30fc\u3092200\u301c500\u6587\u5b57\u3067\u8aac\u660e\u3057\u3066\u304f\u3060\u3055\u3044\u3002',helper:'\u63a8\u5968: 200\u301c500\u6587\u5b57',err:'\u4f5c\u54c1\u8aac\u660e\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002',errLen:'500\u6587\u5b57\u4ee5\u5185\u3067\u8a18\u5165\u3057\u3066\u304f\u3060\u3055\u3044\u3002'},
+  copyrightConfirm:{text:'\u63d0\u51fa\u3059\u308b\u30b3\u30f3\u30c6\u30f3\u30c4\u306e\u8457\u4f5c\u6a29\u3092\u4fdd\u6709\u3057\u3066\u304a\u308a\u3001\u7b2c\u4e09\u8005\u306e\u6a29\u5229\u3092\u4fb5\u5bb3\u3057\u306a\u3044\u3053\u3068\u3092\u78ba\u8a8d\u3057\u307e\u3059\u3002',err:'\u8457\u4f5c\u6a29\u78ba\u8a8d\u306b\u540c\u610f\u3057\u3066\u304f\u3060\u3055\u3044\u3002'}
+},
+zh:{
+  errorSummaryTitle:'\u8bf7\u68c0\u67e5\u4ee5\u4e0b\u9879\u76ee\uff1a',
+  genreError:'\u8bf7\u81f3\u5c11\u9009\u62e9\u4e00\u4e2a\u7c7b\u522b\u3002',
+  editorialTitle:{ph:'\u5982\uff1aGAS',helper:'\u8bf7\u8f93\u51652\u81f350\u4e2a\u5b57\u7b26\u7684\u6807\u9898\u3002',err:'\u8bf7\u8f93\u5165\u4f5c\u54c1\u6807\u9898\u3002',errLen:'\u6807\u9898\u9700\u4e3a2\u81f350\u4e2a\u5b57\u7b26\u3002'},
+  studioName:{ph:'\u5982\uff1aThePinkBang Productions',helper:'\u8bf7\u8f93\u5165\u5de5\u4f5c\u5ba4\u6216\u5236\u4f5c\u516c\u53f8\u540d\u79f0\u3002',err:'\u8bf7\u8f93\u5165\u5236\u4f5c\u516c\u53f8\u540d\u79f0\u3002'},
+  contactEmail:{ph:'\u5982\uff1ahello@example.com',helper:'\u8bf7\u8f93\u5165\u6709\u6548\u7684\u7535\u5b50\u90ae\u4ef6\u5730\u5740\u3002',err:'\u8bf7\u8f93\u5165\u7535\u5b50\u90ae\u4ef6\u5730\u5740\u3002',errFmt:'\u8bf7\u8f93\u5165\u6b63\u786e\u7684\u90ae\u4ef6\u683c\u5f0f\u3002'},
+  studioWebsite:{ph:'\u5982\uff1ahttps://yourstudio.com',helper:'\u8bf7\u5305\u542b https:// \u524d\u7f00\u3002',err:'\u7f51\u7ad9\u5730\u5740\u5fc5\u987b\u4ee5 https:// \u5f00\u5934\u3002'},
+  studioInsta:{ph:'\u5982\uff1a@yourstudio',helper:'\u8bf7\u4ee5 @username \u683c\u5f0f\u8f93\u5165\u3002',err:'Instagram\u7528\u6237\u540d\u5fc5\u987b\u4ee5 @ \u5f00\u5934\u3002'},
+  artistStatement:{ph:'\u5982\uff1a\u8bf7\u7b80\u8981\u63cf\u8ff0\u4f5c\u54c1\u7684\u6982\u5ff5\u3001\u7075\u611f\u548c\u6545\u4e8b\uff08200\u2013500\u5b57\uff09\u3002',helper:'\u5efa\u8bae\u957f\u5ea6\uff1a200\u2013500\u5b57',err:'\u8bf7\u8f93\u5165\u4f5c\u54c1\u8bf4\u660e\u3002',errLen:'\u8bf7\u63a7\u5236\u5728500\u5b57\u4ee5\u5185\u3002'},
+  copyrightConfirm:{text:'\u6211\u786e\u8ba4\u62e5\u6709\u6240\u63d0\u4ea4\u5185\u5bb9\u7684\u7248\u6743\uff0c\u4e14\u4e0d\u4fb5\u72af\u4efb\u4f55\u7b2c\u4e09\u65b9\u6743\u5229\u3002',err:'\u8bf7\u786e\u8ba4\u7248\u6743\u58f0\u660e\u3002'}
+},
+it:{
+  errorSummaryTitle:'Controlla i seguenti campi:',
+  genreError:'Seleziona almeno una categoria.',
+  editorialTitle:{ph:'es. GAS',helper:'Inserisci un titolo tra 2 e 50 caratteri.',err:'Inserisci il titolo editoriale.',errLen:'Il titolo deve essere tra 2 e 50 caratteri.'},
+  studioName:{ph:'es. ThePinkBang Productions',helper:'Inserisci il nome dello studio o della produzione.',err:'Inserisci il nome della produzione.'},
+  contactEmail:{ph:'es. hello@example.com',helper:'Inserisci un indirizzo email valido.',err:'Inserisci il tuo indirizzo email.',errFmt:'Inserisci un formato email valido.'},
+  studioWebsite:{ph:'es. https://yourstudio.com',helper:"Includi https:// nell'URL.",err:"L'URL deve iniziare con https://"},
+  studioInsta:{ph:'es. @yourstudio',helper:'Inserisci nel formato @username.',err:'Il nome Instagram deve iniziare con @'},
+  artistStatement:{ph:"es. Descrivi brevemente il concept, l'ispirazione e la storia del tuo editoriale.",helper:'Lunghezza consigliata: 200\u2013500 caratteri',err:'Inserisci la descrizione artistica.',errLen:'Mantieni sotto i 500 caratteri.'},
+  copyrightConfirm:{text:'Confermo di possedere i diritti sul contenuto inviato e che non viola i diritti di terzi.',err:"Conferma l'accordo sul copyright."}
+},
+fr:{
+  errorSummaryTitle:'Veuillez v\u00e9rifier les champs suivants :',
+  genreError:'Veuillez s\u00e9lectionner au moins une cat\u00e9gorie.',
+  editorialTitle:{ph:'ex. GAS',helper:'Entrez un titre entre 2 et 50 caract\u00e8res.',err:'Veuillez entrer le titre \u00e9ditorial.',errLen:'Le titre doit contenir entre 2 et 50 caract\u00e8res.'},
+  studioName:{ph:'ex. ThePinkBang Productions',helper:'Entrez le nom de votre studio ou soci\u00e9t\u00e9 de production.',err:'Veuillez entrer le nom de production.'},
+  contactEmail:{ph:'ex. hello@example.com',helper:'Entrez une adresse email valide.',err:'Veuillez entrer votre adresse email.',errFmt:"Veuillez entrer un format d'email valide."},
+  studioWebsite:{ph:'ex. https://yourstudio.com',helper:"Incluez https:// dans l'URL.",err:"L'URL doit commencer par https://"},
+  studioInsta:{ph:'ex. @yourstudio',helper:'Entrez au format @username.',err:'Le nom Instagram doit commencer par @'},
+  artistStatement:{ph:"ex. D\u00e9crivez bri\u00e8vement le concept, l'inspiration et l'histoire de votre \u00e9ditorial.",helper:'Longueur recommand\u00e9e : 200\u2013500 caract\u00e8res',err:'Veuillez entrer une description artistique.',errLen:'Veuillez rester sous 500 caract\u00e8res.'},
+  copyrightConfirm:{text:"Je confirme d\u00e9tenir les droits sur le contenu soumis et qu'il ne porte atteinte \u00e0 aucun droit de tiers.",err:'Veuillez confirmer le copyright.'}
+},
+es:{
+  errorSummaryTitle:'Por favor, revise lo siguiente:',
+  genreError:'Seleccione al menos una categor\u00eda.',
+  editorialTitle:{ph:'ej. GAS',helper:'Ingrese un t\u00edtulo entre 2 y 50 caracteres.',err:'Ingrese el t\u00edtulo editorial.',errLen:'El t\u00edtulo debe tener entre 2 y 50 caracteres.'},
+  studioName:{ph:'ej. ThePinkBang Productions',helper:'Ingrese el nombre de su estudio o productora.',err:'Ingrese el nombre de la producci\u00f3n.'},
+  contactEmail:{ph:'ej. hello@example.com',helper:'Ingrese una direcci\u00f3n de email v\u00e1lida.',err:'Ingrese su direcci\u00f3n de email.',errFmt:'Ingrese un formato de email v\u00e1lido.'},
+  studioWebsite:{ph:'ej. https://yourstudio.com',helper:'Incluya https:// en la URL.',err:'La URL debe comenzar con https://'},
+  studioInsta:{ph:'ej. @yourstudio',helper:'Ingrese en formato @username.',err:'El usuario de Instagram debe comenzar con @'},
+  artistStatement:{ph:'ej. Describa brevemente el concepto, inspiraci\u00f3n e historia de su editorial.',helper:'Longitud recomendada: 200\u2013500 caracteres',err:'Ingrese una descripci\u00f3n art\u00edstica.',errLen:'Mantenga bajo 500 caracteres.'},
+  copyrightConfirm:{text:'Confirmo que poseo los derechos del contenido enviado y que no infringe derechos de terceros.',err:'Confirme el acuerdo de derechos de autor.'}
+},
+ru:{
+  errorSummaryTitle:'\u041f\u043e\u0436\u0430\u043b\u0443\u0439\u0441\u0442\u0430, \u043f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 \u0441\u043b\u0435\u0434\u0443\u044e\u0449\u0435\u0435:',
+  genreError:'\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0445\u043e\u0442\u044f \u0431\u044b \u043e\u0434\u043d\u0443 \u043a\u0430\u0442\u0435\u0433\u043e\u0440\u0438\u044e.',
+  editorialTitle:{ph:'\u043d\u0430\u043f\u0440. GAS',helper:'\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u043e\u0442 2 \u0434\u043e 50 \u0441\u0438\u043c\u0432\u043e\u043b\u043e\u0432.',err:'\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u0440\u0430\u0431\u043e\u0442\u044b.',errLen:'\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u0434\u043e\u043b\u0436\u043d\u043e \u0431\u044b\u0442\u044c \u043e\u0442 2 \u0434\u043e 50 \u0441\u0438\u043c\u0432\u043e\u043b\u043e\u0432.'},
+  studioName:{ph:'\u043d\u0430\u043f\u0440. ThePinkBang Productions',helper:'\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u0441\u0442\u0443\u0434\u0438\u0438 \u0438\u043b\u0438 \u043f\u0440\u043e\u0434\u0430\u043a\u0448\u043d\u0430.',err:'\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u043f\u0440\u043e\u0434\u0430\u043a\u0448\u043d\u0430.'},
+  contactEmail:{ph:'\u043d\u0430\u043f\u0440. hello@example.com',helper:'\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u0434\u0435\u0439\u0441\u0442\u0432\u0443\u044e\u0449\u0438\u0439 email.',err:'\u0412\u0432\u0435\u0434\u0438\u0442\u0435 email \u0430\u0434\u0440\u0435\u0441.',errFmt:'\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043a\u043e\u0440\u0440\u0435\u043a\u0442\u043d\u044b\u0439 \u0444\u043e\u0440\u043c\u0430\u0442 email.'},
+  studioWebsite:{ph:'\u043d\u0430\u043f\u0440. https://yourstudio.com',helper:'\u0412\u043a\u043b\u044e\u0447\u0438\u0442\u0435 https:// \u0432 URL.',err:'URL \u0434\u043e\u043b\u0436\u0435\u043d \u043d\u0430\u0447\u0438\u043d\u0430\u0442\u044c\u0441\u044f \u0441 https://'},
+  studioInsta:{ph:'\u043d\u0430\u043f\u0440. @yourstudio',helper:'\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u0432 \u0444\u043e\u0440\u043c\u0430\u0442\u0435 @username.',err:'Instagram \u0434\u043e\u043b\u0436\u0435\u043d \u043d\u0430\u0447\u0438\u043d\u0430\u0442\u044c\u0441\u044f \u0441 @'},
+  artistStatement:{ph:'\u043d\u0430\u043f\u0440. \u041a\u0440\u0430\u0442\u043a\u043e \u043e\u043f\u0438\u0448\u0438\u0442\u0435 \u043a\u043e\u043d\u0446\u0435\u043f\u0446\u0438\u044e, \u0432\u0434\u043e\u0445\u043d\u043e\u0432\u0435\u043d\u0438\u0435 \u0438 \u0438\u0441\u0442\u043e\u0440\u0438\u044e \u0432\u0430\u0448\u0435\u0439 \u0440\u0430\u0431\u043e\u0442\u044b.',helper:'\u0420\u0435\u043a\u043e\u043c\u0435\u043d\u0434\u0443\u0435\u043c\u0430\u044f \u0434\u043b\u0438\u043d\u0430: 200\u2013500 \u0441\u0438\u043c\u0432\u043e\u043b\u043e\u0432',err:'\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043e\u043f\u0438\u0441\u0430\u043d\u0438\u0435 \u0440\u0430\u0431\u043e\u0442\u044b.',errLen:'\u041d\u0435 \u0431\u043e\u043b\u0435\u0435 500 \u0441\u0438\u043c\u0432\u043e\u043b\u043e\u0432.'},
+  copyrightConfirm:{text:'\u041f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0430\u044e, \u0447\u0442\u043e \u043e\u0431\u043b\u0430\u0434\u0430\u044e \u043f\u0440\u0430\u0432\u0430\u043c\u0438 \u043d\u0430 \u043f\u0440\u0435\u0434\u0441\u0442\u0430\u0432\u043b\u0435\u043d\u043d\u044b\u0439 \u043a\u043e\u043d\u0442\u0435\u043d\u0442 \u0438 \u043e\u043d \u043d\u0435 \u043d\u0430\u0440\u0443\u0448\u0430\u0435\u0442 \u043f\u0440\u0430\u0432 \u0442\u0440\u0435\u0442\u044c\u0438\u0445 \u043b\u0438\u0446.',err:'\u041f\u043e\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0435 \u0441\u043e\u0433\u043b\u0430\u0448\u0435\u043d\u0438\u0435 \u043e\u0431 \u0430\u0432\u0442\u043e\u0440\u0441\u043a\u0438\u0445 \u043f\u0440\u0430\u0432\u0430\u0445.'}
+}
+};
+
+// ═══════════════════════════════════════
+// VALIDATION HELPERS
+// ═══════════════════════════════════════
+function _ft(fid){var d=_FT[_curLang]||_FT.en;return d[fid]||(_FT.en[fid]||{});}
+function _showErr(fid,msg){var e=document.getElementById('err-'+fid);var i=document.getElementById(fid);if(e){e.textContent=msg;e.classList.add('visible');}if(i)i.classList.add('error');}
+function _clearErr(fid){var e=document.getElementById('err-'+fid);var i=document.getElementById(fid);if(e){e.textContent='';e.classList.remove('visible');}if(i)i.classList.remove('error');}
+function _clearAllErrs(step){
+  if(step===1){_clearErr('genre');var gt=document.getElementById('genreTags');if(gt)gt.classList.remove('error');}
+  if(step===2){['editorialTitle','studioName','contactEmail','studioWebsite','studioInsta','artistStatement','copyrightConfirm'].forEach(function(f){_clearErr(f);});var cw=document.getElementById('copyrightWrap');if(cw)cw.classList.remove('error');}
+  var s=document.getElementById('errSummary'+step);if(s){s.classList.remove('visible');s.innerHTML='';}
+}
+function _validateField(fid){
+  var d=_ft(fid);var el=document.getElementById(fid);if(!el)return true;
+  var v=(el.type==='checkbox')?el.checked:(el.value||'').trim();
+  _clearErr(fid);
+  switch(fid){
+    case 'editorialTitle':
+      if(!v){_showErr(fid,d.err);return false;}
+      if(v.length<2||v.length>50){_showErr(fid,d.errLen);return false;}
+      return true;
+    case 'studioName':
+      if(!v){_showErr(fid,d.err);return false;}
+      return true;
+    case 'contactEmail':
+      if(!v){_showErr(fid,d.err);return false;}
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)){_showErr(fid,d.errFmt);return false;}
+      return true;
+    case 'studioWebsite':
+      if(v&&!/^https?:\/\/.+\..+/.test(v)){_showErr(fid,d.err);return false;}
+      return true;
+    case 'studioInsta':
+      if(v&&!v.startsWith('@')){_showErr(fid,d.err);return false;}
+      return true;
+    case 'artistStatement':
+      if(!v){_showErr(fid,d.err);return false;}
+      if(v.length>500){_showErr(fid,d.errLen);return false;}
+      return true;
+    case 'copyrightConfirm':
+      if(!v){_showErr(fid,d.err);var cw=document.getElementById('copyrightWrap');if(cw)cw.classList.add('error');return false;}
+      var cw2=document.getElementById('copyrightWrap');if(cw2)cw2.classList.remove('error');
+      return true;
+  }
+  return true;
+}
+function _validateStep(n){
+  _clearAllErrs(n);
+  var errs=[];
+  if(n===1){
+    if(selectedGenres.length===0){
+      var d=_FT[_curLang]||_FT.en;
+      _showErr('genre',d.genreError);
+      document.getElementById('genreTags').classList.add('error');
+      errs.push({field:'genreTags',msg:d.genreError});
+    }
+  }
+  if(n===2){
+    ['editorialTitle','studioName','contactEmail','studioWebsite','studioInsta','artistStatement','copyrightConfirm'].forEach(function(fid){
+      if(!_validateField(fid)){
+        var e=document.getElementById('err-'+fid);
+        errs.push({field:fid==='copyrightConfirm'?'copyrightWrap':fid,msg:e?e.textContent:''});
+      }
+    });
+  }
+  var summary=document.getElementById('errSummary'+n);
+  if(summary&&errs.length>0){
+    var d=_FT[_curLang]||_FT.en;
+    var h='<strong>'+d.errorSummaryTitle+'</strong><ul>';
+    errs.forEach(function(e){
+      h+="<li onclick=\"var t=document.getElementById('"+e.field+"');if(t){t.scrollIntoView({behavior:'smooth',block:'center'});t.focus();}\">"+e.msg+'</li>';
+    });
+    h+='</ul>';
+    summary.innerHTML=h;
+    summary.classList.add('visible');
+    summary.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+  return errs.length===0;
+}
+function _updateCharCount(){
+  var el=document.getElementById('artistStatement');
+  var cc=document.getElementById('charCount-artistStatement');
+  if(!el||!cc)return;
+  var len=el.value.length;
+  cc.textContent=len+' / 500';
+  cc.classList.toggle('over',len>500);
+}
+function _applyFieldTexts(){
+  var d=_FT[_curLang]||_FT.en;
+  ['editorialTitle','studioName','contactEmail','studioWebsite','studioInsta','artistStatement'].forEach(function(fid){
+    var fd=d[fid];if(!fd)return;
+    var inp=document.getElementById(fid);
+    var hlp=document.getElementById('helper-'+fid);
+    if(inp)inp.placeholder=fd.ph||'';
+    if(hlp)hlp.textContent=fd.helper||'';
+  });
+  var cl=document.getElementById('copyrightLabel');
+  if(cl&&d.copyrightConfirm)cl.textContent=d.copyrightConfirm.text;
+}
+
 // STEP NAVIGATION
 var curStep=1;
 var totalSteps=5;
 function goStep(n){
-  // Validation before proceeding
   if(n>curStep){
-    if(curStep===1&&selectedGenres.length===0){
-      if(typeof PAP!=='undefined') PAP.ui.toast('카테고리를 최소 1개 선택하세요. / Select at least one category.','error');
-      return;
-    }
-    if(curStep===2){
-      var title=document.getElementById('editorialTitle').value.trim();
-      var email=document.getElementById('contactEmail').value.trim();
-      var statement=document.getElementById('artistStatement').value.trim();
-      var copyright=document.getElementById('copyrightConfirm').checked;
-      if(!title||!email){
-        if(typeof PAP!=='undefined') PAP.ui.toast('제목과 이메일은 필수입니다. / Title and email are required.','error');
-        return;
-      }
-      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
-        if(typeof PAP!=='undefined') PAP.ui.toast('유효한 이메일을 입력하세요. / Enter a valid email.','error');
-        return;
-      }
-      if(!statement){
-        if(typeof PAP!=='undefined') PAP.ui.toast('작품 설명을 입력하세요. / Please enter an artist statement.','error');
-        return;
-      }
-      if(!copyright){
-        if(typeof PAP!=='undefined') PAP.ui.toast('저작권 확인에 동의해 주세요. / Please confirm copyright ownership.','error');
-        return;
-      }
-    }
+    if(!_validateStep(curStep))return;
   }
+  _clearAllErrs(curStep);
   document.getElementById('step'+curStep).classList.remove('active');
   curStep=n;
   document.getElementById('step'+n).classList.add('active');
@@ -1083,11 +1284,12 @@ ja:{business:'BUSINESS',about:'ABOUT',contact:'CONTACT',subscribe:'購読',submi
 zh:{business:'商务',about:'关于',contact:'联系',subscribe:'订阅',submission:'投稿',pullletter:'PULL-LETTER',pageDesc:'向PAP Magazine提交您的编辑作品。请提供制作信息、团队名单、各造型名单和高分辨率图片。',gateLogin:'登录 / 注册',gateTitle:'仅限会员',gateDesc:'此服务仅限注册会员使用。',successMsg:'您的投稿已成功接收。审核结果将在1-3个工作日内通过邮件通知。',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | 营业执照号 192-88-02644<br>首尔特别市江南区论岘路146街18, 1F | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},ru:{business:'БИЗНЕС',about:'О НАС',contact:'КОНТАКТ',subscribe:'ПОДПИСКА',submission:'ПОДАЧА',pullletter:'PULL-LETTER',pageDesc:'Отправьте ваш эдиториал в PAP Magazine. Укажите информацию о работе, кредиты команды, кредиты по образам и загрузите изображения высокого разрешения.',gateLogin:'ВОЙТИ / РЕГИСТРАЦИЯ',gateTitle:'ТОЛЬКО ДЛЯ УЧАСТНИКОВ',gateDesc:'Этот сервис доступен только зарегистрированным участникам.\nВойдите или зарегистрируйтесь.',successMsg:'Ваша подача успешно принята. Результаты рассмотрения будут отправлены на email в течение 1-3 рабочих дней.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Рег. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'}
 };
 function setLang(l){
-  localStorage.setItem('pap-lang',l);var d=L[l]||L.ko;
+  localStorage.setItem('pap-lang',l);_curLang=l;var d=L[l]||L.ko;
   document.querySelectorAll('[data-i18n]').forEach(function(e){var k=e.getAttribute('data-i18n');if(d[k])e.textContent=d[k];});
   document.querySelectorAll('[data-i18n-html]').forEach(function(e){var k=e.getAttribute('data-i18n-html');if(d[k])e.innerHTML=d[k].replace(/\\n/g,'<br>');});
   if(document.getElementById('footerLegal')&&d.ft) document.getElementById('footerLegal').innerHTML=d.ft;
   document.getElementById('langSelect').value=l;
+  _applyFieldTexts();
 }
 // AUTO LANGUAGE DETECTION
 (function(){
@@ -1116,6 +1318,21 @@ document.addEventListener('DOMContentLoaded',function(){
     document.getElementById('formArea').style.display='block';
     loadMySubmissions();
   }
+  // Real-time validation: blur + input handlers
+  ['editorialTitle','studioName','contactEmail','studioWebsite','studioInsta','artistStatement'].forEach(function(fid){
+    var el=document.getElementById(fid);
+    if(!el)return;
+    el.addEventListener('blur',function(){_validateField(fid);});
+    el.addEventListener('input',function(){
+      if(el.classList.contains('error'))_validateField(fid);
+      if(fid==='artistStatement')_updateCharCount();
+    });
+  });
+  var cpEl=document.getElementById('copyrightConfirm');
+  if(cpEl)cpEl.addEventListener('change',function(){_validateField('copyrightConfirm');});
+  // Apply field texts for current language
+  _applyFieldTexts();
+  _updateCharCount();
 });
 </script>
 </body>
