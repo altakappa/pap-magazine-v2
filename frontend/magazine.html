@@ -32,7 +32,7 @@ a{text-decoration:none;color:inherit}
 .logo-wrap{position:absolute;left:50%;transform:translateX(-50%)}
 .logo-wrap img,.logo-wrap svg{height:28px;width:auto}
 .header-right{display:flex;align-items:center;gap:6px}
-.header-right-item{display:inline-flex;align-items:center;justify-content:center;padding:4px;color:rgba(255,255,255,.4);text-decoration:none;transition:color .2s}
+.header-right-item{display:inline-flex;align-items:center;justify-content:center;padding:4px;color:rgba(255,255,255,.4);text-decoration:none;transition:color .2s;background:none;border:none;cursor:pointer;font-family:inherit}
 .header-right-item:hover{color:#fff}
 .header-right-item svg{width:20px;height:20px}
 .auth-btn-wrap{position:relative;display:inline-flex}
@@ -267,7 +267,7 @@ footer a:hover{color:#fff}
       </select>
     </div>
     <div class="auth-btn-wrap">
-      <button class="header-right-item" onclick="toggleAccountMenu(event)" aria-label="Account" style="cursor:pointer">
+      <button class="header-right-item" onclick="toggleAccountMenu(event)" aria-label="Account">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </button>
       <div class="account-dropdown" id="accountDropdown" style="cursor:default">
