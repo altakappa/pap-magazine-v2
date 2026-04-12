@@ -18,13 +18,7 @@
 <link rel="stylesheet" href="pap-styles.css">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-height:100vh; }
-.page-header {
-  padding:20px 40px; display:flex; align-items:center; justify-content:space-between;
-  border-bottom:1px solid rgba(255,255,255,.06);
-}
-.page-header a { color:#fff; text-decoration:none; font-size:11px; letter-spacing:.15em; font-weight:700; }
-.page-logo { font-size:14px; font-weight:800; letter-spacing:.2em; color:#fff; text-decoration:none; }
+body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-height:100vh; padding-top:72px; }
 .page-title {
   font-size:28px; font-weight:800; letter-spacing:.15em; padding:40px 48px 8px; color:#fff;
 }
@@ -54,10 +48,88 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
 </head>
 <body>
 
-<div class="page-header">
-  <a href="index.html">&larr; BACK</a>
-  <a href="index.html" class="page-logo">PAP MAGAZINE</a>
-  <div style="width:60px"></div>
+<!-- NAV OVERLAY -->
+<div class="nav-overlay" id="navOverlay">
+  <button class="nav-close" onclick="toggleNav()">&times;</button>
+  <div class="nav-overlay-inner">
+    <div class="nav-left-col">
+      <div class="nav-left-top">
+        <a href="subscribe.html" data-i18n="subscribe">SUBSCRIBE</a>
+      </div>
+      <div class="nav-left-links">
+        <a href="submission.html" data-i18n="submission">SUBMISSION</a>
+        <a href="pullletter.html" data-i18n="pullletter">PULL-LETTER</a>
+        <a href="auth.html" data-i18n="navLogin" style="color:rgba(255,255,255,.6)">LOGIN / JOIN</a>
+      </div>
+      <div class="nav-left-links nav-extra-links" style="margin-top:auto">
+        <a href="contact.html" data-i18n="contact">CONTACT</a>
+        <a href="business.html" data-i18n="business">BUSINESS</a>
+        <a href="about.html" data-i18n="about">ABOUT</a>
+      </div>
+      <div class="nav-bottom-row">
+        <div class="nav-left-dots" onclick="this.classList.toggle('open');document.getElementById('navSocials').classList.toggle('active')"><span>&#8942;</span></div>
+        <div class="nav-socials" id="navSocials">
+          <a href="https://www.youtube.com/@pap-magazine" target="_blank" class="nav-social-icon">
+            <svg viewBox="0 0 40 40" width="40" height="40"><rect x="1" y="5" width="38" height="30" rx="4" fill="#000"/><rect x="6" y="10" width="28" height="20" rx="2" fill="#000" stroke="#fff" stroke-width="1.2"/><text x="20" y="19" text-anchor="middle" font-size="9" font-weight="700" fill="#fff" font-family="Arial,sans-serif">You</text><text x="20" y="28" text-anchor="middle" font-size="9" font-weight="700" fill="#fff" font-family="Arial,sans-serif">Tube</text></svg>
+          </a>
+          <a href="https://www.facebook.com/papmagazine/" target="_blank" class="nav-social-icon">
+            <svg viewBox="0 0 40 40" width="40" height="40"><rect x="4" y="4" width="32" height="32" rx="5" fill="#000"/><text x="20" y="30" text-anchor="middle" font-size="26" font-weight="900" fill="#fff" font-family="Arial,sans-serif">f</text></svg>
+          </a>
+          <a href="https://www.instagram.com/pap_magazine/" target="_blank" class="nav-social-icon">
+            <svg viewBox="0 0 40 40" width="40" height="40"><rect x="4" y="4" width="32" height="32" rx="8" fill="#000"/><circle cx="20" cy="20" r="7.5" fill="none" stroke="#fff" stroke-width="2"/><circle cx="20" cy="20" r="1" fill="#fff"/><circle cx="29" cy="11" r="2" fill="#fff"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+    <div class="nav-right-col">
+      <a href="community.html" data-i18n="navCommunity" style="color:#891717">COMMUNITY</a>
+      <a href="/" data-i18n="navMagazine" style="color:#c9a96e">MAGAZINE</a>
+      <a href="/" data-i18n="navEditorial">EDITORIAL</a>
+      <a href="articles.html" data-i18n="navArticle">ARTICLE</a>
+      <a href="films.html" data-i18n="navFilm">FILM</a>
+    </div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <button class="hamburger" onclick="toggleNav()" aria-label="Menu"><span></span><span></span><span></span></button>
+    <button class="search-btn header-left-item" onclick="toggleSearch()" aria-label="Search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </button>
+  </div>
+  <div class="logo-wrap">
+    <a href="/">
+      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 32'%3E%3Ctext x='10' y='22' font-family='Montserrat,sans-serif' font-size='24' font-weight='800' fill='%23fff' letter-spacing='2'%3EPAP%3C/text%3E%3C/svg%3E" alt="PAP Magazine">
+    </a>
+  </div>
+  <div class="header-right">
+    <div class="lang-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>
+      <select onchange="if(typeof setLang==='function')setLang(this.value)">
+        <option value="ko">Korean</option>
+        <option value="en">English</option>
+        <option value="it">Italiano</option>
+        <option value="fr">Français</option>
+        <option value="es">Español</option>
+        <option value="ja">日本語</option>
+        <option value="zh">中文</option>
+      </select>
+    </div>
+    <a href="auth.html" class="auth-btn-header header-right-item" aria-label="Login">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    </a>
+  </div>
+</header>
+
+<!-- SEARCH BAR -->
+<div class="search-bar" id="searchBar">
+  <div class="search-bar-inner">
+    <svg class="search-bar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input class="search-bar-input" type="text" placeholder="SEARCH" id="searchInput">
+    <button class="search-bar-close" onclick="toggleSearch()">&times;</button>
+  </div>
 </div>
 
 <div class="page-title">ARTICLE</div>
@@ -91,7 +163,7 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
   </div>
 </div>
 
-<script src="pap-app.js" defer></script>
+<script src="pap-app.js?v=2" defer></script>
 <script>
 function formatDate(dateStr) {
   if (!dateStr) return '';
