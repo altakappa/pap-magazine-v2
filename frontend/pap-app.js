@@ -2270,4 +2270,39 @@ window.addEventListener('resize',function(){
   shortsResizeTimer=setTimeout(updateShortsPositions,150);
 });
 
+/* ── Infinite marquee (JS-driven, seamless) ── */
+(function(){
+  function initMarquee(){
+    var track=document.getElementById('marqueeTrack');
+    if(!track) return;
+    // Remove CSS animation — JS takes over
+    track.style.animation='none';
+    // Collect original items
+    var origItems=Array.prototype.slice.call(track.children);
+    // Clone enough sets to fill 3x viewport
+    var setWidth=0;
+    origItems.forEach(function(el){ setWidth+=el.offsetWidth; });
+    if(setWidth===0) return;
+    var copies=Math.ceil((window.innerWidth*3)/setWidth)+1;
+    for(var c=0;c<copies;c++){
+      origItems.forEach(function(el){ track.appendChild(el.cloneNode(true)); });
+    }
+    var pos=0;
+    var speed=window.innerWidth<768?0.6:0.8;
+    var raf;
+    function step(){
+      pos-=speed;
+      if(Math.abs(pos)>=setWidth) pos+=setWidth;
+      track.style.transform='translate3d('+pos+'px,0,0)';
+      raf=requestAnimationFrame(step);
+    }
+    raf=requestAnimationFrame(step);
+    // Pause on hover
+    track.addEventListener('mouseenter',function(){ cancelAnimationFrame(raf); });
+    track.addEventListener('mouseleave',function(){ raf=requestAnimationFrame(step); });
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',initMarquee);
+  else setTimeout(initMarquee,200);
+})();
+
 
