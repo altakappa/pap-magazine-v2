@@ -130,7 +130,7 @@ function toggleSideNav(){
       <div class="media-kit">
         <h3 data-i18n="mediaKit">MEDIA KIT</h3>
         <div id="mediaKitBtns" style="display:flex;gap:10px;margin-top:8px;">
-          <a href="#" onclick="event.preventDefault();downloadMediaKit('en')" style="display:inline-block;padding:8px 20px;border:1px solid #fff;color:#fff;font-size:10px;font-weight:700;letter-spacing:.1em;text-decoration:none;transition:all .3s;" onmouseover="this.style.background='#fff';this.style.color='#000'" onmouseout="this.style.background='transparent';this.style.color='#fff'">ENGLISH</a>
+          <a href="#" onclick="event.preventDefault();downloadMediaKit('en')" style="display:inline-block;padding:8px 20px;border:1px solid #fff;color:#fff;font-size:10px;font-weight:700;letter-spacing:.1em;text-decoration:none;transition:all .3s;" onmouseover="this.style.background='#fff';this.style.color='#000'" onmouseout="this.style.background='transparent';this.style.color='#fff'">영어</a>
           <a href="#" onclick="event.preventDefault();downloadMediaKit('ko')" style="display:inline-block;padding:8px 20px;border:1px solid #fff;color:#fff;font-size:10px;font-weight:700;letter-spacing:.1em;text-decoration:none;transition:all .3s;" onmouseover="this.style.background='#fff';this.style.color='#000'" onmouseout="this.style.background='transparent';this.style.color='#fff'">한국어</a>
         </div>
       </div>
@@ -155,10 +155,14 @@ function toggleSideNav(){
 var koMail='contact@papkorea.com';
 var intlMail='contact@pap-magazine.com';
 
-// Media Kit — open Google Drive folder directly
-var mediaKitFolder='https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF';
+// Media Kit — direct download from Google Drive
+var mediaKitFiles={
+  ko:'1nvTbgFPS3KrNSJbC2xhYsaWW3mMJbbsl',
+  en:'1DpKhWe_zocTROb0AEoYnHsKXBJ3ei3xJ'
+};
 function downloadMediaKit(lang){
-  window.open(mediaKitFolder,'_blank','noopener');
+  var fileId=mediaKitFiles[lang]||mediaKitFiles.en;
+  window.open('https://drive.google.com/uc?export=download&id='+fileId,'_blank','noopener');
 }
 
 var L={
