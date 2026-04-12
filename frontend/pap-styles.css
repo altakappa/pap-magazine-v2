@@ -70,6 +70,13 @@ button{cursor:pointer;font-family:inherit}
 .search-btn{background:none;border:none;padding:4px;display:flex;color:#fff}
 .search-btn svg{width:22px;height:22px}
 
+/* ACCOUNT DROPDOWN */
+.auth-btn-wrap{position:relative;display:inline-flex}
+.account-dropdown{position:absolute;top:calc(100% + 12px);right:0;min-width:180px;background:#111;border:1px solid rgba(255,255,255,.1);border-radius:4px;padding:8px 0;opacity:0;visibility:hidden;transform:translateY(-8px);transition:all .25s cubic-bezier(.25,.46,.45,.94);z-index:2000;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+.account-dropdown.active{opacity:1;visibility:visible;transform:translateY(0)}
+.account-dropdown a,.account-dropdown button{display:block;width:100%;padding:10px 20px;font-size:11px;font-weight:600;letter-spacing:.1em;color:rgba(255,255,255,.7);text-decoration:none;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit;transition:color .2s,background .2s}
+.account-dropdown a:hover,.account-dropdown button:hover{color:#fff;background:rgba(255,255,255,.05)}
+.account-dropdown .dropdown-divider{height:1px;background:rgba(255,255,255,.08);margin:6px 0}
 
 /* TERMS & PRIVACY OVERLAY PAGES */
 .page-overlay{position:fixed;inset:0;z-index:3000;background:var(--bg);overflow-y:auto;opacity:0;visibility:hidden;transition:opacity .3s}

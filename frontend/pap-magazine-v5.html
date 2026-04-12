@@ -65,6 +65,15 @@ button{cursor:pointer;font-family:inherit}
 .lang-btn select option{color:#111;background:#fff}
 .search-btn{background:none;border:none;padding:4px;display:flex;color:#fff}
 .search-btn svg{width:22px;height:22px}
+.header-right-item{display:inline-flex;align-items:center;justify-content:center;padding:4px;color:rgba(255,255,255,.4);text-decoration:none;transition:color .2s;background:none;border:none;cursor:pointer}
+.header-right-item:hover{color:#fff}
+.header-right-item svg{width:20px;height:20px}
+.auth-btn-wrap{position:relative;display:inline-flex}
+.account-dropdown{position:absolute;top:calc(100% + 12px);right:0;min-width:180px;background:#111;border:1px solid rgba(255,255,255,.1);border-radius:4px;padding:8px 0;opacity:0;visibility:hidden;transform:translateY(-8px);transition:all .25s cubic-bezier(.25,.46,.45,.94);z-index:2000;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+.account-dropdown.active{opacity:1;visibility:visible;transform:translateY(0)}
+.account-dropdown a,.account-dropdown button{display:block;width:100%;padding:10px 20px;font-size:11px;font-weight:600;letter-spacing:.1em;color:rgba(255,255,255,.7);text-decoration:none;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit;transition:color .2s,background .2s}
+.account-dropdown a:hover,.account-dropdown button:hover{color:#fff;background:rgba(255,255,255,.05)}
+.account-dropdown .dropdown-divider{height:1px;background:rgba(255,255,255,.08);margin:6px 0}
 
 
 /* TERMS & PRIVACY OVERLAY PAGES */
@@ -811,9 +820,17 @@ button{cursor:pointer;font-family:inherit}
         <option value="zh">中文</option>
       </select>
     </div>
-    <a href="auth.html" class="auth-btn-header header-right-item" aria-label="Login">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-    </a>
+    <div class="auth-btn-wrap">
+      <button class="header-right-item" onclick="toggleAccountMenu(event)" aria-label="Account">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </button>
+      <div class="account-dropdown" id="accountDropdown">
+        <a href="auth.html">LOGIN / JOIN</a>
+        <a href="mypage.html">MY PAGE</a>
+        <div class="dropdown-divider"></div>
+        <a href="subscribe.html">SUBSCRIBE</a>
+      </div>
+    </div>
   </div>
 </header>
 
@@ -1135,6 +1152,10 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'||e.key==='Backspace'
 
 // ======== NAV ========
 function toggleNav(){var _n=document.getElementById('navOverlay');if(_n)_n.classList.toggle('active')}
+
+// ======== ACCOUNT MENU ========
+function toggleAccountMenu(e){if(e)e.stopPropagation();var d=document.getElementById('accountDropdown');if(!d)return;d.classList.toggle('active');if(d.classList.contains('active')){setTimeout(function(){document.addEventListener('click',_closeAcct)},10)}else{document.removeEventListener('click',_closeAcct)}}
+function _closeAcct(e){var d=document.getElementById('accountDropdown');if(d&&!d.contains(e.target)){d.classList.remove('active');document.removeEventListener('click',_closeAcct)}}
 
 // ======== FASHION CAROUSEL ========
 let fPos=0;
