@@ -1385,17 +1385,35 @@ function scrollFilm(dir){
     var cookieBanner = document.getElementById('cookieConsent');
     var navOverlay = document.getElementById('navOverlay');
     var papModal = document.querySelector('.pap-modal-overlay');
+    var interstitial = document.getElementById('premiumInterstitial');
+    var brandAd = document.querySelector('[id^="brandAd"]');
+    var pageOverlay = document.querySelector('.page-overlay.active');
     if(signupPopup && signupPopup.classList.contains('active')) return true;
     if(creatorPopup && creatorPopup.classList.contains('active')) return true;
     if(navOverlay && navOverlay.classList.contains('active')) return true;
     if(cookieBanner) return true;
     if(papModal) return true;
+    if(interstitial) return true;
+    if(brandAd) return true;
+    if(pageOverlay) return true;
     return false;
   }
 
   document.addEventListener('mousemove', function(e){
-    // Skip cursor tracking when any modal/popup is active
-    if(isModalActive()) return;
+    // Skip cursor tracking when any modal/popup is active — return logo to header
+    if(isModalActive()){
+      if(onHero){
+        onHero = false;
+        var hp = getHeaderLogoPos();
+        fLogo.style.transition = 'all .4s cubic-bezier(.22,1,.36,1)';
+        fLogo.style.left = hp.x + 'px';
+        fLogo.style.top = hp.y + 'px';
+        fLogo.classList.add('in-header');
+        fLogo.classList.remove('on-hero');
+        if(heroEl) heroEl.style.cursor = '';
+      }
+      return;
+    }
     mouseX = e.clientX;
     mouseY = e.clientY;
     if(onHero) spawnTrail(mouseX, mouseY);
@@ -1909,17 +1927,27 @@ function scrollFilm(dir){
 
 
 // ======== SIGNUP POPUP ========
+function _hideCookieBanner(){
+  var cc=document.getElementById('cookieConsent');
+  if(cc) cc.style.display='none';
+}
+function _showCookieBanner(){
+  var cc=document.getElementById('cookieConsent');
+  if(cc) cc.style.display='';
+}
 (function(){
   var shown = sessionStorage.getItem('pap-signup-shown');
   if(!shown){
     setTimeout(function(){
       document.getElementById('signupPopup').classList.add('active');
+      _hideCookieBanner();
     }, 2500);
   }
 })();
 function closeSignupPopup(){
   document.getElementById('signupPopup').classList.remove('active');
   sessionStorage.setItem('pap-signup-shown','1');
+  _showCookieBanner();
 }
 // ======== FILM AUTO-PLAY ========
 var filmInView=false;
