@@ -616,6 +616,14 @@ try{
       domEds.push({title:titleEl.textContent.trim(), img:imgEl.src, tags:tags, date:catEl?catEl.textContent.replace(/^EDITORIAL\s*[&-]?\s*/i,'').trim():''});
     }
   });
+  // Deduplicate by title (same editorial can appear in multiple DOM sections)
+  var seenTitles={};
+  domEds=domEds.filter(function(ed){
+    var key=ed.title.toLowerCase();
+    if(seenTitles[key]) return false;
+    seenTitles[key]=true;
+    return true;
+  });
   if(!domEds.length) return;
 
   var themes=[
