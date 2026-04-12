@@ -345,6 +345,15 @@ function showPremiumInterstitial(callback){
   }, 1000);
 }
 
+// Navigate to page with interstitial check
+function navigateWithInterstitial(url){
+  if(!isPremium() && _interstitialCount < _INTERSTITIAL_MAX){
+    showPremiumInterstitial(function(){ window.location.href=url; });
+    return;
+  }
+  window.location.href=url;
+}
+
 function openEditorial(title,thumb){
   // Show interstitial for non-premium users (session limited)
   if(!isPremium() && _interstitialCount < _INTERSTITIAL_MAX){
@@ -483,6 +492,14 @@ function edImgError(img){
 // ======== ALL EDITORIALS OVERLAY ========
 var edAllBuilt=false;
 function openAllEditorials(){
+  // Show interstitial for non-premium users (session limited)
+  if(!isPremium() && _interstitialCount < _INTERSTITIAL_MAX){
+    showPremiumInterstitial(function(){ _openAllEditorialsInner(); });
+    return;
+  }
+  _openAllEditorialsInner();
+}
+function _openAllEditorialsInner(){
   // Membership check: free members cannot access all editorials
   if(!isStandardOrAbove()){
     alert(getLangText('edAccessFree','에디토리얼 전체보기는 스탠다드 이상 회원만 이용 가능합니다.\nStandard membership or above is required to browse all editorials.'));
@@ -527,6 +544,13 @@ function closeAllEditorials(skipHistory){
 
 // ======== ALL FILMS OVERLAY ========
 function openAllFilms(){
+  if(!isPremium() && _interstitialCount < _INTERSTITIAL_MAX){
+    showPremiumInterstitial(function(){ _openAllFilmsInner(); });
+    return;
+  }
+  _openAllFilmsInner();
+}
+function _openAllFilmsInner(){
   var overlay=document.getElementById('filmAllOverlay');
   if(!overlay) return;
   var grid=document.getElementById('filmAllGrid');
@@ -580,6 +604,13 @@ function closeAllFilms(){
   }
 }
 function openFilmDetail(idx){
+  if(!isPremium() && _interstitialCount < _INTERSTITIAL_MAX){
+    showPremiumInterstitial(function(){ _openFilmDetailInner(idx); });
+    return;
+  }
+  _openFilmDetailInner(idx);
+}
+function _openFilmDetailInner(idx){
   var f=filmAllData[idx];if(!f) return;
   var overlay=document.getElementById('filmDetailOverlay');
   if(!overlay) return;
@@ -632,6 +663,13 @@ function closeFilmDetail(){
 
 // ======== ALL ARTICLES OVERLAY ========
 function openAllArticles(){
+  if(!isPremium() && _interstitialCount < _INTERSTITIAL_MAX){
+    showPremiumInterstitial(function(){ _openAllArticlesInner(); });
+    return;
+  }
+  _openAllArticlesInner();
+}
+function _openAllArticlesInner(){
   var overlay=document.getElementById('artAllOverlay');
   if(!overlay) return;
   var grid=document.getElementById('artAllGrid');
@@ -756,6 +794,13 @@ function _renderArticleDetail(a,det){
 }
 /* PAP API fetch removed - using local gallery data */
 function openArticleDetail(idx){
+  if(!isPremium() && _interstitialCount < _INTERSTITIAL_MAX){
+    showPremiumInterstitial(function(){ _openArticleDetailInner(idx); });
+    return;
+  }
+  _openArticleDetailInner(idx);
+}
+function _openArticleDetailInner(idx){
   var a=artData[idx];if(!a) return;
   var overlay=document.getElementById('artDetailOverlay');
   if(!overlay) return;
