@@ -155,19 +155,10 @@ function toggleSideNav(){
 var koMail='contact@papkorea.com';
 var intlMail='contact@pap-magazine.com';
 
-// Media Kit download via Google Drive direct download links
-// Replace these IDs with the actual Google Drive file IDs for each language version
-var mediaKitFiles={
-  en:'1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF', // English media kit file ID
-  ko:'1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF'  // Korean media kit file ID
-};
+// Media Kit — open Google Drive folder directly
+var mediaKitFolder='https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF';
 function downloadMediaKit(lang){
-  var fileId=mediaKitFiles[lang]||mediaKitFiles.en;
-  // Use Google Drive export/download URL for direct download
-  var url='https://drive.google.com/uc?export=download&id='+fileId;
-  var a=document.createElement('a');
-  a.href=url;a.target='_blank';a.rel='noopener';
-  document.body.appendChild(a);a.click();a.remove();
+  window.open(mediaKitFolder,'_blank','noopener');
 }
 
 var L={
