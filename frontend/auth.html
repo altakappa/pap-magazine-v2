@@ -131,7 +131,8 @@ a{color:#fff;text-decoration:none}
 .consent-link:hover{color:rgba(255,255,255,.6)}
 
 /* HEADER BAR - sticky */
-.auth-header{position:sticky;top:0;left:0;right:0;width:100%;flex-shrink:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:16px 32px;background:rgba(0,0,0,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.06)}
+.auth-header{position:sticky;top:0;left:0;right:0;width:100%;flex-shrink:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:16px 32px;background:rgba(0,0,0,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.06)}
+.auth-header-right{position:absolute;right:32px}
 .auth-header-logo a{display:flex;align-items:center}
 .auth-header-logo img{height:24px;width:auto}
 .auth-header-right{display:flex;align-items:center;gap:16px}
@@ -213,7 +214,7 @@ a{color:#fff;text-decoration:none}
 <script>window.addEventListener('load',function(){var l=document.getElementById('pageLoader');if(l){l.style.opacity='0';setTimeout(function(){l.remove();},400);}});</script>
 
 <header class="auth-header">
-  <div class="auth-header-logo"><a href="index.html"><img src="pap-logo.png" alt="PAP Magazine" fetchpriority="high" decoding="async" width="120" height="24"></a></div>
+  <div class="auth-header-logo"><a href="/"><img src="pap-logo.png" alt="PAP Magazine" fetchpriority="high" decoding="async" width="120" height="24"></a></div>
   <div class="auth-header-right">
     <div class="auth-lang"><select id="langSelect" onchange="setLang(this.value)"><option value="ko">KO</option><option value="en">EN</option><option value="it">IT</option><option value="fr">FR</option><option value="es">ES</option><option value="ja">JA</option><option value="zh">ZH</option><option value="ru">RU</option></select></div>
   </div>
