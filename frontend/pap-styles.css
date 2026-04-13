@@ -133,8 +133,7 @@ button{cursor:pointer;font-family:inherit}
 .nav-left-dots{width:40px;height:40px;border-radius:50%;border:1.5px solid rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .4s cubic-bezier(.4,0,.2,1);flex-shrink:0}
 .nav-left-dots.open{transform:rotate(90deg)}
 .nav-left-dots span{font-size:26px;font-weight:900;color:rgba(0,0,0,.8);line-height:1}
-.nav-socials{display:none;flex-direction:row;gap:12px;align-items:center}
-.nav-socials.active{display:flex}
+.nav-socials{display:flex;flex-direction:row;gap:12px;align-items:center}
 .nav-social-icon{display:block;transition:opacity .2s}
 .nav-social-icon:hover{opacity:.5}
 .nav-right-col{flex:1;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:0}

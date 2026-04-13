@@ -68,7 +68,7 @@ a{text-decoration:none;color:inherit}
 .nav-right-col a:hover{color:#555}
 .nav-bottom-row{margin-top:auto;display:flex;align-items:center;gap:12px}
 .nav-left-dots{cursor:pointer;font-size:22px;color:#666;padding:4px}
-.nav-socials{display:none;gap:8px;align-items:center}
+.nav-socials{display:flex;flex-direction:row;gap:12px;align-items:center}
 .nav-socials.active{display:flex}
 
 .hero{height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative;overflow:hidden;padding-top:72px}
@@ -216,8 +216,7 @@ footer a:hover{color:#fff}
         <a href="contact.html">CONTACT</a>
       </div>
       <div class="nav-bottom-row">
-        <div class="nav-left-dots" onclick="this.classList.toggle('open');document.getElementById('navSocials').classList.toggle('active')"><span>&#8942;</span></div>
-        <div class="nav-socials" id="navSocials">
+        <div class="nav-socials active" id="navSocials">
           <a href="https://www.youtube.com/@pap-magazine" target="_blank" style="display:inline-flex">
             <svg viewBox="0 0 40 40" width="40" height="40"><rect x="1" y="5" width="38" height="30" rx="4" fill="#000"/><rect x="6" y="10" width="28" height="20" rx="2" fill="#000" stroke="#fff" stroke-width="1.2"/><text x="20" y="19" text-anchor="middle" font-size="9" font-weight="700" fill="#fff" font-family="Arial,sans-serif">You</text><text x="20" y="28" text-anchor="middle" font-size="9" font-weight="700" fill="#fff" font-family="Arial,sans-serif">Tube</text></svg>
           </a>

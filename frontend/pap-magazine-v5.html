@@ -127,7 +127,7 @@ button{cursor:pointer;font-family:inherit}
 .nav-left-dots{width:40px;height:40px;border-radius:50%;border:1.5px solid rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .4s cubic-bezier(.4,0,.2,1);flex-shrink:0}
 .nav-left-dots.open{transform:rotate(90deg)}
 .nav-left-dots span{font-size:26px;font-weight:900;color:rgba(0,0,0,.8);line-height:1}
-.nav-socials{display:none;flex-direction:row;gap:12px;align-items:center}
+.nav-socials{display:flex;flex-direction:row;gap:12px;align-items:center}
 .nav-socials.active{display:flex}
 .nav-social-icon{display:block;transition:opacity .2s}
 .nav-social-icon:hover{opacity:.5}
@@ -765,8 +765,7 @@ button{cursor:pointer;font-family:inherit}
         <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='contact.html';" data-i18n="contact">CONTACT</a>
       </div>
       <div class="nav-bottom-row">
-        <div class="nav-left-dots" onclick="this.classList.toggle('open');document.getElementById('navSocials').classList.toggle('active')"><span>&#8942;</span></div>
-        <div class="nav-socials" id="navSocials">
+        <div class="nav-socials active" id="navSocials">
         <a href="https://www.youtube.com/@pap-magazine" target="_blank" class="nav-social-icon">
           <svg viewBox="0 0 40 40" width="40" height="40">
             <rect x="1" y="5" width="38" height="30" rx="4" fill="#000"/>
