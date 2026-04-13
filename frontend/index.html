@@ -35,7 +35,7 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#000000">
 <!-- Cookie Consent + GA4 (consent-gated) -->
-<script src="cookie-consent.js"></script>
+<script src="cookie-consent.js" defer></script>
 <!-- Print Styles -->
 <style media="print">
 @media print{
@@ -244,9 +244,9 @@
         <a href="auth.html" data-i18n="navLogin" style="color:rgba(255,255,255,.6)">LOGIN / JOIN</a>
       </div>
       <div class="nav-left-links nav-extra-links" style="margin-top:auto">
-        <a href="#" onclick="event.preventDefault();toggleNav();navigateWithInterstitial('contact.html');" data-i18n="contact">CONTACT</a>
-        <a href="#" onclick="event.preventDefault();toggleNav();navigateWithInterstitial('business.html');" data-i18n="business">BUSINESS</a>
         <a href="#" onclick="event.preventDefault();toggleNav();navigateWithInterstitial('about.html');" data-i18n="about">ABOUT</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();navigateWithInterstitial('business.html');" data-i18n="business">BUSINESS</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();navigateWithInterstitial('contact.html');" data-i18n="contact">CONTACT</a>
       </div>
       <div class="nav-bottom-row">
         <div class="nav-left-dots" onclick="this.classList.toggle('open');document.getElementById('navSocials').classList.toggle('active')"><span>&#8942;</span></div>
@@ -585,8 +585,8 @@
   <div class="footer-bottom-nav">
     <div class="footer-bottom-nav-links">
       <a href="#" onclick="event.preventDefault();navigateWithInterstitial('about.html');" data-i18n="about">ABOUT</a>
-      <a href="#" onclick="event.preventDefault();navigateWithInterstitial('contact.html');" data-i18n="contact">CONTACT</a>
       <a href="#" onclick="event.preventDefault();navigateWithInterstitial('business.html');" data-i18n="business">BUSINESS</a>
+      <a href="#" onclick="event.preventDefault();navigateWithInterstitial('contact.html');" data-i18n="contact">CONTACT</a>
     </div>
     <div class="footer-bottom-nav-center">
       <a href="#" onclick="event.preventDefault();openPage('termsPage')" data-i18n="terms">이용약관</a>
@@ -813,3 +813,4 @@ try{
 </div>
 
 </body>
+</html>
