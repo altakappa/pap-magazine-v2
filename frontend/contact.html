@@ -96,15 +96,116 @@ h1{font-size:clamp(48px,8vw,90px);font-weight:800;letter-spacing:5px;text-transf
 <nav role="navigation" aria-label="Main navigation" class="side-nav" id="sideNav">
   <div class="nav-dots open" id="navToggle"><span>&#8942;</span></div>
   <div class="nav-links">
-    <a href="subscribe.html" data-i18n="subscribe">SUBSCRIBE</a>
-    <a href="submission.html" data-i18n="submission">SUBMISSION</a>
-    <a href="pullletter.html" data-i18n="pullletter">PULL-LETTER</a>
-    <a href="about.html" data-i18n="about">ABOUT</a>
-    <a href="business.html" data-i18n="business">BUSINESS</a>
+    <a href="#" onclick="event.preventDefault();navigateWithInterstitial('subscribe.html');" data-i18n="subscribe">SUBSCRIBE</a>
+    <a href="#" onclick="event.preventDefault();navigateWithInterstitial('submission.html');" data-i18n="submission">SUBMISSION</a>
+    <a href="#" onclick="event.preventDefault();navigateWithInterstitial('pullletter.html');" data-i18n="pullletter">PULL-LETTER</a>
+    <a href="#" onclick="event.preventDefault();navigateWithInterstitial('about.html');" data-i18n="about">ABOUT</a>
+    <a href="#" onclick="event.preventDefault();navigateWithInterstitial('business.html');" data-i18n="business">BUSINESS</a>
     <a href="contact.html" class="active" data-i18n="contact">CONTACT</a>
   </div>
 </nav>
 <script>
+// ======== SCROLL LOCK ========
+var _scrollLockCount=0,_savedScrollY=0;
+function lockScroll(){if(_scrollLockCount===0){_savedScrollY=window.scrollY;document.body.style.position='fixed';document.body.style.top='-'+_savedScrollY+'px';document.body.style.left='0';document.body.style.right='0';}_scrollLockCount++;}
+function unlockScroll(){_scrollLockCount--;if(_scrollLockCount<=0){_scrollLockCount=0;document.body.style.position='';document.body.style.top='';document.body.style.left='';document.body.style.right='';window.scrollTo(0,_savedScrollY);}}
+
+// ======== INTERSTITIAL AD + PREMIUM UPSELL ========
+function isStandardOrAbove(){try{var u=localStorage.getItem('pap-user');if(!u)return false;var user=JSON.parse(u);return user&&(user.subscription==='standard'||user.subscription==='premium');}catch(e){return false;}}
+var _interstitialCount=0;
+var _INTERSTITIAL_MAX=2;
+var _brandAds=[];
+function _getNextBrandAd(){if(!_brandAds||_brandAds.length===0)return null;if(typeof _brandAdIdx==='undefined')_brandAdIdx=0;var ad=_brandAds[_brandAdIdx%_brandAds.length];_brandAdIdx++;return ad;}
+
+function showPremiumInterstitial(callback){
+  if(isStandardOrAbove()){if(callback)callback();return;}
+  if(_interstitialCount>=_INTERSTITIAL_MAX){if(callback)callback();return;}
+  _interstitialCount++;
+  var brandAd=_getNextBrandAd();
+  if(brandAd){_showBrandAdInterstitial(brandAd,callback);}else{_showPremiumUpsellInterstitial(callback);}
+}
+
+function _showBrandAdInterstitial(ad,callback){
+  var overlay=document.createElement('div');
+  overlay.id='premiumInterstitial';
+  overlay.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.95);display:flex;align-items:center;justify-content:center;flex-direction:column;opacity:0;transition:opacity .4s;';
+  var label=document.createElement('div');
+  label.textContent='AD'+(ad.brand?' · '+ad.brand:'');
+  label.style.cssText='position:absolute;top:16px;left:20px;font-size:9px;font-weight:700;letter-spacing:.2em;color:rgba(255,255,255,.35);font-family:Montserrat,sans-serif;z-index:2;';
+  overlay.appendChild(label);
+  var mediaWrap=document.createElement('div');
+  mediaWrap.style.cssText='position:relative;max-width:90vw;max-height:75vh;display:flex;align-items:center;justify-content:center;cursor:pointer;';
+  var duration=ad.duration||5;
+  if(ad.type==='video'){var video=document.createElement('video');video.src=ad.src;if(ad.poster)video.poster=ad.poster;video.autoplay=true;video.muted=true;video.playsInline=true;video.loop=true;video.style.cssText='max-width:90vw;max-height:75vh;object-fit:contain;border-radius:2px;';mediaWrap.appendChild(video);}else{var img=document.createElement('img');img.src=ad.src;img.alt=ad.brand||'Ad';img.style.cssText='max-width:90vw;max-height:75vh;object-fit:contain;border-radius:2px;';mediaWrap.appendChild(img);}
+  if(ad.link){mediaWrap.onclick=function(){window.open(ad.link,'_blank');};}
+  overlay.appendChild(mediaWrap);
+  var lang=localStorage.getItem('pap-lang')||'ko';
+  var skipTexts={ko:'건너뛰기',en:'Skip',it:'Salta',fr:'Passer',es:'Saltar',ja:'スキップ',zh:'跳过'};
+  var skipLabel=skipTexts[lang]||skipTexts.en;
+  var skip=document.createElement('button');
+  skip.style.cssText='position:absolute;bottom:24px;right:24px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.55);font-size:11px;font-weight:600;letter-spacing:.1em;cursor:pointer;font-family:Montserrat,sans-serif;padding:8px 20px;border-radius:2px;transition:all .2s;z-index:2;';
+  skip.onmouseover=function(){this.style.background='rgba(255,255,255,.15)';this.style.color='rgba(255,255,255,.9)';};
+  skip.onmouseout=function(){this.style.background='rgba(255,255,255,.1)';this.style.color='rgba(255,255,255,.55)';};
+  var _countdown=duration;var _timer=null;
+  skip.textContent=skipLabel+' ('+_countdown+')';skip.disabled=true;
+  function closeAd(){if(_timer)clearInterval(_timer);if(ad.type==='video'){var v=overlay.querySelector('video');if(v)v.pause();}overlay.style.opacity='0';unlockScroll();setTimeout(function(){if(overlay.parentNode)overlay.parentNode.removeChild(overlay);},400);if(callback)callback();}
+  skip.onclick=function(){closeAd();};
+  overlay.appendChild(skip);
+  var premBadge=document.createElement('a');premBadge.href='subscribe.html';
+  var premTexts={ko:'광고 없이 즐기기',en:'Go ad-free',it:'Senza pubblicità',fr:'Sans publicité',es:'Sin anuncios',ja:'広告なし',zh:'去除广告'};
+  premBadge.textContent=premTexts[lang]||premTexts.en;
+  premBadge.style.cssText='position:absolute;bottom:26px;left:24px;font-size:10px;font-weight:600;letter-spacing:.08em;color:rgba(255,255,255,.3);text-decoration:none;font-family:Montserrat,sans-serif;transition:color .2s;z-index:2;';
+  premBadge.onmouseover=function(){this.style.color='rgba(255,255,255,.7)';};
+  premBadge.onmouseout=function(){this.style.color='rgba(255,255,255,.3)';};
+  overlay.appendChild(premBadge);
+  document.body.appendChild(overlay);lockScroll();
+  requestAnimationFrame(function(){overlay.style.opacity='1';});
+  _timer=setInterval(function(){_countdown--;if(_countdown>0){skip.textContent=skipLabel+' ('+_countdown+')';}else{clearInterval(_timer);skip.textContent=skipLabel;skip.disabled=false;skip.style.color='rgba(255,255,255,.7)';}},1000);
+}
+
+function _showPremiumUpsellInterstitial(callback){
+  var lang=localStorage.getItem('pap-lang')||'ko';
+  var texts={
+    ko:{tag:'SUBSCRIBE',title:'광고 없이\n모든 콘텐츠를 즐기세요',desc:'구독으로 에디토리얼, 매거진,\n독점 콘텐츠를 제한 없이 감상하세요.',btn:'구독하기',skip:'건너뛰기'},
+    en:{tag:'SUBSCRIBE',title:'Enjoy all content\nwithout interruptions',desc:'Subscribe for unlimited access\nto editorials, magazines, and exclusive content.',btn:'Subscribe',skip:'Skip'},
+    it:{tag:'SUBSCRIBE',title:'Goditi tutti i contenuti\nsenza interruzioni',desc:'Abbonati per accesso illimitato\na editoriali, riviste e contenuti esclusivi.',btn:'Abbonati',skip:'Salta'},
+    fr:{tag:'SUBSCRIBE',title:'Profitez de tout le contenu\nsans interruption',desc:"Abonnez-vous pour un accès illimité\naux éditoriaux, magazines et contenus exclusifs.",btn:"S'abonner",skip:'Passer'},
+    es:{tag:'SUBSCRIBE',title:'Disfruta todo el contenido\nsin interrupciones',desc:'Suscríbete para acceso ilimitado\na editoriales, revistas y contenido exclusivo.',btn:'Suscríbete',skip:'Saltar'},
+    ja:{tag:'SUBSCRIBE',title:'すべてのコンテンツを\n中断なくお楽しみください',desc:'購読でエディトリアル、マガジン、\n限定コンテンツに無制限アクセス。',btn:'購読する',skip:'スキップ'},
+    zh:{tag:'SUBSCRIBE',title:'无干扰地\n享受所有内容',desc:'订阅后无限访问\n社论、杂志和独家内容。',btn:'订阅',skip:'跳过'}
+  };
+  var t=texts[lang]||texts.en;
+  var overlay=document.createElement('div');
+  overlay.id='premiumInterstitial';
+  overlay.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .4s;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);';
+  var box=document.createElement('div');box.style.cssText='text-align:center;max-width:420px;padding:48px 32px;';
+  var tag=document.createElement('div');tag.textContent=t.tag;tag.style.cssText='font-size:10px;font-weight:800;letter-spacing:.3em;color:rgba(255,255,255,.4);margin-bottom:24px;';
+  var h=document.createElement('h2');h.textContent=t.title;h.style.cssText='font-size:22px;font-weight:800;letter-spacing:.06em;line-height:1.5;color:#fff;margin-bottom:16px;white-space:pre-line;font-family:Montserrat,sans-serif;';
+  var desc=document.createElement('p');desc.textContent=t.desc;desc.style.cssText='font-size:12px;color:rgba(255,255,255,.5);line-height:1.9;margin-bottom:32px;white-space:pre-line;font-family:Montserrat,sans-serif;';
+  var btn=document.createElement('a');btn.href='subscribe.html';btn.textContent=t.btn;btn.style.cssText='display:inline-block;padding:14px 40px;background:#fff;color:#000;font-size:11px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;text-decoration:none;font-family:Montserrat,sans-serif;transition:all .3s;border:1.5px solid #fff;';
+  btn.onmouseover=function(){this.style.background='transparent';this.style.color='#fff';};
+  btn.onmouseout=function(){this.style.background='#fff';this.style.color='#000';};
+  var skip=document.createElement('button');skip.textContent=t.skip;
+  skip.style.cssText='display:block;margin:16px auto 0;background:none;border:none;color:rgba(255,255,255,.55);font-size:11px;font-weight:600;letter-spacing:.1em;cursor:pointer;font-family:Montserrat,sans-serif;transition:color .2s;padding:8px 16px;';
+  skip.onmouseover=function(){this.style.color='rgba(255,255,255,.9)';};
+  skip.onmouseout=function(){this.style.color='rgba(255,255,255,.55)';};
+  var _countdown=5;var _timer=null;
+  skip.textContent=t.skip+' ('+_countdown+')';skip.disabled=true;skip.style.opacity='0.4';
+  function closeInterstitial(){if(_timer)clearInterval(_timer);overlay.style.opacity='0';unlockScroll();setTimeout(function(){if(overlay.parentNode)overlay.parentNode.removeChild(overlay);},400);if(callback)callback();}
+  skip.onclick=function(){closeInterstitial();};
+  box.appendChild(tag);box.appendChild(h);box.appendChild(desc);box.appendChild(btn);box.appendChild(skip);
+  overlay.appendChild(box);document.body.appendChild(overlay);lockScroll();
+  requestAnimationFrame(function(){overlay.style.opacity='1';});
+  _timer=setInterval(function(){_countdown--;if(_countdown>0){skip.textContent=t.skip+' ('+_countdown+')';}else{clearInterval(_timer);skip.textContent=t.skip;skip.disabled=false;skip.style.opacity='1';}},1000);
+}
+
+function navigateWithInterstitial(url){
+  if(!isStandardOrAbove()&&_interstitialCount<_INTERSTITIAL_MAX){
+    showPremiumInterstitial(function(){window.location.href=url;});
+    return;
+  }
+  window.location.href=url;
+}
 </script>
 <main role="main" class="content">
   <h1 data-i18n="contactTitle">CONTACT US</h1>
