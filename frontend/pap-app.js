@@ -211,7 +211,7 @@ function searchEditorials(query){
       var card=document.createElement('div');
       card.className='ed-row-card';
       card.onclick=function(){openEditorial(e.title,e.img);};
-      card.innerHTML='<div class="ed-row-card-img"><img src="'+e.img+'" alt="'+e.title+'"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">EDITORIAL - '+e.date+'</div><div class="ed-row-card-title">'+e.title+'</div></div>';
+      card.innerHTML='<div class="ed-row-card-img"><img src="'+e.img+'" alt="'+e.title+'"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">EDITORIAL<br>'+e.date+'</div><div class="ed-row-card-title">'+e.title+'</div></div>';
       grid.appendChild(card);
     });
     results.style.display='block';
@@ -623,7 +623,7 @@ function _openEditorialInner(title,thumb){
   edData.forEach(function(ed){
     if(ed.title===title||shown>=8) return;
     var esc=ed.title.replace(/'/g,"\\'");
-    track.innerHTML+='<div class="ed-more-card" onclick="openEditorial(\''+esc+'\',\''+ed.img+'\')"><img src="'+ed.img+'" alt="'+ed.title+'" onerror="edImgError(this)"><div class="ed-more-card-cat">EDITORIAL & FASHION - '+ed.date+'</div><div class="ed-more-card-title">'+ed.title+'</div></div>';
+    track.innerHTML+='<div class="ed-more-card" onclick="openEditorial(\''+esc+'\',\''+ed.img+'\')"><img src="'+ed.img+'" alt="'+ed.title+'" onerror="edImgError(this)"><div class="ed-more-card-cat">EDITORIAL & FASHION<br>'+ed.date+'</div><div class="ed-more-card-title">'+ed.title+'</div></div>';
     shown++;
   });
 
@@ -713,7 +713,7 @@ function _openAllEditorialsInner(){
     var card=document.createElement('div');
     card.className='ed-row-card';
     card.onclick=function(){openEditorial(e.title,e.img);};
-    card.innerHTML='<div class="ed-row-card-img"><img src="'+e.img+'" alt="'+e.title+'" onerror="edImgError(this)"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">EDITORIAL & FASHION · '+e.date+'</div><div class="ed-row-card-title">'+e.title+'</div></div>';
+    card.innerHTML='<div class="ed-row-card-img"><img src="'+e.img+'" alt="'+e.title+'" onerror="edImgError(this)"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">EDITORIAL & FASHION<br>'+e.date+'</div><div class="ed-row-card-title">'+e.title+'</div></div>';
     grid.appendChild(card);
   });
   if(standard&&edData.length>100){
@@ -773,7 +773,7 @@ function _openAllFilmsInner(){
     card.setAttribute('data-idx',i);
     card.onclick=function(){openFilmDetail(i);};
     var dateStr=f.d?f.d.substring(0,10):'';
-    card.innerHTML='<div class="film-all-thumb"><img src="'+f.th+'" alt="'+escapeHtml(f.t)+'" loading="lazy" onerror="edImgError(this)"><div class="film-play-icon"><svg viewBox="0 0 24 24" fill="#fff" width="32" height="32"><path d="M8 5v14l11-7z"/></svg></div></div><div class="film-all-info"><div class="film-all-cat">'+(f.cat||'FILM').toUpperCase()+' · '+dateStr+'</div><div class="film-all-title">'+escapeHtml(f.t)+'</div></div>';
+    card.innerHTML='<div class="film-all-thumb"><img src="'+f.th+'" alt="'+escapeHtml(f.t)+'" loading="lazy" onerror="edImgError(this)"><div class="film-play-icon"><svg viewBox="0 0 24 24" fill="#fff" width="32" height="32"><path d="M8 5v14l11-7z"/></svg></div></div><div class="film-all-info"><div class="film-all-cat">'+(f.cat||'FILM').toUpperCase()+'<br>'+dateStr+'</div><div class="film-all-title">'+escapeHtml(f.t)+'</div></div>';
     grid.appendChild(card);
   });
   count.textContent=filmAllData.length+' FILMS';
@@ -900,7 +900,7 @@ function _openAllArticlesInner(){
     card.setAttribute('data-idx',i);
     card.onclick=function(){openArticleDetail(i);};
     var dateStr=a.d?a.d.substring(0,10):'';
-    card.innerHTML='<div class="art-all-thumb"><img src="'+(a.img||a.th)+'" alt="'+escapeHtml(a.t)+'" loading="lazy" onerror="edImgError(this)"></div><div class="art-all-info"><div class="art-all-cat">'+(a.cat||'ARTICLE').toUpperCase()+' · '+dateStr+'</div><div class="art-all-title">'+escapeHtml(a.t)+'</div>'+(a.sub?'<div class="art-all-sub">'+escapeHtml(a.sub)+'</div>':'')+'</div>';
+    card.innerHTML='<div class="art-all-thumb"><img src="'+(a.img||a.th)+'" alt="'+escapeHtml(a.t)+'" loading="lazy" onerror="edImgError(this)"></div><div class="art-all-info"><div class="art-all-cat">'+(a.cat||'ARTICLE').toUpperCase()+'<br>'+dateStr+'</div><div class="art-all-title">'+escapeHtml(a.t)+'</div>'+(a.sub?'<div class="art-all-sub">'+escapeHtml(a.sub)+'</div>':'')+'</div>';
     grid.appendChild(card);
   });
   count.textContent=artData.length+' ARTICLES';
