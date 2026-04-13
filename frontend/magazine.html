@@ -57,7 +57,10 @@ a{text-decoration:none;color:inherit}
 .nav-overlay{position:fixed;inset:0;z-index:1500;background:#fff;opacity:0;visibility:hidden;transition:all .3s}
 .nav-overlay.active{opacity:1;visibility:visible}
 .nav-overlay-inner{display:flex;width:100%;height:100%;padding:80px 60px 60px}
-.nav-close{position:absolute;top:16px;right:24px;background:none;border:none;font-size:40px;color:#222;cursor:pointer;z-index:10;line-height:1}
+.nav-close{position:absolute;top:20px;left:24px;z-index:1600;background:none;border:none;font-size:0;cursor:pointer;width:36px;height:36px;display:flex;align-items:center;justify-content:center;padding:0}
+.nav-close::before,.nav-close::after{content:'';position:absolute;width:22px;height:2px;background:#000;border-radius:1px}
+.nav-close::before{transform:rotate(45deg)}
+.nav-close::after{transform:rotate(-45deg)}
 .nav-left-col{width:50%;display:flex;flex-direction:column;gap:20px;padding-right:40px}
 .nav-left-top a{font-size:15px;font-weight:800;letter-spacing:.15em;color:#111;text-decoration:none}
 .nav-left-links{display:flex;flex-direction:column;gap:12px}
