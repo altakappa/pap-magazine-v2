@@ -2531,6 +2531,33 @@ function scrollFilm(dir){
 })();
 
 
+// ======== MODAL SCROLL LOCK (공통) ========
+var _scrollLockCount=0;
+var _savedScrollY=0;
+function lockScroll(){
+  if(_scrollLockCount===0){
+    _savedScrollY=window.scrollY;
+    document.body.style.overflow='hidden';
+    document.body.style.position='fixed';
+    document.body.style.top=(-_savedScrollY)+'px';
+    document.body.style.left='0';
+    document.body.style.right='0';
+  }
+  _scrollLockCount++;
+}
+function unlockScroll(){
+  _scrollLockCount--;
+  if(_scrollLockCount<=0){
+    _scrollLockCount=0;
+    document.body.style.overflow='';
+    document.body.style.position='';
+    document.body.style.top='';
+    document.body.style.left='';
+    document.body.style.right='';
+    window.scrollTo(0,_savedScrollY);
+  }
+}
+
 // ======== SIGNUP POPUP ========
 // Priority: cookie consent MUST be resolved before showing signup popup.
 (function(){
@@ -2540,7 +2567,10 @@ function scrollFilm(dir){
   function _showSignupPopup(){
     setTimeout(function(){
       var el=document.getElementById('signupPopup');
-      if(el) el.classList.add('active');
+      if(el){
+        el.classList.add('active');
+        lockScroll();
+      }
     }, 1500);
   }
 
@@ -2555,6 +2585,7 @@ function scrollFilm(dir){
 function closeSignupPopup(){
   var el=document.getElementById('signupPopup');
   if(el) el.classList.remove('active');
+  unlockScroll();
   sessionStorage.setItem('pap-signup-shown','1');
 }
 // ======== FILM AUTO-PLAY ========

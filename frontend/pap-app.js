@@ -1,5 +1,33 @@
 
 
+// ======== MODAL SCROLL LOCK (공통) ========
+// 모달이 열릴 때 배경 스크롤을 잠그고, 닫힐 때 원래 위치로 복원합니다.
+var _scrollLockCount=0;
+var _savedScrollY=0;
+function lockScroll(){
+  if(_scrollLockCount===0){
+    _savedScrollY=window.scrollY;
+    document.body.style.overflow='hidden';
+    document.body.style.position='fixed';
+    document.body.style.top=(-_savedScrollY)+'px';
+    document.body.style.left='0';
+    document.body.style.right='0';
+  }
+  _scrollLockCount++;
+}
+function unlockScroll(){
+  _scrollLockCount--;
+  if(_scrollLockCount<=0){
+    _scrollLockCount=0;
+    document.body.style.overflow='';
+    document.body.style.position='';
+    document.body.style.top='';
+    document.body.style.left='';
+    document.body.style.right='';
+    window.scrollTo(0,_savedScrollY);
+  }
+}
+
 // ======== i18n ========
 const T={
 ko:{about:'ABOUT',contact:'CONTACT',business:'BUSINESS',subscribe:'구독',submission:'서브미션',pullletter:'풀레터',navEditorial:'에디토리얼',navMagazine:'매거진',navCommunity:'커뮤니티',navArticle:'아티클',navFilm:'필름',navBeauty:'뷰티',navInterview:'인터뷰',searchPh:'검색...',aprIssue:'4월호',junIssue:'6월호',editorialHeading:'에디토리얼',fc1:'밀란 패션 위크 FW26 스트릿 스타일 PART.2',fc1d:'<PAP>가 담아온 밀란 패션 위크 현장 공개',fc2:'루이사 베카리아 FW26 백스테이지 WITH 밀란 패션 위크',fc2d:'<PAP>가 루이사 베카리아 백스테이지 현장을 담아왔다',fc3:'밀란 패션 위크 FW26 스트릿 스타일 PART.1',fc3d:'<PAP>가 담아온 밀란 패션 위크 현장 공개',footerLegal:'<strong>주식회사 알타카파</strong><br>CEO : 강동민 | 개인정보 관리자: 강동민 | 사업자번호 192-88-02644<br>서울특별시 강남구 논현로146길 18, 1F PAP 매거진 | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>',terms:'이용약관',privacy:'개인정보처리방침',latestEd:'최신 에디토리얼',trendingEd:'인기 에디토리얼',dreamyEd:'몽환적인 에디토리얼',boldEd:'강렬하고 대담한',warmEd:'자연과 따뜻함',modernEd:'미래적이고 모던한',fc4:'설날을 위한 가장 세련된 선택, 에덴 보드카',fc4d:'PAP가 추천하는 에덴 보드카',latestArticle:'최신기사',coverStory:'4월 커버 화보',coverTitle:'FOLIE',popupTitle:'PAP 멤버가 되어보세요',popupDesc:'에디토리얼, 필름, 아티클 등 PAP의 모든 콘텐츠를 가장 먼저 만나보세요.',popupCta:'무료로 시작하기',popupSkip:'다음에 할게요',},
@@ -365,6 +393,7 @@ function _showBrandAdInterstitial(ad, callback){
     if(_timer) clearInterval(_timer);
     if(ad.type === 'video'){ var v=overlay.querySelector('video'); if(v) v.pause(); }
     overlay.style.opacity = '0';
+    unlockScroll();
     setTimeout(function(){ if(overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 400);
     if(callback) callback();
   }
@@ -383,6 +412,7 @@ function _showBrandAdInterstitial(ad, callback){
   overlay.appendChild(premBadge);
 
   document.body.appendChild(overlay);
+  lockScroll();
   requestAnimationFrame(function(){ overlay.style.opacity = '1'; });
 
   _timer = setInterval(function(){
@@ -458,6 +488,7 @@ function _showPremiumUpsellInterstitial(callback){
   function closeInterstitial(){
     if(_timer) clearInterval(_timer);
     overlay.style.opacity = '0';
+    unlockScroll();
     setTimeout(function(){ if(overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 400);
     if(callback) callback();
   }
@@ -471,6 +502,7 @@ function _showPremiumUpsellInterstitial(callback){
   box.appendChild(skip);
   overlay.appendChild(box);
   document.body.appendChild(overlay);
+  lockScroll();
 
   // Fade in
   requestAnimationFrame(function(){ overlay.style.opacity = '1'; });
@@ -1114,11 +1146,13 @@ function openCreatorPopup(cr){
   });
   
   document.getElementById('creatorPopup').classList.add('active');
+  lockScroll();
   if(typeof _resetCursorForModal==='function') _resetCursorForModal();
 }
 
 function closeCreatorPopup(){
   document.getElementById('creatorPopup').classList.remove('active');
+  unlockScroll();
 }
 
 // Open profile by handle (from editorial credits)
@@ -2007,6 +2041,7 @@ function _resetCursorForModal(){
       var el=document.getElementById('signupPopup');
       if(el){
         el.classList.add('active');
+        lockScroll();
         _resetCursorForModal();
       }
     }, 1500);
@@ -2031,6 +2066,7 @@ function _resetCursorForModal(){
 function closeSignupPopup(){
   var el=document.getElementById('signupPopup');
   if(el) el.classList.remove('active');
+  unlockScroll();
   sessionStorage.setItem('pap-signup-shown','1');
 }
 // ======== FILM AUTO-PLAY ========
