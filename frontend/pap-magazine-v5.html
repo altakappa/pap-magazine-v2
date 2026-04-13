@@ -2532,16 +2532,29 @@ function scrollFilm(dir){
 
 
 // ======== SIGNUP POPUP ========
+// Priority: cookie consent MUST be resolved before showing signup popup.
 (function(){
   var shown = sessionStorage.getItem('pap-signup-shown');
-  if(!shown){
+  if(shown) return;
+
+  function _showSignupPopup(){
     setTimeout(function(){
-      document.getElementById('signupPopup').classList.add('active');
-    }, 2500);
+      var el=document.getElementById('signupPopup');
+      if(el) el.classList.add('active');
+    }, 1500);
+  }
+
+  if(window.papCookieConsent && window.papCookieConsent.resolved){
+    _showSignupPopup();
+  } else if(window.papCookieConsent && window.papCookieConsent.onResolve){
+    window.papCookieConsent.onResolve(function(){ _showSignupPopup(); });
+  } else {
+    document.addEventListener('pap-cookie-resolved', function(){ _showSignupPopup(); }, {once:true});
   }
 })();
 function closeSignupPopup(){
-  document.getElementById('signupPopup').classList.remove('active');
+  var el=document.getElementById('signupPopup');
+  if(el) el.classList.remove('active');
   sessionStorage.setItem('pap-signup-shown','1');
 }
 // ======== FILM AUTO-PLAY ========

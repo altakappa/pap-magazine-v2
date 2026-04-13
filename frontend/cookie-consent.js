@@ -1,11 +1,32 @@
 /* PAP Magazine — Cookie Consent & GA4 Gate
    GDPR/CCPA compliant: GA4 loads ONLY after explicit user consent.
    Consent state stored in localStorage ('pap-cookie-consent').
-   Values: 'accepted' | 'rejected' | null (not yet decided)            */
+   Values: 'accepted' | 'rejected' | null (not yet decided)
+
+   Exposes:
+     window.papCookieConsent.resolved  — true once user has decided
+     window.papCookieConsent.onResolve(fn) — register callback for when consent is decided
+     Event 'pap-cookie-resolved' dispatched on document when decided                     */
 
 (function(){
   var GA_ID='G-TPPJGKJXYV';
   var STORAGE_KEY='pap-cookie-consent';
+
+  /* ── public API ────────────────────────────────── */
+  var _callbacks=[];
+  window.papCookieConsent={
+    resolved: false,
+    value: null,
+    onResolve: function(fn){ if(window.papCookieConsent.resolved) fn(window.papCookieConsent.value); else _callbacks.push(fn); }
+  };
+
+  function _fireResolved(val){
+    window.papCookieConsent.resolved=true;
+    window.papCookieConsent.value=val;
+    for(var i=0;i<_callbacks.length;i++) try{_callbacks[i](val);}catch(e){}
+    _callbacks=[];
+    document.dispatchEvent(new Event('pap-cookie-resolved'));
+  }
 
   /* ── helpers ─────────────────────────────────────── */
   function getConsent(){ try{return localStorage.getItem(STORAGE_KEY);}catch(e){return null;} }
@@ -49,10 +70,12 @@
       setConsent('accepted');
       loadGA4();
       closeBanner();
+      _fireResolved('accepted');
     });
     document.getElementById('ccReject').addEventListener('click',function(){
       setConsent('rejected');
       closeBanner();
+      _fireResolved('rejected');
     });
   }
 
@@ -63,13 +86,17 @@
 
   /* ── init ─────────────────────────────────────────── */
   var consent=getConsent();
-  if(consent==='accepted'){ loadGA4(); }
-  else if(!consent){ /* not decided yet */
+  if(consent==='accepted'){
+    loadGA4();
+    _fireResolved('accepted');
+  } else if(consent==='rejected'){
+    _fireResolved('rejected');
+  } else {
+    /* not decided yet — show banner, do NOT auto-dismiss */
     if(document.readyState==='loading'){
       document.addEventListener('DOMContentLoaded',showBanner);
     }else{
       showBanner();
     }
   }
-  /* if 'rejected' → do nothing (no GA4, no banner) */
 })();
