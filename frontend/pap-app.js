@@ -2044,7 +2044,7 @@ function scrollFilm(dir){
       e.preventDefault();
       e.stopPropagation();
       if(logoClickTimer) clearTimeout(logoClickTimer);
-      logoClickTimer = setTimeout(function(){ toggleNav(); }, 300);
+      logoClickTimer = setTimeout(function(){ window.location.href = '/'; }, 300);
     });
     fLogo.addEventListener('dblclick', function(e){
       e.preventDefault();
