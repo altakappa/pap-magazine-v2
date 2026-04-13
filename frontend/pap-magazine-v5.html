@@ -2245,6 +2245,40 @@ function scrollFilm(dir){
     }
   });
 
+  // ======== BFCACHE / TAB-SWITCH RESTORATION ========
+  function _resetFloatingLogoToHeader(){
+    onHero = false;
+    edgeBouncing = false;
+    rafId = null;
+    fLogo.classList.add('in-header');
+    fLogo.classList.remove('on-cursor');
+    if(heroEl) heroEl.style.cursor = '';
+    fLogo.style.transition = 'none';
+    var hp = getHeaderLogoPos();
+    fLogo.style.left = hp.x + 'px';
+    fLogo.style.top = hp.y + 'px';
+    fLogo.style.transform = 'translate(-50%,-50%)';
+    requestAnimationFrame(function(){
+      fLogo.style.transition = '';
+    });
+  }
+
+  window.addEventListener('pageshow', function(e){
+    if(e.persisted){
+      _resetFloatingLogoToHeader();
+    }
+  });
+
+  document.addEventListener('visibilitychange', function(){
+    if(!document.hidden && !onHero){
+      var hp = getHeaderLogoPos();
+      fLogo.style.left = hp.x + 'px';
+      fLogo.style.top = hp.y + 'px';
+    }
+  });
+
+  window._papResetFloatingLogo = _resetFloatingLogoToHeader;
+
   // ======== PAP CATCH GAME (double-click on header logo) ========
   var gameActive = false;
   var gameCanvas = null;

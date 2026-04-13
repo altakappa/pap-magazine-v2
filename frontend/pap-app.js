@@ -1525,6 +1525,49 @@ function scrollFilm(dir){
     }
   });
 
+  // ======== BFCACHE / TAB-SWITCH RESTORATION ========
+  // Safari (and some other browsers) aggressively cache pages in bfcache.
+  // On back/forward navigation the page is restored from memory without
+  // re-executing scripts, so the closure state (onHero, logo position,
+  // event listeners) may be stale.  Reset the cursor to a known good state.
+  function _resetFloatingLogoToHeader(){
+    onHero = false;
+    edgeBouncing = false;
+    rafId = null;
+    fLogo.classList.add('in-header');
+    fLogo.classList.remove('on-cursor');
+    if(heroEl) heroEl.style.cursor = '';
+    fLogo.style.transition = 'none';
+    var hp = getHeaderLogoPos();
+    fLogo.style.left = hp.x + 'px';
+    fLogo.style.top = hp.y + 'px';
+    fLogo.style.transform = 'translate(-50%,-50%)';
+    // Restore CSS transition after a paint frame
+    requestAnimationFrame(function(){
+      fLogo.style.transition = '';
+    });
+  }
+
+  window.addEventListener('pageshow', function(e){
+    if(e.persisted){
+      // Page restored from bfcache — reset cursor to header
+      _resetFloatingLogoToHeader();
+    }
+  });
+
+  // When the tab regains visibility, re-sync logo position (header may have
+  // shifted due to resize while tab was hidden).
+  document.addEventListener('visibilitychange', function(){
+    if(!document.hidden && !onHero){
+      var hp = getHeaderLogoPos();
+      fLogo.style.left = hp.x + 'px';
+      fLogo.style.top = hp.y + 'px';
+    }
+  });
+
+  // Expose reset for external callers (e.g. _resetCursorForModal)
+  window._papResetFloatingLogo = _resetFloatingLogoToHeader;
+
   // ======== PAP PONG GAME (double-click on header logo) ========
   var gameActive = false;
   var gameCanvas = null;
@@ -2012,6 +2055,12 @@ function scrollFilm(dir){
 
 // ======== MODAL CURSOR RESET (proactively disable floating cursor when popup opens) ========
 function _resetCursorForModal(){
+  // Prefer the internal reset (also resets closure state like onHero)
+  if(window._papResetFloatingLogo){
+    window._papResetFloatingLogo();
+    return;
+  }
+  // Fallback: DOM-only reset (closure state unreachable)
   var fLogo=document.getElementById('floatingLogo');
   var heroEl=document.querySelector('.hero');
   if(fLogo){
