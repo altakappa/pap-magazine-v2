@@ -1402,15 +1402,19 @@ function scrollFilm(dir){
     var nearRightEdge = isInHero && (heroRect.right - mouseX) < EDGE_THRESHOLD;
     var nearEdge = nearLeftEdge || nearRightEdge;
 
-    // Squish zone: wider than bounce threshold, logo compresses as it nears edge
+    // Squish zone: wider than bounce threshold, logo folds outward as it nears edge
     var SQUISH_ZONE = 120;
     var distFromLeft = mouseX - heroRect.left;
     var distFromRight = heroRect.right - mouseX;
-    var squishRatio = 1;
+    var foldDeg = 0; // rotateY degrees for 3D fold effect
     if(isInHero && distFromRight < SQUISH_ZONE){
-      squishRatio = Math.max(0.15, distFromRight / SQUISH_ZONE);
+      // Near right edge — fold outward (rotate toward viewer on right side)
+      var t = 1 - Math.max(0, distFromRight / SQUISH_ZONE);
+      foldDeg = t * 75; // max 75deg
     } else if(isInHero && distFromLeft < SQUISH_ZONE){
-      squishRatio = Math.max(0.15, distFromLeft / SQUISH_ZONE);
+      // Near left edge — fold outward (rotate toward viewer on left side)
+      var t = 1 - Math.max(0, distFromLeft / SQUISH_ZONE);
+      foldDeg = -(t * 75);
     }
 
     if(isInHero && heroRect.top < window.innerHeight * 0.5 && !nearEdge){
@@ -1424,7 +1428,7 @@ function scrollFilm(dir){
       }
       fLogo.style.left = mouseX + 'px';
       fLogo.style.top = mouseY + 'px';
-      fLogo.style.transform = 'translate(-50%,-50%) scaleX(' + squishRatio + ')';
+      fLogo.style.transform = 'translate(-50%,-50%) perspective(300px) rotateY(' + foldDeg + 'deg)';
     } else {
       // Outside hero OR near edge — bounce logo up to header position
       if(onHero || !fLogo.classList.contains('in-header')){
