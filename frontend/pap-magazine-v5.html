@@ -28,8 +28,12 @@ button{cursor:pointer;font-family:inherit}
 /* HEADER */
 .header{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(0,0,0,.97);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:0 40px;display:flex;align-items:center;justify-content:space-between;height:72px}
 .header-left{display:flex;align-items:center;gap:24px}
-.hamburger{background:none;border:none;display:flex;flex-direction:column;gap:6px;padding:8px 4px}
-.hamburger span{width:24px;height:2px;background:#fff;transition:all .3s}
+.hamburger{background:none;border:none;display:flex;flex-direction:column;gap:6px;padding:12px 12px;cursor:pointer;position:relative;z-index:2000}
+.hamburger span{display:block;width:24px;height:2px;background:#fff;transition:transform .3s ease, opacity .3s ease}
+.hamburger.is-active span{background:#000}
+.hamburger.is-active span:nth-child(1){transform:translateY(8px) rotate(45deg)}
+.hamburger.is-active span:nth-child(2){opacity:0}
+.hamburger.is-active span:nth-child(3){transform:translateY(-8px) rotate(-45deg)}
 .logo-wrap{position:absolute;left:50%;transform:translateX(-50%)}
 .logo-wrap img{height:32px;width:auto;visibility:hidden}
 
@@ -130,7 +134,7 @@ button{cursor:pointer;font-family:inherit}
 .nav-right-col{flex:1;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:0}
 .nav-right-col a{font-family:'Montserrat',var(--sans);font-size:clamp(40px,7vw,90px);font-weight:900;letter-spacing:.03em;text-transform:uppercase;color:#000;line-height:1.1;transition:opacity .2s}
 .nav-right-col a:hover{opacity:.4}
-.nav-close{position:absolute;top:24px;right:40px;background:none;border:none;font-size:32px;color:var(--text)}
+.nav-close{display:none}
 
 /* HERO */
 .hero{margin-top:72px;position:relative;height:calc(100vh - 72px);min-height:500px;overflow:hidden;background:var(--bg)}
@@ -1148,23 +1152,38 @@ function getLangText(key,fallback){var lang=localStorage.getItem('pap-lang')||'k
 
 function toggleSearch(){const o=document.getElementById('searchBar');if(!o)return;o.classList.toggle('active');if(o.classList.contains('active'))setTimeout(()=>document.getElementById('searchInput').focus(),300)}
 var _si=document.getElementById('searchInput');if(_si)_si.addEventListener('input',function(){searchEditorials(this.value);});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'||e.key==='Backspace'){var isInput=e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.isContentEditable;if(e.key==='Backspace'&&isInput)return;var _sb=document.getElementById('searchBar');if(_sb)_sb.classList.remove('active');document.getElementById('navOverlay').classList.remove('active');var edOv=document.getElementById('edOverlay');if(edOv&&edOv.classList.contains('active')){closeEditorial();e.preventDefault();return;}closeAllEditorials();closeAllFilms();closeAllArticles();if(document.getElementById('filmDetailOverlay'))document.getElementById('filmDetailOverlay').classList.remove('active');if(document.getElementById('artDetailOverlay'))document.getElementById('artDetailOverlay').classList.remove('active');if(e.key==='Backspace')e.preventDefault();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'||e.key==='Backspace'){var isInput=e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.isContentEditable;if(e.key==='Backspace'&&isInput)return;var _sb=document.getElementById('searchBar');if(_sb)_sb.classList.remove('active');closeNav();var edOv=document.getElementById('edOverlay');if(edOv&&edOv.classList.contains('active')){closeEditorial();e.preventDefault();return;}closeAllEditorials();closeAllFilms();closeAllArticles();if(document.getElementById('filmDetailOverlay'))document.getElementById('filmDetailOverlay').classList.remove('active');if(document.getElementById('artDetailOverlay'))document.getElementById('artDetailOverlay').classList.remove('active');if(e.key==='Backspace')e.preventDefault();}});
 
 // ======== NAV ========
 function toggleNav(){
   var _n=document.getElementById('navOverlay');
   if(!_n) return;
+  var opening = !_n.classList.contains('active');
   _n.classList.toggle('active');
+
+  var hb = document.querySelector('.hamburger');
+  if(hb){
+    if(opening) hb.classList.add('is-active');
+    else hb.classList.remove('is-active');
+  }
+
+  if(opening) lockScroll();
+  else unlockScroll();
+
   var fLogo=document.getElementById('floatingLogo');
-  var heroEl=document.getElementById('hero');
+  var heroEl=document.querySelector('.hero');
   if(fLogo){
-    if(_n.classList.contains('active')){
+    if(opening){
       fLogo.style.display='none';
       if(heroEl) heroEl.style.cursor='';
     } else {
       fLogo.style.display='';
     }
   }
+}
+function closeNav(){
+  var _n=document.getElementById('navOverlay');
+  if(_n && _n.classList.contains('active')) toggleNav();
 }
 
 // ======== ACCOUNT MENU ========

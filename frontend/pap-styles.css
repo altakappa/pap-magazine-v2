@@ -28,8 +28,12 @@ button{cursor:pointer;font-family:inherit}
 .header-left-item{background:none;border:none;padding:4px;display:inline-flex;align-items:center;justify-content:center;color:rgba(255,255,255,.4);text-decoration:none;transition:color .2s}
 .header-left-item:hover{color:#fff}
 .header-left-item svg{width:20px;height:20px}
-.hamburger{background:none;border:none;display:flex;flex-direction:column;gap:6px;padding:12px 12px;cursor:pointer;position:relative;z-index:1001}
-.hamburger span{width:24px;height:2px;background:#fff;transition:all .3s}
+.hamburger{background:none;border:none;display:flex;flex-direction:column;gap:6px;padding:12px 12px;cursor:pointer;position:relative;z-index:2000}
+.hamburger span{display:block;width:24px;height:2px;background:#fff;transition:transform .3s ease, opacity .3s ease}
+.hamburger.is-active span{background:#000}
+.hamburger.is-active span:nth-child(1){transform:translateY(8px) rotate(45deg)}
+.hamburger.is-active span:nth-child(2){opacity:0}
+.hamburger.is-active span:nth-child(3){transform:translateY(-8px) rotate(-45deg)}
 .logo-wrap{position:absolute;left:50%;transform:translateX(-50%)}
 .logo-wrap img{height:32px;width:auto;visibility:hidden}
 
@@ -136,7 +140,7 @@ button{cursor:pointer;font-family:inherit}
 .nav-right-col{flex:1;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:0}
 .nav-right-col a{font-family:'Montserrat',var(--sans);font-size:clamp(40px,7vw,90px);font-weight:900;letter-spacing:.03em;text-transform:uppercase;color:#000;line-height:1.1;transition:opacity .2s}
 .nav-right-col a:hover{opacity:.4}
-.nav-close{position:absolute;top:24px;right:40px;background:none;border:none;font-size:32px;color:var(--text)}
+.nav-close{display:none}
 
 /* HERO */
 .hero{margin-top:72px;position:relative;height:calc(100vh - 72px);min-height:500px;overflow:hidden;background:var(--bg)}
@@ -543,7 +547,7 @@ button{cursor:pointer;font-family:inherit}
   .nf-nav{width:44px;height:44px}
   .shorts-nav{width:48px;height:48px}
   .ed-overlay-close{width:44px;height:44px}
-  .nav-close{min-width:44px;min-height:44px}
+  /* .nav-close hidden — hamburger morphs to X */
   .footer-bottom-nav-center a{padding:8px 4px}
 }
 
@@ -606,7 +610,7 @@ button{cursor:pointer;font-family:inherit}
   .nav-left-col{width:100%;order:2;margin-top:32px}
   .nav-right-col{width:100%;align-items:flex-start;order:1}
   .nav-right-col a{font-size:clamp(28px,8vw,48px)}
-  .nav-close{top:16px;right:20px;font-size:28px}
+  /* .nav-close hidden */
   .nav-left-links a{font-size:clamp(14px,3vw,18px)}
 
   /* Search bar */
@@ -692,7 +696,7 @@ button{cursor:pointer;font-family:inherit}
   .nav-overlay-inner{padding:60px 20px 32px}
   .nav-right-col a{font-size:clamp(24px,9vw,36px)}
   .nav-left-links a{font-size:15px}
-  .nav-close{top:14px;right:16px}
+  /* .nav-close hidden */
 
   /* Footer */
   .footer{padding:24px 16px 12px}

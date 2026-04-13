@@ -77,23 +77,41 @@ function toggleSearch(){const o=document.getElementById('searchBar');if(!o)retur
 function toggleAccountMenu(e){if(e)e.stopPropagation();var d=document.getElementById('accountDropdown');if(!d)return;d.classList.toggle('active');var fL=document.getElementById('floatingLogo');if(d.classList.contains('active')){if(fL)fL.style.display='none';setTimeout(function(){document.addEventListener('click',_closeAcct)},10)}else{if(fL)fL.style.display='';document.removeEventListener('click',_closeAcct)}}
 function _closeAcct(e){var d=document.getElementById('accountDropdown');if(d&&!d.contains(e.target)){d.classList.remove('active');var fL=document.getElementById('floatingLogo');if(fL)fL.style.display='';document.removeEventListener('click',_closeAcct)}}
 var _si=document.getElementById('searchInput');if(_si)_si.addEventListener('input',function(){searchEditorials(this.value);});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'||e.key==='Backspace'){var isInput=e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.isContentEditable;if(e.key==='Backspace'&&isInput)return;var _sb=document.getElementById('searchBar');if(_sb)_sb.classList.remove('active');var _ad=document.getElementById('accountDropdown');if(_ad)_ad.classList.remove('active');document.getElementById('navOverlay').classList.remove('active');var edOv=document.getElementById('edOverlay');if(edOv&&edOv.classList.contains('active')){closeEditorial();e.preventDefault();return;}closeAllEditorials();closeAllFilms();closeAllArticles();if(document.getElementById('filmDetailOverlay'))document.getElementById('filmDetailOverlay').classList.remove('active');if(document.getElementById('artDetailOverlay'))document.getElementById('artDetailOverlay').classList.remove('active');if(e.key==='Backspace')e.preventDefault();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'||e.key==='Backspace'){var isInput=e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.isContentEditable;if(e.key==='Backspace'&&isInput)return;var _sb=document.getElementById('searchBar');if(_sb)_sb.classList.remove('active');var _ad=document.getElementById('accountDropdown');if(_ad)_ad.classList.remove('active');closeNav();var edOv=document.getElementById('edOverlay');if(edOv&&edOv.classList.contains('active')){closeEditorial();e.preventDefault();return;}closeAllEditorials();closeAllFilms();closeAllArticles();if(document.getElementById('filmDetailOverlay'))document.getElementById('filmDetailOverlay').classList.remove('active');if(document.getElementById('artDetailOverlay'))document.getElementById('artDetailOverlay').classList.remove('active');if(e.key==='Backspace')e.preventDefault();}});
 
 // ======== NAV ========
 function toggleNav(){
   var _n=document.getElementById('navOverlay');
   if(!_n) return;
+  var opening = !_n.classList.contains('active');
   _n.classList.toggle('active');
+
+  // Hamburger ≡ ↔ X morph
+  var hb = document.querySelector('.hamburger');
+  if(hb){
+    if(opening) hb.classList.add('is-active');
+    else hb.classList.remove('is-active');
+  }
+
+  // Scroll lock
+  if(opening) lockScroll();
+  else unlockScroll();
+
+  // Floating logo
   var fLogo=document.getElementById('floatingLogo');
-  var heroEl=document.getElementById('hero');
+  var heroEl=document.querySelector('.hero');
   if(fLogo){
-    if(_n.classList.contains('active')){
+    if(opening){
       fLogo.style.display='none';
       if(heroEl) heroEl.style.cursor='';
     } else {
       fLogo.style.display='';
     }
   }
+}
+function closeNav(){
+  var _n=document.getElementById('navOverlay');
+  if(_n && _n.classList.contains('active')) toggleNav();
 }
 
 // ======== FASHION CAROUSEL ========
