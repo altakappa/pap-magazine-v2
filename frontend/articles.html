@@ -260,7 +260,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       var cat = document.createElement('div');
       cat.className = 'card-cat';
-      cat.innerHTML = (a.cat || 'ARTICLE') + '<br>' + formatDate(a.d);
+      cat.textContent = (a.cat || 'ARTICLE') + ' - ' + formatDate(a.d);
 
       var title = document.createElement('div');
       title.className = 'card-title';

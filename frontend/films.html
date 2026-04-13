@@ -281,7 +281,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       var cat = document.createElement('div');
       cat.className = 'card-cat';
-      cat.innerHTML = (f.cat || 'FILM') + '<br>' + formatDate(f.d);
+      cat.textContent = (f.cat || 'FILM') + ' - ' + formatDate(f.d);
 
       var title = document.createElement('div');
       title.className = 'card-title';
