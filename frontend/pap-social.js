@@ -58,6 +58,16 @@
   }
   function isLoggedIn(){ return !!currentUser(); }
 
+  // Build login URL that returns to the current page (including hash)
+  function _loginUrl(){
+    try{
+      var here = location.pathname + location.search + location.hash;
+      return 'auth.html?mode=login&return=' + encodeURIComponent(here);
+    }catch(e){
+      return 'auth.html?mode=login';
+    }
+  }
+
   // ======== UTILITIES ========
   function escapeHTML(s){
     return String(s||'').replace(/[&<>"']/g, function(c){
@@ -232,7 +242,7 @@
         }
         h += '</div>';
       } else {
-        h += '<div class="pap-rating-me pap-login-hint">로그인하시면 별점을 남길 수 있습니다 · <a href="auth.html">로그인</a></div>';
+        h += '<div class="pap-rating-me pap-login-hint">로그인하시면 별점을 남길 수 있습니다 · <a href="'+_loginUrl()+'">로그인</a></div>';
       }
       h += '</div>';
 
@@ -341,7 +351,7 @@
         h += '  <button class="pap-comment-submit">등록</button>';
         h += '</div>';
       } else {
-        h += '<div class="pap-login-hint">댓글 작성은 로그인이 필요합니다 · <a href="auth.html">로그인</a></div>';
+        h += '<div class="pap-login-hint">댓글 작성은 로그인이 필요합니다 · <a href="'+_loginUrl()+'">로그인</a></div>';
       }
 
       h += '<div class="pap-comments-list">';

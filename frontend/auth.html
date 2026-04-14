@@ -1259,7 +1259,19 @@ function setLang(l) {
   if (params.get('mode') === 'login') showLogin();
   if (params.get('mode') === 'signup') showSignup();
   var _authRedirect = params.get('redirect');
-  window.getRedirectUrl = function(){ return _authRedirect ? (_authRedirect + '.html') : 'mypage.html'; };
+  var _authReturn = params.get('return'); // full URL (can include hash)
+  window.getRedirectUrl = function(){
+    if(_authReturn){
+      try{
+        var decoded = decodeURIComponent(_authReturn);
+        // Safety: only allow same-origin relative URLs (no external redirects)
+        if(decoded.indexOf('://') === -1 && decoded.indexOf('//') !== 0){
+          return decoded;
+        }
+      }catch(e){}
+    }
+    return _authRedirect ? (_authRedirect + '.html') : 'mypage.html';
+  };
   if (_authRedirect === 'admin') {
     var sb = document.querySelector('#stepSuccess .auth-btn');
     if (sb) sb.textContent = '어드민으로 이동';
