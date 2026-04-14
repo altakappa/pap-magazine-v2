@@ -176,7 +176,7 @@ function loadProfile(lang) {
 
   if (!token || !userStr) {
     // Not logged in — redirect to auth
-    window.location.href = 'auth.html?mode=login';
+    window.location.href = (window.papLoginUrl?window.papLoginUrl('auth.html?mode=login'):'auth.html?mode=login');
     return;
   }
 
@@ -206,7 +206,7 @@ function loadProfile(lang) {
       document.getElementById('mpAdminLink').style.display = 'block';
     }
   } catch(e) {
-    window.location.href = 'auth.html?mode=login';
+    window.location.href = (window.papLoginUrl?window.papLoginUrl('auth.html?mode=login'):'auth.html?mode=login');
   }
 }
 
@@ -222,5 +222,6 @@ function doLogout() {
   setLang(saved);
 })();
 </script>
+<script src="pap-auth-link.js" defer></script>
 </body>
 </html>

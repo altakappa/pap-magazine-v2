@@ -763,7 +763,7 @@ button{cursor:pointer;font-family:inherit}
       <div class="nav-left-links">
         <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='submission.html';" data-i18n="submission">SUBMISSION</a>
         <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='pullletter.html';" data-i18n="pullletter">PULL-LETTER</a>
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='auth.html';" data-i18n="navLogin" style="color:rgba(255,255,255,.6)">LOGIN / JOIN</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href=(window.papLoginUrl?window.papLoginUrl('auth.html'):'auth.html');" data-i18n="navLogin" style="color:rgba(255,255,255,.6)">LOGIN / JOIN</a>
       </div>
       <div class="nav-left-links" style="margin-top:auto">
         <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='about.html';" data-i18n="about">ABOUT</a>
@@ -3110,6 +3110,7 @@ try{
   </div>
 </div>
 
+<script src="pap-auth-link.js" defer></script>
 </body>
 </html>
 // LAZY DATA LOADING for v5

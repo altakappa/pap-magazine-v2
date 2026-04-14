@@ -1362,7 +1362,7 @@ function simulateLogin(){
     document.getElementById('accessGateOverlay').classList.add('hidden');
     document.getElementById('formArea').style.display='block';
   } else {
-    window.location.href='auth.html';
+    window.location.href=(window.papLoginUrl?window.papLoginUrl('auth.html'):'auth.html');
   }
 }
 
@@ -1428,5 +1428,6 @@ document.addEventListener('DOMContentLoaded',function(){
   _updateCharCount();
 });
 </script>
+<script src="pap-auth-link.js" defer></script>
 </body>
 </html>

@@ -1049,7 +1049,7 @@ function setLang(l) {
 
 async function handleCta(plan) {
   if(plan==='free'){
-    window.location.href = PAP.auth.isLoggedIn() ? 'index.html' : 'auth.html';
+    window.location.href = PAP.auth.isLoggedIn() ? 'index.html' : (window.papLoginUrl?window.papLoginUrl('auth.html'):'auth.html');
     return;
   }
   if(!PAP.auth.isLoggedIn()){
@@ -1085,5 +1085,6 @@ async function handleCta(plan) {
 })();
 setBilling('monthly');
 </script>
+<script src="pap-auth-link.js" defer></script>
 </body>
 </html>

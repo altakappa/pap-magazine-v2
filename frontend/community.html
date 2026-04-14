@@ -1162,7 +1162,7 @@ function renderSidebars(){
 // ======== ALERTS ========
 function alertLogin(){
   if(SB.user) return true;
-  window.location.href='auth.html';
+  window.location.href=(window.papLoginUrl?window.papLoginUrl('auth.html'):'auth.html');
   return false;
 }
 
@@ -1674,5 +1674,6 @@ PAP COMMUNITY<br>
     <span data-i18n="tabDirectory">디렉토리</span>
   </a>
 </nav>
+<script src="pap-auth-link.js" defer></script>
 </body>
 </html>
