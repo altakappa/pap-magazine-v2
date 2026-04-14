@@ -1,0 +1,311 @@
+/* ======== PAP SOCIAL (Comments + Ratings) ======== */
+.pap-social-wrap {
+  margin: 32px 0;
+  padding: 0;
+  font-family: 'Montserrat', sans-serif;
+  color: #fff;
+}
+
+.pap-social-section {
+  padding: 24px 0;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+
+.pap-social-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .25em;
+  color: rgba(255,255,255,.5);
+  margin-bottom: 16px;
+  text-transform: uppercase;
+}
+
+.pap-comments-count {
+  color: rgba(255,255,255,.4);
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+/* ======== RATING ======== */
+.pap-rating-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.pap-rating-avg {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.pap-rating-num {
+  font-size: 32px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
+.pap-rating-count {
+  font-size: 12px;
+  color: rgba(255,255,255,.5);
+  letter-spacing: .05em;
+}
+
+.pap-rating-stars {
+  display: inline-flex;
+  gap: 2px;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.pap-rating-avg-stars {
+  font-size: 18px;
+  color: rgba(255,255,255,.2);
+}
+
+.pap-rating-avg-stars .pap-star-on {
+  color: #F5C518;
+}
+
+.pap-star {
+  transition: color .15s, transform .15s;
+  user-select: none;
+  color: rgba(255,255,255,.15);
+}
+
+.pap-star-on {
+  color: #F5C518;
+}
+
+.pap-rating-input .pap-star {
+  font-size: 28px;
+}
+
+.pap-rating-input .pap-star:hover,
+.pap-rating-input .pap-star.pap-star-hover {
+  color: #F5C518;
+  transform: scale(1.1);
+}
+
+.pap-rating-me {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px dashed rgba(255,255,255,.08);
+  font-size: 12px;
+  color: rgba(255,255,255,.6);
+}
+
+.pap-rating-me-label {
+  font-size: 11px;
+  letter-spacing: .1em;
+  font-weight: 600;
+  color: rgba(255,255,255,.5);
+  text-transform: uppercase;
+}
+
+.pap-rating-my-score {
+  font-size: 12px;
+  color: #F5C518;
+  font-weight: 700;
+  letter-spacing: .05em;
+}
+
+/* ======== LOGIN HINT ======== */
+.pap-login-hint {
+  font-size: 12px;
+  color: rgba(255,255,255,.5);
+  padding: 14px 0;
+  letter-spacing: .02em;
+}
+
+.pap-login-hint a {
+  color: #fff;
+  text-decoration: underline;
+  font-weight: 600;
+  margin-left: 2px;
+}
+
+/* ======== COMMENTS ======== */
+.pap-comment-form {
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.08);
+  padding: 14px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+.pap-comment-user {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  color: rgba(255,255,255,.7);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.pap-comment-input {
+  width: 100%;
+  min-height: 70px;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,.12);
+  color: #fff;
+  padding: 10px 12px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+  transition: border-color .2s;
+  box-sizing: border-box;
+}
+
+.pap-comment-input:focus {
+  border-color: rgba(255,255,255,.35);
+}
+
+.pap-comment-input::placeholder {
+  color: rgba(255,255,255,.3);
+}
+
+.pap-comment-submit {
+  margin-top: 10px;
+  padding: 9px 24px;
+  background: #fff;
+  color: #000;
+  border: none;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .2s;
+}
+
+.pap-comment-submit:hover {
+  background: #F5C518;
+}
+
+/* Comments list */
+.pap-comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.pap-comment-item {
+  padding: 16px 0;
+  border-top: 1px solid rgba(255,255,255,.06);
+}
+
+.pap-comment-item:first-child {
+  border-top: none;
+  padding-top: 4px;
+}
+
+.pap-comment-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.pap-comment-author {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: .03em;
+}
+
+.pap-comment-time {
+  font-size: 11px;
+  color: rgba(255,255,255,.4);
+  letter-spacing: .02em;
+}
+
+.pap-comment-delete {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: rgba(255,255,255,.3);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+  line-height: 1;
+  transition: color .2s;
+}
+
+.pap-comment-delete:hover {
+  color: #ff5454;
+}
+
+.pap-comment-text {
+  font-size: 13px;
+  line-height: 1.7;
+  color: rgba(255,255,255,.85);
+  letter-spacing: .02em;
+  word-break: break-word;
+}
+
+.pap-comments-empty {
+  padding: 20px 0;
+  text-align: center;
+  color: rgba(255,255,255,.35);
+  font-size: 12px;
+  letter-spacing: .05em;
+}
+
+/* ======== CREATOR PROFILE AVG RATING ======== */
+.pap-profile-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(245,197,24,.08);
+  border: 1px solid rgba(245,197,24,.2);
+  border-radius: 2px;
+  margin-top: 8px;
+}
+
+.pap-profile-rating-num {
+  font-size: 14px;
+  font-weight: 800;
+  color: #F5C518;
+  letter-spacing: 0;
+}
+
+.pap-profile-rating-stars {
+  font-size: 12px;
+  color: rgba(255,255,255,.2);
+}
+
+.pap-profile-rating-stars .pap-star-on {
+  color: #F5C518;
+}
+
+.pap-profile-rating-count {
+  font-size: 10px;
+  color: rgba(255,255,255,.5);
+  letter-spacing: .05em;
+}
+
+.pap-profile-rating-empty {
+  font-size: 11px;
+  color: rgba(255,255,255,.3);
+  margin-top: 6px;
+  letter-spacing: .03em;
+}
+
+/* ======== RESPONSIVE ======== */
+@media (max-width: 768px) {
+  .pap-rating-num { font-size: 26px; }
+  .pap-rating-input .pap-star { font-size: 24px; }
+  .pap-social-wrap { margin: 24px 0; }
+  .pap-rating-row { flex-wrap: wrap; gap: 10px; }
+  .pap-rating-me { flex-wrap: wrap; gap: 8px; }
+}

@@ -26,6 +26,7 @@
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="pap-styles.css">
+<link rel="stylesheet" href="pap-social.css">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
 <!-- Favicon & PWA -->
 <link rel="icon" type="image/x-icon" href="favicon.ico">
@@ -582,7 +583,7 @@
   </div>
 </footer>
 
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="pap-api.js?v=2" defer></script><script src="pap-app.js?v=2" defer></script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="pap-api.js?v=2" defer></script><script src="pap-social.js?v=1" defer></script><script src="pap-app.js?v=2" defer></script>
 <script>
 // AI Recommendation Fallback: reads theme tags from DOM ed-row-card elements
 try{
@@ -757,6 +758,7 @@ try{
     <div id="artDetailCredits" style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08);font-size:12px;line-height:1.8"></div>
     <div id="artDetailGallery" style="display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:16px 0"></div>
     <div id="artDetailLink" style="display:none"></div>
+    <div id="artSocialSlot"></div>
   </div>
 </div>
 
@@ -781,6 +783,11 @@ try{
   <!-- CREDITS -->
   <div class="ed-credits-wrap">
     <div class="ed-credits-table" id="edDetailCredits"></div>
+  </div>
+
+  <!-- SOCIAL (Rating + Comments) -->
+  <div class="ed-credits-wrap">
+    <div id="edSocialSlot"></div>
   </div>
 
   <!-- MORE CONTENT -->
