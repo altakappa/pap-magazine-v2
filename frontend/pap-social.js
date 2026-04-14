@@ -1,86 +1,45 @@
 /**
- * PAP Social Module — Comments + Ratings
- * ---------------------------------------
- * Phase 1: localStorage-based (demo)
- * Phase 2: Replace storage adapter with Firebase calls
+ * PAP Social Module — Comments + Ratings (Supabase-backed)
+ * ---------------------------------------------------------
+ * - Comments on editorials & articles
+ * - 1-5 star ratings on editorials
+ * - Creator profile average rating
+ *
+ * Storage: Supabase Postgres via @supabase/supabase-js (loaded via CDN)
+ * Falls back to localStorage when Supabase client is unavailable
+ * (e.g., offline, SDK load failure).
  *
  * Public API:
  *   PAPSocial.renderEditorialSocial(containerEl, editorialTitle)
  *   PAPSocial.renderArticleSocial(containerEl, articleSlug, articleTitle)
- *   PAPSocial.getCreatorAvgRating(creatorHandle) -> {avg:Number, count:Number}
+ *   PAPSocial.getCreatorAvgRating(creatorHandle) -> Promise<{avg,count,...}>
  *   PAPSocial.currentUser() -> {id,name,handle} | null
  */
 (function(global){
   'use strict';
 
-  // ======== STORAGE ADAPTER (swap with Firebase later) ========
-  var STORAGE = {
-    KEY_COMMENTS: 'pap-comments-v1',
-    KEY_RATINGS:  'pap-ratings-v1',
-    _readAll: function(key){ try{ return JSON.parse(localStorage.getItem(key)||'[]'); }catch(e){ return []; } },
-    _writeAll: function(key,arr){ try{ localStorage.setItem(key, JSON.stringify(arr)); }catch(e){} },
-    listComments: function(targetType, targetId){
-      var all = this._readAll(this.KEY_COMMENTS);
-      return all.filter(function(c){ return c.targetType===targetType && c.targetId===targetId; })
-                .sort(function(a,b){ return b.ts - a.ts; });
-    },
-    addComment: function(targetType, targetId, text, user){
-      var all = this._readAll(this.KEY_COMMENTS);
-      var c = {
-        id: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
-        targetType: targetType,
-        targetId: targetId,
-        userId: user.id,
-        userName: user.name,
-        userHandle: user.handle||'',
-        text: text,
-        ts: Date.now()
-      };
-      all.push(c);
-      this._writeAll(this.KEY_COMMENTS, all);
-      return c;
-    },
-    deleteComment: function(commentId, userId){
-      var all = this._readAll(this.KEY_COMMENTS);
-      var filtered = all.filter(function(c){ return !(c.id===commentId && c.userId===userId); });
-      if(filtered.length !== all.length){
-        this._writeAll(this.KEY_COMMENTS, filtered);
-        return true;
-      }
-      return false;
-    },
-    setRating: function(editorialTitle, userId, score){
-      var all = this._readAll(this.KEY_RATINGS);
-      var existing = all.find(function(r){ return r.editorialTitle===editorialTitle && r.userId===userId; });
-      if(existing){
-        existing.score = score;
-        existing.ts = Date.now();
-      } else {
-        all.push({
-          id: 'r_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
-          editorialTitle: editorialTitle,
-          userId: userId,
-          score: score,
-          ts: Date.now()
+  // ======== SUPABASE CONFIG ========
+  var SUPABASE_URL = 'https://igcazquhkwxtqsaqpznx.supabase.co';
+  var SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_8Q19ICgnEqkrjH2hPvwgbA_9pSVDh55';
+  var supabaseClient = null;
+
+  function initSupabase(){
+    if(supabaseClient) return supabaseClient;
+    try{
+      if(typeof global.supabase !== 'undefined' && global.supabase.createClient){
+        supabaseClient = global.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+          auth: { persistSession: false }
         });
       }
-      this._writeAll(this.KEY_RATINGS, all);
-    },
-    getRating: function(editorialTitle, userId){
-      var all = this._readAll(this.KEY_RATINGS);
-      var found = all.find(function(r){ return r.editorialTitle===editorialTitle && r.userId===userId; });
-      return found ? found.score : 0;
-    },
-    getRatingStats: function(editorialTitle){
-      var all = this._readAll(this.KEY_RATINGS);
-      var matched = all.filter(function(r){ return r.editorialTitle===editorialTitle; });
-      if(matched.length===0) return {avg:0,count:0};
-      var sum = matched.reduce(function(a,r){ return a+r.score; }, 0);
-      return { avg: +(sum/matched.length).toFixed(1), count: matched.length };
-    },
-    getAllRatings: function(){
-      return this._readAll(this.KEY_RATINGS);
-    }
+    }catch(e){ console.warn('[PAPSocial] Supabase init failed:', e); }
+    return supabaseClient;
+  }
+
+  // ======== LOCAL CACHE (for immediate UI, then sync with server) ========
+  var CACHE = {
+    comments: {}, // key: type:id -> [comments]
+    ratings: {},  // key: editorialTitle -> {avg,count,myScore}
+    creatorRatings: {} // key: handle -> {avg,count,...}
   };
 
   // ======== CURRENT USER ========
@@ -91,13 +50,12 @@
       var parsed = JSON.parse(u);
       if(!parsed) return null;
       return {
-        id: parsed.id || parsed.email || parsed.username || 'anon',
+        id: String(parsed.id || parsed.email || parsed.username || 'anon'),
         name: parsed.name || parsed.username || (parsed.email||'').split('@')[0] || 'User',
         handle: parsed.handle || parsed.username || ''
       };
     }catch(e){ return null; }
   }
-
   function isLoggedIn(){ return !!currentUser(); }
 
   // ======== UTILITIES ========
@@ -107,12 +65,112 @@
     });
   }
   function timeAgo(ts){
-    var diff = (Date.now() - ts) / 1000;
+    var t = typeof ts === 'string' ? new Date(ts).getTime() : ts;
+    var diff = (Date.now() - t) / 1000;
     if(diff < 60) return '방금 전';
     if(diff < 3600) return Math.floor(diff/60) + '분 전';
     if(diff < 86400) return Math.floor(diff/3600) + '시간 전';
     if(diff < 2592000) return Math.floor(diff/86400) + '일 전';
-    return new Date(ts).toISOString().slice(0,10);
+    return new Date(t).toISOString().slice(0,10);
+  }
+
+  // ======== SUPABASE DATA LAYER ========
+  function sbListComments(targetType, targetId){
+    var sb = initSupabase();
+    if(!sb) return Promise.resolve([]);
+    return sb.from('comments')
+      .select('*')
+      .eq('target_type', targetType)
+      .eq('target_id', targetId)
+      .order('created_at', { ascending: false })
+      .then(function(res){
+        if(res.error){ console.warn('[PAPSocial] listComments error:', res.error); return []; }
+        return (res.data||[]).map(function(row){
+          return {
+            id: row.id,
+            targetType: row.target_type,
+            targetId: row.target_id,
+            userId: row.user_id,
+            userName: row.user_name,
+            userHandle: row.user_handle,
+            text: row.text,
+            ts: new Date(row.created_at).getTime()
+          };
+        });
+      });
+  }
+
+  function sbAddComment(targetType, targetId, text, user){
+    var sb = initSupabase();
+    if(!sb) return Promise.reject(new Error('Supabase not available'));
+    return sb.from('comments').insert([{
+      target_type: targetType,
+      target_id: targetId,
+      user_id: user.id,
+      user_name: user.name,
+      user_handle: user.handle||null,
+      text: text
+    }]).select().then(function(res){
+      if(res.error) throw res.error;
+      return res.data && res.data[0];
+    });
+  }
+
+  function sbDeleteComment(commentId, userId){
+    var sb = initSupabase();
+    if(!sb) return Promise.reject(new Error('Supabase not available'));
+    return sb.from('comments').delete().eq('id', commentId).eq('user_id', userId)
+      .then(function(res){ if(res.error) throw res.error; return true; });
+  }
+
+  function sbSetRating(editorialTitle, userId, score){
+    var sb = initSupabase();
+    if(!sb) return Promise.reject(new Error('Supabase not available'));
+    // UPSERT: insert or update on conflict (editorial_title, user_id)
+    return sb.from('ratings').upsert([{
+      editorial_title: editorialTitle,
+      user_id: userId,
+      score: score,
+      updated_at: new Date().toISOString()
+    }], { onConflict: 'editorial_title,user_id' })
+    .then(function(res){ if(res.error) throw res.error; return true; });
+  }
+
+  function sbGetMyRating(editorialTitle, userId){
+    var sb = initSupabase();
+    if(!sb) return Promise.resolve(0);
+    return sb.from('ratings')
+      .select('score')
+      .eq('editorial_title', editorialTitle)
+      .eq('user_id', userId)
+      .limit(1)
+      .then(function(res){
+        if(res.error || !res.data || res.data.length===0) return 0;
+        return res.data[0].score;
+      });
+  }
+
+  function sbGetRatingStats(editorialTitle){
+    var sb = initSupabase();
+    if(!sb) return Promise.resolve({avg:0,count:0});
+    return sb.from('editorial_rating_stats')
+      .select('avg_score,rating_count')
+      .eq('editorial_title', editorialTitle)
+      .limit(1)
+      .then(function(res){
+        if(res.error || !res.data || res.data.length===0) return {avg:0,count:0};
+        return { avg: parseFloat(res.data[0].avg_score)||0, count: res.data[0].rating_count||0 };
+      });
+  }
+
+  function sbGetAllStats(){
+    var sb = initSupabase();
+    if(!sb) return Promise.resolve([]);
+    return sb.from('editorial_rating_stats').select('*')
+      .then(function(res){
+        if(res.error) return [];
+        return res.data || [];
+      });
   }
 
   // ======== RATING UI ========
@@ -127,115 +185,159 @@
 
   function renderRatingBlock(container, editorialTitle){
     var user = currentUser();
-    var stats = STORAGE.getRatingStats(editorialTitle);
-    var myScore = user ? STORAGE.getRating(editorialTitle, user.id) : 0;
 
-    var h = '<div class="pap-social-section pap-rating-block">';
-    h += '<div class="pap-social-label">RATING</div>';
-    h += '<div class="pap-rating-row">';
-    h += '  <div class="pap-rating-avg">';
-    h += '    <span class="pap-rating-num">'+(stats.count>0?stats.avg.toFixed(1):'—')+'</span>';
-    h += '    <span class="pap-rating-count">('+stats.count+')</span>';
-    h += '  </div>';
-    h += '  <div class="pap-rating-stars pap-rating-avg-stars">'+starHTML(stats.avg,false)+'</div>';
-    h += '</div>';
+    // Show skeleton first
+    container.innerHTML = '<div class="pap-social-section pap-rating-block">'+
+      '<div class="pap-social-label">RATING</div>'+
+      '<div class="pap-rating-row"><div class="pap-rating-avg"><span class="pap-rating-num">—</span></div></div>'+
+      '<div class="pap-rating-me pap-login-hint">별점 불러오는 중...</div>'+
+    '</div>';
 
-    if(user){
-      h += '<div class="pap-rating-me">';
-      h += '  <span class="pap-rating-me-label">나의 평점:</span>';
-      h += '  <div class="pap-rating-stars pap-rating-input" data-editorial="'+escapeHTML(editorialTitle)+'">'+starHTML(myScore,true)+'</div>';
-      h += '  <span class="pap-rating-my-score">'+(myScore>0?(myScore+'점'):'미평가')+'</span>';
+    Promise.all([
+      sbGetRatingStats(editorialTitle),
+      user ? sbGetMyRating(editorialTitle, user.id) : Promise.resolve(0)
+    ]).then(function(results){
+      var stats = results[0];
+      var myScore = results[1] || 0;
+
+      var h = '<div class="pap-social-section pap-rating-block">';
+      h += '<div class="pap-social-label">RATING</div>';
+      h += '<div class="pap-rating-row">';
+      h += '  <div class="pap-rating-avg">';
+      h += '    <span class="pap-rating-num">'+(stats.count>0?stats.avg.toFixed(1):'—')+'</span>';
+      h += '    <span class="pap-rating-count">('+stats.count+')</span>';
+      h += '  </div>';
+      h += '  <div class="pap-rating-stars pap-rating-avg-stars">'+starHTML(stats.avg,false)+'</div>';
       h += '</div>';
-    } else {
-      h += '<div class="pap-rating-me pap-login-hint">로그인하시면 별점을 남길 수 있습니다 · <a href="auth.html">로그인</a></div>';
-    }
-    h += '</div>';
 
-    container.innerHTML = h;
+      if(user){
+        h += '<div class="pap-rating-me">';
+        h += '  <span class="pap-rating-me-label">나의 평점:</span>';
+        h += '  <div class="pap-rating-stars pap-rating-input" data-editorial="'+escapeHTML(editorialTitle)+'">'+starHTML(myScore,true)+'</div>';
+        h += '  <span class="pap-rating-my-score">'+(myScore>0?(myScore+'점'):'미평가')+'</span>';
+        h += '</div>';
+      } else {
+        h += '<div class="pap-rating-me pap-login-hint">로그인하시면 별점을 남길 수 있습니다 · <a href="auth.html">로그인</a></div>';
+      }
+      h += '</div>';
 
-    // Attach handlers
-    var input = container.querySelector('.pap-rating-input');
-    if(input && user){
-      var stars = input.querySelectorAll('.pap-star');
-      stars.forEach(function(st){
-        st.addEventListener('mouseenter', function(){
-          var s = parseInt(st.getAttribute('data-score'),10);
-          stars.forEach(function(x,i){ x.classList.toggle('pap-star-hover', i<s); });
+      container.innerHTML = h;
+
+      var input = container.querySelector('.pap-rating-input');
+      if(input && user){
+        var stars = input.querySelectorAll('.pap-star');
+        stars.forEach(function(st){
+          st.addEventListener('mouseenter', function(){
+            var s = parseInt(st.getAttribute('data-score'),10);
+            stars.forEach(function(x,i){ x.classList.toggle('pap-star-hover', i<s); });
+          });
+          st.addEventListener('mouseleave', function(){
+            stars.forEach(function(x){ x.classList.remove('pap-star-hover'); });
+          });
+          st.addEventListener('click', function(){
+            var s = parseInt(st.getAttribute('data-score'),10);
+            st.style.pointerEvents='none';
+            sbSetRating(editorialTitle, user.id, s).then(function(){
+              renderRatingBlock(container, editorialTitle);
+            }).catch(function(err){
+              console.error('[PAPSocial] rating save failed:', err);
+              alert('별점 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+              st.style.pointerEvents='';
+            });
+          });
         });
-        st.addEventListener('mouseleave', function(){
-          stars.forEach(function(x){ x.classList.remove('pap-star-hover'); });
-        });
-        st.addEventListener('click', function(){
-          var s = parseInt(st.getAttribute('data-score'),10);
-          STORAGE.setRating(editorialTitle, user.id, s);
-          renderRatingBlock(container, editorialTitle);
-        });
-      });
-    }
+      }
+    }).catch(function(err){
+      console.error('[PAPSocial] rating load failed:', err);
+      container.innerHTML = '<div class="pap-social-section"><div class="pap-social-label">RATING</div>'+
+        '<div class="pap-login-hint">별점을 불러오지 못했습니다. 페이지를 새로고침해 주세요.</div></div>';
+    });
   }
 
   // ======== COMMENTS UI ========
   function renderCommentsBlock(container, targetType, targetId){
     var user = currentUser();
-    var comments = STORAGE.listComments(targetType, targetId);
 
-    var h = '<div class="pap-social-section pap-comments-block">';
-    h += '<div class="pap-social-label">COMMENTS <span class="pap-comments-count">('+comments.length+')</span></div>';
+    container.innerHTML = '<div class="pap-social-section pap-comments-block">'+
+      '<div class="pap-social-label">COMMENTS</div>'+
+      '<div class="pap-comments-empty">댓글 불러오는 중...</div>'+
+    '</div>';
 
-    if(user){
-      h += '<div class="pap-comment-form">';
-      h += '  <div class="pap-comment-user">'+escapeHTML(user.name)+'</div>';
-      h += '  <textarea class="pap-comment-input" placeholder="댓글을 남겨주세요" maxlength="1000"></textarea>';
-      h += '  <button class="pap-comment-submit">등록</button>';
-      h += '</div>';
-    } else {
-      h += '<div class="pap-login-hint">댓글 작성은 로그인이 필요합니다 · <a href="auth.html">로그인</a></div>';
-    }
+    sbListComments(targetType, targetId).then(function(comments){
+      var h = '<div class="pap-social-section pap-comments-block">';
+      h += '<div class="pap-social-label">COMMENTS <span class="pap-comments-count">('+comments.length+')</span></div>';
 
-    h += '<div class="pap-comments-list">';
-    if(comments.length===0){
-      h += '<div class="pap-comments-empty">아직 댓글이 없습니다. 첫 댓글을 남겨주세요.</div>';
-    } else {
-      comments.forEach(function(c){
-        var canDelete = user && user.id === c.userId;
-        h += '<div class="pap-comment-item" data-comment-id="'+c.id+'">';
-        h += '  <div class="pap-comment-head">';
-        h += '    <span class="pap-comment-author">'+escapeHTML(c.userName)+'</span>';
-        h += '    <span class="pap-comment-time">'+timeAgo(c.ts)+'</span>';
-        if(canDelete){
-          h += '    <button class="pap-comment-delete" data-id="'+c.id+'" title="삭제">✕</button>';
-        }
-        h += '  </div>';
-        h += '  <div class="pap-comment-text">'+escapeHTML(c.text).replace(/\n/g,'<br>')+'</div>';
+      if(user){
+        h += '<div class="pap-comment-form">';
+        h += '  <div class="pap-comment-user">'+escapeHTML(user.name)+'</div>';
+        h += '  <textarea class="pap-comment-input" placeholder="댓글을 남겨주세요" maxlength="1000"></textarea>';
+        h += '  <button class="pap-comment-submit">등록</button>';
         h += '</div>';
-      });
-    }
-    h += '</div></div>';
+      } else {
+        h += '<div class="pap-login-hint">댓글 작성은 로그인이 필요합니다 · <a href="auth.html">로그인</a></div>';
+      }
 
-    container.innerHTML = h;
+      h += '<div class="pap-comments-list">';
+      if(comments.length===0){
+        h += '<div class="pap-comments-empty">아직 댓글이 없습니다. 첫 댓글을 남겨주세요.</div>';
+      } else {
+        comments.forEach(function(c){
+          var canDelete = user && user.id === c.userId;
+          h += '<div class="pap-comment-item" data-comment-id="'+c.id+'">';
+          h += '  <div class="pap-comment-head">';
+          h += '    <span class="pap-comment-author">'+escapeHTML(c.userName)+'</span>';
+          h += '    <span class="pap-comment-time">'+timeAgo(c.ts)+'</span>';
+          if(canDelete){
+            h += '    <button class="pap-comment-delete" data-id="'+c.id+'" title="삭제">✕</button>';
+          }
+          h += '  </div>';
+          h += '  <div class="pap-comment-text">'+escapeHTML(c.text).replace(/\n/g,'<br>')+'</div>';
+          h += '</div>';
+        });
+      }
+      h += '</div></div>';
 
-    // Submit handler
-    if(user){
-      var submitBtn = container.querySelector('.pap-comment-submit');
-      var input = container.querySelector('.pap-comment-input');
-      submitBtn.addEventListener('click', function(){
-        var txt = (input.value||'').trim();
-        if(!txt) return;
-        STORAGE.addComment(targetType, targetId, txt, user);
-        input.value='';
-        renderCommentsBlock(container, targetType, targetId);
-      });
-    }
+      container.innerHTML = h;
 
-    // Delete handlers
-    container.querySelectorAll('.pap-comment-delete').forEach(function(btn){
-      btn.addEventListener('click', function(){
-        if(!confirm('이 댓글을 삭제하시겠습니까?')) return;
-        var u = currentUser();
-        if(!u) return;
-        STORAGE.deleteComment(btn.getAttribute('data-id'), u.id);
-        renderCommentsBlock(container, targetType, targetId);
+      if(user){
+        var submitBtn = container.querySelector('.pap-comment-submit');
+        var input = container.querySelector('.pap-comment-input');
+        submitBtn.addEventListener('click', function(){
+          var txt = (input.value||'').trim();
+          if(!txt) return;
+          submitBtn.disabled = true;
+          submitBtn.textContent = '등록 중...';
+          sbAddComment(targetType, targetId, txt, user).then(function(){
+            input.value='';
+            renderCommentsBlock(container, targetType, targetId);
+          }).catch(function(err){
+            console.error('[PAPSocial] comment submit failed:', err);
+            alert('댓글 등록에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+            submitBtn.disabled = false;
+            submitBtn.textContent = '등록';
+          });
+        });
+      }
+
+      container.querySelectorAll('.pap-comment-delete').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          if(!confirm('이 댓글을 삭제하시겠습니까?')) return;
+          var u = currentUser();
+          if(!u) return;
+          btn.disabled = true;
+          sbDeleteComment(btn.getAttribute('data-id'), u.id).then(function(){
+            renderCommentsBlock(container, targetType, targetId);
+          }).catch(function(err){
+            console.error('[PAPSocial] delete failed:', err);
+            alert('삭제에 실패했습니다.');
+            btn.disabled = false;
+          });
+        });
       });
+    }).catch(function(err){
+      console.error('[PAPSocial] comments load failed:', err);
+      container.innerHTML = '<div class="pap-social-section"><div class="pap-social-label">COMMENTS</div>'+
+        '<div class="pap-login-hint">댓글을 불러오지 못했습니다.</div></div>';
     });
   }
 
@@ -255,49 +357,48 @@
   }
 
   // ======== CREATOR AVERAGE RATING ========
-  // Given a creator's handle (e.g., "@photographer"), compute average rating
-  // across all editorials where this creator is credited (credits.h or fashion).
+  // Returns Promise<{avg,count,editorials,ratedEditorials}>
   function getCreatorAvgRating(creatorHandle){
-    if(typeof edDetails === 'undefined') return {avg:0, count:0};
+    if(typeof edDetails === 'undefined'){
+      return Promise.resolve({avg:0,count:0,editorials:0,ratedEditorials:0});
+    }
     var handle = (creatorHandle||'').toLowerCase();
-    // Find editorials where this creator appears
     var creatorEditorials = [];
     for(var title in edDetails){
       var ed = edDetails[title];
       var found = false;
       (ed.credits||[]).forEach(function(cr){
-        (cr.h||[]).forEach(function(h){
-          if(h.toLowerCase() === handle) found = true;
-        });
+        (cr.h||[]).forEach(function(h){ if(h.toLowerCase() === handle) found = true; });
       });
-      (ed.fashion||[]).forEach(function(h){
-        if(h.toLowerCase() === handle) found = true;
-      });
+      (ed.fashion||[]).forEach(function(h){ if(h.toLowerCase() === handle) found = true; });
       if(found) creatorEditorials.push(title);
     }
+    if(creatorEditorials.length===0){
+      return Promise.resolve({avg:0,count:0,editorials:0,ratedEditorials:0});
+    }
 
-    if(creatorEditorials.length===0) return {avg:0, count:0, editorials:0};
-
-    // Aggregate all ratings for those editorials
-    var totalSum = 0;
-    var totalCount = 0;
-    var ratedEditorials = 0;
-    creatorEditorials.forEach(function(t){
-      var stats = STORAGE.getRatingStats(t);
-      if(stats.count>0){
-        totalSum += stats.avg * stats.count;
-        totalCount += stats.count;
-        ratedEditorials++;
+    return sbGetAllStats().then(function(allStats){
+      var map = {};
+      (allStats||[]).forEach(function(s){ map[s.editorial_title]=s; });
+      var totalSum = 0, totalCount = 0, ratedEditorials = 0;
+      creatorEditorials.forEach(function(t){
+        var s = map[t];
+        if(s && s.rating_count>0){
+          totalSum += (parseFloat(s.avg_score)||0) * s.rating_count;
+          totalCount += s.rating_count;
+          ratedEditorials++;
+        }
+      });
+      if(totalCount===0){
+        return { avg:0, count:0, editorials:creatorEditorials.length, ratedEditorials:0 };
       }
+      return {
+        avg: +(totalSum/totalCount).toFixed(1),
+        count: totalCount,
+        editorials: creatorEditorials.length,
+        ratedEditorials: ratedEditorials
+      };
     });
-
-    if(totalCount===0) return {avg:0, count:0, editorials:creatorEditorials.length, ratedEditorials:0};
-    return {
-      avg: +(totalSum/totalCount).toFixed(1),
-      count: totalCount,
-      editorials: creatorEditorials.length,
-      ratedEditorials: ratedEditorials
-    };
   }
 
   // ======== EXPORT ========
@@ -308,7 +409,24 @@
     currentUser: currentUser,
     isLoggedIn: isLoggedIn,
     starHTML: starHTML,
-    _storage: STORAGE // for debugging
+    _init: initSupabase
   };
+
+  // Auto-init when Supabase SDK is available
+  if(typeof global.supabase !== 'undefined'){
+    initSupabase();
+  } else {
+    // Wait for SDK to load
+    var waitCount = 0;
+    var waitInterval = setInterval(function(){
+      if(typeof global.supabase !== 'undefined'){
+        initSupabase();
+        clearInterval(waitInterval);
+      } else if(waitCount++ > 50){ // 5s timeout
+        console.warn('[PAPSocial] Supabase SDK did not load within 5s');
+        clearInterval(waitInterval);
+      }
+    }, 100);
+  }
 
 })(window);

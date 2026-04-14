@@ -1172,18 +1172,23 @@ function openCreatorPopup(cr){
     if(lvlEl2 && lvlEl2.parentNode) lvlEl2.parentNode.insertBefore(ratingSlot, lvlEl2.nextSibling);
   }
   if(typeof PAPSocial!=='undefined'){
-    var cav=PAPSocial.getCreatorAvgRating(handle);
-    if(cav && cav.count>0){
-      ratingSlot.innerHTML='<div class="pap-profile-rating">'+
-        '<span class="pap-profile-rating-num">'+cav.avg.toFixed(1)+'</span>'+
-        '<span class="pap-profile-rating-stars">'+PAPSocial.starHTML(cav.avg,false)+'</span>'+
-        '<span class="pap-profile-rating-count">'+cav.count+'명 평가 · '+(cav.ratedEditorials||0)+'/'+(cav.editorials||editorials.length)+' 에디토리얼</span>'+
-      '</div>';
-    } else if(editorials.length>0){
-      ratingSlot.innerHTML='<div class="pap-profile-rating-empty">아직 별점이 등록되지 않았습니다</div>';
-    } else {
+    ratingSlot.innerHTML='<div class="pap-profile-rating-empty">별점 불러오는 중...</div>';
+    Promise.resolve(PAPSocial.getCreatorAvgRating(handle)).then(function(cav){
+      if(cav && cav.count>0){
+        ratingSlot.innerHTML='<div class="pap-profile-rating">'+
+          '<span class="pap-profile-rating-num">'+cav.avg.toFixed(1)+'</span>'+
+          '<span class="pap-profile-rating-stars">'+PAPSocial.starHTML(cav.avg,false)+'</span>'+
+          '<span class="pap-profile-rating-count">'+cav.count+'명 평가 · '+(cav.ratedEditorials||0)+'/'+(cav.editorials||editorials.length)+' 에디토리얼</span>'+
+        '</div>';
+      } else if(editorials.length>0){
+        ratingSlot.innerHTML='<div class="pap-profile-rating-empty">아직 별점이 등록되지 않았습니다</div>';
+      } else {
+        ratingSlot.innerHTML='';
+      }
+    }).catch(function(err){
+      console.error('[creatorAvg] load failed:', err);
       ratingSlot.innerHTML='';
-    }
+    });
   }
   
   // Editorial works grid
