@@ -12,6 +12,34 @@
   var GA_ID='G-TPPJGKJXYV';
   var STORAGE_KEY='pap-cookie-consent';
 
+  /* ── i18n ─────────────────────────────────────────── */
+  var I18N={
+    ko:{msg:'본 웹사이트는 사용자 경험 향상을 위해 쿠키 및 분석 도구(Google Analytics)를 사용합니다. 비필수 쿠키를 수락하거나 거부하실 수 있습니다.',accept:'수락',reject:'거부'},
+    en:{msg:'We use cookies and analytics (Google Analytics) to improve your experience. You can accept or reject non-essential cookies.',accept:'Accept',reject:'Reject'},
+    it:{msg:'Utilizziamo cookie e strumenti di analisi (Google Analytics) per migliorare la tua esperienza. Puoi accettare o rifiutare i cookie non essenziali.',accept:'Accetta',reject:'Rifiuta'},
+    fr:{msg:"Nous utilisons des cookies et des outils d'analyse (Google Analytics) pour améliorer votre expérience. Vous pouvez accepter ou refuser les cookies non essentiels.",accept:'Accepter',reject:'Refuser'},
+    es:{msg:'Utilizamos cookies y herramientas de análisis (Google Analytics) para mejorar tu experiencia. Puedes aceptar o rechazar las cookies no esenciales.',accept:'Aceptar',reject:'Rechazar'},
+    ja:{msg:'当ウェブサイトはユーザー体験向上のため、Cookieおよび分析ツール（Google Analytics）を使用しています。非必須Cookieを受け入れるか拒否できます。',accept:'受け入れる',reject:'拒否'},
+    zh:{msg:'本网站使用 Cookie 和分析工具（Google Analytics）以提升您的体验。您可以接受或拒绝非必要 Cookie。',accept:'接受',reject:'拒绝'},
+    ru:{msg:'Мы используем файлы cookie и аналитику (Google Analytics) для улучшения вашего опыта. Вы можете принять или отклонить необязательные файлы cookie.',accept:'Принять',reject:'Отклонить'}
+  };
+
+  function detectLang(){
+    var saved=null;
+    try{ saved=localStorage.getItem('pap-lang'); }catch(e){}
+    if(saved && I18N[saved]) return saved;
+    var tz=''; try{ tz=Intl.DateTimeFormat().resolvedOptions().timeZone||''; }catch(e){}
+    var nav=(navigator.language||navigator.userLanguage||'').toLowerCase();
+    if(nav.indexOf('ko')===0||tz.indexOf('Seoul')>-1) return 'ko';
+    if(nav.indexOf('ja')===0||tz.indexOf('Tokyo')>-1) return 'ja';
+    if(nav.indexOf('zh')===0||tz.indexOf('Shanghai')>-1||tz.indexOf('Beijing')>-1||tz.indexOf('Hong_Kong')>-1||tz.indexOf('Taipei')>-1) return 'zh';
+    if(nav.indexOf('it')===0||tz.indexOf('Rome')>-1) return 'it';
+    if(nav.indexOf('fr')===0||tz.indexOf('Paris')>-1) return 'fr';
+    if(nav.indexOf('es')===0||tz.indexOf('Madrid')>-1||tz.indexOf('Mexico')>-1) return 'es';
+    if(nav.indexOf('ru')===0||tz.indexOf('Moscow')>-1) return 'ru';
+    return 'en';
+  }
+
   /* ── public API ────────────────────────────────── */
   var _callbacks=[];
   window.papCookieConsent={
@@ -88,15 +116,17 @@
     wrap.id='cookieConsent';
     wrap.setAttribute('role','dialog');
     wrap.setAttribute('aria-label','Cookie consent');
+    var lang=detectLang();
+    var t=I18N[lang]||I18N.en;
+    function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
     wrap.innerHTML=
-      '<div class="cc-inner">'+
+      '<div class="cc-inner" lang="'+lang+'">'+
         '<div class="cc-text-wrap">'+
-          '<p class="cc-text">We use cookies and analytics (Google Analytics) to improve your experience. You can accept or reject non-essential cookies.</p>'+
-          '<p class="cc-text cc-text-ko">본 웹사이트는 사용자 경험 향상을 위해 쿠키 및 분석 도구를 사용합니다.</p>'+
+          '<p class="cc-text">'+esc(t.msg)+'</p>'+
         '</div>'+
         '<div class="cc-actions">'+
-          '<button class="cc-btn cc-reject" id="ccReject">Reject / 거부</button>'+
-          '<button class="cc-btn cc-accept" id="ccAccept">Accept / 수락</button>'+
+          '<button class="cc-btn cc-reject" id="ccReject">'+esc(t.reject)+'</button>'+
+          '<button class="cc-btn cc-accept" id="ccAccept">'+esc(t.accept)+'</button>'+
         '</div>'+
       '</div>';
     document.body.appendChild(wrap);
