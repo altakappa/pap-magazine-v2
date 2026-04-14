@@ -99,6 +99,7 @@ h1{font-size:clamp(48px,8vw,90px);font-weight:800;letter-spacing:5px;text-transf
     <a href="#" onclick="event.preventDefault();navigateWithInterstitial('contact.html');" data-i18n="contact">CONTACT</a>
   </div>
 </nav>
+<script>
 // ======== SCROLL LOCK ========
 var _scrollLockCount=0,_savedScrollY=0;
 function lockScroll(){if(_scrollLockCount===0){_savedScrollY=window.scrollY;document.body.style.position='fixed';document.body.style.top='-'+_savedScrollY+'px';document.body.style.left='0';document.body.style.right='0';}_scrollLockCount++;}
@@ -199,7 +200,8 @@ function navigateWithInterstitial(url){
     return;
   }
   window.location.href=url;
-}<script>
+}
+</script>
 <main role="main" class="content">
   <h1 data-i18n="aboutTitle">ABOUT</h1>
   <div class="about-text" id="aboutBody"></div>
