@@ -82,7 +82,7 @@
       .select('*')
       .eq('target_type', targetType)
       .eq('target_id', targetId)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: true })
       .then(function(res){
         if(res.error){ console.warn('[PAPSocial] listComments error:', res.error); return []; }
         return (res.data||[]).map(function(row){
@@ -94,26 +94,38 @@
             userName: row.user_name,
             userHandle: row.user_handle,
             text: row.text,
+            parentId: row.parent_id || null,
             ts: new Date(row.created_at).getTime()
           };
         });
       });
   }
 
-  function sbAddComment(targetType, targetId, text, user){
+  function sbAddComment(targetType, targetId, text, user, parentId){
     var sb = initSupabase();
     if(!sb) return Promise.reject(new Error('Supabase not available'));
-    return sb.from('comments').insert([{
+    var payload = {
       target_type: targetType,
       target_id: targetId,
       user_id: user.id,
       user_name: user.name,
       user_handle: user.handle||null,
       text: text
-    }]).select().then(function(res){
+    };
+    if(parentId) payload.parent_id = parentId;
+    return sb.from('comments').insert([payload]).select().then(function(res){
       if(res.error) throw res.error;
       return res.data && res.data[0];
     });
+  }
+
+  function sbDeleteRating(editorialTitle, userId){
+    var sb = initSupabase();
+    if(!sb) return Promise.reject(new Error('Supabase not available'));
+    return sb.from('ratings').delete()
+      .eq('editorial_title', editorialTitle)
+      .eq('user_id', userId)
+      .then(function(res){ if(res.error) throw res.error; return true; });
   }
 
   function sbDeleteComment(commentId, userId){
@@ -215,6 +227,9 @@
         h += '  <span class="pap-rating-me-label">나의 평점:</span>';
         h += '  <div class="pap-rating-stars pap-rating-input" data-editorial="'+escapeHTML(editorialTitle)+'">'+starHTML(myScore,true)+'</div>';
         h += '  <span class="pap-rating-my-score">'+(myScore>0?(myScore+'점'):'미평가')+'</span>';
+        if(myScore>0){
+          h += '  <button class="pap-rating-delete" title="별점 삭제">별점 취소</button>';
+        }
         h += '</div>';
       } else {
         h += '<div class="pap-rating-me pap-login-hint">로그인하시면 별점을 남길 수 있습니다 · <a href="auth.html">로그인</a></div>';
@@ -247,6 +262,22 @@
           });
         });
       }
+
+      // Delete rating button
+      var delBtn = container.querySelector('.pap-rating-delete');
+      if(delBtn && user){
+        delBtn.addEventListener('click', function(){
+          if(!confirm('내 별점을 취소하시겠습니까?')) return;
+          delBtn.disabled = true;
+          sbDeleteRating(editorialTitle, user.id).then(function(){
+            renderRatingBlock(container, editorialTitle);
+          }).catch(function(err){
+            console.error('[PAPSocial] rating delete failed:', err);
+            alert('별점 취소에 실패했습니다.');
+            delBtn.disabled = false;
+          });
+        });
+      }
     }).catch(function(err){
       console.error('[PAPSocial] rating load failed:', err);
       container.innerHTML = '<div class="pap-social-section"><div class="pap-social-label">RATING</div>'+
@@ -255,6 +286,28 @@
   }
 
   // ======== COMMENTS UI ========
+  function _renderCommentItem(c, user, isReply){
+    var canDelete = user && user.id === c.userId;
+    var canReply = !!user && !isReply; // only allow replies on top-level (2-level nesting)
+    var h = '<div class="pap-comment-item'+(isReply?' pap-comment-reply':'')+'" data-comment-id="'+c.id+'">';
+    h += '  <div class="pap-comment-head">';
+    h += '    <span class="pap-comment-author">'+escapeHTML(c.userName)+'</span>';
+    h += '    <span class="pap-comment-time">'+timeAgo(c.ts)+'</span>';
+    if(canDelete){
+      h += '    <button class="pap-comment-delete" data-id="'+c.id+'" title="삭제">✕</button>';
+    }
+    h += '  </div>';
+    h += '  <div class="pap-comment-text">'+escapeHTML(c.text).replace(/\n/g,'<br>')+'</div>';
+    h += '  <div class="pap-comment-actions">';
+    if(canReply){
+      h += '<button class="pap-comment-reply-btn" data-id="'+c.id+'">답글</button>';
+    }
+    h += '  </div>';
+    h += '  <div class="pap-reply-form-slot" data-parent="'+c.id+'"></div>';
+    h += '</div>';
+    return h;
+  }
+
   function renderCommentsBlock(container, targetType, targetId){
     var user = currentUser();
 
@@ -264,6 +317,20 @@
     '</div>';
 
     sbListComments(targetType, targetId).then(function(comments){
+      // Separate top-level comments and replies
+      var topLevel = [];
+      var repliesByParent = {};
+      comments.forEach(function(c){
+        if(c.parentId){
+          if(!repliesByParent[c.parentId]) repliesByParent[c.parentId] = [];
+          repliesByParent[c.parentId].push(c);
+        } else {
+          topLevel.push(c);
+        }
+      });
+      // Sort top-level desc (newest first), replies asc (oldest first)
+      topLevel.sort(function(a,b){ return b.ts - a.ts; });
+
       var h = '<div class="pap-social-section pap-comments-block">';
       h += '<div class="pap-social-label">COMMENTS <span class="pap-comments-count">('+comments.length+')</span></div>';
 
@@ -278,20 +345,18 @@
       }
 
       h += '<div class="pap-comments-list">';
-      if(comments.length===0){
+      if(topLevel.length===0){
         h += '<div class="pap-comments-empty">아직 댓글이 없습니다. 첫 댓글을 남겨주세요.</div>';
       } else {
-        comments.forEach(function(c){
-          var canDelete = user && user.id === c.userId;
-          h += '<div class="pap-comment-item" data-comment-id="'+c.id+'">';
-          h += '  <div class="pap-comment-head">';
-          h += '    <span class="pap-comment-author">'+escapeHTML(c.userName)+'</span>';
-          h += '    <span class="pap-comment-time">'+timeAgo(c.ts)+'</span>';
-          if(canDelete){
-            h += '    <button class="pap-comment-delete" data-id="'+c.id+'" title="삭제">✕</button>';
+        topLevel.forEach(function(c){
+          h += '<div class="pap-comment-thread">';
+          h += _renderCommentItem(c, user, false);
+          var replies = repliesByParent[c.id] || [];
+          if(replies.length>0){
+            h += '<div class="pap-replies-list">';
+            replies.forEach(function(r){ h += _renderCommentItem(r, user, true); });
+            h += '</div>';
           }
-          h += '  </div>';
-          h += '  <div class="pap-comment-text">'+escapeHTML(c.text).replace(/\n/g,'<br>')+'</div>';
           h += '</div>';
         });
       }
@@ -299,15 +364,16 @@
 
       container.innerHTML = h;
 
+      // Top-level submit
       if(user){
-        var submitBtn = container.querySelector('.pap-comment-submit');
-        var input = container.querySelector('.pap-comment-input');
+        var submitBtn = container.querySelector('.pap-comment-form .pap-comment-submit');
+        var input = container.querySelector('.pap-comment-form .pap-comment-input');
         submitBtn.addEventListener('click', function(){
           var txt = (input.value||'').trim();
           if(!txt) return;
           submitBtn.disabled = true;
           submitBtn.textContent = '등록 중...';
-          sbAddComment(targetType, targetId, txt, user).then(function(){
+          sbAddComment(targetType, targetId, txt, user, null).then(function(){
             input.value='';
             renderCommentsBlock(container, targetType, targetId);
           }).catch(function(err){
@@ -319,9 +385,10 @@
         });
       }
 
+      // Delete handlers
       container.querySelectorAll('.pap-comment-delete').forEach(function(btn){
         btn.addEventListener('click', function(){
-          if(!confirm('이 댓글을 삭제하시겠습니까?')) return;
+          if(!confirm('이 댓글을 삭제하시겠습니까? 달린 답글도 함께 삭제됩니다.')) return;
           var u = currentUser();
           if(!u) return;
           btn.disabled = true;
@@ -331,6 +398,48 @@
             console.error('[PAPSocial] delete failed:', err);
             alert('삭제에 실패했습니다.');
             btn.disabled = false;
+          });
+        });
+      });
+
+      // Reply button handlers
+      container.querySelectorAll('.pap-comment-reply-btn').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          var parentId = btn.getAttribute('data-id');
+          var slot = container.querySelector('.pap-reply-form-slot[data-parent="'+parentId+'"]');
+          if(!slot) return;
+          // Toggle: if already has form, remove it
+          if(slot.querySelector('.pap-reply-form')){
+            slot.innerHTML='';
+            btn.textContent='답글';
+            return;
+          }
+          // Close other open reply forms
+          container.querySelectorAll('.pap-reply-form-slot').forEach(function(s){ s.innerHTML=''; });
+          container.querySelectorAll('.pap-comment-reply-btn').forEach(function(b){ b.textContent='답글'; });
+          btn.textContent='취소';
+          // Render reply form
+          slot.innerHTML = '<div class="pap-reply-form">'+
+            '<div class="pap-comment-user">'+escapeHTML(user.name)+'</div>'+
+            '<textarea class="pap-comment-input pap-reply-input" placeholder="답글을 남겨주세요" maxlength="1000"></textarea>'+
+            '<button class="pap-comment-submit pap-reply-submit">답글 등록</button>'+
+          '</div>';
+          var replyInput = slot.querySelector('.pap-reply-input');
+          var replySubmit = slot.querySelector('.pap-reply-submit');
+          replyInput.focus();
+          replySubmit.addEventListener('click', function(){
+            var txt = (replyInput.value||'').trim();
+            if(!txt) return;
+            replySubmit.disabled = true;
+            replySubmit.textContent = '등록 중...';
+            sbAddComment(targetType, targetId, txt, user, parentId).then(function(){
+              renderCommentsBlock(container, targetType, targetId);
+            }).catch(function(err){
+              console.error('[PAPSocial] reply submit failed:', err);
+              alert('답글 등록에 실패했습니다.');
+              replySubmit.disabled = false;
+              replySubmit.textContent = '답글 등록';
+            });
           });
         });
       });
