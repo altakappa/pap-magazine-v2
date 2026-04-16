@@ -327,10 +327,6 @@ var _INTERSTITIAL_INTERVAL = 3; // 이후 N번 클릭마다 1회 광고 노출
 //
 // When this array is empty, the premium upsell is shown instead.
 var _brandAds = [
-  { type:'image', src:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Pc_1_b784819584.jpg', link:'subscribe.html', brand:'PAP MAGAZINE', duration:3 },
-  { type:'image', src:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Pc_2_dc9e6ac138.jpg', link:'subscribe.html', brand:'PAP MAGAZINE', duration:3 },
-  { type:'image', src:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Pc_3_07bc8462e4.jpg', link:'subscribe.html', brand:'PAP MAGAZINE', duration:3 },
-  { type:'image', src:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Pc_4_d8891e2914.jpg', link:'subscribe.html', brand:'PAP MAGAZINE', duration:3 },
   { type:'image', src:'pap-studio-campaign-banner.jpg.png', link:'https://www.pap-studios.com', brand:'PAP STUDIO', duration:4 }
 ];
 
