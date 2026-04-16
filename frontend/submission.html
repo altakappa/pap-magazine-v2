@@ -377,9 +377,9 @@ textarea.form-input{min-height:100px;resize:vertical;line-height:1.8}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </button>
       <div class="account-dropdown" id="accountDropdown" style="cursor:default">
-        <a href="auth.html" data-i18n="navLogin">로그인 / 회원가입</a>
+        <a href="auth.html" data-i18n="navLogin">LOG IN / SIGN UP</a>
         <div class="dropdown-divider"></div>
-        <a href="subscribe.html" data-i18n="subscribe">구독하기</a>
+        <a href="subscribe.html" data-i18n="subscribe">SUBSCRIBE</a>
       </div>
     </div>
   </div>
@@ -441,7 +441,7 @@ function _showBrandAdInterstitial(ad,callback){
   if(ad.link){mediaWrap.onclick=function(){window.open(ad.link,'_blank');};}
   overlay.appendChild(mediaWrap);
   var lang=localStorage.getItem('pap-lang')||'ko';
-  var skipTexts={ko:'건너뛰기',en:'Skip',it:'Salta',fr:'Passer',es:'Saltar',ja:'スキップ',zh:'跳过'};
+  var skipTexts={ko:'Skip',en:'Skip',it:'Salta',fr:'Passer',es:'Saltar',ja:'スキップ',zh:'跳过'};
   var skipLabel=skipTexts[lang]||skipTexts.en;
   var skip=document.createElement('button');
   skip.style.cssText='position:absolute;bottom:24px;right:24px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.55);font-size:11px;font-weight:600;letter-spacing:.1em;cursor:pointer;font-family:Montserrat,sans-serif;padding:8px 20px;border-radius:2px;transition:all .2s;z-index:2;';
@@ -453,7 +453,7 @@ function _showBrandAdInterstitial(ad,callback){
   skip.onclick=function(){closeAd();};
   overlay.appendChild(skip);
   var premBadge=document.createElement('a');premBadge.href='subscribe.html';
-  var premTexts={ko:'광고 없이 즐기기',en:'Go ad-free',it:'Senza pubblicità',fr:'Sans publicité',es:'Sin anuncios',ja:'広告なし',zh:'去除广告'};
+  var premTexts={ko:'Go ad-free',en:'Go ad-free',it:'Senza pubblicità',fr:'Sans publicità',es:'Sin anuncios',ja:'広告なし',zh:'去除广告'};
   premBadge.textContent=premTexts[lang]||premTexts.en;
   premBadge.style.cssText='position:absolute;bottom:26px;left:24px;font-size:10px;font-weight:600;letter-spacing:.08em;color:rgba(255,255,255,.3);text-decoration:none;font-family:Montserrat,sans-serif;transition:color .2s;z-index:2;';
   premBadge.onmouseover=function(){this.style.color='rgba(255,255,255,.7)';};
@@ -467,7 +467,7 @@ function _showBrandAdInterstitial(ad,callback){
 function _showPremiumUpsellInterstitial(callback){
   var lang=localStorage.getItem('pap-lang')||'ko';
   var texts={
-    ko:{tag:'SUBSCRIBE',title:'광고 없이\n모든 콘텐츠를 즐기세요',desc:'구독으로 에디토리얼, 매거진,\n독점 콘텐츠를 제한 없이 감상하세요.',btn:'구독하기',skip:'건너뛰기'},
+    ko:{tag:'SUBSCRIBE',title:'Enjoy all content\nwithout interruptions',desc:'Subscribe for unlimited access\nto editorials, magazines, and exclusive content.',btn:'Subscribe',skip:'Skip'},
     en:{tag:'SUBSCRIBE',title:'Enjoy all content\nwithout interruptions',desc:'Subscribe for unlimited access\nto editorials, magazines, and exclusive content.',btn:'Subscribe',skip:'Skip'},
     it:{tag:'SUBSCRIBE',title:'Goditi tutti i contenuti\nsenza interruzioni',desc:'Abbonati per accesso illimitato\na editoriali, riviste e contenuti esclusivi.',btn:'Abbonati',skip:'Salta'},
     fr:{tag:'SUBSCRIBE',title:'Profitez de tout le contenu\nsans interruption',desc:"Abonnez-vous pour un accès illimité\naux éditoriaux, magazines et contenus exclusifs.",btn:"S'abonner",skip:'Passer'},
@@ -512,15 +512,15 @@ function navigateWithInterstitial(url){
 <main role="main" class="content">
   <div class="page-hero">
     <h1>SUBMISSION</h1>
-    <p data-i18n="pageDesc">PAP 매거진에 에디토리얼을 제출하세요. 작품 정보, 팀 크레딧, 룩별 의상 크레딧, 고해상도 이미지를 제출해 주세요. 심사는 접수일로부터 1~3 영업일이 소요됩니다.</p>
+    <p data-i18n="pageDesc">Submit your editorials to PAP Magazine. Please provide work information, team credits, look-by-look outfit credits, and high-resolution images. Review takes 1-3 business days from submission.</p>
   </div>
 
   <!-- ACCESS GATE -->
   <div class="access-gate-overlay" id="accessGateOverlay">
     <div class="access-gate">
-      <h2 data-i18n="gateTitle">회원 전용</h2>
-      <p data-i18n-html="gateDesc">이 서비스는 무료 회원 이상만 이용할 수 있습니다.<br>로그인하거나 회원가입 후 이용해 주세요.</p>
-      <button class="gate-btn" data-i18n="gateLogin" onclick="simulateLogin()">로그인 / 회원가입</button>
+      <h2 data-i18n="gateTitle">MEMBERS ONLY</h2>
+      <p data-i18n-html="gateDesc">This service is available to free members and above.<br>Please log in or sign up to continue.</p>
+      <button class="gate-btn" data-i18n="gateLogin" onclick="simulateLogin()">LOG IN / SIGN UP</button>
     </div>
   </div>
 
@@ -531,7 +531,7 @@ function navigateWithInterstitial(url){
       <button class="my-subs-toggle" onclick="toggleMySubmissions()">HIDE</button>
     </div>
     <div id="mySubsList">
-      <div class="sub-empty" id="subEmpty">아직 제출한 서브미션이 없습니다. / No submissions yet.</div>
+      <div class="sub-empty" id="subEmpty">No submissions yet.</div>
     </div>
   </div>
 
@@ -549,9 +549,9 @@ function navigateWithInterstitial(url){
 
     <!-- STEP 1: Category -->
     <div class="form-section active" id="step1">
-      <div class="section-title">카테고리 / Category <span class="req">*</span></div>
+      <div class="section-title">CATEGORY <span class="req">*</span></div>
       <div class="error-summary" id="errSummary1"></div>
-      <p style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:16px;line-height:1.8" data-i18n-html="step1Desc">에디토리얼에 해당하는 카테고리를 선택하세요 (복수 선택 가능).<br>Select the categories that apply to your editorial (multiple allowed).</p>
+      <p style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:16px;line-height:1.8" data-i18n-html="step1Desc">Select the categories that apply to your editorial (multiple allowed).</p>
       <div class="genre-tags" id="genreTags">
         <button class="genre-tag" onclick="selectGenre(this)">FASHION</button>
         <button class="genre-tag" onclick="selectGenre(this)">BEAUTY</button>
@@ -571,7 +571,7 @@ function navigateWithInterstitial(url){
 
     <!-- STEP 2: Production & Title -->
     <div class="form-section" id="step2">
-      <div class="section-title">작품 정보 / Production Info</div>
+      <div class="section-title">PRODUCTION INFO</div>
       <div class="error-summary" id="errSummary2"></div>
       <div class="form-group">
         <label class="form-label">Editorial Title <span class="req">*</span></label>
@@ -609,7 +609,7 @@ function navigateWithInterstitial(url){
       </div>
 
       <div class="form-group" style="margin-top:8px">
-        <label class="form-label">Artist Statement / 작품 설명 <span class="req">*</span></label>
+        <label class="form-label">Artist Statement <span class="req">*</span></label>
         <textarea class="form-input" id="artistStatement" data-field="artistStatement" style="min-height:120px"></textarea>
         <div class="char-count" id="charCount-artistStatement">0 / 500</div>
         <div class="field-helper" id="helper-artistStatement"></div>
@@ -631,8 +631,8 @@ function navigateWithInterstitial(url){
 
     <!-- STEP 3: Team Credits -->
     <div class="form-section" id="step3">
-      <div class="section-title">팀 크레딧 / Team Credits</div>
-      <p style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:20px;line-height:1.8">각 팀원의 이름, 인스타그램, 웹사이트를 입력해 주세요. 인스타그램 핸들은 소셜 미디어 크레딧에 사용됩니다.<br>Enter each team member's name, Instagram, and website. Instagram handles are used for social media credits.</p>
+      <div class="section-title">TEAM CREDITS</div>
+      <p style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:20px;line-height:1.8">Enter each team member's name, Instagram, and website. Instagram handles are used for social media credits.</p>
       <div class="team-header">
         <span>ROLE</span><span>NAME</span><span>INSTAGRAM</span><span>WEBSITE</span>
       </div>
@@ -650,8 +650,8 @@ function navigateWithInterstitial(url){
 
       <!-- MODELS (Multiple) -->
       <div style="margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,.08)">
-        <div class="section-title" style="border-bottom:none;padding-bottom:0">모델 / Models</div>
-        <p style="font-size:10px;color:rgba(255,255,255,.25);margin-bottom:12px;line-height:1.8">모든 모델의 이름, 인스타그램, 소속 에이전시를 입력하세요. / Enter all models with their agency info.</p>
+        <div class="section-title" style="border-bottom:none;padding-bottom:0">MODELS</div>
+        <p style="font-size:10px;color:rgba(255,255,255,.25);margin-bottom:12px;line-height:1.8">Enter all models with their agency info.</p>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr 30px;gap:10px;margin-bottom:6px">
           <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25)">NAME</span>
           <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25)">INSTAGRAM</span>
@@ -678,16 +678,16 @@ function navigateWithInterstitial(url){
 
     <!-- STEP 4: Look Credits -->
     <div class="form-section" id="step4">
-      <div class="section-title">룩별 크레딧 / Look Credits</div>
-      <p style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:20px;line-height:1.8">각 룩(착장)에 해당하는 이미지를 업로드하고, 사용된 의상·액세서리의 브랜드명과 인스타그램을 입력해 주세요. 최소 4개 이상의 룩이 필요합니다. 이미지를 드래그하여 순서를 변경할 수 있습니다. 하단에서 크레딧 파일(PDF/Word)과 추가 이미지도 함께 첨부할 수 있습니다.<br>Upload images for each look and enter brand/accessory credits. Minimum 4 looks required. Drag thumbnails to reorder. You can also attach a credit file (PDF/Word) and additional images below.</p>
+      <div class="section-title">LOOK CREDITS</div>
+      <p style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:20px;line-height:1.8">Upload images for each look and enter brand/accessory credits. Minimum 4 looks required. Drag thumbnails to reorder. You can also attach a credit file (PDF/Word) and additional images below.</p>
       <div id="lookList"></div>
       <button class="add-btn" onclick="addLook()">+ Add Look</button>
 
       <!-- ADDITIONAL IMAGES -->
       <div style="margin-top:32px;padding-top:24px;border-top:1px solid rgba(255,255,255,.08)">
-        <div class="section-title" style="border-bottom:none;padding-bottom:0">추가 이미지 / Additional Images</div>
+        <div class="section-title" style="border-bottom:none;padding-bottom:0">ADDITIONAL IMAGES</div>
         <div class="form-group">
-          <label class="form-label">고해상도 이미지 — 룩에 포함되지 않는 추가 이미지 (선택)</label>
+          <label class="form-label">High-resolution images — additional images not included in looks (optional)</label>
           <div class="upload-zone" id="uploadZone">
             <input type="file" class="upload-input" id="fileInput" multiple accept="image/*">
             <div class="upload-icon"><svg viewBox="0 0 32 32" fill="none"><path d="M16 24V8M16 8L10 14M16 8L22 14" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 24v2a2 2 0 002 2h20a2 2 0 002-2v-2" stroke-width="2" stroke-linecap="round"/></svg></div>
@@ -695,17 +695,17 @@ function navigateWithInterstitial(url){
             <div class="upload-hint">JPG · Max 25MB · 1080×1350px recommended</div>
           </div>
           <div class="file-list" id="fileList"></div>
-          <div class="form-hint">커버 이미지, 비하인드 컷 등 룩에 포함되지 않는 추가 이미지가 있으면 첨부해 주세요.</div>
+          <div class="form-hint">Please include cover images, behind-the-scenes shots, and other additional images not included in the looks.</div>
         </div>
       </div>
 
       <!-- COVER IMAGE SELECTOR -->
       <div class="cover-select-row" id="coverSelectRow" style="display:none">
-        <label>COVER IMAGE / 커버 이미지:</label>
+        <label>COVER IMAGE:</label>
         <select id="coverImageSelect" onchange="setCoverImage()">
-          <option value="">자동 선택 (첫 번째 이미지) / Auto (first image)</option>
+          <option value="">Auto (first image)</option>
         </select>
-        <div style="font-size:9px;color:rgba(255,255,255,.2)">커버로 사용할 이미지를 지정하세요. 미선택 시 첫 이미지가 사용됩니다.</div>
+        <div style="font-size:9px;color:rgba(255,255,255,.2)">Specify which image to use as the cover. If not selected, the first image will be used.</div>
       </div>
 
       <div class="form-nav">
@@ -717,108 +717,108 @@ function navigateWithInterstitial(url){
 
     <!-- STEP 5: Links & Terms -->
     <div class="form-section" id="step5">
-      <div class="section-title">추가 정보 및 약관 / Additional Info & Terms</div>
+      <div class="section-title">ADDITIONAL INFO & TERMS</div>
       <div class="form-group">
-        <label class="form-label">대용량 파일 전송 링크 (선택)</label>
+        <label class="form-label">Large File Transfer Link (optional)</label>
         <input type="url" class="form-input" placeholder="Dropbox / WeTransfer / Swisstransfer URL">
-        <div class="form-hint">파일이 큰 경우 Dropbox, WeTransfer, Swisstransfer 링크를 첨부해주세요.</div>
+        <div class="form-hint">For large files, please include Dropbox, WeTransfer, or Swisstransfer links.</div>
       </div>
       <div class="form-group">
-        <label class="form-label">영상 링크 — 백스테이지, 스케치, 숏클립 (선택)</label>
+        <label class="form-label">Video Link — behind-the-scenes, sketches, clips (optional)</label>
         <input type="url" class="form-input" placeholder="YouTube / Vimeo URL">
-        <div class="form-hint">백스테이지 영상, 스케치, 숏클립 등 소셜 미디어 콘텐츠용 영상을 첨부해 주세요.</div>
+        <div class="form-hint">Please provide behind-the-scenes footage, sketches, short clips, or other video content for social media use.</div>
       </div>
       <!-- TERMS AGREEMENT -->
       <div class="terms-section">
-        <div class="terms-title">서브미션 이용약관 / Submission Terms & Conditions</div>
+        <div class="terms-title">SUBMISSION TERMS & CONDITIONS</div>
         <div class="terms-box" style="max-height:320px">
           <ol>
-            <li><strong>제1조 (작품의 독점 게재)</strong><br>
-            ① 본 서브미션을 통해 제출된 에디토리얼(이하 "작품")은 PAP Magazine(이하 "PAP")에 독점적으로 게재됩니다. 제출자는 동일한 작품을 다른 매거진, 온라인 미디어, 출판물 또는 이에 준하는 플랫폼에 게재하거나 배포할 수 없습니다.<br>
-            ② 본 조항을 위반하여 작품이 타 매체에 중복 게재된 사실이 확인될 경우, PAP는 해당 작품을 즉시 삭제할 수 있으며, 제출자에 대한 향후 서브미션 접수 제한, 법적 조치를 포함한 제재를 취할 수 있습니다.<br>
-            ③ 독점 게재 기간은 PAP 웹사이트에 작품이 게시된 날로부터 무기한으로 적용됩니다.<br>
+            <li><strong>Article 1 (Exclusive Publication of Work)</strong><br>
+            ① The editorial submitted through this submission process (hereinafter "Work") will be published exclusively in PAP Magazine (hereinafter "PAP"). Submitters may not publish or distribute the same work on other magazines, online media, publications, or equivalent platforms.<br>
+            ② If it is confirmed that the work has been published on other media in violation of this provision, PAP may immediately delete the work and impose sanctions on the submitter, including restrictions on future submissions and legal action.<br>
+            ③ The exclusive publication period applies indefinitely from the date the work is posted on the PAP website.<br>
             <em style="color:rgba(255,255,255,.3)">The submitted editorial is exclusive to PAP Magazine. The submitter may not publish, distribute, or display the same work in any other magazine, online media, publication, or comparable platform. Violation of this clause may result in immediate removal of the content, restriction of future submissions, and potential legal action. The exclusivity period applies indefinitely from the date of publication on PAP's website.</em></li>
 
-            <li><strong>제2조 (웹사이트 및 소셜 미디어 활용 동의)</strong><br>
-            ① 제출된 작품은 PAP의 공식 웹사이트(pap-magazine.com)에 게재되며, PAP의 공식 소셜 미디어 계정(Instagram, Facebook, YouTube 등)을 통해 게재 전후로 홍보 및 소개 목적으로 사용될 수 있습니다.<br>
-            ② PAP는 작품의 홍보를 위해 이미지의 크롭, 리사이즈, 필터 적용 등 합리적인 범위 내의 편집을 수행할 수 있습니다. 단, 작품의 본질적인 내용을 훼손하는 변경은 하지 않습니다.<br>
-            ③ 모든 소셜 미디어 게시물에는 제출자 및 팀원의 크레딧이 적절히 표기됩니다.<br>
+            <li><strong>Article 2 (Website and Social Media Use Consent)</strong><br>
+            ① The submitted work will be published on PAP's official website (pap-magazine.com) and may be used for promotional and introductory purposes through PAP's official social media accounts (Instagram, Facebook, YouTube, etc.) before and after publication.<br>
+            ② PAP may perform reasonable edits within appropriate scope, such as cropping, resizing, and applying filters to images for promotional purposes. However, changes that compromise the essential content of the work will not be made.<br>
+            ③ Proper credit will be given to the submitter and team members on all social media posts.<br>
             <em style="color:rgba(255,255,255,.3)">Submitted works will be published on PAP's official websites and may be used for promotional purposes on PAP's social media accounts before and after publication. PAP may perform reasonable edits such as cropping, resizing, or filtering for promotional purposes, without altering the essential content. All social media posts will include proper credits for the submitter and team members.</em></li>
 
-            <li><strong>제3조 (크레딧 정보의 정확성 및 수정 수수료)</strong><br>
-            ① 제출자는 모든 크레딧 정보(팀원 이름, 인스타그램 핸들, 브랜드명, 룩별 의상 크레딧 등)가 정확하고 최신 상태임을 보증합니다.<br>
-            ② 게재 이후 제출자의 귀책사유로 인한 크레딧 정보 수정이 필요한 경우, 건당 €100의 수정 수수료가 부과됩니다. 수수료는 수정 작업 착수 전에 결제되어야 합니다.<br>
-            ③ PDF 또는 Word 형식의 크레딧 파일에 포함되지 않은 정보는 누락될 수 있으며, 이에 대해 PAP는 책임을 지지 않습니다.<br>
-            ④ 크레딧 작성 시 전체 대문자(ALL CAPS)를 사용하지 마십시오.<br>
+            <li><strong>Article 3 (Accuracy of Credit Information and Correction Fee)</strong><br>
+            ① The submitter warrants that all credit information (team member names, Instagram handles, brand names, look-by-look outfit credits, etc.) is accurate and up to date.<br>
+            ② If credit information needs to be corrected after publication due to the submitter's responsibility, a correction fee of €100 per item will be charged. The fee must be paid before the correction work begins.<br>
+            ③ Information not included in the credit file in PDF or Word format may be omitted, and PAP assumes no responsibility for this.<br>
+            ④ Do not use all capitals (ALL CAPS) when writing credits.<br>
             <em style="color:rgba(255,255,255,.3)">The submitter guarantees that all credit information is accurate and up-to-date. Post-publication corrections due to submitter error will incur a fee of €100 per correction, payable before work commences. Information not included in the submitted PDF or Word credit file may be omitted, and PAP assumes no responsibility for such omissions. Do not use ALL CAPS in credits.</em></li>
 
-            <li><strong>제4조 (콘텐츠 사용 권한 및 수익 배분)</strong><br>
-            ① 제출된 작품이 PAP의 디지털 매거진(웹사이트, 앱 등) 또는 인쇄물(종이 매거진, 인쇄 출판물 등)로 발행되는 경우, 이로 인해 발생하는 모든 수익(구독료, 판매 수익, 광고 수익 등)은 PAP가 전액 귀속합니다. 제출자 및 크리에이티브 팀은 매거진 발행에 따른 수익에 대해 별도의 보상을 청구할 수 없습니다.<br>
-            ② 매거진 발행(디지털 및 인쇄물) 범위를 벗어난 2차 가공 또는 파생적 상업 활동(광고 캠페인, 브랜드 콜라보레이션, 라이선싱, 전시, 상품화 등)으로 작품이 사용되어 수익이 발생할 경우, 해당 활동에서 발생하는 순이익(총수익에서 직접 비용을 차감한 금액)은 PAP와 크리에이티브 팀 사이에서 50:50의 비율로 배분됩니다.<br>
-            ③ 크리에이티브 팀에 배분되는 수익은 제출자 또는 팀 대표자에게 일괄 지급됩니다. 팀 대표자가 해당 수익을 팀원들과 분배하는 방식, 비율 및 시기는 전적으로 팀 대표자의 재량에 따르며, PAP는 팀 내부 수익 분배 과정에 일체 관여하지 않고 이에 대한 어떠한 책임도 부담하지 않습니다.<br>
-            ④ 2차 가공을 통한 상업적 사용이 발생할 경우, PAP는 사전에 제출자에게 서면(이메일 포함)으로 통지합니다.<br>
+            <li><strong>Article 4 (Content Usage Rights and Revenue Sharing)</strong><br>
+            ① If the submitted work is published in PAP's digital magazine (website, app, etc.) or print materials (paper magazine, printed publications, etc.), all revenue generated (subscription fees, sales revenue, advertising revenue, etc.) belongs entirely to PAP. Submitters and creative teams cannot claim additional compensation for revenue generated by magazine publications.<br>
+            ② If the work is used in secondary processing or derivative commercial activities (advertising campaigns, brand collaborations, licensing, exhibitions, merchandise, etc.) outside the scope of magazine publication and revenue is generated, the net profit from such activities (total revenue minus direct costs) will be shared at a 50:50 ratio between PAP and the creative team.<br>
+            ③ Revenue distributed to the creative team will be paid in full to the submitter or team representative. The manner, ratio, and timing of how the team representative distributes the revenue to team members are entirely at the team representative's discretion, and PAP will not be involved in the internal revenue distribution process among team members and assumes no responsibility for it.<br>
+            ④ If commercial use through secondary processing occurs, PAP will notify the submitter in writing (including email) in advance.<br>
             <em style="color:rgba(255,255,255,.3)">Article 4 (Content Usage Rights and Revenue Sharing)<br>
             ① All revenue generated from publication of submitted works in PAP's digital magazine (website, app, etc.) or print publications (print magazine, printed publications, etc.), including subscription fees, sales revenue, and advertising revenue, shall belong entirely to PAP. The submitter and creative team may not claim separate compensation for revenue arising from magazine publication.<br>
             ② If the work is used for secondary processing or derivative commercial activities beyond magazine publication (digital and print), such as advertising campaigns, brand collaborations, licensing, exhibitions, or merchandising, the net profit (gross revenue minus direct costs) from such activities shall be split 50:50 between PAP and the creative team.<br>
             ③ The creative team's share of revenue shall be paid in a lump sum to the submitter or team representative. The manner, ratio, and timing in which the team representative distributes such revenue among team members is entirely at the team representative's discretion. PAP shall have no involvement whatsoever in the internal revenue distribution process within the team and assumes no liability in this regard.<br>
             ④ PAP will provide prior written notice (including email) to the submitter before any secondary commercial use occurs.</em></li>
 
-            <li><strong>제5조 (저작권 및 지적재산권)</strong><br>
-            ① 제출된 작품의 저작권은 원저작자에게 귀속됩니다. 단, 제출자는 PAP에 대해 본 약관에 명시된 범위 내에서의 독점적 이용 권한을 부여합니다.<br>
-            ② 제출자는 제출된 모든 콘텐츠(사진, 영상, 텍스트 등)에 대한 적법한 권리를 보유하고 있으며, 해당 콘텐츠가 제3자의 저작권, 초상권, 상표권, 기타 지적재산권 또는 개인의 권리를 침해하지 않음을 보증합니다.<br>
-            ③ 제3자의 권리 침해로 인해 PAP에 손해가 발생할 경우, 제출자는 이에 대한 모든 책임을 부담합니다.<br>
+            <li><strong>Article 5 (Copyright and Intellectual Property Rights)</strong><br>
+            ① The copyright of the submitted work belongs to the original author. However, the submitter grants PAP exclusive usage rights within the scope specified in these terms.<br>
+            ② The submitter warrants that they have legitimate rights to all submitted content (photos, videos, text, etc.) and that such content does not infringe third-party copyrights, right of publicity, trademarks, other intellectual property rights, or personal rights.<br>
+            ③ If PAP incurs damages due to infringement of third-party rights, the submitter assumes all responsibility for this.<br>
             <em style="color:rgba(255,255,255,.3)">Copyright of submitted works remains with the original creator. The submitter grants PAP exclusive usage rights as specified in these terms. The submitter warrants that all content does not infringe any third-party copyrights, portrait rights, trademarks, or other intellectual property rights. The submitter assumes all liability for any damages to PAP resulting from third-party rights infringement.</em></li>
 
-            <li><strong>제6조 (자료 제출 기한 및 게재 일정)</strong><br>
-            ① 서브미션이 승인된 후, 제출자는 최종 자료(고해상도 이미지, 크레딧 파일, 영상 등)를 승인 통지일로부터 1주(7일) 이내에 제출해야 합니다.<br>
-            ② 기한 내 최종 자료가 제출되지 않을 경우, PAP는 별도의 통지 없이 해당 게재 일정을 취소할 수 있습니다.<br>
-            ③ 에디토리얼 게재까지는 최종 자료 수령일로부터 2~3주가 소요될 수 있으며, 구체적인 게재 일정은 PAP의 편집 일정에 따라 조정될 수 있습니다.<br>
+            <li><strong>Article 6 (Submission Deadline and Publication Schedule)</strong><br>
+            ① After the submission is approved, the submitter must submit final materials (high-resolution images, credit files, videos, etc.) within one week (7 days) from the approval notification date.<br>
+            ② If final materials are not submitted within the deadline, PAP may cancel the publication schedule without further notice.<br>
+            ③ Publication of the editorial may take 2-3 weeks from the date of final material receipt, and the specific publication schedule may be adjusted according to PAP's editorial schedule.<br>
             <em style="color:rgba(255,255,255,.3)">Final materials must be submitted within 7 days of approval notification. Failure to submit within the deadline may result in cancellation without further notice. Publication takes approximately 2-3 weeks from receipt of final materials, subject to PAP's editorial schedule.</em></li>
 
-            <li><strong>제7조 (브랜드 포함 기준 및 브랜디드 콘텐츠)</strong><br>
-            ① 에디토리얼에는 최소 4개 이상의 서로 다른 의류 브랜드가 포함되어야 합니다.<br>
-            ② 단일 브랜드만을 사용하거나, 특정 브랜드의 홍보를 주된 목적으로 하는 에디토리얼은 "브랜디드 콘텐츠(Branded Content)"로 분류됩니다.<br>
-            ③ 브랜디드 콘텐츠의 경우 별도의 게재비가 부과되며, 구체적인 금액은 PAP와 사전 협의를 통해 결정됩니다.<br>
-            ④ 브랜드 포함 기준의 충족 여부는 PAP의 에디토리얼 팀이 최종 판단합니다.<br>
+            <li><strong>Article 7 (Brand Inclusion Criteria and Branded Content)</strong><br>
+            ① Editorials must include a minimum of 4 different clothing brands.<br>
+            ② Editorials that use only a single brand or have the primary purpose of promoting a specific brand are classified as "Branded Content."<br>
+            ③ Branded content is subject to an additional publication fee, and the specific amount will be determined through prior consultation with PAP.<br>
+            ④ Compliance with the brand inclusion criteria is determined by PAP's editorial team.<br>
             <em style="color:rgba(255,255,255,.3)">Editorials must include at least 4 different clothing brands. Single-brand or brand-promotional editorials are classified as Branded Content and require a separate posting fee determined through prior consultation with PAP. Compliance with brand inclusion criteria is determined by PAP's editorial team.</em></li>
 
-            <li><strong>제8조 (게재 후 수정 및 삭제)</strong><br>
-            ① 에디토리얼이 PAP 웹사이트 및 소셜 미디어에 게재 완료된 이후에는 원칙적으로 수정, 교체 또는 삭제가 불가합니다.<br>
-            ② 다만, 다음 각 호에 해당하는 중대한 사유가 있는 경우에 한하여 PAP와의 협의를 통해 처리할 수 있습니다: (a) 법적 분쟁 또는 법원의 명령, (b) 제3자의 권리 침해가 확인된 경우, (c) 중대한 사실 오류가 발견된 경우.<br>
-            ③ 상기 사유에 의한 수정·삭제 요청 시에도 별도의 처리 비용이 발생할 수 있습니다.<br>
+            <li><strong>Article 8 (Modifications and Deletions After Publication)</strong><br>
+            ① Once an editorial is published on the PAP website and social media, modifications, replacements, or deletions are generally not permitted.<br>
+            ② However, in cases where there are significant reasons as follows, such matters may be handled through consultation with PAP: (a) legal disputes or court orders, (b) confirmation of third-party rights infringement, (c) discovery of serious factual errors.<br>
+            ③ Requests for modifications or deletions for the above reasons may incur additional processing fees.<br>
             <em style="color:rgba(255,255,255,.3)">Once published, editorials cannot be modified, replaced, or removed in principle. Exceptions may be made through consultation with PAP only for: (a) legal disputes or court orders, (b) confirmed third-party rights infringement, or (c) critical factual errors. Additional processing fees may apply.</em></li>
 
-            <li><strong>제9조 (개인정보의 수집 및 이용)</strong><br>
-            ① PAP는 서브미션 접수 및 심사, 게재, 크레딧 표기, 연락 등의 목적으로 제출자 및 팀원의 개인정보(이름, 이메일 주소, 인스타그램 핸들, 웹사이트 URL 등)를 수집·이용합니다.<br>
-            ② 수집된 개인정보는 상기 목적 외의 용도로 사용되지 않으며, PAP의 개인정보처리방침에 따라 안전하게 관리됩니다.<br>
-            ③ 제출자는 팀원의 개인정보를 제출하기 전에 해당 팀원으로부터 정보 제공에 대한 동의를 받았음을 확인합니다.<br>
-            ④ 개인정보와 관련된 문의 사항은 contact@pap-magazine.com으로 연락해 주시기 바랍니다.<br>
+            <li><strong>Article 9 (Collection and Use of Personal Information)</strong><br>
+            ① PAP collects and uses personal information (name, email address, Instagram handle, website URL, etc.) of submitters and team members for the purposes of submission receipt, review, publication, credit attribution, and contact.<br>
+            ② Collected personal information will not be used for purposes other than those stated above and will be safely managed in accordance with PAP's privacy policy.<br>
+            ③ The submitter confirms that they have obtained consent from team members for the provision of their personal information before submission.<br>
+            ④ For inquiries regarding personal information, please contact contact@pap-magazine.com.<br>
             <em style="color:rgba(255,255,255,.3)">PAP collects and uses personal information (names, email addresses, Instagram handles, website URLs, etc.) for submission review, publication, credit attribution, and communication. Information is managed per PAP's privacy policy and will not be used for other purposes. The submitter confirms that consent has been obtained from all team members whose information is submitted. For inquiries regarding personal information, please contact contact@pap-magazine.com.</em></li>
 
-            <li><strong>제10조 (면책 및 책임 제한)</strong><br>
-            ① PAP는 서브미션 심사 결과에 대한 이의 신청을 수락하지 않습니다. 심사 기준 및 결과는 PAP 에디토리얼 팀의 전문적 판단에 따릅니다.<br>
-            ② PAP는 천재지변, 시스템 장애, 네트워크 오류 등 불가항력적 사유로 인한 서비스 중단이나 데이터 손실에 대해 책임을 지지 않습니다.<br>
-            ③ 제출자가 본 약관을 위반하여 발생하는 모든 분쟁 및 손해에 대한 책임은 제출자에게 있습니다.<br>
+            <li><strong>Article 10 (Disclaimer and Limitation of Liability)</strong><br>
+            ① PAP does not accept objections to submission review results. Review criteria and results are determined by PAP's editorial team's professional judgment.<br>
+            ② PAP is not responsible for service interruptions or data loss due to force majeure events such as natural disasters, system failures, or network errors.<br>
+            ③ The submitter is responsible for all disputes and damages arising from violation of these terms.<br>
             <em style="color:rgba(255,255,255,.3)">PAP does not accept appeals regarding submission review results. Review criteria and results are at the professional discretion of PAP's editorial team. PAP is not liable for service interruptions or data loss due to force majeure, system failures, or network errors. The submitter is responsible for all disputes and damages arising from violations of these terms.</em></li>
 
-            <li><strong>제11조 (약관의 변경)</strong><br>
-            ① PAP는 관련 법령의 변경, 서비스 정책의 변경 등 합리적인 사유가 있는 경우 본 약관을 변경할 수 있습니다.<br>
-            ② 변경된 약관은 PAP 웹사이트에 공지한 날로부터 7일 후 효력이 발생합니다.<br>
-            ③ 제출자가 변경된 약관에 동의하지 않는 경우, 서브미션 제출을 중단할 수 있습니다.<br>
+            <li><strong>Article 11 (Amendment of Terms)</strong><br>
+            ① PAP may amend these terms if there are reasonable causes such as changes in relevant laws or service policies.<br>
+            ② Amended terms take effect 7 days after notification on the PAP website.<br>
+            ③ If the submitter does not agree to amended terms, they may discontinue submission.<br>
             <em style="color:rgba(255,255,255,.3)">PAP may modify these terms when reasonable grounds exist, such as changes in applicable laws or service policies. Modified terms take effect 7 days after posting on PAP's website. Submitters who disagree with modified terms may discontinue their submissions.</em></li>
 
-            <li><strong>제12조 (준거법 및 관할)</strong><br>
-            ① 본 약관의 해석 및 적용에 관하여는 대한민국 법률을 준거법으로 합니다.<br>
-            ② 본 약관과 관련하여 발생하는 모든 분쟁에 대해서는 서울중앙지방법원을 제1심 전속 관할 법원으로 합니다.<br>
+            <li><strong>Article 12 (Governing Law and Jurisdiction)</strong><br>
+            ① The interpretation and application of these terms are governed by the laws of the Republic of Korea.<br>
+            ② All disputes arising from or related to these terms shall be exclusively under the jurisdiction of the Seoul Central District Court as the court of first instance.<br>
             <em style="color:rgba(255,255,255,.3)">These terms shall be governed by and construed in accordance with the laws of the Republic of Korea. The Seoul Central District Court shall have exclusive jurisdiction over any disputes arising from these terms.</em></li>
           </ol>
-          <p style="margin-top:16px;font-size:11px;color:rgba(255,255,255,.3);text-align:center">시행일: 2026년 1월 1일 | 최종 수정일: 2026년 3월 1일<br>Effective: January 1, 2026 | Last Updated: March 1, 2026</p>
+          <p style="margin-top:16px;font-size:11px;color:rgba(255,255,255,.3);text-align:center">Effective: January 1, 2026 | Last Updated: March 1, 2026</p>
         </div>
         <div class="terms-check">
           <input type="checkbox" id="termsAgree">
-          <label for="termsAgree">본인은 위 서브미션 이용약관(제1조~제12조)의 모든 내용을 충분히 읽고 이해하였으며, 이에 동의합니다.<br><strong>I have thoroughly read and understood all terms (Articles 1–12) above and agree to be bound by them.</strong></label>
+          <label for="termsAgree"><strong>I have thoroughly read and understood all terms (Articles 1–12) above and agree to be bound by them.</strong></label>
         </div>
-        <div class="terms-error" id="termsError">약관에 동의해야 제출할 수 있습니다. / You must agree to the terms to submit.</div>
+        <div class="terms-error" id="termsError">You must agree to the terms to submit.</div>
       </div>
 
       <div class="form-nav">
@@ -832,39 +832,39 @@ function navigateWithInterstitial(url){
     <div class="submit-success" id="submitSuccess">
       <div class="success-icon"><svg viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="30" stroke-width="2"/><polyline points="20 34 28 42 44 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
       <h2>SUBMITTED</h2>
-      <p data-i18n="successMsg">서브미션이 성공적으로 접수되었습니다. 심사 결과는 이메일로 안내드리겠습니다.</p>
+      <p data-i18n="successMsg">Your submission has been successfully received. Review results will be sent to your email.</p>
 
       <!-- SUBMISSION TIMELINE -->
       <div class="timeline-visual" style="max-width:500px;margin:28px auto">
         <div class="tl-step done" style="flex:1;position:relative">
           <div class="tl-dot"></div>
-          <div class="tl-label">접수 완료<br>Submitted</div>
+          <div class="tl-label">SUBMITTED</div>
           <div class="tl-date" id="tlDateSubmit">Today</div>
           <div class="tl-line"></div>
         </div>
         <div class="tl-step active" style="flex:1;position:relative">
           <div class="tl-dot"></div>
-          <div class="tl-label">심사 중<br>Under Review</div>
+          <div class="tl-label">UNDER REVIEW</div>
           <div class="tl-date" id="tlDateReview"></div>
           <div class="tl-line"></div>
         </div>
         <div class="tl-step" style="flex:1;position:relative">
           <div class="tl-dot"></div>
-          <div class="tl-label">결과 통지<br>Decision</div>
+          <div class="tl-label">DECISION</div>
           <div class="tl-date" id="tlDateDecision"></div>
           <div class="tl-line"></div>
         </div>
         <div class="tl-step" style="flex:1;position:relative">
           <div class="tl-dot"></div>
-          <div class="tl-label">게재<br>Published</div>
+          <div class="tl-label">PUBLISHED</div>
           <div class="tl-date" id="tlDatePublish"></div>
         </div>
       </div>
 
       <p style="font-size:11px;color:rgba(255,255,255,.3);margin-top:16px;line-height:2">
-        <span id="reviewTimeNote">심사 결과: 1~3 영업일 이내 이메일 통지 / Review: 1-3 business days</span><br>
-        승인 후 최종 자료 제출 → 게재까지 2~3주 소요<br>
-        <strong style="color:rgba(255,255,255,.5)">MY SUBMISSIONS</strong> 탭에서 실시간 상태를 확인할 수 있습니다.
+        <span id="reviewTimeNote">Review: 1-3 business days</span><br>
+        After approval, submission of final materials → publication takes 2-3 weeks<br>
+        You can check real-time status in the <strong style="color:rgba(255,255,255,.5)">MY SUBMISSIONS</strong> tab.
       </p>
     </div>
   </div>
@@ -929,7 +929,7 @@ function loadMySubmissions(){
 }
 
 function viewSubmission(id){
-  if(typeof PAP!=='undefined') PAP.ui.toast('서브미션 상세 보기는 곧 지원됩니다.','info');
+  if(typeof PAP!=='undefined') PAP.ui.toast('Submission details will be supported soon.','info');
 }
 
 // ADD MODEL ROW
@@ -947,15 +947,15 @@ function addModelRow(){
 var _curLang='ko';
 var _FT={
 ko:{
-  errorSummaryTitle:'다음 항목을 확인해주세요:',
-  genreError:'카테고리를 최소 1개 선택해주세요.',
-  editorialTitle:{ph:'예: GAS',helper:'작품명은 2~50자 이내로 입력해주세요.',err:'작품명을 입력해주세요.',errLen:'작품명은 2~50자 이내로 입력해주세요.'},
-  studioName:{ph:'예: ThePinkBang Productions',helper:'스튜디오 또는 제작사명을 입력해주세요.',err:'제작사명을 입력해주세요.'},
-  contactEmail:{ph:'예: hello@example.com',helper:'회신 가능한 이메일 주소를 입력해주세요.',err:'이메일을 입력해주세요.',errFmt:'올바른 이메일 형식으로 입력해주세요.'},
-  studioWebsite:{ph:'예: https://yourstudio.com',helper:'https://를 포함하여 입력해주세요.',err:'웹사이트 주소는 https://로 시작해야 합니다.'},
-  studioInsta:{ph:'예: @yourstudio',helper:'@username 형식으로 입력해주세요.',err:'인스타그램 아이디는 @로 시작해야 합니다.'},
-  artistStatement:{ph:'예: 작품의 컨셉, 영감, 스토리를 200~500자 이내로 작성해주세요.',helper:'200~500자 권장',err:'작품 설명을 입력해주세요.',errLen:'500자 이하로 작성해주세요.'},
-  copyrightConfirm:{text:'제출한 이미지 및 콘텐츠의 저작권을 보유하고 있으며, 제3자의 권리를 침해하지 않음을 확인합니다.',err:'저작권 확인에 동의해주세요.'}
+  errorSummaryTitle:'Please check the following:',
+  genreError:'Please select at least one category.',
+  editorialTitle:{ph:'e.g. GAS',helper:'Please enter a title between 2 and 50 characters.',err:'Please enter the editorial title.',errLen:'Title must be between 2 and 50 characters.'},
+  studioName:{ph:'e.g. ThePinkBang Productions',helper:'Enter the name of your studio or production company.',err:'Please enter your production or studio name.'},
+  contactEmail:{ph:'e.g. hello@example.com',helper:'Please enter a valid email address.',err:'Please enter your email address.',errFmt:'Please enter a valid email address.'},
+  studioWebsite:{ph:'e.g. https://yourstudio.com',helper:'Include https:// in the URL.',err:'Website URL must start with https://'},
+  studioInsta:{ph:'e.g. @yourstudio',helper:'Please enter in @username format.',err:'Instagram username must start with @'},
+  artistStatement:{ph:'e.g. Briefly describe the concept, inspiration, and story behind your editorial.',helper:'Recommended length: 200–500 characters',err:'Please enter an artist statement.',errLen:'Please keep it under 500 characters.'},
+  copyrightConfirm:{text:'I confirm that I own the rights to the submitted content and that it does not infringe any third-party rights.',err:'Please confirm the copyright agreement.'}
 },
 en:{
   errorSummaryTitle:'Please check the following:',
@@ -1200,11 +1200,11 @@ function addLookFiles(n,fl){
   var maxSize=25*1024*1024;
   for(var i=0;i<fl.length;i++){
     if(allowed.indexOf(fl[i].type)===-1){
-      if(typeof PAP!=='undefined') PAP.ui.toast('JPG/PNG/TIFF/WebP만 가능: '+fl[i].name,'error');
+      if(typeof PAP!=='undefined') PAP.ui.toast('Only JPG/PNG/TIFF/WebP allowed: '+fl[i].name,'error');
       continue;
     }
     if(fl[i].size>maxSize){
-      if(typeof PAP!=='undefined') PAP.ui.toast('25MB 초과: '+fl[i].name,'error');
+      if(typeof PAP!=='undefined') PAP.ui.toast('File exceeds 25MB: '+fl[i].name,'error');
       continue;
     }
     lookFiles[n].push(fl[i]);
@@ -1220,7 +1220,7 @@ function checkImageDimensions(file){
   img.onload=function(){
     var longest=Math.max(img.width,img.height);
     if(longest<1500){
-      if(typeof PAP!=='undefined') PAP.ui.toast('권장: 긴 변 1500px 이상 (현재 '+longest+'px) — '+file.name,'error');
+      if(typeof PAP!=='undefined') PAP.ui.toast('Recommended: longest side 1500px or more (current '+longest+'px) — '+file.name,'error');
     }
     URL.revokeObjectURL(img.src);
   };
@@ -1275,7 +1275,7 @@ function updateCoverSelector(){
   var row=document.getElementById('coverSelectRow');
   if(!sel||!row) return;
   var totalImages=0;
-  var html='<option value="">자동 선택 (첫 번째 이미지) / Auto (first image)</option>';
+  var html='<option value="">Auto (first image)</option>';
   var keys=Object.keys(lookFiles).sort(function(a,b){return parseInt(a)-parseInt(b);});
   keys.forEach(function(k){
     var n=parseInt(k);
@@ -1377,7 +1377,7 @@ async function submitForm(){
   var totalLookImages=0;
   Object.keys(lookFiles).forEach(function(k){ if(lookFiles[k]) totalLookImages+=lookFiles[k].length; });
   if(totalLookImages<4){
-    if(typeof PAP!=='undefined') PAP.ui.toast('최소 4개 이상의 룩 이미지가 필요합니다. / At least 4 look images required.','error');
+    if(typeof PAP!=='undefined') PAP.ui.toast('At least 4 look images required.','error');
     return;
   }
 

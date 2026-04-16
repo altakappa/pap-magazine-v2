@@ -1,0 +1,19 @@
+{
+  "name": "pap-magazine-migration",
+  "version": "1.0.0",
+  "description": "Migrate images from AWS S3 to Supabase Storage",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "probe": "node probe-bucket.js",
+    "migrate": "node migrate-s3-to-supabase.js",
+    "resume": "node migrate-s3-to-supabase.js --resume",
+    "update-urls": "node update-data-urls.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.650.0",
+    "@supabase/supabase-js": "^2.45.0",
+    "dotenv": "^16.4.5",
+    "p-limit": "^6.1.0"
+  }
+}

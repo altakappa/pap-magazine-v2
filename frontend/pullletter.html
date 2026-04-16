@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co https://api.stripe.com https://api.pap-magazine.com; frame-src https://js.stripe.com;">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="PAP Magazine Pull-Letter. 크리에이티브 업계 소식과 영감을 전하는 뉴스레터.">
+<meta name="description" content="PAP Magazine Pull-Letter. Creative industry news and inspiration delivered in a newsletter.">
 <meta property="og:title" content="Pull-Letter | PAP Magazine">
-<meta property="og:description" content="PAP Magazine Pull-Letter. 크리에이티브 업계 소식과 영감을 전하는 뉴스레터.">
+<meta property="og:description" content="PAP Magazine Pull-Letter. Creative industry news and inspiration delivered in a newsletter.">
 <meta property="og:image" content="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_0281a06055.jpg">
 <meta property="og:type" content="website">
 <link rel="canonical" href="https://pap-magazine.com/pullletter.html">
@@ -258,9 +258,9 @@ select.form-input option{background:#111;color:#fff}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </button>
       <div class="account-dropdown" id="accountDropdown" style="cursor:default">
-        <a href="auth.html" data-i18n="navLogin">로그인 / 회원가입</a>
+        <a href="auth.html" data-i18n="navLogin">LOG IN / SIGN UP</a>
         <div class="dropdown-divider"></div>
-        <a href="subscribe.html" data-i18n="subscribe">구독하기</a>
+        <a href="subscribe.html" data-i18n="subscribe">SUBSCRIBE</a>
       </div>
     </div>
   </div>
@@ -323,7 +323,7 @@ function _showBrandAdInterstitial(ad,callback){
   if(ad.link){mediaWrap.onclick=function(){window.open(ad.link,'_blank');};}
   overlay.appendChild(mediaWrap);
   var lang=localStorage.getItem('pap-lang')||'ko';
-  var skipTexts={ko:'건너뛰기',en:'Skip',it:'Salta',fr:'Passer',es:'Saltar',ja:'スキップ',zh:'跳过'};
+  var skipTexts={ko:'Skip',en:'Skip',it:'Salta',fr:'Passer',es:'Saltar',ja:'スキップ',zh:'跳过'};
   var skipLabel=skipTexts[lang]||skipTexts.en;
   var skip=document.createElement('button');
   skip.style.cssText='position:absolute;bottom:24px;right:24px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.55);font-size:11px;font-weight:600;letter-spacing:.1em;cursor:pointer;font-family:Montserrat,sans-serif;padding:8px 20px;border-radius:2px;transition:all .2s;z-index:2;';
@@ -335,7 +335,7 @@ function _showBrandAdInterstitial(ad,callback){
   skip.onclick=function(){closeAd();};
   overlay.appendChild(skip);
   var premBadge=document.createElement('a');premBadge.href='subscribe.html';
-  var premTexts={ko:'광고 없이 즐기기',en:'Go ad-free',it:'Senza pubblicità',fr:'Sans publicité',es:'Sin anuncios',ja:'広告なし',zh:'去除广告'};
+  var premTexts={ko:'Go ad-free',en:'Go ad-free',it:'Senza pubblicità',fr:'Sans publicité',es:'Sin anuncios',ja:'広告なし',zh:'去除广告'};
   premBadge.textContent=premTexts[lang]||premTexts.en;
   premBadge.style.cssText='position:absolute;bottom:26px;left:24px;font-size:10px;font-weight:600;letter-spacing:.08em;color:rgba(255,255,255,.3);text-decoration:none;font-family:Montserrat,sans-serif;transition:color .2s;z-index:2;';
   premBadge.onmouseover=function(){this.style.color='rgba(255,255,255,.7)';};
@@ -349,7 +349,7 @@ function _showBrandAdInterstitial(ad,callback){
 function _showPremiumUpsellInterstitial(callback){
   var lang=localStorage.getItem('pap-lang')||'ko';
   var texts={
-    ko:{tag:'SUBSCRIBE',title:'광고 없이\n모든 콘텐츠를 즐기세요',desc:'구독으로 에디토리얼, 매거진,\n독점 콘텐츠를 제한 없이 감상하세요.',btn:'구독하기',skip:'건너뛰기'},
+    ko:{tag:'SUBSCRIBE',title:'Enjoy all content\nwithout interruptions',desc:'Subscribe for unlimited access\nto editorials, magazines, and exclusive content.',btn:'Subscribe',skip:'Skip'},
     en:{tag:'SUBSCRIBE',title:'Enjoy all content\nwithout interruptions',desc:'Subscribe for unlimited access\nto editorials, magazines, and exclusive content.',btn:'Subscribe',skip:'Skip'},
     it:{tag:'SUBSCRIBE',title:'Goditi tutti i contenuti\nsenza interruzioni',desc:'Abbonati per accesso illimitato\na editoriali, riviste e contenuti esclusivi.',btn:'Abbonati',skip:'Salta'},
     fr:{tag:'SUBSCRIBE',title:'Profitez de tout le contenu\nsans interruption',desc:"Abonnez-vous pour un accès illimité\naux éditoriaux, magazines et contenus exclusifs.",btn:"S'abonner",skip:'Passer'},
@@ -395,88 +395,88 @@ function navigateWithInterstitial(url){
 
   <div class="premium-badge">
     <svg viewBox="0 0 14 14" fill="none"><path d="M7 1l1.76 3.57L13 5.24l-3 2.92.71 4.13L7 10.27 3.29 12.3 4 8.16 1 5.24l4.24-.67L7 1z" stroke-width="1.2" stroke-linejoin="round"/></svg>
-    <span data-i18n="premiumOnly">PREMIUM 전용</span>
+    <span data-i18n="premiumOnly">PREMIUM ONLY</span>
   </div>
 
   <div class="page-hero">
     <h1 data-i18n="pageTitle">PULL-LETTER</h1>
-    <p data-i18n="pageDesc">Pull-Letter는 PAP 매거진이 촬영 전 크리에이터의 역량과 방향성을 검토한 뒤 공식적으로 발급하는 레터입니다. 포토그래퍼와 스타일리스트의 포트폴리오, 인스타그램, 그리고 촬영 방향성이 담긴 무드보드를 제출해 주세요. 검토 후 Pull-Letter 발급 여부를 안내드리며, 미발급 시 사유를 함께 알려드립니다.</p>
+    <p data-i18n="pageDesc">A Pull-Letter is an official letter issued by PAP Magazine after reviewing a creator's capabilities and creative direction. Please submit the photographer's and stylist's portfolios, Instagram profiles, and a mood board reflecting your shoot direction.</p>
   </div>
 
   <!-- PROCESS FLOW -->
   <div class="process-flow" style="display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin-bottom:60px">
-    <div style="background:rgba(255,255,255,.03);padding:28px 24px"><div style="font-size:28px;font-weight:900;color:rgba(255,255,255,.08);margin-bottom:12px;line-height:1">01</div><div style="font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:6px" data-i18n="proc1Label">요청</div><div style="font-size:11px;color:rgba(255,255,255,.3);line-height:1.8" data-i18n="proc1Desc">포트폴리오, 인스타그램, 무드보드를 제출합니다</div></div>
-    <div style="background:rgba(255,255,255,.03);padding:28px 24px"><div style="font-size:28px;font-weight:900;color:rgba(255,255,255,.08);margin-bottom:12px;line-height:1">02</div><div style="font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:6px" data-i18n="proc2Label">검토</div><div style="font-size:11px;color:rgba(255,255,255,.3);line-height:1.8" data-i18n="proc2Desc">PAP 에디터가 역량과 방향성을 검토합니다</div></div>
-    <div style="background:rgba(255,255,255,.03);padding:28px 24px"><div style="font-size:28px;font-weight:900;color:rgba(255,255,255,.08);margin-bottom:12px;line-height:1">03</div><div style="font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:6px" data-i18n="proc3Label">결과</div><div style="font-size:11px;color:rgba(255,255,255,.3);line-height:1.8" data-i18n="proc3Desc">Pull-Letter 발급 또는 미발급 사유를 안내합니다</div></div>
+    <div style="background:rgba(255,255,255,.03);padding:28px 24px"><div style="font-size:28px;font-weight:900;color:rgba(255,255,255,.08);margin-bottom:12px;line-height:1">01</div><div style="font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:6px" data-i18n="proc1Label">REQUEST</div><div style="font-size:11px;color:rgba(255,255,255,.3);line-height:1.8" data-i18n="proc1Desc">Submit portfolios, Instagram, and mood board</div></div>
+    <div style="background:rgba(255,255,255,.03);padding:28px 24px"><div style="font-size:28px;font-weight:900;color:rgba(255,255,255,.08);margin-bottom:12px;line-height:1">02</div><div style="font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:6px" data-i18n="proc2Label">REVIEW</div><div style="font-size:11px;color:rgba(255,255,255,.3);line-height:1.8" data-i18n="proc2Desc">PAP editors evaluate capabilities and direction</div></div>
+    <div style="background:rgba(255,255,255,.03);padding:28px 24px"><div style="font-size:28px;font-weight:900;color:rgba(255,255,255,.08);margin-bottom:12px;line-height:1">03</div><div style="font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:6px" data-i18n="proc3Label">RESULT</div><div style="font-size:11px;color:rgba(255,255,255,.3);line-height:1.8" data-i18n="proc3Desc">Pull-Letter issued or reasons for decline provided</div></div>
   </div>
 
   <!-- ACCESS GATE - FULL PAGE OVERLAY -->
   <div class="access-gate-overlay" id="accessGateOverlay">
     <div class="access-gate" id="accessGate">
-      <h2 data-i18n="gateTitle">PREMIUM 회원 전용</h2>
-      <p data-i18n="gateDesc">이 서비스는 Premium 구독 회원만 이용할 수 있습니다.</p>
+      <h2 data-i18n="gateTitle">PREMIUM MEMBERS ONLY</h2>
+      <p data-i18n="gateDesc">This service is available exclusively to Premium subscribers.</p>
       <div class="tier-info" data-i18n="gateTier" style="display:none"></div>
       <div>
-        <button class="gate-btn" data-i18n="gateLogin" onclick="simulateLogin()">로그인</button>
-        <button class="gate-btn primary" data-i18n="gateUpgrade" onclick="location.href='subscribe.html'">Premium 구독하기</button>
+        <button class="gate-btn" data-i18n="gateLogin" onclick="simulateLogin()">LOG IN</button>
+        <button class="gate-btn primary" data-i18n="gateUpgrade" onclick="location.href='subscribe.html'">Subscribe to Premium</button>
       </div>
     </div>
   </div>
 
   <!-- PULL-LETTER REQUEST FORM -->
   <div class="pl-form" id="flForm">
-    <div class="form-section-title" data-i18n="secPhotographer">포토그래퍼 정보</div>
+    <div class="form-section-title" data-i18n="secPhotographer">PHOTOGRAPHER INFO</div>
     <div class="form-row">
-      <div class="form-group"><label class="form-label"><span data-i18n="labelPhName">포토그래퍼 이름</span> <span class="required">*</span></label><input type="text" class="form-input" id="phName" placeholder="Full Name"><div class="field-error" id="err-phName"></div></div>
-      <div class="form-group"><label class="form-label"><span data-i18n="labelPhInsta">인스타그램</span> <span class="required">*</span></label><input type="text" class="form-input" id="phInsta" placeholder="@username"><div class="field-error" id="err-phInsta"></div></div>
+      <div class="form-group"><label class="form-label"><span data-i18n="labelPhName">Photographer Name</span> <span class="required">*</span></label><input type="text" class="form-input" id="phName" placeholder="Full Name"><div class="field-error" id="err-phName"></div></div>
+      <div class="form-group"><label class="form-label"><span data-i18n="labelPhInsta">Instagram</span> <span class="required">*</span></label><input type="text" class="form-input" id="phInsta" placeholder="@username"><div class="field-error" id="err-phInsta"></div></div>
     </div>
-    <div class="form-group"><label class="form-label"><span data-i18n="labelPhPortfolio">포트폴리오 사이트</span> <span class="required">*</span></label><input type="url" class="form-input" id="phPortfolio" placeholder="https://..."><div class="field-error" id="err-phPortfolio"></div></div>
+    <div class="form-group"><label class="form-label"><span data-i18n="labelPhPortfolio">Portfolio Site</span> <span class="required">*</span></label><input type="url" class="form-input" id="phPortfolio" placeholder="https://..."><div class="field-error" id="err-phPortfolio"></div></div>
 
-    <div class="form-section-title" style="margin-top:40px" data-i18n="secStylist">스타일리스트 정보</div>
+    <div class="form-section-title" style="margin-top:40px" data-i18n="secStylist">STYLIST INFO</div>
     <div class="form-row">
-      <div class="form-group"><label class="form-label"><span data-i18n="labelStName">스타일리스트 이름</span> <span class="required">*</span></label><input type="text" class="form-input" id="stName" placeholder="Full Name"><div class="field-error" id="err-stName"></div></div>
-      <div class="form-group"><label class="form-label"><span data-i18n="labelStInsta">인스타그램</span> <span class="required">*</span></label><input type="text" class="form-input" id="stInsta" placeholder="@username"><div class="field-error" id="err-stInsta"></div></div>
+      <div class="form-group"><label class="form-label"><span data-i18n="labelStName">Stylist Name</span> <span class="required">*</span></label><input type="text" class="form-input" id="stName" placeholder="Full Name"><div class="field-error" id="err-stName"></div></div>
+      <div class="form-group"><label class="form-label"><span data-i18n="labelStInsta">Instagram</span> <span class="required">*</span></label><input type="text" class="form-input" id="stInsta" placeholder="@username"><div class="field-error" id="err-stInsta"></div></div>
     </div>
-    <div class="form-group"><label class="form-label"><span data-i18n="labelStPortfolio">포트폴리오 사이트</span> <span class="required">*</span></label><input type="url" class="form-input" id="stPortfolio" placeholder="https://..."><div class="field-error" id="err-stPortfolio"></div></div>
+    <div class="form-group"><label class="form-label"><span data-i18n="labelStPortfolio">Portfolio Site</span> <span class="required">*</span></label><input type="url" class="form-input" id="stPortfolio" placeholder="https://..."><div class="field-error" id="err-stPortfolio"></div></div>
 
-    <div class="form-section-title" style="margin-top:40px" data-i18n="secContact">연락처</div>
+    <div class="form-section-title" style="margin-top:40px" data-i18n="secContact">CONTACT INFO</div>
     <div class="form-row">
-      <div class="form-group"><label class="form-label"><span data-i18n="labelContactName">요청자 이름</span> <span class="required">*</span></label><input type="text" class="form-input" id="contactName" placeholder="Full Name"><div class="field-error" id="err-contactName"></div></div>
-      <div class="form-group"><label class="form-label"><span data-i18n="labelContactEmail">이메일</span> <span class="required">*</span></label><input type="email" class="form-input" id="contactEmail" placeholder="email@example.com"><div class="field-error" id="err-contactEmail"></div></div>
+      <div class="form-group"><label class="form-label"><span data-i18n="labelContactName">Your Name</span> <span class="required">*</span></label><input type="text" class="form-input" id="contactName" placeholder="Full Name"><div class="field-error" id="err-contactName"></div></div>
+      <div class="form-group"><label class="form-label"><span data-i18n="labelContactEmail">Email</span> <span class="required">*</span></label><input type="email" class="form-input" id="contactEmail" placeholder="email@example.com"><div class="field-error" id="err-contactEmail"></div></div>
     </div>
 
-    <div class="form-section-title" style="margin-top:40px" data-i18n="secMoodboard">무드보드</div>
-    <div class="form-group"><label class="form-label"><span data-i18n="labelMoodboard">무드보드 파일 업로드</span> <span class="required">*</span></label>
-      <div class="upload-zone" id="uploadZone"><input type="file" class="upload-input" id="fileInput" multiple accept="image/*,.pdf,.doc,.docx,.pptx"><div class="upload-icon"><svg viewBox="0 0 36 36" fill="none"><path d="M18 26V10M18 10L12 16M18 10L24 16" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 26v3a2 2 0 002 2h22a2 2 0 002-2v-3" stroke-width="2" stroke-linecap="round"/></svg></div><div class="upload-text"><strong data-i18n="uploadClick">클릭</strong> <span data-i18n="uploadOr">또는 파일을 드래그하세요</span></div><div class="upload-hint" data-i18n="uploadSpec">JPG, PNG, PDF, PPT · 파일당 최대 25MB</div></div>
+    <div class="form-section-title" style="margin-top:40px" data-i18n="secMoodboard">SHOOT DIRECTION / MOOD BOARD</div>
+    <div class="form-group"><label class="form-label"><span data-i18n="labelMoodboard">Mood Board File Upload</span> <span class="required">*</span></label>
+      <div class="upload-zone" id="uploadZone"><input type="file" class="upload-input" id="fileInput" multiple accept="image/*,.pdf,.doc,.docx,.pptx"><div class="upload-icon"><svg viewBox="0 0 36 36" fill="none"><path d="M18 26V10M18 10L12 16M18 10L24 16" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 26v3a2 2 0 002 2h22a2 2 0 002-2v-3" stroke-width="2" stroke-linecap="round"/></svg></div><div class="upload-text"><strong data-i18n="uploadClick">Click</strong> <span data-i18n="uploadOr">or drag files here</span></div><div class="upload-hint" data-i18n="uploadSpec">JPG, PNG, PDF, PPT · Max 25MB per file</div></div>
       <div class="file-list" id="fileList"></div>
       <div class="field-error" id="err-moodboard"></div>
-      <div class="form-hint" data-i18n="moodboardHint">촬영 방향성이 담긴 무드보드, 레퍼런스 이미지, 컨셉 자료 등을 첨부해 주세요.</div>
+      <div class="form-hint" data-i18n="moodboardHint">Attach mood boards, reference images, and concept materials.</div>
     </div>
-    <div class="form-group"><label class="form-label"><span data-i18n="labelAdditional">추가 메시지 (선택)</span></label><textarea class="form-input" id="additionalMsg" placeholder="" style="min-height:80px"></textarea></div>
-    <div class="form-actions"><button class="btn-submit" onclick="submitFL()" data-i18n="btnSubmit">Pull-Letter 요청하기</button></div>
+    <div class="form-group"><label class="form-label"><span data-i18n="labelAdditional">Additional Message (Optional)</span></label><textarea class="form-input" id="additionalMsg" placeholder="" style="min-height:80px"></textarea></div>
+    <div class="form-actions"><button class="btn-submit" onclick="submitFL()" data-i18n="btnSubmit">Request Pull-Letter</button></div>
   </div>
 
   <!-- REVIEW RESULT PANEL (shown to users who have submitted) -->
   <div class="review-panel" id="reviewPanel">
-    <div class="review-panel-title" data-i18n="reviewTitle">검토 결과</div>
+    <div class="review-panel-title" data-i18n="reviewTitle">REVIEW RESULT</div>
 
     <!-- Demo buttons for preview (remove in production) -->
     <div class="demo-toggle">
-      <button class="demo-btn" onclick="showReview('approved')" data-i18n="demoApproved">승인 예시</button>
-      <button class="demo-btn" onclick="showReview('declined')" data-i18n="demoDeclined">거절 예시</button>
-      <button class="demo-btn" onclick="showReview('revision')" data-i18n="demoRevision">보완 요청 예시</button>
-      <button class="demo-btn" onclick="showReview('pending')" data-i18n="demoPending">검토 중</button>
+      <button class="demo-btn" onclick="showReview('approved')" data-i18n="demoApproved">Approved Example</button>
+      <button class="demo-btn" onclick="showReview('declined')" data-i18n="demoDeclined">Declined Example</button>
+      <button class="demo-btn" onclick="showReview('revision')" data-i18n="demoRevision">Revision Example</button>
+      <button class="demo-btn" onclick="showReview('pending')" data-i18n="demoPending">Under Review</button>
     </div>
 
     <div id="reviewContent">
-      <div class="review-empty" data-i18n="reviewPending">현재 제출하신 Pull-Letter 요청을 검토 중입니다. 결과가 확정되면 이 페이지와 이메일로 안내드리겠습니다.</div>
+      <div class="review-empty" data-i18n="reviewPending">Your Pull-Letter request is currently under review. You will be notified on this page and via email once a decision is made.</div>
     </div>
   </div>
 
   <!-- WHAT IS PULL-LETTER -->
   <div class="fl-info">
-    <div class="fl-info-title" data-i18n="infoTitle">PULL-LETTER란?</div>
-    <p class="pl-info-text" style="font-size:13px;color:rgba(255,255,255,.45);line-height:2.2;max-width:600px" data-i18n="infoText">Pull-Letter는 PAP 매거진이 크리에이터의 역량과 촬영 방향성을 사전에 검토한 뒤, 공식적으로 발급하는 레터입니다. 포토그래퍼와 스타일리스트의 포트폴리오, 인스타그램, 그리고 촬영 컨셉이 담긴 무드보드를 바탕으로 PAP 에디터가 종합적으로 판단합니다. Pull-Letter가 발급되면 해당 팀과의 협업이 진행되며, 미발급 시에는 그 사유를 상세히 안내드립니다.</p>
+    <div class="fl-info-title" data-i18n="infoTitle">WHAT IS A PULL-LETTER?</div>
+    <p class="pl-info-text" style="font-size:13px;color:rgba(255,255,255,.45);line-height:2.2;max-width:600px" data-i18n="infoText">A Pull-Letter is an official letter issued by PAP Magazine after reviewing a creator's capabilities and shoot direction.</p>
   </div>
 
 </main>
@@ -488,26 +488,26 @@ function navigateWithInterstitial(url){
 var L = {
 ko:{
   business:'BUSINESS',contact:'CONTACT',about:'ABOUT',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
-  premiumOnly:'PREMIUM 전용',
+  premiumOnly:'PREMIUM ONLY',
   pageTitle:'PULL-LETTER',
-  pageDesc:'Pull-Letter는 PAP 매거진이 촬영 전 크리에이터의 역량과 방향성을 검토한 뒤 공식적으로 발급하는 레터입니다. 포토그래퍼와 스타일리스트의 포트폴리오, 인스타그램, 그리고 촬영 방향성이 담긴 무드보드를 제출해 주세요. 검토 후 Pull-Letter 발급 여부를 안내드리며, 미발급 시 사유를 함께 알려드립니다.',
-  gateTitle:'PREMIUM 회원 전용',gateDesc:'이 서비스는 Premium 구독 회원만 이용할 수 있습니다.',gateTier:'Premium 플랜: ₩13,500/월 · 연간 ₩135,000',gateLogin:'로그인',gateUpgrade:'Premium 구독하기',
-  secPhotographer:'포토그래퍼 정보',labelPhName:'포토그래퍼 이름',labelPhInsta:'인스타그램',labelPhPortfolio:'포트폴리오 사이트',
-  secStylist:'스타일리스트 정보',labelStName:'스타일리스트 이름',labelStInsta:'인스타그램',labelStPortfolio:'포트폴리오 사이트',
-  secContact:'연락처',labelContactName:'요청자 이름',labelContactEmail:'이메일',
-  secMoodboard:'무드보드',labelMoodboard:'무드보드 파일 업로드',uploadClick:'클릭',uploadOr:'또는 파일을 드래그하세요',uploadSpec:'JPG, PNG, PDF, PPT · 파일당 최대 25MB',moodboardHint:'촬영 방향성이 담긴 무드보드, 레퍼런스 이미지, 컨셉 자료 등을 첨부해 주세요.',
-  labelAdditional:'추가 메시지 (선택)',
-  proc1Label:'요청',proc1Desc:'포트폴리오, 인스타그램, 무드보드를 제출합니다',proc2Label:'검토',proc2Desc:'PAP 에디터가 역량과 방향성을 검토합니다',proc3Label:'결과',proc3Desc:'Pull-Letter 발급 또는 미발급 사유를 안내합니다',
-  btnSubmit:'Pull-Letter 요청하기',
-  successTitle:'요청 접수 완료',successDesc:'Pull-Letter 요청이 접수되었습니다. PAP 에디터가 포트폴리오와 무드보드를 검토한 뒤, Pull-Letter 발급 여부를 이메일로 안내드리겠습니다. 미발급 시 사유를 함께 알려드립니다.',
-  infoTitle:'PULL-LETTER란?',infoText:'Pull-Letter는 PAP 매거진이 크리에이터의 역량과 촬영 방향성을 사전에 검토한 뒤, 공식적으로 발급하는 레터입니다.',
-  reviewTitle:'검토 결과',reviewPending:'현재 제출하신 Pull-Letter 요청을 검토 중입니다. 결과가 확정되면 이 페이지와 이메일로 안내드리겠습니다.',
-  demoApproved:'승인 예시',demoDeclined:'거절 예시',demoRevision:'보완 요청 예시',demoPending:'검토 중',
-  statusApproved:'승인',statusDeclined:'거절',statusRevision:'보완 필요',
-  msgApproved:'Pull-Letter가 승인되었습니다. 이메일로 공식 Pull-Letter를 발송해 드리겠습니다. 협업 진행에 대한 안내도 함께 전달드리겠습니다.',
-  msgDeclined:'검토 결과, 이번 Pull-Letter 요청은 승인되지 않았습니다.\n\n[거절 사유]\n포트폴리오의 작업 스타일이 현재 PAP가 추구하는 에디토리얼 방향성과 다소 차이가 있습니다. 보다 실험적이고 아트 기반의 비주얼 작업을 포함한 포트폴리오로 재요청해 주시면 재검토하겠습니다.',
-  msgRevision:'검토 결과, 제출하신 자료에 보완이 필요합니다.\n\n[보완 사유]\n무드보드의 촬영 방향성이 다소 모호합니다. 구체적인 레퍼런스 이미지와 명확한 컨셉 설명이 포함된 무드보드를 다시 제출해 주세요. 스타일리스트의 포트폴리오 링크가 유효하지 않아 확인이 필요합니다.',
-  ft:'<strong>주식회사 알타카파</strong> | CEO : 강동민 | 사업자번호 192-88-02644<br>서울특별시 강남구 논현로146길 18, 1F PAP 매거진 | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'
+  pageDesc:"A Pull-Letter is an official letter issued by PAP Magazine after reviewing a creator's capabilities and creative direction. Please submit the photographer's and stylist's portfolios, Instagram profiles, and a mood board reflecting your shoot direction.",
+  gateTitle:'PREMIUM MEMBERS ONLY',gateDesc:'This service is available exclusively to Premium subscribers.',gateTier:'Premium Plan: $9.49/mo · Annual $79.99',gateLogin:'LOG IN',gateUpgrade:'Subscribe to Premium',
+  secPhotographer:'PHOTOGRAPHER INFO',labelPhName:'Photographer Name',labelPhInsta:'Instagram',labelPhPortfolio:'Portfolio Site',
+  secStylist:'STYLIST INFO',labelStName:'Stylist Name',labelStInsta:'Instagram',labelStPortfolio:'Portfolio Site',
+  secContact:'CONTACT INFO',labelContactName:'Your Name',labelContactEmail:'Email',
+  secMoodboard:'SHOOT DIRECTION / MOOD BOARD',labelMoodboard:'Mood Board File Upload',uploadClick:'Click',uploadOr:'or drag files here',uploadSpec:'JPG, PNG, PDF, PPT · Max 25MB per file',moodboardHint:'Attach mood boards, reference images, and concept materials.',
+  labelAdditional:'Additional Message (Optional)',
+  proc1Label:'REQUEST',proc1Desc:'Submit portfolios, Instagram, and mood board',proc2Label:'REVIEW',proc2Desc:'PAP editors evaluate capabilities and direction',proc3Label:'RESULT',proc3Desc:'Pull-Letter issued or reasons for decline provided',
+  btnSubmit:'Request Pull-Letter',
+  successTitle:'REQUEST RECEIVED',successDesc:'Your Pull-Letter request has been received. PAP editors will review your portfolios and mood board, then inform you via email.',
+  infoTitle:'WHAT IS A PULL-LETTER?',infoText:"A Pull-Letter is an official letter issued by PAP Magazine after reviewing a creator's capabilities and shoot direction.",
+  reviewTitle:'REVIEW RESULT',reviewPending:'Your Pull-Letter request is currently under review. You will be notified on this page and via email once a decision is made.',
+  demoApproved:'Approved Example',demoDeclined:'Declined Example',demoRevision:'Revision Example',demoPending:'Under Review',
+  statusApproved:'APPROVED',statusDeclined:'DECLINED',statusRevision:'REVISION NEEDED',
+  msgApproved:'Your Pull-Letter has been approved. We will send the official Pull-Letter to your email along with collaboration details.',
+  msgDeclined:'After review, your Pull-Letter request has not been approved.\n\n[Reason for Decline]\nThe portfolio style differs from the editorial direction PAP is currently pursuing. We recommend resubmitting with a portfolio that includes more experimental and art-based visual work.',
+  msgRevision:'After review, your submitted materials require revisions.\n\n[Revision Needed]\nThe mood board lacks clear direction. Please resubmit with specific reference images and a clearer concept description. The stylist portfolio link appears to be invalid.',
+  ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'
 },
 en:{
   business:'BUSINESS',contact:'CONTACT',about:'ABOUT',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
@@ -592,12 +592,12 @@ function _clearAllErrors(){
 function _getValText(key,fallback){
   var lang=localStorage.getItem('pap-lang')||'ko';
   var msgs={
-    required:{ko:'필수 입력 항목입니다',en:'This field is required',it:'Campo obbligatorio',fr:'Champ obligatoire',es:'Campo obligatorio',ja:'必須項目です',zh:'必填项',ru:'Обязательное поле'},
-    invalidEmail:{ko:'올바른 이메일 형식이 아닙니다',en:'Please enter a valid email',it:'Email non valida',fr:'Veuillez entrer un email valide',es:'Ingrese un email válido',ja:'有効なメールアドレスを入力してください',zh:'请输入有效的邮箱',ru:'Введите корректный email'},
-    invalidUrl:{ko:'올바른 URL 형식이 아닙니다 (https://...)',en:'Please enter a valid URL (https://...)',it:'Inserisci un URL valido (https://...)',fr:'Veuillez entrer une URL valide (https://...)',es:'Ingrese una URL válida (https://...)',ja:'有効なURLを入力してください (https://...)',zh:'请输入有效的URL (https://...)',ru:'Введите корректный URL (https://...)'},
-    invalidInsta:{ko:'@ 포함 인스타그램 핸들을 입력해주세요',en:'Enter an Instagram handle starting with @',it:"Inserisci un handle Instagram che inizi con @",fr:"Entrez un identifiant Instagram commençant par @",es:'Ingrese un handle de Instagram que comience con @',ja:'@から始まるInstagramハンドルを入力してください',zh:'请输入以@开头的Instagram用户名',ru:'Введите Instagram-аккаунт, начинающийся с @'},
-    noFiles:{ko:'무드보드 파일을 1개 이상 업로드해주세요',en:'Please upload at least one mood board file',it:'Carica almeno un file mood board',fr:'Veuillez télécharger au moins un fichier mood board',es:'Cargue al menos un archivo de mood board',ja:'ムードボードファイルを1つ以上アップロードしてください',zh:'请至少上传一个情绪板文件',ru:'Загрузите хотя бы один файл мудборда'},
-    premiumRequired:{ko:'프리미엄 구독자만 이용 가능한 기능입니다',en:'This feature is available only for Premium subscribers',it:'Funzione disponibile solo per abbonati Premium',fr:'Fonctionnalité réservée aux abonnés Premium',es:'Función disponible solo para suscriptores Premium',ja:'Premium会員限定の機能です',zh:'此功能仅限Premium订阅用户使用',ru:'Функция доступна только для подписчиков Premium'}
+    required:{ko:'This field is required',en:'This field is required',it:'Campo obbligatorio',fr:'Champ obligatoire',es:'Campo obligatorio',ja:'必須項目です',zh:'必填项',ru:'Обязательное поле'},
+    invalidEmail:{ko:'Please enter a valid email',en:'Please enter a valid email',it:'Email non valida',fr:'Veuillez entrer un email valide',es:'Ingrese un email válido',ja:'有効なメールアドレスを入力してください',zh:'请输入有效的邮箱',ru:'Введите корректный email'},
+    invalidUrl:{ko:'Please enter a valid URL (https://...)',en:'Please enter a valid URL (https://...)',it:'Inserisci un URL valido (https://...)',fr:'Veuillez entrer une URL valide (https://...)',es:'Ingrese una URL válida (https://...)',ja:'有効なURLを入力してください (https://...)',zh:'请输入有效的URL (https://...)',ru:'Введите корректный URL (https://...)'},
+    invalidInsta:{ko:'Enter an Instagram handle starting with @',en:'Enter an Instagram handle starting with @',it:"Inserisci un handle Instagram che inizi con @",fr:"Entrez un identifiant Instagram commençant par @",es:'Ingrese un handle de Instagram que comience con @',ja:'@から始まるInstagramハンドルを入力してください',zh:'请输入以@开头的Instagram用户名',ru:'Введите Instagram-аккаунт, начинающийся с @'},
+    noFiles:{ko:'Please upload at least one mood board file',en:'Please upload at least one mood board file',it:'Carica almeno un file mood board',fr:'Veuillez télécharger au moins un fichier mood board',es:'Cargue al menos un archivo de mood board',ja:'ムードボードファイルを1つ以上アップロードしてください',zh:'请至少上传一个情绪板文件',ru:'Загрузите хотя бы один файл мудборда'},
+    premiumRequired:{ko:'This feature is available only for Premium subscribers',en:'This feature is available only for Premium subscribers',it:'Funzione disponibile solo per abbonati Premium',fr:'Fonctionnalité réservée aux abonnés Premium',es:'Función disponible solo para suscriptores Premium',ja:'Premium会員限定の機能です',zh:'此功能仅限Premium订阅用户使用',ru:'Функция доступна только для подписчиков Premium'}
   };
   var m=msgs[key];if(!m) return fallback||'';
   return m[lang]||m.en||fallback||'';
@@ -719,15 +719,15 @@ function showReview(type){
   if(type==='approved'){
     statusLabel=d.statusApproved||'APPROVED';
     statusClass='approved';
-    message=d.msgApproved||'Pull-Letter가 승인되었습니다. 이메일로 공식 Pull-Letter를 발송해 드리겠습니다. 협업 진행에 대한 안내도 함께 전달드리겠습니다.';
+    message=d.msgApproved||'Your Pull-Letter has been approved. We will send the official Pull-Letter to your email along with collaboration details.';
   } else if(type==='declined'){
     statusLabel=d.statusDeclined||'DECLINED';
     statusClass='declined';
-    message=d.msgDeclined||'검토 결과, 이번 Pull-Letter 요청은 승인되지 않았습니다.\n\n[거절 사유]\n포트폴리오의 작업 스타일이 현재 PAP가 추구하는 에디토리얼 방향성과 다소 차이가 있습니다. 보다 실험적이고 아트 기반의 비주얼 작업을 포함한 포트폴리오로 재요청해 주시면 재검토하겠습니다.';
+    message=d.msgDeclined||'After review, your Pull-Letter request has not been approved.\n\n[Reason for Decline]\nThe portfolio style differs from the editorial direction PAP is currently pursuing. We recommend resubmitting with a portfolio that includes more experimental and art-based visual work.';
   } else if(type==='revision'){
     statusLabel=d.statusRevision||'REVISION NEEDED';
     statusClass='revision';
-    message=d.msgRevision||'검토 결과, 제출하신 자료에 보완이 필요합니다.\n\n[보완 사유]\n무드보드의 촬영 방향성이 다소 모호합니다. 구체적인 레퍼런스 이미지와 명확한 컨셉 설명이 포함된 무드보드를 다시 제출해 주세요. 스타일리스트의 포트폴리오 링크가 유효하지 않아 확인이 필요합니다.';
+    message=d.msgRevision||'After review, your submitted materials require revisions.\n\n[Revision Needed]\nThe mood board lacks clear direction. Please resubmit with specific reference images and a clearer concept description. The stylist portfolio link appears to be invalid.';
   }
 
   container.innerHTML='<div class="review-result"><div class="review-status '+statusClass+'">'+statusLabel+'</div><div class="review-date">2026.03.20</div><div class="review-message" style="white-space:pre-line">'+message+'</div></div>';
