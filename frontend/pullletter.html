@@ -55,7 +55,9 @@ a{color:#fff;text-decoration:none}
 /* ACCESS GATE - FULL PAGE OVERLAY */
 .access-gate-overlay{position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.92);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);display:flex;align-items:center;justify-content:center}
 .access-gate-overlay.hidden{display:none}
-.access-gate{border:1px solid rgba(255,255,255,.15);padding:56px 48px;text-align:center;max-width:480px;width:90%}
+.access-gate{border:1px solid rgba(255,255,255,.15);padding:56px 48px;text-align:center;max-width:480px;width:90%;position:relative}
+.gate-close{position:absolute;top:16px;right:16px;background:none;border:none;color:rgba(255,255,255,.5);font-size:22px;cursor:pointer;padding:4px 8px;transition:color .2s;line-height:1}
+.gate-close:hover{color:#fff}
 .access-gate h2{font-size:16px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
 .access-gate p{font-size:13px;color:rgba(255,255,255,.7);line-height:1.8;margin-bottom:12px}
 .access-gate .tier-info{font-size:11px;color:rgba(255,255,255,.6);margin-bottom:28px}
@@ -413,6 +415,7 @@ function navigateWithInterstitial(url){
   <!-- ACCESS GATE - FULL PAGE OVERLAY -->
   <div class="access-gate-overlay" id="accessGateOverlay">
     <div class="access-gate" id="accessGate">
+      <button class="gate-close" onclick="window.location.href='index.html'" aria-label="Close">&times;</button>
       <h2 data-i18n="gateTitle">PREMIUM MEMBERS ONLY</h2>
       <p data-i18n="gateDesc">This service is available exclusively to Premium subscribers.</p>
       <div class="tier-info" data-i18n="gateTier" style="display:none"></div>
