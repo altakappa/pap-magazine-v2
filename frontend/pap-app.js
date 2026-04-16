@@ -162,56 +162,57 @@ function searchEditorials(query){
   var results=document.getElementById('edSearchResults');
   var grid=document.getElementById('edSearchGrid');
   var label=document.getElementById('edSearchLabel');
-  var rows=document.getElementById('edRows');
+  var rows=document.getElementById('edRows')||document.querySelector('.ed-rows-block');
   var crResults=document.getElementById('creatorResults');
   var crCards=document.getElementById('creatorCards');
   var crLabel=document.getElementById('creatorLabel');
-  
+
   if(!query||query.trim().length<1){
-    results.style.display='none';
-    crResults.style.display='none';
-    rows.style.display='block';
+    if(results)results.style.display='none';
+    if(crResults)crResults.style.display='none';
+    if(rows)rows.style.display='block';
     return;
   }
-  
+
   // Search creators
-  var cq=query.toLowerCase().trim();
-  var matchedCreators=creatorData.filter(function(cr){
-    return cr.name.toLowerCase().indexOf(cq)>-1 || cr.role.toLowerCase().indexOf(cq)>-1 || cr.instagram.toLowerCase().indexOf(cq)>-1;
-  });
-  if(matchedCreators.length>0){
-    crLabel.textContent='CREATORS · '+matchedCreators.length+' found';
-    crCards.innerHTML='';
-    matchedCreators.forEach(function(cr){
-      var card=document.createElement('div');
-      card.className='creator-card';
-      card.onclick=function(){openCreatorPopup(cr);};
-      card.innerHTML='<div class="creator-card-name">'+cr.name+'</div><div class="creator-card-role">'+cr.role+'</div><div class="creator-card-count">'+cr.editorials.length+' editorial'+(cr.editorials.length>1?'s':'')+'</div>';
-      crCards.appendChild(card);
+  if(crResults&&crCards&&crLabel&&typeof creatorData!=='undefined'&&creatorData.length>0){
+    var cq=query.toLowerCase().trim();
+    var matchedCreators=creatorData.filter(function(cr){
+      return cr.name.toLowerCase().indexOf(cq)>-1 || cr.role.toLowerCase().indexOf(cq)>-1 || cr.instagram.toLowerCase().indexOf(cq)>-1;
     });
-    crResults.style.display='block';
-  } else {
-    crResults.style.display='none';
+    if(matchedCreators.length>0){
+      crLabel.textContent='CREATORS · '+matchedCreators.length+' found';
+      crCards.innerHTML='';
+      matchedCreators.forEach(function(cr){
+        var card=document.createElement('div');
+        card.className='creator-card';
+        card.onclick=function(){openCreatorPopup(cr);};
+        card.innerHTML='<div class="creator-card-name">'+cr.name+'</div><div class="creator-card-role">'+cr.role+'</div><div class="creator-card-count">'+cr.editorials.length+' editorial'+(cr.editorials.length>1?'s':'')+'</div>';
+        crCards.appendChild(card);
+      });
+      crResults.style.display='block';
+    } else {
+      crResults.style.display='none';
+    }
   }
-  
+
+  if(!results||!grid||!label) return;
+
   var q=query.toLowerCase().trim();
   var scored=[];
-  
+
   edData.forEach(function(ed){
     var score=0;
-    // Title match
     if(ed.title.toLowerCase().indexOf(q)>-1) score+=10;
-    // Tag match
     ed.tags.forEach(function(tag){
       if(tag.indexOf(q)>-1) score+=5;
-      // Fuzzy: if query contains part of tag or vice versa
       if(q.length>2 && tag.indexOf(q.substring(0,3))>-1) score+=2;
     });
     if(score>0) scored.push({ed:ed,score:score});
   });
-  
+
   scored.sort(function(a,b){return b.score-a.score;});
-  
+
   if(scored.length>0){
     label.textContent='"'+query+'" 관련 에디토리얼 '+scored.length+'개';
     grid.innerHTML='';
@@ -224,12 +225,12 @@ function searchEditorials(query){
       grid.appendChild(card);
     });
     results.style.display='block';
-    rows.style.display='none';
+    if(rows)rows.style.display='none';
   } else {
     label.textContent='"'+query+'" 관련 에디토리얼을 찾지 못했습니다';
     grid.innerHTML='';
     results.style.display='block';
-    rows.style.display='none';
+    if(rows)rows.style.display='none';
   }
 }
 
