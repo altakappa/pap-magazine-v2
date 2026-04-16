@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="pap-styles.css">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Montserrat',sans-serif;background:#000;color:#fff;min-height:100vh;overflow-x:hidden}
@@ -269,6 +270,12 @@ textarea.form-input{min-height:100px;resize:vertical;line-height:1.8}
   .timeline-visual{flex-wrap:wrap;gap:4px}
   .cover-select-row{flex-direction:column;gap:8px}
 }
+/* HIDE OLD NAV — unified header active */
+.side-nav{display:none!important}
+.lang-selector{display:none!important}
+.content{margin-left:0!important;padding-top:100px!important}
+.footer-legal{margin-left:0!important}
+@media(max-width:768px){.content{padding-top:80px!important;padding-left:20px!important;padding-right:20px!important}}
 </style>
 <!-- Favicon & PWA -->
 <link rel="icon" type="image/x-icon" href="favicon.ico">
@@ -308,6 +315,79 @@ textarea.form-input{min-height:100px;resize:vertical;line-height:1.8}
 </style>
 </head>
 <body>
+<!-- Nav Overlay -->
+<div class="nav-overlay" id="navOverlay">
+  <button class="nav-close" onclick="toggleNav()">&times;</button>
+  <div class="nav-overlay-inner">
+    <div class="nav-left-col">
+      <div class="nav-left-top">
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='subscribe.html';" data-i18n="subscribe">SUBSCRIBE</a>
+      </div>
+      <div class="nav-left-links">
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='submission.html';" data-i18n="submission">SUBMISSION</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='pullletter.html';" data-i18n="pullletter">PULL-LETTER</a>
+        <a href="auth.html" data-i18n="navLogin" style="color:rgba(255,255,255,.6)">LOGIN / JOIN</a>
+      </div>
+      <div class="nav-left-links nav-extra-links" style="margin-top:auto">
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='about.html';" data-i18n="about">ABOUT</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='business.html';" data-i18n="business">BUSINESS</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='contact.html';" data-i18n="contact">CONTACT</a>
+      </div>
+      <div class="nav-bottom-row">
+        <div class="nav-socials active" id="navSocials">
+        <a href="https://www.youtube.com/@pap-magazine" target="_blank" class="nav-social-icon" aria-label="YouTube"><svg viewBox="0 0 40 40" width="36" height="36"><rect x="2" y="6" width="36" height="28" rx="8" fill="#FF0000"/><polygon points="16,12 16,28 28,20" fill="#fff"/></svg></a>
+        <a href="https://www.facebook.com/papmagazine/" target="_blank" class="nav-social-icon" aria-label="Facebook"><svg viewBox="0 0 40 40" width="36" height="36"><rect x="4" y="4" width="32" height="32" rx="8" fill="#1877F2"/><path d="M26.5 21l.8-5h-4.8v-3.2c0-1.4.7-2.8 2.9-2.8h2.2V5.6s-2-.3-3.9-.3c-4 0-6.6 2.4-6.6 6.8V16H13v5h4.1v12h5.1V21h3.3z" fill="#fff"/></svg></a>
+        <a href="https://www.instagram.com/pap_magazine/" target="_blank" class="nav-social-icon" aria-label="Instagram"><svg viewBox="0 0 40 40" width="36" height="36"><defs><linearGradient id="ig" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stop-color="#FFC107"/><stop offset="25%" stop-color="#F44336"/><stop offset="50%" stop-color="#E040FB"/><stop offset="75%" stop-color="#9C27B0"/><stop offset="100%" stop-color="#5B51D8"/></linearGradient></defs><rect x="4" y="4" width="32" height="32" rx="9" fill="url(#ig)"/><rect x="8" y="8" width="24" height="24" rx="6" fill="none" stroke="#fff" stroke-width="2"/><circle cx="20" cy="20" r="5.5" fill="none" stroke="#fff" stroke-width="2"/><circle cx="28" cy="12" r="1.8" fill="#fff"/></svg></a>
+        <a href="https://www.threads.net/@pap_magazine" target="_blank" class="nav-social-icon" aria-label="Threads"><svg viewBox="0 0 40 40" width="36" height="36"><rect x="4" y="4" width="32" height="32" rx="9" fill="#000"/><path d="M25.5 19.2c-.1-.6-.4-1.1-.8-1.6-.8-1-1.9-1.6-3.2-1.7-1.5-.2-2.8.3-3.8 1.3-.8.9-1.2 1.9-1.2 3.1 0 1.3.5 2.4 1.4 3.2.9.8 2 1.1 3.2 1 1-.1 1.9-.5 2.6-1.2.5-.6.8-1.3.8-2.1 0-.7-.2-1.3-.7-1.8-.5-.5-1.2-.7-1.9-.6-.6.1-1.1.3-1.4.8-.3.4-.4 1-.2 1.5.2.4.5.8.9 1" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg></a>
+        <a href="https://www.tiktok.com/@pap_mag" target="_blank" class="nav-social-icon" aria-label="TikTok"><svg viewBox="0 0 40 40" width="36" height="36"><rect x="4" y="4" width="32" height="32" rx="9" fill="#010101"/><path d="M27.3 16.5c-1.3-.9-2.2-2.3-2.3-4h-3v11.8a2.7 2.7 0 1 1-1.8-2.5v-3.1a5.7 5.7 0 1 0 4.8 5.6V18.6c1.1.8 2.5 1.2 3.9 1.2v-3c-.6 0-1.1-.1-1.6-.3z" fill="#25F4EE" transform="translate(-0.7,-0.5)"/><path d="M27.3 16.5c-1.3-.9-2.2-2.3-2.3-4h-3v11.8a2.7 2.7 0 1 1-1.8-2.5v-3.1a5.7 5.7 0 1 0 4.8 5.6V18.6c1.1.8 2.5 1.2 3.9 1.2v-3c-.6 0-1.1-.1-1.6-.3z" fill="#FE2C55" transform="translate(0.7,0.5)"/><path d="M27.3 16.5c-1.3-.9-2.2-2.3-2.3-4h-3v11.8a2.7 2.7 0 1 1-1.8-2.5v-3.1a5.7 5.7 0 1 0 4.8 5.6V18.6c1.1.8 2.5 1.2 3.9 1.2v-3c-.6 0-1.1-.1-1.6-.3z" fill="#fff"/></svg></a>
+      </div>
+      </div>
+    </div>
+    <div class="nav-right-col">
+      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='community.html';" data-i18n="navCommunity" style="color:#891717">COMMUNITY</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='magazine.html';" data-i18n="navMagazine" style="color:#c9a96e">MAGAZINE</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='index.html';" data-i18n="navEditorial">EDITORIAL</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='articles.html';" data-i18n="navArticle">ARTICLE</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='films.html';" data-i18n="navFilm">FILM</a>
+    </div>
+  </div>
+</div>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-left">
+    <button class="hamburger" onclick="toggleNav()" aria-label="Menu"><span></span><span></span><span></span></button>
+    <button class="search-btn header-left-item" onclick="toggleSearch()" aria-label="Search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </button>
+  </div>
+  <a href="/" class="logo-wrap"><img src="pap-logo.png" alt="PAP Magazine"></a>
+  <div class="header-right">
+    <div class="lang-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>
+      <select id="langSelect" onchange="setLang(this.value)">
+        <option value="ko">Korean</option>
+        <option value="en">English</option>
+        <option value="it">Italiano</option>
+        <option value="fr">Français</option>
+        <option value="es">Español</option>
+        <option value="ja">日本語</option>
+        <option value="zh">中文</option>
+      </select>
+    </div>
+    <div class="auth-btn-wrap">
+      <button class="header-right-item" onclick="toggleAccountMenu(event)" aria-label="Account">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </button>
+      <div class="account-dropdown" id="accountDropdown" style="cursor:default">
+        <a href="auth.html" data-i18n="navLogin">로그인 / 회원가입</a>
+        <div class="dropdown-divider"></div>
+        <a href="subscribe.html" data-i18n="subscribe">구독하기</a>
+      </div>
+    </div>
+  </div>
+</header>
+
 <!-- Loading State -->
 <div id="pageLoader" style="position:fixed;inset:0;z-index:10000;background:#000;display:flex;align-items:center;justify-content:center;transition:opacity .4s">
 <div style="text-align:center"><div style="font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;letter-spacing:.3em;color:rgba(255,255,255,.4);text-transform:uppercase">PAP</div>
@@ -320,12 +400,12 @@ textarea.form-input{min-height:100px;resize:vertical;line-height:1.8}
 <nav role="navigation" aria-label="Main navigation" class="side-nav" id="sideNav">
   <div class="nav-dots open" id="navToggle"><span>&#8942;</span></div>
   <div class="nav-links">
-    <a href="#" onclick="event.preventDefault();navigateWithInterstitial('subscribe.html');" data-i18n="subscribe">SUBSCRIBE</a>
+    <a href="#" onclick="event.preventDefault();window.location.href='subscribe.html';" data-i18n="subscribe">SUBSCRIBE</a>
     <a href="submission.html" class="active" data-i18n="submission">SUBMISSION</a>
-    <a href="#" onclick="event.preventDefault();navigateWithInterstitial('pullletter.html');" data-i18n="pullletter">PULL-LETTER</a>
-    <a href="#" onclick="event.preventDefault();navigateWithInterstitial('about.html');" data-i18n="about">ABOUT</a>
-    <a href="#" onclick="event.preventDefault();navigateWithInterstitial('business.html');" data-i18n="business">BUSINESS</a>
-    <a href="#" onclick="event.preventDefault();navigateWithInterstitial('contact.html');" data-i18n="contact">CONTACT</a>
+    <a href="#" onclick="event.preventDefault();window.location.href='pullletter.html';" data-i18n="pullletter">PULL-LETTER</a>
+    <a href="#" onclick="event.preventDefault();window.location.href='about.html';" data-i18n="about">ABOUT</a>
+    <a href="#" onclick="event.preventDefault();window.location.href='business.html';" data-i18n="business">BUSINESS</a>
+    <a href="#" onclick="event.preventDefault();window.location.href='contact.html';" data-i18n="contact">CONTACT</a>
   </div>
 </nav>
 <script>
@@ -359,7 +439,7 @@ function _showBrandAdInterstitial(ad,callback){
   overlay.appendChild(label);
   var mediaWrap=document.createElement('div');
   mediaWrap.style.cssText='position:relative;max-width:90vw;max-height:75vh;display:flex;align-items:center;justify-content:center;cursor:pointer;';
-  var duration=ad.duration||5;
+  var duration=ad.duration||3;
   if(ad.type==='video'){var video=document.createElement('video');video.src=ad.src;if(ad.poster)video.poster=ad.poster;video.autoplay=true;video.muted=true;video.playsInline=true;video.loop=true;video.style.cssText='max-width:90vw;max-height:75vh;object-fit:contain;border-radius:2px;';mediaWrap.appendChild(video);}else{var img=document.createElement('img');img.src=ad.src;img.alt=ad.brand||'Ad';img.style.cssText='max-width:90vw;max-height:75vh;object-fit:contain;border-radius:2px;';mediaWrap.appendChild(img);}
   if(ad.link){mediaWrap.onclick=function(){window.open(ad.link,'_blank');};}
   overlay.appendChild(mediaWrap);
@@ -413,7 +493,7 @@ function _showPremiumUpsellInterstitial(callback){
   skip.style.cssText='display:block;margin:16px auto 0;background:none;border:none;color:rgba(255,255,255,.55);font-size:11px;font-weight:600;letter-spacing:.1em;cursor:pointer;font-family:Montserrat,sans-serif;transition:color .2s;padding:8px 16px;';
   skip.onmouseover=function(){this.style.color='rgba(255,255,255,.9)';};
   skip.onmouseout=function(){this.style.color='rgba(255,255,255,.55)';};
-  var _countdown=5;var _timer=null;
+  var _countdown=3;var _timer=null;
   skip.textContent=t.skip+' ('+_countdown+')';skip.disabled=true;skip.style.opacity='0.4';
   function closeInterstitial(){if(_timer)clearInterval(_timer);overlay.style.opacity='0';unlockScroll();setTimeout(function(){if(overlay.parentNode)overlay.parentNode.removeChild(overlay);},400);if(callback)callback();}
   skip.onclick=function(){closeInterstitial();};
@@ -1430,6 +1510,7 @@ document.addEventListener('DOMContentLoaded',function(){
   _updateCharCount();
 });
 </script>
+<script src="pap-app.js"></script>
 <script src="pap-auth-link.js" defer></script>
 </body>
 </html>

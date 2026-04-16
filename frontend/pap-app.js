@@ -365,7 +365,7 @@ function _showBrandAdInterstitial(ad, callback){
   var mediaWrap = document.createElement('div');
   mediaWrap.style.cssText = 'position:relative;max-width:90vw;max-height:75vh;display:flex;align-items:center;justify-content:center;cursor:pointer;';
 
-  var duration = ad.duration || 5;
+  var duration = ad.duration || 3;
 
   if(ad.type === 'video'){
     var video = document.createElement('video');
@@ -497,7 +497,7 @@ function _showPremiumUpsellInterstitial(callback){
   skip.onmouseover = function(){ this.style.color='rgba(255,255,255,.9)'; };
   skip.onmouseout = function(){ this.style.color='rgba(255,255,255,.55)'; };
 
-  var _countdown = 5;
+  var _countdown = 3;
   var _timer = null;
   skip.textContent = t.skip + ' (' + _countdown + ')';
   skip.disabled = true;
