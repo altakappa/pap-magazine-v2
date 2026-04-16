@@ -309,8 +309,7 @@ function isLoggedIn(){return !!localStorage.getItem('pap-token');}
 var _interstitialCount = 0;   // 실제 광고 노출 횟수
 var _navClickCount = 0;       // 에디토리얼 클릭 횟수
 var _INTERSTITIAL_MAX = 5;    // 세션당 최대 광고 노출
-var _INTERSTITIAL_FREE = 2;   // 처음 N번 클릭은 광고 없이 자유 탐색
-var _INTERSTITIAL_INTERVAL = 3; // 이후 N번 클릭마다 1회 광고 노출
+var _INTERSTITIAL_EVERY = 3;  // N번째 클릭마다 광고 노출 (3,6,9,12...)
 
 // ---- BRAND AD CONFIGURATION ----
 // To add a brand ad, add an object to this array.
@@ -327,7 +326,7 @@ var _INTERSTITIAL_INTERVAL = 3; // 이후 N번 클릭마다 1회 광고 노출
 //
 // When this array is empty, the premium upsell is shown instead.
 var _brandAds = [
-  { type:'image', src:'pap-studio-campaign-banner.jpg.png', link:'https://www.pap-studios.com', brand:'PAP STUDIO', duration:4 }
+  { type:'image', src:'pap-studio-campaign-banner.jpg', link:'https://www.pap-studios.com', brand:'PAP STUDIO', duration:4 }
 ];
 
 function _getNextBrandAd(){
@@ -346,11 +345,8 @@ function showPremiumInterstitial(callback){
   if(_interstitialCount >= _INTERSTITIAL_MAX){ if(callback) callback(); return; }
   // Count navigation clicks
   _navClickCount++;
-  // First N clicks: free browsing (no ads)
-  if(_navClickCount <= _INTERSTITIAL_FREE){ if(callback) callback(); return; }
-  // After free period: show ad every N clicks
-  var clicksSinceFree = _navClickCount - _INTERSTITIAL_FREE;
-  if(clicksSinceFree % _INTERSTITIAL_INTERVAL !== 0){ if(callback) callback(); return; }
+  // Show ad every N clicks (3rd, 6th, 9th...)
+  if(_navClickCount % _INTERSTITIAL_EVERY !== 0){ if(callback) callback(); return; }
   _interstitialCount++;
 
   var brandAd = _getNextBrandAd();
