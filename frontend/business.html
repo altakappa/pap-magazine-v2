@@ -163,9 +163,9 @@ a{color:#fff;text-decoration:none}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </button>
       <div class="account-dropdown" id="accountDropdown" style="cursor:default">
-        <a href="auth.html" data-i18n="navLogin">LOG IN / SIGN UP</a>
+        <a href="auth.html" data-i18n="navLogin">로그인 / 회원가입</a>
         <div class="dropdown-divider"></div>
-        <a href="subscribe.html" data-i18n="subscribe">SUBSCRIBE</a>
+        <a href="subscribe.html" data-i18n="subscribe">구독하기</a>
       </div>
     </div>
   </div>
@@ -227,7 +227,7 @@ function _showBrandAdInterstitial(ad,callback){
   if(ad.link){mediaWrap.onclick=function(){window.open(ad.link,'_blank');};}
   overlay.appendChild(mediaWrap);
   var lang=localStorage.getItem('pap-lang')||'ko';
-  var skipTexts={ko:'Skip',en:'Skip',it:'Salta',fr:'Passer',es:'Saltar',ja:'スキップ',zh:'跳过'};
+  var skipTexts={ko:'건너뛰기',en:'Skip',it:'Salta',fr:'Passer',es:'Saltar',ja:'スキップ',zh:'跳过'};
   var skipLabel=skipTexts[lang]||skipTexts.en;
   var skip=document.createElement('button');
   skip.style.cssText='position:absolute;bottom:24px;right:24px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.55);font-size:11px;font-weight:600;letter-spacing:.1em;cursor:pointer;font-family:Montserrat,sans-serif;padding:8px 20px;border-radius:2px;transition:all .2s;z-index:2;';
@@ -239,7 +239,7 @@ function _showBrandAdInterstitial(ad,callback){
   skip.onclick=function(){closeAd();};
   overlay.appendChild(skip);
   var premBadge=document.createElement('a');premBadge.href='subscribe.html';
-  var premTexts={ko:'Go ad-free',en:'Go ad-free',it:'Senza pubblicità',fr:'Sans publicità',es:'Sin anuncios',ja:'広告なし',zh:'去除广告'};
+  var premTexts={ko:'광고 없이 즐기기',en:'Go ad-free',it:'Senza pubblicità',fr:'Sans publicità',es:'Sin anuncios',ja:'広告なし',zh:'去除广告'};
   premBadge.textContent=premTexts[lang]||premTexts.en;
   premBadge.style.cssText='position:absolute;bottom:26px;left:24px;font-size:10px;font-weight:600;letter-spacing:.08em;color:rgba(255,255,255,.3);text-decoration:none;font-family:Montserrat,sans-serif;transition:color .2s;z-index:2;';
   premBadge.onmouseover=function(){this.style.color='rgba(255,255,255,.7)';};
@@ -253,7 +253,7 @@ function _showBrandAdInterstitial(ad,callback){
 function _showPremiumUpsellInterstitial(callback){
   var lang=localStorage.getItem('pap-lang')||'ko';
   var texts={
-    ko:{tag:'SUBSCRIBE',title:'Enjoy all content\nwithout interruptions',desc:'Subscribe for unlimited access\nto editorials, magazines, and exclusive content.',btn:'Subscribe',skip:'Skip'},
+    ko:{tag:'SUBSCRIBE',title:'광고 없이\n모든 콘텐츠를 즐기세요',desc:'구독으로 에디토리얼, 매거진,\n독점 콘텐츠를 제한 없이 감상하세요.',btn:'구독하기',skip:'건너뛰기'},
     en:{tag:'SUBSCRIBE',title:'Enjoy all content\nwithout interruptions',desc:'Subscribe for unlimited access\nto editorials, magazines, and exclusive content.',btn:'Subscribe',skip:'Skip'},
     it:{tag:'SUBSCRIBE',title:'Goditi tutti i contenuti\nsenza interruzioni',desc:'Abbonati per accesso illimitato\na editoriali, riviste e contenuti esclusivi.',btn:'Abbonati',skip:'Salta'},
     fr:{tag:'SUBSCRIBE',title:'Profitez de tout le contenu\nsans interruption',desc:"Abonnez-vous pour un accès illimité\naux éditoriaux, magazines et contenus exclusifs.",btn:"S'abonner",skip:'Passer'},
@@ -342,11 +342,11 @@ var L={
 ko:{about:'ABOUT',contact:'CONTACT',business:'BUSINESS',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
 brandTitle:'BRAND CONTENT ADVERTISING',
 workTitle:'MAKE CONTENTS WITH PAP',
-mediaKit:'MEDIA KIT',downloadLink:'Download Link',
-brand:'<p>PAP promotes the content<br>provided by your brand.</p><p>Interested brands and PR representatives,<br>please contact us via the email below.</p>',
-work:'<p>PAP creates a wide range of content from campaigns<br>and lookbooks to branded content and on-site coverage.</p><p>Interested brands and PR representatives,<br>please contact us via the email below.</p>',
-mail:intlMail,
-ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+mediaKit:'미디어 키트',downloadLink:'Download Link',
+brand:'<p>PAP는 귀사 브랜드가 제공하는<br>콘텐츠를 프로모션합니다.</p><p>관심 있는 브랜드 및 PR 담당자께서는<br>아래 이메일을 통해 연락 주시길 바랍니다.</p>',
+work:'<p>PAP는 캠페인, 룩북에서부터<br>브랜디드 콘텐츠, 현장 취재에 이르기까지<br>다양한 콘텐츠를 제작합니다.</p><p>관심 있는 브랜드 및 PR 담당자께서는<br>아래 이메일을 통해 연락 주시길 바랍니다.</p>',
+mail:koMail,
+ft:'<strong>주식회사 알타카파</strong> | CEO : 강동민 | 사업자번호 192-88-02644<br>서울특별시 강남구 논현로146길 18, 1F PAP 매거진 | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
 en:{about:'ABOUT',contact:'CONTACT',business:'BUSINESS',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
 brandTitle:'BRAND CONTENT ADVERTISING',
 workTitle:'MAKE CONTENTS WITH PAP',

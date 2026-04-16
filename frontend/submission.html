@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co https://api.stripe.com https://api.pap-magazine.com; frame-src https://js.stripe.com;">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Submit your work to PAP Magazine - Editorial, fashion and film submissions">
+<meta name="description" content="PAP 매거진에 에디토리얼을 제출하세요. 서브미션 유형을 선택하고, 작품 정보·팀 크레딧·룩별 의상 크레딧·고해상도 이미지를 제출해 주세요.">
 <title>Submission | PAP Magazine</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -285,13 +285,13 @@ textarea.form-input{min-height:100px;resize:vertical;line-height:1.8}
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="PAP Magazine">
 <meta property="og:title" content="Submission | PAP Magazine">
-<meta property="og:description" content="Submit your editorial to PAP Magazine. Open for photographers, stylists, and creative teams.">
+<meta property="og:description" content="PAP 매거진에 에디토리얼을 제출하세요. 포토그래퍼, 스타일리스트, 크리에이티브 팀을 위한 서브미션 접수 중입니다.">
 <meta property="og:url" content="https://pap-magazine.com/submission.html">
 <meta property="og:image" content="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/pap_og_default.jpg">
 <meta property="og:locale" content="ko_KR">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Submission | PAP Magazine">
-<meta name="twitter:description" content="Submit your editorial to PAP Magazine. Open for photographers, stylists, and creative teams.">
+<meta name="twitter:description" content="PAP 매거진에 에디토리얼을 제출하세요. 포토그래퍼, 스타일리스트, 크리에이티브 팀을 위한 서브미션 접수 중입니다.">
 <meta name="twitter:image" content="https://pap-magazine.com/apple-touch-icon.png">
 <link rel="canonical" href="https://pap-magazine.com/submission.html">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Submission - PAP Magazine","description":"Submit your editorial to PAP Magazine"}</script>
@@ -377,9 +377,9 @@ textarea.form-input{min-height:100px;resize:vertical;line-height:1.8}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </button>
       <div class="account-dropdown" id="accountDropdown" style="cursor:default">
-        <a href="auth.html" data-i18n="navLogin">LOG IN / SIGN UP</a>
+        <a href="auth.html" data-i18n="navLogin">로그인 / 회원가입</a>
         <div class="dropdown-divider"></div>
-        <a href="subscribe.html" data-i18n="subscribe">SUBSCRIBE</a>
+        <a href="subscribe.html" data-i18n="subscribe">구독하기</a>
       </div>
     </div>
   </div>
@@ -441,7 +441,7 @@ function _showBrandAdInterstitial(ad,callback){
   if(ad.link){mediaWrap.onclick=function(){window.open(ad.link,'_blank');};}
   overlay.appendChild(mediaWrap);
   var lang=localStorage.getItem('pap-lang')||'ko';
-  var skipTexts={ko:'Skip',en:'Skip',it:'Salta',fr:'Passer',es:'Saltar',ja:'スキップ',zh:'跳过'};
+  var skipTexts={ko:'건너뛰기',en:'Skip',it:'Salta',fr:'Passer',es:'Saltar',ja:'スキップ',zh:'跳过'};
   var skipLabel=skipTexts[lang]||skipTexts.en;
   var skip=document.createElement('button');
   skip.style.cssText='position:absolute;bottom:24px;right:24px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.55);font-size:11px;font-weight:600;letter-spacing:.1em;cursor:pointer;font-family:Montserrat,sans-serif;padding:8px 20px;border-radius:2px;transition:all .2s;z-index:2;';
@@ -453,7 +453,7 @@ function _showBrandAdInterstitial(ad,callback){
   skip.onclick=function(){closeAd();};
   overlay.appendChild(skip);
   var premBadge=document.createElement('a');premBadge.href='subscribe.html';
-  var premTexts={ko:'Go ad-free',en:'Go ad-free',it:'Senza pubblicità',fr:'Sans publicità',es:'Sin anuncios',ja:'広告なし',zh:'去除广告'};
+  var premTexts={ko:'광고 없이 즐기기',en:'Go ad-free',it:'Senza pubblicità',fr:'Sans publicità',es:'Sin anuncios',ja:'広告なし',zh:'去除广告'};
   premBadge.textContent=premTexts[lang]||premTexts.en;
   premBadge.style.cssText='position:absolute;bottom:26px;left:24px;font-size:10px;font-weight:600;letter-spacing:.08em;color:rgba(255,255,255,.3);text-decoration:none;font-family:Montserrat,sans-serif;transition:color .2s;z-index:2;';
   premBadge.onmouseover=function(){this.style.color='rgba(255,255,255,.7)';};
@@ -467,7 +467,7 @@ function _showBrandAdInterstitial(ad,callback){
 function _showPremiumUpsellInterstitial(callback){
   var lang=localStorage.getItem('pap-lang')||'ko';
   var texts={
-    ko:{tag:'SUBSCRIBE',title:'Enjoy all content\nwithout interruptions',desc:'Subscribe for unlimited access\nto editorials, magazines, and exclusive content.',btn:'Subscribe',skip:'Skip'},
+    ko:{tag:'SUBSCRIBE',title:'광고 없이\n모든 콘텐츠를 즐기세요',desc:'구독으로 에디토리얼, 매거진,\n독점 콘텐츠를 제한 없이 감상하세요.',btn:'구독하기',skip:'건너뛰기'},
     en:{tag:'SUBSCRIBE',title:'Enjoy all content\nwithout interruptions',desc:'Subscribe for unlimited access\nto editorials, magazines, and exclusive content.',btn:'Subscribe',skip:'Skip'},
     it:{tag:'SUBSCRIBE',title:'Goditi tutti i contenuti\nsenza interruzioni',desc:'Abbonati per accesso illimitato\na editoriali, riviste e contenuti esclusivi.',btn:'Abbonati',skip:'Salta'},
     fr:{tag:'SUBSCRIBE',title:'Profitez de tout le contenu\nsans interruption',desc:"Abonnez-vous pour un accès illimité\naux éditoriaux, magazines et contenus exclusifs.",btn:"S'abonner",skip:'Passer'},
@@ -512,15 +512,15 @@ function navigateWithInterstitial(url){
 <main role="main" class="content">
   <div class="page-hero">
     <h1>SUBMISSION</h1>
-    <p data-i18n="pageDesc">Submit your editorials to PAP Magazine. Please provide work information, team credits, look-by-look outfit credits, and high-resolution images. Review takes 1-3 business days from submission.</p>
+    <p data-i18n="pageDesc">PAP 매거진에 에디토리얼을 제출하세요. 서브미션 유형을 선택하고, 작품 정보·팀 크레딧·룩별 의상 크레딧·고해상도 이미지를 제출해 주세요. MY SUBMISSIONS에서 실시간 심사 상태를 확인할 수 있습니다.</p>
   </div>
 
   <!-- ACCESS GATE -->
   <div class="access-gate-overlay" id="accessGateOverlay">
     <div class="access-gate">
-      <h2 data-i18n="gateTitle">MEMBERS ONLY</h2>
-      <p data-i18n-html="gateDesc">This service is available to free members and above.<br>Please log in or sign up to continue.</p>
-      <button class="gate-btn" data-i18n="gateLogin" onclick="simulateLogin()">LOG IN / SIGN UP</button>
+      <h2 data-i18n="gateTitle">회원 전용</h2>
+      <p data-i18n-html="gateDesc">이 서비스는 무료 회원 이상만 이용할 수 있습니다.<br>로그인하거나 회원가입 후 이용해 주세요.</p>
+      <button class="gate-btn" data-i18n="gateLogin" onclick="simulateLogin()">로그인 / 회원가입</button>
     </div>
   </div>
 
@@ -832,7 +832,7 @@ function navigateWithInterstitial(url){
     <div class="submit-success" id="submitSuccess">
       <div class="success-icon"><svg viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="30" stroke-width="2"/><polyline points="20 34 28 42 44 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
       <h2>SUBMITTED</h2>
-      <p data-i18n="successMsg">Your submission has been successfully received. Review results will be sent to your email.</p>
+      <p data-i18n="successMsg">서브미션이 성공적으로 접수되었습니다. 심사 결과는 이메일로 안내드리겠습니다.</p>
 
       <!-- SUBMISSION TIMELINE -->
       <div class="timeline-visual" style="max-width:500px;margin:28px auto">
@@ -947,15 +947,15 @@ function addModelRow(){
 var _curLang='ko';
 var _FT={
 ko:{
-  errorSummaryTitle:'Please check the following:',
-  genreError:'Please select at least one category.',
-  editorialTitle:{ph:'e.g. GAS',helper:'Please enter a title between 2 and 50 characters.',err:'Please enter the editorial title.',errLen:'Title must be between 2 and 50 characters.'},
-  studioName:{ph:'e.g. ThePinkBang Productions',helper:'Enter the name of your studio or production company.',err:'Please enter your production or studio name.'},
-  contactEmail:{ph:'e.g. hello@example.com',helper:'Please enter a valid email address.',err:'Please enter your email address.',errFmt:'Please enter a valid email address.'},
-  studioWebsite:{ph:'e.g. https://yourstudio.com',helper:'Include https:// in the URL.',err:'Website URL must start with https://'},
-  studioInsta:{ph:'e.g. @yourstudio',helper:'Please enter in @username format.',err:'Instagram username must start with @'},
-  artistStatement:{ph:'e.g. Briefly describe the concept, inspiration, and story behind your editorial.',helper:'Recommended length: 200–500 characters',err:'Please enter an artist statement.',errLen:'Please keep it under 500 characters.'},
-  copyrightConfirm:{text:'I confirm that I own the rights to the submitted content and that it does not infringe any third-party rights.',err:'Please confirm the copyright agreement.'}
+  errorSummaryTitle:'다음 항목을 확인해 주세요:',
+  genreError:'최소 1개 이상의 카테고리를 선택해 주세요.',
+  editorialTitle:{ph:'예: GAS',helper:'2~50자 범위의 제목을 입력해 주세요.',err:'에디토리얼 제목을 입력해 주세요.',errLen:'제목은 2~50자여야 합니다.'},
+  studioName:{ph:'예: ThePinkBang Productions',helper:'스튜디오 또는 제작사의 이름을 입력해 주세요.',err:'제작사 또는 스튜디오 이름을 입력해 주세요.'},
+  contactEmail:{ph:'예: hello@example.com',helper:'유효한 이메일 주소를 입력해 주세요.',err:'이메일 주소를 입력해 주세요.',errFmt:'올바른 이메일 형식으로 입력해 주세요.'},
+  studioWebsite:{ph:'예: https://yourstudio.com',helper:'URL에 https://을 포함해 주세요.',err:'웹사이트 URL은 https://로 시작해야 합니다.'},
+  studioInsta:{ph:'예: @yourstudio',helper:'@username 형식으로 입력해 주세요.',err:'Instagram 사용자명은 @로 시작해야 합니다.'},
+  artistStatement:{ph:'예: 에디토리얼의 컨셉, 영감, 스토리를 200~500자로 간략히 설명해 주세요.',helper:'권장 길이: 200~500자',err:'작품 설명을 입력해 주세요.',errLen:'500자 이내로 유지해 주세요.'},
+  copyrightConfirm:{text:'제출하는 콘텐츠의 저작권을 보유하고 있으며 제3자의 권리를 침해하지 않음을 확인합니다.',err:'저작권 동의를 확인해 주세요.'}
 },
 en:{
   errorSummaryTitle:'Please check the following:',
@@ -1447,7 +1447,7 @@ function simulateLogin(){
 
 // LANGUAGE (simplified - ko/en)
 var L={
-ko:{business:'BUSINESS',about:'ABOUT',contact:'CONTACT',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',pageDesc:'PAP 매거진에 에디토리얼을 제출하세요. 서브미션 유형을 선택하고, 작품 정보·팀 크레딧·룩별 의상 크레딧·고해상도 이미지를 제출해 주세요. MY SUBMISSIONS에서 실시간 심사 상태를 확인할 수 있습니다.',gateLogin:'로그인 / 회원가입',gateTitle:'회원 전용',gateDesc:'이 서비스는 무료 회원 이상만 이용할 수 있습니다.\n로그인하거나 회원가입 후 이용해 주세요.',successMsg:'서브미션이 성공적으로 접수되었습니다. 심사 결과는 이메일로 안내드리겠습니다.',ft:'<strong>주식회사 알타카파</strong> | CEO : 강동민 | 사업자번호 192-88-02644<br>서울특별시 강남구 논현로146길 18, 1F PAP 매거진 | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+ko:{business:'BUSINESS',about:'ABOUT',contact:'CONTACT',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',pageDesc:'PAP 매거진에 에디토리얼을 제출하세요. 서브미션 유형을 선택하고, 작품 정보·팀 크레딧·룩별 의상 크레딧·고해상도 이미지를 제출해 주세요. MY SUBMISSIONS에서 실시간 심사 상태를 확인할 수 있습니다.',gateLogin:'로그인 / 회원가입',gateTitle:'회원 전용',gateDesc:'이 서비스는 무료 회원 이상만 이용할 수 있습니다.\n로그인하거나 회원가입 후 이용해 주세요.',successMsg:'서브미션이 성공적으로 접수되었습니다. 심사 결과는 이메일로 안내드리겠습니다.',ft:'<strong>주식회사 알타카파</strong> | CEO : 강동민 | 사업자번호 192-88-02644<br>서울특별시 강남구 논현로146길 18, 1F | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
 en:{business:'BUSINESS',about:'ABOUT',contact:'CONTACT',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',pageDesc:'Submit your editorial to PAP Magazine. Choose your submission type, provide production info, team credits, look-by-look garment credits, and high-resolution images. Track your submission status in MY SUBMISSIONS.',gateLogin:'LOG IN / SIGN UP',gateTitle:'MEMBERS ONLY',gateDesc:'This service is available to registered members only.\nPlease log in or sign up to continue.',successMsg:'Your submission has been received successfully. Review results will be sent via email.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
 it:{business:'BUSINESS',about:'CHI SIAMO',contact:'CONTATTI',subscribe:'ABBONATI',submission:'SUBMISSION',pullletter:'PULL-LETTER',pageDesc:'Invia il tuo editoriale a PAP Magazine. Fornisci informazioni sulla produzione, crediti del team, crediti per look e immagini ad alta risoluzione.',gateLogin:'ACCEDI / REGISTRATI',gateTitle:'SOLO MEMBRI',gateDesc:'Questo servizio è disponibile solo per i membri registrati.',successMsg:'La tua submission è stata ricevuta. I risultati saranno inviati via email entro 1-3 giorni lavorativi.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | P. IVA: 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Corea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
 fr:{business:'BUSINESS',about:'À PROPOS',contact:'CONTACT',subscribe:"S'ABONNER",submission:'SOUMISSION',pullletter:'PULL-LETTER',pageDesc:'Soumettez votre éditorial à PAP Magazine. Fournissez les informations de production, crédits d\'équipe, crédits par look et images haute résolution.',gateLogin:'CONNEXION / INSCRIPTION',gateTitle:'RÉSERVÉ AUX MEMBRES',gateDesc:'Ce service est réservé aux membres inscrits.',successMsg:'Votre soumission a été reçue. Les résultats seront envoyés par email sous 1 à 3 jours ouvrés.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | PDG : Domenico Kang | N&#176; 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Séoul, Corée | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},

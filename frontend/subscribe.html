@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.portone.io; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co https://api.portone.io https://api.pap-magazine.com; frame-src https://service.portone.io;">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Subscribe to PAP Magazine. Be the first to explore editorials, films, articles, and more.">
+<meta name="description" content="PAP Magazine 멤버십 구독. 에디토리얼, 필름, 아티클 등 모든 콘텐츠를 가장 먼저 만나보세요.">
 <meta property="og:title" content="Subscribe | PAP Magazine">
-<meta property="og:description" content="Subscribe to PAP Magazine. Be the first to explore editorials, films, articles, and more.">
+<meta property="og:description" content="PAP Magazine 멤버십 구독. 에디토리얼, 필름, 아티클 등 모든 콘텐츠를 가장 먼저 만나보세요.">
 <meta property="og:image" content="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_0281a06055.jpg">
 <meta property="og:type" content="website">
 <link rel="canonical" href="https://pap-magazine.com/subscribe.html">
@@ -260,9 +260,9 @@ a{color:#fff;text-decoration:none}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </button>
       <div class="account-dropdown" id="accountDropdown" style="cursor:default">
-        <a href="auth.html" data-i18n="navLogin">LOG IN / SIGN UP</a>
+        <a href="auth.html" data-i18n="navLogin">로그인 / 회원가입</a>
         <div class="dropdown-divider"></div>
-        <a href="subscribe.html" data-i18n="subscribe">SUBSCRIBE</a>
+        <a href="subscribe.html" data-i18n="subscribe">구독하기</a>
       </div>
     </div>
   </div>
@@ -337,7 +337,7 @@ function _showBrandAdInterstitial(ad,callback){
   if(ad.link){mediaWrap.onclick=function(){window.open(ad.link,'_blank');};}
   overlay.appendChild(mediaWrap);
   var lang=localStorage.getItem('pap-lang')||'ko';
-  var skipTexts={ko:'Skip',en:'Skip',it:'Salta',fr:'Passer',es:'Saltar',ja:'スキップ',zh:'跳过'};
+  var skipTexts={ko:'건너뛰기',en:'Skip',it:'Salta',fr:'Passer',es:'Saltar',ja:'スキップ',zh:'跳过'};
   var skipLabel=skipTexts[lang]||skipTexts.en;
   var skip=document.createElement('button');
   skip.style.cssText='position:absolute;bottom:24px;right:24px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.55);font-size:11px;font-weight:600;letter-spacing:.1em;cursor:pointer;font-family:Montserrat,sans-serif;padding:8px 20px;border-radius:2px;transition:all .2s;z-index:2;';
@@ -349,7 +349,7 @@ function _showBrandAdInterstitial(ad,callback){
   skip.onclick=function(){closeAd();};
   overlay.appendChild(skip);
   var premBadge=document.createElement('a');premBadge.href='subscribe.html';
-  var premTexts={ko:'Go ad-free',en:'Go ad-free',it:'Senza pubblicità',fr:'Sans publicité',es:'Sin anuncios',ja:'広告なし',zh:'去除广告'};
+  var premTexts={ko:'광고 없이 즐기기',en:'Go ad-free',it:'Senza pubblicità',fr:'Sans publicité',es:'Sin anuncios',ja:'広告なし',zh:'去除广告'};
   premBadge.textContent=premTexts[lang]||premTexts.en;
   premBadge.style.cssText='position:absolute;bottom:26px;left:24px;font-size:10px;font-weight:600;letter-spacing:.08em;color:rgba(255,255,255,.3);text-decoration:none;font-family:Montserrat,sans-serif;transition:color .2s;z-index:2;';
   premBadge.onmouseover=function(){this.style.color='rgba(255,255,255,.7)';};
@@ -363,7 +363,7 @@ function _showBrandAdInterstitial(ad,callback){
 function _showPremiumUpsellInterstitial(callback){
   var lang=localStorage.getItem('pap-lang')||'ko';
   var texts={
-    ko:{tag:'SUBSCRIBE',title:'Enjoy all content\nwithout interruptions',desc:'Subscribe for unlimited access\nto editorials, magazines, and exclusive content.',btn:'Subscribe',skip:'Skip'},
+    ko:{tag:'SUBSCRIBE',title:'광고 없이\n모든 콘텐츠를 즐기세요',desc:'구독으로 에디토리얼, 매거진,\n독점 콘텐츠를 제한 없이 감상하세요.',btn:'구독하기',skip:'건너뛰기'},
     en:{tag:'SUBSCRIBE',title:'Enjoy all content\nwithout interruptions',desc:'Subscribe for unlimited access\nto editorials, magazines, and exclusive content.',btn:'Subscribe',skip:'Skip'},
     it:{tag:'SUBSCRIBE',title:'Goditi tutti i contenuti\nsenza interruzioni',desc:'Abbonati per accesso illimitato\na editoriali, riviste e contenuti esclusivi.',btn:'Abbonati',skip:'Salta'},
     fr:{tag:'SUBSCRIBE',title:'Profitez de tout le contenu\nsans interruption',desc:"Abonnez-vous pour un accès illimité\naux éditoriaux, magazines et contenus exclusifs.",btn:"S'abonner",skip:'Passer'},
@@ -410,17 +410,17 @@ function navigateWithInterstitial(url){
   <!-- HERO -->
   <div class="subscribe-hero">
     <h1 data-i18n="heroTitle">SUBSCRIBE</h1>
-    <p data-i18n="heroDesc">Standard members can browse the latest 100 editorials and download images. For full archive access, logo file downloads, Pull-Letter requests and more, upgrade to Premium.</p>
+    <p data-i18n="heroDesc">PAP 매거진의 구독 멤버가 되어 독점 에디토리얼, 서브미션 피드백, Pull-Letter 요청 등 다양한 프리미엄 혜택을 만나보세요.</p>
   </div>
 
   <!-- BILLING TOGGLE -->
   <div class="billing-toggle">
-    <span class="billing-label active" id="labelMonthly" data-i18n="monthly" onclick="setBilling('monthly')">MONTHLY</span>
+    <span class="billing-label active" id="labelMonthly" data-i18n="monthly" onclick="setBilling('monthly')">월간</span>
     <div class="toggle-track" id="billingToggle" onclick="toggleBilling()">
       <div class="toggle-knob"></div>
     </div>
-    <span class="billing-label" id="labelYearly" data-i18n="yearly" onclick="setBilling('yearly')">YEARLY</span>
-    <span class="billing-save" id="billingSave" data-i18n="save2mo">2 MONTHS FREE</span>
+    <span class="billing-label" id="labelYearly" data-i18n="yearly" onclick="setBilling('yearly')">연간</span>
+    <span class="billing-save" id="billingSave" data-i18n="save2mo">2개월 무료</span>
   </div>
 
   <!-- PRICING CARDS -->
@@ -431,9 +431,9 @@ function navigateWithInterstitial(url){
       <div class="plan-tier" data-i18n="tierFree">TIER 1</div>
       <div class="plan-name" data-i18n="planFreeName">FREE</div>
       <div class="plan-price-free" data-i18n="priceFree">₩0</div>
-      <div class="plan-desc" data-i18n="planFreeDesc">No sign-up required — browse freely</div>
+      <div class="plan-desc" data-i18n="planFreeDesc">PAP의 최신 콘텐츠를 무료로 만나보세요</div>
       <ul class="plan-features" id="featuresFree"></ul>
-      <button class="plan-cta" data-i18n="ctaFree" onclick="window.location.href='index.html'">Browse Now</button>
+      <button class="plan-cta" data-i18n="ctaFree" onclick="window.location.href='index.html'">둘러보기</button>
     </div>
 
     <!-- STANDARD -->
@@ -441,10 +441,10 @@ function navigateWithInterstitial(url){
       <div class="plan-tier" data-i18n="tierStandard">TIER 2</div>
       <div class="plan-name" data-i18n="planStdName">STANDARD</div>
       <div class="plan-original-price" id="stdOriginal"></div>
-      <div class="plan-price" id="stdPrice"><span class="currency">₩</span>8,500<span class="period" data-i18n="perMonth">/ mo</span></div>
-      <div class="plan-desc" data-i18n="planStdDesc">Latest 100 editorials + submission feedback & image downloads</div>
+      <div class="plan-price" id="stdPrice"><span class="currency">₩</span>8,500<span class="period" data-i18n="perMonth">/ 월</span></div>
+      <div class="plan-desc" data-i18n="planStdDesc">서브미션 피드백과 이미지 다운로드 혜택</div>
       <ul class="plan-features" id="featuresStd"></ul>
-      <button class="plan-cta" data-i18n="ctaStd" onclick="handleCta('standard')">Subscribe</button>
+      <button class="plan-cta" data-i18n="ctaStd" onclick="handleCta('standard')">구독하기</button>
     </div>
 
     <!-- PREMIUM -->
@@ -452,23 +452,23 @@ function navigateWithInterstitial(url){
       <div class="plan-tier" data-i18n="tierPremium">TIER 3</div>
       <div class="plan-name" data-i18n="planPremName">PREMIUM</div>
       <div class="plan-original-price" id="premOriginal"></div>
-      <div class="plan-price" id="premPrice"><span class="currency">₩</span>13,500<span class="period" data-i18n="perMonth">/ mo</span></div>
-      <div class="plan-desc" data-i18n="planPremDesc">All benefits + Pull-Letter request + full archive</div>
+      <div class="plan-price" id="premPrice"><span class="currency">₩</span>13,500<span class="period" data-i18n="perMonth">/ 월</span></div>
+      <div class="plan-desc" data-i18n="planPremDesc">모든 혜택 + Pull-Letter 요청 + 전체 아카이브</div>
       <ul class="plan-features" id="featuresPrem"></ul>
-      <button class="plan-cta" data-i18n="ctaPrem" onclick="handleCta('premium')">Subscribe</button>
+      <button class="plan-cta" data-i18n="ctaPrem" onclick="handleCta('premium')">구독하기</button>
     </div>
 
   </div>
 
   <!-- COMPARISON TABLE -->
   <div class="comparison-section">
-    <div class="comparison-title" data-i18n="compareTitle">COMPARE PLANS</div>
+    <div class="comparison-title" data-i18n="compareTitle">플랜 비교</div>
     <table class="comparison-table" id="comparisonTable"></table>
   </div>
 
   <!-- PAYMENT RECOMMENDATION -->
   <div class="payment-info">
-    <h3 data-i18n="paymentTitle">PAYMENT METHODS</h3>
+    <h3 data-i18n="paymentTitle">결제 수단</h3>
     <div class="payment-logos">
       <div class="payment-logo">VISA</div>
       <div class="payment-logo">MASTERCARD</div>
@@ -478,7 +478,7 @@ function navigateWithInterstitial(url){
       <div class="payment-logo">KAKAO PAY</div>
       <div class="payment-logo">NAVER PAY</div>
     </div>
-    <p class="payment-note" data-i18n="paymentNote">Pay securely from anywhere in the world. Subscriptions renew monthly and can be cancelled anytime.</p>
+    <p class="payment-note" data-i18n="paymentNote">전 세계 어디서나 안전하게 결제할 수 있습니다. 구독은 월 단위로 갱신되며, 언제든지 해지할 수 있습니다.</p>
   </div>
 
 </main>
@@ -508,61 +508,61 @@ var crossIcon = '<span class="icon cross"><svg viewBox="0 0 16 16" width="16" he
 var L = {
 ko: {
   business:'BUSINESS', contact:'CONTACT', about:'ABOUT', subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
-  monthly:'MONTHLY', yearly:'YEARLY', save2mo:'2 MONTHS FREE', perYear:'/ yr',
+  monthly:'월간', yearly:'연간', save2mo:'2개월 무료', perYear:'/ 연',
   heroTitle:'SUBSCRIBE',
-  heroDesc:'Standard members can browse the latest 100 editorials and download images. For full archive access, logo file downloads, Pull-Letter requests and more, upgrade to Premium.',
+  heroDesc:'스탠다드 멤버는 최신 100개 에디토리얼 열람과 이미지 다운로드가 가능합니다. 전체 아카이브 열람, 로고 파일 다운로드, Pull-Letter 요청 등 프리미엄 혜택이 필요하다면 프리미엄 멤버가 되어보세요.',
   tierFree:'TIER 1', tierStandard:'TIER 2', tierPremium:'TIER 3',
   planFreeName:'FREE', planStdName:'STANDARD', planPremName:'PREMIUM',
-  priceFree:'$0',
-  perMonth:'/ mo',
-  planFreeDesc:'No sign-up required — browse freely',
-  planStdDesc:'Latest 100 editorials + submission feedback & image downloads',
-  planPremDesc:'All benefits + Pull-Letter request + full archive',
-  badge:'RECOMMENDED',
-  ctaFree:'Browse Now', ctaStd:'Sign Up & Subscribe', ctaPrem:'Sign Up & Subscribe', ctaStdLoggedIn:'Subscribe', ctaPremLoggedIn:'Subscribe',
-  compareTitle:'COMPARE PLANS',
-  paymentTitle:'PAYMENT METHODS',
-  paymentNote:'Pay securely from anywhere in the world. Subscriptions renew monthly and can be cancelled anytime.',
+  priceFree:'₩0',
+  perMonth:'/ 월',
+  planFreeDesc:'회원가입 없이 자유롭게 이용 가능',
+  planStdDesc:'최신 100개 열람 + 서브미션 피드백 + 이미지 다운로드',
+  planPremDesc:'모든 혜택 + Pull-Letter 요청 + 전체 아카이브',
+  badge:'추천',
+  ctaFree:'둘러보기', ctaStd:'가입 후 구독하기', ctaPrem:'가입 후 구독하기', ctaStdLoggedIn:'구독하기', ctaPremLoggedIn:'구독하기',
+  compareTitle:'플랜 비교',
+  paymentTitle:'결제 수단',
+  paymentNote:'전 세계 어디서나 안전하게 결제할 수 있습니다. 구독은 월 단위로 갱신되며, 언제든지 해지할 수 있습니다.',
   features: {
     free: [
-      {on:true, text:'No sign-up required'},
-      {on:true, text:'View latest 10 editorials for free'},
-      {on:true, text:'Submit work'},
-      {on:false, text:'Ads included'},
-      {on:false, text:'No submission feedback'},
-      {on:false, text:'No Pull-Letter request'},
-      {on:false, text:'No logo image download'}
+      {on:true, text:'회원가입 없이 이용 가능'},
+      {on:true, text:'최신 10개 에디토리얼 무료 보기'},
+      {on:true, text:'서브미션 제출 가능'},
+      {on:false, text:'광고 포함'},
+      {on:false, text:'서브미션 피드백 불가'},
+      {on:false, text:'Pull-Letter 요청 불가'},
+      {on:false, text:'이미지 다운로드 불가'}
     ],
     std: [
-      {on:true, text:'View latest 200 editorials'},
-      {on:true, text:'Ad-free browsing'},
-      {on:true, text:'Submit work'},
-      {on:true, text:'Feedback on rejected submissions'},
-      {on:true, text:'Download images with logo'},
-      {on:false, text:'No Pull-Letter request'}
+      {on:true, text:'최신 200개 에디토리얼 보기'},
+      {on:true, text:'광고 없는 콘텐츠 이용'},
+      {on:true, text:'서브미션 제출 가능'},
+      {on:true, text:'서브미션 탈락 시 피드백 제공'},
+      {on:true, text:'이미지 다운로드'},
+      {on:false, text:'Pull-Letter 요청 불가'}
     ],
     prem: [
-      {on:true, text:'View all editorials (full archive)'},
-      {on:true, text:'Ad-free browsing'},
-      {on:true, text:'Submit work'},
-      {on:true, text:'Feedback on rejected submissions'},
-      {on:true, text:'Pull-Letter request'},
-      {on:true, text:'Download images with logo'}
+      {on:true, text:'모든 에디토리얼 보기 (전체 아카이브)'},
+      {on:true, text:'광고 없는 콘텐츠 이용'},
+      {on:true, text:'서브미션 제출 가능'},
+      {on:true, text:'서브미션 탈락 시 피드백 제공'},
+      {on:true, text:'Pull-Letter 요청 가능'},
+      {on:true, text:'이미지 다운로드'}
     ]
   },
   comparison: {
-    headers: ['Feature','FREE','STANDARD','PREMIUM'],
+    headers: ['기능','FREE','STANDARD','PREMIUM'],
     rows: [
-      ['Sign-up required','No','Yes','Yes'],
-      ['Editorial access','Latest 10','Latest 200','Full archive'],
-      ['Ad-free browsing',false,true,true],
-      ['Submit work',true,true,true],
-      ['Submission feedback',false,true,true],
-      ['Pull-Letter request',false,false,true],
-      ['Logo image download',false,true,true]
+      ['회원가입','불필요','필요','필요'],
+      ['에디토리얼 열람','최신 10개','최신 200개','전체'],
+      ['광고 없는 이용',false,true,true],
+      ['서브미션 제출',true,true,true],
+      ['서브미션 피드백',false,true,true],
+      ['Pull-Letter 요청',false,false,true],
+      ['이미지 다운로드',false,true,true]
     ]
   },
-  ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'
+  ft:'<strong>주식회사 알타카파</strong> | CEO : 강동민 | 사업자번호 192-88-02644<br>서울특별시 강남구 논현로146길 18, 1F PAP 매거진 | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'
 },
 en: {
   business:'BUSINESS', contact:'CONTACT', about:'ABOUT', subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
