@@ -306,8 +306,11 @@ function isStandardOrAbove(){try{var u=localStorage.getItem('pap-user');if(!u)re
 function isLoggedIn(){return !!localStorage.getItem('pap-token');}
 
 // ======== INTERSTITIAL AD + PREMIUM UPSELL ========
-var _interstitialCount = 0;
-var _INTERSTITIAL_MAX = 2; // max per session
+var _interstitialCount = 0;   // 실제 광고 노출 횟수
+var _navClickCount = 0;       // 에디토리얼 클릭 횟수
+var _INTERSTITIAL_MAX = 5;    // 세션당 최대 광고 노출
+var _INTERSTITIAL_FREE = 2;   // 처음 N번 클릭은 광고 없이 자유 탐색
+var _INTERSTITIAL_INTERVAL = 3; // 이후 N번 클릭마다 1회 광고 노출
 
 // ---- BRAND AD CONFIGURATION ----
 // To add a brand ad, add an object to this array.
@@ -345,6 +348,13 @@ function showPremiumInterstitial(callback){
   if(isStandardOrAbove()){ if(callback) callback(); return; }
   // Session limit
   if(_interstitialCount >= _INTERSTITIAL_MAX){ if(callback) callback(); return; }
+  // Count navigation clicks
+  _navClickCount++;
+  // First N clicks: free browsing (no ads)
+  if(_navClickCount <= _INTERSTITIAL_FREE){ if(callback) callback(); return; }
+  // After free period: show ad every N clicks
+  var clicksSinceFree = _navClickCount - _INTERSTITIAL_FREE;
+  if(clicksSinceFree % _INTERSTITIAL_INTERVAL !== 0){ if(callback) callback(); return; }
   _interstitialCount++;
 
   var brandAd = _getNextBrandAd();
@@ -425,15 +435,19 @@ function _showBrandAdInterstitial(ad, callback){
   skip.onclick = function(){ closeAd(); };
   overlay.appendChild(skip);
 
-  // Premium badge (bottom left)
+  // Premium upsell (below skip button area)
+  var premWrap = document.createElement('div');
+  premWrap.style.cssText = 'position:absolute;bottom:24px;left:50%;transform:translateX(-50%);text-align:center;z-index:2;';
+
   var premBadge = document.createElement('a');
   premBadge.href = 'subscribe.html';
-  var premTexts = { ko:'광고 없이 즐기기', en:'Go ad-free', it:'Senza pubblicità', fr:'Sans publicité', es:'Sin anuncios', ja:'広告なし', zh:'去除广告' };
+  var premTexts = { ko:'Premium 구독으로 광고 없이 이용하기 →', en:'Subscribe to Premium for ad-free →', it:'Abbonati a Premium senza pubblicità →', fr:'Abonnez-vous Premium sans pub →', es:'Suscríbete a Premium sin anuncios →', ja:'Premiumで広告なし →', zh:'订阅Premium去除广告 →' };
   premBadge.textContent = premTexts[lang] || premTexts.en;
-  premBadge.style.cssText = 'position:absolute;bottom:26px;left:24px;font-size:10px;font-weight:600;letter-spacing:.08em;color:rgba(255,255,255,.3);text-decoration:none;font-family:Montserrat,sans-serif;transition:color .2s;z-index:2;';
-  premBadge.onmouseover = function(){ this.style.color='rgba(255,255,255,.7)'; };
-  premBadge.onmouseout = function(){ this.style.color='rgba(255,255,255,.3)'; };
-  overlay.appendChild(premBadge);
+  premBadge.style.cssText = 'font-size:11px;font-weight:600;letter-spacing:.05em;color:rgba(255,255,255,.45);text-decoration:none;font-family:Montserrat,sans-serif;transition:all .2s;border-bottom:1px solid rgba(255,255,255,.15);padding-bottom:2px;';
+  premBadge.onmouseover = function(){ this.style.color='rgba(255,255,255,.85)'; this.style.borderBottomColor='rgba(255,255,255,.5)'; };
+  premBadge.onmouseout = function(){ this.style.color='rgba(255,255,255,.45)'; this.style.borderBottomColor='rgba(255,255,255,.15)'; };
+  premWrap.appendChild(premBadge);
+  overlay.appendChild(premWrap);
 
   document.body.appendChild(overlay);
   lockScroll();
