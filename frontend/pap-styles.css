@@ -90,7 +90,7 @@ button{cursor:pointer;font-family:inherit}
 .account-dropdown .dropdown-divider{height:1px;background:rgba(255,255,255,.08);margin:6px 0}
 
 /* TERMS & PRIVACY OVERLAY PAGES */
-.page-overlay{position:fixed;inset:0;z-index:3000;background:var(--bg);overflow-y:auto;opacity:0;;transition:opacity .3s}
+.page-overlay{position:fixed;inset:0;z-index:3000;background:var(--bg);overflow-y:auto;opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s}
 .page-overlay.active{opacity:1;visibility:visible}
 .page-overlay .page-header{position:sticky;top:0;background:rgba(0,0,0,.97);backdrop-filter:blur(12px);padding:0 40px;display:flex;align-items:center;justify-content:center;height:64px;z-index:10}
 .page-overlay .page-header a{color:#fff;font-size:13px;font-weight:700;letter-spacing:.15em;text-transform:uppercase}
@@ -133,7 +133,7 @@ button{cursor:pointer;font-family:inherit}
 .search-no-result{color:rgba(255,255,255,.5);font-size:13px;letter-spacing:.05em;padding:12px 0}
 
 /* MOBILE NAV OVERLAY */
-.nav-overlay{position:fixed;inset:0;z-index:1500;background:#fff;opacity:0;;transition:opacity .4s cubic-bezier(.23,1,.32,1),visibility .4s}
+.nav-overlay{position:fixed;inset:0;z-index:1500;background:#fff;opacity:0;visibility:hidden;transition:opacity .4s cubic-bezier(.23,1,.32,1),visibility .4s}
 .nav-overlay.active{opacity:1;visibility:visible}
 .nav-overlay-inner{display:flex;width:100%;height:100%;padding:80px 60px 60px}
 .nav-left-col{display:flex;flex-direction:column;justify-content:space-between;width:280px;flex-shrink:0;transform:translateX(-40px);opacity:0;transition:transform .3s cubic-bezier(.23,1,.32,1),opacity .3s cubic-bezier(.23,1,.32,1)}
@@ -402,7 +402,7 @@ button{cursor:pointer;font-family:inherit}
 .ed-cred-val a:hover{text-decoration:underline}
 
 /* CREATOR PROFILE POPUP */
-.creator-popup-overlay{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;opacity:0;;transition:opacity .3s,visibility .3s}
+.creator-popup-overlay{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s}
 .creator-popup-overlay.active{opacity:1;visibility:visible}
 .creator-popup{background:#0a0a0a;border:1px solid rgba(255,255,255,.12);max-width:680px;width:92%;max-height:85vh;overflow-y:auto;position:relative}
 .creator-popup-close{position:absolute;top:16px;right:20px;background:none;border:none;color:rgba(255,255,255,.4);font-size:24px;cursor:pointer;z-index:2;transition:color .2s}
@@ -888,7 +888,7 @@ button{cursor:pointer;font-family:inherit}
 .sr.v{opacity:1;transform:translateY(0)}
 
 /* SIGNUP POPUP */
-.signup-popup-overlay{position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;opacity:0;;transition:opacity .4s,visibility .4s}
+.signup-popup-overlay{position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transition:opacity .4s,visibility .4s}
 .signup-popup-overlay.active{opacity:1;visibility:visible}
 .signup-popup{background:#000;border:1px solid rgba(255,255,255,.15);padding:48px 40px;max-width:440px;width:90%;text-align:center;position:relative;animation:popIn .4s ease both}
 @keyframes popIn{from{opacity:0;transform:scale(.95) translateY(12px)}to{opacity:1;transform:scale(1) translateY(0)}}
