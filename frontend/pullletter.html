@@ -150,7 +150,7 @@ select.form-input option{background:#111;color:#fff}
   .footer-legal{margin-left:60px;padding:20px 20px}
 }
 /* HIDE OLD NAV — unified header active */
-.side-nav{display:none!important}
+/* side-nav restored */
 .lang-selector{display:none!important}
 .content{margin-left:0!important;padding-top:100px!important}
 .footer-legal{margin-left:0!important}
@@ -415,7 +415,7 @@ function navigateWithInterstitial(url){
     <div class="access-gate" id="accessGate">
       <h2 data-i18n="gateTitle">PREMIUM 회원 전용</h2>
       <p data-i18n="gateDesc">이 서비스는 Premium 구독 회원만 이용할 수 있습니다.</p>
-      <div class="tier-info" data-i18n="gateTier">Premium 플랜: ₩13,500/월 · 연간 ₩135,000</div>
+      <div class="tier-info" data-i18n="gateTier" style="display:none"></div>
       <div>
         <button class="gate-btn" data-i18n="gateLogin" onclick="simulateLogin()">로그인</button>
         <button class="gate-btn primary" data-i18n="gateUpgrade" onclick="location.href='subscribe.html'">Premium 구독하기</button>
