@@ -1595,9 +1595,12 @@ function scrollFilm(dir){
     }
   }, {passive: true});
 
-  // Initial position
+  // Initial position — also serves as re-initialization when navigating back to main
   window.addEventListener('load', function(){
-    const hp = getHeaderLogoPos();
+    fLogo.style.display = ''; // ensure logo is visible
+    fLogo.style.opacity = '1';
+    fLogo.classList.add('in-header');
+    var hp = getHeaderLogoPos();
     fLogo.style.left = hp.x + 'px';
     fLogo.style.top = hp.y + 'px';
     fLogo.style.transform = 'translate(-50%,-50%)';
@@ -1635,10 +1638,9 @@ function scrollFilm(dir){
   }
 
   window.addEventListener('pageshow', function(e){
-    if(e.persisted){
-      // Page restored from bfcache — reset cursor to header
-      _resetFloatingLogoToHeader();
-    }
+    // ALWAYS reset cursor on pageshow — whether from bfcache or normal navigation
+    // This fixes the bug where custom cursor disappears after returning from sub-pages
+    _resetFloatingLogoToHeader();
   });
 
   // When the tab regains visibility, re-sync logo position (header may have
@@ -1653,6 +1655,15 @@ function scrollFilm(dir){
 
   // Expose reset for external callers (e.g. _resetCursorForModal)
   window._papResetFloatingLogo = _resetFloatingLogoToHeader;
+
+  // Extra safety: also reset on DOMContentLoaded in case load already fired
+  if(document.readyState === 'complete' || document.readyState === 'interactive'){
+    _resetFloatingLogoToHeader();
+  } else {
+    document.addEventListener('DOMContentLoaded', function(){
+      _resetFloatingLogoToHeader();
+    });
+  }
 
   // ======== PAP PONG GAME (double-click on header logo) ========
   var gameActive = false;
