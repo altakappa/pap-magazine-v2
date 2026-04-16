@@ -28,12 +28,15 @@ button{cursor:pointer;font-family:inherit}
 .header-left-item{background:none;border:none;padding:4px;display:inline-flex;align-items:center;justify-content:center;color:rgba(255,255,255,.4);text-decoration:none;transition:color .2s}
 .header-left-item:hover{color:#fff}
 .header-left-item svg{width:20px;height:20px}
-.hamburger{background:none;border:none;display:flex;flex-direction:column;gap:6px;padding:12px 12px;cursor:pointer;position:relative;z-index:2000}
-.hamburger span{display:block;width:24px;height:2px;background:#fff;transition:transform .3s ease, opacity .3s ease}
+.hamburger{background:none;border:none;display:flex;align-items:center;justify-content:center;padding:12px;cursor:pointer;position:relative;z-index:2000;width:48px;height:48px}
+.hamburger span{display:block;width:24px;height:2px;background:#fff;border-radius:1px;position:absolute;transform-origin:center center;transition:transform .4s cubic-bezier(.23,1,.32,1),opacity .25s ease,background .4s ease}
+.hamburger span:nth-child(1){transform:translateY(-8px)}
+.hamburger span:nth-child(2){transform:translateY(0)}
+.hamburger span:nth-child(3){transform:translateY(8px)}
 .hamburger.is-active span{background:#000}
-.hamburger.is-active span:nth-child(1){transform:translateY(8px) rotate(45deg)}
-.hamburger.is-active span:nth-child(2){opacity:0}
-.hamburger.is-active span:nth-child(3){transform:translateY(-8px) rotate(-45deg)}
+.hamburger.is-active span:nth-child(1){transform:translateY(0) rotate(45deg)}
+.hamburger.is-active span:nth-child(2){opacity:0;transform:scaleX(0)}
+.hamburger.is-active span:nth-child(3){transform:translateY(0) rotate(-45deg)}
 .logo-wrap{position:absolute;left:50%;transform:translateX(-50%)}
 .logo-wrap img{height:32px;width:auto;visibility:hidden}
 
@@ -816,6 +819,10 @@ button{cursor:pointer;font-family:inherit}
 @media(max-width:320px){
   .header{height:48px;padding:0 8px}
   .hamburger span{width:20px}
+  .hamburger span:nth-child(1){transform:translateY(-6px)}
+  .hamburger span:nth-child(3){transform:translateY(6px)}
+  .hamburger.is-active span:nth-child(1){transform:translateY(0) rotate(45deg)}
+  .hamburger.is-active span:nth-child(3){transform:translateY(0) rotate(-45deg)}
   .hero{margin-top:48px;height:60vh}
   .hero-title{font-size:1.1rem}
   .hero-content{left:10px;bottom:16px}
