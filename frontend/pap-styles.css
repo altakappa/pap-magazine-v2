@@ -122,10 +122,11 @@ button{cursor:pointer;font-family:inherit}
 .search-bar-close{background:none;border:none;font-size:22px;color:var(--text);padding:0 4px;line-height:1;cursor:pointer;flex-shrink:0;font-weight:700}
 
 /* MOBILE NAV OVERLAY */
-.nav-overlay{position:fixed;inset:0;z-index:1500;background:#fff;opacity:0;visibility:hidden;transition:all .3s}
+.nav-overlay{position:fixed;inset:0;z-index:1500;background:#fff;opacity:0;visibility:hidden;transition:opacity .4s cubic-bezier(.23,1,.32,1),visibility .4s}
 .nav-overlay.active{opacity:1;visibility:visible}
 .nav-overlay-inner{display:flex;width:100%;height:100%;padding:80px 60px 60px}
-.nav-left-col{display:flex;flex-direction:column;justify-content:space-between;width:280px;flex-shrink:0}
+.nav-left-col{display:flex;flex-direction:column;justify-content:space-between;width:280px;flex-shrink:0;transform:translateX(-40px);opacity:0;transition:transform .3s cubic-bezier(.23,1,.32,1),opacity .3s cubic-bezier(.23,1,.32,1)}
+.nav-overlay.active .nav-left-col{transform:translateX(0);opacity:1;transition:transform .5s cubic-bezier(.23,1,.32,1) .15s,opacity .5s cubic-bezier(.23,1,.32,1) .15s}
 .nav-left-top{margin-bottom:auto}
 .nav-left-top a{font-family:'Montserrat',var(--sans);font-size:clamp(18px,2.5vw,24px);font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#000;transition:opacity .2s}
 .nav-left-top a:hover{opacity:.4}
@@ -139,7 +140,8 @@ button{cursor:pointer;font-family:inherit}
 .nav-socials{display:flex;flex-direction:row;gap:12px;align-items:center}
 .nav-social-icon{display:block;transition:opacity .2s}
 .nav-social-icon:hover{opacity:.5}
-.nav-right-col{flex:1;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:0}
+.nav-right-col{flex:1;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:0;transform:translateX(40px);opacity:0;transition:transform .3s cubic-bezier(.23,1,.32,1),opacity .3s cubic-bezier(.23,1,.32,1)}
+.nav-overlay.active .nav-right-col{transform:translateX(0);opacity:1;transition:transform .5s cubic-bezier(.23,1,.32,1) .25s,opacity .5s cubic-bezier(.23,1,.32,1) .25s}
 .nav-right-col a{font-family:'Montserrat',var(--sans);font-size:clamp(40px,7vw,90px);font-weight:900;letter-spacing:.03em;text-transform:uppercase;color:#000;line-height:1.1;transition:opacity .2s}
 .nav-right-col a:hover{opacity:.4}
 .nav-close{position:absolute;top:20px;left:24px;z-index:1600;background:none;border:none;font-size:0;cursor:pointer;width:36px;height:36px;display:flex;align-items:center;justify-content:center;padding:0}
