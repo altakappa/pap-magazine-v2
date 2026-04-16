@@ -2165,15 +2165,25 @@ function _resetCursorForModal(){
 }
 
 // ======== SIGNUP POPUP ========
-// Priority: cookie consent MUST be resolved before showing signup popup.
+// STRICT PRIORITY: cookie consent MUST be resolved before showing signup popup.
+// Cookie popup → wait for user action → THEN show signup popup.
 // Uses papCookieConsent.onResolve() from cookie-consent.js to wait.
 (function(){
   var shown = sessionStorage.getItem('pap-signup-shown');
   if(shown) return;
 
   function _showSignupPopup(){
+    // Double-check: never show signup popup while cookie banner is still visible
+    var cookieBanner = document.getElementById('cookieConsent');
+    if(cookieBanner){
+      // Cookie banner still on screen — wait and retry
+      setTimeout(_showSignupPopup, 500);
+      return;
+    }
     setTimeout(function(){
       try{
+        // Final guard: check again before showing
+        if(document.getElementById('cookieConsent')) return;
         var el=document.getElementById('signupPopup');
         if(el){
           el.classList.add('active');

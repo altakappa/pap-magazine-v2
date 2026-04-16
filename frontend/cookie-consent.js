@@ -49,6 +49,7 @@
   };
 
   function _fireResolved(val){
+    if(window.papCookieConsent.resolved) return; // prevent double fire
     window.papCookieConsent.resolved=true;
     window.papCookieConsent.value=val;
     for(var i=0;i<_callbacks.length;i++) try{_callbacks[i](val);}catch(e){}
@@ -81,7 +82,7 @@
     var style=document.createElement('style');
     style.id='pap-cc-styles';
     style.textContent=[
-      '#cookieConsent{position:fixed;bottom:0;left:0;right:0;z-index:10000;background:rgba(0,0,0,.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:20px 24px;border-top:1px solid rgba(255,255,255,.1);font-family:"Montserrat",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;animation:ccSlideUp .4s ease;box-sizing:border-box}',
+      '#cookieConsent{position:fixed;bottom:0;left:0;right:0;z-index:10000;background:rgba(0,0,0,.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:20px 24px;border-top:1px solid rgba(255,255,255,.1);font-family:"Montserrat",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;animation:ccSlideUp .4s ease forwards;box-sizing:border-box;opacity:1;visibility:visible}',
       '#cookieConsent *{box-sizing:border-box}',
       '#cookieConsent.cc-hide{animation:ccSlideDown .4s ease forwards}',
       '#cookieConsent .cc-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:24px;flex-wrap:wrap}',
@@ -142,11 +143,43 @@
       closeBanner();
       _fireResolved('rejected');
     });
+
+    // Safety: ensure banner stays visible until user acts
+    // Periodically check if banner was accidentally removed or hidden
+    var _guardTimer = setInterval(function(){
+      var el = document.getElementById('cookieConsent');
+      if(!el){
+        // Banner was removed without user action — re-show it
+        if(!getConsent()){
+          clearInterval(_guardTimer);
+          showBanner();
+        } else {
+          clearInterval(_guardTimer);
+        }
+        return;
+      }
+      // Ensure banner remains visible (guard against CSS/JS interference)
+      if(el.style.display === 'none' || el.style.visibility === 'hidden' || el.style.opacity === '0'){
+        if(!el.classList.contains('cc-hide')){
+          el.style.display = '';
+          el.style.visibility = 'visible';
+          el.style.opacity = '1';
+        }
+      }
+    }, 1000);
+
+    // Store guard timer reference for cleanup
+    wrap._guardTimer = _guardTimer;
   }
 
   function closeBanner(){
     var el=document.getElementById('cookieConsent');
-    if(el){ el.classList.add('cc-hide'); setTimeout(function(){el.remove();},400); }
+    if(el){
+      // Clear the guard timer
+      if(el._guardTimer) clearInterval(el._guardTimer);
+      el.classList.add('cc-hide');
+      setTimeout(function(){el.remove();},400);
+    }
   }
 
   /* ── init ─────────────────────────────────────────── */
