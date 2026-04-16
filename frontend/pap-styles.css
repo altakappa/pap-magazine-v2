@@ -15,7 +15,7 @@ button{cursor:pointer;font-family:inherit}
 
 /* LOADER */
 .loader{position:fixed;inset:0;background:var(--black);z-index:9999;display:flex;align-items:center;justify-content:center;transition:opacity .6s,visibility .6s;overflow:hidden}
-.loader.hidden{opacity:0;visibility:hidden;pointer-events:none}
+.loader.hidden{opacity:0;;pointer-events:none}
 .loader-bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transition:opacity .8s ease}
 .loader-bg.loaded{opacity:1}
 .loader-bg::after{content:'';position:absolute;inset:0;background:rgba(0,0,0,.45)}
@@ -38,7 +38,7 @@ button{cursor:pointer;font-family:inherit}
 .hamburger.is-active span:nth-child(2){opacity:0;transform:scaleX(0)}
 .hamburger.is-active span:nth-child(3){transform:translateY(0) rotate(-45deg)}
 .logo-wrap{position:absolute;left:50%;transform:translateX(-50%)}
-.logo-wrap img{height:32px;width:auto;visibility:hidden}
+.logo-wrap img{height:32px;width:auto}
 
 /* FLOATING CURSOR LOGO */
 .floating-logo{position:fixed;z-index:1100;pointer-events:none;transition:none;will-change:transform,left,top}
@@ -83,14 +83,14 @@ button{cursor:pointer;font-family:inherit}
 
 /* ACCOUNT DROPDOWN */
 .auth-btn-wrap{position:relative;display:inline-flex}
-.account-dropdown{position:absolute;top:calc(100% + 12px);right:0;min-width:180px;background:#111;border:1px solid rgba(255,255,255,.1);border-radius:4px;padding:8px 0;opacity:0;visibility:hidden;transform:translateY(-8px);transition:all .25s cubic-bezier(.25,.46,.45,.94);z-index:2000;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+.account-dropdown{position:absolute;top:calc(100% + 12px);right:0;min-width:180px;background:#111;border:1px solid rgba(255,255,255,.1);border-radius:4px;padding:8px 0;opacity:0;;transform:translateY(-8px);transition:all .25s cubic-bezier(.25,.46,.45,.94);z-index:2000;box-shadow:0 8px 32px rgba(0,0,0,.5)}
 .account-dropdown.active{opacity:1;visibility:visible;transform:translateY(0)}
 .account-dropdown a,.account-dropdown button{display:block;width:100%;padding:10px 20px;font-size:11px;font-weight:600;letter-spacing:.1em;color:rgba(255,255,255,.7);text-decoration:none;text-align:left;background:none;border:none;cursor:pointer;font-family:inherit;transition:color .2s,background .2s}
 .account-dropdown a:hover,.account-dropdown button:hover{color:#fff;background:rgba(255,255,255,.05)}
 .account-dropdown .dropdown-divider{height:1px;background:rgba(255,255,255,.08);margin:6px 0}
 
 /* TERMS & PRIVACY OVERLAY PAGES */
-.page-overlay{position:fixed;inset:0;z-index:3000;background:var(--bg);overflow-y:auto;opacity:0;visibility:hidden;transition:opacity .3s}
+.page-overlay{position:fixed;inset:0;z-index:3000;background:var(--bg);overflow-y:auto;opacity:0;;transition:opacity .3s}
 .page-overlay.active{opacity:1;visibility:visible}
 .page-overlay .page-header{position:sticky;top:0;background:rgba(0,0,0,.97);backdrop-filter:blur(12px);padding:0 40px;display:flex;align-items:center;justify-content:center;height:64px;z-index:10}
 .page-overlay .page-header a{color:#fff;font-size:13px;font-weight:700;letter-spacing:.15em;text-transform:uppercase}
@@ -133,7 +133,7 @@ button{cursor:pointer;font-family:inherit}
 .search-no-result{color:rgba(255,255,255,.5);font-size:13px;letter-spacing:.05em;padding:12px 0}
 
 /* MOBILE NAV OVERLAY */
-.nav-overlay{position:fixed;inset:0;z-index:1500;background:#fff;opacity:0;visibility:hidden;transition:opacity .4s cubic-bezier(.23,1,.32,1),visibility .4s}
+.nav-overlay{position:fixed;inset:0;z-index:1500;background:#fff;opacity:0;;transition:opacity .4s cubic-bezier(.23,1,.32,1),visibility .4s}
 .nav-overlay.active{opacity:1;visibility:visible}
 .nav-overlay-inner{display:flex;width:100%;height:100%;padding:80px 60px 60px}
 .nav-left-col{display:flex;flex-direction:column;justify-content:space-between;width:280px;flex-shrink:0;transform:translateX(-40px);opacity:0;transition:transform .3s cubic-bezier(.23,1,.32,1),opacity .3s cubic-bezier(.23,1,.32,1)}
@@ -145,6 +145,7 @@ button{cursor:pointer;font-family:inherit}
 .nav-left-links a{font-family:'Montserrat',var(--sans);font-size:clamp(18px,2.5vw,24px);font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#000;transition:opacity .2s}
 .nav-left-links a:hover{opacity:.4}
 .nav-left-links.nav-extra-links{margin-bottom:32px!important}
+.nav-left-links.nav-extra-links a{font-size:clamp(10px,1.25vw,13px)!important;font-weight:700}
 .nav-left-links.nav-extra-links a:hover{opacity:.4}
 .nav-bottom-row{display:flex;align-items:center;gap:16px}
 .nav-left-dots{width:40px;height:40px;border-radius:50%;border:1.5px solid rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .4s cubic-bezier(.4,0,.2,1);flex-shrink:0}
@@ -401,7 +402,7 @@ button{cursor:pointer;font-family:inherit}
 .ed-cred-val a:hover{text-decoration:underline}
 
 /* CREATOR PROFILE POPUP */
-.creator-popup-overlay{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s}
+.creator-popup-overlay{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;opacity:0;;transition:opacity .3s,visibility .3s}
 .creator-popup-overlay.active{opacity:1;visibility:visible}
 .creator-popup{background:#0a0a0a;border:1px solid rgba(255,255,255,.12);max-width:680px;width:92%;max-height:85vh;overflow-y:auto;position:relative}
 .creator-popup-close{position:absolute;top:16px;right:20px;background:none;border:none;color:rgba(255,255,255,.4);font-size:24px;cursor:pointer;z-index:2;transition:color .2s}
@@ -427,7 +428,7 @@ button{cursor:pointer;font-family:inherit}
 .creator-work-date{font-size:9px;color:rgba(255,255,255,.65);margin-top:2px}
 
 /* EDITORIAL DETAIL OVERLAY */
-.ed-overlay{position:fixed;inset:0;z-index:3000;background:#000;overflow-y:auto;opacity:0;visibility:hidden;transition:opacity .3s}
+.ed-overlay{position:fixed;inset:0;z-index:3000;background:#000;overflow-y:auto;opacity:0;;transition:opacity .3s}
 .ed-overlay.active{opacity:1;visibility:visible}
 .ed-overlay-close{position:fixed;top:20px;left:20px;z-index:3001;width:36px;height:36px;background:none;border:none;color:#fff;font-size:28px;cursor:pointer;z-index:3002;display:flex;align-items:center;justify-content:center}
 .ed-overlay-close:hover{opacity:.6}
@@ -887,7 +888,7 @@ button{cursor:pointer;font-family:inherit}
 .sr.v{opacity:1;transform:translateY(0)}
 
 /* SIGNUP POPUP */
-.signup-popup-overlay{position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transition:opacity .4s,visibility .4s}
+.signup-popup-overlay{position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;opacity:0;;transition:opacity .4s,visibility .4s}
 .signup-popup-overlay.active{opacity:1;visibility:visible}
 .signup-popup{background:#000;border:1px solid rgba(255,255,255,.15);padding:48px 40px;max-width:440px;width:90%;text-align:center;position:relative;animation:popIn .4s ease both}
 @keyframes popIn{from{opacity:0;transform:scale(.95) translateY(12px)}to{opacity:1;transform:scale(1) translateY(0)}}
