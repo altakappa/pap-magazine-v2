@@ -82,11 +82,11 @@ if(hSlides.length)setInterval(()=>heroGo(hCur+1),3000);
 // ======== LANG HELPER ========
 function getLangText(key,fallback){var lang=localStorage.getItem('pap-lang')||'ko';var msgs={edAccessFree:{ko:'에디토리얼 전체보기는 스탠다드 이상 회원만 이용 가능합니다.',en:'Standard membership or above is required to browse all editorials.',it:'Per accedere a tutti gli editoriali è necessario un abbonamento Standard o superiore.',fr:'Un abonnement Standard ou supérieur est requis pour parcourir tous les éditoriaux.',es:'Se requiere una membresía Estándar o superior para ver todos los editoriales.',ja:'全エディトリアルの閲覧にはスタンダード以上の会員登録が必要です。',zh:'浏览所有社论需要标准会员或以上。',ru:'Для просмотра всех редакционных материалов требуется подписка Standard или выше.'}};var m=msgs[key];if(!m)return fallback||'';return m[lang]||m.en||fallback||'';}
 
-function toggleSearch(){const o=document.getElementById('searchBar');if(!o)return;o.classList.toggle('active');if(o.classList.contains('active'))setTimeout(()=>document.getElementById('searchInput').focus(),300)}
+function toggleSearch(){const o=document.getElementById('searchBar');if(!o)return;o.classList.toggle('active');if(o.classList.contains('active')){setTimeout(()=>{var si=document.getElementById('searchInput');if(si)si.focus();},300);}else{var dd=document.getElementById('searchDropdown');if(dd)dd.classList.remove('active');var si=document.getElementById('searchInput');if(si)si.value='';}}
 function toggleAccountMenu(e){if(e)e.stopPropagation();var d=document.getElementById('accountDropdown');if(!d)return;d.classList.toggle('active');var fL=document.getElementById('floatingLogo');if(d.classList.contains('active')){if(fL)fL.style.display='none';setTimeout(function(){document.addEventListener('click',_closeAcct)},10)}else{if(fL)fL.style.display='';document.removeEventListener('click',_closeAcct)}}
 function _closeAcct(e){var d=document.getElementById('accountDropdown');if(d&&!d.contains(e.target)){d.classList.remove('active');var fL=document.getElementById('floatingLogo');if(fL)fL.style.display='';document.removeEventListener('click',_closeAcct)}}
 var _si=document.getElementById('searchInput');if(_si)_si.addEventListener('input',function(){searchEditorials(this.value);});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'||e.key==='Backspace'){var isInput=e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.isContentEditable;if(e.key==='Backspace'&&isInput)return;var _sb=document.getElementById('searchBar');if(_sb)_sb.classList.remove('active');var _ad=document.getElementById('accountDropdown');if(_ad)_ad.classList.remove('active');closeNav();var edOv=document.getElementById('edOverlay');if(edOv&&edOv.classList.contains('active')){closeEditorial();e.preventDefault();return;}closeAllEditorials();closeAllFilms();closeAllArticles();if(document.getElementById('filmDetailOverlay'))document.getElementById('filmDetailOverlay').classList.remove('active');if(document.getElementById('artDetailOverlay'))document.getElementById('artDetailOverlay').classList.remove('active');if(e.key==='Backspace')e.preventDefault();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'||e.key==='Backspace'){var isInput=e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.isContentEditable;if(e.key==='Backspace'&&isInput)return;var _sb=document.getElementById('searchBar');if(_sb)_sb.classList.remove('active');var _sdd=document.getElementById('searchDropdown');if(_sdd)_sdd.classList.remove('active');var _ssi=document.getElementById('searchInput');if(_ssi)_ssi.value='';var _ad=document.getElementById('accountDropdown');if(_ad)_ad.classList.remove('active');closeNav();var edOv=document.getElementById('edOverlay');if(edOv&&edOv.classList.contains('active')){closeEditorial();e.preventDefault();return;}closeAllEditorials();closeAllFilms();closeAllArticles();if(document.getElementById('filmDetailOverlay'))document.getElementById('filmDetailOverlay').classList.remove('active');if(document.getElementById('artDetailOverlay'))document.getElementById('artDetailOverlay').classList.remove('active');if(e.key==='Backspace')e.preventDefault();}});
 
 // ======== NAV ========
 function toggleNav(){
@@ -159,6 +159,12 @@ function scrollEdRow(btn,dir){
 var edData=[];
 
 function searchEditorials(query){
+  // Dropdown search (works on all pages with search-bar)
+  var dd=document.getElementById('searchDropdown');
+  var ddGrid=document.getElementById('searchDropdownGrid');
+  var ddLabel=document.getElementById('searchDropdownLabel');
+
+  // Legacy panel search (magazine page etc.)
   var results=document.getElementById('edSearchResults');
   var grid=document.getElementById('edSearchGrid');
   var label=document.getElementById('edSearchLabel');
@@ -168,15 +174,52 @@ function searchEditorials(query){
   var crLabel=document.getElementById('creatorLabel');
 
   if(!query||query.trim().length<1){
+    if(dd)dd.classList.remove('active');
     if(results)results.style.display='none';
     if(crResults)crResults.style.display='none';
     if(rows)rows.style.display='block';
     return;
   }
 
-  // Search creators
+  var q=query.toLowerCase().trim();
+  var scored=[];
+
+  edData.forEach(function(ed){
+    var score=0;
+    if(ed.title.toLowerCase().indexOf(q)>-1) score+=10;
+    if(ed.tags){ed.tags.forEach(function(tag){
+      if(tag.indexOf(q)>-1) score+=5;
+      if(q.length>2 && tag.indexOf(q.substring(0,3))>-1) score+=2;
+    });}
+    if(score>0) scored.push({ed:ed,score:score});
+  });
+
+  scored.sort(function(a,b){return b.score-a.score;});
+
+  // --- Dropdown rendering (primary) ---
+  if(dd&&ddGrid&&ddLabel){
+    ddGrid.innerHTML='';
+    if(scored.length>0){
+      ddLabel.textContent='"'+query+'" · '+scored.length+'개 에디토리얼';
+      var maxShow=Math.min(scored.length,12);
+      for(var i=0;i<maxShow;i++){
+        var e=scored[i].ed;
+        var item=document.createElement('div');
+        item.className='search-dropdown-item';
+        (function(ed){item.onclick=function(){toggleSearch();openEditorial(ed.title,ed.img);};})(e);
+        item.innerHTML='<img src="'+e.img+'" alt="'+e.title+'"><div class="search-dropdown-item-info"><div class="search-dropdown-item-cat">EDITORIAL · '+e.date+'</div><div class="search-dropdown-item-title">'+e.title+'</div></div>';
+        ddGrid.appendChild(item);
+      }
+    } else {
+      ddLabel.textContent='';
+      ddGrid.innerHTML='<div class="search-no-result">"'+query+'" 관련 에디토리얼을 찾지 못했습니다</div>';
+    }
+    dd.classList.add('active');
+  }
+
+  // --- Legacy panel rendering (for pages with edSearchResults) ---
   if(crResults&&crCards&&crLabel&&typeof creatorData!=='undefined'&&creatorData.length>0){
-    var cq=query.toLowerCase().trim();
+    var cq=q;
     var matchedCreators=creatorData.filter(function(cr){
       return cr.name.toLowerCase().indexOf(cq)>-1 || cr.role.toLowerCase().indexOf(cq)>-1 || cr.instagram.toLowerCase().indexOf(cq)>-1;
     });
@@ -196,41 +239,26 @@ function searchEditorials(query){
     }
   }
 
-  if(!results||!grid||!label) return;
-
-  var q=query.toLowerCase().trim();
-  var scored=[];
-
-  edData.forEach(function(ed){
-    var score=0;
-    if(ed.title.toLowerCase().indexOf(q)>-1) score+=10;
-    ed.tags.forEach(function(tag){
-      if(tag.indexOf(q)>-1) score+=5;
-      if(q.length>2 && tag.indexOf(q.substring(0,3))>-1) score+=2;
-    });
-    if(score>0) scored.push({ed:ed,score:score});
-  });
-
-  scored.sort(function(a,b){return b.score-a.score;});
-
-  if(scored.length>0){
-    label.textContent='"'+query+'" 관련 에디토리얼 '+scored.length+'개';
-    grid.innerHTML='';
-    scored.forEach(function(item){
-      var e=item.ed;
-      var card=document.createElement('div');
-      card.className='ed-row-card';
-      card.onclick=function(){openEditorial(e.title,e.img);};
-      card.innerHTML='<div class="ed-row-card-img"><img src="'+e.img+'" alt="'+e.title+'"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">EDITORIAL - '+e.date+'</div><div class="ed-row-card-title">'+e.title+'</div></div>';
-      grid.appendChild(card);
-    });
-    results.style.display='block';
-    if(rows)rows.style.display='none';
-  } else {
-    label.textContent='"'+query+'" 관련 에디토리얼을 찾지 못했습니다';
-    grid.innerHTML='';
-    results.style.display='block';
-    if(rows)rows.style.display='none';
+  if(results&&grid&&label){
+    if(scored.length>0){
+      label.textContent='"'+query+'" 관련 에디토리얼 '+scored.length+'개';
+      grid.innerHTML='';
+      scored.forEach(function(item){
+        var e=item.ed;
+        var card=document.createElement('div');
+        card.className='ed-row-card';
+        card.onclick=function(){openEditorial(e.title,e.img);};
+        card.innerHTML='<div class="ed-row-card-img"><img src="'+e.img+'" alt="'+e.title+'"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">EDITORIAL - '+e.date+'</div><div class="ed-row-card-title">'+e.title+'</div></div>';
+        grid.appendChild(card);
+      });
+      results.style.display='block';
+      if(rows)rows.style.display='none';
+    } else {
+      label.textContent='"'+query+'" 관련 에디토리얼을 찾지 못했습니다';
+      grid.innerHTML='';
+      results.style.display='block';
+      if(rows)rows.style.display='none';
+    }
   }
 }
 
