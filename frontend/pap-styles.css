@@ -113,8 +113,8 @@ button{cursor:pointer;font-family:inherit}
 @media(max-width:768px){.page-overlay .page-header{padding:0 20px}.page-overlay .page-back{left:20px}.page-overlay .page-container{padding:24px 20px 60px}.page-overlay h1{font-size:22px}}
 
 /* SEARCH BAR (top strip) */
-.search-bar{position:fixed;top:0;left:0;right:0;z-index:2000;background:var(--black);padding:0 40px;height:0;overflow:visible;transition:height .3s cubic-bezier(.25,.46,.45,.94);display:flex;align-items:center}
-.search-bar.active{height:56px}
+.search-bar{position:fixed;top:0;left:0;right:0;z-index:2000;background:var(--black);padding:0 40px;height:0;overflow:hidden;transition:height .3s cubic-bezier(.25,.46,.45,.94);display:flex;align-items:center}
+.search-bar.active{height:56px;overflow:visible}
 .search-bar-inner{display:flex;align-items:center;width:100%;max-width:600px;margin:0 auto;background:#fff;border-radius:28px;padding:0 16px;height:40px;gap:8px}
 .search-bar-icon{width:18px;height:18px;flex-shrink:0;color:var(--gray-500)}
 .search-bar-input{flex:1;border:none;outline:none;background:transparent;font-size:13px;font-weight:500;letter-spacing:.15em;text-transform:uppercase;color:var(--text);font-family:inherit}
