@@ -2165,56 +2165,39 @@ function _resetCursorForModal(){
 }
 
 // ======== SIGNUP POPUP ========
-// STRICT PRIORITY: cookie consent MUST be resolved before showing signup popup.
-// Cookie popup → wait for user action → THEN show signup popup.
-// Uses papCookieConsent.onResolve() from cookie-consent.js to wait.
+// INDEPENDENT from cookie consent — both popups show SIMULTANEOUSLY on first visit.
+// Cookie popup (bottom bar, z-index:10000) + Signup popup (center modal, z-index:5000)
+// Each popup has its own state in localStorage and closes independently.
 (function(){
-  var shown = sessionStorage.getItem('pap-signup-shown');
-  if(shown) return;
+  var SIGNUP_KEY = 'pap-signup-shown';
+  // Check localStorage (persists across pages AND sessions)
+  var dismissed;
+  try { dismissed = localStorage.getItem(SIGNUP_KEY); } catch(e) { dismissed = null; }
+  if(dismissed) return;
 
   function _showSignupPopup(){
-    // Double-check: never show signup popup while cookie banner is still visible
-    var cookieBanner = document.getElementById('cookieConsent');
-    if(cookieBanner){
-      // Cookie banner still on screen — wait and retry
-      setTimeout(_showSignupPopup, 500);
-      return;
-    }
-    setTimeout(function(){
-      try{
-        // Final guard: check again before showing
-        if(document.getElementById('cookieConsent')) return;
-        var el=document.getElementById('signupPopup');
-        if(el){
-          el.classList.add('active');
-          lockScroll();
-          if(typeof _resetCursorForModal==='function') _resetCursorForModal();
-        }
-      }catch(e){ console.error('Signup popup error:',e); unlockScroll(); }
-    }, 1500);
+    try{
+      var el = document.getElementById('signupPopup');
+      if(!el) return;
+      el.classList.add('active');
+      lockScroll();
+      if(typeof _resetCursorForModal === 'function') _resetCursorForModal();
+    }catch(e){ console.error('Signup popup error:', e); }
   }
 
-  // Wait for cookie consent to be resolved first
-  if(window.papCookieConsent && window.papCookieConsent.resolved){
-    // Already resolved (returning visitor) — show after short delay
-    _showSignupPopup();
-  } else if(window.papCookieConsent && window.papCookieConsent.onResolve){
-    // Not yet resolved — wait for user to accept/reject cookies, then show
-    window.papCookieConsent.onResolve(function(){
-      _showSignupPopup();
-    });
+  // Show immediately after DOM is ready (no waiting for cookie consent)
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', function(){ setTimeout(_showSignupPopup, 800); });
   } else {
-    // Fallback: if cookie-consent.js not loaded yet, listen for the event
-    document.addEventListener('pap-cookie-resolved', function(){
-      _showSignupPopup();
-    }, {once:true});
+    setTimeout(_showSignupPopup, 800);
   }
 })();
 function closeSignupPopup(){
-  var el=document.getElementById('signupPopup');
+  var el = document.getElementById('signupPopup');
   if(el) el.classList.remove('active');
   unlockScroll();
-  sessionStorage.setItem('pap-signup-shown','1');
+  // Save to localStorage so it persists across pages and doesn't reappear
+  try { localStorage.setItem('pap-signup-shown', '1'); } catch(e) {}
 }
 // ======== FILM AUTO-PLAY ========
 var filmInView=false;

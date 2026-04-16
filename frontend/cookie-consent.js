@@ -3,10 +3,9 @@
    Consent state stored in localStorage ('pap-cookie-consent').
    Values: 'accepted' | 'rejected' | null (not yet decided)
 
-   Exposes:
-     window.papCookieConsent.resolved  — true once user has decided
-     window.papCookieConsent.onResolve(fn) — register callback for when consent is decided
-     Event 'pap-cookie-resolved' dispatched on document when decided                     */
+   This popup is INDEPENDENT from all other popups.
+   It shows on first visit, stays until user clicks accept/reject.
+   State persists via localStorage across all pages.                   */
 
 (function(){
   var GA_ID='G-TPPJGKJXYV';
@@ -49,7 +48,7 @@
   };
 
   function _fireResolved(val){
-    if(window.papCookieConsent.resolved) return; // prevent double fire
+    if(window.papCookieConsent.resolved) return;
     window.papCookieConsent.resolved=true;
     window.papCookieConsent.value=val;
     for(var i=0;i<_callbacks.length;i++) try{_callbacks[i](val);}catch(e){}
@@ -76,19 +75,18 @@
     gtag('config',GA_ID,{anonymize_ip:true});
   }
 
-  /* ── inject styles (self-contained, works on any page) ─── */
+  /* ── inject styles ─────────────────────────────────── */
   function injectStyles(){
     if(document.getElementById('pap-cc-styles')) return;
     var style=document.createElement('style');
     style.id='pap-cc-styles';
     style.textContent=[
-      '#cookieConsent{position:fixed;bottom:0;left:0;right:0;z-index:10000;background:rgba(0,0,0,.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:20px 24px;border-top:1px solid rgba(255,255,255,.1);font-family:"Montserrat",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;animation:ccSlideUp .4s ease forwards;box-sizing:border-box;opacity:1;visibility:visible}',
+      '#cookieConsent{position:fixed;bottom:0;left:0;right:0;z-index:10000;background:rgba(0,0,0,.95);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:20px 24px;border-top:1px solid rgba(255,255,255,.1);font-family:"Montserrat",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;animation:ccSlideUp .4s ease forwards;box-sizing:border-box}',
       '#cookieConsent *{box-sizing:border-box}',
       '#cookieConsent.cc-hide{animation:ccSlideDown .4s ease forwards}',
       '#cookieConsent .cc-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:24px;flex-wrap:wrap}',
       '#cookieConsent .cc-text-wrap{flex:1;min-width:240px}',
       '#cookieConsent .cc-text{color:rgba(255,255,255,.85);font-size:13px;line-height:1.6;margin:0;padding:0}',
-      '#cookieConsent .cc-text-ko{color:rgba(255,255,255,.5);font-size:11px;line-height:1.5;margin-top:4px}',
       '#cookieConsent .cc-actions{display:flex;gap:12px;flex-shrink:0}',
       '#cookieConsent .cc-btn{padding:10px 24px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;border:1.5px solid rgba(255,255,255,.3);cursor:pointer;font-family:"Montserrat",sans-serif;transition:all .25s;border-radius:0;line-height:1}',
       '#cookieConsent .cc-reject{background:transparent;color:rgba(255,255,255,.6)}',
@@ -103,13 +101,12 @@
       '  #cookieConsent .cc-actions{width:100%;justify-content:center}',
       '  #cookieConsent .cc-btn{flex:1;padding:12px 16px;max-width:180px}',
       '  #cookieConsent .cc-text{font-size:12px}',
-      '  #cookieConsent .cc-text-ko{font-size:10px}',
       '}'
     ].join('');
     (document.head||document.documentElement).appendChild(style);
   }
 
-  /* ── banner HTML ─────────────────────────────────── */
+  /* ── banner ─────────────────────────────────── */
   function showBanner(){
     if(document.getElementById('cookieConsent')) return;
     injectStyles();
@@ -143,43 +140,11 @@
       closeBanner();
       _fireResolved('rejected');
     });
-
-    // Safety: ensure banner stays visible until user acts
-    // Periodically check if banner was accidentally removed or hidden
-    var _guardTimer = setInterval(function(){
-      var el = document.getElementById('cookieConsent');
-      if(!el){
-        // Banner was removed without user action — re-show it
-        if(!getConsent()){
-          clearInterval(_guardTimer);
-          showBanner();
-        } else {
-          clearInterval(_guardTimer);
-        }
-        return;
-      }
-      // Ensure banner remains visible (guard against CSS/JS interference)
-      if(el.style.display === 'none' || el.style.visibility === 'hidden' || el.style.opacity === '0'){
-        if(!el.classList.contains('cc-hide')){
-          el.style.display = '';
-          el.style.visibility = 'visible';
-          el.style.opacity = '1';
-        }
-      }
-    }, 1000);
-
-    // Store guard timer reference for cleanup
-    wrap._guardTimer = _guardTimer;
   }
 
   function closeBanner(){
     var el=document.getElementById('cookieConsent');
-    if(el){
-      // Clear the guard timer
-      if(el._guardTimer) clearInterval(el._guardTimer);
-      el.classList.add('cc-hide');
-      setTimeout(function(){el.remove();},400);
-    }
+    if(el){ el.classList.add('cc-hide'); setTimeout(function(){el.remove();},400); }
   }
 
   /* ── init ─────────────────────────────────────────── */
@@ -190,7 +155,6 @@
   } else if(consent==='rejected'){
     _fireResolved('rejected');
   } else {
-    /* not decided yet — show banner, do NOT auto-dismiss */
     if(document.readyState==='loading'){
       document.addEventListener('DOMContentLoaded',showBanner);
     }else{
