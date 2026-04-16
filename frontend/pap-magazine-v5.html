@@ -571,6 +571,7 @@ button{cursor:pointer;font-family:inherit}
   *{box-shadow:none!important;text-shadow:none!important}
 }
 </style>
+<link rel="stylesheet" href="pap-styles.css">
 </head>
 <body>
 
@@ -772,9 +773,9 @@ button{cursor:pointer;font-family:inherit}
       <div class="nav-left-links">
         <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='submission.html';" data-i18n="submission">SUBMISSION</a>
         <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='pullletter.html';" data-i18n="pullletter">PULL-LETTER</a>
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href=(window.papLoginUrl?window.papLoginUrl('auth.html'):'auth.html');" data-i18n="navLogin" style="color:rgba(255,255,255,.6)">LOGIN / JOIN</a>
+        <a href="auth.html" data-i18n="navLogin" style="color:rgba(255,255,255,.6)">LOGIN / JOIN</a>
       </div>
-      <div class="nav-left-links" style="margin-top:auto">
+      <div class="nav-left-links nav-extra-links" style="margin-top:auto">
         <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='about.html';" data-i18n="about">ABOUT</a>
         <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='business.html';" data-i18n="business">BUSINESS</a>
         <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='contact.html';" data-i18n="contact">CONTACT</a>
@@ -831,9 +832,9 @@ button{cursor:pointer;font-family:inherit}
         <a href="subscribe.html" data-i18n="subscribe">구독하기</a>
       </div>
     </div>
-    </div>
   </div>
 </header>
+
 
 <!-- Hero Slideshow -->
 <section class="hero" id="hero" style="cursor:pointer" onclick="event.preventDefault();event.stopPropagation();try{openEditorial('Folie','https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/MG_0186_Editar_a1a68c6da8.jpg')}catch(e){console.error(e)}">
