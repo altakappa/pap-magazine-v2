@@ -64,6 +64,15 @@ function setLang(l){localStorage.setItem('pap-lang',l);
 window.addEventListener('load',()=>{var _l=document.getElementById('loader');if(_l)setTimeout(()=>_l.classList.add('hidden'),800);});
 setTimeout(()=>{var _l=document.getElementById('loader');if(_l)_l.classList.add('hidden');},3000);
 
+// Safety: force unlock scroll if body is stuck after page load
+setTimeout(function(){
+  var bs=document.body.style;
+  if(bs.overflow==='hidden' && bs.position==='fixed'){
+    var noOverlay=!document.getElementById('premiumInterstitial')&&!document.querySelector('.signupPopup.active,.access-gate-overlay');
+    if(noOverlay){ _scrollLockCount=0; unlockScroll(); console.warn('Scroll was stuck — force unlocked'); }
+  }
+},4000);
+
 // ======== HERO SLIDER ========
 let hCur=0;const hSlides=document.querySelectorAll('.hero-slide');
 function heroGo(n){if(!hSlides.length)return;hSlides[hCur].classList.remove('active');hCur=(n+hSlides.length)%hSlides.length;hSlides[hCur].classList.add('active')}
@@ -359,6 +368,7 @@ function showPremiumInterstitial(callback){
 
 // ---- BRAND AD INTERSTITIAL (image or video) ----
 function _showBrandAdInterstitial(ad, callback){
+  try{
   var overlay = document.createElement('div');
   overlay.id = 'premiumInterstitial';
   overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.95);display:flex;align-items:center;justify-content:center;flex-direction:column;opacity:0;transition:opacity .4s;';
@@ -456,10 +466,12 @@ function _showBrandAdInterstitial(ad, callback){
       skip.style.color = 'rgba(255,255,255,.7)';
     }
   }, 1000);
+  }catch(e){ console.error('Ad error:',e); unlockScroll(); if(callback) callback(); }
 }
 
 // ---- PREMIUM UPSELL INTERSTITIAL (fallback when no brand ads) ----
 function _showPremiumUpsellInterstitial(callback){
+  try{
   var lang = localStorage.getItem('pap-lang') || 'ko';
   var texts = {
     ko: { tag:'SUBSCRIBE', title:'광고 없이\n모든 콘텐츠를 즐기세요', desc:'구독으로 에디토리얼, 매거진,\n독점 콘텐츠를 제한 없이 감상하세요.', btn:'구독하기', skip:'건너뛰기' },
@@ -549,6 +561,7 @@ function _showPremiumUpsellInterstitial(callback){
       skip.style.opacity = '1';
     }
   }, 1000);
+  }catch(e){ console.error('Upsell error:',e); unlockScroll(); if(callback) callback(); }
 }
 
 // Navigate to page with interstitial check
@@ -2160,12 +2173,14 @@ function _resetCursorForModal(){
 
   function _showSignupPopup(){
     setTimeout(function(){
-      var el=document.getElementById('signupPopup');
-      if(el){
-        el.classList.add('active');
-        lockScroll();
-        _resetCursorForModal();
-      }
+      try{
+        var el=document.getElementById('signupPopup');
+        if(el){
+          el.classList.add('active');
+          lockScroll();
+          if(typeof _resetCursorForModal==='function') _resetCursorForModal();
+        }
+      }catch(e){ console.error('Signup popup error:',e); unlockScroll(); }
     }, 1500);
   }
 
