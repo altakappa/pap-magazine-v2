@@ -144,7 +144,8 @@ button{cursor:pointer;font-family:inherit}
 .nav-left-links{display:flex;flex-direction:column;gap:4px;margin-bottom:32px}
 .nav-left-links a{font-family:'Montserrat',var(--sans);font-size:clamp(18px,2.5vw,24px);font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#000;transition:opacity .2s}
 .nav-left-links a:hover{opacity:.4}
-.nav-left-links.nav-extra-links a{font-size:clamp(10px,1.2vw,12px)!important;font-weight:500!important;color:#666!important;letter-spacing:.1em}
+.nav-left-links.nav-extra-links{flex-direction:row!important;gap:20px!important;margin-bottom:0!important}
+.nav-left-links.nav-extra-links a{font-size:clamp(12px,1.67vw,16px)!important;font-weight:500!important;color:#666!important;letter-spacing:.1em}
 .nav-left-links.nav-extra-links a:hover{opacity:.5}
 .nav-bottom-row{display:flex;align-items:center;gap:16px}
 .nav-left-dots{width:40px;height:40px;border-radius:50%;border:1.5px solid rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .4s cubic-bezier(.4,0,.2,1);flex-shrink:0}
