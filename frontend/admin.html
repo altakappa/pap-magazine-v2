@@ -226,8 +226,9 @@ tr:hover td{background:rgba(0,0,0,.02)}
   </div>
 
   <div class="sb-section">
-    <div class="sb-section-title">배너 관리</div>
+    <div class="sb-section-title">배너 / 광고</div>
     <a href="#" onclick="go('banners',this)"><span>🎯</span> <span>배너 관리</span></a>
+    <a href="#" onclick="go('intads',this)"><span>📺</span> <span>인터스티셜 광고</span></a>
   </div>
 
   <div class="sb-section">
@@ -615,6 +616,33 @@ tr:hover td{background:rgba(0,0,0,.02)}
         <div class="tbl-top"><h3>배너 목록</h3><div class="tbl-filters"><button class="tf on" onclick="filterBanners('메인',this)">메인</button><button class="tf" onclick="filterBanners('이벤트',this)">이벤트</button><button class="tf" onclick="filterBanners('서브',this)">서브</button></div></div>
         <table><thead><tr><th>순서</th><th>이미지</th><th>제목</th><th>링크</th><th>활성</th><th>작업</th></tr></thead>
         <tbody id="bannerTableBody"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- INTERSTITIAL ADS -->
+  <div class="tab" id="t-intads">
+    <div class="mn-header"><div class="mn-title">인터스티셜 광고 관리</div><div class="mn-actions"><button class="btn btn-primary" onclick="openAdModal(-1)">+ 새 광고</button></div></div>
+    <div class="mn-body">
+      <div class="stats" style="margin-bottom:20px">
+        <div class="stat"><div class="stat-n" id="adCount">0</div><div class="stat-l">등록된 광고</div></div>
+        <div class="stat"><div class="stat-n" id="adActiveCount">0</div><div class="stat-l">활성 광고</div></div>
+        <div class="stat"><div class="stat-n">2</div><div class="stat-l">세션당 최대 노출</div></div>
+        <div class="stat"><div class="stat-n">90vw × 75vh</div><div class="stat-l">최대 표시 크기</div></div>
+      </div>
+      <div style="background:var(--surface2);border:1px solid var(--border);padding:14px 18px;margin-bottom:20px;font-size:11px;color:var(--text2);line-height:1.7">
+        <strong>광고 사이즈 가이드</strong><br>
+        이미지: <strong>최대 90vw × 75vh</strong> (화면 너비 90%, 높이 75%) — object-fit:contain으로 비율 유지<br>
+        권장 이미지: <strong>1080×1350px</strong> (4:5 세로형) 또는 <strong>1920×1080px</strong> (16:9 가로형)<br>
+        비디오: MP4/WebM, 최대 15MB 권장, 자동 음소거 재생<br>
+        스킵 버튼: 설정한 초(기본 3초) 이후 활성화 · Standard+ 회원은 광고 스킵
+      </div>
+      <div class="tbl-wrap">
+        <div class="tbl-top"><h3>광고 목록</h3></div>
+        <table><thead><tr><th>순서</th><th>미리보기</th><th>타입</th><th>브랜드</th><th>링크</th><th>초</th><th>활성</th><th>작업</th></tr></thead>
+        <tbody id="adTableBody">
+          <tr><td colspan="8" style="text-align:center;color:var(--text3);padding:40px 0">광고를 추가하세요</td></tr>
+        </tbody></table>
       </div>
     </div>
   </div>
@@ -1009,6 +1037,62 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
     <div class="modal-foot">
       <button class="btn btn-primary" onclick="saveBanner()">저장</button>
       <button class="btn" onclick="closeBannerModal()">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- INTERSTITIAL AD MODAL -->
+<div class="modal-bg" id="adModal">
+  <div class="modal" style="max-width:520px">
+    <button class="modal-close" onclick="closeAdModal()">×</button>
+    <h2 id="adModalTitle">광고 추가</h2>
+    <div class="sub">인터스티셜 광고 정보를 입력하세요.</div>
+    <div class="modal-section">
+      <div class="modal-label">타입</div>
+      <div class="pe-radios">
+        <label class="pe-radio sel"><input type="radio" name="adType" value="image" checked onchange="selectRadio(this);toggleAdPoster()"> 이미지</label>
+        <label class="pe-radio"><input type="radio" name="adType" value="video" onchange="selectRadio(this);toggleAdPoster()"> 비디오</label>
+      </div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-label">브랜드명</div>
+      <input class="pe-input" id="adBrand" placeholder="예: PRADA, GUCCI, PAP MAGAZINE">
+    </div>
+    <div class="modal-section">
+      <div class="modal-label">이미지/비디오 URL</div>
+      <input class="pe-input" id="adSrc" placeholder="https://cdn.example.com/ad-image.jpg">
+      <div style="font-size:10px;color:var(--text3);margin-top:4px">S3 또는 외부 CDN 이미지/비디오 URL</div>
+    </div>
+    <div class="modal-section" id="adPosterSection" style="display:none">
+      <div class="modal-label">포스터 이미지 (비디오 전용)</div>
+      <input class="pe-input" id="adPoster" placeholder="https://cdn.example.com/poster.jpg">
+      <div style="font-size:10px;color:var(--text3);margin-top:4px">비디오 로딩 중 표시할 이미지</div>
+    </div>
+    <div class="modal-section">
+      <div class="modal-label">클릭 시 이동 URL</div>
+      <input class="pe-input" id="adLink" placeholder="https://www.brand.com 또는 subscribe.html">
+    </div>
+    <div class="pe-row">
+      <div class="modal-section pe-half">
+        <div class="modal-label">스킵 대기 시간 (초)</div>
+        <input class="pe-input" id="adDuration" type="number" value="3" min="1" max="15">
+      </div>
+      <div class="modal-section pe-half">
+        <div class="modal-label">정렬 순서</div>
+        <input class="pe-input" id="adOrder" type="number" value="1" min="0">
+      </div>
+    </div>
+    <div class="modal-section">
+      <label class="pe-check"><input type="checkbox" id="adActive" checked> 활성화</label>
+    </div>
+    <div class="modal-section" id="adPreviewSection" style="display:none">
+      <div class="modal-label">미리보기</div>
+      <div id="adPreviewBox" style="background:#000;border-radius:4px;overflow:hidden;max-height:200px;display:flex;align-items:center;justify-content:center"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="previewAd()" style="margin-right:auto">미리보기</button>
+      <button class="btn btn-primary" onclick="saveAd()">저장</button>
+      <button class="btn" onclick="closeAdModal()">취소</button>
     </div>
   </div>
 </div>
@@ -2579,7 +2663,158 @@ go=function(id,el){
   if(id==='shorts') loadShortsFromAPI();
   if(id==='community') loadCommunity();
   if(id==='subscriptions') loadSubscriptions();
+  if(id==='intads') renderAds();
 };
+
+// ======== INTERSTITIAL AD MANAGEMENT ========
+var intAds=JSON.parse(localStorage.getItem('pap-intads')||'null');
+if(!intAds){
+  // Load defaults from pap-app.js _brandAds
+  intAds=[
+    {type:'image',src:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Pc_1_b784819584.jpg',poster:'',link:'subscribe.html',brand:'PAP MAGAZINE',duration:3,order:1,active:true},
+    {type:'image',src:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Pc_2_dc9e6ac138.jpg',poster:'',link:'subscribe.html',brand:'PAP MAGAZINE',duration:3,order:2,active:true},
+    {type:'image',src:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Pc_3_07bc8462e4.jpg',poster:'',link:'subscribe.html',brand:'PAP MAGAZINE',duration:3,order:3,active:true},
+    {type:'image',src:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Pc_4_d8891e2914.jpg',poster:'',link:'subscribe.html',brand:'PAP MAGAZINE',duration:3,order:4,active:true}
+  ];
+  localStorage.setItem('pap-intads',JSON.stringify(intAds));
+}
+var editAdIdx=-1;
+
+function renderAds(){
+  var tb=document.getElementById('adTableBody');
+  if(!tb)return;
+  var activeCount=intAds.filter(function(a){return a.active}).length;
+  var ct=document.getElementById('adCount');if(ct)ct.textContent=intAds.length;
+  var ac=document.getElementById('adActiveCount');if(ac)ac.textContent=activeCount;
+  if(intAds.length===0){
+    tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:40px 0">광고를 추가하세요</td></tr>';
+    return;
+  }
+  var sorted=intAds.slice().sort(function(a,b){return(a.order||0)-(b.order||0)});
+  tb.innerHTML='';
+  sorted.forEach(function(ad,i){
+    var realIdx=intAds.indexOf(ad);
+    var thumb=ad.type==='video'
+      ?(ad.poster?'<img loading="lazy" src="'+ad.poster+'" style="width:80px;height:50px;object-fit:cover">':'<div style="width:80px;height:50px;background:#222;display:flex;align-items:center;justify-content:center;font-size:9px;color:#666">VIDEO</div>')
+      :'<img loading="lazy" src="'+ad.src+'" style="width:80px;height:50px;object-fit:cover">';
+    var shortLink=ad.link.length>25?ad.link.substring(0,25)+'...':ad.link;
+    tb.innerHTML+='<tr>'+
+      '<td>'+(ad.order||i+1)+'</td>'+
+      '<td>'+thumb+'</td>'+
+      '<td><span style="display:inline-block;padding:2px 8px;font-size:9px;font-weight:700;letter-spacing:.1em;border-radius:2px;background:'+(ad.type==='video'?'var(--purple)':'var(--blue)')+';color:#fff">'+(ad.type==='video'?'VIDEO':'IMAGE')+'</span></td>'+
+      '<td style="font-weight:600">'+(ad.brand||'—')+'</td>'+
+      '<td style="font-size:11px;color:var(--text2)">'+shortLink+'</td>'+
+      '<td>'+(ad.duration||3)+'초</td>'+
+      '<td>'+(ad.active?'<span style="color:var(--green);font-weight:700">✓</span>':'<span style="color:var(--red)">✗</span>')+'</td>'+
+      '<td><button class="btn btn-sm" onclick="openAdModal('+realIdx+')">편집</button> <button class="btn btn-sm btn-red" onclick="deleteAd('+realIdx+')">삭제</button></td>'+
+    '</tr>';
+  });
+}
+
+function toggleAdPoster(){
+  var isVideo=false;
+  document.querySelectorAll('#adModal input[name=adType]').forEach(function(r){if(r.checked&&r.value==='video')isVideo=true;});
+  document.getElementById('adPosterSection').style.display=isVideo?'block':'none';
+}
+
+function openAdModal(idx){
+  editAdIdx=idx;
+  document.querySelectorAll('#adModal .pe-radio').forEach(function(r){r.classList.remove('sel');});
+  if(idx>=0){
+    var ad=intAds[idx];
+    document.getElementById('adModalTitle').textContent='광고 편집';
+    document.getElementById('adBrand').value=ad.brand||'';
+    document.getElementById('adSrc').value=ad.src||'';
+    document.getElementById('adPoster').value=ad.poster||'';
+    document.getElementById('adLink').value=ad.link||'';
+    document.getElementById('adDuration').value=ad.duration||3;
+    document.getElementById('adOrder').value=ad.order||1;
+    document.getElementById('adActive').checked=ad.active!==false;
+    document.querySelectorAll('#adModal input[name=adType]').forEach(function(r){
+      if(r.value===ad.type){r.checked=true;r.parentElement.classList.add('sel');}
+    });
+  } else {
+    document.getElementById('adModalTitle').textContent='광고 추가';
+    document.getElementById('adBrand').value='';
+    document.getElementById('adSrc').value='';
+    document.getElementById('adPoster').value='';
+    document.getElementById('adLink').value='';
+    document.getElementById('adDuration').value=3;
+    document.getElementById('adOrder').value=intAds.length+1;
+    document.getElementById('adActive').checked=true;
+    document.querySelectorAll('#adModal input[name=adType]').forEach(function(r){
+      if(r.value==='image'){r.checked=true;r.parentElement.classList.add('sel');}
+    });
+  }
+  toggleAdPoster();
+  document.getElementById('adPreviewSection').style.display='none';
+  document.getElementById('adModal').classList.add('show');
+}
+
+function closeAdModal(){document.getElementById('adModal').classList.remove('show');}
+
+function previewAd(){
+  var src=document.getElementById('adSrc').value.trim();
+  if(!src){alert('이미지/비디오 URL을 입력하세요.');return;}
+  var box=document.getElementById('adPreviewBox');
+  var isVideo=false;
+  document.querySelectorAll('#adModal input[name=adType]').forEach(function(r){if(r.checked&&r.value==='video')isVideo=true;});
+  if(isVideo){
+    box.innerHTML='<video src="'+src+'" style="max-width:100%;max-height:180px" controls muted></video>';
+  } else {
+    box.innerHTML='<img src="'+src+'" style="max-width:100%;max-height:180px;object-fit:contain">';
+  }
+  document.getElementById('adPreviewSection').style.display='block';
+}
+
+function saveAd(){
+  var type='image';
+  document.querySelectorAll('#adModal input[name=adType]').forEach(function(r){if(r.checked)type=r.value;});
+  var brand=document.getElementById('adBrand').value.trim();
+  var src=document.getElementById('adSrc').value.trim();
+  var poster=document.getElementById('adPoster').value.trim();
+  var link=document.getElementById('adLink').value.trim();
+  var duration=parseInt(document.getElementById('adDuration').value)||3;
+  var order=parseInt(document.getElementById('adOrder').value)||1;
+  var active=document.getElementById('adActive').checked;
+  if(!src){alert('이미지/비디오 URL은 필수입니다.');return;}
+  if(!brand){alert('브랜드명을 입력하세요.');return;}
+  var ad={type:type,src:src,poster:poster,link:link,brand:brand,duration:duration,order:order,active:active};
+  if(editAdIdx>=0){
+    intAds[editAdIdx]=ad;
+  } else {
+    intAds.push(ad);
+  }
+  localStorage.setItem('pap-intads',JSON.stringify(intAds));
+  syncAdsToPapApp();
+  closeAdModal();
+  renderAds();
+}
+
+function deleteAd(idx){
+  if(!confirm('이 광고를 삭제하시겠습니까?'))return;
+  intAds.splice(idx,1);
+  localStorage.setItem('pap-intads',JSON.stringify(intAds));
+  syncAdsToPapApp();
+  renderAds();
+}
+
+function syncAdsToPapApp(){
+  // Generate the _brandAds code for pap-app.js
+  var active=intAds.filter(function(a){return a.active});
+  var code='var _brandAds = [\n';
+  active.forEach(function(a,i){
+    code+="  { type:'"+a.type+"', src:'"+a.src+"'";
+    if(a.type==='video'&&a.poster) code+=", poster:'"+a.poster+"'";
+    code+=", link:'"+a.link+"', brand:'"+a.brand+"', duration:"+a.duration+" }";
+    if(i<active.length-1) code+=',';
+    code+='\n';
+  });
+  code+='];';
+  // Store generated code for copy
+  localStorage.setItem('pap-intads-code',code);
+  console.log('[PAP Admin] _brandAds code updated:\n'+code);
+}
 </script>
 </body>
 </html>
