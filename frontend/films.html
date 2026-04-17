@@ -156,6 +156,7 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
 <div class="filter-wrap" id="filterWrap"></div>
 
 <div class="card-grid" id="cardGrid"></div>
+<div id="filmPagination"></div>
 
 <!-- CREATOR PROFILE POPUP -->
 <div class="creator-popup-overlay" id="creatorPopup" onclick="if(event.target===this)closeCreatorPopup()">
@@ -228,6 +229,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   var catList = Object.keys(cats).sort();
   var activeFilter = 'ALL';
+  var filmCurrentPage = 1;
 
   // Build filter buttons
   var filterWrap = document.getElementById('filterWrap');
@@ -236,6 +238,7 @@ document.addEventListener('DOMContentLoaded', function() {
   allBtn.textContent = 'ALL';
   allBtn.onclick = function() {
     activeFilter = 'ALL';
+    filmCurrentPage = 1;
     updateFilterButtons();
     renderCards();
   };
@@ -247,6 +250,7 @@ document.addEventListener('DOMContentLoaded', function() {
     btn.textContent = cat.toUpperCase();
     btn.onclick = function() {
       activeFilter = cat;
+      filmCurrentPage = 1;
       updateFilterButtons();
       renderCards();
     };
@@ -265,7 +269,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // Expose renderCards globally so API sync can trigger re-render
-  window._papFilmRenderCards = renderCards;
+  window._papFilmRenderCards = function(){ filmCurrentPage=1; renderCards(); };
 
   function renderCards() {
     var grid = document.getElementById('cardGrid');
@@ -278,8 +282,12 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
 
-    filtered.forEach(function(f, filteredIdx) {
-      // Find the original index in filmAllData
+    var totalPages = Math.ceil(filtered.length / PAP_PER_PAGE);
+    if (filmCurrentPage > totalPages) filmCurrentPage = totalPages || 1;
+    var startIdx = (filmCurrentPage - 1) * PAP_PER_PAGE;
+    var pageItems = filtered.slice(startIdx, startIdx + PAP_PER_PAGE);
+
+    pageItems.forEach(function(f) {
       var origIdx = filmAllData.indexOf(f);
       var card = document.createElement('div');
       card.className = 'card';
@@ -311,6 +319,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update count
     var countEl = document.getElementById('filmCount');
     countEl.textContent = filtered.length + ' FILMS';
+
+    // Pagination
+    var pagContainer = document.getElementById('filmPagination');
+    buildPagination(pagContainer, filmCurrentPage, totalPages, function(page) {
+      filmCurrentPage = page;
+      renderCards();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, true);
   }
 
   renderCards();

@@ -155,6 +155,7 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
 <div class="filter-wrap" id="filterWrap"></div>
 
 <div class="card-grid" id="cardGrid"></div>
+<div id="artPagination"></div>
 
 <div class="page-footer">
   <p>&copy; 2026 PAP Magazine. All rights reserved.</p>
@@ -221,6 +222,7 @@ document.addEventListener('DOMContentLoaded', function() {
   allBtn.textContent = 'ALL';
   allBtn.onclick = function() {
     activeFilter = 'ALL';
+    artCurrentPage = 1;
     updateFilterButtons();
     renderCards();
   };
@@ -232,6 +234,7 @@ document.addEventListener('DOMContentLoaded', function() {
     btn.textContent = cat.toUpperCase();
     btn.onclick = function() {
       activeFilter = cat;
+      artCurrentPage = 1;
       updateFilterButtons();
       renderCards();
     };
@@ -249,8 +252,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  var artCurrentPage = 1;
+
   // Expose renderCards globally so API sync can trigger re-render
-  window._papArticleRenderCards = renderCards;
+  window._papArticleRenderCards = function(){ artCurrentPage=1; renderCards(); };
 
   function renderCards() {
     var grid = document.getElementById('cardGrid');
@@ -263,7 +268,12 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
 
-    filtered.forEach(function(a, i) {
+    var totalPages = Math.ceil(filtered.length / PAP_PER_PAGE);
+    if (artCurrentPage > totalPages) artCurrentPage = totalPages || 1;
+    var startIdx = (artCurrentPage - 1) * PAP_PER_PAGE;
+    var pageItems = filtered.slice(startIdx, startIdx + PAP_PER_PAGE);
+
+    pageItems.forEach(function(a) {
       var origIdx = artData.indexOf(a);
       var card = document.createElement('div');
       card.className = 'card';
@@ -293,6 +303,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update count
     var countEl = document.getElementById('artCount');
     countEl.textContent = filtered.length + ' ARTICLES';
+
+    // Pagination
+    var pagContainer = document.getElementById('artPagination');
+    buildPagination(pagContainer, artCurrentPage, totalPages, function(page) {
+      artCurrentPage = page;
+      renderCards();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, true);
   }
 
   renderCards();

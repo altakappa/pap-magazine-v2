@@ -531,6 +531,15 @@ button{cursor:pointer;font-family:inherit}
 .signup-popup .popup-cta:hover{background:transparent;color:#fff}
 .signup-popup .popup-skip{display:block;font-size:11px;color:rgba(255,255,255,.3);cursor:pointer;background:none;border:none;font-family:'Montserrat',sans-serif;letter-spacing:.1em;transition:color .2s;margin:0 auto}
 .signup-popup .popup-skip:hover{color:rgba(255,255,255,.6)}
+/* PAGINATION */
+.pap-pagination{display:flex;justify-content:center;align-items:center;gap:6px;padding:32px 48px 48px;flex-wrap:wrap;}
+.pap-pagination button{width:40px;height:40px;border:none;border-radius:10px;background:#e8e8ec;color:#666;font-family:'Montserrat',sans-serif;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.pap-pagination button:hover{background:#d0d0d6;color:#333;}
+.pap-pagination button.active{background:#3b6cff;color:#fff;}
+.pap-pagination button.active:hover{background:#2b5ce6;}
+.pap-pagination button:disabled{opacity:.4;cursor:default;pointer-events:none;}
+.pap-pagination .pag-dots{width:40px;height:40px;display:flex;align-items:center;justify-content:center;color:#999;font-weight:700;letter-spacing:2px;font-size:14px;}
+@media(max-width:600px){.pap-pagination{gap:4px;padding:24px 16px 36px;}.pap-pagination button{width:34px;height:34px;font-size:11px;border-radius:8px;}.pap-pagination .pag-dots{width:28px;height:34px;}}
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
 <!-- Favicon & PWA -->
@@ -571,7 +580,6 @@ button{cursor:pointer;font-family:inherit}
   *{box-shadow:none!important;text-shadow:none!important}
 }
 </style>
-<link rel="stylesheet" href="pap-styles.css">
 </head>
 <body>
 
@@ -773,9 +781,9 @@ button{cursor:pointer;font-family:inherit}
       <div class="nav-left-links">
         <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='submission.html';" data-i18n="submission">SUBMISSION</a>
         <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='pullletter.html';" data-i18n="pullletter">PULL-LETTER</a>
-        <a href="auth.html" data-i18n="navLogin" style="color:rgba(255,255,255,.6)">LOGIN / JOIN</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href=(window.papLoginUrl?window.papLoginUrl('auth.html'):'auth.html');" data-i18n="navLogin" style="color:rgba(255,255,255,.6)">LOGIN / JOIN</a>
       </div>
-      <div class="nav-left-links nav-extra-links" style="margin-top:auto">
+      <div class="nav-left-links" style="margin-top:auto">
         <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='about.html';" data-i18n="about">ABOUT</a>
         <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='business.html';" data-i18n="business">BUSINESS</a>
         <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='contact.html';" data-i18n="contact">CONTACT</a>
@@ -832,9 +840,9 @@ button{cursor:pointer;font-family:inherit}
         <a href="subscribe.html" data-i18n="subscribe">구독하기</a>
       </div>
     </div>
+    </div>
   </div>
 </header>
-
 
 <!-- Hero Slideshow -->
 <section class="hero" id="hero" style="cursor:pointer" onclick="event.preventDefault();event.stopPropagation();try{openEditorial('Folie','https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/MG_0186_Editar_a1a68c6da8.jpg')}catch(e){console.error(e)}">
@@ -1511,39 +1519,75 @@ function edImgError(img){
 
 // ======== ALL EDITORIALS OVERLAY ========
 var edAllBuilt=false;
+var edAllCurrentPage=1;
+var PAP_PER_PAGE=18;
+function buildPagination(container,currentPage,totalPages,onPageChange,isDark){
+  container.innerHTML='';if(totalPages<=1)return;
+  container.className='pap-pagination'+(isDark?' dark':'');
+  function btn(label,page,isActive,isDisabled){
+    var b=document.createElement('button');b.textContent=label;
+    if(isActive)b.className='active';if(isDisabled)b.disabled=true;
+    if(!isDisabled&&!isActive)b.onclick=function(){onPageChange(page);};
+    container.appendChild(b);
+  }
+  function dots(){var d=document.createElement('span');d.className='pag-dots';d.textContent='···';container.appendChild(d);}
+  btn('‹',currentPage-1,false,currentPage===1);
+  var pages=[];
+  if(totalPages<=9){for(var i=1;i<=totalPages;i++)pages.push(i);}
+  else{pages.push(1);if(currentPage>4)pages.push('«');
+    var s=Math.max(2,currentPage-1),e=Math.min(totalPages-1,currentPage+1);
+    if(currentPage<=4){s=2;e=Math.min(5,totalPages-1);}
+    if(currentPage>=totalPages-3){s=Math.max(2,totalPages-4);e=totalPages-1;}
+    if(s>2)pages.push('...');for(var i=s;i<=e;i++)pages.push(i);
+    if(e<totalPages-1)pages.push('...');pages.push(totalPages);}
+  pages.forEach(function(p){
+    if(p==='...')dots();else if(p==='«')btn('«',Math.max(1,currentPage-5),false,false);
+    else btn(String(p),p,p===currentPage,false);});
+  btn('›',currentPage+1,false,currentPage===totalPages);
+}
 function openAllEditorials(){
-  // Membership check: free members cannot access all editorials
   if(!isStandardOrAbove()){
     alert(getLangText('edAccessFree','에디토리얼 전체보기는 스탠다드 이상 회원만 이용 가능합니다.\nStandard membership or above is required to browse all editorials.'));
     return;
   }
   var overlay=document.getElementById('edAllOverlay');
   if(!overlay) return;
+  _renderEdAllPage();
+  edAllBuilt=true;
+  overlay.classList.add('active');
+  document.body.style.overflow='hidden';
+  history.pushState({allEditorials:true},'',window.location.pathname+'#all-editorials');
+}
+function _renderEdAllPage(){
   var grid=document.getElementById('edAllGrid');
   var count=document.getElementById('edAllCount');
+  var pagContainer=document.getElementById('edAllPagination');
   grid.innerHTML='';
-  var premium=isPremium();
-  var standard=isStandardOrAbove()&&!premium;
+  var premium=isPremium();var standard=isStandardOrAbove()&&!premium;
   var limit=premium?edData.length:100;
-  edData.forEach(function(e,idx){
-    if(idx>=limit) return;
-    var card=document.createElement('div');
-    card.className='ed-row-card';
+  var availableData=edData.slice(0,limit);
+  var totalPages=Math.ceil(availableData.length/PAP_PER_PAGE);
+  if(edAllCurrentPage>totalPages)edAllCurrentPage=totalPages||1;
+  var startIdx=(edAllCurrentPage-1)*PAP_PER_PAGE;
+  var pageItems=availableData.slice(startIdx,startIdx+PAP_PER_PAGE);
+  pageItems.forEach(function(e){
+    var card=document.createElement('div');card.className='ed-row-card';
     card.onclick=function(){openEditorial(e.title,e.img);};
     card.innerHTML='<div class="ed-row-card-img"><img src="'+e.img+'" alt="'+e.title+'" onerror="edImgError(this)"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">EDITORIAL & FASHION · '+e.date+'</div><div class="ed-row-card-title">'+e.title+'</div></div>';
     grid.appendChild(card);
   });
-  if(standard&&edData.length>100){
+  if(standard&&edAllCurrentPage===totalPages&&edData.length>100){
     var upsell=document.createElement('div');
     upsell.style.cssText='grid-column:1/-1;text-align:center;padding:40px 20px;';
     upsell.innerHTML='<p style="color:#999;font-size:12px;letter-spacing:.1em;margin-bottom:12px;">PREMIUM MEMBERS CAN ACCESS ALL '+edData.length+' EDITORIALS</p><a href="subscribe.html" style="display:inline-block;padding:10px 28px;background:#fff;color:#000;font-size:11px;font-weight:700;letter-spacing:.1em;text-decoration:none;">UPGRADE TO PREMIUM</a>';
     grid.appendChild(upsell);
   }
-  count.textContent=(premium?edData.length:Math.min(100,edData.length))+' EDITORIALS'+(premium?'':' (PREMIUM: '+edData.length+')');
-  edAllBuilt=true;
-  overlay.classList.add('active');
-  document.body.style.overflow='hidden';
-  history.pushState({allEditorials:true},'',window.location.pathname+'#all-editorials');
+  count.textContent=availableData.length+' EDITORIALS'+(premium?'':' (PREMIUM: '+edData.length+')');
+  if(pagContainer){buildPagination(pagContainer,edAllCurrentPage,totalPages,function(page){
+    edAllCurrentPage=page;_renderEdAllPage();
+    var overlay=document.getElementById('edAllOverlay');
+    if(overlay)overlay.scrollTo({top:0,behavior:'smooth'});
+  },false);}
 }
 function closeAllEditorials(skipHistory){
   var overlay=document.getElementById("edAllOverlay");
@@ -3017,6 +3061,7 @@ try{
     <button class="ed-all-close" onclick="closeAllEditorials()">&times;</button>
   </div>
   <div class="ed-all-grid" id="edAllGrid"></div>
+  <div id="edAllPagination"></div>
 </div>
 
 <!-- ALL FILMS OVERLAY -->
