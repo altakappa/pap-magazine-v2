@@ -566,7 +566,7 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal()
     <div class="sub-modal-title" id="modalTitle">March 2026</div>
     <div class="sub-modal-count" id="modalCount">19 editorials</div>
     <div class="sub-modal-divider"></div>
-    <p class="sub-modal-desc">Subscribe to unlock this issue and the full PAP archive — 86 issues, 2,109+ editorials.</p>
+    <p class="sub-modal-desc" id="modalDesc">Subscribe to unlock this issue and the full PAP archive — 86 issues, 2,109+ editorials.</p>
     <div class="sub-modal-plans">
       <div class="sub-modal-plan" onclick="location.href='subscribe.html'">
         <div class="smp-name">STANDARD</div>
@@ -577,11 +577,31 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal()
         <div class="smp-price">₩13,500<span> /mo</span></div>
       </div>
     </div>
-    <button class="sub-modal-cta" onclick="location.href='subscribe.html'">SUBSCRIBE NOW</button>
+    <button class="sub-modal-cta" id="modalCta" onclick="location.href='subscribe.html'">SUBSCRIBE NOW</button>
     <button class="sub-modal-preview" id="modalPreview">Preview 3 editorials free →</button>
-    <div class="sub-modal-note">Cancel anytime · Instant access to all issues</div>
+    <div class="sub-modal-note" id="modalNote">Cancel anytime · Instant access to all issues</div>
   </div>
 </div>
+<script>
+(function(){
+  var lang=(localStorage.getItem('pap-lang')||navigator.language||'en').substring(0,2);
+  var t={
+    ko:{desc:'이 이슈와 PAP 전체 아카이브를 열람하려면 구독이 필요합니다 — 86개 이슈, 2,109+ 에디토리얼.',cta:'지금 구독하기',preview:'에디토리얼 3개 무료 미리보기 →',note:'언제든 해지 가능 · 전체 이슈 즉시 열람'},
+    en:{desc:'Subscribe to unlock this issue and the full PAP archive — 86 issues, 2,109+ editorials.',cta:'SUBSCRIBE NOW',preview:'Preview 3 editorials free →',note:'Cancel anytime · Instant access to all issues'},
+    it:{desc:'Abbonati per sbloccare questo numero e l\'intero archivio PAP — 86 numeri, 2.109+ editoriali.',cta:'ABBONATI ORA',preview:'Anteprima 3 editoriali gratis →',note:'Cancella quando vuoi · Accesso immediato a tutti i numeri'},
+    fr:{desc:'Abonnez-vous pour accéder à ce numéro et à l\'archive complète de PAP — 86 numéros, 2 109+ éditoriaux.',cta:'S\'ABONNER',preview:'Aperçu de 3 éditoriaux gratuit →',note:'Annulation à tout moment · Accès immédiat à tous les numéros'},
+    ja:{desc:'このイシューとPAPの全アーカイブをご覧いただくには購読が必要です — 86イシュー、2,109+エディトリアル。',cta:'今すぐ購読',preview:'エディトリアル3本を無料プレビュー →',note:'いつでも解約可能 · 全イシュー即アクセス'},
+    zh:{desc:'订阅以解锁此期及PAP完整档案库 — 86期，2,109+编辑内容。',cta:'立即订阅',preview:'免费预览3篇编辑内容 →',note:'随时取消 · 即时访问所有期刊'},
+    es:{desc:'Suscríbete para desbloquear este número y el archivo completo de PAP — 86 números, 2.109+ editoriales.',cta:'SUSCRÍBETE AHORA',preview:'Vista previa de 3 editoriales gratis →',note:'Cancela en cualquier momento · Acceso instantáneo a todos los números'}
+  };
+  var s=t[lang]||t.en;
+  var d=document.getElementById('modalDesc');if(d)d.textContent=s.desc;
+  var c=document.getElementById('modalCta');if(c)c.textContent=s.cta;
+  var p=document.getElementById('modalPreview');
+  if(p){var origClick=p.onclick;p.textContent=s.preview;}
+  var n=document.getElementById('modalNote');if(n)n.textContent=s.note;
+})();
+</script>
 
 <script src="pap-auth-link.js" defer></script>
 </body>
