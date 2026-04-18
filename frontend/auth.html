@@ -131,17 +131,31 @@ a{color:#fff;text-decoration:none}
 .consent-link{font-size:10px;color:rgba(255,255,255,.25);text-decoration:underline;text-underline-offset:2px;margin-left:4px;transition:color .2s}
 .consent-link:hover{color:rgba(255,255,255,.6)}
 
-/* HEADER BAR - sticky */
-.auth-header{position:sticky;top:0;left:0;right:0;width:100%;flex-shrink:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:16px 32px;background:rgba(0,0,0,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.06)}
-.auth-header-right{position:absolute;right:32px}
-.auth-header-logo a{display:flex;align-items:center}
-.auth-header-logo img{height:24px;width:auto}
-.auth-header-right{display:flex;align-items:center;gap:14px}
-.auth-header-login{font-size:11px;font-weight:600;letter-spacing:.06em;color:rgba(255,255,255,.5);cursor:pointer;transition:color .2s;text-decoration:none;white-space:nowrap}
+/* HEADER BAR - matches main page */
+.auth-header{position:sticky;top:0;left:0;right:0;width:100%;flex-shrink:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 40px;height:72px;background:rgba(0,0,0,.97);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.auth-header .header-left{display:flex;align-items:center;gap:24px}
+.auth-header .header-left-item{background:none;border:none;padding:4px;display:inline-flex;align-items:center;justify-content:center;color:rgba(255,255,255,.4);text-decoration:none;transition:color .2s;cursor:pointer;font-family:inherit}
+.auth-header .header-left-item:hover{color:#fff}
+.auth-header .header-left-item svg{width:20px;height:20px}
+.auth-header .hamburger{background:none;border:none;display:flex;align-items:center;justify-content:center;padding:12px;cursor:pointer;position:relative;z-index:2000;width:48px;height:48px}
+.auth-header .hamburger span{display:block;width:24px;height:2px;background:#fff;border-radius:1px;position:absolute;transform-origin:center center;transition:transform .4s cubic-bezier(.23,1,.32,1),opacity .25s ease}
+.auth-header .hamburger span:nth-child(1){transform:translateY(-8px)}
+.auth-header .hamburger span:nth-child(2){transform:translateY(0)}
+.auth-header .hamburger span:nth-child(3){transform:translateY(8px)}
+.auth-header .logo-wrap{position:absolute;left:50%;transform:translateX(-50%)}
+.auth-header .logo-wrap img{height:32px;width:auto}
+.auth-header .header-right{display:flex;align-items:center;gap:6px}
+.auth-header .lang-btn{display:flex;align-items:center;gap:4px;background:none;border:none;border-radius:0;padding:4px 2px;font-size:11px;font-weight:500;color:#fff}
+.auth-header .lang-btn svg{width:16px;height:16px;opacity:.6}
+.auth-header .lang-btn select{border:none;background:transparent;font-size:11px;font-weight:500;font-family:'Montserrat',sans-serif;color:#fff;outline:none;cursor:pointer;-webkit-appearance:none;appearance:none}
+.auth-header .lang-btn select option{color:#111;background:#fff}
+.auth-header .search-btn{background:none;border:none;padding:4px;display:flex;color:rgba(255,255,255,.4);cursor:pointer;transition:color .2s}
+.auth-header .search-btn:hover{color:#fff}
+.auth-header .search-btn svg{width:22px;height:22px}
+.auth-header-login{font-size:11px;font-weight:600;letter-spacing:.06em;color:rgba(255,255,255,.5);cursor:pointer;transition:color .2s;text-decoration:none;white-space:nowrap;padding:4px}
 .auth-header-login:hover{color:#fff}
 
-/* LANG */
-.auth-lang select{background:transparent;color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.12);padding:5px 10px;font-size:10px;font-family:'Montserrat',sans-serif;letter-spacing:.1em;cursor:pointer}
+/* LANG - removed old style, now using .lang-btn from header */
 .auth-lang select option{background:#000;color:#fff}
 
 /* SUCCESS */
@@ -163,11 +177,28 @@ a{color:#fff;text-decoration:none}
 /* Optimize paint for static elements */
 .consent-section,.plan-cards,.benefits{contain:layout style}
 @media(max-width:500px){
-  .auth-header{padding:12px 16px}
+  .auth-header{padding:0 16px;height:60px}
+  .auth-header .header-left{gap:4px}
+  .auth-header .header-left-item svg{width:18px;height:18px}
+  .auth-header .logo-wrap img{height:24px}
   .auth-wrapper{padding:20px 16px 36px}
   .form-row{grid-template-columns:1fr}
   .step-hero h2{font-size:18px}
   .plan-card{padding:16px}
+}
+@media(max-width:390px){
+  .auth-header{padding:0 12px;height:56px}
+  .auth-header .header-left{gap:2px}
+  .auth-header .header-left-item svg{width:16px;height:16px}
+  .auth-header .header-right{gap:4px}
+  .auth-header .lang-btn{padding:2px;font-size:9px}
+  .auth-header .lang-btn svg{width:12px;height:12px}
+  .auth-header .lang-btn select{font-size:9px}
+  .auth-header .logo-wrap img{height:20px}
+  .auth-header-login{font-size:10px}
+  .auth-header .search-btn svg{width:18px;height:18px}
+  .auth-header .hamburger{width:40px;height:40px}
+  .auth-header .hamburger span{width:20px}
 }
 @media(max-width:600px){
   .cc-inner{flex-direction:column;text-align:center}
@@ -214,7 +245,7 @@ a{color:#fff;text-decoration:none}
 <style>
 @media print{
   body{background:#fff!important;color:#000!important}
-  .auth-header,.auth-lang{display:none!important}
+  .auth-header{display:none!important}
   *{box-shadow:none!important;text-shadow:none!important}
 }
 </style>
@@ -228,10 +259,28 @@ a{color:#fff;text-decoration:none}
 <script>window.addEventListener('load',function(){var l=document.getElementById('pageLoader');if(l){l.style.opacity='0';setTimeout(function(){l.remove();},400);}});</script>
 
 <header class="auth-header">
-  <div class="auth-header-logo"><a href="/"><img src="pap-logo.png" alt="PAP Magazine" fetchpriority="high" decoding="async" width="120" height="24"></a></div>
-  <div class="auth-header-right">
+  <div class="header-left">
+    <a href="/" class="header-left-item" aria-label="Menu"><span style="display:flex;align-items:center;justify-content:center;width:48px;height:48px;position:relative"><span style="display:block;width:24px;height:2px;background:#fff;border-radius:1px;position:absolute;transform:translateY(-8px)"></span><span style="display:block;width:24px;height:2px;background:#fff;border-radius:1px;position:absolute;transform:translateY(0)"></span><span style="display:block;width:24px;height:2px;background:#fff;border-radius:1px;position:absolute;transform:translateY(8px)"></span></span></a>
+    <a href="/" class="search-btn header-left-item" aria-label="Search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </a>
+  </div>
+  <a href="/" class="logo-wrap"><img src="pap-logo.png" alt="PAP Magazine" fetchpriority="high" decoding="async" height="32"></a>
+  <div class="header-right">
+    <div class="lang-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>
+      <select id="langSelect" onchange="setLang(this.value)">
+        <option value="ko">한국어</option>
+        <option value="en">English</option>
+        <option value="it">Italiano</option>
+        <option value="fr">Français</option>
+        <option value="es">Español</option>
+        <option value="ja">日本語</option>
+        <option value="zh">中文</option>
+        <option value="ru">Русский</option>
+      </select>
+    </div>
     <a class="auth-header-login" href="#" onclick="showLogin();return false;" data-i18n="headerLogin">로그인</a>
-    <div class="auth-lang"><select id="langSelect" onchange="setLang(this.value)"><option value="ko">KO</option><option value="en">EN</option><option value="it">IT</option><option value="fr">FR</option><option value="es">ES</option><option value="ja">JA</option><option value="zh">ZH</option><option value="ru">RU</option></select></div>
   </div>
 </header>
 
