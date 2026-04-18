@@ -3036,7 +3036,9 @@ try{
         e.preventDefault();
         var toast=document.createElement('div');
         toast.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:14px 28px;font-size:11px;font-weight:600;letter-spacing:.08em;z-index:99999;font-family:Montserrat,sans-serif;background:#111;color:#fff;border:1px solid #333;text-align:center;';
-        toast.textContent='IMAGE DOWNLOAD IS AVAILABLE FOR STANDARD & PREMIUM MEMBERS';
+        var lang=localStorage.getItem('pap-lang')||'ko';
+        var msg={ko:'이미지 다운로드는 스탠다드 및 프리미엄 회원만 이용 가능합니다',en:'IMAGE DOWNLOAD IS AVAILABLE FOR STANDARD & PREMIUM MEMBERS',it:'IL DOWNLOAD DELLE IMMAGINI È DISPONIBILE PER I MEMBRI STANDARD E PREMIUM',fr:'LE TÉLÉCHARGEMENT D\'IMAGES EST RÉSERVÉ AUX MEMBRES STANDARD ET PREMIUM',es:'LA DESCARGA DE IMÁGENES ESTÁ DISPONIBLE PARA MIEMBROS ESTÁNDAR Y PREMIUM',ja:'画像ダウンロードはスタンダード・プレミアム会員のみご利用いただけます',zh:'图片下载仅限标准及高级会员使用',ru:'СКАЧИВАНИЕ ИЗОБРАЖЕНИЙ ДОСТУПНО ДЛЯ СТАНДАРТНЫХ И ПРЕМИУМ УЧАСТНИКОВ'};
+        toast.textContent=msg[lang]||msg.en;
         document.body.appendChild(toast);
         setTimeout(function(){toast.style.opacity='0';toast.style.transition='opacity .3s';setTimeout(function(){toast.remove();},300);},2500);
       }
