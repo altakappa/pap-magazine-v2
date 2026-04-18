@@ -159,7 +159,10 @@
       }
     ],
     "fashion": [],
-    "desc": "A hauntingly beautiful exploration of dark elegance and macabre couture. This editorial blurs the line between fashion and the theatrical, celebrating bold beauty and unconventional aesthetics through dramatic makeup and avant-garde styling."
+    "desc": {
+      "ko": "어둠의 우아함과 마카브르한 쿠튀르를 탐구하는 몽환적인 에디토리얼. 패션과 연극의 경계를 허물며, 과감한 뷰티와 아방가르드한 스타일링을 통해 파격적인 미학을 기념합니다.",
+      "en": "A hauntingly beautiful exploration of dark elegance and macabre couture. This editorial blurs the line between fashion and the theatrical, celebrating bold beauty and unconventional aesthetics through dramatic makeup and avant-garde styling."
+    }
   },
   "Equipoise": {
     "issue": "APR. 2026 ISSUE",
@@ -266,7 +269,10 @@
         "id": "@alexanderwangny"
       }
     ],
-    "desc": "A study in balance and tension — where sculptural fashion meets raw, unfiltered emotion. Through deliberate composition and layered textures, Equipoise captures the delicate equilibrium between strength and vulnerability."
+    "desc": {
+      "ko": "균형과 긴장에 대한 탐구 — 조각적인 패션과 날것의 감정이 만나는 지점. 의도적인 구도와 겹겹이 쌓인 텍스처를 통해 강인함과 취약함 사이의 섬세한 균형을 포착합니다.",
+      "en": "A study in balance and tension — where sculptural fashion meets raw, unfiltered emotion. Through deliberate composition and layered textures, Equipoise captures the delicate equilibrium between strength and vulnerability."
+    }
   },
   "Birds Don't Cry": {
     "issue": "APR. 2026 ISSUE",
@@ -457,7 +463,10 @@
         "id": "@adxjo_"
       }
     ],
-    "desc": "A vivid, surreal narrative that defies convention. Birds Don't Cry weaves together bold color, rebellious styling, and striking silhouettes to tell a story of freedom, identity, and unapologetic self-expression."
+    "desc": {
+      "ko": "관습을 거부하는 생생하고 초현실적인 서사. 대담한 컬러, 반항적인 스타일링, 그리고 인상적인 실루엣을 엮어 자유, 정체성, 그리고 거침없는 자기표현의 이야기를 전합니다.",
+      "en": "A vivid, surreal narrative that defies convention. Birds Don't Cry weaves together bold color, rebellious styling, and striking silhouettes to tell a story of freedom, identity, and unapologetic self-expression."
+    }
   },
   "Folie": {
     "issue": "APR. 2026 ISSUE",
@@ -649,7 +658,10 @@
         "id": "@mielibrand"
       }
     ],
-    "desc": "A theatrical descent into the world of madness and beauty. Folie embraces the extravagant and the absurd — bold patterns, dramatic silhouettes, and painterly compositions come together in a celebration of creative abandon."
+    "desc": {
+      "ko": "광기와 아름다움의 세계로의 연극적 여정. Folie는 화려하고 부조리한 것을 포용합니다 — 대담한 패턴, 드라마틱한 실루엣, 회화적 구도가 하나로 어우러져 창작의 자유를 기념합니다.",
+      "en": "A theatrical descent into the world of madness and beauty. Folie embraces the extravagant and the absurd — bold patterns, dramatic silhouettes, and painterly compositions come together in a celebration of creative abandon."
+    }
   },
   "Welcome to the Circus": {
     "issue": "MAR. 2026 ISSUE",

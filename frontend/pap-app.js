@@ -670,7 +670,7 @@ function _openEditorialInner(title,thumb){
 
   // Editorial description
   var descEl=document.getElementById('edDetailDesc');
-  if(descEl){descEl.innerHTML=det.desc;}
+  if(descEl){var lang=localStorage.getItem('pap-lang')||'ko';var descText=typeof det.desc==='object'?(det.desc[lang]||det.desc.en||det.desc.ko||''):det.desc;descEl.innerHTML=descText;}
 
   // Gallery 2-col with hover credits
   var gal=document.getElementById('edDetailGallery');
@@ -763,7 +763,7 @@ function _openEditorialInner_noPush(title,thumb){
   document.getElementById('edDetailTitle').textContent=title;
   document.getElementById('edDetailIssue').textContent=det.issue;
   var descEl=document.getElementById('edDetailDesc');
-  if(descEl){descEl.innerHTML=det.desc;}
+  if(descEl){var lang=localStorage.getItem('pap-lang')||'ko';var descText=typeof det.desc==='object'?(det.desc[lang]||det.desc.en||det.desc.ko||''):det.desc;descEl.innerHTML=descText;}
   var gal=document.getElementById('edDetailGallery');
   gal.innerHTML='';
   det.images.forEach(function(url,idx){
