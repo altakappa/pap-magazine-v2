@@ -95,6 +95,22 @@ body{font-family:'Montserrat',sans-serif;background:#0a0a0a;color:#fff;min-heigh
 .search-box{padding:8px 14px;background:#1a1a1a;border:1px solid #333;border-radius:4px;color:#fff;font-family:inherit;font-size:13px;width:250px}
 .search-box:focus{outline:none;border-color:#666}
 .empty-state{text-align:center;color:#555;padding:60px 20px;font-size:13px}
+/* REVIEW MODAL */
+.review-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:300}
+.review-modal-bg.show{display:flex}
+.review-modal{background:#111;border:1px solid #333;border-radius:8px;max-width:480px;width:90%;padding:28px;position:relative}
+.review-modal h3{font-size:16px;font-weight:700;margin-bottom:16px;letter-spacing:.06em}
+.review-modal .rm-info{font-size:12px;color:#888;margin-bottom:16px;line-height:1.6}
+.review-modal .rm-actions{display:flex;gap:8px;margin-top:20px;justify-content:flex-end}
+.review-modal .rm-actions button{padding:10px 20px;border:none;border-radius:4px;font-family:inherit;font-size:13px;cursor:pointer;font-weight:600}
+.rm-btn-approve{background:#27ae60;color:#fff}
+.rm-btn-approve:hover{background:#219a52}
+.rm-btn-reject{background:#c0392b;color:#fff}
+.rm-btn-reject:hover{background:#a93226}
+.rm-btn-revision{background:#8e44ad;color:#fff}
+.rm-btn-revision:hover{background:#7d3c98}
+.rm-btn-cancel{background:#333;color:#aaa;border:1px solid #555!important}
+.rm-btn-cancel:hover{color:#fff;border-color:#888!important}
 </style>
 </head>
 <body>
@@ -324,15 +340,29 @@ body{font-family:'Montserrat',sans-serif;background:#0a0a0a;color:#fff;min-heigh
 
 <div class="toast" id="toast"></div>
 
+<!-- REVIEW MODAL for Submissions & Pull-Letters -->
+<div class="review-modal-bg" id="reviewModalBg">
+  <div class="review-modal">
+    <h3 id="reviewModalTitle">Review</h3>
+    <div class="rm-info" id="reviewModalInfo"></div>
+    <div class="rm-actions">
+      <button class="rm-btn-approve" id="rmBtnApprove">Approve</button>
+      <button class="rm-btn-reject" id="rmBtnReject">Reject</button>
+      <button class="rm-btn-revision" id="rmBtnRevision" style="display:none">Revision</button>
+      <button class="rm-btn-cancel" onclick="closeReviewModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <script>
 var API_BASE='';
-var TOKEN=localStorage.getItem('pap_admin_token')||'';
+var TOKEN=localStorage.getItem('pap-token')||localStorage.getItem('pap_admin_token')||'';
 var allMembers=[];
 (function(){var h=window.location.hostname;if(h==='localhost'||h==='127.0.0.1'){API_BASE='http://localhost:3000/api';}else{API_BASE=window.location.origin+'/api';}})();
 
 /* AUTH */
-function doLogin(){var email=document.getElementById('loginEmail').value;var pw=document.getElementById('loginPassword').value;var errEl=document.getElementById('loginError');errEl.style.display='none';fetch(API_BASE+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,password:pw})}).then(function(r){return r.json();}).then(function(data){if(data.token){TOKEN=data.token;localStorage.setItem('pap_admin_token',TOKEN);document.getElementById('loginOverlay').style.display='none';document.getElementById('userInfo').textContent=email;loadDashboard();}else{var msg=data.message||data.error||'Login failed';errEl.textContent=typeof msg==='string'?msg:JSON.stringify(msg);errEl.style.display='block';}}).catch(function(e){errEl.textContent='Connection error: '+(e.message||e);errEl.style.display='block';});}
-function doLogout(){TOKEN='';localStorage.removeItem('pap_admin_token');window.location.reload();}
+function doLogin(){var email=document.getElementById('loginEmail').value;var pw=document.getElementById('loginPassword').value;var errEl=document.getElementById('loginError');errEl.style.display='none';fetch(API_BASE+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,password:pw})}).then(function(r){return r.json();}).then(function(data){if(data.token){TOKEN=data.token;localStorage.setItem('pap-token',TOKEN);document.getElementById('loginOverlay').style.display='none';document.getElementById('userInfo').textContent=email;loadDashboard();}else{var msg=data.message||data.error||'Login failed';errEl.textContent=typeof msg==='string'?msg:JSON.stringify(msg);errEl.style.display='block';}}).catch(function(e){errEl.textContent='Connection error: '+(e.message||e);errEl.style.display='block';});}
+function doLogout(){TOKEN='';localStorage.removeItem('pap-token');localStorage.removeItem('pap_admin_token');window.location.reload();}
 if(TOKEN){fetch(API_BASE+'/auth/me',{headers:{'Authorization':'Bearer '+TOKEN}}).then(function(r){return r.json();}).then(function(data){if(data.user){document.getElementById('loginOverlay').style.display='none';document.getElementById('userInfo').textContent=data.user.email;loadDashboard();}}).catch(function(){});}
 
 /* API HELPERS */
@@ -353,12 +383,12 @@ function fmtDate(d){if(!d)return'-';return new Date(d).toLocaleDateString('ko-KR
 
 /* DASHBOARD */
 function loadDashboard(){
-  apiGet('/editorials?limit=1').then(function(d){document.getElementById('statEditorials').textContent=d.pagination?d.pagination.total:0;}).catch(function(){});
-  apiGet('/articles?limit=1').then(function(d){document.getElementById('statArticles').textContent=d.pagination?d.pagination.total:0;}).catch(function(){});
-  apiGet('/films?limit=1').then(function(d){document.getElementById('statFilms').textContent=d.pagination?d.pagination.total:0;}).catch(function(){});
+  apiGet('/editorials?limit=1').then(function(d){document.getElementById('statEditorials').textContent=d.pagination?d.pagination.total:0;}).catch(function(){document.getElementById('statEditorials').textContent='-';});
+  apiGet('/articles?limit=1').then(function(d){document.getElementById('statArticles').textContent=d.pagination?d.pagination.total:0;}).catch(function(){document.getElementById('statArticles').textContent='-';});
+  apiGet('/films?limit=1').then(function(d){document.getElementById('statFilms').textContent=d.pagination?d.pagination.total:0;}).catch(function(){document.getElementById('statFilms').textContent='-';});
   apiGet('/admin/members').then(function(d){document.getElementById('statMembers').textContent=(d.data||[]).length;}).catch(function(){document.getElementById('statMembers').textContent='-';});
   apiGet('/submissions?status=pending&limit=1').then(function(d){document.getElementById('statSubmissions').textContent=d.pagination?d.pagination.total:0;}).catch(function(){document.getElementById('statSubmissions').textContent='-';});
-  apiGet('/editorials?status=draft&limit=1').then(function(de){apiGet('/films?status=draft&limit=1').then(function(d1){apiGet('/articles?status=draft&limit=1').then(function(d2){document.getElementById('statDrafts').textContent=((de.pagination?de.pagination.total:0)+(d1.pagination?d1.pagination.total:0)+(d2.pagination?d2.pagination.total:0));});});}).catch(function(){});
+  apiGet('/editorials?status=draft&limit=1').then(function(de){apiGet('/films?status=draft&limit=1').then(function(d1){apiGet('/articles?status=draft&limit=1').then(function(d2){document.getElementById('statDrafts').textContent=((de.pagination?de.pagination.total:0)+(d1.pagination?d1.pagination.total:0)+(d2.pagination?d2.pagination.total:0));}).catch(function(){});}).catch(function(){});}).catch(function(){document.getElementById('statDrafts').textContent='-';});
 }
 
 /* EDITORIALS */
@@ -384,15 +414,15 @@ function deleteFilm(id){if(!confirm('Delete this film?'))return;apiDelete('/film
 
 /* SUBMISSIONS */
 function loadSubmissions(status,btn){if(btn){btn.closest('.filter-bar').querySelectorAll('.filter-btn').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');}var q=status?'?status='+status+'&limit=100':'?limit=100';apiGet('/submissions'+q).then(function(d){var rows=(d.data||[]).map(function(s){var sc='status-'+(s.status||'pending');return '<tr><td><strong>'+(s.title||'Untitled')+'</strong></td><td>'+(s.submitted_by||s.user_id||'-')+'</td><td>'+(s.file_urls?s.file_urls.length+' files':'-')+'</td><td>'+fmtDate(s.created_at)+'</td><td><span class="status-badge '+sc+'">'+(s.status||'pending')+'</span></td><td><button class="btn btn-outline btn-sm" onclick="reviewSubmission(\''+s.id+'\')">Review</button></td></tr>';}).join('');document.getElementById('submissionsTableBody').innerHTML=rows||'<tr><td colspan="6"><div class="empty-state">No submissions</div></td></tr>';}).catch(function(){document.getElementById('submissionsTableBody').innerHTML='<tr><td colspan="6"><div class="empty-state">Failed to load submissions</div></td></tr>';});}
-function reviewSubmission(id){apiGet('/submissions/'+id).then(function(d){if(d.data){var s=d.data;var action=prompt('Status for "'+s.title+'":\nType: approved, rejected, or revision');if(action&&['approved','rejected','revision'].indexOf(action)>=0){apiPut('/submissions/'+id,{status:action}).then(function(){showToast('Submission '+action);loadSubmissions('pending');});}}});}
+function reviewSubmission(id){apiGet('/submissions/'+id).then(function(d){if(d.data){openReviewModal('submission',d.data);}}).catch(function(){showToast('Failed to load submission','error');});}
 
 /* PULL-LETTERS */
 function loadPullLetters(status,btn){if(btn){btn.closest('.filter-bar').querySelectorAll('.filter-btn').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');}var q=status?'?status='+status+'&limit=100':'?limit=100';apiGet('/pullletters'+q).then(function(d){var rows=(d.data||[]).map(function(p){var sc='status-'+(p.status||'pending');return '<tr><td>'+(p.user_id||'-')+'</td><td>'+(p.request_text||'-').substring(0,60)+'</td><td>'+(p.file_urls?p.file_urls.length+' files':'-')+'</td><td>'+fmtDate(p.created_at)+'</td><td><span class="status-badge '+sc+'">'+(p.status||'pending')+'</span></td><td><button class="btn btn-outline btn-sm" onclick="reviewPullLetter(\''+p.id+'\')">Review</button></td></tr>';}).join('');document.getElementById('pulllettersTableBody').innerHTML=rows||'<tr><td colspan="6"><div class="empty-state">No pull-letter requests</div></td></tr>';}).catch(function(){document.getElementById('pulllettersTableBody').innerHTML='<tr><td colspan="6"><div class="empty-state">Failed to load pull-letters</div></td></tr>';});}
-function reviewPullLetter(id){var action=prompt('Status:\nType: accepted, rejected');if(action&&['accepted','rejected'].indexOf(action)>=0){apiPut('/pullletters/'+id,{status:action}).then(function(){showToast('Pull-letter '+action);loadPullLetters('pending');});}}
+function reviewPullLetter(id){apiGet('/pullletters/'+id).then(function(d){if(d.data){openReviewModal('pullletter',d.data);}else{openReviewModal('pullletter',{id:id});}}).catch(function(){openReviewModal('pullletter',{id:id});});}
 
 /* MEMBERS */
 function loadMembers(){apiGet('/admin/members').then(function(d){allMembers=d.data||[];renderMembers(allMembers);}).catch(function(){document.getElementById('membersTableBody').innerHTML='<tr><td colspan="5"><div class="empty-state">Failed to load members</div></td></tr>';});}
-function renderMembers(list){var rows=list.map(function(m){return '<tr><td><strong>'+(m.name||'-')+'</strong></td><td>'+(m.email||'-')+'</td><td>'+(m.role||'member')+'</td><td>'+(m.subscription_plan||'free')+'</td><td>'+fmtDate(m.created_at)+'</td></tr>';}).join('');document.getElementById('membersTableBody').innerHTML=rows||'<tr><td colspan="5"><div class="empty-state">No members</div></td></tr>';}
+function renderMembers(list){var rows=list.map(function(m){var plan=m.subscriptionPlan||m.subscription_plan||'free';var planLabel=plan.indexOf('premium')>-1?'Premium':plan.indexOf('standard')>-1?'Standard':'Free';return '<tr><td><strong>'+(m.name||m.display_name||'-')+'</strong></td><td>'+(m.email||'-')+'</td><td>'+(m.role||'member')+'</td><td>'+planLabel+'</td><td>'+fmtDate(m.created_at)+'</td></tr>';}).join('');document.getElementById('membersTableBody').innerHTML=rows||'<tr><td colspan="5"><div class="empty-state">No members</div></td></tr>';}
 function filterMemberList(){var q=document.getElementById('memberSearch').value.toLowerCase();var filtered=allMembers.filter(function(m){return(m.name||'').toLowerCase().includes(q)||(m.email||'').toLowerCase().includes(q);});renderMembers(filtered);}
 
 /* COMMUNITY */
@@ -400,7 +430,40 @@ function loadCommunity(){apiGet('/community/posts?limit=100').then(function(d){v
 function deleteCommunityPost(id){if(!confirm('Delete this post?'))return;apiDelete('/community/posts/'+id).then(function(){showToast('Post deleted');loadCommunity();});}
 
 /* SUBSCRIPTIONS */
-function loadSubscriptions(){apiGet('/admin/members').then(function(d){var members=d.data||[];var std=0,prm=0,free=0;members.forEach(function(m){var p=m.subscription_plan||'free';if(p.includes('standard'))std++;else if(p.includes('premium'))prm++;else free++;});document.getElementById('statSubStandard').textContent=std;document.getElementById('statSubPremium').textContent=prm;document.getElementById('statSubFree').textContent=free;var rows=members.filter(function(m){return m.subscription_plan&&m.subscription_plan!=='free';}).map(function(m){return '<tr><td><strong>'+(m.name||m.email)+'</strong></td><td>'+(m.subscription_plan||'-')+'</td><td><span class="status-badge status-published">Active</span></td><td>-</td></tr>';}).join('');document.getElementById('subscriptionsTableBody').innerHTML=rows||'<tr><td colspan="4"><div class="empty-state">No paid subscriptions</div></td></tr>';}).catch(function(){});}
+function loadSubscriptions(){apiGet('/admin/members').then(function(d){var members=d.data||[];var std=0,prm=0,free=0;members.forEach(function(m){var p=m.subscriptionPlan||m.subscription_plan||'free';if(p.indexOf('standard')>-1)std++;else if(p.indexOf('premium')>-1)prm++;else free++;});document.getElementById('statSubStandard').textContent=std;document.getElementById('statSubPremium').textContent=prm;document.getElementById('statSubFree').textContent=free;var rows=members.filter(function(m){var p=m.subscriptionPlan||m.subscription_plan||'free';return p!=='free';}).map(function(m){var p=m.subscriptionPlan||m.subscription_plan||'-';var s=m.subscriptionStatus||m.subscription_status||'active';var sc=s==='active'?'status-published':s==='suspended'?'status-rejected':'status-draft';return '<tr><td><strong>'+(m.name||m.display_name||m.email)+'</strong></td><td>'+p+'</td><td><span class="status-badge '+sc+'">'+s+'</span></td><td>-</td></tr>';}).join('');document.getElementById('subscriptionsTableBody').innerHTML=rows||'<tr><td colspan="4"><div class="empty-state">No paid subscriptions</div></td></tr>';}).catch(function(){document.getElementById('subscriptionsTableBody').innerHTML='<tr><td colspan="4"><div class="empty-state">Failed to load subscriptions</div></td></tr>';});}
+/* REVIEW MODAL */
+var _reviewType='';var _reviewItem=null;
+function openReviewModal(type,item){
+  _reviewType=type;_reviewItem=item;
+  var title=type==='submission'?'Review Submission':'Review Pull-Letter';
+  var info='';
+  if(type==='submission'){
+    info='<strong>'+(item.title||'Untitled')+'</strong><br>Submitted by: '+(item.submitted_by||item.user_id||'-')+'<br>Date: '+fmtDate(item.created_at)+'<br>Files: '+(item.file_urls?item.file_urls.length+' files':'-');
+    document.getElementById('rmBtnRevision').style.display='';
+  }else{
+    info='<strong>Pull-Letter Request</strong><br>From: '+(item.user_id||'-')+'<br>Request: '+(item.request_text||'-').substring(0,100)+'<br>Date: '+fmtDate(item.created_at);
+    document.getElementById('rmBtnRevision').style.display='none';
+  }
+  document.getElementById('reviewModalTitle').textContent=title;
+  document.getElementById('reviewModalInfo').innerHTML=info;
+  document.getElementById('rmBtnApprove').onclick=function(){doReviewAction(type==='pullletter'?'accepted':'approved');};
+  document.getElementById('rmBtnReject').onclick=function(){doReviewAction('rejected');};
+  document.getElementById('rmBtnRevision').onclick=function(){doReviewAction('revision');};
+  document.getElementById('reviewModalBg').classList.add('show');
+}
+function closeReviewModal(){document.getElementById('reviewModalBg').classList.remove('show');_reviewType='';_reviewItem=null;}
+function doReviewAction(status){
+  if(!_reviewItem||!_reviewItem.id){showToast('No item selected','error');return;}
+  var endpoint=_reviewType==='submission'?'/submissions/'+_reviewItem.id:'/pullletters/'+_reviewItem.id;
+  apiPut(endpoint,{status:status}).then(function(d){
+    if(d.error){showToast(d.error,'error');return;}
+    showToast((_reviewType==='submission'?'Submission':'Pull-letter')+' '+status);
+    closeReviewModal();
+    if(_reviewType==='submission')loadSubmissions('pending');
+    else loadPullLetters('pending');
+  }).catch(function(e){showToast('Action failed: '+(e.message||''),'error');});
+}
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeReviewModal();});
 </script>
 </body>
 </html>
