@@ -896,6 +896,12 @@ button{cursor:pointer;font-family:var(--sans)}
 
 <script src="pap-api.js?v=2" defer></script>
 <script>
+// ======== HTML ESCAPE (XSS prevention) ========
+function escHtml(s){
+  if(typeof s!=='string') return '';
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 // ======== TRANSLATION HELPER ========
 function t(obj){
   if(typeof obj==='string') return obj;
@@ -1165,7 +1171,7 @@ var projects=[];
 function renderProjects(){
   var html='';
   projects.forEach(function(p){
-    html+='<div class="proj"><div class="proj-top"><div class="proj-title">'+p.title+'</div><div class="proj-badge '+p.status+'">'+p.status.toUpperCase()+'</div></div><div class="proj-desc">'+p.desc+'</div><div class="proj-roles"><span class="proj-role">Photographer</span><span class="proj-role">Stylist</span><span class="proj-role">Makeup Artist</span></div><div class="proj-bottom"><div class="proj-loc">📍 '+p.location+'</div><button class="proj-apply" onclick="alertLogin()">'+(p.status==='open'?'APPLY':'CLOSED')+'</button></div></div>';
+    html+='<div class="proj"><div class="proj-top"><div class="proj-title">'+escHtml(p.title)+'</div><div class="proj-badge '+escHtml(p.status)+'">'+escHtml(p.status).toUpperCase()+'</div></div><div class="proj-desc">'+escHtml(p.desc)+'</div><div class="proj-roles"><span class="proj-role">Photographer</span><span class="proj-role">Stylist</span><span class="proj-role">Makeup Artist</span></div><div class="proj-bottom"><div class="proj-loc">📍 '+p.location+'</div><button class="proj-apply" onclick="alertLogin()">'+(p.status==='open'?'APPLY':'CLOSED')+'</button></div></div>';
   });
   document.getElementById('projectsList').innerHTML=html;
 }
@@ -1216,7 +1222,7 @@ function fDir(){
 
 // ======== SIDEBARS ========
 function renderSidebars(){
-  var topPosts=allPosts.sort(function(a,b){return b.likes-a.likes;}).slice(0,5);
+  var topPosts=allPosts.slice().sort(function(a,b){return b.likes-a.likes;}).slice(0,5);
   var h='';
   topPosts.forEach(function(p,i){h+='<div class="sw-item" onclick="openPost('+p.id+')"><div class="sw-rank">'+(i+1)+'</div><div style="flex:1"><div class="sw-nm">'+t(p.title)+'</div><div class="sw-sub">'+p.author+'</div></div></div>';});
   document.getElementById('topPosts').innerHTML=h;
@@ -1555,7 +1561,7 @@ openPost = function(id){
           var name = c.profiles ? c.profiles.display_name : 'User';
           var av = name.split(' ').map(function(w){return w[0];}).join('').substring(0,2);
           var canDelete = SB.user && c.user_id === SB.user.id;
-          commentHtml += '<div class="comment"><div class="comment-av">'+av+'</div><div class="comment-body"><div class="comment-name">'+name+' <span class="comment-time">'+new Date(c.created_at).toLocaleDateString()+'</span></div><div class="comment-text">'+c.content+'</div>'+(canDelete?'<div class="comment-action" onclick="deleteComment(\''+c.id+'\',\''+id+'\')">삭제</div>':'')+'</div></div>';
+          commentHtml += '<div class="comment"><div class="comment-av">'+escHtml(av)+'</div><div class="comment-body"><div class="comment-name">'+escHtml(name)+' <span class="comment-time">'+new Date(c.created_at).toLocaleDateString()+'</span></div><div class="comment-text">'+escHtml(c.content)+'</div>'+(canDelete?'<div class="comment-action" onclick="deleteComment(\''+c.id+'\',\''+id+'\')">삭제</div>':'')+'</div></div>';
         });
         var section = document.querySelector('.comments-section');
         if(section){
@@ -1590,7 +1596,7 @@ function submitComment(postId){
       if(comment){
         var name = comment.profiles ? comment.profiles.display_name : SB.user.email.split('@')[0];
         var av = name.split(' ').map(function(w){return w[0];}).join('').substring(0,2);
-        var html = '<div class="comment"><div class="comment-av">'+av+'</div><div class="comment-body"><div class="comment-name">'+name+' <span class="comment-time">just now</span></div><div class="comment-text">'+content+'</div><div class="comment-action" onclick="deleteComment(\''+comment.id+'\',\''+postId+'\')">삭제</div></div></div>';
+        var html = '<div class="comment"><div class="comment-av">'+escHtml(av)+'</div><div class="comment-body"><div class="comment-name">'+escHtml(name)+' <span class="comment-time">just now</span></div><div class="comment-text">'+escHtml(content)+'</div><div class="comment-action" onclick="deleteComment(\''+comment.id+'\',\''+postId+'\')">삭제</div></div></div>';
         var inputWrap = document.querySelector('.comment-input-wrap');
         if(inputWrap) inputWrap.insertAdjacentHTML('beforebegin', html);
         input.value = '';
@@ -1605,7 +1611,13 @@ function submitComment(postId){
 function deleteComment(commentId, postId){
   if(!SB.client) return;
   SB.deleteComment(commentId).then(function(ok){
-    if(ok) openPost(postId); // Refresh
+    if(ok){
+      // Decrement comment count in local data
+      var post = allPosts.find(function(p){ return p.id == postId; });
+      if(post) post.comments = Math.max(0, (post.comments||0) - 1);
+      openPost(postId); // Refresh
+      updatePostTable();
+    }
   });
 }
 
