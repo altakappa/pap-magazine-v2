@@ -24,8 +24,12 @@ module.exports = async function handler(req, res) {
       return res.redirect(302, `${frontendUrl}/auth.html?error=missing_code&mode=login`);
     }
 
-    const KAKAO_CLIENT_ID = process.env.KAKAO_CLIENT_ID || '27187473a130e7e7b1fbdfd00bbf3676';
-    const KAKAO_CLIENT_SECRET = process.env.KAKAO_CLIENT_SECRET || 'V6bR8gEIWLEYA9vlbYL8Grr8I5jPfPis';
+    const KAKAO_CLIENT_ID = process.env.KAKAO_CLIENT_ID;
+    const KAKAO_CLIENT_SECRET = process.env.KAKAO_CLIENT_SECRET;
+    if (!KAKAO_CLIENT_ID || !KAKAO_CLIENT_SECRET) {
+      console.error('Kakao OAuth environment variables are not set');
+      return res.redirect(302, `${frontendUrl}/auth.html?error=oauth_config_error&mode=login`);
+    }
     const REDIRECT_URI = `${frontendUrl}/api/auth/kakao-callback`;
 
     // 1. Exchange authorization code for access token

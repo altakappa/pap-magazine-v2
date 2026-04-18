@@ -5,6 +5,8 @@
 const ALLOWED_ORIGINS = [
   'https://www.pap-magazine.com',
   'https://pap-magazine.com',
+  'https://www.papkorea.com',
+  'https://papkorea.com',
   'https://pap-magazine.vercel.app',
   'http://localhost:3000',
   'http://localhost:5500',

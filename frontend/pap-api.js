@@ -135,7 +135,7 @@ const PAP = (function() {
     logout() {
       removeToken();
       removeUser();
-      window.location.href = 'pap-magazine-v5.html';
+      window.location.href = 'index.html';
     },
 
     isLoggedIn() {
@@ -180,7 +180,7 @@ const PAP = (function() {
         // Fetch user profile
         request('GET', '/auth/me').then(res => {
           setUser(res.user);
-          window.location.href = 'pap-magazine-v5.html';
+          window.location.href = 'index.html';
         }).catch(() => {
           removeToken();
           ui.toast('Authentication failed', 'error');

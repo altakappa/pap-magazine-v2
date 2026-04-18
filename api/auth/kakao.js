@@ -13,7 +13,11 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const KAKAO_CLIENT_ID = process.env.KAKAO_CLIENT_ID || '27187473a130e7e7b1fbdfd00bbf3676';
+    const KAKAO_CLIENT_ID = process.env.KAKAO_CLIENT_ID;
+    if (!KAKAO_CLIENT_ID) {
+      console.error('KAKAO_CLIENT_ID environment variable is not set');
+      return res.status(500).json({ message: 'OAuth configuration error' });
+    }
     const siteUrl = process.env.NEXT_PUBLIC_URL || 'https://www.papkorea.com';
     const REDIRECT_URI = `${siteUrl}/api/auth/kakao-callback`;
 

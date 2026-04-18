@@ -1442,7 +1442,7 @@ var SB = {
       checked_at: today
     }).select().single();
     if(error){
-      if(error.code === '23505') { console.log('[SB] Already checked in today'); return 'already'; }
+      if(error.code === '23505') { return 'already'; }
       console.error('[SB] doCheckin:', error);
       return false;
     }

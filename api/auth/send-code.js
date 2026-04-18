@@ -85,12 +85,11 @@ module.exports = async function handler(req, res) {
     const result = await sendEmail(email.trim(), buildVerificationEmail(code));
 
     if (result.skipped) {
-      // SMTP not configured — for development, return code in response
-      console.warn('[VERIFY] SMTP not configured, returning code for dev');
+      // SMTP not configured — log warning but do NOT expose code in response
+      console.warn('[VERIFY] SMTP not configured. Email was not sent.');
       return res.status(200).json({
         verificationToken,
         message: 'Verification code sent',
-        _devCode: code, // Remove in production
       });
     }
 

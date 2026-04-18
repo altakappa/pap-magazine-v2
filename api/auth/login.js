@@ -33,15 +33,6 @@ module.exports = async function handler(req, res) {
     if (authError) {
       // Try to distinguish error types for better UX
       var errMsg = authError.message || '';
-      if (errMsg.includes('Invalid login credentials')) {
-        // Check if user exists to provide specific feedback
-        var { data: existingUser } = await supabaseAdmin.auth.admin.listUsers({ filter: { email: email } });
-        var userExists = existingUser && existingUser.users && existingUser.users.length > 0;
-        if (!userExists) {
-          return res.status(401).json({ message: 'User not found', code: 'USER_NOT_FOUND' });
-        }
-        return res.status(401).json({ message: 'Invalid password', code: 'WRONG_PASSWORD' });
-      }
       return res.status(401).json({ message: 'Invalid email or password', code: 'AUTH_ERROR' });
     }
 

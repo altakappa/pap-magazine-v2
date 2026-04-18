@@ -2891,14 +2891,13 @@ window.addEventListener('resize',function(){
     else if(h.includes('pap-magazine.com')){PAP_API_BASE='https://www.pap-magazine.com/api';}
     else{PAP_API_BASE='';}
   })();
-  if(!PAP_API_BASE){console.log('[PAP Sync] Local file mode.');return;}
-  console.log('[PAP Sync] API base:',PAP_API_BASE);
+  if(!PAP_API_BASE){return;}
   function apiFilmToLocal(f){return{t:f.title||'',yt:f.youtube_id||'',th:f.thumbnail_url||'',d:f.published_date||'',cat:Array.isArray(f.categories)?f.categories.join(','):(f.categories||'Film'),tags:Array.isArray(f.tags)?f.tags.join(','):(f.tags||''),cr:Array.isArray(f.credits)?f.credits:[],_api_id:f.id};}
   function apiArticleToLocal(a){return{t:a.title||'',sub:a.subtitle||'',d:a.published_date||'',slug:a.slug||'',url:a.custom_url||a.slug||'',cat:a.category||'',th:a.thumbnail_url||'',img:a.hero_image_url||'',tags:Array.isArray(a.tags)?a.tags:[],cr:Array.isArray(a.credits)?a.credits:[],desc:a.content||'',gallery:Array.isArray(a.gallery)?a.gallery:[],_api_id:a.id};}
   function mergeData(api,local){var seen={},m=[];api.forEach(function(i){var k=(i.t||'').trim().toLowerCase();if(k&&!seen[k]){seen[k]=1;m.push(i);}});local.forEach(function(i){var k=(i.t||'').trim().toLowerCase();if(k&&!seen[k]){seen[k]=1;m.push(i);}});return m;}
   function fetchAll(ep,conv,cb){var all=[],pg=1;(function go(){fetch(PAP_API_BASE+ep+'?status=published\u0026limit=100\u0026page='+pg).then(function(r){return r.json();}).then(function(res){if(res.data&&res.data.length>0){res.data.forEach(function(i){all.push(conv(i));});if(res.pagination&&pg<res.pagination.pages){pg++;go();}else{cb(all);}}else{cb(all);}}).catch(function(e){console.warn('[PAP Sync]',ep,e);cb(all);});})();}
-  function syncFilms(){if(typeof filmAllData==='undefined')return;fetchAll('/films',apiFilmToLocal,function(af){if(af.length>0){var mg=mergeData(af,filmAllData);filmAllData.length=0;mg.forEach(function(f){filmAllData.push(f);});console.log('[PAP Sync] Films synced: '+filmAllData.length);}});}
-  function syncArticles(){if(typeof artData==='undefined')return;fetchAll('/articles',apiArticleToLocal,function(aa){if(aa.length>0){var mg=mergeData(aa,artData);artData.length=0;mg.forEach(function(a){artData.push(a);});console.log('[PAP Sync] Articles synced: '+artData.length);}});}
+  function syncFilms(){if(typeof filmAllData==='undefined')return;fetchAll('/films',apiFilmToLocal,function(af){if(af.length>0){var mg=mergeData(af,filmAllData);filmAllData.length=0;mg.forEach(function(f){filmAllData.push(f);});}});}
+  function syncArticles(){if(typeof artData==='undefined')return;fetchAll('/articles',apiArticleToLocal,function(aa){if(aa.length>0){var mg=mergeData(aa,artData);artData.length=0;mg.forEach(function(a){artData.push(a);});}});}
   if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',function(){syncFilms();syncArticles();});}else{setTimeout(function(){syncFilms();syncArticles();},100);}
 })();
 

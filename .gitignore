@@ -23,3 +23,15 @@ npm-debug.log*
 # IDE
 .vscode/
 .idea/
+
+# Development/migration tools (should not be deployed)
+frontend/data-migration.html
+frontend/community_updated.html
+
+# SQL schemas and dev docs in frontend (should not be public)
+frontend/js/*.sql
+frontend/js/*.md
+frontend/js/*.txt
+
+# Large data files (not for deployment)
+PAP_Digital_Magazine/
