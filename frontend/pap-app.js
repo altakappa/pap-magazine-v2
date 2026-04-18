@@ -2953,3 +2953,26 @@ function buildPagination(container,currentPage,totalPages,onPageChange,isDark){
   else window.addEventListener('load',function(){setTimeout(tryOpen,1200);});
 })();
 
+// ======== IMAGE RIGHT-CLICK PROTECTION ========
+// Only standard & premium subscribers can right-click (download) images
+(function(){
+  document.addEventListener('contextmenu',function(e){
+    var el=e.target;
+    if(el.tagName==='IMG' || el.closest('img')){
+      if(!isStandardOrAbove()){
+        e.preventDefault();
+        var toast=document.createElement('div');
+        toast.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:14px 28px;font-size:11px;font-weight:600;letter-spacing:.08em;z-index:99999;font-family:Montserrat,sans-serif;background:#111;color:#fff;border:1px solid #333;text-align:center;';
+        toast.textContent='IMAGE DOWNLOAD IS AVAILABLE FOR STANDARD & PREMIUM MEMBERS';
+        document.body.appendChild(toast);
+        setTimeout(function(){toast.style.opacity='0';toast.style.transition='opacity .3s';setTimeout(function(){toast.remove();},300);},2500);
+      }
+    }
+  });
+  document.addEventListener('dragstart',function(e){
+    if((e.target.tagName==='IMG') && !isStandardOrAbove()){
+      e.preventDefault();
+    }
+  });
+})();
+
