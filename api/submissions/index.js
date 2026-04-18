@@ -28,6 +28,14 @@ module.exports = async function handler(req, res) {
         Array.isArray(fields.data) ? fields.data[0] : fields.data
       );
 
+      // Validate required fields
+      if (!data.title || !data.title.trim()) {
+        return res.status(400).json({ message: 'Title is required' });
+      }
+      if (!data.genre || !Array.isArray(data.genre) || data.genre.length === 0) {
+        return res.status(400).json({ message: 'At least one genre is required' });
+      }
+
       // Upload look images to Supabase Storage
       const lookImages = files.lookImages
         ? (Array.isArray(files.lookImages) ? files.lookImages : [files.lookImages])

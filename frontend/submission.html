@@ -927,8 +927,9 @@ function loadMySubmissions(){
   var section=document.getElementById('mySubsSection');
   section.style.display='block';
   // Load from API if available
-  if(PAP.submissions&&PAP.submissions.list){
-    PAP.submissions.list().then(function(subs){
+  if(PAP.submissions&&(PAP.submissions.getMine||PAP.submissions.list)){
+    (PAP.submissions.getMine||PAP.submissions.list)().then(function(res){
+      var subs=res.submissions||res.data||res||[];
       if(!subs||subs.length===0) return;
       document.getElementById('subEmpty').style.display='none';
       var html='';
@@ -941,7 +942,7 @@ function loadMySubmissions(){
         html+='<div class="sub-item"><div><div class="sub-item-title">'+PAP.sanitize(s.title||'Untitled')+'</div></div><div class="sub-item-date">'+PAP.sanitize(s.created_at||'')+'</div><div class="sub-item-status '+statusClass+'">'+statusText+'</div><div class="sub-item-action" onclick="viewSubmission(\''+s.id+'\')">VIEW</div></div>';
       });
       document.getElementById('mySubsList').innerHTML=html;
-    }).catch(function(){});
+    }).catch(function(e){console.error('loadMySubmissions error:',e);});
   }
 }
 
@@ -1398,31 +1399,37 @@ async function submitForm(){
     return;
   }
 
-  // Collect form data
+  // Collect form data — field names match backend expectations
   var data={
-    genres: selectedGenres,
+    genre: selectedGenres,
     title: document.getElementById('editorialTitle').value.trim(),
     studio: document.getElementById('studioName').value.trim(),
-    email: document.getElementById('contactEmail').value.trim(),
+    contactEmail: document.getElementById('contactEmail').value.trim(),
+    contactName: document.getElementById('studioName').value.trim(),
     website: document.getElementById('studioWebsite').value.trim(),
     instagram: document.getElementById('studioInsta').value.trim(),
     artistStatement: document.getElementById('artistStatement').value.trim(),
-    coverLook: selectedCoverLook,
-    coverIndex: selectedCoverIdx
+    coverImageIndex: selectedCoverIdx||0
   };
 
-  // Collect team credits
+  // Collect team credits — store as both 'credits' (backend) and 'team' (legacy)
   data.team=[];
+  data.credits={};
   document.querySelectorAll('#teamList .team-row').forEach(function(row){
     var inputs=row.querySelectorAll('.team-input');
     var roleEl=row.querySelector('.team-role');
     var role=roleEl?roleEl.textContent:inputs[0].value;
-    data.team.push({
+    var member={
       role: role,
       name: inputs[roleEl?0:1].value,
       instagram: inputs[roleEl?1:2].value,
       website: inputs[roleEl?2:3]?inputs[roleEl?2:3].value:''
-    });
+    };
+    data.team.push(member);
+    // Also build credits object keyed by role (for backend)
+    var rKey=role.toLowerCase().replace(/\s+/g,'_');
+    if(!data.credits[rKey]) data.credits[rKey]=[];
+    data.credits[rKey].push(member.name+(member.instagram?' ('+member.instagram+')':''));
   });
 
   // Collect models
@@ -1432,8 +1439,14 @@ async function submitForm(){
     if(inputs[0].value.trim()) data.models.push({ name:inputs[0].value, instagram:inputs[1].value, agency:inputs[2]?inputs[2].value:'' });
   });
 
+  // Flatten lookFiles into array for upload
+  var allLookImages=[];
+  Object.keys(lookFiles).sort(function(a,b){return parseInt(a)-parseInt(b);}).forEach(function(k){
+    if(lookFiles[k]) allLookImages=allLookImages.concat(lookFiles[k]);
+  });
+
   try{
-    await PAP.submissions.create(data, files1||[]);
+    await PAP.submissions.create(data, allLookImages, files1||[]);
     document.getElementById('step5').style.display='none';
     document.querySelector('.step-bar').style.display='none';
     document.getElementById('submitSuccess').style.display='block';

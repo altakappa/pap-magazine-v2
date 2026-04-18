@@ -1461,14 +1461,27 @@ async function loadSubmissionForReview(submissionId){
 }
 
 function populateReviewModal(submission){
-  var desc=submission.description?JSON.parse(submission.description):{};
+  var desc={};
+  try{desc=submission.description?JSON.parse(submission.description):{};}catch(e){desc={};}
   var createdDate=submission.created_at?new Date(submission.created_at).toLocaleDateString('ko-KR',{month:'long',day:'numeric'}):'-';
-  document.getElementById('reviewModalHeader').textContent=submission.title+' — '+submission.submitted_by+' · '+createdDate;
-  document.getElementById('reviewModalProduction').textContent=submission.company_name+' · '+(submission.company_email||'');
-  document.getElementById('reviewModalCredits').textContent=submission.credits||'—';
+  var submitterName=submission.submitterName||submission.profiles&&submission.profiles.name||'—';
+  var submitterEmail=submission.submitterEmail||submission.profiles&&submission.profiles.email||desc.contactEmail||'';
+  document.getElementById('reviewModalHeader').textContent=(submission.title||'Untitled')+' — '+submitterName+' · '+createdDate;
+  document.getElementById('reviewModalProduction').textContent=submitterName+(submitterEmail?' · '+submitterEmail:'');
+  // Credits: from description JSON or top-level
+  var creditsText='—';
+  if(desc.credits&&typeof desc.credits==='object'){
+    creditsText=Object.keys(desc.credits).map(function(k){return k+': '+(Array.isArray(desc.credits[k])?desc.credits[k].join(', '):desc.credits[k]);}).join(' / ');
+  }else if(desc.team&&Array.isArray(desc.team)){
+    creditsText=desc.team.map(function(t){return t.role+': '+t.name;}).join(' / ');
+  }else if(submission.credits){
+    creditsText=submission.credits;
+  }
+  document.getElementById('reviewModalCredits').textContent=creditsText;
   var looks=submission.file_urls?submission.file_urls.length:'?';
   document.getElementById('reviewModalLooks').textContent=looks+'개 이미지';
-  document.getElementById('reviewModalLinks').textContent=submission.notes||'—';
+  var linksText=desc.artistStatement||submission.notes||'—';
+  document.getElementById('reviewModalLinks').textContent=linksText;
 }
 
 function renderReviewImageGrid(fileUrls){
