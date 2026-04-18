@@ -1550,7 +1550,13 @@ function scrollFilm(dir){
     // Exclude header area — cursor must be below header to activate custom cursor
     var headerEl = document.querySelector('.header');
     var headerBottom = headerEl ? headerEl.getBoundingClientRect().bottom + 8 : 80; // +8px buffer
-    const isInHero = heroRect.top <= mouseY && mouseY <= heroRect.bottom && heroRect.left <= mouseX && mouseX <= heroRect.right && mouseY > headerBottom;
+    // Also exclude auth-btn-wrap & active dropdown area from hero cursor zone
+    var authWrap = document.querySelector('.auth-btn-wrap');
+    var acctDD = document.getElementById('accountDropdown');
+    var overAuth = false;
+    if(authWrap){var ar=authWrap.getBoundingClientRect();if(mouseX>=ar.left-8&&mouseX<=ar.right+8&&mouseY>=ar.top-8&&mouseY<=ar.bottom+8)overAuth=true;}
+    if(acctDD&&acctDD.classList.contains('active')){var dr=acctDD.getBoundingClientRect();if(mouseX>=dr.left-8&&mouseX<=dr.right+8&&mouseY>=dr.top-8&&mouseY<=dr.bottom+8)overAuth=true;}
+    const isInHero = !overAuth && heroRect.top <= mouseY && mouseY <= heroRect.bottom && heroRect.left <= mouseX && mouseX <= heroRect.right && mouseY > headerBottom;
 
     // Detect if cursor is near left or right edge of hero
     var nearLeftEdge = isInHero && (mouseX - heroRect.left) < EDGE_THRESHOLD;
@@ -1647,6 +1653,8 @@ function scrollFilm(dir){
     if(interstitial) return true;
     if(brandAd) return true;
     if(pageOverlay) return true;
+    var acctDD = document.getElementById('accountDropdown');
+    if(acctDD && acctDD.classList.contains('active')) return true;
     return false;
   }
 

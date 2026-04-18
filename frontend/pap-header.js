@@ -353,23 +353,28 @@
   var sel = document.getElementById('langSelect');
   if (sel) sel.value = saved;
 
-  /* Update login links based on user state */
-  function _updateAuthState() {
-    try {
-      var u = localStorage.getItem('pap-user');
-      if (!u) return;
-      var user = JSON.parse(u);
-      if (!user || !user.name) return;
-      var dd = document.getElementById('accountDropdown');
-      if (!dd) return;
-      dd.innerHTML = '<a href="mypage.html" style="font-weight:700">' + user.name + '</a>' +
-        '<div class="dropdown-divider"></div>' +
-        '<a href="mypage.html">MY PAGE</a>' +
-        '<a href="subscribe.html" data-i18n="subscribe">구독하기</a>' +
-        '<div class="dropdown-divider"></div>' +
-        '<button onclick="localStorage.removeItem(\'pap-user\');location.reload();">로그아웃</button>';
-    } catch (e) { /* ignore */ }
+  /* Update login links based on user state — delegated to pap-app.js _papUpdateAuthDropdown if available */
+  if(typeof _papUpdateAuthDropdown==='function'){
+    _papUpdateAuthDropdown();
+  } else {
+    /* Fallback for pages without pap-app.js */
+    try{
+      var u=localStorage.getItem('pap-user');
+      if(u){
+        var user=JSON.parse(u);
+        if(user&&user.name){
+          var dd=document.getElementById('accountDropdown');
+          if(dd){
+            dd.innerHTML='<a href="mypage.html" style="font-weight:700;color:#fff">'+user.name+'</a>'+
+              '<div class="dropdown-divider"></div>'+
+              '<a href="mypage.html">MY PAGE</a>'+
+              '<a href="subscribe.html">SUBSCRIPTION</a>'+
+              '<div class="dropdown-divider"></div>'+
+              '<button onclick="localStorage.removeItem(\'pap-token\');localStorage.removeItem(\'pap-user\');window.location.href=\'/\';">LOG OUT</button>';
+          }
+        }
+      }
+    }catch(e){}
   }
-  _updateAuthState();
 
 })();
