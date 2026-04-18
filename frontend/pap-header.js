@@ -367,17 +367,17 @@
         if(dd){
           var lang=localStorage.getItem('pap-lang')||'ko';
           var t={
-            ko:{mypage:'마이페이지',subscribe:'구독 관리',logout:'로그아웃'},
-            en:{mypage:'MY PAGE',subscribe:'MANAGE SUBSCRIPTION',logout:'LOG OUT'},
-            it:{mypage:'LA MIA PAGINA',subscribe:'GESTISCI ABBONAMENTO',logout:'ESCI'},
-            fr:{mypage:'MON COMPTE',subscribe:'GÉRER L\'ABONNEMENT',logout:'DÉCONNEXION'},
-            ja:{mypage:'マイページ',subscribe:'購読管理',logout:'ログアウト'},
-            zh:{mypage:'我的页面',subscribe:'管理订阅',logout:'退出登录'},
-            es:{mypage:'MI PÁGINA',subscribe:'GESTIONAR SUSCRIPCIÓN',logout:'CERRAR SESIÓN'}
+            ko:{home:'홈으로',subscribe:'구독 관리',logout:'로그아웃'},
+            en:{home:'HOME',subscribe:'MANAGE SUBSCRIPTION',logout:'LOG OUT'},
+            it:{home:'HOME',subscribe:'GESTISCI ABBONAMENTO',logout:'ESCI'},
+            fr:{home:'ACCUEIL',subscribe:'GÉRER L\'ABONNEMENT',logout:'DÉCONNEXION'},
+            ja:{home:'ホームへ',subscribe:'購読管理',logout:'ログアウト'},
+            zh:{home:'首页',subscribe:'管理订阅',logout:'退出登录'},
+            es:{home:'INICIO',subscribe:'GESTIONAR SUSCRIPCIÓN',logout:'CERRAR SESIÓN'}
           };
           var s=t[lang]||t.en;
           dd.innerHTML=
-            '<a href="mypage.html">'+s.mypage+'</a>'+
+            '<a href="/">'+s.home+'</a>'+
             '<a href="subscribe.html">'+s.subscribe+'</a>'+
             '<div class="dropdown-divider"></div>'+
             '<button onclick="localStorage.removeItem(\'pap-token\');localStorage.removeItem(\'pap-user\');window.location.href=\'/\';">'+s.logout+'</button>';
