@@ -1416,7 +1416,7 @@ function go(id,el){
     if(document.getElementById('postSubtitle'))document.getElementById('postSubtitle').value='';
     if(document.getElementById('postTags'))document.getElementById('postTags').value='';
     if(document.getElementById('postVideoUrl'))document.getElementById('postVideoUrl').value='';
-    if(document.getElementById('postDescription'))document.getElementById('postDescription').value='';
+    if(document.getElementById('postDescription'))document.getElementById('postDescription').value=ed.description||'';
     if(document.getElementById('tagPreview'))document.getElementById('tagPreview').innerHTML='';
   }
 }
@@ -1827,7 +1827,7 @@ function editEditorial(id){
   var preview=document.getElementById('tagPreview');
   if(preview&&tagsStr)preview.innerHTML=tagsStr.split(',').map(function(t){return t.trim()?'<span class="pe-tag">'+t.trim()+'</span>':'';}).join('');
   if(document.getElementById('postVideoUrl'))document.getElementById('postVideoUrl').value=ed.url||'';
-  if(document.getElementById('postDescription'))document.getElementById('postDescription').value='';
+  if(document.getElementById('postDescription'))document.getElementById('postDescription').value=ed.description||'';
   document.getElementById('postPublish').checked=(ed.status==='published');
 
   // Populate thumbnail preview
@@ -1953,6 +1953,7 @@ async function savePost(){
       else if(g.src&&g.src.indexOf('http')===0){galleryUrls.push(g.src);}
     }
 
+    var descriptionVal=document.getElementById('postDescription')?document.getElementById('postDescription').value:'';
     var payload={
       title:title,
       slug:title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/-+$/,''),
@@ -1965,7 +1966,8 @@ async function savePost(){
       cover_image:thumbUrl||undefined,
       gallery:galleryUrls.length?galleryUrls:undefined,
       status:isPublished?'published':'draft',
-      published_date:isPublished?new Date().toISOString():null
+      published_date:isPublished?new Date().toISOString():null,
+      description:descriptionVal||null
     };
     // Remove undefined keys
     Object.keys(payload).forEach(function(k){if(payload[k]===undefined)delete payload[k];});

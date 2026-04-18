@@ -41,7 +41,7 @@ module.exports = async function handler(req, res) {
 
     try {
       const updates = {};
-      const allowed = ['title', 'slug', 'cover_image', 'published_date', 'url', 'tags', 'issue', 'thumbnail', 'gallery', 'credits', 'fashion', 'status'];
+      const allowed = ['title', 'slug', 'cover_image', 'published_date', 'url', 'tags', 'issue', 'thumbnail', 'gallery', 'credits', 'fashion', 'status', 'description'];
       for (const key of allowed) {
         if (req.body[key] !== undefined) updates[key] = req.body[key];
       }

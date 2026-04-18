@@ -47,7 +47,7 @@ module.exports = async function handler(req, res) {
     if (!user) return;
 
     try {
-      const { title, slug, cover_image, published_date, url, tags, issue, thumbnail, gallery, credits, fashion, status } = req.body;
+      const { title, slug, cover_image, published_date, url, tags, issue, thumbnail, gallery, credits, fashion, status, description } = req.body;
 
       if (!title) {
         return res.status(400).json({ error: 'title is required' });
@@ -67,7 +67,8 @@ module.exports = async function handler(req, res) {
           gallery: gallery || [],
           credits: credits || {},
           fashion: fashion || {},
-          status: status || 'published'
+          status: status || 'published',
+          description: description || null
         })
         .select()
         .single();
