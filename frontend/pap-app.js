@@ -2649,7 +2649,7 @@ window._papFilmAutoPlay = function(){
     loadJSON('data/creators.json', creatorData);
     loadJSON('data/shorts.json', shortsData, function(){ if(window._papShortsRender) window._papShortsRender(); });
     // For edDetails (object, not array):
-    fetch('data/editorial-details.json').then(function(r){return r.json();}).then(function(data){
+    fetch('data/editorial-details.json?v=2').then(function(r){return r.json();}).then(function(data){
       Object.keys(data).forEach(function(k){ edDetails[k]=data[k]; });
       console.log('[PAP] Loaded editorial details');
     }).catch(function(e){ console.warn('[PAP] Could not load editorial details'); });

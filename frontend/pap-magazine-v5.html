@@ -3229,7 +3229,7 @@ try{
     loadJSON('data/articles.json',artData,window._papArticleRenderCards);
     loadJSON('data/creators.json',creatorData);
     loadJSON('data/shorts.json',shortsData);
-    fetch('data/editorial-details.json').then(function(r){return r.json();}).then(function(data){
+    fetch('data/editorial-details.json?v=2').then(function(r){return r.json();}).then(function(data){
       Object.keys(data).forEach(function(k){edDetails[k]=data[k];});
     }).catch(function(){});
   }
