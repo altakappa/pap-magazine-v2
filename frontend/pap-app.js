@@ -920,6 +920,7 @@ function _openAllEditorialsInner(){
   // Membership check: free members cannot access all editorials
   if(!isStandardOrAbove()){
     alert(getLangText('edAccessFree','에디토리얼 전체보기는 스탠다드 이상 회원만 이용 가능합니다.\nStandard membership or above is required to browse all editorials.'));
+    window.location.href='subscribe.html';
     return;
   }
   var overlay=document.getElementById('edAllOverlay');
