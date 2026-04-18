@@ -353,6 +353,35 @@
   var sel = document.getElementById('langSelect');
   if (sel) sel.value = saved;
 
+  /* Apply i18n to injected header elements */
+  var _hdrT = {
+    ko:{subscribe:'구독하기',submission:'서브미션',pullletter:'풀레터',navLogin:'로그인 / 회원가입',about:'ABOUT',business:'BUSINESS',contact:'CONTACT',navCommunity:'커뮤니티',navMagazine:'매거진',navEditorial:'에디토리얼',navArticle:'아티클',navFilm:'필름'},
+    en:{subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',navLogin:'LOGIN / JOIN',about:'ABOUT',business:'BUSINESS',contact:'CONTACT',navCommunity:'COMMUNITY',navMagazine:'MAGAZINE',navEditorial:'EDITORIAL',navArticle:'ARTICLE',navFilm:'FILM'},
+    it:{subscribe:'ABBONATI',submission:'SUBMISSION',pullletter:'PULL-LETTER',navLogin:'ACCEDI / ISCRIVITI',about:'CHI SIAMO',business:'BUSINESS',contact:'CONTATTI',navCommunity:'COMMUNITY',navMagazine:'MAGAZINE',navEditorial:'EDITORIALE',navArticle:'ARTICOLO',navFilm:'FILM'},
+    fr:{subscribe:"S'ABONNER",submission:'SOUMISSION',pullletter:'PULL-LETTER',navLogin:'CONNEXION / INSCRIPTION',about:'À PROPOS',business:'BUSINESS',contact:'CONTACT',navCommunity:'COMMUNAUTÉ',navMagazine:'MAGAZINE',navEditorial:'ÉDITORIAL',navArticle:'ARTICLE',navFilm:'FILM'},
+    ja:{subscribe:'購読',submission:'サブミッション',pullletter:'PULL-LETTER',navLogin:'ログイン / 会員登録',about:'アバウト',business:'ビジネス',contact:'お問い合わせ',navCommunity:'コミュニティ',navMagazine:'マガジン',navEditorial:'エディトリアル',navArticle:'アーティクル',navFilm:'フィルム'},
+    zh:{subscribe:'订阅',submission:'投稿',pullletter:'PULL-LETTER',navLogin:'登录 / 注册',about:'关于我们',business:'商务合作',contact:'联系方式',navCommunity:'社区',navMagazine:'杂志',navEditorial:'编辑精选',navArticle:'文章',navFilm:'影片'},
+    es:{subscribe:'SUSCRIBIRSE',submission:'ENVÍO',pullletter:'PULL-LETTER',navLogin:'INICIAR SESIÓN / UNIRSE',about:'ACERCA DE',business:'NEGOCIOS',contact:'CONTACTO',navCommunity:'COMUNIDAD',navMagazine:'REVISTA',navEditorial:'EDITORIAL',navArticle:'ARTÍCULO',navFilm:'FILM'}
+  };
+  function _applyHeaderI18n(lang){
+    var s = _hdrT[lang] || _hdrT.en;
+    document.querySelectorAll('[data-i18n]').forEach(function(el){
+      var k = el.getAttribute('data-i18n');
+      if(s[k]) el.textContent = s[k];
+    });
+  }
+  _applyHeaderI18n(saved);
+
+  /* Wrap existing setLang so nav overlay updates on language change */
+  var _origSetLang = typeof window.setLang === 'function' ? window.setLang : null;
+  window.setLang = function(l){
+    if(_origSetLang) _origSetLang(l);
+    else localStorage.setItem('pap-lang', l);
+    _applyHeaderI18n(l);
+    var sl = document.getElementById('langSelect');
+    if(sl) sl.value = l;
+  };
+
   /* Update login links based on user state — delegated to pap-app.js _papUpdateAuthDropdown if available */
   if(typeof _papUpdateAuthDropdown==='function'){
     _papUpdateAuthDropdown();
