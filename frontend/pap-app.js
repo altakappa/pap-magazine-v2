@@ -85,6 +85,51 @@ function getLangText(key,fallback){var lang=localStorage.getItem('pap-lang')||'k
 function toggleSearch(){const o=document.getElementById('searchBar');if(!o)return;o.classList.toggle('active');if(o.classList.contains('active')){setTimeout(()=>{var si=document.getElementById('searchInput');if(si)si.focus();},300);}else{var dd=document.getElementById('searchDropdown');if(dd)dd.classList.remove('active');var si=document.getElementById('searchInput');if(si)si.value='';}}
 function toggleAccountMenu(e){if(e)e.stopPropagation();var d=document.getElementById('accountDropdown');if(!d)return;d.classList.toggle('active');var fL=document.getElementById('floatingLogo');if(d.classList.contains('active')){if(fL)fL.style.display='none';setTimeout(function(){document.addEventListener('click',_closeAcct)},10)}else{if(fL)fL.style.display='';document.removeEventListener('click',_closeAcct)}}
 function _closeAcct(e){var d=document.getElementById('accountDropdown');if(d&&!d.contains(e.target)){d.classList.remove('active');var fL=document.getElementById('floatingLogo');if(fL)fL.style.display='';document.removeEventListener('click',_closeAcct)}}
+
+// ======== AUTH STATE → HEADER DROPDOWN ========
+function _papUpdateAuthDropdown(){
+  try{
+    var u=localStorage.getItem('pap-user');
+    var token=localStorage.getItem('pap-token');
+    if(!u&&!token) return;
+    var user=u?JSON.parse(u):null;
+    var displayName=(user&&user.name)?user.name:(user&&user.email)?user.email:'Account';
+    var dd=document.getElementById('accountDropdown');
+    if(!dd) return;
+    var lang=localStorage.getItem('pap-lang')||'ko';
+    var t={
+      ko:{mypage:'마이페이지',subscribe:'구독 관리',logout:'로그아웃'},
+      en:{mypage:'MY PAGE',subscribe:'MANAGE SUBSCRIPTION',logout:'LOG OUT'},
+      it:{mypage:'LA MIA PAGINA',subscribe:'GESTISCI ABBONAMENTO',logout:'ESCI'},
+      fr:{mypage:'MON COMPTE',subscribe:'GÉRER L\'ABONNEMENT',logout:'DÉCONNEXION'},
+      ja:{mypage:'マイページ',subscribe:'購読管理',logout:'ログアウト'},
+      zh:{mypage:'我的页面',subscribe:'管理订阅',logout:'退出登录'},
+      es:{mypage:'MI PÁGINA',subscribe:'GESTIONAR SUSCRIPCIÓN',logout:'CERRAR SESIÓN'}
+    };
+    var s=t[lang]||t.en;
+    dd.innerHTML=
+      '<a href="mypage.html" style="font-weight:700;color:#fff">'+displayName+'</a>'+
+      '<div class="dropdown-divider"></div>'+
+      '<a href="mypage.html">'+s.mypage+'</a>'+
+      '<a href="subscribe.html">'+s.subscribe+'</a>'+
+      '<div class="dropdown-divider"></div>'+
+      '<button onclick="_papLogout()">'+s.logout+'</button>';
+    // Also update nav overlay login link
+    document.querySelectorAll('[data-i18n="navLogin"]').forEach(function(el){
+      el.href='mypage.html';
+      el.textContent=displayName;
+      el.removeAttribute('data-i18n');
+      el.setAttribute('data-auth-updated','1');
+    });
+  }catch(e){console.warn('Auth dropdown error:',e);}
+}
+function _papLogout(){
+  localStorage.removeItem('pap-token');
+  localStorage.removeItem('pap-user');
+  window.location.href='/';
+}
+_papUpdateAuthDropdown();
+
 var _si=document.getElementById('searchInput');if(_si)_si.addEventListener('input',function(){searchEditorials(this.value);});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'||e.key==='Backspace'){var isInput=e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.isContentEditable;if(e.key==='Backspace'&&isInput)return;var _sb=document.getElementById('searchBar');if(_sb)_sb.classList.remove('active');var _sdd=document.getElementById('searchDropdown');if(_sdd)_sdd.classList.remove('active');var _ssi=document.getElementById('searchInput');if(_ssi)_ssi.value='';var _ad=document.getElementById('accountDropdown');if(_ad)_ad.classList.remove('active');closeNav();var edOv=document.getElementById('edOverlay');if(edOv&&edOv.classList.contains('active')){closeEditorial();e.preventDefault();return;}closeAllEditorials();closeAllFilms();closeAllArticles();if(document.getElementById('filmDetailOverlay'))document.getElementById('filmDetailOverlay').classList.remove('active');if(document.getElementById('artDetailOverlay'))document.getElementById('artDetailOverlay').classList.remove('active');if(e.key==='Backspace')e.preventDefault();}});
 

@@ -1019,5 +1019,36 @@ document.querySelectorAll('.nav-overlay a').forEach(link => {
 });
 </script>
 <script src="pap-auth-link.js" defer></script>
+<script>
+(function(){
+  try{
+    var u=localStorage.getItem('pap-user');
+    var token=localStorage.getItem('pap-token');
+    if(!u&&!token)return;
+    var user=u?JSON.parse(u):null;
+    var displayName=(user&&user.name)?user.name:(user&&user.email)?user.email:'Account';
+    var dd=document.getElementById('accountDropdown');
+    if(!dd)return;
+    var lang=(localStorage.getItem('pap-lang')||'ko').substring(0,2);
+    var t={
+      ko:{mypage:'마이페이지',subscribe:'구독 관리',logout:'로그아웃'},
+      en:{mypage:'MY PAGE',subscribe:'MANAGE SUBSCRIPTION',logout:'LOG OUT'},
+      it:{mypage:'LA MIA PAGINA',subscribe:'GESTISCI ABBONAMENTO',logout:'ESCI'},
+      fr:{mypage:'MON COMPTE',subscribe:'GÉRER L\'ABONNEMENT',logout:'DÉCONNEXION'},
+      ja:{mypage:'マイページ',subscribe:'購読管理',logout:'ログアウト'},
+      zh:{mypage:'我的页面',subscribe:'管理订阅',logout:'退出登录'},
+      es:{mypage:'MI PÁGINA',subscribe:'GESTIONAR SUSCRIPCIÓN',logout:'CERRAR SESIÓN'}
+    };
+    var s=t[lang]||t.en;
+    dd.innerHTML=
+      '<a href="mypage.html" style="font-weight:700;color:#fff">'+displayName+'</a>'+
+      '<div class="dropdown-divider"></div>'+
+      '<a href="mypage.html">'+s.mypage+'</a>'+
+      '<a href="subscribe.html">'+s.subscribe+'</a>'+
+      '<div class="dropdown-divider"></div>'+
+      '<button onclick="localStorage.removeItem(\'pap-token\');localStorage.removeItem(\'pap-user\');window.location.href=\'/\';">'+s.logout+'</button>';
+  }catch(e){}
+})();
+</script>
 </body>
 </html>
