@@ -741,7 +741,70 @@ function _openEditorialInner(title,thumb){
   document.getElementById('edOverlay').scrollTop=0;
   document.body.style.overflow='hidden';
   if(typeof _resetCursorForModal==='function') _resetCursorForModal();
-  try{history.pushState({editorial:true,title:title},'',window.location.pathname+'#editorial/'+encodeURIComponent(title));}catch(e){window.location.hash='#editorial/'+encodeURIComponent(title);}
+  // Push state with editorial info so popstate can restore it
+  var _edThumb=det.thumb||thumb||'';
+  try{history.pushState({editorial:true,title:title,thumb:_edThumb},'',window.location.pathname+'#editorial/'+encodeURIComponent(title));}catch(e){window.location.hash='#editorial/'+encodeURIComponent(title);}
+}
+
+// Version of _openEditorialInner that does NOT push a new history entry (used by popstate)
+function _openEditorialInner_noPush(title,thumb){
+  var d=edDetails[title];
+  if(!d){var titleLower=title.toLowerCase();for(var key in edDetails){if(key.toLowerCase()===titleLower){d=edDetails[key];break;}}}
+  d=d||{};
+  var det={issue:d.issue||'MAR. ISSUE',thumb:d.thumb||thumb,images:d.images||[thumb,thumb],credits:d.credits||[{r:'Photography',h:['@photographer']},{r:'Stylist',h:['@stylist']}],fashion:d.fashion||['@brand']};
+  var heroImg=document.getElementById('edDetailHero');
+  heroImg.onerror=function(){edImgError(this);};
+  heroImg.src=det.thumb;
+  document.getElementById('edDetailTitle').textContent=title;
+  document.getElementById('edDetailIssue').textContent=det.issue;
+  var gal=document.getElementById('edDetailGallery');
+  gal.innerHTML='';
+  det.images.forEach(function(url,idx){
+    var credits='';
+    var fLen=det.fashion.length;
+    if(fLen>0){
+      var perImg=Math.max(2,Math.ceil(fLen/det.images.length));
+      var start=(idx*perImg)%fLen;
+      for(var fi=0;fi<perImg&&fi<fLen;fi++){
+        var f=det.fashion[(start+fi)%fLen];
+        credits+='<a href="#" onclick="event.preventDefault();openProfileByHandle(\''+f.replace(/'/g,"")+'\')">'+f+'</a>';
+      }
+    }
+    gal.innerHTML+='<div class="ed-gallery-item"><img src="'+url+'" alt="'+title+'" loading="lazy" onerror="edImgError(this)"><div class="ed-img-credits">'+credits+'</div></div>';
+  });
+  var cr=document.getElementById('edDetailCredits');
+  var ch='';
+  det.credits.forEach(function(c){
+    var handles=c.h.map(function(h){return '<a href="#" onclick="event.preventDefault();openProfileByHandle(\''+h.replace(/'/g,"")+'\')">'+h+'</a>';}).join('  ');
+    ch+='<div class="ed-cred-row"><div class="ed-cred-role">'+c.r+'</div><div class="ed-cred-val">'+handles+'</div></div>';
+  });
+  cr.innerHTML=ch;
+  var logoSection=document.getElementById('edLogoDownload');
+  if(logoSection){
+    var logoFolderId=getLogoFolderId(title);
+    if(isPremium()&&logoFolderId){
+      logoSection.innerHTML='<div style="display:flex;align-items:center;gap:12px;"><span style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999;">LOGO FILES</span><a href="https://drive.google.com/drive/folders/'+logoFolderId+'" target="_blank" rel="noopener" style="display:inline-block;padding:6px 16px;border:1px solid #555;color:#fff;font-size:9px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .3s;" onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">DOWNLOAD</a></div>';
+      logoSection.style.display='';
+    } else { logoSection.style.display='none'; }
+  }
+  var socialSlot=document.getElementById('edSocialSlot');
+  if(socialSlot&&typeof PAPSocial!=='undefined') PAPSocial.renderEditorialSocial(socialSlot,title);
+  var track=document.getElementById('edMoreTrack');
+  track.innerHTML='';
+  var shown=0;
+  edData.forEach(function(ed){
+    if(ed.title===title||shown>=8) return;
+    var esc=ed.title.replace(/'/g,"\\'");
+    track.innerHTML+='<div class="ed-more-card" onclick="openEditorial(\''+esc+'\',\''+ed.img+'\')"><img src="'+ed.img+'" alt="'+ed.title+'" onerror="edImgError(this)"><div class="ed-more-card-cat">EDITORIAL & FASHION - '+ed.date+'</div><div class="ed-more-card-title">'+ed.title+'</div></div>';
+    shown++;
+  });
+  var allOv=document.getElementById('edAllOverlay');
+  if(allOv&&allOv.classList.contains('active')){allOv.style.display='none';window._edAllWasOpen=true;}
+  document.getElementById('edOverlay').classList.add('active');
+  document.getElementById('edOverlay').scrollTop=0;
+  document.body.style.overflow='hidden';
+  if(typeof _resetCursorForModal==='function') _resetCursorForModal();
+  // No pushState — this is called from popstate
 }
 
 function closeEditorial(skipHistory){
@@ -760,7 +823,22 @@ function closeEditorial(skipHistory){
 }
 
 window.addEventListener('popstate',function(e){
+  var st=e.state;
   var edOv=document.getElementById('edOverlay');
+
+  // If navigating back to a previous editorial state → restore that editorial
+  if(st && st.editorial && st.title){
+    if(edOv && edOv.classList.contains('active')){
+      // Editorial overlay is already open — just swap content (skip pushState)
+      _openEditorialInner_noPush(st.title, st.thumb||'');
+    } else {
+      // Overlay was closed — open it (skip pushState)
+      _openEditorialInner_noPush(st.title, st.thumb||'');
+    }
+    return;
+  }
+
+  // Otherwise, close whatever overlay is open
   if(edOv && edOv.classList.contains('active')){
     closeEditorial(true);
     return;
@@ -2742,16 +2820,30 @@ function buildPagination(container,currentPage,totalPages,onPageChange,isDark){
   btn('›',currentPage+1,false,currentPage===totalPages);
 }
 
+// ======== DEEP LINK: open editorial from hash #editorial/Title ========
+(function(){
+  var hash=window.location.hash;
+  if(hash && hash.indexOf('#editorial/')===0){
+    var edName=decodeURIComponent(hash.substring('#editorial/'.length));
+    if(!edName) return;
+    function tryOpenHash(){
+      if(typeof openEditorial==='function') openEditorial(edName,'');
+    }
+    if(document.readyState==='complete') setTimeout(tryOpenHash,1200);
+    else window.addEventListener('load',function(){setTimeout(tryOpenHash,1200);});
+  }
+})();
+
 // ======== DEEP LINK: open editorial from ?ed= param ========
 (function(){
   var params=new URLSearchParams(window.location.search);
   var edName=params.get('ed');
   if(!edName)return;
+  // Clean ?ed= from URL immediately (before pushState from openEditorial)
+  history.replaceState(null,'',window.location.pathname);
   function tryOpen(){
     if(typeof openEditorial==='function'){
       openEditorial(edName,'');
-      // Clean URL
-      history.replaceState(null,'',window.location.pathname);
     }
   }
   if(document.readyState==='complete') setTimeout(tryOpen,1200);
