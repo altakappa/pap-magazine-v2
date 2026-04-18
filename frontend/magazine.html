@@ -53,25 +53,30 @@ a{text-decoration:none;color:inherit}
 .search-bar-input{flex:1;border:none;outline:none;background:transparent;font-size:13px;font-weight:500;letter-spacing:.15em;text-transform:uppercase;color:#111;font-family:inherit}
 .search-bar-input::placeholder{color:#999}
 .search-bar-close{background:none;border:none;font-size:22px;color:#111;padding:0 4px;line-height:1;cursor:pointer;flex-shrink:0;font-weight:700}
-/* NAV OVERLAY */
-.nav-overlay{position:fixed;inset:0;z-index:1500;background:#fff;opacity:0;visibility:hidden;transition:all .3s}
+/* NAV OVERLAY — matches pap-styles.css */
+.nav-overlay{position:fixed;inset:0;z-index:1500;background:#fff;opacity:0;visibility:hidden;transition:opacity .4s cubic-bezier(.23,1,.32,1),visibility .4s}
 .nav-overlay.active{opacity:1;visibility:visible}
 .nav-overlay-inner{display:flex;width:100%;height:100%;padding:80px 60px 60px}
 .nav-close{position:absolute;top:20px;left:24px;z-index:1600;background:none;border:none;font-size:0;cursor:pointer;width:36px;height:36px;display:flex;align-items:center;justify-content:center;padding:0}
 .nav-close::before,.nav-close::after{content:'';position:absolute;width:22px;height:2px;background:#000;border-radius:1px}
 .nav-close::before{transform:rotate(45deg)}
 .nav-close::after{transform:rotate(-45deg)}
-.nav-left-col{width:50%;display:flex;flex-direction:column;gap:20px;padding-right:40px}
-.nav-left-top a{font-size:15px;font-weight:800;letter-spacing:.15em;color:#111;text-decoration:none}
-.nav-left-links{display:flex;flex-direction:column;gap:12px}
-.nav-left-links a{font-size:12px;font-weight:700;letter-spacing:.12em;color:#333;text-decoration:none;transition:color .2s}
-.nav-left-links a:hover{color:#000}
-.nav-right-col{width:50%;display:flex;flex-direction:column;justify-content:center;gap:24px;padding-left:40px;border-left:1px solid rgba(0,0,0,.06)}
-.nav-right-col a{font-size:clamp(28px,4vw,48px);font-weight:900;letter-spacing:.08em;color:#111;text-decoration:none;transition:color .2s}
-.nav-right-col a:hover{color:#555}
-.nav-bottom-row{margin-top:auto;display:flex;align-items:center;gap:12px}
-.nav-left-dots{cursor:pointer;font-size:22px;color:#666;padding:4px}
+.nav-left-col{display:flex;flex-direction:column;justify-content:space-between;width:280px;flex-shrink:0;transform:translateX(-30px);opacity:0;transition:none}
+.nav-overlay.active .nav-left-col{transform:translateX(0);opacity:1;transition:transform .5s cubic-bezier(.23,1,.32,1) .15s,opacity .5s cubic-bezier(.23,1,.32,1) .15s}
+.nav-left-top{margin-bottom:auto}
+.nav-left-top a{font-family:'Montserrat',sans-serif;font-size:clamp(18px,2.5vw,24px);font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#000;text-decoration:none;transition:opacity .2s}
+.nav-left-top a:hover{opacity:.4}
+.nav-left-links{display:flex;flex-direction:column;gap:4px;margin-bottom:32px}
+.nav-left-links a{font-family:'Montserrat',sans-serif;font-size:clamp(18px,2.5vw,24px);font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#000;text-decoration:none;transition:opacity .2s}
+.nav-left-links a:hover{opacity:.4}
+.nav-right-col{flex:1;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:0;transform:translateX(30px);opacity:0;transition:none}
+.nav-overlay.active .nav-right-col{transform:translateX(0);opacity:1;transition:transform .5s cubic-bezier(.23,1,.32,1) .25s,opacity .5s cubic-bezier(.23,1,.32,1) .25s}
+.nav-right-col a{font-family:'Montserrat',sans-serif;font-size:clamp(40px,7vw,90px);font-weight:900;letter-spacing:.03em;text-transform:uppercase;color:#000;text-decoration:none;line-height:1.1;transition:opacity .2s}
+.nav-right-col a:hover{opacity:.4}
+.nav-bottom-row{display:flex;align-items:center;gap:16px}
 .nav-socials{display:flex;flex-direction:row;gap:12px;align-items:center}
+.nav-social-icon{display:block;transition:opacity .2s}
+.nav-social-icon:hover{opacity:.5}
 .nav-socials.active{display:flex}
 
 .hero{height:100vh;display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative;overflow:hidden;padding-top:72px}
@@ -185,6 +190,8 @@ footer a:hover{color:#fff}
 }
 .sub-modal-note{font-size:10px;color:rgba(255,255,255,.3);margin-top:16px;letter-spacing:.5px}
 
+@media(max-width:900px){.nav-extra-links{display:none}.nav-bottom-row{display:none}}
+@media(max-width:768px){.nav-overlay-inner{flex-direction:column;padding:70px 24px 40px}.nav-left-col{width:100%;order:2;margin-top:32px}.nav-right-col{width:100%;align-items:flex-start;order:1}.nav-right-col a{font-size:clamp(28px,8vw,48px)}.nav-left-links a{font-size:clamp(14px,3vw,18px)}.nav-left-top a{font-size:clamp(14px,3vw,18px)}}
 @media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:560px){.grid{grid-template-columns:1fr;max-width:360px;margin:0 auto}.sec-head{flex-direction:column;align-items:flex-start;gap:6px}}
 </style>
@@ -234,17 +241,17 @@ footer a:hover{color:#fff}
   <div class="nav-overlay-inner">
     <div class="nav-left-col">
       <div class="nav-left-top">
-        <a href="subscribe.html">SUBSCRIBE</a>
+        <a href="subscribe.html" data-i18n="subscribe">SUBSCRIBE</a>
       </div>
       <div class="nav-left-links">
-        <a href="submission.html">SUBMISSION</a>
-        <a href="pullletter.html">PULL-LETTER</a>
-        <a href="auth.html" style="color:rgba(0,0,0,.4)">LOGIN / JOIN</a>
+        <a href="submission.html" data-i18n="submission">SUBMISSION</a>
+        <a href="pullletter.html" data-i18n="pullletter">PULL-LETTER</a>
+        <a href="auth.html" data-i18n="navLogin" style="color:rgba(0,0,0,.4)">LOGIN / JOIN</a>
       </div>
-      <div class="nav-left-links" style="margin-top:auto">
-        <a href="about.html">ABOUT</a>
-        <a href="business.html">BUSINESS</a>
-        <a href="contact.html">CONTACT</a>
+      <div class="nav-left-links nav-extra-links" style="margin-top:auto">
+        <a href="about.html" data-i18n="about">ABOUT</a>
+        <a href="business.html" data-i18n="business">BUSINESS</a>
+        <a href="contact.html" data-i18n="contact">CONTACT</a>
       </div>
       <div class="nav-bottom-row">
         <div class="nav-socials active" id="navSocials">
@@ -257,11 +264,11 @@ footer a:hover{color:#fff}
       </div>
     </div>
     <div class="nav-right-col">
-      <a href="community.html" style="color:#891717">COMMUNITY</a>
-      <a href="magazine.html" style="color:#c9a96e">MAGAZINE</a>
-      <a href="/">EDITORIAL</a>
-      <a href="articles.html">ARTICLE</a>
-      <a href="films.html">FILM</a>
+      <a href="community.html" data-i18n="navCommunity" style="color:#891717">COMMUNITY</a>
+      <a href="magazine.html" data-i18n="navMagazine" style="color:#c9a96e">MAGAZINE</a>
+      <a href="/" data-i18n="navEditorial">EDITORIAL</a>
+      <a href="articles.html" data-i18n="navArticle">ARTICLE</a>
+      <a href="films.html" data-i18n="navFilm">FILM</a>
     </div>
   </div>
 </div>
@@ -755,6 +762,26 @@ document.getElementById('previewOverlay').addEventListener('click',function(e){
       '<div class="dropdown-divider"></div>'+
       '<button onclick="localStorage.removeItem(\'pap-token\');localStorage.removeItem(\'pap-user\');window.location.href=\'/\';">'+s.logout+'</button>';
   }catch(e){}
+})();
+// Nav overlay i18n
+(function(){
+  var lang=(localStorage.getItem('pap-lang')||'ko').substring(0,2);
+  var t={
+    ko:{subscribe:'구독하기',submission:'서브미션',pullletter:'풀레터',navLogin:'로그인 / 회원가입',about:'ABOUT',business:'BUSINESS',contact:'CONTACT',navCommunity:'커뮤니티',navMagazine:'매거진',navEditorial:'에디토리얼',navArticle:'아티클',navFilm:'필름'},
+    en:{subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',navLogin:'LOGIN / JOIN',about:'ABOUT',business:'BUSINESS',contact:'CONTACT',navCommunity:'COMMUNITY',navMagazine:'MAGAZINE',navEditorial:'EDITORIAL',navArticle:'ARTICLE',navFilm:'FILM'},
+    it:{subscribe:'ABBONATI',submission:'SUBMISSION',pullletter:'PULL-LETTER',navLogin:'ACCEDI / ISCRIVITI',about:'CHI SIAMO',business:'BUSINESS',contact:'CONTATTI',navCommunity:'COMMUNITY',navMagazine:'MAGAZINE',navEditorial:'EDITORIALE',navArticle:'ARTICOLO',navFilm:'FILM'},
+    fr:{subscribe:"S'ABONNER",submission:'SOUMISSION',pullletter:'PULL-LETTER',navLogin:'CONNEXION / INSCRIPTION',about:'À PROPOS',business:'BUSINESS',contact:'CONTACT',navCommunity:'COMMUNAUTÉ',navMagazine:'MAGAZINE',navEditorial:'ÉDITORIAL',navArticle:'ARTICLE',navFilm:'FILM'},
+    ja:{subscribe:'購読',submission:'サブミッション',pullletter:'PULL-LETTER',navLogin:'ログイン / 会員登録',about:'アバウト',business:'ビジネス',contact:'お問い合わせ',navCommunity:'コミュニティ',navMagazine:'マガジン',navEditorial:'エディトリアル',navArticle:'アーティクル',navFilm:'フィルム'},
+    zh:{subscribe:'订阅',submission:'投稿',pullletter:'PULL-LETTER',navLogin:'登录 / 注册',about:'关于我们',business:'商务合作',contact:'联系方式',navCommunity:'社区',navMagazine:'杂志',navEditorial:'编辑精选',navArticle:'文章',navFilm:'影片'},
+    es:{subscribe:'SUSCRIBIRSE',submission:'ENVÍO',pullletter:'PULL-LETTER',navLogin:'INICIAR SESIÓN / UNIRSE',about:'ACERCA DE',business:'NEGOCIOS',contact:'CONTACTO',navCommunity:'COMUNIDAD',navMagazine:'REVISTA',navEditorial:'EDITORIAL',navArticle:'ARTÍCULO',navFilm:'FILM'}
+  };
+  var s=t[lang]||t.en;
+  document.querySelectorAll('[data-i18n]').forEach(function(el){
+    var k=el.getAttribute('data-i18n');
+    if(s[k]) el.textContent=s[k];
+  });
+  var sel=document.getElementById('langSelect');
+  if(sel) sel.value=lang;
 })();
 </script>
 </body>
