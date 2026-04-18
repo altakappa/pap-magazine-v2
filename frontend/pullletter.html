@@ -621,7 +621,7 @@ function _isValidUrl(v){return /^https?:\/\/.+\..+/.test(v);}
 // ======== SUBMIT ========
 async function submitFL(){
   // 1) Premium subscription check FIRST
-  if(typeof PAP!=='undefined' && !PAP.auth.isPremium()){
+  if(typeof PAP!=='undefined' && !PAP.ui.checkAccess('premium')){
     document.getElementById('accessGateOverlay').classList.remove('hidden');
     document.getElementById('flForm').style.display='none';
     PAP.ui.toast(_getValText('premiumRequired'),'error');
@@ -691,6 +691,10 @@ async function submitFL(){
   document.querySelectorAll('#flForm input, #flForm select, #flForm textarea').forEach(function(el){
     if(el.name||el.id) data[el.name||el.id]=el.value;
   });
+  // Ensure requestText field for backend (maps additionalMsg or description)
+  if(!data.requestText){
+    data.requestText=data.additionalMsg||data.description||'';
+  }
   try{
     await PAP.pullLetters.create(data, uploadedFiles||[]);
     document.getElementById('flForm').style.display='none';
@@ -787,7 +791,7 @@ function setLang(l){
 // Auto-check login + premium on load
 document.addEventListener('DOMContentLoaded',function(){
   if(typeof PAP!=='undefined'&&PAP.auth.isLoggedIn()){
-    if(PAP.auth.isPremium()){
+    if(PAP.ui.checkAccess('premium')){
       document.getElementById('accessGateOverlay').classList.add('hidden');
       document.getElementById('flForm').style.display='block';
     } else {

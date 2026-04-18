@@ -1609,7 +1609,7 @@ async function loadPullLetters(statusFilter){
       var statusLabel=pl.status==='pending'?'대기 중':pl.status==='approved'?'승인':'거절';
       var filesCount=pl.file_urls?pl.file_urls.length:0;
       var reqText=(pl.request_text||'').substring(0,60)+(pl.request_text&&pl.request_text.length>60?'...':'');
-      tb.innerHTML+='<tr><td>'+esc(pl.requesterName||pl.requesterEmail||'—')+'</td><td>'+esc(reqText||'—')+'</td><td>'+filesCount+'개 파일</td><td>'+fmtDate(pl.created_at)+'</td><td><span class="badge '+statusCls+'">'+statusLabel+'</span></td><td><button class="btn btn-sm btn-green" onclick="doPullLetterReview(\''+pl.id+'\',\'approved\')">승인</button> <button class="btn btn-sm btn-red" onclick="doPullLetterReview(\''+pl.id+'\',\'rejected\')">거절</button></td></tr>';
+      tb.innerHTML+='<tr><td>'+esc(pl.requesterName||pl.requesterEmail||'—')+'</td><td>'+esc(reqText||'—')+'</td><td>'+filesCount+'개 파일</td><td>'+fmtDate(pl.created_at)+'</td><td><span class="badge '+statusCls+'">'+statusLabel+'</span></td><td><button class="btn btn-sm btn-green" onclick="doPullLetterReview(\''+pl.id+'\',\'accepted\')">승인</button> <button class="btn btn-sm btn-red" onclick="doPullLetterReview(\''+pl.id+'\',\'rejected\')">거절</button></td></tr>';
     });
   }catch(err){
     tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:#ff6b6b;padding:40px">불러오기 실패</td></tr>';
@@ -1622,10 +1622,10 @@ function filterPullLetters(status,btn){
 }
 
 async function doPullLetterReview(id,status){
-  var labels={approved:'승인',rejected:'거절'};
+  var labels={accepted:'승인',rejected:'거절'};
   if(!confirm('이 Pull-Letter를 '+labels[status]+' 처리하시겠습니까?')) return;
   try{
-    var resp=await fetch((_apiBase||'/api')+'/pullletters/'+id,{
+    var resp=await fetch((_apiBase||'/api')+'/pullletters/'+id+'/review',{
       method:'PUT',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('pap-token'),'X-Requested-With':'XMLHttpRequest'},
       body:JSON.stringify({status:status})
