@@ -158,7 +158,8 @@
         ]
       }
     ],
-    "fashion": []
+    "fashion": [],
+    "desc": "A hauntingly beautiful exploration of dark elegance and macabre couture. This editorial blurs the line between fashion and the theatrical, celebrating bold beauty and unconventional aesthetics through dramatic makeup and avant-garde styling."
   },
   "Equipoise": {
     "issue": "APR. 2026 ISSUE",
@@ -264,7 +265,8 @@
         "n": "Alexander Wang",
         "id": "@alexanderwangny"
       }
-    ]
+    ],
+    "desc": "A study in balance and tension — where sculptural fashion meets raw, unfiltered emotion. Through deliberate composition and layered textures, Equipoise captures the delicate equilibrium between strength and vulnerability."
   },
   "Birds Don't Cry": {
     "issue": "APR. 2026 ISSUE",
@@ -454,7 +456,8 @@
         "n": "Adxjo",
         "id": "@adxjo_"
       }
-    ]
+    ],
+    "desc": "A vivid, surreal narrative that defies convention. Birds Don't Cry weaves together bold color, rebellious styling, and striking silhouettes to tell a story of freedom, identity, and unapologetic self-expression."
   },
   "Folie": {
     "issue": "APR. 2026 ISSUE",
@@ -645,7 +648,8 @@
         "n": "Mieli",
         "id": "@mielibrand"
       }
-    ]
+    ],
+    "desc": "A theatrical descent into the world of madness and beauty. Folie embraces the extravagant and the absurd — bold patterns, dramatic silhouettes, and painterly compositions come together in a celebration of creative abandon."
   },
   "Welcome to the Circus": {
     "issue": "MAR. 2026 ISSUE",

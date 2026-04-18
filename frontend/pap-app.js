@@ -660,13 +660,17 @@ function _openEditorialInner(title,thumb){
   var d=edDetails[title];
   if(!d){var titleLower=title.toLowerCase();for(var key in edDetails){if(key.toLowerCase()===titleLower){d=edDetails[key];break;}}}
   d=d||{};
-  var det={issue:d.issue||'MAR. ISSUE',thumb:d.thumb||thumb,images:d.images||[thumb,thumb],credits:d.credits||[{r:'Photography',h:['@photographer']},{r:'Stylist',h:['@stylist']}],fashion:d.fashion||['@brand']};
+  var det={issue:d.issue||'MAR. ISSUE',thumb:d.thumb||thumb,images:d.images||[thumb,thumb],credits:d.credits||[{r:'Photography',h:['@photographer']},{r:'Stylist',h:['@stylist']}],fashion:d.fashion||['@brand'],desc:d.desc||''};
 
   var heroImg=document.getElementById('edDetailHero');
   heroImg.onerror=function(){edImgError(this);};
   heroImg.src=det.thumb;
   document.getElementById('edDetailTitle').textContent=title;
   document.getElementById('edDetailIssue').textContent=det.issue;
+
+  // Editorial description
+  var descEl=document.getElementById('edDetailDesc');
+  if(descEl){descEl.innerHTML=det.desc;}
 
   // Gallery 2-col with hover credits
   var gal=document.getElementById('edDetailGallery');
@@ -752,12 +756,14 @@ function _openEditorialInner_noPush(title,thumb){
   var d=edDetails[title];
   if(!d){var titleLower=title.toLowerCase();for(var key in edDetails){if(key.toLowerCase()===titleLower){d=edDetails[key];break;}}}
   d=d||{};
-  var det={issue:d.issue||'MAR. ISSUE',thumb:d.thumb||thumb,images:d.images||[thumb,thumb],credits:d.credits||[{r:'Photography',h:['@photographer']},{r:'Stylist',h:['@stylist']}],fashion:d.fashion||['@brand']};
+  var det={issue:d.issue||'MAR. ISSUE',thumb:d.thumb||thumb,images:d.images||[thumb,thumb],credits:d.credits||[{r:'Photography',h:['@photographer']},{r:'Stylist',h:['@stylist']}],fashion:d.fashion||['@brand'],desc:d.desc||''};
   var heroImg=document.getElementById('edDetailHero');
   heroImg.onerror=function(){edImgError(this);};
   heroImg.src=det.thumb;
   document.getElementById('edDetailTitle').textContent=title;
   document.getElementById('edDetailIssue').textContent=det.issue;
+  var descEl=document.getElementById('edDetailDesc');
+  if(descEl){descEl.innerHTML=det.desc;}
   var gal=document.getElementById('edDetailGallery');
   gal.innerHTML='';
   det.images.forEach(function(url,idx){
