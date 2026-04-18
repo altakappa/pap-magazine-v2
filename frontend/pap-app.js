@@ -109,7 +109,6 @@ function _papUpdateAuthDropdown(){
     var s=t[lang]||t.en;
     dd.innerHTML=
       '<a href="mypage.html">'+s.mypage+'</a>'+
-      '<a href="subscribe.html">'+s.subscribe+'</a>'+
       '<div class="dropdown-divider"></div>'+
       '<button onclick="_papLogout()">'+s.logout+'</button>';
     // Also update nav overlay login link

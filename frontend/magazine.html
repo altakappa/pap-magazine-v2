@@ -751,7 +751,6 @@ document.getElementById('previewOverlay').addEventListener('click',function(e){
     var s=t[lang]||t.en;
     dd.innerHTML=
       '<a href="mypage.html">'+s.mypage+'</a>'+
-      '<a href="subscribe.html">'+s.subscribe+'</a>'+
       '<div class="dropdown-divider"></div>'+
       '<button onclick="localStorage.removeItem(\'pap-token\');localStorage.removeItem(\'pap-user\');window.location.href=\'/\';">'+s.logout+'</button>';
   }catch(e){}
