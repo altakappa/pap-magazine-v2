@@ -2866,7 +2866,7 @@ window.addEventListener('resize',function(){
 })();
 
 // ======== PAGINATION UTILITY ========
-var PAP_PER_PAGE=18;
+var PAP_PER_PAGE=20;
 function buildPagination(container,currentPage,totalPages,onPageChange,isDark){
   container.innerHTML='';
   if(totalPages<=1) return;
