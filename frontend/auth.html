@@ -32,7 +32,8 @@ body{font-family:'Montserrat',sans-serif;background:#000;color:#fff;min-height:1
 @keyframes ccSlideDown{from{transform:translateY(0);opacity:1}to{transform:translateY(100%);opacity:0}}
 a{color:#fff;text-decoration:none}
 
-.auth-wrapper{width:100%;max-width:460px;padding:20px;flex:1;display:flex;flex-direction:column;justify-content:center;margin:0 auto}
+.auth-wrapper{width:100%;max-width:460px;padding:20px 20px 40px;flex:1;display:flex;flex-direction:column;justify-content:center;margin:0 auto}
+@supports(padding:env(safe-area-inset-bottom)){.auth-wrapper{padding-bottom:max(40px,calc(env(safe-area-inset-bottom) + 20px))}}
 .auth-logo{text-align:center;margin-bottom:32px}
 .auth-logo a{display:inline-block}
 .auth-logo img{height:48px;width:auto}
@@ -107,7 +108,7 @@ a{color:#fff;text-decoration:none}
 .plan-card .plan-name,.plan-card .plan-price,.plan-card .plan-features{padding-left:34px}
 
 /* LINKS */
-.auth-link{display:block;text-align:center;margin-top:20px;font-size:11px;color:rgba(255,255,255,.35);transition:color .2s;cursor:pointer}
+.auth-link{display:block;text-align:center;margin-top:20px;font-size:11px;color:rgba(255,255,255,.35);transition:color .2s;cursor:pointer;padding-bottom:8px}
 .auth-link:hover{color:rgba(255,255,255,.7)}
 .auth-link a{color:rgba(255,255,255,.5);text-decoration:underline;text-underline-offset:2px}
 .auth-link a:hover{color:#fff}
@@ -161,7 +162,7 @@ a{color:#fff;text-decoration:none}
 .consent-section,.plan-cards,.benefits{contain:layout style}
 @media(max-width:500px){
   .auth-header{padding:12px 16px}
-  .auth-wrapper{padding:20px 16px}
+  .auth-wrapper{padding:20px 16px 36px}
   .form-row{grid-template-columns:1fr}
   .step-hero h2{font-size:18px}
   .plan-card{padding:16px}
@@ -170,6 +171,15 @@ a{color:#fff;text-decoration:none}
   .cc-inner{flex-direction:column;text-align:center}
   .cc-actions{width:100%;justify-content:center}
   .cc-text-ko{text-align:center}
+}
+/* Short viewport — compact spacing, ensure CTA visible */
+@media(max-height:640px){
+  .auth-wrapper{justify-content:flex-start;padding-top:12px}
+  .auth-logo{margin-bottom:20px}
+  .step-indicator{margin-bottom:24px}
+  .step-hero h2{font-size:18px;margin-bottom:12px}
+  .plan-card{padding:14px}
+  .consent-section{margin:12px 0 16px;padding:12px 14px}
 }
 </style>
 <!-- Favicon & PWA -->

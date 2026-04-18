@@ -3,6 +3,10 @@
   --gray-200: #e5e5e5; --gray-400: #999; --gray-500: #777; --gray-600: #555;
   --text: #111; --serif: 'Playfair Display', Georgia, serif;
   --sans: 'Inter', -apple-system, sans-serif;
+  /* Layout spacing guide */
+  --pad-x: 48px;          /* default side padding */
+  --pad-section: 48px;    /* vertical section gap */
+  --pad-x-safe: var(--pad-x); /* safe-area-aware side padding */
 }
 /* Hide search overlay from document flow */
 .search-overlay{display:none}
@@ -96,7 +100,7 @@ button{cursor:pointer;font-family:inherit}
 .page-overlay .page-header a{color:#fff;font-size:13px;font-weight:700;letter-spacing:.15em;text-transform:uppercase}
 .page-overlay .page-back{position:absolute;left:40px;color:rgba(255,255,255,.6);font-size:12px;font-weight:500;letter-spacing:.1em;cursor:pointer;background:none;border:none;font-family:inherit;transition:color .2s}
 .page-overlay .page-back:hover{color:#fff}
-.page-overlay .page-container{max-width:740px;margin:0 auto;padding:40px 24px 80px}
+.page-overlay .page-container{max-width:740px;margin:0 auto;padding:40px var(--pad-x) 80px}
 .page-overlay h1{font-size:28px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px}
 .page-overlay .page-date{font-size:12px;color:var(--gray-400);margin-bottom:48px}
 .page-overlay h2{font-size:15px;font-weight:700;letter-spacing:.03em;margin:40px 0 12px;padding-top:20px;border-top:1px solid var(--gray-200)}
@@ -178,8 +182,8 @@ button{cursor:pointer;font-family:inherit}
 .hero-watermark span{font-family:var(--serif);font-size:11px;color:rgba(255,255,255,.5);font-weight:700;letter-spacing:.05em}
 
 /* FASHION CAROUSEL */
-.fashion-section{padding:60px 0 20px;background:#000}
-.fashion-heading{font-size:15px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;text-align:left;margin-bottom:12px;color:#e5e5e5;padding:0 48px}
+.fashion-section{padding:var(--pad-section) 0 20px;background:#000}
+.fashion-heading{font-size:15px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;text-align:left;margin-bottom:12px;color:#e5e5e5;padding:0 var(--pad-x)}
 .fashion-section h2{font-size:11px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;text-align:center;margin-bottom:32px;color:var(--gray-500)}
 .carousel-wrap{position:relative;overflow:hidden;padding:0}
 .carousel-track{display:flex;gap:16px;overflow-x:auto;scroll-behavior:smooth;padding:0 48px;-ms-overflow-style:none;scrollbar-width:none}
@@ -210,7 +214,7 @@ button{cursor:pointer;font-family:inherit}
 .film-video .play-btn::after{content:'';border-left:16px solid rgba(255,255,255,.8);border-top:9px solid transparent;border-bottom:9px solid transparent;margin-left:4px}
 
 /* EDITORIAL SECTION */
-.editorial-section{padding:20px 0;background:#000;color:#fff}
+.editorial-section{padding:var(--pad-section) 0 20px;background:#000;color:#fff}
 /* EDITORIAL ROWS */
 .ed-row{margin-bottom:32px}
 .ed-row-label{font-family:'Montserrat',var(--sans);font-size:15px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:#e5e5e5;padding:0 48px;margin-bottom:12px}
@@ -276,7 +280,7 @@ button{cursor:pointer;font-family:inherit}
 
 
 /* FILM */
-.film-section{background:#000;color:#fff;padding:20px 0}
+.film-section{background:#000;color:#fff;padding:var(--pad-section) 0 20px}
 .nf-top{padding:0 24px;margin-bottom:12px}
 .nf-top h2{font-family:'Montserrat',var(--sans);font-size:13px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:#e5e5e5}
 .nf-wrap{position:relative}
@@ -312,7 +316,7 @@ button{cursor:pointer;font-family:inherit}
 .nf-popup-title{font-family:'Montserrat',var(--sans);font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#fff;line-height:1.4}
 
 /* YOUTUBE SHORTS ROW */
-.shorts-section{padding:48px 0;background:#000;overflow:hidden;position:relative}
+.shorts-section{padding:var(--pad-section) 0;background:#000;overflow:hidden;position:relative}
 .shorts-title{text-align:center;font-size:11px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:32px}
 .shorts-carousel{position:relative;display:flex;align-items:center;justify-content:center;height:520px;perspective:1000px}
 .shorts-track{display:flex;align-items:center;justify-content:center;gap:0;transition:transform .5s cubic-bezier(.25,.46,.45,.94);position:relative;width:100%}
@@ -442,7 +446,7 @@ button{cursor:pointer;font-family:inherit}
 .ed-hero-issue{font-size:13px;font-weight:400;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.5)}
 
 /* GALLERY: 2-column grid on white bg */
-.ed-gallery{background:#000;padding:40px 24px}
+.ed-gallery{background:#000;padding:40px var(--pad-x)}
 .ed-gallery-grid{max-width:700px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .ed-gallery-item{position:relative;overflow:hidden}
 .ed-gallery-item img{width:100%;display:block}
@@ -456,7 +460,7 @@ button{cursor:pointer;font-family:inherit}
 .ed-desc:empty{display:none;margin:0}
 
 /* CREDITS: centered two-column table */
-.ed-credits-wrap{background:#000;padding:60px 24px;display:flex;flex-direction:column;align-items:center}
+.ed-credits-wrap{background:#000;padding:60px var(--pad-x);display:flex;flex-direction:column;align-items:center}
 .ed-credits-table{display:table;border-collapse:separate;border-spacing:20px 4px;margin:0 auto}
 .ed-cred-row{display:table-row;font-size:14px;line-height:2}
 .ed-cred-role{display:table-cell;text-align:right;white-space:nowrap;color:rgba(255,255,255,.5);font-size:13px;letter-spacing:.03em;text-transform:uppercase;vertical-align:top;padding:2px 0}
@@ -594,6 +598,7 @@ button{cursor:pointer;font-family:inherit}
 
 /* --- 768px: Small tablet / Large phone landscape --- */
 @media(max-width:768px){
+  :root{--pad-x:20px;--pad-section:36px}
   .nav-extra-links{display:none}
   .nav-bottom-row{display:none}
   .header{padding:0 16px;height:60px}
@@ -605,18 +610,18 @@ button{cursor:pointer;font-family:inherit}
   .hero-symbol{right:20px;bottom:28px}
   .hero-watermark{right:20px;bottom:28px;width:40px;height:40px}
 
-  /* Reduce all 48px track/section paddings */
-  .fashion-heading{padding:0 20px}
-  .carousel-track{padding:0 20px}
-  .ed-row-label{padding:0 20px}
-  .ed-row-track{padding:0 20px}
-  .ed-search-grid{padding:0 20px}
-  .ed-all-header{padding:32px 20px 16px}
-  .ed-all-grid{padding:12px 20px 60px}
-  .nf-top{padding:0 20px}
-  .nf-track{padding:0 20px}
-  .ai-rec-badge{padding:0 20px}
-  .creator-results{padding:0 20px}
+  /* Reduce all 48px track/section paddings — use CSS var */
+  .fashion-heading{padding:0 var(--pad-x)}
+  .carousel-track{padding:0 var(--pad-x)}
+  .ed-row-label{padding:0 var(--pad-x)}
+  .ed-row-track{padding:0 var(--pad-x)}
+  .ed-search-grid{padding:0 var(--pad-x)}
+  .ed-all-header{padding:32px var(--pad-x) 16px}
+  .ed-all-grid{padding:12px var(--pad-x) 60px}
+  .nf-top{padding:0 var(--pad-x)}
+  .nf-track{padding:0 var(--pad-x)}
+  .ai-rec-badge{padding:0 var(--pad-x)}
+  .creator-results{padding:0 var(--pad-x)}
 
   /* Cards */
   .fashion-card{min-width:calc(75% - 12px)}
@@ -655,15 +660,15 @@ button{cursor:pointer;font-family:inherit}
   /* Page overlay */
   .page-overlay .page-header{padding:0 16px}
   .page-overlay .page-back{left:16px}
-  .page-overlay .page-container{padding:24px 16px 60px}
+  .page-overlay .page-container{padding:24px var(--pad-x) 60px}
   .page-overlay h1{font-size:22px}
 
   /* Editorial detail */
   .ed-hero-split{flex-direction:column}
   .ed-hero-img,.ed-hero-info{width:100%}
-  .ed-hero-info{min-height:40vh;padding:32px 20px}
+  .ed-hero-info{min-height:40vh;padding:32px var(--pad-x)}
   .ed-gallery-grid{grid-template-columns:1fr}
-  .ed-credits-wrap{padding:40px 20px}
+  .ed-credits-wrap{padding:40px var(--pad-x)}
   .ed-credits-table{border-spacing:12px 2px}
   .ed-cred-role{font-size:12px}
   .ed-more-card{flex:1 1 0;min-width:0}
@@ -687,6 +692,7 @@ button{cursor:pointer;font-family:inherit}
 
 /* --- 480px: Large phones (iPhone Plus/Max 428px, Galaxy A 384px) --- */
 @media(max-width:480px){
+  :root{--pad-x:16px;--pad-section:28px}
   .header{padding:0 12px;height:56px}
   .hero{margin-top:56px;height:60vh}
   .hero-content{left:16px;bottom:24px}
@@ -696,21 +702,21 @@ button{cursor:pointer;font-family:inherit}
   .hero-watermark{right:16px;bottom:16px;width:36px;height:36px}
   .hero-watermark span{font-size:10px}
 
-  /* Track paddings — tighter */
-  .fashion-heading{padding:0 16px}
-  .carousel-track{padding:0 16px}
-  .ed-row-label{padding:0 16px}
-  .ed-row-track{padding:0 16px}
-  .ed-search-grid{padding:0 16px;grid-template-columns:repeat(2,1fr);gap:10px}
-  .ed-all-header{padding:24px 16px 12px}
-  .ed-all-grid{padding:8px 16px 60px;grid-template-columns:repeat(2,1fr);gap:10px}
+  /* Track paddings — tighter, use CSS var */
+  .fashion-heading{padding:0 var(--pad-x)}
+  .carousel-track{padding:0 var(--pad-x)}
+  .ed-row-label{padding:0 var(--pad-x)}
+  .ed-row-track{padding:0 var(--pad-x)}
+  .ed-search-grid{padding:0 var(--pad-x);grid-template-columns:repeat(2,1fr);gap:10px}
+  .ed-all-header{padding:24px var(--pad-x) 12px}
+  .ed-all-grid{padding:8px var(--pad-x) 60px;grid-template-columns:repeat(2,1fr);gap:10px}
   .film-all-grid{grid-template-columns:repeat(2,1fr)}
   .art-all-grid{grid-template-columns:repeat(2,1fr)}
-  #filmFilterWrap,#artFilterWrap{padding:0 16px 12px!important}
-  .nf-top{padding:0 16px}
-  .nf-track{padding:0 16px}
-  .ai-rec-badge{padding:0 16px}
-  .creator-results{padding:0 16px}
+  #filmFilterWrap,#artFilterWrap{padding:0 var(--pad-x) 12px!important}
+  .nf-top{padding:0 var(--pad-x)}
+  .nf-track{padding:0 var(--pad-x)}
+  .ai-rec-badge{padding:0 var(--pad-x)}
+  .creator-results{padding:0 var(--pad-x)}
 
   /* Cards — smaller for phone screens */
   .fashion-card{min-width:calc(85% - 8px)}
@@ -734,10 +740,10 @@ button{cursor:pointer;font-family:inherit}
   .footer-bottom-nav-center a{font-size:10px}
 
   /* Editorial detail */
-  .ed-hero-info{min-height:35vh;padding:24px 16px}
+  .ed-hero-info{min-height:35vh;padding:24px var(--pad-x)}
   .ed-hero-title{font-size:clamp(11px,2.5vw,14px)}
-  .ed-gallery{padding:24px 12px}
-  .ed-credits-wrap{padding:32px 12px}
+  .ed-gallery{padding:24px var(--pad-x)}
+  .ed-credits-wrap{padding:32px var(--pad-x)}
   .ed-credits-table{border-spacing:8px 2px}
   .ed-cred-row{font-size:12px}
   .ed-cred-role{font-size:10px}
@@ -766,6 +772,7 @@ button{cursor:pointer;font-family:inherit}
 
 /* --- 390px: iPhone 12/13/14 (390px), Galaxy S21-S24 (360-384px) --- */
 @media(max-width:390px){
+  :root{--pad-x:12px;--pad-section:24px}
   .header{padding:0 10px;height:54px}
   .header-left{gap:2px}
   .header-left-item svg{width:16px;height:16px}
@@ -780,8 +787,8 @@ button{cursor:pointer;font-family:inherit}
   .hero-symbol{right:14px;bottom:24px}
   .hero-title{font-size:1.4rem}
 
-  /* Track paddings — minimal */
-  .fashion-heading,.carousel-track,.ed-row-label,.ed-row-track,.nf-top,.nf-track,.ai-rec-badge,.creator-results,.ed-search-grid{padding-left:12px;padding-right:12px}
+  /* Track paddings — minimal, via CSS var */
+  .fashion-heading,.carousel-track,.ed-row-label,.ed-row-track,.nf-top,.nf-track,.ai-rec-badge,.creator-results,.ed-search-grid{padding-left:var(--pad-x);padding-right:var(--pad-x)}
 
   /* Cards */
   .ed-row-card{min-width:140px;max-width:140px}
@@ -842,6 +849,7 @@ button{cursor:pointer;font-family:inherit}
 
 /* --- 320px: Galaxy Z Fold (folded 280px), very small screens --- */
 @media(max-width:320px){
+  :root{--pad-x:8px;--pad-section:20px}
   .header{height:48px;padding:0 8px}
   .hamburger span{width:20px}
   .hamburger span:nth-child(1){transform:translateY(-6px)}
@@ -853,7 +861,7 @@ button{cursor:pointer;font-family:inherit}
   .hero-content{left:10px;bottom:16px}
   .hero-symbol{right:10px;bottom:22px}
 
-  .fashion-heading,.carousel-track,.ed-row-label,.ed-row-track,.nf-top,.nf-track,.ai-rec-badge,.creator-results,.ed-search-grid{padding-left:8px;padding-right:8px}
+  .fashion-heading,.carousel-track,.ed-row-label,.ed-row-track,.nf-top,.nf-track,.ai-rec-badge,.creator-results,.ed-search-grid{padding-left:var(--pad-x);padding-right:var(--pad-x)}
 
   .ed-row-card{min-width:115px;max-width:115px}
   .nf-card{min-width:180px;max-width:180px}
