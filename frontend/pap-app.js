@@ -825,20 +825,51 @@ function closeEditorial(skipHistory){
 window.addEventListener('popstate',function(e){
   var st=e.state;
   var edOv=document.getElementById('edOverlay');
+  var cpOv=document.getElementById('creatorPopup');
 
-  // If navigating back to a previous editorial state → restore that editorial
-  if(st && st.editorial && st.title){
+  // If navigating back to a creator profile state → restore creator popup
+  if(st && st.creator && st.handle){
+    // Close editorial overlay if open (without history manipulation)
     if(edOv && edOv.classList.contains('active')){
-      // Editorial overlay is already open — just swap content (skip pushState)
-      _openEditorialInner_noPush(st.title, st.thumb||'');
+      edOv.classList.remove('active');
+      document.body.style.overflow='';
+    }
+    // Restore creator popup from saved data or by handle
+    if(window._lastCreatorData){
+      var cr=window._lastCreatorData;
+      var h=cr.handle||cr.instagram||cr.name||'';
+      if(h.replace('@','').toLowerCase()===st.handle.replace('@','').toLowerCase()){
+        // Re-open with saved data (no pushState)
+        _openCreatorPopup_noPush(cr);
+        return;
+      }
+    }
+    // Fallback: open by handle from DB
+    var db=typeof getCreatorDB==='function'?getCreatorDB():{};
+    var key=st.handle.toLowerCase();
+    if(db[key]){
+      _openCreatorPopup_noPush(db[key]);
     } else {
-      // Overlay was closed — open it (skip pushState)
-      _openEditorialInner_noPush(st.title, st.thumb||'');
+      _openCreatorPopup_noPush({name:st.handle.replace('@',''),handle:st.handle,role:'Contributor',editorials:[],imgs:[]});
     }
     return;
   }
 
+  // If navigating back to a previous editorial state → restore that editorial
+  if(st && st.editorial && st.title){
+    // Close creator popup if open
+    if(cpOv && cpOv.classList.contains('active')){cpOv.classList.remove('active');unlockScroll();}
+    _openEditorialInner_noPush(st.title, st.thumb||'');
+    return;
+  }
+
   // Otherwise, close whatever overlay is open
+  // Close creator popup first
+  if(cpOv && cpOv.classList.contains('active')){
+    cpOv.classList.remove('active');
+    unlockScroll();
+    return;
+  }
   if(edOv && edOv.classList.contains('active')){
     closeEditorial(true);
     return;
@@ -1390,18 +1421,76 @@ function openCreatorPopup(cr){
     var div=document.createElement('div');
     div.className='creator-work-card';
     div.innerHTML='<img src="'+item.img+'" alt="'+item.title+'"><div class="creator-work-title">'+item.title+'</div>';
-    div.onclick=function(){closeCreatorPopup();openEditorial(item.title,item.img);};
+    div.onclick=function(){closeCreatorPopup(true);openEditorial(item.title,item.img);};
     grid.appendChild(div);
   });
   
   document.getElementById('creatorPopup').classList.add('active');
   lockScroll();
   if(typeof _resetCursorForModal==='function') _resetCursorForModal();
+  // Save creator data for history restore & push state
+  window._lastCreatorData=cr;
+  try{history.pushState({creator:true,handle:handle||name},'',window.location.pathname+'#creator/'+encodeURIComponent(handle||name));}catch(e){}
 }
 
-function closeCreatorPopup(){
+// Version of openCreatorPopup without pushState (used by popstate)
+function _openCreatorPopup_noPush(cr){
+  var name=cr.name||'';
+  var handle=cr.handle||cr.instagram||'';
+  var role=cr.role||'';
+  var editorials=cr.editorials||[];
+  var imgs=cr.imgs||[];
+  if(imgs.length===0 && editorials.length>0){
+    editorials.forEach(function(t){
+      var ed=edDetails[t];
+      if(!ed){var tL=t.toLowerCase();for(var k in edDetails){if(k.toLowerCase()===tL){ed=edDetails[k];break;}}}
+      if(ed && ed.thumb) imgs.push({title:t,img:ed.thumb});
+    });
+  }
+  var isBrand=cr.isBrand||(role==='Fashion Brand');
+  document.getElementById('cpName').textContent=name.replace('@','');
+  document.getElementById('cpRole').textContent=role;
+  var lvlEl=document.getElementById('cpLevel');
+  if(isBrand){
+    lvlEl.className='creator-popup-level';
+    lvlEl.innerHTML=editorials.length+' EDITORIAL'+(editorials.length!==1?'S':'');
+  } else {
+    var level=getLevel(editorials.length);
+    lvlEl.className='creator-popup-level '+level.cls;
+    lvlEl.innerHTML='<span class="lvl-icon">'+level.icon+'</span> '+level.name+' · '+editorials.length+' EDITORIAL'+(editorials.length!==1?'S':'');
+  }
+  var igBtn=document.getElementById('cpIgBtn');
+  var igHandle=handle.replace('@','');
+  if(igHandle){igBtn.href='https://www.instagram.com/'+igHandle+'/';igBtn.textContent='@'+igHandle;igBtn.style.display='inline-flex';}else{igBtn.style.display='none';}
+  document.getElementById('cpCount').textContent=editorials.length;
+  document.getElementById('cpFirst').textContent=editorials.length>0?editorials[editorials.length-1].substring(0,15):'—';
+  document.getElementById('cpLatest').textContent=editorials.length>0?editorials[0].substring(0,15):'—';
+  var ratingSlot=document.getElementById('cpAvgRating');
+  if(ratingSlot) ratingSlot.innerHTML='';
+  if(typeof PAPSocial!=='undefined' && ratingSlot){
+    Promise.resolve(PAPSocial.getCreatorAvgRating(handle)).then(function(cav){
+      if(cav&&cav.count>0){ratingSlot.innerHTML='<div class="pap-profile-rating"><span class="pap-profile-rating-num">'+cav.avg.toFixed(1)+'</span><span class="pap-profile-rating-stars">'+PAPSocial.starHTML(cav.avg,false)+'</span><span class="pap-profile-rating-count">'+cav.count+'명 평가 · '+(cav.ratedEditorials||0)+'/'+(cav.editorials||editorials.length)+' 에디토리얼</span></div>';}
+    }).catch(function(){});
+  }
+  var grid=document.getElementById('cpWorks');
+  grid.innerHTML='';
+  imgs.forEach(function(item){
+    var div=document.createElement('div');
+    div.className='creator-work-card';
+    div.innerHTML='<img src="'+item.img+'" alt="'+item.title+'"><div class="creator-work-title">'+item.title+'</div>';
+    div.onclick=function(){closeCreatorPopup(true);openEditorial(item.title,item.img);};
+    grid.appendChild(div);
+  });
+  document.getElementById('creatorPopup').classList.add('active');
+  lockScroll();
+  if(typeof _resetCursorForModal==='function') _resetCursorForModal();
+  window._lastCreatorData=cr;
+}
+
+function closeCreatorPopup(skipHistory){
   document.getElementById('creatorPopup').classList.remove('active');
   unlockScroll();
+  if(!skipHistory){try{history.back();}catch(e){}}
 }
 
 // Open profile by handle (from editorial credits)
