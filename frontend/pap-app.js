@@ -1536,7 +1536,7 @@ function filmSlug(title){
   return title.toLowerCase().replace(/[^a-z0-9\s-]/g,'').replace(/\s+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'');
 }
 function filmPageUrl(title){
-  return 'https://www.pap-magazine.com/ko/'+filmSlug(title)+'-film/';
+  return window.location.origin+'/ko/'+filmSlug(title)+'-film/';
 }
 
 // ======== FILM — Netflix hover + scroll ========
@@ -2640,7 +2640,7 @@ window._papFilmAutoPlay = function(){
       target.length = 0;
       data.forEach(function(item){ target.push(item); });
       if(renderCb) renderCb();
-      console.log('[PAP] Loaded ' + target.length + ' items from ' + url);
+      /* Loaded items from JSON */
     }).catch(function(e){
       console.warn('[PAP] Could not load ' + url + ', using API sync fallback');
     });
@@ -2656,7 +2656,7 @@ window._papFilmAutoPlay = function(){
     // For edDetails (object, not array):
     fetch('data/editorial-details.json?v=2').then(function(r){return r.json();}).then(function(data){
       Object.keys(data).forEach(function(k){ edDetails[k]=data[k]; });
-      console.log('[PAP] Loaded editorial details');
+      /* Loaded editorial details */
     }).catch(function(e){ console.warn('[PAP] Could not load editorial details'); });
   }
 })();
@@ -2671,8 +2671,8 @@ window._papFilmAutoPlay = function(){
       PAP_API_BASE='http://localhost:3000/api';
     } else if(h.includes('vercel.app')){
       PAP_API_BASE=window.location.origin+'/api';
-    } else if(h.includes('pap-magazine.com')){
-      PAP_API_BASE='https://www.pap-magazine.com/api';
+    } else if(h.includes('pap-magazine.com') || h.includes('papkorea.com')){
+      PAP_API_BASE=window.location.origin+'/api';
     } else {
       // Local file:// or unknown host — skip sync
       PAP_API_BASE='';
@@ -2680,11 +2680,11 @@ window._papFilmAutoPlay = function(){
   })();
 
   if(!PAP_API_BASE){
-    console.log('[PAP Sync] No API detected (local file mode). Using hardcoded data only.');
+    /* No API detected (local file mode). Using hardcoded data only. */
     return;
   }
 
-  console.log('[PAP Sync] API base:',PAP_API_BASE);
+  /* API sync active */
 
   // Convert Supabase film record → hardcoded filmAllData format
   function apiFilmToLocal(f){
@@ -2781,9 +2781,9 @@ window._papFilmAutoPlay = function(){
         // Replace filmAllData in-place (preserve reference)
         filmAllData.length=0;
         merged.forEach(function(f){filmAllData.push(f);});
-        console.log('[PAP Sync] Films synced: '+apiFilms.length+' from API, '+origLen+' hardcoded → '+filmAllData.length+' total');
+        /* Films synced from API */
       } else {
-        console.log('[PAP Sync] No API films found. Using '+filmAllData.length+' hardcoded films.');
+        /* Using hardcoded films only */
       }
       // Re-render film cards if the page has a renderCards function (films.html)
       if(typeof window._papFilmRenderCards==='function'){
@@ -2801,9 +2801,9 @@ window._papFilmAutoPlay = function(){
         var merged=mergeData(apiArticles, artData);
         artData.length=0;
         merged.forEach(function(a){artData.push(a);});
-        console.log('[PAP Sync] Articles synced: '+apiArticles.length+' from API, '+origLen+' hardcoded → '+artData.length+' total');
+        /* Articles synced from API */
       } else {
-        console.log('[PAP Sync] No API articles found. Using '+artData.length+' hardcoded articles.');
+        /* Using hardcoded articles only */
       }
       // Re-render article cards if available (articles.html)
       if(typeof window._papArticleRenderCards==='function'){
