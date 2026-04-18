@@ -108,8 +108,6 @@ function _papUpdateAuthDropdown(){
     };
     var s=t[lang]||t.en;
     dd.innerHTML=
-      '<a href="mypage.html" style="font-weight:700;color:#fff">'+displayName+'</a>'+
-      '<div class="dropdown-divider"></div>'+
       '<a href="mypage.html">'+s.mypage+'</a>'+
       '<a href="subscribe.html">'+s.subscribe+'</a>'+
       '<div class="dropdown-divider"></div>'+
