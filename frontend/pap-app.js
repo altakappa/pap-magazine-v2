@@ -83,8 +83,8 @@ if(hSlides.length)setInterval(()=>heroGo(hCur+1),3000);
 function getLangText(key,fallback){var lang=localStorage.getItem('pap-lang')||'ko';var msgs={edAccessFree:{ko:'에디토리얼 전체보기는 스탠다드 이상 회원만 이용 가능합니다.',en:'Standard membership or above is required to browse all editorials.',it:'Per accedere a tutti gli editoriali è necessario un abbonamento Standard o superiore.',fr:'Un abonnement Standard ou supérieur est requis pour parcourir tous les éditoriaux.',es:'Se requiere una membresía Estándar o superior para ver todos los editoriales.',ja:'全エディトリアルの閲覧にはスタンダード以上の会員登録が必要です。',zh:'浏览所有社论需要标准会员或以上。',ru:'Для просмотра всех редакционных материалов требуется подписка Standard или выше.'}};var m=msgs[key];if(!m)return fallback||'';return m[lang]||m.en||fallback||'';}
 
 function toggleSearch(){const o=document.getElementById('searchBar');if(!o)return;o.classList.toggle('active');if(o.classList.contains('active')){setTimeout(()=>{var si=document.getElementById('searchInput');if(si)si.focus();},300);}else{var dd=document.getElementById('searchDropdown');if(dd)dd.classList.remove('active');var si=document.getElementById('searchInput');if(si)si.value='';}}
-function toggleAccountMenu(e){if(e)e.stopPropagation();var d=document.getElementById('accountDropdown');if(!d)return;d.classList.toggle('active');var fL=document.getElementById('floatingLogo');if(d.classList.contains('active')){if(fL)fL.style.display='none';setTimeout(function(){document.addEventListener('click',_closeAcct)},10)}else{if(fL)fL.style.display='';document.removeEventListener('click',_closeAcct)}}
-function _closeAcct(e){var d=document.getElementById('accountDropdown');if(d&&!d.contains(e.target)){d.classList.remove('active');var fL=document.getElementById('floatingLogo');if(fL)fL.style.display='';document.removeEventListener('click',_closeAcct)}}
+function toggleAccountMenu(e){if(e)e.stopPropagation();var d=document.getElementById('accountDropdown');if(!d)return;d.classList.toggle('active');if(d.classList.contains('active')){setTimeout(function(){document.addEventListener('click',_closeAcct)},10)}else{document.removeEventListener('click',_closeAcct)}}
+function _closeAcct(e){var d=document.getElementById('accountDropdown');if(d&&!d.contains(e.target)){d.classList.remove('active');document.removeEventListener('click',_closeAcct)}}
 
 // ======== AUTH STATE → HEADER DROPDOWN ========
 function _papUpdateAuthDropdown(){
@@ -109,6 +109,7 @@ function _papUpdateAuthDropdown(){
     var s=t[lang]||t.en;
     dd.innerHTML=
       '<a href="mypage.html">'+s.mypage+'</a>'+
+      '<a href="subscribe.html">'+s.subscribe+'</a>'+
       '<div class="dropdown-divider"></div>'+
       '<button onclick="_papLogout()">'+s.logout+'</button>';
     // Also update nav overlay login link
@@ -1650,8 +1651,6 @@ function scrollFilm(dir){
     if(interstitial) return true;
     if(brandAd) return true;
     if(pageOverlay) return true;
-    var acctDD = document.getElementById('accountDropdown');
-    if(acctDD && acctDD.classList.contains('active')) return true;
     return false;
   }
 
