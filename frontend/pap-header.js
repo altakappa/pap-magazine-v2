@@ -149,7 +149,7 @@
   ].join('');
 
   /* Language options */
-  var langOptions = '<option value="ko">Korean</option><option value="en">English</option><option value="it">Italiano</option><option value="fr">Français</option><option value="es">Español</option><option value="ja">日本語</option><option value="zh">中文</option><option value="ru">Русский</option>';
+  var langOptions = '<option value="ko">한국어</option><option value="en">English</option><option value="it">Italiano</option><option value="fr">Français</option><option value="es">Español</option><option value="ja">日本語</option><option value="zh">中文</option><option value="ru">Русский</option>';
 
   /* Determine current page for active highlight */
   var loc = window.location.pathname.split('/').pop() || 'index.html';
@@ -360,18 +360,27 @@
     /* Fallback for pages without pap-app.js */
     try{
       var u=localStorage.getItem('pap-user');
-      if(u){
-        var user=JSON.parse(u);
-        if(user&&user.name){
-          var dd=document.getElementById('accountDropdown');
-          if(dd){
-            dd.innerHTML='<a href="mypage.html" style="font-weight:700;color:#fff">'+user.name+'</a>'+
-              '<div class="dropdown-divider"></div>'+
-              '<a href="mypage.html">MY PAGE</a>'+
-              '<a href="subscribe.html">SUBSCRIPTION</a>'+
-              '<div class="dropdown-divider"></div>'+
-              '<button onclick="localStorage.removeItem(\'pap-token\');localStorage.removeItem(\'pap-user\');window.location.href=\'/\';">LOG OUT</button>';
-          }
+      var token=localStorage.getItem('pap-token');
+      if(u||token){
+        var user=u?JSON.parse(u):null;
+        var dd=document.getElementById('accountDropdown');
+        if(dd){
+          var lang=localStorage.getItem('pap-lang')||'ko';
+          var t={
+            ko:{mypage:'마이페이지',subscribe:'구독 관리',logout:'로그아웃'},
+            en:{mypage:'MY PAGE',subscribe:'MANAGE SUBSCRIPTION',logout:'LOG OUT'},
+            it:{mypage:'LA MIA PAGINA',subscribe:'GESTISCI ABBONAMENTO',logout:'ESCI'},
+            fr:{mypage:'MON COMPTE',subscribe:'GÉRER L\'ABONNEMENT',logout:'DÉCONNEXION'},
+            ja:{mypage:'マイページ',subscribe:'購読管理',logout:'ログアウト'},
+            zh:{mypage:'我的页面',subscribe:'管理订阅',logout:'退出登录'},
+            es:{mypage:'MI PÁGINA',subscribe:'GESTIONAR SUSCRIPCIÓN',logout:'CERRAR SESIÓN'}
+          };
+          var s=t[lang]||t.en;
+          dd.innerHTML=
+            '<a href="mypage.html">'+s.mypage+'</a>'+
+            '<a href="subscribe.html">'+s.subscribe+'</a>'+
+            '<div class="dropdown-divider"></div>'+
+            '<button onclick="localStorage.removeItem(\'pap-token\');localStorage.removeItem(\'pap-user\');window.location.href=\'/\';">'+s.logout+'</button>';
         }
       }
     }catch(e){}
