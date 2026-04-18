@@ -2742,3 +2742,19 @@ function buildPagination(container,currentPage,totalPages,onPageChange,isDark){
   btn('›',currentPage+1,false,currentPage===totalPages);
 }
 
+// ======== DEEP LINK: open editorial from ?ed= param ========
+(function(){
+  var params=new URLSearchParams(window.location.search);
+  var edName=params.get('ed');
+  if(!edName)return;
+  function tryOpen(){
+    if(typeof openEditorial==='function'){
+      openEditorial(edName,'');
+      // Clean URL
+      history.replaceState(null,'',window.location.pathname);
+    }
+  }
+  if(document.readyState==='complete') setTimeout(tryOpen,1200);
+  else window.addEventListener('load',function(){setTimeout(tryOpen,1200);});
+})();
+

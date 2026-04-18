@@ -641,7 +641,7 @@ function openPreview(issueTitle){
     preview.forEach(function(ed){
       var card=document.createElement('a');
       card.className='preview-card';
-      card.href=ed.url||'#';
+      card.href='index.html?ed='+encodeURIComponent(ed.title);
       card.innerHTML='<img src="'+ed.img+'" alt="'+ed.title+'" loading="lazy"><div class="preview-card-overlay"><div class="preview-card-title">'+ed.title+'</div></div>';
       grid.appendChild(card);
     });
