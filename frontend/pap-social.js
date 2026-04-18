@@ -487,9 +487,9 @@
       var ed = edDetails[title];
       var found = false;
       (ed.credits||[]).forEach(function(cr){
-        (cr.h||[]).forEach(function(h){ if(h.toLowerCase() === handle) found = true; });
+        (cr.h||[]).forEach(function(h){ var k=typeof h==='object'&&h.id?h.id:h; if((k||'').toLowerCase() === handle) found = true; });
       });
-      (ed.fashion||[]).forEach(function(h){ if(h.toLowerCase() === handle) found = true; });
+      (ed.fashion||[]).forEach(function(h){ var k=typeof h==='object'&&h.id?h.id:h; if((k||'').toLowerCase() === handle) found = true; });
       if(found) creatorEditorials.push(title);
     }
     if(creatorEditorials.length===0){
