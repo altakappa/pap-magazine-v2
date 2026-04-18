@@ -136,7 +136,9 @@ a{color:#fff;text-decoration:none}
 .auth-header-right{position:absolute;right:32px}
 .auth-header-logo a{display:flex;align-items:center}
 .auth-header-logo img{height:24px;width:auto}
-.auth-header-right{display:flex;align-items:center;gap:16px}
+.auth-header-right{display:flex;align-items:center;gap:14px}
+.auth-header-login{font-size:11px;font-weight:600;letter-spacing:.06em;color:rgba(255,255,255,.5);cursor:pointer;transition:color .2s;text-decoration:none;white-space:nowrap}
+.auth-header-login:hover{color:#fff}
 
 /* LANG */
 .auth-lang select{background:transparent;color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.12);padding:5px 10px;font-size:10px;font-family:'Montserrat',sans-serif;letter-spacing:.1em;cursor:pointer}
@@ -228,6 +230,7 @@ a{color:#fff;text-decoration:none}
 <header class="auth-header">
   <div class="auth-header-logo"><a href="/"><img src="pap-logo.png" alt="PAP Magazine" fetchpriority="high" decoding="async" width="120" height="24"></a></div>
   <div class="auth-header-right">
+    <a class="auth-header-login" href="#" onclick="showLogin();return false;" data-i18n="headerLogin">로그인</a>
     <div class="auth-lang"><select id="langSelect" onchange="setLang(this.value)"><option value="ko">KO</option><option value="en">EN</option><option value="it">IT</option><option value="fr">FR</option><option value="es">ES</option><option value="ja">JA</option><option value="zh">ZH</option><option value="ru">RU</option></select></div>
   </div>
 </header>
@@ -485,6 +488,18 @@ function showStep(n) {
   isLoginView = false;
 }
 
+function _updateHeaderLogin(){
+  var el=document.querySelector('.auth-header-login');if(!el)return;
+  var lang=localStorage.getItem('pap-lang')||'ko';
+  if(typeof L==='undefined')return;var t=L[lang]||L.ko||{};
+  if(isLoginView){
+    el.textContent=t.headerSignup||'가입하기';
+    el.onclick=function(e){e.preventDefault();showSignup();};
+  }else{
+    el.textContent=t.headerLogin||'로그인';
+    el.onclick=function(e){e.preventDefault();showLogin();};
+  }
+}
 function showLogin() {
   isLoginView = true;
   document.querySelectorAll('.step-panel').forEach(function(p){ p.classList.remove('active'); });
@@ -492,12 +507,14 @@ function showLogin() {
   document.getElementById('loginPanel').classList.add('active');
   document.getElementById('stepSuccess').classList.remove('active');
   document.getElementById('stepSuccess').style.display = 'none';
+  _updateHeaderLogin();
 }
 
 function showSignup() {
   isLoginView = false;
   document.getElementById('loginPanel').classList.remove('active');
   showStep(1);
+  _updateHeaderLogin();
 }
 
 function showSuccess() {
@@ -981,7 +998,7 @@ ko: {
   or:'또는', labelEmail:'이메일', labelPw:'비밀번호', labelLastName:'성', labelFirstName:'이름',
   phPw:'비밀번호 입력', phPwSet:'8자 이상, 대문자+숫자 포함', phLastName:'성', phFirstName:'이름',
   pwHint:'대문자 1개 + 숫자 1개 이상 포함',
-  btnStart:'시작하기', btnVerify:'인증하기', btnNext:'다음', btnComplete:'가입 완료', btnLogin:'로그인',
+  btnStart:'시작하기', btnVerify:'인증하기', btnNext:'다음', btnComplete:'가입 완료', btnLogin:'로그인', headerLogin:'로그인', headerSignup:'가입하기',
   step2Title:'인증 코드 입력', codeHint:'이메일로 전송된 6자리 코드를 입력하세요.', resendCode:'코드를 받지 못하셨나요? 다시 보내기', codeSentTo:' 으로 인증 코드를 보냈습니다.',
   step3Title_account:'계정 설정',
   hasAccount:'이미 회원이신가요? <a href="#" onclick="showLogin();return false;">로그인</a>',
@@ -1012,7 +1029,7 @@ en: {
   or:'OR', labelEmail:'EMAIL', labelPw:'PASSWORD', labelLastName:'LAST NAME', labelFirstName:'FIRST NAME',
   phPw:'Enter password', phPwSet:'Min. 8 chars, uppercase + number', phLastName:'Last name', phFirstName:'First name',
   pwHint:'At least 1 uppercase letter + 1 number',
-  btnStart:'GET STARTED', btnVerify:'VERIFY', btnNext:'NEXT', btnComplete:'COMPLETE SIGNUP', btnLogin:'LOG IN',
+  btnStart:'GET STARTED', btnVerify:'VERIFY', btnNext:'NEXT', btnComplete:'COMPLETE SIGNUP', btnLogin:'LOG IN', headerLogin:'Log in', headerSignup:'Sign up',
   step2Title:'Enter Verification Code', codeHint:'Enter the 6-digit code sent to your email.', resendCode:'Didn\'t receive the code? Resend', codeSentTo:': verification code sent.',
   step3Title_account:'Set Up Account',
   hasAccount:'Already a member? <a href="#" onclick="showLogin();return false;">Log in</a>',
@@ -1043,7 +1060,7 @@ it: {
   or:'OPPURE', labelEmail:'EMAIL', labelPw:'PASSWORD', labelLastName:'COGNOME', labelFirstName:'NOME',
   phPw:'Inserisci password', phPwSet:'Min. 8 caratteri, maiuscola + numero', phLastName:'Cognome', phFirstName:'Nome',
   pwHint:'Almeno 1 maiuscola + 1 numero',
-  btnStart:'INIZIA', btnVerify:'VERIFICA', btnNext:'AVANTI', btnComplete:'COMPLETA REGISTRAZIONE', btnLogin:'ACCEDI',
+  btnStart:'INIZIA', btnVerify:'VERIFICA', btnNext:'AVANTI', btnComplete:'COMPLETA REGISTRAZIONE', btnLogin:'ACCEDI', headerLogin:'Accedi', headerSignup:'Registrati',
   step2Title:'Inserisci Codice', codeHint:'Inserisci il codice a 6 cifre inviato alla tua email.', resendCode:'Non hai ricevuto il codice? Invia di nuovo', codeSentTo:': codice inviato.',
   step3Title_account:'Configura Account',
   hasAccount:'Già membro? <a href="#" onclick="showLogin();return false;">Accedi</a>',
@@ -1074,7 +1091,7 @@ fr: {
   or:'OU', labelEmail:'EMAIL', labelPw:'MOT DE PASSE', labelLastName:'NOM', labelFirstName:'PRÉNOM',
   phPw:'Entrez le mot de passe', phPwSet:'Min. 8 caractères, majuscule + chiffre', phLastName:'Nom', phFirstName:'Prénom',
   pwHint:'Au moins 1 majuscule + 1 chiffre',
-  btnStart:'COMMENCER', btnVerify:'VÉRIFIER', btnNext:'SUIVANT', btnComplete:'TERMINER L\'INSCRIPTION', btnLogin:'CONNEXION',
+  btnStart:'COMMENCER', btnVerify:'VÉRIFIER', btnNext:'SUIVANT', btnComplete:'TERMINER L\'INSCRIPTION', btnLogin:'CONNEXION', headerLogin:'Connexion', headerSignup:'S\'inscrire',
   step2Title:'Entrer le Code', codeHint:'Entrez le code à 6 chiffres envoyé à votre email.', resendCode:'Code non reçu ? Renvoyer', codeSentTo:' : code envoyé.',
   step3Title_account:'Configurer le Compte',
   hasAccount:'Déjà membre ? <a href="#" onclick="showLogin();return false;">Connexion</a>',
@@ -1105,7 +1122,7 @@ es: {
   or:'O', labelEmail:'EMAIL', labelPw:'CONTRASEÑA', labelLastName:'APELLIDO', labelFirstName:'NOMBRE',
   phPw:'Ingrese contraseña', phPwSet:'Mín. 8 caracteres, mayúscula + número', phLastName:'Apellido', phFirstName:'Nombre',
   pwHint:'Al menos 1 mayúscula + 1 número',
-  btnStart:'EMPEZAR', btnVerify:'VERIFICAR', btnNext:'SIGUIENTE', btnComplete:'COMPLETAR REGISTRO', btnLogin:'INICIAR SESIÓN',
+  btnStart:'EMPEZAR', btnVerify:'VERIFICAR', btnNext:'SIGUIENTE', btnComplete:'COMPLETAR REGISTRO', btnLogin:'INICIAR SESIÓN', headerLogin:'Iniciar sesión', headerSignup:'Registrarse',
   step2Title:'Ingresa el Código', codeHint:'Ingresa el código de 6 dígitos enviado a tu email.', resendCode:'¿No recibiste el código? Reenviar', codeSentTo:': código enviado.',
   step3Title_account:'Configura tu Cuenta',
   hasAccount:'¿Ya eres miembro? <a href="#" onclick="showLogin();return false;">Inicia sesión</a>',
@@ -1136,7 +1153,7 @@ ja: {
   or:'または', labelEmail:'メール', labelPw:'パスワード', labelLastName:'姓', labelFirstName:'名',
   phPw:'パスワード入力', phPwSet:'8文字以上、大文字+数字', phLastName:'姓', phFirstName:'名',
   pwHint:'大文字1つ + 数字1つ以上',
-  btnStart:'始める', btnVerify:'認証する', btnNext:'次へ', btnComplete:'登録完了', btnLogin:'ログイン',
+  btnStart:'始める', btnVerify:'認証する', btnNext:'次へ', btnComplete:'登録完了', btnLogin:'ログイン', headerLogin:'ログイン', headerSignup:'新規登録',
   step2Title:'認証コード入力', codeHint:'メールに送信された6桁のコードを入力してください。', resendCode:'コードが届きませんか？再送する', codeSentTo:'に認証コードを送信しました。',
   step3Title_account:'アカウント設定',
   hasAccount:'すでにメンバーですか？ <a href="#" onclick="showLogin();return false;">ログイン</a>',
@@ -1167,7 +1184,7 @@ zh: {
   or:'或', labelEmail:'邮箱', labelPw:'密码', labelLastName:'姓', labelFirstName:'名',
   phPw:'输入密码', phPwSet:'至少8位，含大写字母+数字', phLastName:'姓', phFirstName:'名',
   pwHint:'至少1个大写字母 + 1个数字',
-  btnStart:'开始', btnVerify:'验证', btnNext:'下一步', btnComplete:'完成注册', btnLogin:'登录',
+  btnStart:'开始', btnVerify:'验证', btnNext:'下一步', btnComplete:'完成注册', btnLogin:'登录', headerLogin:'登录', headerSignup:'注册',
   step2Title:'输入验证码', codeHint:'请输入发送到您邮箱的6位验证码。', resendCode:'没收到验证码？重新发送', codeSentTo:'：验证码已发送。',
   step3Title_account:'设置账户',
   hasAccount:'已经是会员？ <a href="#" onclick="showLogin();return false;">登录</a>',
@@ -1198,7 +1215,7 @@ ru: {
   or:'ИЛИ', labelEmail:'EMAIL', labelPw:'ПАРОЛЬ', labelLastName:'ФАМИЛИЯ', labelFirstName:'ИМЯ',
   phPw:'Введите пароль', phPwSet:'Мин. 8 символов, заглавная + цифра', phLastName:'Фамилия', phFirstName:'Имя',
   pwHint:'Минимум 1 заглавная буква + 1 цифра',
-  btnStart:'НАЧАТЬ', btnVerify:'ПОДТВЕРДИТЬ', btnNext:'ДАЛЕЕ', btnComplete:'ЗАВЕРШИТЬ РЕГИСТРАЦИЮ', btnLogin:'ВОЙТИ',
+  btnStart:'НАЧАТЬ', btnVerify:'ПОДТВЕРДИТЬ', btnNext:'ДАЛЕЕ', btnComplete:'ЗАВЕРШИТЬ РЕГИСТРАЦИЮ', btnLogin:'ВОЙТИ', headerLogin:'Войти', headerSignup:'Регистрация',
   step2Title:'Введите Код', codeHint:'Введите 6-значный код, отправленный на вашу почту.', resendCode:'Не получили код? Отправить повторно', codeSentTo:': код отправлен.',
   step3Title_account:'Настройка Аккаунта',
   hasAccount:'Уже участник? <a href="#" onclick="showLogin();return false;">Войти</a>',
