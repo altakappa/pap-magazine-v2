@@ -1320,21 +1320,25 @@ function buildCreatorDB(){
   var db={};
   for(var title in edDetails){
     var ed=edDetails[title];
-    // Process credits
+    // Process credits — supports both {n,id} objects and plain strings
     (ed.credits||[]).forEach(function(cr){
-      (cr.h||[]).forEach(function(handle){
+      (cr.h||[]).forEach(function(h){
+        var handle=typeof h==='object'&&h.id?h.id:h;
+        var displayName=typeof h==='object'&&h.n?h.n:handle.replace(/^@/,'');
         var key=handle.toLowerCase();
-        if(!db[key]){db[key]={name:handle.replace('@',''),handle:handle,role:cr.r,editorials:[],imgs:[]};}
+        if(!db[key]){db[key]={name:displayName,handle:handle,role:cr.r,editorials:[],imgs:[]};}
         if(db[key].editorials.indexOf(title)===-1){
           db[key].editorials.push(title);
           if(ed.thumb) db[key].imgs.push({title:title,img:ed.thumb});
         }
       });
     });
-    // Process fashion
-    (ed.fashion||[]).forEach(function(handle){
+    // Process fashion — supports both {n,id} objects and plain strings
+    (ed.fashion||[]).forEach(function(h){
+      var handle=typeof h==='object'&&h.id?h.id:h;
+      var displayName=typeof h==='object'&&h.n?h.n:handle.replace(/^@/,'');
       var key=handle.toLowerCase();
-      if(!db[key]){db[key]={name:handle.replace('@',''),handle:handle,role:'Fashion Brand',editorials:[],imgs:[]};}
+      if(!db[key]){db[key]={name:displayName,handle:handle,role:'Fashion Brand',editorials:[],imgs:[]};}
       db[key].isBrand=true;
       if(db[key].editorials.indexOf(title)===-1){
         db[key].editorials.push(title);
