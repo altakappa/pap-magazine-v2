@@ -1411,19 +1411,32 @@ function openEditorial(title,thumb){
       var start=(idx*perImg)%fLen;
       for(var fi=0;fi<perImg&&fi<fLen;fi++){
         var f=det.fashion[(start+fi)%fLen];
-        var u=f.replace('@','');
-        credits+='<a href="#" onclick="event.preventDefault();openProfileByHandle(\''+f.replace(/'/g,"")+'\')">'+f+'</a>';
+        var fHandle=typeof f==='object'?f.id||'':f;
+        var fDisplay=typeof f==='object'&&f.n?f.n:fHandle.replace(/^@/,'');
+        credits+='<a href="#" onclick="event.preventDefault();openProfileByHandle(\''+fHandle.replace(/'/g,"")+'\')">'+fDisplay+'</a>';
       }
     }
     gal.innerHTML+='<div class="ed-gallery-item"><img src="'+url+'" alt="'+title+'" loading="lazy" onerror="edImgError(this)"><div class="ed-img-credits">'+credits+'</div></div>';
   });
 
-  // Credits table
+  // Credits table — supports name+handle objects or plain handle strings
   var cr=document.getElementById('edDetailCredits');
   var ch='';
   det.credits.forEach(function(c){
-    var handles=c.h.map(function(h){return '<a href="#" onclick="event.preventDefault();openProfileByHandle(\''+h.replace(/'/g,"")+'\')">'+h+'</a>';}).join('  ');
-    ch+='<div class="ed-cred-row"><div class="ed-cred-role">'+c.r+'</div><div class="ed-cred-val">'+handles+'</div></div>';
+    var vals=c.h.map(function(h){
+      // Support both {n:"Name",id:"@handle"} objects and plain "@handle" strings
+      var handle, displayName;
+      if(typeof h==='object'&&h.n){
+        handle=h.id||'';
+        displayName=h.n;
+      } else {
+        handle=h;
+        displayName=h.replace(/^@/,'');
+      }
+      var safeHandle=handle.replace(/'/g,"");
+      return '<a href="#" onclick="event.preventDefault();openProfileByHandle(\''+safeHandle+'\')">'+displayName+'</a>';
+    }).join(', ');
+    ch+='<div class="ed-cred-row"><div class="ed-cred-role">'+c.r+'</div><div class="ed-cred-val">'+vals+'</div></div>';
   });
   // Fashion by — removed (shown as hover credits on images)
   cr.innerHTML=ch;

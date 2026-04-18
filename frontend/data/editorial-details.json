@@ -55,46 +55,106 @@
       {
         "r": "Photographer",
         "h": [
-          "@marennl"
+          {
+            "n": "Maren",
+            "id": "@marennl"
+          }
         ]
       },
       {
         "r": "Makeup & Hair",
         "h": [
-          "@muafridapettersen"
+          {
+            "n": "Frida Pettersen",
+            "id": "@muafridapettersen"
+          }
         ]
       },
       {
         "r": "Retouch",
         "h": [
-          "@retouch.linka"
+          {
+            "n": "Linka",
+            "id": "@retouch.linka"
+          }
         ]
       },
       {
         "r": "Starring",
         "h": [
-          "@barbora.otterstein",
-          "@heartbreakmanagement"
+          {
+            "n": "Barbora Otterstein",
+            "id": "@barbora.otterstein"
+          },
+          {
+            "n": "Heartbreak Management",
+            "id": "@heartbreakmanagement"
+          }
         ]
       },
       {
         "r": "Beauty by",
         "h": [
-          "@nyxcosmeticsnordics",
-          "@lethalcosmetics",
-          "@maybelline",
-          "@duffbeautyofficial",
-          "@janeiredale_norway",
-          "@patmcgrathreal",
-          "@maccosmeticsnordics",
-          "@maccosmetics",
-          "@makeupbymario",
-          "@jeffreestarcosmetics",
-          "@snowdropcosmetics",
-          "@caiacosmetics",
-          "@panduroofficial",
-          "@ilmakiage",
-          "@schwarzkopfpro"
+          {
+            "n": "NYX Cosmetics",
+            "id": "@nyxcosmeticsnordics"
+          },
+          {
+            "n": "Lethal Cosmetics",
+            "id": "@lethalcosmetics"
+          },
+          {
+            "n": "Maybelline",
+            "id": "@maybelline"
+          },
+          {
+            "n": "Duff Beauty",
+            "id": "@duffbeautyofficial"
+          },
+          {
+            "n": "Jane Iredale",
+            "id": "@janeiredale_norway"
+          },
+          {
+            "n": "Pat McGrath",
+            "id": "@patmcgrathreal"
+          },
+          {
+            "n": "MAC Cosmetics",
+            "id": "@maccosmeticsnordics"
+          },
+          {
+            "n": "MAC Cosmetics",
+            "id": "@maccosmetics"
+          },
+          {
+            "n": "Makeup by Mario",
+            "id": "@makeupbymario"
+          },
+          {
+            "n": "Jeffree Star Cosmetics",
+            "id": "@jeffreestarcosmetics"
+          },
+          {
+            "n": "Snowdrop Cosmetics",
+            "id": "@snowdropcosmetics"
+          },
+          {
+            "n": "CAIA Cosmetics",
+            "id": "@caiacosmetics"
+          },
+          {
+            "n": "Panduro",
+            "id": "@panduroofficial"
+          },
+          {
+            "n": "Il Makiage",
+            "id": "@ilmakiage"
+          },
+          {
+            "n": "Schwarzkopf Pro",
+            "id": "@schwarzkopfpro"
+          }
         ]
       }
     ],
@@ -119,49 +179,91 @@
       {
         "r": "Photographer",
         "h": [
-          "@annemariehalo"
+          {
+            "n": "Annemarie Halo",
+            "id": "@annemariehalo"
+          }
         ]
       },
       {
         "r": "Stylist",
         "h": [
-          "@aislingfin",
-          "@of.sentience"
+          {
+            "n": "Aisling Fin",
+            "id": "@aislingfin"
+          },
+          {
+            "n": "Of Sentience",
+            "id": "@of.sentience"
+          }
         ]
       },
       {
         "r": "Lighting Assist",
         "h": [
-          "@jpierrebonnet"
+          {
+            "n": "J. Pierre Bonnet",
+            "id": "@jpierrebonnet"
+          }
         ]
       },
       {
         "r": "Custom Painted Backdrops",
         "h": [
-          "@mulch_backdrops"
+          {
+            "n": "Mulch Backdrops",
+            "id": "@mulch_backdrops"
+          }
         ]
       },
       {
         "r": "Starring",
         "h": [
-          "@tang_uay"
+          {
+            "n": "Tang Uay",
+            "id": "@tang_uay"
+          }
         ]
       },
       {
         "r": "Fashion by",
         "h": [
-          "@afvandervost",
-          "@calzedonia",
-          "@rickowensonline",
-          "@alexanderwangny"
+          {
+            "n": "A.F. Vandevorst",
+            "id": "@afvandervost"
+          },
+          {
+            "n": "Calzedonia",
+            "id": "@calzedonia"
+          },
+          {
+            "n": "Rick Owens",
+            "id": "@rickowensonline"
+          },
+          {
+            "n": "Alexander Wang",
+            "id": "@alexanderwangny"
+          }
         ]
       }
     ],
     "fashion": [
-      "@afvandervost",
-      "@calzedonia",
-      "@rickowensonline",
-      "@alexanderwangny"
+      {
+        "n": "A.F. Vandevorst",
+        "id": "@afvandervost"
+      },
+      {
+        "n": "Calzedonia",
+        "id": "@calzedonia"
+      },
+      {
+        "n": "Rick Owens",
+        "id": "@rickowensonline"
+      },
+      {
+        "n": "Alexander Wang",
+        "id": "@alexanderwangny"
+      }
     ]
   },
   "Birds Don't Cry": {
@@ -187,84 +289,171 @@
       {
         "r": "Art Direction & Hair",
         "h": [
-          "@crustacoupe"
+          {
+            "n": "Crustacoupe",
+            "id": "@crustacoupe"
+          }
         ]
       },
       {
         "r": "Art Direction & Photo & Retouch",
         "h": [
-          "@venusvisconti"
+          {
+            "n": "Venus Visconti",
+            "id": "@venusvisconti"
+          }
         ]
       },
       {
         "r": "Stylist",
         "h": [
-          "@xstailys"
+          {
+            "n": "Xstailys",
+            "id": "@xstailys"
+          }
         ]
       },
       {
         "r": "Makeup",
         "h": [
-          "@6malditasea6"
+          {
+            "n": "Malditasea",
+            "id": "@6malditasea6"
+          }
         ]
       },
       {
         "r": "Styling Assist",
         "h": [
-          "@josephinefrg"
+          {
+            "n": "Josephine",
+            "id": "@josephinefrg"
+          }
         ]
       },
       {
         "r": "Hair Assist",
         "h": [
-          "@brb.sora",
-          "@93.d_z"
+          {
+            "n": "Sora",
+            "id": "@brb.sora"
+          },
+          {
+            "n": "D.Z",
+            "id": "@93.d_z"
+          }
         ]
       },
       {
         "r": "Makeup Assist",
         "h": [
-          "@aumarfx"
+          {
+            "n": "Aumar FX",
+            "id": "@aumarfx"
+          }
         ]
       },
       {
         "r": "Photo Assist",
         "h": [
-          "@byhesoia"
+          {
+            "n": "Hesoia",
+            "id": "@byhesoia"
+          }
         ]
       },
       {
         "r": "Starring",
         "h": [
-          "@theobougar",
-          "@nanaa_chan",
-          "@zhayiia",
-          "@insideliyasguts",
-          "@snubkid",
-          "@ernamontanna"
+          {
+            "n": "Theo Bougar",
+            "id": "@theobougar"
+          },
+          {
+            "n": "Nana Chan",
+            "id": "@nanaa_chan"
+          },
+          {
+            "n": "Zhayiia",
+            "id": "@zhayiia"
+          },
+          {
+            "n": "Liyas",
+            "id": "@insideliyasguts"
+          },
+          {
+            "n": "Snubkid",
+            "id": "@snubkid"
+          },
+          {
+            "n": "Erna Montanna",
+            "id": "@ernamontanna"
+          }
         ]
       },
       {
         "r": "Fashion by",
         "h": [
-          "@xanaduparis",
-          "@jvstih",
-          "@maisondipietro",
-          "@hooked_paris",
-          "@palme_atoll",
-          "@julie_ehme",
-          "@adxjo_"
+          {
+            "n": "Xanadu Paris",
+            "id": "@xanaduparis"
+          },
+          {
+            "n": "Jvstih",
+            "id": "@jvstih"
+          },
+          {
+            "n": "Maison di Pietro",
+            "id": "@maisondipietro"
+          },
+          {
+            "n": "Hooked Paris",
+            "id": "@hooked_paris"
+          },
+          {
+            "n": "Palme Atoll",
+            "id": "@palme_atoll"
+          },
+          {
+            "n": "Julie Ehme",
+            "id": "@julie_ehme"
+          },
+          {
+            "n": "Adxjo",
+            "id": "@adxjo_"
+          }
         ]
       }
     ],
     "fashion": [
-      "@xanaduparis",
-      "@jvstih",
-      "@maisondipietro",
-      "@hooked_paris",
-      "@palme_atoll",
-      "@julie_ehme",
-      "@adxjo_"
+      {
+        "n": "Xanadu Paris",
+        "id": "@xanaduparis"
+      },
+      {
+        "n": "Jvstih",
+        "id": "@jvstih"
+      },
+      {
+        "n": "Maison di Pietro",
+        "id": "@maisondipietro"
+      },
+      {
+        "n": "Hooked Paris",
+        "id": "@hooked_paris"
+      },
+      {
+        "n": "Palme Atoll",
+        "id": "@palme_atoll"
+      },
+      {
+        "n": "Julie Ehme",
+        "id": "@julie_ehme"
+      },
+      {
+        "n": "Adxjo",
+        "id": "@adxjo_"
+      }
     ]
   },
   "Folie": {
@@ -297,75 +486,165 @@
       {
         "r": "Photo & Art Direction",
         "h": [
-          "@johnnymoraesph"
+          {
+            "n": "Johnny Moraes",
+            "id": "@johnnymoraesph"
+          }
         ]
       },
       {
         "r": "Styling",
         "h": [
-          "@murilorangel_"
+          {
+            "n": "Murilo Rangel",
+            "id": "@murilorangel_"
+          }
         ]
       },
       {
         "r": "Makeup & Hair",
         "h": [
-          "@hicarothalesmake"
+          {
+            "n": "Hicaro Thales",
+            "id": "@hicarothalesmake"
+          }
         ]
       },
       {
         "r": "Hair Assist",
         "h": [
-          "@flamartins"
+          {
+            "n": "Fla Martins",
+            "id": "@flamartins"
+          }
         ]
       },
       {
         "r": "Photo Assist",
         "h": [
-          "@francifrancaphotos"
+          {
+            "n": "Franci Franca",
+            "id": "@francifrancaphotos"
+          }
         ]
       },
       {
         "r": "Location",
         "h": [
-          "@openestudio"
+          {
+            "n": "Open Estudio",
+            "id": "@openestudio"
+          }
         ]
       },
       {
         "r": "Starring",
         "h": [
-          "@malagutierrezz",
-          "@iam_ooliver",
-          "@mylenaaandrade",
-          "@011agency"
+          {
+            "n": "Mala Gutierrez",
+            "id": "@malagutierrezz"
+          },
+          {
+            "n": "Oliver",
+            "id": "@iam_ooliver"
+          },
+          {
+            "n": "Mylena Andrade",
+            "id": "@mylenaaandrade"
+          },
+          {
+            "n": "011 Agency",
+            "id": "@011agency"
+          }
         ]
       },
       {
         "r": "Fashion by",
         "h": [
-          "@converse_br",
-          "@reserva",
-          "@brasilero___",
-          "@zantti_zantti",
-          "@penhamaia",
-          "@calzedoniabrasil",
-          "@gigil.oficial",
-          "@schutzoficial",
-          "@lucasadrianoatelie",
-          "@mielibrand"
+          {
+            "n": "Converse",
+            "id": "@converse_br"
+          },
+          {
+            "n": "Reserva",
+            "id": "@reserva"
+          },
+          {
+            "n": "Brasilero",
+            "id": "@brasilero___"
+          },
+          {
+            "n": "Zantti",
+            "id": "@zantti_zantti"
+          },
+          {
+            "n": "Penha Maia",
+            "id": "@penhamaia"
+          },
+          {
+            "n": "Calzedonia",
+            "id": "@calzedoniabrasil"
+          },
+          {
+            "n": "Gigil",
+            "id": "@gigil.oficial"
+          },
+          {
+            "n": "Schutz",
+            "id": "@schutzoficial"
+          },
+          {
+            "n": "Lucas Adriano Ateliê",
+            "id": "@lucasadrianoatelie"
+          },
+          {
+            "n": "Mieli",
+            "id": "@mielibrand"
+          }
         ]
       }
     ],
     "fashion": [
-      "@converse_br",
-      "@reserva",
-      "@brasilero___",
-      "@zantti_zantti",
-      "@penhamaia",
-      "@calzedoniabrasil",
-      "@gigil.oficial",
-      "@schutzoficial",
-      "@lucasadrianoatelie",
-      "@mielibrand"
+      {
+        "n": "Converse",
+        "id": "@converse_br"
+      },
+      {
+        "n": "Reserva",
+        "id": "@reserva"
+      },
+      {
+        "n": "Brasilero",
+        "id": "@brasilero___"
+      },
+      {
+        "n": "Zantti",
+        "id": "@zantti_zantti"
+      },
+      {
+        "n": "Penha Maia",
+        "id": "@penhamaia"
+      },
+      {
+        "n": "Calzedonia",
+        "id": "@calzedoniabrasil"
+      },
+      {
+        "n": "Gigil",
+        "id": "@gigil.oficial"
+      },
+      {
+        "n": "Schutz",
+        "id": "@schutzoficial"
+      },
+      {
+        "n": "Lucas Adriano Ateliê",
+        "id": "@lucasadrianoatelie"
+      },
+      {
+        "n": "Mieli",
+        "id": "@mielibrand"
+      }
     ]
   },
   "Welcome to the Circus": {
