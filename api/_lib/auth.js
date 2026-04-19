@@ -1,6 +1,6 @@
 /**
  * PAP Magazine - Auth Middleware
- * JWT verification and user extraction
+ * JWT verification with token_version validation
  */
 
 const jwt = require('jsonwebtoken');
@@ -10,10 +10,16 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 /**
  * Generate JWT token for a user
+ * Includes token_version for server-side invalidation
  */
 function generateToken(user) {
   return jwt.sign(
-    { id: user.id, email: user.email, role: user.role },
+    {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      tv: user.token_version || 0, // token version for invalidation
+    },
     JWT_SECRET,
     { expiresIn: '7d', algorithm: 'HS256' }
   );
@@ -37,6 +43,7 @@ function verifyToken(req) {
 
 /**
  * Middleware: require authenticated user
+ * Validates JWT + checks token_version against DB for critical operations
  * Returns user payload or sends 401
  */
 function requireAuth(req, res) {
@@ -46,6 +53,42 @@ function requireAuth(req, res) {
     return null;
   }
   return user;
+}
+
+/**
+ * Middleware: require authenticated user with DB validation
+ * Checks token_version to ensure token hasn't been invalidated (e.g., by logout)
+ * Use for sensitive operations (profile changes, payments, etc.)
+ */
+async function requireAuthStrict(req, res) {
+  const user = verifyToken(req);
+  if (!user) {
+    res.status(401).json({ message: 'Authentication required' });
+    return null;
+  }
+
+  // Verify token version against database
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('token_version, role')
+    .eq('id', user.id)
+    .single();
+
+  if (!profile) {
+    res.status(401).json({ message: 'User not found' });
+    return null;
+  }
+
+  const dbVersion = profile.token_version || 0;
+  const tokenVersion = user.tv || 0;
+
+  if (tokenVersion < dbVersion) {
+    res.status(401).json({ message: 'Session expired. Please login again.' });
+    return null;
+  }
+
+  // Return enriched user with latest role from DB
+  return { ...user, role: profile.role };
 }
 
 /**
@@ -71,4 +114,25 @@ async function requireAdmin(req, res) {
   return user;
 }
 
-module.exports = { generateToken, verifyToken, requireAuth, requireAdmin };
+/**
+ * Increment token_version for a user (invalidates all existing tokens)
+ */
+async function invalidateTokens(userId) {
+  // Try RPC first (atomic increment), fallback to manual
+  const { error: rpcError } = await supabaseAdmin.rpc('increment_token_version', { user_id: userId });
+  if (rpcError) {
+    // Fallback: fetch current version and increment
+    const { data } = await supabaseAdmin
+      .from('profiles')
+      .select('token_version')
+      .eq('id', userId)
+      .single();
+    const currentVersion = (data && data.token_version) || 0;
+    await supabaseAdmin
+      .from('profiles')
+      .update({ token_version: currentVersion + 1 })
+      .eq('id', userId);
+  }
+}
+
+module.exports = { generateToken, verifyToken, requireAuth, requireAuthStrict, requireAdmin, invalidateTokens };

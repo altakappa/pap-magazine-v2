@@ -66,6 +66,7 @@ module.exports = async function handler(req, res) {
       name: (profile && (profile.display_name || profile.name)) || (userData.user.user_metadata && userData.user.user_metadata.name) || '',
       role: (profile && profile.role) || 'member',
       subscription: (profile && (profile.subscription_plan || profile.plan)) || 'free',
+      token_version: (profile && profile.token_version) || 0,
     };
 
     var token = generateToken(user);

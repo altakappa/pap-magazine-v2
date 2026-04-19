@@ -88,6 +88,7 @@ module.exports = async function handler(req, res) {
       name: name || '',
       role: profile?.role || 'member',
       subscription: profile?.subscription_plan || 'free',
+      token_version: profile?.token_version || 0,
     };
 
     const token = generateToken(user);

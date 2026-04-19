@@ -133,6 +133,14 @@ const PAP = (function() {
     },
 
     logout() {
+      // Notify server to invalidate all tokens (non-blocking)
+      const token = getToken();
+      if (token) {
+        fetch(API_BASE + '/auth/logout', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token },
+        }).catch(function() {});
+      }
       removeToken();
       removeUser();
       window.location.href = 'index.html';

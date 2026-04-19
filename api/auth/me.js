@@ -4,7 +4,7 @@
  */
 
 const { supabaseAdmin } = require('../_lib/supabase');
-const { requireAuth } = require('../_lib/auth');
+const { requireAuth, requireAuthStrict } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 
@@ -13,43 +13,14 @@ module.exports = async function handler(req, res) {
 
   if (rateLimit(req, res, RATE_LIMITS.api)) return;
 
-  const user = requireAuth(req, res);
-  if (!user) return;
+  // PUT (profile update) requires strict auth with DB token version check
+  if (req.method === 'PUT') {
+    const user = await requireAuthStrict(req, res);
+    if (!user) return;
 
-  try {
-    if (req.method === 'GET') {
-      const { data: profile, error } = await supabaseAdmin
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      if (error || !profile) {
-        return res.status(404).json({ message: 'Profile not found' });
-      }
-
-      return res.status(200).json({
-        user: {
-          id: profile.id,
-          email: profile.email,
-          name: profile.name,
-          role: profile.role,
-          subscription: profile.subscription_plan,
-          subscriptionStatus: profile.subscription_status,
-          bio: profile.bio,
-          website: profile.website,
-          location: profile.location,
-          instagram: profile.instagram,
-          avatarUrl: profile.avatar_url,
-          createdAt: profile.created_at,
-        },
-      });
-    }
-
-    if (req.method === 'PUT') {
+    try {
       const { name, bio, website, location, instagram } = req.body;
 
-      // Only allow updating safe fields
       const updates = {};
       if (name !== undefined) updates.name = name;
       if (bio !== undefined) updates.bio = bio;
@@ -80,6 +51,44 @@ module.exports = async function handler(req, res) {
           location: profile.location,
           instagram: profile.instagram,
           avatarUrl: profile.avatar_url,
+        },
+      });
+    } catch (error) {
+      console.error('Profile update error:', error);
+      return res.status(500).json({ message: 'Server error' });
+    }
+  }
+
+  // GET and other methods use standard auth
+  const user = requireAuth(req, res);
+  if (!user) return;
+
+  try {
+    if (req.method === 'GET') {
+      const { data: profile, error } = await supabaseAdmin
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error || !profile) {
+        return res.status(404).json({ message: 'Profile not found' });
+      }
+
+      return res.status(200).json({
+        user: {
+          id: profile.id,
+          email: profile.email,
+          name: profile.name,
+          role: profile.role,
+          subscription: profile.subscription_plan,
+          subscriptionStatus: profile.subscription_status,
+          bio: profile.bio,
+          website: profile.website,
+          location: profile.location,
+          instagram: profile.instagram,
+          avatarUrl: profile.avatar_url,
+          createdAt: profile.created_at,
         },
       });
     }

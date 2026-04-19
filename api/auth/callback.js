@@ -51,7 +51,11 @@ module.exports = async function handler(req, res) {
       return res.redirect(302, frontendUrl + '/auth?error=state_mismatch&mode=login');
     }
 
-    // PKCE verifier check (logged without sensitive data)
+    // PKCE verifier is required — reject if missing (prevents code interception attacks)
+    if (!codeVerifier) {
+      console.error('OAuth callback missing PKCE code_verifier');
+      return res.redirect(302, frontendUrl + '/auth?error=missing_verifier&mode=login');
+    }
 
     // Exchange code for tokens via direct HTTP call to Supabase
     var tokenUrl = process.env.SUPABASE_URL + '/auth/v1/token?grant_type=pkce';
@@ -63,16 +67,15 @@ module.exports = async function handler(req, res) {
       },
       body: JSON.stringify({
         auth_code: code,
-        code_verifier: codeVerifier || '',
+        code_verifier: codeVerifier,
       }),
     });
 
     var tokenData = await tokenResp.json();
 
     if (!tokenResp.ok || tokenData.error) {
-      var errMsg = tokenData.error_description || tokenData.msg || tokenData.error || 'Token exchange failed';
-      console.error('Token exchange failed:', errMsg);
-      return res.redirect(302, frontendUrl + '/auth?error=token_exchange&detail=' + encodeURIComponent(errMsg) + '&mode=login');
+      console.error('Token exchange failed:', tokenData.error_description || tokenData.error || 'Unknown');
+      return res.redirect(302, frontendUrl + '/auth?error=token_exchange&mode=login');
     }
 
     var userId = tokenData.user.id;
@@ -108,6 +111,7 @@ module.exports = async function handler(req, res) {
       name: (profile && (profile.display_name || profile.name)) || (tokenData.user.user_metadata && tokenData.user.user_metadata.name) || '',
       role: (profile && profile.role) || 'member',
       subscription: (profile && (profile.subscription_plan || profile.plan)) || 'free',
+      token_version: (profile && profile.token_version) || 0,
     };
 
     var token = generateToken(user);
