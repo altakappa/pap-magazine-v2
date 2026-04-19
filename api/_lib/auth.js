@@ -26,19 +26,68 @@ function generateToken(user) {
 }
 
 /**
- * Verify JWT token from Authorization header
+ * Parse cookies from request
+ */
+function parseCookies(cookieHeader) {
+  const cookies = {};
+  if (!cookieHeader) return cookies;
+  cookieHeader.split(';').forEach(c => {
+    const parts = c.trim().split('=');
+    const key = parts.shift();
+    if (key) cookies[key] = parts.join('=');
+  });
+  return cookies;
+}
+
+/**
+ * Verify JWT token from Authorization header OR httpOnly cookie
+ * Priority: Authorization header > pap_auth cookie
  * Returns decoded user payload or null
  */
 function verifyToken(req) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  let token = null;
 
-  const token = authHeader.split(' ')[1];
+  // 1. Try Authorization header first
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
+  }
+
+  // 2. Fallback to httpOnly cookie
+  if (!token) {
+    const cookies = parseCookies(req.headers.cookie);
+    token = cookies.pap_auth;
+  }
+
+  if (!token) return null;
+
   try {
     return jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
   } catch (err) {
     return null;
   }
+}
+
+/**
+ * Set auth cookie on response
+ * httpOnly + Secure + SameSite=Lax — safe from XSS, works with same-site navigation
+ */
+function setAuthCookie(res, token) {
+  const maxAge = 7 * 24 * 60 * 60; // 7 days (matches JWT expiry)
+  const existingCookies = res.getHeader('Set-Cookie') || [];
+  const cookieArr = Array.isArray(existingCookies) ? existingCookies : (existingCookies ? [existingCookies] : []);
+  cookieArr.push(`pap_auth=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`);
+  res.setHeader('Set-Cookie', cookieArr);
+}
+
+/**
+ * Clear auth cookie on response
+ */
+function clearAuthCookie(res) {
+  const existingCookies = res.getHeader('Set-Cookie') || [];
+  const cookieArr = Array.isArray(existingCookies) ? existingCookies : (existingCookies ? [existingCookies] : []);
+  cookieArr.push('pap_auth=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
+  res.setHeader('Set-Cookie', cookieArr);
 }
 
 /**
@@ -135,4 +184,4 @@ async function invalidateTokens(userId) {
   }
 }
 
-module.exports = { generateToken, verifyToken, requireAuth, requireAuthStrict, requireAdmin, invalidateTokens };
+module.exports = { generateToken, verifyToken, requireAuth, requireAuthStrict, requireAdmin, invalidateTokens, setAuthCookie, clearAuthCookie };

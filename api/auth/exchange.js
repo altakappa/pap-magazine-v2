@@ -5,7 +5,8 @@
  */
 
 const { supabaseAdmin } = require('../_lib/supabase');
-const { generateToken } = require('../_lib/auth');
+const { generateToken, setAuthCookie } = require('../_lib/auth');
+const { setCsrfCookie } = require('../_lib/csrf');
 const { handleCors } = require('../_lib/cors');
 const { createClient } = require('@supabase/supabase-js');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
@@ -70,6 +71,10 @@ module.exports = async function handler(req, res) {
     };
 
     var token = generateToken(user);
+
+    // Set httpOnly auth cookie (XSS-safe) + CSRF token
+    setAuthCookie(res, token);
+    setCsrfCookie(res);
 
     return res.status(200).json({ token: token, user: user });
   } catch (error) {

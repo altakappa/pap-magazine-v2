@@ -51,6 +51,12 @@ const PAP = (function() {
   }
   function removeUser() { localStorage.removeItem('pap-user'); }
 
+  // ======== CSRF TOKEN HELPER ========
+  function getCsrfToken() {
+    var match = document.cookie.match(/(?:^|;\s*)pap_csrf=([^;]*)/);
+    return match ? match[1] : null;
+  }
+
   // ======== HTTP HELPER ========
   async function request(method, endpoint, data, isFormData) {
     const headers = {};
@@ -58,8 +64,10 @@ const PAP = (function() {
     if (token) headers['Authorization'] = 'Bearer ' + token;
     if (!isFormData) headers['Content-Type'] = 'application/json';
 
-    // CSRF protection header
+    // CSRF protection headers
     headers['X-Requested-With'] = 'XMLHttpRequest';
+    var csrfToken = getCsrfToken();
+    if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
 
     const options = { method, headers, credentials: 'same-origin' };
     if (data) {

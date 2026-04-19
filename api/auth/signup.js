@@ -5,7 +5,8 @@
 
 const jwt = require('jsonwebtoken');
 const { supabaseAdmin } = require('../_lib/supabase');
-const { generateToken } = require('../_lib/auth');
+const { generateToken, setAuthCookie } = require('../_lib/auth');
+const { setCsrfCookie } = require('../_lib/csrf');
 const { handleCors } = require('../_lib/cors');
 const { sendEmail, templates } = require('../_lib/email');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
@@ -92,6 +93,10 @@ module.exports = async function handler(req, res) {
     };
 
     const token = generateToken(user);
+
+    // Set httpOnly auth cookie (XSS-safe) + CSRF token
+    setAuthCookie(res, token);
+    setCsrfCookie(res);
 
     // Send welcome email (non-blocking)
     sendEmail(email, templates.welcome(user)).catch(() => {});
