@@ -20,7 +20,7 @@ module.exports = async function handler(req, res) {
     if (!admin) return;
   } catch (authErr) {
     console.error('Admin auth error:', authErr);
-    return res.status(401).json({ message: 'Auth failed', detail: authErr.message });
+    return res.status(401).json({ message: 'Auth failed' });
   }
 
   try {

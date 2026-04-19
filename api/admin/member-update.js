@@ -22,7 +22,7 @@ module.exports = async function handler(req, res) {
     admin = await requireAdmin(req, res);
     if (!admin) return;
   } catch (e) {
-    return res.status(401).json({ message: 'Auth failed', detail: e.message });
+    return res.status(401).json({ message: 'Auth failed' });
   }
 
   const { memberId, role, subscriptionPlan, subscriptionStatus } = req.body;
@@ -40,7 +40,7 @@ module.exports = async function handler(req, res) {
       .single();
 
     if (fetchErr || !profile) {
-      return res.status(404).json({ message: 'Member not found', detail: fetchErr ? fetchErr.message : 'No data' });
+      return res.status(404).json({ message: 'Member not found' });
     }
 
     // Detect actual column names in the table
