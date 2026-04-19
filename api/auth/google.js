@@ -28,8 +28,14 @@ module.exports = async function handler(req, res) {
 
     const { verifier, challenge } = generatePKCE();
 
-    // Store verifier in cookie for callback to use
-    res.setHeader('Set-Cookie', `pkce_verifier=${verifier}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600`);
+    // Generate CSRF state parameter
+    const state = base64url(crypto.randomBytes(32));
+
+    // Store verifier and state in cookies for callback to verify
+    res.setHeader('Set-Cookie', [
+      `pkce_verifier=${verifier}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600`,
+      `oauth_state=${state}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600`,
+    ]);
 
     // Build Supabase OAuth URL directly (no JS client needed)
     const params = new URLSearchParams({
@@ -39,11 +45,12 @@ module.exports = async function handler(req, res) {
       code_challenge_method: 'S256',
       access_type: 'offline',
       prompt: 'consent',
+      state,
     });
 
     return res.redirect(302, `${supabaseUrl}/auth/v1/authorize?${params}`);
   } catch (error) {
     console.error('Google OAuth error:', error);
-    return res.status(500).json({ message: 'OAuth initialization failed', detail: error.message });
+    return res.status(500).json({ message: 'OAuth initialization failed' });
   }
 };

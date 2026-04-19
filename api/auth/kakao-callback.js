@@ -18,10 +18,29 @@ module.exports = async function handler(req, res) {
   const frontendUrl = process.env.NEXT_PUBLIC_URL || 'https://www.papkorea.com';
 
   try {
-    const { code } = req.query;
+    const { code, state: stateParam } = req.query;
 
     if (!code) {
       return res.redirect(302, `${frontendUrl}/auth.html?error=missing_code&mode=login`);
+    }
+
+    // Verify CSRF state parameter
+    function parseCookies(cookieHeader) {
+      var cookies = {};
+      if (!cookieHeader) return cookies;
+      cookieHeader.split(';').forEach(function (c) {
+        var parts = c.trim().split('=');
+        var key = parts.shift();
+        cookies[key] = parts.join('=');
+      });
+      return cookies;
+    }
+    const cookies = parseCookies(req.headers.cookie);
+    const storedState = cookies.oauth_state;
+
+    if (!stateParam || !storedState || stateParam !== storedState) {
+      console.error('Kakao OAuth state mismatch — possible CSRF attack');
+      return res.redirect(302, `${frontendUrl}/auth.html?error=state_mismatch&mode=login`);
     }
 
     const KAKAO_CLIENT_ID = process.env.KAKAO_CLIENT_ID;
@@ -163,9 +182,15 @@ module.exports = async function handler(req, res) {
     const token = generateToken(user);
     const userJson = encodeURIComponent(JSON.stringify(user));
 
-    return res.redirect(302, `${frontendUrl}/auth.html?token=${token}&user=${userJson}`);
+    // Pass token via httpOnly cookie instead of URL parameter (prevents leakage via referrer/logs)
+    res.setHeader('Set-Cookie', [
+      'oauth_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
+      `pap_oauth_token=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=120`,
+      `pap_oauth_user=${userJson}; Path=/; SameSite=Lax; Max-Age=120`,
+    ]);
+    return res.redirect(302, `${frontendUrl}/auth.html?oauth=success`);
   } catch (error) {
-    console.error('Kakao callback error:', error);
+    console.error('Kakao callback error:', error.code || 'UNKNOWN');
     return res.redirect(302, `${frontendUrl}/auth.html?error=auth_failed&mode=login`);
   }
 };

@@ -29,14 +29,21 @@ module.exports = async function handler(req, res) {
       .order('created_at', { ascending: false })
       .range(offset, offset + perPage - 1);
 
+    // Sanitize input for ilike queries (prevent SQL injection via special chars)
+    function sanitizeLike(str) {
+      return str.replace(/[%_\\]/g, '\\$&').slice(0, 100);
+    }
+
     // Filter by role/profession if stored in bio
     if (role && role !== 'all') {
-      query = query.ilike('bio', `%${role}%`);
+      const safeRole = sanitizeLike(role);
+      query = query.ilike('bio', `%${safeRole}%`);
     }
 
     // Text search
     if (q) {
-      query = query.or(`name.ilike.%${q}%,bio.ilike.%${q}%,location.ilike.%${q}%`);
+      const safeQ = sanitizeLike(q);
+      query = query.or(`name.ilike.%${safeQ}%,bio.ilike.%${safeQ}%,location.ilike.%${safeQ}%`);
     }
 
     const { data: members, count, error } = await query;

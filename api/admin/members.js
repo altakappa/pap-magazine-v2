@@ -29,7 +29,7 @@ module.exports = async function handler(req, res) {
 
     if (error) {
       console.error('Profiles query error:', error);
-      return res.status(500).json({ message: 'DB query failed', detail: error.message });
+      return res.status(500).json({ message: 'DB query failed' });
     }
 
     // Enrich with submission and pullletter counts (non-blocking)
@@ -75,6 +75,6 @@ module.exports = async function handler(req, res) {
     });
   } catch (error) {
     console.error('Admin members error:', error);
-    return res.status(500).json({ message: 'Server error', detail: error.message });
+    return res.status(500).json({ message: 'Server error' });
   }
 };

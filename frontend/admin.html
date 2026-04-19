@@ -1202,7 +1202,7 @@ async function loadMembers(){
     updateMemberStats();
     renderMembers();
   }catch(e){
-    tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:#ff6b6b;padding:40px">⚠ 회원 데이터를 불러올 수 없습니다.<br><small style="color:var(--text4)">백엔드 API 연결을 확인하세요. ('+((e&&e.message)||'Unknown error')+')</small></td></tr>';
+    tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:#ff6b6b;padding:40px">⚠ 회원 데이터를 불러올 수 없습니다.<br><small style="color:var(--text4)">백엔드 API 연결을 확인하세요.</small></td></tr>';
   }
 }
 

@@ -13,6 +13,7 @@ module.exports = async function handler(req, res) {
   }
 
   try {
+    const crypto = require('crypto');
     const KAKAO_CLIENT_ID = process.env.KAKAO_CLIENT_ID;
     if (!KAKAO_CLIENT_ID) {
       console.error('KAKAO_CLIENT_ID environment variable is not set');
@@ -21,7 +22,11 @@ module.exports = async function handler(req, res) {
     const siteUrl = process.env.NEXT_PUBLIC_URL || 'https://www.papkorea.com';
     const REDIRECT_URI = `${siteUrl}/api/auth/kakao-callback`;
 
-    const authUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code`;
+    // Generate CSRF state parameter
+    const state = crypto.randomBytes(32).toString('base64url');
+    res.setHeader('Set-Cookie', `oauth_state=${state}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600`);
+
+    const authUrl = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&state=${state}`;
 
     return res.redirect(302, authUrl);
   } catch (error) {

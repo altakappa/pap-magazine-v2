@@ -70,6 +70,6 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ token: token, user: user });
   } catch (error) {
     console.error('Token exchange error:', error);
-    return res.status(500).json({ message: 'Exchange failed', detail: error.message });
+    return res.status(500).json({ message: 'Exchange failed' });
   }
 };

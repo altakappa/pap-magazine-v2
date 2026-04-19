@@ -1366,8 +1366,40 @@ document.addEventListener('DOMContentLoaded', function() {
   var hashStr = window.location.hash;
   var _oauthHandled = false;
 
+  var oauthSuccess = params.get('oauth');
+
   // No OAuth params? Skip heavy processing entirely
-  if (!oauthCode && !oauthToken && !oauthError && !(hashStr && hashStr.indexOf('access_token') > -1)) return;
+  if (!oauthCode && !oauthToken && !oauthError && !oauthSuccess && !(hashStr && hashStr.indexOf('access_token') > -1)) return;
+
+  // Handle secure cookie-based OAuth flow (Google/Facebook/Kakao callbacks)
+  if (oauthSuccess === 'success') {
+    (async function() {
+      try {
+        var resp = await fetch('/api/auth/oauth-token', { method: 'POST', credentials: 'same-origin' });
+        var data = await resp.json();
+        if (resp.ok && data.token) {
+          localStorage.setItem('pap-token', data.token);
+          if (data.user) {
+            localStorage.setItem('pap-user', JSON.stringify({
+              id: data.user.id, email: data.user.email, name: data.user.name,
+              role: data.user.role, subscription: data.user.subscription
+            }));
+          }
+          window.history.replaceState({}, document.title, window.location.pathname);
+          window.location.href = (window.getRedirectUrl ? window.getRedirectUrl() : 'mypage.html');
+        } else {
+          if (typeof PAP !== 'undefined') { PAP.ui.toast('Login failed: ' + (data.message || 'Unknown error'), 'error'); }
+          else { alert('Login failed: ' + (data.message || 'Unknown error')); }
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+      } catch(e) {
+        if (typeof PAP !== 'undefined') { PAP.ui.toast('OAuth error', 'error'); }
+        else { alert('OAuth error'); }
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    })();
+    return;
+  }
 
   async function exchangeSupabaseForPAP(session) {
     if (_oauthHandled) return false;

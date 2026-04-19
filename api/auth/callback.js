@@ -29,21 +29,29 @@ module.exports = async function handler(req, res) {
     var code = req.query.code;
     var oauthError = req.query.error;
     var errorDesc = req.query.error_description;
+    var stateParam = req.query.state;
 
     if (oauthError) {
-      console.error('OAuth error from provider:', oauthError, errorDesc);
-      return res.redirect(302, frontendUrl + '/auth?error=oauth_provider&detail=' + encodeURIComponent(errorDesc || oauthError) + '&mode=login');
+      console.error('OAuth error from provider:', oauthError);
+      return res.redirect(302, frontendUrl + '/auth?error=oauth_provider&mode=login');
     }
 
     if (!code) {
       return res.redirect(302, frontendUrl + '/auth?error=missing_code&mode=login');
     }
 
-    // Read PKCE code_verifier from cookie
+    // Read cookies
     var cookies = parseCookies(req.headers.cookie);
     var codeVerifier = cookies.pkce_verifier;
+    var storedState = cookies.oauth_state;
 
-    console.log('Callback: has code=' + (!!code) + ', has verifier=' + (!!codeVerifier));
+    // Verify CSRF state parameter
+    if (!stateParam || !storedState || stateParam !== storedState) {
+      console.error('OAuth state mismatch — possible CSRF attack');
+      return res.redirect(302, frontendUrl + '/auth?error=state_mismatch&mode=login');
+    }
+
+    // PKCE verifier check (logged without sensitive data)
 
     // Exchange code for tokens via direct HTTP call to Supabase
     var tokenUrl = process.env.SUPABASE_URL + '/auth/v1/token?grant_type=pkce';
@@ -105,11 +113,16 @@ module.exports = async function handler(req, res) {
     var token = generateToken(user);
     var userJson = encodeURIComponent(JSON.stringify(user));
 
-    // Clear PKCE cookie
-    res.setHeader('Set-Cookie', 'pkce_verifier=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0');
-    return res.redirect(302, frontendUrl + '/auth?token=' + token + '&user=' + userJson);
+    // Pass token via httpOnly cookie instead of URL parameter (prevents token leakage via referrer/logs)
+    res.setHeader('Set-Cookie', [
+      'pkce_verifier=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
+      'oauth_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
+      'pap_oauth_token=' + token + '; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=120',
+      'pap_oauth_user=' + userJson + '; Path=/; SameSite=Lax; Max-Age=120',
+    ]);
+    return res.redirect(302, frontendUrl + '/auth?oauth=success');
   } catch (error) {
-    console.error('OAuth callback error:', error);
-    return res.redirect(302, frontendUrl + '/auth?error=callback_error&detail=' + encodeURIComponent(error.message || 'Unknown') + '&mode=login');
+    console.error('OAuth callback error:', error.code || 'UNKNOWN');
+    return res.redirect(302, frontendUrl + '/auth?error=callback_error&mode=login');
   }
 };

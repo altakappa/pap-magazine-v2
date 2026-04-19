@@ -93,7 +93,7 @@ module.exports = async function handler(req, res) {
       .single();
 
     if (error) {
-      return res.status(500).json({ message: 'Update failed', detail: error.message });
+      return res.status(500).json({ message: 'Update failed' });
     }
 
     return res.status(200).json({
@@ -109,6 +109,6 @@ module.exports = async function handler(req, res) {
     });
   } catch (error) {
     console.error('Admin member-update error:', error);
-    return res.status(500).json({ message: 'Server error', detail: error.message });
+    return res.status(500).json({ message: 'Server error' });
   }
 };

@@ -2,16 +2,23 @@
  * PAP Magazine - CORS Helper
  */
 
-const ALLOWED_ORIGINS = [
+// Production origins only — localhost allowed only in development
+const PROD_ORIGINS = [
   'https://www.pap-magazine.com',
   'https://pap-magazine.com',
   'https://www.papkorea.com',
   'https://papkorea.com',
   'https://pap-magazine.vercel.app',
+];
+
+const DEV_ORIGINS = [
   'http://localhost:3000',
   'http://localhost:5500',
   'http://127.0.0.1:5500',
 ];
+
+const isDev = process.env.NODE_ENV === 'development' || process.env.VERCEL_ENV === 'development';
+const ALLOWED_ORIGINS = isDev ? PROD_ORIGINS.concat(DEV_ORIGINS) : PROD_ORIGINS;
 
 function setCors(req, res) {
   const origin = req.headers.origin;

@@ -149,6 +149,6 @@ module.exports = async function handler(req, res) {
     });
   } catch (error) {
     console.error('Checkout error:', error);
-    return res.status(500).json({ message: error.message || 'Failed to process payment' });
+    return res.status(500).json({ message: 'Failed to process payment' });
   }
 };

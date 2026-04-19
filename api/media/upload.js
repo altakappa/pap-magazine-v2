@@ -33,8 +33,30 @@ module.exports = async function handler(req, res) {
 
     const fs = require('fs');
 
+    // Allowed MIME types and extensions for upload security
+    const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'video/mp4', 'video/webm'];
+    const ALLOWED_EXT = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'mp4', 'webm'];
+    const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB per file
+
     for (const file of fileList) {
-      const ext = file.originalFilename ? file.originalFilename.split('.').pop() : 'jpg';
+      const ext = (file.originalFilename ? file.originalFilename.split('.').pop() : '').toLowerCase();
+      const mime = (file.mimetype || '').toLowerCase();
+
+      // Validate file extension
+      if (!ALLOWED_EXT.includes(ext)) {
+        return res.status(400).json({ error: `File type not allowed: .${ext}` });
+      }
+
+      // Validate MIME type
+      if (!ALLOWED_MIME.includes(mime)) {
+        return res.status(400).json({ error: `MIME type not allowed: ${mime}` });
+      }
+
+      // Validate file size
+      if (file.size > MAX_FILE_SIZE) {
+        return res.status(400).json({ error: `File too large: ${(file.size / 1024 / 1024).toFixed(1)}MB (max 20MB)` });
+      }
+
       const storagePath = `uploads/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
 
       const fileBuffer = fs.readFileSync(file.filepath);

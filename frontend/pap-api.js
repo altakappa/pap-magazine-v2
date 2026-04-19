@@ -172,19 +172,21 @@ const PAP = (function() {
     // Handle OAuth callback (call this on page load of auth.html)
     handleOAuthCallback() {
       const params = new URLSearchParams(window.location.search);
-      const token = params.get('token');
-      if (token) {
-        // Remove token from URL immediately to prevent leaking via referrer
-        window.history.replaceState({}, document.title, window.location.pathname);
-        setToken(token);
-        // Fetch user profile
-        request('GET', '/auth/me').then(res => {
-          setUser(res.user);
-          window.location.href = 'index.html';
-        }).catch(() => {
-          removeToken();
-          ui.toast('Authentication failed', 'error');
-        });
+      // Secure cookie-based flow: token comes via httpOnly cookie, exchanged via API
+      if (params.get('oauth') === 'success') {
+        fetch(API_BASE + '/auth/oauth-token', { method: 'POST', credentials: 'same-origin' })
+          .then(r => r.json())
+          .then(data => {
+            if (data.token) {
+              setToken(data.token);
+              if (data.user) setUser(data.user);
+              window.history.replaceState({}, document.title, window.location.pathname);
+              window.location.href = 'index.html';
+            }
+          })
+          .catch(() => {
+            ui.toast('Authentication failed', 'error');
+          });
       }
     }
   };

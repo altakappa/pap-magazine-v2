@@ -35,16 +35,17 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ message: 'Invalid email format' });
     }
 
-    // Verify the email was confirmed via verification code
-    if (verifiedToken) {
-      try {
-        const decoded = jwt.verify(verifiedToken, JWT_SECRET);
-        if (!decoded.verified || decoded.email !== email.trim().toLowerCase()) {
-          return res.status(400).json({ message: 'Email verification mismatch' });
-        }
-      } catch (err) {
-        return res.status(400).json({ message: 'Email verification expired. Please verify again.' });
+    // Verify the email was confirmed via verification code (REQUIRED)
+    if (!verifiedToken) {
+      return res.status(400).json({ message: 'Email verification is required' });
+    }
+    try {
+      const decoded = jwt.verify(verifiedToken, JWT_SECRET, { algorithms: ['HS256'] });
+      if (!decoded.verified || decoded.email !== email.trim().toLowerCase()) {
+        return res.status(400).json({ message: 'Email verification mismatch' });
       }
+    } catch (err) {
+      return res.status(400).json({ message: 'Email verification expired. Please verify again.' });
     }
 
     if (password.length < 8) {
