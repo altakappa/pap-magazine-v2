@@ -48,8 +48,12 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ message: 'Email verification expired. Please verify again.' });
     }
 
+    // Password policy: min 8 chars, must contain letter + number
     if (password.length < 8) {
       return res.status(400).json({ message: 'Password must be at least 8 characters' });
+    }
+    if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+      return res.status(400).json({ message: 'Password must contain at least one letter and one number' });
     }
 
     // Create user in Supabase Auth

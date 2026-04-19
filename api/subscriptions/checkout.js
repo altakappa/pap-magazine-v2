@@ -12,6 +12,7 @@
 const { requireAuth } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { supabaseAdmin } = require('../_lib/supabase');
+const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 
 // PortOne V2 API base
 const PORTONE_API_BASE = 'https://api.portone.io';
@@ -56,6 +57,8 @@ function getNextBillingDate(billingCycle) {
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
+
+  if (rateLimit(req, res, RATE_LIMITS.auth)) return;
 
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' });

@@ -5,6 +5,7 @@
  */
 
 const { handleCors } = require('../_lib/cors');
+const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 
 function parseCookies(cookieHeader) {
   var cookies = {};
@@ -23,6 +24,8 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
+
+  if (rateLimit(req, res, RATE_LIMITS.auth)) return;
 
   try {
     const cookies = parseCookies(req.headers.cookie);

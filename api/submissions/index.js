@@ -8,12 +8,15 @@ const { requireAuth, requireAdmin } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { parseForm, uploadFiles } = require('../_lib/upload');
 const { sendEmail, templates } = require('../_lib/email');
+const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 
 // Disable Vercel body parsing for multipart
 module.exports.config = { api: { bodyParser: false } };
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
+
+  if (rateLimit(req, res, RATE_LIMITS.upload)) return;
 
   // ── POST: Create submission ──
   if (req.method === 'POST') {

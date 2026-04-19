@@ -15,8 +15,8 @@ const { supabaseAdmin } = require('./supabase');
 function parseForm(req) {
   return new Promise((resolve, reject) => {
     const form = formidable({
-      maxFileSize: 50 * 1024 * 1024, // 50MB
-      maxFiles: 30,
+      maxFileSize: 20 * 1024 * 1024, // 20MB (reduced from 50MB)
+      maxFiles: 20,
       keepExtensions: true,
     });
 

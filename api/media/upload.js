@@ -9,6 +9,7 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { handleCors } = require('../_lib/cors');
 const { requireAdmin } = require('../_lib/auth');
 const { parseForm } = require('../_lib/upload');
+const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -16,6 +17,8 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  if (rateLimit(req, res, RATE_LIMITS.upload)) return;
 
   const user = await requireAdmin(req, res);
   if (!user) return;
