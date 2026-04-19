@@ -8,9 +8,11 @@ const { requireAdmin } = require('../../_lib/auth');
 const { handleCors } = require('../../_lib/cors');
 const { sendEmail, templates } = require('../../_lib/email');
 const { getOptimizedThumbnail, getOptimizedHero } = require('../../_lib/imageOptimize');
+const { rateLimit, RATE_LIMITS } = require('../../_lib/rateLimit');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
+  if (rateLimit(req, res, RATE_LIMITS.api)) return;
 
   if (req.method !== 'PUT') {
     return res.status(405).json({ message: 'Method not allowed' });

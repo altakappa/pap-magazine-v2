@@ -7,9 +7,11 @@
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
+const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
+  if (rateLimit(req, res, RATE_LIMITS.api)) return;
 
   if (req.method !== 'DELETE') {
     return res.status(405).json({ message: 'Method not allowed' });

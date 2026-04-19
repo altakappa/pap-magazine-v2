@@ -6,9 +6,11 @@
 const { supabaseAdmin } = require('../../_lib/supabase');
 const { requireAuth } = require('../../_lib/auth');
 const { handleCors } = require('../../_lib/cors');
+const { rateLimit, RATE_LIMITS } = require('../../_lib/rateLimit');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
+  if (rateLimit(req, res, RATE_LIMITS.api)) return;
 
   const user = requireAuth(req, res);
   if (!user) return;

@@ -7,9 +7,11 @@
 const { supabaseAdmin } = require('../_lib/supabase');
 const { handleCors } = require('../_lib/cors');
 const { requireAdmin } = require('../_lib/auth');
+const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
+  if (rateLimit(req, res, RATE_LIMITS.api)) return;
 
   // GET: 에디토리얼 목록 (공개)
   if (req.method === 'GET') {

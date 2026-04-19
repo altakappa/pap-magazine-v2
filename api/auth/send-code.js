@@ -78,7 +78,7 @@ module.exports = async function handler(req, res) {
     const verificationToken = jwt.sign(
       { email: email.trim().toLowerCase(), codeHash },
       JWT_SECRET,
-      { expiresIn: '10m' }
+      { expiresIn: '10m', algorithm: 'HS256' }
     );
 
     // Send the code via email

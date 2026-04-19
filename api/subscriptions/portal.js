@@ -11,12 +11,14 @@
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAuth } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
+const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 
 const PORTONE_API_BASE = 'https://api.portone.io';
 const PORTONE_API_SECRET = process.env.PORTONE_API_SECRET;
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
+  if (rateLimit(req, res, RATE_LIMITS.api)) return;
 
   if (req.method !== 'POST' && req.method !== 'GET') {
     return res.status(405).json({ message: 'Method not allowed' });

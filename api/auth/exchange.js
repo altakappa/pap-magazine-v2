@@ -8,9 +8,12 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { generateToken } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { createClient } = require('@supabase/supabase-js');
+const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
+
+  if (rateLimit(req, res, RATE_LIMITS.auth)) return;
 
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' });
@@ -30,7 +33,7 @@ module.exports = async function handler(req, res) {
     var { data: userData, error: userError } = await supabase.auth.getUser(accessToken);
 
     if (userError || !userData || !userData.user) {
-      return res.status(401).json({ message: 'Invalid access token', detail: userError ? userError.message : 'No user found' });
+      return res.status(401).json({ message: 'Invalid access token' });
     }
 
     var userId = userData.user.id;
