@@ -8,7 +8,7 @@
    State persists via localStorage across all pages.                   */
 
 (function(){
-  var GA_ID='G-TPPJGKJXYV';
+  var GA_ID='G-6Q8H9HEPX7';
   var STORAGE_KEY='pap-cookie-consent';
 
   /* ── i18n ─────────────────────────────────────────── */
