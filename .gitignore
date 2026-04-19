@@ -35,3 +35,7 @@ frontend/js/*.txt
 
 # Large data files (not for deployment)
 PAP_Digital_Magazine/
+pap-editorials-ALL.json
+pap-editorials-full.json
+pap-films-ALL.json
+pap-youtube-shorts.json

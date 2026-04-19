@@ -14,8 +14,9 @@ module.exports = async function handler(req, res) {
   // GET: 필름 목록 (공개)
   if (req.method === 'GET') {
     try {
-      const { status, category, page = 1, limit = 50 } = req.query;
-      const offset = (parseInt(page) - 1) * parseInt(limit);
+      const { status, category, page = 1, limit: rawLimit = 50 } = req.query;
+      const limit = Math.min(Math.max(1, parseInt(rawLimit) || 50), 100);
+      const offset = (parseInt(page) - 1) * limit;
 
       let query = supabaseAdmin
         .from('films')

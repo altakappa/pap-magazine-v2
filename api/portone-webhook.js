@@ -32,14 +32,22 @@ function getRawBody(req) {
   });
 }
 
-// Verify webhook signature (if webhook secret is configured)
+// Verify webhook signature
 function verifySignature(rawBody, signature) {
-  if (!PORTONE_WEBHOOK_SECRET || !signature) return true; // skip if not configured
+  if (!PORTONE_WEBHOOK_SECRET) {
+    console.warn('[PortOne] PORTONE_WEBHOOK_SECRET not configured — rejecting webhook');
+    return false;
+  }
+  if (!signature) return false;
   const expected = crypto
     .createHmac('sha256', PORTONE_WEBHOOK_SECRET)
     .update(rawBody)
     .digest('hex');
-  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+  try {
+    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+  } catch (e) {
+    return false;
+  }
 }
 
 // Helper: call PortOne V2 REST API
@@ -88,7 +96,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const { type, data } = event;
-    console.log('PortOne webhook:', type);
+    /* Webhook event received */
 
     switch (type) {
       // ── First-time or one-off payment completed ──
@@ -119,7 +127,7 @@ module.exports = async function handler(req, res) {
           )).catch(() => {});
         }
 
-        console.log('Payment confirmed for user:', userId, 'amount:', payment.amount?.total);
+        /* Payment confirmed */
         break;
       }
 
@@ -184,7 +192,7 @@ module.exports = async function handler(req, res) {
           }
         }
 
-        console.log('Recurring payment confirmed for user:', userId);
+        /* Recurring payment confirmed */
         break;
       }
 
@@ -240,7 +248,7 @@ module.exports = async function handler(req, res) {
       }
 
       default:
-        console.log('Unhandled webhook event:', type);
+        /* Unhandled webhook event */
     }
 
     return res.status(200).json({ received: true });
