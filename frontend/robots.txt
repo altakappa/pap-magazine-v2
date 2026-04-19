@@ -5,5 +5,7 @@ Disallow: /admin.html
 Disallow: /content-admin.html
 Disallow: /data-migration.html
 Disallow: /auth.html
+Disallow: /mypage.html
+Disallow: /api/
 
-Sitemap: https://pap-magazine.com/sitemap.xml
+Sitemap: https://www.papkorea.com/sitemap.xml
