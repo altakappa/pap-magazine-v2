@@ -279,6 +279,8 @@ select.form-input option{background:#111;color:#fff}
         <option value="es">Español</option>
         <option value="ja">日本語</option>
         <option value="zh">中文</option>
+        <option value="ru">Русский</option>
+        <option value="de">Deutsch</option>
       </select>
     </div>
     <div class="auth-btn-wrap">
@@ -302,7 +304,8 @@ select.form-input option{background:#111;color:#fff}
 <script>window.addEventListener('load',function(){var l=document.getElementById('pageLoader');if(l){l.style.opacity='0';setTimeout(function(){l.remove();},400);}});</script>
 
 
-<div class="lang-selector"><select id="langSelect" onchange="setLang(this.value)"><option value="ko">KO</option><option value="en">EN</option><option value="it">IT</option><option value="fr">FR</option><option value="es">ES</option><option value="ja">JA</option><option value="zh">ZH</option><option value="ru">RU</option></select></div>
+<div class="lang-selector"><select id="langSelect" onchange="setLang(this.value)"><option value="ko">KO</option><option value="en">EN</option><option value="it">IT</option><option value="fr">FR</option><option value="es">ES</option><option value="ja">JA</option><option value="zh">ZH</option><option value="ru">RU</option>
+        <option value="de">Deutsch</option></select></div>
 
 <nav role="navigation" aria-label="Main navigation" class="side-nav" id="sideNav">
   <div class="nav-dots open" id="navToggle"><span>&#8942;</span></div>
@@ -376,6 +379,8 @@ function _showPremiumUpsellInterstitial(callback){
   var texts={
     ko:{tag:'SUBSCRIBE',title:'광고 없이\n모든 콘텐츠를 즐기세요',desc:'구독으로 에디토리얼, 매거진,\n독점 콘텐츠를 제한 없이 감상하세요.',btn:'구독하기',skip:'건너뛰기'},
     en:{tag:'SUBSCRIBE',title:'Enjoy all content\nwithout interruptions',desc:'Subscribe for unlimited access\nto editorials, magazines, and exclusive content.',btn:'Subscribe',skip:'Skip'},
+    ru:{tag:'SUBSCRIBE',title:'Enjoy all content\nwithout interruptions',desc:'Subscribe for unlimited access\nto editorials, magazines, and exclusive content.',btn:'Subscribe',skip:'Skip'},
+    de:{tag:'SUBSCRIBE',title:'Enjoy all content\nwithout interruptions',desc:'Subscribe for unlimited access\nto editorials, magazines, and exclusive content.',btn:'Subscribe',skip:'Skip'},
     it:{tag:'SUBSCRIBE',title:'Goditi tutti i contenuti\nsenza interruzioni',desc:'Abbonati per accesso illimitato\na editoriali, riviste e contenuti esclusivi.',btn:'Abbonati',skip:'Salta'},
     fr:{tag:'SUBSCRIBE',title:'Profitez de tout le contenu\nsans interruption',desc:"Abonnez-vous pour un accès illimité\naux éditoriaux, magazines et contenus exclusifs.",btn:"S'abonner",skip:'Passer'},
     es:{tag:'SUBSCRIBE',title:'Disfruta todo el contenido\nsin interrupciones',desc:'Suscríbete para acceso ilimitado\na editoriales, revistas y contenido exclusivo.',btn:'Suscríbete',skip:'Saltar'},
@@ -536,6 +541,52 @@ ko:{
   ft:'<strong>주식회사 알타카파</strong> | CEO : Domenico Kang | 사업자등록번호 192-88-02644<br>서울특별시 강남구 논현로 146길 18, 1층 | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'
 },
 en:{
+  business:'BUSINESS',contact:'CONTACT',about:'ABOUT',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
+  premiumOnly:'PREMIUM ONLY',
+  pageTitle:'PULL-LETTER',
+  pageDesc:"A Pull-Letter is an official letter issued by PAP Magazine after reviewing a creator's capabilities and creative direction. Please submit the photographer's and stylist's portfolios, Instagram profiles, and a mood board reflecting your shoot direction.",
+  gateTitle:'PREMIUM MEMBERS ONLY',gateDesc:'This service is available exclusively to Premium subscribers.',gateTier:'Premium Plan: $9.49/mo · Annual $79.99',gateLogin:'LOG IN',gateUpgrade:'Subscribe to Premium',
+  secPhotographer:'PHOTOGRAPHER INFO',labelPhName:'Photographer Name',labelPhInsta:'Instagram',labelPhPortfolio:'Portfolio Site',
+  secStylist:'STYLIST INFO',labelStName:'Stylist Name',labelStInsta:'Instagram',labelStPortfolio:'Portfolio Site',
+  secContact:'CONTACT INFO',labelContactName:'Your Name',labelContactEmail:'Email',
+  secMoodboard:'SHOOT DIRECTION / MOOD BOARD',labelMoodboard:'Mood Board File Upload',uploadClick:'Click',uploadOr:'or drag files here',uploadSpec:'JPG, PNG, PDF, PPT · Max 25MB per file',moodboardHint:'Attach mood boards, reference images, and concept materials.',
+  labelAdditional:'Additional Message (Optional)',
+  proc1Label:'REQUEST',proc1Desc:'Submit portfolios, Instagram, and mood board',proc2Label:'REVIEW',proc2Desc:'PAP editors evaluate capabilities and direction',proc3Label:'RESULT',proc3Desc:'Pull-Letter issued or reasons for decline provided',
+  btnSubmit:'Request Pull-Letter',
+  successTitle:'REQUEST RECEIVED',successDesc:'Your Pull-Letter request has been received. PAP editors will review your portfolios and mood board, then inform you via email.',
+  infoTitle:'WHAT IS A PULL-LETTER?',infoText:"A Pull-Letter is an official letter issued by PAP Magazine after reviewing a creator's capabilities and shoot direction.",
+  reviewTitle:'REVIEW RESULT',reviewPending:'Your Pull-Letter request is currently under review. You will be notified on this page and via email once a decision is made.',
+  demoApproved:'Approved Example',demoDeclined:'Declined Example',demoRevision:'Revision Example',demoPending:'Under Review',
+  statusApproved:'APPROVED',statusDeclined:'DECLINED',statusRevision:'REVISION NEEDED',
+  msgApproved:'Your Pull-Letter has been approved. We will send the official Pull-Letter to your email along with collaboration details.',
+  msgDeclined:'After review, your Pull-Letter request has not been approved.\n\n[Reason for Decline]\nThe portfolio style differs from the editorial direction PAP is currently pursuing. We recommend resubmitting with a portfolio that includes more experimental and art-based visual work.',
+  msgRevision:'After review, your submitted materials require revisions.\n\n[Revision Needed]\nThe mood board lacks clear direction. Please resubmit with specific reference images and a clearer concept description. The stylist portfolio link appears to be invalid.',
+  ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'
+},
+ru:{
+  business:'BUSINESS',contact:'CONTACT',about:'ABOUT',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
+  premiumOnly:'PREMIUM ONLY',
+  pageTitle:'PULL-LETTER',
+  pageDesc:"A Pull-Letter is an official letter issued by PAP Magazine after reviewing a creator's capabilities and creative direction. Please submit the photographer's and stylist's portfolios, Instagram profiles, and a mood board reflecting your shoot direction.",
+  gateTitle:'PREMIUM MEMBERS ONLY',gateDesc:'This service is available exclusively to Premium subscribers.',gateTier:'Premium Plan: $9.49/mo · Annual $79.99',gateLogin:'LOG IN',gateUpgrade:'Subscribe to Premium',
+  secPhotographer:'PHOTOGRAPHER INFO',labelPhName:'Photographer Name',labelPhInsta:'Instagram',labelPhPortfolio:'Portfolio Site',
+  secStylist:'STYLIST INFO',labelStName:'Stylist Name',labelStInsta:'Instagram',labelStPortfolio:'Portfolio Site',
+  secContact:'CONTACT INFO',labelContactName:'Your Name',labelContactEmail:'Email',
+  secMoodboard:'SHOOT DIRECTION / MOOD BOARD',labelMoodboard:'Mood Board File Upload',uploadClick:'Click',uploadOr:'or drag files here',uploadSpec:'JPG, PNG, PDF, PPT · Max 25MB per file',moodboardHint:'Attach mood boards, reference images, and concept materials.',
+  labelAdditional:'Additional Message (Optional)',
+  proc1Label:'REQUEST',proc1Desc:'Submit portfolios, Instagram, and mood board',proc2Label:'REVIEW',proc2Desc:'PAP editors evaluate capabilities and direction',proc3Label:'RESULT',proc3Desc:'Pull-Letter issued or reasons for decline provided',
+  btnSubmit:'Request Pull-Letter',
+  successTitle:'REQUEST RECEIVED',successDesc:'Your Pull-Letter request has been received. PAP editors will review your portfolios and mood board, then inform you via email.',
+  infoTitle:'WHAT IS A PULL-LETTER?',infoText:"A Pull-Letter is an official letter issued by PAP Magazine after reviewing a creator's capabilities and shoot direction.",
+  reviewTitle:'REVIEW RESULT',reviewPending:'Your Pull-Letter request is currently under review. You will be notified on this page and via email once a decision is made.',
+  demoApproved:'Approved Example',demoDeclined:'Declined Example',demoRevision:'Revision Example',demoPending:'Under Review',
+  statusApproved:'APPROVED',statusDeclined:'DECLINED',statusRevision:'REVISION NEEDED',
+  msgApproved:'Your Pull-Letter has been approved. We will send the official Pull-Letter to your email along with collaboration details.',
+  msgDeclined:'After review, your Pull-Letter request has not been approved.\n\n[Reason for Decline]\nThe portfolio style differs from the editorial direction PAP is currently pursuing. We recommend resubmitting with a portfolio that includes more experimental and art-based visual work.',
+  msgRevision:'After review, your submitted materials require revisions.\n\n[Revision Needed]\nThe mood board lacks clear direction. Please resubmit with specific reference images and a clearer concept description. The stylist portfolio link appears to be invalid.',
+  ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'
+},
+de:{
   business:'BUSINESS',contact:'CONTACT',about:'ABOUT',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
   premiumOnly:'PREMIUM ONLY',
   pageTitle:'PULL-LETTER',

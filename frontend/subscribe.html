@@ -280,6 +280,8 @@ a{color:#fff;text-decoration:none}
         <option value="es">Español</option>
         <option value="ja">日本語</option>
         <option value="zh">中文</option>
+        <option value="ru">Русский</option>
+        <option value="de">Deutsch</option>
       </select>
     </div>
     <div class="auth-btn-wrap">
@@ -314,6 +316,7 @@ a{color:#fff;text-decoration:none}
     <option value="ja">JA</option>
     <option value="zh">ZH</option>
     <option value="ru">RU</option>
+        <option value="de">Deutsch</option>
   </select>
 </div>
 
@@ -389,6 +392,8 @@ function _showPremiumUpsellInterstitial(callback){
   var texts={
     ko:{tag:'SUBSCRIBE',title:'광고 없이\n모든 콘텐츠를 즐기세요',desc:'구독으로 에디토리얼, 매거진,\n독점 콘텐츠를 제한 없이 감상하세요.',btn:'구독하기',skip:'건너뛰기'},
     en:{tag:'SUBSCRIBE',title:'Enjoy all content\nwithout interruptions',desc:'Subscribe for unlimited access\nto editorials, magazines, and exclusive content.',btn:'Subscribe',skip:'Skip'},
+    ru:{tag:'SUBSCRIBE',title:'Enjoy all content\nwithout interruptions',desc:'Subscribe for unlimited access\nto editorials, magazines, and exclusive content.',btn:'Subscribe',skip:'Skip'},
+    de:{tag:'SUBSCRIBE',title:'Enjoy all content\nwithout interruptions',desc:'Subscribe for unlimited access\nto editorials, magazines, and exclusive content.',btn:'Subscribe',skip:'Skip'},
     it:{tag:'SUBSCRIBE',title:'Goditi tutti i contenuti\nsenza interruzioni',desc:'Abbonati per accesso illimitato\na editoriali, riviste e contenuti esclusivi.',btn:'Abbonati',skip:'Salta'},
     fr:{tag:'SUBSCRIBE',title:'Profitez de tout le contenu\nsans interruption',desc:"Abonnez-vous pour un accès illimité\naux éditoriaux, magazines et contenus exclusifs.",btn:"S'abonner",skip:'Passer'},
     es:{tag:'SUBSCRIBE',title:'Disfruta todo el contenido\nsin interrupciones',desc:'Suscríbete para acceso ilimitado\na editoriales, revistas y contenido exclusivo.',btn:'Suscríbete',skip:'Saltar'},
@@ -589,6 +594,122 @@ ko: {
   ft:'<strong>주식회사 알타카파</strong> | CEO : 강동민 | 사업자번호 192-88-02644<br>서울특별시 강남구 논현로146길 18, 1F PAP 매거진 | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'
 },
 en: {
+  business:'BUSINESS', contact:'CONTACT', about:'ABOUT', subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
+  monthly:'MONTHLY', yearly:'YEARLY', save2mo:'2 MONTHS FREE', perYear:'/ yr',
+  priceFree:'$0',
+  heroTitle:'SUBSCRIBE',
+  heroDesc:'Standard members can browse the latest 100 editorials and download images. For full archive access, logo file downloads, Pull-Letter requests and more, upgrade to Premium.',
+  tierFree:'TIER 1', tierStandard:'TIER 2', tierPremium:'TIER 3',
+  planFreeName:'FREE', planStdName:'STANDARD', planPremName:'PREMIUM',
+  perMonth:'/ mo',
+  planFreeDesc:'No sign-up required — browse freely',
+  planStdDesc:'Latest 100 editorials + submission feedback & image downloads',
+  planPremDesc:'All benefits + Pull-Letter request + full archive',
+  badge:'RECOMMENDED',
+  ctaFree:'Browse Now', ctaStd:'Sign Up & Subscribe', ctaPrem:'Sign Up & Subscribe', ctaStdLoggedIn:'Subscribe', ctaPremLoggedIn:'Subscribe',
+  compareTitle:'COMPARE PLANS',
+  paymentTitle:'PAYMENT METHODS',
+  paymentNote:'Pay securely from anywhere in the world . Subscriptions renew monthly and can be cancelled anytime.',
+  features: {
+    free: [
+      {on:true, text:'No sign-up required'},
+      {on:true, text:'View latest 10 editorials for free'},
+      {on:true, text:'Submit work'},
+      {on:false, text:'Ads included'},
+      {on:false, text:'No submission feedback'},
+      {on:false, text:'No Pull-Letter request'},
+      {on:false, text:'No logo image download'}
+    ],
+    std: [
+      {on:true, text:'View latest 100 editorials'},
+      {on:true, text:'Ad-free browsing'},
+      {on:true, text:'Submit work'},
+      {on:true, text:'Feedback on rejected submissions'},
+      {on:true, text:'Download images with logo'},
+      {on:false, text:'No Pull-Letter request'}
+    ],
+    prem: [
+      {on:true, text:'View all editorials (full archive)'},
+      {on:true, text:'Ad-free browsing'},
+      {on:true, text:'Submit work'},
+      {on:true, text:'Feedback on rejected submissions'},
+      {on:true, text:'Pull-Letter request'},
+      {on:true, text:'Download images with logo'}
+    ]
+  },
+  comparison: {
+    headers: ['Feature','FREE','STANDARD','PREMIUM'],
+    rows: [
+      ['Sign-up required','No','Yes','Yes'],
+      ['Editorial access','Latest 10','Latest 100','Full archive'],
+      ['Ad-free browsing',false,true,true],
+      ['Submit work',true,true,true],
+      ['Submission feedback',false,true,true],
+      ['Pull-Letter request',false,false,true],
+      ['Logo image download',false,true,true]
+    ]
+  },
+  ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'
+},
+ru:{
+  business:'BUSINESS', contact:'CONTACT', about:'ABOUT', subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
+  monthly:'MONTHLY', yearly:'YEARLY', save2mo:'2 MONTHS FREE', perYear:'/ yr',
+  priceFree:'$0',
+  heroTitle:'SUBSCRIBE',
+  heroDesc:'Standard members can browse the latest 100 editorials and download images. For full archive access, logo file downloads, Pull-Letter requests and more, upgrade to Premium.',
+  tierFree:'TIER 1', tierStandard:'TIER 2', tierPremium:'TIER 3',
+  planFreeName:'FREE', planStdName:'STANDARD', planPremName:'PREMIUM',
+  perMonth:'/ mo',
+  planFreeDesc:'No sign-up required — browse freely',
+  planStdDesc:'Latest 100 editorials + submission feedback & image downloads',
+  planPremDesc:'All benefits + Pull-Letter request + full archive',
+  badge:'RECOMMENDED',
+  ctaFree:'Browse Now', ctaStd:'Sign Up & Subscribe', ctaPrem:'Sign Up & Subscribe', ctaStdLoggedIn:'Subscribe', ctaPremLoggedIn:'Subscribe',
+  compareTitle:'COMPARE PLANS',
+  paymentTitle:'PAYMENT METHODS',
+  paymentNote:'Pay securely from anywhere in the world . Subscriptions renew monthly and can be cancelled anytime.',
+  features: {
+    free: [
+      {on:true, text:'No sign-up required'},
+      {on:true, text:'View latest 10 editorials for free'},
+      {on:true, text:'Submit work'},
+      {on:false, text:'Ads included'},
+      {on:false, text:'No submission feedback'},
+      {on:false, text:'No Pull-Letter request'},
+      {on:false, text:'No logo image download'}
+    ],
+    std: [
+      {on:true, text:'View latest 100 editorials'},
+      {on:true, text:'Ad-free browsing'},
+      {on:true, text:'Submit work'},
+      {on:true, text:'Feedback on rejected submissions'},
+      {on:true, text:'Download images with logo'},
+      {on:false, text:'No Pull-Letter request'}
+    ],
+    prem: [
+      {on:true, text:'View all editorials (full archive)'},
+      {on:true, text:'Ad-free browsing'},
+      {on:true, text:'Submit work'},
+      {on:true, text:'Feedback on rejected submissions'},
+      {on:true, text:'Pull-Letter request'},
+      {on:true, text:'Download images with logo'}
+    ]
+  },
+  comparison: {
+    headers: ['Feature','FREE','STANDARD','PREMIUM'],
+    rows: [
+      ['Sign-up required','No','Yes','Yes'],
+      ['Editorial access','Latest 10','Latest 100','Full archive'],
+      ['Ad-free browsing',false,true,true],
+      ['Submit work',true,true,true],
+      ['Submission feedback',false,true,true],
+      ['Pull-Letter request',false,false,true],
+      ['Logo image download',false,true,true]
+    ]
+  },
+  ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'
+},
+de:{
   business:'BUSINESS', contact:'CONTACT', about:'ABOUT', subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
   monthly:'MONTHLY', yearly:'YEARLY', save2mo:'2 MONTHS FREE', perYear:'/ yr',
   priceFree:'$0',
@@ -1041,6 +1162,7 @@ var currentBilling = 'monthly';
 var PRICES = {
   ko:  { symbol:'₩', std_m:8500,  prem_m:13500, std_y:85000,  prem_y:135000 },
   en:  { symbol:'$', std_m:5.99,  prem_m:9.49,  std_y:49.99,  prem_y:79.99 },
+  de:{ symbol:'$', std_m:5.99,  prem_m:9.49,  std_y:49.99,  prem_y:79.99 },
   it:  { symbol:'€', std_m:5.49,  prem_m:8.99,  std_y:45.99,  prem_y:74.99 },
   fr:  { symbol:'€', std_m:5.49,  prem_m:8.99,  std_y:45.99,  prem_y:74.99 },
   es:  { symbol:'€', std_m:5.49,  prem_m:8.99,  std_y:45.99,  prem_y:74.99 },

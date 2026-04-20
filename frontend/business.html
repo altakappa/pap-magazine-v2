@@ -182,6 +182,8 @@ a{color:#fff;text-decoration:none}
         <option value="es">Español</option>
         <option value="ja">日本語</option>
         <option value="zh">中文</option>
+        <option value="ru">Русский</option>
+        <option value="de">Deutsch</option>
       </select>
     </div>
     <div class="auth-btn-wrap">
@@ -205,7 +207,8 @@ a{color:#fff;text-decoration:none}
 <script>window.addEventListener('load',function(){var l=document.getElementById('pageLoader');if(l){l.style.opacity='0';setTimeout(function(){l.remove();},400);}});</script>
 <a href="auth.html" class="auth-btn-header auth-btn-sidenav" aria-label="Login" style="position:fixed;top:32px;right:100px;z-index:1001;color:rgba(255,255,255,.4);transition:color .2s;text-decoration:none"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>
 
-<div class="lang-selector"><select id="langSelect" onchange="setLang(this.value)"><option value="ko">KO</option><option value="en">EN</option><option value="it">IT</option><option value="fr">FR</option><option value="es">ES</option><option value="ja">JA</option><option value="zh">ZH</option><option value="ru">RU</option></select></div>
+<div class="lang-selector"><select id="langSelect" onchange="setLang(this.value)"><option value="ko">KO</option><option value="en">EN</option><option value="it">IT</option><option value="fr">FR</option><option value="es">ES</option><option value="ja">JA</option><option value="zh">ZH</option><option value="ru">RU</option>
+        <option value="de">Deutsch</option></select></div>
 <nav role="navigation" aria-label="Main navigation" class="side-nav" id="sideNav">
   <div class="nav-dots open" id="navToggle"><span>&#8942;</span></div>
   <div class="nav-links">
@@ -278,6 +281,8 @@ function _showPremiumUpsellInterstitial(callback){
   var texts={
     ko:{tag:'SUBSCRIBE',title:'광고 없이\n모든 콘텐츠를 즐기세요',desc:'구독으로 에디토리얼, 매거진,\n독점 콘텐츠를 제한 없이 감상하세요.',btn:'구독하기',skip:'건너뛰기'},
     en:{tag:'SUBSCRIBE',title:'Enjoy all content\nwithout interruptions',desc:'Subscribe for unlimited access\nto editorials, magazines, and exclusive content.',btn:'Subscribe',skip:'Skip'},
+    ru:{tag:'SUBSCRIBE',title:'Enjoy all content\nwithout interruptions',desc:'Subscribe for unlimited access\nto editorials, magazines, and exclusive content.',btn:'Subscribe',skip:'Skip'},
+    de:{tag:'SUBSCRIBE',title:'Enjoy all content\nwithout interruptions',desc:'Subscribe for unlimited access\nto editorials, magazines, and exclusive content.',btn:'Subscribe',skip:'Skip'},
     it:{tag:'SUBSCRIBE',title:'Goditi tutti i contenuti\nsenza interruzioni',desc:'Abbonati per accesso illimitato\na editoriali, riviste e contenuti esclusivi.',btn:'Abbonati',skip:'Salta'},
     fr:{tag:'SUBSCRIBE',title:'Profitez de tout le contenu\nsans interruption',desc:"Abonnez-vous pour un accès illimité\naux éditoriaux, magazines et contenus exclusifs.",btn:"S'abonner",skip:'Passer'},
     es:{tag:'SUBSCRIBE',title:'Disfruta todo el contenido\nsin interrupciones',desc:'Suscríbete para acceso ilimitado\na editoriales, revistas y contenido exclusivo.',btn:'Suscríbete',skip:'Saltar'},
@@ -371,6 +376,22 @@ work:'<p>PAP는 캠페인, 룩북에서부터<br>브랜디드 콘텐츠, 현장 
 mail:koMail,
 ft:'<strong>주식회사 알타카파</strong> | CEO : 강동민 | 사업자번호 192-88-02644<br>서울특별시 강남구 논현로146길 18, 1F PAP 매거진 | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
 en:{about:'ABOUT',contact:'CONTACT',business:'BUSINESS',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
+brandTitle:'BRAND CONTENT ADVERTISING',
+workTitle:'MAKE CONTENTS WITH PAP',
+mediaKit:'MEDIA KIT',downloadLink:'Download Link',
+brand:'<p>PAP promotes the content<br>provided by your brand.</p><p>Interested brands and PR representatives,<br>please contact us via the email below.</p>',
+work:'<p>PAP creates a wide range of content from campaigns<br>and lookbooks to branded content and on-site coverage.</p><p>Interested brands and PR representatives,<br>please contact us via the email below.</p>',
+mail:intlMail,
+ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+ru:{about:'ABOUT',contact:'CONTACT',business:'BUSINESS',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
+brandTitle:'BRAND CONTENT ADVERTISING',
+workTitle:'MAKE CONTENTS WITH PAP',
+mediaKit:'MEDIA KIT',downloadLink:'Download Link',
+brand:'<p>PAP promotes the content<br>provided by your brand.</p><p>Interested brands and PR representatives,<br>please contact us via the email below.</p>',
+work:'<p>PAP creates a wide range of content from campaigns<br>and lookbooks to branded content and on-site coverage.</p><p>Interested brands and PR representatives,<br>please contact us via the email below.</p>',
+mail:intlMail,
+ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+de:{about:'ABOUT',contact:'CONTACT',business:'BUSINESS',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
 brandTitle:'BRAND CONTENT ADVERTISING',
 workTitle:'MAKE CONTENTS WITH PAP',
 mediaKit:'MEDIA KIT',downloadLink:'Download Link',

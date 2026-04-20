@@ -398,6 +398,8 @@ textarea.form-input{min-height:100px;resize:vertical;line-height:1.8}
         <option value="es">Español</option>
         <option value="ja">日本語</option>
         <option value="zh">中文</option>
+        <option value="ru">Русский</option>
+        <option value="de">Deutsch</option>
       </select>
     </div>
     <div class="auth-btn-wrap">
@@ -421,7 +423,8 @@ textarea.form-input{min-height:100px;resize:vertical;line-height:1.8}
 <script>window.addEventListener('load',function(){var l=document.getElementById('pageLoader');if(l){l.style.opacity='0';setTimeout(function(){l.remove();},400);}});</script>
 <a href="auth.html" class="auth-btn-header auth-btn-sidenav" aria-label="Login" style="position:fixed;top:32px;right:100px;z-index:1001;color:rgba(255,255,255,.4);transition:color .2s;text-decoration:none"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>
 
-<div class="lang-selector"><select id="langSelect" onchange="setLang(this.value)"><option value="ko">KO</option><option value="en">EN</option><option value="it">IT</option><option value="fr">FR</option><option value="es">ES</option><option value="ja">JA</option><option value="zh">ZH</option><option value="ru">RU</option></select></div>
+<div class="lang-selector"><select id="langSelect" onchange="setLang(this.value)"><option value="ko">KO</option><option value="en">EN</option><option value="it">IT</option><option value="fr">FR</option><option value="es">ES</option><option value="ja">JA</option><option value="zh">ZH</option><option value="ru">RU</option>
+        <option value="de">Deutsch</option></select></div>
 <nav role="navigation" aria-label="Main navigation" class="side-nav" id="sideNav">
   <div class="nav-dots open" id="navToggle"><span>&#8942;</span></div>
   <div class="nav-links">
@@ -494,6 +497,8 @@ function _showPremiumUpsellInterstitial(callback){
   var texts={
     ko:{tag:'SUBSCRIBE',title:'광고 없이\n모든 콘텐츠를 즐기세요',desc:'구독으로 에디토리얼, 매거진,\n독점 콘텐츠를 제한 없이 감상하세요.',btn:'구독하기',skip:'건너뛰기'},
     en:{tag:'SUBSCRIBE',title:'Enjoy all content\nwithout interruptions',desc:'Subscribe for unlimited access\nto editorials, magazines, and exclusive content.',btn:'Subscribe',skip:'Skip'},
+    ru:{tag:'SUBSCRIBE',title:'Enjoy all content\nwithout interruptions',desc:'Subscribe for unlimited access\nto editorials, magazines, and exclusive content.',btn:'Subscribe',skip:'Skip'},
+    de:{tag:'SUBSCRIBE',title:'Enjoy all content\nwithout interruptions',desc:'Subscribe for unlimited access\nto editorials, magazines, and exclusive content.',btn:'Subscribe',skip:'Skip'},
     it:{tag:'SUBSCRIBE',title:'Goditi tutti i contenuti\nsenza interruzioni',desc:'Abbonati per accesso illimitato\na editoriali, riviste e contenuti esclusivi.',btn:'Abbonati',skip:'Salta'},
     fr:{tag:'SUBSCRIBE',title:'Profitez de tout le contenu\nsans interruption',desc:"Abonnez-vous pour un accès illimité\naux éditoriaux, magazines et contenus exclusifs.",btn:"S'abonner",skip:'Passer'},
     es:{tag:'SUBSCRIBE',title:'Disfruta todo el contenido\nsin interrupciones',desc:'Suscríbete para acceso ilimitado\na editoriales, revistas y contenido exclusivo.',btn:'Suscríbete',skip:'Saltar'},
@@ -997,6 +1002,28 @@ en:{
   artistStatement:{ph:'e.g. Briefly describe the concept, inspiration, and story behind your editorial.',helper:'Recommended length: 200\u2013500 characters',err:'Please enter an artist statement.',errLen:'Please keep it under 500 characters.'},
   copyrightConfirm:{text:'I confirm that I own the rights to the submitted content and that it does not infringe any third-party rights.',err:'Please confirm the copyright agreement.'}
 },
+ru:{
+  errorSummaryTitle:'Please check the following:',
+  genreError:'Please select at least one category.',
+  editorialTitle:{ph:'e.g. GAS',helper:'Please enter a title between 2 and 50 characters.',err:'Please enter the editorial title.',errLen:'Title must be between 2 and 50 characters.'},
+  studioName:{ph:'e.g. ThePinkBang Productions',helper:'Enter the name of your studio or production company.',err:'Please enter your production or studio name.'},
+  contactEmail:{ph:'e.g. hello@example.com',helper:'Please enter a valid email address.',err:'Please enter your email address.',errFmt:'Please enter a valid email address.'},
+  studioWebsite:{ph:'e.g. https://yourstudio.com',helper:'Include https:// in the URL.',err:'Website URL must start with https://'},
+  studioInsta:{ph:'e.g. @yourstudio',helper:'Please enter in @username format.',err:'Instagram username must start with @'},
+  artistStatement:{ph:'e.g. Briefly describe the concept, inspiration, and story behind your editorial.',helper:'Recommended length: 200\u2013500 characters',err:'Please enter an artist statement.',errLen:'Please keep it under 500 characters.'},
+  copyrightConfirm:{text:'I confirm that I own the rights to the submitted content and that it does not infringe any third-party rights.',err:'Please confirm the copyright agreement.'}
+},
+de:{
+  errorSummaryTitle:'Please check the following:',
+  genreError:'Please select at least one category.',
+  editorialTitle:{ph:'e.g. GAS',helper:'Please enter a title between 2 and 50 characters.',err:'Please enter the editorial title.',errLen:'Title must be between 2 and 50 characters.'},
+  studioName:{ph:'e.g. ThePinkBang Productions',helper:'Enter the name of your studio or production company.',err:'Please enter your production or studio name.'},
+  contactEmail:{ph:'e.g. hello@example.com',helper:'Please enter a valid email address.',err:'Please enter your email address.',errFmt:'Please enter a valid email address.'},
+  studioWebsite:{ph:'e.g. https://yourstudio.com',helper:'Include https:// in the URL.',err:'Website URL must start with https://'},
+  studioInsta:{ph:'e.g. @yourstudio',helper:'Please enter in @username format.',err:'Instagram username must start with @'},
+  artistStatement:{ph:'e.g. Briefly describe the concept, inspiration, and story behind your editorial.',helper:'Recommended length: 200\u2013500 characters',err:'Please enter an artist statement.',errLen:'Please keep it under 500 characters.'},
+  copyrightConfirm:{text:'I confirm that I own the rights to the submitted content and that it does not infringe any third-party rights.',err:'Please confirm the copyright agreement.'}
+},
 ja:{
   errorSummaryTitle:'\u4ee5\u4e0b\u306e\u9805\u76ee\u3092\u3054\u78ba\u8a8d\u304f\u3060\u3055\u3044:',
   genreError:'\u30ab\u30c6\u30b4\u30ea\u30fc\u30921\u3064\u4ee5\u4e0a\u9078\u629e\u3057\u3066\u304f\u3060\u3055\u3044\u3002',
@@ -1490,6 +1517,8 @@ function simulateLogin(){
 var L={
 ko:{business:'BUSINESS',about:'ABOUT',contact:'CONTACT',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',pageDesc:'PAP 매거진에 에디토리얼을 제출하세요. 서브미션 유형을 선택하고, 작품 정보·팀 크레딧·룩별 의상 크레딧·고해상도 이미지를 제출해 주세요. MY SUBMISSIONS에서 실시간 심사 상태를 확인할 수 있습니다.',gateLogin:'로그인 / 회원가입',gateTitle:'회원 전용',gateDesc:'이 서비스는 무료 회원 이상만 이용할 수 있습니다.\n로그인하거나 회원가입 후 이용해 주세요.',successMsg:'서브미션이 성공적으로 접수되었습니다. 심사 결과는 이메일로 안내드리겠습니다.',ft:'<strong>주식회사 알타카파</strong> | CEO : 강동민 | 사업자번호 192-88-02644<br>서울특별시 강남구 논현로146길 18, 1F | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
 en:{business:'BUSINESS',about:'ABOUT',contact:'CONTACT',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',pageDesc:'Submit your editorial to PAP Magazine. Choose your submission type, provide production info, team credits, look-by-look garment credits, and high-resolution images. Track your submission status in MY SUBMISSIONS.',gateLogin:'LOG IN / SIGN UP',gateTitle:'MEMBERS ONLY',gateDesc:'This service is available to registered members only.\nPlease log in or sign up to continue.',successMsg:'Your submission has been received successfully. Review results will be sent via email.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+ru:{business:'BUSINESS',about:'ABOUT',contact:'CONTACT',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',pageDesc:'Submit your editorial to PAP Magazine. Choose your submission type, provide production info, team credits, look-by-look garment credits, and high-resolution images. Track your submission status in MY SUBMISSIONS.',gateLogin:'LOG IN / SIGN UP',gateTitle:'MEMBERS ONLY',gateDesc:'This service is available to registered members only.\nPlease log in or sign up to continue.',successMsg:'Your submission has been received successfully. Review results will be sent via email.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+de:{business:'BUSINESS',about:'ABOUT',contact:'CONTACT',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',pageDesc:'Submit your editorial to PAP Magazine. Choose your submission type, provide production info, team credits, look-by-look garment credits, and high-resolution images. Track your submission status in MY SUBMISSIONS.',gateLogin:'LOG IN / SIGN UP',gateTitle:'MEMBERS ONLY',gateDesc:'This service is available to registered members only.\nPlease log in or sign up to continue.',successMsg:'Your submission has been received successfully. Review results will be sent via email.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
 it:{business:'BUSINESS',about:'CHI SIAMO',contact:'CONTATTI',subscribe:'ABBONATI',submission:'SUBMISSION',pullletter:'PULL-LETTER',pageDesc:'Invia il tuo editoriale a PAP Magazine. Fornisci informazioni sulla produzione, crediti del team, crediti per look e immagini ad alta risoluzione.',gateLogin:'ACCEDI / REGISTRATI',gateTitle:'SOLO MEMBRI',gateDesc:'Questo servizio è disponibile solo per i membri registrati.',successMsg:'La tua submission è stata ricevuta. I risultati saranno inviati via email entro 1-3 giorni lavorativi.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | P. IVA: 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Corea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
 fr:{business:'BUSINESS',about:'À PROPOS',contact:'CONTACT',subscribe:"S'ABONNER",submission:'SOUMISSION',pullletter:'PULL-LETTER',pageDesc:'Soumettez votre éditorial à PAP Magazine. Fournissez les informations de production, crédits d\'équipe, crédits par look et images haute résolution.',gateLogin:'CONNEXION / INSCRIPTION',gateTitle:'RÉSERVÉ AUX MEMBRES',gateDesc:'Ce service est réservé aux membres inscrits.',successMsg:'Votre soumission a été reçue. Les résultats seront envoyés par email sous 1 à 3 jours ouvrés.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | PDG : Domenico Kang | N&#176; 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Séoul, Corée | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
 es:{business:'NEGOCIOS',about:'ACERCA DE',contact:'CONTACTO',subscribe:'SUSCRIBIRSE',submission:'ENVÍO',pullletter:'PULL-LETTER',pageDesc:'Envíe su editorial a PAP Magazine. Proporcione información de producción, créditos del equipo, créditos por look e imágenes de alta resolución.',gateLogin:'INICIAR SESIÓN / REGISTRARSE',gateTitle:'SOLO MIEMBROS',gateDesc:'Este servicio está disponible solo para miembros registrados.',successMsg:'Su envío ha sido recibido. Los resultados se enviarán por email en 1-3 días hábiles.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seúl, Corea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},

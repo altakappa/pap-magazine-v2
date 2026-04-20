@@ -311,6 +311,8 @@ footer a:hover{color:#fff}
         <option value="es">Español</option>
         <option value="ja">日本語</option>
         <option value="zh">中文</option>
+        <option value="ru">Русский</option>
+        <option value="de">Deutsch</option>
       </select>
     </div>
     <div class="auth-btn-wrap">
@@ -635,7 +637,9 @@ function openPreview(issueTitle){
     fr:{title:'Aperçu Gratuit',subtitle:'ÉDITORIAUX',cta:'S\'ABONNER POUR TOUT LIRE',lock:'Abonnez-vous pour accéder à tous les éditoriaux de ce numéro'},
     ja:{title:'無料プレビュー',subtitle:'エディトリアル',cta:'購読して全て読む',lock:'このイシューの全エディトリアルを読むには購読が必要です'},
     zh:{title:'免费预览',subtitle:'编辑内容',cta:'订阅阅读全部',lock:'订阅以解锁此期所有编辑内容'},
-    es:{title:'Vista Previa Gratuita',subtitle:'EDITORIALES',cta:'SUSCRÍBETE PARA LEER TODO',lock:'Suscríbete para desbloquear todos los editoriales de este número'}
+    es:{title:'Vista Previa Gratuita',subtitle:'EDITORIALES',cta:'SUSCRÍBETE PARA LEER TODO',lock:'Suscríbete para desbloquear todos los editoriales de este número'},
+    ru:{title:'Бесплатный Предпросмотр',subtitle:'РЕДАКЦИОННЫЕ',cta:'ПОДПИШИТЕСЬ ЧТОБЫ ЧИТАТЬ ВСЁ',lock:'Подпишитесь, чтобы открыть все редакционные материалы этого выпуска'},
+    de:{title:'Kostenlose Vorschau',subtitle:'EDITORIALS',cta:'ABONNIEREN, UM ALLES ZU LESEN',lock:'Abonnieren Sie, um alle Editorials dieser Ausgabe freizuschalten'}
   };
   var pt=previewTexts[lang]||previewTexts.en;
   document.getElementById('previewIssue').textContent=issueTitle.toUpperCase();
@@ -740,7 +744,9 @@ document.getElementById('previewOverlay').addEventListener('click',function(e){
     fr:{desc:'Abonnez-vous pour accéder à ce numéro et à l\'archive complète de PAP — 86 numéros, 2 109+ éditoriaux.',cta:'S\'ABONNER',preview:'Aperçu de 3 éditoriaux gratuit →',note:'Annulation à tout moment · Accès immédiat à tous les numéros'},
     ja:{desc:'このイシューとPAPの全アーカイブをご覧いただくには購読が必要です — 86イシュー、2,109+エディトリアル。',cta:'今すぐ購読',preview:'エディトリアル3本を無料プレビュー →',note:'いつでも解約可能 · 全イシュー即アクセス'},
     zh:{desc:'订阅以解锁此期及PAP完整档案库 — 86期，2,109+编辑内容。',cta:'立即订阅',preview:'免费预览3篇编辑内容 →',note:'随时取消 · 即时访问所有期刊'},
-    es:{desc:'Suscríbete para desbloquear este número y el archivo completo de PAP — 86 números, 2.109+ editoriales.',cta:'SUSCRÍBETE AHORA',preview:'Vista previa de 3 editoriales gratis →',note:'Cancela en cualquier momento · Acceso instantáneo a todos los números'}
+    es:{desc:'Suscríbete para desbloquear este número y el archivo completo de PAP — 86 números, 2.109+ editoriales.',cta:'SUSCRÍBETE AHORA',preview:'Vista previa de 3 editoriales gratis →',note:'Cancela en cualquier momento · Acceso instantáneo a todos los números'},
+    ru:{desc:'Подпишитесь, чтобы открыть этот выпуск и весь архив PAP — 86 выпусков, 2 109+ редакционных материалов.',cta:'ПОДПИСАТЬСЯ',preview:'Предпросмотр 3 материалов бесплатно →',note:'Отмена в любой момент · Мгновенный доступ ко всем выпускам'},
+    de:{desc:'Abonnieren Sie, um diese Ausgabe und das gesamte PAP-Archiv freizuschalten — 86 Ausgaben, 2.109+ Editorials.',cta:'JETZT ABONNIEREN',preview:'3 Editorials kostenlos ansehen →',note:'Jederzeit kündbar · Sofortiger Zugriff auf alle Ausgaben'}
   };
   var s=t[lang]||t.en;
   var d=document.getElementById('modalDesc');if(d)d.textContent=s.desc;
@@ -770,7 +776,9 @@ document.getElementById('previewOverlay').addEventListener('click',function(e){
       fr:{mypage:'MON COMPTE',subscribe:'GÉRER L\'ABONNEMENT',logout:'DÉCONNEXION'},
       ja:{mypage:'マイページ',subscribe:'購読管理',logout:'ログアウト'},
       zh:{mypage:'我的页面',subscribe:'管理订阅',logout:'退出登录'},
-      es:{mypage:'MI PÁGINA',subscribe:'GESTIONAR SUSCRIPCIÓN',logout:'CERRAR SESIÓN'}
+      es:{mypage:'MI PÁGINA',subscribe:'GESTIONAR SUSCRIPCIÓN',logout:'CERRAR SESIÓN'},
+      ru:{mypage:'МОЯ СТРАНИЦА',subscribe:'УПРАВЛЕНИЕ ПОДПИСКОЙ',logout:'ВЫЙТИ'},
+      de:{mypage:'MEINE SEITE',subscribe:'ABONNEMENT VERWALTEN',logout:'ABMELDEN'}
     };
     var s=t[lang]||t.en;
     dd.innerHTML=
@@ -790,7 +798,9 @@ document.getElementById('previewOverlay').addEventListener('click',function(e){
     fr:{subscribe:"S'ABONNER",submission:'SOUMISSION',pullletter:'PULL-LETTER',navLogin:'CONNEXION / INSCRIPTION',about:'À PROPOS',business:'BUSINESS',contact:'CONTACT',navCommunity:'COMMUNAUTÉ',navMagazine:'MAGAZINE',navEditorial:'ÉDITORIAL',navArticle:'ARTICLE',navFilm:'FILM'},
     ja:{subscribe:'購読',submission:'サブミッション',pullletter:'PULL-LETTER',navLogin:'ログイン / 会員登録',about:'アバウト',business:'ビジネス',contact:'お問い合わせ',navCommunity:'コミュニティ',navMagazine:'マガジン',navEditorial:'エディトリアル',navArticle:'アーティクル',navFilm:'フィルム'},
     zh:{subscribe:'订阅',submission:'投稿',pullletter:'PULL-LETTER',navLogin:'登录 / 注册',about:'关于我们',business:'商务合作',contact:'联系方式',navCommunity:'社区',navMagazine:'杂志',navEditorial:'编辑精选',navArticle:'文章',navFilm:'影片'},
-    es:{subscribe:'SUSCRIBIRSE',submission:'ENVÍO',pullletter:'PULL-LETTER',navLogin:'INICIAR SESIÓN / UNIRSE',about:'ACERCA DE',business:'NEGOCIOS',contact:'CONTACTO',navCommunity:'COMUNIDAD',navMagazine:'REVISTA',navEditorial:'EDITORIAL',navArticle:'ARTÍCULO',navFilm:'FILM'}
+    es:{subscribe:'SUSCRIBIRSE',submission:'ENVÍO',pullletter:'PULL-LETTER',navLogin:'INICIAR SESIÓN / UNIRSE',about:'ACERCA DE',business:'NEGOCIOS',contact:'CONTACTO',navCommunity:'COMUNIDAD',navMagazine:'REVISTA',navEditorial:'EDITORIAL',navArticle:'ARTÍCULO',navFilm:'FILM'},
+    ru:{subscribe:'ПОДПИСКА',submission:'ПОДАЧА',pullletter:'PULL-LETTER',navLogin:'ВХОД / РЕГИСТРАЦИЯ',about:'О НАС',business:'БИЗНЕС',contact:'КОНТАКТ',navCommunity:'СООБЩЕСТВО',navMagazine:'ЖУРНАЛ',navEditorial:'EDITORIAL',navArticle:'СТАТЬЯ',navFilm:'FILM'},
+    de:{subscribe:'ABONNIEREN',submission:'EINREICHUNG',pullletter:'PULL-LETTER',navLogin:'ANMELDEN / REGISTRIEREN',about:'ÜBER UNS',business:'BUSINESS',contact:'KONTAKT',navCommunity:'COMMUNITY',navMagazine:'MAGAZIN',navEditorial:'EDITORIAL',navArticle:'ARTIKEL',navFilm:'FILM'}
   };
   var s=t[lang]||t.en;
   document.querySelectorAll('[data-i18n]').forEach(function(el){

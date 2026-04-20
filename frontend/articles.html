@@ -139,6 +139,8 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
         <option value="es">Español</option>
         <option value="ja">日本語</option>
         <option value="zh">中文</option>
+        <option value="ru">Русский</option>
+        <option value="de">Deutsch</option>
       </select>
     </div>
     <div class="auth-btn-wrap">
@@ -154,20 +156,7 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
   </div>
 </header>
 
-<!-- SEARCH BAR -->
-<div class="search-bar" id="searchBar">
-  <div class="search-bar-inner">
-    <svg class="search-bar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <input class="search-bar-input" type="text" placeholder="SEARCH" id="searchInput">
-    <button class="search-bar-close" onclick="toggleSearch()">&times;</button>
-  </div>
-  <div class="search-dropdown" id="searchDropdown">
-    <div class="search-dropdown-label" id="searchDropdownLabel"></div>
-    <div class="search-dropdown-grid" id="searchDropdownGrid"></div>
-  </div>
-</div>
-
-<div class="page-title">ARTICLE</div>
+<div class="page-title" data-i18n="articlesPageTitle">ARTICLE</div>
 <div class="page-count" id="artCount"></div>
 
 <div class="filter-wrap" id="filterWrap"></div>
@@ -205,10 +194,34 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
 <script src="pap-social.js?v=2" defer></script>
 <script src="pap-app.js?v=3" defer></script>
 <script>
+var _ART_MONTHS = {
+  en:['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'],
+  ko:['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'],
+  ja:['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
+  zh:['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'],
+  it:['GEN','FEB','MAR','APR','MAG','GIU','LUG','AGO','SET','OTT','NOV','DIC'],
+  fr:['JAN','FÉV','MAR','AVR','MAI','JUN','JUL','AOÛ','SEP','OCT','NOV','DÉC'],
+  es:['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'],
+  ru:['ЯНВ','ФЕВ','МАР','АПР','МАЙ','ИЮН','ИЮЛ','АВГ','СЕН','ОКТ','НОЯ','ДЕК'],
+  de:['JAN','FEB','MÄR','APR','MAI','JUN','JUL','AUG','SEP','OKT','NOV','DEZ']
+};
+var _ART_LABELS = {
+  en:{all:'ALL',articles:'ARTICLES'},
+  ko:{all:'전체',articles:'아티클'},
+  ja:{all:'すべて',articles:'アーティクル'},
+  zh:{all:'全部',articles:'文章'},
+  it:{all:'TUTTI',articles:'ARTICOLI'},
+  fr:{all:'TOUS',articles:'ARTICLES'},
+  es:{all:'TODOS',articles:'ARTÍCULOS'},
+  ru:{all:'ВСЕ',articles:'СТАТЬИ'},
+  de:{all:'ALLE',articles:'ARTIKEL'}
+};
+function _artLang(){ return (localStorage.getItem('pap-lang')||'ko').substring(0,2); }
+function _artL(){ return _ART_LABELS[_artLang()] || _ART_LABELS.en; }
 function formatDate(dateStr) {
   if (!dateStr) return '';
   var d = new Date(dateStr);
-  var months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  var months = _ART_MONTHS[_artLang()] || _ART_MONTHS.en;
   var day = String(d.getDate()).padStart(2, '0');
   var month = months[d.getMonth()];
   var year = d.getFullYear();
@@ -237,7 +250,8 @@ document.addEventListener('DOMContentLoaded', function() {
   var filterWrap = document.getElementById('filterWrap');
   var allBtn = document.createElement('button');
   allBtn.className = 'filter-btn active';
-  allBtn.textContent = 'ALL';
+  allBtn.setAttribute('data-filter-all', '1');
+  allBtn.textContent = _artL().all;
   allBtn.onclick = function() {
     activeFilter = 'ALL';
     artCurrentPage = 1;
@@ -249,6 +263,7 @@ document.addEventListener('DOMContentLoaded', function() {
   catList.forEach(function(cat) {
     var btn = document.createElement('button');
     btn.className = 'filter-btn';
+    btn.setAttribute('data-filter-cat', cat);
     btn.textContent = cat.toUpperCase();
     btn.onclick = function() {
       activeFilter = cat;
@@ -262,7 +277,9 @@ document.addEventListener('DOMContentLoaded', function() {
   function updateFilterButtons() {
     var btns = filterWrap.querySelectorAll('.filter-btn');
     btns.forEach(function(btn) {
-      if (btn.textContent === activeFilter || (activeFilter === 'ALL' && btn.textContent === 'ALL')) {
+      var isAll = btn.getAttribute('data-filter-all') === '1';
+      var filterVal = btn.getAttribute('data-filter-cat') || (isAll ? 'ALL' : btn.textContent);
+      if (filterVal === activeFilter) {
         btn.classList.add('active');
       } else {
         btn.classList.remove('active');
@@ -325,7 +342,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Update count
     var countEl = document.getElementById('artCount');
-    countEl.textContent = filtered.length + ' ARTICLES';
+    countEl.textContent = filtered.length + ' ' + _artL().articles;
 
     // Pagination
     var pagContainer = document.getElementById('artPagination');
@@ -337,6 +354,21 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   renderCards();
+
+  // Re-render on language change
+  document.addEventListener('pap-lang-changed', function(){
+    // Update ALL button label
+    var allBtn = filterWrap.querySelector('[data-filter-all="1"]');
+    if(allBtn) allBtn.textContent = _artL().all;
+    renderCards();
+  });
+  window.addEventListener('storage', function(e){
+    if(e.key === 'pap-lang'){
+      var allBtn = filterWrap.querySelector('[data-filter-all="1"]');
+      if(allBtn) allBtn.textContent = _artL().all;
+      renderCards();
+    }
+  });
 });
 </script>
 <script src="pap-auth-link.js" defer></script>

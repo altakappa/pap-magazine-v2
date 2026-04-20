@@ -21,7 +21,7 @@
   var LS_LANG_SOURCE = 'pap-lang-source'; // 'user' | 'geo' | 'auto'
   var CACHE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-  var SUPPORTED = ['ko','en','it','fr','es','ja','zh','ru'];
+  var SUPPORTED = ['ko','en','it','fr','es','ja','zh','ru','de'];
 
   // Country → language mapping
   var COUNTRY_LANG = {
@@ -29,14 +29,17 @@
     'JP':'ja',
     'CN':'zh', 'TW':'zh', 'HK':'zh', 'MO':'zh', 'SG':'zh',
     'IT':'it', 'SM':'it', 'VA':'it',
-    'FR':'fr', 'BE':'fr', 'LU':'fr', 'MC':'fr', 'CH':'fr',
+    'FR':'fr', 'BE':'fr', 'LU':'fr', 'MC':'fr',
     'SN':'fr', 'CI':'fr', 'CM':'fr', 'DZ':'fr', 'MA':'fr', 'TN':'fr',
     'ES':'es', 'MX':'es', 'AR':'es', 'CO':'es', 'PE':'es', 'VE':'es',
     'CL':'es', 'EC':'es', 'GT':'es', 'CU':'es', 'BO':'es', 'DO':'es',
     'HN':'es', 'PY':'es', 'SV':'es', 'NI':'es', 'CR':'es', 'PA':'es',
     'UY':'es', 'PR':'es',
-    'RU':'ru', 'BY':'ru', 'KZ':'ru', 'KG':'ru'
-    // default for US/UK/CA/AU/NZ/IE/DE/NL/others → 'en'
+    'RU':'ru', 'BY':'ru', 'KZ':'ru', 'KG':'ru',
+    'DE':'de', 'AT':'de', 'CH':'de', 'LI':'de'
+    // default for US/UK/CA/AU/NZ/IE/NL/others → 'en'
+    // Note: CH (Switzerland) defaults to 'de' (largest linguistic group);
+    // French/Italian Swiss users can manually switch.
   };
 
   // --- Storage helpers ---
@@ -70,6 +73,7 @@
     if(nav.indexOf('fr') === 0 || tz.indexOf('Paris') > -1) return 'fr';
     if(nav.indexOf('es') === 0 || tz.indexOf('Madrid') > -1 || tz.indexOf('Mexico') > -1) return 'es';
     if(nav.indexOf('ru') === 0 || tz.indexOf('Moscow') > -1 || tz.indexOf('Petersburg') > -1) return 'ru';
+    if(nav.indexOf('de') === 0 || tz.indexOf('Berlin') > -1 || tz.indexOf('Vienna') > -1 || tz.indexOf('Zurich') > -1) return 'de';
     return 'en';
   }
 
