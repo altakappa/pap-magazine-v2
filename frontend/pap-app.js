@@ -1,10 +1,10 @@
 
 
 // ======== BETA MODE CONFIG ========
-// 베타 종료 날짜를 설정하면 해당 날짜까지 가입 회원 전원 전체 콘텐츠 이용 가능
+// 베타 기간 중에는 로그인 여부와 관계없이 "모든 방문자"에게 전체 콘텐츠 오픈 (OPEN BETA)
 // 베타 종료 후에는 구독 등급(free/standard/premium)에 따라 접근 차등 적용
 // 날짜 형식: 'YYYY-MM-DD' (예: '2026-12-31') 또는 null (베타 무기한)
-var PAP_BETA_END = null;   // ← 여기에 종료 날짜 입력 (예: '2026-12-31')
+var PAP_BETA_END = '2026-05-06';   // ← 베타 종료 날짜 (2026년 5월 6일 23:59:59까지 오픈 베타)
 
 function isBetaActive(){
   if(!PAP_BETA_END) return true; // null이면 무기한 베타
@@ -532,17 +532,17 @@ var edLogoFolders={
 function getLogoFolderId(t){if(edLogoFolders[t])return edLogoFolders[t];var tL=t.toLowerCase();for(var k in edLogoFolders){if(k.toLowerCase()===tL)return edLogoFolders[k];}return null;}
 
 // Global auth helpers (needed by openEditorial for premium logo section)
-// 베타 기간 중에는 로그인한 모든 회원에게 전체 접근 권한 부여
+// 베타 기간 중에는 비로그인 방문자를 포함한 모두에게 전체 접근 권한 부여 (OPEN BETA)
 function isPremium(){
   try{
-    if(isBetaActive() && isLoggedIn()) return true;
+    if(isBetaActive()) return true;
     var u=localStorage.getItem('pap-user');if(!u)return false;
     var user=JSON.parse(u);return user&&user.subscription==='premium';
   }catch(e){return false;}
 }
 function isStandardOrAbove(){
   try{
-    if(isBetaActive() && isLoggedIn()) return true;
+    if(isBetaActive()) return true;
     var u=localStorage.getItem('pap-user');if(!u)return false;
     var user=JSON.parse(u);return user&&(user.subscription==='standard'||user.subscription==='premium');
   }catch(e){return false;}
