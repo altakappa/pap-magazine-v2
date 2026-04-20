@@ -26,6 +26,16 @@
   /* ── opt-out hook (rare: only if a page truly wants its own header) ── */
   if (document.body && document.body.getAttribute('data-pap-no-header') === '1') return;
 
+  /* Index.html has a .floating-logo element whose animation JS (in pap-app.js)
+     captures a live reference to the original <header>'s .logo-wrap via
+     getBoundingClientRect(). If we remove and re-inject the header on that
+     page, the captured reference becomes stale and the floating logo docks
+     at 0,0 (top-left). Since index.html already has the canonical inline
+     header design we want to unify everyone around, we simply exit early
+     on pages that host the floating logo. All OTHER pages still get the
+     unified header. */
+  if (document.querySelector('.floating-logo')) return;
+
   /* ================================================================
      0. Clean up any pre-existing header / legacy nav markup
      ================================================================ */
