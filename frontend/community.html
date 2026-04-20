@@ -2280,23 +2280,7 @@ function runMatch(){
 function resetAi(){document.getElementById('aiForm').style.display='block';document.getElementById('aiRes').style.display='none';}
 
 // ======== DIRECTORY ========
-var DD=[
-  {n:'Judith Moreno',r:'photographer',l:'Milan, IT',a:['Minimal','Editorial','Natural'],c:34},
-  {n:'Sergi Padial',r:'stylist',l:'Barcelona, ES',a:['Bold','Maximalist','Color'],c:48},
-  {n:'Lena Park',r:'photographer',l:'Seoul, KR',a:['Documentary','Street','Natural'],c:67},
-  {n:'Elisa V',r:'makeup',l:'London, UK',a:['Beauty','Minimal','Gloss'],c:52},
-  {n:'Marco Bellini',r:'artdirector',l:'Milano, IT',a:['Avant-Garde','Surreal','Dark'],c:78},
-  {n:'Clara Chen',r:'photographer',l:'Shanghai, CN',a:['Editorial','Fashion','Color'],c:45},
-  {n:'David Lee',r:'photographer',l:'Seoul, KR',a:['Landscape','Nature','Clean'],c:56},
-  {n:'Nina Park',r:'artdirector',l:'Seoul, KR',a:['Minimal','Digital','Futuristic'],c:39},
-  {n:'Tom Anderson',r:'videographer',l:'London, UK',a:['Motion','Dynamic','Music'],c:41},
-  {n:'Sophie Martin',r:'makeup',l:'Paris, FR',a:['Beauty','Fine Art','Ethereal'],c:63},
-  {n:'Alex Turner',r:'photographer',l:'New York, US',a:['Urban','Street','Bold'],c:58},
-  {n:'Rachel Green',r:'stylist',l:'Seoul, KR',a:['Fashion','Modern','Trendy'],c:44},
-  {n:'Michael Brown',r:'retoucher',l:'Barcelona, ES',a:['Digital','Clean','Precise'],c:72},
-  {n:'Julia White',r:'photographer',l:'Paris, FR',a:['Editorial','Fine Art','Timeless'],c:61},
-  {n:'Nicolas Dupont',r:'photographer',l:'Paris, FR',a:['Fine Art','Conceptual','Artistic'],c:55}
-];
+var DD=[];
 var dCurFilter='all';
 function sdf(e,f){dCurFilter=f;document.querySelectorAll('.dir-f').forEach(function(x){x.classList.remove('on');});e.classList.add('on');fDir();}
 function fDir(){
