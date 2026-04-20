@@ -2,32 +2,6 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<script>
-/* Deep-link cover: when landing on index.html with ?ed=<title> or
-   #all-editorials, hide the homepage content with a black cover so the user
-   doesn't see the home page briefly flash before the overlay opens. The
-   cover is removed by pap-app.js after the relevant overlay opens. Also
-   suppresses the beta-notice popup for this deep-link flow. */
-(function(){
-  try{
-    var params=new URLSearchParams(window.location.search);
-    var hasEdParam=!!params.get('ed');
-    var hasAllHash=(window.location.hash==='#all-editorials'||window.location.hash==='#all-films'||window.location.hash==='#all-articles');
-    if(!hasEdParam && !hasAllHash) return;
-    window._papDeepLinkMode=true;
-    var style=document.createElement('style');
-    style.id='pap-deeplink-cover-style';
-    style.textContent='html,body{background:#000!important}body{opacity:0!important;transition:opacity .35s ease}body.pap-deeplink-ready{opacity:1!important}#betaNotice{display:none!important}';
-    (document.head||document.documentElement).appendChild(style);
-    /* Safety net: if overlay fails to open within 4s, reveal anyway */
-    setTimeout(function(){
-      if(document.body&&!document.body.classList.contains('pap-deeplink-ready')){
-        document.body.classList.add('pap-deeplink-ready');
-      }
-    },4000);
-  }catch(e){}
-})();
-</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>PAP Magazine - Fashion, Editorial & Film</title>
 <meta name="description" content="PAP Magazine is a global fashion and editorial platform showcasing editorials, films, and creative content from emerging and established artists worldwide.">
@@ -64,7 +38,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="pap-styles.css?v=2">
+<link rel="stylesheet" href="pap-styles.css">
 <link rel="stylesheet" href="pap-social.css">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
 <!-- Favicon & PWA -->
@@ -78,7 +52,7 @@
 <script src="pap-geo-lang.js"></script>
 <script src="pap-img-fallback.js"></script>
 <script src="cookie-consent.js" defer></script>
-<script src="beta-notice.js?v=3" defer></script>
+<script src="beta-notice.js" defer></script>
 <!-- Print Styles -->
 <style media="print">
 @media print{
@@ -341,7 +315,6 @@
         <option value="ja">日本語</option>
         <option value="zh">中文</option>
         <option value="ru">Русский</option>
-        <option value="de">Deutsch</option>
       </select>
     </div>
     <div class="auth-btn-wrap">
@@ -386,70 +359,70 @@
   <div class="carousel-wrap">
     <button class="carousel-arrow left" onclick="moveCarousel(-1)" aria-label="Previous article">&#8249;</button>
     <div class="carousel-track" id="fashionTrack">
-    <div class="fashion-card" data-slug="milan-fw26-street-style-part2" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/00_d2170845de.jpg" alt="밀란 패션 위크 FW26 스트릿 스타일 Part.2"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 02 Mar 2026</div><div class="fashion-card-title">밀란 패션 위크 FW26 스트릿 스타일 Part.2</div></div></div>
-    <div class="fashion-card" data-slug="luisa-beccaria-backstage-fw26" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/00_10f3cf27f9.png" alt="루이사 베카리아 FW26 백스테이지 with 밀란 패션 위크"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 27 Feb 2026</div><div class="fashion-card-title">루이사 베카리아 FW26 백스테이지 with 밀란 패션 위크</div></div></div>
-    <div class="fashion-card" data-slug="milan-fw26-street-style-part1" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/00_8a8d2b4d65.png" alt="밀란 패션 위크 FW26 스트릿 스타일 Part.1"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 26 Feb 2026</div><div class="fashion-card-title">밀란 패션 위크 FW26 스트릿 스타일 Part.1</div></div></div>
-    <div class="fashion-card" data-slug="eden-vodka" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/2_a715470bad.jpg" alt="설날을 위한 가장 세련된 선택, 에덴 보드카"></div><div class="fashion-card-info"><div class="fashion-card-cat">Life - 13 Feb 2026</div><div class="fashion-card-title">설날을 위한 가장 세련된 선택, 에덴 보드카</div></div></div>
-    <div class="fashion-card" data-slug="delvaux-kasper-bosmans" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/675_8c451769ab.png" alt="왜 델보였을까, 캐스퍼 보스만스에게 묻다"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion,Art - 06 Feb 2026</div><div class="fashion-card-title">왜 델보였을까, 캐스퍼 보스만스에게 묻다</div></div></div>
-    <div class="fashion-card" data-slug="kimhekim-couture" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/6757675_82856d34f8.png" alt="살 테면 사 봐라, 김해김의 쿠뛰르"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 06 Feb 2026</div><div class="fashion-card-title">살 테면 사 봐라, 김해김의 쿠뛰르</div></div></div>
-    <div class="fashion-card" data-slug="pfw-fw26-street-style" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/_80d6ebd2f0.png" alt="파리 패션 위크 FW26 스트릿 스타일"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 02 Feb 2026</div><div class="fashion-card-title">파리 패션 위크 FW26 스트릿 스타일</div></div></div>
-    <div class="fashion-card" data-slug="still-in-pfw" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1_0bed00177c.png" alt="여전히 파리 패션 위크에 머물러 있다"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 30 Jan 2026</div><div class="fashion-card-title">여전히 파리 패션 위크에 머물러 있다</div></div></div>
-    <div class="fashion-card" data-slug="loro-piana-is-on-a-different-level" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/123_0909588363.png" alt="저 걸렸어요! 로로피아나 차원이 달라병 걸렸어요"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 28 Jan 2026</div><div class="fashion-card-title">저 걸렸어요! 로로피아나 차원이 달라병 걸렸어요</div></div></div>
-    <div class="fashion-card" data-slug="still-bohemian-still-isabel-marant" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1_0_00_01_24_e41fd0eefa.jpg" alt="여전히 보헤미안, 여전히 이자벨 마랑"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 27 Jan 2026</div><div class="fashion-card-title">여전히 보헤미안, 여전히 이자벨 마랑</div></div></div>
-    <div class="fashion-card" data-slug="pfw-fw26-day-6" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/_699bda9c9f.jpg" alt="파리패션위크 FW26 DAY 6"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 25 Jan 2026</div><div class="fashion-card-title">파리패션위크 FW26 DAY 6</div></div></div>
-    <div class="fashion-card" data-slug="pfw-fw26-day-5" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/_853823b060.jpg" alt="파리패션위크 FW26 DAY 5"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 24 Jan 2026</div><div class="fashion-card-title">파리패션위크 FW26 DAY 5</div></div></div>
-    <div class="fashion-card" data-slug="paris-fashion-week-fw26-day-4" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/_07af7d0533.jpg" alt="파리패션위크 FW26 DAY 4"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 23 Jan 2026</div><div class="fashion-card-title">파리패션위크 FW26 DAY 4</div></div></div>
-    <div class="fashion-card" data-slug="paris-fashion-week-fw26-day-3" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/_b9d4298ea8.jpg" alt="파리패션위크 FW26 DAY 3"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 22 Jan 2026</div><div class="fashion-card-title">파리패션위크 FW26 DAY 3</div></div></div>
-    <div class="fashion-card" data-slug="paris-fashion-week-fw26-day-1" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1350_34e26825c6.png" alt="파리패션위크 FW26 DAY 1"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 21 Jan 2026</div><div class="fashion-card-title">파리패션위크 FW26 DAY 1</div></div></div>
-    <div class="fashion-card" data-slug="paris-fashion-week-fw26-day-2" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/_6a7252aecd.png" alt="파리패션위크 FW26 DAY 2"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 21 Jan 2026</div><div class="fashion-card-title">파리패션위크 FW26 DAY 2</div></div></div>
-    <div class="fashion-card" data-slug="milan-fashion-week-fw26-day-3-4" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1234_b5df9a9793.png" alt="밀란패션위크 FW26 DAY 3 &amp; 4"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 20 Jan 2026</div><div class="fashion-card-title">밀란패션위크 FW26 DAY 3 &amp; 4</div></div></div>
-    <div class="fashion-card" data-slug="dolcegabbana-fw26-close-look" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/675555_d48a8f7a6f.png" alt="돌체앤가바나 FW26 자세히 만나보기"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 20 Jan 2026</div><div class="fashion-card-title">돌체앤가바나 FW26 자세히 만나보기</div></div></div>
-    <div class="fashion-card" data-slug="tods-fw-2026-27" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1340_ba0bf97ef2.png" alt="쿨한 도시남이라면 토즈 FW 2026/27"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 18 Jan 2026</div><div class="fashion-card-title">쿨한 도시남이라면 토즈 FW 2026/27</div></div></div>
-    <div class="fashion-card" data-slug="which-is-your-favorite-etro-animal" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1350_4b7e6f5d4c.png" alt="가장 마음에 드는 에트로의 동물은?"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 18 Jan 2026</div><div class="fashion-card-title">가장 마음에 드는 에트로의 동물은?</div></div></div>
-    <div class="fashion-card" data-slug="milan-fashion-week-fw26-day-2" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/6785_5d1a6ed34f.png" alt="밀란패션위크 FW26 DAY 2"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 18 Jan 2026</div><div class="fashion-card-title">밀란패션위크 FW26 DAY 2</div></div></div>
-    <div class="fashion-card" data-slug="dolce-gabbana-2026-fw-watch-jewelry-collection" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/675555_d48a8f7a6f.png" alt="돌체앤가바나 2026 FW 워치 &amp; 주얼리 컬렉션"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 18 Jan 2026</div><div class="fashion-card-title">돌체앤가바나 2026 FW 워치 &amp; 주얼리 컬렉션</div></div></div>
-    <div class="fashion-card" data-slug="milan-fashion-week-fw26-day-1" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/67896789_7e06e5d4c3.png" alt="밀란패션위크 FW26 DAY 1"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 16 Jan 2026</div><div class="fashion-card-title">밀란패션위크 FW26 DAY 1</div></div></div>
-    <div class="fashion-card" data-slug="pitti-uomo-fw26-day-2-3" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_24680e3c1b.jpg" alt="피렌체 핏티워모 FW26 DAY 2 &amp; 3"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 16 Jan 2026</div><div class="fashion-card-title">피렌체 핏티워모 FW26 DAY 2 &amp; 3</div></div></div>
-    <div class="fashion-card" data-slug="sunnei-cafe" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/13500_e4b811e898.png" alt="써네이가 카페를 만든다면?"></div><div class="fashion-card-info"><div class="fashion-card-cat">Life - 16 Jan 2026</div><div class="fashion-card-title">써네이가 카페를 만든다면?</div></div></div>
-    <div class="fashion-card" data-slug="pitti-uomo-fw26-day-1" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_7c51e2e23a.jpg" alt="피렌체 핏티워모 FW26 DAY 1"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 15 Jan 2026</div><div class="fashion-card-title">피렌체 핏티워모 FW26 DAY 1</div></div></div>
-    <div class="fashion-card" data-slug="milan-fashion-week-fw26-preview" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_e1e8aae0b5.jpg" alt="밀란패션위크 FW26 프리뷰"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 14 Jan 2026</div><div class="fashion-card-title">밀란패션위크 FW26 프리뷰</div></div></div>
-    <div class="fashion-card" data-slug="discovering-margins-of-life-a-closets-new-beginning" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_5db3cb9e21.jpg" alt="'삶의 여백'을 발견하다, 에이클로젯의 새 시작"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 13 Jan 2026</div><div class="fashion-card-title">'삶의 여백'을 발견하다, 에이클로젯의 새 시작</div></div></div>
-    <div class="fashion-card" data-slug="paris-fashion-week-fw26-preview" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_26dd80d71d.jpg" alt="파리패션위크 FW26 프리뷰"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 13 Jan 2026</div><div class="fashion-card-title">파리패션위크 FW26 프리뷰</div></div></div>
-    <div class="fashion-card" data-slug="the-only-cake-for-special-year-end" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1350_640ad57e0d.png" alt="특별한 연말을 위한 단 하나의 케이크"></div><div class="fashion-card-info"><div class="fashion-card-cat">Culture - 05 Dec 2025</div><div class="fashion-card-title">특별한 연말을 위한 단 하나의 케이크</div></div></div>
-    <div class="fashion-card" data-slug="dior-archive-still-moves" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/UBS_House_of_Craft_x_Dior_Behind_the_Scenes_Image_1_171c4bf946.jpg" alt="디올의 아카이브는 지금도 움직인다"></div><div class="fashion-card-info"><div class="fashion-card-cat">Art - 18 Nov 2025</div><div class="fashion-card-title">디올의 아카이브는 지금도 움직인다</div></div></div>
-    <div class="fashion-card" data-slug="makeup-as-sculptural-language" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/13503_55c75684fb.png" alt="메이크업을 조형적 언어로 표현하다"></div><div class="fashion-card-info"><div class="fashion-card-cat">Beauty - 17 Nov 2025</div><div class="fashion-card-title">메이크업을 조형적 언어로 표현하다</div></div></div>
-    <div class="fashion-card" data-slug="airplane-selfie-guide" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/13502_ae122fa95d.png" alt="비행기 셀카? 이 가이드를 따를 것"></div><div class="fashion-card-info"><div class="fashion-card-cat">Culture - 17 Nov 2025</div><div class="fashion-card-title">비행기 셀카? 이 가이드를 따를 것</div></div></div>
-    <div class="fashion-card" data-slug="tales-frey-body-after-mixing" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/_8c537c5d8e.png" alt="테일즈 프레이가 던지는 뒤섞임 이후의 신체"></div><div class="fashion-card-info"><div class="fashion-card-cat">Art - 17 Nov 2025</div><div class="fashion-card-title">테일즈 프레이가 던지는 뒤섞임 이후의 신체</div></div></div>
-    <div class="fashion-card" data-slug="between-photography-and-painting" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/135000000000_185e79c900.png" alt="사진과 회화의 경계를 넘나들다"></div><div class="fashion-card-info"><div class="fashion-card-cat">Art - 14 Nov 2025</div><div class="fashion-card-title">사진과 회화의 경계를 넘나들다</div></div></div>
-    <div class="fashion-card" data-slug="modern-human-core-365-days-crying" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1350_ea7cb13602.jpg" alt="현대인 코어 : 365일 매일 울 것"></div><div class="fashion-card-info"><div class="fashion-card-cat">Art - 13 Nov 2025</div><div class="fashion-card-title">현대인 코어 : 365일 매일 울 것</div></div></div>
-    <div class="fashion-card" data-slug="seoul-fashion-week-fw25-street-fashion" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_e9d3fb3b70.jpg" alt="서울패션위크 FW25 스트릿 패션"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 15 Oct 2025</div><div class="fashion-card-title">서울패션위크 FW25 스트릿 패션</div></div></div>
-    <div class="fashion-card" data-slug="everlane-x-designer-peter-do" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_bed2e93076.jpg" alt="에버레인 X 디자이너 피터 도"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 29 Sep 2025</div><div class="fashion-card-title">에버레인 X 디자이너 피터 도</div></div></div>
-    <div class="fashion-card" data-slug="how-did-lemaire-become-a-brand-loved-by-parisians" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_c6fccb6ddf.jpg" alt="르메르는 어떻게 파리지앵이 사랑하는 브랜드가 됐을까?"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 15 Sep 2025</div><div class="fashion-card-title">르메르는 어떻게 파리지앵이 사랑하는 브랜드가 됐을까?</div></div></div>
-    <div class="fashion-card" data-slug="milan-fashion-week-ss26-street-style" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_c31d25b5b2.jpg" alt="밀란 패션 위크 SS26 스트릿 스타일"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 01 Sep 2025</div><div class="fashion-card-title">밀란 패션 위크 SS26 스트릿 스타일</div></div></div>
-    <div class="fashion-card" data-slug="paris-fashion-week-ss26-street-style" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_d2e6ed2bd1.jpg" alt="파리 패션 위크 SS26 스트릿 스타일"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 15 Aug 2025</div><div class="fashion-card-title">파리 패션 위크 SS26 스트릿 스타일</div></div></div>
-    <div class="fashion-card" data-slug="paris-pitti-immagine-garden-party-2025" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_7f51441b91.jpg" alt="파리 핏티 이마지네 가든파티 2025"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 01 Jul 2025</div><div class="fashion-card-title">파리 핏티 이마지네 가든파티 2025</div></div></div>
-    <div class="fashion-card" data-slug="milan-design-week-2025-highlights" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_a3b7c2d4e5.jpg" alt="밀란 디자인 위크 2025 하이라이트"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion,Culture - 15 Jun 2025</div><div class="fashion-card-title">밀란 디자인 위크 2025 하이라이트</div></div></div>
-    <div class="fashion-card" data-slug="seoul-fashion-week-ss26-street-fashion" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_b8c9d0e1f2.jpg" alt="서울패션위크 SS26 스트릿 패션"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 01 Jun 2025</div><div class="fashion-card-title">서울패션위크 SS26 스트릿 패션</div></div></div>
-    <div class="fashion-card" data-slug="why-bottega-veneta-is-beloved" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_c1d2e3f4a5.jpg" alt="보테가 베네타가 사랑받는 이유"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 20 May 2025</div><div class="fashion-card-title">보테가 베네타가 사랑받는 이유</div></div></div>
-    <div class="fashion-card" data-slug="thug-flavored-adidas-let-me-try-it-on-first" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/_21516644b4.jpg" alt="떠그맛 아디다스 아조씨가 먼저 입어볼게"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 09 May 2025</div><div class="fashion-card-title">떠그맛 아디다스 아조씨가 먼저 입어볼게</div></div></div>
-    <div class="fashion-card" data-slug="the-spaces-and-moments-touched-by-the-gaze-of-furniture-designer-shinsojak" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/_587c19ea59.jpg" alt="가구 디자이너 신소작의 시선이 닿은 공간과 순간"></div><div class="fashion-card-info"><div class="fashion-card-cat">Life,Culture - 12 Apr 2025</div><div class="fashion-card-title">가구 디자이너 신소작의 시선이 닿은 공간과 순간</div></div></div>
-    <div class="fashion-card" data-slug="theres-something-so-special-about-cooking-for-someone-and-i-truly-love-it" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/_587c19ea59.jpg" alt="누군가를 위해서 요리하는 행위, 그게 너무 좋아요"></div><div class="fashion-card-info"><div class="fashion-card-cat">Life - 28 Mar 2025</div><div class="fashion-card-title">누군가를 위해서 요리하는 행위, 그게 너무 좋아요</div></div></div>
-    <div class="fashion-card" data-slug="copenhagen-fashion-week-ss26" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_f1e2d3c4b5.jpg" alt="코펜하겐 패션 위크 SS26"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 15 Mar 2025</div><div class="fashion-card-title">코펜하겐 패션 위크 SS26</div></div></div>
-    <div class="fashion-card" data-slug="pap-viperrr-mfw-aw25-photowall" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_3df515e936.png" alt="PAP MAGAZINE x VIPERRR — MFW AW25 애프터파티 포토월"></div><div class="fashion-card-info"><div class="fashion-card-cat">Culture - 11 Mar 2025</div><div class="fashion-card-title">PAP MAGAZINE x VIPERRR — MFW AW25 애프터파티 포토월</div></div></div>
-    <div class="fashion-card" data-slug="pap-viperrr-mfw-aw25-afterparty" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_1fbb1cddab.png" alt="PAP MAGAZINE x VIPERRR — MFW AW25 애프터파티의 뜨거운 순간들"></div><div class="fashion-card-info"><div class="fashion-card-cat">Culture - 11 Mar 2025</div><div class="fashion-card-title">PAP MAGAZINE x VIPERRR — MFW AW25 애프터파티의 뜨거운 순간들</div></div></div>
-    <div class="fashion-card" data-slug="why-our-neighborhood-select-shops-disappeared" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_a1b2c3d4e5.jpg" alt="우리 동네 편집숍이 사라진 이유"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion,Culture - 01 Mar 2025</div><div class="fashion-card-title">우리 동네 편집숍이 사라진 이유</div></div></div>
-    <div class="fashion-card" data-slug="givenchys-new-creative-director-sarah-burton" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_b2c3d4e5f6.jpg" alt="지방시의 새 크리에이티브 디렉터, 사라 버튼"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 15 Feb 2025</div><div class="fashion-card-title">지방시의 새 크리에이티브 디렉터, 사라 버튼</div></div></div>
-    <div class="fashion-card" data-slug="kenzo-nigos-third-collection" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_c3d4e5f6a7.jpg" alt="겐조 니고의 세 번째 컬렉션"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 01 Feb 2025</div><div class="fashion-card-title">겐조 니고의 세 번째 컬렉션</div></div></div>
-    <div class="fashion-card" data-slug="paris-haute-couture-fw25-highlights" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_d4e5f6a7b8.jpg" alt="파리 오뜨 꾸뛰르 FW25 하이라이트"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 15 Jan 2025</div><div class="fashion-card-title">파리 오뜨 꾸뛰르 FW25 하이라이트</div></div></div>
-    <div class="fashion-card" data-slug="london-fashion-week-fw25-street-style" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_e5f6a7b8c9.jpg" alt="런던패션위크 FW25 스트릿 스타일"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 05 Jan 2025</div><div class="fashion-card-title">런던패션위크 FW25 스트릿 스타일</div></div></div>
-    <div class="fashion-card" data-slug="new-york-fashion-week-fw25-street-style" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_f6a7b8c9d0.jpg" alt="뉴욕패션위크 FW25 스트릿 스타일"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 20 Dec 2024</div><div class="fashion-card-title">뉴욕패션위크 FW25 스트릿 스타일</div></div></div>
-    <div class="fashion-card" data-slug="haider-ackermanns-tom-ford" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_a7b8c9d0e1.jpg" alt="하이더 아커만의 톰포드"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 10 Dec 2024</div><div class="fashion-card-title">하이더 아커만의 톰포드</div></div></div>
-    <div class="fashion-card" data-slug="rick-owens-moncler-living-project" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/_8bce1f9bcc.jpg" alt="릭 오웬스X몽클레르 또 한 번의 리빙 프로젝트"></div><div class="fashion-card-info"><div class="fashion-card-cat">Culture - 01 Nov 2024</div><div class="fashion-card-title">릭 오웬스X몽클레르 또 한 번의 리빙 프로젝트</div></div></div>
-    <div class="fashion-card" data-slug="mischief-meets-gufram" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/_f591c9dfa6.jpg" alt="미스치프의 아이디어 구프람과 만나다"></div><div class="fashion-card-info"><div class="fashion-card-cat">Culture - 11 Sep 2024</div><div class="fashion-card-title">미스치프의 아이디어 구프람과 만나다</div></div></div>
-    <div class="fashion-card" data-slug="nana-makeup-story-kim-chaewon" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_854d00af05.jpg" alt="나나의 화양연화 뒤에 숨겨진 메이크업에 대한 이야기"></div><div class="fashion-card-info"><div class="fashion-card-cat">Beauty - 10 Sep 2024</div><div class="fashion-card-title">나나의 화양연화 뒤에 숨겨진 메이크업에 대한 이야기</div></div></div>
-    <div class="fashion-card" data-slug="porsche-capsule-dreamscape" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_a8fe31daf5.jpg" alt="포르쉐의 꿈과 기술의 초현실, 캡슐 드림스케이프"></div><div class="fashion-card-info"><div class="fashion-card-cat">Life - 09 Sep 2024</div><div class="fashion-card-title">포르쉐의 꿈과 기술의 초현실, 캡슐 드림스케이프</div></div></div>
-    <div class="fashion-card" data-slug="sound-of-movement-wonvin" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_45f4726e45.png" alt="'Sound Of Movement' : The Man Who Steals Souls"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion,Music - 05 Jun 2024</div><div class="fashion-card-title">'Sound Of Movement' : The Man Who Steals Souls</div></div></div>
-    <div class="fashion-card" data-slug="sound-of-movement-miranni" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_5a5146e098.jpg" alt="'Sound Of Movement' : Don't Steal My Soul"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion,Music - 04 Jun 2024</div><div class="fashion-card-title">'Sound Of Movement' : Don't Steal My Soul</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/00_d2170845de.jpg" alt="밀란 패션 위크 FW26 스트릿 스타일 Part.2"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 02 Mar 2026</div><div class="fashion-card-title">밀란 패션 위크 FW26 스트릿 스타일 Part.2</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/00_10f3cf27f9.png" alt="루이사 베카리아 FW26 백스테이지 with 밀란 패션 위크"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 27 Feb 2026</div><div class="fashion-card-title">루이사 베카리아 FW26 백스테이지 with 밀란 패션 위크</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/00_8a8d2b4d65.png" alt="밀란 패션 위크 FW26 스트릿 스타일 Part.1"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 26 Feb 2026</div><div class="fashion-card-title">밀란 패션 위크 FW26 스트릿 스타일 Part.1</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/2_a715470bad.jpg" alt="설날을 위한 가장 세련된 선택, 에덴 보드카"></div><div class="fashion-card-info"><div class="fashion-card-cat">Life - 13 Feb 2026</div><div class="fashion-card-title">설날을 위한 가장 세련된 선택, 에덴 보드카</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/675_8c451769ab.png" alt="왜 델보였을까, 캐스퍼 보스만스에게 묻다"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion,Art - 06 Feb 2026</div><div class="fashion-card-title">왜 델보였을까, 캐스퍼 보스만스에게 묻다</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/6757675_82856d34f8.png" alt="살 테면 사 봐라, 김해김의 쿠뛰르"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 06 Feb 2026</div><div class="fashion-card-title">살 테면 사 봐라, 김해김의 쿠뛰르</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/_80d6ebd2f0.png" alt="파리 패션 위크 FW26 스트릿 스타일"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 02 Feb 2026</div><div class="fashion-card-title">파리 패션 위크 FW26 스트릿 스타일</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1_0bed00177c.png" alt="여전히 파리 패션 위크에 머물러 있다"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 30 Jan 2026</div><div class="fashion-card-title">여전히 파리 패션 위크에 머물러 있다</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/123_0909588363.png" alt="저 걸렸어요! 로로피아나 차원이 달라병 걸렸어요"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 28 Jan 2026</div><div class="fashion-card-title">저 걸렸어요! 로로피아나 차원이 달라병 걸렸어요</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1_0_00_01_24_e41fd0eefa.jpg" alt="여전히 보헤미안, 여전히 이자벨 마랑"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 27 Jan 2026</div><div class="fashion-card-title">여전히 보헤미안, 여전히 이자벨 마랑</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/_699bda9c9f.jpg" alt="파리패션위크 FW26 DAY 6"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 25 Jan 2026</div><div class="fashion-card-title">파리패션위크 FW26 DAY 6</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/_853823b060.jpg" alt="파리패션위크 FW26 DAY 5"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 24 Jan 2026</div><div class="fashion-card-title">파리패션위크 FW26 DAY 5</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/_07af7d0533.jpg" alt="파리패션위크 FW26 DAY 4"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 23 Jan 2026</div><div class="fashion-card-title">파리패션위크 FW26 DAY 4</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/_b9d4298ea8.jpg" alt="파리패션위크 FW26 DAY 3"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 22 Jan 2026</div><div class="fashion-card-title">파리패션위크 FW26 DAY 3</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1350_34e26825c6.png" alt="파리패션위크 FW26 DAY 1"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 21 Jan 2026</div><div class="fashion-card-title">파리패션위크 FW26 DAY 1</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/_6a7252aecd.png" alt="파리패션위크 FW26 DAY 2"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 21 Jan 2026</div><div class="fashion-card-title">파리패션위크 FW26 DAY 2</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1234_b5df9a9793.png" alt="밀란패션위크 FW26 DAY 3 &amp; 4"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 20 Jan 2026</div><div class="fashion-card-title">밀란패션위크 FW26 DAY 3 &amp; 4</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/675555_d48a8f7a6f.png" alt="돌체앤가바나 FW26 자세히 만나보기"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 20 Jan 2026</div><div class="fashion-card-title">돌체앤가바나 FW26 자세히 만나보기</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1340_ba0bf97ef2.png" alt="쿨한 도시남이라면 토즈 FW 2026/27"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 18 Jan 2026</div><div class="fashion-card-title">쿨한 도시남이라면 토즈 FW 2026/27</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1350_4b7e6f5d4c.png" alt="가장 마음에 드는 에트로의 동물은?"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 18 Jan 2026</div><div class="fashion-card-title">가장 마음에 드는 에트로의 동물은?</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/6785_5d1a6ed34f.png" alt="밀란패션위크 FW26 DAY 2"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 18 Jan 2026</div><div class="fashion-card-title">밀란패션위크 FW26 DAY 2</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/675555_d48a8f7a6f.png" alt="돌체앤가바나 2026 FW 워치 &amp; 주얼리 컬렉션"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 18 Jan 2026</div><div class="fashion-card-title">돌체앤가바나 2026 FW 워치 &amp; 주얼리 컬렉션</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/67896789_7e06e5d4c3.png" alt="밀란패션위크 FW26 DAY 1"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 16 Jan 2026</div><div class="fashion-card-title">밀란패션위크 FW26 DAY 1</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_24680e3c1b.jpg" alt="피렌체 핏티워모 FW26 DAY 2 &amp; 3"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 16 Jan 2026</div><div class="fashion-card-title">피렌체 핏티워모 FW26 DAY 2 &amp; 3</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/13500_e4b811e898.png" alt="써네이가 카페를 만든다면?"></div><div class="fashion-card-info"><div class="fashion-card-cat">Life - 16 Jan 2026</div><div class="fashion-card-title">써네이가 카페를 만든다면?</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_7c51e2e23a.jpg" alt="피렌체 핏티워모 FW26 DAY 1"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 15 Jan 2026</div><div class="fashion-card-title">피렌체 핏티워모 FW26 DAY 1</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_e1e8aae0b5.jpg" alt="밀란패션위크 FW26 프리뷰"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 14 Jan 2026</div><div class="fashion-card-title">밀란패션위크 FW26 프리뷰</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_5db3cb9e21.jpg" alt="'삶의 여백'을 발견하다, 에이클로젯의 새 시작"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 13 Jan 2026</div><div class="fashion-card-title">'삶의 여백'을 발견하다, 에이클로젯의 새 시작</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_26dd80d71d.jpg" alt="파리패션위크 FW26 프리뷰"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 13 Jan 2026</div><div class="fashion-card-title">파리패션위크 FW26 프리뷰</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1350_640ad57e0d.png" alt="특별한 연말을 위한 단 하나의 케이크"></div><div class="fashion-card-info"><div class="fashion-card-cat">Culture - 05 Dec 2025</div><div class="fashion-card-title">특별한 연말을 위한 단 하나의 케이크</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/UBS_House_of_Craft_x_Dior_Behind_the_Scenes_Image_1_171c4bf946.jpg" alt="디올의 아카이브는 지금도 움직인다"></div><div class="fashion-card-info"><div class="fashion-card-cat">Art - 18 Nov 2025</div><div class="fashion-card-title">디올의 아카이브는 지금도 움직인다</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/13503_55c75684fb.png" alt="메이크업을 조형적 언어로 표현하다"></div><div class="fashion-card-info"><div class="fashion-card-cat">Beauty - 17 Nov 2025</div><div class="fashion-card-title">메이크업을 조형적 언어로 표현하다</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/13502_ae122fa95d.png" alt="비행기 셀카? 이 가이드를 따를 것"></div><div class="fashion-card-info"><div class="fashion-card-cat">Culture - 17 Nov 2025</div><div class="fashion-card-title">비행기 셀카? 이 가이드를 따를 것</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/_8c537c5d8e.png" alt="테일즈 프레이가 던지는 뒤섞임 이후의 신체"></div><div class="fashion-card-info"><div class="fashion-card-cat">Art - 17 Nov 2025</div><div class="fashion-card-title">테일즈 프레이가 던지는 뒤섞임 이후의 신체</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/135000000000_185e79c900.png" alt="사진과 회화의 경계를 넘나들다"></div><div class="fashion-card-info"><div class="fashion-card-cat">Art - 14 Nov 2025</div><div class="fashion-card-title">사진과 회화의 경계를 넘나들다</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/1350_ea7cb13602.jpg" alt="현대인 코어 : 365일 매일 울 것"></div><div class="fashion-card-info"><div class="fashion-card-cat">Art - 13 Nov 2025</div><div class="fashion-card-title">현대인 코어 : 365일 매일 울 것</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_e9d3fb3b70.jpg" alt="서울패션위크 FW25 스트릿 패션"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 15 Oct 2025</div><div class="fashion-card-title">서울패션위크 FW25 스트릿 패션</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_bed2e93076.jpg" alt="에버레인 X 디자이너 피터 도"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 29 Sep 2025</div><div class="fashion-card-title">에버레인 X 디자이너 피터 도</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_c6fccb6ddf.jpg" alt="르메르는 어떻게 파리지앵이 사랑하는 브랜드가 됐을까?"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 15 Sep 2025</div><div class="fashion-card-title">르메르는 어떻게 파리지앵이 사랑하는 브랜드가 됐을까?</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_c31d25b5b2.jpg" alt="밀란 패션 위크 SS26 스트릿 스타일"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 01 Sep 2025</div><div class="fashion-card-title">밀란 패션 위크 SS26 스트릿 스타일</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_d2e6ed2bd1.jpg" alt="파리 패션 위크 SS26 스트릿 스타일"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 15 Aug 2025</div><div class="fashion-card-title">파리 패션 위크 SS26 스트릿 스타일</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_7f51441b91.jpg" alt="파리 핏티 이마지네 가든파티 2025"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 01 Jul 2025</div><div class="fashion-card-title">파리 핏티 이마지네 가든파티 2025</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_a3b7c2d4e5.jpg" alt="밀란 디자인 위크 2025 하이라이트"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion,Culture - 15 Jun 2025</div><div class="fashion-card-title">밀란 디자인 위크 2025 하이라이트</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_b8c9d0e1f2.jpg" alt="서울패션위크 SS26 스트릿 패션"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 01 Jun 2025</div><div class="fashion-card-title">서울패션위크 SS26 스트릿 패션</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_c1d2e3f4a5.jpg" alt="보테가 베네타가 사랑받는 이유"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 20 May 2025</div><div class="fashion-card-title">보테가 베네타가 사랑받는 이유</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/_21516644b4.jpg" alt="떠그맛 아디다스 아조씨가 먼저 입어볼게"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 09 May 2025</div><div class="fashion-card-title">떠그맛 아디다스 아조씨가 먼저 입어볼게</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/_587c19ea59.jpg" alt="가구 디자이너 신소작의 시선이 닿은 공간과 순간"></div><div class="fashion-card-info"><div class="fashion-card-cat">Life,Culture - 12 Apr 2025</div><div class="fashion-card-title">가구 디자이너 신소작의 시선이 닿은 공간과 순간</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/_587c19ea59.jpg" alt="누군가를 위해서 요리하는 행위, 그게 너무 좋아요"></div><div class="fashion-card-info"><div class="fashion-card-cat">Life - 28 Mar 2025</div><div class="fashion-card-title">누군가를 위해서 요리하는 행위, 그게 너무 좋아요</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_f1e2d3c4b5.jpg" alt="코펜하겐 패션 위크 SS26"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 15 Mar 2025</div><div class="fashion-card-title">코펜하겐 패션 위크 SS26</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_3df515e936.png" alt="PAP MAGAZINE x VIPERRR — MFW AW25 애프터파티 포토월"></div><div class="fashion-card-info"><div class="fashion-card-cat">Culture - 11 Mar 2025</div><div class="fashion-card-title">PAP MAGAZINE x VIPERRR — MFW AW25 애프터파티 포토월</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_1fbb1cddab.png" alt="PAP MAGAZINE x VIPERRR — MFW AW25 애프터파티의 뜨거운 순간들"></div><div class="fashion-card-info"><div class="fashion-card-cat">Culture - 11 Mar 2025</div><div class="fashion-card-title">PAP MAGAZINE x VIPERRR — MFW AW25 애프터파티의 뜨거운 순간들</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_a1b2c3d4e5.jpg" alt="우리 동네 편집숍이 사라진 이유"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion,Culture - 01 Mar 2025</div><div class="fashion-card-title">우리 동네 편집숍이 사라진 이유</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_b2c3d4e5f6.jpg" alt="지방시의 새 크리에이티브 디렉터, 사라 버튼"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 15 Feb 2025</div><div class="fashion-card-title">지방시의 새 크리에이티브 디렉터, 사라 버튼</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_c3d4e5f6a7.jpg" alt="겐조 니고의 세 번째 컬렉션"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 01 Feb 2025</div><div class="fashion-card-title">겐조 니고의 세 번째 컬렉션</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_d4e5f6a7b8.jpg" alt="파리 오뜨 꾸뛰르 FW25 하이라이트"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 15 Jan 2025</div><div class="fashion-card-title">파리 오뜨 꾸뛰르 FW25 하이라이트</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_e5f6a7b8c9.jpg" alt="런던패션위크 FW25 스트릿 스타일"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 05 Jan 2025</div><div class="fashion-card-title">런던패션위크 FW25 스트릿 스타일</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_f6a7b8c9d0.jpg" alt="뉴욕패션위크 FW25 스트릿 스타일"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 20 Dec 2024</div><div class="fashion-card-title">뉴욕패션위크 FW25 스트릿 스타일</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_a7b8c9d0e1.jpg" alt="하이더 아커만의 톰포드"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion - 10 Dec 2024</div><div class="fashion-card-title">하이더 아커만의 톰포드</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/_8bce1f9bcc.jpg" alt="릭 오웬스X몽클레르 또 한 번의 리빙 프로젝트"></div><div class="fashion-card-info"><div class="fashion-card-cat">Culture - 01 Nov 2024</div><div class="fashion-card-title">릭 오웬스X몽클레르 또 한 번의 리빙 프로젝트</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/_f591c9dfa6.jpg" alt="미스치프의 아이디어 구프람과 만나다"></div><div class="fashion-card-info"><div class="fashion-card-cat">Culture - 11 Sep 2024</div><div class="fashion-card-title">미스치프의 아이디어 구프람과 만나다</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_854d00af05.jpg" alt="나나의 화양연화 뒤에 숨겨진 메이크업에 대한 이야기"></div><div class="fashion-card-info"><div class="fashion-card-cat">Beauty - 10 Sep 2024</div><div class="fashion-card-title">나나의 화양연화 뒤에 숨겨진 메이크업에 대한 이야기</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_a8fe31daf5.jpg" alt="포르쉐의 꿈과 기술의 초현실, 캡슐 드림스케이프"></div><div class="fashion-card-info"><div class="fashion-card-cat">Life - 09 Sep 2024</div><div class="fashion-card-title">포르쉐의 꿈과 기술의 초현실, 캡슐 드림스케이프</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_45f4726e45.png" alt="'Sound Of Movement' : The Man Who Steals Souls"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion,Music - 05 Jun 2024</div><div class="fashion-card-title">'Sound Of Movement' : The Man Who Steals Souls</div></div></div>
+    <div class="fashion-card" style="cursor:pointer" onclick="openArticleFromCard(this)"><div class="fashion-card-img"><img loading="lazy" src="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_5a5146e098.jpg" alt="'Sound Of Movement' : Don't Steal My Soul"></div><div class="fashion-card-info"><div class="fashion-card-cat">Fashion,Music - 04 Jun 2024</div><div class="fashion-card-title">'Sound Of Movement' : Don't Steal My Soul</div></div></div>
     </div>
     <button class="carousel-arrow right" onclick="moveCarousel(1)" aria-label="Next article">&#8250;</button>
   </div>
@@ -523,7 +496,7 @@
 
 <!-- FILM Section -->
 <section class="film-section" id="films">
-  <div class="nf-top"><h2 data-i18n="navFilm">FILM</h2></div>
+  <div class="nf-top"><h2>FILM</h2></div>
   <!-- Main Video Player -->
   <div style="width:100vw;margin-left:calc(-50vw + 50%);margin-bottom:20px;padding:0">
     <div style="position:relative;width:100%;height:56.25vw;max-height:80vh;background:#000;overflow:hidden">
@@ -585,7 +558,7 @@
 </section>
 
 <section class="shorts-section" id="shortsSection">
-  <div class="shorts-title" data-i18n="shortsHeading">SHORTS</div>
+  <div class="shorts-title">SHORTS</div>
   <div class="shorts-carousel">
     <button class="shorts-nav prev" onclick="moveShort(-1)" aria-label="Previous short">‹</button>
     <div class="shorts-track" id="shortsTrack"></div>
@@ -636,7 +609,7 @@
   </div>
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="pap-api.js?v=2" defer></script><script src="pap-social.js?v=2" defer></script><script src="pap-app.js?v=6" defer></script><script src="pap-header.js?v=5" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="pap-api.js?v=2" defer></script><script src="pap-social.js?v=2" defer></script><script src="pap-app.js?v=3" defer></script>
 <script>
 // AI Recommendation Fallback: reads theme tags from DOM ed-row-card elements
 try{
@@ -669,24 +642,22 @@ try{
 
   var themes=[
     {id:'dreamy',tags:['dreamy','romantic','soft','ethereal','pastel','gentle','tender','nostalgia','light','spiritual','peaceful'],
-     labels:{ko:'몽환적이고 로맨틱한',en:'Dreamy & Romantic',it:'Onirico & Romantico',fr:'Onirique & Romantique',es:'Onírico & Romántico',ja:'夢幻的でロマンティック',zh:'梦幻浪漫风格',ru:'Мечтательный и романтичный',de:'Träumerisch & Romantisch'}},
+     labels:{ko:'몽환적이고 로맨틱한',en:'Dreamy & Romantic',it:'Onirico & Romantico',fr:'Onirique & Romantique',es:'Onírico & Romántico',ja:'夢幻的でロマンティック',zh:'梦幻浪漫风格',ru:'Мечтательный и романтичный'}},
     {id:'bold',tags:['bold','colorful','vibrant','intense','dramatic','fierce','powerful','maximalist','pop','energetic'],
-     labels:{ko:'강렬하고 대담한',en:'Bold & Intense',it:'Audace & Intenso',fr:'Audacieux & Intense',es:'Audaz e Intenso',ja:'大胆で強烈な',zh:'大胆前卫风格',ru:'Смелый и яркий',de:'Kühn & Intensiv'}},
+     labels:{ko:'강렬하고 대담한',en:'Bold & Intense',it:'Audace & Intenso',fr:'Audacieux & Intense',es:'Audaz e Intenso',ja:'大胆で強烈な',zh:'大胆前卫风格',ru:'Смелый и яркий'}},
     {id:'dark',tags:['dark','moody','noir','shadow','gritty','mysterious','cinematic','urban','underground','dystopian'],
-     labels:{ko:'다크 & 시네마틱',en:'Dark & Cinematic',it:'Dark & Cinematico',fr:'Sombre & Cinématique',es:'Oscuro & Cinemático',ja:'ダーク＆シネマティック',zh:'暗黑电影风格',ru:'Тёмный и кинематографичный',de:'Dunkel & Filmisch'}},
+     labels:{ko:'다크 & 시네마틱',en:'Dark & Cinematic',it:'Dark & Cinematico',fr:'Sombre & Cinématique',es:'Oscuro & Cinemático',ja:'ダーク＆シネマティック',zh:'暗黑电影风格',ru:'Тёмный и кинематографичный'}},
     {id:'nature',tags:['warm','natural','organic','earthy','golden','desert','landscape','bohemian','flowing','sand'],
-     labels:{ko:'자연과 따뜻함',en:'Warm & Organic',it:'Caldo & Organico',fr:'Chaleureux & Organique',es:'Cálido & Orgánico',ja:'自然と温もり',zh:'自然温暖风格',ru:'Тёплый и органичный',de:'Warm & Organisch'}},
+     labels:{ko:'자연과 따뜻함',en:'Warm & Organic',it:'Caldo & Organico',fr:'Chaleureux & Organique',es:'Cálido & Orgánico',ja:'自然と温もり',zh:'自然温暖风格',ru:'Тёплый и органичный'}},
     {id:'modern',tags:['futuristic','modern','geometric','structured','clean','sleek','chrome','metallic','industrial','space','precision','minimal'],
-     labels:{ko:'미래적이고 모던한',en:'Futuristic & Modern',it:'Futuristico & Moderno',fr:'Futuriste & Moderne',es:'Futurista & Moderno',ja:'未来的でモダンな',zh:'未来摩登风格',ru:'Футуристичный и современный',de:'Futuristisch & Modern'}},
+     labels:{ko:'미래적이고 모던한',en:'Futuristic & Modern',it:'Futuristico & Moderno',fr:'Futuriste & Moderne',es:'Futurista & Moderno',ja:'未来的でモダンな',zh:'未来摩登风格',ru:'Футуристичный и современный'}},
     {id:'classic',tags:['elegant','classic','refined','sophisticated','timeless','grace','beauty','muse','feminine'],
-     labels:{ko:'클래식 & 엘레강스',en:'Classic & Elegance',it:'Classico & Eleganza',fr:'Classique & Élégance',es:'Clásico & Elegancia',ja:'クラシック＆エレガンス',zh:'经典优雅风格',ru:'Классика и элегантность',de:'Klassisch & Elegant'}},
+     labels:{ko:'클래식 & 엘레강스',en:'Classic & Elegance',it:'Classico & Eleganza',fr:'Classique & Élégance',es:'Clásico & Elegancia',ja:'クラシック＆エレガンス',zh:'经典优雅风格',ru:'Классика и элегантность'}},
     {id:'surreal',tags:['surreal','dreamlike','fantasy','conceptual','whimsical','artistic','abstract','creative','imaginative'],
-     labels:{ko:'초현실적 판타지',en:'Surreal Fantasy',it:'Fantasia Surrealista',fr:'Fantaisie Surréaliste',es:'Fantasía Surrealista',ja:'シュールファンタジー',zh:'超现实幻想',ru:'Сюрреалистическая фантазия',de:'Surreale Fantasie'}},
+     labels:{ko:'초현실적 판타지',en:'Surreal Fantasy',it:'Fantasia Surrealista',fr:'Fantaisie Surréaliste',es:'Fantasía Surrealista',ja:'シュールファンタジー',zh:'超现实幻想',ru:'Сюрреалистическая фантазия'}},
     {id:'royal',tags:['royal','gothic','castle','medieval','luxurious','opulent','heritage','dramatic'],
-     labels:{ko:'로열 & 고딕',en:'Royal & Gothic',it:'Reale & Gotico',fr:'Royal & Gothique',es:'Real & Gótico',ja:'ロイヤル＆ゴシック',zh:'皇家哥特风格',ru:'Королевский и готический',de:'Königlich & Gotisch'}}
+     labels:{ko:'로열 & 고딕',en:'Royal & Gothic',it:'Reale & Gotico',fr:'Royal & Gothique',es:'Real & Gótico',ja:'ロイヤル＆ゴシック',zh:'皇家哥特风格',ru:'Королевский и готический'}}
   ];
-  // Expose themes for language switching re-translation
-  window._papAIThemes = themes;
 
   var lang=localStorage.getItem('pap-lang')||'ko';
   var scored=themes.map(function(theme){
@@ -705,7 +676,7 @@ try{
 
   function buildRow(td){
     var label=td.theme.labels[lang]||td.theme.labels.en;
-    var h='<div class="ed-row"><h3 class="ed-row-label" data-theme-id="'+td.theme.id+'">'+label+'</h3>';
+    var h='<div class="ed-row"><h3 class="ed-row-label">'+label+'</h3>';
     h+='<div class="ed-row-wrap"><button class="ed-row-arrow ed-row-left" onclick="scrollEdRow(this,-1)">&#8249;</button><div class="ed-row-track">';
     td.matched.slice(0,10).forEach(function(m){
       var ed=m.ed;
@@ -718,21 +689,6 @@ try{
 
   if(c1 && top.length>=2) c1.innerHTML=buildRow(top[0])+buildRow(top[1]);
   if(c2 && top.length>=4) c2.innerHTML=buildRow(top[2])+buildRow(top[3]);
-
-  // Re-translate AI theme row headings when language changes
-  window._papReapplyAIThemeLabels = function(newLang){
-    var curLang = newLang || localStorage.getItem('pap-lang') || 'ko';
-    var themesArr = window._papAIThemes || [];
-    if(!themesArr.length) return;
-    var byId = {};
-    themesArr.forEach(function(t){byId[t.id]=t;});
-    document.querySelectorAll('.ed-row-label[data-theme-id]').forEach(function(el){
-      var id = el.getAttribute('data-theme-id');
-      var t = byId[id];
-      if(!t) return;
-      el.textContent = t.labels[curLang] || t.labels.en || '';
-    });
-  };
 })();
 }catch(e){console.error('AI Rec Fallback error:',e);}
 </script>
@@ -760,34 +716,6 @@ try{
 
 <!-- ALL EDITORIALS OVERLAY -->
 <div class="ed-all-overlay" id="edAllOverlay">
-  <div class="overlay-mini-header">
-    <div class="overlay-mini-left">
-      <button class="hamburger" onclick="closeAllEditorials();closeAllFilms();closeAllArticles();toggleNav();" aria-label="Menu"><span></span><span></span><span></span></button>
-      <button class="search-btn header-left-item" onclick="closeAllEditorials();closeAllFilms();closeAllArticles();setTimeout(toggleSearch,0);" aria-label="Search">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      </button>
-    </div>
-    <a href="/" class="overlay-mini-logo"><img src="pap-logo.png" alt="PAP Magazine"></a>
-    <div class="overlay-mini-right">
-      <div class="lang-btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>
-        <select class="lang-select-el" onchange="setLang(this.value)">
-          <option value="ko">한국어</option>
-          <option value="en">English</option>
-          <option value="it">Italiano</option>
-          <option value="fr">Français</option>
-          <option value="es">Español</option>
-          <option value="ja">日本語</option>
-          <option value="zh">中文</option>
-          <option value="ru">Русский</option>
-          <option value="de">Deutsch</option>
-        </select>
-      </div>
-      <a href="auth.html" class="header-right-item" aria-label="Account" style="display:flex;align-items:center;color:inherit;text-decoration:none">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      </a>
-    </div>
-  </div>
   <div class="ed-all-header">
     <div style="display:flex;align-items:baseline">
       <div class="ed-all-title">ALL EDITORIALS</div>
@@ -801,37 +729,9 @@ try{
 
 <!-- ALL FILMS OVERLAY -->
 <div class="ed-all-overlay" id="filmAllOverlay">
-  <div class="overlay-mini-header">
-    <div class="overlay-mini-left">
-      <button class="hamburger" onclick="closeAllEditorials();closeAllFilms();closeAllArticles();toggleNav();" aria-label="Menu"><span></span><span></span><span></span></button>
-      <button class="search-btn header-left-item" onclick="closeAllEditorials();closeAllFilms();closeAllArticles();setTimeout(toggleSearch,0);" aria-label="Search">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      </button>
-    </div>
-    <a href="/" class="overlay-mini-logo"><img src="pap-logo.png" alt="PAP Magazine"></a>
-    <div class="overlay-mini-right">
-      <div class="lang-btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>
-        <select class="lang-select-el" onchange="setLang(this.value)">
-          <option value="ko">한국어</option>
-          <option value="en">English</option>
-          <option value="it">Italiano</option>
-          <option value="fr">Français</option>
-          <option value="es">Español</option>
-          <option value="ja">日本語</option>
-          <option value="zh">中文</option>
-          <option value="ru">Русский</option>
-          <option value="de">Deutsch</option>
-        </select>
-      </div>
-      <a href="auth.html" class="header-right-item" aria-label="Account" style="display:flex;align-items:center;color:inherit;text-decoration:none">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      </a>
-    </div>
-  </div>
   <div class="ed-all-header">
     <div style="display:flex;align-items:baseline;flex-wrap:wrap;gap:8px">
-      <div class="ed-all-title" data-i18n="allFilms">ALL FILMS</div>
+      <div class="ed-all-title">ALL FILMS</div>
       <div class="ed-all-count" id="filmAllCount"></div>
     </div>
     <button class="ed-all-close" onclick="closeAllFilms()">&times;</button>
@@ -857,34 +757,6 @@ try{
 
 <!-- ALL ARTICLES OVERLAY -->
 <div class="ed-all-overlay" id="artAllOverlay">
-  <div class="overlay-mini-header">
-    <div class="overlay-mini-left">
-      <button class="hamburger" onclick="closeAllEditorials();closeAllFilms();closeAllArticles();toggleNav();" aria-label="Menu"><span></span><span></span><span></span></button>
-      <button class="search-btn header-left-item" onclick="closeAllEditorials();closeAllFilms();closeAllArticles();setTimeout(toggleSearch,0);" aria-label="Search">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      </button>
-    </div>
-    <a href="/" class="overlay-mini-logo"><img src="pap-logo.png" alt="PAP Magazine"></a>
-    <div class="overlay-mini-right">
-      <div class="lang-btn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>
-        <select class="lang-select-el" onchange="setLang(this.value)">
-          <option value="ko">한국어</option>
-          <option value="en">English</option>
-          <option value="it">Italiano</option>
-          <option value="fr">Français</option>
-          <option value="es">Español</option>
-          <option value="ja">日本語</option>
-          <option value="zh">中文</option>
-          <option value="ru">Русский</option>
-          <option value="de">Deutsch</option>
-        </select>
-      </div>
-      <a href="auth.html" class="header-right-item" aria-label="Account" style="display:flex;align-items:center;color:inherit;text-decoration:none">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      </a>
-    </div>
-  </div>
   <div class="ed-all-header">
     <div style="display:flex;align-items:baseline;flex-wrap:wrap;gap:8px">
       <div class="ed-all-title">ALL ARTICLES</div>

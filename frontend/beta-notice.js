@@ -5,14 +5,15 @@
 
 (function(){
   var I18N={
-    ko:{title:'베타 테스트 안내',msg:'현재 PAP Magazine 웹사이트는 베타 테스트 중입니다. 이 기간 동안 유료 구독 서비스를 이용하실 수 없습니다. 양해 부탁드립니다.',btn:'확인'},
-    en:{title:'Beta Test Notice',msg:'PAP Magazine website is currently in beta testing. Paid subscription services are unavailable during this period. Thank you for your understanding.',btn:'OK'},
-    it:{title:'Avviso Beta Test',msg:'Il sito web di PAP Magazine è attualmente in fase di beta test. I servizi di abbonamento a pagamento non sono disponibili durante questo periodo. Grazie per la comprensione.',btn:'OK'},
-    fr:{title:'Avis de Bêta Test',msg:'Le site web de PAP Magazine est actuellement en phase de bêta test. Les services d\'abonnement payants ne sont pas disponibles pendant cette période. Merci de votre compréhension.',btn:'OK'},
-    es:{title:'Aviso de Beta Test',msg:'El sitio web de PAP Magazine se encuentra actualmente en fase de prueba beta. Los servicios de suscripción de pago no están disponibles durante este período. Gracias por su comprensión.',btn:'OK'},
-    ja:{title:'ベータテストのお知らせ',msg:'現在、PAP Magazineウェブサイトはベータテスト中です。この期間中、有料サブスクリプションサービスはご利用いただけません。ご了承ください。',btn:'OK'},
-    zh:{title:'Beta 测试公告',msg:'PAP Magazine 网站目前处于 Beta 测试阶段。在此期间，付费订阅服务暂不可用。感谢您的理解。',btn:'确认'},
-    ru:{title:'Уведомление о бета-тесте',msg:'Веб-сайт PAP Magazine в настоящее время находится на стадии бета-тестирования. Платные подписки недоступны в этот период. Благодарим за понимание.',btn:'OK'}
+    ko:{title:'베타 테스트 안내',msg:'현재 PAP Magazine 웹사이트는 베타 테스트 중입니다.',highlight:'무료 회원가입을 하시면 유료 서비스를 포함한 모든 콘텐츠를 무료로 이용하실 수 있습니다.',btnSignup:'무료 회원가입',btn:'확인'},
+    en:{title:'Beta Test Notice',msg:'PAP Magazine is currently in beta testing.',highlight:'Sign up for a free account to access all content — including paid services — at no cost during the beta period.',btnSignup:'Free Sign Up',btn:'OK'},
+    it:{title:'Avviso Beta Test',msg:'Il sito web di PAP Magazine è attualmente in fase di beta test.',highlight:'Registrati gratuitamente per accedere a tutti i contenuti, inclusi i servizi a pagamento, senza alcun costo durante il periodo beta.',btnSignup:'Registrati Gratis',btn:'OK'},
+    fr:{title:'Avis de Bêta Test',msg:'Le site web de PAP Magazine est actuellement en phase de bêta test.',highlight:'Inscrivez-vous gratuitement pour accéder à tout le contenu — y compris les services payants — sans frais pendant la période bêta.',btnSignup:'Inscription Gratuite',btn:'OK'},
+    es:{title:'Aviso de Beta Test',msg:'El sitio web de PAP Magazine se encuentra actualmente en fase de prueba beta.',highlight:'Regístrate gratis para acceder a todos los contenidos, incluidos los servicios de pago, sin coste durante el período beta.',btnSignup:'Registro Gratuito',btn:'OK'},
+    ja:{title:'ベータテストのお知らせ',msg:'現在、PAP Magazineウェブサイトはベータテスト中です。',highlight:'無料会員登録をすれば、有料サービスを含むすべてのコンテンツをベータ期間中は無料でご利用いただけます。',btnSignup:'無料登録',btn:'OK'},
+    zh:{title:'Beta 测试公告',msg:'PAP Magazine 网站目前处于 Beta 测试阶段。',highlight:'免费注册即可在 Beta 期间免费使用包括付费服务在内的所有内容。',btnSignup:'免费注册',btn:'确认'},
+    ru:{title:'Уведомление о бета-тесте',msg:'Веб-сайт PAP Magazine в настоящее время находится на стадии бета-тестирования.',highlight:'Зарегистрируйтесь бесплатно, чтобы получить доступ ко всему контенту, включая платные услуги, в течение бета-периода.',btnSignup:'Бесплатная Регистрация',btn:'OK'},
+    de:{title:'Beta-Test Hinweis',msg:'Die PAP Magazine Website befindet sich derzeit in der Beta-Testphase.',highlight:'Registrieren Sie sich kostenlos, um während der Beta-Phase auf alle Inhalte — einschließlich kostenpflichtiger Dienste — kostenfrei zuzugreifen.',btnSignup:'Kostenlos Registrieren',btn:'OK'}
   };
 
   function detectLang(){
@@ -45,8 +46,18 @@
     if(title) title.textContent=t.title;
     var msg=el.querySelector('.bn-msg');
     if(msg) msg.textContent=t.msg;
+    var hl=el.querySelector('.bn-highlight');
+    if(hl) hl.textContent=t.highlight||'';
+    var btnSignup=el.querySelector('.bn-btn-signup');
+    if(btnSignup) btnSignup.textContent=t.btnSignup||'';
     var btn=el.querySelector('.bn-btn');
     if(btn) btn.textContent=t.btn;
+  }
+
+  /* Detect whether the visitor is logged in — the signup CTA is hidden
+     for logged-in members (they already have access during beta). */
+  function isLoggedInForBeta(){
+    try{ return !!localStorage.getItem('pap-token'); }catch(e){return false;}
   }
 
   document.addEventListener('pap-lang-changed', updateNoticeLang);
@@ -63,15 +74,20 @@
       '#betaNotice .bn-card{background:#fff;max-width:460px;width:90%;padding:36px 32px 28px;text-align:center;position:relative;border-radius:0}',
       '#betaNotice .bn-badge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:#fff;background:#000;padding:5px 14px;margin-bottom:18px}',
       '#betaNotice .bn-title{font-size:18px;font-weight:700;letter-spacing:.05em;color:#000;margin:0 0 14px}',
-      '#betaNotice .bn-msg{font-size:13px;line-height:1.7;color:#444;margin:0 0 24px}',
-      '#betaNotice .bn-btn{display:inline-block;padding:12px 48px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;background:#000;color:#fff;border:1.5px solid #000;cursor:pointer;font-family:"Montserrat",sans-serif;transition:all .25s;border-radius:0;line-height:1}',
-      '#betaNotice .bn-btn:hover{background:transparent;color:#000}',
+      '#betaNotice .bn-msg{font-size:13px;line-height:1.7;color:#444;margin:0 0 14px}',
+      '#betaNotice .bn-highlight{font-size:13px;line-height:1.7;color:#000;font-weight:600;background:#f6f2ea;border-left:3px solid #c9a96e;padding:12px 14px;margin:0 0 24px;text-align:left}',
+      '#betaNotice .bn-actions{display:flex;flex-direction:column;gap:10px;align-items:center}',
+      '#betaNotice .bn-btn-signup{display:inline-block;padding:12px 32px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;background:#c9a96e;color:#fff;border:1.5px solid #c9a96e;cursor:pointer;font-family:"Montserrat",sans-serif;transition:all .25s;border-radius:0;line-height:1;text-decoration:none;min-width:220px}',
+      '#betaNotice .bn-btn-signup:hover{background:#b8985d;border-color:#b8985d}',
+      '#betaNotice .bn-btn{display:inline-block;padding:10px 32px;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;background:transparent;color:#666;border:1px solid #ddd;cursor:pointer;font-family:"Montserrat",sans-serif;transition:all .25s;border-radius:0;line-height:1;min-width:220px}',
+      '#betaNotice .bn-btn:hover{background:#000;color:#fff;border-color:#000}',
       '@keyframes bnFadeIn{from{opacity:0}to{opacity:1}}',
       '@keyframes bnFadeOut{from{opacity:1}to{opacity:0}}',
       '@media(max-width:480px){',
       '  #betaNotice .bn-card{padding:28px 20px 22px}',
       '  #betaNotice .bn-title{font-size:16px}',
       '  #betaNotice .bn-msg{font-size:12px}',
+      '  #betaNotice .bn-highlight{font-size:12px;padding:10px 12px}',
       '}'
     ].join('');
     (document.head||document.documentElement).appendChild(style);
@@ -82,16 +98,25 @@
     injectStyles();
     var lang=detectLang();
     var t=I18N[lang]||I18N.en;
+    var loggedIn=isLoggedInForBeta();
     var overlay=document.createElement('div');
     overlay.id='betaNotice';
     overlay.setAttribute('role','dialog');
     overlay.setAttribute('aria-label','Beta test notice');
+    var signupHTML = loggedIn ? '' :
+      '<a class="bn-btn-signup" href="auth.html">'+esc(t.btnSignup||'Sign Up')+'</a>';
+    var highlightHTML = loggedIn ? '' :
+      '<div class="bn-highlight">'+esc(t.highlight||'')+'</div>';
     overlay.innerHTML=
       '<div class="bn-card" lang="'+lang+'">'+
         '<div class="bn-badge">BETA</div>'+
         '<h2 class="bn-title">'+esc(t.title)+'</h2>'+
         '<p class="bn-msg">'+esc(t.msg)+'</p>'+
-        '<button class="bn-btn" id="bnClose">'+esc(t.btn)+'</button>'+
+        highlightHTML+
+        '<div class="bn-actions">'+
+          signupHTML+
+          '<button class="bn-btn" id="bnClose">'+esc(t.btn)+'</button>'+
+        '</div>'+
       '</div>';
     document.body.appendChild(overlay);
 

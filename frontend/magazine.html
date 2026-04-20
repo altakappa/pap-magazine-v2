@@ -594,9 +594,14 @@ var MONTH_MAP={january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8
 var PAP_BETA_END_MAG = '2026-05-06';
 function _magIsOpenAccess(){
   try{
-    if(!PAP_BETA_END_MAG) return true; // null = 무기한 베타
-    var now=new Date(), end=new Date(PAP_BETA_END_MAG+'T23:59:59');
-    if(now<=end) return true;
+    var isBeta = !PAP_BETA_END_MAG; // null = 무기한 베타
+    if(PAP_BETA_END_MAG){
+      var now=new Date(), end=new Date(PAP_BETA_END_MAG+'T23:59:59');
+      isBeta = (now<=end);
+    }
+    // 베타 기간 중에는 "로그인한 회원(무료 포함)"에게만 전체 접근 허용
+    if(isBeta) return !!localStorage.getItem('pap-token');
+    // 베타 종료 후: standard/premium 구독자만
     var u=localStorage.getItem('pap-user');
     if(!u) return false;
     var user=JSON.parse(u);
