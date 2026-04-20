@@ -3,21 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <script>
-/* Deep-link cover: when landing on index.html with ?ed=<title>, hide the
-   homepage content with a black cover so the user doesn't see the home
-   page briefly flash before the editorial overlay opens. The cover is
-   removed by pap-app.js after openEditorial() succeeds. Also suppresses
-   the beta-notice popup for this deep-link flow. */
+/* Deep-link cover: when landing on index.html with ?ed=<title> or
+   #all-editorials, hide the homepage content with a black cover so the user
+   doesn't see the home page briefly flash before the overlay opens. The
+   cover is removed by pap-app.js after the relevant overlay opens. Also
+   suppresses the beta-notice popup for this deep-link flow. */
 (function(){
   try{
     var params=new URLSearchParams(window.location.search);
-    if(!params.get('ed'))return;
+    var hasEdParam=!!params.get('ed');
+    var hasAllHash=(window.location.hash==='#all-editorials'||window.location.hash==='#all-films'||window.location.hash==='#all-articles');
+    if(!hasEdParam && !hasAllHash) return;
     window._papDeepLinkMode=true;
     var style=document.createElement('style');
     style.id='pap-deeplink-cover-style';
     style.textContent='html,body{background:#000!important}body{opacity:0!important;transition:opacity .35s ease}body.pap-deeplink-ready{opacity:1!important}#betaNotice{display:none!important}';
     (document.head||document.documentElement).appendChild(style);
-    /* Safety net: if editorial fails to open within 4s, reveal anyway */
+    /* Safety net: if overlay fails to open within 4s, reveal anyway */
     setTimeout(function(){
       if(document.body&&!document.body.classList.contains('pap-deeplink-ready')){
         document.body.classList.add('pap-deeplink-ready');
@@ -62,7 +64,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="pap-styles.css">
+<link rel="stylesheet" href="pap-styles.css?v=2">
 <link rel="stylesheet" href="pap-social.css">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
 <!-- Favicon & PWA -->
@@ -634,7 +636,7 @@
   </div>
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="pap-api.js?v=2" defer></script><script src="pap-social.js?v=2" defer></script><script src="pap-app.js?v=5" defer></script><script src="pap-header.js?v=4" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="pap-api.js?v=2" defer></script><script src="pap-social.js?v=2" defer></script><script src="pap-app.js?v=6" defer></script><script src="pap-header.js?v=5" defer></script>
 <script>
 // AI Recommendation Fallback: reads theme tags from DOM ed-row-card elements
 try{
@@ -765,7 +767,7 @@ try{
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       </button>
     </div>
-    <a href="/" class="overlay-mini-logo">PAP MAGAZINE</a>
+    <a href="/" class="overlay-mini-logo"><img src="pap-logo.png" alt="PAP Magazine"></a>
     <div class="overlay-mini-right">
       <div class="lang-btn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>
@@ -806,7 +808,7 @@ try{
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       </button>
     </div>
-    <a href="/" class="overlay-mini-logo">PAP MAGAZINE</a>
+    <a href="/" class="overlay-mini-logo"><img src="pap-logo.png" alt="PAP Magazine"></a>
     <div class="overlay-mini-right">
       <div class="lang-btn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>
@@ -862,7 +864,7 @@ try{
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       </button>
     </div>
-    <a href="/" class="overlay-mini-logo">PAP MAGAZINE</a>
+    <a href="/" class="overlay-mini-logo"><img src="pap-logo.png" alt="PAP Magazine"></a>
     <div class="overlay-mini-right">
       <div class="lang-btn">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>
