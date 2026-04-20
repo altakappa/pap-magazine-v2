@@ -346,15 +346,24 @@ window.loadNotifications = function(){
 
 window.openNotifications = function(){
   if(!alertLogin()) return;
+  var panel = document.getElementById('notifPanel');
+  if(!panel) return;
+  // Toggle panel visibility
+  if(panel.classList.contains('active')){
+    panel.classList.remove('active');
+    return;
+  }
+  panel.classList.add('active');
+
   fetch('/api/community/notifications', { credentials: 'include' })
     .then(function(r){ return r.json(); })
     .then(function(data){
       var items = data.notifications || [];
-      var html = '<div style="position:fixed;top:0;right:0;bottom:0;width:360px;max-width:100vw;background:#fff;z-index:10003;box-shadow:-4px 0 24px rgba(0,0,0,.15);overflow-y:auto;font-family:Montserrat,sans-serif" id="notifPanel">';
-      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:20px;border-bottom:1px solid #eee"><h3 style="margin:0;font-size:14px;font-weight:700;letter-spacing:.05em">'+(lang==='ko'?'알림':'NOTIFICATIONS')+'</h3><button onclick="document.getElementById(\'notifPanel\').remove();document.getElementById(\'notifOverlayBg\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer">×</button></div>';
+      var list = document.getElementById('notifList');
+      if(!list) return;
 
       if(items.length === 0){
-        html += '<div style="padding:40px 20px;text-align:center;color:#999;font-size:12px">'+(lang==='ko'?'알림이 없습니다':'No notifications')+'</div>';
+        list.innerHTML = '<div class="notif-empty">'+(L[lang]&&L[lang].notifEmpty||'No new notifications')+'</div>';
       } else {
         var typeIcons = { like:'❤️', comment:'💬', follow:'👤', project_apply:'📋', project_accepted:'✅', project_rejected:'❌', dm:'✉️', mention:'@' };
         var typeTexts = {
@@ -362,21 +371,20 @@ window.openNotifications = function(){
           en: { like:'liked your post',comment:'commented on your post',follow:'started following you',project_apply:'applied to your project',project_accepted:'Your application was accepted',project_rejected:'Your application was rejected',dm:'sent you a message',mention:'mentioned you' }
         };
         var texts = typeTexts[lang] || typeTexts.en;
-
+        var html = '';
         items.forEach(function(n){
           var icon = typeIcons[n.type] || '🔔';
           var text = texts[n.type] || n.message || '';
           var actorName = n.actor ? n.actor.name : '';
-          html += '<div style="padding:14px 20px;border-bottom:1px solid #f5f5f5;'+(n.read?'':'background:#fafafa')+';cursor:pointer" onclick="handleNotifClick(\''+n.type+'\',\''+n.targetType+'\',\''+n.targetId+'\')">';
-          html += '<div style="display:flex;gap:10px;align-items:flex-start">';
-          html += '<span style="font-size:16px">'+icon+'</span>';
-          html += '<div style="flex:1"><div style="font-size:12px;line-height:1.5"><strong>'+escHtml(actorName)+'</strong> '+escHtml(text)+'</div>';
-          html += '<div style="font-size:10px;color:#999;margin-top:4px">'+timeAgo(n.createdAt)+'</div></div></div></div>';
+          var av = actorName ? actorName.split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase() : '?';
+          html += '<div class="notif-item'+(n.read?'':' unread')+'" onclick="handleNotifClick(\''+n.type+'\',\''+(n.targetType||'')+'\',\''+(n.targetId||'')+'\')">';
+          html += '<div class="notif-av">'+av+'</div>';
+          html += '<div class="notif-body"><div class="notif-text"><strong>'+escHtml(actorName)+'</strong> '+escHtml(text)+'</div>';
+          html += '<div class="notif-time">'+timeAgo(n.createdAt)+'</div></div>';
+          html += '<span class="notif-icon">'+icon+'</span></div>';
         });
+        list.innerHTML = html;
       }
-      html += '</div>';
-      html += '<div id="notifOverlayBg" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:10002;background:rgba(0,0,0,.3)" onclick="document.getElementById(\'notifPanel\').remove();this.remove()"></div>';
-      document.body.insertAdjacentHTML('beforeend', html);
 
       // Mark all as read
       fetch('/api/community/notifications', {
@@ -385,14 +393,25 @@ window.openNotifications = function(){
         credentials: 'include',
         body: JSON.stringify({ all: true })
       }).then(function(){ loadNotifications(); });
-    });
+    }).catch(function(){});
+};
+
+window.markAllRead = function(){
+  fetch('/api/community/notifications', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ all: true })
+  }).then(function(){
+    loadNotifications();
+    var list = document.getElementById('notifList');
+    if(list) list.querySelectorAll('.notif-item').forEach(function(el){ el.classList.remove('unread'); });
+  }).catch(function(){});
 };
 
 window.handleNotifClick = function(type, targetType, targetId){
   var panel = document.getElementById('notifPanel');
-  var bg = document.getElementById('notifOverlayBg');
-  if(panel) panel.remove();
-  if(bg) bg.remove();
+  if(panel) panel.classList.remove('active');
   if(targetType === 'post') openPost(targetId);
   if(type === 'dm' || targetType === 'message') openDMPanel();
   if(type === 'follow') goTab('directory', document.querySelector('[onclick*="directory"]'));
@@ -401,76 +420,87 @@ window.handleNotifClick = function(type, targetType, targetId){
 // ── 2.3 DM (Direct Messages) ──
 window.openDMPanel = function(){
   if(!alertLogin()) return;
+  var panel = document.getElementById('dmPanel');
+  var overlay = document.getElementById('dmOverlay');
+  if(!panel) return;
+  panel.classList.add('active');
+  if(overlay) overlay.classList.add('active');
+  // Show conv list, hide chat
+  document.getElementById('dmConvList').style.display = '';
+  document.getElementById('dmChat').style.display = 'none';
+
   fetch('/api/community/messages?list=conversations', { credentials: 'include' })
     .then(function(r){ return r.json(); })
     .then(function(data){
       var convs = data.conversations || [];
-      var html = '<div id="dmPanel" style="position:fixed;top:0;right:0;bottom:0;width:400px;max-width:100vw;background:#fff;z-index:10003;box-shadow:-4px 0 24px rgba(0,0,0,.15);display:flex;flex-direction:column;font-family:Montserrat,sans-serif">';
-      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:20px;border-bottom:1px solid #eee;flex-shrink:0"><h3 style="margin:0;font-size:14px;font-weight:700;letter-spacing:.05em">'+(lang==='ko'?'메시지':'MESSAGES')+'</h3><button onclick="document.getElementById(\'dmPanel\').remove();document.getElementById(\'dmOverlayBg\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer">×</button></div>';
-      html += '<div id="dmConvList" style="flex:1;overflow-y:auto">';
+      var list = document.getElementById('dmConvList');
+      if(!list) return;
 
       if(convs.length === 0){
-        html += '<div style="padding:40px 20px;text-align:center;color:#999;font-size:12px">'+(lang==='ko'?'메시지가 없습니다':'No messages yet')+'</div>';
+        list.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--text4);font-size:12px">'+(L[lang]&&L[lang].dmEmpty||'No conversations')+'</div>';
       } else {
+        var html = '';
         convs.forEach(function(c){
           var other = c.otherUser || {};
-          var av = (other.name||'??').split(' ').map(function(w){return w[0];}).join('').substring(0,2);
+          var av = (other.name||'??').split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase();
           var lastMsg = c.lastMessage ? c.lastMessage.content.substring(0,40) : '';
-          var unread = c.unreadCount > 0 ? '<span style="background:#000;color:#fff;font-size:9px;padding:2px 6px;border-radius:10px;margin-left:auto">'+c.unreadCount+'</span>' : '';
-          html += '<div style="padding:14px 20px;border-bottom:1px solid #f5f5f5;cursor:pointer;display:flex;gap:12px;align-items:center" onclick="openConversation(\''+c.id+'\',\''+escHtml(other.name||'User')+'\')">';
-          html += '<div style="width:40px;height:40px;border-radius:50%;background:#f0f0f0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">'+av+'</div>';
-          html += '<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600">'+escHtml(other.name||'User')+'</div>';
-          html += '<div style="font-size:11px;color:#999;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(lastMsg)+'</div></div>'+unread+'</div>';
+          var unread = c.unreadCount > 0 ? '<span class="dm-unread">'+c.unreadCount+'</span>' : '';
+          html += '<div class="dm-conv-item" onclick="openConversation(\''+c.id+'\',\''+escHtml(other.name||'User')+'\')">';
+          html += '<div class="dm-conv-av">'+av+'</div>';
+          html += '<div class="dm-conv-info"><div class="dm-conv-name">'+escHtml(other.name||'User')+'</div>';
+          html += '<div class="dm-conv-last">'+escHtml(lastMsg)+'</div></div>'+unread+'</div>';
         });
+        list.innerHTML = html;
       }
-      html += '</div></div>';
-      html += '<div id="dmOverlayBg" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:10002;background:rgba(0,0,0,.3)" onclick="document.getElementById(\'dmPanel\').remove();this.remove()"></div>';
-      document.body.insertAdjacentHTML('beforeend', html);
     }).catch(function(){ showToast('Failed to load messages'); });
 };
 
+window.closeDMPanel = function(){
+  var panel = document.getElementById('dmPanel');
+  var overlay = document.getElementById('dmOverlay');
+  if(panel) panel.classList.remove('active');
+  if(overlay) overlay.classList.remove('active');
+};
+
 window.openConversation = function(convId, otherName){
-  var list = document.getElementById('dmConvList');
-  if(!list) return;
+  // Hide conv list, show chat
+  document.getElementById('dmConvList').style.display = 'none';
+  var chat = document.getElementById('dmChat');
+  chat.style.display = 'flex';
+  chat.dataset.convId = convId;
+
+  var header = document.getElementById('dmChatHeader');
+  header.innerHTML = '<button class="dm-back-btn" onclick="openDMPanel()">←</button><strong>'+escHtml(otherName)+'</strong>';
+
+  var msgContainer = document.getElementById('dmMessages');
+  msgContainer.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text4);font-size:11px">Loading...</div>';
 
   fetch('/api/community/messages?conversationId=' + convId, { credentials: 'include' })
     .then(function(r){ return r.json(); })
     .then(function(data){
       var msgs = data.messages || [];
-      var html = '<div style="padding:12px 16px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:8px"><button onclick="openDMPanel()" style="background:none;border:none;font-size:16px;cursor:pointer">←</button><strong style="font-size:12px">'+escHtml(otherName)+'</strong></div>';
-      html += '<div id="dmMsgList" style="flex:1;overflow-y:auto;padding:16px">';
+      var html = '';
       msgs.forEach(function(m){
-        var align = m.isMine ? 'flex-end' : 'flex-start';
-        var bg = m.isMine ? '#000' : '#f0f0f0';
-        var color = m.isMine ? '#fff' : '#000';
-        html += '<div style="display:flex;justify-content:'+align+';margin-bottom:8px"><div style="background:'+bg+';color:'+color+';padding:8px 14px;max-width:75%;font-size:12px;line-height:1.5;border-radius:12px">'+escHtml(m.content)+'</div></div>';
+        var cls = m.isMine ? 'dm-msg sent' : 'dm-msg received';
+        html += '<div class="'+cls+'"><div class="dm-bubble">'+escHtml(m.content)+'</div></div>';
       });
-      html += '</div>';
-      html += '<div style="padding:12px;border-top:1px solid #eee;display:flex;gap:8px;flex-shrink:0"><input id="dmInput" style="flex:1;padding:8px 12px;border:1px solid #ddd;font-size:12px;font-family:Montserrat,sans-serif" placeholder="'+(lang==='ko'?'메시지 입력...':'Type a message...')+'" onkeypress="if(event.key===\'Enter\')sendDMFromInput(\''+convId+'\')"><button onclick="sendDMFromInput(\''+convId+'\')" style="padding:8px 16px;background:#000;color:#fff;border:none;font-size:11px;font-weight:700;cursor:pointer;font-family:Montserrat,sans-serif">'+(lang==='ko'?'전송':'SEND')+'</button></div>';
-
-      var panel = document.getElementById('dmPanel');
-      if(panel){
-        // Replace content below header
-        list.outerHTML = '<div id="dmConvList" style="flex:1;display:flex;flex-direction:column;overflow:hidden">'+html+'</div>';
-        // Scroll to bottom
-        setTimeout(function(){
-          var ml = document.getElementById('dmMsgList');
-          if(ml) ml.scrollTop = ml.scrollHeight;
-        },50);
-      }
-    });
+      msgContainer.innerHTML = html || '<div style="text-align:center;padding:20px;color:var(--text4);font-size:11px">No messages yet</div>';
+      msgContainer.scrollTop = msgContainer.scrollHeight;
+    }).catch(function(){ msgContainer.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text4)">Error loading messages</div>'; });
 };
 
-window.sendDMFromInput = function(convId){
+window.sendDMFromInput = function(convIdArg){
   var input = document.getElementById('dmInput');
   if(!input || !input.value.trim()) return;
   var content = input.value.trim();
   input.value = '';
+  var chat = document.getElementById('dmChat');
+  var convId = convIdArg || (chat ? chat.dataset.convId : null);
 
   // Add message to UI immediately
-  var msgList = document.getElementById('dmMsgList');
+  var msgList = document.getElementById('dmMessages');
   if(msgList){
-    msgList.insertAdjacentHTML('beforeend', '<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><div style="background:#000;color:#fff;padding:8px 14px;max-width:75%;font-size:12px;line-height:1.5;border-radius:12px">'+escHtml(content)+'</div></div>');
+    msgList.insertAdjacentHTML('beforeend', '<div class="dm-msg sent"><div class="dm-bubble">'+escHtml(content)+'</div></div>');
     msgList.scrollTop = msgList.scrollHeight;
   }
 
@@ -537,36 +567,56 @@ window.checkBadges = function(){
 
 // ── 3.2 MOODBOARD — Inspiration Board tab ──
 window.loadMoodboards = function(){
+  var container = document.getElementById('moodGrid');
+  if(!container) return;
   fetch('/api/community/moodboards')
     .then(function(r){ return r.json(); })
     .then(function(data){
       var boards = data.boards || [];
-      var container = document.getElementById('moodboardGrid');
-      if(!container) return;
       if(boards.length === 0){
-        container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;font-size:12px">'+(lang==='ko'?'아직 무드보드가 없습니다. 첫 번째 무드보드를 만들어보세요!':'No mood boards yet. Create the first one!')+'</div>';
+        container.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--text4)"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin-bottom:12px;opacity:.4"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><p style="font-size:12px">'+(L[lang]&&L[lang].moodEmpty||'No moodboards yet')+'</p></div>';
         return;
       }
       var html = '';
       boards.forEach(function(b){
-        html += '<div class="mood-card" style="cursor:pointer">';
-        html += '<div class="mood-preview" style="display:grid;grid-template-columns:1fr 1fr;gap:2px;aspect-ratio:1;overflow:hidden">';
-        (b.previewImages||[]).forEach(function(img){
-          html += '<div style="background:url('+escHtml(img)+') center/cover;min-height:80px"></div>';
+        html += '<div class="mood-card">';
+        html += '<div class="mood-preview">';
+        (b.previewImages||[]).slice(0,4).forEach(function(img){
+          html += '<div class="mood-img" style="background-image:url('+escHtml(img)+')"></div>';
         });
         for(var i=(b.previewImages||[]).length; i<4; i++){
-          html += '<div style="background:#f0f0f0;min-height:80px"></div>';
+          html += '<div class="mood-img mood-img-empty"></div>';
         }
         html += '</div>';
-        html += '<div style="padding:12px"><div style="font-size:12px;font-weight:600">'+escHtml(b.title)+'</div>';
-        html += '<div style="font-size:10px;color:#999;margin-top:4px">'+escHtml(b.author.name)+' · ❤️ '+b.voteCount+' · '+b.itemCount+' items</div>';
+        html += '<div class="mood-caption"><div class="mood-title">'+escHtml(b.title)+'</div>';
+        html += '<div class="mood-meta">'+escHtml(b.author.name)+' · '+b.itemCount+' items</div></div>';
+        html += '<div class="mood-footer"><button class="mood-vote-btn" onclick="event.stopPropagation();voteMoodboard(\''+b.id+'\',this)">♥ '+b.voteCount+'</button>';
         if(b.tags && b.tags.length){
-          html += '<div style="margin-top:6px">'+b.tags.map(function(t){return '<span style="font-size:9px;padding:2px 6px;background:#f5f5f5;margin-right:4px">'+escHtml(t)+'</span>';}).join('')+'</div>';
+          html += '<div class="mood-tags">'+b.tags.slice(0,3).map(function(t){return '<span class="mood-tag">'+escHtml(t)+'</span>';}).join('')+'</div>';
         }
         html += '</div></div>';
       });
       container.innerHTML = html;
-    }).catch(function(){});
+    }).catch(function(){
+      container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text4);font-size:12px">Failed to load moodboards</div>';
+    });
+};
+
+window.createMoodboard = function(){
+  if(!alertLogin()) return;
+  showToast(lang==='ko'?'무드보드 생성 기능은 곧 제공됩니다':'Moodboard creation coming soon');
+};
+
+window.voteMoodboard = function(boardId, btn){
+  if(!alertLogin()) return;
+  fetch('/api/community/moodboards', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    credentials:'include',
+    body: JSON.stringify({action:'vote',boardId:boardId})
+  }).then(function(r){return r.json();}).then(function(d){
+    if(btn) btn.textContent = '♥ '+(d.voteCount||0);
+  }).catch(function(){});
 };
 
 
