@@ -56,7 +56,8 @@
     var style=document.createElement('style');
     style.id='pap-beta-styles';
     style.textContent=[
-      '#betaNotice{position:fixed;top:0;left:0;right:0;bottom:0;z-index:10001;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);animation:bnFadeIn .3s ease forwards;font-family:"Montserrat",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}',
+      '#betaNotice{position:fixed;top:0;left:0;right:0;bottom:0;z-index:10001;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);opacity:0;font-family:"Montserrat",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}',
+      '#betaNotice.bn-ready{animation:bnFadeIn .3s ease forwards}',
       '#betaNotice *{box-sizing:border-box}',
       '#betaNotice.bn-hide{animation:bnFadeOut .3s ease forwards}',
       '#betaNotice .bn-card{background:#fff;max-width:460px;width:90%;padding:36px 32px 28px;text-align:center;position:relative;border-radius:0}',
@@ -93,6 +94,21 @@
         '<button class="bn-btn" id="bnClose">'+esc(t.btn)+'</button>'+
       '</div>';
     document.body.appendChild(overlay);
+
+    /* Wait for async geo-lang detection, then reveal with correct language */
+    var revealed=false;
+    function revealNotice(){
+      if(revealed) return;
+      revealed=true;
+      updateNoticeLang();
+      overlay.classList.add('bn-ready');
+    }
+    document.addEventListener('pap-lang-changed', function onLang(){
+      document.removeEventListener('pap-lang-changed', onLang);
+      revealNotice();
+    });
+    /* Fallback: if geo-detection takes too long or fails, show after 600ms */
+    setTimeout(revealNotice, 600);
 
     document.getElementById('bnClose').addEventListener('click',function(){
       overlay.classList.add('bn-hide');
