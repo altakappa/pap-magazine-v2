@@ -23,10 +23,13 @@
     ru:{msg:'Мы используем файлы cookie и аналитику (Google Analytics) для улучшения вашего опыта. Вы можете принять или отклонить необязательные файлы cookie.',accept:'Принять',reject:'Отклонить'}
   };
 
+  /* Read language from pap-geo-lang.js (which runs before this script).
+     Falls back to browser detection only if pap-lang is not yet set. */
   function detectLang(){
     var saved=null;
     try{ saved=localStorage.getItem('pap-lang'); }catch(e){}
     if(saved && I18N[saved]) return saved;
+    /* fallback: browser/timezone detection */
     var tz=''; try{ tz=Intl.DateTimeFormat().resolvedOptions().timeZone||''; }catch(e){}
     var nav=(navigator.language||navigator.userLanguage||'').toLowerCase();
     if(nav.indexOf('ko')===0||tz.indexOf('Seoul')>-1) return 'ko';
@@ -38,6 +41,26 @@
     if(nav.indexOf('ru')===0||tz.indexOf('Moscow')>-1) return 'ru';
     return 'en';
   }
+
+  function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+
+  /* Update banner text when geo-lang detects a new language (async IP lookup) */
+  function updateBannerLang(){
+    var el=document.getElementById('cookieConsent');
+    if(!el) return;
+    var lang=detectLang();
+    var t=I18N[lang]||I18N.en;
+    var inner=el.querySelector('.cc-inner');
+    if(inner) inner.setAttribute('lang',lang);
+    var txt=el.querySelector('.cc-text');
+    if(txt) txt.textContent=t.msg;
+    var reject=el.querySelector('.cc-reject');
+    if(reject) reject.textContent=t.reject;
+    var accept=el.querySelector('.cc-accept');
+    if(accept) accept.textContent=t.accept;
+  }
+
+  document.addEventListener('pap-lang-changed', updateBannerLang);
 
   /* ── public API ────────────────────────────────── */
   var _callbacks=[];
@@ -116,7 +139,6 @@
     wrap.setAttribute('aria-label','Cookie consent');
     var lang=detectLang();
     var t=I18N[lang]||I18N.en;
-    function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
     wrap.innerHTML=
       '<div class="cc-inner" lang="'+lang+'">'+
         '<div class="cc-text-wrap">'+

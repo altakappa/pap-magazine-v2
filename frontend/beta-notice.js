@@ -33,6 +33,24 @@
 
   function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 
+  /* Update notice text when geo-lang detects a new language (async IP lookup) */
+  function updateNoticeLang(){
+    var el=document.getElementById('betaNotice');
+    if(!el) return;
+    var lang=detectLang();
+    var t=I18N[lang]||I18N.en;
+    var card=el.querySelector('.bn-card');
+    if(card) card.setAttribute('lang',lang);
+    var title=el.querySelector('.bn-title');
+    if(title) title.textContent=t.title;
+    var msg=el.querySelector('.bn-msg');
+    if(msg) msg.textContent=t.msg;
+    var btn=el.querySelector('.bn-btn');
+    if(btn) btn.textContent=t.btn;
+  }
+
+  document.addEventListener('pap-lang-changed', updateNoticeLang);
+
   function injectStyles(){
     if(document.getElementById('pap-beta-styles')) return;
     var style=document.createElement('style');
