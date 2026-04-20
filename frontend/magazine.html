@@ -174,7 +174,8 @@ footer a:hover{color:#fff}
 .sub-modal-plan{border:1px solid rgba(255,255,255,.12);padding:20px 24px;min-width:190px;text-align:center;transition:all .3s;cursor:pointer;background:rgba(255,255,255,.02)}
 .sub-modal-plan:hover{border-color:rgba(255,255,255,.3);background:rgba(255,255,255,.05)}
 .sub-modal-plan.rec{border-color:rgba(137,23,23,.5)}
-.sub-modal-plan.rec::after{content:'RECOMMENDED';display:block;font-size:8px;letter-spacing:2px;color:rgba(255,255,255,.4);margin-top:8px}
+.sub-modal-plan.rec::after{content:attr(data-rec);display:block;font-size:8px;letter-spacing:2px;color:rgba(255,255,255,.4);margin-top:8px}
+.sub-modal-plan.rec:not([data-rec])::after{content:'RECOMMENDED'}
 .smp-name{font-size:10px;letter-spacing:3px;color:rgba(255,255,255,.5);margin-bottom:6px}
 .smp-price{font-size:24px;font-weight:300;color:#fff}
 .smp-price span{font-size:12px;color:rgba(255,255,255,.35)}
@@ -587,12 +588,32 @@ var _magEdCache=null;
 var _currentIssueTitle='';
 var MONTH_MAP={january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
 
+// ---- Access gate helper (OPEN BETA 지원) ----
+// ⚠ pap-app.js의 PAP_BETA_END과 반드시 동일 값으로 유지할 것
+var PAP_BETA_END_MAG = '2026-05-06';
+function _magIsOpenAccess(){
+  try{
+    if(!PAP_BETA_END_MAG) return true; // null = 무기한 베타
+    var now=new Date(), end=new Date(PAP_BETA_END_MAG+'T23:59:59');
+    if(now<=end) return true;
+    var u=localStorage.getItem('pap-user');
+    if(!u) return false;
+    var user=JSON.parse(u);
+    return user&&(user.subscription==='standard'||user.subscription==='premium');
+  }catch(e){return false;}
+}
+
 function openModal(el){
   var covTitle=el.querySelector('.cov-title');
   var covCt=el.querySelector('.cov-ct');
   var title=covTitle?covTitle.textContent:'';
   var count=covCt?covCt.textContent:'';
   _currentIssueTitle=title;
+  // 베타 기간 중(또는 구독자)에는 구독 팝업을 건너뛰고 바로 전체 이슈 프리뷰 오픈
+  if(_magIsOpenAccess()){
+    openPreview(title,{unlimited:true});
+    return;
+  }
   document.getElementById('modalIssue').textContent=title.toUpperCase();
   document.getElementById('modalTitle').textContent=title;
   document.getElementById('modalCount').textContent=count.toLowerCase();
@@ -625,7 +646,9 @@ function parseIssueMonthYear(title){
   return {month:month,year:year};
 }
 
-function openPreview(issueTitle){
+function openPreview(issueTitle,opts){
+  opts=opts||{};
+  var unlimited=!!opts.unlimited || _magIsOpenAccess();
   closeModal();
   var overlay=document.getElementById('previewOverlay');
   var grid=document.getElementById('previewGrid');
@@ -643,9 +666,14 @@ function openPreview(issueTitle){
   };
   var pt=previewTexts[lang]||previewTexts.en;
   document.getElementById('previewIssue').textContent=issueTitle.toUpperCase();
-  document.getElementById('previewTitle').textContent=pt.title;
+  document.getElementById('previewTitle').textContent=unlimited?issueTitle:pt.title;
   document.getElementById('previewCta').textContent=pt.cta;
   document.getElementById('previewLock').textContent=pt.lock;
+  // 베타 기간(또는 구독자)에는 자물쇠/구독 CTA 숨김
+  var ctaEl=document.getElementById('previewCta');
+  var lockEl=document.getElementById('previewLock');
+  if(ctaEl) ctaEl.style.display=unlimited?'none':'';
+  if(lockEl) lockEl.style.display=unlimited?'none':'';
   grid.innerHTML='<div style="color:rgba(255,255,255,.4);font-size:12px;letter-spacing:.1em;padding:40px 0">LOADING...</div>';
   overlay.classList.add('active');
   document.body.style.overflow='hidden';
@@ -659,7 +687,7 @@ function openPreview(issueTitle){
       var d=ed.date.split('-');
       return parseInt(d[0],10)===parsed.year && parseInt(d[1],10)===parsed.month;
     });
-    var preview=filtered.slice(0,3);
+    var preview=unlimited?filtered:filtered.slice(0,3);
     document.getElementById('previewSubtitle').textContent=preview.length+' / '+filtered.length+' '+pt.subtitle;
     if(preview.length===0){
       grid.innerHTML='<div style="color:#999;padding:40px;grid-column:1/-1">No editorials found for this issue</div>';
@@ -708,11 +736,11 @@ document.getElementById('previewOverlay').addEventListener('click',function(e){
     <div class="sub-modal-plans">
       <div class="sub-modal-plan" onclick="location.href='subscribe.html'">
         <div class="smp-name">STANDARD</div>
-        <div class="smp-price">₩8,500<span> /mo</span></div>
+        <div class="smp-price"><span id="modalStdPrice">₩8,500</span><span id="modalStdPer"> /mo</span></div>
       </div>
       <div class="sub-modal-plan rec" onclick="location.href='subscribe.html'">
         <div class="smp-name">PREMIUM</div>
-        <div class="smp-price">₩13,500<span> /mo</span></div>
+        <div class="smp-price"><span id="modalPremPrice">₩13,500</span><span id="modalPremPer"> /mo</span></div>
       </div>
     </div>
     <button class="sub-modal-cta" id="modalCta" onclick="location.href='subscribe.html'">SUBSCRIBE NOW</button>
@@ -754,6 +782,32 @@ document.getElementById('previewOverlay').addEventListener('click',function(e){
   var p=document.getElementById('modalPreview');
   if(p){p.textContent=s.preview;}
   var n=document.getElementById('modalNote');if(n)n.textContent=s.note;
+
+  // ---- Per-country pricing (edit these if you want to adjust) ----
+  // Base price in KRW: Standard ₩8,500, Premium ₩13,500
+  // Values below are rounded to common local prices (approx parity, no FX auto-sync)
+  var pricing={
+    ko:{std:'₩8,500',   prem:'₩13,500', per:'/mo'},
+    en:{std:'$6.99',    prem:'$10.99',  per:'/mo'},
+    it:{std:'€5,99',    prem:'€9,99',   per:'/mese'},
+    fr:{std:'€5,99',    prem:'€9,99',   per:'/mois'},
+    es:{std:'€5,99',    prem:'€9,99',   per:'/mes'},
+    de:{std:'€5,99',    prem:'€9,99',   per:'/Monat'},
+    ja:{std:'¥780',     prem:'¥1,280',  per:'/月'},
+    zh:{std:'¥42',      prem:'¥68',     per:'/月'},
+    ru:{std:'₽549',     prem:'₽899',    per:'/мес'}
+  };
+  var pr=pricing[lang]||pricing.en;
+  var sp=document.getElementById('modalStdPrice');  if(sp) sp.textContent=pr.std;
+  var pp=document.getElementById('modalPremPrice'); if(pp) pp.textContent=pr.prem;
+  var spp=document.getElementById('modalStdPer');   if(spp)spp.textContent=' '+pr.per;
+  var ppp=document.getElementById('modalPremPer');  if(ppp)ppp.textContent=' '+pr.per;
+
+  // ---- RECOMMENDED label localization ----
+  var recLabels={ko:'추천',en:'RECOMMENDED',it:'CONSIGLIATO',fr:'RECOMMANDÉ',es:'RECOMENDADO',de:'EMPFOHLEN',ja:'おすすめ',zh:'推荐',ru:'РЕКОМЕНДУЕМ'};
+  var recText=recLabels[lang]||recLabels.en;
+  // Inject CSS rule so ::after on .sub-modal-plan.rec can read it (fallback to attribute-based)
+  document.querySelectorAll('.sub-modal-plan.rec').forEach(function(el){el.setAttribute('data-rec',recText);});
 })();
 </script>
 
