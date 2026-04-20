@@ -260,7 +260,10 @@
     '    <div class="nav-right-col">',
     '      <a href="#" onclick="' + _navGo('community.html') + '" data-i18n="navCommunity" style="color:#891717">COMMUNITY</a>',
     '      <a href="#" onclick="' + _navGo('magazine.html') + '" data-i18n="navMagazine" style="color:#c9a96e">MAGAZINE</a>',
-    '      <a href="index.html" onclick="event.preventDefault();_papCloseNav();if(typeof openAllEditorials===\'function\'){openAllEditorials();}else if(typeof window.navigateWithInterstitial===\'function\'){navigateWithInterstitial(\'index.html\');}else{window.location.href=\'index.html\';}" data-i18n="navEditorial">EDITORIAL</a>',
+    /* EDITORIAL — on index.html (where #edAllOverlay exists) open the
+       overlay directly; on any other page navigate to the home-page hash
+       so pap-app.js auto-opens the overlay after landing. */
+    '      <a href="index.html#all-editorials" onclick="event.preventDefault();_papCloseNav();if(document.getElementById(\'edAllOverlay\')&&typeof openAllEditorials===\'function\'){openAllEditorials();}else{window.location.href=\'index.html#all-editorials\';}" data-i18n="navEditorial">EDITORIAL</a>',
     '      <a href="#" onclick="' + _navGo('articles.html') + '" data-i18n="navArticle">ARTICLE</a>',
     '      <a href="#" onclick="' + _navGo('films.html') + '" data-i18n="navFilm">FILM</a>',
     '    </div>',

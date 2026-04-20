@@ -1143,6 +1143,27 @@ function closeAllEditorials(skipHistory){
   }
 }
 
+/* Auto-open the editorials overlay when the page URL is index.html#all-editorials.
+   Triggered when the user clicks EDITORIAL in the hamburger menu of a sub-page
+   (pap-header.js navigates them here with the hash so the overlay opens on
+   arrival instead of just dropping them on the home screen). */
+(function _autoOpenEditorialsFromHash(){
+  function tryOpen(){
+    if(window.location.hash !== '#all-editorials') return;
+    var overlay=document.getElementById('edAllOverlay');
+    if(!overlay) return;
+    if(typeof openAllEditorials !== 'function') return;
+    // Delay slightly so edData + dependent state is initialised.
+    setTimeout(function(){ try{ openAllEditorials(); }catch(e){} }, 80);
+  }
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', tryOpen);
+  } else {
+    tryOpen();
+  }
+  window.addEventListener('hashchange', tryOpen);
+})();
+
 // ======== ALL FILMS OVERLAY ========
 function openAllFilms(){
   if(!isStandardOrAbove() && _interstitialCount < _INTERSTITIAL_MAX){
