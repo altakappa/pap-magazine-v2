@@ -160,10 +160,16 @@
     layoutFix.id = 'pap-header-layout';
     layoutFix.textContent = [
       /* push content below header on sub-pages */
-      '.pap-has-header .content{margin-left:0!important;padding-top:100px!important}',
-      '.pap-has-header .footer-legal{margin-left:0!important}',
+      '.pap-has-header:not(.pap-keep-side-nav) .content{margin-left:0!important;padding-top:100px!important}',
+      '.pap-has-header:not(.pap-keep-side-nav) .footer-legal{margin-left:0!important}',
+      /* pages that opt-in to keep the legacy .side-nav coexist with unified header */
+      '.pap-has-header.pap-keep-side-nav .content{padding-top:100px!important}',
+      '.pap-has-header.pap-keep-side-nav .footer-legal{padding-top:0!important}',
+      '.pap-has-header.pap-keep-side-nav .side-nav{top:72px!important;padding-top:20px!important;height:calc(100vh - 72px)!important}',
+      '@media(max-width:768px){.pap-has-header.pap-keep-side-nav .side-nav{top:60px!important;height:calc(100vh - 60px)!important;padding-top:12px!important}.pap-has-header.pap-keep-side-nav .content{padding-top:80px!important}}',
+      '@media(max-width:480px){.pap-has-header.pap-keep-side-nav .side-nav{top:56px!important;height:calc(100vh - 56px)!important}}',
       /* hide legacy duplicate navigation elements (NOT the page's own sub-header) */
-      '.pap-has-header .side-nav{display:none!important}',
+      '.pap-has-header:not(.pap-keep-side-nav) .side-nav{display:none!important}',
       '.pap-has-header .subpage-logo{display:none!important}',
       '.pap-has-header .auth-btn-sidenav{display:none!important}',
       '.pap-has-header > .lang-selector{display:none!important}',
@@ -179,7 +185,7 @@
       /* auth page: adjust wrapper */
       '.pap-has-header .auth-wrapper{padding-top:100px!important}',
       /* sub-pages mobile */
-      '@media(max-width:768px){.pap-has-header .content{padding-top:80px!important;padding-left:20px!important;padding-right:20px!important}.pap-has-header .footer-legal{padding-left:20px!important;padding-right:20px!important}.pap-has-header .c-header{top:60px!important}.pap-has-header .c-body{padding-top:104px!important}}',
+      '@media(max-width:768px){.pap-has-header:not(.pap-keep-side-nav) .content{padding-top:80px!important;padding-left:20px!important;padding-right:20px!important}.pap-has-header:not(.pap-keep-side-nav) .footer-legal{padding-left:20px!important;padding-right:20px!important}.pap-has-header .c-header{top:60px!important}.pap-has-header .c-body{padding-top:104px!important}}',
       '@media(max-width:480px){.pap-has-header .c-header{top:56px!important}.pap-has-header .c-body{padding-top:100px!important}}',
     ].join('\n');
     document.head.appendChild(layoutFix);
