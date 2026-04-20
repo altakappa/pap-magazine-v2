@@ -638,6 +638,171 @@ window.showToast = function(msg){
 // ======================================================================
 // INIT V2
 // ======================================================================
+// PHASE 4: PLATFORM INSIGHTS (Behance + Are.na + The Dots + BoF)
+// ======================================================================
+
+// ── 4.1 Featured Creators (BoF 500-style) ──
+window.loadFeaturedCreators = function(){
+  var container = document.getElementById('featuredCreators');
+  if(!container) return;
+  fetch('/api/community/featured-creators', { credentials: 'include' })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      var creators = data.creators || [];
+      if(creators.length === 0){
+        container.innerHTML = '<div style="text-align:center;padding:20px 0;font-size:11px;color:var(--text4)">'+(L[lang]&&L[lang].featuredEmpty||'Featured creators coming soon')+'</div>';
+        return;
+      }
+      var html = '';
+      creators.forEach(function(c){
+        var av = (c.name||'??').substring(0,2).toUpperCase();
+        html += '<div class="sw-item" onclick="openProfile(\''+c.id+'\')">';
+        html += '<div class="sw-av">'+av+'</div>';
+        html += '<div><div class="sw-nm">'+escHtml(c.name)+'</div>';
+        html += '<div class="sw-sub">'+escHtml(c.role||'')+'</div></div></div>';
+      });
+      container.innerHTML = html;
+    }).catch(function(){});
+};
+
+// ── 4.2 Moodboard Channel Filter (Are.na-style) ──
+window.filterMoodChannel = function(channel, btn){
+  // Update active state
+  var btns = document.querySelectorAll('.mood-channel');
+  btns.forEach(function(b){ b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  // Reload moodboards with channel filter
+  if(typeof loadMoodboards === 'function') loadMoodboards(channel);
+};
+
+// Extend loadMoodboards to support channel filter
+var _origLoadMoodboards = window.loadMoodboards;
+window.loadMoodboards = function(channel){
+  var grid = document.getElementById('moodGrid');
+  if(!grid) return;
+  var url = '/api/community/moodboards';
+  if(channel && channel !== 'all') url += '?channel=' + encodeURIComponent(channel);
+  fetch(url, { credentials: 'include' })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      var boards = data.boards || [];
+      if(boards.length === 0){
+        grid.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--text4);font-size:13px;grid-column:1/-1">'+(L[lang]&&L[lang].moodEmpty||'No inspiration boards yet')+'</div>';
+        return;
+      }
+      var html = '';
+      boards.forEach(function(b){
+        html += '<div class="mood-card" onclick="openMoodboard(\''+b.id+'\')">';
+        html += '<div class="mood-preview">';
+        var imgs = b.previewImages || [];
+        if(imgs.length > 0){
+          imgs.slice(0,3).forEach(function(img){
+            html += '<div class="mood-img" style="background-image:url('+escHtml(img)+')"></div>';
+          });
+        } else {
+          html += '<div class="mood-img mood-img-empty"></div>';
+        }
+        html += '</div>';
+        html += '<div class="mood-caption"><div class="mood-title">'+escHtml(b.title)+'</div>';
+        if(b.channel) html += '<span class="mood-tag">'+escHtml(b.channel)+'</span> ';
+        html += '<span style="font-size:11px;color:var(--text3)">'+escHtml(b.blockCount||0)+' blocks</span></div>';
+        html += '<div class="mood-footer"><button class="mood-vote-btn" onclick="event.stopPropagation();voteMoodboard(\''+b.id+'\',this)">♥ '+b.voteCount+'</button>';
+        if(b.tags && b.tags.length > 0){
+          html += '<div class="mood-tags">'+b.tags.slice(0,3).map(function(t){return '<span class="mood-tag">'+escHtml(t)+'</span>';}).join('')+'</div>';
+        }
+        html += '</div></div>';
+      });
+      grid.innerHTML = html;
+    }).catch(function(){ showToast('Failed to load boards'); });
+};
+
+// ── 4.3 AI Archive Search ──
+window.searchArchive = function(){
+  var input = document.getElementById('aiSearchInput');
+  if(!input || !input.value.trim()) return;
+  var query = input.value.trim();
+  showToast('Searching PAP archive for "' + query + '"...');
+  // Future: integrate with AI backend
+  fetch('/api/community/search?q=' + encodeURIComponent(query), { credentials: 'include' })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      // Show results in a dedicated area or redirect
+      if(data.results && data.results.length > 0){
+        showToast(data.results.length + ' results found');
+      } else {
+        showToast('No results found. Try different keywords.');
+      }
+    }).catch(function(){ showToast('Search is coming soon'); });
+};
+
+// ── 4.4 Profile Milestones (Behance-style) ──
+window.loadMilestones = function(userId){
+  var container = document.getElementById('ppMilestoneList');
+  var section = document.getElementById('ppMilestones');
+  if(!container || !section) return;
+  fetch('/api/community/milestones?userId=' + userId, { credentials: 'include' })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      var milestones = data.milestones || [];
+      if(milestones.length === 0){
+        section.style.display = 'none';
+        return;
+      }
+      section.style.display = '';
+      var icons = { editorial: '📸', collaboration: '🤝', badge: '🏆', project: '📋', community: '💬' };
+      var html = '';
+      milestones.forEach(function(m){
+        var icon = icons[m.type] || '⭐';
+        html += '<div class="milestone-item">';
+        html += '<div class="milestone-icon">'+icon+'</div>';
+        html += '<div class="milestone-info">';
+        html += '<div class="milestone-name">'+escHtml(m.title)+'</div>';
+        if(m.description) html += '<div class="milestone-desc">'+escHtml(m.description)+'</div>';
+        html += '<div class="milestone-date">'+timeAgo(m.date)+'</div>';
+        html += '</div></div>';
+      });
+      container.innerHTML = html;
+    }).catch(function(){ section.style.display = 'none'; });
+};
+
+// ── 4.5 Community Survey ──
+window.openSurvey = function(){
+  showToast(L[lang]&&L[lang].cvSoon||'Community survey coming soon!');
+};
+
+// ── 4.6 Membership Tier Display ──
+window.loadMembershipTier = function(){
+  var badge = document.getElementById('membershipBadge');
+  var label = document.getElementById('membershipLabel');
+  if(!badge || !label || !SB.user) return;
+  fetch('/api/community/membership', { credentials: 'include' })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if(data.tier && data.tier !== 'free'){
+        badge.style.display = '';
+        label.textContent = data.tier.charAt(0).toUpperCase() + data.tier.slice(1);
+        badge.className = 'membership-indicator tier-' + data.tier;
+      }
+    }).catch(function(){});
+};
+
+// ── 4.7 Team Tags rendering helper (The Dots-style) ──
+window.renderTeamTags = function(team){
+  if(!team || team.length === 0) return '';
+  var html = '<div class="proj-team">';
+  var shown = team.slice(0,4);
+  shown.forEach(function(m){
+    var initials = (m.name||'?').substring(0,1).toUpperCase();
+    html += '<div class="proj-team-av" title="'+escHtml(m.name)+' — '+escHtml(m.role||'')+'">'+initials+'</div>';
+  });
+  if(team.length > 4){
+    html += '<div class="proj-team-more">+' + (team.length - 4) + '</div>';
+  }
+  html += '</div>';
+  return html;
+};
+
+// ======================================================================
 function initV2(){
   // Periodically check notifications (every 60s)
   if(SB.user){
@@ -645,13 +810,19 @@ function initV2(){
     setInterval(loadNotifications, 60000);
     // Check badges on load
     setTimeout(checkBadges, 3000);
+    // Load membership tier
+    loadMembershipTier();
   }
+
+  // Load featured creators for sidebar
+  loadFeaturedCreators();
 
   // Listen for auth changes
   document.addEventListener('pap-auth-changed', function(){
     if(SB.user){
       loadNotifications();
       checkBadges();
+      loadMembershipTier();
     }
   });
 }
