@@ -43,8 +43,8 @@
   --text2: #6e6e73;
   --text3: #86868b;
   --text4: #aeaeb2;
-  --accent: #0071e3;
-  --accent-hover: #0077ed;
+  --accent: #891717;
+  --accent-hover: #a01c1c;
   --sans: "SF Pro Text","SF Pro Icons","Helvetica Neue",Helvetica,Arial,sans-serif;
   --display: "SF Pro Display","SF Pro Icons","Helvetica Neue",Helvetica,Arial,sans-serif;
   --shadow-sm: none;
@@ -101,11 +101,10 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
   height: 44px; display: flex; align-items: center; padding: 0 max(22px, env(safe-area-inset-left));
   justify-content: center;
 }
-.c-logo { margin-right: 32px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; }
-.c-logo img { height: 18px; width: auto; filter: invert(1); }
+.c-logo { margin-right: 32px; flex-shrink: 0; display: flex; align-items: center; }
 .c-logo span {
   color: var(--text); font-family: var(--display); font-weight: 600;
-  font-size: 14px; letter-spacing: -0.01em; text-transform: none;
+  font-size: 11px; letter-spacing: .15em; text-transform: uppercase;
 }
 .c-nav { display: flex; gap: 0; height: 100%; }
 .c-nav a {
@@ -223,7 +222,7 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
   color: var(--text); letter-spacing: -0.022em;
 }
 .search-input::placeholder { color: var(--text4); }
-.search-input:focus { box-shadow: 0 0 0 4px rgba(0,113,227,.15); }
+.search-input:focus { box-shadow: 0 0 0 4px rgba(137,23,23,.15); }
 .search-filter {
   padding: 14px 24px; border: none; background: var(--surface2);
   font-size: 15px; font-family: var(--sans); color: var(--text2);
@@ -260,9 +259,9 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
 
 /* Pinned posts: subtle highlight, no heavy inset shadow */
 .post-table tbody tr.pinned {
-  background: rgba(0,113,227,.03); border-bottom: 1px solid var(--border); box-shadow: none;
+  background: rgba(137,23,23,.03); border-bottom: 1px solid var(--border); box-shadow: none;
 }
-.post-table tbody tr.pinned:hover { background: rgba(0,113,227,.06); }
+.post-table tbody tr.pinned:hover { background: rgba(137,23,23,.06); }
 
 .post-row-category {
   font-size: 12px; font-weight: 500; text-transform: none;
@@ -280,7 +279,7 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
   border-radius: 980px; color: var(--text3); margin-left: 0; white-space: nowrap;
   font-weight: 500; letter-spacing: -0.01em;
 }
-.post-row-badge.new { background: rgba(0,113,227,.08); color: var(--accent); }
+.post-row-badge.new { background: rgba(137,23,23,.08); color: var(--accent); }
 .post-row-badge.hot { color: #e74c3c; background: rgba(231,76,60,.06); }
 .post-row-author {
   color: var(--text3); min-width: auto; text-align: left; font-size: 13px;
@@ -319,10 +318,10 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
    ========================================================== */
 .orig-toggle-mini {
   display: inline-block; font-size: 11px; font-weight: 500; color: var(--accent);
-  background: rgba(0,113,227,.06); padding: 4px 12px; border-radius: 980px; margin-left: 10px;
+  background: rgba(137,23,23,.06); padding: 4px 12px; border-radius: 980px; margin-left: 10px;
   cursor: pointer; transition: background var(--transition); white-space: nowrap; vertical-align: middle;
 }
-.orig-toggle-mini:hover { background: rgba(0,113,227,.12); }
+.orig-toggle-mini:hover { background: rgba(137,23,23,.12); }
 .orig-toggle-wrap { display: flex; align-items: center; gap: 12px; margin: 16px 0 12px; }
 .orig-toggle-btn {
   font-size: 13px; font-weight: 500; letter-spacing: -0.01em; padding: 8px 20px;
@@ -393,7 +392,7 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
   border-radius: 12px; transition: box-shadow var(--transition);
   letter-spacing: -0.022em;
 }
-.ai-sel:hover { box-shadow: 0 0 0 4px rgba(0,113,227,.1); }
+.ai-sel:hover { box-shadow: 0 0 0 4px rgba(137,23,23,.1); }
 .ai-sel option { background: #fff; color: #1d1d1f; }
 .ai-aes { display: flex; flex-wrap: wrap; gap: 8px; }
 .ai-aes-tag {
@@ -458,7 +457,7 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
   outline: none; border-radius: 12px; transition: box-shadow var(--transition);
   letter-spacing: -0.022em;
 }
-.dir-search:focus { box-shadow: 0 0 0 4px rgba(0,113,227,.15); }
+.dir-search:focus { box-shadow: 0 0 0 4px rgba(137,23,23,.15); }
 .dir-search::placeholder { color: var(--text4); }
 .dir-filters { display: flex; gap: 8px; flex-wrap: wrap; }
 .dir-f {
@@ -709,7 +708,7 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
   font-family: var(--sans); outline: none; background: var(--surface2);
   border-radius: 12px; transition: box-shadow var(--transition);
 }
-.comment-input:focus { box-shadow: 0 0 0 4px rgba(0,113,227,.15); }
+.comment-input:focus { box-shadow: 0 0 0 4px rgba(137,23,23,.15); }
 .comment-send {
   padding: 12px 24px; font-size: 14px; font-weight: 400; background: var(--accent);
   color: #fff; border: none; letter-spacing: -0.01em; border-radius: 980px;
@@ -841,7 +840,7 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
 }
 .notif-item:hover { background: var(--surface2); }
 .notif-item:last-child { border-bottom: none; }
-.notif-item.unread { background: rgba(0,113,227,.03); }
+.notif-item.unread { background: rgba(137,23,23,.03); }
 .notif-item.unread::before {
   content: ''; width: 6px; height: 6px; border-radius: 50%;
   background: var(--accent); flex-shrink: 0; margin-top: 7px;
@@ -893,7 +892,7 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
   cursor: pointer; transition: background var(--transition);
 }
 .dm-convo:hover, .dm-conv-item:hover { background: var(--surface2); }
-.dm-convo.unread, .dm-conv-item.unread { background: rgba(0,113,227,.03); }
+.dm-convo.unread, .dm-conv-item.unread { background: rgba(137,23,23,.03); }
 .dm-convo-avatar, .dm-conv-av {
   width: 44px; height: 44px; border-radius: 50%; background: var(--surface2);
   display: flex; align-items: center; justify-content: center;
@@ -925,7 +924,7 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
   font-size: 15px; font-family: var(--sans); outline: none; background: var(--surface2);
   transition: box-shadow var(--transition);
 }
-.dm-input:focus { box-shadow: 0 0 0 4px rgba(0,113,227,.15); background: #fff; }
+.dm-input:focus { box-shadow: 0 0 0 4px rgba(137,23,23,.15); background: #fff; }
 .dm-send {
   padding: 10px 20px; background: var(--accent); color: #fff; border: none;
   font-size: 14px; font-weight: 400; letter-spacing: -0.01em; border-radius: 980px;
@@ -1124,7 +1123,7 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
   transition: box-shadow var(--transition); letter-spacing: -0.022em;
 }
 .ai-search-hero .ai-search-input:focus {
-  box-shadow: 0 0 0 4px rgba(0,113,227,.15);
+  box-shadow: 0 0 0 4px rgba(137,23,23,.15);
 }
 .ai-search-hero .ai-search-input::placeholder { color: var(--text4); }
 .ai-search-hero p {
@@ -1193,7 +1192,7 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
   border-radius: 980px; background: var(--surface2); color: var(--text3);
 }
 .membership-badge.tier-free { background: var(--surface2); color: var(--text4); }
-.membership-badge.tier-pro { background: rgba(0,113,227,.08); color: #0071e3; }
+.membership-badge.tier-pro { background: rgba(137,23,23,.08); color: #891717; }
 .membership-badge.tier-studio { background: rgba(29,29,31,.08); color: var(--text); }
 .membership-badge .mb-icon {
   width: 16px; height: 16px; border-radius: 50%; display: flex;
@@ -1515,7 +1514,7 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
 
 <!-- HEADER -->
 <div class="c-header">
-  <div class="c-logo"><img loading="lazy" loading="lazy" src="pap-logo.png" alt="PAP"> <span>COMMUNITY</span></div>
+  <div class="c-logo"><span>COMMUNITY</span></div>
   <nav role="navigation" aria-label="Main navigation" class="c-nav">
     <a href="#" onclick="goTab('cafe',this);return false" class="active" data-i18n="tabCafe">게시판</a>
     <a href="#" onclick="goTab('projects',this);return false" data-i18n="tabProjects">프로젝트</a>
