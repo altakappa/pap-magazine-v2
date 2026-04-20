@@ -798,44 +798,18 @@ function getSupabase() {
   return _supabaseClient;
 }
 
-// ======== SOCIAL LOGIN (frontend Supabase OAuth with PKCE) ========
-async function socialLogin(provider) {
-  if (provider === 'kakao') {
-    if (typeof PAP !== 'undefined' && PAP.auth && PAP.auth.loginWithKakao) {
-      PAP.auth.loginWithKakao();
-    } else {
-      window.location.href = '/api/auth/kakao';
-    }
+// ======== SOCIAL LOGIN (unified: all providers go through backend endpoints) ========
+// Backend endpoints: /api/auth/google, /api/auth/facebook, /api/auth/kakao
+// They handle PKCE + CSRF state via httpOnly cookies (no verifier loss on Safari ITP).
+// Callback sets pap_oauth_token httpOnly cookie and redirects to /auth?oauth=success.
+function socialLogin(provider) {
+  if (provider !== 'google' && provider !== 'facebook' && provider !== 'kakao') {
+    alert('Unsupported provider: ' + provider);
     return;
   }
-
-  var sb = getSupabase();
-  if (!sb) {
-    alert('Supabase client not loaded. Please refresh and try again.');
-    return;
-  }
-
-  var opts = {
-    redirectTo: window.location.origin + '/auth',
-    skipBrowserRedirect: false,
-  };
-  if (provider === 'google') {
-    opts.queryParams = { access_type: 'offline', prompt: 'consent' };
-  }
-
-  var result = await sb.auth.signInWithOAuth({ provider: provider, options: opts });
-  if (result.error) {
-    alert('OAuth error: ' + result.error.message);
-    return;
-  }
-
-  // Backup PKCE code_verifier to cookie (Safari ITP may clear localStorage on redirect)
-  setTimeout(function() {
-    var verifier = localStorage.getItem(VERIFIER_KEY);
-    if (verifier) {
-      setCookie('pap-pkce-verifier', verifier, 10); // 10 min expiry
-    }
-  }, 100);
+  // Preserve intended post-login redirect as a query param (backend callback ignores it,
+  // but this page's own redirect logic will honor the original URL after token exchange).
+  window.location.href = '/api/auth/' + provider;
 }
 
 // ======== ERROR MESSAGES (8 LANGUAGES) ========
@@ -1575,6 +1549,6 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 </script>
-<script src="pap-header.js?v=7" defer></script>
+<script src="pap-header.js?v=8" defer></script>
 </body>
 </html>

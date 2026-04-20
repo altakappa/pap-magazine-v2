@@ -166,6 +166,7 @@
       '.pap-has-header.pap-keep-side-nav .content{padding-top:100px!important}',
       '.pap-has-header.pap-keep-side-nav .footer-legal{padding-top:0!important}',
       '.pap-has-header.pap-keep-side-nav .side-nav{top:72px!important;padding-top:20px!important;height:calc(100vh - 72px)!important}',
+      '.pap-has-header.pap-keep-side-nav .side-nav .nav-dots{display:none!important}',
       '@media(max-width:768px){.pap-has-header.pap-keep-side-nav .side-nav{top:60px!important;height:calc(100vh - 60px)!important;padding-top:12px!important}.pap-has-header.pap-keep-side-nav .content{padding-top:80px!important}}',
       '@media(max-width:480px){.pap-has-header.pap-keep-side-nav .side-nav{top:56px!important;height:calc(100vh - 56px)!important}}',
       /* hide legacy duplicate navigation elements (NOT the page's own sub-header) */
