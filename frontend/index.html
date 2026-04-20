@@ -2,6 +2,30 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<script>
+/* Deep-link cover: when landing on index.html with ?ed=<title>, hide the
+   homepage content with a black cover so the user doesn't see the home
+   page briefly flash before the editorial overlay opens. The cover is
+   removed by pap-app.js after openEditorial() succeeds. Also suppresses
+   the beta-notice popup for this deep-link flow. */
+(function(){
+  try{
+    var params=new URLSearchParams(window.location.search);
+    if(!params.get('ed'))return;
+    window._papDeepLinkMode=true;
+    var style=document.createElement('style');
+    style.id='pap-deeplink-cover-style';
+    style.textContent='html,body{background:#000!important}body{opacity:0!important;transition:opacity .35s ease}body.pap-deeplink-ready{opacity:1!important}#betaNotice{display:none!important}';
+    (document.head||document.documentElement).appendChild(style);
+    /* Safety net: if editorial fails to open within 4s, reveal anyway */
+    setTimeout(function(){
+      if(document.body&&!document.body.classList.contains('pap-deeplink-ready')){
+        document.body.classList.add('pap-deeplink-ready');
+      }
+    },4000);
+  }catch(e){}
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>PAP Magazine - Fashion, Editorial & Film</title>
 <meta name="description" content="PAP Magazine is a global fashion and editorial platform showcasing editorials, films, and creative content from emerging and established artists worldwide.">
@@ -52,7 +76,7 @@
 <script src="pap-geo-lang.js"></script>
 <script src="pap-img-fallback.js"></script>
 <script src="cookie-consent.js" defer></script>
-<script src="beta-notice.js" defer></script>
+<script src="beta-notice.js?v=2" defer></script>
 <!-- Print Styles -->
 <style media="print">
 @media print{
@@ -610,7 +634,7 @@
   </div>
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="pap-api.js?v=2" defer></script><script src="pap-social.js?v=2" defer></script><script src="pap-app.js?v=4" defer></script><script src="pap-header.js?v=4" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="pap-api.js?v=2" defer></script><script src="pap-social.js?v=2" defer></script><script src="pap-app.js?v=5" defer></script><script src="pap-header.js?v=4" defer></script>
 <script>
 // AI Recommendation Fallback: reads theme tags from DOM ed-row-card elements
 try{

@@ -131,7 +131,18 @@
     var now=new Date(); var end=new Date(PAP_BETA_END+'T23:59:59');
     return now<=end;
   }
-  function initNotice(){ if(shouldShowBeta()) showNotice(); }
+  /* Skip the beta popup on deep-link flows (e.g. ?ed=<title> landing
+     on index.html to open an editorial directly). The user clicked an
+     editorial preview on magazine.html — don't interrupt that flow with
+     an unrelated homepage-level beta notice. */
+  function isDeepLinkFlow(){
+    try{
+      var p=new URLSearchParams(window.location.search);
+      if(p.get('ed'))return true;
+    }catch(e){}
+    return !!window._papDeepLinkMode;
+  }
+  function initNotice(){ if(isDeepLinkFlow()) return; if(shouldShowBeta()) showNotice(); }
   if(document.readyState==='loading'){
     document.addEventListener('DOMContentLoaded',initNotice);
   }else{

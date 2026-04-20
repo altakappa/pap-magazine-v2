@@ -3158,13 +3158,31 @@ function buildPagination(container,currentPage,totalPages,onPageChange,isDark){
   if(!edName)return;
   // Clean ?ed= from URL immediately (before pushState from openEditorial)
   history.replaceState(null,'',window.location.pathname);
-  function tryOpen(){
-    if(typeof openEditorial==='function'){
-      openEditorial(edName,'');
+  /* Reveal body (remove the deep-link black cover injected in index.html
+     <head>) once the editorial overlay is visible on top. */
+  function revealBody(){
+    if(document.body&&!document.body.classList.contains('pap-deeplink-ready')){
+      document.body.classList.add('pap-deeplink-ready');
     }
   }
-  if(document.readyState==='complete') setTimeout(tryOpen,1200);
-  else window.addEventListener('load',function(){setTimeout(tryOpen,1200);});
+  /* Poll for edDetails to populate (loaded async from API). As soon as
+     the entry is available, open the editorial — no more blind 1200ms
+     wait. Falls back to opening with whatever data exists after 3s. */
+  var pollStart=Date.now();
+  function tryOpen(){
+    if(typeof openEditorial!=='function'){
+      setTimeout(tryOpen,100); return;
+    }
+    var ready=(typeof edDetails==='object'&&edDetails&&(edDetails[edName]||Object.keys(edDetails).length>0));
+    var elapsed=Date.now()-pollStart;
+    if(!ready&&elapsed<3000){setTimeout(tryOpen,100);return;}
+    try{ openEditorial(edName,''); }catch(e){}
+    /* Reveal shortly after openEditorial triggers its own render so the
+       editorial overlay is painted before we fade in. */
+    setTimeout(revealBody,60);
+  }
+  if(document.readyState==='complete') tryOpen();
+  else window.addEventListener('load',tryOpen);
 })();
 
 // ======== IMAGE RIGHT-CLICK PROTECTION ========
