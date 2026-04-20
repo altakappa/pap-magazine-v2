@@ -319,7 +319,7 @@ function lockScroll(){if(_scrollLockCount===0){_savedScrollY=window.scrollY;docu
 function unlockScroll(){_scrollLockCount--;if(_scrollLockCount<=0){_scrollLockCount=0;document.body.style.position='';document.body.style.top='';document.body.style.left='';document.body.style.right='';window.scrollTo(0,_savedScrollY);}}
 
 // ======== INTERSTITIAL AD + PREMIUM UPSELL ========
-function isStandardOrAbove(){try{var u=localStorage.getItem('pap-user');if(!u)return false;var user=JSON.parse(u);return user&&(user.subscription==='standard'||user.subscription==='premium');}catch(e){return false;}}
+function isStandardOrAbove(){try{if(typeof isBetaActive==='function'&&isBetaActive()&&!!localStorage.getItem('pap-token'))return true;var u=localStorage.getItem('pap-user');if(!u)return false;var user=JSON.parse(u);return user&&(user.subscription==='standard'||user.subscription==='premium');}catch(e){return false;}}
 var _interstitialCount=0;
 var _INTERSTITIAL_MAX=2;
 var _brandAds=[];

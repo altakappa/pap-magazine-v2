@@ -1384,8 +1384,9 @@ var edLogoFolders={
 function getLogoFolderId(t){if(edLogoFolders[t])return edLogoFolders[t];var tL=t.toLowerCase();for(var k in edLogoFolders){if(k.toLowerCase()===tL)return edLogoFolders[k];}return null;}
 
 // Global auth helpers (needed by openEditorial for premium logo section)
-function isPremium(){try{var u=localStorage.getItem('pap-user');if(!u)return false;var user=JSON.parse(u);return user&&user.subscription==='premium';}catch(e){return false;}}
-function isStandardOrAbove(){try{var u=localStorage.getItem('pap-user');if(!u)return false;var user=JSON.parse(u);return user&&(user.subscription==='standard'||user.subscription==='premium');}catch(e){return false;}}
+// 베타 기간 중에는 로그인한 모든 회원에게 전체 접근 권한 부여
+function isPremium(){try{if(typeof isBetaActive==='function'&&isBetaActive()&&!!localStorage.getItem('pap-token'))return true;var u=localStorage.getItem('pap-user');if(!u)return false;var user=JSON.parse(u);return user&&user.subscription==='premium';}catch(e){return false;}}
+function isStandardOrAbove(){try{if(typeof isBetaActive==='function'&&isBetaActive()&&!!localStorage.getItem('pap-token'))return true;var u=localStorage.getItem('pap-user');if(!u)return false;var user=JSON.parse(u);return user&&(user.subscription==='standard'||user.subscription==='premium');}catch(e){return false;}}
 
 function openEditorial(title,thumb){
   var d=edDetails[title];
@@ -3013,6 +3014,7 @@ try{
 (function(){
   function isStandardOrAbove(){
     try{
+      if(typeof isBetaActive==='function'&&isBetaActive()&&!!localStorage.getItem('pap-token'))return true;
       var u=localStorage.getItem('pap-user');
       if(!u) return false;
       var user=JSON.parse(u);
@@ -3021,6 +3023,7 @@ try{
   }
   function isPremium(){
     try{
+      if(typeof isBetaActive==='function'&&isBetaActive()&&!!localStorage.getItem('pap-token'))return true;
       var u=localStorage.getItem('pap-user');
       if(!u) return false;
       var user=JSON.parse(u);

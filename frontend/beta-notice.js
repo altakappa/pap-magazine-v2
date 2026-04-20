@@ -125,9 +125,16 @@
   }
 
   /* ── init ─────────────────────────────────────────── */
+  /* Respect PAP_BETA_END from pap-app.js — hide popup when beta is over */
+  function shouldShowBeta(){
+    if(typeof PAP_BETA_END==='undefined'||PAP_BETA_END===null) return true;
+    var now=new Date(); var end=new Date(PAP_BETA_END+'T23:59:59');
+    return now<=end;
+  }
+  function initNotice(){ if(shouldShowBeta()) showNotice(); }
   if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',showNotice);
+    document.addEventListener('DOMContentLoaded',initNotice);
   }else{
-    showNotice();
+    initNotice();
   }
 })();

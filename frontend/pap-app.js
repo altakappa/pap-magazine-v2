@@ -1,5 +1,18 @@
 
 
+// ======== BETA MODE CONFIG ========
+// 베타 종료 날짜를 설정하면 해당 날짜까지 가입 회원 전원 전체 콘텐츠 이용 가능
+// 베타 종료 후에는 구독 등급(free/standard/premium)에 따라 접근 차등 적용
+// 날짜 형식: 'YYYY-MM-DD' (예: '2026-12-31') 또는 null (베타 무기한)
+var PAP_BETA_END = null;   // ← 여기에 종료 날짜 입력 (예: '2026-12-31')
+
+function isBetaActive(){
+  if(!PAP_BETA_END) return true; // null이면 무기한 베타
+  var now = new Date();
+  var end = new Date(PAP_BETA_END + 'T23:59:59');
+  return now <= end;
+}
+
 // ======== MODAL SCROLL LOCK (공통) ========
 // 모달이 열릴 때 배경 스크롤을 잠그고, 닫힐 때 원래 위치로 복원합니다.
 var _scrollLockCount=0;
@@ -382,8 +395,21 @@ var edLogoFolders={
 function getLogoFolderId(t){if(edLogoFolders[t])return edLogoFolders[t];var tL=t.toLowerCase();for(var k in edLogoFolders){if(k.toLowerCase()===tL)return edLogoFolders[k];}return null;}
 
 // Global auth helpers (needed by openEditorial for premium logo section)
-function isPremium(){try{var u=localStorage.getItem('pap-user');if(!u)return false;var user=JSON.parse(u);return user&&user.subscription==='premium';}catch(e){return false;}}
-function isStandardOrAbove(){try{var u=localStorage.getItem('pap-user');if(!u)return false;var user=JSON.parse(u);return user&&(user.subscription==='standard'||user.subscription==='premium');}catch(e){return false;}}
+// 베타 기간 중에는 로그인한 모든 회원에게 전체 접근 권한 부여
+function isPremium(){
+  try{
+    if(isBetaActive() && isLoggedIn()) return true;
+    var u=localStorage.getItem('pap-user');if(!u)return false;
+    var user=JSON.parse(u);return user&&user.subscription==='premium';
+  }catch(e){return false;}
+}
+function isStandardOrAbove(){
+  try{
+    if(isBetaActive() && isLoggedIn()) return true;
+    var u=localStorage.getItem('pap-user');if(!u)return false;
+    var user=JSON.parse(u);return user&&(user.subscription==='standard'||user.subscription==='premium');
+  }catch(e){return false;}
+}
 function isLoggedIn(){return !!localStorage.getItem('pap-token');}
 
 // ======== INTERSTITIAL AD + PREMIUM UPSELL ========
