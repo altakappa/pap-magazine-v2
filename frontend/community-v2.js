@@ -31,7 +31,7 @@ window.editPost = function(postId){
   if(catSel) catSel.value = post.cat || 'free';
 
   // Change submit button to update mode
-  var submitBtn = overlay.querySelector('.w-submit');
+  var submitBtn = overlay.querySelector('.write-submit');
   if(submitBtn){
     submitBtn.setAttribute('data-edit-id', postId);
     submitBtn.textContent = L[lang].submitBtn || 'Update';
@@ -42,7 +42,7 @@ window.editPost = function(postId){
 var _origSubmitPost = window.submitPost;
 window.submitPost = function(){
   var overlay = document.getElementById('writeOverlay');
-  var submitBtn = overlay ? overlay.querySelector('.w-submit') : null;
+  var submitBtn = overlay ? overlay.querySelector('.write-submit') : null;
   var editId = submitBtn ? submitBtn.getAttribute('data-edit-id') : null;
 
   if(editId){
@@ -782,6 +782,19 @@ window.loadMembershipTier = function(){
         badge.style.display = '';
         label.textContent = data.tier.charAt(0).toUpperCase() + data.tier.slice(1);
         badge.className = 'membership-indicator tier-' + data.tier;
+      }
+    }).catch(function(){});
+};
+
+// ── 4.6b Open Moodboard detail ──
+window.openMoodboard = function(boardId){
+  showToast('Moodboard detail view coming soon');
+  // Future: fetch board detail and display overlay
+  fetch('/api/community/moodboards/' + boardId, { credentials: 'include' })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if(data && data.title){
+        showToast('Viewing: ' + data.title);
       }
     }).catch(function(){});
 };
