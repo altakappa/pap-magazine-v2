@@ -289,6 +289,9 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   var artCurrentPage = 1;
+  /* Override global PAP_PER_PAGE (20) with a 3-column friendly 21 so the
+     grid always fills complete rows on this page. */
+  var ART_PER_PAGE = 21;
 
   // Expose renderCards globally so API sync can trigger re-render
   window._papArticleRenderCards = function(){ artCurrentPage=1; renderCards(); };
@@ -304,10 +307,10 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
 
-    var totalPages = Math.ceil(filtered.length / PAP_PER_PAGE);
+    var totalPages = Math.ceil(filtered.length / ART_PER_PAGE);
     if (artCurrentPage > totalPages) artCurrentPage = totalPages || 1;
-    var startIdx = (artCurrentPage - 1) * PAP_PER_PAGE;
-    var pageItems = filtered.slice(startIdx, startIdx + PAP_PER_PAGE);
+    var startIdx = (artCurrentPage - 1) * ART_PER_PAGE;
+    var pageItems = filtered.slice(startIdx, startIdx + ART_PER_PAGE);
 
     pageItems.forEach(function(a) {
       var origIdx = artData.indexOf(a);

@@ -291,6 +291,10 @@ document.addEventListener('DOMContentLoaded', function() {
   // Expose renderCards globally so API sync can trigger re-render
   window._papFilmRenderCards = function(){ filmCurrentPage=1; renderCards(); };
 
+  /* Override global PAP_PER_PAGE (20) with a 3-column friendly 21 so the
+     grid always fills complete rows on this page. */
+  var FILM_PER_PAGE = 21;
+
   function renderCards() {
     var grid = document.getElementById('cardGrid');
     grid.innerHTML = '';
@@ -302,10 +306,10 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
 
-    var totalPages = Math.ceil(filtered.length / PAP_PER_PAGE);
+    var totalPages = Math.ceil(filtered.length / FILM_PER_PAGE);
     if (filmCurrentPage > totalPages) filmCurrentPage = totalPages || 1;
-    var startIdx = (filmCurrentPage - 1) * PAP_PER_PAGE;
-    var pageItems = filtered.slice(startIdx, startIdx + PAP_PER_PAGE);
+    var startIdx = (filmCurrentPage - 1) * FILM_PER_PAGE;
+    var pageItems = filtered.slice(startIdx, startIdx + FILM_PER_PAGE);
 
     pageItems.forEach(function(f) {
       var origIdx = filmAllData.indexOf(f);
