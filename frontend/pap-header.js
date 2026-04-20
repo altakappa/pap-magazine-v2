@@ -56,8 +56,16 @@
      below, not removed, to avoid breaking inline scripts that reference
      them by id/class. */
   _removeAll('header.header');
+  _removeAll('header.auth-header');
   _removeAll('.nav-overlay');
   _removeAll('.pap-search-overlay');
+  /* Remove ORPHAN language selectors that live outside the header (e.g.
+     legacy `.lang-selector` in business/contact/about/submission/pullletter,
+     `.mp-lang` in mypage). They each contain a stray `<select id="langSelect">`
+     which creates duplicate IDs in DOM once the unified header is injected. */
+  _removeAll('body > .lang-selector');
+  _removeAll('.mp-lang');
+  _removeAll('.mp-back');
 
   /* ================================================================
      1. CSS — inject only when pap-styles.css is absent
@@ -168,6 +176,8 @@
       '.pap-has-header .c-body{padding-top:116px!important}',
       /* mypage: adjust wrapper */
       '.pap-has-header .mp-wrapper{padding-top:100px!important}',
+      /* auth page: adjust wrapper */
+      '.pap-has-header .auth-wrapper{padding-top:100px!important}',
       /* sub-pages mobile */
       '@media(max-width:768px){.pap-has-header .content{padding-top:80px!important;padding-left:20px!important;padding-right:20px!important}.pap-has-header .footer-legal{padding-left:20px!important;padding-right:20px!important}.pap-has-header .c-header{top:60px!important}.pap-has-header .c-body{padding-top:104px!important}}',
       '@media(max-width:480px){.pap-has-header .c-header{top:56px!important}.pap-has-header .c-body{padding-top:100px!important}}',
@@ -323,8 +333,12 @@
     }
     /* Clean-up again in case inline markup was added late */
     _removeAll('header.header');
+    _removeAll('header.auth-header');
     _removeAll('.nav-overlay');
     _removeAll('.pap-search-overlay');
+    _removeAll('body > .lang-selector');
+    _removeAll('.mp-lang');
+    _removeAll('.mp-back');
 
     var wrapper = document.createElement('div');
     wrapper.innerHTML = headerHTML;
