@@ -537,7 +537,18 @@ function getLogoFolderId(t){if(edLogoFolders[t])return edLogoFolders[t];var tL=t
 // Global auth helpers (needed by openEditorial for premium logo section)
 // 베타 기간 중에는 "로그인한 회원(무료 포함)"에게만 전체 접근 권한 부여
 // 비로그인 방문자는 유료 서비스에 접근 불가 → 로그인/회원가입 유도
-function isLoggedIn(){return !!localStorage.getItem('pap-token');}
+// 로그인 판별을 관대하게: pap-token 또는 파싱 가능한 pap-user 중 하나만 있어도
+// 로그인 회원으로 인정. 세션 경계/토큰 리프레시 중 race로 한쪽이 일시적으로
+// 비어 있어도 베타 회원이 잘못 페이월로 떨어지지 않게 방지한다.
+function isLoggedIn(){
+  try{
+    if(localStorage.getItem('pap-token')) return true;
+    var u=localStorage.getItem('pap-user');
+    if(!u) return false;
+    var parsed=JSON.parse(u);
+    return !!(parsed && (parsed.id || parsed.email));
+  }catch(e){ return false; }
+}
 function isPremium(){
   try{
     if(isBetaActive()){

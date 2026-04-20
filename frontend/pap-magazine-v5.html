@@ -1389,8 +1389,8 @@ function getLogoFolderId(t){if(edLogoFolders[t])return edLogoFolders[t];var tL=t
 
 // Global auth helpers (needed by openEditorial for premium logo section)
 // 베타 기간 중에는 로그인한 모든 회원에게 전체 접근 권한 부여
-function isPremium(){try{if(typeof isBetaActive==='function'&&isBetaActive()&&!!localStorage.getItem('pap-token'))return true;var u=localStorage.getItem('pap-user');if(!u)return false;var user=JSON.parse(u);return user&&user.subscription==='premium';}catch(e){return false;}}
-function isStandardOrAbove(){try{if(typeof isBetaActive==='function'&&isBetaActive()&&!!localStorage.getItem('pap-token'))return true;var u=localStorage.getItem('pap-user');if(!u)return false;var user=JSON.parse(u);return user&&(user.subscription==='standard'||user.subscription==='premium');}catch(e){return false;}}
+function isPremium(){try{var betaOn=(typeof isBetaActive==='function'&&isBetaActive());if(betaOn){if(typeof isLoggedIn==='function'&&isLoggedIn())return true;if(localStorage.getItem('pap-token'))return true;var ub=localStorage.getItem('pap-user');if(ub){try{var pb=JSON.parse(ub);if(pb&&(pb.id||pb.email))return true;}catch(eb){}}}var u=localStorage.getItem('pap-user');if(!u)return false;var user=JSON.parse(u);return user&&user.subscription==='premium';}catch(e){return false;}}
+function isStandardOrAbove(){try{var betaOn=(typeof isBetaActive==='function'&&isBetaActive());if(betaOn){if(typeof isLoggedIn==='function'&&isLoggedIn())return true;if(localStorage.getItem('pap-token'))return true;var ub=localStorage.getItem('pap-user');if(ub){try{var pb=JSON.parse(ub);if(pb&&(pb.id||pb.email))return true;}catch(eb){}}}var u=localStorage.getItem('pap-user');if(!u)return false;var user=JSON.parse(u);return user&&(user.subscription==='standard'||user.subscription==='premium');}catch(e){return false;}}
 
 function openEditorial(title,thumb){
   var d=edDetails[title];
@@ -3016,9 +3016,19 @@ try{
 // ======== IMAGE RIGHT-CLICK PROTECTION ========
 // Only premium subscribers can right-click (download) images
 (function(){
+  function _betaLoggedIn(){
+    try{
+      if(typeof isLoggedIn==='function' && isLoggedIn()) return true;
+      if(localStorage.getItem('pap-token')) return true;
+      var ub=localStorage.getItem('pap-user');
+      if(!ub) return false;
+      var pb=JSON.parse(ub);
+      return !!(pb && (pb.id || pb.email));
+    }catch(e){return false;}
+  }
   function isStandardOrAbove(){
     try{
-      if(typeof isBetaActive==='function'&&isBetaActive()&&!!localStorage.getItem('pap-token'))return true;
+      if(typeof isBetaActive==='function' && isBetaActive() && _betaLoggedIn()) return true;
       var u=localStorage.getItem('pap-user');
       if(!u) return false;
       var user=JSON.parse(u);
@@ -3027,7 +3037,7 @@ try{
   }
   function isPremium(){
     try{
-      if(typeof isBetaActive==='function'&&isBetaActive()&&!!localStorage.getItem('pap-token'))return true;
+      if(typeof isBetaActive==='function' && isBetaActive() && _betaLoggedIn()) return true;
       var u=localStorage.getItem('pap-user');
       if(!u) return false;
       var user=JSON.parse(u);

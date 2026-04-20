@@ -216,7 +216,7 @@ function lockScroll(){if(_scrollLockCount===0){_savedScrollY=window.scrollY;docu
 function unlockScroll(){_scrollLockCount--;if(_scrollLockCount<=0){_scrollLockCount=0;document.body.style.position='';document.body.style.top='';document.body.style.left='';document.body.style.right='';window.scrollTo(0,_savedScrollY);}}
 
 // ======== INTERSTITIAL AD + PREMIUM UPSELL ========
-function isStandardOrAbove(){try{if(typeof isBetaActive==='function'&&isBetaActive()&&!!localStorage.getItem('pap-token'))return true;var u=localStorage.getItem('pap-user');if(!u)return false;var user=JSON.parse(u);return user&&(user.subscription==='standard'||user.subscription==='premium');}catch(e){return false;}}
+function isStandardOrAbove(){try{var betaOn=(typeof isBetaActive==='function'&&isBetaActive());if(betaOn){if(typeof isLoggedIn==='function'&&isLoggedIn())return true;if(localStorage.getItem('pap-token'))return true;var ub=localStorage.getItem('pap-user');if(ub){try{var pb=JSON.parse(ub);if(pb&&(pb.id||pb.email))return true;}catch(eb){}}}var u=localStorage.getItem('pap-user');if(!u)return false;var user=JSON.parse(u);return user&&(user.subscription==='standard'||user.subscription==='premium');}catch(e){return false;}}
 var _interstitialCount=0;
 var _INTERSTITIAL_MAX=2;
 var _brandAds=[];
@@ -375,7 +375,7 @@ function downloadMediaKit(lang){var fid=mediaKitFiles[lang]||mediaKitFiles.en;wi
   setLang(saved);
 })();
 </script>
-<script src="pap-app.js?v=6"></script>
+<script src="pap-app.js?v=7"></script>
 <script src="pap-header.js?v=6" defer></script>
 <script src="pap-auth-link.js" defer></script>
 </body>

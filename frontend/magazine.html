@@ -592,6 +592,18 @@ var MONTH_MAP={january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8
 // ---- Access gate helper (OPEN BETA 지원) ----
 // ⚠ pap-app.js의 PAP_BETA_END과 반드시 동일 값으로 유지할 것
 var PAP_BETA_END_MAG = '2026-05-06';
+// 로그인 판별을 관대하게: pap-token 또는 pap-user(파싱 가능한 객체) 중 하나만 있어도
+// "로그인 회원"으로 인정. 세션 경계/토큰 리프레시 중 race로 한쪽이 빠질 수 있어
+// 베타 회원이 잘못 페이월로 떨어지는 상황을 방지한다.
+function _magHasLoginSession(){
+  try{
+    if(localStorage.getItem('pap-token')) return true;
+    var u=localStorage.getItem('pap-user');
+    if(!u) return false;
+    var parsed=JSON.parse(u);
+    return !!(parsed && (parsed.id || parsed.email));
+  }catch(e){ return false; }
+}
 function _magIsOpenAccess(){
   try{
     var isBeta = !PAP_BETA_END_MAG; // null = 무기한 베타
@@ -600,7 +612,7 @@ function _magIsOpenAccess(){
       isBeta = (now<=end);
     }
     // 베타 기간 중에는 "로그인한 회원(무료 포함)"에게만 전체 접근 허용
-    if(isBeta) return !!localStorage.getItem('pap-token');
+    if(isBeta) return _magHasLoginSession();
     // 베타 종료 후: standard/premium 구독자만
     var u=localStorage.getItem('pap-user');
     if(!u) return false;
@@ -738,7 +750,7 @@ document.getElementById('previewOverlay').addEventListener('click',function(e){
     <div class="sub-modal-title" id="modalTitle">March 2026</div>
     <div class="sub-modal-count" id="modalCount">19 editorials</div>
     <div class="sub-modal-divider"></div>
-    <p class="sub-modal-desc" id="modalDesc">Subscribe to unlock this issue and the full PAP archive — 86 issues, 2,109+ editorials.</p>
+    <p class="sub-modal-desc" id="modalDesc">Subscribe to unlock this issue and the full PAP archive · 86 issues, 2,109+ editorials.</p>
     <div class="sub-modal-plans">
       <div class="sub-modal-plan" onclick="location.href='subscribe.html'">
         <div class="smp-name">STANDARD</div>
@@ -772,15 +784,15 @@ document.getElementById('previewOverlay').addEventListener('click',function(e){
 (function(){
   var lang=(localStorage.getItem('pap-lang')||navigator.language||'en').substring(0,2);
   var t={
-    ko:{desc:'이 이슈와 PAP 전체 아카이브를 열람하려면 구독이 필요합니다 — 86개 이슈, 2,109+ 에디토리얼.',cta:'지금 구독하기',preview:'에디토리얼 3개 무료 미리보기 →',note:'언제든 해지 가능 · 전체 이슈 즉시 열람'},
-    en:{desc:'Subscribe to unlock this issue and the full PAP archive — 86 issues, 2,109+ editorials.',cta:'SUBSCRIBE NOW',preview:'Preview 3 editorials free →',note:'Cancel anytime · Instant access to all issues'},
-    it:{desc:'Abbonati per sbloccare questo numero e l\'intero archivio PAP — 86 numeri, 2.109+ editoriali.',cta:'ABBONATI ORA',preview:'Anteprima 3 editoriali gratis →',note:'Cancella quando vuoi · Accesso immediato a tutti i numeri'},
-    fr:{desc:'Abonnez-vous pour accéder à ce numéro et à l\'archive complète de PAP — 86 numéros, 2 109+ éditoriaux.',cta:'S\'ABONNER',preview:'Aperçu de 3 éditoriaux gratuit →',note:'Annulation à tout moment · Accès immédiat à tous les numéros'},
-    ja:{desc:'このイシューとPAPの全アーカイブをご覧いただくには購読が必要です — 86イシュー、2,109+エディトリアル。',cta:'今すぐ購読',preview:'エディトリアル3本を無料プレビュー →',note:'いつでも解約可能 · 全イシュー即アクセス'},
-    zh:{desc:'订阅以解锁此期及PAP完整档案库 — 86期，2,109+编辑内容。',cta:'立即订阅',preview:'免费预览3篇编辑内容 →',note:'随时取消 · 即时访问所有期刊'},
-    es:{desc:'Suscríbete para desbloquear este número y el archivo completo de PAP — 86 números, 2.109+ editoriales.',cta:'SUSCRÍBETE AHORA',preview:'Vista previa de 3 editoriales gratis →',note:'Cancela en cualquier momento · Acceso instantáneo a todos los números'},
-    ru:{desc:'Подпишитесь, чтобы открыть этот выпуск и весь архив PAP — 86 выпусков, 2 109+ редакционных материалов.',cta:'ПОДПИСАТЬСЯ',preview:'Предпросмотр 3 материалов бесплатно →',note:'Отмена в любой момент · Мгновенный доступ ко всем выпускам'},
-    de:{desc:'Abonnieren Sie, um diese Ausgabe und das gesamte PAP-Archiv freizuschalten — 86 Ausgaben, 2.109+ Editorials.',cta:'JETZT ABONNIEREN',preview:'3 Editorials kostenlos ansehen →',note:'Jederzeit kündbar · Sofortiger Zugriff auf alle Ausgaben'}
+    ko:{desc:'이 이슈와 PAP 전체 아카이브를 열람하려면 구독이 필요합니다. 86개 이슈, 2,109+ 에디토리얼.',cta:'지금 구독하기',preview:'에디토리얼 3개 무료 미리보기 →',note:'언제든 해지 가능 · 전체 이슈 즉시 열람'},
+    en:{desc:'Subscribe to unlock this issue and the full PAP archive. 86 issues, 2,109+ editorials.',cta:'SUBSCRIBE NOW',preview:'Preview 3 editorials free →',note:'Cancel anytime · Instant access to all issues'},
+    it:{desc:'Abbonati per sbloccare questo numero e l\'intero archivio PAP. 86 numeri, 2.109+ editoriali.',cta:'ABBONATI ORA',preview:'Anteprima 3 editoriali gratis →',note:'Cancella quando vuoi · Accesso immediato a tutti i numeri'},
+    fr:{desc:'Abonnez-vous pour accéder à ce numéro et à l\'archive complète de PAP. 86 numéros, 2 109+ éditoriaux.',cta:'S\'ABONNER',preview:'Aperçu de 3 éditoriaux gratuit →',note:'Annulation à tout moment · Accès immédiat à tous les numéros'},
+    ja:{desc:'このイシューとPAPの全アーカイブをご覧いただくには購読が必要です。86イシュー、2,109+エディトリアル。',cta:'今すぐ購読',preview:'エディトリアル3本を無料プレビュー →',note:'いつでも解約可能 · 全イシュー即アクセス'},
+    zh:{desc:'订阅以解锁此期及PAP完整档案库。86期，2,109+编辑内容。',cta:'立即订阅',preview:'免费预览3篇编辑内容 →',note:'随时取消 · 即时访问所有期刊'},
+    es:{desc:'Suscríbete para desbloquear este número y el archivo completo de PAP. 86 números, 2.109+ editoriales.',cta:'SUSCRÍBETE AHORA',preview:'Vista previa de 3 editoriales gratis →',note:'Cancela en cualquier momento · Acceso instantáneo a todos los números'},
+    ru:{desc:'Подпишитесь, чтобы открыть этот выпуск и весь архив PAP. 86 выпусков, 2 109+ редакционных материалов.',cta:'ПОДПИСАТЬСЯ',preview:'Предпросмотр 3 материалов бесплатно →',note:'Отмена в любой момент · Мгновенный доступ ко всем выпускам'},
+    de:{desc:'Abonnieren Sie, um diese Ausgabe und das gesamte PAP-Archiv freizuschalten. 86 Ausgaben, 2.109+ Editorials.',cta:'JETZT ABONNIEREN',preview:'3 Editorials kostenlos ansehen →',note:'Jederzeit kündbar · Sofortiger Zugriff auf alle Ausgaben'}
   };
   var s=t[lang]||t.en;
   var d=document.getElementById('modalDesc');if(d)d.textContent=s.desc;
