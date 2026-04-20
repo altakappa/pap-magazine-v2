@@ -643,22 +643,24 @@ try{
 
   var themes=[
     {id:'dreamy',tags:['dreamy','romantic','soft','ethereal','pastel','gentle','tender','nostalgia','light','spiritual','peaceful'],
-     labels:{ko:'몽환적이고 로맨틱한',en:'Dreamy & Romantic',it:'Onirico & Romantico',fr:'Onirique & Romantique',es:'Onírico & Romántico',ja:'夢幻的でロマンティック',zh:'梦幻浪漫风格',ru:'Мечтательный и романтичный'}},
+     labels:{ko:'몽환적이고 로맨틱한',en:'Dreamy & Romantic',it:'Onirico & Romantico',fr:'Onirique & Romantique',es:'Onírico & Romántico',ja:'夢幻的でロマンティック',zh:'梦幻浪漫风格',ru:'Мечтательный и романтичный',de:'Träumerisch & Romantisch'}},
     {id:'bold',tags:['bold','colorful','vibrant','intense','dramatic','fierce','powerful','maximalist','pop','energetic'],
-     labels:{ko:'강렬하고 대담한',en:'Bold & Intense',it:'Audace & Intenso',fr:'Audacieux & Intense',es:'Audaz e Intenso',ja:'大胆で強烈な',zh:'大胆前卫风格',ru:'Смелый и яркий'}},
+     labels:{ko:'강렬하고 대담한',en:'Bold & Intense',it:'Audace & Intenso',fr:'Audacieux & Intense',es:'Audaz e Intenso',ja:'大胆で強烈な',zh:'大胆前卫风格',ru:'Смелый и яркий',de:'Kühn & Intensiv'}},
     {id:'dark',tags:['dark','moody','noir','shadow','gritty','mysterious','cinematic','urban','underground','dystopian'],
-     labels:{ko:'다크 & 시네마틱',en:'Dark & Cinematic',it:'Dark & Cinematico',fr:'Sombre & Cinématique',es:'Oscuro & Cinemático',ja:'ダーク＆シネマティック',zh:'暗黑电影风格',ru:'Тёмный и кинематографичный'}},
+     labels:{ko:'다크 & 시네마틱',en:'Dark & Cinematic',it:'Dark & Cinematico',fr:'Sombre & Cinématique',es:'Oscuro & Cinemático',ja:'ダーク＆シネマティック',zh:'暗黑电影风格',ru:'Тёмный и кинематографичный',de:'Dunkel & Filmisch'}},
     {id:'nature',tags:['warm','natural','organic','earthy','golden','desert','landscape','bohemian','flowing','sand'],
-     labels:{ko:'자연과 따뜻함',en:'Warm & Organic',it:'Caldo & Organico',fr:'Chaleureux & Organique',es:'Cálido & Orgánico',ja:'自然と温もり',zh:'自然温暖风格',ru:'Тёплый и органичный'}},
+     labels:{ko:'자연과 따뜻함',en:'Warm & Organic',it:'Caldo & Organico',fr:'Chaleureux & Organique',es:'Cálido & Orgánico',ja:'自然と温もり',zh:'自然温暖风格',ru:'Тёплый и органичный',de:'Warm & Organisch'}},
     {id:'modern',tags:['futuristic','modern','geometric','structured','clean','sleek','chrome','metallic','industrial','space','precision','minimal'],
-     labels:{ko:'미래적이고 모던한',en:'Futuristic & Modern',it:'Futuristico & Moderno',fr:'Futuriste & Moderne',es:'Futurista & Moderno',ja:'未来的でモダンな',zh:'未来摩登风格',ru:'Футуристичный и современный'}},
+     labels:{ko:'미래적이고 모던한',en:'Futuristic & Modern',it:'Futuristico & Moderno',fr:'Futuriste & Moderne',es:'Futurista & Moderno',ja:'未来的でモダンな',zh:'未来摩登风格',ru:'Футуристичный и современный',de:'Futuristisch & Modern'}},
     {id:'classic',tags:['elegant','classic','refined','sophisticated','timeless','grace','beauty','muse','feminine'],
-     labels:{ko:'클래식 & 엘레강스',en:'Classic & Elegance',it:'Classico & Eleganza',fr:'Classique & Élégance',es:'Clásico & Elegancia',ja:'クラシック＆エレガンス',zh:'经典优雅风格',ru:'Классика и элегантность'}},
+     labels:{ko:'클래식 & 엘레강스',en:'Classic & Elegance',it:'Classico & Eleganza',fr:'Classique & Élégance',es:'Clásico & Elegancia',ja:'クラシック＆エレガンス',zh:'经典优雅风格',ru:'Классика и элегантность',de:'Klassisch & Elegant'}},
     {id:'surreal',tags:['surreal','dreamlike','fantasy','conceptual','whimsical','artistic','abstract','creative','imaginative'],
-     labels:{ko:'초현실적 판타지',en:'Surreal Fantasy',it:'Fantasia Surrealista',fr:'Fantaisie Surréaliste',es:'Fantasía Surrealista',ja:'シュールファンタジー',zh:'超现实幻想',ru:'Сюрреалистическая фантазия'}},
+     labels:{ko:'초현실적 판타지',en:'Surreal Fantasy',it:'Fantasia Surrealista',fr:'Fantaisie Surréaliste',es:'Fantasía Surrealista',ja:'シュールファンタジー',zh:'超现实幻想',ru:'Сюрреалистическая фантазия',de:'Surreale Fantasie'}},
     {id:'royal',tags:['royal','gothic','castle','medieval','luxurious','opulent','heritage','dramatic'],
-     labels:{ko:'로열 & 고딕',en:'Royal & Gothic',it:'Reale & Gotico',fr:'Royal & Gothique',es:'Real & Gótico',ja:'ロイヤル＆ゴシック',zh:'皇家哥特风格',ru:'Королевский и готический'}}
+     labels:{ko:'로열 & 고딕',en:'Royal & Gothic',it:'Reale & Gotico',fr:'Royal & Gothique',es:'Real & Gótico',ja:'ロイヤル＆ゴシック',zh:'皇家哥特风格',ru:'Королевский и готический',de:'Königlich & Gotisch'}}
   ];
+  // Expose themes for language switching re-translation
+  window._papAIThemes = themes;
 
   var lang=localStorage.getItem('pap-lang')||'ko';
   var scored=themes.map(function(theme){
@@ -677,7 +679,7 @@ try{
 
   function buildRow(td){
     var label=td.theme.labels[lang]||td.theme.labels.en;
-    var h='<div class="ed-row"><h3 class="ed-row-label">'+label+'</h3>';
+    var h='<div class="ed-row"><h3 class="ed-row-label" data-theme-id="'+td.theme.id+'">'+label+'</h3>';
     h+='<div class="ed-row-wrap"><button class="ed-row-arrow ed-row-left" onclick="scrollEdRow(this,-1)">&#8249;</button><div class="ed-row-track">';
     td.matched.slice(0,10).forEach(function(m){
       var ed=m.ed;
@@ -690,6 +692,21 @@ try{
 
   if(c1 && top.length>=2) c1.innerHTML=buildRow(top[0])+buildRow(top[1]);
   if(c2 && top.length>=4) c2.innerHTML=buildRow(top[2])+buildRow(top[3]);
+
+  // Re-translate AI theme row headings when language changes
+  window._papReapplyAIThemeLabels = function(newLang){
+    var curLang = newLang || localStorage.getItem('pap-lang') || 'ko';
+    var themesArr = window._papAIThemes || [];
+    if(!themesArr.length) return;
+    var byId = {};
+    themesArr.forEach(function(t){byId[t.id]=t;});
+    document.querySelectorAll('.ed-row-label[data-theme-id]').forEach(function(el){
+      var id = el.getAttribute('data-theme-id');
+      var t = byId[id];
+      if(!t) return;
+      el.textContent = t.labels[curLang] || t.labels.en || '';
+    });
+  };
 })();
 }catch(e){console.error('AI Rec Fallback error:',e);}
 </script>

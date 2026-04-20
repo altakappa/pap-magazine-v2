@@ -137,6 +137,8 @@ function setLang(l){localStorage.setItem('pap-lang',l);
   document.querySelectorAll('[data-i18n-html]').forEach(e=>{const k=e.dataset.i18nHtml;if(t[k])e.innerHTML=t[k]});
   document.querySelectorAll('[data-i18n-ph]').forEach(e=>{const k=e.dataset.i18nPh;if(t[k])e.placeholder=t[k]});
   _applyArticleCardI18n(l);
+  // Re-translate AI theme row headings on homepage (if present)
+  if(typeof window._papReapplyAIThemeLabels==='function'){ try{ window._papReapplyAIThemeLabels(l); }catch(e){} }
 }
 // Auto-load article i18n data as soon as possible
 if(document.readyState==='loading'){
