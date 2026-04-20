@@ -52,15 +52,15 @@ a{color:#fff;text-decoration:none}
 .lang-selector select option{background:#000;color:#fff}
 
 /* CONTENT */
-.content{margin-left:120px;padding:100px 60px 80px 0}
+.content{max-width:1200px;margin:0 auto;padding:100px 40px 80px;text-align:center}
 
 /* HERO SECTION */
-.subscribe-hero{margin-bottom:80px;max-width:700px}
+.subscribe-hero{margin:0 auto 80px;max-width:700px;text-align:center}
 .subscribe-hero h1{font-size:clamp(36px,6vw,72px);font-weight:900;letter-spacing:.04em;text-transform:uppercase;line-height:1;margin-bottom:24px}
-.subscribe-hero p{font-size:14px;line-height:2;color:rgba(255,255,255,.55);max-width:520px}
+.subscribe-hero p{font-size:14px;line-height:2;color:rgba(255,255,255,.55);max-width:520px;margin:0 auto}
 
 /* BILLING TOGGLE */
-.billing-toggle{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:48px;max-width:1100px}
+.billing-toggle{display:flex;align-items:center;justify-content:center;gap:16px;margin:0 auto 48px;max-width:1100px}
 .billing-label{font-size:12px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.35);cursor:pointer;transition:color .3s}
 .billing-label.active{color:#fff}
 .toggle-track{width:48px;height:26px;background:rgba(255,255,255,.15);border-radius:13px;position:relative;cursor:pointer;transition:background .3s;flex-shrink:0}
@@ -115,9 +115,9 @@ a{color:#fff;text-decoration:none}
 .plan-card.recommended .plan-cta:hover{background:transparent;color:#fff;border-color:rgba(255,255,255,.5)}
 
 /* COMPARISON TABLE */
-.comparison-section{margin:0 auto 80px;max-width:1100px}
-.comparison-title{font-size:12px;font-weight:700;letter-spacing:.25em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:32px}
-.comparison-table{width:100%;border-collapse:collapse}
+.comparison-section{margin:0 auto 80px;max-width:1100px;text-align:center}
+.comparison-title{font-size:12px;font-weight:700;letter-spacing:.25em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:32px;text-align:center}
+.comparison-table{width:100%;border-collapse:collapse;text-align:left}
 .comparison-table th,.comparison-table td{padding:14px 16px;text-align:left;font-size:12px;border-bottom:1px solid rgba(255,255,255,.08)}
 .comparison-table th{font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.5);font-size:11px}
 .comparison-table th:not(:first-child),.comparison-table td:not(:first-child){text-align:center;width:22%}
@@ -128,14 +128,14 @@ a{color:#fff;text-decoration:none}
 .comparison-table thead th{border-bottom:1px solid rgba(255,255,255,.15)}
 
 /* PAYMENT INFO */
-.payment-info{max-width:700px;margin:0 auto 80px;padding-top:40px;border-top:1px solid rgba(255,255,255,.08)}
-.payment-info h3{font-size:12px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:20px}
-.payment-logos{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:24px}
+.payment-info{max-width:700px;margin:0 auto 80px;padding-top:40px;border-top:1px solid rgba(255,255,255,.08);text-align:center}
+.payment-info h3{font-size:12px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:20px;text-align:center}
+.payment-logos{display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-content:center;margin-bottom:24px}
 .payment-logo{height:28px;padding:6px 16px;border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.5);text-transform:uppercase}
-.payment-note{font-size:12px;line-height:2;color:rgba(255,255,255,.35)}
+.payment-note{font-size:12px;line-height:2;color:rgba(255,255,255,.35);text-align:center}
 
 /* FOOTER */
-.footer-legal{margin-left:120px;padding:40px 60px 40px 0;border-top:1px solid rgba(255,255,255,.1);font-size:11px;color:rgba(255,255,255,.3);line-height:2}
+.footer-legal{max-width:1200px;margin:0 auto;padding:40px 40px;border-top:1px solid rgba(255,255,255,.1);font-size:11px;color:rgba(255,255,255,.3);line-height:2;text-align:center}
 .footer-legal a{color:rgba(255,255,255,.3)}
 
 /* RESPONSIVE */
@@ -147,10 +147,10 @@ a{color:#fff;text-decoration:none}
   .side-nav{width:50px;padding-top:20px}
   .side-nav .nav-group-label{font-size:8px;letter-spacing:.15em;padding:10px 0 6px}
   .side-nav .nav-links a{font-size:10px;letter-spacing:3px;padding:8px 0}
-  .content{margin-left:60px;padding:60px 20px}
+  .content{padding:60px 20px}
   .pricing-grid{grid-template-columns:1fr;max-width:100%}
   .plan-card{padding:32px 24px 28px}
-  .footer-legal{margin-left:60px;padding:20px 20px}
+  .footer-legal{padding:20px}
   .comparison-section{overflow-x:auto}
   .comparison-table{min-width:560px}
 }
