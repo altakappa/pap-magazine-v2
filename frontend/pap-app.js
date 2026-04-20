@@ -50,7 +50,7 @@ fr:{about:'À PROPOS',contact:'CONTACT',business:'BUSINESS',subscribe:"S'ABONNER
 es:{about:'ACERCA DE',contact:'CONTACTO',business:'NEGOCIOS',subscribe:'SUSCRIBIRSE',submission:'ENVÍO',pullletter:'PULL-LETTER',ftAbout:'ACERCA DE',ftBusiness:'NEGOCIOS',ftContact:'CONTACTO',ftSubscribe:'SUSCRIBIRSE',ftSubmission:'ENVÍO',ftPullletter:'PULL-LETTER',ftCommunity:'COMUNIDAD',ftMagazine:'REVISTA',navEditorial:'EDITORIAL',navMagazine:'REVISTA',navCommunity:'COMUNIDAD',navArticle:'ARTÍCULO',navFilm:'FILM',navBeauty:'BELLEZA',navInterview:'ENTREVISTA',searchPh:'Buscar...',aprIssue:'ED. ABRIL',junIssue:'ED. JUNIO',editorialHeading:'EDITORIAL',fc1:'Milan Fashion Week FW26 Street Style Parte 2',fc1d:'PAP captura la escena de Milan Fashion Week',fc2:'Luisa Beccaria FW26 Backstage Milan Fashion Week',fc2d:'PAP te trae el backstage de Luisa Beccaria',fc3:'Milan Fashion Week FW26 Street Style Parte 1',fc3d:'PAP captura la escena de Milan Fashion Week',footerLegal:'<strong>ALTAKAPPA Co., Ltd.</strong><br>CEO : Domenico Kang | Registro Comercial: 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seúl, Corea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>',terms:'Términos de Servicio',privacy:'Política de Privacidad',latestEd:'Editoriales Recientes',trendingEd:'Tendencias',dreamyEd:'Onírico & Etéreo',boldEd:'Audaz e Intenso',warmEd:'Cálido & Orgánico',modernEd:'Futurista & Moderno',fc4:'La Elección Más Elegante para Año Nuevo, Eden Vodka',fc4d:'Eden Vodka recomendado por PAP',latestArticle:'Artículos Recientes',coverStory:'APR. COVER STORY',coverTitle:'FOLIE',popupTitle:'Hazte Miembro de PAP',popupDesc:'Sé el primero en descubrir nuestros editoriales, películas, artículos y más.',popupCta:'EMPIEZA GRATIS',popupSkip:'Quizás más tarde',},
 ja:{about:'アバウト',contact:'お問い合わせ',business:'ビジネス',subscribe:'購読',submission:'サブミッション',pullletter:'PULL-LETTER',ftAbout:'アバウト',ftBusiness:'ビジネス',ftContact:'お問い合わせ',ftSubscribe:'購読',ftSubmission:'サブミッション',ftPullletter:'PULL-LETTER',ftCommunity:'コミュニティ',ftMagazine:'マガジン',navEditorial:'エディトリアル',navMagazine:'マガジン',navCommunity:'コミュニティ',navArticle:'アーティクル',navFilm:'フィルム',navBeauty:'ビューティー',navInterview:'インタビュー',searchPh:'検索...',aprIssue:'4月号',junIssue:'6月号',editorialHeading:'エディトリアル',fc1:'ミラノファッションウィーク FW26 ストリートスタイル Part.2',fc1d:'PAPがミラノファッションウィークの現場を公開',fc2:'ルイーザ・ベッカリア FW26 バックステージ',fc2d:'PAPがルイーザ・ベッカリアのバックステージをお届け',fc3:'ミラノファッションウィーク FW26 ストリートスタイル Part.1',fc3d:'PAPがミラノファッションウィークの現場を公開',footerLegal:'<strong>株式会社アルタカッパ</strong><br>CEO : カン・ドンミン | 事業者番号 192-88-02644<br>ソウル特別市 江南区 論峴路146ギル 18, 1F PAP マガジン | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>',terms:'利用規約',privacy:'プライバシーポリシー',latestEd:'最新エディトリアル',trendingEd:'人気エディトリアル',dreamyEd:'夢幻的なエディトリアル',boldEd:'大胆で強烈な',warmEd:'自然と温もり',modernEd:'未来的でモダンな',fc4:'新年のための最もスタイリッシュな選択、エデンウォッカ',fc4d:'PAPおすすめのエデンウォッカ',latestArticle:'最新記事',coverStory:'4月 カバーストーリー',coverTitle:'FOLIE',popupTitle:'PAPメンバーになろう',popupDesc:'エディトリアル、フィルム、アーティクルなど、PAPの全コンテンツをいち早くお届け。',popupCta:'無料で始める',popupSkip:'あとで',},
 zh:{about:'关于我们',contact:'联系方式',business:'商务合作',subscribe:'订阅',submission:'投稿',pullletter:'PULL-LETTER',ftAbout:'关于我们',ftBusiness:'商务合作',ftContact:'联系方式',ftSubscribe:'订阅',ftSubmission:'投稿',ftPullletter:'PULL-LETTER',ftCommunity:'社区',ftMagazine:'杂志',navEditorial:'编辑精选',navMagazine:'杂志',navCommunity:'社区',navArticle:'文章',navFilm:'影片',navBeauty:'美妆',navInterview:'访谈',searchPh:'搜索...',aprIssue:'四月刊',junIssue:'六月刊',editorialHeading:'编辑精选',fc1:'米兰时装周 FW26 街拍风格 Part.2',fc1d:'PAP带您直击米兰时装周现场',fc2:'Luisa Beccaria FW26 后台 米兰时装周',fc2d:'PAP带您走进Luisa Beccaria后台',fc3:'米兰时装周 FW26 街拍风格 Part.1',fc3d:'PAP带您直击米兰时装周现场',footerLegal:'<strong>株式会社 ALTAKAPPA</strong><br>CEO : 姜东民 | 营业执照号 192-88-02644<br>韩国首尔市江南区论岘路146街18号, 1F PAP 杂志 | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>',terms:'服务条款',privacy:'隐私政策',latestEd:'最新时尚大片',trendingEd:'热门时尚大片',dreamyEd:'梦幻风格大片',boldEd:'大胆前卫风格',warmEd:'自然温暖风格',modernEd:'未来摩登风格',fc4:'新年最时尚的选择，伊甸伏特加',fc4d:'PAP推荐的伊甸伏特加',latestArticle:'最新文章',coverStory:'四月 封面故事',coverTitle:'FOLIE',popupTitle:'成为PAP会员',popupDesc:'抢先探索我们的时尚大片、影片、文章等精彩内容。',popupCta:'免费开始',popupSkip:'以后再说',},
-ru:{about:'О НАС',contact:'КОНТАКТ',business:'БИЗНЕС',subscribe:'ПОДПИСКА',submission:'ПОДАЧА',pullletter:'PULL-LETTER',navEditorial:'EDITORIAL',navMagazine:'ЖУРНАЛ',navArticle:'СТАТЬЯ',navFilm:'FILM',navCommunity:'СООБЩЕСТВО',searchPh:'Поиск...',coverStory:'АПР. ОБЛОЖКА',coverTitle:'FOLIE',popupTitle:'Станьте участником PAP',popupDesc:'Первыми узнавайте о наших редакционных материалах, фильмах, статьях и многом другом.',popupCta:'НАЧАТЬ БЕСПЛАТНО',popupSkip:'Позже'}
+ru:{about:'О НАС',contact:'КОНТАКТ',business:'БИЗНЕС',subscribe:'ПОДПИСКА',submission:'ПОДАЧА',pullletter:'PULL-LETTER',ftAbout:'О НАС',ftBusiness:'БИЗНЕС',ftContact:'КОНТАКТ',ftSubscribe:'ПОДПИСКА',ftSubmission:'ПОДАЧА',ftPullletter:'PULL-LETTER',ftCommunity:'СООБЩЕСТВО',ftMagazine:'ЖУРНАЛ',navEditorial:'EDITORIAL',navMagazine:'ЖУРНАЛ',navCommunity:'СООБЩЕСТВО',navArticle:'СТАТЬЯ',navFilm:'FILM',navBeauty:'КРАСОТА',navInterview:'ИНТЕРВЬЮ',searchPh:'Поиск...',aprIssue:'АПР. ВЫПУСК',junIssue:'ИЮНЬ ВЫПУСК',editorialHeading:'EDITORIAL',fc1:'Миланская неделя моды FW26 уличный стиль Часть 2',fc1d:'PAP запечатлел сцены Миланской недели моды',fc2:'Luisa Beccaria FW26 бэкстейдж на Миланской неделе моды',fc2d:'PAP показывает бэкстейдж Luisa Beccaria',fc3:'Миланская неделя моды FW26 уличный стиль Часть 1',fc3d:'PAP запечатлел сцены Миланской недели моды',footerLegal:'<strong>ALTAKAPPA Co., Ltd.</strong><br>CEO : Доменико Кан | Рег. номер: 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Сеул, Корея | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>',terms:'Условия использования',privacy:'Политика конфиденциальности',latestEd:'Последние съёмки',trendingEd:'В тренде',dreamyEd:'Мечтательные и Воздушные',boldEd:'Смелые и Дерзкие',warmEd:'Тёплые и Природные',modernEd:'Футуристичные и Современные',fc4:'Самый стильный выбор к Новому году — Eden Vodka',fc4d:'Eden Vodka от PAP',latestArticle:'Последние статьи',coverStory:'АПР. ОБЛОЖКА',coverTitle:'FOLIE',popupTitle:'Станьте участником PAP',popupDesc:'Первыми узнавайте о наших редакционных материалах, фильмах, статьях и многом другом.',popupCta:'НАЧАТЬ БЕСПЛАТНО',popupSkip:'Позже'}
 };
 let lang='ko';
 function setLang(l){localStorage.setItem('pap-lang',l);
@@ -117,7 +117,8 @@ function _papUpdateAuthDropdown(){
       fr:{mypage:'MON COMPTE',subscribe:'GÉRER L\'ABONNEMENT',logout:'DÉCONNEXION'},
       ja:{mypage:'マイページ',subscribe:'購読管理',logout:'ログアウト'},
       zh:{mypage:'我的页面',subscribe:'管理订阅',logout:'退出登录'},
-      es:{mypage:'MI PÁGINA',subscribe:'GESTIONAR SUSCRIPCIÓN',logout:'CERRAR SESIÓN'}
+      es:{mypage:'MI PÁGINA',subscribe:'GESTIONAR SUSCRIPCIÓN',logout:'CERRAR SESIÓN'},
+      ru:{mypage:'МОЯ СТРАНИЦА',subscribe:'УПРАВЛЕНИЕ ПОДПИСКОЙ',logout:'ВЫЙТИ'}
     };
     var s=t[lang]||t.en;
     dd.innerHTML=
@@ -194,9 +195,30 @@ document.querySelectorAll('.sr').forEach(e=>obs.observe(e));
 // ======== INIT ========
 
 // ======== TERMS & PRIVACY PAGES ========
+var _legalNoticeTexts={
+  en:'This document is provided in Korean (the governing language). An official English translation will be available soon.',
+  it:'Questo documento è redatto in coreano (lingua ufficiale). Una traduzione ufficiale in italiano sarà disponibile a breve.',
+  fr:'Ce document est rédigé en coréen (langue officielle). Une traduction officielle en français sera disponible prochainement.',
+  es:'Este documento está redactado en coreano (idioma oficial). Una traducción oficial al español estará disponible próximamente.',
+  ja:'この文書は韓国語（正式言語）で提供されています。日本語の公式翻訳は近日公開予定です。',
+  zh:'本文件以韩语（官方语言）提供。中文官方翻译即将发布。',
+  ru:'Этот документ составлен на корейском языке (официальный язык). Официальный перевод на русский будет доступен в ближайшее время.'
+};
 function openPage(id){
   document.getElementById(id).classList.add('active');
   document.body.style.overflow='hidden';
+  // Show language notice for non-Korean users
+  var curLang=localStorage.getItem('pap-lang')||'ko';
+  var noticeId=id==='termsPage'?'termsLangNotice':'privacyLangNotice';
+  var notice=document.getElementById(noticeId);
+  if(notice){
+    if(curLang!=='ko'&&_legalNoticeTexts[curLang]){
+      notice.textContent=_legalNoticeTexts[curLang];
+      notice.style.display='block';
+    } else {
+      notice.style.display='none';
+    }
+  }
 }
 function closePage(id){
   document.getElementById(id).classList.remove('active');
@@ -213,6 +235,16 @@ function scrollEdRow(btn,dir){
 // ======== EDITORIAL SEARCH (tag-based) ========
 // ======== EDITORIAL SEARCH (tag-based) ========
 var edData=[];
+var _searchTexts={
+  ko:{found:function(q,n){return '"'+q+'" · '+n+'개 에디토리얼';},noResult:function(q){return '"'+q+'" 관련 에디토리얼을 찾지 못했습니다';}},
+  en:{found:function(q,n){return '"'+q+'" · '+n+' editorials';},noResult:function(q){return 'No editorials found for "'+q+'"';}},
+  it:{found:function(q,n){return '"'+q+'" · '+n+' editoriali';},noResult:function(q){return 'Nessun editoriale trovato per "'+q+'"';}},
+  fr:{found:function(q,n){return '"'+q+'" · '+n+' éditoriaux';},noResult:function(q){return 'Aucun éditorial trouvé pour "'+q+'"';}},
+  es:{found:function(q,n){return '"'+q+'" · '+n+' editoriales';},noResult:function(q){return 'No se encontraron editoriales para "'+q+'"';}},
+  ja:{found:function(q,n){return '"'+q+'" · '+n+'件のエディトリアル';},noResult:function(q){return '"'+q+'" に関連するエディトリアルが見つかりません';}},
+  zh:{found:function(q,n){return '"'+q+'" · '+n+'篇社论';},noResult:function(q){return '未找到与 "'+q+'" 相关的社论';}},
+  ru:{found:function(q,n){return '"'+q+'" · '+n+' материалов';},noResult:function(q){return 'По запросу "'+q+'" ничего не найдено';}}
+};
 
 function searchEditorials(query){
   // Dropdown search (works on all pages with search-bar)
@@ -256,7 +288,7 @@ function searchEditorials(query){
   if(dd&&ddGrid&&ddLabel){
     ddGrid.innerHTML='';
     if(scored.length>0){
-      ddLabel.textContent='"'+query+'" · '+scored.length+'개 에디토리얼';
+      var _st=_searchTexts[lang]||_searchTexts.en;ddLabel.textContent=_st.found(query,scored.length);
       var maxShow=Math.min(scored.length,12);
       for(var i=0;i<maxShow;i++){
         var e=scored[i].ed;
@@ -268,7 +300,7 @@ function searchEditorials(query){
       }
     } else {
       ddLabel.textContent='';
-      ddGrid.innerHTML='<div class="search-no-result">"'+query+'" 관련 에디토리얼을 찾지 못했습니다</div>';
+      var _st=_searchTexts[lang]||_searchTexts.en;ddGrid.innerHTML='<div class="search-no-result">'+_st.noResult(query)+'</div>';
     }
     dd.classList.add('active');
   }
@@ -297,7 +329,7 @@ function searchEditorials(query){
 
   if(results&&grid&&label){
     if(scored.length>0){
-      label.textContent='"'+query+'" 관련 에디토리얼 '+scored.length+'개';
+      var _st2=_searchTexts[lang]||_searchTexts.en;label.textContent=_st2.found(query,scored.length);
       grid.innerHTML='';
       scored.forEach(function(item){
         var e=item.ed;
@@ -310,7 +342,7 @@ function searchEditorials(query){
       results.style.display='block';
       if(rows)rows.style.display='none';
     } else {
-      label.textContent='"'+query+'" 관련 에디토리얼을 찾지 못했습니다';
+      var _st2=_searchTexts[lang]||_searchTexts.en;label.textContent=_st2.noResult(query);
       grid.innerHTML='';
       results.style.display='block';
       if(rows)rows.style.display='none';
@@ -510,7 +542,7 @@ function _showBrandAdInterstitial(ad, callback){
 
   // Skip button
   var lang = localStorage.getItem('pap-lang') || 'ko';
-  var skipTexts = { ko:'건너뛰기', en:'Skip', it:'Salta', fr:'Passer', es:'Saltar', ja:'スキップ', zh:'跳过' };
+  var skipTexts = { ko:'건너뛰기', en:'Skip', it:'Salta', fr:'Passer', es:'Saltar', ja:'スキップ', zh:'跳过', ru:'Пропустить' };
   var skipLabel = skipTexts[lang] || skipTexts.en;
 
   var skip = document.createElement('button');
@@ -541,7 +573,7 @@ function _showBrandAdInterstitial(ad, callback){
 
   var premBadge = document.createElement('a');
   premBadge.href = 'subscribe.html';
-  var premTexts = { ko:'Premium 구독으로 광고 없이 이용하기 →', en:'Subscribe to Premium for ad-free →', it:'Abbonati a Premium senza pubblicità →', fr:'Abonnez-vous Premium sans pub →', es:'Suscríbete a Premium sin anuncios →', ja:'Premiumで広告なし →', zh:'订阅Premium去除广告 →' };
+  var premTexts = { ko:'Premium 구독으로 광고 없이 이용하기 →', en:'Subscribe to Premium for ad-free →', it:'Abbonati a Premium senza pubblicità →', fr:'Abonnez-vous Premium sans pub →', es:'Suscríbete a Premium sin anuncios →', ja:'Premiumで広告なし →', zh:'订阅Premium去除广告 →', ru:'Подписка Premium без рекламы →' };
   premBadge.textContent = premTexts[lang] || premTexts.en;
   premBadge.style.cssText = 'font-size:11px;font-weight:600;letter-spacing:.05em;color:rgba(255,255,255,.45);text-decoration:none;font-family:Montserrat,sans-serif;transition:all .2s;border-bottom:1px solid rgba(255,255,255,.15);padding-bottom:2px;';
   premBadge.onmouseover = function(){ this.style.color='rgba(255,255,255,.85)'; this.style.borderBottomColor='rgba(255,255,255,.5)'; };
@@ -578,7 +610,8 @@ function _showPremiumUpsellInterstitial(callback){
     fr: { tag:'SUBSCRIBE', title:'Profitez de tout le contenu\nsans interruption', desc:'Abonnez-vous pour un accès illimité\naux éditoriaux, magazines et contenus exclusifs.', btn:'S\'abonner', skip:'Passer' },
     es: { tag:'SUBSCRIBE', title:'Disfruta todo el contenido\nsin interrupciones', desc:'Suscríbete para acceso ilimitado\na editoriales, revistas y contenido exclusivo.', btn:'Suscríbete', skip:'Saltar' },
     ja: { tag:'SUBSCRIBE', title:'すべてのコンテンツを\n中断なくお楽しみください', desc:'購読でエディトリアル、マガジン、\n限定コンテンツに無制限アクセス。', btn:'購読する', skip:'スキップ' },
-    zh: { tag:'SUBSCRIBE', title:'无干扰地\n享受所有内容', desc:'订阅后无限访问\n社论、杂志和独家内容。', btn:'订阅', skip:'跳过' }
+    zh: { tag:'SUBSCRIBE', title:'无干扰地\n享受所有内容', desc:'订阅后无限访问\n社论、杂志和独家内容。', btn:'订阅', skip:'跳过' },
+    ru: { tag:'SUBSCRIBE', title:'Наслаждайтесь контентом\nбез перерывов', desc:'Подпишитесь для неограниченного доступа\nк материалам, журналам и эксклюзивному контенту.', btn:'Подписаться', skip:'Пропустить' }
   };
   var t = texts[lang] || texts.en;
 

@@ -2077,20 +2077,55 @@ function toggleOriginal(postId, btn){
 }
 
 // ======== LANGUAGE ========
+// Community page needs both global T translations (header/footer via pap-app.js)
+// AND local L translations (community-specific keys).
+// pap-app.js loads with defer and may overwrite this setLang, so we register
+// a hook that pap-app.js can call after its own translation pass.
+function _communityTranslations(){
+  // Apply community-specific L translations (overrides/supplements global T)
+  document.querySelectorAll('[data-i18n]').forEach(function(e){
+    var key=e.getAttribute('data-i18n');
+    if(L[lang]&&L[lang][key]) e.textContent=L[lang][key];
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(function(e){
+    var key=e.getAttribute('data-i18n-ph');
+    if(L[lang]&&L[lang][key]) e.placeholder=L[lang][key];
+  });
+  if(document.getElementById('postTableBody')) updatePostTable();
+  if(document.getElementById('topPosts')) renderSidebars();
+}
+
 function setLang(l){
   lang=l;
   localStorage.setItem('pap-lang',l);
   var sel=document.getElementById('langSelect');
   if(sel) sel.value=l;
-  updateTranslations();
-  if(document.getElementById('postTableBody')) updatePostTable();
-  if(document.getElementById('topPosts')) renderSidebars();
+  document.documentElement.lang=l;
+  // Apply global T translations if pap-app.js T is available
+  var t=(typeof T!=='undefined')?T[l]||T.en:null;
+  if(t){
+    document.querySelectorAll('[data-i18n]').forEach(function(e){var k=e.dataset.i18n;if(t[k])e.textContent=t[k];});
+    document.querySelectorAll('[data-i18n-html]').forEach(function(e){var k=e.dataset.i18nHtml;if(t[k])e.innerHTML=t[k];});
+    document.querySelectorAll('[data-i18n-ph]').forEach(function(e){var k=e.dataset.i18nPh;if(t[k])e.placeholder=t[k];});
+  }
+  // Then apply community-specific L translations (higher priority for community keys)
+  _communityTranslations();
 }
 
-function updateTranslations(){
-  document.querySelectorAll('[data-i18n]').forEach(function(e){var key=e.getAttribute('data-i18n');if(L[lang][key])e.textContent=L[lang][key];});
-  document.querySelectorAll('[data-i18n-ph]').forEach(function(e){var key=e.getAttribute('data-i18n-ph');if(L[lang][key])e.placeholder=L[lang][key];});
-}
+// Hook: when pap-app.js overrides setLang, we wrap it to also run community translations
+document.addEventListener('DOMContentLoaded',function(){
+  setTimeout(function(){
+    var _globalSetLang=window.setLang;
+    // Only wrap if pap-app.js has replaced our setLang
+    if(_globalSetLang && _globalSetLang!==setLang){
+      window.setLang=function(l){
+        lang=l;
+        _globalSetLang(l);
+        _communityTranslations();
+      };
+    }
+  },100);
+});
 
 // ======== TABS ========
 function goTab(tab,el){
