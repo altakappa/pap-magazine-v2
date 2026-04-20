@@ -96,15 +96,35 @@ function _loadArticleI18n(){
     .then(function(data){
       if(!Array.isArray(data)) return;
       var map={};
+      var bySlug={}, byTitleKo={};
       data.forEach(function(item){
         if(item.slug && item.ti18n){
           map[item.slug]={t:item.ti18n, sub:item.subi18n||null};
         }
+        if(item.slug) bySlug[item.slug]=item;
+        var ko=((item.t)||(item.ti18n&&item.ti18n.ko)||'').trim().toLowerCase();
+        if(ko) byTitleKo[ko]=item;
       });
       window._articleI18n=map;
-      // Populate artData if empty (for openArticleFromCard lookup)
-      if(typeof artData!=='undefined' && artData.length===0){
-        data.forEach(function(a){artData.push(a);});
+      // Populate artData if empty; otherwise enrich existing items with ti18n
+      if(typeof artData!=='undefined'){
+        if(artData.length===0){
+          data.forEach(function(a){artData.push(a);});
+        } else {
+          // API sync already ran — backfill translations onto existing artData items
+          artData.forEach(function(a){
+            var m=(a.slug && bySlug[a.slug]) || byTitleKo[(a.t||'').trim().toLowerCase()];
+            if(m){
+              if(!a.ti18n && m.ti18n) a.ti18n=m.ti18n;
+              if(!a.subi18n && m.subi18n) a.subi18n=m.subi18n;
+              if(!a.desci18n && m.desci18n) a.desci18n=m.desci18n;
+            }
+          });
+          // Re-render so detail overlay + card text reflect translated data
+          if(typeof window._papArticleRenderCards==='function'){
+            window._papArticleRenderCards();
+          }
+        }
       }
       _applyArticleCardI18n(lang);
     })
@@ -2867,20 +2887,39 @@ window._papFilmAutoPlay = function(){
       cr: Array.isArray(a.credits)? a.credits : [],
       desc: a.content||'',
       gallery: Array.isArray(a.gallery)? a.gallery : [],
-      _api_id: a.id
+      _api_id: a.id,
+      // Pass through any i18n fields the API exposes (varies by backend schema)
+      ti18n: a.title_i18n || a.titleI18n || a.ti18n || null,
+      subi18n: a.subtitle_i18n || a.subtitleI18n || a.subi18n || null,
+      desci18n: a.content_i18n || a.contentI18n || a.desci18n || null
     };
   }
 
-  // Merge: API items first, then hardcoded (deduplicated by title)
+  // Merge: API items first, then hardcoded (deduplicated by slug/title).
+  // If local JSON has ti18n/subi18n for an API-matched article, enrich the API item
+  // with those translations so the UI can render non-Korean titles.
   function mergeData(apiItems, localItems){
+    var localBySlug={};
+    var localByTitle={};
+    localItems.forEach(function(item){
+      if(item.slug) localBySlug[item.slug]=item;
+      var tk=(item.t||'').trim().toLowerCase();
+      if(tk) localByTitle[tk]=item;
+    });
     var seen={};
     var merged=[];
     apiItems.forEach(function(item){
       var key=(item.t||'').trim().toLowerCase();
-      if(key && !seen[key]){
-        seen[key]=true;
-        merged.push(item);
+      if(!key || seen[key]) return;
+      seen[key]=true;
+      // Enrich with translations from local JSON when API lacks them
+      var localMatch=(item.slug && localBySlug[item.slug]) || localByTitle[key];
+      if(localMatch){
+        if(!item.ti18n && localMatch.ti18n) item.ti18n=localMatch.ti18n;
+        if(!item.subi18n && localMatch.subi18n) item.subi18n=localMatch.subi18n;
+        if(!item.desci18n && localMatch.desci18n) item.desci18n=localMatch.desci18n;
       }
+      merged.push(item);
     });
     localItems.forEach(function(item){
       var key=(item.t||'').trim().toLowerCase();
