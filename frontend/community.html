@@ -185,9 +185,9 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
 /* ==========================================================
    CENTER MAIN AREA — Spacious Apple-like sections
    ========================================================== */
-.c-main-content { flex: 1; padding: 48px 40px 100px; overflow-y: auto; }
+.c-main-content { flex: 1; padding: 56px 40px 120px; overflow-y: auto; }
 .c-tab { display: none; }
-.c-tab.active { display: block; }
+.c-tab.active { display: block; padding-top: 24px; }
 
 /* Tabs: simple underline style, not pills */
 .c-tabs-nav {
@@ -246,10 +246,10 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
 .post-table tbody tr {
   display: flex; flex-wrap: wrap; align-items: baseline;
   cursor: pointer; background: transparent;
-  padding: 24px 0; border-bottom: 1px solid var(--border);
+  padding: 32px 0; border-bottom: 1px solid var(--border);
   transition: background var(--transition);
   border-radius: 0; box-shadow: none;
-  gap: 8px 16px;
+  gap: 10px 16px;
 }
 .post-table tbody tr:first-child { border-top: 1px solid var(--border); }
 .post-table tbody tr:hover { background: var(--surface2); }
@@ -266,12 +266,13 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
 .post-row-category {
   font-size: 12px; font-weight: 500; text-transform: none;
   color: var(--accent); letter-spacing: -0.01em; min-width: auto;
-  order: 1; flex-basis: 100%;
+  order: 1; flex-basis: 100%; padding-bottom: 4px;
+  border-bottom: 1px solid var(--border); margin-bottom: 4px;
 }
 .post-row-title {
   font-weight: 600; color: var(--text); flex: none; display: flex;
   align-items: center; gap: 8px; line-height: 1.47;
-  font-size: 17px; letter-spacing: -0.022em;
+  font-size: 20px; letter-spacing: -0.025em;
   order: 2; flex-basis: 100%;
 }
 .post-row-badge {
@@ -303,7 +304,7 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
 /* ==========================================================
    PAGINATION — clean, minimal
    ========================================================== */
-.pagination { display: flex; justify-content: center; gap: 4px; margin: 48px 0; }
+.pagination { display: flex; justify-content: center; gap: 4px; margin: 64px 0; }
 .pag-btn {
   padding: 8px 14px; font-size: 14px; border: none;
   background: transparent; color: var(--text3); cursor: pointer;
@@ -335,15 +336,17 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
 /* ==========================================================
    PROJECTS — spacious cards
    ========================================================== */
+#t-projects { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+#t-projects.active { display: grid; }
 .proj {
   background: var(--surface2); border: none;
-  margin-bottom: 24px; padding: 40px; border-radius: var(--radius-lg);
-  transition: background var(--transition);
+  margin-bottom: 0; padding: 48px; border-radius: var(--radius-lg);
+  transition: all var(--transition); border-top: 4px solid var(--accent);
 }
-.proj:hover { background: #ededf0; }
+.proj:hover { background: #ededf0; transform: translateY(-2px); }
 .proj-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
 .proj-title {
-  font-family: var(--display); font-size: 22px; font-weight: 700;
+  font-family: var(--display); font-size: 24px; font-weight: 700;
   letter-spacing: -0.02em; text-transform: none; line-height: 1.2; flex: 1; margin-right: 16px;
 }
 .proj-badge {
@@ -376,11 +379,11 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
 /* ==========================================================
    AI MATCH — large hero, Apple feel
    ========================================================== */
-.ai-hero { text-align: center; padding: 80px 0 60px; }
+.ai-hero { text-align: center; padding: 100px 0 60px; }
 .ai-hero h2 {
   font-family: var(--display); font-size: clamp(28px, 4vw, 48px); font-weight: 700;
   letter-spacing: -0.025em; text-transform: none; margin-bottom: 16px; line-height: 1.08;
-  color: var(--text);
+  color: var(--text); max-width: 600px; margin-left: auto; margin-right: auto;
 }
 .ai-hero p { font-size: 17px; color: var(--text2); line-height: 1.47; max-width: 500px; margin: 0 auto; }
 .ai-form { max-width: 520px; margin: 0 auto 56px; }
@@ -468,24 +471,28 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
 }
 .dir-f:hover { color: var(--text); background: #e8e8ed; }
 .dir-f.on { background: var(--accent); color: #fff; }
-.dir-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
+.dir-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 24px; }
 .dir-card {
-  background: var(--surface2); border: none; padding: 32px;
-  border-radius: var(--radius-lg);
-  transition: background var(--transition); cursor: pointer;
+  background: var(--surface); border: none; padding: 36px 32px;
+  border-radius: var(--radius-lg); text-align: center;
+  transition: all var(--transition); cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0,0,0,.04);
 }
-.dir-card:hover { background: #ededf0; }
+.dir-card:hover { background: #fff; transform: translateY(-4px); box-shadow: 0 8px 28px rgba(0,0,0,.08); }
 .dir-av {
-  width: 56px; height: 56px; border-radius: 50%; background: #fff;
+  width: 64px; height: 64px; border-radius: 50%; background: var(--surface2);
   border: none; display: flex; align-items: center; justify-content: center;
-  font-family: var(--display); font-size: 18px; font-weight: 700; color: var(--text3); margin-bottom: 16px;
+  font-family: var(--display); font-size: 20px; font-weight: 700; color: var(--text3); margin: 0 auto 20px;
 }
-.dir-nm { font-size: 17px; font-weight: 600; letter-spacing: -0.022em; margin-bottom: 4px; }
-.dir-rl { font-size: 13px; font-weight: 400; letter-spacing: -0.01em; text-transform: none; color: var(--text3); margin-bottom: 12px; }
-.dir-loc { font-size: 13px; color: var(--text4); margin-bottom: 12px; }
-.dir-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-.dir-tags span { font-size: 11px; padding: 4px 10px; background: #fff; color: var(--text3); border-radius: 980px; }
-.dir-ed { font-size: 12px; color: var(--text4); }
+.dir-nm { font-size: 17px; font-weight: 600; letter-spacing: -0.022em; margin-bottom: 4px; text-align: center; }
+.dir-rl { font-size: 13px; font-weight: 400; letter-spacing: -0.01em; text-transform: none; color: var(--text3); margin-bottom: 12px; text-align: center; }
+.dir-loc { font-size: 13px; color: var(--text4); margin-bottom: 12px; text-align: center; }
+.dir-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; justify-content: center; }
+.dir-tags span { font-size: 11px; padding: 4px 10px; background: var(--surface2); color: var(--text3); border-radius: 980px; }
+.dir-ed { font-size: 12px; color: var(--accent); text-align: center; }
+.dir-ed::after { content: " >"; }
+#t-directory { background: var(--bg-secondary); border-radius: var(--radius-lg); padding: 48px; margin: -20px -40px; }
+#t-directory .dir-bar { margin-bottom: 40px; }
 
 
 /* ==========================================================
@@ -947,15 +954,18 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
 /* ==========================================================
    MOODBOARD — clean masonry
    ========================================================== */
+#t-moodboard { background: #1d1d1f; border-radius: var(--radius-lg); padding: 48px; margin: -20px -40px; }
+#t-moodboard .mood-title, #t-moodboard h3 { color: #f5f5f7; }
+#t-moodboard .mood-tags { color: rgba(255,255,255,.6); }
 .mood-grid {
-  columns: 3; column-gap: 20px;
+  columns: 3; column-gap: 24px;
 }
 .mood-grid > * {
-  break-inside: avoid; margin-bottom: 20px; display: inline-block; width: 100%;
-  background: var(--surface2); border: none; border-radius: var(--radius);
-  overflow: hidden; transition: background var(--transition);
+  break-inside: avoid; margin-bottom: 24px; display: inline-block; width: 100%;
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); border-radius: var(--radius);
+  overflow: hidden; transition: all var(--transition);
 }
-.mood-grid > *:hover { background: #ededf0; }
+.mood-grid > *:hover { background: rgba(255,255,255,.1); }
 .mood-card { cursor: pointer; }
 .mood-preview { overflow: hidden; }
 .mood-img {
@@ -965,26 +975,26 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
 .mood-img-empty { background: #e8e8ed; min-height: 100px; }
 .mood-grid img { width: 100%; display: block; }
 .mood-caption {
-  padding: 18px 20px; font-size: 15px; line-height: 1.47; color: var(--text2);
+  padding: 18px 20px; font-size: 15px; line-height: 1.47; color: rgba(255,255,255,.6);
 }
-.mood-caption strong, .mood-title { display: block; font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 6px; letter-spacing: -0.022em; }
+.mood-caption strong, .mood-title { display: block; font-size: 17px; font-weight: 600; color: #f5f5f7; margin-bottom: 6px; letter-spacing: -0.022em; }
 .mood-footer {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 20px; border-top: 1px solid var(--border);
+  padding: 14px 20px; border-top: 1px solid rgba(255,255,255,.08);
 }
-.mood-author { font-size: 13px; color: var(--text3); }
+.mood-author { font-size: 13px; color: rgba(255,255,255,.45); }
 .mood-tags { display: flex; gap: 5px; flex-wrap: wrap; }
 .mood-tag {
-  font-size: 12px; padding: 4px 10px; background: #fff;
-  color: var(--text3); border-radius: 980px; font-weight: 500;
+  font-size: 12px; padding: 4px 10px; background: rgba(255,255,255,.1);
+  color: rgba(255,255,255,.6); border-radius: 980px; font-weight: 500;
 }
 .mood-vote, .mood-vote-btn {
   display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px;
   font-size: 13px; font-weight: 400; border: none;
-  background: #fff; color: var(--text3); border-radius: 980px;
+  background: rgba(255,255,255,.1); color: rgba(255,255,255,.6); border-radius: 980px;
   cursor: pointer; transition: all var(--transition);
 }
-.mood-vote:hover, .mood-vote-btn:hover { background: #e8e8ed; }
+.mood-vote:hover, .mood-vote-btn:hover { background: rgba(255,255,255,.18); }
 .mood-vote.voted, .mood-vote-btn.voted { background: var(--accent); color: #fff; }
 .mood-vote svg { width: 14px; height: 14px; }
 
@@ -1049,7 +1059,7 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
    FEATURED CREATORS
    ========================================================== */
 .featured-creators {
-  padding: 64px 0 48px;
+  padding: 80px 0 64px; margin-bottom: 64px;
 }
 .fc-header {
   font-family: var(--display); font-size: 32px; font-weight: 700;
@@ -1067,9 +1077,9 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
 .fc-card {
   flex-shrink: 0; width: 220px; background: var(--surface2); border-radius: var(--radius-lg);
   padding: 32px 24px; text-align: center;
-  transition: background var(--transition); cursor: pointer; scroll-snap-align: start;
+  transition: all var(--transition); cursor: pointer; scroll-snap-align: start;
 }
-.fc-card:hover { background: #ededf0; }
+.fc-card:hover { background: #ededf0; transform: translateY(-4px); }
 .fc-card-avatar {
   width: 72px; height: 72px; border-radius: 50%; background: #fff;
   margin: 0 auto 18px; display: flex; align-items: center; justify-content: center;
@@ -1108,6 +1118,7 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
    ========================================================== */
 .ai-search-hero {
   text-align: center; padding: 88px 24px 64px;
+  background: var(--bg-secondary); border-radius: var(--radius-lg); margin: -20px -40px 40px;
 }
 .ai-search-hero h2 {
   font-family: var(--display); font-size: clamp(32px, 5vw, 56px); font-weight: 700;
@@ -1163,13 +1174,13 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
    COMMUNITY VOICE
    ========================================================== */
 .community-voice-banner {
-  background: var(--surface2); border-radius: var(--radius-lg); padding: 40px 44px;
+  background: var(--bg-secondary); border-radius: var(--radius-lg); padding: 64px 56px;
   display: flex; align-items: center; justify-content: space-between;
-  gap: 28px; margin: 32px 0;
+  gap: 28px; margin: 32px 0; text-align: center;
 }
 .community-voice-banner .cv-text { flex: 1; }
 .community-voice-banner .cv-title {
-  font-size: 22px; font-weight: 700; color: var(--text); margin-bottom: 8px; letter-spacing: -0.025em;
+  font-family: var(--display); font-size: 28px; font-weight: 700; color: var(--text); margin-bottom: 12px; letter-spacing: -0.025em;
 }
 .community-voice-banner .cv-desc {
   font-size: 15px; color: var(--text2); line-height: 1.47;
@@ -1268,7 +1279,8 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
   .pagination { flex-wrap: wrap; }
 
   /* PROJECTS */
-  .proj { padding: 28px; }
+  #t-projects { grid-template-columns: 1fr; }
+  .proj { padding: 28px; border-top-width: 3px; }
   .proj-title { font-size: 19px; }
   .proj-desc { font-size: 15px; }
   .proj-bottom { flex-direction: column; gap: 14px; align-items: flex-start; }
@@ -1281,6 +1293,7 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
   .ai-connect { align-self: flex-start; }
 
   /* DIRECTORY */
+  #t-directory { padding: 24px; margin: -10px -20px; }
   .dir-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .dir-card { padding: 24px; }
   .dir-bar { flex-direction: column; gap: 12px; }
@@ -1323,6 +1336,7 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
   .notif-panel { width: 100%; max-width: 100vw; right: -16px; border-radius: 0 0 var(--radius) var(--radius); }
 
   /* MOODBOARD */
+  #t-moodboard { padding: 24px; margin: -10px -20px; }
   .mood-grid { columns: 2; column-gap: 12px; }
   .mood-grid > * { margin-bottom: 12px; }
 
@@ -1339,7 +1353,7 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
   .fc-card { width: 180px; padding: 24px 20px; }
 
   /* AI SEARCH */
-  .ai-search-hero { padding: 48px 16px 40px; }
+  .ai-search-hero { padding: 48px 16px 40px; margin: -10px -20px 24px; }
   .ai-search-hero h2 { font-size: 28px; }
 
   /* COMMUNITY VOICE */
