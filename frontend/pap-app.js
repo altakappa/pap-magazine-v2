@@ -3065,39 +3065,74 @@ window.addEventListener('resize',function(){
   shortsResizeTimer=setTimeout(updateShortsPositions,150);
 });
 
-/* ── Infinite marquee (JS-driven, seamless) ── */
+/* ── Infinite marquee (CSS-animation, truly seamless) ──
+   We duplicate the original items so the track is 2× wide, then animate
+   translateX from 0 to -50% via @keyframes papMarquee. Because the two
+   halves are identical clones, the wrap at -50% is visually continuous
+   — no jump, no stop-and-restart. We wait for fonts.ready before
+   cloning so widths are final and pixel-aligned. Resize & language
+   change both re-run setup. */
 (function(){
-  function initMarquee(){
+  function setupMarquee(){
     var track=document.getElementById('marqueeTrack');
     if(!track) return;
-    // Remove CSS animation — JS takes over
-    track.style.animation='none';
-    // Collect original items
-    var origItems=Array.prototype.slice.call(track.children);
-    // Clone enough sets to fill 3x viewport
-    var setWidth=0;
-    origItems.forEach(function(el){ setWidth+=el.offsetWidth; });
-    if(setWidth===0) return;
-    var copies=Math.ceil((window.innerWidth*3)/setWidth)+1;
-    for(var c=0;c<copies;c++){
-      origItems.forEach(function(el){ track.appendChild(el.cloneNode(true)); });
+    // Reset: disable animation, strip previously-added clones
+    track.classList.remove('mq-anim');
+    track.style.animation='';
+    track.style.animationDuration='';
+    track.style.transform='';
+    var clones=track.querySelectorAll('[data-mq-clone]');
+    for(var k=0;k<clones.length;k++) clones[k].parentNode.removeChild(clones[k]);
+    // Mark remaining children as originals (idempotent on repeat calls)
+    var origs=Array.prototype.slice.call(track.children);
+    if(!origs.length) return;
+    origs.forEach(function(el){ el.removeAttribute('data-mq-clone'); });
+    // Force reflow so scrollWidth reflects 1-set content
+    void track.offsetWidth;
+    var setWidth=track.scrollWidth;
+    if(setWidth<=0) return;
+    // Need content ≥ 2× viewport AND even copies (so -50% lands on a clone boundary)
+    var needed=Math.max(2, Math.ceil((window.innerWidth*2)/setWidth));
+    if(needed % 2) needed++;
+    // Append (needed-1) identical sets using live clones of the original nodes
+    for(var c=1;c<needed;c++){
+      origs.forEach(function(el){
+        var n=el.cloneNode(true);
+        n.setAttribute('data-mq-clone','1');
+        track.appendChild(n);
+      });
     }
-    var pos=0;
-    var speed=window.innerWidth<768?0.6:0.8;
-    var raf;
-    function step(){
-      pos-=speed;
-      if(Math.abs(pos)>=setWidth) pos+=setWidth;
-      track.style.transform='translate3d('+pos+'px,0,0)';
-      raf=requestAnimationFrame(step);
-    }
-    raf=requestAnimationFrame(step);
-    // Pause on hover
-    track.addEventListener('mouseenter',function(){ cancelAnimationFrame(raf); });
-    track.addEventListener('mouseleave',function(){ raf=requestAnimationFrame(step); });
+    // Speed: ~80 px/s desktop, ~60 px/s mobile. Duration covers half the track.
+    var pxPerSec=window.innerWidth<768?60:80;
+    var halfWidth=(setWidth*needed)/2;
+    var duration=Math.max(14, halfWidth/pxPerSec);
+    track.style.animationDuration=duration+'s';
+    // Force reflow then enable animation (avoids starting mid-layout)
+    void track.offsetWidth;
+    track.classList.add('mq-anim');
   }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',initMarquee);
-  else setTimeout(initMarquee,200);
+  function schedule(){
+    // Wait for webfonts (Montserrat 900) so measured widths are final.
+    if(document.fonts && document.fonts.ready && typeof document.fonts.ready.then==='function'){
+      document.fonts.ready.then(function(){ setTimeout(setupMarquee, 60); });
+    } else {
+      setTimeout(setupMarquee, 400);
+    }
+  }
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded', schedule);
+  } else {
+    schedule();
+  }
+  // Re-setup on resize (debounced) & on language change (text widths change)
+  var resizeTimer;
+  window.addEventListener('resize', function(){
+    clearTimeout(resizeTimer);
+    resizeTimer=setTimeout(setupMarquee, 220);
+  });
+  document.addEventListener('pap-lang-changed', function(){
+    setTimeout(setupMarquee, 100);
+  });
 })();
 
 // ======== PAGINATION UTILITY ========
