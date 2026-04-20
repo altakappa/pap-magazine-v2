@@ -3,9 +3,13 @@
  *
  * This file is the ONE place that controls the top navigation bar across
  * every page of the site. When loaded, it:
- *   1. Removes any existing <header class="header">, .nav-overlay,
- *      .pap-search-overlay, .side-nav, .subpage-logo, .auth-btn-sidenav,
- *      .c-header, .mp-back, .mp-lang elements on the page.
+ *   1. Removes duplicate MAIN-nav elements only: <header class="header">,
+ *      .nav-overlay, .pap-search-overlay. It does NOT touch page-specific
+ *      sub-navigation (e.g. community's .c-header with FEED/PROJECTS/AI
+ *      MATCH/DIRECTORY/MOODBOARD tabs, mypage's .mp-back/.mp-lang, etc.).
+ *      Legacy .side-nav / .subpage-logo / .auth-btn-sidenav are hidden
+ *      via CSS (display:none) instead of removed — safer for pages that
+ *      reference them in their own JS.
  *   2. Injects the canonical header + nav-overlay + search-overlay
  *      (modeled after the home page / index.html header).
  *   3. Provides _papToggleNav / _papToggleSearch / _papToggleAccount
@@ -45,15 +49,15 @@
       if (nodes[i] && nodes[i].parentNode) nodes[i].parentNode.removeChild(nodes[i]);
     }
   }
+  /* Remove ONLY duplicate main-nav elements. Page-specific sub-headers
+     (e.g. community's .c-header with its tabs, mypage's .mp-back/.mp-lang)
+     are preserved — they hold functionality the page depends on. Legacy
+     .side-nav / .subpage-logo / .auth-btn-sidenav are hidden via CSS
+     below, not removed, to avoid breaking inline scripts that reference
+     them by id/class. */
   _removeAll('header.header');
   _removeAll('.nav-overlay');
   _removeAll('.pap-search-overlay');
-  _removeAll('.side-nav');
-  _removeAll('.subpage-logo');
-  _removeAll('.auth-btn-sidenav');
-  _removeAll('.c-header');
-  _removeAll('.mp-back');
-  _removeAll('.mp-lang');
 
   /* ================================================================
      1. CSS — inject only when pap-styles.css is absent
@@ -150,20 +154,23 @@
       /* push content below header on sub-pages */
       '.pap-has-header .content{margin-left:0!important;padding-top:100px!important}',
       '.pap-has-header .footer-legal{margin-left:0!important}',
-      /* hide old navigation elements */
+      /* hide legacy duplicate navigation elements (NOT the page's own sub-header) */
       '.pap-has-header .side-nav{display:none!important}',
       '.pap-has-header .subpage-logo{display:none!important}',
       '.pap-has-header .auth-btn-sidenav{display:none!important}',
       '.pap-has-header > .lang-selector{display:none!important}',
-      '.pap-has-header .c-header{display:none!important}',
+      /* mypage: hide its legacy mini top-bar (unified header covers it) */
       '.pap-has-header .mp-back{display:none!important}',
       '.pap-has-header .mp-lang{display:none!important}',
-      /* community: push body below header */
-      '.pap-has-header .c-body{padding-top:72px!important}',
+      /* community: KEEP .c-header visible (tab navigation) and position it
+         immediately below the 72px unified header. Body padding = 72+44. */
+      '.pap-has-header .c-header{top:72px!important;z-index:999!important}',
+      '.pap-has-header .c-body{padding-top:116px!important}',
       /* mypage: adjust wrapper */
       '.pap-has-header .mp-wrapper{padding-top:100px!important}',
       /* sub-pages mobile */
-      '@media(max-width:768px){.pap-has-header .content{padding-top:80px!important;padding-left:20px!important;padding-right:20px!important}.pap-has-header .footer-legal{padding-left:20px!important;padding-right:20px!important}}',
+      '@media(max-width:768px){.pap-has-header .content{padding-top:80px!important;padding-left:20px!important;padding-right:20px!important}.pap-has-header .footer-legal{padding-left:20px!important;padding-right:20px!important}.pap-has-header .c-header{top:60px!important}.pap-has-header .c-body{padding-top:104px!important}}',
+      '@media(max-width:480px){.pap-has-header .c-header{top:56px!important}.pap-has-header .c-body{padding-top:100px!important}}',
     ].join('\n');
     document.head.appendChild(layoutFix);
   }
