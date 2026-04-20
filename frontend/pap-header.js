@@ -74,9 +74,9 @@
       '.hamburger.is-active span:nth-child(1){transform:translateY(8px) rotate(45deg)}',
       '.hamburger.is-active span:nth-child(2){opacity:0}',
       '.hamburger.is-active span:nth-child(3){transform:translateY(-8px) rotate(-45deg)}',
-      /* logo */
-      '.pap-header-logo{position:absolute;left:50%;transform:translateX(-50%)}',
-      '.pap-header-logo img{height:28px;width:auto}',
+      /* logo — match pap-styles.css .logo-wrap */
+      '.logo-wrap{position:absolute;left:50%;transform:translateX(-50%)}',
+      '.logo-wrap img{height:32px;width:auto}',
       /* right side */
       '.header-right{display:flex;align-items:center;gap:6px}',
       '.header-right-item{display:inline-flex;align-items:center;justify-content:center;padding:4px;color:rgba(255,255,255,.4);text-decoration:none;transition:color .2s;background:none;border:none;cursor:pointer;font-family:inherit}',
@@ -159,6 +159,22 @@
   }
   if (document.body) document.body.classList.add('pap-has-header');
 
+  /* Safety net: ALWAYS clamp header logo + header sizing, even if
+     pap-styles.css is loaded. Prevents the logo rendering at its
+     native pixel size when a page's CSS is missing the rule. */
+  if (!document.getElementById('pap-header-safety')) {
+    var safety = document.createElement('style');
+    safety.id = 'pap-header-safety';
+    safety.textContent = [
+      'header.header{position:fixed!important;top:0;left:0;right:0;z-index:1000;height:72px;display:flex;align-items:center;justify-content:space-between;padding:0 40px;background:rgba(0,0,0,.97);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}',
+      'header.header .logo-wrap{position:absolute!important;left:50%;top:50%;transform:translate(-50%,-50%);margin:0;padding:0;max-height:40px;overflow:hidden;display:inline-flex;align-items:center}',
+      'header.header .logo-wrap img{height:32px!important;width:auto!important;max-height:32px!important;display:block}',
+      '@media(max-width:768px){header.header{height:60px;padding:0 16px}header.header .logo-wrap img{height:24px!important;max-height:24px!important}}',
+      '@media(max-width:480px){header.header{height:56px;padding:0 12px}header.header .logo-wrap img{height:20px!important;max-height:20px!important}}'
+    ].join('\n');
+    document.head.appendChild(safety);
+  }
+
   /* ================================================================
      3. HTML — build and inject
      ================================================================ */
@@ -227,7 +243,7 @@
     '    <div class="nav-right-col">',
     '      <a href="#" onclick="' + _navGo('community.html') + '" data-i18n="navCommunity" style="color:#891717">COMMUNITY</a>',
     '      <a href="#" onclick="' + _navGo('magazine.html') + '" data-i18n="navMagazine" style="color:#c9a96e">MAGAZINE</a>',
-    '      <a href="index.html" onclick="event.preventDefault();_papCloseNav();window.location.href=\'index.html\';" data-i18n="navEditorial">EDITORIAL</a>',
+    '      <a href="index.html" onclick="event.preventDefault();_papCloseNav();if(typeof openAllEditorials===\'function\'){openAllEditorials();}else if(typeof window.navigateWithInterstitial===\'function\'){navigateWithInterstitial(\'index.html\');}else{window.location.href=\'index.html\';}" data-i18n="navEditorial">EDITORIAL</a>',
     '      <a href="#" onclick="' + _navGo('articles.html') + '" data-i18n="navArticle">ARTICLE</a>',
     '      <a href="#" onclick="' + _navGo('films.html') + '" data-i18n="navFilm">FILM</a>',
     '    </div>',
@@ -241,7 +257,7 @@
     '      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
     '    </button>',
     '  </div>',
-    '  <a href="/" class="pap-header-logo"><img src="pap-logo.png" alt="PAP Magazine"></a>',
+    '  <a href="/" class="logo-wrap"><img src="pap-logo.png" alt="PAP Magazine"></a>',
     '  <div class="header-right">',
     '    <div class="lang-btn">',
     '      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>',
