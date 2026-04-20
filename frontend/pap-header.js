@@ -192,6 +192,24 @@
     document.head.appendChild(safety);
   }
 
+  /* Safety net: ALWAYS inject .pap-search-overlay CSS — it's a class
+     introduced by this script and is NOT defined in pap-styles.css, so
+     without these rules the overlay would render as a flowing block and
+     the "Search..." input would show at the top of the page. */
+  if (!document.getElementById('pap-search-overlay-css')) {
+    var searchCss = document.createElement('style');
+    searchCss.id = 'pap-search-overlay-css';
+    searchCss.textContent = [
+      '.pap-search-overlay{position:fixed!important;inset:0;z-index:1800;background:rgba(0,0,0,.95);display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transition:all .3s}',
+      '.pap-search-overlay.active{opacity:1;visibility:visible}',
+      '.pap-search-overlay .search-close{position:absolute;top:20px;right:24px;background:none;border:none;font-size:28px;color:#fff;cursor:pointer}',
+      '.pap-search-overlay .search-inner{width:80%;max-width:600px}',
+      '.pap-search-overlay .search-input{width:100%;background:transparent;border:none;border-bottom:2px solid rgba(255,255,255,.3);color:#fff;font-size:24px;font-family:"Montserrat",sans-serif;padding:12px 0;outline:none;letter-spacing:.05em}',
+      '.pap-search-overlay .search-input::placeholder{color:rgba(255,255,255,.3)}'
+    ].join('\n');
+    document.head.appendChild(searchCss);
+  }
+
   /* ================================================================
      3. HTML — build and inject
      ================================================================ */
