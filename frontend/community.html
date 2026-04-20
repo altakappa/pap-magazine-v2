@@ -804,11 +804,6 @@ button{cursor:pointer;font-family:var(--sans)}
       <div id="popAesthetics"></div>
     </div>
 
-    <!-- RECENT VISITORS -->
-    <div class="sw">
-      <div class="sw-title" data-i18n="recentVisitors">최근 방문자</div>
-      <div id="recentVisitors"></div>
-    </div>
   </div>
 
 </div>
@@ -1258,9 +1253,6 @@ function renderSidebars(){
   h='';tags.forEach(function(t){h+='<span class="sw-tag">'+t+'</span>';});
   document.getElementById('popAesthetics').innerHTML=h;
 
-  var visitors=[{n:'Park Min'},{n:'Kim Jun'},{n:'Lee Su'},{n:'Choi Ha'},{n:'Jung Min'}];
-  h='';visitors.forEach(function(v){h+='<div class="sw-item"><div class="sw-av">'+v.n.substring(0,2)+'</div><div class="sw-nm">'+v.n+'</div></div>';});
-  document.getElementById('recentVisitors').innerHTML=h;
 }
 
 // ======== ALERTS ========
