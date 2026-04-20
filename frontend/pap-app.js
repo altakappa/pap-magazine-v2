@@ -111,7 +111,7 @@ function _loadArticleI18n(){
     .catch(function(e){console.warn('Article i18n load failed:',e);});
 }
 function setLang(l){localStorage.setItem('pap-lang',l);
-  lang=l;document.documentElement.lang=l;var _ls=document.getElementById('langSelect');if(_ls)_ls.value=l;
+  lang=l;document.documentElement.lang=l;document.querySelectorAll('.lang-select-el,#langSelect').forEach(function(s){s.value=l;});
   const t=T[l]||T.en;
   document.querySelectorAll('[data-i18n]').forEach(e=>{const k=e.dataset.i18n;if(t[k])e.textContent=t[k]});
   document.querySelectorAll('[data-i18n-html]').forEach(e=>{const k=e.dataset.i18nHtml;if(t[k])e.innerHTML=t[k]});
