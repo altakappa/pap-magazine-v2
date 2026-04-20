@@ -43,22 +43,85 @@ function unlockScroll(){
 
 // ======== i18n ========
 const T={
-ko:{about:'ABOUT',contact:'CONTACT',business:'BUSINESS',subscribe:'구독하기',submission:'서브미션',pullletter:'풀레터',ftAbout:'회사 소개',ftBusiness:'비즈니스',ftContact:'문의하기',ftSubscribe:'구독하기',ftSubmission:'서브미션',ftPullletter:'풀레터',ftCommunity:'커뮤니티',ftMagazine:'매거진',navEditorial:'에디토리얼',navMagazine:'매거진',navCommunity:'커뮤니티',navArticle:'아티클',navFilm:'필름',navBeauty:'뷰티',navInterview:'인터뷰',searchPh:'검색...',aprIssue:'4월호',junIssue:'6월호',editorialHeading:'에디토리얼',fc1:'밀란 패션 위크 FW26 스트릿 스타일 PART.2',fc1d:'<PAP>가 담아온 밀란 패션 위크 현장 공개',fc2:'루이사 베카리아 FW26 백스테이지 WITH 밀란 패션 위크',fc2d:'<PAP>가 루이사 베카리아 백스테이지 현장을 담아왔다',fc3:'밀란 패션 위크 FW26 스트릿 스타일 PART.1',fc3d:'<PAP>가 담아온 밀란 패션 위크 현장 공개',footerLegal:'<strong>주식회사 알타카파</strong><br>CEO : 강동민 | 개인정보 관리자: 강동민 | 사업자번호 192-88-02644<br>서울특별시 강남구 논현로146길 18, 1F PAP 매거진 | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>',terms:'이용약관',privacy:'개인정보처리방침',latestEd:'최신 에디토리얼',trendingEd:'인기 에디토리얼',dreamyEd:'몽환적인 에디토리얼',boldEd:'강렬하고 대담한',warmEd:'자연과 따뜻함',modernEd:'미래적이고 모던한',fc4:'설날을 위한 가장 세련된 선택, 에덴 보드카',fc4d:'PAP가 추천하는 에덴 보드카',latestArticle:'최신기사',coverStory:'4월 커버 화보',coverTitle:'FOLIE',popupTitle:'PAP 멤버가 되어보세요',popupDesc:'에디토리얼, 필름, 아티클 등 PAP의 모든 콘텐츠를 가장 먼저 만나보세요.',popupCta:'무료로 시작하기',popupSkip:'다음에 할게요',},
-en:{about:'ABOUT',contact:'CONTACT',business:'BUSINESS',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',ftAbout:'ABOUT',ftBusiness:'BUSINESS',ftContact:'CONTACT',ftSubscribe:'SUBSCRIBE',ftSubmission:'SUBMISSION',ftPullletter:'PULL-LETTER',ftCommunity:'COMMUNITY',ftMagazine:'MAGAZINE',navEditorial:'EDITORIAL',navMagazine:'MAGAZINE',navCommunity:'COMMUNITY',navArticle:'ARTICLE',navFilm:'FILM',navBeauty:'BEAUTY',navInterview:'INTERVIEW',searchPh:'Search...',aprIssue:'APR. ISSUE',junIssue:'JUN. ISSUE',editorialHeading:'EDITORIAL',fc1:'Milan Fashion Week FW26 Street Style Part.2',fc1d:'PAP captures the scene from Milan Fashion Week',fc2:'Luisa Beccaria FW26 Backstage with Milan Fashion Week',fc2d:'PAP brings you the backstage of Luisa Beccaria',fc3:'Milan Fashion Week FW26 Street Style Part.1',fc3d:'PAP captures the scene from Milan Fashion Week',footerLegal:'<strong>ALTAKAPPA Co., Ltd.</strong><br>CEO : Domenico Kang | Business Registration No. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>',terms:'Terms of Service',privacy:'Privacy Policy',latestEd:'Latest Editorials',trendingEd:'Trending Now',dreamyEd:'Dreamy & Ethereal',boldEd:'Bold & Intense',warmEd:'Warm & Organic',modernEd:'Futuristic & Modern',fc4:'The Most Stylish Choice for New Year, Eden Vodka',fc4d:'Eden Vodka recommended by PAP',latestArticle:'Latest Articles',coverStory:'APR. COVER STORY',coverTitle:'FOLIE',popupTitle:'Become a PAP Member',popupDesc:'Be the first to explore our editorials, films, articles, and more.',popupCta:'GET STARTED FREE',popupSkip:'Maybe later',},
-it:{about:'CHI SIAMO',contact:'CONTATTI',business:'BUSINESS',subscribe:'ABBONATI',submission:'SUBMISSION',pullletter:'PULL-LETTER',ftAbout:'CHI SIAMO',ftBusiness:'BUSINESS',ftContact:'CONTATTI',ftSubscribe:'ABBONATI',ftSubmission:'SUBMISSION',ftPullletter:'PULL-LETTER',ftCommunity:'COMMUNITY',ftMagazine:'MAGAZINE',navEditorial:'EDITORIALE',navMagazine:'MAGAZINE',navCommunity:'COMMUNITY',navArticle:'ARTICOLO',navFilm:'FILM',navBeauty:'BELLEZZA',navInterview:'INTERVISTA',searchPh:'Cerca...',aprIssue:'NUM. APRILE',junIssue:'NUM. GIUGNO',editorialHeading:'EDITORIALE',fc1:'Milan Fashion Week FW26 Street Style Parte 2',fc1d:'PAP cattura la scena dalla Milan Fashion Week',fc2:'Luisa Beccaria FW26 Backstage con Milan Fashion Week',fc2d:'PAP vi porta nel backstage di Luisa Beccaria',fc3:'Milan Fashion Week FW26 Street Style Parte 1',fc3d:'PAP cattura la scena dalla Milan Fashion Week',footerLegal:'<strong>ALTAKAPPA Co., Ltd.</strong><br>CEO : Domenico Kang | P. IVA: 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Corea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>',terms:'Termini di Servizio',privacy:'Informativa sulla Privacy',latestEd:'Ultimi Editoriali',trendingEd:'Di Tendenza',dreamyEd:'Onirico & Etereo',boldEd:'Audace & Intenso',warmEd:'Caldo & Organico',modernEd:'Futuristico & Moderno',fc4:'La Scelta Più Elegante per Capodanno, Eden Vodka',fc4d:'Eden Vodka consigliata da PAP',latestArticle:'Ultimi Articoli',coverStory:'APR. COVER STORY',coverTitle:'FOLIE',popupTitle:'Diventa Membro PAP',popupDesc:'Scopri per primo i nostri editoriali, film, articoli e molto altro.',popupCta:'INIZIA GRATIS',popupSkip:'Forse più tardi',},
-fr:{about:'À PROPOS',contact:'CONTACT',business:'BUSINESS',subscribe:"S'ABONNER",submission:'SOUMISSION',pullletter:'PULL-LETTER',ftAbout:'À PROPOS',ftBusiness:'BUSINESS',ftContact:'CONTACT',ftSubscribe:"S'ABONNER",ftSubmission:'SOUMISSION',ftPullletter:'PULL-LETTER',ftCommunity:'COMMUNAUTÉ',ftMagazine:'MAGAZINE',navEditorial:'ÉDITORIAL',navMagazine:'MAGAZINE',navCommunity:'COMMUNAUTÉ',navArticle:'ARTICLE',navFilm:'FILM',navBeauty:'BEAUTÉ',navInterview:'INTERVIEW',searchPh:'Rechercher...',aprIssue:'NUM. AVRIL',junIssue:'NUM. JUIN',editorialHeading:'ÉDITORIAL',fc1:'Milan Fashion Week FW26 Street Style Partie 2',fc1d:'PAP capture la scène de la Milan Fashion Week',fc2:'Luisa Beccaria FW26 Backstage Milan Fashion Week',fc2d:'PAP vous emmène dans les coulisses de Luisa Beccaria',fc3:'Milan Fashion Week FW26 Street Style Partie 1',fc3d:'PAP capture la scène de la Milan Fashion Week',footerLegal:'<strong>ALTAKAPPA Co., Ltd.</strong><br>PDG : Domenico Kang | N° d\'entreprise: 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Séoul, Corée | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>',terms:'Conditions d\'Utilisation',privacy:'Politique de Confidentialité',latestEd:'Derniers Éditoriaux',trendingEd:'Tendances',dreamyEd:'Onirique & Éthéré',boldEd:'Audacieux & Intense',warmEd:'Chaleureux & Organique',modernEd:'Futuriste & Moderne',fc4:'Le Choix Le Plus Élégant pour le Nouvel An, Eden Vodka',fc4d:'Eden Vodka recommandée par PAP',latestArticle:'Derniers Articles',coverStory:'APR. COVER STORY',coverTitle:'FOLIE',popupTitle:'Devenez Membre PAP',popupDesc:'Découvrez en avant-première nos éditoriaux, films, articles et bien plus.',popupCta:'COMMENCER GRATUITEMENT',popupSkip:'Peut-être plus tard',},
-es:{about:'ACERCA DE',contact:'CONTACTO',business:'NEGOCIOS',subscribe:'SUSCRIBIRSE',submission:'ENVÍO',pullletter:'PULL-LETTER',ftAbout:'ACERCA DE',ftBusiness:'NEGOCIOS',ftContact:'CONTACTO',ftSubscribe:'SUSCRIBIRSE',ftSubmission:'ENVÍO',ftPullletter:'PULL-LETTER',ftCommunity:'COMUNIDAD',ftMagazine:'REVISTA',navEditorial:'EDITORIAL',navMagazine:'REVISTA',navCommunity:'COMUNIDAD',navArticle:'ARTÍCULO',navFilm:'FILM',navBeauty:'BELLEZA',navInterview:'ENTREVISTA',searchPh:'Buscar...',aprIssue:'ED. ABRIL',junIssue:'ED. JUNIO',editorialHeading:'EDITORIAL',fc1:'Milan Fashion Week FW26 Street Style Parte 2',fc1d:'PAP captura la escena de Milan Fashion Week',fc2:'Luisa Beccaria FW26 Backstage Milan Fashion Week',fc2d:'PAP te trae el backstage de Luisa Beccaria',fc3:'Milan Fashion Week FW26 Street Style Parte 1',fc3d:'PAP captura la escena de Milan Fashion Week',footerLegal:'<strong>ALTAKAPPA Co., Ltd.</strong><br>CEO : Domenico Kang | Registro Comercial: 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seúl, Corea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>',terms:'Términos de Servicio',privacy:'Política de Privacidad',latestEd:'Editoriales Recientes',trendingEd:'Tendencias',dreamyEd:'Onírico & Etéreo',boldEd:'Audaz e Intenso',warmEd:'Cálido & Orgánico',modernEd:'Futurista & Moderno',fc4:'La Elección Más Elegante para Año Nuevo, Eden Vodka',fc4d:'Eden Vodka recomendado por PAP',latestArticle:'Artículos Recientes',coverStory:'APR. COVER STORY',coverTitle:'FOLIE',popupTitle:'Hazte Miembro de PAP',popupDesc:'Sé el primero en descubrir nuestros editoriales, películas, artículos y más.',popupCta:'EMPIEZA GRATIS',popupSkip:'Quizás más tarde',},
-ja:{about:'アバウト',contact:'お問い合わせ',business:'ビジネス',subscribe:'購読',submission:'サブミッション',pullletter:'PULL-LETTER',ftAbout:'アバウト',ftBusiness:'ビジネス',ftContact:'お問い合わせ',ftSubscribe:'購読',ftSubmission:'サブミッション',ftPullletter:'PULL-LETTER',ftCommunity:'コミュニティ',ftMagazine:'マガジン',navEditorial:'エディトリアル',navMagazine:'マガジン',navCommunity:'コミュニティ',navArticle:'アーティクル',navFilm:'フィルム',navBeauty:'ビューティー',navInterview:'インタビュー',searchPh:'検索...',aprIssue:'4月号',junIssue:'6月号',editorialHeading:'エディトリアル',fc1:'ミラノファッションウィーク FW26 ストリートスタイル Part.2',fc1d:'PAPがミラノファッションウィークの現場を公開',fc2:'ルイーザ・ベッカリア FW26 バックステージ',fc2d:'PAPがルイーザ・ベッカリアのバックステージをお届け',fc3:'ミラノファッションウィーク FW26 ストリートスタイル Part.1',fc3d:'PAPがミラノファッションウィークの現場を公開',footerLegal:'<strong>株式会社アルタカッパ</strong><br>CEO : カン・ドンミン | 事業者番号 192-88-02644<br>ソウル特別市 江南区 論峴路146ギル 18, 1F PAP マガジン | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>',terms:'利用規約',privacy:'プライバシーポリシー',latestEd:'最新エディトリアル',trendingEd:'人気エディトリアル',dreamyEd:'夢幻的なエディトリアル',boldEd:'大胆で強烈な',warmEd:'自然と温もり',modernEd:'未来的でモダンな',fc4:'新年のための最もスタイリッシュな選択、エデンウォッカ',fc4d:'PAPおすすめのエデンウォッカ',latestArticle:'最新記事',coverStory:'4月 カバーストーリー',coverTitle:'FOLIE',popupTitle:'PAPメンバーになろう',popupDesc:'エディトリアル、フィルム、アーティクルなど、PAPの全コンテンツをいち早くお届け。',popupCta:'無料で始める',popupSkip:'あとで',},
-zh:{about:'关于我们',contact:'联系方式',business:'商务合作',subscribe:'订阅',submission:'投稿',pullletter:'PULL-LETTER',ftAbout:'关于我们',ftBusiness:'商务合作',ftContact:'联系方式',ftSubscribe:'订阅',ftSubmission:'投稿',ftPullletter:'PULL-LETTER',ftCommunity:'社区',ftMagazine:'杂志',navEditorial:'编辑精选',navMagazine:'杂志',navCommunity:'社区',navArticle:'文章',navFilm:'影片',navBeauty:'美妆',navInterview:'访谈',searchPh:'搜索...',aprIssue:'四月刊',junIssue:'六月刊',editorialHeading:'编辑精选',fc1:'米兰时装周 FW26 街拍风格 Part.2',fc1d:'PAP带您直击米兰时装周现场',fc2:'Luisa Beccaria FW26 后台 米兰时装周',fc2d:'PAP带您走进Luisa Beccaria后台',fc3:'米兰时装周 FW26 街拍风格 Part.1',fc3d:'PAP带您直击米兰时装周现场',footerLegal:'<strong>株式会社 ALTAKAPPA</strong><br>CEO : 姜东民 | 营业执照号 192-88-02644<br>韩国首尔市江南区论岘路146街18号, 1F PAP 杂志 | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>',terms:'服务条款',privacy:'隐私政策',latestEd:'最新时尚大片',trendingEd:'热门时尚大片',dreamyEd:'梦幻风格大片',boldEd:'大胆前卫风格',warmEd:'自然温暖风格',modernEd:'未来摩登风格',fc4:'新年最时尚的选择，伊甸伏特加',fc4d:'PAP推荐的伊甸伏特加',latestArticle:'最新文章',coverStory:'四月 封面故事',coverTitle:'FOLIE',popupTitle:'成为PAP会员',popupDesc:'抢先探索我们的时尚大片、影片、文章等精彩内容。',popupCta:'免费开始',popupSkip:'以后再说',},
-ru:{about:'О НАС',contact:'КОНТАКТ',business:'БИЗНЕС',subscribe:'ПОДПИСКА',submission:'ПОДАЧА',pullletter:'PULL-LETTER',ftAbout:'О НАС',ftBusiness:'БИЗНЕС',ftContact:'КОНТАКТ',ftSubscribe:'ПОДПИСКА',ftSubmission:'ПОДАЧА',ftPullletter:'PULL-LETTER',ftCommunity:'СООБЩЕСТВО',ftMagazine:'ЖУРНАЛ',navEditorial:'EDITORIAL',navMagazine:'ЖУРНАЛ',navCommunity:'СООБЩЕСТВО',navArticle:'СТАТЬЯ',navFilm:'FILM',navBeauty:'КРАСОТА',navInterview:'ИНТЕРВЬЮ',searchPh:'Поиск...',aprIssue:'АПР. ВЫПУСК',junIssue:'ИЮНЬ ВЫПУСК',editorialHeading:'EDITORIAL',fc1:'Миланская неделя моды FW26 уличный стиль Часть 2',fc1d:'PAP запечатлел сцены Миланской недели моды',fc2:'Luisa Beccaria FW26 бэкстейдж на Миланской неделе моды',fc2d:'PAP показывает бэкстейдж Luisa Beccaria',fc3:'Миланская неделя моды FW26 уличный стиль Часть 1',fc3d:'PAP запечатлел сцены Миланской недели моды',footerLegal:'<strong>ALTAKAPPA Co., Ltd.</strong><br>CEO : Доменико Кан | Рег. номер: 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Сеул, Корея | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>',terms:'Условия использования',privacy:'Политика конфиденциальности',latestEd:'Последние съёмки',trendingEd:'В тренде',dreamyEd:'Мечтательные и Воздушные',boldEd:'Смелые и Дерзкие',warmEd:'Тёплые и Природные',modernEd:'Футуристичные и Современные',fc4:'Самый стильный выбор к Новому году — Eden Vodka',fc4d:'Eden Vodka от PAP',latestArticle:'Последние статьи',coverStory:'АПР. ОБЛОЖКА',coverTitle:'FOLIE',popupTitle:'Станьте участником PAP',popupDesc:'Первыми узнавайте о наших редакционных материалах, фильмах, статьях и многом другом.',popupCta:'НАЧАТЬ БЕСПЛАТНО',popupSkip:'Позже'}
+ko:{about:'ABOUT',contact:'CONTACT',business:'BUSINESS',subscribe:'구독하기',submission:'서브미션',pullletter:'풀레터',ftAbout:'회사 소개',ftBusiness:'비즈니스',ftContact:'문의하기',ftSubscribe:'구독하기',ftSubmission:'서브미션',ftPullletter:'풀레터',ftCommunity:'커뮤니티',ftMagazine:'매거진',navEditorial:'에디토리얼',navMagazine:'매거진',navCommunity:'커뮤니티',navArticle:'아티클',navFilm:'필름',navBeauty:'뷰티',navInterview:'인터뷰',searchPh:'검색...',aprIssue:'4월호',junIssue:'6월호',editorialHeading:'에디토리얼',shortsHeading:'숏츠',allFilms:'모든 필름',fc1:'밀란 패션 위크 FW26 스트릿 스타일 PART.2',fc1d:'<PAP>가 담아온 밀란 패션 위크 현장 공개',fc2:'루이사 베카리아 FW26 백스테이지 WITH 밀란 패션 위크',fc2d:'<PAP>가 루이사 베카리아 백스테이지 현장을 담아왔다',fc3:'밀란 패션 위크 FW26 스트릿 스타일 PART.1',fc3d:'<PAP>가 담아온 밀란 패션 위크 현장 공개',footerLegal:'<strong>주식회사 알타카파</strong><br>CEO : 강동민 | 개인정보 관리자: 강동민 | 사업자번호 192-88-02644<br>서울특별시 강남구 논현로146길 18, 1F PAP 매거진 | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>',terms:'이용약관',privacy:'개인정보처리방침',latestEd:'최신 에디토리얼',trendingEd:'인기 에디토리얼',dreamyEd:'몽환적인 에디토리얼',boldEd:'강렬하고 대담한',warmEd:'자연과 따뜻함',modernEd:'미래적이고 모던한',fc4:'설날을 위한 가장 세련된 선택, 에덴 보드카',fc4d:'PAP가 추천하는 에덴 보드카',latestArticle:'최신기사',coverStory:'4월 커버 화보',coverTitle:'FOLIE',popupTitle:'PAP 멤버가 되어보세요',popupDesc:'에디토리얼, 필름, 아티클 등 PAP의 모든 콘텐츠를 가장 먼저 만나보세요.',popupCta:'무료로 시작하기',popupSkip:'다음에 할게요',},
+en:{about:'ABOUT',contact:'CONTACT',business:'BUSINESS',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',ftAbout:'ABOUT',ftBusiness:'BUSINESS',ftContact:'CONTACT',ftSubscribe:'SUBSCRIBE',ftSubmission:'SUBMISSION',ftPullletter:'PULL-LETTER',ftCommunity:'COMMUNITY',ftMagazine:'MAGAZINE',navEditorial:'EDITORIAL',navMagazine:'MAGAZINE',navCommunity:'COMMUNITY',navArticle:'ARTICLE',navFilm:'FILM',navBeauty:'BEAUTY',navInterview:'INTERVIEW',searchPh:'Search...',aprIssue:'APR. ISSUE',junIssue:'JUN. ISSUE',editorialHeading:'EDITORIAL',shortsHeading:'SHORTS',allFilms:'ALL FILMS',fc1:'Milan Fashion Week FW26 Street Style Part.2',fc1d:'PAP captures the scene from Milan Fashion Week',fc2:'Luisa Beccaria FW26 Backstage with Milan Fashion Week',fc2d:'PAP brings you the backstage of Luisa Beccaria',fc3:'Milan Fashion Week FW26 Street Style Part.1',fc3d:'PAP captures the scene from Milan Fashion Week',footerLegal:'<strong>ALTAKAPPA Co., Ltd.</strong><br>CEO : Domenico Kang | Business Registration No. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>',terms:'Terms of Service',privacy:'Privacy Policy',latestEd:'Latest Editorials',trendingEd:'Trending Now',dreamyEd:'Dreamy & Ethereal',boldEd:'Bold & Intense',warmEd:'Warm & Organic',modernEd:'Futuristic & Modern',fc4:'The Most Stylish Choice for New Year, Eden Vodka',fc4d:'Eden Vodka recommended by PAP',latestArticle:'Latest Articles',coverStory:'APR. COVER STORY',coverTitle:'FOLIE',popupTitle:'Become a PAP Member',popupDesc:'Be the first to explore our editorials, films, articles, and more.',popupCta:'GET STARTED FREE',popupSkip:'Maybe later',},
+it:{about:'CHI SIAMO',contact:'CONTATTI',business:'BUSINESS',subscribe:'ABBONATI',submission:'SUBMISSION',pullletter:'PULL-LETTER',ftAbout:'CHI SIAMO',ftBusiness:'BUSINESS',ftContact:'CONTATTI',ftSubscribe:'ABBONATI',ftSubmission:'SUBMISSION',ftPullletter:'PULL-LETTER',ftCommunity:'COMMUNITY',ftMagazine:'MAGAZINE',navEditorial:'EDITORIALE',navMagazine:'MAGAZINE',navCommunity:'COMMUNITY',navArticle:'ARTICOLO',navFilm:'FILM',navBeauty:'BELLEZZA',navInterview:'INTERVISTA',searchPh:'Cerca...',aprIssue:'NUM. APRILE',junIssue:'NUM. GIUGNO',editorialHeading:'EDITORIALE',shortsHeading:'SHORTS',allFilms:'TUTTI I FILM',fc1:'Milan Fashion Week FW26 Street Style Parte 2',fc1d:'PAP cattura la scena dalla Milan Fashion Week',fc2:'Luisa Beccaria FW26 Backstage con Milan Fashion Week',fc2d:'PAP vi porta nel backstage di Luisa Beccaria',fc3:'Milan Fashion Week FW26 Street Style Parte 1',fc3d:'PAP cattura la scena dalla Milan Fashion Week',footerLegal:'<strong>ALTAKAPPA Co., Ltd.</strong><br>CEO : Domenico Kang | P. IVA: 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Corea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>',terms:'Termini di Servizio',privacy:'Informativa sulla Privacy',latestEd:'Ultimi Editoriali',trendingEd:'Di Tendenza',dreamyEd:'Onirico & Etereo',boldEd:'Audace & Intenso',warmEd:'Caldo & Organico',modernEd:'Futuristico & Moderno',fc4:'La Scelta Più Elegante per Capodanno, Eden Vodka',fc4d:'Eden Vodka consigliata da PAP',latestArticle:'Ultimi Articoli',coverStory:'APR. COVER STORY',coverTitle:'FOLIE',popupTitle:'Diventa Membro PAP',popupDesc:'Scopri per primo i nostri editoriali, film, articoli e molto altro.',popupCta:'INIZIA GRATIS',popupSkip:'Forse più tardi',},
+fr:{about:'À PROPOS',contact:'CONTACT',business:'BUSINESS',subscribe:"S'ABONNER",submission:'SOUMISSION',pullletter:'PULL-LETTER',ftAbout:'À PROPOS',ftBusiness:'BUSINESS',ftContact:'CONTACT',ftSubscribe:"S'ABONNER",ftSubmission:'SOUMISSION',ftPullletter:'PULL-LETTER',ftCommunity:'COMMUNAUTÉ',ftMagazine:'MAGAZINE',navEditorial:'ÉDITORIAL',navMagazine:'MAGAZINE',navCommunity:'COMMUNAUTÉ',navArticle:'ARTICLE',navFilm:'FILM',navBeauty:'BEAUTÉ',navInterview:'INTERVIEW',searchPh:'Rechercher...',aprIssue:'NUM. AVRIL',junIssue:'NUM. JUIN',editorialHeading:'ÉDITORIAL',shortsHeading:'SHORTS',allFilms:'TOUS LES FILMS',fc1:'Milan Fashion Week FW26 Street Style Partie 2',fc1d:'PAP capture la scène de la Milan Fashion Week',fc2:'Luisa Beccaria FW26 Backstage Milan Fashion Week',fc2d:'PAP vous emmène dans les coulisses de Luisa Beccaria',fc3:'Milan Fashion Week FW26 Street Style Partie 1',fc3d:'PAP capture la scène de la Milan Fashion Week',footerLegal:'<strong>ALTAKAPPA Co., Ltd.</strong><br>PDG : Domenico Kang | N° d\'entreprise: 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Séoul, Corée | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>',terms:'Conditions d\'Utilisation',privacy:'Politique de Confidentialité',latestEd:'Derniers Éditoriaux',trendingEd:'Tendances',dreamyEd:'Onirique & Éthéré',boldEd:'Audacieux & Intense',warmEd:'Chaleureux & Organique',modernEd:'Futuriste & Moderne',fc4:'Le Choix Le Plus Élégant pour le Nouvel An, Eden Vodka',fc4d:'Eden Vodka recommandée par PAP',latestArticle:'Derniers Articles',coverStory:'APR. COVER STORY',coverTitle:'FOLIE',popupTitle:'Devenez Membre PAP',popupDesc:'Découvrez en avant-première nos éditoriaux, films, articles et bien plus.',popupCta:'COMMENCER GRATUITEMENT',popupSkip:'Peut-être plus tard',},
+es:{about:'ACERCA DE',contact:'CONTACTO',business:'NEGOCIOS',subscribe:'SUSCRIBIRSE',submission:'ENVÍO',pullletter:'PULL-LETTER',ftAbout:'ACERCA DE',ftBusiness:'NEGOCIOS',ftContact:'CONTACTO',ftSubscribe:'SUSCRIBIRSE',ftSubmission:'ENVÍO',ftPullletter:'PULL-LETTER',ftCommunity:'COMUNIDAD',ftMagazine:'REVISTA',navEditorial:'EDITORIAL',navMagazine:'REVISTA',navCommunity:'COMUNIDAD',navArticle:'ARTÍCULO',navFilm:'FILM',navBeauty:'BELLEZA',navInterview:'ENTREVISTA',searchPh:'Buscar...',aprIssue:'ED. ABRIL',junIssue:'ED. JUNIO',editorialHeading:'EDITORIAL',shortsHeading:'SHORTS',allFilms:'TODAS LAS PELÍCULAS',fc1:'Milan Fashion Week FW26 Street Style Parte 2',fc1d:'PAP captura la escena de Milan Fashion Week',fc2:'Luisa Beccaria FW26 Backstage Milan Fashion Week',fc2d:'PAP te trae el backstage de Luisa Beccaria',fc3:'Milan Fashion Week FW26 Street Style Parte 1',fc3d:'PAP captura la escena de Milan Fashion Week',footerLegal:'<strong>ALTAKAPPA Co., Ltd.</strong><br>CEO : Domenico Kang | Registro Comercial: 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seúl, Corea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>',terms:'Términos de Servicio',privacy:'Política de Privacidad',latestEd:'Editoriales Recientes',trendingEd:'Tendencias',dreamyEd:'Onírico & Etéreo',boldEd:'Audaz e Intenso',warmEd:'Cálido & Orgánico',modernEd:'Futurista & Moderno',fc4:'La Elección Más Elegante para Año Nuevo, Eden Vodka',fc4d:'Eden Vodka recomendado por PAP',latestArticle:'Artículos Recientes',coverStory:'APR. COVER STORY',coverTitle:'FOLIE',popupTitle:'Hazte Miembro de PAP',popupDesc:'Sé el primero en descubrir nuestros editoriales, películas, artículos y más.',popupCta:'EMPIEZA GRATIS',popupSkip:'Quizás más tarde',},
+ja:{about:'アバウト',contact:'お問い合わせ',business:'ビジネス',subscribe:'購読',submission:'サブミッション',pullletter:'PULL-LETTER',ftAbout:'アバウト',ftBusiness:'ビジネス',ftContact:'お問い合わせ',ftSubscribe:'購読',ftSubmission:'サブミッション',ftPullletter:'PULL-LETTER',ftCommunity:'コミュニティ',ftMagazine:'マガジン',navEditorial:'エディトリアル',navMagazine:'マガジン',navCommunity:'コミュニティ',navArticle:'アーティクル',navFilm:'フィルム',navBeauty:'ビューティー',navInterview:'インタビュー',searchPh:'検索...',aprIssue:'4月号',junIssue:'6月号',editorialHeading:'エディトリアル',shortsHeading:'ショート',allFilms:'すべてのフィルム',fc1:'ミラノファッションウィーク FW26 ストリートスタイル Part.2',fc1d:'PAPがミラノファッションウィークの現場を公開',fc2:'ルイーザ・ベッカリア FW26 バックステージ',fc2d:'PAPがルイーザ・ベッカリアのバックステージをお届け',fc3:'ミラノファッションウィーク FW26 ストリートスタイル Part.1',fc3d:'PAPがミラノファッションウィークの現場を公開',footerLegal:'<strong>株式会社アルタカッパ</strong><br>CEO : カン・ドンミン | 事業者番号 192-88-02644<br>ソウル特別市 江南区 論峴路146ギル 18, 1F PAP マガジン | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>',terms:'利用規約',privacy:'プライバシーポリシー',latestEd:'最新エディトリアル',trendingEd:'人気エディトリアル',dreamyEd:'夢幻的なエディトリアル',boldEd:'大胆で強烈な',warmEd:'自然と温もり',modernEd:'未来的でモダンな',fc4:'新年のための最もスタイリッシュな選択、エデンウォッカ',fc4d:'PAPおすすめのエデンウォッカ',latestArticle:'最新記事',coverStory:'4月 カバーストーリー',coverTitle:'FOLIE',popupTitle:'PAPメンバーになろう',popupDesc:'エディトリアル、フィルム、アーティクルなど、PAPの全コンテンツをいち早くお届け。',popupCta:'無料で始める',popupSkip:'あとで',},
+zh:{about:'关于我们',contact:'联系方式',business:'商务合作',subscribe:'订阅',submission:'投稿',pullletter:'PULL-LETTER',ftAbout:'关于我们',ftBusiness:'商务合作',ftContact:'联系方式',ftSubscribe:'订阅',ftSubmission:'投稿',ftPullletter:'PULL-LETTER',ftCommunity:'社区',ftMagazine:'杂志',navEditorial:'编辑精选',navMagazine:'杂志',navCommunity:'社区',navArticle:'文章',navFilm:'影片',navBeauty:'美妆',navInterview:'访谈',searchPh:'搜索...',aprIssue:'四月刊',junIssue:'六月刊',editorialHeading:'编辑精选',shortsHeading:'短片',allFilms:'全部影片',fc1:'米兰时装周 FW26 街拍风格 Part.2',fc1d:'PAP带您直击米兰时装周现场',fc2:'Luisa Beccaria FW26 后台 米兰时装周',fc2d:'PAP带您走进Luisa Beccaria后台',fc3:'米兰时装周 FW26 街拍风格 Part.1',fc3d:'PAP带您直击米兰时装周现场',footerLegal:'<strong>株式会社 ALTAKAPPA</strong><br>CEO : 姜东民 | 营业执照号 192-88-02644<br>韩国首尔市江南区论岘路146街18号, 1F PAP 杂志 | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>',terms:'服务条款',privacy:'隐私政策',latestEd:'最新时尚大片',trendingEd:'热门时尚大片',dreamyEd:'梦幻风格大片',boldEd:'大胆前卫风格',warmEd:'自然温暖风格',modernEd:'未来摩登风格',fc4:'新年最时尚的选择，伊甸伏特加',fc4d:'PAP推荐的伊甸伏特加',latestArticle:'最新文章',coverStory:'四月 封面故事',coverTitle:'FOLIE',popupTitle:'成为PAP会员',popupDesc:'抢先探索我们的时尚大片、影片、文章等精彩内容。',popupCta:'免费开始',popupSkip:'以后再说',},
+ru:{about:'О НАС',contact:'КОНТАКТ',business:'БИЗНЕС',subscribe:'ПОДПИСКА',submission:'ПОДАЧА',pullletter:'PULL-LETTER',ftAbout:'О НАС',ftBusiness:'БИЗНЕС',ftContact:'КОНТАКТ',ftSubscribe:'ПОДПИСКА',ftSubmission:'ПОДАЧА',ftPullletter:'PULL-LETTER',ftCommunity:'СООБЩЕСТВО',ftMagazine:'ЖУРНАЛ',navEditorial:'EDITORIAL',navMagazine:'ЖУРНАЛ',navCommunity:'СООБЩЕСТВО',navArticle:'СТАТЬЯ',navFilm:'FILM',navBeauty:'КРАСОТА',navInterview:'ИНТЕРВЬЮ',searchPh:'Поиск...',aprIssue:'АПР. ВЫПУСК',junIssue:'ИЮНЬ ВЫПУСК',editorialHeading:'EDITORIAL',shortsHeading:'ШОРТС',allFilms:'ВСЕ ФИЛЬМЫ',fc1:'Миланская неделя моды FW26 уличный стиль Часть 2',fc1d:'PAP запечатлел сцены Миланской недели моды',fc2:'Luisa Beccaria FW26 бэкстейдж на Миланской неделе моды',fc2d:'PAP показывает бэкстейдж Luisa Beccaria',fc3:'Миланская неделя моды FW26 уличный стиль Часть 1',fc3d:'PAP запечатлел сцены Миланской недели моды',footerLegal:'<strong>ALTAKAPPA Co., Ltd.</strong><br>CEO : Доменико Кан | Рег. номер: 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Сеул, Корея | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>',terms:'Условия использования',privacy:'Политика конфиденциальности',latestEd:'Последние съёмки',trendingEd:'В тренде',dreamyEd:'Мечтательные и Воздушные',boldEd:'Смелые и Дерзкие',warmEd:'Тёплые и Природные',modernEd:'Футуристичные и Современные',fc4:'Самый стильный выбор к Новому году — Eden Vodka',fc4d:'Eden Vodka от PAP',latestArticle:'Последние статьи',coverStory:'АПР. ОБЛОЖКА',coverTitle:'FOLIE',popupTitle:'Станьте участником PAP',popupDesc:'Первыми узнавайте о наших редакционных материалах, фильмах, статьях и многом другом.',popupCta:'НАЧАТЬ БЕСПЛАТНО',popupSkip:'Позже'}
 };
 let lang='ko';
+// Article i18n data map — slug → {t:{ko,en,...}, sub:{...}}
+window._articleI18n = window._articleI18n || {};
+function _applyArticleCardI18n(l){
+  try{
+    var map=window._articleI18n||{};
+    // 1) Static cards on index.html (.fashion-card)
+    document.querySelectorAll('.fashion-card[data-slug]').forEach(function(card){
+      var slug=card.getAttribute('data-slug');
+      var data=map[slug];
+      if(!data) return;
+      var titleEl=card.querySelector('.fashion-card-title');
+      if(titleEl && data.t){
+        var tr = data.t[l] || data.t.en || data.t.ko;
+        if(tr) titleEl.textContent = tr;
+      }
+      var imgEl=card.querySelector('.fashion-card-img img');
+      if(imgEl && data.t){
+        var alt = data.t[l] || data.t.en || data.t.ko;
+        if(alt) imgEl.setAttribute('alt', alt);
+      }
+    });
+    // 2) Dynamic cards on articles.html (.card with data-slug)
+    document.querySelectorAll('.card[data-slug]').forEach(function(card){
+      var slug=card.getAttribute('data-slug');
+      var data=map[slug];
+      if(!data) return;
+      var titleEl=card.querySelector('.card-title');
+      if(titleEl && data.t){
+        var tr = data.t[l] || data.t.en || data.t.ko;
+        if(tr) titleEl.textContent = tr.toUpperCase();
+      }
+    });
+  }catch(e){console.warn('Card i18n error:',e);}
+}
+function _loadArticleI18n(){
+  if(window._articleI18nLoading || (window._articleI18n && Object.keys(window._articleI18n).length)) return;
+  window._articleI18nLoading=true;
+  fetch('pap-article-db.json',{cache:'default'})
+    .then(function(r){return r.ok ? r.json() : null;})
+    .then(function(data){
+      if(!Array.isArray(data)) return;
+      var map={};
+      data.forEach(function(item){
+        if(item.slug && item.ti18n){
+          map[item.slug]={t:item.ti18n, sub:item.subi18n||null};
+        }
+      });
+      window._articleI18n=map;
+      // Populate artData if empty (for openArticleFromCard lookup)
+      if(typeof artData!=='undefined' && artData.length===0){
+        data.forEach(function(a){artData.push(a);});
+      }
+      _applyArticleCardI18n(lang);
+    })
+    .catch(function(e){console.warn('Article i18n load failed:',e);});
+}
 function setLang(l){localStorage.setItem('pap-lang',l);
   lang=l;document.documentElement.lang=l;var _ls=document.getElementById('langSelect');if(_ls)_ls.value=l;
   const t=T[l]||T.en;
   document.querySelectorAll('[data-i18n]').forEach(e=>{const k=e.dataset.i18n;if(t[k])e.textContent=t[k]});
   document.querySelectorAll('[data-i18n-html]').forEach(e=>{const k=e.dataset.i18nHtml;if(t[k])e.innerHTML=t[k]});
   document.querySelectorAll('[data-i18n-ph]').forEach(e=>{const k=e.dataset.i18nPh;if(t[k])e.placeholder=t[k]});
+  _applyArticleCardI18n(l);
+}
+// Auto-load article i18n data as soon as possible
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded',_loadArticleI18n);
+} else {
+  _loadArticleI18n();
 }
 
 // ======== LOADER ========
@@ -1230,13 +1293,27 @@ function openArticleBySlug(slug){
 function _decHtml(s){var d=document.createElement('div');d.innerHTML=s;return d.textContent||d.innerText||'';}
 function _normWs(s){return s.replace(/[\u2018\u2019\u201C\u201D]/g,"'").replace(/\s+/g,' ').trim();}
 function openArticleFromCard(card){
+  // Prefer data-slug (language-agnostic) over title matching
+  var slug=card.getAttribute('data-slug');
+  if(slug){
+    for(var j=0;j<artData.length;j++){
+      if(artData[j].slug===slug){openArticleDetail(j);return;}
+    }
+  }
   var titleEl=card.querySelector('.fashion-card-title')||card.querySelector('.art-all-title');
   if(!titleEl) return;
   var raw=titleEl.innerHTML||'';
   var title=_normWs(_decHtml(raw));
+  // Match by any language variant in ti18n
   for(var i=0;i<artData.length;i++){
     var at=_normWs(artData[i].t||'');
     if(at===title||at.toUpperCase()===title){openArticleDetail(i);return;}
+    if(artData[i].ti18n){
+      for(var lk in artData[i].ti18n){
+        var lt=_normWs(artData[i].ti18n[lk]||'');
+        if(lt===title||lt.toUpperCase()===title){openArticleDetail(i);return;}
+      }
+    }
   }
   for(var i=0;i<artData.length;i++){
     var at=_normWs(artData[i].t||'');
@@ -1245,9 +1322,13 @@ function openArticleFromCard(card){
 }
 function _renderArticleDetail(a,det){
   document.getElementById('artDetailImg').src=a.img||a.th;
-  document.getElementById('artDetailTitle').textContent=a.t||'';
+  // Use localized title/sub if available
+  var _curLang=(typeof lang!=='undefined'?lang:(localStorage.getItem('pap-lang')||'ko'));
+  var _locTitle=(a.ti18n && (a.ti18n[_curLang]||a.ti18n.en))||a.t||'';
+  var _locSub=(a.subi18n && (a.subi18n[_curLang]||a.subi18n.en))||a.sub||'';
+  document.getElementById('artDetailTitle').textContent=_locTitle;
   document.getElementById('artDetailCat').textContent=(a.cat||'ARTICLE')+' · '+(a.d||'');
-  document.getElementById('artDetailSub').textContent=a.sub||'';
+  document.getElementById('artDetailSub').textContent=_locSub;
   var descEl=document.getElementById('artDetailDesc');
   if(descEl){
     if(a.desc){
@@ -1342,22 +1423,11 @@ function closeArticleDetail(skipHistory){
 
 
 // AUTO LANGUAGE DETECTION
+// Language detection is delegated to pap-geo-lang.js (loaded before this script).
+// That module handles: IP geolocation → browser/timezone fallback → user preference respect.
+// Here we simply apply whatever has already been resolved in localStorage.
 (function(){
-  var saved=localStorage.getItem('pap-lang');
-  if(!saved){
-    var tz=Intl.DateTimeFormat().resolvedOptions().timeZone||'';
-    var lang=navigator.language||navigator.userLanguage||'';
-    lang=lang.toLowerCase();
-    if(lang.startsWith('ko')||tz.indexOf('Seoul')>-1) saved='ko';
-    else if(lang.startsWith('ja')||tz.indexOf('Tokyo')>-1) saved='ja';
-    else if(lang.startsWith('zh')||tz.indexOf('Shanghai')>-1||tz.indexOf('Beijing')>-1||tz.indexOf('Hong_Kong')>-1||tz.indexOf('Taipei')>-1) saved='zh';
-    else if(lang.startsWith('it')||tz.indexOf('Rome')>-1) saved='it';
-    else if(lang.startsWith('fr')||tz.indexOf('Paris')>-1) saved='fr';
-    else if(lang.startsWith('es')||tz.indexOf('Madrid')>-1||tz.indexOf('Mexico')>-1) saved='es';
-    else if(lang.startsWith('ru')||tz.indexOf('Moscow')>-1||tz.indexOf('Petersburg')>-1) saved='ru';
-    else saved='en';
-    localStorage.setItem('pap-lang',saved);
-  }
+  var saved = localStorage.getItem('pap-lang') || 'en';
   setLang(saved);
 })();
 

@@ -310,7 +310,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
       var title = document.createElement('div');
       title.className = 'card-title';
-      title.textContent = (a.t || '').toUpperCase();
+      var _curLang=(localStorage.getItem('pap-lang')||'ko');
+      var _locT=(a.ti18n&&(a.ti18n[_curLang]||a.ti18n.en))||a.t||'';
+      title.textContent = _locT.toUpperCase();
+
+      // data-slug for language-agnostic linking
+      if(a.slug) card.setAttribute('data-slug', a.slug);
 
       card.appendChild(img);
       card.appendChild(cat);
