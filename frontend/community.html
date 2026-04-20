@@ -596,6 +596,13 @@ button{cursor:pointer;font-family:var(--sans)}
   </nav>
   <div class="c-header-right">
     <a href="index.html" class="c-back" data-i18n="backMag">← 매거진</a>
+    <button onclick="openDMPanel()" title="Messages" style="background:none;border:none;cursor:pointer;position:relative;padding:4px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    </button>
+    <button onclick="openNotifications()" title="Notifications" style="background:none;border:none;cursor:pointer;position:relative;padding:4px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-2px;background:#e74c3c;color:#fff;font-size:8px;width:16px;height:16px;border-radius:50%;align-items:center;justify-content:center;font-weight:700;font-family:Montserrat,sans-serif">0</span>
+    </button>
     <button class="c-write-btn" onclick="openWrite()" data-i18n="writeBtn">글쓰기</button>
   </div>
 </div>
@@ -1777,6 +1784,7 @@ PAP COMMUNITY<br>
     <span data-i18n="tabDirectory">디렉토리</span>
   </a>
 </nav>
+<script src="community-v2.js" defer></script>
 <script src="pap-header.js"></script>
 <script src="pap-auth-link.js" defer></script>
 </body>
