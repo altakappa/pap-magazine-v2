@@ -2824,7 +2824,10 @@ function timeAgo(dateStr){
 
 // ======== INIT ========
 window.addEventListener('load',function(){
-  updateTranslations();
+  // Re-read saved language (header may have dispatched pap-lang-changed by now)
+  try{ var _ls=localStorage.getItem('pap-lang'); if(_ls) lang=_ls; }catch(e){}
+  // Apply translations (setLang handles both global T and community-specific L)
+  try{ if(typeof setLang==='function') setLang(lang); else _communityTranslations(); }catch(e){ try{_communityTranslations();}catch(e2){} }
   currentCategory='all';
   updatePostTable();
   renderProjects();
@@ -2835,6 +2838,17 @@ window.addEventListener('load',function(){
   if(sbReady){
     loadFromSupabase();
   }
+});
+
+// Listen for language changes dispatched by header/geo-lang
+document.addEventListener('pap-lang-changed', function(ev){
+  try{
+    var newLang = (ev && ev.detail && ev.detail.lang) || localStorage.getItem('pap-lang') || lang;
+    lang = newLang;
+    var sel=document.getElementById('langSelect'); if(sel) sel.value=newLang;
+    document.documentElement.lang=newLang;
+    _communityTranslations();
+  }catch(e){}
 });
 
 var savedLang=localStorage.getItem('pap-lang');
