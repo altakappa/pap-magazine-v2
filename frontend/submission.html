@@ -920,7 +920,7 @@ function navigateWithInterstitial(url){
 </main>
 <div class="footer-legal" id="footerLegal"></div>
 
-<script src="pap-api.js?v=8" defer></script>
+<script src="pap-api.js?v=9" defer></script>
 <script src="submission-terms.js?v=1"></script>
 <script>
 var lookCount=0;
@@ -936,6 +936,75 @@ function _isValidVideoUrl(u){
     var parsed=new URL(u);
     return parsed.protocol==='http:'||parsed.protocol==='https:';
   } catch(_){ return false; }
+}
+
+// IMAGE COMPRESSION — client-side Canvas resize + JPG re-encode.
+// Runs before files are queued so the browser only ever uploads files
+// sized for editorial use (longest side ≤ 2000 px, JPG ~85% quality).
+// Side effects: strips EXIF/GPS metadata (privacy win), unifies format.
+// TIFF and non-standard types pass through unchanged because most browsers
+// can't decode TIFF via Canvas; the server-side direct upload still accepts
+// the original file.
+function _compressImage(file, opts){
+  opts = opts || {};
+  var MAX_DIM = opts.maxDim || 2000;
+  var QUALITY = opts.quality || 0.85;
+  if(!file || !file.type) return Promise.resolve(file);
+  if(file.type === 'image/tiff') return Promise.resolve(file);
+  if(!/^image\/(jpe?g|png|webp)$/i.test(file.type)) return Promise.resolve(file);
+
+  // Prefer createImageBitmap: faster, respects EXIF orientation natively.
+  var loader = (typeof createImageBitmap === 'function')
+    ? createImageBitmap(file, { imageOrientation: 'from-image' }).catch(function(){ return null; })
+    : Promise.resolve(null);
+
+  return loader.then(function(bitmap){
+    return new Promise(function(resolve){
+      function finish(width, height, draw){
+        var longest = Math.max(width, height);
+        // If the file is already within budget in BOTH dimension AND size,
+        // keep the original so we don't needlessly re-encode.
+        if(longest <= MAX_DIM && file.size < 4 * 1024 * 1024) return resolve(file);
+        var scale = Math.min(1, MAX_DIM / longest);
+        var tw = Math.max(1, Math.round(width * scale));
+        var th = Math.max(1, Math.round(height * scale));
+        var canvas = document.createElement('canvas');
+        canvas.width = tw; canvas.height = th;
+        var ctx = canvas.getContext('2d');
+        try { ctx.imageSmoothingQuality = 'high'; } catch(_){}
+        try { draw(ctx, tw, th); } catch(_){ return resolve(file); }
+        canvas.toBlob(function(blob){
+          if(!blob) return resolve(file);
+          // Bail out if compression paradoxically grew the file (rare edge)
+          if(blob.size >= file.size && longest <= MAX_DIM) return resolve(file);
+          var baseName = (file.name || 'image').replace(/\.[^.]+$/, '') + '.jpg';
+          try {
+            resolve(new File([blob], baseName, { type: 'image/jpeg', lastModified: Date.now() }));
+          } catch(_){
+            try { Object.defineProperty(blob, 'name', { value: baseName }); } catch(_){}
+            resolve(blob);
+          }
+        }, 'image/jpeg', QUALITY);
+      }
+      if(bitmap){
+        finish(bitmap.width, bitmap.height, function(ctx, w, h){
+          ctx.drawImage(bitmap, 0, 0, w, h);
+          try { bitmap.close && bitmap.close(); } catch(_){}
+        });
+      } else {
+        var img = new Image();
+        var url = URL.createObjectURL(file);
+        img.onload = function(){
+          finish(img.naturalWidth, img.naturalHeight, function(ctx, w, h){
+            ctx.drawImage(img, 0, 0, w, h);
+            URL.revokeObjectURL(url);
+          });
+        };
+        img.onerror = function(){ URL.revokeObjectURL(url); resolve(file); };
+        img.src = url;
+      }
+    });
+  });
 }
 
 // GENRE SELECTION
@@ -1288,10 +1357,11 @@ function itemOptions(){
   return '<option value="">Select...</option><option>Jacket</option><option>Top</option><option>Shirt</option><option>Sweater</option><option>Dress</option><option>Pants</option><option>Skirt</option><option>Bodysuit</option><option>Costume</option><option>Coat</option><option>Shoes</option><option>Boots</option><option>Bag</option><option>Glasses</option><option>Sunglasses</option><option>Hat</option><option>Belt</option><option>Ring</option><option>Necklace</option><option>Earrings</option><option>Watch</option><option>Scarf</option><option>Gloves</option><option>Other</option>';
 }
 
-function addLookFiles(n,fl){
+async function addLookFiles(n,fl){
   if(!lookFiles[n]) lookFiles[n]=[];
   var allowed=['image/jpeg','image/png','image/tiff','image/webp'];
   var maxSize=25*1024*1024;
+  var queue=[];
   for(var i=0;i<fl.length;i++){
     if(allowed.indexOf(fl[i].type)===-1){
       if(typeof PAP!=='undefined') PAP.ui.toast(_t('toastOnlyImgFmt',{name:fl[i].name}),'error');
@@ -1301,9 +1371,19 @@ function addLookFiles(n,fl){
       if(typeof PAP!=='undefined') PAP.ui.toast(_t('toastImgTooBig25',{name:fl[i].name}),'error');
       continue;
     }
-    lookFiles[n].push(fl[i]);
-    // Check image dimensions
+    queue.push(fl[i]);
     checkImageDimensions(fl[i]);
+  }
+  if(queue.length===0){ renderLookThumbs(n); updateCoverSelector(); return; }
+  // Compress in parallel BEFORE they enter the upload queue so the user's
+  // upload is already right-sized for editorial web use.
+  try {
+    var compressed = await Promise.all(queue.map(function(f){ return _compressImage(f); }));
+    compressed.forEach(function(f){ lookFiles[n].push(f); });
+  } catch(e) {
+    // Fall back to originals so the user is never blocked by a compression bug
+    console.warn('[compress] falling back to originals:', e);
+    queue.forEach(function(f){ lookFiles[n].push(f); });
   }
   renderLookThumbs(n);
   updateCoverSelector();
@@ -1420,10 +1500,11 @@ uz1.addEventListener('dragover',function(e){e.preventDefault();uz1.classList.add
 uz1.addEventListener('dragleave',function(){uz1.classList.remove('dragover');});
 uz1.addEventListener('drop',function(e){e.preventDefault();uz1.classList.remove('dragover');addF(e.dataTransfer.files);});
 
-function addF(fl){
+async function addF(fl){
   var allowed=['image/jpeg','image/png','image/tiff','image/webp'];
   var maxSize=20*1024*1024;
   var maxFiles=30;
+  var queue=[];
   for(var i=0;i<fl.length;i++){
     if(allowed.indexOf(fl[i].type)===-1){
       if(typeof PAP!=='undefined') PAP.ui.toast(_t('toastInvalidFileType',{name:fl[i].name}),'error');
@@ -1433,11 +1514,19 @@ function addF(fl){
       if(typeof PAP!=='undefined') PAP.ui.toast(_t('toastFileTooBig20',{name:fl[i].name}),'error');
       continue;
     }
-    if(files1.length>=maxFiles){
+    if(files1.length+queue.length>=maxFiles){
       if(typeof PAP!=='undefined') PAP.ui.toast(_t('toastMaxFilesN',{max:maxFiles}),'error');
       break;
     }
-    files1.push(fl[i]);
+    queue.push(fl[i]);
+  }
+  if(queue.length===0){ renderF(); return; }
+  try {
+    var compressed = await Promise.all(queue.map(function(f){ return _compressImage(f); }));
+    compressed.forEach(function(f){ files1.push(f); });
+  } catch(e) {
+    console.warn('[compress] falling back to originals:', e);
+    queue.forEach(function(f){ files1.push(f); });
   }
   renderF();
 }
@@ -1476,23 +1565,9 @@ async function submitForm(){
     return;
   }
 
-  // PRE-UPLOAD SIZE CHECK — Vercel Serverless has a 4.5MB request body limit.
-  // Fashion editorials routinely exceed this, so warn the user BEFORE network call
-  // instead of letting them hit a cryptic 413 HTML error.
-  var totalBytes=0;
-  Object.keys(lookFiles).forEach(function(k){
-    if(lookFiles[k]) lookFiles[k].forEach(function(f){ totalBytes+=(f.size||0); });
-  });
-  (files1||[]).forEach(function(f){ totalBytes+=(f.size||0); });
-  // Vercel limit is 4.5 MB; leave ~200 KB headroom for JSON/field data.
-  var MAX_UPLOAD=4.3*1024*1024;
-  if(totalBytes>MAX_UPLOAD){
-    var mb=(totalBytes/1024/1024).toFixed(1);
-    var msg=_t('toastUploadTooLarge',{mb:mb});
-    if(typeof PAP!=='undefined') PAP.ui.toast(msg,'error');
-    console.warn('[PAP submit] blocked — total size', mb+'MB', 'exceeds', (MAX_UPLOAD/1024/1024).toFixed(1)+'MB');
-    return;
-  }
+  // Note: no pre-upload size gate needed anymore — images have been
+  // compressed client-side on selection and the upload goes directly to
+  // Supabase Storage via signed URLs (bypasses Vercel's 4.5 MB body limit).
 
   // Validate optional video URL
   var videoUrlVal=(document.getElementById('videoUrl')&&document.getElementById('videoUrl').value||'').trim();
@@ -1553,6 +1628,11 @@ async function submitForm(){
     if(lookFiles[k]) allLookImages=allLookImages.concat(lookFiles[k]);
   });
 
+  // Lock the submit button and surface progress while the browser streams
+  // files directly to Supabase Storage.
+  var btn=document.querySelector('.btn-submit');
+  var origText=btn?btn.textContent:'';
+  if(btn){ btn.disabled=true; btn.textContent='UPLOADING…'; }
   try{
     console.log('[PAP submit] payload snapshot', {
       title: data.title,
@@ -1561,7 +1641,16 @@ async function submitForm(){
       additionalCount: (files1||[]).length,
       videoUrl: data.videoUrl||'(none)',
     });
-    await PAP.submissions.create(data, allLookImages, files1||[]);
+    await PAP.submissions.create(
+      data,
+      allLookImages,
+      files1||[],
+      function(done, total, phase){
+        if(!btn) return;
+        if(phase==='sign') btn.textContent='PREPARING…';
+        else if(phase==='upload') btn.textContent='UPLOADING… '+done+'/'+total;
+      }
+    );
     document.getElementById('step5').style.display='none';
     document.querySelector('.step-bar').style.display='none';
     document.getElementById('submitSuccess').style.display='block';
@@ -1583,6 +1672,8 @@ async function submitForm(){
     // Make the toast actionable: include error class so we can diagnose Safari DOMException etc.
     if(en && en!=='Error') m=en+': '+m;
     if(typeof PAP!=='undefined') PAP.ui.toast(m,'error');
+  } finally {
+    if(btn){ btn.disabled=false; btn.textContent=origText||'SUBMIT'; }
   }
 }
 

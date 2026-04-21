@@ -1,61 +1,103 @@
 /**
- * POST /api/submissions       — Create new submission (user, multipart)
+ * POST /api/submissions       — Create new submission (user, JSON body with pre-uploaded URLs)
  * GET  /api/submissions        — List all submissions (admin, with ?status=&page=)
+ *
+ * Upload flow (two-step, direct-to-Supabase):
+ *   1. Client compresses images and requests signed upload URLs via
+ *      POST /api/submissions/upload-url
+ *   2. Client PUTs each file directly to Supabase Storage (bypasses Vercel's
+ *      4.5 MB request-body ceiling entirely).
+ *   3. Client POSTs submission metadata here with the resulting public URLs.
  */
 
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAuth, requireAdmin } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
-const { parseForm, uploadFiles } = require('../_lib/upload');
 const { sendEmail, templates } = require('../_lib/email');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 
-// Disable Vercel body parsing for multipart
-module.exports.config = { api: { bodyParser: false } };
+const BUCKET = 'submissions';
+
+/**
+ * Build the `{SUPABASE_URL}/storage/v1/object/public/{bucket}/{user.id}/`
+ * prefix that every submitted URL must start with. This guarantees the
+ * caller cannot register URLs pointing at another user's folder, a different
+ * bucket, or an arbitrary third-party host.
+ */
+function userPathPrefix(userId) {
+  const base = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
+  const safeId = String(userId || '').replace(/[^a-zA-Z0-9_-]/g, '') || 'anon';
+  return `${base}/storage/v1/object/public/${BUCKET}/${safeId}/`;
+}
+
+function isValidOwnedUrl(url, prefix) {
+  if (typeof url !== 'string' || !url) return false;
+  if (!url.startsWith(prefix)) return false;
+  // Reject path traversal and accidental query-string abuse
+  if (url.indexOf('..') !== -1) return false;
+  return true;
+}
+
+function sanitizeUrlList(list, prefix) {
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  for (const u of list) {
+    if (isValidOwnedUrl(u, prefix)) out.push(u);
+  }
+  return out;
+}
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
 
   if (rateLimit(req, res, RATE_LIMITS.upload)) return;
 
-  // ── POST: Create submission ──
+  // ── POST: Create submission (JSON, with pre-uploaded URLs) ──
   if (req.method === 'POST') {
     const user = requireAuth(req, res);
     if (!user) return;
 
     try {
-      // Images only — no video uploads. Video is accepted as data.videoUrl
-      // (Dropbox / WeTransfer / Swisstransfer / Google Drive link) to stay
-      // under Vercel's 4.5 MB request-body ceiling.
-      const { fields, files } = await parseForm(req, {
-        maxFileSize: 20 * 1024 * 1024,
-        maxTotalFileSize: 4 * 1024 * 1024,
-        maxFiles: 30,
-      });
+      // Vercel parses JSON automatically; normalize defensively.
+      let body = req.body;
+      if (!body || typeof body === 'string') {
+        try { body = body ? JSON.parse(body) : {}; } catch (_) { body = {}; }
+      }
 
-      // Parse the JSON data field
-      const data = JSON.parse(
-        Array.isArray(fields.data) ? fields.data[0] : fields.data
-      );
+      const data = body.data || {};
+      const prefix = userPathPrefix(user.id);
 
       // Validate required fields
-      if (!data.title || !data.title.trim()) {
+      if (!data.title || !String(data.title).trim()) {
         return res.status(400).json({ message: 'Title is required' });
       }
       if (!data.genre || !Array.isArray(data.genre) || data.genre.length === 0) {
         return res.status(400).json({ message: 'At least one genre is required' });
       }
 
-      // Upload look images to Supabase Storage
-      const lookImages = files.lookImages
-        ? (Array.isArray(files.lookImages) ? files.lookImages : [files.lookImages])
-        : [];
-      const additionalImages = files.additionalImages
-        ? (Array.isArray(files.additionalImages) ? files.additionalImages : [files.additionalImages])
-        : [];
+      // Validate + scope URLs to the caller's own folder
+      const lookUrls = sanitizeUrlList(body.lookUrls, prefix);
+      const additionalUrls = sanitizeUrlList(body.additionalUrls, prefix);
 
-      const lookUrls = await uploadFiles('submissions', lookImages, user.id);
-      const additionalUrls = await uploadFiles('submissions', additionalImages, user.id);
+      if (lookUrls.length + additionalUrls.length === 0) {
+        return res.status(400).json({ message: 'No valid image URLs provided' });
+      }
+
+      // Reject if any submitted URL was stripped for being out-of-scope — the
+      // client shouldn't ever send those, so flag it loudly for easier debug.
+      const submittedTotal =
+        (Array.isArray(body.lookUrls) ? body.lookUrls.length : 0) +
+        (Array.isArray(body.additionalUrls) ? body.additionalUrls.length : 0);
+      const acceptedTotal = lookUrls.length + additionalUrls.length;
+      if (acceptedTotal < submittedTotal) {
+        console.warn(
+          '[submissions] dropped %d out-of-scope URLs (user=%s)',
+          submittedTotal - acceptedTotal, user.id
+        );
+        return res.status(400).json({
+          message: 'One or more image URLs do not belong to this user',
+        });
+      }
 
       // Validate optional video URL (Dropbox / WeTransfer / Swisstransfer / etc.)
       let videoUrl = typeof data.videoUrl === 'string' ? data.videoUrl.trim() : '';
@@ -68,7 +110,7 @@ module.exports = async function handler(req, res) {
         }
       }
 
-      // Insert submission — store all structured data in `description` as JSON
+      // Flatten credits.photographer to a single display string
       const photographerCredit = Array.isArray(data.credits?.photographer)
         ? data.credits.photographer.join(', ')
         : (data.credits?.photographer || '');
@@ -111,7 +153,6 @@ module.exports = async function handler(req, res) {
 
       return res.status(201).json({ submission });
     } catch (error) {
-      // Dump as much detail as possible into Vercel logs for postmortem
       try {
         console.error('Create submission error:', {
           name: error && error.name,

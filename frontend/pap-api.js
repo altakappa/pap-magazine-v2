@@ -116,7 +116,7 @@ const PAP = (function() {
         } catch (parseErr) {
           // Non-JSON response. Synthesize a helpful error message from status.
           const statusMsg =
-            res.status === 413 ? 'Upload too large — your images/video exceed the server limit (4.5 MB). Please reduce file sizes and try again.' :
+            res.status === 413 ? 'Request payload too large. Please reduce the amount of data in the form and try again.' :
             res.status === 504 ? 'Server timeout — the upload took too long. Please try again with fewer/smaller files.' :
             res.status === 502 ? 'Bad gateway — the server is temporarily unavailable. Please try again.' :
             res.status === 401 ? 'Session expired. Please log in again.' :
@@ -296,30 +296,94 @@ const PAP = (function() {
 
   // ======== SUBMISSIONS ========
   const submissions = {
-    // Note: video is accepted as an optional URL (Dropbox/WeTransfer/etc.)
-    // passed via data.videoUrl — no video file upload. This avoids Vercel's
-    // 4.5 MB request-body limit for large video files.
-    async create(data, lookImageFiles, additionalImageFiles) {
-      const formData = new FormData();
+    // Two-step direct upload flow to bypass Vercel's 4.5 MB body limit:
+    //   1. POST /submissions/upload-url → returns signed Supabase URLs
+    //   2. PUT each file directly to Supabase Storage
+    //   3. POST /submissions with JSON metadata + resulting public URLs
+    //
+    // Video is accepted as an optional URL via data.videoUrl (Dropbox /
+    // WeTransfer / Swisstransfer / Google Drive) — no video file upload.
+    //
+    // `onProgress(done, total, phase)` is called during the upload phase so
+    // the UI can show a progress indicator (phase: 'sign' | 'upload').
+    async create(data, lookImageFiles, additionalImageFiles, onProgress) {
+      const looks = lookImageFiles || [];
+      const extras = additionalImageFiles || [];
 
-      // Add look images (filenames sanitized to ASCII for Safari compatibility)
-      if (lookImageFiles) {
-        lookImageFiles.forEach(function(file, idx) {
-          formData.append('lookImages', safeFile(file, 'look' + idx));
-        });
+      // Build metadata list in a fixed order. We keep the ordering indexes so
+      // that we can reconstruct lookUrls / additionalUrls after uploads.
+      const metas = [];
+      looks.forEach(function(f) {
+        metas.push({ file: f, category: 'look' });
+      });
+      extras.forEach(function(f) {
+        metas.push({ file: f, category: 'additional' });
+      });
+
+      if (metas.length === 0) {
+        throw new Error('At least one image is required');
       }
 
-      // Add additional images
-      if (additionalImageFiles) {
-        additionalImageFiles.forEach(function(file, idx) {
-          formData.append('additionalImages', safeFile(file, 'extra' + idx));
-        });
+      if (typeof onProgress === 'function') onProgress(0, metas.length, 'sign');
+
+      // Step 1 — ask the server for signed upload URLs
+      const signReq = metas.map(function(m) {
+        var safe = safeFile(m.file, m.category);
+        return {
+          name: safe.name || 'file',
+          type: safe.type || 'application/octet-stream',
+          size: safe.size || 0,
+          category: m.category,
+        };
+      });
+
+      const signRes = await request('POST', '/submissions/upload-url', { files: signReq });
+      if (!signRes || !Array.isArray(signRes.uploads) || signRes.uploads.length !== metas.length) {
+        throw new Error('Failed to obtain upload URLs');
       }
 
-      // Add JSON data (includes data.videoUrl if provided)
-      formData.append('data', JSON.stringify(data));
+      // Step 2 — PUT each file directly to Supabase Storage, in parallel
+      var done = 0;
+      const uploadPromises = metas.map(function(m, i) {
+        const slot = signRes.uploads[i];
+        const safe = safeFile(m.file, m.category);
+        return fetch(slot.signedUrl, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': safe.type || 'application/octet-stream',
+            'x-upsert': 'true',
+          },
+          body: safe,
+        }).then(function(r) {
+          if (!r.ok) {
+            return r.text().catch(function(){return '';}).then(function(body) {
+              throw new Error('Upload failed (' + r.status + ')' + (body ? ': ' + body.slice(0, 200) : ''));
+            });
+          }
+          done++;
+          if (typeof onProgress === 'function') onProgress(done, metas.length, 'upload');
+          return slot;
+        });
+      });
 
-      return await request('POST', '/submissions', formData, true);
+      const settled = await Promise.all(uploadPromises);
+
+      // Reconstruct look/additional URL arrays in original order
+      const lookUrls = [];
+      const additionalUrls = [];
+      metas.forEach(function(m, i) {
+        const slot = settled[i];
+        if (!slot || !slot.publicUrl) return;
+        if (m.category === 'look') lookUrls.push(slot.publicUrl);
+        else additionalUrls.push(slot.publicUrl);
+      });
+
+      // Step 3 — send metadata + pre-uploaded URLs as plain JSON
+      return await request('POST', '/submissions', {
+        data: data,
+        lookUrls: lookUrls,
+        additionalUrls: additionalUrls,
+      });
     },
 
     async getMine() {
