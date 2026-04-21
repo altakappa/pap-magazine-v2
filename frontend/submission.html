@@ -714,7 +714,7 @@ function navigateWithInterstitial(url){
     <!-- STEP 4: Look Credits -->
     <div class="form-section" id="step4">
       <div class="section-title">LOOK CREDITS</div>
-      <p style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:20px;line-height:1.8">Upload images for each look and enter brand/accessory credits. Minimum 4 looks required. Drag thumbnails to reorder. You can also attach a credit file (PDF/Word) and additional images below.</p>
+      <p style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:20px;line-height:1.8">Upload images for each look and enter brand/accessory credits. Minimum 4 looks required. Drag thumbnails to reorder. You can also add additional images below.</p>
       <div id="lookList"></div>
       <button class="add-btn" onclick="addLook()">+ Add Look</button>
 
@@ -753,11 +753,6 @@ function navigateWithInterstitial(url){
     <!-- STEP 5: Links & Terms -->
     <div class="form-section" id="step5">
       <div class="section-title">ADDITIONAL INFO & TERMS</div>
-      <div class="form-group">
-        <label class="form-label">Large File Transfer Link (optional)</label>
-        <input type="url" class="form-input" placeholder="Dropbox / WeTransfer / Swisstransfer URL">
-        <div class="form-hint">For large files, please include Dropbox, WeTransfer, or Swisstransfer links.</div>
-      </div>
       <div class="form-group">
         <label class="form-label">Video Link — behind-the-scenes, sketches, clips (optional)</label>
         <input type="url" class="form-input" placeholder="YouTube / Vimeo URL">
@@ -907,10 +902,10 @@ function navigateWithInterstitial(url){
   <!-- GUIDELINES -->
   <div class="guidelines">
     <div class="guidelines-title">SUBMISSION GUIDELINES</div>
-    <div class="gl-item"><div class="gl-head" onclick="this.parentElement.classList.toggle('open')"><h3>필수 제출 자료 / Required Materials</h3><span class="gl-toggle">+</span></div><div class="gl-body"><div class="gl-body-inner"><ul><li>고해상도 사진 (JPG) — PAP Magazine 독점</li><li>크레딧: 브랜드명, 팀원 이름을 영문으로, 인스타그램 핸들 포함</li><li>룩별 의상/뷰티 브랜드 크레딧과 인스타그램 핸들</li><li>크레딧 파일은 사진과 같은 폴더에 PDF 또는 Word로 제출</li><li>크레딧에 전체 대문자 사용 금지</li><li>권장 이미지 사이즈: 1080×1350px · 이미지당 최대 25MB</li></ul></div></div></div>
-    <div class="gl-item"><div class="gl-head" onclick="this.parentElement.classList.toggle('open')"><h3>제출 및 게재 절차 / Process</h3><span class="gl-toggle">+</span></div><div class="gl-body"><div class="gl-body-inner"><ul><li>Dropbox, WeTransfer, Swisstransfer를 통해 파일 전송</li><li>에디토리얼 게재까지 2~3주 소요</li><li>모든 에디토리얼은 인스타그램에도 게시됩니다</li><li>자료는 1주 이내에 제출해야 게재 일정이 유지됩니다</li><li>백스테이지 영상, 스케치 등 소셜 미디어 콘텐츠용 영상을 함께 제출해 주세요</li></ul></div></div></div>
-    <div class="gl-item"><div class="gl-head" onclick="this.parentElement.classList.toggle('open')"><h3>이용 약관 / Terms</h3><span class="gl-toggle">+</span></div><div class="gl-body"><div class="gl-body-inner"><ul><li>제출된 작품은 PAP의 웹사이트와 소셜 미디어에 게재 전후로 소개될 수 있습니다</li><li>에디토리얼은 PAP 독점이며 다른 매거진에 중복 게재 불가</li><li>제출 정보 오류로 인한 수정 시 €100 수수료 부과</li><li>PAP 주도의 상업적 이미지 사용 시 수익은 50:50 배분</li><li>단일 브랜드 에디토리얼은 브랜디드 콘텐츠로 분류 (게재비 별도)</li><li>4개 이상의 의류 브랜드 포함 필수</li></ul></div></div></div>
-    <div class="gl-item"><div class="gl-head" onclick="this.parentElement.classList.toggle('open')"><h3>추가 옵션 (유료) / Additional Options</h3><span class="gl-toggle">+</span></div><div class="gl-body"><div class="gl-body-inner"><ul><li>커버 및 특정 이미지 선택: €200 (피드당)</li><li>인스타그램 콜라보레이터 태그: €100 (피드당)</li><li>게시 날짜 지정: €100 (피드당)</li></ul><p style="margin-top:12px">매월 최우수 에디토리얼 선정 → 한 달간 홈페이지 메인 노출</p></div></div></div>
+    <div class="gl-item"><div class="gl-head" onclick="this.parentElement.classList.toggle('open')"><h3>필수 제출 자료 / Required Materials</h3><span class="gl-toggle">+</span></div><div class="gl-body"><div class="gl-body-inner"><ul><li>고해상도 사진 8장 이상 (JPG) — PAP Magazine 독점</li><li>크레딧: 브랜드명, 팀원 이름을 영문으로, 인스타그램 핸들 포함</li><li>룩별 의상/뷰티 브랜드 크레딧과 인스타그램 핸들</li><li>크레딧에 전체 대문자 사용 금지</li><li>권장 이미지 사이즈: 1080×1350px · 이미지당 최대 25MB</li></ul></div></div></div>
+    <div class="gl-item"><div class="gl-head" onclick="this.parentElement.classList.toggle('open')"><h3>제출 및 게재 절차 / Process</h3><span class="gl-toggle">+</span></div><div class="gl-body"><div class="gl-body-inner"><ul><li>에디토리얼 게재까지 최대 2~3주 소요</li><li>모든 에디토리얼은 인스타그램에도 게시됩니다</li><li>백스테이지 영상, 스케치 등 소셜 미디어 콘텐츠용 영상을 함께 제출해 주세요</li></ul></div></div></div>
+    <div class="gl-item"><div class="gl-head" onclick="this.parentElement.classList.toggle('open')"><h3>이용 약관 / Terms</h3><span class="gl-toggle">+</span></div><div class="gl-body"><div class="gl-body-inner"><ul><li>제출된 작품은 PAP의 웹사이트와 소셜 미디어에 게재 전후로 소개될 수 있습니다</li><li>에디토리얼은 PAP 독점이며 다른 매거진에 중복 게재 불가</li><li>제출 정보 오류로 인한 수정 시 €100 수수료 부과</li><li>잡지를 제외한 PAP 주도의 상업적 이미지 사용 시 수익 50:50 배분</li><li>단일 브랜드 에디토리얼은 브랜디드 콘텐츠로 분류 (게재비 별도)</li><li>4개 이상의 의류 브랜드 포함 필수</li></ul></div></div></div>
+    <div class="gl-item"><div class="gl-head" onclick="this.parentElement.classList.toggle('open')"><h3>추가 옵션 (유료) / Additional Options</h3><span class="gl-toggle">+</span></div><div class="gl-body"><div class="gl-body-inner"><ul><li>커버 및 특정 이미지 선택: €200 (피드당)</li><li>인스타그램 콜라보레이터 태그: €100 (피드당)</li><li>게시 날짜 지정: €100 (피드당)</li></ul></div></div></div>
   </div>
 </main>
 <div class="footer-legal" id="footerLegal"></div>
