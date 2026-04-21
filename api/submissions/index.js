@@ -187,7 +187,7 @@ module.exports = async function handler(req, res) {
 
       let query = supabaseAdmin
         .from('submissions')
-        .select('*, profiles!inner(name, email, subscription_plan)', { count: 'exact' })
+        .select('*, profiles(display_name, email, subscription_plan)', { count: 'exact' })
         .order('created_at', { ascending: false })
         .range(offset, offset + perPage - 1);
 
@@ -202,7 +202,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({
         submissions: submissions.map(s => ({
           ...s,
-          submitterName: s.profiles?.name,
+          submitterName: s.profiles?.display_name,
           submitterEmail: s.profiles?.email,
           submitterPlan: s.profiles?.subscription_plan,
         })),
