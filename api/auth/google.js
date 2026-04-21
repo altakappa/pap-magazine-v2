@@ -28,13 +28,11 @@ module.exports = async function handler(req, res) {
 
     const { verifier, challenge } = generatePKCE();
 
-    // Generate CSRF state parameter
-    const state = base64url(crypto.randomBytes(32));
-
-    // Store verifier and state in cookies for callback to verify
+    // Store PKCE verifier in cookie for callback to verify
+    // NOTE: Do NOT pass a custom `state` parameter — Supabase generates/validates its own state internally.
+    // Passing a custom state causes Supabase to return "400: OAuth state parameter is invalid" on callback.
     res.setHeader('Set-Cookie', [
       `pkce_verifier=${verifier}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600`,
-      `oauth_state=${state}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600`,
     ]);
 
     // Build Supabase OAuth URL directly (no JS client needed)
@@ -45,7 +43,6 @@ module.exports = async function handler(req, res) {
       code_challenge_method: 'S256',
       access_type: 'offline',
       prompt: 'consent',
-      state,
     });
 
     return res.redirect(302, `${supabaseUrl}/auth/v1/authorize?${params}`);

@@ -29,7 +29,6 @@ module.exports = async function handler(req, res) {
     var code = req.query.code;
     var oauthError = req.query.error;
     var errorDesc = req.query.error_description;
-    var stateParam = req.query.state;
 
     if (oauthError) {
       console.error('OAuth error from provider:', oauthError);
@@ -43,13 +42,11 @@ module.exports = async function handler(req, res) {
     // Read cookies
     var cookies = parseCookies(req.headers.cookie);
     var codeVerifier = cookies.pkce_verifier;
-    var storedState = cookies.oauth_state;
 
-    // Verify CSRF state parameter
-    if (!stateParam || !storedState || stateParam !== storedState) {
-      console.error('OAuth state mismatch — possible CSRF attack');
-      return res.redirect(302, frontendUrl + '/auth?error=state_mismatch&mode=login');
-    }
+    // NOTE: We do NOT validate a custom `state` parameter here —
+    // Supabase generates and validates its own OAuth state internally. Passing a custom state
+    // caused "400: OAuth state parameter is invalid" errors on Supabase's /callback endpoint.
+    // PKCE code_verifier below provides protection against code interception attacks.
 
     // PKCE verifier is required — reject if missing (prevents code interception attacks)
     if (!codeVerifier) {
@@ -122,7 +119,7 @@ module.exports = async function handler(req, res) {
       'pkce_verifier=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
       'oauth_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
       'pap_oauth_token=' + token + '; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=120',
-      'pap_oauth_user=' + userJson + '; Path=/; SameSite=Lax; Max-Age=120',
+      'pap_oauth_user=' + userJson + '; Path=/; Secure; SameSite=Lax; Max-Age=120',
     ]);
     return res.redirect(302, frontendUrl + '/auth?oauth=success');
   } catch (error) {
