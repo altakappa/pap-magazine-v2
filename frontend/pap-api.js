@@ -57,16 +57,35 @@ const PAP = (function() {
     return match ? match[1] : null;
   }
 
+  // HTTP header values must be US-ASCII (no control chars, no non-ASCII).
+  // Safari throws "The string did not match the expected pattern." if violated.
+  // Strip anything outside printable ASCII and trim whitespace/newlines defensively.
+  function sanitizeHeaderValue(v) {
+    if (!v) return '';
+    try {
+      // Remove CR/LF and anything outside printable ASCII (space..~)
+      return String(v).replace(/[^\x20-\x7E]/g, '').trim();
+    } catch (_) {
+      return '';
+    }
+  }
+
   // ======== HTTP HELPER ========
   async function request(method, endpoint, data, isFormData) {
     const headers = {};
-    const token = getToken();
+    const rawToken = getToken();
+    const token = sanitizeHeaderValue(rawToken);
+    // If the stored token got corrupted (non-ASCII / newline), drop it — server will fall back to httpOnly cookie.
+    if (rawToken && !token) {
+      try { console.warn('[PAP] stored token contained non-ASCII chars, dropping from Authorization header'); } catch(_){}
+      try { removeToken(); } catch(_){}
+    }
     if (token) headers['Authorization'] = 'Bearer ' + token;
     if (!isFormData) headers['Content-Type'] = 'application/json';
 
     // CSRF protection headers
     headers['X-Requested-With'] = 'XMLHttpRequest';
-    var csrfToken = getCsrfToken();
+    var csrfToken = sanitizeHeaderValue(getCsrfToken());
     if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
 
     const options = { method, headers, credentials: 'same-origin' };
