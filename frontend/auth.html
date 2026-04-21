@@ -807,8 +807,28 @@ function socialLogin(provider) {
     alert('Unsupported provider: ' + provider);
     return;
   }
-  // Preserve intended post-login redirect as a query param (backend callback ignores it,
-  // but this page's own redirect logic will honor the original URL after token exchange).
+  // Preserve the intended post-login return URL across the OAuth roundtrip.
+  // The ?return= query param is lost when we leave to /api/auth/<provider>,
+  // so we stash it in a short-lived cookie that survives the provider redirects.
+  try {
+    var params = new URLSearchParams(window.location.search);
+    // params.get() URL-decodes once, so `ret` is the plain path (e.g., "/articles.html")
+    var ret = params.get('return');
+    if (!ret && document.referrer) {
+      // Fall back to referrer if same-origin (user clicked login from some other page)
+      if (document.referrer.indexOf(window.location.origin) === 0) {
+        var refPath = document.referrer.substring(window.location.origin.length);
+        // Don't loop back to auth.html itself
+        if (refPath && refPath.indexOf('auth.html') === -1 && refPath.indexOf('/auth') !== 0) {
+          ret = refPath;
+        }
+      }
+    }
+    if (ret) {
+      // Store URL-encoded so cookie is safe for special chars (?, &, =, space)
+      document.cookie = 'pap-return-url=' + encodeURIComponent(ret) + '; Path=/; Max-Age=600; SameSite=Lax';
+    }
+  } catch(e) {}
   window.location.href = '/api/auth/' + provider;
 }
 
@@ -1392,6 +1412,21 @@ function setLang(l) {
   if (params.get('mode') === 'signup') showSignup();
   var _authRedirect = params.get('redirect');
   var _authReturn = params.get('return'); // full URL (can include hash)
+  function _consumeReturnCookie(){
+    try{
+      var m = document.cookie.match(/(?:^|; )pap-return-url=([^;]+)/);
+      if(!m) return null;
+      // Clear cookie on read (one-time use)
+      document.cookie = 'pap-return-url=; Path=/; Max-Age=0; SameSite=Lax';
+      var decoded;
+      try { decoded = decodeURIComponent(m[1]); } catch(e) { decoded = m[1]; }
+      // Safety: only allow same-origin relative URLs (no external redirects)
+      if(decoded && decoded.indexOf('://') === -1 && decoded.indexOf('//') !== 0){
+        return decoded;
+      }
+    }catch(e){}
+    return null;
+  }
   window.getRedirectUrl = function(){
     if(_authReturn){
       try{
@@ -1402,6 +1437,9 @@ function setLang(l) {
         }
       }catch(e){}
     }
+    // Fallback: pap-return-url cookie (set by socialLogin before OAuth roundtrip)
+    var fromCookie = _consumeReturnCookie();
+    if(fromCookie) return fromCookie;
     return _authRedirect ? (_authRedirect + '.html') : 'mypage.html';
   };
   if (_authRedirect === 'admin') {
