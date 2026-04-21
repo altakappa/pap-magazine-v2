@@ -766,15 +766,9 @@ function navigateWithInterstitial(url){
     <div class="form-section" id="step5">
       <div class="section-title">ADDITIONAL INFO & TERMS</div>
       <div class="form-group">
-        <label class="form-label">Video File — behind-the-scenes, sketches, clips (optional)</label>
-        <div class="upload-zone" id="videoZone">
-          <input type="file" class="upload-input" id="videoInput" accept="video/*" onchange="handleVideoSelect(this.files)">
-          <div class="upload-icon"><svg viewBox="0 0 32 32" fill="none"><path d="M16 24V8M16 8L10 14M16 8L22 14" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 24v2a2 2 0 002 2h20a2 2 0 002-2v-2" stroke-width="2" stroke-linecap="round"/></svg></div>
-          <div class="upload-text"><strong>Click</strong> or drag a video file</div>
-          <div class="upload-hint">MP4 / MOV · Max 100MB</div>
-        </div>
-        <div class="file-list" id="videoList"></div>
-        <div class="form-hint">Upload behind-the-scenes footage, sketches, or short clips. PAP will publish this video on our official YouTube channel.</div>
+        <label class="form-label" data-i18n="videoUrlLabel">Video Link — behind-the-scenes, sketches, clips (optional)</label>
+        <input type="url" class="form-input" id="videoUrl" placeholder="https://www.dropbox.com/... · https://wetransfer.com/... · https://www.swisstransfer.com/...">
+        <div class="form-hint" data-i18n-html="videoUrlHint">Because video files exceed upload limits, please share a download link from <b>Dropbox, WeTransfer, Swisstransfer, Google Drive</b> or similar. PAP will download your video and publish it on our official YouTube channel.</div>
       </div>
       <!-- TERMS AGREEMENT -->
       <div class="terms-section">
@@ -926,43 +920,21 @@ function navigateWithInterstitial(url){
 </main>
 <div class="footer-legal" id="footerLegal"></div>
 
-<script src="pap-api.js?v=6" defer></script>
+<script src="pap-api.js?v=7" defer></script>
 <script>
 var lookCount=0;
 var files1=[];
-var videoFile=null;
 var selectedGenres=[];
 var selectedCoverLook=0;
 var selectedCoverIdx=0;
 
-// VIDEO FILE HANDLER
-function handleVideoSelect(fl){
-  if(!fl||fl.length===0)return;
-  var f=fl[0];
-  var MAX=100*1024*1024; // 100MB
-  if(!/^video\//i.test(f.type||'')){
-    if(typeof PAP!=='undefined'&&PAP.ui) PAP.ui.toast('Please select a video file.','error');
-    document.getElementById('videoInput').value='';
-    return;
-  }
-  if(f.size>MAX){
-    if(typeof PAP!=='undefined'&&PAP.ui) PAP.ui.toast('Video file exceeds 100MB limit.','error');
-    document.getElementById('videoInput').value='';
-    return;
-  }
-  videoFile=f;
-  renderVideo();
-}
-function removeVideo(){
-  videoFile=null;
-  var vi=document.getElementById('videoInput'); if(vi) vi.value='';
-  renderVideo();
-}
-function renderVideo(){
-  var vl=document.getElementById('videoList'); if(!vl)return;
-  if(!videoFile){ vl.innerHTML=''; return; }
-  var s=(videoFile.size/1024/1024).toFixed(1)+' MB';
-  vl.innerHTML='<div class="file-item"><span class="fn">'+videoFile.name+'</span><span class="fs">'+s+'</span><button class="fr" onclick="removeVideo()">×</button></div>';
+// VIDEO LINK VALIDATION (optional; accept Dropbox/WeTransfer/Swisstransfer/Google Drive/etc.)
+function _isValidVideoUrl(u){
+  if(!u) return true; // empty is allowed (optional)
+  try {
+    var parsed=new URL(u);
+    return parsed.protocol==='http:'||parsed.protocol==='https:';
+  } catch(_){ return false; }
 }
 
 // GENRE SELECTION
@@ -1503,14 +1475,20 @@ async function submitForm(){
     if(lookFiles[k]) lookFiles[k].forEach(function(f){ totalBytes+=(f.size||0); });
   });
   (files1||[]).forEach(function(f){ totalBytes+=(f.size||0); });
-  if(videoFile) totalBytes+=(videoFile.size||0);
   // Vercel limit is 4.5 MB; leave ~200 KB headroom for JSON/field data.
   var MAX_UPLOAD=4.3*1024*1024;
   if(totalBytes>MAX_UPLOAD){
     var mb=(totalBytes/1024/1024).toFixed(1);
-    var msg='Total upload size is '+mb+' MB, which exceeds the 4.5 MB server limit. Please compress/resize images (recommended: 1500-2000 px wide, JPG ~80% quality) and remove the video if included. Direct-upload support for larger files is on the roadmap.';
+    var msg='Total image upload size is '+mb+' MB, which exceeds the 4.5 MB server limit. Please compress/resize images (recommended: 1500-2000 px wide, JPG ~80% quality) and try again.';
     if(typeof PAP!=='undefined') PAP.ui.toast(msg,'error');
     console.warn('[PAP submit] blocked — total size', mb+'MB', 'exceeds', (MAX_UPLOAD/1024/1024).toFixed(1)+'MB');
+    return;
+  }
+
+  // Validate optional video URL
+  var videoUrlVal=(document.getElementById('videoUrl')&&document.getElementById('videoUrl').value||'').trim();
+  if(videoUrlVal && !_isValidVideoUrl(videoUrlVal)){
+    if(typeof PAP!=='undefined') PAP.ui.toast('Please enter a valid video link (https://...) or leave it empty.','error');
     return;
   }
 
@@ -1524,7 +1502,8 @@ async function submitForm(){
     website: document.getElementById('studioWebsite').value.trim(),
     instagram: document.getElementById('studioInsta').value.trim(),
     artistStatement: document.getElementById('artistStatement').value.trim(),
-    coverImageIndex: selectedCoverIdx||0
+    coverImageIndex: selectedCoverIdx||0,
+    videoUrl: videoUrlVal||''
   };
 
   // Collect team credits — store as both 'credits' (backend) and 'team' (legacy)
@@ -1571,10 +1550,9 @@ async function submitForm(){
       genre: data.genre,
       lookImageCount: allLookImages.length,
       additionalCount: (files1||[]).length,
-      hasVideo: !!videoFile,
-      videoSize: videoFile ? (videoFile.size/1024/1024).toFixed(1)+'MB' : null,
+      videoUrl: data.videoUrl||'(none)',
     });
-    await PAP.submissions.create(data, allLookImages, files1||[], videoFile||null);
+    await PAP.submissions.create(data, allLookImages, files1||[]);
     document.getElementById('step5').style.display='none';
     document.querySelector('.step-bar').style.display='none';
     document.getElementById('submitSuccess').style.display='block';
@@ -1611,14 +1589,14 @@ function simulateLogin(){
 
 // LANGUAGE (simplified - ko/en)
 var L={
-ko:{business:'BUSINESS',about:'ABOUT',contact:'CONTACT',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',pageDesc:'PAP 매거진에 에디토리얼을 제출하세요. 서브미션 유형을 선택하고, 작품 정보·팀 크레딧·룩별 의상 크레딧·고해상도 이미지를 제출해 주세요. MY SUBMISSIONS에서 실시간 심사 상태를 확인할 수 있습니다.',gateLogin:'로그인 / 회원가입',gateTitle:'회원 전용',gateDesc:'이 서비스는 무료 회원 이상만 이용할 수 있습니다.\n로그인하거나 회원가입 후 이용해 주세요.',successMsg:'서브미션이 성공적으로 접수되었습니다. 심사 결과는 이메일로 안내드리겠습니다.',englishOnlyNotice:'<strong>안내</strong>모든 서브미션 내용(제목, 아티스트 스테이트먼트, 팀 크레딧, 모델·에이전시 정보)은 <b>영어로 작성</b>해 주세요. 글로벌 에디토리얼 팀의 일관된 심사와 지면 발행을 위해 필수입니다.',ft:'<strong>주식회사 알타카파</strong> | CEO : 강동민 | 사업자번호 192-88-02644<br>서울특별시 강남구 논현로146길 18, 1F | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
-en:{business:'BUSINESS',about:'ABOUT',contact:'CONTACT',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',pageDesc:'Submit your editorial to PAP Magazine. Choose your submission type, provide production info, team credits, look-by-look garment credits, and high-resolution images. Track your submission status in MY SUBMISSIONS.',gateLogin:'LOG IN / SIGN UP',gateTitle:'MEMBERS ONLY',gateDesc:'This service is available to registered members only.\nPlease log in or sign up to continue.',successMsg:'Your submission has been received successfully. Review results will be sent via email.',englishOnlyNotice:'<strong>Notice</strong>All submission content (title, artist statement, team credits, model & agency info) must be written in <b>English</b>. This ensures consistent review and publication across our global editorial team.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
-de:{business:'BUSINESS',about:'ABOUT',contact:'CONTACT',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',pageDesc:'Submit your editorial to PAP Magazine. Choose your submission type, provide production info, team credits, look-by-look garment credits, and high-resolution images. Track your submission status in MY SUBMISSIONS.',gateLogin:'LOG IN / SIGN UP',gateTitle:'MEMBERS ONLY',gateDesc:'This service is available to registered members only.\nPlease log in or sign up to continue.',successMsg:'Your submission has been received successfully. Review results will be sent via email.',englishOnlyNotice:'<strong>Hinweis</strong>Alle Einreichungsinhalte (Titel, Artist Statement, Team-Credits, Model- und Agentur-Infos) müssen <b>auf Englisch</b> verfasst werden. So gewährleisten wir eine einheitliche Prüfung und Veröffentlichung durch unser globales Redaktionsteam.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
-it:{business:'BUSINESS',about:'CHI SIAMO',contact:'CONTATTI',subscribe:'ABBONATI',submission:'SUBMISSION',pullletter:'PULL-LETTER',pageDesc:'Invia il tuo editoriale a PAP Magazine. Fornisci informazioni sulla produzione, crediti del team, crediti per look e immagini ad alta risoluzione.',gateLogin:'ACCEDI / REGISTRATI',gateTitle:'SOLO MEMBRI',gateDesc:'Questo servizio è disponibile solo per i membri registrati.',successMsg:'La tua submission è stata ricevuta. I risultati saranno inviati via email entro 1-3 giorni lavorativi.',englishOnlyNotice:'<strong>Avviso</strong>Tutti i contenuti della submission (titolo, artist statement, crediti del team, info su modelli e agenzie) devono essere scritti <b>in inglese</b>. Questo garantisce una revisione e pubblicazione coerenti da parte del nostro team editoriale internazionale.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | P. IVA: 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Corea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
-fr:{business:'BUSINESS',about:'À PROPOS',contact:'CONTACT',subscribe:"S'ABONNER",submission:'SOUMISSION',pullletter:'PULL-LETTER',pageDesc:'Soumettez votre éditorial à PAP Magazine. Fournissez les informations de production, crédits d\'équipe, crédits par look et images haute résolution.',gateLogin:'CONNEXION / INSCRIPTION',gateTitle:'RÉSERVÉ AUX MEMBRES',gateDesc:'Ce service est réservé aux membres inscrits.',successMsg:'Votre soumission a été reçue. Les résultats seront envoyés par email sous 1 à 3 jours ouvrés.',englishOnlyNotice:'<strong>Note</strong>Tous les contenus de soumission (titre, artist statement, crédits de l\'équipe, infos modèles et agences) doivent être rédigés <b>en anglais</b>. Cela garantit une révision et une publication cohérentes par notre équipe éditoriale internationale.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | PDG : Domenico Kang | N&#176; 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Séoul, Corée | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
-es:{business:'NEGOCIOS',about:'ACERCA DE',contact:'CONTACTO',subscribe:'SUSCRIBIRSE',submission:'ENVÍO',pullletter:'PULL-LETTER',pageDesc:'Envíe su editorial a PAP Magazine. Proporcione información de producción, créditos del equipo, créditos por look e imágenes de alta resolución.',gateLogin:'INICIAR SESIÓN / REGISTRARSE',gateTitle:'SOLO MIEMBROS',gateDesc:'Este servicio está disponible solo para miembros registrados.',successMsg:'Su envío ha sido recibido. Los resultados se enviarán por email en 1-3 días hábiles.',englishOnlyNotice:'<strong>Aviso</strong>Todo el contenido del envío (título, artist statement, créditos del equipo, información de modelos y agencias) debe estar redactado <b>en inglés</b>. Esto garantiza una revisión y publicación coherentes por parte de nuestro equipo editorial internacional.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seúl, Corea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
-ja:{business:'BUSINESS',about:'ABOUT',contact:'CONTACT',subscribe:'購読',submission:'サブミッション',pullletter:'PULL-LETTER',pageDesc:'PAP Magazineにエディトリアルを提出してください。作品情報、チームクレジット、ルック別クレジット、高解像度画像をご提出ください。',gateLogin:'ログイン / 会員登録',gateTitle:'会員専用',gateDesc:'このサービスは会員のみご利用いただけます。',successMsg:'サブミッションが正常に受け付けられました。審査結果は1〜3営業日以内にメールでお知らせします。',englishOnlyNotice:'<strong>お知らせ</strong>すべてのサブミッション内容(タイトル、アーティストステートメント、チームクレジット、モデル・エージェンシー情報)は<b>英語</b>でご記入ください。グローバル編集チームによる一貫した審査と掲載のために必須です。',ft:'<strong>株式会社アルタカッパ</strong> | CEO : カン・ドンミン | 事業者番号 192-88-02644<br>ソウル特別市江南区論峴路146キル18, 1F | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
-zh:{business:'商务',about:'关于',contact:'联系',subscribe:'订阅',submission:'投稿',pullletter:'PULL-LETTER',pageDesc:'向PAP Magazine提交您的编辑作品。请提供制作信息、团队名单、各造型名单和高分辨率图片。',gateLogin:'登录 / 注册',gateTitle:'仅限会员',gateDesc:'此服务仅限注册会员使用。',successMsg:'您的投稿已成功接收。审核结果将在1-3个工作日内通过邮件通知。',englishOnlyNotice:'<strong>提示</strong>所有投稿内容(标题、艺术家自述、团队名单、模特与经纪公司信息)必须以<b>英文</b>填写。以便我们的全球编辑团队进行统一审核和发布。',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | 营业执照号 192-88-02644<br>首尔特别市江南区论岘路146街18, 1F | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},ru:{business:'БИЗНЕС',about:'О НАС',contact:'КОНТАКТ',subscribe:'ПОДПИСКА',submission:'ПОДАЧА',pullletter:'PULL-LETTER',pageDesc:'Отправьте ваш эдиториал в PAP Magazine. Укажите информацию о работе, кредиты команды, кредиты по образам и загрузите изображения высокого разрешения.',gateLogin:'ВОЙТИ / РЕГИСТРАЦИЯ',gateTitle:'ТОЛЬКО ДЛЯ УЧАСТНИКОВ',gateDesc:'Этот сервис доступен только зарегистрированным участникам.\nВойдите или зарегистрируйтесь.',successMsg:'Ваша подача успешно принята. Результаты рассмотрения будут отправлены на email в течение 1-3 рабочих дней.',englishOnlyNotice:'<strong>Уведомление</strong>Всё содержимое подачи (название, artist statement, кредиты команды, информация о моделях и агентствах) должно быть написано <b>на английском языке</b>. Это обеспечивает единообразную проверку и публикацию нашей международной редакционной командой.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Рег. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'}
+ko:{business:'BUSINESS',about:'ABOUT',contact:'CONTACT',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',pageDesc:'PAP 매거진에 에디토리얼을 제출하세요. 서브미션 유형을 선택하고, 작품 정보·팀 크레딧·룩별 의상 크레딧·고해상도 이미지를 제출해 주세요. MY SUBMISSIONS에서 실시간 심사 상태를 확인할 수 있습니다.',gateLogin:'로그인 / 회원가입',gateTitle:'회원 전용',gateDesc:'이 서비스는 무료 회원 이상만 이용할 수 있습니다.\n로그인하거나 회원가입 후 이용해 주세요.',successMsg:'서브미션이 성공적으로 접수되었습니다. 심사 결과는 이메일로 안내드리겠습니다.',englishOnlyNotice:'<strong>안내</strong>모든 서브미션 내용(제목, 아티스트 스테이트먼트, 팀 크레딧, 모델·에이전시 정보)은 <b>영어로 작성</b>해 주세요. 글로벌 에디토리얼 팀의 일관된 심사와 지면 발행을 위해 필수입니다.',videoUrlLabel:'비디오 링크 — 비하인드, 스케치, 클립 (선택)',videoUrlHint:'비디오 파일은 용량이 커서 직접 업로드 대신 <b>Dropbox · WeTransfer · Swisstransfer · Google Drive</b> 등의 다운로드 링크를 공유해 주세요. PAP가 비디오를 받아 공식 YouTube 채널에 업로드합니다.',ft:'<strong>주식회사 알타카파</strong> | CEO : 강동민 | 사업자번호 192-88-02644<br>서울특별시 강남구 논현로146길 18, 1F | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+en:{business:'BUSINESS',about:'ABOUT',contact:'CONTACT',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',pageDesc:'Submit your editorial to PAP Magazine. Choose your submission type, provide production info, team credits, look-by-look garment credits, and high-resolution images. Track your submission status in MY SUBMISSIONS.',gateLogin:'LOG IN / SIGN UP',gateTitle:'MEMBERS ONLY',gateDesc:'This service is available to registered members only.\nPlease log in or sign up to continue.',successMsg:'Your submission has been received successfully. Review results will be sent via email.',englishOnlyNotice:'<strong>Notice</strong>All submission content (title, artist statement, team credits, model & agency info) must be written in <b>English</b>. This ensures consistent review and publication across our global editorial team.',videoUrlLabel:'Video Link — behind-the-scenes, sketches, clips (optional)',videoUrlHint:'Because video files exceed upload limits, please share a download link from <b>Dropbox · WeTransfer · Swisstransfer · Google Drive</b> or similar. PAP will download your video and publish it on our official YouTube channel.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+de:{business:'BUSINESS',about:'ABOUT',contact:'CONTACT',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',pageDesc:'Submit your editorial to PAP Magazine. Choose your submission type, provide production info, team credits, look-by-look garment credits, and high-resolution images. Track your submission status in MY SUBMISSIONS.',gateLogin:'LOG IN / SIGN UP',gateTitle:'MEMBERS ONLY',gateDesc:'This service is available to registered members only.\nPlease log in or sign up to continue.',successMsg:'Your submission has been received successfully. Review results will be sent via email.',englishOnlyNotice:'<strong>Hinweis</strong>Alle Einreichungsinhalte (Titel, Artist Statement, Team-Credits, Model- und Agentur-Infos) müssen <b>auf Englisch</b> verfasst werden. So gewährleisten wir eine einheitliche Prüfung und Veröffentlichung durch unser globales Redaktionsteam.',videoUrlLabel:'Video-Link — Behind-the-Scenes, Skizzen, Clips (optional)',videoUrlHint:'Da Videodateien die Upload-Grenze überschreiten, teilen Sie bitte einen Download-Link von <b>Dropbox · WeTransfer · Swisstransfer · Google Drive</b> oder ähnlichen Diensten. PAP lädt Ihr Video herunter und veröffentlicht es auf unserem offiziellen YouTube-Kanal.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+it:{business:'BUSINESS',about:'CHI SIAMO',contact:'CONTATTI',subscribe:'ABBONATI',submission:'SUBMISSION',pullletter:'PULL-LETTER',pageDesc:'Invia il tuo editoriale a PAP Magazine. Fornisci informazioni sulla produzione, crediti del team, crediti per look e immagini ad alta risoluzione.',gateLogin:'ACCEDI / REGISTRATI',gateTitle:'SOLO MEMBRI',gateDesc:'Questo servizio è disponibile solo per i membri registrati.',successMsg:'La tua submission è stata ricevuta. I risultati saranno inviati via email entro 1-3 giorni lavorativi.',englishOnlyNotice:'<strong>Avviso</strong>Tutti i contenuti della submission (titolo, artist statement, crediti del team, info su modelli e agenzie) devono essere scritti <b>in inglese</b>. Questo garantisce una revisione e pubblicazione coerenti da parte del nostro team editoriale internazionale.',videoUrlLabel:'Link Video — behind-the-scenes, bozze, clip (opzionale)',videoUrlHint:'Poiché i file video superano i limiti di caricamento, condividi un link di download da <b>Dropbox · WeTransfer · Swisstransfer · Google Drive</b> o simili. PAP scaricherà il tuo video e lo pubblicherà sul nostro canale YouTube ufficiale.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | P. IVA: 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Corea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+fr:{business:'BUSINESS',about:'À PROPOS',contact:'CONTACT',subscribe:"S'ABONNER",submission:'SOUMISSION',pullletter:'PULL-LETTER',pageDesc:'Soumettez votre éditorial à PAP Magazine. Fournissez les informations de production, crédits d\'équipe, crédits par look et images haute résolution.',gateLogin:'CONNEXION / INSCRIPTION',gateTitle:'RÉSERVÉ AUX MEMBRES',gateDesc:'Ce service est réservé aux membres inscrits.',successMsg:'Votre soumission a été reçue. Les résultats seront envoyés par email sous 1 à 3 jours ouvrés.',englishOnlyNotice:'<strong>Note</strong>Tous les contenus de soumission (titre, artist statement, crédits de l\'équipe, infos modèles et agences) doivent être rédigés <b>en anglais</b>. Cela garantit une révision et une publication cohérentes par notre équipe éditoriale internationale.',videoUrlLabel:'Lien vidéo — coulisses, croquis, clips (optionnel)',videoUrlHint:'Les fichiers vidéo dépassant les limites de téléversement, veuillez partager un lien de téléchargement depuis <b>Dropbox · WeTransfer · Swisstransfer · Google Drive</b> ou similaire. PAP téléchargera votre vidéo et la publiera sur notre chaîne YouTube officielle.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | PDG : Domenico Kang | N&#176; 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Séoul, Corée | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+es:{business:'NEGOCIOS',about:'ACERCA DE',contact:'CONTACTO',subscribe:'SUSCRIBIRSE',submission:'ENVÍO',pullletter:'PULL-LETTER',pageDesc:'Envíe su editorial a PAP Magazine. Proporcione información de producción, créditos del equipo, créditos por look e imágenes de alta resolución.',gateLogin:'INICIAR SESIÓN / REGISTRARSE',gateTitle:'SOLO MIEMBROS',gateDesc:'Este servicio está disponible solo para miembros registrados.',successMsg:'Su envío ha sido recibido. Los resultados se enviarán por email en 1-3 días hábiles.',englishOnlyNotice:'<strong>Aviso</strong>Todo el contenido del envío (título, artist statement, créditos del equipo, información de modelos y agencias) debe estar redactado <b>en inglés</b>. Esto garantiza una revisión y publicación coherentes por parte de nuestro equipo editorial internacional.',videoUrlLabel:'Enlace de video — detrás de cámaras, bocetos, clips (opcional)',videoUrlHint:'Como los archivos de video superan los límites de carga, comparta un enlace de descarga desde <b>Dropbox · WeTransfer · Swisstransfer · Google Drive</b> o similar. PAP descargará su video y lo publicará en nuestro canal oficial de YouTube.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seúl, Corea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+ja:{business:'BUSINESS',about:'ABOUT',contact:'CONTACT',subscribe:'購読',submission:'サブミッション',pullletter:'PULL-LETTER',pageDesc:'PAP Magazineにエディトリアルを提出してください。作品情報、チームクレジット、ルック別クレジット、高解像度画像をご提出ください。',gateLogin:'ログイン / 会員登録',gateTitle:'会員専用',gateDesc:'このサービスは会員のみご利用いただけます。',successMsg:'サブミッションが正常に受け付けられました。審査結果は1〜3営業日以内にメールでお知らせします。',englishOnlyNotice:'<strong>お知らせ</strong>すべてのサブミッション内容(タイトル、アーティストステートメント、チームクレジット、モデル・エージェンシー情報)は<b>英語</b>でご記入ください。グローバル編集チームによる一貫した審査と掲載のために必須です。',videoUrlLabel:'ビデオリンク — メイキング、スケッチ、クリップ(任意)',videoUrlHint:'ビデオファイルはアップロード上限を超えるため、<b>Dropbox · WeTransfer · Swisstransfer · Google Drive</b> 等のダウンロードリンクを共有してください。PAPが動画をダウンロードし、公式YouTubeチャンネルで公開します。',ft:'<strong>株式会社アルタカッパ</strong> | CEO : カン・ドンミン | 事業者番号 192-88-02644<br>ソウル特別市江南区論峴路146キル18, 1F | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+zh:{business:'商务',about:'关于',contact:'联系',subscribe:'订阅',submission:'投稿',pullletter:'PULL-LETTER',pageDesc:'向PAP Magazine提交您的编辑作品。请提供制作信息、团队名单、各造型名单和高分辨率图片。',gateLogin:'登录 / 注册',gateTitle:'仅限会员',gateDesc:'此服务仅限注册会员使用。',successMsg:'您的投稿已成功接收。审核结果将在1-3个工作日内通过邮件通知。',englishOnlyNotice:'<strong>提示</strong>所有投稿内容(标题、艺术家自述、团队名单、模特与经纪公司信息)必须以<b>英文</b>填写。以便我们的全球编辑团队进行统一审核和发布。',videoUrlLabel:'视频链接 — 幕后、草图、短片(可选)',videoUrlHint:'由于视频文件超出上传限制,请分享来自 <b>Dropbox · WeTransfer · Swisstransfer · Google Drive</b> 等平台的下载链接。PAP 将下载您的视频并发布在我们的官方 YouTube 频道。',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | 营业执照号 192-88-02644<br>首尔特别市江南区论岘路146街18, 1F | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},ru:{business:'БИЗНЕС',about:'О НАС',contact:'КОНТАКТ',subscribe:'ПОДПИСКА',submission:'ПОДАЧА',pullletter:'PULL-LETTER',pageDesc:'Отправьте ваш эдиториал в PAP Magazine. Укажите информацию о работе, кредиты команды, кредиты по образам и загрузите изображения высокого разрешения.',gateLogin:'ВОЙТИ / РЕГИСТРАЦИЯ',gateTitle:'ТОЛЬКО ДЛЯ УЧАСТНИКОВ',gateDesc:'Этот сервис доступен только зарегистрированным участникам.\nВойдите или зарегистрируйтесь.',successMsg:'Ваша подача успешно принята. Результаты рассмотрения будут отправлены на email в течение 1-3 рабочих дней.',englishOnlyNotice:'<strong>Уведомление</strong>Всё содержимое подачи (название, artist statement, кредиты команды, информация о моделях и агентствах) должно быть написано <b>на английском языке</b>. Это обеспечивает единообразную проверку и публикацию нашей международной редакционной командой.',videoUrlLabel:'Ссылка на видео — бэкстейдж, скетчи, клипы (необязательно)',videoUrlHint:'Поскольку видеофайлы превышают лимит загрузки, поделитесь ссылкой для скачивания с <b>Dropbox · WeTransfer · Swisstransfer · Google Drive</b> или аналогичных сервисов. PAP скачает ваше видео и опубликует его на официальном YouTube-канале.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Рег. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'}
 };
 function setLang(l){
   localStorage.setItem('pap-lang',l);_curLang=l;var d=L[l]||L.ko;

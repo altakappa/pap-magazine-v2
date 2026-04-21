@@ -296,7 +296,10 @@ const PAP = (function() {
 
   // ======== SUBMISSIONS ========
   const submissions = {
-    async create(data, lookImageFiles, additionalImageFiles, videoFile) {
+    // Note: video is accepted as an optional URL (Dropbox/WeTransfer/etc.)
+    // passed via data.videoUrl — no video file upload. This avoids Vercel's
+    // 4.5 MB request-body limit for large video files.
+    async create(data, lookImageFiles, additionalImageFiles) {
       const formData = new FormData();
 
       // Add look images (filenames sanitized to ASCII for Safari compatibility)
@@ -313,12 +316,7 @@ const PAP = (function() {
         });
       }
 
-      // Add video file (single, optional)
-      if (videoFile) {
-        formData.append('videoFile', safeFile(videoFile, 'video'));
-      }
-
-      // Add JSON data
+      // Add JSON data (includes data.videoUrl if provided)
       formData.append('data', JSON.stringify(data));
 
       return await request('POST', '/submissions', formData, true);

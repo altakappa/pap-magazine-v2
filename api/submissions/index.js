@@ -24,10 +24,12 @@ module.exports = async function handler(req, res) {
     if (!user) return;
 
     try {
-      // Allow larger files for optional video (100MB per file)
+      // Images only — no video uploads. Video is accepted as data.videoUrl
+      // (Dropbox / WeTransfer / Swisstransfer / Google Drive link) to stay
+      // under Vercel's 4.5 MB request-body ceiling.
       const { fields, files } = await parseForm(req, {
-        maxFileSize: 100 * 1024 * 1024,
-        maxTotalFileSize: 600 * 1024 * 1024,
+        maxFileSize: 20 * 1024 * 1024,
+        maxTotalFileSize: 4 * 1024 * 1024,
         maxFiles: 30,
       });
 
@@ -51,13 +53,20 @@ module.exports = async function handler(req, res) {
       const additionalImages = files.additionalImages
         ? (Array.isArray(files.additionalImages) ? files.additionalImages : [files.additionalImages])
         : [];
-      const videoFiles = files.videoFile
-        ? (Array.isArray(files.videoFile) ? files.videoFile : [files.videoFile])
-        : [];
 
       const lookUrls = await uploadFiles('submissions', lookImages, user.id);
       const additionalUrls = await uploadFiles('submissions', additionalImages, user.id);
-      const videoUrls = await uploadFiles('submissions', videoFiles, user.id);
+
+      // Validate optional video URL (Dropbox / WeTransfer / Swisstransfer / etc.)
+      let videoUrl = typeof data.videoUrl === 'string' ? data.videoUrl.trim() : '';
+      if (videoUrl) {
+        try {
+          const u = new URL(videoUrl);
+          if (u.protocol !== 'http:' && u.protocol !== 'https:') videoUrl = '';
+        } catch (_) {
+          videoUrl = '';
+        }
+      }
 
       // Insert submission — store all structured data in `description` as JSON
       const photographerCredit = Array.isArray(data.credits?.photographer)
@@ -78,9 +87,9 @@ module.exports = async function handler(req, res) {
             contactEmail: data.contactEmail || '',
             contactName: data.contactName || '',
             photographerCredit,
-            videoUrls: videoUrls || [],
+            videoUrl,
           }),
-          file_urls: [...lookUrls, ...additionalUrls, ...videoUrls],
+          file_urls: [...lookUrls, ...additionalUrls],
           status: 'pending',
         })
         .select()
