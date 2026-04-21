@@ -226,24 +226,67 @@ const PAP = (function() {
     }
   };
 
+  // ======== FILENAME SANITIZATION (for Safari FormData) ========
+  // Safari's fetch throws "The string did not match the expected pattern."
+  // when multipart form-data contains filenames with non-ASCII characters
+  // (e.g. Korean). Rebuild File objects with an ASCII-safe filename.
+  function asciiSafeFilename(original, fallbackPrefix) {
+    var ext = '';
+    if (typeof original === 'string') {
+      var m = original.toLowerCase().match(/\.([a-z0-9]{1,8})$/);
+      if (m) ext = '.' + m[1];
+    }
+    var rand = Math.random().toString(36).slice(2, 8);
+    return (fallbackPrefix || 'file') + '_' + Date.now() + '_' + rand + ext;
+  }
+  function safeFile(file, prefix) {
+    if (!file) return file;
+    try {
+      var originalName = file.name || '';
+      // If name already ASCII-printable (no control chars), keep as-is.
+      if (/^[\x20-\x7E]+$/.test(originalName)) return file;
+      var newName = asciiSafeFilename(originalName, prefix);
+      // Prefer File constructor (modern browsers)
+      if (typeof File === 'function') {
+        try {
+          return new File([file], newName, {
+            type: file.type || 'application/octet-stream',
+            lastModified: file.lastModified || Date.now(),
+          });
+        } catch (_) { /* fall through to Blob */ }
+      }
+      // Fallback: wrap as Blob (will be sent as "blob" but with correct MIME)
+      var b = file.slice ? file.slice(0, file.size, file.type) : file;
+      // Some browsers allow setting blob.name — harmless otherwise
+      try { Object.defineProperty(b, 'name', { value: newName }); } catch (_) {}
+      return b;
+    } catch (_) {
+      return file;
+    }
+  }
+
   // ======== SUBMISSIONS ========
   const submissions = {
     async create(data, lookImageFiles, additionalImageFiles, videoFile) {
       const formData = new FormData();
 
-      // Add look images
+      // Add look images (filenames sanitized to ASCII for Safari compatibility)
       if (lookImageFiles) {
-        lookImageFiles.forEach(file => formData.append('lookImages', file));
+        lookImageFiles.forEach(function(file, idx) {
+          formData.append('lookImages', safeFile(file, 'look' + idx));
+        });
       }
 
       // Add additional images
       if (additionalImageFiles) {
-        additionalImageFiles.forEach(file => formData.append('additionalImages', file));
+        additionalImageFiles.forEach(function(file, idx) {
+          formData.append('additionalImages', safeFile(file, 'extra' + idx));
+        });
       }
 
       // Add video file (single, optional)
       if (videoFile) {
-        formData.append('videoFile', videoFile);
+        formData.append('videoFile', safeFile(videoFile, 'video'));
       }
 
       // Add JSON data
@@ -277,7 +320,9 @@ const PAP = (function() {
     async create(data, moodboardFiles) {
       const formData = new FormData();
       if (moodboardFiles) {
-        moodboardFiles.forEach(file => formData.append('moodboard', file));
+        moodboardFiles.forEach(function(file, idx) {
+          formData.append('moodboard', safeFile(file, 'mood' + idx));
+        });
       }
       formData.append('data', JSON.stringify(data));
       return await request('POST', '/pullletters', formData, true);

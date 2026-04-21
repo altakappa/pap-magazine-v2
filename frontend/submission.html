@@ -919,7 +919,7 @@ function navigateWithInterstitial(url){
 </main>
 <div class="footer-legal" id="footerLegal"></div>
 
-<script src="pap-api.js?v=4" defer></script>
+<script src="pap-api.js?v=5" defer></script>
 <script>
 var lookCount=0;
 var files1=[];
@@ -1563,8 +1563,12 @@ async function submitForm(){
     document.getElementById('tlDatePublish').textContent='~'+pubDate.toLocaleDateString();
     window.scrollTo({top:0,behavior:'smooth'});
   }catch(e){
-    console.error('[PAP submit] error:', e);
-    var m=(e&&e.message)||'Submission failed';
+    console.error('[PAP submit] error:', e, e&&e.name, e&&e.stack);
+    var em=(e&&e.message)||'';
+    var en=(e&&e.name)||'';
+    var m=em||'Submission failed';
+    // Make the toast actionable: include error class so we can diagnose Safari DOMException etc.
+    if(en && en!=='Error') m=en+': '+m;
     if(typeof PAP!=='undefined') PAP.ui.toast(m,'error');
   }
 }
