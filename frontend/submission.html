@@ -926,7 +926,7 @@ function navigateWithInterstitial(url){
 </main>
 <div class="footer-legal" id="footerLegal"></div>
 
-<script src="pap-api.js?v=5" defer></script>
+<script src="pap-api.js?v=6" defer></script>
 <script>
 var lookCount=0;
 var files1=[];
@@ -1492,6 +1492,25 @@ async function submitForm(){
   var totalImages=totalLookImages+(files1?files1.length:0);
   if(totalImages<4){
     if(typeof PAP!=='undefined') PAP.ui.toast('At least 4 images required.','error');
+    return;
+  }
+
+  // PRE-UPLOAD SIZE CHECK — Vercel Serverless has a 4.5MB request body limit.
+  // Fashion editorials routinely exceed this, so warn the user BEFORE network call
+  // instead of letting them hit a cryptic 413 HTML error.
+  var totalBytes=0;
+  Object.keys(lookFiles).forEach(function(k){
+    if(lookFiles[k]) lookFiles[k].forEach(function(f){ totalBytes+=(f.size||0); });
+  });
+  (files1||[]).forEach(function(f){ totalBytes+=(f.size||0); });
+  if(videoFile) totalBytes+=(videoFile.size||0);
+  // Vercel limit is 4.5 MB; leave ~200 KB headroom for JSON/field data.
+  var MAX_UPLOAD=4.3*1024*1024;
+  if(totalBytes>MAX_UPLOAD){
+    var mb=(totalBytes/1024/1024).toFixed(1);
+    var msg='Total upload size is '+mb+' MB, which exceeds the 4.5 MB server limit. Please compress/resize images (recommended: 1500-2000 px wide, JPG ~80% quality) and remove the video if included. Direct-upload support for larger files is on the roadmap.';
+    if(typeof PAP!=='undefined') PAP.ui.toast(msg,'error');
+    console.warn('[PAP submit] blocked — total size', mb+'MB', 'exceeds', (MAX_UPLOAD/1024/1024).toFixed(1)+'MB');
     return;
   }
 

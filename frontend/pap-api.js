@@ -104,7 +104,36 @@ const PAP = (function() {
       try {
         const res = await fetch(API_BASE + endpoint, options);
         clearTimeout(timeoutId);
-        const json = await res.json();
+
+        // Read body as text first — server might return non-JSON on platform errors
+        // (Vercel 413 payload-too-large, 504 gateway-timeout, etc. return HTML).
+        // Safari throws "SyntaxError: The string did not match the expected pattern."
+        // when JSON.parse gets HTML, which is useless to the user.
+        const rawText = await res.text();
+        let json;
+        try {
+          json = rawText ? JSON.parse(rawText) : {};
+        } catch (parseErr) {
+          // Non-JSON response. Synthesize a helpful error message from status.
+          const statusMsg =
+            res.status === 413 ? 'Upload too large — your images/video exceed the server limit (4.5 MB). Please reduce file sizes and try again.' :
+            res.status === 504 ? 'Server timeout — the upload took too long. Please try again with fewer/smaller files.' :
+            res.status === 502 ? 'Bad gateway — the server is temporarily unavailable. Please try again.' :
+            res.status === 401 ? 'Session expired. Please log in again.' :
+            res.status === 403 ? 'Access denied.' :
+            res.status === 404 ? 'Endpoint not found (' + endpoint + ').' :
+            (res.status >= 500 ? 'Server error ' + res.status + '. Please try again later.' :
+            'Unexpected server response (' + res.status + ').');
+          // Keep a short preview of the HTML body in the console for diagnostics
+          try {
+            console.error('[PAP] non-JSON response from ' + endpoint, {
+              status: res.status,
+              contentType: res.headers.get('content-type'),
+              bodyPreview: String(rawText || '').slice(0, 400),
+            });
+          } catch(_){}
+          throw new Error(statusMsg);
+        }
 
         // Handle 401 responses
         if (res.status === 401) {
