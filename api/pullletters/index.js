@@ -22,6 +22,21 @@ module.exports = async function handler(req, res) {
     const user = requireAuth(req, res);
     if (!user) return;
 
+    // Pull-letter submissions are premium-only (enforced server-side so
+    // frontend gate bypasses via dev tools can't sneak through).
+    try {
+      const { data: prof, error: profErr } = await supabaseAdmin
+        .from('profiles')
+        .select('subscription_plan')
+        .eq('id', user.id)
+        .single();
+      if (profErr || !prof || prof.subscription_plan !== 'premium') {
+        return res.status(403).json({ message: 'Premium subscription required' });
+      }
+    } catch (e) {
+      return res.status(403).json({ message: 'Premium subscription required' });
+    }
+
     try {
       const { fields, files } = await parseForm(req);
       const data = JSON.parse(
