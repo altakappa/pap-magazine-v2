@@ -50,7 +50,11 @@ module.exports = async function handler(req, res) {
       const lookUrls = await uploadFiles('submissions', lookImages, user.id);
       const additionalUrls = await uploadFiles('submissions', additionalImages, user.id);
 
-      // Insert submission
+      // Insert submission — store all structured data in `description` as JSON
+      const photographerCredit = Array.isArray(data.credits?.photographer)
+        ? data.credits.photographer.join(', ')
+        : (data.credits?.photographer || '');
+
       const { data: submission, error } = await supabaseAdmin
         .from('submissions')
         .insert({
@@ -64,15 +68,18 @@ module.exports = async function handler(req, res) {
             coverImageIndex: data.coverImageIndex || 0,
             contactEmail: data.contactEmail || '',
             contactName: data.contactName || '',
+            photographerCredit,
           }),
           file_urls: [...lookUrls, ...additionalUrls],
-          credits: data.credits?.photographer || '',
           status: 'pending',
         })
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Submissions insert failed:', error);
+        throw error;
+      }
 
       // Send confirmation email (non-blocking)
       const { data: profile } = await supabaseAdmin
@@ -86,7 +93,11 @@ module.exports = async function handler(req, res) {
       return res.status(201).json({ submission });
     } catch (error) {
       console.error('Create submission error:', error);
-      return res.status(500).json({ message: 'Failed to create submission' });
+      // Surface Supabase/DB error hints to help debugging without leaking internals
+      const hint = error && error.message ? String(error.message).slice(0, 200) : '';
+      return res.status(500).json({
+        message: 'Failed to create submission' + (hint ? ` (${hint})` : ''),
+      });
     }
   }
 

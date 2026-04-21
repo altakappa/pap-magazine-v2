@@ -56,6 +56,38 @@ async function uploadToStorage(bucket, filePath, storagePath, contentType) {
 }
 
 /**
+ * Sanitize a file extension for Supabase Storage
+ * Supabase Storage rejects paths with non-ASCII or special characters.
+ * Returns a safe extension like ".jpg" (lowercase, ASCII only), or "" if none.
+ */
+function sanitizeExt(filename) {
+  if (!filename) return '';
+  const raw = path.extname(filename).toLowerCase();
+  // Keep only ASCII letters/digits after the leading dot, up to 8 chars
+  const m = raw.match(/^\.([a-z0-9]{1,8})$/);
+  return m ? `.${m[1]}` : '';
+}
+
+/**
+ * Infer an extension from MIME type as a fallback when the filename has none.
+ */
+function extFromMime(mimetype) {
+  if (!mimetype) return '';
+  const map = {
+    'image/jpeg': '.jpg',
+    'image/jpg': '.jpg',
+    'image/png': '.png',
+    'image/webp': '.webp',
+    'image/gif': '.gif',
+    'image/heic': '.heic',
+    'image/heif': '.heif',
+    'image/avif': '.avif',
+    'image/svg+xml': '.svg',
+  };
+  return map[mimetype.toLowerCase()] || '';
+}
+
+/**
  * Upload multiple files to a bucket
  * @param {string} bucket - Storage bucket name
  * @param {Array} files - Array of formidable file objects
@@ -65,11 +97,17 @@ async function uploadToStorage(bucket, filePath, storagePath, contentType) {
 async function uploadFiles(bucket, files, userId) {
   if (!files || !Array.isArray(files)) return [];
 
+  // Defensive: make sure userId is ASCII-safe for the storage path
+  const safeUserId = String(userId || 'anon').replace(/[^a-zA-Z0-9_-]/g, '');
+
   const urls = [];
   for (const file of files) {
-    const ext = path.extname(file.originalFilename || file.newFilename);
+    const ext =
+      sanitizeExt(file.originalFilename || file.newFilename) ||
+      extFromMime(file.mimetype);
     const timestamp = Date.now();
-    const storagePath = `${userId}/${timestamp}_${Math.random().toString(36).slice(2)}${ext}`;
+    const rand = Math.random().toString(36).slice(2, 10);
+    const storagePath = `${safeUserId}/${timestamp}_${rand}${ext}`;
 
     const url = await uploadToStorage(
       bucket,
