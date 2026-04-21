@@ -24,7 +24,12 @@ module.exports = async function handler(req, res) {
     if (!user) return;
 
     try {
-      const { fields, files } = await parseForm(req);
+      // Allow larger files for optional video (100MB per file)
+      const { fields, files } = await parseForm(req, {
+        maxFileSize: 100 * 1024 * 1024,
+        maxTotalFileSize: 600 * 1024 * 1024,
+        maxFiles: 30,
+      });
 
       // Parse the JSON data field
       const data = JSON.parse(
@@ -46,9 +51,13 @@ module.exports = async function handler(req, res) {
       const additionalImages = files.additionalImages
         ? (Array.isArray(files.additionalImages) ? files.additionalImages : [files.additionalImages])
         : [];
+      const videoFiles = files.videoFile
+        ? (Array.isArray(files.videoFile) ? files.videoFile : [files.videoFile])
+        : [];
 
       const lookUrls = await uploadFiles('submissions', lookImages, user.id);
       const additionalUrls = await uploadFiles('submissions', additionalImages, user.id);
+      const videoUrls = await uploadFiles('submissions', videoFiles, user.id);
 
       // Insert submission — store all structured data in `description` as JSON
       const photographerCredit = Array.isArray(data.credits?.photographer)
@@ -69,8 +78,9 @@ module.exports = async function handler(req, res) {
             contactEmail: data.contactEmail || '',
             contactName: data.contactName || '',
             photographerCredit,
+            videoUrls: videoUrls || [],
           }),
-          file_urls: [...lookUrls, ...additionalUrls],
+          file_urls: [...lookUrls, ...additionalUrls, ...videoUrls],
           status: 'pending',
         })
         .select()
@@ -92,11 +102,25 @@ module.exports = async function handler(req, res) {
 
       return res.status(201).json({ submission });
     } catch (error) {
-      console.error('Create submission error:', error);
-      // Surface Supabase/DB error hints to help debugging without leaking internals
-      const hint = error && error.message ? String(error.message).slice(0, 200) : '';
+      // Dump as much detail as possible into Vercel logs for postmortem
+      try {
+        console.error('Create submission error:', {
+          name: error && error.name,
+          message: error && error.message,
+          code: error && error.code,
+          details: error && error.details,
+          hint: error && error.hint,
+          stack: error && error.stack,
+        });
+      } catch (_) { console.error('Create submission error (raw):', error); }
+
+      const parts = [];
+      if (error && error.message) parts.push(String(error.message));
+      if (error && error.code) parts.push('code=' + error.code);
+      if (error && error.details) parts.push(String(error.details).slice(0, 120));
+      const hint = parts.join(' | ').slice(0, 300);
       return res.status(500).json({
-        message: 'Failed to create submission' + (hint ? ` (${hint})` : ''),
+        message: 'Failed to create submission' + (hint ? ` — ${hint}` : ''),
       });
     }
   }

@@ -12,11 +12,13 @@ const { supabaseAdmin } = require('./supabase');
  * Parse multipart form data
  * Returns { fields, files }
  */
-function parseForm(req) {
+function parseForm(req, opts) {
+  opts = opts || {};
   return new Promise((resolve, reject) => {
     const form = formidable({
-      maxFileSize: 20 * 1024 * 1024, // 20MB (reduced from 50MB)
-      maxFiles: 20,
+      maxFileSize: opts.maxFileSize || 20 * 1024 * 1024, // 20MB default
+      maxTotalFileSize: opts.maxTotalFileSize || (opts.maxFileSize ? opts.maxFileSize * 2 : 200 * 1024 * 1024),
+      maxFiles: opts.maxFiles || 20,
       keepExtensions: true,
     });
 
@@ -25,6 +27,24 @@ function parseForm(req) {
       else resolve({ fields, files });
     });
   });
+}
+
+/**
+ * Infer file extension from MIME for video files as fallback
+ */
+function extFromVideoMime(mimetype) {
+  if (!mimetype) return '';
+  const map = {
+    'video/mp4': '.mp4',
+    'video/quicktime': '.mov',
+    'video/x-msvideo': '.avi',
+    'video/x-matroska': '.mkv',
+    'video/webm': '.webm',
+    'video/ogg': '.ogv',
+    'video/mpeg': '.mpeg',
+    'video/3gpp': '.3gp',
+  };
+  return map[mimetype.toLowerCase()] || '';
 }
 
 /**
@@ -97,27 +117,47 @@ function extFromMime(mimetype) {
 async function uploadFiles(bucket, files, userId) {
   if (!files || !Array.isArray(files)) return [];
 
-  // Defensive: make sure userId is ASCII-safe for the storage path
-  const safeUserId = String(userId || 'anon').replace(/[^a-zA-Z0-9_-]/g, '');
+  // Defensive: make sure userId is ASCII-safe for the storage path.
+  // Supabase Storage allows only: alphanumerics, hyphen, underscore, dot, slash.
+  // Strip to [A-Za-z0-9_-] for the userId segment; fall back to 'anon' if empty.
+  let safeUserId = String(userId || '').replace(/[^a-zA-Z0-9_-]/g, '');
+  if (!safeUserId) safeUserId = 'anon';
 
   const urls = [];
   for (const file of files) {
-    const ext =
+    let ext =
       sanitizeExt(file.originalFilename || file.newFilename) ||
-      extFromMime(file.mimetype);
+      extFromMime(file.mimetype) ||
+      extFromVideoMime(file.mimetype);
+    // Final safety: ensure ext is `.` + [a-z0-9] or empty.
+    if (ext && !/^\.[a-z0-9]{1,8}$/.test(ext)) ext = '';
+
     const timestamp = Date.now();
     const rand = Math.random().toString(36).slice(2, 10);
+    // Path = userId/timestamp_rand.ext — all guaranteed ASCII-safe
     const storagePath = `${safeUserId}/${timestamp}_${rand}${ext}`;
 
-    const url = await uploadToStorage(
-      bucket,
-      file.filepath,
-      storagePath,
-      file.mimetype || 'application/octet-stream'
-    );
-    urls.push(url);
+    // Supabase path whitelist: alphanumerics, -, _, ., /. Validate before sending.
+    if (!/^[A-Za-z0-9/_.-]+$/.test(storagePath)) {
+      throw new Error(`Refusing unsafe storage path: ${storagePath}`);
+    }
+
+    try {
+      const url = await uploadToStorage(
+        bucket,
+        file.filepath,
+        storagePath,
+        file.mimetype || 'application/octet-stream'
+      );
+      urls.push(url);
+    } catch (e) {
+      // Surface which file failed so client gets actionable feedback
+      const name = file.originalFilename || file.newFilename || 'file';
+      const msg = (e && e.message) ? e.message : String(e);
+      throw new Error(`Upload of "${name}" failed: ${msg}`);
+    }
   }
   return urls;
 }
 
-module.exports = { parseForm, uploadToStorage, uploadFiles };
+module.exports = { parseForm, uploadToStorage, uploadFiles, sanitizeExt, extFromMime, extFromVideoMime };

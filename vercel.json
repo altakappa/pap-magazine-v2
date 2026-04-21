@@ -54,6 +54,14 @@
     "api/**/*.js": {
       "maxDuration": 30,
       "memory": 256
+    },
+    "api/submissions/index.js": {
+      "maxDuration": 60,
+      "memory": 1024
+    },
+    "api/pullletters/index.js": {
+      "maxDuration": 60,
+      "memory": 512
     }
   },
   "cleanUrls": true

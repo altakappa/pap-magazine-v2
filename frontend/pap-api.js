@@ -209,7 +209,7 @@ const PAP = (function() {
 
   // ======== SUBMISSIONS ========
   const submissions = {
-    async create(data, lookImageFiles, additionalImageFiles) {
+    async create(data, lookImageFiles, additionalImageFiles, videoFile) {
       const formData = new FormData();
 
       // Add look images
@@ -220,6 +220,11 @@ const PAP = (function() {
       // Add additional images
       if (additionalImageFiles) {
         additionalImageFiles.forEach(file => formData.append('additionalImages', file));
+      }
+
+      // Add video file (single, optional)
+      if (videoFile) {
+        formData.append('videoFile', videoFile);
       }
 
       // Add JSON data

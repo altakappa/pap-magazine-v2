@@ -261,7 +261,7 @@ textarea.form-input{min-height:100px;resize:vertical;line-height:1.8}
 
 /* ADD MULTIPLE MODELS */
 .multi-model-wrap{border:1px solid rgba(255,255,255,.06);padding:12px;margin-top:4px}
-.model-row{display:grid;grid-template-columns:1fr 1fr 1fr 30px;gap:10px;align-items:center;margin-bottom:6px}
+.model-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 30px;gap:10px;align-items:center;margin-bottom:6px}
 .model-row .team-input{padding:8px 10px;font-size:11px}
 .model-remove{background:none;border:none;color:rgba(255,255,255,.2);font-size:14px;cursor:pointer;padding:2px 4px;transition:color .2s}
 .model-remove:hover{color:#fff}
@@ -282,7 +282,8 @@ textarea.form-input{min-height:100px;resize:vertical;line-height:1.8}
   .sub-item{grid-template-columns:1fr 80px;gap:8px}
   .sub-item-date,.sub-item-action{display:none}
   .model-row{grid-template-columns:1fr 1fr 30px}
-  .model-row .team-input:nth-child(3){display:none}
+  .model-row .team-input:nth-child(3),
+  .model-row .team-input:nth-child(4){display:none}
   .timeline-visual{flex-wrap:wrap;gap:4px}
   .cover-select-row{flex-direction:column;gap:8px}
 }
@@ -687,18 +688,20 @@ function navigateWithInterstitial(url){
       <!-- MODELS (Multiple) -->
       <div style="margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,.08)">
         <div class="section-title" style="border-bottom:none;padding-bottom:0">MODELS</div>
-        <p style="font-size:10px;color:rgba(255,255,255,.25);margin-bottom:12px;line-height:1.8">Enter all models with their agency info.</p>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 30px;gap:10px;margin-bottom:6px">
-          <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25)">NAME</span>
-          <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25)">INSTAGRAM</span>
-          <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25)">AGENCY</span>
+        <p style="font-size:10px;color:rgba(255,255,255,.25);margin-bottom:12px;line-height:1.8">Enter the model's name and Instagram, and the agency's name and Instagram separately.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 30px;gap:10px;margin-bottom:6px">
+          <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25)">MODEL NAME</span>
+          <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25)">MODEL INSTA</span>
+          <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25)">AGENCY NAME</span>
+          <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25)">AGENCY INSTA</span>
           <span></span>
         </div>
         <div id="modelList">
           <div class="model-row">
             <input class="team-input" placeholder="Model Name">
-            <input class="team-input" placeholder="@instagram">
-            <input class="team-input" placeholder="Agency (optional)">
+            <input class="team-input" placeholder="@model_instagram">
+            <input class="team-input" placeholder="Agency Name (optional)">
+            <input class="team-input" placeholder="@agency_instagram (optional)">
             <span></span>
           </div>
         </div>
@@ -715,7 +718,8 @@ function navigateWithInterstitial(url){
     <!-- STEP 4: Look Credits -->
     <div class="form-section" id="step4">
       <div class="section-title">LOOK CREDITS</div>
-      <p style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:20px;line-height:1.8">Upload images for each look and enter brand/accessory credits. Minimum 4 looks required. Drag thumbnails to reorder. You can also add additional images below.</p>
+      <p style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:20px;line-height:1.8">Upload images for each look and enter brand/accessory credits. Minimum 4 images required. Drag thumbnails to reorder. You can also add additional images below.</p>
+      <div class="error-summary" id="errSummary4"></div>
       <div id="lookList"></div>
       <button class="add-btn" onclick="addLook()">+ Add Look</button>
 
@@ -755,9 +759,15 @@ function navigateWithInterstitial(url){
     <div class="form-section" id="step5">
       <div class="section-title">ADDITIONAL INFO & TERMS</div>
       <div class="form-group">
-        <label class="form-label">Video Link — behind-the-scenes, sketches, clips (optional)</label>
-        <input type="url" class="form-input" placeholder="YouTube / Vimeo URL">
-        <div class="form-hint">Please provide behind-the-scenes footage, sketches, short clips, or other video content for social media use.</div>
+        <label class="form-label">Video File — behind-the-scenes, sketches, clips (optional)</label>
+        <div class="upload-zone" id="videoZone">
+          <input type="file" class="upload-input" id="videoInput" accept="video/*" onchange="handleVideoSelect(this.files)">
+          <div class="upload-icon"><svg viewBox="0 0 32 32" fill="none"><path d="M16 24V8M16 8L10 14M16 8L22 14" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 24v2a2 2 0 002 2h20a2 2 0 002-2v-2" stroke-width="2" stroke-linecap="round"/></svg></div>
+          <div class="upload-text"><strong>Click</strong> or drag a video file</div>
+          <div class="upload-hint">MP4 / MOV · Max 100MB</div>
+        </div>
+        <div class="file-list" id="videoList"></div>
+        <div class="form-hint">Upload behind-the-scenes footage, sketches, or short clips. PAP will publish this video on our official YouTube channel.</div>
       </div>
       <!-- TERMS AGREEMENT -->
       <div class="terms-section">
@@ -909,13 +919,44 @@ function navigateWithInterstitial(url){
 </main>
 <div class="footer-legal" id="footerLegal"></div>
 
-<script src="pap-api.js?v=2" defer></script>
+<script src="pap-api.js?v=3" defer></script>
 <script>
 var lookCount=0;
 var files1=[];
+var videoFile=null;
 var selectedGenres=[];
 var selectedCoverLook=0;
 var selectedCoverIdx=0;
+
+// VIDEO FILE HANDLER
+function handleVideoSelect(fl){
+  if(!fl||fl.length===0)return;
+  var f=fl[0];
+  var MAX=100*1024*1024; // 100MB
+  if(!/^video\//i.test(f.type||'')){
+    if(typeof PAP!=='undefined'&&PAP.ui) PAP.ui.toast('Please select a video file.','error');
+    document.getElementById('videoInput').value='';
+    return;
+  }
+  if(f.size>MAX){
+    if(typeof PAP!=='undefined'&&PAP.ui) PAP.ui.toast('Video file exceeds 100MB limit.','error');
+    document.getElementById('videoInput').value='';
+    return;
+  }
+  videoFile=f;
+  renderVideo();
+}
+function removeVideo(){
+  videoFile=null;
+  var vi=document.getElementById('videoInput'); if(vi) vi.value='';
+  renderVideo();
+}
+function renderVideo(){
+  var vl=document.getElementById('videoList'); if(!vl)return;
+  if(!videoFile){ vl.innerHTML=''; return; }
+  var s=(videoFile.size/1024/1024).toFixed(1)+' MB';
+  vl.innerHTML='<div class="file-item"><span class="fn">'+videoFile.name+'</span><span class="fs">'+s+'</span><button class="fr" onclick="removeVideo()">×</button></div>';
+}
 
 // GENRE SELECTION
 function selectGenre(el){
@@ -967,7 +1008,7 @@ function addModelRow(){
   var list=document.getElementById('modelList');
   var row=document.createElement('div');
   row.className='model-row';
-  row.innerHTML='<input class="team-input" placeholder="Model Name"><input class="team-input" placeholder="@instagram"><input class="team-input" placeholder="Agency (optional)"><button class="model-remove" onclick="this.parentElement.remove()">×</button>';
+  row.innerHTML='<input class="team-input" placeholder="Model Name"><input class="team-input" placeholder="@model_instagram"><input class="team-input" placeholder="Agency Name (optional)"><input class="team-input" placeholder="@agency_instagram (optional)"><button class="model-remove" onclick="this.parentElement.remove()">×</button>';
   list.appendChild(row);
 }
 
@@ -1150,6 +1191,19 @@ function _validateStep(n){
         errs.push({field:fid==='copyrightConfirm'?'copyrightWrap':fid,msg:e?e.textContent:''});
       }
     });
+  }
+  if(n===4){
+    var _total=0;
+    try{
+      Object.keys(lookFiles||{}).forEach(function(k){ if(lookFiles[k]) _total+=lookFiles[k].length; });
+      if(Array.isArray(window.files1)) _total+=window.files1.length;
+      else if(typeof files1!=='undefined' && Array.isArray(files1)) _total+=files1.length;
+    }catch(e){}
+    if(_total<4){
+      var _msg=(_curLang==='ko'?'최소 4장 이상의 이미지를 업로드해 주세요. (현재 ':'Please upload at least 4 images. (Currently ')+_total+(_curLang==='ko'?'장)':')');
+      if(typeof PAP!=='undefined'&&PAP.ui&&PAP.ui.toast) PAP.ui.toast(_msg,'error');
+      errs.push({field:'lookList',msg:_msg});
+    }
   }
   var summary=document.getElementById('errSummary'+n);
   if(summary&&errs.length>0){
@@ -1425,11 +1479,12 @@ async function submitForm(){
   }
   err.style.display='none';
 
-  // Count total look images
+  // Count total images (look + additional) — enforce minimum 4
   var totalLookImages=0;
   Object.keys(lookFiles).forEach(function(k){ if(lookFiles[k]) totalLookImages+=lookFiles[k].length; });
-  if(totalLookImages<4){
-    if(typeof PAP!=='undefined') PAP.ui.toast('At least 4 look images required.','error');
+  var totalImages=totalLookImages+(files1?files1.length:0);
+  if(totalImages<4){
+    if(typeof PAP!=='undefined') PAP.ui.toast('At least 4 images required.','error');
     return;
   }
 
@@ -1470,7 +1525,12 @@ async function submitForm(){
   data.models=[];
   document.querySelectorAll('#modelList .model-row').forEach(function(row){
     var inputs=row.querySelectorAll('.team-input');
-    if(inputs[0].value.trim()) data.models.push({ name:inputs[0].value, instagram:inputs[1].value, agency:inputs[2]?inputs[2].value:'' });
+    if(inputs[0].value.trim()) data.models.push({
+      name: inputs[0].value,
+      instagram: inputs[1]?inputs[1].value:'',
+      agency: inputs[2]?inputs[2].value:'',
+      agencyInstagram: inputs[3]?inputs[3].value:''
+    });
   });
 
   // Flatten lookFiles into array for upload
@@ -1480,7 +1540,15 @@ async function submitForm(){
   });
 
   try{
-    await PAP.submissions.create(data, allLookImages, files1||[]);
+    console.log('[PAP submit] payload snapshot', {
+      title: data.title,
+      genre: data.genre,
+      lookImageCount: allLookImages.length,
+      additionalCount: (files1||[]).length,
+      hasVideo: !!videoFile,
+      videoSize: videoFile ? (videoFile.size/1024/1024).toFixed(1)+'MB' : null,
+    });
+    await PAP.submissions.create(data, allLookImages, files1||[], videoFile||null);
     document.getElementById('step5').style.display='none';
     document.querySelector('.step-bar').style.display='none';
     document.getElementById('submitSuccess').style.display='block';
@@ -1495,7 +1563,9 @@ async function submitForm(){
     document.getElementById('tlDatePublish').textContent='~'+pubDate.toLocaleDateString();
     window.scrollTo({top:0,behavior:'smooth'});
   }catch(e){
-    if(typeof PAP!=='undefined') PAP.ui.toast(e.message||'Submission failed','error');
+    console.error('[PAP submit] error:', e);
+    var m=(e&&e.message)||'Submission failed';
+    if(typeof PAP!=='undefined') PAP.ui.toast(m,'error');
   }
 }
 
