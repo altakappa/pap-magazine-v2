@@ -275,10 +275,10 @@ tr:hover td{background:rgba(0,0,0,.02)}
       </div>
 
       <div class="tbl-wrap">
-        <div class="tbl-top"><h3>최근 서브미션</h3></div>
+        <div class="tbl-top"><h3>최근 서브미션</h3><a href="#" onclick="go('submissions');return false;" style="font-size:11px;color:var(--text3)">전체 보기 →</a></div>
         <table><thead><tr><th>제목</th><th>제출자</th><th>룩 수</th><th>날짜</th><th>상태</th></tr></thead>
-        <tbody>
-          <tr><td colspan="5" style="text-align:center;color:var(--text3);padding:40px 0">서브미션이 없습니다</td></tr>
+        <tbody id="homeRecentSubmissions">
+          <tr><td colspan="5" style="text-align:center;color:var(--text3);padding:40px 0">불러오는 중...</td></tr>
         </tbody></table>
       </div>
     </div>
@@ -1819,11 +1819,12 @@ async function loadDashboardStats(){
   try{
     var stats=document.querySelectorAll('#t-home .stat-n');
     // Load counts from APIs
-    var [edRes,subRes,plRes,memRes]=await Promise.allSettled([
+    var [edRes,subRes,plRes,memRes,recentSubRes]=await Promise.allSettled([
       apiGet('/editorials?limit=1'),
       apiGet('/submissions?status=pending'),
       apiGet('/pullletters?status=pending'),
-      apiGet('/admin/members')
+      apiGet('/admin/members'),
+      apiGet('/submissions?page=1')
     ]);
     var edTotal=(edRes.status==='fulfilled'&&edRes.value.pagination)?edRes.value.pagination.total:0;
     var subPending=(subRes.status==='fulfilled')?subRes.value.total||0:0;
@@ -1838,7 +1839,35 @@ async function loadDashboardStats(){
     if(stats[3])stats[3].textContent=plPending;
     if(stats[4])stats[4].textContent=stdCount;
     if(stats[5])stats[5].textContent=premCount;
-  }catch(e){console.error('Dashboard stats error:',e);}
+
+    // Render the latest 5 submissions in the home dashboard table
+    var recentTb=document.getElementById('homeRecentSubmissions');
+    if(recentTb){
+      if(recentSubRes.status!=='fulfilled'){
+        var msg=(recentSubRes.reason&&recentSubRes.reason.message)||'불러오기 실패';
+        recentTb.innerHTML='<tr><td colspan="5" style="text-align:center;color:#ff6b6b;padding:40px 0">'+esc(msg)+'</td></tr>';
+      }else{
+        var subs=(recentSubRes.value&&recentSubRes.value.submissions)||[];
+        if(!subs.length){
+          recentTb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:40px 0">서브미션이 없습니다</td></tr>';
+        }else{
+          var rows=subs.slice(0,5).map(function(s){
+            var statusBadge='<span class="badge b-'+(s.status||'pending')+'">'+esc(s.status||'pending')+'</span>';
+            var looks=Array.isArray(s.file_urls)?s.file_urls.length:0;
+            var name=esc(s.submitterName||s.submitterEmail||'—');
+            var title=esc(s.title||'Untitled');
+            var date=fmtDate(s.created_at);
+            return '<tr><td class="td-title" onclick="go(\'submissions\');setTimeout(function(){openModal(\''+s.id+'\')},150)">'+title+'</td><td>'+name+'</td><td>'+looks+'</td><td>'+date+'</td><td>'+statusBadge+'</td></tr>';
+          }).join('');
+          recentTb.innerHTML=rows;
+        }
+      }
+    }
+  }catch(e){
+    console.error('Dashboard stats error:',e);
+    var tb=document.getElementById('homeRecentSubmissions');
+    if(tb)tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:#ff6b6b;padding:40px 0">불러오기 실패: '+esc(e.message||'')+'</td></tr>';
+  }
 }
 
 // ======== EDITORIAL CRUD (API) ========
