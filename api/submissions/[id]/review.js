@@ -25,8 +25,8 @@ module.exports = async function handler(req, res) {
     const { id } = req.query;
     const { status, reviewNote, coverImageIndex } = req.body;
 
-    if (!status || !['approved', 'rejected'].includes(status)) {
-      return res.status(400).json({ message: 'Status must be "approved" or "rejected"' });
+    if (!status || !['approved', 'rejected', 'revision'].includes(status)) {
+      return res.status(400).json({ message: 'Status must be "approved", "rejected", or "revision"' });
     }
 
     // Validate coverImageIndex if provided
