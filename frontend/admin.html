@@ -263,26 +263,67 @@ tr:hover td{background:rgba(0,0,0,.02)}
   <div class="tab on" id="t-home">
     <div class="mn-header"><div class="mn-title">대시보드</div><div style="font-size:11px;color:var(--text3)" id="dashDate"></div></div>
     <div class="mn-body">
-      <div class="stats">
-        <div class="stat"><div class="stat-n">0</div><div class="stat-l">전체 회원</div></div>
-        <div class="stat"><div class="stat-n">0</div><div class="stat-l">게시된 에디토리얼</div></div>
-        <div class="stat"><div class="stat-n">0</div><div class="stat-l">대기 중 서브미션</div></div>
-        <div class="stat"><div class="stat-n">0</div><div class="stat-l">대기 중 Pull-Letter</div></div>
-        <div class="stat"><div class="stat-n">0</div><div class="stat-l">Standard 구독</div></div>
-        <div class="stat"><div class="stat-n">0</div><div class="stat-l">Premium 구독</div></div>
-        <div class="stat"><div class="stat-n">0</div><div class="stat-l">커뮤니티 게시글</div></div>
-        <div class="stat"><div class="stat-n">₩0</div><div class="stat-l">월 매출</div></div>
+      <!-- Quick Actions -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
+        <button class="btn btn-primary" onclick="go('newpost')">+ 새 에디토리얼</button>
+        <button class="btn" onclick="go('newnews')">+ 새 뉴스</button>
+        <button class="btn" onclick="go('film')">+ 새 필름</button>
+        <button class="btn" onclick="go('shorts')">+ 새 숏츠</button>
+        <button class="btn" onclick="go('submissions')">서브미션 심사 (<span id="qaPendingSub">0</span>)</button>
+        <button class="btn" onclick="go('pullletters')">Pull-Letter 심사 (<span id="qaPendingPl">0</span>)</button>
       </div>
 
-      <div class="tbl-wrap">
+      <div class="stats" id="homeStatsGrid">
+        <div class="stat"><div class="stat-n" id="dashMembers">0</div><div class="stat-l">전체 회원</div><div class="stat-c" id="dashMembersDelta" style="color:var(--text3)">이번 달 +0</div></div>
+        <div class="stat"><div class="stat-n" id="dashEditorials">0</div><div class="stat-l">게시된 에디토리얼</div><div class="stat-c" id="dashEditorialsDelta" style="color:var(--text3)">이번 달 +0</div></div>
+        <div class="stat"><div class="stat-n" id="dashSubmissions">0</div><div class="stat-l">대기 중 서브미션</div><div class="stat-c" id="dashSubmissionsDelta" style="color:var(--text3)">이번 달 +0 신규</div></div>
+        <div class="stat"><div class="stat-n" id="dashPullletters">0</div><div class="stat-l">대기 중 Pull-Letter</div><div class="stat-c" id="dashPulllettersDelta" style="color:var(--text3)">이번 달 +0 신청</div></div>
+        <div class="stat"><div class="stat-n" id="dashStandard">0</div><div class="stat-l">Standard 구독</div><div class="stat-c" id="dashStandardBreakdown" style="color:var(--text3)">월 0 · 연 0</div></div>
+        <div class="stat"><div class="stat-n" id="dashPremium">0</div><div class="stat-l">Premium 구독</div><div class="stat-c" id="dashPremiumBreakdown" style="color:var(--text3)">월 0 · 연 0</div></div>
+        <div class="stat"><div class="stat-n" id="dashCommunity">0</div><div class="stat-l">커뮤니티 게시글</div></div>
+        <div class="stat"><div class="stat-n" id="dashRevenue">₩0</div><div class="stat-l">월 추정 매출 (MRR)</div><div class="stat-c" id="dashRevenueNote" style="color:var(--text3)">활성 구독 0건</div></div>
+      </div>
+
+      <!-- Pull-letter signup trend (last 30 days) -->
+      <div class="tbl-wrap" style="margin-bottom:20px">
+        <div class="tbl-top"><h3>Pull-Letter 신청 추이 (최근 30일)</h3><div style="font-size:11px;color:var(--text3)" id="dashTrendSummary">총 0건</div></div>
+        <div style="padding:18px"><svg id="dashTrendChart" viewBox="0 0 600 100" preserveAspectRatio="none" style="width:100%;height:100px;display:block"></svg></div>
+      </div>
+
+      <!-- Recent submissions -->
+      <div class="tbl-wrap" style="margin-bottom:20px">
         <div class="tbl-top"><h3>최근 서브미션</h3><a href="#" onclick="go('submissions');return false;" style="font-size:11px;color:var(--text3)">전체 보기 →</a></div>
         <table><thead><tr><th>제목</th><th>제출자</th><th>룩 수</th><th>날짜</th><th>상태</th></tr></thead>
         <tbody id="homeRecentSubmissions">
           <tr><td colspan="5" style="text-align:center;color:var(--text3);padding:40px 0">불러오는 중...</td></tr>
         </tbody></table>
       </div>
+
+      <!-- Recent members + recent editorials side-by-side -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="tbl-wrap">
+          <div class="tbl-top"><h3>최근 가입 회원</h3><a href="#" onclick="go('users');return false;" style="font-size:11px;color:var(--text3)">전체 보기 →</a></div>
+          <table><thead><tr><th>이름</th><th>이메일</th><th>역할</th><th>가입일</th></tr></thead>
+          <tbody id="homeRecentMembers">
+            <tr><td colspan="4" style="text-align:center;color:var(--text3);padding:40px 0">불러오는 중...</td></tr>
+          </tbody></table>
+        </div>
+
+        <div class="tbl-wrap">
+          <div class="tbl-top"><h3>최근 발행 에디토리얼</h3><a href="#" onclick="go('editorials');return false;" style="font-size:11px;color:var(--text3)">전체 보기 →</a></div>
+          <table><thead><tr><th></th><th>제목</th><th>발행일</th></tr></thead>
+          <tbody id="homeRecentEditorials">
+            <tr><td colspan="3" style="text-align:center;color:var(--text3);padding:40px 0">불러오는 중...</td></tr>
+          </tbody></table>
+        </div>
+      </div>
+
+      <div style="margin-top:20px;padding:16px;background:var(--surface2);border:1px solid var(--border);font-size:11px;color:var(--text3);line-height:1.7">
+        <strong>이번 달 요약</strong> · 신규 회원 <span id="dashMonthMembers">0</span>명 · 발행 에디토리얼 <span id="dashMonthEditorials">0</span>개 · 서브미션 <span id="dashMonthSubmissions">0</span>건 · Pull-Letter 신청 <span id="dashMonthPullletters">0</span>건
+      </div>
     </div>
   </div>
+
 
   <!-- EDITORIALS -->
   <div class="tab" id="t-editorials">
@@ -1815,58 +1856,139 @@ function toggleSchedule(){
 }
 
 // ======== DASHBOARD STATS ========
-async function loadDashboardStats(){
-  try{
-    var stats=document.querySelectorAll('#t-home .stat-n');
-    // Load counts from APIs
-    var [edRes,subRes,plRes,memRes,recentSubRes]=await Promise.allSettled([
-      apiGet('/editorials?limit=1'),
-      apiGet('/submissions?status=pending'),
-      apiGet('/pullletters?status=pending'),
-      apiGet('/admin/members'),
-      apiGet('/submissions?page=1')
-    ]);
-    var edTotal=(edRes.status==='fulfilled'&&edRes.value.pagination)?edRes.value.pagination.total:0;
-    var subPending=(subRes.status==='fulfilled')?subRes.value.total||0:0;
-    var plPending=(plRes.status==='fulfilled'&&plRes.value.pullLetters)?plRes.value.pullLetters.length:0;
-    var members=(memRes.status==='fulfilled')?(memRes.value.members||memRes.value||[]):[];
-    var memTotal=Array.isArray(members)?members.length:0;
-    var stdCount=Array.isArray(members)?members.filter(function(m){return m.subscription_plan&&m.subscription_plan.indexOf('standard')>-1;}).length:0;
-    var premCount=Array.isArray(members)?members.filter(function(m){return m.subscription_plan&&m.subscription_plan.indexOf('premium')>-1;}).length:0;
-    if(stats[0])stats[0].textContent=memTotal;
-    if(stats[1])stats[1].textContent=edTotal;
-    if(stats[2])stats[2].textContent=subPending;
-    if(stats[3])stats[3].textContent=plPending;
-    if(stats[4])stats[4].textContent=stdCount;
-    if(stats[5])stats[5].textContent=premCount;
+// Render a simple SVG line+area chart for daily counts. `series` is [{date,count}, ...].
+function renderTrendChart(svg, series){
+  if(!svg||!Array.isArray(series)||!series.length)return;
+  var w=600, h=100, pad=4;
+  var max=Math.max(1, series.reduce(function(m,d){return Math.max(m,d.count||0);},0));
+  var step=(w-pad*2)/(series.length-1||1);
+  var pts=series.map(function(d,i){
+    var x=pad+i*step;
+    var y=h-pad-((d.count||0)/max)*(h-pad*2);
+    return [x,y];
+  });
+  var lineD='M '+pts.map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1);}).join(' L ');
+  var areaD=lineD+' L '+(w-pad)+','+(h-pad)+' L '+pad+','+(h-pad)+' Z';
+  var lastIdx=series.length-1;
+  var lastPt=pts[lastIdx];
+  var firstDate=series[0].date, lastDate=series[lastIdx].date;
+  svg.innerHTML=
+    '<defs><linearGradient id="dashTrendGrad" x1="0" x2="0" y1="0" y2="1">'+
+      '<stop offset="0%" stop-color="rgba(37,99,235,0.25)"/>'+
+      '<stop offset="100%" stop-color="rgba(37,99,235,0)"/>'+
+    '</linearGradient></defs>'+
+    '<path d="'+areaD+'" fill="url(#dashTrendGrad)" stroke="none"/>'+
+    '<path d="'+lineD+'" fill="none" stroke="var(--blue)" stroke-width="1.5"/>'+
+    '<circle cx="'+lastPt[0]+'" cy="'+lastPt[1]+'" r="3" fill="var(--blue)"/>'+
+    '<text x="'+pad+'" y="'+(h-pad+2)+'" font-size="9" fill="var(--text3)">'+firstDate.slice(5)+'</text>'+
+    '<text x="'+(w-pad)+'" y="'+(h-pad+2)+'" font-size="9" fill="var(--text3)" text-anchor="end">'+lastDate.slice(5)+'</text>';
+}
 
-    // Render the latest 5 submissions in the home dashboard table
-    var recentTb=document.getElementById('homeRecentSubmissions');
-    if(recentTb){
-      if(recentSubRes.status!=='fulfilled'){
-        var msg=(recentSubRes.reason&&recentSubRes.reason.message)||'불러오기 실패';
-        recentTb.innerHTML='<tr><td colspan="5" style="text-align:center;color:#ff6b6b;padding:40px 0">'+esc(msg)+'</td></tr>';
+async function loadDashboardStats(){
+  // Date in header
+  var dashDate=document.getElementById('dashDate');
+  if(dashDate)dashDate.textContent=new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
+
+  function setText(id,v){var el=document.getElementById(id);if(el)el.textContent=v;}
+  function fmtKRW(n){return '₩'+(n||0).toLocaleString('ko-KR');}
+
+  try{
+    var statsRes=await apiGet('/admin/stats');
+    if(statsRes&&statsRes.message&&!statsRes.totals){throw new Error(statsRes.message);}
+
+    var totals=statsRes.totals||{};
+    var pc=statsRes.planCounts||{};
+    var tm=statsRes.thisMonth||{};
+
+    // Stat cards
+    setText('dashMembers',totals.members||0);
+    setText('dashMembersDelta','이번 달 +'+(tm.members||0));
+    setText('dashEditorials',totals.editorialsPublished||0);
+    setText('dashEditorialsDelta','이번 달 +'+(tm.editorials||0));
+    setText('dashSubmissions',totals.submissionsPending||0);
+    setText('dashSubmissionsDelta','이번 달 +'+(tm.submissions||0)+' 신규');
+    setText('dashPullletters',totals.pullettersPending||0);
+    setText('dashPulllettersDelta','이번 달 +'+(tm.pullletters||0)+' 신청');
+    setText('dashStandard',pc.standard||0);
+    setText('dashStandardBreakdown','월 '+(pc.standard_monthly||0)+' · 연 '+(pc.standard_yearly||0));
+    setText('dashPremium',pc.premium||0);
+    setText('dashPremiumBreakdown','월 '+(pc.premium_monthly||0)+' · 연 '+(pc.premium_yearly||0));
+    setText('dashCommunity',totals.communityPosts||0);
+    setText('dashRevenue',fmtKRW(statsRes.monthlyRevenue));
+    setText('dashRevenueNote','활성 구독 '+(totals.activeSubscriptions||0)+'건');
+
+    // Quick action badges
+    setText('qaPendingSub',totals.submissionsPending||0);
+    setText('qaPendingPl',totals.pullettersPending||0);
+
+    // Monthly summary footer
+    setText('dashMonthMembers',tm.members||0);
+    setText('dashMonthEditorials',tm.editorials||0);
+    setText('dashMonthSubmissions',tm.submissions||0);
+    setText('dashMonthPullletters',tm.pullletters||0);
+
+    // Recent submissions
+    var subTb=document.getElementById('homeRecentSubmissions');
+    if(subTb){
+      var subs=statsRes.recentSubmissions||[];
+      if(!subs.length){
+        subTb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:40px 0">서브미션이 없습니다</td></tr>';
       }else{
-        var subs=(recentSubRes.value&&recentSubRes.value.submissions)||[];
-        if(!subs.length){
-          recentTb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:40px 0">서브미션이 없습니다</td></tr>';
-        }else{
-          var rows=subs.slice(0,5).map(function(s){
-            var statusBadge='<span class="badge b-'+(s.status||'pending')+'">'+esc(s.status||'pending')+'</span>';
-            var looks=Array.isArray(s.file_urls)?s.file_urls.length:0;
-            var name=esc(s.submitterName||s.submitterEmail||'—');
-            var title=esc(s.title||'Untitled');
-            var date=fmtDate(s.created_at);
-            return '<tr><td class="td-title" onclick="go(\'submissions\');setTimeout(function(){openModal(\''+s.id+'\')},150)">'+title+'</td><td>'+name+'</td><td>'+looks+'</td><td>'+date+'</td><td>'+statusBadge+'</td></tr>';
-          }).join('');
-          recentTb.innerHTML=rows;
-        }
+        subTb.innerHTML=subs.map(function(s){
+          var statusBadge='<span class="badge b-'+(s.status||'pending')+'">'+esc(s.status||'pending')+'</span>';
+          var looks=Array.isArray(s.file_urls)?s.file_urls.length:0;
+          var name=esc(s.submitterName||s.submitterEmail||'—');
+          var title=esc(s.title||'Untitled');
+          var date=fmtDate(s.created_at);
+          return '<tr><td class="td-title" onclick="go(\'submissions\');setTimeout(function(){openModal(\''+s.id+'\')},150)">'+title+'</td><td>'+name+'</td><td>'+looks+'</td><td>'+date+'</td><td>'+statusBadge+'</td></tr>';
+        }).join('');
       }
     }
+
+    // Recent members
+    var memTb=document.getElementById('homeRecentMembers');
+    if(memTb){
+      var mems=statsRes.recentMembers||[];
+      if(!mems.length){
+        memTb.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:40px 0">회원이 없습니다</td></tr>';
+      }else{
+        memTb.innerHTML=mems.map(function(m){
+          var role=m.role||'member';
+          var roleBadge='<span class="badge b-role-'+role+'">'+esc(role)+'</span>';
+          return '<tr><td>'+esc(m.display_name||'—')+'</td><td style="color:var(--text3);font-size:11px">'+esc(m.email||'—')+'</td><td>'+roleBadge+'</td><td>'+fmtDate(m.created_at)+'</td></tr>';
+        }).join('');
+      }
+    }
+
+    // Recent editorials
+    var edTb=document.getElementById('homeRecentEditorials');
+    if(edTb){
+      var eds=statsRes.recentEditorials||[];
+      if(!eds.length){
+        edTb.innerHTML='<tr><td colspan="3" style="text-align:center;color:var(--text3);padding:40px 0">에디토리얼이 없습니다</td></tr>';
+      }else{
+        edTb.innerHTML=eds.map(function(e){
+          var thumb=e.thumbnail||e.cover_image||'';
+          var thumbHtml=thumb?'<img loading="lazy" class="td-thumb" src="'+esc(thumb)+'" style="width:30px;height:38px">':'<span style="color:var(--text3)">—</span>';
+          return '<tr><td style="width:40px">'+thumbHtml+'</td><td class="td-title" style="max-width:200px;overflow:hidden;text-overflow:ellipsis" onclick="go(\'editorials\')">'+esc(e.title||'')+'</td><td>'+fmtDate(e.published_date)+'</td></tr>';
+        }).join('');
+      }
+    }
+
+    // Pull-letter trend
+    var trend=statsRes.pullletterTrend||[];
+    var trendTotal=trend.reduce(function(s,d){return s+(d.count||0);},0);
+    setText('dashTrendSummary','총 '+trendTotal+'건');
+    renderTrendChart(document.getElementById('dashTrendChart'),trend);
   }catch(e){
     console.error('Dashboard stats error:',e);
-    var tb=document.getElementById('homeRecentSubmissions');
-    if(tb)tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:#ff6b6b;padding:40px 0">불러오기 실패: '+esc(e.message||'')+'</td></tr>';
+    var msg='불러오기 실패: '+esc(e.message||'');
+    var subTb=document.getElementById('homeRecentSubmissions');
+    if(subTb)subTb.innerHTML='<tr><td colspan="5" style="text-align:center;color:#ff6b6b;padding:40px 0">'+msg+'</td></tr>';
+    var memTb=document.getElementById('homeRecentMembers');
+    if(memTb)memTb.innerHTML='<tr><td colspan="4" style="text-align:center;color:#ff6b6b;padding:40px 0">'+msg+'</td></tr>';
+    var edTb=document.getElementById('homeRecentEditorials');
+    if(edTb)edTb.innerHTML='<tr><td colspan="3" style="text-align:center;color:#ff6b6b;padding:40px 0">'+msg+'</td></tr>';
   }
 }
 
