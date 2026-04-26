@@ -114,6 +114,14 @@ module.exports = async function handler(req, res) {
         ? data.credits.photographer.join(', ')
         : (data.credits?.photographer || '');
 
+      // Per-look fashion credits captured by the submission UI. `looks` is
+      // [{ n, items: [{ type, brand, instagram }] }] and `lookImageMap`
+      // mirrors `lookUrls` index-for-index, mapping each look image to the
+      // look number it belongs to so the admin review modal can show the
+      // brand crew per image.
+      const looks = Array.isArray(data.looks) ? data.looks : [];
+      const lookImageMap = Array.isArray(data.lookImageMap) ? data.lookImageMap : [];
+
       const { data: submission, error } = await supabaseAdmin
         .from('submissions')
         .insert({
@@ -129,6 +137,8 @@ module.exports = async function handler(req, res) {
             contactName: data.contactName || '',
             photographerCredit,
             videoUrl,
+            looks,
+            lookImageMap,
           }),
           file_urls: [...lookUrls, ...additionalUrls],
           status: 'pending',
