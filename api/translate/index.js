@@ -78,7 +78,9 @@ module.exports = async function handler(req, res) {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        // Use Claude Sonnet 4.5 — current production-ready model with strong
+        // multilingual + nuance handling. Override via env var if needed.
+        model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5',
         max_tokens: 2048,
         system: systemPrompt,
         messages: [
@@ -105,7 +107,7 @@ module.exports = async function handler(req, res) {
         translated: translated.trim(),
         source: 'ko',
         target: 'en',
-        model: 'claude-sonnet-4-20250514',
+        model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5',
       }
     });
 
