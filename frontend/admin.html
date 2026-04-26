@@ -1140,24 +1140,24 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
 
 <!-- REVIEW MODAL -->
 <div class="modal-bg" id="reviewModal">
-  <div class="modal" style="max-height:90vh;overflow-y:auto">
+  <div class="modal" style="max-height:95vh;overflow-y:auto;max-width:1100px;width:96%">
     <button class="modal-close" onclick="closeModal()">×</button>
     <h2>서브미션 심사</h2>
     <div class="sub" id="reviewModalHeader">—</div>
-    <div class="modal-section"><div class="modal-label">프로덕션</div><div class="modal-val" id="reviewModalProduction">Studio Lux · lena@studioplus.com</div></div>
+    <div class="modal-section"><div class="modal-label">프로덕션</div><div class="modal-val" id="reviewModalProduction">—</div></div>
     <div class="modal-section"><div class="modal-label">팀 크레딧</div><div class="modal-val" id="reviewModalCredits">—</div></div>
     <div class="modal-section"><div class="modal-label">룩 정보</div><div class="modal-val" id="reviewModalLooks">—</div></div>
-    <div class="modal-section"><div class="modal-label">링크</div><div class="modal-val" id="reviewModalLinks">전송 링크: <a href="#" style="color:var(--blue)">wetransfer.com/...</a><br>영상: <a href="#" style="color:var(--blue)">youtube.com/...</a></div></div>
+    <div class="modal-section"><div class="modal-label">링크</div><div class="modal-val" id="reviewModalLinks">—</div></div>
 
     <div class="modal-section" style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px">
-      <div class="modal-label">표지 이미지 선택</div>
-      <div id="reviewImageGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-top:12px;padding:12px;background:var(--surface2);border-radius:8px;max-height:300px;overflow-y:auto">
+      <div class="modal-label">이미지 갤러리 · 클릭하여 확대 / ★ 표지 설정</div>
+      <div id="reviewImageGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-top:12px;padding:14px;background:var(--surface2);border-radius:8px">
         <!-- Images will be populated here -->
       </div>
-      <div style="font-size:11px;color:var(--text3);margin-top:8px">★ 클릭하여 표지 이미지로 설정합니다</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:10px">이미지를 클릭하면 큰 사이즈로 볼 수 있고, ★ 아이콘을 누르면 표지로 설정됩니다.</div>
     </div>
 
-    <div class="modal-section"><div class="modal-label">심사 의견</div><textarea class="modal-ta" id="reviewNote" placeholder="심사 의견을 작성하세요. 이 내용은 제출자에게 이메일로 전달됩니다."></textarea></div>
+    <div class="modal-section"><div class="modal-label">심사 의견</div><textarea class="modal-ta" id="reviewNote" placeholder="심사 의견을 작성하세요."></textarea></div>
     <div class="modal-foot">
       <button class="btn btn-green" onclick="doReview('approved')">✓ 승인</button>
       <button class="btn btn-red" onclick="doReview('rejected')">✗ 거절</button>
@@ -1165,6 +1165,16 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
       <button class="btn" onclick="closeModal()">취소</button>
     </div>
   </div>
+</div>
+
+<!-- Lightbox for full-size image preview -->
+<div id="reviewLightbox" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:1100;align-items:center;justify-content:center;flex-direction:column" onclick="closeReviewLightbox(event)">
+  <button onclick="closeReviewLightbox()" style="position:absolute;top:20px;right:24px;background:none;border:none;color:#fff;font-size:32px;cursor:pointer;line-height:1">×</button>
+  <button id="reviewLightboxPrev" onclick="event.stopPropagation();stepReviewLightbox(-1)" style="position:absolute;left:24px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:#fff;font-size:24px;width:48px;height:48px;cursor:pointer;border-radius:50%">‹</button>
+  <button id="reviewLightboxNext" onclick="event.stopPropagation();stepReviewLightbox(1)" style="position:absolute;right:24px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:#fff;font-size:24px;width:48px;height:48px;cursor:pointer;border-radius:50%">›</button>
+  <img id="reviewLightboxImg" src="" alt="" style="max-width:90vw;max-height:78vh;object-fit:contain;display:block" onclick="event.stopPropagation()">
+  <div id="reviewLightboxCaption" style="margin-top:18px;color:#fff;font-size:13px;text-align:center;max-width:80vw;line-height:1.7" onclick="event.stopPropagation()"></div>
+</div>
 </div>
 
 <script src="pap-api.js?v=2" defer></script>
@@ -1564,6 +1574,30 @@ function populateReviewModal(submission){
   if(typeof desc.coverImageIndex==='number')selectedCoverImageIndex=desc.coverImageIndex;
 }
 
+function buildLookCreditFor(idx, desc){
+  var map=Array.isArray(desc.lookImageMap)?desc.lookImageMap:[];
+  var looks=Array.isArray(desc.looks)?desc.looks:[];
+  var entry=map[idx];
+  // If explicit lookImageMap exists, use it
+  if(entry&&typeof entry.lookN==='number'){
+    var look=looks.find(function(L){return L&&L.n===entry.lookN;});
+    if(!look||!Array.isArray(look.items)||!look.items.length) return { lookN: entry.lookN, items: [] };
+    return { lookN: entry.lookN, items: look.items };
+  }
+  // Fallback: if no lookImageMap but looks array exists, map by index
+  if(looks.length>0){
+    // Try to find a look that covers this image index
+    // Simple heuristic: distribute images across looks evenly, or 1:1 if counts match
+    var totalImages=(desc.totalImages||10);
+    var lookIdx=Math.min(Math.floor(idx*looks.length/totalImages), looks.length-1);
+    var fallbackLook=looks[lookIdx];
+    if(fallbackLook){
+      return { lookN: fallbackLook.n||lookIdx+1, items: Array.isArray(fallbackLook.items)?fallbackLook.items:[] };
+    }
+  }
+  return null;
+}
+
 function renderReviewImageGrid(fileUrls){
   var grid=document.getElementById('reviewImageGrid');
   grid.innerHTML='';
@@ -1571,29 +1605,142 @@ function renderReviewImageGrid(fileUrls){
     grid.innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--text3);padding:20px">이미지가 없습니다</div>';
     return;
   }
-  fileUrls.forEach(function(url,idx){
-    var div=document.createElement('div');
-    div.style.cssText='cursor:pointer;border:3px solid transparent;border-radius:6px;overflow:hidden;position:relative;transition:all 0.2s';
-    if(idx===selectedCoverImageIndex){
-      div.style.borderColor='var(--green)';
-      div.style.boxShadow='0 0 8px rgba(76,175,80,0.4)';
+  // Decode the description JSON once so we can cross-reference per-image looks
+  var desc={};
+  try{
+    if(currentReviewSubmission&&currentReviewSubmission.description){
+      desc=typeof currentReviewSubmission.description==='string'
+        ? JSON.parse(currentReviewSubmission.description)
+        : currentReviewSubmission.description;
     }
+  }catch(e){desc={};}
+
+  // Inject totalImages so fallback look mapping works
+  if(!desc.totalImages) desc.totalImages=fileUrls.length;
+  fileUrls.forEach(function(url,idx){
+    var card=document.createElement('div');
+    card.style.cssText='border:2px solid '+(idx===selectedCoverImageIndex?'var(--green)':'var(--border)')+';border-radius:6px;overflow:hidden;background:var(--surface);display:flex;flex-direction:column;transition:border-color .2s';
+    if(idx===selectedCoverImageIndex)card.style.boxShadow='0 0 8px rgba(76,175,80,.4)';
+
+    // Image — click opens lightbox
+    var imgWrap=document.createElement('div');
+    imgWrap.style.cssText='position:relative;cursor:zoom-in;background:#0a0a0a';
     var img=document.createElement('img');
     img.src=url;
-    img.style.cssText='width:100%;height:100px;object-fit:cover;display:block';
-    div.appendChild(img);
-    var label=document.createElement('div');
-    label.textContent='#'+(idx+1);
-    label.style.cssText='position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,0.6);color:#fff;font-size:10px;padding:2px 6px;border-radius:3px';
-    div.appendChild(label);
-    div.onclick=function(){selectCoverImage(idx);};
-    grid.appendChild(div);
+    img.loading='lazy';
+    img.style.cssText='width:100%;height:240px;object-fit:cover;display:block';
+    imgWrap.appendChild(img);
+
+    var idxLabel=document.createElement('div');
+    idxLabel.textContent='#'+(idx+1);
+    idxLabel.style.cssText='position:absolute;top:6px;left:6px;background:rgba(0,0,0,.65);color:#fff;font-size:10px;font-weight:700;padding:3px 8px;border-radius:3px';
+    imgWrap.appendChild(idxLabel);
+
+    // Star button — sets cover, doesn't open lightbox
+    var starBtn=document.createElement('button');
+    starBtn.innerHTML=idx===selectedCoverImageIndex?'★':'☆';
+    starBtn.title='표지 이미지로 설정';
+    starBtn.style.cssText='position:absolute;top:6px;right:6px;background:rgba(0,0,0,.65);color:'+(idx===selectedCoverImageIndex?'#ffd166':'#fff')+';border:none;font-size:16px;width:28px;height:28px;cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center';
+    starBtn.onclick=function(e){ e.stopPropagation(); selectCoverImage(idx); };
+    imgWrap.appendChild(starBtn);
+
+    imgWrap.onclick=function(e){ e.stopPropagation(); openReviewLightbox(idx); };
+    imgWrap.ondblclick=function(e){ e.stopPropagation(); openReviewLightbox(idx); };
+    card.appendChild(imgWrap);
+
+    // Look + brand credits panel
+    var info=document.createElement('div');
+    info.style.cssText='padding:10px 12px;font-size:11px;color:var(--text2);line-height:1.55;border-top:1px solid var(--border);min-height:54px';
+    var creditObj=buildLookCreditFor(idx,desc);
+    if(creditObj){
+      var head=document.createElement('div');
+      head.textContent='LOOK '+creditObj.lookN;
+      head.style.cssText='font-weight:700;font-size:10px;letter-spacing:.08em;color:var(--text3);margin-bottom:6px';
+      info.appendChild(head);
+      if(creditObj.items.length){
+        creditObj.items.forEach(function(it){
+          var line=document.createElement('div');
+          var t=it.type||'';
+          var b=it.brand||'';
+          var ig=it.instagram||'';
+          line.innerHTML=(t?'<span style="color:var(--text3)">'+esc(t)+':</span> ':'')+'<span style="color:var(--text)">'+esc(b||'—')+'</span>'+(ig?' <span style="color:var(--text3)">'+esc(ig)+'</span>':'');
+          info.appendChild(line);
+        });
+      }else{
+        var none=document.createElement('div');
+        none.textContent='브랜드 크레딧 없음';
+        none.style.color='var(--text3)';
+        info.appendChild(none);
+      }
+    }else{
+      info.innerHTML='<span style="color:var(--text3)">추가 이미지 (룩 정보 없음)</span>';
+    }
+    card.appendChild(info);
+
+    grid.appendChild(card);
   });
 }
 
 function selectCoverImage(idx){
   selectedCoverImageIndex=idx;
   renderReviewImageGrid(currentReviewSubmission.file_urls||[]);
+}
+
+// ======== REVIEW LIGHTBOX ========
+var _reviewLbIdx=0;
+function openReviewLightbox(idx){
+  _reviewLbIdx=idx;
+  _renderReviewLightbox();
+  var lb=document.getElementById('reviewLightbox');
+  lb.style.display='flex';
+  // Prevent immediate close from same click event propagation
+  setTimeout(function(){ document.addEventListener('keydown',_reviewLbKey); },50);
+}
+function closeReviewLightbox(e){
+  // Only close when clicking the overlay background itself
+  if(e&&e.target!==document.getElementById('reviewLightbox'))return;
+  document.getElementById('reviewLightbox').style.display='none';
+  document.removeEventListener('keydown',_reviewLbKey);
+}
+function stepReviewLightbox(delta){
+  var urls=(currentReviewSubmission&&currentReviewSubmission.file_urls)||[];
+  if(!urls.length)return;
+  _reviewLbIdx=(_reviewLbIdx+delta+urls.length)%urls.length;
+  _renderReviewLightbox();
+}
+function _reviewLbKey(e){
+  if(e.key==='Escape')closeReviewLightbox();
+  else if(e.key==='ArrowLeft')stepReviewLightbox(-1);
+  else if(e.key==='ArrowRight')stepReviewLightbox(1);
+}
+function _renderReviewLightbox(){
+  var urls=(currentReviewSubmission&&currentReviewSubmission.file_urls)||[];
+  if(!urls.length)return;
+  var idx=Math.max(0,Math.min(_reviewLbIdx,urls.length-1));
+  document.getElementById('reviewLightboxImg').src=urls[idx];
+  // Build caption with look + brand credits
+  var desc={};
+  try{
+    if(currentReviewSubmission&&currentReviewSubmission.description){
+      desc=typeof currentReviewSubmission.description==='string'
+        ? JSON.parse(currentReviewSubmission.description)
+        : currentReviewSubmission.description;
+    }
+  }catch(e){desc={};}
+  var credit=buildLookCreditFor(idx,desc);
+  var caption='#'+(idx+1)+' / '+urls.length;
+  if(credit){
+    caption+=' &nbsp;·&nbsp; <strong>Look '+credit.lookN+'</strong>';
+    if(credit.items.length){
+      caption+=' &nbsp;·&nbsp; '+credit.items.map(function(it){
+        var t=it.type?esc(it.type)+': ':'';
+        var b=esc(it.brand||'—');
+        var ig=it.instagram?' <span style="color:rgba(255,255,255,.5)">'+esc(it.instagram)+'</span>':'';
+        return t+b+ig;
+      }).join(' &nbsp;/&nbsp; ');
+    }
+  }
+  document.getElementById('reviewLightboxCaption').innerHTML=caption;
 }
 
 async function doReview(status){
