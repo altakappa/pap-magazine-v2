@@ -1447,16 +1447,23 @@ async function loadSubmissionForReview(submissionId){
     var resp=await fetch(apiBase+'/submissions/'+submissionId,{
       headers:{'Authorization':'Bearer '+token,'X-Requested-With':'XMLHttpRequest'}
     });
-    if(!resp.ok) throw new Error('Failed to load submission');
+    if(!resp.ok){
+      var errBody=null; try{errBody=await resp.json();}catch(_){}
+      throw new Error('Failed to load submission ('+resp.status+'): '+(errBody&&errBody.message||''));
+    }
     var data=await resp.json();
-    var sub=data.data||data;
-    if(sub){
+    // Backend returns { submission: {...} }; tolerate { data } and bare object too.
+    var sub=data.submission||data.data||data;
+    if(sub&&sub.id){
       currentReviewSubmission=sub;
       populateReviewModal(sub);
       renderReviewImageGrid(sub.file_urls||[]);
+    }else{
+      throw new Error('Empty submission payload');
     }
   }catch(err){
     console.error('Error loading submission:',err);
+    document.getElementById('reviewModalHeader').textContent='불러오기 실패: '+err.message;
   }
 }
 
@@ -1464,24 +1471,56 @@ function populateReviewModal(submission){
   var desc={};
   try{desc=submission.description?JSON.parse(submission.description):{};}catch(e){desc={};}
   var createdDate=submission.created_at?new Date(submission.created_at).toLocaleDateString('ko-KR',{month:'long',day:'numeric'}):'-';
-  var submitterName=submission.submitterName||submission.profiles&&submission.profiles.name||'—';
-  var submitterEmail=submission.submitterEmail||submission.profiles&&submission.profiles.email||desc.contactEmail||'';
-  document.getElementById('reviewModalHeader').textContent=(submission.title||'Untitled')+' — '+submitterName+' · '+createdDate;
-  document.getElementById('reviewModalProduction').textContent=submitterName+(submitterEmail?' · '+submitterEmail:'');
-  // Credits: from description JSON or top-level
+  var submitterName=submission.submitterName||(submission.profiles&&submission.profiles.name)||desc.contactName||'—';
+  var submitterEmail=submission.submitterEmail||(submission.profiles&&submission.profiles.email)||desc.contactEmail||'';
+  var plan=submission.submitterPlan?' · '+submission.submitterPlan:'';
+  var genreText=Array.isArray(desc.genre)&&desc.genre.length?' · '+desc.genre.join(', '):'';
+  document.getElementById('reviewModalHeader').textContent=(submission.title||'Untitled')+' — '+submitterName+' · '+createdDate+genreText;
+  document.getElementById('reviewModalProduction').textContent=submitterName+(submitterEmail?' · '+submitterEmail:'')+plan;
+
+  // Credits: prefer the structured `credits` object, then `photographerCredit`, then fallback
   var creditsText='—';
-  if(desc.credits&&typeof desc.credits==='object'){
-    creditsText=Object.keys(desc.credits).map(function(k){return k+': '+(Array.isArray(desc.credits[k])?desc.credits[k].join(', '):desc.credits[k]);}).join(' / ');
+  if(desc.credits&&typeof desc.credits==='object'&&Object.keys(desc.credits).length){
+    creditsText=Object.keys(desc.credits).map(function(k){
+      var v=desc.credits[k];
+      var val=Array.isArray(v)?v.filter(Boolean).join(', '):(v||'');
+      return val?(k+': '+val):'';
+    }).filter(Boolean).join(' / ')||'—';
+  }else if(desc.photographerCredit){
+    creditsText='Photographer: '+desc.photographerCredit;
   }else if(desc.team&&Array.isArray(desc.team)){
     creditsText=desc.team.map(function(t){return t.role+': '+t.name;}).join(' / ');
   }else if(submission.credits){
     creditsText=submission.credits;
   }
   document.getElementById('reviewModalCredits').textContent=creditsText;
-  var looks=submission.file_urls?submission.file_urls.length:'?';
-  document.getElementById('reviewModalLooks').textContent=looks+'개 이미지';
-  var linksText=desc.artistStatement||submission.notes||'—';
-  document.getElementById('reviewModalLinks').textContent=linksText;
+
+  // Looks: image count + models
+  var looks=submission.file_urls?submission.file_urls.length:0;
+  var modelsText='';
+  if(Array.isArray(desc.models)&&desc.models.length){
+    modelsText=' · 모델: '+desc.models.map(function(m){
+      if(typeof m==='string')return m;
+      if(m&&m.name)return m.name+(m.agency?' ('+m.agency+')':'');
+      return '';
+    }).filter(Boolean).join(', ');
+  }
+  document.getElementById('reviewModalLooks').textContent=looks+'개 이미지'+modelsText;
+
+  // Links: video URL + artist statement
+  var linkParts=[];
+  if(desc.videoUrl){
+    var safe=String(desc.videoUrl).replace(/"/g,'&quot;');
+    linkParts.push('영상: <a href="'+safe+'" target="_blank" rel="noopener noreferrer" style="color:var(--blue);word-break:break-all">'+safe+'</a>');
+  }
+  if(desc.artistStatement){
+    var statement=String(desc.artistStatement).replace(/[<>&]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c];});
+    linkParts.push('아티스트 스테이트먼트: '+statement);
+  }
+  document.getElementById('reviewModalLinks').innerHTML=linkParts.length?linkParts.join('<br>'):'—';
+
+  // Pre-select cover image from description
+  if(typeof desc.coverImageIndex==='number')selectedCoverImageIndex=desc.coverImageIndex;
 }
 
 function renderReviewImageGrid(fileUrls){
