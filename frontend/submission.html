@@ -224,6 +224,7 @@ textarea.form-input{min-height:100px;resize:vertical;line-height:1.8}
 .status-accepted{color:rgba(100,255,150,.8);border-color:rgba(100,255,150,.25);background:rgba(100,255,150,.05)}
 .status-published{color:rgba(100,200,255,.8);border-color:rgba(100,200,255,.25);background:rgba(100,200,255,.05)}
 .status-rejected{color:rgba(255,100,100,.6);border-color:rgba(255,100,100,.2);background:rgba(255,100,100,.03)}
+.status-revision{color:rgba(100,150,255,.8);border-color:rgba(100,150,255,.25);background:rgba(100,150,255,.05)}
 .sub-item-action{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3);cursor:pointer;text-align:center;transition:color .2s}
 .sub-item-action:hover{color:#fff}
 .sub-empty{font-size:11px;color:rgba(255,255,255,.25);text-align:center;padding:20px 0}
@@ -1038,9 +1039,10 @@ function loadMySubmissions(){
       subs.forEach(function(s){
         var statusClass='status-reviewing';
         var statusText='REVIEWING';
-        if(s.status==='accepted'){statusClass='status-accepted';statusText='ACCEPTED';}
+        if(s.status==='accepted'||s.status==='approved'){statusClass='status-accepted';statusText='ACCEPTED';}
         else if(s.status==='published'){statusClass='status-published';statusText='PUBLISHED';}
         else if(s.status==='rejected'){statusClass='status-rejected';statusText='REJECTED';}
+        else if(s.status==='revision'){statusClass='status-revision';statusText='REVISION REQUESTED';}
         html+='<div class="sub-item"><div><div class="sub-item-title">'+PAP.sanitize(s.title||'Untitled')+'</div></div><div class="sub-item-date">'+PAP.sanitize(s.created_at||'')+'</div><div class="sub-item-status '+statusClass+'">'+statusText+'</div><div class="sub-item-action" onclick="viewSubmission(\''+s.id+'\')">VIEW</div></div>';
       });
       document.getElementById('mySubsList').innerHTML=html;
