@@ -492,7 +492,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
     <div class="mn-header"><div class="mn-title">서브미션 심사</div><div class="mn-actions"><button class="btn" onclick="loadSubmissions()">↻ 새로고침</button></div></div>
     <div class="mn-body">
       <div class="tbl-wrap">
-        <div class="tbl-top"><h3>서브미션 목록</h3><div class="tbl-filters"><button class="tf on" onclick="filterSubmissions('',this)">전체</button><button class="tf" onclick="filterSubmissions('pending',this)">대기 중</button><button class="tf" onclick="filterSubmissions('approved',this)">승인</button><button class="tf" onclick="filterSubmissions('rejected',this)">거절</button></div></div>
+        <div class="tbl-top"><h3>서브미션 목록</h3><div class="tbl-filters"><button class="tf on" onclick="filterSubmissions('',this)">전체</button><button class="tf" onclick="filterSubmissions('pending',this)">대기 중</button><button class="tf" onclick="filterSubmissions('approved',this)">승인</button><button class="tf" onclick="filterSubmissions('revision',this)">보완 요청</button><button class="tf" onclick="filterSubmissions('rejected',this)">거절</button></div></div>
         <table><thead><tr><th>제목</th><th>제출자</th><th>구독 등급</th><th>룩 수</th><th>날짜</th><th>상태</th><th>작업</th></tr></thead>
         <tbody id="submissionListBody">
           <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px 0">불러오는 중...</td></tr>
@@ -1170,6 +1170,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
 
     <div class="modal-foot">
       <button class="btn btn-green" onclick="doReview('approved')">✓ 승인</button>
+      <button class="btn btn-blue" onclick="doReview('revision')">↻ 보완 요청</button>
       <button class="btn btn-red" onclick="doReview('rejected')">✗ 거절</button>
       <div style="flex:1"></div>
       <button class="btn" onclick="closeModal()">취소</button>
@@ -1810,7 +1811,14 @@ async function doReview(status){
     return;
   }
   var note=document.getElementById('reviewNote').value;
-  var labels={approved:'승인',rejected:'거절'};
+  var labels={approved:'승인',rejected:'거절',revision:'보완 요청'};
+
+  // For 보완 요청 the admin note is the only useful signal to the submitter,
+  // so warn if it's empty.
+  if(status==='revision'&&!(note||'').trim()){
+    alert('보완 요청은 어떤 부분을 수정해야 하는지 의견 작성이 필요해요. 심사 의견 칸에 구체적으로 작성해주세요.');
+    return;
+  }
 
   if(!confirm(labels[status]+' 처리하시겠습니까?\n의견: '+(note||'(없음)'))){
     return;
@@ -1860,8 +1868,8 @@ async function loadSubmissions(statusFilter){
     if(!submissions.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px 0">서브미션이 없습니다</td></tr>';return;}
     tb.innerHTML='';
     submissions.forEach(function(s){
-      var statusCls=s.status==='pending'?'b-pending':s.status==='approved'?'b-approved':'b-declined';
-      var statusLabel=s.status==='pending'?'대기 중':s.status==='approved'?'승인':'거절';
+      var statusCls=s.status==='pending'?'b-pending':s.status==='approved'?'b-approved':s.status==='revision'?'b-revision':'b-declined';
+      var statusLabel=s.status==='pending'?'대기 중':s.status==='approved'?'승인':s.status==='revision'?'보완 요청':'거절';
       var looks=s.file_urls?s.file_urls.length:'?';
       var plan=s.submitterPlan||'free';
       var planCls=plan.indexOf('premium')>-1?'b-premium':plan.indexOf('standard')>-1?'b-standard':'b-free';
