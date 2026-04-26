@@ -1622,11 +1622,40 @@ async function submitForm(){
     });
   });
 
-  // Flatten lookFiles into array for upload
+  // Flatten lookFiles into array for upload AND build:
+  //  - data.looks       : per-look brand items captured from the look-block UI
+  //  - data.lookImageMap: image index → { lookN, imgIdxInLook } so the admin
+  //                       review modal can show "Look N · Brand X" next to
+  //                       each individual image.
   var allLookImages=[];
+  data.looks=[];
+  data.lookImageMap=[];
   Object.keys(lookFiles).sort(function(a,b){return parseInt(a)-parseInt(b);}).forEach(function(k){
-    if(lookFiles[k]) allLookImages=allLookImages.concat(lookFiles[k]);
+    var n=parseInt(k);
+    if(!lookFiles[k]) return;
+
+    // Read brand items from this look's UI
+    var items=[];
+    var lookBlock=document.getElementById('look'+n);
+    if(lookBlock){
+      lookBlock.querySelectorAll('.look-item').forEach(function(row){
+        var sel=row.querySelector('.look-select');
+        var inputs=row.querySelectorAll('.look-input');
+        var type=sel?sel.value.trim():'';
+        var brand=inputs[0]?inputs[0].value.trim():'';
+        var insta=inputs[1]?inputs[1].value.trim():'';
+        if(type||brand||insta) items.push({type:type,brand:brand,instagram:insta});
+      });
+    }
+    data.looks.push({n:n,items:items});
+
+    // Then enqueue images and record their look mapping
+    for(var i=0;i<lookFiles[k].length;i++){
+      data.lookImageMap.push({lookN:n,imgIdxInLook:i});
+      allLookImages.push(lookFiles[k][i]);
+    }
   });
+
 
   // Lock the submit button and surface progress while the browser streams
   // files directly to Supabase Storage.
