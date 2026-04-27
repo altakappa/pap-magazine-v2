@@ -11,11 +11,22 @@ const { requireAuth } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 
+// Build the same `{SUPABASE_URL}/storage/v1/object/public/submissions/{user.id}/`
+// prefix the POST endpoint enforces — caller can only attach URLs in their
+// own folder.
+function _userPathPrefix(userId) {
+  const base = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
+  const safeId = String(userId || '').replace(/[^a-zA-Z0-9_-]/g, '') || 'anon';
+  return `${base}/storage/v1/object/public/submissions/${safeId}/`;
+}
+
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
   if (rateLimit(req, res, RATE_LIMITS.api)) return;
 
-  if (req.method !== 'GET') {
+  // GET retrieves a single submission; PUT lets the OWNER resubmit a revised
+  // version (used after admin marks status='revision'). All other methods 405.
+  if (req.method !== 'GET' && req.method !== 'PUT') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
@@ -38,6 +49,105 @@ module.exports = async function handler(req, res) {
       return res.status(404).json({ message: 'Submission not found' });
     }
 
+    // ── PUT: Owner resubmits a revised version ─────────────────────────────
+    if (req.method === 'PUT') {
+      if (submission.user_id !== user.id) {
+        return res.status(403).json({ message: 'Only the submitter can update this submission' });
+      }
+      // Only allow updating when the work is currently awaiting the submitter:
+      // pending (not yet reviewed) or revision (admin asked for changes).
+      if (submission.status !== 'pending' && submission.status !== 'revision') {
+        return res.status(409).json({
+          message: 'This submission can no longer be edited (status: ' + submission.status + ')',
+        });
+      }
+
+      let body = req.body;
+      if (!body || typeof body === 'string') {
+        try { body = body ? JSON.parse(body) : {}; } catch (_) { body = {}; }
+      }
+      const data = body.data || {};
+
+      if (!data.title || !String(data.title).trim()) {
+        return res.status(400).json({ message: 'Title is required' });
+      }
+      if (!data.genre || !Array.isArray(data.genre) || data.genre.length === 0) {
+        return res.status(400).json({ message: 'At least one genre is required' });
+      }
+
+      // Sanitize URL lists — both kept-from-original and newly uploaded must
+      // live in the caller's own Supabase folder.
+      const prefix = _userPathPrefix(user.id);
+      function _sanitize(list) {
+        if (!Array.isArray(list)) return [];
+        const out = [];
+        for (const u of list) {
+          if (typeof u === 'string' && u.startsWith(prefix) && u.indexOf('..') === -1) out.push(u);
+        }
+        return out;
+      }
+      const lookUrls = _sanitize(body.lookUrls);
+      const additionalUrls = _sanitize(body.additionalUrls);
+      if (lookUrls.length + additionalUrls.length === 0) {
+        return res.status(400).json({ message: 'No valid image URLs provided' });
+      }
+
+      // Optional video URL
+      let videoUrl = typeof data.videoUrl === 'string' ? data.videoUrl.trim() : '';
+      if (videoUrl) {
+        try {
+          const u = new URL(videoUrl);
+          if (u.protocol !== 'http:' && u.protocol !== 'https:') videoUrl = '';
+        } catch (_) { videoUrl = ''; }
+      }
+
+      const photographerCredit = Array.isArray(data.credits?.photographer)
+        ? data.credits.photographer.join(', ')
+        : (data.credits?.photographer || '');
+      const looks = Array.isArray(data.looks) ? data.looks : [];
+      const lookImageMap = Array.isArray(data.lookImageMap) ? data.lookImageMap : [];
+
+      // Append a "[Resubmitted on …]" line to admin_notes so the editor can
+      // see the history of the original feedback + what got revised.
+      const ts = new Date().toISOString().slice(0, 16).replace('T', ' ');
+      const prevNotes = submission.admin_notes ? String(submission.admin_notes).trim() : '';
+      const revisionMarker = '[Resubmitted ' + ts + ' UTC by submitter]';
+      const newNotes = prevNotes ? prevNotes + '\n\n' + revisionMarker : revisionMarker;
+
+      const { data: updated, error: updateErr } = await supabaseAdmin
+        .from('submissions')
+        .update({
+          title: data.title || 'Untitled',
+          description: JSON.stringify({
+            genre: data.genre || [],
+            artistStatement: data.artistStatement || '',
+            credits: data.credits || {},
+            models: data.models || [],
+            coverImageIndex: data.coverImageIndex || 0,
+            contactEmail: data.contactEmail || '',
+            contactName: data.contactName || '',
+            photographerCredit,
+            videoUrl,
+            looks,
+            lookImageMap,
+          }),
+          file_urls: [...lookUrls, ...additionalUrls],
+          status: 'pending',           // back into the editorial queue
+          admin_notes: newNotes,        // preserve history
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (updateErr) {
+        console.error('Resubmit update failed:', updateErr);
+        return res.status(500).json({ message: 'Failed to resubmit', detail: updateErr.message });
+      }
+
+      return res.status(200).json({ submission: updated });
+    }
+
+    // ── GET: Read submission (owner OR admin) ──────────────────────────────
     // Owner can always view their own. For non-owners, check admin role
     // against the database (JWT's role may be stale).
     const isOwner = submission.user_id === user.id;
