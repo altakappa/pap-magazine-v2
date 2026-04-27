@@ -15,7 +15,7 @@ a{color:#fff;text-decoration:none}
 .mp-back{position:fixed;top:28px;left:32px;font-size:11px;font-weight:600;letter-spacing:.1em;color:rgba(255,255,255,.3);transition:color .2s;cursor:pointer;background:none;border:none;font-family:'Montserrat',sans-serif;z-index:10}
 .mp-back:hover{color:#fff}
 
-.mp-wrapper{width:100%;max-width:480px;margin:0 auto;padding:80px 20px 40px}
+.mp-wrapper{width:100%;max-width:520px;margin:0 auto;padding:80px 20px 60px}
 
 /* AVATAR */
 .mp-avatar{width:72px;height:72px;border-radius:50%;border:2px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;overflow:hidden;background:rgba(255,255,255,.04)}
@@ -27,7 +27,7 @@ a{color:#fff;text-decoration:none}
 
 /* SECTIONS */
 .mp-section{margin-bottom:28px}
-.mp-section-title{font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.25);margin-bottom:14px}
+.mp-section-title{font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:14px}
 
 .mp-card{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);padding:18px 20px;margin-bottom:10px;transition:border-color .3s}
 .mp-card:hover{border-color:rgba(255,255,255,.2)}
@@ -41,6 +41,42 @@ a{color:#fff;text-decoration:none}
 .mp-badge.standard{color:#4dabf7;border-color:#4dabf7}
 .mp-badge.premium{color:#ffd43b;border-color:#ffd43b}
 .mp-badge.admin{color:#ff6b6b;border-color:#ff6b6b}
+.mp-badge.pending{color:#ffd43b;border-color:rgba(255,212,59,.4)}
+.mp-badge.approved{color:#51cf66;border-color:rgba(81,207,102,.4)}
+.mp-badge.revision{color:#74c0fc;border-color:rgba(116,192,252,.4)}
+.mp-badge.rejected{color:#ff6b6b;border-color:rgba(255,107,107,.4)}
+
+/* SUBSCRIPTION STATUS CARD */
+.mp-sub-card{border:1px solid rgba(255,255,255,.1);background:linear-gradient(135deg,rgba(255,255,255,.04) 0%,rgba(255,255,255,.01) 100%);padding:24px 22px;margin-bottom:10px}
+.mp-sub-card.upgrade{border-color:rgba(255,212,59,.25);background:linear-gradient(135deg,rgba(255,212,59,.06) 0%,rgba(255,212,59,.01) 100%)}
+.mp-sub-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.mp-sub-plan-name{font-size:14px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.mp-sub-perks{display:flex;flex-direction:column;gap:6px;margin:14px 0 18px}
+.mp-sub-perk{display:flex;align-items:center;gap:8px;font-size:11px;color:rgba(255,255,255,.7);letter-spacing:.02em}
+.mp-sub-perk svg{width:11px;height:11px;flex-shrink:0;stroke:#51cf66;stroke-width:2.5;fill:none}
+.mp-sub-perk.locked{color:rgba(255,255,255,.3)}
+.mp-sub-perk.locked svg{stroke:rgba(255,255,255,.2)}
+.mp-sub-cta{display:block;text-align:center;padding:11px 16px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;border:1px solid rgba(255,212,59,.5);color:#ffd43b;background:rgba(255,212,59,.04);transition:all .3s}
+.mp-sub-cta:hover{background:rgba(255,212,59,.12);color:#fff}
+.mp-sub-cta.standard{border-color:rgba(77,171,247,.5);color:#4dabf7;background:rgba(77,171,247,.04)}
+.mp-sub-cta.standard:hover{background:rgba(77,171,247,.12);color:#fff}
+.mp-sub-manage{display:block;text-align:center;padding:9px 16px;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.1);transition:all .2s}
+.mp-sub-manage:hover{color:#fff;border-color:rgba(255,255,255,.3)}
+
+/* STATS GRID */
+.mp-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.mp-stat{padding:14px 12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);text-align:center}
+.mp-stat-num{font-size:22px;font-weight:800;letter-spacing:.02em;line-height:1.1;margin-bottom:4px}
+.mp-stat-label{font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.4)}
+
+/* SUBMISSION LIST */
+.mp-sub-item{display:flex;align-items:center;gap:12px;padding:13px 14px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02);margin-bottom:6px;cursor:pointer;transition:all .2s}
+.mp-sub-item:hover{border-color:rgba(255,255,255,.18);background:rgba(255,255,255,.04)}
+.mp-sub-thumb{width:48px;height:48px;border-radius:3px;background:#0a0a0a;flex-shrink:0;background-size:cover;background-position:center}
+.mp-sub-info{flex:1;min-width:0}
+.mp-sub-title{font-size:12px;font-weight:600;letter-spacing:.02em;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px}
+.mp-sub-date{font-size:10px;color:rgba(255,255,255,.35);letter-spacing:.04em}
+.mp-empty{padding:20px 14px;text-align:center;font-size:11px;color:rgba(255,255,255,.3);border:1px dashed rgba(255,255,255,.08)}
 
 /* MENU ITEMS */
 .mp-menu{display:flex;flex-direction:column;gap:2px}
@@ -56,8 +92,9 @@ a{color:#fff;text-decoration:none}
 .mp-lang select option{background:#000;color:#fff}
 
 @media(max-width:500px){
-  .mp-wrapper{padding:70px 16px 30px}
+  .mp-wrapper{padding:70px 16px 40px}
   .mp-back{top:20px;left:16px}
+  .mp-stat-num{font-size:20px}
 }
 </style>
 <link rel="icon" type="image/x-icon" href="favicon.ico">
@@ -82,7 +119,7 @@ a{color:#fff;text-decoration:none}
     <option value="ja">JA</option>
     <option value="zh">ZH</option>
     <option value="ru">RU</option>
-        <option value="de">Deutsch</option>
+    <option value="de">Deutsch</option>
   </select>
 </div>
 
@@ -94,6 +131,39 @@ a{color:#fff;text-decoration:none}
   <div class="mp-name" id="mpName">—</div>
   <div class="mp-email" id="mpEmail">—</div>
 
+  <!-- SUBSCRIPTION STATUS (built dynamically by renderSubscriptionCard) -->
+  <div class="mp-section">
+    <div class="mp-section-title" data-i18n="sectionPlan">구독</div>
+    <div id="mpSubCard"></div>
+  </div>
+
+  <!-- ACTIVITY STATS -->
+  <div class="mp-section">
+    <div class="mp-section-title" data-i18n="sectionActivity">활동</div>
+    <div class="mp-stats">
+      <div class="mp-stat">
+        <div class="mp-stat-num" id="mpStatSubs">—</div>
+        <div class="mp-stat-label" data-i18n="statSubs">서브미션</div>
+      </div>
+      <div class="mp-stat">
+        <div class="mp-stat-num" id="mpStatComments">—</div>
+        <div class="mp-stat-label" data-i18n="statComments">댓글</div>
+      </div>
+      <div class="mp-stat">
+        <div class="mp-stat-num" id="mpStatRatings">—</div>
+        <div class="mp-stat-label" data-i18n="statRatings">별점</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RECENT SUBMISSIONS -->
+  <div class="mp-section">
+    <div class="mp-section-title" data-i18n="sectionRecent">최근 서브미션</div>
+    <div id="mpRecentSubs">
+      <div class="mp-empty" data-i18n="loading">불러오는 중...</div>
+    </div>
+  </div>
+
   <!-- ACCOUNT INFO -->
   <div class="mp-section">
     <div class="mp-section-title" data-i18n="sectionAccount">계정 정보</div>
@@ -101,12 +171,6 @@ a{color:#fff;text-decoration:none}
       <div class="mp-row">
         <span class="mp-label" data-i18n="labelRole">역할</span>
         <span class="mp-badge" id="mpRole">—</span>
-      </div>
-    </div>
-    <div class="mp-card">
-      <div class="mp-row">
-        <span class="mp-label" data-i18n="labelPlan">구독 플랜</span>
-        <span class="mp-badge" id="mpPlan">—</span>
       </div>
     </div>
   </div>
@@ -149,68 +213,232 @@ a{color:#fff;text-decoration:none}
 </div>
 
 <script src="pap-api.js?v=2" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+// ───── i18n ─────
 var LANG = {
-  ko: { sectionAccount:'계정 정보', labelRole:'역할', labelPlan:'구독 플랜', sectionMenu:'메뉴', menuSubmission:'작품 제출', menuPullletter:'Pull-Letter', menuCommunity:'커뮤니티', menuSubscribe:'구독 관리', menuAdmin:'관리자 페이지', menuLogout:'로그아웃', roleAdmin:'관리자', roleMember:'회원', roleContributor:'기여자', planFree:'Free', planStandard:'Standard', planPremium:'Premium', notLoggedIn:'로그인이 필요합니다' },
-  en: { sectionAccount:'Account Info', labelRole:'Role', labelPlan:'Subscription', sectionMenu:'Menu', menuSubmission:'Submit Work', menuPullletter:'Pull-Letter', menuCommunity:'Community', menuSubscribe:'Manage Subscription', menuAdmin:'Admin Panel', menuLogout:'Log Out', roleAdmin:'Admin', roleMember:'Member', roleContributor:'Contributor', planFree:'Free', planStandard:'Standard', planPremium:'Premium', notLoggedIn:'Please log in' },
-  de:{ sectionAccount:'Account Info', labelRole:'Role', labelPlan:'Subscription', sectionMenu:'Menu', menuSubmission:'Submit Work', menuPullletter:'Pull-Letter', menuCommunity:'Community', menuSubscribe:'Manage Subscription', menuAdmin:'Admin Panel', menuLogout:'Log Out', roleAdmin:'Admin', roleMember:'Member', roleContributor:'Contributor', planFree:'Free', planStandard:'Standard', planPremium:'Premium', notLoggedIn:'Please log in' },
-  it: { sectionAccount:'Info Account', labelRole:'Ruolo', labelPlan:'Abbonamento', sectionMenu:'Menu', menuSubmission:'Invia Lavori', menuPullletter:'Pull-Letter', menuCommunity:'Community', menuSubscribe:'Gestisci Abbonamento', menuAdmin:'Pannello Admin', menuLogout:'Esci', roleAdmin:'Admin', roleMember:'Membro', roleContributor:'Collaboratore', planFree:'Free', planStandard:'Standard', planPremium:'Premium', notLoggedIn:'Effettua il login' },
-  fr: { sectionAccount:'Informations', labelRole:'Rôle', labelPlan:'Abonnement', sectionMenu:'Menu', menuSubmission:'Soumettre', menuPullletter:'Pull-Letter', menuCommunity:'Communauté', menuSubscribe:'Gérer l\'abonnement', menuAdmin:'Admin', menuLogout:'Déconnexion', roleAdmin:'Admin', roleMember:'Membre', roleContributor:'Contributeur', planFree:'Free', planStandard:'Standard', planPremium:'Premium', notLoggedIn:'Veuillez vous connecter' },
-  es: { sectionAccount:'Información', labelRole:'Rol', labelPlan:'Suscripción', sectionMenu:'Menú', menuSubmission:'Enviar Trabajo', menuPullletter:'Pull-Letter', menuCommunity:'Comunidad', menuSubscribe:'Gestionar Suscripción', menuAdmin:'Admin', menuLogout:'Cerrar Sesión', roleAdmin:'Admin', roleMember:'Miembro', roleContributor:'Colaborador', planFree:'Free', planStandard:'Standard', planPremium:'Premium', notLoggedIn:'Inicia sesión' },
-  ja: { sectionAccount:'アカウント情報', labelRole:'役割', labelPlan:'プラン', sectionMenu:'メニュー', menuSubmission:'作品提出', menuPullletter:'Pull-Letter', menuCommunity:'コミュニティ', menuSubscribe:'サブスク管理', menuAdmin:'管理画面', menuLogout:'ログアウト', roleAdmin:'管理者', roleMember:'メンバー', roleContributor:'コントリビューター', planFree:'Free', planStandard:'Standard', planPremium:'Premium', notLoggedIn:'ログインが必要です' },
-  zh: { sectionAccount:'账户信息', labelRole:'角色', labelPlan:'订阅', sectionMenu:'菜单', menuSubmission:'提交作品', menuPullletter:'Pull-Letter', menuCommunity:'社区', menuSubscribe:'管理订阅', menuAdmin:'管理后台', menuLogout:'退出登录', roleAdmin:'管理员', roleMember:'会员', roleContributor:'贡献者', planFree:'Free', planStandard:'Standard', planPremium:'Premium', notLoggedIn:'请登录' },
-  ru: { sectionAccount:'Аккаунт', labelRole:'Роль', labelPlan:'Подписка', sectionMenu:'Меню', menuSubmission:'Отправить работу', menuPullletter:'Pull-Letter', menuCommunity:'Сообщество', menuSubscribe:'Управление подпиской', menuAdmin:'Админ', menuLogout:'Выйти', roleAdmin:'Админ', roleMember:'Участник', roleContributor:'Автор', planFree:'Free', planStandard:'Standard', planPremium:'Premium', notLoggedIn:'Войдите в систему' }
+  ko:{ sectionAccount:'계정 정보', labelRole:'역할', sectionPlan:'구독', sectionActivity:'활동', sectionRecent:'최근 서브미션', sectionMenu:'메뉴', statSubs:'서브미션', statComments:'댓글', statRatings:'별점', menuSubmission:'작품 제출', menuPullletter:'Pull-Letter', menuCommunity:'커뮤니티', menuSubscribe:'구독 관리', menuAdmin:'관리자 페이지', menuLogout:'로그아웃', roleAdmin:'관리자', roleMember:'회원', roleContributor:'기여자', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'무료 회원', upgradeTitleStd:'Standard로 업그레이드', upgradeTitlePrm:'Premium으로 업그레이드', perkAdsFree:'광고 없는 깔끔한 경험', perkArchive100:'최근 100개 에디토리얼 열람', perkArchiveFull:'전체 아카이브 + 86 이슈 무제한', perkFeedback:'서브미션 거절 사유 피드백', perkLogo:'로고 파일 다운로드', perkPullletter:'Pull-Letter 요청', cta:'구독하기', manage:'구독 관리', loading:'불러오는 중...', emptySubs:'아직 제출한 작품이 없어요', viewAll:'전체 보기 →', statusPending:'심사중', statusApproved:'승인', statusRevision:'보완 요청', statusRejected:'거절', loginRequired:'로그인이 필요합니다' },
+  en:{ sectionAccount:'Account', labelRole:'Role', sectionPlan:'Subscription', sectionActivity:'Activity', sectionRecent:'Recent Submissions', sectionMenu:'Menu', statSubs:'Submissions', statComments:'Comments', statRatings:'Ratings', menuSubmission:'Submit Work', menuPullletter:'Pull-Letter', menuCommunity:'Community', menuSubscribe:'Manage Subscription', menuAdmin:'Admin Panel', menuLogout:'Log Out', roleAdmin:'Admin', roleMember:'Member', roleContributor:'Contributor', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'Free Member', upgradeTitleStd:'Upgrade to Standard', upgradeTitlePrm:'Upgrade to Premium', perkAdsFree:'Ad-free experience', perkArchive100:'Latest 100 editorials access', perkArchiveFull:'Full archive · 86 issues unlimited', perkFeedback:'Submission rejection feedback', perkLogo:'Logo files download', perkPullletter:'Pull-Letter requests', cta:'Subscribe', manage:'Manage subscription', loading:'Loading...', emptySubs:'No submissions yet', viewAll:'View all →', statusPending:'Pending', statusApproved:'Approved', statusRevision:'Revision', statusRejected:'Rejected', loginRequired:'Please log in' },
+  it:{ sectionAccount:'Account', labelRole:'Ruolo', sectionPlan:'Abbonamento', sectionActivity:'Attività', sectionRecent:'Submission recenti', sectionMenu:'Menu', statSubs:'Submission', statComments:'Commenti', statRatings:'Valutazioni', menuSubmission:'Invia Lavori', menuPullletter:'Pull-Letter', menuCommunity:'Community', menuSubscribe:'Gestisci Abbonamento', menuAdmin:'Pannello Admin', menuLogout:'Esci', roleAdmin:'Admin', roleMember:'Membro', roleContributor:'Collaboratore', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'Membro gratuito', upgradeTitleStd:'Passa a Standard', upgradeTitlePrm:'Passa a Premium', perkAdsFree:'Esperienza senza pubblicità', perkArchive100:'Ultimi 100 editoriali', perkArchiveFull:'Archivio completo · 86 numeri illimitati', perkFeedback:'Feedback sulle submission rifiutate', perkLogo:'Download file logo', perkPullletter:'Richieste Pull-Letter', cta:'Abbonati', manage:'Gestisci abbonamento', loading:'Caricamento...', emptySubs:'Nessuna submission', viewAll:'Vedi tutto →', statusPending:'In esame', statusApproved:'Approvata', statusRevision:'Da revisionare', statusRejected:'Rifiutata', loginRequired:'Effettua il login' },
+  fr:{ sectionAccount:'Compte', labelRole:'Rôle', sectionPlan:'Abonnement', sectionActivity:'Activité', sectionRecent:'Soumissions récentes', sectionMenu:'Menu', statSubs:'Soumissions', statComments:'Commentaires', statRatings:'Notes', menuSubmission:'Soumettre', menuPullletter:'Pull-Letter', menuCommunity:'Communauté', menuSubscribe:"Gérer l'abonnement", menuAdmin:'Admin', menuLogout:'Déconnexion', roleAdmin:'Admin', roleMember:'Membre', roleContributor:'Contributeur', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'Membre gratuit', upgradeTitleStd:'Passer à Standard', upgradeTitlePrm:'Passer à Premium', perkAdsFree:'Expérience sans publicité', perkArchive100:"Accès aux 100 derniers éditoriaux", perkArchiveFull:'Archive complète · 86 numéros illimités', perkFeedback:'Retour sur les soumissions refusées', perkLogo:'Téléchargement des fichiers logo', perkPullletter:'Demandes Pull-Letter', cta:"S'abonner", manage:"Gérer l'abonnement", loading:'Chargement...', emptySubs:'Aucune soumission', viewAll:'Tout voir →', statusPending:'En attente', statusApproved:'Approuvée', statusRevision:'Révision', statusRejected:'Refusée', loginRequired:'Veuillez vous connecter' },
+  es:{ sectionAccount:'Cuenta', labelRole:'Rol', sectionPlan:'Suscripción', sectionActivity:'Actividad', sectionRecent:'Envíos recientes', sectionMenu:'Menú', statSubs:'Envíos', statComments:'Comentarios', statRatings:'Valoraciones', menuSubmission:'Enviar Trabajo', menuPullletter:'Pull-Letter', menuCommunity:'Comunidad', menuSubscribe:'Gestionar Suscripción', menuAdmin:'Admin', menuLogout:'Cerrar Sesión', roleAdmin:'Admin', roleMember:'Miembro', roleContributor:'Colaborador', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'Miembro gratuito', upgradeTitleStd:'Pasar a Standard', upgradeTitlePrm:'Pasar a Premium', perkAdsFree:'Experiencia sin anuncios', perkArchive100:'Últimos 100 editoriales', perkArchiveFull:'Archivo completo · 86 números ilimitados', perkFeedback:'Comentarios sobre envíos rechazados', perkLogo:'Descarga de archivos de logo', perkPullletter:'Solicitudes Pull-Letter', cta:'Suscríbete', manage:'Gestionar suscripción', loading:'Cargando...', emptySubs:'Sin envíos', viewAll:'Ver todo →', statusPending:'En revisión', statusApproved:'Aprobado', statusRevision:'Revisión', statusRejected:'Rechazado', loginRequired:'Inicia sesión' },
+  ja:{ sectionAccount:'アカウント情報', labelRole:'役割', sectionPlan:'サブスクリプション', sectionActivity:'アクティビティ', sectionRecent:'最近の投稿', sectionMenu:'メニュー', statSubs:'投稿', statComments:'コメント', statRatings:'評価', menuSubmission:'作品提出', menuPullletter:'Pull-Letter', menuCommunity:'コミュニティ', menuSubscribe:'サブスク管理', menuAdmin:'管理画面', menuLogout:'ログアウト', roleAdmin:'管理者', roleMember:'メンバー', roleContributor:'コントリビューター', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'無料会員', upgradeTitleStd:'Standardにアップグレード', upgradeTitlePrm:'Premiumにアップグレード', perkAdsFree:'広告のない快適な体験', perkArchive100:'最新100エディトリアル閲覧', perkArchiveFull:'全アーカイブ・86号無制限', perkFeedback:'投稿フィードバック', perkLogo:'ロゴファイルダウンロード', perkPullletter:'Pull-Letterリクエスト', cta:'登録する', manage:'サブスク管理', loading:'読み込み中...', emptySubs:'投稿はまだありません', viewAll:'すべて見る →', statusPending:'審査中', statusApproved:'承認', statusRevision:'修正依頼', statusRejected:'却下', loginRequired:'ログインが必要です' },
+  zh:{ sectionAccount:'账户信息', labelRole:'角色', sectionPlan:'订阅', sectionActivity:'活动', sectionRecent:'最近投稿', sectionMenu:'菜单', statSubs:'投稿', statComments:'评论', statRatings:'评分', menuSubmission:'提交作品', menuPullletter:'Pull-Letter', menuCommunity:'社区', menuSubscribe:'管理订阅', menuAdmin:'管理后台', menuLogout:'退出登录', roleAdmin:'管理员', roleMember:'会员', roleContributor:'贡献者', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'免费会员', upgradeTitleStd:'升级到 Standard', upgradeTitlePrm:'升级到 Premium', perkAdsFree:'无广告体验', perkArchive100:'最近 100 个社论', perkArchiveFull:'完整档案·86 期无限', perkFeedback:'投稿反馈', perkLogo:'徽标文件下载', perkPullletter:'Pull-Letter 请求', cta:'订阅', manage:'管理订阅', loading:'加载中...', emptySubs:'暂无投稿', viewAll:'查看全部 →', statusPending:'审核中', statusApproved:'通过', statusRevision:'需修改', statusRejected:'拒绝', loginRequired:'请登录' },
+  ru:{ sectionAccount:'Аккаунт', labelRole:'Роль', sectionPlan:'Подписка', sectionActivity:'Активность', sectionRecent:'Недавние публикации', sectionMenu:'Меню', statSubs:'Публикации', statComments:'Комментарии', statRatings:'Оценки', menuSubmission:'Отправить работу', menuPullletter:'Pull-Letter', menuCommunity:'Сообщество', menuSubscribe:'Управление подпиской', menuAdmin:'Админ', menuLogout:'Выйти', roleAdmin:'Админ', roleMember:'Участник', roleContributor:'Автор', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'Бесплатный участник', upgradeTitleStd:'Перейти на Standard', upgradeTitlePrm:'Перейти на Premium', perkAdsFree:'Без рекламы', perkArchive100:'Последние 100 редакций', perkArchiveFull:'Полный архив · 86 выпусков', perkFeedback:'Обратная связь по работам', perkLogo:'Скачивание файлов логотипа', perkPullletter:'Запросы Pull-Letter', cta:'Подписаться', manage:'Управление', loading:'Загрузка...', emptySubs:'Пока нет публикаций', viewAll:'Все →', statusPending:'На проверке', statusApproved:'Одобрено', statusRevision:'Доработать', statusRejected:'Отклонено', loginRequired:'Войдите в систему' },
+  de:{ sectionAccount:'Konto', labelRole:'Rolle', sectionPlan:'Abonnement', sectionActivity:'Aktivität', sectionRecent:'Letzte Einreichungen', sectionMenu:'Menü', statSubs:'Einreichungen', statComments:'Kommentare', statRatings:'Bewertungen', menuSubmission:'Werk einreichen', menuPullletter:'Pull-Letter', menuCommunity:'Community', menuSubscribe:'Abonnement', menuAdmin:'Admin', menuLogout:'Abmelden', roleAdmin:'Admin', roleMember:'Mitglied', roleContributor:'Mitwirkender', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'Kostenloses Mitglied', upgradeTitleStd:'Auf Standard upgraden', upgradeTitlePrm:'Auf Premium upgraden', perkAdsFree:'Werbefreies Erlebnis', perkArchive100:'Letzte 100 Editorials', perkArchiveFull:'Vollständiges Archiv · 86 Ausgaben', perkFeedback:'Submission-Feedback', perkLogo:'Logo-Dateien Download', perkPullletter:'Pull-Letter Anfragen', cta:'Abonnieren', manage:'Verwalten', loading:'Laden...', emptySubs:'Noch keine Einreichungen', viewAll:'Alle anzeigen →', statusPending:'In Prüfung', statusApproved:'Genehmigt', statusRevision:'Überarbeitung', statusRejected:'Abgelehnt', loginRequired:'Bitte melden Sie sich an' }
 };
+
+var _t = LANG.ko;       // current dictionary
+var _user = null;        // current user
+var _supabase = null;    // supabase anon client
 
 function setLang(l) {
   localStorage.setItem('pap-lang', l);
-  var d = LANG[l] || LANG.ko;
+  _t = LANG[l] || LANG.ko;
   document.querySelectorAll('[data-i18n]').forEach(function(el){
     var k = el.getAttribute('data-i18n');
-    if (d[k]) el.textContent = d[k];
+    if (_t[k]) el.textContent = _t[k];
   });
   document.getElementById('langSelect').value = l;
-  loadProfile(l);
+  // Re-render dynamic sections that include translated copy
+  if (_user) {
+    renderSubscriptionCard(_user);
+    loadRecentSubmissions();
+  }
 }
 
-function loadProfile(lang) {
-  var d = LANG[lang] || LANG.ko;
+// ───── Supabase init ─────
+function initSupabase(){
+  if (_supabase) return _supabase;
+  try{
+    if (typeof supabase !== 'undefined' && supabase.createClient) {
+      _supabase = supabase.createClient(
+        'https://igcazquhkwxtqsaqpznx.supabase.co',
+        'sb_publishable_8Q19ICgnEqkrjH2hPvwgbA_9pSVDh55',
+        { auth:{ persistSession:false } }
+      );
+    }
+  }catch(e){}
+  return _supabase;
+}
+
+// ───── Subscription card ─────
+function renderSubscriptionCard(user){
+  var plan = user.subscription || 'free';
+  var isFree = plan === 'free';
+  var card = document.getElementById('mpSubCard');
+  if (!card) return;
+
+  // Helper to render a perk row
+  function perk(active, label){
+    return '<div class="mp-sub-perk' + (active ? '' : ' locked') + '">' +
+      '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>' +
+      '<span>' + label + '</span>' +
+    '</div>';
+  }
+
+  var html = '';
+  if (plan === 'premium') {
+    html += '<div class="mp-sub-card">' +
+      '<div class="mp-sub-head"><span class="mp-sub-plan-name">PREMIUM</span><span class="mp-badge premium">' + _t.planPremium + '</span></div>' +
+      '<div class="mp-sub-perks">' +
+        perk(true, _t.perkAdsFree) +
+        perk(true, _t.perkArchiveFull) +
+        perk(true, _t.perkFeedback) +
+        perk(true, _t.perkLogo) +
+        perk(true, _t.perkPullletter) +
+      '</div>' +
+      '<a class="mp-sub-manage" href="subscribe.html">' + _t.manage + '</a>' +
+    '</div>';
+  } else if (plan === 'standard') {
+    html += '<div class="mp-sub-card">' +
+      '<div class="mp-sub-head"><span class="mp-sub-plan-name">STANDARD</span><span class="mp-badge standard">' + _t.planStandard + '</span></div>' +
+      '<div class="mp-sub-perks">' +
+        perk(true, _t.perkAdsFree) +
+        perk(true, _t.perkArchive100) +
+        perk(true, _t.perkFeedback) +
+        perk(true, _t.perkLogo) +
+        perk(false, _t.perkArchiveFull) +
+        perk(false, _t.perkPullletter) +
+      '</div>' +
+      '<a class="mp-sub-cta" href="subscribe.html">' + _t.upgradeTitlePrm + ' →</a>' +
+    '</div>';
+  } else {
+    // Free → strongest upgrade CTA
+    html += '<div class="mp-sub-card upgrade">' +
+      '<div class="mp-sub-head"><span class="mp-sub-plan-name">' + _t.upgradeBadge + '</span><span class="mp-badge free">' + _t.planFree + '</span></div>' +
+      '<div class="mp-sub-perks">' +
+        perk(false, _t.perkAdsFree) +
+        perk(false, _t.perkArchive100) +
+        perk(false, _t.perkArchiveFull) +
+        perk(false, _t.perkFeedback) +
+        perk(false, _t.perkPullletter) +
+      '</div>' +
+      '<a class="mp-sub-cta" href="subscribe.html">' + _t.upgradeTitleStd + ' →</a>' +
+    '</div>';
+  }
+  card.innerHTML = html;
+}
+
+// ───── Activity stats (parallel fetch) ─────
+function loadActivityStats(user){
+  var token = localStorage.getItem('pap-token');
+  var headers = { 'Authorization':'Bearer ' + token };
+
+  // 1) submissions count
+  fetch('/api/submissions/mine', { headers: headers })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(j){
+      var n = (j && j.submissions && j.submissions.length) || 0;
+      document.getElementById('mpStatSubs').textContent = n;
+    })
+    .catch(function(){ document.getElementById('mpStatSubs').textContent = '0'; });
+
+  // 2) comments + ratings via Supabase anon
+  var sb = initSupabase();
+  if (!sb) {
+    document.getElementById('mpStatComments').textContent = '0';
+    document.getElementById('mpStatRatings').textContent = '0';
+    return;
+  }
+  sb.from('comments').select('id', { count:'exact', head:true }).eq('user_id', user.id)
+    .then(function(res){
+      document.getElementById('mpStatComments').textContent = res.count || 0;
+    }).catch(function(){ document.getElementById('mpStatComments').textContent = '0'; });
+  sb.from('ratings').select('user_id', { count:'exact', head:true }).eq('user_id', user.id)
+    .then(function(res){
+      document.getElementById('mpStatRatings').textContent = res.count || 0;
+    }).catch(function(){ document.getElementById('mpStatRatings').textContent = '0'; });
+}
+
+// ───── Recent submissions list ─────
+function _statusBadge(status){
+  var key = 'status' + (status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Pending');
+  var label = _t[key] || status || '';
+  var cls = ({approved:'approved', revision:'revision', rejected:'rejected'})[status] || 'pending';
+  return '<span class="mp-badge ' + cls + '">' + label + '</span>';
+}
+
+function _formatDate(dt){
+  if (!dt) return '';
+  try {
+    var d = new Date(dt);
+    return d.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' });
+  } catch(e){ return ''; }
+}
+
+function loadRecentSubmissions(){
+  var token = localStorage.getItem('pap-token');
+  var box = document.getElementById('mpRecentSubs');
+  fetch('/api/submissions/mine', { headers:{ 'Authorization':'Bearer ' + token } })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(j){
+      var subs = (j && j.submissions) || [];
+      if (!subs.length) {
+        box.innerHTML = '<div class="mp-empty">' + _t.emptySubs + '</div>';
+        return;
+      }
+      var top = subs.slice(0, 3);
+      var html = '';
+      top.forEach(function(s){
+        // Best-effort thumb: use first image if available
+        var thumb = '';
+        if (Array.isArray(s.images) && s.images.length) thumb = s.images[0];
+        else if (typeof s.image_urls === 'string' && s.image_urls) thumb = s.image_urls.split(',')[0];
+        var thumbStyle = thumb ? 'background-image:url(' + JSON.stringify(thumb).slice(1,-1) + ')' : '';
+        var title = s.title || s.editorial_title || _t.statSubs;
+        html += '<div class="mp-sub-item" onclick="window.location.href=\'submission.html?revise=' + encodeURIComponent(s.id || '') + '\'">' +
+          '<div class="mp-sub-thumb" style="' + thumbStyle + '"></div>' +
+          '<div class="mp-sub-info">' +
+            '<div class="mp-sub-title">' + (title.replace(/</g,'&lt;')) + '</div>' +
+            '<div class="mp-sub-date">' + _formatDate(s.created_at) + '</div>' +
+          '</div>' +
+          _statusBadge(s.status) +
+        '</div>';
+      });
+      if (subs.length > 3) {
+        html += '<a href="submission.html#mine" style="display:block;text-align:center;margin-top:10px;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.5)">' + _t.viewAll + '</a>';
+      }
+      box.innerHTML = html;
+    })
+    .catch(function(){
+      box.innerHTML = '<div class="mp-empty">' + _t.emptySubs + '</div>';
+    });
+}
+
+// ───── Profile loader ─────
+function loadProfile(){
   var userStr = localStorage.getItem('pap-user');
   var token = localStorage.getItem('pap-token');
 
   if (!token || !userStr) {
-    // Not logged in — redirect to auth
-    window.location.href = (window.papLoginUrl?window.papLoginUrl('auth.html?mode=login'):'auth.html?mode=login');
+    window.location.href = (window.papLoginUrl ? window.papLoginUrl('auth.html?mode=login') : 'auth.html?mode=login');
     return;
   }
 
   try {
-    var user = JSON.parse(userStr);
-    document.getElementById('mpName').textContent = user.name || user.email || '—';
-    document.getElementById('mpEmail').textContent = user.email || '';
+    _user = JSON.parse(userStr);
+    document.getElementById('mpName').textContent = _user.name || _user.email || '—';
+    document.getElementById('mpEmail').textContent = _user.email || '';
 
     // Role badge
     var roleEl = document.getElementById('mpRole');
-    var role = user.role || 'member';
-    roleEl.textContent = d['role' + role.charAt(0).toUpperCase() + role.slice(1)] || role;
+    var role = _user.role || 'member';
+    roleEl.textContent = _t['role' + role.charAt(0).toUpperCase() + role.slice(1)] || role;
     roleEl.className = 'mp-badge';
     if (role === 'admin') roleEl.classList.add('admin');
 
-    // Plan badge
-    var planEl = document.getElementById('mpPlan');
-    var plan = user.subscription || 'free';
-    planEl.textContent = d['plan' + plan.charAt(0).toUpperCase() + plan.slice(1)] || plan;
-    planEl.className = 'mp-badge';
-    if (plan === 'standard') planEl.classList.add('standard');
-    else if (plan === 'premium') planEl.classList.add('premium');
-    else planEl.classList.add('free');
-
-    // Show admin link for admins
+    // Show admin link
     if (role === 'admin') {
       document.getElementById('mpAdminLink').style.display = 'block';
     }
+
+    // Render dynamic sections
+    renderSubscriptionCard(_user);
+    loadActivityStats(_user);
+    loadRecentSubmissions();
   } catch(e) {
-    window.location.href = (window.papLoginUrl?window.papLoginUrl('auth.html?mode=login'):'auth.html?mode=login');
+    window.location.href = (window.papLoginUrl ? window.papLoginUrl('auth.html?mode=login') : 'auth.html?mode=login');
   }
 }
 
@@ -223,7 +451,13 @@ function doLogout() {
 // Init
 (function(){
   var saved = localStorage.getItem('pap-lang') || 'ko';
-  setLang(saved);
+  _t = LANG[saved] || LANG.ko;
+  document.querySelectorAll('[data-i18n]').forEach(function(el){
+    var k = el.getAttribute('data-i18n');
+    if (_t[k]) el.textContent = _t[k];
+  });
+  document.getElementById('langSelect').value = saved;
+  loadProfile();
 })();
 </script>
 <script src="pap-header.js?v=8"></script>
