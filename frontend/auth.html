@@ -1576,9 +1576,24 @@ document.addEventListener('DOMContentLoaded', function() {
     window.history.replaceState({}, document.title, window.location.pathname);
     window.location.href = (window.getRedirectUrl ? window.getRedirectUrl() : 'mypage.html');
   } else if (oauthError) {
+    // Map error codes from /api/auth/callback to user-friendly Korean messages.
+    // The `detail` query param (when present) carries the underlying provider/Supabase
+    // error message — useful for diagnosing redirect_uri_mismatch, invalid_grant, etc.
     var detail = params.get('detail') || params.get('error_description') || '';
-    var errText = oauthError;
-    if (detail) errText += ': ' + detail;
+    var ERR_MAP = {
+      oauth_provider:    '소셜 로그인 제공자에서 오류가 발생했어요. 잠시 후 다시 시도하거나 다른 방법으로 로그인해 주세요.',
+      missing_code:      '로그인 중 인증 코드를 받지 못했어요. 다시 시도해 주세요.',
+      missing_verifier:  '로그인 세션이 만료됐어요. 페이지를 새로고침한 뒤 다시 시도해 주세요.',
+      token_exchange:    '로그인 토큰 교환에 실패했어요. 잠시 후 다시 시도하거나 관리자에게 문의해 주세요.',
+      callback_error:    '로그인 처리 중 오류가 발생했어요. 다시 시도해 주세요.'
+    };
+    var friendly = ERR_MAP[oauthError] || ('로그인 오류 (' + oauthError + ')');
+    var errText = friendly;
+    if (detail) errText += '\n\n[상세] ' + detail;
+    // Always log the raw payload to console so dev/admin can debug from devtools.
+    console.warn('[OAuth] error=' + oauthError + (detail ? ' detail=' + detail : ''));
+    // Suppress the "flow state" toast (occurs harmlessly when the OAuth state cookie
+    // already cleared because user pressed Back / refreshed).
     if (detail.indexOf('flow state') === -1) {
       if (typeof PAP !== 'undefined') { PAP.ui.toast(errText, 'error'); }
       else { alert(errText); }
