@@ -30,7 +30,7 @@ module.exports = async function handler(req, res) {
   try {
     // Get current subscription
     const { data: subscriber } = await supabaseAdmin
-      .from('subscribers')
+      .from('subscriptions')
       .select('*')
       .eq('user_id', user.id)
       .single();
@@ -73,9 +73,8 @@ module.exports = async function handler(req, res) {
       }
 
       // Update subscription status — keep active until period end
-      await supabaseAdmin.from('subscribers').update({
+      await supabaseAdmin.from('subscriptions').update({
         status: 'cancel_scheduled',
-        cancel_at: subscriber.current_period_end,
       }).eq('user_id', user.id);
 
       return res.status(200).json({
