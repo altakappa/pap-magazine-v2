@@ -450,6 +450,7 @@ function isStandardOrAbove(){try{var betaOn=(typeof isBetaActive==='function'&&i
 var _interstitialCount=0;
 var _INTERSTITIAL_MAX=2;
 var _brandAds=[];
+(function(){try{fetch(window.location.origin+'/api/ads',{credentials:'omit'}).then(function(r){return r.ok?r.json():null;}).then(function(j){if(j&&Array.isArray(j.ads))_brandAds=j.ads;}).catch(function(){});}catch(_){}})();
 function _getNextBrandAd(){if(!_brandAds||_brandAds.length===0)return null;if(typeof _brandAdIdx==='undefined')_brandAdIdx=0;var ad=_brandAds[_brandAdIdx%_brandAds.length];_brandAdIdx++;return ad;}
 
 function showPremiumInterstitial(callback){

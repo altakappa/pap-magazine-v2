@@ -1100,13 +1100,23 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
       <input class="pe-input" id="adBrand" placeholder="예: PRADA, GUCCI, PAP MAGAZINE">
     </div>
     <div class="modal-section">
-      <div class="modal-label">이미지/비디오 URL</div>
-      <input class="pe-input" id="adSrc" placeholder="https://cdn.example.com/ad-image.jpg">
-      <div style="font-size:10px;color:var(--text3);margin-top:4px">S3 또는 외부 CDN 이미지/비디오 URL</div>
+      <div class="modal-label">이미지/비디오 파일</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="file" id="adFile" accept="image/*,video/*" style="display:none" onchange="uploadAdFile(this)">
+        <button class="btn btn-sm" type="button" onclick="document.getElementById('adFile').click()">📁 파일 업로드</button>
+        <span id="adUploadStatus" style="font-size:11px;color:var(--text3)"></span>
+      </div>
+      <input class="pe-input" id="adSrc" placeholder="업로드 후 자동 입력되거나, 외부 URL을 직접 입력하세요" style="margin-top:8px">
+      <div style="font-size:10px;color:var(--text3);margin-top:4px">파일을 업로드하거나 외부 CDN URL을 직접 입력할 수 있습니다 · 최대 50MB</div>
     </div>
     <div class="modal-section" id="adPosterSection" style="display:none">
       <div class="modal-label">포스터 이미지 (비디오 전용)</div>
-      <input class="pe-input" id="adPoster" placeholder="https://cdn.example.com/poster.jpg">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="file" id="adPosterFile" accept="image/*" style="display:none" onchange="uploadAdPosterFile(this)">
+        <button class="btn btn-sm" type="button" onclick="document.getElementById('adPosterFile').click()">📁 포스터 업로드</button>
+        <span id="adPosterUploadStatus" style="font-size:11px;color:var(--text3)"></span>
+      </div>
+      <input class="pe-input" id="adPoster" placeholder="포스터 이미지 URL" style="margin-top:8px">
       <div style="font-size:10px;color:var(--text3);margin-top:4px">비디오 로딩 중 표시할 이미지</div>
     </div>
     <div class="modal-section">
@@ -3218,23 +3228,26 @@ go=function(id,el){
   if(id==='intads') renderAds();
 };
 
-// ======== INTERSTITIAL AD MANAGEMENT ========
-var intAds=JSON.parse(localStorage.getItem('pap-intads')||'null');
-if(!intAds){
-  // Load defaults from pap-app.js _brandAds
-  intAds=[
-    {type:'image',src:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Pc_1_b784819584.jpg',poster:'',link:'subscribe.html',brand:'PAP MAGAZINE',duration:3,order:1,active:true},
-    {type:'image',src:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Pc_2_dc9e6ac138.jpg',poster:'',link:'subscribe.html',brand:'PAP MAGAZINE',duration:3,order:2,active:true},
-    {type:'image',src:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Pc_3_07bc8462e4.jpg',poster:'',link:'subscribe.html',brand:'PAP MAGAZINE',duration:3,order:3,active:true},
-    {type:'image',src:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Pc_4_d8891e2914.jpg',poster:'',link:'subscribe.html',brand:'PAP MAGAZINE',duration:3,order:4,active:true}
-  ];
-  localStorage.setItem('pap-intads',JSON.stringify(intAds));
-}
-var editAdIdx=-1;
+// ======== INTERSTITIAL AD MANAGEMENT (backend-driven) ========
+// All ads now live in Supabase (table: interstitial_ads). The admin reads
+// /api/admin/ads (which returns ALL ads, including inactive ones) and writes
+// via POST/PUT/DELETE. The public /api/ads endpoint only returns active ones
+// and is consumed by pap-app.js / pap-ads.js across every page.
+var intAds=[];
+var editAdId=null; // UUID of the ad being edited; null when creating
 
-function renderAds(){
+async function renderAds(){
   var tb=document.getElementById('adTableBody');
   if(!tb)return;
+  tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:40px 0">로딩 중…</td></tr>';
+  try{
+    var res=await apiGet('/admin/ads');
+    intAds=(res&&res.ads)?res.ads:[];
+  }catch(e){
+    console.error('[ads] load failed',e);
+    tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--red);padding:40px 0">광고 목록을 불러오지 못했습니다</td></tr>';
+    return;
+  }
   var activeCount=intAds.filter(function(a){return a.active}).length;
   var ct=document.getElementById('adCount');if(ct)ct.textContent=intAds.length;
   var ac=document.getElementById('adActiveCount');if(ac)ac.textContent=activeCount;
@@ -3242,23 +3255,23 @@ function renderAds(){
     tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:40px 0">광고를 추가하세요</td></tr>';
     return;
   }
-  var sorted=intAds.slice().sort(function(a,b){return(a.order||0)-(b.order||0)});
+  // Backend already returns ads sorted by sort_order, created_at
   tb.innerHTML='';
-  sorted.forEach(function(ad,i){
-    var realIdx=intAds.indexOf(ad);
+  intAds.forEach(function(ad,i){
     var thumb=ad.type==='video'
-      ?(ad.poster?'<img loading="lazy" src="'+ad.poster+'" style="width:80px;height:50px;object-fit:cover">':'<div style="width:80px;height:50px;background:#222;display:flex;align-items:center;justify-content:center;font-size:9px;color:#666">VIDEO</div>')
-      :'<img loading="lazy" src="'+ad.src+'" style="width:80px;height:50px;object-fit:cover">';
-    var shortLink=ad.link.length>25?ad.link.substring(0,25)+'...':ad.link;
+      ?(ad.poster?'<img loading="lazy" src="'+esc(ad.poster)+'" style="width:80px;height:50px;object-fit:cover">':'<div style="width:80px;height:50px;background:#222;display:flex;align-items:center;justify-content:center;font-size:9px;color:#666">VIDEO</div>')
+      :'<img loading="lazy" src="'+esc(ad.src)+'" style="width:80px;height:50px;object-fit:cover">';
+    var linkText=ad.link||'';
+    var shortLink=linkText.length>25?linkText.substring(0,25)+'...':linkText;
     tb.innerHTML+='<tr>'+
-      '<td>'+(ad.order||i+1)+'</td>'+
+      '<td>'+(ad.sort_order||i+1)+'</td>'+
       '<td>'+thumb+'</td>'+
       '<td><span style="display:inline-block;padding:2px 8px;font-size:9px;font-weight:700;letter-spacing:.1em;border-radius:2px;background:'+(ad.type==='video'?'var(--purple)':'var(--blue)')+';color:#fff">'+(ad.type==='video'?'VIDEO':'IMAGE')+'</span></td>'+
-      '<td style="font-weight:600">'+(ad.brand||'—')+'</td>'+
-      '<td style="font-size:11px;color:var(--text2)">'+shortLink+'</td>'+
+      '<td style="font-weight:600">'+esc(ad.brand||'—')+'</td>'+
+      '<td style="font-size:11px;color:var(--text2)">'+esc(shortLink)+'</td>'+
       '<td>'+(ad.duration||3)+'초</td>'+
       '<td>'+(ad.active?'<span style="color:var(--green);font-weight:700">✓</span>':'<span style="color:var(--red)">✗</span>')+'</td>'+
-      '<td><button class="btn btn-sm" onclick="openAdModal('+realIdx+')">편집</button> <button class="btn btn-sm btn-red" onclick="deleteAd('+realIdx+')">삭제</button></td>'+
+      '<td><button class="btn btn-sm" onclick="openAdModal(\''+ad.id+'\')">편집</button> <button class="btn btn-sm btn-red" onclick="deleteAd(\''+ad.id+'\')">삭제</button></td>'+
     '</tr>';
   });
 }
@@ -3269,21 +3282,27 @@ function toggleAdPoster(){
   document.getElementById('adPosterSection').style.display=isVideo?'block':'none';
 }
 
-function openAdModal(idx){
-  editAdIdx=idx;
+function openAdModal(id){
+  editAdId=id||null;
   document.querySelectorAll('#adModal .pe-radio').forEach(function(r){r.classList.remove('sel');});
-  if(idx>=0){
-    var ad=intAds[idx];
+  // Reset upload status
+  var us=document.getElementById('adUploadStatus');if(us)us.textContent='';
+  var ps=document.getElementById('adPosterUploadStatus');if(ps)ps.textContent='';
+  var fileInput=document.getElementById('adFile');if(fileInput)fileInput.value='';
+  var posterInput=document.getElementById('adPosterFile');if(posterInput)posterInput.value='';
+  if(id){
+    var ad=intAds.find(function(a){return a.id===id});
+    if(!ad){alert('광고를 찾을 수 없습니다.');return;}
     document.getElementById('adModalTitle').textContent='광고 편집';
     document.getElementById('adBrand').value=ad.brand||'';
     document.getElementById('adSrc').value=ad.src||'';
     document.getElementById('adPoster').value=ad.poster||'';
     document.getElementById('adLink').value=ad.link||'';
     document.getElementById('adDuration').value=ad.duration||3;
-    document.getElementById('adOrder').value=ad.order||1;
+    document.getElementById('adOrder').value=ad.sort_order||0;
     document.getElementById('adActive').checked=ad.active!==false;
     document.querySelectorAll('#adModal input[name=adType]').forEach(function(r){
-      if(r.value===ad.type){r.checked=true;r.parentElement.classList.add('sel');}
+      if(r.value===(ad.type||'image')){r.checked=true;r.parentElement.classList.add('sel');}
     });
   } else {
     document.getElementById('adModalTitle').textContent='광고 추가';
@@ -3319,7 +3338,68 @@ function previewAd(){
   document.getElementById('adPreviewSection').style.display='block';
 }
 
-function saveAd(){
+// ── Ad-creative file upload (signed URL → direct PUT to Supabase) ──
+async function _uploadAdCreative(file){
+  // 1) Ask the API for a signed upload URL.
+  var meta=await apiPost('/admin/ads/upload-url',{name:file.name,type:file.type,size:file.size});
+  if(!meta||!meta.signedUrl){
+    throw new Error((meta&&meta.message)||'업로드 URL 생성 실패');
+  }
+  // 2) PUT the binary directly to Supabase Storage. This bypasses the
+  //    Vercel 4.5 MB body limit and lets us push videos up to 50 MB.
+  var put=await fetch(meta.signedUrl,{method:'PUT',headers:{'Content-Type':file.type||'application/octet-stream'},body:file});
+  if(!put.ok){
+    var t=await put.text().catch(function(){return ''});
+    throw new Error('Storage 업로드 실패 ('+put.status+') '+t);
+  }
+  return meta.publicUrl||'';
+}
+
+async function uploadAdFile(input){
+  var file=input&&input.files&&input.files[0];
+  if(!file)return;
+  var status=document.getElementById('adUploadStatus');
+  status.textContent='업로드 중… ('+Math.round(file.size/1024)+' KB)';
+  status.style.color='var(--text3)';
+  try{
+    var url=await _uploadAdCreative(file);
+    document.getElementById('adSrc').value=url;
+    // Auto-detect video and switch the type radio
+    if(file.type&&file.type.indexOf('video/')===0){
+      document.querySelectorAll('#adModal input[name=adType]').forEach(function(r){
+        r.checked=(r.value==='video');
+        if(r.checked){r.parentElement.classList.add('sel');}else{r.parentElement.classList.remove('sel');}
+      });
+      toggleAdPoster();
+    }
+    status.textContent='✓ 업로드 완료';
+    status.style.color='var(--green)';
+  }catch(e){
+    console.error('[ads] upload failed',e);
+    status.textContent='✗ '+(e.message||'업로드 실패');
+    status.style.color='var(--red)';
+  }
+}
+
+async function uploadAdPosterFile(input){
+  var file=input&&input.files&&input.files[0];
+  if(!file)return;
+  var status=document.getElementById('adPosterUploadStatus');
+  status.textContent='업로드 중… ('+Math.round(file.size/1024)+' KB)';
+  status.style.color='var(--text3)';
+  try{
+    var url=await _uploadAdCreative(file);
+    document.getElementById('adPoster').value=url;
+    status.textContent='✓ 업로드 완료';
+    status.style.color='var(--green)';
+  }catch(e){
+    console.error('[ads] poster upload failed',e);
+    status.textContent='✗ '+(e.message||'업로드 실패');
+    status.style.color='var(--red)';
+  }
+}
+
+async function saveAd(){
   var type='image';
   document.querySelectorAll('#adModal input[name=adType]').forEach(function(r){if(r.checked)type=r.value;});
   var brand=document.getElementById('adBrand').value.trim();
@@ -3327,45 +3407,43 @@ function saveAd(){
   var poster=document.getElementById('adPoster').value.trim();
   var link=document.getElementById('adLink').value.trim();
   var duration=parseInt(document.getElementById('adDuration').value)||3;
-  var order=parseInt(document.getElementById('adOrder').value)||1;
+  var sort_order=parseInt(document.getElementById('adOrder').value)||0;
   var active=document.getElementById('adActive').checked;
-  if(!src){alert('이미지/비디오 URL은 필수입니다.');return;}
+  if(!src){alert('이미지/비디오 파일을 업로드하거나 URL을 입력하세요.');return;}
   if(!brand){alert('브랜드명을 입력하세요.');return;}
-  var ad={type:type,src:src,poster:poster,link:link,brand:brand,duration:duration,order:order,active:active};
-  if(editAdIdx>=0){
-    intAds[editAdIdx]=ad;
-  } else {
-    intAds.push(ad);
+  var payload={type:type,src:src,poster:poster,link:link,brand:brand,duration:duration,sort_order:sort_order,active:active};
+  try{
+    var res;
+    if(editAdId){
+      res=await apiPut('/admin/ads/'+editAdId,payload);
+    } else {
+      res=await apiPost('/admin/ads',payload);
+    }
+    if(res&&res.message&&!res.ad){
+      alert('저장 실패: '+res.message);
+      return;
+    }
+    closeAdModal();
+    await renderAds();
+  }catch(e){
+    console.error('[ads] save failed',e);
+    alert('저장 실패: '+(e.message||e));
   }
-  localStorage.setItem('pap-intads',JSON.stringify(intAds));
-  syncAdsToPapApp();
-  closeAdModal();
-  renderAds();
 }
 
-function deleteAd(idx){
+async function deleteAd(id){
   if(!confirm('이 광고를 삭제하시겠습니까?'))return;
-  intAds.splice(idx,1);
-  localStorage.setItem('pap-intads',JSON.stringify(intAds));
-  syncAdsToPapApp();
-  renderAds();
-}
-
-function syncAdsToPapApp(){
-  // Generate the _brandAds code for pap-app.js
-  var active=intAds.filter(function(a){return a.active});
-  var code='var _brandAds = [\n';
-  active.forEach(function(a,i){
-    code+="  { type:'"+a.type+"', src:'"+a.src+"'";
-    if(a.type==='video'&&a.poster) code+=", poster:'"+a.poster+"'";
-    code+=", link:'"+a.link+"', brand:'"+a.brand+"', duration:"+a.duration+" }";
-    if(i<active.length-1) code+=',';
-    code+='\n';
-  });
-  code+='];';
-  // Store generated code for copy
-  localStorage.setItem('pap-intads-code',code);
-  // Code stored in localStorage for copy
+  try{
+    var res=await apiDelete('/admin/ads/'+id);
+    if(res&&res.message&&!res.ok){
+      alert('삭제 실패: '+res.message);
+      return;
+    }
+    await renderAds();
+  }catch(e){
+    console.error('[ads] delete failed',e);
+    alert('삭제 실패: '+(e.message||e));
+  }
 }
 </script>
 </body>
