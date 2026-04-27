@@ -43,7 +43,14 @@ module.exports = async function handler(req, res) {
 
     try {
       const updates = {};
-      const allowed = ['title', 'slug', 'cover_image', 'published_date', 'url', 'tags', 'issue', 'thumbnail', 'gallery', 'credits', 'fashion', 'status', 'description'];
+      // Phase 4: scheduled_publish_at, seo_*, og_image, title_en, description_en
+      // are part of the allowlist so the admin form can save them.
+      const allowed = [
+        'title', 'slug', 'cover_image', 'published_date', 'url', 'tags',
+        'issue', 'thumbnail', 'gallery', 'credits', 'fashion', 'status', 'description',
+        'scheduled_publish_at', 'seo_title', 'seo_description', 'og_image',
+        'title_en', 'description_en'
+      ];
       for (const key of allowed) {
         if (req.body[key] !== undefined) updates[key] = req.body[key];
       }
