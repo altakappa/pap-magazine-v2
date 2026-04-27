@@ -588,6 +588,68 @@ const PAP = (function() {
       return res;
     },
 
+    /**
+     * Guest checkout — pay by card without prior login.
+     * Creates an account behind the scenes, runs PortOne, returns a JWT
+     * we drop straight into localStorage so the user is logged in.
+     * A "set your password" email is sent automatically.
+     */
+    async guestCheckout(plan, billing, guestInfo) {
+      if (typeof PortOne === 'undefined') {
+        throw new Error('Payment SDK not loaded. Please refresh the page.');
+      }
+      var storeId = window._PAP_PORTONE_STORE_ID;
+      var channelKey = window._PAP_PORTONE_CHANNEL_KEY;
+      if (!storeId || !channelKey) {
+        throw new Error('Payment configuration missing');
+      }
+      if (!guestInfo || !guestInfo.email || !guestInfo.name) {
+        throw new Error('이메일과 이름이 필요해요.');
+      }
+
+      // 1) Issue billing key in the same PortOne popup as authenticated checkout.
+      var issueResponse = await PortOne.requestIssueBillingKey({
+        storeId: storeId,
+        channelKey: channelKey,
+        billingKeyMethod: 'CARD',
+        customer: { email: guestInfo.email, fullName: guestInfo.name },
+      });
+      if (issueResponse.code != null) {
+        throw new Error(issueResponse.message || 'Payment cancelled');
+      }
+
+      // 2) Send to /guest-checkout — no auth header, server validates email is fresh.
+      var resp = await fetch(API_BASE + '/subscriptions/guest-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: guestInfo.email,
+          name: guestInfo.name,
+          billingKey: issueResponse.billingKey,
+          plan: plan,
+          billing: billing,
+        }),
+      });
+      var data = await resp.json();
+      if (!resp.ok) {
+        // Bubble up the friendly server message verbatim.
+        var err = new Error(data.message || 'Guest checkout failed');
+        err.existingAccount = !!data.existingAccount;
+        throw err;
+      }
+
+      // 3) Auto-login by stashing the JWT + user object exactly the way
+      //    /api/auth/oauth-token does. The next page load reads from
+      //    localStorage and treats them as logged-in.
+      if (data.token) {
+        try { localStorage.setItem('pap-token', data.token); } catch (_) {}
+      }
+      if (data.user) {
+        try { localStorage.setItem('pap-user', JSON.stringify(data.user)); } catch (_) {}
+      }
+      return data;
+    },
+
     async cancelSubscription() {
       return await request('POST', '/subscriptions/portal', { action: 'cancel' });
     },
