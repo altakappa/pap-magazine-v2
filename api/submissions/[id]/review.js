@@ -94,13 +94,21 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    // Send notification email (non-blocking)
+    // Send notification email (non-blocking). Pick the template that matches
+    // the actual decision so the submitter gets the correct message — earlier
+    // versions fell back to the rejected template for any non-approved status,
+    // which incorrectly framed revision requests as outright rejections.
     const { data: profile } = await supabaseAdmin
       .from('profiles').select('email, name').eq('id', submission.user_id).single();
     if (profile) {
-      const tpl = status === 'approved'
-        ? templates.submissionApproved({ name: profile.name }, { title: submission.title }, reviewNote)
-        : templates.submissionRejected({ name: profile.name }, { title: submission.title }, reviewNote);
+      let tpl;
+      if (status === 'approved') {
+        tpl = templates.submissionApproved({ name: profile.name }, { title: submission.title }, reviewNote);
+      } else if (status === 'revision') {
+        tpl = templates.submissionRevision({ name: profile.name }, { title: submission.title }, reviewNote);
+      } else {
+        tpl = templates.submissionRejected({ name: profile.name }, { title: submission.title }, reviewNote);
+      }
       sendEmail(profile.email, tpl).catch(() => {});
     }
 
