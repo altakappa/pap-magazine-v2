@@ -588,9 +588,28 @@ var _INTERSTITIAL_EVERY = 3;  // N번째 클릭마다 광고 노출 (3,6,9,12...
 // { type:'image', src:'https://cdn.example.com/prada-campaign.jpg', link:'https://www.prada.com', brand:'PRADA', duration:3 }
 //
 // When this array is empty, the premium upsell is shown instead.
+//
+// NOTE: This array is now hydrated at runtime from /api/ads (managed via the
+// admin dashboard → 인터스티셜 광고 관리). The hardcoded entry below is only a
+// fallback so the experience never breaks if the API call fails.
 var _brandAds = [
   { type:'image', src:'pap-studio-campaign-banner.jpg', link:'https://www.pap-studios.com', brand:'PAP STUDIO', duration:4 }
 ];
+
+// Fetch the live ads from the backend on first load. Public endpoint, no auth.
+(function _loadBrandAdsFromAPI(){
+  try{
+    var origin = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : '';
+    fetch(origin + '/api/ads', { credentials: 'omit' })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){
+        if(j && Array.isArray(j.ads) && j.ads.length){
+          _brandAds = j.ads;
+        }
+      })
+      .catch(function(){ /* keep fallback */ });
+  }catch(_){ /* keep fallback */ }
+})();
 
 function _getNextBrandAd(){
   if(!_brandAds || _brandAds.length === 0) return null;
