@@ -2390,6 +2390,27 @@ function editEditorial(id){
   if(document.getElementById('postDescription'))document.getElementById('postDescription').value=ed.description||'';
   document.getElementById('postPublish').checked=(ed.status==='published');
 
+  // ── Phase 4: rehydrate scheduled-publish UI when editing ──
+  // If the editorial has a scheduled_publish_at value, tick the box and
+  // pre-fill the date/time inputs (in browser local time, KST).
+  var schedCb = document.getElementById('postSchedule');
+  var schedDateEl = document.getElementById('scheduleDate');
+  var schedTimeEl = document.getElementById('scheduleTime');
+  if (schedCb) {
+    schedCb.checked = !!ed.scheduled_publish_at;
+    if (ed.scheduled_publish_at) {
+      try {
+        var sd = new Date(ed.scheduled_publish_at);
+        if (!isNaN(sd.getTime())) {
+          var pad = function(n){ return n < 10 ? '0' + n : '' + n; };
+          if (schedDateEl) schedDateEl.value = sd.getFullYear() + '-' + pad(sd.getMonth() + 1) + '-' + pad(sd.getDate());
+          if (schedTimeEl) schedTimeEl.value = pad(sd.getHours()) + ':' + pad(sd.getMinutes());
+        }
+      } catch(e) {}
+    }
+    if (typeof toggleSchedule === 'function') toggleSchedule();
+  }
+
   // Populate thumbnail preview
   var thumbPrev=document.getElementById('thumbPreview');
   if(thumbPrev&&(ed.thumbnail||ed.cover_image)){
@@ -2492,6 +2513,23 @@ async function savePost(){
   var subtitle=document.getElementById('postSubtitle')?document.getElementById('postSubtitle').value:'';
   var videoUrl=document.getElementById('postVideoUrl')?document.getElementById('postVideoUrl').value:'';
 
+  // ── Phase 4: scheduled publish ──
+  // If "예약 게시" is checked AND a date+time was provided, build an ISO timestamp.
+  // Backend (api/editorials/index.js) hides editorials with future scheduled_publish_at
+  // from the public list, so the post stays invisible to readers until the moment passes.
+  var scheduledAt = null;
+  var scheduleCb = document.getElementById('postSchedule');
+  if (scheduleCb && scheduleCb.checked) {
+    var dEl = document.getElementById('scheduleDate');
+    var tEl = document.getElementById('scheduleTime');
+    if (dEl && dEl.value) {
+      var t = (tEl && tEl.value) ? tEl.value : '09:00';
+      // Treat input as KST (browser local) — toISOString converts to UTC for storage.
+      var localDt = new Date(dEl.value + 'T' + t + ':00');
+      if (!isNaN(localDt.getTime())) scheduledAt = localDt.toISOString();
+    }
+  }
+
   // Show saving indicator
   var saveBtn=document.querySelector('#t-newpost .pe-actions .btn-primary');
   if(saveBtn){saveBtn.textContent='저장 중...';saveBtn.disabled=true;}
@@ -2527,7 +2565,8 @@ async function savePost(){
       gallery:galleryUrls.length?galleryUrls:undefined,
       status:isPublished?'published':'draft',
       published_date:isPublished?new Date().toISOString():null,
-      description:descriptionVal||null
+      description:descriptionVal||null,
+      scheduled_publish_at: scheduledAt
     };
     // Remove undefined keys
     Object.keys(payload).forEach(function(k){if(payload[k]===undefined)delete payload[k];});
