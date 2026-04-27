@@ -67,6 +67,18 @@ module.exports = async function handler(req, res) {
   const user = requireAuth(req, res);
   if (!user) return;
 
+  // Surface a clear error if PortOne credentials weren't configured on Vercel.
+  // Without this check the request silently 500s with a generic "Failed to
+  // process payment" message, which is nearly impossible to diagnose from
+  // the user's side.
+  if (!PORTONE_API_SECRET) {
+    console.error('PORTONE_API_SECRET is not set in environment');
+    return res.status(503).json({
+      message: 'Payment system not yet configured. Please contact support.',
+      detail: 'PORTONE_API_SECRET missing on the server.',
+    });
+  }
+
   try {
     const { billingKey, plan, billing } = req.body;
     // billingKey: from PortOne.requestIssueBillingKey() on frontend
@@ -125,9 +137,11 @@ module.exports = async function handler(req, res) {
       // First payment succeeded, schedule can be retried
     }
 
-    // 3. Store subscription in Supabase
+    // 3. Store subscription in Supabase. We use the existing `subscriptions`
+    //    table (extended in migration 007 with portone_* columns) rather than
+    //    a parallel `subscribers` table — keeps a single source of truth.
     const now = new Date();
-    await supabaseAdmin.from('subscribers').upsert({
+    const { error: subErr } = await supabaseAdmin.from('subscriptions').upsert({
       user_id: user.id,
       portone_billing_key: billingKey,
       portone_payment_id: paymentId,
@@ -137,8 +151,15 @@ module.exports = async function handler(req, res) {
       current_period_start: now.toISOString(),
       current_period_end: nextDate.toISOString(),
     }, { onConflict: 'user_id' });
+    if (subErr) {
+      // Don't fail the request — first payment already succeeded. Log loudly
+      // so we can reconcile later from PortOne logs.
+      console.error('Subscription row upsert failed:', subErr.message || subErr);
+    }
 
-    // 4. Update user profile
+    // 4. Update user profile so `_user.subscription` reflects the new tier
+    //    immediately on next login. Also bump token_version so any active
+    //    JWTs are forced to refresh (prevents stale free-tier flags).
     await supabaseAdmin.from('profiles').update({
       subscription_plan: planKey,
       subscription_status: 'active',
