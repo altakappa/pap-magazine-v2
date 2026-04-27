@@ -111,18 +111,23 @@ module.exports = async function handler(req, res) {
           break;
         }
 
-        // Find subscriber by payment ID prefix (pap_{userId}_...)
-        const match = paymentId.match(/^pap_(.+?)_\d+$/);
+        // Payment ID shape:
+        //   authenticated:   pap_<UUID>_<timestamp>
+        //   guest:           pap_g_<UUID>_<timestamp>
+        //   recurring:       pap_sched_<UUID>_<timestamp>
+        // The user UUID itself never contains underscores, so the
+        // "any chars except underscore" cluster cleanly captures it.
+        const match = paymentId.match(/^pap_(?:g_|sched_)?([^_]+(?:-[^_]+)*)_\d+$/);
         if (!match) break;
         const userId = match[1];
 
         // Send confirmation email
         const { data: profile } = await supabaseAdmin
-          .from('profiles').select('email, name, subscription_plan').eq('id', userId).single();
+          .from('profiles').select('email, display_name, subscription_plan').eq('id', userId).single();
 
         if (profile && profile.email) {
           sendEmail(profile.email, templates.subscriptionConfirmed(
-            { name: profile.name },
+            { name: profile.display_name || profile.email },
             profile.subscription_plan
           )).catch(() => {});
         }
@@ -137,13 +142,14 @@ module.exports = async function handler(req, res) {
         if (!paymentId) break;
 
         // Extract user ID from schedule ID (pap_sched_{userId}_...)
-        const match = paymentId.match(/^pap_sched_(.+?)_\d+$/);
+        // UUID has no underscores so we capture cleanly up to next "_".
+        const match = paymentId.match(/^pap_sched_([^_]+(?:-[^_]+)*)_\d+$/);
         if (!match) break;
         const userId = match[1];
 
         // Get subscriber info
         const { data: subscriber } = await supabaseAdmin
-          .from('subscribers')
+          .from('subscriptions')
           .select('*')
           .eq('user_id', userId)
           .single();
@@ -154,7 +160,7 @@ module.exports = async function handler(req, res) {
         const now = new Date();
         const nextDate = getNextBillingDate(subscriber.billing_cycle, now);
 
-        await supabaseAdmin.from('subscribers').update({
+        await supabaseAdmin.from('subscriptions').update({
           status: 'active',
           current_period_start: now.toISOString(),
           current_period_end: nextDate.toISOString(),
@@ -203,10 +209,10 @@ module.exports = async function handler(req, res) {
         console.warn('Payment failed:', paymentId);
 
         // Try to find user and update status
-        const match = paymentId?.match(/^pap_(?:sched_)?(.+?)_\d+$/);
+        const match = paymentId?.match(/^pap_(?:g_|sched_)?([^_]+(?:-[^_]+)*)_\d+$/);
         if (match) {
           const userId = match[1];
-          await supabaseAdmin.from('subscribers').update({
+          await supabaseAdmin.from('subscriptions').update({
             status: 'payment_failed',
           }).eq('user_id', userId);
         }
@@ -216,11 +222,11 @@ module.exports = async function handler(req, res) {
       // ── Payment cancelled / refunded ──
       case 'Transaction.Cancelled': {
         const paymentId = data?.paymentId;
-        const match = paymentId?.match(/^pap_(?:sched_)?(.+?)_\d+$/);
+        const match = paymentId?.match(/^pap_(?:g_|sched_)?([^_]+(?:-[^_]+)*)_\d+$/);
         if (!match) break;
         const userId = match[1];
 
-        await supabaseAdmin.from('subscribers').update({ status: 'canceled' })
+        await supabaseAdmin.from('subscriptions').update({ status: 'canceled' })
           .eq('user_id', userId);
         await supabaseAdmin.from('profiles').update({ subscription_status: 'inactive' })
           .eq('id', userId);
@@ -232,14 +238,14 @@ module.exports = async function handler(req, res) {
         const billingKey = data?.billingKey;
         if (!billingKey) break;
 
-        await supabaseAdmin.from('subscribers').update({
+        await supabaseAdmin.from('subscriptions').update({
           status: 'canceled',
           portone_billing_key: null,
         }).eq('portone_billing_key', billingKey);
 
         // Also update profile
         const { data: subscriber } = await supabaseAdmin
-          .from('subscribers').select('user_id').eq('portone_billing_key', billingKey).single();
+          .from('subscriptions').select('user_id').eq('portone_billing_key', billingKey).single();
         if (subscriber) {
           await supabaseAdmin.from('profiles').update({ subscription_status: 'inactive' })
             .eq('id', subscriber.user_id);
