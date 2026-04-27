@@ -1144,10 +1144,20 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
     <button class="modal-close" onclick="closeModal()">×</button>
     <h2>서브미션 심사</h2>
     <div class="sub" id="reviewModalHeader">—</div>
-    <div class="modal-section"><div class="modal-label">프로덕션</div><div class="modal-val" id="reviewModalProduction">—</div></div>
-    <div class="modal-section"><div class="modal-label">팀 크레딧</div><div class="modal-val" id="reviewModalCredits">—</div></div>
-    <div class="modal-section"><div class="modal-label">룩 정보</div><div class="modal-val" id="reviewModalLooks">—</div></div>
-    <div class="modal-section"><div class="modal-label">링크</div><div class="modal-val" id="reviewModalLinks">—</div></div>
+
+    <!-- Clean editorial-style block: Title / Credit / Fashion / Statement / Video / Production -->
+    <div class="modal-section"><div class="modal-label">Title</div><div class="modal-val" id="reviewModalTitle" style="font-size:14px;font-weight:600;color:var(--text)">—</div></div>
+    <div class="modal-section"><div class="modal-label">Credit</div><div class="modal-val" id="reviewModalCredits" style="white-space:pre-line;line-height:1.9">—</div></div>
+    <div class="modal-section"><div class="modal-label">Fashion</div><div class="modal-val" id="reviewModalFashion" style="word-break:break-word;line-height:1.9">—</div></div>
+    <div class="modal-section"><div class="modal-label">Statement</div><div class="modal-val" id="reviewModalStatement" style="white-space:pre-line">—</div></div>
+    <div class="modal-section"><div class="modal-label">Video</div><div class="modal-val" id="reviewModalVideo">—</div></div>
+    <div class="modal-section"><div class="modal-label">Production</div><div class="modal-val" id="reviewModalProduction" style="font-size:11px;color:var(--text3)">—</div></div>
+
+    <!-- Legacy fields kept hidden so any code referencing them doesn't break -->
+    <div id="reviewModalLooks" style="display:none"></div>
+    <div id="reviewModalLinks" style="display:none"></div>
+
+
 
     <div class="modal-section" style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px">
       <div class="modal-label">이미지 갤러리 · 클릭하여 확대 / ★ 표지 설정</div>
@@ -1580,6 +1590,121 @@ async function loadSubmissionForReview(submissionId){
   }
 }
 
+// ─── Helpers for the editorial-style credit/fashion block ────────────────────
+// Map technical role keys (from credits object) → display labels in PAP style
+var REVIEW_ROLE_LABELS = {
+  photo: 'Photographer', photographer: 'Photographer',
+  photo_asst: 'Assisted by', photo_assist: 'Assisted by', photo_assistant: 'Assisted by', photographer_assist: 'Assisted by',
+  styling: 'Style', stylist: 'Style',
+  styling_asst: 'Style assist', styling_assist: 'Style assist', stylist_assist: 'Style assist',
+  hair: 'Hair', hairstylist: 'Hair', hair_asst: 'Hair assist',
+  mua: 'MUAH', makeup: 'MUAH', make_up: 'MUAH', makeup_asst: 'MUAH assist',
+  muah: 'MUAH', muah_asst: 'MUAH assist',
+  casting: 'Casting', casting_director: 'Casting',
+  video: 'Video', videographer: 'Video', video_director: 'Video',
+  director: 'Director', creative_director: 'Creative Director', art_director: 'Art Director',
+  set_design: 'Set Design', set_designer: 'Set Design', set_designe_assist: 'Set Design assist',
+  producer: 'Producer',
+  starring: 'Starring', model: 'Starring',
+};
+
+function _extractHandle(s){
+  if(typeof s!=='string')return '';
+  var m=s.match(/@[\w._-]+/);
+  if(m)return m[0];
+  // No @ found — synthesize one from the name (lowercase, no spaces)
+  var name=s.replace(/\s*\([^)]*\)\s*/g,'').trim();
+  if(!name)return '';
+  return '@'+name.toLowerCase().replace(/[^\w._-]/g,'');
+}
+
+function _normalizeRoleKey(k){
+  return String(k||'').toLowerCase().replace(/[\s.]+/g,'_').replace(/_+/g,'_').replace(/^_|_$/g,'');
+}
+
+// Build the multi-line "Credit" block in PAP style:
+//   Photographer @ps_ritabusa Assisted by @kajsawingsphotography
+//   Style @irisrochalima
+//   ...
+function buildCreditBlock(desc){
+  var credits=desc.credits||{};
+  var lines=[];
+  var seen={};
+
+  // Pair each primary role with its assistant, if any.
+  // Iterate in a stable, intuitive order rather than object-key order.
+  var roleOrder=['photo','photographer','styling','stylist','hair','hairstylist','mua','makeup','muah','set_design','set_designer','casting','video','videographer','director','creative_director','art_director','producer'];
+  // Append any keys not in the canonical order so nothing is lost.
+  Object.keys(credits).forEach(function(k){
+    var nk=_normalizeRoleKey(k);
+    if(roleOrder.indexOf(nk)===-1) roleOrder.push(nk);
+  });
+
+  roleOrder.forEach(function(key){
+    var nk=_normalizeRoleKey(key);
+    if(seen[nk])return;
+    // Assistant variants we want to fold under the primary
+    var asstKeys=[nk+'_asst', nk+'_assist', nk+'_assistant', nk+'_assisted_by'];
+
+    var primaryRaw=credits[key]||credits[nk];
+    var primaryArr=Array.isArray(primaryRaw)?primaryRaw:(primaryRaw?[primaryRaw]:[]);
+    var primaryHandles=primaryArr.map(_extractHandle).filter(Boolean);
+
+    var asstHandles=[];
+    asstKeys.forEach(function(ak){
+      var raw=credits[ak];
+      if(!raw)return;
+      var arr=Array.isArray(raw)?raw:[raw];
+      arr.map(_extractHandle).filter(Boolean).forEach(function(h){asstHandles.push(h);});
+      seen[ak]=true;
+    });
+
+    if(!primaryHandles.length && !asstHandles.length){ seen[nk]=true; return; }
+
+    var label=REVIEW_ROLE_LABELS[nk]||nk.replace(/_/g,' ').replace(/\b\w/g,function(c){return c.toUpperCase();});
+    var line=label;
+    if(primaryHandles.length) line+=' '+primaryHandles.join(' ');
+    if(asstHandles.length) line+=' Assisted by '+asstHandles.join(' ');
+    lines.push(line);
+    seen[nk]=true;
+  });
+
+  // Models → "Starring @handle1 @handle2"
+  if(Array.isArray(desc.models)&&desc.models.length){
+    var modelHandles=[];
+    desc.models.forEach(function(m){
+      if(typeof m==='string'){ var h=_extractHandle(m); if(h)modelHandles.push(h); return; }
+      if(m&&m.instagram){ modelHandles.push(_extractHandle(m.instagram)||m.instagram); }
+      else if(m&&m.name){ modelHandles.push(_extractHandle(m.name)); }
+      // Add agency handle inline if provided
+      if(m&&m.agencyInstagram){
+        var ah=_extractHandle(m.agencyInstagram);
+        if(ah)modelHandles[modelHandles.length-1]+=' / '+ah;
+      }
+    });
+    modelHandles=modelHandles.filter(Boolean);
+    if(modelHandles.length) lines.push('Starring '+modelHandles.join(' '));
+  }
+
+  return lines.join('\n');
+}
+
+// Collect all unique brand instagrams across looks → "@a @b @c"
+function buildFashionLine(desc){
+  var looks=Array.isArray(desc.looks)?desc.looks:[];
+  var ordered=[]; var seen={};
+  looks.forEach(function(L){
+    if(!L||!Array.isArray(L.items))return;
+    L.items.forEach(function(it){
+      var h='';
+      if(it.instagram) h=_extractHandle(it.instagram);
+      else if(it.brand) h=_extractHandle(it.brand);
+      if(h&&!seen[h]){ seen[h]=true; ordered.push(h); }
+    });
+  });
+  return ordered.join(' ');
+}
+
 function populateReviewModal(submission){
   var desc={};
   try{desc=submission.description?JSON.parse(submission.description):{};}catch(e){desc={};}
@@ -1588,53 +1713,42 @@ function populateReviewModal(submission){
   var submitterEmail=submission.submitterEmail||(submission.profiles&&submission.profiles.email)||desc.contactEmail||'';
   var plan=submission.submitterPlan?' · '+submission.submitterPlan:'';
   var genreText=Array.isArray(desc.genre)&&desc.genre.length?' · '+desc.genre.join(', '):'';
-  document.getElementById('reviewModalHeader').textContent=(submission.title||'Untitled')+' — '+submitterName+' · '+createdDate+genreText;
-  document.getElementById('reviewModalProduction').textContent=submitterName+(submitterEmail?' · '+submitterEmail:'')+plan;
+  var imgCount=Array.isArray(submission.file_urls)?submission.file_urls.length:0;
 
-  // Credits: prefer the structured `credits` object, then `photographerCredit`, then fallback
-  var creditsText='—';
-  if(desc.credits&&typeof desc.credits==='object'&&Object.keys(desc.credits).length){
-    creditsText=Object.keys(desc.credits).map(function(k){
-      var v=desc.credits[k];
-      var val=Array.isArray(v)?v.filter(Boolean).join(', '):(v||'');
-      return val?(k+': '+val):'';
-    }).filter(Boolean).join(' / ')||'—';
-  }else if(desc.photographerCredit){
-    creditsText='Photographer: '+desc.photographerCredit;
-  }else if(desc.team&&Array.isArray(desc.team)){
-    creditsText=desc.team.map(function(t){return t.role+': '+t.name;}).join(' / ');
-  }else if(submission.credits){
-    creditsText=submission.credits;
-  }
-  document.getElementById('reviewModalCredits').textContent=creditsText;
+  // Header (compact context strip)
+  document.getElementById('reviewModalHeader').textContent=submitterName+' · '+createdDate+genreText+' · '+imgCount+' images';
 
-  // Looks: image count + models
-  var looks=submission.file_urls?submission.file_urls.length:0;
-  var modelsText='';
-  if(Array.isArray(desc.models)&&desc.models.length){
-    modelsText=' · 모델: '+desc.models.map(function(m){
-      if(typeof m==='string')return m;
-      if(m&&m.name)return m.name+(m.agency?' ('+m.agency+')':'');
-      return '';
-    }).filter(Boolean).join(', ');
-  }
-  document.getElementById('reviewModalLooks').textContent=looks+'개 이미지'+modelsText;
+  // Title
+  document.getElementById('reviewModalTitle').textContent=submission.title||'Untitled';
 
-  // Links: video URL + artist statement
-  var linkParts=[];
+  // Credit block — PAP editorial style
+  var creditText=buildCreditBlock(desc);
+  document.getElementById('reviewModalCredits').textContent=creditText||'—';
+
+  // Fashion brands (unique handles across all looks)
+  var fashionText=buildFashionLine(desc);
+  document.getElementById('reviewModalFashion').textContent=fashionText||'—';
+
+  // Statement
+  document.getElementById('reviewModalStatement').textContent=desc.artistStatement||'—';
+
+  // Video link
+  var videoEl=document.getElementById('reviewModalVideo');
   if(desc.videoUrl){
     var safe=String(desc.videoUrl).replace(/"/g,'&quot;');
-    linkParts.push('영상: <a href="'+safe+'" target="_blank" rel="noopener noreferrer" style="color:var(--blue);word-break:break-all">'+safe+'</a>');
+    videoEl.innerHTML='<a href="'+safe+'" target="_blank" rel="noopener noreferrer" style="color:var(--blue);word-break:break-all">'+esc(desc.videoUrl)+'</a>';
+  }else{
+    videoEl.textContent='—';
   }
-  if(desc.artistStatement){
-    var statement=String(desc.artistStatement).replace(/[<>&]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c];});
-    linkParts.push('아티스트 스테이트먼트: '+statement);
-  }
-  document.getElementById('reviewModalLinks').innerHTML=linkParts.length?linkParts.join('<br>'):'—';
+
+  // Production (compact submitter info — name + email + plan)
+  document.getElementById('reviewModalProduction').textContent=submitterName+(submitterEmail?' · '+submitterEmail:'')+plan;
 
   // Pre-select cover image from description
   if(typeof desc.coverImageIndex==='number')selectedCoverImageIndex=desc.coverImageIndex;
 }
+
+
 
 function buildLookCreditFor(idx, desc){
   var map=Array.isArray(desc.lookImageMap)?desc.lookImageMap:[];
