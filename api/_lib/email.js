@@ -144,6 +144,24 @@ const templates = {
     };
   },
 
+  // 4b. Submission revision requested — editor wants the work resubmitted with changes
+  submissionRevision(user, submission, note) {
+    return {
+      subject: `Revision requested: "${submission.title}"`,
+      html: wrapHtml(`
+        <h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">Revision Requested</h2>
+        <p>Hi ${user.name || 'there'},</p>
+        <p>Thank you for submitting <strong style="color:#fff;">"${submission.title}"</strong> to PAP Magazine.</p>
+        <p>Our editorial team has reviewed your work and would like to see a revised version before making a final publication decision. Please address the feedback below and resubmit.</p>
+        ${note ? `<div style="margin:20px 0;padding:16px;background:#1a1a1a;border-left:3px solid #4A90E2;"><span style="color:#9ab7e6;font-size:11px;text-transform:uppercase;letter-spacing:1px;">Editor's Feedback</span><br><span style="color:#ddd;font-size:14px;line-height:1.7;white-space:pre-line;">${note}</span></div>` : ''}
+        <p>You can review the full status and your original submission in <strong style="color:#fff;">MY SUBMISSIONS</strong>, then resubmit your revised work using the same form.</p>
+        <a href="${FRONTEND_URL}/submission.html#mySubsSection" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">VIEW & RESUBMIT</a>
+        <p style="font-size:12px;color:#888;margin-top:24px;">Questions about the feedback? Reply to this email and we'll get back to you.</p>
+      `),
+    };
+  },
+
+
   // 5. Pull-letter request received
   pullletterReceived(user) {
     return {
