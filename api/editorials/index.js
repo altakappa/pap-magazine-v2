@@ -62,7 +62,12 @@ module.exports = async function handler(req, res) {
     if (!user) return;
 
     try {
-      const { title, slug, cover_image, published_date, url, tags, issue, thumbnail, gallery, credits, fashion, status, description } = req.body;
+      const {
+        title, slug, cover_image, published_date, url, tags, issue,
+        thumbnail, gallery, credits, fashion, status, description,
+        scheduled_publish_at, seo_title, seo_description, og_image,
+        title_en, description_en
+      } = req.body;
 
       if (!title) {
         return res.status(400).json({ error: 'title is required' });
@@ -83,7 +88,14 @@ module.exports = async function handler(req, res) {
           credits: credits || {},
           fashion: fashion || {},
           status: status || 'published',
-          description: description || null
+          description: description || null,
+          // Phase 4 fields — null when not provided keeps the column clean
+          scheduled_publish_at: scheduled_publish_at || null,
+          seo_title: seo_title || null,
+          seo_description: seo_description || null,
+          og_image: og_image || null,
+          title_en: title_en || null,
+          description_en: description_en || null,
         })
         .select()
         .single();
