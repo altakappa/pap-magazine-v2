@@ -386,6 +386,78 @@ const PAP = (function() {
       });
     },
 
+    // Resubmit a previously-submitted work after admin requested a revision.
+    // Mirrors create() but:
+    //   - mixes already-uploaded `keptLookUrls` / `keptAdditionalUrls`
+    //     (URLs from the original submission the user wants to keep) with any
+    //     newly-added files that need fresh uploads.
+    //   - PUTs the merged metadata to /api/submissions/:id, which sets the
+    //     submission status back to 'pending' for re-review.
+    async update(id, data, newLookFiles, newAdditionalFiles, keptLookUrls, keptAdditionalUrls, onProgress) {
+      const newLooks = newLookFiles || [];
+      const newExtras = newAdditionalFiles || [];
+      const metas = [];
+      newLooks.forEach(function(f) { metas.push({ file: f, category: 'look' }); });
+      newExtras.forEach(function(f) { metas.push({ file: f, category: 'additional' }); });
+
+      const keptLook = Array.isArray(keptLookUrls) ? keptLookUrls.slice() : [];
+      const keptExtra = Array.isArray(keptAdditionalUrls) ? keptAdditionalUrls.slice() : [];
+      if (keptLook.length + keptExtra.length + metas.length === 0) {
+        throw new Error('At least one image is required');
+      }
+
+      let newLookUploaded = [];
+      let newExtraUploaded = [];
+      if (metas.length > 0) {
+        if (typeof onProgress === 'function') onProgress(0, metas.length, 'sign');
+        const signReq = metas.map(function(m) {
+          var safe = safeFile(m.file, m.category);
+          return { name: safe.name || 'file', type: safe.type || 'application/octet-stream', size: safe.size || 0, category: m.category };
+        });
+        const signRes = await request('POST', '/submissions/upload-url', { files: signReq });
+        if (!signRes || !Array.isArray(signRes.uploads) || signRes.uploads.length !== metas.length) {
+          throw new Error('Failed to obtain upload URLs');
+        }
+        var done = 0;
+        const uploadPromises = metas.map(function(m, i) {
+          const slot = signRes.uploads[i];
+          const safe = safeFile(m.file, m.category);
+          return fetch(slot.signedUrl, {
+            method: 'PUT',
+            headers: { 'Content-Type': safe.type || 'application/octet-stream', 'x-upsert': 'true' },
+            body: safe,
+          }).then(function(r) {
+            if (!r.ok) {
+              return r.text().catch(function(){return '';}).then(function(body) {
+                throw new Error('Upload failed (' + r.status + ')' + (body ? ': ' + body.slice(0, 200) : ''));
+              });
+            }
+            done++;
+            if (typeof onProgress === 'function') onProgress(done, metas.length, 'upload');
+            return slot;
+          });
+        });
+        const settled = await Promise.all(uploadPromises);
+        metas.forEach(function(m, i) {
+          const slot = settled[i];
+          if (!slot || !slot.publicUrl) return;
+          if (m.category === 'look') newLookUploaded.push(slot.publicUrl);
+          else newExtraUploaded.push(slot.publicUrl);
+        });
+      }
+
+      // Final URL lists: kept (from original) come first to preserve cover-index meaning.
+      const lookUrls = keptLook.concat(newLookUploaded);
+      const additionalUrls = keptExtra.concat(newExtraUploaded);
+
+      return await request('PUT', '/submissions/' + encodeURIComponent(id), {
+        data: data,
+        lookUrls: lookUrls,
+        additionalUrls: additionalUrls,
+      });
+    },
+
+
     async getMine() {
       return await request('GET', '/submissions/mine');
     },
