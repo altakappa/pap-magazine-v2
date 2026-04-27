@@ -19,13 +19,25 @@ module.exports = async function handler(req, res) {
       const { status, page = 1, limit: rawLimit = 25 } = req.query;
       const limit = Math.min(Math.max(1, parseInt(rawLimit) || 25), 100);
       const offset = (parseInt(page) - 1) * limit;
+      const requestedStatus = status || 'published';
 
-      const { data, error, count } = await supabaseAdmin
+      let query = supabaseAdmin
         .from('editorials')
         .select('*', { count: 'exact' })
-        .eq('status', status || 'published')
+        .eq('status', requestedStatus)
         .order('published_date', { ascending: false })
         .range(offset, offset + parseInt(limit) - 1);
+
+      // For the public-facing 'published' view, hide editorials whose
+      // scheduled_publish_at is still in the future. Admin tools that
+      // pass status='draft' or status='scheduled' bypass this gate.
+      // The OR clause keeps backward-compat with rows that don't have
+      // scheduled_publish_at set.
+      if (requestedStatus === 'published') {
+        query = query.or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${new Date().toISOString()}`);
+      }
+
+      const { data, error, count } = await query;
 
       if (error) throw error;
 
