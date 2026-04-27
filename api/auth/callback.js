@@ -30,9 +30,18 @@ module.exports = async function handler(req, res) {
     var oauthError = req.query.error;
     var errorDesc = req.query.error_description;
 
+    // Helper — append a (sanitized, length-capped) detail string to the redirect URL
+    // so the frontend can show the user what actually went wrong. We strip anything
+    // that could break out of the query-string and cap to 200 chars to keep URLs sane.
+    function withDetail(baseUrl, raw) {
+      if (!raw) return baseUrl;
+      var safe = String(raw).replace(/[<>"'`\\\r\n\t]/g, ' ').slice(0, 200);
+      return baseUrl + '&detail=' + encodeURIComponent(safe);
+    }
+
     if (oauthError) {
-      console.error('OAuth error from provider:', oauthError);
-      return res.redirect(302, frontendUrl + '/auth?error=oauth_provider&mode=login');
+      console.error('OAuth error from provider:', oauthError, errorDesc || '');
+      return res.redirect(302, withDetail(frontendUrl + '/auth?error=oauth_provider&mode=login', errorDesc || oauthError));
     }
 
     if (!code) {
@@ -71,8 +80,9 @@ module.exports = async function handler(req, res) {
     var tokenData = await tokenResp.json();
 
     if (!tokenResp.ok || tokenData.error) {
-      console.error('Token exchange failed:', tokenData.error_description || tokenData.error || 'Unknown');
-      return res.redirect(302, frontendUrl + '/auth?error=token_exchange&mode=login');
+      var msg = tokenData.error_description || tokenData.error || ('HTTP ' + tokenResp.status);
+      console.error('Token exchange failed:', msg);
+      return res.redirect(302, withDetail(frontendUrl + '/auth?error=token_exchange&mode=login', msg));
     }
 
     var userId = tokenData.user.id;
@@ -123,7 +133,11 @@ module.exports = async function handler(req, res) {
     ]);
     return res.redirect(302, frontendUrl + '/auth?oauth=success');
   } catch (error) {
-    console.error('OAuth callback error:', error.code || 'UNKNOWN');
-    return res.redirect(302, frontendUrl + '/auth?error=callback_error&mode=login');
+    console.error('OAuth callback error:', error && (error.message || error.code) || 'UNKNOWN');
+    var detailMsg = error && error.message ? error.message : '';
+    var safe = String(detailMsg).replace(/[<>"'`\\\r\n\t]/g, ' ').slice(0, 200);
+    var url = frontendUrl + '/auth?error=callback_error&mode=login';
+    if (safe) url += '&detail=' + encodeURIComponent(safe);
+    return res.redirect(302, url);
   }
 };
