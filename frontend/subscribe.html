@@ -525,8 +525,11 @@ function navigateWithInterstitial(url){
 <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
 <!-- PortOne config (storeId & channelKey set from Vercel env at build, or inline) -->
 <script>
-window._PAP_PORTONE_STORE_ID = 'store-pap-magazine'; /* Replace after PortOne registration */
-window._PAP_PORTONE_CHANNEL_KEY = ''; /* Replace after PG channel setup */
+// PortOne V2 — PAP MAGAZINE 테스트 채널 (토스페이먼츠 정기결제, iamporttest_4).
+// Both values are PUBLIC (the SDK ships them to the browser anyway). Swap to
+// the live channel-key after PortOne approves the production Toss channel.
+window._PAP_PORTONE_STORE_ID    = 'store-7b6778d6-f24d-49d2-a939-19df4ec81381';
+window._PAP_PORTONE_CHANNEL_KEY = 'channel-key-1f8ffa8d-2039-48b1-9af1-db8421e9a058';
 </script>
 <script src="pap-api.js?v=2" defer></script>
 <script>
