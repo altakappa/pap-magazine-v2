@@ -1104,7 +1104,8 @@ async function viewSubmission(id){
       (Array.isArray(desc.genre)&&desc.genre.length?'<div style="margin-bottom:14px"><div style="font-size:9px;letter-spacing:.18em;font-weight:700;color:rgba(255,255,255,.4);margin-bottom:6px">GENRE</div><div>'+_esc(desc.genre.join(', '))+'</div></div>':'')+
       (desc.artistStatement?'<div style="margin-bottom:14px"><div style="font-size:9px;letter-spacing:.18em;font-weight:700;color:rgba(255,255,255,.4);margin-bottom:6px">STATEMENT</div><div style="white-space:pre-line">'+_esc(desc.artistStatement)+'</div></div>':'')+
       (desc.videoUrl?'<div style="margin-bottom:14px"><div style="font-size:9px;letter-spacing:.18em;font-weight:700;color:rgba(255,255,255,.4);margin-bottom:6px">VIDEO LINK</div><a href="'+_safeUrl(desc.videoUrl)+'" target="_blank" rel="noopener" style="color:rgba(100,150,255,.9);word-break:break-all">'+_esc(desc.videoUrl)+'</a></div>':'')+
-      (s.status==='revision'?'<div style="margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,.08);text-align:center"><a href="#step1" onclick="document.getElementById(\'_mySubModalBg\').remove();window.scrollTo({top:0,behavior:\'smooth\'});return false;" style="display:inline-block;background:#fff;color:#000;padding:14px 36px;font-size:11px;font-weight:700;letter-spacing:.16em;text-decoration:none">RESUBMIT REVISED VERSION</a></div>':'');
+            (s.status==='revision'?'<div style="margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,.08);text-align:center"><a href="?revise='+encodeURIComponent(s.id)+'#step1" style="display:inline-block;background:#fff;color:#000;padding:14px 36px;font-size:11px;font-weight:700;letter-spacing:.16em;text-decoration:none">RESUBMIT REVISED VERSION</a><div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:10px">Opens the submission form with your previous data prefilled.</div></div>':'');
+
 
     bg.appendChild(card);
     document.body.appendChild(bg);
@@ -1554,6 +1555,231 @@ function addLookItem(lookNum){
 // Initialize with 4 looks (minimum required)
 addLook();addLook();addLook();addLook();
 
+// ═══════════════════════════════════════════════════════════════════════════
+// REVISION MODE — when admin returned the work with status='revision', the
+// submitter clicks "RESUBMIT REVISED VERSION" which lands here with
+// ?revise=<id>. Fetch the original submission and prefill every field so they
+// only have to fix what was flagged.
+// ═══════════════════════════════════════════════════════════════════════════
+var REVISE_ID = null;
+var existingLookUrls = {};        // {lookN: ['https://…','https://…']} — kept-from-original
+var existingAdditionalUrls = [];  // ['https://…','…']                   — kept additional images
+
+(function detectReviseMode(){
+  try{
+    var params = new URLSearchParams(window.location.search);
+    var id = params.get('revise');
+    if(!id) return;
+    REVISE_ID = id;
+    // Show a loading banner immediately so the user knows we're hydrating
+    var banner = document.createElement('div');
+    banner.id = '_reviseBanner';
+    banner.style.cssText='position:sticky;top:0;z-index:50;background:rgba(100,150,255,.12);border-bottom:1px solid rgba(100,150,255,.4);padding:14px 24px;text-align:center;font-size:12px;color:rgba(100,150,255,.95);font-family:Inter,sans-serif;';
+    banner.textContent='Loading your previous submission for revision…';
+    document.body.insertBefore(banner, document.body.firstChild);
+    // Wait a tick for the form to be initialized, then prefill
+    document.addEventListener('DOMContentLoaded', function(){ setTimeout(loadReviseSubmission, 120); }, { once: true });
+    if(document.readyState !== 'loading') setTimeout(loadReviseSubmission, 120);
+  }catch(e){ console.error('detectReviseMode error:',e); }
+})();
+
+async function loadReviseSubmission(){
+  if(!REVISE_ID) return;
+  try{
+    var res = await fetch('/api/submissions/' + REVISE_ID, {
+      credentials:'include',
+      headers:{'X-Requested-With':'XMLHttpRequest'}
+    });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    var payload = await res.json();
+    var s = payload.submission || payload.data || payload;
+    if(!s || !s.id) throw new Error('Empty submission');
+    var desc = {};
+    try{ desc = s.description ? JSON.parse(s.description) : {}; }catch(_){ }
+
+    // Update banner with editor's note + clear CTA
+    var banner = document.getElementById('_reviseBanner');
+    if(banner){
+      var note = (s.admin_notes || '').trim();
+      banner.style.padding = '20px 24px';
+      banner.style.textAlign = 'left';
+      banner.innerHTML =
+        '<div style="max-width:880px;margin:0 auto;text-align:left">'+
+          '<div style="font-size:10px;letter-spacing:.18em;font-weight:700;color:rgba(100,150,255,.95);margin-bottom:8px">REVISION MODE — EDITING SUBMISSION "'+(s.title||'Untitled').replace(/[<>&]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c];})+'"</div>'+
+          (note ? '<div style="font-size:11px;color:rgba(255,255,255,.55);margin-bottom:6px;text-transform:uppercase;letter-spacing:.1em">Editor\'s feedback</div><div style="font-size:13px;color:rgba(255,255,255,.92);white-space:pre-line;line-height:1.7">'+note.replace(/[<>&]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c];})+'</div>' : '')+
+          '<div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:14px">Address the feedback above, edit any fields below, then SUBMIT to send the revised version.</div>'+
+        '</div>';
+    }
+
+    // ───── Prefill text fields
+    function _setVal(id, v){ var el=document.getElementById(id); if(el && typeof v==='string') el.value=v; }
+    _setVal('editorialTitle', s.title || '');
+    _setVal('studioName', desc.contactName || '');
+    _setVal('contactEmail', desc.contactEmail || '');
+    _setVal('artistStatement', desc.artistStatement || '');
+    _setVal('videoUrl', desc.videoUrl || '');
+
+    // ───── Genres — re-click matching .genre-tag elements
+    if(Array.isArray(desc.genre)){
+      desc.genre.forEach(function(g){
+        document.querySelectorAll('.genre-tag').forEach(function(tag){
+          if(tag.textContent.trim()===g && !tag.classList.contains('selected')){ tag.click(); }
+        });
+      });
+    }
+
+    // ───── Team rows — clear default, add one row per credits entry
+    var teamList = document.getElementById('teamList');
+    if(teamList && desc.credits && typeof desc.credits === 'object'){
+      // Clear existing rows added by the page bootstrap
+      teamList.innerHTML = '';
+      Object.keys(desc.credits).forEach(function(roleKey){
+        var entries = desc.credits[roleKey];
+        if(!Array.isArray(entries)) entries = [entries];
+        entries.forEach(function(entryStr){
+          if(typeof addTeamRow !== 'function') return;
+          addTeamRow();
+          var rows = teamList.querySelectorAll('.team-row');
+          var row = rows[rows.length-1];
+          if(!row) return;
+          var inputs = row.querySelectorAll('.team-input');
+          var roleEl = row.querySelector('.team-role');
+          // Parse "Name (@handle)" or "Name @handle"
+          var m = String(entryStr||'').match(/^(.+?)\s*[\(@]\s*(@?[^\)\s]+)\)?\s*$/);
+          var name = m ? m[1].trim() : String(entryStr||'').trim();
+          var ig = m ? (m[2].indexOf('@')===0 ? m[2] : '@'+m[2]) : '';
+          if(roleEl){ roleEl.textContent = roleKey.replace(/_/g,' '); }
+          // inputs layout depends on whether the role label is editable
+          var nameIdx = roleEl ? 0 : 1;
+          if(inputs[nameIdx]) inputs[nameIdx].value = name;
+          if(inputs[nameIdx+1]) inputs[nameIdx+1].value = ig;
+        });
+      });
+    }
+
+    // ───── Model rows
+    if(Array.isArray(desc.models) && typeof addModelRow === 'function'){
+      var modelList = document.getElementById('modelList');
+      if(modelList) modelList.innerHTML = '';
+      desc.models.forEach(function(m){
+        addModelRow();
+        var rows = modelList.querySelectorAll('.model-row');
+        var row = rows[rows.length-1];
+        if(!row) return;
+        var ins = row.querySelectorAll('.team-input');
+        if(ins[0]) ins[0].value = m.name || '';
+        if(ins[1]) ins[1].value = m.instagram || '';
+        if(ins[2]) ins[2].value = m.agency || '';
+        if(ins[3]) ins[3].value = m.agencyInstagram || '';
+      });
+    }
+
+    // ───── Look blocks: clear the 4 default blocks, build one per look from desc.looks
+    var lookList = document.getElementById('lookList');
+    if(lookList && Array.isArray(desc.looks) && desc.looks.length){
+      lookList.innerHTML = '';
+      lookFiles = {};
+      lookCount = 0;
+      desc.looks.forEach(function(L){
+        addLook();
+        var n = lookCount;
+        // Fill brand items
+        var itemsEl = document.getElementById('lookItems' + n);
+        if(itemsEl && Array.isArray(L.items) && L.items.length){
+          itemsEl.innerHTML = '';
+          L.items.forEach(function(it){
+            addLookItem(n);
+            var rows = itemsEl.querySelectorAll('.look-item');
+            var row = rows[rows.length - 1];
+            if(!row) return;
+            var sel = row.querySelector('.look-select');
+            var inputs = row.querySelectorAll('.look-input');
+            if(sel && it.type) sel.value = it.type;
+            if(inputs[0]) inputs[0].value = it.brand || '';
+            if(inputs[1]) inputs[1].value = it.instagram || '';
+          });
+        }
+      });
+
+      // ───── Distribute existing image URLs back into their look buckets via lookImageMap
+      var allLookUrls = (s.file_urls || []).slice();
+      // The original lookUrls were the FIRST N where N = count from lookImageMap
+      var lookCountUrls = Array.isArray(desc.lookImageMap) ? desc.lookImageMap.length : allLookUrls.length;
+      var lookUrlSlice = allLookUrls.slice(0, lookCountUrls);
+      var additionalSlice = allLookUrls.slice(lookCountUrls);
+
+      if(Array.isArray(desc.lookImageMap)){
+        desc.lookImageMap.forEach(function(entry, idx){
+          if(!entry || typeof entry.lookN !== 'number') return;
+          var url = lookUrlSlice[idx];
+          if(!url) return;
+          if(!existingLookUrls[entry.lookN]) existingLookUrls[entry.lookN] = [];
+          existingLookUrls[entry.lookN].push(url);
+        });
+      }
+      existingAdditionalUrls = additionalSlice;
+
+      // Re-render look thumbs to surface kept-from-original images
+      Object.keys(existingLookUrls).forEach(function(k){
+        try{ renderLookThumbs(parseInt(k)); }catch(_){}
+      });
+      // Re-render additional file list (existing URLs as removable badges)
+      try{ renderF(); }catch(_){}
+    }
+
+    // Pre-select cover image
+    if(typeof desc.coverImageIndex === 'number'){ selectedCoverIdx = desc.coverImageIndex; }
+
+    // Change SUBMIT button label so it's obvious what mode they're in
+    var submitBtn = document.querySelector('.btn-submit');
+    if(submitBtn){ submitBtn.textContent = 'RESUBMIT REVISED'; submitBtn.dataset.reviseMode='1'; }
+  }catch(e){
+    console.error('loadReviseSubmission error:', e);
+    var banner = document.getElementById('_reviseBanner');
+    if(banner) banner.innerHTML = '<span style="color:#ff8585">Failed to load your previous submission ('+(e.message||'')+'). Please refresh.</span>';
+  }
+}
+
+// renderLookThumbs and renderF need to be aware of existing URLs.
+// Patch them by wrapping to ALSO render kept-from-original URL thumbnails.
+var _origRenderLookThumbs = typeof renderLookThumbs === 'function' ? renderLookThumbs : null;
+function _renderRemoteThumb(parent, url, onRemove){
+  var div = document.createElement('div');
+  div.className = 'look-thumb remote';
+  div.style.cssText = 'position:relative;border:1px solid rgba(100,150,255,.5)';
+  var img = document.createElement('img');
+  img.src = url;
+  img.style.cssText = 'width:60px;height:75px;object-fit:cover;display:block';
+  div.appendChild(img);
+  var badge = document.createElement('div');
+  badge.textContent = 'KEPT';
+  badge.style.cssText='position:absolute;bottom:2px;left:2px;background:rgba(100,150,255,.85);color:#fff;font-size:7px;font-weight:700;padding:2px 4px;letter-spacing:.05em';
+  div.appendChild(badge);
+  var rm = document.createElement('button');
+  rm.textContent='×';
+  rm.style.cssText='position:absolute;top:-6px;right:-6px;width:18px;height:18px;background:#000;color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:50%;cursor:pointer;font-size:10px;line-height:1';
+  rm.onclick = onRemove;
+  div.appendChild(rm);
+  parent.appendChild(div);
+}
+// Hook: after the original renderLookThumbs runs, append remote thumbs.
+if(_origRenderLookThumbs){
+  renderLookThumbs = function(n){
+    _origRenderLookThumbs(n);
+    if(!REVISE_ID) return;
+    var holder = document.getElementById('lookThumbs'+n);
+    if(!holder) return;
+    var urls = existingLookUrls[n] || [];
+    urls.forEach(function(url, idx){
+      _renderRemoteThumb(holder, url, function(){
+        existingLookUrls[n].splice(idx, 1);
+        renderLookThumbs(n);
+      });
+    });
+  };
+}
+
+
 // FILE UPLOADS
 var fi1=document.getElementById('fileInput');
 var uz1=document.getElementById('uploadZone');
@@ -1621,7 +1847,10 @@ async function submitForm(){
   // Count total images (look + additional) — enforce minimum 4
   var totalLookImages=0;
   Object.keys(lookFiles).forEach(function(k){ if(lookFiles[k]) totalLookImages+=lookFiles[k].length; });
-  var totalImages=totalLookImages+(files1?files1.length:0);
+  // Include kept-from-original images (revise mode) so the 4-image minimum
+  // is satisfied even if the user just edits text fields without re-uploading.
+  Object.keys(existingLookUrls||{}).forEach(function(k){ totalLookImages += (existingLookUrls[k]||[]).length; });
+
   if(totalImages<4){
     if(typeof PAP!=='undefined') PAP.ui.toast(_t('toastMinImages'),'error');
     return;
@@ -1689,12 +1918,45 @@ async function submitForm(){
   //  - data.lookImageMap: image index → { lookN, imgIdxInLook } so the admin
   //                       review modal can show "Look N · Brand X" next to
   //                       each individual image.
-  var allLookImages=[];
+  var allLookImages=[];      // NEW files to upload (File objects)
+  var keptLookUrls=[];       // EXISTING URLs from prior submission (revise mode only)
   data.looks=[];
   data.lookImageMap=[];
-  Object.keys(lookFiles).sort(function(a,b){return parseInt(a)-parseInt(b);}).forEach(function(k){
+
+  // Walk every look number that EITHER has new files OR kept URLs (revise mode)
+  var allLookKeys = {};
+  Object.keys(lookFiles||{}).forEach(function(k){ allLookKeys[k]=true; });
+  Object.keys(existingLookUrls||{}).forEach(function(k){ allLookKeys[k]=true; });
+  Object.keys(allLookKeys).sort(function(a,b){return parseInt(a)-parseInt(b);}).forEach(function(k){
     var n=parseInt(k);
-    if(!lookFiles[k]) return;
+
+    // Read brand items from this look's UI
+    var items=[];
+    var lookBlock=document.getElementById('look'+n);
+    if(lookBlock){
+      lookBlock.querySelectorAll('.look-item').forEach(function(row){
+        var sel=row.querySelector('.look-select');
+        var inputs=row.querySelectorAll('.look-input');
+        var type=sel?sel.value.trim():'';
+        var brand=inputs[0]?inputs[0].value.trim():'';
+        var insta=inputs[1]?inputs[1].value.trim():'';
+        if(type||brand||insta) items.push({type:type,brand:brand,instagram:insta});
+      });
+    }
+    data.looks.push({n:n,items:items});
+
+    // Kept URLs come FIRST in the final URL list (matches API merge order),
+    // so the lookImageMap entries for them must be enqueued first too.
+    var kept = (existingLookUrls && existingLookUrls[k]) || [];
+    var imgIdx = 0;
+    for(var ki=0; ki<kept.length; ki++){
+      data.lookImageMap.push({lookN:n, imgIdxInLook:imgIdx++});
+      keptLookUrls.push(kept[ki]);
+    }
+
+    // Then any newly-added files for this look
+    if(lookFiles[k]){
+
 
     // Read brand items from this look's UI
     var items=[];
@@ -1729,19 +1991,38 @@ async function submitForm(){
       title: data.title,
       genre: data.genre,
       lookImageCount: allLookImages.length,
+      keptLookCount: keptLookUrls.length,
       additionalCount: (files1||[]).length,
+      keptAdditionalCount: (existingAdditionalUrls||[]).length,
       videoUrl: data.videoUrl||'(none)',
+      reviseId: REVISE_ID || '(none)',
     });
-    await PAP.submissions.create(
-      data,
-      allLookImages,
-      files1||[],
-      function(done, total, phase){
-        if(!btn) return;
-        if(phase==='sign') btn.textContent='PREPARING…';
-        else if(phase==='upload') btn.textContent='UPLOADING… '+done+'/'+total;
-      }
-    );
+    var progressCb = function(done, total, phase){
+      if(!btn) return;
+      if(phase==='sign') btn.textContent='PREPARING…';
+      else if(phase==='upload') btn.textContent='UPLOADING… '+done+'/'+total;
+    };
+    if(REVISE_ID){
+      // RESUBMIT: update existing record. Mix kept-from-original URLs with any
+      // newly-added files; backend resets status to 'pending' for re-review.
+      await PAP.submissions.update(
+        REVISE_ID,
+        data,
+        allLookImages,
+        files1||[],
+        keptLookUrls,
+        existingAdditionalUrls||[],
+        progressCb
+      );
+    }else{
+      await PAP.submissions.create(
+        data,
+        allLookImages,
+        files1||[],
+        progressCb
+      );
+    }
+
     document.getElementById('step5').style.display='none';
     document.querySelector('.step-bar').style.display='none';
     document.getElementById('submitSuccess').style.display='block';
