@@ -1279,16 +1279,65 @@ async function handleCta(plan) {
     window.location.href = PAP.auth.isLoggedIn() ? 'index.html' : (window.papLoginUrl?window.papLoginUrl('auth.html'):'auth.html');
     return;
   }
-  if(!PAP.auth.isLoggedIn()){
-    window.location.href='auth.html?redirect=subscribe';
+  var billing = currentBilling;
+
+  // Logged-in users: existing flow.
+  if (PAP.auth.isLoggedIn()) {
+    try { await PAP.subscriptions.checkout(plan, billing); }
+    catch(e){ PAP.ui.toast(e.message || 'Checkout failed', 'error'); }
     return;
   }
-  var billing = currentBilling;
-  try{
-    await PAP.subscriptions.checkout(plan, billing);
-  }catch(e){
-    PAP.ui.toast(e.message||'Checkout failed','error');
+
+  // Guests: prompt for email + name, then run guest checkout.
+  // No redirect to /auth — we create the account silently and email a
+  // "비밀번호 설정" link after successful payment.
+  var guest = await _promptGuestInfo();
+  if (!guest) return; // user cancelled
+  try {
+    await PAP.subscriptions.guestCheckout(plan, billing, guest);
+    PAP.ui.toast('결제가 완료되었어요. 비밀번호 설정 메일을 확인해 주세요.', 'success');
+    // Auto-login JWT was already saved in localStorage by guestCheckout.
+    setTimeout(function(){ window.location.href = 'mypage.html'; }, 1200);
+  } catch(e) {
+    if (e && e.existingAccount) {
+      // Polite redirect to login flow.
+      PAP.ui.toast(e.message, 'error');
+      setTimeout(function(){ window.location.href = 'auth.html?redirect=subscribe'; }, 1500);
+    } else {
+      PAP.ui.toast((e && e.message) || 'Checkout failed', 'error');
+    }
   }
+}
+
+// ── Minimal prompt for guest email + name ──────────────────────────
+// Uses native prompts to keep this patch small. A nicer modal can be
+// designed later, but the conversion benefit comes from cutting the
+// "log in first" wall, not from a fancy form.
+function _promptGuestInfo() {
+  return new Promise(function(resolve){
+    var lang = (localStorage.getItem('pap-lang') || 'ko');
+    var T = {
+      ko: { email: '결제 영수증을 받을 이메일을 입력해 주세요.',
+            invalid: '이메일 형식을 확인해 주세요.',
+            name: '카드 명의자(이름)을 입력해 주세요.' },
+      en: { email: 'Enter the email to receive your receipt.',
+            invalid: 'Please enter a valid email.',
+            name: 'Enter the cardholder name.' }
+    };
+    var t = T[lang] || T.en;
+    // Try to capture an email already entered during the session
+    var prefill = (localStorage.getItem('pap-guest-email') || '');
+    var email = (window.prompt(t.email, prefill) || '').trim();
+    if (!email) return resolve(null);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      PAP.ui.toast(t.invalid, 'error');
+      return resolve(null);
+    }
+    try { localStorage.setItem('pap-guest-email', email); } catch(_){}
+    var name = (window.prompt(t.name, '') || '').trim();
+    if (!name) return resolve(null);
+    resolve({ email: email, name: name });
+  });
 }
 
 // AUTO LANGUAGE DETECTION
