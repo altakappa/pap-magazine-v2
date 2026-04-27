@@ -88,11 +88,17 @@ CREATE POLICY "Users can delete their own rating"
 
 -- ─── editorial_rating_stats (view) ───────────────────────────────────────
 -- pap-social.js queries this view to show "4.2 (37)" next to editorials.
-CREATE OR REPLACE VIEW public.editorial_rating_stats AS
+--
+-- We DROP first because Postgres won't let us change the type of an existing
+-- view column via CREATE OR REPLACE — older runs may have created this view
+-- with rating_count as BIGINT (the natural type for COUNT(*)).
+DROP VIEW IF EXISTS public.editorial_rating_stats;
+
+CREATE VIEW public.editorial_rating_stats AS
 SELECT
   editorial_title,
   ROUND(AVG(score)::numeric, 2) AS avg_score,
-  COUNT(*)::INTEGER             AS rating_count
+  COUNT(*)                      AS rating_count   -- BIGINT; JS reads as Number
 FROM public.ratings
 GROUP BY editorial_title;
 
