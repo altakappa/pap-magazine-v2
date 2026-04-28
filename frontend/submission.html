@@ -1955,29 +1955,14 @@ async function submitForm(){
       keptLookUrls.push(kept[ki]);
     }
 
-    // Then any newly-added files for this look
+    // Then any newly-added files for this look — enqueue them and record
+    // their look mapping. The brand-items + data.looks.push above already
+    // ran once per k, so we don't duplicate that here.
     if(lookFiles[k]){
-
-
-    // Read brand items from this look's UI
-    var items=[];
-    var lookBlock=document.getElementById('look'+n);
-    if(lookBlock){
-      lookBlock.querySelectorAll('.look-item').forEach(function(row){
-        var sel=row.querySelector('.look-select');
-        var inputs=row.querySelectorAll('.look-input');
-        var type=sel?sel.value.trim():'';
-        var brand=inputs[0]?inputs[0].value.trim():'';
-        var insta=inputs[1]?inputs[1].value.trim():'';
-        if(type||brand||insta) items.push({type:type,brand:brand,instagram:insta});
-      });
-    }
-    data.looks.push({n:n,items:items});
-
-    // Then enqueue images and record their look mapping
-    for(var i=0;i<lookFiles[k].length;i++){
-      data.lookImageMap.push({lookN:n,imgIdxInLook:i});
-      allLookImages.push(lookFiles[k][i]);
+      for(var i=0;i<lookFiles[k].length;i++){
+        data.lookImageMap.push({lookN:n,imgIdxInLook:imgIdx++});
+        allLookImages.push(lookFiles[k][i]);
+      }
     }
   });
 
