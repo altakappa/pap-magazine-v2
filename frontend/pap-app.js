@@ -285,9 +285,56 @@ function closeNav(){
   if(_n && _n.classList.contains('active')) toggleNav();
 }
 
+// ======== UNIFIED CAROUSEL ARROW STATE ========
+// Toggles `.is-disabled` on the left arrow when scrollLeft is at 0 and on
+// the right arrow when scrollLeft + clientWidth has reached scrollWidth.
+// Single helper used by every horizontal-scroll carousel on the home page
+// so the user sees the same "hide arrow when there's nothing to scroll
+// to" behavior consistently across sections.
+function _papUpdateArrows(track, leftBtn, rightBtn){
+  if(!track) return;
+  // 1px tolerance — fractional scroll positions on retina/zoom can leave
+  // scrollLeft like 0.4 even when visually pinned to the start.
+  var atStart = track.scrollLeft <= 1;
+  var atEnd   = track.scrollLeft + track.clientWidth >= track.scrollWidth - 1;
+  // No overflow at all → both arrows hide (nothing to scroll).
+  var noOverflow = track.scrollWidth <= track.clientWidth + 1;
+  if(leftBtn)  leftBtn.classList.toggle('is-disabled',  noOverflow || atStart);
+  if(rightBtn) rightBtn.classList.toggle('is-disabled', noOverflow || atEnd);
+}
+function _papWireCarousel(trackSel, leftSel, rightSel){
+  var track = typeof trackSel === 'string' ? document.querySelector(trackSel) : trackSel;
+  if(!track) return;
+  // Find sibling buttons within the track's parent (works for ed-row-wrap,
+  // nf-wrap, fashion-section, etc.)
+  var wrap = track.parentElement;
+  var left  = leftSel  ? (wrap.querySelector(leftSel)  || document.querySelector(leftSel))  : null;
+  var right = rightSel ? (wrap.querySelector(rightSel) || document.querySelector(rightSel)) : null;
+  function update(){ _papUpdateArrows(track, left, right); }
+  track.addEventListener('scroll', update, {passive:true});
+  window.addEventListener('resize', update);
+  // Mutation observer for content rendered later (cards added via API)
+  var mo = new MutationObserver(update);
+  try{ mo.observe(track, {childList:true, subtree:false}); }catch(_){}
+  // Initial state — wait a frame for layout to settle.
+  requestAnimationFrame(function(){ requestAnimationFrame(update); });
+}
+
 // ======== FASHION CAROUSEL ========
-let fPos=0;
-function moveCarousel(d){const t=document.getElementById('fashionTrack');if(!t||!t.firstElementChild)return;const w=t.firstElementChild.offsetWidth+24;fPos=Math.max(0,Math.min(fPos+d,2));t.style.transform=`translateX(-${fPos*w}px)`}
+// Uses the SAME native-scroll mechanism as the editorial rows. The legacy
+// translateX-based moveCarousel was fighting the .carousel-track's own
+// overflow-x:auto, leaving the right arrow visually outside the viewport
+// on some sizes. Switching to scrollBy is one mechanism, predictable.
+function moveCarousel(d){
+  var t = document.getElementById('fashionTrack');
+  if(!t) return;
+  // Scroll by ~one card width (estimated from first child or fallback).
+  var first = t.firstElementChild;
+  var step = (first ? first.offsetWidth + 24 : 320);
+  // Reset legacy transform if any prior state set it.
+  if(t.style.transform) t.style.transform = '';
+  t.scrollBy({left: d * step, behavior: 'smooth'});
+}
 
 // ======== ED CAROUSEL ========
 let ePos=0;
@@ -355,6 +402,62 @@ function scrollEdRow(btn,dir){
   var track=btn.parentElement.querySelector('.ed-row-track');
   if(track) track.scrollBy({left:dir*460,behavior:'smooth'});
 }
+
+// Initialize unified arrow-state for every home-page horizontal carousel.
+// Runs once at DOMContentLoaded; carousels added later (e.g. by API render)
+// can call this again or rely on the MutationObserver inside _papWireCarousel.
+(function _papInitCarouselArrows(){
+  function init(){
+    // Fashion section ("최신기사") — single track, fixed left/right arrows
+    var fashionTrack = document.getElementById('fashionTrack');
+    if(fashionTrack){
+      var section = fashionTrack.closest('.fashion-section');
+      var L = section && section.querySelector('.carousel-arrow.left');
+      var R = section && section.querySelector('.carousel-arrow.right');
+      _papWireCarousel(fashionTrack, '.carousel-arrow.left', '.carousel-arrow.right');
+      // The left/right arrow query above scopes to wrap (parentElement of
+      // track), but fashion uses section as the relative parent — wire by
+      // direct ref too:
+      if(L || R){
+        function update(){ _papUpdateArrows(fashionTrack, L, R); }
+        fashionTrack.addEventListener('scroll', update, {passive:true});
+        window.addEventListener('resize', update);
+        requestAnimationFrame(function(){ requestAnimationFrame(update); });
+      }
+    }
+    // Editorial rows — multiple tracks, each wrapped in .ed-row-wrap
+    document.querySelectorAll('.ed-row-wrap').forEach(function(wrap){
+      var track = wrap.querySelector('.ed-row-track');
+      var left  = wrap.querySelector('.ed-row-arrow.ed-row-left');
+      var right = wrap.querySelector('.ed-row-arrow.ed-row-right');
+      if(!track) return;
+      function update(){ _papUpdateArrows(track, left, right); }
+      track.addEventListener('scroll', update, {passive:true});
+      window.addEventListener('resize', update);
+      var mo = new MutationObserver(update);
+      try{ mo.observe(track, {childList:true, subtree:false}); }catch(_){}
+      requestAnimationFrame(function(){ requestAnimationFrame(update); });
+    });
+    // Film carousel — .nf-wrap with .nf-track inside
+    document.querySelectorAll('.nf-wrap').forEach(function(wrap){
+      var track = wrap.querySelector('.nf-track');
+      var left  = wrap.querySelector('.nf-nav-left');
+      var right = wrap.querySelector('.nf-nav-right');
+      if(!track) return;
+      function update(){ _papUpdateArrows(track, left, right); }
+      track.addEventListener('scroll', update, {passive:true});
+      window.addEventListener('resize', update);
+      var mo = new MutationObserver(update);
+      try{ mo.observe(track, {childList:true, subtree:false}); }catch(_){}
+      requestAnimationFrame(function(){ requestAnimationFrame(update); });
+    });
+  }
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
 
 // ======== EDITORIAL SEARCH (tag-based) ========
 // ======== EDITORIAL SEARCH (tag-based) ========

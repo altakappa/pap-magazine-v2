@@ -1307,3 +1307,16 @@ section.hero + .shorts-section{
 }
 .art-active-tag-clear:hover,
 .art-active-tag-clear:focus-visible{outline:none;opacity:1}
+
+/* ======== UNIFIED CAROUSEL ARROW STATE ========
+   Triggered by _papUpdateArrows in pap-app.js. .is-disabled means
+   "there's nothing further to scroll in this direction" — we hide the
+   arrow rather than greying it out so the user doesn't see a button
+   that does nothing. */
+.carousel-arrow.is-disabled,
+.ed-row-arrow.is-disabled,
+.nf-nav.is-disabled{
+  opacity: 0 !important;
+  visibility: hidden;
+  pointer-events: none;
+}
