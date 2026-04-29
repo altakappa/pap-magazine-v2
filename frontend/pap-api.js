@@ -245,7 +245,10 @@ const PAP = (function() {
               setToken(data.token);
               if (data.user) setUser(data.user);
               window.history.replaceState({}, document.title, window.location.pathname);
-              window.location.href = 'index.html';
+              // location.replace: the OAuth callback URL shouldn't sit in
+              // history — back from index should go to wherever the user
+              // started, not back through this auth roundtrip.
+              window.location.replace('index.html');
             }
           })
           .catch(() => {

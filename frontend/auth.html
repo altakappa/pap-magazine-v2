@@ -473,7 +473,7 @@ a{color:#fff;text-decoration:none}
   </div>
 </div>
 
-<script src="pap-api.js?v=2" defer></script>
+<script src="pap-api.js?v=3" defer></script>
 <script>
 // ======== STATE ========
 var currentStep = 1;
@@ -482,16 +482,51 @@ var isLoginView = false;
 var verificationToken = '';
 var verifiedToken = '';
 
+// ======== HISTORY / ROUTING ========
+// The auth flow is a single page with multiple panels (signup steps 1–4 and a
+// separate login view). Each panel transition pushes a history entry so that
+// the browser back button (or mobile swipe-back) returns to the previous
+// panel rather than exiting the page entirely.
+//
+// _navigating = true → we're restoring state from popstate or initial load,
+//                      so panel-change functions REPLACE the current entry
+//                      instead of pushing a new one. After init / popstate
+//                      restoration completes, it flips back to false so
+//                      user-driven transitions push fresh entries.
+var _navigating = true;
+
+function _authStateUrl(state){
+  var qs = '';
+  if (state && state.authView === 'login') qs = '?mode=login';
+  else if (state && state.authStep && state.authStep > 1) qs = '?step=' + state.authStep;
+  return window.location.pathname + qs;
+}
+function _syncAuthHistory(state){
+  try {
+    if (_navigating) {
+      window.history.replaceState(state, '', _authStateUrl(state));
+    } else {
+      var cur = window.history.state || {};
+      // Avoid duplicate consecutive entries
+      if (cur.authView === state.authView && cur.authStep === state.authStep) {
+        window.history.replaceState(state, '', _authStateUrl(state));
+      } else {
+        window.history.pushState(state, '', _authStateUrl(state));
+      }
+    }
+  } catch (e) { /* SecurityError on file:// etc — non-fatal */ }
+}
+
 // ======== NAVIGATION ========
 function goBack() {
-  if (isLoginView) {
-    // Stay on login view if there's a login error showing, otherwise go to main
-    window.location.href = (window.getRedirectUrl?window.getRedirectUrl():'index.html');
-    return;
-  } else if (currentStep > 1) {
-    showStep(currentStep - 1);
+  // Defer to the browser history stack — each panel transition has pushed
+  // its own entry, so history.back() restores the previous panel correctly.
+  // On the very first entry (initial signup step 1 / login view), back
+  // exits to the redirect target (index/mypage/etc).
+  if (window.history.length > 1 && (currentStep > 1 || isLoginView)) {
+    window.history.back();
   } else {
-    window.location.href = (window.getRedirectUrl?window.getRedirectUrl():'index.html');
+    window.location.href = (window.getRedirectUrl ? window.getRedirectUrl() : 'index.html');
   }
 }
 
@@ -508,9 +543,13 @@ function showStep(n) {
     else if (i + 1 < n) d.classList.add('done');
   });
 
-  // Show/hide step indicator
+  // Show/hide step indicator + clear other panels
   document.getElementById('stepIndicator').style.display = 'flex';
+  var lp = document.getElementById('loginPanel'); if (lp) lp.classList.remove('active');
+  var ss = document.getElementById('stepSuccess'); if (ss) { ss.classList.remove('active'); ss.style.display = 'none'; }
   isLoginView = false;
+
+  _syncAuthHistory({ authView: 'signup', authStep: n });
 }
 
 function _updateHeaderLogin(){
@@ -533,11 +572,13 @@ function showLogin() {
   document.getElementById('stepSuccess').classList.remove('active');
   document.getElementById('stepSuccess').style.display = 'none';
   _updateHeaderLogin();
+  _syncAuthHistory({ authView: 'login' });
 }
 
 function showSignup() {
   isLoginView = false;
   document.getElementById('loginPanel').classList.remove('active');
+  // showStep(1) handles its own history sync — produces a single entry
   showStep(1);
   _updateHeaderLogin();
 }
@@ -548,7 +589,27 @@ function showSuccess() {
   document.getElementById('stepIndicator').style.display = 'none';
   document.getElementById('stepSuccess').style.display = 'block';
   document.getElementById('stepSuccess').classList.add('active');
+  // Don't push a history entry for the success screen — after redirecting to
+  // mypage, the user clicking back should NOT land back on this panel.
 }
+
+// ======== POPSTATE: restore the correct panel on browser back/forward ========
+window.addEventListener('popstate', function(e){
+  var state = e.state || {};
+  _navigating = true;  // panel functions will replaceState instead of push
+  try {
+    if (state.authView === 'login') {
+      showLogin();
+    } else if (state.authView === 'signup' && typeof state.authStep === 'number') {
+      showStep(state.authStep);
+    } else {
+      // No state (e.g. user navigated forward beyond our entries) — restore step 1
+      showStep(1);
+    }
+  } finally {
+    setTimeout(function(){ _navigating = false; }, 0);
+  }
+});
 
 // ======== STEP ACTIONS ========
 async function goToStep2() {
@@ -1386,7 +1447,9 @@ function setLang(l) {
   if (!params.get('error') && !params.get('token') && !params.get('code') && !window.location.hash) {
     var existingToken = localStorage.getItem('pap-token');
     if (existingToken && !params.get('redirect')) {
-      window.location.href = 'mypage.html';
+      // location.replace so the previous page (whatever sent the user here)
+      // remains directly accessible via back, instead of bouncing through auth.
+      window.location.replace('mypage.html');
       return;
     }
   }
@@ -1408,8 +1471,20 @@ function setLang(l) {
   setLang(saved);
 
   // Mode & redirect setup (lightweight, no DOM-heavy ops)
-  if (params.get('mode') === 'login') showLogin();
-  if (params.get('mode') === 'signup') showSignup();
+  // _navigating is true at script start, so these initial calls REPLACE
+  // the first history entry with the correct state instead of pushing.
+  if (params.get('mode') === 'login') {
+    showLogin();
+  } else if (params.get('mode') === 'signup') {
+    showSignup();
+  } else {
+    // Default entry: signup step 1 — seed the initial entry's state so
+    // popstate has data to restore against later.
+    _syncAuthHistory({ authView: 'signup', authStep: 1 });
+  }
+  // After initial mode resolution, switch to push mode for user transitions.
+  // Use a microtask so any sync follow-up still sees _navigating=true.
+  Promise.resolve().then(function(){ _navigating = false; });
   var _authRedirect = params.get('redirect');
   var _authReturn = params.get('return'); // full URL (can include hash)
   function _consumeReturnCookie(){
@@ -1478,7 +1553,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }));
           }
           window.history.replaceState({}, document.title, window.location.pathname);
-          window.location.href = (window.getRedirectUrl ? window.getRedirectUrl() : 'mypage.html');
+          window.location.replace(window.getRedirectUrl ? window.getRedirectUrl() : 'mypage.html');
         } else {
           if (typeof PAP !== 'undefined') { PAP.ui.toast('Login failed: ' + (data.message || 'Unknown error'), 'error'); }
           else { alert('Login failed: ' + (data.message || 'Unknown error')); }
@@ -1511,7 +1586,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }));
         deleteCookie('pap-pkce-verifier');
         window.history.replaceState({}, document.title, window.location.pathname);
-        window.location.href = (window.getRedirectUrl ? window.getRedirectUrl() : 'mypage.html');
+        window.location.replace(window.getRedirectUrl ? window.getRedirectUrl() : 'mypage.html');
         return true;
       } else {
         if (typeof PAP !== 'undefined') { PAP.ui.toast('Login failed: ' + (data.detail || data.message || 'Unknown error'), 'error'); }
@@ -1574,7 +1649,7 @@ document.addEventListener('DOMContentLoaded', function() {
       } catch(e) {}
     }
     window.history.replaceState({}, document.title, window.location.pathname);
-    window.location.href = (window.getRedirectUrl ? window.getRedirectUrl() : 'mypage.html');
+    window.location.replace(window.getRedirectUrl ? window.getRedirectUrl() : 'mypage.html');
   } else if (oauthError) {
     // Map error codes from /api/auth/callback to user-friendly Korean messages.
     // The `detail` query param (when present) carries the underlying provider/Supabase
