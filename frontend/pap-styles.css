@@ -1132,3 +1132,89 @@ section.hero + .shorts-section{
   .pap-pagination .pag-jump .pag-jump-dots{font-size:12px;}
   .pap-pagination .pag-jump .pag-jump-arrow{font-size:16px;}
 }
+
+/* ======== IMAGE LIGHTBOX (pap-lightbox.js) ========
+   Full-screen image viewer for editorial/article galleries.
+   Locked to z-index above all other overlays (10500). */
+.pap-lightbox{
+  position:fixed;inset:0;z-index:10500;
+  background:rgba(0,0,0,.95);
+  -webkit-backdrop-filter:blur(8px);
+  backdrop-filter:blur(8px);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;visibility:hidden;
+  transition:opacity .28s ease,visibility .28s ease;
+}
+.pap-lightbox.is-open{opacity:1;visibility:visible}
+.pap-lb-close{
+  position:fixed;top:24px;left:24px;z-index:2;
+  width:44px;height:44px;
+  background:rgba(0,0,0,.4);
+  border:1px solid rgba(255,255,255,.15);
+  border-radius:50%;
+  color:#fff;font-size:22px;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  opacity:.85;transition:opacity .2s,background .2s,transform .2s;
+}
+.pap-lb-close:hover,.pap-lb-close:focus-visible{
+  opacity:1;background:rgba(255,255,255,.12);transform:scale(1.05);outline:none;
+}
+.pap-lb-prev,.pap-lb-next{
+  position:fixed;top:50%;transform:translateY(-50%);z-index:2;
+  width:56px;height:56px;
+  background:rgba(0,0,0,.4);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:50%;
+  color:#fff;font-size:32px;line-height:1;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  opacity:.7;transition:opacity .2s,background .2s;
+  font-family:inherit;
+}
+.pap-lb-prev{left:24px}
+.pap-lb-next{right:24px}
+.pap-lb-prev:hover,.pap-lb-next:hover,
+.pap-lb-prev:focus-visible,.pap-lb-next:focus-visible{
+  opacity:1;background:rgba(255,255,255,.12);outline:none;
+}
+.pap-lb-stage{
+  width:100%;height:100%;
+  display:flex;align-items:center;justify-content:center;
+  padding:80px 80px;
+  /* allow native pinch-zoom on mobile */
+  touch-action:pinch-zoom;
+}
+.pap-lb-img{
+  max-width:100%;max-height:100%;
+  width:auto;height:auto;
+  object-fit:contain;
+  user-select:none;
+  -webkit-user-drag:none;
+  -webkit-touch-callout:none;
+  /* The stage already takes pinch-zoom gestures; the image inherits.
+     Keep cursor as default (not zoom-in) since we're already in viewer. */
+  cursor:default;
+}
+.pap-lb-counter{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:2;
+  color:rgba(255,255,255,.55);
+  font-family:'Montserrat',var(--sans);
+  font-size:12px;letter-spacing:.15em;
+  padding:6px 14px;
+  background:rgba(0,0,0,.4);border-radius:20px;
+  pointer-events:none;
+}
+@media(max-width:768px){
+  .pap-lb-close{top:16px;left:16px;width:40px;height:40px;font-size:20px}
+  .pap-lb-prev,.pap-lb-next{width:44px;height:44px;font-size:26px}
+  .pap-lb-prev{left:8px}
+  .pap-lb-next{right:8px}
+  .pap-lb-stage{padding:60px 56px}
+  .pap-lb-counter{bottom:16px;font-size:11px}
+}
+@media(max-width:480px){
+  .pap-lb-close{top:10px;left:10px;width:36px;height:36px;font-size:18px}
+  .pap-lb-prev,.pap-lb-next{width:36px;height:36px;font-size:22px}
+  .pap-lb-prev{left:4px}
+  .pap-lb-next{right:4px}
+  .pap-lb-stage{padding:50px 44px}
+}
