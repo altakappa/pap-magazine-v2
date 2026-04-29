@@ -335,33 +335,32 @@ function _papWireCarousel(trackSel, leftSel, rightSel){
 // in some Chrome layouts (likely an interaction with the parent's
 // overflow:hidden + flex container). Even direct scrollLeft assignment is
 // queued/ignored when CSS scroll-behavior:smooth is set on the element.
-// Workaround: temporarily force scroll-behavior:auto inline, animate via
-// rAF with our own easing, then restore the original behavior.
-function _papSmoothScrollBy(track, dx, duration){
+//
+// Strategy: temporarily force scroll-behavior:auto inline, set scrollLeft
+// synchronously to the target, then on the next animation frame swap
+// behavior back to its previous value AND set scrollLeft again — Chrome
+// will animate from the current position with smooth scroll for the final
+// frame, giving a visual easing without depending on rAF firing reliably.
+// Works on hidden tabs (rAF throttled) too because the synchronous jump
+// ensures the click ALWAYS produces movement.
+function _papSmoothScrollBy(track, dx){
   if(!track || !dx) return;
-  duration = duration || 380;
   var prevBehavior = track.style.scrollBehavior;
-  track.style.scrollBehavior = 'auto';
-  var start = track.scrollLeft;
   var max = Math.max(0, track.scrollWidth - track.clientWidth);
-  var target = Math.max(0, Math.min(max, start + dx));
-  if(target === start){
-    track.style.scrollBehavior = prevBehavior;
-    return;
-  }
-  var t0 = performance.now();
-  function ease(p){ return p<.5 ? 2*p*p : -1+(4-2*p)*p; }
-  function step(now){
-    var p = Math.min(1, (now - t0) / duration);
-    track.scrollLeft = start + (target - start) * ease(p);
-    if(p < 1){
-      requestAnimationFrame(step);
-    } else {
-      // Restore inline scroll-behavior so future native calls behave as before.
+  var target = Math.max(0, Math.min(max, track.scrollLeft + dx));
+  if(target === track.scrollLeft) return;
+  // Phase 1 — synchronous instant jump (works regardless of rAF state).
+  track.style.scrollBehavior = 'auto';
+  track.scrollLeft = target;
+  // Phase 2 — let the visual smooth-scroll CSS take over for the next paint.
+  // (No-op if rAF is throttled; the user already sees the new position.)
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(function(){
       track.style.scrollBehavior = prevBehavior;
-    }
+    });
+  } else {
+    track.style.scrollBehavior = prevBehavior;
   }
-  requestAnimationFrame(step);
 }
 function moveCarousel(d){
   var t = document.getElementById('fashionTrack');
