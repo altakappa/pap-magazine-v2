@@ -204,15 +204,13 @@ button{cursor:pointer;font-family:inherit}
 .shorts-section{
   padding: var(--space-section) 0;
   background: #000;
+  /* Default: every content section carries a subtle top divider so the
+     rhythm doesn't depend on direct sibling adjacency (popups or other
+     overlay divs sometimes get inserted between sections by JS). */
+  border-top: 1px solid rgba(255,255,255,0.05);
 }
 .editorial-section{color:#fff}
 .film-section{color:#fff}
-section + .fashion-section,
-section + .editorial-section,
-section + .film-section,
-section + .shorts-section{
-  border-top: 1px solid rgba(255,255,255,0.05);
-}
 /* Hero sits above the first content section without a divider line —
    the gradient at the bottom of hero already creates the visual break. */
 section.hero + .fashion-section,
