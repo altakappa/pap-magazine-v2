@@ -156,10 +156,28 @@ a{color:#fff;text-decoration:none}
     </div>
   </div>
 
-  <!-- RECENT SUBMISSIONS -->
+  <!-- ── QA #83: New mypage IA — 4 content sections ── -->
+
+  <!-- 1. 내가 참여한 작품 (My Contributions) -->
+  <div class="mp-section" id="mpContributionsSection">
+    <div class="mp-section-title" data-i18n="sectionContributions">내가 참여한 작품</div>
+    <div id="mpContributionsList">
+      <div class="mp-empty" data-i18n="contribComing">곧 출시 — 크레딧에 등록된 인스타그램 핸들과 매칭하여 본인이 참여한 에디토리얼이 표시됩니다</div>
+    </div>
+  </div>
+
+  <!-- 2. 내가 업로드한 작품 (My Submissions) -->
   <div class="mp-section">
-    <div class="mp-section-title" data-i18n="sectionRecent">최근 서브미션</div>
+    <div class="mp-section-title" data-i18n="sectionUploads">내가 업로드한 작품</div>
     <div id="mpRecentSubs">
+      <div class="mp-empty" data-i18n="loading">불러오는 중...</div>
+    </div>
+  </div>
+
+  <!-- 3. 다운로드 가능 파일 (Downloadable Files) -->
+  <div class="mp-section" id="downloads">
+    <div class="mp-section-title" data-i18n="sectionDownloads">다운로드 가능 파일</div>
+    <div id="mpDownloadsList">
       <div class="mp-empty" data-i18n="loading">불러오는 중...</div>
     </div>
   </div>
@@ -214,11 +232,26 @@ a{color:#fff;text-decoration:none}
 
 <script src="pap-api.js?v=3" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+<script src="pap-logos-data.js?v=1" defer></script>
+<style>
+.mp-dl-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 14px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02);margin-bottom:6px;transition:all .2s}
+.mp-dl-item:hover{border-color:rgba(255,255,255,.18);background:rgba(255,255,255,.04)}
+.mp-dl-title{font-size:12px;font-weight:600;letter-spacing:.02em;color:rgba(255,255,255,.85);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mp-dl-btn{display:inline-block;padding:5px 12px;border:1px solid rgba(255,255,255,.18);font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#fff;text-decoration:none;flex-shrink:0;transition:all .2s}
+.mp-dl-btn:hover{background:rgba(255,255,255,.06);border-color:#fff}
+.mp-locked-card{border:1px solid rgba(255,212,59,.25);background:linear-gradient(135deg,rgba(255,212,59,.06) 0%,rgba(255,212,59,.01) 100%);padding:16px 18px;text-align:center}
+.mp-locked-card-msg{font-size:11px;color:rgba(255,212,59,.85);letter-spacing:.04em;margin-bottom:10px}
+.mp-locked-cta{display:inline-block;padding:7px 14px;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;border:1px solid rgba(255,212,59,.5);color:#ffd43b;text-decoration:none;transition:all .2s}
+.mp-locked-cta:hover{background:rgba(255,212,59,.12);color:#fff}
+.mp-dl-list{max-height:340px;overflow-y:auto}
+.mp-dl-list::-webkit-scrollbar{width:4px}
+.mp-dl-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12)}
+</style>
 <script>
 // ───── i18n ─────
 var LANG = {
-  ko:{ sectionAccount:'계정 정보', labelRole:'역할', sectionPlan:'구독', sectionActivity:'활동', sectionRecent:'최근 서브미션', sectionMenu:'메뉴', statSubs:'서브미션', statComments:'댓글', statRatings:'별점', menuSubmission:'작품 제출', menuPullletter:'Pull-Letter', menuCommunity:'커뮤니티', menuSubscribe:'구독 관리', menuAdmin:'관리자 페이지', menuLogout:'로그아웃', roleAdmin:'관리자', roleMember:'회원', roleContributor:'기여자', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'무료 회원', upgradeTitleStd:'Standard로 업그레이드', upgradeTitlePrm:'Premium으로 업그레이드', perkAdsFree:'광고 없는 깔끔한 경험', perkArchive100:'최근 100개 에디토리얼 열람', perkArchiveFull:'전체 아카이브 + 86 이슈 무제한', perkFeedback:'서브미션 거절 사유 피드백', perkLogo:'로고 파일 다운로드', perkPullletter:'Pull-Letter 요청', cta:'구독하기', manage:'구독 관리', loading:'불러오는 중...', emptySubs:'아직 제출한 작품이 없어요', viewAll:'전체 보기 →', statusPending:'심사중', statusApproved:'승인', statusRevision:'보완 요청', statusRejected:'거절', loginRequired:'로그인이 필요합니다' },
-  en:{ sectionAccount:'Account', labelRole:'Role', sectionPlan:'Subscription', sectionActivity:'Activity', sectionRecent:'Recent Submissions', sectionMenu:'Menu', statSubs:'Submissions', statComments:'Comments', statRatings:'Ratings', menuSubmission:'Submit Work', menuPullletter:'Pull-Letter', menuCommunity:'Community', menuSubscribe:'Manage Subscription', menuAdmin:'Admin Panel', menuLogout:'Log Out', roleAdmin:'Admin', roleMember:'Member', roleContributor:'Contributor', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'Free Member', upgradeTitleStd:'Upgrade to Standard', upgradeTitlePrm:'Upgrade to Premium', perkAdsFree:'Ad-free experience', perkArchive100:'Latest 100 editorials access', perkArchiveFull:'Full archive · 86 issues unlimited', perkFeedback:'Submission rejection feedback', perkLogo:'Logo files download', perkPullletter:'Pull-Letter requests', cta:'Subscribe', manage:'Manage subscription', loading:'Loading...', emptySubs:'No submissions yet', viewAll:'View all →', statusPending:'Pending', statusApproved:'Approved', statusRevision:'Revision', statusRejected:'Rejected', loginRequired:'Please log in' },
+  ko:{ sectionAccount:'계정 정보', labelRole:'역할', sectionPlan:'구독', sectionActivity:'활동', sectionRecent:'최근 서브미션', sectionContributions:'내가 참여한 작품', sectionUploads:'내가 업로드한 작품', sectionDownloads:'다운로드 가능 파일', contribComing:'곧 출시 — 크레딧에 등록된 인스타그램 핸들과 매칭하여 본인이 참여한 에디토리얼이 표시됩니다', downloadsLocked:'프리미엄 구독 시 로고 / 배포용 파일을 다운로드할 수 있습니다', downloadsEmpty:'다운로드 가능한 파일이 없습니다', downloadOpen:'다운로드', sectionMenu:'메뉴', statSubs:'서브미션', statComments:'댓글', statRatings:'별점', menuSubmission:'작품 제출', menuPullletter:'Pull-Letter', menuCommunity:'커뮤니티', menuSubscribe:'구독 관리', menuAdmin:'관리자 페이지', menuLogout:'로그아웃', roleAdmin:'관리자', roleMember:'회원', roleContributor:'기여자', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'무료 회원', upgradeTitleStd:'Standard로 업그레이드', upgradeTitlePrm:'Premium으로 업그레이드', perkAdsFree:'광고 없는 깔끔한 경험', perkArchive100:'최근 100개 에디토리얼 열람', perkArchiveFull:'전체 아카이브 + 86 이슈 무제한', perkFeedback:'서브미션 거절 사유 피드백', perkLogo:'로고 파일 다운로드', perkPullletter:'Pull-Letter 요청', cta:'구독하기', manage:'구독 관리', loading:'불러오는 중...', emptySubs:'아직 제출한 작품이 없어요', viewAll:'전체 보기 →', statusPending:'심사중', statusApproved:'승인', statusRevision:'보완 요청', statusRejected:'거절', loginRequired:'로그인이 필요합니다' },
+  en:{ sectionAccount:'Account', labelRole:'Role', sectionPlan:'Subscription', sectionActivity:'Activity', sectionRecent:'Recent Submissions', sectionContributions:'My Contributions', sectionUploads:'My Submissions', sectionDownloads:'Downloadable Files', contribComing:'Coming soon — editorials where you appear in the credits will be listed here', downloadsLocked:'Premium subscription unlocks logo & distribution kit downloads', downloadsEmpty:'No downloadable files available', downloadOpen:'Download', sectionMenu:'Menu', statSubs:'Submissions', statComments:'Comments', statRatings:'Ratings', menuSubmission:'Submit Work', menuPullletter:'Pull-Letter', menuCommunity:'Community', menuSubscribe:'Manage Subscription', menuAdmin:'Admin Panel', menuLogout:'Log Out', roleAdmin:'Admin', roleMember:'Member', roleContributor:'Contributor', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'Free Member', upgradeTitleStd:'Upgrade to Standard', upgradeTitlePrm:'Upgrade to Premium', perkAdsFree:'Ad-free experience', perkArchive100:'Latest 100 editorials access', perkArchiveFull:'Full archive · 86 issues unlimited', perkFeedback:'Submission rejection feedback', perkLogo:'Logo files download', perkPullletter:'Pull-Letter requests', cta:'Subscribe', manage:'Manage subscription', loading:'Loading...', emptySubs:'No submissions yet', viewAll:'View all →', statusPending:'Pending', statusApproved:'Approved', statusRevision:'Revision', statusRejected:'Rejected', loginRequired:'Please log in' },
   it:{ sectionAccount:'Account', labelRole:'Ruolo', sectionPlan:'Abbonamento', sectionActivity:'Attività', sectionRecent:'Submission recenti', sectionMenu:'Menu', statSubs:'Submission', statComments:'Commenti', statRatings:'Valutazioni', menuSubmission:'Invia Lavori', menuPullletter:'Pull-Letter', menuCommunity:'Community', menuSubscribe:'Gestisci Abbonamento', menuAdmin:'Pannello Admin', menuLogout:'Esci', roleAdmin:'Admin', roleMember:'Membro', roleContributor:'Collaboratore', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'Membro gratuito', upgradeTitleStd:'Passa a Standard', upgradeTitlePrm:'Passa a Premium', perkAdsFree:'Esperienza senza pubblicità', perkArchive100:'Ultimi 100 editoriali', perkArchiveFull:'Archivio completo · 86 numeri illimitati', perkFeedback:'Feedback sulle submission rifiutate', perkLogo:'Download file logo', perkPullletter:'Richieste Pull-Letter', cta:'Abbonati', manage:'Gestisci abbonamento', loading:'Caricamento...', emptySubs:'Nessuna submission', viewAll:'Vedi tutto →', statusPending:'In esame', statusApproved:'Approvata', statusRevision:'Da revisionare', statusRejected:'Rifiutata', loginRequired:'Effettua il login' },
   fr:{ sectionAccount:'Compte', labelRole:'Rôle', sectionPlan:'Abonnement', sectionActivity:'Activité', sectionRecent:'Soumissions récentes', sectionMenu:'Menu', statSubs:'Soumissions', statComments:'Commentaires', statRatings:'Notes', menuSubmission:'Soumettre', menuPullletter:'Pull-Letter', menuCommunity:'Communauté', menuSubscribe:"Gérer l'abonnement", menuAdmin:'Admin', menuLogout:'Déconnexion', roleAdmin:'Admin', roleMember:'Membre', roleContributor:'Contributeur', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'Membre gratuit', upgradeTitleStd:'Passer à Standard', upgradeTitlePrm:'Passer à Premium', perkAdsFree:'Expérience sans publicité', perkArchive100:"Accès aux 100 derniers éditoriaux", perkArchiveFull:'Archive complète · 86 numéros illimités', perkFeedback:'Retour sur les soumissions refusées', perkLogo:'Téléchargement des fichiers logo', perkPullletter:'Demandes Pull-Letter', cta:"S'abonner", manage:"Gérer l'abonnement", loading:'Chargement...', emptySubs:'Aucune soumission', viewAll:'Tout voir →', statusPending:'En attente', statusApproved:'Approuvée', statusRevision:'Révision', statusRejected:'Refusée', loginRequired:'Veuillez vous connecter' },
   es:{ sectionAccount:'Cuenta', labelRole:'Rol', sectionPlan:'Suscripción', sectionActivity:'Actividad', sectionRecent:'Envíos recientes', sectionMenu:'Menú', statSubs:'Envíos', statComments:'Comentarios', statRatings:'Valoraciones', menuSubmission:'Enviar Trabajo', menuPullletter:'Pull-Letter', menuCommunity:'Comunidad', menuSubscribe:'Gestionar Suscripción', menuAdmin:'Admin', menuLogout:'Cerrar Sesión', roleAdmin:'Admin', roleMember:'Miembro', roleContributor:'Colaborador', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'Miembro gratuito', upgradeTitleStd:'Pasar a Standard', upgradeTitlePrm:'Pasar a Premium', perkAdsFree:'Experiencia sin anuncios', perkArchive100:'Últimos 100 editoriales', perkArchiveFull:'Archivo completo · 86 números ilimitados', perkFeedback:'Comentarios sobre envíos rechazados', perkLogo:'Descarga de archivos de logo', perkPullletter:'Solicitudes Pull-Letter', cta:'Suscríbete', manage:'Gestionar suscripción', loading:'Cargando...', emptySubs:'Sin envíos', viewAll:'Ver todo →', statusPending:'En revisión', statusApproved:'Aprobado', statusRevision:'Revisión', statusRejected:'Rechazado', loginRequired:'Inicia sesión' },
@@ -244,6 +277,7 @@ function setLang(l) {
   if (_user) {
     renderSubscriptionCard(_user);
     loadRecentSubmissions();
+    renderDownloads(_user);
   }
 }
 
@@ -406,6 +440,51 @@ function loadRecentSubmissions(){
     });
 }
 
+// ───── Downloadable files (QA #83) ─────
+// Logo / distribution kits live on Google Drive — Drive's own permission
+// model is the authoritative gate. This list mirrors the access policy
+// on the client: premium / admin users see the full list of editorials
+// that have a distribution folder; everyone else sees an upgrade CTA.
+//
+// Future: filter by user.contributorOf so only editorials the user
+// actually participated in are surfaced. The UI is already structured
+// for that — the data source just needs to switch from PAP_LOGO_FOLDERS
+// to a /api/users/me/contributions endpoint.
+function renderDownloads(user){
+  var box = document.getElementById('mpDownloadsList');
+  if (!box) return;
+  var role = (user && user.role) || 'member';
+  var plan = (user && user.subscription) || 'free';
+  var canAccess = role === 'admin' || plan === 'premium' || plan === 'standard';
+  if (!canAccess) {
+    box.innerHTML = '<div class="mp-locked-card">' +
+      '<div class="mp-locked-card-msg">' + _t.downloadsLocked + '</div>' +
+      '<a class="mp-locked-cta" href="subscribe.html">' + _t.upgradeTitleStd + ' →</a>' +
+    '</div>';
+    return;
+  }
+  var folders = (typeof window !== 'undefined' && window.PAP_LOGO_FOLDERS) || {};
+  var titles = Object.keys(folders).sort(function(a,b){
+    return a.toLowerCase().localeCompare(b.toLowerCase());
+  });
+  if (!titles.length) {
+    box.innerHTML = '<div class="mp-empty">' + _t.downloadsEmpty + '</div>';
+    return;
+  }
+  var html = '<div class="mp-dl-list">';
+  titles.forEach(function(t){
+    var fid = folders[t];
+    var safe = t.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    html += '<div class="mp-dl-item">' +
+      '<div class="mp-dl-title">' + safe + '</div>' +
+      '<a class="mp-dl-btn" href="https://drive.google.com/drive/folders/' + encodeURIComponent(fid) +
+        '" target="_blank" rel="noopener">' + _t.downloadOpen + '</a>' +
+    '</div>';
+  });
+  html += '</div>';
+  box.innerHTML = html;
+}
+
 // ───── Profile loader ─────
 function loadProfile(){
   var userStr = localStorage.getItem('pap-user');
@@ -437,6 +516,7 @@ function loadProfile(){
     renderSubscriptionCard(_user);
     loadActivityStats(_user);
     loadRecentSubmissions();
+    renderDownloads(_user);
   } catch(e) {
     window.location.href = (window.papLoginUrl ? window.papLoginUrl('auth.html?mode=login') : 'auth.html?mode=login');
   }

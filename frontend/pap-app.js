@@ -648,7 +648,11 @@ function searchEditorials(query){
 
 // ======== EDITORIAL DETAIL DATA ========
 var edDetails={};
-var edLogoFolders={
+// Editorial logo distribution folder map. Single source of truth lives in
+// pap-logos-data.js (window.PAP_LOGO_FOLDERS) so mypage and pap-app.js
+// stay in sync. The inline fallback below is kept for safety in case the
+// data script fails to load — both should have the same content.
+var edLogoFolders = (typeof window !== 'undefined' && window.PAP_LOGO_FOLDERS) ? window.PAP_LOGO_FOLDERS : {
 '2Much':'1vc8OQ6k1Kf4-_u7B6DRZMsnc8dBbrQO8',
 'A Mertale':'10r1p_jWraQExWqVyx_SVPYc60sjq0fz6',
 'A knights Tale':'13CH4Bmw65dVcR5wtDewzT-2owfQmzliD',
@@ -1092,7 +1096,12 @@ function _openEditorialInner(title,thumb){
   // Fashion by — removed (shown as hover credits on images)
   cr.innerHTML=ch;
 
-  // Premium logo download section — links to per-editorial Google Drive "editorial for distribution" folder
+  // ─── QA #83 — Logo / distribution files moved to mypage ───
+  // Per the IA redesign, downloadable assets are no longer surfaced on
+  // the public editorial detail page. We keep the slot but render only a
+  // CTA pointing to mypage > 다운로드 가능 파일. The actual access check
+  // and file list live on mypage; here we just show / hide the CTA based
+  // on whether this editorial has any distribution kit at all.
   var logoSection=document.getElementById('edLogoDownload');
   if(!logoSection){
     logoSection=document.createElement('div');
@@ -1101,8 +1110,19 @@ function _openEditorialInner(title,thumb){
     cr.parentNode.insertBefore(logoSection,cr.nextSibling);
   }
   var logoFolderId=getLogoFolderId(title);
-  if(isPremium() && logoFolderId){
-    logoSection.innerHTML='<div style="display:flex;align-items:center;gap:12px;"><span style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999;">LOGO FILES</span><a href="https://drive.google.com/drive/folders/'+logoFolderId+'" target="_blank" rel="noopener" style="display:inline-block;padding:6px 16px;border:1px solid #555;color:#fff;font-size:9px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .3s;" onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">DOWNLOAD</a></div>';
+  if(logoFolderId){
+    logoSection.innerHTML=''
+      +'<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">'
+        +'<div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999;">'
+          +'DISTRIBUTION KIT'
+          +'<div style="font-size:9px;font-weight:500;letter-spacing:.04em;color:#666;margin-top:4px;text-transform:none;">'
+            +'참여 크리에이터에게 제공되는 로고·배포용 파일 — 마이페이지에서 다운로드하세요'
+          +'</div>'
+        +'</div>'
+        +'<a href="/mypage.html#downloads" style="display:inline-block;padding:6px 16px;border:1px solid #555;color:#fff;font-size:9px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .3s;" onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">'
+          +'마이페이지로 이동 →'
+        +'</a>'
+      +'</div>';
     logoSection.style.display='';
   } else {
     logoSection.style.display='none';
