@@ -5,8 +5,17 @@
   --sans: 'Inter', -apple-system, sans-serif;
   /* Layout spacing guide */
   --pad-x: 48px;          /* default side padding */
-  --pad-section: 48px;    /* vertical section gap */
   --pad-x-safe: var(--pad-x); /* safe-area-aware side padding */
+
+  /* ======== SPACING SCALE ========
+     Hierarchical scale used throughout the site so visual rhythm stays
+     consistent across every section. Values double in influence at each
+     level: card → row → block → section. */
+  --space-card:    8px;   /* gap between cards in a row */
+  --space-row:    24px;   /* gap between rows in the same section */
+  --space-block:  48px;   /* gap between content blocks within a section */
+  --space-section: 96px;  /* gap above + below every top-level section */
+  --pad-section:  var(--space-section); /* legacy alias kept for compat */
 }
 /* Hide search overlay from document flow */
 .search-overlay{display:none}
@@ -182,7 +191,38 @@ button{cursor:pointer;font-family:inherit}
 .hero-watermark span{font-family:var(--serif);font-size:11px;color:rgba(255,255,255,.5);font-weight:700;letter-spacing:.05em}
 
 /* FASHION CAROUSEL */
-.fashion-section{padding:var(--pad-section) 0 20px;background:#000}
+/* ======== TOP-LEVEL SECTIONS — unified rhythm ========
+   Every major content section uses symmetric vertical padding from the
+   spacing scale, so the visual gap between any two consecutive sections
+   is consistent regardless of which section types sit next to each other.
+   A near-invisible top border on every section after the first creates a
+   subtle rhythmic divider that helps the eye parse the layout into
+   distinct content blocks (per QA report — "섹션 간 명확한 구분"). */
+.fashion-section,
+.editorial-section,
+.film-section,
+.shorts-section{
+  padding: var(--space-section) 0;
+  background: #000;
+}
+.editorial-section{color:#fff}
+.film-section{color:#fff}
+section + .fashion-section,
+section + .editorial-section,
+section + .film-section,
+section + .shorts-section{
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+/* Hero sits above the first content section without a divider line —
+   the gradient at the bottom of hero already creates the visual break. */
+section.hero + .fashion-section,
+section.hero + .editorial-section,
+section.hero + .film-section,
+section.hero + .shorts-section{
+  border-top: none;
+}
+
+.fashion-section{padding:var(--space-section) 0;background:#000}
 .fashion-heading{font-size:15px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;text-align:left;margin-bottom:12px;color:#e5e5e5;padding:0 var(--pad-x)}
 .fashion-section h2{font-size:11px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;text-align:center;margin-bottom:32px;color:var(--gray-500)}
 .carousel-wrap{position:relative;overflow:hidden;padding:0}
@@ -214,7 +254,7 @@ button{cursor:pointer;font-family:inherit}
 .film-video .play-btn::after{content:'';border-left:16px solid rgba(255,255,255,.8);border-top:9px solid transparent;border-bottom:9px solid transparent;margin-left:4px}
 
 /* EDITORIAL SECTION */
-.editorial-section{padding:var(--pad-section) 0 20px;background:#000;color:#fff}
+/* .editorial-section base styles handled by the unified rules above */
 /* EDITORIAL ROWS */
 .ed-row{margin-bottom:32px}
 .ed-row-label{font-family:'Montserrat',var(--sans);font-size:15px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:#e5e5e5;padding:0 48px;margin-bottom:12px}
@@ -280,7 +320,7 @@ button{cursor:pointer;font-family:inherit}
 
 
 /* FILM */
-.film-section{background:#000;color:#fff;padding:var(--pad-section) 0 20px}
+/* .film-section base styles handled by the unified rules above */
 .nf-top{padding:0 24px;margin-bottom:12px}
 .nf-top h2{font-family:'Montserrat',var(--sans);font-size:13px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:#e5e5e5}
 .nf-wrap{position:relative}
@@ -316,7 +356,8 @@ button{cursor:pointer;font-family:inherit}
 .nf-popup-title{font-family:'Montserrat',var(--sans);font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#fff;line-height:1.4}
 
 /* YOUTUBE SHORTS ROW */
-.shorts-section{padding:var(--pad-section) 0;background:#000;overflow:hidden;position:relative}
+.shorts-section{overflow:hidden;position:relative}
+/* .shorts-section base padding/background handled by unified rules above */
 .shorts-title{text-align:center;font-size:11px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:32px}
 .shorts-carousel{position:relative;display:flex;align-items:center;justify-content:center;height:520px;perspective:1000px}
 .shorts-track{display:flex;align-items:center;justify-content:center;gap:0;transition:transform .5s cubic-bezier(.25,.46,.45,.94);position:relative;width:100%}
@@ -641,7 +682,7 @@ button{cursor:pointer;font-family:inherit}
 
 /* --- 768px: Small tablet / Large phone landscape --- */
 @media(max-width:768px){
-  :root{--pad-x:20px;--pad-section:36px}
+  :root{--pad-x:20px;--space-section:72px;--space-block:36px;--space-row:20px;--pad-section:72px}
   .nav-extra-links{display:none}
   .nav-bottom-row{display:none}
   .header{padding:0 16px;height:60px}
@@ -736,7 +777,7 @@ button{cursor:pointer;font-family:inherit}
 
 /* --- 480px: Large phones (iPhone Plus/Max 428px, Galaxy A 384px) --- */
 @media(max-width:480px){
-  :root{--pad-x:16px;--pad-section:28px}
+  :root{--pad-x:16px;--space-section:56px;--space-block:32px;--space-row:18px;--pad-section:56px}
   .header{padding:0 12px;height:56px}
   .hero{margin-top:56px;height:60vh}
   .hero-content{left:16px;bottom:24px}
@@ -820,7 +861,7 @@ button{cursor:pointer;font-family:inherit}
 
 /* --- 390px: iPhone 12/13/14 (390px), Galaxy S21-S24 (360-384px) --- */
 @media(max-width:390px){
-  :root{--pad-x:12px;--pad-section:24px}
+  :root{--pad-x:12px;--space-section:44px;--space-block:28px;--space-row:16px;--pad-section:44px}
   .header{padding:0 10px;height:54px}
   .header-left{gap:2px}
   .header-left-item svg{width:16px;height:16px}
@@ -897,7 +938,7 @@ button{cursor:pointer;font-family:inherit}
 
 /* --- 320px: Galaxy Z Fold (folded 280px), very small screens --- */
 @media(max-width:320px){
-  :root{--pad-x:8px;--pad-section:20px}
+  :root{--pad-x:8px;--space-section:36px;--space-block:24px;--space-row:14px;--pad-section:36px}
   .header{height:48px;padding:0 8px}
   .hamburger span{width:20px}
   .hamburger span:nth-child(1){transform:translateY(-6px)}
