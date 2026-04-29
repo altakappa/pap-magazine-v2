@@ -597,6 +597,9 @@ setTimeout(function(){document.getElementById('hc').classList.add('vis')},200);
    Runs BEFORE the IntersectionObserver IIFE below so the fade-in observer
    attaches to the new quarter cards rather than the original month cards. */
 (function papRegroupByQuarter(){
+  /* Local month map — IIFE runs before the page-level MONTH_MAP is
+     declared, so we keep our own copy here to avoid an undefined ref. */
+  var MONTH_MAP_LOCAL = {january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
   var QUARTER_RANGE = {1:'Jan – Mar', 2:'Apr – Jun', 3:'Jul – Sep', 4:'Oct – Dec'};
   document.querySelectorAll('section.issues').forEach(function(section, sectionIdx){
     var grid = section.querySelector('.grid');
@@ -612,7 +615,7 @@ setTimeout(function(){document.getElementById('hc').classList.add('vis')},200);
       var monthText = titleEl.textContent.trim();
       var m = monthText.match(/^(\w+)\s+(\d{4})$/);
       if(!m) return null;
-      var monthIdx = MONTH_MAP[m[1].toLowerCase()];
+      var monthIdx = MONTH_MAP_LOCAL[m[1].toLowerCase()];
       if(!monthIdx) return null;
       var year = parseInt(m[2], 10);
       var quarter = Math.ceil(monthIdx / 3);
