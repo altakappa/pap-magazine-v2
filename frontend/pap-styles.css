@@ -1255,3 +1255,55 @@ section.hero + .shorts-section{
 .ed-all-overlay .ed-all-header .ed-all-close{
   display:none;
 }
+
+/* ======== ARTICLE HASHTAG CHIPS ======== */
+.art-tag-chip{
+  display:inline-block;
+  padding:5px 12px;
+  margin:3px 5px 3px 0;
+  background:rgba(255,255,255,.08);
+  color:#aaa;
+  font-size:10px;
+  font-weight:500;
+  letter-spacing:.05em;
+  border-radius:14px;
+  text-decoration:none;
+  transition:background .2s ease, color .2s ease, transform .2s ease;
+  cursor:pointer;
+}
+.art-tag-chip:hover,
+.art-tag-chip:focus-visible{
+  background:rgba(255,255,255,.18);
+  color:#fff;
+  transform:translateY(-1px);
+  outline:none;
+}
+
+/* Active-tag chip — shown at the top of articles.html when ?tag= is set */
+.art-active-tag{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 16px;
+  background:#fff;
+  color:#000;
+  font-family:'Montserrat',var(--sans);
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.08em;
+  border-radius:20px;
+  margin-bottom:16px;
+}
+.art-active-tag-clear{
+  background:none;
+  border:none;
+  color:#000;
+  cursor:pointer;
+  font-size:18px;
+  line-height:1;
+  padding:0 0 0 4px;
+  opacity:.5;
+  transition:opacity .2s;
+}
+.art-active-tag-clear:hover,
+.art-active-tag-clear:focus-visible{outline:none;opacity:1}

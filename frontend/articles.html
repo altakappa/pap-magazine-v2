@@ -29,7 +29,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="pap-styles.css?v=11">
+<link rel="stylesheet" href="pap-styles.css?v=12">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-height:100vh; padding-top:72px; }
@@ -193,7 +193,7 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
 <link rel="stylesheet" href="pap-social.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 <script src="pap-social.js?v=2" defer></script>
-<script src="pap-app.js?v=11" defer></script>
+<script src="pap-app.js?v=12" defer></script>
 <script src="pap-lightbox.js?v=1" defer></script>
 <script src="pap-reveal.js?v=4" defer></script><script src="pap-header.js?v=9" defer></script>
 <script>
@@ -248,6 +248,38 @@ document.addEventListener('DOMContentLoaded', function() {
 
   var catList = Object.keys(cats).sort();
   var activeFilter = 'ALL';
+  // Tag filter — when the user clicks a hashtag in an article-detail
+  // overlay, that detail page links here as /articles.html?tag=<value>.
+  // We read it on page load (and on URL changes via popstate) and treat
+  // it as an additional filter on top of the category filter buttons.
+  var activeTag = '';
+  try {
+    activeTag = (new URLSearchParams(window.location.search).get('tag') || '').trim();
+  } catch(_){}
+  function _renderActiveTagChip(){
+    var existing = document.getElementById('artActiveTag');
+    if(existing) existing.remove();
+    if(!activeTag) return;
+    var chip = document.createElement('div');
+    chip.id = 'artActiveTag';
+    chip.className = 'art-active-tag';
+    chip.innerHTML = '#' + activeTag +
+      ' <button class="art-active-tag-clear" type="button" aria-label="Clear tag filter">&times;</button>';
+    chip.querySelector('.art-active-tag-clear').onclick = function(){
+      activeTag = '';
+      try {
+        var url = window.location.pathname;
+        history.replaceState(null, '', url);
+      } catch(_){}
+      _renderActiveTagChip();
+      artCurrentPage = 1;
+      renderCards();
+    };
+    var fw = document.getElementById('filterWrap');
+    if(fw && fw.parentNode){
+      fw.parentNode.insertBefore(chip, fw);
+    }
+  }
 
   // Build filter buttons
   var filterWrap = document.getElementById('filterWrap');
@@ -301,12 +333,26 @@ document.addEventListener('DOMContentLoaded', function() {
   function renderCards() {
     var grid = document.getElementById('cardGrid');
     grid.innerHTML = '';
+    _renderActiveTagChip();
 
     var filtered = artData.filter(function(a) {
-      if (activeFilter === 'ALL') return true;
-      return (a.cat || '').split(',').some(function(c) {
-        return c.trim().toLowerCase() === activeFilter.toLowerCase();
-      });
+      // Category filter
+      if (activeFilter !== 'ALL') {
+        var catMatch = (a.cat || '').split(',').some(function(c) {
+          return c.trim().toLowerCase() === activeFilter.toLowerCase();
+        });
+        if(!catMatch) return false;
+      }
+      // Tag filter (additive — combines with category)
+      if (activeTag) {
+        var tags = Array.isArray(a.tags) ? a.tags
+          : (typeof a.tags === 'string' ? a.tags.split(',') : []);
+        var tagMatch = tags.some(function(t){
+          return String(t).trim().toLowerCase() === activeTag.toLowerCase();
+        });
+        if(!tagMatch) return false;
+      }
+      return true;
     });
 
     var totalPages = Math.ceil(filtered.length / ART_PER_PAGE);

@@ -1547,7 +1547,17 @@ function _renderArticleDetail(a,det){
   var tagsEl=document.getElementById('artDetailTags');
   if(a.tags){
     var tagArr=Array.isArray(a.tags)?a.tags:(typeof a.tags==='string'?a.tags.split(','):[]);
-    tagsEl.innerHTML=tagArr.map(function(t){return '<span style="display:inline-block;padding:3px 10px;background:rgba(255,255,255,.08);border-radius:12px;font-size:10px;color:#aaa;letter-spacing:.05em;margin:2px 4px 2px 0">#'+escapeHtml(typeof t==='string'?t.trim():String(t))+'</span>';}).join('');
+    // Each hashtag is now a clickable link → /articles.html?tag=<tag>.
+    // The articles list page reads the query param and filters its grid
+    // to only entries whose .tags include that value, with an active-tag
+    // chip rendered at the top so the user knows the filter is on and
+    // can clear it. Hover/active styling defined under .art-tag-chip.
+    tagsEl.innerHTML=tagArr.map(function(t){
+      var tag = (typeof t === 'string' ? t.trim() : String(t));
+      if(!tag) return '';
+      return '<a class="art-tag-chip" href="articles.html?tag=' +
+        encodeURIComponent(tag) + '">#' + escapeHtml(tag) + '</a>';
+    }).join('');
     tagsEl.style.display='';
   } else { tagsEl.style.display='none'; }
   var galEl=document.getElementById('artDetailGallery');
