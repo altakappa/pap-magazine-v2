@@ -424,8 +424,32 @@
     window.toggleNav = window._papToggleNav;
     window.closeNav = window._papCloseNav;
 
-    /* Toggle Search */
+    /* Toggle Search.
+       Prefer the legacy #searchBar (which has the full search-results
+       dropdown markup + input handler bound in pap-app.js's
+       searchEditorials). Fall back to the injected #papSearchOverlay
+       only when the page doesn't have the legacy element (e.g. minimal
+       pages like 404.html). This makes the header search button work
+       identically across home + sub pages — same overlay, same handlers,
+       same Enter / click behavior. */
     window._papToggleSearch = function () {
+      var legacyBar = document.getElementById('searchBar');
+      if (legacyBar) {
+        legacyBar.classList.toggle('active');
+        if (legacyBar.classList.contains('active')) {
+          setTimeout(function () {
+            var inp = document.getElementById('searchInput');
+            if (inp) inp.focus();
+          }, 300);
+        } else {
+          var dd = document.getElementById('searchDropdown');
+          if (dd) dd.classList.remove('active');
+          var inp = document.getElementById('searchInput');
+          if (inp) inp.value = '';
+        }
+        return;
+      }
+      // Fallback for pages without the full search component
       var o = document.getElementById('papSearchOverlay');
       if (!o) return;
       o.classList.toggle('active');
@@ -439,7 +463,12 @@
         unlockScroll();
       }
     };
-    window.toggleSearch = window._papToggleSearch;
+    /* Don't blindly overwrite window.toggleSearch — keep the legacy
+       pap-app.js implementation in place and only set our wrapper if
+       no other implementation has registered. */
+    if (typeof window.toggleSearch !== 'function') {
+      window.toggleSearch = window._papToggleSearch;
+    }
 
     /* Toggle Account dropdown */
     function _closeAcctH(e) {

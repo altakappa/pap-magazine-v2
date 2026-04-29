@@ -230,7 +230,24 @@ function _papLogout(){
 }
 _papUpdateAuthDropdown();
 
-var _si=document.getElementById('searchInput');if(_si)_si.addEventListener('input',function(){searchEditorials(this.value);});
+var _si=document.getElementById('searchInput');
+if(_si){
+  _si.addEventListener('input',function(){searchEditorials(this.value);});
+  // Enter key — open the first dropdown result (works on home + sub pages).
+  // Falls through to no-op when there are no results yet.
+  _si.addEventListener('keydown',function(e){
+    if(e.key==='Enter'){
+      e.preventDefault();
+      var first=document.querySelector('#searchDropdown .search-dropdown-item');
+      if(first){first.click();return;}
+      // No editorial match — try a global Google-style fallback: navigate to
+      // home with the query so the page can show "no results" or trigger a
+      // server-side search if implemented later.
+      var q=this.value.trim();
+      if(q) window.location.href='/?q=' + encodeURIComponent(q);
+    }
+  });
+}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'||e.key==='Backspace'){var isInput=e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.isContentEditable;if(e.key==='Backspace'&&isInput)return;var _sb=document.getElementById('searchBar');if(_sb)_sb.classList.remove('active');var _sdd=document.getElementById('searchDropdown');if(_sdd)_sdd.classList.remove('active');var _ssi=document.getElementById('searchInput');if(_ssi)_ssi.value='';var _ad=document.getElementById('accountDropdown');if(_ad)_ad.classList.remove('active');closeNav();var edOv=document.getElementById('edOverlay');if(edOv&&edOv.classList.contains('active')){closeEditorial();e.preventDefault();return;}closeAllEditorials();closeAllFilms();closeAllArticles();if(document.getElementById('filmDetailOverlay'))document.getElementById('filmDetailOverlay').classList.remove('active');if(document.getElementById('artDetailOverlay'))document.getElementById('artDetailOverlay').classList.remove('active');if(e.key==='Backspace')e.preventDefault();}});
 
 // ======== NAV ========
@@ -402,7 +419,20 @@ function searchEditorials(query){
         var e=scored[i].ed;
         var item=document.createElement('div');
         item.className='search-dropdown-item';
-        (function(ed){item.onclick=function(){toggleSearch();openEditorial(ed.title,ed.img);};})(e);
+        // Click handler — universal across home and sub pages.
+        // On home (where #edOverlay exists) open the overlay directly.
+        // On any other page, deep-link to /#editorial/Title so the home
+        // page's auto-open hash handler renders the overlay after landing.
+        (function(ed){
+          item.onclick=function(){
+            try{ toggleSearch(); }catch(_){}
+            if(typeof openEditorial==='function' && document.getElementById('edOverlay')){
+              openEditorial(ed.title, ed.img);
+            } else {
+              window.location.href = '/#editorial/' + encodeURIComponent(ed.title);
+            }
+          };
+        })(e);
         item.innerHTML='<img src="'+e.img+'" alt="'+e.title+'"><div class="search-dropdown-item-info"><div class="search-dropdown-item-cat">EDITORIAL · '+e.date+'</div><div class="search-dropdown-item-title">'+e.title+'</div></div>';
         ddGrid.appendChild(item);
       }
