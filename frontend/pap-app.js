@@ -352,8 +352,10 @@ function _papSmoothScrollBy(track, dx){
   // Phase 1 — synchronous instant jump (works regardless of rAF state).
   track.style.scrollBehavior = 'auto';
   track.scrollLeft = target;
-  // Phase 2 — let the visual smooth-scroll CSS take over for the next paint.
-  // (No-op if rAF is throttled; the user already sees the new position.)
+  // Phase 2 — synthetic scroll event so listeners (e.g. arrow state updater)
+  // run even when programmatic scroll didn't trigger a native scroll event.
+  try { track.dispatchEvent(new Event('scroll', {bubbles:false})); } catch(_){}
+  // Phase 3 — restore previous scroll-behavior on next frame (best-effort).
   if (typeof requestAnimationFrame === 'function') {
     requestAnimationFrame(function(){
       track.style.scrollBehavior = prevBehavior;
