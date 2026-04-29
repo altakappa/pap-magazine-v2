@@ -333,21 +333,33 @@ function _papWireCarousel(trackSel, leftSel, rightSel){
 //
 // IMPORTANT: scrollBy({behavior:'smooth'}) silently fails on these tracks
 // in some Chrome layouts (likely an interaction with the parent's
-// overflow:hidden + flex container). Use a manual rAF-driven smooth scroll
-// so the click ALWAYS moves the track regardless of the smooth-scroll quirk.
+// overflow:hidden + flex container). Even direct scrollLeft assignment is
+// queued/ignored when CSS scroll-behavior:smooth is set on the element.
+// Workaround: temporarily force scroll-behavior:auto inline, animate via
+// rAF with our own easing, then restore the original behavior.
 function _papSmoothScrollBy(track, dx, duration){
   if(!track || !dx) return;
   duration = duration || 380;
+  var prevBehavior = track.style.scrollBehavior;
+  track.style.scrollBehavior = 'auto';
   var start = track.scrollLeft;
   var max = Math.max(0, track.scrollWidth - track.clientWidth);
   var target = Math.max(0, Math.min(max, start + dx));
-  if(target === start) return;
+  if(target === start){
+    track.style.scrollBehavior = prevBehavior;
+    return;
+  }
   var t0 = performance.now();
   function ease(p){ return p<.5 ? 2*p*p : -1+(4-2*p)*p; }
   function step(now){
     var p = Math.min(1, (now - t0) / duration);
     track.scrollLeft = start + (target - start) * ease(p);
-    if(p < 1) requestAnimationFrame(step);
+    if(p < 1){
+      requestAnimationFrame(step);
+    } else {
+      // Restore inline scroll-behavior so future native calls behave as before.
+      track.style.scrollBehavior = prevBehavior;
+    }
   }
   requestAnimationFrame(step);
 }
