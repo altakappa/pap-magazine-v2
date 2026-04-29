@@ -16,6 +16,15 @@
   --space-block:  48px;   /* gap between content blocks within a section */
   --space-section: 96px;  /* gap above + below every top-level section */
   --pad-section:  var(--space-section); /* legacy alias kept for compat */
+
+  /* ======== CARD HOVER TOKENS ========
+     Shared transition timing for every list card (editorial, article,
+     fashion, film, shorts, creator). Card div never transforms — only
+     the inner image scales inside its overflow:hidden mask, so hover
+     never causes layout shift or overflow clipping. */
+  --card-hover-scale: 1.05;
+  --card-hover-duration: .5s;
+  --card-hover-easing: cubic-bezier(.4, 0, .2, 1);
 }
 /* Hide search overlay from document flow */
 .search-overlay{display:none}
@@ -228,8 +237,9 @@ section.hero + .shorts-section{
 .carousel-track::-webkit-scrollbar{display:none}
 .fashion-card{min-width:calc(27% - 12px);max-width:267px;flex-shrink:0}
 .fashion-card-img{width:100%;aspect-ratio:16/9;overflow:hidden;background:transparent}
-.fashion-card-img img{width:100%;height:100%;object-fit:cover;transition:transform .5s}
-.fashion-card:hover .fashion-card-img img{transform:scale(1.03)}
+.fashion-card-img img{width:100%;height:100%;object-fit:cover;transition:transform var(--card-hover-duration) var(--card-hover-easing)}
+.fashion-card:hover .fashion-card-img img,
+.fashion-card:focus-visible .fashion-card-img img{transform:scale(var(--card-hover-scale))}
 .fashion-card-info{padding:12px 0}
 .fashion-card-cat{font-size:10px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.5)}
 .fashion-card-title{font-size:15px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-top:4px;line-height:1.3;color:#fff}
@@ -264,14 +274,18 @@ section.hero + .shorts-section{
 .ed-row-right{right:0}
 .ed-row-track{display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;padding:0 48px;scroll-behavior:smooth;overscroll-behavior-x:contain;-ms-overflow-style:none;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .ed-row-track::-webkit-scrollbar{display:none}
-.ed-row-card{min-width:calc((100vw - 96px - 56px) / 7);max-width:calc((100vw - 96px - 56px) / 7);flex-shrink:0;cursor:pointer;transition:transform .3s;position:relative}
+.ed-row-card{min-width:calc((100vw - 96px - 56px) / 7);max-width:calc((100vw - 96px - 56px) / 7);flex-shrink:0;cursor:pointer;position:relative}
 @media(max-width:1200px){.ed-row-card{min-width:calc((100vw - 96px - 40px) / 5);max-width:calc((100vw - 96px - 40px) / 5)}}
 @media(max-width:768px){.ed-row-card{min-width:calc((100vw - 96px - 24px) / 3);max-width:calc((100vw - 96px - 24px) / 3)}}
 @media(max-width:480px){.ed-row-card{min-width:calc((100vw - 96px - 16px) / 2.3);max-width:calc((100vw - 96px - 16px) / 2.3)}}
-.ed-row-card:hover{transform:scale(1.05)}
+/* Unified card hover: card div stays fixed (no layout shift / overflow);
+   only the inner image scales inside the overflow:hidden mask. Same
+   easing + duration token (--card-hover-easing / --card-hover-duration)
+   shared across every card type so the interaction feels consistent. */
 .ed-row-card-img{width:100%;aspect-ratio:3/4;overflow:hidden;border-radius:4px;background:#1a1a1a}
-.ed-row-card-img img{width:100%;height:100%;object-fit:cover;transition:transform .4s}
-.ed-row-card:hover .ed-row-card-img img{transform:scale(1.05)}
+.ed-row-card-img img{width:100%;height:100%;object-fit:cover;transition:transform var(--card-hover-duration,.5s) var(--card-hover-easing,cubic-bezier(.4,0,.2,1))}
+.ed-row-card:hover .ed-row-card-img img,
+.ed-row-card:focus-visible .ed-row-card-img img{transform:scale(1.05)}
 .ed-row-card-info{padding:8px 0}
 .ed-row-card-cat{font-size:9px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.4)}
 .ed-row-card-title{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#fff;margin-top:2px;line-height:1.3}
@@ -579,10 +593,11 @@ section.hero + .shorts-section{
 
 /* FILM ALL GRID */
 .film-all-grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
-.film-all-card{cursor:pointer;transition:transform .2s,opacity .2s;border-radius:4px;overflow:hidden;background:#111}
-.film-all-card:hover{transform:scale(1.03);opacity:.9}
+.film-all-card{cursor:pointer;border-radius:4px;overflow:hidden;background:#111}
 .film-all-thumb{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;background:#222}
-.film-all-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.film-all-thumb img{width:100%;height:100%;object-fit:cover;display:block;transition:transform var(--card-hover-duration) var(--card-hover-easing)}
+.film-all-card:hover .film-all-thumb img,
+.film-all-card:focus-visible .film-all-thumb img{transform:scale(var(--card-hover-scale))}
 .film-play-icon{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:48px;height:48px;background:rgba(0,0,0,.6);border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s}
 .film-all-card:hover .film-play-icon{opacity:1}
 .film-all-info{padding:10px 12px}
@@ -598,10 +613,11 @@ section.hero + .shorts-section{
 
 /* ARTICLE ALL GRID */
 .art-all-grid{grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
-.art-all-card{cursor:pointer;transition:transform .2s,opacity .2s;border-radius:4px;overflow:hidden;background:#111}
-.art-all-card:hover{transform:scale(1.03);opacity:.9}
+.art-all-card{cursor:pointer;border-radius:4px;overflow:hidden;background:#111}
 .art-all-thumb{position:relative;width:100%;aspect-ratio:3/2;overflow:hidden;background:#222}
-.art-all-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.art-all-thumb img{width:100%;height:100%;object-fit:cover;display:block;transition:transform var(--card-hover-duration) var(--card-hover-easing)}
+.art-all-card:hover .art-all-thumb img,
+.art-all-card:focus-visible .art-all-thumb img{transform:scale(var(--card-hover-scale))}
 .art-all-info{padding:10px 12px}
 .art-all-cat{font-size:9px;color:#888;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
 .art-all-title{font-family:'Montserrat',sans-serif;font-size:13px;font-weight:700;color:#fff;letter-spacing:.04em;line-height:1.4}
