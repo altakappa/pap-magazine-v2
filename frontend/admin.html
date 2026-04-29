@@ -138,15 +138,26 @@ tr:hover td{background:rgba(0,0,0,.02)}
 .pe-upload-icon{font-size:28px;margin-bottom:8px}
 .pe-upload-text{font-size:12px;font-weight:600;color:var(--text2)}
 .pe-upload-hint{font-size:10px;color:var(--text3);margin-top:4px}
-.pe-upload img{max-width:200px;max-height:250px;object-fit:cover}
+.pe-upload img{max-width:200px;max-height:250px;object-fit:contain}
+
+/* Inline guideline panel — shown above the gallery upload area */
+.pe-gallery-guideline{font-size:11px;color:var(--text2);background:rgba(0,0,0,.03);border-left:2px solid rgba(0,0,0,.2);padding:8px 12px;margin-bottom:12px;line-height:1.5}
+.pe-gallery-guideline strong{color:var(--text);font-weight:700}
+.pe-gallery-guideline-row{display:flex;flex-wrap:wrap;gap:12px;margin-top:4px}
+.pe-gallery-guideline-row span{font-size:10px;color:var(--text3)}
 
 .pe-gallery{display:flex;flex-wrap:wrap;gap:8px}
-.pe-gallery-item{width:100px;height:125px;border:1px solid var(--border2);position:relative;overflow:hidden;cursor:grab}
-.pe-gallery-item img{width:100%;height:100%;object-fit:cover}
-.pe-gallery-item .pe-gallery-del{position:absolute;top:2px;right:2px;width:20px;height:20px;background:rgba(0,0,0,.6);color:#fff;border:none;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s}
+.pe-gallery-item{width:120px;height:150px;border:1px solid var(--border2);position:relative;overflow:hidden;cursor:grab;background:#f5f5f7;transition:transform .15s ease,opacity .15s ease,box-shadow .15s ease}
+/* contain so the admin sees the entire uploaded image without cropping */
+.pe-gallery-item img{width:100%;height:100%;object-fit:contain;background:#f5f5f7;pointer-events:none}
+.pe-gallery-item:active{cursor:grabbing}
+.pe-gallery-item.dragging{opacity:.4}
+.pe-gallery-item.drag-over{box-shadow:inset 0 0 0 2px #111}
+.pe-gallery-item .pe-gallery-del{position:absolute;top:2px;right:2px;width:20px;height:20px;background:rgba(0,0,0,.6);color:#fff;border:none;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;z-index:2}
 .pe-gallery-item:hover .pe-gallery-del{opacity:1}
-.pe-gallery-item .pe-gallery-num{position:absolute;bottom:2px;left:4px;font-size:9px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6)}
-.pe-gallery-add{width:100px;height:125px;border:2px dashed var(--border2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;color:var(--text3);font-weight:600;transition:all .2s;text-align:center;padding:8px}
+.pe-gallery-item .pe-gallery-num{position:absolute;bottom:2px;left:4px;font-size:9px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6);background:rgba(0,0,0,.4);padding:2px 5px;border-radius:2px;z-index:2}
+.pe-gallery-item .pe-gallery-grip{position:absolute;top:2px;left:2px;font-size:11px;color:#fff;background:rgba(0,0,0,.4);padding:2px 5px;border-radius:2px;letter-spacing:1px;line-height:1;z-index:2;pointer-events:none}
+.pe-gallery-add{width:120px;height:150px;border:2px dashed var(--border2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;color:var(--text3);font-weight:600;transition:all .2s;text-align:center;padding:8px}
 .pe-gallery-add:hover{border-color:rgba(0,0,0,.25);color:var(--text2)}
 
 .pe-credit-row,.pe-brand-row{display:flex;gap:8px;margin-bottom:8px;align-items:center}
@@ -391,12 +402,22 @@ tr:hover td{background:rgba(0,0,0,.02)}
         <!-- 화보 이미지 (여러 장) -->
         <div class="pe-section">
           <div class="pe-label">화보 이미지 <span class="pe-opt">여러 장 가능 · 드래그로 순서 변경</span></div>
+          <div class="pe-gallery-guideline">
+            <strong>업로드 가이드라인</strong>
+            <div class="pe-gallery-guideline-row">
+              <span>📐 <strong>비율</strong> 4:5 권장 (1080×1350px)</span>
+              <span>💾 <strong>용량</strong> 1장당 최대 500KB</span>
+              <span>🖼️ <strong>형식</strong> JPG · PNG · WebP</span>
+              <span>↕️ <strong>정렬</strong> 카드를 드래그하여 순서 변경</span>
+            </div>
+          </div>
           <div class="pe-gallery" id="galleryGrid">
             <div class="pe-gallery-add" onclick="document.getElementById('galleryInput').click()">
               <input type="file" id="galleryInput" accept="image/*" multiple style="display:none" onchange="addGallery(this)">
               <span>+ 이미지 추가</span>
             </div>
           </div>
+          <div id="galleryUploadFeedback" style="font-size:11px;color:var(--text3);margin-top:6px;min-height:14px"></div>
         </div>
 
         <!-- 에디토리얼 설명 -->
@@ -2110,23 +2131,108 @@ function previewThumb(input){
 var galleryCount=0;
 var galleryImages=[];
 
+// ── Editorial gallery upload constants (admin-side validation) ──────────────
+var GALLERY_MAX_BYTES = 500 * 1024;            // 500KB per image
+var GALLERY_RECOMMENDED_RATIO = 4/5;            // 0.8 — 4:5 portrait
+var GALLERY_RATIO_TOLERANCE = 0.08;             // ±0.08 from 0.8 → 0.72–0.88
+
+function _galleryFeedback(msg, kind){
+  var el=document.getElementById('galleryUploadFeedback');
+  if(!el) return;
+  el.textContent=msg||'';
+  el.style.color = (kind==='error') ? '#c62828'
+                : (kind==='warn')  ? '#b86b00'
+                : (kind==='ok')    ? '#2e7d32'
+                :                    'var(--text3)';
+}
+
+function _validateGalleryFile(file){
+  // Returns { ok: bool, blocked: bool, message: str }
+  if(!file) return {ok:false, blocked:true, message:'파일을 읽을 수 없습니다.'};
+  if(file.size > GALLERY_MAX_BYTES){
+    var kb = Math.round(file.size/1024);
+    return {ok:false, blocked:true,
+      message:'"'+file.name+'" 용량 '+kb+'KB — 1장당 최대 500KB를 초과해 업로드 차단됨. 압축하거나 해상도를 줄여주세요.'};
+  }
+  return {ok:true, blocked:false, message:''};
+}
+
+function _checkAspectRatio(src, callback){
+  // Async — check 4:5 ratio after image loads. Doesn't block upload, just warns.
+  var img = new Image();
+  img.onload = function(){
+    var r = img.naturalWidth / img.naturalHeight;
+    var dev = Math.abs(r - GALLERY_RECOMMENDED_RATIO);
+    callback({ratio: r, deviation: dev, isClose: dev <= GALLERY_RATIO_TOLERANCE});
+  };
+  img.onerror = function(){ callback({ratio: 0, deviation: 1, isClose: false}); };
+  img.src = src;
+}
+
 function addGallery(input){
   if(!input.files) return;
   var grid=document.getElementById('galleryGrid');
   var addBtn=grid.querySelector('.pe-gallery-add');
+  var blockedNames=[];
+  var ratioWarnings=[];
+  var queued=0;
+  var processed=0;
+
+  function maybeFinalize(){
+    if(processed < queued) return;
+    var msgs=[];
+    if(blockedNames.length){
+      msgs.push('차단됨: '+blockedNames.length+'장 (500KB 초과)');
+    }
+    if(ratioWarnings.length){
+      msgs.push('비율 권장 미달: '+ratioWarnings.length+'장 (4:5 권장)');
+    }
+    if(msgs.length){
+      _galleryFeedback(msgs.join(' · '), blockedNames.length ? 'error' : 'warn');
+    } else if(queued > 0){
+      _galleryFeedback('업로드 완료 — '+queued+'장 추가됨', 'ok');
+    }
+  }
+
   for(var i=0;i<input.files.length;i++){
-    galleryCount++;
     var file=input.files[i];
+    queued++;
+    var v=_validateGalleryFile(file);
+    if(!v.ok){
+      blockedNames.push(file.name);
+      _galleryFeedback(v.message, 'error');
+      processed++;
+      maybeFinalize();
+      continue;
+    }
+    galleryCount++;
     var reader=new FileReader();
     (function(num,f){
       reader.onload=function(e){
-        galleryImages.push({num:num,src:e.target.result,credits:'',file:f,isUrl:false});
+        var src=e.target.result;
+        galleryImages.push({num:num,src:src,credits:'',file:f,isUrl:false});
         var div=document.createElement('div');
         div.className='pe-gallery-item';
         div.setAttribute('data-img-num',num);
-        div.innerHTML='<img loading="lazy" src="'+e.target.result+'"><button class="pe-gallery-del" onclick="removeGalleryImg('+num+')">×</button><span class="pe-gallery-num">#'+num+'</span>';
+        div.setAttribute('draggable','true');
+        div.innerHTML='<span class="pe-gallery-grip">⋮⋮</span>'
+          +'<img loading="lazy" src="'+src+'">'
+          +'<button class="pe-gallery-del" onclick="removeGalleryImg('+num+')">×</button>'
+          +'<span class="pe-gallery-num">#'+num+'</span>';
         grid.insertBefore(div,addBtn);
+        _wireGalleryItemDrag(div);
         updateImgCredits();
+        // Async ratio check — non-blocking
+        _checkAspectRatio(src, function(info){
+          if(!info.isClose){
+            ratioWarnings.push(num);
+            // Subtle visual hint on the card
+            div.style.outline='2px solid rgba(184,107,0,.6)';
+            div.title='비율이 4:5 권장에서 벗어남 (현재 '+info.ratio.toFixed(2)+', 권장 0.80)';
+          }
+          processed++;
+          maybeFinalize();
+        });
       };
     })(galleryCount,file);
     reader.readAsDataURL(file);
@@ -2141,6 +2247,64 @@ function removeGalleryImg(num){
   // Remove from array
   galleryImages=galleryImages.filter(function(g){return g.num!==num;});
   updateImgCredits();
+}
+
+// ── Drag & drop reordering ────────────────────────────────────────────────
+// Native HTML5 drag — works with the existing data-img-num attribute. The
+// galleryImages array is re-sorted to match the visual DOM order on drop,
+// so submitForm() reads the correct sequence when persisting the post.
+var _gDragSrc=null;
+function _wireGalleryItemDrag(el){
+  el.addEventListener('dragstart', function(e){
+    _gDragSrc = el;
+    el.classList.add('dragging');
+    try { e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain', el.getAttribute('data-img-num')||''); } catch(_){}
+  });
+  el.addEventListener('dragend', function(){
+    el.classList.remove('dragging');
+    _gDragSrc=null;
+    document.querySelectorAll('.pe-gallery-item.drag-over').forEach(function(n){n.classList.remove('drag-over');});
+    _syncGalleryOrderFromDOM();
+  });
+  el.addEventListener('dragover', function(e){
+    if(!_gDragSrc || _gDragSrc===el) return;
+    e.preventDefault();
+    try { e.dataTransfer.dropEffect='move'; } catch(_){}
+    el.classList.add('drag-over');
+  });
+  el.addEventListener('dragleave', function(){
+    el.classList.remove('drag-over');
+  });
+  el.addEventListener('drop', function(e){
+    e.preventDefault();
+    el.classList.remove('drag-over');
+    if(!_gDragSrc || _gDragSrc===el) return;
+    var grid=document.getElementById('galleryGrid');
+    var addBtn=grid.querySelector('.pe-gallery-add');
+    // Decide whether to insert before or after target based on cursor position
+    var rect=el.getBoundingClientRect();
+    var insertAfter = (e.clientX - rect.left) > rect.width/2;
+    if(insertAfter && el.nextSibling && el.nextSibling!==addBtn){
+      grid.insertBefore(_gDragSrc, el.nextSibling);
+    } else if(insertAfter){
+      grid.insertBefore(_gDragSrc, addBtn);
+    } else {
+      grid.insertBefore(_gDragSrc, el);
+    }
+  });
+}
+function _syncGalleryOrderFromDOM(){
+  var items=document.querySelectorAll('#galleryGrid .pe-gallery-item');
+  var nextOrder=[];
+  items.forEach(function(node){
+    var n=parseInt(node.getAttribute('data-img-num'),10);
+    var match=galleryImages.find(function(g){return g.num===n;});
+    if(match) nextOrder.push(match);
+  });
+  if(nextOrder.length===galleryImages.length){
+    galleryImages=nextOrder;
+    updateImgCredits();
+  }
 }
 
 function updateImgCredits(){
@@ -2430,8 +2594,13 @@ function editEditorial(id){
         var div=document.createElement('div');
         div.className='pe-gallery-item';
         div.setAttribute('data-img-num',galleryCount);
-        div.innerHTML='<img loading="lazy" src="'+esc(url)+'"><button class="pe-gallery-del" onclick="removeGalleryImg('+galleryCount+')">×</button><span class="pe-gallery-num">#'+galleryCount+'</span>';
+        div.setAttribute('draggable','true');
+        div.innerHTML='<span class="pe-gallery-grip">⋮⋮</span>'
+          +'<img loading="lazy" src="'+esc(url)+'">'
+          +'<button class="pe-gallery-del" onclick="removeGalleryImg('+galleryCount+')">×</button>'
+          +'<span class="pe-gallery-num">#'+galleryCount+'</span>';
         grid.insertBefore(div,addBtn);
+        if(typeof _wireGalleryItemDrag === 'function') _wireGalleryItemDrag(div);
       }
     });
     updateImgCredits();
