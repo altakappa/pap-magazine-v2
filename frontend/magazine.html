@@ -355,7 +355,7 @@ footer a:hover{color:#fff}
     <div class="hero-label h-el">DIGITAL MAGAZINE ARCHIVE</div>
     <h1 class="hero-title h-el">THE COLLECTION</h1>
     <div class="hero-div h-el"></div>
-    <div class="hero-badge h-el">86 ISSUES · 2,114+ EDITORIALS</div>
+    <div class="hero-badge h-el" id="heroBadge">86 ISSUES · 2,114+ EDITORIALS</div>
   </div>
   <div class="scroll-hint"><span>SCROLL</span><div class="scroll-hint-line"></div></div>
 </section>
@@ -648,6 +648,33 @@ setTimeout(function(){document.getElementById('hc').classList.add('vis')},200);
   });
   allQuarters.forEach(function(g, i){ g.volNumber = i + 1; });
   var totalVolumes = allQuarters.length;
+
+  /* Compute hero-badge totals from the same data we just grouped.
+     ISSUES count uses the volume count (matches the per-section
+     "N ISSUES" headers which also count quarters now). EDITORIALS is
+     the actual sum across every month — auto-updates whenever a
+     month card is added to the static HTML. */
+  var totalEditorialsAll = 0;
+  allQuarters.forEach(function(g){
+    g.items.forEach(function(it){ totalEditorialsAll += it.count; });
+  });
+  var heroBadgeEl = document.getElementById('heroBadge');
+  if(heroBadgeEl){
+    // Round editorials down to nearest 10 with a "+" suffix so the
+    // number doesn't churn on every tiny addition (matches the
+    // previous "2,114+" bucketing convention).
+    var edBucket = Math.floor(totalEditorialsAll / 10) * 10;
+    heroBadgeEl.textContent =
+      totalVolumes + ' ISSUES · ' +
+      edBucket.toLocaleString('en-US') + '+ EDITORIALS';
+  }
+  // Also keep the subscribe-modal description text in sync
+  var modalDesc = document.getElementById('modalDesc');
+  if(modalDesc){
+    var edBucket2 = Math.floor(totalEditorialsAll / 10) * 10;
+    modalDesc.textContent = 'Subscribe to unlock this issue and the full PAP archive · ' +
+      totalVolumes + ' issues, ' + edBucket2.toLocaleString('en-US') + '+ editorials.';
+  }
 
   /* PASS 2: render each section, sorted newest → oldest within the
      section, using the global volume number assigned in pass 1. */
