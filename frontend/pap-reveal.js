@@ -32,19 +32,21 @@
   if(!document.getElementById(styleId)){
     var style = document.createElement('style');
     style.id = styleId;
+    /* Double-class selector (.pap-reveal.pap-reveal) bumps specificity
+       to 0,2,0 — higher than any single-class card rule already in the
+       site stylesheet, so our opacity/transform always wins regardless
+       of cascade order. */
     style.textContent =
-      '.pap-reveal{' +
+      '.pap-reveal.pap-reveal{' +
         'opacity:0;' +
         'transform:translateY(16px);' +
         'transition:opacity ' + DURATION + ' ' + EASING + ',transform ' + DURATION + ' ' + EASING + ';' +
         'transition-delay:var(--pap-reveal-delay,0s);' +
         'will-change:transform,opacity;' +
       '}' +
-      '.pap-reveal.is-in{opacity:1;transform:none;will-change:auto}' +
-      /* Drop will-change after the animation completes so the GPU layer
-         doesn't stay promoted forever. */
+      '.pap-reveal.pap-reveal.is-in{opacity:1;transform:none;will-change:auto}' +
       '@media (prefers-reduced-motion:reduce){' +
-        '.pap-reveal{opacity:1;transform:none;transition:none}' +
+        '.pap-reveal.pap-reveal{opacity:1;transform:none;transition:none}' +
       '}';
     document.head.appendChild(style);
   }
