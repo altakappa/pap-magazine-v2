@@ -2169,75 +2169,120 @@ function _checkAspectRatio(src, callback){
   img.src = src;
 }
 
+// QA #85 — Rewritten with clearer per-file state isolation. Each file
+// validates and reads INDEPENDENTLY: a single blocked file no longer
+// pollutes the success path of valid files in the same or subsequent
+// batches. Logic flow:
+//   1. Reset feedback area (clear stale messages from previous batches).
+//   2. Snapshot input.files into a local array, then clear input.value
+//      IMMEDIATELY so the user can re-select the same file later.
+//   3. For each file: validate size → if blocked, increment counter and
+//      continue; if valid, read async then insert into DOM.
+//   4. Summarize at the end of validation pass AND each async completion.
+function _summarizeGalleryBatch(added, blocked, ratioWarn){
+  var msgs=[];
+  if(added>0)       msgs.push(added+'장 추가됨');
+  if(blocked>0)     msgs.push(blocked+'장 차단됨 (500KB 초과)');
+  if(ratioWarn>0)   msgs.push(ratioWarn+'장 비율 권장 미달 (4:5)');
+  var kind = (blocked>0 && added===0) ? 'error'
+           : (added>0  && blocked===0 && ratioWarn===0) ? 'ok'
+           : (blocked>0 || ratioWarn>0) ? 'warn'
+           : 'info';
+  _galleryFeedback(msgs.join(' · '), kind);
+}
+
 function addGallery(input){
-  if(!input.files) return;
+  if(!input || !input.files || !input.files.length) return;
   var grid=document.getElementById('galleryGrid');
   var addBtn=grid.querySelector('.pe-gallery-add');
-  var blockedNames=[];
-  var ratioWarnings=[];
-  var queued=0;
-  var processed=0;
-
-  function maybeFinalize(){
-    if(processed < queued) return;
-    var msgs=[];
-    if(blockedNames.length){
-      msgs.push('차단됨: '+blockedNames.length+'장 (500KB 초과)');
-    }
-    if(ratioWarnings.length){
-      msgs.push('비율 권장 미달: '+ratioWarnings.length+'장 (4:5 권장)');
-    }
-    if(msgs.length){
-      _galleryFeedback(msgs.join(' · '), blockedNames.length ? 'error' : 'warn');
-    } else if(queued > 0){
-      _galleryFeedback('업로드 완료 — '+queued+'장 추가됨', 'ok');
-    }
+  if(!grid || !addBtn){
+    _galleryFeedback('갤러리 영역을 찾을 수 없습니다. 페이지를 새로고침해주세요.', 'error');
+    return;
   }
 
-  for(var i=0;i<input.files.length;i++){
-    var file=input.files[i];
-    queued++;
-    var v=_validateGalleryFile(file);
+  // Reset feedback so a stale error from a previous batch doesn't linger.
+  _galleryFeedback('', 'info');
+
+  // Snapshot files + clear input.value IMMEDIATELY so re-selecting the
+  // same file fires onchange again. (Browsers suppress onchange when the
+  // selected files list hasn't changed since the last assignment.)
+  var files = Array.prototype.slice.call(input.files);
+  input.value = '';
+
+  // Per-batch counters — independent of any other batch.
+  var added = 0;
+  var blocked = 0;
+  var ratioWarn = 0;
+
+  files.forEach(function(file){
+    // STEP 1 — synchronous validation (size only)
+    var v = _validateGalleryFile(file);
     if(!v.ok){
-      blockedNames.push(file.name);
-      _galleryFeedback(v.message, 'error');
-      processed++;
-      maybeFinalize();
-      continue;
+      blocked++;
+      _summarizeGalleryBatch(added, blocked, ratioWarn);
+      // Skip this file. We do NOT abort the loop — other files in the
+      // same batch may still be valid and must be uploaded normally.
+      return;
     }
-    galleryCount++;
-    var reader=new FileReader();
-    (function(num,f){
-      reader.onload=function(e){
-        var src=e.target.result;
-        galleryImages.push({num:num,src:src,credits:'',file:f,isUrl:false});
-        var div=document.createElement('div');
-        div.className='pe-gallery-item';
-        div.setAttribute('data-img-num',num);
-        div.setAttribute('draggable','true');
-        div.innerHTML='<span class="pe-gallery-grip">⋮⋮</span>'
-          +'<img loading="lazy" src="'+src+'">'
-          +'<button class="pe-gallery-del" onclick="removeGalleryImg('+num+')">×</button>'
-          +'<span class="pe-gallery-num">#'+num+'</span>';
-        grid.insertBefore(div,addBtn);
-        _wireGalleryItemDrag(div);
-        updateImgCredits();
-        // Async ratio check — non-blocking
-        _checkAspectRatio(src, function(info){
-          if(!info.isClose){
-            ratioWarnings.push(num);
-            // Subtle visual hint on the card
-            div.style.outline='2px solid rgba(184,107,0,.6)';
-            div.title='비율이 4:5 권장에서 벗어남 (현재 '+info.ratio.toFixed(2)+', 권장 0.80)';
-          }
-          processed++;
-          maybeFinalize();
-        });
-      };
-    })(galleryCount,file);
-    reader.readAsDataURL(file);
-  }
-  input.value='';
+
+    // STEP 2 — async file read. Closure here is naturally per-file
+    // (forEach gives a fresh function scope), no IIFE needed.
+    var num = ++galleryCount;
+    var reader = new FileReader();
+
+    reader.onerror = function(){
+      // Read failed — typically a corrupt file or revoked permission.
+      // Roll back the galleryCount we reserved.
+      galleryCount--;
+      blocked++;
+      _galleryFeedback('"'+file.name+'" 파일을 읽을 수 없습니다.', 'error');
+      _summarizeGalleryBatch(added, blocked, ratioWarn);
+    };
+
+    reader.onload = function(e){
+      var src = e.target.result;
+      // Add to the data array
+      galleryImages.push({num:num, src:src, credits:'', file:file, isUrl:false});
+      // Add to the DOM
+      var div = document.createElement('div');
+      div.className = 'pe-gallery-item';
+      div.setAttribute('data-img-num', num);
+      div.setAttribute('draggable', 'true');
+      div.innerHTML = '<span class="pe-gallery-grip">⋮⋮</span>'
+        + '<img loading="lazy" src="'+src+'">'
+        + '<button class="pe-gallery-del" onclick="removeGalleryImg('+num+')">×</button>'
+        + '<span class="pe-gallery-num">#'+num+'</span>';
+      grid.insertBefore(div, addBtn);
+      _wireGalleryItemDrag(div);
+      updateImgCredits();
+      added++;
+      _summarizeGalleryBatch(added, blocked, ratioWarn);
+
+      // STEP 3 — non-blocking aspect-ratio check. The image is ALREADY
+      // added; this purely surfaces a soft warning if the ratio strays
+      // from the 4:5 recommendation.
+      _checkAspectRatio(src, function(info){
+        if(!info || info.isClose) return;
+        ratioWarn++;
+        div.style.outline = '2px solid rgba(184,107,0,.6)';
+        div.title = '비율 권장 (4:5)에서 벗어남 — 현재 ' + info.ratio.toFixed(2);
+        _summarizeGalleryBatch(added, blocked, ratioWarn);
+      });
+    };
+
+    try {
+      reader.readAsDataURL(file);
+    } catch(err){
+      galleryCount--;
+      blocked++;
+      _galleryFeedback('"'+file.name+'" 파일 처리 중 오류: '+(err && err.message || err), 'error');
+      _summarizeGalleryBatch(added, blocked, ratioWarn);
+    }
+  });
+
+  // If every file in the batch was blocked synchronously, the loop has
+  // already summarized. Otherwise the async onload paths will summarize
+  // as their reads complete.
 }
 
 function removeGalleryImg(num){
