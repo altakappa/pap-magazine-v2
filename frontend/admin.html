@@ -406,7 +406,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
             <strong>업로드 가이드라인</strong>
             <div class="pe-gallery-guideline-row">
               <span>📐 <strong>비율</strong> 4:5 권장 (1080×1350px)</span>
-              <span>💾 <strong>용량</strong> 1장당 최대 500KB</span>
+              <span>💾 <strong>용량</strong> 1장당 최대 2MB</span>
               <span>🖼️ <strong>형식</strong> JPG · PNG · WebP</span>
               <span>↕️ <strong>정렬</strong> 카드를 드래그하여 순서 변경</span>
             </div>
@@ -2132,7 +2132,11 @@ var galleryCount=0;
 var galleryImages=[];
 
 // ── Editorial gallery upload constants (admin-side validation) ──────────────
-var GALLERY_MAX_BYTES = 500 * 1024;            // 500KB per image
+// QA #94 — bumped from 500KB to 2MB to match the editorial-quality budget
+// we settled on for submission look images (QA #90). 2MB lets a properly
+// exported 2000px JPEG at ~85% quality through; anything bigger is almost
+// certainly an unprocessed export and gets blocked with a clear message.
+var GALLERY_MAX_BYTES = 2 * 1024 * 1024;        // 2MB per image
 var GALLERY_RECOMMENDED_RATIO = 4/5;            // 0.8 — 4:5 portrait
 var GALLERY_RATIO_TOLERANCE = 0.08;             // ±0.08 from 0.8 → 0.72–0.88
 
@@ -2151,8 +2155,9 @@ function _validateGalleryFile(file){
   if(!file) return {ok:false, blocked:true, message:'파일을 읽을 수 없습니다.'};
   if(file.size > GALLERY_MAX_BYTES){
     var kb = Math.round(file.size/1024);
+    var mb = (file.size/1024/1024).toFixed(2);
     return {ok:false, blocked:true,
-      message:'"'+file.name+'" 용량 '+kb+'KB — 1장당 최대 500KB를 초과해 업로드 차단됨. 압축하거나 해상도를 줄여주세요.'};
+      message:'"'+file.name+'" 용량 '+mb+'MB — 1장당 최대 2MB를 초과해 업로드 차단됨. 압축하거나 해상도를 줄여주세요.'};
   }
   return {ok:true, blocked:false, message:''};
 }
@@ -2182,7 +2187,7 @@ function _checkAspectRatio(src, callback){
 function _summarizeGalleryBatch(added, blocked, ratioWarn){
   var msgs=[];
   if(added>0)       msgs.push(added+'장 추가됨');
-  if(blocked>0)     msgs.push(blocked+'장 차단됨 (500KB 초과)');
+  if(blocked>0)     msgs.push(blocked+'장 차단됨 (2MB 초과)');
   if(ratioWarn>0)   msgs.push(ratioWarn+'장 비율 권장 미달 (4:5)');
   var kind = (blocked>0 && added===0) ? 'error'
            : (added>0  && blocked===0 && ratioWarn===0) ? 'ok'
@@ -2248,8 +2253,13 @@ function addGallery(input){
       div.className = 'pe-gallery-item';
       div.setAttribute('data-img-num', num);
       div.setAttribute('draggable', 'true');
+      // QA #94 — explicit draggable="false" on the inner <img>. Without it
+      // some browsers (notably Safari) start a NATIVE image-drag for the
+      // file URL when the user grabs the picture, which beats our HTML5
+      // DnD reorder handler to it and the row never moves. CSS
+      // pointer-events:none isn't always enough on its own.
       div.innerHTML = '<span class="pe-gallery-grip">⋮⋮</span>'
-        + '<img loading="lazy" src="'+src+'">'
+        + '<img loading="lazy" draggable="false" src="'+src+'">'
         + '<button class="pe-gallery-del" onclick="removeGalleryImg('+num+')">×</button>'
         + '<span class="pe-gallery-num">#'+num+'</span>';
       grid.insertBefore(div, addBtn);
@@ -2710,8 +2720,11 @@ function editEditorial(id){
         div.className='pe-gallery-item';
         div.setAttribute('data-img-num',galleryCount);
         div.setAttribute('draggable','true');
+        // QA #94 — same draggable="false" defensive measure as in addGallery,
+        // applied to the edit-post path so existing images can also be
+        // re-ordered without the browser hijacking the drag for an image URL.
         div.innerHTML='<span class="pe-gallery-grip">⋮⋮</span>'
-          +'<img loading="lazy" src="'+esc(url)+'">'
+          +'<img loading="lazy" draggable="false" src="'+esc(url)+'">'
           +'<button class="pe-gallery-del" onclick="removeGalleryImg('+galleryCount+')">×</button>'
           +'<span class="pe-gallery-num">#'+galleryCount+'</span>';
         grid.insertBefore(div,addBtn);
