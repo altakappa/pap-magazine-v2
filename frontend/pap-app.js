@@ -330,6 +330,27 @@ function _papWireCarousel(trackSel, leftSel, rightSel){
 // translateX-based moveCarousel was fighting the .carousel-track's own
 // overflow-x:auto, leaving the right arrow visually outside the viewport
 // on some sizes. Switching to scrollBy is one mechanism, predictable.
+//
+// IMPORTANT: scrollBy({behavior:'smooth'}) silently fails on these tracks
+// in some Chrome layouts (likely an interaction with the parent's
+// overflow:hidden + flex container). Use a manual rAF-driven smooth scroll
+// so the click ALWAYS moves the track regardless of the smooth-scroll quirk.
+function _papSmoothScrollBy(track, dx, duration){
+  if(!track || !dx) return;
+  duration = duration || 380;
+  var start = track.scrollLeft;
+  var max = Math.max(0, track.scrollWidth - track.clientWidth);
+  var target = Math.max(0, Math.min(max, start + dx));
+  if(target === start) return;
+  var t0 = performance.now();
+  function ease(p){ return p<.5 ? 2*p*p : -1+(4-2*p)*p; }
+  function step(now){
+    var p = Math.min(1, (now - t0) / duration);
+    track.scrollLeft = start + (target - start) * ease(p);
+    if(p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
 function moveCarousel(d){
   var t = document.getElementById('fashionTrack');
   if(!t) return;
@@ -338,7 +359,7 @@ function moveCarousel(d){
   var step = (first ? first.offsetWidth + 24 : 320);
   // Reset legacy transform if any prior state set it.
   if(t.style.transform) t.style.transform = '';
-  t.scrollBy({left: d * step, behavior: 'smooth'});
+  _papSmoothScrollBy(t, d * step);
 }
 
 // ======== ED CAROUSEL ========
@@ -405,7 +426,7 @@ function closePage(id){
 // ======== EDITORIAL ROWS SCROLL ========
 function scrollEdRow(btn,dir){
   var track=btn.parentElement.querySelector('.ed-row-track');
-  if(track) track.scrollBy({left:dir*460,behavior:'smooth'});
+  if(track) _papSmoothScrollBy(track, dir*460);
 }
 
 // Initialize unified arrow-state for every home-page horizontal carousel.
@@ -1999,7 +2020,7 @@ function filmPageUrl(title){
 // ======== FILM — Netflix hover + scroll ========
 function scrollFilm(dir){
   var s=document.getElementById('filmScroll');
-  if(s) s.scrollBy({left:dir*420,behavior:'smooth'});
+  if(s) _papSmoothScrollBy(s, dir*420);
 }
 
 // Netflix popup interaction
