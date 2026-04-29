@@ -1852,7 +1852,15 @@ async function submitForm(){
   // is satisfied even if the user just edits text fields without re-uploading.
   Object.keys(existingLookUrls||{}).forEach(function(k){ totalLookImages += (existingLookUrls[k]||[]).length; });
 
-  if(totalImages<4){
+  // Sum look images + additional (new + kept) for the 4-image minimum.
+  // Bug fix: the previous version referenced `totalImages` which was an
+  // out-of-scope variable from updateCoverSelector(), throwing
+  // ReferenceError that silently aborted submitForm.
+  var totalAllImages = totalLookImages
+    + ((typeof files1 !== 'undefined' && files1) ? files1.length : 0)
+    + ((typeof existingAdditionalUrls !== 'undefined' && existingAdditionalUrls) ? existingAdditionalUrls.length : 0);
+
+  if(totalAllImages<4){
     if(typeof PAP!=='undefined') PAP.ui.toast(_t('toastMinImages'),'error');
     return;
   }
