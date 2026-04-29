@@ -1437,7 +1437,12 @@ function setLang(l) {
     var k = e.getAttribute('data-i18n-ph');
     if (d[k]) e.placeholder = d[k];
   });
-  document.getElementById('langSelect').value = l;
+  // langSelect was removed when the unified header migration absorbed the
+  // language switcher — the element no longer exists. Null-guard this so
+  // setLang never throws on initial sync calls (which would otherwise abort
+  // the rest of the auth IIFE before history/popstate setup runs).
+  var langSel = document.getElementById('langSelect');
+  if (langSel) langSel.value = l;
 }
 
 // === EARLY REDIRECT: run synchronously before anything else ===
