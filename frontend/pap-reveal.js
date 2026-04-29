@@ -26,7 +26,13 @@
   var EASING = 'cubic-bezier(0.22, 1, 0.36, 1)';
   var STAGGER_MS = 80;
   var STAGGER_CAP_MS = 600;
-  var THRESHOLD = 0.2;
+  /* threshold + rootMargin tuned to fire reliably for horizontally
+     scrolling card tracks (where strict viewport-intersection checks
+     can miss cards that are mostly visible vertically). 0.05 means
+     "any 5% pixel visible triggers"; rootMargin 100px expands the
+     observation zone slightly above and below the actual viewport. */
+  var THRESHOLD = 0.05;
+  var ROOT_MARGIN = '100px 0px 100px 0px';
 
   var reduceMotion = (typeof window.matchMedia === 'function')
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -41,7 +47,7 @@
         observer.unobserve(e.target);
       }
     }
-  }, {threshold: THRESHOLD, rootMargin: '0px 0px -8% 0px'}) : null;
+  }, {threshold: THRESHOLD, rootMargin: ROOT_MARGIN}) : null;
 
   /** Apply hidden state via inline style — wins over any stylesheet rule. */
   function _hide(el, delaySeconds){
