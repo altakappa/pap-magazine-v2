@@ -317,7 +317,12 @@ function _papWireCarousel(trackSel, leftSel, rightSel){
   var mo = new MutationObserver(update);
   try{ mo.observe(track, {childList:true, subtree:false}); }catch(_){}
   // Initial state — wait a frame for layout to settle.
-  requestAnimationFrame(function(){ requestAnimationFrame(update); });
+  // setTimeout guarantees layout has settled and observer/scroll listeners
+  // are attached before the first state computation. RAF chained twice was
+  // intermittently not firing in some Vercel CDN cold-start scenarios.
+  setTimeout(update, 0);
+  setTimeout(update, 200);
+  setTimeout(update, 1500);
 }
 
 // ======== FASHION CAROUSEL ========
@@ -422,7 +427,12 @@ function scrollEdRow(btn,dir){
         function update(){ _papUpdateArrows(fashionTrack, L, R); }
         fashionTrack.addEventListener('scroll', update, {passive:true});
         window.addEventListener('resize', update);
-        requestAnimationFrame(function(){ requestAnimationFrame(update); });
+        // setTimeout guarantees layout has settled and observer/scroll listeners
+  // are attached before the first state computation. RAF chained twice was
+  // intermittently not firing in some Vercel CDN cold-start scenarios.
+  setTimeout(update, 0);
+  setTimeout(update, 200);
+  setTimeout(update, 1500);
       }
     }
     // Editorial rows — multiple tracks, each wrapped in .ed-row-wrap
@@ -436,7 +446,12 @@ function scrollEdRow(btn,dir){
       window.addEventListener('resize', update);
       var mo = new MutationObserver(update);
       try{ mo.observe(track, {childList:true, subtree:false}); }catch(_){}
-      requestAnimationFrame(function(){ requestAnimationFrame(update); });
+      // setTimeout guarantees layout has settled and observer/scroll listeners
+  // are attached before the first state computation. RAF chained twice was
+  // intermittently not firing in some Vercel CDN cold-start scenarios.
+  setTimeout(update, 0);
+  setTimeout(update, 200);
+  setTimeout(update, 1500);
     });
     // Film carousel — .nf-wrap with .nf-track inside
     document.querySelectorAll('.nf-wrap').forEach(function(wrap){
@@ -449,7 +464,12 @@ function scrollEdRow(btn,dir){
       window.addEventListener('resize', update);
       var mo = new MutationObserver(update);
       try{ mo.observe(track, {childList:true, subtree:false}); }catch(_){}
-      requestAnimationFrame(function(){ requestAnimationFrame(update); });
+      // setTimeout guarantees layout has settled and observer/scroll listeners
+  // are attached before the first state computation. RAF chained twice was
+  // intermittently not firing in some Vercel CDN cold-start scenarios.
+  setTimeout(update, 0);
+  setTimeout(update, 200);
+  setTimeout(update, 1500);
     });
   }
   if(document.readyState === 'loading'){
