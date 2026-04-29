@@ -64,7 +64,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="pap-styles.css?v=14">
+<link rel="stylesheet" href="pap-styles.css?v=15">
 <link rel="stylesheet" href="pap-social.css">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
 <!-- Favicon & PWA -->
@@ -636,7 +636,7 @@
   </div>
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script><script src="pap-logos-data.js?v=1" defer></script><script src="pap-api.js?v=3" defer></script><script src="pap-social.js?v=2" defer></script><script src="pap-app.js?v=19" defer></script><script src="pap-lightbox.js?v=1" defer></script><script src="pap-reveal.js?v=4" defer></script><script src="pap-header.js?v=9" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script><script src="pap-logos-data.js?v=1" defer></script><script src="pap-api.js?v=3" defer></script><script src="pap-social.js?v=2" defer></script><script src="pap-app.js?v=20" defer></script><script src="pap-lightbox.js?v=1" defer></script><script src="pap-reveal.js?v=4" defer></script><script src="pap-header.js?v=9" defer></script>
 <script>
 // AI Recommendation Fallback: reads theme tags from DOM ed-row-card elements
 try{
@@ -759,10 +759,11 @@ try{
 </div>
 
 <!-- ALL EDITORIALS OVERLAY -->
+<!-- QA #84: X close removed — overlay is now perceived as a full page.
+     Navigation back is via browser history / hamburger / logo. -->
 <div class="ed-all-overlay" id="edAllOverlay">
   <div class="overlay-mini-header">
     <div class="overlay-mini-left">
-      <button class="overlay-mini-close" onclick="closeAllEditorials()" aria-label="Close">&times;</button>
       <button class="hamburger" onclick="closeAllEditorials();closeAllFilms();closeAllArticles();toggleNav();" aria-label="Menu"><span></span><span></span><span></span></button>
       <button class="search-btn header-left-item" onclick="closeAllEditorials();closeAllFilms();closeAllArticles();setTimeout(toggleSearch,0);" aria-label="Search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -794,7 +795,14 @@ try{
       <div class="ed-all-title" data-i18n="navEditorial">EDITORIAL</div>
       <div class="ed-all-count" id="edAllCount"></div>
     </div>
-    <button class="ed-all-close" onclick="closeAllEditorials()">&times;</button>
+  </div>
+  <!-- QA #84: Category filter row — All / Fashion / Beauty / Art / Music -->
+  <div class="ed-cat-filter" id="edCatFilter" role="tablist" aria-label="Editorial categories">
+    <button class="ed-cat-pill active" data-cat="all" role="tab" aria-selected="true" onclick="filterEditorialsByCategory('all')">ALL</button>
+    <button class="ed-cat-pill" data-cat="fashion" role="tab" aria-selected="false" onclick="filterEditorialsByCategory('fashion')">FASHION</button>
+    <button class="ed-cat-pill" data-cat="beauty" role="tab" aria-selected="false" onclick="filterEditorialsByCategory('beauty')">BEAUTY</button>
+    <button class="ed-cat-pill" data-cat="art" role="tab" aria-selected="false" onclick="filterEditorialsByCategory('art')">ART</button>
+    <button class="ed-cat-pill" data-cat="music" role="tab" aria-selected="false" onclick="filterEditorialsByCategory('music')">MUSIC</button>
   </div>
   <div class="ed-all-grid" id="edAllGrid"></div>
   <div id="edAllPagination"></div>

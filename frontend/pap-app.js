@@ -1346,6 +1346,16 @@ function _openAllEditorialsInner(){
   }
   var overlay=document.getElementById('edAllOverlay');
   if(!overlay) return;
+  // QA #84: always start at the ALL category on fresh entry so the user
+  // sees the full collection, not a stale filter from a previous visit.
+  edAllCurrentCategory = 'all';
+  edAllCurrentPage = 1;
+  var pills = document.querySelectorAll('#edCatFilter .ed-cat-pill');
+  pills.forEach(function(p){
+    var isAll = p.getAttribute('data-cat') === 'all';
+    p.classList.toggle('active', isAll);
+    p.setAttribute('aria-selected', isAll ? 'true' : 'false');
+  });
   _renderEdAllPage();
   edAllBuilt=true;
   overlay.classList.add('active');
@@ -1365,6 +1375,47 @@ function _openAllEditorialsInner(){
     history.pushState({allEditorials:true},'',window.location.pathname+_h);
   }
 }
+// QA #84: active category filter (default 'all'). Persisted in-memory only;
+// resets when the overlay is closed and reopened so users always start
+// at ALL on a fresh entry.
+var edAllCurrentCategory = 'all';
+
+function _edEditorialMatchesCategory(e, cat){
+  if(cat === 'all') return true;
+  var tags = Array.isArray(e.tags)
+    ? e.tags
+    : (typeof e.tags === 'string' ? e.tags.split(',') : []);
+  return tags.some(function(t){
+    return String(t).trim().toLowerCase() === cat;
+  });
+}
+
+function filterEditorialsByCategory(cat){
+  if(!cat) cat = 'all';
+  edAllCurrentCategory = cat;
+  edAllCurrentPage = 1;
+  // Update pill active state
+  var pills = document.querySelectorAll('#edCatFilter .ed-cat-pill');
+  pills.forEach(function(p){
+    var isActive = p.getAttribute('data-cat') === cat;
+    p.classList.toggle('active', isActive);
+    p.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  });
+  // Fade-out → re-render → fade-in transition
+  var grid = document.getElementById('edAllGrid');
+  if(grid){
+    grid.classList.add('is-fading');
+    setTimeout(function(){
+      _renderEdAllPage();
+      // Force reflow before removing the class so the transition replays
+      void grid.offsetWidth;
+      grid.classList.remove('is-fading');
+    }, 220);
+  } else {
+    _renderEdAllPage();
+  }
+}
+
 function _renderEdAllPage(){
   var grid=document.getElementById('edAllGrid');
   var count=document.getElementById('edAllCount');
@@ -1372,8 +1423,14 @@ function _renderEdAllPage(){
   grid.innerHTML='';
   var premium=isPremium();
   var standard=isStandardOrAbove()&&!premium;
-  var limit=premium?edData.length:100;
-  var availableData=edData.slice(0,limit);
+  // Apply category filter BEFORE plan-based slicing so the per-category
+  // numbers stay consistent (otherwise a filter could surface results
+  // that are gated for non-premium users).
+  var filtered = edData.filter(function(e){
+    return _edEditorialMatchesCategory(e, edAllCurrentCategory);
+  });
+  var limit=premium?filtered.length:100;
+  var availableData=filtered.slice(0,limit);
   var totalPages=Math.ceil(availableData.length/PAP_PER_PAGE);
   if(edAllCurrentPage>totalPages) edAllCurrentPage=totalPages||1;
   var startIdx=(edAllCurrentPage-1)*PAP_PER_PAGE;
@@ -1382,16 +1439,32 @@ function _renderEdAllPage(){
     var card=document.createElement('div');
     card.className='ed-row-card';
     card.onclick=function(){openEditorial(e.title,e.img);};
-    card.innerHTML='<div class="ed-row-card-img"><img src="'+e.img+'" alt="'+e.title+'" onerror="edImgError(this)"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">EDITORIAL & FASHION · '+e.date+'</div><div class="ed-row-card-title">'+e.title+'</div></div>';
+    var catLabel = (function(){
+      var tags = Array.isArray(e.tags) ? e.tags : (typeof e.tags === 'string' ? e.tags.split(',') : []);
+      var nice = tags.filter(function(t){
+        var s = String(t).trim().toLowerCase();
+        return s && s !== 'editorial';
+      }).map(function(t){
+        return String(t).trim().toUpperCase();
+      });
+      return (nice.length ? 'EDITORIAL & ' + nice[0] : 'EDITORIAL');
+    })();
+    card.innerHTML='<div class="ed-row-card-img"><img src="'+e.img+'" alt="'+e.title+'" onerror="edImgError(this)"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">'+catLabel+' · '+e.date+'</div><div class="ed-row-card-title">'+e.title+'</div></div>';
     grid.appendChild(card);
   });
-  if(standard&&edAllCurrentPage===totalPages&&edData.length>100){
+  if(!pageItems.length){
+    var empty=document.createElement('div');
+    empty.style.cssText='grid-column:1/-1;text-align:center;padding:60px 20px;color:#666;font-size:12px;letter-spacing:.1em';
+    empty.textContent = 'NO EDITORIALS IN THIS CATEGORY';
+    grid.appendChild(empty);
+  }
+  if(standard&&edAllCurrentPage===totalPages&&filtered.length>100){
     var upsell=document.createElement('div');
     upsell.style.cssText='grid-column:1/-1;text-align:center;padding:40px 20px;';
-    upsell.innerHTML='<p style="color:#999;font-size:12px;letter-spacing:.1em;margin-bottom:12px;">PREMIUM MEMBERS CAN ACCESS ALL '+edData.length+' EDITORIALS</p><a href="subscribe.html" style="display:inline-block;padding:10px 28px;background:#fff;color:#000;font-size:11px;font-weight:700;letter-spacing:.1em;text-decoration:none;">UPGRADE TO PREMIUM</a>';
+    upsell.innerHTML='<p style="color:#999;font-size:12px;letter-spacing:.1em;margin-bottom:12px;">PREMIUM MEMBERS CAN ACCESS ALL '+filtered.length+' EDITORIALS</p><a href="subscribe.html" style="display:inline-block;padding:10px 28px;background:#fff;color:#000;font-size:11px;font-weight:700;letter-spacing:.1em;text-decoration:none;">UPGRADE TO PREMIUM</a>';
     grid.appendChild(upsell);
   }
-  count.textContent=availableData.length+' EDITORIALS'+(premium?'':' (PREMIUM: '+edData.length+')');
+  count.textContent=availableData.length+' EDITORIALS'+(premium?'':' (PREMIUM: '+filtered.length+')');
   if(pagContainer){
     buildPagination(pagContainer,edAllCurrentPage,totalPages,function(page){
       edAllCurrentPage=page;
