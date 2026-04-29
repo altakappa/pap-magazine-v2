@@ -3166,14 +3166,23 @@ window.addEventListener('resize',function(){
 })();
 
 // ======== PAGINATION UTILITY ========
+// Unified pagination component used by index (editorials), articles, films,
+// and any other listing page. Ellipsis ('···') is rendered as a hover/focus-
+// interactive button that morphs into «/» on hover and jumps ±5 pages on click.
+// Mobile (no-hover) devices: a single tap on the '···' button reveals the arrow
+// briefly and fires the jump (the :active state plus the .is-revealed class give
+// users a visual hint that the element is interactive).
 var PAP_PER_PAGE=20;
+var PAP_PAGE_JUMP=5; // number of pages the ellipsis jump skips
 function buildPagination(container,currentPage,totalPages,onPageChange,isDark){
   container.innerHTML='';
   if(totalPages<=1) return;
   container.className='pap-pagination'+(isDark?' dark':'');
-  // helper
+
+  // Numbered / arrow button
   function btn(label,page,isActive,isDisabled,cls){
     var b=document.createElement('button');
+    b.type='button';
     b.textContent=label;
     if(isActive) b.className='active';
     if(isDisabled) b.disabled=true;
@@ -3182,39 +3191,71 @@ function buildPagination(container,currentPage,totalPages,onPageChange,isDark){
     container.appendChild(b);
     return b;
   }
-  function dots(){
-    var d=document.createElement('span');
-    d.className='pag-dots';
-    d.textContent='···';
-    container.appendChild(d);
+
+  // Hover-interactive ellipsis with directional ±5 jump.
+  // direction: -1 (prev block) → '···' morphs to '«', jumps to currentPage-5
+  // direction: +1 (next block) → '···' morphs to '»', jumps to currentPage+5
+  function jump(direction){
+    var target = direction<0
+      ? Math.max(1,currentPage-PAP_PAGE_JUMP)
+      : Math.min(totalPages,currentPage+PAP_PAGE_JUMP);
+    var b=document.createElement('button');
+    b.type='button';
+    b.className='pag-jump '+(direction<0?'pag-jump-prev':'pag-jump-next');
+    var label=(direction<0?'이전 ':'다음 ')+PAP_PAGE_JUMP+'페이지로 이동';
+    b.setAttribute('aria-label',label);
+    b.title=(direction<0?'-':'+')+PAP_PAGE_JUMP+' pages';
+    b.innerHTML='<span class="pag-jump-dots" aria-hidden="true">···</span>'+
+                '<span class="pag-jump-arrow" aria-hidden="true">'+(direction<0?'«':'»')+'</span>';
+    // Mobile / no-hover devices: first tap reveals the arrow (300ms hint),
+    // second tap (within 1.2s) fires the jump. On hover-capable devices the
+    // single click fires immediately because the arrow is already visible.
+    var canHover = (typeof window.matchMedia==='function'
+                    && window.matchMedia('(hover: hover)').matches);
+    if(canHover){
+      b.onclick=function(){onPageChange(target);};
+    } else {
+      var revealed=false, revealTimer=null;
+      b.onclick=function(){
+        if(revealed){
+          revealed=false;
+          if(revealTimer){clearTimeout(revealTimer);revealTimer=null;}
+          b.classList.remove('is-revealed');
+          onPageChange(target);
+          return;
+        }
+        revealed=true;
+        b.classList.add('is-revealed');
+        if(revealTimer)clearTimeout(revealTimer);
+        revealTimer=setTimeout(function(){
+          revealed=false;
+          b.classList.remove('is-revealed');
+        },1200);
+      };
+    }
+    container.appendChild(b);
+    return b;
   }
-  // prev
+
+  // prev arrow
   btn('‹',currentPage-1,false,currentPage===1);
+
   // page numbers
-  var pages=[];
   if(totalPages<=9){
-    for(var i=1;i<=totalPages;i++) pages.push(i);
+    for(var i=1;i<=totalPages;i++) btn(String(i),i,i===currentPage,false);
   } else {
-    // always first
-    pages.push(1);
-    if(currentPage>4) pages.push('«');
-    // window around current
+    btn('1',1,1===currentPage,false);
     var start=Math.max(2,currentPage-1);
     var end=Math.min(totalPages-1,currentPage+1);
     if(currentPage<=4){start=2;end=Math.min(5,totalPages-1);}
     if(currentPage>=totalPages-3){start=Math.max(2,totalPages-4);end=totalPages-1;}
-    if(start>2) pages.push('...');
-    for(var i=start;i<=end;i++) pages.push(i);
-    if(end<totalPages-1) pages.push('...');
-    // always last
-    pages.push(totalPages);
+    if(start>2) jump(-1);
+    for(var j=start;j<=end;j++) btn(String(j),j,j===currentPage,false);
+    if(end<totalPages-1) jump(+1);
+    btn(String(totalPages),totalPages,totalPages===currentPage,false);
   }
-  pages.forEach(function(p){
-    if(p==='...') dots();
-    else if(p==='«') btn('«',Math.max(1,currentPage-5),false,false);
-    else btn(String(p),p,p===currentPage,false);
-  });
-  // next
+
+  // next arrow
   btn('›',currentPage+1,false,currentPage===totalPages);
 }
 

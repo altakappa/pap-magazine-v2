@@ -539,7 +539,18 @@ button{cursor:pointer;font-family:inherit}
 .pap-pagination button.active:hover{background:#2b5ce6;}
 .pap-pagination button:disabled{opacity:.4;cursor:default;pointer-events:none;}
 .pap-pagination .pag-dots{width:40px;height:40px;display:flex;align-items:center;justify-content:center;color:#999;font-weight:700;letter-spacing:2px;font-size:14px;}
-@media(max-width:600px){.pap-pagination{gap:4px;padding:24px 16px 36px;}.pap-pagination button{width:34px;height:34px;font-size:11px;border-radius:8px;}.pap-pagination .pag-dots{width:28px;height:34px;}}
+.pap-pagination .pag-jump{position:relative;width:40px;height:40px;border:none;border-radius:10px;background:transparent;color:#999;cursor:pointer;padding:0;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;font-family:'Montserrat',sans-serif;font-weight:700;transition:background-color .25s cubic-bezier(.65,.05,.36,1),color .25s ease;}
+.pap-pagination .pag-jump .pag-jump-dots,.pap-pagination .pag-jump .pag-jump-arrow{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transition:opacity .28s cubic-bezier(.65,.05,.36,1),transform .28s cubic-bezier(.65,.05,.36,1);pointer-events:none;}
+.pap-pagination .pag-jump .pag-jump-dots{font-size:14px;letter-spacing:2px;opacity:1;transform:translateX(0);}
+.pap-pagination .pag-jump .pag-jump-arrow{font-size:18px;letter-spacing:0;opacity:0;}
+.pap-pagination .pag-jump.pag-jump-prev .pag-jump-arrow{transform:translateX(-8px);}
+.pap-pagination .pag-jump.pag-jump-next .pag-jump-arrow{transform:translateX(8px);}
+.pap-pagination .pag-jump:hover,.pap-pagination .pag-jump:focus-visible,.pap-pagination .pag-jump.is-revealed{background:#d0d0d6;color:#333;outline:none;}
+.pap-pagination .pag-jump:hover .pag-jump-dots,.pap-pagination .pag-jump:focus-visible .pag-jump-dots,.pap-pagination .pag-jump.is-revealed .pag-jump-dots{opacity:0;}
+.pap-pagination .pag-jump.pag-jump-prev:hover .pag-jump-dots,.pap-pagination .pag-jump.pag-jump-prev:focus-visible .pag-jump-dots,.pap-pagination .pag-jump.pag-jump-prev.is-revealed .pag-jump-dots{transform:translateX(6px);}
+.pap-pagination .pag-jump.pag-jump-next:hover .pag-jump-dots,.pap-pagination .pag-jump.pag-jump-next:focus-visible .pag-jump-dots,.pap-pagination .pag-jump.pag-jump-next.is-revealed .pag-jump-dots{transform:translateX(-6px);}
+.pap-pagination .pag-jump:hover .pag-jump-arrow,.pap-pagination .pag-jump:focus-visible .pag-jump-arrow,.pap-pagination .pag-jump.is-revealed .pag-jump-arrow{opacity:1;transform:translateX(0);}
+@media(max-width:600px){.pap-pagination{gap:4px;padding:24px 16px 36px;}.pap-pagination button{width:34px;height:34px;font-size:11px;border-radius:8px;}.pap-pagination .pag-dots,.pap-pagination .pag-jump{width:34px;height:34px;border-radius:8px;}.pap-pagination .pag-jump .pag-jump-dots{font-size:12px;}.pap-pagination .pag-jump .pag-jump-arrow{font-size:16px;}}
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
 <!-- Favicon & PWA -->
@@ -1546,25 +1557,45 @@ var PAP_PER_PAGE=20;
 function buildPagination(container,currentPage,totalPages,onPageChange,isDark){
   container.innerHTML='';if(totalPages<=1)return;
   container.className='pap-pagination'+(isDark?' dark':'');
+  var JUMP=5;
   function btn(label,page,isActive,isDisabled){
-    var b=document.createElement('button');b.textContent=label;
+    var b=document.createElement('button');b.type='button';b.textContent=label;
     if(isActive)b.className='active';if(isDisabled)b.disabled=true;
     if(!isDisabled&&!isActive)b.onclick=function(){onPageChange(page);};
     container.appendChild(b);
   }
-  function dots(){var d=document.createElement('span');d.className='pag-dots';d.textContent='···';container.appendChild(d);}
+  function jump(direction){
+    var target=direction<0?Math.max(1,currentPage-JUMP):Math.min(totalPages,currentPage+JUMP);
+    var b=document.createElement('button');b.type='button';
+    b.className='pag-jump '+(direction<0?'pag-jump-prev':'pag-jump-next');
+    b.setAttribute('aria-label',(direction<0?'이전 ':'다음 ')+JUMP+'페이지로 이동');
+    b.title=(direction<0?'-':'+')+JUMP+' pages';
+    b.innerHTML='<span class="pag-jump-dots" aria-hidden="true">···</span>'+
+                '<span class="pag-jump-arrow" aria-hidden="true">'+(direction<0?'«':'»')+'</span>';
+    var canHover=(typeof window.matchMedia==='function'&&window.matchMedia('(hover: hover)').matches);
+    if(canHover){b.onclick=function(){onPageChange(target);};}
+    else{
+      var revealed=false,t=null;
+      b.onclick=function(){
+        if(revealed){revealed=false;if(t){clearTimeout(t);t=null;}b.classList.remove('is-revealed');onPageChange(target);return;}
+        revealed=true;b.classList.add('is-revealed');
+        if(t)clearTimeout(t);t=setTimeout(function(){revealed=false;b.classList.remove('is-revealed');},1200);
+      };
+    }
+    container.appendChild(b);
+  }
   btn('‹',currentPage-1,false,currentPage===1);
-  var pages=[];
-  if(totalPages<=9){for(var i=1;i<=totalPages;i++)pages.push(i);}
-  else{pages.push(1);if(currentPage>4)pages.push('«');
+  if(totalPages<=9){for(var i=1;i<=totalPages;i++)btn(String(i),i,i===currentPage,false);}
+  else{
+    btn('1',1,1===currentPage,false);
     var s=Math.max(2,currentPage-1),e=Math.min(totalPages-1,currentPage+1);
     if(currentPage<=4){s=2;e=Math.min(5,totalPages-1);}
     if(currentPage>=totalPages-3){s=Math.max(2,totalPages-4);e=totalPages-1;}
-    if(s>2)pages.push('...');for(var i=s;i<=e;i++)pages.push(i);
-    if(e<totalPages-1)pages.push('...');pages.push(totalPages);}
-  pages.forEach(function(p){
-    if(p==='...')dots();else if(p==='«')btn('«',Math.max(1,currentPage-5),false,false);
-    else btn(String(p),p,p===currentPage,false);});
+    if(s>2)jump(-1);
+    for(var k=s;k<=e;k++)btn(String(k),k,k===currentPage,false);
+    if(e<totalPages-1)jump(+1);
+    btn(String(totalPages),totalPages,totalPages===currentPage,false);
+  }
   btn('›',currentPage+1,false,currentPage===totalPages);
 }
 function openAllEditorials(){

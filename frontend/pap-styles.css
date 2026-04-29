@@ -983,14 +983,64 @@ button{cursor:pointer;font-family:inherit}
 .pap-pagination button.active{background:#3b6cff;color:#fff;}
 .pap-pagination button.active:hover{background:#2b5ce6;}
 .pap-pagination button:disabled{opacity:.4;cursor:default;pointer-events:none;}
+/* Legacy static dots — kept for non-interactive contexts */
 .pap-pagination .pag-dots{width:40px;height:40px;display:flex;align-items:center;justify-content:center;color:#999;font-weight:700;letter-spacing:2px;font-size:14px;}
+/* Hover-interactive ellipsis: shows ··· by default, morphs into «/» on hover/focus
+   — clicking jumps ±5 pages. On touch devices, the same single tap fires the jump
+   and the :active state provides the visual hint. */
+.pap-pagination .pag-jump{
+  position:relative;width:40px;height:40px;border:none;border-radius:10px;
+  background:transparent;color:#999;cursor:pointer;padding:0;overflow:hidden;
+  display:inline-flex;align-items:center;justify-content:center;
+  font-family:'Montserrat',sans-serif;font-weight:700;
+  transition:background-color .25s cubic-bezier(.65,.05,.36,1),color .25s ease;
+}
+.pap-pagination .pag-jump .pag-jump-dots,
+.pap-pagination .pag-jump .pag-jump-arrow{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  transition:opacity .28s cubic-bezier(.65,.05,.36,1),transform .28s cubic-bezier(.65,.05,.36,1);
+  pointer-events:none;
+}
+.pap-pagination .pag-jump .pag-jump-dots{
+  font-size:14px;letter-spacing:2px;opacity:1;transform:translateX(0);
+}
+.pap-pagination .pag-jump .pag-jump-arrow{
+  font-size:18px;letter-spacing:0;opacity:0;
+}
+.pap-pagination .pag-jump.pag-jump-prev .pag-jump-arrow{transform:translateX(-8px);}
+.pap-pagination .pag-jump.pag-jump-next .pag-jump-arrow{transform:translateX(8px);}
+/* Hover / focus / revealed (mobile tap) state — cross-fade with slide */
+.pap-pagination .pag-jump:hover,
+.pap-pagination .pag-jump:focus-visible,
+.pap-pagination .pag-jump.is-revealed{
+  background:#d0d0d6;color:#333;outline:none;
+}
+.pap-pagination .pag-jump:hover .pag-jump-dots,
+.pap-pagination .pag-jump:focus-visible .pag-jump-dots,
+.pap-pagination .pag-jump.is-revealed .pag-jump-dots{opacity:0;}
+.pap-pagination .pag-jump.pag-jump-prev:hover .pag-jump-dots,
+.pap-pagination .pag-jump.pag-jump-prev:focus-visible .pag-jump-dots,
+.pap-pagination .pag-jump.pag-jump-prev.is-revealed .pag-jump-dots{transform:translateX(6px);}
+.pap-pagination .pag-jump.pag-jump-next:hover .pag-jump-dots,
+.pap-pagination .pag-jump.pag-jump-next:focus-visible .pag-jump-dots,
+.pap-pagination .pag-jump.pag-jump-next.is-revealed .pag-jump-dots{transform:translateX(-6px);}
+.pap-pagination .pag-jump:hover .pag-jump-arrow,
+.pap-pagination .pag-jump:focus-visible .pag-jump-arrow,
+.pap-pagination .pag-jump.is-revealed .pag-jump-arrow{opacity:1;transform:translateX(0);}
 /* dark theme pagination (for articles/films dark pages) */
 .pap-pagination.dark button{background:rgba(255,255,255,.08);color:#888;}
 .pap-pagination.dark button:hover{background:rgba(255,255,255,.15);color:#fff;}
 .pap-pagination.dark button.active{background:#3b6cff;color:#fff;}
 .pap-pagination.dark .pag-dots{color:#555;}
+.pap-pagination.dark .pag-jump{background:transparent;color:#666;}
+.pap-pagination.dark .pag-jump:hover,
+.pap-pagination.dark .pag-jump:focus-visible,
+.pap-pagination.dark .pag-jump.is-revealed{background:rgba(255,255,255,.15);color:#fff;}
 @media(max-width:600px){
   .pap-pagination{gap:4px;padding:24px 16px 36px;}
   .pap-pagination button{width:34px;height:34px;font-size:11px;border-radius:8px;}
-  .pap-pagination .pag-dots{width:28px;height:34px;}
+  .pap-pagination .pag-dots,
+  .pap-pagination .pag-jump{width:34px;height:34px;border-radius:8px;}
+  .pap-pagination .pag-jump .pag-jump-dots{font-size:12px;}
+  .pap-pagination .pag-jump .pag-jump-arrow{font-size:16px;}
 }
