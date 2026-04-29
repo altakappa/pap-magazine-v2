@@ -89,12 +89,19 @@
       '.header-left-item{background:none;border:none;padding:4px;display:inline-flex;align-items:center;justify-content:center;color:rgba(255,255,255,.4);text-decoration:none;transition:color .2s}',
       '.header-left-item:hover{color:#fff}',
       '.header-left-item svg{width:20px;height:20px}',
-      /* hamburger */
-      '.hamburger{background:none;border:none;display:flex;flex-direction:column;gap:6px;padding:12px;cursor:pointer;position:relative;z-index:2000}',
-      '.hamburger span{display:block;width:24px;height:2px;background:#fff;transition:transform .3s ease,opacity .3s ease}',
+      /* hamburger — single morphing button (≡ ↔ X). Stays at z-index:2000
+         so it floats above the nav-overlay (z-index:1500) and acts as the
+         close button itself when the menu is open. No separate ".nav-close"
+         button is rendered anymore — the bars below morph in place. */
+      '.hamburger{background:none;border:none;display:flex;flex-direction:column;gap:6px;padding:12px;cursor:pointer;position:relative;z-index:2000;-webkit-tap-highlight-color:transparent}',
+      // The 3 bars share one transition so transform + colour move together
+      // on the same timing curve. cubic-bezier(.65,.05,.36,1) is the same
+      // ease used on the nav-overlay fade so the whole interaction feels
+      // like one motion.
+      '.hamburger span{display:block;width:24px;height:2px;background:#fff;border-radius:1px;transform-origin:center;transition:transform .35s cubic-bezier(.65,.05,.36,1),opacity .25s ease,background-color .35s cubic-bezier(.65,.05,.36,1)}',
       '.hamburger.is-active span{background:#000}',
       '.hamburger.is-active span:nth-child(1){transform:translateY(8px) rotate(45deg)}',
-      '.hamburger.is-active span:nth-child(2){opacity:0}',
+      '.hamburger.is-active span:nth-child(2){opacity:0;transform:scaleX(.6)}',
       '.hamburger.is-active span:nth-child(3){transform:translateY(-8px) rotate(-45deg)}',
       /* logo — match pap-styles.css .logo-wrap */
       '.logo-wrap{position:absolute;left:50%;transform:translateX(-50%)}',
@@ -139,10 +146,10 @@
       '.nav-right-col{flex:1;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:0}',
       '.nav-right-col a{font-family:"Montserrat",sans-serif;font-size:clamp(40px,7vw,90px);font-weight:900;letter-spacing:.03em;text-transform:uppercase;color:#000;line-height:1.1;transition:opacity .2s}',
       '.nav-right-col a:hover{opacity:.4}',
-      '.nav-close{position:absolute;top:20px;left:24px;z-index:1600;background:none;border:none;font-size:0;cursor:pointer;width:36px;height:36px;display:flex;align-items:center;justify-content:center;padding:0}',
-      '.nav-close::before,.nav-close::after{content:"";position:absolute;width:22px;height:2px;background:#000;border-radius:1px}',
-      '.nav-close::before{transform:rotate(45deg)}',
-      '.nav-close::after{transform:rotate(-45deg)}',
+      // .nav-close removed — the .hamburger button (z-index:2000) stays
+      // visible above the white nav-overlay and morphs into an X via
+      // .is-active, eliminating the duplicate close icon that used to sit
+      // at top:20px;left:24px and cause the "two icons" QA report.
       /* responsive */
       '@media(max-width:900px){.nav-extra-links{display:none}.nav-bottom-row{display:none}}',
       '@media(max-width:768px){.header{padding:0 16px;height:60px}.header-left{gap:4px}.header-left-item svg{width:18px;height:18px}.nav-overlay-inner{flex-direction:column;padding:70px 24px 40px}.nav-left-col{width:100%;order:2;margin-top:32px}.nav-right-col{width:100%;align-items:flex-start;order:1}.nav-right-col a{font-size:clamp(28px,8vw,48px)}.nav-left-links a{font-size:clamp(14px,3vw,18px)}}',
@@ -272,7 +279,8 @@
     '</div>',
     /* Nav overlay */
     '<div class="nav-overlay" id="navOverlay">',
-    '  <button class="nav-close" onclick="_papToggleNav()">&times;</button>',
+    // No separate close button — the .hamburger in the header morphs into
+    // an X (.is-active) and toggles the overlay back closed when clicked.
     '  <div class="nav-overlay-inner">',
     '    <div class="nav-left-col">',
     '      <div class="nav-left-top">',
