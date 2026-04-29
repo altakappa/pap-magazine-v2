@@ -441,14 +441,7 @@ function loadProfile(){
     window.location.href = (window.papLoginUrl ? window.papLoginUrl('auth.html?mode=login') : 'auth.html?mode=login');
   }
 }
-
-function doLogout() {
-  localStorage.removeItem('pap-token');
-  localStorage.removeItem('pap-user');
-  window.location.href = '/';
-}
-
-// Init
+function doLogout() { localStorage.removeItem('pap-token'); localStorage.removeItem('pap-user'); window.location.href = '/'; }
 (function(){
   var saved = localStorage.getItem('pap-lang') || 'ko';
   _t = LANG[saved] || LANG.ko;
