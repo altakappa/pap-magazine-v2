@@ -333,8 +333,12 @@ section.hero + .shorts-section{
 
 /* FILM */
 /* .film-section base styles handled by the unified rules above */
-.nf-top{padding:0 24px;margin-bottom:12px}
-.nf-top h2{font-family:'Montserrat',var(--sans);font-size:13px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:#e5e5e5}
+/* FILM section heading — aligned with .ed-row-label so the left edge of
+   "FILM" sits on the same vertical line as "최신 에디토리얼" / "최신 기사".
+   Per QA: section H titles must share padding / font size / letter-spacing
+   so the left baseline reads as a single column down the page. */
+.nf-top{padding:0 48px;margin-bottom:12px}
+.nf-top h2{font-family:'Montserrat',var(--sans);font-size:15px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:#e5e5e5;margin:0}
 .nf-wrap{position:relative}
 .nf-nav{position:absolute;top:0;width:48px;height:100%;z-index:20;background:rgba(20,20,20,.7);border:none;color:#fff;font-size:32px;cursor:pointer;opacity:0;transition:opacity .3s;display:flex;align-items:center;justify-content:center}
 .nf-wrap:hover .nf-nav{opacity:1}
