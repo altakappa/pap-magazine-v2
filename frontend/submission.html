@@ -567,11 +567,11 @@ function navigateWithInterstitial(url){
   <!-- MY SUBMISSIONS DASHBOARD -->
   <div class="my-subs-section" id="mySubsSection" style="display:none">
     <div class="my-subs-title">
-      <span>MY SUBMISSIONS</span>
-      <button class="my-subs-toggle" onclick="toggleMySubmissions()">HIDE</button>
+      <span data-i18n="mySubsTitle">MY SUBMISSIONS</span>
+      <button class="my-subs-toggle" id="mySubsToggleBtn" onclick="toggleMySubmissions()" data-i18n="mySubsHide">HIDE</button>
     </div>
     <div id="mySubsList">
-      <div class="sub-empty" id="subEmpty">No submissions yet.</div>
+      <div class="sub-empty" id="subEmpty" data-i18n="mySubsEmpty">No submissions yet.</div>
     </div>
   </div>
 
@@ -594,7 +594,7 @@ function navigateWithInterstitial(url){
 
     <!-- STEP 1: Category -->
     <div class="form-section active" id="step1">
-      <div class="section-title">CATEGORY <span class="req">*</span></div>
+      <div class="section-title"><span data-i18n="sectionCategory">CATEGORY</span> <span class="req">*</span></div>
       <div class="error-summary" id="errSummary1"></div>
       <p style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:16px;line-height:1.8" data-i18n-html="step1Desc">Select the categories that apply to your editorial (multiple allowed).</p>
       <div class="genre-tags" id="genreTags">
@@ -611,29 +611,29 @@ function navigateWithInterstitial(url){
 
       <div class="form-nav">
         <div style="flex:1"></div>
-        <button class="btn btn-next" onclick="goStep(2)">NEXT</button>
+        <button class="btn btn-next" onclick="goStep(2)" data-i18n="btnNext">NEXT</button>
       </div>
     </div>
 
     <!-- STEP 2: Production & Title -->
     <div class="form-section" id="step2">
-      <div class="section-title">PRODUCTION INFO</div>
+      <div class="section-title" data-i18n="sectionProduction">PRODUCTION INFO</div>
       <div class="error-summary" id="errSummary2"></div>
       <div class="form-group">
-        <label class="form-label">Editorial Title <span class="req">*</span></label>
+        <label class="form-label"><span data-i18n="labelEditorialTitle">Editorial Title</span> <span class="req">*</span></label>
         <input type="text" class="form-input" id="editorialTitle" data-field="editorialTitle">
         <div class="field-helper" id="helper-editorialTitle"></div>
         <div class="field-error" id="err-editorialTitle"></div>
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Production / Studio Name <span class="req">*</span></label>
+          <label class="form-label"><span data-i18n="labelStudioName">Production / Studio Name</span> <span class="req">*</span></label>
           <input type="text" class="form-input" id="studioName" data-field="studioName">
           <div class="field-helper" id="helper-studioName"></div>
           <div class="field-error" id="err-studioName"></div>
         </div>
         <div class="form-group">
-          <label class="form-label">Email <span class="req">*</span></label>
+          <label class="form-label"><span data-i18n="labelEmail">Email</span> <span class="req">*</span></label>
           <input type="email" class="form-input" id="contactEmail" data-field="contactEmail">
           <div class="field-helper" id="helper-contactEmail"></div>
           <div class="field-error" id="err-contactEmail"></div>
@@ -641,13 +641,13 @@ function navigateWithInterstitial(url){
       </div>
       <div class="form-row">
         <div class="form-group">
-          <label class="form-label">Website</label>
+          <label class="form-label" data-i18n="labelWebsite">Website</label>
           <input type="url" class="form-input" id="studioWebsite" data-field="studioWebsite">
           <div class="field-helper" id="helper-studioWebsite"></div>
           <div class="field-error" id="err-studioWebsite"></div>
         </div>
         <div class="form-group">
-          <label class="form-label">Instagram</label>
+          <label class="form-label" data-i18n="labelInstagram">Instagram</label>
           <input type="text" class="form-input" id="studioInsta" data-field="studioInsta">
           <div class="field-helper" id="helper-studioInsta"></div>
           <div class="field-error" id="err-studioInsta"></div>
@@ -655,7 +655,7 @@ function navigateWithInterstitial(url){
       </div>
 
       <div class="form-group" style="margin-top:8px">
-        <label class="form-label">Artist Statement <span class="req">*</span></label>
+        <label class="form-label"><span data-i18n="labelArtistStatement">Artist Statement</span> <span class="req">*</span></label>
         <textarea class="form-input" id="artistStatement" data-field="artistStatement" style="min-height:120px"></textarea>
         <div class="char-count" id="charCount-artistStatement">0 / 500</div>
         <div class="field-helper" id="helper-artistStatement"></div>
@@ -669,18 +669,18 @@ function navigateWithInterstitial(url){
       <div class="field-error" id="err-copyrightConfirm" style="margin-top:6px"></div>
 
       <div class="form-nav">
-        <button class="btn btn-back" onclick="goStep(1)">BACK</button>
+        <button class="btn btn-back" onclick="goStep(1)" data-i18n="btnBack">BACK</button>
         <div style="flex:1"></div>
-        <button class="btn btn-next" onclick="goStep(3)">NEXT</button>
+        <button class="btn btn-next" onclick="goStep(3)" data-i18n="btnNext">NEXT</button>
       </div>
     </div>
 
     <!-- STEP 3: Team Credits -->
     <div class="form-section" id="step3">
-      <div class="section-title">TEAM CREDITS</div>
-      <p style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:20px;line-height:1.8">Enter each team member's name, Instagram, and website. Instagram handles are used for social media credits.</p>
+      <div class="section-title" data-i18n="sectionTeamCredits">TEAM CREDITS</div>
+      <p style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:20px;line-height:1.8" data-i18n="teamCreditsDesc">Enter each team member's name, Instagram, and website. Instagram handles are used for social media credits.</p>
       <div class="team-header">
-        <span>ROLE</span><span>NAME</span><span>INSTAGRAM</span><span>WEBSITE</span>
+        <span data-i18n="hdrRole">ROLE</span><span data-i18n="hdrName">NAME</span><span data-i18n="hdrInstagram">INSTAGRAM</span><span data-i18n="hdrWebsite">WEBSITE</span>
       </div>
       <div id="teamList">
         <div class="team-row"><div class="team-role">Photo</div><input class="team-input" placeholder="Name"><input class="team-input" placeholder="@instagram"><input class="team-input" placeholder="website"></div>
@@ -692,81 +692,81 @@ function navigateWithInterstitial(url){
         <div class="team-row"><div class="team-role">Retouch</div><input class="team-input" placeholder="Name / Studio"><input class="team-input" placeholder="@instagram"><input class="team-input" placeholder="website"></div>
         <div class="team-row"><div class="team-role">Production</div><input class="team-input" placeholder="Name / Studio"><input class="team-input" placeholder="@instagram"><input class="team-input" placeholder="website"></div>
       </div>
-      <button class="add-btn" style="margin-top:12px" onclick="addTeamRow()">+ Add Team Member</button>
+      <button class="add-btn" style="margin-top:12px" onclick="addTeamRow()" data-i18n="btnAddTeam">+ Add Team Member</button>
 
       <!-- MODELS (Multiple) -->
       <div style="margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,.08)">
-        <div class="section-title" style="border-bottom:none;padding-bottom:0">MODELS</div>
-        <p style="font-size:10px;color:rgba(255,255,255,.25);margin-bottom:12px;line-height:1.8">Enter the model's name and Instagram, and the agency's name and Instagram separately.</p>
+        <div class="section-title" style="border-bottom:none;padding-bottom:0" data-i18n="sectionModels">MODELS</div>
+        <p style="font-size:10px;color:rgba(255,255,255,.25);margin-bottom:12px;line-height:1.8" data-i18n="modelsDesc">Enter the model's name and Instagram, and the agency's name and Instagram separately.</p>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 30px;gap:10px;margin-bottom:6px">
-          <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25)">MODEL NAME</span>
-          <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25)">MODEL INSTA</span>
-          <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25)">AGENCY NAME</span>
-          <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25)">AGENCY INSTA</span>
+          <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25)" data-i18n="hdrModelName">MODEL NAME</span>
+          <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25)" data-i18n="hdrModelInsta">MODEL INSTA</span>
+          <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25)" data-i18n="hdrAgencyName">AGENCY NAME</span>
+          <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25)" data-i18n="hdrAgencyInsta">AGENCY INSTA</span>
           <span></span>
         </div>
         <div id="modelList">
           <div class="model-row">
-            <input class="team-input" placeholder="Model Name">
-            <input class="team-input" placeholder="@model_instagram">
-            <input class="team-input" placeholder="Agency Name (optional)">
-            <input class="team-input" placeholder="@agency_instagram (optional)">
+            <input class="team-input" data-i18n-ph="phModelName" placeholder="Model Name">
+            <input class="team-input" data-i18n-ph="phModelInsta" placeholder="@model_instagram">
+            <input class="team-input" data-i18n-ph="phAgencyName" placeholder="Agency Name (optional)">
+            <input class="team-input" data-i18n-ph="phAgencyInsta" placeholder="@agency_instagram (optional)">
             <span></span>
           </div>
         </div>
-        <button class="add-btn" style="margin-top:8px" onclick="addModelRow()">+ Add Model</button>
+        <button class="add-btn" style="margin-top:8px" onclick="addModelRow()" data-i18n="btnAddModel">+ Add Model</button>
       </div>
 
       <div class="form-nav">
-        <button class="btn btn-back" onclick="goStep(2)">BACK</button>
+        <button class="btn btn-back" onclick="goStep(2)" data-i18n="btnBack">BACK</button>
         <div style="flex:1"></div>
-        <button class="btn btn-next" onclick="goStep(4)">NEXT</button>
+        <button class="btn btn-next" onclick="goStep(4)" data-i18n="btnNext">NEXT</button>
       </div>
     </div>
 
     <!-- STEP 4: Look Credits -->
     <div class="form-section" id="step4">
-      <div class="section-title">LOOK CREDITS</div>
-      <p style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:20px;line-height:1.8">Upload images for each look and enter brand/accessory credits. Minimum 4 images required. Drag thumbnails to reorder. You can also add additional images below.</p>
+      <div class="section-title" data-i18n="sectionLookCredits">LOOK CREDITS</div>
+      <p style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:20px;line-height:1.8" data-i18n="lookCreditsDesc">Upload images for each look and enter brand/accessory credits. Minimum 4 images required. Drag thumbnails to reorder. You can also add additional images below.</p>
       <div class="error-summary" id="errSummary4"></div>
       <div id="lookList"></div>
-      <button class="add-btn" onclick="addLook()">+ Add Look</button>
+      <button class="add-btn" onclick="addLook()" data-i18n="btnAddLook">+ Add Look</button>
 
       <!-- ADDITIONAL IMAGES -->
       <div style="margin-top:32px;padding-top:24px;border-top:1px solid rgba(255,255,255,.08)">
-        <div class="section-title" style="border-bottom:none;padding-bottom:0">ADDITIONAL IMAGES</div>
+        <div class="section-title" style="border-bottom:none;padding-bottom:0" data-i18n="sectionAdditionalImages">ADDITIONAL IMAGES</div>
         <div class="form-group">
-          <label class="form-label">High-resolution images — additional images not included in looks (optional)</label>
+          <label class="form-label" data-i18n="labelAdditionalImages">High-resolution images — additional images not included in looks (optional)</label>
           <div class="upload-zone" id="uploadZone">
             <input type="file" class="upload-input" id="fileInput" multiple accept="image/*">
             <div class="upload-icon"><svg viewBox="0 0 32 32" fill="none"><path d="M16 24V8M16 8L10 14M16 8L22 14" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 24v2a2 2 0 002 2h20a2 2 0 002-2v-2" stroke-width="2" stroke-linecap="round"/></svg></div>
-            <div class="upload-text"><strong>Click</strong> or drag additional images</div>
-            <div class="upload-hint">JPG · Max 25MB · 1080×1350px recommended</div>
+            <div class="upload-text" data-i18n-html="uploadDragText"><strong>Click</strong> or drag additional images</div>
+            <div class="upload-hint" data-i18n="uploadHint">JPG · Max 25MB · 1080×1350px recommended</div>
           </div>
           <div class="file-list" id="fileList"></div>
-          <div class="form-hint">Please include cover images, behind-the-scenes shots, and other additional images not included in the looks.</div>
+          <div class="form-hint" data-i18n="additionalImagesHint">Please include cover images, behind-the-scenes shots, and other additional images not included in the looks.</div>
         </div>
       </div>
 
       <!-- COVER IMAGE SELECTOR -->
       <div class="cover-select-row" id="coverSelectRow" style="display:none">
-        <label>COVER IMAGE:</label>
+        <label data-i18n="labelCoverImage">COVER IMAGE:</label>
         <select id="coverImageSelect" onchange="setCoverImage()">
-          <option value="">Auto (first image)</option>
+          <option value="" data-i18n="coverImageAuto">Auto (first image)</option>
         </select>
-        <div style="font-size:9px;color:rgba(255,255,255,.2)">Specify which image to use as the cover. If not selected, the first image will be used.</div>
+        <div style="font-size:9px;color:rgba(255,255,255,.2)" data-i18n="coverImageHint">Specify which image to use as the cover. If not selected, the first image will be used.</div>
       </div>
 
       <div class="form-nav">
-        <button class="btn btn-back" onclick="goStep(3)">BACK</button>
+        <button class="btn btn-back" onclick="goStep(3)" data-i18n="btnBack">BACK</button>
         <div style="flex:1"></div>
-        <button class="btn btn-next" onclick="goStep(5)">NEXT</button>
+        <button class="btn btn-next" onclick="goStep(5)" data-i18n="btnNext">NEXT</button>
       </div>
     </div>
 
     <!-- STEP 5: Links & Terms -->
     <div class="form-section" id="step5">
-      <div class="section-title">ADDITIONAL INFO & TERMS</div>
+      <div class="section-title" data-i18n="sectionAdditionalInfo">ADDITIONAL INFO & TERMS</div>
       <div class="form-group">
         <label class="form-label" data-i18n="videoUrlLabel">Video Link — behind-the-scenes, sketches, clips (optional)</label>
         <input type="url" class="form-input" id="videoUrl" placeholder="https://www.dropbox.com/... · https://wetransfer.com/... · https://www.swisstransfer.com/...">
@@ -864,16 +864,16 @@ function navigateWithInterstitial(url){
       </div>
 
       <div class="form-nav">
-        <button class="btn btn-back" onclick="goStep(4)">BACK</button>
+        <button class="btn btn-back" onclick="goStep(4)" data-i18n="btnBack">BACK</button>
         <div style="flex:1"></div>
-        <button class="btn btn-submit" onclick="submitForm()">SUBMIT</button>
+        <button class="btn btn-submit" onclick="submitForm()" data-i18n="btnSubmit">SUBMIT</button>
       </div>
     </div>
 
     <!-- SUCCESS -->
     <div class="submit-success" id="submitSuccess">
       <div class="success-icon"><svg viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="30" stroke-width="2"/><polyline points="20 34 28 42 44 24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-      <h2>SUBMITTED</h2>
+      <h2 data-i18n="submittedTitle">SUBMITTED</h2>
       <p data-i18n="successMsg">서브미션이 성공적으로 접수되었습니다. 심사 결과는 이메일로 안내드리겠습니다.</p>
 
       <!-- SUBMISSION TIMELINE -->
@@ -1018,12 +1018,21 @@ function selectGenre(el){
   var _s1=document.getElementById('errSummary1');if(_s1){_s1.classList.remove('visible');_s1.innerHTML='';}
 }
 
-// MY SUBMISSIONS DASHBOARD
+// MY SUBMISSIONS DASHBOARD — i18n-aware HIDE/SHOW toggle
 function toggleMySubmissions(){
   var list=document.getElementById('mySubsList');
   var btn=document.querySelector('.my-subs-toggle');
-  if(list.style.display==='none'){ list.style.display='block'; btn.textContent='HIDE'; }
-  else{ list.style.display='none'; btn.textContent='SHOW'; }
+  if(!list||!btn) return;
+  var d=L[_curLang]||L.ko;
+  if(list.style.display==='none'){
+    list.style.display='block';
+    btn.textContent = d.mySubsHide || 'HIDE';
+    btn.setAttribute('data-i18n','mySubsHide');
+  } else {
+    list.style.display='none';
+    btn.textContent = d.mySubsShow || 'SHOW';
+    btn.setAttribute('data-i18n','mySubsShow');
+  }
 }
 
 function loadMySubmissions(){
@@ -2055,8 +2064,8 @@ function simulateLogin(){
 
 // LANGUAGE (simplified - ko/en)
 var L={
-ko:{business:'BUSINESS',about:'ABOUT',contact:'CONTACT',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',pageDesc:'PAP 매거진에 에디토리얼을 제출하세요. 서브미션 유형을 선택하고, 작품 정보·팀 크레딧·룩별 의상 크레딧·고해상도 이미지를 제출해 주세요. MY SUBMISSIONS에서 실시간 심사 상태를 확인할 수 있습니다.',gateLogin:'로그인 / 회원가입',gateTitle:'회원 전용',gateDesc:'이 서비스는 무료 회원 이상만 이용할 수 있습니다.\n로그인하거나 회원가입 후 이용해 주세요.',successMsg:'서브미션이 성공적으로 접수되었습니다. 심사 결과는 이메일로 안내드리겠습니다.',englishOnlyNotice:'<strong>안내</strong>모든 서브미션 내용(제목, 아티스트 스테이트먼트, 팀 크레딧, 모델·에이전시 정보)은 <b>영어로 작성</b>해 주세요. 글로벌 에디토리얼 팀의 일관된 심사와 지면 발행을 위해 필수입니다.',videoUrlLabel:'비디오 링크 — 비하인드, 스케치, 클립 (선택)',videoUrlHint:'비디오 파일은 용량이 커서 직접 업로드 대신 <b>Dropbox · WeTransfer · Swisstransfer · Google Drive</b> 등의 다운로드 링크를 공유해 주세요. PAP가 비디오를 받아 공식 YouTube 채널에 업로드합니다.',termsTitle:'서브미션 약관',termsEffective:'시행일: 2026년 1월 1일 | 최종 수정일: 2026년 3월 1일',termsAgreeLabel:'위 모든 약관(제1조~제12조)을 정독하고 이해했으며, 이에 동의합니다.',termsErrorMsg:'서브미션을 진행하려면 약관에 동의해 주세요.',toastSubmitDetailsSoon:'서브미션 상세 보기는 곧 지원됩니다.',toastOnlyImgFmt:'JPG/PNG/TIFF/WebP만 허용됩니다: {name}',toastImgTooBig25:'25MB를 초과합니다: {name}',toastImgLongestPx:'권장: 긴 변 1500px 이상 (현재 {px}px) — {name}',toastInvalidFileType:'허용되지 않는 파일 형식입니다: {name}',toastFileTooBig20:'파일 용량이 20MB를 초과합니다: {name}',toastMaxFilesN:'최대 {max}개의 파일만 업로드할 수 있습니다',toastMinImages:'최소 4장 이상의 이미지가 필요합니다.',toastMin4ImagesDynamic:'최소 4장 이상의 이미지를 업로드해 주세요. (현재 {total}장)',toastInvalidVideoLink:'올바른 비디오 링크(https://...)를 입력하거나 비워 두세요.',toastUploadTooLarge:'총 이미지 업로드 용량이 {mb} MB로 서버 제한(4.5MB)을 초과했습니다. 이미지를 압축·축소해 주세요 (권장: 가로 1500~2000px, JPG 80% 품질).',ft:'<strong>주식회사 알타카파</strong> | CEO : 강동민 | 사업자번호 192-88-02644<br>서울특별시 강남구 논현로146길 18, 1F | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
-en:{business:'BUSINESS',about:'ABOUT',contact:'CONTACT',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',pageDesc:'Submit your editorial to PAP Magazine. Choose your submission type, provide production info, team credits, look-by-look garment credits, and high-resolution images. Track your submission status in MY SUBMISSIONS.',gateLogin:'LOG IN / SIGN UP',gateTitle:'MEMBERS ONLY',gateDesc:'This service is available to registered members only.\nPlease log in or sign up to continue.',successMsg:'Your submission has been received successfully. Review results will be sent via email.',englishOnlyNotice:'<strong>Notice</strong>All submission content (title, artist statement, team credits, model & agency info) must be written in <b>English</b>. This ensures consistent review and publication across our global editorial team.',videoUrlLabel:'Video Link — behind-the-scenes, sketches, clips (optional)',videoUrlHint:'Because video files exceed upload limits, please share a download link from <b>Dropbox · WeTransfer · Swisstransfer · Google Drive</b> or similar. PAP will download your video and publish it on our official YouTube channel.',termsTitle:'SUBMISSION TERMS & CONDITIONS',termsEffective:'Effective: January 1, 2026 | Last Updated: March 1, 2026',termsAgreeLabel:'I have thoroughly read and understood all terms (Articles 1–12) above and agree to be bound by them.',termsErrorMsg:'You must agree to the terms to submit.',toastSubmitDetailsSoon:'Submission details will be supported soon.',toastOnlyImgFmt:'Only JPG/PNG/TIFF/WebP allowed: {name}',toastImgTooBig25:'File exceeds 25MB: {name}',toastImgLongestPx:'Recommended: longest side 1500px or more (current {px}px) — {name}',toastInvalidFileType:'Invalid file type: {name}',toastFileTooBig20:'File too large (max 20MB): {name}',toastMaxFilesN:'Maximum {max} files allowed',toastMinImages:'At least 4 images required.',toastMin4ImagesDynamic:'Please upload at least 4 images. (Currently {total})',toastInvalidVideoLink:'Please enter a valid video link (https://...) or leave it empty.',toastUploadTooLarge:'Total image upload size is {mb} MB, which exceeds the 4.5 MB server limit. Please compress/resize images (recommended: 1500–2000 px wide, JPG ~80% quality) and try again.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+ko:{business:'비즈니스',about:'어바웃',contact:'문의',subscribe:'구독',submission:'서브미션',pullletter:'풀레터',pageDesc:'PAP 매거진에 에디토리얼을 제출하세요. 서브미션 유형을 선택하고, 작품 정보·팀 크레딧·룩별 의상 크레딧·고해상도 이미지를 제출해 주세요. MY SUBMISSIONS에서 실시간 심사 상태를 확인할 수 있습니다.',gateLogin:'로그인 / 회원가입',gateTitle:'회원 전용',gateDesc:'이 서비스는 무료 회원 이상만 이용할 수 있습니다.\n로그인하거나 회원가입 후 이용해 주세요.',successMsg:'서브미션이 성공적으로 접수되었습니다. 심사 결과는 이메일로 안내드리겠습니다.',englishOnlyNotice:'<strong>안내</strong>모든 서브미션 내용(제목, 아티스트 스테이트먼트, 팀 크레딧, 모델·에이전시 정보)은 <b>영어로 작성</b>해 주세요. 글로벌 에디토리얼 팀의 일관된 심사와 지면 발행을 위해 필수입니다.',step1Desc:'에디토리얼에 해당하는 카테고리를 선택해 주세요(복수 선택 가능).',videoUrlLabel:'비디오 링크 — 비하인드, 스케치, 클립 (선택)',videoUrlHint:'비디오 파일은 용량이 커서 직접 업로드 대신 <b>Dropbox · WeTransfer · Swisstransfer · Google Drive</b> 등의 다운로드 링크를 공유해 주세요. PAP가 비디오를 받아 공식 YouTube 채널에 업로드합니다.',termsTitle:'서브미션 약관',termsEffective:'시행일: 2026년 1월 1일 | 최종 수정일: 2026년 3월 1일',termsAgreeLabel:'위 모든 약관(제1조~제12조)을 정독하고 이해했으며, 이에 동의합니다.',termsErrorMsg:'서브미션을 진행하려면 약관에 동의해 주세요.',toastSubmitDetailsSoon:'서브미션 상세 보기는 곧 지원됩니다.',toastOnlyImgFmt:'JPG/PNG/TIFF/WebP만 허용됩니다: {name}',toastImgTooBig25:'25MB를 초과합니다: {name}',toastImgLongestPx:'권장: 긴 변 1500px 이상 (현재 {px}px) — {name}',toastInvalidFileType:'허용되지 않는 파일 형식입니다: {name}',toastFileTooBig20:'파일 용량이 20MB를 초과합니다: {name}',toastMaxFilesN:'최대 {max}개의 파일만 업로드할 수 있습니다',toastMinImages:'최소 4장 이상의 이미지가 필요합니다.',toastMin4ImagesDynamic:'최소 4장 이상의 이미지를 업로드해 주세요. (현재 {total}장)',toastInvalidVideoLink:'올바른 비디오 링크(https://...)를 입력하거나 비워 두세요.',toastUploadTooLarge:'총 이미지 업로드 용량이 {mb} MB로 서버 제한(4.5MB)을 초과했습니다. 이미지를 압축·축소해 주세요 (권장: 가로 1500~2000px, JPG 80% 품질).',mySubsTitle:'내 서브미션',mySubsHide:'숨기기',mySubsShow:'보이기',mySubsEmpty:'아직 제출한 서브미션이 없습니다.',sectionCategory:'카테고리',sectionProduction:'프로덕션 정보',sectionTeamCredits:'팀 크레딧',sectionLookCredits:'룩 크레딧',sectionAdditionalImages:'추가 이미지',sectionAdditionalInfo:'추가 정보 및 약관',sectionModels:'모델',labelEditorialTitle:'에디토리얼 제목',labelStudioName:'프로덕션 / 스튜디오 이름',labelEmail:'이메일',labelWebsite:'웹사이트',labelInstagram:'인스타그램',labelArtistStatement:'아티스트 스테이트먼트',labelAdditionalImages:'고해상도 이미지 — 룩에 포함되지 않은 추가 이미지 (선택)',labelCoverImage:'커버 이미지:',btnNext:'다음',btnBack:'이전',btnSubmit:'제출',btnAddTeam:'+ 팀원 추가',btnAddModel:'+ 모델 추가',btnAddLook:'+ 룩 추가',hdrRole:'역할',hdrName:'이름',hdrInstagram:'인스타그램',hdrWebsite:'웹사이트',hdrModelName:'모델 이름',hdrModelInsta:'모델 인스타',hdrAgencyName:'에이전시 이름',hdrAgencyInsta:'에이전시 인스타',phModelName:'모델 이름',phModelInsta:'@model_instagram',phAgencyName:'에이전시 이름 (선택)',phAgencyInsta:'@agency_instagram (선택)',teamCreditsDesc:'각 팀원의 이름, 인스타그램, 웹사이트를 입력해 주세요. 인스타그램 핸들은 SNS 크레딧에 사용됩니다.',modelsDesc:'모델의 이름과 인스타그램, 에이전시의 이름과 인스타그램을 각각 입력해 주세요.',lookCreditsDesc:'각 룩의 이미지를 업로드하고 브랜드/액세서리 크레딧을 입력해 주세요. 최소 4장 이상의 이미지가 필요합니다. 썸네일을 드래그하여 순서를 변경할 수 있고, 아래에 추가 이미지도 등록할 수 있습니다.',uploadDragText:'<strong>클릭</strong>하거나 추가 이미지를 드래그해 주세요',uploadHint:'JPG · 최대 25MB · 권장 1080×1350px',additionalImagesHint:'커버 이미지, 비하인드 컷, 룩에 포함되지 않은 추가 이미지를 등록해 주세요.',coverImageAuto:'자동 (첫 번째 이미지)',coverImageHint:'커버로 사용할 이미지를 지정해 주세요. 선택하지 않으면 첫 번째 이미지가 사용됩니다.',submittedTitle:'제출 완료',ft:'<strong>주식회사 알타카파</strong> | CEO : 강동민 | 사업자번호 192-88-02644<br>서울특별시 강남구 논현로146길 18, 1F | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+en:{business:'BUSINESS',about:'ABOUT',contact:'CONTACT',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',pageDesc:'Submit your editorial to PAP Magazine. Choose your submission type, provide production info, team credits, look-by-look garment credits, and high-resolution images. Track your submission status in MY SUBMISSIONS.',gateLogin:'LOG IN / SIGN UP',gateTitle:'MEMBERS ONLY',gateDesc:'This service is available to registered members only.\nPlease log in or sign up to continue.',successMsg:'Your submission has been received successfully. Review results will be sent via email.',englishOnlyNotice:'<strong>Notice</strong>All submission content (title, artist statement, team credits, model & agency info) must be written in <b>English</b>. This ensures consistent review and publication across our global editorial team.',step1Desc:'Select the categories that apply to your editorial (multiple allowed).',videoUrlLabel:'Video Link — behind-the-scenes, sketches, clips (optional)',videoUrlHint:'Because video files exceed upload limits, please share a download link from <b>Dropbox · WeTransfer · Swisstransfer · Google Drive</b> or similar. PAP will download your video and publish it on our official YouTube channel.',termsTitle:'SUBMISSION TERMS & CONDITIONS',termsEffective:'Effective: January 1, 2026 | Last Updated: March 1, 2026',termsAgreeLabel:'I have thoroughly read and understood all terms (Articles 1–12) above and agree to be bound by them.',termsErrorMsg:'You must agree to the terms to submit.',toastSubmitDetailsSoon:'Submission details will be supported soon.',toastOnlyImgFmt:'Only JPG/PNG/TIFF/WebP allowed: {name}',toastImgTooBig25:'File exceeds 25MB: {name}',toastImgLongestPx:'Recommended: longest side 1500px or more (current {px}px) — {name}',toastInvalidFileType:'Invalid file type: {name}',toastFileTooBig20:'File too large (max 20MB): {name}',toastMaxFilesN:'Maximum {max} files allowed',toastMinImages:'At least 4 images required.',toastMin4ImagesDynamic:'Please upload at least 4 images. (Currently {total})',toastInvalidVideoLink:'Please enter a valid video link (https://...) or leave it empty.',toastUploadTooLarge:'Total image upload size is {mb} MB, which exceeds the 4.5 MB server limit. Please compress/resize images (recommended: 1500–2000 px wide, JPG ~80% quality) and try again.',mySubsTitle:'MY SUBMISSIONS',mySubsHide:'HIDE',mySubsShow:'SHOW',mySubsEmpty:'No submissions yet.',sectionCategory:'CATEGORY',sectionProduction:'PRODUCTION INFO',sectionTeamCredits:'TEAM CREDITS',sectionLookCredits:'LOOK CREDITS',sectionAdditionalImages:'ADDITIONAL IMAGES',sectionAdditionalInfo:'ADDITIONAL INFO & TERMS',sectionModels:'MODELS',labelEditorialTitle:'Editorial Title',labelStudioName:'Production / Studio Name',labelEmail:'Email',labelWebsite:'Website',labelInstagram:'Instagram',labelArtistStatement:'Artist Statement',labelAdditionalImages:'High-resolution images — additional images not included in looks (optional)',labelCoverImage:'COVER IMAGE:',btnNext:'NEXT',btnBack:'BACK',btnSubmit:'SUBMIT',btnAddTeam:'+ Add Team Member',btnAddModel:'+ Add Model',btnAddLook:'+ Add Look',hdrRole:'ROLE',hdrName:'NAME',hdrInstagram:'INSTAGRAM',hdrWebsite:'WEBSITE',hdrModelName:'MODEL NAME',hdrModelInsta:'MODEL INSTA',hdrAgencyName:'AGENCY NAME',hdrAgencyInsta:'AGENCY INSTA',phModelName:'Model Name',phModelInsta:'@model_instagram',phAgencyName:'Agency Name (optional)',phAgencyInsta:'@agency_instagram (optional)',teamCreditsDesc:"Enter each team member's name, Instagram, and website. Instagram handles are used for social media credits.",modelsDesc:"Enter the model's name and Instagram, and the agency's name and Instagram separately.",lookCreditsDesc:'Upload images for each look and enter brand/accessory credits. Minimum 4 images required. Drag thumbnails to reorder. You can also add additional images below.',uploadDragText:'<strong>Click</strong> or drag additional images',uploadHint:'JPG · Max 25MB · 1080×1350px recommended',additionalImagesHint:'Please include cover images, behind-the-scenes shots, and other additional images not included in the looks.',coverImageAuto:'Auto (first image)',coverImageHint:'Specify which image to use as the cover. If not selected, the first image will be used.',submittedTitle:'SUBMITTED',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
 de:{business:'BUSINESS',about:'ABOUT',contact:'CONTACT',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',pageDesc:'Submit your editorial to PAP Magazine. Choose your submission type, provide production info, team credits, look-by-look garment credits, and high-resolution images. Track your submission status in MY SUBMISSIONS.',gateLogin:'LOG IN / SIGN UP',gateTitle:'MEMBERS ONLY',gateDesc:'This service is available to registered members only.\nPlease log in or sign up to continue.',successMsg:'Your submission has been received successfully. Review results will be sent via email.',englishOnlyNotice:'<strong>Hinweis</strong>Alle Einreichungsinhalte (Titel, Artist Statement, Team-Credits, Model- und Agentur-Infos) müssen <b>auf Englisch</b> verfasst werden. So gewährleisten wir eine einheitliche Prüfung und Veröffentlichung durch unser globales Redaktionsteam.',videoUrlLabel:'Video-Link — Behind-the-Scenes, Skizzen, Clips (optional)',videoUrlHint:'Da Videodateien die Upload-Grenze überschreiten, teilen Sie bitte einen Download-Link von <b>Dropbox · WeTransfer · Swisstransfer · Google Drive</b> oder ähnlichen Diensten. PAP lädt Ihr Video herunter und veröffentlicht es auf unserem offiziellen YouTube-Kanal.',termsTitle:'SUBMISSION AGB',termsEffective:'Gültig ab: 1. Januar 2026 | Zuletzt aktualisiert: 1. März 2026',termsAgreeLabel:'Ich habe alle Bestimmungen (Artikel 1–12) oben gründlich gelesen und verstanden und stimme ihnen zu.',termsErrorMsg:'Bitte stimmen Sie den Bedingungen zu, um die Einreichung abzuschließen.',toastSubmitDetailsSoon:'Einreichungsdetails werden bald unterstützt.',toastOnlyImgFmt:'Nur JPG/PNG/TIFF/WebP erlaubt: {name}',toastImgTooBig25:'Datei überschreitet 25 MB: {name}',toastImgLongestPx:'Empfohlen: längste Seite 1500 px oder mehr (aktuell {px} px) — {name}',toastInvalidFileType:'Ungültiger Dateityp: {name}',toastFileTooBig20:'Datei zu groß (max. 20 MB): {name}',toastMaxFilesN:'Maximal {max} Dateien erlaubt',toastMinImages:'Mindestens 4 Bilder erforderlich.',toastMin4ImagesDynamic:'Bitte laden Sie mindestens 4 Bilder hoch. (Aktuell {total})',toastInvalidVideoLink:'Bitte geben Sie einen gültigen Video-Link (https://...) ein oder lassen Sie das Feld leer.',toastUploadTooLarge:'Gesamte Upload-Größe beträgt {mb} MB und überschreitet das Serverlimit von 4,5 MB. Bitte Bilder komprimieren/verkleinern (empfohlen: 1500–2000 px Breite, JPG ~80%).',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
 it:{business:'BUSINESS',about:'CHI SIAMO',contact:'CONTATTI',subscribe:'ABBONATI',submission:'SUBMISSION',pullletter:'PULL-LETTER',pageDesc:'Invia il tuo editoriale a PAP Magazine. Fornisci informazioni sulla produzione, crediti del team, crediti per look e immagini ad alta risoluzione.',gateLogin:'ACCEDI / REGISTRATI',gateTitle:'SOLO MEMBRI',gateDesc:'Questo servizio è disponibile solo per i membri registrati.',successMsg:'La tua submission è stata ricevuta. I risultati saranno inviati via email entro 1-3 giorni lavorativi.',englishOnlyNotice:'<strong>Avviso</strong>Tutti i contenuti della submission (titolo, artist statement, crediti del team, info su modelli e agenzie) devono essere scritti <b>in inglese</b>. Questo garantisce una revisione e pubblicazione coerenti da parte del nostro team editoriale internazionale.',videoUrlLabel:'Link Video — behind-the-scenes, bozze, clip (opzionale)',videoUrlHint:'Poiché i file video superano i limiti di caricamento, condividi un link di download da <b>Dropbox · WeTransfer · Swisstransfer · Google Drive</b> o simili. PAP scaricherà il tuo video e lo pubblicherà sul nostro canale YouTube ufficiale.',termsTitle:'TERMINI E CONDIZIONI SUBMISSION',termsEffective:'In vigore dal: 1° gennaio 2026 | Ultimo aggiornamento: 1° marzo 2026',termsAgreeLabel:'Ho letto attentamente e compreso tutti i termini (Articoli 1–12) sopra e accetto di esserne vincolato.',termsErrorMsg:'È necessario accettare i termini per inviare.',toastSubmitDetailsSoon:'I dettagli della submission saranno supportati a breve.',toastOnlyImgFmt:'Sono ammessi solo JPG/PNG/TIFF/WebP: {name}',toastImgTooBig25:'Il file supera 25 MB: {name}',toastImgLongestPx:'Consigliato: lato più lungo 1500 px o più (attuale {px} px) — {name}',toastInvalidFileType:'Tipo di file non valido: {name}',toastFileTooBig20:'File troppo grande (max 20 MB): {name}',toastMaxFilesN:'Massimo {max} file consentiti',toastMinImages:'Sono richieste almeno 4 immagini.',toastMin4ImagesDynamic:'Carica almeno 4 immagini. (Attualmente {total})',toastInvalidVideoLink:'Inserisci un link video valido (https://...) o lascia vuoto.',toastUploadTooLarge:'La dimensione totale del caricamento è di {mb} MB, oltre il limite di 4,5 MB del server. Comprimi/ridimensiona le immagini (consigliato: 1500–2000 px di larghezza, JPG ~80%) e riprova.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | P. IVA: 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Corea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
 fr:{business:'BUSINESS',about:'À PROPOS',contact:'CONTACT',subscribe:"S'ABONNER",submission:'SOUMISSION',pullletter:'PULL-LETTER',pageDesc:'Soumettez votre éditorial à PAP Magazine. Fournissez les informations de production, crédits d\'équipe, crédits par look et images haute résolution.',gateLogin:'CONNEXION / INSCRIPTION',gateTitle:'RÉSERVÉ AUX MEMBRES',gateDesc:'Ce service est réservé aux membres inscrits.',successMsg:'Votre soumission a été reçue. Les résultats seront envoyés par email sous 1 à 3 jours ouvrés.',englishOnlyNotice:'<strong>Note</strong>Tous les contenus de soumission (titre, artist statement, crédits de l\'équipe, infos modèles et agences) doivent être rédigés <b>en anglais</b>. Cela garantit une révision et une publication cohérentes par notre équipe éditoriale internationale.',videoUrlLabel:'Lien vidéo — coulisses, croquis, clips (optionnel)',videoUrlHint:'Les fichiers vidéo dépassant les limites de téléversement, veuillez partager un lien de téléchargement depuis <b>Dropbox · WeTransfer · Swisstransfer · Google Drive</b> ou similaire. PAP téléchargera votre vidéo et la publiera sur notre chaîne YouTube officielle.',termsTitle:'CONDITIONS DE SUBMISSION',termsEffective:'En vigueur : 1er janvier 2026 | Dernière mise à jour : 1er mars 2026',termsAgreeLabel:"J'ai lu attentivement et compris l'ensemble des conditions (Articles 1–12) ci-dessus et accepte d'y être lié.",termsErrorMsg:'Vous devez accepter les conditions pour soumettre.',toastSubmitDetailsSoon:'Les détails de la soumission seront bientôt pris en charge.',toastOnlyImgFmt:'Seuls JPG/PNG/TIFF/WebP sont autorisés : {name}',toastImgTooBig25:'Le fichier dépasse 25 Mo : {name}',toastImgLongestPx:'Recommandé : côté le plus long 1500 px ou plus (actuel {px} px) — {name}',toastInvalidFileType:'Type de fichier invalide : {name}',toastFileTooBig20:'Fichier trop volumineux (max 20 Mo) : {name}',toastMaxFilesN:'Maximum {max} fichiers autorisés',toastMinImages:'Au moins 4 images sont requises.',toastMin4ImagesDynamic:'Veuillez téléverser au moins 4 images. (Actuellement {total})',toastInvalidVideoLink:'Veuillez entrer un lien vidéo valide (https://...) ou laisser vide.',toastUploadTooLarge:'La taille totale du téléversement est de {mb} Mo, ce qui dépasse la limite serveur de 4,5 Mo. Veuillez compresser/redimensionner les images (recommandé : 1500–2000 px de large, JPG ~80%) et réessayer.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | PDG : Domenico Kang | N&#176; 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Séoul, Corée | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
@@ -2079,8 +2088,11 @@ function setLang(l){
   localStorage.setItem('pap-lang',l);_curLang=l;var d=L[l]||L.ko;
   document.querySelectorAll('[data-i18n]').forEach(function(e){var k=e.getAttribute('data-i18n');if(d[k])e.textContent=d[k];});
   document.querySelectorAll('[data-i18n-html]').forEach(function(e){var k=e.getAttribute('data-i18n-html');if(d[k])e.innerHTML=d[k].replace(/\\n/g,'<br>');});
+  // QA #86 — also process data-i18n-ph for input/textarea placeholders
+  document.querySelectorAll('[data-i18n-ph]').forEach(function(e){var k=e.getAttribute('data-i18n-ph');if(d[k])e.placeholder=d[k];});
   if(document.getElementById('footerLegal')&&d.ft) document.getElementById('footerLegal').innerHTML=d.ft;
-  document.getElementById('langSelect').value=l;
+  var sel=document.getElementById('langSelect');
+  if(sel) sel.value=l;
   _applyFieldTexts();
   _applyTerms();
 }
