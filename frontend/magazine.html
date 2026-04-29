@@ -122,7 +122,7 @@ a{text-decoration:none;color:inherit}
 .sec-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:50px;border-bottom:1px solid var(--border);padding-bottom:16px}
 .sec-title{font-family:var(--display);font-size:clamp(26px,3.5vw,42px);font-weight:700;letter-spacing:-.5px}
 .sec-count{font-size:10px;letter-spacing:2px;color:var(--dimmer)}
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(16px,2.5vw,36px)}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:clamp(20px,3vw,48px);max-width:1100px;margin-left:auto;margin-right:auto}
 .card{cursor:pointer;opacity:0;transform:translateY(24px);display:block}
 .card.vis{opacity:1;transform:translateY(0);transition:opacity .6s ease,transform .6s ease}
 .card:hover .cover img{transform:scale(1.04)}
@@ -210,7 +210,6 @@ footer a:hover{color:#fff}
 
 @media(max-width:900px){.nav-extra-links{display:none}.nav-bottom-row{display:none}}
 @media(max-width:768px){.nav-overlay-inner{flex-direction:column;padding:70px 24px 40px}.nav-left-col{width:100%;order:2;margin-top:32px}.nav-right-col{width:100%;align-items:flex-start;order:1}.nav-right-col a{font-size:clamp(28px,8vw,48px)}.nav-left-links a{font-size:clamp(14px,3vw,18px)}.nav-left-top a{font-size:clamp(14px,3vw,18px)}}
-@media(max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:560px){.grid{grid-template-columns:1fr;max-width:360px;margin:0 auto}.sec-head{flex-direction:column;align-items:flex-start;gap:6px}}
 </style>
 <!-- Favicon & PWA -->
