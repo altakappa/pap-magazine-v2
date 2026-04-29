@@ -236,6 +236,19 @@ a{color:#fff;text-decoration:none}
 <meta name="twitter:image" content="https://pap-magazine.com/apple-touch-icon.png">
 <link rel="canonical" href="https://pap-magazine.com/auth.html">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Join PAP - PAP Magazine"}</script>
+<!-- Back-navigation acceleration: pre-warm the home page so pressing back
+     after auth doesn't trigger a full cold reload. prefetch is universal
+     (HTTP cache); the speculation rules block additionally prerenders the
+     full page on Chrome/Edge for an instant restore. -->
+<link rel="prefetch" href="/" as="document">
+<link rel="prefetch" href="/mypage.html" as="document">
+<script type="speculationrules">
+{
+  "prerender": [
+    { "source": "list", "urls": ["/", "/mypage.html"] }
+  ]
+}
+</script>
 <!-- Cookie Consent + GA4 (consent-gated) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
 <script src="pap-geo-lang.js"></script>
