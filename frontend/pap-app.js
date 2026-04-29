@@ -981,7 +981,18 @@ function _openEditorialInner(title,thumb){
   if(typeof _resetCursorForModal==='function') _resetCursorForModal();
   // Push state with editorial info so popstate can restore it
   var _edThumb=det.thumb||thumb||'';
-  try{history.pushState({editorial:true,title:title,thumb:_edThumb},'',window.location.pathname+'#editorial/'+encodeURIComponent(title));}catch(e){window.location.hash='#editorial/'+encodeURIComponent(title);}
+  // replaceState when arriving via deep-link (#editorial/Title already in URL),
+  // pushState for in-app opens — prevents duplicate history entries that
+  // would make the X / back button land on the same hash.
+  try{
+    var _ehash='#editorial/'+encodeURIComponent(title);
+    var _epath=window.location.pathname+_ehash;
+    if(window.location.hash===_ehash){
+      history.replaceState({editorial:true,title:title,thumb:_edThumb},'',_epath);
+    }else{
+      history.pushState({editorial:true,title:title,thumb:_edThumb},'',_epath);
+    }
+  }catch(e){window.location.hash='#editorial/'+encodeURIComponent(title);}
 }
 
 // Version of _openEditorialInner that does NOT push a new history entry (used by popstate)
@@ -1162,7 +1173,20 @@ function _openAllEditorialsInner(){
   edAllBuilt=true;
   overlay.classList.add('active');
   document.body.style.overflow='hidden';
-  history.pushState({allEditorials:true},'',window.location.pathname+'#all-editorials');
+  // If we arrived via a direct hash navigation (e.g. user clicked
+  // EDITORIAL in the hamburger menu of a sub-page, which sends them to
+  // /index.html#all-editorials as a full nav), the hash is ALREADY in
+  // place from the navigation. A pushState would create a duplicate
+  // history entry — back from there lands on the same hash again,
+  // which appears to the user as "X did nothing useful" or "X dumped
+  // me on home". Use replaceState in that case so back goes to the
+  // actual previous page.
+  var _h='#all-editorials';
+  if(window.location.hash===_h){
+    history.replaceState({allEditorials:true},'',window.location.pathname+_h);
+  }else{
+    history.pushState({allEditorials:true},'',window.location.pathname+_h);
+  }
 }
 function _renderEdAllPage(){
   var grid=document.getElementById('edAllGrid');
@@ -1280,7 +1304,12 @@ function _openAllFilmsInner(){
     grid.appendChild(card);
   });
   count.textContent=filmAllData.length+' FILMS';
-  history.pushState({overlay:'films'},'','#films-all');
+  // replaceState if user arrived via direct #films-all nav, else push.
+  if(window.location.hash==='#films-all'){
+    history.replaceState({overlay:'films'},'',window.location.pathname+'#films-all');
+  }else{
+    history.pushState({overlay:'films'},'',window.location.pathname+'#films-all');
+  }
   overlay.classList.add('active');
   document.body.style.overflow='hidden';
 }
@@ -1344,7 +1373,15 @@ function _openFilmDetailInner(idx){
   }
   overlay.classList.add('active');
   document.body.style.overflow='hidden';
-  try{history.pushState({film:true,idx:idx},'',window.location.pathname+'#film/'+encodeURIComponent(f.t||''));}catch(e){}
+  try{
+    var _fhash='#film/'+encodeURIComponent(f.t||'');
+    var _fpath=window.location.pathname+_fhash;
+    if(window.location.hash===_fhash){
+      history.replaceState({film:true,idx:idx},'',_fpath);
+    }else{
+      history.pushState({film:true,idx:idx},'',_fpath);
+    }
+  }catch(e){}
 }
 function _findFilmByTitle(title){
   if(!title) return -1;
@@ -1410,7 +1447,12 @@ function _openAllArticlesInner(){
     grid.appendChild(card);
   });
   count.textContent=artData.length+' ARTICLES';
-  history.pushState({overlay:'articles'},'','#articles-all');
+  // replaceState if user arrived via direct #articles-all nav, else push.
+  if(window.location.hash==='#articles-all'){
+    history.replaceState({overlay:'articles'},'',window.location.pathname+'#articles-all');
+  }else{
+    history.pushState({overlay:'articles'},'',window.location.pathname+'#articles-all');
+  }
   overlay.classList.add('active');
   document.body.style.overflow='hidden';
 }
@@ -1549,7 +1591,15 @@ function _openArticleDetailInner(idx){
   document.body.style.overflow='hidden';
   
   // Push state for back button
-  try{history.pushState({article:true,idx:idx},'',window.location.pathname+'#article/'+encodeURIComponent(a.slug||a.t));}catch(e){}
+  try{
+    var _ahash='#article/'+encodeURIComponent(a.slug||a.t);
+    var _apath=window.location.pathname+_ahash;
+    if(window.location.hash===_ahash){
+      history.replaceState({article:true,idx:idx},'',_apath);
+    }else{
+      history.pushState({article:true,idx:idx},'',_apath);
+    }
+  }catch(e){}
 }
 function closeArticleDetail(skipHistory){
   var overlay=document.getElementById('artDetailOverlay');
