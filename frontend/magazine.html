@@ -601,7 +601,14 @@ setTimeout(function(){document.getElementById('hc').classList.add('vis')},200);
      declared, so we keep our own copy here to avoid an undefined ref. */
   var MONTH_MAP_LOCAL = {january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
   var QUARTER_RANGE = {1:'Jan – Mar', 2:'Apr – Jun', 3:'Jul – Sep', 4:'Oct – Dec'};
-  document.querySelectorAll('section.issues').forEach(function(section, sectionIdx){
+
+  /* PASS 1: collect every quarter across every section, then assign a
+     single sequential volume number from oldest (Vol. 1) to newest. The
+     resulting Vol number is the primary card label per user request. */
+  var sectionsData = [];
+  var allQuarters = [];
+
+  document.querySelectorAll('section.issues').forEach(function(section){
     var grid = section.querySelector('.grid');
     if(!grid) return;
     var cards = Array.from(grid.querySelectorAll('.card'));
@@ -630,50 +637,65 @@ setTimeout(function(){document.getElementById('hc').classList.add('vis')},200);
       if(!groupMap[key]) groupMap[key] = {quarter: p.quarter, year: p.year, items: []};
       groupMap[key].items.push(p);
     });
-    var groups = Object.keys(groupMap).map(function(k){return groupMap[k];})
-      .sort(function(a, b){
-        if(a.year !== b.year) return b.year - a.year;
-        return b.quarter - a.quarter;
-      });
+    var sectionGroups = Object.keys(groupMap).map(function(k){return groupMap[k];});
+    sectionsData.push({section: section, grid: grid, groups: sectionGroups});
+    allQuarters.push.apply(allQuarters, sectionGroups);
+  });
 
-    grid.innerHTML = '';
+  // Sort globally oldest → newest, assign Vol number
+  allQuarters.sort(function(a, b){
+    if(a.year !== b.year) return a.year - b.year;
+    return a.quarter - b.quarter;
+  });
+  allQuarters.forEach(function(g, i){ g.volNumber = i + 1; });
+  var totalVolumes = allQuarters.length;
+
+  /* PASS 2: render each section, sorted newest → oldest within the
+     section, using the global volume number assigned in pass 1. */
+  sectionsData.forEach(function(sec, sectionIdx){
+    var groups = sec.groups.sort(function(a, b){
+      if(a.year !== b.year) return b.year - a.year;
+      return b.quarter - a.quarter;
+    });
+
+    sec.grid.innerHTML = '';
     groups.forEach(function(g, idx){
       var totalCount = g.items.reduce(function(s, it){return s + it.count;}, 0);
       var sortedDesc = g.items.slice().sort(function(a, b){return b.monthIdx - a.monthIdx;});
       var coverImg = sortedDesc[0].img;
-      var quarterName = 'Q' + g.quarter;
-      var title = quarterName + ' ' + g.year;
-      var range = QUARTER_RANGE[g.quarter] + ' ' + g.year;
+      var volTitle = 'Vol. ' + g.volNumber;            // primary
+      var range = QUARTER_RANGE[g.quarter] + ' ' + g.year; // secondary
       var isLatest = (sectionIdx === 0 && idx === 0);
 
       var card = document.createElement('div');
       card.className = 'card';
       card.setAttribute('data-quarter', g.quarter);
       card.setAttribute('data-year', g.year);
+      card.setAttribute('data-vol', g.volNumber);
       card.onclick = function(){ openModal(this); };
       card.innerHTML =
         '<div class="cover">' +
-          '<img loading="lazy" src="' + coverImg + '" alt="' + title + '">' +
+          '<img loading="lazy" src="' + coverImg + '" alt="' + volTitle + '">' +
           '<div class="covlay">' +
             '<span class="' + (isLatest ? 'latest-badge' : 'mo-badge') + '">' +
-              (isLatest ? 'LATEST' : title.toUpperCase()) +
+              (isLatest ? 'LATEST' : volTitle.toUpperCase()) +
             '</span>' +
             '<div class="cov-bot">' +
-              '<div class="cov-title">' + title + '</div>' +
-              '<div class="cov-ct">' + totalCount + ' EDITORIALS</div>' +
+              '<div class="cov-title">' + volTitle + '</div>' +
+              '<div class="cov-ct">' + totalCount + ' EDITORIALS · ' + range + '</div>' +
             '</div>' +
           '</div>' +
           '<div class="hov"><div class="rd">READ</div></div>' +
         '</div>' +
         '<div class="meta">' +
-          '<span class="vol">' + range + '</span>' +
-          '<span class="dt">' + title.toUpperCase() + '</span>' +
+          '<span class="vol">' + volTitle.toUpperCase() + '</span>' +
+          '<span class="dt">' + range + '</span>' +
         '</div>';
-      grid.appendChild(card);
+      sec.grid.appendChild(card);
     });
 
     // Update section count
-    var counter = section.querySelector('.sec-count');
+    var counter = sec.section.querySelector('.sec-count');
     if(counter){
       counter.textContent = groups.length + ' ISSUE' + (groups.length > 1 ? 'S' : '');
     }
@@ -684,6 +706,7 @@ setTimeout(function(){document.getElementById('hc').classList.add('vis')},200);
 
 var _magEdCache=null;
 var _currentIssueTitle='';
+var _currentQuarterOpts=null;
 var MONTH_MAP={january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
 
 // ---- Access gate helper (OPEN BETA 지원) ----
@@ -724,15 +747,28 @@ function openModal(el){
   var title=covTitle?covTitle.textContent:'';
   var count=covCt?covCt.textContent:'';
   _currentIssueTitle=title;
+  // Quarter-grouped cards expose year + quarter as data attributes
+  // (the visible title is now "Vol. N", which isn't directly parseable
+  // back to a month/year — we read the data attrs instead).
+  var dQ = el.getAttribute('data-quarter');
+  var dY = el.getAttribute('data-year');
+  var quarterOpts = (dQ && dY) ? {year: parseInt(dY,10), quarter: parseInt(dQ,10)} : null;
   // 베타 기간 중(또는 구독자)에는 구독 팝업을 건너뛰고 바로 전체 이슈 프리뷰 오픈
   if(_magIsOpenAccess()){
-    openPreview(title,{unlimited:true});
+    var opts = {unlimited:true};
+    if(quarterOpts){ opts.year = quarterOpts.year; opts.quarter = quarterOpts.quarter; }
+    openPreview(title,opts);
     return;
   }
+  // Stash for the "preview free" button on the subscribe modal
+  if(quarterOpts){ _currentQuarterOpts = quarterOpts; } else { _currentQuarterOpts = null; }
   document.getElementById('modalIssue').textContent=title.toUpperCase();
   document.getElementById('modalTitle').textContent=title;
   document.getElementById('modalCount').textContent=count.toLowerCase();
-  document.getElementById('modalPreview').onclick=function(){openPreview(title)};
+  document.getElementById('modalPreview').onclick=function(){
+    var pOpts = _currentQuarterOpts ? {year: _currentQuarterOpts.year, quarter: _currentQuarterOpts.quarter} : undefined;
+    openPreview(title, pOpts);
+  };
   var m=document.getElementById('subModal');
   m.classList.add('active');
   document.body.style.overflow='hidden';
@@ -803,7 +839,13 @@ function openPreview(issueTitle,opts){
   overlay.classList.add('active');
   document.body.style.overflow='hidden';
 
-  var parsed=parseIssueMonthYear(issueTitle);
+  var parsed;
+  if(opts.year && opts.quarter){
+    var startM = (opts.quarter - 1) * 3 + 1;
+    parsed = {year: opts.year, months: [startM, startM+1, startM+2]};
+  } else {
+    parsed = parseIssueMonthYear(issueTitle);
+  }
   if(!parsed){grid.innerHTML='<div style="color:#999;padding:40px">No editorials found</div>';return;}
 
   function renderPreviewCards(data){
