@@ -80,8 +80,62 @@
   }
 
   /* ── helpers ─────────────────────────────────────── */
-  function getConsent(){ try{return localStorage.getItem(STORAGE_KEY);}catch(e){return null;} }
-  function setConsent(v){ try{localStorage.setItem(STORAGE_KEY,v);}catch(e){} }
+  // Store consent in BOTH localStorage AND a domain-wide cookie.
+  // localStorage is per-origin — so www.papkorea.com and papkorea.com would
+  // each have their own copy, and Safari "Prevent Cross-Site Tracking" can
+  // wipe it. The cookie (domain=.papkorea.com, max-age=365d) survives all
+  // those edge cases and is what browsers consider the canonical "consent
+  // given" signal anyway.
+  var COOKIE_NAME = 'pap_cookie_consent';
+  var COOKIE_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
+
+  function _readCookie(name){
+    try{
+      var pairs = (document.cookie||'').split(';');
+      for(var i=0;i<pairs.length;i++){
+        var p = pairs[i].trim();
+        if(p.indexOf(name + '=') === 0) return decodeURIComponent(p.substring(name.length + 1));
+      }
+    }catch(e){}
+    return null;
+  }
+  function _writeCookie(name, value){
+    try{
+      // Domain rule: production uses ".papkorea.com" so the cookie is shared
+      // between root + www + any other subdomain. On localhost/preview hosts
+      // we omit the domain attribute so the browser scopes it to the current
+      // host (which is what we want there).
+      var host = location.hostname || '';
+      var domainAttr = '';
+      if(host.indexOf('papkorea.com') > -1) domainAttr = '; Domain=.papkorea.com';
+      var secureAttr = (location.protocol === 'https:') ? '; Secure' : '';
+      document.cookie = name + '=' + encodeURIComponent(value) +
+        '; Max-Age=' + COOKIE_MAX_AGE +
+        '; Path=/' + domainAttr + secureAttr +
+        '; SameSite=Lax';
+    }catch(e){}
+  }
+
+  function getConsent(){
+    // Prefer cookie (cross-subdomain reliable). Fall back to localStorage
+    // for users who consented before this dual-write was deployed.
+    var fromCookie = _readCookie(COOKIE_NAME);
+    if(fromCookie === 'accepted' || fromCookie === 'rejected') return fromCookie;
+    try{
+      var fromLS = localStorage.getItem(STORAGE_KEY);
+      if(fromLS === 'accepted' || fromLS === 'rejected') {
+        // Migrate forward to the cookie so this user stops seeing the banner
+        // on other subdomains immediately.
+        _writeCookie(COOKIE_NAME, fromLS);
+        return fromLS;
+      }
+    }catch(e){}
+    return null;
+  }
+  function setConsent(v){
+    try{ localStorage.setItem(STORAGE_KEY, v); }catch(e){}
+    _writeCookie(COOKIE_NAME, v);
+  }
 
   /* ── load GA4 ────────────────────────────────────── */
   function loadGA4(){
