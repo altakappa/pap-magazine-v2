@@ -97,8 +97,12 @@ textarea.form-input{min-height:100px;resize:vertical;line-height:1.8}
 .char-count{font-size:9px;color:rgba(255,255,255,.55);margin-top:4px;text-align:right}
 .char-count.over{color:rgba(255,80,80,.7)}
 
-/* TEAM MEMBER ROW */
-.team-row{display:grid;grid-template-columns:120px 1fr 1fr 1fr;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+/* TEAM MEMBER ROW
+ * QA #88 — link column reduced from two parallel inputs (instagram + website)
+ * to a single LINK TYPE select + a single LINK input. Grid changes from
+ * 120px 1fr 1fr 1fr → 120px 1fr 1fr (3 cols) and the link cell hosts both
+ * the select and the input via flex. */
+.team-row{display:grid;grid-template-columns:120px 1fr 1fr;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.06)}
 .team-role{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.85)}
 .team-input{background:transparent;border:1px solid rgba(255,255,255,.12);padding:10px 12px;font-size:12px;font-family:'Montserrat',sans-serif;color:#fff;outline:none;width:100%;transition:border-color .3s,background .3s}
 .team-input:focus{border-color:rgba(255,255,255,.4)}
@@ -106,7 +110,13 @@ textarea.form-input{min-height:100px;resize:vertical;line-height:1.8}
 /* QA #87 — required-field highlight for team credits */
 .team-input.error{border-color:#ff6b6b;background:rgba(255,107,107,.08)}
 .team-row.error{box-shadow:inset 3px 0 0 #ff6b6b;padding-left:8px;background:rgba(255,107,107,.04)}
-.team-header{display:grid;grid-template-columns:120px 1fr 1fr 1fr;gap:12px;padding:0 0 8px;margin-bottom:4px;border-bottom:1px solid rgba(255,255,255,.12)}
+/* QA #88 — link cell: type-toggle on the left + URL/handle input on the right */
+.team-link-cell{display:flex;align-items:stretch;gap:0}
+.team-link-type{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);border-right:0;padding:10px 8px;font-size:11px;font-family:'Montserrat',sans-serif;color:#fff;outline:none;cursor:pointer;flex-shrink:0;width:90px;letter-spacing:.04em;-webkit-appearance:none;-moz-appearance:none;appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'><path d='M3 5l3 3 3-3' stroke='rgba(255,255,255,.5)' stroke-width='1.5' fill='none'/></svg>");background-repeat:no-repeat;background-position:right 8px center;padding-right:24px}
+.team-link-type:focus{border-color:rgba(255,255,255,.4)}
+.team-link-type option{background:#0a0a0a;color:#fff}
+.team-link-cell .team-input{flex:1;min-width:0}
+.team-header{display:grid;grid-template-columns:120px 1fr 1fr;gap:12px;padding:0 0 8px;margin-bottom:4px;border-bottom:1px solid rgba(255,255,255,.12)}
 .team-header span{font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.7)}
 
 /* LOOK CREDITS */
@@ -281,6 +291,8 @@ textarea.form-input{min-height:100px;resize:vertical;line-height:1.8}
   .content{padding:60px 20px}
   .form-row,.form-row3{grid-template-columns:1fr}
   .team-row,.team-header{grid-template-columns:1fr}
+  .team-link-cell{flex-direction:row}
+  .team-link-type{width:100px}
   .team-role{margin-bottom:4px}
   .look-item,.look-item-header{grid-template-columns:1fr}
   .footer-legal{padding:20px 20px}
@@ -684,17 +696,17 @@ function navigateWithInterstitial(url){
       <p style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:20px;line-height:1.8" data-i18n="teamCreditsDesc">Enter each team member's name, Instagram, and website. Instagram handles are used for social media credits.</p>
       <div class="error-summary" id="errSummary3"></div>
       <div class="team-header">
-        <span data-i18n="hdrRole">ROLE</span><span data-i18n="hdrName">NAME</span><span data-i18n="hdrInstagram">INSTAGRAM</span><span data-i18n="hdrWebsite">WEBSITE</span>
+        <span data-i18n="hdrRole">ROLE</span><span data-i18n="hdrName">NAME</span><span data-i18n="hdrLink">LINK</span>
       </div>
       <div id="teamList">
-        <div class="team-row"><div class="team-role">Photo</div><input class="team-input" placeholder="Name"><input class="team-input" placeholder="@instagram"><input class="team-input" placeholder="website"></div>
-        <div class="team-row"><div class="team-role">Art Dir.</div><input class="team-input" placeholder="Name"><input class="team-input" placeholder="@instagram"><input class="team-input" placeholder=""></div>
-        <div class="team-row"><div class="team-role">Styling</div><input class="team-input" placeholder="Name"><input class="team-input" placeholder="@instagram"><input class="team-input" placeholder=""></div>
-        <div class="team-row"><div class="team-role">MUAH</div><input class="team-input" placeholder="Name"><input class="team-input" placeholder="@instagram"><input class="team-input" placeholder=""></div>
-        <div class="team-row"><div class="team-role">Set Design</div><input class="team-input" placeholder="Name"><input class="team-input" placeholder="@instagram"><input class="team-input" placeholder=""></div>
-        <div class="team-row"><div class="team-role">Styling Asst.</div><input class="team-input" placeholder="Name"><input class="team-input" placeholder="@instagram"><input class="team-input" placeholder=""></div>
-        <div class="team-row"><div class="team-role">Retouch</div><input class="team-input" placeholder="Name / Studio"><input class="team-input" placeholder="@instagram"><input class="team-input" placeholder="website"></div>
-        <div class="team-row"><div class="team-role">Production</div><input class="team-input" placeholder="Name / Studio"><input class="team-input" placeholder="@instagram"><input class="team-input" placeholder="website"></div>
+        <div class="team-row"><div class="team-role">Photo</div><input class="team-input" placeholder="Name"><div class="team-link-cell"><select class="team-link-type" onchange="_onTeamLinkTypeChange(this)"><option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option><option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option></select><input class="team-input team-link-input" placeholder="@instagram"></div></div>
+        <div class="team-row"><div class="team-role">Art Dir.</div><input class="team-input" placeholder="Name"><div class="team-link-cell"><select class="team-link-type" onchange="_onTeamLinkTypeChange(this)"><option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option><option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option></select><input class="team-input team-link-input" placeholder="@instagram"></div></div>
+        <div class="team-row"><div class="team-role">Styling</div><input class="team-input" placeholder="Name"><div class="team-link-cell"><select class="team-link-type" onchange="_onTeamLinkTypeChange(this)"><option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option><option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option></select><input class="team-input team-link-input" placeholder="@instagram"></div></div>
+        <div class="team-row"><div class="team-role">MUAH</div><input class="team-input" placeholder="Name"><div class="team-link-cell"><select class="team-link-type" onchange="_onTeamLinkTypeChange(this)"><option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option><option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option></select><input class="team-input team-link-input" placeholder="@instagram"></div></div>
+        <div class="team-row"><div class="team-role">Set Design</div><input class="team-input" placeholder="Name"><div class="team-link-cell"><select class="team-link-type" onchange="_onTeamLinkTypeChange(this)"><option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option><option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option></select><input class="team-input team-link-input" placeholder="@instagram"></div></div>
+        <div class="team-row"><div class="team-role">Styling Asst.</div><input class="team-input" placeholder="Name"><div class="team-link-cell"><select class="team-link-type" onchange="_onTeamLinkTypeChange(this)"><option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option><option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option></select><input class="team-input team-link-input" placeholder="@instagram"></div></div>
+        <div class="team-row"><div class="team-role">Retouch</div><input class="team-input" placeholder="Name / Studio"><div class="team-link-cell"><select class="team-link-type" onchange="_onTeamLinkTypeChange(this)"><option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option><option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option></select><input class="team-input team-link-input" placeholder="@instagram"></div></div>
+        <div class="team-row"><div class="team-role">Production</div><input class="team-input" placeholder="Name / Studio"><div class="team-link-cell"><select class="team-link-type" onchange="_onTeamLinkTypeChange(this)"><option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option><option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option></select><input class="team-input team-link-input" placeholder="@instagram"></div></div>
       </div>
       <button class="add-btn" style="margin-top:12px" onclick="addTeamRow()" data-i18n="btnAddTeam">+ Add Team Member</button>
 
@@ -1337,13 +1349,16 @@ function _validateStep(n){
   }
   if(n===3){
     // QA #87 — at least 1 team credit must be entered. A row is considered
-    // "filled" if any of its inputs has a non-empty value. This treats the
-    // pre-filled rows (Photo / Art Dir. / Styling / etc.) and user-added
-    // rows uniformly without depending on column position.
+    // "filled" if any of its inputs (including the link cell input from
+    // QA #88) has a non-empty value. This treats the pre-filled rows
+    // (Photo / Art Dir. / Styling / etc.) and user-added rows uniformly
+    // without depending on column position.
     var teamList = document.getElementById('teamList');
     var rows = teamList ? teamList.querySelectorAll('.team-row') : [];
     var hasAnyCredit = false;
     rows.forEach(function(row){
+      // .team-input matches BOTH the role/name inputs AND the link input
+      // (since .team-link-input also has .team-input class).
       var inputs = row.querySelectorAll('.team-input');
       for(var i=0;i<inputs.length;i++){
         if(inputs[i].value && inputs[i].value.trim()){
@@ -1442,13 +1457,42 @@ function goStep(n){
   if(n===4) updateCoverSelector();
 }
 
-// ADD TEAM ROW
+// ADD TEAM ROW — QA #88: link column is single-select (Instagram OR Website)
 function addTeamRow(){
   var list=document.getElementById('teamList');
   var row=document.createElement('div');
   row.className='team-row';
-  row.innerHTML='<input class="team-input" placeholder="Role" style="font-weight:700;text-transform:uppercase;letter-spacing:.1em"><input class="team-input" placeholder="Name"><input class="team-input" placeholder="@instagram"><input class="team-input" placeholder="website">';
+  row.innerHTML=''
+    + '<input class="team-input" placeholder="Role" style="font-weight:700;text-transform:uppercase;letter-spacing:.1em">'
+    + '<input class="team-input" placeholder="Name">'
+    + '<div class="team-link-cell">'
+      + '<select class="team-link-type" onchange="_onTeamLinkTypeChange(this)">'
+        + '<option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option>'
+        + '<option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option>'
+      + '</select>'
+      + '<input class="team-input team-link-input" placeholder="@instagram">'
+    + '</div>';
   list.appendChild(row);
+  // Apply current language labels to the freshly-added select options
+  if(typeof setLang === 'function') setLang(_curLang);
+}
+
+// QA #88: when the link-type select changes, rewrite the input placeholder
+// AND wipe any value that doesn't match the new type (so a half-typed URL
+// doesn't get sent as an Instagram handle, or vice versa).
+function _onTeamLinkTypeChange(sel){
+  var cell = sel.closest('.team-link-cell');
+  if(!cell) return;
+  var inp = cell.querySelector('.team-link-input');
+  if(!inp) return;
+  if(sel.value === 'website'){
+    inp.placeholder = 'https://example.com';
+    // If user had typed an @handle, clear it — wrong type now
+    if(/^@/.test(inp.value)) inp.value = '';
+  } else {
+    inp.placeholder = '@instagram';
+    if(/^https?:\/\//i.test(inp.value)) inp.value = '';
+  }
 }
 
 // LOOK CREDITS
@@ -1689,6 +1733,9 @@ async function loadReviseSubmission(){
     }
 
     // ───── Team rows — clear default, add one row per credits entry
+    // QA #88: the link column is now a TYPE select + a single LINK input.
+    // We detect whether the saved value looks like a URL (→ website) or
+    // an @-handle (→ instagram) and set the dropdown accordingly.
     var teamList = document.getElementById('teamList');
     if(teamList && desc.credits && typeof desc.credits === 'object'){
       // Clear existing rows added by the page bootstrap
@@ -1702,17 +1749,30 @@ async function loadReviseSubmission(){
           var rows = teamList.querySelectorAll('.team-row');
           var row = rows[rows.length-1];
           if(!row) return;
-          var inputs = row.querySelectorAll('.team-input');
           var roleEl = row.querySelector('.team-role');
-          // Parse "Name (@handle)" or "Name @handle"
-          var m = String(entryStr||'').match(/^(.+?)\s*[\(@]\s*(@?[^\)\s]+)\)?\s*$/);
-          var name = m ? m[1].trim() : String(entryStr||'').trim();
-          var ig = m ? (m[2].indexOf('@')===0 ? m[2] : '@'+m[2]) : '';
+          var nameInputs = row.querySelectorAll('.team-input:not(.team-link-input)');
+          var linkSel = row.querySelector('.team-link-type');
+          var linkInp = row.querySelector('.team-link-input');
+          // Parse "Name (@handle)", "Name (https://...)" or just "Name"
+          var s = String(entryStr||'').trim();
+          var m = s.match(/^(.+?)\s*[\(]\s*([^\)]+?)\s*[\)]\s*$/);
+          var name = m ? m[1].trim() : s;
+          var link = m ? m[2].trim() : '';
           if(roleEl){ roleEl.textContent = roleKey.replace(/_/g,' '); }
-          // inputs layout depends on whether the role label is editable
+          // Layout: pre-filled rows → nameInputs[0]=Name. Added → nameInputs[0]=Role, [1]=Name
           var nameIdx = roleEl ? 0 : 1;
-          if(inputs[nameIdx]) inputs[nameIdx].value = name;
-          if(inputs[nameIdx+1]) inputs[nameIdx+1].value = ig;
+          if(nameInputs[nameIdx]) nameInputs[nameIdx].value = name;
+          if(linkSel && linkInp){
+            if(/^https?:\/\//i.test(link)){
+              linkSel.value = 'website';
+              linkInp.value = link;
+              linkInp.placeholder = 'https://example.com';
+            } else if(link){
+              linkSel.value = 'instagram';
+              linkInp.value = link.indexOf('@')===0 ? link : '@'+link;
+              linkInp.placeholder = '@instagram';
+            }
+          }
         });
       });
     }
@@ -1950,23 +2010,35 @@ async function submitForm(){
   };
 
   // Collect team credits — store as both 'credits' (backend) and 'team' (legacy)
+  // QA #88: link column is now a single LINK TYPE select + LINK input.
+  // Populate either `instagram` OR `website` depending on the selected type
+  // so downstream consumers receive a clean, unambiguous credit record.
   data.team=[];
   data.credits={};
   document.querySelectorAll('#teamList .team-row').forEach(function(row){
-    var inputs=row.querySelectorAll('.team-input');
-    var roleEl=row.querySelector('.team-role');
-    var role=roleEl?roleEl.textContent:inputs[0].value;
-    var member={
+    var roleEl   = row.querySelector('.team-role');
+    var nameInp  = row.querySelectorAll('.team-input:not(.team-link-input)');
+    // For pre-filled rows (role is a div) → nameInp[0] = Name
+    // For added rows (role is an input)   → nameInp[0] = Role, nameInp[1] = Name
+    var role = roleEl ? roleEl.textContent : (nameInp[0] ? nameInp[0].value : '');
+    var name = roleEl ? (nameInp[0] ? nameInp[0].value : '') : (nameInp[1] ? nameInp[1].value : '');
+    var linkSel = row.querySelector('.team-link-type');
+    var linkInp = row.querySelector('.team-link-input');
+    var linkVal = linkInp ? linkInp.value.trim() : '';
+    var linkType = linkSel ? linkSel.value : 'instagram';
+    var member = {
       role: role,
-      name: inputs[roleEl?0:1].value,
-      instagram: inputs[roleEl?1:2].value,
-      website: inputs[roleEl?2:3]?inputs[roleEl?2:3].value:''
+      name: name,
+      instagram: linkType === 'instagram' ? linkVal : '',
+      website:   linkType === 'website'   ? linkVal : ''
     };
     data.team.push(member);
-    // Also build credits object keyed by role (for backend)
+    // Also build credits object keyed by role (for backend) — use whichever
+    // link type was selected, falling back to plain name if nothing.
     var rKey=role.toLowerCase().replace(/\s+/g,'_');
     if(!data.credits[rKey]) data.credits[rKey]=[];
-    data.credits[rKey].push(member.name+(member.instagram?' ('+member.instagram+')':''));
+    var displayLink = member.instagram || member.website || '';
+    data.credits[rKey].push(member.name + (displayLink ? ' (' + displayLink + ')' : ''));
   });
 
   // Collect models
@@ -2114,8 +2186,8 @@ function simulateLogin(){
 
 // LANGUAGE (simplified - ko/en)
 var L={
-ko:{business:'비즈니스',about:'어바웃',contact:'문의',subscribe:'구독',submission:'서브미션',pullletter:'풀레터',pageDesc:'PAP 매거진에 에디토리얼을 제출하세요. 서브미션 유형을 선택하고, 작품 정보·팀 크레딧·룩별 의상 크레딧·고해상도 이미지를 제출해 주세요. MY SUBMISSIONS에서 실시간 심사 상태를 확인할 수 있습니다.',gateLogin:'로그인 / 회원가입',gateTitle:'회원 전용',gateDesc:'이 서비스는 무료 회원 이상만 이용할 수 있습니다.\n로그인하거나 회원가입 후 이용해 주세요.',successMsg:'서브미션이 성공적으로 접수되었습니다. 심사 결과는 이메일로 안내드리겠습니다.',englishOnlyNotice:'<strong>안내</strong>모든 서브미션 내용(제목, 아티스트 스테이트먼트, 팀 크레딧, 모델·에이전시 정보)은 <b>영어로 작성</b>해 주세요. 글로벌 에디토리얼 팀의 일관된 심사와 지면 발행을 위해 필수입니다.',step1Desc:'에디토리얼에 해당하는 카테고리를 선택해 주세요(복수 선택 가능).',videoUrlLabel:'비디오 링크 — 비하인드, 스케치, 클립 (선택)',videoUrlHint:'비디오 파일은 용량이 커서 직접 업로드 대신 <b>Dropbox · WeTransfer · Swisstransfer · Google Drive</b> 등의 다운로드 링크를 공유해 주세요. PAP가 비디오를 받아 공식 YouTube 채널에 업로드합니다.',termsTitle:'서브미션 약관',termsEffective:'시행일: 2026년 1월 1일 | 최종 수정일: 2026년 3월 1일',termsAgreeLabel:'위 모든 약관(제1조~제12조)을 정독하고 이해했으며, 이에 동의합니다.',termsErrorMsg:'서브미션을 진행하려면 약관에 동의해 주세요.',toastSubmitDetailsSoon:'서브미션 상세 보기는 곧 지원됩니다.',toastOnlyImgFmt:'JPG/PNG/TIFF/WebP만 허용됩니다: {name}',toastImgTooBig25:'25MB를 초과합니다: {name}',toastImgLongestPx:'권장: 긴 변 1500px 이상 (현재 {px}px) — {name}',toastInvalidFileType:'허용되지 않는 파일 형식입니다: {name}',toastFileTooBig20:'파일 용량이 20MB를 초과합니다: {name}',toastMaxFilesN:'최대 {max}개의 파일만 업로드할 수 있습니다',toastMinImages:'최소 4장 이상의 이미지가 필요합니다.',toastMin4ImagesDynamic:'최소 4장 이상의 이미지를 업로드해 주세요. (현재 {total}장)',toastInvalidVideoLink:'올바른 비디오 링크(https://...)를 입력하거나 비워 두세요.',toastUploadTooLarge:'총 이미지 업로드 용량이 {mb} MB로 서버 제한(4.5MB)을 초과했습니다. 이미지를 압축·축소해 주세요 (권장: 가로 1500~2000px, JPG 80% 품질).',mySubsTitle:'내 서브미션',mySubsHide:'숨기기',mySubsShow:'보이기',mySubsEmpty:'아직 제출한 서브미션이 없습니다.',sectionCategory:'카테고리',sectionProduction:'프로덕션 정보',sectionTeamCredits:'팀 크레딧',sectionLookCredits:'룩 크레딧',sectionAdditionalImages:'추가 이미지',sectionAdditionalInfo:'추가 정보 및 약관',sectionModels:'모델',labelEditorialTitle:'에디토리얼 제목',labelStudioName:'프로덕션 / 스튜디오 이름',labelEmail:'이메일',labelWebsite:'웹사이트',labelInstagram:'인스타그램',labelArtistStatement:'아티스트 스테이트먼트',labelAdditionalImages:'고해상도 이미지 — 룩에 포함되지 않은 추가 이미지 (선택)',labelCoverImage:'커버 이미지:',btnNext:'다음',btnBack:'이전',btnSubmit:'제출',btnAddTeam:'+ 팀원 추가',btnAddModel:'+ 모델 추가',btnAddLook:'+ 룩 추가',hdrRole:'역할',hdrName:'이름',hdrInstagram:'인스타그램',hdrWebsite:'웹사이트',hdrModelName:'모델 이름',hdrModelInsta:'모델 인스타',hdrAgencyName:'에이전시 이름',hdrAgencyInsta:'에이전시 인스타',phModelName:'모델 이름',phModelInsta:'@model_instagram',phAgencyName:'에이전시 이름 (선택)',phAgencyInsta:'@agency_instagram (선택)',teamCreditsDesc:'각 팀원의 이름, 인스타그램, 웹사이트를 입력해 주세요. 인스타그램 핸들은 SNS 크레딧에 사용됩니다.',modelsDesc:'모델의 이름과 인스타그램, 에이전시의 이름과 인스타그램을 각각 입력해 주세요.',lookCreditsDesc:'각 룩의 이미지를 업로드하고 브랜드/액세서리 크레딧을 입력해 주세요. 최소 4장 이상의 이미지가 필요합니다. 썸네일을 드래그하여 순서를 변경할 수 있고, 아래에 추가 이미지도 등록할 수 있습니다.',uploadDragText:'<strong>클릭</strong>하거나 추가 이미지를 드래그해 주세요',uploadHint:'JPG · 최대 25MB · 권장 1080×1350px',additionalImagesHint:'커버 이미지, 비하인드 컷, 룩에 포함되지 않은 추가 이미지를 등록해 주세요.',coverImageAuto:'자동 (첫 번째 이미지)',coverImageHint:'커버로 사용할 이미지를 지정해 주세요. 선택하지 않으면 첫 번째 이미지가 사용됩니다.',submittedTitle:'제출 완료',ft:'<strong>주식회사 알타카파</strong> | CEO : 강동민 | 사업자번호 192-88-02644<br>서울특별시 강남구 논현로146길 18, 1F | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
-en:{business:'BUSINESS',about:'ABOUT',contact:'CONTACT',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',pageDesc:'Submit your editorial to PAP Magazine. Choose your submission type, provide production info, team credits, look-by-look garment credits, and high-resolution images. Track your submission status in MY SUBMISSIONS.',gateLogin:'LOG IN / SIGN UP',gateTitle:'MEMBERS ONLY',gateDesc:'This service is available to registered members only.\nPlease log in or sign up to continue.',successMsg:'Your submission has been received successfully. Review results will be sent via email.',englishOnlyNotice:'<strong>Notice</strong>All submission content (title, artist statement, team credits, model & agency info) must be written in <b>English</b>. This ensures consistent review and publication across our global editorial team.',step1Desc:'Select the categories that apply to your editorial (multiple allowed).',videoUrlLabel:'Video Link — behind-the-scenes, sketches, clips (optional)',videoUrlHint:'Because video files exceed upload limits, please share a download link from <b>Dropbox · WeTransfer · Swisstransfer · Google Drive</b> or similar. PAP will download your video and publish it on our official YouTube channel.',termsTitle:'SUBMISSION TERMS & CONDITIONS',termsEffective:'Effective: January 1, 2026 | Last Updated: March 1, 2026',termsAgreeLabel:'I have thoroughly read and understood all terms (Articles 1–12) above and agree to be bound by them.',termsErrorMsg:'You must agree to the terms to submit.',toastSubmitDetailsSoon:'Submission details will be supported soon.',toastOnlyImgFmt:'Only JPG/PNG/TIFF/WebP allowed: {name}',toastImgTooBig25:'File exceeds 25MB: {name}',toastImgLongestPx:'Recommended: longest side 1500px or more (current {px}px) — {name}',toastInvalidFileType:'Invalid file type: {name}',toastFileTooBig20:'File too large (max 20MB): {name}',toastMaxFilesN:'Maximum {max} files allowed',toastMinImages:'At least 4 images required.',toastMin4ImagesDynamic:'Please upload at least 4 images. (Currently {total})',toastInvalidVideoLink:'Please enter a valid video link (https://...) or leave it empty.',toastUploadTooLarge:'Total image upload size is {mb} MB, which exceeds the 4.5 MB server limit. Please compress/resize images (recommended: 1500–2000 px wide, JPG ~80% quality) and try again.',mySubsTitle:'MY SUBMISSIONS',mySubsHide:'HIDE',mySubsShow:'SHOW',mySubsEmpty:'No submissions yet.',sectionCategory:'CATEGORY',sectionProduction:'PRODUCTION INFO',sectionTeamCredits:'TEAM CREDITS',sectionLookCredits:'LOOK CREDITS',sectionAdditionalImages:'ADDITIONAL IMAGES',sectionAdditionalInfo:'ADDITIONAL INFO & TERMS',sectionModels:'MODELS',labelEditorialTitle:'Editorial Title',labelStudioName:'Production / Studio Name',labelEmail:'Email',labelWebsite:'Website',labelInstagram:'Instagram',labelArtistStatement:'Artist Statement',labelAdditionalImages:'High-resolution images — additional images not included in looks (optional)',labelCoverImage:'COVER IMAGE:',btnNext:'NEXT',btnBack:'BACK',btnSubmit:'SUBMIT',btnAddTeam:'+ Add Team Member',btnAddModel:'+ Add Model',btnAddLook:'+ Add Look',hdrRole:'ROLE',hdrName:'NAME',hdrInstagram:'INSTAGRAM',hdrWebsite:'WEBSITE',hdrModelName:'MODEL NAME',hdrModelInsta:'MODEL INSTA',hdrAgencyName:'AGENCY NAME',hdrAgencyInsta:'AGENCY INSTA',phModelName:'Model Name',phModelInsta:'@model_instagram',phAgencyName:'Agency Name (optional)',phAgencyInsta:'@agency_instagram (optional)',teamCreditsDesc:"Enter each team member's name, Instagram, and website. Instagram handles are used for social media credits.",modelsDesc:"Enter the model's name and Instagram, and the agency's name and Instagram separately.",lookCreditsDesc:'Upload images for each look and enter brand/accessory credits. Minimum 4 images required. Drag thumbnails to reorder. You can also add additional images below.',uploadDragText:'<strong>Click</strong> or drag additional images',uploadHint:'JPG · Max 25MB · 1080×1350px recommended',additionalImagesHint:'Please include cover images, behind-the-scenes shots, and other additional images not included in the looks.',coverImageAuto:'Auto (first image)',coverImageHint:'Specify which image to use as the cover. If not selected, the first image will be used.',submittedTitle:'SUBMITTED',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+ko:{business:'비즈니스',about:'어바웃',contact:'문의',subscribe:'구독',submission:'서브미션',pullletter:'풀레터',pageDesc:'PAP 매거진에 에디토리얼을 제출하세요. 서브미션 유형을 선택하고, 작품 정보·팀 크레딧·룩별 의상 크레딧·고해상도 이미지를 제출해 주세요. MY SUBMISSIONS에서 실시간 심사 상태를 확인할 수 있습니다.',gateLogin:'로그인 / 회원가입',gateTitle:'회원 전용',gateDesc:'이 서비스는 무료 회원 이상만 이용할 수 있습니다.\n로그인하거나 회원가입 후 이용해 주세요.',successMsg:'서브미션이 성공적으로 접수되었습니다. 심사 결과는 이메일로 안내드리겠습니다.',englishOnlyNotice:'<strong>안내</strong>모든 서브미션 내용(제목, 아티스트 스테이트먼트, 팀 크레딧, 모델·에이전시 정보)은 <b>영어로 작성</b>해 주세요. 글로벌 에디토리얼 팀의 일관된 심사와 지면 발행을 위해 필수입니다.',step1Desc:'에디토리얼에 해당하는 카테고리를 선택해 주세요(복수 선택 가능).',videoUrlLabel:'비디오 링크 — 비하인드, 스케치, 클립 (선택)',videoUrlHint:'비디오 파일은 용량이 커서 직접 업로드 대신 <b>Dropbox · WeTransfer · Swisstransfer · Google Drive</b> 등의 다운로드 링크를 공유해 주세요. PAP가 비디오를 받아 공식 YouTube 채널에 업로드합니다.',termsTitle:'서브미션 약관',termsEffective:'시행일: 2026년 1월 1일 | 최종 수정일: 2026년 3월 1일',termsAgreeLabel:'위 모든 약관(제1조~제12조)을 정독하고 이해했으며, 이에 동의합니다.',termsErrorMsg:'서브미션을 진행하려면 약관에 동의해 주세요.',toastSubmitDetailsSoon:'서브미션 상세 보기는 곧 지원됩니다.',toastOnlyImgFmt:'JPG/PNG/TIFF/WebP만 허용됩니다: {name}',toastImgTooBig25:'25MB를 초과합니다: {name}',toastImgLongestPx:'권장: 긴 변 1500px 이상 (현재 {px}px) — {name}',toastInvalidFileType:'허용되지 않는 파일 형식입니다: {name}',toastFileTooBig20:'파일 용량이 20MB를 초과합니다: {name}',toastMaxFilesN:'최대 {max}개의 파일만 업로드할 수 있습니다',toastMinImages:'최소 4장 이상의 이미지가 필요합니다.',toastMin4ImagesDynamic:'최소 4장 이상의 이미지를 업로드해 주세요. (현재 {total}장)',toastInvalidVideoLink:'올바른 비디오 링크(https://...)를 입력하거나 비워 두세요.',toastUploadTooLarge:'총 이미지 업로드 용량이 {mb} MB로 서버 제한(4.5MB)을 초과했습니다. 이미지를 압축·축소해 주세요 (권장: 가로 1500~2000px, JPG 80% 품질).',mySubsTitle:'내 서브미션',mySubsHide:'숨기기',mySubsShow:'보이기',mySubsEmpty:'아직 제출한 서브미션이 없습니다.',sectionCategory:'카테고리',sectionProduction:'프로덕션 정보',sectionTeamCredits:'팀 크레딧',sectionLookCredits:'룩 크레딧',sectionAdditionalImages:'추가 이미지',sectionAdditionalInfo:'추가 정보 및 약관',sectionModels:'모델',labelEditorialTitle:'에디토리얼 제목',labelStudioName:'프로덕션 / 스튜디오 이름',labelEmail:'이메일',labelWebsite:'웹사이트',labelInstagram:'인스타그램',labelArtistStatement:'아티스트 스테이트먼트',labelAdditionalImages:'고해상도 이미지 — 룩에 포함되지 않은 추가 이미지 (선택)',labelCoverImage:'커버 이미지:',btnNext:'다음',btnBack:'이전',btnSubmit:'제출',btnAddTeam:'+ 팀원 추가',btnAddModel:'+ 모델 추가',btnAddLook:'+ 룩 추가',hdrRole:'역할',hdrName:'이름',hdrInstagram:'인스타그램',hdrWebsite:'웹사이트',hdrLink:'링크',linkTypeInsta:'@ 인스타그램',linkTypeWeb:'🌐 웹사이트',hdrModelName:'모델 이름',hdrModelInsta:'모델 인스타',hdrAgencyName:'에이전시 이름',hdrAgencyInsta:'에이전시 인스타',phModelName:'모델 이름',phModelInsta:'@model_instagram',phAgencyName:'에이전시 이름 (선택)',phAgencyInsta:'@agency_instagram (선택)',teamCreditsDesc:'각 팀원의 이름, 인스타그램, 웹사이트를 입력해 주세요. 인스타그램 핸들은 SNS 크레딧에 사용됩니다.',modelsDesc:'모델의 이름과 인스타그램, 에이전시의 이름과 인스타그램을 각각 입력해 주세요.',lookCreditsDesc:'각 룩의 이미지를 업로드하고 브랜드/액세서리 크레딧을 입력해 주세요. 최소 4장 이상의 이미지가 필요합니다. 썸네일을 드래그하여 순서를 변경할 수 있고, 아래에 추가 이미지도 등록할 수 있습니다.',uploadDragText:'<strong>클릭</strong>하거나 추가 이미지를 드래그해 주세요',uploadHint:'JPG · 최대 25MB · 권장 1080×1350px',additionalImagesHint:'커버 이미지, 비하인드 컷, 룩에 포함되지 않은 추가 이미지를 등록해 주세요.',coverImageAuto:'자동 (첫 번째 이미지)',coverImageHint:'커버로 사용할 이미지를 지정해 주세요. 선택하지 않으면 첫 번째 이미지가 사용됩니다.',submittedTitle:'제출 완료',ft:'<strong>주식회사 알타카파</strong> | CEO : 강동민 | 사업자번호 192-88-02644<br>서울특별시 강남구 논현로146길 18, 1F | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
+en:{business:'BUSINESS',about:'ABOUT',contact:'CONTACT',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',pageDesc:'Submit your editorial to PAP Magazine. Choose your submission type, provide production info, team credits, look-by-look garment credits, and high-resolution images. Track your submission status in MY SUBMISSIONS.',gateLogin:'LOG IN / SIGN UP',gateTitle:'MEMBERS ONLY',gateDesc:'This service is available to registered members only.\nPlease log in or sign up to continue.',successMsg:'Your submission has been received successfully. Review results will be sent via email.',englishOnlyNotice:'<strong>Notice</strong>All submission content (title, artist statement, team credits, model & agency info) must be written in <b>English</b>. This ensures consistent review and publication across our global editorial team.',step1Desc:'Select the categories that apply to your editorial (multiple allowed).',videoUrlLabel:'Video Link — behind-the-scenes, sketches, clips (optional)',videoUrlHint:'Because video files exceed upload limits, please share a download link from <b>Dropbox · WeTransfer · Swisstransfer · Google Drive</b> or similar. PAP will download your video and publish it on our official YouTube channel.',termsTitle:'SUBMISSION TERMS & CONDITIONS',termsEffective:'Effective: January 1, 2026 | Last Updated: March 1, 2026',termsAgreeLabel:'I have thoroughly read and understood all terms (Articles 1–12) above and agree to be bound by them.',termsErrorMsg:'You must agree to the terms to submit.',toastSubmitDetailsSoon:'Submission details will be supported soon.',toastOnlyImgFmt:'Only JPG/PNG/TIFF/WebP allowed: {name}',toastImgTooBig25:'File exceeds 25MB: {name}',toastImgLongestPx:'Recommended: longest side 1500px or more (current {px}px) — {name}',toastInvalidFileType:'Invalid file type: {name}',toastFileTooBig20:'File too large (max 20MB): {name}',toastMaxFilesN:'Maximum {max} files allowed',toastMinImages:'At least 4 images required.',toastMin4ImagesDynamic:'Please upload at least 4 images. (Currently {total})',toastInvalidVideoLink:'Please enter a valid video link (https://...) or leave it empty.',toastUploadTooLarge:'Total image upload size is {mb} MB, which exceeds the 4.5 MB server limit. Please compress/resize images (recommended: 1500–2000 px wide, JPG ~80% quality) and try again.',mySubsTitle:'MY SUBMISSIONS',mySubsHide:'HIDE',mySubsShow:'SHOW',mySubsEmpty:'No submissions yet.',sectionCategory:'CATEGORY',sectionProduction:'PRODUCTION INFO',sectionTeamCredits:'TEAM CREDITS',sectionLookCredits:'LOOK CREDITS',sectionAdditionalImages:'ADDITIONAL IMAGES',sectionAdditionalInfo:'ADDITIONAL INFO & TERMS',sectionModels:'MODELS',labelEditorialTitle:'Editorial Title',labelStudioName:'Production / Studio Name',labelEmail:'Email',labelWebsite:'Website',labelInstagram:'Instagram',labelArtistStatement:'Artist Statement',labelAdditionalImages:'High-resolution images — additional images not included in looks (optional)',labelCoverImage:'COVER IMAGE:',btnNext:'NEXT',btnBack:'BACK',btnSubmit:'SUBMIT',btnAddTeam:'+ Add Team Member',btnAddModel:'+ Add Model',btnAddLook:'+ Add Look',hdrRole:'ROLE',hdrName:'NAME',hdrInstagram:'INSTAGRAM',hdrWebsite:'WEBSITE',hdrLink:'LINK',linkTypeInsta:'@ INSTAGRAM',linkTypeWeb:'🌐 WEBSITE',hdrModelName:'MODEL NAME',hdrModelInsta:'MODEL INSTA',hdrAgencyName:'AGENCY NAME',hdrAgencyInsta:'AGENCY INSTA',phModelName:'Model Name',phModelInsta:'@model_instagram',phAgencyName:'Agency Name (optional)',phAgencyInsta:'@agency_instagram (optional)',teamCreditsDesc:"Enter each team member's name, Instagram, and website. Instagram handles are used for social media credits.",modelsDesc:"Enter the model's name and Instagram, and the agency's name and Instagram separately.",lookCreditsDesc:'Upload images for each look and enter brand/accessory credits. Minimum 4 images required. Drag thumbnails to reorder. You can also add additional images below.',uploadDragText:'<strong>Click</strong> or drag additional images',uploadHint:'JPG · Max 25MB · 1080×1350px recommended',additionalImagesHint:'Please include cover images, behind-the-scenes shots, and other additional images not included in the looks.',coverImageAuto:'Auto (first image)',coverImageHint:'Specify which image to use as the cover. If not selected, the first image will be used.',submittedTitle:'SUBMITTED',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
 de:{business:'BUSINESS',about:'ABOUT',contact:'CONTACT',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',pageDesc:'Submit your editorial to PAP Magazine. Choose your submission type, provide production info, team credits, look-by-look garment credits, and high-resolution images. Track your submission status in MY SUBMISSIONS.',gateLogin:'LOG IN / SIGN UP',gateTitle:'MEMBERS ONLY',gateDesc:'This service is available to registered members only.\nPlease log in or sign up to continue.',successMsg:'Your submission has been received successfully. Review results will be sent via email.',englishOnlyNotice:'<strong>Hinweis</strong>Alle Einreichungsinhalte (Titel, Artist Statement, Team-Credits, Model- und Agentur-Infos) müssen <b>auf Englisch</b> verfasst werden. So gewährleisten wir eine einheitliche Prüfung und Veröffentlichung durch unser globales Redaktionsteam.',videoUrlLabel:'Video-Link — Behind-the-Scenes, Skizzen, Clips (optional)',videoUrlHint:'Da Videodateien die Upload-Grenze überschreiten, teilen Sie bitte einen Download-Link von <b>Dropbox · WeTransfer · Swisstransfer · Google Drive</b> oder ähnlichen Diensten. PAP lädt Ihr Video herunter und veröffentlicht es auf unserem offiziellen YouTube-Kanal.',termsTitle:'SUBMISSION AGB',termsEffective:'Gültig ab: 1. Januar 2026 | Zuletzt aktualisiert: 1. März 2026',termsAgreeLabel:'Ich habe alle Bestimmungen (Artikel 1–12) oben gründlich gelesen und verstanden und stimme ihnen zu.',termsErrorMsg:'Bitte stimmen Sie den Bedingungen zu, um die Einreichung abzuschließen.',toastSubmitDetailsSoon:'Einreichungsdetails werden bald unterstützt.',toastOnlyImgFmt:'Nur JPG/PNG/TIFF/WebP erlaubt: {name}',toastImgTooBig25:'Datei überschreitet 25 MB: {name}',toastImgLongestPx:'Empfohlen: längste Seite 1500 px oder mehr (aktuell {px} px) — {name}',toastInvalidFileType:'Ungültiger Dateityp: {name}',toastFileTooBig20:'Datei zu groß (max. 20 MB): {name}',toastMaxFilesN:'Maximal {max} Dateien erlaubt',toastMinImages:'Mindestens 4 Bilder erforderlich.',toastMin4ImagesDynamic:'Bitte laden Sie mindestens 4 Bilder hoch. (Aktuell {total})',toastInvalidVideoLink:'Bitte geben Sie einen gültigen Video-Link (https://...) ein oder lassen Sie das Feld leer.',toastUploadTooLarge:'Gesamte Upload-Größe beträgt {mb} MB und überschreitet das Serverlimit von 4,5 MB. Bitte Bilder komprimieren/verkleinern (empfohlen: 1500–2000 px Breite, JPG ~80%).',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
 it:{business:'BUSINESS',about:'CHI SIAMO',contact:'CONTATTI',subscribe:'ABBONATI',submission:'SUBMISSION',pullletter:'PULL-LETTER',pageDesc:'Invia il tuo editoriale a PAP Magazine. Fornisci informazioni sulla produzione, crediti del team, crediti per look e immagini ad alta risoluzione.',gateLogin:'ACCEDI / REGISTRATI',gateTitle:'SOLO MEMBRI',gateDesc:'Questo servizio è disponibile solo per i membri registrati.',successMsg:'La tua submission è stata ricevuta. I risultati saranno inviati via email entro 1-3 giorni lavorativi.',englishOnlyNotice:'<strong>Avviso</strong>Tutti i contenuti della submission (titolo, artist statement, crediti del team, info su modelli e agenzie) devono essere scritti <b>in inglese</b>. Questo garantisce una revisione e pubblicazione coerenti da parte del nostro team editoriale internazionale.',videoUrlLabel:'Link Video — behind-the-scenes, bozze, clip (opzionale)',videoUrlHint:'Poiché i file video superano i limiti di caricamento, condividi un link di download da <b>Dropbox · WeTransfer · Swisstransfer · Google Drive</b> o simili. PAP scaricherà il tuo video e lo pubblicherà sul nostro canale YouTube ufficiale.',termsTitle:'TERMINI E CONDIZIONI SUBMISSION',termsEffective:'In vigore dal: 1° gennaio 2026 | Ultimo aggiornamento: 1° marzo 2026',termsAgreeLabel:'Ho letto attentamente e compreso tutti i termini (Articoli 1–12) sopra e accetto di esserne vincolato.',termsErrorMsg:'È necessario accettare i termini per inviare.',toastSubmitDetailsSoon:'I dettagli della submission saranno supportati a breve.',toastOnlyImgFmt:'Sono ammessi solo JPG/PNG/TIFF/WebP: {name}',toastImgTooBig25:'Il file supera 25 MB: {name}',toastImgLongestPx:'Consigliato: lato più lungo 1500 px o più (attuale {px} px) — {name}',toastInvalidFileType:'Tipo di file non valido: {name}',toastFileTooBig20:'File troppo grande (max 20 MB): {name}',toastMaxFilesN:'Massimo {max} file consentiti',toastMinImages:'Sono richieste almeno 4 immagini.',toastMin4ImagesDynamic:'Carica almeno 4 immagini. (Attualmente {total})',toastInvalidVideoLink:'Inserisci un link video valido (https://...) o lascia vuoto.',toastUploadTooLarge:'La dimensione totale del caricamento è di {mb} MB, oltre il limite di 4,5 MB del server. Comprimi/ridimensiona le immagini (consigliato: 1500–2000 px di larghezza, JPG ~80%) e riprova.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | P. IVA: 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Corea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
 fr:{business:'BUSINESS',about:'À PROPOS',contact:'CONTACT',subscribe:"S'ABONNER",submission:'SOUMISSION',pullletter:'PULL-LETTER',pageDesc:'Soumettez votre éditorial à PAP Magazine. Fournissez les informations de production, crédits d\'équipe, crédits par look et images haute résolution.',gateLogin:'CONNEXION / INSCRIPTION',gateTitle:'RÉSERVÉ AUX MEMBRES',gateDesc:'Ce service est réservé aux membres inscrits.',successMsg:'Votre soumission a été reçue. Les résultats seront envoyés par email sous 1 à 3 jours ouvrés.',englishOnlyNotice:'<strong>Note</strong>Tous les contenus de soumission (titre, artist statement, crédits de l\'équipe, infos modèles et agences) doivent être rédigés <b>en anglais</b>. Cela garantit une révision et une publication cohérentes par notre équipe éditoriale internationale.',videoUrlLabel:'Lien vidéo — coulisses, croquis, clips (optionnel)',videoUrlHint:'Les fichiers vidéo dépassant les limites de téléversement, veuillez partager un lien de téléchargement depuis <b>Dropbox · WeTransfer · Swisstransfer · Google Drive</b> ou similaire. PAP téléchargera votre vidéo et la publiera sur notre chaîne YouTube officielle.',termsTitle:'CONDITIONS DE SUBMISSION',termsEffective:'En vigueur : 1er janvier 2026 | Dernière mise à jour : 1er mars 2026',termsAgreeLabel:"J'ai lu attentivement et compris l'ensemble des conditions (Articles 1–12) ci-dessus et accepte d'y être lié.",termsErrorMsg:'Vous devez accepter les conditions pour soumettre.',toastSubmitDetailsSoon:'Les détails de la soumission seront bientôt pris en charge.',toastOnlyImgFmt:'Seuls JPG/PNG/TIFF/WebP sont autorisés : {name}',toastImgTooBig25:'Le fichier dépasse 25 Mo : {name}',toastImgLongestPx:'Recommandé : côté le plus long 1500 px ou plus (actuel {px} px) — {name}',toastInvalidFileType:'Type de fichier invalide : {name}',toastFileTooBig20:'Fichier trop volumineux (max 20 Mo) : {name}',toastMaxFilesN:'Maximum {max} fichiers autorisés',toastMinImages:'Au moins 4 images sont requises.',toastMin4ImagesDynamic:'Veuillez téléverser au moins 4 images. (Actuellement {total})',toastInvalidVideoLink:'Veuillez entrer un lien vidéo valide (https://...) ou laisser vide.',toastUploadTooLarge:'La taille totale du téléversement est de {mb} Mo, ce qui dépasse la limite serveur de 4,5 Mo. Veuillez compresser/redimensionner les images (recommandé : 1500–2000 px de large, JPG ~80%) et réessayer.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | PDG : Domenico Kang | N&#176; 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Séoul, Corée | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
@@ -2140,7 +2212,7 @@ var _PAP_SUBMISSION_I18N_EXT = {
     labelCoverImage:'COVER-BILD:',
     btnNext:'WEITER', btnBack:'ZURÜCK', btnSubmit:'EINREICHEN',
     btnAddTeam:'+ Teammitglied hinzufügen', btnAddModel:'+ Model hinzufügen', btnAddLook:'+ Look hinzufügen',
-    hdrRole:'ROLLE', hdrName:'NAME', hdrInstagram:'INSTAGRAM', hdrWebsite:'WEBSITE',
+    hdrRole:'ROLLE', hdrName:'NAME', hdrInstagram:'INSTAGRAM', hdrWebsite:'WEBSITE',hdrLink:'LINK',linkTypeInsta:'@ INSTAGRAM',linkTypeWeb:'🌐 WEBSITE',
     hdrModelName:'MODEL-NAME', hdrModelInsta:'MODEL-INSTA', hdrAgencyName:'AGENTUR-NAME', hdrAgencyInsta:'AGENTUR-INSTA',
     phModelName:'Model-Name', phModelInsta:'@model_instagram', phAgencyName:'Agentur-Name (optional)', phAgencyInsta:'@agency_instagram (optional)',
     teamCreditsDesc:'Geben Sie für jedes Teammitglied Name, Instagram und Website ein. Instagram-Handles werden für Social-Media-Credits verwendet.',
@@ -2165,7 +2237,7 @@ var _PAP_SUBMISSION_I18N_EXT = {
     labelCoverImage:'IMMAGINE DI COPERTINA:',
     btnNext:'AVANTI', btnBack:'INDIETRO', btnSubmit:'INVIA',
     btnAddTeam:'+ Aggiungi membro del team', btnAddModel:'+ Aggiungi modello', btnAddLook:'+ Aggiungi look',
-    hdrRole:'RUOLO', hdrName:'NOME', hdrInstagram:'INSTAGRAM', hdrWebsite:'SITO WEB',
+    hdrRole:'RUOLO', hdrName:'NOME', hdrInstagram:'INSTAGRAM', hdrWebsite:'SITO WEB',hdrLink:'LINK',linkTypeInsta:'@ INSTAGRAM',linkTypeWeb:'🌐 SITO WEB',
     hdrModelName:'NOME MODELLO', hdrModelInsta:'INSTA MODELLO', hdrAgencyName:'NOME AGENZIA', hdrAgencyInsta:'INSTA AGENZIA',
     phModelName:'Nome modello', phModelInsta:'@model_instagram', phAgencyName:'Nome agenzia (opzionale)', phAgencyInsta:'@agency_instagram (opzionale)',
     teamCreditsDesc:'Inserisci nome, Instagram e sito web di ogni membro del team. Gli handle Instagram vengono usati per i crediti sui social media.',
@@ -2190,7 +2262,7 @@ var _PAP_SUBMISSION_I18N_EXT = {
     labelCoverImage:'IMAGE DE COUVERTURE :',
     btnNext:'SUIVANT', btnBack:'RETOUR', btnSubmit:'ENVOYER',
     btnAddTeam:'+ Ajouter un membre', btnAddModel:'+ Ajouter un mannequin', btnAddLook:'+ Ajouter un look',
-    hdrRole:'RÔLE', hdrName:'NOM', hdrInstagram:'INSTAGRAM', hdrWebsite:'SITE WEB',
+    hdrRole:'RÔLE', hdrName:'NOM', hdrInstagram:'INSTAGRAM', hdrWebsite:'SITE WEB',hdrLink:'LIEN',linkTypeInsta:'@ INSTAGRAM',linkTypeWeb:'🌐 SITE WEB',
     hdrModelName:'NOM DU MANNEQUIN', hdrModelInsta:'INSTA MANNEQUIN', hdrAgencyName:"NOM DE L'AGENCE", hdrAgencyInsta:'INSTA AGENCE',
     phModelName:'Nom du mannequin', phModelInsta:'@model_instagram', phAgencyName:"Nom de l'agence (optionnel)", phAgencyInsta:'@agency_instagram (optionnel)',
     teamCreditsDesc:"Entrez le nom, Instagram et site web de chaque membre de l'équipe. Les handles Instagram sont utilisés pour les crédits sur les réseaux sociaux.",
@@ -2215,7 +2287,7 @@ var _PAP_SUBMISSION_I18N_EXT = {
     labelCoverImage:'IMAGEN DE PORTADA:',
     btnNext:'SIGUIENTE', btnBack:'ATRÁS', btnSubmit:'ENVIAR',
     btnAddTeam:'+ Añadir miembro', btnAddModel:'+ Añadir modelo', btnAddLook:'+ Añadir look',
-    hdrRole:'ROL', hdrName:'NOMBRE', hdrInstagram:'INSTAGRAM', hdrWebsite:'SITIO WEB',
+    hdrRole:'ROL', hdrName:'NOMBRE', hdrInstagram:'INSTAGRAM', hdrWebsite:'SITIO WEB',hdrLink:'ENLACE',linkTypeInsta:'@ INSTAGRAM',linkTypeWeb:'🌐 SITIO WEB',
     hdrModelName:'NOMBRE DEL MODELO', hdrModelInsta:'INSTA MODELO', hdrAgencyName:'NOMBRE DE AGENCIA', hdrAgencyInsta:'INSTA AGENCIA',
     phModelName:'Nombre del modelo', phModelInsta:'@model_instagram', phAgencyName:'Nombre de agencia (opcional)', phAgencyInsta:'@agency_instagram (opcional)',
     teamCreditsDesc:'Ingrese el nombre, Instagram y sitio web de cada miembro del equipo. Los handles de Instagram se usan para créditos en redes sociales.',
@@ -2240,7 +2312,7 @@ var _PAP_SUBMISSION_I18N_EXT = {
     labelCoverImage:'カバー画像:',
     btnNext:'次へ', btnBack:'戻る', btnSubmit:'送信',
     btnAddTeam:'+ チームメンバー追加', btnAddModel:'+ モデル追加', btnAddLook:'+ ルック追加',
-    hdrRole:'役割', hdrName:'名前', hdrInstagram:'INSTAGRAM', hdrWebsite:'ウェブサイト',
+    hdrRole:'役割', hdrName:'名前', hdrInstagram:'INSTAGRAM', hdrWebsite:'ウェブサイト',hdrLink:'リンク',linkTypeInsta:'@ インスタグラム',linkTypeWeb:'🌐 ウェブサイト',
     hdrModelName:'モデル名', hdrModelInsta:'モデルInsta', hdrAgencyName:'エージェンシー名', hdrAgencyInsta:'エージェンシーInsta',
     phModelName:'モデル名', phModelInsta:'@model_instagram', phAgencyName:'エージェンシー名(任意)', phAgencyInsta:'@agency_instagram(任意)',
     teamCreditsDesc:'各チームメンバーの名前、Instagram、ウェブサイトを入力してください。Instagramハンドルはソーシャルメディアクレジットに使用されます。',
@@ -2265,7 +2337,7 @@ var _PAP_SUBMISSION_I18N_EXT = {
     labelCoverImage:'封面图片:',
     btnNext:'下一步', btnBack:'上一步', btnSubmit:'提交',
     btnAddTeam:'+ 添加团队成员', btnAddModel:'+ 添加模特', btnAddLook:'+ 添加造型',
-    hdrRole:'角色', hdrName:'姓名', hdrInstagram:'INSTAGRAM', hdrWebsite:'网站',
+    hdrRole:'角色', hdrName:'姓名', hdrInstagram:'INSTAGRAM', hdrWebsite:'网站',hdrLink:'链接',linkTypeInsta:'@ INSTAGRAM',linkTypeWeb:'🌐 网站',
     hdrModelName:'模特姓名', hdrModelInsta:'模特INSTA', hdrAgencyName:'经纪公司名称', hdrAgencyInsta:'经纪公司INSTA',
     phModelName:'模特姓名', phModelInsta:'@model_instagram', phAgencyName:'经纪公司名称(可选)', phAgencyInsta:'@agency_instagram(可选)',
     teamCreditsDesc:'请输入每位团队成员的姓名、Instagram 和网站。Instagram 账号将用于社交媒体署名。',
@@ -2290,7 +2362,7 @@ var _PAP_SUBMISSION_I18N_EXT = {
     labelCoverImage:'ОБЛОЖКА:',
     btnNext:'ДАЛЕЕ', btnBack:'НАЗАД', btnSubmit:'ОТПРАВИТЬ',
     btnAddTeam:'+ Добавить участника', btnAddModel:'+ Добавить модель', btnAddLook:'+ Добавить образ',
-    hdrRole:'РОЛЬ', hdrName:'ИМЯ', hdrInstagram:'INSTAGRAM', hdrWebsite:'САЙТ',
+    hdrRole:'РОЛЬ', hdrName:'ИМЯ', hdrInstagram:'INSTAGRAM', hdrWebsite:'САЙТ',hdrLink:'ССЫЛКА',linkTypeInsta:'@ INSTAGRAM',linkTypeWeb:'🌐 САЙТ',
     hdrModelName:'ИМЯ МОДЕЛИ', hdrModelInsta:'МОДЕЛЬ INSTA', hdrAgencyName:'НАЗВАНИЕ АГЕНТСТВА', hdrAgencyInsta:'АГЕНТСТВО INSTA',
     phModelName:'Имя модели', phModelInsta:'@model_instagram', phAgencyName:'Название агентства (необязательно)', phAgencyInsta:'@agency_instagram (необязательно)',
     teamCreditsDesc:'Введите имя, Instagram и веб-сайт каждого члена команды. Instagram-handles используются для кредитов в социальных сетях.',
