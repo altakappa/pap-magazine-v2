@@ -583,6 +583,100 @@ document.addEventListener('keydown', function(e) {
 
 setTimeout(function(){document.getElementById('hc').classList.add('vis')},200);
 (function(){var b=document.querySelectorAll('.hero-bg-img'),i=0;setInterval(function(){b[i].classList.remove('active');i=(i+1)%b.length;b[i].classList.add('active')},4000)})();
+
+/* ======== QUARTER GROUPING ========
+   Per user request: instead of rendering one issue per month, group every
+   3 consecutive months into a single "Q1 / Q2 / Q3 / Q4" volume. The
+   static HTML keeps the per-month cards as the source of truth (so adding
+   a new month is still a one-line edit); this function rewrites the grid
+   at runtime to merge them by quarter.
+
+   Sum of editorial counts in the merged card. Cover image = the latest
+   month's cover within the quarter. Volume label = "Q{n} {year}".
+
+   Runs BEFORE the IntersectionObserver IIFE below so the fade-in observer
+   attaches to the new quarter cards rather than the original month cards. */
+(function papRegroupByQuarter(){
+  var QUARTER_RANGE = {1:'Jan – Mar', 2:'Apr – Jun', 3:'Jul – Sep', 4:'Oct – Dec'};
+  document.querySelectorAll('section.issues').forEach(function(section, sectionIdx){
+    var grid = section.querySelector('.grid');
+    if(!grid) return;
+    var cards = Array.from(grid.querySelectorAll('.card'));
+    if(cards.length === 0) return;
+
+    var parsed = cards.map(function(card){
+      var titleEl = card.querySelector('.cov-title');
+      var ctEl    = card.querySelector('.cov-ct');
+      var imgEl   = card.querySelector('img');
+      if(!titleEl || !ctEl || !imgEl) return null;
+      var monthText = titleEl.textContent.trim();
+      var m = monthText.match(/^(\w+)\s+(\d{4})$/);
+      if(!m) return null;
+      var monthIdx = MONTH_MAP[m[1].toLowerCase()];
+      if(!monthIdx) return null;
+      var year = parseInt(m[2], 10);
+      var quarter = Math.ceil(monthIdx / 3);
+      var count = parseInt((ctEl.textContent.match(/\d+/) || ['0'])[0], 10);
+      return {monthIdx: monthIdx, year: year, quarter: quarter, count: count, img: imgEl.src};
+    }).filter(Boolean);
+    if(parsed.length === 0) return;
+
+    var groupMap = {};
+    parsed.forEach(function(p){
+      var key = p.year + '-Q' + p.quarter;
+      if(!groupMap[key]) groupMap[key] = {quarter: p.quarter, year: p.year, items: []};
+      groupMap[key].items.push(p);
+    });
+    var groups = Object.keys(groupMap).map(function(k){return groupMap[k];})
+      .sort(function(a, b){
+        if(a.year !== b.year) return b.year - a.year;
+        return b.quarter - a.quarter;
+      });
+
+    grid.innerHTML = '';
+    groups.forEach(function(g, idx){
+      var totalCount = g.items.reduce(function(s, it){return s + it.count;}, 0);
+      var sortedDesc = g.items.slice().sort(function(a, b){return b.monthIdx - a.monthIdx;});
+      var coverImg = sortedDesc[0].img;
+      var quarterName = 'Q' + g.quarter;
+      var title = quarterName + ' ' + g.year;
+      var range = QUARTER_RANGE[g.quarter] + ' ' + g.year;
+      var isLatest = (sectionIdx === 0 && idx === 0);
+
+      var card = document.createElement('div');
+      card.className = 'card';
+      card.setAttribute('data-quarter', g.quarter);
+      card.setAttribute('data-year', g.year);
+      card.onclick = function(){ openModal(this); };
+      card.innerHTML =
+        '<div class="cover">' +
+          '<img loading="lazy" src="' + coverImg + '" alt="' + title + '">' +
+          '<div class="covlay">' +
+            '<span class="' + (isLatest ? 'latest-badge' : 'mo-badge') + '">' +
+              (isLatest ? 'LATEST' : title.toUpperCase()) +
+            '</span>' +
+            '<div class="cov-bot">' +
+              '<div class="cov-title">' + title + '</div>' +
+              '<div class="cov-ct">' + totalCount + ' EDITORIALS</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="hov"><div class="rd">READ</div></div>' +
+        '</div>' +
+        '<div class="meta">' +
+          '<span class="vol">' + range + '</span>' +
+          '<span class="dt">' + title.toUpperCase() + '</span>' +
+        '</div>';
+      grid.appendChild(card);
+    });
+
+    // Update section count
+    var counter = section.querySelector('.sec-count');
+    if(counter){
+      counter.textContent = groups.length + ' ISSUE' + (groups.length > 1 ? 'S' : '');
+    }
+  });
+})();
+
 (function(){var c=document.querySelectorAll('.card');var o=new IntersectionObserver(function(e){e.forEach(function(en){if(en.isIntersecting){var idx=Array.from(c).indexOf(en.target);setTimeout(function(){en.target.classList.add('vis')},idx*80);o.unobserve(en.target)}})},{threshold:.08});c.forEach(function(x){o.observe(x)})})();
 
 var _magEdCache=null;
@@ -655,13 +749,23 @@ document.addEventListener('keydown',function(e){
 });
 
 function parseIssueMonthYear(title){
-  var parts=title.trim().split(/\s+/);
+  var t=title.trim();
+  // Quarter format: "Q1 2026" / "Q2 2025" etc. — covers 3 months at once
+  var qm=t.match(/^Q([1-4])\s+(\d{4})$/i);
+  if(qm){
+    var q=parseInt(qm[1],10), yr=parseInt(qm[2],10);
+    if(!yr) return null;
+    var startM=(q-1)*3+1; // Q1→1, Q2→4, Q3→7, Q4→10
+    return {months:[startM, startM+1, startM+2], year:yr};
+  }
+  // Monthly format (legacy): "March 2026"
+  var parts=t.split(/\s+/);
   if(parts.length<2) return null;
   var monthName=parts[0].toLowerCase();
   var year=parseInt(parts[1],10);
   var month=MONTH_MAP[monthName];
   if(!month||!year) return null;
-  return {month:month,year:year};
+  return {month:month,year:year,months:[month]};
 }
 
 function openPreview(issueTitle,opts){
@@ -700,10 +804,12 @@ function openPreview(issueTitle,opts){
   if(!parsed){grid.innerHTML='<div style="color:#999;padding:40px">No editorials found</div>';return;}
 
   function renderPreviewCards(data){
+    // parsed.months is always an array (1 entry for monthly, 3 for quarter)
+    var months = parsed.months || [parsed.month];
     var filtered=data.filter(function(ed){
       if(!ed.date) return false;
       var d=ed.date.split('-');
-      return parseInt(d[0],10)===parsed.year && parseInt(d[1],10)===parsed.month;
+      return parseInt(d[0],10)===parsed.year && months.indexOf(parseInt(d[1],10))>-1;
     });
     var preview=unlimited?filtered:filtered.slice(0,3);
     document.getElementById('previewSubtitle').textContent=preview.length+' / '+filtered.length+' '+pt.subtitle;
