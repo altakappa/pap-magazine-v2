@@ -1289,11 +1289,14 @@ function _openFilmDetailInner(idx){
   document.getElementById('filmDetailCat').textContent=catStr;
   var credEl=document.getElementById('filmDetailCredits');
   if(credEl){
+    // Ensure the grid container class is applied so .ed-cred-row children
+    // form a proper 2-column layout (role | name).
+    credEl.classList.add('ed-credits-table');
     var cr=f.cr||[];
     credEl.innerHTML=cr.map(function(c){
       var handles=(c.p||'').split(',').map(function(h){
         h=h.trim();if(!h) return '';
-        return '<a href="#" class="film-cred-link" data-handle="'+h.replace(/"/g,'')+'" style="color:#fff;text-decoration:none;cursor:pointer">'+escapeHtml(h)+'</a>';
+        return '<a href="#" class="film-cred-link" data-handle="'+h.replace(/"/g,'')+'" style="cursor:pointer">'+escapeHtml(h)+'</a>';
       }).filter(Boolean).join('&nbsp;&nbsp;');
       return '<div class="ed-cred-row"><div class="ed-cred-role">'+escapeHtml(c.r||'')+'</div><div class="ed-cred-val">'+handles+'</div></div>';
     }).join('');

@@ -463,13 +463,41 @@ button{cursor:pointer;font-family:inherit}
 .ed-desc{max-width:600px;width:100%;text-align:center;margin-bottom:48px;font-size:15px;line-height:1.9;color:rgba(255,255,255,.7);letter-spacing:.01em}
 .ed-desc:empty{display:none;margin:0}
 
-/* CREDITS: centered two-column table */
+/* CREDITS: centered two-column grid
+   Layout-level alignment via CSS Grid: roles right-aligned in a fixed-width
+   column, values left-aligned in a flexible column. All rows share the same
+   grid context (via display:contents on .ed-cred-row), so the role column
+   width is determined once by the longest role and applies uniformly across
+   every row — independent of individual text lengths. */
 .ed-credits-wrap{background:#000;padding:60px var(--pad-x);display:flex;flex-direction:column;align-items:center}
-.ed-credits-table{display:table;border-collapse:separate;border-spacing:20px 4px;margin:0 auto}
-.ed-cred-row{display:table-row;font-size:14px;line-height:2}
-.ed-cred-role{display:table-cell;text-align:right;white-space:nowrap;color:rgba(255,255,255,.5);font-size:13px;letter-spacing:.03em;text-transform:uppercase;vertical-align:top;padding:2px 0}
-.ed-cred-val{display:table-cell;color:#fff;vertical-align:top;padding:2px 0}
-.ed-cred-val a{color:#fff;text-decoration:none}
+.ed-credits-table{
+  display:grid;
+  grid-template-columns: minmax(120px, max-content) minmax(0, 1fr);
+  column-gap: 28px;
+  row-gap: 8px;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+}
+.ed-cred-row{display:contents}
+.ed-cred-role{
+  text-align:right;
+  white-space:nowrap;
+  color:rgba(255,255,255,.5);
+  font-size:13px;
+  letter-spacing:.03em;
+  text-transform:uppercase;
+  align-self:start;
+  line-height:1.7;
+}
+.ed-cred-val{
+  color:#fff;
+  font-size:14px;
+  line-height:1.7;
+  align-self:start;
+  word-break: break-word;
+}
+.ed-cred-val a{color:#fff;text-decoration:none;cursor:pointer}
 .ed-cred-val a:hover{text-decoration:underline}
 .ed-cred-handle{font-size:12px;color:rgba(255,255,255,.45);margin-left:4px}
 
@@ -684,8 +712,9 @@ button{cursor:pointer;font-family:inherit}
   .ed-hero-info{min-height:40vh;padding:32px var(--pad-x)}
   .ed-gallery-grid{grid-template-columns:1fr}
   .ed-credits-wrap{padding:40px var(--pad-x)}
-  .ed-credits-table{border-spacing:12px 2px}
-  .ed-cred-role{font-size:12px}
+  .ed-credits-table{column-gap:20px;row-gap:6px}
+  .ed-cred-role{font-size:11px}
+  .ed-cred-val{font-size:13px}
   .ed-more-card{flex:1 1 0;min-width:0}
 
   /* Creator popup */
@@ -759,9 +788,13 @@ button{cursor:pointer;font-family:inherit}
   .ed-hero-title{font-size:clamp(11px,2.5vw,14px)}
   .ed-gallery{padding:24px var(--pad-x)}
   .ed-credits-wrap{padding:32px var(--pad-x)}
-  .ed-credits-table{border-spacing:8px 2px}
-  .ed-cred-row{font-size:12px}
-  .ed-cred-role{font-size:10px}
+  .ed-credits-table{
+    grid-template-columns: minmax(80px, max-content) minmax(0, 1fr);
+    column-gap:14px;
+    row-gap:4px;
+  }
+  .ed-cred-role{font-size:10px;letter-spacing:.05em}
+  .ed-cred-val{font-size:12px}
   .ed-more-wrap{padding:40px 0 60px}
 
   /* Shorts carousel */
