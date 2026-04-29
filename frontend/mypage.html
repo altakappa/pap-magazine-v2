@@ -12,10 +12,28 @@
 body{font-family:'Montserrat',sans-serif;background:#000;color:#fff;min-height:100vh}
 a{color:#fff;text-decoration:none}
 
-.mp-back{position:fixed;top:28px;left:32px;font-size:11px;font-weight:600;letter-spacing:.1em;color:rgba(255,255,255,.3);transition:color .2s;cursor:pointer;background:none;border:none;font-family:'Montserrat',sans-serif;z-index:10}
+/* QA #92 — mypage internal sidebar nav */
+.mp-sidebar{position:fixed;left:0;top:0;width:220px;height:100vh;z-index:5;border-right:1px solid rgba(255,255,255,.06);background:rgba(0,0,0,.35);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);padding:90px 0 28px;display:flex;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.mp-sidebar::-webkit-scrollbar{width:4px}
+.mp-sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08)}
+.mp-side-nav{display:flex;flex-direction:column;flex:1}
+.mp-side-group{display:flex;flex-direction:column;padding:0 28px 18px}
+.mp-side-group-title{font-size:9px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.25);margin-bottom:10px}
+.mp-side-link{display:block;font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.5);padding:9px 0 9px 12px;margin-left:-12px;border-left:2px solid transparent;transition:color .2s,border-color .2s,background .2s;cursor:pointer}
+.mp-side-link:hover{color:#fff}
+.mp-side-link.active{color:#fff;border-left-color:#fff}
+.mp-side-link.danger{color:rgba(255,107,107,.65)}
+.mp-side-link.danger:hover{color:#ff6b6b}
+.mp-side-spacer{flex:1;min-height:8px}
+.mp-side-divider{height:1px;background:rgba(255,255,255,.06);margin:0 28px 18px}
+.mp-back{font-size:11px;font-weight:600;letter-spacing:.1em;color:rgba(255,255,255,.3);transition:color .2s;cursor:pointer;background:none;border:none;font-family:'Montserrat',sans-serif;display:block;padding:0 28px 24px;text-align:left}
 .mp-back:hover{color:#fff}
 
-.mp-wrapper{width:100%;max-width:520px;margin:0 auto;padding:80px 20px 60px}
+.mp-wrapper{width:100%;max-width:520px;margin:0 auto;padding:80px 20px 60px;scroll-behavior:smooth}
+/* Each anchor target gets a small top offset so smooth-scroll doesn't tuck
+   the heading under the global fixed header when the user clicks a sidebar
+   item. */
+#mp-profile,#mp-subscription,#mp-activity,#mp-contributions,#mp-submissions,#mp-downloads,#mp-account{scroll-margin-top:28px}
 
 /* AVATAR */
 .mp-avatar{width:72px;height:72px;border-radius:50%;border:2px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;overflow:hidden;background:rgba(255,255,255,.04)}
@@ -91,9 +109,29 @@ a{color:#fff;text-decoration:none}
 .mp-lang select{background:transparent;color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.12);padding:5px 10px;font-size:10px;font-family:'Montserrat',sans-serif;letter-spacing:.1em;cursor:pointer}
 .mp-lang select option{background:#000;color:#fff}
 
+/* Desktop: push wrapper right of fixed sidebar but keep it horizontally
+   centered within the remaining viewport area (so the card stack still
+   looks balanced). body padding-left is the cleanest way to do this
+   without forking margin rules on .mp-wrapper. */
+@media(min-width:901px){
+  body{padding-left:220px}
+}
+/* Tablet & mobile: collapse sidebar into a horizontal scrollable bar
+   pinned to the top of the page. Same links, same active state, just
+   laid out on the X axis. */
+@media(max-width:900px){
+  .mp-sidebar{position:relative;width:100%;height:auto;padding:64px 12px 12px;border-right:none;border-bottom:1px solid rgba(255,255,255,.08);overflow-x:auto;overflow-y:hidden;background:rgba(0,0,0,.6)}
+  .mp-side-nav{flex-direction:row;flex-wrap:nowrap;gap:0;align-items:center}
+  .mp-side-group{flex-direction:row;padding:0 4px;align-items:center;gap:0;flex-shrink:0}
+  .mp-side-group-title{display:none}
+  .mp-side-link{padding:6px 12px;margin:0;border-left:none;border-bottom:2px solid transparent;white-space:nowrap}
+  .mp-side-link.active{border-left-color:transparent;border-bottom-color:#fff}
+  .mp-side-spacer{display:none}
+  .mp-side-divider{width:1px;height:18px;margin:0 8px;flex-shrink:0}
+  .mp-back{padding:0 16px 0 0;flex-shrink:0}
+}
 @media(max-width:500px){
-  .mp-wrapper{padding:70px 16px 40px}
-  .mp-back{top:20px;left:16px}
+  .mp-wrapper{padding:24px 16px 40px}
   .mp-stat-num{font-size:20px}
 }
 </style>
@@ -107,7 +145,30 @@ a{color:#fff;text-decoration:none}
 </head>
 <body>
 
-<a href="/" class="mp-back">← 돌아가기</a>
+<!-- QA #92 — mypage internal sidebar (desktop: left rail, mobile: top bar) -->
+<aside class="mp-sidebar" id="mpSidebar" aria-label="My Page navigation">
+  <a href="/" class="mp-back" data-i18n="navBack">← 돌아가기</a>
+  <nav class="mp-side-nav">
+    <div class="mp-side-group">
+      <div class="mp-side-group-title" data-i18n="navMyPage">MY PAGE</div>
+      <a href="#mp-profile" class="mp-side-link" data-i18n="navProfile">PROFILE</a>
+      <a href="#mp-subscription" class="mp-side-link" data-i18n="navSubscription">SUBSCRIPTION</a>
+      <a href="#mp-activity" class="mp-side-link" data-i18n="navActivity">ACTIVITY</a>
+      <a href="#mp-contributions" class="mp-side-link" data-i18n="navContributions">CONTRIBUTIONS</a>
+      <a href="#mp-submissions" class="mp-side-link" data-i18n="navSubmissions">SUBMISSIONS</a>
+      <a href="#mp-downloads" class="mp-side-link" data-i18n="navDownloads">DOWNLOADS</a>
+      <a href="#mp-account" class="mp-side-link" data-i18n="navAccount">ACCOUNT</a>
+    </div>
+    <div class="mp-side-spacer"></div>
+    <div class="mp-side-divider"></div>
+    <div class="mp-side-group" id="mpSideAdminGroup" style="display:none">
+      <a href="admin.html" class="mp-side-link" data-i18n="menuAdmin">ADMIN PANEL</a>
+    </div>
+    <div class="mp-side-group">
+      <a href="#" onclick="event.preventDefault();doLogout()" class="mp-side-link danger" data-i18n="menuLogout">LOGOUT</a>
+    </div>
+  </nav>
+</aside>
 
 <div class="mp-lang">
   <select id="langSelect" onchange="setLang(this.value)">
@@ -124,21 +185,23 @@ a{color:#fff;text-decoration:none}
 </div>
 
 <div class="mp-wrapper">
-  <!-- AVATAR + NAME -->
-  <div class="mp-avatar" id="mpAvatar">
-    <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-  </div>
-  <div class="mp-name" id="mpName">—</div>
-  <div class="mp-email" id="mpEmail">—</div>
+  <!-- PROFILE (avatar + name + email) -->
+  <section id="mp-profile">
+    <div class="mp-avatar" id="mpAvatar">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    </div>
+    <div class="mp-name" id="mpName">—</div>
+    <div class="mp-email" id="mpEmail">—</div>
+  </section>
 
   <!-- SUBSCRIPTION STATUS (built dynamically by renderSubscriptionCard) -->
-  <div class="mp-section">
+  <section class="mp-section" id="mp-subscription">
     <div class="mp-section-title" data-i18n="sectionPlan">구독</div>
     <div id="mpSubCard"></div>
-  </div>
+  </section>
 
   <!-- ACTIVITY STATS -->
-  <div class="mp-section">
+  <section class="mp-section" id="mp-activity">
     <div class="mp-section-title" data-i18n="sectionActivity">활동</div>
     <div class="mp-stats">
       <div class="mp-stat">
@@ -154,36 +217,36 @@ a{color:#fff;text-decoration:none}
         <div class="mp-stat-label" data-i18n="statRatings">별점</div>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- ── QA #83: New mypage IA — 4 content sections ── -->
+  <!-- ── QA #83: 4 content sections (now also serve as sidebar anchors) ── -->
 
   <!-- 1. 내가 참여한 작품 (My Contributions) -->
-  <div class="mp-section" id="mpContributionsSection">
+  <section class="mp-section" id="mp-contributions">
     <div class="mp-section-title" data-i18n="sectionContributions">내가 참여한 작품</div>
     <div id="mpContributionsList">
       <div class="mp-empty" data-i18n="contribComing">곧 출시 — 크레딧에 등록된 인스타그램 핸들과 매칭하여 본인이 참여한 에디토리얼이 표시됩니다</div>
     </div>
-  </div>
+  </section>
 
   <!-- 2. 내가 업로드한 작품 (My Submissions) -->
-  <div class="mp-section">
+  <section class="mp-section" id="mp-submissions">
     <div class="mp-section-title" data-i18n="sectionUploads">내가 업로드한 작품</div>
     <div id="mpRecentSubs">
       <div class="mp-empty" data-i18n="loading">불러오는 중...</div>
     </div>
-  </div>
+  </section>
 
   <!-- 3. 다운로드 가능 파일 (Downloadable Files) -->
-  <div class="mp-section" id="downloads">
+  <section class="mp-section" id="mp-downloads">
     <div class="mp-section-title" data-i18n="sectionDownloads">다운로드 가능 파일</div>
     <div id="mpDownloadsList">
       <div class="mp-empty" data-i18n="loading">불러오는 중...</div>
     </div>
-  </div>
+  </section>
 
   <!-- ACCOUNT INFO -->
-  <div class="mp-section">
+  <section class="mp-section" id="mp-account">
     <div class="mp-section-title" data-i18n="sectionAccount">계정 정보</div>
     <div class="mp-card">
       <div class="mp-row">
@@ -191,43 +254,12 @@ a{color:#fff;text-decoration:none}
         <span class="mp-badge" id="mpRole">—</span>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- MENU -->
-  <div class="mp-section">
-    <div class="mp-section-title" data-i18n="sectionMenu">메뉴</div>
-    <div class="mp-menu">
-      <a href="submission.html" class="mp-menu-item">
-        <span data-i18n="menuSubmission">작품 제출</span>
-        <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
-      </a>
-      <a href="pullletter.html" class="mp-menu-item">
-        <span data-i18n="menuPullletter">Pull-Letter</span>
-        <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
-      </a>
-      <a href="community.html" class="mp-menu-item">
-        <span data-i18n="menuCommunity">커뮤니티</span>
-        <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
-      </a>
-      <a href="subscribe.html" class="mp-menu-item">
-        <span data-i18n="menuSubscribe">구독 관리</span>
-        <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
-      </a>
-      <div class="mp-menu-item" id="mpAdminLink" style="display:none">
-        <a href="admin.html" style="color:inherit;display:flex;justify-content:space-between;align-items:center;width:100%">
-          <span data-i18n="menuAdmin">관리자 페이지</span>
-          <svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:rgba(255,255,255,.3);stroke-width:2;fill:none"><polyline points="9 18 15 12 9 6"/></svg>
-        </a>
-      </div>
-    </div>
-  </div>
-
-  <!-- LOGOUT -->
-  <div class="mp-section">
-    <div class="mp-menu">
-      <div class="mp-menu-item danger" onclick="doLogout()" data-i18n="menuLogout">로그아웃</div>
-    </div>
-  </div>
+  <!-- QA #92 — submission/pullletter/community/subscribe links and the
+       admin entry + logout used to live here in a duplicated body menu.
+       They've moved to the unified left sidebar (and the global hamburger)
+       so users get one consistent navigation surface. -->
 </div>
 
 <script src="pap-api.js?v=3" defer></script>
@@ -250,15 +282,15 @@ a{color:#fff;text-decoration:none}
 <script>
 // ───── i18n ─────
 var LANG = {
-  ko:{ sectionAccount:'계정 정보', labelRole:'역할', sectionPlan:'구독', sectionActivity:'활동', sectionRecent:'최근 서브미션', sectionContributions:'내가 참여한 작품', sectionUploads:'내가 업로드한 작품', sectionDownloads:'다운로드 가능 파일', contribComing:'곧 출시 — 크레딧에 등록된 인스타그램 핸들과 매칭하여 본인이 참여한 에디토리얼이 표시됩니다', downloadsLocked:'프리미엄 구독 시 로고 / 배포용 파일을 다운로드할 수 있습니다', downloadsEmpty:'다운로드 가능한 파일이 없습니다', downloadOpen:'다운로드', sectionMenu:'메뉴', statSubs:'서브미션', statComments:'댓글', statRatings:'별점', menuSubmission:'작품 제출', menuPullletter:'Pull-Letter', menuCommunity:'커뮤니티', menuSubscribe:'구독 관리', menuAdmin:'관리자 페이지', menuLogout:'로그아웃', roleAdmin:'관리자', roleMember:'회원', roleContributor:'기여자', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'무료 회원', upgradeTitleStd:'Standard로 업그레이드', upgradeTitlePrm:'Premium으로 업그레이드', perkAdsFree:'광고 없는 깔끔한 경험', perkArchive100:'최근 100개 에디토리얼 열람', perkArchiveFull:'전체 아카이브 + 86 이슈 무제한', perkFeedback:'서브미션 거절 사유 피드백', perkLogo:'로고 파일 다운로드', perkPullletter:'Pull-Letter 요청', cta:'구독하기', manage:'구독 관리', loading:'불러오는 중...', emptySubs:'아직 제출한 작품이 없어요', viewAll:'전체 보기 →', statusPending:'심사중', statusApproved:'승인', statusRevision:'보완 요청', statusRejected:'거절', loginRequired:'로그인이 필요합니다' },
-  en:{ sectionAccount:'Account', labelRole:'Role', sectionPlan:'Subscription', sectionActivity:'Activity', sectionRecent:'Recent Submissions', sectionContributions:'My Contributions', sectionUploads:'My Submissions', sectionDownloads:'Downloadable Files', contribComing:'Coming soon — editorials where you appear in the credits will be listed here', downloadsLocked:'Premium subscription unlocks logo & distribution kit downloads', downloadsEmpty:'No downloadable files available', downloadOpen:'Download', sectionMenu:'Menu', statSubs:'Submissions', statComments:'Comments', statRatings:'Ratings', menuSubmission:'Submit Work', menuPullletter:'Pull-Letter', menuCommunity:'Community', menuSubscribe:'Manage Subscription', menuAdmin:'Admin Panel', menuLogout:'Log Out', roleAdmin:'Admin', roleMember:'Member', roleContributor:'Contributor', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'Free Member', upgradeTitleStd:'Upgrade to Standard', upgradeTitlePrm:'Upgrade to Premium', perkAdsFree:'Ad-free experience', perkArchive100:'Latest 100 editorials access', perkArchiveFull:'Full archive · 86 issues unlimited', perkFeedback:'Submission rejection feedback', perkLogo:'Logo files download', perkPullletter:'Pull-Letter requests', cta:'Subscribe', manage:'Manage subscription', loading:'Loading...', emptySubs:'No submissions yet', viewAll:'View all →', statusPending:'Pending', statusApproved:'Approved', statusRevision:'Revision', statusRejected:'Rejected', loginRequired:'Please log in' },
-  it:{ sectionAccount:'Account', labelRole:'Ruolo', sectionPlan:'Abbonamento', sectionActivity:'Attività', sectionRecent:'Submission recenti', sectionMenu:'Menu', statSubs:'Submission', statComments:'Commenti', statRatings:'Valutazioni', menuSubmission:'Invia Lavori', menuPullletter:'Pull-Letter', menuCommunity:'Community', menuSubscribe:'Gestisci Abbonamento', menuAdmin:'Pannello Admin', menuLogout:'Esci', roleAdmin:'Admin', roleMember:'Membro', roleContributor:'Collaboratore', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'Membro gratuito', upgradeTitleStd:'Passa a Standard', upgradeTitlePrm:'Passa a Premium', perkAdsFree:'Esperienza senza pubblicità', perkArchive100:'Ultimi 100 editoriali', perkArchiveFull:'Archivio completo · 86 numeri illimitati', perkFeedback:'Feedback sulle submission rifiutate', perkLogo:'Download file logo', perkPullletter:'Richieste Pull-Letter', cta:'Abbonati', manage:'Gestisci abbonamento', loading:'Caricamento...', emptySubs:'Nessuna submission', viewAll:'Vedi tutto →', statusPending:'In esame', statusApproved:'Approvata', statusRevision:'Da revisionare', statusRejected:'Rifiutata', loginRequired:'Effettua il login' },
-  fr:{ sectionAccount:'Compte', labelRole:'Rôle', sectionPlan:'Abonnement', sectionActivity:'Activité', sectionRecent:'Soumissions récentes', sectionMenu:'Menu', statSubs:'Soumissions', statComments:'Commentaires', statRatings:'Notes', menuSubmission:'Soumettre', menuPullletter:'Pull-Letter', menuCommunity:'Communauté', menuSubscribe:"Gérer l'abonnement", menuAdmin:'Admin', menuLogout:'Déconnexion', roleAdmin:'Admin', roleMember:'Membre', roleContributor:'Contributeur', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'Membre gratuit', upgradeTitleStd:'Passer à Standard', upgradeTitlePrm:'Passer à Premium', perkAdsFree:'Expérience sans publicité', perkArchive100:"Accès aux 100 derniers éditoriaux", perkArchiveFull:'Archive complète · 86 numéros illimités', perkFeedback:'Retour sur les soumissions refusées', perkLogo:'Téléchargement des fichiers logo', perkPullletter:'Demandes Pull-Letter', cta:"S'abonner", manage:"Gérer l'abonnement", loading:'Chargement...', emptySubs:'Aucune soumission', viewAll:'Tout voir →', statusPending:'En attente', statusApproved:'Approuvée', statusRevision:'Révision', statusRejected:'Refusée', loginRequired:'Veuillez vous connecter' },
-  es:{ sectionAccount:'Cuenta', labelRole:'Rol', sectionPlan:'Suscripción', sectionActivity:'Actividad', sectionRecent:'Envíos recientes', sectionMenu:'Menú', statSubs:'Envíos', statComments:'Comentarios', statRatings:'Valoraciones', menuSubmission:'Enviar Trabajo', menuPullletter:'Pull-Letter', menuCommunity:'Comunidad', menuSubscribe:'Gestionar Suscripción', menuAdmin:'Admin', menuLogout:'Cerrar Sesión', roleAdmin:'Admin', roleMember:'Miembro', roleContributor:'Colaborador', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'Miembro gratuito', upgradeTitleStd:'Pasar a Standard', upgradeTitlePrm:'Pasar a Premium', perkAdsFree:'Experiencia sin anuncios', perkArchive100:'Últimos 100 editoriales', perkArchiveFull:'Archivo completo · 86 números ilimitados', perkFeedback:'Comentarios sobre envíos rechazados', perkLogo:'Descarga de archivos de logo', perkPullletter:'Solicitudes Pull-Letter', cta:'Suscríbete', manage:'Gestionar suscripción', loading:'Cargando...', emptySubs:'Sin envíos', viewAll:'Ver todo →', statusPending:'En revisión', statusApproved:'Aprobado', statusRevision:'Revisión', statusRejected:'Rechazado', loginRequired:'Inicia sesión' },
-  ja:{ sectionAccount:'アカウント情報', labelRole:'役割', sectionPlan:'サブスクリプション', sectionActivity:'アクティビティ', sectionRecent:'最近の投稿', sectionMenu:'メニュー', statSubs:'投稿', statComments:'コメント', statRatings:'評価', menuSubmission:'作品提出', menuPullletter:'Pull-Letter', menuCommunity:'コミュニティ', menuSubscribe:'サブスク管理', menuAdmin:'管理画面', menuLogout:'ログアウト', roleAdmin:'管理者', roleMember:'メンバー', roleContributor:'コントリビューター', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'無料会員', upgradeTitleStd:'Standardにアップグレード', upgradeTitlePrm:'Premiumにアップグレード', perkAdsFree:'広告のない快適な体験', perkArchive100:'最新100エディトリアル閲覧', perkArchiveFull:'全アーカイブ・86号無制限', perkFeedback:'投稿フィードバック', perkLogo:'ロゴファイルダウンロード', perkPullletter:'Pull-Letterリクエスト', cta:'登録する', manage:'サブスク管理', loading:'読み込み中...', emptySubs:'投稿はまだありません', viewAll:'すべて見る →', statusPending:'審査中', statusApproved:'承認', statusRevision:'修正依頼', statusRejected:'却下', loginRequired:'ログインが必要です' },
-  zh:{ sectionAccount:'账户信息', labelRole:'角色', sectionPlan:'订阅', sectionActivity:'活动', sectionRecent:'最近投稿', sectionMenu:'菜单', statSubs:'投稿', statComments:'评论', statRatings:'评分', menuSubmission:'提交作品', menuPullletter:'Pull-Letter', menuCommunity:'社区', menuSubscribe:'管理订阅', menuAdmin:'管理后台', menuLogout:'退出登录', roleAdmin:'管理员', roleMember:'会员', roleContributor:'贡献者', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'免费会员', upgradeTitleStd:'升级到 Standard', upgradeTitlePrm:'升级到 Premium', perkAdsFree:'无广告体验', perkArchive100:'最近 100 个社论', perkArchiveFull:'完整档案·86 期无限', perkFeedback:'投稿反馈', perkLogo:'徽标文件下载', perkPullletter:'Pull-Letter 请求', cta:'订阅', manage:'管理订阅', loading:'加载中...', emptySubs:'暂无投稿', viewAll:'查看全部 →', statusPending:'审核中', statusApproved:'通过', statusRevision:'需修改', statusRejected:'拒绝', loginRequired:'请登录' },
-  ru:{ sectionAccount:'Аккаунт', labelRole:'Роль', sectionPlan:'Подписка', sectionActivity:'Активность', sectionRecent:'Недавние публикации', sectionMenu:'Меню', statSubs:'Публикации', statComments:'Комментарии', statRatings:'Оценки', menuSubmission:'Отправить работу', menuPullletter:'Pull-Letter', menuCommunity:'Сообщество', menuSubscribe:'Управление подпиской', menuAdmin:'Админ', menuLogout:'Выйти', roleAdmin:'Админ', roleMember:'Участник', roleContributor:'Автор', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'Бесплатный участник', upgradeTitleStd:'Перейти на Standard', upgradeTitlePrm:'Перейти на Premium', perkAdsFree:'Без рекламы', perkArchive100:'Последние 100 редакций', perkArchiveFull:'Полный архив · 86 выпусков', perkFeedback:'Обратная связь по работам', perkLogo:'Скачивание файлов логотипа', perkPullletter:'Запросы Pull-Letter', cta:'Подписаться', manage:'Управление', loading:'Загрузка...', emptySubs:'Пока нет публикаций', viewAll:'Все →', statusPending:'На проверке', statusApproved:'Одобрено', statusRevision:'Доработать', statusRejected:'Отклонено', loginRequired:'Войдите в систему' },
-  de:{ sectionAccount:'Konto', labelRole:'Rolle', sectionPlan:'Abonnement', sectionActivity:'Aktivität', sectionRecent:'Letzte Einreichungen', sectionMenu:'Menü', statSubs:'Einreichungen', statComments:'Kommentare', statRatings:'Bewertungen', menuSubmission:'Werk einreichen', menuPullletter:'Pull-Letter', menuCommunity:'Community', menuSubscribe:'Abonnement', menuAdmin:'Admin', menuLogout:'Abmelden', roleAdmin:'Admin', roleMember:'Mitglied', roleContributor:'Mitwirkender', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'Kostenloses Mitglied', upgradeTitleStd:'Auf Standard upgraden', upgradeTitlePrm:'Auf Premium upgraden', perkAdsFree:'Werbefreies Erlebnis', perkArchive100:'Letzte 100 Editorials', perkArchiveFull:'Vollständiges Archiv · 86 Ausgaben', perkFeedback:'Submission-Feedback', perkLogo:'Logo-Dateien Download', perkPullletter:'Pull-Letter Anfragen', cta:'Abonnieren', manage:'Verwalten', loading:'Laden...', emptySubs:'Noch keine Einreichungen', viewAll:'Alle anzeigen →', statusPending:'In Prüfung', statusApproved:'Genehmigt', statusRevision:'Überarbeitung', statusRejected:'Abgelehnt', loginRequired:'Bitte melden Sie sich an' }
+  ko:{ sectionAccount:'계정 정보', labelRole:'역할', sectionPlan:'구독', sectionActivity:'활동', sectionRecent:'최근 서브미션', sectionContributions:'내가 참여한 작품', sectionUploads:'내가 업로드한 작품', sectionDownloads:'다운로드 가능 파일', contribComing:'곧 출시 — 크레딧에 등록된 인스타그램 핸들과 매칭하여 본인이 참여한 에디토리얼이 표시됩니다', downloadsLocked:'프리미엄 구독 시 로고 / 배포용 파일을 다운로드할 수 있습니다', downloadsEmpty:'다운로드 가능한 파일이 없습니다', downloadOpen:'다운로드', sectionMenu:'메뉴', statSubs:'서브미션', statComments:'댓글', statRatings:'별점', menuSubmission:'작품 제출', menuPullletter:'Pull-Letter', menuCommunity:'커뮤니티', menuSubscribe:'구독 관리', menuAdmin:'관리자 페이지', menuLogout:'로그아웃', roleAdmin:'관리자', roleMember:'회원', roleContributor:'기여자', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'무료 회원', upgradeTitleStd:'Standard로 업그레이드', upgradeTitlePrm:'Premium으로 업그레이드', perkAdsFree:'광고 없는 깔끔한 경험', perkArchive100:'최근 100개 에디토리얼 열람', perkArchiveFull:'전체 아카이브 + 86 이슈 무제한', perkFeedback:'서브미션 거절 사유 피드백', perkLogo:'로고 파일 다운로드', perkPullletter:'Pull-Letter 요청', cta:'구독하기', manage:'구독 관리', loading:'불러오는 중...', emptySubs:'아직 제출한 작품이 없어요', viewAll:'전체 보기 →', statusPending:'심사중', statusApproved:'승인', statusRevision:'보완 요청', statusRejected:'거절', loginRequired:'로그인이 필요합니다', navBack:'← 돌아가기', navMyPage:'마이페이지', navProfile:'프로필', navSubscription:'구독', navActivity:'활동', navContributions:'참여 작품', navSubmissions:'업로드', navDownloads:'다운로드', navAccount:'계정' },
+  en:{ sectionAccount:'Account', labelRole:'Role', sectionPlan:'Subscription', sectionActivity:'Activity', sectionRecent:'Recent Submissions', sectionContributions:'My Contributions', sectionUploads:'My Submissions', sectionDownloads:'Downloadable Files', contribComing:'Coming soon — editorials where you appear in the credits will be listed here', downloadsLocked:'Premium subscription unlocks logo & distribution kit downloads', downloadsEmpty:'No downloadable files available', downloadOpen:'Download', sectionMenu:'Menu', statSubs:'Submissions', statComments:'Comments', statRatings:'Ratings', menuSubmission:'Submit Work', menuPullletter:'Pull-Letter', menuCommunity:'Community', menuSubscribe:'Manage Subscription', menuAdmin:'Admin Panel', menuLogout:'Log Out', roleAdmin:'Admin', roleMember:'Member', roleContributor:'Contributor', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'Free Member', upgradeTitleStd:'Upgrade to Standard', upgradeTitlePrm:'Upgrade to Premium', perkAdsFree:'Ad-free experience', perkArchive100:'Latest 100 editorials access', perkArchiveFull:'Full archive · 86 issues unlimited', perkFeedback:'Submission rejection feedback', perkLogo:'Logo files download', perkPullletter:'Pull-Letter requests', cta:'Subscribe', manage:'Manage subscription', loading:'Loading...', emptySubs:'No submissions yet', viewAll:'View all →', statusPending:'Pending', statusApproved:'Approved', statusRevision:'Revision', statusRejected:'Rejected', loginRequired:'Please log in', navBack:'← BACK', navMyPage:'MY PAGE', navProfile:'PROFILE', navSubscription:'SUBSCRIPTION', navActivity:'ACTIVITY', navContributions:'CONTRIBUTIONS', navSubmissions:'SUBMISSIONS', navDownloads:'DOWNLOADS', navAccount:'ACCOUNT' },
+  it:{ sectionAccount:'Account', labelRole:'Ruolo', sectionPlan:'Abbonamento', sectionActivity:'Attività', sectionRecent:'Submission recenti', sectionMenu:'Menu', statSubs:'Submission', statComments:'Commenti', statRatings:'Valutazioni', menuSubmission:'Invia Lavori', menuPullletter:'Pull-Letter', menuCommunity:'Community', menuSubscribe:'Gestisci Abbonamento', menuAdmin:'Pannello Admin', menuLogout:'Esci', roleAdmin:'Admin', roleMember:'Membro', roleContributor:'Collaboratore', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'Membro gratuito', upgradeTitleStd:'Passa a Standard', upgradeTitlePrm:'Passa a Premium', perkAdsFree:'Esperienza senza pubblicità', perkArchive100:'Ultimi 100 editoriali', perkArchiveFull:'Archivio completo · 86 numeri illimitati', perkFeedback:'Feedback sulle submission rifiutate', perkLogo:'Download file logo', perkPullletter:'Richieste Pull-Letter', cta:'Abbonati', manage:'Gestisci abbonamento', loading:'Caricamento...', emptySubs:'Nessuna submission', viewAll:'Vedi tutto →', statusPending:'In esame', statusApproved:'Approvata', statusRevision:'Da revisionare', statusRejected:'Rifiutata', loginRequired:'Effettua il login', navBack:'← INDIETRO', navMyPage:'MY PAGE', navProfile:'PROFILO', navSubscription:'ABBONAMENTO', navActivity:'ATTIVITÀ', navContributions:'CONTRIBUTI', navSubmissions:'INVII', navDownloads:'DOWNLOAD', navAccount:'ACCOUNT' },
+  fr:{ sectionAccount:'Compte', labelRole:'Rôle', sectionPlan:'Abonnement', sectionActivity:'Activité', sectionRecent:'Soumissions récentes', sectionMenu:'Menu', statSubs:'Soumissions', statComments:'Commentaires', statRatings:'Notes', menuSubmission:'Soumettre', menuPullletter:'Pull-Letter', menuCommunity:'Communauté', menuSubscribe:"Gérer l'abonnement", menuAdmin:'Admin', menuLogout:'Déconnexion', roleAdmin:'Admin', roleMember:'Membre', roleContributor:'Contributeur', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'Membre gratuit', upgradeTitleStd:'Passer à Standard', upgradeTitlePrm:'Passer à Premium', perkAdsFree:'Expérience sans publicité', perkArchive100:"Accès aux 100 derniers éditoriaux", perkArchiveFull:'Archive complète · 86 numéros illimités', perkFeedback:'Retour sur les soumissions refusées', perkLogo:'Téléchargement des fichiers logo', perkPullletter:'Demandes Pull-Letter', cta:"S'abonner", manage:"Gérer l'abonnement", loading:'Chargement...', emptySubs:'Aucune soumission', viewAll:'Tout voir →', statusPending:'En attente', statusApproved:'Approuvée', statusRevision:'Révision', statusRejected:'Refusée', loginRequired:'Veuillez vous connecter', navBack:'← RETOUR', navMyPage:'MON ESPACE', navProfile:'PROFIL', navSubscription:'ABONNEMENT', navActivity:'ACTIVITÉ', navContributions:'CONTRIBUTIONS', navSubmissions:'SOUMISSIONS', navDownloads:'TÉLÉCHARGEMENTS', navAccount:'COMPTE' },
+  es:{ sectionAccount:'Cuenta', labelRole:'Rol', sectionPlan:'Suscripción', sectionActivity:'Actividad', sectionRecent:'Envíos recientes', sectionMenu:'Menú', statSubs:'Envíos', statComments:'Comentarios', statRatings:'Valoraciones', menuSubmission:'Enviar Trabajo', menuPullletter:'Pull-Letter', menuCommunity:'Comunidad', menuSubscribe:'Gestionar Suscripción', menuAdmin:'Admin', menuLogout:'Cerrar Sesión', roleAdmin:'Admin', roleMember:'Miembro', roleContributor:'Colaborador', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'Miembro gratuito', upgradeTitleStd:'Pasar a Standard', upgradeTitlePrm:'Pasar a Premium', perkAdsFree:'Experiencia sin anuncios', perkArchive100:'Últimos 100 editoriales', perkArchiveFull:'Archivo completo · 86 números ilimitados', perkFeedback:'Comentarios sobre envíos rechazados', perkLogo:'Descarga de archivos de logo', perkPullletter:'Solicitudes Pull-Letter', cta:'Suscríbete', manage:'Gestionar suscripción', loading:'Cargando...', emptySubs:'Sin envíos', viewAll:'Ver todo →', statusPending:'En revisión', statusApproved:'Aprobado', statusRevision:'Revisión', statusRejected:'Rechazado', loginRequired:'Inicia sesión', navBack:'← VOLVER', navMyPage:'MI PÁGINA', navProfile:'PERFIL', navSubscription:'SUSCRIPCIÓN', navActivity:'ACTIVIDAD', navContributions:'COLABORACIONES', navSubmissions:'ENVÍOS', navDownloads:'DESCARGAS', navAccount:'CUENTA' },
+  ja:{ sectionAccount:'アカウント情報', labelRole:'役割', sectionPlan:'サブスクリプション', sectionActivity:'アクティビティ', sectionRecent:'最近の投稿', sectionMenu:'メニュー', statSubs:'投稿', statComments:'コメント', statRatings:'評価', menuSubmission:'作品提出', menuPullletter:'Pull-Letter', menuCommunity:'コミュニティ', menuSubscribe:'サブスク管理', menuAdmin:'管理画面', menuLogout:'ログアウト', roleAdmin:'管理者', roleMember:'メンバー', roleContributor:'コントリビューター', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'無料会員', upgradeTitleStd:'Standardにアップグレード', upgradeTitlePrm:'Premiumにアップグレード', perkAdsFree:'広告のない快適な体験', perkArchive100:'最新100エディトリアル閲覧', perkArchiveFull:'全アーカイブ・86号無制限', perkFeedback:'投稿フィードバック', perkLogo:'ロゴファイルダウンロード', perkPullletter:'Pull-Letterリクエスト', cta:'登録する', manage:'サブスク管理', loading:'読み込み中...', emptySubs:'投稿はまだありません', viewAll:'すべて見る →', statusPending:'審査中', statusApproved:'承認', statusRevision:'修正依頼', statusRejected:'却下', loginRequired:'ログインが必要です', navBack:'← 戻る', navMyPage:'マイページ', navProfile:'プロフィール', navSubscription:'サブスク', navActivity:'アクティビティ', navContributions:'参加作品', navSubmissions:'投稿', navDownloads:'ダウンロード', navAccount:'アカウント' },
+  zh:{ sectionAccount:'账户信息', labelRole:'角色', sectionPlan:'订阅', sectionActivity:'活动', sectionRecent:'最近投稿', sectionMenu:'菜单', statSubs:'投稿', statComments:'评论', statRatings:'评分', menuSubmission:'提交作品', menuPullletter:'Pull-Letter', menuCommunity:'社区', menuSubscribe:'管理订阅', menuAdmin:'管理后台', menuLogout:'退出登录', roleAdmin:'管理员', roleMember:'会员', roleContributor:'贡献者', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'免费会员', upgradeTitleStd:'升级到 Standard', upgradeTitlePrm:'升级到 Premium', perkAdsFree:'无广告体验', perkArchive100:'最近 100 个社论', perkArchiveFull:'完整档案·86 期无限', perkFeedback:'投稿反馈', perkLogo:'徽标文件下载', perkPullletter:'Pull-Letter 请求', cta:'订阅', manage:'管理订阅', loading:'加载中...', emptySubs:'暂无投稿', viewAll:'查看全部 →', statusPending:'审核中', statusApproved:'通过', statusRevision:'需修改', statusRejected:'拒绝', loginRequired:'请登录', navBack:'← 返回', navMyPage:'我的页面', navProfile:'个人资料', navSubscription:'订阅', navActivity:'活动', navContributions:'参与作品', navSubmissions:'投稿', navDownloads:'下载', navAccount:'账户' },
+  ru:{ sectionAccount:'Аккаунт', labelRole:'Роль', sectionPlan:'Подписка', sectionActivity:'Активность', sectionRecent:'Недавние публикации', sectionMenu:'Меню', statSubs:'Публикации', statComments:'Комментарии', statRatings:'Оценки', menuSubmission:'Отправить работу', menuPullletter:'Pull-Letter', menuCommunity:'Сообщество', menuSubscribe:'Управление подпиской', menuAdmin:'Админ', menuLogout:'Выйти', roleAdmin:'Админ', roleMember:'Участник', roleContributor:'Автор', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'Бесплатный участник', upgradeTitleStd:'Перейти на Standard', upgradeTitlePrm:'Перейти на Premium', perkAdsFree:'Без рекламы', perkArchive100:'Последние 100 редакций', perkArchiveFull:'Полный архив · 86 выпусков', perkFeedback:'Обратная связь по работам', perkLogo:'Скачивание файлов логотипа', perkPullletter:'Запросы Pull-Letter', cta:'Подписаться', manage:'Управление', loading:'Загрузка...', emptySubs:'Пока нет публикаций', viewAll:'Все →', statusPending:'На проверке', statusApproved:'Одобрено', statusRevision:'Доработать', statusRejected:'Отклонено', loginRequired:'Войдите в систему', navBack:'← НАЗАД', navMyPage:'ЛИЧНЫЙ КАБИНЕТ', navProfile:'ПРОФИЛЬ', navSubscription:'ПОДПИСКА', navActivity:'АКТИВНОСТЬ', navContributions:'УЧАСТИЕ', navSubmissions:'ПУБЛИКАЦИИ', navDownloads:'ЗАГРУЗКИ', navAccount:'АККАУНТ' },
+  de:{ sectionAccount:'Konto', labelRole:'Rolle', sectionPlan:'Abonnement', sectionActivity:'Aktivität', sectionRecent:'Letzte Einreichungen', sectionMenu:'Menü', statSubs:'Einreichungen', statComments:'Kommentare', statRatings:'Bewertungen', menuSubmission:'Werk einreichen', menuPullletter:'Pull-Letter', menuCommunity:'Community', menuSubscribe:'Abonnement', menuAdmin:'Admin', menuLogout:'Abmelden', roleAdmin:'Admin', roleMember:'Mitglied', roleContributor:'Mitwirkender', planFree:'Free', planStandard:'Standard', planPremium:'Premium', upgradeBadge:'Kostenloses Mitglied', upgradeTitleStd:'Auf Standard upgraden', upgradeTitlePrm:'Auf Premium upgraden', perkAdsFree:'Werbefreies Erlebnis', perkArchive100:'Letzte 100 Editorials', perkArchiveFull:'Vollständiges Archiv · 86 Ausgaben', perkFeedback:'Submission-Feedback', perkLogo:'Logo-Dateien Download', perkPullletter:'Pull-Letter Anfragen', cta:'Abonnieren', manage:'Verwalten', loading:'Laden...', emptySubs:'Noch keine Einreichungen', viewAll:'Alle anzeigen →', statusPending:'In Prüfung', statusApproved:'Genehmigt', statusRevision:'Überarbeitung', statusRejected:'Abgelehnt', loginRequired:'Bitte melden Sie sich an', navBack:'← ZURÜCK', navMyPage:'MEIN BEREICH', navProfile:'PROFIL', navSubscription:'ABONNEMENT', navActivity:'AKTIVITÄT', navContributions:'BEITRÄGE', navSubmissions:'EINREICHUNGEN', navDownloads:'DOWNLOADS', navAccount:'KONTO' }
 };
 
 var _t = LANG.ko;       // current dictionary
@@ -507,9 +539,10 @@ function loadProfile(){
     roleEl.className = 'mp-badge';
     if (role === 'admin') roleEl.classList.add('admin');
 
-    // Show admin link
+    // Show admin sidebar group only for admins
     if (role === 'admin') {
-      document.getElementById('mpAdminLink').style.display = 'block';
+      var adminGroup = document.getElementById('mpSideAdminGroup');
+      if (adminGroup) adminGroup.style.display = 'flex';
     }
 
     // Render dynamic sections
@@ -522,6 +555,45 @@ function loadProfile(){
   }
 }
 function doLogout() { localStorage.removeItem('pap-token'); localStorage.removeItem('pap-user'); window.location.href = '/'; }
+
+// QA #92 — sidebar interactions: smooth scroll on click + active section
+// highlighting via IntersectionObserver. We compute ids from each link's
+// href so adding/removing sections later just means editing the markup.
+function setupMpSidebar(){
+  var links = document.querySelectorAll('.mp-side-link[href^="#"]');
+  if(!links.length) return;
+  var bySectionId = {};
+  links.forEach(function(a){
+    var id = a.getAttribute('href').slice(1);
+    var sec = id ? document.getElementById(id) : null;
+    if(sec) bySectionId[id] = a;
+    a.addEventListener('click', function(e){
+      var target = sec || document.getElementById(a.getAttribute('href').slice(1));
+      if(!target) return;
+      e.preventDefault();
+      target.scrollIntoView({behavior:'smooth',block:'start'});
+      // Reflect the click in the URL so refresh / back-button preserves
+      // the user's section, but don't trigger another scroll.
+      try { history.replaceState(null,'','#'+a.getAttribute('href').slice(1)); } catch(_){}
+    });
+  });
+  if(typeof IntersectionObserver==='undefined') return;
+  // rootMargin biases the "active" zone to the upper third of the
+  // viewport — feels natural when the user is reading top-to-bottom.
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if(!entry.isIntersecting) return;
+      var link = bySectionId[entry.target.id];
+      if(!link) return;
+      links.forEach(function(a){ a.classList.remove('active'); });
+      link.classList.add('active');
+    });
+  }, { rootMargin:'-20% 0px -60% 0px', threshold:0 });
+  Object.keys(bySectionId).forEach(function(id){
+    var sec=document.getElementById(id);
+    if(sec) io.observe(sec);
+  });
+}
 (function(){
   var saved = localStorage.getItem('pap-lang') || 'ko';
   _t = LANG[saved] || LANG.ko;
@@ -531,6 +603,7 @@ function doLogout() { localStorage.removeItem('pap-token'); localStorage.removeI
   });
   document.getElementById('langSelect').value = saved;
   loadProfile();
+  setupMpSidebar();
 })();
 </script>
 <script src="pap-reveal.js?v=4" defer></script><script src="pap-header.js?v=9"></script>
