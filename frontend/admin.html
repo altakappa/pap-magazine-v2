@@ -431,16 +431,10 @@ tr:hover td{background:rgba(0,0,0,.02)}
         <div class="pe-section">
           <div class="pe-label">크레딧 정보</div>
           <div id="creditsArea">
-            <div class="pe-credit-row">
-              <select class="pe-select pe-credit-role">
-                <option>Photographer</option><option>Stylist</option><option>Stylist assist</option><option>Make Up</option><option>Hair</option><option>Set Design</option><option>Set designe assist</option><option>Producer</option><option>Starring</option><option>Creative Director</option><option>Art Director</option><option>Model</option><option>Video Director</option>
-              </select>
-              <input class="pe-input pe-credit-name" placeholder="이름">
-              <input class="pe-input pe-credit-ig" placeholder="@instagram">
-              <button class="btn btn-sm btn-red" onclick="this.parentElement.remove()">삭제</button>
-            </div>
+            <!-- Initial credit row populated on DOMContentLoaded by _initFirstCreditRow() -->
           </div>
           <button class="btn btn-sm" onclick="addCredit()" style="margin-top:8px">+ 크레딧 추가</button>
+          <div class="pe-hint" style="margin-top:6px">역할이 목록에 없으면 <strong>+ 직접 입력</strong>을 선택해 자유롭게 입력할 수 있습니다.</div>
         </div>
 
         <!-- 패션 브랜드 태그 -->
@@ -1519,8 +1513,14 @@ function go(id,el){
     if(document.getElementById('postSubtitle'))document.getElementById('postSubtitle').value='';
     if(document.getElementById('postTags'))document.getElementById('postTags').value='';
     if(document.getElementById('postVideoUrl'))document.getElementById('postVideoUrl').value='';
-    if(document.getElementById('postDescription'))document.getElementById('postDescription').value=ed.description||'';
+    if(document.getElementById('postDescription'))document.getElementById('postDescription').value='';
     if(document.getElementById('tagPreview'))document.getElementById('tagPreview').innerHTML='';
+    // Ensure at least one credit row exists (the inline initial row was
+    // moved into _buildCreditRowInner so newly-opened forms start empty).
+    var ca=document.getElementById('creditsArea');
+    if(ca && !ca.querySelector('.pe-credit-row')){
+      if(typeof addCredit==='function') addCredit();
+    }
   }
 }
 // Review submission tracking
@@ -2328,11 +2328,81 @@ function updateImgCredits(){
   });
 }
 
+// ── Editorial credit roles ──────────────────────────────────────────────────
+// Extended list driven by QA #82 — covers assistants and the long tail of
+// production roles. The trailing __custom__ option swaps the select for a
+// free-text input so editors can enter any role not in the list.
+var EDITORIAL_CREDIT_ROLES = [
+  'Photographer','Photographer assist',
+  'Stylist','Stylist assist',
+  'Make Up','Make Up assist',
+  'Hair','Hair assist',
+  'Set Design','Set Design assist',
+  'Producer','Production assist',
+  'Creative Director','Art Director','Casting Director',
+  'Model','Starring','Talent Agency',
+  'Video Director','Video assist','DOP / Cinematographer',
+  'Editor','Colorist','Retouching',
+  'Sound','Music','VFX',
+  'Location','Special Thanks'
+];
+var EDITORIAL_CREDIT_CUSTOM_VALUE = '__custom__';
+
+// Resolve the actual role name from a credit row — returns the custom text
+// when the select is set to the custom sentinel, otherwise the select value.
+function _readCreditRole(row){
+  if(!row) return '';
+  var sel=row.querySelector('.pe-credit-role');
+  var customInput=row.querySelector('.pe-credit-role-custom');
+  if(!sel) return '';
+  var v=sel.value;
+  if(v===EDITORIAL_CREDIT_CUSTOM_VALUE){
+    return (customInput && customInput.value ? customInput.value : '').trim();
+  }
+  return v;
+}
+
+// Build the inner HTML of a credit row. Pre-selects `role` if it matches a
+// known option; otherwise switches the row into custom-input mode and pre-
+// fills the text input with the unrecognised role string.
+function _buildCreditRowInner(role, name, ig){
+  role = role || EDITORIAL_CREDIT_ROLES[0];
+  name = name || '';
+  ig   = ig   || '';
+  var isKnown = EDITORIAL_CREDIT_ROLES.indexOf(role) >= 0;
+  var opts = EDITORIAL_CREDIT_ROLES.map(function(r){
+    return '<option value="'+esc(r)+'"'+(isKnown && r===role ? ' selected' : '')+'>'+esc(r)+'</option>';
+  }).join('');
+  opts += '<option value="'+EDITORIAL_CREDIT_CUSTOM_VALUE+'"'+(!isKnown ? ' selected' : '')+'>+ 직접 입력</option>';
+  var customDisplay = isKnown ? 'none' : 'block';
+  var customValue   = isKnown ? '' : esc(role);
+  return '<select class="pe-select pe-credit-role" onchange="_onCreditRoleChange(this)">'+opts+'</select>'
+    +'<input class="pe-input pe-credit-role-custom" placeholder="역할 직접 입력" value="'+customValue+'" style="display:'+customDisplay+';width:170px;flex-shrink:0">'
+    +'<input class="pe-input pe-credit-name" placeholder="이름" value="'+esc(name)+'">'
+    +'<input class="pe-input pe-credit-ig" placeholder="@instagram" value="'+esc(ig)+'">'
+    +'<button class="btn btn-sm btn-red" onclick="this.parentElement.remove()">삭제</button>';
+}
+
+// Toggle visibility of the custom-text input when the role select changes.
+function _onCreditRoleChange(sel){
+  var row=sel.closest('.pe-credit-row');
+  if(!row) return;
+  var custom=row.querySelector('.pe-credit-role-custom');
+  if(!custom) return;
+  if(sel.value===EDITORIAL_CREDIT_CUSTOM_VALUE){
+    custom.style.display='block';
+    custom.focus();
+  } else {
+    custom.style.display='none';
+    custom.value='';
+  }
+}
+
 function addCredit(){
   var area=document.getElementById('creditsArea');
   var row=document.createElement('div');
   row.className='pe-credit-row';
-  row.innerHTML='<select class="pe-select pe-credit-role"><option>Photographer</option><option>Stylist</option><option>Stylist assist</option><option>Make Up</option><option>Hair</option><option>Set Design</option><option>Set designe assist</option><option>Producer</option><option>Starring</option><option>Creative Director</option><option>Art Director</option><option>Model</option><option>Video Director</option></select><input class="pe-input pe-credit-name" placeholder="이름"><input class="pe-input pe-credit-ig" placeholder="@instagram"><button class="btn btn-sm btn-red" onclick="this.parentElement.remove()">삭제</button>';
+  row.innerHTML=_buildCreditRowInner('','','');
   area.appendChild(row);
 }
 
@@ -2611,11 +2681,15 @@ function editEditorial(id){
   if(creditsArea&&ed.credits&&typeof ed.credits==='object'){
     creditsArea.innerHTML='';
     Object.entries(ed.credits).forEach(function(entry){
-      var role=entry[0];var val=entry[1];
-      var row=document.createElement('div');row.className='pe-credit-row';
-      row.innerHTML='<select class="pe-select pe-credit-role"><option>Photographer</option><option>Stylist</option><option>Stylist assist</option><option>Make Up</option><option>Hair</option><option>Set Design</option><option>Set designe assist</option><option>Producer</option><option>Starring</option><option>Creative Director</option><option>Art Director</option><option>Model</option><option>Video Director</option></select><input class="pe-input pe-credit-name" placeholder="이름" value="'+esc(val.name||val||'')+'"><input class="pe-input pe-credit-ig" placeholder="@instagram" value="'+esc(val.instagram||'')+'"><button class="btn btn-sm btn-red" onclick="this.parentElement.remove()">삭제</button>';
-      var sel=row.querySelector('select');
-      for(var i=0;i<sel.options.length;i++){if(sel.options[i].text===role)sel.selectedIndex=i;}
+      var role=entry[0];
+      var val=entry[1];
+      var row=document.createElement('div');
+      row.className='pe-credit-row';
+      row.innerHTML=_buildCreditRowInner(
+        role,
+        (val && typeof val==='object' ? val.name : val) || '',
+        (val && typeof val==='object' ? val.instagram : '') || ''
+      );
       creditsArea.appendChild(row);
     });
   }
@@ -2653,15 +2727,15 @@ async function savePost(){
   var category=catSelect?catSelect.value:'editorial';
   var tagsArr=tags?tags.split(',').map(function(t){return t.trim();}).filter(Boolean):[];
 
-  // Build credits
+  // Build credits — read role via _readCreditRole so custom-input rows
+  // contribute their typed role string instead of the __custom__ sentinel.
   var credits={};
   document.querySelectorAll('#creditsArea .pe-credit-row').forEach(function(row){
-    var role=row.querySelector('.pe-credit-role');
     var name=row.querySelector('.pe-credit-name');
     var ig=row.querySelector('.pe-credit-ig');
-    if(role&&name&&name.value){
-      var r=role.options[role.selectedIndex].text;
-      credits[r]={name:name.value,instagram:ig?ig.value:''};
+    var roleStr=_readCreditRole(row);
+    if(roleStr && name && name.value){
+      credits[roleStr]={name:name.value,instagram:ig?ig.value:''};
     }
   });
 
