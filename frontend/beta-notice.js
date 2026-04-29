@@ -146,18 +146,31 @@
     /* Fallback: if geo-detection takes too long or fails, show after 600ms */
     setTimeout(revealNotice, 600);
 
-    document.getElementById('bnClose').addEventListener('click',function(){
-      overlay.classList.add('bn-hide');
-      setTimeout(function(){ overlay.remove(); },300);
-    });
-
-    /* close on overlay click (outside card) */
-    overlay.addEventListener('click',function(e){
-      if(e.target===overlay){
-        overlay.classList.add('bn-hide');
-        setTimeout(function(){ overlay.remove(); },300);
+    function _closeNotice(){
+      // Record dismissal so the popup doesn't reappear on subsequent
+      // home-page entries within the TTL window.
+      if(typeof window._papMarkBetaDismissed === 'function'){
+        window._papMarkBetaDismissed();
       }
+      overlay.classList.add('bn-hide');
+      setTimeout(function(){ overlay.remove(); }, 300);
+    }
+    document.getElementById('bnClose').addEventListener('click', _closeNotice);
+    /* close on overlay click (outside card) */
+    overlay.addEventListener('click', function(e){
+      if(e.target === overlay) _closeNotice();
     });
+    /* Also mark dismissed when the user clicks the signup CTA — they
+       implicitly acknowledged the notice. (The link itself navigates
+       away normally; we just mark before the navigation completes.) */
+    var signupBtn = overlay.querySelector('.bn-btn-signup');
+    if(signupBtn){
+      signupBtn.addEventListener('click', function(){
+        if(typeof window._papMarkBetaDismissed === 'function'){
+          window._papMarkBetaDismissed();
+        }
+      });
+    }
   }
 
   /* ── init ─────────────────────────────────────────── */
@@ -178,10 +191,63 @@
     }catch(e){}
     return !!window._papDeepLinkMode;
   }
-  function initNotice(){ if(isDeepLinkFlow()) return; if(shouldShowBeta()) showNotice(); }
+
+  /* ──────── DISMISSAL POLICY ────────
+     Per QA spec ("팝업 노출 여부가 일관된 기준으로 동작해야 함 …
+     최초 1회, 세션 기준 등 명확하게 제어"):
+
+     The popup is shown AT MOST once every 7 days per browser, regardless
+     of how the user reaches the home page (logo click, browser back,
+     direct URL). Dismissal is recorded in localStorage with a timestamp,
+     so any subsequent navigation back to the home — whether a fresh load
+     or a BFCache restore — sees the dismissal flag and skips display.
+
+     Why localStorage instead of sessionStorage:
+       • sessionStorage clears on tab close, so opening the site in a
+         new tab the next day would re-show the popup repeatedly. Users
+         saw the same popup multiple times over a session of weeks.
+       • localStorage with a 7-day TTL gives a single, predictable
+         "once per week" notice, which is the right cadence for a beta
+         info toast that hasn't really changed.
+
+     Cookie banner / important system messages are NOT routed through
+     this — they have their own dismissal logic. */
+  var DISMISSAL_KEY = 'pap-beta-notice-dismissed-at';
+  var DISMISSAL_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+  function isRecentlyDismissed(){
+    try{
+      var raw = localStorage.getItem(DISMISSAL_KEY);
+      if(!raw) return false;
+      var ts = parseInt(raw, 10);
+      if(isNaN(ts)) return false;
+      return (Date.now() - ts) < DISMISSAL_TTL_MS;
+    }catch(e){ return false; }
+  }
+  function markDismissed(){
+    try{ localStorage.setItem(DISMISSAL_KEY, String(Date.now())); }catch(e){}
+  }
+  /* Expose for debugging / manual reset (e.g. to verify popup styling
+     after a deploy without clearing all localStorage). */
+  window._papResetBetaNotice = function(){
+    try{ localStorage.removeItem(DISMISSAL_KEY); console.log('[PAP] Beta notice dismissal cleared'); }catch(e){}
+  };
+
+  function initNotice(){
+    if(isDeepLinkFlow()) return;
+    if(!shouldShowBeta()) return;
+    if(isRecentlyDismissed()) return;
+    showNotice();
+  }
   if(document.readyState==='loading'){
     document.addEventListener('DOMContentLoaded',initNotice);
   }else{
     initNotice();
   }
+
+  /* Hook the dismissal recorder into the existing close interactions
+     (X button, OK button, backdrop click) by intercepting at injection
+     time. Defined here as a public function so showNotice's handlers
+     can call it without forward-reference issues. */
+  window._papMarkBetaDismissed = markDismissed;
 })();
