@@ -195,7 +195,7 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
 <script src="pap-social.js?v=2" defer></script>
 <script src="pap-app.js?v=9" defer></script>
 <script src="pap-lightbox.js?v=1" defer></script>
-<script src="pap-header.js?v=8" defer></script>
+<script src="pap-reveal.js?v=1" defer></script><script src="pap-header.js?v=8" defer></script>
 <script>
 var _ART_MONTHS = {
   en:['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'],
@@ -357,6 +357,9 @@ document.addEventListener('DOMContentLoaded', function() {
       renderCards();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }, true);
+
+    // Trigger unified scroll-reveal animation on the freshly inserted cards
+    if (window.papReveal) window.papReveal.refresh();
   }
 
   renderCards();
