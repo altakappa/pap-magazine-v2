@@ -3202,8 +3202,13 @@ function _peFormatSaveError(e){
   if(/payload.*too.*large|413/i.test(msg))               return '요청 본문이 너무 큽니다. 이미지를 더 압축해 주세요 (Vercel 4.5MB 한도).';
   if(/duplicate|already.*exists|conflict/i.test(msg))    return '이미 존재하는 항목입니다 (슬러그/파일명 중복 가능).';
 
-  if(/storage\s*upload\s*failed/i.test(msg))             return '이미지 저장소 업로드 실패: '+msg;
-  if(/upload\s*failed/i.test(msg))                       return '이미지 업로드 실패: '+msg;
+  if(/storage\s*upload\s*failed/i.test(msg))             return '이미지 저장소(Supabase) 업로드 실패: '+msg;
+  // QA #100 follow-up — don't pre-judge the cause as "size or format".
+  // The user reported a 1.3MB JPEG (well within both client and server
+  // limits) hitting this branch, which means the real cause was a
+  // server-side condition — RLS, bucket config, etc. — the message had
+  // hidden. Pass the raw detail through so it's actionable.
+  if(/upload\s*failed/i.test(msg))                       return '이미지 업로드 실패: '+msg+' (서버 원인 — 콘솔 로그 또는 메시지 끝부분 참고)';
   if(/file too large|too large/i.test(msg))              return '파일 용량이 너무 큽니다. 1장당 2MB 이하로 압축해 주세요.';
   if(/invalid file|wrong format|unsupported|mime type not allowed|file type not allowed/i.test(msg)) return '지원하지 않는 파일 형식입니다 (JPG · PNG · WebP).';
   if(/title.*(required|null|empty)/i.test(msg))          return '제목이 누락되었습니다.';
