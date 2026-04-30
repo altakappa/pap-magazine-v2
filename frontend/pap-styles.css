@@ -1243,20 +1243,11 @@ section.hero + .shorts-section{
    Per QA spec: every overlay (detail + list) gets the close X at top-LEFT
    of its mini-header for consistent placement. The button is the first
    item inside .overlay-mini-left, sitting just before the hamburger. */
-.overlay-mini-close{
-  background:none;border:none;color:#fff;cursor:pointer;
-  font-size:28px;line-height:1;
-  width:36px;height:36px;
-  display:flex;align-items:center;justify-content:center;
-  padding:0;margin:0 4px 0 0;
-  opacity:.85;transition:opacity .2s,transform .2s;
-}
-.overlay-mini-close:hover,.overlay-mini-close:focus-visible{
-  opacity:1;transform:scale(1.08);outline:none;
-}
-@media(max-width:768px){
-  .overlay-mini-close{width:32px;height:32px;font-size:24px}
-}
+/* QA #99 — overlay-mini-close X buttons removed in favour of the
+   full-page metaphor (back via browser history / hamburger / logo).
+   Keeping the rule as display:none catches any stale X that lingers
+   in cached HTML or older inline pages until they get rebuilt. */
+.overlay-mini-close{display:none!important}
 
 /* Detail overlays now use the mini-header's close button — hide the
    legacy fixed top-left X that used to live on each detail overlay

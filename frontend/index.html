@@ -812,7 +812,8 @@ try{
 <div class="ed-all-overlay" id="filmAllOverlay">
   <div class="overlay-mini-header">
     <div class="overlay-mini-left">
-      <button class="overlay-mini-close" onclick="closeAllFilms()" aria-label="Close">&times;</button>
+      <!-- QA #99 — X close removed; films-list overlay is a full page now,
+           navigated back via browser history / hamburger / logo. -->
       <button class="hamburger" onclick="closeAllEditorials();closeAllFilms();closeAllArticles();toggleNav();" aria-label="Menu"><span></span><span></span><span></span></button>
       <button class="search-btn header-left-item" onclick="closeAllEditorials();closeAllFilms();closeAllArticles();setTimeout(toggleSearch,0);" aria-label="Search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -854,7 +855,8 @@ try{
 <div class="film-detail-overlay" id="filmDetailOverlay">
   <div class="overlay-mini-header">
     <div class="overlay-mini-left">
-      <button class="overlay-mini-close" onclick="closeFilmDetail()" aria-label="Close">&times;</button>
+      <!-- QA #99 — X close removed; film detail overlay is a full page. -->
+
       <button class="hamburger" onclick="closeFilmDetail();toggleNav();" aria-label="Menu"><span></span><span></span><span></span></button>
       <button class="search-btn header-left-item" onclick="closeFilmDetail();setTimeout(toggleSearch,0);" aria-label="Search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -889,7 +891,8 @@ try{
 <div class="ed-all-overlay" id="artAllOverlay">
   <div class="overlay-mini-header">
     <div class="overlay-mini-left">
-      <button class="overlay-mini-close" onclick="closeAllArticles()" aria-label="Close">&times;</button>
+      <!-- QA #99 — X close removed; articles-list overlay is a full page. -->
+
       <button class="hamburger" onclick="closeAllEditorials();closeAllFilms();closeAllArticles();toggleNav();" aria-label="Menu"><span></span><span></span><span></span></button>
       <button class="search-btn header-left-item" onclick="closeAllEditorials();closeAllFilms();closeAllArticles();setTimeout(toggleSearch,0);" aria-label="Search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -931,7 +934,8 @@ try{
 <div class="art-detail-overlay" id="artDetailOverlay">
   <div class="overlay-mini-header">
     <div class="overlay-mini-left">
-      <button class="overlay-mini-close" onclick="closeArticleDetail()" aria-label="Close">&times;</button>
+      <!-- QA #99 — X close removed; article detail overlay is a full page. -->
+
       <button class="hamburger" onclick="closeArticleDetail();toggleNav();" aria-label="Menu"><span></span><span></span><span></span></button>
       <button class="search-btn header-left-item" onclick="closeArticleDetail();setTimeout(toggleSearch,0);" aria-label="Search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -971,10 +975,11 @@ try{
 <!-- EDITORIAL DETAIL OVERLAY -->
 <div class="ed-overlay" id="edOverlay">
   <!-- Unified mini-header — gives global nav access at any overlay depth.
-       Close X sits first on the left for consistency across detail + list overlays. -->
+       QA #99 — X close removed; editorial detail behaves as a full page.
+       Back is via browser history (overlay pushed a hash), hamburger, or
+       the centered logo. -->
   <div class="overlay-mini-header">
     <div class="overlay-mini-left">
-      <button class="overlay-mini-close" onclick="closeEditorial()" aria-label="Close">&times;</button>
       <button class="hamburger" onclick="closeEditorial();toggleNav();" aria-label="Menu"><span></span><span></span><span></span></button>
       <button class="search-btn header-left-item" onclick="closeEditorial();setTimeout(toggleSearch,0);" aria-label="Search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
