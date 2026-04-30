@@ -3529,32 +3529,47 @@ window._papFilmAutoPlay = function(){
     return merged;
   }
 
-  // Also feed edDetails (the per-editorial detail map keyed by title)
-  // so opening an admin-created editorial card surfaces its credits,
-  // gallery, etc. instead of falling through to the placeholder.
+  // Feed edDetails (the per-editorial detail map keyed by title) with
+  // the API record. The map is also seeded by editorial-details.json
+  // (a curated snapshot baked at deploy time) — when a key lives in
+  // both places the API record WINS, because the admin edits land in
+  // the DB and we want those changes visible immediately. We still
+  // borrow `issue` from the curated entry as a fallback when the API
+  // didn't store one.
   function _populateEdDetailsFromApi(apiEd){
     if(typeof edDetails === 'undefined') return;
     var key = apiEd.title;
     if(!key) return;
-    // Don't clobber a richer hand-curated entry from editorial-details.json
-    if(edDetails[key]) return;
+    var existing = edDetails[key] || {};
     edDetails[key] = {
-      issue:   '',
-      // detail page hero reads from .thumb (see line ~1114 heroImg.src = det.thumb)
-      // so map our HERO slot here, not the small card thumbnail.
-      thumb:   apiEd.hero || apiEd.img || '',
-      images:  apiEd.gallery && apiEd.gallery.length ? apiEd.gallery : (apiEd.hero ? [apiEd.hero] : (apiEd.img ? [apiEd.img] : [])),
+      // Curated `issue` (e.g. 'MAR. 2026 ISSUE') is hand-edited and
+      // worth keeping when the API doesn't carry one.
+      issue:  existing.issue || '',
+      // Detail page hero reads from .thumb (see heroImg.src = det.thumb).
+      // Always use the latest API hero — that's where admin's ◆ COVER
+      // pick lands.
+      thumb:  apiEd.hero || apiEd.img || existing.thumb || '',
+      images: apiEd.gallery && apiEd.gallery.length
+                ? apiEd.gallery
+                : (existing.images && existing.images.length
+                    ? existing.images
+                    : (apiEd.hero ? [apiEd.hero] : (apiEd.img ? [apiEd.img] : []))),
       // Convert {roles[], name, instagram} array → {r, h:[{n,id}]} display shape.
-      // Falls back gracefully when credits are dict / display-array / empty.
       credits: (function(raw){
         if(typeof _normalizeCreditsForDisplay === 'function') return _normalizeCreditsForDisplay(raw);
         return Array.isArray(raw) ? raw : [];
-      })(apiEd.credits),
-      fashion: (apiEd.fashion && Array.isArray(apiEd.fashion.brands))
+      })(apiEd.credits || (existing.credits && existing.credits.length ? null : null)) ,
+      fashion: (apiEd.fashion && Array.isArray(apiEd.fashion.brands) && apiEd.fashion.brands.length)
         ? apiEd.fashion.brands.map(function(b){ return b.instagram || b.name || ''; }).filter(Boolean)
-        : [],
-      desc: apiEd.description || ''
+        : (Array.isArray(existing.fashion) ? existing.fashion : []),
+      desc: apiEd.description || existing.desc || ''
     };
+    // If API came back with no credits at all but the curated entry had
+    // some, keep those so the detail page doesn't go blank on edit.
+    if((!apiEd.credits || (Array.isArray(apiEd.credits) && apiEd.credits.length===0))
+       && Array.isArray(existing.credits) && existing.credits.length){
+      edDetails[key].credits = existing.credits;
+    }
   }
 
   function syncEditorials(){
@@ -3570,48 +3585,67 @@ window._papFilmAutoPlay = function(){
         _populateEdDetailsFromApi(e);
       });
 
-      // 2. Prepend the API-only editorials into the home grid. The
-      //    grid is HARDCODED in index.html (one <div.ed-row-card> per
-      //    editorial) — the static markup is built at deploy time and
-      //    contains every editorial that existed when the snapshot
-      //    was taken. Admin uploads after that snapshot live only in
-      //    the DB, so without this DOM injection they're invisible
-      //    on the public site.
+      // 2. Reconcile the home grid with the API.
+      //    The grid is HARDCODED in index.html (one <div.ed-row-card>
+      //    per editorial) — the static markup is built at deploy time.
+      //    For each API editorial:
+      //      • If a static card with the same title already exists,
+      //        UPDATE that card in place so admin edits (changed
+      //        thumbnail, new title casing, new date) actually render.
+      //        Without this, edits saved in admin appeared in the DB
+      //        but the home page kept showing the static snapshot.
+      //      • If no static card matches, PREPEND a fresh card so
+      //        brand-new admin uploads still surface on the home page.
       var track = document.querySelector('.ed-row-track');
       if(track){
-        // Build a set of titles already rendered in the static markup
-        // so we don't insert a duplicate when an editorial happens to
-        // be in BOTH the static HTML and the API response.
-        var existingTitles = {};
+        // Build an index from lowercase title → existing static card
+        // so we can update-in-place instead of duplicating.
+        var staticCardByTitle = {};
         track.querySelectorAll('.ed-row-card').forEach(function(c){
           var t = (c.querySelector('.ed-row-card-title')||{}).textContent || '';
-          if(t) existingTitles[t.trim().toLowerCase()] = true;
+          var k = t.trim().toLowerCase();
+          if(k) staticCardByTitle[k] = c;
         });
-        // Insert API-only editorials at the FRONT of the track,
-        // newest first. apiEds came back from the API in the order
-        // the API returns them (typically published_date desc), so
-        // we walk it in reverse and insertBefore so the first
-        // returned ends up first in the DOM.
+        // Walk in reverse so the first item in apiEds (newest) ends
+        // up first in the DOM after a chain of insertBefore calls.
         for(var i=apiEds.length-1; i>=0; i--){
           var e = apiEds[i];
           var key = (e.title||'').trim().toLowerCase();
-          if(!key || existingTitles[key]) continue;
+          if(!key) continue;
           if(!e.img) continue; // a thumbnail-less card would render broken
-          var card = document.createElement('div');
-          card.className = 'ed-row-card';
-          card.setAttribute('data-tags', Array.isArray(e.tags) ? e.tags.join(',') : '');
-          card.setAttribute('data-api-injected', '1');
-          // Use double quotes inside the JS string to avoid escaping
-          // issues with editorial titles that contain apostrophes.
+
           var safeTitle = (e.title||'').replace(/"/g, '&quot;');
           var safeImg   = (e.img||'').replace(/"/g, '&quot;');
-          card.setAttribute('onclick', 'openEditorial("'+safeTitle+'","'+safeImg+'")');
           var dateLabel = e.date ? (e.date.split('T')[0]) : '';
           var catLabel = 'EDITORIAL' + (dateLabel ? (' - ' + dateLabel) : '');
-          card.innerHTML =
-            '<div class="ed-row-card-img"><img loading="lazy" src="'+safeImg+'" alt="'+safeTitle+'" onerror="if(window.edImgError)edImgError(this)"></div>' +
-            '<div class="ed-row-card-info"><div class="ed-row-card-cat">'+catLabel+'</div><div class="ed-row-card-title">'+(e.title||'').toUpperCase()+'</div></div>';
-          track.insertBefore(card, track.firstChild);
+          var existing = staticCardByTitle[key];
+          if(existing){
+            // UPDATE in place — keeps DOM order stable so the home
+            // grid layout doesn't reshuffle on every refresh.
+            var existingImg = existing.querySelector('.ed-row-card-img img');
+            if(existingImg){
+              existingImg.setAttribute('src', safeImg);
+              existingImg.setAttribute('alt', safeTitle);
+            }
+            existing.setAttribute('onclick', 'openEditorial("'+safeTitle+'","'+safeImg+'")');
+            existing.setAttribute('data-tags', Array.isArray(e.tags) ? e.tags.join(',') : '');
+            existing.setAttribute('data-api-synced', '1');
+            var catEl = existing.querySelector('.ed-row-card-cat');
+            if(catEl) catEl.textContent = catLabel;
+            var titleEl = existing.querySelector('.ed-row-card-title');
+            if(titleEl) titleEl.textContent = (e.title||'').toUpperCase();
+          } else {
+            // PREPEND new card.
+            var card = document.createElement('div');
+            card.className = 'ed-row-card';
+            card.setAttribute('data-tags', Array.isArray(e.tags) ? e.tags.join(',') : '');
+            card.setAttribute('data-api-injected', '1');
+            card.setAttribute('onclick', 'openEditorial("'+safeTitle+'","'+safeImg+'")');
+            card.innerHTML =
+              '<div class="ed-row-card-img"><img loading="lazy" src="'+safeImg+'" alt="'+safeTitle+'" onerror="if(window.edImgError)edImgError(this)"></div>' +
+              '<div class="ed-row-card-info"><div class="ed-row-card-cat">'+catLabel+'</div><div class="ed-row-card-title">'+(e.title||'').toUpperCase()+'</div></div>';
+            track.insertBefore(card, track.firstChild);
+          }
         }
       }
 
