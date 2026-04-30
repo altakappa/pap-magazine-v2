@@ -172,6 +172,20 @@ tr:hover td{background:rgba(0,0,0,.02)}
 .pe-credit-grip:hover{color:var(--text)}
 .pe-credit-grip:active{cursor:grabbing}
 .pe-credit-check{flex-shrink:0;margin:10px 0 0;cursor:pointer}
+/* QA #100 — pre-save validation feedback. Required-field misses get an
+   inline message right under the offending input plus a red border, and
+   the whole list of misses is summarised in #peSaveSummary at the top
+   of the form so the user sees everything that needs fixing without
+   scrolling through the page. */
+.pe-input-error,.pe-input-error.pe-input,.pe-input-error.pe-select{border-color:#c62828!important;box-shadow:0 0 0 1px rgba(198,40,40,.15)!important}
+.pe-field-err{display:none;font-size:11px;color:#c62828;margin-top:6px;letter-spacing:.02em;line-height:1.5;font-weight:500}
+.pe-field-err.visible{display:block}
+.pe-save-summary{display:none;background:rgba(198,40,40,.06);border-left:3px solid #c62828;padding:12px 14px;margin:0 0 18px;font-size:12px;color:#c62828;border-radius:2px;line-height:1.6}
+.pe-save-summary strong{display:block;margin-bottom:6px;font-weight:700;letter-spacing:.02em}
+.pe-save-summary ul{margin:4px 0 0 18px;padding:0}
+.pe-save-summary li{margin:2px 0;cursor:pointer}
+.pe-save-summary li:hover{text-decoration:underline}
+.pe-save-success{display:none;background:rgba(46,125,50,.06);border-left:3px solid #2e7d32;padding:10px 14px;margin:0 0 12px;font-size:12px;color:#2e7d32;border-radius:2px;font-weight:500}
 .pe-credits-toolbar{display:flex;align-items:center;gap:14px;padding:10px 12px;margin-bottom:10px;background:#fafafa;border:1px solid var(--border2);border-radius:2px;font-size:12px}
 .pe-credits-toolbar label{display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--text2);font-weight:500}
 .pe-credits-toolbar label input{cursor:pointer}
@@ -388,6 +402,11 @@ tr:hover td{background:rgba(0,0,0,.02)}
     <div class="mn-header"><div class="mn-title">게시글 작성</div><div class="mn-actions"><button class="btn" onclick="go('editorials')">← 목록으로</button></div></div>
     <div class="mn-body">
       <div class="pe">
+        <!-- QA #100 — aggregate validation feedback. Filled in by
+             _peValidatePost when save is attempted with missing/invalid
+             fields. Each <li> scrolls + focuses the matching field. -->
+        <div class="pe-save-summary" id="peSaveSummary" role="alert" aria-live="polite"></div>
+        <div class="pe-save-success" id="peSaveSuccess" role="status" aria-live="polite"></div>
 
         <!-- 제목 -->
         <div class="pe-section">
@@ -406,7 +425,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
         <div class="pe-row">
           <div class="pe-section pe-half">
             <div class="pe-label">카테고리</div>
-            <select class="pe-select">
+            <select class="pe-select" id="postCategory">
               <option value="">선택</option>
               <option value="editorial" selected>에디토리얼</option>
               <option value="news">뉴스 (아티클)</option>
@@ -3040,13 +3059,164 @@ async function deleteEditorial(id,title){
   }catch(e){alert('삭제 실패: '+e.message);}
 }
 
-async function savePost(){
-  var title=document.getElementById('postTitle')?document.getElementById('postTitle').value:'';
-  var tags=document.getElementById('postTags')?document.getElementById('postTags').value:'';
-  if(!title){alert('제목을 입력해 주세요.');return;}
+// ─── QA #100 — pre-save validation + error feedback ────────────────────
+// Each helper is local to the new-post form. Errors live in two places:
+//   1. inline under the offending field (red border + small message)
+//   2. aggregated in #peSaveSummary at the top of the form, with each
+//      bullet acting as a click-target that scrolls/focuses the field
+function _peShowFieldError(fieldId, msg){
+  var input=document.getElementById(fieldId);
+  if(input && input.classList) input.classList.add('pe-input-error');
+  var errId='peErr-'+fieldId;
+  var errEl=document.getElementById(errId);
+  if(!errEl){
+    errEl=document.createElement('div');
+    errEl.id=errId;
+    errEl.className='pe-field-err';
+    if(input && input.parentNode) input.parentNode.insertBefore(errEl, input.nextSibling);
+  }
+  if(errEl){
+    errEl.textContent=msg;
+    errEl.classList.add('visible');
+  }
+}
+function _peClearAllErrors(){
+  document.querySelectorAll('.pe-input-error').forEach(function(el){el.classList.remove('pe-input-error');});
+  document.querySelectorAll('.pe-field-err.visible').forEach(function(el){el.classList.remove('visible');el.textContent='';});
+  var summary=document.getElementById('peSaveSummary');
+  if(summary){ summary.style.display='none'; summary.innerHTML=''; }
+  var success=document.getElementById('peSaveSuccess');
+  if(success){ success.style.display='none'; success.textContent=''; }
+}
 
-  var catSelect=document.querySelector('#t-newpost select');
-  var category=catSelect?catSelect.value:'editorial';
+// Returns a list of {id, msg}. Empty list means the form is good to save.
+function _peCollectValidationErrors(){
+  var errs=[];
+  var titleEl=document.getElementById('postTitle');
+  var title=(titleEl && titleEl.value || '').trim();
+  if(!title) errs.push({id:'postTitle', msg:'제목을 입력해 주세요.'});
+  else if(title.length<2) errs.push({id:'postTitle', msg:'제목은 2자 이상이어야 합니다.'});
+  else if(title.length>200) errs.push({id:'postTitle', msg:'제목은 200자 이내로 입력해 주세요.'});
+
+  var catEl=document.getElementById('postCategory');
+  var category=(catEl && catEl.value || '').trim();
+  if(!category) errs.push({id:'postCategory', msg:'카테고리를 선택해 주세요.'});
+
+  if(category==='editorial'){
+    // Thumbnail: required for new editorials. Edit mode keeps the
+    // existing thumbnail unless the user picks a new one — we read the
+    // preview state to detect "has any thumb at all".
+    var thumbInput=document.getElementById('thumbInput');
+    var hasNewThumb = thumbInput && thumbInput.files && thumbInput.files[0];
+    var thumbPreview=document.getElementById('thumbPreview');
+    var hasExistingThumb = thumbPreview && thumbPreview.querySelector('img');
+    if(!hasNewThumb && !hasExistingThumb){
+      errs.push({id:'thumbInput', msg:'썸네일 이미지를 업로드해 주세요.'});
+    }
+
+    // Gallery: at least 1 image. galleryImages is the canonical source.
+    if(typeof galleryImages==='undefined' || !galleryImages || galleryImages.length===0){
+      errs.push({id:'galleryGrid', msg:'화보 이미지를 1장 이상 업로드해 주세요.'});
+    }
+
+    // Credits: at least one row with both roles[] and name. The QA #97
+    // bulk-select toolbar leaves stale empty rows behind on purpose;
+    // they don't count toward this check.
+    var rows=document.querySelectorAll('#creditsArea .pe-credit-row');
+    var validCredits=0;
+    rows.forEach(function(row){
+      var roles=(typeof _readCreditRoles==='function') ? _readCreditRoles(row) : [];
+      var nameEl=row.querySelector('.pe-credit-name');
+      var nameVal=(nameEl && nameEl.value || '').trim();
+      if(roles.length>0 && nameVal) validCredits++;
+    });
+    if(validCredits===0){
+      errs.push({id:'creditsArea', msg:'크레딧을 1개 이상 입력해 주세요. (역할 + 이름)'});
+    }
+  }
+
+  // Schedule date: required and in the future when "예약 게시" is on.
+  var scheduleCb=document.getElementById('postSchedule');
+  if(scheduleCb && scheduleCb.checked){
+    var dEl=document.getElementById('scheduleDate');
+    if(!dEl || !dEl.value){
+      errs.push({id:'scheduleDate', msg:'예약 게시 날짜를 선택해 주세요.'});
+    } else {
+      var t=(document.getElementById('scheduleTime') || {}).value || '09:00';
+      var localDt=new Date(dEl.value+'T'+t+':00');
+      if(isNaN(localDt.getTime())){
+        errs.push({id:'scheduleDate', msg:'예약 날짜 형식이 올바르지 않습니다.'});
+      } else if(localDt.getTime() <= Date.now()){
+        errs.push({id:'scheduleDate', msg:'예약 날짜는 현재 시각 이후여야 합니다.'});
+      }
+    }
+  }
+
+  return errs;
+}
+
+function _peApplyValidationErrors(errs){
+  errs.forEach(function(e){ _peShowFieldError(e.id, e.msg); });
+  var summary=document.getElementById('peSaveSummary');
+  if(summary){
+    var listHtml = errs.map(function(e){
+      // Each li is a click-target: scroll to + focus the matching field.
+      return '<li onclick="_peJumpToField(\''+e.id+'\')">'+esc(e.msg)+'</li>';
+    }).join('');
+    summary.innerHTML = '<strong>저장 전 다음 항목을 확인해 주세요 ('+errs.length+'건)</strong><ul>'+listHtml+'</ul>';
+    summary.style.display='block';
+    summary.scrollIntoView({behavior:'smooth', block:'center'});
+  }
+  // Auto-focus the first offending field for keyboard users.
+  if(errs.length>0) _peJumpToField(errs[0].id);
+}
+function _peJumpToField(fieldId){
+  var el=document.getElementById(fieldId);
+  if(!el) return;
+  el.scrollIntoView({behavior:'smooth', block:'center'});
+  if(typeof el.focus==='function'){
+    // setTimeout so scrollIntoView animation finishes before focus jumps
+    setTimeout(function(){ try{ el.focus(); }catch(_){} }, 350);
+  }
+}
+
+// Map raw server / fetch errors to a specific Korean message so the
+// user sees what to fix instead of a generic "Upload failed".
+function _peFormatSaveError(e){
+  var msg = (e && e.message) || '';
+  if(/upload\s*failed/i.test(msg))         return '이미지 업로드 실패. 파일 크기(2MB) 또는 형식(JPG/PNG/WebP)을 확인해 주세요.';
+  if(/file too large|too large/i.test(msg)) return '파일 용량이 너무 큽니다. 1장당 2MB 이하로 압축해 주세요.';
+  if(/invalid file|wrong format|unsupported/i.test(msg)) return '지원하지 않는 파일 형식입니다 (JPG · PNG · WebP).';
+  if(/title.*(required|null|empty)/i.test(msg)) return '제목이 누락되었습니다.';
+  if(/duplicate|already.*exists|unique/i.test(msg)) return '이미 존재하는 슬러그입니다. 슬러그를 변경하거나 비워두면 자동 생성됩니다.';
+  if(/network|fetch|failed to fetch|connection/i.test(msg)) return '네트워크 오류. 잠시 후 다시 시도해 주세요.';
+  if(/unauthor|forbidden|401|403/i.test(msg)) return '권한이 없습니다. 다시 로그인 후 시도해 주세요.';
+  if(/timeout/i.test(msg)) return '서버 응답 지연. 이미지 용량이 큰 경우 압축 후 다시 시도해 주세요.';
+  return msg ? ('저장 실패: '+msg) : '저장 중 알 수 없는 오류가 발생했습니다.';
+}
+
+function _peShowSaveSuccess(msg){
+  var success=document.getElementById('peSaveSuccess');
+  if(success){
+    success.textContent=msg||'저장되었습니다.';
+    success.style.display='block';
+  }
+}
+
+async function savePost(){
+  // Always start by clearing prior errors so re-clicks reflect current state.
+  _peClearAllErrors();
+
+  var errs=_peCollectValidationErrors();
+  if(errs.length>0){
+    _peApplyValidationErrors(errs);
+    return;
+  }
+
+  var title=document.getElementById('postTitle').value.trim();
+  var tags=document.getElementById('postTags')?document.getElementById('postTags').value:'';
+  var catEl=document.getElementById('postCategory');
+  var category=catEl?catEl.value:'editorial';
   var tagsArr=tags?tags.split(',').map(function(t){return t.trim();}).filter(Boolean):[];
 
   // QA #96 — credits are now an ARRAY of {roles[], name, instagram} so
@@ -3145,13 +3315,15 @@ async function savePost(){
     Object.keys(payload).forEach(function(k){if(payload[k]===undefined)delete payload[k];});
 
     if(category==='editorial'){
+      var successMsg;
       if(editingEditorialId){
         await apiPut('/editorials/'+editingEditorialId,payload);
-        alert('에디토리얼이 수정되었습니다.');
+        successMsg='에디토리얼이 수정되었습니다.';
       }else{
         await apiPost('/editorials',payload);
-        alert('에디토리얼이 등록되었습니다.');
+        successMsg='에디토리얼이 등록되었습니다.';
       }
+      _peShowSaveSuccess(successMsg);
       editingEditorialId=null;
       loadEditorials();go('editorials');
     }else if(category==='news'){
@@ -3168,7 +3340,17 @@ async function savePost(){
       loadShortsFromAPI();go('shorts');
     }
   }catch(e){
-    alert('저장 실패: '+(e.message||JSON.stringify(e)));
+    // QA #100 — translate the raw error into something specific so the
+    // user knows what to fix. The summary panel above the form picks
+    // up the message for visibility (alert is the legacy fallback).
+    var friendly = _peFormatSaveError(e);
+    var summary=document.getElementById('peSaveSummary');
+    if(summary){
+      summary.innerHTML='<strong>저장 실패</strong><ul><li>'+esc(friendly)+'</li></ul>';
+      summary.style.display='block';
+      summary.scrollIntoView({behavior:'smooth', block:'center'});
+    }
+    alert(friendly);
   }finally{
     if(saveBtn){saveBtn.textContent='저장';saveBtn.disabled=false;}
   }
