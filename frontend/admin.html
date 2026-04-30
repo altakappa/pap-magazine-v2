@@ -1616,20 +1616,85 @@ function go(id,el){
   if(id==='submissions') loadSubmissions();
   if(id==='pullletters') loadPullLetters();
   if(id==='newpost'&&!editingEditorialId){
-    // Reset form for new post
-    if(document.getElementById('postTitle'))document.getElementById('postTitle').value='';
-    if(document.getElementById('postSubtitle'))document.getElementById('postSubtitle').value='';
-    if(document.getElementById('postTags'))document.getElementById('postTags').value='';
-    if(document.getElementById('postVideoUrl'))document.getElementById('postVideoUrl').value='';
-    if(document.getElementById('postDescription'))document.getElementById('postDescription').value='';
-    if(document.getElementById('tagPreview'))document.getElementById('tagPreview').innerHTML='';
-    // Ensure at least one credit row exists (the inline initial row was
-    // moved into _buildCreditRowInner so newly-opened forms start empty).
-    var ca=document.getElementById('creditsArea');
-    if(ca && !ca.querySelector('.pe-credit-row')){
-      if(typeof addCredit==='function') addCredit();
-    }
+    // QA — full form reset on every fresh-new-post entry. The previous
+    // implementation only cleared the text inputs, which left the
+    // gallery, credits, brands, thumbnail preview, schedule state and
+    // image-credit rows from the LAST saved post sitting on screen.
+    // Symptom from the user: "I just published an editorial and clicked
+    // 새 에디토리얼 — but all the previous photos and credits are still
+    // there." Fix: a single reset function that wipes every piece of
+    // form state so the new-post screen always starts clean.
+    _resetNewPostForm();
   }
+}
+
+function _resetNewPostForm(){
+  // 1. Plain text / textarea inputs
+  ['postTitle','postSubtitle','postTags','postVideoUrl','postDescription'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.value = '';
+  });
+  var tp = document.getElementById('tagPreview');
+  if(tp) tp.innerHTML = '';
+
+  // 2. Thumbnail preview + file input
+  var thumbPrev = document.getElementById('thumbPreview');
+  if(thumbPrev){
+    thumbPrev.innerHTML = '<div class="pe-upload-icon">📷</div>'
+      + '<div class="pe-upload-text">클릭하여 이미지를 업로드하세요</div>'
+      + '<div class="pe-upload-hint">JPG, PNG · 권장 1080×1350px</div>';
+  }
+  var thumbInput = document.getElementById('thumbInput');
+  if(thumbInput) thumbInput.value = '';
+
+  // 3. Gallery — both the in-memory state and every rendered card
+  if(typeof galleryImages !== 'undefined') galleryImages = [];
+  if(typeof galleryCount  !== 'undefined') galleryCount  = 0;
+  if(typeof galleryCoverNum !== 'undefined') galleryCoverNum = null;
+  if(typeof galleryHeroNum  !== 'undefined') galleryHeroNum  = null;
+  var grid = document.getElementById('galleryGrid');
+  if(grid){
+    grid.querySelectorAll('.pe-gallery-item').forEach(function(el){ el.remove(); });
+  }
+  var galFb = document.getElementById('galleryUploadFeedback');
+  if(galFb) galFb.textContent = '';
+
+  // 4. Credits — clear every row, then add one empty row + sync toolbar
+  var creditsArea = document.getElementById('creditsArea');
+  if(creditsArea){
+    creditsArea.innerHTML = '';
+    if(typeof addCredit === 'function') addCredit();
+  }
+  if(typeof _onCreditCheckChange === 'function') _onCreditCheckChange();
+
+  // 5. Brands
+  var brandsArea = document.getElementById('brandsArea');
+  if(brandsArea) brandsArea.innerHTML = '';
+
+  // 6. Per-image credits placeholder
+  var imgCreditsArea = document.getElementById('imgCreditsArea');
+  if(imgCreditsArea){
+    imgCreditsArea.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:8px 0">위에서 화보 이미지를 추가하면 각 이미지마다 착장 크레딧을 입력할 수 있습니다.</div>';
+  }
+
+  // 7. Publish / schedule controls back to defaults
+  var pub = document.getElementById('postPublish');
+  if(pub) pub.checked = true;       // default: published
+  var sched = document.getElementById('postSchedule');
+  if(sched) sched.checked = false;
+  var schedDate = document.getElementById('scheduleDate');
+  if(schedDate) schedDate.value = '';
+  var schedTime = document.getElementById('scheduleTime');
+  if(schedTime) schedTime.value = '';
+  var schedArea = document.getElementById('scheduleArea');
+  if(schedArea) schedArea.style.display = 'none';
+
+  // 8. Category select back to 'editorial'
+  var catSelect = document.getElementById('postCategory');
+  if(catSelect) catSelect.value = 'editorial';
+
+  // 9. Validation summary / success panels from the previous save
+  if(typeof _peClearAllErrors === 'function') _peClearAllErrors();
 }
 // Review submission tracking
 var currentReviewSubmission=null;
@@ -3484,6 +3549,9 @@ async function savePost(){
       }
       _peShowSaveSuccess(successMsg);
       editingEditorialId=null;
+      // Wipe the form NOW so the next "+ 새 에디토리얼" click starts
+      // truly empty even if the go('newpost') reset hook ever drifts.
+      if(typeof _resetNewPostForm === 'function') _resetNewPostForm();
       loadEditorials();go('editorials');
     }else if(category==='news'){
       await apiPost('/articles',{title:title,subtitle:subtitle,tags:tagsArr,thumbnail_url:thumbUrl,credits:Object.entries(credits).map(function(c){return{role:c[0],name:c[1].name};}),status:isPublished?'published':'draft',published_date:isPublished?new Date().toISOString():null,category:'news'});
