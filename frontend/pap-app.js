@@ -3945,13 +3945,51 @@ function buildPagination(container,currentPage,totalPages,onPageChange,isDark){
 }
 
 // ======== DEEP LINK: open editorial from hash #editorial/Title ========
+// Accepts EITHER the canonical title ("Refractions") OR a slug-style
+// fragment ("refractions", "indigestible-rituals") so old pap-magazine.com
+// URLs that get 301'd here (vercel.json redirects /ko/<slug>/ →
+// /#editorial/<slug>) still resolve to the correct editorial.
 (function(){
   var hash=window.location.hash;
   if(hash && hash.indexOf('#editorial/')===0){
     var edName=decodeURIComponent(hash.substring('#editorial/'.length));
     if(!edName) return;
+    function _resolveEditorialName(input){
+      if(!input) return input;
+      // 1. Exact match in edDetails (most common — case-correct title)
+      if(typeof edDetails === 'object' && edDetails[input]) return input;
+      // 2. Case-insensitive title match — handles e.g. "refractions" → "Refractions"
+      var lower = input.toLowerCase();
+      if(typeof edDetails === 'object'){
+        for(var k in edDetails){
+          if(k.toLowerCase() === lower) return k;
+        }
+      }
+      // 3. Slug-style match: dashes → spaces, then case-insensitive
+      //    Catches "indigestible-rituals" → "Indigestible Rituals".
+      var spaced = lower.replace(/-/g, ' ');
+      if(typeof edDetails === 'object'){
+        for(var k2 in edDetails){
+          if(k2.toLowerCase() === spaced) return k2;
+        }
+      }
+      // 4. Match against edData[].url (the original /slug/ path)
+      if(typeof edData !== 'undefined' && Array.isArray(edData)){
+        for(var i=0;i<edData.length;i++){
+          var slug = (edData[i].url||'').replace(/^\/+|\/+$/g, '').toLowerCase();
+          if(slug && (slug === lower || slug === spaced)){
+            return edData[i].title;
+          }
+        }
+      }
+      // 5. Fallback — pass through, openEditorial will use its own
+      //    case-insensitive lookup as last resort.
+      return input;
+    }
     function tryOpenHash(){
-      if(typeof openEditorial==='function') openEditorial(edName,'');
+      if(typeof openEditorial!=='function') return;
+      var resolved = _resolveEditorialName(edName);
+      openEditorial(resolved, '');
     }
     if(document.readyState==='complete') setTimeout(tryOpenHash,1200);
     else window.addEventListener('load',function(){setTimeout(tryOpenHash,1200);});

@@ -7,6 +7,21 @@
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/admin/:path*", "destination": "/admin.html" }
   ],
+  "redirects": [
+    { "source": "/ko", "destination": "/", "permanent": true },
+    { "source": "/ko/", "destination": "/", "permanent": true },
+    { "source": "/ko/about", "destination": "/about.html", "permanent": true },
+    { "source": "/ko/about/", "destination": "/about.html", "permanent": true },
+    { "source": "/ko/contact", "destination": "/contact.html", "permanent": true },
+    { "source": "/ko/contact/", "destination": "/contact.html", "permanent": true },
+    { "source": "/ko/business", "destination": "/business.html", "permanent": true },
+    { "source": "/ko/business/", "destination": "/business.html", "permanent": true },
+    { "source": "/ko/filmList", "destination": "/", "permanent": true },
+    { "source": "/ko/filmList/", "destination": "/", "permanent": true },
+    { "source": "/ko/category/:cat*", "destination": "/", "permanent": true },
+    { "source": "/ko/:slug", "destination": "/#editorial/:slug", "permanent": true },
+    { "source": "/ko/:slug/", "destination": "/#editorial/:slug", "permanent": true }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",
