@@ -133,7 +133,15 @@ tr:hover td{background:rgba(0,0,0,.02)}
 .pe-radio input{display:none}
 .pe-radio.sel{background:rgba(0,0,0,.06);border-color:rgba(0,0,0,.2);color:var(--text);font-weight:600}
 
-.pe-upload{border:2px dashed var(--border2);padding:32px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface)}
+.pe-upload{border:2px dashed var(--border2);padding:32px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface);position:relative}
+/* QA — X button on the thumbnail preview so the admin can wipe the
+   currently-saved cover image and revert to "no separate thumb"
+   (savePost will then fall back to the ★ gallery pick). Sits in the
+   top-right corner; clicking it must NOT bubble to the parent
+   .pe-upload click handler that opens the file picker. */
+.pe-upload-x{position:absolute;top:8px;right:8px;width:28px;height:28px;background:rgba(0,0,0,.7);color:#fff;border:none;border-radius:50%;font-size:16px;cursor:pointer;display:none;align-items:center;justify-content:center;z-index:5;line-height:1;font-family:inherit;padding:0;transition:background .2s}
+.pe-upload-x:hover{background:#c62828}
+.pe-upload.has-thumb .pe-upload-x{display:flex}
 .pe-upload:hover{border-color:rgba(0,0,0,.25);background:var(--surface2)}
 .pe-upload-icon{font-size:28px;margin-bottom:8px}
 .pe-upload-text{font-size:12px;font-weight:600;color:var(--text2)}
@@ -469,8 +477,9 @@ tr:hover td{background:rgba(0,0,0,.02)}
         <!-- 썸네일 -->
         <div class="pe-section">
           <div class="pe-label">썸네일 이미지</div>
-          <div class="pe-upload" onclick="document.getElementById('thumbInput').click()">
+          <div class="pe-upload" id="thumbUploadBox" onclick="document.getElementById('thumbInput').click()">
             <input type="file" id="thumbInput" accept="image/*" style="display:none" onchange="previewThumb(this)">
+            <button type="button" class="pe-upload-x" onclick="event.stopPropagation();clearThumbnailInput()" aria-label="썸네일 이미지 제거">×</button>
             <div class="pe-upload-inner" id="thumbPreview">
               <div class="pe-upload-icon">📷</div>
               <div class="pe-upload-text">클릭하여 이미지를 업로드하세요</div>
@@ -1644,6 +1653,12 @@ function _resetNewPostForm(){
   }
   var thumbInput = document.getElementById('thumbInput');
   if(thumbInput) thumbInput.value = '';
+  var thumbBox = document.getElementById('thumbUploadBox');
+  if(thumbBox){
+    thumbBox.classList.remove('has-thumb');
+    thumbBox.dataset.existingUrl = '';
+    thumbBox.removeAttribute('data-thumb-cleared');
+  }
 
   // 3. Gallery — both the in-memory state and every rendered card
   if(typeof galleryImages !== 'undefined') galleryImages = [];
@@ -2294,8 +2309,36 @@ function previewThumb(input){
     var reader=new FileReader();
     reader.onload=function(e){
       document.getElementById('thumbPreview').innerHTML='<img loading="lazy" src="'+e.target.result+'" style="max-width:200px;max-height:250px;object-fit:cover"><div class="pe-upload-text" style="margin-top:8px">클릭하여 변경</div>';
+      // Mark the wrapping .pe-upload as having a thumb so the X button
+      // becomes visible (the X is hidden until is-current = true).
+      var box=document.getElementById('thumbUploadBox');
+      if(box) box.classList.add('has-thumb');
     };
     reader.readAsDataURL(input.files[0]);
+  }
+}
+
+// QA — wipe the thumbnail preview + clear the file input. After this:
+//   - savePost will skip the "upload thumbInput.files[0]" path
+//   - finalThumb falls back to ★ gallery pick → first gallery image
+//   - sets data-thumb-cleared on the box so editPost knows the admin
+//     intentionally removed the saved cover (without this flag, the
+//     code would think "no new file → keep existing URL").
+function clearThumbnailInput(){
+  var input=document.getElementById('thumbInput');
+  if(input) input.value='';
+  var prev=document.getElementById('thumbPreview');
+  if(prev){
+    prev.innerHTML='<div class="pe-upload-icon">📷</div>'
+      + '<div class="pe-upload-text">클릭하여 이미지를 업로드하세요</div>'
+      + '<div class="pe-upload-hint">JPG, PNG · 권장 1080×1350px</div>';
+  }
+  var box=document.getElementById('thumbUploadBox');
+  if(box){
+    box.classList.remove('has-thumb');
+    box.setAttribute('data-thumb-cleared','1');
+    // Wipe the stashed existing URL too — admin explicitly removed it.
+    box.dataset.existingUrl = '';
   }
 }
 
@@ -3137,10 +3180,23 @@ function editEditorial(id){
     if (typeof toggleSchedule === 'function') toggleSchedule();
   }
 
-  // Populate thumbnail preview
+  // Populate thumbnail preview + show the X button so the admin can
+  // clear the saved cover. data-thumb-cleared resets to '0' since
+  // the admin hasn't taken any explicit clear action yet on this load.
   var thumbPrev=document.getElementById('thumbPreview');
+  var thumbBox=document.getElementById('thumbUploadBox');
+  if(thumbBox){ thumbBox.classList.remove('has-thumb'); thumbBox.setAttribute('data-thumb-cleared','0'); }
   if(thumbPrev&&(ed.thumbnail||ed.cover_image)){
-    thumbPrev.innerHTML='<img loading="lazy" src="'+esc(ed.thumbnail||ed.cover_image)+'" style="max-width:200px;max-height:250px;object-fit:cover"><div class="pe-upload-text" style="margin-top:8px">클릭하여 변경</div>';
+    var existingThumbUrl = ed.thumbnail || ed.cover_image;
+    thumbPrev.innerHTML='<img loading="lazy" src="'+esc(existingThumbUrl)+'" style="max-width:200px;max-height:250px;object-fit:cover"><div class="pe-upload-text" style="margin-top:8px">클릭하여 변경</div>';
+    if(thumbBox){
+      thumbBox.classList.add('has-thumb');
+      // Stash the saved URL so savePost can keep it when the admin
+      // edits without picking a new file (and no ★ gallery override).
+      thumbBox.dataset.existingUrl = existingThumbUrl;
+    }
+  } else if(thumbBox){
+    thumbBox.dataset.existingUrl = '';
   }
 
   // Populate gallery
@@ -3521,12 +3577,19 @@ async function savePost(){
       }
     }
 
-    // QA — TWO independent slots:
-    //   thumbnail (★) → home-grid card image
-    //   cover_image (◆) → editorial-detail top hero image
-    // Each falls back through its own preference chain so the post
-    // never saves blank in either slot.
-    var finalThumb = thumbUrlPick || thumbUrl || (galleryUrls.length ? galleryUrls[0] : null);
+    // QA — precedence (most explicit user intent wins):
+    //   1. thumbUrl       → admin uploaded a NEW file via the
+    //                       separate "썸네일 이미지" box this session.
+    //   2. existingThumb  → URL already saved on the post and NOT
+    //                       cleared by the X button this session.
+    //   3. thumbUrlPick   → ★ gallery pick.
+    //   4. galleryUrls[0] → first gallery image fallback.
+    // The previous order put the gallery ★ first, which silently
+    // ignored anything the admin uploaded into the separate thumb
+    // box — symptom: "변경한 이미지가 적용 안 된다".
+    var thumbBox = document.getElementById('thumbUploadBox');
+    var existingThumbUrl = (thumbBox && thumbBox.dataset && thumbBox.dataset.existingUrl) || '';
+    var finalThumb = thumbUrl || existingThumbUrl || thumbUrlPick || (galleryUrls.length ? galleryUrls[0] : null);
     var finalCover = coverUrlPick || finalThumb; // cover falls back to thumb if not picked
 
     var descriptionVal=document.getElementById('postDescription')?document.getElementById('postDescription').value:'';
