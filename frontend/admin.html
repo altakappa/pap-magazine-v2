@@ -157,19 +157,32 @@ tr:hover td{background:rgba(0,0,0,.02)}
 .pe-gallery-item:hover .pe-gallery-del{opacity:1}
 .pe-gallery-item .pe-gallery-num{position:absolute;bottom:2px;left:4px;font-size:9px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6);background:rgba(0,0,0,.4);padding:2px 5px;border-radius:2px;z-index:2}
 .pe-gallery-item .pe-gallery-grip{position:absolute;top:2px;left:2px;font-size:11px;color:#fff;background:rgba(0,0,0,.4);padding:2px 5px;border-radius:2px;letter-spacing:1px;line-height:1;z-index:2;pointer-events:none}
-/* Admin marks ONE gallery image as the COVER. That single image is
-   the homepage card thumbnail AND the editorial-detail hero — same
-   photo in both places (the standard magazine pattern: cover = top
-   image). Hover surfaces the ★ button; the active row shows a
-   yellow outline + COVER label so the current selection reads
-   instantly. */
-.pe-gallery-item .pe-gallery-cover{position:absolute;bottom:2px;right:2px;width:22px;height:22px;background:rgba(0,0,0,.55);color:rgba(255,255,255,.55);border:none;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s,background .2s,color .2s;z-index:2;border-radius:2px;line-height:1;padding:0;font-family:inherit}
+/* TWO independent slots per gallery image:
+   ★ = THUMB (homepage card, small image, `thumbnail` field)
+   ◆ = COVER (editorial-detail top image, big, `cover_image` field)
+   Each is picked separately. Same photo can hold both, or each
+   slot can be a different photo. Different colors so the active
+   selection pair is unambiguous at a glance. */
+.pe-gallery-item .pe-gallery-thumb,
+.pe-gallery-item .pe-gallery-cover{position:absolute;bottom:2px;width:22px;height:22px;background:rgba(0,0,0,.55);color:rgba(255,255,255,.55);border:none;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s,background .2s,color .2s;z-index:2;border-radius:2px;line-height:1;padding:0;font-family:inherit}
+.pe-gallery-item .pe-gallery-thumb{right:2px}
+.pe-gallery-item .pe-gallery-cover{right:28px}
+.pe-gallery-item:hover .pe-gallery-thumb,
 .pe-gallery-item:hover .pe-gallery-cover{opacity:1}
-.pe-gallery-item .pe-gallery-cover:hover{background:rgba(0,0,0,.85);color:#ffd43b}
-.pe-gallery-item.is-cover{outline:2px solid #ffd43b;outline-offset:-2px}
-.pe-gallery-item.is-cover .pe-gallery-cover{opacity:1;background:#ffd43b;color:#000}
-.pe-gallery-item .pe-tag-cover{position:absolute;top:2px;right:2px;background:#ffd43b;color:#000;font-size:8px;font-weight:800;letter-spacing:.1em;padding:2px 5px;border-radius:2px;z-index:2;line-height:1;display:none}
+.pe-gallery-item .pe-gallery-thumb:hover{background:rgba(0,0,0,.85);color:#ffd43b}
+.pe-gallery-item .pe-gallery-cover:hover{background:rgba(0,0,0,.85);color:#4dabf7}
+.pe-gallery-item.is-thumb{outline:2px solid #ffd43b;outline-offset:-2px}
+.pe-gallery-item.is-thumb .pe-gallery-thumb{opacity:1;background:#ffd43b;color:#000}
+.pe-gallery-item.is-cover{outline:2px solid #4dabf7;outline-offset:-2px}
+.pe-gallery-item.is-cover .pe-gallery-cover{opacity:1;background:#4dabf7;color:#fff}
+.pe-gallery-item.is-thumb.is-cover{outline:2px solid #fff;box-shadow:0 0 0 1px #ffd43b inset, 0 0 0 4px #4dabf7 inset}
+.pe-gallery-item .pe-tag-thumb,
+.pe-gallery-item .pe-tag-cover{position:absolute;right:2px;font-size:8px;font-weight:800;letter-spacing:.1em;padding:2px 5px;border-radius:2px;z-index:2;line-height:1;display:none}
+.pe-gallery-item .pe-tag-cover{top:2px;background:#4dabf7;color:#fff}
+.pe-gallery-item .pe-tag-thumb{top:2px;background:#ffd43b;color:#000}
+.pe-gallery-item.is-thumb .pe-tag-thumb{display:block}
 .pe-gallery-item.is-cover .pe-tag-cover{display:block}
+.pe-gallery-item.is-thumb.is-cover .pe-tag-thumb{top:18px} /* stack below cover */
 .pe-gallery-add{width:120px;height:150px;border:2px dashed var(--border2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;color:var(--text3);font-weight:600;transition:all .2s;text-align:center;padding:8px}
 .pe-gallery-add:hover{border-color:rgba(0,0,0,.25);color:var(--text2)}
 
@@ -476,7 +489,8 @@ tr:hover td{background:rgba(0,0,0,.02)}
               <span>🖼️ <strong>형식</strong> JPG · PNG · WebP</span>
               <span>📐 <strong>표시</strong> 4:5 박스에 contain (비율 무관, 잘리지 않음)</span>
               <span>↕️ <strong>정렬</strong> 카드를 드래그하여 순서 변경</span>
-              <span style="color:#b86b00">⭐ <strong>커버 이미지(★)</strong> 홈 카드 + 에디토리얼 상세 페이지 최상단에 노출 — 카드 우측하단 ★ 클릭</span>
+              <span style="color:#b86b00">⭐ <strong>썸네일(★)</strong> 홈 카드 작은 이미지 — 우측하단 ★ 클릭</span>
+              <span style="color:#0066cc">🟦 <strong>커버(◆)</strong> 에디토리얼 상세 페이지 최상단 큰 이미지 — 우측하단 ◆ 클릭</span>
             </div>
           </div>
           <div class="pe-gallery" id="galleryGrid">
@@ -1634,6 +1648,7 @@ function _resetNewPostForm(){
   // 3. Gallery — both the in-memory state and every rendered card
   if(typeof galleryImages !== 'undefined') galleryImages = [];
   if(typeof galleryCount  !== 'undefined') galleryCount  = 0;
+  if(typeof galleryThumbNum !== 'undefined') galleryThumbNum = null;
   if(typeof galleryCoverNum !== 'undefined') galleryCoverNum = null;
   var grid = document.getElementById('galleryGrid');
   if(grid){
@@ -2286,13 +2301,15 @@ function previewThumb(input){
 
 var galleryCount=0;
 var galleryImages=[];
-// QA — single COVER pick per gallery. The starred (★) row drives both
-// the homepage card thumbnail (`thumbnail`) AND the editorial-detail
-// hero image (`cover_image`) — same photo in both places, mirroring
-// the magazine convention where the cover is the top image. Defaults
-// to null so the first uploaded image takes the role until the admin
-// picks something else; stored as data-img-num so reordering doesn't
-// drift the selection.
+// QA — TWO independent picks per gallery (썸네일 ≠ 커버):
+//   galleryThumbNum → ★ row used as the homepage CARD THUMBNAIL
+//                     (small image, persisted as `thumbnail`)
+//   galleryCoverNum → ◆ row used as the editorial-detail COVER
+//                     (big top image, persisted as `cover_image`)
+// Both default to null and the first uploaded image takes both
+// roles until the admin picks something else. Stored as data-img-num
+// so reordering doesn't drift the selection.
+var galleryThumbNum=null;
 var galleryCoverNum=null;
 
 // ── Editorial gallery upload constants (admin-side validation) ──────────────
@@ -2418,18 +2435,22 @@ function addGallery(input){
       div.innerHTML = '<span class="pe-gallery-grip">⋮⋮</span>'
         + '<img loading="lazy" draggable="false" src="'+src+'">'
         + '<button class="pe-gallery-del" onclick="removeGalleryImg('+num+')">×</button>'
-        + '<button class="pe-gallery-cover" onclick="event.stopPropagation();setGalleryCover('+num+')" title="커버 이미지로 지정 (홈 카드 + 상세 페이지 최상단)" aria-label="커버 이미지로 지정">★</button>'
-        + '<span class="pe-tag-cover">COVER</span>'
+        + '<button class="pe-gallery-cover" onclick="event.stopPropagation();setGalleryCover('+num+')" title="커버 이미지로 지정 (에디토리얼 상세 페이지 최상단 큰 이미지)" aria-label="커버로 지정">◆</button>'
+        + '<button class="pe-gallery-thumb" onclick="event.stopPropagation();setGalleryThumb('+num+')" title="썸네일로 지정 (홈 카드 작은 이미지)"            aria-label="썸네일로 지정">★</button>'
+        + '<span class="pe-tag-cover">COVER</span><span class="pe-tag-thumb">THUMB</span>'
         + '<span class="pe-gallery-num">#'+num+'</span>';
       grid.insertBefore(div, addBtn);
       _wireGalleryItemDrag(div);
       updateImgCredits();
       added++;
       _summarizeGalleryBatch(added, blocked);
-      // First image to land becomes the default cover until the admin
-      // picks something else. Saves an extra click for the common
-      // case of "cover = the first photo I uploaded".
-      if(galleryCoverNum===null){ galleryCoverNum = num; _renderGalleryCoverState(); }
+      // First image to land becomes the default thumb AND cover
+      // until the admin picks something else. Saves an extra click
+      // for the common case of "use the first photo for both roles".
+      var changed=false;
+      if(galleryThumbNum===null){ galleryThumbNum = num; changed=true; }
+      if(galleryCoverNum===null){ galleryCoverNum = num; changed=true; }
+      if(changed) _renderGalleryCoverState();
     };
 
     try {
@@ -2453,26 +2474,41 @@ function removeGalleryImg(num){
   if(el) el.remove();
   // Remove from array
   galleryImages=galleryImages.filter(function(g){return g.num!==num;});
-  // If the removed image was the chosen cover, fall back to whatever
-  // remains first — keeps the post from saving with no cover at all.
+  // If the removed image was either pick, fall back to whatever
+  // remains first — keeps the post from saving without either role.
+  var rerender=false;
+  if(galleryThumbNum===num){
+    galleryThumbNum = galleryImages.length ? galleryImages[0].num : null;
+    rerender=true;
+  }
   if(galleryCoverNum===num){
     galleryCoverNum = galleryImages.length ? galleryImages[0].num : null;
-    _renderGalleryCoverState();
+    rerender=true;
   }
+  if(rerender) _renderGalleryCoverState();
   updateImgCredits();
 }
 
-// Mark the given gallery image (by data-img-num) as the public-card
-// thumbnail. Visual highlight is handled by .is-cover in CSS; the
-// actual save side reads `galleryCoverNum` in savePost.
+// Mark the given gallery image (by data-img-num) as the homepage
+// card THUMBNAIL. Saved into the `thumbnail` field on save.
+function setGalleryThumb(num){
+  galleryThumbNum = num;
+  _renderGalleryCoverState();
+}
+// Mark the given gallery image (by data-img-num) as the editorial
+// detail COVER (top hero image). Saved into the `cover_image` field.
 function setGalleryCover(num){
   galleryCoverNum = num;
   _renderGalleryCoverState();
 }
 
 function _renderGalleryCoverState(){
+  // Single render pass updates BOTH thumb (★) and cover (◆) classes
+  // on every row so the visual outline + label stack always reflects
+  // current state.
   document.querySelectorAll('#galleryGrid .pe-gallery-item').forEach(function(el){
     var n = parseInt(el.getAttribute('data-img-num'),10);
+    el.classList.toggle('is-thumb', n === galleryThumbNum);
     el.classList.toggle('is-cover', n === galleryCoverNum);
   });
 }
@@ -3094,7 +3130,7 @@ function editEditorial(id){
   }
 
   // Populate gallery
-  galleryImages=[];galleryCount=0;galleryCoverNum=null;
+  galleryImages=[];galleryCount=0;galleryThumbNum=null;galleryCoverNum=null;
   var grid=document.getElementById('galleryGrid');
   var addBtn=grid?grid.querySelector('.pe-gallery-add'):null;
   if(grid)grid.querySelectorAll('.pe-gallery-item').forEach(function(el){el.remove();});
@@ -3113,24 +3149,33 @@ function editEditorial(id){
         div.innerHTML='<span class="pe-gallery-grip">⋮⋮</span>'
           +'<img loading="lazy" draggable="false" src="'+esc(url)+'">'
           +'<button class="pe-gallery-del" onclick="removeGalleryImg('+galleryCount+')">×</button>'
-          +'<button class="pe-gallery-cover" onclick="event.stopPropagation();setGalleryCover('+galleryCount+')" title="커버 이미지로 지정 (홈 카드 + 상세 페이지 최상단)" aria-label="커버 이미지로 지정">★</button>'
-          +'<span class="pe-tag-cover">COVER</span>'
+          +'<button class="pe-gallery-cover" onclick="event.stopPropagation();setGalleryCover('+galleryCount+')" title="커버 이미지로 지정 (에디토리얼 상세 페이지 최상단 큰 이미지)" aria-label="커버로 지정">◆</button>'
+          +'<button class="pe-gallery-thumb" onclick="event.stopPropagation();setGalleryThumb('+galleryCount+')" title="썸네일로 지정 (홈 카드 작은 이미지)"            aria-label="썸네일로 지정">★</button>'
+          +'<span class="pe-tag-cover">COVER</span><span class="pe-tag-thumb">THUMB</span>'
           +'<span class="pe-gallery-num">#'+galleryCount+'</span>';
         grid.insertBefore(div,addBtn);
         if(typeof _wireGalleryItemDrag === 'function') _wireGalleryItemDrag(div);
       }
     });
     updateImgCredits();
-    // QA — restore the cover selection. The saved post stores the same
-    // URL in both `thumbnail` and `cover_image`; either field is fine
-    // for matching. Falls back to the first gallery image if no match.
-    var savedCoverUrl = ed.thumbnail || ed.cover_image || '';
-    if(savedCoverUrl){
-      var match = galleryImages.find(function(g){ return g.src === savedCoverUrl; });
-      if(match) galleryCoverNum = match.num;
+    // QA — restore BOTH ★ THUMB (`thumbnail`) and ◆ COVER (`cover_image`)
+    // by matching the saved URLs against the loaded gallery items.
+    // Each role falls back to the first gallery image independently
+    // so a post that previously had only one of the two saved still
+    // ends up with both selected.
+    var savedThumbUrl = ed.thumbnail   || '';
+    var savedCoverUrl = ed.cover_image || '';
+    if(savedThumbUrl){
+      var thumbMatch = galleryImages.find(function(g){ return g.src === savedThumbUrl; });
+      if(thumbMatch) galleryThumbNum = thumbMatch.num;
     }
-    if(galleryCoverNum===null && galleryImages.length){
-      galleryCoverNum = galleryImages[0].num;
+    if(savedCoverUrl){
+      var coverMatch = galleryImages.find(function(g){ return g.src === savedCoverUrl; });
+      if(coverMatch) galleryCoverNum = coverMatch.num;
+    }
+    if(galleryImages.length){
+      if(galleryThumbNum===null) galleryThumbNum = galleryImages[0].num;
+      if(galleryCoverNum===null) galleryCoverNum = galleryImages[0].num;
     }
     _renderGalleryCoverState();
   }
@@ -3443,11 +3488,12 @@ async function savePost(){
     }
 
     // Upload gallery images (only new files, keep existing URLs).
-    // Track which resolved URL corresponds to galleryCoverNum so the
-    // ★ cover survives even when its file is freshly uploaded in
-    // this batch.
+    // Track which resolved URLs correspond to BOTH ★ THUMB and ◆ COVER
+    // so each pick survives even when its file was freshly uploaded
+    // in this very batch.
     var galleryUrls=[];
-    var coverUrl=null;
+    var thumbUrlPick=null;
+    var coverUrlPick=null;
     for(var i=0;i<galleryImages.length;i++){
       var g=galleryImages[i];
       var resolvedUrl=null;
@@ -3456,16 +3502,18 @@ async function savePost(){
       else if(g.src&&g.src.indexOf('http')===0){resolvedUrl=g.src;}
       if(resolvedUrl){
         galleryUrls.push(resolvedUrl);
-        if(g.num === galleryCoverNum) coverUrl = resolvedUrl;
+        if(g.num === galleryThumbNum) thumbUrlPick = resolvedUrl;
+        if(g.num === galleryCoverNum) coverUrlPick = resolvedUrl;
       }
     }
 
-    // QA — single ★ COVER drives BOTH slots: it's the home-card
-    // thumbnail AND the editorial-detail hero image. Same URL in
-    // both fields keeps the magazine "cover = top image" pattern.
-    // Precedence: ★ pick → separate thumbInput upload (legacy) →
-    // first gallery image (so the post never saves blank).
-    var finalCover = coverUrl || thumbUrl || (galleryUrls.length ? galleryUrls[0] : null);
+    // QA — TWO independent slots:
+    //   thumbnail (★) → home-grid card image
+    //   cover_image (◆) → editorial-detail top hero image
+    // Each falls back through its own preference chain so the post
+    // never saves blank in either slot.
+    var finalThumb = thumbUrlPick || thumbUrl || (galleryUrls.length ? galleryUrls[0] : null);
+    var finalCover = coverUrlPick || finalThumb; // cover falls back to thumb if not picked
 
     var descriptionVal=document.getElementById('postDescription')?document.getElementById('postDescription').value:'';
     var payload={
@@ -3476,7 +3524,7 @@ async function savePost(){
       fashion:fashion,
       issue:subtitle||null,
       url:videoUrl||null,
-      thumbnail:finalCover||undefined,
+      thumbnail:finalThumb||undefined,
       cover_image:finalCover||undefined,
       gallery:galleryUrls.length?galleryUrls:undefined,
       status:isPublished?'published':'draft',
