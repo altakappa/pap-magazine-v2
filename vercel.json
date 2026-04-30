@@ -4,7 +4,8 @@
   "outputDirectory": "frontend",
   "framework": null,
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" }
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/admin/:path*", "destination": "/admin.html" }
   ],
   "headers": [
     {

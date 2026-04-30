@@ -1637,19 +1637,24 @@ function go(id,el,opts){
     var sbLink = document.querySelector('.sb a[onclick*="go(\''+id+'\'"]');
     if(sbLink) sbLink.classList.add('on');
   }
-  // Update the URL fragment so the current section survives a refresh
-  // and is reachable via back / forward. Skip when triggered FROM a
-  // hash-change (initFromHash, popstate) to avoid an infinite loop.
+  // Update the URL PATH so the current section survives a refresh,
+  // accumulates real history entries, and is reachable via back /
+  // forward. Skip when triggered FROM a popstate / initFromPath so
+  // we don't double-push. Path-based routing requires a Vercel
+  // rewrite (`/admin/:path*` → `/admin.html`) which is wired in
+  // vercel.json — without it, refreshing /admin/editorials would
+  // 404. Old `#admin/<id>` hash URLs are still recognised by the
+  // init reader for backwards compat with anything bookmarked.
   if(!opts.skipHistory){
-    var newHash = '#admin/' + id;
-    if(window.location.hash !== newHash){
-      try { history.pushState({admin:id}, '', newHash); } catch(_){}
+    var newPath = '/admin/' + id;
+    if(window.location.pathname !== newPath){
+      try { history.pushState({admin:id}, '', newPath); } catch(_){}
       // Defensive re-assert: if any default link action sneaks in
-      // after our handler returns and rewrites the hash to '#', put
-      // it back without spawning an extra history entry.
+      // after our handler returns and rewrites the URL, put it
+      // back without spawning an extra history entry.
       setTimeout(function(){
-        if(window.location.hash !== newHash){
-          try { history.replaceState({admin:id}, '', newHash); } catch(_){}
+        if(window.location.pathname !== newPath){
+          try { history.replaceState({admin:id}, '', newPath); } catch(_){}
         }
       }, 0);
     }
@@ -1661,32 +1666,38 @@ function go(id,el,opts){
   if(id==='film') loadFilmsFromAPI();
   if(id==='submissions') loadSubmissions();
   if(id==='pullletters') loadPullLetters();
-  if(id==='newpost'&&!editingEditorialId){
-    // QA — full form reset on every fresh-new-post entry. The previous
-    // implementation only cleared the text inputs, which left the
-    // gallery, credits, brands, thumbnail preview, schedule state and
-    // image-credit rows from the LAST saved post sitting on screen.
-    // Symptom from the user: "I just published an editorial and clicked
-    // 새 에디토리얼 — but all the previous photos and credits are still
-    // there." Fix: a single reset function that wipes every piece of
-    // form state so the new-post screen always starts clean.
-    _resetNewPostForm();
+  if(id==='newpost'){
+    // QA report: 새 게시글 작성 페이지에서 뒤로가기 후 다시 클릭 시
+    // 이전 데이터가 남아있는 문제. Always reset on entry UNLESS the
+    // caller is `editEditorial(...)` which sets editingEditorialId
+    // synchronously BEFORE calling go('newpost'). Without that
+    // sentinel, every navigation to the form (including back/forward
+    // and re-clicking "+ 새 에디토리얼") starts in a guaranteed-empty
+    // state — a same-route re-entry behaves like a fresh mount.
+    if(!editingEditorialId){
+      _resetNewPostForm();
+    }
+  } else if(id !== 'newpost' && editingEditorialId){
+    // Leaving the new-post route while still in an edit session?
+    // Drop the sentinel so the next "+ 새 에디토리얼" click triggers
+    // the reset above instead of inheriting stale edit state.
+    editingEditorialId = null;
   }
 }
 
-// QA — URL-hash routing for the admin SPA so each section has its
+// QA — URL-PATH routing for the admin SPA so each section has its
 // own bookmarkable / refreshable / back-button-friendly URL.
-//   /admin#admin/editorials  → 에디토리얼 목록
-//   /admin#admin/users       → 회원 관리
-//   /admin#admin/newpost     → 새 게시글
-// Anything outside the whitelist is ignored (defends against XSS via
-// hash injection — only a-z / 0-9 / _ are accepted).
+//   /admin/editorials  → 에디토리얼 목록
+//   /admin/users       → 회원 관리
+//   /admin/newpost     → 새 게시글
+// Refreshing any of those works because vercel.json rewrites every
+// `/admin/*` path back to `/admin.html`. Anything outside the
+// DOM-derived whitelist is ignored (defends against URL injection —
+// only a-z / 0-9 / _ are accepted in the section id).
 //
 // The whitelist is BUILT FROM THE DOM — every `<div class="tab" id="t-X">`
 // becomes a valid tab id `X`. Earlier versions hardcoded the list and
-// went stale every time a new section was added (intads, newnews,
-// community, subscriptions, about, business, contact were all missing,
-// so refreshing those pages reverted to the home view).
+// went stale every time a new section was added.
 function _getValidAdminTabs(){
   var ids = [];
   document.querySelectorAll('.tab[id^="t-"]').forEach(function(el){
@@ -1695,27 +1706,50 @@ function _getValidAdminTabs(){
   });
   return ids;
 }
-function _initAdminFromHash(){
+// Extract the section id from either format we accept:
+//   • Path-based (current): /admin/editorials → "editorials"
+//   • Hash-based (legacy):  /admin#admin/editorials → "editorials"
+// Returns '' when neither matches so callers can decide how to fall
+// back (init: no-op, popstate: ignore).
+function _extractAdminSectionId(){
+  // 1. Path form — strip "/admin/" prefix, take the first segment.
+  var p = window.location.pathname || '';
+  if(p.indexOf('/admin/') === 0){
+    var rest = p.slice('/admin/'.length);
+    var seg  = rest.split('/')[0] || '';
+    seg = seg.replace(/[^a-z0-9_]/gi, '');
+    if(seg) return seg;
+  }
+  // 2. Hash form — keeps old bookmarks working.
   var h = window.location.hash || '';
-  if(h.indexOf('#admin/') !== 0) return false;
-  var id = h.slice('#admin/'.length).replace(/[^a-z0-9_]/gi, '');
+  if(h.indexOf('#admin/') === 0){
+    var hid = h.slice('#admin/'.length).replace(/[^a-z0-9_]/gi, '');
+    if(hid) return hid;
+  }
+  return '';
+}
+function _initAdminFromHash(){
+  // Function name kept for back-compat with anything that may have
+  // grabbed a reference to it; reads from path now (with hash
+  // fallback) via _extractAdminSectionId.
+  var id = _extractAdminSectionId();
   if(!id) return false;
   var valid = _getValidAdminTabs();
   if(valid.indexOf(id) < 0) return false;
-  // skipHistory: caller already has the right hash; pushing again
+  // skipHistory: caller already has the right URL; pushing again
   // would create a duplicate history entry.
   go(id, null, {skipHistory: true});
   return true;
 }
 window.addEventListener('popstate', function(){
-  // Back / forward — only react when the new hash names a valid
-  // admin section. If the hash is empty, '#', or anything outside
-  // the admin namespace we leave the visible tab alone. Earlier
-  // versions force-redirected to 'home' here, which combined with
-  // the sidebar's `href="#"` default action made every click bounce
-  // back to the home tab right after rendering the requested one.
-  var h = window.location.hash || '';
-  if(h.indexOf('#admin/') === 0){
+  // Back / forward — only react when the new URL names a valid
+  // admin section. If the URL is outside the admin namespace we
+  // leave the visible tab alone. Earlier versions force-redirected
+  // to 'home' here, which combined with the sidebar's `href="#"`
+  // default action made every click bounce back to the home tab
+  // right after rendering the requested one.
+  var id = _extractAdminSectionId();
+  if(id){
     _initAdminFromHash();
   }
 });
