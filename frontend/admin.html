@@ -157,6 +157,15 @@ tr:hover td{background:rgba(0,0,0,.02)}
 .pe-gallery-item:hover .pe-gallery-del{opacity:1}
 .pe-gallery-item .pe-gallery-num{position:absolute;bottom:2px;left:4px;font-size:9px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6);background:rgba(0,0,0,.4);padding:2px 5px;border-radius:2px;z-index:2}
 .pe-gallery-item .pe-gallery-grip{position:absolute;top:2px;left:2px;font-size:11px;color:#fff;background:rgba(0,0,0,.4);padding:2px 5px;border-radius:2px;letter-spacing:1px;line-height:1;z-index:2;pointer-events:none}
+/* QA — admin can star one gallery image as the public-card thumbnail.
+   Hidden until hover; the chosen image stays visible (.is-cover) to
+   show the current selection at a glance. */
+.pe-gallery-item .pe-gallery-cover{position:absolute;bottom:2px;right:2px;width:22px;height:22px;background:rgba(0,0,0,.55);color:rgba(255,255,255,.55);border:none;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s,background .2s,color .2s;z-index:2;border-radius:2px;line-height:1;padding:0;font-family:inherit}
+.pe-gallery-item:hover .pe-gallery-cover{opacity:1}
+.pe-gallery-item .pe-gallery-cover:hover{background:rgba(0,0,0,.85);color:#ffd43b}
+.pe-gallery-item.is-cover{outline:2px solid #ffd43b;outline-offset:-2px}
+.pe-gallery-item.is-cover .pe-gallery-cover{opacity:1;background:#ffd43b;color:#000}
+.pe-gallery-item.is-cover::after{content:'COVER';position:absolute;top:2px;right:2px;background:#ffd43b;color:#000;font-size:8px;font-weight:800;letter-spacing:.1em;padding:2px 5px;border-radius:2px;z-index:2;line-height:1}
 .pe-gallery-add{width:120px;height:150px;border:2px dashed var(--border2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;color:var(--text3);font-weight:600;transition:all .2s;text-align:center;padding:8px}
 .pe-gallery-add:hover{border-color:rgba(0,0,0,.25);color:var(--text2)}
 
@@ -463,6 +472,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
               <span>🖼️ <strong>형식</strong> JPG · PNG · WebP</span>
               <span>📐 <strong>표시</strong> 4:5 박스에 contain (비율 무관, 잘리지 않음)</span>
               <span>↕️ <strong>정렬</strong> 카드를 드래그하여 순서 변경</span>
+              <span>⭐ <strong>썸네일</strong> 카드 우측하단 ★ 클릭하여 카드 썸네일로 지정</span>
             </div>
           </div>
           <div class="pe-gallery" id="galleryGrid">
@@ -2208,6 +2218,11 @@ function previewThumb(input){
 
 var galleryCount=0;
 var galleryImages=[];
+// QA — which gallery image is the "cover" used as the public card
+// thumbnail. null means "fall back to thumbInput, then first gallery
+// image". Stored as the row's data-img-num so reordering doesn't
+// shift the choice.
+var galleryCoverNum=null;
 
 // ── Editorial gallery upload constants (admin-side validation) ──────────────
 // QA #94 — bumped from 500KB to 2MB to match the editorial-quality budget
@@ -2332,12 +2347,17 @@ function addGallery(input){
       div.innerHTML = '<span class="pe-gallery-grip">⋮⋮</span>'
         + '<img loading="lazy" draggable="false" src="'+src+'">'
         + '<button class="pe-gallery-del" onclick="removeGalleryImg('+num+')">×</button>'
+        + '<button class="pe-gallery-cover" onclick="event.stopPropagation();setGalleryCover('+num+')" title="썸네일(커버)로 지정" aria-label="썸네일로 지정">★</button>'
         + '<span class="pe-gallery-num">#'+num+'</span>';
       grid.insertBefore(div, addBtn);
       _wireGalleryItemDrag(div);
       updateImgCredits();
       added++;
       _summarizeGalleryBatch(added, blocked);
+      // First image to land becomes the default cover until the admin
+      // picks a different one. Saves an extra click for the common case
+      // of "cover = the first photo I uploaded".
+      if(galleryCoverNum===null){ galleryCoverNum = num; _renderGalleryCoverState(); }
     };
 
     try {
@@ -2361,7 +2381,28 @@ function removeGalleryImg(num){
   if(el) el.remove();
   // Remove from array
   galleryImages=galleryImages.filter(function(g){return g.num!==num;});
+  // If the removed image was the chosen cover, fall back to whatever
+  // remains first — keeps the post from saving with no cover at all.
+  if(galleryCoverNum===num){
+    galleryCoverNum = galleryImages.length ? galleryImages[0].num : null;
+    _renderGalleryCoverState();
+  }
   updateImgCredits();
+}
+
+// Mark the given gallery image (by data-img-num) as the public-card
+// thumbnail. Visual highlight is handled by .is-cover in CSS; the
+// actual save side reads `galleryCoverNum` in savePost.
+function setGalleryCover(num){
+  galleryCoverNum = num;
+  _renderGalleryCoverState();
+}
+
+function _renderGalleryCoverState(){
+  document.querySelectorAll('#galleryGrid .pe-gallery-item').forEach(function(el){
+    var n = parseInt(el.getAttribute('data-img-num'),10);
+    el.classList.toggle('is-cover', n === galleryCoverNum);
+  });
 }
 
 // ── Drag & drop reordering ────────────────────────────────────────────────
@@ -2981,7 +3022,7 @@ function editEditorial(id){
   }
 
   // Populate gallery
-  galleryImages=[];galleryCount=0;
+  galleryImages=[];galleryCount=0;galleryCoverNum=null;
   var grid=document.getElementById('galleryGrid');
   var addBtn=grid?grid.querySelector('.pe-gallery-add'):null;
   if(grid)grid.querySelectorAll('.pe-gallery-item').forEach(function(el){el.remove();});
@@ -3000,12 +3041,26 @@ function editEditorial(id){
         div.innerHTML='<span class="pe-gallery-grip">⋮⋮</span>'
           +'<img loading="lazy" draggable="false" src="'+esc(url)+'">'
           +'<button class="pe-gallery-del" onclick="removeGalleryImg('+galleryCount+')">×</button>'
+          +'<button class="pe-gallery-cover" onclick="event.stopPropagation();setGalleryCover('+galleryCount+')" title="썸네일(커버)로 지정" aria-label="썸네일로 지정">★</button>'
           +'<span class="pe-gallery-num">#'+galleryCount+'</span>';
         grid.insertBefore(div,addBtn);
         if(typeof _wireGalleryItemDrag === 'function') _wireGalleryItemDrag(div);
       }
     });
     updateImgCredits();
+    // QA — restore the cover selection. If the saved post's
+    // thumbnail/cover_image URL matches one of the loaded gallery
+    // images, mark that one as the cover; otherwise default to the
+    // first gallery image so the post never saves coverless.
+    var savedCoverUrl = ed.thumbnail || ed.cover_image || '';
+    if(savedCoverUrl){
+      var match = galleryImages.find(function(g){ return g.src === savedCoverUrl; });
+      if(match) galleryCoverNum = match.num;
+    }
+    if(galleryCoverNum===null && galleryImages.length){
+      galleryCoverNum = galleryImages[0].num;
+    }
+    _renderGalleryCoverState();
   }
 
   // Populate credits
@@ -3315,14 +3370,28 @@ async function savePost(){
       thumbUrl=await uploadFile(thumbInput.files[0]);
     }
 
-    // Upload gallery images (only new files, keep existing URLs)
+    // Upload gallery images (only new files, keep existing URLs).
+    // We track which uploaded URL corresponds to galleryCoverNum so the
+    // chosen cover survives even when its file is freshly uploaded.
     var galleryUrls=[];
+    var coverUrl=null;
     for(var i=0;i<galleryImages.length;i++){
       var g=galleryImages[i];
-      if(g.isUrl){galleryUrls.push(g.src);} // existing URL
-      else if(g.file){galleryUrls.push(await uploadFile(g.file));} // new file
-      else if(g.src&&g.src.indexOf('http')===0){galleryUrls.push(g.src);}
+      var resolvedUrl=null;
+      if(g.isUrl){resolvedUrl=g.src;} // existing URL
+      else if(g.file){resolvedUrl=await uploadFile(g.file);} // new file
+      else if(g.src&&g.src.indexOf('http')===0){resolvedUrl=g.src;}
+      if(resolvedUrl){
+        galleryUrls.push(resolvedUrl);
+        if(g.num === galleryCoverNum) coverUrl = resolvedUrl;
+      }
     }
+
+    // QA — cover precedence:
+    //   1. Gallery image starred by the admin (galleryCoverNum)
+    //   2. Separate thumbnail file uploaded via thumbInput
+    //   3. Fallback: first gallery image (so the post never saves coverless)
+    var finalThumbUrl = coverUrl || thumbUrl || (galleryUrls.length ? galleryUrls[0] : null);
 
     var descriptionVal=document.getElementById('postDescription')?document.getElementById('postDescription').value:'';
     var payload={
@@ -3333,8 +3402,8 @@ async function savePost(){
       fashion:fashion,
       issue:subtitle||null,
       url:videoUrl||null,
-      thumbnail:thumbUrl||undefined,
-      cover_image:thumbUrl||undefined,
+      thumbnail:finalThumbUrl||undefined,
+      cover_image:finalThumbUrl||undefined,
       gallery:galleryUrls.length?galleryUrls:undefined,
       status:isPublished?'published':'draft',
       published_date:isPublished?new Date().toISOString():null,
