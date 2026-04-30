@@ -1681,12 +1681,27 @@ function go(id,el,opts){
 //   /admin#admin/newpost     → 새 게시글
 // Anything outside the whitelist is ignored (defends against XSS via
 // hash injection — only a-z / 0-9 / _ are accepted).
-var _ADMIN_VALID_TABS = ['home','menucats','cover','categories','loading','editorials','news','film','shorts','newpost','users','submissions','pullletters','banners'];
+//
+// The whitelist is BUILT FROM THE DOM — every `<div class="tab" id="t-X">`
+// becomes a valid tab id `X`. Earlier versions hardcoded the list and
+// went stale every time a new section was added (intads, newnews,
+// community, subscriptions, about, business, contact were all missing,
+// so refreshing those pages reverted to the home view).
+function _getValidAdminTabs(){
+  var ids = [];
+  document.querySelectorAll('.tab[id^="t-"]').forEach(function(el){
+    var id = el.id.slice(2); // strip "t-"
+    if(id) ids.push(id);
+  });
+  return ids;
+}
 function _initAdminFromHash(){
   var h = window.location.hash || '';
   if(h.indexOf('#admin/') !== 0) return false;
   var id = h.slice('#admin/'.length).replace(/[^a-z0-9_]/gi, '');
-  if(!id || _ADMIN_VALID_TABS.indexOf(id) < 0) return false;
+  if(!id) return false;
+  var valid = _getValidAdminTabs();
+  if(valid.indexOf(id) < 0) return false;
   // skipHistory: caller already has the right hash; pushing again
   // would create a duplicate history entry.
   go(id, null, {skipHistory: true});
