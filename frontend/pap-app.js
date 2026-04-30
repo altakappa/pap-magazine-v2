@@ -1107,7 +1107,7 @@ function _openEditorialInner(title,thumb){
   // already-display array. Normalise to {r, h} once so the renderer below
   // can stay simple. Empty credits fall back to the placeholder pair.
   var _normCr = _normalizeCreditsForDisplay(d.credits);
-  var det={issue:d.issue||'MAR. ISSUE',thumb:d.thumb||thumb,images:d.images||[thumb,thumb],credits:(_normCr.length?_normCr:[{r:'Photography',h:['@photographer']},{r:'Stylist',h:['@stylist']}]),fashion:d.fashion||['@brand'],desc:d.desc||''};
+  var det={issue:d.issue||'MAR. ISSUE',thumb:d.thumb||thumb,images:d.images||[thumb,thumb],credits:(_normCr.length?_normCr:[{r:'Photography',h:['@photographer']},{r:'Stylist',h:['@stylist']}]),fashion:d.fashion||['@brand'],imageCredits:d.imageCredits||{},desc:d.desc||''};
 
   var heroImg=document.getElementById('edDetailHero');
   heroImg.onerror=function(){edImgError(this);};
@@ -1119,21 +1119,49 @@ function _openEditorialInner(title,thumb){
   var descEl=document.getElementById('edDetailDesc');
   if(descEl){var lang=localStorage.getItem('pap-lang')||'ko';var descText=typeof det.desc==='object'?(det.desc[lang]||det.desc.en||det.desc.ko||''):det.desc;descEl.innerHTML=descText;}
 
-  // Gallery 2-col with hover credits
+  // Gallery 2-col with hover credits.
+  // Priority for the hover overlay text:
+  //   1. det.imageCredits[img_N] — the exact string the admin typed in
+  //      "이미지별 착장 크레딧" for THIS image (e.g. "@brand1 Jacket,
+  //      @brand2 Pants"). Each @handle in the string is rendered as an
+  //      Instagram-deeplink anchor; non-handle text (item names like
+  //      "Jacket") stays as plain text in between.
+  //   2. Rotating fallback through det.fashion brand list when no
+  //      per-image credit string was saved — keeps older posts from
+  //      going blank on hover.
   var gal=document.getElementById('edDetailGallery');
   gal.innerHTML='';
+  var imgCreditsMap = (det.imageCredits && typeof det.imageCredits === 'object') ? det.imageCredits : {};
   det.images.forEach(function(url,idx){
     var credits='';
-    // Show fashion brands as hover overlay on each image (rotate through)
-    var fLen=det.fashion.length;
-    if(fLen>0){
-      var perImg=Math.max(2,Math.ceil(fLen/det.images.length));
-      var start=(idx*perImg)%fLen;
-      for(var fi=0;fi<perImg&&fi<fLen;fi++){
-        var f=det.fashion[(start+fi)%fLen];
-        var fHandle=typeof f==='object'?f.id||'':f;
-        var fDisplay=typeof f==='object'&&f.n?f.n:fHandle.replace(/^@/,'');
-        credits+='<a href="#" onclick="event.preventDefault();openProfileByHandle(\''+fHandle.replace(/'/g,"")+'\')">'+fDisplay+'</a>';
+    var perImgKey = 'img_' + (idx + 1);
+    var perImg = imgCreditsMap[perImgKey];
+    if(typeof perImg === 'string' && perImg.trim()){
+      // Tokenize on commas; each token may contain "@handle Item Name".
+      // Wrap @handle in an Instagram link, keep the rest as text.
+      var tokens = perImg.split(',').map(function(t){ return t.trim(); }).filter(Boolean);
+      credits = tokens.map(function(tok){
+        var m = tok.match(/^(@[A-Za-z0-9._]+)\s*(.*)$/);
+        if(m){
+          var handle = m[1];
+          var label  = m[2] ? ' '+m[2] : '';
+          var safe   = handle.replace(/'/g,"");
+          return '<a href="#" onclick="event.preventDefault();openProfileByHandle(\''+safe+'\')">'+handle.replace(/^@/,'')+'</a>'+label;
+        }
+        return tok;
+      }).join(', ');
+    } else {
+      // Show fashion brands as hover overlay on each image (rotate through)
+      var fLen=det.fashion.length;
+      if(fLen>0){
+        var perImgCount=Math.max(2,Math.ceil(fLen/det.images.length));
+        var start=(idx*perImgCount)%fLen;
+        for(var fi=0;fi<perImgCount&&fi<fLen;fi++){
+          var f=det.fashion[(start+fi)%fLen];
+          var fHandle=typeof f==='object'?f.id||'':f;
+          var fDisplay=typeof f==='object'&&f.n?f.n:fHandle.replace(/^@/,'');
+          credits+='<a href="#" onclick="event.preventDefault();openProfileByHandle(\''+fHandle.replace(/'/g,"")+'\')">'+fDisplay+'</a>';
+        }
       }
     }
     gal.innerHTML+='<div class="ed-gallery-item"><img src="'+url+'" alt="'+title+'" loading="lazy" onerror="edImgError(this)"><div class="ed-img-credits">'+credits+'</div></div>';
@@ -1234,7 +1262,7 @@ function _openEditorialInner_noPush(title,thumb){
   // already-display array. Normalise to {r, h} once so the renderer below
   // can stay simple. Empty credits fall back to the placeholder pair.
   var _normCr = _normalizeCreditsForDisplay(d.credits);
-  var det={issue:d.issue||'MAR. ISSUE',thumb:d.thumb||thumb,images:d.images||[thumb,thumb],credits:(_normCr.length?_normCr:[{r:'Photography',h:['@photographer']},{r:'Stylist',h:['@stylist']}]),fashion:d.fashion||['@brand'],desc:d.desc||''};
+  var det={issue:d.issue||'MAR. ISSUE',thumb:d.thumb||thumb,images:d.images||[thumb,thumb],credits:(_normCr.length?_normCr:[{r:'Photography',h:['@photographer']},{r:'Stylist',h:['@stylist']}]),fashion:d.fashion||['@brand'],imageCredits:d.imageCredits||{},desc:d.desc||''};
   var heroImg=document.getElementById('edDetailHero');
   heroImg.onerror=function(){edImgError(this);};
   heroImg.src=det.thumb;
@@ -1244,17 +1272,36 @@ function _openEditorialInner_noPush(title,thumb){
   if(descEl){var lang=localStorage.getItem('pap-lang')||'ko';var descText=typeof det.desc==='object'?(det.desc[lang]||det.desc.en||det.desc.ko||''):det.desc;descEl.innerHTML=descText;}
   var gal=document.getElementById('edDetailGallery');
   gal.innerHTML='';
+  // Same per-image credit priority as the main openEditorial path:
+  // admin's "이미지별 착장 크레딧" string wins, then rotating brand fallback.
+  var imgCreditsMap = (det.imageCredits && typeof det.imageCredits === 'object') ? det.imageCredits : {};
   det.images.forEach(function(url,idx){
     var credits='';
-    var fLen=det.fashion.length;
-    if(fLen>0){
-      var perImg=Math.max(2,Math.ceil(fLen/det.images.length));
-      var start=(idx*perImg)%fLen;
-      for(var fi=0;fi<perImg&&fi<fLen;fi++){
-        var f=det.fashion[(start+fi)%fLen];
-        var fHandle=typeof f==='object'?f.id||'':f;
-        var fDisplay=typeof f==='object'&&f.n?f.n:fHandle.replace(/^@/,'');
-        credits+='<a href="#" onclick="event.preventDefault();openProfileByHandle(\''+fHandle.replace(/'/g,"")+'\')">'+fDisplay+'</a>';
+    var perImgKey = 'img_' + (idx + 1);
+    var perImg = imgCreditsMap[perImgKey];
+    if(typeof perImg === 'string' && perImg.trim()){
+      var tokens = perImg.split(',').map(function(t){ return t.trim(); }).filter(Boolean);
+      credits = tokens.map(function(tok){
+        var m = tok.match(/^(@[A-Za-z0-9._]+)\s*(.*)$/);
+        if(m){
+          var handle = m[1];
+          var label  = m[2] ? ' '+m[2] : '';
+          var safe   = handle.replace(/'/g,"");
+          return '<a href="#" onclick="event.preventDefault();openProfileByHandle(\''+safe+'\')">'+handle.replace(/^@/,'')+'</a>'+label;
+        }
+        return tok;
+      }).join(', ');
+    } else {
+      var fLen=det.fashion.length;
+      if(fLen>0){
+        var perImgCount=Math.max(2,Math.ceil(fLen/det.images.length));
+        var start=(idx*perImgCount)%fLen;
+        for(var fi=0;fi<perImgCount&&fi<fLen;fi++){
+          var f=det.fashion[(start+fi)%fLen];
+          var fHandle=typeof f==='object'?f.id||'':f;
+          var fDisplay=typeof f==='object'&&f.n?f.n:fHandle.replace(/^@/,'');
+          credits+='<a href="#" onclick="event.preventDefault();openProfileByHandle(\''+fHandle.replace(/'/g,"")+'\')">'+fDisplay+'</a>';
+        }
       }
     }
     gal.innerHTML+='<div class="ed-gallery-item"><img src="'+url+'" alt="'+title+'" loading="lazy" onerror="edImgError(this)"><div class="ed-img-credits">'+credits+'</div></div>';
@@ -3562,6 +3609,13 @@ window._papFilmAutoPlay = function(){
       fashion: (apiEd.fashion && Array.isArray(apiEd.fashion.brands) && apiEd.fashion.brands.length)
         ? apiEd.fashion.brands.map(function(b){ return b.instagram || b.name || ''; }).filter(Boolean)
         : (Array.isArray(existing.fashion) ? existing.fashion : []),
+      // Per-image outfit credits typed in admin under "이미지별 착장 크레딧".
+      // Shape: { img_1: "@brand1 Jacket, @brand2 Pants", img_2: "..." }.
+      // The detail-page renderer prefers this map over the rotating-brand
+      // fallback when an image has its own credit string.
+      imageCredits: (apiEd.fashion && apiEd.fashion.imageCredits && typeof apiEd.fashion.imageCredits === 'object')
+        ? apiEd.fashion.imageCredits
+        : (existing.imageCredits || {}),
       desc: apiEd.description || existing.desc || ''
     };
     // If API came back with no credits at all but the curated entry had

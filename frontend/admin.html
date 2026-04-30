@@ -3367,6 +3367,20 @@ function editEditorial(id){
     });
   }
 
+  // Restore per-image fashion credits saved as fashion.imageCredits.
+  // Stored shape: { img_1: "@brand1 Jacket, @brand2 Pants", img_2: ... }
+  // savePost reads these from galleryImages[i].credits, so we drop them
+  // back onto each gallery row (1-indexed key → 0-indexed array slot)
+  // and re-render the imgCreditsArea so the inputs show their values.
+  if(ed.fashion&&ed.fashion.imageCredits&&typeof ed.fashion.imageCredits==='object'){
+    var creditsMap = ed.fashion.imageCredits;
+    galleryImages.forEach(function(g, i){
+      var key = 'img_' + (i + 1);
+      if(creditsMap[key]) g.credits = creditsMap[key];
+    });
+    if(typeof updateImgCredits === 'function') updateImgCredits();
+  }
+
   go('newpost');
 }
 
