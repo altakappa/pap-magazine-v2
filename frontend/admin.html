@@ -461,7 +461,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
           </div>
           <div class="pe-section pe-half">
             <div class="pe-label">슬러그 (URL)</div>
-            <input class="pe-input" placeholder="예: hit-the-jackpot">
+            <input class="pe-input" id="postSlug" placeholder="예: hit-the-jackpot">
             <div class="pe-hint">영문 소문자, 하이픈 사용. 비워두면 자동 생성됩니다.</div>
           </div>
         </div>
@@ -1628,7 +1628,7 @@ function go(id,el){
 
 function _resetNewPostForm(){
   // 1. Plain text / textarea inputs
-  ['postTitle','postSubtitle','postTags','postVideoUrl','postDescription'].forEach(function(id){
+  ['postTitle','postSubtitle','postSlug','postTags','postVideoUrl','postDescription'].forEach(function(id){
     var el = document.getElementById(id);
     if(el) el.value = '';
   });
@@ -2758,7 +2758,16 @@ function _buildCreditRowInner(roles, name, ig){
   var checkboxes = EDITORIAL_CREDIT_ROLES.map(function(r){
     return '<label><input type="checkbox" value="'+esc(r)+'" onchange="_onCreditRoleCheckbox(this)">'+esc(r)+'</label>';
   }).join('');
-  var rolesJson = esc(JSON.stringify(roles));
+  // QA — escape DOUBLE QUOTES in the JSON because data-roles uses
+  // double-quote delimiters in the attribute. The shared esc() helper
+  // only handles &, <, > (textContent → innerHTML), so JSON like
+  // ["Photographer"] would land in the DOM as
+  //   data-roles="["Photographer"]"  ← attribute closes at the first
+  //   inner quote and getAttribute('data-roles') comes back as just `[`.
+  // JSON.parse on that fails, the role chips render empty, and the
+  // editor looks like the saved roles were lost. Replacing " with
+  // &quot; keeps the attribute value intact end-to-end.
+  var rolesJson = JSON.stringify(roles).replace(/"/g, '&quot;');
   // QA #97 — grip + checkbox at the start of every row. The grip is
   // visually distinct so admins know it's the drag handle (the whole
   // row is draggable, but the grip is the affordance). The checkbox
@@ -3094,6 +3103,11 @@ function editEditorial(id){
   // Populate basic fields
   document.getElementById('postTitle').value=ed.title||'';
   document.getElementById('postSubtitle').value=ed.issue||'';
+  // QA — restore the saved slug. Without this every edit dropped the
+  // slug back to a blank input, so the user had to retype the URL
+  // (or savePost would auto-regenerate it from the title and silently
+  // change the public URL of an already-published editorial).
+  if(document.getElementById('postSlug')) document.getElementById('postSlug').value = ed.slug || '';
   var tagsStr=Array.isArray(ed.tags)?ed.tags.join(', '):ed.tags||'';
   document.getElementById('postTags').value=tagsStr;
   var preview=document.getElementById('tagPreview');
@@ -3516,9 +3530,18 @@ async function savePost(){
     var finalCover = coverUrlPick || finalThumb; // cover falls back to thumb if not picked
 
     var descriptionVal=document.getElementById('postDescription')?document.getElementById('postDescription').value:'';
+    // QA — respect the slug the admin typed. Falls back to an
+    // auto-generated slug from the title only when the input is empty
+    // (matches the placeholder hint "비워두면 자동 생성됩니다"). The
+    // previous version always overwrote with auto-generated, which
+    // both ignored manual slugs and silently changed the public URL
+    // of any edited editorial.
+    var slugInput = document.getElementById('postSlug');
+    var slugVal = (slugInput && slugInput.value || '').trim();
+    var slugAuto = title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
     var payload={
       title:title,
-      slug:title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/-+$/,''),
+      slug:slugVal || slugAuto,
       tags:tagsArr,
       credits:credits,
       fashion:fashion,
