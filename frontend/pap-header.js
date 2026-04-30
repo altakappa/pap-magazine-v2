@@ -407,10 +407,22 @@
       if (!n) return;
       var opening = !n.classList.contains('active');
       n.classList.toggle('active');
+      // QA #98 — toggle BOTH .is-active AND .active on the hamburger so
+      // pages that ship their own (stale) `.hamburger.active span:...`
+      // CSS still morph into an X. Without this, magazine.html (which
+      // has `.hamburger.active` rules in its inline <style> but no
+      // `.is-active` rules) stayed as three bars when the menu opened.
+      // Pages whose CSS keys off `.is-active` (pap-styles.css, the
+      // injected header style here) keep working unchanged.
       var hb = document.querySelector('.hamburger');
       if (hb) {
-        if (opening) hb.classList.add('is-active');
-        else hb.classList.remove('is-active');
+        if (opening) {
+          hb.classList.add('is-active');
+          hb.classList.add('active');
+        } else {
+          hb.classList.remove('is-active');
+          hb.classList.remove('active');
+        }
       }
       if (opening) lockScroll();
       else unlockScroll();

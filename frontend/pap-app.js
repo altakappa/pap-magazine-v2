@@ -258,10 +258,20 @@ function toggleNav(){
   _n.classList.toggle('active');
 
   // Hamburger ≡ ↔ X morph
+  // QA #98 — toggle BOTH .is-active AND .active so pages with stale
+  // page-level CSS keyed off `.hamburger.active` (e.g. magazine.html)
+  // also morph into an X. Pages keyed off `.is-active` (the canonical
+  // class — pap-styles.css, pap-header.js injected style) keep working
+  // unchanged because we still toggle that class too.
   var hb = document.querySelector('.hamburger');
   if(hb){
-    if(opening) hb.classList.add('is-active');
-    else hb.classList.remove('is-active');
+    if(opening){
+      hb.classList.add('is-active');
+      hb.classList.add('active');
+    } else {
+      hb.classList.remove('is-active');
+      hb.classList.remove('active');
+    }
   }
 
   // Scroll lock

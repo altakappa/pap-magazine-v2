@@ -39,11 +39,12 @@ a{text-decoration:none;color:inherit}
 /* UNIFIED HEADER */
 .header{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(0,0,0,.97);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:0 40px;display:flex;align-items:center;justify-content:space-between;height:72px;border-bottom:1px solid rgba(255,255,255,.1)}
 .header-left{display:flex;align-items:center;gap:24px}
-.hamburger{background:none;border:none;display:flex;flex-direction:column;gap:6px;padding:12px;cursor:pointer}
-.hamburger span{width:24px;height:2px;background:#fff;transition:all .3s}
-.hamburger.active span:nth-child(1){transform:rotate(45deg) translate(10px,10px)}
-.hamburger.active span:nth-child(2){opacity:0}
-.hamburger.active span:nth-child(3){transform:rotate(-45deg) translate(7px,-7px)}
+/* QA #98 — hamburger CSS removed. Canonical rules now live in
+   pap-header.js's injected <style> (and in pap-styles.css for pages
+   that link it). Keeping a duplicate here caused the morph to fail:
+   the old rules keyed off `.hamburger.active` while the JS adds
+   `.is-active`, so neither set of CSS lined up with the actual class
+   on the element. */
 .search-btn{background:none;border:none;padding:4px;display:flex;color:rgba(255,255,255,.4);transition:color .2s;cursor:pointer}
 .search-btn:hover{color:#fff}
 .search-btn svg{width:20px;height:20px}
