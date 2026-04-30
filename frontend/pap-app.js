@@ -3481,9 +3481,17 @@ window._papFilmAutoPlay = function(){
   // keys so card-render code can stay one path.
   function apiEditorialToLocal(e){
     var slug = e.slug || '';
+    // Two slots, two intents:
+    //   thumbnail  → small home-grid card image (img)
+    //   cover_image → big editorial-detail hero (hero)
+    // Each falls back to the other when one is missing so older
+    // posts that only filled one slot still render in both places.
+    var thumb = e.thumbnail   || e.cover_image || e.thumbnail_url || '';
+    var hero  = e.cover_image || e.thumbnail   || e.thumbnail_url || '';
     return {
       title: e.title || '',
-      img:   e.thumbnail || e.cover_image || e.thumbnail_url || '',
+      img:   thumb,
+      hero:  hero,
       date:  e.published_date || e.created_at || '',
       url:   slug ? ('/'+slug+'/') : ('/editorial/'+(e.id||'')),
       tags:  Array.isArray(e.tags) ? e.tags : (typeof e.tags==='string' ? e.tags.split(',').map(function(t){return t.trim();}).filter(Boolean) : []),
@@ -3532,8 +3540,10 @@ window._papFilmAutoPlay = function(){
     if(edDetails[key]) return;
     edDetails[key] = {
       issue:   '',
-      thumb:   apiEd.img || '',
-      images:  apiEd.gallery && apiEd.gallery.length ? apiEd.gallery : (apiEd.img ? [apiEd.img] : []),
+      // detail page hero reads from .thumb (see line ~1114 heroImg.src = det.thumb)
+      // so map our HERO slot here, not the small card thumbnail.
+      thumb:   apiEd.hero || apiEd.img || '',
+      images:  apiEd.gallery && apiEd.gallery.length ? apiEd.gallery : (apiEd.hero ? [apiEd.hero] : (apiEd.img ? [apiEd.img] : [])),
       // Convert {roles[], name, instagram} array → {r, h:[{n,id}]} display shape.
       // Falls back gracefully when credits are dict / display-array / empty.
       credits: (function(raw){
