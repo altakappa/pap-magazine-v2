@@ -68,11 +68,17 @@ function rateLimit(req, res, { limit = 30, windowMs = 60000 } = {}) {
   return false;
 }
 
-// Preset configs for different endpoint types
+// Preset configs for different endpoint types.
+// `upload` was 5/min, which broke the actual editorial workflow — a single
+// post legitimately holds 10–30 look images, and the admin uploads them
+// one-at-a-time (one HTTP request per image). 5/min meant the 6th image
+// onward got 429'd. Bumped to 120/min so a full 30-image post can finish
+// in a single batch and a few retries still have headroom; abuse from a
+// non-admin caller is already blocked one layer up by requireAdmin.
 const RATE_LIMITS = {
   auth: { limit: 10, windowMs: 60 * 1000 },      // 10 req/min for login/signup
   api: { limit: 60, windowMs: 60 * 1000 },        // 60 req/min general
-  upload: { limit: 5, windowMs: 60 * 1000 },       // 5 uploads/min
+  upload: { limit: 120, windowMs: 60 * 1000 },     // 120 uploads/min — admin batches
   webhook: { limit: 100, windowMs: 60 * 1000 },    // 100 req/min for webhooks
 };
 

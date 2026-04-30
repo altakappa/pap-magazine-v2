@@ -3215,6 +3215,7 @@ function _peFormatSaveError(e){
   if(/network|fetch|failed to fetch|connection/i.test(msg)) return '네트워크 오류. 잠시 후 다시 시도해 주세요.';
   if(/unauthor|forbidden|401|403/i.test(msg))            return '권한이 없습니다. 다시 로그인 후 시도해 주세요.';
   if(/timeout/i.test(msg))                               return '서버 응답 지연. 이미지 용량이 큰 경우 압축 후 다시 시도해 주세요.';
+  if(/429|too many requests|rate limit/i.test(msg))      return '업로드 요청이 너무 많습니다. 1분 후 다시 시도해 주세요. (서버 한도)';
   return msg ? ('저장 실패: '+msg) : '저장 중 알 수 없는 오류가 발생했습니다.';
 }
 
