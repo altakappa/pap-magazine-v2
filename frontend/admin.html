@@ -160,10 +160,32 @@ tr:hover td{background:rgba(0,0,0,.02)}
 .pe-gallery-add{width:120px;height:150px;border:2px dashed var(--border2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;color:var(--text3);font-weight:600;transition:all .2s;text-align:center;padding:8px}
 .pe-gallery-add:hover{border-color:rgba(0,0,0,.25);color:var(--text2)}
 
-.pe-credit-row,.pe-brand-row{display:flex;gap:8px;margin-bottom:8px;align-items:center}
+.pe-credit-row,.pe-brand-row{display:flex;gap:8px;margin-bottom:8px;align-items:flex-start}
 .pe-credit-role{width:170px;flex-shrink:0}
 .pe-credit-name,.pe-brand-name{flex:1}
 .pe-credit-ig,.pe-brand-ig{width:160px;flex-shrink:0}
+/* QA #96 — multi-role chip picker. The trigger looks like a normal text
+   input (chips inside it), the popup is an absolutely-positioned
+   checkbox list, and a custom-text input at the bottom of the popup
+   lets editors add roles that aren't in the predefined list. */
+.pe-credit-role-multi{position:relative;width:220px;flex-shrink:0}
+.pe-role-trigger{min-height:34px;border:1px solid var(--border2);background:#fff;padding:4px 26px 4px 6px;display:flex;flex-wrap:wrap;gap:4px;align-items:center;cursor:text;font-size:12px;border-radius:2px;position:relative}
+.pe-role-trigger:hover{border-color:rgba(0,0,0,.4)}
+.pe-role-trigger.open{border-color:#111;box-shadow:0 0 0 1px #111}
+.pe-role-trigger::after{content:'▾';position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--text3);pointer-events:none}
+.pe-role-trigger .pe-role-placeholder{color:var(--text3);font-size:11px}
+.pe-role-chip{display:inline-flex;align-items:center;gap:4px;background:#111;color:#fff;font-size:11px;font-weight:600;padding:2px 4px 2px 8px;line-height:1.4;border-radius:2px;letter-spacing:.02em;white-space:nowrap}
+.pe-role-chip .pe-chip-x{background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:13px;padding:0 2px;line-height:1;font-family:inherit}
+.pe-role-chip .pe-chip-x:hover{color:#fff}
+.pe-role-menu{position:absolute;top:calc(100% + 2px);left:0;right:0;min-width:220px;max-height:280px;overflow-y:auto;background:#fff;border:1px solid #111;box-shadow:0 4px 12px rgba(0,0,0,.12);z-index:50;padding:6px 0;display:none}
+.pe-role-menu.open{display:block}
+.pe-role-menu label{display:flex;align-items:center;gap:8px;padding:6px 12px;font-size:12px;cursor:pointer;color:var(--text)}
+.pe-role-menu label:hover{background:rgba(0,0,0,.04)}
+.pe-role-menu label input{margin:0;cursor:pointer}
+.pe-role-menu-divider{height:1px;background:rgba(0,0,0,.08);margin:4px 0}
+.pe-role-custom-wrap{padding:4px 12px 8px}
+.pe-role-custom-wrap input{width:100%;font-size:11px;padding:6px 8px;border:1px solid var(--border2);border-radius:2px;background:#fafafa;font-family:inherit}
+.pe-role-custom-wrap input:focus{outline:none;border-color:#111;background:#fff}
 
 .pe-checks{display:flex;gap:16px}
 .pe-check{font-size:12px;font-weight:500;color:var(--text2);display:flex;align-items:center;gap:6px;cursor:pointer}
@@ -2383,64 +2405,178 @@ var EDITORIAL_CREDIT_ROLES = [
   'Sound','Music','VFX',
   'Location','Special Thanks'
 ];
-var EDITORIAL_CREDIT_CUSTOM_VALUE = '__custom__';
+// QA #96 — credit roles are now MULTI-select. Each credit row owns an
+// array of role strings (e.g. ['Hair','Make Up'] for the same person)
+// instead of one role per row. The data layer stores it as
+// `credits[i].roles = []` and the UI is a chip picker with checkboxes
+// for the predefined roles plus a free-text input for custom roles.
 
-// Resolve the actual role name from a credit row — returns the custom text
-// when the select is set to the custom sentinel, otherwise the select value.
-function _readCreditRole(row){
-  if(!row) return '';
-  var sel=row.querySelector('.pe-credit-role');
-  var customInput=row.querySelector('.pe-credit-role-custom');
-  if(!sel) return '';
-  var v=sel.value;
-  if(v===EDITORIAL_CREDIT_CUSTOM_VALUE){
-    return (customInput && customInput.value ? customInput.value : '').trim();
-  }
-  return v;
+// Read all role strings selected on a credit row. Predefined roles are
+// pulled from checked checkboxes; custom roles come from the chip list
+// (rendered via _renderRoleChips), tagged data-custom="1" to distinguish
+// them from checkbox-driven chips.
+function _readCreditRoles(row){
+  if(!row) return [];
+  var trigger=row.querySelector('.pe-role-trigger');
+  if(!trigger) return [];
+  var seen={};
+  var out=[];
+  trigger.querySelectorAll('.pe-role-chip').forEach(function(chip){
+    var v=chip.getAttribute('data-role')||'';
+    v = v.trim();
+    if(v && !seen[v]){ seen[v]=1; out.push(v); }
+  });
+  return out;
 }
 
-// Build the inner HTML of a credit row. Pre-selects `role` if it matches a
-// known option; otherwise switches the row into custom-input mode and pre-
-// fills the text input with the unrecognised role string.
-function _buildCreditRowInner(role, name, ig){
-  role = role || EDITORIAL_CREDIT_ROLES[0];
+// Backward-compat helper for any caller still expecting a single role
+// string. Returns the first role joined to the rest by ', ' (e.g.
+// 'Hair, Make Up') so display contexts always get something readable.
+function _readCreditRole(row){
+  return _readCreditRoles(row).join(', ');
+}
+
+function _renderRoleChips(trigger){
+  if(!trigger) return;
+  // Reads the data-roles JSON attribute (canonical store) and re-renders
+  // chips + ticks predefined checkboxes accordingly.
+  var rolesRaw=trigger.getAttribute('data-roles')||'[]';
+  var roles=[];
+  try { roles=JSON.parse(rolesRaw); } catch(_){ roles=[]; }
+  if(!Array.isArray(roles)) roles=[];
+  // Render chips
+  var chipsHtml='';
+  if(roles.length===0){
+    chipsHtml='<span class="pe-role-placeholder">역할 선택…</span>';
+  } else {
+    chipsHtml=roles.map(function(r){
+      return '<span class="pe-role-chip" data-role="'+esc(r)+'">'+esc(r)
+        +'<button type="button" class="pe-chip-x" onclick="event.stopPropagation();_removeCreditRoleChip(this)" aria-label="역할 삭제">×</button></span>';
+    }).join('');
+  }
+  trigger.innerHTML=chipsHtml;
+  // Sync checkboxes inside the menu with the chip set
+  var menu=trigger.parentElement.querySelector('.pe-role-menu');
+  if(menu){
+    menu.querySelectorAll('input[type="checkbox"]').forEach(function(cb){
+      cb.checked = roles.indexOf(cb.value) >= 0;
+    });
+  }
+}
+
+function _setCreditRoles(trigger, roles){
+  // Dedupe + drop empties before persisting.
+  var seen={};
+  var clean=[];
+  (roles||[]).forEach(function(r){
+    r=(r||'').trim();
+    if(r && !seen[r]){ seen[r]=1; clean.push(r); }
+  });
+  trigger.setAttribute('data-roles', JSON.stringify(clean));
+  _renderRoleChips(trigger);
+}
+
+function _toggleRoleMenu(trigger, force){
+  var menu=trigger.parentElement.querySelector('.pe-role-menu');
+  if(!menu) return;
+  var willOpen = (typeof force==='boolean') ? force : !menu.classList.contains('open');
+  // Close any other open menus first (single-open invariant).
+  document.querySelectorAll('.pe-role-menu.open').forEach(function(m){
+    if(m!==menu){ m.classList.remove('open'); }
+  });
+  document.querySelectorAll('.pe-role-trigger.open').forEach(function(t){
+    if(t!==trigger){ t.classList.remove('open'); }
+  });
+  menu.classList.toggle('open', willOpen);
+  trigger.classList.toggle('open', willOpen);
+}
+
+function _onCreditRoleCheckbox(cb){
+  var wrap=cb.closest('.pe-credit-role-multi');
+  if(!wrap) return;
+  var trigger=wrap.querySelector('.pe-role-trigger');
+  var current=[];
+  try { current=JSON.parse(trigger.getAttribute('data-roles')||'[]'); } catch(_){}
+  if(cb.checked){
+    if(current.indexOf(cb.value)<0) current.push(cb.value);
+  } else {
+    current=current.filter(function(r){return r!==cb.value;});
+  }
+  _setCreditRoles(trigger, current);
+}
+
+function _onCreditRoleCustomKey(input, e){
+  if(e.key!=='Enter') return;
+  e.preventDefault();
+  var wrap=input.closest('.pe-credit-role-multi');
+  if(!wrap) return;
+  var trigger=wrap.querySelector('.pe-role-trigger');
+  var v=(input.value||'').trim();
+  if(!v) return;
+  var current=[];
+  try { current=JSON.parse(trigger.getAttribute('data-roles')||'[]'); } catch(_){}
+  current.push(v);
+  _setCreditRoles(trigger, current);
+  input.value='';
+}
+
+function _removeCreditRoleChip(btn){
+  var chip=btn.closest('.pe-role-chip');
+  if(!chip) return;
+  var trigger=chip.closest('.pe-role-trigger');
+  if(!trigger) return;
+  var role=chip.getAttribute('data-role')||'';
+  var current=[];
+  try { current=JSON.parse(trigger.getAttribute('data-roles')||'[]'); } catch(_){}
+  current=current.filter(function(r){return r!==role;});
+  _setCreditRoles(trigger, current);
+}
+
+// Close any open role menu when clicking outside the picker. Wired once.
+document.addEventListener('click', function(e){
+  if(e.target.closest('.pe-credit-role-multi')) return;
+  document.querySelectorAll('.pe-role-menu.open').forEach(function(m){m.classList.remove('open');});
+  document.querySelectorAll('.pe-role-trigger.open').forEach(function(t){t.classList.remove('open');});
+});
+
+// Build the inner HTML of a credit row. `roles` may be a single role
+// string (legacy) or an array of role strings (new). Both render the
+// same chip-picker UI; legacy strings are wrapped to [string].
+function _buildCreditRowInner(roles, name, ig){
+  if(typeof roles === 'string') roles = roles ? [roles] : [];
+  if(!Array.isArray(roles)) roles = [];
   name = name || '';
   ig   = ig   || '';
-  var isKnown = EDITORIAL_CREDIT_ROLES.indexOf(role) >= 0;
-  var opts = EDITORIAL_CREDIT_ROLES.map(function(r){
-    return '<option value="'+esc(r)+'"'+(isKnown && r===role ? ' selected' : '')+'>'+esc(r)+'</option>';
+  // Build the predefined-role checkbox list. Custom roles (anything not
+  // in EDITORIAL_CREDIT_ROLES) skip the checkbox layer and live purely
+  // as chips.
+  var checkboxes = EDITORIAL_CREDIT_ROLES.map(function(r){
+    return '<label><input type="checkbox" value="'+esc(r)+'" onchange="_onCreditRoleCheckbox(this)">'+esc(r)+'</label>';
   }).join('');
-  opts += '<option value="'+EDITORIAL_CREDIT_CUSTOM_VALUE+'"'+(!isKnown ? ' selected' : '')+'>+ 직접 입력</option>';
-  var customDisplay = isKnown ? 'none' : 'block';
-  var customValue   = isKnown ? '' : esc(role);
-  return '<select class="pe-select pe-credit-role" onchange="_onCreditRoleChange(this)">'+opts+'</select>'
-    +'<input class="pe-input pe-credit-role-custom" placeholder="역할 직접 입력" value="'+customValue+'" style="display:'+customDisplay+';width:170px;flex-shrink:0">'
+  var rolesJson = esc(JSON.stringify(roles));
+  return '<div class="pe-credit-role-multi">'
+    +   '<div class="pe-role-trigger" data-roles="'+rolesJson+'" onclick="_toggleRoleMenu(this)" tabindex="0"></div>'
+    +   '<div class="pe-role-menu" role="listbox">'
+    +     checkboxes
+    +     '<div class="pe-role-menu-divider"></div>'
+    +     '<div class="pe-role-custom-wrap"><input type="text" placeholder="+ 직접 입력 후 Enter" onkeydown="_onCreditRoleCustomKey(this,event)"></div>'
+    +   '</div>'
+    + '</div>'
     +'<input class="pe-input pe-credit-name" placeholder="이름" value="'+esc(name)+'">'
     +'<input class="pe-input pe-credit-ig" placeholder="@instagram" value="'+esc(ig)+'">'
     +'<button class="btn btn-sm btn-red" onclick="this.parentElement.remove()">삭제</button>';
-}
-
-// Toggle visibility of the custom-text input when the role select changes.
-function _onCreditRoleChange(sel){
-  var row=sel.closest('.pe-credit-row');
-  if(!row) return;
-  var custom=row.querySelector('.pe-credit-role-custom');
-  if(!custom) return;
-  if(sel.value===EDITORIAL_CREDIT_CUSTOM_VALUE){
-    custom.style.display='block';
-    custom.focus();
-  } else {
-    custom.style.display='none';
-    custom.value='';
-  }
 }
 
 function addCredit(){
   var area=document.getElementById('creditsArea');
   var row=document.createElement('div');
   row.className='pe-credit-row';
-  row.innerHTML=_buildCreditRowInner('','','');
+  row.innerHTML=_buildCreditRowInner([], '', '');
   area.appendChild(row);
+  // Render chips for the freshly-attached trigger so the placeholder
+  // shows ('역할 선택…') instead of an empty box.
+  var trig=row.querySelector('.pe-role-trigger');
+  if(trig) _renderRoleChips(trig);
 }
 
 function addBrand(){
@@ -2717,20 +2853,42 @@ function editEditorial(id){
   }
 
   // Populate credits
+  // QA #96 — load credits from EITHER the new array format
+  // [{roles[], name, instagram}, ...] OR the legacy dict format
+  // {role: {name, instagram}, ...} so we don't break existing posts.
   var creditsArea=document.getElementById('creditsArea');
-  if(creditsArea&&ed.credits&&typeof ed.credits==='object'){
+  if(creditsArea && ed.credits){
     creditsArea.innerHTML='';
-    Object.entries(ed.credits).forEach(function(entry){
-      var role=entry[0];
-      var val=entry[1];
+    var entries=[];
+    if(Array.isArray(ed.credits)){
+      // New format — pass through, normalising shape just in case.
+      entries=ed.credits.map(function(c){
+        var roles=Array.isArray(c.roles) ? c.roles
+                : (c.role ? [c.role] : []);
+        return {
+          roles: roles,
+          name: c.name || '',
+          instagram: c.instagram || ''
+        };
+      });
+    } else if(typeof ed.credits==='object'){
+      // Legacy dict format — one role per entry. Wrap each into the new
+      // shape so the editor presents a uniform chip picker UI.
+      entries=Object.entries(ed.credits).map(function(e){
+        var role=e[0]; var val=e[1];
+        var name = (val && typeof val==='object') ? (val.name || '')
+                 : (typeof val==='string' ? val : '');
+        var ig   = (val && typeof val==='object') ? (val.instagram || '') : '';
+        return { roles: role ? [role] : [], name: name, instagram: ig };
+      });
+    }
+    entries.forEach(function(c){
       var row=document.createElement('div');
       row.className='pe-credit-row';
-      row.innerHTML=_buildCreditRowInner(
-        role,
-        (val && typeof val==='object' ? val.name : val) || '',
-        (val && typeof val==='object' ? val.instagram : '') || ''
-      );
+      row.innerHTML=_buildCreditRowInner(c.roles, c.name, c.instagram);
       creditsArea.appendChild(row);
+      var trig=row.querySelector('.pe-role-trigger');
+      if(trig) _renderRoleChips(trig);
     });
   }
 
@@ -2767,15 +2925,23 @@ async function savePost(){
   var category=catSelect?catSelect.value:'editorial';
   var tagsArr=tags?tags.split(',').map(function(t){return t.trim();}).filter(Boolean):[];
 
-  // Build credits — read role via _readCreditRole so custom-input rows
-  // contribute their typed role string instead of the __custom__ sentinel.
-  var credits={};
+  // QA #96 — credits are now an ARRAY of {roles[], name, instagram} so
+  // a single person can hold multiple roles (e.g. Hair + Make Up) in one
+  // entry. Empty rows (no name) are skipped; a row with no roles selected
+  // is also skipped — there's no useful way to credit someone without
+  // saying for what.
+  var credits=[];
   document.querySelectorAll('#creditsArea .pe-credit-row').forEach(function(row){
-    var name=row.querySelector('.pe-credit-name');
-    var ig=row.querySelector('.pe-credit-ig');
-    var roleStr=_readCreditRole(row);
-    if(roleStr && name && name.value){
-      credits[roleStr]={name:name.value,instagram:ig?ig.value:''};
+    var nameEl=row.querySelector('.pe-credit-name');
+    var igEl=row.querySelector('.pe-credit-ig');
+    var roles=_readCreditRoles(row);
+    var nameVal=(nameEl && nameEl.value || '').trim();
+    if(roles.length>0 && nameVal){
+      credits.push({
+        roles: roles,
+        name: nameVal,
+        instagram: (igEl && igEl.value || '').trim()
+      });
     }
   });
 

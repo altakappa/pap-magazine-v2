@@ -648,6 +648,45 @@ function searchEditorials(query){
 
 // ======== EDITORIAL DETAIL DATA ========
 var edDetails={};
+
+// QA #96 — credits can arrive in three shapes depending on where they come
+// from: the legacy admin dict ({role: {name, instagram}}), the new admin
+// array ([{roles: [...], name, instagram}]), or the curated display
+// array ([{r, h: [...]}]) baked into editorial-details.json. Display
+// code below all expects {r, h}, so normalise once at the read site.
+function _normalizeCreditsForDisplay(raw){
+  if(!raw) return [];
+  // Already in display format — items have an `r` field.
+  if(Array.isArray(raw) && raw.length && raw[0] && raw[0].r !== undefined){
+    return raw;
+  }
+  // New admin array format — items have `roles` (array) or `name`.
+  if(Array.isArray(raw)){
+    return raw.map(function(c){
+      var roles = Array.isArray(c.roles) ? c.roles
+                : (c.role ? [c.role] : []);
+      var n = c.name || '';
+      var id = c.instagram || '';
+      // {n, id} preserves both display name and handle so the existing
+      // renderer (typeof h==='object'&&h.n) takes the high-fidelity branch.
+      return { r: roles.join(', '), h: [{ n: n, id: id }] };
+    });
+  }
+  // Legacy admin dict — keys are roles, values are {name, instagram} or string.
+  if(typeof raw === 'object'){
+    return Object.keys(raw).map(function(role){
+      var val = raw[role];
+      var n = '', id = '';
+      if(val && typeof val === 'object'){
+        n = val.name || ''; id = val.instagram || '';
+      } else if(typeof val === 'string'){
+        n = val;
+      }
+      return { r: role, h: [{ n: n, id: id }] };
+    });
+  }
+  return [];
+}
 // Editorial logo distribution folder map. Single source of truth lives in
 // pap-logos-data.js (window.PAP_LOGO_FOLDERS) so mypage and pap-app.js
 // stay in sync. The inline fallback below is kept for safety in case the
@@ -1054,7 +1093,11 @@ function _openEditorialInner(title,thumb){
   var d=edDetails[title];
   if(!d){var titleLower=title.toLowerCase();for(var key in edDetails){if(key.toLowerCase()===titleLower){d=edDetails[key];break;}}}
   d=d||{};
-  var det={issue:d.issue||'MAR. ISSUE',thumb:d.thumb||thumb,images:d.images||[thumb,thumb],credits:d.credits||[{r:'Photography',h:['@photographer']},{r:'Stylist',h:['@stylist']}],fashion:d.fashion||['@brand'],desc:d.desc||''};
+  // QA #96 — d.credits may be admin-dict, admin-array (with roles[]), or
+  // already-display array. Normalise to {r, h} once so the renderer below
+  // can stay simple. Empty credits fall back to the placeholder pair.
+  var _normCr = _normalizeCreditsForDisplay(d.credits);
+  var det={issue:d.issue||'MAR. ISSUE',thumb:d.thumb||thumb,images:d.images||[thumb,thumb],credits:(_normCr.length?_normCr:[{r:'Photography',h:['@photographer']},{r:'Stylist',h:['@stylist']}]),fashion:d.fashion||['@brand'],desc:d.desc||''};
 
   var heroImg=document.getElementById('edDetailHero');
   heroImg.onerror=function(){edImgError(this);};
@@ -1177,7 +1220,11 @@ function _openEditorialInner_noPush(title,thumb){
   var d=edDetails[title];
   if(!d){var titleLower=title.toLowerCase();for(var key in edDetails){if(key.toLowerCase()===titleLower){d=edDetails[key];break;}}}
   d=d||{};
-  var det={issue:d.issue||'MAR. ISSUE',thumb:d.thumb||thumb,images:d.images||[thumb,thumb],credits:d.credits||[{r:'Photography',h:['@photographer']},{r:'Stylist',h:['@stylist']}],fashion:d.fashion||['@brand'],desc:d.desc||''};
+  // QA #96 — d.credits may be admin-dict, admin-array (with roles[]), or
+  // already-display array. Normalise to {r, h} once so the renderer below
+  // can stay simple. Empty credits fall back to the placeholder pair.
+  var _normCr = _normalizeCreditsForDisplay(d.credits);
+  var det={issue:d.issue||'MAR. ISSUE',thumb:d.thumb||thumb,images:d.images||[thumb,thumb],credits:(_normCr.length?_normCr:[{r:'Photography',h:['@photographer']},{r:'Stylist',h:['@stylist']}]),fashion:d.fashion||['@brand'],desc:d.desc||''};
   var heroImg=document.getElementById('edDetailHero');
   heroImg.onerror=function(){edImgError(this);};
   heroImg.src=det.thumb;
@@ -1905,8 +1952,11 @@ function buildCreatorDB(){
   var db={};
   for(var title in edDetails){
     var ed=edDetails[title];
-    // Process credits — supports both {n,id} objects and plain strings
-    (ed.credits||[]).forEach(function(cr){
+    // QA #96 — normalise credits before iterating. ed.credits may already
+    // be in display shape (curated JSON) or in either admin format
+    // (legacy dict, new array with roles[]).
+    var _normEdCredits = _normalizeCreditsForDisplay(ed.credits);
+    _normEdCredits.forEach(function(cr){
       (cr.h||[]).forEach(function(h){
         var handle=typeof h==='object'&&h.id?h.id:h;
         var displayName=typeof h==='object'&&h.n?h.n:handle.replace(/^@/,'');
