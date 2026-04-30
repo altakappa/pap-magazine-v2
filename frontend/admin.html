@@ -165,13 +165,13 @@ tr:hover td{background:rgba(0,0,0,.02)}
 .pe-gallery-item:hover .pe-gallery-del{opacity:1}
 .pe-gallery-item .pe-gallery-num{position:absolute;bottom:2px;left:4px;font-size:9px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6);background:rgba(0,0,0,.4);padding:2px 5px;border-radius:2px;z-index:2}
 .pe-gallery-item .pe-gallery-grip{position:absolute;top:2px;left:2px;font-size:11px;color:#fff;background:rgba(0,0,0,.4);padding:2px 5px;border-radius:2px;letter-spacing:1px;line-height:1;z-index:2;pointer-events:none}
-/* TWO independent slots per gallery image (UI label ↔ DB field):
-   ★ (yellow) = "커버" in UI = home card small image → DB `thumbnail`
-   ◆ (blue)   = "썸네일" in UI = editorial-detail top hero → DB `cover_image`
-   The DB column names predate the UI rename and stay as-is for
-   backwards compat. Each pick is independent. Same photo can hold
-   both, or each slot can be a different photo. Different colors so
-   the active selection pair is unambiguous at a glance. */
+/* Single picker per gallery image:
+   ★ (yellow) = "썸네일" in UI = home card small image → DB `thumbnail`
+   The detail-page hero (DB `cover_image`) is uploaded separately
+   in the dedicated top "커버 이미지" section, NOT picked from the
+   gallery. We keep the .pe-gallery-cover / .is-cover / .pe-tag-cover
+   CSS rules as dead-code so older posts don't error if they ever
+   re-run an old render path; new render paths only emit the ★. */
 .pe-gallery-item .pe-gallery-thumb,
 .pe-gallery-item .pe-gallery-cover{position:absolute;bottom:2px;width:22px;height:22px;background:rgba(0,0,0,.55);color:rgba(255,255,255,.55);border:none;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s,background .2s,color .2s;z-index:2;border-radius:2px;line-height:1;padding:0;font-family:inherit}
 .pe-gallery-item .pe-gallery-thumb{right:2px}
@@ -426,7 +426,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
     <div class="mn-body">
       <div class="tbl-wrap">
         <div class="tbl-top"><h3>에디토리얼 목록 (<span id="edCountLabel">0</span>개)</h3><input style="background:#f5f5f7;border:1px solid var(--border2);padding:6px 12px;color:var(--text);outline:none;width:200px;border-radius:4px" placeholder="검색..." id="edSearchAdmin" oninput="renderEditorialList()"></div>
-        <table><thead><tr><th>ID</th><th>커버</th><th>제목</th><th>태그</th><th>상태</th><th>날짜</th><th>작업</th></tr></thead>
+        <table><thead><tr><th>ID</th><th>썸네일</th><th>제목</th><th>태그</th><th>상태</th><th>날짜</th><th>작업</th></tr></thead>
         <tbody id="edListBody"></tbody></table>
       </div>
     </div>
@@ -475,9 +475,11 @@ tr:hover td{background:rgba(0,0,0,.02)}
           </div>
         </div>
 
-        <!-- 커버 (홈 카드용 작은 이미지 — DB 필드는 thumbnail) -->
+        <!-- 커버 이미지 (에디토리얼 상세 최상단 큰 이미지 — DB 필드는 cover_image)
+             변수/엘리먼트 ID(thumbInput, thumbUploadBox 등)는 변경 비용이 커서
+             그대로 두지만, 사용자/저장 측면에서는 cover_image로 매핑된다. -->
         <div class="pe-section">
-          <div class="pe-label">커버 이미지 <span class="pe-opt">홈 카드에 노출</span></div>
+          <div class="pe-label">커버 이미지 <span class="pe-opt">에디토리얼 최상단 노출</span></div>
           <div class="pe-upload" id="thumbUploadBox" onclick="document.getElementById('thumbInput').click()">
             <input type="file" id="thumbInput" accept="image/*" style="display:none" onchange="previewThumb(this)">
             <button type="button" class="pe-upload-x" onclick="event.stopPropagation();clearThumbnailInput()" aria-label="커버 이미지 제거">×</button>
@@ -499,8 +501,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
               <span>🖼️ <strong>형식</strong> JPG · PNG · WebP</span>
               <span>📐 <strong>표시</strong> 4:5 박스에 contain (비율 무관, 잘리지 않음)</span>
               <span>↕️ <strong>정렬</strong> 카드를 드래그하여 순서 변경</span>
-              <span style="color:#b86b00">⭐ <strong>커버(★)</strong> 홈 카드 작은 이미지 — 우측하단 ★ 클릭</span>
-              <span style="color:#0066cc">🟦 <strong>썸네일(◆)</strong> 에디토리얼 상세 페이지 최상단 큰 이미지 — 우측하단 ◆ 클릭</span>
+              <span style="color:#b86b00">⭐ <strong>썸네일(★)</strong> 홈 카드 작은 이미지 — 우측하단 ★ 클릭 (커버 이미지는 상단 영역에서 별도 업로드)</span>
             </div>
           </div>
           <div class="pe-gallery" id="galleryGrid">
@@ -2401,14 +2402,14 @@ function clearThumbnailInput(){
 
 var galleryCount=0;
 var galleryImages=[];
-// QA — TWO independent picks per gallery (썸네일 ≠ 커버):
-//   galleryThumbNum → ★ row used as the homepage CARD THUMBNAIL
-//                     (small image, persisted as `thumbnail`)
-//   galleryCoverNum → ◆ row used as the editorial-detail COVER
-//                     (big top image, persisted as `cover_image`)
-// Both default to null and the first uploaded image takes both
-// roles until the admin picks something else. Stored as data-img-num
-// so reordering doesn't drift the selection.
+// galleryThumbNum → ★ row picked as the homepage CARD THUMBNAIL
+//                   (small image, persisted as `thumbnail`).
+// Defaults to null; the first uploaded image takes the role until
+// the admin picks something else. Stored as data-img-num so
+// reordering doesn't drift the selection.
+// (galleryCoverNum kept for back-compat with any stale code paths;
+//  no UI surfaces it any more — cover_image comes from the top
+//  단독 "커버 이미지" upload section, not gallery.)
 var galleryThumbNum=null;
 var galleryCoverNum=null;
 
@@ -2535,22 +2536,18 @@ function addGallery(input){
       div.innerHTML = '<span class="pe-gallery-grip">⋮⋮</span>'
         + '<img loading="lazy" draggable="false" src="'+src+'">'
         + '<button class="pe-gallery-del" onclick="removeGalleryImg('+num+')">×</button>'
-        + '<button class="pe-gallery-cover" onclick="event.stopPropagation();setGalleryCover('+num+')" title="썸네일로 지정 (에디토리얼 상세 페이지 최상단 큰 이미지)" aria-label="썸네일로 지정">◆</button>'
-        + '<button class="pe-gallery-thumb" onclick="event.stopPropagation();setGalleryThumb('+num+')" title="커버로 지정 (홈 카드 작은 이미지)"            aria-label="커버로 지정">★</button>'
-        + '<span class="pe-tag-cover">THUMB</span><span class="pe-tag-thumb">COVER</span>'
+        + '<button class="pe-gallery-thumb" onclick="event.stopPropagation();setGalleryThumb('+num+')" title="썸네일로 지정 (홈 카드 작은 이미지)" aria-label="썸네일로 지정">★</button>'
+        + '<span class="pe-tag-thumb">THUMB</span>'
         + '<span class="pe-gallery-num">#'+num+'</span>';
       grid.insertBefore(div, addBtn);
       _wireGalleryItemDrag(div);
       updateImgCredits();
       added++;
       _summarizeGalleryBatch(added, blocked);
-      // First image to land becomes the default thumb AND cover
-      // until the admin picks something else. Saves an extra click
-      // for the common case of "use the first photo for both roles".
-      var changed=false;
-      if(galleryThumbNum===null){ galleryThumbNum = num; changed=true; }
-      if(galleryCoverNum===null){ galleryCoverNum = num; changed=true; }
-      if(changed) _renderGalleryCoverState();
+      // First image to land becomes the default ★ THUMB until the
+      // admin picks something else. Saves an extra click for the
+      // common case of "use the first photo for the home card".
+      if(galleryThumbNum===null){ galleryThumbNum = num; _renderGalleryCoverState(); }
     };
 
     try {
@@ -2575,17 +2572,11 @@ function removeGalleryImg(num){
   // Remove from array
   galleryImages=galleryImages.filter(function(g){return g.num!==num;});
   // If the removed image was either pick, fall back to whatever
-  // remains first — keeps the post from saving without either role.
-  var rerender=false;
+  // remains first — keeps the post from saving without a thumb.
   if(galleryThumbNum===num){
     galleryThumbNum = galleryImages.length ? galleryImages[0].num : null;
-    rerender=true;
+    _renderGalleryCoverState();
   }
-  if(galleryCoverNum===num){
-    galleryCoverNum = galleryImages.length ? galleryImages[0].num : null;
-    rerender=true;
-  }
-  if(rerender) _renderGalleryCoverState();
   updateImgCredits();
 }
 
@@ -2595,21 +2586,19 @@ function setGalleryThumb(num){
   galleryThumbNum = num;
   _renderGalleryCoverState();
 }
-// Mark the given gallery image (by data-img-num) as the editorial
-// detail COVER (top hero image). Saved into the `cover_image` field.
-function setGalleryCover(num){
-  galleryCoverNum = num;
-  _renderGalleryCoverState();
-}
+// Stub kept for back-compat with any stale render path that might
+// still wire up a ◆ button; modern paths emit only ★ so this is
+// effectively dead code, but keeping it avoids ReferenceError if a
+// cached HTML chunk somewhere still calls it.
+function setGalleryCover(num){ /* no-op — ◆ removed from gallery */ }
 
 function _renderGalleryCoverState(){
-  // Single render pass updates BOTH thumb (★) and cover (◆) classes
-  // on every row so the visual outline + label stack always reflects
-  // current state.
+  // Single render pass updates the ★ thumb class on every row so
+  // the visual outline + label always reflects current state.
   document.querySelectorAll('#galleryGrid .pe-gallery-item').forEach(function(el){
     var n = parseInt(el.getAttribute('data-img-num'),10);
     el.classList.toggle('is-thumb', n === galleryThumbNum);
-    el.classList.toggle('is-cover', n === galleryCoverNum);
+    el.classList.remove('is-cover'); // ◆ no longer in use
   });
 }
 
@@ -3237,27 +3226,31 @@ function editEditorial(id){
     if (typeof toggleSchedule === 'function') toggleSchedule();
   }
 
-  // Populate thumbnail preview + show the X button so the admin can
-  // clear the saved cover. data-thumb-cleared resets to '0' since
-  // the admin hasn't taken any explicit clear action yet on this load.
+  // Populate the top "커버 이미지" preview + show the X button so the
+  // admin can clear the saved cover. data-thumb-cleared resets to '0'
+  // since the admin hasn't taken any explicit clear action yet on
+  // this load. (Element IDs still say "thumb*" historically but this
+  // section now drives the cover_image DB field.)
   var thumbPrev=document.getElementById('thumbPreview');
   var thumbBox=document.getElementById('thumbUploadBox');
   if(thumbBox){ thumbBox.classList.remove('has-thumb'); thumbBox.setAttribute('data-thumb-cleared','0'); }
-  if(thumbPrev&&(ed.thumbnail||ed.cover_image)){
-    var existingThumbUrl = ed.thumbnail || ed.cover_image;
-    thumbPrev.innerHTML='<img loading="lazy" src="'+esc(existingThumbUrl)+'" style="max-width:200px;max-height:250px;object-fit:cover"><div class="pe-upload-text" style="margin-top:8px">클릭하여 변경</div>';
+  if(thumbPrev&&(ed.cover_image||ed.thumbnail)){
+    // Prefer cover_image; fall back to thumbnail for legacy posts that
+    // only have the old field populated.
+    var existingCoverUrl = ed.cover_image || ed.thumbnail;
+    thumbPrev.innerHTML='<img loading="lazy" src="'+esc(existingCoverUrl)+'" style="max-width:200px;max-height:250px;object-fit:cover"><div class="pe-upload-text" style="margin-top:8px">클릭하여 변경</div>';
     if(thumbBox){
       thumbBox.classList.add('has-thumb');
       // Stash the saved URL so savePost can keep it when the admin
-      // edits without picking a new file (and no ★ gallery override).
-      thumbBox.dataset.existingUrl = existingThumbUrl;
+      // edits without picking a new file.
+      thumbBox.dataset.existingUrl = existingCoverUrl;
     }
   } else if(thumbBox){
     thumbBox.dataset.existingUrl = '';
   }
 
   // Populate gallery
-  galleryImages=[];galleryCount=0;galleryThumbNum=null;galleryCoverNum=null;
+  galleryImages=[];galleryCount=0;galleryThumbNum=null;
   var grid=document.getElementById('galleryGrid');
   var addBtn=grid?grid.querySelector('.pe-gallery-add'):null;
   if(grid)grid.querySelectorAll('.pe-gallery-item').forEach(function(el){el.remove();});
@@ -3276,33 +3269,26 @@ function editEditorial(id){
         div.innerHTML='<span class="pe-gallery-grip">⋮⋮</span>'
           +'<img loading="lazy" draggable="false" src="'+esc(url)+'">'
           +'<button class="pe-gallery-del" onclick="removeGalleryImg('+galleryCount+')">×</button>'
-          +'<button class="pe-gallery-cover" onclick="event.stopPropagation();setGalleryCover('+galleryCount+')" title="썸네일로 지정 (에디토리얼 상세 페이지 최상단 큰 이미지)" aria-label="썸네일로 지정">◆</button>'
-          +'<button class="pe-gallery-thumb" onclick="event.stopPropagation();setGalleryThumb('+galleryCount+')" title="커버로 지정 (홈 카드 작은 이미지)"            aria-label="커버로 지정">★</button>'
-          +'<span class="pe-tag-cover">THUMB</span><span class="pe-tag-thumb">COVER</span>'
+          +'<button class="pe-gallery-thumb" onclick="event.stopPropagation();setGalleryThumb('+galleryCount+')" title="썸네일로 지정 (홈 카드 작은 이미지)" aria-label="썸네일로 지정">★</button>'
+          +'<span class="pe-tag-thumb">THUMB</span>'
           +'<span class="pe-gallery-num">#'+galleryCount+'</span>';
         grid.insertBefore(div,addBtn);
         if(typeof _wireGalleryItemDrag === 'function') _wireGalleryItemDrag(div);
       }
     });
     updateImgCredits();
-    // QA — restore BOTH ★ THUMB (`thumbnail`) and ◆ COVER (`cover_image`)
-    // by matching the saved URLs against the loaded gallery items.
-    // Each role falls back to the first gallery image independently
-    // so a post that previously had only one of the two saved still
-    // ends up with both selected.
-    var savedThumbUrl = ed.thumbnail   || '';
-    var savedCoverUrl = ed.cover_image || '';
+    // QA — restore the ★ THUMB (`thumbnail`) by matching the saved
+    // URL against the loaded gallery items, falling back to the first
+    // image so an old post with no thumb saved still gets one.
+    // ◆ COVER picker was removed — cover_image now lives in the top
+    // 커버 이미지 section (loaded into thumbPreview earlier).
+    var savedThumbUrl = ed.thumbnail || '';
     if(savedThumbUrl){
       var thumbMatch = galleryImages.find(function(g){ return g.src === savedThumbUrl; });
       if(thumbMatch) galleryThumbNum = thumbMatch.num;
     }
-    if(savedCoverUrl){
-      var coverMatch = galleryImages.find(function(g){ return g.src === savedCoverUrl; });
-      if(coverMatch) galleryCoverNum = coverMatch.num;
-    }
-    if(galleryImages.length){
-      if(galleryThumbNum===null) galleryThumbNum = galleryImages[0].num;
-      if(galleryCoverNum===null) galleryCoverNum = galleryImages[0].num;
+    if(galleryImages.length && galleryThumbNum===null){
+      galleryThumbNum = galleryImages[0].num;
     }
     _renderGalleryCoverState();
   }
@@ -3615,12 +3601,12 @@ async function savePost(){
     }
 
     // Upload gallery images (only new files, keep existing URLs).
-    // Track which resolved URLs correspond to BOTH ★ THUMB and ◆ COVER
-    // so each pick survives even when its file was freshly uploaded
-    // in this very batch.
+    // Track which resolved URL corresponds to the ★ THUMB pick so it
+    // survives even when its file was freshly uploaded in this batch.
+    // ◆ COVER picker was removed — cover_image is uploaded via the
+    // dedicated top "커버 이미지" section instead, so no second pick.
     var galleryUrls=[];
     var thumbUrlPick=null;
-    var coverUrlPick=null;
     for(var i=0;i<galleryImages.length;i++){
       var g=galleryImages[i];
       var resolvedUrl=null;
@@ -3630,24 +3616,24 @@ async function savePost(){
       if(resolvedUrl){
         galleryUrls.push(resolvedUrl);
         if(g.num === galleryThumbNum) thumbUrlPick = resolvedUrl;
-        if(g.num === galleryCoverNum) coverUrlPick = resolvedUrl;
       }
     }
 
-    // QA — precedence (most explicit user intent wins):
-    //   1. thumbUrl       → admin uploaded a NEW file via the
-    //                       separate "썸네일 이미지" box this session.
-    //   2. existingThumb  → URL already saved on the post and NOT
-    //                       cleared by the X button this session.
-    //   3. thumbUrlPick   → ★ gallery pick.
-    //   4. galleryUrls[0] → first gallery image fallback.
-    // The previous order put the gallery ★ first, which silently
-    // ignored anything the admin uploaded into the separate thumb
-    // box — symptom: "변경한 이미지가 적용 안 된다".
-    var thumbBox = document.getElementById('thumbUploadBox');
-    var existingThumbUrl = (thumbBox && thumbBox.dataset && thumbBox.dataset.existingUrl) || '';
-    var finalThumb = thumbUrl || existingThumbUrl || thumbUrlPick || (galleryUrls.length ? galleryUrls[0] : null);
-    var finalCover = coverUrlPick || finalThumb; // cover falls back to thumb if not picked
+    // Field mapping (UI label ↔ DB field):
+    //   썸네일 (홈 카드 작은 이미지)         → DB `thumbnail`
+    //     ↳ source: ★ 갤러리 선택 → 첫 갤러리 이미지 (fallback)
+    //   커버   (에디토리얼 상세 최상단 큰 이미지) → DB `cover_image`
+    //     ↳ source: 상단 "커버 이미지" 단독 업로드 → 기존 저장값 → 썸네일 (fallback)
+    //
+    // Variable names below (thumbUrl / existingThumbUrl / thumbBox)
+    // historically referred to the separate top upload back when that
+    // slot meant "thumbnail". The slot now feeds cover_image instead;
+    // we keep the variable identifiers to avoid touching unrelated
+    // code paths but the values flow into finalCover.
+    var coverBox = document.getElementById('thumbUploadBox');
+    var existingCoverUrl = (coverBox && coverBox.dataset && coverBox.dataset.existingUrl) || '';
+    var finalThumb = thumbUrlPick || (galleryUrls.length ? galleryUrls[0] : null);
+    var finalCover = thumbUrl || existingCoverUrl || finalThumb;
 
     var descriptionVal=document.getElementById('postDescription')?document.getElementById('postDescription').value:'';
     // QA — respect the slug the admin typed. Falls back to an
