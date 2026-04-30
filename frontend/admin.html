@@ -164,6 +164,19 @@ tr:hover td{background:rgba(0,0,0,.02)}
 .pe-credit-role{width:170px;flex-shrink:0}
 .pe-credit-name,.pe-brand-name{flex:1}
 .pe-credit-ig,.pe-brand-ig{width:160px;flex-shrink:0}
+/* QA #97 — drag handle + bulk-select affordances on credit rows */
+.pe-credit-row{transition:opacity .15s,background .15s,box-shadow .15s;padding:2px 0}
+.pe-credit-row.dragging{opacity:.4}
+.pe-credit-row.drag-over{box-shadow:inset 0 2px 0 #111}
+.pe-credit-grip{flex-shrink:0;width:18px;align-self:stretch;display:flex;align-items:center;justify-content:center;color:var(--text3);cursor:grab;font-size:11px;letter-spacing:1px;user-select:none;font-family:'Montserrat',sans-serif;line-height:1}
+.pe-credit-grip:hover{color:var(--text)}
+.pe-credit-grip:active{cursor:grabbing}
+.pe-credit-check{flex-shrink:0;margin:10px 0 0;cursor:pointer}
+.pe-credits-toolbar{display:flex;align-items:center;gap:14px;padding:10px 12px;margin-bottom:10px;background:#fafafa;border:1px solid var(--border2);border-radius:2px;font-size:12px}
+.pe-credits-toolbar label{display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--text2);font-weight:500}
+.pe-credits-toolbar label input{cursor:pointer}
+.pe-credits-toolbar .pe-toolbar-spacer{flex:1}
+.pe-credits-toolbar .pe-toolbar-count{font-size:11px;color:var(--text3)}
 /* QA #96 — multi-role chip picker. The trigger looks like a normal text
    input (chips inside it), the popup is an absolutely-positioned
    checkbox list, and a custom-text input at the bottom of the popup
@@ -452,6 +465,14 @@ tr:hover td{background:rgba(0,0,0,.02)}
         <!-- 크레딧 정보 -->
         <div class="pe-section">
           <div class="pe-label">크레딧 정보</div>
+          <!-- QA #97 — bulk select + delete toolbar. Selecting any row's
+               checkbox enables the delete button + updates the count. -->
+          <div class="pe-credits-toolbar">
+            <label><input type="checkbox" id="creditsCheckAll" onchange="_onCreditCheckAll(this)"> 전체</label>
+            <button id="creditsBulkDel" type="button" class="btn btn-sm btn-red" onclick="bulkDeleteCredits()" disabled>선택 삭제 <span class="pe-toolbar-count" id="creditsSelCount">(0)</span></button>
+            <span class="pe-toolbar-spacer"></span>
+            <span class="pe-toolbar-count">⋮⋮ 핸들로 드래그하여 순서 변경</span>
+          </div>
           <div id="creditsArea">
             <!-- Initial credit row populated on DOMContentLoaded by _initFirstCreditRow() -->
           </div>
@@ -2554,7 +2575,13 @@ function _buildCreditRowInner(roles, name, ig){
     return '<label><input type="checkbox" value="'+esc(r)+'" onchange="_onCreditRoleCheckbox(this)">'+esc(r)+'</label>';
   }).join('');
   var rolesJson = esc(JSON.stringify(roles));
-  return '<div class="pe-credit-role-multi">'
+  // QA #97 — grip + checkbox at the start of every row. The grip is
+  // visually distinct so admins know it's the drag handle (the whole
+  // row is draggable, but the grip is the affordance). The checkbox
+  // drives the bulk-delete toolbar via _onCreditCheckChange.
+  return '<span class="pe-credit-grip" aria-hidden="true">⋮⋮</span>'
+    +'<input type="checkbox" class="pe-credit-check" onchange="_onCreditCheckChange()">'
+    +'<div class="pe-credit-role-multi">'
     +   '<div class="pe-role-trigger" data-roles="'+rolesJson+'" onclick="_toggleRoleMenu(this)" tabindex="0"></div>'
     +   '<div class="pe-role-menu" role="listbox">'
     +     checkboxes
@@ -2564,19 +2591,113 @@ function _buildCreditRowInner(roles, name, ig){
     + '</div>'
     +'<input class="pe-input pe-credit-name" placeholder="이름" value="'+esc(name)+'">'
     +'<input class="pe-input pe-credit-ig" placeholder="@instagram" value="'+esc(ig)+'">'
-    +'<button class="btn btn-sm btn-red" onclick="this.parentElement.remove()">삭제</button>';
+    +'<button class="btn btn-sm btn-red" onclick="_removeCreditRow(this)">삭제</button>';
 }
 
 function addCredit(){
   var area=document.getElementById('creditsArea');
   var row=document.createElement('div');
   row.className='pe-credit-row';
+  row.setAttribute('draggable','true');
   row.innerHTML=_buildCreditRowInner([], '', '');
   area.appendChild(row);
+  _wireCreditRowDrag(row);
   // Render chips for the freshly-attached trigger so the placeholder
   // shows ('역할 선택…') instead of an empty box.
   var trig=row.querySelector('.pe-role-trigger');
   if(trig) _renderRoleChips(trig);
+  _onCreditCheckChange();
+}
+
+// ── QA #97 — Drag & drop reorder + bulk select on credit rows ──────────
+// Mirror of the gallery-row pattern (_wireGalleryItemDrag): native HTML5
+// DnD with a grip cell that acts as the visual affordance. DOM order IS
+// the data order — savePost reads rows top-to-bottom, so reordering
+// requires no extra state plumbing.
+var _creditDragSrc=null;
+function _wireCreditRowDrag(row){
+  row.addEventListener('dragstart', function(e){
+    _creditDragSrc=row;
+    row.classList.add('dragging');
+    try { e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain', ''); } catch(_){}
+  });
+  row.addEventListener('dragend', function(){
+    row.classList.remove('dragging');
+    _creditDragSrc=null;
+    document.querySelectorAll('#creditsArea .pe-credit-row.drag-over').forEach(function(n){n.classList.remove('drag-over');});
+  });
+  row.addEventListener('dragover', function(e){
+    if(!_creditDragSrc || _creditDragSrc===row) return;
+    e.preventDefault();
+    try { e.dataTransfer.dropEffect='move'; } catch(_){}
+    row.classList.add('drag-over');
+  });
+  row.addEventListener('dragleave', function(){
+    row.classList.remove('drag-over');
+  });
+  row.addEventListener('drop', function(e){
+    e.preventDefault();
+    row.classList.remove('drag-over');
+    if(!_creditDragSrc || _creditDragSrc===row) return;
+    var area=document.getElementById('creditsArea');
+    if(!area) return;
+    // Insert above target if cursor is in upper half, else below — feels
+    // closer to the cursor than always-before-or-always-after.
+    var rect=row.getBoundingClientRect();
+    var insertAfter=(e.clientY-rect.top) > rect.height/2;
+    if(insertAfter){
+      if(row.nextSibling) area.insertBefore(_creditDragSrc, row.nextSibling);
+      else area.appendChild(_creditDragSrc);
+    } else {
+      area.insertBefore(_creditDragSrc, row);
+    }
+  });
+}
+
+function _removeCreditRow(btn){
+  var row=btn.closest('.pe-credit-row');
+  if(row) row.remove();
+  _onCreditCheckChange();
+}
+
+// Bulk select state — driven entirely off DOM checkboxes so there's no
+// shadow array to keep in sync. The toolbar reads counts on every change.
+function _onCreditCheckChange(){
+  var rows=document.querySelectorAll('#creditsArea .pe-credit-row');
+  var checks=document.querySelectorAll('#creditsArea .pe-credit-check');
+  var selected=0;
+  checks.forEach(function(c){ if(c.checked) selected++; });
+  var btn=document.getElementById('creditsBulkDel');
+  var countEl=document.getElementById('creditsSelCount');
+  var allCb=document.getElementById('creditsCheckAll');
+  if(btn) btn.disabled = (selected===0);
+  if(countEl) countEl.textContent = '('+selected+')';
+  if(allCb){
+    allCb.checked = (rows.length>0 && selected===rows.length);
+    // Indeterminate state when partially selected
+    allCb.indeterminate = (selected>0 && selected<rows.length);
+  }
+}
+
+function _onCreditCheckAll(masterCb){
+  var checks=document.querySelectorAll('#creditsArea .pe-credit-check');
+  checks.forEach(function(c){ c.checked = masterCb.checked; });
+  _onCreditCheckChange();
+}
+
+function bulkDeleteCredits(){
+  var checks=document.querySelectorAll('#creditsArea .pe-credit-check');
+  var selectedRows=[];
+  checks.forEach(function(c){
+    if(c.checked){
+      var row=c.closest('.pe-credit-row');
+      if(row) selectedRows.push(row);
+    }
+  });
+  if(selectedRows.length===0) return;
+  if(!confirm(selectedRows.length+'개의 크레딧을 삭제하시겠습니까?')) return;
+  selectedRows.forEach(function(r){ r.remove(); });
+  _onCreditCheckChange();
 }
 
 function addBrand(){
@@ -2885,11 +3006,14 @@ function editEditorial(id){
     entries.forEach(function(c){
       var row=document.createElement('div');
       row.className='pe-credit-row';
+      row.setAttribute('draggable','true');
       row.innerHTML=_buildCreditRowInner(c.roles, c.name, c.instagram);
       creditsArea.appendChild(row);
+      _wireCreditRowDrag(row);
       var trig=row.querySelector('.pe-role-trigger');
       if(trig) _renderRoleChips(trig);
     });
+    _onCreditCheckChange();
   }
 
   // Populate brands
