@@ -3,7 +3,19 @@
  * Handles multipart form parsing and Supabase Storage uploads
  */
 
-const formidable = require('formidable');
+// formidable v3 ships a function as the default export, but the CJS/ESM
+// interop in Vercel's bundler sometimes hands back the namespace object
+// instead — `formidable({...})` then throws "formidable is not a function"
+// (the bug surfaced in production as the mysterious "Upload failed").
+// Resolve to a callable in any of the three shapes the package can ship.
+const formidableLib = require('formidable');
+const formidable =
+  typeof formidableLib === 'function' ? formidableLib :
+  (formidableLib && (formidableLib.default || formidableLib.formidable)) ||
+  null;
+const IncomingFormCtor =
+  (formidableLib && (formidableLib.IncomingForm || (formidableLib.default && formidableLib.default.IncomingForm))) ||
+  null;
 const fs = require('fs');
 const path = require('path');
 const { supabaseAdmin } = require('./supabase');
@@ -15,12 +27,24 @@ const { supabaseAdmin } = require('./supabase');
 function parseForm(req, opts) {
   opts = opts || {};
   return new Promise((resolve, reject) => {
-    const form = formidable({
+    const config = {
       maxFileSize: opts.maxFileSize || 20 * 1024 * 1024, // 20MB default
       maxTotalFileSize: opts.maxTotalFileSize || (opts.maxFileSize ? opts.maxFileSize * 2 : 200 * 1024 * 1024),
       maxFiles: opts.maxFiles || 20,
       keepExtensions: true,
-    });
+    };
+    // Try the function-style factory first; fall back to the IncomingForm
+    // constructor, which is exposed in every formidable version we've
+    // shipped against. Throw a descriptive error when neither shape is
+    // available so the catch block upstream can surface it.
+    let form;
+    try {
+      if (typeof formidable === 'function') form = formidable(config);
+      else if (typeof IncomingFormCtor === 'function') form = new IncomingFormCtor(config);
+      else throw new Error('formidable export not callable; got ' + typeof formidableLib);
+    } catch (initErr) {
+      return reject(initErr);
+    }
 
     form.parse(req, (err, fields, files) => {
       if (err) reject(err);
