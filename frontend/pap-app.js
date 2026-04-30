@@ -3481,17 +3481,15 @@ window._papFilmAutoPlay = function(){
   // keys so card-render code can stay one path.
   function apiEditorialToLocal(e){
     var slug = e.slug || '';
-    // Two slots, two intents:
-    //   thumbnail  → small home-grid card image (img)
-    //   cover_image → big editorial-detail hero (hero)
-    // Each falls back to the other when one is missing so older
-    // posts that only filled one slot still render in both places.
-    var thumb = e.thumbnail   || e.cover_image || e.thumbnail_url || '';
-    var hero  = e.cover_image || e.thumbnail   || e.thumbnail_url || '';
+    // One COVER image fills both roles: home-grid card thumbnail AND
+    // editorial-detail hero (top of the page). The admin saves the
+    // same URL into both `thumbnail` and `cover_image`; we read
+    // either field to be tolerant of older posts that only wrote one.
+    var cover = e.thumbnail || e.cover_image || e.thumbnail_url || '';
     return {
       title: e.title || '',
-      img:   thumb,
-      hero:  hero,
+      img:   cover,
+      hero:  cover,
       date:  e.published_date || e.created_at || '',
       url:   slug ? ('/'+slug+'/') : ('/editorial/'+(e.id||'')),
       tags:  Array.isArray(e.tags) ? e.tags : (typeof e.tags==='string' ? e.tags.split(',').map(function(t){return t.trim();}).filter(Boolean) : []),

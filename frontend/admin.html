@@ -157,34 +157,19 @@ tr:hover td{background:rgba(0,0,0,.02)}
 .pe-gallery-item:hover .pe-gallery-del{opacity:1}
 .pe-gallery-item .pe-gallery-num{position:absolute;bottom:2px;left:4px;font-size:9px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6);background:rgba(0,0,0,.4);padding:2px 5px;border-radius:2px;z-index:2}
 .pe-gallery-item .pe-gallery-grip{position:absolute;top:2px;left:2px;font-size:11px;color:#fff;background:rgba(0,0,0,.4);padding:2px 5px;border-radius:2px;letter-spacing:1px;line-height:1;z-index:2;pointer-events:none}
-/* Admin can mark TWO different roles per gallery image:
-   ★ = card thumbnail (homepage grid, small image)
-   ◆ = hero / cover image (editorial detail page, big image)
-   They're independent — the same image can hold both, or each can
-   be a different photo. Different colors so the active selection
-   pair is unambiguous at a glance. */
-.pe-gallery-item .pe-gallery-cover,
-.pe-gallery-item .pe-gallery-hero{position:absolute;bottom:2px;width:22px;height:22px;background:rgba(0,0,0,.55);color:rgba(255,255,255,.55);border:none;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s,background .2s,color .2s;z-index:2;border-radius:2px;line-height:1;padding:0;font-family:inherit}
-.pe-gallery-item .pe-gallery-cover{right:2px}
-.pe-gallery-item .pe-gallery-hero{right:28px}
-.pe-gallery-item:hover .pe-gallery-cover,
-.pe-gallery-item:hover .pe-gallery-hero{opacity:1}
+/* Admin marks ONE gallery image as the COVER. That single image is
+   the homepage card thumbnail AND the editorial-detail hero — same
+   photo in both places (the standard magazine pattern: cover = top
+   image). Hover surfaces the ★ button; the active row shows a
+   yellow outline + COVER label so the current selection reads
+   instantly. */
+.pe-gallery-item .pe-gallery-cover{position:absolute;bottom:2px;right:2px;width:22px;height:22px;background:rgba(0,0,0,.55);color:rgba(255,255,255,.55);border:none;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s,background .2s,color .2s;z-index:2;border-radius:2px;line-height:1;padding:0;font-family:inherit}
+.pe-gallery-item:hover .pe-gallery-cover{opacity:1}
 .pe-gallery-item .pe-gallery-cover:hover{background:rgba(0,0,0,.85);color:#ffd43b}
-.pe-gallery-item .pe-gallery-hero:hover{background:rgba(0,0,0,.85);color:#4dabf7}
 .pe-gallery-item.is-cover{outline:2px solid #ffd43b;outline-offset:-2px}
 .pe-gallery-item.is-cover .pe-gallery-cover{opacity:1;background:#ffd43b;color:#000}
-.pe-gallery-item.is-hero{outline:2px solid #4dabf7;outline-offset:-2px}
-.pe-gallery-item.is-hero .pe-gallery-hero{opacity:1;background:#4dabf7;color:#fff}
-.pe-gallery-item.is-cover.is-hero{outline:2px solid #fff;box-shadow:0 0 0 1px #ffd43b inset, 0 0 0 4px #4dabf7 inset}
-/* Top-right label stack: HERO above, COVER below. Both can show on
-   one image when the admin picks the same photo for both roles. */
-.pe-gallery-item .pe-tag-cover,
-.pe-gallery-item .pe-tag-hero{position:absolute;right:2px;font-size:8px;font-weight:800;letter-spacing:.1em;padding:2px 5px;border-radius:2px;z-index:2;line-height:1;display:none}
-.pe-gallery-item .pe-tag-hero{top:2px;background:#4dabf7;color:#fff}
-.pe-gallery-item .pe-tag-cover{top:2px;background:#ffd43b;color:#000}
-.pe-gallery-item.is-hero .pe-tag-hero{display:block}
+.pe-gallery-item .pe-tag-cover{position:absolute;top:2px;right:2px;background:#ffd43b;color:#000;font-size:8px;font-weight:800;letter-spacing:.1em;padding:2px 5px;border-radius:2px;z-index:2;line-height:1;display:none}
 .pe-gallery-item.is-cover .pe-tag-cover{display:block}
-.pe-gallery-item.is-hero.is-cover .pe-tag-cover{top:18px} /* stack below hero */
 .pe-gallery-add{width:120px;height:150px;border:2px dashed var(--border2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:11px;color:var(--text3);font-weight:600;transition:all .2s;text-align:center;padding:8px}
 .pe-gallery-add:hover{border-color:rgba(0,0,0,.25);color:var(--text2)}
 
@@ -491,8 +476,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
               <span>🖼️ <strong>형식</strong> JPG · PNG · WebP</span>
               <span>📐 <strong>표시</strong> 4:5 박스에 contain (비율 무관, 잘리지 않음)</span>
               <span>↕️ <strong>정렬</strong> 카드를 드래그하여 순서 변경</span>
-              <span style="color:#b86b00">⭐ <strong>썸네일(★)</strong> 홈 카드 작은 이미지 — 우측하단 ★</span>
-              <span style="color:#0066cc">🟦 <strong>HERO(◆)</strong> 에디토리얼 상세 큰 이미지 — 우측하단 ◆</span>
+              <span style="color:#b86b00">⭐ <strong>커버 이미지(★)</strong> 홈 카드 + 에디토리얼 상세 페이지 최상단에 노출 — 카드 우측하단 ★ 클릭</span>
             </div>
           </div>
           <div class="pe-gallery" id="galleryGrid">
@@ -1651,7 +1635,6 @@ function _resetNewPostForm(){
   if(typeof galleryImages !== 'undefined') galleryImages = [];
   if(typeof galleryCount  !== 'undefined') galleryCount  = 0;
   if(typeof galleryCoverNum !== 'undefined') galleryCoverNum = null;
-  if(typeof galleryHeroNum  !== 'undefined') galleryHeroNum  = null;
   var grid = document.getElementById('galleryGrid');
   if(grid){
     grid.querySelectorAll('.pe-gallery-item').forEach(function(el){ el.remove(); });
@@ -2303,16 +2286,14 @@ function previewThumb(input){
 
 var galleryCount=0;
 var galleryImages=[];
-// QA — two independent picks per gallery:
-//   galleryCoverNum → ★ row used as the homepage CARD THUMBNAIL
-//                     (small image, persisted as `thumbnail`)
-//   galleryHeroNum  → ◆ row used as the editorial-detail HERO
-//                     (big top image, persisted as `cover_image`)
-// Both default to null and the first image takes the role until the
-// admin picks something else. Stored as data-img-num so reordering
-// doesn't drift the selection.
+// QA — single COVER pick per gallery. The starred (★) row drives both
+// the homepage card thumbnail (`thumbnail`) AND the editorial-detail
+// hero image (`cover_image`) — same photo in both places, mirroring
+// the magazine convention where the cover is the top image. Defaults
+// to null so the first uploaded image takes the role until the admin
+// picks something else; stored as data-img-num so reordering doesn't
+// drift the selection.
 var galleryCoverNum=null;
-var galleryHeroNum=null;
 
 // ── Editorial gallery upload constants (admin-side validation) ──────────────
 // QA #94 — bumped from 500KB to 2MB to match the editorial-quality budget
@@ -2437,22 +2418,18 @@ function addGallery(input){
       div.innerHTML = '<span class="pe-gallery-grip">⋮⋮</span>'
         + '<img loading="lazy" draggable="false" src="'+src+'">'
         + '<button class="pe-gallery-del" onclick="removeGalleryImg('+num+')">×</button>'
-        + '<button class="pe-gallery-hero"  onclick="event.stopPropagation();setGalleryHero('+num+')"  title="에디토리얼 상세 hero(큰 이미지)로 지정" aria-label="hero로 지정">◆</button>'
-        + '<button class="pe-gallery-cover" onclick="event.stopPropagation();setGalleryCover('+num+')" title="홈 카드 썸네일로 지정"            aria-label="썸네일로 지정">★</button>'
-        + '<span class="pe-tag-hero">HERO</span><span class="pe-tag-cover">COVER</span>'
+        + '<button class="pe-gallery-cover" onclick="event.stopPropagation();setGalleryCover('+num+')" title="커버 이미지로 지정 (홈 카드 + 상세 페이지 최상단)" aria-label="커버 이미지로 지정">★</button>'
+        + '<span class="pe-tag-cover">COVER</span>'
         + '<span class="pe-gallery-num">#'+num+'</span>';
       grid.insertBefore(div, addBtn);
       _wireGalleryItemDrag(div);
       updateImgCredits();
       added++;
       _summarizeGalleryBatch(added, blocked);
-      // First image to land becomes the default cover AND hero until
-      // the admin picks something else. Saves an extra click for the
-      // common case of "use the first photo for both roles".
-      var changed=false;
-      if(galleryCoverNum===null){ galleryCoverNum = num; changed=true; }
-      if(galleryHeroNum===null){  galleryHeroNum  = num; changed=true; }
-      if(changed) _renderGalleryCoverState();
+      // First image to land becomes the default cover until the admin
+      // picks something else. Saves an extra click for the common
+      // case of "cover = the first photo I uploaded".
+      if(galleryCoverNum===null){ galleryCoverNum = num; _renderGalleryCoverState(); }
     };
 
     try {
@@ -2476,19 +2453,12 @@ function removeGalleryImg(num){
   if(el) el.remove();
   // Remove from array
   galleryImages=galleryImages.filter(function(g){return g.num!==num;});
-  // If the removed image was a cover or hero pick, fall back to
-  // whatever remains first — keeps the post from saving without
-  // either role assigned.
-  var rerender=false;
+  // If the removed image was the chosen cover, fall back to whatever
+  // remains first — keeps the post from saving with no cover at all.
   if(galleryCoverNum===num){
     galleryCoverNum = galleryImages.length ? galleryImages[0].num : null;
-    rerender=true;
+    _renderGalleryCoverState();
   }
-  if(galleryHeroNum===num){
-    galleryHeroNum = galleryImages.length ? galleryImages[0].num : null;
-    rerender=true;
-  }
-  if(rerender) _renderGalleryCoverState();
   updateImgCredits();
 }
 
@@ -2500,19 +2470,10 @@ function setGalleryCover(num){
   _renderGalleryCoverState();
 }
 
-function setGalleryHero(num){
-  galleryHeroNum = num;
-  _renderGalleryCoverState();
-}
-
 function _renderGalleryCoverState(){
-  // Single render pass updates BOTH cover (★) and hero (◆) classes
-  // on every row so the visual outline + label stack always reflects
-  // current state — both pickers share this function.
   document.querySelectorAll('#galleryGrid .pe-gallery-item').forEach(function(el){
     var n = parseInt(el.getAttribute('data-img-num'),10);
     el.classList.toggle('is-cover', n === galleryCoverNum);
-    el.classList.toggle('is-hero',  n === galleryHeroNum);
   });
 }
 
@@ -3133,7 +3094,7 @@ function editEditorial(id){
   }
 
   // Populate gallery
-  galleryImages=[];galleryCount=0;galleryCoverNum=null;galleryHeroNum=null;
+  galleryImages=[];galleryCount=0;galleryCoverNum=null;
   var grid=document.getElementById('galleryGrid');
   var addBtn=grid?grid.querySelector('.pe-gallery-add'):null;
   if(grid)grid.querySelectorAll('.pe-gallery-item').forEach(function(el){el.remove();});
@@ -3152,33 +3113,24 @@ function editEditorial(id){
         div.innerHTML='<span class="pe-gallery-grip">⋮⋮</span>'
           +'<img loading="lazy" draggable="false" src="'+esc(url)+'">'
           +'<button class="pe-gallery-del" onclick="removeGalleryImg('+galleryCount+')">×</button>'
-          +'<button class="pe-gallery-hero"  onclick="event.stopPropagation();setGalleryHero('+galleryCount+')"  title="에디토리얼 상세 hero(큰 이미지)로 지정" aria-label="hero로 지정">◆</button>'
-          +'<button class="pe-gallery-cover" onclick="event.stopPropagation();setGalleryCover('+galleryCount+')" title="홈 카드 썸네일로 지정"            aria-label="썸네일로 지정">★</button>'
-          +'<span class="pe-tag-hero">HERO</span><span class="pe-tag-cover">COVER</span>'
+          +'<button class="pe-gallery-cover" onclick="event.stopPropagation();setGalleryCover('+galleryCount+')" title="커버 이미지로 지정 (홈 카드 + 상세 페이지 최상단)" aria-label="커버 이미지로 지정">★</button>'
+          +'<span class="pe-tag-cover">COVER</span>'
           +'<span class="pe-gallery-num">#'+galleryCount+'</span>';
         grid.insertBefore(div,addBtn);
         if(typeof _wireGalleryItemDrag === 'function') _wireGalleryItemDrag(div);
       }
     });
     updateImgCredits();
-    // QA — restore BOTH cover (★, thumbnail) and hero (◆, cover_image)
-    // by matching the saved URL against the loaded gallery items. Each
-    // role falls back to the first gallery image independently so a
-    // post that previously had only one of the two saved still ends up
-    // with both selected.
-    var savedCoverUrl = ed.thumbnail || '';
-    var savedHeroUrl  = ed.cover_image || '';
+    // QA — restore the cover selection. The saved post stores the same
+    // URL in both `thumbnail` and `cover_image`; either field is fine
+    // for matching. Falls back to the first gallery image if no match.
+    var savedCoverUrl = ed.thumbnail || ed.cover_image || '';
     if(savedCoverUrl){
-      var coverMatch = galleryImages.find(function(g){ return g.src === savedCoverUrl; });
-      if(coverMatch) galleryCoverNum = coverMatch.num;
+      var match = galleryImages.find(function(g){ return g.src === savedCoverUrl; });
+      if(match) galleryCoverNum = match.num;
     }
-    if(savedHeroUrl){
-      var heroMatch = galleryImages.find(function(g){ return g.src === savedHeroUrl; });
-      if(heroMatch) galleryHeroNum = heroMatch.num;
-    }
-    if(galleryImages.length){
-      if(galleryCoverNum===null) galleryCoverNum = galleryImages[0].num;
-      if(galleryHeroNum===null)  galleryHeroNum  = galleryImages[0].num;
+    if(galleryCoverNum===null && galleryImages.length){
+      galleryCoverNum = galleryImages[0].num;
     }
     _renderGalleryCoverState();
   }
@@ -3491,12 +3443,11 @@ async function savePost(){
     }
 
     // Upload gallery images (only new files, keep existing URLs).
-    // We track which uploaded URL corresponds to BOTH galleryCoverNum
-    // and galleryHeroNum so the chosen cover/hero survive even when
-    // their files are freshly uploaded in this batch.
+    // Track which resolved URL corresponds to galleryCoverNum so the
+    // ★ cover survives even when its file is freshly uploaded in
+    // this batch.
     var galleryUrls=[];
     var coverUrl=null;
-    var heroUrl=null;
     for(var i=0;i<galleryImages.length;i++){
       var g=galleryImages[i];
       var resolvedUrl=null;
@@ -3506,17 +3457,15 @@ async function savePost(){
       if(resolvedUrl){
         galleryUrls.push(resolvedUrl);
         if(g.num === galleryCoverNum) coverUrl = resolvedUrl;
-        if(g.num === galleryHeroNum)  heroUrl  = resolvedUrl;
       }
     }
 
-    // QA — two independent slots:
-    //   thumbnail (★ pick) → home/grid card image
-    //   cover_image (◆ pick) → editorial-detail HERO image
-    // Each falls back through its own preference chain so the post
-    // never saves blank in either slot.
-    var finalThumbnail = coverUrl || thumbUrl || (galleryUrls.length ? galleryUrls[0] : null);
-    var finalCoverImg  = heroUrl  || finalThumbnail; // hero falls back to thumbnail when not picked
+    // QA — single ★ COVER drives BOTH slots: it's the home-card
+    // thumbnail AND the editorial-detail hero image. Same URL in
+    // both fields keeps the magazine "cover = top image" pattern.
+    // Precedence: ★ pick → separate thumbInput upload (legacy) →
+    // first gallery image (so the post never saves blank).
+    var finalCover = coverUrl || thumbUrl || (galleryUrls.length ? galleryUrls[0] : null);
 
     var descriptionVal=document.getElementById('postDescription')?document.getElementById('postDescription').value:'';
     var payload={
@@ -3527,8 +3476,8 @@ async function savePost(){
       fashion:fashion,
       issue:subtitle||null,
       url:videoUrl||null,
-      thumbnail:finalThumbnail||undefined,
-      cover_image:finalCoverImg||undefined,
+      thumbnail:finalCover||undefined,
+      cover_image:finalCover||undefined,
       gallery:galleryUrls.length?galleryUrls:undefined,
       status:isPublished?'published':'draft',
       published_date:isPublished?new Date().toISOString():null,
