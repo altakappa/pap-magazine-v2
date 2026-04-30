@@ -1317,7 +1317,13 @@ async function uploadFile(file){
   // gives the admin something actionable instead of "Upload failed".
   var msg = res.error || ('HTTP '+r.status);
   if(res.detail) msg += ' — ' + res.detail;
-  if(res.file)   msg += ' ('+res.file+')';
+  if(res.supabaseStatus || res.supabaseError){
+    var supa = '';
+    if(res.supabaseError)  supa += res.supabaseError;
+    if(res.supabaseStatus) supa += (supa ? ' ' : '') + res.supabaseStatus;
+    if(supa) msg += ' [Supabase: '+supa+']';
+  }
+  if(res.file) msg += ' ('+res.file+(res.fileSize ? ', '+(res.fileSize/1024).toFixed(0)+'KB' : '')+')';
   // Log full response for debugging (admin DevTools)
   console.error('[uploadFile] failed', r.status, res);
   throw new Error(msg);

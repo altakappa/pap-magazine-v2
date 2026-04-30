@@ -73,16 +73,26 @@ module.exports = async function handler(req, res) {
 
       if (uploadError) {
         // QA #100 follow-up — surface the actual Supabase error to the
-        // admin instead of silently continuing. The previous behaviour
-        // (continue → empty data array → client throws generic 'Upload
-        // failed') hid every real cause: bucket misconfiguration, RLS
-        // policy, name collision, etc. Now the admin sees the precise
-        // reason and can act on it.
-        console.error('Storage upload error:', uploadError);
+        // admin instead of silently continuing. Supabase StorageError
+        // carries `statusCode` + `error` (the human label like "Bucket
+        // not found", "Duplicate", "Payload too large") on top of
+        // `message`; without all three we can't distinguish a bucket
+        // misconfiguration from an RLS denial from a quota hit.
+        console.error('Storage upload error (full):', JSON.stringify(uploadError, Object.getOwnPropertyNames(uploadError)));
+        var supaStatus = uploadError.statusCode || uploadError.status || null;
+        var supaLabel  = uploadError.error || uploadError.name || null;
+        var supaMsg    = uploadError.message || String(uploadError);
+        var combined   = supaMsg;
+        if (supaStatus && !combined.includes(String(supaStatus))) combined = supaStatus + ' ' + combined;
+        if (supaLabel  && !combined.includes(supaLabel))          combined = supaLabel  + ': ' + combined;
         return res.status(500).json({
           error: 'Storage upload failed',
-          detail: uploadError.message || String(uploadError),
-          file: file.originalFilename || null
+          detail: combined,
+          supabaseStatus: supaStatus,
+          supabaseError: supaLabel,
+          file: file.originalFilename || null,
+          fileSize: file.size,
+          mime: file.mimetype
         });
       }
 
