@@ -3475,17 +3475,157 @@ window._papFilmAutoPlay = function(){
     });
   }
 
+  // Convert Supabase editorial record → hardcoded edData format.
+  // editorials.json uses long keys (title/img/date/url/tags) instead of
+  // the short keys films/articles use (t/th/d). We keep the same long
+  // keys so card-render code can stay one path.
+  function apiEditorialToLocal(e){
+    var slug = e.slug || '';
+    return {
+      title: e.title || '',
+      img:   e.thumbnail || e.cover_image || e.thumbnail_url || '',
+      date:  e.published_date || e.created_at || '',
+      url:   slug ? ('/'+slug+'/') : ('/editorial/'+(e.id||'')),
+      tags:  Array.isArray(e.tags) ? e.tags : (typeof e.tags==='string' ? e.tags.split(',').map(function(t){return t.trim();}).filter(Boolean) : []),
+      _api_id: e.id,
+      // Carry the rest through so editorial-detail rendering can lift
+      // credits / fashion / gallery off the same record without a
+      // second fetch.
+      credits:  Array.isArray(e.credits) ? e.credits : e.credits || [],
+      fashion:  e.fashion || null,
+      gallery:  Array.isArray(e.gallery) ? e.gallery : [],
+      description: e.description || ''
+    };
+  }
+
+  // edData merger — keys differ from films/articles ('title' instead of
+  // 't'), so reuse the same dedupe logic but read the editorial-shaped
+  // key directly. API items win when titles collide so admin updates
+  // override the static JSON snapshot.
+  function mergeEditorials(apiItems, localItems){
+    var seen = {};
+    var merged = [];
+    apiItems.forEach(function(item){
+      var key = (item.title || '').trim().toLowerCase();
+      if(!key || seen[key]) return;
+      seen[key] = true;
+      merged.push(item);
+    });
+    localItems.forEach(function(item){
+      var key = (item.title || '').trim().toLowerCase();
+      if(key && !seen[key]){
+        seen[key] = true;
+        merged.push(item);
+      }
+    });
+    return merged;
+  }
+
+  // Also feed edDetails (the per-editorial detail map keyed by title)
+  // so opening an admin-created editorial card surfaces its credits,
+  // gallery, etc. instead of falling through to the placeholder.
+  function _populateEdDetailsFromApi(apiEd){
+    if(typeof edDetails === 'undefined') return;
+    var key = apiEd.title;
+    if(!key) return;
+    // Don't clobber a richer hand-curated entry from editorial-details.json
+    if(edDetails[key]) return;
+    edDetails[key] = {
+      issue:   '',
+      thumb:   apiEd.img || '',
+      images:  apiEd.gallery && apiEd.gallery.length ? apiEd.gallery : (apiEd.img ? [apiEd.img] : []),
+      // Convert {roles[], name, instagram} array → {r, h:[{n,id}]} display shape.
+      // Falls back gracefully when credits are dict / display-array / empty.
+      credits: (function(raw){
+        if(typeof _normalizeCreditsForDisplay === 'function') return _normalizeCreditsForDisplay(raw);
+        return Array.isArray(raw) ? raw : [];
+      })(apiEd.credits),
+      fashion: (apiEd.fashion && Array.isArray(apiEd.fashion.brands))
+        ? apiEd.fashion.brands.map(function(b){ return b.instagram || b.name || ''; }).filter(Boolean)
+        : [],
+      desc: apiEd.description || ''
+    };
+  }
+
+  function syncEditorials(){
+    if(typeof edData==='undefined') return;
+    fetchAll('/editorials',apiEditorialToLocal,function(apiEds){
+      if(apiEds.length===0) return;
+
+      // 1. Update the in-memory edData array (powers search + edAllOverlay)
+      var merged = mergeEditorials(apiEds, edData);
+      edData.length = 0;
+      merged.forEach(function(e){
+        edData.push(e);
+        _populateEdDetailsFromApi(e);
+      });
+
+      // 2. Prepend the API-only editorials into the home grid. The
+      //    grid is HARDCODED in index.html (one <div.ed-row-card> per
+      //    editorial) — the static markup is built at deploy time and
+      //    contains every editorial that existed when the snapshot
+      //    was taken. Admin uploads after that snapshot live only in
+      //    the DB, so without this DOM injection they're invisible
+      //    on the public site.
+      var track = document.querySelector('.ed-row-track');
+      if(track){
+        // Build a set of titles already rendered in the static markup
+        // so we don't insert a duplicate when an editorial happens to
+        // be in BOTH the static HTML and the API response.
+        var existingTitles = {};
+        track.querySelectorAll('.ed-row-card').forEach(function(c){
+          var t = (c.querySelector('.ed-row-card-title')||{}).textContent || '';
+          if(t) existingTitles[t.trim().toLowerCase()] = true;
+        });
+        // Insert API-only editorials at the FRONT of the track,
+        // newest first. apiEds came back from the API in the order
+        // the API returns them (typically published_date desc), so
+        // we walk it in reverse and insertBefore so the first
+        // returned ends up first in the DOM.
+        for(var i=apiEds.length-1; i>=0; i--){
+          var e = apiEds[i];
+          var key = (e.title||'').trim().toLowerCase();
+          if(!key || existingTitles[key]) continue;
+          if(!e.img) continue; // a thumbnail-less card would render broken
+          var card = document.createElement('div');
+          card.className = 'ed-row-card';
+          card.setAttribute('data-tags', Array.isArray(e.tags) ? e.tags.join(',') : '');
+          card.setAttribute('data-api-injected', '1');
+          // Use double quotes inside the JS string to avoid escaping
+          // issues with editorial titles that contain apostrophes.
+          var safeTitle = (e.title||'').replace(/"/g, '&quot;');
+          var safeImg   = (e.img||'').replace(/"/g, '&quot;');
+          card.setAttribute('onclick', 'openEditorial("'+safeTitle+'","'+safeImg+'")');
+          var dateLabel = e.date ? (e.date.split('T')[0]) : '';
+          var catLabel = 'EDITORIAL' + (dateLabel ? (' - ' + dateLabel) : '');
+          card.innerHTML =
+            '<div class="ed-row-card-img"><img loading="lazy" src="'+safeImg+'" alt="'+safeTitle+'" onerror="if(window.edImgError)edImgError(this)"></div>' +
+            '<div class="ed-row-card-info"><div class="ed-row-card-cat">'+catLabel+'</div><div class="ed-row-card-title">'+(e.title||'').toUpperCase()+'</div></div>';
+          track.insertBefore(card, track.firstChild);
+        }
+      }
+
+      // 3. If the all-editorials overlay has already built itself,
+      //    rebuild it so it reflects the merged edData too.
+      if(typeof _renderEdAllPage === 'function' && typeof edAllBuilt !== 'undefined' && edAllBuilt){
+        try { _renderEdAllPage(); } catch(_){}
+      }
+    });
+  }
+
   // Run sync after DOM is ready
   if(document.readyState==='loading'){
     document.addEventListener('DOMContentLoaded',function(){
       syncFilms();
       syncArticles();
+      syncEditorials();
     });
   } else {
     // DOM already loaded — small delay to let page scripts initialize first
     setTimeout(function(){
       syncFilms();
       syncArticles();
+      syncEditorials();
     },100);
   }
 })();
