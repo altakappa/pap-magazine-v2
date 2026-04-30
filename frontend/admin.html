@@ -1613,6 +1613,17 @@ async function deleteMemberFromModal(){
 // Auto-load members when users tab is shown
 function go(id,el,opts){
   opts = opts || {};
+  // QA — sidebar links are `<a href="#" onclick="go(...)">`, which
+  // means the browser's default action follows href="#" AFTER our
+  // onclick runs, wiping `#admin/<id>` back to plain `#` and firing
+  // a popstate that bounced us to home. Cancel that default by
+  // pulling the live event off `window.event` (available inside
+  // inline onclick handlers in every shipping browser) so the URL
+  // we just pushed is what the address bar actually keeps.
+  try {
+    var _ev = (typeof window !== 'undefined' && window.event) ? window.event : null;
+    if(_ev && _ev.preventDefault) _ev.preventDefault();
+  } catch(_){}
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
   var tab=document.getElementById('t-'+id);
   if(tab)tab.classList.add('on');
@@ -1633,6 +1644,14 @@ function go(id,el,opts){
     var newHash = '#admin/' + id;
     if(window.location.hash !== newHash){
       try { history.pushState({admin:id}, '', newHash); } catch(_){}
+      // Defensive re-assert: if any default link action sneaks in
+      // after our handler returns and rewrites the hash to '#', put
+      // it back without spawning an extra history entry.
+      setTimeout(function(){
+        if(window.location.hash !== newHash){
+          try { history.replaceState({admin:id}, '', newHash); } catch(_){}
+        }
+      }, 0);
     }
   }
   // Auto-load data when switching tabs
@@ -1674,14 +1693,15 @@ function _initAdminFromHash(){
   return true;
 }
 window.addEventListener('popstate', function(){
-  // Back / forward — switch to whatever section the new hash names.
-  // Default back to 'home' when the hash was cleared (e.g. user hit
-  // back past the admin's first push).
+  // Back / forward — only react when the new hash names a valid
+  // admin section. If the hash is empty, '#', or anything outside
+  // the admin namespace we leave the visible tab alone. Earlier
+  // versions force-redirected to 'home' here, which combined with
+  // the sidebar's `href="#"` default action made every click bounce
+  // back to the home tab right after rendering the requested one.
   var h = window.location.hash || '';
   if(h.indexOf('#admin/') === 0){
     _initAdminFromHash();
-  } else {
-    go('home', null, {skipHistory: true});
   }
 });
 // Run after the page's existing init has wired everything up so the
