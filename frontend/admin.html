@@ -582,6 +582,22 @@ tr:hover td{background:rgba(0,0,0,.02)}
             <label class="pe-check"><input type="checkbox"> 추천 (Featured)</label>
             <label class="pe-check"><input type="checkbox" id="postSchedule" onchange="toggleSchedule()"> 예약 게시</label>
           </div>
+
+          <!-- 발행 날짜 (수동 설정) — 비워두면 저장 시점이 자동으로 사용됨 -->
+          <div id="publishDateArea" style="margin-top:12px;padding:12px;background:var(--surface);border:1px solid var(--border)">
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+              <div class="pe-label" style="margin-bottom:0">발행 날짜</div>
+              <span class="pe-opt">선택 — 비워두면 저장 시점</span>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="date" class="pe-input" id="publishDate" style="flex:1">
+              <input type="time" class="pe-input" id="publishTime" style="width:120px">
+              <button type="button" class="btn btn-sm" onclick="_setPublishDateNow()" title="지금 시각으로">지금</button>
+              <button type="button" class="btn btn-sm" onclick="_clearPublishDate()" title="비우기 (저장 시점 자동 사용)">초기화</button>
+            </div>
+            <div class="pe-hint" style="margin-top:6px">에디토리얼 상단/카드의 표시 날짜로 사용됩니다. 과거 날짜로 백데이트하거나 미래 날짜로도 설정 가능 (단, 미래 날짜는 예약 게시와 별개로 표시 날짜만 변경됩니다).</div>
+          </div>
+
           <div id="scheduleArea" style="display:none;margin-top:12px;padding:12px;background:var(--surface);border:1px solid var(--border)">
             <div class="pe-label" style="margin-bottom:6px">예약 일시</div>
             <div style="display:flex;gap:8px">
@@ -1828,6 +1844,11 @@ function _resetNewPostForm(){
   if(schedTime) schedTime.value = '';
   var schedArea = document.getElementById('scheduleArea');
   if(schedArea) schedArea.style.display = 'none';
+  // 7b. Manual publish-date picker — empty means "use 저장 시점"
+  var pubDateE = document.getElementById('publishDate');
+  if(pubDateE) pubDateE.value = '';
+  var pubTimeE = document.getElementById('publishTime');
+  if(pubTimeE) pubTimeE.value = '';
 
   // 8. Category select back to 'editorial'
   var catSelect = document.getElementById('postCategory');
@@ -3074,6 +3095,41 @@ function toggleSchedule(){
   }
 }
 
+// ── Manual publish-date controls ─────────────────────────────────────────────
+// The 발행 날짜 picker overrides the auto "now" timestamp so admin can
+// backdate or future-date a post's display timestamp without affecting
+// the schedule-publish behaviour. Empty inputs → savePost falls back to
+// new Date() at save time.
+function _setPublishDateNow(){
+  var d = new Date();
+  var pad = function(n){ return n<10 ? '0'+n : ''+n; };
+  var dateEl = document.getElementById('publishDate');
+  var timeEl = document.getElementById('publishTime');
+  if(dateEl) dateEl.value = d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+  if(timeEl) timeEl.value = pad(d.getHours())+':'+pad(d.getMinutes());
+}
+function _clearPublishDate(){
+  var dateEl = document.getElementById('publishDate');
+  var timeEl = document.getElementById('publishTime');
+  if(dateEl) dateEl.value = '';
+  if(timeEl) timeEl.value = '';
+}
+// Compose the saved ISO timestamp from the two pickers. Returns null
+// when the date input is empty so savePost can pick its own fallback.
+// Time defaults to 09:00 when only the date is filled — keeps the
+// resulting timestamp visible in the user's local day.
+function _readPublishDate(){
+  var dateEl = document.getElementById('publishDate');
+  var timeEl = document.getElementById('publishTime');
+  var dv = (dateEl && dateEl.value || '').trim();
+  if(!dv) return null;
+  var tv = (timeEl && timeEl.value || '').trim() || '09:00';
+  var iso = dv + 'T' + tv + ':00';
+  var parsed = new Date(iso);
+  if(isNaN(parsed.getTime())) return null;
+  return parsed.toISOString();
+}
+
 // ======== DASHBOARD STATS ========
 // Render a simple SVG line+area chart for daily counts. `series` is [{date,count}, ...].
 function renderTrendChart(svg, series){
@@ -3293,6 +3349,24 @@ function editEditorial(id){
       } catch(e) {}
     }
     if (typeof toggleSchedule === 'function') toggleSchedule();
+  }
+
+  // Pre-fill the manual 발행 날짜 picker with the post's saved
+  // published_date so editing doesn't silently shift the timestamp
+  // forward to "now" on every save.
+  var pubDateEl = document.getElementById('publishDate');
+  var pubTimeEl = document.getElementById('publishTime');
+  if(pubDateEl) pubDateEl.value = '';
+  if(pubTimeEl) pubTimeEl.value = '';
+  if(ed.published_date){
+    try {
+      var pd = new Date(ed.published_date);
+      if(!isNaN(pd.getTime())){
+        var _pad = function(n){ return n < 10 ? '0' + n : '' + n; };
+        if(pubDateEl) pubDateEl.value = pd.getFullYear() + '-' + _pad(pd.getMonth()+1) + '-' + _pad(pd.getDate());
+        if(pubTimeEl) pubTimeEl.value = _pad(pd.getHours()) + ':' + _pad(pd.getMinutes());
+      }
+    } catch(e) {}
   }
 
   // Populate the top "커버 이미지" preview + show the X button so the
@@ -3740,7 +3814,15 @@ async function savePost(){
       cover_image:finalCover||undefined,
       gallery:galleryUrls.length?galleryUrls:undefined,
       status:isPublished?'published':'draft',
-      published_date:isPublished?new Date().toISOString():null,
+      // Manual publish date wins over the auto "now" timestamp.
+      // _readPublishDate() returns null when the picker is empty, in
+      // which case we fall back to the previous behaviour (저장 시점).
+      // Drafts (!isPublished) keep null unless admin explicitly set one.
+      published_date: (function(){
+        var manual = (typeof _readPublishDate === 'function') ? _readPublishDate() : null;
+        if(manual) return manual;
+        return isPublished ? new Date().toISOString() : null;
+      })(),
       description:descriptionVal||null,
       scheduled_publish_at: scheduledAt
     };
