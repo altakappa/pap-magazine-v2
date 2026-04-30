@@ -405,9 +405,9 @@ tr:hover td{background:rgba(0,0,0,.02)}
           <div class="pe-gallery-guideline">
             <strong>업로드 가이드라인</strong>
             <div class="pe-gallery-guideline-row">
-              <span>📐 <strong>비율</strong> 4:5 권장 (1080×1350px)</span>
               <span>💾 <strong>용량</strong> 1장당 최대 2MB</span>
               <span>🖼️ <strong>형식</strong> JPG · PNG · WebP</span>
+              <span>📐 <strong>표시</strong> 4:5 박스에 contain (비율 무관, 잘리지 않음)</span>
               <span>↕️ <strong>정렬</strong> 카드를 드래그하여 순서 변경</span>
             </div>
           </div>
@@ -2137,8 +2137,10 @@ var galleryImages=[];
 // exported 2000px JPEG at ~85% quality through; anything bigger is almost
 // certainly an unprocessed export and gets blocked with a clear message.
 var GALLERY_MAX_BYTES = 2 * 1024 * 1024;        // 2MB per image
-var GALLERY_RECOMMENDED_RATIO = 4/5;            // 0.8 — 4:5 portrait
-var GALLERY_RATIO_TOLERANCE = 0.08;             // ±0.08 from 0.8 → 0.72–0.88
+// QA #95 — aspect-ratio constraint at upload time was removed. The 4:5
+// shape now lives purely in the FRONTEND display layer (.ed-gallery-item
+// uses aspect-ratio:4/5 + object-fit:contain) so any source ratio uploads
+// fine and is letterboxed into the 4:5 box without cropping.
 
 function _galleryFeedback(msg, kind){
   var el=document.getElementById('galleryUploadFeedback');
@@ -2162,18 +2164,6 @@ function _validateGalleryFile(file){
   return {ok:true, blocked:false, message:''};
 }
 
-function _checkAspectRatio(src, callback){
-  // Async — check 4:5 ratio after image loads. Doesn't block upload, just warns.
-  var img = new Image();
-  img.onload = function(){
-    var r = img.naturalWidth / img.naturalHeight;
-    var dev = Math.abs(r - GALLERY_RECOMMENDED_RATIO);
-    callback({ratio: r, deviation: dev, isClose: dev <= GALLERY_RATIO_TOLERANCE});
-  };
-  img.onerror = function(){ callback({ratio: 0, deviation: 1, isClose: false}); };
-  img.src = src;
-}
-
 // QA #85 — Rewritten with clearer per-file state isolation. Each file
 // validates and reads INDEPENDENTLY: a single blocked file no longer
 // pollutes the success path of valid files in the same or subsequent
@@ -2184,15 +2174,17 @@ function _checkAspectRatio(src, callback){
 //   3. For each file: validate size → if blocked, increment counter and
 //      continue; if valid, read async then insert into DOM.
 //   4. Summarize at the end of validation pass AND each async completion.
-function _summarizeGalleryBatch(added, blocked, ratioWarn){
+function _summarizeGalleryBatch(added, blocked){
+  // QA #95 — removed the ratio-warn arm. Aspect ratio is no longer
+  // evaluated at upload, so the only signal we surface here is added vs
+  // blocked-by-size.
   var msgs=[];
-  if(added>0)       msgs.push(added+'장 추가됨');
-  if(blocked>0)     msgs.push(blocked+'장 차단됨 (2MB 초과)');
-  if(ratioWarn>0)   msgs.push(ratioWarn+'장 비율 권장 미달 (4:5)');
+  if(added>0)   msgs.push(added+'장 추가됨');
+  if(blocked>0) msgs.push(blocked+'장 차단됨 (2MB 초과)');
   var kind = (blocked>0 && added===0) ? 'error'
-           : (added>0  && blocked===0 && ratioWarn===0) ? 'ok'
-           : (blocked>0 || ratioWarn>0) ? 'warn'
-           : 'info';
+           : (added>0  && blocked===0) ? 'ok'
+           : (blocked>0)                ? 'warn'
+           :                              'info';
   _galleryFeedback(msgs.join(' · '), kind);
 }
 
@@ -2217,14 +2209,15 @@ function addGallery(input){
   // Per-batch counters — independent of any other batch.
   var added = 0;
   var blocked = 0;
-  var ratioWarn = 0;
 
   files.forEach(function(file){
-    // STEP 1 — synchronous validation (size only)
+    // STEP 1 — synchronous validation (size only). QA #95 confirmed: NO
+    // aspect-ratio gate at this stage. The frontend layer (.ed-gallery-item)
+    // contains any ratio into a 4:5 box at display time.
     var v = _validateGalleryFile(file);
     if(!v.ok){
       blocked++;
-      _summarizeGalleryBatch(added, blocked, ratioWarn);
+      _summarizeGalleryBatch(added, blocked);
       // Skip this file. We do NOT abort the loop — other files in the
       // same batch may still be valid and must be uploaded normally.
       return;
@@ -2241,7 +2234,7 @@ function addGallery(input){
       galleryCount--;
       blocked++;
       _galleryFeedback('"'+file.name+'" 파일을 읽을 수 없습니다.', 'error');
-      _summarizeGalleryBatch(added, blocked, ratioWarn);
+      _summarizeGalleryBatch(added, blocked);
     };
 
     reader.onload = function(e){
@@ -2266,18 +2259,7 @@ function addGallery(input){
       _wireGalleryItemDrag(div);
       updateImgCredits();
       added++;
-      _summarizeGalleryBatch(added, blocked, ratioWarn);
-
-      // STEP 3 — non-blocking aspect-ratio check. The image is ALREADY
-      // added; this purely surfaces a soft warning if the ratio strays
-      // from the 4:5 recommendation.
-      _checkAspectRatio(src, function(info){
-        if(!info || info.isClose) return;
-        ratioWarn++;
-        div.style.outline = '2px solid rgba(184,107,0,.6)';
-        div.title = '비율 권장 (4:5)에서 벗어남 — 현재 ' + info.ratio.toFixed(2);
-        _summarizeGalleryBatch(added, blocked, ratioWarn);
-      });
+      _summarizeGalleryBatch(added, blocked);
     };
 
     try {
@@ -2286,7 +2268,7 @@ function addGallery(input){
       galleryCount--;
       blocked++;
       _galleryFeedback('"'+file.name+'" 파일 처리 중 오류: '+(err && err.message || err), 'error');
-      _summarizeGalleryBatch(added, blocked, ratioWarn);
+      _summarizeGalleryBatch(added, blocked);
     }
   });
 
