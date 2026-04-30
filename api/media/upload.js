@@ -72,8 +72,18 @@ module.exports = async function handler(req, res) {
         });
 
       if (uploadError) {
-        console.error('Upload error:', uploadError);
-        continue;
+        // QA #100 follow-up — surface the actual Supabase error to the
+        // admin instead of silently continuing. The previous behaviour
+        // (continue → empty data array → client throws generic 'Upload
+        // failed') hid every real cause: bucket misconfiguration, RLS
+        // policy, name collision, etc. Now the admin sees the precise
+        // reason and can act on it.
+        console.error('Storage upload error:', uploadError);
+        return res.status(500).json({
+          error: 'Storage upload failed',
+          detail: uploadError.message || String(uploadError),
+          file: file.originalFilename || null
+        });
       }
 
       const { data: urlData } = supabaseAdmin.storage
@@ -90,8 +100,15 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({ data: uploaded });
   } catch (err) {
+    // QA #100 follow-up — return the actual error detail (not just
+    // "Upload failed") so the admin sees the real cause: formidable
+    // size limit, malformed multipart, missing supabase credentials,
+    // network blip, etc. Stack trace stays in the server log only.
     console.error('Media upload error:', err);
-    return res.status(500).json({ error: 'Upload failed' });
+    return res.status(500).json({
+      error: 'Upload failed',
+      detail: (err && err.message) || String(err)
+    });
   }
 };
 
