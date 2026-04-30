@@ -1609,12 +1609,30 @@ async function deleteMemberFromModal(){
 }
 
 // Auto-load members when users tab is shown
-function go(id,el){
+function go(id,el,opts){
+  opts = opts || {};
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
   var tab=document.getElementById('t-'+id);
   if(tab)tab.classList.add('on');
   document.querySelectorAll('.sb a').forEach(a=>a.classList.remove('on'));
-  if(el) el.classList.add('on');
+  // QA — when entering via URL-hash (refresh / back-forward) the
+  // caller can't pass `el`. Fall back to the matching sidebar anchor
+  // so the highlighted item still tracks the visible section.
+  if(el) {
+    el.classList.add('on');
+  } else {
+    var sbLink = document.querySelector('.sb a[onclick*="go(\''+id+'\'"]');
+    if(sbLink) sbLink.classList.add('on');
+  }
+  // Update the URL fragment so the current section survives a refresh
+  // and is reachable via back / forward. Skip when triggered FROM a
+  // hash-change (initFromHash, popstate) to avoid an infinite loop.
+  if(!opts.skipHistory){
+    var newHash = '#admin/' + id;
+    if(window.location.hash !== newHash){
+      try { history.pushState({admin:id}, '', newHash); } catch(_){}
+    }
+  }
   // Auto-load data when switching tabs
   if(id==='users'&&!allMembers.length) loadMembers();
   if(id==='editorials'&&!editorials.length) loadEditorials();
@@ -1634,6 +1652,44 @@ function go(id,el){
     _resetNewPostForm();
   }
 }
+
+// QA — URL-hash routing for the admin SPA so each section has its
+// own bookmarkable / refreshable / back-button-friendly URL.
+//   /admin#admin/editorials  → 에디토리얼 목록
+//   /admin#admin/users       → 회원 관리
+//   /admin#admin/newpost     → 새 게시글
+// Anything outside the whitelist is ignored (defends against XSS via
+// hash injection — only a-z / 0-9 / _ are accepted).
+var _ADMIN_VALID_TABS = ['home','menucats','cover','categories','loading','editorials','news','film','shorts','newpost','users','submissions','pullletters','banners'];
+function _initAdminFromHash(){
+  var h = window.location.hash || '';
+  if(h.indexOf('#admin/') !== 0) return false;
+  var id = h.slice('#admin/'.length).replace(/[^a-z0-9_]/gi, '');
+  if(!id || _ADMIN_VALID_TABS.indexOf(id) < 0) return false;
+  // skipHistory: caller already has the right hash; pushing again
+  // would create a duplicate history entry.
+  go(id, null, {skipHistory: true});
+  return true;
+}
+window.addEventListener('popstate', function(){
+  // Back / forward — switch to whatever section the new hash names.
+  // Default back to 'home' when the hash was cleared (e.g. user hit
+  // back past the admin's first push).
+  var h = window.location.hash || '';
+  if(h.indexOf('#admin/') === 0){
+    _initAdminFromHash();
+  } else {
+    go('home', null, {skipHistory: true});
+  }
+});
+// Run after the page's existing init has wired everything up so the
+// sidebar links and tab elements are guaranteed to exist.
+document.addEventListener('DOMContentLoaded', function(){
+  // setTimeout 0 lets any other DOMContentLoaded handler (auth check,
+  // sidebar build, etc.) finish first; otherwise sidebar links may
+  // not be in the DOM yet when we try to highlight them.
+  setTimeout(function(){ _initAdminFromHash(); }, 0);
+});
 
 function _resetNewPostForm(){
   // 1. Plain text / textarea inputs
