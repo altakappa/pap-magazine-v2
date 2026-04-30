@@ -3546,6 +3546,9 @@ window._papFilmAutoPlay = function(){
       // Carry the rest through so editorial-detail rendering can lift
       // credits / fashion / gallery off the same record without a
       // second fetch.
+      // `issue` is the admin's "발행호" subtitle (e.g. "APR. 2026 ISSUE",
+      // or "3월호" — year-less inputs get normalized downstream).
+      issue:    e.issue || '',
       credits:  Array.isArray(e.credits) ? e.credits : e.credits || [],
       fashion:  e.fashion || null,
       gallery:  Array.isArray(e.gallery) ? e.gallery : [],
@@ -3583,15 +3586,56 @@ window._papFilmAutoPlay = function(){
   // the DB and we want those changes visible immediately. We still
   // borrow `issue` from the curated entry as a fallback when the API
   // didn't store one.
+  // Issue-label year normalizer.
+  // Many admin entries land as "3월호", "MAR. ISSUE", "APR." — no year.
+  // Detail page header renders this as the small subtitle under the
+  // title; without the year the page feels stranded. Inject the year
+  // from the post's published_date (or current year as a last resort)
+  // unless the raw string already contains a 4-digit year.
+  // Examples:
+  //   "MAR. ISSUE"  + 2026 → "MAR. 2026 ISSUE"
+  //   "APR."        + 2026 → "APR. 2026"
+  //   "3월호"        + 2026 → "2026년 3월호"
+  //   "MAR. 2025 ISSUE"    → unchanged (year already present)
+  function _normalizeIssueLabel(raw, dateSource){
+    if(!raw) return '';
+    var s = String(raw).trim();
+    if(!s) return '';
+    // Already has a 4-digit year? Leave the editor's exact wording alone.
+    if(/\b(19|20)\d{2}\b/.test(s)) return s;
+    var year = '';
+    if(dateSource){
+      var d = new Date(dateSource);
+      if(!isNaN(d.getTime())) year = String(d.getFullYear());
+    }
+    if(!year) year = String(new Date().getFullYear());
+    // Korean "<n>월호" / "<n>월" → "<year>년 <…>" prefix.
+    if(/\d+\s*월/.test(s)) return year + '년 ' + s;
+    // English month-abbrev prefix ("MAR.", "APR", "JANUARY") — insert
+    // year right after it so the reading order matches the curated
+    // examples ("MAR. 2026 ISSUE").
+    var m = s.match(/^([A-Za-z]{3,9}\.?)(\s|$)/);
+    if(m){
+      var prefix = m[1];
+      var rest = s.slice(prefix.length).trim();
+      return rest ? (prefix + ' ' + year + ' ' + rest) : (prefix + ' ' + year);
+    }
+    // Bare label — just append.
+    return s + ' ' + year;
+  }
+
   function _populateEdDetailsFromApi(apiEd){
     if(typeof edDetails === 'undefined') return;
     var key = apiEd.title;
     if(!key) return;
     var existing = edDetails[key] || {};
     edDetails[key] = {
-      // Curated `issue` (e.g. 'MAR. 2026 ISSUE') is hand-edited and
-      // worth keeping when the API doesn't carry one.
-      issue:  existing.issue || '',
+      // Issue subtitle. Priority: admin-typed value (apiEd.issue) wins
+      // because that's the live source of truth; curated existing.issue
+      // is the static-JSON snapshot and only used as fallback. Year is
+      // injected by _normalizeIssueLabel when missing so newly uploaded
+      // posts no longer display "MAR. ISSUE" without a year.
+      issue:  _normalizeIssueLabel(apiEd.issue || existing.issue || '', apiEd.date),
       // Detail page hero reads from .thumb (see heroImg.src = det.thumb).
       // Always use the latest API hero — that's where admin's ◆ COVER
       // pick lands.
