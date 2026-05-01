@@ -18,6 +18,31 @@
 (function(global){
   'use strict';
 
+  // ======== i18n (login hints + empty-state messages) ========
+  // Self-contained — does not depend on pap-app.js's T table being
+  // available, so this module also works on pages that don't ship the
+  // full app (e.g. articles.html, mypage.html if they ever use this).
+  var _PAP_SOC_I18N = {
+    ko:{loginToRate:'로그인하시면 별점을 남길 수 있습니다',loginToComment:'댓글 작성은 로그인이 필요합니다',noComments:'아직 댓글이 없습니다. 첫 댓글을 남겨주세요.',login:'로그인',commentPh:'댓글을 남겨주세요',submit:'등록',rateCancel:'별점 취소',rateDeleteTitle:'별점 삭제'},
+    en:{loginToRate:'Sign in to leave a rating',loginToComment:'Sign in to leave a comment',noComments:'No comments yet. Be the first to comment.',login:'Sign In',commentPh:'Leave a comment',submit:'Post',rateCancel:'Remove rating',rateDeleteTitle:'Delete rating'},
+    it:{loginToRate:'Accedi per lasciare una valutazione',loginToComment:'Accedi per lasciare un commento',noComments:'Nessun commento. Lascia il primo commento.',login:'Accedi',commentPh:'Lascia un commento',submit:'Pubblica',rateCancel:'Rimuovi valutazione',rateDeleteTitle:'Elimina valutazione'},
+    fr:{loginToRate:'Connectez-vous pour laisser une note',loginToComment:'Connectez-vous pour laisser un commentaire',noComments:'Aucun commentaire pour le moment. Soyez le premier à commenter.',login:'Connexion',commentPh:'Laissez un commentaire',submit:'Publier',rateCancel:'Retirer la note',rateDeleteTitle:'Supprimer la note'},
+    es:{loginToRate:'Inicia sesión para dejar una valoración',loginToComment:'Inicia sesión para dejar un comentario',noComments:'Aún no hay comentarios. Sé el primero en comentar.',login:'Iniciar Sesión',commentPh:'Deja un comentario',submit:'Publicar',rateCancel:'Quitar valoración',rateDeleteTitle:'Eliminar valoración'},
+    ja:{loginToRate:'ログインすると評価を残せます',loginToComment:'コメント投稿にはログインが必要です',noComments:'まだコメントがありません。最初のコメントを残してください。',login:'ログイン',commentPh:'コメントを残してください',submit:'投稿',rateCancel:'評価を取り消す',rateDeleteTitle:'評価を削除'},
+    zh:{loginToRate:'登录后可以评分',loginToComment:'发表评论需要登录',noComments:'暂无评论。来发表第一条评论吧。',login:'登录',commentPh:'留下评论',submit:'发布',rateCancel:'取消评分',rateDeleteTitle:'删除评分'},
+    ru:{loginToRate:'Войдите, чтобы оставить оценку',loginToComment:'Войдите, чтобы оставить комментарий',noComments:'Комментариев пока нет. Будьте первым.',login:'Войти',commentPh:'Оставьте комментарий',submit:'Отправить',rateCancel:'Убрать оценку',rateDeleteTitle:'Удалить оценку'},
+    de:{loginToRate:'Melde dich an, um zu bewerten',loginToComment:'Melde dich an, um zu kommentieren',noComments:'Noch keine Kommentare. Sei der Erste.',login:'Anmelden',commentPh:'Kommentar hinterlassen',submit:'Posten',rateCancel:'Bewertung entfernen',rateDeleteTitle:'Bewertung löschen'}
+  };
+  function _papSocLang(){
+    try { var l = localStorage.getItem('pap-lang'); return (l && _PAP_SOC_I18N[l]) ? l : 'ko'; }
+    catch(e){ return 'ko'; }
+  }
+  function _papSocT(key){
+    var l = _papSocLang();
+    var d = _PAP_SOC_I18N[l] || _PAP_SOC_I18N.ko;
+    return d[key] || _PAP_SOC_I18N.ko[key] || key;
+  }
+
   // ======== SUPABASE CONFIG ========
   var SUPABASE_URL = 'https://igcazquhkwxtqsaqpznx.supabase.co';
   var SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_8Q19ICgnEqkrjH2hPvwgbA_9pSVDh55';
@@ -238,11 +263,11 @@
         h += '  <div class="pap-rating-stars pap-rating-input" data-editorial="'+escapeHTML(editorialTitle)+'">'+starHTML(myScore,true)+'</div>';
         h += '  <span class="pap-rating-my-score">'+(myScore>0?(myScore+'점'):'미평가')+'</span>';
         if(myScore>0){
-          h += '  <button class="pap-rating-delete" title="별점 삭제">별점 취소</button>';
+          h += '  <button class="pap-rating-delete" title="'+_papSocT('rateDeleteTitle')+'">'+_papSocT('rateCancel')+'</button>';
         }
         h += '</div>';
       } else {
-        h += '<div class="pap-rating-me pap-login-hint">로그인하시면 별점을 남길 수 있습니다 · <a href="'+_loginUrl()+'">로그인</a></div>';
+        h += '<div class="pap-rating-me pap-login-hint">'+_papSocT('loginToRate')+' · <a href="'+_loginUrl()+'">'+_papSocT('login')+'</a></div>';
       }
       h += '</div>';
 
@@ -347,16 +372,16 @@
       if(user){
         h += '<div class="pap-comment-form">';
         h += '  <div class="pap-comment-user">'+escapeHTML(user.name)+'</div>';
-        h += '  <textarea class="pap-comment-input" placeholder="댓글을 남겨주세요" maxlength="1000"></textarea>';
-        h += '  <button class="pap-comment-submit">등록</button>';
+        h += '  <textarea class="pap-comment-input" placeholder="'+_papSocT('commentPh')+'" maxlength="1000"></textarea>';
+        h += '  <button class="pap-comment-submit">'+_papSocT('submit')+'</button>';
         h += '</div>';
       } else {
-        h += '<div class="pap-login-hint">댓글 작성은 로그인이 필요합니다 · <a href="'+_loginUrl()+'">로그인</a></div>';
+        h += '<div class="pap-login-hint">'+_papSocT('loginToComment')+' · <a href="'+_loginUrl()+'">'+_papSocT('login')+'</a></div>';
       }
 
       h += '<div class="pap-comments-list">';
       if(topLevel.length===0){
-        h += '<div class="pap-comments-empty">아직 댓글이 없습니다. 첫 댓글을 남겨주세요.</div>';
+        h += '<div class="pap-comments-empty">'+_papSocT('noComments')+'</div>';
       } else {
         topLevel.forEach(function(c){
           h += '<div class="pap-comment-thread">';
