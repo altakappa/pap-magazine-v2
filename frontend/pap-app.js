@@ -3601,22 +3601,38 @@ window._papFilmAutoPlay = function(){
   // the DB and we want those changes visible immediately. We still
   // borrow `issue` from the curated entry as a fallback when the API
   // didn't store one.
-  // Issue-label normalizer — always outputs English format
-  // "MMM. YYYY ISSUE" (e.g. "APR. 2026 ISSUE") regardless of how the
-  // admin typed the source value. Pulls year from dateSource when the
-  // raw string doesn't include one.
+  // Issue-label normalizer — collapses every input variant
+  // (Korean "4월호", English "APR. ISSUE", numeric dates, etc.) into the
+  // unified quarterly volume label "VOL.<n> ISSUE".
+  //
+  // Quarter-to-volume mapping (anchor: 2026 Q2 = Vol 30):
+  //   Q1 = Jan / Feb / Mar
+  //   Q2 = Apr / May / Jun
+  //   Q3 = Jul / Aug / Sep
+  //   Q4 = Oct / Nov / Dec
+  //   vol = year*4 + quarter - 8076
+  //   →  2026 Q2 (Apr-Jun) = Vol 30
+  //   →  2026 Q1 (Jan-Mar) = Vol 29
+  //   →  2025 Q4 (Oct-Dec) = Vol 28
+  //   →  2025 Q3 (Jul-Sep) = Vol 27
+  //   →  2025 Q2 (Apr-Jun) = Vol 26 …
+  //
   // Examples:
-  //   "4월호"           + 2026 → "APR. 2026 ISSUE"
-  //   "2026년 4월호"           → "APR. 2026 ISSUE"
-  //   "MAR. ISSUE"      + 2026 → "MAR. 2026 ISSUE"
-  //   "APR."            + 2026 → "APR. 2026 ISSUE"
-  //   "MAR. 2025 ISSUE"        → "MAR. 2025 ISSUE" (unchanged)
-  //   "April 2026"             → "APR. 2026 ISSUE"
-  //   "2026-04-15" date  → "APR. 2026 ISSUE"
+  //   "4월호"           + 2026 → "VOL.30 ISSUE"
+  //   "2026년 4월호"           → "VOL.30 ISSUE"
+  //   "MAR. ISSUE"      + 2026 → "VOL.29 ISSUE"
+  //   "APR."            + 2026 → "VOL.30 ISSUE"
+  //   "APR. 2026 ISSUE"        → "VOL.30 ISSUE"   (re-normalized)
+  //   "VOL.30 ISSUE"           → "VOL.30 ISSUE"   (early-return)
+  //   "2026-04-15" date         → "VOL.30 ISSUE"
   function _normalizeIssueLabel(raw, dateSource){
     var monthAbbrevs = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
     var monthFullEn = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
     var s = (raw == null) ? '' : String(raw).trim();
+
+    // Already vol-formatted? Keep the editor's exact wording. Matches
+    // "VOL.30", "Vol. 30", "VOL 30 ISSUE" etc.
+    if(/\bVOL\.?\s*\d+/i.test(s)) return s;
 
     var year = '';
     var monthIdx = -1; // 0..11
@@ -3653,7 +3669,7 @@ window._papFilmAutoPlay = function(){
       }
     }
 
-    // Year fallback from dateSource then current year
+    // Year/month fallback from dateSource
     if(!year || monthIdx === -1){
       if(dateSource){
         var d = new Date(dateSource);
@@ -3663,17 +3679,22 @@ window._papFilmAutoPlay = function(){
         }
       }
     }
-    if(!year) year = String(new Date().getFullYear());
-
-    if(monthIdx >= 0 && monthIdx < 12){
-      return monthAbbrevs[monthIdx] + '. ' + year + ' ISSUE';
+    // Last resort: today
+    if(!year || monthIdx === -1){
+      var today = new Date();
+      if(!year) year = String(today.getFullYear());
+      if(monthIdx === -1) monthIdx = today.getMonth();
     }
 
-    // Couldn't extract a month — return original (with year appended
-    // if it's missing) so the field doesn't go blank.
-    if(!s) return '';
-    if(/\b(19|20)\d{2}\b/.test(s)) return s;
-    return s + ' ' + year;
+    if(monthIdx >= 0 && monthIdx < 12 && year){
+      var y = parseInt(year, 10);
+      var quarter = Math.ceil((monthIdx + 1) / 3); // 1..4
+      var vol = y * 4 + quarter - 8076;
+      return 'VOL.' + vol + ' ISSUE';
+    }
+
+    // Truly unparseable — return original so the field isn't blank.
+    return s;
   }
 
   function _populateEdDetailsFromApi(apiEd){

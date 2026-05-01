@@ -754,9 +754,10 @@ section.hero + .shorts-section{
   .nf-card{min-width:260px;max-width:260px}
   .nf-card-img{aspect-ratio:1/1}
   .editorial-grid{grid-template-columns:repeat(2,1fr)}
-  /* Editorial hero title — keep it bold and readable on mobile so the
-     editorial name reads as the headline of the page, not a footnote. */
-  .ed-hero-title{font-size:clamp(28px,7vw,42px)}
+  /* Editorial hero title — render at headline scale on mobile (≈3× the
+     prior compact size) so the editorial name dominates the hero card
+     the way it does on desktop. */
+  .ed-hero-title{font-size:clamp(72px,18vw,108px);line-height:1.05}
   .ed-hero-issue{font-size:11px;letter-spacing:.18em}
   .fashion-card-title{font-size:12px}
   .ed-card-title{font-size:14px}
@@ -907,7 +908,7 @@ section.hero + .shorts-section{
 
   /* Editorial detail */
   .ed-hero-info{min-height:35vh;padding:24px var(--pad-x)}
-  .ed-hero-title{font-size:clamp(24px,7.5vw,34px)}
+  .ed-hero-title{font-size:clamp(64px,20vw,96px);line-height:1.05}
   .ed-gallery{padding:24px var(--pad-x)}
   .ed-credits-wrap{padding:32px var(--pad-x)}
   .ed-credits-table{
@@ -979,7 +980,7 @@ section.hero + .shorts-section{
   .footer-marquee-track span{font-size:1.275rem}
 
   /* Editorial detail */
-  .ed-hero-title{font-size:clamp(22px,8vw,30px)}
+  .ed-hero-title{font-size:clamp(60px,22vw,84px);line-height:1.05}
   .ed-gallery-grid{gap:8px}
   .creator-works-grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
 }
