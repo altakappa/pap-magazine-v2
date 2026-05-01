@@ -101,13 +101,14 @@
   }
   function _writeCookie(name, value){
     try{
-      // Domain rule: production uses ".papkorea.com" so the cookie is shared
-      // between root + www + any other subdomain. On localhost/preview hosts
-      // we omit the domain attribute so the browser scopes it to the current
-      // host (which is what we want there).
+      // Domain rule: production uses ".pap-magazine.com" (or ".papkorea.com"
+      // for the legacy alias) so the cookie is shared between root + www +
+      // any other subdomain. On localhost/preview hosts we omit the domain
+      // attribute so the browser scopes it to the current host.
       var host = location.hostname || '';
       var domainAttr = '';
-      if(host.indexOf('papkorea.com') > -1) domainAttr = '; Domain=.papkorea.com';
+      if(host.indexOf('pap-magazine.com') > -1) domainAttr = '; Domain=.pap-magazine.com';
+      else if(host.indexOf('papkorea.com') > -1) domainAttr = '; Domain=.papkorea.com';
       var secureAttr = (location.protocol === 'https:') ? '; Secure' : '';
       document.cookie = name + '=' + encodeURIComponent(value) +
         '; Max-Age=' + COOKIE_MAX_AGE +
