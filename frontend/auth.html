@@ -1553,6 +1553,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
   var oauthSuccess = params.get('oauth');
 
+  // Also accept token+user from the URL fragment (#token=...&user=...). The
+  // OAuth callback now uses a fragment so the token doesn't leak into server
+  // access logs or referrer headers — fragments are never sent to servers.
+  if (!oauthToken && hashStr && hashStr.indexOf('token=') > -1) {
+    var hashParams = new URLSearchParams(hashStr.replace(/^#/, ''));
+    var ht = hashParams.get('token');
+    var hu = hashParams.get('user');
+    if (ht) oauthToken = ht;
+    if (hu) oauthUser = hu;
+  }
+
   // No OAuth params? Skip heavy processing entirely
   if (!oauthCode && !oauthToken && !oauthError && !oauthSuccess && !(hashStr && hashStr.indexOf('access_token') > -1)) return;
 

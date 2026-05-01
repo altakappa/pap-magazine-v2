@@ -124,14 +124,29 @@ module.exports = async function handler(req, res) {
     var token = generateToken(user);
     var userJson = encodeURIComponent(JSON.stringify(user));
 
-    // Pass token via httpOnly cookie instead of URL parameter (prevents token leakage via referrer/logs)
+    // Pass token directly in the URL fragment instead of via HttpOnly cookies.
+    //
+    // Why: the cookie-based flow (Set-Cookie + /auth?oauth=success → frontend
+    // calls /api/auth/oauth-token to read it) was failing on www.pap-magazine.com
+    // because Safari ITP / cross-site OAuth redirect chains were dropping the
+    // Set-Cookie response. Verified via Vercel function logs: callback ran all
+    // 8 steps successfully, but no cookies appeared in browser storage and the
+    // /api/auth/oauth-token endpoint was never invoked.
+    //
+    // Fragment vs query: a URL fragment (#) is NOT sent to servers, so it
+    // avoids referrer / access-log token leakage. The auth.html handler reads
+    // either query (?token=) or fragment (#token=) and immediately strips it
+    // from history with replaceState.
+    //
+    // Clear the temporary PKCE/state cookies that /api/auth/google or
+    // /api/auth/facebook set at the start of the flow.
     res.setHeader('Set-Cookie', [
       'pkce_verifier=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
       'oauth_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
-      'pap_oauth_token=' + token + '; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=120',
-      'pap_oauth_user=' + userJson + '; Path=/; Secure; SameSite=Lax; Max-Age=120',
     ]);
-    return res.redirect(302, frontendUrl + '/auth?oauth=success');
+    var successUrl = frontendUrl + '/auth#token=' + encodeURIComponent(token) +
+      '&user=' + userJson;
+    return res.redirect(302, successUrl);
   } catch (error) {
     console.error('OAuth callback error:', error && (error.message || error.code) || 'UNKNOWN');
     var detailMsg = error && error.message ? error.message : '';
