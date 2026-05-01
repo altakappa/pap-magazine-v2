@@ -925,18 +925,44 @@ function socialLogin(provider) {
     return;
   }
 
+  // skipBrowserRedirect lets us inspect the URL the SDK built — and lets us
+  // copy the PKCE code_verifier (which Supabase just wrote to localStorage)
+  // into a same-origin cookie. The cookie is the safety net for Safari ITP /
+  // Private mode situations where localStorage gets wiped between the OAuth
+  // hop and the return to /auth.html. The handler at the top of this file
+  // restores the verifier from this cookie back into localStorage when the
+  // SDK loads on the post-OAuth page.
   sb.auth.signInWithOAuth({
     provider: provider,
     options: {
-      redirectTo: window.location.origin + '/auth.html'
+      redirectTo: window.location.origin + '/auth.html',
+      skipBrowserRedirect: true
     }
   }).then(function (result) {
     if (result && result.error) {
       var msg = result.error.message || 'OAuth initiation failed';
       if (typeof PAP !== 'undefined' && PAP.ui && PAP.ui.toast) PAP.ui.toast(msg, 'error');
       else alert(msg);
+      return;
     }
-    // On success the SDK does the redirect itself — nothing to do here.
+    // Mirror the freshly-written verifier into a cookie so it survives a
+    // localStorage wipe across the OAuth roundtrip.
+    try {
+      var verifier = localStorage.getItem(VERIFIER_KEY);
+      if (verifier) {
+        document.cookie = 'pap-pkce-verifier=' + encodeURIComponent(verifier) +
+          '; Path=/; Max-Age=600; SameSite=Lax; Secure';
+      }
+    } catch (e) {}
+
+    var url = result && result.data && result.data.url;
+    if (url) {
+      window.location.href = url;
+    } else {
+      var emsg = 'OAuth URL missing from Supabase response';
+      if (typeof PAP !== 'undefined' && PAP.ui && PAP.ui.toast) PAP.ui.toast(emsg, 'error');
+      else alert(emsg);
+    }
   }).catch(function (e) {
     var msg = (e && e.message) || 'OAuth error';
     if (typeof PAP !== 'undefined' && PAP.ui && PAP.ui.toast) PAP.ui.toast(msg, 'error');
@@ -1659,42 +1685,55 @@ document.addEventListener('DOMContentLoaded', function() {
   if (oauthCode || (hashStr && hashStr.indexOf('access_token') > -1)) {
     var sb = getSupabase();
     if (sb) {
+      // Listener wins if the SDK auto-processes the URL (detectSessionInUrl).
       sb.auth.onAuthStateChange(function(event, session) {
-        if (event === 'SIGNED_IN' && session && session.access_token) {
+        if (event === 'SIGNED_IN' && session && session.access_token && !_oauthHandled) {
           exchangeSupabaseForPAP(session);
         }
       });
 
-      // Reduced fallback timeout: 3s (was 5s)
-      setTimeout(function() {
-        if (_oauthHandled) return;
-        (async function() {
-          try {
-            var result = await sb.auth.getSession();
-            var session = result.data && result.data.session;
-            if (session && session.access_token) {
-              await exchangeSupabaseForPAP(session);
-            } else if (!_oauthHandled) {
-              if (oauthCode) {
-                var exResult = await sb.auth.exchangeCodeForSession(oauthCode);
-                if (exResult.data && exResult.data.session) {
-                  await exchangeSupabaseForPAP(exResult.data.session);
-                } else {
-                  if (typeof PAP !== 'undefined') { PAP.ui.toast('OAuth code exchange error: ' + (exResult.error ? exResult.error.message : 'Unknown'), 'error'); }
-                  else { alert('OAuth code exchange error: ' + (exResult.error ? exResult.error.message : 'Unknown')); }
-                }
-              }
-              window.history.replaceState({}, document.title, window.location.pathname);
-            }
-          } catch(e) {
-            if (!_oauthHandled) {
-              if (typeof PAP !== 'undefined') { PAP.ui.toast('OAuth error: ' + e.message, 'error'); }
-              else { alert('OAuth error: ' + e.message); }
-              window.history.replaceState({}, document.title, window.location.pathname);
-            }
+      // Immediate attempt to claim the session — no 3-second wait. The PKCE
+      // flow needs an explicit exchangeCodeForSession() call to mint the
+      // session. We try getSession() first (in case the SDK already finished
+      // an auto-exchange), then fall through to exchangeCodeForSession().
+      (async function() {
+        try {
+          // Tiny wait so the SDK has a chance to auto-detect from the URL.
+          await new Promise(function (r) { setTimeout(r, 50); });
+          if (_oauthHandled) return;
+
+          var sessRes = await sb.auth.getSession();
+          var session = sessRes.data && sessRes.data.session;
+          if (session && session.access_token) {
+            await exchangeSupabaseForPAP(session);
+            return;
           }
-        })();
-      }, 3000);
+
+          if (oauthCode && !_oauthHandled) {
+            var exResult = await sb.auth.exchangeCodeForSession(oauthCode);
+            if (exResult.data && exResult.data.session) {
+              await exchangeSupabaseForPAP(exResult.data.session);
+              return;
+            }
+            var exErr = (exResult && exResult.error && exResult.error.message) || 'Unknown';
+            if (typeof PAP !== 'undefined' && PAP.ui && PAP.ui.toast) {
+              PAP.ui.toast('OAuth code exchange error: ' + exErr, 'error');
+            } else {
+              alert('OAuth code exchange error: ' + exErr);
+            }
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        } catch (e) {
+          if (!_oauthHandled) {
+            if (typeof PAP !== 'undefined' && PAP.ui && PAP.ui.toast) {
+              PAP.ui.toast('OAuth error: ' + (e && e.message), 'error');
+            } else {
+              alert('OAuth error: ' + (e && e.message));
+            }
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        }
+      })();
     }
   } else if (oauthToken) {
     localStorage.setItem('pap-token', oauthToken);
