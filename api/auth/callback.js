@@ -24,6 +24,9 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ message: 'Method not allowed' });
 
   var frontendUrl = process.env.NEXT_PUBLIC_URL || 'https://www.papkorea.com';
+  console.log('[OAUTH-DEBUG] callback.js entered. frontendUrl =', frontendUrl);
+  console.log('[OAUTH-DEBUG] SUPABASE_URL set?', !!process.env.SUPABASE_URL, 'value len =', (process.env.SUPABASE_URL || '').length);
+  console.log('[OAUTH-DEBUG] JWT_SECRET set?', !!process.env.JWT_SECRET, 'value len =', (process.env.JWT_SECRET || '').length);
 
   try {
     var code = req.query.code;
@@ -39,18 +42,22 @@ module.exports = async function handler(req, res) {
       return baseUrl + '&detail=' + encodeURIComponent(safe);
     }
 
+    console.log('[OAUTH-DEBUG] step1: query.code=', code ? 'present' : 'MISSING', 'query.error=', oauthError || 'none');
+
     if (oauthError) {
       console.error('OAuth error from provider:', oauthError, errorDesc || '');
       return res.redirect(302, withDetail(frontendUrl + '/auth?error=oauth_provider&mode=login', errorDesc || oauthError));
     }
 
     if (!code) {
+      console.log('[OAUTH-DEBUG] step1-fail: missing code, redirecting');
       return res.redirect(302, frontendUrl + '/auth?error=missing_code&mode=login');
     }
 
     // Read cookies
     var cookies = parseCookies(req.headers.cookie);
     var codeVerifier = cookies.pkce_verifier;
+    console.log('[OAUTH-DEBUG] step2: cookies received? cookie keys =', Object.keys(cookies).join(','), '| pkce_verifier present?', !!codeVerifier);
 
     // NOTE: We do NOT validate a custom `state` parameter here —
     // Supabase generates and validates its own OAuth state internally. Passing a custom state
@@ -78,6 +85,7 @@ module.exports = async function handler(req, res) {
     });
 
     var tokenData = await tokenResp.json();
+    console.log('[OAUTH-DEBUG] step3: tokenResp.ok=', tokenResp.ok, 'status=', tokenResp.status, 'has user?', !!(tokenData && tokenData.user));
 
     if (!tokenResp.ok || tokenData.error) {
       var msg = tokenData.error_description || tokenData.error || ('HTTP ' + tokenResp.status);
@@ -87,14 +95,18 @@ module.exports = async function handler(req, res) {
 
     var userId = tokenData.user.id;
     var email = tokenData.user.email;
+    console.log('[OAUTH-DEBUG] step4: userId=', userId, 'email=', email);
 
     // Fetch or wait for profile
     var profile = null;
+    var profileFetchError = null;
     for (var i = 0; i < 3; i++) {
       var result = await supabaseAdmin.from('profiles').select('*').eq('id', userId).single();
+      if (result.error) profileFetchError = result.error;
       if (result.data) { profile = result.data; break; }
       await new Promise(function (r) { setTimeout(r, 500); });
     }
+    console.log('[OAUTH-DEBUG] step5: profile fetch result. found?', !!profile, 'lastError=', profileFetchError && (profileFetchError.message || profileFetchError.code));
 
     // If no profile exists, create one
     if (!profile) {
@@ -110,6 +122,7 @@ module.exports = async function handler(req, res) {
         .select('*')
         .single();
       profile = insertResult.data;
+      console.log('[OAUTH-DEBUG] step6: profile insert. ok?', !!profile, 'error=', insertResult.error && (insertResult.error.message || insertResult.error.code));
     }
 
     var user = {
@@ -121,8 +134,18 @@ module.exports = async function handler(req, res) {
       token_version: (profile && profile.token_version) || 0,
     };
 
-    var token = generateToken(user);
+    var token;
+    try {
+      token = generateToken(user);
+      console.log('[OAUTH-DEBUG] step7: JWT generated, length=', token ? token.length : 0);
+    } catch (jwtErr) {
+      console.error('[OAUTH-DEBUG] step7-FAIL: generateToken threw', jwtErr && jwtErr.message);
+      throw jwtErr;
+    }
     var userJson = encodeURIComponent(JSON.stringify(user));
+
+    var redirectUrl = frontendUrl + '/auth?oauth=success';
+    console.log('[OAUTH-DEBUG] step8: setting cookies + redirecting to', redirectUrl);
 
     // Pass token via httpOnly cookie instead of URL parameter (prevents token leakage via referrer/logs)
     res.setHeader('Set-Cookie', [
@@ -131,13 +154,14 @@ module.exports = async function handler(req, res) {
       'pap_oauth_token=' + token + '; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=120',
       'pap_oauth_user=' + userJson + '; Path=/; Secure; SameSite=Lax; Max-Age=120',
     ]);
-    return res.redirect(302, frontendUrl + '/auth?oauth=success');
+    return res.redirect(302, redirectUrl);
   } catch (error) {
-    console.error('OAuth callback error:', error && (error.message || error.code) || 'UNKNOWN');
+    console.error('[OAUTH-DEBUG] CATCH-BLOCK ENTERED. error=', error && (error.message || error.code) || 'UNKNOWN', 'stack=', error && error.stack && error.stack.slice(0, 300));
     var detailMsg = error && error.message ? error.message : '';
     var safe = String(detailMsg).replace(/[<>"'`\\\r\n\t]/g, ' ').slice(0, 200);
     var url = frontendUrl + '/auth?error=callback_error&mode=login';
     if (safe) url += '&detail=' + encodeURIComponent(safe);
+    console.error('[OAUTH-DEBUG] redirecting to error URL:', url);
     return res.redirect(302, url);
   }
 };
