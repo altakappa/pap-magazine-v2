@@ -717,8 +717,12 @@ section.hero + .shorts-section{
 /* --- 768px: Small tablet / Large phone landscape --- */
 @media(max-width:768px){
   :root{--pad-x:20px;--space-section:72px;--space-block:36px;--space-row:20px;--pad-section:72px}
-  .nav-extra-links{display:none}
-  .nav-bottom-row{display:none}
+  /* Earlier these were `display:none` — that hid ABOUT/BUSINESS/CONTACT
+     and the social icons row on every mobile screen. Now we keep them
+     visible; pap-header.js re-styles the mobile overlay so the extra
+     items fit cleanly under the main column. */
+  .nav-extra-links{display:flex}
+  .nav-bottom-row{display:flex}
   .header{padding:0 16px;height:60px}
   .header-left{gap:4px}
   .header-left-item svg{width:18px;height:18px}
