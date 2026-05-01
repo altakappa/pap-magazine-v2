@@ -8,4 +8,4 @@ Disallow: /auth.html
 Disallow: /mypage.html
 Disallow: /api/
 
-Sitemap: https://www.papkorea.com/sitemap.xml
+Sitemap: https://www.pap-magazine.com/sitemap.xml

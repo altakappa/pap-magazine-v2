@@ -5,7 +5,8 @@
   "framework": null,
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/admin/:path*", "destination": "/admin.html" }
+    { "source": "/admin/:path*", "destination": "/admin.html" },
+    { "source": "/sitemap.xml", "destination": "/api/sitemap" }
   ],
   "redirects": [
     { "source": "/ko", "destination": "/", "permanent": true },

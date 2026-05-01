@@ -1109,6 +1109,15 @@ function _openEditorialInner(title,thumb){
   var _normCr = _normalizeCreditsForDisplay(d.credits);
   var det={issue:d.issue||'MAR. ISSUE',thumb:d.thumb||thumb,images:d.images||[thumb,thumb],credits:(_normCr.length?_normCr:[{r:'Photography',h:['@photographer']},{r:'Stylist',h:['@stylist']}]),fashion:d.fashion||['@brand'],imageCredits:d.imageCredits||{},desc:d.desc||''};
 
+  // SEO — update meta tags + JSON-LD when an editorial opens. Helps
+  // social-share previews (Kakao/Facebook/X) and Google's JS-aware
+  // crawler pick up per-editorial title/image/description instead of
+  // the generic homepage values. _updateEditorialMeta is defined at
+  // bottom of file (deep-link section) and is a no-op if missing.
+  if(typeof _updateEditorialMeta === 'function'){
+    try { _updateEditorialMeta(title, det); } catch(_){}
+  }
+
   var heroImg=document.getElementById('edDetailHero');
   heroImg.onerror=function(){edImgError(this);};
   heroImg.src=det.thumb;
@@ -1263,6 +1272,10 @@ function _openEditorialInner_noPush(title,thumb){
   // can stay simple. Empty credits fall back to the placeholder pair.
   var _normCr = _normalizeCreditsForDisplay(d.credits);
   var det={issue:d.issue||'MAR. ISSUE',thumb:d.thumb||thumb,images:d.images||[thumb,thumb],credits:(_normCr.length?_normCr:[{r:'Photography',h:['@photographer']},{r:'Stylist',h:['@stylist']}]),fashion:d.fashion||['@brand'],imageCredits:d.imageCredits||{},desc:d.desc||''};
+  // SEO — same meta refresh as _openEditorialInner (back/forward path).
+  if(typeof _updateEditorialMeta === 'function'){
+    try { _updateEditorialMeta(title, det); } catch(_){}
+  }
   var heroImg=document.getElementById('edDetailHero');
   heroImg.onerror=function(){edImgError(this);};
   heroImg.src=det.thumb;
@@ -3943,6 +3956,134 @@ function buildPagination(container,currentPage,totalPages,onPageChange,isDark){
   // next arrow
   btn('›',currentPage+1,false,currentPage===totalPages);
 }
+
+// ======== SEO: per-editorial meta tag updater ========
+// Updates document.title, meta description, og:*, twitter:*, canonical
+// and injects a JSON-LD Article schema when an editorial overlay opens.
+// Helps social-share crawlers (Kakao/Facebook/X) show editorial-specific
+// previews and gives Google's JS-aware indexer richer signals than the
+// generic homepage tags.
+function _updateEditorialMeta(title, det){
+  if(!title) return;
+  var lang = (typeof localStorage !== 'undefined' && localStorage.getItem('pap-lang')) || 'ko';
+  var rawDesc = det && det.desc;
+  var descText = '';
+  if(typeof rawDesc === 'string') descText = rawDesc;
+  else if(rawDesc && typeof rawDesc === 'object') descText = rawDesc[lang] || rawDesc.en || rawDesc.ko || '';
+  // Strip HTML, collapse whitespace, cap at 200 chars for meta description.
+  var desc = String(descText).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200);
+  if(!desc){
+    desc = title + ' — ' + (det && det.issue || '') + ' on PAP Magazine';
+  }
+  var img = (det && det.thumb) || '';
+  var url = 'https://www.pap-magazine.com/#editorial/' + encodeURIComponent(title);
+  var pageTitle = title + ' | PAP Magazine';
+
+  // Helper: get-or-create a meta tag and set its content.
+  function _setMeta(selector, attrName, attrValue, content){
+    var el = document.head.querySelector(selector);
+    if(!el){
+      el = document.createElement('meta');
+      el.setAttribute(attrName, attrValue);
+      document.head.appendChild(el);
+    }
+    el.setAttribute('content', content);
+  }
+  document.title = pageTitle;
+  _setMeta('meta[name="description"]',         'name',     'description',     desc);
+  _setMeta('meta[property="og:title"]',        'property', 'og:title',        pageTitle);
+  _setMeta('meta[property="og:description"]',  'property', 'og:description',  desc);
+  _setMeta('meta[property="og:url"]',          'property', 'og:url',          url);
+  _setMeta('meta[property="og:type"]',         'property', 'og:type',         'article');
+  if(img) _setMeta('meta[property="og:image"]','property', 'og:image',        img);
+  _setMeta('meta[name="twitter:card"]',        'name',     'twitter:card',    'summary_large_image');
+  _setMeta('meta[name="twitter:title"]',       'name',     'twitter:title',   pageTitle);
+  _setMeta('meta[name="twitter:description"]', 'name',     'twitter:description', desc);
+  if(img) _setMeta('meta[name="twitter:image"]','name',    'twitter:image',   img);
+
+  // Canonical link
+  var canon = document.head.querySelector('link[rel="canonical"]');
+  if(!canon){
+    canon = document.createElement('link');
+    canon.setAttribute('rel', 'canonical');
+    document.head.appendChild(canon);
+  }
+  canon.setAttribute('href', url);
+
+  // JSON-LD Article schema. Replace any previous editorial schema we
+  // injected so we don't accumulate duplicates as the user navigates.
+  var prevLd = document.head.querySelector('script[data-pap-ld="editorial"]');
+  if(prevLd) prevLd.parentNode.removeChild(prevLd);
+  try {
+    var schema = {
+      '@context': 'https://schema.org',
+      '@type': 'Article',
+      headline: title,
+      description: desc,
+      image: img ? [img] : undefined,
+      url: url,
+      author: { '@type': 'Organization', name: 'PAP Magazine' },
+      publisher: {
+        '@type': 'Organization',
+        name: 'PAP Magazine',
+        logo: { '@type': 'ImageObject', url: 'https://www.pap-magazine.com/pap-logo.png' }
+      },
+      mainEntityOfPage: { '@type': 'WebPage', '@id': url }
+    };
+    // Strip undefined keys so the JSON is clean
+    Object.keys(schema).forEach(function(k){ if(schema[k] === undefined) delete schema[k]; });
+    var ld = document.createElement('script');
+    ld.type = 'application/ld+json';
+    ld.setAttribute('data-pap-ld', 'editorial');
+    ld.text = JSON.stringify(schema);
+    document.head.appendChild(ld);
+  } catch(_) {}
+}
+
+// Reset meta tags back to homepage defaults when leaving the editorial
+// overlay (closeEditorial / popstate to non-#editorial URL). Captured
+// at first call so we don't drift over time.
+var _PAP_HOME_META = null;
+function _captureHomeMeta(){
+  if(_PAP_HOME_META) return;
+  function _read(sel, attr){ var e = document.head.querySelector(sel); return e ? e.getAttribute(attr) : ''; }
+  _PAP_HOME_META = {
+    title: document.title,
+    description: _read('meta[name="description"]', 'content'),
+    ogTitle: _read('meta[property="og:title"]', 'content'),
+    ogDescription: _read('meta[property="og:description"]', 'content'),
+    ogUrl: _read('meta[property="og:url"]', 'content'),
+    ogImage: _read('meta[property="og:image"]', 'content'),
+    canonical: _read('link[rel="canonical"]', 'href')
+  };
+}
+function _resetEditorialMeta(){
+  _captureHomeMeta();
+  if(!_PAP_HOME_META) return;
+  document.title = _PAP_HOME_META.title || 'PAP Magazine';
+  function _setIf(sel, attr, val){ var e = document.head.querySelector(sel); if(e && val) e.setAttribute(attr, val); }
+  _setIf('meta[name="description"]',         'content', _PAP_HOME_META.description);
+  _setIf('meta[property="og:title"]',        'content', _PAP_HOME_META.ogTitle);
+  _setIf('meta[property="og:description"]',  'content', _PAP_HOME_META.ogDescription);
+  _setIf('meta[property="og:url"]',          'content', _PAP_HOME_META.ogUrl);
+  _setIf('meta[property="og:image"]',        'content', _PAP_HOME_META.ogImage);
+  _setIf('meta[property="og:type"]',         'content', 'website');
+  _setIf('link[rel="canonical"]',            'href',    _PAP_HOME_META.canonical);
+  var ld = document.head.querySelector('script[data-pap-ld="editorial"]');
+  if(ld) ld.parentNode.removeChild(ld);
+}
+// Capture homepage meta on page load (before any editorial opens).
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', _captureHomeMeta);
+} else {
+  _captureHomeMeta();
+}
+// Reset on popstate when hash leaves the editorial namespace
+window.addEventListener('popstate', function(){
+  if(window.location.hash.indexOf('#editorial/') !== 0){
+    _resetEditorialMeta();
+  }
+});
 
 // ======== DEEP LINK: open editorial from hash #editorial/Title ========
 // Accepts EITHER the canonical title ("Refractions") OR a slug-style
