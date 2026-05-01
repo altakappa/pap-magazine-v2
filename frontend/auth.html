@@ -872,102 +872,38 @@ function getSupabase() {
   return _supabaseClient;
 }
 
-// ======== SOCIAL LOGIN ========
-// Strategy:
-//   - Google / Facebook → use Supabase JS client directly (signInWithOAuth).
-//     The SDK manages PKCE verifier in localStorage and Supabase redirects back
-//     to our /auth.html?code=<…>, where the existing handler runs
-//     exchangeCodeForSession() to mint the JWT. This avoids the cross-domain
-//     HttpOnly cookie problems that broke OAuth on www.pap-magazine.com.
-//   - Kakao → still goes through our /api/auth/kakao endpoint because Kakao
-//     is not a Supabase-managed provider here (we talk to Kakao's API
-//     directly via api/auth/kakao.js + api/auth/kakao-callback.js).
+// ======== SOCIAL LOGIN (unified: all providers go through backend endpoints) ========
+// Backend endpoints: /api/auth/google, /api/auth/facebook, /api/auth/kakao
+// They handle PKCE + CSRF state via httpOnly cookies (no verifier loss on Safari ITP).
+// Callback sets pap_oauth_token httpOnly cookie and redirects to /auth?oauth=success.
 function socialLogin(provider) {
   if (provider !== 'google' && provider !== 'facebook' && provider !== 'kakao') {
     alert('Unsupported provider: ' + provider);
     return;
   }
-
   // Preserve the intended post-login return URL across the OAuth roundtrip.
-  // The ?return= query param is lost when we leave to the OAuth provider,
-  // so we stash it in a short-lived cookie that survives the redirects.
+  // The ?return= query param is lost when we leave to /api/auth/<provider>,
+  // so we stash it in a short-lived cookie that survives the provider redirects.
   try {
     var params = new URLSearchParams(window.location.search);
+    // params.get() URL-decodes once, so `ret` is the plain path (e.g., "/articles.html")
     var ret = params.get('return');
     if (!ret && document.referrer) {
+      // Fall back to referrer if same-origin (user clicked login from some other page)
       if (document.referrer.indexOf(window.location.origin) === 0) {
         var refPath = document.referrer.substring(window.location.origin.length);
+        // Don't loop back to auth.html itself
         if (refPath && refPath.indexOf('auth.html') === -1 && refPath.indexOf('/auth') !== 0) {
           ret = refPath;
         }
       }
     }
     if (ret) {
+      // Store URL-encoded so cookie is safe for special chars (?, &, =, space)
       document.cookie = 'pap-return-url=' + encodeURIComponent(ret) + '; Path=/; Max-Age=600; SameSite=Lax';
     }
   } catch(e) {}
-
-  // Kakao continues to use the dedicated backend endpoint.
-  if (provider === 'kakao') {
-    window.location.href = '/api/auth/' + provider;
-    return;
-  }
-
-  // Google / Facebook — use Supabase JS client directly so PKCE state is
-  // stored in localStorage by the SDK. The redirect target is /auth.html;
-  // when Supabase comes back with ?code=<…>, the existing OAuth handler
-  // below picks it up and calls exchangeCodeForSession(), which only works
-  // when PKCE was stored by the SDK on this same origin.
-  var sb = (typeof getSupabase === 'function') ? getSupabase() : null;
-  if (!sb || !sb.auth || typeof sb.auth.signInWithOAuth !== 'function') {
-    // Fallback to backend endpoint if SDK didn't load.
-    window.location.href = '/api/auth/' + provider;
-    return;
-  }
-
-  // skipBrowserRedirect lets us inspect the URL the SDK built — and lets us
-  // copy the PKCE code_verifier (which Supabase just wrote to localStorage)
-  // into a same-origin cookie. The cookie is the safety net for Safari ITP /
-  // Private mode situations where localStorage gets wiped between the OAuth
-  // hop and the return to /auth.html. The handler at the top of this file
-  // restores the verifier from this cookie back into localStorage when the
-  // SDK loads on the post-OAuth page.
-  sb.auth.signInWithOAuth({
-    provider: provider,
-    options: {
-      redirectTo: window.location.origin + '/auth.html',
-      skipBrowserRedirect: true
-    }
-  }).then(function (result) {
-    if (result && result.error) {
-      var msg = result.error.message || 'OAuth initiation failed';
-      if (typeof PAP !== 'undefined' && PAP.ui && PAP.ui.toast) PAP.ui.toast(msg, 'error');
-      else alert(msg);
-      return;
-    }
-    // Mirror the freshly-written verifier into a cookie so it survives a
-    // localStorage wipe across the OAuth roundtrip.
-    try {
-      var verifier = localStorage.getItem(VERIFIER_KEY);
-      if (verifier) {
-        document.cookie = 'pap-pkce-verifier=' + encodeURIComponent(verifier) +
-          '; Path=/; Max-Age=600; SameSite=Lax; Secure';
-      }
-    } catch (e) {}
-
-    var url = result && result.data && result.data.url;
-    if (url) {
-      window.location.href = url;
-    } else {
-      var emsg = 'OAuth URL missing from Supabase response';
-      if (typeof PAP !== 'undefined' && PAP.ui && PAP.ui.toast) PAP.ui.toast(emsg, 'error');
-      else alert(emsg);
-    }
-  }).catch(function (e) {
-    var msg = (e && e.message) || 'OAuth error';
-    if (typeof PAP !== 'undefined' && PAP.ui && PAP.ui.toast) PAP.ui.toast(msg, 'error');
-    else alert(msg);
-  });
+  window.location.href = '/api/auth/' + provider;
 }
 
 // ======== ERROR MESSAGES (8 LANGUAGES) ========
@@ -1685,55 +1621,42 @@ document.addEventListener('DOMContentLoaded', function() {
   if (oauthCode || (hashStr && hashStr.indexOf('access_token') > -1)) {
     var sb = getSupabase();
     if (sb) {
-      // Listener wins if the SDK auto-processes the URL (detectSessionInUrl).
       sb.auth.onAuthStateChange(function(event, session) {
-        if (event === 'SIGNED_IN' && session && session.access_token && !_oauthHandled) {
+        if (event === 'SIGNED_IN' && session && session.access_token) {
           exchangeSupabaseForPAP(session);
         }
       });
 
-      // Immediate attempt to claim the session — no 3-second wait. The PKCE
-      // flow needs an explicit exchangeCodeForSession() call to mint the
-      // session. We try getSession() first (in case the SDK already finished
-      // an auto-exchange), then fall through to exchangeCodeForSession().
-      (async function() {
-        try {
-          // Tiny wait so the SDK has a chance to auto-detect from the URL.
-          await new Promise(function (r) { setTimeout(r, 50); });
-          if (_oauthHandled) return;
-
-          var sessRes = await sb.auth.getSession();
-          var session = sessRes.data && sessRes.data.session;
-          if (session && session.access_token) {
-            await exchangeSupabaseForPAP(session);
-            return;
-          }
-
-          if (oauthCode && !_oauthHandled) {
-            var exResult = await sb.auth.exchangeCodeForSession(oauthCode);
-            if (exResult.data && exResult.data.session) {
-              await exchangeSupabaseForPAP(exResult.data.session);
-              return;
+      // Reduced fallback timeout: 3s (was 5s)
+      setTimeout(function() {
+        if (_oauthHandled) return;
+        (async function() {
+          try {
+            var result = await sb.auth.getSession();
+            var session = result.data && result.data.session;
+            if (session && session.access_token) {
+              await exchangeSupabaseForPAP(session);
+            } else if (!_oauthHandled) {
+              if (oauthCode) {
+                var exResult = await sb.auth.exchangeCodeForSession(oauthCode);
+                if (exResult.data && exResult.data.session) {
+                  await exchangeSupabaseForPAP(exResult.data.session);
+                } else {
+                  if (typeof PAP !== 'undefined') { PAP.ui.toast('OAuth code exchange error: ' + (exResult.error ? exResult.error.message : 'Unknown'), 'error'); }
+                  else { alert('OAuth code exchange error: ' + (exResult.error ? exResult.error.message : 'Unknown')); }
+                }
+              }
+              window.history.replaceState({}, document.title, window.location.pathname);
             }
-            var exErr = (exResult && exResult.error && exResult.error.message) || 'Unknown';
-            if (typeof PAP !== 'undefined' && PAP.ui && PAP.ui.toast) {
-              PAP.ui.toast('OAuth code exchange error: ' + exErr, 'error');
-            } else {
-              alert('OAuth code exchange error: ' + exErr);
+          } catch(e) {
+            if (!_oauthHandled) {
+              if (typeof PAP !== 'undefined') { PAP.ui.toast('OAuth error: ' + e.message, 'error'); }
+              else { alert('OAuth error: ' + e.message); }
+              window.history.replaceState({}, document.title, window.location.pathname);
             }
-            window.history.replaceState({}, document.title, window.location.pathname);
           }
-        } catch (e) {
-          if (!_oauthHandled) {
-            if (typeof PAP !== 'undefined' && PAP.ui && PAP.ui.toast) {
-              PAP.ui.toast('OAuth error: ' + (e && e.message), 'error');
-            } else {
-              alert('OAuth error: ' + (e && e.message));
-            }
-            window.history.replaceState({}, document.title, window.location.pathname);
-          }
-        }
-      })();
+        })();
+      }, 3000);
     }
   } else if (oauthToken) {
     localStorage.setItem('pap-token', oauthToken);

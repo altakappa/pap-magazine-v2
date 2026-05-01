@@ -24,16 +24,26 @@ module.exports = async function handler(req, res) {
   try {
     const supabaseUrl = process.env.SUPABASE_URL;
     const siteUrl = process.env.NEXT_PUBLIC_URL || 'https://www.pap-magazine.com';
-    // Redirect Supabase OAuth back to /auth.html (the frontend page) instead of
-    // our backend /api/auth/callback. The Supabase JS client loaded on auth.html
-    // picks up the ?code=… query param and runs exchangeCodeForSession() locally,
-    // which avoids the cookie-domain / DNS / redirect-chain issues that the
-    // server-side callback was hitting in production.
-    const redirectTo = `${siteUrl}/auth.html`;
+    const redirectTo = `${siteUrl}/api/auth/callback`;
 
+    const { verifier, challenge } = generatePKCE();
+
+    // Generate CSRF state parameter
+    const state = base64url(crypto.randomBytes(32));
+
+    // Store verifier and state in cookies for callback to verify
+    res.setHeader('Set-Cookie', [
+      `pkce_verifier=${verifier}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600`,
+      `oauth_state=${state}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600`,
+    ]);
+
+    // Build Supabase OAuth URL directly (no JS client needed)
     const params = new URLSearchParams({
       provider: 'facebook',
       redirect_to: redirectTo,
+      code_challenge: challenge,
+      code_challenge_method: 'S256',
+      state,
     });
 
     return res.redirect(302, `${supabaseUrl}/auth/v1/authorize?${params}`);
