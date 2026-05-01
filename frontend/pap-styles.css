@@ -764,6 +764,9 @@ section.hero + .shorts-section{
   .nav-right-col{width:100%;align-items:flex-start;order:1}
   .nav-right-col a{font-size:clamp(28px,8vw,48px)}
   /* .nav-close hidden */
+  /* SUBSCRIBE / SUBMISSION / PULL-LETTER / LOGIN-JOIN — keep all
+     primary nav items the same size for visual consistency. */
+  .nav-left-top a{font-size:clamp(14px,3vw,18px)}
   .nav-left-links a{font-size:clamp(14px,3vw,18px)}
 
   /* Search bar */
@@ -852,6 +855,7 @@ section.hero + .shorts-section{
   /* Nav overlay */
   .nav-overlay-inner{padding:60px 20px 32px}
   .nav-right-col a{font-size:clamp(24px,9vw,36px)}
+  .nav-left-top a{font-size:15px}
   .nav-left-links a{font-size:15px}
   /* .nav-close hidden */
 
@@ -956,6 +960,7 @@ section.hero + .shorts-section{
 
   .nav-overlay-inner{padding:52px 16px 24px}
   .nav-right-col a{font-size:22px}
+  .nav-left-top a{font-size:14px}
   .nav-left-links a{font-size:14px}
 
   .shorts-carousel{height:360px}
@@ -995,6 +1000,7 @@ section.hero + .shorts-section{
   .fashion-card{min-width:95%}
 
   .nav-right-col a{font-size:18px}
+  .nav-left-top a{font-size:13px}
   .nav-left-links a{font-size:13px}
 
   .shorts-carousel{height:320px}

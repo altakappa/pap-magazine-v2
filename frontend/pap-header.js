@@ -170,9 +170,13 @@
       '  .nav-right-col a{font-size:clamp(28px,8vw,48px)}',
       '  .nav-left-col{width:100%;order:2;margin-top:24px}',
       '  .nav-left-top{margin-bottom:16px}',
-      '  .nav-left-top a{font-size:18px}',
+      /* Unified primary-nav sizing — SUBSCRIBE / SUBMISSION / PULL-LETTER /
+         LOGIN-JOIN all share the same scale on mobile so the column reads
+         as one consistent block. Earlier the nav-left-top entry stayed at
+         18px while the others dropped to 15px which looked uneven. */
+      '  .nav-left-top a{font-size:clamp(14px,3vw,18px)}',
       '  .nav-left-links{margin-bottom:20px;gap:6px}',
-      '  .nav-left-links a{font-size:15px}',
+      '  .nav-left-links a{font-size:clamp(14px,3vw,18px)}',
       '  .nav-extra-links{margin-top:0!important}',
       '  .nav-bottom-row{margin-top:8px;padding-top:20px;border-top:1px solid rgba(0,0,0,.08)}',
       '  .nav-socials{flex-wrap:wrap;gap:14px}',
@@ -182,7 +186,8 @@
       '  .header{padding:0 12px;height:56px}',
       '  .nav-overlay-inner{padding:60px 20px 28px}',
       '  .nav-right-col a{font-size:clamp(24px,9vw,36px)}',
-      '  .nav-left-links a{font-size:14px}',
+      '  .nav-left-top a{font-size:15px}',
+      '  .nav-left-links a{font-size:15px}',
       '  .nav-social-icon svg{width:28px;height:28px}',
       '}',
       '@media(max-width:380px){.header{height:52px;padding:0 8px}.hamburger span{width:20px}}'

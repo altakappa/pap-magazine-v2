@@ -226,7 +226,10 @@ footer a:hover{color:#fff}
 }
 .sub-modal-note{font-size:10px;color:rgba(255,255,255,.3);margin-top:16px;letter-spacing:.5px}
 
-@media(max-width:900px){.nav-extra-links{display:none}.nav-bottom-row{display:none}}
+/* Earlier this hid .nav-extra-links (ABOUT/BUSINESS/CONTACT) and
+   .nav-bottom-row (socials) below 900px. Now we keep them visible
+   on mobile — pap-styles.css already handles the layout. */
+@media(max-width:900px){.nav-extra-links{display:flex!important}.nav-bottom-row{display:flex!important}}
 @media(max-width:768px){.nav-overlay-inner{flex-direction:column;padding:70px 24px 40px}.nav-left-col{width:100%;order:2;margin-top:32px}.nav-right-col{width:100%;align-items:flex-start;order:1}.nav-right-col a{font-size:clamp(28px,8vw,48px)}.nav-left-links a{font-size:clamp(14px,3vw,18px)}.nav-left-top a{font-size:clamp(14px,3vw,18px)}}
 @media(max-width:560px){.grid{grid-template-columns:1fr;max-width:360px;margin:0 auto}.sec-head{flex-direction:column;align-items:flex-start;gap:6px}}
 </style>
