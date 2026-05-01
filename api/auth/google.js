@@ -21,18 +21,16 @@ module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
   if (req.method !== 'GET') return res.status(405).json({ message: 'Method not allowed' });
 
+  // NOTE: This server-side endpoint is now a deprecated fallback. The frontend
+  // socialLogin() in auth.html now calls supabase.auth.signInWithOAuth() directly,
+  // which lets the Supabase JS client manage PKCE in localStorage. Bypassing this
+  // endpoint avoids the cross-domain cookie issues we hit when www.pap-magazine.com
+  // and www.papkorea.com had different Set-Cookie behaviour during OAuth callback.
   try {
     const supabaseUrl = process.env.SUPABASE_URL;
     const siteUrl = process.env.NEXT_PUBLIC_URL || 'https://www.pap-magazine.com';
-    // Redirect Supabase OAuth back to /auth.html (the frontend page) instead of
-    // our backend /api/auth/callback. The Supabase JS client loaded on auth.html
-    // picks up the ?code=… query param and runs exchangeCodeForSession() locally,
-    // which avoids the cookie-domain / DNS / redirect-chain issues that the
-    // server-side callback was hitting in production.
     const redirectTo = `${siteUrl}/auth.html`;
 
-    // Build Supabase OAuth URL — no PKCE / cookies on our side; Supabase JS
-    // client on the frontend manages the verifier in localStorage.
     const params = new URLSearchParams({
       provider: 'google',
       redirect_to: redirectTo,

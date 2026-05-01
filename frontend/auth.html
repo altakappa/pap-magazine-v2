@@ -872,38 +872,76 @@ function getSupabase() {
   return _supabaseClient;
 }
 
-// ======== SOCIAL LOGIN (unified: all providers go through backend endpoints) ========
-// Backend endpoints: /api/auth/google, /api/auth/facebook, /api/auth/kakao
-// They handle PKCE + CSRF state via httpOnly cookies (no verifier loss on Safari ITP).
-// Callback sets pap_oauth_token httpOnly cookie and redirects to /auth?oauth=success.
+// ======== SOCIAL LOGIN ========
+// Strategy:
+//   - Google / Facebook → use Supabase JS client directly (signInWithOAuth).
+//     The SDK manages PKCE verifier in localStorage and Supabase redirects back
+//     to our /auth.html?code=<…>, where the existing handler runs
+//     exchangeCodeForSession() to mint the JWT. This avoids the cross-domain
+//     HttpOnly cookie problems that broke OAuth on www.pap-magazine.com.
+//   - Kakao → still goes through our /api/auth/kakao endpoint because Kakao
+//     is not a Supabase-managed provider here (we talk to Kakao's API
+//     directly via api/auth/kakao.js + api/auth/kakao-callback.js).
 function socialLogin(provider) {
   if (provider !== 'google' && provider !== 'facebook' && provider !== 'kakao') {
     alert('Unsupported provider: ' + provider);
     return;
   }
+
   // Preserve the intended post-login return URL across the OAuth roundtrip.
-  // The ?return= query param is lost when we leave to /api/auth/<provider>,
-  // so we stash it in a short-lived cookie that survives the provider redirects.
+  // The ?return= query param is lost when we leave to the OAuth provider,
+  // so we stash it in a short-lived cookie that survives the redirects.
   try {
     var params = new URLSearchParams(window.location.search);
-    // params.get() URL-decodes once, so `ret` is the plain path (e.g., "/articles.html")
     var ret = params.get('return');
     if (!ret && document.referrer) {
-      // Fall back to referrer if same-origin (user clicked login from some other page)
       if (document.referrer.indexOf(window.location.origin) === 0) {
         var refPath = document.referrer.substring(window.location.origin.length);
-        // Don't loop back to auth.html itself
         if (refPath && refPath.indexOf('auth.html') === -1 && refPath.indexOf('/auth') !== 0) {
           ret = refPath;
         }
       }
     }
     if (ret) {
-      // Store URL-encoded so cookie is safe for special chars (?, &, =, space)
       document.cookie = 'pap-return-url=' + encodeURIComponent(ret) + '; Path=/; Max-Age=600; SameSite=Lax';
     }
   } catch(e) {}
-  window.location.href = '/api/auth/' + provider;
+
+  // Kakao continues to use the dedicated backend endpoint.
+  if (provider === 'kakao') {
+    window.location.href = '/api/auth/' + provider;
+    return;
+  }
+
+  // Google / Facebook — use Supabase JS client directly so PKCE state is
+  // stored in localStorage by the SDK. The redirect target is /auth.html;
+  // when Supabase comes back with ?code=<…>, the existing OAuth handler
+  // below picks it up and calls exchangeCodeForSession(), which only works
+  // when PKCE was stored by the SDK on this same origin.
+  var sb = (typeof getSupabase === 'function') ? getSupabase() : null;
+  if (!sb || !sb.auth || typeof sb.auth.signInWithOAuth !== 'function') {
+    // Fallback to backend endpoint if SDK didn't load.
+    window.location.href = '/api/auth/' + provider;
+    return;
+  }
+
+  sb.auth.signInWithOAuth({
+    provider: provider,
+    options: {
+      redirectTo: window.location.origin + '/auth.html'
+    }
+  }).then(function (result) {
+    if (result && result.error) {
+      var msg = result.error.message || 'OAuth initiation failed';
+      if (typeof PAP !== 'undefined' && PAP.ui && PAP.ui.toast) PAP.ui.toast(msg, 'error');
+      else alert(msg);
+    }
+    // On success the SDK does the redirect itself — nothing to do here.
+  }).catch(function (e) {
+    var msg = (e && e.message) || 'OAuth error';
+    if (typeof PAP !== 'undefined' && PAP.ui && PAP.ui.toast) PAP.ui.toast(msg, 'error');
+    else alert(msg);
+  });
 }
 
 // ======== ERROR MESSAGES (8 LANGUAGES) ========
