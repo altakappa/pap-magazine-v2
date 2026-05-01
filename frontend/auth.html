@@ -1671,14 +1671,41 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   } else if (oauthToken) {
     localStorage.setItem('pap-token', oauthToken);
-    if (oauthUser) {
+    // Parse user JSON from URL. URLSearchParams (used to extract `oauthUser`
+    // from the fragment) already decodes once, so JSON.parse should work
+    // directly. The decodeURIComponent fallback handles the legacy case where
+    // the value arrives still-encoded (e.g. via location.search on some flows).
+    // If parsing fails entirely, fall back to /api/auth/me so the user isn't
+    // stuck in an auth↔mypage redirect loop just because pap-user is missing.
+    var _setUserFromObj = function(u){
+      if (!u) return false;
       try {
-        var u = JSON.parse(decodeURIComponent(oauthUser));
         localStorage.setItem('pap-user', JSON.stringify({id:u.id, email:u.email, name:u.name, role:u.role, subscription:u.subscription}));
-      } catch(e) {}
+        return true;
+      } catch(e) { return false; }
+    };
+    var _userOk = false;
+    if (oauthUser) {
+      var _u = null;
+      try { _u = JSON.parse(oauthUser); } catch(e1) {
+        try { _u = JSON.parse(decodeURIComponent(oauthUser)); } catch(e2) { _u = null; }
+      }
+      _userOk = _setUserFromObj(_u);
     }
-    window.history.replaceState({}, document.title, window.location.pathname);
-    window.location.replace(window.getRedirectUrl ? window.getRedirectUrl() : 'mypage.html');
+    var _finishRedirect = function(){
+      window.history.replaceState({}, document.title, window.location.pathname);
+      window.location.replace(window.getRedirectUrl ? window.getRedirectUrl() : 'mypage.html');
+    };
+    if (_userOk) {
+      _finishRedirect();
+    } else {
+      // Fallback: fetch user from /api/auth/me using the token we just stored.
+      fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + oauthToken } })
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(j){ _setUserFromObj(j && j.user); })
+        .catch(function(){})
+        .then(_finishRedirect);
+    }
   } else if (oauthError) {
     // Map error codes from /api/auth/callback to user-friendly Korean messages.
     // The `detail` query param (when present) carries the underlying provider/Supabase
