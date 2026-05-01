@@ -17,13 +17,24 @@ function generatePKCE() {
   return { verifier, challenge };
 }
 
+// Derive the user's current origin from request headers so the OAuth flow
+// stays on the same host they started on. Hardcoding NEXT_PUBLIC_URL meant
+// users on pap-magazine.com would be redirected to www.pap-magazine.com
+// (or vice versa), which dropped the PKCE verifier cookie because cookies
+// are scoped to a single host. Vercel sets x-forwarded-* headers.
+function getRequestOrigin(req) {
+  const proto = (req.headers['x-forwarded-proto'] || 'https').split(',')[0].trim();
+  const host = (req.headers['x-forwarded-host'] || req.headers.host || '').split(',')[0].trim();
+  return `${proto}://${host}`;
+}
+
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
   if (req.method !== 'GET') return res.status(405).json({ message: 'Method not allowed' });
 
   try {
     const supabaseUrl = process.env.SUPABASE_URL;
-    const siteUrl = process.env.NEXT_PUBLIC_URL || 'https://www.pap-magazine.com';
+    const siteUrl = getRequestOrigin(req);
     const redirectTo = `${siteUrl}/api/auth/callback`;
 
     const { verifier, challenge } = generatePKCE();

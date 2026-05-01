@@ -19,11 +19,21 @@ function parseCookies(cookieHeader) {
   return cookies;
 }
 
+// Derive the request's actual origin so we redirect the user back to the
+// same host they started OAuth on (e.g. pap-magazine.com vs www.pap-magazine.com).
+// The /api/auth/google and /api/auth/facebook endpoints already preserve the
+// host across the Supabase round-trip, so this callback runs on the original host.
+function getRequestOrigin(req) {
+  var proto = ((req.headers['x-forwarded-proto'] || 'https') + '').split(',')[0].trim();
+  var host = ((req.headers['x-forwarded-host'] || req.headers.host || '') + '').split(',')[0].trim();
+  return proto + '://' + host;
+}
+
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
   if (req.method !== 'GET') return res.status(405).json({ message: 'Method not allowed' });
 
-  var frontendUrl = process.env.NEXT_PUBLIC_URL || 'https://www.pap-magazine.com';
+  var frontendUrl = getRequestOrigin(req);
 
   try {
     var code = req.query.code;
