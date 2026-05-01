@@ -23,24 +23,19 @@ module.exports = async function handler(req, res) {
 
   try {
     const supabaseUrl = process.env.SUPABASE_URL;
-    const siteUrl = process.env.NEXT_PUBLIC_URL || 'https://www.papkorea.com';
-    const redirectTo = `${siteUrl}/api/auth/callback`;
+    const siteUrl = process.env.NEXT_PUBLIC_URL || 'https://www.pap-magazine.com';
+    // Redirect Supabase OAuth back to /auth.html (the frontend page) instead of
+    // our backend /api/auth/callback. The Supabase JS client loaded on auth.html
+    // picks up the ?code=… query param and runs exchangeCodeForSession() locally,
+    // which avoids the cookie-domain / DNS / redirect-chain issues that the
+    // server-side callback was hitting in production.
+    const redirectTo = `${siteUrl}/auth.html`;
 
-    const { verifier, challenge } = generatePKCE();
-
-    // Store PKCE verifier in cookie for callback to verify
-    // NOTE: Do NOT pass a custom `state` parameter — Supabase generates/validates its own state internally.
-    // Passing a custom state causes Supabase to return "400: OAuth state parameter is invalid" on callback.
-    res.setHeader('Set-Cookie', [
-      `pkce_verifier=${verifier}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600`,
-    ]);
-
-    // Build Supabase OAuth URL directly (no JS client needed)
+    // Build Supabase OAuth URL — no PKCE / cookies on our side; Supabase JS
+    // client on the frontend manages the verifier in localStorage.
     const params = new URLSearchParams({
       provider: 'google',
       redirect_to: redirectTo,
-      code_challenge: challenge,
-      code_challenge_method: 'S256',
       access_type: 'offline',
       prompt: 'consent',
     });
