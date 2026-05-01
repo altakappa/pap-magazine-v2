@@ -150,10 +150,41 @@
       // visible above the white nav-overlay and morphs into an X via
       // .is-active, eliminating the duplicate close icon that used to sit
       // at top:20px;left:24px and cause the "two icons" QA report.
-      /* responsive */
-      '@media(max-width:900px){.nav-extra-links{display:none}.nav-bottom-row{display:none}}',
-      '@media(max-width:768px){.header{padding:0 16px;height:60px}.header-left{gap:4px}.header-left-item svg{width:18px;height:18px}.nav-overlay-inner{flex-direction:column;padding:70px 24px 40px}.nav-left-col{width:100%;order:2;margin-top:32px}.nav-right-col{width:100%;align-items:flex-start;order:1}.nav-right-col a{font-size:clamp(28px,8vw,48px)}.nav-left-links a{font-size:clamp(14px,3vw,18px)}}',
-      '@media(max-width:480px){.header{padding:0 12px;height:56px}.nav-overlay-inner{padding:60px 20px 32px}.nav-right-col a{font-size:clamp(24px,9vw,36px)}.nav-left-links a{font-size:15px}}',
+      /* responsive
+         Earlier this hid .nav-extra-links (ABOUT/BUSINESS/CONTACT) and
+         .nav-bottom-row (socials) below 900px — leftover from a wider
+         tablet design. The mobile nav-overlay has plenty of vertical
+         space, so we keep everything visible and just rescale typography
+         to fit. */
+      '@media(max-width:900px){',
+      '  .nav-extra-links{display:flex!important}',
+      '  .nav-bottom-row{display:flex!important}',
+      '}',
+      '@media(max-width:768px){',
+      '  .header{padding:0 16px;height:60px}',
+      '  .header-left{gap:4px}',
+      '  .header-left-item svg{width:18px;height:18px}',
+      '  /* Stack nav columns: right (big titles) on top, left (links + socials) below. Both full width with consistent left-aligned typography. */',
+      '  .nav-overlay-inner{flex-direction:column;padding:70px 24px 32px;overflow-y:auto;-webkit-overflow-scrolling:touch}',
+      '  .nav-right-col{width:100%;align-items:flex-start;order:1;gap:8px;justify-content:flex-start;padding-bottom:24px;border-bottom:1px solid rgba(0,0,0,.08)}',
+      '  .nav-right-col a{font-size:clamp(28px,8vw,48px)}',
+      '  .nav-left-col{width:100%;order:2;margin-top:24px}',
+      '  .nav-left-top{margin-bottom:16px}',
+      '  .nav-left-top a{font-size:18px}',
+      '  .nav-left-links{margin-bottom:20px;gap:6px}',
+      '  .nav-left-links a{font-size:15px}',
+      '  .nav-extra-links{margin-top:0!important}',
+      '  .nav-bottom-row{margin-top:8px;padding-top:20px;border-top:1px solid rgba(0,0,0,.08)}',
+      '  .nav-socials{flex-wrap:wrap;gap:14px}',
+      '  .nav-social-icon svg{width:32px;height:32px}',
+      '}',
+      '@media(max-width:480px){',
+      '  .header{padding:0 12px;height:56px}',
+      '  .nav-overlay-inner{padding:60px 20px 28px}',
+      '  .nav-right-col a{font-size:clamp(24px,9vw,36px)}',
+      '  .nav-left-links a{font-size:14px}',
+      '  .nav-social-icon svg{width:28px;height:28px}',
+      '}',
       '@media(max-width:380px){.header{height:52px;padding:0 8px}.hamburger span{width:20px}}'
     ].join('\n');
     document.head.appendChild(style);
