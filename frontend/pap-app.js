@@ -183,52 +183,8 @@ if(hSlides.length)setInterval(()=>heroGo(hCur+1),3000);
 function getLangText(key,fallback){var lang=localStorage.getItem('pap-lang')||'ko';var msgs={edAccessFree:{ko:'에디토리얼 전체보기는 스탠다드 이상 회원만 이용 가능합니다.',en:'Standard membership or above is required to browse all editorials.',it:'Per accedere a tutti gli editoriali è necessario un abbonamento Standard o superiore.',fr:'Un abonnement Standard ou supérieur est requis pour parcourir tous les éditoriaux.',es:'Se requiere una membresía Estándar o superior para ver todos los editoriales.',ja:'全エディトリアルの閲覧にはスタンダード以上の会員登録が必要です。',zh:'浏览所有社论需要标准会员或以上。',ru:'Для просмотра всех редакционных материалов требуется подписка Standard или выше.'}};var m=msgs[key];if(!m)return fallback||'';return m[lang]||m.en||fallback||'';}
 
 function toggleSearch(){const o=document.getElementById('searchBar');if(!o)return;o.classList.toggle('active');if(o.classList.contains('active')){setTimeout(()=>{var si=document.getElementById('searchInput');if(si)si.focus();},300);}else{var dd=document.getElementById('searchDropdown');if(dd)dd.classList.remove('active');var si=document.getElementById('searchInput');if(si)si.value='';}}
-function toggleAccountMenu(e){if(e)e.stopPropagation();var d=document.getElementById('accountDropdown');if(!d)return;d.classList.toggle('active');if(d.classList.contains('active')){setTimeout(function(){document.addEventListener('click',_closeAcct)},10)}else{document.removeEventListener('click',_closeAcct)}}
-function _closeAcct(e){var d=document.getElementById('accountDropdown');if(d&&!d.contains(e.target)){d.classList.remove('active');document.removeEventListener('click',_closeAcct)}}
-
-// ======== AUTH STATE → HEADER DROPDOWN ========
-function _papUpdateAuthDropdown(){
-  try{
-    var u=localStorage.getItem('pap-user');
-    var token=localStorage.getItem('pap-token');
-    if(!u&&!token) return;
-    var user=u?JSON.parse(u):null;
-    var displayName=(user&&user.name)?user.name:(user&&user.email)?user.email:'Account';
-    var dd=document.getElementById('accountDropdown');
-    if(!dd) return;
-    var lang=localStorage.getItem('pap-lang')||'ko';
-    var t={
-      ko:{mypage:'마이페이지',subscribe:'구독 관리',logout:'로그아웃'},
-      en:{mypage:'MY PAGE',subscribe:'MANAGE SUBSCRIPTION',logout:'LOG OUT'},
-      it:{mypage:'LA MIA PAGINA',subscribe:'GESTISCI ABBONAMENTO',logout:'ESCI'},
-      fr:{mypage:'MON COMPTE',subscribe:'GÉRER L\'ABONNEMENT',logout:'DÉCONNEXION'},
-      ja:{mypage:'マイページ',subscribe:'購読管理',logout:'ログアウト'},
-      zh:{mypage:'我的页面',subscribe:'管理订阅',logout:'退出登录'},
-      es:{mypage:'MI PÁGINA',subscribe:'GESTIONAR SUSCRIPCIÓN',logout:'CERRAR SESIÓN'},
-      ru:{mypage:'МОЯ СТРАНИЦА',subscribe:'УПРАВЛЕНИЕ ПОДПИСКОЙ',logout:'ВЫЙТИ'},
-      de:{mypage:'MEINE SEITE',subscribe:'ABONNEMENT VERWALTEN',logout:'ABMELDEN'}
-    };
-    var s=t[lang]||t.en;
-    dd.innerHTML=
-      '<a href="mypage.html">'+s.mypage+'</a>'+
-      '<a href="subscribe.html">'+s.subscribe+'</a>'+
-      '<div class="dropdown-divider"></div>'+
-      '<button onclick="_papLogout()">'+s.logout+'</button>';
-    // Also update nav overlay login link
-    document.querySelectorAll('[data-i18n="navLogin"]').forEach(function(el){
-      el.href='mypage.html';
-      el.textContent=displayName;
-      el.removeAttribute('data-i18n');
-      el.setAttribute('data-auth-updated','1');
-    });
-  }catch(e){console.warn('Auth dropdown error:',e);}
-}
-function _papLogout(){
-  localStorage.removeItem('pap-token');
-  localStorage.removeItem('pap-user');
-  window.location.href='/';
-}
-_papUpdateAuthDropdown();
+// Auth state, account dropdown, logout: extracted to pap-auth.js (mission 2).
+// pap-auth.js MUST be loaded before this file.
 
 var _si=document.getElementById('searchInput');
 if(_si){
@@ -774,21 +730,8 @@ var edLogoFolders = (typeof window !== 'undefined' && window.PAP_LOGO_FOLDERS) ?
 // Case-insensitive lookup helper for edLogoFolders
 function getLogoFolderId(t){if(edLogoFolders[t])return edLogoFolders[t];var tL=t.toLowerCase();for(var k in edLogoFolders){if(k.toLowerCase()===tL)return edLogoFolders[k];}return null;}
 
-// Global auth helpers (needed by openEditorial for premium logo section)
-// 베타 기간 중에는 "로그인한 회원(무료 포함)"에게만 전체 접근 권한 부여
-// 비로그인 방문자는 유료 서비스에 접근 불가 → 로그인/회원가입 유도
-// 로그인 판별을 관대하게: pap-token 또는 파싱 가능한 pap-user 중 하나만 있어도
-// 로그인 회원으로 인정. 세션 경계/토큰 리프레시 중 race로 한쪽이 일시적으로
-// 비어 있어도 베타 회원이 잘못 페이월로 떨어지지 않게 방지한다.
-function isLoggedIn(){
-  try{
-    if(localStorage.getItem('pap-token')) return true;
-    var u=localStorage.getItem('pap-user');
-    if(!u) return false;
-    var parsed=JSON.parse(u);
-    return !!(parsed && (parsed.id || parsed.email));
-  }catch(e){ return false; }
-}
+// isLoggedIn() lives in pap-auth.js (mission 2 extraction). isPremium /
+// isStandardOrAbove call it as a global; pap-auth.js is loaded before this file.
 function isPremium(){
   try{
     if(isBetaActive()){
