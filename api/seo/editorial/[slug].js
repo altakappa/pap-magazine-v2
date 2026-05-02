@@ -312,53 +312,74 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    /* Two-step lookup so a UUID-typed `id` column doesn't reject string slugs:
-       1) match by slug exactly (covers the canonical sitemap URLs)
-       2) if nothing, treat the param as a UUID/id (legacy /editorial/<id> links)
-       Each query is filtered to published + past scheduled_publish_at. */
-    const nowIso = new Date().toISOString();
+    /* 3-step lookup. Done as separate queries (not chained `.or()`) because
+       supabase's OR-string parser gets tripped up by ISO timestamps with
+       dots, and because a UUID `id` column will reject non-UUID input.
+       Order: slug match → title match (URL-decoded) → id match (UUID-only). */
+    const decodedSlug = (() => {
+      try { return decodeURIComponent(slug); } catch { return slug; }
+    })();
 
-    let { data, error } = await supabaseAdmin
+    let data = null, error = null;
+
+    /* 1) Exact slug match — the canonical case */
+    const slugLookup = await supabaseAdmin
       .from('editorials')
       .select('*')
       .eq('slug', slug)
       .eq('status', 'published')
-      .or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${nowIso}`)
       .limit(1)
       .maybeSingle();
+    data = slugLookup.data; error = slugLookup.error;
 
-    /* Fallback: only attempt id-match when the param could be a UUID, to
-       avoid postgres throwing "invalid input syntax for type uuid". */
-    if ((!data || error) && /^[0-9a-f-]{8,}$/i.test(slug)) {
+    /* 2) Title match (URL-decoded). Some editorials have titles for slugs
+       — e.g. slug="The New Dandy" — and the URL arrives encoded. */
+    if (!data && decodedSlug !== slug) {
+      const decodedSlugLookup = await supabaseAdmin
+        .from('editorials')
+        .select('*')
+        .eq('slug', decodedSlug)
+        .eq('status', 'published')
+        .limit(1)
+        .maybeSingle();
+      data = decodedSlugLookup.data; error = decodedSlugLookup.error;
+    }
+
+    /* 3) Title match — last resort for legacy /editorial/<title> URLs */
+    if (!data) {
+      const titleLookup = await supabaseAdmin
+        .from('editorials')
+        .select('*')
+        .eq('title', decodedSlug)
+        .eq('status', 'published')
+        .limit(1)
+        .maybeSingle();
+      data = titleLookup.data; error = titleLookup.error;
+    }
+
+    /* 4) UUID id match (only if param looks like a UUID, to keep postgres
+       from throwing "invalid input syntax for type uuid"). */
+    if (!data && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug)) {
       const idLookup = await supabaseAdmin
         .from('editorials')
         .select('*')
         .eq('id', slug)
         .eq('status', 'published')
-        .or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${nowIso}`)
         .limit(1)
         .maybeSingle();
-      data = idLookup.data;
-      error = idLookup.error;
+      data = idLookup.data; error = idLookup.error;
     }
 
-    /* Last-resort fallback: match by exact title (sitemap was previously
-       generated with raw titles, so already-indexed Google URLs may use
-       title in the path slot). Only done when slug+id both miss. */
-    if ((!data || error)) {
-      const titleLookup = await supabaseAdmin
-        .from('editorials')
-        .select('*')
-        .eq('title', decodeURIComponent(slug))
-        .eq('status', 'published')
-        .or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${nowIso}`)
-        .limit(1)
-        .maybeSingle();
-      data = titleLookup.data;
-      error = titleLookup.error;
+    /* Filter out future-scheduled posts in JS to keep the SQL filters simple */
+    if (data && data.scheduled_publish_at) {
+      const scheduledMs = Date.parse(data.scheduled_publish_at);
+      if (!isNaN(scheduledMs) && scheduledMs > Date.now()) {
+        data = null;
+      }
     }
 
     if (error || !data) {
+      console.error('[seo/editorial] not found', { slug, decodedSlug, error: error?.message });
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300');
       return res.status(404).send(render404Html(slug));
