@@ -183,14 +183,20 @@ module.exports = async function handler(req, res) {
           'localStorage.setItem("pap-user",JSON.stringify({id:u.id,email:u.email,name:u.name,role:u.role,subscription:u.subscription}));' +
         '}catch(e){}' +
         // Resolve return URL from cookie set by socialLogin() before the OAuth
-        // round-trip; fallback to mypage.html.
-        'var dest="mypage.html";' +
+        // round-trip; fallback to /mypage.html. NB: this script runs on
+        // /api/auth/callback so we must use absolute paths — a relative
+        // "mypage.html" would resolve to /api/auth/mypage.html and 404.
+        'var dest="/mypage.html";' +
         'try{' +
           'var m=document.cookie.match(/(?:^|; )pap-return-url=([^;]+)/);' +
           'if(m){' +
             'document.cookie="pap-return-url=; Path=/; Max-Age=0; SameSite=Lax";' +
             'var d=decodeURIComponent(m[1]);' +
-            'if(d&&d.indexOf("://")===-1&&d.indexOf("//")!==0){dest=d;}' +
+            'if(d&&d.indexOf("://")===-1&&d.indexOf("//")!==0){' +
+              // Force leading slash so the redirect is always site-absolute,
+              // regardless of what the cookie stored.
+              'dest=d.charAt(0)==="/"?d:"/"+d;' +
+            '}' +
           '}' +
         '}catch(e){}' +
         'window.location.replace(dest);' +
