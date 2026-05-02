@@ -61,10 +61,32 @@
 <meta name="twitter:title" content="PAP Magazine - Fashion, Editorial & Film">
 <meta name="twitter:description" content="A global fashion and editorial platform showcasing creative content from artists worldwide.">
 <meta name="twitter:image" content="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/c_1_7c42a14014.jpg">
+<!-- WebSite schema with Sitelinks Search Box — gives Google a search box
+     directly under the PAP listing in search results. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "PAP Magazine",
+  "alternateName": ["PAP", "PAP MAGAZINE", "팝매거진"],
+  "url": "https://www.pap-magazine.com",
+  "inLanguage": ["ko-KR", "en-US", "it-IT"],
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": {
+      "@type": "EntryPoint",
+      "urlTemplate": "https://www.pap-magazine.com/?q={search_term_string}"
+    },
+    "query-input": "required name=search_term_string"
+  },
+  "publisher": { "@id": "https://www.pap-magazine.com/#organization" }
+}
+</script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "Organization",
+  "@id": "https://www.pap-magazine.com/#organization",
   "name": "PAP Magazine",
   "alternateName": ["PAP", "PAP MAGAZINE", "팝매거진", "피에이피 매거진"],
   "url": "https://www.pap-magazine.com",

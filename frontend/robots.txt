@@ -57,4 +57,8 @@ Disallow: /
 User-agent: Google-Extended
 Disallow: /
 
+Sitemap: https://www.pap-magazine.com/sitemap-index.xml
 Sitemap: https://www.pap-magazine.com/sitemap.xml
+Sitemap: https://www.pap-magazine.com/sitemap-editorials.xml
+Sitemap: https://www.pap-magazine.com/sitemap-articles.xml
+Sitemap: https://www.pap-magazine.com/sitemap-films.xml

@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.portone.io https://*.portone.io https://*.iamport.co https://js.tosspayments.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co https://api.portone.io https://*.portone.io https://*.iamport.co https://api.pap-magazine.com https://*.tosspayments.com https://ipapi.co; frame-src https://service.portone.io https://*.portone.io https://*.iamport.co https://*.tosspayments.com https://pay.tosspayments.com;">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="PAP Magazine 멤버십 구독. 에디토리얼, 필름, 아티클 등 모든 콘텐츠를 가장 먼저 만나보세요.">
-<meta name="keywords" content="PAP Magazine, subscription, 구독, membership, 멤버십, premium, digital magazine, 디지털 매거진">
-<meta property="og:title" content="Subscribe | PAP Magazine">
-<meta property="og:description" content="PAP Magazine 멤버십 구독. 에디토리얼, 필름, 아티클 등 모든 콘텐츠를 가장 먼저 만나보세요.">
+<meta name="description" content="PAP Magazine 프리미엄 멤버십 — 에디토리얼·필름·아티클·셀럽 뉴스 등 모든 콘텐츠를 가장 먼저, 광고 없이, 풀해상도로. 패션·아트·뷰티·컬쳐의 모든 깊이를 누리세요. Subscribe to PAP Magazine premium.">
+<meta name="keywords" content="PAP Magazine 구독, 디지털 매거진 멤버십, fashion magazine subscription, premium editorial access, ad-free magazine, 매거진 정기구독, K-fashion magazine, Italian fashion publication">
+<meta property="og:title" content="Subscribe to PAP Magazine — Premium Membership">
+<meta property="og:description" content="에디토리얼·필름·아티클·셀럽 뉴스를 광고 없이 가장 먼저, 풀해상도로 만나는 PAP 프리미엄 멤버십.">
 <meta property="og:image" content="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/cover1_0281a06055.jpg">
 <meta property="og:type" content="website">
 <link rel="canonical" href="https://www.pap-magazine.com/subscribe">
@@ -94,14 +94,16 @@ a{color:#fff;text-decoration:none}
 .plan-card.is-current .plan-cta{background:transparent;color:rgba(255,255,255,.4);border-color:rgba(255,255,255,.15);cursor:default;pointer-events:none}
 .plan-card.is-current .plan-cta:hover{background:transparent;color:rgba(255,255,255,.4);border-color:rgba(255,255,255,.15)}
 
-/* Recommended badge */
+/* Recommended badge — centered above the card top to match the
+   "currently on" badge styling on the FREE / PREMIUM cards. */
 .plan-card.recommended{border-color:rgba(255,255,255,.3)}
 .plan-card.recommended::before{
   content:attr(data-badge);
-  position:absolute;top:-1px;left:32px;
+  position:absolute;top:-1px;left:50%;transform:translate(-50%,-50%);
   background:#fff;color:#000;
   font-size:9px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;
   padding:5px 14px;
+  white-space:nowrap;
 }
 
 .plan-tier{font-size:10px;font-weight:700;letter-spacing:.25em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:20px}
@@ -113,8 +115,11 @@ a{color:#fff;text-decoration:none}
 .plan-desc{font-size:12px;color:rgba(255,255,255,.4);line-height:1.8;margin-bottom:32px;min-height:44px;width:100%}
 
 /* Feature list */
+/* Feature list — centered horizontally so the whole card content reads
+   as a single column. Icon + text are kept inline-flex so the check mark
+   sits next to the label, but the row itself is justify-center'd. */
 .plan-features{list-style:none;margin-bottom:auto;padding-bottom:32px;width:100%}
-.plan-features li{font-size:12px;line-height:1.6;color:rgba(255,255,255,.7);padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:flex-start;gap:10px}
+.plan-features li{font-size:12px;line-height:1.6;color:rgba(255,255,255,.7);padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:flex-start;justify-content:center;gap:10px;text-align:center}
 .plan-features li:last-child{border-bottom:none}
 .plan-features li .icon{flex-shrink:0;width:16px;height:16px;display:flex;align-items:center;justify-content:center;margin-top:1px}
 .plan-features li .icon.check svg{stroke:#fff;opacity:.8}

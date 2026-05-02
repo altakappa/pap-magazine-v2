@@ -7,7 +7,14 @@
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/admin/:path*", "destination": "/admin.html" },
     { "source": "/sitemap.xml", "destination": "/api/sitemap" },
-    { "source": "/editorial/:slug", "destination": "/api/seo/editorial/:slug" }
+    { "source": "/sitemap-index.xml", "destination": "/api/sitemap-index" },
+    { "source": "/sitemap-editorials.xml", "destination": "/api/sitemap-editorials" },
+    { "source": "/sitemap-articles.xml", "destination": "/api/sitemap-articles" },
+    { "source": "/sitemap-films.xml", "destination": "/api/sitemap-films" },
+    { "source": "/editorial/:slug", "destination": "/api/seo/editorial/:slug" },
+    { "source": "/article/:slug", "destination": "/api/seo/article/:slug" },
+    { "source": "/film/:slug", "destination": "/api/seo/film/:slug" },
+    { "source": "/short/:slug", "destination": "/api/seo/short/:slug" }
   ],
   "redirects": [
     {
@@ -90,6 +97,54 @@
       "source": "/(.*).png",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/(.*).(jpg|jpeg|webp|avif|gif|svg|ico)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/(.*).(woff|woff2|ttf|otf)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" },
+        { "key": "Access-Control-Allow-Origin", "value": "*" }
+      ]
+    },
+    {
+      "source": "/sitemap(.*).xml",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=3600, stale-while-revalidate=86400" },
+        { "key": "Content-Type", "value": "application/xml; charset=utf-8" }
+      ]
+    },
+    {
+      "source": "/editorial/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, s-maxage=300, stale-while-revalidate=86400" },
+        { "key": "X-Robots-Tag", "value": "index, follow, max-image-preview:large" }
+      ]
+    },
+    {
+      "source": "/article/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, s-maxage=300, stale-while-revalidate=86400" },
+        { "key": "X-Robots-Tag", "value": "index, follow, max-image-preview:large" }
+      ]
+    },
+    {
+      "source": "/film/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, s-maxage=300, stale-while-revalidate=86400" },
+        { "key": "X-Robots-Tag", "value": "index, follow, max-image-preview:large, max-video-preview:-1" }
+      ]
+    },
+    {
+      "source": "/short/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, s-maxage=300, stale-while-revalidate=86400" },
+        { "key": "X-Robots-Tag", "value": "index, follow, max-image-preview:large, max-video-preview:-1" }
       ]
     },
     {
