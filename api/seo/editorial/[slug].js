@@ -96,6 +96,22 @@ function renderEditorialHtml(ed) {
   const tags = Array.isArray(ed.tags) ? ed.tags : (ed.tags ? String(ed.tags).split(',').map(s => s.trim()).filter(Boolean) : []);
   const contributors = extractContributors(ed);
 
+  /* Gallery: full editorial image set. The DB stores it either as a JSON
+     array of URLs or a stringified JSON. Cap at 60 to keep the SSR HTML
+     reasonable; the SPA can lazy-load anything beyond that. */
+  const gallery = (() => {
+    let g = ed.gallery;
+    if (!g) return [];
+    if (typeof g === 'string') {
+      try { g = JSON.parse(g); } catch { return []; }
+    }
+    if (!Array.isArray(g)) return [];
+    return g.filter(u => typeof u === 'string' && u).slice(0, 60);
+  })();
+
+  /* All images that go into Schema.org image[] for rich results */
+  const allImages = [ogImage, ...gallery].filter(Boolean);
+
   /* Schema.org Article — gives Google rich-result eligibility */
   const articleSchema = {
     '@context': 'https://schema.org',
@@ -103,7 +119,7 @@ function renderEditorialHtml(ed) {
     headline: titleKo,
     alternativeHeadline: titleEn,
     description: descKo,
-    image: [ogImage].filter(Boolean),
+    image: allImages,
     datePublished: published,
     dateModified: fmtIsoDate(ed.updated_at || ed.published_date),
     author: contributors.length
@@ -143,9 +159,23 @@ function renderEditorialHtml(ed) {
       '</ul></section>'
     : '';
 
-  /* Cover image — wrapped in <noscript> too so it always renders */
+  /* Cover image — first paint, eager-load. */
   const heroImg = ogImage
-    ? `<img src="${escAttr(ogImage)}" alt="${escAttr(titleKo)}" loading="eager" fetchpriority="high" width="1200" height="800">`
+    ? `<img src="${escAttr(ogImage)}" alt="${escAttr(titleKo)} — Cover" loading="eager" fetchpriority="high" width="1200" height="800">`
+    : '';
+
+  /* Gallery: every editorial image as a <figure>, lazy-loaded (so the page
+     stays fast while still being fully crawlable). Each image gets an
+     informative alt text combining the editorial title + sequence index,
+     which helps Google Images. */
+  const galleryHtml = gallery.length
+    ? '<section class="seo-gallery" aria-label="Editorial gallery">' +
+        gallery.map((src, i) =>
+          `<figure>` +
+            `<img src="${escAttr(src)}" alt="${escAttr(titleKo)} — Look ${i + 1}" loading="lazy" decoding="async">` +
+          `</figure>`
+        ).join('') +
+      '</section>'
     : '';
 
   return `<!DOCTYPE html>
@@ -222,6 +252,11 @@ ${tags.map(t => `<meta property="article:tag" content="${escAttr(t)}">`).join('\
   body.seo-loading .seo-credits h2{font-size:14px;letter-spacing:.12em;text-transform:uppercase;opacity:.7}
   body.seo-loading .seo-credits ul{list-style:none;padding:0;display:flex;flex-wrap:wrap;gap:16px}
   body.seo-loading .seo-credits li{font-size:13px;opacity:.8}
+  /* Editorial gallery — single-column on mobile, two-column on tablet+, generous spacing */
+  body.seo-loading .seo-gallery{max-width:1200px;margin:48px auto;padding:0 16px;display:grid;grid-template-columns:1fr;gap:24px}
+  body.seo-loading .seo-gallery figure{margin:0}
+  body.seo-loading .seo-gallery img{display:block;width:100%;height:auto;background:#111}
+  @media(min-width:900px){body.seo-loading .seo-gallery{grid-template-columns:1fr 1fr;gap:32px}}
 </style>
 </head>
 <body class="seo-loading">
@@ -234,10 +269,11 @@ ${tags.map(t => `<meta property="article:tag" content="${escAttr(t)}">`).join('\
       <h1>${escText(titleKo)}</h1>
       ${titleEn !== titleKo ? `<p class="alt">${escText(titleEn)}</p>` : ''}
       <time datetime="${escAttr(published)}">${escText(published.slice(0, 10))}${ed.issue ? ' · ' + escText(ed.issue) : ''}</time>
-      <p>${escText(desc)}</p>
-      ${descEn && descEn !== descKo ? `<p>${escText(truncate(descEn, 280))}</p>` : ''}
+      <p>${escText(descKo)}</p>
+      ${descEn && descEn !== descKo ? `<p>${escText(descEn)}</p>` : ''}
       ${tagHtml}
     </div>
+    ${galleryHtml}
     ${creditsHtml}
   </article>
 </main>
