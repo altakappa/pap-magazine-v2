@@ -312,16 +312,51 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    /* Look up by slug; fall back to id for legacy links */
+    /* Two-step lookup so a UUID-typed `id` column doesn't reject string slugs:
+       1) match by slug exactly (covers the canonical sitemap URLs)
+       2) if nothing, treat the param as a UUID/id (legacy /editorial/<id> links)
+       Each query is filtered to published + past scheduled_publish_at. */
     const nowIso = new Date().toISOString();
-    const { data, error } = await supabaseAdmin
+
+    let { data, error } = await supabaseAdmin
       .from('editorials')
       .select('*')
-      .or(`slug.eq.${slug},id.eq.${slug}`)
+      .eq('slug', slug)
       .eq('status', 'published')
       .or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${nowIso}`)
       .limit(1)
       .maybeSingle();
+
+    /* Fallback: only attempt id-match when the param could be a UUID, to
+       avoid postgres throwing "invalid input syntax for type uuid". */
+    if ((!data || error) && /^[0-9a-f-]{8,}$/i.test(slug)) {
+      const idLookup = await supabaseAdmin
+        .from('editorials')
+        .select('*')
+        .eq('id', slug)
+        .eq('status', 'published')
+        .or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${nowIso}`)
+        .limit(1)
+        .maybeSingle();
+      data = idLookup.data;
+      error = idLookup.error;
+    }
+
+    /* Last-resort fallback: match by exact title (sitemap was previously
+       generated with raw titles, so already-indexed Google URLs may use
+       title in the path slot). Only done when slug+id both miss. */
+    if ((!data || error)) {
+      const titleLookup = await supabaseAdmin
+        .from('editorials')
+        .select('*')
+        .eq('title', decodeURIComponent(slug))
+        .eq('status', 'published')
+        .or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${nowIso}`)
+        .limit(1)
+        .maybeSingle();
+      data = titleLookup.data;
+      error = titleLookup.error;
+    }
 
     if (error || !data) {
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
