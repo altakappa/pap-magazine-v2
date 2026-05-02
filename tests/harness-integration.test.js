@@ -400,7 +400,8 @@ for (const html of HTMLS_LOADING_FULL_CHAIN) {
   }
   const content = fs.readFileSync(file, 'utf8');
   const found = [];
-  const re = /src="(pap-[a-z0-9-]+)\.js/g;
+  // Match both relative (legacy) and absolute (post-cleanup) script src.
+  const re = /src="\/?(pap-[a-z0-9-]+)\.js/g;
   let match;
   while ((match = re.exec(content)) !== null) {
     if (expectedTags.includes(match[1])) found.push(match[1]);

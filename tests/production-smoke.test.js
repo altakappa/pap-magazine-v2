@@ -119,7 +119,8 @@ async function checkScriptOrder() {
     return;
   }
   const found = [];
-  const re = /src="(pap-[a-z0-9-]+)\.js/g;
+  // Match both relative (legacy) and absolute (post-cleanup) script src.
+  const re = /src="\/?(pap-[a-z0-9-]+)\.js/g;
   let m;
   while ((m = re.exec(html)) !== null) {
     if (EXPECTED_SCRIPT_ORDER.includes(m[1])) found.push(m[1]);
