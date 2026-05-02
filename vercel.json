@@ -9,6 +9,26 @@
     { "source": "/sitemap.xml", "destination": "/api/sitemap" }
   ],
   "redirects": [
+    {
+      "//": "Domain consolidation: papkorea.com is the legacy alias. All traffic 301-redirects to pap-magazine.com so search engines index a single canonical domain and SEO juice consolidates. Users typing papkorea.com still 'work' — they just land on pap-magazine.com. Path is preserved.",
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "www.papkorea.com" }],
+      "destination": "https://www.pap-magazine.com/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "papkorea.com" }],
+      "destination": "https://www.pap-magazine.com/:path*",
+      "permanent": true
+    },
+    {
+      "//": "Apex-to-www on the canonical domain itself, in case anyone hits pap-magazine.com without the www subdomain.",
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "pap-magazine.com" }],
+      "destination": "https://www.pap-magazine.com/:path*",
+      "permanent": true
+    },
     { "source": "/ko", "destination": "/", "permanent": true },
     { "source": "/ko/", "destination": "/", "permanent": true },
     { "source": "/ko/about", "destination": "/about.html", "permanent": true },

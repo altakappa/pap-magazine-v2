@@ -1,11 +1,60 @@
+# PAP Magazine — robots.txt
+# Canonical domain: https://www.pap-magazine.com
+# Legacy alias www.papkorea.com 301-redirects to the canonical domain at the
+# Vercel layer, so crawlers that follow the redirect will end up here and
+# never index the alias.
+
 User-agent: *
 Allow: /
 
+# Internal / authenticated pages — never expose in search results
 Disallow: /admin.html
 Disallow: /content-admin.html
 Disallow: /data-migration.html
 Disallow: /auth.html
 Disallow: /mypage.html
+Disallow: /data-deletion.html
 Disallow: /api/
+
+# Backup files (legacy snapshots — exclude from index)
+Disallow: /*.backup$
+Disallow: /*.bak$
+
+# Allow major search engines explicit access (faster crawl budget allocation)
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 0
+
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 0
+
+User-agent: Naverbot
+Allow: /
+Crawl-delay: 0
+
+User-agent: Yeti
+Allow: /
+Crawl-delay: 0
+
+User-agent: Daumoa
+Allow: /
+Crawl-delay: 0
+
+# Block AI training scrapers (PAP retains content rights)
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
 
 Sitemap: https://www.pap-magazine.com/sitemap.xml
