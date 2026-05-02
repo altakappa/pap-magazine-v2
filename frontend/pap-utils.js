@@ -1,0 +1,220 @@
+// PAP Magazine — Shell utilities module (extracted from pap-app.js per
+// HARNESS_CHECKLIST.md mission 5).
+//
+// Foundational pure-ish helpers shared across every page and harness:
+//   - modal scroll lock (lockScroll / unlockScroll, ref-counted)
+//   - horizontal carousel arrow-state + smooth scroll
+//   - HTML escape / decode / whitespace normalize
+//   - shared pagination component (PAP_PER_PAGE, buildPagination)
+//
+// All functions are top-level declarations so they attach to window in
+// classic-script context — they are read as bare globals from pap-app.js,
+// pap-static.js, articles.html, films.html, and the inline scroll-lock copies
+// in about/business/contact/pullletter/pap-magazine-v5.
+//
+// No external dependencies. Should be loaded first in the script chain.
+
+// ======== MODAL SCROLL LOCK (공통) ========
+// 모달이 열릴 때 배경 스크롤을 잠그고, 닫힐 때 원래 위치로 복원합니다.
+var _scrollLockCount=0;
+var _savedScrollY=0;
+function lockScroll(){
+  if(_scrollLockCount===0){
+    _savedScrollY=window.scrollY;
+    document.body.style.overflow='hidden';
+    document.body.style.position='fixed';
+    document.body.style.top=(-_savedScrollY)+'px';
+    document.body.style.left='0';
+    document.body.style.right='0';
+  }
+  _scrollLockCount++;
+}
+function unlockScroll(){
+  _scrollLockCount--;
+  if(_scrollLockCount<=0){
+    _scrollLockCount=0;
+    document.body.style.overflow='';
+    document.body.style.position='';
+    document.body.style.top='';
+    document.body.style.left='';
+    document.body.style.right='';
+    window.scrollTo(0,_savedScrollY);
+  }
+}
+
+// ======== UNIFIED CAROUSEL ARROW STATE ========
+// Toggles `.is-disabled` on the left arrow when scrollLeft is at 0 and on
+// the right arrow when scrollLeft + clientWidth has reached scrollWidth.
+// Single helper used by every horizontal-scroll carousel on the home page
+// so the user sees the same "hide arrow when there's nothing to scroll
+// to" behavior consistently across sections.
+function _papUpdateArrows(track, leftBtn, rightBtn){
+  if(!track) return;
+  // 1px tolerance — fractional scroll positions on retina/zoom can leave
+  // scrollLeft like 0.4 even when visually pinned to the start.
+  var atStart = track.scrollLeft <= 1;
+  var atEnd   = track.scrollLeft + track.clientWidth >= track.scrollWidth - 1;
+  // No overflow at all → both arrows hide (nothing to scroll).
+  var noOverflow = track.scrollWidth <= track.clientWidth + 1;
+  if(leftBtn)  leftBtn.classList.toggle('is-disabled',  noOverflow || atStart);
+  if(rightBtn) rightBtn.classList.toggle('is-disabled', noOverflow || atEnd);
+}
+function _papWireCarousel(trackSel, leftSel, rightSel){
+  var track = typeof trackSel === 'string' ? document.querySelector(trackSel) : trackSel;
+  if(!track) return;
+  // Find sibling buttons within the track's parent (works for ed-row-wrap,
+  // nf-wrap, fashion-section, etc.)
+  var wrap = track.parentElement;
+  var left  = leftSel  ? (wrap.querySelector(leftSel)  || document.querySelector(leftSel))  : null;
+  var right = rightSel ? (wrap.querySelector(rightSel) || document.querySelector(rightSel)) : null;
+  function update(){ _papUpdateArrows(track, left, right); }
+  track.addEventListener('scroll', update, {passive:true});
+  window.addEventListener('resize', update);
+  // Mutation observer for content rendered later (cards added via API)
+  var mo = new MutationObserver(update);
+  try{ mo.observe(track, {childList:true, subtree:false}); }catch(_){}
+  // Initial state — wait a frame for layout to settle.
+  // setTimeout guarantees layout has settled and observer/scroll listeners
+  // are attached before the first state computation. RAF chained twice was
+  // intermittently not firing in some Vercel CDN cold-start scenarios.
+  setTimeout(update, 0);
+  setTimeout(update, 200);
+  setTimeout(update, 1500);
+}
+
+// ======== SMOOTH SCROLL HELPER ========
+// Used by Fashion / Editorial-row / Film-row carousels. See pap-app.js's
+// moveCarousel/scrollEdRow/scrollFilm for callers.
+//
+// IMPORTANT: scrollBy({behavior:'smooth'}) silently fails on these tracks
+// in some Chrome layouts (likely an interaction with the parent's
+// overflow:hidden + flex container). Even direct scrollLeft assignment is
+// queued/ignored when CSS scroll-behavior:smooth is set on the element.
+//
+// Strategy: temporarily force scroll-behavior:auto inline, set scrollLeft
+// synchronously to the target, then on the next animation frame swap
+// behavior back to its previous value AND set scrollLeft again — Chrome
+// will animate from the current position with smooth scroll for the final
+// frame, giving a visual easing without depending on rAF firing reliably.
+// Works on hidden tabs (rAF throttled) too because the synchronous jump
+// ensures the click ALWAYS produces movement.
+function _papSmoothScrollBy(track, dx){
+  if(!track || !dx) return;
+  var prevBehavior = track.style.scrollBehavior;
+  var max = Math.max(0, track.scrollWidth - track.clientWidth);
+  var target = Math.max(0, Math.min(max, track.scrollLeft + dx));
+  if(target === track.scrollLeft) return;
+  // Phase 1 — synchronous instant jump (works regardless of rAF state).
+  track.style.scrollBehavior = 'auto';
+  track.scrollLeft = target;
+  // Phase 2 — synthetic scroll event so listeners (e.g. arrow state updater)
+  // run even when programmatic scroll didn't trigger a native scroll event.
+  try { track.dispatchEvent(new Event('scroll', {bubbles:false})); } catch(_){}
+  // Phase 3 — restore previous scroll-behavior on next frame (best-effort).
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(function(){
+      track.style.scrollBehavior = prevBehavior;
+    });
+  } else {
+    track.style.scrollBehavior = prevBehavior;
+  }
+}
+
+// ======== HTML helpers ========
+function escapeHtml(t){if(!t)return '';return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function _decHtml(s){var d=document.createElement('div');d.innerHTML=s;return d.textContent||d.innerText||'';}
+function _normWs(s){return s.replace(/[\u2018\u2019\u201C\u201D]/g,"'").replace(/\s+/g,' ').trim();}
+
+// ======== UNIFIED PAGINATION COMPONENT ========
+// Used by index (editorials), articles, films, and any other listing page.
+// Ellipsis ('···') is rendered as a hover/focus-interactive button that
+// morphs into «/» on hover and jumps ±5 pages on click. Mobile (no-hover)
+// devices: a single tap on the '···' button reveals the arrow briefly and
+// fires the jump (the :active state plus the .is-revealed class give users
+// a visual hint that the element is interactive).
+var PAP_PER_PAGE=20;
+var PAP_PAGE_JUMP=5; // number of pages the ellipsis jump skips
+function buildPagination(container,currentPage,totalPages,onPageChange,isDark){
+  container.innerHTML='';
+  if(totalPages<=1) return;
+  container.className='pap-pagination'+(isDark?' dark':'');
+
+  // Numbered / arrow button
+  function btn(label,page,isActive,isDisabled,cls){
+    var b=document.createElement('button');
+    b.type='button';
+    b.textContent=label;
+    if(isActive) b.className='active';
+    if(isDisabled) b.disabled=true;
+    if(cls) b.className=(b.className?b.className+' ':'')+cls;
+    if(!isDisabled&&!isActive) b.onclick=function(){onPageChange(page);};
+    container.appendChild(b);
+    return b;
+  }
+
+  // Hover-interactive ellipsis with directional ±5 jump.
+  // direction: -1 (prev block) → '···' morphs to '«', jumps to currentPage-5
+  // direction: +1 (next block) → '···' morphs to '»', jumps to currentPage+5
+  function jump(direction){
+    var target = direction<0
+      ? Math.max(1,currentPage-PAP_PAGE_JUMP)
+      : Math.min(totalPages,currentPage+PAP_PAGE_JUMP);
+    var b=document.createElement('button');
+    b.type='button';
+    b.className='pag-jump '+(direction<0?'pag-jump-prev':'pag-jump-next');
+    var label=(direction<0?'이전 ':'다음 ')+PAP_PAGE_JUMP+'페이지로 이동';
+    b.setAttribute('aria-label',label);
+    b.title=(direction<0?'-':'+')+PAP_PAGE_JUMP+' pages';
+    b.innerHTML='<span class="pag-jump-dots" aria-hidden="true">···</span>'+
+                '<span class="pag-jump-arrow" aria-hidden="true">'+(direction<0?'«':'»')+'</span>';
+    // Mobile / no-hover devices: first tap reveals the arrow (300ms hint),
+    // second tap (within 1.2s) fires the jump. On hover-capable devices the
+    // single click fires immediately because the arrow is already visible.
+    var canHover = (typeof window.matchMedia==='function'
+                    && window.matchMedia('(hover: hover)').matches);
+    if(canHover){
+      b.onclick=function(){onPageChange(target);};
+    } else {
+      var revealed=false, revealTimer=null;
+      b.onclick=function(){
+        if(revealed){
+          revealed=false;
+          if(revealTimer){clearTimeout(revealTimer);revealTimer=null;}
+          b.classList.remove('is-revealed');
+          onPageChange(target);
+          return;
+        }
+        revealed=true;
+        b.classList.add('is-revealed');
+        if(revealTimer)clearTimeout(revealTimer);
+        revealTimer=setTimeout(function(){
+          revealed=false;
+          b.classList.remove('is-revealed');
+        },1200);
+      };
+    }
+    container.appendChild(b);
+    return b;
+  }
+
+  // prev arrow
+  btn('‹',currentPage-1,false,currentPage===1);
+
+  // page numbers
+  if(totalPages<=9){
+    for(var i=1;i<=totalPages;i++) btn(String(i),i,i===currentPage,false);
+  } else {
+    btn('1',1,1===currentPage,false);
+    var start=Math.max(2,currentPage-1);
+    var end=Math.min(totalPages-1,currentPage+1);
+    if(currentPage<=4){start=2;end=Math.min(5,totalPages-1);}
+    if(currentPage>=totalPages-3){start=Math.max(2,totalPages-4);end=totalPages-1;}
+    if(start>2) jump(-1);
+    for(var j=start;j<=end;j++) btn(String(j),j,j===currentPage,false);
+    if(end<totalPages-1) jump(+1);
+    btn(String(totalPages),totalPages,totalPages===currentPage,false);
+  }
+
+  // next arrow
+  btn('›',currentPage+1,false,currentPage===totalPages);
+}
