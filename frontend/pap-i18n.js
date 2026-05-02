@@ -37,6 +37,22 @@ de:{about:'ÜBER UNS',contact:'KONTAKT',business:'BUSINESS',subscribe:'ABONNIERE
 // modal / pagination code in pap-app.js can read it as a bare global.
 // Switching to `let` would silently break those callsites.
 var lang='ko';
+
+// ======== Search result label translations (relocated from pap-app.js per
+// HARNESS_CHECKLIST.md mission 4 — option C: each harness extraction also
+// migrates its inline language dictionary into this i18n module). Consumed
+// by pap-search.js as a bare global; `var` for cross-script visibility.
+var _searchTexts={
+  ko:{found:function(q,n){return '"'+q+'" · '+n+'개 에디토리얼';},noResult:function(q){return '"'+q+'" 관련 에디토리얼을 찾지 못했습니다';}},
+  en:{found:function(q,n){return '"'+q+'" · '+n+' editorials';},noResult:function(q){return 'No editorials found for "'+q+'"';}},
+  it:{found:function(q,n){return '"'+q+'" · '+n+' editoriali';},noResult:function(q){return 'Nessun editoriale trovato per "'+q+'"';}},
+  fr:{found:function(q,n){return '"'+q+'" · '+n+' éditoriaux';},noResult:function(q){return 'Aucun éditorial trouvé pour "'+q+'"';}},
+  es:{found:function(q,n){return '"'+q+'" · '+n+' editoriales';},noResult:function(q){return 'No se encontraron editoriales para "'+q+'"';}},
+  ja:{found:function(q,n){return '"'+q+'" · '+n+'件のエディトリアル';},noResult:function(q){return '"'+q+'" に関連するエディトリアルが見つかりません';}},
+  zh:{found:function(q,n){return '"'+q+'" · '+n+'篇社论';},noResult:function(q){return '未找到与 "'+q+'" 相关的社论';}},
+  ru:{found:function(q,n){return '"'+q+'" · '+n+' материалов';},noResult:function(q){return 'По запросу "'+q+'" ничего не найдено';}},
+  de:{found:function(q,n){return '"'+q+'" · '+n+' Editorials';},noResult:function(q){return 'Keine Editorials gefunden für "'+q+'"';}}
+};
 // Article i18n data map — slug → {t:{ko,en,...}, sub:{...}}
 window._articleI18n = window._articleI18n || {};
 function _applyArticleCardI18n(l){

@@ -1,0 +1,155 @@
+// PAP Magazine — Search module (extracted from pap-app.js per HARNESS_CHECKLIST.md mission 4)
+//
+// Owns: search bar toggle, search-input event wiring, the editorial search
+//   algorithm + dropdown / legacy-panel rendering.
+//
+// Public surface (consumed cross-script via globals):
+//   window.toggleSearch()       — open/close the search bar (called from
+//                                 inline onclick= attributes across pages)
+//   window.searchEditorials(q)  — score-and-render search results
+//
+// Dependencies (must all be loaded before this file):
+//   - pap-i18n.js      → uses `lang` and `_searchTexts` for result labels
+// Dependencies that resolve at CALL time (so load order doesn't matter):
+//   - pap-app.js       → `edData` (editorial dataset), `creatorData`,
+//                        `openEditorial`, `openCreatorPopup`. The search input
+//                        listener only fires on user typing, by which time
+//                        every script has run.
+
+function toggleSearch(){const o=document.getElementById('searchBar');if(!o)return;o.classList.toggle('active');if(o.classList.contains('active')){setTimeout(()=>{var si=document.getElementById('searchInput');if(si)si.focus();},300);}else{var dd=document.getElementById('searchDropdown');if(dd)dd.classList.remove('active');var si=document.getElementById('searchInput');if(si)si.value='';}}
+
+var _si=document.getElementById('searchInput');
+if(_si){
+  _si.addEventListener('input',function(){searchEditorials(this.value);});
+  // Enter key — open the first dropdown result (works on home + sub pages).
+  // Falls through to no-op when there are no results yet.
+  _si.addEventListener('keydown',function(e){
+    if(e.key==='Enter'){
+      e.preventDefault();
+      var first=document.querySelector('#searchDropdown .search-dropdown-item');
+      if(first){first.click();return;}
+      // No editorial match — try a global Google-style fallback: navigate to
+      // home with the query so the page can show "no results" or trigger a
+      // server-side search if implemented later.
+      var q=this.value.trim();
+      if(q) window.location.href='/?q=' + encodeURIComponent(q);
+    }
+  });
+}
+
+function searchEditorials(query){
+  // Dropdown search (works on all pages with search-bar)
+  var dd=document.getElementById('searchDropdown');
+  var ddGrid=document.getElementById('searchDropdownGrid');
+  var ddLabel=document.getElementById('searchDropdownLabel');
+
+  // Legacy panel search (magazine page etc.)
+  var results=document.getElementById('edSearchResults');
+  var grid=document.getElementById('edSearchGrid');
+  var label=document.getElementById('edSearchLabel');
+  var rows=document.getElementById('edRows')||document.querySelector('.ed-rows-block');
+  var crResults=document.getElementById('creatorResults');
+  var crCards=document.getElementById('creatorCards');
+  var crLabel=document.getElementById('creatorLabel');
+
+  if(!query||query.trim().length<1){
+    if(dd)dd.classList.remove('active');
+    if(results)results.style.display='none';
+    if(crResults)crResults.style.display='none';
+    if(rows)rows.style.display='block';
+    return;
+  }
+
+  var q=query.toLowerCase().trim();
+  var scored=[];
+
+  edData.forEach(function(ed){
+    var score=0;
+    if(ed.title.toLowerCase().indexOf(q)>-1) score+=10;
+    if(ed.tags){ed.tags.forEach(function(tag){
+      if(tag.indexOf(q)>-1) score+=5;
+      if(q.length>2 && tag.indexOf(q.substring(0,3))>-1) score+=2;
+    });}
+    if(score>0) scored.push({ed:ed,score:score});
+  });
+
+  scored.sort(function(a,b){return b.score-a.score;});
+
+  // --- Dropdown rendering (primary) ---
+  if(dd&&ddGrid&&ddLabel){
+    ddGrid.innerHTML='';
+    if(scored.length>0){
+      var _st=_searchTexts[lang]||_searchTexts.en;ddLabel.textContent=_st.found(query,scored.length);
+      var maxShow=Math.min(scored.length,12);
+      for(var i=0;i<maxShow;i++){
+        var e=scored[i].ed;
+        var item=document.createElement('div');
+        item.className='search-dropdown-item';
+        // Click handler — universal across home and sub pages.
+        // On home (where #edOverlay exists) open the overlay directly.
+        // On any other page, deep-link to /#editorial/Title so the home
+        // page's auto-open hash handler renders the overlay after landing.
+        (function(ed){
+          item.onclick=function(){
+            try{ toggleSearch(); }catch(_){}
+            if(typeof openEditorial==='function' && document.getElementById('edOverlay')){
+              openEditorial(ed.title, ed.img);
+            } else {
+              window.location.href = '/#editorial/' + encodeURIComponent(ed.title);
+            }
+          };
+        })(e);
+        item.innerHTML='<img src="'+e.img+'" alt="'+e.title+'"><div class="search-dropdown-item-info"><div class="search-dropdown-item-cat">EDITORIAL · '+e.date+'</div><div class="search-dropdown-item-title">'+e.title+'</div></div>';
+        ddGrid.appendChild(item);
+      }
+    } else {
+      ddLabel.textContent='';
+      var _st=_searchTexts[lang]||_searchTexts.en;ddGrid.innerHTML='<div class="search-no-result">'+_st.noResult(query)+'</div>';
+    }
+    dd.classList.add('active');
+  }
+
+  // --- Legacy panel rendering (for pages with edSearchResults) ---
+  if(crResults&&crCards&&crLabel&&typeof creatorData!=='undefined'&&creatorData.length>0){
+    var cq=q;
+    var matchedCreators=creatorData.filter(function(cr){
+      return cr.name.toLowerCase().indexOf(cq)>-1 || cr.role.toLowerCase().indexOf(cq)>-1 || cr.instagram.toLowerCase().indexOf(cq)>-1;
+    });
+    if(matchedCreators.length>0){
+      crLabel.textContent='CREATORS · '+matchedCreators.length+' found';
+      crCards.innerHTML='';
+      matchedCreators.forEach(function(cr){
+        var card=document.createElement('div');
+        card.className='creator-card';
+        card.onclick=function(){openCreatorPopup(cr);};
+        card.innerHTML='<div class="creator-card-name">'+cr.name+'</div><div class="creator-card-role">'+cr.role+'</div><div class="creator-card-count">'+cr.editorials.length+' editorial'+(cr.editorials.length>1?'s':'')+'</div>';
+        crCards.appendChild(card);
+      });
+      crResults.style.display='block';
+    } else {
+      crResults.style.display='none';
+    }
+  }
+
+  if(results&&grid&&label){
+    if(scored.length>0){
+      var _st2=_searchTexts[lang]||_searchTexts.en;label.textContent=_st2.found(query,scored.length);
+      grid.innerHTML='';
+      scored.forEach(function(item){
+        var e=item.ed;
+        var card=document.createElement('div');
+        card.className='ed-row-card';
+        card.onclick=function(){openEditorial(e.title,e.img);};
+        card.innerHTML='<div class="ed-row-card-img"><img src="'+e.img+'" alt="'+e.title+'"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">EDITORIAL - '+e.date+'</div><div class="ed-row-card-title">'+e.title+'</div></div>';
+        grid.appendChild(card);
+      });
+      results.style.display='block';
+      if(rows)rows.style.display='none';
+    } else {
+      var _st2=_searchTexts[lang]||_searchTexts.en;label.textContent=_st2.noResult(query);
+      grid.innerHTML='';
+      results.style.display='block';
+      if(rows)rows.style.display='none';
+    }
+  }
+}

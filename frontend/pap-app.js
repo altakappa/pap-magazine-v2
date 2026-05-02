@@ -80,28 +80,14 @@ if(hSlides.length)setInterval(()=>heroGo(hCur+1),3000);
 // ======== LANG HELPER ========
 function getLangText(key,fallback){var lang=localStorage.getItem('pap-lang')||'ko';var msgs={edAccessFree:{ko:'에디토리얼 전체보기는 스탠다드 이상 회원만 이용 가능합니다.',en:'Standard membership or above is required to browse all editorials.',it:'Per accedere a tutti gli editoriali è necessario un abbonamento Standard o superiore.',fr:'Un abonnement Standard ou supérieur est requis pour parcourir tous les éditoriaux.',es:'Se requiere una membresía Estándar o superior para ver todos los editoriales.',ja:'全エディトリアルの閲覧にはスタンダード以上の会員登録が必要です。',zh:'浏览所有社论需要标准会员或以上。',ru:'Для просмотра всех редакционных материалов требуется подписка Standard или выше.'}};var m=msgs[key];if(!m)return fallback||'';return m[lang]||m.en||fallback||'';}
 
-function toggleSearch(){const o=document.getElementById('searchBar');if(!o)return;o.classList.toggle('active');if(o.classList.contains('active')){setTimeout(()=>{var si=document.getElementById('searchInput');if(si)si.focus();},300);}else{var dd=document.getElementById('searchDropdown');if(dd)dd.classList.remove('active');var si=document.getElementById('searchInput');if(si)si.value='';}}
+// toggleSearch / search input listeners / searchEditorials: extracted to
+// pap-search.js (mission 4). Search labels (`_searchTexts`) moved to pap-i18n.js.
 // Auth state, account dropdown, logout: extracted to pap-auth.js (mission 2).
-// pap-auth.js MUST be loaded before this file.
-
-var _si=document.getElementById('searchInput');
-if(_si){
-  _si.addEventListener('input',function(){searchEditorials(this.value);});
-  // Enter key — open the first dropdown result (works on home + sub pages).
-  // Falls through to no-op when there are no results yet.
-  _si.addEventListener('keydown',function(e){
-    if(e.key==='Enter'){
-      e.preventDefault();
-      var first=document.querySelector('#searchDropdown .search-dropdown-item');
-      if(first){first.click();return;}
-      // No editorial match — try a global Google-style fallback: navigate to
-      // home with the query so the page can show "no results" or trigger a
-      // server-side search if implemented later.
-      var q=this.value.trim();
-      if(q) window.location.href='/?q=' + encodeURIComponent(q);
-    }
-  });
-}
+// Both pap-auth.js and pap-search.js MUST be loaded before this file.
+//
+// The ESC/Backspace global hotkey handler below STAYS here — it closes
+// search UI but ALSO closes editorial / film / article overlays and the nav,
+// which belong to other harnesses. Splitting it would cross-couple them.
 document.addEventListener('keydown',e=>{if(e.key==='Escape'||e.key==='Backspace'){var isInput=e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'||e.target.isContentEditable;if(e.key==='Backspace'&&isInput)return;var _sb=document.getElementById('searchBar');if(_sb)_sb.classList.remove('active');var _sdd=document.getElementById('searchDropdown');if(_sdd)_sdd.classList.remove('active');var _ssi=document.getElementById('searchInput');if(_ssi)_ssi.value='';var _ad=document.getElementById('accountDropdown');if(_ad)_ad.classList.remove('active');closeNav();var edOv=document.getElementById('edOverlay');if(edOv&&edOv.classList.contains('active')){closeEditorial();e.preventDefault();return;}closeAllEditorials();closeAllFilms();closeAllArticles();if(document.getElementById('filmDetailOverlay'))document.getElementById('filmDetailOverlay').classList.remove('active');if(document.getElementById('artDetailOverlay'))document.getElementById('artDetailOverlay').classList.remove('active');if(e.key==='Backspace')e.preventDefault();}});
 
 // ======== NAV ========
@@ -377,138 +363,10 @@ function scrollEdRow(btn,dir){
   }
 })();
 
-// ======== EDITORIAL SEARCH (tag-based) ========
-// ======== EDITORIAL SEARCH (tag-based) ========
+// ======== EDITORIAL SEARCH DATA SLOT ========
+// edData (editorial dataset) is owned by Content. The search algorithm itself
+// lives in pap-search.js (mission 4) and reads edData as a global at call time.
 var edData=[];
-var _searchTexts={
-  ko:{found:function(q,n){return '"'+q+'" · '+n+'개 에디토리얼';},noResult:function(q){return '"'+q+'" 관련 에디토리얼을 찾지 못했습니다';}},
-  en:{found:function(q,n){return '"'+q+'" · '+n+' editorials';},noResult:function(q){return 'No editorials found for "'+q+'"';}},
-  it:{found:function(q,n){return '"'+q+'" · '+n+' editoriali';},noResult:function(q){return 'Nessun editoriale trovato per "'+q+'"';}},
-  fr:{found:function(q,n){return '"'+q+'" · '+n+' éditoriaux';},noResult:function(q){return 'Aucun éditorial trouvé pour "'+q+'"';}},
-  es:{found:function(q,n){return '"'+q+'" · '+n+' editoriales';},noResult:function(q){return 'No se encontraron editoriales para "'+q+'"';}},
-  ja:{found:function(q,n){return '"'+q+'" · '+n+'件のエディトリアル';},noResult:function(q){return '"'+q+'" に関連するエディトリアルが見つかりません';}},
-  zh:{found:function(q,n){return '"'+q+'" · '+n+'篇社论';},noResult:function(q){return '未找到与 "'+q+'" 相关的社论';}},
-  ru:{found:function(q,n){return '"'+q+'" · '+n+' материалов';},noResult:function(q){return 'По запросу "'+q+'" ничего не найдено';}},
-  de:{found:function(q,n){return '"'+q+'" · '+n+' Editorials';},noResult:function(q){return 'Keine Editorials gefunden für "'+q+'"';}}
-};
-
-function searchEditorials(query){
-  // Dropdown search (works on all pages with search-bar)
-  var dd=document.getElementById('searchDropdown');
-  var ddGrid=document.getElementById('searchDropdownGrid');
-  var ddLabel=document.getElementById('searchDropdownLabel');
-
-  // Legacy panel search (magazine page etc.)
-  var results=document.getElementById('edSearchResults');
-  var grid=document.getElementById('edSearchGrid');
-  var label=document.getElementById('edSearchLabel');
-  var rows=document.getElementById('edRows')||document.querySelector('.ed-rows-block');
-  var crResults=document.getElementById('creatorResults');
-  var crCards=document.getElementById('creatorCards');
-  var crLabel=document.getElementById('creatorLabel');
-
-  if(!query||query.trim().length<1){
-    if(dd)dd.classList.remove('active');
-    if(results)results.style.display='none';
-    if(crResults)crResults.style.display='none';
-    if(rows)rows.style.display='block';
-    return;
-  }
-
-  var q=query.toLowerCase().trim();
-  var scored=[];
-
-  edData.forEach(function(ed){
-    var score=0;
-    if(ed.title.toLowerCase().indexOf(q)>-1) score+=10;
-    if(ed.tags){ed.tags.forEach(function(tag){
-      if(tag.indexOf(q)>-1) score+=5;
-      if(q.length>2 && tag.indexOf(q.substring(0,3))>-1) score+=2;
-    });}
-    if(score>0) scored.push({ed:ed,score:score});
-  });
-
-  scored.sort(function(a,b){return b.score-a.score;});
-
-  // --- Dropdown rendering (primary) ---
-  if(dd&&ddGrid&&ddLabel){
-    ddGrid.innerHTML='';
-    if(scored.length>0){
-      var _st=_searchTexts[lang]||_searchTexts.en;ddLabel.textContent=_st.found(query,scored.length);
-      var maxShow=Math.min(scored.length,12);
-      for(var i=0;i<maxShow;i++){
-        var e=scored[i].ed;
-        var item=document.createElement('div');
-        item.className='search-dropdown-item';
-        // Click handler — universal across home and sub pages.
-        // On home (where #edOverlay exists) open the overlay directly.
-        // On any other page, deep-link to /#editorial/Title so the home
-        // page's auto-open hash handler renders the overlay after landing.
-        (function(ed){
-          item.onclick=function(){
-            try{ toggleSearch(); }catch(_){}
-            if(typeof openEditorial==='function' && document.getElementById('edOverlay')){
-              openEditorial(ed.title, ed.img);
-            } else {
-              window.location.href = '/#editorial/' + encodeURIComponent(ed.title);
-            }
-          };
-        })(e);
-        item.innerHTML='<img src="'+e.img+'" alt="'+e.title+'"><div class="search-dropdown-item-info"><div class="search-dropdown-item-cat">EDITORIAL · '+e.date+'</div><div class="search-dropdown-item-title">'+e.title+'</div></div>';
-        ddGrid.appendChild(item);
-      }
-    } else {
-      ddLabel.textContent='';
-      var _st=_searchTexts[lang]||_searchTexts.en;ddGrid.innerHTML='<div class="search-no-result">'+_st.noResult(query)+'</div>';
-    }
-    dd.classList.add('active');
-  }
-
-  // --- Legacy panel rendering (for pages with edSearchResults) ---
-  if(crResults&&crCards&&crLabel&&typeof creatorData!=='undefined'&&creatorData.length>0){
-    var cq=q;
-    var matchedCreators=creatorData.filter(function(cr){
-      return cr.name.toLowerCase().indexOf(cq)>-1 || cr.role.toLowerCase().indexOf(cq)>-1 || cr.instagram.toLowerCase().indexOf(cq)>-1;
-    });
-    if(matchedCreators.length>0){
-      crLabel.textContent='CREATORS · '+matchedCreators.length+' found';
-      crCards.innerHTML='';
-      matchedCreators.forEach(function(cr){
-        var card=document.createElement('div');
-        card.className='creator-card';
-        card.onclick=function(){openCreatorPopup(cr);};
-        card.innerHTML='<div class="creator-card-name">'+cr.name+'</div><div class="creator-card-role">'+cr.role+'</div><div class="creator-card-count">'+cr.editorials.length+' editorial'+(cr.editorials.length>1?'s':'')+'</div>';
-        crCards.appendChild(card);
-      });
-      crResults.style.display='block';
-    } else {
-      crResults.style.display='none';
-    }
-  }
-
-  if(results&&grid&&label){
-    if(scored.length>0){
-      var _st2=_searchTexts[lang]||_searchTexts.en;label.textContent=_st2.found(query,scored.length);
-      grid.innerHTML='';
-      scored.forEach(function(item){
-        var e=item.ed;
-        var card=document.createElement('div');
-        card.className='ed-row-card';
-        card.onclick=function(){openEditorial(e.title,e.img);};
-        card.innerHTML='<div class="ed-row-card-img"><img src="'+e.img+'" alt="'+e.title+'"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">EDITORIAL - '+e.date+'</div><div class="ed-row-card-title">'+e.title+'</div></div>';
-        grid.appendChild(card);
-      });
-      results.style.display='block';
-      if(rows)rows.style.display='none';
-    } else {
-      var _st2=_searchTexts[lang]||_searchTexts.en;label.textContent=_st2.noResult(query);
-      grid.innerHTML='';
-      results.style.display='block';
-      if(rows)rows.style.display='none';
-    }
-  }
-}
-
 
 // ======== EDITORIAL DETAIL DATA ========
 var edDetails={};
