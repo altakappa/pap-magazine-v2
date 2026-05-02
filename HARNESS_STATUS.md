@@ -325,17 +325,42 @@ window.scrollEdRow(btn, dir)         // 에디토리얼 row 화살표
 
 ## 6. 검증 방식
 
-각 미션마다 다음 4단계 검증:
+### 6.1 미션 진행 시 4단계 수동 검증
+
+각 미션마다:
 
 1. **`node -c`** — 모든 변경 파일 syntax check
 2. **byte-identity diff** — 추출 함수가 origin/main 의 원본과 byte 단위 동일한지 확인 (`git show origin/main:frontend/pap-app.js | awk` ↔ 새 파일)
 3. **HTML 로드 순서 grep** — 모든 10개 HTML 의 script 태그가 의존성 순서대로인지 byte 오프셋 비교
 4. **vm 통합 테스트** — Node `vm.createContext` 로 모든 모듈을 한 컨텍스트에 로드, cross-module 함수 호출 동작 검증
 
-production 배포 직후 추가 검증:
-- 모든 모듈 HTTP 200 응답 확인
-- 핵심 함수가 production JS 파일에 grep-가능
-- `/auth.html`, `/api/auth/google` 정상 응답
+### 6.2 자동화된 CI 안전망 (✅ 완료)
+
+`harness-refactor` 마무리 시점 (2026-05-02) 에 GitHub Actions 자동화 셋업 완료. 이제 모든 push / PR 마다 자동 실행.
+
+**워크플로**: [`.github/workflows/test.yml`](.github/workflows/test.yml) — 2 jobs.
+
+**Job 1 — `vm integration test`** (~6초, 모든 push + PR 에서 실행)
+
+`npm test` → [tests/harness-integration.test.js](tests/harness-integration.test.js)
+- Phase 1: 15개 모듈 vm 로드 (HTML 순서 그대로)
+- Phase 2: 51개 public surface assertion (모든 window.X 함수, var X 데이터)
+- Phase 3: 6개 cross-module 행동 검증 (`setLang` 전파, `isLoggedIn` 토큰 추적, `edImgError` 폴백, `navigateWithInterstitial`, beta 액세스 등)
+- Phase 4: 10개 HTML × 15개 script 태그 순서
+
+**Job 2 — `production smoke test`** (~6초, push to main 에서만 실행)
+
+`npm run smoke` → [tests/production-smoke.test.js](tests/production-smoke.test.js)
+- Phase 0: pap-i18n.js 의 mission-10 marker (`_interstitialUpsellTexts`) 가 production 에 나타날 때까지 폴링 (max 5분)
+- Phase 1: 15개 모듈 production 200 OK + canonical marker grep
+- Phase 2: index.html 의 15개 script 태그가 정확한 순서로 served
+- Phase 3: `/api/auth/google` → 302 to Supabase, `/` → 200
+
+**합계**: 91 assertions, 외부 npm 의존성 0개, Node 20 builtin fetch 사용.
+
+**검증된 회귀 검출**: setLang 함수 삭제 시뮬레이션 → exit 1, 3개 의존 검증 명시 실패. CI 가 PR 머지 차단 가능.
+
+**최초 성공 실행**: [run #25247375913](https://github.com/altakappa/pap-magazine-v2/actions/runs/25247375913) — 두 job 모두 6초 만에 통과.
 
 ---
 
@@ -368,6 +393,7 @@ git revert <commit-hash> && git push origin main
    - **SubmissionFlow** (`submission.html`, `pullletter.html` inline JS)
    - **Community** (`community.html`, `community-v2.js`)
    - **Social** (`pap-social.js` 이미 분리됨, 추가 정리만 필요)
+6. **사전-기존 버그: `/films/` (trailing slash) 에서 모듈 404** — 본 리팩터 무관, pre-harness 시점부터 존재. 원인: `films.html` 은 `<script src="pap-utils.js">` 같은 상대 경로 사용. 사용자가 `/films/` (슬래시 포함) 로 접근하면 브라우저가 `/films/pap-utils.js` 로 resolve → Vercel 404 → 페이지 깨짐. 사이트 내부 링크는 모두 `/films` (슬래시 없음) 또는 `films.html` → 308 → `/films` 패턴이라 정상 동작. 외부에서 `/films/` 로 직링크 들어오는 경우만 영향. 해결: 모든 HTML 의 상대 script src 를 절대 경로 (`/pap-X.js`) 로 변경. 작은 작업이지만 본 리팩터 범위 외 (별도 cleanup 미션).
 
 ---
 
@@ -397,8 +423,11 @@ git revert <commit-hash> && git push origin main
 
 ## 10. 향후 작업 후보
 
-### 1순위 (지금 바로 가능)
-- **회귀 테스트 자동화** — `vm` 통합 테스트를 `npm run test` 로 wrap, GitHub Actions 또는 Vercel Build hook 에 연결. PR 마다 자동 검증.
+### ✅ 완료된 1순위 (회귀 자동화)
+~~`vm` 통합 테스트 + production smoke test → GitHub Actions~~ — §6.2 참조.
+
+### 1순위 (남은)
+- **상대 경로 script src → 절대 경로** — `/films/` (trailing slash) 에서 모듈 404 되는 사전-기존 버그 해결. 10 HTML 의 `<script src="pap-X.js">` → `<script src="/pap-X.js">` 변경. 작은 작업.
 
 ### 2순위 (Phase 3)
 - **AdminCMS 추출** — `admin.html` inline JS 를 `pap-admin.js` 로
@@ -418,6 +447,10 @@ git revert <commit-hash> && git push origin main
 ### 자주 쓰는 명령
 
 ```bash
+# 자동 검증 (CI 가 매 push/PR 에 돌리는 것과 동일)
+npm test                # vm 통합 테스트 (~600ms, offline)
+npm run smoke           # production 검증 (Vercel 폴링 + ~6초)
+
 # 현재 모듈 라인 수 확인
 wc -l frontend/pap-*.js
 
@@ -425,12 +458,16 @@ wc -l frontend/pap-*.js
 grep -l "function isLoggedIn" frontend/pap-*.js
 
 # 모든 HTML 의 script 태그 순서 확인
-for f in about articles ...; do
+for f in about articles business community contact films index pullletter submission subscribe; do
   grep -oE 'src="pap-[a-z0-9-]+\.js' frontend/$f.html
 done
 
-# 통합 테스트
-node -e "/* vm test from harness-refactor mission verification */"
+# 회귀 시뮬레이션 (의도적으로 함수 삭제 → 테스트 실패 확인 → 복구)
+cp frontend/pap-i18n.js /tmp/backup
+sed -i '' '/^function setLang(l){/,/^}$/d' frontend/pap-i18n.js
+npm test  # exit 1, 실패 명시
+cp /tmp/backup frontend/pap-i18n.js
+npm test  # exit 0, 다시 통과
 ```
 
 ### 자주 헷갈리는 패턴
