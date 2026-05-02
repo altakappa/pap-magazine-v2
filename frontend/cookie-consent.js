@@ -154,13 +154,73 @@
     gtag('config',GA_ID,{anonymize_ip:true});
   }
 
-  /* ── load Meta Pixel ─────────────────────────────────
-     Meta(Facebook/Instagram) 광고 효율 측정 + 룩어라이크 오디언스 생성용.
-     consent='accepted'일 때만 로드. fbq('init') + 'PageView' 자동 트래킹.
-     이벤트 추가 시: window.fbq && fbq('track', 'EventName', {data});       */
+  /* ── helpers: cookie reader (for Meta browser IDs) + UUID ────────── */
+  function _readBrowserCookie(name){
+    try{
+      var pairs=(document.cookie||'').split(';');
+      for(var i=0;i<pairs.length;i++){
+        var p=pairs[i].trim();
+        if(p.indexOf(name+'=')===0) return decodeURIComponent(p.substring(name.length+1));
+      }
+    }catch(e){}
+    return null;
+  }
+  function _uuid(){
+    /* Prefer crypto.randomUUID; fall back to v4-ish for older browsers */
+    try{ if(window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID(); }catch(e){}
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){
+      var r=Math.random()*16|0, v=c==='x'?r:(r&0x3|0x8); return v.toString(16);
+    });
+  }
+
+  /* ── send event to PAP CAPI endpoint (server-side mirror of Pixel) ──
+     event_id is shared between Pixel + CAPI so Meta deduplicates them.
+     Fire-and-forget: failure here must never break the page.            */
+  function sendCapi(eventName, eventId, customData){
+    try{
+      var body={
+        event_name: eventName,
+        event_id: eventId,
+        event_source_url: window.location.href,
+        user_data: {
+          fbp: _readBrowserCookie('_fbp') || undefined,
+          fbc: _readBrowserCookie('_fbc') || undefined
+        },
+        custom_data: customData || {}
+      };
+      /* Use sendBeacon when available (works on page unload); fetch otherwise */
+      var blob=new Blob([JSON.stringify(body)],{type:'application/json'});
+      if(navigator.sendBeacon && navigator.sendBeacon('/api/meta-capi', blob)) return;
+      fetch('/api/meta-capi',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(body),
+        keepalive: true
+      }).catch(function(){});
+    }catch(e){}
+  }
+
+  /* ── load Meta Pixel + CAPI dual-tracking ────────────────────────────
+     Pixel (browser) + CAPI (server) send the same event with the same
+     event_id. Meta automatically deduplicates them, but coverage jumps
+     from ~50–70% (Pixel only) to ~95–100% (Pixel + CAPI).
+     consent='accepted'일 때만 로드.
+     이벤트 추가 시: window.papTrack('EventName', {custom_data})           */
   function loadMetaPixel(){
-    if(window.fbq) return; /* 이미 로드됨 */
     if(!META_PIXEL_ID || META_PIXEL_ID==='REPLACE_WITH_PIXEL_ID') return; /* ID 미설정 */
+
+    /* Always (re)define papTrack so app code can fire custom events even if
+       Pixel was loaded by another script earlier. Robust to missing fbq —
+       CAPI side fires regardless, Pixel side is best-effort.                */
+    window.papTrack=function(eventName, customData){
+      var eid=_uuid();
+      try{ if(window.fbq) window.fbq('track', eventName, customData||{}, {eventID: eid}); }catch(e){}
+      sendCapi(eventName, eid, customData);
+    };
+
+    if(window.fbq) return; /* Pixel base script already loaded — papTrack updated above */
+
+    /* First-time Pixel load */
     !function(f,b,e,v,n,t,s)
     {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
     n.callMethod.apply(n,arguments):n.queue.push(arguments)};
@@ -170,7 +230,11 @@
     s.parentNode.insertBefore(t,s)}(window, document,'script',
     'https://connect.facebook.net/en_US/fbevents.js');
     window.fbq('init', META_PIXEL_ID);
-    window.fbq('track', 'PageView');
+
+    /* Dual-fire PageView with shared eventID (deduplication key) */
+    var pageViewId=_uuid();
+    window.fbq('track', 'PageView', {}, {eventID: pageViewId});
+    sendCapi('PageView', pageViewId);
   }
 
   /* ── inject styles ─────────────────────────────────── */
