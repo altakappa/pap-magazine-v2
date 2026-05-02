@@ -132,21 +132,27 @@ module.exports = async function handler(req, res) {
     };
 
     var token = generateToken(user);
-    var userJson = encodeURIComponent(JSON.stringify(user));
 
-    // Pass token directly in the URL fragment instead of via HttpOnly cookies.
+    // Return an HTML page that embeds the token + user in the BODY, sets
+    // localStorage from there, then navigates to mypage.html.
     //
-    // Why: the cookie-based flow (Set-Cookie + /auth?oauth=success → frontend
-    // calls /api/auth/oauth-token to read it) was failing on www.pap-magazine.com
-    // because Safari ITP / cross-site OAuth redirect chains were dropping the
-    // Set-Cookie response. Verified via Vercel function logs: callback ran all
-    // 8 steps successfully, but no cookies appeared in browser storage and the
-    // /api/auth/oauth-token endpoint was never invoked.
+    // Why not URL fragment / query? Cross-site OAuth redirect chains
+    // (Google → Supabase → us → /auth#token=...) get their fragments and
+    // query params silently stripped by:
+    //   - Safari Cross-Site Tracking Prevention (`Prevented ... from accessing
+    //     QueryParameters`) — observed in production
+    //   - Chrome / Firefox link-decoration / referer-policy variants
+    //   - Some intermediate proxies
+    // The result was a bare `/auth` URL with no token, even though our callback
+    // ran successfully (user rows appearing in Supabase). Returning HTML directly
+    // sidesteps all URL-based token transport.
     //
-    // Fragment vs query: a URL fragment (#) is NOT sent to servers, so it
-    // avoids referrer / access-log token leakage. The auth.html handler reads
-    // either query (?token=) or fragment (#token=) and immediately strips it
-    // from history with replaceState.
+    // Why not Set-Cookie + /api/auth/oauth-token? Set-Cookie on cross-site
+    // navigation responses gets dropped by Safari ITP. Verified previously via
+    // Vercel logs (callback succeeded, cookie never reached browser).
+    //
+    // The token is JSON.stringify-escaped before embedding so it's safe to put
+    // inside a <script> tag. The user object is similarly serialised.
     //
     // Clear the temporary PKCE/state cookies that /api/auth/google or
     // /api/auth/facebook set at the start of the flow.
@@ -154,9 +160,43 @@ module.exports = async function handler(req, res) {
       'pkce_verifier=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
       'oauth_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
     ]);
-    var successUrl = frontendUrl + '/auth#token=' + encodeURIComponent(token) +
-      '&user=' + userJson;
-    return res.redirect(302, successUrl);
+
+    // JSON.stringify is the safe way to inline strings/objects into a <script>;
+    // additionally escape `</` so a literal `</script` inside any string can't
+    // close our tag early.
+    var safeToken = JSON.stringify(token).replace(/<\/(script)/gi, '<\\/$1');
+    var safeUser  = JSON.stringify(user).replace(/<\/(script)/gi, '<\\/$1');
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(200).send(
+      '<!doctype html><html lang="ko"><head><meta charset="utf-8">' +
+      '<meta name="robots" content="noindex,nofollow">' +
+      '<title>로그인 처리 중…</title>' +
+      '<style>html,body{margin:0;height:100%;background:#000;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:flex;align-items:center;justify-content:center}p{opacity:.7;font-size:14px}</style>' +
+      '</head><body><p>로그인 처리 중…</p>' +
+      '<script>(function(){' +
+        'try{' +
+          'var t=' + safeToken + ';' +
+          'var u=' + safeUser + ';' +
+          'localStorage.setItem("pap-token",t);' +
+          'localStorage.setItem("pap-user",JSON.stringify({id:u.id,email:u.email,name:u.name,role:u.role,subscription:u.subscription}));' +
+        '}catch(e){}' +
+        // Resolve return URL from cookie set by socialLogin() before the OAuth
+        // round-trip; fallback to mypage.html.
+        'var dest="mypage.html";' +
+        'try{' +
+          'var m=document.cookie.match(/(?:^|; )pap-return-url=([^;]+)/);' +
+          'if(m){' +
+            'document.cookie="pap-return-url=; Path=/; Max-Age=0; SameSite=Lax";' +
+            'var d=decodeURIComponent(m[1]);' +
+            'if(d&&d.indexOf("://")===-1&&d.indexOf("//")!==0){dest=d;}' +
+          '}' +
+        '}catch(e){}' +
+        'window.location.replace(dest);' +
+      '})();<\/script>' +
+      '</body></html>'
+    );
   } catch (error) {
     console.error('OAuth callback error:', error && (error.message || error.code) || 'UNKNOWN');
     var detailMsg = error && error.message ? error.message : '';
