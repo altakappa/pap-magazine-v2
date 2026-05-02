@@ -398,7 +398,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
         <div class="tbl-wrap">
           <div class="tbl-top"><h3>최근 가입 회원</h3><a href="#" onclick="go('users');return false;" style="font-size:11px;color:var(--text3)">전체 보기 →</a></div>
-          <table><thead><tr><th>이름</th><th>이메일</th><th>역할</th><th>가입일</th></tr></thead>
+          <table><thead><tr><th>이름</th><th>이메일</th><th>역할</th><th>가입일시</th></tr></thead>
           <tbody id="homeRecentMembers">
             <tr><td colspan="4" style="text-align:center;color:var(--text3);padding:40px 0">불러오는 중...</td></tr>
           </tbody></table>
@@ -1483,6 +1483,39 @@ function renderMembers(){
   var esc=function(s){var d=document.createElement('div');d.textContent=s||'';return d.innerHTML;};
   var roleLabels={admin:'관리자',contributor:'기여자',member:'회원'};
   var statusLabels={active:'활성',inactive:'비활성',suspended:'정지',cancelled:'취소'};
+  // Joined-date formatter (shared by table / modal / CSV export).
+  // mode = 'short' (table cell, compact)  → "26.05.02 19:23"
+  //        'long'  (detail modal)         → "2026년 5월 2일 (토) 오후 7:23:45"
+  //        'iso'   (CSV)                  → "2026-05-02 19:23:45" (KST, no Z)
+  // Using the user's local timezone so the admin sees signup time in their
+  // own clock — matches the way they'd remember when a member registered.
+  if(typeof window._formatJoinedDateTime!=='function'){
+    window._formatJoinedDateTime=function(raw,mode){
+      if(!raw) return '—';
+      var d=new Date(raw);
+      if(isNaN(d.getTime())) return '—';
+      var pad=function(n){return n<10?'0'+n:''+n;};
+      if(mode==='iso'){
+        return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+
+               ' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+      }
+      if(mode==='short'){
+        // YY.MM.DD HH:mm — fits in narrow table column
+        return String(d.getFullYear()).slice(-2)+'.'+pad(d.getMonth()+1)+'.'+pad(d.getDate())+
+               ' '+pad(d.getHours())+':'+pad(d.getMinutes());
+      }
+      // long
+      try{
+        return d.toLocaleString('ko-KR',{
+          year:'numeric',month:'long',day:'numeric',weekday:'short',
+          hour:'2-digit',minute:'2-digit',second:'2-digit'
+        });
+      }catch(e){
+        return d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일 '+
+               pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+      }
+    };
+  }
   for(var i=0;i<filtered.length;i++){
     var m=filtered[i];
     var plan=_getMemberPlan(m);
@@ -1493,7 +1526,9 @@ function renderMembers(){
     var statusCls=status==='active'?'b-active':status==='suspended'?'b-suspended':'b-inactive';
     var statusLabel=statusLabels[status]||status;
     var roleLabel=roleLabels[role]||role;
-    var date=(m.joinedAt||m.created_at)?new Date(m.joinedAt||m.created_at).toLocaleDateString('ko-KR',{year:'numeric',month:'short'}):'—';
+    // Members table — show date + time so admins can audit signup activity
+    // precisely. Uses Korean locale so 'AM/PM' renders as 오전/오후.
+    var date=_formatJoinedDateTime(m.joinedAt||m.created_at,'short');
     var mid=m.id;
     h+='<tr>';
     h+='<td>'+esc(m.name)+'</td>';
@@ -1519,7 +1554,7 @@ function exportMembersCSV(){
   if(!allMembers.length){alert('내보낼 데이터가 없습니다.');return;}
   var rows=[['이름','이메일','역할','위치','구독플랜','구독상태','가입일']];
   allMembers.forEach(function(m){
-    rows.push([m.name||'',m.email||'',_getMemberRole(m),m.location||'',_getMemberPlan(m),_getMemberStatus(m),(m.joinedAt||m.created_at)?new Date(m.joinedAt||m.created_at).toISOString().split('T')[0]:'']);
+    rows.push([m.name||'',m.email||'',_getMemberRole(m),m.location||'',_getMemberPlan(m),_getMemberStatus(m),_formatJoinedDateTime(m.joinedAt||m.created_at,'iso')]);
   });
   var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
   var blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
@@ -1535,7 +1570,8 @@ function openMemberModal(memberId){
   document.getElementById('memberEditEmail').textContent=m.email||'—';
   document.getElementById('memberEditInsta').textContent=m.instagram||'—';
   document.getElementById('memberEditLocation').textContent=m.location||'—';
-  document.getElementById('memberEditJoined').textContent=(m.joinedAt||m.created_at)?new Date(m.joinedAt||m.created_at).toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'}):'—';
+  // Member detail modal — full date + time down to the second.
+  document.getElementById('memberEditJoined').textContent=_formatJoinedDateTime(m.joinedAt||m.created_at,'long');
   document.getElementById('memberEditCounts').textContent='투고 '+(m.submissionCount||0)+'건 / Pull-Letter '+(m.pullletterCount||0)+'건';
   document.getElementById('memberEditRole').value=_getMemberRole(m);
   document.getElementById('memberEditPlan').value=_getMemberPlan(m);
