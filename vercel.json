@@ -7,15 +7,10 @@
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/admin/:path*", "destination": "/admin.html" },
     { "source": "/sitemap.xml", "destination": "/api/sitemap" },
-    {
-      "//": "SEO: server-rendered editorial pages. /editorial/:slug returns full HTML with per-article meta tags + schema.org Article so Google can index them. The SPA hydrates on top for the rich UX.",
-      "source": "/editorial/:slug",
-      "destination": "/api/seo/editorial/:slug"
-    }
+    { "source": "/editorial/:slug", "destination": "/api/seo/editorial/:slug" }
   ],
   "redirects": [
     {
-      "//": "Domain consolidation: papkorea.com is the legacy alias. All traffic 301-redirects to pap-magazine.com so search engines index a single canonical domain and SEO juice consolidates. Users typing papkorea.com still 'work' — they just land on pap-magazine.com. Path is preserved.",
       "source": "/:path*",
       "has": [{ "type": "host", "value": "www.papkorea.com" }],
       "destination": "https://www.pap-magazine.com/:path*",
@@ -28,21 +23,18 @@
       "permanent": true
     },
     {
-      "//": "Legacy mobile subdomain: m.papkorea.com was historically the most-indexed PAP property in Google. Consolidating it into the canonical domain reclaims that authority. Path is preserved so /dystopia/, /category/Editorial/ etc. still resolve.",
       "source": "/:path*",
       "has": [{ "type": "host", "value": "m.papkorea.com" }],
       "destination": "https://www.pap-magazine.com/:path*",
       "permanent": true
     },
     {
-      "//": "Same treatment for m.pap-magazine.com if anyone ever types it.",
       "source": "/:path*",
       "has": [{ "type": "host", "value": "m.pap-magazine.com" }],
       "destination": "https://www.pap-magazine.com/:path*",
       "permanent": true
     },
     {
-      "//": "Apex-to-www on the canonical domain itself, in case anyone hits pap-magazine.com without the www subdomain.",
       "source": "/:path*",
       "has": [{ "type": "host", "value": "pap-magazine.com" }],
       "destination": "https://www.pap-magazine.com/:path*",
