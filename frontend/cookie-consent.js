@@ -1,5 +1,5 @@
-/* PAP Magazine — Cookie Consent & GA4 Gate
-   GDPR/CCPA compliant: GA4 loads ONLY after explicit user consent.
+/* PAP Magazine — Cookie Consent, GA4 & Meta Pixel Gate
+   GDPR/CCPA compliant: GA4 + Meta Pixel load ONLY after explicit user consent.
    Consent state stored in localStorage ('pap-cookie-consent').
    Values: 'accepted' | 'rejected' | null (not yet decided)
 
@@ -9,18 +9,19 @@
 
 (function(){
   var GA_ID='G-6Q8H9HEPX7';
+  var META_PIXEL_ID='482856832429283'; /* PAPMAGAZINE 픽셀 — Meta Events Manager */
   var STORAGE_KEY='pap-cookie-consent';
 
   /* ── i18n ─────────────────────────────────────────── */
   var I18N={
-    ko:{msg:'본 웹사이트는 사용자 경험 향상을 위해 쿠키 및 분석 도구(Google Analytics)를 사용합니다. 비필수 쿠키를 수락하거나 거부하실 수 있습니다.',accept:'수락',reject:'거부'},
-    en:{msg:'We use cookies and analytics (Google Analytics) to improve your experience. You can accept or reject non-essential cookies.',accept:'Accept',reject:'Reject'},
-    it:{msg:'Utilizziamo cookie e strumenti di analisi (Google Analytics) per migliorare la tua esperienza. Puoi accettare o rifiutare i cookie non essenziali.',accept:'Accetta',reject:'Rifiuta'},
-    fr:{msg:"Nous utilisons des cookies et des outils d'analyse (Google Analytics) pour améliorer votre expérience. Vous pouvez accepter ou refuser les cookies non essentiels.",accept:'Accepter',reject:'Refuser'},
-    es:{msg:'Utilizamos cookies y herramientas de análisis (Google Analytics) para mejorar tu experiencia. Puedes aceptar o rechazar las cookies no esenciales.',accept:'Aceptar',reject:'Rechazar'},
-    ja:{msg:'当ウェブサイトはユーザー体験向上のため、Cookieおよび分析ツール（Google Analytics）を使用しています。非必須Cookieを受け入れるか拒否できます。',accept:'受け入れる',reject:'拒否'},
-    zh:{msg:'本网站使用 Cookie 和分析工具（Google Analytics）以提升您的体验。您可以接受或拒绝非必要 Cookie。',accept:'接受',reject:'拒绝'},
-    ru:{msg:'Мы используем файлы cookie и аналитику (Google Analytics) для улучшения вашего опыта. Вы можете принять или отклонить необязательные файлы cookie.',accept:'Принять',reject:'Отклонить'}
+    ko:{msg:'본 웹사이트는 사용자 경험 향상을 위해 쿠키 및 분석 도구(Google Analytics, Meta Pixel)를 사용합니다. 비필수 쿠키를 수락하거나 거부하실 수 있습니다.',accept:'수락',reject:'거부'},
+    en:{msg:'We use cookies and analytics (Google Analytics, Meta Pixel) to improve your experience. You can accept or reject non-essential cookies.',accept:'Accept',reject:'Reject'},
+    it:{msg:'Utilizziamo cookie e strumenti di analisi (Google Analytics, Meta Pixel) per migliorare la tua esperienza. Puoi accettare o rifiutare i cookie non essenziali.',accept:'Accetta',reject:'Rifiuta'},
+    fr:{msg:"Nous utilisons des cookies et des outils d'analyse (Google Analytics, Meta Pixel) pour améliorer votre expérience. Vous pouvez accepter ou refuser les cookies non essentiels.",accept:'Accepter',reject:'Refuser'},
+    es:{msg:'Utilizamos cookies y herramientas de análisis (Google Analytics, Meta Pixel) para mejorar tu experiencia. Puedes aceptar o rechazar las cookies no esenciales.',accept:'Aceptar',reject:'Rechazar'},
+    ja:{msg:'当ウェブサイトはユーザー体験向上のため、Cookieおよび分析ツール（Google Analytics、Meta Pixel）を使用しています。非必須Cookieを受け入れるか拒否できます。',accept:'受け入れる',reject:'拒否'},
+    zh:{msg:'本网站使用 Cookie 和分析工具（Google Analytics、Meta Pixel）以提升您的体验。您可以接受或拒绝非必要 Cookie。',accept:'接受',reject:'拒绝'},
+    ru:{msg:'Мы используем файлы cookie и аналитику (Google Analytics, Meta Pixel) для улучшения вашего опыта. Вы можете принять или отклонить необязательные файлы cookie.',accept:'Принять',reject:'Отклонить'}
   };
 
   /* Read language from pap-geo-lang.js (which runs before this script).
@@ -153,6 +154,25 @@
     gtag('config',GA_ID,{anonymize_ip:true});
   }
 
+  /* ── load Meta Pixel ─────────────────────────────────
+     Meta(Facebook/Instagram) 광고 효율 측정 + 룩어라이크 오디언스 생성용.
+     consent='accepted'일 때만 로드. fbq('init') + 'PageView' 자동 트래킹.
+     이벤트 추가 시: window.fbq && fbq('track', 'EventName', {data});       */
+  function loadMetaPixel(){
+    if(window.fbq) return; /* 이미 로드됨 */
+    if(!META_PIXEL_ID || META_PIXEL_ID==='REPLACE_WITH_PIXEL_ID') return; /* ID 미설정 */
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window, document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    window.fbq('init', META_PIXEL_ID);
+    window.fbq('track', 'PageView');
+  }
+
   /* ── inject styles ─────────────────────────────────── */
   function injectStyles(){
     if(document.getElementById('pap-cc-styles')) return;
@@ -209,6 +229,7 @@
     document.getElementById('ccAccept').addEventListener('click',function(){
       setConsent('accepted');
       loadGA4();
+      loadMetaPixel();
       closeBanner();
       _fireResolved('accepted');
     });
@@ -228,6 +249,7 @@
   var consent=getConsent();
   if(consent==='accepted'){
     loadGA4();
+    loadMetaPixel();
     _fireResolved('accepted');
   } else if(consent==='rejected'){
     _fireResolved('rejected');
