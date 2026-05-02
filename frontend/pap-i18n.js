@@ -38,6 +38,27 @@ de:{about:'ÜBER UNS',contact:'KONTAKT',business:'BUSINESS',subscribe:'ABONNIERE
 // Switching to `let` would silently break those callsites.
 var lang='ko';
 
+// ======== Subscription interstitial + image-protection translations
+// (relocated from pap-subscription.js per HARNESS_CHECKLIST.md mission 10 —
+// option C i18n consolidation final pass). Originally inline `var` dicts
+// inside _showBrandAdInterstitial / _showPremiumUpsellInterstitial / the
+// right-click protection IIFE; now module-level globals so they allocate
+// once at script load instead of per click.
+var _interstitialSkipTexts = { ko:'건너뛰기', en:'Skip', it:'Salta', fr:'Passer', es:'Saltar', ja:'スキップ', zh:'跳过', ru:'Пропустить' };
+var _interstitialPremTexts = { ko:'Premium 구독으로 광고 없이 이용하기 →', en:'Subscribe to Premium for ad-free →', it:'Abbonati a Premium senza pubblicità →', fr:'Abonnez-vous Premium sans pub →', es:'Suscríbete a Premium sin anuncios →', ja:'Premiumで広告なし →', zh:'订阅Premium去除广告 →', ru:'Подписка Premium без рекламы →' };
+var _interstitialUpsellTexts = {
+  ko: { tag:'SUBSCRIBE', title:'광고 없이\n모든 콘텐츠를 즐기세요', desc:'구독으로 에디토리얼, 매거진,\n독점 콘텐츠를 제한 없이 감상하세요.', btn:'구독하기', skip:'건너뛰기' },
+  en: { tag:'SUBSCRIBE', title:'Enjoy all content\nwithout interruptions', desc:'Subscribe for unlimited access\nto editorials, magazines, and exclusive content.', btn:'Subscribe', skip:'Skip' },
+  it: { tag:'SUBSCRIBE', title:'Goditi tutti i contenuti\nsenza interruzioni', desc:'Abbonati per accesso illimitato\na editoriali, riviste e contenuti esclusivi.', btn:'Abbonati', skip:'Salta' },
+  fr: { tag:'SUBSCRIBE', title:'Profitez de tout le contenu\nsans interruption', desc:'Abonnez-vous pour un accès illimité\naux éditoriaux, magazines et contenus exclusifs.', btn:'S\'abonner', skip:'Passer' },
+  es: { tag:'SUBSCRIBE', title:'Disfruta todo el contenido\nsin interrupciones', desc:'Suscríbete para acceso ilimitado\na editoriales, revistas y contenido exclusivo.', btn:'Suscríbete', skip:'Saltar' },
+  ja: { tag:'SUBSCRIBE', title:'すべてのコンテンツを\n中断なくお楽しみください', desc:'購読でエディトリアル、マガジン、\n限定コンテンツに無制限アクセス。', btn:'購読する', skip:'スキップ' },
+  zh: { tag:'SUBSCRIBE', title:'无干扰地\n享受所有内容', desc:'订阅后无限访问\n社论、杂志和独家内容。', btn:'订阅', skip:'跳过' },
+  ru: { tag:'SUBSCRIBE', title:'Наслаждайтесь контентом\nбез перерывов', desc:'Подпишитесь для неограниченного доступа\nк материалам, журналам и эксклюзивному контенту.', btn:'Подписаться', skip:'Пропустить' },
+  de: { tag:'SUBSCRIBE', title:'Genießen Sie alle Inhalte\nohne Unterbrechung', desc:'Abonnieren Sie für unbegrenzten Zugang\nzu Editorials, Magazinen und exklusiven Inhalten.', btn:'Abonnieren', skip:'Überspringen' }
+};
+var _imageProtectMsg = {ko:'이미지 다운로드는 스탠다드 및 프리미엄 회원만 이용 가능합니다',en:'IMAGE DOWNLOAD IS AVAILABLE FOR STANDARD & PREMIUM MEMBERS',it:'IL DOWNLOAD DELLE IMMAGINI È DISPONIBILE PER I MEMBRI STANDARD E PREMIUM',fr:'LE TÉLÉCHARGEMENT D\'IMAGES EST RÉSERVÉ AUX MEMBRES STANDARD ET PREMIUM',es:'LA DESCARGA DE IMÁGENES ESTÁ DISPONIBLE PARA MIEMBROS ESTÁNDAR Y PREMIUM',ja:'画像ダウンロードはスタンダード・プレミアム会員のみご利用いただけます',zh:'图片下载仅限标准及高级会员使用',ru:'СКАЧИВАНИЕ ИЗОБРАЖЕНИЙ ДОСТУПНО ДЛЯ СТАНДАРТНЫХ И ПРЕМИУМ УЧАСТНИКОВ'};
+
 // ======== Search result label translations (relocated from pap-app.js per
 // HARNESS_CHECKLIST.md mission 4 — option C: each harness extraction also
 // migrates its inline language dictionary into this i18n module). Consumed

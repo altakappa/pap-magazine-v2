@@ -19,12 +19,10 @@
 //   - pap-app.js   → isBetaActive (still in pap-app.js — borderline shared
 //                    flag; tier checks call it as a global at click time)
 //
-// Inline 9-language dictionaries inside _showBrandAdInterstitial and
-// _showPremiumUpsellInterstitial (skipTexts, premTexts, texts, plus the
-// imageProtect msg in the right-click IIFE) intentionally remain LOCAL to
-// their functions for this strict-scope extraction. Promoting them to
-// module-level globals would change allocation semantics (per-call → once)
-// and is deferred to a future i18n consolidation pass.
+// 9-language interstitial + image-protect dictionaries now live in
+// pap-i18n.js (mission 10 i18n consolidation final pass) as
+// _interstitialSkipTexts, _interstitialPremTexts, _interstitialUpsellTexts,
+// _imageProtectMsg. Reads them as bare globals.
 
 // ======== TIER CHECKS ========
 // During beta we treat any logged-in user (free / standard / premium) as
@@ -164,10 +162,9 @@ function _showBrandAdInterstitial(ad, callback){
 
   overlay.appendChild(mediaWrap);
 
-  // Skip button
+  // Skip button — labels in pap-i18n.js (_interstitialSkipTexts)
   var lang = localStorage.getItem('pap-lang') || 'ko';
-  var skipTexts = { ko:'건너뛰기', en:'Skip', it:'Salta', fr:'Passer', es:'Saltar', ja:'スキップ', zh:'跳过', ru:'Пропустить' };
-  var skipLabel = skipTexts[lang] || skipTexts.en;
+  var skipLabel = _interstitialSkipTexts[lang] || _interstitialSkipTexts.en;
 
   var skip = document.createElement('button');
   skip.style.cssText = 'position:absolute;bottom:24px;right:24px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.55);font-size:11px;font-weight:600;letter-spacing:.1em;cursor:pointer;font-family:Montserrat,sans-serif;padding:8px 20px;border-radius:2px;transition:all .2s;z-index:2;';
@@ -197,8 +194,8 @@ function _showBrandAdInterstitial(ad, callback){
 
   var premBadge = document.createElement('a');
   premBadge.href = 'subscribe.html';
-  var premTexts = { ko:'Premium 구독으로 광고 없이 이용하기 →', en:'Subscribe to Premium for ad-free →', it:'Abbonati a Premium senza pubblicità →', fr:'Abonnez-vous Premium sans pub →', es:'Suscríbete a Premium sin anuncios →', ja:'Premiumで広告なし →', zh:'订阅Premium去除广告 →', ru:'Подписка Premium без рекламы →' };
-  premBadge.textContent = premTexts[lang] || premTexts.en;
+  // Premium upsell label — in pap-i18n.js (_interstitialPremTexts)
+  premBadge.textContent = _interstitialPremTexts[lang] || _interstitialPremTexts.en;
   premBadge.style.cssText = 'font-size:11px;font-weight:600;letter-spacing:.05em;color:rgba(255,255,255,.45);text-decoration:none;font-family:Montserrat,sans-serif;transition:all .2s;border-bottom:1px solid rgba(255,255,255,.15);padding-bottom:2px;';
   premBadge.onmouseover = function(){ this.style.color='rgba(255,255,255,.85)'; this.style.borderBottomColor='rgba(255,255,255,.5)'; };
   premBadge.onmouseout = function(){ this.style.color='rgba(255,255,255,.45)'; this.style.borderBottomColor='rgba(255,255,255,.15)'; };
@@ -227,18 +224,8 @@ function _showBrandAdInterstitial(ad, callback){
 function _showPremiumUpsellInterstitial(callback){
   try{
   var lang = localStorage.getItem('pap-lang') || 'ko';
-  var texts = {
-    ko: { tag:'SUBSCRIBE', title:'광고 없이\n모든 콘텐츠를 즐기세요', desc:'구독으로 에디토리얼, 매거진,\n독점 콘텐츠를 제한 없이 감상하세요.', btn:'구독하기', skip:'건너뛰기' },
-    en: { tag:'SUBSCRIBE', title:'Enjoy all content\nwithout interruptions', desc:'Subscribe for unlimited access\nto editorials, magazines, and exclusive content.', btn:'Subscribe', skip:'Skip' },
-    it: { tag:'SUBSCRIBE', title:'Goditi tutti i contenuti\nsenza interruzioni', desc:'Abbonati per accesso illimitato\na editoriali, riviste e contenuti esclusivi.', btn:'Abbonati', skip:'Salta' },
-    fr: { tag:'SUBSCRIBE', title:'Profitez de tout le contenu\nsans interruption', desc:'Abonnez-vous pour un accès illimité\naux éditoriaux, magazines et contenus exclusifs.', btn:'S\'abonner', skip:'Passer' },
-    es: { tag:'SUBSCRIBE', title:'Disfruta todo el contenido\nsin interrupciones', desc:'Suscríbete para acceso ilimitado\na editoriales, revistas y contenido exclusivo.', btn:'Suscríbete', skip:'Saltar' },
-    ja: { tag:'SUBSCRIBE', title:'すべてのコンテンツを\n中断なくお楽しみください', desc:'購読でエディトリアル、マガジン、\n限定コンテンツに無制限アクセス。', btn:'購読する', skip:'スキップ' },
-    zh: { tag:'SUBSCRIBE', title:'无干扰地\n享受所有内容', desc:'订阅后无限访问\n社论、杂志和独家内容。', btn:'订阅', skip:'跳过' },
-    ru: { tag:'SUBSCRIBE', title:'Наслаждайтесь контентом\nбез перерывов', desc:'Подпишитесь для неограниченного доступа\nк материалам, журналам и эксклюзивному контенту.', btn:'Подписаться', skip:'Пропустить' },
-    de: { tag:'SUBSCRIBE', title:'Genießen Sie alle Inhalte\nohne Unterbrechung', desc:'Abonnieren Sie für unbegrenzten Zugang\nzu Editorials, Magazinen und exklusiven Inhalten.', btn:'Abonnieren', skip:'Überspringen' }
-  };
-  var t = texts[lang] || texts.en;
+  // Upsell labels in pap-i18n.js (_interstitialUpsellTexts).
+  var t = _interstitialUpsellTexts[lang] || _interstitialUpsellTexts.en;
 
   var overlay = document.createElement('div');
   overlay.id = 'premiumInterstitial';
@@ -340,8 +327,8 @@ function navigateWithInterstitial(url){
         var toast=document.createElement('div');
         toast.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:14px 28px;font-size:11px;font-weight:600;letter-spacing:.08em;z-index:99999;font-family:Montserrat,sans-serif;background:#111;color:#fff;border:1px solid #333;text-align:center;';
         var lang=localStorage.getItem('pap-lang')||'ko';
-        var msg={ko:'이미지 다운로드는 스탠다드 및 프리미엄 회원만 이용 가능합니다',en:'IMAGE DOWNLOAD IS AVAILABLE FOR STANDARD & PREMIUM MEMBERS',it:'IL DOWNLOAD DELLE IMMAGINI È DISPONIBILE PER I MEMBRI STANDARD E PREMIUM',fr:'LE TÉLÉCHARGEMENT D\'IMAGES EST RÉSERVÉ AUX MEMBRES STANDARD ET PREMIUM',es:'LA DESCARGA DE IMÁGENES ESTÁ DISPONIBLE PARA MIEMBROS ESTÁNDAR Y PREMIUM',ja:'画像ダウンロードはスタンダード・プレミアム会員のみご利用いただけます',zh:'图片下载仅限标准及高级会员使用',ru:'СКАЧИВАНИЕ ИЗОБРАЖЕНИЙ ДОСТУПНО ДЛЯ СТАНДАРТНЫХ И ПРЕМИУМ УЧАСТНИКОВ'};
-        toast.textContent=msg[lang]||msg.en;
+        // Image-protect toast message in pap-i18n.js (_imageProtectMsg).
+        toast.textContent=_imageProtectMsg[lang]||_imageProtectMsg.en;
         document.body.appendChild(toast);
         setTimeout(function(){toast.style.opacity='0';toast.style.transition='opacity .3s';setTimeout(function(){toast.remove();},300);},2500);
       }
