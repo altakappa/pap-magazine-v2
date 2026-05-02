@@ -1,0 +1,30 @@
+name: harness-integration
+
+# Runs the harness layout / cross-module integration test on every push and PR.
+# The test (tests/harness-integration.test.js) catches regressions like:
+#   - module renamed but HTML script tag missed
+#   - module added but load order wrong
+#   - public surface accidentally removed
+#   - cross-module reference broken (e.g. pap-search expecting pap-i18n's
+#     _searchTexts but a refactor moved or renamed it)
+#
+# Zero npm dependencies — runs on a fresh node install in seconds.
+
+on:
+  push:
+    branches: [main, harness-refactor]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: vm integration test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: run harness integration test
+        run: npm test
