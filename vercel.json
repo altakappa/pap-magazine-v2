@@ -6,7 +6,12 @@
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/admin/:path*", "destination": "/admin.html" },
-    { "source": "/sitemap.xml", "destination": "/api/sitemap" }
+    { "source": "/sitemap.xml", "destination": "/api/sitemap" },
+    {
+      "//": "SEO: server-rendered editorial pages. /editorial/:slug returns full HTML with per-article meta tags + schema.org Article so Google can index them. The SPA hydrates on top for the rich UX.",
+      "source": "/editorial/:slug",
+      "destination": "/api/seo/editorial/:slug"
+    }
   ],
   "redirects": [
     {
@@ -19,6 +24,20 @@
     {
       "source": "/:path*",
       "has": [{ "type": "host", "value": "papkorea.com" }],
+      "destination": "https://www.pap-magazine.com/:path*",
+      "permanent": true
+    },
+    {
+      "//": "Legacy mobile subdomain: m.papkorea.com was historically the most-indexed PAP property in Google. Consolidating it into the canonical domain reclaims that authority. Path is preserved so /dystopia/, /category/Editorial/ etc. still resolve.",
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "m.papkorea.com" }],
+      "destination": "https://www.pap-magazine.com/:path*",
+      "permanent": true
+    },
+    {
+      "//": "Same treatment for m.pap-magazine.com if anyone ever types it.",
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "m.pap-magazine.com" }],
       "destination": "https://www.pap-magazine.com/:path*",
       "permanent": true
     },
@@ -40,8 +59,8 @@
     { "source": "/ko/filmList", "destination": "/", "permanent": true },
     { "source": "/ko/filmList/", "destination": "/", "permanent": true },
     { "source": "/ko/category/:cat*", "destination": "/", "permanent": true },
-    { "source": "/ko/:slug", "destination": "/#editorial/:slug", "permanent": true },
-    { "source": "/ko/:slug/", "destination": "/#editorial/:slug", "permanent": true }
+    { "source": "/ko/:slug", "destination": "/editorial/:slug", "permanent": true },
+    { "source": "/ko/:slug/", "destination": "/editorial/:slug", "permanent": true }
   ],
   "headers": [
     {
