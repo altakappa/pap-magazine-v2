@@ -7,7 +7,8 @@
     "dev": "vercel dev",
     "build": "echo 'Static frontend + serverless API'",
     "deploy": "vercel --prod",
-    "test": "node tests/harness-integration.test.js"
+    "test": "node tests/harness-integration.test.js",
+    "smoke": "node tests/production-smoke.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
