@@ -57,7 +57,7 @@ module.exports = async function handler(req, res) {
     // near that. Adjust if PAP ever crosses that threshold.
     const { data: eds, error } = await supabaseAdmin
       .from('editorials')
-      .select('title, slug, published_date, updated_at')
+      .select('id, title, slug, published_date, updated_at, cover_image, og_image, thumbnail')
       .eq('status', 'published')
       .or('scheduled_publish_at.is.null,scheduled_publish_at.lte.' + new Date().toISOString())
       .order('published_date', { ascending: false })
@@ -80,27 +80,37 @@ module.exports = async function handler(req, res) {
       );
     });
 
-    // Editorial deep-links — uses the same hash format the SPA reads
-    // (#editorial/<Title>). encodeURIComponent so titles with spaces /
-    // unicode are valid URLs in the sitemap.
+    // Editorial pages — server-rendered at /editorial/:slug for SEO.
+    // Using slug (stable, URL-safe) instead of title (changes, needs encoding).
+    // Falls back to id when slug is missing on legacy rows.
+    // Includes <image:image> child so Google Images can index the cover.
     (eds || []).forEach(ed => {
-      const title = ed.title || '';
-      if (!title) return;
-      const loc = BASE + '/#editorial/' + encodeURIComponent(title);
+      const handle = ed.slug || ed.id;
+      if (!handle) return;
+      const loc = BASE + '/editorial/' + encodeURIComponent(handle);
       const lastmod = fmtDate(ed.updated_at || ed.published_date);
+      const img = ed.og_image || ed.cover_image || ed.thumbnail;
+      const imgBlock = img
+        ? '    <image:image>\n' +
+          '      <image:loc>' + xmlEscape(img) + '</image:loc>\n' +
+          '      <image:title>' + xmlEscape(ed.title || '') + '</image:title>\n' +
+          '    </image:image>\n'
+        : '';
       urls.push(
         '  <url>\n' +
         '    <loc>' + xmlEscape(loc) + '</loc>\n' +
         '    <lastmod>' + lastmod + '</lastmod>\n' +
         '    <changefreq>monthly</changefreq>\n' +
         '    <priority>0.8</priority>\n' +
+        imgBlock +
         '  </url>'
       );
     });
 
     const xml =
       '<?xml version="1.0" encoding="UTF-8"?>\n' +
-      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n' +
+      '        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n' +
       urls.join('\n') + '\n' +
       '</urlset>\n';
 
