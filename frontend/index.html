@@ -446,17 +446,12 @@
      when the API returns empty, so the launch period before there's
      activity still looks intentional. -->
 <style>
-  /* Background uses --pap-red (same as the COMMUNITY nav label). Subtle
-     radial highlights add depth without diluting the brand. */
+  /* Flat --pap-red — matches every other brand-red surface (auth buttons,
+     COMMUNITY nav label, membership badge). An earlier iteration layered
+     a ::before radial gradient for "depth", but the white highlight side
+     tinted the perceived colour noticeably pinker than the brand red,
+     breaking parity with adjacent buttons. Flat colour wins on consistency. */
   .community-cta { position: relative; padding: 56px 32px; background: var(--pap-red); overflow: hidden; }
-  .community-cta::before {
-    content: "";
-    position: absolute; inset: 0;
-    background:
-      radial-gradient(circle at 20% 50%, rgba(255,255,255,.08) 0%, transparent 55%),
-      radial-gradient(circle at 80% 50%, rgba(0,0,0,.18) 0%, transparent 55%);
-    pointer-events: none;
-  }
   .community-cta-link {
     position: relative; z-index: 1;
     display: grid;
