@@ -19,6 +19,7 @@ Run these SQL files in Supabase Dashboard > SQL Editor, in this exact order:
 | 13 | `013_user_preferences.sql` | `user_preferences` table powering personalised theme rows (per-user tag weights, RLS-scoped to owner) |
 | 14 | `014_backfill_editorial_tags.sql` | One-shot: enriches 12 production editorials with thematic tags pulled from index.html static cards, so /api/editorials/themes can bucket them |
 | 15 | `015_moodboard_comments.sql` | Mood board comment thread (lightweight, single-level) |
+| 16 | `016_semantic_embeddings.sql` | pgvector + `editorials.embedding` + `theme_embeddings` + `match_editorials_by_embedding` RPC. Powers AI semantic theme matching |
 
 ## Skip List
 

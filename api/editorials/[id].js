@@ -9,6 +9,18 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { handleCors } = require('../_lib/cors');
 const { requireAdmin } = require('../_lib/auth');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
+const { embedAndStoreEditorial } = require('../_lib/embeddings');
+
+// Re-embed only when fields that drive the embedding text actually change.
+// Saves an OpenAI call (and a DB write) on routine admin edits like fixing
+// a typo in `gallery` or toggling status.
+const EMBED_TRIGGERS = ['title', 'description', 'tags'];
+function shouldReembed(updates) {
+  for (const k of EMBED_TRIGGERS) {
+    if (Object.prototype.hasOwnProperty.call(updates, k)) return true;
+  }
+  return false;
+}
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -63,6 +75,13 @@ module.exports = async function handler(req, res) {
         .single();
 
       if (error) throw error;
+
+      // Re-embed when the admin changed something that affects the
+      // embedding text. Best-effort, AFTER successful save.
+      if (shouldReembed(updates)) {
+        try { await embedAndStoreEditorial(data); }
+        catch (e) { console.warn('[editorial PUT] re-embed failed', e && e.message); }
+      }
 
       return res.status(200).json({ data });
     } catch (err) {

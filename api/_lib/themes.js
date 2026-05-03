@@ -1,20 +1,23 @@
 /**
  * PAP Magazine — Theme definitions (single source of truth).
  *
- * 7 curated theme bundles, each mapping a "theme id" to:
- *   - `tags`:     exact tag tokens that count as a tag-set match (Phase 1)
- *   - `keywords`: multilingual keyword bag for content text matching across
- *                 title + description (Phase 2 in /api/editorials/themes).
- *                 Editorial copy can be in ANY language (Korean, Japanese,
- *                 Chinese, English, Italian, etc.) and the same theme should
- *                 still pull it in — keywords below cover all 9 supported
- *                 languages so the matcher is language-agnostic.
- *   - `labels`:   9-language display name for the row heading
+ * 7 curated theme bundles. Each id maps to:
+ *   - `tags`:        exact tag tokens for the explicit-tag matcher (Phase 1
+ *                    in /api/editorials/themes)
+ *   - `keywords`:    multilingual keyword bag for substring search across
+ *                    title + description (Phase 2). Editorial copy can be
+ *                    in ANY of the 9 supported languages and the same theme
+ *                    should still pull it in.
+ *   - `description`: English-only seed text for the OpenAI semantic
+ *                    embedding stored in `theme_embeddings`. text-embedding-3-small
+ *                    handles cross-lingual retrieval, so a single canonical
+ *                    description per theme keeps the vector space clean.
+ *                    Tags are appended at embed time so the model gets
+ *                    both prose context AND keyword signal.
+ *   - `labels`:      9-language display name for the row heading
  *
  * Lifted from the previous inline IIFE in index.html so backend AND frontend
- * read from the same place. The /api/editorials/themes endpoint uses `tags`
- * for exact matching, `keywords` for substring search in the editorial's
- * title+description, and `labels[lang]` to render the row heading.
+ * read from the same place.
  *
  * Never reorder this array — the day-of-year rotation for anonymous visitors
  * (themes.js endpoint) hashes by index, so reordering would silently change
@@ -45,6 +48,7 @@ const THEMES = [
       // Italian / French / Spanish / German / Russian (stems)
       'onirico','romantic','sognante','rêveur','soñador','traum','verträumt','мечт','романт'
     ],
+    description: 'Soft, romantic, ethereal fashion editorial imagery. Pastel palettes, gentle natural light, dreamlike compositions, tender and intimate mood. Spiritual or nostalgic atmosphere. Beauty and peacefulness over drama.',
     labels: { ko:'몽환적이고 로맨틱한', en:'Dreamy & Romantic', it:'Onirico & Romantico', fr:'Onirique & Romantique', es:'Onírico & Romántico', ja:'夢幻的でロマンティック', zh:'梦幻浪漫风格', ru:'Мечтательный и романтичный', de:'Träumerisch & Romantisch' }
   },
   {
@@ -57,6 +61,7 @@ const THEMES = [
       '大胆','强烈','鲜艳','前卫',
       'audace','intens','vibrante','dramat','vibrant','audaz','vibrante','kühn','intensiv','lebhaft','смел','ярк'
     ],
+    description: 'Bold, intense, maximalist fashion editorial imagery. Saturated colours, dramatic poses, fierce attitude, pop sensibility. High energy and theatrical statement-making over restraint.',
     labels: { ko:'강렬하고 대담한', en:'Bold & Intense', it:'Audace & Intenso', fr:'Audacieux & Intense', es:'Audaz e Intenso', ja:'大胆で強烈な', zh:'大胆前卫风格', ru:'Смелый и яркий', de:'Kühn & Intensiv' }
   },
   {
@@ -69,6 +74,7 @@ const THEMES = [
       '暗黑','阴暗','神秘','电影感','黑白',
       'oscur','scur','ombra','sombre','ténèbr','misterios','dunkel','schatten','geheimnis','тёмн','тень','мрачн'
     ],
+    description: 'Dark, cinematic, moody fashion editorial imagery. Noir and shadow play, gritty urban or underground settings, mysterious or dystopian narrative. Heavy contrast, deep blacks, film-noir compositions.',
     labels: { ko:'다크 & 시네마틱', en:'Dark & Cinematic', it:'Dark & Cinematico', fr:'Sombre & Cinématique', es:'Oscuro & Cinemático', ja:'ダーク＆シネマティック', zh:'暗黑电影风格', ru:'Тёмный и кинематографичный', de:'Dunkel & Filmisch' }
   },
   {
@@ -81,6 +87,7 @@ const THEMES = [
       '自然','温暖','有机','黄金','沙漠','森林','海滩','田园',
       'natural','calde','organic','desert','paesaggi','natur','chaleureu','organique','désert','paysage','natural','cálid','orgánic','desierto','paisaj','natur','warm','organisch','wüste','природ','тёпл','органич','пустын','пейзаж'
     ],
+    description: 'Warm, organic fashion editorial imagery. Natural light, earthy palettes, deserts and landscapes, bohemian flowing fabrics. Sun, sand, golden hour. Connection to land and elemental textures.',
     labels: { ko:'자연과 따뜻함', en:'Warm & Organic', it:'Caldo & Organico', fr:'Chaleureux & Organique', es:'Cálido & Orgánico', ja:'自然と温もり', zh:'自然温暖风格', ru:'Тёплый и органичный', de:'Warm & Organisch' }
   },
   {
@@ -93,6 +100,7 @@ const THEMES = [
       '未来','现代','几何','金属','极简','太空','赛博',
       'futurist','moderno','geometric','minimal','futurist','moderne','géométrique','minimal','futurist','moderno','geométric','minimal','futurist','modern','geometrisch','minimal','футурист','современн','геометр','минимал'
     ],
+    description: 'Futuristic, modern, minimalist fashion editorial imagery. Geometric structure, sleek precise lines, chrome and metallic surfaces, industrial or space-age settings. Clean technical aesthetics.',
     labels: { ko:'미래적이고 모던한', en:'Futuristic & Modern', it:'Futuristico & Moderno', fr:'Futuriste & Moderne', es:'Futurista & Moderno', ja:'未来的でモダンな', zh:'未来摩登风格', ru:'Футуристичный и современный', de:'Futuristisch & Modern' }
   },
   {
@@ -105,6 +113,7 @@ const THEMES = [
       '经典','优雅','精致','复古','高级','古典',
       'elegant','classic','raffinat','sofistic','vintage','élégant','classique','raffiné','vintage','elegant','clásic','refinad','vintage','elegant','klassisch','raffiniert','vintage','элегант','классик','изыск','винтаж'
     ],
+    description: 'Classic, elegant, timeless fashion editorial imagery. Refined and sophisticated styling, the muse archetype, graceful feminine beauty. Old-Hollywood polish, couture sensibility, restraint and craft.',
     labels: { ko:'클래식 & 엘레강스', en:'Classic & Elegance', it:'Classico & Eleganza', fr:'Classique & Élégance', es:'Clásico & Elegancia', ja:'クラシック＆エレガンス', zh:'经典优雅风格', ru:'Классика и элегантность', de:'Klassisch & Elegant' }
   },
   {
@@ -117,9 +126,17 @@ const THEMES = [
       '超现实','幻想','抽象','创意','魔法','奇幻',
       'surreal','fantasia','astratt','surréal','fantaisie','abstrait','surrealist','fantasía','abstract','surreal','fantasie','abstrakt','сюрреал','фантаз','абстракт'
     ],
+    description: 'Surreal, dreamlike, fantasy fashion editorial imagery. Conceptual scenarios, whimsical or abstract compositions, imaginative artistic direction. Magical realism over literal storytelling.',
     labels: { ko:'초현실적 판타지', en:'Surreal Fantasy', it:'Fantasia Surrealista', fr:'Fantaisie Surréaliste', es:'Fantasía Surrealista', ja:'シュールファンタジー', zh:'超现实幻想', ru:'Сюрреалистическая фантазия', de:'Surreale Fantasie' }
   }
 ];
+
+// Build the canonical embedding-input string for a theme — caller passes
+// this to embed() and stores the resulting vector in theme_embeddings.
+// Stable wording so re-embeds produce the same vector for unchanged themes.
+function themeEmbeddingText(theme) {
+  return theme.description + ' Tags: ' + theme.tags.join(', ') + '.';
+}
 
 const THEME_BY_ID = THEMES.reduce(function(m, t){ m[t.id] = t; return m; }, {});
 const SUPPORTED_LANGS = ['ko','en','it','fr','es','ja','zh','ru','de'];
@@ -149,4 +166,4 @@ function pickAnonymousThemes(date, count) {
   return picks;
 }
 
-module.exports = { THEMES, THEME_BY_ID, SUPPORTED_LANGS, safeLang, pickAnonymousThemes };
+module.exports = { THEMES, THEME_BY_ID, SUPPORTED_LANGS, safeLang, pickAnonymousThemes, themeEmbeddingText };

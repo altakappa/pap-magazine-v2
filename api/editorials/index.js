@@ -8,6 +8,7 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { handleCors } = require('../_lib/cors');
 const { requireAdmin } = require('../_lib/auth');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
+const { embedAndStoreEditorial } = require('../_lib/embeddings');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -101,6 +102,18 @@ module.exports = async function handler(req, res) {
         .single();
 
       if (error) throw error;
+
+      // Best-effort semantic embedding. Done AFTER the insert succeeds so
+      // the editorial is durably saved even if OpenAI is unreachable;
+      // backfill endpoint can pick up rows where embedding stayed null.
+      // Awaited so the home themes row reflects the new editorial on the
+      // very next page load — admin save UX is already a few hundred ms,
+      // an extra ~500ms is fine.
+      try {
+        await embedAndStoreEditorial(data);
+      } catch (embedErr) {
+        console.warn('[editorials POST] embed best-effort failed', embedErr && embedErr.message);
+      }
 
       return res.status(201).json({ data });
     } catch (err) {
