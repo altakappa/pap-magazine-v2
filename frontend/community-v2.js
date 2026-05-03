@@ -459,42 +459,67 @@ window.handleNotifClick = function(type, targetType, targetId){
   }
 };
 
-// ── 2.3 DM (Direct Messages) ──
+// ── 2.3 DM (Direct Messages) ──────────────────────────────────────────
+// Bug fixes from previous version:
+//   - sendDMFromInput was sending recipientId=convId (wrong — API needs the
+//     other user's id); we now store recipientId on chat dataset.
+//   - sendDM(userId, name) didn't actually open the conversation; now it
+//     looks up existing conversation with that user OR opens a new-chat view.
+//   - alertLogin replaced with _canActLocal (timing-bug-free).
+
+function _dmShowEmptyConvList(){
+  var list = document.getElementById('dmConvList');
+  if(!list) return;
+  list.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--text4);font-size:12px">'
+    + (L[lang]&&L[lang].dmEmpty||'No conversations')
+    + '<div style="margin-top:12px;font-size:11px;color:var(--text4)">'
+    + (lang==='ko'?'멤버 프로필에서 메시지를 보낼 수 있어요':'Send a message from any member profile')
+    + '</div></div>';
+}
+
+function _dmRenderConvList(convs){
+  var list = document.getElementById('dmConvList');
+  if(!list) return;
+  if(!convs || convs.length === 0){ _dmShowEmptyConvList(); return; }
+  var html = '';
+  convs.forEach(function(c){
+    var other = c.otherUser || {};
+    var name = other.name || 'User';
+    var av = name.split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase();
+    var lastMsg = c.lastMessage ? c.lastMessage.content.substring(0,50) : '';
+    var lastTime = c.lastMessage ? (typeof timeAgo==='function' ? timeAgo(c.lastMessage.createdAt) : '') : '';
+    var unread = c.unreadCount > 0 ? '<span class="dm-unread">'+c.unreadCount+'</span>' : '';
+    var safeName = escHtml(name).replace(/'/g, '&#39;');
+    var otherId = (other.id || '').replace(/'/g, '');
+    html += '<div class="dm-conv-item" onclick="openConversation(\''+c.id+'\',\''+otherId+'\',\''+safeName+'\')">';
+    html += '<div class="dm-conv-av">'+av+'</div>';
+    html += '<div class="dm-conv-info"><div class="dm-conv-name">'+escHtml(name)+'</div>';
+    html += '<div class="dm-conv-last">'+escHtml(lastMsg)+'</div></div>';
+    html += '<div class="dm-conv-meta">'+(lastTime?'<div class="dm-conv-time">'+lastTime+'</div>':'')+unread+'</div></div>';
+  });
+  list.innerHTML = html;
+}
+
+function _dmFetchConvList(){
+  return fetch('/api/community/messages?list=conversations', { credentials:'include' })
+    .then(function(r){ return r.json(); });
+}
+
 window.openDMPanel = function(){
-  if(!alertLogin()) return;
+  if(!_canActLocal()) return;
   var panel = document.getElementById('dmPanel');
   var overlay = document.getElementById('dmOverlay');
   if(!panel) return;
   panel.classList.add('active');
   if(overlay) overlay.classList.add('active');
-  // Show conv list, hide chat
   document.getElementById('dmConvList').style.display = '';
   document.getElementById('dmChat').style.display = 'none';
 
-  fetch('/api/community/messages?list=conversations', { credentials: 'include' })
-    .then(function(r){ return r.json(); })
-    .then(function(data){
-      var convs = data.conversations || [];
-      var list = document.getElementById('dmConvList');
-      if(!list) return;
-
-      if(convs.length === 0){
-        list.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--text4);font-size:12px">'+(L[lang]&&L[lang].dmEmpty||'No conversations')+'</div>';
-      } else {
-        var html = '';
-        convs.forEach(function(c){
-          var other = c.otherUser || {};
-          var av = (other.name||'??').split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase();
-          var lastMsg = c.lastMessage ? c.lastMessage.content.substring(0,40) : '';
-          var unread = c.unreadCount > 0 ? '<span class="dm-unread">'+c.unreadCount+'</span>' : '';
-          html += '<div class="dm-conv-item" onclick="openConversation(\''+c.id+'\',\''+escHtml(other.name||'User')+'\')">';
-          html += '<div class="dm-conv-av">'+av+'</div>';
-          html += '<div class="dm-conv-info"><div class="dm-conv-name">'+escHtml(other.name||'User')+'</div>';
-          html += '<div class="dm-conv-last">'+escHtml(lastMsg)+'</div></div>'+unread+'</div>';
-        });
-        list.innerHTML = html;
-      }
-    }).catch(function(){ showToast('Failed to load messages'); });
+  var list = document.getElementById('dmConvList');
+  if(list) list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text4);font-size:11px">Loading...</div>';
+  _dmFetchConvList()
+    .then(function(data){ _dmRenderConvList(data.conversations || []); })
+    .catch(function(){ showToast('Failed to load messages'); });
 };
 
 window.closeDMPanel = function(){
@@ -504,64 +529,132 @@ window.closeDMPanel = function(){
   if(overlay) overlay.classList.remove('active');
 };
 
-window.openConversation = function(convId, otherName){
-  // Hide conv list, show chat
-  document.getElementById('dmConvList').style.display = 'none';
+// Open a specific conversation. convId may be empty for "new conversation"
+// — the first sent message will create the conversation row server-side.
+window.openConversation = function(convId, otherUserId, otherName){
+  var convListEl = document.getElementById('dmConvList');
   var chat = document.getElementById('dmChat');
+  if(convListEl) convListEl.style.display = 'none';
+  if(!chat) return;
   chat.style.display = 'flex';
-  chat.dataset.convId = convId;
+  chat.dataset.convId = convId || '';
+  chat.dataset.recipientId = otherUserId || '';
+  chat.dataset.otherName = otherName || 'User';
 
   var header = document.getElementById('dmChatHeader');
-  header.innerHTML = '<button class="dm-back-btn" onclick="openDMPanel()">←</button><strong>'+escHtml(otherName)+'</strong>';
+  if(header) header.innerHTML = '<button class="dm-back-btn" onclick="openDMPanel()">←</button><strong>'+escHtml(otherName||'User')+'</strong>';
 
   var msgContainer = document.getElementById('dmMessages');
-  msgContainer.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text4);font-size:11px">Loading...</div>';
+  if(!msgContainer) return;
 
-  fetch('/api/community/messages?conversationId=' + convId, { credentials: 'include' })
+  if(!convId){
+    msgContainer.innerHTML = '<div class="dm-empty" style="text-align:center;padding:40px 20px;color:var(--text4);font-size:11px">'
+      + (lang==='ko'?'첫 메시지를 보내보세요':'Send your first message')
+      + '</div>';
+    var input = document.getElementById('dmInput');
+    if(input) input.focus();
+    return;
+  }
+
+  msgContainer.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text4);font-size:11px">Loading...</div>';
+  fetch('/api/community/messages?conversationId=' + encodeURIComponent(convId), { credentials:'include' })
     .then(function(r){ return r.json(); })
     .then(function(data){
       var msgs = data.messages || [];
-      var html = '';
-      msgs.forEach(function(m){
-        var cls = m.isMine ? 'dm-msg sent' : 'dm-msg received';
-        html += '<div class="'+cls+'"><div class="dm-bubble">'+escHtml(m.content)+'</div></div>';
-      });
-      msgContainer.innerHTML = html || '<div style="text-align:center;padding:20px;color:var(--text4);font-size:11px">No messages yet</div>';
+      if(msgs.length === 0){
+        msgContainer.innerHTML = '<div class="dm-empty" style="text-align:center;padding:20px;color:var(--text4);font-size:11px">'+(lang==='ko'?'메시지가 없습니다':'No messages yet')+'</div>';
+      } else {
+        var html = '';
+        msgs.forEach(function(m){
+          var cls = m.isMine ? 'dm-msg sent' : 'dm-msg received';
+          html += '<div class="'+cls+'"><div class="dm-bubble">'+escHtml(m.content)+'</div></div>';
+        });
+        msgContainer.innerHTML = html;
+      }
       msgContainer.scrollTop = msgContainer.scrollHeight;
+      var input = document.getElementById('dmInput');
+      if(input) input.focus();
     }).catch(function(){ msgContainer.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text4)">Error loading messages</div>'; });
 };
 
-window.sendDMFromInput = function(convIdArg){
+// Send message — uses chat.dataset.recipientId (correct user id, NOT convId).
+// First message in a new conversation creates the conversation server-side
+// and the response gives us back the new convId.
+window.sendDMFromInput = function(){
   var input = document.getElementById('dmInput');
   if(!input || !input.value.trim()) return;
   var content = input.value.trim();
-  input.value = '';
   var chat = document.getElementById('dmChat');
-  var convId = convIdArg || (chat ? chat.dataset.convId : null);
+  if(!chat) return;
+  var recipientId = chat.dataset.recipientId;
+  if(!recipientId){
+    showToast(lang==='ko'?'수신자 정보가 없어요':'No recipient — close and re-open the chat');
+    return;
+  }
+  input.value = '';
 
-  // Add message to UI immediately
+  // Optimistic: append + clear empty-state placeholder if present
   var msgList = document.getElementById('dmMessages');
   if(msgList){
+    var placeholder = msgList.querySelector('.dm-empty');
+    if(placeholder) placeholder.remove();
     msgList.insertAdjacentHTML('beforeend', '<div class="dm-msg sent"><div class="dm-bubble">'+escHtml(content)+'</div></div>');
     msgList.scrollTop = msgList.scrollHeight;
   }
 
   fetch('/api/community/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ recipientId: convId, content: content })
-  }).catch(function(){});
+    method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+    body: JSON.stringify({ recipientId: recipientId, content: content })
+  }).then(function(r){ return r.json().then(function(j){ return { ok:r.ok, j:j }; }); })
+    .then(function(out){
+      if(!out.ok){
+        showToast(out.j.message || 'Failed to send');
+        return;
+      }
+      // First message in a new conversation — store the new convId so
+      // subsequent sends/refreshes hit the right thread.
+      if(!chat.dataset.convId && out.j.message && out.j.message.conversationId){
+        chat.dataset.convId = out.j.message.conversationId;
+      }
+    }).catch(function(){ showToast('Failed to send'); });
 };
 
+// Start (or resume) a DM with a specific user. Called from member profile,
+// directory, etc. If a conversation already exists, opens it; otherwise
+// shows a fresh chat pane and the first message creates the conversation.
 window.sendDM = function(userId, userName){
-  if(!alertLogin()) return;
-  if(!userId && userName){
-    // Demo mode or directory contact
-    showToast((lang==='ko'?'메시지를 보내려면 로그인이 필요합니다':'Login required to send messages'));
+  if(!_canActLocal()) return;
+  if(!userId){
+    // Called from demo / placeholder data with no real user id (e.g. AI
+    // matching cards). Surface a clear message instead of a confusing
+    // login prompt.
+    showToast(lang==='ko'?'이 카드는 데모 데이터예요 — 디렉토리에서 회원을 찾아 메시지를 보내주세요':'This card is demo data — find members in the Directory tab to send messages');
     return;
   }
-  openDMPanel();
+
+  var panel = document.getElementById('dmPanel');
+  var overlay = document.getElementById('dmOverlay');
+  if(panel) panel.classList.add('active');
+  if(overlay) overlay.classList.add('active');
+  document.getElementById('dmConvList').style.display = '';
+  document.getElementById('dmChat').style.display = 'none';
+
+  // Look up existing conversation; if none, open new-chat view
+  _dmFetchConvList()
+    .then(function(data){
+      var convs = data.conversations || [];
+      var existing = null;
+      for(var i=0;i<convs.length;i++){
+        var c = convs[i];
+        if(c.otherUser && c.otherUser.id === userId){ existing = c; break; }
+      }
+      if(existing){
+        openConversation(existing.id, userId, (existing.otherUser && existing.otherUser.name) || userName);
+      } else {
+        openConversation('', userId, userName || 'User');
+      }
+    })
+    .catch(function(){ openConversation('', userId, userName || 'User'); });
 };
 
 // ── 2.4 ENHANCED PROFILE POPUP — with follow button and real badges ──
