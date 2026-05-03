@@ -11,6 +11,34 @@
 (function(){
 'use strict';
 
+// ── Robust login check (fixes alertLogin timing bug) ────────────────────
+// Background: the page-level alertLogin() in community.html only checks
+// SB.user, which Supabase populates ASYNCHRONOUSLY on init. If a user
+// clicks an action button before SB session retrieval completes, alertLogin
+// thinks they're logged out and redirects to auth.html — which then
+// redirects them to mypage.html (because they ARE actually logged in via
+// PAP cookie-based JWT). Net result: clicking "+ 스크랩 추가" lands the
+// user on mypage instead of opening the scrap modal.
+//
+// _canActLocal trusts the pap-token localStorage key (synchronously
+// available from page load — set by PAP.auth on cookie-JWT login). Used by
+// the new playground primitives (scrapbook, moodboard create, editorial
+// bridge). Older functions still use alertLogin(); fixing them is a
+// separate concern (some have flow that *does* want a redirect).
+function _canActLocal(){
+  try {
+    if(typeof isLoggedIn === 'function' && isLoggedIn()) return true;
+    if(typeof SB !== 'undefined' && SB.user) return true;
+    if(localStorage.getItem('pap-token')) return true;
+  } catch(e) {}
+  if(typeof showToast === 'function'){
+    showToast((typeof lang !== 'undefined' && lang === 'ko')
+      ? '로그인이 필요합니다'
+      : 'Login required');
+  }
+  return false;
+}
+
 // ======================================================================
 // PHASE 1: CORE FEATURE COMPLETION
 // ======================================================================
@@ -605,7 +633,7 @@ window.loadMoodboards = function(){
 // Moodboard create — supports `inspiredById` to chain off another board.
 // Items are entered as one image URL per line in a textarea.
 window.createMoodboard = function(inspiredById){
-  if(!alertLogin()) return;
+  if(!_canActLocal()) return;
   var bg = document.getElementById('createMoodboardBg');
   if(!bg) return;
   document.getElementById('cmTitle').value = '';
@@ -904,7 +932,7 @@ window.closeMoodDetail = function(){
 // pre-fill the form so the member doesn't re-enter context they already
 // captured in the moodboard.
 window.bridgeToEditorial = function(boardId){
-  if(!alertLogin()) return;
+  if(!_canActLocal()) return;
   window.location.href = '/submission.html?moodboard=' + encodeURIComponent(boardId);
 };
 
@@ -945,7 +973,7 @@ window.loadScraps = function(userId){
 };
 
 window.openAddScrap = function(){
-  if(typeof alertLogin === 'function' && !alertLogin()) return;
+  if(!_canActLocal()) return;
   var bg = document.getElementById('addScrapBg');
   if(!bg) return;
   document.getElementById('addScrapImage').value = '';
