@@ -121,6 +121,25 @@ module.exports = async function handler(req, res) {
           return res.status(200).json({ voted: false });
         } else {
           await supabaseAdmin.from('community_mood_board_votes').insert({ board_id: boardId, user_id: user.id });
+
+          // Notification: tell the board owner someone liked it (skip self)
+          try {
+            const { data: board } = await supabaseAdmin
+              .from('community_mood_boards')
+              .select('user_id')
+              .eq('id', boardId)
+              .maybeSingle();
+            if (board && board.user_id && board.user_id !== user.id) {
+              await supabaseAdmin.from('community_notifications').insert({
+                user_id: board.user_id,
+                type: 'like',
+                actor_id: user.id,
+                target_type: 'mood_board',
+                target_id: boardId,
+              });
+            }
+          } catch (e) { /* non-fatal */ }
+
           return res.status(200).json({ voted: true });
         }
       } catch (error) {
@@ -154,6 +173,28 @@ module.exports = async function handler(req, res) {
           sort_order: i,
         }));
         await supabaseAdmin.from('community_mood_board_items').insert(itemRows);
+      }
+
+      // Notification: if this board was inspired by another, tell the
+      // source-board owner ("✨ X님이 당신의 보드에서 영감받아 새 보드를
+      // 만들었어요"). Skip if source owner is the same person.
+      if (inspiredById) {
+        try {
+          const { data: parent } = await supabaseAdmin
+            .from('community_mood_boards')
+            .select('user_id')
+            .eq('id', inspiredById)
+            .maybeSingle();
+          if (parent && parent.user_id && parent.user_id !== user.id) {
+            await supabaseAdmin.from('community_notifications').insert({
+              user_id: parent.user_id,
+              type: 'inspiration',
+              actor_id: user.id,
+              target_type: 'mood_board',
+              target_id: board.id, // navigate to the NEW (inspired) board, not the source
+            });
+          }
+        } catch (e) { /* non-fatal */ }
       }
 
       return res.status(201).json({ board });

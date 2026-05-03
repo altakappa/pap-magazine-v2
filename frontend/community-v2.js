@@ -393,16 +393,21 @@ window.openNotifications = function(){
       if(items.length === 0){
         list.innerHTML = '<div class="notif-empty">'+(L[lang]&&L[lang].notifEmpty||'No new notifications')+'</div>';
       } else {
-        var typeIcons = { like:'❤️', comment:'💬', follow:'👤', project_apply:'📋', project_accepted:'✅', project_rejected:'❌', dm:'✉️', mention:'@' };
+        var typeIcons = { like:'❤️', comment:'💬', follow:'👤', project_apply:'📋', project_accepted:'✅', project_rejected:'❌', dm:'✉️', mention:'@', inspiration:'✨', scrap:'📌' };
+        // For 'like' specifically, the meaning depends on target_type
+        // (post like vs moodboard vote). Frontend splits the message below.
         var typeTexts = {
-          ko: { like:'님이 좋아요를 눌렀습니다',comment:'님이 댓글을 남겼습니다',follow:'님이 팔로우하기 시작했습니다',project_apply:'님이 프로젝트에 지원했습니다',project_accepted:'프로젝트 지원이 수락되었습니다',project_rejected:'프로젝트 지원이 거절되었습니다',dm:'님이 메시지를 보냈습니다',mention:'님이 언급했습니다' },
-          en: { like:'liked your post',comment:'commented on your post',follow:'started following you',project_apply:'applied to your project',project_accepted:'Your application was accepted',project_rejected:'Your application was rejected',dm:'sent you a message',mention:'mentioned you' }
+          ko: { like:'님이 좋아요를 눌렀습니다', like_mood_board:'님이 당신의 무드보드를 좋아합니다', comment:'님이 댓글을 남겼습니다', follow:'님이 팔로우하기 시작했습니다', project_apply:'님이 프로젝트에 지원했습니다', project_accepted:'프로젝트 지원이 수락되었습니다', project_rejected:'프로젝트 지원이 거절되었습니다', dm:'님이 메시지를 보냈습니다', mention:'님이 언급했습니다', inspiration:'님이 당신의 보드에서 영감받아 새 보드를 만들었어요', scrap:'님이 당신의 무드보드를 스크랩북에 저장했어요' },
+          en: { like:'liked your post', like_mood_board:'liked your moodboard', comment:'commented on your post', follow:'started following you', project_apply:'applied to your project', project_accepted:'Your application was accepted', project_rejected:'Your application was rejected', dm:'sent you a message', mention:'mentioned you', inspiration:'created a new board inspired by yours', scrap:'saved your moodboard to their scrapbook' }
         };
         var texts = typeTexts[lang] || typeTexts.en;
         var html = '';
         items.forEach(function(n){
           var icon = typeIcons[n.type] || '🔔';
-          var text = texts[n.type] || n.message || '';
+          // 'like' on a mood_board reads naturally as "liked your moodboard"
+          // — fall through to plain 'like' if no specialized variant exists.
+          var keyed = (n.type && n.targetType) ? (n.type + '_' + n.targetType) : null;
+          var text = (keyed && texts[keyed]) || texts[n.type] || n.message || '';
           var actorName = n.actor ? n.actor.name : '';
           var av = actorName ? actorName.split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase() : '?';
           html += '<div class="notif-item'+(n.read?'':' unread')+'" onclick="handleNotifClick(\''+n.type+'\',\''+(n.targetType||'')+'\',\''+(n.targetId||'')+'\')">';
@@ -440,9 +445,18 @@ window.markAllRead = function(){
 window.handleNotifClick = function(type, targetType, targetId){
   var panel = document.getElementById('notifPanel');
   if(panel) panel.classList.remove('active');
-  if(targetType === 'post') openPost(targetId);
-  if(type === 'dm' || targetType === 'message') openDMPanel();
-  if(type === 'follow') goTab('directory', document.querySelector('[onclick*="directory"]'));
+  if(targetType === 'post') { if(typeof openPost === 'function') openPost(targetId); return; }
+  if(targetType === 'mood_board' && targetId) {
+    // Go to moodboard tab + open the board detail overlay
+    if(typeof goTab === 'function') goTab('moodboard', document.querySelector('[onclick*="moodboard"]'));
+    if(typeof openMoodboard === 'function') setTimeout(function(){ openMoodboard(targetId); }, 100);
+    return;
+  }
+  if(type === 'dm' || targetType === 'message') { openDMPanel(); return; }
+  if(type === 'follow') {
+    var dirEl = document.querySelector('[onclick*="directory"]');
+    if(typeof goTab === 'function' && dirEl) goTab('directory', dirEl);
+  }
 };
 
 // ── 2.3 DM (Direct Messages) ──
