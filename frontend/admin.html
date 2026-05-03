@@ -2403,7 +2403,12 @@ function filterSubmissions(status,btn){
 }
 
 // ======== PULL-LETTERS MANAGEMENT ========
+// Two flows write to the same `pullletters` table:
+//   - Legacy: /frontend/pullletter.html → multipart with file_urls (request_text)
+//   - Community: /frontend/community.html → JSON with mood_board_id + structured fields
+// Status values: 'pending' → 'accepted'/'approved' → 'issued' (PDF delivered) | 'rejected'
 var currentPLFilter='';
+var _allPullLetters=[];
 async function loadPullLetters(statusFilter){
   if(statusFilter!==undefined)currentPLFilter=statusFilter;
   var tb=document.getElementById('pullletterListBody');
@@ -2413,14 +2418,33 @@ async function loadPullLetters(statusFilter){
     var query=currentPLFilter?'?status='+currentPLFilter:'';
     var result=await apiGet('/pullletters'+query);
     var pls=result.pullLetters||[];
+    _allPullLetters = pls;
     if(!pls.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:40px 0">Pull-Letter 요청이 없습니다</td></tr>';return;}
     tb.innerHTML='';
     pls.forEach(function(pl){
-      var statusCls=pl.status==='pending'?'b-pending':pl.status==='approved'?'b-approved':'b-declined';
-      var statusLabel=pl.status==='pending'?'대기 중':pl.status==='approved'?'승인':'거절';
-      var filesCount=pl.file_urls?pl.file_urls.length:0;
-      var reqText=(pl.request_text||'').substring(0,60)+(pl.request_text&&pl.request_text.length>60?'...':'');
-      tb.innerHTML+='<tr><td>'+esc(pl.requesterName||pl.requesterEmail||'—')+'</td><td>'+esc(reqText||'—')+'</td><td>'+filesCount+'개 파일</td><td>'+fmtDate(pl.created_at)+'</td><td><span class="badge '+statusCls+'">'+statusLabel+'</span></td><td><button class="btn btn-sm btn-green" onclick="doPullLetterReview(\''+pl.id+'\',\'accepted\')">승인</button> <button class="btn btn-sm btn-red" onclick="doPullLetterReview(\''+pl.id+'\',\'rejected\')">거절</button></td></tr>';
+      var statusMap = {
+        pending:  { cls:'b-pending',  label:'대기 중' },
+        accepted: { cls:'b-approved', label:'승인' },
+        approved: { cls:'b-approved', label:'승인' },
+        issued:   { cls:'b-approved', label:'발급 완료' },
+        rejected: { cls:'b-declined', label:'거절' },
+      };
+      var s = statusMap[pl.status] || statusMap.pending;
+      // Title: moodboard title (community flow) or first line of request_text (legacy)
+      var title = pl.moodBoardTitle || ((pl.request_text||'').slice(0,60) + ((pl.request_text||'').length>60?'…':''));
+      // Detail: shoot_purpose (community) or file count (legacy)
+      var detail = pl.shoot_purpose
+        ? (pl.shoot_purpose.slice(0,60) + (pl.shoot_purpose.length>60?'…':''))
+        : ((pl.file_urls && pl.file_urls.length) ? (pl.file_urls.length+'개 파일') : '—');
+      var actions = '<button class="btn btn-sm" onclick="openPullLetterReview(\''+pl.id+'\')">검토</button>';
+      tb.innerHTML += '<tr>'
+        + '<td>'+esc(pl.requesterName||pl.requesterEmail||'—')+'</td>'
+        + '<td><strong>'+esc(title||'—')+'</strong>'+(detail?'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+esc(detail)+'</div>':'')+'</td>'
+        + '<td>'+(pl.mood_board_id ? '🔗 community' : (pl.file_urls?(pl.file_urls.length+'개'):'—'))+'</td>'
+        + '<td>'+fmtDate(pl.created_at)+'</td>'
+        + '<td><span class="badge '+s.cls+'">'+s.label+'</span></td>'
+        + '<td>'+actions+'</td>'
+        + '</tr>';
     });
   }catch(err){
     tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:#ff6b6b;padding:40px">불러오기 실패</td></tr>';
@@ -2432,17 +2456,102 @@ function filterPullLetters(status,btn){
   loadPullLetters(status);
 }
 
-async function doPullLetterReview(id,status){
-  var labels={accepted:'승인',rejected:'거절'};
-  if(!confirm('이 Pull-Letter를 '+labels[status]+' 처리하시겠습니까?')) return;
+// Inline review panel — opens a quick modal with all fields + PDF upload + actions.
+function openPullLetterReview(id){
+  var pl = _allPullLetters.find(function(x){ return x.id === id; });
+  if(!pl){ alert('Not found'); return; }
+  var bg = document.getElementById('plReviewBg');
+  if(!bg){ bg = _createPullLetterReviewModal(); document.body.appendChild(bg); }
+  bg.dataset.id = id;
+  var body = bg.querySelector('.plr-body');
+  body.innerHTML = ''
+    + '<div class="plr-row"><label>Requester</label><div>'+esc(pl.requesterName||'—')+' · '+esc(pl.requesterEmail||'')+'</div></div>'
+    + (pl.moodBoardTitle ? '<div class="plr-row"><label>Mood Board</label><div>'+esc(pl.moodBoardTitle)+'</div></div>' : '')
+    + (pl.shoot_purpose ? '<div class="plr-row"><label>Purpose</label><div style="white-space:pre-wrap">'+esc(pl.shoot_purpose)+'</div></div>' : '')
+    + (pl.shoot_location_target ? '<div class="plr-row"><label>Location</label><div>'+esc(pl.shoot_location_target)+'</div></div>' : '')
+    + (pl.items_needed ? '<div class="plr-row"><label>Items</label><div>'+esc(pl.items_needed)+'</div></div>' : '')
+    + (pl.shoot_date_planned ? '<div class="plr-row"><label>Shoot Date</label><div>'+esc(pl.shoot_date_planned)+'</div></div>' : '')
+    + (pl.contact_phone ? '<div class="plr-row"><label>Phone</label><div>'+esc(pl.contact_phone)+'</div></div>' : '')
+    + (pl.request_text && !pl.shoot_purpose ? '<div class="plr-row"><label>Legacy Request</label><div style="white-space:pre-wrap">'+esc(pl.request_text)+'</div></div>' : '')
+    + (pl.file_urls && pl.file_urls.length ? '<div class="plr-row"><label>Uploaded files</label><div>'+pl.file_urls.length+' file(s)</div></div>' : '')
+    + '<div class="plr-row"><label>Admin notes</label><textarea id="plrNotes" rows="3" style="width:100%;padding:8px 10px;border:1px solid var(--border);font-family:inherit;font-size:12px">'+esc(pl.admin_notes||'')+'</textarea></div>'
+    + '<div class="plr-row"><label>Pull-Letter PDF</label><div style="font-size:11px;color:var(--text3);margin-bottom:6px">'+(pl.pull_letter_url?'Already uploaded: '+esc(pl.pull_letter_url):'Not uploaded')+'</div><input type="file" id="plrPdf" accept="application/pdf"></div>';
+  bg.style.display = 'flex';
+}
+function closePullLetterReview(){
+  var bg = document.getElementById('plReviewBg');
+  if(bg) bg.style.display = 'none';
+}
+function _createPullLetterReviewModal(){
+  var bg = document.createElement('div');
+  bg.id = 'plReviewBg';
+  bg.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:200;font-family:Montserrat,sans-serif';
+  bg.innerHTML = '<div style="background:#fff;width:560px;max-width:96vw;max-height:90vh;overflow-y:auto;border:1px solid var(--border);padding:28px;position:relative">'
+    + '<button onclick="closePullLetterReview()" style="position:absolute;top:14px;right:18px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--text3)">×</button>'
+    + '<h3 style="font-size:14px;font-weight:700;letter-spacing:.05em;margin-bottom:18px">PULL-LETTER REVIEW</h3>'
+    + '<div class="plr-body"></div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">'
+      + '<button class="btn btn-sm" onclick="doPullLetterReview(\'approved\',null)">Approve</button>'
+      + '<button class="btn btn-sm" onclick="doPullLetterReview(\'issued\',null)">Mark Issued (uploads PDF)</button>'
+      + '<button class="btn btn-sm" onclick="doPullLetterReview(\'rejected\',null)">Reject</button>'
+      + '<button class="btn btn-sm" onclick="doPullLetterReview(null,null)">Save notes only</button>'
+    + '</div>';
+  // Inline style for plr rows
+  var style = document.createElement('style');
+  style.textContent = '.plr-row{margin-bottom:14px}.plr-row label{display:block;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);margin-bottom:4px}.plr-row > div{font-size:13px;color:var(--text2)}';
+  document.head.appendChild(style);
+  bg.addEventListener('click', function(e){ if(e.target === bg) closePullLetterReview(); });
+  return bg;
+}
+async function _uploadPullLetterPdfIfPresent(id){
+  var input = document.getElementById('plrPdf');
+  if(!input || !input.files || input.files.length === 0) return null;
+  var fd = new FormData();
+  fd.append('pdf', input.files[0]);
+  var r = await fetch((_apiBase||'/api')+'/pullletters/upload?id='+encodeURIComponent(id), {
+    method:'POST',
+    headers:{ 'Authorization':'Bearer '+localStorage.getItem('pap-token'), 'X-Requested-With':'XMLHttpRequest' },
+    body: fd,
+  });
+  var j = await r.json();
+  if(!r.ok) throw new Error(j.message || 'PDF upload failed');
+  return j.pullLetterPath;
+}
+async function doPullLetterReview(status){
+  var bg = document.getElementById('plReviewBg');
+  var id = bg ? bg.dataset.id : null;
+  if(!id) return;
+  var labels = { approved:'승인', accepted:'승인', issued:'발급 완료', rejected:'거절' };
+  if(status && !confirm('이 Pull-Letter를 '+(labels[status]||status)+' 처리하시겠습니까?')) return;
   try{
-    var resp=await fetch((_apiBase||'/api')+'/pullletters/'+id+'/review',{
+    var pdfPath = null;
+    // 'issued' requires a PDF (or one already uploaded). For other statuses upload is optional.
+    var pl = _allPullLetters.find(function(x){ return x.id === id; });
+    if(status === 'issued'){
+      pdfPath = await _uploadPullLetterPdfIfPresent(id);
+      if(!pdfPath && !(pl && pl.pull_letter_url)){
+        alert('"Mark Issued"는 PDF가 필요합니다. 먼저 파일을 첨부해주세요.');
+        return;
+      }
+    } else {
+      pdfPath = await _uploadPullLetterPdfIfPresent(id);
+    }
+    var notesEl = document.getElementById('plrNotes');
+    var payload = { reviewNote: notesEl ? notesEl.value : '' };
+    if(status) payload.status = status;
+    if(pdfPath) payload.pullLetterPath = pdfPath;
+    // If we only have notes/PDF (no status change), still need a status to satisfy the endpoint.
+    // Reuse current status as a no-op so review.js validation passes.
+    if(!payload.status){
+      payload.status = (pl && pl.status) || 'pending';
+    }
+    var resp = await fetch((_apiBase||'/api')+'/pullletters/'+id+'/review', {
       method:'PUT',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('pap-token'),'X-Requested-With':'XMLHttpRequest'},
-      body:JSON.stringify({status:status})
+      body: JSON.stringify(payload),
     });
-    if(!resp.ok){var d=await resp.json();throw new Error(d.message||'처리 실패');}
-    alert('Pull-Letter가 '+labels[status]+' 처리되었습니다.');
+    if(!resp.ok){ var d=await resp.json(); throw new Error(d.message||'처리 실패'); }
+    closePullLetterReview();
     loadPullLetters(currentPLFilter);
   }catch(e){
     alert('오류: '+(e.message||'Pull-Letter 처리 실패'));

@@ -2041,6 +2041,47 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
   </div>
 </div>
 
+<!-- PULL-LETTER REQUEST MODAL (Premium-only) -->
+<div class="profile-popup-bg" id="pullLetterReqBg" onclick="if(event.target===this)closePullLetterRequest()">
+  <div class="profile-popup" style="max-width:560px">
+    <button class="profile-popup-close" onclick="closePullLetterRequest()">×</button>
+    <div style="padding:32px">
+      <div style="font-size:18px;font-weight:600;margin-bottom:6px;letter-spacing:-0.022em" data-i18n="plReqTitle">📄 풀레터 요청</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:18px" data-i18n="plReqDesc">PAP가 발급하는 공식 확인서로 촬영장소·의상·장비 대여에 활용할 수 있어요.</div>
+      <input type="hidden" id="plBoardId">
+      <div style="margin-bottom:14px;padding:10px 14px;background:rgba(220,180,80,.08);border:1px solid rgba(220,180,80,.25);border-radius:6px;font-size:12px;color:var(--text2)">
+        <span data-i18n="plReqBasedOn">기반 무드보드:</span> <strong id="plBoardTitleDisplay" style="font-weight:600"></strong>
+      </div>
+      <div style="margin-bottom:14px">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:6px"><span data-i18n="plReqPurposeLabel">촬영 의도 / 컨셉</span> <span style="color:#c00">*</span></div>
+        <textarea id="plPurpose" rows="3" placeholder="" data-i18n-ph="plReqPurposePh" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:Montserrat,sans-serif;resize:vertical"></textarea>
+      </div>
+      <div style="margin-bottom:14px">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:6px" data-i18n="plReqLocationLabel">빌리고 싶은 장소</div>
+        <input id="plLocation" type="text" placeholder="" data-i18n-ph="plReqLocationPh" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:Montserrat,sans-serif">
+      </div>
+      <div style="margin-bottom:14px">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:6px" data-i18n="plReqItemsLabel">빌리고 싶은 의상·장비</div>
+        <input id="plItems" type="text" placeholder="" data-i18n-ph="plReqItemsPh" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:Montserrat,sans-serif">
+      </div>
+      <div style="margin-bottom:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:6px" data-i18n="plReqDateLabel">예정 촬영일</div>
+          <input id="plDate" type="date" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:Montserrat,sans-serif">
+        </div>
+        <div>
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:6px" data-i18n="plReqPhoneLabel">연락처</div>
+          <input id="plPhone" type="tel" placeholder="" data-i18n-ph="plReqPhonePh" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:Montserrat,sans-serif">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+        <button onclick="closePullLetterRequest()" class="write-cancel" data-i18n="cancelBtn">취소</button>
+        <button onclick="submitPullLetterRequest()" class="c-write-btn" data-i18n="plReqSubmit">요청 보내기</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ADD SCRAP MODAL — minimal: image URL + optional note + optional source URL -->
 <div class="profile-popup-bg" id="addScrapBg" onclick="if(event.target===this)closeAddScrap()">
   <div class="profile-popup" style="max-width:480px">
@@ -2203,7 +2244,8 @@ ko:{
   viewOriginal:'원문보기',viewTranslation:'번역보기',originalLabel:'원문',
   tabMoodboard:'무드보드',moodTitle:'INSPIRATION BOARDS',moodDesc:'크리에이터들의 무드보드를 탐색하고 영감을 공유하세요',moodCreate:'+ 보드 만들기',moodEmpty:'아직 무드보드가 없습니다',
   tabScrapbook:'스크랩북',scrapTitle:'SCRAPBOOK',scrapDesc:'시간이 쌓이면 취향이 보여요. 마음에 드는 이미지를 모아보세요.',scrapAdd:'+ 스크랩 추가',scrapEmpty:'아직 스크랩이 없습니다',scrapImageUrlLabel:'이미지 URL',scrapNoteLabel:'짧은 메모 (선택)',scrapNotePh:'예: 좋은 라이팅',scrapSourceLabel:'출처 URL (선택)',scrapSave:'저장',scrapDelConfirm:'이 스크랩을 삭제할까요?',scrapDropTitle:'이미지를 끌어다 놓기',scrapDropHint:'또는 클릭해서 선택 · ⌘V로 붙여넣기 · 아래에 URL 입력',scrapPreviewClear:'지우기',scrapUploading:'업로드 중...',
-  moodInspiredBy:'영감받음',moodInspiredByLabel:'영감받은 보드:',moodInspireBtn:'이 보드에서 영감받기',moodEditorialBtn:'에디토리얼로 제안',moodInspiredHint:'✨ 다른 보드에서 영감받아 새 보드를 만들고 있어요.',moodTitleLabel:'제목',moodDescLabel:'설명 (선택)',moodTagsLabel:'태그 (콤마로 구분)',moodTagsPh:'예: minimal, ethereal',moodImagesLabel:'이미지 URL (한 줄에 하나)',moodSubmit:'만들기',
+  moodInspiredBy:'영감받음',moodInspiredByLabel:'영감받은 보드:',moodInspireBtn:'이 보드에서 영감받기',moodEditorialBtn:'에디토리얼로 제안',moodPullLetterBtn:'풀레터 요청 (Premium)',moodInspiredHint:'✨ 다른 보드에서 영감받아 새 보드를 만들고 있어요.',moodTitleLabel:'제목',moodDescLabel:'설명 (선택)',moodTagsLabel:'태그 (콤마로 구분)',moodTagsPh:'예: minimal, ethereal',moodImagesLabel:'이미지 URL (한 줄에 하나)',moodSubmit:'만들기',
+  plReqTitle:'📄 풀레터 요청',plReqDesc:'PAP가 발급하는 공식 확인서로 촬영장소·의상·장비 대여에 활용할 수 있어요.',plReqBasedOn:'기반 무드보드:',plReqPurposeLabel:'촬영 의도 / 컨셉',plReqPurposePh:'예: 봄 시즌 미니멀 톤의 도시 인물 촬영',plReqLocationLabel:'빌리고 싶은 장소',plReqLocationPh:'예: OO 갤러리, OO 옥상',plReqItemsLabel:'빌리고 싶은 의상·장비',plReqItemsPh:'예: 베이지 트렌치, 16-35mm 렌즈',plReqDateLabel:'예정 촬영일',plReqPhoneLabel:'연락처',plReqPhonePh:'010-XXXX-XXXX',plReqSubmit:'요청 보내기',
   notifTitle:'알림',notifMarkAll:'모두 읽음',notifEmpty:'새로운 알림이 없습니다',
   dmTitle:'메시지',dmEmpty:'대화가 없습니다',dmPlaceholder:'메시지 입력...',dmSend:'전송',
   followBtn:'팔로우',unfollowBtn:'팔로잉',messageBtn:'메시지',badgesTitle:'크리에이터 뱃지',
@@ -2235,7 +2277,8 @@ en:{
   viewOriginal:'View Original',viewTranslation:'View Translation',originalLabel:'Original',
   tabMoodboard:'MOODBOARD',moodTitle:'INSPIRATION BOARDS',moodDesc:'Explore moodboards by creators and share your inspiration',moodCreate:'+ CREATE BOARD',moodEmpty:'No moodboards yet',
   tabScrapbook:'SCRAPBOOK',scrapTitle:'SCRAPBOOK',scrapDesc:'Your taste, slowly built. Save images you love.',scrapAdd:'+ ADD SCRAP',scrapEmpty:'No scraps yet',scrapImageUrlLabel:'Image URL',scrapNoteLabel:'Short note (optional)',scrapNotePh:'e.g. nice lighting',scrapSourceLabel:'Source URL (optional)',scrapSave:'Save',scrapDelConfirm:'Delete this scrap?',scrapDropTitle:'Drop an image here',scrapDropHint:'or click to pick · ⌘V to paste · or enter URL below',scrapPreviewClear:'Clear',scrapUploading:'Uploading...',
-  moodInspiredBy:'Inspired',moodInspiredByLabel:'Inspired by:',moodInspireBtn:'Inspired by this board',moodEditorialBtn:'Propose as editorial',moodInspiredHint:'✨ Creating a new board inspired by another one.',moodTitleLabel:'Title',moodDescLabel:'Description (optional)',moodTagsLabel:'Tags (comma separated)',moodTagsPh:'e.g. minimal, ethereal',moodImagesLabel:'Image URLs (one per line)',moodSubmit:'Create',
+  moodInspiredBy:'Inspired',moodInspiredByLabel:'Inspired by:',moodInspireBtn:'Inspired by this board',moodEditorialBtn:'Propose as editorial',moodPullLetterBtn:'Request Pull-Letter (Premium)',moodInspiredHint:'✨ Creating a new board inspired by another one.',moodTitleLabel:'Title',moodDescLabel:'Description (optional)',moodTagsLabel:'Tags (comma separated)',moodTagsPh:'e.g. minimal, ethereal',moodImagesLabel:'Image URLs (one per line)',moodSubmit:'Create',
+  plReqTitle:'📄 Pull-Letter Request',plReqDesc:'Official PAP confirmation document — use it to rent shoot locations or borrow clothes/equipment.',plReqBasedOn:'Based on moodboard:',plReqPurposeLabel:'Shoot purpose / concept',plReqPurposePh:'e.g. Spring minimal urban portrait shoot',plReqLocationLabel:'Location to rent',plReqLocationPh:'e.g. OO gallery, OO rooftop',plReqItemsLabel:'Clothes / equipment to borrow',plReqItemsPh:'e.g. beige trench, 16-35mm lens',plReqDateLabel:'Planned shoot date',plReqPhoneLabel:'Contact phone',plReqPhonePh:'+82-10-XXXX-XXXX',plReqSubmit:'Submit request',
   notifTitle:'Notifications',notifMarkAll:'Mark all read',notifEmpty:'No new notifications',
   dmTitle:'Messages',dmEmpty:'No conversations',dmPlaceholder:'Type a message...',dmSend:'Send',
   followBtn:'Follow',unfollowBtn:'Following',messageBtn:'Message',badgesTitle:'Creator Badges',
