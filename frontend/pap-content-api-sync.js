@@ -508,9 +508,11 @@ window._papFilmAutoPlay = function(){
   // theme bundles against DOM-card data-tags. Source of truth for theme
   // definitions now lives in api/_lib/themes.js.
   //
-  // Container: #aiThemeRows1 (the legacy second container #aiThemeRows2 is
-  // emptied by this function — the new endpoint always returns 3 rows that
-  // all live in container #1).
+  // Containers: split across #aiThemeRows1 (between Film and Shorts) and
+  // #aiThemeRows2 (below Shorts). Each gets exactly 2 rows, per the
+  // "에디토리얼은 2/2/2 짝지어 노출" home design rule. The /editorials/themes
+  // endpoint returns 4 rows total — first 2 land in container #1, the
+  // remaining 2 in container #2.
   //
   // Logged-in personalisation: server picks themes from user_preferences;
   // client-side here also reorders cards inside each row "unseen first"
@@ -580,8 +582,13 @@ window._papFilmAutoPlay = function(){
           return h;
         }
 
-        c1.innerHTML = json.rows.map(buildRow).join('');
-        if(c2) c2.innerHTML = '';
+        // Split rows: first 2 → upper container (between Film and Shorts),
+        // remaining (typically 2) → lower container (below Shorts). Slicing
+        // is defensive — if the API returns fewer than 4 rows the lower
+        // container simply renders fewer cards rather than breaking layout.
+        var rows = json.rows || [];
+        c1.innerHTML = rows.slice(0, 2).map(buildRow).join('');
+        if(c2) c2.innerHTML = rows.slice(2, 4).map(buildRow).join('');
 
         // Re-translate row labels when the language picker changes — same
         // hook the previous inline IIFE used so other modules don't need

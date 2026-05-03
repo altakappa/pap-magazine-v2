@@ -38,7 +38,11 @@ const { verifyToken } = require('../_lib/auth');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { THEMES, THEME_BY_ID, safeLang, pickAnonymousThemes } = require('../_lib/themes');
 
-const ROW_COUNT = 3;
+// Home page splits theme rows across two containers (#aiThemeRows1 between
+// Film and Shorts, #aiThemeRows2 below Shorts), 2 rows each per the
+// "에디토리얼은 2/2/2 짝지어 노출" design rule. So the endpoint must return
+// exactly 4 rows: 2 for the upper container, 2 for the lower one.
+const ROW_COUNT = 4;
 const DEFAULT_PER_ROW = 10;
 const MAX_PER_ROW = 20;
 // Pull a generous slice of recent published editorials in one shot, then
