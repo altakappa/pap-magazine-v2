@@ -446,13 +446,15 @@
      when the API returns empty, so the launch period before there's
      activity still looks intentional. -->
 <style>
-  .community-cta { position: relative; padding: 56px 32px; background: #0a0a0a; overflow: hidden; }
+  /* Background uses PAP key color #891717 (same red as the COMMUNITY nav
+     link). Subtle radial highlights add depth without diluting the brand. */
+  .community-cta { position: relative; padding: 56px 32px; background: #891717; overflow: hidden; }
   .community-cta::before {
     content: "";
     position: absolute; inset: 0;
     background:
-      radial-gradient(circle at 20% 50%, rgba(255,255,255,.06) 0%, transparent 50%),
-      radial-gradient(circle at 80% 50%, rgba(255,255,255,.04) 0%, transparent 50%);
+      radial-gradient(circle at 20% 50%, rgba(255,255,255,.08) 0%, transparent 55%),
+      radial-gradient(circle at 80% 50%, rgba(0,0,0,.18) 0%, transparent 55%);
     pointer-events: none;
   }
   .community-cta-link {
@@ -492,8 +494,10 @@
     text-transform: uppercase;
     transition: background .2s ease, border-color .2s ease, transform .2s ease;
   }
+  /* Hover flips to white pill with the deep-red label — keeps brand colour
+     present in the highest-attention state. */
   .community-cta-link:hover .community-cta-button {
-    background: #fff; color: #0a0a0a; border-color: #fff;
+    background: #fff; color: #891717; border-color: #fff;
   }
   .community-cta-link:hover .community-cta-thumbs { transform: translateY(-2px); }
 
