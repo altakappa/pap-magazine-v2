@@ -454,6 +454,42 @@ window._papFilmAutoPlay = function(){
     }
   }
 
+  // Populates the right-side thumbnail strip on the community CTA banner
+  // (between hero and 최신기사). Pulls trending moodboards from the
+  // discovery API; gracefully no-ops when the API is empty (cold-start
+  // period before any boards exist), leaving the centered text-only banner
+  // intact. Hidden on mobile via CSS so we never fight responsive layout.
+  function _renderCommunityCtaThumbs(){
+    var holder = document.getElementById('ccaThumbs');
+    if(!holder) return; // index.html only — community page doesn't render this
+    var apiBase = (window.PAP_CONFIG && window.PAP_CONFIG.API_BASE) || '/api';
+    fetch(apiBase + '/community/discovery')
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(json){
+        if(!json) return;
+        // Discovery API can return `trendingMoodboards` (preferred — visual)
+        // or `recentScraps`. Use whichever is non-empty; fall back gracefully.
+        var pool = (Array.isArray(json.trendingMoodboards) && json.trendingMoodboards.length)
+          ? json.trendingMoodboards
+          : (Array.isArray(json.recentScraps) ? json.recentScraps : []);
+        if(!pool.length) return;
+        var html = '';
+        for(var i = 0; i < pool.length && i < 4; i++){
+          var item = pool[i] || {};
+          // Try multiple shape variants — discovery API hasn't been formally
+          // contract-locked, so be defensive about field names.
+          var img = item.cover_image || item.image_url || item.thumbnail
+                 || (Array.isArray(item.images) ? item.images[0] : '')
+                 || item.url || '';
+          if(!img) continue;
+          var safeImg = String(img).replace(/"/g, '&quot;');
+          html += '<div class="community-cta-thumb" style="background-image:url(\'' + safeImg + '\')"></div>';
+        }
+        if(html) holder.innerHTML = html;
+      })
+      .catch(function(){ /* Banner stays valid without thumbs — never block UX */ });
+  }
+
   // Re-renders the "최신 에디토리얼" row on the home page from edData,
   // sorted by published_date desc (newest first), capped at 12 cards.
   // Called after syncEditorials merges the API response into edData so the
@@ -703,6 +739,7 @@ window._papFilmAutoPlay = function(){
       syncFilms();
       syncArticles();
       syncEditorials();
+      _renderCommunityCtaThumbs();
     });
   } else {
     // DOM already loaded — small delay to let page scripts initialize first
@@ -710,6 +747,7 @@ window._papFilmAutoPlay = function(){
       syncFilms();
       syncArticles();
       syncEditorials();
+      _renderCommunityCtaThumbs();
     },100);
   }
 })();

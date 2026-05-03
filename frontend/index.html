@@ -438,6 +438,101 @@
   <img class="hero-symbol" src="pap-symbol-white.png" alt="PAP">
 </section>
 
+<!-- Community CTA banner — sits between cover hero and the latest-articles
+     carousel. Goal: drive both visitors and signed-in members into the
+     community. Live thumbnails from /api/community/discovery (recent
+     moodboards) are populated by pap-content-api-sync.js's
+     _renderCommunityCtaThumbs() — banner stays valid (just centred text)
+     when the API returns empty, so the launch period before there's
+     activity still looks intentional. -->
+<style>
+  .community-cta { position: relative; padding: 56px 32px; background: #0a0a0a; overflow: hidden; }
+  .community-cta::before {
+    content: "";
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 20% 50%, rgba(255,255,255,.06) 0%, transparent 50%),
+      radial-gradient(circle at 80% 50%, rgba(255,255,255,.04) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  .community-cta-link {
+    position: relative; z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 48px;
+    align-items: center;
+    max-width: 1280px;
+    margin: 0 auto;
+    text-decoration: none;
+    color: inherit;
+  }
+  .community-cta-content { color: #fff; }
+  .community-cta-eyebrow {
+    font-size: 11px; letter-spacing: .25em; font-weight: 600;
+    color: rgba(255,255,255,.55); margin-bottom: 12px;
+  }
+  .community-cta-title {
+    font-size: clamp(22px, 3.2vw, 36px);
+    font-weight: 700; line-height: 1.2;
+    margin: 0 0 12px;
+  }
+  .community-cta-subtitle {
+    font-size: 14px; line-height: 1.6;
+    color: rgba(255,255,255,.7);
+    margin: 0 0 24px;
+    max-width: 520px;
+  }
+  .community-cta-button {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 12px 24px;
+    border: 1px solid rgba(255,255,255,.4);
+    background: transparent;
+    color: #fff;
+    font-size: 12px; font-weight: 600; letter-spacing: .15em;
+    text-transform: uppercase;
+    transition: background .2s ease, border-color .2s ease, transform .2s ease;
+  }
+  .community-cta-link:hover .community-cta-button {
+    background: #fff; color: #0a0a0a; border-color: #fff;
+  }
+  .community-cta-link:hover .community-cta-thumbs { transform: translateY(-2px); }
+
+  /* Right-side live thumbnail strip. Empty by default — script fills it
+     in when /api/community/discovery returns moodboards. */
+  .community-cta-thumbs {
+    display: flex;
+    gap: 8px;
+    transition: transform .25s ease;
+  }
+  .community-cta-thumbs:empty { display: none; }
+  .community-cta-thumb {
+    width: 64px; height: 84px;
+    background: rgba(255,255,255,.08);
+    background-size: cover; background-position: center;
+    border-radius: 2px;
+  }
+  /* Stagger thumbs slightly so the strip feels like a curation, not a grid. */
+  .community-cta-thumb:nth-child(2) { transform: translateY(-6px); }
+  .community-cta-thumb:nth-child(4) { transform: translateY(-6px); }
+
+  @media (max-width: 768px) {
+    .community-cta { padding: 40px 20px; }
+    .community-cta-link { grid-template-columns: 1fr; gap: 24px; }
+    .community-cta-thumbs { display: none; } /* Mobile: focus on text + CTA */
+  }
+</style>
+<section class="community-cta" aria-label="PAP Community">
+  <a href="/community.html" class="community-cta-link">
+    <div class="community-cta-content">
+      <div class="community-cta-eyebrow" data-i18n="ccaEyebrow">PAP COMMUNITY</div>
+      <h2 class="community-cta-title" data-i18n="ccaTitle">크리에이터들이 함께하는 공간</h2>
+      <p class="community-cta-subtitle" data-i18n="ccaSubtitle">무드보드를 공유하고, 영감을 주고받고, 다음 화보를 함께 만들어요.</p>
+      <span class="community-cta-button" data-i18n="ccaButton">커뮤니티 입장하기 →</span>
+    </div>
+    <div class="community-cta-thumbs" id="ccaThumbs" aria-hidden="true"></div>
+  </a>
+</section>
+
 <section class="fashion-section">
   <h1 class="fashion-heading sr" data-i18n="latestArticle">최신기사</h1>
   <div class="carousel-wrap">
