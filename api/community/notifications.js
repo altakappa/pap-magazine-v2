@@ -24,7 +24,7 @@ module.exports = async function handler(req, res) {
 
       let query = supabaseAdmin
         .from('community_notifications')
-        .select('*, actor:actor_id(name, avatar_url)', { count: 'exact' })
+        .select('*, actor:actor_id(id, name, avatar_url)', { count: 'exact' })
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .range(offset, offset + perPage - 1);
@@ -52,7 +52,7 @@ module.exports = async function handler(req, res) {
           message: n.message,
           read: n.read,
           createdAt: n.created_at,
-          actor: n.actor ? { name: n.actor.name, avatarUrl: n.actor.avatar_url } : null,
+          actor: n.actor ? { id: n.actor.id, name: n.actor.name, avatarUrl: n.actor.avatar_url } : null,
         })),
         total: count,
         unreadCount: unreadCount || 0,

@@ -409,10 +409,16 @@ window.openNotifications = function(){
           var keyed = (n.type && n.targetType) ? (n.type + '_' + n.targetType) : null;
           var text = (keyed && texts[keyed]) || texts[n.type] || n.message || '';
           var actorName = n.actor ? n.actor.name : '';
+          var actorId = (n.actor && n.actor.id) || '';
           var av = actorName ? actorName.split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase() : '?';
+          // event.stopPropagation on the actor name keeps the row's
+          // click-through (handleNotifClick) from also firing.
+          var actorBlock = actorId
+            ? '<a href="#" onclick="event.preventDefault();event.stopPropagation();openProfile(\''+actorId+'\')" style="color:inherit;text-decoration:underline;text-underline-offset:2px"><strong>'+escHtml(actorName)+'</strong></a>'
+            : '<strong>'+escHtml(actorName)+'</strong>';
           html += '<div class="notif-item'+(n.read?'':' unread')+'" onclick="handleNotifClick(\''+n.type+'\',\''+(n.targetType||'')+'\',\''+(n.targetId||'')+'\')">';
           html += '<div class="notif-av">'+av+'</div>';
-          html += '<div class="notif-body"><div class="notif-text"><strong>'+escHtml(actorName)+'</strong> '+escHtml(text)+'</div>';
+          html += '<div class="notif-body"><div class="notif-text">'+actorBlock+' '+escHtml(text)+'</div>';
           html += '<div class="notif-time">'+timeAgo(n.createdAt)+'</div></div>';
           html += '<span class="notif-icon">'+icon+'</span></div>';
         });
@@ -491,8 +497,11 @@ function _dmRenderConvList(convs){
     var unread = c.unreadCount > 0 ? '<span class="dm-unread">'+c.unreadCount+'</span>' : '';
     var safeName = escHtml(name).replace(/'/g, '&#39;');
     var otherId = (other.id || '').replace(/'/g, '');
+    // Avatar click opens profile (stop propagation so the conversation
+    // doesn't also open). Row click still opens the conversation.
     html += '<div class="dm-conv-item" onclick="openConversation(\''+c.id+'\',\''+otherId+'\',\''+safeName+'\')">';
-    html += '<div class="dm-conv-av">'+av+'</div>';
+    var avClick = otherId ? 'event.stopPropagation();openProfile(\''+otherId+'\')' : '';
+    html += '<div class="dm-conv-av"'+(avClick?' onclick="'+avClick+'" style="cursor:pointer"':'')+'>'+av+'</div>';
     html += '<div class="dm-conv-info"><div class="dm-conv-name">'+escHtml(name)+'</div>';
     html += '<div class="dm-conv-last">'+escHtml(lastMsg)+'</div></div>';
     html += '<div class="dm-conv-meta">'+(lastTime?'<div class="dm-conv-time">'+lastTime+'</div>':'')+unread+'</div></div>';
@@ -542,7 +551,12 @@ window.openConversation = function(convId, otherUserId, otherName){
   chat.dataset.otherName = otherName || 'User';
 
   var header = document.getElementById('dmChatHeader');
-  if(header) header.innerHTML = '<button class="dm-back-btn" onclick="openDMPanel()">←</button><strong>'+escHtml(otherName||'User')+'</strong>';
+  if(header){
+    var nameBlock = otherUserId
+      ? '<a href="#" onclick="event.preventDefault();openProfile(\''+otherUserId+'\')" style="color:inherit;text-decoration:underline;text-underline-offset:2px"><strong>'+escHtml(otherName||'User')+'</strong></a>'
+      : '<strong>'+escHtml(otherName||'User')+'</strong>';
+    header.innerHTML = '<button class="dm-back-btn" onclick="openDMPanel()">←</button>'+nameBlock;
+  }
 
   var msgContainer = document.getElementById('dmMessages');
   if(!msgContainer) return;
