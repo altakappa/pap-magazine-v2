@@ -2647,12 +2647,43 @@ function setLang(l){
   setLang(saved);
 })();
 
+// Mission 5 (community playground): Editorial bridge from a moodboard.
+// When the user lands on submission.html?moodboard=<id>, fetch the board
+// detail and prefill title + artist statement so they don't re-enter context
+// they already captured in the moodboard. Inserts a small notice banner.
+function _prefillFromMoodboard(){
+  try{
+    var p = new URLSearchParams(window.location.search);
+    var mbId = p.get('moodboard');
+    if(!mbId) return;
+    fetch('/api/community/moodboards?id='+encodeURIComponent(mbId), { credentials:'include' })
+      .then(function(r){ return r.json(); })
+      .then(function(b){
+        if(!b || !b.title) return;
+        var titleEl = document.getElementById('editorialTitle');
+        var stmtEl  = document.getElementById('artistStatement');
+        if(titleEl && !titleEl.value) titleEl.value = b.title;
+        if(stmtEl && !stmtEl.value && b.description) stmtEl.value = b.description;
+        // Notice banner
+        var formArea = document.getElementById('formArea');
+        if(formArea && !document.getElementById('mbBridgeNotice')){
+          var notice = document.createElement('div');
+          notice.id = 'mbBridgeNotice';
+          notice.style.cssText = 'background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);padding:14px 18px;margin-bottom:24px;font-size:13px;color:rgba(255,255,255,.85);letter-spacing:.02em';
+          notice.innerHTML = '✨ <strong>'+ (b.title||'') + '</strong> 무드보드를 기반으로 제안 중입니다. 제목과 컨셉이 자동 입력되었어요.';
+          formArea.insertBefore(notice, formArea.firstChild);
+        }
+      }).catch(function(){});
+  }catch(e){}
+}
+
 // Auto-check login on load
 document.addEventListener('DOMContentLoaded',function(){
   if(typeof PAP!=='undefined'&&PAP.auth.isLoggedIn()){
     document.getElementById('accessGateOverlay').classList.add('hidden');
     document.getElementById('formArea').style.display='block';
     loadMySubmissions();
+    _prefillFromMoodboard();
   }
   // Real-time validation: blur + input handlers
   ['editorialTitle','studioName','contactEmail','studioWebsite','studioInsta','artistStatement'].forEach(function(fid){

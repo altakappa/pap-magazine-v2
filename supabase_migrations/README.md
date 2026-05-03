@@ -12,6 +12,7 @@ Run these SQL files in Supabase Dashboard > SQL Editor, in this exact order:
 | 4 | `003_editorials_table.sql` | Editorials table (depends on admin_users from step 1) |
 | 5 | `004_all_content_tables.sql` | Creators, shorts, banners, cover_slides, site_settings |
 | 6 | `../frontend/js/supabase-schema-community.sql` | Community tables: posts, comments, likes, views, checkins, projects, applications (depends on profiles from step 1) |
+| 9 | `009_community_v3_playground.sql` | Community playground primitives: scraps table + mood_boards.inspired_by_id |
 
 ## Skip List
 
