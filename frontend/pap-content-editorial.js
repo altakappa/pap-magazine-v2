@@ -281,6 +281,39 @@ function _openEditorialInner(title,thumb){
         method: 'POST',
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
       }).catch(function(){ /* analytics must not break UX */ });
+
+      // Personalised theme rows: bump each tag of this editorial in the
+      // user's preferences. Server is the security boundary (re-reads
+      // tags from DB, ignores client-supplied list). Anonymous callers
+      // are silently no-op'd by the endpoint, so we don't gate on
+      // isLoggedIn() — keeps this branch tight.
+      var _pToken = localStorage.getItem('pap-token');
+      fetch('/api/users/preferences', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          'Authorization': _pToken ? ('Bearer ' + _pToken) : ''
+        },
+        body: JSON.stringify({ editorial_id: d.id })
+      }).catch(function(){ /* preferences are nice-to-have */ });
+
+      // Local "have I seen this" set — drives the unseen-first reorder
+      // inside personalised theme rows. Lives in localStorage only, so
+      // there's no DB write per open, no PII leaving the device, and
+      // browser clear is a graceful reset.
+      try {
+        var _seenRaw = localStorage.getItem('pap-viewed-eds');
+        var _seen = _seenRaw ? JSON.parse(_seenRaw) : [];
+        if (!Array.isArray(_seen)) _seen = [];
+        if (_seen.indexOf(d.id) === -1) {
+          _seen.push(d.id);
+          // Cap to last 500 ids so localStorage never blows up on
+          // long-time readers. FIFO eviction.
+          if (_seen.length > 500) _seen = _seen.slice(_seen.length - 500);
+          localStorage.setItem('pap-viewed-eds', JSON.stringify(_seen));
+        }
+      } catch(_){}
     } catch(_){}
   }
   // QA #96 — d.credits may be admin-dict, admin-array (with roles[]), or

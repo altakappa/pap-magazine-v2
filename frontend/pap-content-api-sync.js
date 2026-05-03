@@ -503,6 +503,103 @@ window._papFilmAutoPlay = function(){
     track.innerHTML = html;
   }
 
+  // Re-renders the personalised theme rows from /api/editorials/themes.
+  // Replaces the previous inline IIFE in index.html that scored hardcoded
+  // theme bundles against DOM-card data-tags. Source of truth for theme
+  // definitions now lives in api/_lib/themes.js.
+  //
+  // Container: #aiThemeRows1 (the legacy second container #aiThemeRows2 is
+  // emptied by this function — the new endpoint always returns 3 rows that
+  // all live in container #1).
+  //
+  // Logged-in personalisation: server picks themes from user_preferences;
+  // client-side here also reorders cards inside each row "unseen first"
+  // using the localStorage `pap-viewed-eds` set populated by
+  // _openEditorialInner. Within the seen / unseen halves we keep the
+  // server's order (which is published_date desc), so the row stays
+  // chronologically coherent.
+  function _renderThemeRows(){
+    var c1 = document.getElementById('aiThemeRows1');
+    var c2 = document.getElementById('aiThemeRows2');
+    if(!c1) return;
+    var lang = localStorage.getItem('pap-lang') || 'ko';
+    var apiBase = (window.PAP_CONFIG && window.PAP_CONFIG.API_BASE) || '/api';
+    fetch(apiBase + '/editorials/themes?lang=' + encodeURIComponent(lang) + '&perRow=10', {
+      headers: (function(){
+        var t = localStorage.getItem('pap-token');
+        return t ? { 'Authorization': 'Bearer ' + t } : {};
+      })()
+    })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(json){
+        if(!json || !Array.isArray(json.rows) || json.rows.length === 0) return;
+
+        // Unseen-first reorder. Empty set on first visit = no-op (server
+        // order wins, which is published_date desc).
+        var seenSet = (function(){
+          try {
+            var raw = localStorage.getItem('pap-viewed-eds');
+            var arr = raw ? JSON.parse(raw) : [];
+            var s = {};
+            (Array.isArray(arr) ? arr : []).forEach(function(id){ s[id] = 1; });
+            return s;
+          } catch(_){ return {}; }
+        })();
+        function unseenFirst(cards){
+          var unseen = [], seen = [];
+          cards.forEach(function(c){
+            if(c && c.id && seenSet[c.id]) seen.push(c); else unseen.push(c);
+          });
+          return unseen.concat(seen);
+        }
+
+        function buildRow(row){
+          var ordered = unseenFirst(row.cards || []);
+          if(ordered.length === 0) return '';
+          var h = '<div class="ed-row"><h3 class="ed-row-label" data-theme-id="' + row.themeId + '">' + (row.label || '') + '</h3>';
+          h += '<div class="ed-row-wrap"><button class="ed-row-arrow ed-row-left" onclick="scrollEdRow(this,-1)" aria-label="Scroll left">&#8249;</button><div class="ed-row-track">';
+          ordered.forEach(function(ed){
+            var safeTitle = String(ed.title || '').replace(/"/g, '&quot;');
+            var safeImg   = String(ed.img   || '').replace(/"/g, '&quot;');
+            var dateLabel = ed.date ? String(ed.date).split('T')[0] : '';
+            var catLabel  = 'EDITORIAL' + (dateLabel ? (' - ' + dateLabel) : '');
+            var tagsAttr  = Array.isArray(ed.tags) ? ed.tags.join(',') : '';
+            h += '<div class="ed-row-card" data-tags="' + tagsAttr + '" data-api-rendered="1" ' +
+                 'onclick=\'openEditorial("' + safeTitle + '","' + safeImg + '")\'>' +
+                   '<div class="ed-row-card-img">' +
+                     '<img loading="lazy" src="' + safeImg + '" alt="' + safeTitle + '" ' +
+                          'onerror="if(window.edImgError)edImgError(this)">' +
+                   '</div>' +
+                   '<div class="ed-row-card-info">' +
+                     '<div class="ed-row-card-cat">' + catLabel + '</div>' +
+                     '<div class="ed-row-card-title">' + String(ed.title || '').toUpperCase() + '</div>' +
+                   '</div>' +
+                 '</div>';
+          });
+          h += '</div><button class="ed-row-arrow ed-row-right" onclick="scrollEdRow(this,1)" aria-label="Scroll right">&#8250;</button></div></div>';
+          return h;
+        }
+
+        c1.innerHTML = json.rows.map(buildRow).join('');
+        if(c2) c2.innerHTML = '';
+
+        // Re-translate row labels when the language picker changes — same
+        // hook the previous inline IIFE used so other modules don't need
+        // to know themes moved.
+        window._papReapplyAIThemeLabels = function(newLang){
+          var curLang = newLang || localStorage.getItem('pap-lang') || 'ko';
+          // Refetch with the new lang so labels stay in sync. Cheap (60s
+          // edge cache, returns the same theme picks since they're either
+          // user-pref-based or day-of-year-based, neither lang-dependent).
+          _renderThemeRows();
+          // Suppress lint about unused var — caller may pass a lang we
+          // already wrote into localStorage before invoking us.
+          return curLang;
+        };
+      })
+      .catch(function(){ /* themes are nice-to-have, never block UX */ });
+  }
+
   // Re-renders the "인기 에디토리얼" row from /api/editorials/trending.
   // Uses the same card markup as _renderLatestRow so the visual is identical
   // — only the source of the order differs (view count vs published_date).
@@ -578,7 +675,14 @@ window._papFilmAutoPlay = function(){
       //    trending RPC is slow or the migration hasn't been applied yet.
       _renderTrendingRow();
 
-      // 4. If the all-editorials overlay has already built itself,
+      // 4. Re-render the personalised theme rows. Independent fetch — the
+      //    /editorials/themes endpoint runs auth-aware (logged-in users get
+      //    user_preferences-driven picks; anonymous get a day-of-year
+      //    rotation). Falls back silently if the migration / endpoint isn't
+      //    live, which leaves the existing inline IIFE output in place.
+      _renderThemeRows();
+
+      // 5. If the all-editorials overlay has already built itself,
       //    rebuild it so it reflects the merged edData too.
       if(typeof _renderEdAllPage === 'function' && typeof edAllBuilt !== 'undefined' && edAllBuilt){
         try { _renderEdAllPage(); } catch(_){}

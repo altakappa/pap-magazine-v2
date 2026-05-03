@@ -16,6 +16,7 @@ Run these SQL files in Supabase Dashboard > SQL Editor, in this exact order:
 | 10 | `010_pullletters_extend.sql` | Extends existing `pullletters` table with moodboard linkage + private storage bucket for issued PDFs |
 | 11 | `011_pullletters_proposal_team.sql` | Adds `team_info` JSONB + `proposal_pdf_url` for the formal 촬영시안 + team-credits flow |
 | 12 | `012_editorial_views.sql` | `editorial_views` append-only table + `trending_editorials()` RPC for the home "인기 에디토리얼" row |
+| 13 | `013_user_preferences.sql` | `user_preferences` table powering personalised theme rows (per-user tag weights, RLS-scoped to owner) |
 
 ## Skip List
 
