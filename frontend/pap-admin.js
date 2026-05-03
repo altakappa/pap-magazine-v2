@@ -1136,19 +1136,67 @@ function openPullLetterReview(id){
   var bg = document.getElementById('plReviewBg');
   if(!bg){ bg = _createPullLetterReviewModal(); document.body.appendChild(bg); }
   bg.dataset.id = id;
+
+  // ── Team credits block (structured team_info from new flow) ──
+  var team = pl.team_info || {};
+  function _teamRow(label, t){
+    if(!t || !(t.name || t.instagram || t.portfolio)) return '';
+    var parts = [];
+    if(t.name) parts.push('<strong>'+esc(t.name)+'</strong>');
+    if(t.instagram) parts.push('<a href="https://instagram.com/'+esc((t.instagram||'').replace(/^@/,''))+'" target="_blank" rel="noopener noreferrer">'+esc(t.instagram)+'</a>');
+    if(t.portfolio) parts.push('<a href="'+esc(t.portfolio)+'" target="_blank" rel="noopener noreferrer">portfolio ↗</a>');
+    return '<div class="plr-row"><label>'+esc(label)+'</label><div>'+parts.join(' · ')+'</div></div>';
+  }
+  var teamHtml = ''
+    + _teamRow('Photographer (필수)',   team.photographer)
+    + _teamRow('Stylist (필수)',         team.stylist)
+    + _teamRow('Videographer (선택)',    team.videographer)
+    + (team.contact ? '<div class="plr-row"><label>Contact</label><div>'+esc(team.contact.name||'—')+' · '+esc(team.contact.email||'')+'</div></div>' : '');
+  if(Array.isArray(team.extras) && team.extras.length){
+    teamHtml += team.extras.map(function(x){
+      return '<div class="plr-row"><label>'+esc(x.role||'Other')+'</label><div>'+esc(x.name||'')+(x.instagram?(' · '+esc(x.instagram)):'')+'</div></div>';
+    }).join('');
+  }
+
+  // ── Files block — proposal PDF (signed) + moodboard thumbnail grid ──
+  var filesHtml = '';
+  if(pl.proposalPdfSignedUrl){
+    filesHtml += '<div class="plr-row"><label>📄 촬영시안 PDF</label><div><a href="'+esc(pl.proposalPdfSignedUrl)+'" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">Download proposal ↗</a></div></div>';
+  } else if(pl.proposal_pdf_url){
+    filesHtml += '<div class="plr-row"><label>촬영시안 PDF</label><div style="color:var(--text3)">Path: '+esc(pl.proposal_pdf_url)+' (signing failed)</div></div>';
+  }
+  if(pl.file_urls && pl.file_urls.length){
+    filesHtml += '<div class="plr-row"><label>Mood board ('+pl.file_urls.length+')</label><div>'
+      + pl.file_urls.slice(0,8).map(function(u){
+          return '<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer"><img src="'+esc(u)+'" alt="" style="width:48px;height:48px;object-fit:cover;border:1px solid var(--border);margin-right:4px;margin-bottom:4px"></a>';
+        }).join('')
+      + (pl.file_urls.length > 8 ? '<span style="font-size:11px;color:var(--text3)">+ '+(pl.file_urls.length-8)+' more</span>' : '')
+      + '</div></div>';
+  }
+
+  // ── Misc/legacy block ──
+  var miscHtml = ''
+    + (pl.request_text ? '<div class="plr-row"><label>Additional message</label><div style="white-space:pre-wrap">'+esc(pl.request_text)+'</div></div>' : '')
+    + (pl.shoot_purpose && pl.shoot_purpose !== pl.request_text ? '<div class="plr-row"><label>Legacy purpose</label><div style="white-space:pre-wrap">'+esc(pl.shoot_purpose)+'</div></div>' : '');
+
+  // ── Admin actions block (issued PDF status) ──
+  var pdfStatusHtml = '';
+  if(pl.pullLetterSignedUrl){
+    pdfStatusHtml = '✅ Already issued — <a href="'+esc(pl.pullLetterSignedUrl)+'" target="_blank" rel="noopener noreferrer">Download issued letter ↗</a>';
+  } else if(pl.pull_letter_url){
+    pdfStatusHtml = 'Uploaded but signing failed: '+esc(pl.pull_letter_url);
+  } else {
+    pdfStatusHtml = 'Not yet issued';
+  }
+
   var body = bg.querySelector('.plr-body');
   body.innerHTML = ''
     + '<div class="plr-row"><label>Requester</label><div>'+esc(pl.requesterName||'—')+' · '+esc(pl.requesterEmail||'')+'</div></div>'
-    + (pl.moodBoardTitle ? '<div class="plr-row"><label>Mood Board</label><div>'+esc(pl.moodBoardTitle)+'</div></div>' : '')
-    + (pl.shoot_purpose ? '<div class="plr-row"><label>Purpose</label><div style="white-space:pre-wrap">'+esc(pl.shoot_purpose)+'</div></div>' : '')
-    + (pl.shoot_location_target ? '<div class="plr-row"><label>Location</label><div>'+esc(pl.shoot_location_target)+'</div></div>' : '')
-    + (pl.items_needed ? '<div class="plr-row"><label>Items</label><div>'+esc(pl.items_needed)+'</div></div>' : '')
-    + (pl.shoot_date_planned ? '<div class="plr-row"><label>Shoot Date</label><div>'+esc(pl.shoot_date_planned)+'</div></div>' : '')
-    + (pl.contact_phone ? '<div class="plr-row"><label>Phone</label><div>'+esc(pl.contact_phone)+'</div></div>' : '')
-    + (pl.request_text && !pl.shoot_purpose ? '<div class="plr-row"><label>Legacy Request</label><div style="white-space:pre-wrap">'+esc(pl.request_text)+'</div></div>' : '')
-    + (pl.file_urls && pl.file_urls.length ? '<div class="plr-row"><label>Uploaded files</label><div>'+pl.file_urls.length+' file(s)</div></div>' : '')
-    + '<div class="plr-row"><label>Admin notes</label><textarea id="plrNotes" rows="3" style="width:100%;padding:8px 10px;border:1px solid var(--border);font-family:inherit;font-size:12px">'+esc(pl.admin_notes||'')+'</textarea></div>'
-    + '<div class="plr-row"><label>Pull-Letter PDF</label><div style="font-size:11px;color:var(--text3);margin-bottom:6px">'+(pl.pull_letter_url?'Already uploaded: '+esc(pl.pull_letter_url):'Not uploaded')+'</div><input type="file" id="plrPdf" accept="application/pdf"></div>';
+    + teamHtml
+    + filesHtml
+    + miscHtml
+    + '<div class="plr-row"><label>Admin notes (회원에게 표시됨)</label><textarea id="plrNotes" rows="3" style="width:100%;padding:8px 10px;border:1px solid var(--border);font-family:inherit;font-size:12px">'+esc(pl.admin_notes||'')+'</textarea></div>'
+    + '<div class="plr-row"><label>발급 풀레터 PDF (admin upload)</label><div style="font-size:11px;color:var(--text3);margin-bottom:6px">'+pdfStatusHtml+'</div><input type="file" id="plrPdf" accept="application/pdf"></div>';
   bg.style.display = 'flex';
 }
 function closePullLetterReview(){

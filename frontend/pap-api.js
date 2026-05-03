@@ -483,12 +483,25 @@ const PAP = (function() {
 
   // ======== PULL-LETTERS ========
   const pullLetters = {
-    async create(data, moodboardFiles) {
+    // data: {
+    //   photographer:{name,instagram,portfolio},  REQUIRED
+    //   stylist:{name,instagram,portfolio},       REQUIRED
+    //   videographer:{name,instagram,portfolio},  optional
+    //   contact:{name,email},                     REQUIRED
+    //   requestText: string,                      optional
+    //   extras: [{role,name,instagram}]           optional
+    // }
+    // moodboardFiles: image File[]
+    // proposalPdf: PDF File (REQUIRED — 촬영시안)
+    async create(data, moodboardFiles, proposalPdf) {
       const formData = new FormData();
       if (moodboardFiles) {
         moodboardFiles.forEach(function(file, idx) {
           formData.append('moodboard', safeFile(file, 'mood' + idx));
         });
+      }
+      if (proposalPdf) {
+        formData.append('proposal_pdf', safeFile(proposalPdf, 'proposal.pdf'));
       }
       formData.append('data', JSON.stringify(data));
       return await request('POST', '/pullletters', formData, true);

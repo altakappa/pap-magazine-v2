@@ -33,22 +33,29 @@ module.exports = async function handler(req, res) {
 
     if (error) throw error;
 
-    // Mint short-lived signed URLs for issued PDFs (private bucket).
+    // Mint short-lived signed URLs for both PDFs in the private bucket:
+    //   - pull_letter_url: admin-issued letter (only present once status='issued')
+    //   - proposal_pdf_url: member-uploaded 촬영시안
+    async function sign(path) {
+      if (!path) return null;
+      try {
+        const { data } = await supabaseAdmin.storage
+          .from('pull-letters')
+          .createSignedUrl(path, PDF_SIGNED_URL_TTL_SECONDS);
+        return (data && data.signedUrl) || null;
+      } catch (e) { return null; }
+    }
     const enriched = await Promise.all((pullLetters || []).map(async pl => {
-      let signedUrl = null;
-      if (pl.pull_letter_url) {
-        try {
-          const { data } = await supabaseAdmin.storage
-            .from('pull-letters')
-            .createSignedUrl(pl.pull_letter_url, PDF_SIGNED_URL_TTL_SECONDS);
-          signedUrl = data && data.signedUrl;
-        } catch (e) { /* non-fatal */ }
-      }
+      const [pullLetterSignedUrl, proposalPdfSignedUrl] = await Promise.all([
+        sign(pl.pull_letter_url),
+        sign(pl.proposal_pdf_url),
+      ]);
       return {
         ...pl,
         moodBoardTitle: pl.mood_board ? pl.mood_board.title : null,
         moodBoardId: pl.mood_board ? pl.mood_board.id : null,
-        pullLetterSignedUrl: signedUrl,
+        pullLetterSignedUrl,
+        proposalPdfSignedUrl,
       };
     }));
 
