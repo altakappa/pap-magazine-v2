@@ -39,17 +39,6 @@ module.exports = async function handler(req, res) {
 
     const { verifier, challenge } = generatePKCE();
 
-    // [DIAG-OAUTH] Trace what host the cookie is being scoped to and what
-    // redirect_to we hand to Supabase. Compare with callback.js logs to confirm
-    // that the same host receives the cookie back.
-    console.log('[DIAG-OAUTH google] start', JSON.stringify({
-      host: req.headers.host,
-      xfh: req.headers['x-forwarded-host'],
-      siteUrl: siteUrl,
-      redirectTo: redirectTo,
-      ua: (req.headers['user-agent'] || '').slice(0, 80),
-    }));
-
     // Store PKCE verifier in cookie for callback to verify
     // NOTE: Do NOT pass a custom `state` parameter — Supabase generates/validates its own state internally.
     // Passing a custom state causes Supabase to return "400: OAuth state parameter is invalid" on callback.

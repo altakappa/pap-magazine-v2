@@ -39,14 +39,6 @@ module.exports = async function handler(req, res) {
 
     const { verifier, challenge } = generatePKCE();
 
-    // [DIAG-OAUTH] Trace cookie scope vs Supabase redirect_to.
-    console.log('[DIAG-OAUTH facebook] start', JSON.stringify({
-      host: req.headers.host,
-      xfh: req.headers['x-forwarded-host'],
-      siteUrl: siteUrl,
-      redirectTo: redirectTo,
-    }));
-
     // Generate CSRF state parameter
     const state = base64url(crypto.randomBytes(32));
 
