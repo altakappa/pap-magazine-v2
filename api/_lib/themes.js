@@ -128,17 +128,19 @@ function safeLang(lang) {
   return SUPPORTED_LANGS.indexOf(lang) > -1 ? lang : 'ko';
 }
 
-// Stable rotation for anonymous visitors: deterministic per-day choice of 3
+// Stable rotation for anonymous visitors: deterministic per-day choice of N
 // of the 7 themes, so every anonymous visitor on the same day sees the same
 // rows (no flicker from re-rolls, easy to cache, easy to reason about).
-// Uses day-of-year + a small per-position offset so the 3 picks stay distinct.
-function pickAnonymousThemes(date) {
+// Uses day-of-year + a small per-position offset so the picks stay distinct.
+// Default is 4 to match the home page layout (2 rows × 2 containers).
+function pickAnonymousThemes(date, count) {
+  const want = (typeof count === 'number' && count > 0) ? count : 4;
   const d = date || new Date();
   const start = new Date(d.getFullYear(), 0, 0);
   const dayOfYear = Math.floor((d - start) / (1000 * 60 * 60 * 24));
   const picks = [];
   const seen = new Set();
-  for (let offset = 0; picks.length < 3 && offset < THEMES.length * 2; offset++) {
+  for (let offset = 0; picks.length < want && offset < THEMES.length * 2; offset++) {
     const idx = (dayOfYear + offset * 3) % THEMES.length;
     if (seen.has(idx)) continue;
     seen.add(idx);
