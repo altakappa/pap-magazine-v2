@@ -81,9 +81,29 @@ function bucketCards(pool, themes, perRow) {
   // Each editorial can appear in multiple theme rows (e.g. a "dreamy +
   // surreal" piece). That's fine — natural cross-pollination. We dedupe
   // WITHIN a row (no card listed twice in the same row) but not across rows.
+  //
+  // Two-phase fill so every row always has `perRow` (default 10) cards:
+  //   Phase 1 — Theme-matched cards (editorial.tags ∩ theme.tags ≠ ∅).
+  //             Iterates `pool` (already published_date desc) so most-recent
+  //             matches surface first.
+  //   Phase 2 — Padding with the latest editorials that didn't already get
+  //             picked in phase 1. Without this padding a theme with only 2
+  //             tag-matched editorials would render a stub 2-card row, which
+  //             looks broken next to the fully-populated rows above. With
+  //             padding the row stays scrollable and visually consistent
+  //             — the first few cards are theme-personalised, the tail is
+  //             "latest in general" so users always have something to see.
+  //
+  // This also doubles as an empty-row guard: even if a theme has *zero*
+  // tag-matched editorials, the row still gets `perRow` recent cards, so
+  // the frontend never has to filter out empty rows (which previously
+  // caused #aiThemeRows2 to render only 1 row instead of 2).
   return themes.map(function (theme) {
     const tagSet = new Set(theme.tags);
     const cards = [];
+    const seenIds = new Set();
+
+    // Phase 1: tag-matched cards
     for (let i = 0; i < pool.length && cards.length < perRow; i++) {
       const ed = pool[i];
       const edTags = Array.isArray(ed.tags) ? ed.tags : [];
@@ -91,8 +111,22 @@ function bucketCards(pool, themes, perRow) {
       for (let j = 0; j < edTags.length; j++) {
         if (tagSet.has(edTags[j])) { matched = true; break; }
       }
-      if (matched) cards.push(ed);
+      if (matched) {
+        cards.push(ed);
+        seenIds.add(ed.id);
+      }
     }
+
+    // Phase 2: top up with most-recent editorials not already in this row
+    if (cards.length < perRow) {
+      for (let i = 0; i < pool.length && cards.length < perRow; i++) {
+        const ed = pool[i];
+        if (seenIds.has(ed.id)) continue;
+        cards.push(ed);
+        seenIds.add(ed.id);
+      }
+    }
+
     return { themeId: theme.id, cards: cards };
   });
 }
