@@ -995,6 +995,36 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
   .md-item { margin-bottom: 10px; }
 }
 
+/* Onboarding modal (mission E — first-visit tour for new community members) */
+.ob-bg { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 20px; opacity: 0; transition: opacity .25s ease; }
+.ob-bg.active { display: flex; opacity: 1; }
+.ob-modal { background: #fff; max-width: 480px; width: 100%; border-radius: 14px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.3); display: flex; flex-direction: column; max-height: 90vh; position: relative; }
+.ob-skip { position: absolute; top: 14px; right: 18px; background: none; border: none; font-size: 12px; color: var(--text4); letter-spacing: .04em; cursor: pointer; padding: 6px 10px; transition: color .15s; z-index: 2; }
+.ob-skip:hover { color: var(--text2); }
+.ob-slide { padding: 56px 40px 32px; flex: 1; display: none; flex-direction: column; align-items: center; text-align: center; }
+.ob-slide.active { display: flex; animation: obFadeIn .35s ease; }
+@keyframes obFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.ob-icon { width: 88px; height: 88px; margin-bottom: 28px; display: flex; align-items: center; justify-content: center; font-size: 44px; background: var(--surface2); border-radius: 50%; }
+.ob-title { font-size: 22px; font-weight: 700; letter-spacing: -0.022em; margin-bottom: 14px; color: var(--text); line-height: 1.3; }
+.ob-desc { font-size: 14px; color: var(--text2); line-height: 1.65; margin-bottom: 8px; max-width: 360px; }
+.ob-foot { padding: 20px 40px 32px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.ob-dots { display: flex; gap: 6px; }
+.ob-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border2); transition: background .2s, width .2s; }
+.ob-dot.active { background: var(--accent); width: 18px; border-radius: 3px; }
+.ob-nav { display: flex; gap: 10px; }
+.ob-prev, .ob-next { padding: 10px 20px; font-size: 12px; font-weight: 600; letter-spacing: .03em; border-radius: 999px; cursor: pointer; font-family: Montserrat,sans-serif; transition: opacity .15s, background .15s; border: 1px solid transparent; }
+.ob-prev { background: transparent; border-color: var(--border2); color: var(--text2); }
+.ob-prev:hover { background: var(--surface2); }
+.ob-prev:disabled { opacity: .35; cursor: default; }
+.ob-next { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ob-next:hover { background: var(--accent-hover); }
+@media (max-width: 600px){
+  .ob-slide { padding: 44px 24px 24px; }
+  .ob-foot { padding: 16px 24px 24px; }
+  .ob-icon { width: 72px; height: 72px; font-size: 36px; margin-bottom: 22px; }
+  .ob-title { font-size: 19px; }
+}
+
 /* SCRAPBOOK — masonry grid of saved images, light surface */
 #t-scrapbook { padding-top: 16px; }
 .scrap-grid { columns: 4; column-gap: 16px; }
@@ -1978,6 +2008,52 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
 
 </div>
 
+<!-- COMMUNITY ONBOARDING MODAL (mission E — first-visit tour) -->
+<!-- Auto-shown on first community visit; localStorage flag prevents re-show.
+     4 slides walk through: Welcome → Moodboard → Scrapbook → Get started. -->
+<div class="ob-bg" id="obBg" onclick="if(event.target===this)closeOnboarding()">
+  <div class="ob-modal">
+    <button class="ob-skip" onclick="closeOnboarding()" data-i18n="obSkip">건너뛰기</button>
+
+    <div class="ob-slide active" data-slide="0">
+      <div class="ob-icon">👋</div>
+      <div class="ob-title" data-i18n="obWelcomeTitle">PAP 커뮤니티에 오신 걸 환영해요</div>
+      <div class="ob-desc" data-i18n="obWelcomeDesc">자유롭게 영감을 모으고, 표현하고, 다른 크리에이터들과 나누는 공간이에요. 정해진 워크플로 없어요 — 원하는 방식으로 사용하세요.</div>
+    </div>
+
+    <div class="ob-slide" data-slide="1">
+      <div class="ob-icon">🎨</div>
+      <div class="ob-title" data-i18n="obMoodboardTitle">무드보드로 미학을 표현해요</div>
+      <div class="ob-desc" data-i18n="obMoodboardDesc">이미지를 모아 컨셉이나 분위기를 시각적으로 표현하세요. 다른 회원들이 보고 영감을 받거나 ♥를 누를 수 있어요. 본인 보드는 ✨ "이 보드에서 영감받기" 체인의 출발점이 돼요.</div>
+    </div>
+
+    <div class="ob-slide" data-slide="2">
+      <div class="ob-icon">📌</div>
+      <div class="ob-title" data-i18n="obScrapbookTitle">스크랩북으로 취향을 쌓아요</div>
+      <div class="ob-desc" data-i18n="obScrapbookDesc">파일·드래그·붙여넣기·URL 어떤 방식으로든 마음에 드는 이미지를 저장하세요. PAP 에디토리얼을 보다가 hover하면 "📌 스크랩" 버튼이 나타나서 한 번에 저장 가능해요.</div>
+    </div>
+
+    <div class="ob-slide" data-slide="3">
+      <div class="ob-icon">✨</div>
+      <div class="ob-title" data-i18n="obStartTitle">자, 시작해볼까요</div>
+      <div class="ob-desc" data-i18n="obStartDesc">정답은 없어요. 게시판에서 인사 한마디, 스크랩북에 좋아하는 컷 한 장, 또는 무드보드 만들기 — 무엇이든 좋아요.</div>
+    </div>
+
+    <div class="ob-foot">
+      <div class="ob-dots" id="obDots">
+        <span class="ob-dot active"></span>
+        <span class="ob-dot"></span>
+        <span class="ob-dot"></span>
+        <span class="ob-dot"></span>
+      </div>
+      <div class="ob-nav">
+        <button class="ob-prev" id="obPrev" onclick="onboardingPrev()" disabled data-i18n="obPrev">이전</button>
+        <button class="ob-next" id="obNext" onclick="onboardingNext()" data-i18n="obNext">다음</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- WRITE POST OVERLAY -->
 <div class="write-overlay" id="writeOverlay">
   <div class="write-header">
@@ -2228,6 +2304,7 @@ ko:{
   checkinBtn:'출석체크',checkinTitle:'출석체크',checkinGo:'오늘 체크인',streak:'현재 연속:',days:'일',
   topPopular:'인기글 TOP 5',swTrending:'인기 크리에이터',swOpenProj:'진행 중인 프로젝트',swPopAes:'인기 미학 태그',recentVisitors:'최근 방문자',
   swTrendingMoodboards:'이번주 주목할 무드보드',trendingMoodboardsEmpty:'아직 보드가 없어요',swActiveCreators:'활발한 크리에이터',activeCreatorsEmpty:'곧 활동이 보일 거예요',swRecentScraps:'최근 스크랩',recentScrapsEmpty:'스크랩이 모이는 중',
+  obSkip:'건너뛰기',obPrev:'이전',obNext:'다음',obWelcomeTitle:'PAP 커뮤니티에 오신 걸 환영해요',obWelcomeDesc:'자유롭게 영감을 모으고, 표현하고, 다른 크리에이터들과 나누는 공간이에요. 정해진 워크플로 없어요 — 원하는 방식으로 사용하세요.',obMoodboardTitle:'무드보드로 미학을 표현해요',obMoodboardDesc:'이미지를 모아 컨셉이나 분위기를 시각적으로 표현하세요. 다른 회원들이 보고 영감을 받거나 ♥를 누를 수 있어요. 본인 보드는 ✨ "이 보드에서 영감받기" 체인의 출발점이 돼요.',obScrapbookTitle:'스크랩북으로 취향을 쌓아요',obScrapbookDesc:'파일·드래그·붙여넣기·URL 어떤 방식으로든 마음에 드는 이미지를 저장하세요. PAP 에디토리얼을 보다가 hover하면 "📌 스크랩" 버튼이 나타나서 한 번에 저장 가능해요.',obStartTitle:'자, 시작해볼까요',obStartDesc:'정답은 없어요. 게시판에서 인사 한마디, 스크랩북에 좋아하는 컷 한 장, 또는 무드보드 만들기 — 무엇이든 좋아요.',
   aiTitle:'TEAM MATCHING',aiDesc:'역할, 위치, 미학을 기반으로 이상적인 협업 파트너를 추천합니다.',aiMyRole:'나의 역할',aiLocation:'위치',aiAesthetic:'추구하는 미학 (복수 선택)',aiLookingFor:'찾는 역할',aiFindBtn:'매칭 시작',aiLoading:'최적의 파트너를 분석 중...',
   dirSearchPh:'이름, 역할, 위치, 미학으로 검색...',
   projAll:'전체 프로젝트',
@@ -2261,6 +2338,7 @@ en:{
   checkinBtn:'Check In',checkinTitle:'Check In',checkinGo:'Check In Today',streak:'Streak:',days:'days',
   topPopular:'TOP 5 POSTS',swTrending:'TRENDING CREATORS',swOpenProj:'OPEN PROJECTS',swPopAes:'POPULAR AESTHETICS',recentVisitors:'RECENT VISITORS',
   swTrendingMoodboards:'Trending Moodboards',trendingMoodboardsEmpty:'No boards yet',swActiveCreators:'Active Creators',activeCreatorsEmpty:'Activity coming soon',swRecentScraps:'Recent Scraps',recentScrapsEmpty:'Scraps gathering',
+  obSkip:'Skip',obPrev:'Back',obNext:'Next',obWelcomeTitle:'Welcome to PAP Community',obWelcomeDesc:'A place to gather inspiration, express yourself, and share with other creators. No prescribed workflow — use it however feels right.',obMoodboardTitle:'Express your aesthetic with moodboards',obMoodboardDesc:'Collect images to visualize a concept or mood. Other members can see, like (♥), or chain off your board with ✨ "inspired by".',obScrapbookTitle:'Build your taste with the scrapbook',obScrapbookDesc:'Save images however you like — file, drag, paste, or URL. While viewing PAP editorials, hover an image to use the one-click "📌 Save" button.',obStartTitle:'Ready to start',obStartDesc:'There\'s no right way. Say hi on the board, save one image to your scrapbook, or create a moodboard — whatever feels right.',
   aiTitle:'TEAM MATCHING',aiDesc:'Ideal partners recommended based on role, location, and aesthetics.',aiMyRole:'MY ROLE',aiLocation:'LOCATION',aiAesthetic:'AESTHETIC',aiLookingFor:'LOOKING FOR',aiFindBtn:'FIND MATCH',aiLoading:'Analyzing best partners...',
   dirSearchPh:'Search name, role, location, aesthetic...',
   projAll:'ALL PROJECTS',
@@ -2353,7 +2431,69 @@ document.addEventListener('DOMContentLoaded',function(){
       };
     }
   },100);
+
+  // Onboarding — show on first community visit only.
+  // Versioned key (-v1) so we can re-trigger for everyone if the tour content
+  // changes meaningfully later (e.g., -v2 after adding a new primitive).
+  setTimeout(function(){
+    try {
+      if(!localStorage.getItem('pap-community-onboarded-v1')){
+        openOnboarding();
+      }
+    } catch(_){}
+  }, 600);
 });
+
+// ======== ONBOARDING (mission E) ========
+var _obSlide = 0;
+var _OB_TOTAL = 4;
+
+function openOnboarding(){
+  var bg = document.getElementById('obBg');
+  if(!bg) return;
+  _obSlide = 0;
+  _obShow(0);
+  bg.classList.add('active');
+}
+
+function closeOnboarding(){
+  var bg = document.getElementById('obBg');
+  if(bg) bg.classList.remove('active');
+  try { localStorage.setItem('pap-community-onboarded-v1', String(Date.now())); } catch(_){}
+}
+
+function _obShow(i){
+  document.querySelectorAll('.ob-slide').forEach(function(s, idx){
+    s.classList.toggle('active', idx === i);
+  });
+  document.querySelectorAll('.ob-dot').forEach(function(d, idx){
+    d.classList.toggle('active', idx === i);
+  });
+  var prev = document.getElementById('obPrev');
+  var next = document.getElementById('obNext');
+  if(prev) prev.disabled = (i === 0);
+  if(next){
+    var isLast = (i === _OB_TOTAL - 1);
+    next.textContent = isLast
+      ? (lang==='ko' ? '시작하기' : 'Get started')
+      : (lang==='ko' ? '다음' : 'Next');
+  }
+}
+
+function onboardingNext(){
+  if(_obSlide >= _OB_TOTAL - 1){
+    closeOnboarding();
+    return;
+  }
+  _obSlide++;
+  _obShow(_obSlide);
+}
+
+function onboardingPrev(){
+  if(_obSlide <= 0) return;
+  _obSlide--;
+  _obShow(_obSlide);
+}
 
 // ======== TABS ========
 function goTab(tab,el){
