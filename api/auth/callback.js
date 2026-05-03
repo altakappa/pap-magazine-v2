@@ -35,6 +35,24 @@ module.exports = async function handler(req, res) {
 
   var frontendUrl = getRequestOrigin(req);
 
+  // [DIAG-OAUTH] Temporary diagnostic logging — remove once root cause identified.
+  // Inputs we care about for tracing the redirect chain on www.pap-magazine.com.
+  var _diagCookies = parseCookies(req.headers.cookie);
+  var _diagCookieKeys = Object.keys(_diagCookies);
+  console.log('[DIAG-OAUTH callback] enter', JSON.stringify({
+    host: req.headers.host,
+    xfh: req.headers['x-forwarded-host'],
+    xfp: req.headers['x-forwarded-proto'],
+    referer: req.headers.referer || null,
+    hasCode: !!req.query.code,
+    hasError: !!req.query.error,
+    errorParam: req.query.error || null,
+    cookieKeys: _diagCookieKeys,
+    hasPKCE: !!_diagCookies.pkce_verifier,
+    pkceLen: _diagCookies.pkce_verifier ? _diagCookies.pkce_verifier.length : 0,
+    ua: (req.headers['user-agent'] || '').slice(0, 80),
+  }));
+
   try {
     var code = req.query.code;
     var oauthError = req.query.error;
@@ -49,13 +67,26 @@ module.exports = async function handler(req, res) {
       return baseUrl + '&detail=' + encodeURIComponent(safe);
     }
 
+    // [DIAG-OAUTH] Append host + cookie state to error redirects so we can
+    // diagnose without requiring Vercel log access. Compact format.
+    function withDiag(url) {
+      var diagBits = [
+        'h=' + (req.headers.host || '?'),
+        'ck=' + _diagCookieKeys.join(',') || 'none',
+        'pkce=' + (_diagCookies.pkce_verifier ? 'y' : 'n'),
+      ].join('|');
+      var sep = url.indexOf('?') > -1 ? '&' : '?';
+      return url + sep + 'diag=' + encodeURIComponent(diagBits);
+    }
+
     if (oauthError) {
-      console.error('OAuth error from provider:', oauthError, errorDesc || '');
-      return res.redirect(302, withDetail(frontendUrl + '/auth?error=oauth_provider&mode=login', errorDesc || oauthError));
+      console.error('[DIAG-OAUTH callback] provider error', oauthError, errorDesc || '');
+      return res.redirect(302, withDiag(withDetail(frontendUrl + '/auth?error=oauth_provider&mode=login', errorDesc || oauthError)));
     }
 
     if (!code) {
-      return res.redirect(302, frontendUrl + '/auth?error=missing_code&mode=login');
+      console.error('[DIAG-OAUTH callback] missing code');
+      return res.redirect(302, withDiag(frontendUrl + '/auth?error=missing_code&mode=login'));
     }
 
     // Read cookies
@@ -69,8 +100,8 @@ module.exports = async function handler(req, res) {
 
     // PKCE verifier is required — reject if missing (prevents code interception attacks)
     if (!codeVerifier) {
-      console.error('OAuth callback missing PKCE code_verifier');
-      return res.redirect(302, frontendUrl + '/auth?error=missing_verifier&mode=login');
+      console.error('[DIAG-OAUTH callback] missing PKCE verifier — cookies received:', _diagCookieKeys.join(',') || '(none)');
+      return res.redirect(302, withDiag(frontendUrl + '/auth?error=missing_verifier&mode=login'));
     }
 
     // Exchange code for tokens via direct HTTP call to Supabase
@@ -91,9 +122,10 @@ module.exports = async function handler(req, res) {
 
     if (!tokenResp.ok || tokenData.error) {
       var msg = tokenData.error_description || tokenData.error || ('HTTP ' + tokenResp.status);
-      console.error('Token exchange failed:', msg);
-      return res.redirect(302, withDetail(frontendUrl + '/auth?error=token_exchange&mode=login', msg));
+      console.error('[DIAG-OAUTH callback] token exchange failed:', msg);
+      return res.redirect(302, withDiag(withDetail(frontendUrl + '/auth?error=token_exchange&mode=login', msg)));
     }
+    console.log('[DIAG-OAUTH callback] token exchange OK, user', tokenData.user && tokenData.user.id);
 
     var userId = tokenData.user.id;
     var email = tokenData.user.email;
@@ -167,21 +199,31 @@ module.exports = async function handler(req, res) {
     var safeToken = JSON.stringify(token).replace(/<\/(script)/gi, '<\\/$1');
     var safeUser  = JSON.stringify(user).replace(/<\/(script)/gi, '<\\/$1');
 
+    console.log('[DIAG-OAUTH callback] returning success HTML for user', user.id, 'host=', req.headers.host);
+
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'no-store');
     return res.status(200).send(
       '<!doctype html><html lang="ko"><head><meta charset="utf-8">' +
       '<meta name="robots" content="noindex,nofollow">' +
       '<title>로그인 처리 중…</title>' +
-      '<style>html,body{margin:0;height:100%;background:#000;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:flex;align-items:center;justify-content:center}p{opacity:.7;font-size:14px}</style>' +
-      '</head><body><p>로그인 처리 중…</p>' +
+      '<style>html,body{margin:0;height:100%;background:#000;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:flex;align-items:center;justify-content:center;flex-direction:column}p{opacity:.7;font-size:14px;margin:4px}small{opacity:.4;font-size:11px}</style>' +
+      '</head><body><p>로그인 처리 중…</p><small id="diag"></small>' +
       '<script>(function(){' +
+        // [DIAG-OAUTH] Browser-side trace. Visible in DevTools console; also
+        // shown faintly under the loading text so the user can copy without DevTools.
+        'var diag={step:"start",host:location.host,t:Date.now()};' +
+        'function log(m,extra){diag.step=m;if(extra)diag[m]=extra;console.log("[DIAG-OAUTH browser]",m,extra||"");var el=document.getElementById("diag");if(el)el.textContent="diag: "+m;}' +
+        'log("entered");' +
+        'var setOk=false;' +
         'try{' +
           'var t=' + safeToken + ';' +
           'var u=' + safeUser + ';' +
           'localStorage.setItem("pap-token",t);' +
           'localStorage.setItem("pap-user",JSON.stringify({id:u.id,email:u.email,name:u.name,role:u.role,subscription:u.subscription}));' +
-        '}catch(e){}' +
+          'setOk=(localStorage.getItem("pap-token")===t);' +
+          'log("localStorage_set",{ok:setOk,tokenLen:t.length});' +
+        '}catch(e){log("localStorage_error",String(e&&e.message||e));}' +
         // Resolve return URL from cookie set by socialLogin() before the OAuth
         // round-trip; fallback to /mypage.html. NB: this script runs on
         // /api/auth/callback so we must use absolute paths — a relative
@@ -199,16 +241,20 @@ module.exports = async function handler(req, res) {
             '}' +
           '}' +
         '}catch(e){}' +
-        'window.location.replace(dest);' +
+        'log("redirecting",dest);' +
+        // [DIAG-OAUTH] Small delay so the user can SEE the diag text and we
+        // have a window where DevTools shows the console output before the
+        // page navigates. Remove once root cause identified.
+        'setTimeout(function(){window.location.replace(dest);},500);' +
       '})();<\/script>' +
       '</body></html>'
     );
   } catch (error) {
-    console.error('OAuth callback error:', error && (error.message || error.code) || 'UNKNOWN');
+    console.error('[DIAG-OAUTH callback] uncaught error:', error && (error.message || error.code) || 'UNKNOWN', error && error.stack);
     var detailMsg = error && error.message ? error.message : '';
     var safe = String(detailMsg).replace(/[<>"'`\\\r\n\t]/g, ' ').slice(0, 200);
     var url = frontendUrl + '/auth?error=callback_error&mode=login';
     if (safe) url += '&detail=' + encodeURIComponent(safe);
-    return res.redirect(302, url);
+    return res.redirect(302, withDiag(url));
   }
 };
