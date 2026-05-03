@@ -45,10 +45,13 @@ const { THEMES, THEME_BY_ID, safeLang, pickAnonymousThemes } = require('../_lib/
 const ROW_COUNT = 4;
 const DEFAULT_PER_ROW = 10;
 const MAX_PER_ROW = 20;
-// Pull a generous slice of recent published editorials in one shot, then
-// bucket client-side per theme. Keeps the endpoint to a single DB round-trip.
-// 200 is comfortably more than 3 themes × ~10 cards even with low overlap.
-const POOL_SIZE = 200;
+// Pool the entire (or near-entire) catalogue so theme matching considers
+// every editorial, not just the most recent 200. We have 2000+ editorials
+// — capping at 200 systematically excluded older work that genuinely
+// matched a theme. 3000 leaves headroom and is still a single DB query.
+// Since the endpoint is edge-cached for 60s, this DB hit happens at most
+// once per minute, well within budget.
+const POOL_SIZE = 3000;
 
 async function topUserThemes(userId) {
   // Aggregate weights per theme by summing across the user's tag rows that
@@ -80,30 +83,40 @@ async function topUserThemes(userId) {
 function bucketCards(pool, themes, perRow) {
   // Each editorial can appear in multiple theme rows (e.g. a "dreamy +
   // surreal" piece). That's fine — natural cross-pollination. We dedupe
-  // WITHIN a row (no card listed twice in the same row) but not across rows.
+  // WITHIN a row but not across rows.
   //
-  // Two-phase fill so every row always has `perRow` (default 10) cards:
-  //   Phase 1 — Theme-matched cards (editorial.tags ∩ theme.tags ≠ ∅).
-  //             Iterates `pool` (already published_date desc) so most-recent
-  //             matches surface first.
-  //   Phase 2 — Padding with the latest editorials that didn't already get
-  //             picked in phase 1. Without this padding a theme with only 2
-  //             tag-matched editorials would render a stub 2-card row, which
-  //             looks broken next to the fully-populated rows above. With
-  //             padding the row stays scrollable and visually consistent
-  //             — the first few cards are theme-personalised, the tail is
-  //             "latest in general" so users always have something to see.
+  // 3-phase matching so we exhaust the on-topic catalogue (2000+ editorials)
+  // before falling back to "latest" filler:
+  //   Phase 1 — Exact tag intersection (editorial.tags ∩ theme.tags).
+  //             Strongest signal: admin explicitly tagged the piece with
+  //             one of the theme's tag tokens.
+  //   Phase 2 — Keyword search across title + description. Catches the
+  //             majority of the catalogue that doesn't have explicit tags
+  //             but whose title or copy mentions theme-related words
+  //             ("dreamy", "shadow", "neon" etc.). Each theme tag is
+  //             searched as a substring against the pre-lowercased
+  //             searchText haystack — handles untagged editorials that
+  //             still belong on a theme row. NOTE: this is heuristic
+  //             matching; the proper fix is AI-driven semantic tagging
+  //             (see HARNESS_CHECKLIST.md → AI tagging mission).
+  //   Phase 3 — Latest-editorials padding ONLY if Phase 1 + 2 still under
+  //             perRow. Last-resort filler so the row never looks broken.
   //
-  // This also doubles as an empty-row guard: even if a theme has *zero*
-  // tag-matched editorials, the row still gets `perRow` recent cards, so
-  // the frontend never has to filter out empty rows (which previously
-  // caused #aiThemeRows2 to render only 1 row instead of 2).
+  // For 2000+ editorials with sparse tags, Phase 2 is what carries most
+  // rows to a full 10-card length while staying topically relevant.
   return themes.map(function (theme) {
     const tagSet = new Set(theme.tags);
+    // Lowercase versions of the theme's tag tokens for substring search
+    // in Phase 2. Skip extremely short tokens (≤2 chars) that would
+    // generate noise (e.g. "in", "a") — themes don't actually use any
+    // such tokens currently but the filter is cheap insurance.
+    const lowerTags = theme.tags
+      .map(function (t) { return String(t || '').toLowerCase().trim(); })
+      .filter(function (t) { return t.length >= 3; });
     const cards = [];
     const seenIds = new Set();
 
-    // Phase 1: tag-matched cards
+    // Phase 1: explicit tag-set intersection
     for (let i = 0; i < pool.length && cards.length < perRow; i++) {
       const ed = pool[i];
       const edTags = Array.isArray(ed.tags) ? ed.tags : [];
@@ -117,7 +130,25 @@ function bucketCards(pool, themes, perRow) {
       }
     }
 
-    // Phase 2: top up with most-recent editorials not already in this row
+    // Phase 2: keyword search in title + description
+    if (cards.length < perRow && lowerTags.length > 0) {
+      for (let i = 0; i < pool.length && cards.length < perRow; i++) {
+        const ed = pool[i];
+        if (seenIds.has(ed.id)) continue;
+        const hay = ed.searchText || '';
+        if (!hay) continue;
+        let matched = false;
+        for (let j = 0; j < lowerTags.length; j++) {
+          if (hay.indexOf(lowerTags[j]) !== -1) { matched = true; break; }
+        }
+        if (matched) {
+          cards.push(ed);
+          seenIds.add(ed.id);
+        }
+      }
+    }
+
+    // Phase 3: top up with latest editorials (last resort filler)
     if (cards.length < perRow) {
       for (let i = 0; i < pool.length && cards.length < perRow; i++) {
         const ed = pool[i];
@@ -169,7 +200,7 @@ module.exports = async function handler(req, res) {
   try {
     const { data: pool, error } = await supabaseAdmin
       .from('editorials')
-      .select('id,title,thumbnail,cover_image,published_date,tags,slug')
+      .select('id,title,thumbnail,cover_image,published_date,tags,slug,description')
       .eq('status', 'published')
       .order('published_date', { ascending: false })
       .limit(POOL_SIZE);
@@ -180,13 +211,25 @@ module.exports = async function handler(req, res) {
     }
 
     const normalizedPool = (pool || []).map(function (e) {
+      // Pre-compute a single lowercase haystack of title + description so
+      // Phase 2 keyword matching is one indexOf per theme tag instead of
+      // re-stringifying for every editorial × theme combination.
+      const titleStr = String(e.title || '');
+      const descStr  = typeof e.description === 'string'
+        ? e.description
+        : (e.description ? JSON.stringify(e.description) : '');
       return {
         id: e.id,
-        title: e.title || '',
+        title: titleStr,
         img: e.thumbnail || e.cover_image || '',
         date: e.published_date ? String(e.published_date).split('T')[0] : '',
         tags: Array.isArray(e.tags) ? e.tags : [],
         slug: e.slug || '',
+        // Lowercase haystack of title + description text. Used by Phase 2
+        // keyword matching so editorials without explicit tags can still
+        // be classified by their content (e.g. an editorial titled
+        // "DREAMY VOYAGE" with no tags will still match the dreamy theme).
+        searchText: (titleStr + ' ' + descStr).toLowerCase(),
       };
     }).filter(function (e) { return e.title && e.img; });
 
