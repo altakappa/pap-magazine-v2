@@ -657,27 +657,181 @@ window.sendDM = function(userId, userName){
     .catch(function(){ openConversation('', userId, userName || 'User'); });
 };
 
-// ── 2.4 ENHANCED PROFILE POPUP — with follow button and real badges ──
-var _origOpenProfile = window.openProfile;
-window.openProfile = function(name, e){
-  _origOpenProfile(name, e);
+// ── 2.4 ENHANCED PROFILE POPUP — real member data via /api/community/members/:id ──
+//
+// Two flows coexist:
+//   (A) Real member: openProfile(uuid) — fetches /api/community/members/:id
+//       and renders bio/role/links + recent moodboards + recent scraps
+//       + working follow/DM buttons (real userId).
+//   (B) Legacy demo: openProfile('Judith Moreno') — falls through to the
+//       hardcoded sample dict in community.html. Kept so older inline call
+//       sites (post comments, AI matching cards) don't break.
+//
+// Routing rule: if first arg is a UUID-like string (8-4-4-4-12 hex), treat
+// as member id; otherwise treat as legacy display name.
 
+var _UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+var _origOpenProfile = window.openProfile;
+
+window.openProfile = function(idOrName, e){
+  if(e && typeof e.stopPropagation === 'function') e.stopPropagation();
+  if(typeof idOrName === 'string' && _UUID_RE.test(idOrName)){
+    return openMemberProfile(idOrName);
+  }
+  // Legacy demo-data path
+  if(typeof _origOpenProfile === 'function') _origOpenProfile(idOrName, e);
+  // Inject the same Follow/DM button pair (no real userId — buttons will
+  // show informative toasts instead of acting).
+  _attachLegacyProfileActions(idOrName);
+};
+
+function _attachLegacyProfileActions(name){
   var popup = document.getElementById('profilePopupBg');
   if(!popup || !popup.classList.contains('active')) return;
-
-  // Add follow + message buttons if not already present
   var btnContainer = document.getElementById('ppActionBtns');
-  if(!btnContainer){
-    var levelEl = document.getElementById('ppLevel');
-    if(levelEl){
-      var btns = document.createElement('div');
-      btns.id = 'ppActionBtns';
-      btns.style.cssText = 'display:flex;gap:8px;margin-top:12px;justify-content:center';
-      btns.innerHTML = '<button onclick="followUser(null,\''+escHtml(name)+'\',this)" style="padding:8px 20px;font-size:10px;font-weight:700;letter-spacing:.1em;background:#000;color:#fff;border:1px solid #000;cursor:pointer;font-family:Montserrat,sans-serif">'+(lang==='ko'?'팔로우':'FOLLOW')+'</button><button onclick="sendDM(null,\''+escHtml(name)+'\')" style="padding:8px 20px;font-size:10px;font-weight:700;letter-spacing:.1em;background:transparent;color:#000;border:1px solid #000;cursor:pointer;font-family:Montserrat,sans-serif">'+(lang==='ko'?'메시지':'MESSAGE')+'</button>';
-      levelEl.parentNode.insertBefore(btns, levelEl.nextSibling);
-    }
-  }
+  if(btnContainer) return;
+  var levelEl = document.getElementById('ppLevel');
+  if(!levelEl) return;
+  var btns = document.createElement('div');
+  btns.id = 'ppActionBtns';
+  btns.style.cssText = 'display:flex;gap:8px;margin-top:12px;justify-content:center';
+  btns.innerHTML = ''
+    + '<button onclick="followUser(null,\''+escHtml(name)+'\',this)" style="padding:8px 20px;font-size:10px;font-weight:700;letter-spacing:.1em;background:#000;color:#fff;border:1px solid #000;cursor:pointer;font-family:Montserrat,sans-serif">'+(lang==='ko'?'팔로우':'FOLLOW')+'</button>'
+    + '<button onclick="sendDM(null,\''+escHtml(name)+'\')" style="padding:8px 20px;font-size:10px;font-weight:700;letter-spacing:.1em;background:transparent;color:#000;border:1px solid #000;cursor:pointer;font-family:Montserrat,sans-serif">'+(lang==='ko'?'메시지':'MESSAGE')+'</button>';
+  levelEl.parentNode.insertBefore(btns, levelEl.nextSibling);
+}
+
+// Real-member profile — fetches data and populates the popup with the same
+// shell elements (ppName/ppRole/ppAvatar/ppPosts/etc.) plus a NEW
+// `ppExtraSection` container for moodboards + scraps.
+window.openMemberProfile = function(userId){
+  if(!userId) return;
+  var popup = document.getElementById('profilePopupBg');
+  if(!popup) return;
+  popup.classList.add('active');
+
+  // Show a tiny loading state while we fetch
+  var nameEl = document.getElementById('ppName');
+  if(nameEl) nameEl.textContent = (lang==='ko' ? '불러오는 중…' : 'Loading…');
+
+  fetch('/api/community/members/' + encodeURIComponent(userId), { credentials:'include' })
+    .then(function(r){ return r.json().then(function(j){ return { ok:r.ok, j:j }; }); })
+    .then(function(out){
+      if(!out.ok){ showToast(out.j.message || 'Failed to load profile'); return; }
+      _renderMemberProfile(out.j);
+    }).catch(function(){ showToast('Failed to load profile'); });
 };
+
+function _renderMemberProfile(data){
+  var p = data.profile || {};
+  var c = data.counts || {};
+  var name = p.name || 'Member';
+  var initials = name.split(' ').map(function(w){ return w[0]; }).join('').substring(0,2).toUpperCase();
+
+  // Top section — name/role/avatar
+  var nameEl = document.getElementById('ppName');
+  if(nameEl) nameEl.textContent = name;
+  var roleEl = document.getElementById('ppRole');
+  if(roleEl) roleEl.textContent = p.role || (lang==='ko'?'회원':'Member');
+  var avEl = document.getElementById('ppAvatar');
+  if(avEl){
+    if(p.avatarUrl){ avEl.innerHTML = '<img src="'+escHtml(p.avatarUrl)+'" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">'; }
+    else { avEl.textContent = initials; }
+  }
+  var levelEl = document.getElementById('ppLevel');
+  if(levelEl){
+    var planLabel = '';
+    if(p.subscriptionPlan && p.subscriptionPlan.indexOf('premium') === 0) planLabel = '● PREMIUM';
+    else if(p.subscriptionPlan && p.subscriptionPlan.indexOf('standard') === 0) planLabel = '● STANDARD';
+    levelEl.textContent = planLabel;
+    levelEl.className = 'profile-popup-level ' + (planLabel ? 'lvl-premium' : '');
+  }
+
+  // Stats — replace the "posts/followers/likes" trio with our richer set
+  var statPosts = document.getElementById('ppPosts');
+  if(statPosts){ statPosts.textContent = (c.moodboards != null) ? c.moodboards : (c.posts || 0); }
+  var statFol = document.getElementById('ppFollowers');
+  if(statFol){ statFol.textContent = c.followers || 0; }
+  var statLikes = document.getElementById('ppLikes');
+  if(statLikes){ statLikes.textContent = c.scraps || 0; }
+  // Update labels via existing data-i18n attributes when possible
+  var labels = document.querySelectorAll('.profile-popup-stat-label');
+  if(labels.length >= 3){
+    labels[0].textContent = lang==='ko' ? '무드보드' : 'Boards';
+    labels[1].textContent = lang==='ko' ? '팔로워'   : 'Followers';
+    labels[2].textContent = lang==='ko' ? '스크랩'   : 'Scraps';
+  }
+
+  // Action buttons (real userId — Follow/DM actually work)
+  var oldBtns = document.getElementById('ppActionBtns');
+  if(oldBtns) oldBtns.remove();
+  if(levelEl){
+    var btns = document.createElement('div');
+    btns.id = 'ppActionBtns';
+    btns.style.cssText = 'display:flex;gap:8px;margin-top:12px;justify-content:center';
+    if(!data.isSelf){
+      var followLabel = data.isFollowing
+        ? (lang==='ko'?'팔로잉':'FOLLOWING')
+        : (lang==='ko'?'팔로우':'FOLLOW');
+      var followStyle = data.isFollowing ? 'background:transparent;color:#000' : 'background:#000;color:#fff';
+      btns.innerHTML = ''
+        + '<button data-uid="'+escHtml(p.id)+'" data-following="'+(data.isFollowing?'true':'false')+'" onclick="followUser(this.dataset.uid,\''+escHtml(name).replace(/'/g,"")+'\',this)" style="padding:8px 20px;font-size:10px;font-weight:700;letter-spacing:.1em;'+followStyle+';border:1px solid #000;cursor:pointer;font-family:Montserrat,sans-serif">'+followLabel+'</button>'
+        + '<button onclick="sendDM(\''+escHtml(p.id)+'\',\''+escHtml(name).replace(/'/g,"")+'\')" style="padding:8px 20px;font-size:10px;font-weight:700;letter-spacing:.1em;background:transparent;color:#000;border:1px solid #000;cursor:pointer;font-family:Montserrat,sans-serif">'+(lang==='ko'?'메시지':'MESSAGE')+'</button>';
+    } else {
+      btns.innerHTML = '<div style="font-size:11px;color:var(--text4);padding:8px">'+(lang==='ko'?'본인 프로필':'Your profile')+'</div>';
+    }
+    levelEl.parentNode.insertBefore(btns, levelEl.nextSibling);
+  }
+
+  // Bio / location / instagram / website — extra info section
+  var ppWorks = document.getElementById('ppWorks');
+  if(ppWorks){
+    var extraHtml = '';
+    if(p.bio){
+      extraHtml += '<div class="pp-bio" style="font-size:13px;line-height:1.6;color:var(--text2);padding:0 32px 16px;text-align:center">'+escHtml(p.bio)+'</div>';
+    }
+    var links = [];
+    if(p.location)  links.push('<span>📍 '+escHtml(p.location)+'</span>');
+    if(p.instagram) links.push('<a href="https://instagram.com/'+escHtml(p.instagram.replace(/^@/,''))+'" target="_blank" rel="noopener noreferrer" style="color:var(--text3);text-decoration:none">'+escHtml(p.instagram)+'</a>');
+    if(p.website)   links.push('<a href="'+escHtml(p.website)+'" target="_blank" rel="noopener noreferrer" style="color:var(--text3);text-decoration:none">'+(lang==='ko'?'웹사이트 ↗':'Website ↗')+'</a>');
+    if(links.length){
+      extraHtml += '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:14px;font-size:12px;color:var(--text3);padding:0 32px 16px">'+links.join('<span style="color:var(--text4)">·</span>')+'</div>';
+    }
+
+    // Recent moodboards section
+    var boards = data.recentMoodboards || [];
+    if(boards.length){
+      extraHtml += '<div class="pp-section-title" style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);padding:18px 32px 10px;border-top:1px solid var(--border);margin-top:8px">'+(lang==='ko'?'최근 무드보드':'Recent moodboards')+'</div>';
+      extraHtml += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:0 32px 16px">';
+      boards.slice(0,6).forEach(function(b){
+        var bg = b.previewImage ? 'background-image:url('+escHtml(b.previewImage)+');background-size:cover;background-position:center' : 'background:var(--surface2)';
+        var safeTitle = escHtml(b.title||'Untitled');
+        extraHtml += '<div title="'+safeTitle+'" onclick="closeProfile();goTab(\'moodboard\',document.querySelector(\'[onclick*=\\\"moodboard\\\"]\'));setTimeout(function(){openMoodboard(\''+b.id+'\')},120)" style="aspect-ratio:1/1;border-radius:6px;cursor:pointer;'+bg+'"></div>';
+      });
+      extraHtml += '</div>';
+    }
+
+    // Recent scraps section
+    var scraps = data.recentScraps || [];
+    if(scraps.length){
+      extraHtml += '<div class="pp-section-title" style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);padding:8px 32px 10px;border-top:1px solid var(--border)">'+(lang==='ko'?'최근 스크랩':'Recent scraps')+'</div>';
+      extraHtml += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:0 32px 24px">';
+      scraps.slice(0,8).forEach(function(s){
+        var click = s.sourceUrl
+          ? "window.open('"+escHtml(s.sourceUrl).replace(/'/g,'')+"','_blank','noopener,noreferrer')"
+          : '';
+        extraHtml += '<img src="'+escHtml(s.imageUrl)+'" alt="" loading="lazy" onclick="'+click+'" style="width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:3px;cursor:pointer" onerror="this.style.opacity=\'.3\'">';
+      });
+      extraHtml += '</div>';
+    }
+
+    if(!boards.length && !scraps.length){
+      extraHtml += '<div style="text-align:center;padding:32px;font-size:12px;color:var(--text4)">'+(lang==='ko'?'아직 활동이 없어요':'No activity yet')+'</div>';
+    }
+
+    ppWorks.innerHTML = extraHtml;
+  }
+}
 
 
 // ======================================================================
@@ -891,7 +1045,10 @@ function _renderActiveCreators(creators){
     var totals = [];
     if(c.moodboardCount) totals.push(c.moodboardCount + (lang==='ko'?' 보드':' boards'));
     if(c.scrapCount) totals.push(c.scrapCount + (lang==='ko'?' 스크랩':' scraps'));
-    html += '<div class="sw-item" onclick="if(typeof openProfile===\'function\')openProfile(\''+escHtml(name).replace(/'/g,'')+'\')">';
+    // Pass real userId (UUID) so openProfile takes the rich-member path
+    var safeId = (c.id || '').replace(/'/g, '');
+    var safeName = escHtml(name).replace(/'/g, '');
+    html += '<div class="sw-item" onclick="openProfile(\''+(safeId || safeName)+'\')">';
     html += '<div class="sw-av">'+av+'</div>';
     html += '<div><div class="sw-nm">'+escHtml(name)+'</div>';
     html += '<div class="sw-sub">'+totals.join(' · ')+'</div></div></div>';
@@ -1058,7 +1215,12 @@ window.openMoodboard = function(boardId){
       var html = '';
       html += '<div class="md-head">';
       html += '<h2 class="md-title">'+escHtml(b.title)+'</h2>';
-      html += '<div class="md-meta">'+escHtml(b.author && b.author.name || '')+' · '+(b.items?b.items.length:0)+' items · ♥ '+(b.voteCount||0)+'</div>';
+      var authorName = (b.author && b.author.name) || '';
+      var authorId = (b.author && b.author.id) || '';
+      var authorBlock = authorId
+        ? '<a href="#" onclick="event.preventDefault();closeMoodDetail();openProfile(\''+authorId+'\')" style="color:inherit;text-decoration:underline;text-underline-offset:2px;cursor:pointer">'+escHtml(authorName)+'</a>'
+        : escHtml(authorName);
+      html += '<div class="md-meta">'+authorBlock+' · '+(b.items?b.items.length:0)+' items · ♥ '+(b.voteCount||0)+'</div>';
       if(b.inspiredBy){
         html += '<div class="md-inspired" onclick="closeMoodDetail();openMoodboard(\''+b.inspiredBy.id+'\')" style="cursor:pointer">';
         html += '✨ '+(L[lang]&&L[lang].moodInspiredByLabel||'Inspired by')+' '+escHtml(b.inspiredBy.title)+(b.inspiredBy.authorName?(' — '+escHtml(b.inspiredBy.authorName)):'');
