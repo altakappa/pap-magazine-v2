@@ -972,6 +972,130 @@ window.loadScraps = function(userId){
     });
 };
 
+// Upload zone helpers — converge file picker, drag-drop, paste, and URL
+// input into a single preview. Auto-fills addScrapImage when a file is
+// uploaded so submitScrap() can use the existing URL-based POST path.
+function _scrapShowPreview(url){
+  var img = document.getElementById('scrapPreviewImg');
+  var prev = document.getElementById('scrapDropPreview');
+  var empty = document.getElementById('scrapDropEmpty');
+  if(!img || !prev || !empty) return;
+  img.src = url;
+  prev.style.display = '';
+  empty.style.display = 'none';
+}
+function _scrapClearPreview(){
+  var img = document.getElementById('scrapPreviewImg');
+  var prev = document.getElementById('scrapDropPreview');
+  var empty = document.getElementById('scrapDropEmpty');
+  var urlInput = document.getElementById('addScrapImage');
+  if(img) img.src = '';
+  if(prev) prev.style.display = 'none';
+  if(empty) empty.style.display = '';
+  if(urlInput) urlInput.value = '';
+  var f = document.getElementById('addScrapFile');
+  if(f) f.value = '';
+}
+window._scrapClearPreview = _scrapClearPreview;
+
+function _scrapPreviewFromUrl(url){
+  // Live URL input — show preview if it looks like an image URL
+  if(!url) { _scrapClearPreview(); return; }
+  if(/^https?:\/\//i.test(url)) _scrapShowPreview(url);
+}
+window._scrapPreviewFromUrl = _scrapPreviewFromUrl;
+
+function _scrapSetUploading(on){
+  var u = document.getElementById('scrapDropUploading');
+  var empty = document.getElementById('scrapDropEmpty');
+  var prev = document.getElementById('scrapDropPreview');
+  if(u) u.style.display = on ? '' : 'none';
+  if(on){
+    if(empty) empty.style.display = 'none';
+    if(prev) prev.style.display = 'none';
+  }
+}
+function _scrapUploadFile(file){
+  if(!file) return;
+  if(!file.type || !/^image\//.test(file.type)){
+    showToast(lang==='ko'?'이미지 파일만 업로드할 수 있어요':'Only image files supported');
+    return;
+  }
+  _scrapSetUploading(true);
+  var fd = new FormData();
+  fd.append('file', file);
+  var token = localStorage.getItem('pap-token');
+  fetch('/api/community/scrap-upload', {
+    method:'POST',
+    headers: token ? { 'Authorization':'Bearer '+token } : {},
+    credentials:'include',
+    body: fd,
+  }).then(function(r){ return r.json().then(function(j){ return { ok:r.ok, j:j }; }); })
+    .then(function(out){
+      _scrapSetUploading(false);
+      if(!out.ok){
+        showToast(out.j.message || (lang==='ko'?'업로드 실패':'Upload failed'));
+        var empty = document.getElementById('scrapDropEmpty');
+        if(empty) empty.style.display = '';
+        return;
+      }
+      // Fill the URL input + show preview — submitScrap() then uses the URL
+      var urlInput = document.getElementById('addScrapImage');
+      if(urlInput) urlInput.value = out.j.url;
+      _scrapShowPreview(out.j.url);
+    }).catch(function(){
+      _scrapSetUploading(false);
+      showToast(lang==='ko'?'업로드 실패':'Upload failed');
+      var empty = document.getElementById('scrapDropEmpty');
+      if(empty) empty.style.display = '';
+    });
+}
+window._scrapHandleFiles = function(files){
+  if(files && files.length > 0) _scrapUploadFile(files[0]);
+};
+
+// Wire drag-drop on the drop zone + paste on the modal (modal must be open).
+function _scrapWireOnce(){
+  var zone = document.getElementById('scrapDropZone');
+  if(!zone || zone.dataset.wired) return;
+  zone.dataset.wired = '1';
+  ['dragenter','dragover'].forEach(function(ev){
+    zone.addEventListener(ev, function(e){
+      e.preventDefault();
+      zone.style.borderColor = 'var(--accent, #891717)';
+      zone.style.background = 'rgba(137,23,23,.04)';
+    });
+  });
+  ['dragleave','dragend','drop'].forEach(function(ev){
+    zone.addEventListener(ev, function(e){
+      e.preventDefault();
+      zone.style.borderColor = '';
+      zone.style.background = '';
+    });
+  });
+  zone.addEventListener('drop', function(e){
+    var files = e.dataTransfer && e.dataTransfer.files;
+    if(files && files.length > 0) _scrapUploadFile(files[0]);
+  });
+}
+function _scrapWirePaste(){
+  // Paste handler — only active while the modal is open
+  if(window._scrapPasteHandler) return;
+  window._scrapPasteHandler = function(e){
+    var bg = document.getElementById('addScrapBg');
+    if(!bg || !bg.classList.contains('active')) return;
+    var items = e.clipboardData && e.clipboardData.items;
+    if(!items) return;
+    for(var i=0;i<items.length;i++){
+      if(items[i].type && items[i].type.indexOf('image/') === 0){
+        var file = items[i].getAsFile();
+        if(file){ e.preventDefault(); _scrapUploadFile(file); return; }
+      }
+    }
+  };
+  document.addEventListener('paste', window._scrapPasteHandler);
+}
+
 window.openAddScrap = function(){
   if(!_canActLocal()) return;
   var bg = document.getElementById('addScrapBg');
@@ -979,7 +1103,12 @@ window.openAddScrap = function(){
   document.getElementById('addScrapImage').value = '';
   document.getElementById('addScrapNote').value = '';
   document.getElementById('addScrapSource').value = '';
+  var f = document.getElementById('addScrapFile');
+  if(f) f.value = '';
+  _scrapClearPreview();
   bg.classList.add('active');
+  _scrapWireOnce();
+  _scrapWirePaste();
 };
 
 window.closeAddScrap = function(){

@@ -2047,9 +2047,27 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
     <button class="profile-popup-close" onclick="closeAddScrap()">×</button>
     <div style="padding:32px">
       <div style="font-size:18px;font-weight:600;margin-bottom:18px;letter-spacing:-0.022em" data-i18n="scrapAdd">+ 스크랩 추가</div>
+
+      <!-- Drop / paste / pick zone — three input modes converge into one preview -->
+      <div id="scrapDropZone"
+           style="margin-bottom:14px;border:1.5px dashed var(--border2);border-radius:8px;padding:24px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;background:rgba(0,0,0,.02)"
+           onclick="document.getElementById('addScrapFile').click()">
+        <div id="scrapDropEmpty">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:.4;margin-bottom:8px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:4px;font-weight:600" data-i18n="scrapDropTitle">이미지를 끌어다 놓기</div>
+          <div style="font-size:11px;color:var(--text3)" data-i18n="scrapDropHint">또는 클릭해서 선택 · ⌘V로 붙여넣기 · 아래에 URL 입력</div>
+        </div>
+        <div id="scrapDropPreview" style="display:none">
+          <img id="scrapPreviewImg" src="" alt="" style="max-width:100%;max-height:200px;border-radius:4px;display:block;margin:0 auto 10px">
+          <button onclick="event.stopPropagation();_scrapClearPreview()" style="background:transparent;border:1px solid var(--border);padding:4px 10px;font-size:11px;cursor:pointer;font-family:Montserrat,sans-serif" data-i18n="scrapPreviewClear">지우기</button>
+        </div>
+        <div id="scrapDropUploading" style="display:none;font-size:12px;color:var(--text3)" data-i18n="scrapUploading">업로드 중...</div>
+      </div>
+      <input id="addScrapFile" type="file" accept="image/*" style="display:none" onchange="_scrapHandleFiles(this.files)">
+
       <div style="margin-bottom:14px">
         <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:6px" data-i18n="scrapImageUrlLabel">이미지 URL</div>
-        <input id="addScrapImage" type="url" placeholder="https://..." style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:Montserrat,sans-serif">
+        <input id="addScrapImage" type="url" placeholder="https://..." oninput="_scrapPreviewFromUrl(this.value)" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:Montserrat,sans-serif">
       </div>
       <div style="margin-bottom:14px">
         <div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:6px" data-i18n="scrapNoteLabel">짧은 메모 (선택)</div>
@@ -2184,7 +2202,7 @@ ko:{
   btnScrap:'스크랩',btnShare:'공유',btnReport:'신고',commentPlaceholder:'댓글을 입력하세요...',commentSubmit:'등록',prevPost:'이전 글',nextPost:'다음 글',
   viewOriginal:'원문보기',viewTranslation:'번역보기',originalLabel:'원문',
   tabMoodboard:'무드보드',moodTitle:'INSPIRATION BOARDS',moodDesc:'크리에이터들의 무드보드를 탐색하고 영감을 공유하세요',moodCreate:'+ 보드 만들기',moodEmpty:'아직 무드보드가 없습니다',
-  tabScrapbook:'스크랩북',scrapTitle:'SCRAPBOOK',scrapDesc:'시간이 쌓이면 취향이 보여요. 마음에 드는 이미지를 모아보세요.',scrapAdd:'+ 스크랩 추가',scrapEmpty:'아직 스크랩이 없습니다',scrapImageUrlLabel:'이미지 URL',scrapNoteLabel:'짧은 메모 (선택)',scrapNotePh:'예: 좋은 라이팅',scrapSourceLabel:'출처 URL (선택)',scrapSave:'저장',scrapDelConfirm:'이 스크랩을 삭제할까요?',
+  tabScrapbook:'스크랩북',scrapTitle:'SCRAPBOOK',scrapDesc:'시간이 쌓이면 취향이 보여요. 마음에 드는 이미지를 모아보세요.',scrapAdd:'+ 스크랩 추가',scrapEmpty:'아직 스크랩이 없습니다',scrapImageUrlLabel:'이미지 URL',scrapNoteLabel:'짧은 메모 (선택)',scrapNotePh:'예: 좋은 라이팅',scrapSourceLabel:'출처 URL (선택)',scrapSave:'저장',scrapDelConfirm:'이 스크랩을 삭제할까요?',scrapDropTitle:'이미지를 끌어다 놓기',scrapDropHint:'또는 클릭해서 선택 · ⌘V로 붙여넣기 · 아래에 URL 입력',scrapPreviewClear:'지우기',scrapUploading:'업로드 중...',
   moodInspiredBy:'영감받음',moodInspiredByLabel:'영감받은 보드:',moodInspireBtn:'이 보드에서 영감받기',moodEditorialBtn:'에디토리얼로 제안',moodInspiredHint:'✨ 다른 보드에서 영감받아 새 보드를 만들고 있어요.',moodTitleLabel:'제목',moodDescLabel:'설명 (선택)',moodTagsLabel:'태그 (콤마로 구분)',moodTagsPh:'예: minimal, ethereal',moodImagesLabel:'이미지 URL (한 줄에 하나)',moodSubmit:'만들기',
   notifTitle:'알림',notifMarkAll:'모두 읽음',notifEmpty:'새로운 알림이 없습니다',
   dmTitle:'메시지',dmEmpty:'대화가 없습니다',dmPlaceholder:'메시지 입력...',dmSend:'전송',
@@ -2216,7 +2234,7 @@ en:{
   btnScrap:'Save',btnShare:'Share',btnReport:'Report',commentPlaceholder:'Add a comment...',commentSubmit:'Post',prevPost:'Previous',nextPost:'Next',
   viewOriginal:'View Original',viewTranslation:'View Translation',originalLabel:'Original',
   tabMoodboard:'MOODBOARD',moodTitle:'INSPIRATION BOARDS',moodDesc:'Explore moodboards by creators and share your inspiration',moodCreate:'+ CREATE BOARD',moodEmpty:'No moodboards yet',
-  tabScrapbook:'SCRAPBOOK',scrapTitle:'SCRAPBOOK',scrapDesc:'Your taste, slowly built. Save images you love.',scrapAdd:'+ ADD SCRAP',scrapEmpty:'No scraps yet',scrapImageUrlLabel:'Image URL',scrapNoteLabel:'Short note (optional)',scrapNotePh:'e.g. nice lighting',scrapSourceLabel:'Source URL (optional)',scrapSave:'Save',scrapDelConfirm:'Delete this scrap?',
+  tabScrapbook:'SCRAPBOOK',scrapTitle:'SCRAPBOOK',scrapDesc:'Your taste, slowly built. Save images you love.',scrapAdd:'+ ADD SCRAP',scrapEmpty:'No scraps yet',scrapImageUrlLabel:'Image URL',scrapNoteLabel:'Short note (optional)',scrapNotePh:'e.g. nice lighting',scrapSourceLabel:'Source URL (optional)',scrapSave:'Save',scrapDelConfirm:'Delete this scrap?',scrapDropTitle:'Drop an image here',scrapDropHint:'or click to pick · ⌘V to paste · or enter URL below',scrapPreviewClear:'Clear',scrapUploading:'Uploading...',
   moodInspiredBy:'Inspired',moodInspiredByLabel:'Inspired by:',moodInspireBtn:'Inspired by this board',moodEditorialBtn:'Propose as editorial',moodInspiredHint:'✨ Creating a new board inspired by another one.',moodTitleLabel:'Title',moodDescLabel:'Description (optional)',moodTagsLabel:'Tags (comma separated)',moodTagsPh:'e.g. minimal, ethereal',moodImagesLabel:'Image URLs (one per line)',moodSubmit:'Create',
   notifTitle:'Notifications',notifMarkAll:'Mark all read',notifEmpty:'No new notifications',
   dmTitle:'Messages',dmEmpty:'No conversations',dmPlaceholder:'Type a message...',dmSend:'Send',
