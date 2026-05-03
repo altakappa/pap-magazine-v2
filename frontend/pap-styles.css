@@ -10,11 +10,14 @@
   /* ======== SPACING SCALE ========
      Hierarchical scale used throughout the site so visual rhythm stays
      consistent across every section. Values double in influence at each
-     level: card → row → block → section. */
+     level: card → row → block → section.
+     Tightened from the original (96/48/24) to ~half so the home feed
+     reads as a continuous flow of editorial → article → film → shorts
+     instead of feeling like distinct, far-apart pages. */
   --space-card:    8px;   /* gap between cards in a row */
-  --space-row:    24px;   /* gap between rows in the same section */
-  --space-block:  48px;   /* gap between content blocks within a section */
-  --space-section: 96px;  /* gap above + below every top-level section */
+  --space-row:    12px;   /* gap between rows in the same section */
+  --space-block:  24px;   /* gap between content blocks within a section */
+  --space-section: 48px;  /* gap above + below every top-level section */
   --pad-section:  var(--space-section); /* legacy alias kept for compat */
 
   /* ======== CARD HOVER TOKENS ========
@@ -716,7 +719,7 @@ section.hero + .shorts-section{
 
 /* --- 768px: Small tablet / Large phone landscape --- */
 @media(max-width:768px){
-  :root{--pad-x:20px;--space-section:72px;--space-block:36px;--space-row:20px;--pad-section:72px}
+  :root{--pad-x:20px;--space-section:36px;--space-block:18px;--space-row:10px;--pad-section:36px}
   /* Earlier these were `display:none` — that hid ABOUT/BUSINESS/CONTACT
      and the social icons row on every mobile screen. Now we keep them
      visible; pap-header.js re-styles the mobile overlay so the extra
@@ -858,7 +861,7 @@ section.hero + .shorts-section{
 
 /* --- 480px: Large phones (iPhone Plus/Max 428px, Galaxy A 384px) --- */
 @media(max-width:480px){
-  :root{--pad-x:16px;--space-section:56px;--space-block:32px;--space-row:18px;--pad-section:56px}
+  :root{--pad-x:16px;--space-section:28px;--space-block:16px;--space-row:9px;--pad-section:28px}
   .header{padding:0 12px;height:56px}
   .hero{margin-top:56px;height:60vh}
   .hero-content{left:16px;bottom:24px}
@@ -943,7 +946,7 @@ section.hero + .shorts-section{
 
 /* --- 390px: iPhone 12/13/14 (390px), Galaxy S21-S24 (360-384px) --- */
 @media(max-width:390px){
-  :root{--pad-x:12px;--space-section:44px;--space-block:28px;--space-row:16px;--pad-section:44px}
+  :root{--pad-x:12px;--space-section:22px;--space-block:14px;--space-row:8px;--pad-section:22px}
   .header{padding:0 10px;height:54px}
   .header-left{gap:2px}
   .header-left-item svg{width:16px;height:16px}
@@ -1021,7 +1024,7 @@ section.hero + .shorts-section{
 
 /* --- 320px: Galaxy Z Fold (folded 280px), very small screens --- */
 @media(max-width:320px){
-  :root{--pad-x:8px;--space-section:36px;--space-block:24px;--space-row:14px;--pad-section:36px}
+  :root{--pad-x:8px;--space-section:18px;--space-block:12px;--space-row:7px;--pad-section:18px}
   .header{height:48px;padding:0 8px}
   .hamburger span{width:20px}
   .hamburger span:nth-child(1){transform:translateY(-6px)}
