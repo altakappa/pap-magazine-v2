@@ -43,7 +43,7 @@
   --text2: #6e6e73;
   --text3: #86868b;
   --text4: #aeaeb2;
-  --accent: #891717;
+  --accent: var(--pap-red);
   --accent-hover: #a01c1c;
   --sans: "SF Pro Text","SF Pro Icons","Helvetica Neue",Helvetica,Arial,sans-serif;
   --display: "SF Pro Display","SF Pro Icons","Helvetica Neue",Helvetica,Arial,sans-serif;
@@ -1321,7 +1321,7 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
   border-radius: 980px; background: var(--surface2); color: var(--text3);
 }
 .membership-badge.tier-free { background: var(--surface2); color: var(--text4); }
-.membership-badge.tier-pro { background: rgba(137,23,23,.08); color: #891717; }
+.membership-badge.tier-pro { background: rgba(137,23,23,.08); color: var(--pap-red); }
 .membership-badge.tier-studio { background: rgba(29,29,31,.08); color: var(--text); }
 .membership-badge .mb-icon {
   width: 16px; height: 16px; border-radius: 50%; display: flex;
@@ -1607,7 +1607,7 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
       </div>
     </div>
     <div class="nav-right-col">
-      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='community.html';" data-i18n="navCommunity" style="color:#891717">COMMUNITY</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='community.html';" data-i18n="navCommunity" style="color:var(--pap-red)">COMMUNITY</a>
       <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='magazine.html';" data-i18n="navMagazine" style="color:#c9a96e">MAGAZINE</a>
       <a href="#" onclick="event.preventDefault();toggleNav();openAllEditorials();" data-i18n="navEditorial">EDITORIAL</a>
       <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='articles.html';" data-i18n="navArticle">ARTICLE</a>

@@ -1522,7 +1522,7 @@ function _scrapWireOnce(){
   ['dragenter','dragover'].forEach(function(ev){
     zone.addEventListener(ev, function(e){
       e.preventDefault();
-      zone.style.borderColor = 'var(--accent, #891717)';
+      zone.style.borderColor = 'var(--accent, var(--pap-red))';
       zone.style.background = 'rgba(137,23,23,.04)';
     });
   });

@@ -337,7 +337,7 @@
     '      </div>',
     '    </div>',
     '    <div class="nav-right-col">',
-    '      <a href="#" onclick="' + _navGo('community.html') + '" data-i18n="navCommunity" style="color:#891717">COMMUNITY</a>',
+    '      <a href="#" onclick="' + _navGo('community.html') + '" data-i18n="navCommunity" style="color:var(--pap-red)">COMMUNITY</a>',
     '      <a href="#" onclick="' + _navGo('magazine.html') + '" data-i18n="navMagazine" style="color:#c9a96e">MAGAZINE</a>',
     /* EDITORIAL — on index.html (where #edAllOverlay exists) open the
        overlay directly; on any other page navigate to the home-page hash

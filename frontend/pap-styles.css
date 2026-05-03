@@ -3,6 +3,12 @@
   --gray-200: #e5e5e5; --gray-400: #999; --gray-500: #777; --gray-600: #555;
   --text: #111; --serif: 'Playfair Display', Georgia, serif;
   --sans: 'Inter', -apple-system, sans-serif;
+  /* PAP brand colours — single source of truth so #891717 typos like
+     #881717 / #891718 can't drift in over time. Use --pap-red wherever the
+     deep red appears (community CTA, COMMUNITY nav label, future admin
+     badges etc.); --pap-red-hover for darker pressed/hover states. */
+  --pap-red: #891717;
+  --pap-red-hover: #6e1212;
   /* Layout spacing guide */
   --pad-x: 48px;          /* default side padding */
   --pad-x-safe: var(--pad-x); /* safe-area-aware side padding */

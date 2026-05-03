@@ -368,7 +368,7 @@
       </div>
     </div>
     <div class="nav-right-col">
-      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='community.html';" data-i18n="navCommunity" style="color:#891717">COMMUNITY</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='community.html';" data-i18n="navCommunity" style="color:var(--pap-red)">COMMUNITY</a>
       <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='magazine.html';" data-i18n="navMagazine" style="color:#c9a96e">MAGAZINE</a>
       <a href="#" onclick="event.preventDefault();toggleNav();openAllEditorials();" data-i18n="navEditorial">EDITORIAL</a>
       <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='articles.html';" data-i18n="navArticle">ARTICLE</a>
@@ -446,9 +446,9 @@
      when the API returns empty, so the launch period before there's
      activity still looks intentional. -->
 <style>
-  /* Background uses PAP key color #891717 (same red as the COMMUNITY nav
-     link). Subtle radial highlights add depth without diluting the brand. */
-  .community-cta { position: relative; padding: 56px 32px; background: #891717; overflow: hidden; }
+  /* Background uses --pap-red (same as the COMMUNITY nav label). Subtle
+     radial highlights add depth without diluting the brand. */
+  .community-cta { position: relative; padding: 56px 32px; background: var(--pap-red); overflow: hidden; }
   .community-cta::before {
     content: "";
     position: absolute; inset: 0;
@@ -497,7 +497,7 @@
   /* Hover flips to white pill with the deep-red label — keeps brand colour
      present in the highest-attention state. */
   .community-cta-link:hover .community-cta-button {
-    background: #fff; color: #891717; border-color: #fff;
+    background: #fff; color: var(--pap-red); border-color: #fff;
   }
   .community-cta-link:hover .community-cta-thumbs { transform: translateY(-2px); }
 
@@ -766,7 +766,7 @@
 <footer class="footer">
   <div class="footer-marquee">
     <div class="footer-marquee-track" id="marqueeTrack">
-      <span><a href="#" onclick="event.preventDefault();window.location.href='subscribe.html';" data-i18n="ftSubscribe">구독</a></span><span><a href="#" onclick="event.preventDefault();window.location.href='submission.html';" data-i18n="ftSubmission">서브미션</a></span><span><a href="#" onclick="event.preventDefault();window.location.href='pullletter.html';" data-i18n="ftPullletter">풀레터</a></span><span><a href="#" onclick="event.preventDefault();navigateWithInterstitial('community.html';" style="color:#891717" data-i18n="ftCommunity">커뮤니티</a></span><span><a href="#" onclick="event.preventDefault();navigateWithInterstitial('magazine.html';" style="color:#c9a96e" data-i18n="ftMagazine">매거진</a></span>
+      <span><a href="#" onclick="event.preventDefault();window.location.href='subscribe.html';" data-i18n="ftSubscribe">구독</a></span><span><a href="#" onclick="event.preventDefault();window.location.href='submission.html';" data-i18n="ftSubmission">서브미션</a></span><span><a href="#" onclick="event.preventDefault();window.location.href='pullletter.html';" data-i18n="ftPullletter">풀레터</a></span><span><a href="#" onclick="event.preventDefault();navigateWithInterstitial('community.html';" style="color:var(--pap-red)" data-i18n="ftCommunity">커뮤니티</a></span><span><a href="#" onclick="event.preventDefault();navigateWithInterstitial('magazine.html';" style="color:#c9a96e" data-i18n="ftMagazine">매거진</a></span>
     </div>
   </div>
   <div class="footer-legal" data-i18n-html="footerLegal">
