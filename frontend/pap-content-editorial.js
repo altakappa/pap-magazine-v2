@@ -39,6 +39,86 @@
 // dispatches across editorial / article / film / creator overlays — splitting
 // it would cross-couple all four sub-modules.
 
+// ======== SCRAP-FROM-EDITORIAL (community playground bridge) ========
+// One-click "Save to my scrapbook" button on each editorial gallery image.
+// Injects CSS once at module load; the button HTML is appended inside each
+// `.ed-gallery-item` by the gallery-render code further down.
+// Calls /api/community/scraps with sourceType='editorial' so the API can
+// later cross-reference scraps to their PAP source content.
+(function _injectScrapBtnCss(){
+  if(document.getElementById('papScrapBtnStyle')) return;
+  var s=document.createElement('style');
+  s.id='papScrapBtnStyle';
+  s.textContent=''
+    + '.ed-gallery-item{position:relative;}'
+    + '.ed-scrap-btn{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.65);color:#fff;border:none;border-radius:999px;padding:6px 12px;font-size:11px;font-weight:600;letter-spacing:.05em;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px;opacity:0;transform:translateY(-4px);transition:opacity .2s,transform .2s,background .2s;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:2}'
+    + '.ed-gallery-item:hover .ed-scrap-btn{opacity:1;transform:translateY(0)}'
+    + '.ed-scrap-btn:hover{background:rgba(0,0,0,.85)}'
+    + '.ed-scrap-btn.saved{background:rgba(81,207,102,.85);color:#fff}'
+    + '.ed-scrap-btn svg{width:12px;height:12px;stroke:currentColor;stroke-width:2;fill:none}';
+  document.head.appendChild(s);
+})();
+
+// One-click scrap: POST to /api/community/scraps. Updates the button to
+// "Saved ✓" (or shows a toast) on success; toast on failure.
+window._papScrapFromImage = function(url, title, btn){
+  // Login gate — uses pap-token directly (sync, reliable from page load)
+  var token=null;
+  try { token=localStorage.getItem('pap-token'); } catch(_){}
+  if(!token){
+    var lang=(localStorage.getItem('pap-lang')||'ko');
+    alert(lang==='ko' ? '로그인 후 스크랩할 수 있어요' : 'Please log in to save scraps');
+    return;
+  }
+  if(btn) btn.disabled=true;
+  fetch('/api/community/scraps', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+token },
+    credentials:'include',
+    body: JSON.stringify({
+      imageUrl: url,
+      sourceUrl: window.location.origin + window.location.pathname + '?editorial=' + encodeURIComponent(title||''),
+      sourceType: 'editorial',
+      note: title || null,
+    }),
+  }).then(function(r){ return r.json().then(function(j){ return { ok:r.ok, j:j }; }); })
+    .then(function(out){
+      if(btn) btn.disabled=false;
+      var lang=(localStorage.getItem('pap-lang')||'ko');
+      if(!out.ok){
+        var msg = (out.j && out.j.message) || (lang==='ko'?'스크랩 실패':'Scrap failed');
+        if(typeof window.showToast==='function') window.showToast(msg);
+        else alert(msg);
+        return;
+      }
+      // Success — flip the button to "Saved" state
+      if(btn){
+        btn.classList.add('saved');
+        btn.innerHTML = '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>'+(lang==='ko'?'저장됨':'Saved');
+        // Keep the saved state visible — it'll reset on next page load
+      }
+      if(typeof window.showToast==='function'){
+        window.showToast(lang==='ko' ? '스크랩북에 저장됐어요' : 'Saved to your scrapbook');
+      }
+    }).catch(function(){
+      if(btn) btn.disabled=false;
+      var lang=(localStorage.getItem('pap-lang')||'ko');
+      var msg = lang==='ko'?'스크랩 실패':'Scrap failed';
+      if(typeof window.showToast==='function') window.showToast(msg);
+      else alert(msg);
+    });
+};
+
+// Tiny helper for inline render — emits the button HTML with safely-escaped
+// title for the JS string-arg context. Inline so the gallery template stays
+// readable.
+function _scrapBtnHtml(url, title){
+  var t = (title||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+  var lang=(localStorage.getItem('pap-lang')||'ko');
+  var label = lang==='ko' ? '스크랩' : 'Save';
+  return '<button class="ed-scrap-btn" onclick="event.stopPropagation();_papScrapFromImage(\''+url+'\',\''+t+'\',this)" title="Save to scrapbook"><svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>'+label+'</button>';
+}
+
 // ======== EDITORIAL DATA + DETAIL + OPEN/CLOSE FAMILY ========
 // ======== EDITORIAL SEARCH DATA SLOT ========
 // edData (editorial dataset) is owned by Content. The search algorithm itself
@@ -258,7 +338,7 @@ function _openEditorialInner(title,thumb){
         }
       }
     }
-    gal.innerHTML+='<div class="ed-gallery-item"><img src="'+url+'" alt="'+title+'" loading="lazy" onerror="edImgError(this)"><div class="ed-img-credits">'+credits+'</div></div>';
+    gal.innerHTML+='<div class="ed-gallery-item"><img src="'+url+'" alt="'+title+'" loading="lazy" onerror="edImgError(this)">'+_scrapBtnHtml(url,title)+'<div class="ed-img-credits">'+credits+'</div></div>';
   });
 
   // Credits table — supports name+handle objects or plain handle strings
@@ -404,7 +484,7 @@ function _openEditorialInner_noPush(title,thumb){
         }
       }
     }
-    gal.innerHTML+='<div class="ed-gallery-item"><img src="'+url+'" alt="'+title+'" loading="lazy" onerror="edImgError(this)"><div class="ed-img-credits">'+credits+'</div></div>';
+    gal.innerHTML+='<div class="ed-gallery-item"><img src="'+url+'" alt="'+title+'" loading="lazy" onerror="edImgError(this)">'+_scrapBtnHtml(url,title)+'<div class="ed-img-credits">'+credits+'</div></div>';
   });
   var cr=document.getElementById('edDetailCredits');
   var ch='';
