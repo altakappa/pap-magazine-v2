@@ -19,7 +19,23 @@
  *
  * Idempotent: every ALTER uses IF NOT EXISTS where supported; bucket insert
  * uses ON CONFLICT.
+ *
+ * Note on `created_at`: 000_prerequisites.sql shipped `pullletters` with only
+ * `subscribed_at` (originally a newsletter table). The API layer
+ * (api/pullletters/*) and admin.html assume `created_at` exists, and the
+ * idx_pullletters_status_created index below depends on it — so we add the
+ * column up front and backfill existing rows from `subscribed_at` to keep
+ * both paths working. (Discovered when first run failed with
+ * "column 'created_at' does not exist" on a fresh prod DB.)
  */
+
+-- ── Ensure created_at exists (was missing in original schema) ───────────
+ALTER TABLE public.pullletters
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT now();
+
+UPDATE public.pullletters
+SET    created_at = COALESCE(created_at, subscribed_at, now())
+WHERE  created_at IS NULL;
 
 -- ── Extend the table ─────────────────────────────────────────────────────
 ALTER TABLE public.pullletters
