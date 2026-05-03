@@ -268,6 +268,21 @@ function _openEditorialInner(title,thumb){
   var d=edDetails[title];
   if(!d){var titleLower=title.toLowerCase();for(var key in edDetails){if(key.toLowerCase()===titleLower){d=edDetails[key];break;}}}
   d=d||{};
+  // Fire-and-forget view tracking. Powers the "인기 에디토리얼" row via
+  // GET /api/editorials/trending. Skipped for static-snapshot entries
+  // that have no DB id — those can't be tracked yet (admin uploads
+  // produce DB rows that DO have an id, so freshly uploaded editorials
+  // surface in trending immediately once they get any opens).
+  // Also skipped on popstate restoration (_openEditorialInner_noPush)
+  // so browser-back doesn't double-count.
+  if(d && d.id){
+    try {
+      fetch('/api/editorials/' + encodeURIComponent(d.id) + '/view', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      }).catch(function(){ /* analytics must not break UX */ });
+    } catch(_){}
+  }
   // QA #96 — d.credits may be admin-dict, admin-array (with roles[]), or
   // already-display array. Normalise to {r, h} once so the renderer below
   // can stay simple. Empty credits fall back to the placeholder pair.

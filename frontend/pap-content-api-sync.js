@@ -411,6 +411,9 @@ window._papFilmAutoPlay = function(){
     if(!key) return;
     var existing = edDetails[key] || {};
     edDetails[key] = {
+      // DB UUID — needed by /api/editorials/:id/view tracking. Static-JSON
+      // snapshot entries don't have this; tracker skips them on open.
+      id:     apiEd._api_id || existing.id || '',
       // Issue subtitle. Priority: admin-typed value (apiEd.issue) wins
       // because that's the live source of truth; curated existing.issue
       // is the static-JSON snapshot and only used as fallback. Year is
@@ -500,6 +503,52 @@ window._papFilmAutoPlay = function(){
     track.innerHTML = html;
   }
 
+  // Re-renders the "인기 에디토리얼" row from /api/editorials/trending.
+  // Uses the same card markup as _renderLatestRow so the visual is identical
+  // — only the source of the order differs (view count vs published_date).
+  //
+  // Cold-start safety: trending API needs view records to return anything
+  // useful. If it returns fewer than 6 items we leave the static-HTML cards
+  // in place so the row never looks broken in the early days post-launch.
+  // Same threshold as a "ed-row scrolls comfortably" floor.
+  function _renderTrendingRow(){
+    var track = document.getElementById('edTrendingTrack');
+    if(!track) return;
+    var apiBase = (window.PAP_CONFIG && window.PAP_CONFIG.API_BASE) || '/api';
+    fetch(apiBase + '/editorials/trending?period=7d&limit=12')
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(json){
+        if(!json || !Array.isArray(json.data) || json.data.length < 6) return;
+        var html = '';
+        json.data.forEach(function(ed){
+          // RPC returns the joined editorial fields; mirror the field
+          // selection apiEditorialToLocal does for the latest row.
+          var thumb = ed.thumbnail || ed.cover_image || '';
+          var title = ed.title || '';
+          if(!thumb || !title) return;
+          var safeTitle = String(title).replace(/"/g, '&quot;');
+          var safeImg   = String(thumb).replace(/"/g, '&quot;');
+          var dateLabel = ed.published_date ? String(ed.published_date).split('T')[0] : '';
+          var catLabel  = 'EDITORIAL' + (dateLabel ? (' - ' + dateLabel) : '');
+          var tagsAttr  = Array.isArray(ed.tags) ? ed.tags.join(',') : '';
+          html +=
+            '<div class="ed-row-card" data-tags="' + tagsAttr + '" data-api-rendered="1" ' +
+            'onclick=\'openEditorial("' + safeTitle + '","' + safeImg + '")\'>' +
+              '<div class="ed-row-card-img">' +
+                '<img loading="lazy" src="' + safeImg + '" alt="' + safeTitle + '" ' +
+                     'onerror="if(window.edImgError)edImgError(this)">' +
+              '</div>' +
+              '<div class="ed-row-card-info">' +
+                '<div class="ed-row-card-cat">' + catLabel + '</div>' +
+                '<div class="ed-row-card-title">' + String(title).toUpperCase() + '</div>' +
+              '</div>' +
+            '</div>';
+        });
+        if(html) track.innerHTML = html;
+      })
+      .catch(function(){ /* trending is a nice-to-have, never block UX */ });
+  }
+
   function syncEditorials(){
     if(typeof edData==='undefined') return;
     fetchAll('/editorials',apiEditorialToLocal,function(apiEds){
@@ -524,7 +573,12 @@ window._papFilmAutoPlay = function(){
       //    what's in the DB.
       _renderLatestRow();
 
-      // 3. If the all-editorials overlay has already built itself,
+      // 3. Re-render the "인기 에디토리얼" row from view-count data.
+      //    Independent fetch so it doesn't block the latest row when the
+      //    trending RPC is slow or the migration hasn't been applied yet.
+      _renderTrendingRow();
+
+      // 4. If the all-editorials overlay has already built itself,
       //    rebuild it so it reflects the merged edData too.
       if(typeof _renderEdAllPage === 'function' && typeof edAllBuilt !== 'undefined' && edAllBuilt){
         try { _renderEdAllPage(); } catch(_){}
