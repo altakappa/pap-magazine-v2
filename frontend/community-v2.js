@@ -750,6 +750,82 @@ window.loadFeaturedCreators = function(){
     }).catch(function(){});
 };
 
+// ── 4.1b Discovery surfaces (mission D — trending boards / active creators / recent scraps) ──
+// Single API call hydrates 3 sidebar widgets. Public read; works for
+// logged-out visitors too (gives them a reason to sign up).
+window.loadDiscovery = function(){
+  fetch('/api/community/discovery', { credentials:'include' })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      _renderTrendingMoodboards((data && data.trendingMoodboards) || []);
+      _renderActiveCreators((data && data.activeCreators) || []);
+      _renderRecentScraps((data && data.recentScraps) || []);
+    }).catch(function(){ /* silent — empty states already shown */ });
+};
+
+function _renderTrendingMoodboards(boards){
+  var el = document.getElementById('trendingMoodboards');
+  if(!el) return;
+  if(!boards.length){
+    el.innerHTML = '<div style="text-align:center;padding:14px 0;font-size:11px;color:var(--text4)">'+(L[lang]&&L[lang].trendingMoodboardsEmpty||'No boards yet')+'</div>';
+    return;
+  }
+  var html = '';
+  boards.forEach(function(b){
+    var thumb = b.previewImage ? 'background-image:url('+escHtml(b.previewImage)+')' : '';
+    var safeTitle = escHtml(b.title||'Untitled');
+    var authorName = escHtml((b.author && b.author.name) || '');
+    html += '<div class="sw-mood-item" onclick="goTab(\'moodboard\',document.querySelector(\'[onclick*=\\\"moodboard\\\"]\'));setTimeout(function(){openMoodboard(\''+b.id+'\')},100)">';
+    html += '<div class="sw-mood-thumb" style="'+thumb+'"></div>';
+    html += '<div class="sw-mood-info"><div class="sw-mood-title">'+safeTitle+'</div>';
+    html += '<div class="sw-mood-meta">'+authorName+(b.voteCount?(' · ♥ '+b.voteCount):'')+'</div></div>';
+    html += '</div>';
+  });
+  el.innerHTML = html;
+}
+
+function _renderActiveCreators(creators){
+  var el = document.getElementById('activeCreators');
+  if(!el) return;
+  if(!creators.length){
+    el.innerHTML = '<div style="text-align:center;padding:14px 0;font-size:11px;color:var(--text4)">'+(L[lang]&&L[lang].activeCreatorsEmpty||'Activity coming soon')+'</div>';
+    return;
+  }
+  var html = '';
+  creators.forEach(function(c){
+    var name = c.name || 'User';
+    var av = name.split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase();
+    var totals = [];
+    if(c.moodboardCount) totals.push(c.moodboardCount + (lang==='ko'?' 보드':' boards'));
+    if(c.scrapCount) totals.push(c.scrapCount + (lang==='ko'?' 스크랩':' scraps'));
+    html += '<div class="sw-item" onclick="if(typeof openProfile===\'function\')openProfile(\''+escHtml(name).replace(/'/g,'')+'\')">';
+    html += '<div class="sw-av">'+av+'</div>';
+    html += '<div><div class="sw-nm">'+escHtml(name)+'</div>';
+    html += '<div class="sw-sub">'+totals.join(' · ')+'</div></div></div>';
+  });
+  el.innerHTML = html;
+}
+
+function _renderRecentScraps(scraps){
+  var el = document.getElementById('recentScraps');
+  if(!el) return;
+  if(!scraps.length){
+    el.innerHTML = '<div style="text-align:center;padding:14px 0;font-size:11px;color:var(--text4);grid-column:1/-1">'+(L[lang]&&L[lang].recentScrapsEmpty||'Scraps gathering')+'</div>';
+    return;
+  }
+  // Show 4-col grid of latest scraps. Click → scrapbook tab of that user
+  // (fallback: just open the source URL if available).
+  var html = '';
+  scraps.slice(0, 8).forEach(function(s){
+    var alt = escHtml((s.author && s.author.name) || '');
+    var clickHandler = s.sourceUrl
+      ? "window.open('"+escHtml(s.sourceUrl).replace(/'/g,'')+"','_blank','noopener,noreferrer')"
+      : "goTab('scrapbook',document.querySelector('[onclick*=\\\"scrapbook\\\"]'))";
+    html += '<img src="'+escHtml(s.imageUrl)+'" alt="'+alt+'" title="'+alt+'" loading="lazy" onclick="'+clickHandler+'" onerror="this.style.opacity=\'.3\'">';
+  });
+  el.innerHTML = html;
+}
+
 // ── 4.2 Moodboard Channel Filter (Are.na-style) ──
 window.filterMoodChannel = function(channel, btn){
   // Update active state
@@ -1181,6 +1257,8 @@ function initV2(){
 
   // Load featured creators for sidebar
   loadFeaturedCreators();
+  // Load discovery surfaces (trending moodboards, active creators, recent scraps)
+  if(typeof loadDiscovery === 'function') loadDiscovery();
 
   // Listen for auth changes
   document.addEventListener('pap-auth-changed', function(){

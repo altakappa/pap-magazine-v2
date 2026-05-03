@@ -516,6 +516,18 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
 }
 .sw-nm { font-size: 15px; font-weight: 600; }
 .sw-sub { font-size: 13px; color: var(--text4); line-height: 1.4; }
+
+/* Discovery widgets (mission D — trending moodboards / scraps) */
+.sw-mood-item { display: flex; gap: 10px; align-items: center; padding: 8px 0; cursor: pointer; transition: opacity .15s; }
+.sw-mood-item:hover { opacity: .75; }
+.sw-mood-thumb { width: 44px; height: 44px; border-radius: 6px; background-size: cover; background-position: center; background-color: var(--surface); flex-shrink: 0; }
+.sw-mood-info { flex: 1; min-width: 0; }
+.sw-mood-title { font-size: 13px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sw-mood-meta { font-size: 11px; color: var(--text4); margin-top: 2px; }
+.sw-mood-vote { font-size: 11px; color: var(--text3); flex-shrink: 0; }
+.sw-scraps-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 4px; }
+.sw-scraps-grid img { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 3px; cursor: pointer; transition: opacity .15s; }
+.sw-scraps-grid img:hover { opacity: .7; }
 .sw-tag {
   display: inline-block; font-size: 11px; font-weight: 500; letter-spacing: -0.01em;
   text-transform: none; padding: 4px 12px; background: #fff;
@@ -1928,6 +1940,30 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
       <div id="popAesthetics"></div>
     </div>
 
+    <!-- TRENDING MOODBOARDS (mission D — discovery surface) -->
+    <div class="sw">
+      <div class="sw-title" data-i18n="swTrendingMoodboards">이번주 주목할 무드보드</div>
+      <div id="trendingMoodboards">
+        <div style="text-align:center;padding:14px 0;font-size:11px;color:var(--text4)" data-i18n="trendingMoodboardsEmpty">아직 보드가 없어요</div>
+      </div>
+    </div>
+
+    <!-- ACTIVE CREATORS (mission D — most active in last 30d) -->
+    <div class="sw">
+      <div class="sw-title" data-i18n="swActiveCreators">활발한 크리에이터</div>
+      <div id="activeCreators">
+        <div style="text-align:center;padding:14px 0;font-size:11px;color:var(--text4)" data-i18n="activeCreatorsEmpty">곧 활동이 보일 거예요</div>
+      </div>
+    </div>
+
+    <!-- RECENT SCRAPS (mission D — latest scraps from any member) -->
+    <div class="sw">
+      <div class="sw-title" data-i18n="swRecentScraps">최근 스크랩</div>
+      <div id="recentScraps" class="sw-scraps-grid">
+        <div style="text-align:center;padding:14px 0;font-size:11px;color:var(--text4);grid-column:1/-1" data-i18n="recentScrapsEmpty">스크랩이 모이는 중</div>
+      </div>
+    </div>
+
     <!-- PAP FEATURED CREATORS -->
     <div class="sw featured-creators-widget">
       <div class="sw-title" data-i18n="featuredTitle">PAP FEATURED</div>
@@ -2190,6 +2226,7 @@ ko:{
   membersCount:'멤버 0명',statsMembers:'회원 수:',statsToday:'오늘 글:',statsTotal:'전체 글:',
   checkinBtn:'출석체크',checkinTitle:'출석체크',checkinGo:'오늘 체크인',streak:'현재 연속:',days:'일',
   topPopular:'인기글 TOP 5',swTrending:'인기 크리에이터',swOpenProj:'진행 중인 프로젝트',swPopAes:'인기 미학 태그',recentVisitors:'최근 방문자',
+  swTrendingMoodboards:'이번주 주목할 무드보드',trendingMoodboardsEmpty:'아직 보드가 없어요',swActiveCreators:'활발한 크리에이터',activeCreatorsEmpty:'곧 활동이 보일 거예요',swRecentScraps:'최근 스크랩',recentScrapsEmpty:'스크랩이 모이는 중',
   aiTitle:'TEAM MATCHING',aiDesc:'역할, 위치, 미학을 기반으로 이상적인 협업 파트너를 추천합니다.',aiMyRole:'나의 역할',aiLocation:'위치',aiAesthetic:'추구하는 미학 (복수 선택)',aiLookingFor:'찾는 역할',aiFindBtn:'매칭 시작',aiLoading:'최적의 파트너를 분석 중...',
   dirSearchPh:'이름, 역할, 위치, 미학으로 검색...',
   projAll:'전체 프로젝트',
@@ -2222,6 +2259,7 @@ en:{
   membersCount:'Members: 0',statsMembers:'Members:',statsToday:'Today:',statsTotal:'Total:',
   checkinBtn:'Check In',checkinTitle:'Check In',checkinGo:'Check In Today',streak:'Streak:',days:'days',
   topPopular:'TOP 5 POSTS',swTrending:'TRENDING CREATORS',swOpenProj:'OPEN PROJECTS',swPopAes:'POPULAR AESTHETICS',recentVisitors:'RECENT VISITORS',
+  swTrendingMoodboards:'Trending Moodboards',trendingMoodboardsEmpty:'No boards yet',swActiveCreators:'Active Creators',activeCreatorsEmpty:'Activity coming soon',swRecentScraps:'Recent Scraps',recentScrapsEmpty:'Scraps gathering',
   aiTitle:'TEAM MATCHING',aiDesc:'Ideal partners recommended based on role, location, and aesthetics.',aiMyRole:'MY ROLE',aiLocation:'LOCATION',aiAesthetic:'AESTHETIC',aiLookingFor:'LOOKING FOR',aiFindBtn:'FIND MATCH',aiLoading:'Analyzing best partners...',
   dirSearchPh:'Search name, role, location, aesthetic...',
   projAll:'ALL PROJECTS',
