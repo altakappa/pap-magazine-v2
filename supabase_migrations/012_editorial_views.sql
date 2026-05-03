@@ -56,7 +56,7 @@ BEGIN
     CREATE POLICY admin_read_view
       ON public.editorial_views
       FOR SELECT
-      USING (is_admin(auth.uid()));
+      USING (public.is_admin());
   END IF;
 END $$;
 
