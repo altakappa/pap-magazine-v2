@@ -67,6 +67,24 @@ module.exports = async function handler(req, res) {
 
       if (error) throw error;
 
+      // Notification: tell the post owner someone commented (skip self-comments)
+      try {
+        const { data: post } = await supabaseAdmin
+          .from('community_posts')
+          .select('user_id')
+          .eq('id', postId)
+          .maybeSingle();
+        if (post && post.user_id && post.user_id !== user.id) {
+          await supabaseAdmin.from('community_notifications').insert({
+            user_id: post.user_id,
+            type: 'comment',
+            actor_id: user.id,
+            target_type: 'post',
+            target_id: postId,
+          });
+        }
+      } catch (e) { /* notification failure is non-fatal */ }
+
       return res.status(201).json({ comment });
     } catch (error) {
       console.error('Add comment error:', error);

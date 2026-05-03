@@ -88,6 +88,29 @@ module.exports = async function handler(req, res) {
         .single();
 
       if (error) throw error;
+
+      // Notification: if scrap is from another member's community moodboard,
+      // tell the board owner. Skip self-scraps and non-community sources
+      // (editorial/film/article/external/upload have no member owner here).
+      if (cleanType === 'moodboard' && sourceId) {
+        try {
+          const { data: board } = await supabaseAdmin
+            .from('community_mood_boards')
+            .select('user_id')
+            .eq('id', sourceId)
+            .maybeSingle();
+          if (board && board.user_id && board.user_id !== user.id) {
+            await supabaseAdmin.from('community_notifications').insert({
+              user_id: board.user_id,
+              type: 'scrap',
+              actor_id: user.id,
+              target_type: 'mood_board',
+              target_id: sourceId,
+            });
+          }
+        } catch (e) { /* non-fatal */ }
+      }
+
       return res.status(201).json({ scrap: data });
     } catch (error) {
       console.error('Create scrap error:', error);
