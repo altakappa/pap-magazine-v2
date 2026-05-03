@@ -451,6 +451,55 @@ window._papFilmAutoPlay = function(){
     }
   }
 
+  // Re-renders the "최신 에디토리얼" row on the home page from edData,
+  // sorted by published_date desc (newest first), capped at 12 cards.
+  // Called after syncEditorials merges the API response into edData so the
+  // home page always reflects what's currently in the database.
+  function _renderLatestRow(){
+    if(typeof edData === 'undefined' || !Array.isArray(edData)) return;
+    var track = document.querySelector('#editorials .ed-row .ed-row-track')
+             || document.querySelector('.ed-row-track');
+    if(!track) return;
+
+    // Sort by date desc — fall back to 0 for items without a date so they
+    // sink to the bottom rather than reordering randomly.
+    var sorted = edData.slice().sort(function(a, b){
+      var da = a && a.date ? new Date(a.date).getTime() : 0;
+      var db = b && b.date ? new Date(b.date).getTime() : 0;
+      return (db||0) - (da||0);
+    });
+
+    // Take top 12, skip records without a thumbnail (broken renders).
+    var top = [];
+    for(var i = 0; i < sorted.length && top.length < 12; i++){
+      var e = sorted[i];
+      if(e && e.img && e.title) top.push(e);
+    }
+
+    var html = '';
+    for(var j = 0; j < top.length; j++){
+      var ed = top[j];
+      var safeTitle = String(ed.title||'').replace(/"/g, '&quot;');
+      var safeImg   = String(ed.img||'').replace(/"/g, '&quot;');
+      var dateLabel = ed.date ? String(ed.date).split('T')[0] : '';
+      var catLabel  = 'EDITORIAL' + (dateLabel ? (' - ' + dateLabel) : '');
+      var tagsAttr  = Array.isArray(ed.tags) ? ed.tags.join(',') : '';
+      html +=
+        '<div class="ed-row-card" data-tags="' + tagsAttr + '" data-api-rendered="1" ' +
+        'onclick=\'openEditorial("' + safeTitle + '","' + safeImg + '")\'>' +
+          '<div class="ed-row-card-img">' +
+            '<img loading="lazy" src="' + safeImg + '" alt="' + safeTitle + '" ' +
+                 'onerror="if(window.edImgError)edImgError(this)">' +
+          '</div>' +
+          '<div class="ed-row-card-info">' +
+            '<div class="ed-row-card-cat">' + catLabel + '</div>' +
+            '<div class="ed-row-card-title">' + String(ed.title||'').toUpperCase() + '</div>' +
+          '</div>' +
+        '</div>';
+    }
+    track.innerHTML = html;
+  }
+
   function syncEditorials(){
     if(typeof edData==='undefined') return;
     fetchAll('/editorials',apiEditorialToLocal,function(apiEds){
@@ -464,69 +513,16 @@ window._papFilmAutoPlay = function(){
         _populateEdDetailsFromApi(e);
       });
 
-      // 2. Reconcile the home grid with the API.
-      //    The grid is HARDCODED in index.html (one <div.ed-row-card>
-      //    per editorial) — the static markup is built at deploy time.
-      //    For each API editorial:
-      //      • If a static card with the same title already exists,
-      //        UPDATE that card in place so admin edits (changed
-      //        thumbnail, new title casing, new date) actually render.
-      //        Without this, edits saved in admin appeared in the DB
-      //        but the home page kept showing the static snapshot.
-      //      • If no static card matches, PREPEND a fresh card so
-      //        brand-new admin uploads still surface on the home page.
-      var track = document.querySelector('.ed-row-track');
-      if(track){
-        // Build an index from lowercase title → existing static card
-        // so we can update-in-place instead of duplicating.
-        var staticCardByTitle = {};
-        track.querySelectorAll('.ed-row-card').forEach(function(c){
-          var t = (c.querySelector('.ed-row-card-title')||{}).textContent || '';
-          var k = t.trim().toLowerCase();
-          if(k) staticCardByTitle[k] = c;
-        });
-        // Walk in reverse so the first item in apiEds (newest) ends
-        // up first in the DOM after a chain of insertBefore calls.
-        for(var i=apiEds.length-1; i>=0; i--){
-          var e = apiEds[i];
-          var key = (e.title||'').trim().toLowerCase();
-          if(!key) continue;
-          if(!e.img) continue; // a thumbnail-less card would render broken
-
-          var safeTitle = (e.title||'').replace(/"/g, '&quot;');
-          var safeImg   = (e.img||'').replace(/"/g, '&quot;');
-          var dateLabel = e.date ? (e.date.split('T')[0]) : '';
-          var catLabel = 'EDITORIAL' + (dateLabel ? (' - ' + dateLabel) : '');
-          var existing = staticCardByTitle[key];
-          if(existing){
-            // UPDATE in place — keeps DOM order stable so the home
-            // grid layout doesn't reshuffle on every refresh.
-            var existingImg = existing.querySelector('.ed-row-card-img img');
-            if(existingImg){
-              existingImg.setAttribute('src', safeImg);
-              existingImg.setAttribute('alt', safeTitle);
-            }
-            existing.setAttribute('onclick', 'openEditorial("'+safeTitle+'","'+safeImg+'")');
-            existing.setAttribute('data-tags', Array.isArray(e.tags) ? e.tags.join(',') : '');
-            existing.setAttribute('data-api-synced', '1');
-            var catEl = existing.querySelector('.ed-row-card-cat');
-            if(catEl) catEl.textContent = catLabel;
-            var titleEl = existing.querySelector('.ed-row-card-title');
-            if(titleEl) titleEl.textContent = (e.title||'').toUpperCase();
-          } else {
-            // PREPEND new card.
-            var card = document.createElement('div');
-            card.className = 'ed-row-card';
-            card.setAttribute('data-tags', Array.isArray(e.tags) ? e.tags.join(',') : '');
-            card.setAttribute('data-api-injected', '1');
-            card.setAttribute('onclick', 'openEditorial("'+safeTitle+'","'+safeImg+'")');
-            card.innerHTML =
-              '<div class="ed-row-card-img"><img loading="lazy" src="'+safeImg+'" alt="'+safeTitle+'" onerror="if(window.edImgError)edImgError(this)"></div>' +
-              '<div class="ed-row-card-info"><div class="ed-row-card-cat">'+catLabel+'</div><div class="ed-row-card-title">'+(e.title||'').toUpperCase()+'</div></div>';
-            track.insertBefore(card, track.firstChild);
-          }
-        }
-      }
+      // 2. Re-render the "최신 에디토리얼" row from scratch.
+      //    Previously this code merged API editorials into the static HTML
+      //    (update existing cards by title, prepend new ones). That left
+      //    cards in their original hardcoded order, so a brand-new admin
+      //    upload could still appear AFTER older editorials simply because
+      //    the static snapshot put it later. Now we always rebuild the row
+      //    fresh from edData (sorted by published_date desc, top 12), which
+      //    means the home page always reflects the actual chronology of
+      //    what's in the DB.
+      _renderLatestRow();
 
       // 3. If the all-editorials overlay has already built itself,
       //    rebuild it so it reflects the merged edData too.
