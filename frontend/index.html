@@ -446,12 +446,16 @@
      when the API returns empty, so the launch period before there's
      activity still looks intentional. -->
 <style>
-  /* Flat --pap-red — matches every other brand-red surface (auth buttons,
-     COMMUNITY nav label, membership badge). An earlier iteration layered
-     a ::before radial gradient for "depth", but the white highlight side
-     tinted the perceived colour noticeably pinker than the brand red,
-     breaking parity with adjacent buttons. Flat colour wins on consistency. */
-  .community-cta { position: relative; padding: 56px 32px; background: var(--pap-red); overflow: hidden; }
+  /* Background uses --pap-red-hover (~20% darker than --pap-red) on
+     purpose. Brand-red as a small text fill (COMMUNITY nav label,
+     membership badge) renders as deep red, but the SAME #891717 spread
+     across this banner-sized field is perceived noticeably lighter
+     (Helmholtz-Kohlrausch / area-effect — large fields read brighter
+     than small ones at identical RGB). Stepping the banner one shade
+     darker matches it perceptually with the smaller brand-red surfaces
+     elsewhere on the page. The literal --pap-red token stays unchanged
+     for places that compare visually to small swatches. */
+  .community-cta { position: relative; padding: 56px 32px; background: var(--pap-red-hover); overflow: hidden; }
   .community-cta-link {
     position: relative; z-index: 1;
     display: grid;
