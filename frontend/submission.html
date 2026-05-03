@@ -978,6 +978,7 @@ function navigateWithInterstitial(url){
 <div class="footer-legal" id="footerLegal"></div>
 
 <script src="/pap-api.js?v=3" defer></script>
+<script src="/pap-name-validator.js?v=1" defer></script>
 <script src="submission-terms.js?v=1"></script>
 <script>
 var lookCount=0;
@@ -2169,6 +2170,19 @@ async function submitForm(){
     return;
   }
   err.style.display='none';
+
+  // Name-only check (English alphabet/digits/space/. - ' for editorial title,
+  // studio name, team member names, model names, brand names).
+  if(typeof window._papHasInvalidNameField === 'function' && window._papHasInvalidNameField()){
+    var lang = (localStorage.getItem('pap-lang') || 'ko');
+    var msg = (lang === 'en')
+      ? 'Name fields accept English letters, digits, space, . - \' only'
+      : '이름 칸은 영문(A–Z, a–z), 숫자, 공백, . - \' 만 입력 가능합니다';
+    if(typeof PAP !== 'undefined' && PAP.ui) PAP.ui.toast(msg, 'error');
+    var first = document.querySelector('input[data-name-invalid="1"]');
+    if(first) first.scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
 
   // Count total images (look + additional) — enforce minimum 4
   var totalLookImages=0;

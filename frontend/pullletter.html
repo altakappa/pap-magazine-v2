@@ -546,6 +546,7 @@ function navigateWithInterstitial(url){
 <div class="footer-legal" id="footerLegal"></div>
 
 <script src="/pap-api.js?v=3" defer></script>
+<script src="/pap-name-validator.js?v=1" defer></script>
 <script>
 var L = {
 ko:{
@@ -709,6 +710,7 @@ function _getValText(key,fallback){
     noFiles:{ko:'무드보드 파일을 1개 이상 업로드해주세요',en:'Please upload at least one mood board file',it:'Carica almeno un file mood board',fr:'Veuillez télécharger au moins un fichier mood board',es:'Cargue al menos un archivo de mood board',ja:'ムードボードファイルを1つ以上アップロードしてください',zh:'请至少上传一个情绪板文件',ru:'Загрузите хотя бы один файл мудборда'},
     noProposal:{ko:'촬영시안 PDF를 첨부해주세요',en:'Please attach the shoot proposal PDF',it:'Allega il PDF della proposta di shooting',fr:'Veuillez joindre le PDF de la proposition de shoot',es:'Adjunte el PDF de la propuesta de shoot',ja:'撮影シアン PDF を添付してください',zh:'请附上拍摄方案 PDF',ru:'Прикрепите PDF с предложением по съёмке'},
     proposalNotPdf:{ko:'PDF 형식의 파일만 업로드 가능합니다',en:'Only PDF files are accepted',it:'Sono accettati solo file PDF',fr:'Seuls les fichiers PDF sont acceptés',es:'Solo se aceptan archivos PDF',ja:'PDFファイルのみアップロード可能です',zh:'只接受 PDF 文件',ru:'Принимаются только PDF-файлы'},
+    nameOnlyInvalid:{ko:'이름 칸은 영문(A–Z, a–z), 숫자, 공백, . - \' 만 입력 가능합니다',en:'Name fields accept English letters, digits, space, . - \' only',it:'I campi nome accettano solo lettere inglesi, cifre, spazio, . - \'',fr:'Les champs nom n\'acceptent que les lettres anglaises, chiffres, espace, . - \'',es:'Los campos de nombre solo aceptan letras inglesas, dígitos, espacio, . - \'',ja:'名前欄は英字 (A–Z, a–z)・数字・空白・. - \' のみ入力可能です',zh:'姓名栏仅接受英文字母、数字、空格、. - \'',ru:'В полях имени допустимы только латинские буквы, цифры, пробел, . - \''},
     premiumRequired:{ko:'Premium 구독 회원만 이용할 수 있는 기능입니다',en:'This feature is available only for Premium subscribers',it:'Funzione disponibile solo per abbonati Premium',fr:'Fonctionnalité réservée aux abonnés Premium',es:'Función disponible solo para suscriptores Premium',ja:'Premium会員限定の機能です',zh:'此功能仅限Premium订阅用户使用',ru:'Функция доступна только для подписчиков Premium'}
   };
   var m=msgs[key];if(!m) return fallback||'';
@@ -794,6 +796,13 @@ async function submitFL(){
     var pErr2=document.getElementById('err-proposal');
     if(pErr2){pErr2.textContent=_getValText('proposalNotPdf');pErr2.classList.add('visible');}
     valid=false;
+  }
+
+  // Name-only check (English alphabet/digits/space/. - ' for name fields)
+  if(typeof window._papHasInvalidNameField === 'function' && window._papHasInvalidNameField(document.getElementById('flForm'))){
+    PAP.ui.toast(_getValText('nameOnlyInvalid'),'error');
+    valid=false;
+    if(!firstErr) firstErr=document.querySelector('input[data-name-invalid="1"]');
   }
 
   if(!valid){
