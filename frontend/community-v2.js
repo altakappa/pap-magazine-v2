@@ -1085,9 +1085,122 @@ window.openMoodboard = function(boardId){
         html += '</div>';
       });
       html += '</div>';
+
+      // Comment thread — list + input. Loaded asynchronously after the
+      // detail body is mounted so the modal opens immediately.
+      html += '<div class="md-comments-section" data-board-id="'+b.id+'">';
+      html += '  <h3 class="md-comments-title">'+(lang==='ko'?'댓글':'Comments')+'</h3>';
+      html += '  <div class="md-comments-list" id="mdCommentsList">'
+            +    '<div style="color:rgba(255,255,255,.4);font-size:12px;padding:10px 0">'+(lang==='ko'?'댓글 불러오는 중...':'Loading comments...')+'</div>'
+            +  '</div>';
+      html += '  <div class="md-comment-input-row">';
+      html += '    <input type="text" class="md-comment-input" id="mdCommentInput" maxlength="2000" placeholder="'+(lang==='ko'?'이 보드에 대한 생각을 남겨보세요...':'Leave a thought about this board...')+'" onkeypress="if(event.key===\'Enter\')submitMoodboardComment(\''+b.id+'\')">';
+      html += '    <button class="md-comment-send" onclick="submitMoodboardComment(\''+b.id+'\')">'+(lang==='ko'?'등록':'Post')+'</button>';
+      html += '  </div>';
+      html += '</div>';
+
       body.innerHTML = html;
       ov.classList.add('active');
+      loadMoodboardComments(b.id);
     }).catch(function(){ showToast('Failed to load board'); });
+};
+
+// Load comments for a mood board — public read (no auth needed)
+window.loadMoodboardComments = function(boardId){
+  var listEl = document.getElementById('mdCommentsList');
+  if(!listEl) return;
+  fetch('/api/community/moodboard-comments?boardId=' + encodeURIComponent(boardId), { credentials:'include' })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      var comments = (data && data.comments) || [];
+      _renderMoodboardComments(comments);
+    }).catch(function(){
+      listEl.innerHTML = '<div style="color:rgba(255,255,255,.4);font-size:12px;padding:10px 0">Failed to load comments</div>';
+    });
+};
+
+function _renderMoodboardComments(comments){
+  var listEl = document.getElementById('mdCommentsList');
+  if(!listEl) return;
+  if(!comments || comments.length === 0){
+    listEl.innerHTML = '<div class="md-comments-empty" style="color:rgba(255,255,255,.4);font-size:12px;padding:10px 0">'+(lang==='ko'?'아직 댓글이 없어요. 첫 댓글을 남겨보세요.':'No comments yet. Be the first.')+'</div>';
+    return;
+  }
+  var html = '';
+  var myId = (typeof SB !== 'undefined' && SB.user) ? SB.user.id : null;
+  comments.forEach(function(c){
+    var name = (c.author && c.author.name) || 'User';
+    var initials = name.split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase();
+    var timeStr = (typeof timeAgo === 'function') ? timeAgo(c.createdAt) : '';
+    var canDelete = myId && c.author && c.author.id === myId;
+    html += '<div class="md-comment" data-id="'+c.id+'">';
+    html += '  <div class="md-comment-av">'+initials+'</div>';
+    html += '  <div class="md-comment-body">';
+    html += '    <div class="md-comment-meta"><strong>'+escHtml(name)+'</strong> <span class="md-comment-time">'+timeStr+'</span>'
+          + (canDelete ? '<button class="md-comment-del" onclick="deleteMoodboardComment(\''+c.id+'\')" title="Delete">×</button>' : '')
+          + '</div>';
+    html += '    <div class="md-comment-content">'+escHtml(c.content)+'</div>';
+    html += '  </div>';
+    html += '</div>';
+  });
+  listEl.innerHTML = html;
+}
+
+window.submitMoodboardComment = function(boardId){
+  if(!_canActLocal()) return;
+  var input = document.getElementById('mdCommentInput');
+  if(!input) return;
+  var content = input.value.trim();
+  if(!content) return;
+  input.value = '';
+
+  fetch('/api/community/moodboard-comments', {
+    method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+    body: JSON.stringify({ boardId: boardId, content: content }),
+  }).then(function(r){ return r.json().then(function(j){ return { ok:r.ok, j:j }; }); })
+    .then(function(out){
+      if(!out.ok){ showToast(out.j.message || 'Failed'); input.value = content; return; }
+      // Append the new comment without reloading everything
+      var listEl = document.getElementById('mdCommentsList');
+      if(!listEl) return;
+      var emptyEl = listEl.querySelector('.md-comments-empty');
+      if(emptyEl) listEl.innerHTML = '';
+      var c = out.j.comment;
+      var name = (c.author && c.author.name) || 'You';
+      var initials = name.split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase();
+      var timeStr = (typeof timeAgo === 'function') ? timeAgo(c.createdAt) : '';
+      var html = '<div class="md-comment" data-id="'+c.id+'">'
+        + '<div class="md-comment-av">'+initials+'</div>'
+        + '<div class="md-comment-body">'
+        + '  <div class="md-comment-meta"><strong>'+escHtml(name)+'</strong> <span class="md-comment-time">'+timeStr+'</span>'
+        + '    <button class="md-comment-del" onclick="deleteMoodboardComment(\''+c.id+'\')" title="Delete">×</button>'
+        + '  </div>'
+        + '  <div class="md-comment-content">'+escHtml(c.content)+'</div>'
+        + '</div></div>';
+      listEl.insertAdjacentHTML('beforeend', html);
+    }).catch(function(){
+      showToast('Failed to post comment');
+      input.value = content;
+    });
+};
+
+window.deleteMoodboardComment = function(commentId){
+  if(!confirm(lang==='ko'?'댓글을 삭제할까요?':'Delete this comment?')) return;
+  fetch('/api/community/moodboard-comments?id=' + encodeURIComponent(commentId), {
+    method:'DELETE', credentials:'include',
+  }).then(function(r){
+    if(r.ok){
+      var el = document.querySelector('.md-comment[data-id="'+commentId+'"]');
+      if(el) el.remove();
+      var listEl = document.getElementById('mdCommentsList');
+      if(listEl && !listEl.querySelector('.md-comment')){
+        // Show empty state again
+        listEl.innerHTML = '<div class="md-comments-empty" style="color:rgba(255,255,255,.4);font-size:12px;padding:10px 0">'+(lang==='ko'?'아직 댓글이 없어요. 첫 댓글을 남겨보세요.':'No comments yet. Be the first.')+'</div>';
+      }
+    } else {
+      showToast('Failed to delete');
+    }
+  }).catch(function(){ showToast('Failed to delete'); });
 };
 
 // ── 4.7 Team Tags rendering helper (The Dots-style) ──

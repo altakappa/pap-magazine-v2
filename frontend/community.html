@@ -988,11 +988,31 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
 .md-item { break-inside: avoid; margin-bottom: 16px; border-radius: var(--radius); overflow: hidden; background: rgba(255,255,255,.06); }
 .md-item img { width: 100%; display: block; }
 .md-cap { padding: 8px 12px; font-size: 12px; color: rgba(255,255,255,.6); }
+/* Mood board comment thread (mission C — light conversation primitive) */
+.md-comments-section { max-width: 760px; margin: 0 auto 60px; padding: 0 40px; }
+.md-comments-title { font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(255,255,255,.55); margin-bottom: 18px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,.08); }
+.md-comments-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 18px; }
+.md-comment { display: flex; gap: 12px; align-items: flex-start; }
+.md-comment-av { width: 32px; height: 32px; border-radius: 50%; background: rgba(255,255,255,.08); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: rgba(255,255,255,.7); flex-shrink: 0; }
+.md-comment-body { flex: 1; min-width: 0; }
+.md-comment-meta { display: flex; align-items: center; gap: 10px; font-size: 12px; color: rgba(255,255,255,.55); margin-bottom: 4px; }
+.md-comment-meta strong { color: rgba(255,255,255,.85); font-weight: 600; }
+.md-comment-time { color: rgba(255,255,255,.35); font-size: 11px; }
+.md-comment-content { font-size: 14px; line-height: 1.55; color: rgba(255,255,255,.85); white-space: pre-wrap; word-break: break-word; }
+.md-comment-del { margin-left: auto; background: none; border: none; color: rgba(255,255,255,.3); font-size: 16px; cursor: pointer; line-height: 1; padding: 0 4px; transition: color .15s; }
+.md-comment-del:hover { color: rgba(255,107,107,.8); }
+.md-comment-input-row { display: flex; gap: 10px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.08); }
+.md-comment-input { flex: 1; padding: 10px 14px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.04); border-radius: 6px; color: #f5f5f7; font-size: 13px; font-family: Montserrat,sans-serif; outline: none; }
+.md-comment-input:focus { border-color: rgba(255,255,255,.3); background: rgba(255,255,255,.06); }
+.md-comment-send { padding: 10px 18px; background: rgba(255,255,255,.12); border: none; color: #f5f5f7; font-size: 12px; font-weight: 600; letter-spacing: .04em; cursor: pointer; border-radius: 6px; transition: background .15s; }
+.md-comment-send:hover { background: rgba(255,255,255,.2); }
+
 @media (max-width: 900px){
   .md-head { padding: 24px 20px 16px; }
   .md-title { font-size: 24px; }
   .md-items { columns: 2; column-gap: 10px; padding: 16px 20px 60px; }
   .md-item { margin-bottom: 10px; }
+  .md-comments-section { padding: 0 20px; }
 }
 
 /* Onboarding modal (mission E — first-visit tour for new community members) */
