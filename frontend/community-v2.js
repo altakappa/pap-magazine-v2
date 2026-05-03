@@ -602,9 +602,52 @@ window.loadMoodboards = function(){
     });
 };
 
-window.createMoodboard = function(){
+// Moodboard create — supports `inspiredById` to chain off another board.
+// Items are entered as one image URL per line in a textarea.
+window.createMoodboard = function(inspiredById){
   if(!alertLogin()) return;
-  showToast(lang==='ko'?'무드보드 생성 기능은 곧 제공됩니다':'Moodboard creation coming soon');
+  var bg = document.getElementById('createMoodboardBg');
+  if(!bg) return;
+  document.getElementById('cmTitle').value = '';
+  document.getElementById('cmDescription').value = '';
+  document.getElementById('cmTags').value = '';
+  document.getElementById('cmImages').value = '';
+  document.getElementById('cmInspiredId').value = inspiredById || '';
+  var inspiredHint = document.getElementById('cmInspiredHint');
+  if(inspiredHint){
+    inspiredHint.style.display = inspiredById ? '' : 'none';
+  }
+  bg.classList.add('active');
+};
+window.closeCreateMoodboard = function(){
+  var bg = document.getElementById('createMoodboardBg');
+  if(bg) bg.classList.remove('active');
+};
+window.submitMoodboard = function(){
+  var title = (document.getElementById('cmTitle').value||'').trim();
+  if(!title){ showToast(lang==='ko'?'제목을 입력하세요':'Enter a title'); return; }
+  var description = (document.getElementById('cmDescription').value||'').trim();
+  var tagsRaw = (document.getElementById('cmTags').value||'').trim();
+  var imagesRaw = (document.getElementById('cmImages').value||'').trim();
+  var inspiredById = (document.getElementById('cmInspiredId').value||'').trim();
+
+  var tags = tagsRaw ? tagsRaw.split(',').map(function(t){ return t.trim(); }).filter(Boolean) : [];
+  var items = imagesRaw
+    ? imagesRaw.split('\n').map(function(u){ return u.trim(); }).filter(Boolean).map(function(u){ return { imageUrl: u }; })
+    : [];
+
+  var body = { title: title, description: description, tags: tags, items: items };
+  if(inspiredById) body.inspiredById = inspiredById;
+
+  fetch('/api/community/moodboards', {
+    method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
+    body: JSON.stringify(body),
+  }).then(function(r){ return r.json().then(function(j){ return { ok:r.ok, j:j }; }); })
+    .then(function(out){
+      if(!out.ok){ showToast(out.j.message || 'Failed'); return; }
+      closeCreateMoodboard();
+      if(typeof loadMoodboards === 'function') loadMoodboards();
+    }).catch(function(){ showToast('Failed to create'); });
 };
 
 window.voteMoodboard = function(boardId, btn){
@@ -704,8 +747,11 @@ window.loadMoodboards = function(channel){
         }
         html += '</div>';
         html += '<div class="mood-caption"><div class="mood-title">'+escHtml(b.title)+'</div>';
+        if(b.inspiredById){
+          html += '<span class="mood-tag" title="Inspired by another board" style="background:rgba(255,255,255,.12)">✨ '+(L[lang]&&L[lang].moodInspiredBy||'Inspired')+'</span> ';
+        }
         if(b.channel) html += '<span class="mood-tag">'+escHtml(b.channel)+'</span> ';
-        html += '<span style="font-size:11px;color:var(--text3)">'+escHtml(b.blockCount||0)+' blocks</span></div>';
+        html += '<span style="font-size:11px;color:var(--text3)">'+escHtml(b.itemCount||0)+' items</span></div>';
         html += '<div class="mood-footer"><button class="mood-vote-btn" onclick="event.stopPropagation();voteMoodboard(\''+b.id+'\',this)">♥ '+b.voteCount+'</button>';
         if(b.tags && b.tags.length > 0){
           html += '<div class="mood-tags">'+b.tags.slice(0,3).map(function(t){return '<span class="mood-tag">'+escHtml(t)+'</span>';}).join('')+'</div>';
@@ -787,16 +833,48 @@ window.loadMembershipTier = function(){
 };
 
 // ── 4.6b Open Moodboard detail ──
+// Fetches the board (items + inspired_by ancestor) and renders into the
+// moodboard detail overlay. Includes Editorial bridge (mission 5) and
+// Pull-letter request (separate PR) entry points.
 window.openMoodboard = function(boardId){
-  showToast('Moodboard detail view coming soon');
-  // Future: fetch board detail and display overlay
-  fetch('/api/community/moodboards/' + boardId, { credentials: 'include' })
+  fetch('/api/community/moodboards?id=' + encodeURIComponent(boardId), { credentials:'include' })
     .then(function(r){ return r.json(); })
-    .then(function(data){
-      if(data && data.title){
-        showToast('Viewing: ' + data.title);
+    .then(function(b){
+      if(!b || !b.title){ showToast('Board not found'); return; }
+      var ov = document.getElementById('moodDetailOverlay');
+      if(!ov) return;
+      var body = document.getElementById('moodDetailBody');
+      var html = '';
+      html += '<div class="md-head">';
+      html += '<h2 class="md-title">'+escHtml(b.title)+'</h2>';
+      html += '<div class="md-meta">'+escHtml(b.author && b.author.name || '')+' · '+(b.items?b.items.length:0)+' items · ♥ '+(b.voteCount||0)+'</div>';
+      if(b.inspiredBy){
+        html += '<div class="md-inspired" onclick="closeMoodDetail();openMoodboard(\''+b.inspiredBy.id+'\')" style="cursor:pointer">';
+        html += '✨ '+(L[lang]&&L[lang].moodInspiredByLabel||'Inspired by')+' '+escHtml(b.inspiredBy.title)+(b.inspiredBy.authorName?(' — '+escHtml(b.inspiredBy.authorName)):'');
+        html += '</div>';
       }
-    }).catch(function(){});
+      if(b.description) html += '<p class="md-desc">'+escHtml(b.description)+'</p>';
+      if(b.tags && b.tags.length){
+        html += '<div class="md-tags">'+b.tags.map(function(t){return '<span class="mood-tag">'+escHtml(t)+'</span>';}).join('')+'</div>';
+      }
+      // Action buttons row (inspired-by chain, editorial bridge).
+      // Pull-letter button is added by PR B (premium-only feature).
+      html += '<div class="md-actions" id="mdActions">';
+      html += '<button class="md-action-btn" onclick="createMoodboard(\''+b.id+'\')">✨ '+(L[lang]&&L[lang].moodInspireBtn||'이 보드에서 영감받기')+'</button>';
+      html += '<button class="md-action-btn" onclick="bridgeToEditorial(\''+b.id+'\')">📸 '+(L[lang]&&L[lang].moodEditorialBtn||'에디토리얼로 제안')+'</button>';
+      html += '</div>';
+      html += '</div>';
+      // Items grid
+      html += '<div class="md-items">';
+      (b.items||[]).forEach(function(it){
+        html += '<div class="md-item"><img src="'+escHtml(it.imageUrl)+'" alt="" loading="lazy">';
+        if(it.caption) html += '<div class="md-cap">'+escHtml(it.caption)+'</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+      body.innerHTML = html;
+      ov.classList.add('active');
+    }).catch(function(){ showToast('Failed to load board'); });
 };
 
 // ── 4.7 Team Tags rendering helper (The Dots-style) ──
@@ -813,6 +891,107 @@ window.renderTeamTags = function(team){
   }
   html += '</div>';
   return html;
+};
+
+window.closeMoodDetail = function(){
+  var ov = document.getElementById('moodDetailOverlay');
+  if(ov) ov.classList.remove('active');
+};
+
+// ── Mission 5: Editorial bridge ─────────────────────────────────────────
+// Sends the user to /submission.html with the moodboard ID prefilled.
+// submission.html reads ?moodboard= and pulls the board's images/title to
+// pre-fill the form so the member doesn't re-enter context they already
+// captured in the moodboard.
+window.bridgeToEditorial = function(boardId){
+  if(!alertLogin()) return;
+  window.location.href = '/submission.html?moodboard=' + encodeURIComponent(boardId);
+};
+
+// ── 4.7 SCRAPBOOK — personal visual collection (web-native curation) ──
+// Lightweight masonry grid. Loads caller's own scrapbook by default; pass
+// userId to view someone else's. Public-readable, owner-mutable.
+window.loadScraps = function(userId){
+  var grid = document.getElementById('scrapGrid');
+  if(!grid) return;
+  var url = '/api/community/scraps';
+  if(userId) url += '?userId=' + encodeURIComponent(userId);
+  fetch(url, { credentials:'include' })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      var scraps = (data && data.scraps) || [];
+      if(scraps.length === 0){
+        grid.innerHTML = '<div style="text-align:center;padding:60px 20px;color:var(--text4);grid-column:1/-1"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin-bottom:12px;opacity:.4"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg><p style="font-size:12px">'+(L[lang]&&L[lang].scrapEmpty||'No scraps yet')+'</p></div>';
+        return;
+      }
+      var canEdit = !userId || (SB.user && userId === SB.user.id);
+      var html = '';
+      scraps.forEach(function(s){
+        html += '<div class="scrap-card" data-id="'+s.id+'">';
+        var img = '<img src="'+escHtml(s.imageUrl)+'" alt="" loading="lazy" onerror="this.style.opacity=\'.3\'">';
+        if(s.sourceUrl){
+          html += '<a href="'+escHtml(s.sourceUrl)+'" target="_blank" rel="noopener noreferrer">'+img+'</a>';
+        } else {
+          html += img;
+        }
+        if(s.note) html += '<div class="scrap-note">'+escHtml(s.note)+'</div>';
+        if(canEdit) html += '<button class="scrap-del" title="Delete" onclick="deleteScrap(\''+s.id+'\',this)">×</button>';
+        html += '</div>';
+      });
+      grid.innerHTML = html;
+    }).catch(function(){
+      grid.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text4);font-size:12px;grid-column:1/-1">Failed to load scraps</div>';
+    });
+};
+
+window.openAddScrap = function(){
+  if(typeof alertLogin === 'function' && !alertLogin()) return;
+  var bg = document.getElementById('addScrapBg');
+  if(!bg) return;
+  document.getElementById('addScrapImage').value = '';
+  document.getElementById('addScrapNote').value = '';
+  document.getElementById('addScrapSource').value = '';
+  bg.classList.add('active');
+};
+
+window.closeAddScrap = function(){
+  var bg = document.getElementById('addScrapBg');
+  if(bg) bg.classList.remove('active');
+};
+
+window.submitScrap = function(){
+  var imageUrl = (document.getElementById('addScrapImage').value || '').trim();
+  var note     = (document.getElementById('addScrapNote').value || '').trim();
+  var src      = (document.getElementById('addScrapSource').value || '').trim();
+  if(!imageUrl){
+    showToast(lang==='ko'?'이미지 URL을 입력하세요':'Enter an image URL');
+    return;
+  }
+  fetch('/api/community/scraps', {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    credentials:'include',
+    body: JSON.stringify({ imageUrl: imageUrl, note: note || null, sourceUrl: src || null, sourceType: src ? 'external' : 'upload' }),
+  }).then(function(r){ return r.json().then(function(j){ return { ok:r.ok, j:j }; }); })
+    .then(function(out){
+      if(!out.ok){ showToast(out.j.message || 'Failed to save'); return; }
+      closeAddScrap();
+      loadScraps();
+    }).catch(function(){ showToast('Failed to save'); });
+};
+
+window.deleteScrap = function(id, btn){
+  if(!confirm((L[lang]&&L[lang].scrapDelConfirm)||'Delete?')) return;
+  fetch('/api/community/scraps?id='+encodeURIComponent(id), {
+    method:'DELETE', credentials:'include',
+  }).then(function(r){
+    if(r.ok){
+      var card = btn && btn.closest('.scrap-card');
+      if(card) card.remove();
+    } else {
+      showToast('Failed to delete');
+    }
+  }).catch(function(){ showToast('Failed to delete'); });
 };
 
 // ======================================================================

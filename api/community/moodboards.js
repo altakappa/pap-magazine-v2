@@ -1,7 +1,8 @@
 /**
- * GET  /api/community/moodboards — List mood boards (?userId= or trending)
- * POST /api/community/moodboards — Create mood board
- * POST /api/community/moodboards?action=vote&boardId= — Vote on mood board
+ * GET  /api/community/moodboards                  — List mood boards (?userId=, ?sort=, ?page=)
+ * GET  /api/community/moodboards?id=...           — Single board detail (with items + inspired_by ancestor)
+ * POST /api/community/moodboards                  — Create mood board (body: title, description, tags, items, inspiredById?)
+ * POST /api/community/moodboards?action=vote&boardId= — Toggle vote on mood board
  */
 
 const { supabaseAdmin } = require('../_lib/supabase');
@@ -13,8 +14,46 @@ module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
   if (rateLimit(req, res, RATE_LIMITS.api)) return;
 
-  // ── GET: List mood boards ──
+  // ── GET: detail or list ──
   if (req.method === 'GET') {
+    // Single board detail
+    if (req.query.id) {
+      try {
+        const { data: board, error } = await supabaseAdmin
+          .from('community_mood_boards')
+          .select('*, profiles!inner(name, avatar_url), items:community_mood_board_items(id, image_url, caption, sort_order)')
+          .eq('id', req.query.id)
+          .maybeSingle();
+        if (error) throw error;
+        if (!board) return res.status(404).json({ message: 'Not found' });
+
+        let inspiredBy = null;
+        if (board.inspired_by_id) {
+          const { data: parent } = await supabaseAdmin
+            .from('community_mood_boards')
+            .select('id, title, user_id, profiles!inner(name)')
+            .eq('id', board.inspired_by_id)
+            .maybeSingle();
+          if (parent) inspiredBy = { id: parent.id, title: parent.title, authorName: parent.profiles && parent.profiles.name };
+        }
+
+        return res.status(200).json({
+          id: board.id,
+          title: board.title,
+          description: board.description,
+          tags: board.tags,
+          voteCount: board.vote_count,
+          createdAt: board.created_at,
+          author: { id: board.user_id, name: board.profiles && board.profiles.name, avatarUrl: board.profiles && board.profiles.avatar_url },
+          items: (board.items || []).sort((a, c) => a.sort_order - c.sort_order).map(i => ({ id: i.id, imageUrl: i.image_url, caption: i.caption })),
+          inspiredBy,
+        });
+      } catch (error) {
+        console.error('Get moodboard detail error:', error);
+        return res.status(500).json({ message: 'Failed to fetch board' });
+      }
+    }
+
     try {
       const { userId, sort = 'recent', page = 1 } = req.query;
       const perPage = 20;
@@ -47,6 +86,7 @@ module.exports = async function handler(req, res) {
           previewImages: (b.items || []).sort((a, c) => a.sort_order - c.sort_order).slice(0, 4).map(i => i.image_url),
           itemCount: (b.items || []).length,
           createdAt: b.created_at,
+          inspiredById: b.inspired_by_id || null,
           author: { id: b.user_id, name: b.profiles?.name, avatarUrl: b.profiles?.avatar_url },
         })),
         total: count,
@@ -91,12 +131,15 @@ module.exports = async function handler(req, res) {
 
     // Create mood board
     try {
-      const { title, description, tags, items } = req.body;
+      const { title, description, tags, items, inspiredById } = req.body;
       if (!title) return res.status(400).json({ message: 'Title is required' });
+
+      const insertRow = { user_id: user.id, title, description: description || '', tags: tags || [] };
+      if (inspiredById) insertRow.inspired_by_id = inspiredById;
 
       const { data: board, error } = await supabaseAdmin
         .from('community_mood_boards')
-        .insert({ user_id: user.id, title, description: description || '', tags: tags || [] })
+        .insert(insertRow)
         .select()
         .single();
 
