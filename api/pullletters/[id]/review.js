@@ -21,29 +21,44 @@ module.exports = async function handler(req, res) {
 
   try {
     const { id } = req.query;
-    const { status, reviewNote } = req.body;
+    const { status, reviewNote, pullLetterPath } = req.body;
 
-    if (!status || !['accepted', 'rejected'].includes(status)) {
-      return res.status(400).json({ message: 'Status must be "accepted" or "rejected"' });
+    // 'issued' added for the community-flow PDF deliverable. Existing
+    // 'accepted'/'rejected' still work for legacy multipart requests.
+    if (!status || !['accepted', 'approved', 'rejected', 'issued'].includes(status)) {
+      return res.status(400).json({ message: 'Status must be one of: accepted, approved, rejected, issued' });
+    }
+
+    const update = {
+      status,
+      admin_notes: reviewNote || '',
+      reviewed_by: admin.id,
+      reviewed_at: new Date().toISOString(),
+    };
+    if (status === 'issued') {
+      update.issued_at = new Date().toISOString();
+      if (pullLetterPath) update.pull_letter_url = pullLetterPath;
+    } else if (typeof pullLetterPath === 'string') {
+      // Allow attaching the PDF on approval too (pre-issue), optional.
+      update.pull_letter_url = pullLetterPath;
     }
 
     const { data: pullLetter, error } = await supabaseAdmin
       .from('pullletters')
-      .update({
-        status,
-        admin_notes: reviewNote || '',
-      })
+      .update(update)
       .eq('id', id)
       .select()
       .single();
 
     if (error) throw error;
 
-    // Send notification email (non-blocking)
+    // Send notification email (non-blocking). 'issued' uses the accepted
+    // template until a dedicated 'issued' template is added.
     const { data: profile } = await supabaseAdmin
       .from('profiles').select('email, name').eq('id', pullLetter.user_id).single();
     if (profile) {
-      const tpl = status === 'accepted'
+      const isPositive = status === 'accepted' || status === 'approved' || status === 'issued';
+      const tpl = isPositive
         ? templates.pullletterAccepted({ name: profile.name }, reviewNote)
         : templates.pullletterRejected({ name: profile.name }, reviewNote);
       sendEmail(profile.email, tpl).catch(() => {});
