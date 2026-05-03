@@ -14,6 +14,7 @@ Run these SQL files in Supabase Dashboard > SQL Editor, in this exact order:
 | 6 | `../frontend/js/supabase-schema-community.sql` | Community tables: posts, comments, likes, views, checkins, projects, applications (depends on profiles from step 1) |
 | 9 | `009_community_v3_playground.sql` | Community playground primitives: scraps table + mood_boards.inspired_by_id |
 | 10 | `010_pullletters_extend.sql` | Extends existing `pullletters` table with moodboard linkage + private storage bucket for issued PDFs |
+| 11 | `011_pullletters_proposal_team.sql` | Adds `team_info` JSONB + `proposal_pdf_url` for the formal 촬영시안 + team-credits flow |
 
 ## Skip List
 

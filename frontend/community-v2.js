@@ -885,16 +885,13 @@ window.openMoodboard = function(boardId){
       if(b.tags && b.tags.length){
         html += '<div class="md-tags">'+b.tags.map(function(t){return '<span class="mood-tag">'+escHtml(t)+'</span>';}).join('')+'</div>';
       }
-      // Action buttons row (inspired-by chain, editorial bridge, pull-letter).
-      // Pull-letter is premium-only; non-premium users still see the button
-      // but get an upsell instead of the form.
-      var ownsBoard = SB.user && b.author && b.author.id === SB.user.id;
+      // Action buttons row (inspired-by chain, editorial bridge).
+      // Pull-letter intentionally NOT here — community moodboards are for
+      // expressing personal aesthetic; pull-letter is a separate formal flow
+      // at /pullletter.html that requires team info + 촬영시안 PDF.
       html += '<div class="md-actions" id="mdActions">';
       html += '<button class="md-action-btn" onclick="createMoodboard(\''+b.id+'\')">✨ '+(L[lang]&&L[lang].moodInspireBtn||'이 보드에서 영감받기')+'</button>';
       html += '<button class="md-action-btn" onclick="bridgeToEditorial(\''+b.id+'\')">📸 '+(L[lang]&&L[lang].moodEditorialBtn||'에디토리얼로 제안')+'</button>';
-      if(ownsBoard){
-        html += '<button class="md-action-btn md-pullletter-btn" onclick="openPullLetterRequest(\''+b.id+'\',\''+escHtml(b.title)+'\')">📄 '+(L[lang]&&L[lang].moodPullLetterBtn||'풀레터 요청 (Premium)')+'</button>';
-      }
       html += '</div>';
       html += '</div>';
       // Items grid
@@ -939,78 +936,6 @@ window.closeMoodDetail = function(){
 window.bridgeToEditorial = function(boardId){
   if(!_canActLocal()) return;
   window.location.href = '/submission.html?moodboard=' + encodeURIComponent(boardId);
-};
-
-// ── Pull-letter request (Premium-only) ──────────────────────────────────
-// Premium gating happens server-side (RLS + endpoint check). Client-side
-// gate here is UX only — non-premium members see an upsell modal instead.
-window.openPullLetterRequest = function(boardId, boardTitle){
-  if(!alertLogin()) return;
-  // Probe premium status. We use the bare global `isPremium` exposed by
-  // pap-subscription.js (loaded before community-v2 in the script chain).
-  var isPrem = (typeof isPremium === 'function') ? isPremium() : false;
-  if(!isPrem){
-    if(typeof showPremiumInterstitial === 'function'){
-      showPremiumInterstitial(function(){ window.openPullLetterRequest(boardId, boardTitle); });
-    } else {
-      alert(lang==='ko'
-        ? '풀레터는 프리미엄 회원 전용 서비스입니다. 마이페이지에서 업그레이드해주세요.'
-        : 'Pull-letter is a Premium-only service. Please upgrade in My Page.');
-    }
-    return;
-  }
-  var bg = document.getElementById('pullLetterReqBg');
-  if(!bg) return;
-  document.getElementById('plBoardId').value = boardId;
-  document.getElementById('plBoardTitleDisplay').textContent = boardTitle || '';
-  document.getElementById('plPurpose').value = '';
-  document.getElementById('plLocation').value = '';
-  document.getElementById('plItems').value = '';
-  document.getElementById('plDate').value = '';
-  document.getElementById('plPhone').value = '';
-  bg.classList.add('active');
-};
-
-window.closePullLetterRequest = function(){
-  var bg = document.getElementById('pullLetterReqBg');
-  if(bg) bg.classList.remove('active');
-};
-
-window.submitPullLetterRequest = function(){
-  var moodBoardId  = (document.getElementById('plBoardId').value||'').trim();
-  var shootPurpose = (document.getElementById('plPurpose').value||'').trim();
-  if(!moodBoardId){ showToast('Missing board'); return; }
-  if(!shootPurpose){ showToast(lang==='ko'?'촬영 의도를 입력하세요':'Enter shoot purpose'); return; }
-  var body = {
-    moodBoardId: moodBoardId,
-    shootPurpose: shootPurpose,
-    shootLocationTarget: (document.getElementById('plLocation').value||'').trim() || null,
-    itemsNeeded: (document.getElementById('plItems').value||'').trim() || null,
-    shootDatePlanned: (document.getElementById('plDate').value||'').trim() || null,
-    contactPhone: (document.getElementById('plPhone').value||'').trim() || null,
-  };
-  // Posts to the existing /api/pullletters endpoint (community/JSON flow,
-  // not the legacy multipart flow). Server distinguishes by content-type.
-  fetch('/api/pullletters', {
-    method:'POST', headers:{'Content-Type':'application/json'}, credentials:'include',
-    body: JSON.stringify(body),
-  }).then(function(r){ return r.json().then(function(j){ return { ok:r.ok, status:r.status, j:j }; }); })
-    .then(function(out){
-      if(!out.ok){
-        var msg = (out.j && out.j.message) || 'Failed to submit';
-        if(out.status === 403){
-          msg = lang==='ko'
-            ? '풀레터는 프리미엄 회원 전용 서비스입니다.'
-            : 'Pull-letter is a Premium-only service.';
-        }
-        showToast(msg);
-        return;
-      }
-      closePullLetterRequest();
-      showToast(lang==='ko'
-        ? '풀레터 요청이 접수되었습니다. 검토 후 마이페이지에서 확인하실 수 있어요.'
-        : 'Pull-letter request submitted. Track its status in My Page.');
-    }).catch(function(){ showToast('Failed to submit'); });
 };
 
 // ── 4.7 SCRAPBOOK — personal visual collection (web-native curation) ──
