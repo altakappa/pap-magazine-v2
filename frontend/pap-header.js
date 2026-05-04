@@ -83,8 +83,19 @@
     var style = document.createElement('style');
     style.id = 'pap-header-css';
     style.textContent = [
-      /* header bar */
-      '.header{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(0,0,0,.97);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:0 40px;display:flex;align-items:center;justify-content:space-between;height:72px;cursor:default!important}',
+      /* header bar
+         z-index 1600 — must out-stack .nav-overlay (1500) so the
+         hamburger inside the header stays clickable while the menu is
+         open. The hamburger's own z-index:2000 cannot escape this
+         header's stacking context (position:fixed creates one), so the
+         header layer itself has to win the battle against the overlay. */
+      '.header{position:fixed;top:0;left:0;right:0;z-index:1600;background:rgba(0,0,0,.97);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:0 40px;display:flex;align-items:center;justify-content:space-between;height:72px;cursor:default!important}',
+      /* While the menu is open, blank the dark backdrop so the white
+         nav-overlay reads cleanly behind the X button — without this
+         the 72px dark band keeps sitting on top of the white menu and
+         feels broken. The X bars below use .hamburger.is-active span
+         {background:#000} so they stay visible against the white. */
+      '.nav-overlay.active ~ .header,body:has(.nav-overlay.active) .header{background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none}',
       '.header-left{display:flex;align-items:center;gap:24px}',
       '.header-left-item{background:none;border:none;padding:4px;display:inline-flex;align-items:center;justify-content:center;color:rgba(255,255,255,.4);text-decoration:none;transition:color .2s}',
       '.header-left-item:hover{color:#fff}',
