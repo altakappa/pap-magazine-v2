@@ -397,13 +397,19 @@ function _openEditorialInner(title,thumb){
       // Tokenize on commas; each token may contain "@handle Item Name".
       // Wrap @handle in an Instagram link, keep the rest as text.
       var tokens = perImg.split(',').map(function(t){ return t.trim(); }).filter(Boolean);
+      // Render order is "Item: @handle" — admins type "@handle Item Name"
+      // (handle first, item label after) but fashion-magazine convention
+      // puts the garment FIRST, then who made it. Keep both pieces in the
+      // same anchor so the whole "Vest: @houseofhedra" reads as one link.
       credits = tokens.map(function(tok){
         var m = tok.match(/^(@[A-Za-z0-9._]+)\s*(.*)$/);
         if(m){
           var handle = m[1];
-          var label  = m[2] ? ' '+m[2] : '';
+          var label  = m[2] ? m[2].trim() : '';
           var safe   = handle.replace(/'/g,"");
-          return '<a href="#" onclick="event.preventDefault();openProfileByHandle(\''+safe+'\')">'+handle.replace(/^@/,'')+'</a>'+label;
+          var prefix = label ? label + ': ' : '';
+          // Keep the @ symbol on the rendered handle (prev code stripped it).
+          return prefix + '<a href="#" onclick="event.preventDefault();openProfileByHandle(\''+safe+'\')">'+handle+'</a>';
         }
         return tok;
       }).join(', ');
@@ -544,13 +550,16 @@ function _openEditorialInner_noPush(title,thumb){
     var perImg = imgCreditsMap[perImgKey];
     if(typeof perImg === 'string' && perImg.trim()){
       var tokens = perImg.split(',').map(function(t){ return t.trim(); }).filter(Boolean);
+      // Same "Item: @handle" reordering as the main openEditorial path —
+      // see the longer comment there. Keep these two branches in sync.
       credits = tokens.map(function(tok){
         var m = tok.match(/^(@[A-Za-z0-9._]+)\s*(.*)$/);
         if(m){
           var handle = m[1];
-          var label  = m[2] ? ' '+m[2] : '';
+          var label  = m[2] ? m[2].trim() : '';
           var safe   = handle.replace(/'/g,"");
-          return '<a href="#" onclick="event.preventDefault();openProfileByHandle(\''+safe+'\')">'+handle.replace(/^@/,'')+'</a>'+label;
+          var prefix = label ? label + ': ' : '';
+          return prefix + '<a href="#" onclick="event.preventDefault();openProfileByHandle(\''+safe+'\')">'+handle+'</a>';
         }
         return tok;
       }).join(', ');
