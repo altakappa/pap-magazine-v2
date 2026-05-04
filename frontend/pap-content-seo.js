@@ -193,13 +193,27 @@ window.addEventListener('popstate', function(){
       //    case-insensitive lookup as last resort.
       return input;
     }
+    /* Poll for edDetails / edData to populate (both load async — static
+       JSON in pap-content-api-sync.js plus the API-merge IIFE that lands
+       newer admin-uploaded editorials). The previous fixed 1200ms wait
+       lost the race for any editorial that hadn't been baked into the
+       static snapshot, leaving the overlay rendered with placeholder
+       fallbacks ("photographer", "stylist", "@brand") on refresh.
+       Now we poll up to 4s — once the right entry exists in either
+       collection, resolve and open immediately; if the deadline hits
+       without a hit we still try once with what we have so the user
+       isn't left on a blank screen. */
+    var hashPollStart = Date.now();
     function tryOpenHash(){
-      if(typeof openEditorial!=='function') return;
+      if(typeof openEditorial!=='function'){ setTimeout(tryOpenHash,100); return; }
       var resolved = _resolveEditorialName(edName);
-      openEditorial(resolved, '');
+      var hit = (typeof edDetails==='object' && edDetails && edDetails[resolved]);
+      var elapsed = Date.now() - hashPollStart;
+      if(!hit && elapsed < 4000){ setTimeout(tryOpenHash,120); return; }
+      try { openEditorial(resolved, ''); } catch(e) {}
     }
-    if(document.readyState==='complete') setTimeout(tryOpenHash,1200);
-    else window.addEventListener('load',function(){setTimeout(tryOpenHash,1200);});
+    if(document.readyState==='complete') tryOpenHash();
+    else window.addEventListener('load', tryOpenHash);
   }
 })();
 
