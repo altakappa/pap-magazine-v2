@@ -35,40 +35,77 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
 const PAGE_SIZE   = parseInt(process.env.PAGE_SIZE, 10) || 500;
 const FREQUENT_TH = parseInt(process.env.FREQUENT_THRESHOLD, 10) || 3;
+const SOURCE      = (process.env.SOURCE || 'all').toLowerCase();   // db | static | all
 
 const OUT_DIR = path.join(__dirname, 'output');
+const STATIC_JSON_PATH = path.join(__dirname, '..', 'frontend', 'data', 'editorial-details.json');
 
 function fail(msg) {
   console.error('[extract] ' + msg);
   process.exit(1);
 }
 
-if (!SUPABASE_URL || !SUPABASE_KEY) {
-  fail('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY env vars required.\n' +
-       '  Find them in Vercel → Settings → Environment Variables.');
+// DB credentials only required when scanning the DB. Pure static-source
+// runs need just the JSON file on disk.
+if ((SOURCE === 'db' || SOURCE === 'all') && (!SUPABASE_URL || !SUPABASE_KEY)) {
+  fail('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY env vars required (SOURCE=' + SOURCE + ').\n' +
+       '  Find them in Vercel → Settings → Environment Variables, or use SOURCE=static for offline run.');
 }
 
-const supa = createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: { autoRefreshToken: false, persistSession: false },
-});
+const supa = (SUPABASE_URL && SUPABASE_KEY)
+  ? createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { autoRefreshToken: false, persistSession: false } })
+  : null;
 
-async function fetchAll() {
+async function fetchAllFromDb() {
+  if (!supa) return [];
   const all = [];
   for (let from = 0; ; from += PAGE_SIZE) {
     const to = from + PAGE_SIZE - 1;
     const res = await supa
       .from('editorials')
-      .select('id, credits, fashion')
+      .select('id, title, credits, fashion')
       .eq('status', 'published')
       .range(from, to);
     if (res.error) fail('DB read failed: ' + res.error.message);
     const data = res.data || [];
     all.push(...data);
-    process.stdout.write('  fetched ' + all.length + ' editorials\r');
+    process.stdout.write('  fetched ' + all.length + ' DB editorials\r');
     if (data.length < PAGE_SIZE) break;
   }
   process.stdout.write('\n');
   return all;
+}
+
+function readStaticEditorials() {
+  if (!fs.existsSync(STATIC_JSON_PATH)) {
+    fail('static JSON not found at ' + STATIC_JSON_PATH);
+  }
+  const raw = fs.readFileSync(STATIC_JSON_PATH, 'utf8');
+  const obj = JSON.parse(raw);
+  const out = [];
+  for (const key of Object.keys(obj)) {
+    const v = obj[key] || {};
+    out.push({
+      id: 'static:' + key,
+      title: key,
+      credits: v.credits || [],
+      fashion: v.fashion || [],
+    });
+  }
+  return out;
+}
+
+// DB wins on title collision: admin re-upload of a historical piece
+// supersedes the static snapshot. Same dedup as the admin endpoint.
+function unionDedupedByTitle(dbRows, staticRows) {
+  const dbTitles = new Set(dbRows.map(function (r) { return String(r.title || '').trim().toLowerCase(); }));
+  const merged = dbRows.slice();
+  for (const sr of staticRows) {
+    const key = String(sr.title || '').trim().toLowerCase();
+    if (!key || dbTitles.has(key)) continue;
+    merged.push(sr);
+  }
+  return merged;
 }
 
 function ensureDir(dir) {
@@ -81,10 +118,33 @@ function writeJson(file, obj) {
 }
 
 (async function main() {
-  console.log('[extract] fetching published editorials …');
-  const editorials = await fetchAll();
+  console.log('[extract] source=' + SOURCE + ' threshold=' + FREQUENT_TH);
+
+  let editorials = [];
+  let dbCount = 0, staticCount = 0;
+
+  if (SOURCE === 'db' || SOURCE === 'all') {
+    console.log('[extract] fetching DB published editorials …');
+    const dbRows = await fetchAllFromDb();
+    dbCount = dbRows.length;
+    editorials = dbRows;
+  }
+  if (SOURCE === 'static' || SOURCE === 'all') {
+    console.log('[extract] reading static editorial-details.json …');
+    const staticRows = readStaticEditorials();
+    staticCount = staticRows.length;
+    editorials = SOURCE === 'static'
+      ? staticRows
+      : unionDedupedByTitle(editorials, staticRows);
+  }
+  console.log('  ' + dbCount + ' DB + ' + staticCount + ' static (deduped → ' + editorials.length + ')');
+
   console.log('[extract] running aggregator …');
   const result = aggregate(editorials, { frequentThreshold: FREQUENT_TH });
+  result.summary.source = SOURCE;
+  result.summary.db_editorials = dbCount;
+  result.summary.static_editorials = staticCount;
+  result.summary.merged_editorials = editorials.length;
 
   console.log('\n=== summary ===');
   console.log(JSON.stringify(result.summary, null, 2));

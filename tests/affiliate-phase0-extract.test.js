@@ -309,6 +309,70 @@ it('summary numbers add up', () => {
   assert.strictEqual(r.summary.rare_count, 1);     // x (1 occurrence)
 });
 
+// ── Title-based dedup (DB ⊕ static union) ──────────────────────────────
+// Same dedup logic lives in api/admin/extract-brand-aliases.js and
+// scripts/extract_brand_aliases.js. The function isn't exported because
+// it's only 5 lines and duplicating it kept those files self-contained.
+// We re-implement it here to test the rule itself rather than reach into
+// the call sites (which would couple test setup to file paths).
+console.log('\n=== Title-based dedup (DB wins on collision) ===');
+
+function unionDedupedByTitle(dbRows, staticRows) {
+  const dbTitles = new Set(dbRows.map(r => String(r.title || '').trim().toLowerCase()));
+  const merged = dbRows.slice();
+  for (const sr of staticRows) {
+    const key = String(sr.title || '').trim().toLowerCase();
+    if (!key || dbTitles.has(key)) continue;
+    merged.push(sr);
+  }
+  return merged;
+}
+
+it('keeps DB row when title collides with static', () => {
+  const db = [{ id: 'uuid-1', title: 'Couture Macabre', fashion: [{ id: '@db' }] }];
+  const stat = [{ id: 'static:Couture Macabre', title: 'Couture Macabre', fashion: [{ id: '@static' }] }];
+  const merged = unionDedupedByTitle(db, stat);
+  assert.strictEqual(merged.length, 1);
+  assert.strictEqual(merged[0].id, 'uuid-1');
+});
+
+it('case-insensitive title match: "MUGLER" vs "Mugler" → dedup', () => {
+  const db = [{ id: 'uuid-2', title: 'MUGLER' }];
+  const stat = [{ id: 'static:Mugler', title: 'Mugler' }];
+  assert.strictEqual(unionDedupedByTitle(db, stat).length, 1);
+});
+
+it('whitespace-trim: " Folie " vs "Folie" → dedup', () => {
+  const db = [{ id: 'uuid-3', title: ' Folie ' }];
+  const stat = [{ id: 'static:Folie', title: 'Folie' }];
+  assert.strictEqual(unionDedupedByTitle(db, stat).length, 1);
+});
+
+it('appends static-only entries that have no DB equivalent', () => {
+  const db = [{ id: 'uuid-4', title: 'A' }];
+  const stat = [
+    { id: 'static:A', title: 'A' },        // dedup
+    { id: 'static:B', title: 'B' },        // keep
+    { id: 'static:3021', title: '3021' },  // keep (numeric legacy id)
+  ];
+  const merged = unionDedupedByTitle(db, stat);
+  assert.strictEqual(merged.length, 3);
+  const titles = merged.map(r => r.title).sort();
+  assert.deepStrictEqual(titles, ['3021', 'A', 'B']);
+});
+
+it('drops static rows with empty/missing title (would be lossy as merge keys)', () => {
+  const db = [];
+  const stat = [
+    { id: 'static:1', title: '' },
+    { id: 'static:2' },
+    { id: 'static:3', title: 'Real' },
+  ];
+  const merged = unionDedupedByTitle(db, stat);
+  assert.strictEqual(merged.length, 1);
+  assert.strictEqual(merged[0].title, 'Real');
+});
+
 // ── Done ────────────────────────────────────────────────────────────────
 console.log('\n=== SUMMARY ===');
 console.log('passed: ' + pass + '   failed: ' + fail);
