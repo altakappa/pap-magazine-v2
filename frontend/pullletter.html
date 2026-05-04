@@ -49,13 +49,16 @@ a{color:#fff;text-decoration:none}
 .lang-selector select{background:transparent;color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.2);padding:6px 12px;font-size:11px;font-family:'Montserrat',sans-serif;letter-spacing:.1em;cursor:pointer}
 .lang-selector select option{background:#000;color:#fff}
 
-.content{max-width:800px;margin:0 auto;padding:100px 40px 80px;text-align:center}
-/* Form-related elements stay left-aligned for readability — but the
-   page hero (title + description) must read centered under the PAP
-   logo so the page entry feels symmetric, matching subscribe.html. */
+/* !important on margin/centering because something in the cascade was
+   keeping the rendered .content snug against the left edge instead of
+   horizontally centering on the viewport. The two extra !importants on
+   page-hero text-align ensure the headline + description visually sit
+   under the PAP logo regardless of any other rule. */
+.content{max-width:800px!important;margin-left:auto!important;margin-right:auto!important;padding:100px 40px 80px;text-align:center}
 .content .form-section-title,.content .form-label,.content .form-input,.content .field-error,.content textarea.form-input,.content .upload-text,.content .upload-hint,.content .file-item,.content .review-message,.content .fl-info-card p,.content .fl-info-card h3{text-align:left}
-.content .page-hero{text-align:center}
-.content .page-hero p{margin-left:auto;margin-right:auto;text-align:center}
+.content .page-hero{text-align:center!important}
+.content .page-hero h1{text-align:center!important}
+.content .page-hero p{margin-left:auto;margin-right:auto;text-align:center!important}
 
 /* PAGE HERO */
 .page-hero{margin-bottom:64px}
