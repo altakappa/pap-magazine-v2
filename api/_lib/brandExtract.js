@@ -57,6 +57,24 @@ function isBrandRole(role) {
   return BRAND_ROLES_LC.has(String(role).trim().toLowerCase());
 }
 
+// Generic-noun tokens that appear in credit fields as placeholders or
+// section labels (e.g. "@brand", "Wearing"). Live extraction surfaced
+// `brand` 1563× — pure noise, never a real brand. Compared against the
+// already-normalised alias key.
+const STOP_ALIASES = new Set([
+  'brand', 'brands',
+  'wearing', 'outfit', 'outfits',
+  'fashion', 'cosmetics',
+  'beauty',
+  'branded', 'branded_content',
+  '함께한_브랜드', '브랜드', '옷',
+  'na', 'none', 'tbd', 'unknown',
+]);
+
+function isStopAlias(normalized) {
+  return STOP_ALIASES.has(normalized);
+}
+
 /**
  * Take a {n, id}-style entry and split-+-normalise into 0..N tokens.
  * The split handles the rare case where an admin pasted multiple brands
@@ -79,6 +97,7 @@ function tokensFromHandle(handleObj) {
     if (!trimmed) continue;
     var norm = normaliseAlias(trimmed);
     if (!norm) continue;
+    if (isStopAlias(norm)) continue;
     out.push({ raw: trimmed, normalized: norm });
   }
   return out;
@@ -272,7 +291,9 @@ function aggregate(editorials, opts) {
 
 module.exports = {
   BRAND_ROLE_LABELS,
+  STOP_ALIASES,
   isBrandRole,
+  isStopAlias,
   tokensFromHandle,
   extractFromEditorial,
   aggregate,
