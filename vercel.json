@@ -14,7 +14,8 @@
     { "source": "/editorial/:slug", "destination": "/api/seo/editorial/:slug" },
     { "source": "/article/:slug", "destination": "/api/seo/article/:slug" },
     { "source": "/film/:slug", "destination": "/api/seo/film/:slug" },
-    { "source": "/short/:slug", "destination": "/api/seo/short/:slug" }
+    { "source": "/short/:slug", "destination": "/api/seo/short/:slug" },
+    { "source": "/go/:id", "destination": "/api/go/:id" }
   ],
   "redirects": [
     {

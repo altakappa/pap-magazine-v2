@@ -20,6 +20,8 @@ Run these SQL files in Supabase Dashboard > SQL Editor, in this exact order:
 | 14 | `014_backfill_editorial_tags.sql` | One-shot: enriches 12 production editorials with thematic tags pulled from index.html static cards, so /api/editorials/themes can bucket them |
 | 15 | `015_moodboard_comments.sql` | Mood board comment thread (lightweight, single-level) |
 | 16 | `016_semantic_embeddings.sql` | pgvector + `editorials.embedding` + `theme_embeddings` + `match_editorials_by_embedding` RPC. Powers AI semantic theme matching |
+| 17 | `017_affiliate_phase0.sql` | Affiliate System Phase 0 schema: `brands` + `brand_aliases` + `affiliate_clicks` + `payout_batches` + `creator_earnings` + `kyc_records`. RLS on every table per AFFILIATE_SPEC.md |
+| 18 | `018_seed_brands.sql` | Seeds 49 brand master rows + initial alias map. Brands start `status='pending'` until admin fills the affiliate URLs |
 
 ## Skip List
 
