@@ -13,7 +13,12 @@
     var params=new URLSearchParams(window.location.search);
     var hasEdParam=!!params.get('ed');
     var hasAllHash=(window.location.hash==='#all-editorials'||window.location.hash==='#all-films'||window.location.hash==='#all-articles');
-    if(!hasEdParam && !hasAllHash) return;
+    // Hash deep-link to a specific editorial (e.g. #editorial/refractions).
+    // Without this branch the page paints the homepage briefly while the
+    // hash handler in pap-content-seo.js polls for edDetails, producing a
+    // visible "home → editorial" flash on refresh.
+    var hasEditorialHash=(typeof window.location.hash==='string' && window.location.hash.indexOf('#editorial/')===0);
+    if(!hasEdParam && !hasAllHash && !hasEditorialHash) return;
     window._papDeepLinkMode=true;
     var style=document.createElement('style');
     style.id='pap-deeplink-cover-style';

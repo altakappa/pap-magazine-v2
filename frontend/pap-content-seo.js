@@ -204,6 +204,16 @@ window.addEventListener('popstate', function(){
        without a hit we still try once with what we have so the user
        isn't left on a blank screen. */
     var hashPollStart = Date.now();
+    /* Reveal body (remove the deep-link black cover injected in
+       index.html <head>) once the editorial overlay is mounted, so the
+       user never sees the homepage flashing through before the overlay
+       paints. The cover is a body { opacity: 0 } CSS rule keyed off the
+       absence of .pap-deeplink-ready. */
+    function _revealHashBody(){
+      if(document.body && !document.body.classList.contains('pap-deeplink-ready')){
+        document.body.classList.add('pap-deeplink-ready');
+      }
+    }
     function tryOpenHash(){
       if(typeof openEditorial!=='function'){ setTimeout(tryOpenHash,100); return; }
       var resolved = _resolveEditorialName(edName);
@@ -211,6 +221,8 @@ window.addEventListener('popstate', function(){
       var elapsed = Date.now() - hashPollStart;
       if(!hit && elapsed < 4000){ setTimeout(tryOpenHash,120); return; }
       try { openEditorial(resolved, ''); } catch(e) {}
+      // Fade body in shortly after the overlay starts painting.
+      setTimeout(_revealHashBody, 60);
     }
     if(document.readyState==='complete') tryOpenHash();
     else window.addEventListener('load', tryOpenHash);
