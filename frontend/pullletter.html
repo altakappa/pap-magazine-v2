@@ -50,8 +50,12 @@ a{color:#fff;text-decoration:none}
 .lang-selector select option{background:#000;color:#fff}
 
 .content{max-width:800px;margin:0 auto;padding:100px 40px 80px;text-align:center}
-.content .page-hero p,.content .form-section-title,.content .form-label,.content .form-input,.content .field-error,.content textarea.form-input,.content .upload-text,.content .upload-hint,.content .file-item,.content .review-message,.content .fl-info-card p,.content .fl-info-card h3{text-align:left}
-.content .page-hero p{margin-left:auto;margin-right:auto}
+/* Form-related elements stay left-aligned for readability — but the
+   page hero (title + description) must read centered under the PAP
+   logo so the page entry feels symmetric, matching subscribe.html. */
+.content .form-section-title,.content .form-label,.content .form-input,.content .field-error,.content textarea.form-input,.content .upload-text,.content .upload-hint,.content .file-item,.content .review-message,.content .fl-info-card p,.content .fl-info-card h3{text-align:left}
+.content .page-hero{text-align:center}
+.content .page-hero p{margin-left:auto;margin-right:auto;text-align:center}
 
 /* PAGE HERO */
 .page-hero{margin-bottom:64px}

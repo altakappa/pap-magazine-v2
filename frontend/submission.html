@@ -42,8 +42,12 @@ a{color:#fff;text-decoration:none}
 .lang-selector select{background:transparent;color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.2);padding:6px 12px;font-size:11px;font-family:'Montserrat',sans-serif;letter-spacing:.1em;cursor:pointer}
 .lang-selector select option{background:#000;color:#fff}
 .content{max-width:900px;margin:0 auto;padding:100px 40px 80px;text-align:center}
-.content .page-hero p,.content .section-title,.content .form-label,.content .form-input,.content .form-hint,.content .field-helper,.content .field-error,.content textarea.form-input,.content .team-input{text-align:left}
-.content .page-hero p{margin-left:auto;margin-right:auto}
+/* Form-related elements stay left-aligned for readability — but the
+   page hero (title + description) must read centered under the PAP logo
+   so the page entry feels symmetric, matching subscribe.html. */
+.content .section-title,.content .form-label,.content .form-input,.content .form-hint,.content .field-helper,.content .field-error,.content textarea.form-input,.content .team-input{text-align:left}
+.content .page-hero{text-align:center}
+.content .page-hero p{margin-left:auto;margin-right:auto;text-align:center}
 .page-hero{margin-bottom:48px}
 .page-hero h1{font-size:clamp(36px,5vw,56px);font-weight:900;letter-spacing:.04em;text-transform:uppercase;line-height:1.05;margin-bottom:24px}
 .page-hero p{font-size:14px;line-height:2;color:rgba(255,255,255,.7);max-width:600px}
