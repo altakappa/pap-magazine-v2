@@ -109,7 +109,12 @@ function tokensFromHandle(handleObj) {
  * else is in the corpus that we might be missing" report.
  */
 function extractFromEditorial(editorial) {
-  var brandTokens = [];   // {raw, normalized, source}
+  // {raw, normalized, source, role}
+  //   source: 'fashion' (top-level fashion[] field) | 'credits' (credits[].r/role)
+  //   role:   'fashion-field' for source=fashion, otherwise the literal role
+  //           label (e.g. 'Fashion by', 'Beauty by'). Used by category
+  //           inference + editorial_brands link table.
+  var brandTokens = [];
   var seenRoles = [];     // every role label we saw (for stats)
 
   // Source 1: editorial.fashion[*] — always brand
@@ -118,7 +123,7 @@ function extractFromEditorial(editorial) {
     for (var i = 0; i < fashion.length; i++) {
       var toks = tokensFromHandle(fashion[i]);
       for (var j = 0; j < toks.length; j++) {
-        brandTokens.push({ raw: toks[j].raw, normalized: toks[j].normalized, source: 'fashion' });
+        brandTokens.push({ raw: toks[j].raw, normalized: toks[j].normalized, source: 'fashion', role: 'fashion-field' });
       }
     }
   } else if (fashion && typeof fashion === 'object' && Array.isArray(fashion.brands)) {
@@ -126,7 +131,7 @@ function extractFromEditorial(editorial) {
     for (var k = 0; k < fashion.brands.length; k++) {
       var toks2 = tokensFromHandle(fashion.brands[k]);
       for (var l = 0; l < toks2.length; l++) {
-        brandTokens.push({ raw: toks2[l].raw, normalized: toks2[l].normalized, source: 'fashion' });
+        brandTokens.push({ raw: toks2[l].raw, normalized: toks2[l].normalized, source: 'fashion', role: 'fashion-field' });
       }
     }
   }
@@ -151,7 +156,7 @@ function extractFromEditorial(editorial) {
         for (var hi = 0; hi < h.length; hi++) {
           var toks3 = tokensFromHandle(h[hi]);
           for (var ti = 0; ti < toks3.length; ti++) {
-            brandTokens.push({ raw: toks3[ti].raw, normalized: toks3[ti].normalized, source: 'credits' });
+            brandTokens.push({ raw: toks3[ti].raw, normalized: toks3[ti].normalized, source: 'credits', role: String(c.r) });
           }
         }
         continue;
@@ -159,14 +164,14 @@ function extractFromEditorial(editorial) {
 
       // Format B: admin-shape {roles|role, name, instagram}
       var roles = Array.isArray(c.roles) ? c.roles : (c.role ? [c.role] : []);
-      var matchesAny = false;
+      var matchedRole = null;
       for (var ri = 0; ri < roles.length; ri++) {
-        if (isBrandRole(roles[ri])) { matchesAny = true; break; }
+        if (isBrandRole(roles[ri])) { matchedRole = String(roles[ri]); break; }
       }
-      if (!matchesAny) continue;
+      if (!matchedRole) continue;
       var toks4 = tokensFromHandle({ n: c.name, id: c.instagram });
       for (var oi = 0; oi < toks4.length; oi++) {
-        brandTokens.push({ raw: toks4[oi].raw, normalized: toks4[oi].normalized, source: 'credits' });
+        brandTokens.push({ raw: toks4[oi].raw, normalized: toks4[oi].normalized, source: 'credits', role: matchedRole });
       }
     }
   } else if (credits && typeof credits === 'object') {
@@ -180,14 +185,14 @@ function extractFromEditorial(editorial) {
       if (typeof val === 'string') {
         var toks5 = tokensFromHandle({ n: val });
         for (var si = 0; si < toks5.length; si++) {
-          brandTokens.push({ raw: toks5[si].raw, normalized: toks5[si].normalized, source: 'credits' });
+          brandTokens.push({ raw: toks5[si].raw, normalized: toks5[si].normalized, source: 'credits', role: role });
         }
       } else if (val && typeof val === 'object') {
         var name = val.name || val.n;
         var ig   = val.instagram || val.id;
         var toks6 = tokensFromHandle({ n: name, id: ig });
         for (var ii = 0; ii < toks6.length; ii++) {
-          brandTokens.push({ raw: toks6[ii].raw, normalized: toks6[ii].normalized, source: 'credits' });
+          brandTokens.push({ raw: toks6[ii].raw, normalized: toks6[ii].normalized, source: 'credits', role: role });
         }
       }
     }
@@ -208,17 +213,27 @@ function extractFromEditorial(editorial) {
 function aggregate(editorials, opts) {
   opts = opts || {};
   var frequentThreshold = typeof opts.frequentThreshold === 'number' ? opts.frequentThreshold : 3;
+  var collectLinks      = opts.collectLinks !== false;   // default ON; off saves memory
+  // Caller decides which field to use as the editorial title — DB rows have
+  // .title; static-snapshot entries have title injected as the dict key.
+  var titleOf = typeof opts.titleOf === 'function'
+    ? opts.titleOf
+    : function (ed) { return (ed && ed.title) ? String(ed.title) : null; };
 
-  var aliasMap = new Map();   // normalized → { occurrences, editorialIds:Set, samples:Set, sources:Set }
+  var aliasMap = new Map();   // normalized → { occurrences, editorialKeys:Set, samples:Set, sources:Set, roles:Map<role,count> }
   var roleStats = new Map();  // role label → count
   var unknownRoles = new Set();
   var scanned = 0;
   var withBrandSignal = 0;
+  var links = [];             // {editorial_title, alias, role, source} — duplicates collapsed downstream
 
   for (var i = 0; i < editorials.length; i++) {
     scanned++;
     var ed = editorials[i];
     var result = extractFromEditorial(ed);
+    var edTitle = titleOf(ed);
+    // Stable key for editorials_count: prefer title, fall back to id.
+    var edKey = edTitle || (ed && ed.id) || null;
 
     // Record role stats
     for (var rsi = 0; rsi < result.seenRoles.length; rsi++) {
@@ -235,28 +250,42 @@ function aggregate(editorials, opts) {
       if (!entry) {
         entry = {
           occurrences: 0,
-          editorialIds: new Set(),
+          editorialKeys: new Set(),
           samples: new Set(),
           sources: new Set(),
+          roles: new Map(),
         };
         aliasMap.set(t.normalized, entry);
       }
       entry.occurrences++;
-      if (ed && ed.id) entry.editorialIds.add(ed.id);
+      if (edKey) entry.editorialKeys.add(edKey);
       if (entry.samples.size < 5) entry.samples.add(t.raw);
       entry.sources.add(t.source);
+      entry.roles.set(t.role, (entry.roles.get(t.role) || 0) + 1);
+
+      if (collectLinks && edTitle) {
+        links.push({
+          editorial_title: edTitle,
+          alias: t.normalized,
+          role: t.role,
+          source: t.source,
+        });
+      }
     }
   }
 
   // Flatten + sort
   var all = [];
   aliasMap.forEach(function (e, alias) {
+    var roleObj = {};
+    e.roles.forEach(function (count, role) { roleObj[role] = count; });
     all.push({
       alias: alias,
       occurrences_total: e.occurrences,
-      editorials_count: e.editorialIds.size,
+      editorials_count: e.editorialKeys.size,
       samples: Array.from(e.samples).slice(0, 5),
       sources: Array.from(e.sources).sort(),
+      roles: roleObj,
     });
   });
   all.sort(function (a, b) {
@@ -286,14 +315,104 @@ function aggregate(editorials, opts) {
     rare_aliases: rare,
     role_stats: roleStatsObj,
     unknown_roles: Array.from(unknownRoles).sort(),
+    editorial_brand_links: collectLinks ? links : null,
   };
+}
+
+// ── Category inference ───────────────────────────────────────────────────
+// Three-layer classifier (most specific signal wins):
+//   1. role label    e.g. "Beauty by"      → 'beauty'
+//   2. name keyword  e.g. *_cosmetics      → 'beauty'
+//   3. hardcoded     e.g. tiffany          → 'jewelry'
+//   default          → 'fashion'
+
+// Role → category overrides. Anything not listed defaults to 'fashion'
+// (since "Fashion by", "Wearing", "Outfit by", "함께한 브랜드" are all fashion).
+var ROLE_TO_CATEGORY = {
+  'beauty': 'beauty',
+  'beauty by': 'beauty',
+  'cosmetics': 'beauty',
+  'cosmetics by': 'beauty',
+};
+
+// Substring keywords in the normalised alias. Order matters: first hit wins.
+var KEYWORD_TO_CATEGORY = [
+  // beauty
+  ['cosmetics', 'beauty'], ['beauty', 'beauty'], ['makeup', 'beauty'],
+  ['skincare', 'beauty'], ['fragrance', 'beauty'], ['perfume', 'beauty'],
+  // jewelry
+  ['jewelry', 'jewelry'], ['jewellery', 'jewelry'], ['bijoux', 'jewelry'],
+  // footwear
+  ['footwear', 'footwear'], ['sneakers', 'footwear'], ['_shoes', 'footwear'],
+  ['boots', 'footwear'],
+  // bag
+  ['handbag', 'bag'], ['handbags', 'bag'],
+];
+
+// Hand-curated overrides for famous brands whose name carries no
+// keyword signal. Keep small — admin curation will catch the rest.
+var HARDCODED_CATEGORY = {
+  // jewelry
+  tiffany: 'jewelry', cartier: 'jewelry', boucheron: 'jewelry',
+  swarovski: 'jewelry', davidyurman: 'jewelry', vancleefarpels: 'jewelry',
+  bulgari: 'jewelry', mikimoto: 'jewelry', chaumet: 'jewelry',
+  // footwear
+  jimmychoo: 'footwear', christianlouboutin: 'footwear',
+  drmartens: 'footwear', converse: 'footwear', vans: 'footwear',
+  birkenstock: 'footwear', uggs: 'footwear', crocs: 'footwear',
+  newbalance: 'footwear', salomon: 'footwear', hoka: 'footwear',
+  // bag
+  goyard: 'bag', longchamp: 'bag', mansurgavriel: 'bag',
+  staud: 'bag', thejacquemus: 'bag',
+  // beauty (no keyword in name)
+  charlottetilbury: 'beauty', glossier: 'beauty', rarebeauty: 'beauty',
+  fentybeauty: 'beauty', tartecosmetics: 'beauty', kosas: 'beauty',
+  ilia: 'beauty', merit: 'beauty', tower28: 'beauty',
+};
+
+/**
+ * Pick the best category for a brand given its normalized alias and the
+ * role distribution observed during extraction.
+ *
+ * @param {string} alias                normalized brand_id
+ * @param {Object} [rolesObj]           {roleLabel: count} — output of aggregate()
+ * @returns {string}                    one of: fashion | beauty | jewelry | footwear | bag
+ */
+function inferCategory(alias, rolesObj) {
+  // Layer 1: role label (most reliable when present)
+  if (rolesObj) {
+    var topRole = null, topCount = 0;
+    Object.keys(rolesObj).forEach(function (r) {
+      if (rolesObj[r] > topCount) { topRole = r; topCount = rolesObj[r]; }
+    });
+    if (topRole) {
+      var roleCat = ROLE_TO_CATEGORY[String(topRole).toLowerCase()];
+      if (roleCat) return roleCat;
+    }
+  }
+
+  // Layer 2: hardcoded (specific brands we know)
+  if (HARDCODED_CATEGORY[alias]) return HARDCODED_CATEGORY[alias];
+
+  // Layer 3: keyword in name
+  for (var i = 0; i < KEYWORD_TO_CATEGORY.length; i++) {
+    if (alias.indexOf(KEYWORD_TO_CATEGORY[i][0]) !== -1) {
+      return KEYWORD_TO_CATEGORY[i][1];
+    }
+  }
+
+  return 'fashion';
 }
 
 module.exports = {
   BRAND_ROLE_LABELS,
   STOP_ALIASES,
+  ROLE_TO_CATEGORY,
+  KEYWORD_TO_CATEGORY,
+  HARDCODED_CATEGORY,
   isBrandRole,
   isStopAlias,
+  inferCategory,
   tokensFromHandle,
   extractFromEditorial,
   aggregate,

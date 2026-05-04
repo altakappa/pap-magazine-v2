@@ -24,6 +24,7 @@ const {
   STOP_ALIASES,
   isBrandRole,
   isStopAlias,
+  inferCategory,
   tokensFromHandle,
   extractFromEditorial,
   aggregate,
@@ -411,6 +412,103 @@ it('aggregate excludes stop aliases from frequent_aliases entirely', () => {
   const names = out.frequent_aliases.map(a => a.alias);
   assert.ok(!names.includes('brand'), 'brand must be filtered from frequent list');
   assert.strictEqual(out.summary.unique_aliases, 0, 'no aliases survive when only stop words present');
+});
+
+// ── Per-token role tracking (added for category inference + link table) ─
+console.log('\n=== role tracking on brandTokens ===');
+
+it('extractor tags fashion[] tokens with role="fashion-field"', () => {
+  const ed = { fashion: [{ n: 'Balenciaga', id: '@balenciaga' }] };
+  const { brandTokens } = extractFromEditorial(ed);
+  assert.strictEqual(brandTokens.length, 1);
+  assert.strictEqual(brandTokens[0].role, 'fashion-field');
+  assert.strictEqual(brandTokens[0].source, 'fashion');
+});
+
+it('extractor tags display-format credits with the literal role string', () => {
+  const ed = {
+    credits: [{ r: 'Beauty by', h: [{ n: 'Charlotte Tilbury', id: '@charlottetilbury' }] }],
+  };
+  const { brandTokens } = extractFromEditorial(ed);
+  assert.strictEqual(brandTokens.length, 1);
+  assert.strictEqual(brandTokens[0].role, 'Beauty by');
+  assert.strictEqual(brandTokens[0].source, 'credits');
+});
+
+it('extractor preserves the matched role from admin-format (roles array)', () => {
+  const ed = {
+    credits: [{ roles: ['Photography', 'Fashion by'], name: 'Zara', instagram: '@zara' }],
+  };
+  const { brandTokens } = extractFromEditorial(ed);
+  assert.strictEqual(brandTokens.length, 1);
+  assert.strictEqual(brandTokens[0].role, 'Fashion by');
+});
+
+it('aggregate exposes role distribution per alias', () => {
+  const eds = [
+    { fashion: [{ n: 'Mugler', id: '@mugler' }] },                                      // role=fashion-field
+    { credits: [{ r: 'Fashion by', h: [{ n: 'Mugler', id: '@mugler' }] }] },            // role=Fashion by
+    { credits: [{ r: 'Fashion by', h: [{ n: 'Mugler', id: '@mugler' }] }] },            // role=Fashion by (count=2)
+  ];
+  const out = aggregate(eds, { frequentThreshold: 1 });
+  const mugler = out.frequent_aliases.find(a => a.alias === 'mugler');
+  assert.ok(mugler, 'mugler should be in frequent aliases');
+  assert.deepStrictEqual(mugler.roles, { 'fashion-field': 1, 'Fashion by': 2 });
+});
+
+it('aggregate emits editorial_brand_links when collectLinks=true', () => {
+  const eds = [
+    { title: 'Folie',  fashion: [{ n: 'Zara', id: '@zara' }] },
+    { title: 'Equipoise', credits: [{ r: 'Fashion by', h: [{ n: 'Prada', id: '@prada' }] }] },
+  ];
+  const out = aggregate(eds, { frequentThreshold: 1, collectLinks: true });
+  assert.ok(Array.isArray(out.editorial_brand_links));
+  assert.strictEqual(out.editorial_brand_links.length, 2);
+  const folie = out.editorial_brand_links.find(l => l.editorial_title === 'Folie');
+  assert.deepStrictEqual(folie, {
+    editorial_title: 'Folie', alias: 'zara', role: 'fashion-field', source: 'fashion',
+  });
+});
+
+it('aggregate suppresses link collection when collectLinks=false', () => {
+  const eds = [{ title: 'X', fashion: [{ n: 'Zara', id: '@zara' }] }];
+  const out = aggregate(eds, { frequentThreshold: 1, collectLinks: false });
+  assert.strictEqual(out.editorial_brand_links, null);
+});
+
+// ── inferCategory (3-layer classifier) ──────────────────────────────────
+console.log('\n=== inferCategory ===');
+
+it('Layer 1: "Beauty by" role wins → beauty (even for ambiguous brand name)', () => {
+  assert.strictEqual(inferCategory('newbrand', { 'Beauty by': 5 }), 'beauty');
+});
+it('Layer 1: "Cosmetics by" role → beauty', () => {
+  assert.strictEqual(inferCategory('something', { 'Cosmetics by': 2 }), 'beauty');
+});
+it('Layer 2: hardcoded brand wins over keyword (tiffany → jewelry)', () => {
+  assert.strictEqual(inferCategory('tiffany', { 'Fashion by': 5 }), 'jewelry');
+});
+it('Layer 2: hardcoded footwear (jimmychoo → footwear despite Fashion by role)', () => {
+  assert.strictEqual(inferCategory('jimmychoo', { 'Fashion by': 5 }), 'footwear');
+});
+it('Layer 3: keyword "_cosmetics" → beauty', () => {
+  assert.strictEqual(inferCategory('caia_cosmetics', null), 'beauty');
+});
+it('Layer 3: keyword "jewelry" anywhere → jewelry', () => {
+  assert.strictEqual(inferCategory('annabel_jewelry', null), 'jewelry');
+});
+it('Layer 3: keyword "sneakers" → footwear', () => {
+  assert.strictEqual(inferCategory('cheap_sneakers', null), 'footwear');
+});
+it('Default: bare brand name with Fashion-by role → fashion', () => {
+  assert.strictEqual(inferCategory('balenciaga', { 'Fashion by': 100 }), 'fashion');
+});
+it('Default: no signals → fashion', () => {
+  assert.strictEqual(inferCategory('unknownbrand', null), 'fashion');
+});
+it('Most-common role wins when multiple roles seen', () => {
+  // Beauty:1 vs Fashion:5 → fashion category (most common is non-beauty role)
+  assert.strictEqual(inferCategory('weirdbrand', { 'Beauty by': 1, 'Fashion by': 5 }), 'fashion');
 });
 
 // ── Done ────────────────────────────────────────────────────────────────
