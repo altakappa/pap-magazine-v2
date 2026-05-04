@@ -399,8 +399,10 @@ function _openEditorialInner(title,thumb){
       var tokens = perImg.split(',').map(function(t){ return t.trim(); }).filter(Boolean);
       // Render order is "Item: @handle" — admins type "@handle Item Name"
       // (handle first, item label after) but fashion-magazine convention
-      // puts the garment FIRST, then who made it. Keep both pieces in the
-      // same anchor so the whole "Vest: @houseofhedra" reads as one link.
+      // puts the garment FIRST, then who made it. Each token is wrapped
+      // in a span so the .ed-img-credits flex container's gap handles
+      // separation between items — no commas, no double spaces, just
+      // clean wrap-friendly chunks ("Coat: @dona.ralph" "Pants: @ferragamo").
       credits = tokens.map(function(tok){
         var m = tok.match(/^(@[A-Za-z0-9._]+)\s*(.*)$/);
         if(m){
@@ -408,11 +410,12 @@ function _openEditorialInner(title,thumb){
           var label  = m[2] ? m[2].trim() : '';
           var safe   = handle.replace(/'/g,"");
           var prefix = label ? label + ': ' : '';
-          // Keep the @ symbol on the rendered handle (prev code stripped it).
-          return prefix + '<a href="#" onclick="event.preventDefault();openProfileByHandle(\''+safe+'\')">'+handle+'</a>';
+          return '<span class="ed-img-credit">' + prefix
+               + '<a href="#" onclick="event.preventDefault();openProfileByHandle(\''+safe+'\')">'+handle+'</a>'
+               + '</span>';
         }
-        return tok;
-      }).join(', ');
+        return '<span class="ed-img-credit">' + tok + '</span>';
+      }).join('');
     } else {
       // Show fashion brands as hover overlay on each image (rotate through)
       var fLen=det.fashion.length;
@@ -550,8 +553,9 @@ function _openEditorialInner_noPush(title,thumb){
     var perImg = imgCreditsMap[perImgKey];
     if(typeof perImg === 'string' && perImg.trim()){
       var tokens = perImg.split(',').map(function(t){ return t.trim(); }).filter(Boolean);
-      // Same "Item: @handle" reordering as the main openEditorial path —
-      // see the longer comment there. Keep these two branches in sync.
+      // Same "Item: @handle" reordering + per-token <span> wrapper as
+      // the main openEditorial path — see the longer comment there.
+      // Keep these two branches in sync.
       credits = tokens.map(function(tok){
         var m = tok.match(/^(@[A-Za-z0-9._]+)\s*(.*)$/);
         if(m){
@@ -559,10 +563,12 @@ function _openEditorialInner_noPush(title,thumb){
           var label  = m[2] ? m[2].trim() : '';
           var safe   = handle.replace(/'/g,"");
           var prefix = label ? label + ': ' : '';
-          return prefix + '<a href="#" onclick="event.preventDefault();openProfileByHandle(\''+safe+'\')">'+handle+'</a>';
+          return '<span class="ed-img-credit">' + prefix
+               + '<a href="#" onclick="event.preventDefault();openProfileByHandle(\''+safe+'\')">'+handle+'</a>'
+               + '</span>';
         }
-        return tok;
-      }).join(', ');
+        return '<span class="ed-img-credit">' + tok + '</span>';
+      }).join('');
     } else {
       var fLen=det.fashion.length;
       if(fLen>0){
