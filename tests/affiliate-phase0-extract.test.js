@@ -21,7 +21,9 @@ const ROOT = path.resolve(__dirname, '..');
 
 const {
   BRAND_ROLE_LABELS,
+  STOP_ALIASES,
   isBrandRole,
+  isStopAlias,
   tokensFromHandle,
   extractFromEditorial,
   aggregate,
@@ -371,6 +373,44 @@ it('drops static rows with empty/missing title (would be lossy as merge keys)', 
   const merged = unionDedupedByTitle(db, stat);
   assert.strictEqual(merged.length, 1);
   assert.strictEqual(merged[0].title, 'Real');
+});
+
+// ── isStopAlias / stop-word filter ──────────────────────────────────────
+console.log('\n=== isStopAlias ===');
+
+it('"brand" placeholder is filtered (live extraction surfaced 1563×)', () => {
+  assert.strictEqual(isStopAlias('brand'), true);
+});
+it('"wearing" / "outfit" / "fashion" generic nouns are filtered', () => {
+  ['wearing', 'outfit', 'fashion', 'beauty'].forEach(t =>
+    assert.strictEqual(isStopAlias(t), true, t));
+});
+it('Korean role placeholders (브랜드, 옷) are filtered', () => {
+  ['브랜드', '옷'].forEach(t => assert.strictEqual(isStopAlias(t), true, t));
+});
+it('real brand alias "balenciaga" is NOT filtered', () => {
+  assert.strictEqual(isStopAlias('balenciaga'), false);
+});
+
+it('extractor drops a token whose normalized form is a stop alias', () => {
+  const ed = {
+    fashion: [{ n: 'Brand', id: '@brand' }, { n: 'Balenciaga', id: '@balenciaga' }],
+  };
+  const { brandTokens } = extractFromEditorial(ed);
+  const aliases = brandTokens.map(t => t.normalized);
+  assert.deepStrictEqual(aliases, ['balenciaga'], 'only the real brand should survive');
+});
+
+it('aggregate excludes stop aliases from frequent_aliases entirely', () => {
+  // 5 editorials × @brand each → would be frequent_count = 1 with no filter
+  const eds = Array.from({ length: 5 }, (_, i) => ({
+    id: 'e' + i,
+    fashion: [{ n: 'Brand', id: '@brand' }],
+  }));
+  const out = aggregate(eds, { frequentThreshold: 3 });
+  const names = out.frequent_aliases.map(a => a.alias);
+  assert.ok(!names.includes('brand'), 'brand must be filtered from frequent list');
+  assert.strictEqual(out.summary.unique_aliases, 0, 'no aliases survive when only stop words present');
 });
 
 // ── Done ────────────────────────────────────────────────────────────────

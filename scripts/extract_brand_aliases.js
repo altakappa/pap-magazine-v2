@@ -28,8 +28,22 @@
 
 const fs = require('fs');
 const path = require('path');
-const { createClient } = require('@supabase/supabase-js');
 const { aggregate } = require('../api/_lib/brandExtract');
+
+// Lazy-load supabase only when DB scan is requested — keeps SOURCE=static
+// runs working without `npm install` in fresh checkouts.
+let _createClient = null;
+function loadSupabaseClient() {
+  if (!_createClient) {
+    try {
+      _createClient = require('@supabase/supabase-js').createClient;
+    } catch (e) {
+      fail('SOURCE=' + SOURCE + ' needs @supabase/supabase-js. Either run `npm install`,\n' +
+           '  or set SOURCE=static to scan the editorial-details.json snapshot only.');
+    }
+  }
+  return _createClient;
+}
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
@@ -53,7 +67,7 @@ if ((SOURCE === 'db' || SOURCE === 'all') && (!SUPABASE_URL || !SUPABASE_KEY)) {
 }
 
 const supa = (SUPABASE_URL && SUPABASE_KEY)
-  ? createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { autoRefreshToken: false, persistSession: false } })
+  ? loadSupabaseClient()(SUPABASE_URL, SUPABASE_KEY, { auth: { autoRefreshToken: false, persistSession: false } })
   : null;
 
 async function fetchAllFromDb() {
