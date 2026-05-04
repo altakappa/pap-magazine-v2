@@ -39,3 +39,5 @@ pap-editorials-ALL.json
 pap-editorials-full.json
 pap-films-ALL.json
 pap-youtube-shorts.json
+scripts/output/*.json
+

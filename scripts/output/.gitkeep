@@ -1,0 +1,8 @@
+# Output directory for generated artefacts (JSON, SQL, etc).
+# Files here are produced by scripts/extract_brand_aliases.js and
+# similar tooling. They're regenerated each run and excluded from
+# version control via .gitignore (scripts/output/*.json).
+#
+# Reason for keeping the empty folder in git: scripts that write here
+# expect the directory to exist. Without this .gitkeep, a fresh clone
+# would have to mkdir before the first run.
