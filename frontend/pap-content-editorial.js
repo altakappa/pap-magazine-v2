@@ -134,14 +134,15 @@ var edDetails={};
 // array ([{r, h: [...]}]) baked into editorial-details.json. Display
 // code below all expects {r, h}, so normalise once at the read site.
 function _normalizeCreditsForDisplay(raw){
+  var rows;
   if(!raw) return [];
   // Already in display format — items have an `r` field.
   if(Array.isArray(raw) && raw.length && raw[0] && raw[0].r !== undefined){
-    return raw;
+    rows = raw;
   }
   // New admin array format — items have `roles` (array) or `name`.
-  if(Array.isArray(raw)){
-    return raw.map(function(c){
+  else if(Array.isArray(raw)){
+    rows = raw.map(function(c){
       var roles = Array.isArray(c.roles) ? c.roles
                 : (c.role ? [c.role] : []);
       var n = c.name || '';
@@ -152,8 +153,8 @@ function _normalizeCreditsForDisplay(raw){
     });
   }
   // Legacy admin dict — keys are roles, values are {name, instagram} or string.
-  if(typeof raw === 'object'){
-    return Object.keys(raw).map(function(role){
+  else if(typeof raw === 'object'){
+    rows = Object.keys(raw).map(function(role){
       var val = raw[role];
       var n = '', id = '';
       if(val && typeof val === 'object'){
@@ -164,7 +165,41 @@ function _normalizeCreditsForDisplay(raw){
       return { r: role, h: [{ n: n, id: id }] };
     });
   }
-  return [];
+  else {
+    return [];
+  }
+  // Merge rows that share the same role (case-insensitive). The new admin
+  // array format produces one row per credited person/brand, so a piece
+  // with 18 "Fashion By" entries used to render as 18 separate "FASHION BY"
+  // labels stacked on top of each other. Now we collapse them so the role
+  // label appears once and the handles are joined together — same data,
+  // half the visual noise.
+  return _mergeCreditsBySameRole(rows);
+}
+// Group consecutive-or-not rows by their role label so the renderer
+// outputs one row per role. Order of first appearance is preserved.
+// Casing of the first occurrence of each role wins (e.g. "Fashion By"
+// vs "FASHION BY" → whichever was seen first is kept).
+function _mergeCreditsBySameRole(rows){
+  if(!Array.isArray(rows) || rows.length === 0) return rows || [];
+  var byKey = {};
+  var order = [];
+  for(var i = 0; i < rows.length; i++){
+    var c = rows[i];
+    if(!c || !c.r) continue;
+    var key = String(c.r).trim().toLowerCase();
+    if(!key) continue;
+    if(byKey[key]){
+      // Concat handles; downstream renderer joins them with ", "
+      var existing = byKey[key];
+      var addH = Array.isArray(c.h) ? c.h : [];
+      existing.h = existing.h.concat(addH);
+    } else {
+      byKey[key] = { r: c.r, h: Array.isArray(c.h) ? c.h.slice() : [] };
+      order.push(key);
+    }
+  }
+  return order.map(function(k){ return byKey[k]; });
 }
 // Editorial logo distribution folder map. Single source of truth lives in
 // pap-logos-data.js (window.PAP_LOGO_FOLDERS) so mypage and pap-app.js
