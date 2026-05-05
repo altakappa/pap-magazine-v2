@@ -2443,19 +2443,26 @@ function setLang(l){
   try { if(typeof _refreshCommunityUgc === 'function') _refreshCommunityUgc(); } catch(_){}
 }
 
-// Hook: when pap-app.js overrides setLang, we wrap it to also run community translations
+// Robust language-change hook via MutationObserver on <html lang>.
+// Both setLang implementations (community.html's local + pap-i18n.js's
+// global) update document.documentElement.lang, so observing that single
+// attribute reliably catches every language switch — regardless of which
+// setLang path the dropdown's onchange takes, regardless of script load
+// order, and without the timing-sensitive 100ms wrap that previously
+// missed pap-app's later-arriving setLang.
 document.addEventListener('DOMContentLoaded',function(){
-  setTimeout(function(){
-    var _globalSetLang=window.setLang;
-    // Only wrap if pap-app.js has replaced our setLang
-    if(_globalSetLang && _globalSetLang!==setLang){
-      window.setLang=function(l){
-        lang=l;
-        _globalSetLang(l);
-        _communityTranslations();
-      };
-    }
-  },100);
+  try {
+    var _obs = new MutationObserver(function(mutations){
+      var newLang = document.documentElement.lang || lang;
+      if(newLang === lang) return;
+      lang = newLang;
+      try { localStorage.setItem('pap-lang', newLang); } catch(_){}
+      try { _communityTranslations(); } catch(_){}
+      // PR #17: also re-fetch UGC so user-written content translates too
+      try { if(typeof _refreshCommunityUgc === 'function') _refreshCommunityUgc(); } catch(_){}
+    });
+    _obs.observe(document.documentElement, { attributes:true, attributeFilter:['lang'] });
+  } catch(_){}
 
   // Onboarding — show on first community visit only.
   // Versioned key (-v1) so we can re-trigger for everyone if the tour content
