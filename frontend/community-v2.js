@@ -11,6 +11,19 @@
 (function(){
 'use strict';
 
+// ── _withLang(url) — append the active community language as ?lang= ────
+// Server endpoints (posts, moodboards, comments, members) auto-translate
+// UGC fields when this param is present. Same-lang and short-text are
+// short-circuited server-side, and translations are DB-cached so the cost
+// is a one-time charge per (content, target-lang) pair.
+function _withLang(url){
+  var l = (typeof lang !== 'undefined' && lang) || (function(){
+    try { return localStorage.getItem('pap-lang') || 'ko'; } catch(e){ return 'ko'; }
+  })();
+  var sep = url.indexOf('?') === -1 ? '?' : '&';
+  return url + sep + 'lang=' + encodeURIComponent(l);
+}
+
 // ── Robust login check (fixes alertLogin timing bug) ────────────────────
 // Background: the page-level alertLogin() in community.html only checks
 // SB.user, which Supabase populates ASYNCHRONOUSLY on init. If a user
@@ -708,13 +721,14 @@ window.openMemberProfile = function(userId){
   if(!userId) return;
   var popup = document.getElementById('profilePopupBg');
   if(!popup) return;
+  popup.dataset.memberId = userId; // for _refreshCommunityUgc on lang change
   popup.classList.add('active');
 
   // Show a tiny loading state while we fetch
   var nameEl = document.getElementById('ppName');
   if(nameEl) nameEl.textContent = (lang==='ko' ? '불러오는 중…' : 'Loading…');
 
-  fetch('/api/community/members/' + encodeURIComponent(userId), { credentials:'include' })
+  fetch(_withLang('/api/community/members/' + encodeURIComponent(userId)), { credentials:'include' })
     .then(function(r){ return r.json().then(function(j){ return { ok:r.ok, j:j }; }); })
     .then(function(out){
       if(!out.ok){ showToast(out.j.message || 'Failed to load profile'); return; }
@@ -858,7 +872,7 @@ window.checkBadges = function(){
 window.loadMoodboards = function(){
   var container = document.getElementById('moodGrid');
   if(!container) return;
-  fetch('/api/community/moodboards')
+  fetch(_withLang('/api/community/moodboards'))
     .then(function(r){ return r.json(); })
     .then(function(data){
       var boards = data.boards || [];
@@ -1001,7 +1015,7 @@ window.loadFeaturedCreators = function(){
 // Single API call hydrates 3 sidebar widgets. Public read; works for
 // logged-out visitors too (gives them a reason to sign up).
 window.loadDiscovery = function(){
-  fetch('/api/community/discovery', { credentials:'include' })
+  fetch(_withLang('/api/community/discovery'), { credentials:'include' })
     .then(function(r){ return r.json(); })
     .then(function(data){
       _renderTrendingMoodboards((data && data.trendingMoodboards) || []);
@@ -1205,7 +1219,7 @@ window.loadMembershipTier = function(){
 // moodboard detail overlay. Includes Editorial bridge (mission 5) and
 // Pull-letter request (separate PR) entry points.
 window.openMoodboard = function(boardId){
-  fetch('/api/community/moodboards?id=' + encodeURIComponent(boardId), { credentials:'include' })
+  fetch(_withLang('/api/community/moodboards?id=' + encodeURIComponent(boardId)), { credentials:'include' })
     .then(function(r){ return r.json(); })
     .then(function(b){
       if(!b || !b.title){ showToast('Board not found'); return; }
@@ -1213,8 +1227,8 @@ window.openMoodboard = function(boardId){
       if(!ov) return;
       var body = document.getElementById('moodDetailBody');
       var html = '';
-      html += '<div class="md-head">';
-      html += '<h2 class="md-title">'+escHtml(b.title)+'</h2>';
+      html += '<div class="md-head" data-board-id="'+b.id+'">';
+      html += '<h2 class="md-title" data-original="'+escHtml(b.titleOriginal||b.title||'')+'" data-translated="'+escHtml(b.title||'')+'">'+escHtml(b.title)+'</h2>';
       var authorName = (b.author && b.author.name) || '';
       var authorId = (b.author && b.author.id) || '';
       var authorBlock = authorId
@@ -1226,7 +1240,12 @@ window.openMoodboard = function(boardId){
         html += '✨ '+(L[lang]&&L[lang].moodInspiredByLabel||'Inspired by')+' '+escHtml(b.inspiredBy.title)+(b.inspiredBy.authorName?(' — '+escHtml(b.inspiredBy.authorName)):'');
         html += '</div>';
       }
-      if(b.description) html += '<p class="md-desc">'+escHtml(b.description)+'</p>';
+      if(b.description) html += '<p class="md-desc" data-original="'+escHtml(b.descriptionOriginal||b.description||'')+'" data-translated="'+escHtml(b.description||'')+'">'+escHtml(b.description)+'</p>';
+      // "원문 보기" / "View original" toggle — only when server actually
+      // translated something (titleOriginal !== title or description differs)
+      if(b.translated){
+        html += '<button class="md-orig-toggle" data-mode="translated" onclick="_toggleMoodboardOriginal(this)" style="margin-top:6px;padding:4px 10px;font-size:11px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);border-radius:999px;cursor:pointer;font-family:Montserrat,sans-serif">🌐 '+(lang==='ko'?'원문 보기':'View original')+'</button>';
+      }
       if(b.tags && b.tags.length){
         html += '<div class="md-tags">'+b.tags.map(function(t){return '<span class="mood-tag">'+escHtml(t)+'</span>';}).join('')+'</div>';
       }
@@ -1271,7 +1290,7 @@ window.openMoodboard = function(boardId){
 window.loadMoodboardComments = function(boardId){
   var listEl = document.getElementById('mdCommentsList');
   if(!listEl) return;
-  fetch('/api/community/moodboard-comments?boardId=' + encodeURIComponent(boardId), { credentials:'include' })
+  fetch(_withLang('/api/community/moodboard-comments?boardId=' + encodeURIComponent(boardId)), { credentials:'include' })
     .then(function(r){ return r.json(); })
     .then(function(data){
       var comments = (data && data.comments) || [];
@@ -1301,7 +1320,8 @@ function _renderMoodboardComments(comments){
     html += '    <div class="md-comment-meta"><strong>'+escHtml(name)+'</strong> <span class="md-comment-time">'+timeStr+'</span>'
           + (canDelete ? '<button class="md-comment-del" onclick="deleteMoodboardComment(\''+c.id+'\')" title="Delete">×</button>' : '')
           + '</div>';
-    html += '    <div class="md-comment-content">'+escHtml(c.content)+'</div>';
+    var cOrig = (c.contentOriginal != null) ? c.contentOriginal : c.content;
+    html += '    <div class="md-comment-content" data-original="'+escHtml(cOrig)+'" data-translated="'+escHtml(c.content)+'">'+escHtml(c.content)+'</div>';
     html += '  </div>';
     html += '</div>';
   });
@@ -1379,6 +1399,28 @@ window.renderTeamTags = function(team){
   }
   html += '</div>';
   return html;
+};
+
+// Toggle the moodboard title/description (and visible comments) between
+// translated and original. Reads pre-stashed data-original/data-translated
+// from the rendered HTML so no extra fetch is needed.
+window._toggleMoodboardOriginal = function(btn){
+  var head = btn.closest('.md-head');
+  if(!head) return;
+  var nextMode = btn.dataset.mode === 'translated' ? 'original' : 'translated';
+  btn.dataset.mode = nextMode;
+  var title = head.querySelector('.md-title');
+  var desc  = head.querySelector('.md-desc');
+  if(title) title.textContent = title.dataset[nextMode] || title.textContent;
+  if(desc)  desc.textContent  = desc.dataset[nextMode]  || desc.textContent;
+  // Also flip every comment that has an .md-comment-content with both data sets
+  document.querySelectorAll('.md-comment-content[data-original][data-translated]').forEach(function(el){
+    el.textContent = el.dataset[nextMode] || el.textContent;
+  });
+  // Update label
+  btn.innerHTML = '🌐 ' + (nextMode === 'original'
+    ? (lang==='ko' ? '번역 보기' : 'View translation')
+    : (lang==='ko' ? '원문 보기'  : 'View original'));
 };
 
 window.closeMoodDetail = function(){
@@ -1612,6 +1654,33 @@ window.deleteScrap = function(id, btn){
 };
 
 // ======================================================================
+// ── _refreshCommunityUgc — called by setLang to re-fetch translatable
+// content in the new language. Safe to call repeatedly. ───────────────
+window._refreshCommunityUgc = function(){
+  try {
+    // 1) Moodboard tab grid (if visible)
+    if(typeof loadMoodboards === 'function'){
+      var mTab = document.getElementById('t-moodboard');
+      if(mTab && mTab.classList.contains('active')) loadMoodboards();
+    }
+    // 2) Discovery sidebar (always visible on desktop)
+    if(typeof loadDiscovery === 'function') loadDiscovery();
+    // 3) Open moodboard detail (re-fetch + re-render)
+    var mdOv = document.getElementById('moodDetailOverlay');
+    if(mdOv && mdOv.classList.contains('active')){
+      // Re-extract id from comments section
+      var sec = document.querySelector('.md-comments-section[data-board-id]');
+      var id = sec && sec.getAttribute('data-board-id');
+      if(id && typeof openMoodboard === 'function') openMoodboard(id);
+    }
+    // 4) Open profile popup (re-fetch using id stashed on the popup root)
+    var pp = document.getElementById('profilePopupBg');
+    if(pp && pp.classList.contains('active') && pp.dataset.memberId){
+      if(typeof openMemberProfile === 'function') openMemberProfile(pp.dataset.memberId);
+    }
+  } catch(e){ /* swallow — language switch must never break */ }
+};
+
 function initV2(){
   // Periodically check notifications (every 60s)
   if(SB.user){

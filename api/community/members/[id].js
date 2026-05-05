@@ -19,6 +19,9 @@ const { supabaseAdmin } = require('../../_lib/supabase');
 const { verifyToken } = require('../../_lib/auth');
 const { handleCors } = require('../../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../../_lib/rateLimit');
+const { getOrTranslate } = require('../../_lib/translate');
+
+const SUPPORTED_LANGS = new Set(['ko','en','it','fr','es','ja','zh','ru','de']);
 
 async function _count(table, field, value) {
   try {
@@ -132,13 +135,29 @@ module.exports = async function handler(req, res) {
       } catch (e) { /* non-fatal */ }
     }
 
+    // Translate bio if ?lang= requested
+    const langParam = req.query.lang;
+    const targetLang = (typeof langParam === 'string' && SUPPORTED_LANGS.has(langParam)) ? langParam : null;
+    let bioTranslated = prof.bio;
+    if (targetLang && prof.bio) {
+      bioTranslated = await getOrTranslate('profile_bio', prof.id, 'bio', prof.bio, targetLang);
+    }
+    // Translate moodboard titles in the embedded recent list (cap each call)
+    if (targetLang && recentMoodboards.length > 0) {
+      await Promise.all(recentMoodboards.map(async b => {
+        b.titleOriginal = b.title;
+        b.title = await getOrTranslate('mood_board', b.id, 'title', b.title || '', targetLang);
+      }));
+    }
+
     return res.status(200).json({
       profile: {
         id: prof.id,
         name: prof.name,
         role: prof.role,
         avatarUrl: prof.avatar_url,
-        bio: prof.bio,
+        bio: bioTranslated,
+        bioOriginal: prof.bio,
         location: prof.location,
         instagram: prof.instagram,
         website: prof.website,

@@ -9,6 +9,9 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAuth } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
+const { getOrTranslate } = require('../_lib/translate');
+
+const SUPPORTED_LANGS = new Set(['ko','en','it','fr','es','ja','zh','ru','de']);
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -37,17 +40,45 @@ module.exports = async function handler(req, res) {
           if (parent) inspiredBy = { id: parent.id, title: parent.title, authorName: parent.profiles && parent.profiles.name };
         }
 
-        return res.status(200).json({
+        // Build base payload (untranslated)
+        const items = (board.items || []).sort((a, c) => a.sort_order - c.sort_order)
+          .map(i => ({ id: i.id, imageUrl: i.image_url, caption: i.caption, captionOriginal: i.caption }));
+        const out = {
           id: board.id,
           title: board.title,
+          titleOriginal: board.title,
           description: board.description,
+          descriptionOriginal: board.description,
           tags: board.tags,
           voteCount: board.vote_count,
           createdAt: board.created_at,
           author: { id: board.user_id, name: board.profiles && board.profiles.name, avatarUrl: board.profiles && board.profiles.avatar_url },
-          items: (board.items || []).sort((a, c) => a.sort_order - c.sort_order).map(i => ({ id: i.id, imageUrl: i.image_url, caption: i.caption })),
+          items,
           inspiredBy,
-        });
+        };
+
+        // Translate if ?lang= requested. Title + description + each item caption.
+        // Tags are skipped — they're conceptual labels and translating them
+        // breaks the "tag taxonomy" matching.
+        const langParam = req.query.lang;
+        const targetLang = (typeof langParam === 'string' && SUPPORTED_LANGS.has(langParam)) ? langParam : null;
+        if (targetLang) {
+          const [tt, dd] = await Promise.all([
+            getOrTranslate('mood_board', board.id, 'title',       board.title       || '', targetLang),
+            getOrTranslate('mood_board', board.id, 'description', board.description || '', targetLang),
+          ]);
+          out.title = tt;
+          out.description = dd;
+          // Captions in parallel — bounded by translateBatch's internal concurrency
+          const capItems = items.filter(i => i.caption && i.caption.trim());
+          const capTranslations = await Promise.all(capItems.map(i =>
+            getOrTranslate('mood_board_item', i.id, 'caption', i.caption || '', targetLang)
+          ));
+          capItems.forEach((i, idx) => { i.caption = capTranslations[idx]; });
+          out.translated = (tt !== board.title) || (dd !== board.description);
+        }
+
+        return res.status(200).json(out);
       } catch (error) {
         console.error('Get moodboard detail error:', error);
         return res.status(500).json({ message: 'Failed to fetch board' });
@@ -55,9 +86,10 @@ module.exports = async function handler(req, res) {
     }
 
     try {
-      const { userId, sort = 'recent', page = 1 } = req.query;
+      const { userId, sort = 'recent', page = 1, lang } = req.query;
       const perPage = 20;
       const offset = (parseInt(page) - 1) * perPage;
+      const targetLang = (typeof lang === 'string' && SUPPORTED_LANGS.has(lang)) ? lang : null;
 
       let query = supabaseAdmin
         .from('community_mood_boards')
@@ -76,10 +108,14 @@ module.exports = async function handler(req, res) {
       const { data, count, error } = await query;
       if (error) throw error;
 
-      return res.status(200).json({
-        boards: data.map(b => ({
+      // Translate title (and short description preview if present) per board.
+      // Captions on list-view items are NOT shown so we skip them — only the
+      // title strip is rendered on cards.
+      const boardsOut = await Promise.all(data.map(async b => {
+        const row = {
           id: b.id,
           title: b.title,
+          titleOriginal: b.title,
           description: b.description,
           tags: b.tags,
           voteCount: b.vote_count,
@@ -88,7 +124,16 @@ module.exports = async function handler(req, res) {
           createdAt: b.created_at,
           inspiredById: b.inspired_by_id || null,
           author: { id: b.user_id, name: b.profiles?.name, avatarUrl: b.profiles?.avatar_url },
-        })),
+        };
+        if (targetLang) {
+          row.title = await getOrTranslate('mood_board', b.id, 'title', b.title || '', targetLang);
+          row.translated = (row.title !== row.titleOriginal);
+        }
+        return row;
+      }));
+
+      return res.status(200).json({
+        boards: boardsOut,
         total: count,
         page: parseInt(page),
         totalPages: Math.ceil(count / perPage),
