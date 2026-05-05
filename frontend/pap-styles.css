@@ -83,7 +83,12 @@ body:has(.nav-overlay.active) .header{background:transparent;backdrop-filter:non
 .logo-wrap img{height:32px;width:auto}
 
 /* FLOATING CURSOR LOGO */
-.floating-logo{position:fixed;z-index:1100;pointer-events:none;transition:none;will-change:transform,left,top}
+/* z-index 1700 — must out-stack the .header (1600) so the animated
+   logo on index.html stays visible after it docks into header position.
+   When the header was at z-index 1000 the previous 1100 was fine, but
+   raising the header to clear the nav-overlay (1500) buried the logo
+   behind the header's dark backdrop. */
+.floating-logo{position:fixed;z-index:1700;pointer-events:none;transition:none;will-change:transform,left,top}
 .floating-logo a{pointer-events:auto;display:block;cursor:pointer}
 .floating-logo img{height:32px;width:auto}
 .floating-logo.in-header{transition:left .4s cubic-bezier(.25,.46,.45,.94),top .4s cubic-bezier(.25,.46,.45,.94),transform .4s cubic-bezier(.25,.46,.45,.94)}
