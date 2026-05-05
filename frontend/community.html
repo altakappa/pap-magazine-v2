@@ -2436,6 +2436,11 @@ function setLang(l){
   }
   // Then apply community-specific L translations (higher priority for community keys)
   _communityTranslations();
+  // Re-fetch UGC (posts/moodboards/scraps/etc.) so user-written content is
+  // re-rendered in the new language. The API endpoints take ?lang= and
+  // serve cached translations. Wrapped in try/catch — partial failures
+  // shouldn't break the language switch itself.
+  try { if(typeof _refreshCommunityUgc === 'function') _refreshCommunityUgc(); } catch(_){}
 }
 
 // Hook: when pap-app.js overrides setLang, we wrap it to also run community translations

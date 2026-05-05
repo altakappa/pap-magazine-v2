@@ -1,12 +1,20 @@
 /**
- * GET  /api/community/posts  — List posts (?tag=&page=)
+ * GET  /api/community/posts  — List posts (?tag=&page=&lang=)
  * POST /api/community/posts  — Create a new post
+ *
+ * When ?lang= is provided, post title + content are auto-translated via
+ * api/_lib/translate.js (cached in community_translations). The original
+ * fields are also returned as `titleOriginal` / `contentOriginal` so the
+ * frontend can offer a "show original" toggle.
  */
 
 const { supabaseAdmin } = require('../../_lib/supabase');
 const { requireAuth } = require('../../_lib/auth');
 const { handleCors } = require('../../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../../_lib/rateLimit');
+const { getOrTranslate } = require('../../_lib/translate');
+
+const SUPPORTED_LANGS = new Set(['ko','en','it','fr','es','ja','zh','ru','de']);
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -19,9 +27,10 @@ module.exports = async function handler(req, res) {
   // ── GET: List posts ──
   if (req.method === 'GET') {
     try {
-      const { tag, page = 1 } = req.query;
+      const { tag, page = 1, lang } = req.query;
       const perPage = 20;
       const offset = (parseInt(page) - 1) * perPage;
+      const targetLang = (typeof lang === 'string' && SUPPORTED_LANGS.has(lang)) ? lang : null;
 
       let query = supabaseAdmin
         .from('community_posts')
@@ -36,11 +45,13 @@ module.exports = async function handler(req, res) {
       const { data: posts, count, error } = await query;
       if (error) throw error;
 
-      return res.status(200).json({
-        posts: posts.map(p => ({
+      const translated = await Promise.all(posts.map(async p => {
+        const out = {
           id: p.id,
           title: p.title,
           content: p.content,
+          titleOriginal: p.title,
+          contentOriginal: p.content,
           tag: p.tag,
           likeCount: p.like_count,
           commentCount: p.comment_count,
@@ -51,7 +62,21 @@ module.exports = async function handler(req, res) {
             avatarUrl: p.profiles?.avatar_url,
             instagram: p.profiles?.instagram,
           },
-        })),
+        };
+        if (targetLang) {
+          const [t, c] = await Promise.all([
+            getOrTranslate('post', p.id, 'title',   p.title   || '', targetLang),
+            getOrTranslate('post', p.id, 'content', p.content || '', targetLang),
+          ]);
+          out.title = t;
+          out.content = c;
+          out.translated = (t !== p.title) || (c !== p.content);
+        }
+        return out;
+      }));
+
+      return res.status(200).json({
+        posts: translated,
         total: count,
         page: parseInt(page),
         totalPages: Math.ceil(count / perPage),

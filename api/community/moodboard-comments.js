@@ -15,6 +15,9 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAuth, verifyToken } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
+const { getOrTranslate } = require('../_lib/translate');
+
+const SUPPORTED_LANGS = new Set(['ko','en','it','fr','es','ja','zh','ru','de']);
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -23,8 +26,9 @@ module.exports = async function handler(req, res) {
   // ── GET: list (public — no auth required) ──
   if (req.method === 'GET') {
     try {
-      const { boardId } = req.query;
+      const { boardId, lang } = req.query;
       if (!boardId) return res.status(400).json({ message: 'boardId required' });
+      const targetLang = (typeof lang === 'string' && SUPPORTED_LANGS.has(lang)) ? lang : null;
 
       const { data, error } = await supabaseAdmin
         .from('community_mood_board_comments')
@@ -34,18 +38,26 @@ module.exports = async function handler(req, res) {
         .limit(200);
       if (error) throw error;
 
-      return res.status(200).json({
-        comments: (data || []).map(c => ({
+      const out = await Promise.all((data || []).map(async c => {
+        const row = {
           id: c.id,
           content: c.content,
+          contentOriginal: c.content,
           createdAt: c.created_at,
           author: {
             id: c.user_id,
             name: c.profiles && c.profiles.name,
             avatarUrl: c.profiles && c.profiles.avatar_url,
           },
-        })),
-      });
+        };
+        if (targetLang) {
+          row.content = await getOrTranslate('mood_board_comment', c.id, 'content', c.content || '', targetLang);
+          row.translated = (row.content !== row.contentOriginal);
+        }
+        return row;
+      }));
+
+      return res.status(200).json({ comments: out });
     } catch (error) {
       console.error('List moodboard comments error:', error);
       return res.status(500).json({ message: 'Failed to fetch comments' });

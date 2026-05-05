@@ -7,6 +7,9 @@ const { supabaseAdmin } = require('../../../_lib/supabase');
 const { requireAuth } = require('../../../_lib/auth');
 const { handleCors } = require('../../../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../../../_lib/rateLimit');
+const { getOrTranslate } = require('../../../_lib/translate');
+
+const SUPPORTED_LANGS = new Set(['ko','en','it','fr','es','ja','zh','ru','de']);
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -20,6 +23,9 @@ module.exports = async function handler(req, res) {
   // ── GET: List comments ──
   if (req.method === 'GET') {
     try {
+      const { lang } = req.query;
+      const targetLang = (typeof lang === 'string' && SUPPORTED_LANGS.has(lang)) ? lang : null;
+
       const { data: comments, error } = await supabaseAdmin
         .from('community_comments')
         .select('*, profiles!inner(name, avatar_url)')
@@ -28,18 +34,26 @@ module.exports = async function handler(req, res) {
 
       if (error) throw error;
 
-      return res.status(200).json({
-        comments: comments.map(c => ({
+      const out = await Promise.all(comments.map(async c => {
+        const row = {
           id: c.id,
           content: c.content,
+          contentOriginal: c.content,
           createdAt: c.created_at,
           author: {
             id: c.user_id,
             name: c.profiles?.name,
             avatarUrl: c.profiles?.avatar_url,
           },
-        })),
-      });
+        };
+        if (targetLang) {
+          row.content = await getOrTranslate('post_comment', c.id, 'content', c.content || '', targetLang);
+          row.translated = (row.content !== row.contentOriginal);
+        }
+        return row;
+      }));
+
+      return res.status(200).json({ comments: out });
     } catch (error) {
       console.error('Get comments error:', error);
       return res.status(500).json({ message: 'Failed to fetch comments' });
