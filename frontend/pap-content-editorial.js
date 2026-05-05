@@ -417,15 +417,27 @@ function _openEditorialInner(title,thumb){
         return '<span class="ed-img-credit">' + tok + '</span>';
       }).join('');
     } else {
-      // Show fashion brands as hover overlay on each image (rotate through)
+      // Show fashion brands as hover overlay on each image (rotate through).
+      // Defensive coercion: brand entries can be string ("@brand") or object
+      // ({n:"Brand", id:"@brand"}). When id is an empty string the old
+      // code left fHandle as "" but rendered fDisplay correctly — that's
+      // OK. When n is also empty (brand with no metadata at all) we now
+      // skip the entry instead of rendering a blank link.
       var fLen=det.fashion.length;
       if(fLen>0){
         var perImgCount=Math.max(2,Math.ceil(fLen/det.images.length));
         var start=(idx*perImgCount)%fLen;
         for(var fi=0;fi<perImgCount&&fi<fLen;fi++){
           var f=det.fashion[(start+fi)%fLen];
-          var fHandle=typeof f==='object'?f.id||'':f;
-          var fDisplay=typeof f==='object'&&f.n?f.n:fHandle.replace(/^@/,'');
+          var fHandle = '', fDisplay = '';
+          if(f && typeof f === 'object'){
+            fHandle  = (typeof f.id === 'string' ? f.id : '') || '';
+            fDisplay = (typeof f.n  === 'string' ? f.n  : '') || (fHandle ? fHandle.replace(/^@/,'') : '');
+          } else if(typeof f === 'string'){
+            fHandle  = f;
+            fDisplay = f.replace(/^@/, '');
+          }
+          if(!fDisplay) continue;
           credits+='<a href="#" onclick="event.preventDefault();openProfileByHandle(\''+fHandle.replace(/'/g,"")+'\')">'+fDisplay+'</a>';
         }
       }
@@ -433,11 +445,26 @@ function _openEditorialInner(title,thumb){
     gal.innerHTML+='<div class="ed-gallery-item"><img src="'+url+'" alt="'+title+'" loading="lazy" onerror="edImgError(this)">'+_scrapBtnHtml(url,title)+'<div class="ed-img-credits">'+credits+'</div></div>';
   });
 
-  // Credits table — supports name+handle objects or plain handle strings
+  // Credits table — supports name+handle objects or plain handle strings.
+  // Defensive: an object with empty .n used to fall through to the string
+  // branch and call h.replace(...) on the object → TypeError. Now we
+  // resolve handle/displayName strictly to strings before any string ops.
   var cr=document.getElementById('edDetailCredits');
   var ch='';
   det.credits.forEach(function(c){
-    var vals=c.h.map(function(h){var handle,displayName;if(typeof h==='object'&&h.n){handle=h.id||'';displayName=h.n;}else{handle=h;displayName=h.replace(/^@/,'');}var safeHandle=handle.replace(/'/g,"");return '<a href="#" onclick="event.preventDefault();openProfileByHandle(\''+safeHandle+'\')">'+displayName+'</a>';}).join(', ');
+    var vals=c.h.map(function(h){
+      var handle = '', displayName = '';
+      if(h && typeof h === 'object'){
+        handle      = (typeof h.id === 'string' ? h.id : '') || '';
+        displayName = (typeof h.n  === 'string' ? h.n  : '') || (handle ? handle.replace(/^@/,'') : '');
+      } else if(typeof h === 'string'){
+        handle      = h;
+        displayName = h.replace(/^@/, '');
+      }
+      if(!displayName) return '';
+      var safeHandle = handle.replace(/'/g,"");
+      return '<a href="#" onclick="event.preventDefault();openProfileByHandle(\''+safeHandle+'\')">'+displayName+'</a>';
+    }).filter(Boolean).join(', ');
     ch+='<div class="ed-cred-row"><div class="ed-cred-role">'+c.r+'</div><div class="ed-cred-val">'+vals+'</div></div>';
   });
   // Fashion by — removed (shown as hover credits on images)
@@ -570,14 +597,23 @@ function _openEditorialInner_noPush(title,thumb){
         return '<span class="ed-img-credit">' + tok + '</span>';
       }).join('');
     } else {
+      // Same defensive coercion as openEditorial path — keep these two
+      // branches in sync.
       var fLen=det.fashion.length;
       if(fLen>0){
         var perImgCount=Math.max(2,Math.ceil(fLen/det.images.length));
         var start=(idx*perImgCount)%fLen;
         for(var fi=0;fi<perImgCount&&fi<fLen;fi++){
           var f=det.fashion[(start+fi)%fLen];
-          var fHandle=typeof f==='object'?f.id||'':f;
-          var fDisplay=typeof f==='object'&&f.n?f.n:fHandle.replace(/^@/,'');
+          var fHandle = '', fDisplay = '';
+          if(f && typeof f === 'object'){
+            fHandle  = (typeof f.id === 'string' ? f.id : '') || '';
+            fDisplay = (typeof f.n  === 'string' ? f.n  : '') || (fHandle ? fHandle.replace(/^@/,'') : '');
+          } else if(typeof f === 'string'){
+            fHandle  = f;
+            fDisplay = f.replace(/^@/, '');
+          }
+          if(!fDisplay) continue;
           credits+='<a href="#" onclick="event.preventDefault();openProfileByHandle(\''+fHandle.replace(/'/g,"")+'\')">'+fDisplay+'</a>';
         }
       }
@@ -587,7 +623,19 @@ function _openEditorialInner_noPush(title,thumb){
   var cr=document.getElementById('edDetailCredits');
   var ch='';
   det.credits.forEach(function(c){
-    var vals=c.h.map(function(h){var handle,displayName;if(typeof h==='object'&&h.n){handle=h.id||'';displayName=h.n;}else{handle=h;displayName=h.replace(/^@/,'');}var safeHandle=handle.replace(/'/g,"");return '<a href="#" onclick="event.preventDefault();openProfileByHandle(\''+safeHandle+'\')">'+displayName+'</a>';}).join(', ');
+    var vals=c.h.map(function(h){
+      var handle = '', displayName = '';
+      if(h && typeof h === 'object'){
+        handle      = (typeof h.id === 'string' ? h.id : '') || '';
+        displayName = (typeof h.n  === 'string' ? h.n  : '') || (handle ? handle.replace(/^@/,'') : '');
+      } else if(typeof h === 'string'){
+        handle      = h;
+        displayName = h.replace(/^@/, '');
+      }
+      if(!displayName) return '';
+      var safeHandle = handle.replace(/'/g,"");
+      return '<a href="#" onclick="event.preventDefault();openProfileByHandle(\''+safeHandle+'\')">'+displayName+'</a>';
+    }).filter(Boolean).join(', ');
     ch+='<div class="ed-cred-row"><div class="ed-cred-role">'+c.r+'</div><div class="ed-cred-val">'+vals+'</div></div>';
   });
   cr.innerHTML=ch;
