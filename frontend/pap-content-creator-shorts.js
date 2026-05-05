@@ -118,6 +118,18 @@ var creatorDB=null;
 function getCreatorDB(){if(!creatorDB)creatorDB=buildCreatorDB();return creatorDB;}
 
 function openCreatorPopup(cr){
+  // Save the editorial overlay's current scroll position BEFORE we push
+  // a new history state. When the user closes this popup, popstate will
+  // re-render the editorial via _openEditorialInner_noPush, which sets
+  // edOverlay.scrollTop=0 — without this snapshot the user gets snapped
+  // to the very top of the editorial instead of the credit row they
+  // clicked from.
+  try {
+    var _edOv = document.getElementById('edOverlay');
+    if(_edOv && _edOv.classList.contains('active')){
+      window._papEdScrollBeforeCreator = _edOv.scrollTop;
+    }
+  } catch(_){}
   // cr can be: {name,role,instagram,editorials,img} or {name,handle,role,editorials,imgs}
   var name=cr.name||'';
   var handle=cr.handle||cr.instagram||'';
