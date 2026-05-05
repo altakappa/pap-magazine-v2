@@ -294,8 +294,20 @@ window.addEventListener('popstate',function(e){
   // If navigating back to a previous editorial state → restore that editorial
   if(st && st.editorial && st.title){
     // Close creator popup if open
-    if(cpOv && cpOv.classList.contains('active')){cpOv.classList.remove('active');unlockScroll();}
+    var _wasCpActive = !!(cpOv && cpOv.classList.contains('active'));
+    if(_wasCpActive){cpOv.classList.remove('active');unlockScroll();}
     _openEditorialInner_noPush(st.title, st.thumb||'');
+    // If we just closed a creator popup that was opened ON TOP of the
+    // editorial, restore the scroll position the user was at when they
+    // clicked the credit. Without this they get snapped to the top
+    // because _openEditorialInner_noPush ends with scrollTop=0.
+    if(_wasCpActive && typeof window._papEdScrollBeforeCreator === 'number'){
+      try {
+        var _edOv2 = document.getElementById('edOverlay');
+        if(_edOv2) _edOv2.scrollTop = window._papEdScrollBeforeCreator;
+      } catch(_){}
+      window._papEdScrollBeforeCreator = null;
+    }
     return;
   }
 
