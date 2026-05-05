@@ -2452,10 +2452,19 @@ function setLang(l){
 // missed pap-app's later-arriving setLang.
 document.addEventListener('DOMContentLoaded',function(){
   try {
-    var _obs = new MutationObserver(function(mutations){
-      var newLang = document.documentElement.lang || lang;
-      if(newLang === lang) return;
-      lang = newLang;
+    // ⚠ Don't compare against the global `lang` here — pap-i18n.js's setLang
+    // does `lang = l` BEFORE setting document.documentElement.lang, so by the
+    // time the observer fires `lang === newLang` is already true and we'd
+    // early-return. Use a closure-private snapshot instead.
+    var _lastAppliedLang = document.documentElement.lang || 'ko';
+    var _obs = new MutationObserver(function(){
+      var newLang = document.documentElement.lang;
+      if(!newLang || newLang === _lastAppliedLang) return;
+      _lastAppliedLang = newLang;
+      // Mirror into the shared global + storage in case the upstream setLang
+      // didn't (defensive — pap-i18n.js does, but community.html's local
+      // setLang only persists when called directly).
+      try { lang = newLang; } catch(_){}
       try { localStorage.setItem('pap-lang', newLang); } catch(_){}
       try { _communityTranslations(); } catch(_){}
       // PR #17: also re-fetch UGC so user-written content translates too
