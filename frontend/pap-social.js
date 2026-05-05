@@ -508,13 +508,26 @@
     }
     var handle = (creatorHandle||'').toLowerCase();
     var creatorEditorials = [];
+    // Coerce a credit/fashion entry into a lowercase handle string. Entries
+    // can be plain strings ("@brand") or objects ({n:"Name", id:"@brand"}),
+    // and an object with an empty .id used to fall through the old ternary
+    // to the object itself — calling .toLowerCase() on the object then
+    // threw TypeError, which propagated up through openCreatorPopup and
+    // killed the credit-name click flow. Now we always return a string.
+    function _entryHandle(h){
+      if(h && typeof h === 'object'){
+        return (typeof h.id === 'string' ? h.id : '').toLowerCase();
+      }
+      if(typeof h === 'string') return h.toLowerCase();
+      return '';
+    }
     for(var title in edDetails){
       var ed = edDetails[title];
       var found = false;
       (ed.credits||[]).forEach(function(cr){
-        (cr.h||[]).forEach(function(h){ var k=typeof h==='object'&&h.id?h.id:h; if((k||'').toLowerCase() === handle) found = true; });
+        (cr.h||[]).forEach(function(h){ if(_entryHandle(h) === handle) found = true; });
       });
-      (ed.fashion||[]).forEach(function(h){ var k=typeof h==='object'&&h.id?h.id:h; if((k||'').toLowerCase() === handle) found = true; });
+      (ed.fashion||[]).forEach(function(h){ if(_entryHandle(h) === handle) found = true; });
       if(found) creatorEditorials.push(title);
     }
     if(creatorEditorials.length===0){
