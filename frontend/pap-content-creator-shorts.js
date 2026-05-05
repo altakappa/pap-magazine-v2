@@ -48,6 +48,28 @@ function getLevel(count){
 }
 
 // Build creator database from edDetails
+//
+// Credits/fashion entries arrive in three shapes (curated JSON string,
+// admin object with both name+id, or admin object with just one of them).
+// We MUST normalise to two strings — `handle` and `displayName` — before
+// touching `.toLowerCase()` / `.replace()`, otherwise an entry like
+// {n:'Photographer', id:''} (no Instagram handle) falls through the old
+// `h.id ? h.id : h` ternary to `h` (the object), and `.toLowerCase()`
+// throws TypeError, killing the whole DB build mid-loop.
+function _coerceCreatorEntry(h){
+  var handle = '', displayName = '';
+  if(h && typeof h === 'object'){
+    handle      = (typeof h.id === 'string' ? h.id : '') || '';
+    displayName = (typeof h.n  === 'string' ? h.n  : '') || '';
+  } else if(typeof h === 'string'){
+    handle      = h;
+    displayName = h.replace(/^@/, '');
+  }
+  // If we got a handle but no display name, derive it from the handle.
+  if(!displayName && handle) displayName = handle.replace(/^@/, '');
+  return { handle: handle, displayName: displayName };
+}
+
 function buildCreatorDB(){
   var db={};
   for(var title in edDetails){
@@ -58,10 +80,17 @@ function buildCreatorDB(){
     var _normEdCredits = _normalizeCreditsForDisplay(ed.credits);
     _normEdCredits.forEach(function(cr){
       (cr.h||[]).forEach(function(h){
-        var handle=typeof h==='object'&&h.id?h.id:h;
-        var displayName=typeof h==='object'&&h.n?h.n:handle.replace(/^@/,'');
-        var key=handle.toLowerCase();
-        if(!db[key]){db[key]={name:displayName,handle:handle,role:cr.r,editorials:[],imgs:[]};}
+        var c = _coerceCreatorEntry(h);
+        // Skip entries with neither name nor handle — they'd produce a
+        // db[''] bucket that swallows every other empty entry.
+        if(!c.handle && !c.displayName) return;
+        // Key by handle when we have one, otherwise by display-name so a
+        // photographer with no IG handle still gets a stable bucket
+        // ("Photography: John Doe" → key "name:john doe").
+        var key = c.handle
+          ? c.handle.toLowerCase()
+          : ('name:' + c.displayName.toLowerCase());
+        if(!db[key]){db[key]={name:c.displayName,handle:c.handle,role:cr.r,editorials:[],imgs:[]};}
         if(db[key].editorials.indexOf(title)===-1){
           db[key].editorials.push(title);
           if(ed.thumb) db[key].imgs.push({title:title,img:ed.thumb});
@@ -70,10 +99,12 @@ function buildCreatorDB(){
     });
     // Process fashion — supports both {n,id} objects and plain strings
     (ed.fashion||[]).forEach(function(h){
-      var handle=typeof h==='object'&&h.id?h.id:h;
-      var displayName=typeof h==='object'&&h.n?h.n:handle.replace(/^@/,'');
-      var key=handle.toLowerCase();
-      if(!db[key]){db[key]={name:displayName,handle:handle,role:'Fashion Brand',editorials:[],imgs:[]};}
+      var c = _coerceCreatorEntry(h);
+      if(!c.handle && !c.displayName) return;
+      var key = c.handle
+        ? c.handle.toLowerCase()
+        : ('name:' + c.displayName.toLowerCase());
+      if(!db[key]){db[key]={name:c.displayName,handle:c.handle,role:'Fashion Brand',editorials:[],imgs:[]};}
       db[key].isBrand=true;
       if(db[key].editorials.indexOf(title)===-1){
         db[key].editorials.push(title);
