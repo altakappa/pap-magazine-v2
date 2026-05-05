@@ -200,10 +200,14 @@ body:has(.nav-overlay.active) .header{background:transparent;backdrop-filter:non
 .nav-overlay.active .nav-right-col{transform:translateX(0);opacity:1;transition:transform .5s cubic-bezier(.23,1,.32,1) .25s,opacity .5s cubic-bezier(.23,1,.32,1) .25s}
 .nav-right-col a{font-family:'Montserrat',var(--sans);font-size:clamp(40px,7vw,90px);font-weight:900;letter-spacing:.03em;text-transform:uppercase;color:#000;line-height:1.1;transition:opacity .2s}
 .nav-right-col a:hover{opacity:.4}
-.nav-close{position:absolute;top:20px;left:24px;z-index:1600;background:none;border:none;font-size:0;cursor:pointer;width:36px;height:36px;display:flex;align-items:center;justify-content:center;padding:0}
-.nav-close::before,.nav-close::after{content:'';position:absolute;width:22px;height:2px;background:#000;border-radius:1px}
-.nav-close::before{transform:rotate(45deg)}
-.nav-close::after{transform:rotate(-45deg)}
+/* .nav-close — DEPRECATED. The canonical close affordance is the
+   .hamburger button morphing into an X via .is-active. Inline pages
+   (submission, pullletter, magazine, community, index) still ship a
+   <button class="nav-close"> inside their pre-injection markup, and
+   pap-header.js drops that whole .nav-overlay subtree on load — but in
+   case any stale legacy build keeps it around, force-hide it so the
+   pseudo-element X never doubles up over the hamburger's morphed X. */
+.nav-close{display:none!important}
 
 /* HERO */
 .hero{margin-top:72px;position:relative;height:calc(100vh - 72px);min-height:500px;overflow:hidden;background:var(--bg)}
