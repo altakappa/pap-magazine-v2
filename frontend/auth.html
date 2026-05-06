@@ -931,7 +931,13 @@ async function sendResetEmail() {
   btn.disabled = true; btn.textContent = '...';
   try {
     // redirectTo brings the user back to auth.html with a recovery hash.
-    var redirect = location.origin + '/auth.html';
+    // IMPORTANT: use '/auth' (no .html) because vercel.json has
+    // cleanUrls:true, which 308-redirects /auth.html → /auth. That extra
+    // hop drops Supabase's #access_token=...&type=recovery fragment, so
+    // we land on /auth with no recovery context and just see the login
+    // panel. Targeting the clean URL directly skips the redirect and
+    // preserves the hash all the way to the in-page handler.
+    var redirect = location.origin + '/auth';
     var { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: redirect });
     if (error) {
       // Supabase throws for hard failures only (network, malformed email).
