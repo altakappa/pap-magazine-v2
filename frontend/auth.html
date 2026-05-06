@@ -1775,26 +1775,32 @@ document.addEventListener('DOMContentLoaded', function() {
   // ===== Password recovery from email link =====
   // Supabase's resetPasswordForEmail() emails the user a link back to this
   // page with #access_token=...&type=recovery&refresh_token=...
-  // We must intercept this BEFORE the OAuth handler below — otherwise the
-  // recovery hash (which also contains an access_token) would be sent to
-  // /api/auth/exchange and the user would be silently logged in & redirected
-  // to mypage instead of getting the new-password form.
+  //
+  // The Supabase JS client (detectSessionInUrl:true) eats that hash on
+  // load — by the time userland code reads window.location.hash the SDK
+  // may have already replaceState'd it away. So we cannot rely on the
+  // hash being there. Two-pronged detection:
+  //   1) If the hash IS still readable (race-fast browsers), handle it
+  //      synchronously with showReset() and bail.
+  //   2) Always wire up onAuthStateChange("PASSWORD_RECOVERY") so the
+  //      SDK fires it whenever it parses the recovery URL — even when
+  //      the visible URL bar is already clean.
+  // (When this branch returns we explicitly skip the OAuth handler so a
+  //  recovery access_token doesn't get exchanged for a normal session.)
+  var _sbRec = getSupabase();
+  if (_sbRec) {
+    try {
+      _sbRec.auth.onAuthStateChange(function(event){
+        if (event === 'PASSWORD_RECOVERY') {
+          if (typeof showReset === 'function') showReset();
+        }
+      });
+    } catch(_){}
+  }
   if (hashStr && hashStr.indexOf('type=recovery') > -1) {
-    var _sbRec = getSupabase();
-    if (_sbRec) {
-      // onAuthStateChange fires PASSWORD_RECOVERY once the SDK has parsed
-      // the hash and established a recovery-scoped session. updateUser
-      // works against that session.
-      try {
-        _sbRec.auth.onAuthStateChange(function(event){
-          if (event === 'PASSWORD_RECOVERY') {
-            if (typeof showReset === 'function') showReset();
-          }
-        });
-      } catch(_){}
-    }
-    // Show the reset panel right away; the auth-state event is just for
-    // confirming the session is ready (visual feedback already correct).
+    // Visible recovery hash — show the panel immediately and stop the
+    // rest of this handler so OAuth code below doesn't try to claim the
+    // access_token.
     if (typeof showReset === 'function') showReset();
     return;
   }
