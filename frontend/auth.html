@@ -79,6 +79,20 @@ a{color:#fff;text-decoration:none}
 .form-input{width:100%;background:transparent;border:1px solid rgba(255,255,255,.15);padding:13px 16px;font-size:13px;font-family:'Montserrat',sans-serif;color:#fff;outline:none;transition:border-color .3s}
 .form-input:focus{border-color:rgba(255,255,255,.5)}
 .form-input::placeholder{color:rgba(255,255,255,.2)}
+/* Password input wrapper — relative positioning lets the eye toggle
+   button sit absolutely on the right edge of the field. The .pw-input
+   gets right padding so the typed text never collides with the icon. */
+.pw-wrap{position:relative}
+.pw-wrap .form-input.pw-input{padding-right:42px}
+.pw-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;padding:8px;cursor:pointer;color:rgba(255,255,255,.45);display:inline-flex;align-items:center;justify-content:center;transition:color .2s}
+.pw-toggle:hover{color:rgba(255,255,255,.85)}
+.pw-toggle svg{width:18px;height:18px;display:block}
+/* When the input has been switched to text (visible password) we hide
+   the "open eye" and show the "slashed eye" — both icons live in the
+   same button so the layout never shifts. */
+.pw-toggle .icon-hidden{display:none}
+.pw-toggle.is-shown .icon-shown{display:none}
+.pw-toggle.is-shown .icon-hidden{display:inline-flex}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .form-hint{font-size:10px;color:rgba(255,255,255,.2);margin-top:6px;letter-spacing:.02em}
 .pw-strength{height:2px;background:rgba(255,255,255,.06);margin-top:8px;border-radius:1px;overflow:hidden}
@@ -365,7 +379,7 @@ a{color:#fff;text-decoration:none}
     </div>
     <div class="form-group">
       <label class="form-label" data-i18n="labelPw">비밀번호</label>
-      <input type="password" class="form-input" id="signupPw" data-i18n-ph="phPwSet" placeholder="8자 이상, 대문자+숫자 포함" oninput="checkPwStrength(this.value)">
+      <div class="pw-wrap"><input type="password" class="form-input pw-input" id="signupPw" data-i18n-ph="phPwSet" placeholder="8자 이상, 대문자+숫자 포함" oninput="checkPwStrength(this.value)"><button type="button" class="pw-toggle" onclick="papTogglePw('signupPw',this)" aria-label="비밀번호 보기"><span class="icon-shown"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span><span class="icon-hidden"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></span></button></div>
       <div class="pw-strength"><div class="pw-strength-bar" id="pwBar"></div></div>
       <div class="form-hint" data-i18n="pwHint">대문자 1개 + 숫자 1개 이상 포함</div>
     </div>
@@ -478,7 +492,7 @@ a{color:#fff;text-decoration:none}
     </div>
     <div class="form-group">
       <label class="form-label" data-i18n="labelPw">비밀번호</label>
-      <input type="password" class="form-input" id="loginPw" data-i18n-ph="phPw" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')doLogin()">
+      <div class="pw-wrap"><input type="password" class="form-input pw-input" id="loginPw" data-i18n-ph="phPw" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')doLogin()"><button type="button" class="pw-toggle" onclick="papTogglePw('loginPw',this)" aria-label="비밀번호 보기"><span class="icon-shown"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span><span class="icon-hidden"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></span></button></div>
     </div>
     <button class="auth-btn" data-i18n="btnLogin" onclick="doLogin()">로그인</button>
     <div class="auth-link" style="margin-bottom:8px"><a href="#" onclick="showForgot();return false;" data-i18n="forgot">비밀번호를 잊으셨나요?</a></div>
@@ -507,12 +521,12 @@ a{color:#fff;text-decoration:none}
     </div>
     <div class="form-group">
       <label class="form-label" data-i18n="labelPw">비밀번호</label>
-      <input type="password" class="form-input" id="resetPw1" data-i18n-ph="phPwSet" placeholder="대문자 + 숫자 포함, 최소 8자" onkeydown="if(event.key==='Enter')document.getElementById('resetPw2').focus()">
+      <div class="pw-wrap"><input type="password" class="form-input pw-input" id="resetPw1" data-i18n-ph="phPwSet" placeholder="대문자 + 숫자 포함, 최소 8자" onkeydown="if(event.key==='Enter')document.getElementById('resetPw2').focus()"><button type="button" class="pw-toggle" onclick="papTogglePw('resetPw1',this)" aria-label="비밀번호 보기"><span class="icon-shown"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span><span class="icon-hidden"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></span></button></div>
       <div class="form-hint" data-i18n="pwHint" style="margin-top:6px;color:rgba(255,255,255,.45);font-size:11px">대문자 1자 + 숫자 1자 이상 포함</div>
     </div>
     <div class="form-group">
       <label class="form-label" data-i18n="labelPwConfirm">비밀번호 확인</label>
-      <input type="password" class="form-input" id="resetPw2" data-i18n-ph="phPwConfirm" placeholder="비밀번호 재입력" onkeydown="if(event.key==='Enter')doResetPassword()">
+      <div class="pw-wrap"><input type="password" class="form-input pw-input" id="resetPw2" data-i18n-ph="phPwConfirm" placeholder="비밀번호 재입력" onkeydown="if(event.key==='Enter')doResetPassword()"><button type="button" class="pw-toggle" onclick="papTogglePw('resetPw2',this)" aria-label="비밀번호 보기"><span class="icon-shown"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></span><span class="icon-hidden"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></span></button></div>
     </div>
     <button class="auth-btn" id="btnResetPw" data-i18n="resetBtn" onclick="doResetPassword()">비밀번호 변경</button>
   </div>
@@ -526,6 +540,29 @@ var selectedPlan = 'free';
 var isLoginView = false;
 var verificationToken = '';
 var verifiedToken = '';
+
+// ======== PASSWORD VISIBILITY TOGGLE ========
+// Flips a password input between type="password" and type="text" when
+// the eye button next to it is clicked. The .is-shown class on the
+// button swaps the open/slashed-eye SVGs (CSS handles the visual swap).
+function papTogglePw(inputId, btn) {
+  var el = document.getElementById(inputId);
+  if (!el) return;
+  if (el.type === 'password') {
+    el.type = 'text';
+    if (btn) btn.classList.add('is-shown');
+  } else {
+    el.type = 'password';
+    if (btn) btn.classList.remove('is-shown');
+  }
+  // Restore focus + caret position so the user can keep typing
+  // immediately after toggling without their cursor jumping.
+  try {
+    var v = el.value || '';
+    el.focus();
+    el.setSelectionRange(v.length, v.length);
+  } catch(_){}
+}
 
 // ======== HISTORY / ROUTING ========
 // The auth flow is a single page with multiple panels (signup steps 1–4 and a
