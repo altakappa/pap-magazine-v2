@@ -6,6 +6,54 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>PAP 관리자</title>
+<!-- ADMIN GATE — runs synchronously at the very top of <head>, before
+     any UI is rendered. Hides body, then verifies the token's role via
+     /api/auth/me. Non-admins (or anonymous) are redirected to /auth and
+     never see the admin shell. The server-side requireAdmin middleware
+     still re-checks every API call as the actual security boundary;
+     this client gate just keeps the markup out of unauthorised DOMs.
+     Bypass via View Source is fine — every API call would 403 anyway. -->
+<style id="admin-gate-cover">html,body{background:#000!important}body{visibility:hidden!important}body.pap-admin-ok{visibility:visible!important;background:#f5f5f7!important}</style>
+<script>
+(function(){
+  try {
+    var token = null;
+    try { token = localStorage.getItem('pap-token'); } catch(_){}
+    function _redirect403() {
+      var ret = encodeURIComponent('/admin');
+      // Send to the login panel; auth.html honours ?mode=login + ?return=
+      // and ferries the user back to /admin on successful sign-in.
+      window.location.replace('/auth?mode=login&return=' + ret);
+    }
+    if (!token) { _redirect403(); return; }
+    fetch('/api/auth/me', {
+      method: 'GET',
+      headers: { 'Authorization': 'Bearer ' + token, 'X-Requested-With': 'XMLHttpRequest' },
+      credentials: 'same-origin'
+    })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(json){
+        var role = json && json.user && json.user.role;
+        if (role !== 'admin') {
+          // Authenticated but not an admin — bounce to homepage rather
+          // than the login screen so we don't loop forever.
+          window.location.replace('/');
+          return;
+        }
+        // Reveal the admin shell. Body becomes visible immediately;
+        // the rest of the page's normal scripts run as usual.
+        if (document.body) document.body.classList.add('pap-admin-ok');
+        else document.addEventListener('DOMContentLoaded', function(){
+          document.body.classList.add('pap-admin-ok');
+        });
+      })
+      .catch(function(){ _redirect403(); });
+  } catch(e) {
+    // If anything goes wrong before fetch even fires, fail closed.
+    window.location.replace('/auth?mode=login&return=' + encodeURIComponent('/admin'));
+  }
+})();
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#f5f5f7;--surface:#fff;--surface2:#f0f0f3;--border:rgba(0,0,0,.06);--border2:rgba(0,0,0,.12);--text:#111;--text2:rgba(0,0,0,.55);--text3:rgba(0,0,0,.35);--green:#16a34a;--red:#dc2626;--yellow:#ca8a04;--blue:#2563eb;--purple:#7c3aed;--sans:'Inter',sans-serif;--display:'Montserrat',sans-serif}
