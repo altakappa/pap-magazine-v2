@@ -1021,9 +1021,19 @@ function getSupabase() {
       localStorage.setItem(VERIFIER_KEY, cookieVerifier);
     }
 
+    // flowType: 'implicit' (was 'pkce') so password-reset emails carry
+    // the recovery token in a URL hash fragment (#access_token=...) that
+    // works the moment the user opens the email link in ANY browser. The
+    // PKCE alternative requires a code_verifier in localStorage from the
+    // device that requested the reset — which fails the moment the user
+    // clicks the email link in a different browser or incognito tab. For
+    // password recovery the cross-context reliability of implicit flow is
+    // worth more than the marginal CSRF advantage of PKCE. (Our OAuth
+    // flow does NOT depend on this client's flow type — it round-trips
+    // through /api/auth/callback server-side, so this change is safe.)
     _supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: {
-        flowType: 'pkce',
+        flowType: 'implicit',
         detectSessionInUrl: true,
         autoRefreshToken: false,
         persistSession: true,
