@@ -1773,20 +1773,16 @@ document.addEventListener('DOMContentLoaded', function() {
   var _oauthHandled = false;
 
   // ===== Password recovery from email link =====
-  // Supabase's resetPasswordForEmail() emails the user a link back to this
-  // page with #access_token=...&type=recovery&refresh_token=...
-  //
-  // The Supabase JS client (detectSessionInUrl:true) eats that hash on
-  // load — by the time userland code reads window.location.hash the SDK
-  // may have already replaceState'd it away. So we cannot rely on the
-  // hash being there. Two-pronged detection:
-  //   1) If the hash IS still readable (race-fast browsers), handle it
-  //      synchronously with showReset() and bail.
-  //   2) Always wire up onAuthStateChange("PASSWORD_RECOVERY") so the
-  //      SDK fires it whenever it parses the recovery URL — even when
-  //      the visible URL bar is already clean.
-  // (When this branch returns we explicitly skip the OAuth handler so a
-  //  recovery access_token doesn't get exchanged for a normal session.)
+  // Three-pronged detection because Supabase JS racing eats the hash:
+  //   (a) Synchronous hash read — works on slow browsers / dev tools open
+  //   (b) onAuthStateChange("PASSWORD_RECOVERY") — works if SDK fires
+  //       the event AFTER our listener registers (not guaranteed)
+  //   (c) Polled getSession() — definitive: if a session magically
+  //       appeared without the user logging in, we just landed via a
+  //       recovery URL. This covers the race where the SDK has already
+  //       parsed the hash, fired and forgotten the event before we got
+  //       there. We poll for up to 3s so the SDK has time to finish
+  //       parsing the URL fragment on slower mobile browsers.
   var _sbRec = getSupabase();
   if (_sbRec) {
     try {
@@ -1798,11 +1794,32 @@ document.addEventListener('DOMContentLoaded', function() {
     } catch(_){}
   }
   if (hashStr && hashStr.indexOf('type=recovery') > -1) {
-    // Visible recovery hash — show the panel immediately and stop the
-    // rest of this handler so OAuth code below doesn't try to claim the
-    // access_token.
     if (typeof showReset === 'function') showReset();
     return;
+  }
+
+  // (c) Session-based detection. If we just landed on /auth from a
+  // recovery URL, the Supabase JS SDK will have asynchronously parsed
+  // the hash, established a session, and (probably) cleared the URL.
+  // We poll for that session up to 3s — if one appears AND the user
+  // didn't log in via this page (no oauth params), it's a recovery
+  // landing, so flip to the reset panel.
+  var _hadRecoveryHash = !!(hashStr && hashStr.indexOf('access_token') > -1 &&
+                            hashStr.indexOf('type=recovery') > -1);
+  if (_sbRec && (_hadRecoveryHash || (!params.get('code') && !params.get('token') && !params.get('error') && !hashStr))) {
+    var _recPollStart = Date.now();
+    function _checkRecoverySession() {
+      _sbRec.auth.getSession().then(function(res){
+        var sess = res && res.data && res.data.session;
+        if (sess && sess.user) {
+          // Got a session out of nowhere → recovery landing. Show reset.
+          if (typeof showReset === 'function') showReset();
+        } else if (Date.now() - _recPollStart < 3000) {
+          setTimeout(_checkRecoverySession, 200);
+        }
+      }).catch(function(){});
+    }
+    _checkRecoverySession();
   }
 
   var oauthSuccess = params.get('oauth');
