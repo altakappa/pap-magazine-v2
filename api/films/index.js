@@ -55,24 +55,38 @@ module.exports = async function handler(req, res) {
     if (!user) return;
 
     try {
-      const { title, youtube_id, thumbnail_url, published_date, categories, tags, credits, status } = req.body;
+      const {
+        title, youtube_id, thumbnail_url, published_date,
+        categories, tags, credits, slug, status,
+        related_editorial_id,
+      } = req.body;
 
       if (!title || !youtube_id) {
         return res.status(400).json({ error: 'title and youtube_id are required' });
       }
 
+      // categories / tags expected as TEXT[] (films schema). Coerce string-shape
+      // bodies (legacy admin payloads) into arrays so the column accepts them.
+      const toArray = v =>
+        Array.isArray(v) ? v
+        : (v == null || v === '' ? [] : [String(v)]);
+
+      const insertRow = {
+        title,
+        youtube_id,
+        thumbnail_url: thumbnail_url || null,
+        published_date: published_date || null,
+        categories: toArray(categories).length ? toArray(categories) : ['Film'],
+        tags:       toArray(tags).length       ? toArray(tags)       : [title],
+        credits: Array.isArray(credits) ? credits : [],
+        status: status || 'published',
+      };
+      if (slug)                  insertRow.slug = slug;
+      if (related_editorial_id)  insertRow.related_editorial_id = related_editorial_id;
+
       const { data, error } = await supabaseAdmin
         .from('films')
-        .insert({
-          title,
-          youtube_id,
-          thumbnail_url: thumbnail_url || null,
-          published_date: published_date || null,
-          categories: categories || 'Film',
-          tags: tags || title,
-          credits: credits || [],
-          status: status || 'published'
-        })
+        .insert(insertRow)
         .select()
         .single();
 

@@ -43,9 +43,21 @@ module.exports = async function handler(req, res) {
 
     try {
       const updates = {};
-      const allowed = ['title', 'youtube_id', 'thumbnail_url', 'published_date', 'categories', 'tags', 'credits', 'slug', 'status'];
+      const allowed = [
+        'title', 'youtube_id', 'thumbnail_url', 'published_date',
+        'categories', 'tags', 'credits', 'slug', 'status',
+        'related_editorial_id',
+      ];
+      // Coerce TEXT[] columns to arrays so admin payloads from older
+      // form versions (string-shape) don't break the schema.
+      const toArrayCols = new Set(['categories', 'tags']);
       for (const key of allowed) {
-        if (req.body[key] !== undefined) updates[key] = req.body[key];
+        if (req.body[key] === undefined) continue;
+        let v = req.body[key];
+        if (toArrayCols.has(key)) {
+          v = Array.isArray(v) ? v : (v == null || v === '' ? [] : [String(v)]);
+        }
+        updates[key] = v;
       }
 
       const { data, error } = await supabaseAdmin
