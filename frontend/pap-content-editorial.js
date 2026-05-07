@@ -299,6 +299,58 @@ function openEditorial(title,thumb){
   _openEditorialInner(title,thumb);
 }
 
+// ──────────────────────────────────────────────────────────────────────
+// Editorial video section renderer. Consumed by both _openEditorialInner
+// and _openEditorialInner_noPush so the two render paths stay in sync.
+//
+// Resolves the editorial's url field through normaliseEmbedUrl
+// (pap-utils.js, also shared with the film admin form). One of three
+// outcomes:
+//   • iframe match  → fill #edDetailVideoFrame with <iframe src=…> and
+//                     un-hide the wrapping <section>.
+//   • link match    → fill #edDetailVideoFrame with a styled <a> card
+//                     (Instagram fallback) and un-hide the section.
+//   • null / no slot present → leave hidden, clear any prior content
+//                     so re-opens of a different editorial don't carry
+//                     over a stale player.
+// ──────────────────────────────────────────────────────────────────────
+function _renderEditorialVideo(rawUrl){
+  var wrap = document.getElementById('edDetailVideoWrap');
+  var frame = document.getElementById('edDetailVideoFrame');
+  if (!wrap || !frame) return;
+  // Always clear first — prevents the iframe from hanging around when
+  // navigating from an editorial-with-video to one without.
+  frame.innerHTML = '';
+  wrap.hidden = true;
+
+  if (typeof normaliseEmbedUrl !== 'function') return;
+  var info = normaliseEmbedUrl(rawUrl);
+  if (!info) return;
+
+  if (info.kind === 'iframe') {
+    // Allow list mirrors YouTube's documented embed permissions; the
+    // attribute is required for fullscreen + autoplay-on-tap to work
+    // inside iOS Safari, and is harmless for Vimeo.
+    frame.innerHTML =
+      '<iframe src="' + info.src + '" loading="lazy" '
+      + 'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" '
+      + 'allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>';
+    wrap.hidden = false;
+    return;
+  }
+
+  if (info.kind === 'link') {
+    // Instagram doesn't iframe-embed reliably — render a card link that
+    // opens in a new tab. The .ed-video-link CSS handles the play-icon
+    // affordance so the slot still reads as "video here".
+    var label = info.provider === 'instagram' ? 'Watch on Instagram' : 'Watch external';
+    frame.innerHTML =
+      '<a class="ed-video-link" href="' + info.href + '" target="_blank" rel="noopener noreferrer">'
+      + label + '</a>';
+    wrap.hidden = false;
+  }
+}
+
 function _openEditorialInner(title,thumb){
   var d=edDetails[title];
   if(!d){var titleLower=title.toLowerCase();for(var key in edDetails){if(key.toLowerCase()===titleLower){d=edDetails[key];break;}}}
@@ -444,6 +496,8 @@ function _openEditorialInner(title,thumb){
     }
     gal.innerHTML+='<div class="ed-gallery-item"><img src="'+url+'" alt="'+title+'" loading="lazy" onerror="edImgError(this)">'+_scrapBtnHtml(url,title)+'<div class="ed-img-credits">'+credits+'</div></div>';
   });
+
+  _renderEditorialVideo(det && det.url);
 
   // Credits table — supports name+handle objects or plain handle strings.
   // Defensive: an object with empty .n used to fall through to the string
@@ -620,6 +674,7 @@ function _openEditorialInner_noPush(title,thumb){
     }
     gal.innerHTML+='<div class="ed-gallery-item"><img src="'+url+'" alt="'+title+'" loading="lazy" onerror="edImgError(this)">'+_scrapBtnHtml(url,title)+'<div class="ed-img-credits">'+credits+'</div></div>';
   });
+  _renderEditorialVideo(det && det.url);
   var cr=document.getElementById('edDetailCredits');
   var ch='';
   det.credits.forEach(function(c){

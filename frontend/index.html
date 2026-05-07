@@ -1074,6 +1074,17 @@
     <div class="ed-gallery-grid" id="edDetailGallery"></div>
   </div>
 
+  <!-- VIDEO (optional, conditional). pap-content-editorial.js fills the
+       inner #edDetailVideoFrame with either an <iframe> (YouTube/Vimeo)
+       or an <a class="ed-video-link"> (Instagram fallback) and flips
+       this section's `hidden` attribute, based on normaliseEmbedUrl
+       (pap-utils.js) of the editorial's url field. Empty / unrecognised
+       URL → wrap stays [hidden] and the section never reaches the DOM
+       layout — matches "영상 없는 에디토리얼 → DOM 추가 안 함" rule. -->
+  <section class="ed-video" id="edDetailVideoWrap" hidden>
+    <div class="ed-video-frame" id="edDetailVideoFrame"></div>
+  </section>
+
   <!-- EDITORIAL DESCRIPTION + CREDITS -->
   <div class="ed-credits-wrap">
     <div class="ed-desc" id="edDetailDesc"></div>

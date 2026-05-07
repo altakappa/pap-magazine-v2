@@ -3004,10 +3004,23 @@ function closeFilmModal(){document.getElementById('filmModal').classList.remove(
 
 async function saveFilm(){
   var title=document.getElementById('filmTitle').value.trim();
-  var yt=document.getElementById('filmYouTube').value;
+  var yt=document.getElementById('filmYouTube').value.trim();
   if(!title||!yt){alert('제목과 YouTube URL을 입력해 주세요.');return;}
-  var ytId=yt.replace(/.*[?&]v=([^&]+).*/,'$1').replace(/.*youtu\.be\//,'').replace(/.*shorts\//,'');
-  if(ytId.indexOf('http')>-1) ytId = yt;
+  // Use the shared normaliseEmbedUrl helper (pap-utils.js) so films stay
+  // in sync with the editorial detail-page renderer. Films store the
+  // raw YouTube ID (films.youtube_id), so we pull it from the embed src
+  // when normalisation succeeds. Bare IDs (no URL) round-trip via the
+  // fall-through branch — handy when the admin pastes just `dQw4w9WgXcQ`.
+  var ytId;
+  var info = (typeof normaliseEmbedUrl === 'function') ? normaliseEmbedUrl(yt) : null;
+  if (info && info.provider === 'youtube') {
+    ytId = info.src.split('/embed/')[1];
+  } else {
+    // Already-bare IDs match the YouTube id shape; for anything else, pass
+    // through unchanged so the existing form's edge-cases (manual ID, raw
+    // URLs we don't yet recognise) don't regress.
+    ytId = yt;
+  }
 
   // Slug — explicit value wins; else auto-derive from title.
   var slug = (document.getElementById('filmSlug').value || '').trim() || _filmSlugify(title);

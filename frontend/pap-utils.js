@@ -1,6 +1,80 @@
 // PAP Magazine — Shell utilities module (extracted from pap-app.js per
 // HARNESS_CHECKLIST.md mission 5).
 //
+// ───────────────────────────────────────────────────────────────────────
+// VIDEO EMBED URL NORMALISATION (shared by editorial detail + film admin)
+// ───────────────────────────────────────────────────────────────────────
+// Films and editorials both accept a single video URL. The detail page
+// renders an <iframe> using the embed URL produced here; the admin form
+// validates against this same function so the user gets a consistent
+// "URL is valid" / "we'll fall back to a link" answer at save time.
+//
+// Returns one of:
+//   { kind:'iframe', src, provider } — iframe-embeddable URL ready to drop
+//                                       into <iframe src=…>
+//   { kind:'link',   href, provider } — provider doesn't support iframe
+//                                       embedding from arbitrary domains
+//                                       (Instagram); render a card link
+//                                       instead.
+//   null                              — empty input or unrecognised URL.
+//
+// providers covered: youtube, vimeo, instagram (link only).
+// Anything else returns null so the caller can decide whether to show
+// a generic external-link fallback or skip the section entirely.
+function normaliseEmbedUrl(rawUrl){
+  if (!rawUrl) return null;
+  var u = String(rawUrl).trim();
+  if (!u) return null;
+
+  // YouTube — watch / youtu.be / shorts / embed already-clean.
+  // Match the *first* video-id-shaped token after recognised path markers
+  // so query strings like `?si=…&list=…` don't break extraction.
+  var ytMatch =
+       u.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i)
+    || u.match(/[?&]v=([A-Za-z0-9_-]{11})/);
+  if (ytMatch) {
+    return {
+      kind: 'iframe',
+      // youtube-nocookie is the privacy-friendly variant; it accepts the
+      // same /embed/{id} path but doesn't drop tracking cookies until
+      // the user actually starts the video.
+      src: 'https://www.youtube-nocookie.com/embed/' + ytMatch[1],
+      provider: 'youtube',
+    };
+  }
+
+  // Vimeo — vimeo.com/{id} (canonical), with optional /channels/, /groups/,
+  // /album/, or /video/ prefixes that all resolve to the same player.
+  var vimeoMatch = u.match(/vimeo\.com\/(?:.*?\/)?(\d{6,})/i);
+  if (vimeoMatch) {
+    return {
+      kind: 'iframe',
+      src: 'https://player.vimeo.com/video/' + vimeoMatch[1],
+      provider: 'vimeo',
+    };
+  }
+
+  // Instagram Reel / Post / TV — Instagram's embed.js requires loading
+  // their script and crawls layout. Falling back to an external-link
+  // card is much more robust across mobile + when their script is
+  // blocked. The caller renders a styled <a target="_blank">.
+  var igMatch = u.match(/instagram\.com\/(?:reel|reels|p|tv)\/([A-Za-z0-9_-]+)/i);
+  if (igMatch) {
+    return {
+      kind: 'link',
+      href: 'https://www.instagram.com/' + (u.indexOf('/reel') >= 0 ? 'reel' : (u.indexOf('/tv') >= 0 ? 'tv' : 'p')) + '/' + igMatch[1] + '/',
+      provider: 'instagram',
+    };
+  }
+
+  return null;
+}
+// Make the helper available to non-module scripts (admin form + editorial
+// detail) which read it as a bare global.
+if (typeof window !== 'undefined') window.normaliseEmbedUrl = normaliseEmbedUrl;
+
+
+//
 // Foundational pure-ish helpers shared across every page and harness:
 //   - modal scroll lock (lockScroll / unlockScroll, ref-counted)
 //   - horizontal carousel arrow-state + smooth scroll
