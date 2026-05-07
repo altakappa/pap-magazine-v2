@@ -23,6 +23,7 @@ CREATE INDEX IF NOT EXISTS idx_films_related_editorial
   ON public.films(related_editorial_id)
   WHERE related_editorial_id IS NOT NULL;
 
-COMMENT ON COLUMN public.films.related_editorial_id IS
-  'Optional FK to the editorial this film derives from (BTS, behind-the-scenes, ' ||
-  'campaign film, etc.). NULL = free-standing film. ON DELETE SET NULL.';
+-- COMMENT ON COLUMN takes a single string literal — no || concatenation
+-- here (Postgres syntax-errors before the IS clause is fully parsed). Keep
+-- it on one line so re-runs of this file don't reintroduce the bug.
+COMMENT ON COLUMN public.films.related_editorial_id IS 'Optional FK to the editorial this film derives from (BTS, behind-the-scenes, campaign film, etc.). NULL = free-standing film. ON DELETE SET NULL.';
