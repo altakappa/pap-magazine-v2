@@ -1099,35 +1099,100 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
   </div>
 </main>
 
-<!-- FILM EDIT MODAL -->
+<!-- FILM EDIT MODAL — films are video editorials. Same metadata model as
+     editorials (categories / credits / slug / published_date / tags / thumbnail)
+     plus a YouTube video on top. The credits area reuses the editorial form's
+     drag-and-drop multi-role chip picker by passing a custom areaId
+     ('filmCreditsArea') to the shared addCredit / bulkDeleteCredits / etc.
+     functions in pap-admin.js. -->
 <div class="modal-bg" id="filmModal">
-  <div class="modal" style="max-width:520px">
+  <div class="modal" style="max-width:760px">
     <button class="modal-close" onclick="closeFilmModal()">×</button>
     <h2 id="filmModalTitle">필름 추가</h2>
-    <div class="sub">클릭 시 새 팝업창에서 YouTube 영상이 재생됩니다.</div>
+    <div class="sub">클릭 시 새 팝업창에서 YouTube 영상이 재생됩니다. 필름은 "동영상이 있는 에디토리얼"입니다.</div>
+
     <div class="modal-section">
       <div class="modal-label">제목</div>
       <input class="pe-input" id="filmTitle" placeholder="예: Silent Gaze — Behind the Scenes">
     </div>
+
     <div class="modal-section">
       <div class="modal-label">YouTube URL</div>
       <input class="pe-input" id="filmYouTube" placeholder="https://www.youtube.com/watch?v=xxxx 또는 YouTube ID">
-      <div class="pe-hint">YouTube 영상 URL 또는 ID를 입력하세요. 클릭 시 새 팝업창(640×360)으로 재생됩니다.</div>
+      <div class="pe-hint">YouTube 영상 URL 또는 ID. 클릭 시 새 팝업창(640×360)으로 재생됩니다.</div>
     </div>
-    <div class="modal-section">
-      <div class="modal-label">썸네일 이미지 URL <span class="pe-opt">선택</span></div>
-      <input class="pe-input" id="filmThumb" placeholder="비워두면 YouTube 썸네일 자동 사용">
-    </div>
-    <div class="modal-section">
-      <div class="modal-label">재생 방식</div>
-      <div class="pe-radios">
-        <label class="pe-radio sel"><input type="radio" name="filmPlayType" value="popup" checked onchange="selectRadio(this)"> 새 팝업창</label>
-        <label class="pe-radio"><input type="radio" name="filmPlayType" value="overlay" onchange="selectRadio(this)"> 오버레이</label>
+
+    <!-- Slug + 발행일: 한 행에 -->
+    <div class="pe-row">
+      <div class="modal-section pe-half">
+        <div class="modal-label">슬러그 (URL)</div>
+        <input class="pe-input" id="filmSlug" placeholder="예: silent-gaze-bts">
+        <div class="pe-hint">영문 소문자, 하이픈. 비워두면 자동 생성.</div>
+      </div>
+      <div class="modal-section pe-half">
+        <div class="modal-label">발행일</div>
+        <input class="pe-input" type="date" id="filmDate">
       </div>
     </div>
+
+    <!-- 카테고리: 8개 하드코딩 + 자유 입력 -->
+    <div class="modal-section">
+      <div class="modal-label">카테고리 <span class="pe-opt">여러 개 선택 가능</span></div>
+      <div id="filmCatsArea" style="display:flex;flex-wrap:wrap;gap:6px 18px;padding:10px 12px;background:#fafafa;border:1px solid var(--border2);border-radius:2px">
+        <label class="pe-check"><input type="checkbox" name="filmCat" value="Behind the Scenes"> Behind the Scenes</label>
+        <label class="pe-check"><input type="checkbox" name="filmCat" value="Campaign"> Campaign</label>
+        <label class="pe-check"><input type="checkbox" name="filmCat" value="Documentary"> Documentary</label>
+        <label class="pe-check"><input type="checkbox" name="filmCat" value="Interview"> Interview</label>
+        <label class="pe-check"><input type="checkbox" name="filmCat" value="Performance"> Performance</label>
+        <label class="pe-check"><input type="checkbox" name="filmCat" value="Music Video"> Music Video</label>
+        <label class="pe-check"><input type="checkbox" name="filmCat" value="Short Film"> Short Film</label>
+        <label class="pe-check"><input type="checkbox" name="filmCat" value="Trailer"> Trailer</label>
+      </div>
+      <input class="pe-input" id="filmCatsCustom" placeholder="기타 카테고리 (쉼표 구분, 예: Editorial, Vlog)" style="margin-top:8px">
+    </div>
+
+    <!-- 썸네일: URL 입력 + 파일 업로드 (둘 다 가능) -->
+    <div class="modal-section">
+      <div class="modal-label">썸네일 이미지 <span class="pe-opt">비워두면 YouTube 썸네일 자동 사용</span></div>
+      <input class="pe-input" id="filmThumb" placeholder="https://… (URL 직접 입력)">
+      <div class="pe-upload" id="filmThumbUploadBox" onclick="document.getElementById('filmThumbInput').click()" style="margin-top:8px;min-height:auto;padding:12px">
+        <input type="file" id="filmThumbInput" accept="image/*" style="display:none" onchange="_onFilmThumbFile(this)">
+        <div class="pe-upload-inner" id="filmThumbPreview">
+          <span class="pe-upload-icon" style="font-size:18px">📷</span>
+          <span class="pe-upload-text" style="margin-left:8px">또는 파일 업로드 (JPG · PNG · WebP)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 크레딧 -->
+    <div class="modal-section">
+      <div class="modal-label">크레딧 정보</div>
+      <div class="pe-credits-toolbar">
+        <label><input type="checkbox" id="filmCreditsCheckAll" onchange="_onCreditCheckAll(this, 'filmCreditsArea')"> 전체</label>
+        <button id="filmCreditsBulkDel" type="button" class="btn btn-sm btn-red" onclick="bulkDeleteCredits('filmCreditsArea')" disabled>선택 삭제 <span class="pe-toolbar-count" id="filmCreditsSelCount">(0)</span></button>
+        <span class="pe-toolbar-spacer"></span>
+        <span class="pe-toolbar-count">⋮⋮ 핸들로 드래그하여 순서 변경</span>
+      </div>
+      <div id="filmCreditsArea">
+        <!-- Rows populated by openFilmModal() — empty modal opens with one blank row -->
+      </div>
+      <button class="btn btn-sm" onclick="addCredit('filmCreditsArea')" style="margin-top:8px">+ 크레딧 추가</button>
+      <div class="pe-hint" style="margin-top:6px">역할이 목록에 없으면 <strong>+ 직접 입력</strong>을 선택해 자유롭게 입력할 수 있습니다.</div>
+    </div>
+
+    <!-- 연결된 에디토리얼 (옵션) -->
+    <div class="modal-section">
+      <div class="modal-label">연결된 에디토리얼 <span class="pe-opt">선택 — BTS / Campaign 영상의 원본 에디토리얼</span></div>
+      <select class="pe-select" id="filmRelatedEditorial">
+        <option value="">— 없음 —</option>
+        <!-- options populated by openFilmModal() from /api/editorials -->
+      </select>
+    </div>
+
     <div class="modal-section">
       <label class="pe-check"><input type="checkbox" id="filmActive" checked> 공개</label>
     </div>
+
     <div class="modal-foot">
       <button class="btn btn-primary" onclick="saveFilm()">저장</button>
       <button class="btn" onclick="closeFilmModal()">취소</button>

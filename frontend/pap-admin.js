@@ -1832,19 +1832,36 @@ function _buildCreditRowInner(roles, name, ig){
     +'<button class="btn btn-sm btn-red" onclick="_removeCreditRow(this)">삭제</button>';
 }
 
-function addCredit(){
-  var area=document.getElementById('creditsArea');
+// areaId — defaults to 'creditsArea' (editorial post editor). Pass
+// 'filmCreditsArea' to drive the film modal's credits area. Toolbar
+// element IDs are derived from areaId by replacing the 'Area' suffix:
+//   creditsArea     → creditsCheckAll / creditsBulkDel / creditsSelCount
+//   filmCreditsArea → filmCreditsCheckAll / filmCreditsBulkDel / filmCreditsSelCount
+// Keeps both modals on the same code path — fewer copies to maintain.
+function _creditsToolbarIds(areaId){
+  var prefix = (areaId || 'creditsArea').replace(/Area$/, '');
+  return {
+    checkAll: prefix + 'CheckAll',
+    bulkDel:  prefix + 'BulkDel',
+    selCount: prefix + 'SelCount',
+  };
+}
+
+function addCredit(areaId){
+  areaId = areaId || 'creditsArea';
+  var area=document.getElementById(areaId);
+  if(!area) return;
   var row=document.createElement('div');
   row.className='pe-credit-row';
   row.setAttribute('draggable','true');
   row.innerHTML=_buildCreditRowInner([], '', '');
   area.appendChild(row);
-  _wireCreditRowDrag(row);
+  _wireCreditRowDrag(row, areaId);
   // Render chips for the freshly-attached trigger so the placeholder
   // shows ('역할 선택…') instead of an empty box.
   var trig=row.querySelector('.pe-role-trigger');
   if(trig) _renderRoleChips(trig);
-  _onCreditCheckChange();
+  _onCreditCheckChange(areaId);
 }
 
 // ── QA #97 — Drag & drop reorder + bulk select on credit rows ──────────
@@ -1853,7 +1870,8 @@ function addCredit(){
 // the data order — savePost reads rows top-to-bottom, so reordering
 // requires no extra state plumbing.
 var _creditDragSrc=null;
-function _wireCreditRowDrag(row){
+function _wireCreditRowDrag(row, areaId){
+  areaId = areaId || 'creditsArea';
   row.addEventListener('dragstart', function(e){
     _creditDragSrc=row;
     row.classList.add('dragging');
@@ -1862,7 +1880,7 @@ function _wireCreditRowDrag(row){
   row.addEventListener('dragend', function(){
     row.classList.remove('dragging');
     _creditDragSrc=null;
-    document.querySelectorAll('#creditsArea .pe-credit-row.drag-over').forEach(function(n){n.classList.remove('drag-over');});
+    document.querySelectorAll('#'+areaId+' .pe-credit-row.drag-over').forEach(function(n){n.classList.remove('drag-over');});
   });
   row.addEventListener('dragover', function(e){
     if(!_creditDragSrc || _creditDragSrc===row) return;
@@ -1877,7 +1895,7 @@ function _wireCreditRowDrag(row){
     e.preventDefault();
     row.classList.remove('drag-over');
     if(!_creditDragSrc || _creditDragSrc===row) return;
-    var area=document.getElementById('creditsArea');
+    var area=document.getElementById(areaId);
     if(!area) return;
     // Insert above target if cursor is in upper half, else below — feels
     // closer to the cursor than always-before-or-always-after.
@@ -1894,20 +1912,26 @@ function _wireCreditRowDrag(row){
 
 function _removeCreditRow(btn){
   var row=btn.closest('.pe-credit-row');
+  // Auto-detect which area this row belongs to so removing a row from
+  // the film modal doesn't touch the editorial toolbar (or vice versa).
+  var area=row && row.closest('[id$="creditsArea"], #creditsArea');
+  var areaId=area ? area.id : 'creditsArea';
   if(row) row.remove();
-  _onCreditCheckChange();
+  _onCreditCheckChange(areaId);
 }
 
 // Bulk select state — driven entirely off DOM checkboxes so there's no
 // shadow array to keep in sync. The toolbar reads counts on every change.
-function _onCreditCheckChange(){
-  var rows=document.querySelectorAll('#creditsArea .pe-credit-row');
-  var checks=document.querySelectorAll('#creditsArea .pe-credit-check');
+function _onCreditCheckChange(areaId){
+  areaId = areaId || 'creditsArea';
+  var ids = _creditsToolbarIds(areaId);
+  var rows=document.querySelectorAll('#'+areaId+' .pe-credit-row');
+  var checks=document.querySelectorAll('#'+areaId+' .pe-credit-check');
   var selected=0;
   checks.forEach(function(c){ if(c.checked) selected++; });
-  var btn=document.getElementById('creditsBulkDel');
-  var countEl=document.getElementById('creditsSelCount');
-  var allCb=document.getElementById('creditsCheckAll');
+  var btn=document.getElementById(ids.bulkDel);
+  var countEl=document.getElementById(ids.selCount);
+  var allCb=document.getElementById(ids.checkAll);
   if(btn) btn.disabled = (selected===0);
   if(countEl) countEl.textContent = '('+selected+')';
   if(allCb){
@@ -1917,14 +1941,16 @@ function _onCreditCheckChange(){
   }
 }
 
-function _onCreditCheckAll(masterCb){
-  var checks=document.querySelectorAll('#creditsArea .pe-credit-check');
+function _onCreditCheckAll(masterCb, areaId){
+  areaId = areaId || 'creditsArea';
+  var checks=document.querySelectorAll('#'+areaId+' .pe-credit-check');
   checks.forEach(function(c){ c.checked = masterCb.checked; });
-  _onCreditCheckChange();
+  _onCreditCheckChange(areaId);
 }
 
-function bulkDeleteCredits(){
-  var checks=document.querySelectorAll('#creditsArea .pe-credit-check');
+function bulkDeleteCredits(areaId){
+  areaId = areaId || 'creditsArea';
+  var checks=document.querySelectorAll('#'+areaId+' .pe-credit-check');
   var selectedRows=[];
   checks.forEach(function(c){
     if(c.checked){
@@ -1935,7 +1961,7 @@ function bulkDeleteCredits(){
   if(selectedRows.length===0) return;
   if(!confirm(selectedRows.length+'개의 크레딧을 삭제하시겠습니까?')) return;
   selectedRows.forEach(function(r){ r.remove(); });
-  _onCreditCheckChange();
+  _onCreditCheckChange(areaId);
 }
 
 function addBrand(){
@@ -2827,35 +2853,221 @@ function renderFilms(){
   });
 }
 
+// ── Film modal helpers ────────────────────────────────────────────────
+// Slug autogeneration shared with the editorial form would be ideal but
+// the editorial code does it inline inside savePost; this is the same
+// pattern as that, scoped here to avoid touching the working post path.
+function _filmSlugify(s){
+  if(!s) return '';
+  return String(s).toLowerCase().trim()
+    .replace(/[À-ſ]/g, function(c){
+      // Strip simple Latin diacritics — Postgres slug column doesn't
+      // need them and admin search expects ASCII.
+      var map = 'AAAAAAAECEEEEIIIIDNOOOOOOUUUUYTHsaaaaaaaeceeeeiiiidnoooooouuuuythy';
+      return map[c.charCodeAt(0) - 0x00C0] || '';
+    })
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 100);
+}
+
+// Populate the "연결된 에디토리얼" dropdown from /api/editorials. Cached
+// across modal opens so admin doesn't refetch on every edit.
+var _filmRelatedEdCache = null;
+async function _populateFilmRelatedEditorial(selectedId){
+  var sel = document.getElementById('filmRelatedEditorial');
+  if(!sel) return;
+  // Always reset to base option + selected entry until the API answers.
+  sel.innerHTML = '<option value="">— 없음 —</option>';
+  try {
+    if (!_filmRelatedEdCache) {
+      var r = await apiGet('/editorials?status=published&limit=100');
+      _filmRelatedEdCache = (r && (r.data || r.editorials || r)) || [];
+      if (!Array.isArray(_filmRelatedEdCache)) _filmRelatedEdCache = [];
+    }
+    _filmRelatedEdCache.forEach(function(ed){
+      var opt = document.createElement('option');
+      opt.value = ed.id;
+      opt.textContent = ed.title || ed.slug || ed.id;
+      sel.appendChild(opt);
+    });
+    if (selectedId) sel.value = selectedId;
+  } catch(e){
+    console.warn('[films] failed to load editorials list:', e && e.message);
+  }
+}
+
+// File-input handler for the film thumbnail upload affordance — runs the
+// same /api/media/upload roundtrip the editorial form uses, then drops
+// the resulting URL into #filmThumb so saveFilm picks it up.
+async function _onFilmThumbFile(input){
+  if(!input.files || !input.files[0]) return;
+  var prev = document.getElementById('filmThumbPreview');
+  var origHtml = prev ? prev.innerHTML : '';
+  if(prev) prev.innerHTML = '<span class="pe-upload-text">업로드 중…</span>';
+  try {
+    var url = await uploadFile(input.files[0]);
+    document.getElementById('filmThumb').value = url;
+    if(prev){
+      prev.innerHTML = '<img loading="lazy" src="'+esc(url)+'" style="max-height:60px;max-width:100px;object-fit:cover;border-radius:2px"><span class="pe-upload-text" style="margin-left:8px">업로드 완료 — 클릭하여 변경</span>';
+    }
+  } catch(e){
+    if(prev) prev.innerHTML = origHtml;
+    alert('업로드 실패: ' + (e && e.message));
+  }
+  input.value = '';
+}
+
+function _resetFilmModalFields(){
+  document.getElementById('filmTitle').value='';
+  document.getElementById('filmYouTube').value='';
+  document.getElementById('filmThumb').value='';
+  document.getElementById('filmSlug').value='';
+  document.getElementById('filmDate').value=new Date().toISOString().slice(0,10);
+  document.getElementById('filmCatsCustom').value='';
+  document.querySelectorAll('#filmCatsArea input[name="filmCat"]').forEach(function(cb){cb.checked=false;});
+  document.getElementById('filmActive').checked=true;
+  document.getElementById('filmCreditsArea').innerHTML='';
+  addCredit('filmCreditsArea');   // one blank row
+  var thumbPrev = document.getElementById('filmThumbPreview');
+  if(thumbPrev) thumbPrev.innerHTML = '<span class="pe-upload-icon" style="font-size:18px">📷</span><span class="pe-upload-text" style="margin-left:8px">또는 파일 업로드 (JPG · PNG · WebP)</span>';
+}
+
 function openFilmModal(idx){
   editFilmIdx=idx;
   editFilmId=idx>=0&&films[idx]?films[idx].id:null;
   document.getElementById('filmModalTitle').textContent=idx>=0?'필름 편집':'필름 추가';
-  if(idx>=0){var f=films[idx];document.getElementById('filmTitle').value=f.title||'';document.getElementById('filmYouTube').value=f.youtube_id||'';document.getElementById('filmThumb').value=f.thumbnail_url||'';document.getElementById('filmActive').checked=(f.status==='published');}
-  else{document.getElementById('filmTitle').value='';document.getElementById('filmYouTube').value='';document.getElementById('filmThumb').value='';document.getElementById('filmActive').checked=true;}
-  document.querySelectorAll('#filmModal .pe-radio').forEach(function(r){r.classList.remove('sel');});
-  document.querySelector('#filmModal .pe-radio').classList.add('sel');
+
+  _resetFilmModalFields();
+
+  if(idx>=0){
+    var f = films[idx];
+    document.getElementById('filmTitle').value = f.title || '';
+    document.getElementById('filmYouTube').value = f.youtube_id || '';
+    document.getElementById('filmThumb').value = f.thumbnail_url || '';
+    document.getElementById('filmSlug').value = f.slug || '';
+    document.getElementById('filmDate').value = (f.published_date || '').slice(0,10) || new Date().toISOString().slice(0,10);
+    document.getElementById('filmActive').checked = (f.status==='published');
+
+    // Categories — tick predefined boxes, dump the rest into the custom textbox.
+    var predefined = ['Behind the Scenes','Campaign','Documentary','Interview','Performance','Music Video','Short Film','Trailer'];
+    var custom = [];
+    var fcats = Array.isArray(f.categories) ? f.categories : (f.categories ? [String(f.categories)] : []);
+    fcats.forEach(function(c){
+      var cb = document.querySelector('#filmCatsArea input[name="filmCat"][value="'+c.replace(/"/g,'\\"')+'"]');
+      if(cb) cb.checked = true;
+      else if(c && predefined.indexOf(c) === -1) custom.push(c);
+    });
+    document.getElementById('filmCatsCustom').value = custom.join(', ');
+
+    // Credits — rebuild rows from saved JSONB. Clear the blank row first
+    // so we don't end up with a phantom empty row above the loaded ones.
+    var creditsArea = document.getElementById('filmCreditsArea');
+    creditsArea.innerHTML = '';
+    var creditsList = Array.isArray(f.credits) ? f.credits : [];
+    if (creditsList.length === 0) {
+      addCredit('filmCreditsArea');   // keep one blank row for editing
+    } else {
+      creditsList.forEach(function(c){
+        var row = document.createElement('div');
+        row.className = 'pe-credit-row';
+        row.setAttribute('draggable','true');
+        var roles = c.roles || (c.role ? [c.role] : []);
+        row.innerHTML = _buildCreditRowInner(roles, c.name || '', c.instagram || '');
+        creditsArea.appendChild(row);
+        _wireCreditRowDrag(row, 'filmCreditsArea');
+        var trig = row.querySelector('.pe-role-trigger');
+        if(trig) _renderRoleChips(trig);
+      });
+      _onCreditCheckChange('filmCreditsArea');
+    }
+
+    // Existing thumb URL preview
+    if (f.thumbnail_url) {
+      var prev = document.getElementById('filmThumbPreview');
+      if(prev){
+        prev.innerHTML = '<img loading="lazy" src="'+esc(f.thumbnail_url)+'" style="max-height:60px;max-width:100px;object-fit:cover;border-radius:2px"><span class="pe-upload-text" style="margin-left:8px">현재 썸네일 — 클릭하여 변경</span>';
+      }
+    }
+
+    // Related editorial — populate dropdown then select current value
+    _populateFilmRelatedEditorial(f.related_editorial_id || '');
+  } else {
+    _populateFilmRelatedEditorial('');
+  }
+
   document.getElementById('filmModal').classList.add('show');
 }
 function closeFilmModal(){document.getElementById('filmModal').classList.remove('show');}
 
 async function saveFilm(){
-  var title=document.getElementById('filmTitle').value;var yt=document.getElementById('filmYouTube').value;
+  var title=document.getElementById('filmTitle').value.trim();
+  var yt=document.getElementById('filmYouTube').value;
   if(!title||!yt){alert('제목과 YouTube URL을 입력해 주세요.');return;}
-  var ytId=yt.replace(/.*[?&]v=([^&]+).*/,'$1').replace(/.*youtu\.be\//,'').replace(/.*shorts\//,'');if(ytId.indexOf('http')>-1)ytId=yt;
-  var isActive=document.getElementById('filmActive').checked;
-  var payload={title:title,youtube_id:ytId,thumbnail_url:document.getElementById('filmThumb').value||null,status:isActive?'published':'draft',published_date:isActive?new Date().toISOString():null};
+  var ytId=yt.replace(/.*[?&]v=([^&]+).*/,'$1').replace(/.*youtu\.be\//,'').replace(/.*shorts\//,'');
+  if(ytId.indexOf('http')>-1) ytId = yt;
+
+  // Slug — explicit value wins; else auto-derive from title.
+  var slug = (document.getElementById('filmSlug').value || '').trim() || _filmSlugify(title);
+
+  // Categories — predefined checkboxes + custom comma-list. Default to
+  // ['Film'] so the existing public GET ?category=film filter keeps working
+  // when the admin ticks nothing.
+  var cats = [];
+  document.querySelectorAll('#filmCatsArea input[name="filmCat"]:checked').forEach(function(cb){ cats.push(cb.value); });
+  var customRaw = (document.getElementById('filmCatsCustom').value || '').trim();
+  if (customRaw) {
+    customRaw.split(',').map(function(s){return s.trim();}).filter(Boolean).forEach(function(c){
+      if (cats.indexOf(c) < 0) cats.push(c);
+    });
+  }
+  if (cats.length === 0) cats = ['Film'];
+
+  var pubDate = document.getElementById('filmDate').value || new Date().toISOString().slice(0,10);
+
+  // Credits — same shape the editorial form serializes. Empty rows skipped.
+  var credits = [];
+  document.querySelectorAll('#filmCreditsArea .pe-credit-row').forEach(function(row){
+    var nameEl = row.querySelector('.pe-credit-name');
+    var igEl   = row.querySelector('.pe-credit-ig');
+    var roles  = _readCreditRoles(row);
+    var nameVal = (nameEl && nameEl.value || '').trim();
+    if (roles.length > 0 && nameVal) {
+      credits.push({ roles: roles, name: nameVal, instagram: (igEl && igEl.value || '').trim() });
+    }
+  });
+
+  var relEd = (document.getElementById('filmRelatedEditorial').value || '').trim() || null;
+  var thumb = (document.getElementById('filmThumb').value || '').trim() || null;
+  var isActive = document.getElementById('filmActive').checked;
+
+  var payload = {
+    title: title,
+    youtube_id: ytId,
+    thumbnail_url: thumb,
+    published_date: pubDate,
+    categories: cats,
+    credits: credits,
+    slug: slug || null,
+    status: isActive ? 'published' : 'draft',
+    related_editorial_id: relEd,
+  };
+
   try{
     if(editFilmId){
-      await apiPut('/films/'+editFilmId,payload);
+      await apiPut('/films/'+editFilmId, payload);
       alert('필름이 수정되었습니다.');
-    }else{
-      await apiPost('/films',payload);
+    } else {
+      await apiPost('/films', payload);
       alert('필름이 등록되었습니다.');
     }
     closeFilmModal();
     loadFilmsFromAPI();
-  }catch(e){alert('저장 실패: '+e.message);}
+  }catch(e){
+    alert('저장 실패: ' + (e && e.message));
+  }
 }
 
 async function deleteFilm(i){
