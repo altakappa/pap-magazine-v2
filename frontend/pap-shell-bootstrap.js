@@ -48,7 +48,7 @@
 // 비로그인 방문자는 유료 서비스에 접근 불가 (로그인 유도)
 // 베타 종료 후에는 구독 등급(free/standard/premium)에 따라 접근 차등 적용
 // 날짜 형식: 'YYYY-MM-DD' (예: '2026-12-31') 또는 null (베타 무기한)
-var PAP_BETA_END = '2026-05-06';   // ← 베타 종료 날짜 (2026년 5월 6일 23:59:59까지)
+var PAP_BETA_END = '2026-06-30';   // ← 베타 종료 날짜 (2026년 6월 30일 23:59:59까지)
 
 function isBetaActive(){
   if(!PAP_BETA_END) return true; // null이면 무기한 베타
