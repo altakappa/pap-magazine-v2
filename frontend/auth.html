@@ -586,7 +586,13 @@ function _authStateUrl(state){
   var qs = '';
   if (state && state.authView === 'login') qs = '?mode=login';
   else if (state && state.authStep && state.authStep > 1) qs = '?step=' + state.authStep;
-  return window.location.pathname + qs;
+  // Preserve URL fragment (#access_token=...&type=recovery from Supabase
+  // recovery emails) so init-time _syncAuthHistory calls don't wipe it
+  // before the Supabase SDK parses it. Without this, the SDK initializes
+  // against a hashless URL, no session is established, and the polling
+  // detector in IIFE-2 sees no session ever appear → reset panel never
+  // fires → the user just sees the login page (the bug we're fixing).
+  return window.location.pathname + qs + (window.location.hash || '');
 }
 function _syncAuthHistory(state){
   try {
@@ -1754,7 +1760,25 @@ function setLang(l) {
   // Mode & redirect setup (lightweight, no DOM-heavy ops)
   // _navigating is true at script start, so these initial calls REPLACE
   // the first history entry with the correct state instead of pushing.
-  if (params.get('mode') === 'login') {
+  //
+  // RECOVERY GUARD: when the user lands here from a Supabase password-
+  // recovery email, the URL carries #access_token=…&type=recovery (or
+  // ?code=… for PKCE flow). _syncAuthHistory below preserves the hash
+  // via _authStateUrl, but on top of that we explicitly SKIP the panel-
+  // switching showLogin/showSignup calls — those would re-enter the
+  // history machinery and could race with the Supabase SDK's own
+  // history.replaceState during session detection. Defer panel selection
+  // to IIFE-2's recovery detector (which calls showReset).
+  var _hasRecoveryHash = (window.location.hash || '').indexOf('type=recovery') > -1
+                      || (window.location.hash || '').indexOf('access_token') > -1;
+  var _hasRecoveryCode = !!params.get('code'); // PKCE-flow recovery, future-proof
+  var _isRecoveryLanding = _hasRecoveryHash || _hasRecoveryCode;
+
+  if (_isRecoveryLanding) {
+    // Hold panel state — IIFE-2 will showReset() once detection confirms.
+    // Seed history with a neutral state so popstate has something to restore.
+    _syncAuthHistory({ authView: 'reset' });
+  } else if (params.get('mode') === 'login') {
     showLogin();
   } else if (params.get('mode') === 'signup') {
     showSignup();
