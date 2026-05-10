@@ -691,46 +691,56 @@ window._papFilmAutoPlay = function(){
 
   function syncEditorials(){
     if(typeof edData==='undefined') return;
-    fetchAll('/editorials',apiEditorialToLocal,function(apiEds){
-      if(apiEds.length===0) return;
 
-      // 1. Update the in-memory edData array (powers search + edAllOverlay)
-      var merged = mergeEditorials(apiEds, edData);
+    // Two-stage sync to fix "newest editorial appears with a delay" UX:
+    //
+    //   STAGE 1 — fetch only the first 12 (newest) and re-render the home
+    //   "최신 에디토리얼" row + trending + theme rows IMMEDIATELY. The
+    //   static index.html now ships skeleton cards (no stale 데이터),
+    //   so this is the first paint with real data the user sees.
+    //
+    //   STAGE 2 — paginate the rest in the background to populate edData
+    //   for search and the edAllOverlay. Re-render the overlay once it's
+    //   already been opened. The home row doesn't need re-rendering after
+    //   stage 2 because the top-12 ordering can't change from receiving
+    //   older items.
+    //
+    // Why this matters: previously fetchAll() awaited every page (~2-5
+    // round-trips when the catalog grew past 100 items) before rendering
+    // anything, so a freshly published editorial took 0.5-2s to appear
+    // above the static HTML cards.
+
+    function applyToEdData(items){
+      var merged = mergeEditorials(items, edData);
       edData.length = 0;
       merged.forEach(function(e){
         edData.push(e);
         _populateEdDetailsFromApi(e);
       });
+    }
 
-      // 2. Re-render the "최신 에디토리얼" row from scratch.
-      //    Previously this code merged API editorials into the static HTML
-      //    (update existing cards by title, prepend new ones). That left
-      //    cards in their original hardcoded order, so a brand-new admin
-      //    upload could still appear AFTER older editorials simply because
-      //    the static snapshot put it later. Now we always rebuild the row
-      //    fresh from edData (sorted by published_date desc, top 12), which
-      //    means the home page always reflects the actual chronology of
-      //    what's in the DB.
-      _renderLatestRow();
-
-      // 3. Re-render the "인기 에디토리얼" row from view-count data.
-      //    Independent fetch so it doesn't block the latest row when the
-      //    trending RPC is slow or the migration hasn't been applied yet.
-      _renderTrendingRow();
-
-      // 4. Re-render the personalised theme rows. Independent fetch — the
-      //    /editorials/themes endpoint runs auth-aware (logged-in users get
-      //    user_preferences-driven picks; anonymous get a day-of-year
-      //    rotation). Falls back silently if the migration / endpoint isn't
-      //    live, which leaves the existing inline IIFE output in place.
-      _renderThemeRows();
-
-      // 5. If the all-editorials overlay has already built itself,
-      //    rebuild it so it reflects the merged edData too.
-      if(typeof _renderEdAllPage === 'function' && typeof edAllBuilt !== 'undefined' && edAllBuilt){
-        try { _renderEdAllPage(); } catch(_){}
-      }
-    });
+    // STAGE 1: fast-path — newest 12 only.
+    fetch(PAP_API_BASE + '/editorials?status=published&limit=12&page=1')
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(res){
+        if(!res || !Array.isArray(res.data) || res.data.length === 0) return;
+        var quick = res.data.map(apiEditorialToLocal);
+        applyToEdData(quick);
+        _renderLatestRow();
+        _renderTrendingRow();
+        _renderThemeRows();
+      })
+      .catch(function(err){ console.warn('[PAP Sync] editorials fast fetch:', err); })
+      .finally(function(){
+        // STAGE 2: full catalog in the background — populates search + overlay.
+        fetchAll('/editorials', apiEditorialToLocal, function(apiEds){
+          if(apiEds.length === 0) return;
+          applyToEdData(apiEds);
+          if(typeof _renderEdAllPage === 'function' && typeof edAllBuilt !== 'undefined' && edAllBuilt){
+            try { _renderEdAllPage(); } catch(_){}
+          }
+        });
+      });
   }
 
   // Run sync after DOM is ready
