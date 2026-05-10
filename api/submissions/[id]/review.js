@@ -54,6 +54,7 @@ module.exports = async function handler(req, res) {
     // explicitly hit 발행 to expose it publicly. We deliberately skip
     // embedAndStoreEditorial here — embeddings happen at publish time
     // so half-baked drafts don't leak into semantic search results.
+    let stagedEditorialId = null;
     if (status === 'approved') {
       try {
         const desc = submission.description ? JSON.parse(submission.description) : {};
@@ -93,6 +94,7 @@ module.exports = async function handler(req, res) {
           if (edErr) {
             console.error('Stage-as-editorial failed:', edErr);
           } else {
+            stagedEditorialId = editorial.id;
             const notePrefix = reviewNote || '';
             const newNote = notePrefix + (notePrefix ? '\n' : '') + '[Staged as editorial id: ' + editorial.id + ']';
             await supabaseAdmin
@@ -125,7 +127,10 @@ module.exports = async function handler(req, res) {
       sendEmail(profile.email, tpl).catch(() => {});
     }
 
-    return res.status(200).json({ submission });
+    // editorialId lets the admin UI deep-link straight into the edit
+    // screen for the staged draft, skipping the manual nav through
+    // 에디토리얼 관리 → 임시저장 탭.
+    return res.status(200).json({ submission, editorialId: stagedEditorialId });
   } catch (error) {
     console.error('Review submission error:', error);
     return res.status(500).json({ message: 'Failed to review submission' });
