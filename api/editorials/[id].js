@@ -67,6 +67,22 @@ module.exports = async function handler(req, res) {
         if (req.body[key] !== undefined) updates[key] = req.body[key];
       }
 
+      // Detect a draft→published transition so we can stamp published_date
+      // and force an embed below. We need the prior status for that.
+      let priorStatus = null;
+      if (updates.status !== undefined) {
+        const { data: prior } = await supabaseAdmin
+          .from('editorials')
+          .select('status, published_date')
+          .eq('id', id)
+          .single();
+        priorStatus = prior ? prior.status : null;
+        const becomingPublished = updates.status === 'published' && priorStatus !== 'published';
+        if (becomingPublished && updates.published_date === undefined && (!prior || !prior.published_date)) {
+          updates.published_date = new Date().toISOString();
+        }
+      }
+
       const { data, error } = await supabaseAdmin
         .from('editorials')
         .update(updates)
@@ -76,9 +92,12 @@ module.exports = async function handler(req, res) {
 
       if (error) throw error;
 
-      // Re-embed when the admin changed something that affects the
-      // embedding text. Best-effort, AFTER successful save.
-      if (shouldReembed(updates)) {
+      // Re-embed when the admin changed embedding-relevant text OR when the
+      // editorial is going public for the first time (drafts staged from
+      // submissions never got an initial embed — we skip that to avoid
+      // indexing half-baked work).
+      const becomingPublished = updates.status === 'published' && priorStatus !== 'published';
+      if (shouldReembed(updates) || becomingPublished) {
         try { await embedAndStoreEditorial(data); }
         catch (e) { console.warn('[editorial PUT] re-embed failed', e && e.message); }
       }

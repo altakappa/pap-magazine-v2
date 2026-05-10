@@ -1,6 +1,10 @@
 /**
  * PUT /api/submissions/:id/review — Admin review a submission
- * Supports auto-publishing approved submissions as articles
+ *
+ * Approval is a TWO-STEP flow: approving a submission stages it as an
+ * editorial draft (status='draft', published_date=null). The editor then
+ * tunes metadata in the admin and clicks 발행 to flip it to 'published'
+ * via PUT /api/editorials/:id. Approval ≠ public exposure.
  */
 
 const { supabaseAdmin } = require('../../_lib/supabase');
@@ -46,7 +50,10 @@ module.exports = async function handler(req, res) {
 
     if (error) throw error;
 
-    // Auto-publish: Create article from approved submission
+    // Stage as editorial draft. The editor will polish metadata and
+    // explicitly hit 발행 to expose it publicly. We deliberately skip
+    // embedAndStoreEditorial here — embeddings happen at publish time
+    // so half-baked drafts don't leak into semantic search results.
     if (status === 'approved') {
       try {
         const desc = submission.description ? JSON.parse(submission.description) : {};
@@ -56,41 +63,47 @@ module.exports = async function handler(req, res) {
           : (submission.file_urls && submission.file_urls[0]) || null;
 
         if (coverUrl) {
-          const { data: article, error: articleError } = await supabaseAdmin
-            .from('articles')
+          const tagsArr = Array.isArray(desc.genre) ? desc.genre : [];
+          const description = (desc.artistStatement || '').trim() || null;
+          // submissions has no `credits` column — pull from the
+          // description JSON the submitter filled in. Editorial.credits
+          // is jsonb, so wrap stray strings in {} to keep the shape.
+          let credits = desc.credits || {};
+          if (typeof credits === 'string') credits = credits.trim() ? { note: credits } : {};
+
+          const { data: editorial, error: edErr } = await supabaseAdmin
+            .from('editorials')
             .insert({
               title: submission.title,
-              subtitle: desc.artistStatement || '',
-              category: (desc.genre && Array.isArray(desc.genre) && desc.genre[0]) || 'Editorial',
-              tags: (Array.isArray(desc.genre) ? desc.genre : []) || [],
-              thumbnail_url: getOptimizedThumbnail(coverUrl),
-              hero_image_url: getOptimizedHero(coverUrl),
-              content: desc.artistStatement || submission.title,
+              slug: null,
+              cover_image: getOptimizedHero(coverUrl),
+              thumbnail: getOptimizedThumbnail(coverUrl),
               gallery: submission.file_urls || [],
-              credits: submission.credits || desc.credits || '',
-              status: 'published',
-              published_date: new Date().toISOString()
+              credits,
+              fashion: {},
+              tags: tagsArr,
+              issue: null,
+              description,
+              status: 'draft',
+              published_date: null,
             })
             .select()
             .single();
 
-          if (articleError) {
-            console.error('Auto-publish failed:', articleError);
-            // Don't fail the review - submission is still approved
+          if (edErr) {
+            console.error('Stage-as-editorial failed:', edErr);
           } else {
-            // Update submission with published article ID reference
             const notePrefix = reviewNote || '';
-            const newNote = notePrefix + (notePrefix ? '\n' : '') + '[Auto-published as article ID: ' + article.id + ']';
+            const newNote = notePrefix + (notePrefix ? '\n' : '') + '[Staged as editorial id: ' + editorial.id + ']';
             await supabaseAdmin
               .from('submissions')
               .update({ admin_notes: newNote })
               .eq('id', submission.id)
-              .catch(err => console.error('Failed to update admin_notes with article ID:', err));
+              .catch(err => console.error('Failed to update admin_notes:', err));
           }
         }
-      } catch (autoPublishError) {
-        console.error('Auto-publish error:', autoPublishError);
-        // Don't fail the review - submission is still approved
+      } catch (stageErr) {
+        console.error('Stage-as-editorial error:', stageErr);
       }
     }
 
