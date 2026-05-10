@@ -122,7 +122,7 @@ const templates = {
         <p>Hi ${user.name || 'there'},</p>
         <p>We're pleased to inform you that <strong style="color:#fff;">"${submission.title}"</strong> has been accepted for publication on PAP Magazine.</p>
         ${note ? `<div style="margin:20px 0;padding:16px;background:#1a1a1a;border-left:3px solid #4CAF50;"><span style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:1px;">Editor's Note</span><br><span style="color:#ccc;font-size:14px;">${note}</span></div>` : ''}
-        <p>Your editorial will be prepared for publication. We'll notify you once it goes live.</p>
+        <p>Your editorial is now staged for final editorial review. Our team will polish the metadata and schedule the release — we'll send a follow-up email the moment it goes live on PAP Magazine.</p>
         <a href="${FRONTEND_URL}/submission.html" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">VIEW STATUS</a>
       `),
     };

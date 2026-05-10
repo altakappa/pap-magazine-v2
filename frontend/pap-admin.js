@@ -2162,6 +2162,20 @@ async function loadDashboardStats(){
 // ======== EDITORIAL CRUD (API) ========
 var editorials=[];
 var editingEditorialId=null;
+// Status filter: 'all' | 'published' | 'draft'. Drafts are submissions
+// that the editor approved but hasn't yet published, so the filter has
+// to surface them clearly (they're invisible on the public site).
+var edStatusFilter='all';
+
+function setEditorialStatusFilter(s){
+  edStatusFilter=(s==='published'||s==='draft')?s:'all';
+  var btns=document.querySelectorAll('.ed-fbtn');
+  for(var i=0;i<btns.length;i++){
+    if(btns[i].getAttribute('data-status')===edStatusFilter) btns[i].classList.add('ed-fbtn-active');
+    else btns[i].classList.remove('ed-fbtn-active');
+  }
+  renderEditorialList();
+}
 
 async function loadEditorials(){
   var tb=document.getElementById('edListBody');
@@ -2180,10 +2194,17 @@ async function loadEditorials(){
 function renderEditorialList(){
   var q=(document.getElementById('edSearchAdmin')?document.getElementById('edSearchAdmin').value:'').toLowerCase();
   var filtered=editorials.filter(function(e){
+    if(edStatusFilter!=='all'){
+      var st=e.status||'published';
+      if(st!==edStatusFilter)return false;
+    }
     if(!q)return true;
     var tags=Array.isArray(e.tags)?e.tags.join(' '):e.tags||'';
     return (e.title||'').toLowerCase().indexOf(q)>-1||tags.toLowerCase().indexOf(q)>-1;
   });
+  var draftCount=editorials.filter(function(e){return (e.status||'published')==='draft';}).length;
+  var dcb=document.getElementById('edDraftCountBadge');
+  if(dcb) dcb.textContent=draftCount?('('+draftCount+')'):'';
   var tb=document.getElementById('edListBody');
   if(!tb) return;
   tb.innerHTML='';
@@ -2193,13 +2214,40 @@ function renderEditorialList(){
     var tagBadges=tags.slice(0,3).map(function(t){return '<span class="pe-tag">'+esc(t)+'</span>';}).join(' ');
     var st=e.status||'published';
     var cls=st==='published'?'b-published':'b-draft';
-    var label=st==='published'?'공개':'비공개';
+    var label=st==='published'?'공개':'임시저장';
     var thumb=e.thumbnail||e.cover_image||'';
     var thumbHtml=thumb?'<img loading="lazy" class="td-thumb" src="'+esc(thumb)+'">':'—';
     var shortId=e.id?e.id.substring(0,8):'—';
-    tb.innerHTML+='<tr><td style="font-size:10px">'+shortId+'</td><td>'+thumbHtml+'</td><td class="td-title" onclick="editEditorial(\''+e.id+'\')">'+esc(e.title)+'</td><td>'+tagBadges+'</td><td><span class="badge '+cls+'">'+label+'</span></td><td>'+fmtDate(e.published_date)+'</td><td><button class="btn btn-sm" onclick="editEditorial(\''+e.id+'\')">편집</button> <button class="btn btn-sm btn-red" onclick="deleteEditorial(\''+e.id+'\',\''+esc(e.title).replace(/'/g,"\\'")+'\')">삭제</button></td></tr>';
+    var rowStyle=st==='draft'?' style="background:rgba(255,152,0,0.06)"':'';
+    var safeTitle=esc(e.title).replace(/'/g,"\\'");
+    var actions='<button class="btn btn-sm" onclick="editEditorial(\''+e.id+'\')">편집</button>';
+    if(st==='draft'){
+      actions+=' <button class="btn btn-sm btn-primary" onclick="publishEditorial(\''+e.id+'\',\''+safeTitle+'\')" title="이 에디토리얼을 공개 사이트에 노출합니다">발행 ▶</button>';
+    }
+    actions+=' <button class="btn btn-sm btn-red" onclick="deleteEditorial(\''+e.id+'\',\''+safeTitle+'\')">삭제</button>';
+    tb.innerHTML+='<tr'+rowStyle+'><td style="font-size:10px">'+shortId+'</td><td>'+thumbHtml+'</td><td class="td-title" onclick="editEditorial(\''+e.id+'\')">'+esc(e.title)+'</td><td>'+tagBadges+'</td><td><span class="badge '+cls+'">'+label+'</span></td><td>'+fmtDate(e.published_date)+'</td><td>'+actions+'</td></tr>';
   });
   if(document.getElementById('edCountLabel')) document.getElementById('edCountLabel').textContent=editorials.length;
+}
+
+// Flip a draft editorial to published. Drafts come from approved
+// submissions and from the admin's own "save as draft" — both need an
+// explicit click here before they show up on the public site.
+// apiPut doesn't check r.ok, so the response may be {error:'...'} on
+// failure — inspect it explicitly rather than blindly toasting success.
+async function publishEditorial(id,title){
+  if(!confirm('"'+(title||'이 에디토리얼')+'"을(를) 발행하시겠습니까?\n공개 사이트에 즉시 노출됩니다.')) return;
+  try{
+    var resp=await apiPut('/editorials/'+id,{status:'published'});
+    if(resp && resp.error){
+      alert('발행 실패: '+resp.error);
+      return;
+    }
+    await loadEditorials();
+    if(typeof toast==='function') toast('발행되었습니다');
+  }catch(e){
+    alert('발행 실패: '+(e&&e.message?e.message:'알 수 없는 오류'));
+  }
 }
 
 function editEditorial(id){
