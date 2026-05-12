@@ -269,34 +269,62 @@ const templates = {
     };
   },
 
+  // ── Weekly news (이주의 뉴스) ──────────────────────────────────
+  // Uses the PAP Daily Briefing visual identity (brown header, numbered
+  // circular badges, ART · FASHION · BEAUTY · CULTURE divider, dark
+  // footer) so the weekly digest reads like an extension of the same
+  // editorial product. Per editorial direction, the per-item SOURCE —
+  // DATE line is NOT rendered (we don't want to advertise where the
+  // raw news came from in a marketing email). The mandatory
+  // unsubscribe link still lives in wrapMarketing()'s footer below.
   weeklyNews: (campaign, user, unsubToken) => {
     const items = (campaign.payload && campaign.payload.newsItems) || [];
-    const cards = items.map(n => `
-      <tr><td style="padding-bottom:20px;border-bottom:1px solid #1f1f1f;padding-top:20px;">
-        <a href="${n.url || FRONTEND_URL}" style="text-decoration:none;color:inherit;display:block;">
-          ${n.image ? `<img src="${n.image}" alt="${escapeHtml(n.title)}" width="520" style="display:block;width:100%;max-width:520px;height:auto;border:0;margin-bottom:12px;">` : ''}
-          <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:#c9a96e;text-transform:uppercase;">${escapeHtml(n.category || 'NEWS')}</div>
-          <div style="font-size:16px;font-weight:700;color:#fff;margin-top:6px;letter-spacing:.3px;line-height:1.4;">${escapeHtml(n.title)}</div>
-          ${n.summary ? `<div style="font-size:12px;color:#999;margin-top:8px;line-height:1.6;">${escapeHtml(n.summary)}</div>` : ''}
-        </a>
+    const headerDate = (campaign.payload && campaign.payload.headerDate) || (() => {
+      const d = new Date();
+      const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+    })();
+    const issueLabel = (campaign.payload && campaign.payload.issueLabel) || 'Weekly Briefing';
+
+    const cards = items.map((n, i) => `
+      <tr><td style="padding:24px 28px 0;">
+        <div style="display:inline-block;background:#6b1a1a;color:#ffffff;font-size:11px;font-weight:700;width:22px;height:22px;line-height:22px;text-align:center;border-radius:50%;margin-bottom:8px;">${String(i+1).padStart(2,'0')}</div>
+        <div style="font-size:17px;font-weight:700;color:#1a1a1a;line-height:1.4;margin-bottom:6px;">${escapeHtml(n.title || '')}</div>
+        ${n.summary ? `<div style="font-size:13.5px;color:#444;line-height:1.7;margin-bottom:4px;">${escapeHtml(n.summary)}</div>` : ''}
       </td></tr>
     `).join('');
 
-    const greeting = user && user.display_name ? user.display_name : (user && user.email ? user.email.split('@')[0] : 'PAP Reader');
-    return {
-      subject: campaign.subject,
-      html: wrapMarketing({
-        preheader: campaign.preheader || '이주의 PAP 뉴스',
-        body: `
-          <div style="font-size:11px;color:#c9a96e;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">THIS WEEK IN PAP</div>
-          <h1 style="font-size:26px;color:#fff;margin:0 0 8px;letter-spacing:.5px;line-height:1.25;">${escapeHtml(campaign.hero_headline || '이주의 뉴스')}</h1>
-          <p style="color:#999;font-size:13px;line-height:1.7;margin:0 0 24px;">${escapeHtml(campaign.hero_body || '')}</p>
-          <div style="font-size:12px;color:#aaa;margin-bottom:12px;">안녕하세요, <strong style="color:#fff;">${escapeHtml(greeting)}</strong>님.</div>
-          <table width="100%" cellpadding="0" cellspacing="0">${cards}</table>
-        `,
-        unsubUrl: `${FRONTEND_URL}/api/auth/unsubscribe?token=${unsubToken}`,
-      }),
-    };
+    // PAP Daily Briefing HTML — preserved byte-for-byte except for:
+    //   1) date string says <issueLabel> — <headerDate>
+    //   2) per-item SOURCE — DATE line removed
+    //   3) added an unsubscribe row above the dark footer (legal requirement)
+    const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>PAP Weekly News</title></head>
+<body style="margin:0;padding:0;background:#f5f0eb;">
+  <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${escapeHtml(campaign.preheader || '이주의 PAP 뉴스')}</div>
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;font-family:'Inter',Helvetica,Arial,sans-serif;background:#ffffff;">
+    <tr><td align="center" style="background-color:#6b1a1a;padding:28px 20px"><img src="https://lh3.googleusercontent.com/d/1IAVkzs1uAj10kM0P3h64ItZvB924WkET" width="50" style="display:block;" alt="PAP"></td></tr>
+    <tr><td align="center" style="background-color:#f5f0eb;padding:14px 20px;font-size:10px;font-weight:600;color:#6b1a1a;letter-spacing:4px;">ART &middot; FASHION &middot; BEAUTY &middot; CULTURE</td></tr>
+    <tr><td align="center" style="background-color:#f5f0eb;padding:0 20px 18px;font-size:13px;color:#999;">${escapeHtml(issueLabel)} &mdash; ${escapeHtml(headerDate)}</td></tr>
+    ${cards}
+    <tr><td style="padding:18px 28px 0;"><hr style="border:none;border-top:1px solid #eee;"></td></tr>
+    <!-- Legal: unsubscribe + sender info, required for marketing email -->
+    <tr><td style="padding:18px 28px 0;font-size:11px;color:#888;line-height:1.6;">
+      본 메일은 PAP Magazine에 가입하시고 <strong style="color:#555;">이메일 수신에 동의</strong>하신 회원에게 발송됩니다.
+      &nbsp;·&nbsp;
+      <a href="${FRONTEND_URL}/api/auth/unsubscribe?token=${unsubToken}" style="color:#6b1a1a;text-decoration:underline;">수신 거부</a>
+      &nbsp;·&nbsp;
+      <a href="${FRONTEND_URL}/mypage#mp-preferences" style="color:#6b1a1a;text-decoration:underline;">알림 설정 변경</a>
+    </td></tr>
+    <tr><td align="center" style="background-color:#1a1a1a;padding:28px 20px;margin-top:18px;">
+      <div style="font-size:11px;font-weight:700;color:#ffffff;letter-spacing:4px;">P A P &nbsp; M A G A Z I N E</div>
+      <div style="font-size:11px;color:#888;margin-top:6px;">pap-magazine.com | @pap_magazine</div>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+    return { subject: campaign.subject, html };
   },
 };
 
