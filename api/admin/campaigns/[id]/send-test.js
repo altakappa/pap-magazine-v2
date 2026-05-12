@@ -62,10 +62,21 @@ module.exports = async function handler(req, res) {
       .single();
     if (tokErr) throw tokErr;
 
+    // Look up the admin's preferred locale so the test preview renders
+    // in whatever language they read PAP in. Falls back to 'en' if the
+    // column isn't set yet (legacy admin from before migration 027).
+    let adminLang = 'en';
+    try {
+      const { data: pr } = await supabaseAdmin
+        .from('profiles').select('language').eq('id', admin.id).single();
+      if (pr && pr.language) adminLang = pr.language;
+    } catch (_) { /* falls through to 'en' */ }
+
     const fakeUser = {
       id: admin.id,
       email: targetEmail,
       display_name: (admin.name || admin.email || 'PAP Admin') + ' (TEST)',
+      language: adminLang,
     };
     const built = templateFn(campaign, fakeUser, tok.token);
     // Prepend [TEST] to the subject so it's unmistakable in the inbox.

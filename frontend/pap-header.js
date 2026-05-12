@@ -640,6 +640,22 @@
       window._papApplyHeaderI18n(l);
       var sl = document.getElementById('langSelect');
       if (sl) sl.value = l;
+      // Persist the user's locale on the server profile so the email
+      // campaign cron can render newsletters in this language. Logged-
+      // out visitors are skipped — their pap-lang stays in localStorage
+      // and will be synced to the profile if/when they sign up.
+      // Fire-and-forget: a transient network blip must not block the
+      // visible UI change the user just made.
+      try {
+        var tok = localStorage.getItem('pap-token');
+        if (tok) {
+          fetch('/api/auth/language', {
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + tok, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lang: l }),
+          }).catch(function () { /* no-op */ });
+        }
+      } catch (_) { /* localStorage may throw in some private modes */ }
     };
 
     /* Update login links based on user state */

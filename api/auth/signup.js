@@ -26,7 +26,7 @@ module.exports = async function handler(req, res) {
   let createdUserId = null;
 
   try {
-    const { email, password, name, verifiedToken, consent } = req.body;
+    const { email, password, name, verifiedToken, consent, language } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ message: 'Email and password are required' });
@@ -98,12 +98,20 @@ module.exports = async function handler(req, res) {
       .split(',')[0].trim() || null;
     const userAgent = (req.headers['user-agent'] || '').slice(0, 500) || null;
 
+    // Sanitize language: only allow site-supported locales, else 'en'.
+    // This keeps profiles.language clean even if a stale client sends
+    // something weird ('zh-Hant', 'pt-BR', etc.) — falling back to 'en'
+    // means the user still gets a readable email rather than a crash.
+    const SUPPORTED_LANGS = ['ko', 'en', 'it', 'fr', 'es', 'ja', 'zh', 'ru', 'de'];
+    const safeLang = SUPPORTED_LANGS.includes(language) ? language : 'en';
+
     try {
       await supabaseAdmin
         .from('profiles')
         .upsert({
           id: userId,
           email,
+          language: safeLang,
           terms_consent_at: nowIso,
           privacy_consent_at: nowIso,
           age_consent_at: nowIso,

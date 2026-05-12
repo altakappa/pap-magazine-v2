@@ -82,9 +82,12 @@ module.exports = async function handler(req, res) {
 
     try {
       // 3) Fetch recipients — only members with email_consent = true.
+      // We pull profiles.language too so the template renders each
+      // copy in the recipient's preferred locale (set at signup +
+      // synced via /api/auth/language).
       const { data: recipients, error: recErr } = await supabaseAdmin
         .from('profiles')
-        .select('id, email, display_name')
+        .select('id, email, display_name, language')
         .eq('email_consent', true)
         .not('email', 'is', null);
       if (recErr) throw recErr;

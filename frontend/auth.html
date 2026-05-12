@@ -885,7 +885,11 @@ async function completeSignup() {
   btn.textContent = '...';
 
   try {
-    await PAP.auth.signup({ name: fullName, email: email, password: pw, verifiedToken: verifiedToken, consent: consentData });
+    // Capture the language the user signed up in (localStorage pap-lang)
+    // so future marketing emails render in that locale. signup.js
+    // sanitizes against the supported list, so any junk gets coerced to 'en'.
+    var signupLang = (localStorage.getItem('pap-lang') || 'en').toLowerCase();
+    await PAP.auth.signup({ name: fullName, email: email, password: pw, verifiedToken: verifiedToken, consent: consentData, language: signupLang });
     showSuccess();
   } catch (e) {
     var msg = e.message || '';

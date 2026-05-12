@@ -276,15 +276,25 @@ const templates = {
   // editorial product. Per editorial direction, the per-item SOURCE —
   // DATE line is NOT rendered (we don't want to advertise where the
   // raw news came from in a marketing email). The mandatory
-  // unsubscribe link still lives in wrapMarketing()'s footer below.
+  // unsubscribe link still lives in the footer below.
+  //
+  // i18n: when campaign.payload.i18n is present (AI-generated weekly
+  // campaigns produce all 9 site locales), pick the recipient's
+  // language → fall back to 'en' → fall back to the flat payload
+  // shape (manual single-language campaigns). The pickI18n() helper
+  // makes the fallback chain explicit.
   weeklyNews: (campaign, user, unsubToken) => {
-    const items = (campaign.payload && campaign.payload.newsItems) || [];
+    const lang = (user && user.language) || 'en';
+    const view = pickI18nForWeekly(campaign, lang);
+    const items = view.newsItems;
     const headerDate = (campaign.payload && campaign.payload.headerDate) || (() => {
       const d = new Date();
       const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
       return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
     })();
     const issueLabel = (campaign.payload && campaign.payload.issueLabel) || 'Weekly Briefing';
+    const subject = view.subject || campaign.subject;
+    const preheader = view.preheader || campaign.preheader || 'PAP Weekly News';
 
     const cards = items.map((n, i) => `
       <tr><td style="padding:24px 28px 0;">
@@ -302,7 +312,7 @@ const templates = {
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>PAP Weekly News</title></head>
 <body style="margin:0;padding:0;background:#f5f0eb;">
-  <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${escapeHtml(campaign.preheader || '이주의 PAP 뉴스')}</div>
+  <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${escapeHtml(preheader)}</div>
   <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;font-family:'Inter',Helvetica,Arial,sans-serif;background:#ffffff;">
     <tr><td align="center" style="background-color:#6b1a1a;padding:28px 20px"><img src="https://lh3.googleusercontent.com/d/1IAVkzs1uAj10kM0P3h64ItZvB924WkET" width="50" style="display:block;" alt="PAP"></td></tr>
     <tr><td align="center" style="background-color:#f5f0eb;padding:14px 20px;font-size:10px;font-weight:600;color:#6b1a1a;letter-spacing:4px;">ART &middot; FASHION &middot; BEAUTY &middot; CULTURE</td></tr>
@@ -324,9 +334,47 @@ const templates = {
   </table>
 </body>
 </html>`;
-    return { subject: campaign.subject, html };
+    return { subject, html };
   },
 };
+
+// ── i18n picker for weeklyNews ────────────────────────────────────
+// Resolves the "what content should THIS recipient see" question with
+// a four-step fallback chain:
+//   1) campaign.payload.i18n[lang]  — exact-match locale
+//   2) campaign.payload.i18n.en     — English fallback (the canonical
+//      default for any locale not in our supported set)
+//   3) campaign.payload.{subject, newsItems, ...} — flat payload from
+//      manually-created single-language campaigns
+//   4) campaign.{subject, preheader, ...} — last-resort top-level fields
+//
+// Anything missing falls through to the next step, so a half-translated
+// campaign still renders SOMETHING readable rather than crashing.
+function pickI18nForWeekly(campaign, lang) {
+  const payload = campaign.payload || {};
+  const i18n = payload.i18n;
+  const flatItems = Array.isArray(payload.newsItems) ? payload.newsItems : [];
+  if (i18n && typeof i18n === 'object') {
+    const pref = i18n[lang] || i18n.en || {};
+    return {
+      subject:       pref.subject       || campaign.subject || '',
+      preheader:     pref.preheader     || campaign.preheader || '',
+      hero_headline: pref.hero_headline || campaign.hero_headline || '',
+      hero_body:     pref.hero_body     || campaign.hero_body || '',
+      newsItems:     Array.isArray(pref.newsItems) ? pref.newsItems
+                    : (Array.isArray(i18n.en && i18n.en.newsItems) ? i18n.en.newsItems
+                    : flatItems),
+    };
+  }
+  // Legacy single-language campaign (admin typed in one locale via the UI)
+  return {
+    subject: campaign.subject || '',
+    preheader: campaign.preheader || '',
+    hero_headline: campaign.hero_headline || '',
+    hero_body: campaign.hero_body || '',
+    newsItems: flatItems,
+  };
+}
 
 // ── Marketing wrapper ─────────────────────────────────────────────
 // Distinct from wrapHtml(): adds preheader text (preview snippet in
