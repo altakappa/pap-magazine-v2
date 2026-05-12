@@ -26,7 +26,7 @@ module.exports = async function handler(req, res) {
   let createdUserId = null;
 
   try {
-    const { email, password, name, verifiedToken, consent, language } = req.body;
+    const { email, password, name, verifiedToken, consent, language, emailLanguage } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ message: 'Email and password are required' });
@@ -104,6 +104,14 @@ module.exports = async function handler(req, res) {
     // means the user still gets a readable email rather than a crash.
     const SUPPORTED_LANGS = ['ko', 'en', 'it', 'fr', 'es', 'ja', 'zh', 'ru', 'de'];
     const safeLang = SUPPORTED_LANGS.includes(language) ? language : 'en';
+    // Email language defaults to whatever the user picked for the site,
+    // so the default behaviour for someone who skips the explicit
+    // "newsletter language" selector is intuitive: "I read PAP in
+    // Korean, my emails arrive in Korean too." The user can split them
+    // later in mypage if they want.
+    const safeEmailLang = SUPPORTED_LANGS.includes(emailLanguage)
+      ? emailLanguage
+      : safeLang;
 
     try {
       await supabaseAdmin
@@ -112,6 +120,7 @@ module.exports = async function handler(req, res) {
           id: userId,
           email,
           language: safeLang,
+          email_language: safeEmailLang,
           terms_consent_at: nowIso,
           privacy_consent_at: nowIso,
           age_consent_at: nowIso,

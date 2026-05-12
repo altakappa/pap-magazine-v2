@@ -137,6 +137,14 @@ a{color:#fff;text-decoration:none}
 .auth-terms a{color:rgba(255,255,255,.4);text-decoration:underline;text-underline-offset:2px}
 /* Consent checkboxes */
 .consent-section{margin:20px 0 24px;border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:16px 18px;background:rgba(255,255,255,.02)}
+/* Signup-time newsletter-language dropdown. Sits visually above the
+   consent block — same outline as the consent card so the form reads
+   as one settings group. */
+.signup-email-lang{margin:20px 0 14px;border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:14px 18px;background:rgba(255,255,255,.02)}
+.signup-email-lang-label{font-size:12px;font-weight:600;letter-spacing:.04em;color:rgba(255,255,255,.85);display:block;margin-bottom:4px}
+.signup-email-lang-sub{font-size:10.5px;color:rgba(255,255,255,.45);line-height:1.5;letter-spacing:.02em;margin-bottom:10px}
+.signup-email-lang-select{width:100%;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.12);color:#fff;font-size:12px;padding:9px 10px;font-family:inherit;cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>");background-repeat:no-repeat;background-position:right 12px center;padding-right:34px}
+.signup-email-lang-select option{background:#111;color:#fff}
 .consent-row{display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:9px 0;font-family:Montserrat,sans-serif;position:relative}
 .consent-row input[type="checkbox"]{position:absolute;opacity:0;width:0;height:0}
 .consent-check{flex-shrink:0;width:16px;height:16px;border:1.5px solid rgba(255,255,255,.2);border-radius:3px;margin-top:1px;transition:all .2s;display:flex;align-items:center;justify-content:center}
@@ -420,6 +428,26 @@ a{color:#fff;text-decoration:none}
         <div class="plan-price" data-i18n="planPremPrice">&#8361;13,500 / 월</div>
         <div class="plan-features" data-i18n="planPremFeatures">Standard 포함 + 비하인드 콘텐츠 · 1:1 피드백 · 독점 이벤트 초대</div>
       </div>
+    </div>
+
+    <!-- ======== EMAIL LANGUAGE ======== -->
+    <!-- Defaults to the site language the visitor is currently using
+         (set in the open()-time bootstrap below), but the explicit
+         dropdown lets them split UI vs. inbox language up front. -->
+    <div class="signup-email-lang">
+      <label class="signup-email-lang-label" data-i18n="emailLangLabel">메일 수신 언어</label>
+      <div class="signup-email-lang-sub" data-i18n="emailLangSub">PAP의 뉴스레터를 어떤 언어로 받아보시겠어요?</div>
+      <select id="signupEmailLang" class="signup-email-lang-select">
+        <option value="ko">한국어</option>
+        <option value="en">English</option>
+        <option value="it">Italiano</option>
+        <option value="fr">Français</option>
+        <option value="es">Español</option>
+        <option value="ja">日本語</option>
+        <option value="zh">中文</option>
+        <option value="ru">Русский</option>
+        <option value="de">Deutsch</option>
+      </select>
     </div>
 
     <!-- ======== CONSENT CHECKBOXES ======== -->
@@ -709,6 +737,16 @@ function showReset() {
 function showSignup() {
   isLoginView = false;
   document.getElementById('loginPanel').classList.remove('active');
+  // Pre-select the email-language dropdown to whatever locale they're
+  // currently reading the site in. That way the visible default
+  // matches expectation ("I'm reading in Korean, the dropdown shows
+  // Korean") — the user only has to touch it if they want a different
+  // newsletter locale. Falls back to 'en' if pap-lang isn't set yet.
+  try {
+    var lang = (localStorage.getItem('pap-lang') || 'en').toLowerCase();
+    var el = document.getElementById('signupEmailLang');
+    if (el) el.value = ['ko','en','it','fr','es','ja','zh','ru','de'].indexOf(lang) >= 0 ? lang : 'en';
+  } catch (_) { /* localStorage may throw in some private-browsing modes */ }
   // showStep(1) handles its own history sync — produces a single entry
   showStep(1);
   _updateHeaderLogin();
@@ -889,7 +927,12 @@ async function completeSignup() {
     // so future marketing emails render in that locale. signup.js
     // sanitizes against the supported list, so any junk gets coerced to 'en'.
     var signupLang = (localStorage.getItem('pap-lang') || 'en').toLowerCase();
-    await PAP.auth.signup({ name: fullName, email: email, password: pw, verifiedToken: verifiedToken, consent: consentData, language: signupLang });
+    // Explicit email-language dropdown overrides the site default.
+    // Falls back to signupLang (mirror site language) if the field
+    // wasn't initialised — same logic the form bootstrap uses.
+    var emailLangEl = document.getElementById('signupEmailLang');
+    var emailLang = (emailLangEl && emailLangEl.value) || signupLang;
+    await PAP.auth.signup({ name: fullName, email: email, password: pw, verifiedToken: verifiedToken, consent: consentData, language: signupLang, emailLanguage: emailLang });
     showSuccess();
   } catch (e) {
     var msg = e.message || '';
@@ -1376,7 +1419,7 @@ ko: {
   resetTitle:'새 비밀번호 설정', resetDesc:'새로 사용하실 비밀번호를 입력해주세요.',
   resetBtn:'비밀번호 변경', resetSuccess:'비밀번호가 변경되었습니다. 로그인해주세요.',
   backToLogin:'← 로그인으로 돌아가기', labelPwConfirm:'비밀번호 확인', phPwConfirm:'비밀번호 재입력',
-  consentAll:'전체 동의', consentTerms:'[필수] 이용약관 동의', consentPrivacy:'[필수] 개인정보 수집 및 이용 동의', consentAge:'[필수] 만 14세 이상입니다', consentMarketing:'[선택] 마케팅 정보 수신 동의', consentEmail:'[선택] 이메일 알림 수신 동의', consentView:'보기',
+  consentAll:'전체 동의', consentTerms:'[필수] 이용약관 동의', consentPrivacy:'[필수] 개인정보 수집 및 이용 동의', consentAge:'[필수] 만 14세 이상입니다', consentMarketing:'[선택] 마케팅 정보 수신 동의', consentEmail:'[선택] 이메일 알림 수신 동의', consentView:'보기', emailLangLabel:'메일 수신 언어', emailLangSub:'PAP 뉴스레터를 어떤 언어로 받아보시겠어요?',
   successTitle:'환영합니다!',
   successDesc:'PAP Magazine 회원이 되신 것을 환영합니다.<br>이제 서브미션 제출, 커뮤니티 참여 등 다양한 혜택을 이용할 수 있습니다.',
   successBtn:'홈으로 이동'
@@ -1412,7 +1455,7 @@ en: {
   resetTitle:'Set new password', resetDesc:'Choose a new password for your account.',
   resetBtn:'Update password', resetSuccess:'Password updated. Please log in.',
   backToLogin:'← Back to login', labelPwConfirm:'CONFIRM PASSWORD', phPwConfirm:'Re-enter password',
-  consentAll:'Agree to all', consentTerms:'[Required] Terms of Service', consentPrivacy:'[Required] Privacy Policy', consentAge:'[Required] I am 14 years or older', consentMarketing:'[Optional] Marketing communications', consentEmail:'[Optional] Email notifications', consentView:'View',
+  consentAll:'Agree to all', consentTerms:'[Required] Terms of Service', consentPrivacy:'[Required] Privacy Policy', consentAge:'[Required] I am 14 years or older', consentMarketing:'[Optional] Marketing communications', consentEmail:'[Optional] Email notifications', consentView:'View', emailLangLabel:'Email language', emailLangSub:'Which language would you like PAP newsletters in?',
   successTitle:'Welcome!',
   successDesc:'Welcome to PAP Magazine.<br>You can now submit work, join the community, and enjoy all member benefits.',
   successBtn:'Go to Home'
@@ -1448,7 +1491,7 @@ ru:{
   resetTitle:'Set new password', resetDesc:'Choose a new password for your account.',
   resetBtn:'Update password', resetSuccess:'Password updated. Please log in.',
   backToLogin:'← Back to login', labelPwConfirm:'CONFIRM PASSWORD', phPwConfirm:'Re-enter password',
-  consentAll:'Agree to all', consentTerms:'[Required] Terms of Service', consentPrivacy:'[Required] Privacy Policy', consentAge:'[Required] I am 14 years or older', consentMarketing:'[Optional] Marketing communications', consentEmail:'[Optional] Email notifications', consentView:'View',
+  consentAll:'Agree to all', consentTerms:'[Required] Terms of Service', consentPrivacy:'[Required] Privacy Policy', consentAge:'[Required] I am 14 years or older', consentMarketing:'[Optional] Marketing communications', consentEmail:'[Optional] Email notifications', consentView:'View', emailLangLabel:'Email language', emailLangSub:'Which language would you like PAP newsletters in?',
   successTitle:'Welcome!',
   successDesc:'Welcome to PAP Magazine.<br>You can now submit work, join the community, and enjoy all member benefits.',
   successBtn:'Go to Home'
@@ -1484,7 +1527,7 @@ de:{
   resetTitle:'Set new password', resetDesc:'Choose a new password for your account.',
   resetBtn:'Update password', resetSuccess:'Password updated. Please log in.',
   backToLogin:'← Back to login', labelPwConfirm:'CONFIRM PASSWORD', phPwConfirm:'Re-enter password',
-  consentAll:'Agree to all', consentTerms:'[Required] Terms of Service', consentPrivacy:'[Required] Privacy Policy', consentAge:'[Required] I am 14 years or older', consentMarketing:'[Optional] Marketing communications', consentEmail:'[Optional] Email notifications', consentView:'View',
+  consentAll:'Agree to all', consentTerms:'[Required] Terms of Service', consentPrivacy:'[Required] Privacy Policy', consentAge:'[Required] I am 14 years or older', consentMarketing:'[Optional] Marketing communications', consentEmail:'[Optional] Email notifications', consentView:'View', emailLangLabel:'Email language', emailLangSub:'Which language would you like PAP newsletters in?',
   successTitle:'Welcome!',
   successDesc:'Welcome to PAP Magazine.<br>You can now submit work, join the community, and enjoy all member benefits.',
   successBtn:'Go to Home'
@@ -1520,7 +1563,7 @@ it: {
   resetTitle:'Imposta nuova password', resetDesc:'Scegli una nuova password per il tuo account.',
   resetBtn:'Aggiorna password', resetSuccess:'Password aggiornata. Effettua l\'accesso.',
   backToLogin:'← Torna al login', labelPwConfirm:'CONFERMA PASSWORD', phPwConfirm:'Reinserisci la password',
-  consentAll:'Accetta tutto', consentTerms:'[Obbligatorio] Termini di servizio', consentPrivacy:'[Obbligatorio] Informativa sulla privacy', consentAge:'[Obbligatorio] Ho almeno 14 anni', consentMarketing:'[Facoltativo] Comunicazioni di marketing', consentEmail:'[Facoltativo] Notifiche email', consentView:'Vedi',
+  consentAll:'Accetta tutto', consentTerms:'[Obbligatorio] Termini di servizio', consentPrivacy:'[Obbligatorio] Informativa sulla privacy', consentAge:'[Obbligatorio] Ho almeno 14 anni', consentMarketing:'[Facoltativo] Comunicazioni di marketing', consentEmail:'[Facoltativo] Notifiche email', consentView:'Vedi', emailLangLabel:'Lingua delle email', emailLangSub:'In quale lingua vorresti ricevere le newsletter PAP?',
   successTitle:'Benvenuto!',
   successDesc:'Benvenuto su PAP Magazine.<br>Ora puoi inviare lavori, unirti alla community e godere di tutti i vantaggi.',
   successBtn:'Vai alla Home'
@@ -1556,7 +1599,7 @@ fr: {
   resetTitle:'Nouveau mot de passe', resetDesc:'Choisissez un nouveau mot de passe pour votre compte.',
   resetBtn:'Mettre à jour', resetSuccess:'Mot de passe mis à jour. Veuillez vous connecter.',
   backToLogin:'← Retour à la connexion', labelPwConfirm:'CONFIRMER LE MOT DE PASSE', phPwConfirm:'Saisir à nouveau',
-  consentAll:'Tout accepter', consentTerms:'[Obligatoire] Conditions d\'utilisation', consentPrivacy:'[Obligatoire] Politique de confidentialité', consentAge:'[Obligatoire] J\'ai 14 ans ou plus', consentMarketing:'[Facultatif] Communications marketing', consentEmail:'[Facultatif] Notifications par email', consentView:'Voir',
+  consentAll:'Tout accepter', consentTerms:'[Obligatoire] Conditions d\'utilisation', consentPrivacy:'[Obligatoire] Politique de confidentialité', consentAge:'[Obligatoire] J\'ai 14 ans ou plus', consentMarketing:'[Facultatif] Communications marketing', consentEmail:'[Facultatif] Notifications par email', consentView:'Voir', emailLangLabel:'Langue des e-mails', emailLangSub:'Dans quelle langue souhaitez-vous recevoir les newsletters PAP?',
   successTitle:'Bienvenue !',
   successDesc:'Bienvenue sur PAP Magazine.<br>Vous pouvez maintenant soumettre des travaux et rejoindre la communauté.',
   successBtn:'Aller à l\'accueil'
@@ -1592,7 +1635,7 @@ es: {
   resetTitle:'Nueva contraseña', resetDesc:'Elija una nueva contraseña para su cuenta.',
   resetBtn:'Actualizar contraseña', resetSuccess:'Contraseña actualizada. Inicie sesión.',
   backToLogin:'← Volver al inicio de sesión', labelPwConfirm:'CONFIRMAR CONTRASEÑA', phPwConfirm:'Reingrese la contraseña',
-  consentAll:'Aceptar todo', consentTerms:'[Obligatorio] Términos de servicio', consentPrivacy:'[Obligatorio] Política de privacidad', consentAge:'[Obligatorio] Tengo 14 años o más', consentMarketing:'[Opcional] Comunicaciones de marketing', consentEmail:'[Opcional] Notificaciones por email', consentView:'Ver',
+  consentAll:'Aceptar todo', consentTerms:'[Obligatorio] Términos de servicio', consentPrivacy:'[Obligatorio] Política de privacidad', consentAge:'[Obligatorio] Tengo 14 años o más', consentMarketing:'[Opcional] Comunicaciones de marketing', consentEmail:'[Opcional] Notificaciones por email', consentView:'Ver', emailLangLabel:'Idioma del email', emailLangSub:'¿En qué idioma quieres recibir las newsletters de PAP?',
   successTitle:'¡Bienvenido!',
   successDesc:'Bienvenido a PAP Magazine.<br>Ahora puede enviar trabajos y unirse a la comunidad.',
   successBtn:'Ir al Inicio'
@@ -1628,7 +1671,7 @@ ja: {
   resetTitle:'新しいパスワードを設定', resetDesc:'新しいパスワードを入力してください。',
   resetBtn:'パスワードを変更', resetSuccess:'パスワードが更新されました。ログインしてください。',
   backToLogin:'← ログインに戻る', labelPwConfirm:'パスワード確認', phPwConfirm:'パスワードを再入力',
-  consentAll:'すべてに同意', consentTerms:'[必須] 利用規約', consentPrivacy:'[必須] プライバシーポリシー', consentAge:'[必須] 14歳以上です', consentMarketing:'[任意] マーケティング情報の受信', consentEmail:'[任意] メール通知の受信', consentView:'表示',
+  consentAll:'すべてに同意', consentTerms:'[必須] 利用規約', consentPrivacy:'[必須] プライバシーポリシー', consentAge:'[必須] 14歳以上です', consentMarketing:'[任意] マーケティング情報の受信', consentEmail:'[任意] メール通知の受信', consentView:'表示', emailLangLabel:'メール受信言語', emailLangSub:'PAPのニュースレターをどの言語で受け取りますか?',
   successTitle:'ようこそ！',
   successDesc:'PAP Magazineへようこそ。<br>作品提出やコミュニティ参加などの特典をご利用いただけます。',
   successBtn:'ホームへ'
@@ -1664,7 +1707,7 @@ zh: {
   resetTitle:'设置新密码', resetDesc:'请为您的账户选择一个新密码。',
   resetBtn:'更新密码', resetSuccess:'密码已更新。请登录。',
   backToLogin:'← 返回登录', labelPwConfirm:'确认密码', phPwConfirm:'再次输入密码',
-  consentAll:'全部同意', consentTerms:'[必选] 服务条款', consentPrivacy:'[必选] 隐私政策', consentAge:'[必选] 我已年满14周岁', consentMarketing:'[可选] 营销信息接收', consentEmail:'[可选] 邮件通知接收', consentView:'查看',
+  consentAll:'全部同意', consentTerms:'[必选] 服务条款', consentPrivacy:'[必选] 隐私政策', consentAge:'[必选] 我已年满14周岁', consentMarketing:'[可选] 营销信息接收', consentEmail:'[可选] 邮件通知接收', consentView:'查看', emailLangLabel:'邮件接收语言', emailLangSub:'您希望以哪种语言接收 PAP 通讯?',
   successTitle:'欢迎！',
   successDesc:'欢迎加入PAP Magazine。<br>现在您可以提交作品、参与社区并享受所有会员权益。',
   successBtn:'前往首页'
@@ -1700,7 +1743,7 @@ ru: {
   resetTitle:'Новый пароль', resetDesc:'Выберите новый пароль для вашей учётной записи.',
   resetBtn:'Обновить пароль', resetSuccess:'Пароль обновлён. Пожалуйста, войдите.',
   backToLogin:'← Назад ко входу', labelPwConfirm:'ПОДТВЕРДИТЕ ПАРОЛЬ', phPwConfirm:'Введите пароль ещё раз',
-  consentAll:'Принять всё', consentTerms:'[Обязательно] Условия использования', consentPrivacy:'[Обязательно] Политика конфиденциальности', consentAge:'[Обязательно] Мне 14 лет или больше', consentMarketing:'[Необязательно] Маркетинговые сообщения', consentEmail:'[Необязательно] Уведомления по email', consentView:'Просмотр',
+  consentAll:'Принять всё', consentTerms:'[Обязательно] Условия использования', consentPrivacy:'[Обязательно] Политика конфиденциальности', consentAge:'[Обязательно] Мне 14 лет или больше', consentMarketing:'[Необязательно] Маркетинговые сообщения', consentEmail:'[Необязательно] Уведомления по email', consentView:'Просмотр', emailLangLabel:'Язык писем', emailLangSub:'На каком языке вы хотите получать рассылку PAP?',
   successTitle:'Добро пожаловать!',
   successDesc:'Добро пожаловать в PAP Magazine.<br>Теперь вы можете подавать работы и участвовать в сообществе.',
   successBtn:'Перейти на главную'

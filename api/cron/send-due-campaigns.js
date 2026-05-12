@@ -82,12 +82,15 @@ module.exports = async function handler(req, res) {
 
     try {
       // 3) Fetch recipients — only members with email_consent = true.
-      // We pull profiles.language too so the template renders each
-      // copy in the recipient's preferred locale (set at signup +
-      // synced via /api/auth/language).
+      // We pull BOTH language and email_language because they can
+      // diverge after migration 028 (e.g. KR designer who reads the
+      // site in Korean but receives newsletters in English). The
+      // template's pickI18nForWeekly() uses user.language, so we
+      // collapse the two columns here: email_language wins, falling
+      // back to language, then to 'en' as a last resort.
       const { data: recipients, error: recErr } = await supabaseAdmin
         .from('profiles')
-        .select('id, email, display_name, language')
+        .select('id, email, display_name, language, email_language')
         .eq('email_consent', true)
         .not('email', 'is', null);
       if (recErr) throw recErr;
@@ -120,7 +123,16 @@ module.exports = async function handler(req, res) {
           if (tokErr) throw tokErr;
 
           try {
-            const built = templateFn(campaign, user, tok.token);
+            // Collapse the two language columns into the single
+            // `language` field the template consumes. Precedence:
+            // email_language (explicit newsletter pref) > language
+            // (site UI) > 'en' (safe fallback). Done inline per-user
+            // so we don't mutate the original profiles row.
+            const renderUser = {
+              ...user,
+              language: user.email_language || user.language || 'en',
+            };
+            const built = templateFn(campaign, renderUser, tok.token);
             const result = await sendEmail(user.email, built);
             const ok = result && result.sent === true;
 

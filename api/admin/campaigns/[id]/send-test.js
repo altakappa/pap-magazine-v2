@@ -62,14 +62,15 @@ module.exports = async function handler(req, res) {
       .single();
     if (tokErr) throw tokErr;
 
-    // Look up the admin's preferred locale so the test preview renders
-    // in whatever language they read PAP in. Falls back to 'en' if the
-    // column isn't set yet (legacy admin from before migration 027).
+    // Look up the admin's preferred newsletter locale so the test
+    // preview matches what a real recipient with the same preference
+    // would see. Precedence mirrors the cron path: email_language
+    // (explicit pref) > language (site UI) > 'en'.
     let adminLang = 'en';
     try {
       const { data: pr } = await supabaseAdmin
-        .from('profiles').select('language').eq('id', admin.id).single();
-      if (pr && pr.language) adminLang = pr.language;
+        .from('profiles').select('language, email_language').eq('id', admin.id).single();
+      if (pr) adminLang = pr.email_language || pr.language || 'en';
     } catch (_) { /* falls through to 'en' */ }
 
     const fakeUser = {

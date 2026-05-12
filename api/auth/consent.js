@@ -31,7 +31,7 @@ module.exports = async function handler(req, res) {
     try {
       const { data, error } = await supabaseAdmin
         .from('profiles')
-        .select('terms_consent_at, privacy_consent_at, age_consent_at, marketing_consent, marketing_consent_at, email_consent, email_consent_at')
+        .select('terms_consent_at, privacy_consent_at, age_consent_at, marketing_consent, marketing_consent_at, email_consent, email_consent_at, language, email_language')
         .eq('id', user.id)
         .single();
       if (error) throw error;
