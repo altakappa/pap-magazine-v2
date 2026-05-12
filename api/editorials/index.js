@@ -22,6 +22,14 @@ module.exports = async function handler(req, res) {
       const offset = (parseInt(page) - 1) * limit;
       const requestedStatus = status || 'published';
 
+      // Drafts (and any non-published view) are admin-only — submissions
+      // are staged here before the editor publishes them, so leaking them
+      // would expose work-in-progress.
+      if (requestedStatus !== 'published') {
+        const admin = await requireAdmin(req, res);
+        if (!admin) return;
+      }
+
       let query = supabaseAdmin
         .from('editorials')
         .select('*', { count: 'exact' })

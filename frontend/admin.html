@@ -473,7 +473,17 @@ tr:hover td{background:rgba(0,0,0,.02)}
     <div class="mn-header"><div class="mn-title">에디토리얼 관리</div><div class="mn-actions"><button class="btn btn-primary" onclick="go('newpost')">+ 새 게시글</button></div></div>
     <div class="mn-body">
       <div class="tbl-wrap">
-        <div class="tbl-top"><h3>에디토리얼 목록 (<span id="edCountLabel">0</span>개)</h3><input style="background:#f5f5f7;border:1px solid var(--border2);padding:6px 12px;color:var(--text);outline:none;width:200px;border-radius:4px" placeholder="검색..." id="edSearchAdmin" oninput="renderEditorialList()"></div>
+        <div class="tbl-top">
+          <h3>에디토리얼 목록 (<span id="edCountLabel">0</span>개)</h3>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div class="ed-status-filter" role="tablist" aria-label="에디토리얼 상태 필터" style="display:inline-flex;border:1px solid var(--border2);border-radius:4px;overflow:hidden">
+              <button type="button" class="btn btn-sm ed-fbtn ed-fbtn-active" data-status="all" onclick="setEditorialStatusFilter('all')" style="border:none;border-radius:0">전체</button>
+              <button type="button" class="btn btn-sm ed-fbtn" data-status="published" onclick="setEditorialStatusFilter('published')" style="border:none;border-radius:0;border-left:1px solid var(--border2)">발행됨</button>
+              <button type="button" class="btn btn-sm ed-fbtn" data-status="draft" onclick="setEditorialStatusFilter('draft')" style="border:none;border-radius:0;border-left:1px solid var(--border2)">임시저장 <span id="edDraftCountBadge" style="margin-left:4px;font-weight:700;color:#ff9800"></span></button>
+            </div>
+            <input style="background:#f5f5f7;border:1px solid var(--border2);padding:6px 12px;color:var(--text);outline:none;width:200px;border-radius:4px" placeholder="검색..." id="edSearchAdmin" oninput="renderEditorialList()">
+          </div>
+        </div>
         <table><thead><tr><th>ID</th><th>썸네일</th><th>제목</th><th>태그</th><th>상태</th><th>날짜</th><th>작업</th></tr></thead>
         <tbody id="edListBody"></tbody></table>
       </div>
@@ -657,8 +667,11 @@ tr:hover td{background:rgba(0,0,0,.02)}
         </div>
 
         <!-- 버튼 -->
+        <!-- 저장 → "공개" 체크박스 상태대로 저장 (체크 시 발행, 해제 시 임시저장)
+             임시저장 → 체크박스와 무관하게 항상 status='draft'로 강제 저장 -->
         <div class="pe-actions">
           <button class="btn btn-primary" onclick="savePost()">저장</button>
+          <button class="btn" onclick="savePost('draft')" title="공개 체크와 무관하게 임시저장으로 저장">임시저장</button>
           <button class="btn" onclick="alert('미리보기는 실제 운영 시 사이트에서 확인 가능합니다.')">미리보기</button>
           <button class="btn" onclick="go('editorials')">취소</button>
         </div>

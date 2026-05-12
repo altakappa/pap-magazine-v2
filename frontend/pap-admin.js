@@ -1030,14 +1030,56 @@ async function doReview(status){
       throw new Error(errData.message||'심사 처리 실패');
     }
     var result=await resp.json();
-    alert('심사가 완료되었습니다.');
     closeModal();
-    // Optionally reload submissions list
+    // On approval the backend stages an editorial draft and returns its
+    // id. Jump straight into the edit screen so the editor can polish
+    // metadata while the submission's context is still fresh — beats
+    // making them navigate back through 에디토리얼 관리 → 임시저장.
+    if(status==='approved' && result && result.editorialId){
+      try{
+        await openEditorialEditor(result.editorialId);
+        return;
+      }catch(navErr){
+        console.warn('Could not auto-open editorial editor:',navErr);
+        alert('승인되었습니다. 에디토리얼 관리 → 임시저장 탭에서 편집할 수 있습니다.');
+      }
+    } else {
+      alert('심사가 완료되었습니다.');
+    }
     if(window.loadSubmissions) loadSubmissions();
   }catch(err){
     console.error('Review submission error:',err);
     alert('오류: '+err.message);
   }
+}
+
+// review.js stamps approved submissions with a marker like
+// "[Staged as editorial id: <uuid>]" inside admin_notes. Pull the uuid
+// back out so the submission row + review modal can deep-link to the
+// editor. Returns null when the marker is missing (older approvals
+// from before this flow shipped, or stage-as-editorial failures).
+function _extractStagedEditorialId(notes){
+  if(!notes || typeof notes !== 'string') return null;
+  var m = notes.match(/\[Staged as editorial id:\s*([0-9a-f-]{36})\]/i);
+  return m ? m[1] : null;
+}
+
+// Fetch one editorial by id, drop it into the local cache, then open
+// the edit form. Lets callers (post-approval auto-jump, "편집" button on
+// approved submission rows) share one code path.
+async function openEditorialEditor(editorialId){
+  var resp=await apiGet('/editorials/'+editorialId);
+  var ed=resp && (resp.data || resp);
+  if(!ed || !ed.id) throw new Error('Editorial not found: '+editorialId);
+  if(!Array.isArray(editorials)) editorials=[];
+  // Replace any stale cached copy so editEditorial finds the fresh row.
+  var idx=editorials.findIndex(function(e){return e.id===ed.id;});
+  if(idx>=0) editorials[idx]=ed;
+  else editorials.push(ed);
+  // editEditorial sets editingEditorialId synchronously and calls
+  // go('newpost') itself at the end, so the route's reset hook (which
+  // skips when editingEditorialId is set) leaves our populated form alone.
+  editEditorial(ed.id);
 }
 
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
@@ -1062,7 +1104,17 @@ async function loadSubmissions(statusFilter){
       var plan=s.submitterPlan||'free';
       var planCls=plan.indexOf('premium')>-1?'b-premium':plan.indexOf('standard')>-1?'b-standard':'b-free';
       var planLabel=plan.indexOf('premium')>-1?'Premium':plan.indexOf('standard')>-1?'Standard':'Free';
-      tb.innerHTML+='<tr><td class="td-title" onclick="openModal(\''+s.id+'\')">'+esc(s.title)+'</td><td>'+esc(s.submitterName||s.submitterEmail||'—')+'</td><td><span class="badge '+planCls+'">'+planLabel+'</span></td><td>'+looks+'</td><td>'+fmtDate(s.created_at)+'</td><td><span class="badge '+statusCls+'">'+statusLabel+'</span></td><td><button class="btn btn-sm" onclick="openModal(\''+s.id+'\')">심사</button></td></tr>';
+      // For approved submissions, surface a deep-link to the staged
+      // editorial's edit screen. The id was stamped into admin_notes by
+      // review.js as "[Staged as editorial id: <uuid>]" — parse it back
+      // out so the editor can resume polishing without hunting through
+      // the editorials list.
+      var editorialId=_extractStagedEditorialId(s.admin_notes);
+      var actionBtns='<button class="btn btn-sm" onclick="openModal(\''+s.id+'\')">심사</button>';
+      if(s.status==='approved' && editorialId){
+        actionBtns+=' <button class="btn btn-sm btn-primary" onclick="openEditorialEditor(\''+editorialId+'\')" title="이 서브미션이 임시저장된 에디토리얼 편집 화면으로 이동">에디토리얼 편집</button>';
+      }
+      tb.innerHTML+='<tr><td class="td-title" onclick="openModal(\''+s.id+'\')">'+esc(s.title)+'</td><td>'+esc(s.submitterName||s.submitterEmail||'—')+'</td><td><span class="badge '+planCls+'">'+planLabel+'</span></td><td>'+looks+'</td><td>'+fmtDate(s.created_at)+'</td><td><span class="badge '+statusCls+'">'+statusLabel+'</span></td><td>'+actionBtns+'</td></tr>';
     });
   }catch(err){
     tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:#ff6b6b;padding:40px">불러오기 실패</td></tr>';
@@ -2162,6 +2214,20 @@ async function loadDashboardStats(){
 // ======== EDITORIAL CRUD (API) ========
 var editorials=[];
 var editingEditorialId=null;
+// Status filter: 'all' | 'published' | 'draft'. Drafts are submissions
+// that the editor approved but hasn't yet published, so the filter has
+// to surface them clearly (they're invisible on the public site).
+var edStatusFilter='all';
+
+function setEditorialStatusFilter(s){
+  edStatusFilter=(s==='published'||s==='draft')?s:'all';
+  var btns=document.querySelectorAll('.ed-fbtn');
+  for(var i=0;i<btns.length;i++){
+    if(btns[i].getAttribute('data-status')===edStatusFilter) btns[i].classList.add('ed-fbtn-active');
+    else btns[i].classList.remove('ed-fbtn-active');
+  }
+  renderEditorialList();
+}
 
 async function loadEditorials(){
   var tb=document.getElementById('edListBody');
@@ -2180,10 +2246,17 @@ async function loadEditorials(){
 function renderEditorialList(){
   var q=(document.getElementById('edSearchAdmin')?document.getElementById('edSearchAdmin').value:'').toLowerCase();
   var filtered=editorials.filter(function(e){
+    if(edStatusFilter!=='all'){
+      var st=e.status||'published';
+      if(st!==edStatusFilter)return false;
+    }
     if(!q)return true;
     var tags=Array.isArray(e.tags)?e.tags.join(' '):e.tags||'';
     return (e.title||'').toLowerCase().indexOf(q)>-1||tags.toLowerCase().indexOf(q)>-1;
   });
+  var draftCount=editorials.filter(function(e){return (e.status||'published')==='draft';}).length;
+  var dcb=document.getElementById('edDraftCountBadge');
+  if(dcb) dcb.textContent=draftCount?('('+draftCount+')'):'';
   var tb=document.getElementById('edListBody');
   if(!tb) return;
   tb.innerHTML='';
@@ -2193,13 +2266,40 @@ function renderEditorialList(){
     var tagBadges=tags.slice(0,3).map(function(t){return '<span class="pe-tag">'+esc(t)+'</span>';}).join(' ');
     var st=e.status||'published';
     var cls=st==='published'?'b-published':'b-draft';
-    var label=st==='published'?'공개':'비공개';
+    var label=st==='published'?'공개':'임시저장';
     var thumb=e.thumbnail||e.cover_image||'';
     var thumbHtml=thumb?'<img loading="lazy" class="td-thumb" src="'+esc(thumb)+'">':'—';
     var shortId=e.id?e.id.substring(0,8):'—';
-    tb.innerHTML+='<tr><td style="font-size:10px">'+shortId+'</td><td>'+thumbHtml+'</td><td class="td-title" onclick="editEditorial(\''+e.id+'\')">'+esc(e.title)+'</td><td>'+tagBadges+'</td><td><span class="badge '+cls+'">'+label+'</span></td><td>'+fmtDate(e.published_date)+'</td><td><button class="btn btn-sm" onclick="editEditorial(\''+e.id+'\')">편집</button> <button class="btn btn-sm btn-red" onclick="deleteEditorial(\''+e.id+'\',\''+esc(e.title).replace(/'/g,"\\'")+'\')">삭제</button></td></tr>';
+    var rowStyle=st==='draft'?' style="background:rgba(255,152,0,0.06)"':'';
+    var safeTitle=esc(e.title).replace(/'/g,"\\'");
+    var actions='<button class="btn btn-sm" onclick="editEditorial(\''+e.id+'\')">편집</button>';
+    if(st==='draft'){
+      actions+=' <button class="btn btn-sm btn-primary" onclick="publishEditorial(\''+e.id+'\',\''+safeTitle+'\')" title="이 에디토리얼을 공개 사이트에 노출합니다">발행 ▶</button>';
+    }
+    actions+=' <button class="btn btn-sm btn-red" onclick="deleteEditorial(\''+e.id+'\',\''+safeTitle+'\')">삭제</button>';
+    tb.innerHTML+='<tr'+rowStyle+'><td style="font-size:10px">'+shortId+'</td><td>'+thumbHtml+'</td><td class="td-title" onclick="editEditorial(\''+e.id+'\')">'+esc(e.title)+'</td><td>'+tagBadges+'</td><td><span class="badge '+cls+'">'+label+'</span></td><td>'+fmtDate(e.published_date)+'</td><td>'+actions+'</td></tr>';
   });
   if(document.getElementById('edCountLabel')) document.getElementById('edCountLabel').textContent=editorials.length;
+}
+
+// Flip a draft editorial to published. Drafts come from approved
+// submissions and from the admin's own "save as draft" — both need an
+// explicit click here before they show up on the public site.
+// apiPut doesn't check r.ok, so the response may be {error:'...'} on
+// failure — inspect it explicitly rather than blindly toasting success.
+async function publishEditorial(id,title){
+  if(!confirm('"'+(title||'이 에디토리얼')+'"을(를) 발행하시겠습니까?\n공개 사이트에 즉시 노출됩니다.')) return;
+  try{
+    var resp=await apiPut('/editorials/'+id,{status:'published'});
+    if(resp && resp.error){
+      alert('발행 실패: '+resp.error);
+      return;
+    }
+    await loadEditorials();
+    if(typeof toast==='function') toast('발행되었습니다');
+  }catch(e){
+    alert('발행 실패: '+(e&&e.message?e.message:'알 수 없는 오류'));
+  }
 }
 
 function editEditorial(id){
@@ -2567,7 +2667,11 @@ function _peShowSaveSuccess(msg){
   }
 }
 
-async function savePost(){
+// mode (optional): 'draft' forces status='draft' regardless of the
+// 공개 checkbox, so the "임시저장" button always saves as a draft no
+// matter what the publish toggle says. Default behaviour reads the
+// checkbox as before.
+async function savePost(mode){
   // Always start by clearing prior errors so re-clicks reflect current state.
   _peClearAllErrors();
 
@@ -2577,6 +2681,7 @@ async function savePost(){
     return;
   }
 
+  var forceDraft = (mode === 'draft');
   var title=document.getElementById('postTitle').value.trim();
   var tags=document.getElementById('postTags')?document.getElementById('postTags').value:'';
   var catEl=document.getElementById('postCategory');
@@ -2616,7 +2721,8 @@ async function savePost(){
   galleryImages.forEach(function(g,i){if(g.credits)imgCreditsMap['img_'+(i+1)]=g.credits;});
   if(Object.keys(imgCreditsMap).length)fashion.imageCredits=imgCreditsMap;
 
-  var isPublished=document.getElementById('postPublish').checked;
+  // forceDraft: explicit "임시저장" button click — always save as draft.
+  var isPublished = forceDraft ? false : document.getElementById('postPublish').checked;
   var subtitle=document.getElementById('postSubtitle')?document.getElementById('postSubtitle').value:'';
   var videoUrl=document.getElementById('postVideoUrl')?document.getElementById('postVideoUrl').value:'';
 
@@ -2638,8 +2744,18 @@ async function savePost(){
   }
 
   // Show saving indicator
-  var saveBtn=document.querySelector('#t-newpost .pe-actions .btn-primary');
-  if(saveBtn){saveBtn.textContent='저장 중...';saveBtn.disabled=true;}
+  // Visual feedback: disable BOTH save buttons while in flight so the
+  // user can't click 저장 + 임시저장 in quick succession. Stash the
+  // original labels so we can restore them in the finally branch (the
+  // "임시저장" button shouldn't end up reading "저장").
+  var saveBtns=document.querySelectorAll('#t-newpost .pe-actions .btn');
+  var saveBtnLabels=[];
+  saveBtns.forEach(function(b){
+    saveBtnLabels.push(b.textContent);
+    b.disabled=true;
+  });
+  var primaryBtn=document.querySelector('#t-newpost .pe-actions .btn-primary');
+  if(primaryBtn) primaryBtn.textContent = forceDraft ? '임시저장 중...' : '저장 중...';
 
   try{
     // Upload thumbnail if new file selected
@@ -2762,7 +2878,10 @@ async function savePost(){
     }
     alert(friendly);
   }finally{
-    if(saveBtn){saveBtn.textContent='저장';saveBtn.disabled=false;}
+    saveBtns.forEach(function(b,i){
+      b.disabled=false;
+      if(saveBtnLabels[i] !== undefined) b.textContent = saveBtnLabels[i];
+    });
   }
 }
 
