@@ -136,11 +136,14 @@
       renderNewsItems();
     }
 
-    $('campaignEditorModal').classList.add('active');
+    // admin.html uses .modal-bg.show (not .active) to flip display:none
+    // → display:flex. Using the wrong class made the modal stay hidden
+    // even though all the markup was rendered correctly.
+    $('campaignEditorModal').classList.add('show');
   }
 
   function closeEditor() {
-    $('campaignEditorModal').classList.remove('active');
+    $('campaignEditorModal').classList.remove('show');
   }
 
   // Load all published editorials for the picker. We hit the public
