@@ -3,6 +3,12 @@
   "buildCommand": "",
   "outputDirectory": "frontend",
   "framework": null,
+  "crons": [
+    {
+      "path": "/api/cron/send-due-campaigns",
+      "schedule": "0 * * * *"
+    }
+  ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/admin/:path*", "destination": "/admin.html" },

@@ -117,6 +117,20 @@ tr:hover td{background:rgba(0,0,0,.02)}
 .b-free{border:1px solid var(--border2);color:var(--text3);background:rgba(0,0,0,.03)}
 .b-standard{border:1px solid rgba(202,138,4,.3);color:var(--yellow);background:rgba(202,138,4,.06)}
 .b-premium{border:1px solid rgba(124,58,237,.3);color:var(--purple);background:rgba(124,58,237,.06)}
+/* ── Campaign editor (email broadcasts) ─────────────────────────
+   Two-column picker: editorial pool (left) and the picked subset
+   (right, ordered). News editor uses simple stacked cards. */
+.camp-pool-item{display:flex;align-items:center;gap:10px;padding:8px;border:1px solid transparent;cursor:pointer;transition:all .2s;background:transparent}
+.camp-pool-item:hover{background:rgba(0,0,0,.04);border-color:var(--border)}
+.camp-pool-item.is-picked{background:rgba(34,197,94,.06);border-color:rgba(34,197,94,.25);cursor:default}
+.camp-pool-thumb{width:44px;height:55px;background-size:cover;background-position:center;flex-shrink:0;border:1px solid var(--border)}
+.camp-pool-meta{flex:1;min-width:0}
+.camp-pool-tagline{font-size:9px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;font-weight:700}
+.camp-pool-title{font-size:11px;color:var(--text);font-weight:600;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.camp-pool-actions{display:flex;gap:4px;flex-shrink:0}
+.camp-news-item{border:1px solid var(--border);background:var(--surface2);padding:12px}
+.modal-in{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:12px;padding:8px 10px;font-family:inherit;box-sizing:border-box}
+.modal-ta{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:12px;padding:8px 10px;font-family:inherit;resize:vertical;box-sizing:border-box}
 .b-role-admin{border:1px solid rgba(220,38,38,.3);color:var(--red);background:rgba(220,38,38,.06)}
 .b-role-contributor{border:1px solid rgba(59,130,246,.3);color:var(--blue);background:rgba(59,130,246,.06)}
 .b-role-member{border:1px solid var(--border2);color:var(--text3);background:rgba(0,0,0,.03)}
@@ -385,6 +399,11 @@ tr:hover td{background:rgba(0,0,0,.02)}
     <a href="#" onclick="go('users',this)"><span>👤</span> <span>회원 관리</span></a>
     <a href="#" onclick="go('community',this)"><span>💬</span> <span>커뮤니티 관리</span></a>
     <a href="#" onclick="go('subscriptions',this)"><span>💳</span> <span>구독 / 결제</span></a>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-section-title">마케팅</div>
+    <a href="#" onclick="go('campaigns',this)"><span>✉️</span> <span>이메일 캠페인</span></a>
   </div>
 
   <div class="sb-section">
@@ -690,6 +709,35 @@ tr:hover td{background:rgba(0,0,0,.02)}
         <tbody id="submissionListBody">
           <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px 0">불러오는 중...</td></tr>
         </tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- EMAIL CAMPAIGNS -->
+  <!-- Marketing newsletter scheduling. The admin curates content,
+       schedules a send time, and the Vercel cron at
+       /api/cron/send-due-campaigns picks up due rows hourly. -->
+  <div class="tab" id="t-campaigns">
+    <div class="mn-header">
+      <div class="mn-title">이메일 캠페인</div>
+      <div class="mn-actions">
+        <button class="btn" onclick="campaigns.load()">↻ 새로고침</button>
+        <button class="btn btn-primary" onclick="campaigns.openEditor('editorial-weekly')">+ 이주의 에디토리얼</button>
+        <button class="btn btn-primary" onclick="campaigns.openEditor('news-weekly')">+ 이주의 뉴스</button>
+      </div>
+    </div>
+    <div class="mn-body">
+      <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text3);margin-bottom:14px">
+        <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green)"></span>
+        <span>이메일 수신 동의 회원: <strong id="campaignEligibleCount" style="color:var(--text)">—</strong>명</span>
+      </div>
+      <div class="tbl-wrap">
+        <div class="tbl-top"><h3>캠페인 목록</h3></div>
+        <table><thead><tr><th>이름</th><th>유형</th><th>제목</th><th>예약</th><th>발송 완료</th><th>대상/성공/실패</th><th>상태</th><th>작업</th></tr></thead>
+          <tbody id="campaignListBody">
+            <tr><td colspan="8" style="text-align:center;color:var(--text3);padding:40px 0">불러오는 중...</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -1466,8 +1514,91 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
 </div>
 </div>
 
+<!-- ─────────────────────────────────────────────────────────────
+     EMAIL CAMPAIGN EDITOR MODAL
+     - Opens for either 'editorial-weekly' or 'news-weekly'
+     - editorial-weekly: admin picks 4-8 editorial cards via search
+     - news-weekly:     admin types news items manually (title/summary/url/image)
+     - Always: subject + preheader + hero copy + scheduled_at
+     - Action buttons: Save draft / Send test / Schedule
+─────────────────────────────────────────────────────────────── -->
+<div class="modal-bg" id="campaignEditorModal">
+  <div class="modal" style="max-width:920px;width:96%;max-height:95vh;overflow-y:auto">
+    <button class="modal-close" onclick="campaigns.closeEditor()">×</button>
+    <h2 id="campaignEditorTitle">캠페인 편집</h2>
+    <div class="sub" id="campaignEditorSub">수신자: <span id="campaignEditorRecipients">—</span>명</div>
+
+    <div class="modal-section">
+      <div class="modal-label">이름 (관리용 라벨, 회원에게 노출되지 않음)</div>
+      <input class="modal-in" id="campName" placeholder="예: editorial-weekly-2026-W19">
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-label">메일 제목 *</div>
+      <input class="modal-in" id="campSubject" placeholder="예: 이주의 에디토리얼 — Becoming Form 외 5편">
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-label">프리헤더 (받은편지함에 제목 옆 미리보기 텍스트)</div>
+      <input class="modal-in" id="campPreheader" placeholder="예: 5월 둘째 주, PAP가 골라낸 6편의 에디토리얼">
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-label">히어로 헤드라인 (본문 큰 제목)</div>
+      <input class="modal-in" id="campHeadline" placeholder="예: This Week in Editorial">
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-label">에디터의 한 마디 (본문 첫 단락)</div>
+      <textarea class="modal-ta" id="campBody" rows="3" placeholder="이주의 큐레이션 톤을 잡는 짧은 글. 1-2 문장 권장."></textarea>
+    </div>
+
+    <!-- editorial-weekly: editorial picker -->
+    <div class="modal-section" id="campEditorialsSection" style="display:none">
+      <div class="modal-label" style="display:flex;justify-content:space-between;align-items:center">
+        <span>에디토리얼 선택 <span id="campEditorialsCount" style="color:var(--text3);font-weight:normal">(0개)</span></span>
+        <input type="text" id="campEditorialSearch" placeholder="제목 검색..." style="background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:11px;padding:6px 10px;width:200px" oninput="campaigns.filterEditorialPool(this.value)">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px">
+        <div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:6px;letter-spacing:.1em">사용 가능</div>
+          <div id="campEditorialPool" style="border:1px solid var(--border);background:var(--surface2);max-height:320px;overflow-y:auto;padding:6px"></div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:6px;letter-spacing:.1em">선택됨 (순서대로 메일에 노출)</div>
+          <div id="campEditorialPicked" style="border:1px solid var(--border);background:var(--surface2);max-height:320px;overflow-y:auto;padding:6px;min-height:80px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- news-weekly: free-form news items -->
+    <div class="modal-section" id="campNewsSection" style="display:none">
+      <div class="modal-label" style="display:flex;justify-content:space-between;align-items:center">
+        <span>뉴스 아이템 <span id="campNewsCount" style="color:var(--text3);font-weight:normal">(0개)</span></span>
+        <button class="btn btn-sm" type="button" onclick="campaigns.addNewsItem()">+ 추가</button>
+      </div>
+      <div id="campNewsList" style="margin-top:10px;display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-label">발송 예약 시간 (비워두면 임시저장)</div>
+      <input class="modal-in" type="datetime-local" id="campScheduledAt">
+      <div style="font-size:10px;color:var(--text3);margin-top:6px">cron이 매시간 정각에 예약된 캠페인을 처리합니다. 예약 시간 이후 첫 정각에 발송돼요.</div>
+    </div>
+
+    <div class="modal-foot">
+      <button class="btn" onclick="campaigns.save('draft')">임시저장</button>
+      <button class="btn btn-blue" onclick="campaigns.sendTest()">✉ 테스트 발송 (나에게)</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-green" onclick="campaigns.save('scheduled')">예약 발송</button>
+      <button class="btn" onclick="campaigns.closeEditor()">취소</button>
+    </div>
+  </div>
+</div>
+
 <script src="/pap-api.js?v=3" defer></script>
 
-<script src="/pap-admin.js?v=1" defer></script>
+<script src="/pap-admin.js?v=2" defer></script>
+<script src="/pap-admin-campaigns.js?v=1" defer></script>
 </body>
 </html>

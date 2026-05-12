@@ -228,7 +228,126 @@ const templates = {
       `),
     };
   },
+
+  // ── Marketing newsletter templates ────────────────────────────────
+  // Used by /api/cron/send-due-campaigns. Each takes the campaign row
+  // (with payload), the recipient profile, and an unsubscribe token so
+  // every email body carries a working one-click opt-out link.
+  // Marketing wrapper (different from wrapHtml): light "footer" with
+  // sender info + unsubscribe link as required by 정보통신망법 §50.
+
+  weeklyEditorial: (campaign, user, unsubToken) => {
+    const eds = (campaign.payload && campaign.payload.editorials) || [];
+    const cards = eds.map(ed => `
+      <tr><td style="padding-bottom:24px;">
+        <a href="${FRONTEND_URL}/editorial/${encodeURIComponent(ed.slug || ed.id)}" style="text-decoration:none;color:inherit;display:block;">
+          <img src="${ed.image}" alt="${escapeHtml(ed.title)}" width="520" style="display:block;width:100%;max-width:520px;height:auto;border:0;">
+          <div style="padding:14px 4px 0;">
+            <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:#888;text-transform:uppercase;">${escapeHtml(ed.tagline || 'EDITORIAL')}</div>
+            <div style="font-size:18px;font-weight:700;color:#fff;margin-top:6px;letter-spacing:.5px;">${escapeHtml(ed.title)}</div>
+            ${ed.credit ? `<div style="font-size:11px;color:#777;margin-top:6px;">${escapeHtml(ed.credit)}</div>` : ''}
+          </div>
+        </a>
+      </td></tr>
+    `).join('');
+
+    const greeting = user && user.display_name ? user.display_name : (user && user.email ? user.email.split('@')[0] : 'PAP Reader');
+    return {
+      subject: campaign.subject,
+      html: wrapMarketing({
+        preheader: campaign.preheader || '이주의 PAP 에디토리얼',
+        body: `
+          <div style="font-size:11px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">THIS WEEK&apos;S EDITORIALS</div>
+          <h1 style="font-size:26px;color:#fff;margin:0 0 8px;letter-spacing:.5px;line-height:1.25;">${escapeHtml(campaign.hero_headline || '이주의 에디토리얼')}</h1>
+          <p style="color:#999;font-size:13px;line-height:1.7;margin:0 0 24px;">${escapeHtml(campaign.hero_body || '')}</p>
+          <div style="font-size:12px;color:#aaa;margin-bottom:24px;">안녕하세요, <strong style="color:#fff;">${escapeHtml(greeting)}</strong>님.</div>
+          <table width="100%" cellpadding="0" cellspacing="0">${cards}</table>
+          <a href="${FRONTEND_URL}/" style="display:inline-block;background:#fff;color:#000;padding:14px 36px;font-size:11px;font-weight:700;letter-spacing:2px;text-decoration:none;margin-top:8px;">VIEW MORE ON PAP</a>
+        `,
+        unsubUrl: `${FRONTEND_URL}/api/auth/unsubscribe?token=${unsubToken}`,
+      }),
+    };
+  },
+
+  weeklyNews: (campaign, user, unsubToken) => {
+    const items = (campaign.payload && campaign.payload.newsItems) || [];
+    const cards = items.map(n => `
+      <tr><td style="padding-bottom:20px;border-bottom:1px solid #1f1f1f;padding-top:20px;">
+        <a href="${n.url || FRONTEND_URL}" style="text-decoration:none;color:inherit;display:block;">
+          ${n.image ? `<img src="${n.image}" alt="${escapeHtml(n.title)}" width="520" style="display:block;width:100%;max-width:520px;height:auto;border:0;margin-bottom:12px;">` : ''}
+          <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:#c9a96e;text-transform:uppercase;">${escapeHtml(n.category || 'NEWS')}</div>
+          <div style="font-size:16px;font-weight:700;color:#fff;margin-top:6px;letter-spacing:.3px;line-height:1.4;">${escapeHtml(n.title)}</div>
+          ${n.summary ? `<div style="font-size:12px;color:#999;margin-top:8px;line-height:1.6;">${escapeHtml(n.summary)}</div>` : ''}
+        </a>
+      </td></tr>
+    `).join('');
+
+    const greeting = user && user.display_name ? user.display_name : (user && user.email ? user.email.split('@')[0] : 'PAP Reader');
+    return {
+      subject: campaign.subject,
+      html: wrapMarketing({
+        preheader: campaign.preheader || '이주의 PAP 뉴스',
+        body: `
+          <div style="font-size:11px;color:#c9a96e;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">THIS WEEK IN PAP</div>
+          <h1 style="font-size:26px;color:#fff;margin:0 0 8px;letter-spacing:.5px;line-height:1.25;">${escapeHtml(campaign.hero_headline || '이주의 뉴스')}</h1>
+          <p style="color:#999;font-size:13px;line-height:1.7;margin:0 0 24px;">${escapeHtml(campaign.hero_body || '')}</p>
+          <div style="font-size:12px;color:#aaa;margin-bottom:12px;">안녕하세요, <strong style="color:#fff;">${escapeHtml(greeting)}</strong>님.</div>
+          <table width="100%" cellpadding="0" cellspacing="0">${cards}</table>
+        `,
+        unsubUrl: `${FRONTEND_URL}/api/auth/unsubscribe?token=${unsubToken}`,
+      }),
+    };
+  },
 };
+
+// ── Marketing wrapper ─────────────────────────────────────────────
+// Distinct from wrapHtml(): adds preheader text (preview snippet in
+// Gmail/Outlook inbox), an unsubscribe link in the footer, and the
+// sender-info block required by 정보통신망법 §50.
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function wrapMarketing({ preheader, body, unsubUrl }) {
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>PAP Magazine</title>
+</head>
+<body style="margin:0;padding:0;background:#000;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <!-- preheader (hidden but used as inbox preview) -->
+  <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${escapeHtml(preheader || '')}</div>
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#000;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#0a0a0a;border:1px solid #1a1a1a;max-width:600px;">
+        <tr><td style="padding:28px 36px 20px;border-bottom:1px solid #1a1a1a;">
+          <a href="${FRONTEND_URL}" style="color:#fff;font-size:24px;font-weight:700;letter-spacing:8px;text-decoration:none;">PAP</a>
+        </td></tr>
+        <tr><td style="padding:32px 36px;color:#ccc;font-size:14px;line-height:1.7;">${body}</td></tr>
+        <tr><td style="padding:28px 36px;border-top:1px solid #1a1a1a;color:#666;font-size:11px;line-height:1.6;">
+          <p style="margin:0 0 14px;color:#888;">
+            본 메일은 PAP Magazine에 가입하시고 <strong style="color:#aaa;">이메일 수신에 동의</strong>하신 회원에게 발송됩니다.
+          </p>
+          <p style="margin:0 0 14px;">
+            <a href="${unsubUrl}" style="color:#bbb;text-decoration:underline;">수신 거부 / Unsubscribe</a>
+            &nbsp;·&nbsp;
+            <a href="${FRONTEND_URL}/mypage#mp-preferences" style="color:#bbb;text-decoration:underline;">알림 설정 변경</a>
+          </p>
+          <p style="margin:0;color:#555;font-size:10px;line-height:1.5;">
+            PAP Magazine · contact@pap-magazine.com · ${FRONTEND_URL}<br>
+            &copy; ${new Date().getFullYear()} PAP Magazine. All rights reserved.
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
 
 // ── Send function ──
 async function sendEmail(to, template) {
