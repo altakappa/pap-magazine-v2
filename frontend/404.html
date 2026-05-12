@@ -792,10 +792,16 @@ main {
 <meta name="twitter:image" content="https://www.pap-magazine.com/apple-touch-icon.png">
 <link rel="canonical" href="https://www.pap-magazine.com/404.html">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Page Not Found - PAP Magazine"}</script>
+<!-- Unified header — replaces 404's legacy inline .hamburger / .nav-close
+     so the X close button stays consistent with every other public page.
+     pap-header.js#_removeAll wipes the stale <header.header> + .nav-overlay
+     below and re-injects the canonical markup (incl. the .pap-nav-close X). -->
+<link rel="stylesheet" href="/pap-styles.css?v=16">
 <!-- Cookie Consent + GA4 (consent-gated) -->
 <script src="/pap-geo-lang.js"></script>
 <script src="/pap-img-fallback.js" defer></script>
 <script src="cookie-consent.js" defer></script>
+<script src="/pap-header.js?v=10" defer></script>
 <!-- Print Styles -->
 <style media="print">
 @media print{

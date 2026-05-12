@@ -157,10 +157,9 @@
       '.nav-right-col{flex:1;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:0}',
       '.nav-right-col a{font-family:"Montserrat",sans-serif;font-size:clamp(40px,7vw,90px);font-weight:900;letter-spacing:.03em;text-transform:uppercase;color:#000;line-height:1.1;transition:opacity .2s}',
       '.nav-right-col a:hover{opacity:.4}',
-      // .nav-close removed — the .hamburger button (z-index:2000) stays
-      // visible above the white nav-overlay and morphs into an X via
-      // .is-active, eliminating the duplicate close icon that used to sit
-      // at top:20px;left:24px and cause the "two icons" QA report.
+      // .pap-nav-close style is appended below via the always-injected
+      // "pap-nav-close-css" tag so it applies regardless of whether
+      // pap-styles.css is loaded.
       /* responsive
          Earlier this hid .nav-extra-links (ABOUT/BUSINESS/CONTACT) and
          .nav-bottom-row (socials) below 900px — leftover from a wider
@@ -263,6 +262,35 @@
     document.head.appendChild(safety);
   }
 
+  /* Safety net: ALWAYS inject .pap-nav-close CSS — this is the dedicated
+     X close button injected into .nav-overlay by this script. It's a new
+     class owned by pap-header.js, NOT defined in pap-styles.css, so it
+     must always be injected. Sits at top-left of the white nav-overlay
+     and is the user-visible "close" affordance — the hamburger also
+     morphs into an X via .is-active, but pages whose CSS fails to
+     recolour the bars (QA #147 — subscribe page bars stayed white on
+     white) still got no visible close; this guarantees one. */
+  if (!document.getElementById('pap-nav-close-css')) {
+    var navCloseCss = document.createElement('style');
+    navCloseCss.id = 'pap-nav-close-css';
+    navCloseCss.textContent = [
+      /* Default state: hidden. The nav-overlay sits z-index:1500, the
+         hamburger 2000 — slot this X between (1700) so it floats above
+         the white menu but stays out of the hamburger's way. */
+      '.pap-nav-close{position:fixed!important;top:18px;left:18px;z-index:1700;width:44px;height:44px;display:none;align-items:center;justify-content:center;background:none;border:none;padding:0;cursor:pointer;color:#000;-webkit-tap-highlight-color:transparent;font-family:inherit}',
+      /* Reveal whenever the nav-overlay is open. Two selectors cover both
+         the "X is sibling of .nav-overlay" case AND the "X is INSIDE
+         .nav-overlay" case (this script injects it as a child). */
+      '.nav-overlay.active .pap-nav-close,body:has(.nav-overlay.active) .pap-nav-close{display:flex}',
+      '.pap-nav-close:hover{opacity:.6}',
+      '.pap-nav-close svg{display:block;width:22px;height:22px;stroke:#000}',
+      /* Compact spacing on phones to match the smaller header. */
+      '@media(max-width:768px){.pap-nav-close{top:12px;left:12px;width:40px;height:40px}}',
+      '@media(max-width:480px){.pap-nav-close{top:10px;left:10px;width:36px;height:36px}}'
+    ].join('\n');
+    document.head.appendChild(navCloseCss);
+  }
+
   /* Safety net: ALWAYS inject .pap-search-overlay CSS — it's a class
      introduced by this script and is NOT defined in pap-styles.css, so
      without these rules the overlay would render as a flowing block and
@@ -326,8 +354,14 @@
     '</div>',
     /* Nav overlay */
     '<div class="nav-overlay" id="navOverlay">',
-    // No separate close button — the .hamburger in the header morphs into
-    // an X (.is-active) and toggles the overlay back closed when clicked.
+    // Dedicated close button at top-left. The .hamburger ALSO morphs into
+    // an X via .is-active, but this explicit .nav-close acts as a safety
+    // net for pages where the hamburger-morph CSS fails to apply (which
+    // QA #147 caught on subscribe / other sub-pages: bars stayed white
+    // on the white overlay, so the user reported "no close button").
+    '  <button class="pap-nav-close" onclick="_papCloseNav()" aria-label="Close menu" type="button">',
+    '    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>',
+    '  </button>',
     '  <div class="nav-overlay-inner">',
     '    <div class="nav-left-col">',
     '      <div class="nav-left-top">',
