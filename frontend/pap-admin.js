@@ -590,6 +590,151 @@ function closeModal(){
   if(rb)rb.style.display='none';
   var tb=document.getElementById('reviewTranslateBtn');
   if(tb){tb.disabled=false;tb.textContent='영어로 변환';}
+  // Reset download button label in case the user left mid-progress
+  var db=document.getElementById('reviewDownloadBtn');
+  if(db){db.disabled=false;db.textContent='⬇ 이미지 일괄 다운로드 (ZIP)';}
+}
+
+// ======== BULK IMAGE DOWNLOAD ========
+// One-click ZIP export of the submission's gallery so the editor can
+// drop the same shoot into both the website (via the staged editorial)
+// AND Instagram without re-fetching every asset by hand. Architecture:
+//
+//   1) file_urls on submissions point at Supabase Storage CDN (public).
+//      We fetch each one in the browser — Vercel is never in the data
+//      path, so the 4.5MB response-size limit doesn't apply.
+//   2) Originals go into originals/ inside the ZIP, named 01_xxx.ext
+//      so the IG carousel order matches the editorial sequence. The
+//      cover image is force-renamed to 00_cover.ext so the editor knows
+//      which to pin as the first slide.
+//   3) When "인스타용 1080² 정사각 포함" is checked, each image is also
+//      run through a Canvas centre-crop pipeline → 1080×1080 JPEG @0.92,
+//      stored under instagram/ with the same numeric prefix.
+//   4) JSZip generates the archive in-memory; an anchor click triggers
+//      the browser save dialog.
+//
+// All async work is awaited sequentially with a progress label on the
+// button so the editor knows the (potentially long) operation is alive.
+async function downloadSubmissionImages(){
+  var sub = currentReviewSubmission;
+  if(!sub || !Array.isArray(sub.file_urls) || !sub.file_urls.length){
+    alert('다운로드할 이미지가 없습니다.');
+    return;
+  }
+  if(typeof JSZip === 'undefined'){
+    alert('ZIP 라이브러리가 아직 로드되지 않았습니다. 잠시 후 다시 시도해주세요.');
+    return;
+  }
+  var btn = document.getElementById('reviewDownloadBtn');
+  var includeIG = !!(document.getElementById('reviewDownloadIG') || {}).checked;
+  var coverIdx = (typeof selectedCoverImageIndex === 'number' && selectedCoverImageIndex >= 0) ? selectedCoverImageIndex : 0;
+  var origLabel = btn ? btn.textContent : '';
+  if(btn){ btn.disabled=true; btn.textContent='준비 중…'; }
+
+  try{
+    var zip = new JSZip();
+    var origFolder = zip.folder('originals');
+    var igFolder = includeIG ? zip.folder('instagram') : null;
+    var total = sub.file_urls.length;
+    var safeTitle = String(sub.title || 'submission').replace(/[^\w가-힣\-]+/g,'_').slice(0,60) || 'submission';
+
+    for(var i=0; i<total; i++){
+      var url = sub.file_urls[i];
+      if(btn){ btn.textContent = '이미지 받는 중 ('+(i+1)+'/'+total+')…'; }
+      var seq = (i===coverIdx ? '00_cover' : String(i+1).padStart(2,'0'));
+      try{
+        var blob = await _fetchAsBlob(url);
+        var ext = _extFromUrlOrType(url, blob.type) || 'jpg';
+        origFolder.file(seq + '.' + ext, blob);
+        if(igFolder){
+          var igBlob = await _cropToSquareBlob(blob, 1080);
+          if(igBlob) igFolder.file(seq + '_1080.jpg', igBlob);
+        }
+      }catch(err){
+        console.warn('Image ['+i+'] download failed:', url, err);
+        // Don't abort the whole ZIP for one bad asset — drop a marker
+        // file so the editor knows which slot was skipped.
+        origFolder.file(seq + '.FAILED.txt', 'Could not fetch: ' + url + '\n' + (err && err.message || err));
+      }
+    }
+
+    if(btn) btn.textContent='ZIP 생성 중…';
+    var content = await zip.generateAsync({ type:'blob', compression:'STORE' }); // images are already compressed; STORE saves CPU
+    var dlUrl = URL.createObjectURL(content);
+    var a = document.createElement('a');
+    a.href = dlUrl;
+    a.download = safeTitle + '.zip';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(dlUrl); }, 4000);
+  }catch(err){
+    console.error('Bulk download error:', err);
+    alert('다운로드 중 오류가 발생했습니다: ' + (err && err.message || err));
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent=origLabel || '⬇ 이미지 일괄 다운로드 (ZIP)'; }
+  }
+}
+
+// Fetch a Storage CDN URL as a Blob. We use fetch + .blob() because it
+// preserves the original MIME (important when the URL omits an extension
+// — Supabase sometimes does this for uploads).
+async function _fetchAsBlob(url){
+  var resp = await fetch(url, { mode:'cors', credentials:'omit' });
+  if(!resp.ok) throw new Error('HTTP '+resp.status);
+  return await resp.blob();
+}
+
+// Centre-crop a Blob (any orientation) to a square JPEG of the given
+// side length. Uses an offscreen canvas; returns null on decode failure.
+function _cropToSquareBlob(blob, side){
+  return new Promise(function(resolve){
+    var img = new Image();
+    var objUrl = URL.createObjectURL(blob);
+    img.onload = function(){
+      try{
+        var sw = img.naturalWidth, sh = img.naturalHeight;
+        var s = Math.min(sw, sh);
+        var sx = (sw - s) / 2, sy = (sh - s) / 2;
+        var cv = document.createElement('canvas');
+        cv.width = side; cv.height = side;
+        var ctx = cv.getContext('2d');
+        // Black backdrop for any edge-case transparent PNGs
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0,0,side,side);
+        ctx.drawImage(img, sx, sy, s, s, 0, 0, side, side);
+        cv.toBlob(function(out){
+          URL.revokeObjectURL(objUrl);
+          resolve(out);
+        }, 'image/jpeg', 0.92);
+      }catch(e){
+        URL.revokeObjectURL(objUrl);
+        console.warn('crop failed', e);
+        resolve(null);
+      }
+    };
+    img.onerror = function(){
+      URL.revokeObjectURL(objUrl);
+      resolve(null);
+    };
+    img.src = objUrl;
+  });
+}
+
+// Pull a sensible filename extension from the URL or MIME. We prefer
+// the URL's path extension (preserves .heic / .webp etc.) and fall
+// back to a MIME → ext map for opaque URLs.
+function _extFromUrlOrType(url, mime){
+  var m = String(url || '').match(/\.([a-z0-9]{2,5})(?:\?|#|$)/i);
+  if(m) return m[1].toLowerCase();
+  if(mime){
+    if(mime.indexOf('jpeg')>-1) return 'jpg';
+    if(mime.indexOf('png')>-1)  return 'png';
+    if(mime.indexOf('webp')>-1) return 'webp';
+    if(mime.indexOf('gif')>-1)  return 'gif';
+    if(mime.indexOf('heic')>-1) return 'heic';
+  }
+  return 'jpg';
 }
 
 // ======== AI TRANSLATE (Korean → English review notes) ========

@@ -1500,7 +1500,21 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
 
 
     <div class="modal-section" style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px">
-      <div class="modal-label">이미지 갤러리 · 클릭하여 확대 / ★ 표지 설정</div>
+      <div class="modal-label" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <span>이미지 갤러리 · 클릭하여 확대 / ★ 표지 설정</span>
+        <!-- ZIP bulk download. Originals come from Supabase Storage
+             (submissions.file_urls). Optional 1080² square crops are
+             generated client-side via Canvas so Vercel never has to
+             stream binary; the editor gets a single .zip with two
+             folders (originals/, instagram/) for the IG carousel. -->
+        <span style="display:flex;gap:6px;align-items:center;font-size:11px">
+          <label style="display:flex;gap:4px;align-items:center;color:var(--text3);cursor:pointer;user-select:none">
+            <input type="checkbox" id="reviewDownloadIG" checked style="margin:0">
+            인스타용 1080² 정사각 포함
+          </label>
+          <button class="btn btn-sm btn-blue" id="reviewDownloadBtn" type="button" onclick="downloadSubmissionImages()">⬇ 이미지 일괄 다운로드 (ZIP)</button>
+        </span>
+      </div>
       <div id="reviewImageGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-top:12px;padding:14px;background:var(--surface2);border-radius:8px">
         <!-- Images will be populated here -->
       </div>
@@ -1621,8 +1635,13 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
 </div>
 
 <script src="/pap-api.js?v=3" defer></script>
+<!-- JSZip for client-side ZIP packaging of submission images.
+     Used by downloadSubmissionImages() in pap-admin.js so the editor can
+     pull all approved originals (plus optional 1080² Instagram crops) in
+     one click without hitting Vercel response-size limits. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
 
-<script src="/pap-admin.js?v=2" defer></script>
+<script src="/pap-admin.js?v=3" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>
