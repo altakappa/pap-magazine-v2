@@ -109,21 +109,25 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    // Send notification email (non-blocking). Pick the template that matches
-    // the actual decision so the submitter gets the correct message — earlier
-    // versions fell back to the rejected template for any non-approved status,
-    // which incorrectly framed revision requests as outright rejections.
+    // QA #165 — send an outcome-agnostic "review complete" email that
+    // pushes the submitter back to the platform to read the verdict.
+    // We pick the locale from profile.email_language (explicit newsletter
+    // preference, set in mypage) → profile.language (site UI locale) →
+    // 'en' as a last-resort fallback. The same dictionary covers all
+    // 9 supported locales; submissionReviewComplete falls back to en
+    // internally if it sees an unknown lang.
     const { data: profile } = await supabaseAdmin
-      .from('profiles').select('email, name').eq('id', submission.user_id).single();
-    if (profile) {
-      let tpl;
-      if (status === 'approved') {
-        tpl = templates.submissionApproved({ name: profile.name }, { title: submission.title }, reviewNote);
-      } else if (status === 'revision') {
-        tpl = templates.submissionRevision({ name: profile.name }, { title: submission.title }, reviewNote);
-      } else {
-        tpl = templates.submissionRejected({ name: profile.name }, { title: submission.title }, reviewNote);
-      }
+      .from('profiles')
+      .select('email, display_name, language, email_language')
+      .eq('id', submission.user_id)
+      .single();
+    if (profile && profile.email) {
+      const lang = profile.email_language || profile.language || 'en';
+      const tpl = templates.submissionReviewComplete(
+        { name: profile.display_name || '' },
+        { title: submission.title },
+        lang
+      );
       sendEmail(profile.email, tpl).catch(() => {});
     }
 

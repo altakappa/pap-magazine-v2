@@ -55,6 +55,105 @@ function wrapHtml(content) {
 </html>`;
 }
 
+// ── i18n copy for the unified "submission review complete" email ──
+// Strings are intentionally outcome-agnostic — the receiver always sees
+// the same message regardless of approved / rejected / revision; the
+// real decision lives on the site at /submission.html#mySubsSection.
+// Keep the keys identical across locales so submissionReviewComplete()
+// can swap dictionaries without per-locale special-casing.
+const SUBMISSION_REVIEW_I18N = {
+  ko: {
+    subject: '심사가 완료되었습니다 — "{title}"',
+    heading: '서브미션 심사 완료',
+    greet: '{name}님, 안녕하세요.',
+    greetingFallback: '회원',
+    body1: 'PAP 매거진에 제출하신 {title}의 심사가 완료되었습니다.',
+    body2: '결과 및 편집팀의 코멘트는 PAP 플랫폼의 <strong style="color:#fff;">MY SUBMISSIONS</strong>에서 확인하실 수 있습니다.',
+    cta: '결과 확인',
+    footer: '문의 사항이 있다면 이 메일에 회신해주세요. 편집팀이 도와드립니다.',
+  },
+  en: {
+    subject: 'Your submission review is complete — "{title}"',
+    heading: 'Submission Review Complete',
+    greet: 'Hi {name},',
+    greetingFallback: 'there',
+    body1: 'The review of your submission to PAP Magazine, {title}, has been completed.',
+    body2: 'Sign in to the PAP platform to read the result and the editorial team’s notes in <strong style="color:#fff;">MY SUBMISSIONS</strong>.',
+    cta: 'VIEW RESULT',
+    footer: 'Questions? Reply to this email and our editorial team will respond.',
+  },
+  it: {
+    subject: 'La tua revisione è completa — "{title}"',
+    heading: 'Revisione completata',
+    greet: 'Ciao {name},',
+    greetingFallback: 'lettore',
+    body1: 'La revisione del tuo invio a PAP Magazine, {title}, è stata completata.',
+    body2: 'Accedi alla piattaforma PAP per leggere il risultato e i commenti del team editoriale in <strong style="color:#fff;">MY SUBMISSIONS</strong>.',
+    cta: 'VEDI ESITO',
+    footer: 'Per qualsiasi domanda, rispondi a questa email — il nostro team editoriale ti risponderà.',
+  },
+  fr: {
+    subject: 'Votre soumission a été examinée — "{title}"',
+    heading: 'Examen terminé',
+    greet: 'Bonjour {name},',
+    greetingFallback: 'lecteur',
+    body1: 'L’examen de votre soumission à PAP Magazine, {title}, est terminé.',
+    body2: 'Connectez-vous à la plateforme PAP pour consulter le résultat et les notes de l’équipe éditoriale dans <strong style="color:#fff;">MY SUBMISSIONS</strong>.',
+    cta: 'VOIR LE RÉSULTAT',
+    footer: 'Une question ? Répondez à cet email — notre équipe vous recontactera.',
+  },
+  es: {
+    subject: 'Tu envío ha sido revisado — "{title}"',
+    heading: 'Revisión completada',
+    greet: 'Hola {name},',
+    greetingFallback: 'lector',
+    body1: 'La revisión de tu envío a PAP Magazine, {title}, ha sido completada.',
+    body2: 'Inicia sesión en la plataforma PAP para ver el resultado y los comentarios del equipo editorial en <strong style="color:#fff;">MY SUBMISSIONS</strong>.',
+    cta: 'VER RESULTADO',
+    footer: '¿Preguntas? Responde a este email y nuestro equipo editorial te responderá.',
+  },
+  ja: {
+    subject: '審査が完了しました — "{title}"',
+    heading: 'サブミッション審査完了',
+    greet: '{name} 様',
+    greetingFallback: 'クリエイター',
+    body1: 'PAP Magazine に提出いただいた {title} の審査が完了しました。',
+    body2: '結果と編集部からのコメントは、PAP プラットフォームの <strong style="color:#fff;">MY SUBMISSIONS</strong> でご確認いただけます。',
+    cta: '結果を見る',
+    footer: 'ご不明な点があれば、このメールにご返信ください。編集部より回答いたします。',
+  },
+  zh: {
+    subject: '您的投稿审核已完成 — "{title}"',
+    heading: '投稿审核完成',
+    greet: '{name},您好,',
+    greetingFallback: '创作者',
+    body1: '您提交至 PAP Magazine 的作品 {title} 审核已完成。',
+    body2: '请登录 PAP 平台,在 <strong style="color:#fff;">MY SUBMISSIONS</strong> 中查看审核结果与编辑部留言。',
+    cta: '查看结果',
+    footer: '如有任何疑问,请直接回复本邮件,编辑部将与您联系。',
+  },
+  ru: {
+    subject: 'Рассмотрение вашей заявки завершено — "{title}"',
+    heading: 'Рассмотрение завершено',
+    greet: 'Здравствуйте, {name}!',
+    greetingFallback: 'участник',
+    body1: 'Рассмотрение вашей работы {title}, отправленной в PAP Magazine, завершено.',
+    body2: 'Войдите в платформу PAP, чтобы увидеть результат и комментарии редакции в разделе <strong style="color:#fff;">MY SUBMISSIONS</strong>.',
+    cta: 'СМОТРЕТЬ РЕЗУЛЬТАТ',
+    footer: 'Вопросы? Ответьте на это письмо — редакция свяжется с вами.',
+  },
+  de: {
+    subject: 'Die Prüfung deiner Einreichung ist abgeschlossen — "{title}"',
+    heading: 'Prüfung abgeschlossen',
+    greet: 'Hallo {name},',
+    greetingFallback: 'Leser',
+    body1: 'Die Prüfung deiner Einreichung an PAP Magazine, {title}, ist abgeschlossen.',
+    body2: 'Melde dich auf der PAP-Plattform an, um Ergebnis und Kommentare der Redaktion in <strong style="color:#fff;">MY SUBMISSIONS</strong> einzusehen.',
+    cta: 'ERGEBNIS ANSEHEN',
+    footer: 'Fragen? Antworte auf diese E-Mail — unsere Redaktion meldet sich.',
+  },
+};
+
 // ── Email Templates ──
 
 const templates = {
@@ -113,52 +212,48 @@ const templates = {
     };
   },
 
-  // 3. Submission approved
-  submissionApproved(user, submission, note) {
+  // 3. Submission review complete — single neutral notification (QA #165).
+  //
+  // Previously three separate templates leaked the decision (approved /
+  // rejected / revision) in the subject + body. Marketing rewrote this
+  // into ONE outcome-agnostic email that drives the submitter back to
+  // MY SUBMISSIONS on the live platform. Two upsides:
+  //   1) Every review → a guaranteed site visit (browse-while-checking).
+  //   2) Rejection feedback stays inside the platform, not in the user's
+  //      inbox where it could be screenshotted out of context.
+  //
+  // Localised per recipient via profile.email_language (consent.js gives
+  // us the value; review.js looks it up and passes `lang` in). Falls
+  // back to English for any locale we don't have copy for yet.
+  submissionReviewComplete(user, submission, lang) {
+    const L = SUBMISSION_REVIEW_I18N[lang] || SUBMISSION_REVIEW_I18N.en;
+    const safeName = user && user.name ? user.name : (L.greetingFallback);
+    const safeTitle = submission && submission.title ? submission.title : '—';
+    const ctaUrl = `${FRONTEND_URL}/submission.html#mySubsSection`;
     return {
-      subject: `Congratulations! "${submission.title}" Accepted`,
+      subject: L.subject.replace('{title}', safeTitle),
       html: wrapHtml(`
-        <h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">Your Work Has Been Selected</h2>
-        <p>Hi ${user.name || 'there'},</p>
-        <p>We're pleased to inform you that <strong style="color:#fff;">"${submission.title}"</strong> has been accepted for publication on PAP Magazine.</p>
-        ${note ? `<div style="margin:20px 0;padding:16px;background:#1a1a1a;border-left:3px solid #4CAF50;"><span style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:1px;">Editor's Note</span><br><span style="color:#ccc;font-size:14px;">${note}</span></div>` : ''}
-        <p>Your editorial is now staged for final editorial review. Our team will polish the metadata and schedule the release — we'll send a follow-up email the moment it goes live on PAP Magazine.</p>
-        <a href="${FRONTEND_URL}/submission.html" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">VIEW STATUS</a>
+        <h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">${L.heading}</h2>
+        <p>${L.greet.replace('{name}', safeName)}</p>
+        <p>${L.body1.replace('{title}', `<strong style="color:#fff;">"${safeTitle}"</strong>`)}</p>
+        <p>${L.body2}</p>
+        <a href="${ctaUrl}" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">${L.cta}</a>
+        <p style="font-size:12px;color:#888;margin-top:24px;">${L.footer}</p>
       `),
     };
   },
 
-  // 4. Submission rejected
-  submissionRejected(user, submission, note) {
-    return {
-      subject: `Update on "${submission.title}"`,
-      html: wrapHtml(`
-        <h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">Submission Update</h2>
-        <p>Hi ${user.name || 'there'},</p>
-        <p>Thank you for submitting <strong style="color:#fff;">"${submission.title}"</strong> to PAP Magazine.</p>
-        <p>After careful review, our editorial team has decided not to move forward with this submission at this time.</p>
-        ${note ? `<div style="margin:20px 0;padding:16px;background:#1a1a1a;border-left:3px solid #888;"><span style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:1px;">Feedback</span><br><span style="color:#ccc;font-size:14px;">${note}</span></div>` : ''}
-        <p>We encourage you to continue creating and submit again in the future.</p>
-        <a href="${FRONTEND_URL}/submission.html" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">SUBMIT AGAIN</a>
-      `),
-    };
+  // Legacy aliases kept so callers that still hardcode the per-status
+  // template names keep working. They all funnel into the single
+  // submissionReviewComplete entry point above.
+  submissionApproved(user, submission, _note, lang) {
+    return templates.submissionReviewComplete(user, submission, lang);
   },
-
-  // 4b. Submission revision requested — editor wants the work resubmitted with changes
-  submissionRevision(user, submission, note) {
-    return {
-      subject: `Revision requested: "${submission.title}"`,
-      html: wrapHtml(`
-        <h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">Revision Requested</h2>
-        <p>Hi ${user.name || 'there'},</p>
-        <p>Thank you for submitting <strong style="color:#fff;">"${submission.title}"</strong> to PAP Magazine.</p>
-        <p>Our editorial team has reviewed your work and would like to see a revised version before making a final publication decision. Please address the feedback below and resubmit.</p>
-        ${note ? `<div style="margin:20px 0;padding:16px;background:#1a1a1a;border-left:3px solid #4A90E2;"><span style="color:#9ab7e6;font-size:11px;text-transform:uppercase;letter-spacing:1px;">Editor's Feedback</span><br><span style="color:#ddd;font-size:14px;line-height:1.7;white-space:pre-line;">${note}</span></div>` : ''}
-        <p>You can review the full status and your original submission in <strong style="color:#fff;">MY SUBMISSIONS</strong>, then resubmit your revised work using the same form.</p>
-        <a href="${FRONTEND_URL}/submission.html#mySubsSection" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">VIEW & RESUBMIT</a>
-        <p style="font-size:12px;color:#888;margin-top:24px;">Questions about the feedback? Reply to this email and we'll get back to you.</p>
-      `),
-    };
+  submissionRejected(user, submission, _note, lang) {
+    return templates.submissionReviewComplete(user, submission, lang);
+  },
+  submissionRevision(user, submission, _note, lang) {
+    return templates.submissionReviewComplete(user, submission, lang);
   },
 
 
