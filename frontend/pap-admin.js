@@ -3073,6 +3073,17 @@ function _resetFilmModalFields(){
   document.getElementById('filmDate').value=new Date().toISOString().slice(0,10);
   document.getElementById('filmCatsCustom').value='';
   document.querySelectorAll('#filmCatsArea input[name="filmCat"]').forEach(function(cb){cb.checked=false;});
+  // QA #164 — publish state radio group + scheduled_publish_at picker.
+  // Default to "공개" (= status='published', scheduled_publish_at=null) so
+  // the existing UX of "new film immediately public" stays unchanged for
+  // anyone who doesn't touch the radio group.
+  var _pubPublished = document.getElementById('filmPublishMode_published');
+  if (_pubPublished) _pubPublished.checked = true;
+  var _schedAt = document.getElementById('filmScheduledAt');
+  if (_schedAt) _schedAt.value = '';
+  if (typeof toggleFilmSchedule === 'function') toggleFilmSchedule();
+  // Legacy hidden checkbox — kept truthy to satisfy any code path that
+  // still reads it before the cached JS reloads.
   document.getElementById('filmActive').checked=true;
   document.getElementById('filmCreditsArea').innerHTML='';
   addCredit('filmCreditsArea');   // one blank row
@@ -3094,6 +3105,29 @@ function openFilmModal(idx){
     document.getElementById('filmThumb').value = f.thumbnail_url || '';
     document.getElementById('filmSlug').value = f.slug || '';
     document.getElementById('filmDate').value = (f.published_date || '').slice(0,10) || new Date().toISOString().slice(0,10);
+    // QA #164 — restore publish state from the row. Precedence:
+    //   status='draft'                                 → 임시저장
+    //   status='published' + scheduled_publish_at future → 예약 게시
+    //   status='published' (otherwise)                  → 공개
+    var _modeId = 'filmPublishMode_published';
+    if (f.status !== 'published') _modeId = 'filmPublishMode_draft';
+    else if (f.scheduled_publish_at && new Date(f.scheduled_publish_at).getTime() > Date.now()) {
+      _modeId = 'filmPublishMode_scheduled';
+    }
+    var _modeEl = document.getElementById(_modeId);
+    if (_modeEl) _modeEl.checked = true;
+    var _schedInput = document.getElementById('filmScheduledAt');
+    if (_schedInput && f.scheduled_publish_at) {
+      // Convert ISO timestamp → datetime-local value (YYYY-MM-DDTHH:mm).
+      try {
+        var _d = new Date(f.scheduled_publish_at);
+        var _p = function(n){ return n < 10 ? '0' + n : '' + n; };
+        _schedInput.value = _d.getFullYear() + '-' + _p(_d.getMonth()+1) + '-' + _p(_d.getDate()) + 'T' + _p(_d.getHours()) + ':' + _p(_d.getMinutes());
+      } catch(_) { _schedInput.value = ''; }
+    } else if (_schedInput) {
+      _schedInput.value = '';
+    }
+    if (typeof toggleFilmSchedule === 'function') toggleFilmSchedule();
     document.getElementById('filmActive').checked = (f.status==='published');
 
     // Categories — tick predefined boxes, dump the rest into the custom textbox.
@@ -3146,6 +3180,16 @@ function openFilmModal(idx){
   document.getElementById('filmModal').classList.add('show');
 }
 function closeFilmModal(){document.getElementById('filmModal').classList.remove('show');}
+
+// QA #164 — toggle the schedule date-time wrap based on the selected
+// publish radio. Called by onchange on each radio + when the modal opens.
+// Idempotent: safe to call before the DOM is fully built.
+function toggleFilmSchedule(){
+  var mode = (document.querySelector('input[name="filmPublishMode"]:checked') || {}).value;
+  var wrap = document.getElementById('filmScheduleWrap');
+  if (!wrap) return;
+  wrap.style.display = (mode === 'scheduled') ? '' : 'none';
+}
 
 async function saveFilm(){
   var title=document.getElementById('filmTitle').value.trim();
@@ -3235,7 +3279,41 @@ async function saveFilm(){
 
   var relEd = (document.getElementById('filmRelatedEditorial').value || '').trim() || null;
   var thumb = (document.getElementById('filmThumb').value || '').trim() || null;
-  var isActive = document.getElementById('filmActive').checked;
+
+  // QA #164 — publish state from radio group. Three outcomes:
+  //   "published" → status=published, scheduled_publish_at=null
+  //   "draft"     → status=draft,     scheduled_publish_at=null
+  //   "scheduled" → status=published, scheduled_publish_at=<future ISO>
+  //                 (matches the editorial pattern — the cron / public
+  //                 GET hide the row until now() crosses the timestamp)
+  var pubModeEl = document.querySelector('input[name="filmPublishMode"]:checked');
+  var pubMode = pubModeEl ? pubModeEl.value : 'published';
+  var status, scheduledIso = null;
+  if (pubMode === 'draft') {
+    status = 'draft';
+  } else if (pubMode === 'scheduled') {
+    var schedRaw = (document.getElementById('filmScheduledAt').value || '').trim();
+    if (!schedRaw) {
+      alert('예약 게시를 선택하셨습니다. 예약 일시를 입력해주세요.');
+      return;
+    }
+    var schedDate = new Date(schedRaw);
+    if (isNaN(schedDate.getTime())) {
+      alert('예약 일시 형식이 올바르지 않습니다.');
+      return;
+    }
+    if (schedDate.getTime() <= Date.now()) {
+      // Past timestamp → just go live immediately (warn so the admin sees
+      // why their "future" didn't take, then save as plain published).
+      if (!confirm('예약 일시가 현재보다 과거입니다. 즉시 공개로 저장할까요?')) return;
+      status = 'published';
+    } else {
+      status = 'published';
+      scheduledIso = schedDate.toISOString();
+    }
+  } else {
+    status = 'published';
+  }
 
   var payload = {
     title: title,
@@ -3245,7 +3323,8 @@ async function saveFilm(){
     categories: cats,
     credits: credits,
     slug: slug || null,
-    status: isActive ? 'published' : 'draft',
+    status: status,
+    scheduled_publish_at: scheduledIso,
     related_editorial_id: relEd,
   };
 

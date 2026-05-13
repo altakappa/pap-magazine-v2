@@ -20,19 +20,23 @@ module.exports = async function handler(req, res) {
       const limit = Math.min(Math.max(1, parseInt(rawLimit) || 50), 100);
       const offset = (parseInt(page) - 1) * limit;
 
-      // QA #162 — films previously selected only their own columns, so the
-      // related_editorial_id was an opaque UUID the frontend couldn't
-      // dereference without a second round-trip. Joining the editorial
-      // row inline keeps the film detail overlay render single-fetch
-      // and surfaces the linked editorial's slug/title/cover so the
-      // "Related Editorial" section can be drawn without further work.
-      // Inner-aliased so absent links resolve to null instead of bombing.
+      // QA #162 + #164 — joins editorials!related_editorial_id and hides
+      // future-scheduled rows from the public ("published") view, mirroring
+      // the editorials GET behaviour so admin tools (status=draft/scheduled)
+      // bypass the schedule gate while consumers never see queued rows.
+      const requestedStatus = status || 'published';
       let query = supabaseAdmin
         .from('films')
         .select('*, related_editorial:editorials!related_editorial_id(id,slug,title,cover_image,thumbnail,published_date)', { count: 'exact' })
-        .eq('status', status || 'published')
+        .eq('status', requestedStatus)
         .order('published_date', { ascending: false })
         .range(offset, offset + parseInt(limit) - 1);
+      // Schedule gate (QA #164). The OR keeps backward-compat with rows
+      // that pre-date column 029 (scheduled_publish_at IS NULL → always
+      // visible once status=published).
+      if (requestedStatus === 'published') {
+        query = query.or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${new Date().toISOString()}`);
+      }
 
       if (category) {
         query = query.ilike('categories', `%${category}%`);
@@ -66,6 +70,7 @@ module.exports = async function handler(req, res) {
         title, youtube_id, thumbnail_url, published_date,
         categories, tags, credits, slug, status,
         related_editorial_id,
+        scheduled_publish_at,
       } = req.body;
 
       if (!title || !youtube_id) {
@@ -87,6 +92,10 @@ module.exports = async function handler(req, res) {
         tags:       toArray(tags).length       ? toArray(tags)       : [title],
         credits: Array.isArray(credits) ? credits : [],
         status: status || 'published',
+        // QA #164 — explicit null when unset so the column is clean rather
+        // than absent (matters for the GET schedule gate to short-circuit
+        // on IS NULL instead of evaluating a missing column).
+        scheduled_publish_at: scheduled_publish_at || null,
       };
       if (slug)                  insertRow.slug = slug;
       if (related_editorial_id)  insertRow.related_editorial_id = related_editorial_id;

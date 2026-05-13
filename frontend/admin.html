@@ -1255,8 +1255,27 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
       </select>
     </div>
 
+    <!-- QA #164 — publish state was a single "공개" checkbox that always
+         rounded to either status=published or status=draft. Editorials
+         already had three explicit options (공개 / 임시저장 / 예약);
+         film admin now mirrors that. The legacy #filmActive checkbox
+         stays in the DOM (hidden) so any cached JS that still reads it
+         won't crash — saveFilm now consumes the radio group instead. -->
     <div class="modal-section">
-      <label class="pe-check"><input type="checkbox" id="filmActive" checked> 공개</label>
+      <div class="pe-label" style="margin-bottom:8px">공개 설정</div>
+      <div style="display:flex;flex-wrap:wrap;gap:14px 22px">
+        <label class="pe-check"><input type="radio" name="filmPublishMode" value="published" id="filmPublishMode_published" checked onchange="toggleFilmSchedule()"> 공개</label>
+        <label class="pe-check"><input type="radio" name="filmPublishMode" value="draft" id="filmPublishMode_draft" onchange="toggleFilmSchedule()"> 임시저장</label>
+        <label class="pe-check"><input type="radio" name="filmPublishMode" value="scheduled" id="filmPublishMode_scheduled" onchange="toggleFilmSchedule()"> 예약 게시</label>
+      </div>
+      <!-- Date/time picker — only visible when "예약 게시" is selected. -->
+      <div id="filmScheduleWrap" style="display:none;margin-top:12px;padding:12px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:2px">
+        <div class="pe-label" style="margin-bottom:6px">예약 일시</div>
+        <input class="pe-input" id="filmScheduledAt" type="datetime-local">
+        <div class="pe-hint" style="margin-top:6px">지정한 날짜·시간이 지나면 자동으로 공개됩니다. (브라우저 로컬 시간 기준)</div>
+      </div>
+      <!-- Hidden legacy checkbox; some code paths still query it. -->
+      <input type="checkbox" id="filmActive" checked style="display:none">
     </div>
 
     <div class="modal-foot">

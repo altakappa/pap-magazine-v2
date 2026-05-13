@@ -31,6 +31,16 @@ module.exports = async function handler(req, res) {
         return res.status(404).json({ error: 'Film not found' });
       }
 
+      // QA #164 — schedule gate. A row whose scheduled_publish_at is
+      // still in the future shouldn't be reachable via the public
+      // detail endpoint either. Returning 404 mirrors the editorials
+      // behaviour and avoids leaking the future-go-live moment.
+      if (data.status === 'published'
+          && data.scheduled_publish_at
+          && new Date(data.scheduled_publish_at).getTime() > Date.now()) {
+        return res.status(404).json({ error: 'Film not found' });
+      }
+
       return res.status(200).json({ data });
     } catch (err) {
       console.error('Film GET error:', err);
@@ -49,6 +59,9 @@ module.exports = async function handler(req, res) {
         'title', 'youtube_id', 'thumbnail_url', 'published_date',
         'categories', 'tags', 'credits', 'slug', 'status',
         'related_editorial_id',
+        // QA #164 — admins can transition a film between published / draft
+        // / scheduled by sending the new value plus optional timestamp.
+        'scheduled_publish_at',
       ];
       // Coerce TEXT[] columns to arrays so admin payloads from older
       // form versions (string-shape) don't break the schema.
