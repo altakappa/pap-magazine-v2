@@ -2856,14 +2856,40 @@ async function savePost(mode){
       await apiPost('/articles',{title:title,subtitle:subtitle,tags:tagsArr,thumbnail_url:thumbUrl,credits:Object.entries(credits).map(function(c){return{role:c[0],name:c[1].name};}),status:isPublished?'published':'draft',published_date:isPublished?new Date().toISOString():null,category:'news'});
       alert('뉴스가 등록되었습니다.');
       loadNews();go('news');
-    }else if(category==='film'){
-      await apiPost('/films',{title:title,youtube_id:videoUrl.replace(/.*[?&]v=([^&]+).*/,'$1').replace(/.*youtu\.be\//,'').replace(/.*shorts\//,''),thumbnail_url:thumbUrl,tags:tagsArr.join(', '),status:isPublished?'published':'draft',published_date:isPublished?new Date().toISOString():null});
-      alert('필름이 등록되었습니다.');
-      loadFilmsFromAPI();go('film');
-    }else if(category==='shorts'){
-      await apiPost('/shorts',{title:title,youtube_id:videoUrl.replace(/.*[?&]v=([^&]+).*/,'$1').replace(/.*youtu\.be\//,'').replace(/.*shorts\//,''),thumbnail_url:thumbUrl,tags:tagsArr.join(', '),status:isPublished?'published':'draft',published_date:isPublished?new Date().toISOString():null});
-      alert('숏츠가 등록되었습니다.');
-      loadShortsFromAPI();go('shorts');
+    }else if(category==='film' || category==='shorts'){
+      // Extract a clean 11-char YouTube id via the shared normaliser so
+      // films/shorts created through the unified post form go through the
+      // same validation as saveFilm() above. The previous in-place .replace
+      // chain silently let through pasted bare URLs and Vimeo links, which
+      // ended up stored verbatim in youtube_id and broke the iframe on the
+      // detail page (QA #160 — "Selects" film).
+      var _ytInfo = (typeof normaliseEmbedUrl === 'function') ? normaliseEmbedUrl(videoUrl) : null;
+      var _ytId = null;
+      if (_ytInfo && _ytInfo.provider === 'youtube') {
+        _ytId = _ytInfo.src.split('/embed/')[1];
+      } else if (/^[A-Za-z0-9_-]{11}$/.test(String(videoUrl||'').trim())) {
+        _ytId = String(videoUrl).trim();
+      } else {
+        alert(
+          '인식할 수 없는 YouTube URL입니다.\n\n' +
+          '지원하는 형식:\n' +
+          '  • https://www.youtube.com/watch?v=비디오ID\n' +
+          '  • https://youtu.be/비디오ID\n' +
+          '  • https://www.youtube.com/shorts/비디오ID\n' +
+          '  • 11자 비디오 ID 직접 입력\n\n' +
+          '입력하신 값: ' + (videoUrl||'(빈 값)')
+        );
+        return;
+      }
+      if (category==='film') {
+        await apiPost('/films',{title:title,youtube_id:_ytId,thumbnail_url:thumbUrl,tags:tagsArr.join(', '),status:isPublished?'published':'draft',published_date:isPublished?new Date().toISOString():null});
+        alert('필름이 등록되었습니다.');
+        loadFilmsFromAPI();go('film');
+      } else {
+        await apiPost('/shorts',{title:title,youtube_id:_ytId,thumbnail_url:thumbUrl,tags:tagsArr.join(', '),status:isPublished?'published':'draft',published_date:isPublished?new Date().toISOString():null});
+        alert('숏츠가 등록되었습니다.');
+        loadShortsFromAPI();go('shorts');
+      }
     }
   }catch(e){
     // QA #100 — translate the raw error into something specific so the
@@ -3125,20 +3151,45 @@ async function saveFilm(){
   var title=document.getElementById('filmTitle').value.trim();
   var yt=document.getElementById('filmYouTube').value.trim();
   if(!title||!yt){alert('제목과 YouTube URL을 입력해 주세요.');return;}
-  // Use the shared normaliseEmbedUrl helper (pap-utils.js) so films stay
-  // in sync with the editorial detail-page renderer. Films store the
-  // raw YouTube ID (films.youtube_id), so we pull it from the embed src
-  // when normalisation succeeds. Bare IDs (no URL) round-trip via the
-  // fall-through branch — handy when the admin pastes just `dQw4w9WgXcQ`.
-  var ytId;
+  // Use the shared normaliseEmbedUrl helper (pap-utils.js) so films stay in
+  // sync with the editorial detail-page renderer. Films store the raw 11-char
+  // YouTube id in films.youtube_id, so we pull it from the embed src when
+  // normalisation succeeds.
+  //
+  // QA #160 — previously the `else` branch passed the raw input through as
+  // `ytId`, which let malformed URLs (e.g. youtube.com/{id} bare-path,
+  // Vimeo links) be saved verbatim into the youtube_id column. The detail
+  // page then built `youtube-nocookie.com/embed/<that-raw-url>` and the
+  // iframe stayed blank. Now we hard-reject anything normaliseEmbedUrl
+  // can't squeeze a YouTube id out of so future rows are guaranteed to
+  // be in the shape the renderer expects.
   var info = (typeof normaliseEmbedUrl === 'function') ? normaliseEmbedUrl(yt) : null;
+  var ytId = null;
   if (info && info.provider === 'youtube') {
     ytId = info.src.split('/embed/')[1];
-  } else {
-    // Already-bare IDs match the YouTube id shape; for anything else, pass
-    // through unchanged so the existing form's edge-cases (manual ID, raw
-    // URLs we don't yet recognise) don't regress.
+  } else if (/^[A-Za-z0-9_-]{11}$/.test(yt)) {
+    // Bare 11-char id pasted directly — normaliseEmbedUrl already accepts
+    // this, but keep the explicit branch so the rejection message below is
+    // never confusing for that case.
     ytId = yt;
+  } else {
+    alert(
+      '인식할 수 없는 YouTube URL입니다.\n\n' +
+      '지원하는 형식:\n' +
+      '  • https://www.youtube.com/watch?v=비디오ID\n' +
+      '  • https://youtu.be/비디오ID\n' +
+      '  • https://www.youtube.com/shorts/비디오ID\n' +
+      '  • 11자 비디오 ID 직접 입력 (예: dQw4w9WgXcQ)\n\n' +
+      '입력하신 값: ' + yt
+    );
+    return;
+  }
+  if (!ytId || !/^[A-Za-z0-9_-]{11}$/.test(ytId)) {
+    // Last-line defence: even if a future regex change accidentally returns
+    // a non-id-shaped value, refuse to save it. Better to nag the admin
+    // than to ship another broken row.
+    alert('YouTube 비디오 ID를 추출하지 못했습니다. URL을 다시 확인해주세요.');
+    return;
   }
 
   // Slug — explicit value wins; else auto-derive from title.

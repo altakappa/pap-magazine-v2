@@ -114,7 +114,9 @@ function renderSeoHtml(kind, record) {
     || record.hero_image_url
     || record.thumbnail_url
     || record.thumbnail
-    || (record.youtube_id ? `https://img.youtube.com/vi/${record.youtube_id}/maxresdefault.jpg` : null)
+    || (record.youtube_id && /^[A-Za-z0-9_-]{11}$/.test(record.youtube_id)
+        ? `https://img.youtube.com/vi/${record.youtube_id}/maxresdefault.jpg`
+        : null)
     || DEFAULT_OG_IMAGE;
 
   const canonical = `${SITE}${cfg.pathPrefix}${encodeURIComponent(slug)}`;
@@ -128,9 +130,12 @@ function renderSeoHtml(kind, record) {
   const gallery = asArray(record.gallery).filter(u => typeof u === 'string').slice(0, 60);
   const allImages = [ogImage, ...gallery].filter(Boolean);
 
-  /* Build the primary schema (Article / NewsArticle / VideoObject) */
+  /* Build the primary schema (Article / NewsArticle / VideoObject).
+   * Only emit VideoObject when the stored id is in the canonical 11-char
+   * shape — anything else would produce a broken contentUrl/embedUrl that
+   * Google rejects from the rich-result. */
   let primarySchema;
-  if (cfg.schemaType === 'VideoObject' && record.youtube_id) {
+  if (cfg.schemaType === 'VideoObject' && record.youtube_id && /^[A-Za-z0-9_-]{11}$/.test(record.youtube_id)) {
     primarySchema = {
       '@context': 'https://schema.org',
       '@type': 'VideoObject',
@@ -194,8 +199,19 @@ function renderSeoHtml(kind, record) {
       '</ul></section>'
     : '';
 
-  /* Hero — image for editorial/article, YouTube embed for film/short */
-  const heroHtml = (cfg.schemaType === 'VideoObject' && record.youtube_id)
+  /* Hero — image for editorial/article, YouTube embed for film/short.
+   *
+   * youtube_id has to match the canonical 11-char id shape before we
+   * concatenate it into the embed URL. Without this guard, a legacy row
+   * whose youtube_id is a full URL ("https://www.youtube.com/<id>")
+   * produces an iframe src like
+   *   https://www.youtube-nocookie.com/embed/https://www.youtube.com/<id>
+   * which YouTube serves as a blank page (QA #160 — "Selects" film).
+   * The new admin form (saveFilm + savePost) refuses to insert non-id-
+   * shaped values, but historical rows still need this defence. */
+  const isValidYtId = typeof record.youtube_id === 'string'
+    && /^[A-Za-z0-9_-]{11}$/.test(record.youtube_id);
+  const heroHtml = (cfg.schemaType === 'VideoObject' && isValidYtId)
     ? `<div class="seo-video"><iframe src="https://www.youtube-nocookie.com/embed/${escAttr(record.youtube_id)}?rel=0" title="${escAttr(titleKo)}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`
     : ogImage
       ? `<div class="seo-hero"><img src="${escAttr(ogImage)}" alt="${escAttr(titleKo)} — Cover" loading="eager" fetchpriority="high" width="1200" height="800"></div>`

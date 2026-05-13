@@ -26,12 +26,28 @@ function normaliseEmbedUrl(rawUrl){
   var u = String(rawUrl).trim();
   if (!u) return null;
 
-  // YouTube — watch / youtu.be / shorts / embed already-clean.
+  // YouTube — covers six input shapes the admin form realistically receives:
+  //   1) https://www.youtube.com/watch?v=ID  (canonical)
+  //   2) https://youtu.be/ID                 (shortlink)
+  //   3) https://www.youtube.com/shorts/ID   (shorts)
+  //   4) https://www.youtube.com/embed/ID    (already-clean embed src)
+  //   5) https://www.youtube.com/live/ID     (live broadcasts)
+  //   6) https://www.youtube.com/ID          (bare path — non-standard but
+  //                                           happens when an admin pastes a
+  //                                           malformed link; QA caught the
+  //                                           "Selects" film row created
+  //                                           this way and the iframe broke)
+  // Plus, further down, the case where the admin pastes JUST the 11-char id.
+  //
   // Match the *first* video-id-shaped token after recognised path markers
   // so query strings like `?si=…&list=…` don't break extraction.
   var ytMatch =
        u.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i)
-    || u.match(/[?&]v=([A-Za-z0-9_-]{11})/);
+    || u.match(/[?&]v=([A-Za-z0-9_-]{11})/)
+    // Bare youtube.com path — youtube.com/ID without /watch?v=, /shorts/, etc.
+    // Anchored to either end-of-string, ?, &, #, or / so we don't gobble half
+    // of an unrelated path segment that happens to be 11 chars.
+    || u.match(/youtube\.com\/([A-Za-z0-9_-]{11})(?:[?&\/#]|$)/i);
   if (ytMatch) {
     return {
       kind: 'iframe',
@@ -39,6 +55,18 @@ function normaliseEmbedUrl(rawUrl){
       // same /embed/{id} path but doesn't drop tracking cookies until
       // the user actually starts the video.
       src: 'https://www.youtube-nocookie.com/embed/' + ytMatch[1],
+      provider: 'youtube',
+    };
+  }
+
+  // Bare 11-character YouTube ID pasted with nothing else — common when the
+  // admin copies the id manually off a URL. Strict equality so we don't
+  // false-positive on partial Vimeo / Instagram ids (those are longer or
+  // contain dots).
+  if (/^[A-Za-z0-9_-]{11}$/.test(u)) {
+    return {
+      kind: 'iframe',
+      src: 'https://www.youtube-nocookie.com/embed/' + u,
       provider: 'youtube',
     };
   }

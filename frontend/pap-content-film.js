@@ -105,7 +105,20 @@ function _openFilmDetailInner(idx){
   var f=filmAllData[idx];if(!f) return;
   var overlay=document.getElementById('filmDetailOverlay');
   if(!overlay) return;
-  document.getElementById('filmDetailPlayer').src='https://www.youtube.com/embed/'+f.yt+'?autoplay=1&rel=0';
+  // Guard: only build the embed URL when youtube_id matches the canonical
+  // 11-char shape. Legacy rows that accidentally stored a full URL (QA #160
+  // — "Selects" film) would otherwise produce
+  //   https://www.youtube.com/embed/https://www.youtube.com/<id>
+  // which renders as a blank YouTube page. Point the iframe at about:blank
+  // when the id is malformed so the user sees an empty player rather than a
+  // confusing YouTube error. The admin form now refuses such ids going forward.
+  var _player = document.getElementById('filmDetailPlayer');
+  if (f.yt && /^[A-Za-z0-9_-]{11}$/.test(f.yt)) {
+    _player.src = 'https://www.youtube.com/embed/' + f.yt + '?autoplay=1&rel=0';
+  } else {
+    _player.src = 'about:blank';
+    if (typeof console !== 'undefined') console.warn('[film] invalid youtube_id, skipping embed:', f && f.yt);
+  }
   document.getElementById('filmDetailTitle').textContent=f.t||'';
   var catStr=(f.cat||'Film');
   if(f.d) catStr+=' · '+f.d;
