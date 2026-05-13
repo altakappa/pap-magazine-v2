@@ -20,9 +20,16 @@ module.exports = async function handler(req, res) {
       const limit = Math.min(Math.max(1, parseInt(rawLimit) || 50), 100);
       const offset = (parseInt(page) - 1) * limit;
 
+      // QA #162 — films previously selected only their own columns, so the
+      // related_editorial_id was an opaque UUID the frontend couldn't
+      // dereference without a second round-trip. Joining the editorial
+      // row inline keeps the film detail overlay render single-fetch
+      // and surfaces the linked editorial's slug/title/cover so the
+      // "Related Editorial" section can be drawn without further work.
+      // Inner-aliased so absent links resolve to null instead of bombing.
       let query = supabaseAdmin
         .from('films')
-        .select('*', { count: 'exact' })
+        .select('*, related_editorial:editorials!related_editorial_id(id,slug,title,cover_image,thumbnail,published_date)', { count: 'exact' })
         .eq('status', status || 'published')
         .order('published_date', { ascending: false })
         .range(offset, offset + parseInt(limit) - 1);

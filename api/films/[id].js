@@ -19,9 +19,11 @@ module.exports = async function handler(req, res) {
   // GET: 단건 조회
   if (req.method === 'GET') {
     try {
+      // Embed the linked editorial inline (QA #162) so the detail view
+      // can render "Related Editorial: <title>" without a second fetch.
       const { data, error } = await supabaseAdmin
         .from('films')
-        .select('*')
+        .select('*, related_editorial:editorials!related_editorial_id(id,slug,title,cover_image,thumbnail,published_date)')
         .eq('id', id)
         .single();
 

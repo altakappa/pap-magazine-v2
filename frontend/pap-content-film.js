@@ -129,13 +129,45 @@ function _openFilmDetailInner(idx){
     // form a proper 2-column layout (role | name).
     credEl.classList.add('ed-credits-table');
     var cr=f.cr||[];
+    // QA #162 — credits used to render only the legacy {r, p} short-key
+    // shape (saved by the 2026-Q1 migration scripts). The admin form saves
+    // the new {roles, name, instagram} long-key shape, so every admin-
+    // entered credit was silently invisible. Now we accept both shapes:
+    //   role:     c.r  || c.roles.join(' & ')
+    //   name:     c.name (new shape only — legacy had no name field)
+    //   handles:  c.p   || c.instagram   (comma-separated string)
     credEl.innerHTML=cr.map(function(c){
-      var handles=(c.p||'').split(',').map(function(h){
+      if (!c || typeof c !== 'object') return '';
+      var roleRaw =
+        c.r != null ? c.r
+        : Array.isArray(c.roles) ? c.roles.join(' & ')
+        : (c.roles || '');
+      var nameRaw = c.name || '';
+      var handlesRaw = c.p != null ? c.p : (c.instagram || '');
+      var handles = String(handlesRaw||'').split(',').map(function(h){
         h=h.trim();if(!h) return '';
+        // Some legacy entries stored "@handle" or "https://instagram.com/handle"
+        // — strip the prefix so the underlying handle stays consistent.
+        h = h.replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/\/$/, '');
+        if(!h) return '';
         return '<a href="#" class="film-cred-link" data-handle="'+h.replace(/"/g,'')+'" style="cursor:pointer">'+escapeHtml(h)+'</a>';
       }).filter(Boolean).join('&nbsp;&nbsp;');
-      return '<div class="ed-cred-row"><div class="ed-cred-role">'+escapeHtml(c.r||'')+'</div><div class="ed-cred-val">'+handles+'</div></div>';
-    }).join('');
+      // The right column shows name and instagram handles together.
+      // If only one is present, just render that. If both, render name
+      // followed by the handle links so the eye reads "<name> @<handle>".
+      var valueHtml;
+      if (nameRaw && handles) {
+        valueHtml = escapeHtml(nameRaw) + '&nbsp;&nbsp;' + handles;
+      } else if (nameRaw) {
+        valueHtml = escapeHtml(nameRaw);
+      } else {
+        valueHtml = handles;
+      }
+      // Skip the row entirely if both role and value would be blank —
+      // a totally empty <div.ed-cred-row> would look like a stray gap.
+      if (!roleRaw && !valueHtml) return '';
+      return '<div class="ed-cred-row"><div class="ed-cred-role">'+escapeHtml(roleRaw)+'</div><div class="ed-cred-val">'+valueHtml+'</div></div>';
+    }).filter(Boolean).join('');
     // Event delegation for credit link clicks (more robust than inline onclick)
     credEl.onclick=function(e){
       var link=e.target.closest('.film-cred-link');
@@ -147,6 +179,26 @@ function _openFilmDetailInner(idx){
     };
     credEl.onmouseover=function(e){var link=e.target.closest('.film-cred-link');if(link)link.style.textDecoration='underline';};
     credEl.onmouseout=function(e){var link=e.target.closest('.film-cred-link');if(link)link.style.textDecoration='none';};
+  }
+  // QA #162 — Related Editorial card. apiFilmToLocal mirrors the
+  // /api/films join into f.rel, so the overlay's hidden anchor flips
+  // on whenever there's a linked editorial. Falls back to the film's
+  // own thumbnail if the editorial has neither cover_image nor a
+  // thumbnail of its own (rare).
+  var relEl = document.getElementById('filmDetailRelated');
+  if (relEl) {
+    var rel = f.rel || null;
+    if (rel && (rel.slug || rel.id) && rel.title) {
+      var slugOrId = rel.slug || rel.id;
+      relEl.setAttribute('href', '/editorial/' + encodeURIComponent(slugOrId));
+      var img = document.getElementById('filmDetailRelatedImg');
+      if (img) img.src = rel.cover_image || rel.thumbnail || f.th || '';
+      var tEl = document.getElementById('filmDetailRelatedTitle');
+      if (tEl) tEl.textContent = rel.title || '';
+      relEl.style.display = 'flex';
+    } else {
+      relEl.style.display = 'none';
+    }
   }
   overlay.classList.add('active');
   document.body.style.overflow='hidden';

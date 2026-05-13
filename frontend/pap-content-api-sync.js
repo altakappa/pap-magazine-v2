@@ -110,6 +110,10 @@ window._papFilmAutoPlay = function(){
       cat: Array.isArray(f.categories)? f.categories.join(',') : (f.categories||'Film'),
       tags: Array.isArray(f.tags)? f.tags.join(',') : (f.tags||''),
       cr: Array.isArray(f.credits)? f.credits : [],
+      // QA #162 — pass the embedded editorial (when /api/films joined it)
+      // through to the overlay renderer so "Related Editorial" can be shown
+      // without a second round-trip. Falls back to null when absent.
+      rel: f.related_editorial || null,
       _api_id: f.id
     };
   }

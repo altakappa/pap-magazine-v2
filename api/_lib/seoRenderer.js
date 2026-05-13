@@ -199,6 +199,24 @@ function renderSeoHtml(kind, record) {
       '</ul></section>'
     : '';
 
+  /* QA #162 — Related Editorial card (films only). The /api/films join
+   * embeds editorials!related_editorial_id under record.related_editorial,
+   * so when a film has one we render a link card to /editorial/<slug>.
+   * Hidden when absent so editorials / articles (which don't carry the
+   * field) get no empty section. */
+  const rel = record.related_editorial && typeof record.related_editorial === 'object'
+    ? record.related_editorial : null;
+  const relatedEditorialHtml = (cfg.schemaType === 'VideoObject' && rel && rel.title)
+    ? `<section class="seo-related"><h2>Related Editorial</h2>
+        <a class="seo-related-card" href="/editorial/${escAttr(rel.slug || rel.id || '')}">
+          ${rel.cover_image || rel.thumbnail ? `<img src="${escAttr(rel.cover_image || rel.thumbnail)}" alt="${escAttr(rel.title)} — Cover" loading="lazy" width="240" height="160">` : ''}
+          <div class="seo-related-meta">
+            <div class="seo-related-tagline">RELATED EDITORIAL</div>
+            <div class="seo-related-title">${escText(rel.title)}</div>
+          </div>
+        </a></section>`
+    : '';
+
   /* Hero — image for editorial/article, YouTube embed for film/short.
    *
    * youtube_id has to match the canonical 11-char id shape before we
@@ -298,6 +316,15 @@ ${tags.map(t => `<meta property="article:tag" content="${escAttr(t)}">`).join('\
   .seo-credits h2{font-size:14px;letter-spacing:.12em;text-transform:uppercase;opacity:.7}
   .seo-credits ul{list-style:none;padding:0;display:flex;flex-wrap:wrap;gap:16px}
   .seo-credits li{font-size:13px;opacity:.8}
+  /* Related editorial card (films only) — QA #162 */
+  .seo-related{max-width:800px;margin:36px auto;padding:0 24px}
+  .seo-related h2{font-size:14px;letter-spacing:.12em;text-transform:uppercase;opacity:.7;margin-bottom:14px}
+  .seo-related-card{display:flex;align-items:center;gap:16px;padding:16px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.02);text-decoration:none;color:inherit;transition:background .2s}
+  .seo-related-card:hover{background:rgba(255,255,255,.05)}
+  .seo-related-card img{width:120px;height:80px;object-fit:cover;background:#222;flex-shrink:0}
+  .seo-related-meta{flex:1;min-width:0}
+  .seo-related-tagline{font-size:9px;font-weight:700;letter-spacing:.2em;color:rgba(201,169,110,.9);text-transform:uppercase;margin-bottom:6px}
+  .seo-related-title{font-size:15px;font-weight:600;letter-spacing:.02em;line-height:1.4}
   .seo-gallery{max-width:1200px;margin:48px auto;padding:0 16px;display:grid;grid-template-columns:1fr;gap:24px}
   .seo-gallery figure{margin:0}
   .seo-gallery img{display:block;width:100%;height:auto;background:#111}
@@ -325,6 +352,7 @@ ${tags.map(t => `<meta property="article:tag" content="${escAttr(t)}">`).join('\
     ${bodyHtml}
     ${galleryHtml}
     ${creditsHtml}
+    ${relatedEditorialHtml}
   </article>
 </main>
 

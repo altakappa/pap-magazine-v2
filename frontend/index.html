@@ -944,6 +944,16 @@
       <div id="filmDetailCat" style="font-size:11px;color:#888;letter-spacing:.08em;margin-top:6px"></div>
     </div>
     <div id="filmDetailCredits" style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08);font-size:12px;line-height:1.8"></div>
+    <!-- QA #162 — Related Editorial card. Populated by _openFilmDetailInner
+         when the film's API row carries `related_editorial`. -->
+    <a id="filmDetailRelated" href="#" style="display:none;align-items:center;gap:14px;padding:14px 16px;margin-top:18px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);text-decoration:none;color:inherit;transition:background .2s">
+      <img id="filmDetailRelatedImg" src="" alt="" style="width:88px;height:64px;object-fit:cover;background:#222;flex-shrink:0">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:9px;font-weight:700;letter-spacing:.2em;color:rgba(201,169,110,.9);text-transform:uppercase;margin-bottom:4px">RELATED EDITORIAL</div>
+        <div id="filmDetailRelatedTitle" style="font-size:14px;font-weight:600;color:#fff;letter-spacing:.03em;line-height:1.4">—</div>
+      </div>
+      <span style="font-size:18px;color:rgba(255,255,255,.4);flex-shrink:0">›</span>
+    </a>
   </div>
 </div>
 
