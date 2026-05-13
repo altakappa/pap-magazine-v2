@@ -1199,15 +1199,20 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
     <!-- 카테고리: 8개 하드코딩 + 자유 입력 -->
     <div class="modal-section">
       <div class="modal-label">카테고리 <span class="pe-opt">여러 개 선택 가능</span></div>
+      <!-- Category list reset per QA #161 — pivoted from the original
+           generic film vocab (Campaign / Documentary / Trailer / etc.) to
+           the categories the editorial team actually uses on PAP. Existing
+           DB data (98 Editorial, 89 Fashion, 7 Beauty, 4 Art) drove the
+           selection; the "기타 카테고리" field below stays so future
+           categories can be added without a code change. -->
       <div id="filmCatsArea" style="display:flex;flex-wrap:wrap;gap:6px 18px;padding:10px 12px;background:#fafafa;border:1px solid var(--border2);border-radius:2px">
-        <label class="pe-check"><input type="checkbox" name="filmCat" value="Behind the Scenes"> Behind the Scenes</label>
-        <label class="pe-check"><input type="checkbox" name="filmCat" value="Campaign"> Campaign</label>
-        <label class="pe-check"><input type="checkbox" name="filmCat" value="Documentary"> Documentary</label>
+        <label class="pe-check"><input type="checkbox" name="filmCat" value="Behind"> Behind</label>
+        <label class="pe-check"><input type="checkbox" name="filmCat" value="Sketch"> Sketch</label>
+        <label class="pe-check"><input type="checkbox" name="filmCat" value="Fashion"> Fashion</label>
+        <label class="pe-check"><input type="checkbox" name="filmCat" value="Beauty"> Beauty</label>
+        <label class="pe-check"><input type="checkbox" name="filmCat" value="Art"> Art</label>
         <label class="pe-check"><input type="checkbox" name="filmCat" value="Interview"> Interview</label>
-        <label class="pe-check"><input type="checkbox" name="filmCat" value="Performance"> Performance</label>
-        <label class="pe-check"><input type="checkbox" name="filmCat" value="Music Video"> Music Video</label>
-        <label class="pe-check"><input type="checkbox" name="filmCat" value="Short Film"> Short Film</label>
-        <label class="pe-check"><input type="checkbox" name="filmCat" value="Trailer"> Trailer</label>
+        <label class="pe-check"><input type="checkbox" name="filmCat" value="Editorial"> Editorial</label>
       </div>
       <input class="pe-input" id="filmCatsCustom" placeholder="기타 카테고리 (쉼표 구분, 예: Editorial, Vlog)" style="margin-top:8px">
     </div>

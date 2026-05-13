@@ -3198,11 +3198,22 @@ async function saveFilm(){
   // Categories — predefined checkboxes + custom comma-list. Default to
   // ['Film'] so the existing public GET ?category=film filter keeps working
   // when the admin ticks nothing.
+  //
+  // Custom entries get a light Title Case normalisation (first letter upper,
+  // rest as-typed) so the lookup buckets don't fragment into "editorial" /
+  // "Editorial" / "EDITORIAL" three-ways. Multi-word inputs like "Behind
+  // the Scenes" are left intact past the first letter — predictable rule,
+  // no surprising lowercase-of-Scenes.
+  function _normCategory(raw) {
+    var s = String(raw || '').trim();
+    if (!s) return '';
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
   var cats = [];
   document.querySelectorAll('#filmCatsArea input[name="filmCat"]:checked').forEach(function(cb){ cats.push(cb.value); });
   var customRaw = (document.getElementById('filmCatsCustom').value || '').trim();
   if (customRaw) {
-    customRaw.split(',').map(function(s){return s.trim();}).filter(Boolean).forEach(function(c){
+    customRaw.split(',').map(function(s){return _normCategory(s);}).filter(Boolean).forEach(function(c){
       if (cats.indexOf(c) < 0) cats.push(c);
     });
   }
