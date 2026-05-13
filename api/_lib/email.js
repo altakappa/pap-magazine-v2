@@ -225,11 +225,29 @@ const templates = {
   // Localised per recipient via profile.email_language (consent.js gives
   // us the value; review.js looks it up and passes `lang` in). Falls
   // back to English for any locale we don't have copy for yet.
-  submissionReviewComplete(user, submission, lang) {
+  submissionReviewComplete(user, submission, lang, status) {
     const L = SUBMISSION_REVIEW_I18N[lang] || SUBMISSION_REVIEW_I18N.en;
     const safeName = user && user.name ? user.name : (L.greetingFallback);
     const safeTitle = submission && submission.title ? submission.title : '—';
     const ctaUrl = `${FRONTEND_URL}/submission.html#mySubsSection`;
+
+    // Rejection-specific courtesy block. Editorial direction (May 2026):
+    // rejection mail should still be warm — explicitly thank the
+    // submitter, reassure them about image privacy/deletion, and leave
+    // the door open for future collaboration. Kept English-only by
+    // request; sits ABOVE the localised CTA so the recipient reads the
+    // note first, then has the option to click through for reviewer
+    // feedback on MY SUBMISSIONS.
+    const rejectionBlock = status === 'rejected' ? `
+      <div style="margin:24px 0 8px;padding:20px 22px;background:#1a1a1a;border-left:3px solid #888;font-size:13px;line-height:1.75;color:#ccc;">
+        <p style="margin:0 0 12px;">Dear ${safeName},</p>
+        <p style="margin:0 0 12px;">Thank you for your email and for sharing your materials with us. Unfortunately, it does not quite align with our aesthetic standard.</p>
+        <p style="margin:0 0 12px;">Please rest assured that any images not selected for publication will remain private and will be promptly deleted.</p>
+        <p style="margin:0 0 12px;">We truly appreciate your kind offer and hope for the opportunity to collaborate again in the future.</p>
+        <p style="margin:0;">All the best,<br>PAP Magazine Editorial Team</p>
+      </div>
+    ` : '';
+
     return {
       subject: L.subject.replace('{title}', safeTitle),
       html: wrapHtml(`
@@ -237,6 +255,7 @@ const templates = {
         <p>${L.greet.replace('{name}', safeName)}</p>
         <p>${L.body1.replace('{title}', `<strong style="color:#fff;">"${safeTitle}"</strong>`)}</p>
         <p>${L.body2}</p>
+        ${rejectionBlock}
         <a href="${ctaUrl}" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">${L.cta}</a>
         <p style="font-size:12px;color:#888;margin-top:24px;">${L.footer}</p>
       `),
@@ -245,15 +264,16 @@ const templates = {
 
   // Legacy aliases kept so callers that still hardcode the per-status
   // template names keep working. They all funnel into the single
-  // submissionReviewComplete entry point above.
+  // submissionReviewComplete entry point above, passing their status so
+  // the rejection-specific courtesy block lights up for 'rejected' only.
   submissionApproved(user, submission, _note, lang) {
-    return templates.submissionReviewComplete(user, submission, lang);
+    return templates.submissionReviewComplete(user, submission, lang, 'approved');
   },
   submissionRejected(user, submission, _note, lang) {
-    return templates.submissionReviewComplete(user, submission, lang);
+    return templates.submissionReviewComplete(user, submission, lang, 'rejected');
   },
   submissionRevision(user, submission, _note, lang) {
-    return templates.submissionReviewComplete(user, submission, lang);
+    return templates.submissionReviewComplete(user, submission, lang, 'revision');
   },
 
 

@@ -123,10 +123,14 @@ module.exports = async function handler(req, res) {
       .single();
     if (profile && profile.email) {
       const lang = profile.email_language || profile.language || 'en';
+      // Pass status so the template can attach the rejection-specific
+      // courtesy block (English) for status='rejected'. Approved /
+      // revision stay on the neutral localised body unchanged.
       const tpl = templates.submissionReviewComplete(
         { name: profile.display_name || '' },
         { title: submission.title },
-        lang
+        lang,
+        status
       );
       sendEmail(profile.email, tpl).catch(() => {});
     }
