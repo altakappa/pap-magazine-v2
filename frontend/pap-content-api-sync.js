@@ -279,7 +279,12 @@ window._papFilmAutoPlay = function(){
       credits:  Array.isArray(e.credits) ? e.credits : e.credits || [],
       fashion:  e.fashion || null,
       gallery:  Array.isArray(e.gallery) ? e.gallery : [],
-      description: e.description || ''
+      description: e.description || '',
+      // QA #163 — films pointing at this editorial via the
+      // related_editorial_id FK. /api/editorials embeds them under
+      // related_films; pass through unmodified so the detail overlay
+      // can render a "Related Films" card section.
+      related_films: Array.isArray(e.related_films) ? e.related_films : [],
     };
   }
 
@@ -448,7 +453,11 @@ window._papFilmAutoPlay = function(){
       imageCredits: (apiEd.fashion && apiEd.fashion.imageCredits && typeof apiEd.fashion.imageCredits === 'object')
         ? apiEd.fashion.imageCredits
         : (existing.imageCredits || {}),
-      desc: apiEd.description || existing.desc || ''
+      desc: apiEd.description || existing.desc || '',
+      // QA #163 — films pointing at this editorial. apiFilmToLocal/...
+      // doesn't run on these (they come straight from the editorials
+      // join), so use the raw column names here.
+      relatedFilms: Array.isArray(apiEd.related_films) ? apiEd.related_films : (existing.relatedFilms || [])
     };
     // If API came back with no credits at all but the curated entry had
     // some, keep those so the detail page doesn't go blank on edit.

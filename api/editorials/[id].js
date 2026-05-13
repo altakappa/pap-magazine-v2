@@ -31,14 +31,31 @@ module.exports = async function handler(req, res) {
   // GET: 단건 조회
   if (req.method === 'GET') {
     try {
+      // QA #163 — reverse-fan in the films that point at this editorial
+      // via films.related_editorial_id so the detail page can render a
+      // "Related Films" section without a second round-trip. Limit to
+      // published films and a sane projection (id/slug/title/thumbnail/
+      // youtube_id/published_date) so the response stays small even when
+      // a single editorial gets multiple linked films over time.
       const { data, error } = await supabaseAdmin
         .from('editorials')
-        .select('*')
+        .select('*, related_films:films!related_editorial_id(id,slug,title,thumbnail_url,youtube_id,published_date,status)')
         .eq('id', id)
         .single();
 
       if (error || !data) {
         return res.status(404).json({ error: 'Editorial not found' });
+      }
+
+      // Filter out unpublished films before sending — service-role bypasses
+      // RLS so we have to enforce visibility here. (Doing it post-fetch
+      // keeps the join shape simple — Supabase doesn't yet support an
+      // .eq() on the joined table directly when there's no explicit
+      // relationship hint.)
+      if (Array.isArray(data.related_films)) {
+        data.related_films = data.related_films
+          .filter(f => f && f.status === 'published')
+          .sort((a, b) => String(b.published_date || '').localeCompare(String(a.published_date || '')));
       }
 
       return res.status(200).json({ data });

@@ -629,6 +629,24 @@ section.hero + .shorts-section{
 .ed-cred-val a:hover{text-decoration:underline}
 .ed-cred-handle{font-size:12px;color:rgba(255,255,255,.45);margin-left:4px}
 
+/* QA #163 — RELATED FILMS card row on editorial detail.
+   Sits between credits and "MORE CONTENT". Hidden when an editorial
+   has no linked films (most don't). Cards click through to
+   /film/<slug> (server-rendered film page). */
+.ed-related-films{background:#000;padding:40px var(--pad-x) 24px;max-width:1200px;margin:0 auto}
+.ed-related-films-title{font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;letter-spacing:.2em;color:rgba(201,169,110,.95);text-transform:uppercase;margin-bottom:18px}
+.ed-related-films-list{display:flex;gap:14px;flex-wrap:wrap}
+.ed-related-film-card{display:flex;align-items:center;gap:14px;padding:12px 14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);text-decoration:none;color:inherit;transition:background .2s,border-color .2s;flex:1 1 280px;max-width:420px;min-width:240px}
+.ed-related-film-card:hover{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.18)}
+.ed-related-film-thumb{width:96px;height:60px;background-size:cover;background-position:center;background-color:#222;flex-shrink:0}
+.ed-related-film-info{flex:1;min-width:0}
+.ed-related-film-tagline{font-size:9px;font-weight:700;letter-spacing:.2em;color:rgba(201,169,110,.95);text-transform:uppercase;margin-bottom:4px}
+.ed-related-film-title{font-size:13px;font-weight:600;color:#fff;letter-spacing:.02em;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:768px){
+  .ed-related-films{padding:32px var(--pad-x) 20px}
+  .ed-related-film-thumb{width:80px;height:50px}
+}
+
 /* MORE CONTENT: 4-col carousel */
 .ed-more-wrap{background:#000;padding:60px 0 80px}
 .ed-more-title{font-family:'Montserrat',sans-serif;font-size:clamp(20px,3vw,32px);font-weight:800;letter-spacing:.06em;text-transform:uppercase;text-align:center;color:#fff;margin-bottom:32px}

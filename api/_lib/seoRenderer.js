@@ -217,6 +217,29 @@ function renderSeoHtml(kind, record) {
         </a></section>`
     : '';
 
+  /* QA #163 — Related Films cards (editorials only). The /api/editorials
+   * reverse-join embeds matching films under record.related_films, so when
+   * an editorial has linked films we render cards that click through to
+   * /film/<slug>. Mirrors the SPA overlay's _renderRelatedFilms() output. */
+  const relFilms = (cfg.schemaType !== 'VideoObject' && Array.isArray(record.related_films))
+    ? record.related_films.filter(f => f && f.title && (f.slug || f.id))
+    : [];
+  const relatedFilmsHtml = relFilms.length
+    ? `<section class="seo-related"><h2>Related Films</h2>
+        <div class="seo-related-films">${relFilms.map(f => {
+          const ytThumb = (f.youtube_id && /^[A-Za-z0-9_-]{11}$/.test(f.youtube_id))
+            ? `https://img.youtube.com/vi/${f.youtube_id}/hqdefault.jpg` : '';
+          const thumb = f.thumbnail_url || ytThumb || '';
+          return `<a class="seo-related-card" href="/film/${escAttr(f.slug || f.id)}">
+            ${thumb ? `<img src="${escAttr(thumb)}" alt="${escAttr(f.title)} — Cover" loading="lazy" width="240" height="160">` : ''}
+            <div class="seo-related-meta">
+              <div class="seo-related-tagline">FILM</div>
+              <div class="seo-related-title">${escText(f.title)}</div>
+            </div>
+          </a>`;
+        }).join('')}</div></section>`
+    : '';
+
   /* Hero — image for editorial/article, YouTube embed for film/short.
    *
    * youtube_id has to match the canonical 11-char id shape before we
@@ -316,15 +339,16 @@ ${tags.map(t => `<meta property="article:tag" content="${escAttr(t)}">`).join('\
   .seo-credits h2{font-size:14px;letter-spacing:.12em;text-transform:uppercase;opacity:.7}
   .seo-credits ul{list-style:none;padding:0;display:flex;flex-wrap:wrap;gap:16px}
   .seo-credits li{font-size:13px;opacity:.8}
-  /* Related editorial card (films only) — QA #162 */
+  /* Related editorial / films cards — QA #162 + #163 */
   .seo-related{max-width:800px;margin:36px auto;padding:0 24px}
   .seo-related h2{font-size:14px;letter-spacing:.12em;text-transform:uppercase;opacity:.7;margin-bottom:14px}
-  .seo-related-card{display:flex;align-items:center;gap:16px;padding:16px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.02);text-decoration:none;color:inherit;transition:background .2s}
+  .seo-related-card{display:flex;align-items:center;gap:16px;padding:16px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.02);text-decoration:none;color:inherit;transition:background .2s;margin-bottom:10px}
   .seo-related-card:hover{background:rgba(255,255,255,.05)}
   .seo-related-card img{width:120px;height:80px;object-fit:cover;background:#222;flex-shrink:0}
   .seo-related-meta{flex:1;min-width:0}
   .seo-related-tagline{font-size:9px;font-weight:700;letter-spacing:.2em;color:rgba(201,169,110,.9);text-transform:uppercase;margin-bottom:6px}
   .seo-related-title{font-size:15px;font-weight:600;letter-spacing:.02em;line-height:1.4}
+  .seo-related-films{display:flex;flex-direction:column;gap:0}
   .seo-gallery{max-width:1200px;margin:48px auto;padding:0 16px;display:grid;grid-template-columns:1fr;gap:24px}
   .seo-gallery figure{margin:0}
   .seo-gallery img{display:block;width:100%;height:auto;background:#111}
@@ -353,6 +377,7 @@ ${tags.map(t => `<meta property="article:tag" content="${escAttr(t)}">`).join('\
     ${galleryHtml}
     ${creditsHtml}
     ${relatedEditorialHtml}
+    ${relatedFilmsHtml}
   </article>
 </main>
 

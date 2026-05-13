@@ -30,9 +30,14 @@ module.exports = async function handler(req, res) {
         if (!admin) return;
       }
 
+      // QA #163 — reverse-fan the films pointing at each editorial via
+      // films.related_editorial_id so the SPA overlay can render a
+      // "Related Films" card without a per-row second fetch. Most
+      // editorials have 0 linked films today so the bloat is minimal;
+      // if usage scales we can move this to an opt-in flag later.
       let query = supabaseAdmin
         .from('editorials')
-        .select('*', { count: 'exact' })
+        .select('*, related_films:films!related_editorial_id(id,slug,title,thumbnail_url,youtube_id,published_date,status)', { count: 'exact' })
         .eq('status', requestedStatus)
         .order('published_date', { ascending: false })
         .range(offset, offset + parseInt(limit) - 1);
@@ -49,6 +54,20 @@ module.exports = async function handler(req, res) {
       const { data, error, count } = await query;
 
       if (error) throw error;
+
+      // Strip non-published films from the embedded array (service-role
+      // bypasses RLS) and sort newest-first. Done in JS instead of an
+      // .eq() on the joined table because PostgREST's join filter
+      // doesn't take an .eq() through the alias syntax we use here.
+      if (Array.isArray(data)) {
+        for (const row of data) {
+          if (Array.isArray(row.related_films)) {
+            row.related_films = row.related_films
+              .filter(f => f && f.status === 'published')
+              .sort((a, b) => String(b.published_date || '').localeCompare(String(a.published_date || '')));
+          }
+        }
+      }
 
       return res.status(200).json({
         data,

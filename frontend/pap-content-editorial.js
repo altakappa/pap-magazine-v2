@@ -351,6 +351,47 @@ function _renderEditorialVideo(rawUrl){
   }
 }
 
+// QA #163 — Related Films card list. Films link to editorials via
+// films.related_editorial_id; /api/editorials embeds the reverse-FK
+// list under editorial.related_films, and apiEditorialToLocal +
+// _populateEdDetailsFromApi pass it through as det.relatedFilms.
+//
+// Renders a horizontal row of thumbnail+title cards. Clicking a card
+// navigates to /film/<slug> (server-rendered film page); we don't try
+// to hand off to the overlay because the overlay state lives in the
+// film page, not the editorial overlay.
+function _renderRelatedFilms(films){
+  var wrap = document.getElementById('edDetailRelatedFilms');
+  var list = document.getElementById('edDetailRelatedFilmsList');
+  if (!wrap || !list) return;
+  list.innerHTML = '';
+  wrap.hidden = true;
+  if (!Array.isArray(films) || films.length === 0) return;
+  films.forEach(function(f){
+    if (!f || !f.title) return;
+    var slug = f.slug || f.id || '';
+    if (!slug) return;
+    // Use the film's own thumbnail, falling back to its YouTube poster
+    // when the row never had a thumbnail_url uploaded (legacy migration).
+    var thumb = f.thumbnail_url
+      || (f.youtube_id && /^[A-Za-z0-9_-]{11}$/.test(f.youtube_id)
+            ? 'https://img.youtube.com/vi/' + f.youtube_id + '/hqdefault.jpg'
+            : '');
+    var safeTitle = String(f.title).replace(/"/g,'&quot;');
+    var safeThumb = String(thumb).replace(/"/g,'&quot;');
+    var href = '/film/' + encodeURIComponent(slug);
+    list.insertAdjacentHTML('beforeend',
+      '<a class="ed-related-film-card" href="'+href+'">'
+        + '<div class="ed-related-film-thumb" style="background-image:url(\''+safeThumb+'\')"></div>'
+        + '<div class="ed-related-film-info">'
+          + '<div class="ed-related-film-tagline">FILM</div>'
+          + '<div class="ed-related-film-title">'+escapeHtml(String(f.title))+'</div>'
+        + '</div>'
+      + '</a>');
+  });
+  wrap.hidden = false;
+}
+
 function _openEditorialInner(title,thumb){
   var d=edDetails[title];
   if(!d){var titleLower=title.toLowerCase();for(var key in edDetails){if(key.toLowerCase()===titleLower){d=edDetails[key];break;}}}
@@ -524,6 +565,10 @@ function _openEditorialInner(title,thumb){
   // Fashion by — removed (shown as hover credits on images)
   cr.innerHTML=ch;
 
+  // QA #163 — Related Films (reverse-FK from films.related_editorial_id).
+  // Hidden if the editorial has no linked films; otherwise renders cards.
+  _renderRelatedFilms(det && det.relatedFilms);
+
   // ─── QA #83 — Logo / distribution files moved to mypage ───
   // Per the IA redesign, downloadable assets are no longer surfaced on
   // the public editorial detail page. We keep the slot but render only a
@@ -694,6 +739,8 @@ function _openEditorialInner_noPush(title,thumb){
     ch+='<div class="ed-cred-row"><div class="ed-cred-role">'+c.r+'</div><div class="ed-cred-val">'+vals+'</div></div>';
   });
   cr.innerHTML=ch;
+  // QA #163 — Related Films (popstate restoration path).
+  _renderRelatedFilms(det && det.relatedFilms);
   var logoSection=document.getElementById('edLogoDownload');
   if(logoSection){
     var logoFolderId=getLogoFolderId(title);

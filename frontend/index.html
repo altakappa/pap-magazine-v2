@@ -1100,6 +1100,15 @@
     <div class="ed-credits-table" id="edDetailCredits"></div>
   </div>
 
+  <!-- QA #163 — RELATED FILMS card section. Hidden by default; the
+       renderer (pap-content-editorial.js#_renderRelatedFilms) flips it
+       on whenever the editorial's API row carries non-empty related_films
+       (reverse-FK from films.related_editorial_id). -->
+  <section class="ed-related-films" id="edDetailRelatedFilms" hidden>
+    <div class="ed-related-films-title">RELATED FILMS</div>
+    <div class="ed-related-films-list" id="edDetailRelatedFilmsList"></div>
+  </section>
+
   <!-- SOCIAL (Rating + Comments) -->
   <div class="ed-credits-wrap">
     <div id="edSocialSlot"></div>
