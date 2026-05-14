@@ -631,20 +631,42 @@ function _openEditorialInner(title,thumb){
   document.getElementById('edOverlay').scrollTop=0;
   document.body.style.overflow='hidden';
   if(typeof _resetCursorForModal==='function') _resetCursorForModal();
-  // Push state with editorial info so popstate can restore it
+  // Push state with editorial info so popstate can restore it.
+  // QA #166 — clean URLs: /editorial/<slug> instead of #editorial/<title>.
+  // Vercel rewrites /editorial/:slug → SSR endpoint on direct hits, so
+  // the in-app pushState and a refresh-of-this-URL converge on the same
+  // canonical address (no more hash-vs-path divergence in shares).
+  // Slug priority: edDetails[title].slug (DB) → admin's saved slug
+  //              → _editorialTitleToSlug fallback (legacy static entries).
   var _edThumb=det.thumb||thumb||'';
-  // replaceState when arriving via deep-link (#editorial/Title already in URL),
-  // pushState for in-app opens — prevents duplicate history entries that
-  // would make the X / back button land on the same hash.
+  var _edSlug = (d && d.slug) || _editorialTitleToSlug(title);
   try{
-    var _ehash='#editorial/'+encodeURIComponent(title);
-    var _epath=window.location.pathname+_ehash;
-    if(window.location.hash===_ehash){
-      history.replaceState({editorial:true,title:title,thumb:_edThumb},'',_epath);
+    var _epath = '/editorial/' + _edSlug;
+    var _state = {editorial:true, title:title, slug:_edSlug, thumb:_edThumb};
+    if(window.location.pathname === _epath){
+      history.replaceState(_state, '', _epath);
     }else{
-      history.pushState({editorial:true,title:title,thumb:_edThumb},'',_epath);
+      history.pushState(_state, '', _epath);
     }
-  }catch(e){window.location.hash='#editorial/'+encodeURIComponent(title);}
+  }catch(e){
+    // Last-ditch — pushState blocked. Don't fall back to hash form
+    // anymore; clean URLs are the contract. The overlay still opens,
+    // just without a shareable URL change.
+  }
+}
+
+// QA #166 — title → URL slug fallback. Used when an editorial entry
+// has no DB slug (static-snapshot rows that pre-date the slug column).
+// Keeps Korean characters because the SSR endpoint resolves them via
+// decodeURIComponent + title-fallback lookup (api/seo/editorial/[slug].js).
+function _editorialTitleToSlug(t){
+  return String(t||'')
+    .toLowerCase()
+    .replace(/['"`]+/g, '')
+    .replace(/[^\w\s가-힣-]+/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
 }
 
 // Version of _openEditorialInner that does NOT push a new history entry (used by popstate)
@@ -779,7 +801,11 @@ function closeEditorial(skipHistory){
   } else {
     document.body.style.overflow='';
   }
-  if(!skipHistory && window.location.hash.indexOf('#editorial/')===0){
+  // QA #166 — was checking window.location.hash before. With clean URLs
+  // there's no hash; gate on history.state.editorial instead so back()
+  // fires for BOTH legacy hash arrivals AND the new path form. The
+  // skipHistory flag stays the safety net for popstate-driven closes.
+  if(!skipHistory && history && history.state && history.state.editorial){
     history.back();
   }
 }

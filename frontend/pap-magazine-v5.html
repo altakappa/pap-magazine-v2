@@ -1504,7 +1504,16 @@ function openEditorial(title,thumb){
   document.getElementById('edOverlay').classList.add('active');
   document.getElementById('edOverlay').scrollTop=0;
   document.body.style.overflow='hidden';
-  try{history.pushState({editorial:true,title:title},'',window.location.pathname+'#editorial/'+encodeURIComponent(title));}catch(e){window.location.hash='#editorial/'+encodeURIComponent(title);}
+  // QA #166 — clean URLs: /editorial/<slug>. The legacy v5 page doesn't
+  // wire edDetails to the API the same way pap-content-api-sync does,
+  // so we derive the slug from the title here (Vercel SSR endpoint has
+  // a slug → title fallback that resolves either form).
+  try{
+    var _slug = String(title||'').toLowerCase()
+      .replace(/['"`]+/g,'').replace(/[^\w\s가-힣-]+/g,'')
+      .trim().replace(/\s+/g,'-').replace(/-+/g,'-');
+    history.pushState({editorial:true,title:title,slug:_slug},'','/editorial/'+_slug);
+  }catch(e){}
 }
 
 function closeEditorial(skipHistory){
@@ -1901,8 +1910,14 @@ function openArticleDetail(idx){
   overlay.scrollTop=0;
   document.body.style.overflow='hidden';
   
-  // Push state for back button
-  try{history.pushState({article:true,idx:idx},'',window.location.pathname+'#article/'+encodeURIComponent(a.slug||a.t));}catch(e){}
+  // Push state for back button.
+  // QA #166 — clean URLs: /article/<slug>.
+  try{
+    var _aSlug = a.slug || String(a.t||'').toLowerCase()
+      .replace(/['"`]+/g,'').replace(/[^\w\s가-힣-]+/g,'')
+      .trim().replace(/\s+/g,'-').replace(/-+/g,'-');
+    history.pushState({article:true,idx:idx,slug:_aSlug,title:a.t||''},'','/article/'+_aSlug);
+  }catch(e){}
 }
 function closeArticleDetail(skipHistory){
   var overlay=document.getElementById('artDetailOverlay');

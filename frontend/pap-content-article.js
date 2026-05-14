@@ -218,16 +218,32 @@ function _openArticleDetailInner(idx){
   overlay.scrollTop=0;
   document.body.style.overflow='hidden';
   
-  // Push state for back button
+  // Push state for back button.
+  // QA #166 — clean URLs: /article/<slug> instead of #article/<slug>.
+  // Articles already carried a slug (apiArticleToLocal preserved it);
+  // now we put it in the path proper so Vercel's SSR rewrite catches
+  // direct refreshes/shares on the same URL.
   try{
-    var _ahash='#article/'+encodeURIComponent(a.slug||a.t);
-    var _apath=window.location.pathname+_ahash;
-    if(window.location.hash===_ahash){
-      history.replaceState({article:true,idx:idx},'',_apath);
+    var _aSlug = a.slug || _articleTitleToSlug(a.t || '');
+    var _apath = '/article/' + _aSlug;
+    var _aState = {article:true, idx:idx, slug:_aSlug, title:a.t||''};
+    if(window.location.pathname === _apath){
+      history.replaceState(_aState, '', _apath);
     }else{
-      history.pushState({article:true,idx:idx},'',_apath);
+      history.pushState(_aState, '', _apath);
     }
   }catch(e){}
+}
+
+// QA #166 — title → URL slug fallback for legacy articles missing a slug.
+function _articleTitleToSlug(t){
+  return String(t||'')
+    .toLowerCase()
+    .replace(/['"`]+/g, '')
+    .replace(/[^\w\s가-힣-]+/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
 }
 function closeArticleDetail(skipHistory){
   var overlay=document.getElementById('artDetailOverlay');

@@ -114,6 +114,8 @@ window._papFilmAutoPlay = function(){
       // through to the overlay renderer so "Related Editorial" can be shown
       // without a second round-trip. Falls back to null when absent.
       rel: f.related_editorial || null,
+      // QA #166 — slug for /film/<slug> clean URLs. Mirrors editorial flow.
+      slug: f.slug || '',
       _api_id: f.id
     };
   }
@@ -268,6 +270,10 @@ window._papFilmAutoPlay = function(){
       hero:  hero,
       date:  e.published_date || e.created_at || '',
       url:   slug ? ('/'+slug+'/') : ('/editorial/'+(e.id||'')),
+      // QA #166 — slug for clean URL routing (/editorial/<slug>).
+      // edDetails consumer reads this when building pushState so the
+      // in-app navigation matches the SSR endpoint served on direct hits.
+      slug:  slug,
       tags:  Array.isArray(e.tags) ? e.tags : (typeof e.tags==='string' ? e.tags.split(',').map(function(t){return t.trim();}).filter(Boolean) : []),
       _api_id: e.id,
       // Carry the rest through so editorial-detail rendering can lift
@@ -423,6 +429,11 @@ window._papFilmAutoPlay = function(){
       // DB UUID — needed by /api/editorials/:id/view tracking. Static-JSON
       // snapshot entries don't have this; tracker skips them on open.
       id:     apiEd._api_id || existing.id || '',
+      // QA #166 — slug for clean URL routing. _openEditorialInner reads
+      // this when building the pushState URL (/editorial/<slug>).
+      // Static-snapshot entries lack a slug; the consumer falls back to
+      // a title-derived slug for those.
+      slug:   apiEd.slug || existing.slug || '',
       // Issue subtitle. Priority: admin-typed value (apiEd.issue) wins
       // because that's the live source of truth; curated existing.issue
       // is the static-JSON snapshot and only used as fallback. Year is

@@ -202,15 +202,31 @@ function _openFilmDetailInner(idx){
   }
   overlay.classList.add('active');
   document.body.style.overflow='hidden';
+  // QA #166 — clean URLs: /film/<slug> instead of #film/<title>.
+  // Slug from DB (apiFilmToLocal); falls back to title-derived slug for
+  // static-snapshot rows that pre-date the slug column.
   try{
-    var _fhash='#film/'+encodeURIComponent(f.t||'');
-    var _fpath=window.location.pathname+_fhash;
-    if(window.location.hash===_fhash){
-      history.replaceState({film:true,idx:idx},'',_fpath);
+    var _fSlug = f.slug || _filmTitleToSlug(f.t||'');
+    var _fpath = '/film/' + _fSlug;
+    var _fState = {film:true, idx:idx, slug:_fSlug, title:f.t||''};
+    if(window.location.pathname === _fpath){
+      history.replaceState(_fState, '', _fpath);
     }else{
-      history.pushState({film:true,idx:idx},'',_fpath);
+      history.pushState(_fState, '', _fpath);
     }
   }catch(e){}
+}
+
+// QA #166 — title → URL slug fallback for films without a DB slug.
+// Same shape as the editorial helper.
+function _filmTitleToSlug(t){
+  return String(t||'')
+    .toLowerCase()
+    .replace(/['"`]+/g, '')
+    .replace(/[^\w\s가-힣-]+/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
 }
 function _findFilmByTitle(title){
   if(!title) return -1;

@@ -87,15 +87,21 @@ function searchEditorials(query){
         item.className='search-dropdown-item';
         // Click handler — universal across home and sub pages.
         // On home (where #edOverlay exists) open the overlay directly.
-        // On any other page, deep-link to /#editorial/Title so the home
-        // page's auto-open hash handler renders the overlay after landing.
+        // On any other page, QA #166 — link to the clean SSR URL
+        // /editorial/<slug>. The slug is on the API record; falls back
+        // to a title-slug for static-snapshot entries that pre-date
+        // the DB column.
         (function(ed){
           item.onclick=function(){
             try{ toggleSearch(); }catch(_){}
             if(typeof openEditorial==='function' && document.getElementById('edOverlay')){
               openEditorial(ed.title, ed.img);
             } else {
-              window.location.href = '/#editorial/' + encodeURIComponent(ed.title);
+              var _slug = ed.slug
+                || String(ed.title||'').toLowerCase()
+                     .replace(/['"`]+/g,'').replace(/[^\w\s가-힣-]+/g,'')
+                     .trim().replace(/\s+/g,'-').replace(/-+/g,'-');
+              window.location.href = '/editorial/' + _slug;
             }
           };
         })(e);

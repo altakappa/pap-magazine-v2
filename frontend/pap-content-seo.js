@@ -42,7 +42,13 @@ function _updateEditorialMeta(title, det){
     desc = title + ' — ' + (det && det.issue || '') + ' on PAP Magazine';
   }
   var img = (det && det.thumb) || '';
-  var url = 'https://www.pap-magazine.com/#editorial/' + encodeURIComponent(title);
+  // QA #166 — clean URL matches what _openEditorialInner pushes and what
+  // the SSR endpoint serves. Hash form is dead; use /editorial/<slug>.
+  // Slug priority: edDetails[title].slug → title-to-slug fallback.
+  var _slug = (det && det.slug) || (typeof _editorialTitleToSlug === 'function'
+    ? _editorialTitleToSlug(title)
+    : String(title||'').toLowerCase().replace(/[^\w\s가-힣-]+/g,'').trim().replace(/\s+/g,'-'));
+  var url = 'https://www.pap-magazine.com/editorial/' + _slug;
   var pageTitle = title + ' | PAP Magazine';
 
   // Helper: get-or-create a meta tag and set its content.
@@ -144,11 +150,15 @@ if(document.readyState === 'loading'){
 } else {
   _captureHomeMeta();
 }
-// Reset on popstate when hash leaves the editorial namespace
+// Reset on popstate when we leave the editorial namespace.
+// QA #166 — accept BOTH legacy #editorial/X hash form and the new
+// /editorial/<slug> path form so back-navigation off either still
+// restores the homepage meta correctly.
 window.addEventListener('popstate', function(){
-  if(window.location.hash.indexOf('#editorial/') !== 0){
-    _resetEditorialMeta();
-  }
+  var stillInEditorial =
+       window.location.hash.indexOf('#editorial/') === 0
+    || window.location.pathname.indexOf('/editorial/') === 0;
+  if(!stillInEditorial) _resetEditorialMeta();
 });
 
 // ======== DEEP LINK: open editorial from hash #editorial/Title ========
@@ -221,6 +231,14 @@ window.addEventListener('popstate', function(){
       var elapsed = Date.now() - hashPollStart;
       if(!hit && elapsed < 4000){ setTimeout(tryOpenHash,120); return; }
       try { openEditorial(resolved, ''); } catch(e) {}
+      // QA #166 — openEditorial pushes /editorial/<slug>, which leaves
+      // the legacy #editorial/<X> hash hanging on the address bar (the
+      // pushState only changes pathname; the hash stays). Strip it.
+      try{
+        if(window.location.hash.indexOf('#editorial/')===0){
+          history.replaceState(history.state, '', window.location.pathname + window.location.search);
+        }
+      }catch(_){}
       // Fade body in shortly after the overlay starts painting.
       setTimeout(_revealHashBody, 60);
     }
