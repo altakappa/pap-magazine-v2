@@ -311,6 +311,57 @@ window.addEventListener('popstate',function(e){
     return;
   }
 
+  // QA #166 — film/article/list states need EXPLICIT restore handling.
+  // The catch-all below "close whatever is active" mistakenly closes the
+  // underlying overlay when the user dismisses a popup that sat on top
+  // of it (e.g. clicking × on a creator popup that was opened from a
+  // film detail's credit row). After closeCreatorPopup → history.back(),
+  // popstate fires with st={film:true,idx:N} and the catch-all would
+  // close the film detail because it's still .active — even though the
+  // user just wanted to dismiss the popup and return to the detail view.
+  //
+  // The blocks below treat these states as "stay here" anchors: dismiss
+  // anything that's stacked on top, but leave the target overlay alone.
+
+  // Back to a film detail page
+  if(st && st.film){
+    if(cpOv && cpOv.classList.contains('active')){cpOv.classList.remove('active');unlockScroll();}
+    var _fd=document.getElementById('filmDetailOverlay');
+    if((!_fd || !_fd.classList.contains('active')) && typeof openFilmDetail==='function' && typeof st.idx==='number'){
+      // Forward/back across a page reload — overlay is gone; re-create it.
+      // openFilmDetail does replaceState when the URL hash already matches,
+      // so we don't double-push history.
+      openFilmDetail(st.idx);
+    }
+    return;
+  }
+  // Back to an article detail page
+  if(st && st.article){
+    if(cpOv && cpOv.classList.contains('active')){cpOv.classList.remove('active');unlockScroll();}
+    var _ad=document.getElementById('artDetailOverlay');
+    if((!_ad || !_ad.classList.contains('active')) && typeof openArticleDetail==='function' && typeof st.idx==='number'){
+      openArticleDetail(st.idx);
+    }
+    return;
+  }
+  // Back to a list overlay (films-all / articles-all / editorials-all).
+  // The list is still .active underneath whatever sat on top. Dismiss
+  // any detail / popup that's stacked, but leave the list alone.
+  // closeFilmDetail(true) etc. pass skipHistory so we don't fire a
+  // second popstate by chaining history.back() in the closers.
+  if(st && st.overlay){
+    if(cpOv && cpOv.classList.contains('active')){cpOv.classList.remove('active');unlockScroll();}
+    var _fdL=document.getElementById('filmDetailOverlay');
+    if(_fdL && _fdL.classList.contains('active')){closeFilmDetail(true);}
+    var _adL=document.getElementById('artDetailOverlay');
+    if(_adL && _adL.classList.contains('active')){closeArticleDetail(true);}
+    // Note: edOverlay is the editorial DETAIL overlay (single editorial),
+    // and edAllOverlay is the editorial LIST. The list never has a detail
+    // overlay opened on top of it in the same stack, so we don't touch
+    // edOv here — the catch-all paths above handle editorial cases.
+    return;
+  }
+
   // Otherwise, close whatever overlay is open
   // Close creator popup first
   if(cpOv && cpOv.classList.contains('active')){
