@@ -5,7 +5,7 @@
  */
 
 const { supabaseAdmin } = require('../_lib/supabase');
-const { requireAdmin } = require('../_lib/auth');
+const { requireMainAdmin } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 
@@ -17,7 +17,9 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  const admin = await requireAdmin(req, res);
+  // QA #169 — suspending or deleting an account is irreversible, so it's
+  // gated to the main admin only. Staff who try will see a 403.
+  const admin = await requireMainAdmin(req, res);
   if (!admin) return;
 
   const { memberId, action } = req.body;

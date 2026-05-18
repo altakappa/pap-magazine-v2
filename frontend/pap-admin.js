@@ -78,14 +78,51 @@ document.addEventListener('DOMContentLoaded',function(){
       return;
     }
     var user=PAP.auth.getUser();
-    if(!user||user.role!=='admin'){
+    // QA #169 — admin page is accessible to BOTH 대표 ('admin') and 스태프
+    // ('staff'). The UI itself is gated per-action below.
+    if(!user || (user.role!=='admin' && user.role!=='staff')){
       document.body.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:Montserrat,sans-serif;color:#fff;background:#000;flex-direction:column"><h1 style="font-size:18px;letter-spacing:.15em">ACCESS DENIED</h1><p style="margin-top:12px;font-size:12px;color:rgba(255,255,255,.4)">Admin privileges required.</p><a href="index.html" style="margin-top:24px;color:#fff;font-size:11px;letter-spacing:.1em">← BACK TO MAGAZINE</a></div>';
       return;
     }
+    // Expose role globally so per-button gates below don't have to fetch.
+    window._papRole = user.role;
+    window._papIsMainAdmin = (user.role === 'admin');
+    _applyRoleVisibility(user.role);
   }
   // Auto-load dashboard stats
   loadDashboardStats();
 });
+
+// QA #169 — show/hide elements based on current admin role.
+// CSS selectors used:
+//   [data-role-main]  → visible to '대표' only (main admin, role='admin')
+//   [data-role-any]   → visible to both '대표' and '스태프'
+// Also populates the sidebar role badge. Called once on DOMContentLoaded
+// and again whenever a modal that contains role-gated buttons opens (the
+// review modal stays in the DOM but its buttons are toggled here).
+function _applyRoleVisibility(role){
+  var isMain = (role === 'admin');
+  document.querySelectorAll('[data-role-main]').forEach(function(el){
+    el.style.display = isMain ? '' : 'none';
+  });
+  // Staff-only notice block inside the review modal
+  var notice = document.getElementById('reviewStaffNotice');
+  if(notice) notice.style.display = isMain ? 'none' : '';
+  // Sidebar role badge
+  var badge = document.getElementById('sbRoleBadge');
+  if(badge){
+    if(isMain){
+      badge.textContent = '대표 관리자';
+      badge.style.color = '#fff';
+      badge.style.borderColor = 'rgba(180,180,255,.4)';
+    } else if(role === 'staff'){
+      badge.textContent = '스태프';
+      badge.style.color = 'rgba(255,180,80,.95)';
+      badge.style.borderColor = 'rgba(255,180,80,.35)';
+    }
+    badge.style.display = 'block';
+  }
+}
 
 // ======== MEMBER MANAGEMENT (Supabase) ========
 var allMembers=[];
@@ -250,10 +287,24 @@ function openMemberModal(memberId){
   document.getElementById('memberEditPlan').value=_getMemberPlan(m);
   document.getElementById('memberEditStatus').value=_getMemberStatus(m);
   document.getElementById('memberModalTitle').textContent=(m.name||m.email)+' 회원 관리';
-  // Hide suspend/delete for admins
-  var isAdmin=_getMemberRole(m)==='admin';
-  document.getElementById('memberSuspendBtn').style.display=isAdmin?'none':'';
-  document.getElementById('memberDeleteBtn').style.display=isAdmin?'none':'';
+  // Hide suspend/delete for elevated roles (main admin OR staff)
+  var memberRole = _getMemberRole(m);
+  var isElevated = (memberRole === 'admin' || memberRole === 'staff');
+  document.getElementById('memberSuspendBtn').style.display=isElevated?'none':'';
+  document.getElementById('memberDeleteBtn').style.display=isElevated?'none':'';
+  // QA #169 — role select is read-only for staff (only main admin can
+  // promote/demote). Plan + status stay editable so staff can still
+  // resolve billing issues.
+  var roleSel = document.getElementById('memberEditRole');
+  var roleLock = document.getElementById('memberEditRoleLock');
+  var isMain = window._papIsMainAdmin === true;
+  if(roleSel) roleSel.disabled = !isMain;
+  if(roleLock) roleLock.style.display = isMain ? 'none' : '';
+  // Suspend/delete buttons disabled for staff (main-admin only on backend)
+  if(!isMain){
+    document.getElementById('memberSuspendBtn').style.display = 'none';
+    document.getElementById('memberDeleteBtn').style.display  = 'none';
+  }
   document.getElementById('memberModal').classList.add('show');
 }
 
@@ -267,11 +318,16 @@ async function saveMemberEdit(){
   var plan=document.getElementById('memberEditPlan').value;
   var status=document.getElementById('memberEditStatus').value;
   if(!id) return;
+  // QA #169 — only the main admin is allowed to send a role change. For
+  // staff we omit the field entirely so the backend (which gates role
+  // changes behind requireMainAdmin) never sees it.
+  var body = { memberId: id, subscriptionPlan: plan, subscriptionStatus: status };
+  if (window._papIsMainAdmin === true) body.role = role;
   try{
     var resp=await fetch(_apiBase+'/admin/member-update',{
       method:'PATCH',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+localStorage.getItem('pap-token'),'X-Requested-With':'XMLHttpRequest'},
-      body:JSON.stringify({memberId:id,role:role,subscriptionPlan:plan,subscriptionStatus:status})
+      body:JSON.stringify(body)
     });
     var data=await resp.json();
     if(!resp.ok) throw new Error(data.message||'Update failed');

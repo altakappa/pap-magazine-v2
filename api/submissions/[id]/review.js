@@ -8,7 +8,7 @@
  */
 
 const { supabaseAdmin } = require('../../_lib/supabase');
-const { requireAdmin } = require('../../_lib/auth');
+const { requireAdmin, requireMainAdmin } = require('../../_lib/auth');
 const { handleCors } = require('../../_lib/cors');
 const { sendEmail, templates } = require('../../_lib/email');
 const { getOptimizedThumbnail, getOptimizedHero } = require('../../_lib/imageOptimize');
@@ -154,7 +154,15 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  const admin = await requireAdmin(req, res);
+  // QA #169 — role-gated review. Staff can request revisions (low-risk;
+  // bounces the work back to the submitter), but the final approve/reject
+  // signoff is reserved for the main admin. We peek at the body first to
+  // pick the right middleware, so non-admins still see the regular 403.
+  const intendedStatus = req.body && req.body.status;
+  const requiresMainAdmin = intendedStatus === 'approved' || intendedStatus === 'rejected';
+  const admin = requiresMainAdmin
+    ? await requireMainAdmin(req, res)
+    : await requireAdmin(req, res);
   if (!admin) return;
 
   try {

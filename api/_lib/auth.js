@@ -141,14 +141,54 @@ async function requireAuthStrict(req, res) {
 }
 
 /**
- * Middleware: require admin role
- * Returns user payload or sends 403
+ * Middleware: require admin role (either Main Admin OR Staff).
+ *
+ * QA #169 — split single admin tier into two:
+ *   - 'admin' = 대표 관리자 (main admin, final approval power)
+ *   - 'staff' = 서브 관리자 (sub admin, can edit drafts/request revisions)
+ *
+ * Most editorial CRUD is still allowed for both tiers — only the FINAL
+ * approve/reject vote on a submission is gated to main admin via
+ * requireMainAdmin below. The returned user payload includes `role` so
+ * downstream handlers can branch further if needed.
+ *
+ * Returns user payload or sends 403.
  */
 async function requireAdmin(req, res) {
   const user = requireAuth(req, res);
   if (!user) return null;
 
-  // Double-check admin role from database
+  // Double-check role from database (JWT's role may be stale).
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (!profile || (profile.role !== 'admin' && profile.role !== 'staff')) {
+    res.status(403).json({ message: 'Admin access required' });
+    return null;
+  }
+
+  // Surface the fresh role so callers can do their own fine-grained gating
+  // (e.g. "only show 회원 관리 to main admin") without a second DB roundtrip.
+  return { ...user, role: profile.role };
+}
+
+/**
+ * Middleware: require MAIN admin role only.
+ *
+ * Reserved for irreversible / signoff actions:
+ *   - Final approve / reject on a submission
+ *   - Promoting or demoting other accounts (staff → admin)
+ *   - Deleting members
+ *
+ * Returns user payload or sends 403.
+ */
+async function requireMainAdmin(req, res) {
+  const user = requireAuth(req, res);
+  if (!user) return null;
+
   const { data: profile } = await supabaseAdmin
     .from('profiles')
     .select('role')
@@ -156,11 +196,11 @@ async function requireAdmin(req, res) {
     .single();
 
   if (!profile || profile.role !== 'admin') {
-    res.status(403).json({ message: 'Admin access required' });
+    res.status(403).json({ message: 'Main admin access required' });
     return null;
   }
 
-  return user;
+  return { ...user, role: profile.role };
 }
 
 /**
@@ -184,4 +224,4 @@ async function invalidateTokens(userId) {
   }
 }
 
-module.exports = { generateToken, verifyToken, requireAuth, requireAuthStrict, requireAdmin, invalidateTokens, setAuthCookie, clearAuthCookie };
+module.exports = { generateToken, verifyToken, requireAuth, requireAuthStrict, requireAdmin, requireMainAdmin, invalidateTokens, setAuthCookie, clearAuthCookie };
