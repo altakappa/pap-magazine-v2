@@ -121,6 +121,13 @@ module.exports = async function handler(req, res) {
       // brand crew per image.
       const looks = Array.isArray(data.looks) ? data.looks : [];
       const lookImageMap = Array.isArray(data.lookImageMap) ? data.lookImageMap : [];
+      // QA #168 — also persist the STRUCTURED team array
+      // [{ role, name, instagram, website }, …]. data.credits is a lossy
+      // flat-string view kept for legacy consumers; review.js stage-as-
+      // editorial now reads `team` directly so it can populate editorial
+      // .credits in its native shape ({roles[], name, instagram, website})
+      // without re-parsing "Name (@handle)" strings.
+      const team = Array.isArray(data.team) ? data.team : [];
 
       const { data: submission, error } = await supabaseAdmin
         .from('submissions')
@@ -131,6 +138,7 @@ module.exports = async function handler(req, res) {
             genre: data.genre || [],
             artistStatement: data.artistStatement || '',
             credits: data.credits || {},
+            team,
             models: data.models || [],
             coverImageIndex: data.coverImageIndex || 0,
             contactEmail: data.contactEmail || '',

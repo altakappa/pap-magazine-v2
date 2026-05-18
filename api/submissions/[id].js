@@ -114,6 +114,9 @@ module.exports = async function handler(req, res) {
       const revisionMarker = '[Resubmitted ' + ts + ' UTC by submitter]';
       const newNotes = prevNotes ? prevNotes + '\n\n' + revisionMarker : revisionMarker;
 
+      // QA #168 — persist structured team array (mirror of POST path)
+      const team = Array.isArray(data.team) ? data.team : [];
+
       const { data: updated, error: updateErr } = await supabaseAdmin
         .from('submissions')
         .update({
@@ -122,6 +125,7 @@ module.exports = async function handler(req, res) {
             genre: data.genre || [],
             artistStatement: data.artistStatement || '',
             credits: data.credits || {},
+            team,
             models: data.models || [],
             coverImageIndex: data.coverImageIndex || 0,
             contactEmail: data.contactEmail || '',

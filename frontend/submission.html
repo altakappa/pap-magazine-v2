@@ -2345,6 +2345,29 @@ async function submitForm(){
     }
   });
 
+  // QA #168 — cover index MUST be a GLOBAL index into the final file_urls
+  // array, not a per-look index. selectedCoverIdx alone is "image index
+  // within selectedCoverLook" — passing that as coverImageIndex broke
+  // stage-as-editorial (review.js) because it would look up
+  // file_urls[2] when the user picked "look 3, image 2".
+  // Resolve the (lookN, imgIdxInLook) pair against the lookImageMap we
+  // just built. Falls back to 0 if no match (shouldn't happen unless the
+  // user removed the cover image after picking it).
+  (function _resolveGlobalCoverIdx(){
+    if (typeof selectedCoverLook !== 'number' || selectedCoverLook <= 0) {
+      data.coverImageIndex = 0;
+      return;
+    }
+    for (var m = 0; m < data.lookImageMap.length; m++) {
+      var ent = data.lookImageMap[m];
+      if (ent && ent.lookN === selectedCoverLook && ent.imgIdxInLook === selectedCoverIdx) {
+        data.coverImageIndex = m;
+        return;
+      }
+    }
+    data.coverImageIndex = 0;
+  })();
+
 
   // QA #91 — surface progress through the full-screen overlay AND keep the
   // submit button disabled so a stray double-tap can't trigger a second

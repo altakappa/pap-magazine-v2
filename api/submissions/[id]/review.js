@@ -14,6 +14,138 @@ const { sendEmail, templates } = require('../../_lib/email');
 const { getOptimizedThumbnail, getOptimizedHero } = require('../../_lib/imageOptimize');
 const { rateLimit, RATE_LIMITS } = require('../../_lib/rateLimit');
 
+// ── QA #168 — converters from submission-shape to editorial-shape ──
+
+// Title Case "photo_assist" → "Photo Assist" (matches editorial role labels).
+function _humanizeRoleKey(k) {
+  if (!k) return '';
+  return String(k)
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+// Parse legacy "Name (@handle)" / "Name (https://…)" credit strings into
+// the structured form. Used as a fallback when desc.team is absent
+// (submissions filed before QA #168 only stored desc.credits flat).
+function _parseLegacyCreditString(s) {
+  const str = String(s || '').trim();
+  if (!str) return null;
+  const m = str.match(/^(.+?)\s*\(\s*([^)]+?)\s*\)\s*$/);
+  if (!m) return { name: str, instagram: '', website: '' };
+  const name = m[1].trim();
+  const link = m[2].trim();
+  if (/^https?:\/\//i.test(link)) return { name, instagram: '', website: link };
+  return { name, instagram: link, website: '' };
+}
+
+// Build editorial.credits array from submission description.
+//   Output: [{ roles: ['Photographer'], name, instagram, website }, …]
+// Priority order:
+//   1. desc.team   — structured array saved since QA #168 (preferred)
+//   2. desc.credits — legacy flat-string view, re-parsed back to structure
+//   3. desc.models — appended as 'Starring' role entries
+function _buildEditorialCredits(desc) {
+  const out = [];
+  if (Array.isArray(desc.team) && desc.team.length) {
+    desc.team.forEach((m) => {
+      if (!m || !m.name) return;
+      const role = (m.role || '').trim() || 'Credit';
+      out.push({
+        roles: [role],
+        name: String(m.name || '').trim(),
+        instagram: String(m.instagram || '').trim(),
+        website: String(m.website || '').trim(),
+      });
+    });
+  } else if (desc.credits && typeof desc.credits === 'object') {
+    Object.keys(desc.credits).forEach((roleKey) => {
+      const arr = Array.isArray(desc.credits[roleKey]) ? desc.credits[roleKey] : [desc.credits[roleKey]];
+      arr.forEach((entry) => {
+        const parsed = _parseLegacyCreditString(entry);
+        if (!parsed || !parsed.name) return;
+        out.push({
+          roles: [_humanizeRoleKey(roleKey)],
+          name: parsed.name,
+          instagram: parsed.instagram,
+          website: parsed.website || '',
+        });
+      });
+    });
+  }
+  if (Array.isArray(desc.models)) {
+    desc.models.forEach((m) => {
+      if (!m || !m.name) return;
+      out.push({
+        roles: ['Starring'],
+        name: String(m.name || '').trim(),
+        instagram: String(m.instagram || '').trim(),
+        website: '',
+      });
+      if (m.agency) {
+        out.push({
+          roles: ['Agency'],
+          name: String(m.agency || '').trim(),
+          instagram: String(m.agencyInstagram || '').trim(),
+          website: '',
+        });
+      }
+    });
+  }
+  return out;
+}
+
+// Build editorial.fashion = { brands, imageCredits } from looks +
+// lookImageMap + the final file_urls list.
+//   Submission shape:
+//     looks         = [{n, items:[{type, brand, instagram}, …]}, …]
+//     lookImageMap  = [{lookN, imgIdxInLook}, …] — mirrors file_urls[i]
+//   Editorial shape:
+//     brands        = [{name, instagram}, …]   (deduped)
+//     imageCredits  = { img_1: "@brand Type, @brand2 Type2", … }
+function _buildEditorialFashion(desc, fileUrls) {
+  const fashion = { brands: [], imageCredits: {} };
+  const looksByN = {};
+  if (Array.isArray(desc.looks)) {
+    desc.looks.forEach((L) => { if (L && typeof L.n === 'number') looksByN[L.n] = L; });
+  }
+  // Dedupe brands across all looks
+  const seen = new Set();
+  Object.values(looksByN).forEach((L) => {
+    (L.items || []).forEach((it) => {
+      if (!it || !it.brand) return;
+      const key = (it.brand + '|' + (it.instagram || '')).toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      fashion.brands.push({ name: it.brand, instagram: it.instagram || '' });
+    });
+  });
+  // Per-image credit lines, keyed img_<1-based> against the FINAL file_urls
+  // order. Falls back gracefully when lookImageMap entries don't match a
+  // known look (e.g. additional / non-look images at the tail of the list).
+  if (Array.isArray(desc.lookImageMap)) {
+    desc.lookImageMap.forEach((entry, idx) => {
+      if (!entry || typeof entry.lookN !== 'number') return;
+      const look = looksByN[entry.lookN];
+      if (!look || !Array.isArray(look.items) || !look.items.length) return;
+      const line = look.items
+        .map((it) => {
+          if (!it) return '';
+          const handle = (it.instagram || '').trim();
+          const type = (it.type || '').trim();
+          if (!handle && !it.brand) return '';
+          // Format expected by the editorial detail renderer: "@handle Type"
+          // (admin "이미지별 착장 크레딧" parses the same shape).
+          const lead = handle ? handle : '@' + String(it.brand || '').toLowerCase().replace(/\s+/g, '');
+          return type ? (lead + ' ' + type) : lead;
+        })
+        .filter(Boolean)
+        .join(', ');
+      if (line) fashion.imageCredits['img_' + (idx + 1)] = line;
+    });
+  }
+  return fashion;
+}
+
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
   if (rateLimit(req, res, RATE_LIMITS.api)) return;
@@ -54,6 +186,13 @@ module.exports = async function handler(req, res) {
     // explicitly hit 발행 to expose it publicly. We deliberately skip
     // embedAndStoreEditorial here — embeddings happen at publish time
     // so half-baked drafts don't leak into semantic search results.
+    //
+    // QA #168 — full data-shape conversion. Submission stores credits/
+    // looks in shapes optimised for the submission form; editorials
+    // expects the admin-edit shapes. Earlier we just shallow-copied
+    // desc.credits, which left the editorial modal blank because it
+    // can't parse "{photographer: ['Name (@handle)']}". The converters
+    // below normalise everything before INSERT.
     let stagedEditorialId = null;
     if (status === 'approved') {
       try {
@@ -66,11 +205,17 @@ module.exports = async function handler(req, res) {
         if (coverUrl) {
           const tagsArr = Array.isArray(desc.genre) ? desc.genre : [];
           const description = (desc.artistStatement || '').trim() || null;
-          // submissions has no `credits` column — pull from the
-          // description JSON the submitter filled in. Editorial.credits
-          // is jsonb, so wrap stray strings in {} to keep the shape.
-          let credits = desc.credits || {};
-          if (typeof credits === 'string') credits = credits.trim() ? { note: credits } : {};
+
+          // ── Convert team/credits → editorial.credits array ──
+          // Editorial shape: [{ roles: ['Photographer'], name, instagram, website }, …]
+          // Preferred input: desc.team (structured, saved since QA #168).
+          // Fallback: desc.credits flat-string view, parsed back into structure
+          //           for submissions filed before that fix landed.
+          const credits = _buildEditorialCredits(desc);
+
+          // ── Convert looks/lookImageMap → editorial.fashion ──
+          // Editorial shape: { brands: [{name, instagram}], imageCredits: { img_N: "@brand Type, @brand2 Type2" } }
+          const fashion = _buildEditorialFashion(desc, submission.file_urls || []);
 
           const { data: editorial, error: edErr } = await supabaseAdmin
             .from('editorials')
@@ -81,7 +226,7 @@ module.exports = async function handler(req, res) {
               thumbnail: getOptimizedThumbnail(coverUrl),
               gallery: submission.file_urls || [],
               credits,
-              fashion: {},
+              fashion,
               tags: tagsArr,
               issue: null,
               description,
