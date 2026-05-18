@@ -985,7 +985,7 @@ function navigateWithInterstitial(url){
 <div class="footer-legal" id="footerLegal"></div>
 
 <script src="/pap-api.js?v=3" defer></script>
-<script src="/pap-name-validator.js?v=1" defer></script>
+<script src="/pap-name-validator.js?v=2" defer></script>
 <script src="submission-terms.js?v=1"></script>
 <script>
 var lookCount=0;
@@ -2180,11 +2180,24 @@ async function submitForm(){
 
   // Name-only check (English alphabet/digits/space/. - ' for editorial title,
   // studio name, team member names, model names, brand names).
+  // QA #167 — toast localised to all 9 supported locales. Previously only
+  // ko/en were covered, so a Chinese/Japanese/etc. submitter would see a
+  // message they couldn't read, give up on the invalid field, and submit
+  // the rest empty — surfacing to the editorial team as "credits missing".
   if(typeof window._papHasInvalidNameField === 'function' && window._papHasInvalidNameField()){
-    var lang = (localStorage.getItem('pap-lang') || 'ko');
-    var msg = (lang === 'en')
-      ? 'Name fields accept English letters, digits, space, . - \' only'
-      : '이름 칸은 영문(A–Z, a–z), 숫자, 공백, . - \' 만 입력 가능합니다';
+    var lang = (localStorage.getItem('pap-lang') || 'en');
+    var nameOnlyToast = {
+      ko: '이름 칸은 영문(A–Z, a–z), 숫자, 공백, . - \' 만 입력 가능합니다. 빨간 표시된 항목을 확인해 주세요.',
+      en: 'Name fields accept English letters, digits, space, . - \' only. Please fix the highlighted fields.',
+      zh: '姓名栏仅可填写英文(A–Z, a–z)、数字、空格、. - \'。请修正红色高亮的字段。',
+      ja: '名前欄は英字(A–Z, a–z)・数字・スペース・. - \' のみ入力できます。赤くハイライトされた項目を修正してください。',
+      it: 'I campi nome accettano solo lettere inglesi, cifre, spazio, . - \'. Correggi i campi evidenziati in rosso.',
+      fr: 'Les champs de nom acceptent uniquement lettres anglaises, chiffres, espace, . - \'. Veuillez corriger les champs surlignés en rouge.',
+      es: 'Los campos de nombre solo aceptan letras inglesas, dígitos, espacio, . - \'. Por favor, corrija los campos resaltados en rojo.',
+      ru: 'В полях имени допускаются только латинские буквы, цифры, пробел, . - \'. Исправьте поля, выделенные красным.',
+      de: 'Namensfelder akzeptieren nur englische Buchstaben, Ziffern, Leerzeichen, . - \'. Bitte korrigieren Sie die rot markierten Felder.',
+    };
+    var msg = nameOnlyToast[lang] || nameOnlyToast.en;
     if(typeof PAP !== 'undefined' && PAP.ui) PAP.ui.toast(msg, 'error');
     var first = document.querySelector('input[data-name-invalid="1"]');
     if(first) first.scrollIntoView({behavior:'smooth', block:'center'});
