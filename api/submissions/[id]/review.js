@@ -17,23 +17,49 @@ const { rateLimit, RATE_LIMITS } = require('../../_lib/rateLimit');
 // ── QA #170 — AI description generator ───────────────────────────────────
 // Two modes, picked by whether the submitter wrote an artist statement:
 //
-//   1) Translate mode — KR statement present → translate to EN + IT.
-//      Output: { kr: <original>, en, it }
+//   1) Translate mode — statement present (in ANY language). The source
+//      may be English (most common — global crew), Korean, or Italian.
+//      Claude auto-detects the language, keeps the original verbatim in
+//      its own slot, and writes natural translations for the other two.
+//      Output: { kr, en, it } — each slot guaranteed non-empty when the
+//      call succeeds, exactly one of them being the verbatim original.
 //
-//   2) Vision mode — KR statement blank → ask Claude to look at the title
+//   2) Vision mode — statement blank → ask Claude to look at the title
 //      and the first few hero images, then write 3-4 sentence editorial
 //      blurbs in KR + EN + IT.
 //      Output: { kr, en, it }
 //
-// Failure is non-fatal: a Claude error falls back to { kr: artistStatement,
-// en: '', it: '' } so the editorial is still staged successfully and the
-// admin can fill in the blanks by hand. ANTHROPIC_API_KEY (already used by
-// /api/translate) gates the call; without it we short-circuit to the
-// fallback shape without making a network call.
+// Failure is non-fatal: a Claude error falls back to leaving the
+// original statement in the most likely slot (heuristic) so the editorial
+// is still staged successfully and the admin can fill in the blanks by
+// hand. ANTHROPIC_API_KEY (already used by /api/translate) gates the
+// call; without it we short-circuit to the fallback shape without making
+// a network call.
+
+// Tiny heuristic for the no-AI fallback path. We only need this to pick
+// the LEAST-WRONG slot for the raw statement when Claude is unavailable;
+// the actual translation work always goes through Claude when the key
+// is set, so we don't need a perfect detector here.
+function _guessLanguage(text) {
+  const s = String(text || '');
+  if (!s.trim()) return 'en';
+  // Hangul range
+  if (/[가-힯ᄀ-ᇿ㄰-㆏]/.test(s)) return 'kr';
+  // Italian-distinctive accented letters (à è é ì ò ù) — rough but cheap
+  if (/[àèéìòù]/i.test(s)) return 'it';
+  // Default English (covers Latin alphabet + common punctuation)
+  return 'en';
+}
+
 async function _generateEditorialDescriptions({ title, artistStatement, imageUrls }) {
-  const kr = (artistStatement || '').trim();
+  const raw = (artistStatement || '').trim();
   if (!process.env.ANTHROPIC_API_KEY) {
-    return { kr, en: '', it: '' };
+    const slot = _guessLanguage(raw);
+    return {
+      kr: slot === 'kr' ? raw : '',
+      en: slot === 'en' ? raw : '',
+      it: slot === 'it' ? raw : '',
+    };
   }
 
   const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
@@ -60,14 +86,26 @@ async function _generateEditorialDescriptions({ title, artistStatement, imageUrl
     try { return JSON.parse(stripped); } catch (_) { return null; }
   }
 
-  // ── Mode 1: KR present → translate to EN + IT ──
-  if (kr) {
+  // ── Mode 1: artist statement present → auto-detect + fill 3 languages ──
+  // Submitters most often write in English (global creative community),
+  // sometimes Korean, occasionally Italian. We don't gate on the input
+  // language — Claude detects it, returns the original verbatim in its
+  // slot, and writes natural translations for the other two.
+  if (raw) {
     const system = [
-      'You are a professional translator for PAP Magazine, a global fashion / beauty / culture editorial publication.',
-      'Translate the given Korean editorial description into English and Italian.',
-      'Tone: editorial, evocative, precise. Match the register of high-end fashion magazines (i-D, Dazed, Vogue Italia).',
-      'Keep proper nouns, brand names, and named subjects as-is.',
-      'Output ONLY a JSON object: {"en": "<english>", "it": "<italian>"}. No prose, no markdown fences.',
+      'You are an editorial translator for PAP Magazine — a global fashion / beauty / culture publication.',
+      '',
+      'You will receive an editorial description written by the submitting crew. The source language could be English, Korean, or Italian (most often English).',
+      '',
+      'Your task:',
+      '  1. Detect the source language.',
+      '  2. Keep the original text VERBATIM in its detected language slot.',
+      '  3. Write a NATURAL translation (not a literal one) in each of the other two languages — Korean (kr), English (en), Italian (it).',
+      '',
+      'Tone for the translations: editorial, sensory, confident. Match the register of high-end fashion magazines (i-D, Dazed, Vogue Italia, Nylon). Avoid generic praise.',
+      'Keep proper nouns, brand names, named subjects as-is in every language.',
+      '',
+      'Output ONLY a JSON object: {"kr": "<korean>", "en": "<english>", "it": "<italian>"}. No prose, no markdown fences.',
     ].join('\n');
     try {
       const resp = await fetch(apiUrl, {
@@ -75,17 +113,34 @@ async function _generateEditorialDescriptions({ title, artistStatement, imageUrl
         headers: commonHeaders,
         body: JSON.stringify({
           model,
-          max_tokens: 1500,
+          max_tokens: 2000,
           system,
-          messages: [{ role: 'user', content: kr }],
+          messages: [{ role: 'user', content: raw }],
         }),
       });
       if (!resp.ok) throw new Error('Claude ' + resp.status);
       const parsed = _parseJson(_pickText(await resp.json())) || {};
-      return { kr, en: String(parsed.en || '').trim(), it: String(parsed.it || '').trim() };
+      const out = {
+        kr: String(parsed.kr || '').trim(),
+        en: String(parsed.en || '').trim(),
+        it: String(parsed.it || '').trim(),
+      };
+      // Sanity guard: if Claude returned nothing for some reason, stash
+      // the raw statement in its guessed slot so the editorial isn't
+      // staged with empty descriptions.
+      if (!out.kr && !out.en && !out.it) {
+        const slot = _guessLanguage(raw);
+        out[slot] = raw;
+      }
+      return out;
     } catch (err) {
       console.error('[ig caption] translate-mode failed:', err && err.message);
-      return { kr, en: '', it: '' };
+      const slot = _guessLanguage(raw);
+      return {
+        kr: slot === 'kr' ? raw : '',
+        en: slot === 'en' ? raw : '',
+        it: slot === 'it' ? raw : '',
+      };
     }
   }
 
@@ -555,15 +610,18 @@ module.exports = async function handler(req, res) {
               fashion,
               tags: tagsArr,
               issue: null,
-              // If the submitter left artistStatement blank and Claude
-              // generated a Korean blurb, store THAT as the description so
-              // the public editorial page isn't blank either.
-              description: description || igDescriptions.kr || null,
-              // English translation goes into the existing column so the
-              // SSR EN locale + admin EN textarea both pick it up. IT
-              // translation lives only inside instagram_caption for now
-              // (no description_it column yet).
+              // The submitter may have written in any language (most often
+              // English). After Claude's auto-detect + translate step,
+              // igDescriptions.kr / .en always contain the LANGUAGE we
+              // want in each column — regardless of the original language.
+              // Prefer those over the raw artistStatement so the public
+              // /editorial page in KR shows Korean and the EN locale shows
+              // English. Falls back to the raw text only when Claude was
+              // unavailable, so the editorial isn't empty.
+              description:    igDescriptions.kr || description || null,
               description_en: igDescriptions.en || null,
+              // IT translation lives only inside instagram_caption for now
+              // (no description_it column yet).
               instagram_caption: instagramCaption,
               status: 'draft',
               published_date: null,
