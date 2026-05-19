@@ -511,7 +511,11 @@ module.exports = async function handler(req, res) {
 
   try {
     const { id } = req.query;
-    const { status, reviewNote, coverImageIndex } = req.body;
+    // QA #171 — approvalDay / approvalMonth come from the admin review
+    // modal and fill the "around the () of ()" placeholders in the
+    // approval email block. Both are optional; if blank, the literal "()"
+    // stays in the email so it's obvious the date wasn't set.
+    const { status, reviewNote, coverImageIndex, approvalDay, approvalMonth } = req.body;
 
     if (!status || !['approved', 'rejected', 'revision'].includes(status)) {
       return res.status(400).json({ message: 'Status must be "approved", "rejected", or "revision"' });
@@ -661,14 +665,16 @@ module.exports = async function handler(req, res) {
       .single();
     if (profile && profile.email) {
       const lang = profile.email_language || profile.language || 'en';
-      // Pass status so the template can attach the rejection-specific
-      // courtesy block (English) for status='rejected'. Approved /
-      // revision stay on the neutral localised body unchanged.
+      // Pass status so the template can attach the rejection / approval
+      // English courtesy blocks. For status='approved' we also forward
+      // the admin-typed publication day/month (QA #171) so the body
+      // reads "around the 15th of June" instead of "around the () of ()".
       const tpl = templates.submissionReviewComplete(
         { name: profile.display_name || '' },
         { title: submission.title },
         lang,
-        status
+        status,
+        { approvalDay: approvalDay || '', approvalMonth: approvalMonth || '' }
       );
       sendEmail(profile.email, tpl).catch(() => {});
     }

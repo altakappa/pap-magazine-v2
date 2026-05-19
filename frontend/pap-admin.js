@@ -651,6 +651,12 @@ function closeModal(){
   // Reset download button label in case the user left mid-progress
   var db=document.getElementById('reviewDownloadBtn');
   if(db){db.disabled=false;db.textContent='⬇ 이미지 일괄 다운로드 (ZIP)';}
+  // QA #171 — clear approval date inputs so prior values don't carry
+  // into the next submission's review.
+  var ad = document.getElementById('reviewApprovalDay');
+  var am = document.getElementById('reviewApprovalMonth');
+  if(ad) ad.value = '';
+  if(am) am.value = '';
 }
 
 // ======== BULK IMAGE DOWNLOAD ========
@@ -1211,6 +1217,24 @@ async function doReview(status){
     return;
   }
 
+  // QA #171 — approval-only: pick up Day/Month so the email's
+  // "around the () of ()" line gets filled in. Blank values are
+  // intentional (admin can ship without a confirmed date) — we just nudge
+  // once so they don't send a half-empty notice by accident.
+  var approvalDay = '';
+  var approvalMonth = '';
+  if(status === 'approved'){
+    var dayEl = document.getElementById('reviewApprovalDay');
+    var monthEl = document.getElementById('reviewApprovalMonth');
+    approvalDay = dayEl ? (dayEl.value || '').trim() : '';
+    approvalMonth = monthEl ? (monthEl.value || '').trim() : '';
+    if(!approvalDay || !approvalMonth){
+      if(!confirm('승인 메일의 "around the () of ()" 자리가 비어있어요.\n빈 () 그대로 발송해도 될까요?\n\n(취소 → 모달로 돌아가서 입력)')){
+        return;
+      }
+    }
+  }
+
   if(!confirm(labels[status]+' 처리하시겠습니까?\n의견: '+(note||'(없음)'))){
     return;
   }
@@ -1221,7 +1245,9 @@ async function doReview(status){
     var payload={
       status:status,
       reviewNote:note,
-      coverImageIndex:selectedCoverImageIndex
+      coverImageIndex:selectedCoverImageIndex,
+      approvalDay: approvalDay,
+      approvalMonth: approvalMonth
     };
     var resp=await fetch(apiBase+'/submissions/'+currentReviewSubmission.id+'/review',{
       method:'PUT',

@@ -1551,6 +1551,21 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
       <textarea class="modal-ta" id="reviewNote" placeholder="심사 의견을 작성하세요. (한국어로 작성 후 '영어로 변환' 클릭 시 Claude가 에디토리얼 톤의 영문으로 번역합니다)"></textarea>
     </div>
 
+    <!-- QA #171 — approval-only fields. These flow into the English
+         approval block of the "심사 완료" email and fill the
+         "around the () of ()" placeholders. Visible to both 대표 and
+         스태프 (any admin can prepare the values), but the data is only
+         used when the 대표 manager actually clicks ✓ 승인. Leaving them
+         blank is OK — the email keeps the literal "()" so the recipient
+         knows the date wasn't finalised. -->
+    <div class="modal-section" id="reviewApprovalDateSection">
+      <div class="modal-label">✓ 승인 시 발행 예정 일자 <span class="pe-opt">메일 본문 "around the (Day) of (Month)" 자리에 들어갑니다 · 비워두면 ()가 그대로 노출</span></div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <input class="pe-input" id="reviewApprovalDay" placeholder="Day (예: 15th, 27th, end of)" style="max-width:240px;flex:1" autocomplete="off">
+        <input class="pe-input" id="reviewApprovalMonth" placeholder="Month (예: June, July)" style="max-width:240px;flex:1" autocomplete="off">
+      </div>
+    </div>
+
     <!-- QA #169 — role-gated action buttons.
          data-role-main = visible only to 대표 관리자 (final approve/reject)
          data-role-any  = visible to both 대표 + 스태프 (revision request)
@@ -1668,7 +1683,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
      one click without hitting Vercel response-size limits. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
 
-<script src="/pap-admin.js?v=5" defer></script>
+<script src="/pap-admin.js?v=6" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>
