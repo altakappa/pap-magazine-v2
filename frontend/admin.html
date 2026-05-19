@@ -601,6 +601,19 @@ tr:hover td{background:rgba(0,0,0,.02)}
           <div class="pe-hint">한국어로 작성하면 AI가 8개 언어로 자동 번역합니다. 프론트엔드에서 이미지 갤러리 바로 아래에 표시됩니다.</div>
         </div>
 
+        <!-- QA #170 — 인스타그램 캡션 (서브미션 승인 시 자동 생성) -->
+        <div class="pe-section" id="editorialIgCaptionSection">
+          <div class="pe-label" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+            <span>📷 인스타그램 캡션 <span class="pe-opt">서브미션 승인 시 자동 생성 · 수정 가능</span></span>
+            <span style="display:flex;gap:6px">
+              <button class="btn btn-sm" type="button" onclick="regenerateIgCaption()" title="현재 크레딧·브랜드 정보로 다시 생성">🔄 다시 생성</button>
+              <button class="btn btn-sm btn-blue" type="button" onclick="copyIgCaption(this)" title="클립보드에 복사">📋 복사</button>
+            </span>
+          </div>
+          <textarea class="modal-ta" id="postIgCaption" style="min-height:200px;font-family:'SF Mono',Menlo,Monaco,monospace;font-size:12px;line-height:1.6" placeholder="@pap_magazine presents&#10;&#10;Photographer @handle&#10;Style @handle&#10;...&#10;&#10;(서브미션 승인 후 자동으로 채워집니다. 직접 작성도 가능합니다.)"></textarea>
+          <div class="pe-hint">서브미션의 팀 크레딧 · 모델 · 룩별 브랜드 정보를 PAP 인스타 스타일로 정렬한 미리보기입니다. 발행 전 자유롭게 다듬어 주세요.</div>
+        </div>
+
         <!-- 크레딧 정보 -->
         <div class="pe-section">
           <div class="pe-label">크레딧 정보</div>
@@ -1655,7 +1668,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
      one click without hitting Vercel response-size limits. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
 
-<script src="/pap-admin.js?v=4" defer></script>
+<script src="/pap-admin.js?v=5" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>

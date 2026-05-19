@@ -94,6 +94,170 @@ function _buildEditorialCredits(desc) {
   return out;
 }
 
+// ── QA #170 — Instagram caption builder ──────────────────────────────────
+// Renders submission data into PAP's exact IG caption style. Format
+// (taken verbatim from a published example):
+//
+//   'TITLE' exclusive for @pap_magazine published by @kangdm ㅡ link in bio
+//
+//   ————-
+//   Role @handle Role @handle Role @handle …          ← inline, single line
+//
+//   Starring @model @agency [@model2 @agency2]
+//
+//   ————-
+//   (KR) Korean description…
+//
+//   (EN) English description…
+//
+//   (IT) Italian description…
+//
+//   ————-
+//   Full Story link🔎
+//   https://www.pap-magazine.com/editorial/<slug>
+//
+//   Fashion by @brand1 @brand2 @brand3 …
+//
+// Editors can hand-tune the text in the admin modal before publishing —
+// the textarea is plain TEXT and round-trips through the editorial PUT
+// endpoint. The (EN) / (IT) translations are auto-filled when the
+// editorial has description_en (we don't yet store description_it; admin
+// pastes the IT translation into the textarea directly until that column
+// lands).
+const _IG_PUBLISHER_HANDLE = '@kangdm';      // Domenico Kang, founding editor
+const _IG_HOUSE_HANDLE     = '@pap_magazine';
+const _IG_SEPARATOR        = '————- ';        // em-dash × 4 + hyphen + space
+const _IG_SITE_BASE        = 'https://www.pap-magazine.com/editorial/';
+
+function _normalizeIgHandle(s) {
+  if (!s) return '';
+  let h = String(s).trim();
+  // Strip instagram URL prefix
+  h = h.replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/\/$/, '');
+  if (!h) return '';
+  return h.charAt(0) === '@' ? h : '@' + h;
+}
+
+// Title Case fallback for free-form role text. Editorial role names are
+// shown verbatim (e.g. "Photography, Art Directing & Retouching") — we
+// only intervene when the role looks like a snake_case key (legacy
+// {photographer:[]} shape).
+function _normalizeRoleLabel(raw) {
+  const str = String(raw || '').trim();
+  if (!str) return 'Credit';
+  // If it looks like a snake/lower key, Title-Case it.
+  if (/^[a-z0-9_]+$/.test(str)) {
+    return str.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+  return str;
+}
+
+// Slug fallback when the editorial row hasn't been slugged yet (review.js
+// inserts with slug=null and the editor may publish before setting one).
+// Mirrors api/seo/editorial/[slug].js' lookup which accepts decoded title
+// as a 3rd-step fallback.
+function _slugifyForUrl(title) {
+  const s = String(title || '').trim();
+  if (!s) return '';
+  return s.toLowerCase()
+    .replace(/['"`]+/g, '')
+    .replace(/[^\w\s가-힣-]+/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}
+
+function _buildInstagramCaption(desc, title, opts) {
+  const slug = (opts && opts.slug) || _slugifyForUrl(title);
+  const descKo = (opts && opts.descKo) || (desc && desc.artistStatement) || '';
+  const descEn = (opts && opts.descEn) || '';
+  const descIt = (opts && opts.descIt) || '';
+
+  const lines = [];
+
+  // ── 1) Header ──
+  lines.push(`'${String(title || '').trim()}' exclusive for ${_IG_HOUSE_HANDLE} published by ${_IG_PUBLISHER_HANDLE} ㅡ link in bio`);
+  lines.push('');
+
+  // ── 2) Crew credits (inline single line) + Starring ──
+  lines.push(_IG_SEPARATOR);
+  const creditParts = [];
+  if (Array.isArray(desc.team) && desc.team.length) {
+    desc.team.forEach((m) => {
+      if (!m || !m.name) return;
+      const handle = _normalizeIgHandle(m.instagram || m.website || '');
+      if (!handle) return;
+      const label = _normalizeRoleLabel(m.role);
+      creditParts.push(`${label} ${handle}`);
+    });
+  } else if (desc.credits && typeof desc.credits === 'object') {
+    // Legacy {photographer: ["Name (@handle)"]} shape — parse back.
+    Object.keys(desc.credits).forEach((roleKey) => {
+      const arr = Array.isArray(desc.credits[roleKey]) ? desc.credits[roleKey] : [desc.credits[roleKey]];
+      arr.forEach((entry) => {
+        const str = String(entry || '').trim();
+        if (!str) return;
+        const m = str.match(/\(([^)]+)\)/);
+        if (!m) return;
+        const handle = _normalizeIgHandle(m[1]);
+        if (!handle) return;
+        creditParts.push(`${_normalizeRoleLabel(roleKey)} ${handle}`);
+      });
+    });
+  }
+  if (creditParts.length) lines.push(creditParts.join(' '));
+
+  // Models — "Starring @model @agency …"
+  if (Array.isArray(desc.models) && desc.models.length) {
+    if (creditParts.length) lines.push('');
+    const modelParts = [];
+    desc.models.forEach((m) => {
+      if (!m || !m.name) return;
+      const model = _normalizeIgHandle(m.instagram || m.name);
+      const agency = _normalizeIgHandle(m.agencyInstagram || m.agency || '');
+      if (model) modelParts.push(model);
+      if (agency) modelParts.push(agency);
+    });
+    if (modelParts.length) lines.push('Starring ' + modelParts.join(' '));
+  }
+  lines.push('');
+
+  // ── 3) Descriptions in three languages ──
+  lines.push(_IG_SEPARATOR);
+  lines.push('(KR) ' + (descKo || '').trim());
+  lines.push('');
+  lines.push('(EN) ' + (descEn || '').trim());
+  lines.push('');
+  lines.push('(IT) ' + (descIt || '').trim());
+  lines.push('');
+
+  // ── 4) Full Story link ──
+  lines.push(_IG_SEPARATOR);
+  lines.push('Full Story link🔎');
+  lines.push(_IG_SITE_BASE + slug);
+  lines.push('');
+
+  // ── 5) Brands — single line "Fashion by @brand1 @brand2 …" ──
+  const seen = new Set();
+  const brandHandles = [];
+  if (Array.isArray(desc.looks)) {
+    desc.looks.forEach((L) => {
+      (L && L.items || []).forEach((it) => {
+        if (!it) return;
+        const h = _normalizeIgHandle(it.instagram || it.brand || '');
+        if (!h) return;
+        const key = h.toLowerCase();
+        if (seen.has(key)) return;
+        seen.add(key);
+        brandHandles.push(h);
+      });
+    });
+  }
+  if (brandHandles.length) lines.push('Fashion by ' + brandHandles.join(' '));
+
+  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
 // Build editorial.fashion = { brands, imageCredits } from looks +
 // lookImageMap + the final file_urls list.
 //   Submission shape:
@@ -225,11 +389,33 @@ module.exports = async function handler(req, res) {
           // Editorial shape: { brands: [{name, instagram}], imageCredits: { img_N: "@brand Type, @brand2 Type2" } }
           const fashion = _buildEditorialFashion(desc, submission.file_urls || []);
 
+          // ── QA #170 — Instagram caption ──
+          // Pre-rendered from the same structured data. Slug is generated
+          // alongside so the embedded /editorial/<slug> URL resolves
+          // immediately (review.js used to leave slug=null and rely on
+          // the SSR endpoint's title fallback; an explicit slug makes the
+          // shareable URL look right from the moment of approval).
+          // (EN) / (IT) descriptions are intentionally left blank — admin
+          // pastes those into the editorial form before publishing; the
+          // textarea preserves any edits via round-trip.
+          const editorialSlug = _slugifyForUrl(submission.title || '');
+          const instagramCaption = _buildInstagramCaption(desc, submission.title, {
+            slug: editorialSlug,
+            descKo: (desc.artistStatement || '').trim(),
+            descEn: '',
+            descIt: '',
+          });
+
           const { data: editorial, error: edErr } = await supabaseAdmin
             .from('editorials')
             .insert({
               title: submission.title,
-              slug: null,
+              // QA #170 — auto-seed slug at approval so the IG caption's
+              // /editorial/<slug> URL works the moment the editor copies
+              // the caption. Admin can still rename the slug later (and
+              // the SSR endpoint's title-fallback covers the brief window
+              // before they do).
+              slug: editorialSlug || null,
               cover_image: getOptimizedHero(coverUrl),
               thumbnail: getOptimizedThumbnail(coverUrl),
               gallery: submission.file_urls || [],
@@ -238,6 +424,7 @@ module.exports = async function handler(req, res) {
               tags: tagsArr,
               issue: null,
               description,
+              instagram_caption: instagramCaption,
               status: 'draft',
               published_date: null,
             })

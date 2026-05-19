@@ -78,7 +78,10 @@ module.exports = async function handler(req, res) {
         'title', 'slug', 'cover_image', 'published_date', 'url', 'tags',
         'issue', 'thumbnail', 'gallery', 'credits', 'fashion', 'status', 'description',
         'scheduled_publish_at', 'seo_title', 'seo_description', 'og_image',
-        'title_en', 'description_en'
+        'title_en', 'description_en',
+        // QA #170 — editor-tunable Instagram caption (auto-seeded at
+        // submission approval; admin can hand-edit before publishing).
+        'instagram_caption',
       ];
       for (const key of allowed) {
         if (req.body[key] !== undefined) updates[key] = req.body[key];

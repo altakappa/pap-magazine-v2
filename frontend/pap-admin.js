@@ -544,8 +544,10 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 
 function _resetNewPostForm(){
-  // 1. Plain text / textarea inputs
-  ['postTitle','postSubtitle','postSlug','postTags','postVideoUrl','postDescription'].forEach(function(id){
+  // 1. Plain text / textarea inputs (QA #170 — include postIgCaption so
+  // a leftover caption from the prior edit doesn't carry into a fresh
+  // "+ 새 에디토리얼" session).
+  ['postTitle','postSubtitle','postSlug','postTags','postVideoUrl','postDescription','postIgCaption'].forEach(function(id){
     var el = document.getElementById(id);
     if(el) el.value = '';
   });
@@ -2503,6 +2505,206 @@ async function publishEditorial(id,title){
   }
 }
 
+// ── QA #170 — Instagram caption helpers (mirror review.js' server-side
+// builder so the editor can re-run it after tweaking credits/brands).
+// Format must match the server output verbatim:
+//
+//   'TITLE' exclusive for @pap_magazine published by @kangdm ㅡ link in bio
+//
+//   ————-
+//   Role @handle Role @handle Role @handle …
+//
+//   Starring @model @agency
+//
+//   ————-
+//   (KR) …
+//
+//   (EN) …
+//
+//   (IT) …
+//
+//   ————-
+//   Full Story link🔎
+//   https://www.pap-magazine.com/editorial/<slug>
+//
+//   Fashion by @brand1 @brand2 …
+var _IG_PUBLISHER_HANDLE = '@kangdm';
+var _IG_HOUSE_HANDLE     = '@pap_magazine';
+var _IG_SEPARATOR        = '————- ';     // em-dash × 4 + hyphen + space
+var _IG_SITE_BASE        = 'https://www.pap-magazine.com/editorial/';
+
+function _igNormalizeHandle(s){
+  if(!s) return '';
+  var h = String(s).trim()
+    .replace(/^https?:\/\/(www\.)?instagram\.com\//i,'')
+    .replace(/\/$/,'');
+  if(!h) return '';
+  return h.charAt(0) === '@' ? h : '@' + h;
+}
+// Editorial role names already match PAP's house format (e.g. "Photography,
+// Art Directing & Retouching") — render verbatim. Only fall back to
+// Title-Case for snake/lowercase keys (legacy submission shape).
+function _igRoleLabel(raw){
+  var s = String(raw||'').trim();
+  if(!s) return 'Credit';
+  if(/^[a-z0-9_]+$/.test(s)){
+    return s.replace(/_/g,' ').replace(/\b\w/g, function(c){return c.toUpperCase();});
+  }
+  return s;
+}
+function _igSlugify(title){
+  var s = String(title||'').trim();
+  if(!s) return '';
+  return s.toLowerCase()
+    .replace(/['"`]+/g,'')
+    .replace(/[^\w\s가-힣-]+/g,'')
+    .trim()
+    .replace(/\s+/g,'-')
+    .replace(/-+/g,'-');
+}
+// Build caption from the currently-open editorial. ed shape:
+//   { title, issue?, slug?, description?, description_en?,
+//     credits: [{roles[], name, instagram, website}, …],
+//     fashion: { brands: [{name, instagram}, …] } }
+function _buildIgCaptionFromEditorial(ed){
+  if(!ed) return '';
+  var lines = [];
+  var title = String(ed.title||'').trim();
+  var slug  = ed.slug || _igSlugify(title);
+
+  // 1) Header
+  lines.push("'" + title + "' exclusive for " + _IG_HOUSE_HANDLE + ' published by ' + _IG_PUBLISHER_HANDLE + ' ㅡ link in bio');
+  lines.push('');
+
+  // 2) Credits (inline single line) + Starring
+  lines.push(_IG_SEPARATOR);
+  var credits = Array.isArray(ed.credits) ? ed.credits : [];
+  var creditParts = [];
+  var modelParts = [];
+  credits.forEach(function(c){
+    if(!c) return;
+    var handle = _igNormalizeHandle(c.instagram || c.website || '');
+    if(!handle) return;
+    var role = (Array.isArray(c.roles) && c.roles.length ? c.roles[0] : c.role) || 'Credit';
+    var label = _igRoleLabel(role);
+    if(label === 'Starring' || /^Model$/i.test(label)){
+      modelParts.push(handle);
+      // If the credit row also carries the agency in website or a sibling
+      // role, the editor can add it manually. Keep mapping simple here.
+    }else{
+      creditParts.push(label + ' ' + handle);
+    }
+  });
+  if(creditParts.length) lines.push(creditParts.join(' '));
+  if(modelParts.length){
+    if(creditParts.length) lines.push('');
+    lines.push('Starring ' + modelParts.join(' '));
+  }
+  lines.push('');
+
+  // 3) Descriptions — three locales. (KR) from description (assumed
+  // primary), (EN) from description_en if present, (IT) blank for admin
+  // to fill.
+  var descKo = (ed.description||'').trim();
+  var descEn = (ed.description_en||'').trim();
+  var descIt = (ed.description_it||'').trim();  // not currently stored; surface as empty
+  lines.push(_IG_SEPARATOR);
+  lines.push('(KR) ' + descKo);
+  lines.push('');
+  lines.push('(EN) ' + descEn);
+  lines.push('');
+  lines.push('(IT) ' + descIt);
+  lines.push('');
+
+  // 4) Full Story link
+  lines.push(_IG_SEPARATOR);
+  lines.push('Full Story link🔎');
+  lines.push(_IG_SITE_BASE + slug);
+  lines.push('');
+
+  // 5) Brands — single line
+  var brands = (ed.fashion && Array.isArray(ed.fashion.brands)) ? ed.fashion.brands : [];
+  var seen = {};
+  var brandHandles = [];
+  brands.forEach(function(b){
+    if(!b) return;
+    var h = _igNormalizeHandle(b.instagram || b.name || '');
+    if(!h) return;
+    var key = h.toLowerCase();
+    if(seen[key]) return;
+    seen[key] = true;
+    brandHandles.push(h);
+  });
+  if(brandHandles.length) lines.push('Fashion by ' + brandHandles.join(' '));
+
+  return lines.join('\n').replace(/\n{3,}/g,'\n\n').trim();
+}
+// Buttons in the editorial modal call into these. We rebuild a synthetic
+// "ed" object from the live form so the regenerate button reflects any
+// in-modal edits the user has made to credits/brands BEFORE saving.
+function regenerateIgCaption(){
+  var ed = _readEditorialFromForm();
+  var caption = _buildIgCaptionFromEditorial(ed);
+  var el = document.getElementById('postIgCaption');
+  if(el){ el.value = caption; }
+}
+async function copyIgCaption(btn){
+  var el = document.getElementById('postIgCaption');
+  if(!el || !el.value){
+    if(typeof PAP !== 'undefined' && PAP.ui) PAP.ui.toast('복사할 캡션이 없습니다.', 'error');
+    return;
+  }
+  try{
+    await navigator.clipboard.writeText(el.value);
+    var orig = btn ? btn.textContent : '';
+    if(btn){ btn.textContent = '✓ 복사됨'; setTimeout(function(){ btn.textContent = orig || '📋 복사'; }, 1500); }
+  }catch(_){
+    // Fallback for older browsers / non-secure contexts: select + execCommand
+    el.focus(); el.select();
+    try { document.execCommand('copy'); } catch(__){}
+  }
+}
+// Read the in-modal editorial state into a shape the IG builder understands.
+// Mirrors the field collection in savePost (no DB roundtrip). Picks up
+// the slug + description + description_en the admin may have just typed
+// so the regenerate button reflects the latest pending edits.
+function _readEditorialFromForm(){
+  var title = (document.getElementById('postTitle')||{}).value || '';
+  var issue = (document.getElementById('postSubtitle')||{}).value || '';
+  var slug  = (document.getElementById('postSlug')||{}).value || '';
+  var description    = (document.getElementById('postDescription')||{}).value || '';
+  // description_en isn't surfaced as a separate input in the editorial
+  // form yet — when it is, this picks it up automatically.
+  var descriptionEn  = (document.getElementById('postDescriptionEn')||{}).value || '';
+  var credits = [];
+  document.querySelectorAll('#creditsArea .pe-credit-row').forEach(function(row){
+    var nameEl = row.querySelector('.pe-credit-name');
+    var igEl = row.querySelector('.pe-credit-ig');
+    var roles = (typeof _readCreditRoles === 'function') ? _readCreditRoles(row) : [];
+    var name = nameEl ? (nameEl.value||'').trim() : '';
+    if(roles.length && name){
+      credits.push({ roles:roles, name:name, instagram:(igEl?igEl.value:'').trim() });
+    }
+  });
+  var brands = [];
+  document.querySelectorAll('#brandsArea .pe-brand-row').forEach(function(row){
+    var nameEl = row.querySelector('.pe-brand-name');
+    var igEl = row.querySelector('.pe-brand-ig');
+    if(nameEl && nameEl.value){
+      brands.push({ name:nameEl.value, instagram:igEl?igEl.value:'' });
+    }
+  });
+  return {
+    title: title,
+    issue: issue,
+    slug: slug,
+    description: description,
+    description_en: descriptionEn,
+    credits: credits,
+    fashion: { brands: brands },
+  };
+}
+
 function editEditorial(id){
   var ed=editorials.find(function(e){return e.id===id;});
   if(!ed)return;
@@ -2521,6 +2723,8 @@ function editEditorial(id){
   if(preview&&tagsStr)preview.innerHTML=tagsStr.split(',').map(function(t){return t.trim()?'<span class="pe-tag">'+t.trim()+'</span>':'';}).join('');
   if(document.getElementById('postVideoUrl'))document.getElementById('postVideoUrl').value=ed.url||'';
   if(document.getElementById('postDescription'))document.getElementById('postDescription').value=ed.description||'';
+  // QA #170 — Instagram caption (seeded at submission approval).
+  if(document.getElementById('postIgCaption'))document.getElementById('postIgCaption').value=ed.instagram_caption||'';
   document.getElementById('postPublish').checked=(ed.status==='published');
 
   // ── Phase 4: rehydrate scheduled-publish UI when editing ──
@@ -3002,6 +3206,12 @@ async function savePost(mode){
     var finalCover = thumbUrl || existingCoverUrl || finalThumb;
 
     var descriptionVal=document.getElementById('postDescription')?document.getElementById('postDescription').value:'';
+    // QA #170 — Instagram caption (auto-seeded at submission approval;
+    // editor may have tuned it in the textarea before saving). Empty
+    // string means "user cleared it on purpose" — pass null so it shows
+    // the generate button next time the editorial is opened.
+    var igCaptionEl=document.getElementById('postIgCaption');
+    var igCaptionVal=igCaptionEl ? (igCaptionEl.value||'').trim() : '';
     // QA — respect the slug the admin typed. Falls back to an
     // auto-generated slug from the title only when the input is empty
     // (matches the placeholder hint "비워두면 자동 생성됩니다"). The
@@ -3033,6 +3243,10 @@ async function savePost(mode){
         return isPublished ? new Date().toISOString() : null;
       })(),
       description:descriptionVal||null,
+      // QA #170 — empty string → null so the modal shows the "generate"
+      // affordance on reopen instead of an empty textarea masquerading
+      // as legitimate content.
+      instagram_caption: igCaptionVal || null,
       scheduled_publish_at: scheduledAt
     };
     // Remove undefined keys
