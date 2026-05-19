@@ -14,6 +14,131 @@ const { sendEmail, templates } = require('../../_lib/email');
 const { getOptimizedThumbnail, getOptimizedHero } = require('../../_lib/imageOptimize');
 const { rateLimit, RATE_LIMITS } = require('../../_lib/rateLimit');
 
+// ── QA #170 — AI description generator ───────────────────────────────────
+// Two modes, picked by whether the submitter wrote an artist statement:
+//
+//   1) Translate mode — KR statement present → translate to EN + IT.
+//      Output: { kr: <original>, en, it }
+//
+//   2) Vision mode — KR statement blank → ask Claude to look at the title
+//      and the first few hero images, then write 3-4 sentence editorial
+//      blurbs in KR + EN + IT.
+//      Output: { kr, en, it }
+//
+// Failure is non-fatal: a Claude error falls back to { kr: artistStatement,
+// en: '', it: '' } so the editorial is still staged successfully and the
+// admin can fill in the blanks by hand. ANTHROPIC_API_KEY (already used by
+// /api/translate) gates the call; without it we short-circuit to the
+// fallback shape without making a network call.
+async function _generateEditorialDescriptions({ title, artistStatement, imageUrls }) {
+  const kr = (artistStatement || '').trim();
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return { kr, en: '', it: '' };
+  }
+
+  const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
+  const apiUrl = 'https://api.anthropic.com/v1/messages';
+  const commonHeaders = {
+    'Content-Type': 'application/json',
+    'x-api-key': process.env.ANTHROPIC_API_KEY,
+    'anthropic-version': '2023-06-01',
+  };
+
+  // Helper: pull the assistant's text response, gracefully tolerating any
+  // shape Claude returns (text vs. tool_use blocks).
+  function _pickText(result) {
+    if (!result || !Array.isArray(result.content)) return '';
+    const block = result.content.find((b) => b && typeof b.text === 'string');
+    return block ? block.text.trim() : '';
+  }
+
+  // Helper: parse a JSON-only response. Strips surrounding fences if
+  // Claude wraps the JSON in ```json … ``` despite the instruction.
+  function _parseJson(text) {
+    if (!text) return null;
+    const stripped = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
+    try { return JSON.parse(stripped); } catch (_) { return null; }
+  }
+
+  // ── Mode 1: KR present → translate to EN + IT ──
+  if (kr) {
+    const system = [
+      'You are a professional translator for PAP Magazine, a global fashion / beauty / culture editorial publication.',
+      'Translate the given Korean editorial description into English and Italian.',
+      'Tone: editorial, evocative, precise. Match the register of high-end fashion magazines (i-D, Dazed, Vogue Italia).',
+      'Keep proper nouns, brand names, and named subjects as-is.',
+      'Output ONLY a JSON object: {"en": "<english>", "it": "<italian>"}. No prose, no markdown fences.',
+    ].join('\n');
+    try {
+      const resp = await fetch(apiUrl, {
+        method: 'POST',
+        headers: commonHeaders,
+        body: JSON.stringify({
+          model,
+          max_tokens: 1500,
+          system,
+          messages: [{ role: 'user', content: kr }],
+        }),
+      });
+      if (!resp.ok) throw new Error('Claude ' + resp.status);
+      const parsed = _parseJson(_pickText(await resp.json())) || {};
+      return { kr, en: String(parsed.en || '').trim(), it: String(parsed.it || '').trim() };
+    } catch (err) {
+      console.error('[ig caption] translate-mode failed:', err && err.message);
+      return { kr, en: '', it: '' };
+    }
+  }
+
+  // ── Mode 2: KR blank → vision-based generation from title + images ──
+  // Limit to first 3 images to keep token usage sane (vision tokens add
+  // up fast). Anthropic supports image-url sources directly.
+  const visionImages = (Array.isArray(imageUrls) ? imageUrls : [])
+    .filter((u) => typeof u === 'string' && /^https?:\/\//.test(u))
+    .slice(0, 3)
+    .map((url) => ({ type: 'image', source: { type: 'url', url } }));
+
+  if (visionImages.length === 0) {
+    // No images and no statement — nothing useful to write.
+    return { kr: '', en: '', it: '' };
+  }
+
+  const visionSystem = [
+    'You are the editorial copywriter for PAP Magazine — a global fashion / beauty / culture publication.',
+    'You will see an editorial title and a few of its key images. Write a short, evocative 3-4 sentence description for the editorial in THREE languages.',
+    'Tone: editorial, sensory, confident. Avoid generic praise; describe what is visually distinctive (palette, mood, styling references, conceptual angle).',
+    'Languages: Korean (kr), English (en), Italian (it). Each version must read natively — not a literal translation.',
+    'Output ONLY a JSON object: {"kr": "<korean>", "en": "<english>", "it": "<italian>"}. No prose, no markdown fences.',
+  ].join('\n');
+  const visionUser = [
+    { type: 'text', text: 'Editorial title: ' + String(title || '').trim() + '\n\nReference images:' },
+    ...visionImages,
+    { type: 'text', text: 'Write the JSON now.' },
+  ];
+
+  try {
+    const resp = await fetch(apiUrl, {
+      method: 'POST',
+      headers: commonHeaders,
+      body: JSON.stringify({
+        model,
+        max_tokens: 1800,
+        system: visionSystem,
+        messages: [{ role: 'user', content: visionUser }],
+      }),
+    });
+    if (!resp.ok) throw new Error('Claude ' + resp.status);
+    const parsed = _parseJson(_pickText(await resp.json())) || {};
+    return {
+      kr: String(parsed.kr || '').trim(),
+      en: String(parsed.en || '').trim(),
+      it: String(parsed.it || '').trim(),
+    };
+  } catch (err) {
+    console.error('[ig caption] vision-mode failed:', err && err.message);
+    return { kr: '', en: '', it: '' };
+  }
+}
+
 // ── QA #168 — converters from submission-shape to editorial-shape ──
 
 // Title Case "photo_assist" → "Photo Assist" (matches editorial role labels).
@@ -390,20 +515,27 @@ module.exports = async function handler(req, res) {
           const fashion = _buildEditorialFashion(desc, submission.file_urls || []);
 
           // ── QA #170 — Instagram caption ──
-          // Pre-rendered from the same structured data. Slug is generated
-          // alongside so the embedded /editorial/<slug> URL resolves
-          // immediately (review.js used to leave slug=null and rely on
-          // the SSR endpoint's title fallback; an explicit slug makes the
-          // shareable URL look right from the moment of approval).
-          // (EN) / (IT) descriptions are intentionally left blank — admin
-          // pastes those into the editorial form before publishing; the
-          // textarea preserves any edits via round-trip.
+          // Slug is generated alongside so the embedded /editorial/<slug>
+          // URL works the moment the editor copies the caption. AI step
+          // generates the (EN) / (IT) translations (and (KR) too when the
+          // submitter left artistStatement blank) — see
+          // _generateEditorialDescriptions above. Failure is non-fatal:
+          // a Claude error leaves (EN)/(IT) blank for the admin to fill
+          // in by hand. The whole call is awaited because the resulting
+          // caption is persisted to editorials.instagram_caption in the
+          // INSERT that follows; running it post-INSERT would race the
+          // admin opening the editorial modal immediately after approval.
           const editorialSlug = _slugifyForUrl(submission.title || '');
+          const igDescriptions = await _generateEditorialDescriptions({
+            title: submission.title,
+            artistStatement: (desc.artistStatement || '').trim(),
+            imageUrls: submission.file_urls || [],
+          });
           const instagramCaption = _buildInstagramCaption(desc, submission.title, {
             slug: editorialSlug,
-            descKo: (desc.artistStatement || '').trim(),
-            descEn: '',
-            descIt: '',
+            descKo: igDescriptions.kr,
+            descEn: igDescriptions.en,
+            descIt: igDescriptions.it,
           });
 
           const { data: editorial, error: edErr } = await supabaseAdmin
@@ -423,7 +555,15 @@ module.exports = async function handler(req, res) {
               fashion,
               tags: tagsArr,
               issue: null,
-              description,
+              // If the submitter left artistStatement blank and Claude
+              // generated a Korean blurb, store THAT as the description so
+              // the public editorial page isn't blank either.
+              description: description || igDescriptions.kr || null,
+              // English translation goes into the existing column so the
+              // SSR EN locale + admin EN textarea both pick it up. IT
+              // translation lives only inside instagram_caption for now
+              // (no description_it column yet).
+              description_en: igDescriptions.en || null,
               instagram_caption: instagramCaption,
               status: 'draft',
               published_date: null,
