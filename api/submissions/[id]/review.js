@@ -511,11 +511,11 @@ module.exports = async function handler(req, res) {
 
   try {
     const { id } = req.query;
-    // QA #171 — approvalDay / approvalMonth come from the admin review
-    // modal and fill the "around the () of ()" placeholders in the
-    // approval email block. Both are optional; if blank, the literal "()"
-    // stays in the email so it's obvious the date wasn't set.
-    const { status, reviewNote, coverImageIndex, approvalDay, approvalMonth } = req.body;
+    // QA #172 — approval email moved out of this handler; Day/Month are
+    // now collected in the editorial save modal, not here. Body still
+    // carries them harmlessly when older clients are mid-deploy, but the
+    // handler no longer reads or forwards them.
+    const { status, reviewNote, coverImageIndex } = req.body;
 
     if (!status || !['approved', 'rejected', 'revision'].includes(status)) {
       return res.status(400).json({ message: 'Status must be "approved", "rejected", or "revision"' });
@@ -627,6 +627,10 @@ module.exports = async function handler(req, res) {
               // IT translation lives only inside instagram_caption for now
               // (no description_it column yet).
               instagram_caption: instagramCaption,
+              // QA #172 — link back to the submission so the editorial
+              // save handler can look up the submitter when the admin
+              // ticks "✉️ 저장 시 승인 메일 발송".
+              source_submission_id: submission.id,
               status: 'draft',
               published_date: null,
             })
@@ -653,30 +657,31 @@ module.exports = async function handler(req, res) {
 
     // QA #165 — send an outcome-agnostic "review complete" email that
     // pushes the submitter back to the platform to read the verdict.
-    // We pick the locale from profile.email_language (explicit newsletter
-    // preference, set in mypage) → profile.language (site UI locale) →
-    // 'en' as a last-resort fallback. The same dictionary covers all
-    // 9 supported locales; submissionReviewComplete falls back to en
-    // internally if it sees an unknown lang.
-    const { data: profile } = await supabaseAdmin
-      .from('profiles')
-      .select('email, display_name, language, email_language')
-      .eq('id', submission.user_id)
-      .single();
-    if (profile && profile.email) {
-      const lang = profile.email_language || profile.language || 'en';
-      // Pass status so the template can attach the rejection / approval
-      // English courtesy blocks. For status='approved' we also forward
-      // the admin-typed publication day/month (QA #171) so the body
-      // reads "around the 15th of June" instead of "around the () of ()".
-      const tpl = templates.submissionReviewComplete(
-        { name: profile.display_name || '' },
-        { title: submission.title },
-        lang,
-        status,
-        { approvalDay: approvalDay || '', approvalMonth: approvalMonth || '' }
-      );
-      sendEmail(profile.email, tpl).catch(() => {});
+    // Locale picked from profile.email_language → profile.language → 'en'.
+    //
+    // QA #172 — the APPROVED branch now skips this immediate send. The
+    // editor finalises the staged editorial (cover/credits/IG caption +
+    // publication Day/Month) and ticks "✉️ 저장 시 승인 메일 발송" in the
+    // editorial modal; that PUT then sends the email with the curated
+    // copy. Rejection / revision still notify immediately because they
+    // don't stage anything downstream — the submitter just needs to
+    // know to come back and read the verdict.
+    if (status !== 'approved') {
+      const { data: profile } = await supabaseAdmin
+        .from('profiles')
+        .select('email, display_name, language, email_language')
+        .eq('id', submission.user_id)
+        .single();
+      if (profile && profile.email) {
+        const lang = profile.email_language || profile.language || 'en';
+        const tpl = templates.submissionReviewComplete(
+          { name: profile.display_name || '' },
+          { title: submission.title },
+          lang,
+          status
+        );
+        sendEmail(profile.email, tpl).catch(() => {});
+      }
     }
 
     // editorialId lets the admin UI deep-link straight into the edit

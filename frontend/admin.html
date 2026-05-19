@@ -702,6 +702,27 @@ tr:hover td{background:rgba(0,0,0,.02)}
           </div>
         </div>
 
+        <!-- QA #172 — 서브미션에서 스테이지된 에디토리얼일 때만 표시되는
+             "✉️ 저장 시 승인 메일 발송" 영역. pap-admin.js가 editEditorial
+             진입 시 ed.source_submission_id 유무를 보고 #editorialApprovalEmailArea
+             를 표시/숨김 처리한다. 이미 발송된 경우 (approval_email_sent_at
+             존재) 체크박스를 disable + 발송 일시 안내 노출. -->
+        <div id="editorialApprovalEmailArea" style="display:none;margin-top:12px;padding:14px 16px;background:var(--surface);border:1px solid rgba(201,168,106,.4);">
+          <div class="pe-label" style="margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px">
+            <span>✉️ 신청자에게 승인 메일 발송 <span class="pe-opt">서브미션에서 스테이지된 에디토리얼만 노출</span></span>
+            <span id="editorialApprovalEmailSentNote" style="display:none;font-size:11px;color:rgba(180,255,180,.85)">이미 발송됨</span>
+          </div>
+          <label style="display:flex;gap:8px;align-items:center;margin-bottom:10px;cursor:pointer;user-select:none">
+            <input type="checkbox" id="editorialSendApprovalEmail" style="margin:0">
+            <span style="font-size:12px;color:var(--text2)">저장 시 신청자에게 승인 메일을 보냅니다 · 한 번 발송 후 재발송되지 않음</span>
+          </label>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <input class="pe-input" id="editorialApprovalDay" placeholder="Day (예: 15th, 27th, end of)" style="max-width:240px;flex:1" autocomplete="off">
+            <input class="pe-input" id="editorialApprovalMonth" placeholder="Month (예: June, July)" style="max-width:240px;flex:1" autocomplete="off">
+          </div>
+          <div class="pe-hint" style="margin-top:6px">메일 본문 "around the <strong>(Day)</strong> of <strong>(Month)</strong>" 자리에 들어갑니다. 비워두면 ()가 그대로 나갑니다.</div>
+        </div>
+
         <!-- 버튼 -->
         <!-- 저장 → "공개" 체크박스 상태대로 저장 (체크 시 발행, 해제 시 임시저장)
              임시저장 → 체크박스와 무관하게 항상 status='draft'로 강제 저장 -->
@@ -1551,21 +1572,6 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
       <textarea class="modal-ta" id="reviewNote" placeholder="심사 의견을 작성하세요. (한국어로 작성 후 '영어로 변환' 클릭 시 Claude가 에디토리얼 톤의 영문으로 번역합니다)"></textarea>
     </div>
 
-    <!-- QA #171 — approval-only fields. These flow into the English
-         approval block of the "심사 완료" email and fill the
-         "around the () of ()" placeholders. Visible to both 대표 and
-         스태프 (any admin can prepare the values), but the data is only
-         used when the 대표 manager actually clicks ✓ 승인. Leaving them
-         blank is OK — the email keeps the literal "()" so the recipient
-         knows the date wasn't finalised. -->
-    <div class="modal-section" id="reviewApprovalDateSection">
-      <div class="modal-label">✓ 승인 시 발행 예정 일자 <span class="pe-opt">메일 본문 "around the (Day) of (Month)" 자리에 들어갑니다 · 비워두면 ()가 그대로 노출</span></div>
-      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <input class="pe-input" id="reviewApprovalDay" placeholder="Day (예: 15th, 27th, end of)" style="max-width:240px;flex:1" autocomplete="off">
-        <input class="pe-input" id="reviewApprovalMonth" placeholder="Month (예: June, July)" style="max-width:240px;flex:1" autocomplete="off">
-      </div>
-    </div>
-
     <!-- QA #169 — role-gated action buttons.
          data-role-main = visible only to 대표 관리자 (final approve/reject)
          data-role-any  = visible to both 대표 + 스태프 (revision request)
@@ -1683,7 +1689,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
      one click without hitting Vercel response-size limits. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
 
-<script src="/pap-admin.js?v=6" defer></script>
+<script src="/pap-admin.js?v=7" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>

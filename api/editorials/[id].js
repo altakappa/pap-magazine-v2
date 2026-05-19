@@ -10,6 +10,62 @@ const { handleCors } = require('../_lib/cors');
 const { requireAdmin } = require('../_lib/auth');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { embedAndStoreEditorial } = require('../_lib/embeddings');
+const { sendEmail, templates } = require('../_lib/email');
+
+// QA #172 — Approval-email trigger.
+// Fires from POST and PUT when the admin ticks "✉️ 저장 시 승인 메일 발송"
+// in the editorial save modal. Conditions to actually send:
+//   1) editorial has a source_submission_id (was staged from a submission)
+//   2) approval_email_sent_at is NULL (idempotency — never send twice)
+//   3) we can look up the submitter's email
+// On success we stamp approval_email_sent_at so subsequent saves skip
+// the email even if the checkbox is left ticked. Failure is non-fatal:
+// the editorial save still succeeds; admin can retry from the modal.
+async function _maybeSendApprovalEmail(editorialRow, opts) {
+  if (!editorialRow || !editorialRow.id) return;
+  if (!opts || !opts.sendApprovalEmail) return;
+  if (!editorialRow.source_submission_id) return;
+  if (editorialRow.approval_email_sent_at) return;
+
+  try {
+    const { data: submission } = await supabaseAdmin
+      .from('submissions')
+      .select('user_id, title')
+      .eq('id', editorialRow.source_submission_id)
+      .single();
+    if (!submission || !submission.user_id) return;
+
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('email, display_name, language, email_language')
+      .eq('id', submission.user_id)
+      .single();
+    if (!profile || !profile.email) return;
+
+    const lang = profile.email_language || profile.language || 'en';
+    const tpl = templates.submissionReviewComplete(
+      { name: profile.display_name || '' },
+      // Use the editorial's CURRENT title — admin may have renamed it
+      // since the submission was filed.
+      { title: editorialRow.title || submission.title },
+      lang,
+      'approved',
+      { approvalDay: opts.approvalDay || '', approvalMonth: opts.approvalMonth || '' }
+    );
+    const result = await sendEmail(profile.email, tpl);
+    // Only stamp the timestamp when the mailer reports success. A
+    // "skipped" (SMTP not configured) or "sent:false" run leaves the
+    // column NULL so a follow-up retry can succeed once SMTP is back.
+    if (result && result.sent) {
+      await supabaseAdmin
+        .from('editorials')
+        .update({ approval_email_sent_at: new Date().toISOString() })
+        .eq('id', editorialRow.id);
+    }
+  } catch (err) {
+    console.error('[editorial approval-email] send failed:', err && err.message);
+  }
+}
 
 // Re-embed only when fields that drive the embedding text actually change.
 // Saves an OpenAI call (and a DB write) on routine admin edits like fixing
@@ -121,6 +177,15 @@ module.exports = async function handler(req, res) {
         try { await embedAndStoreEditorial(data); }
         catch (e) { console.warn('[editorial PUT] re-embed failed', e && e.message); }
       }
+
+      // QA #172 — fire the approval email when the admin ticked the
+      // checkbox. Idempotent: re-saving with the box still ticked won't
+      // resend because approval_email_sent_at is now stamped.
+      await _maybeSendApprovalEmail(data, {
+        sendApprovalEmail: req.body.send_approval_email === true,
+        approvalDay: req.body.approval_day || '',
+        approvalMonth: req.body.approval_month || '',
+      });
 
       return res.status(200).json({ data });
     } catch (err) {

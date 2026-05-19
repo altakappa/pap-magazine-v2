@@ -651,12 +651,6 @@ function closeModal(){
   // Reset download button label in case the user left mid-progress
   var db=document.getElementById('reviewDownloadBtn');
   if(db){db.disabled=false;db.textContent='⬇ 이미지 일괄 다운로드 (ZIP)';}
-  // QA #171 — clear approval date inputs so prior values don't carry
-  // into the next submission's review.
-  var ad = document.getElementById('reviewApprovalDay');
-  var am = document.getElementById('reviewApprovalMonth');
-  if(ad) ad.value = '';
-  if(am) am.value = '';
 }
 
 // ======== BULK IMAGE DOWNLOAD ========
@@ -1217,24 +1211,11 @@ async function doReview(status){
     return;
   }
 
-  // QA #171 — approval-only: pick up Day/Month so the email's
-  // "around the () of ()" line gets filled in. Blank values are
-  // intentional (admin can ship without a confirmed date) — we just nudge
-  // once so they don't send a half-empty notice by accident.
-  var approvalDay = '';
-  var approvalMonth = '';
-  if(status === 'approved'){
-    var dayEl = document.getElementById('reviewApprovalDay');
-    var monthEl = document.getElementById('reviewApprovalMonth');
-    approvalDay = dayEl ? (dayEl.value || '').trim() : '';
-    approvalMonth = monthEl ? (monthEl.value || '').trim() : '';
-    if(!approvalDay || !approvalMonth){
-      if(!confirm('승인 메일의 "around the () of ()" 자리가 비어있어요.\n빈 () 그대로 발송해도 될까요?\n\n(취소 → 모달로 돌아가서 입력)')){
-        return;
-      }
-    }
-  }
-
+  // QA #172 — approval email is no longer sent at the moment of ✓ 승인.
+  // The admin first stages the editorial, then finalises copy/cover/IG
+  // caption in the editorial modal, and ticks "✉️ 저장 시 승인 메일 발송"
+  // there before pressing 저장. doReview's job is now strictly to flip
+  // the submission status and (for approved) stage the draft.
   if(!confirm(labels[status]+' 처리하시겠습니까?\n의견: '+(note||'(없음)'))){
     return;
   }
@@ -1245,9 +1226,7 @@ async function doReview(status){
     var payload={
       status:status,
       reviewNote:note,
-      coverImageIndex:selectedCoverImageIndex,
-      approvalDay: approvalDay,
-      approvalMonth: approvalMonth
+      coverImageIndex:selectedCoverImageIndex
     };
     var resp=await fetch(apiBase+'/submissions/'+currentReviewSubmission.id+'/review',{
       method:'PUT',
@@ -2753,6 +2732,39 @@ function editEditorial(id){
   if(document.getElementById('postIgCaption'))document.getElementById('postIgCaption').value=ed.instagram_caption||'';
   document.getElementById('postPublish').checked=(ed.status==='published');
 
+  // QA #172 — surface the "✉️ 저장 시 승인 메일 발송" section only when
+  // this editorial was actually staged from a submission. Admin-created
+  // editorials (no source) hide the area entirely — no submitter to
+  // notify. If the email was already sent, the checkbox is disabled and
+  // a small "이미 발송됨" badge is shown so the editor doesn't worry
+  // about double-sending.
+  var appBox = document.getElementById('editorialApprovalEmailArea');
+  if(appBox){
+    if(ed.source_submission_id){
+      appBox.style.display = '';
+      var sentNote = document.getElementById('editorialApprovalEmailSentNote');
+      var chk = document.getElementById('editorialSendApprovalEmail');
+      var dayEl = document.getElementById('editorialApprovalDay');
+      var monthEl = document.getElementById('editorialApprovalMonth');
+      var alreadySent = !!ed.approval_email_sent_at;
+      if(chk){ chk.checked = false; chk.disabled = alreadySent; }
+      if(sentNote){
+        if(alreadySent){
+          var when = '';
+          try { when = new Date(ed.approval_email_sent_at).toLocaleString(); } catch(_){}
+          sentNote.textContent = '이미 발송됨' + (when ? ' · ' + when : '');
+          sentNote.style.display = '';
+        } else {
+          sentNote.style.display = 'none';
+        }
+      }
+      if(dayEl) dayEl.value = '';
+      if(monthEl) monthEl.value = '';
+    } else {
+      appBox.style.display = 'none';
+    }
+  }
+
   // ── Phase 4: rehydrate scheduled-publish UI when editing ──
   // If the editorial has a scheduled_publish_at value, tick the box and
   // pre-fill the date/time inputs (in browser local time, KST).
@@ -3275,6 +3287,24 @@ async function savePost(mode){
       instagram_caption: igCaptionVal || null,
       scheduled_publish_at: scheduledAt
     };
+
+    // QA #172 — approval email payload. Only attached when the admin
+    // ticked the "저장 시 승인 메일 발송" checkbox in the editorial modal.
+    // Backend is idempotent (approval_email_sent_at gate) so re-checking
+    // after a successful send doesn't trigger a duplicate.
+    var approvalChk = document.getElementById('editorialSendApprovalEmail');
+    if(approvalChk && approvalChk.checked && !approvalChk.disabled){
+      var dayInp = document.getElementById('editorialApprovalDay');
+      var monthInp = document.getElementById('editorialApprovalMonth');
+      payload.send_approval_email = true;
+      payload.approval_day   = dayInp   ? (dayInp.value   || '').trim() : '';
+      payload.approval_month = monthInp ? (monthInp.value || '').trim() : '';
+      if(!payload.approval_day || !payload.approval_month){
+        if(!confirm('승인 메일의 "around the () of ()" 자리가 비어있어요.\n빈 () 그대로 발송해도 될까요?')){
+          return;
+        }
+      }
+    }
     // Remove undefined keys
     Object.keys(payload).forEach(function(k){if(payload[k]===undefined)delete payload[k];});
 
