@@ -1164,9 +1164,17 @@ function loadMySubmissions(){
 // quick visual summary so creators don't have to chase down email.
 async function viewSubmission(id){
   try{
+    // QA #173 — include the Bearer token explicitly. credentials:'include'
+    // covers the httpOnly cookie path, but users who only have the
+    // localStorage JWT (no cookie) would get a 401 here. Mirror the auth
+    // header pattern used by every authenticated fetch in pap-api.js.
+    var _token = '';
+    try{ _token = localStorage.getItem('pap-token') || ''; }catch(_){}
+    var _headers = {'X-Requested-With':'XMLHttpRequest'};
+    if(_token) _headers['Authorization'] = 'Bearer ' + _token;
     var res=await fetch('/api/submissions/'+id,{
       credentials:'include',
-      headers:{'X-Requested-With':'XMLHttpRequest'}
+      headers:_headers
     });
     if(!res.ok) throw new Error('HTTP '+res.status);
     var data=await res.json();
@@ -1829,9 +1837,17 @@ var existingAdditionalUrls = [];  // ['https://…','…']                   —
 async function loadReviseSubmission(){
   if(!REVISE_ID) return;
   try{
+    // QA #173 — same Bearer-token fix as viewSubmission. Without it,
+    // RESUBMIT REVISED VERSION lands the user on a blank form (or the
+    // banner stalls on "Loading your previous submission for revision…")
+    // because GET /api/submissions/:id returns 401.
+    var _token = '';
+    try{ _token = localStorage.getItem('pap-token') || ''; }catch(_){}
+    var _headers = {'X-Requested-With':'XMLHttpRequest'};
+    if(_token) _headers['Authorization'] = 'Bearer ' + _token;
     var res = await fetch('/api/submissions/' + REVISE_ID, {
       credentials:'include',
-      headers:{'X-Requested-With':'XMLHttpRequest'}
+      headers:_headers
     });
     if(!res.ok) throw new Error('HTTP ' + res.status);
     var payload = await res.json();
