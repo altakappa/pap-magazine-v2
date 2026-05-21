@@ -138,6 +138,11 @@ module.exports = async function handler(req, res) {
           file_urls: [...lookUrls, ...additionalUrls],
           status: 'pending',           // back into the editorial queue
           admin_notes: newNotes,        // preserve history
+          // QA #175 — stamp the moment of resubmission so the admin list
+          // can render "보완 완료" instead of the generic "대기 중" and
+          // surface a dedicated filter button. NULL stays for fresh
+          // submissions that never went through a revision round.
+          resubmitted_at: new Date().toISOString(),
         })
         .eq('id', id)
         .select()

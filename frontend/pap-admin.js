@@ -1328,8 +1328,17 @@ async function loadSubmissions(statusFilter, opts){
     }
     tb.innerHTML='';
     submissions.forEach(function(s){
-      var statusCls=s.status==='pending'?'b-pending':s.status==='approved'?'b-approved':s.status==='revision'?'b-revision':'b-declined';
-      var statusLabel=s.status==='pending'?'대기 중':s.status==='approved'?'승인':s.status==='revision'?'보완 요청':'거절';
+      // QA #175 — a "pending" entry with a non-null resubmitted_at went
+      // through at least one revision round. Surface that as "보완 완료"
+      // with the revision-blue badge so the editor knows to give it
+      // priority re-review (the submitter already addressed feedback).
+      var isResubmitted = (s.status === 'pending' && s.resubmitted_at);
+      var statusCls = isResubmitted
+        ? 'b-revision'
+        : (s.status==='pending'?'b-pending':s.status==='approved'?'b-approved':s.status==='revision'?'b-revision':'b-declined');
+      var statusLabel = isResubmitted
+        ? '보완 완료'
+        : (s.status==='pending'?'대기 중':s.status==='approved'?'승인':s.status==='revision'?'보완 요청':'거절');
       var looks=s.file_urls?s.file_urls.length:'?';
       var plan=s.submitterPlan||'free';
       var planCls=plan.indexOf('premium')>-1?'b-premium':plan.indexOf('standard')>-1?'b-standard':'b-free';

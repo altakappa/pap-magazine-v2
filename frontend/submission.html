@@ -1152,6 +1152,11 @@ function loadMySubmissions(){
         else if(s.status==='published'){statusClass='status-published';statusText='PUBLISHED';}
         else if(s.status==='rejected'){statusClass='status-rejected';statusText='REJECTED';}
         else if(s.status==='revision'){statusClass='status-revision';statusText='REVISION REQUESTED';}
+        // QA #175 — resubmitted_at distinguishes "I uploaded my revised
+        // version and it's now back in the queue" from a fresh first
+        // submission. Reuses the revision-blue style for visual
+        // continuity with the REVISION REQUESTED badge.
+        else if(s.status==='pending' && s.resubmitted_at){statusClass='status-revision';statusText='RESUBMITTED';}
         html+='<div class="sub-item"><div><div class="sub-item-title">'+PAP.sanitize(s.title||'Untitled')+'</div></div><div class="sub-item-date">'+PAP.sanitize(s.created_at||'')+'</div><div class="sub-item-status '+statusClass+'">'+statusText+'</div><div class="sub-item-action" onclick="viewSubmission(\''+s.id+'\')">VIEW</div></div>';
       });
       document.getElementById('mySubsList').innerHTML=html;
@@ -1185,11 +1190,16 @@ async function viewSubmission(id){
     try{desc=s.description?JSON.parse(s.description):{};}catch(_){}
 
     // Status copy + accent colour
+    // QA #175 — a re-submitted entry (pending + resubmitted_at) reads as
+    // "Resubmitted" so the user knows their revision was received and is
+    // back in the review queue (vs. a generic "Reviewing" that could
+    // imply nothing changed).
     var statusText='Reviewing', accent='rgba(255,180,50,.8)';
     if(s.status==='approved'||s.status==='accepted'){statusText='Accepted';accent='rgba(100,255,150,.8)';}
     else if(s.status==='published'){statusText='Published';accent='rgba(100,200,255,.8)';}
     else if(s.status==='rejected'){statusText='Rejected';accent='rgba(255,100,100,.8)';}
     else if(s.status==='revision'){statusText='Revision Requested';accent='rgba(100,150,255,.9)';}
+    else if(s.status==='pending' && s.resubmitted_at){statusText='Resubmitted';accent='rgba(100,150,255,.9)';}
 
     var note=s.admin_notes||s.adminNotes||'';
     var imageCount=Array.isArray(s.file_urls)?s.file_urls.length:0;

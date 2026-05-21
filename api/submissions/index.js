@@ -213,7 +213,13 @@ module.exports = async function handler(req, res) {
         .order('created_at', { ascending: false })
         .range(offset, offset + perPage - 1);
 
-      if (status) {
+      // QA #175 — "resubmitted" is a synthetic filter that means
+      // "pending AND already came back from a revision round". Maps to
+      // (status='pending' AND resubmitted_at IS NOT NULL). Other status
+      // filters stay as plain equality.
+      if (status === 'resubmitted') {
+        query = query.eq('status', 'pending').not('resubmitted_at', 'is', null);
+      } else if (status) {
         query = query.eq('status', status);
       }
 
