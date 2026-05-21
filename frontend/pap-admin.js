@@ -1294,16 +1294,38 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 
 // ======== SUBMISSIONS MANAGEMENT ========
 var currentSubFilter='';
-async function loadSubmissions(statusFilter){
-  if(statusFilter!==undefined)currentSubFilter=statusFilter;
+// QA #174 — page-state tracking so admin can paginate. Reset to 1 on
+// filter change so the user doesn't end up "stuck" on a page that
+// doesn't exist for the new filter (e.g. moved from 전체 page 3 to
+// 거절 which only has 1 page total).
+var currentSubPage=1;
+async function loadSubmissions(statusFilter, opts){
+  if(statusFilter!==undefined && statusFilter!==currentSubFilter){
+    currentSubFilter=statusFilter;
+    currentSubPage=1;
+  }
+  // Allow callers (pagination buttons) to override the page without
+  // changing the filter.
+  if(opts && typeof opts.page === 'number') currentSubPage = Math.max(1, opts.page);
+
   var tb=document.getElementById('submissionListBody');
   if(!tb)return;
   tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px">불러오는 중...</td></tr>';
   try{
-    var query=currentSubFilter?'?status='+currentSubFilter:'';
+    var params=[];
+    if(currentSubFilter) params.push('status='+encodeURIComponent(currentSubFilter));
+    params.push('page='+currentSubPage);
+    var query='?'+params.join('&');
     var result=await apiGet('/submissions'+query);
     var submissions=result.submissions||result.data||[];
-    if(!submissions.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px 0">서브미션이 없습니다</td></tr>';return;}
+    var totalPages=result.totalPages||1;
+    var total=result.total||submissions.length;
+
+    if(!submissions.length){
+      tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px 0">서브미션이 없습니다</td></tr>';
+      _renderSubPagination(currentSubPage, totalPages, total);
+      return;
+    }
     tb.innerHTML='';
     submissions.forEach(function(s){
       var statusCls=s.status==='pending'?'b-pending':s.status==='approved'?'b-approved':s.status==='revision'?'b-revision':'b-declined';
@@ -1324,9 +1346,45 @@ async function loadSubmissions(statusFilter){
       }
       tb.innerHTML+='<tr><td class="td-title" onclick="openModal(\''+s.id+'\')">'+esc(s.title)+'</td><td>'+esc(s.submitterName||s.submitterEmail||'—')+'</td><td><span class="badge '+planCls+'">'+planLabel+'</span></td><td>'+looks+'</td><td>'+fmtDate(s.created_at)+'</td><td><span class="badge '+statusCls+'">'+statusLabel+'</span></td><td>'+actionBtns+'</td></tr>';
     });
+    _renderSubPagination(currentSubPage, totalPages, total);
   }catch(err){
     tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:#ff6b6b;padding:40px">불러오기 실패</td></tr>';
     console.error('Error loading submissions:',err);
+  }
+}
+// QA #174 — pagination bar rendered under the submissions table.
+// Lives in <tfoot> on first call (or replaces existing tfoot on
+// subsequent calls). Hides when there's only one page so the UI doesn't
+// look busy for small accounts.
+function _renderSubPagination(page, totalPages, total){
+  var table=document.getElementById('submissionListBody');
+  if(!table) return;
+  var tableEl=table.closest('table');
+  if(!tableEl) return;
+  var existing=tableEl.querySelector('tfoot.sub-pagination');
+  if(totalPages<=1){
+    if(existing) existing.remove();
+    return;
+  }
+  var prevDisabled = page<=1 ? 'disabled' : '';
+  var nextDisabled = page>=totalPages ? 'disabled' : '';
+  var html=
+    '<tr><td colspan="7" style="padding:14px 12px;border-top:1px solid var(--border);background:var(--surface)">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--text3)">'+
+        '<span>총 <strong style="color:var(--text)">'+total+'</strong>건 · 페이지 <strong style="color:var(--text)">'+page+'</strong> / '+totalPages+'</span>'+
+        '<span style="display:flex;gap:6px">'+
+          '<button class="btn btn-sm" '+prevDisabled+' onclick="loadSubmissions(undefined,{page:'+(page-1)+'})">← 이전</button>'+
+          '<button class="btn btn-sm" '+nextDisabled+' onclick="loadSubmissions(undefined,{page:'+(page+1)+'})">다음 →</button>'+
+        '</span>'+
+      '</div>'+
+    '</td></tr>';
+  if(existing){
+    existing.innerHTML=html;
+  }else{
+    var tf=document.createElement('tfoot');
+    tf.className='sub-pagination';
+    tf.innerHTML=html;
+    tableEl.appendChild(tf);
   }
 }
 function filterSubmissions(status,btn){

@@ -193,8 +193,13 @@ module.exports = async function handler(req, res) {
     if (!admin) return;
 
     try {
-      const { status, page = 1 } = req.query;
-      const perPage = 20;
+      // QA #174 — perPage was 20, which silently hid every submission
+      // past the first page from the admin (no pagination UI was wired
+      // up either). Bumped to 50 so a year's worth of editorial entries
+      // fits on a single screen for most months; the new pagination UI
+      // below covers the overflow when it eventually happens.
+      const { status, page = 1, limit: rawLimit } = req.query;
+      const perPage = Math.min(Math.max(1, parseInt(rawLimit) || 50), 200);
       const offset = (parseInt(page) - 1) * perPage;
 
       // Don't use PostgREST embed here: `submissions.user_id` FKs to
@@ -262,6 +267,7 @@ module.exports = async function handler(req, res) {
         }),
         total: count,
         page: parseInt(page),
+        perPage,
         totalPages: Math.ceil(count / perPage),
       });
     } catch (error) {
