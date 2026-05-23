@@ -68,6 +68,127 @@ function extractContributors(record) {
   return Array.from(names).slice(0, 30);
 }
 
+/* ── QA #177 — structured credit helpers ────────────────────────────
+ *
+ * Parses record.credits into the row shape the editorial overlay
+ * renders (`Role @handle1 @handle2`). Mirrors the SPA's buildCreditBlock
+ * so a direct visit and an in-app overlay show the same crew list.
+ *
+ * Input shapes:
+ *   new (post QA #168) — [{roles:[…], name, instagram, website}, …]
+ *   legacy submission  — {photographer:["Name (@handle)"], …}
+ *   bare array of {role, name, instagram}  — pre-roles[] form
+ *
+ * Output:
+ *   [{ role: 'Photographer', handles: ['@handle1', '@handle2'] }, …]
+ *   Empty array when nothing usable. */
+const IG_ROLE_LABEL = {
+  photographer: 'Photographer',
+  photographer_assist: 'Assisted by', photo_assist: 'Assisted by', photo_asst: 'Assisted by',
+  stylist: 'Style', styling: 'Style',
+  styling_assist: 'Style assist', stylist_assist: 'Style assist',
+  hair: 'Hair', hairstylist: 'Hair', hair_asst: 'Hair assist',
+  makeup: 'Make Up', make_up: 'Make Up', mua: 'Make Up', muah: 'Make Up',
+  casting: 'Casting', casting_director: 'Casting',
+  set_design: 'Set Design', set_designer: 'Set Design',
+  art_director: 'Art Director', creative_director: 'Creative Director',
+  producer: 'Producer',
+  video: 'Video', videographer: 'Video', director: 'Director',
+  starring: 'Starring', model: 'Starring',
+};
+function normalizeHandle(s) {
+  if (!s) return '';
+  let h = String(s).trim()
+    .replace(/^https?:\/\/(www\.)?instagram\.com\//i, '')
+    .replace(/\/$/, '');
+  if (!h) return '';
+  return h.charAt(0) === '@' ? h : '@' + h;
+}
+function humanizeRoleKey(raw) {
+  const k = String(raw || '').toLowerCase().replace(/[\s.]+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+  if (IG_ROLE_LABEL[k]) return IG_ROLE_LABEL[k];
+  const s = String(raw || '').trim();
+  if (!s) return 'Credit';
+  if (/^[a-z0-9_]+$/.test(s)) return s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  return s;
+}
+function extractStructuredCredits(record) {
+  const c = record.credits;
+  if (!c) return [];
+  let obj;
+  try { obj = typeof c === 'string' ? JSON.parse(c) : c; } catch { return []; }
+  if (!obj) return [];
+  const rows = []; // {role, handles}
+  if (Array.isArray(obj)) {
+    obj.forEach((entry) => {
+      if (!entry || typeof entry !== 'object') return;
+      const handle = normalizeHandle(entry.instagram || entry.website || '');
+      if (!handle && !entry.name) return;
+      const role = humanizeRoleKey(
+        Array.isArray(entry.roles) && entry.roles.length ? entry.roles[0]
+          : (entry.role || 'Credit')
+      );
+      const handles = handle ? [handle] : (entry.name ? [escText(entry.name)] : []);
+      rows.push({ role, handles });
+    });
+  } else if (typeof obj === 'object') {
+    Object.keys(obj).forEach((roleKey) => {
+      const arr = Array.isArray(obj[roleKey]) ? obj[roleKey] : [obj[roleKey]];
+      const role = humanizeRoleKey(roleKey);
+      const handles = [];
+      arr.forEach((entry) => {
+        if (!entry) return;
+        if (typeof entry === 'object') {
+          const h = normalizeHandle(entry.instagram || entry.website || '');
+          if (h) handles.push(h);
+          return;
+        }
+        const m = String(entry).match(/\(([^)]+)\)/);
+        if (m) {
+          const h = normalizeHandle(m[1]);
+          if (h) handles.push(h);
+        }
+      });
+      if (handles.length) rows.push({ role, handles });
+    });
+  }
+  return rows;
+}
+
+/* QA #177 — fashion brand chips ("Wearing" section).
+ * Input shape: record.fashion = { brands: [{name, instagram}, …] } */
+function extractFashionBrands(record) {
+  const f = record.fashion;
+  if (!f) return [];
+  let obj;
+  try { obj = typeof f === 'string' ? JSON.parse(f) : f; } catch { return []; }
+  const arr = obj && Array.isArray(obj.brands) ? obj.brands : [];
+  const seen = new Set();
+  const out = [];
+  arr.forEach((b) => {
+    if (!b) return;
+    const handle = normalizeHandle(b.instagram || b.name || '');
+    if (!handle) return;
+    const key = handle.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(handle);
+  });
+  return out;
+}
+
+/* QA #177 — per-image credit map { img_1: "@brand Type, @brand2 Type2" }.
+ * Returns the matching credit string for the 1-based gallery index, or ''. */
+function getImageCredit(record, oneBasedIdx) {
+  const f = record.fashion;
+  if (!f) return '';
+  let obj;
+  try { obj = typeof f === 'string' ? JSON.parse(f) : f; } catch { return ''; }
+  const map = obj && obj.imageCredits && typeof obj.imageCredits === 'object' ? obj.imageCredits : null;
+  if (!map) return '';
+  return String(map['img_' + oneBasedIdx] || '').trim();
+}
+
 /* ── per-kind config: route prefix, breadcrumb labels, default schema ── */
 const KIND = {
   editorial: {
@@ -193,10 +314,57 @@ function renderSeoHtml(kind, record) {
     ? '<ul class="seo-tags">' + tags.map(t => `<li>#${escText(t)}</li>`).join('') + '</ul>'
     : '';
 
-  const creditsHtml = contributors.length
-    ? '<section class="seo-credits"><h2>Credits</h2><ul>' +
-        contributors.map(n => `<li>${escText(n)}</li>`).join('') +
-      '</ul></section>'
+  /* QA #177 — structured Credit block matching the in-app overlay
+   * (`Role @handle1 @handle2`). Falls back to the legacy flat contributor
+   * list when extractStructuredCredits returns nothing — better than
+   * dropping the section entirely on very old rows. */
+  const creditRows = extractStructuredCredits(record);
+  const creditsHtml = creditRows.length
+    ? '<section class="seo-credits"><h2>Credits</h2>' +
+        creditRows.map(({ role, handles }) =>
+          `<div class="ed-cred-row"><div class="ed-cred-role">${escText(role)}</div><div class="ed-cred-val">${handles.map(h => escText(h)).join(' ')}</div></div>`
+        ).join('') +
+      '</section>'
+    : (contributors.length
+        ? '<section class="seo-credits"><h2>Credits</h2><ul>' +
+            contributors.map(n => `<li>${escText(n)}</li>`).join('') +
+          '</ul></section>'
+        : '');
+
+  /* QA #177 — fashion brand chips, mirrors the SPA overlay's "Fashion by"
+   * row. Hidden when the editorial has no brands listed. */
+  const fashionBrands = extractFashionBrands(record);
+  const fashionHtml = fashionBrands.length
+    ? '<section class="seo-fashion"><h2>Fashion</h2><div class="ed-fashion-chips">' +
+        fashionBrands.map(h => `<a class="ed-fashion-chip" href="https://www.instagram.com/${escAttr(h.replace(/^@/, ''))}/" target="_blank" rel="noopener noreferrer">${escText(h)}</a>`).join('') +
+      '</div></section>'
+    : '';
+
+  /* QA #177 — optional video embed when an editorial carries a YouTube /
+   * Vimeo / Instagram link in record.url. We only handle the common
+   * YouTube watch / youtu.be / Vimeo formats here — anything else is
+   * rendered as a plain link. Mirrors the SPA's _renderEditorialVideo. */
+  function _extractEmbed(url) {
+    const u = String(url || '').trim();
+    if (!u) return null;
+    let m;
+    if ((m = u.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([A-Za-z0-9_-]{11})/))) {
+      return { kind: 'iframe', src: `https://www.youtube-nocookie.com/embed/${m[1]}?rel=0` };
+    }
+    if ((m = u.match(/vimeo\.com\/(?:video\/)?(\d+)/))) {
+      return { kind: 'iframe', src: `https://player.vimeo.com/video/${m[1]}` };
+    }
+    if (/instagram\.com\/(reel|p)\//i.test(u)) {
+      return { kind: 'link', href: u, label: 'Watch on Instagram' };
+    }
+    if (/^https?:\/\//i.test(u)) return { kind: 'link', href: u, label: 'Watch external' };
+    return null;
+  }
+  const videoEmbed = cfg.schemaType !== 'VideoObject' ? _extractEmbed(record.url) : null;
+  const videoHtml = videoEmbed
+    ? (videoEmbed.kind === 'iframe'
+        ? `<section class="seo-video-section"><div class="seo-embed"><iframe src="${escAttr(videoEmbed.src)}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div></section>`
+        : `<section class="seo-video-section"><a class="seo-embed-link" href="${escAttr(videoEmbed.href)}" target="_blank" rel="noopener noreferrer">${escText(videoEmbed.label)} ↗</a></section>`)
     : '';
 
   /* QA #162 — Related Editorial card (films only). The /api/films join
@@ -258,11 +426,20 @@ function renderSeoHtml(kind, record) {
       ? `<div class="seo-hero"><img src="${escAttr(ogImage)}" alt="${escAttr(titleKo)} — Cover" loading="eager" fetchpriority="high" width="1200" height="800"></div>`
       : '';
 
+  /* QA #177 — gallery now annotates each image with the per-look fashion
+   * credit string when fashion.imageCredits has one for that index. Same
+   * data path the SPA uses (`@brand1 Item, @brand2 Item2`). The caption
+   * sits below the image instead of as a hover overlay so it works
+   * without JS (matters for SSR/crawlers + accessibility). */
   const galleryHtml = gallery.length
     ? '<section class="seo-gallery" aria-label="Gallery">' +
-        gallery.map((src, i) =>
-          `<figure><img src="${escAttr(src)}" alt="${escAttr(titleKo)} — Look ${i + 1}" loading="lazy" decoding="async"></figure>`
-        ).join('') +
+        gallery.map((src, i) => {
+          const credit = getImageCredit(record, i + 1);
+          return `<figure>`
+            + `<img src="${escAttr(src)}" alt="${escAttr(titleKo)} — Look ${i + 1}" loading="lazy" decoding="async">`
+            + (credit ? `<figcaption class="ed-img-credits">${escText(credit)}</figcaption>` : '')
+            + `</figure>`;
+        }).join('') +
       '</section>'
     : '';
 
@@ -332,13 +509,31 @@ ${tags.map(t => `<meta property="article:tag" content="${escAttr(t)}">`).join('\
   .seo-meta{max-width:800px;margin:32px auto;padding:0 24px;line-height:1.6}
   .seo-meta h1{font-family:'Playfair Display',serif;font-size:clamp(28px,5vw,56px);margin:0 0 12px}
   .seo-meta .alt{opacity:.65;font-style:italic;margin:0 0 24px}
-  .seo-meta time{opacity:.55;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+  .seo-meta time{opacity:.55;font-size:13px;letter-spacing:.08em;text-transform:uppercase;display:block;margin-bottom:20px}
+  .seo-meta .seo-desc-primary{font-size:15px;line-height:1.8;margin:16px 0 12px;white-space:pre-line}
+  .seo-meta .seo-desc-en{font-size:13px;line-height:1.75;margin:0 0 12px;opacity:.6;white-space:pre-line;padding-top:14px;border-top:1px dashed rgba(255,255,255,.12)}
   .seo-tags{display:flex;flex-wrap:wrap;gap:8px;list-style:none;padding:0;margin:24px 0}
   .seo-tags li{padding:4px 10px;border:1px solid rgba(255,255,255,.2);font-size:12px}
+  /* QA #177 — structured credits / fashion / per-image credits to match SPA overlay */
   .seo-credits{max-width:800px;margin:48px auto;padding:0 24px}
-  .seo-credits h2{font-size:14px;letter-spacing:.12em;text-transform:uppercase;opacity:.7}
+  .seo-credits h2{font-size:14px;letter-spacing:.12em;text-transform:uppercase;opacity:.7;margin-bottom:16px}
   .seo-credits ul{list-style:none;padding:0;display:flex;flex-wrap:wrap;gap:16px}
-  .seo-credits li{font-size:13px;opacity:.8}
+  .seo-credits ul li{font-size:13px;opacity:.8}
+  .ed-cred-row{display:grid;grid-template-columns:160px 1fr;gap:16px;align-items:baseline;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:13.5px;line-height:1.7}
+  .ed-cred-row:last-child{border-bottom:none}
+  .ed-cred-role{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.55)}
+  .ed-cred-val{color:rgba(255,255,255,.92);word-break:break-word}
+  .seo-fashion{max-width:800px;margin:32px auto;padding:0 24px}
+  .seo-fashion h2{font-size:14px;letter-spacing:.12em;text-transform:uppercase;opacity:.7;margin-bottom:14px}
+  .ed-fashion-chips{display:flex;flex-wrap:wrap;gap:8px}
+  .ed-fashion-chip{display:inline-block;padding:6px 12px;border:1px solid rgba(255,255,255,.18);font-size:12px;color:rgba(255,255,255,.85);text-decoration:none;transition:background .2s}
+  .ed-fashion-chip:hover{background:rgba(255,255,255,.06)}
+  .seo-video-section{max-width:1200px;margin:48px auto;padding:0 16px}
+  .seo-embed{position:relative;width:100%;aspect-ratio:16/9;background:#111}
+  .seo-embed iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
+  .seo-embed-link{display:inline-block;padding:14px 28px;border:1px solid rgba(255,255,255,.3);color:#fff;text-decoration:none;font-size:12px;letter-spacing:.12em;text-transform:uppercase}
+  .seo-embed-link:hover{background:rgba(255,255,255,.06)}
+  .ed-img-credits{margin:8px 0 0;font-size:11px;letter-spacing:.04em;color:rgba(255,255,255,.55);line-height:1.6;font-family:Inter,-apple-system,sans-serif}
   /* Related editorial / films cards — QA #162 + #163 */
   .seo-related{max-width:800px;margin:36px auto;padding:0 24px}
   .seo-related h2{font-size:14px;letter-spacing:.12em;text-transform:uppercase;opacity:.7;margin-bottom:14px}
@@ -369,13 +564,15 @@ ${tags.map(t => `<meta property="article:tag" content="${escAttr(t)}">`).join('\
       <h1>${escText(titleKo)}</h1>
       ${titleEn !== titleKo ? `<p class="alt">${escText(titleEn)}</p>` : ''}
       <time datetime="${escAttr(published)}">${escText(published.slice(0, 10))}${record.issue ? ' · ' + escText(record.issue) : record.category ? ' · ' + escText(record.category) : ''}</time>
-      <p>${escText(descKo)}</p>
-      ${descEn && descEn !== descKo ? `<p>${escText(descEn)}</p>` : ''}
+      <p class="seo-desc-primary">${escText(descKo)}</p>
+      ${descEn && descEn !== descKo ? `<p class="seo-desc-en">${escText(descEn)}</p>` : ''}
       ${tagHtml}
     </div>
     ${bodyHtml}
     ${galleryHtml}
+    ${videoHtml}
     ${creditsHtml}
+    ${fashionHtml}
     ${relatedEditorialHtml}
     ${relatedFilmsHtml}
   </article>
