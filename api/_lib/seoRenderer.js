@@ -557,6 +557,45 @@ ${tags.map(t => `<meta property="article:tag" content="${escAttr(t)}">`).join('\
 </style>
 </head>
 <body class="seo-loading">
+${kind === 'editorial' ? `<!-- QA #178 — Real-browser redirect bridge (editorials only).
+     The SSR HTML above + meta tags is what crawlers / social-preview
+     scrapers consume (they don't run JS). Real users instead get sent to
+     the SPA homepage with the editorial deep-link, which renders the
+     EXACT same overlay as clicking a card from the menu — no parallel
+     templates to keep in sync.
+     Final URL settles at /editorial/<slug> (clean) because the SPA's
+     openEditorial → _openEditorialInner pushes that path after the
+     overlay opens. ?raw=1 escape hatch leaves the user on the SSR
+     view for debugging / archival snapshots.
+     Films / articles / shorts skip this redirect because the SPA
+     doesn't yet have a robust slug-based deep-link path for those
+     kinds; they stay on the SSR page (which already mirrors the SPA
+     overlay in structure via QA #177). -->
+<style>
+  /* Hide the SSR body the instant we know we'll be redirecting so the
+     user doesn't see a flash of the simplified SSR layout. Crawlers
+     without JS keep seeing the body normally. */
+  html.js-redirecting body{opacity:0!important;transition:none!important}
+</style>
+<script>
+  (function(){
+    try {
+      var qs = (window.location.search || '').toLowerCase();
+      if (qs.indexOf('raw=1') !== -1 || qs.indexOf('no-spa=1') !== -1) return;
+      try {
+        if (sessionStorage.getItem('_pap_ssr_redirect_done')) return;
+        sessionStorage.setItem('_pap_ssr_redirect_done', String(Date.now()));
+      } catch(_){}
+      document.documentElement.classList.add('js-redirecting');
+      // SPA homepage picks up ?ed=<name> via the existing deep-link IIFE
+      // in pap-content-seo.js, opens the editorial overlay, and pushes
+      // /editorial/<slug> as the final URL.
+      var target = '/?ed=' + encodeURIComponent(${JSON.stringify(slug)});
+      window.location.replace(target);
+    } catch(_){ /* on any error, leave the SSR page visible */ }
+  })();
+</script>` : ''}
+
 <main class="seo-content">
   <article>
     ${heroHtml}
