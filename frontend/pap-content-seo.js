@@ -161,6 +161,46 @@ window.addEventListener('popstate', function(){
   if(!stillInEditorial) _resetEditorialMeta();
 });
 
+// QA #178 — hoisted to module scope so BOTH the hash deep-link IIFE
+// (#editorial/<X>) and the query-param IIFE (?ed=<X>) use the same
+// slug→title resolver. Previously only the hash IIFE resolved slugs to
+// titles; the ?ed= path piped the raw slug straight into openEditorial,
+// which then opened the overlay with placeholder content (hero blank,
+// credits empty) because edDetails['synthetic-skin'] doesn't exist —
+// only edDetails['Synthetic Skin'] does.
+function _papResolveEditorialName(input){
+  if(!input) return input;
+  // 1. Exact match in edDetails (most common — case-correct title)
+  if(typeof edDetails === 'object' && edDetails[input]) return input;
+  // 2. Case-insensitive title match — handles e.g. "refractions" → "Refractions"
+  var lower = String(input).toLowerCase();
+  if(typeof edDetails === 'object'){
+    for(var k in edDetails){
+      if(k.toLowerCase() === lower) return k;
+    }
+  }
+  // 3. Slug-style match: dashes → spaces, then case-insensitive
+  //    Catches "indigestible-rituals" → "Indigestible Rituals".
+  var spaced = lower.replace(/-/g, ' ');
+  if(typeof edDetails === 'object'){
+    for(var k2 in edDetails){
+      if(k2.toLowerCase() === spaced) return k2;
+    }
+  }
+  // 4. Match against edData[].url / edData[].slug (the original /slug/ path)
+  if(typeof edData !== 'undefined' && Array.isArray(edData)){
+    for(var i=0;i<edData.length;i++){
+      var rec = edData[i];
+      if(rec && rec.slug && String(rec.slug).toLowerCase() === lower) return rec.title;
+      var u = (rec && rec.url || '').replace(/^\/+|\/+$/g, '').toLowerCase();
+      if(u && (u === lower || u === spaced)) return rec.title;
+    }
+  }
+  // 5. Fallback — pass through, openEditorial will use its own
+  //    case-insensitive lookup as last resort.
+  return input;
+}
+
 // ======== DEEP LINK: open editorial from hash #editorial/Title ========
 // Accepts EITHER the canonical title ("Refractions") OR a slug-style
 // fragment ("refractions", "indigestible-rituals") so old pap-magazine.com
@@ -269,10 +309,17 @@ window.addEventListener('popstate', function(){
     if(typeof openEditorial!=='function'){
       setTimeout(tryOpen,100); return;
     }
-    var ready=(typeof edDetails==='object'&&edDetails&&(edDetails[edName]||Object.keys(edDetails).length>0));
-    var elapsed=Date.now()-pollStart;
-    if(!ready&&elapsed<3000){setTimeout(tryOpen,100);return;}
-    try{ openEditorial(edName,''); }catch(e){}
+    // QA #178 — resolve slug → canonical title BEFORE opening. Without
+    // this, "?ed=synthetic-skin" passes the slug straight to
+    // openEditorial, which then can't find it in edDetails (keyed by
+    // "Synthetic Skin") and renders the overlay with placeholders.
+    var resolved = _papResolveEditorialName(edName);
+    var ready = (typeof edDetails === 'object' && edDetails && (
+      edDetails[resolved] || Object.keys(edDetails).length > 0
+    ));
+    var elapsed = Date.now() - pollStart;
+    if(!ready && elapsed < 4000){ setTimeout(tryOpen, 120); return; }
+    try{ openEditorial(resolved, ''); }catch(e){}
     /* Reveal shortly after openEditorial triggers its own render so the
        editorial overlay is painted before we fade in. */
     setTimeout(revealBody,60);
