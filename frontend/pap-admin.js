@@ -3326,6 +3326,17 @@ async function savePost(mode){
     var slugInput = document.getElementById('postSlug');
     var slugVal = (slugInput && slugInput.value || '').trim();
     var slugAuto = title.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+    // QA #176 — "예약 게시" implies status='published'. Without this
+    // override, admin who tick 예약 게시 but leave "공개" unchecked end
+    // up with status='draft' + scheduled_publish_at=future. Drafts are
+    // hidden forever regardless of the schedule timestamp (the GET
+    // handler's schedule gate only runs for status='published' rows),
+    // so the editorial would silently never go live. Forcing
+    // published here matches the admin's mental model ("예약 게시 =
+    // publish on this date"). forceDraft (임시저장 button) still wins
+    // — explicit "save as draft" trumps scheduling.
+    var statusVal = isPublished || (!forceDraft && scheduledAt) ? 'published' : 'draft';
+
     var payload={
       title:title,
       slug:slugVal || slugAuto,
@@ -3337,15 +3348,20 @@ async function savePost(mode){
       thumbnail:finalThumb||undefined,
       cover_image:finalCover||undefined,
       gallery:galleryUrls.length?galleryUrls:undefined,
-      status:isPublished?'published':'draft',
+      status: statusVal,
       // Manual publish date wins over the auto "now" timestamp.
       // _readPublishDate() returns null when the picker is empty, in
       // which case we fall back to the previous behaviour (저장 시점).
-      // Drafts (!isPublished) keep null unless admin explicitly set one.
+      // Drafts keep published_date NULL unless admin explicitly set one.
+      // Scheduled rows also keep it NULL — published_date is stamped by
+      // the editorial PUT handler when status flips from draft→published
+      // for the first time (api/editorials/[id].js).
       published_date: (function(){
         var manual = (typeof _readPublishDate === 'function') ? _readPublishDate() : null;
         if(manual) return manual;
-        return isPublished ? new Date().toISOString() : null;
+        // Scheduled = don't backdate; let the schedule timestamp speak.
+        if(scheduledAt) return null;
+        return statusVal === 'published' ? new Date().toISOString() : null;
       })(),
       description:descriptionVal||null,
       // QA #170 — empty string → null so the modal shows the "generate"
