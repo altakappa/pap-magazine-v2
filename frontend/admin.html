@@ -96,7 +96,11 @@ input,select,textarea{font-family:var(--sans);font-size:12px}
 .tbl-top{padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)}
 .tbl-top h3{font-size:13px;font-weight:700}
 .tbl-filters{display:flex;gap:4px}
-.tf{padding:5px 10px;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--border);background:transparent;color:var(--text3);transition:all .15s}
+.tf{padding:5px 10px;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--border);background:transparent;color:var(--text3);transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+/* QA #183 — color dot that mirrors each submission status badge. Sits
+   inside the filter button so admin sees the badge color before
+   clicking. Hex values match the b-* badge palette in this file. */
+.tf .tf-dot{display:inline-block;width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .tf:hover{border-color:var(--border2);color:var(--text2)}
 .tf.on{background:rgba(0,0,0,.05);border-color:var(--border2);color:var(--text)}
 table{width:100%;border-collapse:collapse}
@@ -113,6 +117,17 @@ tr:hover td{background:rgba(0,0,0,.02)}
 .b-approved,.b-published{border:1px solid rgba(22,163,74,.3);color:var(--green);background:rgba(22,163,74,.06)}
 .b-declined{border:1px solid rgba(220,38,38,.25);color:var(--red);background:rgba(220,38,38,.06)}
 .b-revision{border:1px solid rgba(37,99,235,.3);color:var(--blue);background:rgba(37,99,235,.06)}
+/* QA #183 — distinct colours per workflow stage so admins can scan the
+   submissions table by colour alone. Previously 보완완료 shared blue with
+   보완요청, and 업로드완료 shared green with 최종승인 — both pairs are
+   meaningfully different states and now get their own hues:
+     • 보완 완료 (resubmitted)  → 청록 (teal/cyan)
+     • 업로드 완료 (uploaded)   → 진한 보라 (purple)
+   The hex/rgb values pair a darker text + thin colored border with a
+   6% tinted background, matching the existing b-* visual rhythm so the
+   new badges don't look out of place. */
+.b-resubmitted{border:1px solid rgba(14,165,164,.35);color:#0d9488;background:rgba(14,165,164,.08)}
+.b-uploaded{border:1px solid rgba(124,58,237,.35);color:var(--purple);background:rgba(124,58,237,.08)}
 .b-draft{border:1px solid var(--border2);color:var(--text3);background:rgba(0,0,0,.03)}
 .b-free{border:1px solid var(--border2);color:var(--text3);background:rgba(0,0,0,.03)}
 .b-standard{border:1px solid rgba(202,138,4,.3);color:var(--yellow);background:rgba(202,138,4,.06)}
@@ -751,7 +766,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
     <div class="mn-header"><div class="mn-title">서브미션 심사</div><div class="mn-actions"><button class="btn" onclick="loadSubmissions()">↻ 새로고침</button></div></div>
     <div class="mn-body">
       <div class="tbl-wrap">
-        <div class="tbl-top"><h3>서브미션 목록</h3><div class="tbl-filters"><button class="tf on" onclick="filterSubmissions('',this)">전체</button><button class="tf" onclick="filterSubmissions('pending',this)">대기 중</button><button class="tf" onclick="filterSubmissions('resubmitted',this)">보완 완료</button><button class="tf" onclick="filterSubmissions('revision',this)">보완 요청</button><button class="tf" onclick="filterSubmissions('final_approved',this)">최종 승인</button><button class="tf" onclick="filterSubmissions('uploaded',this)">업로드 완료</button><button class="tf" onclick="filterSubmissions('rejected',this)">거절</button></div></div>
+        <div class="tbl-top"><h3>서브미션 목록</h3><div class="tbl-filters"><button class="tf on" onclick="filterSubmissions('',this)">전체</button><button class="tf" onclick="filterSubmissions('pending',this)"><span class="tf-dot" style="background:#ca8a04"></span>대기 중</button><button class="tf" onclick="filterSubmissions('resubmitted',this)"><span class="tf-dot" style="background:#0d9488"></span>보완 완료</button><button class="tf" onclick="filterSubmissions('revision',this)"><span class="tf-dot" style="background:#2563eb"></span>보완 요청</button><button class="tf" onclick="filterSubmissions('final_approved',this)"><span class="tf-dot" style="background:#16a34a"></span>최종 승인</button><button class="tf" onclick="filterSubmissions('uploaded',this)"><span class="tf-dot" style="background:#7c3aed"></span>업로드 완료</button><button class="tf" onclick="filterSubmissions('rejected',this)"><span class="tf-dot" style="background:#dc2626"></span>거절</button></div></div>
         <table><thead><tr><th>제목</th><th>제출자</th><th>구독 등급</th><th>룩 수</th><th>날짜</th><th>상태</th><th>작업</th></tr></thead>
         <tbody id="submissionListBody">
           <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px 0">불러오는 중...</td></tr>
@@ -1703,7 +1718,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
      one click without hitting Vercel response-size limits. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
 
-<script src="/pap-admin.js?v=14" defer></script>
+<script src="/pap-admin.js?v=15" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>

@@ -1530,13 +1530,15 @@ async function loadSubmissions(statusFilter, opts){
         else if (s.status === 'approved') ds = 'final_approved';
         else ds = s.status;
       }
+      // QA #183 — every stage gets its own colour so the table can be
+      // scanned visually. See admin.html .b-resubmitted / .b-uploaded.
       var statusMap = {
-        pending:        { cls: 'b-pending',  label: '대기 중' },
-        resubmitted:    { cls: 'b-revision', label: '보완 완료' },
-        revision:       { cls: 'b-revision', label: '보완 요청' },
-        final_approved: { cls: 'b-approved', label: '최종 승인' },
-        uploaded:       { cls: 'b-approved', label: '업로드 완료' },
-        rejected:       { cls: 'b-declined', label: '거절' },
+        pending:        { cls: 'b-pending',     label: '대기 중' },
+        resubmitted:    { cls: 'b-resubmitted', label: '보완 완료' },
+        revision:       { cls: 'b-revision',    label: '보완 요청' },
+        final_approved: { cls: 'b-approved',    label: '최종 승인' },
+        uploaded:       { cls: 'b-uploaded',    label: '업로드 완료' },
+        rejected:       { cls: 'b-declined',    label: '거절' },
       };
       var sInfo = statusMap[ds] || { cls: 'b-pending', label: ds || '—' };
       var statusCls = sInfo.cls;
