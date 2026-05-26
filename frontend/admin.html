@@ -112,22 +112,26 @@ tr:hover td{background:rgba(0,0,0,.02)}
 .td-thumb{width:36px;height:45px;object-fit:cover;border:1px solid var(--border)}
 
 /* BADGES */
-.badge{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 7px;display:inline-block;white-space:nowrap}
-.b-pending{border:1px solid rgba(202,138,4,.35);color:var(--yellow);background:rgba(202,138,4,.06)}
-.b-approved,.b-published{border:1px solid rgba(22,163,74,.3);color:var(--green);background:rgba(22,163,74,.06)}
-.b-declined{border:1px solid rgba(220,38,38,.25);color:var(--red);background:rgba(220,38,38,.06)}
-.b-revision{border:1px solid rgba(37,99,235,.3);color:var(--blue);background:rgba(37,99,235,.06)}
-/* QA #183 — distinct colours per workflow stage so admins can scan the
-   submissions table by colour alone. Previously 보완완료 shared blue with
-   보완요청, and 업로드완료 shared green with 최종승인 — both pairs are
-   meaningfully different states and now get their own hues:
-     • 보완 완료 (resubmitted)  → 청록 (teal/cyan)
-     • 업로드 완료 (uploaded)   → 진한 보라 (purple)
-   The hex/rgb values pair a darker text + thin colored border with a
-   6% tinted background, matching the existing b-* visual rhythm so the
-   new badges don't look out of place. */
-.b-resubmitted{border:1px solid rgba(14,165,164,.35);color:#0d9488;background:rgba(14,165,164,.08)}
-.b-uploaded{border:1px solid rgba(124,58,237,.35);color:var(--purple);background:rgba(124,58,237,.08)}
+.badge{font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:4px 8px;display:inline-block;white-space:nowrap;border-radius:3px;line-height:1}
+/* QA #183 (rev 2) — earlier pastel revision (6-8% tinted background)
+   was too subtle at 9px font size — admin reported colours still
+   looked the same. Switching to SOLID, saturated fills with white
+   text so each workflow stage is unmistakable even at a glance:
+     • 대기 중      → 호박색 (amber)
+     • 보완 요청    → 사파이어 블루
+     • 보완 완료    → 청록 (teal)
+     • 최종 승인    → 초록 (green)
+     • 업로드 완료  → 진한 보라 (purple)
+     • 거절         → 빨강 (red)
+   .b-published is kept aliased to the editorial-only "published"
+   badge — same green as 최종 승인 because in editorial-context it
+   semantically maps to the approved/live state. */
+.b-pending{background:#ca8a04;color:#fff;border:1px solid #a16f04}
+.b-revision{background:#2563eb;color:#fff;border:1px solid #1d4fc5}
+.b-resubmitted{background:#0d9488;color:#fff;border:1px solid #0a7a70}
+.b-approved,.b-published{background:#16a34a;color:#fff;border:1px solid #11823b}
+.b-uploaded{background:#7c3aed;color:#fff;border:1px solid #6028c4}
+.b-declined{background:#dc2626;color:#fff;border:1px solid #b51d1d}
 .b-draft{border:1px solid var(--border2);color:var(--text3);background:rgba(0,0,0,.03)}
 .b-free{border:1px solid var(--border2);color:var(--text3);background:rgba(0,0,0,.03)}
 .b-standard{border:1px solid rgba(202,138,4,.3);color:var(--yellow);background:rgba(202,138,4,.06)}
@@ -1718,7 +1722,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
      one click without hitting Vercel response-size limits. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
 
-<script src="/pap-admin.js?v=15" defer></script>
+<script src="/pap-admin.js?v=16" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>
