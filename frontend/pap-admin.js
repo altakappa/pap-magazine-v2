@@ -858,6 +858,8 @@ async function loadSubmissionForReview(submissionId){
       currentReviewSubmission=sub;
       populateReviewModal(sub);
       renderReviewImageGrid(sub.file_urls||[]);
+      // QA #180 — fresh modal open starts with clean gallery state
+      _resetGalleryDirty();
     }else{
       throw new Error('Empty submission payload');
     }
@@ -1051,6 +1053,23 @@ function buildLookCreditFor(idx, desc){
   return null;
 }
 
+// QA #180 — admin-side gallery curation. Tracked as a "dirty" flag so
+// the "변경사항 저장" button enables only after the admin actually
+// reorders / deletes / changes the cover. Working state lives on
+// currentReviewSubmission.file_urls (mutated in place); on save we PATCH
+// the submission and on cancel we discard by reloading from the server.
+var _galleryDirty = false;
+function _markGalleryDirty(){
+  _galleryDirty = true;
+  var saveBtn = document.getElementById('reviewSaveGalleryBtn');
+  if(saveBtn){ saveBtn.disabled = false; saveBtn.style.opacity = '1'; }
+}
+function _resetGalleryDirty(){
+  _galleryDirty = false;
+  var saveBtn = document.getElementById('reviewSaveGalleryBtn');
+  if(saveBtn){ saveBtn.disabled = true; saveBtn.style.opacity = '.5'; }
+}
+
 function renderReviewImageGrid(fileUrls){
   var grid=document.getElementById('reviewImageGrid');
   grid.innerHTML='';
@@ -1075,13 +1094,38 @@ function renderReviewImageGrid(fileUrls){
     card.style.cssText='border:2px solid '+(idx===selectedCoverImageIndex?'var(--green)':'var(--border)')+';border-radius:6px;overflow:hidden;background:var(--surface);display:flex;flex-direction:column;transition:border-color .2s';
     if(idx===selectedCoverImageIndex)card.style.boxShadow='0 0 8px rgba(76,175,80,.4)';
 
+    // QA #180 — drag/drop to reorder. Stores the dragged index on the
+    // dataTransfer (text/plain) since some browsers reject custom MIME.
+    card.setAttribute('draggable', 'true');
+    card.dataset.galleryIdx = String(idx);
+    card.addEventListener('dragstart', function(e){
+      try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(idx)); } catch(_){}
+      card.style.opacity = '.45';
+    });
+    card.addEventListener('dragend', function(){ card.style.opacity = ''; });
+    card.addEventListener('dragover', function(e){
+      e.preventDefault();
+      try { e.dataTransfer.dropEffect = 'move'; } catch(_){}
+      card.style.outline = '2px dashed rgba(120,180,255,.7)';
+    });
+    card.addEventListener('dragleave', function(){ card.style.outline = ''; });
+    card.addEventListener('drop', function(e){
+      e.preventDefault();
+      card.style.outline = '';
+      var from = parseInt(e.dataTransfer.getData('text/plain'), 10);
+      var to = idx;
+      if(isNaN(from) || from === to) return;
+      _galleryReorder(from, to);
+    });
+
     // Image — click opens lightbox
     var imgWrap=document.createElement('div');
     imgWrap.style.cssText='position:relative;cursor:zoom-in;background:#0a0a0a';
     var img=document.createElement('img');
     img.src=url;
     img.loading='lazy';
-    img.style.cssText='width:100%;height:240px;object-fit:cover;display:block';
+    img.draggable = false;  // QA #180 — keep card-level drag intact
+    img.style.cssText='width:100%;height:240px;object-fit:cover;display:block;-webkit-user-drag:none';
     imgWrap.appendChild(img);
 
     var idxLabel=document.createElement('div');
@@ -1094,8 +1138,23 @@ function renderReviewImageGrid(fileUrls){
     starBtn.innerHTML=idx===selectedCoverImageIndex?'★':'☆';
     starBtn.title='표지 이미지로 설정';
     starBtn.style.cssText='position:absolute;top:6px;right:6px;background:rgba(0,0,0,.65);color:'+(idx===selectedCoverImageIndex?'#ffd166':'#fff')+';border:none;font-size:16px;width:28px;height:28px;cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center';
-    starBtn.onclick=function(e){ e.stopPropagation(); selectCoverImage(idx); };
+    starBtn.onclick=function(e){ e.stopPropagation(); selectCoverImage(idx); _markGalleryDirty(); };
     imgWrap.appendChild(starBtn);
+
+    // QA #180 — × delete button. Positioned mid-right so it doesn't
+    // collide with the cover star. Confirms first because deletion
+    // is destructive (no undo until 저장 — and even before save the
+    // user has lost their picked-but-deleted images from the modal view).
+    var delBtn = document.createElement('button');
+    delBtn.innerHTML = '×';
+    delBtn.title = '이 이미지를 갤러리에서 제거';
+    delBtn.style.cssText = 'position:absolute;top:40px;right:6px;background:rgba(200,50,50,.85);color:#fff;border:none;font-size:18px;font-weight:700;width:28px;height:28px;cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center;line-height:1';
+    delBtn.onclick = function(e){
+      e.stopPropagation();
+      if(!confirm('이 이미지를 갤러리에서 제거하시겠습니까?\n(서버에 저장된 원본은 "갤러리 변경사항 저장" 클릭 시까지 그대로 유지됩니다.)')) return;
+      _galleryDelete(idx);
+    };
+    imgWrap.appendChild(delBtn);
 
     imgWrap.onclick=function(e){ e.stopPropagation(); openReviewLightbox(idx); };
     imgWrap.ondblclick=function(e){ e.stopPropagation(); openReviewLightbox(idx); };
@@ -1136,7 +1195,108 @@ function renderReviewImageGrid(fileUrls){
 
 function selectCoverImage(idx){
   selectedCoverImageIndex=idx;
+  _markGalleryDirty();
   renderReviewImageGrid(currentReviewSubmission.file_urls||[]);
+}
+
+// QA #180 — drag/drop reorder. Swap entries in file_urls, keep the
+// cover index pointing at the SAME image (not the same slot) so the
+// admin's pick survives the move.
+function _galleryReorder(from, to){
+  if(!currentReviewSubmission || !Array.isArray(currentReviewSubmission.file_urls)) return;
+  var urls = currentReviewSubmission.file_urls.slice();
+  if(from < 0 || from >= urls.length || to < 0 || to >= urls.length) return;
+  var moved = urls.splice(from, 1)[0];
+  urls.splice(to, 0, moved);
+  currentReviewSubmission.file_urls = urls;
+  // Track cover index through the reorder
+  if(selectedCoverImageIndex === from){
+    selectedCoverImageIndex = to;
+  } else if(from < selectedCoverImageIndex && to >= selectedCoverImageIndex){
+    selectedCoverImageIndex--;
+  } else if(from > selectedCoverImageIndex && to <= selectedCoverImageIndex){
+    selectedCoverImageIndex++;
+  }
+  _markGalleryDirty();
+  renderReviewImageGrid(urls);
+}
+
+// QA #180 — remove a single image from the working gallery. The
+// original file in Supabase Storage is NOT deleted; we only drop the
+// reference from submissions.file_urls when the admin clicks save.
+function _galleryDelete(idx){
+  if(!currentReviewSubmission || !Array.isArray(currentReviewSubmission.file_urls)) return;
+  var urls = currentReviewSubmission.file_urls.slice();
+  if(idx < 0 || idx >= urls.length) return;
+  if(urls.length <= 1){
+    alert('이미지는 최소 1장 이상 유지해야 합니다.');
+    return;
+  }
+  urls.splice(idx, 1);
+  currentReviewSubmission.file_urls = urls;
+  if(selectedCoverImageIndex === idx){
+    selectedCoverImageIndex = 0;
+  } else if(idx < selectedCoverImageIndex){
+    selectedCoverImageIndex--;
+  }
+  if(selectedCoverImageIndex >= urls.length) selectedCoverImageIndex = urls.length - 1;
+  _markGalleryDirty();
+  renderReviewImageGrid(urls);
+}
+
+// QA #180 — persist the curated gallery via PATCH /api/submissions/:id.
+// Server-side enforces "subset of original" so we never send anything
+// the admin didn't legitimately curate from the existing list.
+async function saveGalleryChanges(){
+  if(!currentReviewSubmission || !currentReviewSubmission.id) return;
+  if(!_galleryDirty) return;
+  var btn = document.getElementById('reviewSaveGalleryBtn');
+  var orig = btn ? btn.textContent : '';
+  if(btn){ btn.disabled = true; btn.textContent = '저장 중…'; }
+  try{
+    var resp = await fetch('/api/submissions/' + currentReviewSubmission.id, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + (localStorage.getItem('pap-token') || ''),
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: JSON.stringify({
+        file_urls: currentReviewSubmission.file_urls,
+        coverImageIndex: selectedCoverImageIndex
+      })
+    });
+    var data = await resp.json();
+    if(!resp.ok) throw new Error(data.message || '저장 실패');
+    // Adopt the canonical server copy so subsequent edits start from a
+    // clean baseline (description.coverImageIndex + lookImageMap are
+    // now in sync with the saved file_urls order).
+    currentReviewSubmission = data.submission || currentReviewSubmission;
+    try{
+      var d = currentReviewSubmission.description
+        ? (typeof currentReviewSubmission.description === 'string'
+            ? JSON.parse(currentReviewSubmission.description)
+            : currentReviewSubmission.description)
+        : {};
+      if(typeof d.coverImageIndex === 'number') selectedCoverImageIndex = d.coverImageIndex;
+    }catch(_){}
+    _resetGalleryDirty();
+    if(btn){
+      btn.textContent = '✓ 저장됨';
+      setTimeout(function(){
+        btn.textContent = orig || '💾 갤러리 변경사항 저장';
+      }, 1500);
+    }
+    // Re-render so any look-image-map shuffles render correctly
+    renderReviewImageGrid(currentReviewSubmission.file_urls || []);
+  }catch(e){
+    if(btn){
+      btn.textContent = orig || '💾 갤러리 변경사항 저장';
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    }
+    alert('갤러리 저장 실패: ' + (e && e.message ? e.message : e));
+  }
 }
 
 // ======== REVIEW LIGHTBOX ========

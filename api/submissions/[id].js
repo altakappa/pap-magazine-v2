@@ -7,7 +7,7 @@
  */
 
 const { supabaseAdmin } = require('../_lib/supabase');
-const { requireAuth } = require('../_lib/auth');
+const { requireAuth, requireAdmin } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 
@@ -24,13 +24,23 @@ module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
   if (rateLimit(req, res, RATE_LIMITS.api)) return;
 
-  // GET retrieves a single submission; PUT lets the OWNER resubmit a revised
-  // version (used after admin marks status='revision'). All other methods 405.
-  if (req.method !== 'GET' && req.method !== 'PUT') {
+  // GET retrieves a single submission. PUT lets the OWNER resubmit a
+  // revised version (after admin marks status='revision'). PATCH lets
+  // an ADMIN curate the gallery during review — reorder / remove images
+  // and pick the cover, without flipping any workflow state. All other
+  // methods 405.
+  if (req.method !== 'GET' && req.method !== 'PUT' && req.method !== 'PATCH') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  const user = requireAuth(req, res);
+  // PATCH uses the admin gate; everything else stays on standard auth so
+  // the submitter can still load their own submission detail and resubmit.
+  let user;
+  if (req.method === 'PATCH') {
+    user = await requireAdmin(req, res);
+  } else {
+    user = requireAuth(req, res);
+  }
   if (!user) return;
 
   try {
@@ -153,6 +163,83 @@ module.exports = async function handler(req, res) {
         return res.status(500).json({ message: 'Failed to resubmit', detail: updateErr.message });
       }
 
+      return res.status(200).json({ submission: updated });
+    }
+
+    // ── PATCH: Admin curates the gallery during review ─────────────────────
+    // Allows reordering / removing existing file_urls and picking a cover
+    // image. Does NOT change submission.status or stamp resubmitted_at —
+    // this is a quiet "tidy the gallery before approval" action.
+    //
+    // Body shape: { file_urls: [string], coverImageIndex?: number }
+    //
+    // Guardrails:
+    //   • file_urls MUST be a subset (in any order) of the existing
+    //     submission.file_urls. Admin can remove or reorder, but cannot
+    //     inject new URLs.
+    //   • coverImageIndex is validated against the NEW file_urls length.
+    //   • Description JSON's coverImageIndex + lookImageMap are kept in
+    //     sync so the rendered editorial still maps each kept image to
+    //     its original look + cover pick.
+    if (req.method === 'PATCH') {
+      let body = req.body;
+      if (!body || typeof body === 'string') {
+        try { body = body ? JSON.parse(body) : {}; } catch (_) { body = {}; }
+      }
+      if (!Array.isArray(body.file_urls)) {
+        return res.status(400).json({ message: 'file_urls must be an array' });
+      }
+      const originalUrls = Array.isArray(submission.file_urls) ? submission.file_urls : [];
+      const originalSet = new Set(originalUrls);
+      const nextUrls = [];
+      const seen = new Set();
+      for (const u of body.file_urls) {
+        if (typeof u !== 'string' || !u) continue;
+        if (!originalSet.has(u)) {
+          return res.status(400).json({ message: 'file_urls may only contain URLs from the original submission' });
+        }
+        if (seen.has(u)) continue; // dedupe
+        seen.add(u);
+        nextUrls.push(u);
+      }
+      if (nextUrls.length === 0) {
+        return res.status(400).json({ message: 'At least one image must remain' });
+      }
+
+      let coverIdx = (typeof body.coverImageIndex === 'number')
+        ? Math.max(0, Math.min(nextUrls.length - 1, body.coverImageIndex))
+        : 0;
+
+      // Rebuild description JSON so coverImageIndex + lookImageMap track
+      // the new order. We drop any lookImageMap entries whose URL was
+      // removed (mapped by ORIGINAL index); the surviving ones get
+      // reindexed in the new order.
+      let desc = {};
+      try { desc = submission.description ? JSON.parse(submission.description) : {}; } catch (_) { desc = {}; }
+      if (Array.isArray(desc.lookImageMap) && desc.lookImageMap.length === originalUrls.length) {
+        const newLookImageMap = [];
+        for (const u of nextUrls) {
+          const origIdx = originalUrls.indexOf(u);
+          newLookImageMap.push((origIdx >= 0 && desc.lookImageMap[origIdx]) || null);
+        }
+        desc.lookImageMap = newLookImageMap;
+      }
+      desc.coverImageIndex = coverIdx;
+
+      const { data: updated, error: updateErr } = await supabaseAdmin
+        .from('submissions')
+        .update({
+          file_urls: nextUrls,
+          description: JSON.stringify(desc),
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (updateErr) {
+        console.error('Gallery curation update failed:', updateErr);
+        return res.status(500).json({ message: 'Failed to save gallery changes', detail: updateErr.message });
+      }
       return res.status(200).json({ submission: updated });
     }
 

@@ -1541,24 +1541,29 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
 
     <div class="modal-section" style="border-top:1px solid var(--border);padding-top:16px;margin-top:16px">
       <div class="modal-label" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
-        <span>이미지 갤러리 · 클릭하여 확대 / ★ 표지 설정</span>
+        <span>이미지 갤러리 · 클릭하여 확대 / ★ 표지 / × 삭제 / 드래그하여 순서 변경</span>
         <!-- ZIP bulk download. Originals come from Supabase Storage
              (submissions.file_urls). Optional 1080² square crops are
              generated client-side via Canvas so Vercel never has to
              stream binary; the editor gets a single .zip with two
              folders (originals/, instagram/) for the IG carousel. -->
-        <span style="display:flex;gap:6px;align-items:center;font-size:11px">
+        <span style="display:flex;gap:6px;align-items:center;font-size:11px;flex-wrap:wrap">
           <label style="display:flex;gap:4px;align-items:center;color:var(--text3);cursor:pointer;user-select:none">
             <input type="checkbox" id="reviewDownloadIG" checked style="margin:0">
             인스타용 1080² 정사각 포함
           </label>
           <button class="btn btn-sm btn-blue" id="reviewDownloadBtn" type="button" onclick="downloadSubmissionImages()">⬇ 이미지 일괄 다운로드 (ZIP)</button>
+          <!-- QA #180 — 갤러리 큐레이션 저장. ×로 이미지 제거하거나
+               드래그로 순서를 바꾸거나 ★로 표지를 지정한 뒤 누르면
+               PATCH /api/submissions/:id 호출. 처음엔 disabled 상태로
+               떠 있다가 _markGalleryDirty()가 호출되는 순간 활성화됨. -->
+          <button class="btn btn-sm" id="reviewSaveGalleryBtn" type="button" onclick="saveGalleryChanges()" disabled style="opacity:.5" title="삭제/순서/표지 변경사항을 저장">💾 갤러리 변경사항 저장</button>
         </span>
       </div>
       <div id="reviewImageGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-top:12px;padding:14px;background:var(--surface2);border-radius:8px">
         <!-- Images will be populated here -->
       </div>
-      <div style="font-size:11px;color:var(--text3);margin-top:10px">이미지를 클릭하면 큰 사이즈로 볼 수 있고, ★ 아이콘을 누르면 표지로 설정됩니다.</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:10px">이미지를 클릭하면 큰 사이즈로 볼 수 있고, ★ 아이콘은 표지 설정, × 아이콘은 갤러리에서 제거합니다. 카드를 드래그하면 순서를 바꿀 수 있으며, 모든 변경은 <strong>💾 갤러리 변경사항 저장</strong>을 눌러야 적용됩니다.</div>
     </div>
 
     <div class="modal-section">
@@ -1689,7 +1694,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
      one click without hitting Vercel response-size limits. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
 
-<script src="/pap-admin.js?v=11" defer></script>
+<script src="/pap-admin.js?v=12" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>
