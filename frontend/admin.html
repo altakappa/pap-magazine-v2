@@ -247,6 +247,15 @@ tr:hover td{background:rgba(0,0,0,.02)}
 .pe-gallery-item.is-cover{outline:2px solid #4dabf7;outline-offset:-2px}
 .pe-gallery-item.is-cover .pe-gallery-cover{opacity:1;background:#4dabf7;color:#fff}
 .pe-gallery-item.is-thumb.is-cover{outline:2px solid #fff;box-shadow:0 0 0 1px #ffd43b inset, 0 0 0 4px #4dabf7 inset}
+/* QA #182 — soft-deleted (× toggled) gallery row. The card stays on
+   screen so the admin can re-include with one click, but it's clearly
+   dimmed + grayscale + struck-through with a red "EXCLUDED" tag so
+   there's no doubt this image WILL NOT be in the published editorial. */
+.pe-gallery-item.is-excluded{opacity:.45;filter:grayscale(1)}
+.pe-gallery-item.is-excluded::after{content:'발행 제외';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-8deg);font-size:11px;font-weight:800;letter-spacing:.1em;color:#fff;background:rgba(200,40,40,.92);padding:4px 10px;border-radius:2px;pointer-events:none;z-index:3;white-space:nowrap}
+.pe-gallery-item.is-excluded .pe-gallery-del{opacity:1;background:rgba(60,150,80,.9);font-size:14px}
+.pe-gallery-item.is-excluded .pe-gallery-thumb,
+.pe-gallery-item.is-excluded .pe-gallery-cover{display:none}
 .pe-gallery-item .pe-tag-thumb,
 .pe-gallery-item .pe-tag-cover{position:absolute;right:2px;font-size:8px;font-weight:800;letter-spacing:.1em;padding:2px 5px;border-radius:2px;z-index:2;line-height:1;display:none}
 .pe-gallery-item .pe-tag-cover{top:2px;background:#4dabf7;color:#fff}
@@ -1694,7 +1703,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
      one click without hitting Vercel response-size limits. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
 
-<script src="/pap-admin.js?v=13" defer></script>
+<script src="/pap-admin.js?v=14" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>

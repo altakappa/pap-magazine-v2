@@ -2025,7 +2025,11 @@ function addGallery(input){
       // pointer-events:none isn't always enough on its own.
       div.innerHTML = '<span class="pe-gallery-grip">⋮⋮</span>'
         + '<img loading="lazy" draggable="false" src="'+src+'">'
-        + '<button class="pe-gallery-del" onclick="removeGalleryImg('+num+')">×</button>'
+        // QA #182 — × no longer physically removes the row. It toggles
+        // an "excluded from publish" flag; click again (the button
+        // swaps to ↺) to re-include. Tooltip wording reflects that so
+        // the editor isn't surprised by the card staying on screen.
+        + '<button class="pe-gallery-del" onclick="removeGalleryImg('+num+')" title="이 이미지를 발행에서 제외 (실제 삭제는 아님)">×</button>'
         + '<button class="pe-gallery-thumb" onclick="event.stopPropagation();setGalleryThumb('+num+')" title="썸네일로 지정 (홈 카드 작은 이미지)" aria-label="썸네일로 지정">★</button>'
         + '<span class="pe-tag-thumb">THUMB</span>'
         + '<span class="pe-gallery-num">#'+num+'</span>';
@@ -2055,16 +2059,51 @@ function addGallery(input){
   // as their reads complete.
 }
 
+// QA #182 — soft delete. Originally this physically removed the row from
+// DOM + galleryImages. The QA feedback (도메니코, 2026-05-27): "after
+// approval, clicking × on an editorial image should not actually delete
+// the image — it should only mark it as 'not for upload'". Rationale: the
+// admin may want to re-include the image later, and immediate deletion
+// throws away the credit row + ordering metadata. The replacement
+// behaviour:
+//   • × on an active image → mark `isExcluded = true`, dim the card,
+//     swap the × button into a ↺ "복원" button.
+//   • ↺ on an excluded image → flip `isExcluded` back to false.
+//   • savePost filters out `isExcluded` rows before uploading, so the
+//     published editorial only contains the kept images. Excluded files
+//     that were never uploaded simply never make the network trip.
+// The function name is kept (`removeGalleryImg`) so all existing inline
+// onclick="removeGalleryImg(...)" handlers keep working without an HTML
+// rewrite — the only change is the implementation semantics.
 function removeGalleryImg(num){
-  // Remove from DOM
+  var hit = galleryImages.find(function(g){return g.num===num;});
+  if(!hit) return;
+  hit.isExcluded = !hit.isExcluded;
+
+  // Apply the dim/strike-through state to the card and swap the button
+  // label accordingly. We DO NOT removeChild — the card stays so it can
+  // be re-included with one click.
   var el=document.querySelector('.pe-gallery-item[data-img-num="'+num+'"]');
-  if(el) el.remove();
-  // Remove from array
-  galleryImages=galleryImages.filter(function(g){return g.num!==num;});
-  // If the removed image was either pick, fall back to whatever
-  // remains first — keeps the post from saving without a thumb.
-  if(galleryThumbNum===num){
-    galleryThumbNum = galleryImages.length ? galleryImages[0].num : null;
+  if(el){
+    el.classList.toggle('is-excluded', !!hit.isExcluded);
+    var btn = el.querySelector('.pe-gallery-del');
+    if(btn){
+      if(hit.isExcluded){
+        btn.innerHTML = '↺';
+        btn.title = '발행 제외 해제 (다시 포함)';
+      }else{
+        btn.innerHTML = '×';
+        btn.title = '이 이미지를 발행에서 제외 (실제 삭제는 아님)';
+      }
+    }
+  }
+
+  // If the THUMB pick is now excluded, fall back to the first STILL-
+  // INCLUDED image. (We don't auto-promote excluded items back when
+  // their fallback is re-included — the admin can re-pick manually.)
+  if(hit.isExcluded && galleryThumbNum === num){
+    var firstKept = galleryImages.find(function(g){return !g.isExcluded;});
+    galleryThumbNum = firstKept ? firstKept.num : null;
     _renderGalleryCoverState();
   }
   updateImgCredits();
@@ -2160,10 +2199,17 @@ function updateImgCredits(){
   }
   galleryImages.forEach(function(img,i){
     var div=document.createElement('div');
-    div.style.cssText='display:flex;gap:8px;margin-bottom:8px;align-items:flex-start';
-    div.innerHTML='<div style="flex-shrink:0;width:60px;height:75px;border:1px solid var(--border);overflow:hidden"><img loading="lazy" src="'+img.src+'" style="width:100%;height:100%;object-fit:cover"></div>'
+    // QA #182 — dim the row for soft-deleted images so the admin sees
+    // at a glance which credits won't appear in the published editorial.
+    var excluded = !!img.isExcluded;
+    div.style.cssText='display:flex;gap:8px;margin-bottom:8px;align-items:flex-start'
+      + (excluded ? ';opacity:.4' : '');
+    var excludedTag = excluded
+      ? '<span style="display:inline-block;font-size:9px;font-weight:800;letter-spacing:.08em;background:#c62828;color:#fff;padding:2px 6px;border-radius:2px;margin-left:6px">발행 제외</span>'
+      : '';
+    div.innerHTML='<div style="flex-shrink:0;width:60px;height:75px;border:1px solid var(--border);overflow:hidden"><img loading="lazy" src="'+img.src+'" style="width:100%;height:100%;object-fit:cover'+(excluded?';filter:grayscale(1)':'')+'"></div>'
       +'<div style="flex:1">'
-      +'<div style="font-size:10px;font-weight:700;color:var(--text3);margin-bottom:4px">이미지 #'+img.num+' 착장 크레딧</div>'
+      +'<div style="font-size:10px;font-weight:700;color:var(--text3);margin-bottom:4px">이미지 #'+img.num+' 착장 크레딧'+excludedTag+'</div>'
       +'<input class="pe-input" placeholder="@brand1 Jacket, @brand2 Pants, @brand3 Shoes..." style="padding:7px 10px;font-size:11px" value="'+(img.credits||'')+'" oninput="galleryImages['+i+'].credits=this.value">'
       +'<div style="font-size:9px;color:var(--text3);margin-top:3px">형식: @인스타그램 아이템명 (쉼표로 구분)</div>'
       +'</div>';
@@ -3120,7 +3166,8 @@ function editEditorial(id){
         // re-ordered without the browser hijacking the drag for an image URL.
         div.innerHTML='<span class="pe-gallery-grip">⋮⋮</span>'
           +'<img loading="lazy" draggable="false" src="'+esc(url)+'">'
-          +'<button class="pe-gallery-del" onclick="removeGalleryImg('+galleryCount+')">×</button>'
+          // QA #182 — soft delete on the editorial edit path as well
+          +'<button class="pe-gallery-del" onclick="removeGalleryImg('+galleryCount+')" title="이 이미지를 발행에서 제외 (실제 삭제는 아님)">×</button>'
           +'<button class="pe-gallery-thumb" onclick="event.stopPropagation();setGalleryThumb('+galleryCount+')" title="썸네일로 지정 (홈 카드 작은 이미지)" aria-label="썸네일로 지정">★</button>'
           +'<span class="pe-tag-thumb">THUMB</span>'
           +'<span class="pe-gallery-num">#'+galleryCount+'</span>';
@@ -3491,6 +3538,11 @@ async function savePost(mode){
     var thumbUrlPick=null;
     for(var i=0;i<galleryImages.length;i++){
       var g=galleryImages[i];
+      // QA #182 — skip soft-deleted (× toggled) rows. They stay in the
+      // local galleryImages array so the admin can re-include them
+      // before save, but never get uploaded or written into file_urls
+      // on the published editorial.
+      if(g.isExcluded) continue;
       var resolvedUrl=null;
       if(g.isUrl){resolvedUrl=g.src;} // existing URL
       else if(g.file){resolvedUrl=await uploadFile(g.file);} // new file
