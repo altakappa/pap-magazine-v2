@@ -1328,30 +1328,46 @@ async function loadSubmissions(statusFilter, opts){
     }
     tb.innerHTML='';
     submissions.forEach(function(s){
-      // QA #175 — a "pending" entry with a non-null resubmitted_at went
-      // through at least one revision round. Surface that as "보완 완료"
-      // with the revision-blue badge so the editor knows to give it
-      // priority re-review (the submitter already addressed feedback).
-      var isResubmitted = (s.status === 'pending' && s.resubmitted_at);
-      var statusCls = isResubmitted
-        ? 'b-revision'
-        : (s.status==='pending'?'b-pending':s.status==='approved'?'b-approved':s.status==='revision'?'b-revision':'b-declined');
-      var statusLabel = isResubmitted
-        ? '보완 완료'
-        : (s.status==='pending'?'대기 중':s.status==='approved'?'승인':s.status==='revision'?'보완 요청':'거절');
+      // QA #179 — server-derived display_status covers all five workflow
+      // stages (대기중 / 보완요청 / 최종승인 / 업로드완료 / 거절) plus the
+      // existing 보완완료 (resubmitted) overlay. Fall back to legacy
+      // computation for older responses that don't include display_status.
+      var ds = s.display_status;
+      if (!ds) {
+        if (s.status === 'pending' && s.resubmitted_at) ds = 'resubmitted';
+        else if (s.status === 'approved' && s.linked_editorial && s.linked_editorial.status === 'published') ds = 'uploaded';
+        else if (s.status === 'approved') ds = 'final_approved';
+        else ds = s.status;
+      }
+      var statusMap = {
+        pending:        { cls: 'b-pending',  label: '대기 중' },
+        resubmitted:    { cls: 'b-revision', label: '보완 완료' },
+        revision:       { cls: 'b-revision', label: '보완 요청' },
+        final_approved: { cls: 'b-approved', label: '최종 승인' },
+        uploaded:       { cls: 'b-approved', label: '업로드 완료' },
+        rejected:       { cls: 'b-declined', label: '거절' },
+      };
+      var sInfo = statusMap[ds] || { cls: 'b-pending', label: ds || '—' };
+      var statusCls = sInfo.cls;
+      var statusLabel = sInfo.label;
       var looks=s.file_urls?s.file_urls.length:'?';
       var plan=s.submitterPlan||'free';
       var planCls=plan.indexOf('premium')>-1?'b-premium':plan.indexOf('standard')>-1?'b-standard':'b-free';
       var planLabel=plan.indexOf('premium')>-1?'Premium':plan.indexOf('standard')>-1?'Standard':'Free';
       // For approved submissions, surface a deep-link to the staged
-      // editorial's edit screen. The id was stamped into admin_notes by
-      // review.js as "[Staged as editorial id: <uuid>]" — parse it back
-      // out so the editor can resume polishing without hunting through
-      // the editorials list.
-      var editorialId=_extractStagedEditorialId(s.admin_notes);
+      // editorial's edit screen. Prefer linked_editorial.id (QA #172,
+      // populated server-side from source_submission_id) over the legacy
+      // [Staged as editorial id: …] marker we used to parse out of
+      // admin_notes — both keep working so older rows aren't orphaned.
+      var editorialId = (s.linked_editorial && s.linked_editorial.id)
+        || _extractStagedEditorialId(s.admin_notes);
       var actionBtns='<button class="btn btn-sm" onclick="openModal(\''+s.id+'\')">심사</button>';
       if(s.status==='approved' && editorialId){
-        actionBtns+=' <button class="btn btn-sm btn-primary" onclick="openEditorialEditor(\''+editorialId+'\')" title="이 서브미션이 임시저장된 에디토리얼 편집 화면으로 이동">에디토리얼 편집</button>';
+        // QA #179 — button label reflects current stage: 업로드완료 →
+        // "에디토리얼 보기" (informational, already published);
+        // 최종승인 (still draft) → "에디토리얼 편집" (work in progress).
+        var btnLabel = ds === 'uploaded' ? '에디토리얼 보기' : '에디토리얼 편집';
+        actionBtns += ' <button class="btn btn-sm btn-primary" onclick="openEditorialEditor(\''+editorialId+'\')" title="연결된 에디토리얼 편집 화면으로 이동">'+btnLabel+'</button>';
       }
       tb.innerHTML+='<tr><td class="td-title" onclick="openModal(\''+s.id+'\')">'+esc(s.title)+'</td><td>'+esc(s.submitterName||s.submitterEmail||'—')+'</td><td><span class="badge '+planCls+'">'+planLabel+'</span></td><td>'+looks+'</td><td>'+fmtDate(s.created_at)+'</td><td><span class="badge '+statusCls+'">'+statusLabel+'</span></td><td>'+actionBtns+'</td></tr>';
     });

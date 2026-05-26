@@ -215,10 +215,21 @@ module.exports = async function handler(req, res) {
 
       // QA #175 — "resubmitted" is a synthetic filter that means
       // "pending AND already came back from a revision round". Maps to
-      // (status='pending' AND resubmitted_at IS NOT NULL). Other status
-      // filters stay as plain equality.
+      // (status='pending' AND resubmitted_at IS NOT NULL).
+      // QA #179 — two more synthetic filters tied to the linked editorial:
+      //   uploaded       → status='approved' AND linked_editorial.status='published'
+      //   final_approved → status='approved' AND (no linked_editorial OR linked_editorial.status='draft')
+      // We resolve those at the application layer after the query because
+      // PostgREST embed-side filtering is awkward to combine with the
+      // existing count / pagination contract.
+      const isVirtual = status === 'uploaded' || status === 'final_approved';
       if (status === 'resubmitted') {
         query = query.eq('status', 'pending').not('resubmitted_at', 'is', null);
+      } else if (isVirtual) {
+        // Pull all approved rows; we'll narrow down in memory after the
+        // linked_editorial embed lands. The page contract still applies —
+        // pagination is computed on the post-filter list below.
+        query = query.eq('status', 'approved');
       } else if (status) {
         query = query.eq('status', status);
       }
@@ -226,6 +237,26 @@ module.exports = async function handler(req, res) {
       const { data: submissions, count, error } = await query;
 
       if (error) throw error;
+
+      // QA #179 — fan-in the linked editorial via source_submission_id so
+      // the admin list can display "최종승인" vs "업로드완료" badges
+      // (approved + draft vs approved + published). Single side query
+      // keyed by submission id — keeps the hot list query cheap.
+      const submissionIds = (submissions || []).map(s => s.id).filter(Boolean);
+      let linkedEditorialBySubId = {};
+      if (submissionIds.length > 0) {
+        const { data: editorialRows } = await supabaseAdmin
+          .from('editorials')
+          .select('id, slug, status, published_date, source_submission_id')
+          .in('source_submission_id', submissionIds);
+        if (Array.isArray(editorialRows)) {
+          for (const er of editorialRows) {
+            if (er && er.source_submission_id) {
+              linkedEditorialBySubId[er.source_submission_id] = er;
+            }
+          }
+        }
+      }
 
       // Hydrate submitter profile + subscription plan via side queries.
       const userIds = Array.from(new Set(
@@ -261,20 +292,51 @@ module.exports = async function handler(req, res) {
         }
       }
 
+      // QA #179 — derive display_status. Five-state workflow surfaced to
+      // the admin: 대기중 / 보완요청 / 최종승인 / 업로드완료 / 거절,
+      // plus the existing 보완완료 (resubmitted) badge.
+      function _deriveDisplayStatus(s, le) {
+        if (s.status === 'rejected') return 'rejected';
+        if (s.status === 'revision') return 'revision';
+        if (s.status === 'pending') {
+          return s.resubmitted_at ? 'resubmitted' : 'pending';
+        }
+        if (s.status === 'approved') {
+          if (le && le.status === 'published') return 'uploaded';
+          return 'final_approved';
+        }
+        return s.status;
+      }
+
+      const hydrated = (submissions || []).map(s => {
+        const p = profilesById[s.user_id] || {};
+        const le = linkedEditorialBySubId[s.id] || null;
+        return {
+          ...s,
+          submitterName: p.display_name || null,
+          submitterEmail: p.email || null,
+          submitterPlan: plansById[s.user_id] || null,
+          linked_editorial: le,
+          display_status: _deriveDisplayStatus(s, le),
+        };
+      });
+
+      // Virtual-filter narrow-down. We pre-filtered to status='approved'
+      // server-side; here we drop the rows that don't match the
+      // requested view. Pagination total recalculated so the page UI
+      // counts the visible subset, not the parent approved pool.
+      const filteredList = isVirtual
+        ? hydrated.filter(r => r.display_status === status)
+        : hydrated;
+      const finalTotal = isVirtual ? filteredList.length : count;
+      const finalTotalPages = Math.max(1, Math.ceil(finalTotal / perPage));
+
       return res.status(200).json({
-        submissions: (submissions || []).map(s => {
-          const p = profilesById[s.user_id] || {};
-          return {
-            ...s,
-            submitterName: p.display_name || null,
-            submitterEmail: p.email || null,
-            submitterPlan: plansById[s.user_id] || null,
-          };
-        }),
-        total: count,
+        submissions: filteredList,
+        total: finalTotal,
         page: parseInt(page),
         perPage,
-        totalPages: Math.ceil(count / perPage),
+        totalPages: finalTotalPages,
       });
     } catch (error) {
       // Echo the underlying Supabase/Postgres error so it shows up in the
