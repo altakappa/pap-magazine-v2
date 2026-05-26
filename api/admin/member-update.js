@@ -64,11 +64,28 @@ module.exports = async function handler(req, res) {
       if (!allowedRoles.includes(role)) {
         return res.status(400).json({ message: 'Invalid role. Allowed: ' + allowedRoles.join(', ') });
       }
-      // Prevent the main admin from accidentally demoting themselves —
-      // they'd lock themselves out of the panel until another main admin
-      // re-promotes them. Demotion of OTHER admins is still allowed.
-      if (role !== 'admin' && memberId === admin.id) {
-        return res.status(400).json({ message: 'Cannot change your own admin role' });
+      // QA #181 — self-demotion guard, tightened.
+      //
+      // Old logic blocked ANY self-edit where the new role wasn't 'admin'.
+      // That was over-broad: it also tripped when the editor's id happened
+      // to equal the target id but the target was already 'staff'/'member'
+      // (in which case there's nothing to "demote from" and no lock-out
+      // risk). The QA report (#181) flagged this as the cause of the
+      // misleading "Cannot change your own admin role" error.
+      //
+      // New rule — ONLY block when ALL of:
+      //   1. caller and target are the SAME row (normalized string match)
+      //   2. target's CURRENT role is actually 'admin'
+      //   3. proposed new role is NOT 'admin' (i.e. a real demotion)
+      // This still prevents the genuine lock-out scenario (the last main
+      // admin demoting themselves) without false-positive blocking any
+      // other legitimate edit.
+      const sameRow = String(memberId || '').trim() === String(admin.id || '').trim();
+      const currentIsAdmin = profile.role === 'admin';
+      if (sameRow && currentIsAdmin && role !== 'admin') {
+        return res.status(400).json({
+          message: '본인 계정의 대표 관리자 권한은 직접 해제할 수 없습니다. 다른 대표 관리자에게 부탁하세요.',
+        });
       }
       if (cols.includes('role')) updates.role = role;
     }

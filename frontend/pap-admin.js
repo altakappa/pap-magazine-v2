@@ -295,11 +295,33 @@ function openMemberModal(memberId){
   // QA #169 — role select is read-only for staff (only main admin can
   // promote/demote). Plan + status stay editable so staff can still
   // resolve billing issues.
+  // QA #181 — additionally lock role select when editing ONESELF and
+  // currently 'admin'. Otherwise the backend would 400 with a confusing
+  // "본인 권한 변경 불가" message after the save round-trip. Locking up
+  // front + showing an inline hint makes the constraint obvious BEFORE
+  // the editor wastes time changing the dropdown.
   var roleSel = document.getElementById('memberEditRole');
   var roleLock = document.getElementById('memberEditRoleLock');
   var isMain = window._papIsMainAdmin === true;
-  if(roleSel) roleSel.disabled = !isMain;
-  if(roleLock) roleLock.style.display = isMain ? 'none' : '';
+  var meId = null;
+  try{
+    var me = (typeof PAP !== 'undefined' && PAP.auth && PAP.auth.getUser) ? PAP.auth.getUser() : null;
+    meId = me && me.id ? String(me.id) : null;
+  }catch(_){ meId = null; }
+  var isSelf = !!(meId && String(m.id) === meId);
+  var isSelfAdminLock = isSelf && memberRole === 'admin';
+  if(roleSel) roleSel.disabled = !isMain || isSelfAdminLock;
+  if(roleLock){
+    if(!isMain){
+      roleLock.textContent = '대표 관리자만 변경 가능';
+      roleLock.style.display = '';
+    }else if(isSelfAdminLock){
+      roleLock.textContent = '본인 계정의 대표 관리자 권한은 직접 해제할 수 없습니다';
+      roleLock.style.display = '';
+    }else{
+      roleLock.style.display = 'none';
+    }
+  }
   // Suspend/delete buttons disabled for staff (main-admin only on backend)
   if(!isMain){
     document.getElementById('memberSuspendBtn').style.display = 'none';
@@ -321,8 +343,17 @@ async function saveMemberEdit(){
   // QA #169 — only the main admin is allowed to send a role change. For
   // staff we omit the field entirely so the backend (which gates role
   // changes behind requireMainAdmin) never sees it.
+  // QA #181 — also OMIT role from the body when the dropdown didn't
+  // change. Sending an unchanged role still triggers the backend's
+  // self-demotion guard if the editor happens to be editing themselves,
+  // which is needless friction when they only wanted to tweak plan /
+  // status. Compare against the currently-loaded value on allMembers.
+  var origMember = allMembers.find(function(x){return x.id===id;});
+  var origRole = origMember ? _getMemberRole(origMember) : null;
   var body = { memberId: id, subscriptionPlan: plan, subscriptionStatus: status };
-  if (window._papIsMainAdmin === true) body.role = role;
+  if (window._papIsMainAdmin === true && role && role !== origRole) {
+    body.role = role;
+  }
   try{
     var resp=await fetch(_apiBase+'/admin/member-update',{
       method:'PATCH',
