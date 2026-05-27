@@ -484,18 +484,22 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    // QA #165 — send an outcome-agnostic "review complete" email that
-    // pushes the submitter back to the platform to read the verdict.
-    // Locale picked from profile.email_language → profile.language → 'en'.
+    // QA #165 — outcome email goes out IMMEDIATELY for all three
+    // statuses (approved / rejected / revision). Locale picked from
+    // profile.email_language → profile.language → 'en'.
     //
-    // QA #172 — the APPROVED branch now skips this immediate send. The
-    // editor finalises the staged editorial (cover/credits/IG caption +
-    // publication Day/Month) and ticks "✉️ 저장 시 승인 메일 발송" in the
-    // editorial modal; that PUT then sends the email with the curated
-    // copy. Rejection / revision still notify immediately because they
-    // don't stage anything downstream — the submitter just needs to
-    // know to come back and read the verdict.
-    if (status !== 'approved') {
+    // QA #185 — Previously the APPROVED branch waited for the admin to
+    // tick "✉️ 저장 시 승인 메일 발송" on the staged editorial. In practice
+    // that checkbox was never clicked (DB shows 12 approved / 0 mails
+    // sent) so submitters were silently left hanging. Auto-send aligns
+    // approval with rejection/revision and removes the manual step.
+    //
+    // The "send again with publication Day/Month + payment details"
+    // checkbox in the editorial editor is KEPT so the editor can
+    // re-notify the submitter once the publication date is locked in.
+    // approval_email_sent_at idempotency-stamps after the first send,
+    // so re-tick + save will resend exactly once with the fresh dates.
+    {
       const { data: profile } = await supabaseAdmin
         .from('profiles')
         .select('email, display_name, language, email_language')
@@ -508,8 +512,29 @@ module.exports = async function handler(req, res) {
           { title: submission.title },
           lang,
           status
+          // No approvalDay / approvalMonth passed — the template falls
+          // back to bracketed placeholders, and the OPTIONAL editor
+          // resend will overwrite the recipient's inbox with a dated
+          // version once the publication schedule is set.
         );
-        sendEmail(profile.email, tpl).catch(() => {});
+        sendEmail(profile.email, tpl)
+          .then(async (result) => {
+            // For approved submissions, stamp the staged editorial's
+            // approval_email_sent_at so the editor's later checkbox
+            // tick acts as an explicit RESEND (idempotency clears the
+            // stamp first — see editorial PUT handler).
+            if (status === 'approved' && stagedEditorialId && result && result.sent) {
+              try {
+                await supabaseAdmin
+                  .from('editorials')
+                  .update({ approval_email_sent_at: new Date().toISOString() })
+                  .eq('id', stagedEditorialId);
+              } catch (e) {
+                console.error('[review] approval stamp failed:', e && e.message);
+              }
+            }
+          })
+          .catch(() => {});
       }
     }
 

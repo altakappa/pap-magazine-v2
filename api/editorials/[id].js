@@ -12,20 +12,33 @@ const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { embedAndStoreEditorial } = require('../_lib/embeddings');
 const { sendEmail, templates } = require('../_lib/email');
 
-// QA #172 — Approval-email trigger.
+// QA #172 / QA #185 — Approval-email trigger.
 // Fires from POST and PUT when the admin ticks "✉️ 저장 시 승인 메일 발송"
-// in the editorial save modal. Conditions to actually send:
+// in the editorial save modal. As of QA #185 the initial approval mail
+// is auto-sent at REVIEW time (without publication day/month), so this
+// path now acts as an explicit RE-SEND with the curated publication
+// schedule + payment block. To keep it idempotent across accidental
+// double-saves we still check approval_email_sent_at — but only block
+// when the timestamp lies within the last 60 seconds. Older stamps
+// from the review-time auto-send are intentionally overridden so the
+// editor's deliberate tick on this checkbox always reaches the inbox.
+// Conditions to actually send:
 //   1) editorial has a source_submission_id (was staged from a submission)
-//   2) approval_email_sent_at is NULL (idempotency — never send twice)
+//   2) approval_email_sent_at is older than 60s OR null
 //   3) we can look up the submitter's email
-// On success we stamp approval_email_sent_at so subsequent saves skip
-// the email even if the checkbox is left ticked. Failure is non-fatal:
-// the editorial save still succeeds; admin can retry from the modal.
 async function _maybeSendApprovalEmail(editorialRow, opts) {
   if (!editorialRow || !editorialRow.id) return;
   if (!opts || !opts.sendApprovalEmail) return;
   if (!editorialRow.source_submission_id) return;
-  if (editorialRow.approval_email_sent_at) return;
+  if (editorialRow.approval_email_sent_at) {
+    const lastMs = new Date(editorialRow.approval_email_sent_at).getTime();
+    if (!isNaN(lastMs) && (Date.now() - lastMs) < 60_000) {
+      // Stamped within the last minute — almost certainly a debounce of
+      // a save that already triggered this same path. Skip to avoid
+      // duplicate sends, but allow legitimate resends after the cool-off.
+      return;
+    }
+  }
 
   try {
     const { data: submission } = await supabaseAdmin
