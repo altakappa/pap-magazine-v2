@@ -42,9 +42,23 @@ module.exports = async function handler(req, res) {
       // QA #163 — reverse-fan the films pointing at each editorial via
       // films.related_editorial_id so the SPA overlay can render a
       // "Related Films" card without a per-row second fetch.
+      // QA #191 — re-include credits / fashion / description / description_en
+      // / gallery / instagram_caption. The SPA's openEditorial reads from
+      // this list cache (no per-row detail fetch) and renders the full
+      // overlay (credits roles, fashion brands, look-by-look gallery),
+      // so omitting those columns produced empty placeholders
+      // ("PHOTOGRAPHY photographer" instead of "Photographer Pedro Braga").
+      // We KEEP `embedding` excluded — it's the 1536-float pgvector that
+      // dwarfed the original ~400KB response. Including credits/fashion/
+      // description JSONB adds maybe ~5KB per row but restores full SPA
+      // fidelity. Net response is still ~50-80KB for the homepage list,
+      // well within the edge-cache budget.
       const LIST_COLUMNS = [
         'id','title','slug','cover_image','thumbnail','published_date',
-        'url','tags','issue','status','scheduled_publish_at','title_en'
+        'url','tags','issue','status','scheduled_publish_at','title_en',
+        'description','description_en','gallery','credits','fashion',
+        'instagram_caption','og_image','seo_title','seo_description',
+        'updated_at','source_submission_id'
       ].join(',');
       let query = supabaseAdmin
         .from('editorials')
