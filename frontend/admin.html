@@ -521,7 +521,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
 
   <!-- EDITORIALS -->
   <div class="tab" id="t-editorials">
-    <div class="mn-header"><div class="mn-title">에디토리얼 관리</div><div class="mn-actions"><button class="btn btn-primary" onclick="go('newpost')">+ 새 게시글</button></div></div>
+    <div class="mn-header"><div class="mn-title">에디토리얼 관리</div><div class="mn-actions"><button class="btn" data-role-main onclick="aiAutoGenerateBulkEditorials()" title="description / instagram_caption이 비어있는 에디토리얼들을 Claude vision으로 일괄 채움 (최대 25개씩, 대표 관리자 전용)" style="background:linear-gradient(135deg,rgba(124,58,237,.12),rgba(37,99,235,.08));border-color:rgba(124,58,237,.3);color:var(--purple)">🤖 빈 에디토리얼 일괄 자동 생성</button><button class="btn btn-primary" onclick="go('newpost')">+ 새 게시글</button></div></div>
     <div class="mn-body">
       <div class="tbl-wrap">
         <div class="tbl-top">
@@ -630,16 +630,20 @@ tr:hover td{background:rgba(0,0,0,.02)}
         </div>
 
         <!-- QA #170 — 인스타그램 캡션 (서브미션 승인 시 자동 생성) -->
+        <!-- QA #184 — '🤖 AI 자동 생성' 버튼 추가. Claude vision으로 description +
+                       description_en + instagram_caption(트라이링구얼) 한 번에 채움. -->
         <div class="pe-section" id="editorialIgCaptionSection">
           <div class="pe-label" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
             <span>📷 인스타그램 캡션 <span class="pe-opt">서브미션 승인 시 자동 생성 · 수정 가능</span></span>
-            <span style="display:flex;gap:6px">
-              <button class="btn btn-sm" type="button" onclick="regenerateIgCaption()" title="현재 크레딧·브랜드 정보로 다시 생성">🔄 다시 생성</button>
+            <span style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="btn btn-sm" type="button" id="aiAutoGenBtn" onclick="aiAutoGenerateEditorial(false)" title="Claude로 description + 트라이링구얼 캡션 자동 생성 (빈 필드만)" style="background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(37,99,235,.12));border-color:rgba(124,58,237,.35);color:var(--purple)">🤖 AI 자동 생성</button>
+              <button class="btn btn-sm" type="button" onclick="aiAutoGenerateEditorial(true)" title="기존 내용을 덮어쓰며 새로 생성">🤖 강제 재생성</button>
+              <button class="btn btn-sm" type="button" onclick="regenerateIgCaption()" title="현재 크레딧·브랜드 정보로 템플릿 재조립 (AI 호출 없음)">🔄 템플릿 재조립</button>
               <button class="btn btn-sm btn-blue" type="button" onclick="copyIgCaption(this)" title="클립보드에 복사">📋 복사</button>
             </span>
           </div>
           <textarea class="modal-ta" id="postIgCaption" style="min-height:200px;font-family:'SF Mono',Menlo,Monaco,monospace;font-size:12px;line-height:1.6" placeholder="@pap_magazine presents&#10;&#10;Photographer @handle&#10;Style @handle&#10;...&#10;&#10;(서브미션 승인 후 자동으로 채워집니다. 직접 작성도 가능합니다.)"></textarea>
-          <div class="pe-hint">서브미션의 팀 크레딧 · 모델 · 룩별 브랜드 정보를 PAP 인스타 스타일로 정렬한 미리보기입니다. 발행 전 자유롭게 다듬어 주세요.</div>
+          <div class="pe-hint">서브미션의 팀 크레딧 · 모델 · 룩별 브랜드 정보를 PAP 인스타 스타일로 정렬한 미리보기입니다. 발행 전 자유롭게 다듬어 주세요. <strong>🤖 AI 자동 생성</strong>은 Claude vision으로 갤러리 이미지를 분석해 IT/KO/EN 3개 언어 캡션을 한 번에 채워줍니다.</div>
         </div>
 
         <!-- 크레딧 정보 -->
@@ -1722,7 +1726,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
      one click without hitting Vercel response-size limits. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
 
-<script src="/pap-admin.js?v=16" defer></script>
+<script src="/pap-admin.js?v=17" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>

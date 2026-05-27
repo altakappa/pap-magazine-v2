@@ -2975,6 +2975,116 @@ function regenerateIgCaption(){
   var el = document.getElementById('postIgCaption');
   if(el){ el.value = caption; }
 }
+
+// QA #184 — POST /api/admin/editorials/:id/auto-generate. Calls Claude
+// vision (or translate-mode if a source-submission artistStatement is
+// linked) to fill description / description_en / instagram_caption.
+//
+// Two modes triggered by the same handler:
+//   • overwrite=false → only fill empty slots (default; click on '🤖 AI 자동 생성')
+//   • overwrite=true  → replace whatever's there (click on '🤖 강제 재생성')
+// On success we pull the new values straight into the open editor form
+// without a page reload so the admin can review/edit before saving.
+async function aiAutoGenerateEditorial(overwrite){
+  if(!editingEditorialId){
+    alert('먼저 에디토리얼을 저장해주세요.\n신규 작성 중에는 AI 자동 생성을 사용할 수 없습니다.\n(임시저장 후 다시 시도하시면 됩니다.)');
+    return;
+  }
+  if(overwrite){
+    var existing = (document.getElementById('postDescription')||{}).value || '';
+    if(existing.trim() && !confirm('기존 description / instagram_caption을 덮어쓰고 새로 생성합니다.\n계속할까요?')) return;
+  }
+  // Visual: lock the buttons + show progress on the AI button itself.
+  var btn = document.getElementById('aiAutoGenBtn');
+  var origLabel = btn ? btn.textContent : '';
+  if(btn){ btn.disabled = true; btn.textContent = '🤖 생성 중…'; btn.style.opacity = '.7'; }
+  try{
+    var resp = await fetch(_apiBase+'/admin/editorials/'+editingEditorialId+'/auto-generate',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer '+(localStorage.getItem('pap-token')||''),
+        'X-Requested-With':'XMLHttpRequest'
+      },
+      body: JSON.stringify({ overwrite: !!overwrite })
+    });
+    var data = await resp.json();
+    if(!resp.ok) throw new Error(data.message || ('Auto-generate failed: '+resp.status));
+
+    // Update the form's fields with whatever the server now has stored.
+    // Only swap a field if the server reports it was actually changed.
+    var fu = data.fieldsUpdated || {};
+    if(fu.description && document.getElementById('postDescription')){
+      document.getElementById('postDescription').value = data.description || '';
+    }
+    if(fu.description_en && document.getElementById('postDescriptionEn')){
+      document.getElementById('postDescriptionEn').value = data.description_en || '';
+    }
+    if(fu.instagram_caption && document.getElementById('postIgCaption')){
+      document.getElementById('postIgCaption').value = data.instagram_caption || '';
+    }
+
+    var summary = [];
+    if(fu.description)        summary.push('description (KR)');
+    if(fu.description_en)     summary.push('description (EN)');
+    if(fu.instagram_caption)  summary.push('instagram caption (KR/EN/IT)');
+    if(summary.length){
+      alert('✓ AI 자동 생성 완료\n채워진 필드: '+summary.join(', '));
+    } else {
+      alert('이미 모든 필드가 채워져 있어요.\n덮어쓰려면 "🤖 강제 재생성"을 사용하세요.');
+    }
+  }catch(e){
+    console.error('aiAutoGenerateEditorial error:', e);
+    alert('자동 생성 실패: '+(e && e.message || e));
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = origLabel || '🤖 AI 자동 생성'; btn.style.opacity = '1'; }
+  }
+}
+
+// QA #184 — bulk fill for editorials that came back empty. Main admin
+// only; backend caps to 25 per call. Useful for cleaning up legacy
+// admin-created editorials (no submission to trigger auto-gen at the
+// approval step).
+async function aiAutoGenerateBulkEditorials(){
+  if(window._papIsMainAdmin !== true){
+    alert('일괄 자동 생성은 대표 관리자만 실행할 수 있습니다.');
+    return;
+  }
+  var doOverwrite = confirm(
+    '🤖 빈 에디토리얼 일괄 AI 자동 생성\n\n' +
+    '대상: description / description_en / instagram_caption 중 하나라도 비어있는 에디토리얼\n' +
+    '최대 25개씩 (Claude API rate limit). 더 있으면 다시 눌러주세요.\n\n' +
+    '확인 → 빈 칸만 채움\n취소 → 작업 중단'
+  );
+  if(!doOverwrite) return;
+  if(!confirm('진행하면 Claude API 호출 비용이 발생합니다 (대상 수 × 약 1회 호출).\n계속할까요?')) return;
+  try{
+    var resp = await fetch(_apiBase+'/admin/editorials/auto-generate-bulk',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer '+(localStorage.getItem('pap-token')||''),
+        'X-Requested-With':'XMLHttpRequest'
+      },
+      body: JSON.stringify({ overwrite: false, onlyMissing: true, limit: 25 })
+    });
+    var data = await resp.json();
+    if(!resp.ok) throw new Error(data.message || ('Bulk failed: '+resp.status));
+    var msg = '✓ 일괄 자동 생성 완료\n\n' +
+      '대상: '+data.processed+'개\n' +
+      '업데이트됨: '+data.updated+'개\n' +
+      '건너뜀: '+data.skipped+'개';
+    if(data.errors && data.errors.length){
+      msg += '\n실패: '+data.errors.length+'개 (자세한 내용은 콘솔 확인)';
+      console.error('[bulk auto-gen] errors:', data.errors);
+    }
+    alert(msg);
+    if(typeof loadEditorials === 'function') loadEditorials();
+  }catch(e){
+    console.error('aiAutoGenerateBulkEditorials error:', e);
+    alert('일괄 자동 생성 실패: '+(e && e.message || e));
+  }
+}
 async function copyIgCaption(btn){
   var el = document.getElementById('postIgCaption');
   if(!el || !el.value){

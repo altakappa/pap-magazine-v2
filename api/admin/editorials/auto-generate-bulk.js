@@ -1,0 +1,226 @@
+/**
+ * POST /api/admin/editorials/auto-generate-bulk — fill EVERY editorial
+ * with a missing description / instagram_caption in one sweep. Useful
+ * for cleaning up legacy admin-created editorials (like Inner Offerings)
+ * that never went through the submission-approval path and therefore
+ * never got auto-gen.
+ *
+ * Gated to MAIN admin only because this hits the Anthropic API repeatedly
+ * (one call per editorial) and can rack up tokens fast. We rate-limit to
+ * ~1 call per 1.5 seconds to stay polite under the burst quota.
+ *
+ * Body: {
+ *   overwrite?: boolean = false,      // replace existing non-empty fields
+ *   limit?: number     = 25,          // safety cap per invocation
+ *   onlyMissing?: bool = true,        // skip rows whose all 3 fields are populated
+ * }
+ *
+ * Returns: {
+ *   processed: number,                // rows we attempted
+ *   updated:   number,                // rows that actually got new values
+ *   skipped:   number,                // rows we walked past (all populated)
+ *   errors:    [{ id, title, err }],  // per-row failure log
+ * }
+ */
+
+const { supabaseAdmin } = require('../../_lib/supabase');
+const { requireMainAdmin } = require('../../_lib/auth');
+const { handleCors } = require('../../_lib/cors');
+const { rateLimit, RATE_LIMITS } = require('../../_lib/rateLimit');
+const { generateEditorialDescriptions } = require('../../_lib/editorialAi');
+
+const _IG_PUBLISHER_HANDLE = '@kangdm';
+const _IG_HOUSE_HANDLE     = '@pap_magazine';
+const _IG_SEPARATOR        = '————- ';
+const _IG_SITE_BASE        = 'https://www.pap-magazine.com/editorial/';
+
+function _normalizeIgHandle(s) {
+  let h = String(s || '').trim();
+  if (!h) return '';
+  const m = h.match(/instagram\.com\/+([A-Za-z0-9_.]+)/i);
+  if (m) h = m[1];
+  if (h[0] !== '@') h = '@' + h.replace(/^@+/, '');
+  return h.replace(/\s/g, '');
+}
+function _normalizeRoleLabel(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return 'Credit';
+  return s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+function _slugify(title) {
+  return String(title || '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'editorial';
+}
+function _isEmpty(v) {
+  return v === null || v === undefined || String(v).trim() === '' || String(v).trim() === '(KR)';
+}
+function _buildCaption(ed, descKr, descEn, descIt) {
+  const lines = [];
+  const title = String(ed.title || '').trim() || 'Untitled';
+  const slug  = (ed.slug && String(ed.slug).trim()) || _slugify(title);
+
+  lines.push(`'${title}' exclusive for ${_IG_HOUSE_HANDLE} published by ${_IG_PUBLISHER_HANDLE} ㅡ link in bio`);
+  lines.push('');
+  lines.push(_IG_SEPARATOR);
+
+  const credits = Array.isArray(ed.credits) ? ed.credits : [];
+  const creditParts = [];
+  const starringParts = [];
+  credits.forEach((c) => {
+    if (!c || !c.name) return;
+    const handle = _normalizeIgHandle(c.instagram || c.website || '');
+    if (!handle) return;
+    const roles = Array.isArray(c.roles) ? c.roles : (c.roles ? [c.roles] : []);
+    const role = roles[0] || c.role || 'Credit';
+    if (/^(model|starring|talent|cast)/i.test(role)) starringParts.push(handle);
+    else creditParts.push(`${_normalizeRoleLabel(role)} ${handle}`);
+  });
+  if (creditParts.length) lines.push(creditParts.join(' '));
+  if (starringParts.length) {
+    if (creditParts.length) lines.push('');
+    lines.push('Starring ' + starringParts.join(' '));
+  }
+  lines.push('');
+  lines.push(_IG_SEPARATOR);
+  lines.push('(KR) ' + (descKr || '').trim());
+  lines.push('');
+  lines.push('(EN) ' + (descEn || '').trim());
+  lines.push('');
+  lines.push('(IT) ' + (descIt || '').trim());
+  lines.push('');
+  lines.push(_IG_SEPARATOR);
+  lines.push('Full Story link🔎');
+  lines.push(_IG_SITE_BASE + slug);
+  lines.push('');
+
+  const fashion = (ed.fashion && typeof ed.fashion === 'object') ? ed.fashion : {};
+  const brands = Array.isArray(fashion.brands) ? fashion.brands : [];
+  const seen = new Set();
+  const brandHandles = [];
+  brands.forEach((b) => {
+    if (!b) return;
+    const h = _normalizeIgHandle(b.instagram || b.name || '');
+    if (!h) return;
+    const k = h.toLowerCase();
+    if (seen.has(k)) return;
+    seen.add(k);
+    brandHandles.push(h);
+  });
+  if (brandHandles.length) lines.push('Fashion by ' + brandHandles.join(' '));
+  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+function _sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+module.exports = async function handler(req, res) {
+  if (handleCors(req, res)) return;
+  if (rateLimit(req, res, RATE_LIMITS.api)) return;
+  if (req.method !== 'POST') {
+    return res.status(405).json({ message: 'Method not allowed' });
+  }
+  const user = await requireMainAdmin(req, res);
+  if (!user) return;
+
+  let body = req.body;
+  if (!body || typeof body === 'string') {
+    try { body = body ? JSON.parse(body) : {}; } catch (_) { body = {}; }
+  }
+  const overwrite   = body.overwrite === true;
+  const onlyMissing = body.onlyMissing !== false; // default true
+  const limit       = Math.max(1, Math.min(50, parseInt(body.limit, 10) || 25));
+
+  try {
+    // Pull candidates. With onlyMissing=true we filter rows that have
+    // ANY of the three target fields empty or the placeholder "(KR)"
+    // stub that earlier code paths left behind.
+    let query = supabaseAdmin
+      .from('editorials')
+      .select('id, title, slug, gallery, credits, fashion, description, description_en, instagram_caption, source_submission_id')
+      .order('created_at', { ascending: true })
+      .limit(limit);
+
+    const { data: rows, error: listErr } = await query;
+    if (listErr) {
+      console.error('Bulk list error:', listErr);
+      return res.status(500).json({ message: 'List failed', detail: listErr.message });
+    }
+
+    const candidates = (rows || []).filter((r) => {
+      if (!onlyMissing) return true;
+      return _isEmpty(r.description) || _isEmpty(r.description_en) || _isEmpty(r.instagram_caption);
+    });
+
+    let updated = 0;
+    let skipped = 0;
+    const errors = [];
+
+    for (const ed of candidates) {
+      try {
+        // Skip rows with no usable input (no images AND no source text)
+        const gallery = Array.isArray(ed.gallery) ? ed.gallery : [];
+        let artistStatement = '';
+        if (ed.source_submission_id) {
+          try {
+            const { data: sub } = await supabaseAdmin
+              .from('submissions').select('description').eq('id', ed.source_submission_id).single();
+            if (sub && sub.description) {
+              const desc = typeof sub.description === 'string' ? JSON.parse(sub.description) : sub.description;
+              if (desc && desc.artistStatement) artistStatement = String(desc.artistStatement).trim();
+            }
+          } catch (_) {}
+        }
+        if (!gallery.length && !artistStatement) {
+          skipped++;
+          continue;
+        }
+
+        const out = await generateEditorialDescriptions({
+          title: ed.title, artistStatement, imageUrls: gallery,
+        });
+        const descKr = out.kr || '';
+        const descEn = out.en || '';
+        const descIt = out.it || '';
+        const caption = _buildCaption(ed, descKr, descEn, descIt);
+
+        const upd = {};
+        if (descKr && (overwrite || _isEmpty(ed.description)))             upd.description = descKr;
+        if (descEn && (overwrite || _isEmpty(ed.description_en)))         upd.description_en = descEn;
+        if (caption && (overwrite || _isEmpty(ed.instagram_caption)))     upd.instagram_caption = caption;
+
+        if (Object.keys(upd).length === 0) {
+          skipped++;
+          continue;
+        }
+        upd.updated_at = new Date().toISOString();
+
+        const { error: updErr } = await supabaseAdmin
+          .from('editorials').update(upd).eq('id', ed.id);
+        if (updErr) {
+          errors.push({ id: ed.id, title: ed.title, err: updErr.message });
+        } else {
+          updated++;
+        }
+
+        // Rate-limit pause — Anthropic recommends ~1 RPS for small accounts;
+        // 1500ms keeps us well under any throttle window.
+        await _sleep(1500);
+      } catch (rowErr) {
+        console.error('Bulk row error', ed && ed.id, rowErr);
+        errors.push({ id: ed.id, title: ed.title, err: rowErr && rowErr.message });
+      }
+    }
+
+    return res.status(200).json({
+      processed: candidates.length,
+      updated,
+      skipped,
+      errors,
+      limit,
+      overwrite,
+      onlyMissing,
+    });
+  } catch (err) {
+    console.error('Bulk auto-generate error:', err);
+    return res.status(500).json({ message: 'Server error', detail: err && err.message });
+  }
+};
