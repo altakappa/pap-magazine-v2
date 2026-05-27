@@ -25,15 +25,20 @@ module.exports = async function handler(req, res) {
       // the editorials GET behaviour so admin tools (status=draft/scheduled)
       // bypass the schedule gate while consumers never see queued rows.
       const requestedStatus = status || 'published';
+      // QA #186 — explicit list-view projection (drops `credits` JSONB +
+      // `description` so the homepage card list isn't shipping payloads
+      // it doesn't render).
+      const LIST_COLUMNS = [
+        'id','title','slug','youtube_id','thumbnail_url','published_date',
+        'categories','tags','status','scheduled_publish_at'
+      ].join(',');
       let query = supabaseAdmin
         .from('films')
-        .select('*, related_editorial:editorials!related_editorial_id(id,slug,title,cover_image,thumbnail,published_date)', { count: 'exact' })
+        .select(LIST_COLUMNS + ', related_editorial:editorials!related_editorial_id(id,slug,title,cover_image,thumbnail,published_date)', { count: 'exact' })
         .eq('status', requestedStatus)
         .order('published_date', { ascending: false })
         .range(offset, offset + parseInt(limit) - 1);
-      // Schedule gate (QA #164). The OR keeps backward-compat with rows
-      // that pre-date column 029 (scheduled_publish_at IS NULL → always
-      // visible once status=published).
+      // Schedule gate (QA #164).
       if (requestedStatus === 'published') {
         query = query.or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${new Date().toISOString()}`);
       }
@@ -44,6 +49,13 @@ module.exports = async function handler(req, res) {
 
       const { data, error, count } = await query;
       if (error) throw error;
+
+      // QA #186 — edge cache the published list.
+      if (requestedStatus === 'published') {
+        res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=600');
+      } else {
+        res.setHeader('Cache-Control', 'private, no-store');
+      }
 
       return res.status(200).json({
         data,

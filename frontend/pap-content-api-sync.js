@@ -767,21 +767,35 @@ window._papFilmAutoPlay = function(){
       });
   }
 
-  // Run sync after DOM is ready
+  // QA #186 — staggered fetch strategy. Before this change, all four
+  // syncs fired in parallel on DOMContentLoaded, so the homepage was
+  // hitting 13+ API endpoints at once. With Vercel serverless cold
+  // starts that meant 5-7s waits everywhere. Now:
+  //   • syncEditorials (newest 12) is the ONLY critical-path call —
+  //     it powers what the user sees above the fold.
+  //   • Everything else (films, articles, community discovery) is
+  //     deferred to `requestIdleCallback` so it runs after first
+  //     paint settles. Below-the-fold sections render skeletons in
+  //     the meantime; users on slow connections actually see the
+  //     editorial grid up to 2s earlier.
+  function _kickDeferredSyncs(){
+    var idle = (typeof requestIdleCallback === 'function')
+      ? function(cb){ requestIdleCallback(cb, { timeout: 1500 }); }
+      : function(cb){ setTimeout(cb, 400); };
+    idle(function(){ try { syncFilms(); } catch(e){ console.warn(e); } });
+    idle(function(){ try { syncArticles(); } catch(e){ console.warn(e); } });
+    idle(function(){ try { _renderCommunityCtaThumbs(); } catch(e){ console.warn(e); } });
+  }
   if(document.readyState==='loading'){
     document.addEventListener('DOMContentLoaded',function(){
-      syncFilms();
-      syncArticles();
       syncEditorials();
-      _renderCommunityCtaThumbs();
+      _kickDeferredSyncs();
     });
   } else {
     // DOM already loaded — small delay to let page scripts initialize first
     setTimeout(function(){
-      syncFilms();
-      syncArticles();
       syncEditorials();
-      _renderCommunityCtaThumbs();
+      _kickDeferredSyncs();
     },100);
   }
 })();

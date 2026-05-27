@@ -20,10 +20,18 @@ module.exports = async function handler(req, res) {
       const limit = Math.min(Math.max(1, parseInt(rawLimit) || 25), 100);
       const offset = (parseInt(page) - 1) * limit;
 
+      // QA #186 — list-view projection drops `content` (the long article
+      // body) + `gallery` + `credits`. Article cards only need
+      // title/subtitle/thumbnail/category/published_date for rendering.
+      const LIST_COLUMNS = [
+        'id','title','subtitle','slug','thumbnail_url','hero_image_url',
+        'category','tags','published_date','custom_url','status'
+      ].join(',');
+      const requestedStatus = status || 'published';
       let query = supabaseAdmin
         .from('articles')
-        .select('*', { count: 'exact' })
-        .eq('status', status || 'published')
+        .select(LIST_COLUMNS, { count: 'exact' })
+        .eq('status', requestedStatus)
         .order('published_date', { ascending: false })
         .range(offset, offset + parseInt(limit) - 1);
 
@@ -33,6 +41,13 @@ module.exports = async function handler(req, res) {
 
       const { data, error, count } = await query;
       if (error) throw error;
+
+      // QA #186 — edge cache the published list.
+      if (requestedStatus === 'published') {
+        res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=600');
+      } else {
+        res.setHeader('Cache-Control', 'private, no-store');
+      }
 
       return res.status(200).json({
         data,

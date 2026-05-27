@@ -40,6 +40,12 @@ module.exports = async function handler(req, res) {
   if (rateLimit(req, res, RATE_LIMITS.api)) return;
   if (req.method !== 'GET') return res.status(405).json({ message: 'Method not allowed' });
 
+  // QA #186 — discovery surfaces refresh slowly (no live data dependency).
+  // 2-minute edge cache + 10-minute SWR is plenty for a "what's happening"
+  // panel, and it eliminates the cold-start tax for every subsequent
+  // visitor inside the window.
+  res.setHeader('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=600');
+
   const out = { trendingMoodboards: [], activeCreators: [], recentScraps: [] };
 
   // ── Trending moodboards ──────────────────────────────────────────────

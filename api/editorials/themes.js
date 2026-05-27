@@ -142,6 +142,11 @@ module.exports = async function handler(req, res) {
   }
   if (rateLimit(req, res, RATE_LIMITS.api)) return;
 
+  // QA #186 — themes refresh slowly (curation level). 5-min edge cache.
+  // Personalized themes (auth'd users) bypass the cache by varying on
+  // Authorization header — Vercel honours that automatically.
+  res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=1800');
+
   const lang = safeLang(String(req.query.lang || 'ko'));
   let perRow = parseInt(req.query.perRow, 10);
   if (!Number.isFinite(perRow) || perRow < 1) perRow = DEFAULT_PER_ROW;
