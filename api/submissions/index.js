@@ -245,9 +245,13 @@ module.exports = async function handler(req, res) {
       const submissionIds = (submissions || []).map(s => s.id).filter(Boolean);
       let linkedEditorialBySubId = {};
       if (submissionIds.length > 0) {
+        // QA #189 — also pull scheduled_publish_at so the MY SUBMISSIONS
+        // approval block can render "around the X of Month" from the
+        // editor's scheduled publish date instead of asking the admin
+        // to type it into the review modal.
         const { data: editorialRows } = await supabaseAdmin
           .from('editorials')
-          .select('id, slug, status, published_date, source_submission_id')
+          .select('id, slug, status, published_date, scheduled_publish_at, source_submission_id')
           .in('source_submission_id', submissionIds);
         if (Array.isArray(editorialRows)) {
           for (const er of editorialRows) {

@@ -225,66 +225,24 @@ const templates = {
   // Localised per recipient via profile.email_language (consent.js gives
   // us the value; review.js looks it up and passes `lang` in). Falls
   // back to English for any locale we don't have copy for yet.
-  submissionReviewComplete(user, submission, lang, status, opts) {
+  // QA #189 — pure notification email.
+  // Previous versions embedded the approval payment block (Day/Month +
+  // payment links) and a rejection courtesy block directly in the
+  // email body. Editorial direction (May 2026): keep the mail purely
+  // as a notification — the actual verdict, editor notes, payment
+  // options, and resubmit flow all live on the site at
+  // /submission.html#mySubsSection. This keeps the email short, the
+  // same shape for every status, and avoids leaking sensitive
+  // commercial details (payment URLs) into recipients' inboxes.
+  //
+  // `opts` parameter kept in the signature for backward compat with
+  // callers that still pass approvalDay/Month — values are now ignored
+  // and the day/month info is surfaced only on MY SUBMISSIONS.
+  submissionReviewComplete(user, submission, lang, status, _opts) {
     const L = SUBMISSION_REVIEW_I18N[lang] || SUBMISSION_REVIEW_I18N.en;
     const safeName = user && user.name ? user.name : (L.greetingFallback);
     const safeTitle = submission && submission.title ? submission.title : '—';
     const ctaUrl = `${FRONTEND_URL}/submission.html#mySubsSection`;
-
-    // Rejection-specific courtesy block. Editorial direction (May 2026):
-    // rejection mail should still be warm — explicitly thank the
-    // submitter, reassure them about image privacy/deletion, and leave
-    // the door open for future collaboration. Kept English-only by
-    // request; sits ABOVE the localised CTA so the recipient reads the
-    // note first, then has the option to click through for reviewer
-    // feedback on MY SUBMISSIONS.
-    const rejectionBlock = status === 'rejected' ? `
-      <div style="margin:24px 0 8px;padding:20px 22px;background:#1a1a1a;border-left:3px solid #888;font-size:13px;line-height:1.75;color:#ccc;">
-        <p style="margin:0 0 12px;">Dear ${safeName},</p>
-        <p style="margin:0 0 12px;">Thank you for your email and for sharing your materials with us. Unfortunately, it does not quite align with our aesthetic standard.</p>
-        <p style="margin:0 0 12px;">Please rest assured that any images not selected for publication will remain private and will be promptly deleted.</p>
-        <p style="margin:0 0 12px;">We truly appreciate your kind offer and hope for the opportunity to collaborate again in the future.</p>
-        <p style="margin:0;">All the best,<br>PAP Magazine Editorial Team</p>
-      </div>
-    ` : '';
-
-    // QA #171 — approval-specific English block. Admin types the
-    // expected publication day + month in the review modal before
-    // pressing ✓ 승인; those values land here as opts.approvalDay /
-    // opts.approvalMonth and fill the "around the () of ()" slot. Left
-    // empty when the admin skipped them so the literal parentheses
-    // remain visible — better than silently dropping the phrase.
-    const approvalDay = (opts && opts.approvalDay) ? String(opts.approvalDay).trim() : '';
-    const approvalMonth = (opts && opts.approvalMonth) ? String(opts.approvalMonth).trim() : '';
-    const dayDisplay = approvalDay || '()';
-    const monthDisplay = approvalMonth || '()';
-    const approvalBlock = status === 'approved' ? `
-      <div style="margin:24px 0 8px;padding:20px 22px;background:#1a1a1a;border-left:3px solid #c9a86a;font-size:13px;line-height:1.75;color:#ccc;">
-        <p style="margin:0 0 12px;">Dear ${safeName},</p>
-        <p style="margin:0 0 12px;">We are pleased to inform you that the project is scheduled to be published as an exclusive digital editorial on PAP around the <strong style="color:#fff;">${dayDisplay}</strong> of <strong style="color:#fff;">${monthDisplay}</strong>. Please note that the dates mentioned are approximate and may be subject to slight changes depending on the circumstances.</p>
-        <p style="margin:0 0 12px;">The editorial will be shared on our social media within a few days following its release on the PAP website. We kindly ask for your patience and understanding in the meantime.</p>
-        <p style="margin:0 0 12px;">Additionally, If you require any additional services, you can make the payment through the link provided and kindly let us know once it's done.</p>
-        <ul style="margin:0 0 12px;padding-left:18px;list-style:none;">
-          <li style="margin:0 0 12px;padding-left:0;">
-            <span style="color:#fff;">• Instagram Collaborators: €100 (per a feed)</span><br>
-            <span style="color:#999;">Payment Link:</span>
-            <a href="https://www.paypal.com/ncp/payment/6JJQ8DFABNNCA" style="color:#c9a86a;text-decoration:underline;">https://www.paypal.com/ncp/payment/6JJQ8DFABNNCA</a>
-          </li>
-          <li style="margin:0 0 12px;padding-left:0;">
-            <span style="color:#fff;">• Specific images for the instagram and selecting image for the cover: €200 (per a feed)</span><br>
-            <span style="color:#999;">Payment Link:</span>
-            <a href="https://www.paypal.com/ncp/payment/JVX4FW85MPW86" style="color:#c9a86a;text-decoration:underline;">https://www.paypal.com/ncp/payment/JVX4FW85MPW86</a>
-          </li>
-          <li style="margin:0 0 12px;padding-left:0;">
-            <span style="color:#fff;">• Specifying a posting date: €100 (per a feed)</span><br>
-            <span style="color:#999;">Payment Link:</span>
-            <a href="https://www.paypal.com/ncp/payment/9DPMLWNMZFTNU" style="color:#c9a86a;text-decoration:underline;">https://www.paypal.com/ncp/payment/9DPMLWNMZFTNU</a>
-          </li>
-        </ul>
-        <p style="margin:0 0 12px;">Thank you once again for the collaboration.</p>
-        <p style="margin:0;">Kind regards,<br>PAP Magazine Editorial Team</p>
-      </div>
-    ` : '';
 
     return {
       subject: L.subject.replace('{title}', safeTitle),
@@ -293,8 +251,6 @@ const templates = {
         <p>${L.greet.replace('{name}', safeName)}</p>
         <p>${L.body1.replace('{title}', `<strong style="color:#fff;">"${safeTitle}"</strong>`)}</p>
         <p>${L.body2}</p>
-        ${approvalBlock}
-        ${rejectionBlock}
         <a href="${ctaUrl}" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">${L.cta}</a>
         <p style="font-size:12px;color:#888;margin-top:24px;">${L.footer}</p>
       `),

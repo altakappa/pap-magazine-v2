@@ -263,11 +263,17 @@ module.exports = async function handler(req, res) {
     // Enrich with submitter profile + active subscription plan so the admin
     // review modal has every field it needs in one round trip. Mirrors the
     // shape returned by the list endpoint.
+    //
+    // QA #189 — also fan in the linked editorial (slug + status +
+    // scheduled_publish_at + published_date) so the submitter's MY
+    // SUBMISSIONS modal can render the publication-date phrase in the
+    // approval block ("around the X of Month") without an extra fetch.
     let submitterName = null;
     let submitterEmail = null;
     let submitterPlan = null;
+    let linkedEditorial = null;
     if (submission.user_id) {
-      const [profRes, subRes] = await Promise.all([
+      const [profRes, subRes, edRes] = await Promise.all([
         supabaseAdmin
           .from('profiles')
           .select('display_name, email')
@@ -277,6 +283,11 @@ module.exports = async function handler(req, res) {
           .from('subscriptions')
           .select('plan, status')
           .eq('user_id', submission.user_id),
+        supabaseAdmin
+          .from('editorials')
+          .select('id, slug, status, published_date, scheduled_publish_at')
+          .eq('source_submission_id', submission.id)
+          .maybeSingle(),
       ]);
       if (profRes && profRes.data) {
         submitterName = profRes.data.display_name || null;
@@ -286,6 +297,9 @@ module.exports = async function handler(req, res) {
         const active = subRes.data.find(s => s.status === 'active');
         submitterPlan = (active || subRes.data[0]).plan || null;
       }
+      if (edRes && edRes.data) {
+        linkedEditorial = edRes.data;
+      }
     }
 
     return res.status(200).json({
@@ -294,6 +308,7 @@ module.exports = async function handler(req, res) {
         submitterName,
         submitterEmail,
         submitterPlan,
+        linked_editorial: linkedEditorial,
       },
     });
   } catch (error) {
