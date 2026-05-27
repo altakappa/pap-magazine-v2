@@ -275,13 +275,31 @@ function renderSeoHtml(kind, record) {
       inLanguage: 'ko-KR'
     };
   } else {
+    // QA #187 — richer Article schema. Adds wordCount + articleBody
+    // (truncated) so Google's "About this result" panel can quote the
+    // editorial, and switches `image` from bare URLs to ImageObject
+    // arrays with caption text — boosts image-search ranking and gives
+    // the AI overviews enough metadata to attribute the photographer.
+    const bodyForWordCount = String(descKo || '').replace(/\s+/g, ' ').trim();
+    const wordCount = bodyForWordCount
+      ? bodyForWordCount.split(' ').filter(Boolean).length
+      : undefined;
+    const imageObjects = allImages.map((u, i) => ({
+      '@type': 'ImageObject',
+      url: u,
+      caption: i === 0 ? `${titleKo} — Cover` : `${titleKo} — Look ${i}`,
+      copyrightHolder: { '@type': 'Organization', name: SITE_NAME }
+    }));
+
     primarySchema = {
       '@context': 'https://schema.org',
       '@type': cfg.schemaType,
       headline: titleKo,
       alternativeHeadline: titleEn,
       description: descKo,
-      image: allImages,
+      image: imageObjects,
+      articleBody: bodyForWordCount ? truncate(bodyForWordCount, 600) : undefined,
+      wordCount,
       datePublished: published,
       dateModified: modified,
       author: contributors.length
@@ -290,12 +308,16 @@ function renderSeoHtml(kind, record) {
       publisher: {
         '@type': 'Organization',
         name: SITE_NAME,
-        logo: { '@type': 'ImageObject', url: ORG_LOGO }
+        logo: { '@type': 'ImageObject', url: ORG_LOGO },
+        url: SITE
       },
       mainEntityOfPage: { '@type': 'WebPage', '@id': canonical },
       keywords: tags.length ? tags.join(', ') : undefined,
       articleSection: record.issue || record.category || cfg.sectionFallback,
-      inLanguage: 'ko-KR'
+      inLanguage: 'ko-KR',
+      // QA #187 — explicit isAccessibleForFree so Google news/Discover
+      // doesn't mistake the editorial for paywalled content.
+      isAccessibleForFree: true
     };
   }
 
@@ -463,9 +485,20 @@ ${tags.length ? `<meta name="keywords" content="${escAttr(tags.join(', '))}">` :
 <meta name="googlebot" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 
 <link rel="canonical" href="${escAttr(canonical)}">
+<!-- QA #187 — hreflang covers every locale that has an i18n bundle on
+     the SPA. Same canonical URL because translation happens client-side;
+     when we ship per-locale SSR variants, point each href to its prefix
+     (e.g. /it/editorial/...). x-default keeps non-mapped locales here. -->
 <link rel="alternate" hreflang="x-default" href="${escAttr(canonical)}">
 <link rel="alternate" hreflang="ko" href="${escAttr(canonical)}">
 <link rel="alternate" hreflang="en" href="${escAttr(canonical)}">
+<link rel="alternate" hreflang="it" href="${escAttr(canonical)}">
+<link rel="alternate" hreflang="fr" href="${escAttr(canonical)}">
+<link rel="alternate" hreflang="es" href="${escAttr(canonical)}">
+<link rel="alternate" hreflang="ja" href="${escAttr(canonical)}">
+<link rel="alternate" hreflang="zh" href="${escAttr(canonical)}">
+<link rel="alternate" hreflang="ru" href="${escAttr(canonical)}">
+<link rel="alternate" hreflang="de" href="${escAttr(canonical)}">
 
 <meta property="og:type" content="${cfg.schemaType === 'VideoObject' ? 'video.other' : 'article'}">
 <meta property="og:title" content="${escAttr(seoTitle)}">
@@ -473,17 +506,33 @@ ${tags.length ? `<meta name="keywords" content="${escAttr(tags.join(', '))}">` :
 <meta property="og:url" content="${escAttr(canonical)}">
 <meta property="og:site_name" content="${escAttr(SITE_NAME)}">
 <meta property="og:image" content="${escAttr(ogImage)}">
-<meta property="og:image:alt" content="${escAttr(titleKo)}">
+<meta property="og:image:secure_url" content="${escAttr(ogImage)}">
+<meta property="og:image:alt" content="${escAttr(titleKo)} — Editorial Cover">
+<!-- QA #187 — Explicit OG image dimensions. Facebook / LinkedIn /
+     KakaoTalk all warn when these are missing; 1200×800 matches the
+     aspect we crop to in admin (4:5 portrait via .ed-gallery-item but
+     the cover_image upload box is unconstrained — most editors export
+     1200×800-ish). Twitter accepts the same image dimensions for the
+     summary_large_image card. -->
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="800">
+<meta property="og:image:type" content="image/jpeg">
 <meta property="og:locale" content="ko_KR">
 <meta property="og:locale:alternate" content="en_US">
+<meta property="og:locale:alternate" content="it_IT">
+<meta property="article:author" content="${escAttr(SITE_NAME)}">
+<meta property="article:section" content="${escAttr(record.issue || record.category || cfg.sectionFallback)}">
 <meta property="article:published_time" content="${escAttr(published)}">
 <meta property="article:modified_time" content="${escAttr(modified)}">
 ${tags.map(t => `<meta property="article:tag" content="${escAttr(t)}">`).join('\n')}
 
 <meta name="twitter:card" content="${cfg.schemaType === 'VideoObject' ? 'player' : 'summary_large_image'}">
+<meta name="twitter:site" content="@pap_magazine">
+<meta name="twitter:creator" content="@kangdm">
 <meta name="twitter:title" content="${escAttr(seoTitle)}">
 <meta name="twitter:description" content="${escAttr(desc)}">
 <meta name="twitter:image" content="${escAttr(ogImage)}">
+<meta name="twitter:image:alt" content="${escAttr(titleKo)} — Editorial Cover">
 
 <script type="application/ld+json">${escJson(primarySchema)}</script>
 <script type="application/ld+json">${escJson(breadcrumbSchema)}</script>
@@ -494,9 +543,17 @@ ${tags.map(t => `<meta property="article:tag" content="${escAttr(t)}">`).join('\
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#000000">
 
+<!-- QA #187 — LCP preload. The largest paint element on every editorial /
+     article page is the hero cover image. Preloading it (with explicit
+     fetchpriority=high) gives Lighthouse a tangible LCP boost — usually
+     -300~800ms on cold cache. We DON'T preload for VideoObject pages
+     because the LCP element there is the YouTube iframe, not an image. -->
+${cfg.schemaType !== 'VideoObject' && ogImage ? `<link rel="preload" as="image" fetchpriority="high" href="${escAttr(ogImage)}">` : ''}
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com">
+<link rel="preconnect" href="https://igcazquhkwxtqsaqpznx.supabase.co">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/pap-styles.css?v=15">
 

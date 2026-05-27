@@ -21,9 +21,13 @@ module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
 
   try {
+    // QA #187 — gallery now joins so the sitemap can advertise EVERY
+    // editorial image to Google Image Search, not just the cover.
+    // Google caps at ~1000 images per <url>, but we cap at 30 to keep
+    // each sitemap fast to crawl + keep the file < 10MB.
     const { data: eds } = await supabaseAdmin
       .from('editorials')
-      .select('id, title, slug, published_date, updated_at, cover_image, og_image, thumbnail')
+      .select('id, title, slug, published_date, updated_at, cover_image, og_image, thumbnail, gallery')
       .eq('status', 'published')
       .or('scheduled_publish_at.is.null,scheduled_publish_at.lte.' + new Date().toISOString())
       .order('published_date', { ascending: false })
@@ -34,19 +38,42 @@ module.exports = async function handler(req, res) {
       if (!handle) return '';
       const loc = SITE + '/editorial/' + encodeURIComponent(handle);
       const lastmod = fmtDate(ed.updated_at || ed.published_date);
-      const img = ed.og_image || ed.cover_image || ed.thumbnail;
-      const imgBlock = img
-        ? '    <image:image>\n' +
-          '      <image:loc>' + xmlEscape(img) + '</image:loc>\n' +
-          '      <image:title>' + xmlEscape(ed.title || '') + '</image:title>\n' +
-          '    </image:image>\n'
-        : '';
+
+      // Build image:image entries — cover first, then up to 29 gallery
+      // images. Dedupe so the cover doesn't repeat if it's also the
+      // first gallery slot. Each entry advertises:
+      //   • image:loc      → the URL Google crawls
+      //   • image:title    → editorial title (anchors brand search)
+      //   • image:caption  → "Editorial Title — Look N" for context
+      const seen = new Set();
+      const imgs = [];
+      const cover = ed.og_image || ed.cover_image || ed.thumbnail;
+      if (cover) {
+        seen.add(cover);
+        imgs.push({ src: cover, caption: (ed.title || '') + ' — Cover' });
+      }
+      const gallery = Array.isArray(ed.gallery) ? ed.gallery : [];
+      gallery.forEach((src, i) => {
+        if (typeof src !== 'string' || !src || seen.has(src)) return;
+        if (imgs.length >= 30) return;
+        seen.add(src);
+        imgs.push({ src, caption: (ed.title || '') + ' — Look ' + (i + 1) });
+      });
+
+      const imgBlocks = imgs.map(it =>
+        '    <image:image>\n' +
+        '      <image:loc>' + xmlEscape(it.src) + '</image:loc>\n' +
+        '      <image:title>' + xmlEscape(ed.title || '') + '</image:title>\n' +
+        '      <image:caption>' + xmlEscape(it.caption) + '</image:caption>\n' +
+        '    </image:image>\n'
+      ).join('');
+
       return '  <url>\n' +
         '    <loc>' + xmlEscape(loc) + '</loc>\n' +
         '    <lastmod>' + lastmod + '</lastmod>\n' +
         '    <changefreq>monthly</changefreq>\n' +
         '    <priority>0.8</priority>\n' +
-        imgBlock +
+        imgBlocks +
         '  </url>';
     }).filter(Boolean);
 
