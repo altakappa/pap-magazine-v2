@@ -309,16 +309,20 @@ function _papResolveEditorialName(input){
     if(typeof openEditorial!=='function'){
       setTimeout(tryOpen,100); return;
     }
-    // QA #178 — resolve slug → canonical title BEFORE opening. Without
-    // this, "?ed=synthetic-skin" passes the slug straight to
-    // openEditorial, which then can't find it in edDetails (keyed by
-    // "Synthetic Skin") and renders the overlay with placeholders.
+    // QA #178 — re-resolve EVERY poll tick. The previous version resolved
+    // once and relied on a loose "any keys present" readiness check; with
+    // 2400+ entries that flag flipped true long before "Synthetic Skin"
+    // landed in edDetails, so the resolver kept returning the raw slug
+    // and openEditorial got "synthetic-skin" (slug form) instead of the
+    // canonical title. Now we keep retrying until the resolver actually
+    // finds a match in edDetails (i.e. returns something different from
+    // the input, OR explicitly finds the resolved key in edDetails).
     var resolved = _papResolveEditorialName(edName);
-    var ready = (typeof edDetails === 'object' && edDetails && (
-      edDetails[resolved] || Object.keys(edDetails).length > 0
-    ));
+    var foundMatch =
+      (typeof edDetails === 'object' && edDetails && edDetails[resolved])
+      || resolved !== edName;
     var elapsed = Date.now() - pollStart;
-    if(!ready && elapsed < 4000){ setTimeout(tryOpen, 120); return; }
+    if(!foundMatch && elapsed < 4000){ setTimeout(tryOpen, 120); return; }
     try{ openEditorial(resolved, ''); }catch(e){}
     /* Reveal shortly after openEditorial triggers its own render so the
        editorial overlay is painted before we fade in. */
