@@ -771,7 +771,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
 
   <!-- SUBMISSIONS -->
   <div class="tab" id="t-submissions">
-    <div class="mn-header"><div class="mn-title">서브미션 심사</div><div class="mn-actions"><button class="btn" onclick="loadSubmissions()">↻ 새로고침</button></div></div>
+    <div class="mn-header"><div class="mn-title">서브미션 심사</div><div class="mn-actions"><button class="btn" onclick="testSubmissionEmail()" title="본인 이메일로 승인/거절/보완 3종 미리보기 메일 발송 — SMTP가 정상 작동하는지 확인할 때 사용" style="background:linear-gradient(135deg,rgba(124,58,237,.12),rgba(37,99,235,.08));border-color:rgba(124,58,237,.3);color:var(--purple)">🧪 메일 테스트</button><button class="btn" onclick="loadSubmissions()">↻ 새로고침</button></div></div>
     <div class="mn-body">
       <div class="tbl-wrap">
         <div class="tbl-top"><h3>서브미션 목록</h3><div class="tbl-filters"><button class="tf on" onclick="filterSubmissions('',this)">전체</button><button class="tf" onclick="filterSubmissions('pending',this)"><span class="tf-dot" style="background:#ca8a04"></span>대기 중</button><button class="tf" onclick="filterSubmissions('resubmitted',this)"><span class="tf-dot" style="background:#0d9488"></span>보완 완료</button><button class="tf" onclick="filterSubmissions('revision',this)"><span class="tf-dot" style="background:#2563eb"></span>보완 요청</button><button class="tf" onclick="filterSubmissions('final_approved',this)"><span class="tf-dot" style="background:#16a34a"></span>최종 승인</button><button class="tf" onclick="filterSubmissions('uploaded',this)"><span class="tf-dot" style="background:#7c3aed"></span>업로드 완료</button><button class="tf" onclick="filterSubmissions('rejected',this)"><span class="tf-dot" style="background:#dc2626"></span>거절</button></div></div>
@@ -1726,7 +1726,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
      one click without hitting Vercel response-size limits. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
 
-<script src="/pap-admin.js?v=17" defer></script>
+<script src="/pap-admin.js?v=18" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>

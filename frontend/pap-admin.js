@@ -1463,6 +1463,83 @@ function _extractStagedEditorialId(notes){
   return m ? m[1] : null;
 }
 
+// QA #188 — sends approval/rejected/revision test emails to the admin's
+// own inbox so they can verify SMTP + see the live template before any
+// real submitter triggers it. Reuses the same templates.submissionReview
+// Complete pipeline as the live review flow, so a successful test is
+// confirmation that real submitters will also receive the mail.
+async function testSubmissionEmail(){
+  var statuses = [
+    { code:'approved',  label:'✓ 승인 (Approved)' },
+    { code:'rejected',  label:'✕ 거절 (Rejected)' },
+    { code:'revision',  label:'↻ 보완 요청 (Revision)' },
+  ];
+  // Build a quick prompt so the admin can pick one of the three. We
+  // intentionally keep this as a window.prompt + alert pair (no modal)
+  // because it's a developer-tool / verification feature, not part of
+  // the routine flow.
+  var choice = prompt(
+    '본인 이메일로 어떤 상태의 미리보기 메일을 보낼까요?\n\n' +
+    statuses.map(function(s,i){ return '  '+(i+1)+'. '+s.label; }).join('\n') +
+    '\n  4. 셋 다 한 번씩\n\n번호 입력 (1-4):',
+    '4'
+  );
+  if(!choice) return;
+  var pickIdx = parseInt(choice, 10);
+  if(isNaN(pickIdx) || pickIdx < 1 || pickIdx > 4){
+    alert('1, 2, 3, 또는 4를 입력해주세요.');
+    return;
+  }
+  var targets = (pickIdx === 4) ? statuses : [statuses[pickIdx-1]];
+
+  // Optional: ask whether to override the recipient. Default = the
+  // admin's own profile email (which the backend looks up).
+  var customTo = prompt(
+    '받는 이메일 (비워두면 본인 프로필 이메일로 발송):\n' +
+    '※ 비공개 정보 노출 방지를 위해 본인 이메일만 권장합니다.',
+    ''
+  );
+  if(customTo === null) return; // canceled
+
+  var token = localStorage.getItem('pap-token') || '';
+  var results = [];
+
+  for (var i = 0; i < targets.length; i++) {
+    var t = targets[i];
+    try {
+      var body = {
+        status: t.code,
+        title: '[TEST] ' + t.label + ' Editorial',
+      };
+      if (customTo && customTo.trim()) body.to = customTo.trim();
+      if (t.code === 'approved') {
+        body.approvalDay = '15';
+        body.approvalMonth = 'June';
+      }
+      var resp = await fetch(_apiBase+'/admin/submissions/test-email',{
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'Authorization':'Bearer '+token,
+          'X-Requested-With':'XMLHttpRequest'
+        },
+        body: JSON.stringify(body)
+      });
+      var data = await resp.json();
+      if(!resp.ok || !data.sent){
+        results.push('✗ ' + t.label + ' — 실패: ' + (data.message || data.detail || resp.status));
+      } else {
+        results.push('✓ ' + t.label + ' → ' + data.to + ' (id: ' + (data.messageId||'').slice(-12) + ')');
+      }
+    } catch (e) {
+      results.push('✗ ' + t.label + ' — 예외: ' + (e && e.message || e));
+    }
+  }
+
+  alert('테스트 결과:\n\n' + results.join('\n') +
+    '\n\n수 초 내에 받은편지함을 확인해주세요. 도착하지 않으면 스팸함도 확인하세요.');
+}
+
 // Fetch one editorial by id, drop it into the local cache, then open
 // the edit form. Lets callers (post-approval auto-jump, "편집" button on
 // approved submission rows) share one code path.
