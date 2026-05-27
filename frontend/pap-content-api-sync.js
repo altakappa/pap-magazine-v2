@@ -285,7 +285,10 @@ window._papFilmAutoPlay = function(){
       credits:  Array.isArray(e.credits) ? e.credits : e.credits || [],
       fashion:  e.fashion || null,
       gallery:  Array.isArray(e.gallery) ? e.gallery : [],
+      // QA #192 — keep KR field for backward compat + ship EN separately
+      // so anything downstream that wants language switching can read it.
       description: e.description || '',
+      description_en: e.description_en || '',
       // QA #163 — films pointing at this editorial via the
       // related_editorial_id FK. /api/editorials embeds them under
       // related_films; pass through unmodified so the detail overlay
@@ -464,7 +467,30 @@ window._papFilmAutoPlay = function(){
       imageCredits: (apiEd.fashion && apiEd.fashion.imageCredits && typeof apiEd.fashion.imageCredits === 'object')
         ? apiEd.fashion.imageCredits
         : (existing.imageCredits || {}),
-      desc: apiEd.description || existing.desc || '',
+      // QA #192 — pass description as an object keyed by language so the
+      // detail renderer (pap-content-editorial.js line ~470) can swap
+      // between ko/en based on the user's localStorage 'pap-lang'. The
+      // renderer ALREADY supports the object form; it just wasn't
+      // receiving one — the API mapper used to ship plain Korean only,
+      // so non-Korean visitors saw KR text regardless of locale.
+      //
+      // Fallback chain inside the renderer:
+      //   user lang exact match → en → ko → '' (empty)
+      // For the 7 locales without a stored translation (it/fr/es/ja/zh/
+      // ru/de) the .en value lands them on English copy, which matches
+      // the rest of the SPA's "EN as global fallback" pattern.
+      desc: (function(){
+        var ko = apiEd.description || (existing.desc && existing.desc.ko) || '';
+        var en = apiEd.description_en || (existing.desc && existing.desc.en) || '';
+        if(!ko && !en){
+          // Backward compat — older edDetails entries kept desc as a
+          // bare string. Preserve that shape rather than substituting
+          // an empty object that the renderer's typeof-check treats
+          // as "object" and renders nothing for.
+          return existing.desc || '';
+        }
+        return { ko: ko, en: en };
+      })(),
       // QA #163 — films pointing at this editorial. apiFilmToLocal/...
       // doesn't run on these (they come straight from the editorials
       // join), so use the raw column names here.
