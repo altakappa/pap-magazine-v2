@@ -24,57 +24,25 @@
     { "source": "/go/:id", "destination": "/api/go/:id" }
   ],
   "redirects": [
-    {
-      "//": "QA #193 — preemptive 404 for known vulnerability-scanner paths. Returns a clean 404 instead of letting the scanner keep retrying variants. Comment fields ('//') are ignored by Vercel.",
-      "source": "/.env:rest*",
-      "destination": "/404.html",
-      "permanent": false
-    },
-    {
-      "source": "/.git/:rest*",
-      "destination": "/404.html",
-      "permanent": false
-    },
-    {
-      "source": "/.aws/:rest*",
-      "destination": "/404.html",
-      "permanent": false
-    },
-    {
-      "source": "/.well-known/security.txt",
-      "destination": "/security.txt",
-      "permanent": false
-    },
-    {
-      "source": "/wp-:rest*",
-      "destination": "/404.html",
-      "permanent": false
-    },
-    {
-      "source": "/wordpress/:rest*",
-      "destination": "/404.html",
-      "permanent": false
-    },
-    {
-      "source": "/phpmyadmin/:rest*",
-      "destination": "/404.html",
-      "permanent": false
-    },
-    {
-      "source": "/xmlrpc.php",
-      "destination": "/404.html",
-      "permanent": false
-    },
-    {
-      "source": "/(backup|backups|db|database|dump|sql)/:rest*",
-      "destination": "/404.html",
-      "permanent": false
-    },
-    {
-      "source": "/:path*.(sql|bak|backup|old|tmp|swp|log)",
-      "destination": "/404.html",
-      "permanent": false
-    },
+    { "source": "/.env",                "destination": "/404.html", "permanent": false },
+    { "source": "/.env.local",          "destination": "/404.html", "permanent": false },
+    { "source": "/.env.production",     "destination": "/404.html", "permanent": false },
+    { "source": "/.env.development",    "destination": "/404.html", "permanent": false },
+    { "source": "/.git/:path*",         "destination": "/404.html", "permanent": false },
+    { "source": "/.aws/:path*",         "destination": "/404.html", "permanent": false },
+    { "source": "/wp-admin/:path*",     "destination": "/404.html", "permanent": false },
+    { "source": "/wp-login.php",        "destination": "/404.html", "permanent": false },
+    { "source": "/wp-config.php",       "destination": "/404.html", "permanent": false },
+    { "source": "/wp-content/:path*",   "destination": "/404.html", "permanent": false },
+    { "source": "/wp-includes/:path*",  "destination": "/404.html", "permanent": false },
+    { "source": "/wordpress/:path*",    "destination": "/404.html", "permanent": false },
+    { "source": "/phpmyadmin/:path*",   "destination": "/404.html", "permanent": false },
+    { "source": "/xmlrpc.php",          "destination": "/404.html", "permanent": false },
+    { "source": "/backup/:path*",       "destination": "/404.html", "permanent": false },
+    { "source": "/backups/:path*",      "destination": "/404.html", "permanent": false },
+    { "source": "/db/:path*",           "destination": "/404.html", "permanent": false },
+    { "source": "/database/:path*",     "destination": "/404.html", "permanent": false },
+    { "source": "/dump/:path*",         "destination": "/404.html", "permanent": false },
     {
       "source": "/:path*",
       "has": [{ "type": "host", "value": "www.papkorea.com" }],
@@ -211,23 +179,11 @@
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "X-Frame-Options", "value": "DENY" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        {
-          "//": "QA #193 — bumped HSTS to 2 years + added preload directive to qualify for the Chrome HSTS preload list (https://hstspreload.org/). After submission Chrome/Firefox/Safari ship the redirect in-browser, so even first-visit users skip HTTP entirely.",
-          "key": "Strict-Transport-Security",
-          "value": "max-age=63072000; includeSubDomains; preload"
-        },
+        { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" },
         { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), payment=()" },
         { "key": "X-XSS-Protection", "value": "1; mode=block" },
-        {
-          "//": "QA #193 — CSP-Report-Only first. The PAP frontend has lots of inline scripts, multiple Supabase/S3/YouTube origins, embedded Instagram + Vimeo iframes, etc. — enforcing a strict CSP up front would brick the site. Report-only lets us watch real violations roll in (Vercel logs / browser console) before flipping to enforcing. The 'frame-ancestors none' line + X-Frame-Options give double clickjacking defence regardless of enforcement mode.",
-          "key": "Content-Security-Policy-Report-Only",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://www.googletagmanager.com https://www.google-analytics.com https://www.gstatic.com https://platform.instagram.com https://connect.facebook.net https://js.stripe.com https://*.vercel-scripts.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://api.anthropic.com https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com https://www.google-analytics.com https://*.vercel-insights.com wss://*.supabase.co; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://platform.instagram.com https://www.instagram.com https://js.stripe.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://www.paypal.com; upgrade-insecure-requests"
-        },
-        {
-          "//": "QA #193 — minimal cross-origin policies. COEP/COOP keep our tabs isolated from cross-origin actors so a vulnerable third-party iframe can't reach back into the main page. unsafe-none for COEP because we embed YouTube + Instagram iframes that don't ship CORP headers.",
-          "key": "Cross-Origin-Opener-Policy",
-          "value": "same-origin"
-        }
+        { "key": "Content-Security-Policy-Report-Only", "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://www.googletagmanager.com https://www.google-analytics.com https://www.gstatic.com https://platform.instagram.com https://connect.facebook.net https://js.stripe.com https://*.vercel-scripts.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://api.anthropic.com https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com https://www.google-analytics.com https://*.vercel-insights.com wss://*.supabase.co; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://platform.instagram.com https://www.instagram.com https://js.stripe.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://www.paypal.com; upgrade-insecure-requests" },
+        { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" }
       ]
     }
   ],
