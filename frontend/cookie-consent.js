@@ -8,7 +8,10 @@
    State persists via localStorage across all pages.                   */
 
 (function(){
-  var GA_ID='G-6Q8H9HEPX7';
+  // QA #195 — switched to the active GA4 property. Previous ID was
+  // 'G-6Q8H9HEPX7' (legacy property), which silently captured zero
+  // because the dashboard the editor watches is on the new property.
+  var GA_ID='G-TPPJGKJXYV';
   var META_PIXEL_ID='482856832429283'; /* PAPMAGAZINE 픽셀 — Meta Events Manager */
   var STORAGE_KEY='pap-cookie-consent';
 
