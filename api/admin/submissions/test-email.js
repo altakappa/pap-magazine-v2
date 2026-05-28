@@ -53,21 +53,53 @@ module.exports = async function handler(req, res) {
   // Look up the admin's profile so we can default the recipient + locale
   // to their own settings — mirrors what the real review endpoint does
   // when emailing the submitter.
-  const { data: profile, error: profileErr } = await supabaseAdmin
+  //
+  // QA #195 — profile.email is sometimes NULL for admin rows created
+  // before consent-flow signup landed (the value was never copied back
+  // from auth.users). Fall back to auth.users.email when that happens
+  // so the test-send still works for "ancient" admin accounts.
+  const { data: profile } = await supabaseAdmin
     .from('profiles')
     .select('email, display_name, language, email_language')
     .eq('id', admin.id)
     .single();
-  if (profileErr || !profile || !profile.email) {
+
+  let resolvedEmail = profile && profile.email ? profile.email : '';
+  let resolvedSource = 'profiles';
+  if (!resolvedEmail) {
+    try {
+      // service-role can read auth.users; this is the canonical source
+      // of the user's email when profiles is incomplete.
+      const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(admin.id);
+      if (authUser && authUser.user && authUser.user.email) {
+        resolvedEmail = authUser.user.email;
+        resolvedSource = 'auth.users';
+      }
+    } catch (e) {
+      console.error('[test-email] auth lookup failed:', e && e.message);
+    }
+  }
+  if (!resolvedEmail && admin.email) {
+    // Final fallback — the JWT itself carried an email claim.
+    resolvedEmail = admin.email;
+    resolvedSource = 'jwt';
+  }
+
+  // Explicit override in the request always wins so the admin can send
+  // to a teammate's inbox for verification.
+  const overrideTo = (typeof body.to === 'string' && body.to.trim()) || '';
+  const to = overrideTo || resolvedEmail;
+
+  if (!to) {
     return res.status(400).json({
-      message: 'Could not resolve admin email for test send',
+      message: 'Could not resolve admin email for test send. Pass {"to": "you@example.com"} in the request body or update profiles.email for your admin row.',
+      adminId: admin.id,
     });
   }
 
-  const to = (typeof body.to === 'string' && body.to.trim()) || profile.email;
   const lang = VALID_LANGS.includes(body.lang)
     ? body.lang
-    : (profile.email_language || profile.language || 'en');
+    : (profile && (profile.email_language || profile.language)) || 'en';
   const title = (typeof body.title === 'string' && body.title.trim())
     || ('[TEST] Sample Editorial — ' + status);
   const approvalDay = (status === 'approved' && body.approvalDay)
@@ -77,7 +109,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const tpl = templates.submissionReviewComplete(
-      { name: profile.display_name || 'Test Recipient' },
+      { name: (profile && profile.display_name) || 'Test Recipient' },
       { title },
       lang,
       status,
@@ -110,6 +142,7 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       sent: true,
       to,
+      resolvedSource,
       status,
       lang,
       messageId: result.messageId,
