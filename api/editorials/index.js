@@ -80,6 +80,17 @@ module.exports = async function handler(req, res) {
         query = query.eq('status', 'published')
                      .gt('scheduled_publish_at', new Date().toISOString())
                      .order('scheduled_publish_at', { ascending: true });
+      } else if (requestedStatus === 'draft') {
+        // QA #197 — split the 임시저장 (Drafts) tab into "actually edited
+        // by an admin" vs "auto-staged at submission approval, untouched".
+        // The latter no longer pollute the Drafts tab — they remain
+        // accessible via 서브미션 심사 → '에디토리얼 편집' until the admin
+        // saves a change (which stamps admin_edited_at). Two-arm OR:
+        //   1. source_submission_id IS NULL  (admin-authored draft)
+        //   2. admin_edited_at IS NOT NULL    (admin has touched it)
+        query = query.eq('status', 'draft')
+                     .or('source_submission_id.is.null,admin_edited_at.not.is.null')
+                     .order('published_date', { ascending: false });
       } else {
         query = query.eq('status', requestedStatus)
                      .order('published_date', { ascending: false });

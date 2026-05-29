@@ -172,6 +172,14 @@ module.exports = async function handler(req, res) {
         }
       }
 
+      // QA #197 — stamp admin_edited_at on every admin PUT. This is what
+      // lets the Drafts tab tell apart "admin actually curated this" from
+      // "auto-staged at submission approval, never touched". The admin's
+      // draft list query reads (source_submission_id IS NULL OR
+      // admin_edited_at IS NOT NULL); writing here flips the second arm
+      // true so the row starts appearing in 임시저장 from now on.
+      updates.admin_edited_at = new Date().toISOString();
+
       const { data, error } = await supabaseAdmin
         .from('editorials')
         .update(updates)
