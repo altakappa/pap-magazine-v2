@@ -2841,9 +2841,25 @@ async function loadEditorials(){
   if(!tb)return;
   tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px">불러오는 중...</td></tr>';
   try{
-    var pub=await apiGet('/editorials?limit=100&status=published');
-    var draft=await apiGet('/editorials?limit=100&status=draft');
-    editorials=(pub.data||[]).concat(draft.data||[]);
+    // QA #196 — pull THREE views in parallel: published (live now),
+    // draft (임시저장), scheduled (예약됨 — published row whose
+    // scheduled_publish_at is in the future). Without the scheduled
+    // bucket the published-filter on the backend hides those rows for
+    // both public AND admin, so the editor couldn't see / edit them.
+    var results = await Promise.all([
+      apiGet('/editorials?limit=100&status=published'),
+      apiGet('/editorials?limit=100&status=draft'),
+      apiGet('/editorials?limit=100&status=scheduled'),
+    ]);
+    var pub = results[0], draft = results[1], scheduled = results[2];
+    // Tag scheduled rows with a synthetic _virtualStatus so the
+    // render layer can show the right badge + filter button without
+    // mutating the canonical status field.
+    var schedRows = (scheduled.data || []).map(function(r){
+      r._virtualStatus = 'scheduled';
+      return r;
+    });
+    editorials = (pub.data || []).concat(draft.data || []).concat(schedRows);
     renderEditorialList();
   }catch(e){
     tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:#ff6b6b;padding:40px">불러오기 실패: '+esc(e.message)+'</td></tr>';
@@ -2852,18 +2868,28 @@ async function loadEditorials(){
 
 function renderEditorialList(){
   var q=(document.getElementById('edSearchAdmin')?document.getElementById('edSearchAdmin').value:'').toLowerCase();
+  // QA #196 — derive an effective status that takes the virtual
+  // 'scheduled' bucket into account. Rows whose _virtualStatus is set
+  // (server-tagged scheduled rows) get treated as 'scheduled' for both
+  // filtering and rendering.
+  function _effectiveStatus(e){
+    if(e._virtualStatus) return e._virtualStatus;
+    return e.status || 'published';
+  }
   var filtered=editorials.filter(function(e){
     if(edStatusFilter!=='all'){
-      var st=e.status||'published';
-      if(st!==edStatusFilter)return false;
+      if(_effectiveStatus(e)!==edStatusFilter)return false;
     }
     if(!q)return true;
     var tags=Array.isArray(e.tags)?e.tags.join(' '):e.tags||'';
     return (e.title||'').toLowerCase().indexOf(q)>-1||tags.toLowerCase().indexOf(q)>-1;
   });
-  var draftCount=editorials.filter(function(e){return (e.status||'published')==='draft';}).length;
+  var draftCount=editorials.filter(function(e){return _effectiveStatus(e)==='draft';}).length;
+  var schedCount=editorials.filter(function(e){return _effectiveStatus(e)==='scheduled';}).length;
   var dcb=document.getElementById('edDraftCountBadge');
   if(dcb) dcb.textContent=draftCount?('('+draftCount+')'):'';
+  var scb=document.getElementById('edScheduledCountBadge');
+  if(scb) scb.textContent=schedCount?('('+schedCount+')'):'';
   var tb=document.getElementById('edListBody');
   if(!tb) return;
   tb.innerHTML='';
@@ -2871,22 +2897,78 @@ function renderEditorialList(){
   filtered.forEach(function(e){
     var tags=Array.isArray(e.tags)?e.tags:[];
     var tagBadges=tags.slice(0,3).map(function(t){return '<span class="pe-tag">'+esc(t)+'</span>';}).join(' ');
-    var st=e.status||'published';
-    var cls=st==='published'?'b-published':'b-draft';
-    var label=st==='published'?'공개':'임시저장';
+    var st=_effectiveStatus(e);
+    // QA #196 — three-state badge palette:
+    //   published → green (b-published)
+    //   draft     → orange/yellow (b-draft)
+    //   scheduled → purple (b-scheduled) so the editor can spot
+    //               queued posts at a glance vs already-live ones.
+    var cls, label;
+    if(st==='scheduled'){
+      cls='b-scheduled';
+      // Show the queued publish time so the editor knows when it goes live.
+      var when='';
+      if(e.scheduled_publish_at){
+        try{
+          var d=new Date(e.scheduled_publish_at);
+          if(!isNaN(d.getTime())){
+            var mm=d.getMonth()+1, dd=d.getDate();
+            var hh=d.getHours(), mn=d.getMinutes();
+            var pad=function(n){return n<10?'0'+n:n;};
+            when=' '+mm+'/'+dd+' '+pad(hh)+':'+pad(mn);
+          }
+        }catch(_){}
+      }
+      label='⏰ 예약'+when;
+    }else if(st==='draft'){
+      cls='b-draft'; label='임시저장';
+    }else{
+      cls='b-published'; label='공개';
+    }
     var thumb=e.thumbnail||e.cover_image||'';
     var thumbHtml=thumb?'<img loading="lazy" class="td-thumb" src="'+esc(thumb)+'">':'—';
     var shortId=e.id?e.id.substring(0,8):'—';
-    var rowStyle=st==='draft'?' style="background:rgba(255,152,0,0.06)"':'';
+    // Highlight non-live rows with a subtle background tint
+    var rowStyle='';
+    if(st==='draft')          rowStyle=' style="background:rgba(255,152,0,0.06)"';
+    else if(st==='scheduled') rowStyle=' style="background:rgba(124,58,237,0.05)"';
     var safeTitle=esc(e.title).replace(/'/g,"\\'");
     var actions='<button class="btn btn-sm" onclick="editEditorial(\''+e.id+'\')">편집</button>';
     if(st==='draft'){
       actions+=' <button class="btn btn-sm btn-primary" onclick="publishEditorial(\''+e.id+'\',\''+safeTitle+'\')" title="이 에디토리얼을 공개 사이트에 노출합니다">발행 ▶</button>';
     }
+    if(st==='scheduled'){
+      // Manual publish-now option for scheduled rows. Useful when the
+      // editor wants to ship early.
+      actions+=' <button class="btn btn-sm btn-primary" onclick="publishScheduledNow(\''+e.id+'\',\''+safeTitle+'\')" title="예약된 발행 시간을 무시하고 지금 즉시 공개합니다">즉시 발행 ▶</button>';
+    }
     actions+=' <button class="btn btn-sm btn-red" onclick="deleteEditorial(\''+e.id+'\',\''+safeTitle+'\')">삭제</button>';
-    tb.innerHTML+='<tr'+rowStyle+'><td style="font-size:10px">'+shortId+'</td><td>'+thumbHtml+'</td><td class="td-title" onclick="editEditorial(\''+e.id+'\')">'+esc(e.title)+'</td><td>'+tagBadges+'</td><td><span class="badge '+cls+'">'+label+'</span></td><td>'+fmtDate(e.published_date)+'</td><td>'+actions+'</td></tr>';
+    // Date column shows publish date for live posts, scheduled date for queued ones.
+    var dateCell = st==='scheduled'
+      ? '<span style="color:rgba(124,58,237,0.85);font-weight:600">예약: '+fmtDate(e.scheduled_publish_at)+'</span>'
+      : fmtDate(e.published_date);
+    tb.innerHTML+='<tr'+rowStyle+'><td style="font-size:10px">'+shortId+'</td><td>'+thumbHtml+'</td><td class="td-title" onclick="editEditorial(\''+e.id+'\')">'+esc(e.title)+'</td><td>'+tagBadges+'</td><td><span class="badge '+cls+'">'+label+'</span></td><td>'+dateCell+'</td><td>'+actions+'</td></tr>';
   });
   if(document.getElementById('edCountLabel')) document.getElementById('edCountLabel').textContent=editorials.length;
+}
+
+// QA #196 — manual "publish now" for a scheduled editorial.
+// Clears scheduled_publish_at and bumps published_date to now() so
+// the row immediately satisfies the public list's freshness gate.
+async function publishScheduledNow(id, title){
+  if(!confirm('"'+(title||'이 에디토리얼')+'"의 예약을 취소하고 지금 바로 공개할까요?')) return;
+  try{
+    var resp=await apiPut('/editorials/'+id, {
+      status:'published',
+      scheduled_publish_at: null,
+      published_date: new Date().toISOString().slice(0,10),
+    });
+    if(resp && resp.error){ alert('발행 실패: '+resp.error); return; }
+    await loadEditorials();
+    if(typeof toast==='function') toast('지금 발행되었습니다');
+  }catch(e){
+    alert('발행 실패: '+(e&&e.message?e.message:'알 수 없는 오류'));
+  }
 }
 
 // Flip a draft editorial to published. Drafts come from approved

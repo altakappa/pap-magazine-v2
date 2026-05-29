@@ -22,6 +22,15 @@ module.exports = async function handler(req, res) {
       const offset = (parseInt(page) - 1) * limit;
       const requestedStatus = status || 'published';
 
+      // QA #196 — 'scheduled' is a VIRTUAL status (no DB column change).
+      // Translates to: rows with status='published' AND scheduled_publish_at
+      // in the future. Previously these vanished from every admin tab
+      // because the public list hides them via the .or() gate below and
+      // the admin tabs were keyed on the raw DB status. Now admin can
+      // pass status=scheduled to see only the queued rows + filter +
+      // edit them before they go live.
+      const isScheduledFilter = requestedStatus === 'scheduled';
+
       // Drafts (and any non-published view) are admin-only — submissions
       // are staged here before the editor publishes them, so leaking them
       // would expose work-in-progress.
@@ -62,17 +71,28 @@ module.exports = async function handler(req, res) {
       ].join(',');
       let query = supabaseAdmin
         .from('editorials')
-        .select(LIST_COLUMNS + ', related_films:films!related_editorial_id(id,slug,title,thumbnail_url,youtube_id,published_date,status)', { count: 'exact' })
-        .eq('status', requestedStatus)
-        .order('published_date', { ascending: false })
-        .range(offset, offset + parseInt(limit) - 1);
+        .select(LIST_COLUMNS + ', related_films:films!related_editorial_id(id,slug,title,thumbnail_url,youtube_id,published_date,status)', { count: 'exact' });
+
+      if (isScheduledFilter) {
+        // QA #196 — scheduled = status='published' + future scheduled
+        // publish date. Sorted by the PUBLISH date (soonest first) so
+        // the admin sees what's about to go live at the top.
+        query = query.eq('status', 'published')
+                     .gt('scheduled_publish_at', new Date().toISOString())
+                     .order('scheduled_publish_at', { ascending: true });
+      } else {
+        query = query.eq('status', requestedStatus)
+                     .order('published_date', { ascending: false });
+      }
+
+      query = query.range(offset, offset + parseInt(limit) - 1);
 
       // For the public-facing 'published' view, hide editorials whose
-      // scheduled_publish_at is still in the future. Admin tools that
-      // pass status='draft' or status='scheduled' bypass this gate.
-      // The OR clause keeps backward-compat with rows that don't have
-      // scheduled_publish_at set.
-      if (requestedStatus === 'published') {
+      // scheduled_publish_at is still in the future. The OR clause
+      // keeps backward-compat with rows that don't have
+      // scheduled_publish_at set. (isScheduledFilter is already
+      // filtering to FUTURE rows above, so we skip the gate.)
+      if (requestedStatus === 'published' && !isScheduledFilter) {
         query = query.or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${new Date().toISOString()}`);
       }
 

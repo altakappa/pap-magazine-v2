@@ -129,6 +129,10 @@ tr:hover td{background:rgba(0,0,0,.02)}
 .b-pending{background:#ca8a04;color:#fff;border:1px solid #a16f04}
 .b-revision{background:#2563eb;color:#fff;border:1px solid #1d4fc5}
 .b-resubmitted{background:#0d9488;color:#fff;border:1px solid #0a7a70}
+/* QA #196 — scheduled editorial badge. Purple/violet to match the
+   "queued / pending" semantic (different from b-approved green which
+   means 'live now'). Used in 에디토리얼 관리 list. */
+.b-scheduled{background:#7c3aed;color:#fff;border:1px solid #6028c4}
 .b-approved,.b-published{background:#16a34a;color:#fff;border:1px solid #11823b}
 .b-uploaded{background:#7c3aed;color:#fff;border:1px solid #6028c4}
 .b-declined{background:#dc2626;color:#fff;border:1px solid #b51d1d}
@@ -531,6 +535,10 @@ tr:hover td{background:rgba(0,0,0,.02)}
               <button type="button" class="btn btn-sm ed-fbtn ed-fbtn-active" data-status="all" onclick="setEditorialStatusFilter('all')" style="border:none;border-radius:0">전체</button>
               <button type="button" class="btn btn-sm ed-fbtn" data-status="published" onclick="setEditorialStatusFilter('published')" style="border:none;border-radius:0;border-left:1px solid var(--border2)">발행됨</button>
               <button type="button" class="btn btn-sm ed-fbtn" data-status="draft" onclick="setEditorialStatusFilter('draft')" style="border:none;border-radius:0;border-left:1px solid var(--border2)">임시저장 <span id="edDraftCountBadge" style="margin-left:4px;font-weight:700;color:#ff9800"></span></button>
+              <!-- QA #196 — 예약 게시 row가 발행됨/임시저장 어느 탭에도 안 떠서 어드민이
+                   목록·편집·삭제 모두 불가능했던 버그 해결. published + 미래 scheduled_publish_at
+                   조합을 가상의 'scheduled' 상태로 모아 별도 탭으로 보여줌. -->
+              <button type="button" class="btn btn-sm ed-fbtn" data-status="scheduled" onclick="setEditorialStatusFilter('scheduled')" style="border:none;border-radius:0;border-left:1px solid var(--border2)">⏰ 예약 <span id="edScheduledCountBadge" style="margin-left:4px;font-weight:700;color:#7c3aed"></span></button>
             </div>
             <input style="background:#f5f5f7;border:1px solid var(--border2);padding:6px 12px;color:var(--text);outline:none;width:200px;border-radius:4px" placeholder="검색..." id="edSearchAdmin" oninput="renderEditorialList()">
           </div>
@@ -1726,7 +1734,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
      one click without hitting Vercel response-size limits. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
 
-<script src="/pap-admin.js?v=18" defer></script>
+<script src="/pap-admin.js?v=19" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>
