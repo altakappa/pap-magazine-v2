@@ -464,7 +464,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
       <!-- Quick Actions -->
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px">
         <button class="btn btn-primary" onclick="go('newpost')">+ 새 에디토리얼</button>
-        <button class="btn" onclick="go('newnews')">+ 새 뉴스</button>
+        <button class="btn" onclick="newNewsArticle()">+ 새 뉴스</button>
         <button class="btn" onclick="go('film')">+ 새 필름</button>
         <button class="btn" onclick="go('shorts')">+ 새 숏츠</button>
         <button class="btn" onclick="go('submissions')">서브미션 심사 (<span id="qaPendingSub">0</span>)</button>
@@ -1020,10 +1020,20 @@ tr:hover td{background:rgba(0,0,0,.02)}
 
   <!-- NEWS -->
   <div class="tab" id="t-news">
-    <div class="mn-header"><div class="mn-title">뉴스 관리</div><div class="mn-actions"><button class="btn btn-primary" onclick="go('newnews')">+ 새 뉴스</button></div></div>
+    <div class="mn-header"><div class="mn-title">뉴스 관리</div><div class="mn-actions"><button class="btn btn-primary" onclick="newNewsArticle()">+ 새 뉴스</button> <button class="btn" onclick="loadNews()" style="background:transparent">🔄 새로고침</button></div></div>
     <div class="mn-body">
       <div class="tbl-wrap">
-        <div class="tbl-top"><h3>뉴스 목록</h3></div>
+        <div class="tbl-top">
+          <h3>뉴스 목록</h3>
+          <!-- QA #199 — status filter tabs mirror the editorial list:
+               전체 / 공개 / 임시저장 / 예약 with live counts. -->
+          <div class="tbl-filters" id="newsStatusFilters">
+            <button class="tf on" data-status="all" onclick="filterNewsByStatus('all')">전체 <span class="badge b-count" id="newsAllCountBadge">0</span></button>
+            <button class="tf" data-status="published" onclick="filterNewsByStatus('published')">공개 <span class="badge b-published" id="newsPublishedCountBadge">0</span></button>
+            <button class="tf" data-status="draft" onclick="filterNewsByStatus('draft')">임시저장 <span class="badge b-draft" id="newsDraftCountBadge">0</span></button>
+            <button class="tf" data-status="scheduled" onclick="filterNewsByStatus('scheduled')">⏰ 예약 <span class="badge b-scheduled" id="newsScheduledCountBadge">0</span></button>
+          </div>
+        </div>
         <table><thead><tr><th>ID</th><th>제목</th><th>상태</th><th>날짜</th><th>작업</th></tr></thead>
         <tbody id="newsListBody">
           <tr><td colspan="5" style="text-align:center;color:var(--text3);padding:40px 0">불러오는 중...</td></tr>
@@ -1034,20 +1044,32 @@ tr:hover td{background:rgba(0,0,0,.02)}
 
   <!-- NEWS EDITOR -->
   <div class="tab" id="t-newnews">
-    <div class="mn-header"><div class="mn-title">뉴스 작성</div><div class="mn-actions"><button class="btn" onclick="go('news')">← 목록으로</button></div></div>
+    <div class="mn-header"><div class="mn-title" id="newnewsModeTitle">뉴스 작성</div><div class="mn-actions"><button class="btn" onclick="go('news')">← 목록으로</button></div></div>
     <div class="mn-body">
       <div class="pe">
+        <!-- QA #199 — banner that lights up when editing an existing
+             article so the editor knows they are mutating a live row,
+             not creating a new one. -->
+        <div id="newnewsEditBanner" style="display:none;background:#fff8e6;color:#8a5a00;border:1px solid #f0c463;padding:10px 14px;margin-bottom:16px;font-size:12px;border-radius:4px">
+          <strong>편집 모드</strong> — 기존 뉴스 게시글을 수정 중입니다. 저장 시 원본이 업데이트됩니다.
+          <span id="newnewsEditMeta" style="display:block;margin-top:4px;color:var(--text3);font-size:11px"></span>
+        </div>
         <div class="pe-section">
           <div class="pe-label">제목</div>
-          <input class="pe-input" placeholder="뉴스 제목을 입력하세요">
+          <input class="pe-input" id="newnewsTitle" placeholder="뉴스 제목을 입력하세요">
           <div class="pe-hint">한국어로 작성 → AI가 8개 언어로 자동 번역</div>
         </div>
         <div class="pe-section">
           <div class="pe-label">썸네일 이미지</div>
-          <div class="pe-upload" onclick="this.querySelector('input').click()" style="padding:20px">
-            <input type="file" accept="image/*" style="display:none">
+          <div class="pe-upload" id="newnewsThumbUpload" onclick="this.querySelector('input').click()" style="padding:20px">
+            <input type="file" accept="image/*" style="display:none" onchange="previewNewsThumb(this)">
             <div class="pe-upload-text">클릭하여 썸네일 업로드</div>
           </div>
+          <!-- QA #199 — when editing, the existing thumbnail URL is
+               pre-filled here so saving without re-uploading keeps the
+               image. The hidden field stays in sync with both upload
+               events and edit-mode hydration. -->
+          <input type="hidden" id="newnewsThumbUrl" value="">
         </div>
         <div class="pe-section">
           <div class="pe-label">본문 구성 <span class="pe-opt">이미지와 텍스트를 자유롭게 조합하세요</span></div>
@@ -1067,8 +1089,18 @@ tr:hover td{background:rgba(0,0,0,.02)}
         </div>
         <div class="pe-section">
           <div class="pe-label">게시 설정</div>
-          <div class="pe-checks">
-            <label class="pe-check"><input type="checkbox" checked> 공개</label>
+          <!-- QA #199 — three-way status radio mirrors the editorial
+               editor (공개 / 임시저장 / 예약). The scheduled-time input
+               only shows when 예약 is picked. -->
+          <div class="pe-checks" style="flex-direction:column;gap:8px;align-items:flex-start">
+            <label class="pe-check"><input type="radio" name="newnewsStatusOpt" value="published" checked onchange="toggleNewsScheduleInput()"> 공개</label>
+            <label class="pe-check"><input type="radio" name="newnewsStatusOpt" value="draft" onchange="toggleNewsScheduleInput()"> 임시저장</label>
+            <label class="pe-check"><input type="radio" name="newnewsStatusOpt" value="scheduled" onchange="toggleNewsScheduleInput()"> ⏰ 예약 게시</label>
+          </div>
+          <div id="newnewsScheduleWrap" style="display:none;margin-top:10px">
+            <div class="pe-label" style="font-size:11px">예약 일시</div>
+            <input type="datetime-local" class="pe-input" id="newnewsScheduledAt" style="max-width:280px">
+            <div class="pe-hint">예약 일시 도달 시 자동 공개됩니다. 그 전까지는 공개 목록에서 숨겨집니다.</div>
           </div>
         </div>
         <div class="pe-actions">
@@ -1734,7 +1766,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
      one click without hitting Vercel response-size limits. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
 
-<script src="/pap-admin.js?v=19" defer></script>
+<script src="/pap-admin.js?v=20" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>

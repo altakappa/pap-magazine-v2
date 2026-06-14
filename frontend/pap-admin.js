@@ -1893,36 +1893,361 @@ async function doPullLetterReview(status){
 }
 
 // ======== NEWS (ARTICLES) MANAGEMENT ========
-var allArticles=[];
+// QA #199 — full edit lifecycle, three-status filter + scheduled posts.
+// Mirrors the editorial list shipped in QA #196/#197 so news editors get
+// the same affordances (저장된 글 수정, 상태별 탭, 예약 게시, 클릭 진입 편집).
+var allArticles=[];                  // every row fetched (published+draft+scheduled, deduped)
+var newsActiveStatus='all';          // which tab is currently selected
+var editingArticleId=null;           // null → POST (new), uuid → PUT (edit)
+
 async function loadNews(){
   var tb=document.getElementById('newsListBody');
   if(!tb)return;
   tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:40px">불러오는 중...</td></tr>';
   try{
-    var pub=await apiGet('/articles?limit=100&status=published');
-    var draft=await apiGet('/articles?limit=100&status=draft');
-    allArticles=(pub.data||[]).concat(draft.data||[]);
+    // Fan-out the three list calls so the page is fully populated in
+    // one round-trip. Same pattern editorial admin uses since QA #196.
+    var results = await Promise.all([
+      apiGet('/articles?limit=100&status=published').catch(function(){return{data:[]};}),
+      apiGet('/articles?limit=100&status=draft').catch(function(){return{data:[]};}),
+      apiGet('/articles?limit=100&status=scheduled').catch(function(){return{data:[]};})
+    ]);
+    var published = results[0].data || [];
+    var drafts    = results[1].data || [];
+    var scheduled = results[2].data || [];
+
+    // Scheduled rows ARE status='published' under the hood — tag them
+    // with a virtual _virtualStatus so the renderer / filter can tell
+    // them apart from already-live published rows without re-querying.
+    scheduled.forEach(function(a){ a._virtualStatus='scheduled'; });
+
+    // Dedupe by id (a scheduled row would otherwise show up in both
+    // the published list AND the scheduled list).
+    var byId = {};
+    [].concat(published, drafts, scheduled).forEach(function(a){
+      if(!a || !a.id) return;
+      // Scheduled tag wins so the row keeps its purple "예약" badge.
+      if(byId[a.id] && a._virtualStatus==='scheduled'){
+        byId[a.id]._virtualStatus='scheduled';
+      } else if(!byId[a.id]){
+        byId[a.id] = a;
+      }
+    });
+    allArticles = Object.values(byId);
+
     renderNews();
   }catch(e){
     tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:#ff6b6b;padding:40px">불러오기 실패</td></tr>';
   }
 }
+
+function _articleEffectiveStatus(a){
+  if(a._virtualStatus==='scheduled') return 'scheduled';
+  return a.status || 'published';
+}
+
 function renderNews(){
   var tb=document.getElementById('newsListBody');
   if(!tb)return;
-  if(!allArticles.length){tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:40px 0">뉴스가 없습니다</td></tr>';return;}
-  tb.innerHTML='';
+
+  // Counts roll up across all rows regardless of active filter so the
+  // tab badges always show the global totals.
+  var counts={all:allArticles.length, published:0, draft:0, scheduled:0};
   allArticles.forEach(function(a){
-    var st=a.status||'published';
-    var cls=st==='published'?'b-published':'b-draft';
-    var label=st==='published'?'공개':'비공개';
+    var s=_articleEffectiveStatus(a);
+    if(counts[s]!==undefined) counts[s]++;
+  });
+  var setCount=function(id,n){var el=document.getElementById(id);if(el)el.textContent=String(n||0);};
+  setCount('newsAllCountBadge', counts.all);
+  setCount('newsPublishedCountBadge', counts.published);
+  setCount('newsDraftCountBadge', counts.draft);
+  setCount('newsScheduledCountBadge', counts.scheduled);
+
+  // Filter rows by the active tab. 'all' shows everything.
+  var visible = allArticles.filter(function(a){
+    if(newsActiveStatus==='all') return true;
+    return _articleEffectiveStatus(a) === newsActiveStatus;
+  });
+
+  if(!visible.length){
+    tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:40px 0">'+(newsActiveStatus==='all'?'뉴스가 없습니다':'해당 상태의 뉴스가 없습니다')+'</td></tr>';
+    return;
+  }
+  tb.innerHTML='';
+  visible.forEach(function(a){
+    var st=_articleEffectiveStatus(a);
+    var cls,label;
+    if(st==='scheduled'){
+      cls='b-scheduled';
+      // Surface the scheduled-at time inline so the editor can see
+      // exactly when each row will flip live.
+      var when = a.scheduled_publish_at ? new Date(a.scheduled_publish_at) : null;
+      var whenStr = when ? when.toLocaleString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+      label='⏰ 예약'+(whenStr?' · '+whenStr:'');
+    } else if(st==='published'){
+      cls='b-published'; label='공개';
+    } else {
+      cls='b-draft'; label='임시저장';
+    }
     var shortId=a.id?a.id.substring(0,8):'—';
-    tb.innerHTML+='<tr><td style="font-size:10px">'+shortId+'</td><td class="td-title">'+esc(a.title)+'</td><td><span class="badge '+cls+'">'+label+'</span></td><td>'+fmtDate(a.published_date)+'</td><td><button class="btn btn-sm btn-red" onclick="deleteArticle(\''+a.id+'\',\''+esc(a.title).replace(/'/g,"\\'")+'\')">삭제</button></td></tr>';
+    // Row is clickable as a whole (matches editorial behavior); the
+    // dedicated 편집 button stays for users who learned the editorial
+    // pattern of clicking the explicit action.
+    var safeTitle = esc(a.title||'(제목 없음)');
+    tb.innerHTML+='<tr style="cursor:pointer" onclick="editArticle(\''+a.id+'\')"><td style="font-size:10px">'+shortId+'</td><td class="td-title">'+safeTitle+'</td><td><span class="badge '+cls+'">'+label+'</span></td><td>'+fmtDate(a.published_date||a.scheduled_publish_at)+'</td><td onclick="event.stopPropagation()"><button class="btn btn-sm" onclick="editArticle(\''+a.id+'\')">편집</button> <button class="btn btn-sm btn-red" onclick="deleteArticle(\''+a.id+'\',\''+safeTitle.replace(/'/g,"\\'")+'\')">삭제</button></td></tr>';
   });
 }
+
+// QA #199 — status tab handler. Just flips the active filter and
+// re-renders from the cached list (no extra network call).
+function filterNewsByStatus(status){
+  newsActiveStatus = status || 'all';
+  var btns = document.querySelectorAll('#newsStatusFilters .tf');
+  btns.forEach(function(b){
+    if(b.getAttribute('data-status')===newsActiveStatus) b.classList.add('on');
+    else b.classList.remove('on');
+  });
+  renderNews();
+}
+
 async function deleteArticle(id,title){
   if(!confirm('"'+title+'" 을 삭제하시겠습니까?'))return;
   try{await apiDelete('/articles/'+id);allArticles=allArticles.filter(function(a){return a.id!==id;});renderNews();alert('삭제되었습니다.');}catch(e){alert('삭제 실패');}
+}
+
+// QA #199 — entry points for the editor flow.
+// `newNewsArticle()` is wired to the "+ 새 뉴스" button (replaces the
+// raw go('newnews')) so we can wipe lingering edit state first.
+// `editArticle(id)` opens the same editor pre-filled with the row's
+// data so the existing form simply rebrands as "편집" and PUTs on save.
+
+function newNewsArticle(){
+  editingArticleId=null;
+  _resetNewsEditorForm();
+  _setNewsEditorMode(false, null);
+  go('newnews');
+}
+
+async function editArticle(id){
+  if(!id) return;
+  try{
+    // Always re-fetch the full row instead of trusting the list cache
+    // — the list projection drops `content`/`gallery`/`credits` which
+    // we absolutely need to populate the editor faithfully.
+    var resp = await apiGet('/articles/'+id);
+    var a = resp && resp.data;
+    if(!a){ alert('뉴스를 찾을 수 없습니다.'); return; }
+    editingArticleId = a.id;
+    _resetNewsEditorForm();
+    _hydrateNewsEditorForm(a);
+    _setNewsEditorMode(true, a);
+    go('newnews');
+  } catch(e){
+    alert('뉴스를 불러오지 못했습니다: '+(e && e.message ? e.message : ''));
+  }
+}
+
+// Toggle the editor header / banner depending on new-vs-edit mode.
+function _setNewsEditorMode(isEdit, article){
+  var title = document.getElementById('newnewsModeTitle');
+  if(title) title.textContent = isEdit ? '뉴스 편집' : '뉴스 작성';
+  var banner = document.getElementById('newnewsEditBanner');
+  var meta = document.getElementById('newnewsEditMeta');
+  if(banner) banner.style.display = isEdit ? 'block' : 'none';
+  if(meta && article){
+    var bits = [];
+    if(article.id) bits.push('ID '+article.id.substring(0,8));
+    if(article.admin_edited_at) bits.push('마지막 편집 '+fmtDate(article.admin_edited_at));
+    else if(article.updated_at) bits.push('업데이트 '+fmtDate(article.updated_at));
+    meta.textContent = bits.join(' · ');
+  } else if(meta){
+    meta.textContent = '';
+  }
+}
+
+// Clear the editor form back to a blank "new article" state.
+function _resetNewsEditorForm(){
+  var titleEl = document.getElementById('newnewsTitle');
+  if(titleEl) titleEl.value = '';
+  var thumb = document.getElementById('newnewsThumbUpload');
+  if(thumb){
+    // Restore the placeholder text + clear the file input.
+    var fi = thumb.querySelector('input[type="file"]');
+    if(fi) fi.value = '';
+    thumb.classList.remove('has-thumb');
+    thumb.innerHTML = '<input type="file" accept="image/*" style="display:none" onchange="previewNewsThumb(this)"><div class="pe-upload-text">클릭하여 썸네일 업로드</div>';
+  }
+  var thumbUrlEl = document.getElementById('newnewsThumbUrl');
+  if(thumbUrlEl) thumbUrlEl.value = '';
+  var blocks = document.getElementById('newsBlocks');
+  if(blocks){
+    // Leave a single empty text block so the editor doesn't open
+    // completely barren the way it does on first render.
+    blocks.innerHTML = '<div class="news-block" style="background:var(--surface);border:1px solid var(--border);padding:14px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:10px;font-weight:700;color:var(--text3)">블록 1 — 텍스트</span><button class="btn btn-sm btn-red" onclick="this.closest(\'.news-block\').remove()">삭제</button></div>'
+      +'<textarea class="modal-ta" style="min-height:100px" placeholder="본문 텍스트를 입력하세요..."></textarea>'
+      +'</div>';
+  }
+  newsBlockCount = 1;
+  // Reset the status radio + hide the schedule input.
+  var radios = document.getElementsByName('newnewsStatusOpt');
+  if(radios && radios.length){
+    for(var i=0;i<radios.length;i++) radios[i].checked = (radios[i].value === 'published');
+  }
+  var sched = document.getElementById('newnewsScheduledAt');
+  if(sched) sched.value = '';
+  toggleNewsScheduleInput();
+}
+
+// Hydrate the editor with an existing article's payload.
+function _hydrateNewsEditorForm(a){
+  var titleEl = document.getElementById('newnewsTitle');
+  if(titleEl) titleEl.value = a.title || '';
+
+  // Pre-fill the thumbnail URL + render a visible preview thumbnail
+  // so the editor can SEE the existing image without re-uploading it.
+  var thumb = document.getElementById('newnewsThumbUpload');
+  var thumbUrlEl = document.getElementById('newnewsThumbUrl');
+  if(thumbUrlEl) thumbUrlEl.value = a.thumbnail_url || '';
+  if(thumb && a.thumbnail_url){
+    thumb.innerHTML = '<input type="file" accept="image/*" style="display:none" onchange="previewNewsThumb(this)">'
+      +'<img loading="lazy" src="'+esc(a.thumbnail_url)+'" style="max-width:200px;max-height:250px;object-fit:cover">'
+      +'<div class="pe-upload-text" style="margin-top:8px">클릭하여 변경</div>';
+    thumb.classList.add('has-thumb');
+  }
+
+  // Rehydrate content blocks. We persist them as a JSON-encoded array
+  // in `content` (see saveNewsArticle below). Older articles may have
+  // stored content as plain text or HTML, in which case we surface it
+  // as a single text block so the editor still loads them.
+  var blocks = document.getElementById('newsBlocks');
+  if(blocks){
+    blocks.innerHTML = '';
+    newsBlockCount = 0;
+    var parsed = null;
+    try { parsed = a.content ? JSON.parse(a.content) : null; } catch(_){ parsed = null; }
+    if(Array.isArray(parsed) && parsed.length){
+      parsed.forEach(function(block){
+        var type = block && block.type ? block.type : 'text';
+        var content = block && block.content!==undefined ? block.content : '';
+        _appendNewsBlock(type, content);
+      });
+    } else {
+      // Legacy / non-block payload — show the raw text in a single
+      // text block so it can be edited (and re-saved as blocks).
+      _appendNewsBlock('text', a.content || '');
+    }
+  }
+
+  // Status / schedule.
+  var radios = document.getElementsByName('newnewsStatusOpt');
+  var sched = document.getElementById('newnewsScheduledAt');
+  var isScheduled = a._virtualStatus === 'scheduled'
+    || (a.status === 'published' && a.scheduled_publish_at && new Date(a.scheduled_publish_at) > new Date());
+  var pick = isScheduled ? 'scheduled' : (a.status === 'draft' ? 'draft' : 'published');
+  if(radios){
+    for(var i=0;i<radios.length;i++) radios[i].checked = (radios[i].value === pick);
+  }
+  if(sched && a.scheduled_publish_at){
+    // <input type="datetime-local"> wants YYYY-MM-DDTHH:MM (local time).
+    var d = new Date(a.scheduled_publish_at);
+    var pad = function(n){return n<10?'0'+n:''+n;};
+    sched.value = d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
+  }
+  toggleNewsScheduleInput();
+}
+
+// Append a block row to #newsBlocks pre-filled with `content`.
+function _appendNewsBlock(type, content){
+  newsBlockCount++;
+  var area = document.getElementById('newsBlocks');
+  if(!area) return;
+  var div = document.createElement('div');
+  div.className = 'news-block';
+  div.style.cssText = 'background:var(--surface);border:1px solid var(--border);padding:14px';
+  var label = ({text:'텍스트',image:'이미지',quote:'인용구',video:'영상'})[type] || '기타';
+  var inner = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:10px;font-weight:700;color:var(--text3)">블록 '+newsBlockCount+' — '+label+'</span><button class="btn btn-sm btn-red" onclick="this.closest(\'.news-block\').remove()">삭제</button></div>';
+  // Use a textContent-style fallback for the input value so any
+  // single/double quotes in content don't break the attribute.
+  if(type==='text'){
+    var ta = document.createElement('textarea');
+    ta.className='modal-ta';
+    ta.style.cssText='min-height:100px';
+    ta.placeholder='본문 텍스트를 입력하세요...';
+    ta.value = content || '';
+    div.innerHTML = inner;
+    div.appendChild(ta);
+  } else if(type==='image'){
+    inner += '<div class="pe-upload" onclick="this.querySelector(\'input\').click()" style="padding:16px"><input type="file" accept="image/*" style="display:none"><div class="pe-upload-text">클릭하여 이미지 업로드</div></div>';
+    var capInput = document.createElement('input');
+    capInput.className='pe-input';
+    capInput.placeholder='이미지 캡션 (선택)';
+    capInput.style.marginTop='8px';
+    capInput.value = content || '';
+    div.innerHTML = inner;
+    div.appendChild(capInput);
+  } else if(type==='quote'){
+    var qta = document.createElement('textarea');
+    qta.className='modal-ta';
+    qta.style.cssText='min-height:60px;font-style:italic';
+    qta.placeholder='인용구 내용...';
+    qta.value = content || '';
+    div.innerHTML = inner;
+    div.appendChild(qta);
+    var srcInput = document.createElement('input');
+    srcInput.className='pe-input';
+    srcInput.placeholder='출처 (선택)';
+    srcInput.style.marginTop='8px';
+    div.appendChild(srcInput);
+  } else if(type==='video'){
+    var vInput = document.createElement('input');
+    vInput.className='pe-input';
+    vInput.placeholder='YouTube URL (예: https://youtube.com/watch?v=...)';
+    vInput.value = content || '';
+    div.innerHTML = inner;
+    div.appendChild(vInput);
+  } else {
+    var oInput = document.createElement('input');
+    oInput.className='pe-input';
+    oInput.value = content || '';
+    div.innerHTML = inner;
+    div.appendChild(oInput);
+  }
+  area.appendChild(div);
+}
+
+// Show/hide the schedule input depending on the chosen status radio.
+function toggleNewsScheduleInput(){
+  var wrap = document.getElementById('newnewsScheduleWrap');
+  if(!wrap) return;
+  var radios = document.getElementsByName('newnewsStatusOpt');
+  var picked = 'published';
+  if(radios){
+    for(var i=0;i<radios.length;i++){ if(radios[i].checked){ picked = radios[i].value; break; } }
+  }
+  wrap.style.display = (picked === 'scheduled') ? 'block' : 'none';
+}
+
+// Thumbnail upload preview — keeps the hidden URL field in sync.
+function previewNewsThumb(input){
+  if(!input || !input.files || !input.files[0]) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var thumb = document.getElementById('newnewsThumbUpload');
+    if(thumb){
+      thumb.innerHTML = '<input type="file" accept="image/*" style="display:none" onchange="previewNewsThumb(this)">'
+        +'<img loading="lazy" src="'+e.target.result+'" style="max-width:200px;max-height:250px;object-fit:cover">'
+        +'<div class="pe-upload-text" style="margin-top:8px">클릭하여 변경</div>';
+      thumb.classList.add('has-thumb');
+    }
+    // NOTE: in production this would upload to S3 + write the public
+    // URL into newnewsThumbUrl. For now we keep the existing
+    // base64 preview behavior so the editor at least shows the new
+    // image; the hidden URL field is left untouched (so an edit that
+    // re-uploads but never has the URL written falls back to the
+    // existing thumbnail_url instead of clobbering it with raw base64).
+  };
+  reader.readAsDataURL(input.files[0]);
 }
 
 // POST EDITOR FUNCTIONS
@@ -4009,47 +4334,115 @@ document.addEventListener('DOMContentLoaded',function(){
 });
 
 // ======== NEWS BLOCK BUILDER ========
+// QA #199 — `addNewsBlock` now delegates to the shared _appendNewsBlock
+// helper so the editor-create path uses the exact same DOM as edit-mode
+// hydration. Without that, a block added by the editor renders with a
+// slightly different shape than the same block hydrated from a saved
+// payload, which broke the "edit a freshly-saved post" round-trip.
 var newsBlockCount=1;
 function addNewsBlock(type){
-  newsBlockCount++;
-  var area=document.getElementById('newsBlocks');if(!area)return;
-  var div=document.createElement('div');
-  div.className='news-block';
-  div.style.cssText='background:var(--surface);border:1px solid var(--border);padding:14px';
-  var label={text:'텍스트',image:'이미지',quote:'인용구',video:'영상'}[type];
-  var inner='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:10px;font-weight:700;color:var(--text3)">블록 '+newsBlockCount+' — '+label+'</span><button class="btn btn-sm btn-red" onclick="this.closest(\'.news-block\').remove()">삭제</button></div>';
-  if(type==='text') inner+='<textarea class="modal-ta" style="min-height:100px" placeholder="본문 텍스트를 입력하세요..."></textarea>';
-  else if(type==='image') inner+='<div class="pe-upload" onclick="this.querySelector(\'input\').click()" style="padding:16px"><input type="file" accept="image/*" style="display:none"><div class="pe-upload-text">클릭하여 이미지 업로드</div></div><input class="pe-input" placeholder="이미지 캡션 (선택)" style="margin-top:8px">';
-  else if(type==='quote') inner+='<textarea class="modal-ta" style="min-height:60px;font-style:italic" placeholder="인용구 내용..."></textarea><input class="pe-input" placeholder="출처 (선택)" style="margin-top:8px">';
-  else if(type==='video') inner+='<input class="pe-input" placeholder="YouTube URL (예: https://youtube.com/watch?v=...)">';
-  div.innerHTML=inner;
-  area.appendChild(div);
+  _appendNewsBlock(type, '');
+}
+
+// QA #199 — collect every block back out of the DOM into a stable
+// JSON shape ([{type, content}, ...]) for serializing into
+// articles.content. The same shape is what _hydrateNewsEditorForm
+// reads on edit, closing the round-trip.
+function _collectNewsBlocks(){
+  var blocks=[];
+  document.querySelectorAll('#newsBlocks .news-block').forEach(function(block){
+    // Block-type label sits in the small grey header — we keep the
+    // legacy text matching since the labels are user-visible Korean.
+    var headLabel = (block.querySelector('span') && block.querySelector('span').textContent) || '';
+    var t = 'text';
+    if(headLabel.indexOf('이미지')>=0) t = 'image';
+    else if(headLabel.indexOf('인용구')>=0) t = 'quote';
+    else if(headLabel.indexOf('영상')>=0) t = 'video';
+
+    var ta = block.querySelector('textarea');
+    var inp = block.querySelector('input.pe-input');
+    var content = '';
+    if(t==='text' || t==='quote'){
+      content = ta ? ta.value : '';
+    } else if(t==='image'){
+      // Image caption sits in the pe-input; the actual uploaded file
+      // would go through an upload pipeline (not in scope here).
+      content = inp ? inp.value : '';
+    } else if(t==='video'){
+      content = inp ? inp.value : '';
+    }
+    blocks.push({type:t, content:content});
+  });
+  return blocks;
 }
 
 async function saveNewsArticle(){
-  var titleEl=document.querySelector('#t-newnews .pe-input');
+  var titleEl=document.getElementById('newnewsTitle');
   if(!titleEl||!titleEl.value){alert('제목을 입력해 주세요.');return;}
-  // Collect content blocks
-  var blocks=[];
-  document.querySelectorAll('#newsBlocks .news-block').forEach(function(block){
-    var ta=block.querySelector('textarea');
-    var inp=block.querySelector('input[type="text"],input.pe-input');
-    if(ta)blocks.push({type:'text',content:ta.value});
-    else if(inp)blocks.push({type:'other',content:inp.value});
-  });
-  var isPublished=document.querySelector('#t-newnews .pe-check input');
+
+  var blocks = _collectNewsBlocks();
+
+  // Status + schedule. The three-way radio replaces the old single
+  // "공개" checkbox so the editor can stage drafts and schedule posts
+  // with the same affordance editorials already have.
+  var picked = 'published';
+  var radios = document.getElementsByName('newnewsStatusOpt');
+  for(var i=0;i<radios.length;i++){ if(radios[i].checked){ picked = radios[i].value; break; } }
+  var schedAt = null;
+  if(picked === 'scheduled'){
+    var schedEl = document.getElementById('newnewsScheduledAt');
+    if(!schedEl || !schedEl.value){
+      alert('예약 게시를 선택했지만 예약 일시가 비어 있습니다.');
+      return;
+    }
+    // <input type="datetime-local"> gives back YYYY-MM-DDTHH:MM in
+    // LOCAL time. Convert to ISO so the server stores UTC.
+    schedAt = new Date(schedEl.value).toISOString();
+    if(new Date(schedAt) <= new Date()){
+      if(!confirm('예약 일시가 현재보다 과거입니다. 그래도 진행할까요?\n(과거 일시는 즉시 공개와 동일하게 동작합니다.)')) return;
+    }
+  }
+
+  // Map the chosen radio onto the DB status field. Scheduled posts
+  // are status='published' under the hood — the
+  // scheduled_publish_at gate keeps them off the public list until
+  // their time comes.
+  var dbStatus = (picked === 'draft') ? 'draft' : 'published';
+
+  // Reuse the existing thumbnail URL when editing without a new upload.
+  var thumbUrlEl = document.getElementById('newnewsThumbUrl');
+  var thumbUrl = thumbUrlEl ? thumbUrlEl.value : '';
+
+  var payload = {
+    title: titleEl.value,
+    content: JSON.stringify(blocks),
+    category: 'news',
+    status: dbStatus,
+    scheduled_publish_at: schedAt,
+  };
+  if(thumbUrl) payload.thumbnail_url = thumbUrl;
+
+  // Only stamp published_date when actually going live now (not for
+  // drafts or future-scheduled posts). The PUT handler also auto-stamps
+  // on first draft→published transition for safety.
+  if(picked === 'published'){
+    payload.published_date = new Date().toISOString();
+  }
+
   try{
-    await apiPost('/articles',{
-      title:titleEl.value,
-      content:JSON.stringify(blocks),
-      category:'news',
-      status:(isPublished&&isPublished.checked)?'published':'draft',
-      published_date:new Date().toISOString()
-    });
-    alert('뉴스가 등록되었습니다.');
+    if(editingArticleId){
+      await apiPut('/articles/'+editingArticleId, payload);
+      alert('뉴스가 수정되었습니다.');
+    } else {
+      await apiPost('/articles', payload);
+      alert('뉴스가 등록되었습니다.');
+    }
+    editingArticleId = null;
     loadNews();
     go('news');
-  }catch(e){alert('저장 실패: '+e.message);}
+  }catch(e){
+    alert('저장 실패: '+(e && e.message ? e.message : ''));
+  }
 }
 
 // ======== FILM CRUD (API) ========

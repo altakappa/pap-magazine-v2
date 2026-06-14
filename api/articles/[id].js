@@ -43,10 +43,39 @@ module.exports = async function handler(req, res) {
 
     try {
       const updates = {};
-      const allowed = ['title', 'subtitle', 'slug', 'published_date', 'category', 'tags', 'thumbnail_url', 'hero_image_url', 'content', 'gallery', 'credits', 'custom_url', 'status'];
+      // QA #199 — added scheduled_publish_at to the allowlist so the
+      // admin form can save a "publish at this future moment" stamp.
+      const allowed = [
+        'title', 'subtitle', 'slug', 'published_date', 'category', 'tags',
+        'thumbnail_url', 'hero_image_url', 'content', 'gallery', 'credits',
+        'custom_url', 'status', 'scheduled_publish_at'
+      ];
       for (const key of allowed) {
         if (req.body[key] !== undefined) updates[key] = req.body[key];
       }
+
+      // Detect draft→published transition so we can stamp published_date
+      // when the row goes live for the first time (mirrors editorial).
+      let priorStatus = null;
+      let priorPublishedAt = null;
+      if (updates.status !== undefined) {
+        const { data: prior } = await supabaseAdmin
+          .from('articles')
+          .select('status, published_date')
+          .eq('id', id)
+          .single();
+        priorStatus = prior ? prior.status : null;
+        priorPublishedAt = prior ? prior.published_date : null;
+        const becomingPublished = updates.status === 'published' && priorStatus !== 'published';
+        if (becomingPublished && updates.published_date === undefined && !priorPublishedAt) {
+          updates.published_date = new Date().toISOString();
+        }
+      }
+
+      // QA #199 — stamp admin_edited_at on every admin PUT so the
+      // Drafts tab can tell "actually curated by an admin" from any
+      // future auto-staged rows (matching QA #197 for editorials).
+      updates.admin_edited_at = new Date().toISOString();
 
       const { data, error } = await supabaseAdmin
         .from('articles')
