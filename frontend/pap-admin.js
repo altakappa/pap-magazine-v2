@@ -2131,10 +2131,15 @@ function _hydrateNewsEditorForm(a){
         var type = block && block.type ? block.type : 'text';
         var content;
         if(type === 'image'){
-          // QA #200 — image blocks now carry both url + caption. Pass
-          // the full object so _appendNewsBlock can hydrate the
-          // preview image AND the caption field together.
+          // QA #200 — image blocks carry both url + caption. Pass the
+          // full object so _appendNewsBlock can hydrate the preview
+          // image AND the caption field together.
           content = { url: block.url || '', caption: block.content || '' };
+        } else if(type === 'quote'){
+          // QA #201 — quote blocks also carry a separate `source`
+          // (attribution) field. Pass as object so the editor restores
+          // both the body and the source input.
+          content = { content: block.content || '', source: block.source || '' };
         } else {
           content = block && block.content!==undefined ? block.content : '';
         }
@@ -2209,7 +2214,10 @@ function _appendNewsBlock(type, content){
     inner += '<div class="news-block-img-status" style="margin-top:4px;font-size:11px;color:var(--text3);min-height:14px"></div>';
     var capInput = document.createElement('input');
     capInput.className='pe-input news-block-img-caption';
-    capInput.placeholder='이미지 캡션 (선택)';
+    // QA #201 — explicit purpose. Caption sits below the image on the
+    // public site so editors know it is reader-facing context, not
+    // internal notes.
+    capInput.placeholder='이미지 캡션 (이미지 아래 작게 표시 · 사진 설명 / 사진가 / 출처 등)';
     capInput.style.marginTop='8px';
     capInput.value = caption;
     div.innerHTML = inner;
@@ -2218,17 +2226,30 @@ function _appendNewsBlock(type, content){
     // back even if no new upload happens during this session.
     if(imgUrl) div.dataset.imgUrl = imgUrl;
   } else if(type==='quote'){
+    // QA #201 — `content` may be a plain string (legacy / new block)
+    // or an object {content, source} (hydration of a saved quote).
+    var quoteText = '';
+    var quoteSource = '';
+    if(content && typeof content === 'object'){
+      quoteText = content.content || '';
+      quoteSource = content.source || '';
+    } else {
+      quoteText = content || '';
+    }
     var qta = document.createElement('textarea');
     qta.className='modal-ta';
     qta.style.cssText='min-height:60px;font-style:italic';
-    qta.placeholder='인용구 내용...';
-    qta.value = content || '';
+    qta.placeholder='인용구 내용을 입력하세요 (강조하고 싶은 발언, 인터뷰 문장 등)';
+    qta.value = quoteText;
     div.innerHTML = inner;
     div.appendChild(qta);
     var srcInput = document.createElement('input');
-    srcInput.className='pe-input';
-    srcInput.placeholder='출처 (선택)';
+    srcInput.className='pe-input news-block-quote-source';
+    // QA #201 — explicit purpose so editors know this is for attribution,
+    // not a generic notes field.
+    srcInput.placeholder='출처 (예: 인터뷰이 이름 · 원본 매체명 · 출처 URL)';
     srcInput.style.marginTop='8px';
+    srcInput.value = quoteSource;
     div.appendChild(srcInput);
   } else if(type==='video'){
     var vInput = document.createElement('input');
@@ -4546,8 +4567,18 @@ function _collectNewsBlocks(){
     var captionInp = block.querySelector('input.news-block-img-caption');
     var inp = block.querySelector('input.pe-input');
 
-    if(t==='text' || t==='quote'){
-      blocks.push({type:t, content: ta ? ta.value : ''});
+    if(t==='text'){
+      blocks.push({type:'text', content: ta ? ta.value : ''});
+    } else if(t==='quote'){
+      // QA #201 — quote source goes into a dedicated `source` field so
+      // the public renderer can render it as attribution under the
+      // quote, not as part of the quote body itself.
+      var srcEl = block.querySelector('input.news-block-quote-source');
+      blocks.push({
+        type:'quote',
+        content: ta ? ta.value : '',
+        source: srcEl ? srcEl.value : ''
+      });
     } else if(t==='image'){
       // QA #200 — read the uploaded URL from the block dataset (set
       // by handleNewsBlockImage). Skip blocks with no URL AND no

@@ -1089,13 +1089,25 @@ tr:hover td{background:rgba(0,0,0,.02)}
               <textarea class="modal-ta" style="min-height:100px" placeholder="본문 텍스트를 입력하세요..."></textarea>
             </div>
           </div>
-          <div style="display:flex;gap:6px;margin-top:12px">
-            <button class="btn btn-sm" onclick="addNewsBlock('text')">+ 텍스트 블록</button>
-            <button class="btn btn-sm" onclick="addNewsBlock('image')">+ 이미지 블록</button>
-            <button class="btn btn-sm" onclick="addNewsBlock('quote')">+ 인용구 블록</button>
-            <button class="btn btn-sm" onclick="addNewsBlock('video')">+ 영상 블록</button>
+          <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">
+            <button class="btn btn-sm" onclick="addNewsBlock('text')" title="일반 본문 단락을 추가합니다. 빈 줄로 단락을 구분할 수 있습니다.">+ 텍스트 블록</button>
+            <button class="btn btn-sm" onclick="addNewsBlock('image')" title="기사 본문에 들어갈 이미지를 업로드합니다. 이미지 아래에 캡션을 달 수 있습니다.">+ 이미지 블록</button>
+            <button class="btn btn-sm" onclick="addNewsBlock('quote')" title="강조하고 싶은 발언이나 인용문을 박스 형태로 강조합니다.">+ 인용구 블록</button>
+            <button class="btn btn-sm" onclick="addNewsBlock('video')" title="YouTube 또는 Vimeo 영상을 임베드합니다. URL만 붙여넣으면 됩니다.">+ 영상 블록</button>
           </div>
-          <div class="pe-hint" style="margin-top:8px">블록을 추가하여 이미지와 텍스트를 자유롭게 배치할 수 있습니다. 프론트엔드에서 추가한 순서대로 표시됩니다.</div>
+          <div class="pe-hint" style="margin-top:8px">블록은 위에서 아래로 추가한 순서대로 프론트 기사 페이지에 표시됩니다. 블록 순서 변경은 삭제 후 재추가로 처리합니다.</div>
+          <!-- QA #201 — block-type cheat sheet so editors don't have to
+               click each "+ 블록" button to discover what each does. The
+               wording also clarifies the difference between caption
+               (image description) and quote source (attribution),
+               which the QA report flagged as ambiguous. -->
+          <div class="pe-hint" style="margin-top:10px;padding:10px 12px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:4px;line-height:1.7">
+            <div style="font-weight:600;color:var(--text2);margin-bottom:6px;font-size:11px;letter-spacing:.04em">블록 종류 안내</div>
+            <div><strong>텍스트</strong> — 일반 본문 단락. 한 블록 안에서 빈 줄로 단락을 나눌 수 있고, 줄바꿈은 그대로 유지됩니다.</div>
+            <div><strong>이미지</strong> — 본문 사이에 사진을 삽입. JPG · PNG · WEBP / 최대 2MB / 권장 가로 1200px 이상. 캡션 칸은 이미지 <em>아래에 표시되는 설명</em>(촬영자, 사진가, 사진 설명 등).</div>
+            <div><strong>인용구</strong> — 강조하고 싶은 발언이나 짧은 인용문을 박스 형태로 강조. 출처 칸은 <em>원본 발언자 · 매체 · URL</em>을 기입.</div>
+            <div><strong>영상</strong> — YouTube / Vimeo URL을 붙여넣으면 본문에 영상 플레이어가 임베드됩니다 (예: https://youtu.be/abcd1234).</div>
+          </div>
           <!-- QA #200 — image block guideline so editors see the same
                rules as the thumbnail uploader. -->
           <div class="pe-hint" style="margin-top:4px;color:var(--text3)">
@@ -1781,7 +1793,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
      one click without hitting Vercel response-size limits. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
 
-<script src="/pap-admin.js?v=21" defer></script>
+<script src="/pap-admin.js?v=22" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>

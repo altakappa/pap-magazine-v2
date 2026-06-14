@@ -121,7 +121,39 @@ window._papFilmAutoPlay = function(){
   }
 
   // Convert Supabase article record → hardcoded artData format
+  //
+  // QA #201 — articles.content was being treated as raw HTML/text in the
+  // SPA renderer, but the admin editor (QA #199/#200) actually saves a
+  // JSON-encoded block array: [{type:'text', content:'...'}, {type:'image', url:'...', content:'caption'}, ...].
+  // When that string hit _renderArticleDetail unparsed, the raw JSON
+  // bracket soup was either dumped as HTML (because it has < / > chars
+  // in attribute values) or wrapped in a single <p>. Both look broken
+  // on the public site. Here we parse once and expose:
+  //   - `blocks`: the parsed array when content is valid JSON blocks
+  //   - `desc`:   the original string for legacy articles (no blocks)
+  // so the renderer can branch cleanly without re-parsing on every paint.
   function apiArticleToLocal(a){
+    var rawContent = a.content || '';
+    var parsedBlocks = null;
+    if(typeof rawContent === 'string' && rawContent.trim().charAt(0) === '['){
+      try {
+        var maybe = JSON.parse(rawContent);
+        if(Array.isArray(maybe)){
+          // Coerce each entry to the canonical {type, content, url} shape
+          // so the renderer never has to guess. Unknown types become
+          // plain text so we never silently swallow content.
+          parsedBlocks = maybe.map(function(b){
+            if(!b || typeof b !== 'object') return { type:'text', content:String(b||'') };
+            var t = b.type || 'text';
+            return {
+              type: t,
+              content: typeof b.content === 'string' ? b.content : '',
+              url: b.url || ''
+            };
+          });
+        }
+      } catch(_){ parsedBlocks = null; }
+    }
     return {
       t: a.title||'',
       sub: a.subtitle||'',
@@ -133,7 +165,10 @@ window._papFilmAutoPlay = function(){
       img: a.hero_image_url||'',
       tags: Array.isArray(a.tags)? a.tags : [],
       cr: Array.isArray(a.credits)? a.credits : [],
-      desc: a.content||'',
+      // Keep the raw string for legacy articles whose `content` is HTML
+      // or plain text; the renderer falls back to this when `blocks` is null.
+      desc: parsedBlocks ? '' : rawContent,
+      blocks: parsedBlocks,
       gallery: Array.isArray(a.gallery)? a.gallery : [],
       _api_id: a.id,
       // Pass through any i18n fields the API exposes (varies by backend schema)

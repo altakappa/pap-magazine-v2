@@ -125,6 +125,72 @@ function openArticleFromCard(card){
     if(at.length>3&&title.length>3&&(at.indexOf(title)===0||title.indexOf(at)===0)){openArticleDetail(i);return;}
   }
 }
+// QA #201 — block array → semantic HTML for the SPA article overlay.
+// Mirrors the admin editor's four block types so what the editor sees
+// is what the reader gets:
+//   text    → <p>
+//   image   → <figure><img><figcaption>caption</figcaption></figure>
+//   quote   → <blockquote>
+//   video   → embedded YouTube/Vimeo iframe (with a graceful URL fallback)
+// Anything else (unknown type) is rendered as escaped plain text so
+// unknown content never silently disappears.
+function _renderArticleBlocks(blocks){
+  if(!Array.isArray(blocks) || !blocks.length) return '';
+  var html = '';
+  blocks.forEach(function(b){
+    if(!b || typeof b !== 'object') return;
+    var t = b.type || 'text';
+    var content = (b.content || '').toString();
+    var url = (b.url || '').toString();
+
+    if(t === 'text'){
+      // Split on blank lines so multi-paragraph blocks render correctly,
+      // but escape so admin text never injects markup unintentionally.
+      var paragraphs = content.split(/\n\n+/).map(function(p){
+        // Single newlines inside a paragraph become <br>.
+        return '<p style="margin:0 0 14px;line-height:1.7">' +
+          escapeHtml(p).replace(/\n/g, '<br>') +
+          '</p>';
+      }).join('');
+      html += paragraphs;
+    } else if(t === 'image'){
+      if(!url) return; // skip blocks that lost their upload
+      html += '<figure style="margin:18px 0">'
+        + '<img src="' + escapeHtml(url) + '" alt="' + escapeHtml(content) + '" loading="lazy" style="width:100%;display:block;border-radius:2px" onerror="edImgError && edImgError(this)">'
+        + (content ? '<figcaption style="margin-top:6px;font-size:11px;color:#888;text-align:center;letter-spacing:.04em">' + escapeHtml(content) + '</figcaption>' : '')
+        + '</figure>';
+    } else if(t === 'quote'){
+      // QA #201 — show attribution under the quote when it's provided.
+      var source = (b.source || '').toString();
+      html += '<blockquote style="margin:18px 0;padding:14px 18px;border-left:3px solid #999;font-style:italic;color:#ddd;font-size:14px;line-height:1.7">'
+        + escapeHtml(content)
+        + (source ? '<footer style="margin-top:8px;font-size:11px;color:#888;font-style:normal;text-align:right">— ' + escapeHtml(source) + '</footer>' : '')
+        + '</blockquote>';
+    } else if(t === 'video'){
+      // Reuse the normaliseEmbedUrl helper when available so we accept
+      // the same set of YouTube formats the film admin already vets.
+      var embed = null;
+      var src = content || url;
+      try {
+        if(typeof normaliseEmbedUrl === 'function') embed = normaliseEmbedUrl(src);
+      } catch(_){ embed = null; }
+      if(embed && embed.src){
+        html += '<div style="margin:18px 0;position:relative;padding-bottom:56.25%;height:0;overflow:hidden">'
+          + '<iframe src="' + escapeHtml(embed.src) + '" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%"></iframe>'
+          + '</div>';
+      } else if(src){
+        // Surface the raw URL as a clickable fallback rather than dropping
+        // the block silently. This makes broken video entries obvious in QA.
+        html += '<p style="margin:18px 0;font-size:12px"><a href="' + escapeHtml(src) + '" target="_blank" rel="noopener" style="color:#aaa">' + escapeHtml(src) + '</a></p>';
+      }
+    } else {
+      // Unknown type — render escaped so nothing ever vanishes silently.
+      html += '<p style="margin:0 0 14px">' + escapeHtml(content) + '</p>';
+    }
+  });
+  return html;
+}
+
 function _renderArticleDetail(a,det){
   document.getElementById('artDetailImg').src=a.img||a.th;
   // Use localized title/sub if available
@@ -136,7 +202,14 @@ function _renderArticleDetail(a,det){
   document.getElementById('artDetailSub').textContent=_locSub;
   var descEl=document.getElementById('artDetailDesc');
   if(descEl){
-    if(a.desc){
+    // QA #201 — render block-structured articles (admin v2) first.
+    // If `a.blocks` was parsed by apiArticleToLocal, walk it and emit
+    // semantic markup per block type. Otherwise fall back to the
+    // legacy raw-HTML / raw-text path so older articles still render.
+    if(Array.isArray(a.blocks) && a.blocks.length){
+      descEl.innerHTML = _renderArticleBlocks(a.blocks);
+      descEl.style.display='';
+    } else if(a.desc){
       if(a.desc.indexOf('<')!==-1&&a.desc.indexOf('>')!==-1){
         descEl.innerHTML=a.desc;
       } else {
