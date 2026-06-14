@@ -2129,7 +2129,15 @@ function _hydrateNewsEditorForm(a){
     if(Array.isArray(parsed) && parsed.length){
       parsed.forEach(function(block){
         var type = block && block.type ? block.type : 'text';
-        var content = block && block.content!==undefined ? block.content : '';
+        var content;
+        if(type === 'image'){
+          // QA #200 — image blocks now carry both url + caption. Pass
+          // the full object so _appendNewsBlock can hydrate the
+          // preview image AND the caption field together.
+          content = { url: block.url || '', caption: block.content || '' };
+        } else {
+          content = block && block.content!==undefined ? block.content : '';
+        }
         _appendNewsBlock(type, content);
       });
     } else {
@@ -2178,14 +2186,37 @@ function _appendNewsBlock(type, content){
     div.innerHTML = inner;
     div.appendChild(ta);
   } else if(type==='image'){
-    inner += '<div class="pe-upload" onclick="this.querySelector(\'input\').click()" style="padding:16px"><input type="file" accept="image/*" style="display:none"><div class="pe-upload-text">클릭하여 이미지 업로드</div></div>';
+    // QA #200 — image block now wires its file input to the real
+    // /media/upload pipeline via handleNewsBlockImage. The block
+    // element itself carries the resolved public URL on dataset.imgUrl
+    // so _collectNewsBlocks can serialize {type:'image', url, content}
+    // (where `content` is still the caption, kept for backwards-compat
+    // with any older payloads).
+    //
+    // `content` argument may be either a plain caption string (legacy)
+    // or an object {url, caption} (new hydration path). We normalise
+    // both to {url, caption}.
+    var imgUrl = '';
+    var caption = '';
+    if(content && typeof content === 'object'){
+      imgUrl = content.url || '';
+      caption = content.caption || '';
+    } else {
+      caption = content || '';
+    }
+    inner += '<div class="pe-upload" onclick="this.querySelector(\'input\').click()" style="padding:16px"><input type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="handleNewsBlockImage(this)"><div class="pe-upload-text">클릭하여 이미지 업로드</div></div>';
+    inner += '<div class="news-block-img-preview" style="margin-top:8px;'+(imgUrl?'':'display:none')+'">'+(imgUrl?'<img src="'+esc(imgUrl)+'" style="max-width:240px;max-height:240px;object-fit:cover;border:1px solid var(--border)">':'')+'</div>';
+    inner += '<div class="news-block-img-status" style="margin-top:4px;font-size:11px;color:var(--text3);min-height:14px"></div>';
     var capInput = document.createElement('input');
-    capInput.className='pe-input';
+    capInput.className='pe-input news-block-img-caption';
     capInput.placeholder='이미지 캡션 (선택)';
     capInput.style.marginTop='8px';
-    capInput.value = content || '';
+    capInput.value = caption;
     div.innerHTML = inner;
     div.appendChild(capInput);
+    // Stash the existing URL on the block so collector can read it
+    // back even if no new upload happens during this session.
+    if(imgUrl) div.dataset.imgUrl = imgUrl;
   } else if(type==='quote'){
     var qta = document.createElement('textarea');
     qta.className='modal-ta';
@@ -2228,26 +2259,174 @@ function toggleNewsScheduleInput(){
   wrap.style.display = (picked === 'scheduled') ? 'block' : 'none';
 }
 
-// Thumbnail upload preview — keeps the hidden URL field in sync.
+// QA #200 — shared image validator for the news editor.
+// Enforces type + size up-front so the editor gets a Korean error before
+// we burn a /media/upload round-trip. Returns null on success or a
+// {ok:false, message} object on failure so the caller can show inline.
+var NEWS_IMG_ALLOWED_TYPES = ['image/jpeg','image/png','image/webp'];
+var NEWS_IMG_MAX_BYTES = 2 * 1024 * 1024; // 2 MB — matches the hint
+function validateNewsImage(file){
+  if(!file) return { ok:false, message:'파일이 선택되지 않았습니다.' };
+  if(NEWS_IMG_ALLOWED_TYPES.indexOf(file.type) < 0){
+    return {
+      ok:false,
+      message:'허용되지 않은 형식입니다 ('+(file.type||'unknown')+'). JPG · PNG · WEBP 만 업로드 가능합니다.'
+    };
+  }
+  if(file.size > NEWS_IMG_MAX_BYTES){
+    var mb = (file.size / (1024*1024)).toFixed(2);
+    return {
+      ok:false,
+      message:'파일이 너무 큽니다 ('+mb+'MB). 최대 2MB 이미지만 업로드할 수 있습니다.'
+    };
+  }
+  return { ok:true };
+}
+
+// Thumbnail upload — QA #200 wiring.
+//
+// Lifecycle:
+//   1. validate the file (type + size) → if it fails we abort BEFORE
+//      hitting the network and show the reason inline.
+//   2. paint an instant base64 preview so the editor sees feedback
+//      while the real upload runs (Supabase round-trip is ~1-3s).
+//   3. POST the file to /api/media/upload via uploadFile() — the same
+//      helper editorials use — and stash the returned public URL in
+//      the hidden newnewsThumbUrl field.
+//   4. on success or failure, replace the inline status line so the
+//      editor knows what happened.
 function previewNewsThumb(input){
   if(!input || !input.files || !input.files[0]) return;
+  var file = input.files[0];
+  var thumb = document.getElementById('newnewsThumbUpload');
+  var status = document.getElementById('newnewsThumbStatus');
+  var hidden = document.getElementById('newnewsThumbUrl');
+
+  // 1) Validate
+  var v = validateNewsImage(file);
+  if(!v.ok){
+    if(status){
+      status.style.color = '#c0392b';
+      status.textContent = '⚠ ' + v.message;
+    }
+    // Clear the input so the next click re-fires onchange even if the
+    // user picks the same problematic file again.
+    try { input.value = ''; } catch(_){}
+    alert(v.message);
+    return;
+  }
+
+  // 2) Instant base64 preview while the upload runs.
   var reader = new FileReader();
   reader.onload = function(e){
-    var thumb = document.getElementById('newnewsThumbUpload');
     if(thumb){
-      thumb.innerHTML = '<input type="file" accept="image/*" style="display:none" onchange="previewNewsThumb(this)">'
+      thumb.innerHTML = '<input type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="previewNewsThumb(this)">'
         +'<img loading="lazy" src="'+e.target.result+'" style="max-width:200px;max-height:250px;object-fit:cover">'
-        +'<div class="pe-upload-text" style="margin-top:8px">클릭하여 변경</div>';
+        +'<div class="pe-upload-text" style="margin-top:8px">업로드 중...</div>';
       thumb.classList.add('has-thumb');
     }
-    // NOTE: in production this would upload to S3 + write the public
-    // URL into newnewsThumbUrl. For now we keep the existing
-    // base64 preview behavior so the editor at least shows the new
-    // image; the hidden URL field is left untouched (so an edit that
-    // re-uploads but never has the URL written falls back to the
-    // existing thumbnail_url instead of clobbering it with raw base64).
   };
-  reader.readAsDataURL(input.files[0]);
+  reader.readAsDataURL(file);
+
+  if(status){
+    status.style.color = 'var(--text3)';
+    status.textContent = '업로드 중... (' + (file.size/1024).toFixed(0) + 'KB)';
+  }
+
+  // 3) Real upload to Supabase Storage via the existing media endpoint.
+  uploadFile(file).then(function(publicUrl){
+    if(hidden) hidden.value = publicUrl;
+    if(thumb){
+      // Swap the temporary base64 preview for the canonical public URL
+      // so a subsequent save reads exactly what the public site will.
+      thumb.innerHTML = '<input type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="previewNewsThumb(this)">'
+        +'<img loading="lazy" src="'+publicUrl+'" style="max-width:200px;max-height:250px;object-fit:cover">'
+        +'<div class="pe-upload-text" style="margin-top:8px">클릭하여 변경</div>';
+    }
+    if(status){
+      status.style.color = '#27ae60';
+      status.textContent = '✓ 업로드 완료';
+    }
+  }).catch(function(err){
+    // Revert the box so the editor knows the upload is gone; the
+    // hidden URL field is left UNTOUCHED (so an edit that re-uploads
+    // and fails falls back to the existing thumbnail).
+    if(thumb){
+      var existing = hidden && hidden.value;
+      thumb.innerHTML = '<input type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="previewNewsThumb(this)">'
+        + (existing ? '<img loading="lazy" src="'+esc(existing)+'" style="max-width:200px;max-height:250px;object-fit:cover">' : '')
+        + '<div class="pe-upload-text" style="margin-top:8px">'+(existing?'클릭하여 변경':'클릭하여 썸네일 업로드')+'</div>';
+      if(!existing) thumb.classList.remove('has-thumb');
+    }
+    if(status){
+      status.style.color = '#c0392b';
+      status.textContent = '⚠ 업로드 실패: ' + (err && err.message ? err.message : '알 수 없는 오류');
+    }
+    console.error('[news thumb upload]', err);
+  });
+}
+
+// QA #200 — file-input change handler for news IMAGE blocks.
+// Same lifecycle as previewNewsThumb but scoped to a single block:
+//   - validate, then upload via /media/upload
+//   - paint preview + status inside the block
+//   - stash the public URL on the block's dataset so
+//     _collectNewsBlocks can read it back on save
+function handleNewsBlockImage(input){
+  if(!input || !input.files || !input.files[0]) return;
+  var file = input.files[0];
+  var block = input.closest('.news-block');
+  if(!block) return;
+  var statusEl = block.querySelector('.news-block-img-status');
+  var previewEl = block.querySelector('.news-block-img-preview');
+
+  // 1) Validate
+  var v = validateNewsImage(file);
+  if(!v.ok){
+    if(statusEl){
+      statusEl.style.color = '#c0392b';
+      statusEl.textContent = '⚠ ' + v.message;
+    }
+    try { input.value = ''; } catch(_){}
+    alert(v.message);
+    return;
+  }
+
+  // 2) Instant base64 preview
+  var reader = new FileReader();
+  reader.onload = function(e){
+    if(previewEl){
+      previewEl.style.display = 'block';
+      previewEl.innerHTML = '<img src="'+e.target.result+'" style="max-width:240px;max-height:240px;object-fit:cover;border:1px solid var(--border)">';
+    }
+  };
+  reader.readAsDataURL(file);
+
+  if(statusEl){
+    statusEl.style.color = 'var(--text3)';
+    statusEl.textContent = '업로드 중... (' + (file.size/1024).toFixed(0) + 'KB)';
+  }
+
+  // 3) Real upload
+  uploadFile(file).then(function(publicUrl){
+    // Store the canonical URL on the block element itself; the
+    // collector reads it back via dataset on save.
+    block.dataset.imgUrl = publicUrl;
+    if(previewEl){
+      previewEl.innerHTML = '<img src="'+publicUrl+'" style="max-width:240px;max-height:240px;object-fit:cover;border:1px solid var(--border)">';
+    }
+    if(statusEl){
+      statusEl.style.color = '#27ae60';
+      statusEl.textContent = '✓ 업로드 완료';
+    }
+  }).catch(function(err){
+    // Keep any previously-uploaded URL if this was a re-upload attempt.
+    if(statusEl){
+      statusEl.style.color = '#c0392b';
+      statusEl.textContent = '⚠ 업로드 실패: ' + (err && err.message ? err.message : '알 수 없는 오류');
+    }
+    console.error('[news block upload]', err);
+  });
 }
 
 // POST EDITOR FUNCTIONS
@@ -4345,9 +4524,13 @@ function addNewsBlock(type){
 }
 
 // QA #199 — collect every block back out of the DOM into a stable
-// JSON shape ([{type, content}, ...]) for serializing into
-// articles.content. The same shape is what _hydrateNewsEditorForm
-// reads on edit, closing the round-trip.
+// JSON shape for serializing into articles.content. The same shape is
+// what _hydrateNewsEditorForm reads on edit, closing the round-trip.
+//
+// QA #200 — image blocks now carry BOTH a `url` (the Supabase public
+// URL stashed on dataset.imgUrl by handleNewsBlockImage) AND a
+// `content` (the optional caption). Text/quote/video blocks keep the
+// pre-#200 shape so older payloads still round-trip cleanly.
 function _collectNewsBlocks(){
   var blocks=[];
   document.querySelectorAll('#newsBlocks .news-block').forEach(function(block){
@@ -4360,18 +4543,22 @@ function _collectNewsBlocks(){
     else if(headLabel.indexOf('영상')>=0) t = 'video';
 
     var ta = block.querySelector('textarea');
+    var captionInp = block.querySelector('input.news-block-img-caption');
     var inp = block.querySelector('input.pe-input');
-    var content = '';
+
     if(t==='text' || t==='quote'){
-      content = ta ? ta.value : '';
+      blocks.push({type:t, content: ta ? ta.value : ''});
     } else if(t==='image'){
-      // Image caption sits in the pe-input; the actual uploaded file
-      // would go through an upload pipeline (not in scope here).
-      content = inp ? inp.value : '';
+      // QA #200 — read the uploaded URL from the block dataset (set
+      // by handleNewsBlockImage). Skip blocks with no URL AND no
+      // caption to avoid persisting empty placeholders.
+      var url = block.dataset.imgUrl || '';
+      var caption = captionInp ? captionInp.value : (inp ? inp.value : '');
+      if(!url && !caption) return; // skip empty image block
+      blocks.push({type:'image', url: url, content: caption});
     } else if(t==='video'){
-      content = inp ? inp.value : '';
+      blocks.push({type:'video', content: inp ? inp.value : ''});
     }
-    blocks.push({type:t, content:content});
   });
   return blocks;
 }

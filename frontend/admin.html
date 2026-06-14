@@ -1062,9 +1062,19 @@ tr:hover td{background:rgba(0,0,0,.02)}
         <div class="pe-section">
           <div class="pe-label">썸네일 이미지</div>
           <div class="pe-upload" id="newnewsThumbUpload" onclick="this.querySelector('input').click()" style="padding:20px">
-            <input type="file" accept="image/*" style="display:none" onchange="previewNewsThumb(this)">
+            <input type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="previewNewsThumb(this)">
             <div class="pe-upload-text">클릭하여 썸네일 업로드</div>
           </div>
+          <!-- QA #200 — explicit upload guidelines so the editor knows
+               what we accept BEFORE picking a file. The validator
+               (validateNewsImage in pap-admin.js) enforces the same
+               limits and surfaces a Korean error when a file fails. -->
+          <div class="pe-hint" style="margin-top:8px">
+            권장 1200×675px (16:9) · JPG / PNG / WEBP · 최대 2MB
+          </div>
+          <!-- Inline status line — flips to "업로드 중...", "✓ 업로드 완료",
+               or a red error message during the upload lifecycle. -->
+          <div id="newnewsThumbStatus" style="margin-top:6px;font-size:11px;color:var(--text3);min-height:14px"></div>
           <!-- QA #199 — when editing, the existing thumbnail URL is
                pre-filled here so saving without re-uploading keeps the
                image. The hidden field stays in sync with both upload
@@ -1086,6 +1096,11 @@ tr:hover td{background:rgba(0,0,0,.02)}
             <button class="btn btn-sm" onclick="addNewsBlock('video')">+ 영상 블록</button>
           </div>
           <div class="pe-hint" style="margin-top:8px">블록을 추가하여 이미지와 텍스트를 자유롭게 배치할 수 있습니다. 프론트엔드에서 추가한 순서대로 표시됩니다.</div>
+          <!-- QA #200 — image block guideline so editors see the same
+               rules as the thumbnail uploader. -->
+          <div class="pe-hint" style="margin-top:4px;color:var(--text3)">
+            <strong>이미지 블록</strong>: JPG / PNG / WEBP · 최대 2MB · 권장 가로 1200px 이상
+          </div>
         </div>
         <div class="pe-section">
           <div class="pe-label">게시 설정</div>
@@ -1766,7 +1781,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
      one click without hitting Vercel response-size limits. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
 
-<script src="/pap-admin.js?v=20" defer></script>
+<script src="/pap-admin.js?v=21" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>
