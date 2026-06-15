@@ -465,6 +465,15 @@ module.exports = async function handler(req, res) {
               source_submission_id: submission.id,
               status: 'draft',
               published_date: null,
+              // QA #206 — make the NULL explicit so a future trigger or
+              // backfill can't accidentally treat the row as
+              // "admin-touched" the moment Postgres' updated_at trigger
+              // fires (which it does on every INSERT). The Drafts tab
+              // query in /api/editorials/index.js gates visibility on
+              // admin_edited_at IS NOT NULL — keeping this NULL is what
+              // keeps freshly-approved submissions OUT of 임시저장 until
+              // an admin actually opens & saves them.
+              admin_edited_at: null,
             })
             .select()
             .single();

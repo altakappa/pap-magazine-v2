@@ -538,7 +538,13 @@ function _openEditorialInner(title,thumb){
     gal.innerHTML+='<div class="ed-gallery-item"><img src="'+url+'" alt="'+title+'" loading="lazy" onerror="edImgError(this)">'+_scrapBtnHtml(url,title)+'<div class="ed-img-credits">'+credits+'</div></div>';
   });
 
-  _renderEditorialVideo(det && det.url);
+  // QA #206 — fall back to a.url (the API row's url field) when the
+  // hardcoded edDetails entry has none. The previous code only looked
+  // at det.url, which silently lost the video for every editorial that
+  // came from the database (i.e. the entire admin-curated catalogue).
+  // The admin form's "영상 링크" input writes into editorials.url, and
+  // apiEditorialToLocal already surfaces it on `a.url`.
+  _renderEditorialVideo((det && det.url) || (a && a.url));
 
   // Credits table — supports name+handle objects or plain handle strings.
   // Defensive: an object with empty .n used to fall through to the string
@@ -741,7 +747,13 @@ function _openEditorialInner_noPush(title,thumb){
     }
     gal.innerHTML+='<div class="ed-gallery-item"><img src="'+url+'" alt="'+title+'" loading="lazy" onerror="edImgError(this)">'+_scrapBtnHtml(url,title)+'<div class="ed-img-credits">'+credits+'</div></div>';
   });
-  _renderEditorialVideo(det && det.url);
+  // QA #206 — fall back to a.url (the API row's url field) when the
+  // hardcoded edDetails entry has none. The previous code only looked
+  // at det.url, which silently lost the video for every editorial that
+  // came from the database (i.e. the entire admin-curated catalogue).
+  // The admin form's "영상 링크" input writes into editorials.url, and
+  // apiEditorialToLocal already surfaces it on `a.url`.
+  _renderEditorialVideo((det && det.url) || (a && a.url));
   var cr=document.getElementById('edDetailCredits');
   var ch='';
   det.credits.forEach(function(c){
