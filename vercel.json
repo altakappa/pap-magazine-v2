@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/send-due-campaigns",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/purge-rejected-submissions",
+      "schedule": "10 18 * * *"
     }
   ],
   "rewrites": [

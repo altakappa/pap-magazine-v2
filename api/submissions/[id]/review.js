@@ -332,7 +332,12 @@ module.exports = async function handler(req, res) {
   // signoff is reserved for the main admin. We peek at the body first to
   // pick the right middleware, so non-admins still see the regular 403.
   const intendedStatus = req.body && req.body.status;
-  const requiresMainAdmin = intendedStatus === 'approved' || intendedStatus === 'rejected';
+  // QA #211 — 'pending' added so the admin can recover a rejected
+  // submission within the 30-day window. Recovery requires the main
+  // admin role (same gate as the original approve/reject decision).
+  const requiresMainAdmin = intendedStatus === 'approved'
+                         || intendedStatus === 'rejected'
+                         || intendedStatus === 'pending';
   const admin = requiresMainAdmin
     ? await requireMainAdmin(req, res)
     : await requireAdmin(req, res);
@@ -346,8 +351,8 @@ module.exports = async function handler(req, res) {
     // handler no longer reads or forwards them.
     const { status, reviewNote, coverImageIndex } = req.body;
 
-    if (!status || !['approved', 'rejected', 'revision'].includes(status)) {
-      return res.status(400).json({ message: 'Status must be "approved", "rejected", or "revision"' });
+    if (!status || !['approved', 'rejected', 'revision', 'pending'].includes(status)) {
+      return res.status(400).json({ message: 'Status must be "approved", "rejected", "revision", or "pending"' });
     }
 
     // Validate coverImageIndex if provided
@@ -355,12 +360,25 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ message: 'coverImageIndex must be a non-negative number' });
     }
 
+    // QA #211 — stamp rejected_at when transitioning to 'rejected' so the
+    // 30-day auto-purge cron can find this row. Set to NULL when leaving
+    // the rejected state (e.g. admin recovers via status='pending'); the
+    // cron only deletes rows that still have a non-null stamp.
+    const reviewPatch = {
+      status,
+      admin_notes: reviewNote || '',
+    };
+    if (status === 'rejected') {
+      reviewPatch.rejected_at = new Date().toISOString();
+    } else {
+      // Recovery path — clear stamp so a row brought back from rejection
+      // doesn't get scooped up by the cron.
+      reviewPatch.rejected_at = null;
+    }
+
     const { data: submission, error } = await supabaseAdmin
       .from('submissions')
-      .update({
-        status,
-        admin_notes: reviewNote || '',
-      })
+      .update(reviewPatch)
       .eq('id', id)
       .select()
       .single();

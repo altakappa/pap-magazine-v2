@@ -1654,7 +1654,24 @@ async function loadSubmissions(statusFilter, opts){
         var btnLabel = ds === 'uploaded' ? '에디토리얼 보기' : '에디토리얼 편집';
         actionBtns += ' <button class="btn btn-sm btn-primary" onclick="openEditorialEditor(\''+editorialId+'\')" title="연결된 에디토리얼 편집 화면으로 이동">'+btnLabel+'</button>';
       }
-      tb.innerHTML+='<tr><td class="td-title" onclick="openModal(\''+s.id+'\')">'+esc(s.title)+'</td><td>'+esc(s.submitterName||s.submitterEmail||'—')+'</td><td><span class="badge '+planCls+'">'+planLabel+'</span></td><td>'+looks+'</td><td>'+fmtDate(s.created_at)+'</td><td><span class="badge '+statusCls+'">'+statusLabel+'</span></td><td>'+actionBtns+'</td></tr>';
+      // QA #211 — rejected rows surface days-to-auto-purge + recover button.
+      // Hard delete happens 30 days after rejected_at via a daily cron;
+      // the admin can flip status back to 'pending' to cancel.
+      var rejectedInfo = '';
+      if(s.status==='rejected' && s.rejected_at){
+        var rejAt = new Date(s.rejected_at);
+        if(!isNaN(rejAt.getTime())){
+          var daysSince = Math.floor((Date.now() - rejAt.getTime()) / (24*60*60*1000));
+          var daysLeft = 30 - daysSince;
+          if(daysLeft > 0){
+            rejectedInfo = '<div style="margin-top:4px;font-size:10px;color:#dc2626;font-weight:600">⏳ '+daysLeft+'일 후 자동 삭제</div>';
+            actionBtns += ' <button class="btn btn-sm" style="border-color:#16a34a;color:#16a34a" onclick="recoverRejectedSubmission(\''+s.id+'\')" title="거절 상태에서 복구하여 다시 검토 대기열로 이동">↩ 복구</button>';
+          } else {
+            rejectedInfo = '<div style="margin-top:4px;font-size:10px;color:#dc2626;font-weight:600">⚠️ 삭제 예정</div>';
+          }
+        }
+      }
+      tb.innerHTML+='<tr><td class="td-title" onclick="openModal(\''+s.id+'\')">'+esc(s.title)+'</td><td>'+esc(s.submitterName||s.submitterEmail||'—')+'</td><td><span class="badge '+planCls+'">'+planLabel+'</span></td><td>'+looks+'</td><td>'+fmtDate(s.created_at)+'</td><td><span class="badge '+statusCls+'">'+statusLabel+'</span>'+rejectedInfo+'</td><td>'+actionBtns+'</td></tr>';
     });
     _renderSubPagination(currentSubPage, totalPages, total);
   }catch(err){
@@ -1702,6 +1719,25 @@ function filterSubmissions(status,btn){
   btn.classList.add('on');
   loadSubmissions(status);
 }
+
+// QA #211 — recover a rejected submission within the 30-day purge window.
+// Flips status='rejected' → 'pending' and (via review.js) clears
+// rejected_at so the cron skips this row on the next scan.
+async function recoverRejectedSubmission(id){
+  if(!id) return;
+  if(!confirm('이 서브미션을 복구하여 대기 중 상태로 되돌릴까요?\n자동 삭제 예정에서 제외되며, 다시 심사 대기열로 이동합니다.')) return;
+  try {
+    var resp = await apiPut('/submissions/'+id+'/review', { status: 'pending', reviewNote: '' });
+    if(resp && resp.error){ alert('복구 실패: '+resp.error); return; }
+    if(typeof toast === 'function') toast('복구되었습니다');
+    else alert('복구되었습니다.');
+    // Refresh the list so the row leaves the rejected bucket immediately.
+    loadSubmissions();
+  } catch(e){
+    alert('복구 실패: '+(e && e.message ? e.message : '알 수 없는 오류'));
+  }
+}
+window.recoverRejectedSubmission = recoverRejectedSubmission;
 
 // ======== PULL-LETTERS MANAGEMENT ========
 // Two flows write to the same `pullletters` table:
