@@ -1986,6 +1986,42 @@ function setNewsDateRangeFromUi(){
   renderNews();
 }
 
+// QA #208 Phase 2c — news saved-filter presets.
+function applyNewsPreset(preset){
+  if(preset === 'scheduled'){
+    newsActiveStatus = 'scheduled';
+    newsSortBy = 'recent';
+    newsDateRange = 'all';
+  } else if(preset === 'today'){
+    newsActiveStatus = 'all';
+    newsDateRange = 'today';
+    newsDateBasis = 'created';
+    newsSortBy = 'recent';
+  } else if(preset === 'draft'){
+    newsActiveStatus = 'draft';
+    newsSortBy = 'updated_desc';
+    newsDateRange = 'all';
+  } else if(preset === 'thisweek'){
+    newsActiveStatus = 'all';
+    newsDateRange = '7d';
+    newsDateBasis = 'created';
+    newsSortBy = 'recent';
+  } else if(preset === 'reset'){
+    newsActiveStatus = 'all';
+    newsSortBy = 'recent';
+    newsDateRange = 'all';
+    newsDateBasis = 'created';
+    newsDateFrom = '';
+    newsDateTo = '';
+  }
+  var sortEl = document.getElementById('newsAdminSort'); if(sortEl) sortEl.value = newsSortBy;
+  var rangeEl = document.getElementById('newsAdminRange'); if(rangeEl) rangeEl.value = newsDateRange;
+  var basisEl = document.getElementById('newsAdminBasis'); if(basisEl) basisEl.value = newsDateBasis;
+  var customWrap = document.getElementById('newsAdminCustomWrap');
+  if(customWrap) customWrap.style.display = (newsDateRange === 'custom') ? '' : 'none';
+  renderNews();
+}
+
 function renderNews(){
   var tb=document.getElementById('newsListBody');
   if(!tb)return;
@@ -2074,6 +2110,7 @@ function renderNews(){
       + '</tr>';
   });
   _newsRefreshBulkToolbar();
+  papInitAdvPanel('news');
 }
 
 // QA #208 Phase 2a — news bulk-selection helpers (mirror editorial).
@@ -3800,6 +3837,53 @@ function _papRenderDateRangeDropdown(idPrefix, currentValue, basis, customFrom, 
   return html;
 }
 
+// QA #208 Phase 2c — saved filter presets ("quick chips").
+// Each preset is a recipe that sets the list's status / sort / range
+// state in one click. The implementation is per-list because the
+// state variable names differ, but the preset semantics are shared.
+//
+// Presets used across all three lists:
+//   - scheduled : status='scheduled' + sort by scheduled_publish_at asc
+//   - today     : today's uploads (date basis = created)
+//   - draft     : 임시저장 only
+//   - this_week : last 7d
+// Per-list helpers below wire the preset name to that list's setters
+// and call its render function. The chip UI in admin.html stays the
+// same; only the onclick names change.
+
+// QA #208 Phase 2c — "advanced filter" panel collapse state.
+// localStorage so the editor's preferred view sticks across reloads.
+function _papGetAdvOpen(key){
+  try { return localStorage.getItem('pap-adv-'+key) === '1'; } catch(_){ return false; }
+}
+function _papSetAdvOpen(key, open){
+  try { localStorage.setItem('pap-adv-'+key, open ? '1' : '0'); } catch(_){}
+}
+function papToggleAdvFilter(key){
+  var panel = document.getElementById(key+'AdvPanel');
+  var btn = document.getElementById(key+'AdvBtn');
+  if(!panel) return;
+  var open = panel.style.display !== 'none';
+  if(open){
+    panel.style.display = 'none';
+    _papSetAdvOpen(key, false);
+    if(btn) btn.textContent = '🔧 고급 필터 ▾';
+  } else {
+    panel.style.display = 'flex';
+    _papSetAdvOpen(key, true);
+    if(btn) btn.textContent = '🔧 고급 필터 ▴';
+  }
+}
+// Apply saved open state on first render of each list.
+function papInitAdvPanel(key){
+  var panel = document.getElementById(key+'AdvPanel');
+  var btn = document.getElementById(key+'AdvBtn');
+  if(!panel) return;
+  var open = _papGetAdvOpen(key);
+  panel.style.display = open ? 'flex' : 'none';
+  if(btn) btn.textContent = open ? '🔧 고급 필터 ▴' : '🔧 고급 필터 ▾';
+}
+
 // QA #208 — bulk-selection state. A plain Set of editorial ids that
 // survive re-renders so the user can toggle a status filter without
 // losing their checked rows. editorialToggleSelectAll, the per-row
@@ -3829,6 +3913,43 @@ function setEditorialDateRangeFromUi(){
   // Toggle custom-range inputs visibility.
   var wrap = document.getElementById('edAdminCustomWrap');
   if(wrap) wrap.style.display = (editorialDateRange === 'custom') ? '' : 'none';
+  renderEditorialList();
+}
+
+// QA #208 Phase 2c — editorial saved-filter presets.
+function applyEditorialPreset(preset){
+  if(preset === 'scheduled'){
+    edStatusFilter = 'scheduled';
+    editorialSortBy = 'recent';
+    editorialDateRange = 'all';
+  } else if(preset === 'today'){
+    edStatusFilter = 'all';
+    editorialDateRange = 'today';
+    editorialDateBasis = 'created';
+    editorialSortBy = 'recent';
+  } else if(preset === 'draft'){
+    edStatusFilter = 'draft';
+    editorialSortBy = 'updated_desc';
+    editorialDateRange = 'all';
+  } else if(preset === 'thisweek'){
+    edStatusFilter = 'all';
+    editorialDateRange = '7d';
+    editorialDateBasis = 'created';
+    editorialSortBy = 'recent';
+  } else if(preset === 'reset'){
+    edStatusFilter = 'all';
+    editorialSortBy = 'recent';
+    editorialDateRange = 'all';
+    editorialDateBasis = 'created';
+    editorialDateFrom = '';
+    editorialDateTo = '';
+  }
+  // Sync the dropdowns visually.
+  var sortEl = document.getElementById('edAdminSort'); if(sortEl) sortEl.value = editorialSortBy;
+  var rangeEl = document.getElementById('edAdminRange'); if(rangeEl) rangeEl.value = editorialDateRange;
+  var basisEl = document.getElementById('edAdminBasis'); if(basisEl) basisEl.value = editorialDateBasis;
+  var customWrap = document.getElementById('edAdminCustomWrap');
+  if(customWrap) customWrap.style.display = (editorialDateRange === 'custom') ? '' : 'none';
   renderEditorialList();
 }
 
@@ -3983,6 +4104,7 @@ function renderEditorialList(){
   });
   if(document.getElementById('edCountLabel')) document.getElementById('edCountLabel').textContent=filtered.length;
   _editorialRefreshBulkToolbar();
+  papInitAdvPanel('ed');
 }
 
 // QA #208 — bulk-selection helpers.
@@ -5297,6 +5419,42 @@ function setFilmDateRangeFromUi(){
   renderFilms();
 }
 
+// QA #208 Phase 2c — film saved-filter presets.
+function applyFilmPreset(preset){
+  if(preset === 'scheduled'){
+    filmActiveStatus = 'scheduled';
+    filmSortBy = 'recent';
+    filmDateRange = 'all';
+  } else if(preset === 'today'){
+    filmActiveStatus = 'all';
+    filmDateRange = 'today';
+    filmDateBasis = 'created';
+    filmSortBy = 'recent';
+  } else if(preset === 'draft'){
+    filmActiveStatus = 'draft';
+    filmSortBy = 'updated_desc';
+    filmDateRange = 'all';
+  } else if(preset === 'thisweek'){
+    filmActiveStatus = 'all';
+    filmDateRange = '7d';
+    filmDateBasis = 'created';
+    filmSortBy = 'recent';
+  } else if(preset === 'reset'){
+    filmActiveStatus = 'all';
+    filmSortBy = 'recent';
+    filmDateRange = 'all';
+    filmDateBasis = 'created';
+    filmDateFrom = '';
+    filmDateTo = '';
+  }
+  var sortEl = document.getElementById('filmAdminSort'); if(sortEl) sortEl.value = filmSortBy;
+  var rangeEl = document.getElementById('filmAdminRange'); if(rangeEl) rangeEl.value = filmDateRange;
+  var basisEl = document.getElementById('filmAdminBasis'); if(basisEl) basisEl.value = filmDateBasis;
+  var customWrap = document.getElementById('filmAdminCustomWrap');
+  if(customWrap) customWrap.style.display = (filmDateRange === 'custom') ? '' : 'none';
+  renderFilms();
+}
+
 async function loadFilmsFromAPI(){
   var tb=document.getElementById('filmListBody');if(!tb)return;
   tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:40px">불러오는 중...</td></tr>';
@@ -5424,6 +5582,7 @@ function renderFilms(){
       + '</tr>';
   });
   _filmRefreshBulkToolbar();
+  papInitAdvPanel('film');
 }
 
 // QA #208 Phase 2a — film filter + bulk-selection helpers.
