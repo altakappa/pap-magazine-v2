@@ -1960,6 +1960,31 @@ function _articleEffectiveStatus(a){
 // QA #208 Phase 2a — bulk-selection state for the news list (same
 // pattern as editorial: a Set survives re-renders + filter toggles).
 var newsSelectedIds = new Set();
+// QA #208 Phase 2b — sort + date-range state for news.
+var newsSortBy = 'recent';
+var newsDateRange = 'all';
+var newsDateBasis = 'created';
+var newsDateFrom = '';
+var newsDateTo = '';
+
+function setNewsSortFromUi(){
+  var sel = document.getElementById('newsAdminSort');
+  if(sel) newsSortBy = sel.value || 'recent';
+  renderNews();
+}
+function setNewsDateRangeFromUi(){
+  var sel = document.getElementById('newsAdminRange');
+  var basis = document.getElementById('newsAdminBasis');
+  var from = document.getElementById('newsAdminFrom');
+  var to = document.getElementById('newsAdminTo');
+  if(sel) newsDateRange = sel.value || 'all';
+  if(basis) newsDateBasis = basis.value || 'created';
+  if(from) newsDateFrom = from.value || '';
+  if(to) newsDateTo = to.value || '';
+  var wrap = document.getElementById('newsAdminCustomWrap');
+  if(wrap) wrap.style.display = (newsDateRange === 'custom') ? '' : 'none';
+  renderNews();
+}
 
 function renderNews(){
   var tb=document.getElementById('newsListBody');
@@ -2004,6 +2029,9 @@ function renderNews(){
     if(newsActiveStatus==='all') return true;
     return _articleEffectiveStatus(a) === newsActiveStatus;
   });
+  // QA #208 Phase 2b — date range + sort.
+  visible = _papApplyDateRange(visible, newsDateRange, newsDateBasis, newsDateFrom, newsDateTo);
+  visible = _papApplySort(visible, newsSortBy);
 
   if(!visible.length){
     tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px 0">'+(newsActiveStatus==='all'?'뉴스가 없습니다':'해당 상태의 뉴스가 없습니다')+'</td></tr>';
@@ -3621,11 +3649,188 @@ async function loadEditorials(){
   }
 }
 
+// QA #208 Phase 2b — shared sort + date-range helpers for the three
+// CMS lists (editorial / news / film). Centralising them here means
+// each list has the same option set and the same semantics for
+// "what date does the dropdown filter on".
+//
+// SORT_OPTIONS — `value` is what the <select> stores. The comparator
+// reads the documented date/title field directly off the row, so the
+// helpers don't need to know which list called them.
+var PAP_SORT_OPTIONS = [
+  { value: 'recent',       label: '최신순' },
+  { value: 'oldest',       label: '오래된순' },
+  { value: 'updated_desc', label: '최근 수정순' },
+  { value: 'title_asc',    label: '제목 ㄱ→ㅎ' },
+];
+
+// DATE_RANGE — relative buckets. `直접선택` is wired separately to two
+// <input type="date"> elements so we can render the "from / to" UI
+// without overcomplicating the dropdown.
+var PAP_DATE_RANGE_OPTIONS = [
+  { value: 'all',    label: '전체 기간' },
+  { value: 'today',  label: '오늘' },
+  { value: '7d',     label: '최근 7일' },
+  { value: '30d',    label: '최근 30일' },
+  { value: 'custom', label: '직접 선택' },
+];
+
+// DATE_BASIS — which column the range filter operates on. Each list
+// passes the actual field name to _papApplyDateRange so this is
+// purely the user-facing label set.
+var PAP_DATE_BASIS_OPTIONS = [
+  { value: 'created',   label: '작성일 기준' },
+  { value: 'published', label: '발행일 기준' },
+  { value: 'updated',   label: '수정일 기준' },
+];
+
+// Resolve a row's timestamp for a given basis. The fallbacks mirror
+// what each list already shows in its date column.
+function _papResolveDate(row, basis){
+  if(!row) return null;
+  if(basis === 'created')   return row.created_at || row.published_date || null;
+  if(basis === 'published') return row.published_date || row.scheduled_publish_at || row.created_at || null;
+  if(basis === 'updated')   return row.admin_edited_at || row.updated_at || row.created_at || null;
+  return row.created_at || null;
+}
+
+// Range expressed as a {fromIso, toIso} pair, or null when "전체 기간".
+// `customFrom`/`customTo` are YYYY-MM-DD strings from the date inputs.
+function _papResolveRange(rangeValue, customFrom, customTo){
+  var now = new Date();
+  var startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  function _toEndOfDay(d){
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+  }
+  if(rangeValue === 'today'){
+    return { from: startOfToday.toISOString(), to: _toEndOfDay(now).toISOString() };
+  }
+  if(rangeValue === '7d'){
+    var d7 = new Date(now); d7.setDate(d7.getDate() - 7);
+    return { from: d7.toISOString(), to: now.toISOString() };
+  }
+  if(rangeValue === '30d'){
+    var d30 = new Date(now); d30.setDate(d30.getDate() - 30);
+    return { from: d30.toISOString(), to: now.toISOString() };
+  }
+  if(rangeValue === 'custom'){
+    if(!customFrom && !customTo) return null;
+    var from = customFrom ? new Date(customFrom + 'T00:00:00').toISOString() : null;
+    var to   = customTo   ? _toEndOfDay(new Date(customTo + 'T00:00:00')).toISOString() : null;
+    return { from: from, to: to };
+  }
+  return null; // 'all' or unrecognised
+}
+
+// Filter rows by date range against the chosen basis.
+function _papApplyDateRange(rows, rangeValue, basis, customFrom, customTo){
+  var range = _papResolveRange(rangeValue, customFrom, customTo);
+  if(!range) return rows;
+  return rows.filter(function(r){
+    var t = _papResolveDate(r, basis);
+    if(!t) return false;
+    if(range.from && String(t) < range.from) return false;
+    if(range.to   && String(t) > range.to)   return false;
+    return true;
+  });
+}
+
+// Sort rows by the chosen option. Operates on the documented fields
+// each list exposes; missing values sort to the end for date sorts
+// and to '' for title sort (so blank titles cluster together rather
+// than inflating page 1).
+function _papApplySort(rows, sortValue){
+  var copy = rows.slice();
+  if(sortValue === 'recent'){
+    return copy.sort(function(a,b){
+      var ta = a.created_at || a.published_date || '';
+      var tb = b.created_at || b.published_date || '';
+      return String(tb).localeCompare(String(ta));
+    });
+  }
+  if(sortValue === 'oldest'){
+    return copy.sort(function(a,b){
+      var ta = a.created_at || a.published_date || '';
+      var tb = b.created_at || b.published_date || '';
+      return String(ta).localeCompare(String(tb));
+    });
+  }
+  if(sortValue === 'updated_desc'){
+    return copy.sort(function(a,b){
+      var ta = a.admin_edited_at || a.updated_at || a.created_at || '';
+      var tb = b.admin_edited_at || b.updated_at || b.created_at || '';
+      return String(tb).localeCompare(String(ta));
+    });
+  }
+  if(sortValue === 'title_asc'){
+    return copy.sort(function(a,b){
+      return String(a.title||'').localeCompare(String(b.title||''), 'ko');
+    });
+  }
+  return copy;
+}
+
+// Build the dropdown markup once so all three lists can drop it into
+// their toolbar without duplicating option arrays.
+function _papRenderSortDropdown(idPrefix, currentValue, onchange){
+  return '<select id="'+idPrefix+'Sort" onchange="'+onchange+'" style="background:#fff;border:1px solid var(--border2);padding:6px 10px;border-radius:4px;font-size:12px;cursor:pointer">'
+    + PAP_SORT_OPTIONS.map(function(o){
+        return '<option value="'+o.value+'"'+(o.value===currentValue?' selected':'')+'>'+o.label+'</option>';
+      }).join('')
+    + '</select>';
+}
+function _papRenderDateRangeDropdown(idPrefix, currentValue, basis, customFrom, customTo, onchange){
+  var html = '<select id="'+idPrefix+'Range" onchange="'+onchange+'" style="background:#fff;border:1px solid var(--border2);padding:6px 10px;border-radius:4px;font-size:12px;cursor:pointer">'
+    + PAP_DATE_RANGE_OPTIONS.map(function(o){
+        return '<option value="'+o.value+'"'+(o.value===currentValue?' selected':'')+'>'+o.label+'</option>';
+      }).join('')
+    + '</select>'
+    + '<select id="'+idPrefix+'Basis" onchange="'+onchange+'" style="margin-left:6px;background:#fff;border:1px solid var(--border2);padding:6px 10px;border-radius:4px;font-size:12px;cursor:pointer">'
+    + PAP_DATE_BASIS_OPTIONS.map(function(o){
+        return '<option value="'+o.value+'"'+(o.value===basis?' selected':'')+'>'+o.label+'</option>';
+      }).join('')
+    + '</select>';
+  // Custom-range inputs render hidden until 'custom' is selected.
+  var hidden = (currentValue === 'custom') ? '' : 'display:none;';
+  html += '<span id="'+idPrefix+'CustomWrap" style="margin-left:6px;'+hidden+'">'
+    + '<input type="date" id="'+idPrefix+'From" value="'+(customFrom||'')+'" onchange="'+onchange+'" style="background:#fff;border:1px solid var(--border2);padding:5px 8px;border-radius:4px;font-size:12px">'
+    + '<span style="margin:0 4px;color:var(--text3)">~</span>'
+    + '<input type="date" id="'+idPrefix+'To" value="'+(customTo||'')+'" onchange="'+onchange+'" style="background:#fff;border:1px solid var(--border2);padding:5px 8px;border-radius:4px;font-size:12px">'
+    + '</span>';
+  return html;
+}
+
 // QA #208 — bulk-selection state. A plain Set of editorial ids that
 // survive re-renders so the user can toggle a status filter without
 // losing their checked rows. editorialToggleSelectAll, the per-row
 // onchange, and editorialBulkAction all read/write this.
 var editorialSelectedIds = new Set();
+// QA #208 Phase 2b — sort + date-range state (per-list).
+var editorialSortBy = 'recent';
+var editorialDateRange = 'all';
+var editorialDateBasis = 'created';
+var editorialDateFrom = '';
+var editorialDateTo = '';
+
+function setEditorialSortFromUi(){
+  var sel = document.getElementById('edAdminSort');
+  if(sel) editorialSortBy = sel.value || 'recent';
+  renderEditorialList();
+}
+function setEditorialDateRangeFromUi(){
+  var sel = document.getElementById('edAdminRange');
+  var basis = document.getElementById('edAdminBasis');
+  var from = document.getElementById('edAdminFrom');
+  var to = document.getElementById('edAdminTo');
+  if(sel) editorialDateRange = sel.value || 'all';
+  if(basis) editorialDateBasis = basis.value || 'created';
+  if(from) editorialDateFrom = from.value || '';
+  if(to) editorialDateTo = to.value || '';
+  // Toggle custom-range inputs visibility.
+  var wrap = document.getElementById('edAdminCustomWrap');
+  if(wrap) wrap.style.display = (editorialDateRange === 'custom') ? '' : 'none';
+  renderEditorialList();
+}
 
 function renderEditorialList(){
   var q=(document.getElementById('edSearchAdmin')?document.getElementById('edSearchAdmin').value:'').toLowerCase();
@@ -3650,6 +3855,12 @@ function renderEditorialList(){
         || creator.toLowerCase().indexOf(q)>-1
         || editor.toLowerCase().indexOf(q)>-1;
   });
+
+  // QA #208 Phase 2b — apply date range + sort after status/search
+  // filtering so the user sees the most specific subset first, then
+  // ordered the way they asked.
+  filtered = _papApplyDateRange(filtered, editorialDateRange, editorialDateBasis, editorialDateFrom, editorialDateTo);
+  filtered = _papApplySort(filtered, editorialSortBy);
 
   // QA #208 — populate status summary cards. Counts derive from the
   // FULL editorials list so the dashboard always shows globals
@@ -5060,6 +5271,31 @@ var editFilmId=null;
 // status, and let renderFilms drive the dashboard + bulk-action UI.
 var filmActiveStatus = 'all';
 var filmSelectedIds = new Set();
+// QA #208 Phase 2b — sort + date-range state for film.
+var filmSortBy = 'recent';
+var filmDateRange = 'all';
+var filmDateBasis = 'created';
+var filmDateFrom = '';
+var filmDateTo = '';
+
+function setFilmSortFromUi(){
+  var sel = document.getElementById('filmAdminSort');
+  if(sel) filmSortBy = sel.value || 'recent';
+  renderFilms();
+}
+function setFilmDateRangeFromUi(){
+  var sel = document.getElementById('filmAdminRange');
+  var basis = document.getElementById('filmAdminBasis');
+  var from = document.getElementById('filmAdminFrom');
+  var to = document.getElementById('filmAdminTo');
+  if(sel) filmDateRange = sel.value || 'all';
+  if(basis) filmDateBasis = basis.value || 'created';
+  if(from) filmDateFrom = from.value || '';
+  if(to) filmDateTo = to.value || '';
+  var wrap = document.getElementById('filmAdminCustomWrap');
+  if(wrap) wrap.style.display = (filmDateRange === 'custom') ? '' : 'none';
+  renderFilms();
+}
 
 async function loadFilmsFromAPI(){
   var tb=document.getElementById('filmListBody');if(!tb)return;
@@ -5132,6 +5368,9 @@ function renderFilms(){
     if(filmActiveStatus === 'all') return true;
     return _filmEffectiveStatus(f) === filmActiveStatus;
   });
+  // QA #208 Phase 2b — date range + sort.
+  visible = _papApplyDateRange(visible, filmDateRange, filmDateBasis, filmDateFrom, filmDateTo);
+  visible = _papApplySort(visible, filmSortBy);
 
   tb.innerHTML='';
   if(!visible.length){
