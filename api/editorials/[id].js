@@ -76,17 +76,41 @@ async function _maybeSendApprovalEmail(editorialRow, opts) {
       { approvalDay: opts.approvalDay || '', approvalMonth: opts.approvalMonth || '' }
     );
     const result = await sendEmail(profile.email, tpl);
-    // Only stamp the timestamp when the mailer reports success. A
-    // "skipped" (SMTP not configured) or "sent:false" run leaves the
-    // column NULL so a follow-up retry can succeed once SMTP is back.
+    // QA #214 — record the result in approval_email_status so the admin
+    // UI can render a precise badge. 'sent' on success, 'failed' on
+    // mailer error/skip with a stored reason for debugging.
     if (result && result.sent) {
       await supabaseAdmin
         .from('editorials')
-        .update({ approval_email_sent_at: new Date().toISOString() })
+        .update({
+          approval_email_sent_at: new Date().toISOString(),
+          approval_email_status: 'sent',
+          approval_email_failed_reason: null,
+        })
+        .eq('id', editorialRow.id);
+    } else {
+      const reason = (result && (result.message || result.reason)) || 'mailer returned no success flag';
+      await supabaseAdmin
+        .from('editorials')
+        .update({
+          approval_email_status: 'failed',
+          approval_email_failed_reason: String(reason).slice(0, 500),
+        })
         .eq('id', editorialRow.id);
     }
   } catch (err) {
     console.error('[editorial approval-email] send failed:', err && err.message);
+    // Best-effort: stamp the failure on the row so the editor sees the
+    // red badge instead of an ambiguous "이미 발송됨" placeholder.
+    try {
+      await supabaseAdmin
+        .from('editorials')
+        .update({
+          approval_email_status: 'failed',
+          approval_email_failed_reason: String(err && err.message || 'unknown').slice(0, 500),
+        })
+        .eq('id', editorialRow.id);
+    } catch(_){}
   }
 }
 
@@ -169,9 +193,23 @@ module.exports = async function handler(req, res) {
         // QA #170 — editor-tunable Instagram caption (auto-seeded at
         // submission approval; admin can hand-edit before publishing).
         'instagram_caption',
+        // QA #214 — persist approval-email curator settings so the
+        // editor's day/month inputs survive a save+reopen cycle.
+        // approval_email_status flips to 'pending' here, then the
+        // _maybeSendApprovalEmail helper bumps it to 'sent'/'failed'.
+        'approval_email_day', 'approval_email_month',
       ];
       for (const key of allowed) {
         if (req.body[key] !== undefined) updates[key] = req.body[key];
+      }
+      // QA #214 — map review-modal payload keys (approval_day, approval_month)
+      // onto the persisted column names so a single payload covers both
+      // the mailer (which reads the camelCase variants) and the DB.
+      if (req.body.approval_day !== undefined && updates.approval_email_day === undefined) {
+        updates.approval_email_day = req.body.approval_day;
+      }
+      if (req.body.approval_month !== undefined && updates.approval_email_month === undefined) {
+        updates.approval_email_month = req.body.approval_month;
       }
 
       // QA #202 — pull the FULL prior row up-front so we can both
@@ -192,6 +230,15 @@ module.exports = async function handler(req, res) {
           if (becomingPublished && updates.published_date === undefined && (!prior || !prior.published_date)) {
             updates.published_date = new Date().toISOString();
           }
+        }
+        // QA #214 — when the curator unticks the send checkbox AND a
+        // previous failed send is on file, treat the save as a deliberate
+        // "reset for retry" so the failed badge clears. We never touch
+        // status when the box stays ticked — _maybeSendApprovalEmail
+        // handles the sent/failed transition based on the mailer result.
+        if (req.body.send_approval_email === false && prior && prior.approval_email_status === 'failed') {
+          updates.approval_email_status = 'pending';
+          updates.approval_email_failed_reason = null;
         }
       }
 

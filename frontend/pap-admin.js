@@ -5071,20 +5071,42 @@ function editEditorial(id){
       var chk = document.getElementById('editorialSendApprovalEmail');
       var dayEl = document.getElementById('editorialApprovalDay');
       var monthEl = document.getElementById('editorialApprovalMonth');
-      var alreadySent = !!ed.approval_email_sent_at;
-      if(chk){ chk.checked = false; chk.disabled = alreadySent; }
+      // QA #214 — derive the 4-state status (pending / sent / failed),
+      // hydrate day/month from the persisted columns so the editor
+      // re-opens to the same values, and render a coloured badge that
+      // makes the current state obvious at a glance.
+      var status = ed.approval_email_status || (ed.approval_email_sent_at ? 'sent' : 'pending');
+      var alreadySent = status === 'sent';
+      // Checkbox: keep DISABLED while a successful send is on the row.
+      // For 'failed' state we leave it ENABLED so the editor can retry
+      // by re-ticking and saving again.
+      if(chk){
+        chk.checked = false;
+        chk.disabled = alreadySent;
+      }
+      // Day / Month: hydrate from persisted columns (QA #214 — was '').
+      if(dayEl)   dayEl.value   = ed.approval_email_day   || '';
+      if(monthEl) monthEl.value = ed.approval_email_month || '';
+      // Status badge:
       if(sentNote){
-        if(alreadySent){
+        if(status === 'sent'){
           var when = '';
-          try { when = new Date(ed.approval_email_sent_at).toLocaleString(); } catch(_){}
-          sentNote.textContent = '이미 발송됨' + (when ? ' · ' + when : '');
+          try { when = new Date(ed.approval_email_sent_at).toLocaleString('ko-KR'); } catch(_){}
+          sentNote.textContent = '✅ 발송 완료' + (when ? ' · ' + when : '');
+          sentNote.style.color = '#16a34a';
+          sentNote.style.fontWeight = '700';
+          sentNote.style.display = '';
+        } else if(status === 'failed'){
+          var reason = ed.approval_email_failed_reason || '';
+          sentNote.textContent = '⚠️ 발송 실패' + (reason ? ' · ' + reason.slice(0, 60) : '') + ' (체크 후 저장하면 재발송)';
+          sentNote.style.color = '#dc2626';
+          sentNote.style.fontWeight = '700';
           sentNote.style.display = '';
         } else {
+          // pending — no badge so the form looks like a fresh send opportunity.
           sentNote.style.display = 'none';
         }
       }
-      if(dayEl) dayEl.value = '';
-      if(monthEl) monthEl.value = '';
     } else {
       appBox.style.display = 'none';
     }
@@ -5646,22 +5668,31 @@ async function savePost(mode){
       scheduled_publish_at: scheduledAt
     };
 
-    // QA #172 — approval email payload. Only attached when the admin
-    // ticked the "저장 시 승인 메일 발송" checkbox in the editorial modal.
-    // Backend is idempotent (approval_email_sent_at gate) so re-checking
-    // after a successful send doesn't trigger a duplicate.
+    // QA #172 — approval email payload. The send flag is attached only
+    // when the admin ticked the checkbox; the day/month are persisted
+    // ALWAYS (QA #214) so re-opening the modal hydrates the same values
+    // the editor saved, regardless of whether they triggered a send.
     var approvalChk = document.getElementById('editorialSendApprovalEmail');
+    var _dayInp   = document.getElementById('editorialApprovalDay');
+    var _monthInp = document.getElementById('editorialApprovalMonth');
+    var _dayVal   = _dayInp   ? (_dayInp.value   || '').trim() : '';
+    var _monthVal = _monthInp ? (_monthInp.value || '').trim() : '';
+    // Always persist day/month so the form stays sticky across reloads.
+    payload.approval_day   = _dayVal;
+    payload.approval_month = _monthVal;
+    // Trigger the actual send only when the box is ticked AND not
+    // disabled (disabled means the row already has approval_email_sent_at).
     if(approvalChk && approvalChk.checked && !approvalChk.disabled){
-      var dayInp = document.getElementById('editorialApprovalDay');
-      var monthInp = document.getElementById('editorialApprovalMonth');
       payload.send_approval_email = true;
-      payload.approval_day   = dayInp   ? (dayInp.value   || '').trim() : '';
-      payload.approval_month = monthInp ? (monthInp.value || '').trim() : '';
-      if(!payload.approval_day || !payload.approval_month){
+      if(!_dayVal || !_monthVal){
         if(!confirm('승인 메일의 "around the () of ()" 자리가 비어있어요.\n빈 () 그대로 발송해도 될까요?')){
           return;
         }
       }
+    } else {
+      // Explicit false so the backend can detect "user unticked to reset
+      // a previously failed send" without ambiguity.
+      payload.send_approval_email = false;
     }
     // Remove undefined keys
     Object.keys(payload).forEach(function(k){if(payload[k]===undefined)delete payload[k];});
