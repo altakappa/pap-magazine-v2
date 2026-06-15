@@ -262,6 +262,56 @@ module.exports = async function handler(req, res) {
         }
       }
 
+      // QA #213 — title-based fallback link. If a submission has no
+      // linked editorial via source_submission_id (e.g. the editorial
+      // was created manually before QA #115 wired up that column), try
+      // matching on a normalised title. This way the admin list still
+      // shows "업로드 완료" for published rows whose link was lost,
+      // and also self-heals the data by stamping source_submission_id
+      // back onto the editorial so the next request hits the fast path.
+      const unlinkedSubs = (submissions || [])
+        .filter(s => s && s.status === 'approved' && !linkedEditorialBySubId[s.id] && s.title)
+        .map(s => ({ id: s.id, normTitle: String(s.title).trim().toLowerCase() }));
+      if (unlinkedSubs.length > 0) {
+        const candidateTitles = unlinkedSubs.map(u => u.normTitle);
+        const { data: candidateEditorials } = await supabaseAdmin
+          .from('editorials')
+          .select('id, slug, status, published_date, scheduled_publish_at, source_submission_id, title')
+          .is('source_submission_id', null);
+        if (Array.isArray(candidateEditorials)) {
+          const byTitle = {};
+          for (const er of candidateEditorials) {
+            if (!er || !er.title) continue;
+            const k = String(er.title).trim().toLowerCase();
+            // First match wins. Multiple drafts with the same title
+            // are unusual; the editor can disambiguate via the edit URL.
+            if (!byTitle[k]) byTitle[k] = er;
+          }
+          // Pair each unlinked submission with a same-title editorial,
+          // backfill source_submission_id, and seed the lookup map so
+          // _deriveDisplayStatus picks it up below.
+          const repairs = [];
+          for (const u of unlinkedSubs) {
+            const match = byTitle[u.normTitle];
+            if (!match) continue;
+            linkedEditorialBySubId[u.id] = match;
+            repairs.push({ ed_id: match.id, sub_id: u.id });
+          }
+          // Fire-and-forget self-heal: write source_submission_id back
+          // so subsequent requests don't pay the title-scan cost.
+          for (const r of repairs) {
+            supabaseAdmin
+              .from('editorials')
+              .update({ source_submission_id: r.sub_id })
+              .eq('id', r.ed_id)
+              .is('source_submission_id', null)
+              .then(({ error }) => {
+                if (error) console.warn('[QA213 self-heal] editorial', r.ed_id, error.message);
+              });
+          }
+        }
+      }
+
       // Hydrate submitter profile + subscription plan via side queries.
       const userIds = Array.from(new Set(
         (submissions || []).map(s => s.user_id).filter(Boolean)
