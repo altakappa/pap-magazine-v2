@@ -9,6 +9,10 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { handleCors } = require('../_lib/cors');
 const { requireAdmin } = require('../_lib/auth');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
+const { recordContentChange, diffFields, attachAuthorship } = require('../_lib/audit');
+
+// QA #202 — fields tracked in the audit diff for shorts.
+const SHORTS_AUDIT_FIELDS = ['title','youtube_id','thumbnail_url','published_date','tags','status'];
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -29,6 +33,8 @@ module.exports = async function handler(req, res) {
         return res.status(404).json({ error: 'Short not found' });
       }
 
+      await attachAuthorship([data]);
+
       return res.status(200).json({ data });
     } catch (err) {
       console.error('Short GET error:', err);
@@ -48,6 +54,17 @@ module.exports = async function handler(req, res) {
         if (req.body[key] !== undefined) updates[key] = req.body[key];
       }
 
+      // QA #202 — capture prior + stamp editor.
+      let priorRow = null;
+      let priorStatus = null;
+      {
+        const { data: prior } = await supabaseAdmin
+          .from('shorts').select('*').eq('id', id).single();
+        priorRow = prior || null;
+        priorStatus = prior ? prior.status : null;
+      }
+      updates.updated_by = user.id;
+
       const { data, error } = await supabaseAdmin
         .from('shorts')
         .update(updates)
@@ -56,6 +73,24 @@ module.exports = async function handler(req, res) {
         .single();
 
       if (error) throw error;
+
+      try {
+        const diff = diffFields(priorRow, updates, SHORTS_AUDIT_FIELDS);
+        let action = 'update';
+        let summary;
+        if (updates.status && priorStatus && updates.status !== priorStatus) {
+          if (updates.status === 'published')         { action = 'publish';   summary = `공개 전환 (이전: ${priorStatus})`; }
+          else if (priorStatus === 'published')       { action = 'unpublish'; summary = `${updates.status} 으로 비공개 전환`; }
+        }
+        await recordContentChange({
+          content_type: 'shorts',
+          content_id: id,
+          action,
+          actor: user,
+          summary,
+          diff,
+        });
+      } catch(_){}
 
       return res.status(200).json({ data });
     } catch (err) {
@@ -70,12 +105,27 @@ module.exports = async function handler(req, res) {
     if (!user) return;
 
     try {
+      let priorTitle = null;
+      try {
+        const { data: prior } = await supabaseAdmin
+          .from('shorts').select('title').eq('id', id).single();
+        priorTitle = prior ? prior.title : null;
+      } catch(_){}
+
       const { error } = await supabaseAdmin
         .from('shorts')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
+
+      await recordContentChange({
+        content_type: 'shorts',
+        content_id: id,
+        action: 'delete',
+        actor: user,
+        summary: priorTitle ? `삭제: ${priorTitle}` : '쇼츠 삭제',
+      });
 
       return res.status(200).json({ message: 'Short deleted' });
     } catch (err) {

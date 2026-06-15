@@ -11,6 +11,16 @@ const { requireAdmin } = require('../_lib/auth');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { embedAndStoreEditorial } = require('../_lib/embeddings');
 const { sendEmail, templates } = require('../_lib/email');
+const { recordContentChange, diffFields, attachAuthorship } = require('../_lib/audit');
+
+// QA #202 — fields we care about in the audit diff. Long opaque JSONB
+// like `embedding` is intentionally excluded so the diff stays small
+// and readable in the admin UI's "수정 이력" view.
+const EDITORIAL_AUDIT_FIELDS = [
+  'title','slug','status','published_date','scheduled_publish_at',
+  'cover_image','thumbnail','tags','issue','description','description_en',
+  'title_en','instagram_caption','seo_title','seo_description','og_image'
+];
 
 // QA #172 / QA #185 — Approval-email trigger.
 // Fires from POST and PUT when the admin ticks "✉️ 저장 시 승인 메일 발송"
@@ -127,6 +137,11 @@ module.exports = async function handler(req, res) {
           .sort((a, b) => String(b.published_date || '').localeCompare(String(a.published_date || '')));
       }
 
+      // QA #202 — attach denormalised authorship objects so the admin
+      // detail modal can render "작성: X · 마지막 수정: Y" without a
+      // per-row second fetch.
+      await attachAuthorship([data]);
+
       return res.status(200).json({ data });
     } catch (err) {
       console.error('Editorial GET error:', err);
@@ -156,19 +171,24 @@ module.exports = async function handler(req, res) {
         if (req.body[key] !== undefined) updates[key] = req.body[key];
       }
 
-      // Detect a draft→published transition so we can stamp published_date
-      // and force an embed below. We need the prior status for that.
+      // QA #202 — pull the FULL prior row up-front so we can both
+      // (a) detect draft→published transition and (b) compute an
+      // audit diff against what the editor actually changed.
       let priorStatus = null;
-      if (updates.status !== undefined) {
+      let priorRow = null;
+      {
         const { data: prior } = await supabaseAdmin
           .from('editorials')
-          .select('status, published_date')
+          .select('*')
           .eq('id', id)
           .single();
+        priorRow = prior || null;
         priorStatus = prior ? prior.status : null;
-        const becomingPublished = updates.status === 'published' && priorStatus !== 'published';
-        if (becomingPublished && updates.published_date === undefined && (!prior || !prior.published_date)) {
-          updates.published_date = new Date().toISOString();
+        if (updates.status !== undefined) {
+          const becomingPublished = updates.status === 'published' && priorStatus !== 'published';
+          if (becomingPublished && updates.published_date === undefined && (!prior || !prior.published_date)) {
+            updates.published_date = new Date().toISOString();
+          }
         }
       }
 
@@ -179,6 +199,9 @@ module.exports = async function handler(req, res) {
       // admin_edited_at IS NOT NULL); writing here flips the second arm
       // true so the row starts appearing in 임시저장 from now on.
       updates.admin_edited_at = new Date().toISOString();
+      // QA #202 — record who pressed Save. created_by stays untouched
+      // (only POST sets it); updated_by gets the current admin.
+      updates.updated_by = user.id;
 
       const { data, error } = await supabaseAdmin
         .from('editorials')
@@ -188,6 +211,28 @@ module.exports = async function handler(req, res) {
         .single();
 
       if (error) throw error;
+
+      // QA #202 — audit ledger entry with a compact diff of what
+      // actually changed. The publish/unpublish action is split out
+      // because the UI wants to highlight status transitions
+      // separately from generic edits.
+      try {
+        const diff = diffFields(priorRow, updates, EDITORIAL_AUDIT_FIELDS);
+        let action = 'update';
+        let summary;
+        if (updates.status && priorStatus && updates.status !== priorStatus) {
+          if (updates.status === 'published')         { action = 'publish';   summary = `공개 전환 (이전: ${priorStatus})`; }
+          else if (priorStatus === 'published')       { action = 'unpublish'; summary = `${updates.status} 으로 비공개 전환`; }
+        }
+        await recordContentChange({
+          content_type: 'editorial',
+          content_id: id,
+          action,
+          actor: user,
+          summary,
+          diff,
+        });
+      } catch(_){}
 
       // Re-embed when the admin changed embedding-relevant text OR when the
       // editorial is going public for the first time (drafts staged from
@@ -221,12 +266,32 @@ module.exports = async function handler(req, res) {
     if (!user) return;
 
     try {
+      // QA #202 — capture the row before destruction so the audit row
+      // has a meaningful "삭제된 콘텐츠 제목" summary.
+      let priorTitle = null;
+      try {
+        const { data: prior } = await supabaseAdmin
+          .from('editorials')
+          .select('title')
+          .eq('id', id)
+          .single();
+        priorTitle = prior ? prior.title : null;
+      } catch(_){}
+
       const { error } = await supabaseAdmin
         .from('editorials')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
+
+      await recordContentChange({
+        content_type: 'editorial',
+        content_id: id,
+        action: 'delete',
+        actor: user,
+        summary: priorTitle ? `삭제: ${priorTitle}` : '에디토리얼 삭제',
+      });
 
       return res.status(200).json({ message: 'Editorial deleted' });
     } catch (err) {

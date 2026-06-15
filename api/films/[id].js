@@ -9,6 +9,13 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { handleCors } = require('../_lib/cors');
 const { requireAdmin } = require('../_lib/auth');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
+const { recordContentChange, diffFields, attachAuthorship } = require('../_lib/audit');
+
+// QA #202 — fields tracked in the audit diff for films.
+const FILM_AUDIT_FIELDS = [
+  'title','slug','status','youtube_id','thumbnail_url','published_date',
+  'scheduled_publish_at','categories','tags','related_editorial_id'
+];
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -40,6 +47,9 @@ module.exports = async function handler(req, res) {
           && new Date(data.scheduled_publish_at).getTime() > Date.now()) {
         return res.status(404).json({ error: 'Film not found' });
       }
+
+      // QA #202 — denormalised authorship for the admin detail view.
+      await attachAuthorship([data]);
 
       return res.status(200).json({ data });
     } catch (err) {
@@ -75,6 +85,20 @@ module.exports = async function handler(req, res) {
         updates[key] = v;
       }
 
+      // QA #202 — pull prior row for both transition detection and the
+      // audit diff.
+      let priorRow = null;
+      let priorStatus = null;
+      {
+        const { data: prior } = await supabaseAdmin
+          .from('films').select('*').eq('id', id).single();
+        priorRow = prior || null;
+        priorStatus = prior ? prior.status : null;
+      }
+
+      // QA #202 — stamp the editor.
+      updates.updated_by = user.id;
+
       const { data, error } = await supabaseAdmin
         .from('films')
         .update(updates)
@@ -83,6 +107,25 @@ module.exports = async function handler(req, res) {
         .single();
 
       if (error) throw error;
+
+      // QA #202 — audit ledger entry with diff.
+      try {
+        const diff = diffFields(priorRow, updates, FILM_AUDIT_FIELDS);
+        let action = 'update';
+        let summary;
+        if (updates.status && priorStatus && updates.status !== priorStatus) {
+          if (updates.status === 'published')         { action = 'publish';   summary = `공개 전환 (이전: ${priorStatus})`; }
+          else if (priorStatus === 'published')       { action = 'unpublish'; summary = `${updates.status} 으로 비공개 전환`; }
+        }
+        await recordContentChange({
+          content_type: 'film',
+          content_id: id,
+          action,
+          actor: user,
+          summary,
+          diff,
+        });
+      } catch(_){}
 
       return res.status(200).json({ data });
     } catch (err) {
@@ -97,12 +140,27 @@ module.exports = async function handler(req, res) {
     if (!user) return;
 
     try {
+      let priorTitle = null;
+      try {
+        const { data: prior } = await supabaseAdmin
+          .from('films').select('title').eq('id', id).single();
+        priorTitle = prior ? prior.title : null;
+      } catch(_){}
+
       const { error } = await supabaseAdmin
         .from('films')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
+
+      await recordContentChange({
+        content_type: 'film',
+        content_id: id,
+        action: 'delete',
+        actor: user,
+        summary: priorTitle ? `삭제: ${priorTitle}` : '필름 삭제',
+      });
 
       return res.status(200).json({ message: 'Film deleted' });
     } catch (err) {

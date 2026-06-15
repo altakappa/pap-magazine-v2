@@ -8,6 +8,7 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { handleCors } = require('../_lib/cors');
 const { requireAdmin } = require('../_lib/auth');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
+const { recordContentChange, attachAuthorship } = require('../_lib/audit');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -45,7 +46,10 @@ module.exports = async function handler(req, res) {
       const LIST_COLUMNS = [
         'id','title','subtitle','slug','thumbnail_url','hero_image_url',
         'category','tags','published_date','custom_url','status',
-        'scheduled_publish_at','admin_edited_at','updated_at'
+        'scheduled_publish_at','admin_edited_at','updated_at',
+        // QA #202 — surface authorship in the admin list (created_at +
+        // FK columns; attachAuthorship resolves to display_name).
+        'created_at','created_by','updated_by'
       ].join(',');
 
       let query = supabaseAdmin
@@ -81,6 +85,10 @@ module.exports = async function handler(req, res) {
 
       const { data, error, count } = await query;
       if (error) throw error;
+
+      // QA #202 — batch-resolve created_by / updated_by into _creator /
+      // _editor objects so the admin list can render display names.
+      if (Array.isArray(data)) await attachAuthorship(data);
 
       // QA #186 — edge cache the published list. Drafts/scheduled stay
       // no-store because they are admin-only and change frequently.
@@ -140,11 +148,23 @@ module.exports = async function handler(req, res) {
           custom_url: custom_url || null,
           status: status || 'published',
           scheduled_publish_at: scheduled_publish_at || null,
+          // QA #202 — authorship stamps (creator == initial editor).
+          created_by: user.id,
+          updated_by: user.id,
         })
         .select()
         .single();
 
       if (error) throw error;
+
+      // QA #202 — audit ledger entry.
+      await recordContentChange({
+        content_type: 'article',
+        content_id: data.id,
+        action: 'create',
+        actor: user,
+        summary: `뉴스 등록: ${data.title}`,
+      });
 
       return res.status(201).json({ data });
     } catch (err) {

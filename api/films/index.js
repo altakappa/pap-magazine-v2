@@ -8,6 +8,7 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { handleCors } = require('../_lib/cors');
 const { requireAdmin } = require('../_lib/auth');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
+const { recordContentChange, attachAuthorship } = require('../_lib/audit');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -30,7 +31,9 @@ module.exports = async function handler(req, res) {
       // it doesn't render).
       const LIST_COLUMNS = [
         'id','title','slug','youtube_id','thumbnail_url','published_date',
-        'categories','tags','status','scheduled_publish_at'
+        'categories','tags','status','scheduled_publish_at',
+        // QA #202 — authorship columns for admin list rendering.
+        'created_at','created_by','updated_by'
       ].join(',');
       let query = supabaseAdmin
         .from('films')
@@ -49,6 +52,9 @@ module.exports = async function handler(req, res) {
 
       const { data, error, count } = await query;
       if (error) throw error;
+
+      // QA #202 — denormalise authorship for admin list views.
+      if (Array.isArray(data)) await attachAuthorship(data);
 
       // QA #186 — edge cache the published list.
       if (requestedStatus === 'published') {
@@ -108,6 +114,9 @@ module.exports = async function handler(req, res) {
         // than absent (matters for the GET schedule gate to short-circuit
         // on IS NULL instead of evaluating a missing column).
         scheduled_publish_at: scheduled_publish_at || null,
+        // QA #202 — authorship.
+        created_by: user.id,
+        updated_by: user.id,
       };
       if (slug)                  insertRow.slug = slug;
       if (related_editorial_id)  insertRow.related_editorial_id = related_editorial_id;
@@ -119,6 +128,15 @@ module.exports = async function handler(req, res) {
         .single();
 
       if (error) throw error;
+
+      // QA #202 — audit ledger.
+      await recordContentChange({
+        content_type: 'film',
+        content_id: data.id,
+        action: 'create',
+        actor: user,
+        summary: `필름 등록: ${data.title}`,
+      });
 
       return res.status(201).json({ data });
     } catch (err) {

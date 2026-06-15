@@ -9,6 +9,7 @@ const { handleCors } = require('../_lib/cors');
 const { requireAdmin } = require('../_lib/auth');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { embedAndStoreEditorial } = require('../_lib/embeddings');
+const { recordContentChange, attachAuthorship } = require('../_lib/audit');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -67,7 +68,10 @@ module.exports = async function handler(req, res) {
         'url','tags','issue','status','scheduled_publish_at','title_en',
         'description','description_en','gallery','credits','fashion',
         'instagram_caption','og_image','seo_title','seo_description',
-        'updated_at','source_submission_id'
+        'updated_at','source_submission_id',
+        // QA #202 — surface authorship in the admin list so editors
+        // see "who created / last edited" without a per-row lookup.
+        'created_at','created_by','updated_by','admin_edited_at'
       ].join(',');
       let query = supabaseAdmin
         .from('editorials')
@@ -138,6 +142,9 @@ module.exports = async function handler(req, res) {
               .sort((a, b) => String(b.published_date || '').localeCompare(String(a.published_date || '')));
           }
         }
+        // QA #202 — batch-resolve created_by / updated_by into
+        // _creator / _editor objects (one extra query, not N).
+        await attachAuthorship(data);
       }
 
       return res.status(200).json({
@@ -200,11 +207,26 @@ module.exports = async function handler(req, res) {
           // direct-admin-create starts NULL so the textarea shows the
           // "generate" button instead of stale content).
           instagram_caption: instagram_caption || null,
+          // QA #202 — authorship stamps. Both columns get the same id
+          // on POST because the creator IS the most recent editor for a
+          // brand-new row; subsequent PUTs will bump updated_by.
+          created_by: user.id,
+          updated_by: user.id,
         })
         .select()
         .single();
 
       if (error) throw error;
+
+      // QA #202 — audit ledger entry (fire-and-forget; failures don't
+      // block the save).
+      await recordContentChange({
+        content_type: 'editorial',
+        content_id: data.id,
+        action: 'create',
+        actor: user,
+        summary: `에디토리얼 등록: ${data.title}`,
+      });
 
       // Best-effort semantic embedding. Done AFTER the insert succeeds so
       // the editorial is durably saved even if OpenAI is unreachable;

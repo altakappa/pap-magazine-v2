@@ -8,6 +8,7 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { handleCors } = require('../_lib/cors');
 const { requireAdmin } = require('../_lib/auth');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
+const { recordContentChange, attachAuthorship } = require('../_lib/audit');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -29,6 +30,9 @@ module.exports = async function handler(req, res) {
 
       const { data, error, count } = await query;
       if (error) throw error;
+
+      // QA #202 — denormalise authorship for admin list views.
+      if (Array.isArray(data)) await attachAuthorship(data);
 
       return res.status(200).json({
         data,
@@ -65,12 +69,24 @@ module.exports = async function handler(req, res) {
           thumbnail_url: thumbnail_url || null,
           published_date: published_date || null,
           tags: tags || title,
-          status: status || 'published'
+          status: status || 'published',
+          // QA #202 — authorship.
+          created_by: user.id,
+          updated_by: user.id,
         })
         .select()
         .single();
 
       if (error) throw error;
+
+      // QA #202 — audit ledger entry.
+      await recordContentChange({
+        content_type: 'shorts',
+        content_id: data.id,
+        action: 'create',
+        actor: user,
+        summary: `쇼츠 등록: ${data.title}`,
+      });
 
       return res.status(201).json({ data });
     } catch (err) {

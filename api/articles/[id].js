@@ -9,6 +9,14 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { handleCors } = require('../_lib/cors');
 const { requireAdmin } = require('../_lib/auth');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
+const { recordContentChange, diffFields, attachAuthorship } = require('../_lib/audit');
+
+// QA #202 — fields tracked in the audit diff for articles.
+const ARTICLE_AUDIT_FIELDS = [
+  'title','subtitle','slug','status','category','published_date',
+  'scheduled_publish_at','thumbnail_url','hero_image_url','content',
+  'tags','credits','custom_url'
+];
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -28,6 +36,9 @@ module.exports = async function handler(req, res) {
       if (error || !data) {
         return res.status(404).json({ error: 'Article not found' });
       }
+
+      // QA #202 — denormalised authorship for the admin detail view.
+      await attachAuthorship([data]);
 
       return res.status(200).json({ data });
     } catch (err) {
@@ -54,21 +65,23 @@ module.exports = async function handler(req, res) {
         if (req.body[key] !== undefined) updates[key] = req.body[key];
       }
 
-      // Detect draft→published transition so we can stamp published_date
-      // when the row goes live for the first time (mirrors editorial).
+      // QA #202 — fetch full prior row for both transition detection
+      // and audit diff (mirrors editorials/[id].js).
       let priorStatus = null;
-      let priorPublishedAt = null;
-      if (updates.status !== undefined) {
+      let priorRow = null;
+      {
         const { data: prior } = await supabaseAdmin
           .from('articles')
-          .select('status, published_date')
+          .select('*')
           .eq('id', id)
           .single();
+        priorRow = prior || null;
         priorStatus = prior ? prior.status : null;
-        priorPublishedAt = prior ? prior.published_date : null;
-        const becomingPublished = updates.status === 'published' && priorStatus !== 'published';
-        if (becomingPublished && updates.published_date === undefined && !priorPublishedAt) {
-          updates.published_date = new Date().toISOString();
+        if (updates.status !== undefined) {
+          const becomingPublished = updates.status === 'published' && priorStatus !== 'published';
+          if (becomingPublished && updates.published_date === undefined && (!prior || !prior.published_date)) {
+            updates.published_date = new Date().toISOString();
+          }
         }
       }
 
@@ -76,6 +89,8 @@ module.exports = async function handler(req, res) {
       // Drafts tab can tell "actually curated by an admin" from any
       // future auto-staged rows (matching QA #197 for editorials).
       updates.admin_edited_at = new Date().toISOString();
+      // QA #202 — record who pressed Save.
+      updates.updated_by = user.id;
 
       const { data, error } = await supabaseAdmin
         .from('articles')
@@ -85,6 +100,25 @@ module.exports = async function handler(req, res) {
         .single();
 
       if (error) throw error;
+
+      // QA #202 — audit ledger entry with diff.
+      try {
+        const diff = diffFields(priorRow, updates, ARTICLE_AUDIT_FIELDS);
+        let action = 'update';
+        let summary;
+        if (updates.status && priorStatus && updates.status !== priorStatus) {
+          if (updates.status === 'published')         { action = 'publish';   summary = `공개 전환 (이전: ${priorStatus})`; }
+          else if (priorStatus === 'published')       { action = 'unpublish'; summary = `${updates.status} 으로 비공개 전환`; }
+        }
+        await recordContentChange({
+          content_type: 'article',
+          content_id: id,
+          action,
+          actor: user,
+          summary,
+          diff,
+        });
+      } catch(_){}
 
       return res.status(200).json({ data });
     } catch (err) {
@@ -99,12 +133,28 @@ module.exports = async function handler(req, res) {
     if (!user) return;
 
     try {
+      let priorTitle = null;
+      try {
+        const { data: prior } = await supabaseAdmin
+          .from('articles').select('title').eq('id', id).single();
+        priorTitle = prior ? prior.title : null;
+      } catch(_){}
+
       const { error } = await supabaseAdmin
         .from('articles')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
+
+      // QA #202 — audit ledger.
+      await recordContentChange({
+        content_type: 'article',
+        content_id: id,
+        action: 'delete',
+        actor: user,
+        summary: priorTitle ? `삭제: ${priorTitle}` : '뉴스 삭제',
+      });
 
       return res.status(200).json({ message: 'Article deleted' });
     } catch (err) {

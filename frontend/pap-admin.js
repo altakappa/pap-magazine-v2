@@ -1970,7 +1970,7 @@ function renderNews(){
   });
 
   if(!visible.length){
-    tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:40px 0">'+(newsActiveStatus==='all'?'뉴스가 없습니다':'해당 상태의 뉴스가 없습니다')+'</td></tr>';
+    tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:40px 0">'+(newsActiveStatus==='all'?'뉴스가 없습니다':'해당 상태의 뉴스가 없습니다')+'</td></tr>';
     return;
   }
   tb.innerHTML='';
@@ -1994,8 +1994,78 @@ function renderNews(){
     // dedicated 편집 button stays for users who learned the editorial
     // pattern of clicking the explicit action.
     var safeTitle = esc(a.title||'(제목 없음)');
-    tb.innerHTML+='<tr style="cursor:pointer" onclick="editArticle(\''+a.id+'\')"><td style="font-size:10px">'+shortId+'</td><td class="td-title">'+safeTitle+'</td><td><span class="badge '+cls+'">'+label+'</span></td><td>'+fmtDate(a.published_date||a.scheduled_publish_at)+'</td><td onclick="event.stopPropagation()"><button class="btn btn-sm" onclick="editArticle(\''+a.id+'\')">편집</button> <button class="btn btn-sm btn-red" onclick="deleteArticle(\''+a.id+'\',\''+safeTitle.replace(/'/g,"\\'")+'\')">삭제</button></td></tr>';
+    // QA #202 — render "작성자 · 최근 수정자" in a tight two-line cell.
+    var authorshipCell = _renderAuthorshipCell(a);
+    tb.innerHTML+='<tr style="cursor:pointer" onclick="editArticle(\''+a.id+'\')"><td style="font-size:10px">'+shortId+'</td><td class="td-title">'+safeTitle+'</td><td><span class="badge '+cls+'">'+label+'</span></td><td>'+fmtDate(a.published_date||a.scheduled_publish_at)+'</td><td onclick="event.stopPropagation()" style="font-size:11px;color:var(--text2);line-height:1.5">'+authorshipCell+'</td><td onclick="event.stopPropagation()"><button class="btn btn-sm" onclick="editArticle(\''+a.id+'\')">편집</button> <button class="btn btn-sm btn-red" onclick="deleteArticle(\''+a.id+'\',\''+safeTitle.replace(/'/g,"\\'")+'\')">삭제</button></td></tr>';
   });
+}
+
+// QA #202 — tiny cell builder that renders denormalised authorship.
+// `_creator` and `_editor` are objects attached by attachAuthorship()
+// on the API side. If both are missing (legacy rows pre-#202) we show
+// a dash so the column stays visually balanced.
+function _renderAuthorshipCell(row){
+  if(!row) return '<span style="color:var(--text3)">—</span>';
+  var creatorName = (row._creator && (row._creator.display_name || row._creator.email)) || null;
+  var editorName  = (row._editor  && (row._editor.display_name  || row._editor.email))  || null;
+  var lines = [];
+  if(creatorName){
+    var createdAt = row.created_at ? new Date(row.created_at).toLocaleDateString('ko-KR',{year:'2-digit',month:'2-digit',day:'2-digit'}) : '';
+    lines.push('<div><span style="color:var(--text3)">작성:</span> '+esc(creatorName)+(createdAt?' <span style="color:var(--text3)">('+createdAt+')</span>':'')+'</div>');
+  }
+  if(editorName && (!creatorName || row.created_by !== row.updated_by)){
+    var editedAt = row.admin_edited_at || row.updated_at;
+    var editedStr = editedAt ? new Date(editedAt).toLocaleDateString('ko-KR',{year:'2-digit',month:'2-digit',day:'2-digit'}) : '';
+    lines.push('<div><span style="color:var(--text3)">수정:</span> '+esc(editorName)+(editedStr?' <span style="color:var(--text3)">('+editedStr+')</span>':'')+'</div>');
+  }
+  return lines.length ? lines.join('') : '<span style="color:var(--text3)">—</span>';
+}
+
+// QA #202 — open the audit log modal for any content row.
+// `contentType` is one of 'editorial'/'article'/'film'/'shorts'.
+async function openContentAuditLog(contentType, contentId){
+  var modal = document.getElementById('contentAuditModal');
+  var body  = document.getElementById('contentAuditBody');
+  if(!modal || !body){ return; }
+  modal.classList.add('show');
+  body.innerHTML = '<div style="padding:40px 0;text-align:center;color:var(--text3)">불러오는 중...</div>';
+  try {
+    var resp = await apiGet('/admin/content-audit/'+contentType+'/'+contentId);
+    var rows = resp && resp.data ? resp.data : [];
+    if(!rows.length){
+      body.innerHTML = '<div style="padding:30px 0;text-align:center;color:var(--text3)">아직 수정 이력이 없습니다.</div>';
+      return;
+    }
+    body.innerHTML = rows.map(function(r){
+      var when = new Date(r.created_at);
+      var whenStr = when.toLocaleString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+      var actionLabel = ({create:'등록',update:'수정',delete:'삭제',publish:'공개',unpublish:'비공개 전환'})[r.action] || r.action;
+      var actionColor = ({create:'#27ae60',update:'#2980b9',delete:'#c0392b',publish:'#16a085',unpublish:'#7f8c8d'})[r.action] || '#666';
+      var actor = r.actor_label || '(알 수 없음)';
+      var diffSummary = '';
+      if(r.diff && typeof r.diff === 'object'){
+        var keys = Object.keys(r.diff);
+        if(keys.length){
+          diffSummary = '<div style="margin-top:6px;font-size:11px;color:var(--text3)">변경 필드: '+keys.map(esc).join(', ')+'</div>';
+        }
+      }
+      return '<div style="padding:10px 14px;border-bottom:1px solid var(--border);font-size:12px;line-height:1.6">'
+        +'<div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px">'
+          +'<div><span style="display:inline-block;padding:2px 8px;background:'+actionColor+';color:#fff;font-size:10px;border-radius:2px;letter-spacing:.04em">'+actionLabel+'</span> '
+          +'<strong style="margin-left:8px">'+esc(actor)+'</strong></div>'
+          +'<div style="color:var(--text3);font-size:11px">'+esc(whenStr)+'</div>'
+        +'</div>'
+        +(r.summary ? '<div style="margin-top:4px;color:var(--text2)">'+esc(r.summary)+'</div>' : '')
+        +diffSummary
+      +'</div>';
+    }).join('');
+  } catch(e){
+    body.innerHTML = '<div style="padding:30px 0;text-align:center;color:#c0392b">불러오기 실패: '+esc(e.message||'')+'</div>';
+  }
+}
+function closeContentAuditModal(){
+  var modal = document.getElementById('contentAuditModal');
+  if(modal) modal.classList.remove('show');
 }
 
 // QA #199 — status tab handler. Just flips the active filter and
@@ -2062,6 +2132,28 @@ function _setNewsEditorMode(isEdit, article){
     meta.textContent = bits.join(' · ');
   } else if(meta){
     meta.textContent = '';
+  }
+  // QA #202 — populate the authorship line + reveal the "수정 이력 보기"
+  // button. Only meaningful in edit mode (a brand-new article has no
+  // ledger yet).
+  var authorshipWrap = document.getElementById('newnewsAuthorshipMeta');
+  var authorshipLine = document.getElementById('newnewsAuthorshipLine');
+  if(authorshipWrap && authorshipLine){
+    if(isEdit && article){
+      var creator = article._creator && (article._creator.display_name || article._creator.email);
+      var editor  = article._editor  && (article._editor.display_name  || article._editor.email);
+      var parts = [];
+      if(creator) parts.push('작성: <strong>'+esc(creator)+'</strong>'+(article.created_at?' · '+fmtDate(article.created_at):''));
+      if(editor)  parts.push('최근 수정: <strong>'+esc(editor)+'</strong>'+(article.admin_edited_at?' · '+fmtDate(article.admin_edited_at):''));
+      if(parts.length){
+        authorshipLine.innerHTML = parts.join(' &nbsp;|&nbsp; ');
+        authorshipWrap.style.display = 'block';
+      } else {
+        authorshipWrap.style.display = 'none';
+      }
+    } else {
+      authorshipWrap.style.display = 'none';
+    }
   }
 }
 
