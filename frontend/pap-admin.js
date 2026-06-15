@@ -1957,22 +1957,47 @@ function _articleEffectiveStatus(a){
   return a.status || 'published';
 }
 
+// QA #208 Phase 2a — bulk-selection state for the news list (same
+// pattern as editorial: a Set survives re-renders + filter toggles).
+var newsSelectedIds = new Set();
+
 function renderNews(){
   var tb=document.getElementById('newsListBody');
   if(!tb)return;
 
   // Counts roll up across all rows regardless of active filter so the
   // tab badges always show the global totals.
-  var counts={all:allArticles.length, published:0, draft:0, scheduled:0};
+  // QA #208 Phase 2a — also track 'archived' so the new 비공개 card
+  // gets an accurate count; everything not in the live triad rolls in.
+  var counts={all:allArticles.length, published:0, draft:0, scheduled:0, archived:0};
   allArticles.forEach(function(a){
     var s=_articleEffectiveStatus(a);
-    if(counts[s]!==undefined) counts[s]++;
+    if(s === 'scheduled') counts.scheduled++;
+    else if(s === 'published') counts.published++;
+    else if(s === 'draft') counts.draft++;
+    else counts.archived++;
   });
   var setCount=function(id,n){var el=document.getElementById(id);if(el)el.textContent=String(n||0);};
   setCount('newsAllCountBadge', counts.all);
   setCount('newsPublishedCountBadge', counts.published);
   setCount('newsDraftCountBadge', counts.draft);
   setCount('newsScheduledCountBadge', counts.scheduled);
+  // QA #208 Phase 2a — stat-card numbers.
+  setCount('newsStatAll', counts.all);
+  setCount('newsStatPublished', counts.published);
+  setCount('newsStatDraft', counts.draft);
+  setCount('newsStatScheduled', counts.scheduled);
+  setCount('newsStatArchived', counts.archived);
+  // Highlight the active card (purple border).
+  document.querySelectorAll('.news-stat-card').forEach(function(c){
+    if(c.dataset.status === newsActiveStatus){
+      c.style.borderColor = 'var(--purple)';
+      c.style.boxShadow = '0 0 0 2px rgba(124,58,237,0.15)';
+    } else {
+      c.style.borderColor = 'var(--border2)';
+      c.style.boxShadow = '';
+    }
+  });
 
   // Filter rows by the active tab. 'all' shows everything.
   var visible = allArticles.filter(function(a){
@@ -1981,7 +2006,8 @@ function renderNews(){
   });
 
   if(!visible.length){
-    tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:40px 0">'+(newsActiveStatus==='all'?'뉴스가 없습니다':'해당 상태의 뉴스가 없습니다')+'</td></tr>';
+    tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px 0">'+(newsActiveStatus==='all'?'뉴스가 없습니다':'해당 상태의 뉴스가 없습니다')+'</td></tr>';
+    _newsRefreshBulkToolbar();
     return;
   }
   tb.innerHTML='';
@@ -2007,8 +2033,85 @@ function renderNews(){
     var safeTitle = esc(a.title||'(제목 없음)');
     // QA #202 — render "작성자 · 최근 수정자" in a tight two-line cell.
     var authorshipCell = _renderAuthorshipCell(a);
-    tb.innerHTML+='<tr style="cursor:pointer" onclick="editArticle(\''+a.id+'\')"><td style="font-size:10px">'+shortId+'</td><td class="td-title">'+safeTitle+'</td><td><span class="badge '+cls+'">'+label+'</span></td><td>'+fmtDate(a.published_date||a.scheduled_publish_at)+'</td><td onclick="event.stopPropagation()" style="font-size:11px;color:var(--text2);line-height:1.5">'+authorshipCell+'</td><td onclick="event.stopPropagation()"><button class="btn btn-sm" onclick="editArticle(\''+a.id+'\')">편집</button> <button class="btn btn-sm btn-red" onclick="deleteArticle(\''+a.id+'\',\''+safeTitle.replace(/'/g,"\\'")+'\')">삭제</button></td></tr>';
+    // QA #208 Phase 2a — checkbox column for bulk selection.
+    var isChecked = newsSelectedIds.has(a.id) ? ' checked' : '';
+    tb.innerHTML+='<tr style="cursor:pointer" onclick="editArticle(\''+a.id+'\')">'
+      + '<td onclick="event.stopPropagation()"><input type="checkbox" class="news-row-check" data-id="'+a.id+'" onchange="newsToggleRow(this)"'+isChecked+'></td>'
+      + '<td style="font-size:10px">'+shortId+'</td>'
+      + '<td class="td-title">'+safeTitle+'</td>'
+      + '<td><span class="badge '+cls+'">'+label+'</span></td>'
+      + '<td>'+fmtDate(a.published_date||a.scheduled_publish_at)+'</td>'
+      + '<td onclick="event.stopPropagation()" style="font-size:11px;color:var(--text2);line-height:1.5">'+authorshipCell+'</td>'
+      + '<td onclick="event.stopPropagation()"><button class="btn btn-sm" onclick="editArticle(\''+a.id+'\')">편집</button> <button class="btn btn-sm btn-red" onclick="deleteArticle(\''+a.id+'\',\''+safeTitle.replace(/'/g,"\\'")+'\')">삭제</button></td>'
+      + '</tr>';
   });
+  _newsRefreshBulkToolbar();
+}
+
+// QA #208 Phase 2a — news bulk-selection helpers (mirror editorial).
+function newsToggleRow(checkbox){
+  if(!checkbox) return;
+  var id = checkbox.dataset.id;
+  if(!id) return;
+  if(checkbox.checked) newsSelectedIds.add(id);
+  else newsSelectedIds.delete(id);
+  _newsRefreshBulkToolbar();
+}
+function newsToggleSelectAll(checkbox){
+  document.querySelectorAll('.news-row-check').forEach(function(cb){
+    cb.checked = checkbox.checked;
+    var id = cb.dataset.id;
+    if(!id) return;
+    if(checkbox.checked) newsSelectedIds.add(id);
+    else newsSelectedIds.delete(id);
+  });
+  _newsRefreshBulkToolbar();
+}
+function newsClearSelection(){
+  newsSelectedIds.clear();
+  var hdr = document.getElementById('newsSelectAll');
+  if(hdr) hdr.checked = false;
+  document.querySelectorAll('.news-row-check').forEach(function(cb){ cb.checked = false; });
+  _newsRefreshBulkToolbar();
+}
+function _newsRefreshBulkToolbar(){
+  var bar = document.getElementById('newsBulkToolbar');
+  var lbl = document.getElementById('newsBulkCount');
+  if(!bar) return;
+  if(newsSelectedIds.size > 0){
+    bar.style.display = 'block';
+    if(lbl) lbl.textContent = newsSelectedIds.size + '개 선택';
+  } else {
+    bar.style.display = 'none';
+  }
+}
+async function newsBulkAction(action){
+  var ids = Array.from(newsSelectedIds);
+  if(!ids.length){ alert('선택된 항목이 없습니다.'); return; }
+  var labels = { publish: '공개 전환', draft: '임시저장 전환', delete: '삭제' };
+  if(!confirm(ids.length + '개 뉴스를 ' + labels[action] + '하시겠습니까?')) return;
+  var failures = [];
+  for(var i = 0; i < ids.length; i++){
+    var id = ids[i];
+    try {
+      if(action === 'delete'){
+        await apiDelete('/articles/' + id);
+      } else if(action === 'publish'){
+        await apiPut('/articles/' + id, { status: 'published' });
+      } else if(action === 'draft'){
+        await apiPut('/articles/' + id, { status: 'draft' });
+      }
+    } catch(err){
+      failures.push(id.substring(0,8) + ': ' + (err && err.message || ''));
+    }
+  }
+  newsSelectedIds.clear();
+  await loadNews();
+  if(failures.length){
+    alert('일부 실패:\n' + failures.join('\n'));
+  } else {
+    alert('완료: ' + ids.length + '개 뉴스 ' + labels[action]);
+  }
 }
 
 // QA #202 — tiny cell builder that renders denormalised authorship.
@@ -4952,29 +5055,206 @@ var films=[];
 var editFilmIdx=-1;
 var editFilmId=null;
 
+// QA #208 Phase 2a — film list state mirrors the editorial / news lists:
+// fan out three status fetches, tag scheduled rows with a virtual
+// status, and let renderFilms drive the dashboard + bulk-action UI.
+var filmActiveStatus = 'all';
+var filmSelectedIds = new Set();
+
 async function loadFilmsFromAPI(){
   var tb=document.getElementById('filmListBody');if(!tb)return;
-  tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px">불러오는 중...</td></tr>';
+  tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:40px">불러오는 중...</td></tr>';
   try{
-    var pub=await apiGet('/films?limit=100&status=published');
-    var draft=await apiGet('/films?limit=100&status=draft');
-    films=(pub.data||[]).concat(draft.data||[]);
+    var results = await Promise.all([
+      apiGet('/films?limit=100&status=published').catch(function(){return{data:[]};}),
+      apiGet('/films?limit=100&status=draft').catch(function(){return{data:[]};}),
+      apiGet('/films?limit=100&status=scheduled').catch(function(){return{data:[]};}),
+    ]);
+    var pub=results[0], draft=results[1], scheduled=results[2];
+    (scheduled.data||[]).forEach(function(r){ r._virtualStatus='scheduled'; });
+    // Dedupe by id; scheduled tag wins.
+    var byId={};
+    [].concat(pub.data||[], draft.data||[], scheduled.data||[]).forEach(function(r){
+      if(!r || !r.id) return;
+      if(byId[r.id] && r._virtualStatus === 'scheduled'){
+        byId[r.id]._virtualStatus = 'scheduled';
+      } else if(!byId[r.id]){
+        byId[r.id] = r;
+      }
+    });
+    films = Object.values(byId).sort(function(a,b){
+      var ta = a.created_at || a.published_date || '';
+      var tb_ = b.created_at || b.published_date || '';
+      return String(tb_).localeCompare(String(ta));
+    });
     renderFilms();
   }catch(e){
-    tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:#ff6b6b;padding:40px">불러오기 실패</td></tr>';
+    tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:#ff6b6b;padding:40px">불러오기 실패</td></tr>';
   }
 }
 
+function _filmEffectiveStatus(f){
+  if(f._virtualStatus) return f._virtualStatus;
+  return f.status || 'published';
+}
+
 function renderFilms(){
-  var tb=document.getElementById('filmListBody');if(!tb)return;tb.innerHTML='';
-  if(!films.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px 0">필름이 없습니다</td></tr>';return;}
-  films.forEach(function(f,i){
+  var tb=document.getElementById('filmListBody');if(!tb)return;
+
+  // QA #208 Phase 2a — populate status cards.
+  var counts={all:films.length, published:0, draft:0, scheduled:0, archived:0};
+  films.forEach(function(f){
+    var s=_filmEffectiveStatus(f);
+    if(s==='scheduled') counts.scheduled++;
+    else if(s==='published') counts.published++;
+    else if(s==='draft') counts.draft++;
+    else counts.archived++;
+  });
+  var setStat=function(id,n){var el=document.getElementById(id);if(el)el.textContent=String(n||0);};
+  setStat('filmStatAll', counts.all);
+  setStat('filmStatPublished', counts.published);
+  setStat('filmStatDraft', counts.draft);
+  setStat('filmStatScheduled', counts.scheduled);
+  setStat('filmStatArchived', counts.archived);
+  // Highlight active card.
+  document.querySelectorAll('.film-stat-card').forEach(function(c){
+    if(c.dataset.status === filmActiveStatus){
+      c.style.borderColor = 'var(--purple)';
+      c.style.boxShadow = '0 0 0 2px rgba(124,58,237,0.15)';
+    } else {
+      c.style.borderColor = 'var(--border2)';
+      c.style.boxShadow = '';
+    }
+  });
+
+  // Filter visible rows by active status.
+  var visible = films.filter(function(f){
+    if(filmActiveStatus === 'all') return true;
+    return _filmEffectiveStatus(f) === filmActiveStatus;
+  });
+
+  tb.innerHTML='';
+  if(!visible.length){
+    tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:40px 0">'+(filmActiveStatus==='all'?'필름이 없습니다':'해당 상태의 필름이 없습니다')+'</td></tr>';
+    _filmRefreshBulkToolbar();
+    return;
+  }
+  visible.forEach(function(f,i){
+    var origIdx = films.indexOf(f);
     var yt=f.youtube_id||'';
     var thumb=f.thumbnail_url||('https://img.youtube.com/vi/'+yt+'/mqdefault.jpg');
-    var st=f.status||'published';
-    var shortId=f.id?f.id.substring(0,8):'—';
-    tb.innerHTML+='<tr><td style="font-size:10px">'+shortId+'</td><td><img loading="lazy" class="td-thumb" src="'+esc(thumb)+'"></td><td class="td-title" onclick="openFilmModal('+i+')">'+esc(f.title)+'</td><td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis">'+esc(yt)+'</td><td><span style="font-size:10px;color:var(--purple)">새 팝업창</span></td><td><span class="badge '+(st==='published'?'b-published':'b-draft')+'">'+(st==='published'?'공개':'비공개')+'</span></td><td><button class="btn btn-sm" onclick="openFilmModal('+i+')">편집</button> <button class="btn btn-sm btn-red" onclick="deleteFilm('+i+')">삭제</button></td></tr>';
+    var st=_filmEffectiveStatus(f);
+    var cls, label;
+    if(st==='scheduled'){
+      cls='b-scheduled';
+      var when='';
+      if(f.scheduled_publish_at){
+        try{
+          var d=new Date(f.scheduled_publish_at);
+          if(!isNaN(d.getTime())){
+            var pad=function(n){return n<10?'0'+n:n;};
+            when=' '+(d.getMonth()+1)+'/'+d.getDate()+' '+pad(d.getHours())+':'+pad(d.getMinutes());
+          }
+        }catch(_){}
+      }
+      label='⏰ 예약'+when;
+    } else if(st==='published'){
+      cls='b-published'; label='공개';
+    } else if(st==='draft'){
+      cls='b-draft'; label='임시저장';
+    } else {
+      cls='b-draft'; label='비공개';
+    }
+    var rowStyle='';
+    if(st==='draft')          rowStyle=' style="background:rgba(255,152,0,0.06)"';
+    else if(st==='scheduled') rowStyle=' style="background:rgba(124,58,237,0.05)"';
+    else if(st==='archived')  rowStyle=' style="background:rgba(220,38,38,0.04)"';
+    var isChecked = filmSelectedIds.has(f.id) ? ' checked' : '';
+    // QA #208 Phase 2a — denormalised authorship (from QA #202 attachAuthorship).
+    var authorshipCell = _renderAuthorshipCell(f);
+    var updatedCell = fmtDate(f.updated_at);
+    tb.innerHTML+='<tr'+rowStyle+'>'
+      + '<td onclick="event.stopPropagation()"><input type="checkbox" class="film-row-check" data-id="'+f.id+'" onchange="filmToggleRow(this)"'+isChecked+'></td>'
+      + '<td><img loading="lazy" class="td-thumb" src="'+esc(thumb)+'"></td>'
+      + '<td class="td-title" onclick="openFilmModal('+origIdx+')">'+esc(f.title||'')+'</td>'
+      + '<td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis">'+esc(yt)+'</td>'
+      + '<td><span class="badge '+cls+'">'+label+'</span></td>'
+      + '<td style="font-size:11px;color:var(--text2);line-height:1.5">'+authorshipCell+'</td>'
+      + '<td style="font-size:11px;color:var(--text2)">'+updatedCell+'</td>'
+      + '<td><button class="btn btn-sm" onclick="openFilmModal('+origIdx+')">편집</button> <button class="btn btn-sm btn-red" onclick="deleteFilm('+origIdx+')">삭제</button></td>'
+      + '</tr>';
   });
+  _filmRefreshBulkToolbar();
+}
+
+// QA #208 Phase 2a — film filter + bulk-selection helpers.
+function filterFilmsByStatus(status){
+  filmActiveStatus = status || 'all';
+  renderFilms();
+}
+function filmToggleRow(checkbox){
+  if(!checkbox) return;
+  var id = checkbox.dataset.id;
+  if(!id) return;
+  if(checkbox.checked) filmSelectedIds.add(id);
+  else filmSelectedIds.delete(id);
+  _filmRefreshBulkToolbar();
+}
+function filmToggleSelectAll(checkbox){
+  document.querySelectorAll('.film-row-check').forEach(function(cb){
+    cb.checked = checkbox.checked;
+    var id = cb.dataset.id;
+    if(!id) return;
+    if(checkbox.checked) filmSelectedIds.add(id);
+    else filmSelectedIds.delete(id);
+  });
+  _filmRefreshBulkToolbar();
+}
+function filmClearSelection(){
+  filmSelectedIds.clear();
+  var hdr = document.getElementById('filmSelectAll');
+  if(hdr) hdr.checked = false;
+  document.querySelectorAll('.film-row-check').forEach(function(cb){ cb.checked = false; });
+  _filmRefreshBulkToolbar();
+}
+function _filmRefreshBulkToolbar(){
+  var bar = document.getElementById('filmBulkToolbar');
+  var lbl = document.getElementById('filmBulkCount');
+  if(!bar) return;
+  if(filmSelectedIds.size > 0){
+    bar.style.display = 'block';
+    if(lbl) lbl.textContent = filmSelectedIds.size + '개 선택';
+  } else {
+    bar.style.display = 'none';
+  }
+}
+async function filmBulkAction(action){
+  var ids = Array.from(filmSelectedIds);
+  if(!ids.length){ alert('선택된 항목이 없습니다.'); return; }
+  var labels = { publish: '공개 전환', draft: '임시저장 전환', delete: '삭제' };
+  if(!confirm(ids.length + '개 필름을 ' + labels[action] + '하시겠습니까?')) return;
+  var failures = [];
+  for(var i = 0; i < ids.length; i++){
+    var id = ids[i];
+    try {
+      if(action === 'delete'){
+        await apiDelete('/films/' + id);
+      } else if(action === 'publish'){
+        await apiPut('/films/' + id, { status: 'published' });
+      } else if(action === 'draft'){
+        await apiPut('/films/' + id, { status: 'draft' });
+      }
+    } catch(err){
+      failures.push(id.substring(0,8) + ': ' + (err && err.message || ''));
+    }
+  }
+  filmSelectedIds.clear();
+  await loadFilmsFromAPI();
+  if(failures.length){
+    alert('일부 실패:\n' + failures.join('\n'));
+  } else {
+    alert('완료: ' + ids.length + '개 필름 ' + labels[action]);
+  }
 }
 
 // ── Film modal helpers ────────────────────────────────────────────────
