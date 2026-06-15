@@ -250,36 +250,33 @@ document.addEventListener('DOMContentLoaded', function() {
     return;
   }
 
-  // Extract unique categories
-  var cats = {};
-  filmAllData.forEach(function(f) {
-    (f.cat || '').split(',').forEach(function(c) {
-      c = c.trim();
-      if (c) cats[c] = 1;
-    });
-  });
-
-  var catList = Object.keys(cats).sort();
+  // QA #205 — fixed canonical category list.
+  //
+  // The previous build pulled the category list dynamically out of
+  // filmAllData[].cat. That looked clever but silently degraded to
+  // "ALL only" whenever the underlying rows had no category populated
+  // (which is what the QA report saw — many legacy films were saved
+  // before the admin form pinned categories to the 7-bucket model in
+  // QA #47). Hard-coding the seven buckets matches the editor's
+  // mental model and the admin's category checkboxes one-to-one.
+  //
+  // CATEGORY_LIST drives both button rendering AND filter matching.
+  // The display label is uppercased for the button row; the matcher
+  // does case-insensitive equality against each entry in the row's
+  // `cat` field (which apiFilmToLocal joins as a CSV from
+  // films.categories TEXT[]).
+  var CATEGORY_LIST = ['ALL', 'FASHION', 'BEAUTY', 'ART', 'BEHIND', 'INTERVIEW', 'SKETCH'];
   var activeFilter = 'ALL';
   var filmCurrentPage = 1;
 
   // Build filter buttons
   var filterWrap = document.getElementById('filterWrap');
-  var allBtn = document.createElement('button');
-  allBtn.className = 'filter-btn active';
-  allBtn.textContent = 'ALL';
-  allBtn.onclick = function() {
-    activeFilter = 'ALL';
-    filmCurrentPage = 1;
-    updateFilterButtons();
-    renderCards();
-  };
-  filterWrap.appendChild(allBtn);
-
-  catList.forEach(function(cat) {
+  filterWrap.innerHTML = '';
+  CATEGORY_LIST.forEach(function(cat) {
     var btn = document.createElement('button');
-    btn.className = 'filter-btn';
-    btn.textContent = cat.toUpperCase();
+    btn.className = 'filter-btn' + (cat === 'ALL' ? ' active' : '');
+    btn.textContent = cat;
+    btn.dataset.cat = cat;
     btn.onclick = function() {
       activeFilter = cat;
       filmCurrentPage = 1;
@@ -292,7 +289,7 @@ document.addEventListener('DOMContentLoaded', function() {
   function updateFilterButtons() {
     var btns = filterWrap.querySelectorAll('.filter-btn');
     btns.forEach(function(btn) {
-      if (btn.textContent === activeFilter || (activeFilter === 'ALL' && btn.textContent === 'ALL')) {
+      if (btn.dataset.cat === activeFilter) {
         btn.classList.add('active');
       } else {
         btn.classList.remove('active');
@@ -311,10 +308,14 @@ document.addEventListener('DOMContentLoaded', function() {
     var grid = document.getElementById('cardGrid');
     grid.innerHTML = '';
 
+    // QA #205 — case-insensitive matching against each comma-separated
+    // category on the row. Films with no `cat` value show only under
+    // ALL (intentional — uncategorized rows shouldn't double-count).
     var filtered = filmAllData.filter(function(f) {
       if (activeFilter === 'ALL') return true;
+      var target = String(activeFilter || '').toLowerCase();
       return (f.cat || '').split(',').some(function(c) {
-        return c.trim().toLowerCase() === activeFilter.toLowerCase();
+        return c.trim().toLowerCase() === target;
       });
     });
 
