@@ -1966,6 +1966,9 @@ var newsDateRange = 'all';
 var newsDateBasis = 'created';
 var newsDateFrom = '';
 var newsDateTo = '';
+// QA #208 Phase 2g/2h — author role + category dropdown filters.
+var newsRoleFilter = 'all';
+var newsCategoryFilter = 'all';
 
 function setNewsSortFromUi(){
   var sel = document.getElementById('newsAdminSort');
@@ -1983,6 +1986,18 @@ function setNewsDateRangeFromUi(){
   if(to) newsDateTo = to.value || '';
   var wrap = document.getElementById('newsAdminCustomWrap');
   if(wrap) wrap.style.display = (newsDateRange === 'custom') ? '' : 'none';
+  renderNews();
+}
+// QA #208 Phase 2g — news role filter handler.
+function setNewsRoleFromUi(){
+  var sel = document.getElementById('newsAdminRole');
+  if(sel) newsRoleFilter = sel.value || 'all';
+  renderNews();
+}
+// QA #208 Phase 2h — news category dropdown handler.
+function setNewsCategoryFromUi(){
+  var sel = document.getElementById('newsAdminCategory');
+  if(sel) newsCategoryFilter = sel.value || 'all';
   renderNews();
 }
 
@@ -2013,10 +2028,14 @@ function applyNewsPreset(preset){
     newsDateBasis = 'created';
     newsDateFrom = '';
     newsDateTo = '';
+    newsRoleFilter = 'all';
+    newsCategoryFilter = 'all';
   }
   var sortEl = document.getElementById('newsAdminSort'); if(sortEl) sortEl.value = newsSortBy;
   var rangeEl = document.getElementById('newsAdminRange'); if(rangeEl) rangeEl.value = newsDateRange;
   var basisEl = document.getElementById('newsAdminBasis'); if(basisEl) basisEl.value = newsDateBasis;
+  var roleEl = document.getElementById('newsAdminRole'); if(roleEl) roleEl.value = newsRoleFilter;
+  var catEl = document.getElementById('newsAdminCategory'); if(catEl) catEl.value = newsCategoryFilter;
   var customWrap = document.getElementById('newsAdminCustomWrap');
   if(customWrap) customWrap.style.display = (newsDateRange === 'custom') ? '' : 'none';
   renderNews();
@@ -2062,8 +2081,23 @@ function renderNews(){
 
   // Filter rows by the active tab. 'all' shows everything.
   var visible = allArticles.filter(function(a){
-    if(newsActiveStatus==='all') return true;
-    return _articleEffectiveStatus(a) === newsActiveStatus;
+    if(newsActiveStatus!=='all' && _articleEffectiveStatus(a) !== newsActiveStatus) return false;
+    // QA #208 Phase 2g — author role filter.
+    if(newsRoleFilter !== 'all'){
+      var creatorRole = (a._creator && a._creator.role) || null;
+      if(newsRoleFilter === 'admin' && creatorRole !== 'admin') return false;
+      if(newsRoleFilter === 'staff' && creatorRole !== 'staff') return false;
+    }
+    // QA #208 Phase 2h — category filter. Articles can carry either a
+    // `category` column or category-coded tags; match both so editors
+    // get a sane result regardless of curation style.
+    if(newsCategoryFilter !== 'all'){
+      var cat = String(a.category||'').toLowerCase();
+      var tagStr = (Array.isArray(a.tags)?a.tags.join(' '):a.tags||'').toLowerCase();
+      var needle = String(newsCategoryFilter).toLowerCase();
+      if(cat !== needle && tagStr.indexOf(needle) === -1) return false;
+    }
+    return true;
   });
   // QA #208 Phase 2b — date range + sort.
   visible = _papApplyDateRange(visible, newsDateRange, newsDateBasis, newsDateFrom, newsDateTo);
@@ -2153,8 +2187,27 @@ function _newsRefreshBulkToolbar(){
 async function newsBulkAction(action){
   var ids = Array.from(newsSelectedIds);
   if(!ids.length){ alert('선택된 항목이 없습니다.'); return; }
-  var labels = { publish: '공개 전환', draft: '임시저장 전환', delete: '삭제' };
+  var labels = {
+    publish: '공개 전환', draft: '임시저장 전환', delete: '삭제',
+    addTags: '태그 추가', removeTags: '태그 제거',
+  };
+
+  // QA #208 Phase 2f — bulk tag actions.
+  var tagsInput = null;
+  if(action === 'addTags' || action === 'removeTags'){
+    var promptLabel = action === 'addTags'
+      ? '추가할 태그를 콤마로 구분해 입력하세요 (예: 인터뷰, 패션)'
+      : '제거할 태그를 콤마로 구분해 입력하세요';
+    var raw = window.prompt(promptLabel, '');
+    if(!raw || !raw.trim()){ return; }
+    tagsInput = raw.split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+    if(!tagsInput.length){ return; }
+  }
+
   if(!confirm(ids.length + '개 뉴스를 ' + labels[action] + '하시겠습니까?')) return;
+  var byId = {};
+  allArticles.forEach(function(a){ if(a && a.id) byId[a.id] = a; });
+
   var failures = [];
   for(var i = 0; i < ids.length; i++){
     var id = ids[i];
@@ -2165,6 +2218,25 @@ async function newsBulkAction(action){
         await apiPut('/articles/' + id, { status: 'published' });
       } else if(action === 'draft'){
         await apiPut('/articles/' + id, { status: 'draft' });
+      } else if(action === 'addTags' || action === 'removeTags'){
+        var row = byId[id];
+        var current = (row && Array.isArray(row.tags)) ? row.tags.slice() : [];
+        var next;
+        if(action === 'addTags'){
+          var seen = {};
+          next = current.concat(tagsInput).filter(function(t){
+            var k = String(t||'').trim();
+            if(!k) return false;
+            if(seen[k.toLowerCase()]) return false;
+            seen[k.toLowerCase()] = 1;
+            return true;
+          });
+        } else {
+          var drop = {};
+          tagsInput.forEach(function(t){ drop[String(t||'').trim().toLowerCase()] = 1; });
+          next = current.filter(function(t){ return !drop[String(t||'').trim().toLowerCase()]; });
+        }
+        await apiPut('/articles/' + id, { tags: next });
       }
     } catch(err){
       failures.push(id.substring(0,8) + ': ' + (err && err.message || ''));
@@ -3699,6 +3771,7 @@ var PAP_SORT_OPTIONS = [
   { value: 'oldest',       label: '오래된순' },
   { value: 'updated_desc', label: '최근 수정순' },
   { value: 'title_asc',    label: '제목 ㄱ→ㅎ' },
+  { value: 'views_desc',   label: '조회수순' },
 ];
 
 // DATE_RANGE — relative buckets. `直접선택` is wired separately to two
@@ -3804,6 +3877,17 @@ function _papApplySort(rows, sortValue){
       return String(a.title||'').localeCompare(String(b.title||''), 'ko');
     });
   }
+  if(sortValue === 'views_desc'){
+    return copy.sort(function(a,b){
+      var va = Number(a.view_count || 0);
+      var vb = Number(b.view_count || 0);
+      if(va !== vb) return vb - va;
+      // Tiebreaker: newest first so equal-zero rows still show recents up top.
+      var ta = a.created_at || a.published_date || '';
+      var tb = b.created_at || b.published_date || '';
+      return String(tb).localeCompare(String(ta));
+    });
+  }
   return copy;
 }
 
@@ -3895,6 +3979,9 @@ var editorialDateRange = 'all';
 var editorialDateBasis = 'created';
 var editorialDateFrom = '';
 var editorialDateTo = '';
+// QA #208 Phase 2g/2h — author role + category dropdown filters.
+var editorialRoleFilter = 'all';      // 'all' | 'admin' | 'staff'
+var editorialCategoryFilter = 'all';  // 'all' | 'Fashion' | 'Beauty' | …
 
 function setEditorialSortFromUi(){
   var sel = document.getElementById('edAdminSort');
@@ -3913,6 +4000,18 @@ function setEditorialDateRangeFromUi(){
   // Toggle custom-range inputs visibility.
   var wrap = document.getElementById('edAdminCustomWrap');
   if(wrap) wrap.style.display = (editorialDateRange === 'custom') ? '' : 'none';
+  renderEditorialList();
+}
+// QA #208 Phase 2g — author role filter handler.
+function setEditorialRoleFromUi(){
+  var sel = document.getElementById('edAdminRole');
+  if(sel) editorialRoleFilter = sel.value || 'all';
+  renderEditorialList();
+}
+// QA #208 Phase 2h — category dropdown handler.
+function setEditorialCategoryFromUi(){
+  var sel = document.getElementById('edAdminCategory');
+  if(sel) editorialCategoryFilter = sel.value || 'all';
   renderEditorialList();
 }
 
@@ -3943,11 +4042,16 @@ function applyEditorialPreset(preset){
     editorialDateBasis = 'created';
     editorialDateFrom = '';
     editorialDateTo = '';
+    // QA #208 Phase 2g/2h — also reset role + category dropdowns.
+    editorialRoleFilter = 'all';
+    editorialCategoryFilter = 'all';
   }
   // Sync the dropdowns visually.
   var sortEl = document.getElementById('edAdminSort'); if(sortEl) sortEl.value = editorialSortBy;
   var rangeEl = document.getElementById('edAdminRange'); if(rangeEl) rangeEl.value = editorialDateRange;
   var basisEl = document.getElementById('edAdminBasis'); if(basisEl) basisEl.value = editorialDateBasis;
+  var roleEl = document.getElementById('edAdminRole'); if(roleEl) roleEl.value = editorialRoleFilter;
+  var catEl = document.getElementById('edAdminCategory'); if(catEl) catEl.value = editorialCategoryFilter;
   var customWrap = document.getElementById('edAdminCustomWrap');
   if(customWrap) customWrap.style.display = (editorialDateRange === 'custom') ? '' : 'none';
   renderEditorialList();
@@ -3966,6 +4070,23 @@ function renderEditorialList(){
   var filtered=editorials.filter(function(e){
     if(edStatusFilter!=='all'){
       if(_effectiveStatus(e)!==edStatusFilter)return false;
+    }
+    // QA #208 Phase 2g — author role filter. Reads role from
+    // _creator.role (attached by attachAuthorship on the server).
+    if(editorialRoleFilter!=='all'){
+      var creatorRole = (e._creator && e._creator.role) || null;
+      if(editorialRoleFilter === 'admin' && creatorRole !== 'admin') return false;
+      if(editorialRoleFilter === 'staff' && creatorRole !== 'staff') return false;
+    }
+    // QA #208 Phase 2h — category filter. Editorials don't have a
+    // single canonical category field, so we match against (a) the
+    // raw category column when present and (b) the tags list. That
+    // matches how the site surfaces categories to readers.
+    if(editorialCategoryFilter!=='all'){
+      var cat = String(e.category||'').toLowerCase();
+      var tagStr = (Array.isArray(e.tags)?e.tags.join(' '):e.tags||'').toLowerCase();
+      var needle = String(editorialCategoryFilter).toLowerCase();
+      if(cat !== needle && tagStr.indexOf(needle) === -1) return false;
     }
     if(!q)return true;
     var tags=Array.isArray(e.tags)?e.tags.join(' '):e.tags||'';
@@ -4147,8 +4268,30 @@ function _editorialRefreshBulkToolbar(){
 async function editorialBulkAction(action){
   var ids = Array.from(editorialSelectedIds);
   if(!ids.length){ alert('선택된 항목이 없습니다.'); return; }
-  var labels = { publish: '공개 전환', draft: '임시저장 전환', delete: '삭제' };
+  var labels = {
+    publish: '공개 전환', draft: '임시저장 전환', delete: '삭제',
+    addTags: '태그 추가', removeTags: '태그 제거',
+  };
+
+  // QA #208 Phase 2f — tag bulk actions need an interactive input.
+  // Prompt once for the comma-separated tag list, then apply the
+  // add/remove operation per row.
+  var tagsInput = null;
+  if(action === 'addTags' || action === 'removeTags'){
+    var promptLabel = action === 'addTags'
+      ? '추가할 태그를 콤마로 구분해 입력하세요 (예: 인터뷰, 패션)'
+      : '제거할 태그를 콤마로 구분해 입력하세요';
+    var raw = window.prompt(promptLabel, '');
+    if(!raw || !raw.trim()){ return; }
+    tagsInput = raw.split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+    if(!tagsInput.length){ return; }
+  }
+
   if(!confirm(ids.length + '개 항목을 ' + labels[action] + '하시겠습니까?')) return;
+  // Look up each row's current tags from the in-memory list for add/remove ops.
+  var byId = {};
+  editorials.forEach(function(e){ if(e && e.id) byId[e.id] = e; });
+
   var failures = [];
   for(var i = 0; i < ids.length; i++){
     var id = ids[i];
@@ -4159,6 +4302,26 @@ async function editorialBulkAction(action){
         await apiPut('/editorials/' + id, { status: 'published' });
       } else if(action === 'draft'){
         await apiPut('/editorials/' + id, { status: 'draft' });
+      } else if(action === 'addTags' || action === 'removeTags'){
+        var row = byId[id];
+        var current = (row && Array.isArray(row.tags)) ? row.tags.slice() : [];
+        var next;
+        if(action === 'addTags'){
+          // Merge + dedupe (case-sensitive, preserves original casing).
+          var seen = {};
+          next = current.concat(tagsInput).filter(function(t){
+            var k = String(t||'').trim();
+            if(!k) return false;
+            if(seen[k.toLowerCase()]) return false;
+            seen[k.toLowerCase()] = 1;
+            return true;
+          });
+        } else {
+          var drop = {};
+          tagsInput.forEach(function(t){ drop[String(t||'').trim().toLowerCase()] = 1; });
+          next = current.filter(function(t){ return !drop[String(t||'').trim().toLowerCase()]; });
+        }
+        await apiPut('/editorials/' + id, { tags: next });
       }
     } catch(err){
       failures.push(id.substring(0,8) + ': ' + (err && err.message || ''));
@@ -5399,6 +5562,9 @@ var filmDateRange = 'all';
 var filmDateBasis = 'created';
 var filmDateFrom = '';
 var filmDateTo = '';
+// QA #208 Phase 2g/2h — author role + category dropdown filters.
+var filmRoleFilter = 'all';
+var filmCategoryFilter = 'all';
 
 function setFilmSortFromUi(){
   var sel = document.getElementById('filmAdminSort');
@@ -5416,6 +5582,18 @@ function setFilmDateRangeFromUi(){
   if(to) filmDateTo = to.value || '';
   var wrap = document.getElementById('filmAdminCustomWrap');
   if(wrap) wrap.style.display = (filmDateRange === 'custom') ? '' : 'none';
+  renderFilms();
+}
+// QA #208 Phase 2g — film role filter handler.
+function setFilmRoleFromUi(){
+  var sel = document.getElementById('filmAdminRole');
+  if(sel) filmRoleFilter = sel.value || 'all';
+  renderFilms();
+}
+// QA #208 Phase 2h — film category dropdown handler.
+function setFilmCategoryFromUi(){
+  var sel = document.getElementById('filmAdminCategory');
+  if(sel) filmCategoryFilter = sel.value || 'all';
   renderFilms();
 }
 
@@ -5446,10 +5624,14 @@ function applyFilmPreset(preset){
     filmDateBasis = 'created';
     filmDateFrom = '';
     filmDateTo = '';
+    filmRoleFilter = 'all';
+    filmCategoryFilter = 'all';
   }
   var sortEl = document.getElementById('filmAdminSort'); if(sortEl) sortEl.value = filmSortBy;
   var rangeEl = document.getElementById('filmAdminRange'); if(rangeEl) rangeEl.value = filmDateRange;
   var basisEl = document.getElementById('filmAdminBasis'); if(basisEl) basisEl.value = filmDateBasis;
+  var roleEl = document.getElementById('filmAdminRole'); if(roleEl) roleEl.value = filmRoleFilter;
+  var catEl = document.getElementById('filmAdminCategory'); if(catEl) catEl.value = filmCategoryFilter;
   var customWrap = document.getElementById('filmAdminCustomWrap');
   if(customWrap) customWrap.style.display = (filmDateRange === 'custom') ? '' : 'none';
   renderFilms();
@@ -5523,8 +5705,23 @@ function renderFilms(){
 
   // Filter visible rows by active status.
   var visible = films.filter(function(f){
-    if(filmActiveStatus === 'all') return true;
-    return _filmEffectiveStatus(f) === filmActiveStatus;
+    if(filmActiveStatus !== 'all' && _filmEffectiveStatus(f) !== filmActiveStatus) return false;
+    // QA #208 Phase 2g — author role filter.
+    if(filmRoleFilter !== 'all'){
+      var creatorRole = (f._creator && f._creator.role) || null;
+      if(filmRoleFilter === 'admin' && creatorRole !== 'admin') return false;
+      if(filmRoleFilter === 'staff' && creatorRole !== 'staff') return false;
+    }
+    // QA #208 Phase 2h — film category filter. Film categories live in
+    // f.category (a string) for the 7 hardcoded values; also match
+    // legacy rows that stuffed a comma-list into tags.
+    if(filmCategoryFilter !== 'all'){
+      var cat = String(f.category||'').toLowerCase();
+      var tagStr = (Array.isArray(f.tags)?f.tags.join(' '):f.tags||'').toLowerCase();
+      var needle = String(filmCategoryFilter).toLowerCase();
+      if(cat !== needle && tagStr.indexOf(needle) === -1) return false;
+    }
+    return true;
   });
   // QA #208 Phase 2b — date range + sort.
   visible = _papApplyDateRange(visible, filmDateRange, filmDateBasis, filmDateFrom, filmDateTo);
@@ -5629,8 +5826,27 @@ function _filmRefreshBulkToolbar(){
 async function filmBulkAction(action){
   var ids = Array.from(filmSelectedIds);
   if(!ids.length){ alert('선택된 항목이 없습니다.'); return; }
-  var labels = { publish: '공개 전환', draft: '임시저장 전환', delete: '삭제' };
+  var labels = {
+    publish: '공개 전환', draft: '임시저장 전환', delete: '삭제',
+    addTags: '태그 추가', removeTags: '태그 제거',
+  };
+
+  // QA #208 Phase 2f — bulk tag actions.
+  var tagsInput = null;
+  if(action === 'addTags' || action === 'removeTags'){
+    var promptLabel = action === 'addTags'
+      ? '추가할 태그를 콤마로 구분해 입력하세요 (예: 인터뷰, 패션)'
+      : '제거할 태그를 콤마로 구분해 입력하세요';
+    var raw = window.prompt(promptLabel, '');
+    if(!raw || !raw.trim()){ return; }
+    tagsInput = raw.split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+    if(!tagsInput.length){ return; }
+  }
+
   if(!confirm(ids.length + '개 필름을 ' + labels[action] + '하시겠습니까?')) return;
+  var byId = {};
+  films.forEach(function(f){ if(f && f.id) byId[f.id] = f; });
+
   var failures = [];
   for(var i = 0; i < ids.length; i++){
     var id = ids[i];
@@ -5641,6 +5857,25 @@ async function filmBulkAction(action){
         await apiPut('/films/' + id, { status: 'published' });
       } else if(action === 'draft'){
         await apiPut('/films/' + id, { status: 'draft' });
+      } else if(action === 'addTags' || action === 'removeTags'){
+        var row = byId[id];
+        var current = (row && Array.isArray(row.tags)) ? row.tags.slice() : [];
+        var next;
+        if(action === 'addTags'){
+          var seen = {};
+          next = current.concat(tagsInput).filter(function(t){
+            var k = String(t||'').trim();
+            if(!k) return false;
+            if(seen[k.toLowerCase()]) return false;
+            seen[k.toLowerCase()] = 1;
+            return true;
+          });
+        } else {
+          var drop = {};
+          tagsInput.forEach(function(t){ drop[String(t||'').trim().toLowerCase()] = 1; });
+          next = current.filter(function(t){ return !drop[String(t||'').trim().toLowerCase()]; });
+        }
+        await apiPut('/films/' + id, { tags: next });
       }
     } catch(err){
       failures.push(id.substring(0,8) + ': ' + (err && err.message || ''));
@@ -6398,31 +6633,232 @@ function moveCover(i,dir){
 renderCovers();
 
 // ======== SHORTS API ========
+// QA #208 Phase 2d — shorts dashboard pattern (matches editorial/news/film).
+var shortsActiveStatus = 'all';
+var shortsSelectedIds = new Set();
+var shortsSortBy = 'recent';
+var shortsDateRange = 'all';
+var shortsDateBasis = 'created';
+var shortsDateFrom = '';
+var shortsDateTo = '';
+var shortsRoleFilter = 'all';
+
+function setShortsSortFromUi(){
+  var sel = document.getElementById('shortsAdminSort');
+  if(sel) shortsSortBy = sel.value || 'recent';
+  renderShortsFromAPI();
+}
+function setShortsDateRangeFromUi(){
+  var sel = document.getElementById('shortsAdminRange');
+  var basis = document.getElementById('shortsAdminBasis');
+  var from = document.getElementById('shortsAdminFrom');
+  var to = document.getElementById('shortsAdminTo');
+  if(sel) shortsDateRange = sel.value || 'all';
+  if(basis) shortsDateBasis = basis.value || 'created';
+  if(from) shortsDateFrom = from.value || '';
+  if(to) shortsDateTo = to.value || '';
+  var wrap = document.getElementById('shortsAdminCustomWrap');
+  if(wrap) wrap.style.display = (shortsDateRange === 'custom') ? '' : 'none';
+  renderShortsFromAPI();
+}
+function setShortsRoleFromUi(){
+  var sel = document.getElementById('shortsAdminRole');
+  if(sel) shortsRoleFilter = sel.value || 'all';
+  renderShortsFromAPI();
+}
+function setShortsStatusFilter(status){
+  shortsActiveStatus = status || 'all';
+  renderShortsFromAPI();
+}
+function applyShortsPreset(preset){
+  if(preset === 'today'){
+    shortsActiveStatus = 'all';
+    shortsDateRange = 'today';
+    shortsDateBasis = 'created';
+    shortsSortBy = 'recent';
+  } else if(preset === 'draft'){
+    shortsActiveStatus = 'draft';
+    shortsSortBy = 'updated_desc';
+    shortsDateRange = 'all';
+  } else if(preset === 'thisweek'){
+    shortsActiveStatus = 'all';
+    shortsDateRange = '7d';
+    shortsDateBasis = 'created';
+    shortsSortBy = 'recent';
+  } else if(preset === 'reset'){
+    shortsActiveStatus = 'all';
+    shortsSortBy = 'recent';
+    shortsDateRange = 'all';
+    shortsDateBasis = 'created';
+    shortsDateFrom = '';
+    shortsDateTo = '';
+    shortsRoleFilter = 'all';
+  }
+  var sortEl = document.getElementById('shortsAdminSort'); if(sortEl) sortEl.value = shortsSortBy;
+  var rangeEl = document.getElementById('shortsAdminRange'); if(rangeEl) rangeEl.value = shortsDateRange;
+  var basisEl = document.getElementById('shortsAdminBasis'); if(basisEl) basisEl.value = shortsDateBasis;
+  var roleEl = document.getElementById('shortsAdminRole'); if(roleEl) roleEl.value = shortsRoleFilter;
+  var customWrap = document.getElementById('shortsAdminCustomWrap');
+  if(customWrap) customWrap.style.display = (shortsDateRange === 'custom') ? '' : 'none';
+  renderShortsFromAPI();
+}
+
 async function loadShortsFromAPI(){
   var tb=document.getElementById('shortsListBody');if(!tb)return;
-  tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:40px">불러오는 중...</td></tr>';
+  tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:40px">불러오는 중...</td></tr>';
   try{
     var pub=await apiGet('/shorts?limit=100&status=published');
     var draft=await apiGet('/shorts?limit=100&status=draft');
     shortsList=(pub.data||[]).concat(draft.data||[]);
     renderShortsFromAPI();
   }catch(e){
-    tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:40px 0">숏츠가 없습니다</td></tr>';
+    tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:40px 0">숏츠가 없습니다</td></tr>';
   }
 }
 function renderShortsFromAPI(){
-  var tb=document.getElementById('shortsListBody');if(!tb)return;tb.innerHTML='';
-  if(!shortsList.length){tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:40px 0">숏츠가 없습니다</td></tr>';return;}
-  shortsList.forEach(function(s,i){
-    var yt=s.youtube_id||s.yt||'';
-    var st=s.status||'published';
-    tb.innerHTML+='<tr><td style="font-size:10px">'+(s.id?s.id.substring(0,8):'—')+'</td><td class="td-title" onclick="openShortsModal('+i+')">'+esc(s.title)+'</td><td style="font-size:11px">'+esc(yt)+'</td><td><span style="font-size:10px;color:var(--green)">메인 화면 인라인</span></td><td><span class="badge '+(st==='published'?'b-published':'b-draft')+'">'+(st==='published'?'공개':'비공개')+'</span></td><td><button class="btn btn-sm" onclick="openShortsModal('+i+')">편집</button> <button class="btn btn-sm btn-red" onclick="deleteShortsAPI('+i+')">삭제</button></td></tr>';
+  var tb=document.getElementById('shortsListBody');if(!tb)return;
+
+  // Status card counts roll up across full list.
+  var counts = { all: shortsList.length, published: 0, draft: 0 };
+  shortsList.forEach(function(s){
+    var st = s.status || 'published';
+    if(st === 'published') counts.published++;
+    else counts.draft++;
   });
+  var setStat=function(id,n){var el=document.getElementById(id);if(el)el.textContent=String(n||0);};
+  setStat('shortsStatAll', counts.all);
+  setStat('shortsStatPublished', counts.published);
+  setStat('shortsStatDraft', counts.draft);
+  document.querySelectorAll('.shorts-stat-card').forEach(function(c){
+    if(c.dataset.status === shortsActiveStatus){
+      c.style.borderColor = 'var(--purple)';
+      c.style.boxShadow = '0 0 0 2px rgba(124,58,237,0.15)';
+    } else {
+      c.style.borderColor = 'var(--border2)';
+      c.style.boxShadow = '';
+    }
+  });
+
+  // Search input + filters.
+  var q = (document.getElementById('shortsSearchAdmin') ? document.getElementById('shortsSearchAdmin').value : '').toLowerCase();
+  var visible = shortsList.filter(function(s){
+    var st = s.status || 'published';
+    if(shortsActiveStatus !== 'all' && st !== shortsActiveStatus) return false;
+    if(shortsRoleFilter !== 'all'){
+      var creatorRole = (s._creator && s._creator.role) || null;
+      if(shortsRoleFilter === 'admin' && creatorRole !== 'admin') return false;
+      if(shortsRoleFilter === 'staff' && creatorRole !== 'staff') return false;
+    }
+    if(!q) return true;
+    var creator = (s._creator && (s._creator.display_name || s._creator.email)) || '';
+    return (s.title||'').toLowerCase().indexOf(q) > -1
+        || creator.toLowerCase().indexOf(q) > -1;
+  });
+  visible = _papApplyDateRange(visible, shortsDateRange, shortsDateBasis, shortsDateFrom, shortsDateTo);
+  visible = _papApplySort(visible, shortsSortBy);
+
+  if(document.getElementById('shortsCountLabel')) document.getElementById('shortsCountLabel').textContent = visible.length;
+
+  tb.innerHTML = '';
+  if(!visible.length){
+    tb.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:40px 0">'+(shortsActiveStatus==='all'?'숏츠가 없습니다':'해당 상태의 숏츠가 없습니다')+'</td></tr>';
+    _shortsRefreshBulkToolbar();
+    papInitAdvPanel('shorts');
+    return;
+  }
+  visible.forEach(function(s){
+    var origIdx = shortsList.indexOf(s);
+    var yt = s.youtube_id || s.yt || '';
+    var st = s.status || 'published';
+    var cls = st === 'published' ? 'b-published' : 'b-draft';
+    var label = st === 'published' ? '공개' : '비공개';
+    var isChecked = shortsSelectedIds.has(s.id) ? ' checked' : '';
+    var authorshipCell = _renderAuthorshipCell(s);
+    var updatedCell = fmtDate(s.updated_at || s.created_at);
+    tb.innerHTML += '<tr>'
+      + '<td onclick="event.stopPropagation()"><input type="checkbox" class="shorts-row-check" data-id="'+s.id+'" onchange="shortsToggleRow(this)"'+isChecked+'></td>'
+      + '<td style="font-size:10px">'+(s.id ? s.id.substring(0,8) : '—')+'</td>'
+      + '<td class="td-title" onclick="openShortsModal('+origIdx+')">'+esc(s.title)+'</td>'
+      + '<td style="font-size:11px">'+esc(yt)+'</td>'
+      + '<td><span class="badge '+cls+'">'+label+'</span></td>'
+      + '<td style="font-size:11px;color:var(--text2);line-height:1.5">'+authorshipCell+'</td>'
+      + '<td style="font-size:11px;color:var(--text2)">'+updatedCell+'</td>'
+      + '<td><button class="btn btn-sm" onclick="openShortsModal('+origIdx+')">편집</button> <button class="btn btn-sm btn-red" onclick="deleteShortsAPI('+origIdx+')">삭제</button></td>'
+      + '</tr>';
+  });
+  _shortsRefreshBulkToolbar();
+  papInitAdvPanel('shorts');
 }
 async function deleteShortsAPI(i){
   if(!shortsList[i])return;
   if(!confirm('"'+shortsList[i].title+'" 을 삭제하시겠습니까?'))return;
   try{await apiDelete('/shorts/'+shortsList[i].id);shortsList.splice(i,1);renderShortsFromAPI();}catch(e){alert('삭제 실패');}
+}
+
+// QA #208 Phase 2d — shorts bulk-selection helpers.
+function shortsToggleRow(checkbox){
+  if(!checkbox) return;
+  var id = checkbox.dataset.id;
+  if(!id) return;
+  if(checkbox.checked) shortsSelectedIds.add(id);
+  else shortsSelectedIds.delete(id);
+  _shortsRefreshBulkToolbar();
+}
+function shortsToggleSelectAll(checkbox){
+  document.querySelectorAll('.shorts-row-check').forEach(function(cb){
+    cb.checked = checkbox.checked;
+    var id = cb.dataset.id;
+    if(!id) return;
+    if(checkbox.checked) shortsSelectedIds.add(id);
+    else shortsSelectedIds.delete(id);
+  });
+  _shortsRefreshBulkToolbar();
+}
+function shortsClearSelection(){
+  shortsSelectedIds.clear();
+  var hdr = document.getElementById('shortsSelectAll');
+  if(hdr) hdr.checked = false;
+  document.querySelectorAll('.shorts-row-check').forEach(function(cb){ cb.checked = false; });
+  _shortsRefreshBulkToolbar();
+}
+function _shortsRefreshBulkToolbar(){
+  var bar = document.getElementById('shortsBulkToolbar');
+  var lbl = document.getElementById('shortsBulkCount');
+  if(!bar) return;
+  if(shortsSelectedIds.size > 0){
+    bar.style.display = 'block';
+    if(lbl) lbl.textContent = shortsSelectedIds.size + '개 선택';
+  } else {
+    bar.style.display = 'none';
+  }
+}
+async function shortsBulkAction(action){
+  var ids = Array.from(shortsSelectedIds);
+  if(!ids.length){ alert('선택된 항목이 없습니다.'); return; }
+  var labels = { publish: '공개 전환', draft: '비공개 전환', delete: '삭제' };
+  if(!confirm(ids.length + '개 숏츠를 ' + labels[action] + '하시겠습니까?')) return;
+  var failures = [];
+  for(var i = 0; i < ids.length; i++){
+    var id = ids[i];
+    try {
+      if(action === 'delete'){
+        await apiDelete('/shorts/' + id);
+      } else if(action === 'publish'){
+        await apiPut('/shorts/' + id, { status: 'published' });
+      } else if(action === 'draft'){
+        await apiPut('/shorts/' + id, { status: 'draft' });
+      }
+    } catch(err){
+      failures.push(id.substring(0,8) + ': ' + (err && err.message || ''));
+    }
+  }
+  shortsSelectedIds.clear();
+  await loadShortsFromAPI();
+  if(failures.length){
+    alert('일부 실패:\n' + failures.join('\n'));
+  } else {
+    alert('완료: ' + ids.length + '개 숏츠 ' + labels[action]);
+  }
 }
 
 // ======== COMMUNITY API ========

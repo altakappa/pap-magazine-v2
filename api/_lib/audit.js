@@ -128,9 +128,11 @@ async function attachAuthorship(rows){
 
   let profilesById = {};
   try {
+    // QA #208 Phase 2g — include `role` so the admin can filter by
+    // author role (대표 관리자 / 서브 관리자).
     const { data } = await supabaseAdmin
       .from('profiles')
-      .select('id, display_name, email')
+      .select('id, display_name, email, role')
       .in('id', Array.from(ids));
     for(const p of (data || [])) profilesById[p.id] = p;
   } catch(err){
