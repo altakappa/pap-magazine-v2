@@ -45,7 +45,23 @@
     { "source": "/article/:slug", "destination": "/api/seo/article/:slug" },
     { "source": "/film/:slug", "destination": "/api/seo/film/:slug" },
     { "source": "/short/:slug", "destination": "/api/seo/short/:slug" },
-    { "source": "/go/:id", "destination": "/api/go/:id" }
+    { "source": "/go/:id", "destination": "/api/go/:id" },
+    { "source": "/about", "destination": "/about.html" },
+    { "source": "/contact", "destination": "/contact.html" },
+    { "source": "/business", "destination": "/business.html" },
+    { "source": "/films", "destination": "/films.html" },
+    { "source": "/articles", "destination": "/articles.html" },
+    { "source": "/auth", "destination": "/auth.html" },
+    { "source": "/mypage", "destination": "/mypage.html" },
+    { "source": "/submission", "destination": "/submission.html" },
+    { "source": "/subscribe", "destination": "/subscribe.html" },
+    { "source": "/community", "destination": "/community.html" },
+    { "source": "/privacy", "destination": "/privacy.html" },
+    { "source": "/terms", "destination": "/terms.html" },
+    { "source": "/data-deletion", "destination": "/data-deletion.html" },
+    { "source": "/data-migration", "destination": "/data-migration.html" },
+    { "source": "/pullletter", "destination": "/pullletter.html" },
+    { "source": "/magazine", "destination": "/magazine.html" }
   ],
   "redirects": [
     { "source": "/.env",                "destination": "/404.html", "permanent": false },
@@ -229,5 +245,6 @@
       "memory": 1024
     }
   },
-  "cleanUrls": true
+  "cleanUrls": false,
+  "trailingSlash": false
 }
