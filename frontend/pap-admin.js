@@ -5030,9 +5030,27 @@ function _readEditorialFromForm(){
   };
 }
 
-function editEditorial(id){
-  var ed=editorials.find(function(e){return e.id===id;});
-  if(!ed)return;
+async function editEditorial(id){
+  // QA #216 — single-row fetch instead of trusting the list cache.
+  // The /editorials list response projection drops a few large fields
+  // (full description JSON, gallery details, …) and is stale right
+  // after a save. Re-fetching the row guarantees the form mounts with
+  // the canonical post-save state without a manual page reload.
+  var ed = null;
+  try {
+    var resp = await apiGet('/editorials/' + id);
+    ed = resp && (resp.data || resp);
+  } catch(err){
+    // Network blip — fall back to the cached row so the editor can at
+    // least open the form, then warn the user the data may be stale.
+    ed = editorials.find(function(e){return e.id===id;}) || null;
+    if(typeof toast === 'function') toast('최신 데이터를 가져오지 못했습니다. 다시 불러오세요.');
+  }
+  if(!ed) return;
+  // Keep the list cache in sync so other UI bits (status badge, table
+  // row) reflect the fresh values without a separate refresh round-trip.
+  var ix = editorials.findIndex(function(e){return e.id===id;});
+  if(ix >= 0) editorials[ix] = Object.assign({}, editorials[ix], ed);
   editingEditorialId=id;
   // Populate basic fields
   document.getElementById('postTitle').value=ed.title||'';
@@ -5460,6 +5478,72 @@ function _peShowSaveSuccess(msg){
   }
 }
 
+// QA #216 — global toast so save handlers can surface success/error
+// without an alert() blocking the UI. Lazy-mounts a #papToast container
+// in the body on first call. Stacks up to 3 visible toasts; older ones
+// auto-dismiss after the duration. Exposed on window so any module can
+// fire `toast('saved')` regardless of script ordering.
+function _papToastImpl(msg, opts){
+  opts = opts || {};
+  var type = opts.type || 'success'; // 'success' | 'error' | 'info'
+  var dur = typeof opts.duration === 'number' ? opts.duration : (type === 'error' ? 6000 : 3000);
+  var box = document.getElementById('papToast');
+  if(!box){
+    box = document.createElement('div');
+    box.id = 'papToast';
+    box.style.cssText = 'position:fixed;bottom:24px;right:24px;display:flex;flex-direction:column;gap:8px;z-index:99999;pointer-events:none';
+    document.body.appendChild(box);
+  }
+  var color = type === 'error' ? '#dc2626' : (type === 'info' ? '#3b82f6' : '#16a34a');
+  var icon  = type === 'error' ? '⚠️ ' : (type === 'info' ? 'ℹ️ ' : '✅ ');
+  var t = document.createElement('div');
+  t.style.cssText = 'pointer-events:auto;background:#111;color:#fff;padding:12px 16px;border-radius:6px;border-left:4px solid '+color+';font-size:13px;line-height:1.4;box-shadow:0 8px 24px rgba(0,0,0,.25);min-width:240px;max-width:420px;opacity:0;transform:translateY(8px);transition:all .2s';
+  t.textContent = icon + String(msg||'');
+  box.appendChild(t);
+  // Trim to most-recent 3 to avoid stacking forever.
+  while(box.children.length > 3){ box.removeChild(box.firstChild); }
+  requestAnimationFrame(function(){ t.style.opacity='1'; t.style.transform='translateY(0)'; });
+  setTimeout(function(){
+    t.style.opacity='0'; t.style.transform='translateY(8px)';
+    setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); }, 220);
+  }, dur);
+}
+// Expose globally — existing callers use `typeof toast === 'function'` checks.
+if(typeof window !== 'undefined'){
+  window.toast = _papToastImpl;
+}
+var toast = _papToastImpl;
+
+// QA #216 — guard against accidental tab close/reload while the editor
+// has unsaved changes. The form sets _papFormDirty=true on any input
+// edit; savePost clears it on a successful round-trip. beforeunload's
+// returnValue triggers the browser's native "Leave this page?" dialog.
+var _papFormDirty = false;
+function _papMarkDirty(){ _papFormDirty = true; }
+function _papClearDirty(){ _papFormDirty = false; }
+window._papMarkDirty = _papMarkDirty;
+window._papClearDirty = _papClearDirty;
+window.addEventListener('beforeunload', function(ev){
+  if(_papFormDirty){
+    ev.preventDefault();
+    ev.returnValue = '';
+    return '';
+  }
+});
+// Wire the dirty flag to all form inputs once the DOM is ready.
+document.addEventListener('DOMContentLoaded', function(){
+  // Editorial + news + film + shorts form containers — any input/change
+  // anywhere inside flips the flag. Specific fields wire themselves via
+  // existing handlers; this is the catch-all.
+  var watch = ['#t-newpost', '#t-newnews', '#filmModal', '#shortsModal'];
+  watch.forEach(function(sel){
+    var root = document.querySelector(sel);
+    if(!root) return;
+    root.addEventListener('input',  _papMarkDirty, true);
+    root.addEventListener('change', _papMarkDirty, true);
+  });
+});
+
 // mode (optional): 'draft' forces status='draft' regardless of the
 // 공개 checkbox, so the "임시저장" button always saves as a draft no
 // matter what the publish toggle says. Default behaviour reads the
@@ -5714,15 +5798,25 @@ async function savePost(mode){
         successMsg='에디토리얼이 등록되었습니다.';
       }
       _peShowSaveSuccess(successMsg);
+      // QA #216 — surface as toast too so the user sees confirmation
+      // even after the list view replaces the success div.
+      toast(successMsg);
+      // QA #216 — clear the unsaved-changes flag so beforeunload stops
+      // nagging the user after a successful save.
+      _papClearDirty();
       editingEditorialId=null;
       // Wipe the form NOW so the next "+ 새 에디토리얼" click starts
       // truly empty even if the go('newpost') reset hook ever drifts.
       if(typeof _resetNewPostForm === 'function') _resetNewPostForm();
-      loadEditorials();go('editorials');
+      // QA #216 — await the refetch so the list page never paints stale
+      // data after a save. Then route to the list view.
+      await loadEditorials();
+      go('editorials');
     }else if(category==='news'){
       await apiPost('/articles',{title:title,subtitle:subtitle,tags:tagsArr,thumbnail_url:thumbUrl,credits:Object.entries(credits).map(function(c){return{role:c[0],name:c[1].name};}),status:isPublished?'published':'draft',published_date:isPublished?new Date().toISOString():null,category:'news'});
-      alert('뉴스가 등록되었습니다.');
-      loadNews();go('news');
+      toast('뉴스가 등록되었습니다.');
+      await loadNews();
+      go('news');
     }else if(category==='film' || category==='shorts'){
       // Extract a clean 11-char YouTube id via the shared normaliser so
       // films/shorts created through the unified post form go through the
@@ -5750,18 +5844,21 @@ async function savePost(mode){
       }
       if (category==='film') {
         await apiPost('/films',{title:title,youtube_id:_ytId,thumbnail_url:thumbUrl,tags:tagsArr.join(', '),status:isPublished?'published':'draft',published_date:isPublished?new Date().toISOString():null});
-        alert('필름이 등록되었습니다.');
-        loadFilmsFromAPI();go('film');
+        toast('필름이 등록되었습니다.');
+        await loadFilmsFromAPI();
+        go('film');
       } else {
         await apiPost('/shorts',{title:title,youtube_id:_ytId,thumbnail_url:thumbUrl,tags:tagsArr.join(', '),status:isPublished?'published':'draft',published_date:isPublished?new Date().toISOString():null});
-        alert('숏츠가 등록되었습니다.');
-        loadShortsFromAPI();go('shorts');
+        toast('숏츠가 등록되었습니다.');
+        await loadShortsFromAPI();
+        go('shorts');
       }
     }
   }catch(e){
-    // QA #100 — translate the raw error into something specific so the
-    // user knows what to fix. The summary panel above the form picks
-    // up the message for visibility (alert is the legacy fallback).
+    // QA #100 / QA #216 — translate raw error and surface it both as a
+    // sticky summary panel above the form AND as an error toast.
+    // The form stays on screen (no go() navigation) so the user can
+    // immediately retry without losing their work.
     var friendly = _peFormatSaveError(e);
     var summary=document.getElementById('peSaveSummary');
     if(summary){
@@ -5769,7 +5866,7 @@ async function savePost(mode){
       summary.style.display='block';
       summary.scrollIntoView({behavior:'smooth', block:'center'});
     }
-    alert(friendly);
+    toast(friendly, { type: 'error' });
   }finally{
     saveBtns.forEach(function(b,i){
       b.disabled=false;
@@ -6598,15 +6695,19 @@ async function saveFilm(){
   try{
     if(editFilmId){
       await apiPut('/films/'+editFilmId, payload);
-      alert('필름이 수정되었습니다.');
+      toast('필름이 수정되었습니다.');
     } else {
       await apiPost('/films', payload);
-      alert('필름이 등록되었습니다.');
+      toast('필름이 등록되었습니다.');
     }
+    _papClearDirty();
     closeFilmModal();
-    loadFilmsFromAPI();
+    // QA #216 — await the refetch so the list paints fresh data
+    // before control returns; otherwise the modal closes onto a stale
+    // grid and the editor thinks nothing changed.
+    await loadFilmsFromAPI();
   }catch(e){
-    alert('저장 실패: ' + (e && e.message));
+    toast('저장 실패: ' + (e && e.message ? e.message : '알 수 없는 오류'), { type: 'error' });
   }
 }
 
