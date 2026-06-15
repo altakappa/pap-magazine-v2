@@ -1050,8 +1050,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
         <select class="pe-select" id="memberRoleFilter" style="max-width:140px" onchange="renderMembers()">
           <option value="all">전체 역할</option>
           <option value="admin">대표 관리자</option>
-          <option value="staff">스태프</option>
-          <option value="contributor">기여자</option>
+          <option value="staff">서브 관리자</option>
           <option value="member">일반 회원</option>
         </select>
         <select class="pe-select" id="memberStatusFilter" style="max-width:160px" onchange="renderMembers()">
@@ -1107,8 +1106,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
         <div class="modal-label">역할 <span class="pe-opt" id="memberEditRoleLock" style="display:none;color:rgba(255,180,80,.9)">대표 관리자만 변경 가능</span></div>
         <select class="pe-select" id="memberEditRole">
           <option value="member">일반 회원 (Member)</option>
-          <option value="contributor">기여자 (Contributor)</option>
-          <option value="staff">스태프 (Sub Admin)</option>
+          <option value="staff">서브 관리자 (Sub Admin)</option>
           <option value="admin">대표 관리자 (Main Admin)</option>
         </select>
       </div>
@@ -2348,7 +2346,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
     <div id="contentAuditBody" style="flex:1;overflow-y:auto;padding:0"></div>
   </div>
 </div>
-<script src="/pap-admin.js?v=37" defer></script>
+<script src="/pap-admin.js?v=38" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>

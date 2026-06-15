@@ -93,21 +93,21 @@ document.addEventListener('DOMContentLoaded',function(){
   loadDashboardStats();
 });
 
-// QA #217 — single source of truth for role labels + badge classes.
-// Used by the sidebar badge, member table, profile chips, and any
-// public-site element that wants to surface a user's role. Adding a
-// new role only requires touching this map.
+// QA #218 — three-role model (Main Admin / Sub Admin / Member). The
+// legacy 'contributor' key is mapped onto 'member' so old DB rows or
+// API responses still render correctly without the role appearing in
+// any UI selector.
 //   admin       → 대표 관리자 (Red)
 //   staff       → 서브 관리자 (Blue)
-//   contributor → 크리에이터 (Purple)
 //   member      → 일반 회원 (Gray)
+//   contributor → (legacy alias for member)
 var PAP_ROLE_META = {
-  admin:       { label: '대표 관리자', short: '대표',   cls: 'b-role-admin',       sbCls: 'sb-role-admin' },
-  staff:       { label: '서브 관리자', short: '서브',   cls: 'b-role-staff',       sbCls: 'sb-role-staff' },
-  contributor: { label: '크리에이터',  short: '크리에이터', cls: 'b-role-contributor', sbCls: 'sb-role-contributor' },
-  member:      { label: '일반 회원',   short: '회원',   cls: 'b-role-member',      sbCls: 'sb-role-member' },
+  admin:  { label: '대표 관리자', short: '대표', cls: 'b-role-admin',  sbCls: 'sb-role-admin' },
+  staff:  { label: '서브 관리자', short: '서브', cls: 'b-role-staff',  sbCls: 'sb-role-staff' },
+  member: { label: '일반 회원',   short: '회원', cls: 'b-role-member', sbCls: 'sb-role-member' },
 };
 function papRoleMeta(role){
+  if (role === 'contributor') return PAP_ROLE_META.member; // QA #218 legacy alias
   return PAP_ROLE_META[role] || PAP_ROLE_META.member;
 }
 window.PAP_ROLE_META = PAP_ROLE_META;

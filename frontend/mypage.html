@@ -64,13 +64,14 @@ a{color:#fff;text-decoration:none}
 .mp-badge.free{color:rgba(255,255,255,.5)}
 .mp-badge.standard{color:#4dabf7;border-color:#4dabf7}
 .mp-badge.premium{color:#ffd43b;border-color:#ffd43b}
-/* QA #217 — role badge palette mirrors /admin (admin=Red, staff=Blue,
-   contributor=Purple, member=Gray) so the same user sees the same colour
-   on mypage and the admin sidebar. Solid background for legibility. */
+/* QA #217 / #218 — three-role badge palette mirrors /admin.
+   admin=Red, staff=Blue, member=Gray. The legacy 'contributor' class
+   intentionally renders identical to 'member' so older HTML / cached
+   JS still paints correctly while we phase the key out. */
 .mp-badge.admin{color:#fff;background:#dc2626;border-color:#dc2626}
 .mp-badge.staff{color:#fff;background:#3b82f6;border-color:#3b82f6}
-.mp-badge.contributor{color:#fff;background:#7c3aed;border-color:#7c3aed}
-.mp-badge.member{color:#fff;background:#6b7280;border-color:#6b7280}
+.mp-badge.member,
+.mp-badge.contributor{color:#fff;background:#6b7280;border-color:#6b7280}
 .mp-badge.pending{color:#ffd43b;border-color:rgba(255,212,59,.4)}
 .mp-badge.approved{color:#51cf66;border-color:rgba(81,207,102,.4)}
 .mp-badge.revision{color:#74c0fc;border-color:rgba(116,192,252,.4)}
@@ -788,17 +789,18 @@ function loadProfile(){
     document.getElementById('mpName').textContent = _user.name || _user.email || '—';
     document.getElementById('mpEmail').textContent = _user.email || '';
 
-    // Role badge — QA #217 4-role palette unified with admin sidebar.
+    // Role badge — QA #218 three-role palette (Main Admin / Sub Admin /
+    // Member). The legacy 'contributor' value is folded into 'member' so
+    // any old profile rows still surface as 일반 회원.
     var roleEl = document.getElementById('mpRole');
     var role = _user.role || 'member';
-    // Standardised Korean labels matching the admin role meta.
-    var _roleLabel = ({ admin: '대표 관리자', staff: '서브 관리자', contributor: '크리에이터', member: '일반 회원' })[role]
+    if (role === 'contributor') role = 'member';
+    var _roleLabel = ({ admin: '대표 관리자', staff: '서브 관리자', member: '일반 회원' })[role]
                   || _t['role' + role.charAt(0).toUpperCase() + role.slice(1)]
                   || role;
     roleEl.textContent = _roleLabel;
-    // Reset to the base class then add the per-role variant.
     roleEl.className = 'mp-badge';
-    if (['admin','staff','contributor','member'].indexOf(role) !== -1) {
+    if (['admin','staff','member'].indexOf(role) !== -1) {
       roleEl.classList.add(role);
     }
 
