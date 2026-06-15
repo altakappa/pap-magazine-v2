@@ -144,6 +144,17 @@ const PAP = (function() {
           // Otherwise treat as expired session
           removeToken();
           removeUser();
+          // QA #207 — repaint the header dropdown the moment we wipe
+          // localStorage so the user doesn't briefly see a logged-in
+          // shell while the navigation hop is in flight. The function
+          // is exposed on window by pap-auth.js. Wrapped in try/catch
+          // because pap-auth.js may not have loaded yet on the very
+          // first API call from a cold page.
+          try {
+            if (typeof window !== 'undefined' && typeof window._papUpdateAuthDropdown === 'function') {
+              window._papUpdateAuthDropdown();
+            }
+          } catch(_){}
           if (window.location.pathname.indexOf('auth.html') === -1) {
             window.location.href = 'auth.html';
           }

@@ -1778,13 +1778,41 @@ function setLang(l) {
 (function(){
   var params = new URLSearchParams(window.location.search);
   // If already logged in, redirect immediately (skip full init)
+  // QA #207 — also honour ?return= so a fresh login from /admin lands
+  // back on /admin instead of being parked on /mypage. AND verify the
+  // token still validates before redirecting — otherwise a stale
+  // localStorage entry ping-pongs the user between /auth → /mypage →
+  // (401) → /auth → … forever. We do the verify in the background:
+  // we redirect optimistically, but a hint flag in sessionStorage
+  // tracks how many bounces happened so we bail out and show the form
+  // if it loops.
   if (!params.get('error') && !params.get('token') && !params.get('code') && !window.location.hash) {
     var existingToken = localStorage.getItem('pap-token');
     if (existingToken && !params.get('redirect')) {
-      // location.replace so the previous page (whatever sent the user here)
-      // remains directly accessible via back, instead of bouncing through auth.
-      window.location.replace('mypage.html');
-      return;
+      var bounces = 0;
+      try { bounces = parseInt(sessionStorage.getItem('pap-auth-bounce') || '0', 10) || 0; } catch(_){}
+      if (bounces < 2) {
+        try { sessionStorage.setItem('pap-auth-bounce', String(bounces + 1)); } catch(_){}
+        // Honour ?return= when present so admin → login → admin works.
+        var ret = params.get('return');
+        var dest = (ret && /^\/[^\s]*$/.test(ret)) ? ret : 'mypage.html';
+        // location.replace so the previous page (whatever sent the user here)
+        // remains directly accessible via back, instead of bouncing through auth.
+        window.location.replace(dest);
+        return;
+      }
+      // QA #207 — we've bounced twice. The token is almost certainly
+      // stale (otherwise mypage would have shown). Clear it and fall
+      // through to the login form so the user can sign in fresh.
+      try {
+        localStorage.removeItem('pap-token');
+        localStorage.removeItem('pap-user');
+        sessionStorage.removeItem('pap-auth-bounce');
+      } catch(_){}
+    } else {
+      // Not logged in (or explicit ?redirect): clear any stale bounce
+      // counter so a future legitimate auto-redirect works.
+      try { sessionStorage.removeItem('pap-auth-bounce'); } catch(_){}
     }
   }
   // Language detection runs early for fast FCP

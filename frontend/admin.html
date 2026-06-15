@@ -31,8 +31,23 @@
       headers: { 'Authorization': 'Bearer ' + token, 'X-Requested-With': 'XMLHttpRequest' },
       credentials: 'same-origin'
     })
-      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(r){
+        // QA #207 — explicit 401 handling. The old code silently
+        // turned a 401 into null and let the `if (role !== 'admin'…)`
+        // branch redirect to '/', which dropped the user on the
+        // homepage with a (now-cleared) stale-token UI. Treating
+        // 401/403 as a hard "go to login" matches what
+        // pap-api.js does for every other call.
+        if (r.status === 401 || r.status === 403) {
+          try { localStorage.removeItem('pap-token'); localStorage.removeItem('pap-user'); } catch(_){}
+          _redirect403();
+          // Propagate null so the next .then short-circuits.
+          return null;
+        }
+        return r.ok ? r.json() : null;
+      })
       .then(function(json){
+        if (!json) return; // already redirected by the 401 branch
         var role = json && json.user && json.user.role;
         // QA #203 — the initial gate used to only accept 'admin', which
         // silently bounced every newly-promoted 서브 관리자 (staff) back
