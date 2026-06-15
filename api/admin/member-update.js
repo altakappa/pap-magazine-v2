@@ -5,7 +5,7 @@
  */
 
 const { supabaseAdmin } = require('../_lib/supabase');
-const { requireAdmin, requireMainAdmin } = require('../_lib/auth');
+const { requireAdmin, requireMainAdmin, invalidateTokens } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 
@@ -126,6 +126,29 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ message: 'Update failed' });
     }
 
+    // QA #203 — when role actually CHANGED, bump the target user's
+    // token_version so their existing JWT becomes invalid. Without this
+    // a freshly-promoted 서브 관리자 still carries a JWT whose role
+    // claim says 'member' (or whatever it was), so /api/auth/me keeps
+    // returning the old role until they manually log out. Likewise a
+    // demotion would otherwise leave the demoted user with admin
+    // privileges until their JWT happens to expire. Skip the bump when
+    // the role didn't change (plan/status edits) so we don't kick users
+    // off for unrelated profile updates.
+    const roleChanged = role !== undefined && profile.role !== role;
+    let tokenInvalidated = false;
+    if (roleChanged) {
+      try {
+        await invalidateTokens(memberId);
+        tokenInvalidated = true;
+      } catch (e) {
+        // Surface in logs; the UI will still show the new role on the
+        // next manual login even if the bump fails (just slower
+        // propagation).
+        console.warn('[member-update] invalidateTokens failed for', memberId, e && e.message);
+      }
+    }
+
     return res.status(200).json({
       message: 'Member updated successfully',
       member: {
@@ -136,6 +159,10 @@ module.exports = async function handler(req, res) {
         subscriptionPlan: data.subscription_plan || data.plan || 'free',
         subscriptionStatus: data.subscription_status || data.status || 'inactive',
       },
+      // QA #203 — let the admin UI surface a "재로그인 안내" toast when
+      // the target user actually got bumped off their session.
+      tokenInvalidated,
+      roleChanged,
     });
   } catch (error) {
     console.error('Admin member-update error:', error);

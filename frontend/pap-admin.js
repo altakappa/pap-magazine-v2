@@ -368,7 +368,18 @@ async function saveMemberEdit(){
     updateMemberStats();
     renderMembers();
     closeMemberModal();
-    alert('회원 정보가 업데이트되었습니다.');
+    // QA #203 — when the backend signals that the target's JWT was
+    // invalidated (role change), make the consequences explicit so the
+    // admin knows the affected user must re-login for the new role to
+    // take effect on the client.
+    if (data && data.tokenInvalidated){
+      alert('회원 권한이 변경되었습니다.\n\n'
+        + '⚠ 해당 회원은 자동 로그아웃되었으며,\n'
+        + '   다시 로그인해야 새 권한이 적용됩니다.\n\n'
+        + '(현재 그 회원이 보고 있는 페이지는 다음 API 요청 시 401을 받아 로그인 화면으로 이동합니다.)');
+    } else {
+      alert('회원 정보가 업데이트되었습니다.');
+    }
   }catch(e){
     alert('오류: '+(e.message||'회원 정보 업데이트 실패'));
   }

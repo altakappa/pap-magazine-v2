@@ -34,9 +34,16 @@
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(json){
         var role = json && json.user && json.user.role;
-        if (role !== 'admin') {
-          // Authenticated but not an admin — bounce to homepage rather
-          // than the login screen so we don't loop forever.
+        // QA #203 — the initial gate used to only accept 'admin', which
+        // silently bounced every newly-promoted 서브 관리자 (staff) back
+        // to the homepage even though pap-admin.js itself permits both
+        // roles. Bring the gate in line with QA #169's two-tier model:
+        // 'admin' = 대표 관리자, 'staff' = 서브 관리자. Per-action
+        // restrictions (e.g. role changes are main-admin only) stay
+        // enforced at the API + button-render level.
+        if (role !== 'admin' && role !== 'staff') {
+          // Authenticated but not a privileged user — bounce to homepage
+          // rather than the login screen so we don't loop forever.
           window.location.replace('/');
           return;
         }
@@ -1812,7 +1819,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
     <div id="contentAuditBody" style="flex:1;overflow-y:auto;padding:0"></div>
   </div>
 </div>
-<script src="/pap-admin.js?v=23" defer></script>
+<script src="/pap-admin.js?v=24" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>
