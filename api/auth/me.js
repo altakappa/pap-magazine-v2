@@ -51,6 +51,9 @@ module.exports = async function handler(req, res) {
           location: profile.location,
           instagram: profile.instagram,
           avatarUrl: profile.avatar_url,
+          // QA #219 — creator recognition.
+          isCreator: !!profile.is_creator,
+          creatorSince: profile.creator_since || null,
         },
       });
     } catch (error) {
@@ -89,6 +92,9 @@ module.exports = async function handler(req, res) {
           instagram: profile.instagram,
           avatarUrl: profile.avatar_url,
           createdAt: profile.created_at,
+          // QA #219 — creator recognition.
+          isCreator: !!profile.is_creator,
+          creatorSince: profile.creator_since || null,
         },
       });
     }

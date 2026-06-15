@@ -66,6 +66,11 @@ module.exports = async function handler(req, res) {
         email: m.email,
         name: m.display_name || m.name || m.email,
         role: m.role || 'member',
+        // QA #219 — creator recognition. is_creator flips true via DB
+        // trigger when a member's submission gets published; the admin
+        // UI shows a "🎨 크리에이터" chip + the recognition date.
+        isCreator: !!m.is_creator,
+        creatorSince: m.creator_since || null,
         subscriptionPlan: m.subscription_plan || m.plan || 'free',
         subscriptionStatus: m.subscription_status || m.status || 'inactive',
         location: m.location || '',

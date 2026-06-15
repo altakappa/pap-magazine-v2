@@ -384,6 +384,7 @@ a{color:#fff;text-decoration:none}
       <div class="mp-row">
         <span class="mp-label" data-i18n="labelRole">역할</span>
         <span class="mp-badge" id="mpRole">—</span>
+        <span class="mp-badge" id="mpCreatorChip" style="display:none;background:#7c3aed;color:#fff;border-color:#7c3aed;margin-left:6px"></span>
       </div>
     </div>
   </section>
@@ -802,6 +803,25 @@ function loadProfile(){
     roleEl.className = 'mp-badge';
     if (['admin','staff','member'].indexOf(role) !== -1) {
       roleEl.classList.add(role);
+    }
+    // QA #219 — creator recognition chip rendered next to the role badge.
+    // The flag is set on /api/auth/me when the user's submission has been
+    // published as an editorial. Stays visible across page reloads.
+    var creatorEl = document.getElementById('mpCreatorChip');
+    if (creatorEl) {
+      if (_user.isCreator) {
+        var sinceLabel = '';
+        try {
+          var _cs = _user.creatorSince ? new Date(_user.creatorSince) : null;
+          if(_cs && !isNaN(_cs.getTime())){
+            sinceLabel = _cs.getFullYear() + '.' + String(_cs.getMonth()+1).padStart(2,'0') + '.' + String(_cs.getDate()).padStart(2,'0');
+          }
+        } catch(_){}
+        creatorEl.textContent = '🎨 크리에이터' + (sinceLabel ? ' · ' + sinceLabel : '');
+        creatorEl.style.display = '';
+      } else {
+        creatorEl.style.display = 'none';
+      }
     }
 
     // Show admin sidebar group only for admins

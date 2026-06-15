@@ -267,7 +267,23 @@ function renderMembers(){
     h+='<tr>';
     h+='<td>'+esc(m.name)+'</td>';
     h+='<td style="font-size:11px">'+esc(m.email)+'</td>';
-    h+='<td><span class="badge '+roleCls+'">'+esc(roleLabel)+'</span></td>';
+    // QA #219 — creator recognition chip rendered next to the role badge.
+    // Distinct purple icon-led tag so the admin can scan creators at a
+    // glance; the tooltip carries the precise creator_since date.
+    var creatorChip = '';
+    if (m.isCreator) {
+      var sinceStr = '';
+      try {
+        var _cs = m.creatorSince ? new Date(m.creatorSince) : null;
+        if(_cs && !isNaN(_cs.getTime())){
+          sinceStr = _cs.getFullYear() + '-' +
+            String(_cs.getMonth()+1).padStart(2,'0') + '-' +
+            String(_cs.getDate()).padStart(2,'0');
+        }
+      } catch(_){}
+      creatorChip = ' <span class="badge" title="크리에이터 인증'+(sinceStr?' · '+sinceStr:'')+'" style="margin-left:4px;background:#7c3aed;color:#fff;border-color:#7c3aed;font-weight:700">🎨 크리에이터</span>';
+    }
+    h+='<td><span class="badge '+roleCls+'">'+esc(roleLabel)+'</span>'+creatorChip+'</td>';
     h+='<td><span class="badge '+planCls+'">'+planLabel+'</span></td>';
     h+='<td><span class="badge '+statusCls+'">'+statusLabel+'</span></td>';
     h+='<td style="font-size:11px">'+date+'</td>';
