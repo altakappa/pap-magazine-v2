@@ -3487,12 +3487,42 @@ async function loadEditorials(){
       r._virtualStatus = 'scheduled';
       return r;
     });
-    editorials = (pub.data || []).concat(draft.data || []).concat(schedRows);
+    // QA #208 — dedupe + sort by created_at desc (newest first).
+    // The legacy code concatenated published + draft + scheduled in
+    // that order, which dumped every scheduled post at the BOTTOM of
+    // the "전체" tab regardless of when it was authored. The user's
+    // report — "예약 게시물이 전체 리스트 최하단에 배치됨" — was that
+    // ordering. Sorting on created_at gives editors a single
+    // chronological stream, and the per-status filter still works
+    // because each row keeps its effective status.
+    var byId = {};
+    [].concat(pub.data || [], draft.data || [], schedRows).forEach(function(r){
+      if(!r || !r.id) return;
+      // Keep the scheduled tag if both buckets returned the same row
+      // (scheduled rows are status='published' under the hood, so the
+      // published fetch returned them too).
+      if(byId[r.id] && r._virtualStatus === 'scheduled'){
+        byId[r.id]._virtualStatus = 'scheduled';
+      } else if(!byId[r.id]){
+        byId[r.id] = r;
+      }
+    });
+    editorials = Object.values(byId).sort(function(a, b){
+      var ta = a.created_at || a.published_date || '';
+      var tb = b.created_at || b.published_date || '';
+      return String(tb).localeCompare(String(ta));
+    });
     renderEditorialList();
   }catch(e){
     tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:#ff6b6b;padding:40px">불러오기 실패: '+esc(e.message)+'</td></tr>';
   }
 }
+
+// QA #208 — bulk-selection state. A plain Set of editorial ids that
+// survive re-renders so the user can toggle a status filter without
+// losing their checked rows. editorialToggleSelectAll, the per-row
+// onchange, and editorialBulkAction all read/write this.
+var editorialSelectedIds = new Set();
 
 function renderEditorialList(){
   var q=(document.getElementById('edSearchAdmin')?document.getElementById('edSearchAdmin').value:'').toLowerCase();
@@ -3510,18 +3540,51 @@ function renderEditorialList(){
     }
     if(!q)return true;
     var tags=Array.isArray(e.tags)?e.tags.join(' '):e.tags||'';
-    return (e.title||'').toLowerCase().indexOf(q)>-1||tags.toLowerCase().indexOf(q)>-1;
+    var creator=(e._creator && (e._creator.display_name || e._creator.email)) || '';
+    var editor=(e._editor && (e._editor.display_name || e._editor.email)) || '';
+    return (e.title||'').toLowerCase().indexOf(q)>-1
+        || tags.toLowerCase().indexOf(q)>-1
+        || creator.toLowerCase().indexOf(q)>-1
+        || editor.toLowerCase().indexOf(q)>-1;
   });
-  var draftCount=editorials.filter(function(e){return _effectiveStatus(e)==='draft';}).length;
-  var schedCount=editorials.filter(function(e){return _effectiveStatus(e)==='scheduled';}).length;
+
+  // QA #208 — populate status summary cards. Counts derive from the
+  // FULL editorials list so the dashboard always shows globals
+  // regardless of which filter is active.
+  var counts = { all: editorials.length, published:0, draft:0, scheduled:0, archived:0 };
+  editorials.forEach(function(e){
+    var s = _effectiveStatus(e);
+    if(s === 'scheduled') counts.scheduled++;
+    else if(s === 'published') counts.published++;
+    else if(s === 'draft') counts.draft++;
+    else counts.archived++;
+  });
+  var setStat = function(id, n){ var el = document.getElementById(id); if(el) el.textContent = String(n||0); };
+  setStat('edStatAll', counts.all);
+  setStat('edStatPublished', counts.published);
+  setStat('edStatDraft', counts.draft);
+  setStat('edStatScheduled', counts.scheduled);
+  setStat('edStatArchived', counts.archived);
+
+  // Highlight the active card with a coloured border.
+  document.querySelectorAll('.ed-stat-card').forEach(function(c){
+    if(c.dataset.status === edStatusFilter){
+      c.style.borderColor = 'var(--purple)';
+      c.style.boxShadow = '0 0 0 2px rgba(124,58,237,0.15)';
+    } else {
+      c.style.borderColor = 'var(--border2)';
+      c.style.boxShadow = '';
+    }
+  });
+
   var dcb=document.getElementById('edDraftCountBadge');
-  if(dcb) dcb.textContent=draftCount?('('+draftCount+')'):'';
+  if(dcb) dcb.textContent=counts.draft?('('+counts.draft+')'):'';
   var scb=document.getElementById('edScheduledCountBadge');
-  if(scb) scb.textContent=schedCount?('('+schedCount+')'):'';
+  if(scb) scb.textContent=counts.scheduled?('('+counts.scheduled+')'):'';
   var tb=document.getElementById('edListBody');
   if(!tb) return;
   tb.innerHTML='';
-  if(!filtered.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px 0">에디토리얼이 없습니다</td></tr>';if(document.getElementById('edCountLabel'))document.getElementById('edCountLabel').textContent='0';return;}
+  if(!filtered.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:40px 0">에디토리얼이 없습니다</td></tr>';if(document.getElementById('edCountLabel'))document.getElementById('edCountLabel').textContent='0';_editorialRefreshBulkToolbar();return;}
   filtered.forEach(function(e){
     var tags=Array.isArray(e.tags)?e.tags:[];
     var tagBadges=tags.slice(0,3).map(function(t){return '<span class="pe-tag">'+esc(t)+'</span>';}).join(' ');
@@ -3555,11 +3618,11 @@ function renderEditorialList(){
     }
     var thumb=e.thumbnail||e.cover_image||'';
     var thumbHtml=thumb?'<img loading="lazy" class="td-thumb" src="'+esc(thumb)+'">':'—';
-    var shortId=e.id?e.id.substring(0,8):'—';
     // Highlight non-live rows with a subtle background tint
     var rowStyle='';
     if(st==='draft')          rowStyle=' style="background:rgba(255,152,0,0.06)"';
     else if(st==='scheduled') rowStyle=' style="background:rgba(124,58,237,0.05)"';
+    else if(st==='archived')  rowStyle=' style="background:rgba(220,38,38,0.04)"';
     var safeTitle=esc(e.title).replace(/'/g,"\\'");
     var actions='<button class="btn btn-sm" onclick="editEditorial(\''+e.id+'\')">편집</button>';
     if(st==='draft'){
@@ -3571,13 +3634,107 @@ function renderEditorialList(){
       actions+=' <button class="btn btn-sm btn-primary" onclick="publishScheduledNow(\''+e.id+'\',\''+safeTitle+'\')" title="예약된 발행 시간을 무시하고 지금 즉시 공개합니다">즉시 발행 ▶</button>';
     }
     actions+=' <button class="btn btn-sm btn-red" onclick="deleteEditorial(\''+e.id+'\',\''+safeTitle+'\')">삭제</button>';
-    // Date column shows publish date for live posts, scheduled date for queued ones.
-    var dateCell = st==='scheduled'
-      ? '<span style="color:rgba(124,58,237,0.85);font-weight:600">예약: '+fmtDate(e.scheduled_publish_at)+'</span>'
+    // QA #208 — publish date column for live posts, scheduled date for queued ones.
+    var publishedCell = st==='scheduled'
+      ? '<span style="color:rgba(249,115,22,0.95);font-weight:600">예약: '+fmtDate(e.scheduled_publish_at)+'</span>'
       : fmtDate(e.published_date);
-    tb.innerHTML+='<tr'+rowStyle+'><td style="font-size:10px">'+shortId+'</td><td>'+thumbHtml+'</td><td class="td-title" onclick="editEditorial(\''+e.id+'\')">'+esc(e.title)+'</td><td>'+tagBadges+'</td><td><span class="badge '+cls+'">'+label+'</span></td><td>'+dateCell+'</td><td>'+actions+'</td></tr>';
+    // QA #208 — author + last editor display, using denormalised objects
+    // from attachAuthorship (QA #202). Falls back to '—' when missing.
+    var creatorName = (e._creator && (e._creator.display_name || e._creator.email)) || '';
+    var editorName  = (e._editor  && (e._editor.display_name  || e._editor.email))  || '';
+    var authorshipHtml;
+    if(creatorName || editorName){
+      var parts = [];
+      if(creatorName) parts.push('<div style="font-weight:500">'+esc(creatorName)+'</div>');
+      if(editorName && (!creatorName || e.created_by !== e.updated_by)){
+        parts.push('<div style="color:var(--text3);font-size:10px">수정: '+esc(editorName)+'</div>');
+      }
+      authorshipHtml = parts.join('');
+    } else {
+      authorshipHtml = '<span style="color:var(--text3)">—</span>';
+    }
+    var updatedCell = fmtDate(e.admin_edited_at || e.updated_at);
+    var isChecked = editorialSelectedIds.has(e.id) ? ' checked' : '';
+    tb.innerHTML+='<tr'+rowStyle+'>'
+      + '<td onclick="event.stopPropagation()"><input type="checkbox" class="ed-row-check" data-id="'+e.id+'" onchange="editorialToggleRow(this)"'+isChecked+'></td>'
+      + '<td>'+thumbHtml+'</td>'
+      + '<td class="td-title" onclick="editEditorial(\''+e.id+'\')">'+esc(e.title)+'</td>'
+      + '<td>'+tagBadges+'</td>'
+      + '<td><span class="badge '+cls+'">'+label+'</span></td>'
+      + '<td style="font-size:11px;line-height:1.5">'+authorshipHtml+'</td>'
+      + '<td>'+publishedCell+'</td>'
+      + '<td style="font-size:11px;color:var(--text2)">'+updatedCell+'</td>'
+      + '<td>'+actions+'</td>'
+      + '</tr>';
   });
-  if(document.getElementById('edCountLabel')) document.getElementById('edCountLabel').textContent=editorials.length;
+  if(document.getElementById('edCountLabel')) document.getElementById('edCountLabel').textContent=filtered.length;
+  _editorialRefreshBulkToolbar();
+}
+
+// QA #208 — bulk-selection helpers.
+function editorialToggleRow(checkbox){
+  if(!checkbox) return;
+  var id = checkbox.dataset.id;
+  if(!id) return;
+  if(checkbox.checked) editorialSelectedIds.add(id);
+  else editorialSelectedIds.delete(id);
+  _editorialRefreshBulkToolbar();
+}
+function editorialToggleSelectAll(checkbox){
+  document.querySelectorAll('.ed-row-check').forEach(function(cb){
+    cb.checked = checkbox.checked;
+    var id = cb.dataset.id;
+    if(!id) return;
+    if(checkbox.checked) editorialSelectedIds.add(id);
+    else editorialSelectedIds.delete(id);
+  });
+  _editorialRefreshBulkToolbar();
+}
+function editorialClearSelection(){
+  editorialSelectedIds.clear();
+  var hdr = document.getElementById('edSelectAll');
+  if(hdr) hdr.checked = false;
+  document.querySelectorAll('.ed-row-check').forEach(function(cb){ cb.checked = false; });
+  _editorialRefreshBulkToolbar();
+}
+function _editorialRefreshBulkToolbar(){
+  var bar = document.getElementById('edBulkToolbar');
+  var lbl = document.getElementById('edBulkCount');
+  if(!bar) return;
+  if(editorialSelectedIds.size > 0){
+    bar.style.display = 'block';
+    if(lbl) lbl.textContent = editorialSelectedIds.size + '개 선택';
+  } else {
+    bar.style.display = 'none';
+  }
+}
+async function editorialBulkAction(action){
+  var ids = Array.from(editorialSelectedIds);
+  if(!ids.length){ alert('선택된 항목이 없습니다.'); return; }
+  var labels = { publish: '공개 전환', draft: '임시저장 전환', delete: '삭제' };
+  if(!confirm(ids.length + '개 항목을 ' + labels[action] + '하시겠습니까?')) return;
+  var failures = [];
+  for(var i = 0; i < ids.length; i++){
+    var id = ids[i];
+    try {
+      if(action === 'delete'){
+        await apiDelete('/editorials/' + id);
+      } else if(action === 'publish'){
+        await apiPut('/editorials/' + id, { status: 'published' });
+      } else if(action === 'draft'){
+        await apiPut('/editorials/' + id, { status: 'draft' });
+      }
+    } catch(err){
+      failures.push(id.substring(0,8) + ': ' + (err && err.message || ''));
+    }
+  }
+  editorialSelectedIds.clear();
+  await loadEditorials();
+  if(failures.length){
+    alert('일부 실패:\n' + failures.join('\n'));
+  } else {
+    alert('완료: ' + ids.length + '개 항목 ' + labels[action]);
+  }
 }
 
 // QA #196 — manual "publish now" for a scheduled editorial.
