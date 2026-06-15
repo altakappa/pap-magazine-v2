@@ -37,6 +37,22 @@ module.exports = async function handler(req, res) {
         if (!admin) return;
       }
 
+      // QA #220 — edge cache for the anonymous public list so the
+      // same Vercel POP doesn't replay the same query to Supabase
+      // 28K times per day. s-maxage=60: a single fetch per POP per
+      // minute. stale-while-revalidate=300: keep serving the cached
+      // copy for 5 more minutes while the next refresh runs in the
+      // background. Authenticated requests skip the cache to avoid
+      // serving admin / staff a stale list right after they publish.
+      const isPublicAnon = requestedStatus === 'published'
+        && !req.headers.authorization
+        && req.method === 'GET';
+      if (isPublicAnon) {
+        res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=300');
+      } else {
+        res.setHeader('Cache-Control', 'no-store, max-age=0');
+      }
+
       // QA #186 — list-view projection drops `content` (the long article
       // body) + `gallery` + `credits`. Article cards only need
       // title/subtitle/thumbnail/category/published_date for rendering.

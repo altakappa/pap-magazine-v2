@@ -26,6 +26,11 @@ module.exports = async function handler(req, res) {
       // the editorials GET behaviour so admin tools (status=draft/scheduled)
       // bypass the schedule gate while consumers never see queued rows.
       const requestedStatus = status || 'published';
+      // QA #220 — edge cache for anonymous public list (60s + SWR 5min).
+      {
+        const { setListCacheHeader } = require('../_lib/cdnCache');
+        setListCacheHeader(req, res, { isPublic: requestedStatus === 'published' });
+      }
       // QA #186 — explicit list-view projection (drops `credits` JSONB +
       // `description` so the homepage card list isn't shipping payloads
       // it doesn't render).

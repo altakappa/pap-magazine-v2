@@ -20,6 +20,12 @@ module.exports = async function handler(req, res) {
       const { status, page = 1, limit: rawLimit = 50 } = req.query;
       const limit = Math.min(Math.max(1, parseInt(rawLimit) || 50), 100);
       const offset = (parseInt(page) - 1) * limit;
+      const requestedStatus = status || 'published';
+      // QA #220 — edge cache for anonymous public list.
+      {
+        const { setListCacheHeader } = require('../_lib/cdnCache');
+        setListCacheHeader(req, res, { isPublic: requestedStatus === 'published' });
+      }
 
       let query = supabaseAdmin
         .from('shorts')

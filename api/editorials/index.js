@@ -40,6 +40,15 @@ module.exports = async function handler(req, res) {
         if (!admin) return;
       }
 
+      // QA #220 — edge cache for the anonymous public list. Same shape
+      // as articles/films/shorts: 60s edge + 5min SWR for unauth GETs
+      // on the published view, no-store otherwise so authenticated
+      // editors never see a stale list after a save.
+      {
+        const { setListCacheHeader } = require('../_lib/cdnCache');
+        setListCacheHeader(req, res, { isPublic: requestedStatus === 'published' });
+      }
+
       // QA #186 — explicit column list (was '*'). The wildcard select
       // returned EVERY column including the 1536-dim `embedding` vector
       // (~10 KB/row), `description` / `description_en` / `instagram_caption`
