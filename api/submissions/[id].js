@@ -224,6 +224,27 @@ module.exports = async function handler(req, res) {
         }
         desc.lookImageMap = newLookImageMap;
       }
+      // QA #215 — also re-key fashion.imageCredits so admin-edited
+      // per-image credits track the new file_urls order. Keys are
+      // 1-based (img_1, img_2, …) and pointed at by index against the
+      // ORIGINAL file_urls. After the curation the survivors keep their
+      // credits, the deleted ones' credits are dropped (cascade), and
+      // the remaining keys are tight-packed to match nextUrls order.
+      if (desc.fashion && desc.fashion.imageCredits && typeof desc.fashion.imageCredits === 'object') {
+        const oldCredits = desc.fashion.imageCredits;
+        const newCredits = {};
+        for (let newIdx = 0; newIdx < nextUrls.length; newIdx++) {
+          const url = nextUrls[newIdx];
+          const origIdx = originalUrls.indexOf(url);
+          if (origIdx >= 0) {
+            const oldKey = 'img_' + (origIdx + 1);
+            if (oldCredits[oldKey]) {
+              newCredits['img_' + (newIdx + 1)] = oldCredits[oldKey];
+            }
+          }
+        }
+        desc.fashion = Object.assign({}, desc.fashion, { imageCredits: newCredits });
+      }
       desc.coverImageIndex = coverIdx;
 
       const { data: updated, error: updateErr } = await supabaseAdmin

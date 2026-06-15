@@ -277,6 +277,24 @@ function _buildInstagramCaption(desc, title, opts) {
 //     imageCredits  = { img_1: "@brand Type, @brand2 Type2", … }
 function _buildEditorialFashion(desc, fileUrls) {
   const fashion = { brands: [], imageCredits: {} };
+  // QA #215 — if the submitter (or an admin earlier in the pipeline)
+  // already typed per-image credits into desc.fashion.imageCredits,
+  // seed the editorial fashion map with those so manual values aren't
+  // overwritten by the auto-generated lookImageMap below. The PATCH
+  // handler re-keys this object whenever file_urls is curated, so the
+  // img_N keys here always line up with the FINAL fileUrls order.
+  if (desc && desc.fashion && desc.fashion.imageCredits && typeof desc.fashion.imageCredits === 'object') {
+    const seed = desc.fashion.imageCredits;
+    const max = Array.isArray(fileUrls) ? fileUrls.length : 0;
+    for (const k of Object.keys(seed)) {
+      const m = /^img_(\d+)$/.exec(k);
+      if (!m) continue;
+      const idx = parseInt(m[1], 10);
+      // Drop orphan keys whose index has no surviving image.
+      if (idx < 1 || idx > max) continue;
+      if (seed[k]) fashion.imageCredits[k] = seed[k];
+    }
+  }
   const looksByN = {};
   if (Array.isArray(desc.looks)) {
     desc.looks.forEach((L) => { if (L && typeof L.n === 'number') looksByN[L.n] = L; });
@@ -313,7 +331,12 @@ function _buildEditorialFashion(desc, fileUrls) {
         })
         .filter(Boolean)
         .join(', ');
-      if (line) fashion.imageCredits['img_' + (idx + 1)] = line;
+      // QA #215 — only overwrite when the slot doesn't already have an
+      // admin-curated value seeded from desc.fashion.imageCredits above.
+      const slotKey = 'img_' + (idx + 1);
+      if (line && !fashion.imageCredits[slotKey]) {
+        fashion.imageCredits[slotKey] = line;
+      }
     });
   }
   return fashion;

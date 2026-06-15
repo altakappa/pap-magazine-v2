@@ -5510,8 +5510,15 @@ async function savePost(mode){
   });
 
   // Image credits per gallery image
+  // QA #215 — index against KEPT images only. isExcluded rows are
+  // filtered out of the upload, so building the credit map off the
+  // raw galleryImages list shifts the keys by every excluded entry
+  // and ends up storing image #2's credit under img_3 (etc.).
   var imgCreditsMap={};
-  galleryImages.forEach(function(g,i){if(g.credits)imgCreditsMap['img_'+(i+1)]=g.credits;});
+  var keptImagesForCredits = galleryImages.filter(function(g){ return !g.isExcluded; });
+  keptImagesForCredits.forEach(function(g,i){
+    if(g.credits) imgCreditsMap['img_'+(i+1)] = g.credits;
+  });
   if(Object.keys(imgCreditsMap).length)fashion.imageCredits=imgCreditsMap;
 
   // forceDraft: explicit "임시저장" button click — always save as draft.
