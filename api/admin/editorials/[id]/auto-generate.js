@@ -202,10 +202,19 @@ module.exports = async function handler(req, res) {
     const caption = _buildCaptionFromEditorial(ed, descKr, descEn, descIt);
 
     // 5) Decide which fields to write — respect overwrite flag.
+    //
+    // QA #204 — added description_it to the slot list so the IT slot
+    // round-trips end-to-end (admin edit → save → re-edit shows IT).
+    // Before this, IT only ever lived inside the instagram_caption blob,
+    // which meant a re-trigger of the generator with overwrite=false
+    // saw an "already populated" description_en (the original English
+    // submission text!) and skipped both KR and IT — exactly the QA
+    // report's "영어 설명 입력 시 한글/이탈리아어 번역 생성 안됨".
     const updates = {};
     const fieldsUpdated = {
       description: false,
       description_en: false,
+      description_it: false,
       instagram_caption: false,
     };
 
@@ -213,13 +222,33 @@ module.exports = async function handler(req, res) {
       return v === null || v === undefined || String(v).trim() === '' || String(v).trim() === '(KR)';
     }
 
-    if (descKr && (overwrite || _isEmpty(ed.description))) {
+    // QA #204 — language-aware emptiness for the per-language description
+    // slots. Submitters often write their artistStatement in English; the
+    // current code path used to dump that English text straight into
+    // `description` and `description_en`, making the KR slot look
+    // "populated" even though it actually contained English. A later
+    // press of "🤖 AI 자동 생성" then skipped the KR fill — exactly the
+    // QA report's "영어 설명 입력 시 한글 번역 생성 안됨". These two
+    // helpers gate each slot on whether it contains text in the EXPECTED
+    // language (Hangul for KR, Latin for EN/IT), so a mis-languaged value
+    // gets treated as empty and re-translated.
+    function _hasHangul(v) { return /[가-힯]/.test(String(v || '')); }
+    function _hasLatin(v)  { return /[A-Za-z]/.test(String(v || '')); }
+    function _isKrSlotEmpty(v) { return _isEmpty(v) || !_hasHangul(v); }
+    function _isEnSlotEmpty(v) { return _isEmpty(v) || !_hasLatin(v); }
+    function _isItSlotEmpty(v) { return _isEmpty(v) || !_hasLatin(v); }
+
+    if (descKr && (overwrite || _isKrSlotEmpty(ed.description))) {
       updates.description = descKr;
       fieldsUpdated.description = true;
     }
-    if (descEn && (overwrite || _isEmpty(ed.description_en))) {
+    if (descEn && (overwrite || _isEnSlotEmpty(ed.description_en))) {
       updates.description_en = descEn;
       fieldsUpdated.description_en = true;
+    }
+    if (descIt && (overwrite || _isItSlotEmpty(ed.description_it))) {
+      updates.description_it = descIt;
+      fieldsUpdated.description_it = true;
     }
     if (caption && (overwrite || _isEmpty(ed.instagram_caption))) {
       updates.instagram_caption = caption;
@@ -231,6 +260,7 @@ module.exports = async function handler(req, res) {
         message: 'No fields to update (all populated; pass overwrite=true to replace).',
         description: ed.description,
         description_en: ed.description_en,
+        description_it: ed.description_it,
         instagram_caption: ed.instagram_caption,
         fieldsUpdated,
         previewKr: descKr,
@@ -256,6 +286,7 @@ module.exports = async function handler(req, res) {
       message: 'Editorial auto-fill complete',
       description: updated.description,
       description_en: updated.description_en,
+      description_it: updated.description_it,
       instagram_caption: updated.instagram_caption,
       fieldsUpdated,
       previewKr: descKr,

@@ -3807,6 +3807,12 @@ async function aiAutoGenerateEditorial(overwrite){
     if(fu.description_en && document.getElementById('postDescriptionEn')){
       document.getElementById('postDescriptionEn').value = data.description_en || '';
     }
+    // QA #204 — also hydrate the IT slot now that it persists in its own
+    // column. Without this the editor never saw the Italian translation
+    // refresh after pressing 🤖 AI 자동 생성.
+    if(fu.description_it && document.getElementById('postDescriptionIt')){
+      document.getElementById('postDescriptionIt').value = data.description_it || '';
+    }
     if(fu.instagram_caption && document.getElementById('postIgCaption')){
       document.getElementById('postIgCaption').value = data.instagram_caption || '';
     }
@@ -3814,6 +3820,7 @@ async function aiAutoGenerateEditorial(overwrite){
     var summary = [];
     if(fu.description)        summary.push('description (KR)');
     if(fu.description_en)     summary.push('description (EN)');
+    if(fu.description_it)     summary.push('description (IT)');
     if(fu.instagram_caption)  summary.push('instagram caption (KR/EN/IT)');
     if(summary.length){
       alert('✓ AI 자동 생성 완료\n채워진 필드: '+summary.join(', '));
@@ -3897,9 +3904,12 @@ function _readEditorialFromForm(){
   var issue = (document.getElementById('postSubtitle')||{}).value || '';
   var slug  = (document.getElementById('postSlug')||{}).value || '';
   var description    = (document.getElementById('postDescription')||{}).value || '';
-  // description_en isn't surfaced as a separate input in the editorial
-  // form yet — when it is, this picks it up automatically.
+  // QA #204 — EN + IT slots are now first-class inputs in the editorial
+  // form (admin.html). _readEditorialFromForm feeds the IG caption
+  // regenerator so it can rebuild the (KR)/(EN)/(IT) blocks from the
+  // editor's latest pending edits before save.
   var descriptionEn  = (document.getElementById('postDescriptionEn')||{}).value || '';
+  var descriptionIt  = (document.getElementById('postDescriptionIt')||{}).value || '';
   var credits = [];
   document.querySelectorAll('#creditsArea .pe-credit-row').forEach(function(row){
     var nameEl = row.querySelector('.pe-credit-name');
@@ -3947,6 +3957,11 @@ function editEditorial(id){
   if(preview&&tagsStr)preview.innerHTML=tagsStr.split(',').map(function(t){return t.trim()?'<span class="pe-tag">'+t.trim()+'</span>':'';}).join('');
   if(document.getElementById('postVideoUrl'))document.getElementById('postVideoUrl').value=ed.url||'';
   if(document.getElementById('postDescription'))document.getElementById('postDescription').value=ed.description||'';
+  // QA #204 — hydrate EN + IT description slots so an admin opening an
+  // existing row sees the per-language values instead of having to dig
+  // them out of the IG caption blob.
+  if(document.getElementById('postDescriptionEn'))document.getElementById('postDescriptionEn').value=ed.description_en||'';
+  if(document.getElementById('postDescriptionIt'))document.getElementById('postDescriptionIt').value=ed.description_it||'';
   // QA #170 — Instagram caption (seeded at submission approval).
   if(document.getElementById('postIgCaption'))document.getElementById('postIgCaption').value=ed.instagram_caption||'';
   document.getElementById('postPublish').checked=(ed.status==='published');
@@ -4469,6 +4484,10 @@ async function savePost(mode){
     var finalCover = thumbUrl || existingCoverUrl || finalThumb;
 
     var descriptionVal=document.getElementById('postDescription')?document.getElementById('postDescription').value:'';
+    // QA #204 — per-language slots so a save persists EN and IT
+    // separately instead of leaving them buried inside the IG caption.
+    var descriptionEnVal=document.getElementById('postDescriptionEn')?document.getElementById('postDescriptionEn').value:'';
+    var descriptionItVal=document.getElementById('postDescriptionIt')?document.getElementById('postDescriptionIt').value:'';
     // QA #170 — Instagram caption (auto-seeded at submission approval;
     // editor may have tuned it in the textarea before saving). Empty
     // string means "user cleared it on purpose" — pass null so it shows
@@ -4522,6 +4541,11 @@ async function savePost(mode){
         return statusVal === 'published' ? new Date().toISOString() : null;
       })(),
       description:descriptionVal||null,
+      // QA #204 — persist EN + IT description slots in their own columns
+      // (migration 039 added description_it). The editorial GET / list
+      // both surface these so the editor sees them on the next open.
+      description_en:descriptionEnVal||null,
+      description_it:descriptionItVal||null,
       // QA #170 — empty string → null so the modal shows the "generate"
       // affordance on reopen instead of an empty textarea masquerading
       // as legitimate content.

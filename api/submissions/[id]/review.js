@@ -453,8 +453,11 @@ module.exports = async function handler(req, res) {
               // unavailable, so the editorial isn't empty.
               description:    igDescriptions.kr || description || null,
               description_en: igDescriptions.en || null,
-              // IT translation lives only inside instagram_caption for now
-              // (no description_it column yet).
+              // QA #204 — IT translation now persists in its own column
+              // (migration 039), so a later admin edit / regeneration
+              // can keep KR + EN + IT in sync end-to-end. The caption
+              // blob still embeds (IT) too for the IG copy-paste flow.
+              description_it: igDescriptions.it || null,
               instagram_caption: instagramCaption,
               // QA #172 — link back to the submission so the editorial
               // save handler can look up the submitter when the admin

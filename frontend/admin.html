@@ -638,10 +638,27 @@ tr:hover td{background:rgba(0,0,0,.02)}
         </div>
 
         <!-- 에디토리얼 설명 -->
+        <!-- QA #204 — three side-by-side language slots (KR / EN / IT) so
+             editors can see and edit ALL translations directly, instead of
+             having to dig the IT version out of the instagram_caption blob.
+             The 🤖 AI generator now writes to all three slots end-to-end. -->
         <div class="pe-section" id="editorialDescSection">
-          <div class="pe-label">에디토리얼 설명 <span class="pe-opt">이미지 갤러리 바로 아래에 표시됩니다</span></div>
-          <textarea class="modal-ta" id="postDescription" style="min-height:120px" placeholder="에디토리얼에 대한 설명을 작성하세요. 촬영 컨셉, 스토리, 영감 등을 자유롭게 서술할 수 있습니다."></textarea>
-          <div class="pe-hint">한국어로 작성하면 AI가 8개 언어로 자동 번역합니다. 프론트엔드에서 이미지 갤러리 바로 아래에 표시됩니다.</div>
+          <div class="pe-label">에디토리얼 설명 <span class="pe-opt">3개 언어 모두 작성 / 편집 가능</span></div>
+          <div style="display:grid;grid-template-columns:1fr;gap:10px">
+            <div>
+              <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--text3);margin-bottom:4px">🇰🇷 한국어 (KR)</div>
+              <textarea class="modal-ta" id="postDescription" style="min-height:100px" placeholder="에디토리얼 한국어 설명. 작성 시 한국어로 입력하세요."></textarea>
+            </div>
+            <div>
+              <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--text3);margin-bottom:4px">🇬🇧 English (EN)</div>
+              <textarea class="modal-ta" id="postDescriptionEn" style="min-height:100px" placeholder="Editorial description in English. Leave blank to auto-translate."></textarea>
+            </div>
+            <div>
+              <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--text3);margin-bottom:4px">🇮🇹 Italiano (IT)</div>
+              <textarea class="modal-ta" id="postDescriptionIt" style="min-height:100px" placeholder="Descrizione dell'editoriale in italiano. Vuoto = traduzione automatica."></textarea>
+            </div>
+          </div>
+          <div class="pe-hint">아무 칸이나 입력해도 됩니다. 비어 있는 칸은 <strong>🤖 AI 자동 생성</strong>이 채워줍니다. (한국어 / 영어 / 이탈리아어 슬롯이 분리되어 저장됩니다.)</div>
         </div>
 
         <!-- QA #170 — 인스타그램 캡션 (서브미션 승인 시 자동 생성) -->
@@ -1819,7 +1836,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
     <div id="contentAuditBody" style="flex:1;overflow-y:auto;padding:0"></div>
   </div>
 </div>
-<script src="/pap-admin.js?v=24" defer></script>
+<script src="/pap-admin.js?v=25" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>

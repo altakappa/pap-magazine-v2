@@ -163,6 +163,9 @@ module.exports = async function handler(req, res) {
         'issue', 'thumbnail', 'gallery', 'credits', 'fashion', 'status', 'description',
         'scheduled_publish_at', 'seo_title', 'seo_description', 'og_image',
         'title_en', 'description_en',
+        // QA #204 — dedicated IT translation slot (was previously only
+        // surfaced inside the instagram_caption blob).
+        'description_it',
         // QA #170 — editor-tunable Instagram caption (auto-seeded at
         // submission approval; admin can hand-edit before publishing).
         'instagram_caption',

@@ -66,7 +66,7 @@ module.exports = async function handler(req, res) {
       const LIST_COLUMNS = [
         'id','title','slug','cover_image','thumbnail','published_date',
         'url','tags','issue','status','scheduled_publish_at','title_en',
-        'description','description_en','gallery','credits','fashion',
+        'description','description_en','description_it','gallery','credits','fashion',
         'instagram_caption','og_image','seo_title','seo_description',
         'updated_at','source_submission_id',
         // QA #202 — surface authorship in the admin list so editors
@@ -173,6 +173,7 @@ module.exports = async function handler(req, res) {
         thumbnail, gallery, credits, fashion, status, description,
         scheduled_publish_at, seo_title, seo_description, og_image,
         title_en, description_en,
+        description_it,  // QA #204 — IT translation slot
         instagram_caption,  // QA #170 — editor-tunable IG caption
       } = req.body;
 
@@ -203,6 +204,7 @@ module.exports = async function handler(req, res) {
           og_image: og_image || null,
           title_en: title_en || null,
           description_en: description_en || null,
+          description_it: description_it || null,
           // QA #170 — Instagram caption (auto-filled at submission approval;
           // direct-admin-create starts NULL so the textarea shows the
           // "generate" button instead of stale content).
