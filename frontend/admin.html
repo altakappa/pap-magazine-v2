@@ -718,6 +718,19 @@ tr:hover td{background:rgba(0,0,0,.02)}
         <div class="pe-save-summary" id="peSaveSummary" role="alert" aria-live="polite"></div>
         <div class="pe-save-success" id="peSaveSuccess" role="status" aria-live="polite"></div>
 
+        <!-- QA #209 — 작업 로그 패널. 편집 모드에서만 표시되며, 4명 요약 카드 +
+             전체 audit history 리스트를 보여준다. 새 게시글 작성 시에는 hidden. -->
+        <div id="contentAuditPanel" data-content-type="editorial" style="display:none;background:#fafbfc;border:1px solid var(--border2);border-radius:6px;padding:14px 16px;margin-bottom:18px;font-size:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div style="font-weight:700;color:var(--text);font-size:13px">📋 작업 로그</div>
+            <button class="btn btn-sm" id="contentAuditToggleBtn" onclick="toggleContentAuditPanel()" style="font-size:11px">▾ 펼치기</button>
+          </div>
+          <!-- 4-card 요약 (항상 표시). 생성자/최종 수정자/승인자/발행 담당자 + timestamp. -->
+          <div id="contentAuditSummary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px"></div>
+          <!-- 전체 audit history 리스트 (펼치기 토글). -->
+          <div id="contentAuditHistory" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border2);max-height:300px;overflow-y:auto"></div>
+        </div>
+
         <!-- 제목 -->
         <div class="pe-section">
           <div class="pe-label">제목</div>
@@ -1827,7 +1840,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
 <div class="modal-bg" id="filmModal">
   <div class="modal" style="max-width:760px">
     <button class="modal-close" onclick="closeFilmModal()">×</button>
-    <h2 id="filmModalTitle">필름 추가</h2>
+    <h2 id="filmModalTitle">필름 추가 <button class="btn btn-sm" style="margin-left:10px;padding:2px 8px;font-size:10px;vertical-align:middle" id="filmAuditBtn" onclick="if(typeof editFilmId !== 'undefined' && editFilmId) openContentAuditLog('film', editFilmId)">📋 수정 이력 보기</button></h2>
     <div class="sub">클릭 시 새 팝업창에서 YouTube 영상이 재생됩니다. 필름은 "동영상이 있는 에디토리얼"입니다.</div>
 
     <div class="modal-section">
@@ -1947,7 +1960,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
 <div class="modal-bg" id="shortsModal">
   <div class="modal" style="max-width:520px">
     <button class="modal-close" onclick="closeShortsModal()">×</button>
-    <h2 id="shortsModalTitle">숏츠 추가</h2>
+    <h2 id="shortsModalTitle">숏츠 추가 <button class="btn btn-sm" style="margin-left:10px;padding:2px 8px;font-size:10px;vertical-align:middle" id="shortsAuditBtn" onclick="if(typeof editShortsIdx !== 'undefined' && editShortsIdx >= 0 && shortsList[editShortsIdx]) openContentAuditLog('shorts', shortsList[editShortsIdx].id)">📋 수정 이력 보기</button></h2>
     <div class="sub">클릭 시 메인 화면에서 바로 인라인 재생됩니다.</div>
     <div class="modal-section">
       <div class="modal-label">제목</div>
@@ -2324,7 +2337,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
     <div id="contentAuditBody" style="flex:1;overflow-y:auto;padding:0"></div>
   </div>
 </div>
-<script src="/pap-admin.js?v=30" defer></script>
+<script src="/pap-admin.js?v=31" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>

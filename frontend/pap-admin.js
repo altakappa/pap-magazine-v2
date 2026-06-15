@@ -499,6 +499,10 @@ function go(id,el,opts){
     // state — a same-route re-entry behaves like a fresh mount.
     if(!editingEditorialId){
       _resetNewPostForm();
+      // QA #209 — hide the audit panel when creating a brand-new post;
+      // there's no row to fetch history for yet.
+      var auditPanel = document.getElementById('contentAuditPanel');
+      if(auditPanel) auditPanel.style.display = 'none';
     }
   } else if(id !== 'newpost' && editingEditorialId){
     // Leaving the new-post route while still in an edit session?
@@ -2274,6 +2278,8 @@ function _renderAuthorshipCell(row){
 
 // QA #202 — open the audit log modal for any content row.
 // `contentType` is one of 'editorial'/'article'/'film'/'shorts'.
+// QA #209 — also renders the 4-card summary (생성자/최종 수정자/승인자/발행 담당자)
+// at the top of the modal body so the editor sees the key actors at a glance.
 async function openContentAuditLog(contentType, contentId){
   var modal = document.getElementById('contentAuditModal');
   var body  = document.getElementById('contentAuditBody');
@@ -2283,8 +2289,46 @@ async function openContentAuditLog(contentType, contentId){
   try {
     var resp = await apiGet('/admin/content-audit/'+contentType+'/'+contentId);
     var rows = resp && resp.data ? resp.data : [];
+    // QA #209 — pick the four key actors out of the log + row fallback.
+    var sourceRow = _lookupContentRow(contentType, contentId);
+    var creatorEntry = null, editorEntry = null, approverEntry = null, publisherEntry = null;
+    for(var i = 0; i < rows.length; i++){
+      var e = rows[i];
+      if(!creatorEntry   && e.action === 'create')                                    creatorEntry = e;
+      if(!approverEntry  && e.action === 'approve')                                   approverEntry = e;
+      if(!publisherEntry && e.action === 'publish')                                   publisherEntry = e;
+      if(!editorEntry    && (e.action === 'update' || e.action === 'publish' || e.action === 'unpublish')) editorEntry = e;
+    }
+    if(!creatorEntry && sourceRow && sourceRow._creator){
+      creatorEntry = { actor_label: sourceRow._creator.display_name || sourceRow._creator.email || '—', created_at: sourceRow.created_at };
+    }
+    if(!editorEntry && sourceRow && sourceRow._editor){
+      editorEntry = { actor_label: sourceRow._editor.display_name || sourceRow._editor.email || '—', created_at: sourceRow.updated_at || sourceRow.admin_edited_at || sourceRow.created_at };
+    }
+    var card = function(label, color, actor){
+      var who = actor ? esc(actor.actor_label || '—') : '<span style="color:var(--text3)">—</span>';
+      var when = '';
+      try {
+        var d = actor && actor.created_at ? new Date(actor.created_at) : null;
+        if(d && !isNaN(d.getTime())){
+          when = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+        }
+      } catch(_){}
+      return '<div style="background:#fff;border:1px solid var(--border2);border-left:3px solid '+color+';border-radius:4px;padding:10px 12px">'
+        + '<div style="font-size:10px;color:var(--text3);font-weight:600;margin-bottom:4px">'+esc(label)+'</div>'
+        + '<div style="font-size:12px;font-weight:600;line-height:1.4">'+who+'</div>'
+        + (when ? '<div style="font-size:10px;color:var(--text3);margin-top:2px">'+esc(when)+'</div>' : '')
+        + '</div>';
+    };
+    var summaryHtml = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:14px 16px;background:#f9fafb;border-bottom:1px solid var(--border2)">'
+      + card('생성자',       '#22c55e', creatorEntry)
+      + card('최종 수정자',  '#7c3aed', editorEntry)
+      + card('승인자',       '#f59e0b', approverEntry)
+      + card('발행 담당자',  '#3b82f6', publisherEntry)
+      + '</div>';
+
     if(!rows.length){
-      body.innerHTML = '<div style="padding:30px 0;text-align:center;color:var(--text3)">아직 수정 이력이 없습니다.</div>';
+      body.innerHTML = summaryHtml + '<div style="padding:30px 0;text-align:center;color:var(--text3)">아직 수정 이력이 없습니다.</div>';
       return;
     }
     body.innerHTML = rows.map(function(r){
@@ -2310,6 +2354,8 @@ async function openContentAuditLog(contentType, contentId){
         +diffSummary
       +'</div>';
     }).join('');
+    // QA #209 — prepend the 4-card summary before the timeline.
+    body.innerHTML = summaryHtml + body.innerHTML;
   } catch(e){
     body.innerHTML = '<div style="padding:30px 0;text-align:center;color:#c0392b">불러오기 실패: '+esc(e.message||'')+'</div>';
   }
@@ -3689,6 +3735,185 @@ async function loadDashboardStats(){
 // ======== EDITORIAL CRUD (API) ========
 var editorials=[];
 var editingEditorialId=null;
+
+// ────────────────────────────────────────────────────────────────────────
+// QA #209 — content audit log panel (shared by editorial/article/film/shorts).
+// Loads the audit history for a content row and renders the summary cards
+// (생성자/최종 수정자/승인자/발행 담당자) + collapsible full history list.
+// Lives at module scope because all four edit modals reuse the same DOM
+// node (#contentAuditPanel) — only data-content-type and the content id
+// change per modal.
+async function loadContentAuditPanel(contentType, contentId){
+  var panel = document.getElementById('contentAuditPanel');
+  if(!panel) return;
+  if(!contentId){
+    panel.style.display = 'none';
+    return;
+  }
+  panel.style.display = '';
+  panel.dataset.contentType = contentType;
+  // Reset placeholder while fetching.
+  var sumEl = document.getElementById('contentAuditSummary');
+  var histEl = document.getElementById('contentAuditHistory');
+  if(sumEl) sumEl.innerHTML = '<div style="grid-column:span 4;color:var(--text3);text-align:center;padding:10px">불러오는 중…</div>';
+  if(histEl) histEl.innerHTML = '';
+
+  try {
+    var res = await apiGet('/admin/content-audit/' + contentType + '/' + contentId + '?limit=100');
+    var entries = (res && res.data) || [];
+    _renderContentAuditSummary(contentType, contentId, entries);
+    _renderContentAuditHistory(entries);
+  } catch(err){
+    if(sumEl) sumEl.innerHTML = '<div style="grid-column:span 4;color:var(--red);text-align:center;padding:10px">작업 로그를 불러오지 못했습니다</div>';
+  }
+}
+
+// Resolve the four key actors from the audit log + the original row.
+// - 생성자: action='create' (oldest). Falls back to created_by on the row.
+// - 최종 수정자: most recent action='update' (or any non-create/delete).
+// - 승인자: oldest action='approve' (서브미션→에디토리얼 승인). 없으면 '—'.
+// - 발행 담당자: most recent action='publish'. 없으면 '—'.
+function _renderContentAuditSummary(contentType, contentId, entries){
+  var sumEl = document.getElementById('contentAuditSummary');
+  if(!sumEl) return;
+
+  // Find the source row in the appropriate in-memory list so we can use
+  // _creator/_editor as a fallback when the audit log doesn't have a
+  // create entry (e.g. rows created before QA #202 launched).
+  var sourceRow = _lookupContentRow(contentType, contentId);
+
+  var creator = null, lastEditor = null, approver = null, publisher = null;
+  // entries are returned newest-first.
+  for(var i = 0; i < entries.length; i++){
+    var e = entries[i];
+    if(!creator && e.action === 'create') creator = e;
+    if(!approver && e.action === 'approve') approver = e;
+    if(!publisher && e.action === 'publish') publisher = e;
+    if(!lastEditor && (e.action === 'update' || e.action === 'publish' || e.action === 'unpublish')) lastEditor = e;
+  }
+  // Fallback to row authorship denormalisation for legacy rows.
+  if(!creator && sourceRow && sourceRow._creator){
+    creator = {
+      actor_label: sourceRow._creator.display_name || sourceRow._creator.email || '—',
+      created_at: sourceRow.created_at,
+    };
+  }
+  if(!lastEditor && sourceRow && sourceRow._editor){
+    lastEditor = {
+      actor_label: sourceRow._editor.display_name || sourceRow._editor.email || '—',
+      created_at: sourceRow.updated_at || sourceRow.admin_edited_at || sourceRow.created_at,
+    };
+  }
+
+  var card = function(label, color, actor, ts){
+    var who = actor ? esc(actor.actor_label || '—') : '<span style="color:var(--text3)">—</span>';
+    var when = '';
+    var tsStr = ts || (actor && actor.created_at) || '';
+    if(tsStr){
+      try {
+        var d = new Date(tsStr);
+        if(!isNaN(d.getTime())){
+          when = d.getFullYear() + '-' +
+            String(d.getMonth()+1).padStart(2,'0') + '-' +
+            String(d.getDate()).padStart(2,'0') + ' ' +
+            String(d.getHours()).padStart(2,'0') + ':' +
+            String(d.getMinutes()).padStart(2,'0');
+        }
+      } catch(_){}
+    }
+    return '<div style="background:#fff;border:1px solid var(--border2);border-left:3px solid '+color+';border-radius:4px;padding:10px 12px">'
+      + '<div style="font-size:10px;color:var(--text3);font-weight:600;margin-bottom:4px">'+esc(label)+'</div>'
+      + '<div style="font-size:12px;font-weight:600;color:var(--text);line-height:1.4">'+who+'</div>'
+      + (when ? '<div style="font-size:10px;color:var(--text3);margin-top:2px">'+esc(when)+'</div>' : '')
+      + '</div>';
+  };
+
+  sumEl.innerHTML = ''
+    + card('생성자',       '#22c55e', creator,    creator    && creator.created_at)
+    + card('최종 수정자',  '#7c3aed', lastEditor, lastEditor && lastEditor.created_at)
+    + card('승인자',       '#f59e0b', approver,   approver   && approver.created_at)
+    + card('발행 담당자',  '#3b82f6', publisher,  publisher  && publisher.created_at);
+}
+
+// Find the row in the matching in-memory list. Used for authorship fallback
+// when the audit log doesn't have a create entry.
+function _lookupContentRow(contentType, contentId){
+  if(contentType === 'editorial')  return (editorials  || []).find(function(r){ return r && r.id === contentId; });
+  if(contentType === 'article')    return (allArticles || []).find(function(r){ return r && r.id === contentId; });
+  if(contentType === 'film')       return (films       || []).find(function(r){ return r && r.id === contentId; });
+  if(contentType === 'shorts')     return (shortsList  || []).find(function(r){ return r && r.id === contentId; });
+  return null;
+}
+
+// Render the full audit history as a vertical timeline. Each row shows
+// the action verb (Korean) + actor + relative time + diff field count.
+function _renderContentAuditHistory(entries){
+  var el = document.getElementById('contentAuditHistory');
+  if(!el) return;
+  if(!entries || !entries.length){
+    el.innerHTML = '<div style="color:var(--text3);text-align:center;padding:14px">기록된 작업 로그가 없습니다</div>';
+    return;
+  }
+  var actionLabel = {
+    create:    '🆕 등록',
+    update:    '✏️ 수정',
+    publish:   '✅ 공개',
+    unpublish: '⏸ 비공개',
+    approve:   '🎉 승인',
+    delete:    '🗑 삭제',
+  };
+  var actionColor = {
+    create:'#22c55e', update:'#7c3aed', publish:'#3b82f6',
+    unpublish:'#f59e0b', approve:'#f59e0b', delete:'#ef4444',
+  };
+  var html = entries.map(function(e){
+    var label = actionLabel[e.action] || ('• ' + (e.action||'?'));
+    var color = actionColor[e.action] || 'var(--text3)';
+    var when = '';
+    try {
+      var d = new Date(e.created_at);
+      if(!isNaN(d.getTime())){
+        when = d.getFullYear() + '-' +
+          String(d.getMonth()+1).padStart(2,'0') + '-' +
+          String(d.getDate()).padStart(2,'0') + ' ' +
+          String(d.getHours()).padStart(2,'0') + ':' +
+          String(d.getMinutes()).padStart(2,'0');
+      }
+    } catch(_){}
+    var diffCount = e.diff ? Object.keys(e.diff).length : 0;
+    var diffNote = diffCount ? '<span style="color:var(--text3);margin-left:6px">· '+diffCount+'개 필드 변경</span>' : '';
+    var summary = e.summary ? '<div style="font-size:11px;color:var(--text2);margin-top:2px">'+esc(e.summary)+'</div>' : '';
+    return ''
+      + '<div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px dashed var(--border2)">'
+      +   '<div style="min-width:80px;font-weight:600;color:'+color+';font-size:11px">'+label+'</div>'
+      +   '<div style="flex:1;font-size:12px">'
+      +     '<div><strong>'+esc(e.actor_label || '—')+'</strong>'+diffNote+'</div>'
+      +     summary
+      +   '</div>'
+      +   '<div style="font-size:10px;color:var(--text3);min-width:120px;text-align:right">'+esc(when)+'</div>'
+      + '</div>';
+  }).join('');
+  el.innerHTML = html;
+}
+
+// Toggle the full history list. Summary cards stay visible — the toggle
+// only flips the detail panel + button label.
+function toggleContentAuditPanel(){
+  var hist = document.getElementById('contentAuditHistory');
+  var btn = document.getElementById('contentAuditToggleBtn');
+  if(!hist) return;
+  if(hist.style.display === 'none'){
+    hist.style.display = 'block';
+    if(btn) btn.textContent = '▴ 접기';
+  } else {
+    hist.style.display = 'none';
+    if(btn) btn.textContent = '▾ 펼치기';
+  }
+}
+// Expose to inline onclick handlers in admin.html.
+window.toggleContentAuditPanel = toggleContentAuditPanel;
+window.loadContentAuditPanel = loadContentAuditPanel;
+
 // Status filter: 'all' | 'published' | 'draft'. Drafts are submissions
 // that the editor approved but hasn't yet published, so the filter has
 // to surface them clearly (they're invisible on the public site).
@@ -4931,6 +5156,8 @@ function editEditorial(id){
   }
 
   go('newpost');
+  // QA #209 — load the audit history panel for this editorial.
+  loadContentAuditPanel('editorial', id);
 }
 
 async function deleteEditorial(id,title){
