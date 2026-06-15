@@ -1582,6 +1582,25 @@ var currentSubFilter='';
 // doesn't exist for the new filter (e.g. moved from 전체 page 3 to
 // 거절 which only has 1 page total).
 var currentSubPage=1;
+// QA #212 — per-page size, persisted to localStorage so the admin's
+// preferred density (10/30/50/100) survives reloads. Default 50.
+var currentSubLimit = (function(){
+  try {
+    var saved = parseInt(localStorage.getItem('pap-sub-limit'));
+    if(saved === 10 || saved === 30 || saved === 50 || saved === 100) return saved;
+  } catch(_){}
+  return 50;
+})();
+function setSubLimit(n){
+  n = parseInt(n);
+  if(!n || [10,30,50,100].indexOf(n) === -1) n = 50;
+  currentSubLimit = n;
+  try { localStorage.setItem('pap-sub-limit', String(n)); } catch(_){}
+  currentSubPage = 1; // reset to first page so the user doesn't land past the new tail
+  loadSubmissions();
+}
+window.setSubLimit = setSubLimit;
+
 async function loadSubmissions(statusFilter, opts){
   if(statusFilter!==undefined && statusFilter!==currentSubFilter){
     currentSubFilter=statusFilter;
@@ -1598,6 +1617,7 @@ async function loadSubmissions(statusFilter, opts){
     var params=[];
     if(currentSubFilter) params.push('status='+encodeURIComponent(currentSubFilter));
     params.push('page='+currentSubPage);
+    params.push('limit='+currentSubLimit);
     var query='?'+params.join('&');
     var result=await apiGet('/submissions'+query);
     var submissions=result.submissions||result.data||[];
@@ -1679,29 +1699,83 @@ async function loadSubmissions(statusFilter, opts){
     console.error('Error loading submissions:',err);
   }
 }
-// QA #174 — pagination bar rendered under the submissions table.
-// Lives in <tfoot> on first call (or replaces existing tfoot on
-// subsequent calls). Hides when there's only one page so the UI doesn't
-// look busy for small accounts.
+// QA #212 — number-based pagination with first/prev/next/last + page
+// numbers + per-page selector. Always renders so the per-page dropdown
+// stays accessible even when the list fits on one page.
+//
+// Layout (single row):
+//   [총 N건 · X-Y]  [<< < 1 2 [3] 4 5 > >>]  [페이지당: 50 ▾]
+//
+// Page-number window: shows up to 7 numbers centred on the current page.
+// Ellipses fill in when the total exceeds the window so the bar stays
+// the same width regardless of dataset size.
 function _renderSubPagination(page, totalPages, total){
   var table=document.getElementById('submissionListBody');
   if(!table) return;
   var tableEl=table.closest('table');
   if(!tableEl) return;
   var existing=tableEl.querySelector('tfoot.sub-pagination');
-  if(totalPages<=1){
-    if(existing) existing.remove();
-    return;
+
+  // Build the numeric page-window. WINDOW_RADIUS controls how many
+  // neighbour numbers surround the active one.
+  var WINDOW_RADIUS = 2;
+  var pages = [];
+  if(totalPages <= 7){
+    for(var i = 1; i <= totalPages; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    var lo = Math.max(2, page - WINDOW_RADIUS);
+    var hi = Math.min(totalPages - 1, page + WINDOW_RADIUS);
+    if(lo > 2) pages.push('…');
+    for(var j = lo; j <= hi; j++) pages.push(j);
+    if(hi < totalPages - 1) pages.push('…');
+    pages.push(totalPages);
   }
-  var prevDisabled = page<=1 ? 'disabled' : '';
-  var nextDisabled = page>=totalPages ? 'disabled' : '';
-  var html=
+
+  var jump = function(p){ return 'onclick="loadSubmissions(undefined,{page:'+p+'})"'; };
+  var btnBase = 'display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:28px;padding:0 8px;border:1px solid var(--border2);background:#fff;color:var(--text);font-size:11px;cursor:pointer;border-radius:3px';
+  var btnActive = 'background:var(--purple);color:#fff;border-color:var(--purple);font-weight:700';
+  var btnDisabled = 'opacity:.4;cursor:not-allowed';
+  var ellipsis = '<span style="padding:0 6px;color:var(--text3)">…</span>';
+
+  var numHtml = pages.map(function(p){
+    if(p === '…') return ellipsis;
+    var style = btnBase + (p === page ? ';' + btnActive : '');
+    return '<button type="button" style="'+style+'" '+jump(p)+'>'+p+'</button>';
+  }).join('');
+
+  var firstStyle = btnBase + (page <= 1 ? ';' + btnDisabled : '');
+  var prevStyle  = btnBase + (page <= 1 ? ';' + btnDisabled : '');
+  var nextStyle  = btnBase + (page >= totalPages ? ';' + btnDisabled : '');
+  var lastStyle  = btnBase + (page >= totalPages ? ';' + btnDisabled : '');
+
+  // Per-page dropdown — value reflects the currentSubLimit module state.
+  var limitOptions = [10,30,50,100].map(function(n){
+    var sel = n === currentSubLimit ? ' selected' : '';
+    return '<option value="'+n+'"'+sel+'>'+n+'개</option>';
+  }).join('');
+
+  // Range label: items X-Y of total.
+  var startIdx = total ? ((page - 1) * currentSubLimit + 1) : 0;
+  var endIdx = Math.min(total, page * currentSubLimit);
+  var rangeLabel = total
+    ? ('<strong style="color:var(--text)">'+startIdx+'-'+endIdx+'</strong> / 총 <strong style="color:var(--text)">'+total+'</strong>건')
+    : '결과 없음';
+
+  var html =
     '<tr><td colspan="7" style="padding:14px 12px;border-top:1px solid var(--border);background:var(--surface)">'+
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--text3)">'+
-        '<span>총 <strong style="color:var(--text)">'+total+'</strong>건 · 페이지 <strong style="color:var(--text)">'+page+'</strong> / '+totalPages+'</span>'+
-        '<span style="display:flex;gap:6px">'+
-          '<button class="btn btn-sm" '+prevDisabled+' onclick="loadSubmissions(undefined,{page:'+(page-1)+'})">← 이전</button>'+
-          '<button class="btn btn-sm" '+nextDisabled+' onclick="loadSubmissions(undefined,{page:'+(page+1)+'})">다음 →</button>'+
+        '<span>'+rangeLabel+'</span>'+
+        '<span style="display:flex;gap:4px;align-items:center">'+
+          '<button type="button" style="'+firstStyle+'" '+(page<=1?'disabled':jump(1))+' title="첫 페이지">«</button>'+
+          '<button type="button" style="'+prevStyle+'" '+(page<=1?'disabled':jump(page-1))+' title="이전">‹</button>'+
+          numHtml +
+          '<button type="button" style="'+nextStyle+'" '+(page>=totalPages?'disabled':jump(page+1))+' title="다음">›</button>'+
+          '<button type="button" style="'+lastStyle+'" '+(page>=totalPages?'disabled':jump(totalPages))+' title="마지막 페이지">»</button>'+
+        '</span>'+
+        '<span style="display:flex;align-items:center;gap:6px">'+
+          '<label style="color:var(--text3)">페이지당</label>'+
+          '<select onchange="setSubLimit(this.value)" style="background:#fff;border:1px solid var(--border2);padding:5px 8px;border-radius:3px;font-size:11px;cursor:pointer">'+limitOptions+'</select>'+
         '</span>'+
       '</div>'+
     '</td></tr>';
