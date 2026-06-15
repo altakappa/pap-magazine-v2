@@ -93,6 +93,26 @@ document.addEventListener('DOMContentLoaded',function(){
   loadDashboardStats();
 });
 
+// QA #217 — single source of truth for role labels + badge classes.
+// Used by the sidebar badge, member table, profile chips, and any
+// public-site element that wants to surface a user's role. Adding a
+// new role only requires touching this map.
+//   admin       → 대표 관리자 (Red)
+//   staff       → 서브 관리자 (Blue)
+//   contributor → 크리에이터 (Purple)
+//   member      → 일반 회원 (Gray)
+var PAP_ROLE_META = {
+  admin:       { label: '대표 관리자', short: '대표',   cls: 'b-role-admin',       sbCls: 'sb-role-admin' },
+  staff:       { label: '서브 관리자', short: '서브',   cls: 'b-role-staff',       sbCls: 'sb-role-staff' },
+  contributor: { label: '크리에이터',  short: '크리에이터', cls: 'b-role-contributor', sbCls: 'sb-role-contributor' },
+  member:      { label: '일반 회원',   short: '회원',   cls: 'b-role-member',      sbCls: 'sb-role-member' },
+};
+function papRoleMeta(role){
+  return PAP_ROLE_META[role] || PAP_ROLE_META.member;
+}
+window.PAP_ROLE_META = PAP_ROLE_META;
+window.papRoleMeta = papRoleMeta;
+
 // QA #169 — show/hide elements based on current admin role.
 // CSS selectors used:
 //   [data-role-main]  → visible to '대표' only (main admin, role='admin')
@@ -108,18 +128,18 @@ function _applyRoleVisibility(role){
   // Staff-only notice block inside the review modal
   var notice = document.getElementById('reviewStaffNotice');
   if(notice) notice.style.display = isMain ? 'none' : '';
-  // Sidebar role badge
+  // QA #217 — sidebar role badge driven by the shared meta map. Strips
+  // any prior inline colour overrides so the CSS class wins (the old
+  // implementation set color/borderColor inline and broke the new
+  // unified palette).
   var badge = document.getElementById('sbRoleBadge');
   if(badge){
-    if(isMain){
-      badge.textContent = '대표 관리자';
-      badge.style.color = '#fff';
-      badge.style.borderColor = 'rgba(180,180,255,.4)';
-    } else if(role === 'staff'){
-      badge.textContent = '스태프';
-      badge.style.color = 'rgba(255,180,80,.95)';
-      badge.style.borderColor = 'rgba(255,180,80,.35)';
-    }
+    var meta = papRoleMeta(role);
+    badge.textContent = meta.label;
+    badge.className = 'badge ' + meta.sbCls;
+    badge.style.color = '';
+    badge.style.background = '';
+    badge.style.borderColor = '';
     badge.style.display = 'block';
   }
 }
@@ -191,7 +211,8 @@ function renderMembers(){
   if(!filtered.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text4);padding:40px">회원이 없습니다</td></tr>';return;}
   var h='';
   var esc=function(s){var d=document.createElement('div');d.textContent=s||'';return d.innerHTML;};
-  var roleLabels={admin:'관리자',contributor:'기여자',member:'회원'};
+  // QA #217 — use the shared role-meta map so member table labels match
+  // the sidebar badge and the public site exactly.
   var statusLabels={active:'활성',inactive:'비활성',suspended:'정지',cancelled:'취소'};
   // Joined-date formatter (shared by table / modal / CSV export).
   // mode = 'short' (table cell, compact)  → "26.05.02 19:23"
@@ -235,7 +256,10 @@ function renderMembers(){
     var planLabel=plan.indexOf('premium')>-1?'Premium':plan.indexOf('standard')>-1?'Standard':'Free';
     var statusCls=status==='active'?'b-active':status==='suspended'?'b-suspended':'b-inactive';
     var statusLabel=statusLabels[status]||status;
-    var roleLabel=roleLabels[role]||role;
+    // QA #217 — drive label + badge class from the shared meta map.
+    var _roleMeta = papRoleMeta(role);
+    var roleLabel = _roleMeta.label;
+    var roleCls = _roleMeta.cls;
     // Members table — show date + time so admins can audit signup activity
     // precisely. Uses Korean locale so 'AM/PM' renders as 오전/오후.
     var date=_formatJoinedDateTime(m.joinedAt||m.created_at,'short');
@@ -243,7 +267,7 @@ function renderMembers(){
     h+='<tr>';
     h+='<td>'+esc(m.name)+'</td>';
     h+='<td style="font-size:11px">'+esc(m.email)+'</td>';
-    h+='<td><span class="badge b-role-'+role+'">'+esc(roleLabel)+'</span></td>';
+    h+='<td><span class="badge '+roleCls+'">'+esc(roleLabel)+'</span></td>';
     h+='<td><span class="badge '+planCls+'">'+planLabel+'</span></td>';
     h+='<td><span class="badge '+statusCls+'">'+statusLabel+'</span></td>';
     h+='<td style="font-size:11px">'+date+'</td>';

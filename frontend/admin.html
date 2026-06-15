@@ -177,9 +177,19 @@ tr:hover td{background:rgba(0,0,0,.02)}
 .camp-news-item{border:1px solid var(--border);background:var(--surface2);padding:12px}
 .modal-in{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:12px;padding:8px 10px;font-family:inherit;box-sizing:border-box}
 .modal-ta{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-size:12px;padding:8px 10px;font-family:inherit;resize:vertical;box-sizing:border-box}
-.b-role-admin{border:1px solid rgba(220,38,38,.3);color:var(--red);background:rgba(220,38,38,.06)}
-.b-role-contributor{border:1px solid rgba(59,130,246,.3);color:var(--blue);background:rgba(59,130,246,.06)}
-.b-role-member{border:1px solid var(--border2);color:var(--text3);background:rgba(0,0,0,.03)}
+/* QA #217 — unified role badge system. 4 roles × consistent style across
+   admin + website. Solid color for legibility on white surfaces. */
+.b-role-admin{border:1px solid rgba(220,38,38,.4);color:#fff;background:#dc2626;font-weight:700}
+.b-role-staff{border:1px solid rgba(59,130,246,.4);color:#fff;background:#3b82f6;font-weight:700}
+.b-role-contributor{border:1px solid rgba(124,58,237,.4);color:#fff;background:#7c3aed;font-weight:700}
+.b-role-member{border:1px solid rgba(107,114,128,.4);color:#fff;background:#6b7280;font-weight:700}
+/* Sidebar variant — same colours but with subtle alpha background so the
+   badge sits politely inside the dark sidebar without overpowering the
+   navigation links. Text stays solid for legibility. */
+.sb-role-admin{border:1px solid rgba(220,38,38,.6);color:#fff;background:rgba(220,38,38,.85);font-weight:700}
+.sb-role-staff{border:1px solid rgba(59,130,246,.6);color:#fff;background:rgba(59,130,246,.85);font-weight:700}
+.sb-role-contributor{border:1px solid rgba(124,58,237,.6);color:#fff;background:rgba(124,58,237,.85);font-weight:700}
+.sb-role-member{border:1px solid rgba(107,114,128,.6);color:#fff;background:rgba(107,114,128,.85);font-weight:700}
 .b-active{border:1px solid rgba(22,163,74,.3);color:var(--green);background:rgba(22,163,74,.06)}
 .b-inactive{border:1px solid var(--border2);color:var(--text4);background:rgba(0,0,0,.02)}
 .b-suspended{border:1px solid rgba(220,38,38,.3);color:var(--red);background:rgba(220,38,38,.06)}
@@ -2338,7 +2348,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
     <div id="contentAuditBody" style="flex:1;overflow-y:auto;padding:0"></div>
   </div>
 </div>
-<script src="/pap-admin.js?v=36" defer></script>
+<script src="/pap-admin.js?v=37" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>
