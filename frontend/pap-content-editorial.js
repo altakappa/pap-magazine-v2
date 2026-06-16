@@ -609,7 +609,7 @@ function _openEditorialInner(title,thumb){
   // came from the database (i.e. the entire admin-curated catalogue).
   // The admin form's "영상 링크" input writes into editorials.url, and
   // apiEditorialToLocal already surfaces it on `a.url`.
-  _renderEditorialVideo((det && det.url) || (a && a.url));
+  _renderEditorialVideo((det && det.url) || (d && d.url));
 
   // Credits table — supports name+handle objects or plain handle strings.
   // Defensive: an object with empty .n used to fall through to the string
@@ -818,7 +818,7 @@ function _openEditorialInner_noPush(title,thumb){
   // came from the database (i.e. the entire admin-curated catalogue).
   // The admin form's "영상 링크" input writes into editorials.url, and
   // apiEditorialToLocal already surfaces it on `a.url`.
-  _renderEditorialVideo((det && det.url) || (a && a.url));
+  _renderEditorialVideo((det && det.url) || (d && d.url));
   var cr=document.getElementById('edDetailCredits');
   var ch='';
   det.credits.forEach(function(c){
