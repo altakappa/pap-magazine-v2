@@ -396,6 +396,71 @@ function _openEditorialInner(title,thumb){
   var d=edDetails[title];
   if(!d){var titleLower=title.toLowerCase();for(var key in edDetails){if(key.toLowerCase()===titleLower){d=edDetails[key];break;}}}
   d=d||{};
+
+  // QA #227 — content fallback. When the matched entry has no gallery,
+  // no credits, no description (any locale) and we *do* know the DB id,
+  // the row most likely came in via a thin static-snapshot path or a
+  // partially-cached list response. Fetch the full row once and re-render
+  // through the no-push path so back/forward history stays correct.
+  // The first paint still happens immediately below, so the user never
+  // stares at a blank overlay while the fetch is in flight.
+  try {
+    var _imgs = Array.isArray(d.images) ? d.images.length : 0;
+    var _credsArr = Array.isArray(d.credits) ? d.credits : [];
+    var _hasDesc = (function(){
+      var x = d.desc;
+      if(!x) return false;
+      if(typeof x === 'string') return !!x.trim();
+      if(typeof x === 'object') return !!(x.ko || x.en);
+      return false;
+    })();
+    var _needsHydrate = (!_imgs && _credsArr.length === 0 && !_hasDesc);
+    if(_needsHydrate && d.id){
+      var _t = '';
+      try { _t = localStorage.getItem('pap-token') || ''; } catch(_){}
+      var _h = {};
+      if(_t) _h['Authorization'] = 'Bearer ' + _t;
+      fetch('/api/editorials/' + encodeURIComponent(d.id), {
+        headers: _h,
+        credentials:'include'
+      })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){
+        var full = j && (j.data || j.editorial);
+        if(!full) return;
+        // Merge the rich fields back onto edDetails[title] so subsequent
+        // opens hit the populated cache.
+        var dst = edDetails[title] || {};
+        dst.id    = full.id || dst.id || '';
+        dst.slug  = full.slug || dst.slug || '';
+        dst.thumb = dst.thumb || full.cover_image || full.thumbnail || full.thumbnail_url || '';
+        if(Array.isArray(full.gallery) && full.gallery.length) dst.images = full.gallery;
+        else if(!dst.images || !dst.images.length) dst.images = dst.thumb ? [dst.thumb] : [];
+        if(Array.isArray(full.credits) && full.credits.length){
+          if(typeof _normalizeCreditsForDisplay === 'function'){
+            dst.credits = _normalizeCreditsForDisplay(full.credits);
+          } else { dst.credits = full.credits; }
+        }
+        if(full.fashion && Array.isArray(full.fashion.brands)){
+          dst.fashion = full.fashion.brands.map(function(b){ return b.instagram || b.name || ''; }).filter(Boolean);
+          if(full.fashion.imageCredits && typeof full.fashion.imageCredits === 'object'){
+            dst.imageCredits = full.fashion.imageCredits;
+          }
+        }
+        var ko = full.description || '';
+        var en = full.description_en || '';
+        if(ko || en) dst.desc = { ko: ko, en: en };
+        edDetails[title] = dst;
+        // Re-render through the no-push path so we don't push a duplicate
+        // history entry on top of the one we already pushed below.
+        if(typeof _openEditorialInner_noPush === 'function'){
+          _openEditorialInner_noPush(title, thumb);
+        }
+      })
+      .catch(function(){ /* non-fatal */ });
+    }
+  } catch(_){ /* never block the open path */ }
+
   // Fire-and-forget view tracking. Powers the "인기 에디토리얼" row via
   // GET /api/editorials/trending. Skipped for static-snapshot entries
   // that have no DB id — those can't be tracked yet (admin uploads
