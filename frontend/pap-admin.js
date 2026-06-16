@@ -2624,6 +2624,15 @@ function _resetNewsEditorForm(){
   }
   var thumbUrlEl = document.getElementById('newnewsThumbUrl');
   if(thumbUrlEl) thumbUrlEl.value = '';
+  // QA #224 — the inline upload-status line ("✓ 업로드 완료", error
+  // messages, etc.) lives in a separate DOM node from the upload box,
+  // so the previous reset only cleared the box and left the stale line
+  // behind. Wipe it explicitly here.
+  var thumbStatus = document.getElementById('newnewsThumbStatus');
+  if(thumbStatus){
+    thumbStatus.textContent = '';
+    thumbStatus.style.color = '';
+  }
   var blocks = document.getElementById('newsBlocks');
   if(blocks){
     // Leave a single empty text block so the editor doesn't open
@@ -2634,14 +2643,27 @@ function _resetNewsEditorForm(){
       +'</div>';
   }
   newsBlockCount = 1;
-  // Reset the status radio + hide the schedule input.
+  // QA #224 — reset the editorial-parity controls to their "fresh
+  // article" defaults: 공개 checked, Featured/예약 cleared, 발행 +
+  // 예약 날짜 inputs blanked, schedule panel hidden.
+  var pubBox = document.getElementById('newnewsPublish');
+  if(pubBox) pubBox.checked = true;
+  var featBox = document.getElementById('newnewsFeatured');
+  if(featBox) featBox.checked = false;
+  var schedBox = document.getElementById('newnewsSchedule');
+  if(schedBox) schedBox.checked = false;
+  var ids = ['newnewsPublishDate','newnewsPublishTime','newnewsScheduleDate'];
+  ids.forEach(function(id){ var el = document.getElementById(id); if(el) el.value = ''; });
+  var sTime = document.getElementById('newnewsScheduleTime');
+  if(sTime) sTime.value = '09:00';
+  // Legacy fields (kept for cached-HTML safety).
   var radios = document.getElementsByName('newnewsStatusOpt');
   if(radios && radios.length){
     for(var i=0;i<radios.length;i++) radios[i].checked = (radios[i].value === 'published');
   }
-  var sched = document.getElementById('newnewsScheduledAt');
-  if(sched) sched.value = '';
-  toggleNewsScheduleInput();
+  var legacySched = document.getElementById('newnewsScheduledAt');
+  if(legacySched) legacySched.value = '';
+  if(typeof toggleNewsSchedule === 'function') toggleNewsSchedule();
 }
 
 // Hydrate the editor with an existing article's payload.
@@ -2711,22 +2733,56 @@ function _hydrateNewsEditorForm(a){
     }
   }
 
-  // Status / schedule.
-  var radios = document.getElementsByName('newnewsStatusOpt');
-  var sched = document.getElementById('newnewsScheduledAt');
+  // QA #224 — rehydrate the editorial-parity checkbox UI from the row.
+  // The three checkboxes encode the same three states the legacy radio
+  // covered: published / draft / scheduled. Scheduled rows still have
+  // status='published' under the hood (the future scheduled_publish_at
+  // is what keeps them off the public list), so we infer "예약 게시"
+  // from the timestamp rather than from status alone.
   var isScheduled = a._virtualStatus === 'scheduled'
     || (a.status === 'published' && a.scheduled_publish_at && new Date(a.scheduled_publish_at) > new Date());
+  var pubBox = document.getElementById('newnewsPublish');
+  var schedBox = document.getElementById('newnewsSchedule');
+  if(pubBox) pubBox.checked = (a.status === 'published');
+  if(schedBox) schedBox.checked = !!isScheduled;
+  var pad = function(n){return n<10?'0'+n:''+n;};
+
+  // 발행 날짜 prefill
+  if(a.published_date){
+    var pd = new Date(a.published_date);
+    if(!isNaN(pd.getTime())){
+      var pdEl = document.getElementById('newnewsPublishDate');
+      var ptEl = document.getElementById('newnewsPublishTime');
+      if(pdEl) pdEl.value = pd.getFullYear() + '-' + pad(pd.getMonth()+1) + '-' + pad(pd.getDate());
+      if(ptEl) ptEl.value = pad(pd.getHours()) + ':' + pad(pd.getMinutes());
+    }
+  }
+
+  // 예약 일시 prefill
+  if(a.scheduled_publish_at){
+    var sd = new Date(a.scheduled_publish_at);
+    if(!isNaN(sd.getTime())){
+      var sdEl = document.getElementById('newnewsScheduleDate');
+      var stEl = document.getElementById('newnewsScheduleTime');
+      if(sdEl) sdEl.value = sd.getFullYear() + '-' + pad(sd.getMonth()+1) + '-' + pad(sd.getDate());
+      if(stEl) stEl.value = pad(sd.getHours()) + ':' + pad(sd.getMinutes());
+    }
+  }
+
+  // Legacy radio (cached HTML safety) — still fill so a stale DOM
+  // doesn't show all-off radios.
+  var radios = document.getElementsByName('newnewsStatusOpt');
   var pick = isScheduled ? 'scheduled' : (a.status === 'draft' ? 'draft' : 'published');
   if(radios){
     for(var i=0;i<radios.length;i++) radios[i].checked = (radios[i].value === pick);
   }
-  if(sched && a.scheduled_publish_at){
-    // <input type="datetime-local"> wants YYYY-MM-DDTHH:MM (local time).
-    var d = new Date(a.scheduled_publish_at);
-    var pad = function(n){return n<10?'0'+n:''+n;};
-    sched.value = d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
+  var legacySched = document.getElementById('newnewsScheduledAt');
+  if(legacySched && a.scheduled_publish_at){
+    var ld = new Date(a.scheduled_publish_at);
+    legacySched.value = ld.getFullYear()+'-'+pad(ld.getMonth()+1)+'-'+pad(ld.getDate())+'T'+pad(ld.getHours())+':'+pad(ld.getMinutes());
   }
-  toggleNewsScheduleInput();
+
+  if(typeof toggleNewsSchedule === 'function') toggleNewsSchedule();
 }
 
 // Append a block row to #newsBlocks pre-filled with `content`.
@@ -2828,15 +2884,39 @@ function _appendNewsBlock(type, content){
 }
 
 // Show/hide the schedule input depending on the chosen status radio.
-function toggleNewsScheduleInput(){
-  var wrap = document.getElementById('newnewsScheduleWrap');
-  if(!wrap) return;
-  var radios = document.getElementsByName('newnewsStatusOpt');
-  var picked = 'published';
-  if(radios){
-    for(var i=0;i<radios.length;i++){ if(radios[i].checked){ picked = radios[i].value; break; } }
-  }
-  wrap.style.display = (picked === 'scheduled') ? 'block' : 'none';
+// QA #224 — legacy 3-way radio toggle. Kept as a no-op alias so any
+// stray onchange="toggleNewsScheduleInput()" handlers in cached HTML
+// won't throw before users hard-refresh. The new UI uses the
+// editorial-style toggleNewsSchedule below.
+function toggleNewsScheduleInput(){ toggleNewsSchedule(); }
+
+// QA #224 — editorial-parity toggle. Show the 예약 일시 panel when the
+// 예약 게시 checkbox is on, exactly like savePost / toggleSchedule do
+// for editorials. The 발행 날짜 panel is always visible.
+function toggleNewsSchedule(){
+  var schedBox = document.getElementById('newnewsSchedule');
+  var area = document.getElementById('newnewsScheduleArea');
+  if(area) area.style.display = (schedBox && schedBox.checked) ? 'block' : 'none';
+}
+
+// QA #224 — small helpers mirroring the editorial form's
+// _setPublishDateNow / _clearPublishDate so the "지금 / 초기화"
+// affordance behaves identically across both editors.
+function _setNewsPublishDateNow(){
+  var d = new Date();
+  var pad = function(n){ return n < 10 ? '0' + n : '' + n; };
+  var ds = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+  var ts = pad(d.getHours()) + ':' + pad(d.getMinutes());
+  var dateEl = document.getElementById('newnewsPublishDate');
+  var timeEl = document.getElementById('newnewsPublishTime');
+  if(dateEl) dateEl.value = ds;
+  if(timeEl) timeEl.value = ts;
+}
+function _clearNewsPublishDate(){
+  var dateEl = document.getElementById('newnewsPublishDate');
+  var timeEl = document.getElementById('newnewsPublishTime');
+  if(dateEl) dateEl.value = '';
+  if(timeEl) timeEl.value = '';
 }
 
 // QA #200 — shared image validator for the news editor.
@@ -6009,38 +6089,59 @@ function _collectNewsBlocks(){
   return blocks;
 }
 
-async function saveNewsArticle(){
+async function saveNewsArticle(forceMode){
   var titleEl=document.getElementById('newnewsTitle');
   if(!titleEl||!titleEl.value){alert('제목을 입력해 주세요.');return;}
 
   var blocks = _collectNewsBlocks();
 
-  // Status + schedule. The three-way radio replaces the old single
-  // "공개" checkbox so the editor can stage drafts and schedule posts
-  // with the same affordance editorials already have.
-  var picked = 'published';
-  var radios = document.getElementsByName('newnewsStatusOpt');
-  for(var i=0;i<radios.length;i++){ if(radios[i].checked){ picked = radios[i].value; break; } }
+  // QA #224 — read the editorial-parity checkbox UI. The 임시저장
+  // button passes forceMode='draft' so the public "공개" checkbox
+  // state is irrelevant in that path (mirrors savePost('draft')).
+  var publishBox = document.getElementById('newnewsPublish');
+  var schedBox   = document.getElementById('newnewsSchedule');
+  var wantsPublish  = !!(publishBox && publishBox.checked);
+  var wantsSchedule = !!(schedBox && schedBox.checked);
+
+  // Determine status. Scheduled posts go in as status='published' so
+  // the public-list scheduled_publish_at gate hides them until their
+  // time comes (same behaviour as editorials).
+  var dbStatus;
+  if(forceMode === 'draft'){
+    dbStatus = 'draft';
+  } else if(wantsSchedule){
+    dbStatus = 'published';
+  } else {
+    dbStatus = wantsPublish ? 'published' : 'draft';
+  }
+
+  // Scheduled-publish timestamp.
   var schedAt = null;
-  if(picked === 'scheduled'){
-    var schedEl = document.getElementById('newnewsScheduledAt');
-    if(!schedEl || !schedEl.value){
-      alert('예약 게시를 선택했지만 예약 일시가 비어 있습니다.');
+  if(wantsSchedule && forceMode !== 'draft'){
+    var sdate = document.getElementById('newnewsScheduleDate');
+    var stime = document.getElementById('newnewsScheduleTime');
+    if(!sdate || !sdate.value){
+      alert('예약 게시를 선택했지만 예약 날짜가 비어 있습니다.');
       return;
     }
-    // <input type="datetime-local"> gives back YYYY-MM-DDTHH:MM in
-    // LOCAL time. Convert to ISO so the server stores UTC.
-    schedAt = new Date(schedEl.value).toISOString();
+    var sval = sdate.value + 'T' + ((stime && stime.value) || '09:00');
+    schedAt = new Date(sval).toISOString();
     if(new Date(schedAt) <= new Date()){
       if(!confirm('예약 일시가 현재보다 과거입니다. 그래도 진행할까요?\n(과거 일시는 즉시 공개와 동일하게 동작합니다.)')) return;
     }
   }
 
-  // Map the chosen radio onto the DB status field. Scheduled posts
-  // are status='published' under the hood — the
-  // scheduled_publish_at gate keeps them off the public list until
-  // their time comes.
-  var dbStatus = (picked === 'draft') ? 'draft' : 'published';
+  // Manual published_date override. Either both date+time are filled
+  // (use them), or fall back to "now" only when actually going live
+  // immediately so drafts/scheduled posts don't get a published stamp.
+  var manualPubAt = null;
+  var pdate = document.getElementById('newnewsPublishDate');
+  var ptime = document.getElementById('newnewsPublishTime');
+  if(pdate && pdate.value){
+    var pval = pdate.value + 'T' + ((ptime && ptime.value) || '00:00');
+    var pd = new Date(pval);
+    if(!isNaN(pd.getTime())) manualPubAt = pd.toISOString();
+  }
 
   // Reuse the existing thumbnail URL when editing without a new upload.
   var thumbUrlEl = document.getElementById('newnewsThumbUrl');
@@ -6069,10 +6170,15 @@ async function saveNewsArticle(){
   };
   if(thumbUrl) payload.thumbnail_url = thumbUrl;
 
-  // Only stamp published_date when actually going live now (not for
-  // drafts or future-scheduled posts). The PUT handler also auto-stamps
-  // on first draft→published transition for safety.
-  if(picked === 'published'){
+  // QA #224 — published_date priority:
+  //   1. manual 발행 날짜 input wins whenever the editor filled it in
+  //   2. otherwise, only auto-stamp when transitioning to immediate
+  //      publish (not draft, not scheduled). The PUT handler also
+  //      auto-stamps on the first draft→published transition for
+  //      safety, so leaving this null on drafts is fine.
+  if(manualPubAt){
+    payload.published_date = manualPubAt;
+  } else if(dbStatus === 'published' && !schedAt){
     payload.published_date = new Date().toISOString();
   }
 

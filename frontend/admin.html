@@ -1463,24 +1463,49 @@ tr:hover td{background:rgba(0,0,0,.02)}
             <strong>이미지 블록</strong>: JPG / PNG / WEBP · 최대 2MB · 권장 가로 1200px 이상
           </div>
         </div>
+        <!-- QA #224 — game settings UI now mirrors the editorial form
+             1:1 (체크박스 3종 + 발행 날짜 + 예약 일시). The two backing
+             DB columns are unchanged — status + scheduled_publish_at +
+             published_date — and `saveNewsArticle` translates this UI
+             back into them. Featured is rendered for visual parity with
+             the editorial form but does not yet persist (no column on
+             articles); a future migration can flip it on. -->
         <div class="pe-section">
           <div class="pe-label">게시 설정</div>
-          <!-- QA #199 — three-way status radio mirrors the editorial
-               editor (공개 / 임시저장 / 예약). The scheduled-time input
-               only shows when 예약 is picked. -->
-          <div class="pe-checks" style="flex-direction:column;gap:8px;align-items:flex-start">
-            <label class="pe-check"><input type="radio" name="newnewsStatusOpt" value="published" checked onchange="toggleNewsScheduleInput()"> 공개</label>
-            <label class="pe-check"><input type="radio" name="newnewsStatusOpt" value="draft" onchange="toggleNewsScheduleInput()"> 임시저장</label>
-            <label class="pe-check"><input type="radio" name="newnewsStatusOpt" value="scheduled" onchange="toggleNewsScheduleInput()"> ⏰ 예약 게시</label>
+          <div class="pe-checks">
+            <label class="pe-check"><input type="checkbox" checked id="newnewsPublish" onchange="toggleNewsSchedule()"> 공개</label>
+            <label class="pe-check"><input type="checkbox" id="newnewsFeatured" title="Featured — UI 통일용. 컬럼은 추후 추가 예정"> 추천 (Featured)</label>
+            <label class="pe-check"><input type="checkbox" id="newnewsSchedule" onchange="toggleNewsSchedule()"> 예약 게시</label>
           </div>
-          <div id="newnewsScheduleWrap" style="display:none;margin-top:10px">
-            <div class="pe-label" style="font-size:11px">예약 일시</div>
-            <input type="datetime-local" class="pe-input" id="newnewsScheduledAt" style="max-width:280px">
-            <div class="pe-hint">예약 일시 도달 시 자동 공개됩니다. 그 전까지는 공개 목록에서 숨겨집니다.</div>
+
+          <!-- 발행 날짜 -->
+          <div id="newnewsPublishDateArea" style="margin-top:12px;padding:12px;background:var(--surface);border:1px solid var(--border)">
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+              <div class="pe-label" style="margin-bottom:0">발행 날짜</div>
+              <span class="pe-opt">선택 — 비워두면 저장 시점</span>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="date" class="pe-input" id="newnewsPublishDate" style="flex:1">
+              <input type="time" class="pe-input" id="newnewsPublishTime" style="width:120px">
+              <button type="button" class="btn btn-sm" onclick="_setNewsPublishDateNow()" title="지금 시각으로">지금</button>
+              <button type="button" class="btn btn-sm" onclick="_clearNewsPublishDate()" title="비우기 (저장 시점 자동 사용)">초기화</button>
+            </div>
+            <div class="pe-hint" style="margin-top:6px">뉴스 카드/상세의 표시 날짜로 사용됩니다. 과거 날짜로 백데이트하거나 미래 날짜로도 설정 가능 (단, 미래 날짜는 예약 게시와 별개로 표시 날짜만 변경됩니다).</div>
+          </div>
+
+          <!-- 예약 일시 — 체크 시에만 노출 -->
+          <div id="newnewsScheduleArea" style="display:none;margin-top:12px;padding:12px;background:var(--surface);border:1px solid var(--border)">
+            <div class="pe-label" style="margin-bottom:6px">예약 일시</div>
+            <div style="display:flex;gap:8px">
+              <input type="date" class="pe-input" id="newnewsScheduleDate" style="flex:1">
+              <input type="time" class="pe-input" id="newnewsScheduleTime" style="width:120px" value="09:00">
+            </div>
+            <div class="pe-hint" style="margin-top:6px">지정한 날짜/시간에 자동으로 공개됩니다 (KST 기준). <strong style="color:rgba(180,255,180,.9)">저장 시 자동으로 공개 상태로 전환</strong>되어 그 시점까지 숨겨졌다가 노출됩니다 — "공개" 체크를 별도로 켤 필요 없음.</div>
           </div>
         </div>
         <div class="pe-actions">
           <button class="btn btn-primary" onclick="saveNewsArticle()">저장</button>
+          <button class="btn" onclick="saveNewsArticle('draft')" title="공개 체크와 무관하게 임시저장으로 저장">임시저장</button>
           <button class="btn" onclick="go('news')">취소</button>
         </div>
       </div>
@@ -2366,7 +2391,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
     <div id="contentAuditBody" style="flex:1;overflow-y:auto;padding:0"></div>
   </div>
 </div>
-<script src="/pap-admin.js?v=40" defer></script>
+<script src="/pap-admin.js?v=41" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>
