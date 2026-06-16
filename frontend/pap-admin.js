@@ -2608,6 +2608,12 @@ function _setNewsEditorMode(isEdit, article){
 function _resetNewsEditorForm(){
   var titleEl = document.getElementById('newnewsTitle');
   if(titleEl) titleEl.value = '';
+  // QA #223 — reset the new category + tag fields too so the next
+  // "+ 새 뉴스" doesn't inherit the previous edit's selections.
+  var catEl = document.getElementById('newnewsCategory');
+  if(catEl) catEl.value = 'news';
+  var tagEl = document.getElementById('newnewsTags');
+  if(tagEl) tagEl.value = '';
   var thumb = document.getElementById('newnewsThumbUpload');
   if(thumb){
     // Restore the placeholder text + clear the file input.
@@ -2642,6 +2648,20 @@ function _resetNewsEditorForm(){
 function _hydrateNewsEditorForm(a){
   var titleEl = document.getElementById('newnewsTitle');
   if(titleEl) titleEl.value = a.title || '';
+
+  // QA #223 — restore category + tags so edits don't silently revert
+  // these fields. Default to 'news' when missing for older rows.
+  var catEl = document.getElementById('newnewsCategory');
+  if(catEl){
+    var c = String(a.category || 'news').toLowerCase();
+    var known = ['news','fashion','art','culture','music'];
+    catEl.value = known.indexOf(c) >= 0 ? c : 'news';
+  }
+  var tagEl = document.getElementById('newnewsTags');
+  if(tagEl){
+    var tagsArr = Array.isArray(a.tags) ? a.tags : [];
+    tagEl.value = tagsArr.join(', ');
+  }
 
   // Pre-fill the thumbnail URL + render a visible preview thumbnail
   // so the editor can SEE the existing image without re-uploading it.
@@ -6026,10 +6046,24 @@ async function saveNewsArticle(){
   var thumbUrlEl = document.getElementById('newnewsThumbUrl');
   var thumbUrl = thumbUrlEl ? thumbUrlEl.value : '';
 
+  // QA #223 — read the category select + tag input the admin form now
+  // exposes. Tags are comma-separated; we normalise to lowercase trimmed
+  // tokens so the public-side filter (which lowercase-compares) sees
+  // canonical values regardless of how the editor typed them.
+  var catEl = document.getElementById('newnewsCategory');
+  var category = (catEl && catEl.value) ? catEl.value : 'news';
+  var tagEl = document.getElementById('newnewsTags');
+  var tagsRaw = tagEl && tagEl.value ? tagEl.value : '';
+  var tags = tagsRaw
+    .split(',')
+    .map(function(t){ return String(t || '').trim().toLowerCase(); })
+    .filter(function(t){ return t.length > 0; });
+
   var payload = {
     title: titleEl.value,
     content: JSON.stringify(blocks),
-    category: 'news',
+    category: category,
+    tags: tags,
     status: dbStatus,
     scheduled_publish_at: schedAt,
   };

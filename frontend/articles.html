@@ -251,16 +251,28 @@ document.addEventListener('DOMContentLoaded', function() {
     return;
   }
 
-  // Extract unique categories
+  // QA #223 — pin the four canonical news categories so the chip set
+  // matches the admin-side dropdown even when zero published articles
+  // yet exist under one of them. Any extra category that shows up in
+  // the data (legacy strings, custom values) is appended after.
+  // 'news' is treated as ALL on the public side and intentionally
+  // omitted from the chip row.
+  var FIXED_CATS = ['fashion','art','culture','music'];
   var cats = {};
+  FIXED_CATS.forEach(function(c){ cats[c] = 1; });
   artData.forEach(function(a) {
     (a.cat || '').split(',').forEach(function(c) {
-      c = c.trim();
-      if (c) cats[c] = 1;
+      c = c.trim().toLowerCase();
+      // 'news' = bucket for posts without a specific category; surface
+      // them under ALL instead of inventing a dedicated chip.
+      if (c && c !== 'news') cats[c] = 1;
     });
   });
 
-  var catList = Object.keys(cats).sort();
+  // Render fixed cats first in the configured order, then any extras
+  // discovered in the data (alphabetised) at the tail.
+  var extras = Object.keys(cats).filter(function(c){ return FIXED_CATS.indexOf(c) < 0; }).sort();
+  var catList = FIXED_CATS.concat(extras);
   var activeFilter = 'ALL';
   // Tag filter — when the user clicks a hashtag in an article-detail
   // overlay, that detail page links here as /articles.html?tag=<value>.
@@ -350,10 +362,14 @@ document.addEventListener('DOMContentLoaded', function() {
     _renderActiveTagChip();
 
     var filtered = artData.filter(function(a) {
-      // Category filter
+      // Category filter — QA #223: case-insensitive, multi-value safe.
+      // 'news' on the row is the "no specific category" default and
+      // intentionally only appears under ALL.
       if (activeFilter !== 'ALL') {
+        var wanted = String(activeFilter || '').toLowerCase();
         var catMatch = (a.cat || '').split(',').some(function(c) {
-          return c.trim().toLowerCase() === activeFilter.toLowerCase();
+          var tok = String(c || '').trim().toLowerCase();
+          return tok === wanted;
         });
         if(!catMatch) return false;
       }
