@@ -284,8 +284,57 @@ function _openArticleDetailInner(idx){
     det=edDetails[a.t];
     if(!det){var tLow=a.t.toLowerCase();for(var key in edDetails){if(key.toLowerCase()===tLow){det=edDetails[key];break;}}}
   }
-  // Check if article needs dynamic content fetch
-  
+  // QA #226 — fallback content fetch.
+  // The list endpoint sometimes returns a row without `content` (older
+  // cache entries, future projection changes, articles whose content
+  // wasn't yet on the CDN). When the overlay would otherwise render as
+  // "hero image + empty body", we fire a per-article GET, re-parse the
+  // blocks the same way apiArticleToLocal does, and re-render once it
+  // resolves. The first paint still happens immediately so the user
+  // never stares at a blank overlay.
+  var hasBlocks = Array.isArray(a.blocks) && a.blocks.length > 0;
+  var hasDesc   = !!(a.desc && String(a.desc).trim());
+  if(!hasBlocks && !hasDesc && a._api_id){
+    var _token = '';
+    try { _token = localStorage.getItem('pap-token') || ''; } catch(_){}
+    var _headers = {};
+    if(_token) _headers['Authorization'] = 'Bearer ' + _token;
+    fetch('/api/articles/' + encodeURIComponent(a._api_id), {
+      headers: _headers,
+      credentials: 'include'
+    })
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(j){
+      var fullA = j && (j.data || j.article);
+      if(!fullA) return;
+      var raw = fullA.content || '';
+      var parsed = null;
+      if(typeof raw === 'string' && raw){
+        try {
+          var maybe = JSON.parse(raw);
+          if(Array.isArray(maybe)){
+            parsed = maybe.map(function(b){
+              if(!b || typeof b !== 'object') return { type:'text', content: String(b || '') };
+              var out = Object.assign({}, b);
+              out.type = b.type || 'text';
+              out.content = typeof b.content === 'string' ? b.content : '';
+              out.url = b.url || '';
+              return out;
+            });
+          }
+        } catch(_){}
+      }
+      if(parsed && parsed.length){
+        a.blocks = parsed;
+        a.desc = '';
+      } else if(raw) {
+        a.desc = String(raw);
+      }
+      _renderArticleDetail(a, det);
+    })
+    .catch(function(){});
+  }
+
   _renderArticleDetail(a,det);
   overlay.classList.add('active');
   overlay.scrollTop=0;
