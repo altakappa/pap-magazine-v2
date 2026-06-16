@@ -691,6 +691,40 @@ function _formatDate(dt){
   } catch(e){ return ''; }
 }
 
+// QA #225 — owner-side delete with confirm. Status is re-checked
+// server-side, so a stale UI state can't be exploited to delete a
+// later-approved submission. On success we re-render the recent list
+// (the card is also removed optimistically as a UX hint while the
+// re-fetch is in flight).
+async function deleteMySubmission(id, title){
+  if(!id) return;
+  var prompt = '"'+(title||'이 서브미션')+'"\n\n이 서브미션을 삭제하시겠습니까?\n\n삭제하면 업로드한 이미지/설명/제출 기록 모두 영구 삭제되며 되돌릴 수 없습니다.';
+  if(!confirm(prompt)) return;
+  var token = '';
+  try { token = localStorage.getItem('pap-token') || ''; } catch(_){}
+  // Optimistic remove from the DOM so the user gets an instant response.
+  try {
+    var row = document.querySelector('.mp-sub-item[data-sub-id="'+id+'"]');
+    if(row && row.parentNode) row.parentNode.removeChild(row);
+  } catch(_){}
+  try {
+    var res = await fetch('/api/submissions/' + encodeURIComponent(id), {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + token, 'X-Requested-With':'XMLHttpRequest' },
+      credentials: 'include'
+    });
+    if(!res.ok){
+      var msg = '삭제에 실패했습니다.';
+      try { var j = await res.json(); if(j && j.message) msg = j.message; } catch(_){}
+      alert(msg);
+    }
+  } catch(e){
+    alert('삭제 중 오류가 발생했습니다: ' + (e && e.message ? e.message : ''));
+  }
+  // Re-fetch the canonical list so badges + pagination stay accurate.
+  loadRecentSubmissions();
+}
+
 function loadRecentSubmissions(){
   var token = localStorage.getItem('pap-token');
   var box = document.getElementById('mpRecentSubs');
@@ -704,6 +738,9 @@ function loadRecentSubmissions(){
       }
       var top = subs.slice(0, 3);
       var html = '';
+      // QA #225 — statuses where the owner is allowed to self-delete. Must
+      // stay in sync with DELETE handler in api/submissions/[id].js.
+      var DELETABLE = { pending:1, revision:1, rejected:1 };
       top.forEach(function(s){
         // Best-effort thumb: use first image if available
         var thumb = '';
@@ -711,13 +748,21 @@ function loadRecentSubmissions(){
         else if (typeof s.image_urls === 'string' && s.image_urls) thumb = s.image_urls.split(',')[0];
         var thumbStyle = thumb ? 'background-image:url(' + JSON.stringify(thumb).slice(1,-1) + ')' : '';
         var title = s.title || s.editorial_title || _t.statSubs;
-        html += '<div class="mp-sub-item" onclick="window.location.href=\'submission.html?revise=' + encodeURIComponent(s.id || '') + '\'">' +
-          '<div class="mp-sub-thumb" style="' + thumbStyle + '"></div>' +
-          '<div class="mp-sub-info">' +
-            '<div class="mp-sub-title">' + (title.replace(/</g,'&lt;')) + '</div>' +
-            '<div class="mp-sub-date">' + _formatDate(s.created_at) + '</div>' +
+        var canDelete = !!DELETABLE[s.status];
+        // QA #225 — wrap row + trash button so trash click doesn't bubble
+        // up into the row's "go to revision form" navigation.
+        html += '<div class="mp-sub-item" data-sub-id="'+(s.id||'').replace(/"/g,'')+'" style="position:relative">' +
+          '<div style="display:flex;align-items:center;gap:14px;flex:1;cursor:pointer" onclick="window.location.href=\'submission.html?revise=' + encodeURIComponent(s.id || '') + '\'">' +
+            '<div class="mp-sub-thumb" style="' + thumbStyle + '"></div>' +
+            '<div class="mp-sub-info">' +
+              '<div class="mp-sub-title">' + (title.replace(/</g,'&lt;')) + '</div>' +
+              '<div class="mp-sub-date">' + _formatDate(s.created_at) + '</div>' +
+            '</div>' +
           '</div>' +
           _statusBadge(s.status) +
+          (canDelete
+            ? '<button class="mp-sub-delete" title="이 서브미션을 삭제합니다" onclick="event.stopPropagation();deleteMySubmission(\''+(s.id||'')+'\','+JSON.stringify(title).replace(/"/g,'&quot;')+')" style="background:transparent;border:1px solid rgba(255,107,107,.3);color:rgba(255,107,107,.85);font-size:11px;padding:6px 10px;margin-left:8px;cursor:pointer;border-radius:2px;font-family:inherit;letter-spacing:.05em">삭제</button>'
+            : '') +
         '</div>';
       });
       if (subs.length > 3) {

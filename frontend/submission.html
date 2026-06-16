@@ -1870,11 +1870,46 @@ var existingAdditionalUrls = [];  // ['https://…','…']                   —
     var id = params.get('revise');
     if(!id) return;
     REVISE_ID = id;
-    // Show a loading banner immediately so the user knows we're hydrating
+    // QA #225 — if the user has previously dismissed the banner for THIS
+    // submission, honour that and skip rendering it. Per-submission dismiss
+    // keys mean a new rejection/revision on the same account still surfaces
+    // properly; only the message they actually closed stays closed.
+    try {
+      if(localStorage.getItem('pap-revise-banner-dismiss-' + id) === '1'){
+        // Still hydrate the form data (loadReviseSubmission) but skip the
+        // banner DOM. We return early from this IIFE only; the loader is
+        // hooked from outside.
+        document.addEventListener('DOMContentLoaded', function(){ setTimeout(loadReviseSubmission, 120); }, { once: true });
+        if(document.readyState !== 'loading') setTimeout(loadReviseSubmission, 120);
+        return;
+      }
+    } catch(_){}
+    // Show a loading banner immediately so the user knows we're hydrating.
+    // QA #225 — banner now sits BELOW the 72px fixed header (was top:0 +
+    // z-index:50, which the header silently covered). We also add an X
+    // close button and persist the dismiss in localStorage so the user
+    // can hide a stale "Rejected" message permanently for that submission.
     var banner = document.createElement('div');
     banner.id = '_reviseBanner';
-    banner.style.cssText='position:sticky;top:0;z-index:50;background:rgba(100,150,255,.12);border-bottom:1px solid rgba(100,150,255,.4);padding:14px 24px;text-align:center;font-size:12px;color:rgba(100,150,255,.95);font-family:Inter,sans-serif;';
+    banner.style.cssText='position:sticky;top:72px;z-index:40;background:rgba(100,150,255,.12);border-bottom:1px solid rgba(100,150,255,.4);padding:14px 48px 14px 24px;text-align:center;font-size:12px;color:rgba(100,150,255,.95);font-family:Inter,sans-serif;';
     banner.textContent='Loading your previous submission for revision…';
+    // X close button — keep it positioned in the top-right corner of the
+    // banner regardless of textContent so the moment hydration replaces
+    // innerHTML below we re-attach a fresh close button.
+    var closeBtn = document.createElement('button');
+    closeBtn.id = '_reviseBannerClose';
+    closeBtn.setAttribute('aria-label','Dismiss feedback banner');
+    closeBtn.innerHTML = '&times;';
+    closeBtn.style.cssText='position:absolute;top:8px;right:14px;background:transparent;border:0;color:rgba(255,255,255,.55);font-size:22px;line-height:1;cursor:pointer;padding:4px 8px;font-family:inherit;';
+    closeBtn.onmouseenter = function(){ this.style.color = 'rgba(255,255,255,.95)'; };
+    closeBtn.onmouseleave = function(){ this.style.color = 'rgba(255,255,255,.55)'; };
+    closeBtn.onclick = function(){
+      try { localStorage.setItem('pap-revise-banner-dismiss-' + REVISE_ID, '1'); } catch(_){}
+      var b = document.getElementById('_reviseBanner');
+      if(b && b.parentNode) b.parentNode.removeChild(b);
+    };
+    banner.style.position = 'sticky';
+    banner.appendChild(closeBtn);
     document.body.insertBefore(banner, document.body.firstChild);
     // Wait a tick for the form to be initialized, then prefill
     document.addEventListener('DOMContentLoaded', function(){ setTimeout(loadReviseSubmission, 120); }, { once: true });
@@ -1908,7 +1943,7 @@ async function loadReviseSubmission(){
     var banner = document.getElementById('_reviseBanner');
     if(banner){
       var note = (s.admin_notes || '').trim();
-      banner.style.padding = '20px 24px';
+      banner.style.padding = '20px 48px 20px 24px';
       banner.style.textAlign = 'left';
       banner.innerHTML =
         '<div style="max-width:880px;margin:0 auto;text-align:left">'+
@@ -1916,6 +1951,22 @@ async function loadReviseSubmission(){
           (note ? '<div style="font-size:11px;color:rgba(255,255,255,.55);margin-bottom:6px;text-transform:uppercase;letter-spacing:.1em">Editor\'s feedback</div><div style="font-size:13px;color:rgba(255,255,255,.92);white-space:pre-line;line-height:1.7">'+note.replace(/[<>&]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c];})+'</div>' : '')+
           '<div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:14px">Address the feedback above, edit any fields below, then SUBMIT to send the revised version.</div>'+
         '</div>';
+      // QA #225 — innerHTML wipes the X button we attached in
+      // detectReviseMode, so re-attach a fresh one here. Same dismiss
+      // semantics: clicking the X persists 'pap-revise-banner-dismiss-<id>'
+      // and removes the banner from the DOM.
+      var _close = document.createElement('button');
+      _close.id = '_reviseBannerClose';
+      _close.setAttribute('aria-label','Dismiss feedback banner');
+      _close.innerHTML = '&times;';
+      _close.style.cssText='position:absolute;top:10px;right:14px;background:transparent;border:0;color:rgba(255,255,255,.55);font-size:22px;line-height:1;cursor:pointer;padding:4px 8px;font-family:inherit;';
+      _close.onmouseenter = function(){ this.style.color = 'rgba(255,255,255,.95)'; };
+      _close.onmouseleave = function(){ this.style.color = 'rgba(255,255,255,.55)'; };
+      _close.onclick = function(){
+        try { localStorage.setItem('pap-revise-banner-dismiss-' + REVISE_ID, '1'); } catch(_){}
+        if(banner && banner.parentNode) banner.parentNode.removeChild(banner);
+      };
+      banner.appendChild(_close);
     }
 
     // ───── Prefill text fields

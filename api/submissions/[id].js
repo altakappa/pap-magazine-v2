@@ -27,9 +27,11 @@ module.exports = async function handler(req, res) {
   // GET retrieves a single submission. PUT lets the OWNER resubmit a
   // revised version (after admin marks status='revision'). PATCH lets
   // an ADMIN curate the gallery during review — reorder / remove images
-  // and pick the cover, without flipping any workflow state. All other
-  // methods 405.
-  if (req.method !== 'GET' && req.method !== 'PUT' && req.method !== 'PATCH') {
+  // and pick the cover, without flipping any workflow state. DELETE lets
+  // the OWNER hard-delete their own submission, gated on a small status
+  // whitelist so an already-published editorial can't be orphaned.
+  // QA #225 — added DELETE.
+  if (req.method !== 'GET' && req.method !== 'PUT' && req.method !== 'PATCH' && req.method !== 'DELETE') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
@@ -57,6 +59,39 @@ module.exports = async function handler(req, res) {
 
     if (error || !submission) {
       return res.status(404).json({ message: 'Submission not found' });
+    }
+
+    // ── DELETE: Owner hard-deletes their own submission ────────────────────
+    // QA #225 — Members can clear out their own draft, awaiting-review, or
+    // rejected submissions. We explicitly DO NOT allow deleting once the
+    // editor has taken any positive action ('approved', 'final_approved',
+    // 'uploaded', 'resubmitted') because those are linked to either an
+    // editorial (source_submission_id) or to an in-flight workflow the
+    // admin owns. Admins still have the admin-side reject + 30-day purge
+    // path for cleanup. Storage objects under
+    // submissions/<user.id>/<sub.id>/ are NOT swept here — they age out
+    // with the rejected-submissions purge cron, and a stray file in the
+    // user's own folder isn't a security risk.
+    if (req.method === 'DELETE') {
+      if (submission.user_id !== user.id) {
+        return res.status(403).json({ message: 'Only the submitter can delete this submission' });
+      }
+      const DELETABLE_STATUSES = ['pending', 'revision', 'rejected'];
+      if (DELETABLE_STATUSES.indexOf(submission.status) === -1) {
+        return res.status(409).json({
+          message: 'This submission can no longer be deleted (status: ' + submission.status + ')',
+        });
+      }
+      const { error: delErr } = await supabaseAdmin
+        .from('submissions')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+      if (delErr) {
+        console.error('Submission DELETE failed:', delErr);
+        return res.status(500).json({ message: 'Failed to delete submission', detail: delErr.message });
+      }
+      return res.status(200).json({ ok: true, id });
     }
 
     // ── PUT: Owner resubmits a revised version ─────────────────────────────
