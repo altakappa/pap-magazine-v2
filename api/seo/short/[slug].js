@@ -24,6 +24,8 @@ module.exports = async function handler(req, res) {
   }
 
   const decoded = (() => { try { return decodeURIComponent(slug); } catch { return slug; } })();
+  // QA #222 — SPA encodes title with hyphens; reverse on the SSR side.
+  const dehyphenated = decoded.replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
 
   try {
     let data = null;
@@ -31,6 +33,21 @@ module.exports = async function handler(req, res) {
     let r = await supabaseAdmin.from('shorts').select('*')
       .eq('title', decoded).eq('status', 'published').limit(1).maybeSingle();
     data = r.data;
+
+    /* title with hyphens stripped — QA #222 */
+    if (!data && dehyphenated !== decoded) {
+      r = await supabaseAdmin.from('shorts').select('*')
+        .eq('title', dehyphenated).eq('status', 'published').limit(1).maybeSingle();
+      data = r.data;
+    }
+
+    /* title ilike — QA #222 */
+    if (!data && dehyphenated.length >= 3) {
+      const safe = dehyphenated.replace(/[\\%_]/g, ch => '\\' + ch);
+      r = await supabaseAdmin.from('shorts').select('*')
+        .ilike('title', safe).eq('status', 'published').limit(1).maybeSingle();
+      data = r.data;
+    }
 
     if (!data) {
       r = await supabaseAdmin.from('shorts').select('*')

@@ -26,6 +26,15 @@ module.exports = async function handler(req, res) {
   }
 
   const decoded = (() => { try { return decodeURIComponent(slug); } catch { return slug; } })();
+  // QA #222 — articles authored via the admin "뉴스" flow usually leave
+  // slug + custom_url NULL, so the SPA renders the title-as-URL with
+  // spaces replaced by hyphens (자크뮈스가-담아낸-...). The SSR must
+  // mirror that transform on the way back in: when no exact match is
+  // found, swap `-` → ` ` and try the title column with both equality
+  // (fast path) and ilike (forgiving of trailing punctuation / extra
+  // spaces). We also try the slug column with the same dash-space swap
+  // so a partially-slugified record still resolves.
+  const dehyphenated = decoded.replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
 
   try {
     let data = null;
@@ -42,10 +51,37 @@ module.exports = async function handler(req, res) {
       data = r.data;
     }
 
-    /* 3) title match */
+    /* 2b) slug column (decoded + dehyphenated) — QA #222 */
+    if (!data) {
+      r = await supabaseAdmin.from('articles').select('*')
+        .eq('slug', decoded).eq('status', 'published').limit(1).maybeSingle();
+      data = r.data;
+    }
+    if (!data && dehyphenated !== decoded) {
+      r = await supabaseAdmin.from('articles').select('*')
+        .eq('slug', dehyphenated).eq('status', 'published').limit(1).maybeSingle();
+      data = r.data;
+    }
+
+    /* 3) title match (exact) */
     if (!data) {
       r = await supabaseAdmin.from('articles').select('*')
         .eq('title', decoded).eq('status', 'published').limit(1).maybeSingle();
+      data = r.data;
+    }
+
+    /* 3b) title match with hyphens stripped — QA #222 */
+    if (!data && dehyphenated !== decoded) {
+      r = await supabaseAdmin.from('articles').select('*')
+        .eq('title', dehyphenated).eq('status', 'published').limit(1).maybeSingle();
+      data = r.data;
+    }
+
+    /* 3c) title ilike (forgiving of trailing punctuation / whitespace) — QA #222 */
+    if (!data && dehyphenated.length >= 3) {
+      const safe = dehyphenated.replace(/[\\%_]/g, ch => '\\' + ch);
+      r = await supabaseAdmin.from('articles').select('*')
+        .ilike('title', safe).eq('status', 'published').limit(1).maybeSingle();
       data = r.data;
     }
 

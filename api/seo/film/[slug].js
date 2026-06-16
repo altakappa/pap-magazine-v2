@@ -26,6 +26,8 @@ module.exports = async function handler(req, res) {
   }
 
   const decoded = (() => { try { return decodeURIComponent(slug); } catch { return slug; } })();
+  // QA #222 — match the SPA's title-as-URL transform: hyphens → spaces.
+  const dehyphenated = decoded.replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
 
   try {
     let data = null;
@@ -39,6 +41,21 @@ module.exports = async function handler(req, res) {
     if (!data) {
       r = await supabaseAdmin.from('films').select('*')
         .eq('title', decoded).eq('status', 'published').limit(1).maybeSingle();
+      data = r.data;
+    }
+
+    /* 2b) title with hyphens stripped — QA #222 */
+    if (!data && dehyphenated !== decoded) {
+      r = await supabaseAdmin.from('films').select('*')
+        .eq('title', dehyphenated).eq('status', 'published').limit(1).maybeSingle();
+      data = r.data;
+    }
+
+    /* 2c) title ilike — QA #222 */
+    if (!data && dehyphenated.length >= 3) {
+      const safe = dehyphenated.replace(/[\\%_]/g, ch => '\\' + ch);
+      r = await supabaseAdmin.from('films').select('*')
+        .ilike('title', safe).eq('status', 'published').limit(1).maybeSingle();
       data = r.data;
     }
 

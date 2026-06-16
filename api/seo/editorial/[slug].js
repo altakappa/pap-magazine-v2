@@ -27,6 +27,10 @@ module.exports = async function handler(req, res) {
   }
 
   const decoded = (() => { try { return decodeURIComponent(slug); } catch { return slug; } })();
+  // QA #222 — SPA encodes titles with hyphens (자크뮈스가-담아낸-...).
+  // Mirror that swap on the SSR side so URLs without a stored slug
+  // still resolve to the right record.
+  const dehyphenated = decoded.replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
 
   try {
     let data = null;
@@ -43,10 +47,32 @@ module.exports = async function handler(req, res) {
       data = r.data;
     }
 
+    /* 2b) slug match with hyphens stripped — QA #222 */
+    if (!data && dehyphenated !== decoded) {
+      r = await supabaseAdmin.from('editorials').select('*')
+        .eq('slug', dehyphenated).eq('status', 'published').limit(1).maybeSingle();
+      data = r.data;
+    }
+
     /* 3) title (legacy URLs that used title in the path slot) */
     if (!data) {
       r = await supabaseAdmin.from('editorials').select('*')
         .eq('title', decoded).eq('status', 'published').limit(1).maybeSingle();
+      data = r.data;
+    }
+
+    /* 3b) title with hyphens stripped — QA #222 */
+    if (!data && dehyphenated !== decoded) {
+      r = await supabaseAdmin.from('editorials').select('*')
+        .eq('title', dehyphenated).eq('status', 'published').limit(1).maybeSingle();
+      data = r.data;
+    }
+
+    /* 3c) title ilike — QA #222 (forgiving of trailing punctuation) */
+    if (!data && dehyphenated.length >= 3) {
+      const safe = dehyphenated.replace(/[\\%_]/g, ch => '\\' + ch);
+      r = await supabaseAdmin.from('editorials').select('*')
+        .ilike('title', safe).eq('status', 'published').limit(1).maybeSingle();
       data = r.data;
     }
 

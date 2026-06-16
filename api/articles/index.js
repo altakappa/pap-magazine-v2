@@ -10,6 +10,25 @@ const { requireAdmin } = require('../_lib/auth');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { recordContentChange, attachAuthorship } = require('../_lib/audit');
 
+// QA #222 — auto-generate a URL slug from the title when the editor
+// leaves it blank. We keep Hangul/CJK characters as-is (modern browsers
+// + Vercel routes handle UTF-8 path segments fine) and only collapse
+// whitespace → hyphen + strip a small set of punctuation. The result
+// lets the SSR /article/:slug handler do a direct slug lookup instead
+// of falling back to the fragile title-ilike path.
+function generateArticleSlug(title) {
+  if (!title) return null;
+  const s = String(title)
+    .normalize('NFC')
+    .replace(/[‘’“”]/g, '')
+    .replace(/[.,!?;:'"…]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 200);
+  return s || null;
+}
+
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
   if (rateLimit(req, res, RATE_LIMITS.api)) return;
@@ -154,12 +173,16 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ error: 'title is required' });
       }
 
+      // QA #222 — when the admin leaves slug empty we fill it from the
+      // title so cold-load /article/<slug> resolves on a fast indexed
+      // path instead of the SSR title-ilike fallback.
+      const finalSlug = (slug && slug.trim()) || generateArticleSlug(title);
       const { data, error } = await supabaseAdmin
         .from('articles')
         .insert({
           title,
           subtitle: subtitle || null,
-          slug: slug || null,
+          slug: finalSlug,
           published_date: published_date || null,
           category: category || null,
           tags: tags || [],

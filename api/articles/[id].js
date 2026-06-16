@@ -65,6 +65,24 @@ module.exports = async function handler(req, res) {
         if (req.body[key] !== undefined) updates[key] = req.body[key];
       }
 
+      // QA #222 — if the editor clears the slug (or sends ''), regenerate
+      // it from the title so the SSR /article/<slug> route resolves on
+      // the indexed slug column. We deliberately only auto-fill on empty
+      // input (not on every save) so existing public URLs stay stable.
+      if (updates.slug !== undefined && !String(updates.slug || '').trim()) {
+        const titleForSlug = updates.title !== undefined ? updates.title : (req.body.title || null);
+        const auto = (function gen(t){
+          if (!t) return null;
+          const s = String(t).normalize('NFC')
+            .replace(/[‘’“”]/g, '')
+            .replace(/[.,!?;:'"…]/g, '')
+            .replace(/\s+/g, '-').replace(/-+/g, '-')
+            .replace(/^-|-$/g, '').slice(0, 200);
+          return s || null;
+        })(titleForSlug);
+        if (auto) updates.slug = auto;
+      }
+
       // QA #202 — fetch full prior row for both transition detection
       // and audit diff (mirrors editorials/[id].js).
       let priorStatus = null;
