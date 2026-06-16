@@ -145,11 +145,16 @@ window._papFilmAutoPlay = function(){
           parsedBlocks = maybe.map(function(b){
             if(!b || typeof b !== 'object') return { type:'text', content:String(b||'') };
             var t = b.type || 'text';
-            return {
-              type: t,
-              content: typeof b.content === 'string' ? b.content : '',
-              url: b.url || ''
-            };
+            // QA #221 — preserve every field the admin editor wrote.
+            // Earlier we only copied content+url, which dropped quote.source
+            // and any future block-specific attribute. Spread the original
+            // block so unknown fields ride through, then normalise the two
+            // well-known string fields.
+            var out = Object.assign({}, b);
+            out.type = t;
+            out.content = typeof b.content === 'string' ? b.content : '';
+            out.url = b.url || '';
+            return out;
           });
         }
       } catch(_){ parsedBlocks = null; }

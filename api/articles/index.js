@@ -53,16 +53,23 @@ module.exports = async function handler(req, res) {
         res.setHeader('Cache-Control', 'no-store, max-age=0');
       }
 
-      // QA #186 — list-view projection drops `content` (the long article
-      // body) + `gallery` + `credits`. Article cards only need
-      // title/subtitle/thumbnail/category/published_date for rendering.
+      // QA #186 — list-view projection drops `gallery` + `credits`.
       // QA #199 — re-include scheduled_publish_at + admin_edited_at so
-      // the admin list can render scheduled-time badges and
-      // last-edited pills without a per-row second fetch.
+      //           the admin list can render scheduled-time badges and
+      //           last-edited pills without a per-row second fetch.
+      // QA #221 — re-include `content` (the JSON block array). The SPA
+      //           consumes /api/articles directly with fetchAll and never
+      //           does a per-article second fetch, so dropping `content`
+      //           here meant every block (text/image/quote/video) silently
+      //           vanished on the public detail page. Article bodies are
+      //           small (≤ ~10 KB for a typical post), and the QA #220
+      //           edge cache means the larger payload is served almost
+      //           entirely from the POP after the first hit.
       const LIST_COLUMNS = [
         'id','title','subtitle','slug','thumbnail_url','hero_image_url',
         'category','tags','published_date','custom_url','status',
         'scheduled_publish_at','admin_edited_at','updated_at',
+        'content',
         // QA #202 — surface authorship in the admin list (created_at +
         // FK columns; attachAuthorship resolves to display_name).
         'created_at','created_by','updated_by'
