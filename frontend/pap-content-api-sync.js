@@ -288,6 +288,88 @@ window._papFilmAutoPlay = function(){
       if(typeof window._papArticleRenderCards==='function'){
         window._papArticleRenderCards();
       }
+      // QA #226 — also surface newly-published articles on the home-page
+      // "최신기사" carousel. The carousel HTML is a long list of static
+      // cards (kept around so the page paints instantly with no JS), so
+      // the API result is used to PREPEND any rows whose slug isn't
+      // already on screen. This lets newly-published news show up at
+      // the front without requiring a manual edit to index.html.
+      try { _renderHomeFashionArticles(apiArticles); } catch(e){ /* non-fatal */ }
+    });
+  }
+
+  // QA #226 — prepend home-carousel cards for any article whose slug
+  // isn't already a static card. We only consider the newest N posts
+  // and intentionally avoid touching the existing static markup so the
+  // first paint stays as-is (no flash, no reorder). The card markup
+  // mirrors the static cards in index.html so the same CSS + click
+  // handler (openArticleFromCard) keeps working.
+  function _renderHomeFashionArticles(apiArticles){
+    var track = document.getElementById('fashionTrack');
+    if(!track || !Array.isArray(apiArticles) || !apiArticles.length) return;
+    var existingSlugs = {};
+    var existingTitles = {};
+    var cards = track.querySelectorAll('.fashion-card');
+    for(var ci = 0; ci < cards.length; ci++){
+      var c = cards[ci];
+      var s = c.getAttribute('data-slug');
+      if(s) existingSlugs[s] = 1;
+      var tEl = c.querySelector('.fashion-card-title');
+      if(tEl){
+        var tt = String(tEl.textContent || '').trim();
+        if(tt) existingTitles[tt] = 1;
+      }
+    }
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    function _fmt(dateStr){
+      if(!dateStr) return '';
+      var d = new Date(dateStr);
+      if(isNaN(d.getTime())) return '';
+      var dd = ('0' + d.getDate()).slice(-2);
+      return dd + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+    }
+    function _esc(s){
+      return String(s == null ? '' : s)
+        .replace(/&/g,'&amp;').replace(/"/g,'&quot;')
+        .replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+    // newest first — the list comes from /api/articles sorted by
+    // published_date DESC already, so we just take the first 8.
+    var candidates = apiArticles.slice(0, 8).filter(function(a){
+      if(!a) return false;
+      var title = (a.t || '').trim();
+      var slug = a.slug || '';
+      if(slug && existingSlugs[slug]) return false;
+      if(title && existingTitles[title]) return false;
+      return !!(title);
+    });
+    // Reverse so insertBefore(track.firstChild) yields newest-first order.
+    candidates.reverse().forEach(function(a){
+      var card = document.createElement('div');
+      card.className = 'fashion-card';
+      var slugAttr = a.slug || '';
+      if(slugAttr) card.setAttribute('data-slug', slugAttr);
+      card.style.cursor = 'pointer';
+      card.setAttribute('onclick', 'openArticleFromCard(this)');
+      var img = a.th || a.img || '';
+      var rawCat = a.cat || '';
+      // Match the static-card formatting: "Fashion - 02 Mar 2026". We
+      // Title-case the first letter of each comma-separated category
+      // (incoming values are stored lowercase since QA #223).
+      var catLabel = rawCat.split(',').map(function(p){
+        p = p.trim();
+        if(!p) return '';
+        return p.charAt(0).toUpperCase() + p.slice(1);
+      }).filter(Boolean).join(',');
+      var dateStr = _fmt(a.d || a.published_date || '');
+      var meta = catLabel + (catLabel && dateStr ? ' - ' : '') + dateStr;
+      card.innerHTML =
+        '<div class="fashion-card-img"><img loading="lazy" src="' + _esc(img) + '" alt="' + _esc(a.t || '') + '"></div>' +
+        '<div class="fashion-card-info">' +
+          '<div class="fashion-card-cat">' + _esc(meta) + '</div>' +
+          '<div class="fashion-card-title">' + _esc(a.t || '') + '</div>' +
+        '</div>';
+      track.insertBefore(card, track.firstChild);
     });
   }
 
