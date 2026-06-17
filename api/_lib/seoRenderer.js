@@ -614,20 +614,18 @@ ${cfg.schemaType !== 'VideoObject' && ogImage ? `<link rel="preload" as="image" 
 </style>
 </head>
 <body class="seo-loading">
-${kind === 'editorial' ? `<!-- QA #178 — Real-browser redirect bridge (editorials only).
+${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-browser redirect bridge.
      The SSR HTML above + meta tags is what crawlers / social-preview
      scrapers consume (they don't run JS). Real users instead get sent to
-     the SPA homepage with the editorial deep-link, which renders the
+     the SPA homepage with the kind-specific deep-link, which renders the
      EXACT same overlay as clicking a card from the menu — no parallel
      templates to keep in sync.
-     Final URL settles at /editorial/<slug> (clean) because the SPA's
-     openEditorial → _openEditorialInner pushes that path after the
-     overlay opens. ?raw=1 escape hatch leaves the user on the SSR
-     view for debugging / archival snapshots.
-     Films / articles / shorts skip this redirect because the SPA
-     doesn't yet have a robust slug-based deep-link path for those
-     kinds; they stay on the SSR page (which already mirrors the SPA
-     overlay in structure via QA #177). -->
+     Editorial → ?ed=<slug>   → /editorial/<slug> (final URL)
+     Film      → ?film=<slug> → /film/<slug>      (final URL — QA #233)
+     ?raw=1 escape hatch leaves the user on the SSR view for debugging /
+     archival snapshots.
+     Articles / shorts still skip the redirect (TODO: extend the same
+     bridge once their slug-based deep-link path lands). -->
 <style>
   /* Hide the SSR body the instant we know we'll be redirecting so the
      user doesn't see a flash of the simplified SSR layout. Crawlers
@@ -644,10 +642,11 @@ ${kind === 'editorial' ? `<!-- QA #178 — Real-browser redirect bridge (editori
         sessionStorage.setItem('_pap_ssr_redirect_done', String(Date.now()));
       } catch(_){}
       document.documentElement.classList.add('js-redirecting');
-      // SPA homepage picks up ?ed=<name> via the existing deep-link IIFE
-      // in pap-content-seo.js, opens the editorial overlay, and pushes
-      // /editorial/<slug> as the final URL.
-      var target = '/?ed=' + encodeURIComponent(${JSON.stringify(slug)});
+      // SPA homepage picks up the right query param via deep-link IIFEs
+      // in pap-content-seo.js, opens the matching overlay, and pushes
+      // /<kind>/<slug> as the final URL.
+      var paramName = ${JSON.stringify(kind === 'film' ? 'film' : 'ed')};
+      var target = '/?' + paramName + '=' + encodeURIComponent(${JSON.stringify(slug)});
       window.location.replace(target);
     } catch(_){ /* on any error, leave the SSR page visible */ }
   })();

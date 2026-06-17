@@ -332,3 +332,61 @@ function _papResolveEditorialName(input){
   else window.addEventListener('load',tryOpen);
 })();
 
+// ======== DEEP LINK: open film from ?film= param (QA #233) ========
+// Mirror of the ?ed= IIFE above. SSR film page (api/seo/film/[slug].js)
+// redirects real browsers to /?film=<slug> via the bridge in
+// seoRenderer.js. We poll for filmAllData to populate and openFilmDetail
+// to be defined, then hand off the same way clicking a film card does.
+// openFilmDetail pushes /film/<slug> via the existing pushState logic,
+// so the final URL settles at the canonical clean path — no double
+// history entries, browser-back returns to the films list overlay.
+(function(){
+  var params = new URLSearchParams(window.location.search);
+  var filmSlug = params.get('film');
+  if(!filmSlug) return;
+  // Clean ?film= from the URL immediately so the pushState that
+  // openFilmDetail issues is the first /film/<slug> entry on the stack.
+  try { history.replaceState(null, '', window.location.pathname); } catch(_){}
+  function revealBody(){
+    if(document.body && !document.body.classList.contains('pap-deeplink-ready')){
+      document.body.classList.add('pap-deeplink-ready');
+    }
+  }
+  // Polling: filmAllData populates asynchronously from /api/films via
+  // pap-content-api-sync.js. We retry every 120ms (matching the editorial
+  // IIFE) until either the slug resolves to a film index OR we hit a
+  // 4s ceiling — at which point we give up rather than blocking the page.
+  var pollStart = Date.now();
+  function tryOpenFilm(){
+    if(typeof openFilmDetail !== 'function' || typeof filmAllData === 'undefined'){
+      setTimeout(tryOpenFilm, 100);
+      return;
+    }
+    // Resolve slug → index. Films were synced with apiFilmToLocal which
+    // populates `.slug` from the row's slug column. Fall back to title
+    // hyphen-stripping for legacy films that pre-date the slug column.
+    var idx = -1;
+    var slugNorm = String(filmSlug || '').toLowerCase();
+    for(var i = 0; i < filmAllData.length; i++){
+      var f = filmAllData[i] || {};
+      if(f.slug && String(f.slug).toLowerCase() === slugNorm){ idx = i; break; }
+    }
+    if(idx < 0){
+      // Hyphenated title fallback (matches SSR's dehyphenate matcher).
+      var dehyph = slugNorm.replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
+      for(var j = 0; j < filmAllData.length; j++){
+        var ft = String((filmAllData[j] || {}).t || '').toLowerCase().trim();
+        if(ft && (ft === dehyph || ft === slugNorm)){ idx = j; break; }
+      }
+    }
+    var elapsed = Date.now() - pollStart;
+    if(idx < 0 && elapsed < 4000){ setTimeout(tryOpenFilm, 120); return; }
+    if(idx >= 0){
+      try { openFilmDetail(idx); } catch(_){}
+    }
+    setTimeout(revealBody, 60);
+  }
+  if(document.readyState === 'complete') tryOpenFilm();
+  else window.addEventListener('load', tryOpenFilm);
+})();
+
