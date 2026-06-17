@@ -186,38 +186,94 @@ function scrollEdRow(btn,dir){
   if(track) _papSmoothScrollBy(track, dir*460);
 }
 
-// QA #239 — Universal left-side X close on every overlay.
-// Each overlay's mini-header gets the SAME button in the SAME spot so
-// users never have to hunt for "where do I exit". We inject from JS
-// (instead of touching six different markup blocks) so the close
-// affordance stays in sync if any one overlay's HTML is refactored.
-// Skips overlays whose markup already includes .overlay-mini-close.
+// QA #239 — Single source of truth: overlay id → close function name.
+// Exposed on window so per-content modules can call
+// _papCloseOtherOverlays() before they open a new overlay (avoids the
+// nested-layer stacking the user reported: clicking a contributor name
+// inside an editorial used to leave the editorial open behind a film
+// overlay behind a profile popup — three layers deep, browser-back
+// chaos).
+window._PAP_OVERLAY_CLOSE_MAP = {
+  'edAllOverlay':       'closeAllEditorials',
+  'filmAllOverlay':     'closeAllFilms',
+  'artAllOverlay':      'closeAllArticles',
+  'edOverlay':          'closeEditorial',
+  'filmDetailOverlay':  'closeFilmDetail',
+  'artDetailOverlay':   'closeArticleDetail'
+};
+
+// QA #239 v2 — close every other active SPA overlay before opening a
+// new one. Each close fn already accepts a skipHistory truthy arg so
+// we don't push extra history.back() calls when the caller is about
+// to push its own state. Safe to call from inside an open() flow.
+window._papCloseOtherOverlays = function(exceptId){
+  var MAP = window._PAP_OVERLAY_CLOSE_MAP;
+  Object.keys(MAP).forEach(function(id){
+    if(id === exceptId) return;
+    var el = document.getElementById(id);
+    if(!el || !el.classList.contains('active')) return;
+    try {
+      var fn = window[MAP[id]];
+      if(typeof fn === 'function') fn(true); // skipHistory
+    } catch(_){}
+  });
+};
+
+// QA #239 — Universal left-side X close + HOME icon on every overlay.
+// Inject from JS so the close + home affordances stay in sync across
+// six different overlay markup blocks. Skips overlays whose markup
+// already includes .overlay-mini-close (idempotent re-runs OK too).
 (function _papWireOverlayCloseButtons(){
-  var MAP = {
-    'edAllOverlay':       'closeAllEditorials',
-    'filmAllOverlay':     'closeAllFilms',
-    'artAllOverlay':      'closeAllArticles',
-    'edOverlay':          'closeEditorial',
-    'filmDetailOverlay':  'closeFilmDetail',
-    'artDetailOverlay':   'closeArticleDetail'
-  };
+  var MAP = window._PAP_OVERLAY_CLOSE_MAP;
+  // QA #239 v2 — same SVG used for both wired-from-markup and JS-wired
+  // home buttons so they paint identically.
+  var HOME_SVG =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">' +
+      '<path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1V9.5z"/>' +
+    '</svg>';
   function _wire(){
     Object.keys(MAP).forEach(function(id){
       var overlay = document.getElementById(id);
       if(!overlay) return;
       var miniLeft = overlay.querySelector('.overlay-mini-left');
       if(!miniLeft) return;
-      if(miniLeft.querySelector('.overlay-mini-close')) return; // already wired in markup
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'overlay-mini-close';
-      btn.setAttribute('aria-label', '닫기');
-      btn.innerHTML = '&times;';
       var fnName = MAP[id];
-      btn.addEventListener('click', function(){
-        try { if(typeof window[fnName] === 'function') window[fnName](); } catch(_){}
-      });
-      miniLeft.insertBefore(btn, miniLeft.firstChild);
+      // 1) X close (left-most). Skip if already wired in markup.
+      if(!miniLeft.querySelector('.overlay-mini-close')){
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'overlay-mini-close';
+        btn.setAttribute('aria-label', '닫기');
+        btn.innerHTML = '&times;';
+        btn.addEventListener('click', function(){
+          try { if(typeof window[fnName] === 'function') window[fnName](); } catch(_){}
+        });
+        miniLeft.insertBefore(btn, miniLeft.firstChild);
+      }
+      // 2) HOME button (right after the X). Closes the overlay then
+      //    routes to /. Surfaces the "1-click out" affordance the user
+      //    asked for — clicking the centered PAP logo also goes home,
+      //    but users don't always discover the logo is interactive.
+      if(!miniLeft.querySelector('.overlay-mini-home')){
+        var home = document.createElement('a');
+        home.href = '/';
+        home.className = 'overlay-mini-home';
+        home.setAttribute('aria-label', '메인 홈으로');
+        home.title = '메인 홈으로';
+        home.innerHTML = HOME_SVG;
+        home.addEventListener('click', function(e){
+          e.preventDefault();
+          try { if(typeof window[fnName] === 'function') window[fnName](true); } catch(_){}
+          window.location.href = '/';
+        });
+        // Insert AFTER the close button (which is now firstChild).
+        var closeEl = miniLeft.querySelector('.overlay-mini-close');
+        if(closeEl && closeEl.nextSibling){
+          miniLeft.insertBefore(home, closeEl.nextSibling);
+        } else {
+          miniLeft.appendChild(home);
+        }
+      }
     });
   }
   if(document.readyState === 'loading'){

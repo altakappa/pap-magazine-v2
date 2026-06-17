@@ -276,6 +276,9 @@ function openArticleDetail(idx){
   _openArticleDetailInner(idx);
 }
 function _openArticleDetailInner(idx){
+  // QA #239 v2 — close any other open overlay first so article detail
+  // doesn't stack on top of editorial / film / list overlays.
+  try { if(typeof _papCloseOtherOverlays === 'function') _papCloseOtherOverlays('artDetailOverlay'); } catch(_){}
   var a=artData[idx];if(!a) return;
   var overlay=document.getElementById('artDetailOverlay');
   if(!overlay) return;

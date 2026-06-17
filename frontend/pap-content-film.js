@@ -102,6 +102,9 @@ function openFilmDetail(idx){
   _openFilmDetailInner(idx);
 }
 function _openFilmDetailInner(idx){
+  // QA #239 v2 — close any other open overlay first (e.g. an editorial
+  // overlay the user came from via a RELATED FILMS click).
+  try { if(typeof _papCloseOtherOverlays === 'function') _papCloseOtherOverlays('filmDetailOverlay'); } catch(_){}
   var f=filmAllData[idx];if(!f) return;
   var overlay=document.getElementById('filmDetailOverlay');
   if(!overlay) return;

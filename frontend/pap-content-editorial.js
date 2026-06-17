@@ -393,6 +393,12 @@ function _renderRelatedFilms(films){
 }
 
 function _openEditorialInner(title,thumb){
+  // QA #239 v2 — collapse any other active overlay (film detail, article
+  // detail, list overlays, …) before opening this one. Stops layer
+  // stacking when the user jumps between content types via in-overlay
+  // links (e.g. RELATED FILMS card inside an editorial → film detail
+  // used to open ON TOP of the editorial).
+  try { if(typeof _papCloseOtherOverlays === 'function') _papCloseOtherOverlays('edOverlay'); } catch(_){}
   var d=edDetails[title];
   if(!d){var titleLower=title.toLowerCase();for(var key in edDetails){if(key.toLowerCase()===titleLower){d=edDetails[key];break;}}}
   d=d||{};

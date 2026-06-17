@@ -700,7 +700,10 @@ section.hero + .shorts-section{
 @media(max-width:600px){.ed-cat-filter{padding:0 var(--pad-x) 12px}.ed-cat-pill{font-size:9px;padding:6px 12px;letter-spacing:.12em}}
 
 /* OVERLAY MINI HEADER — sticky top-bar inside *AllOverlay (editorial/film/article grids) */
-.overlay-mini-header{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:0 40px;height:72px;background:rgba(0,0,0,.97);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.04)}
+/* QA #239 v2 — divider alpha raised (.04 → .12) so the mini-header
+   visually separates from the overlay content below. Same hairline
+   rhythm as section dividers (QA #235) for consistency. */
+.overlay-mini-header{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:0 40px;height:72px;background:rgba(0,0,0,.97);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.12)}
 .overlay-mini-header .overlay-mini-left{display:flex;align-items:center;gap:12px}
 .overlay-mini-header .overlay-mini-right{display:flex;align-items:center;gap:12px;position:relative}
 .overlay-mini-header .overlay-mini-logo{display:flex;align-items:center;font-family:'Montserrat',sans-serif;font-weight:800;font-size:14px;letter-spacing:.18em;color:#fff;text-decoration:none;text-transform:uppercase;white-space:nowrap}
@@ -1417,6 +1420,30 @@ section.hero + .shorts-section{
 .overlay-mini-close:hover,.overlay-mini-close:focus-visible{opacity:.6}
 @media(max-width:768px){
   .overlay-mini-close{font-size:22px;padding:6px;margin-right:2px}
+}
+
+/* QA #239 v2 — HOME 1-click button. Sits immediately after the X close,
+   inside .overlay-mini-left. Closes the active overlay then navigates
+   to /. Visual: same SVG-icon-only treatment as other left-side
+   header buttons (hamburger, search) so it reads as one toolbar. */
+.overlay-mini-home{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:transparent;
+  border:0;
+  color:#fff;
+  cursor:pointer;
+  padding:8px;
+  margin-right:6px;
+  text-decoration:none;
+  transition:opacity .2s ease;
+}
+.overlay-mini-home:hover,.overlay-mini-home:focus-visible{opacity:.6}
+.overlay-mini-home svg{display:block}
+@media(max-width:768px){
+  .overlay-mini-home{padding:6px;margin-right:2px}
+  .overlay-mini-home svg{width:16px;height:16px}
 }
 
 /* Detail overlays now use the mini-header's close button — hide the
