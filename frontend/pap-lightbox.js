@@ -166,11 +166,18 @@
   /* -------- AUTO-BINDING via event delegation --------
      Any <img> inside one of the recognized gallery containers becomes
      clickable. The container's siblings provide the gallery list for
-     prev/next navigation. */
+     prev/next navigation.
+     QA #237 — added #artDetailDesc + #edDetailDesc so the block-renderer
+     <figure><img></figure> images in article / editorial body copy now
+     also open the lightbox. Previously only the dedicated gallery grid
+     was wired, so the body images appeared static. */
   var GALLERY_SELECTORS = [
     '.ed-gallery-grid',     // editorial overlay
     '#edDetailGallery',     // editorial overlay (id alias)
-    '#artDetailGallery',    // article overlay
+    '#edDetailDesc',        // editorial overlay body copy (QA #237)
+    '#artDetailGallery',    // article overlay legacy gallery
+    '#artDetailDesc',       // article overlay block-rendered body (QA #237)
+    '.seo-gallery',         // SSR pages (editorial / film SSR fallback)
     '[data-lightbox-group]' // generic opt-in
   ].join(',');
 
@@ -204,7 +211,8 @@
     var st = document.createElement('style');
     st.id = styleId;
     st.textContent =
-      '.ed-gallery-grid img,#edDetailGallery img,#artDetailGallery img,' +
+      '.ed-gallery-grid img,#edDetailGallery img,#edDetailDesc img,' +
+      '#artDetailGallery img,#artDetailDesc img,.seo-gallery img,' +
       '[data-lightbox-group] img{cursor:zoom-in}';
     document.head.appendChild(st);
   })();
