@@ -18,24 +18,53 @@
 
 function toggleSearch(){const o=document.getElementById('searchBar');if(!o)return;o.classList.toggle('active');if(o.classList.contains('active')){setTimeout(()=>{var si=document.getElementById('searchInput');if(si)si.focus();},300);}else{var dd=document.getElementById('searchDropdown');if(dd)dd.classList.remove('active');var si=document.getElementById('searchInput');if(si)si.value='';}}
 
-var _si=document.getElementById('searchInput');
-if(_si){
-  _si.addEventListener('input',function(){searchEditorials(this.value);});
-  // Enter key — open the first dropdown result (works on home + sub pages).
-  // Falls through to no-op when there are no results yet.
-  _si.addEventListener('keydown',function(e){
-    if(e.key==='Enter'){
-      e.preventDefault();
-      var first=document.querySelector('#searchDropdown .search-dropdown-item');
-      if(first){first.click();return;}
-      // No editorial match — try a global Google-style fallback: navigate to
-      // home with the query so the page can show "no results" or trigger a
-      // server-side search if implemented later.
-      var q=this.value.trim();
-      if(q) window.location.href='/?q=' + encodeURIComponent(q);
-    }
-  });
-}
+// QA #240 — Global delegation. The previous implementation cached
+//   var _si = document.getElementById('searchInput')
+// once at module load and bound input/keydown to that one element.
+// That fails three ways on sub-pages:
+//   1) If the script ran before the search markup was fully parsed,
+//      _si was null and no events ever bound.
+//   2) Some pages had duplicate #searchInput IDs (films.html — fixed
+//      in QA #240), so only the first instance got listeners; the
+//      visible one silently lost every keystroke and Enter press.
+//   3) Any dynamically-injected search bar (overlay re-render, etc.)
+//      missed binding entirely.
+// Delegating from `document` makes the behavior identical on every
+// page and every input that matches the selector, regardless of mount
+// timing or duplication.
+document.addEventListener('input', function(e){
+  var t = e.target;
+  if(!t || !t.matches || !t.matches('#searchInput, .search-bar-input')) return;
+  try { searchEditorials(t.value); } catch(_){}
+});
+document.addEventListener('keydown', function(e){
+  var t = e.target;
+  if(!t || !t.matches || !t.matches('#searchInput, .search-bar-input')) return;
+  if(e.key !== 'Enter') return;
+  e.preventDefault();
+  // Enter opens the first dropdown result — same UX home + sub pages.
+  var first = document.querySelector('#searchDropdown .search-dropdown-item');
+  if(first){ first.click(); return; }
+  // No match — fall back to home with the query so the home page can
+  // show a no-results state. Works even when the current page has no
+  // edData (sub-pages whose datasets haven't synced yet).
+  var q = (t.value||'').trim();
+  if(q) window.location.href = '/?q=' + encodeURIComponent(q);
+});
+// Click delegation for dropdown items. The per-item onclick installed
+// in searchEditorials() is still the primary handler, but this
+// delegation acts as a safety net for items rendered before
+// pap-search.js loaded or injected by other scripts. Reads data-slug
+// (added below) for navigation.
+document.addEventListener('click', function(e){
+  var item = e.target.closest && e.target.closest('.search-dropdown-item');
+  if(!item) return;
+  if(item.onclick) return; // inline handler already fired
+  var slug = item.getAttribute('data-slug');
+  if(!slug) return;
+  try { toggleSearch(); } catch(_){}
+  window.location.href = '/editorial/' + slug;
+});
 
 function searchEditorials(query){
   // Dropdown search (works on all pages with search-bar)
@@ -85,6 +114,15 @@ function searchEditorials(query){
         var e=scored[i].ed;
         var item=document.createElement('div');
         item.className='search-dropdown-item';
+        // QA #240 — also stash the slug as a data attribute so the
+        // document-level click delegation in the global listener can
+        // still navigate even if (somehow) the per-item onclick fails
+        // to register or gets stripped.
+        var _slugAttr = e.slug
+          || String(e.title||'').toLowerCase()
+               .replace(/['"`]+/g,'').replace(/[^\w\s가-힣-]+/g,'')
+               .trim().replace(/\s+/g,'-').replace(/-+/g,'-');
+        item.setAttribute('data-slug', _slugAttr);
         // Click handler — universal across home and sub pages.
         // On home (where #edOverlay exists) open the overlay directly.
         // On any other page, QA #166 — link to the clean SSR URL
