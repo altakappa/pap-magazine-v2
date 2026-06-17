@@ -282,7 +282,7 @@ function check(label, code) {
 // Foundation
 check('pap-utils: lockScroll/unlockScroll', 'typeof lockScroll === "function" && typeof unlockScroll === "function"');
 check('pap-utils: escapeHtml/_decHtml/_normWs', 'typeof escapeHtml === "function" && typeof _decHtml === "function" && typeof _normWs === "function"');
-check('pap-utils: buildPagination + PAP_PER_PAGE', 'typeof buildPagination === "function" && PAP_PER_PAGE === 20');
+check('pap-utils: buildPagination + PAP_PER_PAGE', 'typeof buildPagination === "function" && PAP_PER_PAGE === 30');
 check('pap-utils: carousel helpers', 'typeof _papUpdateArrows === "function" && typeof _papWireCarousel === "function" && typeof _papSmoothScrollBy === "function"');
 
 // i18n
