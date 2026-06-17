@@ -1,7 +1,19 @@
 /* PAP Magazine — Beta Test Notice Popup
-   Shows on every page load to inform users that the site is in beta
-   and paid subscription services are unavailable during this period.
-   Multilingual: ko, en, it, fr, es, ja, zh, ru                       */
+   Registers a single popup with window.papPopups (see pap-popup-registry.js).
+   The registry owns dismissal storage, entry-path consistency (BFCache
+   restore via pageshow), and queueing. This file only owns content and
+   appearance.
+   Multilingual: ko, en, it, fr, es, ja, zh, ru, de.
+
+   QA #241 changes:
+   • Migrated init / dismissal / deep-link guard onto papPopups.register —
+     a fresh load and a back/forward-cache restore now behave identically
+     because the registry re-runs the queue on pageshow with persisted=true.
+   • Dismissal storage policy preserved (localStorage, 7-day TTL).
+     Storage key changed: the new shared key is
+     `pap-popup-dismissed-beta-notice` (managed by the registry). The
+     legacy `pap-beta-notice-dismissed-at` value is migrated on first
+     load so existing dismissals are honored. */
 
 (function(){
   var I18N={
@@ -34,7 +46,10 @@
 
   function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 
-  /* Update notice text when geo-lang detects a new language (async IP lookup) */
+  function isLoggedInForBeta(){
+    try{ return !!localStorage.getItem('pap-token'); }catch(e){return false;}
+  }
+
   function updateNoticeLang(){
     var el=document.getElementById('betaNotice');
     if(!el) return;
@@ -56,13 +71,6 @@
     var btn=el.querySelector('.bn-btn');
     if(btn) btn.textContent=t.btn;
   }
-
-  /* Detect whether the visitor is logged in — the signup CTA is hidden
-     for logged-in members (they already have access during beta). */
-  function isLoggedInForBeta(){
-    try{ return !!localStorage.getItem('pap-token'); }catch(e){return false;}
-  }
-
   document.addEventListener('pap-lang-changed', updateNoticeLang);
 
   function injectStyles(){
@@ -100,8 +108,16 @@
     (document.head||document.documentElement).appendChild(style);
   }
 
-  function showNotice(){
-    if(document.getElementById('betaNotice')) return;
+  /* Render the popup. `api.dismiss()` records the dismissal flag and tells
+     the registry the slot is free; `api.skip()` does the latter without
+     recording (used here only as a defensive escape, not in normal flow). */
+  function renderBetaNotice(api){
+    /* Defensive: if a previous render leaked a DOM node, replace it.
+       Should never happen because the registry guards ACTIVE, but keep
+       cheap idempotence in case the user double-clicks something weird. */
+    var existing = document.getElementById('betaNotice');
+    if(existing) existing.remove();
+
     injectStyles();
     var lang=detectLang();
     var t=I18N[lang]||I18N.en;
@@ -131,7 +147,6 @@
       '</div>';
     document.body.appendChild(overlay);
 
-    /* Wait for async geo-lang detection, then reveal with correct language */
     var revealed=false;
     function revealNotice(){
       if(revealed) return;
@@ -143,111 +158,78 @@
       document.removeEventListener('pap-lang-changed', onLang);
       revealNotice();
     });
-    /* Fallback: if geo-detection takes too long or fails, show after 600ms */
+    /* Fallback reveal if geo-detection takes too long */
     setTimeout(revealNotice, 600);
 
-    function _closeNotice(){
-      // Record dismissal so the popup doesn't reappear on subsequent
-      // home-page entries within the TTL window.
-      if(typeof window._papMarkBetaDismissed === 'function'){
-        window._papMarkBetaDismissed();
-      }
+    function _close(){
+      api.dismiss(); // registry records dismissal flag and frees the slot
       overlay.classList.add('bn-hide');
       setTimeout(function(){ overlay.remove(); }, 300);
     }
-    document.getElementById('bnClose').addEventListener('click', _closeNotice);
-    /* close on overlay click (outside card) */
+    document.getElementById('bnClose').addEventListener('click', _close);
+    /* close on backdrop click (outside card) */
     overlay.addEventListener('click', function(e){
-      if(e.target === overlay) _closeNotice();
+      if(e.target === overlay) _close();
     });
-    /* Also mark dismissed when the user clicks the signup CTA — they
-       implicitly acknowledged the notice. (The link itself navigates
-       away normally; we just mark before the navigation completes.) */
+    /* Also count the signup-CTA click as an implicit dismissal — the
+       user acknowledged the notice by acting on it. */
     var signupBtn = overlay.querySelector('.bn-btn-signup');
     if(signupBtn){
-      signupBtn.addEventListener('click', function(){
-        if(typeof window._papMarkBetaDismissed === 'function'){
-          window._papMarkBetaDismissed();
-        }
-      });
+      signupBtn.addEventListener('click', function(){ api.dismiss(); });
     }
   }
 
-  /* ── init ─────────────────────────────────────────── */
-  /* Respect PAP_BETA_END from pap-app.js — hide popup when beta is over */
+  /* Honour the PAP_BETA_END kill switch defined in pap-app.js. */
   function shouldShowBeta(){
     if(typeof PAP_BETA_END==='undefined'||PAP_BETA_END===null) return true;
     var now=new Date(); var end=new Date(PAP_BETA_END+'T23:59:59');
     return now<=end;
   }
-  /* Skip the beta popup on deep-link flows (e.g. ?ed=<title> landing
-     on index.html to open an editorial directly). The user clicked an
-     editorial preview on magazine.html — don't interrupt that flow with
-     an unrelated homepage-level beta notice. */
-  function isDeepLinkFlow(){
+
+  /* QA #241 migration: legacy beta-notice stored dismissal under its
+     own key. If we find that key still present and the new shared key
+     is missing, copy it across so existing dismissals carry over and
+     users aren't bothered with the popup again. Run-once safety. */
+  function migrateLegacyDismissal(){
     try{
-      var p=new URLSearchParams(window.location.search);
-      if(p.get('ed'))return true;
+      var legacyKey = 'pap-beta-notice-dismissed-at';
+      var newKey   = 'pap-popup-dismissed-beta-notice';
+      var legacy = localStorage.getItem(legacyKey);
+      if(legacy && !localStorage.getItem(newKey)){
+        localStorage.setItem(newKey, legacy);
+      }
+      // Don't remove the legacy key — harmless, and acts as a safety
+      // net if a rollback restores the old beta-notice.js.
     }catch(e){}
-    return !!window._papDeepLinkMode;
   }
 
-  /* ──────── DISMISSAL POLICY ────────
-     Per QA spec ("팝업 노출 여부가 일관된 기준으로 동작해야 함 …
-     최초 1회, 세션 기준 등 명확하게 제어"):
-
-     The popup is shown AT MOST once every 7 days per browser, regardless
-     of how the user reaches the home page (logo click, browser back,
-     direct URL). Dismissal is recorded in localStorage with a timestamp,
-     so any subsequent navigation back to the home — whether a fresh load
-     or a BFCache restore — sees the dismissal flag and skips display.
-
-     Why localStorage instead of sessionStorage:
-       • sessionStorage clears on tab close, so opening the site in a
-         new tab the next day would re-show the popup repeatedly. Users
-         saw the same popup multiple times over a session of weeks.
-       • localStorage with a 7-day TTL gives a single, predictable
-         "once per week" notice, which is the right cadence for a beta
-         info toast that hasn't really changed.
-
-     Cookie banner / important system messages are NOT routed through
-     this — they have their own dismissal logic. */
-  var DISMISSAL_KEY = 'pap-beta-notice-dismissed-at';
-  var DISMISSAL_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-
-  function isRecentlyDismissed(){
-    try{
-      var raw = localStorage.getItem(DISMISSAL_KEY);
-      if(!raw) return false;
-      var ts = parseInt(raw, 10);
-      if(isNaN(ts)) return false;
-      return (Date.now() - ts) < DISMISSAL_TTL_MS;
-    }catch(e){ return false; }
+  function registerWhenReady(){
+    if(!window.papPopups){
+      // pap-popup-registry.js is loaded with the same `defer` attribute as
+      // this file, so by the time we run, papPopups must exist. Defensive
+      // setTimeout retry in case load order ever changes.
+      return setTimeout(registerWhenReady, 50);
+    }
+    migrateLegacyDismissal();
+    window.papPopups.register({
+      id: 'beta-notice',
+      priority: 100,
+      storageType: 'localStorage',
+      dismissalTTL: 7 * 24 * 60 * 60 * 1000, // 7 days — kept per user
+      shouldShow: shouldShowBeta,
+      render: renderBetaNotice
+    });
   }
-  function markDismissed(){
-    try{ localStorage.setItem(DISMISSAL_KEY, String(Date.now())); }catch(e){}
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', registerWhenReady);
+  } else {
+    registerWhenReady();
   }
-  /* Expose for debugging / manual reset (e.g. to verify popup styling
-     after a deploy without clearing all localStorage). */
+
+  /* Backwards-compatible debug hook. Prefer window.papPopups.reset('beta-notice'). */
   window._papResetBetaNotice = function(){
-    try{ localStorage.removeItem(DISMISSAL_KEY); console.log('[PAP] Beta notice dismissal cleared'); }catch(e){}
+    if(window.papPopups) window.papPopups.reset('beta-notice');
+    try{ localStorage.removeItem('pap-beta-notice-dismissed-at'); }catch(e){}
   };
-
-  function initNotice(){
-    if(isDeepLinkFlow()) return;
-    if(!shouldShowBeta()) return;
-    if(isRecentlyDismissed()) return;
-    showNotice();
-  }
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',initNotice);
-  }else{
-    initNotice();
-  }
-
-  /* Hook the dismissal recorder into the existing close interactions
-     (X button, OK button, backdrop click) by intercepting at injection
-     time. Defined here as a public function so showNotice's handlers
-     can call it without forward-reference issues. */
-  window._papMarkBetaDismissed = markDismissed;
 })();

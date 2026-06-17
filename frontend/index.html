@@ -149,7 +149,11 @@
 <script src="/pap-geo-lang.js"></script>
 <script src="/pap-img-fallback.js" defer></script>
 <script src="cookie-consent.js" defer></script>
-<script src="beta-notice.js?v=8" defer></script>
+<!-- QA #241 — popup registry must load BEFORE any popup module so
+     beta-notice.js (and future popups) can call window.papPopups.register
+     at module load. Both files use `defer`, so they execute in source order. -->
+<script src="pap-popup-registry.js?v=1" defer></script>
+<script src="beta-notice.js?v=9" defer></script>
 <!-- Print Styles -->
 <style media="print">
 @media print{
