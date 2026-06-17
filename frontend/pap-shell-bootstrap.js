@@ -186,6 +186,47 @@ function scrollEdRow(btn,dir){
   if(track) _papSmoothScrollBy(track, dir*460);
 }
 
+// QA #239 — Universal left-side X close on every overlay.
+// Each overlay's mini-header gets the SAME button in the SAME spot so
+// users never have to hunt for "where do I exit". We inject from JS
+// (instead of touching six different markup blocks) so the close
+// affordance stays in sync if any one overlay's HTML is refactored.
+// Skips overlays whose markup already includes .overlay-mini-close.
+(function _papWireOverlayCloseButtons(){
+  var MAP = {
+    'edAllOverlay':       'closeAllEditorials',
+    'filmAllOverlay':     'closeAllFilms',
+    'artAllOverlay':      'closeAllArticles',
+    'edOverlay':          'closeEditorial',
+    'filmDetailOverlay':  'closeFilmDetail',
+    'artDetailOverlay':   'closeArticleDetail'
+  };
+  function _wire(){
+    Object.keys(MAP).forEach(function(id){
+      var overlay = document.getElementById(id);
+      if(!overlay) return;
+      var miniLeft = overlay.querySelector('.overlay-mini-left');
+      if(!miniLeft) return;
+      if(miniLeft.querySelector('.overlay-mini-close')) return; // already wired in markup
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'overlay-mini-close';
+      btn.setAttribute('aria-label', '닫기');
+      btn.innerHTML = '&times;';
+      var fnName = MAP[id];
+      btn.addEventListener('click', function(){
+        try { if(typeof window[fnName] === 'function') window[fnName](); } catch(_){}
+      });
+      miniLeft.insertBefore(btn, miniLeft.firstChild);
+    });
+  }
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', _wire);
+  } else {
+    _wire();
+  }
+})();
+
 // Initialize unified arrow-state for every home-page horizontal carousel.
 // Runs once at DOMContentLoaded; carousels added later (e.g. by API render)
 // can call this again or rely on the MutationObserver inside _papWireCarousel.

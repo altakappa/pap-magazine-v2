@@ -1396,7 +1396,28 @@ section.hero + .shorts-section{
    full-page metaphor (back via browser history / hamburger / logo).
    Keeping the rule as display:none catches any stale X that lingers
    in cached HTML or older inline pages until they get rebuilt. */
-.overlay-mini-close{display:none!important}
+/* QA #239 — left-side X close button that lives inside every overlay's
+   mini-header (.overlay-mini-left). Same visual + same position
+   regardless of which overlay opened, so the close affordance never
+   moves between editorials / films / articles / list grids. */
+.overlay-mini-close{
+  display:flex !important;
+  background:transparent;
+  border:0;
+  color:#fff;
+  cursor:pointer;
+  font-size:24px;
+  line-height:1;
+  padding:8px;
+  margin-right:6px;
+  align-items:center;
+  justify-content:center;
+  transition:opacity .2s ease;
+}
+.overlay-mini-close:hover,.overlay-mini-close:focus-visible{opacity:.6}
+@media(max-width:768px){
+  .overlay-mini-close{font-size:22px;padding:6px;margin-right:2px}
+}
 
 /* Detail overlays now use the mini-header's close button — hide the
    legacy fixed top-left X that used to live on each detail overlay
