@@ -397,11 +397,16 @@ section.hero + .shorts-section{
 .nf-nav-right{right:0}
 .nf-track{display:flex;gap:6px;overflow-x:auto;padding:0 48px;scroll-behavior:smooth;-ms-overflow-style:none;scrollbar-width:none}
 .nf-track::-webkit-scrollbar{display:none}
-.nf-card{min-width:300px;max-width:300px;flex-shrink:0;cursor:pointer;border-radius:4px;transition:transform .2s;position:relative}
-.nf-card:hover{transform:scale(1.05)}
+/* QA #236 — hover scaled the whole card div, which let the 1.05x card
+   spill past the .nf-track viewport (and any sibling card it overlapped
+   visually). Now only the inner image scales inside its overflow-hidden
+   img wrapper, matching the .fashion-card / .ed-row-card pattern. */
+.nf-card{min-width:300px;max-width:300px;flex-shrink:0;cursor:pointer;border-radius:4px;position:relative}
 .nf-card.active{opacity:1}
 .nf-card-img{width:100%;aspect-ratio:16/9;overflow:hidden;border-radius:4px;background:#1a1a1a;position:relative}
-.nf-card-img img{width:100%;height:100%;object-fit:cover}
+.nf-card-img img{width:100%;height:100%;object-fit:cover;transition:transform var(--card-hover-duration,.5s) var(--card-hover-easing,cubic-bezier(.4,0,.2,1))}
+.nf-card:hover .nf-card-img img,
+.nf-card:focus-visible .nf-card-img img{transform:scale(var(--card-hover-scale,1.05))}
 .nf-card-img::after{content:attr(data-title);position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Montserrat',sans-serif;font-size:15px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.7);background:rgba(0,0,0,.25);pointer-events:none}
 
 /* Netflix Popup */
@@ -536,7 +541,14 @@ section.hero + .shorts-section{
 .creator-popup-works-title{font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.7);margin-bottom:16px}
 .creator-works-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
 .creator-work-card{cursor:pointer;transition:transform .3s}
-.creator-work-card:hover{transform:scale(1.03)}
+/* QA #236 — was scaling the whole card div. Switched to image-only
+   scale to match the rest of the site's hover language. The img selector
+   below works against either a direct <img> child or a nested
+   .work-img / .creator-thumb wrapper, which is what the live markup uses. */
+.creator-work-card{overflow:hidden}
+.creator-work-card img{transition:transform var(--card-hover-duration,.5s) var(--card-hover-easing,cubic-bezier(.4,0,.2,1))}
+.creator-work-card:hover img,
+.creator-work-card:focus-visible img{transform:scale(var(--card-hover-scale,1.03))}
 .creator-work-img{width:100%;aspect-ratio:3/4;overflow:hidden;background:#1a1a1a;margin-bottom:6px}
 .creator-work-img img{width:100%;height:100%;object-fit:cover}
 .creator-work-title{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
