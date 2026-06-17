@@ -17,13 +17,16 @@
      Hierarchical scale used throughout the site so visual rhythm stays
      consistent across every section. Values double in influence at each
      level: card → row → block → section.
-     Tightened from the original (96/48/24) to ~half so the home feed
-     reads as a continuous flow of editorial → article → film → shorts
-     instead of feeling like distinct, far-apart pages. */
+     QA #235 — bumped from 48px → 80px for the section level so the home
+     feed reads as discrete editorial blocks (editorials / films / shorts
+     are distinct content products, not one continuous scroll). The
+     mobile values still keep the feed compact so the visual rhythm
+     scales with viewport. Combined with the section-divider border
+     bumped to alpha .12, each block is now clearly bounded. */
   --space-card:    8px;   /* gap between cards in a row */
   --space-row:    12px;   /* gap between rows in the same section */
   --space-block:  24px;   /* gap between content blocks within a section */
-  --space-section: 48px;  /* gap above + below every top-level section */
+  --space-section: 80px;  /* gap above + below every top-level section */
   --pad-section:  var(--space-section); /* legacy alias kept for compat */
 
   /* ======== CARD HOVER TOKENS ========
@@ -242,10 +245,11 @@ body:has(.nav-overlay.active) .header{background:transparent;backdrop-filter:non
 .shorts-section{
   padding: var(--space-section) 0;
   background: #000;
-  /* Default: every content section carries a subtle top divider so the
-     rhythm doesn't depend on direct sibling adjacency (popups or other
-     overlay divs sometimes get inserted between sections by JS). */
-  border-top: 1px solid rgba(255,255,255,0.05);
+  /* QA #235 — divider alpha raised from .05 to .12 so the eye can
+     actually see where one content block ends and the next begins.
+     Was previously almost imperceptible at .05; now reads as a clean
+     hairline rule that complements the increased section spacing. */
+  border-top: 1px solid rgba(255,255,255,0.12);
 }
 .editorial-section{color:#fff}
 .film-section{color:#fff}
@@ -799,7 +803,7 @@ section.hero + .shorts-section{
 
 /* --- 768px: Small tablet / Large phone landscape --- */
 @media(max-width:768px){
-  :root{--pad-x:20px;--space-section:36px;--space-block:18px;--space-row:10px;--pad-section:36px}
+  :root{--pad-x:20px;--space-section:60px;--space-block:18px;--space-row:10px;--pad-section:60px}
   /* Earlier these were `display:none` — that hid ABOUT/BUSINESS/CONTACT
      and the social icons row on every mobile screen. Now we keep them
      visible; pap-header.js re-styles the mobile overlay so the extra
@@ -941,7 +945,7 @@ section.hero + .shorts-section{
 
 /* --- 480px: Large phones (iPhone Plus/Max 428px, Galaxy A 384px) --- */
 @media(max-width:480px){
-  :root{--pad-x:16px;--space-section:28px;--space-block:16px;--space-row:9px;--pad-section:28px}
+  :root{--pad-x:16px;--space-section:48px;--space-block:16px;--space-row:9px;--pad-section:48px}
   .header{padding:0 12px;height:56px}
   .hero{margin-top:56px;height:60vh}
   .hero-content{left:16px;bottom:24px}
@@ -1026,7 +1030,7 @@ section.hero + .shorts-section{
 
 /* --- 390px: iPhone 12/13/14 (390px), Galaxy S21-S24 (360-384px) --- */
 @media(max-width:390px){
-  :root{--pad-x:12px;--space-section:22px;--space-block:14px;--space-row:8px;--pad-section:22px}
+  :root{--pad-x:12px;--space-section:36px;--space-block:14px;--space-row:8px;--pad-section:36px}
   .header{padding:0 10px;height:54px}
   .header-left{gap:2px}
   .header-left-item svg{width:16px;height:16px}
@@ -1104,7 +1108,7 @@ section.hero + .shorts-section{
 
 /* --- 320px: Galaxy Z Fold (folded 280px), very small screens --- */
 @media(max-width:320px){
-  :root{--pad-x:8px;--space-section:18px;--space-block:12px;--space-row:7px;--pad-section:18px}
+  :root{--pad-x:8px;--space-section:28px;--space-block:12px;--space-row:7px;--pad-section:28px}
   .header{height:48px;padding:0 8px}
   .hamburger span{width:20px}
   .hamburger span:nth-child(1){transform:translateY(-6px)}
