@@ -891,12 +891,26 @@ function closeEditorial(skipHistory){
   } else {
     document.body.style.overflow='';
   }
-  // QA #166 — was checking window.location.hash before. With clean URLs
-  // there's no hash; gate on history.state.editorial instead so back()
-  // fires for BOTH legacy hash arrivals AND the new path form. The
-  // skipHistory flag stays the safety net for popstate-driven closes.
-  if(!skipHistory && history && history.state && history.state.editorial){
-    history.back();
+  // QA #244 — Header X-button consistency.
+  //
+  // Previous behavior gated history.back() behind a
+  //   history.state && history.state.editorial
+  // check. That gate silently swallowed back() whenever the URL state
+  // didn't carry an explicit `editorial` key — and there are entry
+  // paths that leave it bare (a stale popstate replay, an SSR redirect
+  // landing where the deep-link IIFE swaps the URL with replaceState,
+  // or a user arriving on /editorial/<slug> via a share). When the
+  // gate failed, the overlay closed but no navigation happened: the
+  // user saw the home behind it without any URL change, and reported
+  // it as "X took me back to the home page". That contradicts the
+  // film / article close behavior, which calls back() unconditionally
+  // when skipHistory is false.
+  //
+  // Match the film / article contract — always history.back() unless
+  // popstate told us to skip. popstate itself calls closeEditorial(true)
+  // so we don't double-pop the stack.
+  if(!skipHistory){
+    try { history.back(); } catch(e){}
   }
 }
 
@@ -1063,7 +1077,13 @@ function closeAllEditorials(skipHistory){
   if(overlay && overlay.classList.contains("active")){
     overlay.classList.remove("active");
     document.body.style.overflow="";
-    if(!skipHistory && window.location.hash==='#all-editorials'){history.back();}
+    // QA #244 — Match closeEditorial / closeFilmDetail / closeArticleDetail:
+    // always history.back() on user-driven close. Was gated behind
+    // window.location.hash === '#all-editorials', which silently failed
+    // whenever the user arrived via the new in-app pushState (no hash)
+    // and had to click X twice — once to close the overlay, again to
+    // back out of the URL.
+    if(!skipHistory){ try { history.back(); } catch(e){} }
   }
 }
 

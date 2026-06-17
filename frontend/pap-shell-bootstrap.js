@@ -542,11 +542,15 @@ window.addEventListener('popstate',function(e){
   var filmDet=document.getElementById('filmDetailOverlay');
   if(filmDet && filmDet.classList.contains('active')){closeFilmDetail(true);return;}
   var filmAll=document.getElementById('filmAllOverlay');
-  if(filmAll && filmAll.classList.contains('active')){closeAllFilms();return;}
+  // QA #244 — closeAllFilms / closeAllArticles now call history.back()
+  // when skipHistory is false. popstate is the one place we MUST pass
+  // true, otherwise we'd pop the stack twice (the browser already did
+  // one pop to fire popstate).
+  if(filmAll && filmAll.classList.contains('active')){closeAllFilms(true);return;}
   var artDet=document.getElementById('artDetailOverlay');
   if(artDet && artDet.classList.contains('active')){closeArticleDetail(true);return;}
   var artAll=document.getElementById('artAllOverlay');
-  if(artAll && artAll.classList.contains('active')){closeAllArticles();return;}
+  if(artAll && artAll.classList.contains('active')){closeAllArticles(true);return;}
 });
 
 

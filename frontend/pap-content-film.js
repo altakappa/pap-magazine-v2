@@ -87,11 +87,16 @@ function filterFilms(cat){
   var count=document.getElementById('filmAllCount');
   if(count) count.textContent=shown+' FILMS';
 }
-function closeAllFilms(){
+function closeAllFilms(skipHistory){
   var overlay=document.getElementById('filmAllOverlay');
   if(overlay&&overlay.classList.contains('active')){
     overlay.classList.remove('active');
     document.body.style.overflow='';
+    // QA #244 — Mirror closeFilmDetail / closeEditorial: a header X
+    // click goes back in history so the URL and visible overlay stay
+    // in sync. Without this, the overlay closed but the entry stayed
+    // on the stack, and a refresh re-opened the same overlay.
+    if(!skipHistory){ try { history.back(); } catch(e){} }
   }
 }
 function openFilmDetail(idx){

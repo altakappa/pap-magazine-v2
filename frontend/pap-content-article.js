@@ -86,11 +86,14 @@ function filterArticles(cat){
   var count=document.getElementById('artAllCount');
   if(count) count.textContent=shown+' ARTICLES';
 }
-function closeAllArticles(){
+function closeAllArticles(skipHistory){
   var overlay=document.getElementById('artAllOverlay');
   if(overlay&&overlay.classList.contains('active')){
     overlay.classList.remove('active');
     document.body.style.overflow='';
+    // QA #244 — Mirror closeArticleDetail / closeEditorial: a header X
+    // click goes back in history so URL and overlay stay in sync.
+    if(!skipHistory){ try { history.back(); } catch(e){} }
   }
 }
 // escapeHtml / _decHtml / _normWs extracted to pap-utils.js (mission 5).
