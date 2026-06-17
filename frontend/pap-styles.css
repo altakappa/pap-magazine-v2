@@ -386,12 +386,14 @@ section.hero + .shorts-section{
 
 /* FILM */
 /* .film-section base styles handled by the unified rules above */
-/* FILM section heading — aligned with .ed-row-label so the left edge of
-   "FILM" sits on the same vertical line as "최신 에디토리얼" / "최신 기사".
-   Per QA: section H titles must share padding / font size / letter-spacing
-   so the left baseline reads as a single column down the page. */
-.nf-top{padding:0 48px;margin-bottom:12px}
-.nf-top h2{font-family:'Montserrat',var(--sans);font-size:15px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:#e5e5e5;margin:0}
+/* QA #245 — the film-section heading is now a plain <h3 class="ed-row-label">
+   identical to the editorial / article section headings (see index.html).
+   The previous .nf-top + .nf-top h2 pair lived here as a separate
+   typography rule, which is exactly the divergence the QA flagged.
+   Removed; the shared .ed-row-label rule above is the single source of
+   truth. The legacy `.nf-top` class is intentionally left undefined so
+   any stragglers fall through to default block behavior and surface
+   loudly during testing. */
 .nf-wrap{position:relative}
 .nf-nav{position:absolute;top:0;width:48px;height:100%;z-index:20;background:rgba(20,20,20,.7);border:none;color:#fff;font-size:32px;cursor:pointer;opacity:0;transition:opacity .3s;display:flex;align-items:center;justify-content:center}
 .nf-wrap:hover .nf-nav{opacity:1}
@@ -845,7 +847,7 @@ section.hero + .shorts-section{
   .ed-search-grid{padding:0 var(--pad-x)}
   .ed-all-header{padding:32px var(--pad-x) 16px}
   .ed-all-grid{padding:12px var(--pad-x) 60px}
-  .nf-top{padding:0 var(--pad-x)}
+  /* QA #245 — `.nf-top` removed (heading now uses .ed-row-label). */
   .nf-track{padding:0 var(--pad-x)}
   .ai-rec-badge{padding:0 var(--pad-x)}
   .creator-results{padding:0 var(--pad-x)}
@@ -984,7 +986,7 @@ section.hero + .shorts-section{
   .film-all-grid{grid-template-columns:repeat(2,1fr)}
   .art-all-grid{grid-template-columns:repeat(2,1fr)}
   #filmFilterWrap,#artFilterWrap{padding:0 var(--pad-x) 12px!important}
-  .nf-top{padding:0 var(--pad-x)}
+  /* QA #245 — `.nf-top` removed (heading now uses .ed-row-label). */
   .nf-track{padding:0 var(--pad-x)}
   .ai-rec-badge{padding:0 var(--pad-x)}
   .creator-results{padding:0 var(--pad-x)}
@@ -1064,7 +1066,9 @@ section.hero + .shorts-section{
   .hero-title{font-size:1.4rem}
 
   /* Track paddings — minimal, via CSS var */
-  .fashion-heading,.carousel-track,.ed-row-label,.ed-row-track,.nf-top,.nf-track,.ai-rec-badge,.creator-results,.ed-search-grid{padding-left:var(--pad-x);padding-right:var(--pad-x)}
+  /* QA #245 — .nf-top dropped from the shared track-padding list because
+   the film heading now uses the unified .ed-row-label class. */
+.fashion-heading,.carousel-track,.ed-row-label,.ed-row-track,.nf-track,.ai-rec-badge,.creator-results,.ed-search-grid{padding-left:var(--pad-x);padding-right:var(--pad-x)}
 
   /* Cards */
   .ed-row-card{min-width:140px;max-width:140px}
@@ -1138,7 +1142,9 @@ section.hero + .shorts-section{
   .hero-content{left:10px;bottom:16px}
   .hero-symbol{right:10px;bottom:22px}
 
-  .fashion-heading,.carousel-track,.ed-row-label,.ed-row-track,.nf-top,.nf-track,.ai-rec-badge,.creator-results,.ed-search-grid{padding-left:var(--pad-x);padding-right:var(--pad-x)}
+  /* QA #245 — .nf-top dropped from the shared track-padding list because
+   the film heading now uses the unified .ed-row-label class. */
+.fashion-heading,.carousel-track,.ed-row-label,.ed-row-track,.nf-track,.ai-rec-badge,.creator-results,.ed-search-grid{padding-left:var(--pad-x);padding-right:var(--pad-x)}
 
   .ed-row-card{min-width:115px;max-width:115px}
   .nf-card{min-width:180px;max-width:180px}

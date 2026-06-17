@@ -135,7 +135,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/pap-styles.css?v=21">
+<link rel="stylesheet" href="/pap-styles.css?v=22">
 <link rel="stylesheet" href="/pap-social.css">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
 <!-- Favicon & PWA -->
@@ -695,7 +695,16 @@
 
 <!-- FILM Section -->
 <section class="film-section" id="films">
-  <div class="nf-top"><h2 data-i18n="navFilm">FILM</h2></div>
+  <!-- QA #245 — was `<div class="nf-top"><h2 data-i18n="navFilm">FILM</h2></div>`,
+       a one-off wrapper + h2 combo that subtly mismatched the section
+       header system everywhere else on the home (the editorial / article
+       carousels all use `<h3 class="ed-row-label">…`). Even though the
+       CSS sizes/padding nominally matched, the wrapper + h2 produced a
+       slightly different baseline alignment vs the bare h3 elements
+       above it, so "FILM" sat ~1–2px off the shared left rail. Unified
+       to the same h3 + .ed-row-label structure as every other section
+       so there's a single source of truth for the typography. -->
+  <h3 class="ed-row-label" data-i18n="navFilm">FILM</h3>
   <!-- Main Video Player -->
   <div style="width:100vw;margin-left:calc(-50vw + 50%);margin-bottom:20px;padding:0">
     <div style="position:relative;width:100%;height:56.25vw;max-height:80vh;background:#000;overflow:hidden">
