@@ -89,9 +89,74 @@ setTimeout(function(){
 },4000);
 
 // ======== HERO SLIDER ========
-let hCur=0;const hSlides=document.querySelectorAll('.hero-slide');
-function heroGo(n){if(!hSlides.length)return;hSlides[hCur].classList.remove('active');hCur=(n+hSlides.length)%hSlides.length;hSlides[hCur].classList.add('active')}
-if(hSlides.length)setInterval(()=>heroGo(hCur+1),3000);
+// QA #242 tuning — was setInterval(..., 3000). 3 seconds is below the
+// typical "comfortable read" threshold for an image-led hero, so
+// consecutive slides blurred together and the cover-story text had no
+// chance to register. Bumped to 10s per slide — within the 7–15s range
+// most editorial publications use for cover carousels.
+//
+// While here, added the manual-control + accessibility hooks the QA
+// ticket asked to "consider":
+//   • Hover / touch pauses autoplay (cursor on the banner = the user is
+//     actively looking; don't yank the slide away mid-glance).
+//   • Tab visibility pauses autoplay (no point cycling slides nobody can
+//     see; also avoids the jarring "skipped 5 slides while I was away"
+//     effect when returning to the tab).
+//   • prefers-reduced-motion stops autoplay entirely (users who opted
+//     into reduced motion should not get a self-changing hero).
+//   • setTimeout-loop instead of setInterval so pause/resume is exact
+//     and we never queue overlapping ticks across visibility flips.
+let hCur = 0;
+const hSlides = document.querySelectorAll('.hero-slide');
+const HERO_INTERVAL_MS = 10000; // QA #242 — was 3000
+let _heroTimer = null;
+let _heroPaused = false;
+
+function heroGo(n){
+  if(!hSlides.length) return;
+  hSlides[hCur].classList.remove('active');
+  hCur = (n + hSlides.length) % hSlides.length;
+  hSlides[hCur].classList.add('active');
+}
+function _heroTick(){
+  if(_heroPaused){ _heroTimer = null; return; }
+  heroGo(hCur + 1);
+  _heroTimer = setTimeout(_heroTick, HERO_INTERVAL_MS);
+}
+function _heroStart(){
+  if(_heroTimer || _heroPaused) return;
+  _heroTimer = setTimeout(_heroTick, HERO_INTERVAL_MS);
+}
+function _heroStop(){
+  if(_heroTimer){ clearTimeout(_heroTimer); _heroTimer = null; }
+}
+function _heroPause(){ _heroPaused = true; _heroStop(); }
+function _heroResume(){ _heroPaused = false; _heroStart(); }
+
+if(hSlides.length){
+  // Honor reduced-motion: hold on the first slide, no autoplay at all.
+  var _heroReduceMotion = false;
+  try { _heroReduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(_){}
+  if(!_heroReduceMotion){
+    _heroStart();
+    var _heroEl = document.getElementById('hero');
+    if(_heroEl){
+      // Pause on hover / touch — finger or cursor on the banner means
+      // the user is engaging; don't change the slide under them.
+      _heroEl.addEventListener('mouseenter', _heroPause);
+      _heroEl.addEventListener('mouseleave', _heroResume);
+      _heroEl.addEventListener('touchstart', _heroPause, {passive:true});
+      _heroEl.addEventListener('touchend',   function(){ setTimeout(_heroResume, 400); }, {passive:true});
+    }
+    // Pause when the tab is hidden, resume on focus.
+    document.addEventListener('visibilitychange', function(){
+      if(document.hidden) _heroPause(); else _heroResume();
+    });
+  }
+}
+// Expose for debugging / future manual nav buttons.
+window._papHero = { go: heroGo, pause: _heroPause, resume: _heroResume,
+                    intervalMs: HERO_INTERVAL_MS };
 
 // ======== SEARCH ========
 // ======== LANG HELPER ========
