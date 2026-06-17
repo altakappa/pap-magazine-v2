@@ -31,14 +31,25 @@ module.exports = async function handler(req, res) {
         const { setListCacheHeader } = require('../_lib/cdnCache');
         setListCacheHeader(req, res, { isPublic: requestedStatus === 'published' });
       }
-      // QA #186 — explicit list-view projection (drops `credits` JSONB +
-      // `description` so the homepage card list isn't shipping payloads
-      // it doesn't render).
+      // QA #186 — explicit list-view projection (drops `description` so
+      // the homepage card list isn't shipping payloads it doesn't render).
+      //
+      // QA #230 — re-include `credits` + `related_editorial_id`. They
+      // were originally trimmed for list-payload size, but the admin
+      // film-edit modal hydrates from the SAME list cache (no per-row
+      // re-fetch on Edit click), so leaving them out meant clicking
+      // "편집" landed the editor on a form with no credits and no
+      // linked-editorial selection — looked like the saved data had
+      // been wiped. Matches the fix already applied to editorials
+      // (QA #191) and articles (QA #221). Films are a small table
+      // (~hundreds of rows), so the extra bytes are negligible.
       const LIST_COLUMNS = [
         'id','title','slug','youtube_id','thumbnail_url','published_date',
         'categories','tags','status','scheduled_publish_at',
         // QA #202 — authorship columns for admin list rendering.
-        'created_at','created_by','updated_by'
+        'created_at','created_by','updated_by',
+        // QA #230 — needed by admin edit-modal hydrate (see note above).
+        'credits','related_editorial_id'
       ].join(',');
       let query = supabaseAdmin
         .from('films')
