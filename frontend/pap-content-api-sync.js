@@ -295,6 +295,11 @@ window._papFilmAutoPlay = function(){
       // already on screen. This lets newly-published news show up at
       // the front without requiring a manual edit to index.html.
       try { _renderHomeFashionArticles(apiArticles); } catch(e){ /* non-fatal */ }
+      // QA #238 — refresh scroll-reveal so the freshly prepended fashion
+      // cards animate in like the static ones do.
+      if(window.papReveal && typeof window.papReveal.refresh === 'function'){
+        try { window.papReveal.refresh(); } catch(_){}
+      }
     });
   }
 
@@ -901,6 +906,13 @@ window._papFilmAutoPlay = function(){
         _renderLatestRow();
         _renderTrendingRow();
         _renderThemeRows();
+        // QA #238 — re-scan the DOM so the freshly inserted cards pick up
+        // the global fade-in-up scroll reveal. Without this, dynamic rows
+        // bypassed the IntersectionObserver setup (which only ran once at
+        // DOMContentLoaded against whatever was already in the markup).
+        if(window.papReveal && typeof window.papReveal.refresh === 'function'){
+          try { window.papReveal.refresh(); } catch(_){}
+        }
       })
       .catch(function(err){ console.warn('[PAP Sync] editorials fast fetch:', err); })
       .finally(function(){
@@ -910,6 +922,10 @@ window._papFilmAutoPlay = function(){
           applyToEdData(apiEds);
           if(typeof _renderEdAllPage === 'function' && typeof edAllBuilt !== 'undefined' && edAllBuilt){
             try { _renderEdAllPage(); } catch(_){}
+          }
+          // QA #238 — same refresh hook for the full-catalog second pass.
+          if(window.papReveal && typeof window.papReveal.refresh === 'function'){
+            try { window.papReveal.refresh(); } catch(_){}
           }
         });
       });
