@@ -778,7 +778,15 @@ window.addEventListener('popstate', function(e){
       showStep(1);
     }
   } finally {
-    setTimeout(function(){ _navigating = false; }, 0);
+    // QA #228 — reset synchronously instead of via setTimeout(0). The
+    // setTimeout deferred this flag to the next macrotask, which created
+    // a window where the user could click before the flag flipped back
+    // to false — that next click would land in _syncAuthHistory while
+    // `_navigating` was still true and silently use replaceState instead
+    // of pushState. Result: history entry overwritten, browser-back
+    // jumped over the panel and left the page entirely (the bug we're
+    // fixing). Synchronous reset closes that window completely.
+    _navigating = false;
   }
 });
 
@@ -1862,9 +1870,13 @@ function setLang(l) {
     // popstate has data to restore against later.
     _syncAuthHistory({ authView: 'signup', authStep: 1 });
   }
-  // After initial mode resolution, switch to push mode for user transitions.
-  // Use a microtask so any sync follow-up still sees _navigating=true.
-  Promise.resolve().then(function(){ _navigating = false; });
+  // QA #228 — switch to push mode immediately (no microtask deferral).
+  // The previous Promise.resolve().then(...) approach left a small window
+  // where a sync follow-up could re-enter _syncAuthHistory while the flag
+  // was still true and silently replace its history entry. There are no
+  // sync follow-ups in this IIFE that need the flag to stay true after
+  // this point, so resetting immediately is safe AND closes the race.
+  _navigating = false;
   var _authRedirect = params.get('redirect');
   var _authReturn = params.get('return'); // full URL (can include hash)
   function _consumeReturnCookie(){

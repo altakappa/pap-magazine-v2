@@ -6562,30 +6562,161 @@ function _filmSlugify(s){
     .slice(0, 100);
 }
 
-// Populate the "연결된 에디토리얼" dropdown from /api/editorials. Cached
-// across modal opens so admin doesn't refetch on every edit.
+// QA #229 — Linked-editorial picker (was a plain dropdown).
+// Fetch editorials once per session, cache, then drive a searchable
+// list UI with thumbnail / title / date in admin.html. The hidden
+// `#filmRelatedEditorial` input keeps the same .value contract so
+// saveFilm and edit hydration don't care about the layout change.
 var _filmRelatedEdCache = null;
 async function _populateFilmRelatedEditorial(selectedId){
-  var sel = document.getElementById('filmRelatedEditorial');
-  if(!sel) return;
-  // Always reset to base option + selected entry until the API answers.
-  sel.innerHTML = '<option value="">— 없음 —</option>';
+  var hidden = document.getElementById('filmRelatedEditorial');
+  if(hidden) hidden.value = selectedId || '';
   try {
     if (!_filmRelatedEdCache) {
-      var r = await apiGet('/editorials?status=published&limit=100');
+      // Bigger limit so the picker covers the full catalogue. The
+      // previous limit=100 silently capped what an editor could pick
+      // once the library grew past 100 titles.
+      var r = await apiGet('/editorials?status=published&limit=500');
       _filmRelatedEdCache = (r && (r.data || r.editorials || r)) || [];
       if (!Array.isArray(_filmRelatedEdCache)) _filmRelatedEdCache = [];
     }
-    _filmRelatedEdCache.forEach(function(ed){
-      var opt = document.createElement('option');
-      opt.value = ed.id;
-      opt.textContent = ed.title || ed.slug || ed.id;
-      sel.appendChild(opt);
-    });
-    if (selectedId) sel.value = selectedId;
   } catch(e){
     console.warn('[films] failed to load editorials list:', e && e.message);
+    _filmRelatedEdCache = _filmRelatedEdCache || [];
   }
+  // Reset search + sort to defaults each time the picker opens.
+  var s = document.getElementById('filmRelatedSearch'); if(s) s.value = '';
+  var so = document.getElementById('filmRelatedSort'); if(so) so.value = 'newest';
+  // Render the visible chip for the currently selected editorial (if any).
+  _updateFilmRelatedSelectedChip(selectedId);
+  // Render the picker list.
+  renderFilmRelatedList();
+}
+
+// Render the chip at the top of the picker showing the current pick.
+// Hidden when nothing is selected. Called whenever the selection or
+// the cached data set changes.
+function _updateFilmRelatedSelectedChip(id){
+  var row = document.getElementById('filmRelatedSelectedRow');
+  if(!row) return;
+  if(!id){
+    row.style.display = 'none';
+    return;
+  }
+  var match = null;
+  if(Array.isArray(_filmRelatedEdCache)){
+    for(var i = 0; i < _filmRelatedEdCache.length; i++){
+      if(_filmRelatedEdCache[i] && _filmRelatedEdCache[i].id === id){ match = _filmRelatedEdCache[i]; break; }
+    }
+  }
+  if(!match){
+    // Selected id isn't in the cached list (e.g. unpublished or older
+    // than the limit). Surface a compact placeholder so the editor
+    // still sees that *something* is selected.
+    row.style.display = 'flex';
+    document.getElementById('filmRelatedSelectedThumb').style.backgroundImage = '';
+    document.getElementById('filmRelatedSelectedTitle').textContent = '(목록에 없는 에디토리얼 · ID ' + String(id).slice(0,8) + ')';
+    document.getElementById('filmRelatedSelectedDate').textContent = '';
+    return;
+  }
+  row.style.display = 'flex';
+  var thumb = match.thumbnail || match.thumbnail_url || match.cover_image || '';
+  var thumbEl = document.getElementById('filmRelatedSelectedThumb');
+  if(thumbEl) thumbEl.style.backgroundImage = thumb ? ('url(' + JSON.stringify(thumb).slice(1, -1) + ')') : '';
+  document.getElementById('filmRelatedSelectedTitle').textContent = match.title || match.slug || match.id || '';
+  var pd = match.published_date || match.created_at || '';
+  document.getElementById('filmRelatedSelectedDate').textContent = pd ? _formatFilmEdDate(pd) : '';
+}
+
+function _formatFilmEdDate(d){
+  try {
+    var dt = new Date(d);
+    if(isNaN(dt.getTime())) return '';
+    var pad = function(n){ return n < 10 ? '0' + n : '' + n; };
+    return dt.getFullYear() + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate());
+  } catch(_){ return ''; }
+}
+
+// Render the filtered / sorted editorial list into #filmRelatedList.
+// Called on input, on sort change, and after the cache hydrates.
+function renderFilmRelatedList(){
+  var box = document.getElementById('filmRelatedList');
+  if(!box) return;
+  var list = Array.isArray(_filmRelatedEdCache) ? _filmRelatedEdCache.slice() : [];
+  var searchEl = document.getElementById('filmRelatedSearch');
+  var sortEl = document.getElementById('filmRelatedSort');
+  var q = ((searchEl && searchEl.value) || '').trim().toLowerCase();
+  var sort = (sortEl && sortEl.value) || 'newest';
+  // Text filter — match title (any locale) + slug. We don't pre-index
+  // because the cache size is small (≤500); a plain scan is cheaper
+  // than maintaining an index.
+  if(q){
+    list = list.filter(function(ed){
+      if(!ed) return false;
+      var hay = ((ed.title || '') + ' ' + (ed.slug || '')).toLowerCase();
+      return hay.indexOf(q) !== -1;
+    });
+  }
+  // Sort.
+  list.sort(function(a, b){
+    if(sort === 'title'){
+      return (a.title || '').localeCompare(b.title || '');
+    }
+    var ad = new Date(a.published_date || a.created_at || 0).getTime() || 0;
+    var bd = new Date(b.published_date || b.created_at || 0).getTime() || 0;
+    return sort === 'oldest' ? (ad - bd) : (bd - ad);
+  });
+  if(!list.length){
+    box.innerHTML = '<div class="pe-hint" style="padding:18px;color:var(--text3);text-align:center">'
+      + (q ? '검색 결과가 없습니다.' : '에디토리얼이 없습니다.')
+      + '</div>';
+    return;
+  }
+  var currentId = (document.getElementById('filmRelatedEditorial') || {}).value || '';
+  var html = '';
+  list.forEach(function(ed){
+    var thumb = ed.thumbnail || ed.thumbnail_url || ed.cover_image || '';
+    var safeThumb = String(thumb).replace(/"/g, '&quot;');
+    var title = ed.title || ed.slug || ed.id || '';
+    var pd = ed.published_date || ed.created_at || '';
+    var dateStr = pd ? _formatFilmEdDate(pd) : '';
+    var sel = (ed.id === currentId);
+    html += '<div class="film-rel-row" data-id="' + esc(ed.id) + '" '
+      + 'onclick="selectFilmRelated(\'' + String(ed.id).replace(/'/g, "\\'") + '\')" '
+      + 'style="display:flex;align-items:center;gap:10px;padding:8px 10px;cursor:pointer;border-bottom:1px solid var(--border);'
+      + (sel ? 'background:rgba(255,255,255,.06)' : '') + '">'
+      + '<div style="width:42px;height:42px;background:var(--surface);background-size:cover;background-position:center;flex-shrink:0;border-radius:2px'
+      +   (thumb ? (';background-image:url(\'' + safeThumb + '\')') : '') + '"></div>'
+      + '<div style="flex:1;min-width:0">'
+      +   '<div style="font-size:12px;font-weight:600;color:var(--text1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(title) + '</div>'
+      +   '<div style="font-size:10px;color:var(--text3);margin-top:2px">' + esc(dateStr) + '</div>'
+      + '</div>'
+      + (sel ? '<span style="font-size:11px;color:#3ad48a;flex-shrink:0">✓ 선택됨</span>' : '')
+      + '</div>';
+  });
+  box.innerHTML = html;
+}
+
+// User clicked a row in the picker → write the id into the hidden
+// input + refresh the chip + repaint the list so the selected row
+// shows the highlight. Clicking the already-selected row toggles off.
+function selectFilmRelated(id){
+  var hidden = document.getElementById('filmRelatedEditorial');
+  if(!hidden) return;
+  if(hidden.value === id){
+    hidden.value = '';
+  } else {
+    hidden.value = id || '';
+  }
+  _updateFilmRelatedSelectedChip(hidden.value);
+  renderFilmRelatedList();
+}
+
+function clearFilmRelated(){
+  var hidden = document.getElementById('filmRelatedEditorial');
+  if(hidden) hidden.value = '';
+  _updateFilmRelatedSelectedChip('');
+  renderFilmRelatedList();
 }
 
 // File-input handler for the film thumbnail upload affordance — runs the

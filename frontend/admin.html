@@ -1971,13 +1971,41 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
       <div class="pe-hint" style="margin-top:6px">역할이 목록에 없으면 <strong>+ 직접 입력</strong>을 선택해 자유롭게 입력할 수 있습니다.</div>
     </div>
 
-    <!-- 연결된 에디토리얼 (옵션) -->
+    <!-- QA #229 — Linked-editorial picker.
+         Was a single <select> of titles that grew unmanageable as the
+         editorial count climbed (no search, no thumbnail, no date). Now
+         a searchable list: text filter + newest/oldest sort + each row
+         shows thumbnail / title / published date so the editor can pick
+         the right one at a glance. Keeps `#filmRelatedEditorial` as a
+         hidden input so saveFilm and existing reads still work unchanged. -->
     <div class="modal-section">
       <div class="modal-label">연결된 에디토리얼 <span class="pe-opt">선택 — BTS / Campaign 영상의 원본 에디토리얼</span></div>
-      <select class="pe-select" id="filmRelatedEditorial">
-        <option value="">— 없음 —</option>
-        <!-- options populated by openFilmModal() from /api/editorials -->
-      </select>
+      <!-- Currently selected editorial — pill with thumbnail + title + clear button. -->
+      <div id="filmRelatedSelectedRow" style="display:none;align-items:center;gap:10px;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);margin-bottom:8px;border-radius:2px">
+        <div id="filmRelatedSelectedThumb" style="width:36px;height:36px;background:var(--surface);background-size:cover;background-position:center;flex-shrink:0;border-radius:2px"></div>
+        <div style="flex:1;min-width:0">
+          <div id="filmRelatedSelectedTitle" style="font-size:13px;font-weight:600;color:var(--text1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+          <div id="filmRelatedSelectedDate" style="font-size:11px;color:var(--text3);margin-top:2px"></div>
+        </div>
+        <button type="button" class="btn btn-sm" onclick="clearFilmRelated()" title="선택 해제">✕</button>
+      </div>
+      <!-- Search + sort row -->
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" class="pe-input" id="filmRelatedSearch" placeholder="에디토리얼 제목으로 검색…" oninput="renderFilmRelatedList()" style="flex:1">
+        <select class="pe-select" id="filmRelatedSort" onchange="renderFilmRelatedList()" style="max-width:140px">
+          <option value="newest">최신순</option>
+          <option value="oldest">오래된순</option>
+          <option value="title">제목순</option>
+        </select>
+      </div>
+      <div class="pe-hint" style="margin-top:6px">아래 목록에서 클릭하여 선택합니다. 다시 클릭하거나 위 ✕ 버튼으로 해제할 수 있습니다.</div>
+      <!-- Scrollable result list -->
+      <div id="filmRelatedList" style="max-height:280px;overflow-y:auto;border:1px solid var(--border);margin-top:8px;background:var(--bg)">
+        <div class="pe-hint" style="padding:14px;color:var(--text3);text-align:center">불러오는 중…</div>
+      </div>
+      <!-- Hidden input — saveFilm reads .value (same contract as the
+           previous <select>). DO NOT rename: pap-admin.js:6824 et al. -->
+      <input type="hidden" id="filmRelatedEditorial" value="">
     </div>
 
     <!-- QA #164 — publish state was a single "공개" checkbox that always
@@ -2391,7 +2419,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
     <div id="contentAuditBody" style="flex:1;overflow-y:auto;padding:0"></div>
   </div>
 </div>
-<script src="/pap-admin.js?v=41" defer></script>
+<script src="/pap-admin.js?v=42" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>
