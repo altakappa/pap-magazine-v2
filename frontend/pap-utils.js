@@ -234,7 +234,10 @@ function _normWs(s){return s.replace(/[\u2018\u2019\u201C\u201D]/g,"'").replace(
 // devices: a single tap on the '···' button reveals the arrow briefly and
 // fires the jump (the :active state plus the .is-revealed class give users
 // a visual hint that the element is interactive).
-var PAP_PER_PAGE=20;
+// QA #234 — bumped from 20 to 30 per editor request. Both editorials
+// and films overlays read this directly; articles overrides it locally
+// with ART_PER_PAGE=21 so the 3-column grid keeps filling complete rows.
+var PAP_PER_PAGE=30;
 var PAP_PAGE_JUMP=5; // number of pages the ellipsis jump skips
 function buildPagination(container,currentPage,totalPages,onPageChange,isDark){
   container.innerHTML='';
