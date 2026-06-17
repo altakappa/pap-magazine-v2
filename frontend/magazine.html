@@ -191,15 +191,29 @@ footer a:hover{color:#fff}
    than the viewport (e.g. 64 editorials in a quarter on a 15" laptop) the
    overlay scrolls naturally and nothing gets clipped. The header (close X
    + title) remains accessible via scroll-to-top. */
+/* QA #243 — preview overlay polish:
+   • Sticky header so issue/title/sort stays visible while the grid
+     scrolls. Was: header scrolled away with the cards, leaving users
+     wondering which issue they were in once they passed the fold.
+   • Tighter top padding so on a 15" laptop the first row of cards
+     enters the viewport without a long empty band of black.
+   • Stronger sort indicator (color + chevron + uppercase) so the
+     "최신순" rule is unmistakable. Was: nearly invisible at .32 alpha.
+   • Subtle caption under the issue label clarifies the content scope
+     ("이 호의 에디토리얼" / "EDITORIALS IN THIS ISSUE"). */
 .preview-overlay{position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.92);opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s;display:block;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .preview-overlay.active{opacity:1;visibility:visible}
-.preview-inner{width:100%;max-width:1080px;padding:80px 32px 64px;text-align:center;margin:0 auto;box-sizing:border-box}
+.preview-inner{width:100%;max-width:1080px;padding:56px 32px 80px;text-align:center;margin:0 auto;box-sizing:border-box}
 .preview-close{position:fixed;top:20px;left:24px;z-index:10002;background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.15);color:#fff;font-size:22px;cursor:pointer;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:.85;transition:opacity .2s,background .2s,transform .2s}
 .preview-close:hover{opacity:1;background:rgba(255,255,255,.12);transform:scale(1.05)}
+/* Sticky header block (issue label + title + caption + count + sort) */
+.preview-header{position:sticky;top:0;background:linear-gradient(to bottom,rgba(0,0,0,.95) 70%,rgba(0,0,0,.85));padding:24px 0 16px;margin:-56px -32px 24px;z-index:1;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid rgba(255,255,255,.08)}
 .preview-issue{font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.3em;color:rgba(255,255,255,.4);text-transform:uppercase;margin-bottom:8px}
 .preview-title{font-family:var(--display);font-size:clamp(24px,4vw,36px);color:#fff;margin-bottom:4px}
-.preview-subtitle{font-family:var(--sans);font-size:12px;letter-spacing:.15em;color:rgba(255,255,255,.4);margin-bottom:6px;text-transform:uppercase}
-.preview-sort{font-family:var(--sans);font-size:10px;letter-spacing:.18em;color:rgba(255,255,255,.32);text-transform:uppercase;margin-bottom:32px}
+.preview-scope{font-family:var(--sans);font-size:10px;letter-spacing:.22em;color:rgba(255,255,255,.45);text-transform:uppercase;margin-bottom:14px}
+.preview-subtitle{font-family:var(--sans);font-size:12px;letter-spacing:.15em;color:rgba(255,255,255,.55);margin-bottom:6px;text-transform:uppercase;font-weight:600}
+.preview-sort{display:inline-flex;align-items:center;gap:6px;font-family:var(--sans);font-size:11px;letter-spacing:.18em;color:rgba(255,255,255,.6);text-transform:uppercase;font-weight:600;padding:6px 12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:4px;margin-top:4px}
+.preview-sort::before{content:'↓';font-size:13px;line-height:1;color:rgba(255,255,255,.85)}
 .preview-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-bottom:40px}
 .preview-card{position:relative;border-radius:8px;overflow:hidden;cursor:pointer;aspect-ratio:3/4;background:#111;transition:transform .3s}
 .preview-card:hover{transform:translateY(-4px)}
@@ -213,16 +227,19 @@ footer a:hover{color:#fff}
 .preview-lock-msg{font-family:var(--sans);font-size:11px;color:rgba(255,255,255,.35);letter-spacing:.1em;margin-top:16px}
 @media(max-width:1024px){
   .preview-grid{grid-template-columns:repeat(3,1fr);gap:18px}
-  .preview-inner{padding:72px 24px 56px}
+  .preview-inner{padding:48px 24px 64px}
+  .preview-header{margin:-48px -24px 20px;padding:20px 0 14px}
 }
 @media(max-width:768px){
   .preview-grid{grid-template-columns:repeat(2,1fr);gap:14px}
-  .preview-inner{padding:64px 20px 48px}
+  .preview-inner{padding:44px 20px 56px}
+  .preview-header{margin:-44px -20px 18px;padding:18px 0 12px}
 }
 @media(max-width:480px){
   .preview-grid{grid-template-columns:1fr;max-width:340px;margin-left:auto;margin-right:auto}
   .preview-close{width:40px;height:40px;top:14px;left:14px;font-size:20px}
-  .preview-inner{padding:56px 16px 40px}
+  .preview-inner{padding:40px 16px 48px}
+  .preview-header{margin:-40px -16px 16px;padding:16px 0 12px}
 }
 .sub-modal-note{font-size:10px;color:rgba(255,255,255,.3);margin-top:16px;letter-spacing:.5px}
 
@@ -876,6 +893,20 @@ function openPreview(issueTitle,opts){
     de:{title:'Kostenlose Vorschau',subtitle:'EDITORIALS',cta:'ABONNIEREN, UM ALLES ZU LESEN',lock:'Abonnieren Sie, um alle Editorials dieser Ausgabe freizuschalten'}
   };
   var pt=previewTexts[lang]||previewTexts.en;
+  // QA #243 — caption under the issue title, clarifying that the list
+  // below is editorial content of THIS specific issue. The popup used
+  // to jump straight from a generic "Free Preview" title into cards,
+  // leaving users unsure whether they were seeing a monthly slice or a
+  // full archive — the scope line makes the answer obvious at a glance.
+  var scopeTexts={
+    ko:'이 호의 에디토리얼',en:'EDITORIALS IN THIS ISSUE',
+    it:'EDITORIALI DI QUESTO NUMERO',fr:'ÉDITORIAUX DE CE NUMÉRO',
+    ja:'このイシューのエディトリアル',zh:'本期编辑内容',
+    es:'EDITORIALES DE ESTE NÚMERO',ru:'РЕДАКЦИОННЫЕ МАТЕРИАЛЫ ВЫПУСКА',
+    de:'EDITORIALS DIESER AUSGABE'
+  };
+  var scopeEl = document.getElementById('previewScope');
+  if(scopeEl) scopeEl.textContent = scopeTexts[lang] || scopeTexts.en;
   // Compute the 3-month date range label for the eyebrow line so the
   // popup makes the quarter context obvious. Falls through to the
   // original issueTitle when called from a non-quarter entry point.
@@ -940,7 +971,10 @@ function openPreview(issueTitle,opts){
         subtitleEl.parentNode.insertBefore(sortEl, subtitleEl.nextSibling);
       }
     }
-    sortEl.textContent = '↓ ' + (sortLabels[lang] || sortLabels.en);
+    // QA #243 — arrow is drawn via .preview-sort::before so the JS only
+    // sets the label text. (Previously concatenated '↓ ' resulted in a
+    // double arrow once the CSS pill style was added.)
+    sortEl.textContent = sortLabels[lang] || sortLabels.en;
 
     if(preview.length===0){
       grid.innerHTML='<div style="color:#999;padding:40px;grid-column:1/-1">No editorials found for this issue</div>';
@@ -1013,9 +1047,16 @@ document.getElementById('previewOverlay').addEventListener('click',function(e){
 <div class="preview-overlay" id="previewOverlay">
   <button class="preview-close" onclick="closePreview()">&times;</button>
   <div class="preview-inner">
-    <div class="preview-issue" id="previewIssue">MARCH 2026</div>
-    <div class="preview-title" id="previewTitle">Free Preview</div>
-    <div class="preview-subtitle" id="previewSubtitle">3 EDITORIALS</div>
+    <!-- QA #243 — sticky header so issue/title/count/sort stays visible
+         while users scroll the editorial grid. Pre-fix the header
+         scrolled off and users couldn't tell which issue / sort they
+         were looking at on long lists (20+ editorials per month). -->
+    <div class="preview-header">
+      <div class="preview-issue" id="previewIssue">MARCH 2026</div>
+      <div class="preview-title" id="previewTitle">Free Preview</div>
+      <div class="preview-scope" id="previewScope">EDITORIALS IN THIS ISSUE</div>
+      <div class="preview-subtitle" id="previewSubtitle">3 EDITORIALS</div>
+    </div>
     <div class="preview-grid" id="previewGrid"></div>
     <a href="subscribe.html" class="preview-subscribe" id="previewCta">SUBSCRIBE TO READ ALL</a>
     <div class="preview-lock-msg" id="previewLock">Subscribe to unlock all editorials in this issue</div>
