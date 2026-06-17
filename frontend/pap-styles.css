@@ -1550,14 +1550,29 @@ section.hero + .shorts-section{
 }
 
 /* ======== UNIFIED CAROUSEL ARROW STATE ========
-   Triggered by _papUpdateArrows in pap-app.js. .is-disabled means
+   Triggered by _papUpdateArrows in pap-utils.js. .is-disabled means
    "there's nothing further to scroll in this direction" — we hide the
    arrow rather than greying it out so the user doesn't see a button
-   that does nothing. */
+   that does nothing.
+
+   QA #247 — was `opacity:0 + visibility:hidden + pointer-events:none`.
+   Two issues with that combination:
+
+     1. The element still occupied layout via `display:flex`, so some
+        Chrome / WebKit builds rendered a ~1px sliver of the rounded
+        background while the parent .ed-row-wrap was hovered (the
+        `.ed-row-wrap:hover .ed-row-arrow{opacity:1}` rule fought the
+        `!important` and won on certain stacking contexts).
+     2. Screen readers and keyboard tab order still announced the
+        hidden button, which violated the QA contract ("더 이상 이동
+        불가 시 버튼 hidden") — users tabbing through saw a focusable
+        button that pointer-events nuked silently.
+
+   `display:none !important` removes the element from layout, focus
+   order, and the accessibility tree all at once — the single source
+   of truth the QA asked for. */
 .carousel-arrow.is-disabled,
 .ed-row-arrow.is-disabled,
 .nf-nav.is-disabled{
-  opacity: 0 !important;
-  visibility: hidden;
-  pointer-events: none;
+  display: none !important;
 }
