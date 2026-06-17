@@ -6584,9 +6584,10 @@ async function _populateFilmRelatedEditorial(selectedId){
     console.warn('[films] failed to load editorials list:', e && e.message);
     _filmRelatedEdCache = _filmRelatedEdCache || [];
   }
-  // Reset search + sort to defaults each time the picker opens.
+  // Reset search + sort + range to defaults each time the picker opens.
   var s = document.getElementById('filmRelatedSearch'); if(s) s.value = '';
   var so = document.getElementById('filmRelatedSort'); if(so) so.value = 'newest';
+  var rg = document.getElementById('filmRelatedRange'); if(rg) rg.value = 'all';
   // Render the visible chip for the currently selected editorial (if any).
   _updateFilmRelatedSelectedChip(selectedId);
   // Render the picker list.
@@ -6645,8 +6646,10 @@ function renderFilmRelatedList(){
   var list = Array.isArray(_filmRelatedEdCache) ? _filmRelatedEdCache.slice() : [];
   var searchEl = document.getElementById('filmRelatedSearch');
   var sortEl = document.getElementById('filmRelatedSort');
+  var rangeEl = document.getElementById('filmRelatedRange');
   var q = ((searchEl && searchEl.value) || '').trim().toLowerCase();
   var sort = (sortEl && sortEl.value) || 'newest';
+  var rangeVal = (rangeEl && rangeEl.value) || 'all';
   // Text filter — match title (any locale) + slug. We don't pre-index
   // because the cache size is small (≤500); a plain scan is cheaper
   // than maintaining an index.
@@ -6656,6 +6659,20 @@ function renderFilmRelatedList(){
       var hay = ((ed.title || '') + ' ' + (ed.slug || '')).toLowerCase();
       return hay.indexOf(q) !== -1;
     });
+  }
+  // QA #232 — date-range filter (published_date within last N days).
+  // Rows missing a publish date pass through under "전체 기간" but are
+  // hidden when a range is selected (they can't be inside the window).
+  if(rangeVal !== 'all'){
+    var days = parseInt(rangeVal, 10);
+    if(!isNaN(days) && days > 0){
+      var cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+      list = list.filter(function(ed){
+        var t = new Date(ed && (ed.published_date || ed.created_at) || 0).getTime();
+        if(!t || isNaN(t)) return false;
+        return t >= cutoff;
+      });
+    }
   }
   // Sort.
   list.sort(function(a, b){
@@ -6719,23 +6736,69 @@ function clearFilmRelated(){
   renderFilmRelatedList();
 }
 
+// QA #232 — same shape as validateNewsImage (QA #200): reject the file
+// up front so the editor sees a Korean error before we burn an
+// /api/media/upload round-trip.
+var FILM_THUMB_ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+var FILM_THUMB_MAX_BYTES = 2 * 1024 * 1024; // 2MB
+function validateFilmThumbImage(file){
+  if(!file) return { ok: false, message: '파일이 선택되지 않았습니다.' };
+  if(FILM_THUMB_ALLOWED_TYPES.indexOf(file.type) === -1){
+    return { ok: false, message: '지원하지 않는 형식입니다. JPG / PNG / WEBP 파일만 업로드할 수 있습니다.' };
+  }
+  if(typeof file.size === 'number' && file.size > FILM_THUMB_MAX_BYTES){
+    var mb = (file.size / 1024 / 1024).toFixed(1);
+    return { ok: false, message: '파일 크기가 너무 큽니다. (' + mb + 'MB → 최대 2MB)' };
+  }
+  return { ok: true };
+}
+
 // File-input handler for the film thumbnail upload affordance — runs the
 // same /api/media/upload roundtrip the editorial form uses, then drops
 // the resulting URL into #filmThumb so saveFilm picks it up.
+//
+// QA #232 — pre-flight validation + inline status line. The legacy path
+// only surfaced failures via alert() and rolled the preview back; that
+// hid the actual reason ("the file you picked is 4MB / is a .heic") on
+// alert dismissal. We now:
+//   • validate type + size before upload (skip the network round-trip)
+//   • render progress / success / error inline on #filmThumbStatus
+//   • still show the alert for hard upload errors so they can't be missed
 async function _onFilmThumbFile(input){
   if(!input.files || !input.files[0]) return;
+  var file = input.files[0];
   var prev = document.getElementById('filmThumbPreview');
+  var status = document.getElementById('filmThumbStatus');
   var origHtml = prev ? prev.innerHTML : '';
+  function _setStatus(text, isError){
+    if(!status) return;
+    status.textContent = text || '';
+    status.style.color = isError ? '#c0392b' : 'var(--text3)';
+  }
+  // 1) Validate
+  var v = validateFilmThumbImage(file);
+  if(!v.ok){
+    _setStatus('⚠ ' + v.message, true);
+    // Clear the file input so re-picking the same file re-fires onchange.
+    try { input.value = ''; } catch(_){}
+    alert(v.message);
+    return;
+  }
+  // 2) Upload
   if(prev) prev.innerHTML = '<span class="pe-upload-text">업로드 중…</span>';
+  _setStatus('업로드 중…', false);
   try {
-    var url = await uploadFile(input.files[0]);
+    var url = await uploadFile(file);
     document.getElementById('filmThumb').value = url;
     if(prev){
       prev.innerHTML = '<img loading="lazy" src="'+esc(url)+'" style="max-height:60px;max-width:100px;object-fit:cover;border-radius:2px"><span class="pe-upload-text" style="margin-left:8px">업로드 완료 — 클릭하여 변경</span>';
     }
+    _setStatus('✓ 업로드 완료', false);
   } catch(e){
     if(prev) prev.innerHTML = origHtml;
-    alert('업로드 실패: ' + (e && e.message));
+    var msg = '업로드 실패: ' + (e && e.message ? e.message : '서버 응답 없음');
+    _setStatus('⚠ ' + msg, true);
+    alert(msg);
   }
   input.value = '';
 }
@@ -6764,6 +6827,11 @@ function _resetFilmModalFields(){
   addCredit('filmCreditsArea');   // one blank row
   var thumbPrev = document.getElementById('filmThumbPreview');
   if(thumbPrev) thumbPrev.innerHTML = '<span class="pe-upload-icon" style="font-size:18px">📷</span><span class="pe-upload-text" style="margin-left:8px">또는 파일 업로드 (JPG · PNG · WebP)</span>';
+  // QA #232 — clear the inline status line so a stale "✓ 업로드 완료" /
+  // "⚠ ..." message from a previous edit doesn't carry into a fresh
+  // "+ 새 필름" session.
+  var thumbStatus = document.getElementById('filmThumbStatus');
+  if(thumbStatus){ thumbStatus.textContent = ''; thumbStatus.style.color = ''; }
 }
 
 function openFilmModal(idx){

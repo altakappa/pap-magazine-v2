@@ -1942,17 +1942,27 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
       <input class="pe-input" id="filmCatsCustom" placeholder="기타 카테고리 (쉼표 구분, 예: Editorial, Vlog)" style="margin-top:8px">
     </div>
 
-    <!-- 썸네일: URL 입력 + 파일 업로드 (둘 다 가능) -->
+    <!-- 썸네일: URL 입력 + 파일 업로드 (둘 다 가능)
+         QA #232 — explicit upload guidelines so the editor knows what
+         we accept BEFORE picking a file. The validator (validateFilmThumbImage
+         in pap-admin.js) enforces the same limits and surfaces a Korean error
+         when a file fails. -->
     <div class="modal-section">
       <div class="modal-label">썸네일 이미지 <span class="pe-opt">비워두면 YouTube 썸네일 자동 사용</span></div>
       <input class="pe-input" id="filmThumb" placeholder="https://… (URL 직접 입력)">
       <div class="pe-upload" id="filmThumbUploadBox" onclick="document.getElementById('filmThumbInput').click()" style="margin-top:8px;min-height:auto;padding:12px">
-        <input type="file" id="filmThumbInput" accept="image/*" style="display:none" onchange="_onFilmThumbFile(this)">
+        <input type="file" id="filmThumbInput" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="_onFilmThumbFile(this)">
         <div class="pe-upload-inner" id="filmThumbPreview">
           <span class="pe-upload-icon" style="font-size:18px">📷</span>
           <span class="pe-upload-text" style="margin-left:8px">또는 파일 업로드 (JPG · PNG · WebP)</span>
         </div>
       </div>
+      <div class="pe-hint" style="margin-top:8px">
+        권장 1200×675px (16:9) · JPG / PNG / WEBP · 최대 2MB
+      </div>
+      <!-- Inline status line — flips to "업로드 중...", "✓ 업로드 완료",
+           or a red error message during the upload lifecycle. -->
+      <div id="filmThumbStatus" style="margin-top:6px;font-size:11px;color:var(--text3);min-height:14px"></div>
     </div>
 
     <!-- 크레딧 -->
@@ -1990,9 +2000,18 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
         <button type="button" class="btn btn-sm" onclick="clearFilmRelated()" title="선택 해제">✕</button>
       </div>
       <!-- Search + sort row -->
-      <div style="display:flex;gap:8px;align-items:center">
-        <input type="text" class="pe-input" id="filmRelatedSearch" placeholder="에디토리얼 제목으로 검색…" oninput="renderFilmRelatedList()" style="flex:1">
-        <select class="pe-select" id="filmRelatedSort" onchange="renderFilmRelatedList()" style="max-width:140px">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="text" class="pe-input" id="filmRelatedSearch" placeholder="에디토리얼 제목으로 검색…" oninput="renderFilmRelatedList()" style="flex:1;min-width:200px">
+        <!-- QA #232 — publication-date range filter so editors can scope
+             the picker to "things I worked on recently" without scrolling
+             through years of catalogue. -->
+        <select class="pe-select" id="filmRelatedRange" onchange="renderFilmRelatedList()" style="max-width:130px">
+          <option value="all">전체 기간</option>
+          <option value="30">최근 30일</option>
+          <option value="90">최근 90일</option>
+          <option value="365">최근 1년</option>
+        </select>
+        <select class="pe-select" id="filmRelatedSort" onchange="renderFilmRelatedList()" style="max-width:120px">
           <option value="newest">최신순</option>
           <option value="oldest">오래된순</option>
           <option value="title">제목순</option>
@@ -2419,7 +2438,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
     <div id="contentAuditBody" style="flex:1;overflow-y:auto;padding:0"></div>
   </div>
 </div>
-<script src="/pap-admin.js?v=42" defer></script>
+<script src="/pap-admin.js?v=43" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>
