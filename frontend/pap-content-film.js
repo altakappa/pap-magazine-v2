@@ -136,33 +136,49 @@ function _openFilmDetailInner(idx){
     //   role:     c.r  || c.roles.join(' & ')
     //   name:     c.name (new shape only — legacy had no name field)
     //   handles:  c.p   || c.instagram   (comma-separated string)
+    // QA #231 — Unify the credit display with the editorial detail page.
+    // Editorial renders ONE clickable token per credit: the person's name
+    // (with the Instagram handle as a fallback when no name was saved),
+    // and clicking it deep-links into the Instagram profile. The film
+    // page used to render BOTH name and handles next to each other,
+    // which read as a different style on the same dataset. Now both
+    // surfaces look identical — name first, clickable, opens Instagram.
     credEl.innerHTML=cr.map(function(c){
       if (!c || typeof c !== 'object') return '';
       var roleRaw =
         c.r != null ? c.r
         : Array.isArray(c.roles) ? c.roles.join(' & ')
         : (c.roles || '');
-      var nameRaw = c.name || '';
+      var nameRaw = (c.name || '').trim();
       var handlesRaw = c.p != null ? c.p : (c.instagram || '');
-      var handles = String(handlesRaw||'').split(',').map(function(h){
-        h=h.trim();if(!h) return '';
-        // Some legacy entries stored "@handle" or "https://instagram.com/handle"
-        // — strip the prefix so the underlying handle stays consistent.
-        h = h.replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/\/$/, '');
+      // Split the handles list once — we still use it as a fallback when
+      // no name was saved, and as the click target for the rendered token.
+      var handleList = String(handlesRaw || '').split(',').map(function(h){
+        h = (h || '').trim();
         if(!h) return '';
-        return '<a href="#" class="film-cred-link" data-handle="'+h.replace(/"/g,'')+'" style="cursor:pointer">'+escapeHtml(h)+'</a>';
-      }).filter(Boolean).join('&nbsp;&nbsp;');
-      // The right column shows name and instagram handles together.
-      // If only one is present, just render that. If both, render name
-      // followed by the handle links so the eye reads "<name> @<handle>".
-      var valueHtml;
-      if (nameRaw && handles) {
-        valueHtml = escapeHtml(nameRaw) + '&nbsp;&nbsp;' + handles;
-      } else if (nameRaw) {
-        valueHtml = escapeHtml(nameRaw);
-      } else {
-        valueHtml = handles;
+        return h.replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/\/$/, '');
+      }).filter(Boolean);
+      // Build the display tokens. When there's a name, render ONE token
+      // labelled with the name and pointed at the first handle (if any).
+      // When there's no name, fall back to rendering each handle as its
+      // own token (legacy data shape) so older rows still surface
+      // SOMETHING instead of an empty cell.
+      var tokens = [];
+      if (nameRaw) {
+        var primaryHandle = handleList[0] || '';
+        if (primaryHandle) {
+          tokens.push('<a href="#" class="film-cred-link" data-handle="' + primaryHandle.replace(/"/g,'') + '" style="cursor:pointer">' + escapeHtml(nameRaw) + '</a>');
+        } else {
+          // Name without a handle — render plain text (no link).
+          tokens.push(escapeHtml(nameRaw));
+        }
+      } else if (handleList.length) {
+        // Legacy / handle-only — each handle becomes its own clickable token.
+        handleList.forEach(function(h){
+          tokens.push('<a href="#" class="film-cred-link" data-handle="' + h.replace(/"/g,'') + '" style="cursor:pointer">' + escapeHtml(h) + '</a>');
+        });
       }
+      var valueHtml = tokens.join(', ');
       // Skip the row entirely if both role and value would be blank —
       // a totally empty <div.ed-cred-row> would look like a stray gap.
       if (!roleRaw && !valueHtml) return '';

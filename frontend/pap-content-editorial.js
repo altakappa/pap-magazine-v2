@@ -450,6 +450,13 @@ function _openEditorialInner(title,thumb){
         var ko = full.description || '';
         var en = full.description_en || '';
         if(ko || en) dst.desc = { ko: ko, en: en };
+        // QA #231 — pass related_films through too so the "RELATED FILMS"
+        // section appears when the fallback fetch is the path that hydrates
+        // the editorial (otherwise the editor would see the films on a
+        // direct /editorial/<slug> reload but not on an in-app overlay).
+        if(Array.isArray(full.related_films)) {
+          dst.relatedFilms = full.related_films;
+        }
         edDetails[title] = dst;
         // Re-render through the no-push path so we don't push a duplicate
         // history entry on top of the one we already pushed below.
