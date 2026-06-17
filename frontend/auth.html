@@ -622,9 +622,18 @@ function _authStateUrl(state){
   // fires → the user just sees the login page (the bug we're fixing).
   return window.location.pathname + qs + (window.location.hash || '');
 }
-function _syncAuthHistory(state){
+// QA #228 v2 — `opts.replace=true` lets callers force a replaceState
+// even when `_navigating` is false. This is used by panel-switching
+// functions (showLogin ↔ showSignup ↔ showForgot) so toggling between
+// panels DOESN'T grow the history stack — only signup-step progression
+// (step 1 → 2 → 3 → 4) pushes new entries. Without this, the path
+//   메인 홈 → 회원가입 → "로그인" 토글 → 뒤로가기
+// returned the user to the signup panel instead of the home page
+// they came from (the QA #228 v2 user-reported regression).
+function _syncAuthHistory(state, opts){
   try {
-    if (_navigating) {
+    var forceReplace = !!(opts && opts.replace);
+    if (_navigating || forceReplace) {
       window.history.replaceState(state, '', _authStateUrl(state));
     } else {
       var cur = window.history.state || {};
@@ -651,7 +660,7 @@ function goBack() {
   }
 }
 
-function showStep(n) {
+function showStep(n, opts) {
   currentStep = n;
   document.querySelectorAll('.step-panel').forEach(function(p){ p.classList.remove('active'); });
   var panel = document.getElementById('step' + n);
@@ -670,7 +679,12 @@ function showStep(n) {
   var ss = document.getElementById('stepSuccess'); if (ss) { ss.classList.remove('active'); ss.style.display = 'none'; }
   isLoginView = false;
 
-  _syncAuthHistory({ authView: 'signup', authStep: n });
+  // QA #228 v2 — accept opts so showSignup can request a replaceState
+  // when the user only toggled into the signup view (step 1) from the
+  // login panel; that case shouldn't add a history entry. Actual step
+  // progression (goToStep2 → showStep(2), verifyEmailCode → showStep(3))
+  // omits opts and keeps the default pushState behaviour.
+  _syncAuthHistory({ authView: 'signup', authStep: n }, opts);
 }
 
 function _updateHeaderLogin(){
@@ -696,7 +710,12 @@ function showLogin() {
   document.getElementById('stepSuccess').classList.remove('active');
   document.getElementById('stepSuccess').style.display = 'none';
   _updateHeaderLogin();
-  _syncAuthHistory({ authView: 'login' });
+  // QA #228 v2 — showLogin is exclusively reached via panel toggle from
+  // signup / forgot (or the initial mode=login landing). Either way, the
+  // user is staying on the same auth page; we should NOT push a new
+  // history entry. Force replace so browser-back skips the panel toggle
+  // and returns the user to whatever page they came from.
+  _syncAuthHistory({ authView: 'login' }, { replace: true });
 }
 
 function showForgot() {
@@ -717,7 +736,9 @@ function showForgot() {
     }
   } catch(_){}
   _updateHeaderLogin();
-  _syncAuthHistory({ authView: 'forgot' });
+  // QA #228 v2 — same rationale as showLogin: panel toggle, not a new
+  // navigation. Replace instead of push so back doesn't trap the user.
+  _syncAuthHistory({ authView: 'forgot' }, { replace: true });
 }
 
 function showReset() {
@@ -747,8 +768,12 @@ function showSignup() {
     var el = document.getElementById('signupEmailLang');
     if (el) el.value = ['ko','en','it','fr','es','ja','zh','ru','de'].indexOf(lang) >= 0 ? lang : 'en';
   } catch (_) { /* localStorage may throw in some private-browsing modes */ }
-  // showStep(1) handles its own history sync — produces a single entry
-  showStep(1);
+  // QA #228 v2 — showSignup is always a panel toggle (the only other
+  // way to land here is the initial mode=signup URL, which IIFE handles
+  // explicitly above). Pass { replace: true } so the toggle doesn't grow
+  // the history stack; browser-back from here should jump straight to
+  // whatever page brought the user to /auth in the first place.
+  showStep(1, { replace: true });
   _updateHeaderLogin();
 }
 
