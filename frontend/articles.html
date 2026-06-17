@@ -285,6 +285,8 @@ document.addEventListener('DOMContentLoaded', function() {
   function _renderActiveTagChip(){
     var existing = document.getElementById('artActiveTag');
     if(existing) existing.remove();
+    var existingX = document.getElementById('artActiveTagXref');
+    if(existingX) existingX.remove();
     if(!activeTag) return;
     var chip = document.createElement('div');
     chip.id = 'artActiveTag';
@@ -304,6 +306,31 @@ document.addEventListener('DOMContentLoaded', function() {
     var fw = document.getElementById('filterWrap');
     if(fw && fw.parentNode){
       fw.parentNode.insertBefore(chip, fw);
+    }
+    // QA #246 — sibling link that surfaces editorials carrying the same
+    // tag. Routes to the editorial list overlay with a tag query so the
+    // user can pivot between articles and editorials on the same theme
+    // without navigating to a separate search page. The list grid reads
+    // ?tag= the same way articles.html does.
+    var lang = (localStorage.getItem('pap-lang') || navigator.language || 'en').substring(0,2);
+    var xrefLabel = {
+      ko:'이 태그의 에디토리얼 보기 →',
+      en:'See editorials with this tag →',
+      it:'Vedi editoriali con questo tag →',
+      fr:'Voir les éditoriaux avec ce tag →',
+      ja:'このタグのエディトリアルを見る →',
+      zh:'查看带此标签的编辑内容 →',
+      es:'Ver editoriales con esta etiqueta →',
+      ru:'Редакционные материалы с этим тегом →',
+      de:'Editorials mit diesem Tag ansehen →'
+    }[lang] || 'See editorials with this tag →';
+    var xref = document.createElement('a');
+    xref.id = 'artActiveTagXref';
+    xref.className = 'art-active-tag-xref';
+    xref.href = '/?tag=' + encodeURIComponent(activeTag) + '#all-editorials';
+    xref.textContent = xrefLabel;
+    if(fw && fw.parentNode){
+      fw.parentNode.insertBefore(xref, fw);
     }
   }
 

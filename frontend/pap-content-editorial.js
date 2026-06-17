@@ -360,6 +360,39 @@ function _renderEditorialVideo(rawUrl){
 // navigates to /film/<slug> (server-rendered film page); we don't try
 // to hand off to the overlay because the overlay state lives in the
 // film page, not the editorial overlay.
+// QA #246 — Render clickable hashtag chips on the editorial detail.
+// Routes through the same /articles.html?tag=<value> URL the article
+// detail uses, so a single tag-filter pipeline (and active-chip UI)
+// services both content types. Looks up tags off edData by title — the
+// detail-cache (edDetails) is a partial mirror that doesn't always
+// include the tag list, but edData (the list row source) always does.
+function _renderEditorialTags(title){
+  var tagsEl = document.getElementById('edDetailTags');
+  if (!tagsEl) return;
+  var titleLower = String(title || '').toLowerCase();
+  var found = null;
+  for (var i = 0; i < edData.length; i++){
+    if (String(edData[i].title || '').toLowerCase() === titleLower){
+      found = edData[i]; break;
+    }
+  }
+  var rawTags = found && found.tags;
+  var tagArr = Array.isArray(rawTags)
+    ? rawTags
+    : (typeof rawTags === 'string' ? rawTags.split(',') : []);
+  tagArr = tagArr.map(function(t){ return String(t).trim(); }).filter(Boolean);
+  if (!tagArr.length){
+    tagsEl.innerHTML = '';
+    tagsEl.style.display = 'none';
+    return;
+  }
+  tagsEl.innerHTML = tagArr.map(function(t){
+    return '<a class="art-tag-chip" href="articles.html?tag=' +
+      encodeURIComponent(t) + '">#' + escapeHtml(t) + '</a>';
+  }).join('');
+  tagsEl.style.display = '';
+}
+
 function _renderRelatedFilms(films){
   var wrap = document.getElementById('edDetailRelatedFilms');
   var list = document.getElementById('edDetailRelatedFilmsList');
@@ -649,6 +682,15 @@ function _openEditorialInner(title,thumb){
   // Fashion by — removed (shown as hover credits on images)
   cr.innerHTML=ch;
 
+  // QA #246 — Render clickable hashtag chips for this editorial.
+  // Tags live on the edData list row (categories drive the filter pill
+  // strip) — reused here as user-facing hashtags. Click routes to
+  // articles.html?tag=<value>, where the article list page applies its
+  // tag filter AND surfaces a sibling "이 태그의 에디토리얼 보기" link
+  // back to the editorial overlay, so the two content types stay
+  // discoverable from a single tag click.
+  _renderEditorialTags(title);
+
   // QA #163 — Related Films (reverse-FK from films.related_editorial_id).
   // Hidden if the editorial has no linked films; otherwise renders cards.
   _renderRelatedFilms(det && det.relatedFilms);
@@ -851,6 +893,9 @@ function _openEditorialInner_noPush(title,thumb){
     ch+='<div class="ed-cred-row"><div class="ed-cred-role">'+c.r+'</div><div class="ed-cred-val">'+vals+'</div></div>';
   });
   cr.innerHTML=ch;
+  // QA #246 — same hashtag chip rendering as the push path so back/
+  // forward restoration preserves the tag UI.
+  _renderEditorialTags(title);
   // QA #163 — Related Films (popstate restoration path).
   _renderRelatedFilms(det && det.relatedFilms);
   var logoSection=document.getElementById('edLogoDownload');
@@ -1104,9 +1149,22 @@ function closeAllEditorials(skipHistory){
     var overlay=document.getElementById('edAllOverlay');
     if(!overlay){ setTimeout(revealBody,60); return; }
     if(typeof openAllEditorials !== 'function'){ setTimeout(tryOpen,100); return; }
+    // QA #246 — when arriving with ?tag=<value> (the "see editorials
+    // with this tag" cross-link from articles.html), open the overlay
+    // pre-filtered to that category. edAllCurrentCategory is the same
+    // state the category pills mutate, so reuse it for consistency.
+    var tagQuery = '';
+    try {
+      tagQuery = (new URLSearchParams(window.location.search).get('tag') || '').trim();
+    } catch(_){}
     // Delay slightly so edData + dependent state is initialised.
     setTimeout(function(){
-      try{ openAllEditorials(); }catch(e){}
+      try{
+        if(tagQuery){
+          edAllCurrentCategory = tagQuery.toLowerCase();
+        }
+        openAllEditorials();
+      }catch(e){}
       setTimeout(revealBody,60);
     }, 80);
   }
