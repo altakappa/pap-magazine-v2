@@ -53,7 +53,11 @@ module.exports = async function handler(req, res) {
         // QA #250 — Instagram caption (mirrors editorials column). Also
         // hydrates the admin edit modal directly from the list cache so
         // editors can re-edit without a per-row refetch.
-        'instagram_caption'
+        'instagram_caption',
+        // QA #251 — KR/EN/IT description slots. Same admin edit-modal
+        // hydration concern as above — ship the three TEXT columns in
+        // the list payload so opening "편집" doesn't need a per-row GET.
+        'description','description_en','description_it'
       ].join(',');
       // QA #248 — `?status=scheduled` semantics.
       //
@@ -139,6 +143,11 @@ module.exports = async function handler(req, res) {
         // QA #250 — film Instagram caption (mirrors editorials.instagram_caption
         // from QA #170). Optional, plain TEXT; admin modal drafts + persists it.
         instagram_caption,
+        // QA #251 — trilingual description slots (KR / EN / IT). All optional;
+        // the admin modal exposes one textarea per language with a 🤖 AI
+        // 자동 번역 button that fills the missing slots from whichever
+        // language the editor wrote first.
+        description, description_en, description_it,
       } = req.body;
 
       if (!title || !youtube_id) {
@@ -177,6 +186,16 @@ module.exports = async function handler(req, res) {
         const trimmed = String(instagram_caption || '').trim();
         insertRow.instagram_caption = trimmed ? trimmed : null;
       }
+      // QA #251 — trilingual description; trim + null on empty, same
+      // semantics as instagram_caption above.
+      const _trimOrNull = v => {
+        if (typeof v === 'undefined') return undefined;
+        const t = String(v || '').trim();
+        return t ? t : null;
+      };
+      if (typeof description    !== 'undefined') insertRow.description    = _trimOrNull(description);
+      if (typeof description_en !== 'undefined') insertRow.description_en = _trimOrNull(description_en);
+      if (typeof description_it !== 'undefined') insertRow.description_it = _trimOrNull(description_it);
 
       const { data, error } = await supabaseAdmin
         .from('films')

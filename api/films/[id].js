@@ -75,6 +75,9 @@ module.exports = async function handler(req, res) {
         // QA #250 — Instagram caption. Plain TEXT; empty string normalised
         // to null below so DB stays clean.
         'instagram_caption',
+        // QA #251 — KR/EN/IT description slots. Same trim+null treatment
+        // as instagram_caption below.
+        'description', 'description_en', 'description_it',
       ];
       // Coerce TEXT[] columns to arrays so admin payloads from older
       // form versions (string-shape) don't break the schema.
@@ -85,10 +88,16 @@ module.exports = async function handler(req, res) {
         if (toArrayCols.has(key)) {
           v = Array.isArray(v) ? v : (v == null || v === '' ? [] : [String(v)]);
         }
-        // QA #250 — TEXT caption: trim + treat empty as null so the
-        // column doesn't get written as "" (which would defeat the
-        // IS NULL gate in the future "needs caption?" admin filter).
-        if (key === 'instagram_caption') {
+        // QA #250 / #251 — TEXT slots: trim + treat empty as null so
+        // the column doesn't get written as "" (which would defeat any
+        // future IS NULL gate for "needs caption?" / "needs IT?" admin
+        // filters).
+        if (
+          key === 'instagram_caption' ||
+          key === 'description' ||
+          key === 'description_en' ||
+          key === 'description_it'
+        ) {
           const trimmed = String(v || '').trim();
           v = trimmed ? trimmed : null;
         }

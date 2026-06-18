@@ -1981,6 +1981,38 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
       <div class="pe-hint" style="margin-top:6px">역할이 목록에 없으면 <strong>+ 직접 입력</strong>을 선택해 자유롭게 입력할 수 있습니다.</div>
     </div>
 
+    <!-- QA #251 — film description, KR / EN / IT side-by-side. Same
+         three-slot layout as the editorial editor (QA #204). The AI
+         button calls api/admin/films/:id/translate, which uses
+         whichever slot the editor wrote first as the source and fills
+         the other two via Claude. Re-saves before translating aren't
+         required — the admin client sends the current textarea
+         contents in the request body so unsaved drafts translate too. -->
+    <div class="modal-section" id="filmDescSection">
+      <div class="pe-label" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <span>필름 설명 <span class="pe-opt">3개 언어 모두 작성 / 편집 가능</span></span>
+        <span style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-sm" type="button" onclick="aiTranslateFilmDescriptions(false)" title="비어 있는 언어 슬롯을 입력된 텍스트로부터 자동 번역" style="background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(37,99,235,.12));border-color:rgba(124,58,237,.35);color:var(--purple)">🤖 AI 자동 번역</button>
+          <button class="btn btn-sm" type="button" onclick="aiTranslateFilmDescriptions(true)" title="기존 내용을 덮어쓰며 3개 언어 모두 재생성">🔁 강제 재번역</button>
+        </span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr;gap:10px;margin-top:6px">
+        <div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--text3);margin-bottom:4px">🇰🇷 한국어 (KR)</div>
+          <textarea class="modal-ta" id="filmDescription" style="min-height:90px" placeholder="필름 한국어 설명. 작성 시 한국어로 입력하세요."></textarea>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--text3);margin-bottom:4px">🇬🇧 English (EN)</div>
+          <textarea class="modal-ta" id="filmDescriptionEn" style="min-height:90px" placeholder="Film description in English. Leave blank to auto-translate."></textarea>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--text3);margin-bottom:4px">🇮🇹 Italiano (IT)</div>
+          <textarea class="modal-ta" id="filmDescriptionIt" style="min-height:90px" placeholder="Descrizione del film in italiano. Vuoto = traduzione automatica."></textarea>
+        </div>
+      </div>
+      <div class="pe-hint">한 언어 칸에 입력 후 <strong>🤖 AI 자동 번역</strong>을 누르면 비어 있는 슬롯이 채워집니다. <strong>🔁 강제 재번역</strong>은 모든 슬롯을 덮어쓰며 다시 만듭니다. 필름 저장 전이라도 현재 입력 내용을 기준으로 번역됩니다.</div>
+    </div>
+
     <!-- QA #250 — Instagram caption for films, mirroring the editorials
          IG caption block (QA #170/184). The film page already collects
          every structured field IG needs (제목 + credits[] + 연결된

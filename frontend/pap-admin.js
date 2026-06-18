@@ -6836,6 +6836,9 @@ function _resetFilmModalFields(){
   // film edit doesn't bleed into a fresh "+ 새 필름" session.
   var igCap = document.getElementById('filmIgCaption');
   if (igCap) igCap.value = '';
+  // QA #251 — same logic for the three description slots.
+  ['filmDescription', 'filmDescriptionEn', 'filmDescriptionIt']
+    .forEach(function(id){ var el = document.getElementById(id); if (el) el.value = ''; });
 }
 
 function openFilmModal(idx){
@@ -6856,6 +6859,14 @@ function openFilmModal(idx){
     // API change in the same QA) so no extra fetch is needed.
     var _igEl = document.getElementById('filmIgCaption');
     if (_igEl) _igEl.value = f.instagram_caption || '';
+    // QA #251 — hydrate KR/EN/IT description slots, also straight from
+    // the list payload (added to LIST_COLUMNS in the same QA).
+    var _dEl   = document.getElementById('filmDescription');
+    var _dEnEl = document.getElementById('filmDescriptionEn');
+    var _dItEl = document.getElementById('filmDescriptionIt');
+    if (_dEl)   _dEl.value   = f.description    || '';
+    if (_dEnEl) _dEnEl.value = f.description_en || '';
+    if (_dItEl) _dItEl.value = f.description_it || '';
     document.getElementById('filmDate').value = (f.published_date || '').slice(0,10) || new Date().toISOString().slice(0,10);
     // QA #164 — restore publish state from the row. Precedence:
     //   status='draft'                                 → 임시저장
@@ -7074,6 +7085,15 @@ async function saveFilm(){
   var igCapEl = document.getElementById('filmIgCaption');
   var igCaption = igCapEl ? String(igCapEl.value || '').trim() : '';
 
+  // QA #251 — trilingual description (KR / EN / IT). Same null-on-empty
+  // semantics as the IG caption.
+  var _descEl   = document.getElementById('filmDescription');
+  var _descEnEl = document.getElementById('filmDescriptionEn');
+  var _descItEl = document.getElementById('filmDescriptionIt');
+  var descKr = _descEl   ? String(_descEl.value   || '').trim() : '';
+  var descEn = _descEnEl ? String(_descEnEl.value || '').trim() : '';
+  var descIt = _descItEl ? String(_descItEl.value || '').trim() : '';
+
   var payload = {
     title: title,
     youtube_id: ytId,
@@ -7086,6 +7106,10 @@ async function saveFilm(){
     scheduled_publish_at: scheduledIso,
     related_editorial_id: relEd,
     instagram_caption: igCaption || null,
+    // QA #251 — three description slots persisted together.
+    description:    descKr || null,
+    description_en: descEn || null,
+    description_it: descIt || null,
   };
 
   try{
@@ -7163,6 +7187,79 @@ function regenerateFilmIgCaption(){
   }
   el.value = _buildFilmIgCaptionTemplate();
   try { toast('인스타그램 캡션을 다시 만들었습니다.'); } catch(_){}
+}
+
+// ======== QA #251 — FILM DESCRIPTION AI TRANSLATION ========
+// Sends the current textarea contents (unsaved drafts included) to
+// /api/admin/films/:id/translate. Server picks the non-empty slot as
+// source, translates into the other two languages, and (when overwrite
+// is true) replaces all three. The DB write happens server-side; we
+// just hydrate the textareas with the response so editors see the new
+// translations immediately and can hit "저장" to persist for future
+// loads.
+//
+// For a brand-new film (no editFilmId), there's no row to UPDATE — we
+// surface a clear toast asking the editor to save first. Translating
+// against an empty row would produce nothing useful anyway because
+// the server reads from the row's current state.
+async function aiTranslateFilmDescriptions(overwrite){
+  if (!editFilmId){
+    try { toast('먼저 필름을 저장한 후 AI 번역을 사용해주세요.', { type:'error' }); }
+    catch(_){ alert('먼저 필름을 저장한 후 AI 번역을 사용해주세요.'); }
+    return;
+  }
+  var krEl = document.getElementById('filmDescription');
+  var enEl = document.getElementById('filmDescriptionEn');
+  var itEl = document.getElementById('filmDescriptionIt');
+  var kr = krEl ? String(krEl.value || '').trim() : '';
+  var en = enEl ? String(enEl.value || '').trim() : '';
+  var it = itEl ? String(itEl.value || '').trim() : '';
+
+  // Pick the source — first non-empty slot in KR → EN → IT priority,
+  // matching the server's fallback. This way the server gets whichever
+  // unsaved draft the editor just typed, even if the row in DB is
+  // still empty.
+  var source = null;
+  if (kr) source = { text: kr, lang: 'kr' };
+  else if (en) source = { text: en, lang: 'en' };
+  else if (it) source = { text: it, lang: 'it' };
+
+  if (!source){
+    try { toast('번역할 원문이 없습니다. KR / EN / IT 중 하나의 설명을 먼저 입력해주세요.', { type:'error' }); }
+    catch(_){ alert('번역할 원문이 없습니다.'); }
+    return;
+  }
+
+  if (overwrite && (kr || en || it) &&
+      !confirm('기존 설명을 덮어쓰며 3개 언어 모두 새로 번역합니다.\n계속할까요?')) {
+    return;
+  }
+
+  try { toast('🤖 번역 중... (몇 초 걸릴 수 있습니다)'); } catch(_){}
+  try {
+    var data = await apiPost('/admin/films/' + editFilmId + '/translate', {
+      overwrite: !!overwrite,
+      source: source,
+    });
+    if (data){
+      if (krEl) krEl.value = data.description    || '';
+      if (enEl) enEl.value = data.description_en || '';
+      if (itEl) itEl.value = data.description_it || '';
+      var filled = [];
+      if (data.fieldsUpdated){
+        if (data.fieldsUpdated.description)    filled.push('KR');
+        if (data.fieldsUpdated.description_en) filled.push('EN');
+        if (data.fieldsUpdated.description_it) filled.push('IT');
+      }
+      var msg = filled.length
+        ? '✓ AI 번역 완료: ' + filled.join(', ') + ' 슬롯 업데이트됨'
+        : '✓ 모든 슬롯에 이미 내용이 있어 변경되지 않았습니다.';
+      try { toast(msg); } catch(_){ alert(msg); }
+    }
+  } catch(e){
+    var emsg = (e && e.message) ? e.message : 'AI 번역에 실패했습니다.';
+    try { toast(emsg, { type:'error' }); } catch(_){ alert(emsg); }
+  }
 }
 
 function copyFilmIgCaption(btn){
