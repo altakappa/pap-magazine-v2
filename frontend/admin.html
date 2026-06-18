@@ -1891,11 +1891,21 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
      drag-and-drop multi-role chip picker by passing a custom areaId
      ('filmCreditsArea') to the shared addCredit / bulkDeleteCredits / etc.
      functions in pap-admin.js. -->
-<div class="modal-bg" id="filmModal">
-  <div class="modal" style="max-width:760px">
-    <button class="modal-close" onclick="closeFilmModal()">×</button>
-    <h2 id="filmModalTitle">필름 추가 <button class="btn btn-sm" style="margin-left:10px;padding:2px 8px;font-size:10px;vertical-align:middle" id="filmAuditBtn" onclick="if(typeof editFilmId !== 'undefined' && editFilmId) openContentAuditLog('film', editFilmId)">📋 수정 이력 보기</button></h2>
-    <div class="sub">클릭 시 새 팝업창에서 YouTube 영상이 재생됩니다. 필름은 "동영상이 있는 에디토리얼"입니다.</div>
+<!-- QA #252 — 필름 등록을 모달 → tab page로 전환.
+     에디토리얼(`t-newpost`) / 뉴스(`t-newnews`)와 동일한 mn-header +
+     mn-body 패턴으로 통일했습니다. 기존 modal-section / pe-*
+     클래스가 그대로 적용되므로 내부 폼 마크업은 변경 없음.
+     - openFilmModal(idx) → editingFilmId set + go('newfilm') + hydrate
+     - closeFilmModal()    → go('film') (목록으로 복귀)
+     filmModal id는 더 이상 modal-bg로 사용되지 않습니다 — pap-admin.js
+     의 dirty-check 셀렉터는 #t-newfilm으로 갱신됩니다. -->
+<div class="tab" id="t-newfilm">
+  <div class="mn-header">
+    <div class="mn-title" id="filmModalTitle">필름 작성 <button class="btn btn-sm" style="margin-left:10px;padding:2px 8px;font-size:10px;vertical-align:middle" id="filmAuditBtn" onclick="if(typeof editFilmId !== 'undefined' && editFilmId) openContentAuditLog('film', editFilmId)">📋 수정 이력 보기</button></div>
+    <div class="mn-actions"><button class="btn" onclick="closeFilmModal()">← 목록으로</button></div>
+  </div>
+  <div class="mn-body">
+    <div class="sub" style="margin-bottom:18px">클릭 시 새 팝업창에서 YouTube 영상이 재생됩니다. 필름은 "동영상이 있는 에디토리얼"입니다.</div>
 
     <div class="modal-section">
       <div class="modal-label">제목</div>
@@ -2102,7 +2112,10 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
       <input type="checkbox" id="filmActive" checked style="display:none">
     </div>
 
-    <div class="modal-foot">
+    <!-- QA #252 — same save/cancel pair as the editorial / news editor
+         pages. Cancel routes to the film list via closeFilmModal(), which
+         is now an alias for go('film'). -->
+    <div class="modal-foot" style="margin-top:24px">
       <button class="btn btn-primary" onclick="saveFilm()">저장</button>
       <button class="btn" onclick="closeFilmModal()">취소</button>
     </div>

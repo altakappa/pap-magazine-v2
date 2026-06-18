@@ -527,6 +527,30 @@ function go(id,el,opts){
   if(id==='editorials'&&!editorials.length) loadEditorials();
   if(id==='news') loadNews();
   if(id==='film') loadFilmsFromAPI();
+  // QA #252 — film editor lifecycle. Same shape as 'newpost' below:
+  //   • entering 'newfilm' without editFilmId set ⇒ fresh form
+  //   • leaving 'newfilm' while editFilmId is set ⇒ drop the sentinel
+  //     so the next "+ 새 필름" click starts blank
+  if(id==='newfilm'){
+    if(typeof editFilmId !== 'undefined' && !editFilmId){
+      if(typeof _resetFilmModalFields === 'function') _resetFilmModalFields();
+      var filmTitleEl = document.getElementById('filmModalTitle');
+      if(filmTitleEl){
+        var auditBtn = document.getElementById('filmAuditBtn');
+        filmTitleEl.firstChild && (filmTitleEl.firstChild.textContent = '필름 작성 ');
+        // Hide the "수정 이력 보기" button on new-film entries — no id yet.
+        if(auditBtn) auditBtn.style.display = 'none';
+      }
+    } else if(typeof editFilmId !== 'undefined' && editFilmId){
+      var _auditBtn = document.getElementById('filmAuditBtn');
+      if(_auditBtn) _auditBtn.style.display = '';
+    }
+  } else if(id !== 'newfilm' && typeof editFilmId !== 'undefined' && editFilmId){
+    // Leaving the film editor while in an edit session — drop the
+    // sentinel so the next "+ 새 필름" click triggers a fresh form.
+    editFilmId = null;
+    editFilmIdx = -1;
+  }
   if(id==='submissions') loadSubmissions();
   if(id==='pullletters') loadPullLetters();
   if(id==='newpost'){
@@ -5675,7 +5699,10 @@ document.addEventListener('DOMContentLoaded', function(){
   // Editorial + news + film + shorts form containers — any input/change
   // anywhere inside flips the flag. Specific fields wire themselves via
   // existing handlers; this is the catch-all.
-  var watch = ['#t-newpost', '#t-newnews', '#filmModal', '#shortsModal'];
+  // QA #252 — film editor is now a tab page (#t-newfilm) instead of a
+  // modal-bg overlay. The selector list below drives the unsaved-changes
+  // warning so it needs to track the new id.
+  var watch = ['#t-newpost', '#t-newnews', '#t-newfilm', '#shortsModal'];
   watch.forEach(function(sel){
     var root = document.querySelector(sel);
     if(!root) return;
@@ -6940,9 +6967,25 @@ function openFilmModal(idx){
     _populateFilmRelatedEditorial('');
   }
 
-  document.getElementById('filmModal').classList.add('show');
+  // QA #252 — was `filmModal.classList.add('show')`. Now we navigate to
+  // the dedicated tab page (`#t-newfilm`) the same way the editorial /
+  // news editors do. `go('newfilm')` handles the URL pushState +
+  // sidebar highlight + tab toggle; the form was already hydrated above
+  // so there's nothing else to wire up here.
+  go('newfilm');
+  // Scroll to top so the editor starts at the title field, not wherever
+  // the previous tab was scrolled to.
+  try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch(_){}
 }
-function closeFilmModal(){document.getElementById('filmModal').classList.remove('show');}
+// QA #252 — closing the film editor now means "go back to the film
+// list" (mirrors closeNewPost/closeNewNews behavior). The dirty-check
+// hook in pap-admin.js's beforeunload listener still kicks in via the
+// '#t-newfilm' watch entry.
+function closeFilmModal(){
+  // Drop edit context so the next "+ 새 필름" click starts clean.
+  try { editFilmId = null; editFilmIdx = -1; } catch(_){}
+  go('film');
+}
 
 // QA #164 — toggle the schedule date-time wrap based on the selected
 // publish radio. Called by onchange on each radio + when the modal opens.
