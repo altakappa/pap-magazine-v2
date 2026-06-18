@@ -21,11 +21,16 @@ const { supabaseAdmin } = require('./supabase');
 // in this map falls back to the action keyword itself, so callers
 // don't need to ship UI changes when introducing a new verb.
 const ACTION_LABEL = {
-  create:    '등록',
-  update:    '수정',
-  delete:    '삭제',
-  publish:   '공개',
-  unpublish: '비공개 전환',
+  create:         '등록',
+  update:         '수정',
+  delete:         '삭제',
+  publish:        '공개',
+  unpublish:      '비공개 전환',
+  // QA #249 — emitted by api/cron/release-due-scheduled when a film /
+  // editorial / article's scheduled_publish_at timestamp is crossed
+  // and the row transitions from "queued" to publicly visible. Gives
+  // the editor an explicit log row to verify the schedule fired.
+  auto_published: '예약 자동 발행',
 };
 
 /**

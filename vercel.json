@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/purge-rejected-submissions",
       "schedule": "10 18 * * *"
+    },
+    {
+      "path": "/api/cron/release-due-scheduled",
+      "schedule": "*/5 * * * *"
     }
   ],
   "rewrites": [
