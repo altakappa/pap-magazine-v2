@@ -6866,6 +6866,19 @@ function _resetFilmModalFields(){
   // QA #251 — same logic for the three description slots.
   ['filmDescription', 'filmDescriptionEn', 'filmDescriptionIt']
     .forEach(function(id){ var el = document.getElementById(id); if (el) el.value = ''; });
+  // QA #253 — wipe the unified 게시 설정 surface so a previous edit's
+  // 추천 / 예약 / 발행 날짜 state doesn't carry into a fresh entry.
+  var _pubCb = document.getElementById('filmPublishCb');
+  var _featCb = document.getElementById('filmFeatured');
+  var _schedCb = document.getElementById('filmScheduleCb');
+  if (_pubCb)   _pubCb.checked = true;   // default 공개
+  if (_featCb)  _featCb.checked = false;
+  if (_schedCb) _schedCb.checked = false;
+  ['filmPublishDate','filmPublishTime','filmScheduleDate']
+    .forEach(function(id){ var el = document.getElementById(id); if (el) el.value = ''; });
+  var _stEl = document.getElementById('filmScheduleTime');
+  if (_stEl) _stEl.value = '09:00';
+  if (typeof toggleFilmSchedule === 'function') toggleFilmSchedule();
 }
 
 function openFilmModal(idx){
@@ -6895,6 +6908,21 @@ function openFilmModal(idx){
     if (_dEnEl) _dEnEl.value = f.description_en || '';
     if (_dItEl) _dItEl.value = f.description_it || '';
     document.getElementById('filmDate').value = (f.published_date || '').slice(0,10) || new Date().toISOString().slice(0,10);
+    // QA #253 — hydrate the unified 발행 날짜 pair (#filmPublishDate +
+    // #filmPublishTime) from f.published_date so editors can see + edit
+    // the timestamp the same way the editorial / news editor does.
+    if (f.published_date) {
+      try {
+        var _pd = new Date(f.published_date);
+        if (!isNaN(_pd.getTime())) {
+          var _pp = function(n){ return n < 10 ? '0' + n : '' + n; };
+          var _pubDateEl = document.getElementById('filmPublishDate');
+          var _pubTimeEl = document.getElementById('filmPublishTime');
+          if (_pubDateEl) _pubDateEl.value = _pd.getFullYear() + '-' + _pp(_pd.getMonth()+1) + '-' + _pp(_pd.getDate());
+          if (_pubTimeEl) _pubTimeEl.value = _pp(_pd.getHours()) + ':' + _pp(_pd.getMinutes());
+        }
+      } catch(_){}
+    }
     // QA #164 — restore publish state from the row. Precedence:
     //   status='draft'                                 → 임시저장
     //   status='published' + scheduled_publish_at future → 예약 게시
@@ -6906,6 +6934,15 @@ function openFilmModal(idx){
     }
     var _modeEl = document.getElementById(_modeId);
     if (_modeEl) _modeEl.checked = true;
+    // QA #253 — sync the visible checkbox pair (#filmPublishCb + #filmScheduleCb)
+    // to the hidden radio so the editor sees the right state of the
+    // unified 게시 설정 UI.
+    var _isDraft = (f.status !== 'published');
+    var _isScheduled = (_modeId === 'filmPublishMode_scheduled');
+    var _pubCb2 = document.getElementById('filmPublishCb');
+    var _schedCb2 = document.getElementById('filmScheduleCb');
+    if (_pubCb2)   _pubCb2.checked   = !_isDraft;  // draft → 공개 미체크
+    if (_schedCb2) _schedCb2.checked = _isScheduled;
     var _schedInput = document.getElementById('filmScheduledAt');
     if (_schedInput && f.scheduled_publish_at) {
       // Convert ISO timestamp → datetime-local value (YYYY-MM-DDTHH:mm).
@@ -6913,6 +6950,12 @@ function openFilmModal(idx){
         var _d = new Date(f.scheduled_publish_at);
         var _p = function(n){ return n < 10 ? '0' + n : '' + n; };
         _schedInput.value = _d.getFullYear() + '-' + _p(_d.getMonth()+1) + '-' + _p(_d.getDate()) + 'T' + _p(_d.getHours()) + ':' + _p(_d.getMinutes());
+        // QA #253 — also fill the split date / time pair so the new
+        // unified UI displays the right values.
+        var _sdEl = document.getElementById('filmScheduleDate');
+        var _stEl = document.getElementById('filmScheduleTime');
+        if (_sdEl) _sdEl.value = _d.getFullYear() + '-' + _p(_d.getMonth()+1) + '-' + _p(_d.getDate());
+        if (_stEl) _stEl.value = _p(_d.getHours()) + ':' + _p(_d.getMinutes());
       } catch(_) { _schedInput.value = ''; }
     } else if (_schedInput) {
       _schedInput.value = '';
@@ -6987,17 +7030,66 @@ function closeFilmModal(){
   go('film');
 }
 
-// QA #164 — toggle the schedule date-time wrap based on the selected
-// publish radio. Called by onchange on each radio + when the modal opens.
-// Idempotent: safe to call before the DOM is fully built.
+// QA #164 / #253 — keep the visible UI in sync with the (hidden) legacy
+// radios + show the 예약 일시 box only when the 예약 checkbox is ticked.
+//
+// The film editor now matches the editorial / news pattern: two visible
+// checkboxes (#filmPublishCb 공개, #filmScheduleCb 예약) drive a hidden
+// radio group (`filmPublishMode_*`) that the rest of saveFilm /
+// openFilmModal / read paths already speak. Toggling either checkbox
+// reconciles the radios so downstream code keeps working:
+//
+//   공개 + 예약 미체크  → published
+//   공개 미체크 + 예약 미체크 → draft
+//   예약 체크 (공개 무관) → scheduled
+//
+// The "예약 일시" area (`#filmScheduleArea`) is the user-facing toggle
+// target. The legacy `#filmScheduleWrap` element is now a hidden noop
+// kept only so older cached JS doesn't NPE on a null lookup.
 function toggleFilmSchedule(){
-  var mode = (document.querySelector('input[name="filmPublishMode"]:checked') || {}).value;
-  var wrap = document.getElementById('filmScheduleWrap');
-  if (!wrap) return;
-  wrap.style.display = (mode === 'scheduled') ? '' : 'none';
+  var pubCb   = document.getElementById('filmPublishCb');
+  var schedCb = document.getElementById('filmScheduleCb');
+  var mode = 'published';
+  if (schedCb && schedCb.checked) {
+    mode = 'scheduled';
+    // Per editorial UX (QA #127): selecting 예약 always implies the row
+    // will go public when the time hits. Force the 공개 checkbox on so
+    // the editor's mental model stays correct ("예약 = scheduled-public").
+    if (pubCb) pubCb.checked = true;
+  } else if (pubCb && !pubCb.checked) {
+    mode = 'draft';
+  }
+  // Sync hidden radios so the rest of pap-admin.js reads the right mode.
+  ['published', 'draft', 'scheduled'].forEach(function(m){
+    var r = document.getElementById('filmPublishMode_' + m);
+    if (r) r.checked = (m === mode);
+  });
+  // Show / hide the 예약 일시 area.
+  var area = document.getElementById('filmScheduleArea');
+  if (area) area.style.display = (mode === 'scheduled') ? '' : 'none';
 }
 
-async function saveFilm(){
+// QA #253 — 발행 날짜 helpers, mirroring the editorial / news pair
+// (_setPublishDateNow / _clearPublishDate). Decouples the file the
+// user is editing from the timestamp the row claims to have been
+// published, so editors can back-date or future-date the display date
+// without touching the publish workflow.
+function _setFilmPublishDateNow(){
+  var d = new Date();
+  var p = function(n){ return n < 10 ? '0' + n : '' + n; };
+  var dEl = document.getElementById('filmPublishDate');
+  var tEl = document.getElementById('filmPublishTime');
+  if (dEl) dEl.value = d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate());
+  if (tEl) tEl.value = p(d.getHours()) + ':' + p(d.getMinutes());
+}
+function _clearFilmPublishDate(){
+  var dEl = document.getElementById('filmPublishDate');
+  var tEl = document.getElementById('filmPublishTime');
+  if (dEl) dEl.value = '';
+  if (tEl) tEl.value = '';
+}
+
+async function saveFilm(forceStatus){
   var title=document.getElementById('filmTitle').value.trim();
   var yt=document.getElementById('filmYouTube').value.trim();
   if(!title||!yt){alert('제목과 YouTube URL을 입력해 주세요.');return;}
@@ -7069,7 +7161,29 @@ async function saveFilm(){
   }
   if (cats.length === 0) cats = ['Film'];
 
-  var pubDate = document.getElementById('filmDate').value || new Date().toISOString().slice(0,10);
+  // QA #253 — published_date now sources from the dedicated 발행 날짜
+  // pair (#filmPublishDate + #filmPublishTime) so it can carry a full
+  // timestamp like the editorial / news pattern. Falls back to:
+  //   1. the legacy `#filmDate` input (if present, kept for backwards
+  //      compatibility with rows that still mirror it on hydrate);
+  //   2. today's date — saved as a YYYY-MM-DD slice so the column stays
+  //      compatible with whichever pre-existing data type lived there.
+  var _pubDateEl = document.getElementById('filmPublishDate');
+  var _pubTimeEl = document.getElementById('filmPublishTime');
+  var pubDate;
+  if (_pubDateEl && _pubDateEl.value) {
+    var _t = (_pubTimeEl && _pubTimeEl.value) ? _pubTimeEl.value : '00:00';
+    // Use the explicit date + time, normalised to ISO UTC.
+    var _local = new Date(_pubDateEl.value + 'T' + _t);
+    pubDate = isNaN(_local.getTime())
+      ? _pubDateEl.value
+      : _local.toISOString();
+  } else {
+    var _legacyDateEl = document.getElementById('filmDate');
+    pubDate = (_legacyDateEl && _legacyDateEl.value)
+      ? _legacyDateEl.value
+      : new Date().toISOString().slice(0,10);
+  }
 
   // Credits — same shape the editorial form serializes. Empty rows skipped.
   var credits = [];
@@ -7094,11 +7208,27 @@ async function saveFilm(){
   //                 GET hide the row until now() crosses the timestamp)
   var pubModeEl = document.querySelector('input[name="filmPublishMode"]:checked');
   var pubMode = pubModeEl ? pubModeEl.value : 'published';
+  // QA #253 — explicit "임시저장" button passes 'draft' to override the
+  // unified UI's mode resolution. Mirrors the news editor's
+  // saveNewsArticle('draft') entry point.
+  if (forceStatus === 'draft') pubMode = 'draft';
   var status, scheduledIso = null;
   if (pubMode === 'draft') {
     status = 'draft';
   } else if (pubMode === 'scheduled') {
-    var schedRaw = (document.getElementById('filmScheduledAt').value || '').trim();
+    // QA #253 — read the split date + time inputs and combine into an
+    // ISO timestamp. Falls back to the legacy #filmScheduledAt
+    // datetime-local in case any external caller (or older cached
+    // markup) still feeds it.
+    var _sDateEl = document.getElementById('filmScheduleDate');
+    var _sTimeEl = document.getElementById('filmScheduleTime');
+    var schedRaw = '';
+    if (_sDateEl && _sDateEl.value) {
+      var _st = (_sTimeEl && _sTimeEl.value) ? _sTimeEl.value : '09:00';
+      schedRaw = _sDateEl.value + 'T' + _st;
+    } else {
+      schedRaw = (document.getElementById('filmScheduledAt').value || '').trim();
+    }
     if (!schedRaw) {
       alert('예약 게시를 선택하셨습니다. 예약 일시를 입력해주세요.');
       return;

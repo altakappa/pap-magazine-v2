@@ -2089,34 +2089,72 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
       <input type="hidden" id="filmRelatedEditorial" value="">
     </div>
 
-    <!-- QA #164 — publish state was a single "공개" checkbox that always
-         rounded to either status=published or status=draft. Editorials
-         already had three explicit options (공개 / 임시저장 / 예약);
-         film admin now mirrors that. The legacy #filmActive checkbox
-         stays in the DOM (hidden) so any cached JS that still reads it
-         won't crash — saveFilm now consumes the radio group instead. -->
-    <div class="modal-section">
-      <div class="pe-label" style="margin-bottom:8px">공개 설정</div>
-      <div style="display:flex;flex-wrap:wrap;gap:14px 22px">
-        <label class="pe-check"><input type="radio" name="filmPublishMode" value="published" id="filmPublishMode_published" checked onchange="toggleFilmSchedule()"> 공개</label>
-        <label class="pe-check"><input type="radio" name="filmPublishMode" value="draft" id="filmPublishMode_draft" onchange="toggleFilmSchedule()"> 임시저장</label>
-        <label class="pe-check"><input type="radio" name="filmPublishMode" value="scheduled" id="filmPublishMode_scheduled" onchange="toggleFilmSchedule()"> 예약 게시</label>
+    <!-- QA #253 — 게시 설정 영역을 에디토리얼(QA #224) / 뉴스 패턴과
+         동일하게 통합:
+         • 라디오 3개(공개/임시저장/예약) → 체크박스 3개(공개/추천/예약)
+           로 변경. "임시저장"은 하단 버튼(`saveFilm('draft')`)으로 이동.
+         • 발행 날짜 영역 추가 — date + time + "지금" + "초기화" 버튼.
+           기존 #filmDate(상단)는 hidden mirror로 유지해 saveFilm /
+           openFilmModal의 기존 참조를 깨지 않습니다.
+         • 예약 일시: 단일 datetime-local → date + time 분리 (UI 통일).
+           saveFilm 안에서 두 입력을 ISO 타임스탬프로 합칩니다.
+         • #filmPublishMode_* 라디오 ids는 hidden mirror로 유지 —
+           toggleFilmSchedule + 기존 onchange 핸들러가 그대로 동작. -->
+    <div class="pe-section">
+      <div class="pe-label">게시 설정</div>
+      <div class="pe-checks">
+        <label class="pe-check"><input type="checkbox" checked id="filmPublishCb" onchange="toggleFilmSchedule()"> 공개</label>
+        <label class="pe-check"><input type="checkbox" id="filmFeatured" title="Featured — UI 통일용. 컬럼은 추후 추가 예정"> 추천 (Featured)</label>
+        <label class="pe-check"><input type="checkbox" id="filmScheduleCb" onchange="toggleFilmSchedule()"> 예약 게시</label>
       </div>
-      <!-- Date/time picker — only visible when "예약 게시" is selected. -->
-      <div id="filmScheduleWrap" style="display:none;margin-top:12px;padding:12px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:2px">
+
+      <!-- 발행 날짜 — 비워두면 저장 시점 자동 사용 -->
+      <div id="filmPublishDateArea" style="margin-top:12px;padding:12px;background:var(--surface);border:1px solid var(--border)">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+          <div class="pe-label" style="margin-bottom:0">발행 날짜</div>
+          <span class="pe-opt">선택 — 비워두면 저장 시점</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="date" class="pe-input" id="filmPublishDate" style="flex:1">
+          <input type="time" class="pe-input" id="filmPublishTime" style="width:120px">
+          <button type="button" class="btn btn-sm" onclick="_setFilmPublishDateNow()" title="지금 시각으로">지금</button>
+          <button type="button" class="btn btn-sm" onclick="_clearFilmPublishDate()" title="비우기 (저장 시점 자동 사용)">초기화</button>
+        </div>
+        <div class="pe-hint" style="margin-top:6px">필름 카드/상세의 표시 날짜로 사용됩니다. 과거 날짜로 백데이트하거나 미래 날짜로도 설정 가능 (단, 미래 날짜는 예약 게시와 별개로 표시 날짜만 변경됩니다).</div>
+      </div>
+
+      <!-- 예약 일시 — 체크 시에만 노출 -->
+      <div id="filmScheduleArea" style="display:none;margin-top:12px;padding:12px;background:var(--surface);border:1px solid var(--border)">
         <div class="pe-label" style="margin-bottom:6px">예약 일시</div>
-        <input class="pe-input" id="filmScheduledAt" type="datetime-local">
-        <div class="pe-hint" style="margin-top:6px">지정한 날짜·시간이 지나면 자동으로 공개됩니다. (브라우저 로컬 시간 기준)</div>
+        <div style="display:flex;gap:8px">
+          <input type="date" class="pe-input" id="filmScheduleDate" style="flex:1">
+          <input type="time" class="pe-input" id="filmScheduleTime" style="width:120px" value="09:00">
+        </div>
+        <div class="pe-hint" style="margin-top:6px">지정한 날짜/시간에 자동으로 공개됩니다 (KST 기준). <strong style="color:rgba(180,255,180,.9)">저장 시 자동으로 공개 상태로 전환</strong>되어 그 시점까지 숨겨졌다가 노출됩니다 — "공개" 체크를 별도로 켤 필요 없음.</div>
       </div>
-      <!-- Hidden legacy checkbox; some code paths still query it. -->
-      <input type="checkbox" id="filmActive" checked style="display:none">
+
+      <!-- Hidden mirrors so legacy JS (toggleFilmSchedule / saveFilm /
+           openFilmModal) keeps working without a giant refactor. The
+           checkbox handlers below sync these on every change. -->
+      <div style="display:none">
+        <input type="radio" name="filmPublishMode" value="published" id="filmPublishMode_published" checked>
+        <input type="radio" name="filmPublishMode" value="draft"     id="filmPublishMode_draft">
+        <input type="radio" name="filmPublishMode" value="scheduled" id="filmPublishMode_scheduled">
+        <input id="filmScheduledAt" type="datetime-local">
+        <input id="filmScheduleWrap" type="text" value="legacy-noop">
+        <input type="checkbox" id="filmActive" checked>
+      </div>
     </div>
 
-    <!-- QA #252 — same save/cancel pair as the editorial / news editor
-         pages. Cancel routes to the film list via closeFilmModal(), which
-         is now an alias for go('film'). -->
+    <!-- QA #252 / #253 — 저장 / 임시저장 / 취소 — mirrors the news
+         editor button row exactly. The "임시저장" button is a separate
+         entry point because the unified 게시 설정 UI no longer exposes
+         a "임시저장" radio (that mode now lives behind 공개 미체크 + 예약
+         미체크). Without this button editors had no fast way to drop
+         a draft from a partly-filled form. -->
     <div class="modal-foot" style="margin-top:24px">
       <button class="btn btn-primary" onclick="saveFilm()">저장</button>
+      <button class="btn" onclick="saveFilm('draft')" title="공개/예약 체크와 무관하게 임시저장으로 저장">임시저장</button>
       <button class="btn" onclick="closeFilmModal()">취소</button>
     </div>
   </div>
