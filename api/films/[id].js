@@ -72,6 +72,9 @@ module.exports = async function handler(req, res) {
         // QA #164 — admins can transition a film between published / draft
         // / scheduled by sending the new value plus optional timestamp.
         'scheduled_publish_at',
+        // QA #250 — Instagram caption. Plain TEXT; empty string normalised
+        // to null below so DB stays clean.
+        'instagram_caption',
       ];
       // Coerce TEXT[] columns to arrays so admin payloads from older
       // form versions (string-shape) don't break the schema.
@@ -81,6 +84,13 @@ module.exports = async function handler(req, res) {
         let v = req.body[key];
         if (toArrayCols.has(key)) {
           v = Array.isArray(v) ? v : (v == null || v === '' ? [] : [String(v)]);
+        }
+        // QA #250 — TEXT caption: trim + treat empty as null so the
+        // column doesn't get written as "" (which would defeat the
+        // IS NULL gate in the future "needs caption?" admin filter).
+        if (key === 'instagram_caption') {
+          const trimmed = String(v || '').trim();
+          v = trimmed ? trimmed : null;
         }
         updates[key] = v;
       }

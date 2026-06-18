@@ -1981,6 +1981,26 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
       <div class="pe-hint" style="margin-top:6px">역할이 목록에 없으면 <strong>+ 직접 입력</strong>을 선택해 자유롭게 입력할 수 있습니다.</div>
     </div>
 
+    <!-- QA #250 — Instagram caption for films, mirroring the editorials
+         IG caption block (QA #170/184). The film page already collects
+         every structured field IG needs (제목 + credits[] + 연결된
+         에디토리얼), so the "🔄 템플릿 재조립" button rebuilds the
+         caption deterministically from the form state without an AI
+         hop. AI generation is not wired here because films don't carry
+         per-shot fashion/beauty descriptors the way editorials do — a
+         template fill is faster + predictable. -->
+    <div class="modal-section" id="filmIgCaptionSection">
+      <div class="pe-label" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+        <span>📷 인스타그램 캡션 <span class="pe-opt">선택 — 인스타 게시용 캡션 초안</span></span>
+        <span style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-sm" type="button" onclick="regenerateFilmIgCaption()" title="현재 제목과 크레딧으로 템플릿 캡션 재조립">🔄 템플릿 재조립</button>
+          <button class="btn btn-sm btn-blue" type="button" onclick="copyFilmIgCaption(this)" title="클립보드에 복사">📋 복사</button>
+        </span>
+      </div>
+      <textarea class="modal-ta" id="filmIgCaption" style="min-height:160px;font-family:'SF Mono',Menlo,Monaco,monospace;font-size:12px;line-height:1.6" placeholder="@pap_magazine presents&#10;&#10;Title&#10;&#10;Director @handle&#10;DOP @handle&#10;Starring @model&#10;&#10;(템플릿 재조립을 누르면 위 크레딧 영역의 값으로 채워집니다.)"></textarea>
+      <div class="pe-hint">필름 등록/수정 시 함께 저장됩니다. 발행 전 자유롭게 다듬어주세요. <strong>🔄 템플릿 재조립</strong>은 위 제목·크레딧 입력값으로 즉시 새 초안을 만들고, <strong>📋 복사</strong>는 인스타에 바로 붙여넣을 수 있게 클립보드에 담아줍니다.</div>
+    </div>
+
     <!-- QA #229 — Linked-editorial picker.
          Was a single <select> of titles that grew unmanageable as the
          editorial count climbed (no search, no thumbnail, no date). Now

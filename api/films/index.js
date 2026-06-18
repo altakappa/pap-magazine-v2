@@ -49,7 +49,11 @@ module.exports = async function handler(req, res) {
         // QA #202 — authorship columns for admin list rendering.
         'created_at','created_by','updated_by',
         // QA #230 — needed by admin edit-modal hydrate (see note above).
-        'credits','related_editorial_id'
+        'credits','related_editorial_id',
+        // QA #250 — Instagram caption (mirrors editorials column). Also
+        // hydrates the admin edit modal directly from the list cache so
+        // editors can re-edit without a per-row refetch.
+        'instagram_caption'
       ].join(',');
       // QA #248 — `?status=scheduled` semantics.
       //
@@ -132,6 +136,9 @@ module.exports = async function handler(req, res) {
         categories, tags, credits, slug, status,
         related_editorial_id,
         scheduled_publish_at,
+        // QA #250 — film Instagram caption (mirrors editorials.instagram_caption
+        // from QA #170). Optional, plain TEXT; admin modal drafts + persists it.
+        instagram_caption,
       } = req.body;
 
       if (!title || !youtube_id) {
@@ -163,6 +170,13 @@ module.exports = async function handler(req, res) {
       };
       if (slug)                  insertRow.slug = slug;
       if (related_editorial_id)  insertRow.related_editorial_id = related_editorial_id;
+      // QA #250 — accept null/empty as "clear the caption", not "leave
+      // unchanged" (POST always sets a fresh row, so trim + null is
+      // the correct shape).
+      if (typeof instagram_caption !== 'undefined') {
+        const trimmed = String(instagram_caption || '').trim();
+        insertRow.instagram_caption = trimmed ? trimmed : null;
+      }
 
       const { data, error } = await supabaseAdmin
         .from('films')

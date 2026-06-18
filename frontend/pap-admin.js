@@ -6832,6 +6832,10 @@ function _resetFilmModalFields(){
   // "+ 새 필름" session.
   var thumbStatus = document.getElementById('filmThumbStatus');
   if(thumbStatus){ thumbStatus.textContent = ''; thumbStatus.style.color = ''; }
+  // QA #250 — clear Instagram caption so a stale draft from a previous
+  // film edit doesn't bleed into a fresh "+ 새 필름" session.
+  var igCap = document.getElementById('filmIgCaption');
+  if (igCap) igCap.value = '';
 }
 
 function openFilmModal(idx){
@@ -6847,6 +6851,11 @@ function openFilmModal(idx){
     document.getElementById('filmYouTube').value = f.youtube_id || '';
     document.getElementById('filmThumb').value = f.thumbnail_url || '';
     document.getElementById('filmSlug').value = f.slug || '';
+    // QA #250 — hydrate Instagram caption draft. Comes from the films
+    // LIST_COLUMNS payload (instagram_caption included there per the
+    // API change in the same QA) so no extra fetch is needed.
+    var _igEl = document.getElementById('filmIgCaption');
+    if (_igEl) _igEl.value = f.instagram_caption || '';
     document.getElementById('filmDate').value = (f.published_date || '').slice(0,10) || new Date().toISOString().slice(0,10);
     // QA #164 — restore publish state from the row. Precedence:
     //   status='draft'                                 → 임시저장
@@ -7058,6 +7067,13 @@ async function saveFilm(){
     status = 'published';
   }
 
+  // QA #250 — Instagram caption (optional). Trim + send null on empty
+  // so the API doesn't write "" into the column (matches the IS-NULL
+  // semantics editorials.instagram_caption uses for the "needs caption"
+  // future-filter).
+  var igCapEl = document.getElementById('filmIgCaption');
+  var igCaption = igCapEl ? String(igCapEl.value || '').trim() : '';
+
   var payload = {
     title: title,
     youtube_id: ytId,
@@ -7069,6 +7085,7 @@ async function saveFilm(){
     status: status,
     scheduled_publish_at: scheduledIso,
     related_editorial_id: relEd,
+    instagram_caption: igCaption || null,
   };
 
   try{
@@ -7094,6 +7111,84 @@ async function deleteFilm(i){
   if(!films[i])return;
   if(!confirm('"'+films[i].title+'" 을 삭제하시겠습니까?'))return;
   try{await apiDelete('/films/'+films[i].id);films.splice(i,1);renderFilms();alert('삭제되었습니다.');}catch(e){alert('삭제 실패');}
+}
+
+// ======== QA #250 — FILM INSTAGRAM CAPTION HELPERS ========
+// Template-based caption builder used by the "🔄 템플릿 재조립" button
+// in the film modal. Mirrors the editorial caption shape (Photographer
+// @x / Style @y / …) but pulls from the film form's title + credits[]
+// inputs. No AI hop — the film page already has every structured
+// field we need; a deterministic template is faster and predictable.
+function _buildFilmIgCaptionTemplate(){
+  var titleEl = document.getElementById('filmTitle');
+  var title = titleEl ? String(titleEl.value || '').trim() : '';
+
+  // Read credit rows the same way saveFilm does so the template stays
+  // in lockstep with what actually gets persisted.
+  var lines = [];
+  document.querySelectorAll('#filmCreditsArea .pe-credit-row').forEach(function(row){
+    var nameEl = row.querySelector('.pe-credit-name');
+    var igEl   = row.querySelector('.pe-credit-ig');
+    var roles  = (typeof _readCreditRoles === 'function') ? _readCreditRoles(row) : [];
+    var nameVal = (nameEl && nameEl.value || '').trim();
+    if (!roles.length || !nameVal) return;
+    // Handle: prefer the @insta value, else fall back to the display
+    // name. Strip leading @ so we add exactly one back.
+    var handle = (igEl && igEl.value || '').trim().replace(/^@+/, '');
+    var label = handle ? '@' + handle : nameVal;
+    roles.forEach(function(role){
+      // Capitalise the role for IG ("Director" not "director") so the
+      // caption reads like the manually written one.
+      var pretty = String(role || '').trim();
+      if (!pretty) return;
+      pretty = pretty.charAt(0).toUpperCase() + pretty.slice(1);
+      lines.push(pretty + ' ' + label);
+    });
+  });
+
+  var out = '@pap_magazine presents\n\n';
+  if (title) out += title + '\n\n';
+  if (lines.length) out += lines.join('\n') + '\n';
+  return out.trimEnd();
+}
+
+function regenerateFilmIgCaption(){
+  var el = document.getElementById('filmIgCaption');
+  if (!el) return;
+  // If the editor has hand-written content, confirm before clobbering
+  // — same UX as the editorial regenerate buttons.
+  if (el.value && el.value.trim() &&
+      !confirm('현재 작성된 캡션을 새로 만든 템플릿으로 덮어쓸까요?')) {
+    return;
+  }
+  el.value = _buildFilmIgCaptionTemplate();
+  try { toast('인스타그램 캡션을 다시 만들었습니다.'); } catch(_){}
+}
+
+function copyFilmIgCaption(btn){
+  var el = document.getElementById('filmIgCaption');
+  if (!el || !el.value) {
+    try { toast('복사할 캡션이 없습니다.', { type: 'error' }); } catch(_){ alert('복사할 캡션이 없습니다.'); }
+    return;
+  }
+  var txt = el.value;
+  // Modern clipboard API + fallback. The editor's browser is always
+  // recent (admin-side tool), but the textarea fallback is cheap.
+  var done = function(){
+    try { toast('캡션이 클립보드에 복사되었습니다.'); } catch(_){}
+    if (btn) {
+      var orig = btn.textContent;
+      btn.textContent = '✓ 복사됨';
+      setTimeout(function(){ btn.textContent = orig; }, 1500);
+    }
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(done).catch(function(){
+      el.select(); document.execCommand('copy'); done();
+    });
+  } else {
+    el.select(); document.execCommand('copy'); done();
+  }
 }
 
 // ======== SHORTS CRUD ========
