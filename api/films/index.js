@@ -51,16 +51,43 @@ module.exports = async function handler(req, res) {
         // QA #230 — needed by admin edit-modal hydrate (see note above).
         'credits','related_editorial_id'
       ].join(',');
+      // QA #248 — `?status=scheduled` semantics.
+      //
+      // Films are saved with `status='published'` + a future
+      // `scheduled_publish_at` (see saveFilm in pap-admin.js — mirrors
+      // the editorial flow per QA #127/#164). There is no literal
+      // 'scheduled' value in the films.status column, so the previous
+      // `.eq('status', requestedStatus)` clause turned a scheduled
+      // query into `WHERE status='scheduled'`, which always returned
+      // []. As a result the admin "예약 필름" stat card stayed at 0
+      // and queued films were invisible until the cron actually
+      // released them.
+      //
+      // Pattern matches editorials/index.js (QA #196): translate the
+      // `scheduled` filter into `status='published' AND scheduled
+      // publish date > now()`, sorted by publish date ascending so the
+      // soonest-to-go-live sits at the top.
+      const isScheduledFilter = requestedStatus === 'scheduled';
       let query = supabaseAdmin
         .from('films')
-        .select(LIST_COLUMNS + ', related_editorial:editorials!related_editorial_id(id,slug,title,cover_image,thumbnail,published_date)', { count: 'exact' })
-        .eq('status', requestedStatus)
-        .order('published_date', { ascending: false })
-        .range(offset, offset + parseInt(limit) - 1);
-      // Schedule gate (QA #164).
-      if (requestedStatus === 'published') {
-        query = query.or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${new Date().toISOString()}`);
+        .select(LIST_COLUMNS + ', related_editorial:editorials!related_editorial_id(id,slug,title,cover_image,thumbnail,published_date)', { count: 'exact' });
+
+      if (isScheduledFilter) {
+        query = query.eq('status', 'published')
+                     .gt('scheduled_publish_at', new Date().toISOString())
+                     .order('scheduled_publish_at', { ascending: true });
+      } else {
+        query = query.eq('status', requestedStatus)
+                     .order('published_date', { ascending: false });
+        // Schedule gate (QA #164) — hide future-queued rows from the
+        // public 'published' view. isScheduledFilter already restricts
+        // to FUTURE rows above so we skip the gate there.
+        if (requestedStatus === 'published') {
+          query = query.or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${new Date().toISOString()}`);
+        }
       }
+
+      query = query.range(offset, offset + parseInt(limit) - 1);
 
       if (category) {
         query = query.ilike('categories', `%${category}%`);
