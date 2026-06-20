@@ -7078,7 +7078,11 @@ function closeFilmModal(){
 // reuse it instead of drawing a runtime SVG. The editor can still
 // override via the file input (papInstaSetCustomLogo) when they want a
 // specific transparent-PNG mark for a given editorial.
-var _PAP_INSTA_DEFAULT_LOGO_URL = '/pap-symbol-white.png';
+// QA #254 v3 — wordmark, not the square symbol. The Instagram editor
+// stamps a horizontal "PAP" wordmark at the bottom; pap-symbol-white.png
+// is the square symbol mark used on the site header, not what we want
+// composited over editorial shots.
+var _PAP_INSTA_DEFAULT_LOGO_URL = '/pap-logo-white.png';
 
 var _papInstaLogoImg = null;       // cached HTMLImageElement of the logo
 var _papInstaLogoLoading = null;   // in-flight Promise so concurrent
@@ -7448,12 +7452,41 @@ function _papInstaLoadLogo(){
   return _papInstaLogoLoading;
 }
 
+// QA #254 v3 hotfix — cache loaded images by URL. Sliders fire many
+// `_papInstaCompositeOne` calls per second; without a cache each one
+// re-fetched the gallery image from S3, and a single CORS hiccup
+// (preflight cache miss, transient 4xx, network blip) on any subsequent
+// fetch left the canvas blank — looked like the sliders "did nothing"
+// because the redraw silently dropped the image layer. With the cache
+// the image is fetched exactly once per session per URL, so slider
+// drags repaint instantly from memory.
+var _papInstaImageCache = {};
 function _papInstaLoadImage(url){
+  if (_papInstaImageCache[url]) return Promise.resolve(_papInstaImageCache[url]);
   return new Promise(function(res, rej){
     var img = new Image();
     img.crossOrigin = 'anonymous';
-    img.onload  = function(){ res(img); };
-    img.onerror = function(){ rej(new Error('이미지 로드 실패: ' + url)); };
+    img.onload  = function(){
+      _papInstaImageCache[url] = img;
+      res(img);
+    };
+    img.onerror = function(){
+      // Retry once WITHOUT crossOrigin so a missing CORS header doesn't
+      // black out the preview. The fallback render will taint the canvas
+      // (downloadAll will catch the SecurityError separately), but the
+      // editor can still SEE what they're framing — which is the whole
+      // point of the modal. ZIP export still works on the
+      // crossOrigin-enabled paths it can use.
+      var fallback = new Image();
+      fallback.onload  = function(){
+        _papInstaImageCache[url] = fallback;
+        res(fallback);
+      };
+      fallback.onerror = function(){
+        rej(new Error('이미지 로드 실패: ' + url));
+      };
+      fallback.src = url;
+    };
     img.src = url;
   });
 }
@@ -7468,7 +7501,23 @@ async function _papInstaCompositeOne(url, canvas, opts){
   // transparent and let cover-crop paint over it; on the off chance the
   // image still leaves gaps, the export PNG will preserve transparency.
   ctx.clearRect(0, 0, W, H);
-  var img = await _papInstaLoadImage(url);
+  var img;
+  try {
+    img = await _papInstaLoadImage(url);
+  } catch (e) {
+    // QA #254 v3 hotfix — if the source image won't load, paint a faint
+    // grey background so the editor sees the canvas exists and can still
+    // exercise the logo/position sliders even when the image layer is
+    // unavailable. Surfacing the URL in console keeps debugging cheap.
+    console.warn('[pap-insta] preview image load failed, drawing placeholder:', url, e);
+    ctx.fillStyle = '#f4f4f5';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '24px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('이미지 로드 실패 (CORS)', W/2, H/2);
+    return;
+  }
   var iw = img.naturalWidth, ih = img.naturalHeight;
   // QA #254 v3 — base cover-fit scale, then multiply by user-chosen
   // zoom (imgScale 100~250%). offsetX/Y shift the image by ±50% of
