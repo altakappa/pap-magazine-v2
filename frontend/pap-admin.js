@@ -7300,6 +7300,11 @@ async function _papInstaShowImage(idx){
   if (scl) scl.textContent = opts.imgScale + '%';
   if (oxl) oxl.textContent = (opts.offsetX > 0 ? '+' : '') + opts.offsetX;
   if (oyl) oyl.textContent = (opts.offsetY > 0 ? '+' : '') + opts.offsetY;
+  // QA #257 — logo alpha slider sync (0-100% opacity).
+  var la  = document.getElementById('instaModalLogoAlpha');
+  var lal = document.getElementById('instaModalLogoAlphaLabel');
+  if (la)  la.value  = opts.logoAlpha;
+  if (lal) lal.textContent = opts.logoAlpha + '%';
   // Counter label.
   var cnt = document.getElementById('instaModalCounter');
   if (cnt) cnt.textContent = (idx + 1) + ' / ' + _papInstaCurrentUrls.length +
@@ -7336,9 +7341,12 @@ function _papInstaOnSliderInput(){
   var imgScale = parseFloat((document.getElementById('instaModalImgScale')||{}).value || '100');
   var offsetX  = parseFloat((document.getElementById('instaModalOffsetX') ||{}).value || '0');
   var offsetY  = parseFloat((document.getElementById('instaModalOffsetY') ||{}).value || '0');
+  // QA #257 — logo opacity (10-100%).
+  var logoAlpha = parseFloat((document.getElementById('instaModalLogoAlpha')||{}).value || '100');
   _papInstaPerImageOpts[url] = {
     logoPct: logoPct, padPct: padPct,
     imgScale: imgScale, offsetX: offsetX, offsetY: offsetY,
+    logoAlpha: logoAlpha,
   };
   document.getElementById('instaModalLogoSizeLabel').textContent = logoPct + '%';
   document.getElementById('instaModalPadLabel').textContent     = padPct  + '%';
@@ -7348,6 +7356,9 @@ function _papInstaOnSliderInput(){
   if (scl) scl.textContent = imgScale + '%';
   if (oxl) oxl.textContent = (offsetX > 0 ? '+' : '') + offsetX;
   if (oyl) oyl.textContent = (offsetY > 0 ? '+' : '') + offsetY;
+  // QA #257 — alpha label.
+  var lal = document.getElementById('instaModalLogoAlphaLabel');
+  if (lal) lal.textContent = logoAlpha + '%';
   // Composite — same canvas, just rewrite.
   var opts = _papInstaOptsForImage(url);
   var canvas = document.getElementById('instaPreviewCanvas');
@@ -7383,11 +7394,12 @@ function _papInstaOptsForImage(url){
   if (ov) {
     return {
       W: base.W, H: base.H,
-      logoPct:  (typeof ov.logoPct  === 'number') ? ov.logoPct  : base.logoPct,
-      padPct:   (typeof ov.padPct   === 'number') ? ov.padPct   : base.padPct,
-      imgScale: (typeof ov.imgScale === 'number') ? ov.imgScale : base.imgScale,
-      offsetX:  (typeof ov.offsetX  === 'number') ? ov.offsetX  : base.offsetX,
-      offsetY:  (typeof ov.offsetY  === 'number') ? ov.offsetY  : base.offsetY,
+      logoPct:   (typeof ov.logoPct   === 'number') ? ov.logoPct   : base.logoPct,
+      padPct:    (typeof ov.padPct    === 'number') ? ov.padPct    : base.padPct,
+      imgScale:  (typeof ov.imgScale  === 'number') ? ov.imgScale  : base.imgScale,
+      offsetX:   (typeof ov.offsetX   === 'number') ? ov.offsetX   : base.offsetX,
+      offsetY:   (typeof ov.offsetY   === 'number') ? ov.offsetY   : base.offsetY,
+      logoAlpha: (typeof ov.logoAlpha === 'number') ? ov.logoAlpha : base.logoAlpha,
     };
   }
   return base;
@@ -7548,6 +7560,8 @@ function _papInstaReadOpts(){
     H: (aspect === '1:1' ? 1080 : 1350),
     logoPct: logoPct, padPct: padPct,
     imgScale: 100, offsetX: 0, offsetY: 0,
+    // QA #257 — default logo opacity (no transparency).
+    logoAlpha: 100,
   };
 }
 
@@ -7629,6 +7643,12 @@ async function _papInstaCompositeOne(url, canvas, opts){
   var W = opts.W, H = opts.H;
   if (canvas.width !== W) canvas.width = W;
   if (canvas.height !== H) canvas.height = H;
+  // QA #257 — turn on high-quality scaling for both the gallery image
+  // and the logo overlay. Default browser smoothing setting is "low"
+  // which produces visibly soft / pixelated edges when scaling a small
+  // PNG up to fill 14% of 1080px. "high" runs bicubic-style sampling.
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
   // QA #254 v2 — was fillStyle '#000' which left a black "frame" when
   // the source image happened to be transparent. Clear to fully
   // transparent and let cover-crop paint over it; on the off chance the
@@ -7666,7 +7686,14 @@ async function _papInstaCompositeOne(url, canvas, opts){
   var logo = await _papInstaLoadLogo();
   var logoW = W * (opts.logoPct / 100);
   var logoH = logoW * (logo.naturalHeight / logo.naturalWidth);
+  // QA #257 — apply per-image logo opacity. Save/restore the ctx alpha
+  // so this only affects the logo draw, not future composites that
+  // share the same canvas.
+  var alpha = (typeof opts.logoAlpha === 'number') ? Math.max(0, Math.min(100, opts.logoAlpha)) / 100 : 1;
+  var prevAlpha = ctx.globalAlpha;
+  ctx.globalAlpha = alpha;
   ctx.drawImage(logo, (W - logoW) / 2, H - logoH - (H * (opts.padPct / 100)), logoW, logoH);
+  ctx.globalAlpha = prevAlpha;
 }
 
 function toggleFilmSchedule(){
