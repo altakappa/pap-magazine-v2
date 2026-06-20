@@ -8027,7 +8027,12 @@ function _papCoverReadStyleOpts(){
     contribSize:    _num('coverContribSize', 26),    // px
     topLabelSize:   _num('coverTopLabelSize', 24),   // px
     sideLabelSize:  _num('coverSideLabelSize', 14),  // px
-    bottomPad:      _num('coverBottomPad', 60),      // px from canvas bottom
+    bottomPad:      _num('coverBottomPad', 60),      // px from canvas bottom (contributors baseline)
+    // QA #267 — independent position sliders.
+    topLabelTop:    _num('coverTopLabelTop', 38),    // px from canvas top
+    topLabelSide:   _num('coverTopLabelSide', 38),   // px from each side edge
+    sideLabelY:     _num('coverSideLabelY', 45),     // % canvas height (vertical pos for "Published by")
+    titleBottom:    _num('coverTitleBottom', 18),    // % canvas height from bottom (title baseline)
   };
 }
 
@@ -8042,6 +8047,11 @@ function papCoverResetSettings(){
     ['coverTopLabelSize',  24, 'px'],
     ['coverSideLabelSize', 14, 'px'],
     ['coverBottomPad',     60, 'px'],
+    // QA #267 — position sliders defaults.
+    ['coverTopLabelTop',   38, 'px'],
+    ['coverTopLabelSide',  38, 'px'],
+    ['coverSideLabelY',    45, '%'],
+    ['coverTitleBottom',   18, '%'],
   ];
   pairs.forEach(function(p){
     var el = document.getElementById(p[0]);
@@ -8201,20 +8211,21 @@ async function _papCoverComposite(canvas, meta){
   // QA #266 — read fine-tune slider values once for this composite.
   var sty = _papCoverReadStyleOpts();
 
-  // 3) Top-left: Issue label (white sans)
+  // 3) Top-left: Issue label (white sans). QA #267 — position from sliders.
   ctx.fillStyle = '#ffffff';
   ctx.font = '400 ' + sty.topLabelSize + 'px system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif';
   ctx.textBaseline = 'top';
   ctx.textAlign = 'left';
-  ctx.fillText(meta.issueLabel, 38, 38);
+  ctx.fillText(meta.issueLabel, sty.topLabelSide, sty.topLabelTop);
 
   // 4) Top-right: Year label
   ctx.textAlign = 'right';
-  ctx.fillText(meta.yearLabel, W - 38, 38);
+  ctx.fillText(meta.yearLabel, W - sty.topLabelSide, sty.topLabelTop);
 
-  // 5) Left edge (rotated 90°): "Published by Domenico Kang"
+  // 5) Left edge (rotated 90°): "Published by Domenico Kang".
+  // QA #267 — Y position from slider (% canvas height).
   ctx.save();
-  ctx.translate(38, H * 0.45);
+  ctx.translate(38, H * (sty.sideLabelY / 100));
   ctx.rotate(-Math.PI / 2);
   ctx.font = '400 ' + sty.sideLabelSize + 'px system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif';
   ctx.textAlign = 'left';
@@ -8283,7 +8294,13 @@ async function _papCoverComposite(canvas, meta){
     }
   }
 
-  // Draw contributor lines starting from bottom-up. Bottom pad from slider.
+  // QA #267 — contributors and title now use INDEPENDENT position
+  // anchors so editor can move them separately:
+  //   contribY (baseline of LAST contributor line) = H - bottomPad
+  //   titleY  (baseline of LAST title line)        = H - (titleBottom% × H)
+  // Both draw bottom-up from their baseline. Editor is responsible for
+  // keeping them from overlapping (they can see it live in the preview).
+  ctx.font = 'italic 400 ' + contribSize + 'px "Times New Roman", Georgia, serif';
   var bottomPad = sty.bottomPad;
   var lineGap = 6;
   var contribY = H - bottomPad;
@@ -8291,8 +8308,8 @@ async function _papCoverComposite(canvas, meta){
     ctx.fillText(contribLines[c], W / 2, contribY);
     contribY -= (contribSize + lineGap);
   }
-  // Title block sits above contributors with a 30px gap.
-  var titleY = contribY - 30;
+  // Title uses its own anchor (titleBottom% from bottom).
+  var titleY = H - (H * (sty.titleBottom / 100));
   ctx.font = 'italic 400 ' + titleSize + 'px "Times New Roman", Georgia, serif';
   for (var t = titleLines.length - 1; t >= 0; t--) {
     ctx.fillText(titleLines[t], W / 2, titleY);
