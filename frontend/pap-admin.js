@@ -7046,6 +7046,186 @@ function closeFilmModal(){
 // The "예약 일시" area (`#filmScheduleArea`) is the user-facing toggle
 // target. The legacy `#filmScheduleWrap` element is now a hidden noop
 // kept only so older cached JS doesn't NPE on a null lookup.
+
+// ======== QA #254 — INSTAGRAM IMAGE GENERATOR ========
+//
+// Reads URLs from the gallery grid (each .pe-gallery-item img.src in
+// the editorial editor), composites the PAP logo over each, and
+// exports at Instagram-friendly dimensions (1080×1350 by default).
+//
+// Defaults match the existing PAP IG feed analysed from sample posts:
+//   • Logo width        7% of canvas width
+//   • Bottom padding    5% of canvas height
+//   • Horizontal center
+//   • White transparent PNG, drawn directly on the photo (no scrim)
+//
+// Editor-side controls let the user nudge these per-editorial via the
+// sliders without a code change. A custom logo PNG can also be slotted
+// in via the file input.
+//
+// Rendering happens entirely in the browser (Canvas API + JSZip), so
+// there's no server-side image-processing cost. The only failure mode
+// is CORS-blocked S3 fetches — handled below with crossOrigin and a
+// clear error toast on failure.
+
+// Default PAP logo — drawn from the on-screen mark in the sample IG
+// posts (rounded sans-serif "PAP", white on transparent). Inlined as
+// SVG so we don't ship another PNG asset; the file-input handler
+// overrides this with an <img> element on demand.
+var _PAP_INSTA_DEFAULT_LOGO_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 110">' +
+  '<text x="150" y="86" text-anchor="middle" font-family="Montserrat, sans-serif" font-weight="900" font-size="92" fill="white" letter-spacing="-2">PAP</text>' +
+  '</svg>';
+
+var _papInstaLogoImg = null;       // cached HTMLImageElement of the logo
+var _papInstaLogoLoading = null;   // in-flight Promise so concurrent
+                                    // preview + download calls share one load
+
+async function papInstaPreview(){
+  var urls = _papInstaCollectGalleryUrls();
+  if (!urls.length) {
+    alert('갤러리에 이미지가 없습니다. 먼저 이미지를 추가해주세요.');
+    return;
+  }
+  _papInstaSetStatus('미리보기 합성 중...');
+  try {
+    var opts = _papInstaReadOpts();
+    var modal = document.getElementById('instaPreviewModal');
+    var canvas = document.getElementById('instaPreviewCanvas');
+    if (canvas) { canvas.width = opts.W; canvas.height = opts.H; }
+    await _papInstaCompositeOne(urls[0], canvas, opts);
+    if (modal) modal.classList.add('show');
+    var sub = document.getElementById('instaPreviewSub');
+    if (sub) sub.textContent =
+      '첫 갤러리 이미지로 합성한 결과입니다. (전체 ' + urls.length + '장)';
+    _papInstaSetStatus('');
+  } catch (e) {
+    console.error('[insta preview] failed:', e);
+    _papInstaSetStatus('❌ 미리보기 실패: ' + (e && e.message ? e.message : e));
+    alert('미리보기 합성에 실패했습니다.\nS3 CORS 제한 또는 이미지 로드 실패일 수 있습니다.\n\n상세: ' + (e && e.message ? e.message : e));
+  }
+}
+
+function closeInstaPreview(){
+  var m = document.getElementById('instaPreviewModal');
+  if (m) m.classList.remove('show');
+}
+
+async function papInstaDownloadAll(){
+  var urls = _papInstaCollectGalleryUrls();
+  if (!urls.length) { alert('갤러리에 이미지가 없습니다.'); return; }
+  if (typeof JSZip === 'undefined') {
+    alert('JSZip 라이브러리 로드 실패. 페이지를 새로고침해주세요.');
+    return;
+  }
+  _papInstaSetStatus('처리 중 0 / ' + urls.length + '...');
+  var opts = _papInstaReadOpts();
+  var zip = new JSZip();
+  var folder = zip.folder('pap-instagram-' + (new Date().toISOString().slice(0,10)));
+  var canvas = document.createElement('canvas');
+  canvas.width = opts.W; canvas.height = opts.H;
+  var ok = 0, failed = 0;
+  for (var i = 0; i < urls.length; i++) {
+    try {
+      await _papInstaCompositeOne(urls[i], canvas, opts);
+      var blob = await new Promise(function(res){
+        canvas.toBlob(function(b){ res(b); }, 'image/png', 0.92);
+      });
+      var name = String(i + 1).padStart(2, '0') + '.png';
+      folder.file(name, blob);
+      ok++;
+    } catch (e) {
+      console.error('[insta] image ' + i + ' failed:', e);
+      failed++;
+    }
+    _papInstaSetStatus('처리 중 ' + (i + 1) + ' / ' + urls.length + '...');
+  }
+  _papInstaSetStatus('ZIP 생성 중...');
+  var zipBlob = await zip.generateAsync({ type: 'blob' });
+  var url = URL.createObjectURL(zipBlob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'pap-instagram-' + (new Date().toISOString().slice(0,10)) + '.zip';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 5000);
+  _papInstaSetStatus('✓ ZIP 다운로드 완료 (성공 ' + ok + '장, 실패 ' + failed + '장)');
+}
+
+function papInstaSetCustomLogo(input){
+  if (!input || !input.files || !input.files[0]) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var img = new Image();
+    img.onload = function(){
+      _papInstaLogoImg = img;
+      _papInstaSetStatus('✓ 커스텀 로고 적용됨 (다음 합성부터 사용)');
+    };
+    img.onerror = function(){ _papInstaSetStatus('❌ 로고 이미지 로드 실패'); };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+function _papInstaSetStatus(msg){
+  var el = document.getElementById('instaGenStatus');
+  if (el) el.textContent = msg || '';
+}
+
+function _papInstaReadOpts(){
+  var aspect = (document.getElementById('instaAspect') || {}).value || '4:5';
+  var logoPct = parseFloat((document.getElementById('instaLogoSize') || {}).value || '7');
+  var padPct  = parseFloat((document.getElementById('instaBottomPad') || {}).value || '5');
+  return { W: 1080, H: (aspect === '1:1' ? 1080 : 1350), logoPct: logoPct, padPct: padPct };
+}
+
+function _papInstaCollectGalleryUrls(){
+  var imgs = document.querySelectorAll('#galleryGrid .pe-gallery-item img');
+  var out = [];
+  imgs.forEach(function(img){ if (img && img.src) out.push(img.src); });
+  return out;
+}
+
+function _papInstaLoadLogo(){
+  if (_papInstaLogoImg) return Promise.resolve(_papInstaLogoImg);
+  if (_papInstaLogoLoading) return _papInstaLogoLoading;
+  _papInstaLogoLoading = new Promise(function(res, rej){
+    var img = new Image();
+    img.onload  = function(){ _papInstaLogoImg = img; res(img); };
+    img.onerror = function(){ rej(new Error('로고 SVG 로드 실패')); };
+    var blob = new Blob([_PAP_INSTA_DEFAULT_LOGO_SVG], { type: 'image/svg+xml' });
+    img.src = URL.createObjectURL(blob);
+  });
+  return _papInstaLogoLoading;
+}
+
+function _papInstaLoadImage(url){
+  return new Promise(function(res, rej){
+    var img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload  = function(){ res(img); };
+    img.onerror = function(){ rej(new Error('이미지 로드 실패: ' + url)); };
+    img.src = url;
+  });
+}
+
+async function _papInstaCompositeOne(url, canvas, opts){
+  var ctx = canvas.getContext('2d');
+  var W = opts.W, H = opts.H;
+  if (canvas.width !== W) canvas.width = W;
+  if (canvas.height !== H) canvas.height = H;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+  var img = await _papInstaLoadImage(url);
+  var iw = img.naturalWidth, ih = img.naturalHeight;
+  var scale = Math.max(W / iw, H / ih);
+  var dw = iw * scale, dh = ih * scale;
+  ctx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+  var logo = await _papInstaLoadLogo();
+  var logoW = W * (opts.logoPct / 100);
+  var logoH = logoW * (logo.naturalHeight / logo.naturalWidth);
+  ctx.drawImage(logo, (W - logoW) / 2, H - logoH - (H * (opts.padPct / 100)), logoW, logoH);
+}
+
 function toggleFilmSchedule(){
   var pubCb   = document.getElementById('filmPublishCb');
   var schedCb = document.getElementById('filmScheduleCb');

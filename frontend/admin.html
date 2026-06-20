@@ -812,6 +812,64 @@ tr:hover td{background:rgba(0,0,0,.02)}
           <div id="galleryUploadFeedback" style="font-size:11px;color:var(--text3);margin-top:6px;min-height:14px"></div>
         </div>
 
+        <!-- QA #254 — Instagram image generator.
+             Reads the gallery images above, composites the PAP logo onto
+             each, exports at 1080×1350 (Instagram 4:5 feed-recommended
+             aspect), packages them in a ZIP for one-click download.
+             Defaults measured from the existing PAP IG feed:
+               • Logo width  = 7% of canvas width
+               • Bottom pad  = 5% of canvas height
+               • Position    = horizontal center
+               • Color       = white (transparent PNG)
+             Editors can fine-tune via sliders and swap in their own
+             logo PNG (the file input replaces the in-memory image; the
+             default is a white "PAP" SVG drawn below). -->
+        <div class="pe-section" id="instaGenSection">
+          <div class="pe-label" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+            <span>📷 인스타그램 이미지 생성 <span class="pe-opt">갤러리 이미지 + PAP 로고 + 4:5 (1080×1350)</span></span>
+            <span style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="btn btn-sm" type="button" onclick="papInstaPreview()" title="첫 갤러리 이미지로 합성 결과 미리보기">👁️ 미리보기</button>
+              <button class="btn btn-sm btn-blue" type="button" onclick="papInstaDownloadAll()" title="모든 갤러리 이미지를 인스타용으로 합성 후 ZIP 다운로드">📦 전체 ZIP 다운로드</button>
+            </span>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:2px">
+            <!-- 로고 크기 -->
+            <div>
+              <label style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px">
+                <span>🏷️ 로고 너비 (이미지 너비 대비 %)</span>
+                <strong id="instaLogoSizeLabel" style="color:var(--text)">7%</strong>
+              </label>
+              <input type="range" id="instaLogoSize" min="4" max="14" step="0.5" value="7" style="width:100%" oninput="document.getElementById('instaLogoSizeLabel').textContent = this.value + '%'">
+            </div>
+            <!-- 하단 여백 -->
+            <div>
+              <label style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px">
+                <span>📏 하단 여백 (이미지 높이 대비 %)</span>
+                <strong id="instaPadLabel" style="color:var(--text)">5%</strong>
+              </label>
+              <input type="range" id="instaBottomPad" min="2" max="10" step="0.5" value="5" style="width:100%" oninput="document.getElementById('instaPadLabel').textContent = this.value + '%'">
+            </div>
+
+            <!-- 출력 비율 -->
+            <div>
+              <label style="display:block;font-size:11px;color:var(--text2);margin-bottom:4px">📐 출력 비율</label>
+              <select class="pe-input" id="instaAspect" style="height:32px">
+                <option value="4:5" selected>4:5 세로 (1080×1350) - 권장</option>
+                <option value="1:1">1:1 정사각형 (1080×1080)</option>
+              </select>
+            </div>
+
+            <!-- 로고 PNG 교체 -->
+            <div>
+              <label style="display:block;font-size:11px;color:var(--text2);margin-bottom:4px">🖼️ 로고 PNG 교체 <span class="pe-opt">선택</span></label>
+              <input type="file" id="instaLogoFile" accept="image/png,image/svg+xml" style="font-size:11px;width:100%" onchange="papInstaSetCustomLogo(this)">
+            </div>
+          </div>
+          <div class="pe-hint" style="margin-top:8px">갤러리 이미지가 4:5 비율이 아니면 자동으로 <strong>cover crop</strong> (잘림 최소화) 됩니다. PAP 로고는 흰색 transparent PNG로 합성됩니다. 사이트의 갤러리 이미지가 외부 도메인일 경우 S3 CORS 설정에 따라 처리 실패할 수 있습니다.</div>
+          <div id="instaGenStatus" style="margin-top:8px;font-size:11px;color:var(--text3);min-height:14px"></div>
+        </div>
+
         <!-- 에디토리얼 설명 -->
         <!-- QA #204 — three side-by-side language slots (KR / EN / IT) so
              editors can see and edit ALL translations directly, instead of
@@ -2523,6 +2581,22 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
 </div>
 
 <script src="/pap-api.js?v=3" defer></script>
+<!-- QA #254 — Instagram image preview modal. Populated by papInstaPreview(). -->
+<div class="modal-bg" id="instaPreviewModal" onclick="if(event.target===this) closeInstaPreview()">
+  <div class="modal" style="max-width:540px">
+    <button class="modal-close" onclick="closeInstaPreview()">×</button>
+    <h2>📷 인스타그램 이미지 미리보기</h2>
+    <div class="sub" id="instaPreviewSub">첫 갤러리 이미지로 합성한 결과입니다.</div>
+    <div style="margin-top:14px;text-align:center;background:#000;padding:14px">
+      <canvas id="instaPreviewCanvas" style="max-width:100%;height:auto;display:inline-block;background:#222"></canvas>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-primary" onclick="papInstaDownloadAll()">📦 전체 ZIP 다운로드</button>
+      <button class="btn" onclick="closeInstaPreview()">닫기</button>
+    </div>
+  </div>
+</div>
+
 <!-- JSZip for client-side ZIP packaging of submission images.
      Used by downloadSubmissionImages() in pap-admin.js so the editor can
      pull all approved originals (plus optional 1080² Instagram crops) in
