@@ -7325,7 +7325,15 @@ async function papInstaDownloadAll(){
 //   _papInstaLoadLogo() checks this first, so the chosen logo survives
 //   browser reloads / next-day visits — i.e. functions as the
 //   "permanent default" until the editor clicks "기본 로고로 복원".
-var _PAP_INSTA_CUSTOM_LOGO_KEY = 'pap_insta_custom_logo_v1';
+// QA #254 v3 — bumped key v1 → v2 to invalidate previously-stored bad
+// custom logos. Editors who had uploaded the (incorrect) PAP symbol via
+// the file picker would otherwise keep seeing it because the stored
+// dataURL is read before the factory default URL. New key forces a
+// fresh load of /pap-logo-white.png on next page open.
+var _PAP_INSTA_CUSTOM_LOGO_KEY = 'pap_insta_custom_logo_v2';
+// Best-effort cleanup of the old key so the browser doesn't carry dead
+// storage forever.
+try { localStorage.removeItem('pap_insta_custom_logo_v1'); } catch(_) {}
 
 function _papInstaReadStoredLogoDataUrl(){
   try { return localStorage.getItem(_PAP_INSTA_CUSTOM_LOGO_KEY) || ''; }
