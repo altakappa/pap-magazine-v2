@@ -922,19 +922,23 @@ tr:hover td{background:rgba(0,0,0,.02)}
               <div id="coverLivePreviewEmpty" style="display:none;padding:40px 20px;color:#aaa;font-size:12px">제목 + 커버 이미지를 입력하면 라이브 미리보기가 표시됩니다.</div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px">
+              <!-- QA #269 — defaults locked in from the editor-approved
+                   sample: logoSize 27 / shadow 70 / topLabelSize 19 /
+                   bottomPad 52 / topLabelTop 42 / topLabelSide 52 /
+                   sideLabelY 57 / titleBottom 10. Other values unchanged. -->
               <div>
                 <label style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px">
                   <span>🏷️ 로고 크기</span>
-                  <strong id="coverLogoSizeLabel" style="color:var(--text)">22%</strong>
+                  <strong id="coverLogoSizeLabel" style="color:var(--text)">27%</strong>
                 </label>
-                <input type="range" id="coverLogoSize" min="14" max="40" step="0.5" value="22" style="width:100%" oninput="document.getElementById('coverLogoSizeLabel').textContent = this.value + '%'">
+                <input type="range" id="coverLogoSize" min="14" max="40" step="0.5" value="27" style="width:100%" oninput="document.getElementById('coverLogoSizeLabel').textContent = this.value + '%'">
               </div>
               <div>
                 <label style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px">
                   <span>🌟 로고 입체감 (드롭 섀도우)</span>
-                  <strong id="coverLogoShadowLabel" style="color:var(--text)">35%</strong>
+                  <strong id="coverLogoShadowLabel" style="color:var(--text)">70%</strong>
                 </label>
-                <input type="range" id="coverLogoShadow" min="0" max="100" step="5" value="35" style="width:100%" oninput="document.getElementById('coverLogoShadowLabel').textContent = this.value + '%'">
+                <input type="range" id="coverLogoShadow" min="0" max="100" step="5" value="70" style="width:100%" oninput="document.getElementById('coverLogoShadowLabel').textContent = this.value + '%'">
               </div>
               <div>
                 <label style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px">
@@ -960,9 +964,9 @@ tr:hover td{background:rgba(0,0,0,.02)}
               <div>
                 <label style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px">
                   <span>📅 상단 라벨 크기 (Issue / Year)</span>
-                  <strong id="coverTopLabelSizeLabel" style="color:var(--text)">24px</strong>
+                  <strong id="coverTopLabelSizeLabel" style="color:var(--text)">19px</strong>
                 </label>
-                <input type="range" id="coverTopLabelSize" min="16" max="40" step="1" value="24" style="width:100%" oninput="document.getElementById('coverTopLabelSizeLabel').textContent = this.value + 'px'">
+                <input type="range" id="coverTopLabelSize" min="16" max="40" step="1" value="19" style="width:100%" oninput="document.getElementById('coverTopLabelSizeLabel').textContent = this.value + 'px'">
               </div>
               <div>
                 <label style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px">
@@ -974,9 +978,9 @@ tr:hover td{background:rgba(0,0,0,.02)}
               <div>
                 <label style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px">
                   <span>📏 컨트리뷰터 하단 여백</span>
-                  <strong id="coverBottomPadLabel" style="color:var(--text)">60px</strong>
+                  <strong id="coverBottomPadLabel" style="color:var(--text)">52px</strong>
                 </label>
-                <input type="range" id="coverBottomPad" min="20" max="180" step="2" value="60" style="width:100%" oninput="document.getElementById('coverBottomPadLabel').textContent = this.value + 'px'">
+                <input type="range" id="coverBottomPad" min="20" max="180" step="2" value="52" style="width:100%" oninput="document.getElementById('coverBottomPadLabel').textContent = this.value + 'px'">
               </div>
               <!-- QA #267 — independent position sliders so each element can
                    be moved without affecting the others. Title position is
@@ -986,30 +990,30 @@ tr:hover td{background:rgba(0,0,0,.02)}
               <div>
                 <label style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px">
                   <span>📅 상단 라벨 위치 (Issue / Year)</span>
-                  <strong id="coverTopLabelTopLabel" style="color:var(--text)">38px</strong>
+                  <strong id="coverTopLabelTopLabel" style="color:var(--text)">42px</strong>
                 </label>
-                <input type="range" id="coverTopLabelTop" min="10" max="120" step="2" value="38" style="width:100%" oninput="document.getElementById('coverTopLabelTopLabel').textContent = this.value + 'px'">
+                <input type="range" id="coverTopLabelTop" min="10" max="120" step="2" value="42" style="width:100%" oninput="document.getElementById('coverTopLabelTopLabel').textContent = this.value + 'px'">
               </div>
               <div>
                 <label style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px">
                   <span>📅 상단 라벨 좌우 여백</span>
-                  <strong id="coverTopLabelSideLabel" style="color:var(--text)">38px</strong>
+                  <strong id="coverTopLabelSideLabel" style="color:var(--text)">52px</strong>
                 </label>
-                <input type="range" id="coverTopLabelSide" min="10" max="120" step="2" value="38" style="width:100%" oninput="document.getElementById('coverTopLabelSideLabel').textContent = this.value + 'px'">
+                <input type="range" id="coverTopLabelSide" min="10" max="120" step="2" value="52" style="width:100%" oninput="document.getElementById('coverTopLabelSideLabel').textContent = this.value + 'px'">
               </div>
               <div>
                 <label style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px">
                   <span>📎 좌측 세로 라벨 Y 위치 (캔버스 중앙=50%)</span>
-                  <strong id="coverSideLabelYLabel" style="color:var(--text)">45%</strong>
+                  <strong id="coverSideLabelYLabel" style="color:var(--text)">57%</strong>
                 </label>
-                <input type="range" id="coverSideLabelY" min="20" max="80" step="1" value="45" style="width:100%" oninput="document.getElementById('coverSideLabelYLabel').textContent = this.value + '%'">
+                <input type="range" id="coverSideLabelY" min="20" max="80" step="1" value="57" style="width:100%" oninput="document.getElementById('coverSideLabelYLabel').textContent = this.value + '%'">
               </div>
               <div>
                 <label style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px">
                   <span>📰 제목 위치 (하단에서 위로)</span>
-                  <strong id="coverTitleBottomLabel" style="color:var(--text)">18%</strong>
+                  <strong id="coverTitleBottomLabel" style="color:var(--text)">10%</strong>
                 </label>
-                <input type="range" id="coverTitleBottom" min="8" max="50" step="0.5" value="18" style="width:100%" oninput="document.getElementById('coverTitleBottomLabel').textContent = this.value + '%'">
+                <input type="range" id="coverTitleBottom" min="8" max="50" step="0.5" value="10" style="width:100%" oninput="document.getElementById('coverTitleBottomLabel').textContent = this.value + '%'">
               </div>
             </div>
             <div style="margin-top:10px;text-align:right">
@@ -2922,7 +2926,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
     <div id="contentAuditBody" style="flex:1;overflow-y:auto;padding:0"></div>
   </div>
 </div>
-<script src="/pap-admin.js?v=65" defer></script>
+<script src="/pap-admin.js?v=66" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>

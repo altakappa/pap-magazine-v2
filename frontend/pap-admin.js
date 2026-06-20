@@ -8019,39 +8019,43 @@ function _papCoverReadStyleOpts(){
     var v = el ? parseFloat(el.value) : NaN;
     return isNaN(v) ? fallback : v;
   }
+  // QA #269 — defaults locked in from the editor-approved sample
+  // (June Issue 2026 "Where you end and I begin" cover).
   return {
-    logoSize:       _num('coverLogoSize', 22),       // % canvas width
-    logoShadow:     _num('coverLogoShadow', 35),     // 0-100, shadow intensity
+    logoSize:       _num('coverLogoSize', 27),       // % canvas width
+    logoShadow:     _num('coverLogoShadow', 70),     // 0-100, shadow intensity
     logoTop:        _num('coverLogoTop', 6),         // % canvas height from top
     titleSize:      _num('coverTitleSize', 70),      // px
     contribSize:    _num('coverContribSize', 26),    // px
-    topLabelSize:   _num('coverTopLabelSize', 24),   // px
+    topLabelSize:   _num('coverTopLabelSize', 19),   // px
     sideLabelSize:  _num('coverSideLabelSize', 14),  // px
-    bottomPad:      _num('coverBottomPad', 60),      // px from canvas bottom (contributors baseline)
+    bottomPad:      _num('coverBottomPad', 52),      // px from canvas bottom (contributors baseline)
     // QA #267 — independent position sliders.
-    topLabelTop:    _num('coverTopLabelTop', 38),    // px from canvas top
-    topLabelSide:   _num('coverTopLabelSide', 38),   // px from each side edge
-    sideLabelY:     _num('coverSideLabelY', 45),     // % canvas height (vertical pos for "Published by")
-    titleBottom:    _num('coverTitleBottom', 18),    // % canvas height from bottom (title baseline)
+    topLabelTop:    _num('coverTopLabelTop', 42),    // px from canvas top
+    topLabelSide:   _num('coverTopLabelSide', 52),   // px from each side edge
+    sideLabelY:     _num('coverSideLabelY', 57),     // % canvas height (vertical pos for "Published by")
+    titleBottom:    _num('coverTitleBottom', 10),    // % canvas height from bottom (title baseline)
   };
 }
 
 // Reset button → restores all sliders to defaults.
 function papCoverResetSettings(){
+  // QA #269 — defaults match the editor-approved sample (June Issue 2026
+  // "Where you end and I begin"). Reset button restores all 12 to these.
   var pairs = [
-    ['coverLogoSize',      22, '%'],
-    ['coverLogoShadow',    35, '%'],
+    ['coverLogoSize',      27, '%'],
+    ['coverLogoShadow',    70, '%'],
     ['coverLogoTop',        6, '%'],
     ['coverTitleSize',     70, 'px'],
     ['coverContribSize',   26, 'px'],
-    ['coverTopLabelSize',  24, 'px'],
+    ['coverTopLabelSize',  19, 'px'],
     ['coverSideLabelSize', 14, 'px'],
-    ['coverBottomPad',     60, 'px'],
+    ['coverBottomPad',     52, 'px'],
     // QA #267 — position sliders defaults.
-    ['coverTopLabelTop',   38, 'px'],
-    ['coverTopLabelSide',  38, 'px'],
-    ['coverSideLabelY',    45, '%'],
-    ['coverTitleBottom',   18, '%'],
+    ['coverTopLabelTop',   42, 'px'],
+    ['coverTopLabelSide',  52, 'px'],
+    ['coverSideLabelY',    57, '%'],
+    ['coverTitleBottom',   10, '%'],
   ];
   pairs.forEach(function(p){
     var el = document.getElementById(p[0]);
