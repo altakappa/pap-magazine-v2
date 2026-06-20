@@ -8317,7 +8317,94 @@ async function _papCoverComposite(canvas, meta){
   }
 }
 
+// QA #268 — Live preview wiring.
+//   1. Inline canvas under the cover gen section that always shows the
+//      current state (no modal needed).
+//   2. Debounced re-render on EVERY form/slider input change.
+//   3. The modal version (👁️ 미리보기 button) still works the same way
+//      but it now also auto-syncs when sliders change while open.
+var _papCoverLiveTimer = null;
+var _papCoverLiveRendering = false;
+async function _papCoverDoLiveRender(){
+  if (_papCoverLiveRendering) return;
+  _papCoverLiveRendering = true;
+  try {
+    var liveCanvas = document.getElementById('coverLivePreviewCanvas');
+    var emptyMsg   = document.getElementById('coverLivePreviewEmpty');
+    var statusEl   = document.getElementById('coverLivePreviewStatus');
+    if (!liveCanvas) { _papCoverLiveRendering = false; return; }
+    var meta = _papCoverReadFormMeta();
+    // No title or no cover image yet — show placeholder, hide canvas.
+    if (!meta.title || !meta.coverUrl) {
+      liveCanvas.style.display = 'none';
+      if (emptyMsg) emptyMsg.style.display = 'block';
+      if (statusEl) statusEl.textContent = '대기 중 (제목 + 커버 이미지 필요)';
+      _papCoverLiveRendering = false;
+      return;
+    }
+    liveCanvas.style.display = 'inline-block';
+    if (emptyMsg) emptyMsg.style.display = 'none';
+    if (statusEl) statusEl.textContent = '렌더 중…';
+    await _papCoverComposite(liveCanvas, meta);
+    if (statusEl) statusEl.textContent = '✓ 최신 상태';
+    // If modal is open too, sync it.
+    var modal = document.getElementById('coverPreviewModal');
+    if (modal && modal.classList.contains('show')) {
+      var modalCanvas = document.getElementById('coverPreviewCanvas');
+      if (modalCanvas) await _papCoverComposite(modalCanvas, meta);
+    }
+  } catch (e) {
+    console.warn('[cover live] render failed:', e);
+    var s = document.getElementById('coverLivePreviewStatus');
+    if (s) s.textContent = '⚠️ 렌더 실패';
+  }
+  _papCoverLiveRendering = false;
+}
+function _papCoverScheduleLiveRender(){
+  if (_papCoverLiveTimer) clearTimeout(_papCoverLiveTimer);
+  // 100ms debounce — fast enough to feel live during slider drag,
+  // slow enough to avoid hammering the canvas while user types.
+  _papCoverLiveTimer = setTimeout(_papCoverDoLiveRender, 100);
+}
+
+// Wire once on first interaction with the cover gen section so we don't
+// pay the cost on every admin page load.
+var _papCoverLiveWired = false;
+function _papCoverEnsureLiveWired(){
+  if (_papCoverLiveWired) return;
+  var section = document.getElementById('coverGenSection');
+  if (!section) return;
+  // Event delegation — any 'input' or 'change' inside the section triggers
+  // a re-render. Catches sliders, text inputs, and the file upload field.
+  section.addEventListener('input',  _papCoverScheduleLiveRender);
+  section.addEventListener('change', _papCoverScheduleLiveRender);
+  // Also trigger when the cover image upload changes (thumbInput sits
+  // outside the section, but its preview lives in thumbPreview — we
+  // can't easily delegate, so listen directly on the input).
+  var thumbInput = document.getElementById('thumbInput');
+  if (thumbInput) thumbInput.addEventListener('change', function(){
+    // Give previewThumb() a moment to set the <img>.src.
+    setTimeout(_papCoverScheduleLiveRender, 200);
+  });
+  // Title input lives outside too.
+  var titleInput = document.getElementById('postTitle');
+  if (titleInput) titleInput.addEventListener('input', _papCoverScheduleLiveRender);
+  // First render now.
+  _papCoverScheduleLiveRender();
+  _papCoverLiveWired = true;
+}
+
+// Editorial modal might be opened multiple times; wire on each open via
+// DOMContentLoaded + click handler.
+document.addEventListener('DOMContentLoaded', function(){
+  // Set up once the cover section exists in DOM.
+  setTimeout(_papCoverEnsureLiveWired, 500);
+});
+
 async function papCoverPreview(){
+  // QA #268 — modal preview is now optional (live preview always running),
+  // but keep the button for editors who want a larger view.
+  _papCoverEnsureLiveWired();
   var meta = _papCoverReadFormMeta();
   if (!meta.title) {
     alert('에디토리얼 제목이 비어 있습니다. 먼저 제목을 입력해주세요.');
