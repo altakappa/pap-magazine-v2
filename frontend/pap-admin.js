@@ -8351,12 +8351,7 @@ async function _papCoverDoLiveRender(){
     if (statusEl) statusEl.textContent = '렌더 중…';
     await _papCoverComposite(liveCanvas, meta);
     if (statusEl) statusEl.textContent = '✓ 최신 상태';
-    // If modal is open too, sync it.
-    var modal = document.getElementById('coverPreviewModal');
-    if (modal && modal.classList.contains('show')) {
-      var modalCanvas = document.getElementById('coverPreviewCanvas');
-      if (modalCanvas) await _papCoverComposite(modalCanvas, meta);
-    }
+    // QA #270 — modal sync removed (modal eliminated as redundant).
   } catch (e) {
     console.warn('[cover live] render failed:', e);
     var s = document.getElementById('coverLivePreviewStatus');
@@ -8405,9 +8400,12 @@ document.addEventListener('DOMContentLoaded', function(){
   setTimeout(_papCoverEnsureLiveWired, 500);
 });
 
+// QA #270 — modal preview removed (live preview canvas in 고급 설정
+// panel covers all use cases). Keeping these stubs so any external
+// callers (e.g. a stale onclick) don't error out.
+function closeCoverPreview(){ /* no-op — modal removed */ }
 async function papCoverPreview(){
-  // QA #268 — modal preview is now optional (live preview always running),
-  // but keep the button for editors who want a larger view.
+  // Just trigger a fresh live render so editor sees current state.
   _papCoverEnsureLiveWired();
   var meta = _papCoverReadFormMeta();
   if (!meta.title) {
