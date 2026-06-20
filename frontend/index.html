@@ -1124,9 +1124,12 @@
   <div class="ed-credits-wrap">
     <div class="ed-desc" id="edDetailDesc"></div>
     <div class="ed-credits-table" id="edDetailCredits"></div>
-    <!-- QA #271 — Standard 이상 회원 전용 다운로드 영역 (커버 이미지 + 로고 파일).
-         pap-content-editorial.js의 _renderEditorialDownloads()가 채움. -->
+    <!-- QA #271 v2 — 베타 기간 동안 모든 사용자가 커버 이미지 + PAP 로고
+         합성 갤러리 이미지를 다운로드 받을 수 있는 영역. JSZip로 갤러리
+         이미지들을 하나의 zip 파일로 묶어서 제공. -->
     <div id="edDetailDownloads" style="display:none;margin-top:24px;padding:16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:6px"></div>
+    <!-- JSZip CDN — 갤러리 이미지 ZIP 패키징용. defer로 본문 파싱 후 로드. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
     <!-- QA #246 — clickable hashtag chips, identical UX to the article
          detail (.art-tag-chip). Rendered by pap-content-editorial.js
          when the editorial carries .tags. Clicking a chip links to

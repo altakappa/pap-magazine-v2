@@ -366,40 +366,35 @@ function _renderEditorialVideo(rawUrl){
 // services both content types. Looks up tags off edData by title — the
 // detail-cache (edDetails) is a partial mirror that doesn't always
 // include the tag list, but edData (the list row source) always does.
-// QA #271 — Standard 이상 회원에게 커버 + 로고 이미지 다운로드 영역 노출.
-//   • Free / 비로그인 → CTA "스탠다드 회원만 이용 가능" + 가입 유도 링크
-//   • Standard 이상     → 실제 다운로드 버튼 2개
+// QA #271 v2 — 커버 + PAP 로고 합성 갤러리 이미지 다운로드 영역.
 //
-// `det`는 SPA 오버레이 렌더 시 _normaliseEditorialDetail의 결과,
-// `d`는 raw API row (cover_image, gallery 등 직접 필드 포함).
+// 베타 운영 기간 동안 모든 사용자에게 다운로드 허용 (정식 출시 후 isStandardOrAbove() 게이트 활성).
+//   • 커버 이미지: cover_image URL을 fetch → blob → 다운로드
+//   • 로고 이미지: 각 갤러리 이미지에 PAP 로고를 1080×1350 4:5 캔버스로
+//                  합성 후 ZIP으로 묶어 다운로드 (어드민 IG 생성기와 동일 합성 로직)
+//
+// `det`는 _normaliseEditorialDetail 결과, `d`는 raw API row.
 function _renderEditorialDownloads(det, d){
   var box = document.getElementById('edDetailDownloads');
   if (!box) return;
-  // 우선순위: det.coverImage → d.cover_image → d.thumbnail → det.thumb
   var coverUrl = (det && (det.coverImage || det.cover_image)) ||
                  (d && (d.cover_image || d.thumbnail)) || '';
-  // 갤러리 첫 이미지를 "로고 합성 베이스"로 사용. 라이브 합성 코드는
-  // 어드민 IG 생성기에 있어서 일반 사용자에게는 raw 커버만 제공.
-  // "로고 이미지"는 PAP 기본 로고 PNG 자체를 다운로드하는 방향으로 해석.
+  // 갤러리 URL 수집 (det.gallery / d.gallery 둘 다 지원).
+  var gallery = (det && Array.isArray(det.gallery) && det.gallery.length) ? det.gallery
+              : (d && Array.isArray(d.gallery)   && d.gallery.length)   ? d.gallery
+              : [];
   var title = (det && det.title) || (d && d.title) || 'editorial';
-  var safeTitle = String(title).replace(/[^a-zA-Z0-9가-힯 ]/g, '').replace(/\s+/g, '-').toLowerCase();
-  var standard = (typeof isStandardOrAbove === 'function') ? isStandardOrAbove() : false;
+  var safeTitle = String(title).replace(/[^a-zA-Z0-9가-힯 ]/g, '').replace(/\s+/g, '-').toLowerCase() || 'editorial';
 
-  if (!standard){
-    // CTA — 비스탠다드 사용자에게는 가입 유도만.
-    box.style.display = '';
-    box.innerHTML =
-      '<div style="display:flex;flex-direction:column;gap:8px">' +
-        '<div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999">DOWNLOADS</div>' +
-        '<div style="font-size:13px;color:#ccc">커버 이미지 + PAP 로고 다운로드는 <strong style="color:#fff">스탠다드 이상 회원</strong> 전용입니다.</div>' +
-        '<a href="/subscription.html" style="display:inline-block;margin-top:6px;padding:8px 18px;border:1px solid #fff;color:#fff;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none;align-self:flex-start;transition:background .2s" onmouseover="this.style.background=\'#fff\';this.style.color=\'#000\'" onmouseout="this.style.background=\'transparent\';this.style.color=\'#fff\'">스탠다드 회원 가입하기 →</a>' +
-      '</div>';
+  // 다운로드 영역이 무의미하면 (커버도 갤러리도 없으면) 숨김.
+  if (!coverUrl && !gallery.length) {
+    box.style.display = 'none';
     return;
   }
 
-  // Standard 이상 — 실제 다운로드 버튼.
-  // 1) 커버 이미지: cover_image URL을 fetch → blob → 다운로드.
-  // 2) 로고: /pap-logo-white.png 정적 자산을 직접 다운로드.
+  box.style.display = '';
+  // QA #271 v2 — 베타 안내 + 항상 표시.
+  // (정식 출시 후 isStandardOrAbove() 체크 활성 예정)
   var coverHtml = '';
   if (coverUrl) {
     coverHtml =
@@ -407,23 +402,26 @@ function _renderEditorialDownloads(det, d){
       'style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border:1px solid #555;color:#fff;font-size:11px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" ' +
       'onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">⬇️ 커버 이미지</a>';
   }
-  var logoHtml =
-    '<a href="#" onclick="event.preventDefault();_papDownloadAsFile(\'/pap-logo-white.png\',\'pap-logo-white\');return false;" ' +
-    'style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border:1px solid #555;color:#fff;font-size:11px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" ' +
-    'onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">⬇️ PAP 로고 (PNG)</a>';
-
-  box.style.display = '';
+  var logoBtnHtml = '';
+  if (gallery.length) {
+    // 데이터 어트리뷰트로 갤러리 + 제목 전달. _papDownloadLogoZip()이 읽어서 처리.
+    var galleryJson = encodeURIComponent(JSON.stringify(gallery));
+    logoBtnHtml =
+      '<button id="edLogoDlBtn" type="button" onclick="_papDownloadLogoZip(this)" ' +
+      'data-gallery="' + galleryJson + '" data-title="' + safeTitle + '" ' +
+      'style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border:1px solid #555;background:transparent;color:#fff;font-size:11px;font-weight:700;letter-spacing:.12em;cursor:pointer;transition:all .2s" ' +
+      'onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">⬇️ 로고 이미지 (' + gallery.length + '장 ZIP)</button>';
+  }
   box.innerHTML =
     '<div style="display:flex;flex-direction:column;gap:10px">' +
       '<div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999">DOWNLOADS</div>' +
-      '<div style="display:flex;gap:10px;flex-wrap:wrap">' + coverHtml + logoHtml + '</div>' +
-      '<div style="font-size:11px;color:#888">스탠다드 회원 전용 · 개인 사용 및 비상업적 용도에 한해 사용 가능</div>' +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap">' + coverHtml + logoBtnHtml + '</div>' +
+      '<div id="edLogoDlStatus" style="font-size:11px;color:#888;min-height:14px"></div>' +
+      '<div style="font-size:11px;color:#666">베타 운영 기간 동안 모든 사용자에게 다운로드 제공 · 개인 사용 및 비상업적 용도에 한해 사용 가능</div>' +
     '</div>';
 }
 
-// Shared download helper — fetches a URL, converts to blob, triggers a
-// browser download with the given filename. Used by both the cover and
-// logo download links so CORS-friendly assets save with the right name.
+// 커버/로고 단일 파일 다운로드 헬퍼.
 window._papDownloadAsFile = window._papDownloadAsFile || function(url, basename){
   try {
     fetch(url, { mode: 'cors' })
@@ -443,12 +441,150 @@ window._papDownloadAsFile = window._papDownloadAsFile || function(url, basename)
       })
       .catch(function(e){
         console.warn('[pap download] failed:', e);
-        // Fallback: open in new tab so user can save manually.
         window.open(url, '_blank');
       });
   } catch(_) {
     window.open(url, '_blank');
   }
+};
+
+// QA #271 v2 — 갤러리 이미지에 PAP 로고 합성 후 ZIP 다운로드.
+// 어드민 IG 생성기 (pap-admin.js)와 동일한 합성 알고리즘:
+//   • 4:5 (1080×1350) 캔버스
+//   • 갤러리 이미지 cover-fit 중앙
+//   • PAP 로고: 15% 너비, 1% 하단 여백, 85% 투명도
+// 사용자가 어드민에서 미세조정한 값은 알 수 없으므로 기본값 사용 (사용자 요청:
+// "이미지 편집할게 없다면 편집 반영되지 않은 그대로 로고이미지...").
+window._papDownloadLogoZip = window._papDownloadLogoZip || async function(btn){
+  if (!btn) return;
+  var statusEl = document.getElementById('edLogoDlStatus');
+  function _s(msg, color){
+    if (!statusEl) return;
+    statusEl.textContent = msg || '';
+    if (color) statusEl.style.color = color;
+  }
+  if (typeof JSZip === 'undefined') {
+    _s('❌ ZIP 라이브러리 로드 실패 — 페이지를 새로고침해주세요.', '#c62828');
+    return;
+  }
+  var gallery;
+  try {
+    gallery = JSON.parse(decodeURIComponent(btn.getAttribute('data-gallery') || '[]'));
+  } catch (_) { gallery = []; }
+  var safeTitle = btn.getAttribute('data-title') || 'editorial';
+  if (!gallery.length) {
+    _s('갤러리 이미지가 없습니다.', '#c62828');
+    return;
+  }
+
+  btn.disabled = true;
+  var originalLabel = btn.textContent;
+  btn.style.opacity = '.6';
+  _s('PAP 로고 로드 중…');
+
+  // 1) 로고를 한 번만 로드해서 재사용.
+  var logo;
+  try {
+    logo = await new Promise(function(res, rej){
+      var img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = function(){ res(img); };
+      img.onerror = function(){
+        // crossOrigin 없이 재시도
+        var fb = new Image();
+        fb.onload = function(){ res(fb); };
+        fb.onerror = function(){ rej(new Error('로고 로드 실패')); };
+        fb.src = '/pap-logo-white.png';
+      };
+      img.src = '/pap-logo-white.png';
+    });
+  } catch (e) {
+    _s('❌ PAP 로고 로드 실패: ' + (e && e.message || e), '#c62828');
+    btn.disabled = false; btn.textContent = originalLabel; btn.style.opacity = '1';
+    return;
+  }
+
+  // 2) 각 갤러리 이미지를 합성.
+  var W = 1080, H = 1350;
+  var LOGO_PCT = 15, PAD_PCT = 1, ALPHA = 0.85;
+  var zip = new JSZip();
+  var ok = 0, failed = 0;
+
+  for (var i = 0; i < gallery.length; i++){
+    var url = gallery[i];
+    btn.textContent = '🎨 합성 중 ' + (i + 1) + '/' + gallery.length + '…';
+    _s((i + 1) + '/' + gallery.length + '장 합성 중…');
+    try {
+      var srcImg = await new Promise(function(res, rej){
+        var im = new Image();
+        im.crossOrigin = 'anonymous';
+        im.onload = function(){ res(im); };
+        im.onerror = function(){
+          var fb = new Image();
+          fb.onload = function(){ res(fb); };
+          fb.onerror = function(){ rej(new Error('이미지 로드 실패: ' + url)); };
+          fb.src = url;
+        };
+        im.src = url;
+      });
+      var canvas = document.createElement('canvas');
+      canvas.width = W; canvas.height = H;
+      var ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      // 배경 fill (혹시 모를 투명도 보정)
+      ctx.clearRect(0, 0, W, H);
+      // cover-fit 합성
+      var iw = srcImg.naturalWidth, ih = srcImg.naturalHeight;
+      var scale = Math.max(W / iw, H / ih);
+      var dw = iw * scale, dh = ih * scale;
+      ctx.drawImage(srcImg, (W - dw) / 2, (H - dh) / 2, dw, dh);
+      // 로고 합성
+      var logoW = W * (LOGO_PCT / 100);
+      var logoH = logoW * (logo.naturalHeight / logo.naturalWidth);
+      var prevAlpha = ctx.globalAlpha;
+      ctx.globalAlpha = ALPHA;
+      ctx.drawImage(logo, (W - logoW) / 2, H - logoH - (H * (PAD_PCT / 100)), logoW, logoH);
+      ctx.globalAlpha = prevAlpha;
+      // PNG blob 추출 → zip 추가
+      var blob = await new Promise(function(res){ canvas.toBlob(function(b){ res(b); }, 'image/png', 0.95); });
+      if (!blob) throw new Error('canvas tainted by CORS');
+      var fname = safeTitle + '-' + String(i + 1).padStart(2, '0') + '.png';
+      zip.file(fname, blob);
+      ok++;
+    } catch (e) {
+      console.warn('[logo zip] image ' + (i + 1) + ' failed:', e);
+      failed++;
+    }
+  }
+
+  if (!ok) {
+    _s('❌ 모든 이미지 합성 실패. CORS 또는 네트워크 오류일 수 있습니다.', '#c62828');
+    btn.disabled = false; btn.textContent = originalLabel; btn.style.opacity = '1';
+    return;
+  }
+
+  btn.textContent = '📦 ZIP 생성 중…';
+  _s('ZIP 생성 중…');
+  try {
+    var zipBlob = await zip.generateAsync({ type: 'blob' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(zipBlob);
+    a.download = safeTitle + '-logo-images.zip';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function(){
+      URL.revokeObjectURL(a.href);
+      a.remove();
+    }, 3000);
+    _s('✓ 다운로드 완료 (성공 ' + ok + '장' + (failed ? ', 실패 ' + failed + '장' : '') + ')', '#16a34a');
+  } catch (e) {
+    _s('❌ ZIP 생성 실패: ' + (e && e.message || e), '#c62828');
+  }
+
+  btn.disabled = false;
+  btn.textContent = originalLabel;
+  btn.style.opacity = '1';
 };
 
 function _renderEditorialTags(title){
