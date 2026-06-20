@@ -879,24 +879,31 @@ tr:hover td{background:rgba(0,0,0,.02)}
         <!-- QA #204 — three side-by-side language slots (KR / EN / IT) so
              editors can see and edit ALL translations directly, instead of
              having to dig the IT version out of the instagram_caption blob.
-             The 🤖 AI generator now writes to all three slots end-to-end. -->
+             The 🤖 AI generator now writes to all three slots end-to-end.
+             QA #256 — re-ordered EN to the top because most contributing
+             editors write English (or leave it blank entirely). Korean
+             was originally first because the editorial database was
+             KR-primary, but in practice almost no one writes Korean
+             directly — they either write EN and let the AI translate, or
+             skip the description entirely. Placeholders re-worded to drop
+             any wording that suggested a specific language was required. -->
         <div class="pe-section" id="editorialDescSection">
-          <div class="pe-label">에디토리얼 설명 <span class="pe-opt">3개 언어 모두 작성 / 편집 가능</span></div>
+          <div class="pe-label">에디토리얼 설명 <span class="pe-opt">선택 · 어느 칸이든 1개 이상 입력하면 나머지는 AI가 자동 번역</span></div>
           <div style="display:grid;grid-template-columns:1fr;gap:10px">
             <div>
-              <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--text3);margin-bottom:4px">🇰🇷 한국어 (KR)</div>
-              <textarea class="modal-ta" id="postDescription" style="min-height:100px" placeholder="에디토리얼 한국어 설명. 작성 시 한국어로 입력하세요."></textarea>
+              <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--text3);margin-bottom:4px">🇬🇧 English (EN) <span style="font-weight:500;color:var(--text3)">— 선택</span></div>
+              <textarea class="modal-ta" id="postDescriptionEn" style="min-height:100px" placeholder="Editorial description. You can write in English here, leave blank, or click 🤖 AI 자동 생성 to fill from the gallery."></textarea>
             </div>
             <div>
-              <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--text3);margin-bottom:4px">🇬🇧 English (EN)</div>
-              <textarea class="modal-ta" id="postDescriptionEn" style="min-height:100px" placeholder="Editorial description in English. Leave blank to auto-translate."></textarea>
+              <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--text3);margin-bottom:4px">🇰🇷 한국어 (KR) <span style="font-weight:500;color:var(--text3)">— 선택</span></div>
+              <textarea class="modal-ta" id="postDescription" style="min-height:100px" placeholder="한국어 설명 (선택). 비워두면 EN/IT 입력값에서 AI가 자동 번역합니다."></textarea>
             </div>
             <div>
-              <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--text3);margin-bottom:4px">🇮🇹 Italiano (IT)</div>
-              <textarea class="modal-ta" id="postDescriptionIt" style="min-height:100px" placeholder="Descrizione dell'editoriale in italiano. Vuoto = traduzione automatica."></textarea>
+              <div style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--text3);margin-bottom:4px">🇮🇹 Italiano (IT) <span style="font-weight:500;color:var(--text3)">— opzionale</span></div>
+              <textarea class="modal-ta" id="postDescriptionIt" style="min-height:100px" placeholder="Descrizione (opzionale). Vuoto = traduzione automatica dagli altri campi."></textarea>
             </div>
           </div>
-          <div class="pe-hint">아무 칸이나 입력해도 됩니다. 비어 있는 칸은 <strong>🤖 AI 자동 생성</strong>이 채워줍니다. (한국어 / 영어 / 이탈리아어 슬롯이 분리되어 저장됩니다.)</div>
+          <div class="pe-hint"><strong>전부 비워두셔도 됩니다.</strong> 어느 한 언어라도 입력하면 <strong>🤖 AI 자동 생성</strong> 버튼이 나머지 두 언어를 자동 번역합니다. 모두 비어 있을 때 🤖를 누르면 갤러리 이미지를 분석해 3개 언어 모두 새로 작성합니다.</div>
         </div>
 
         <!-- QA #170 — 인스타그램 캡션 (서브미션 승인 시 자동 생성) -->
@@ -2694,7 +2701,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
     <div id="contentAuditBody" style="flex:1;overflow-y:auto;padding:0"></div>
   </div>
 </div>
-<script src="/pap-admin.js?v=51" defer></script>
+<script src="/pap-admin.js?v=52" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>
