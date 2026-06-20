@@ -7541,12 +7541,25 @@ function papInstaResetCustomLogo(){
 
 // UI badge: shows whether the editor's browser is on factory default
 // or a stored custom logo, and toggles the "기본 로고로 복원" button.
+//
+// QA #259 — added a thumbnail preview + 🔒 lock affordance so the
+// editor can SEE which logo is currently active and confirm it's the
+// one they uploaded. The thumbnail is the same dataURL we draw onto the
+// canvas, so what they see in the badge is exactly what will be
+// composited into the ZIP export.
 function _papInstaUpdateLogoStatusUI(){
-  var has = !!_papInstaReadStoredLogoDataUrl();
+  var stored = _papInstaReadStoredLogoDataUrl();
+  var has = !!stored;
   var badge = document.getElementById('instaLogoStatusBadge');
   if (badge) {
-    badge.textContent = has ? '✓ 커스텀 로고 영구 저장됨' : '기본 PAP 로고 사용 중';
-    badge.style.color = has ? '#16a34a' : 'var(--text3)';
+    if (has) {
+      badge.innerHTML = '🔒 <span style="color:#16a34a">커스텀 로고 영구 적용 중</span> '
+        + '<img src="' + stored + '" alt="현재 로고" '
+        + 'style="display:inline-block;height:18px;width:auto;max-width:80px;vertical-align:middle;'
+        + 'margin-left:6px;padding:2px 4px;background:#222;border-radius:3px">';
+    } else {
+      badge.innerHTML = '<span style="color:var(--text3)">기본 PAP 로고 사용 중</span>';
+    }
   }
   var resetBtn = document.getElementById('instaResetLogoBtn');
   if (resetBtn) resetBtn.style.display = has ? '' : 'none';
