@@ -72,6 +72,11 @@ function lsSet(key,val){try{localStorage.setItem('pap_admin_'+key,JSON.stringify
 // Admin auth + role check
 document.addEventListener('DOMContentLoaded',function(){
   var now=new Date();var dd=document.getElementById('dashDate');if(dd)dd.textContent=now.getFullYear()+'년 '+(now.getMonth()+1)+'월 '+now.getDate()+'일';
+  // QA #254 v3 — initial sync of insta logo status badge (defer so
+  // the function definition below is registered first).
+  setTimeout(function(){
+    if (typeof _papInstaUpdateLogoStatusUI === 'function') _papInstaUpdateLogoStatusUI();
+  }, 0);
   if(typeof PAP!=='undefined'){
     if(!PAP.auth.isLoggedIn()){
       window.location.href='auth.html?redirect=admin';
@@ -7096,6 +7101,8 @@ async function papInstaOpenEditor(){
   }
   _papInstaCurrentUrls = urls;
   _papInstaCurrentIdx = 0;
+  // QA #254 v3 — refresh "기본 로고 / 커스텀 로고" status badge.
+  if (typeof _papInstaUpdateLogoStatusUI === 'function') _papInstaUpdateLogoStatusUI();
   _papInstaRenderThumbStrip();
   try {
     await _papInstaShowImage(0);
@@ -7151,6 +7158,19 @@ async function _papInstaShowImage(idx){
   if (ps) ps.value = opts.padPct;
   if (ll) ll.textContent = opts.logoPct + '%';
   if (pl) pl.textContent = opts.padPct + '%';
+  // QA #254 v3 — image positioning sliders.
+  var sc = document.getElementById('instaModalImgScale');
+  var ox = document.getElementById('instaModalOffsetX');
+  var oy = document.getElementById('instaModalOffsetY');
+  var scl = document.getElementById('instaModalImgScaleLabel');
+  var oxl = document.getElementById('instaModalOffsetXLabel');
+  var oyl = document.getElementById('instaModalOffsetYLabel');
+  if (sc)  sc.value  = opts.imgScale;
+  if (ox)  ox.value  = opts.offsetX;
+  if (oy)  oy.value  = opts.offsetY;
+  if (scl) scl.textContent = opts.imgScale + '%';
+  if (oxl) oxl.textContent = (opts.offsetX > 0 ? '+' : '') + opts.offsetX;
+  if (oyl) oyl.textContent = (opts.offsetY > 0 ? '+' : '') + opts.offsetY;
   // Counter label.
   var cnt = document.getElementById('instaModalCounter');
   if (cnt) cnt.textContent = (idx + 1) + ' / ' + _papInstaCurrentUrls.length +
@@ -7181,11 +7201,24 @@ function papInstaNext(){
 function _papInstaOnSliderInput(){
   var url = _papInstaCurrentUrls[_papInstaCurrentIdx];
   if (!url) return;
-  var logoPct = parseFloat(document.getElementById('instaModalLogoSize').value);
-  var padPct  = parseFloat(document.getElementById('instaModalBottomPad').value);
-  _papInstaPerImageOpts[url] = { logoPct: logoPct, padPct: padPct };
+  var logoPct  = parseFloat(document.getElementById('instaModalLogoSize').value);
+  var padPct   = parseFloat(document.getElementById('instaModalBottomPad').value);
+  // QA #254 v3 — image positioning override values.
+  var imgScale = parseFloat((document.getElementById('instaModalImgScale')||{}).value || '100');
+  var offsetX  = parseFloat((document.getElementById('instaModalOffsetX') ||{}).value || '0');
+  var offsetY  = parseFloat((document.getElementById('instaModalOffsetY') ||{}).value || '0');
+  _papInstaPerImageOpts[url] = {
+    logoPct: logoPct, padPct: padPct,
+    imgScale: imgScale, offsetX: offsetX, offsetY: offsetY,
+  };
   document.getElementById('instaModalLogoSizeLabel').textContent = logoPct + '%';
   document.getElementById('instaModalPadLabel').textContent     = padPct  + '%';
+  var scl = document.getElementById('instaModalImgScaleLabel');
+  var oxl = document.getElementById('instaModalOffsetXLabel');
+  var oyl = document.getElementById('instaModalOffsetYLabel');
+  if (scl) scl.textContent = imgScale + '%';
+  if (oxl) oxl.textContent = (offsetX > 0 ? '+' : '') + offsetX;
+  if (oyl) oyl.textContent = (offsetY > 0 ? '+' : '') + offsetY;
   // Composite — same canvas, just rewrite.
   var opts = _papInstaOptsForImage(url);
   var canvas = document.getElementById('instaPreviewCanvas');
@@ -7194,15 +7227,39 @@ function _papInstaOnSliderInput(){
   var cnt = document.getElementById('instaModalCounter');
   if (cnt) cnt.textContent = (_papInstaCurrentIdx + 1) + ' / ' +
     _papInstaCurrentUrls.length + ' · 🟠 개별 설정';
+  // Refresh thumb-strip so the orange dot lights up immediately.
+  _papInstaRenderThumbStrip();
+}
+
+// QA #254 v3 — Reset the current image's per-image override back to
+// global defaults (clears the row from _papInstaPerImageOpts and re-
+// syncs the sliders).
+function papInstaResetImage(){
+  var url = _papInstaCurrentUrls[_papInstaCurrentIdx];
+  if (!url) return;
+  delete _papInstaPerImageOpts[url];
+  _papInstaShowImage(_papInstaCurrentIdx);
 }
 
 // Resolve the effective opts for a given image: per-image override
 // (if any) wins over the global slider defaults.
+//
+// QA #254 v3 — opts shape extended with imgScale / offsetX / offsetY
+// for per-image positioning. Falls back to identity (100% / 0 / 0)
+// when the override doesn't carry them so older overrides written
+// before v3 don't crash.
 function _papInstaOptsForImage(url){
-  var base = _papInstaReadOpts();  // { W, H, logoPct, padPct } from global sliders
+  var base = _papInstaReadOpts();
   var ov = _papInstaPerImageOpts[url];
   if (ov) {
-    return { W: base.W, H: base.H, logoPct: ov.logoPct, padPct: ov.padPct };
+    return {
+      W: base.W, H: base.H,
+      logoPct:  (typeof ov.logoPct  === 'number') ? ov.logoPct  : base.logoPct,
+      padPct:   (typeof ov.padPct   === 'number') ? ov.padPct   : base.padPct,
+      imgScale: (typeof ov.imgScale === 'number') ? ov.imgScale : base.imgScale,
+      offsetX:  (typeof ov.offsetX  === 'number') ? ov.offsetX  : base.offsetX,
+      offsetY:  (typeof ov.offsetY  === 'number') ? ov.offsetY  : base.offsetY,
+    };
   }
   return base;
 }
@@ -7259,19 +7316,82 @@ async function papInstaDownloadAll(){
   _papInstaSetStatus('✓ ZIP 다운로드 완료 (성공 ' + ok + '장, 실패 ' + failed + '장)');
 }
 
+// QA #254 v3 — persisted custom logo.
+//   localStorage key holds a base64 dataURL of the user-uploaded PNG.
+//   _papInstaLoadLogo() checks this first, so the chosen logo survives
+//   browser reloads / next-day visits — i.e. functions as the
+//   "permanent default" until the editor clicks "기본 로고로 복원".
+var _PAP_INSTA_CUSTOM_LOGO_KEY = 'pap_insta_custom_logo_v1';
+
+function _papInstaReadStoredLogoDataUrl(){
+  try { return localStorage.getItem(_PAP_INSTA_CUSTOM_LOGO_KEY) || ''; }
+  catch(_) { return ''; }
+}
+function _papInstaWriteStoredLogoDataUrl(dataUrl){
+  try {
+    if (dataUrl) localStorage.setItem(_PAP_INSTA_CUSTOM_LOGO_KEY, dataUrl);
+    else         localStorage.removeItem(_PAP_INSTA_CUSTOM_LOGO_KEY);
+  } catch(_) { /* quota / private-mode: ignore */ }
+}
+
 function papInstaSetCustomLogo(input){
   if (!input || !input.files || !input.files[0]) return;
+  var file = input.files[0];
+  // Reject anything heavier than 2 MB — localStorage caps around
+  // 5 MB total, so a logo bigger than that would crowd out other state.
+  if (file.size > 2 * 1024 * 1024) {
+    _papInstaSetStatus('❌ 로고는 2MB 이하 PNG/SVG만 가능합니다.');
+    return;
+  }
   var reader = new FileReader();
   reader.onload = function(e){
+    var dataUrl = e.target.result;
     var img = new Image();
     img.onload = function(){
       _papInstaLogoImg = img;
-      _papInstaSetStatus('✓ 커스텀 로고 적용됨 (다음 합성부터 사용)');
+      // Persist for future sessions on this browser.
+      _papInstaWriteStoredLogoDataUrl(dataUrl);
+      _papInstaSetStatus('✓ 커스텀 로고가 영구 적용되었습니다. (이 브라우저 영구 저장)');
+      _papInstaUpdateLogoStatusUI();
+      // If the preview modal is open, recomposite the current image.
+      var canvas = document.getElementById('instaPreviewCanvas');
+      if (canvas && _papInstaCurrentUrls[_papInstaCurrentIdx]) {
+        var url = _papInstaCurrentUrls[_papInstaCurrentIdx];
+        _papInstaCompositeOne(url, canvas, _papInstaOptsForImage(url));
+      }
     };
     img.onerror = function(){ _papInstaSetStatus('❌ 로고 이미지 로드 실패'); };
-    img.src = e.target.result;
+    img.src = dataUrl;
   };
-  reader.readAsDataURL(input.files[0]);
+  reader.readAsDataURL(file);
+}
+
+// Restore factory-default logo (`/pap-symbol-white.png`).
+function papInstaResetCustomLogo(){
+  if (!confirm('커스텀 로고를 삭제하고 기본 PAP 로고로 되돌리시겠습니까?')) return;
+  _papInstaWriteStoredLogoDataUrl('');
+  _papInstaLogoImg = null;
+  _papInstaLogoLoading = null;
+  _papInstaSetStatus('✓ 기본 로고로 복원되었습니다.');
+  _papInstaUpdateLogoStatusUI();
+  var canvas = document.getElementById('instaPreviewCanvas');
+  if (canvas && _papInstaCurrentUrls[_papInstaCurrentIdx]) {
+    var url = _papInstaCurrentUrls[_papInstaCurrentIdx];
+    _papInstaCompositeOne(url, canvas, _papInstaOptsForImage(url));
+  }
+}
+
+// UI badge: shows whether the editor's browser is on factory default
+// or a stored custom logo, and toggles the "기본 로고로 복원" button.
+function _papInstaUpdateLogoStatusUI(){
+  var has = !!_papInstaReadStoredLogoDataUrl();
+  var badge = document.getElementById('instaLogoStatusBadge');
+  if (badge) {
+    badge.textContent = has ? '✓ 커스텀 로고 영구 저장됨' : '기본 PAP 로고 사용 중';
+    badge.style.color = has ? '#16a34a' : 'var(--text3)';
+  }
+  var resetBtn = document.getElementById('instaResetLogoBtn');
+  if (resetBtn) resetBtn.style.display = has ? '' : 'none';
 }
 
 function _papInstaSetStatus(msg){
@@ -7281,9 +7401,17 @@ function _papInstaSetStatus(msg){
 
 function _papInstaReadOpts(){
   var aspect = (document.getElementById('instaAspect') || {}).value || '4:5';
-  var logoPct = parseFloat((document.getElementById('instaLogoSize') || {}).value || '7');
-  var padPct  = parseFloat((document.getElementById('instaBottomPad') || {}).value || '5');
-  return { W: 1080, H: (aspect === '1:1' ? 1080 : 1350), logoPct: logoPct, padPct: padPct };
+  var logoPct = parseFloat((document.getElementById('instaLogoSize') || {}).value || '14');
+  var padPct  = parseFloat((document.getElementById('instaBottomPad') || {}).value || '3');
+  // QA #254 v3 — image positioning defaults (identity transform — image
+  // is cover-fit centered, no zoom-in, no offset). Per-image overrides
+  // can shift these via the modal sliders.
+  return {
+    W: 1080,
+    H: (aspect === '1:1' ? 1080 : 1350),
+    logoPct: logoPct, padPct: padPct,
+    imgScale: 100, offsetX: 0, offsetY: 0,
+  };
 }
 
 function _papInstaCollectGalleryUrls(){
@@ -7298,14 +7426,24 @@ function _papInstaLoadLogo(){
   if (_papInstaLogoLoading) return _papInstaLogoLoading;
   _papInstaLogoLoading = new Promise(function(res, rej){
     var img = new Image();
-    // Same-origin static asset (`/pap-symbol-white.png` is served from
-    // the Vercel deployment), so crossOrigin isn't strictly required —
-    // but set it anyway so the loaded image is taint-safe for
-    // canvas.toBlob() if the URL is ever swapped to a CDN one.
     img.crossOrigin = 'anonymous';
     img.onload  = function(){ _papInstaLogoImg = img; res(img); };
-    img.onerror = function(){ rej(new Error('PAP 로고 PNG 로드 실패: ' + _PAP_INSTA_DEFAULT_LOGO_URL)); };
-    img.src = _PAP_INSTA_DEFAULT_LOGO_URL;
+    img.onerror = function(){
+      // QA #254 v3 — stored custom logo failed to decode for some
+      // reason (corruption etc). Fall back to factory default rather
+      // than blocking the editor.
+      var fallback = new Image();
+      fallback.crossOrigin = 'anonymous';
+      fallback.onload  = function(){ _papInstaLogoImg = fallback; res(fallback); };
+      fallback.onerror = function(){ rej(new Error('PAP 로고 로드 실패: ' + _PAP_INSTA_DEFAULT_LOGO_URL)); };
+      fallback.src = _PAP_INSTA_DEFAULT_LOGO_URL;
+    };
+    // QA #254 v3 — check for a stored custom logo first (persisted
+    // dataURL in localStorage). Falls through to the factory default
+    // when there's nothing stored.
+    var stored = (typeof _papInstaReadStoredLogoDataUrl === 'function')
+      ? _papInstaReadStoredLogoDataUrl() : '';
+    img.src = stored || _PAP_INSTA_DEFAULT_LOGO_URL;
   });
   return _papInstaLogoLoading;
 }
@@ -7332,9 +7470,17 @@ async function _papInstaCompositeOne(url, canvas, opts){
   ctx.clearRect(0, 0, W, H);
   var img = await _papInstaLoadImage(url);
   var iw = img.naturalWidth, ih = img.naturalHeight;
-  var scale = Math.max(W / iw, H / ih);
+  // QA #254 v3 — base cover-fit scale, then multiply by user-chosen
+  // zoom (imgScale 100~250%). offsetX/Y shift the image by ±50% of
+  // the canvas dimension so the editor can re-frame any region.
+  var imgScale = (typeof opts.imgScale === 'number' && opts.imgScale > 0) ? opts.imgScale : 100;
+  var offsetX  = (typeof opts.offsetX  === 'number') ? opts.offsetX : 0;
+  var offsetY  = (typeof opts.offsetY  === 'number') ? opts.offsetY : 0;
+  var scale = Math.max(W / iw, H / ih) * (imgScale / 100);
   var dw = iw * scale, dh = ih * scale;
-  ctx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+  var dx = (W - dw) / 2 + (offsetX / 100) * W;
+  var dy = (H - dh) / 2 + (offsetY / 100) * H;
+  ctx.drawImage(img, dx, dy, dw, dh);
   var logo = await _papInstaLoadLogo();
   var logoW = W * (opts.logoPct / 100);
   var logoH = logoW * (logo.naturalHeight / logo.naturalWidth);
