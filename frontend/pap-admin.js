@@ -7388,6 +7388,58 @@ function papInstaResetImage(){
   _papInstaShowImage(_papInstaCurrentIdx);
 }
 
+// QA #260 — apply ONLY the logo-related opts of the current image to
+// every other image in the batch. Image-positioning opts (imgScale,
+// offsetX, offsetY) are intentionally left alone because every photo
+// frames differently and a uniform crop wouldn't make sense.
+//
+// Semantics:
+//   - source = current image's effective opts (per-image override OR
+//     global default fallback).
+//   - for each other URL: merge logo opts into its existing override,
+//     preserving its image-positioning opts.
+//   - URLs that had no override before now get a fresh one carrying
+//     just the logo opts (image-positioning defaults remain in effect).
+function papInstaApplyLogoToAll(){
+  var srcUrl = _papInstaCurrentUrls[_papInstaCurrentIdx];
+  if (!srcUrl) return;
+  var src = _papInstaOptsForImage(srcUrl);
+  // The four logo-only opts.
+  var logoOpts = {
+    logoPct:     src.logoPct,
+    padPct:      src.padPct,
+    logoAlpha:   src.logoAlpha,
+    logoEnabled: src.logoEnabled,
+  };
+  var count = 0;
+  _papInstaCurrentUrls.forEach(function(url){
+    if (url === srcUrl) return; // current image already has these values
+    var existing = _papInstaPerImageOpts[url] || {};
+    _papInstaPerImageOpts[url] = {
+      // Preserve existing image-positioning override (or undefined to
+      // fall back to global defaults).
+      imgScale: existing.imgScale,
+      offsetX:  existing.offsetX,
+      offsetY:  existing.offsetY,
+      // Overwrite logo opts with the source image's settings.
+      logoPct:     logoOpts.logoPct,
+      padPct:      logoOpts.padPct,
+      logoAlpha:   logoOpts.logoAlpha,
+      logoEnabled: logoOpts.logoEnabled,
+    };
+    count++;
+  });
+  // Refresh strip indicators + counter label, and re-composite the
+  // currently visible canvas (no functional change for it but keeps
+  // the UI internally consistent).
+  _papInstaRenderThumbStrip();
+  var cnt = document.getElementById('instaModalCounter');
+  if (cnt) cnt.textContent = (_papInstaCurrentIdx + 1) + ' / ' +
+    _papInstaCurrentUrls.length + ' · 🌐 ' + count + '장 일괄 적용 완료';
+  // Toast-style feedback for an obvious "done" signal.
+  alert('현재 이미지의 로고 설정을 다른 ' + count + '장에 일괄 적용했습니다.\n\n적용된 항목: 🏷️ 너비, 📏 하단 여백, 🔆 투명도, ☑️ 로고 표시 여부\n적용 제외: 🔍 확대, ↔️ 좌/우, ↕️ 상/하 (이미지마다 다른 framing 유지)');
+}
+
 // Resolve the effective opts for a given image: per-image override
 // (if any) wins over the global slider defaults.
 //
