@@ -3208,6 +3208,94 @@ function _validateGalleryFile(file){
   return {ok:true, blocked:false, message:''};
 }
 
+// ── QA #255 — admin-side auto-compressor ───────────────────────────────────
+// Editors routinely have raw exports >2MB (10–40MB out of Lightroom is
+// normal). Rather than asking them to round-trip through a third-party
+// compressor every time, the admin gallery picker now sends oversized
+// files through a client-side canvas compressor that drops the longest
+// edge + JPEG quality in steps until the result clears 2MB. Returns a
+// new File object that downstream code uses transparently — the rest of
+// the upload flow doesn't change.
+//
+// Algorithm (escalating loss until under target):
+//   step 1: 2400px @ 0.85
+//   step 2: 2400px @ 0.75 → 0.65 → 0.55
+//   step 3: 2000px @ same quality ladder
+//   step 4: 1800 → 1600 → 1400 px with same ladder
+//   give up below 1400 / 0.5 — return last attempt anyway (better than
+//   blocking the admin entirely; they'll see a warning in the feedback).
+async function _compressGalleryImage(file, targetBytes){
+  targetBytes = targetBytes || GALLERY_MAX_BYTES;
+  // Read source into an Image element.
+  var dataUrl = await new Promise(function(res, rej){
+    var r = new FileReader();
+    r.onload  = function(e){ res(e.target.result); };
+    r.onerror = function(){ rej(new Error('파일 읽기 실패')); };
+    r.readAsDataURL(file);
+  });
+  var img = await new Promise(function(res, rej){
+    var im = new Image();
+    im.onload  = function(){ res(im); };
+    im.onerror = function(){ rej(new Error('이미지 디코드 실패')); };
+    im.src = dataUrl;
+  });
+
+  var sourceW = img.naturalWidth, sourceH = img.naturalHeight;
+  // Long-edge dimension ladder. 2400 keeps print-quality detail for the
+  // hero shots; below 1400 we stop because quality drops noticeably and
+  // anything that hasn't compressed by then is usually a paper-thin
+  // gradient where JPEG codec just doesn't help.
+  var dimLadder     = [2400, 2000, 1800, 1600, 1400];
+  var qualityLadder = [0.85, 0.75, 0.65, 0.55, 0.5];
+
+  var lastBlob = null;
+  for (var di = 0; di < dimLadder.length; di++){
+    var maxDim = dimLadder[di];
+    // Compute target canvas size preserving aspect ratio. If the source
+    // is already smaller than maxDim we still try the quality ladder —
+    // some sources are 2000px but 8MB because of zero JPEG compression.
+    var scale = Math.min(1, maxDim / Math.max(sourceW, sourceH));
+    var dw = Math.round(sourceW * scale);
+    var dh = Math.round(sourceH * scale);
+    var canvas = document.createElement('canvas');
+    canvas.width  = dw;
+    canvas.height = dh;
+    var ctx = canvas.getContext('2d');
+    // White background — JPEG has no alpha channel, so transparent PNG
+    // source pixels would default to BLACK without this. White matches
+    // the PAP site bg and is the safer default for editorial shots.
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, dw, dh);
+    ctx.drawImage(img, 0, 0, dw, dh);
+
+    for (var qi = 0; qi < qualityLadder.length; qi++){
+      var q = qualityLadder[qi];
+      var blob = await new Promise(function(res){
+        canvas.toBlob(function(b){ res(b); }, 'image/jpeg', q);
+      });
+      if (!blob) continue;
+      lastBlob = blob;
+      if (blob.size <= targetBytes){
+        // We hit the target — wrap as File with a .jpg extension so the
+        // upload pipeline tags it correctly downstream.
+        var safeName = (file.name || 'image')
+          .replace(/\.(png|jpe?g|webp|heic|heif|gif|bmp|tiff?)$/i, '')
+          + '.jpg';
+        return new File([blob], safeName, { type: 'image/jpeg' });
+      }
+    }
+  }
+  // Couldn't reach the target — return the smallest attempt anyway so the
+  // editor gets SOMETHING uploaded; the caller surfaces a warning.
+  if (lastBlob){
+    var fallbackName = (file.name || 'image')
+      .replace(/\.(png|jpe?g|webp|heic|heif|gif|bmp|tiff?)$/i, '')
+      + '.jpg';
+    return new File([lastBlob], fallbackName, { type: 'image/jpeg' });
+  }
+  throw new Error('압축 실패');
+}
+
 // QA #85 — Rewritten with clearer per-file state isolation. Each file
 // validates and reads INDEPENDENTLY: a single blocked file no longer
 // pollutes the success path of valid files in the same or subsequent
@@ -3218,13 +3306,15 @@ function _validateGalleryFile(file){
 //   3. For each file: validate size → if blocked, increment counter and
 //      continue; if valid, read async then insert into DOM.
 //   4. Summarize at the end of validation pass AND each async completion.
-function _summarizeGalleryBatch(added, blocked){
+function _summarizeGalleryBatch(added, blocked, compressed){
   // QA #95 — removed the ratio-warn arm. Aspect ratio is no longer
-  // evaluated at upload, so the only signal we surface here is added vs
-  // blocked-by-size.
+  // evaluated at upload.
+  // QA #255 — added a "압축됨" count so the editor sees how many of the
+  // newly-added files went through the auto-shrink path.
   var msgs=[];
-  if(added>0)   msgs.push(added+'장 추가됨');
-  if(blocked>0) msgs.push(blocked+'장 차단됨 (2MB 초과)');
+  if(added>0)      msgs.push(added+'장 추가됨');
+  if(compressed>0) msgs.push(compressed+'장 자동 압축');
+  if(blocked>0)    msgs.push(blocked+'장 차단됨');
   var kind = (blocked>0 && added===0) ? 'error'
            : (added>0  && blocked===0) ? 'ok'
            : (blocked>0)                ? 'warn'
@@ -3253,15 +3343,50 @@ function addGallery(input){
   // Per-batch counters — independent of any other batch.
   var added = 0;
   var blocked = 0;
+  // QA #255 — auto-compress counter so the batch summary distinguishes
+  // "added as-is" from "added after auto-shrink".
+  var compressed = 0;
 
-  files.forEach(function(file){
+  files.forEach(async function(file){
+    // QA #255 — admin auto-compression. Anything over 2MB is run through
+    // _compressGalleryImage() instead of being blocked outright. The
+    // compressor returns a new File (image/jpeg) under the budget; we
+    // proceed with that file as if the user had uploaded it directly.
+    // The 60MB hard cap protects against accidentally selecting a 4K
+    // video / raw camera dump which would tie up the browser tab.
+    var HARD_CAP_BYTES = 60 * 1024 * 1024;
+    if (file.size > HARD_CAP_BYTES){
+      blocked++;
+      _galleryFeedback('"'+file.name+'" 파일이 너무 큽니다 ('+(file.size/1024/1024).toFixed(1)+'MB > 60MB). 사진/그래픽 파일이 아닐 가능성이 있습니다.', 'error');
+      _summarizeGalleryBatch(added, blocked, compressed);
+      return;
+    }
+    if (file.size > GALLERY_MAX_BYTES){
+      _galleryFeedback('"'+file.name+'" ('+(file.size/1024/1024).toFixed(1)+'MB) 자동 압축 중…', 'info');
+      try {
+        var origBytes = file.size;
+        file = await _compressGalleryImage(file);
+        var compactedMB = (file.size/1024/1024).toFixed(2);
+        var origMB = (origBytes/1024/1024).toFixed(1);
+        compressed++;
+        // Note: feedback message will be overwritten by _summarizeGalleryBatch
+        // once this file lands; that's fine — the editor sees the running
+        // "압축됨" total which is more useful than per-file noise.
+        console.log('[gallery] auto-compressed:', file.name, origMB+'MB →', compactedMB+'MB');
+      } catch(e){
+        blocked++;
+        _galleryFeedback('"'+file.name+'" 자동 압축 실패: '+(e && e.message || e), 'error');
+        _summarizeGalleryBatch(added, blocked, compressed);
+        return;
+      }
+    }
     // STEP 1 — synchronous validation (size only). QA #95 confirmed: NO
     // aspect-ratio gate at this stage. The frontend layer (.ed-gallery-item)
     // contains any ratio into a 4:5 box at display time.
     var v = _validateGalleryFile(file);
     if(!v.ok){
       blocked++;
-      _summarizeGalleryBatch(added, blocked);
+      _summarizeGalleryBatch(added, blocked, compressed);
       // Skip this file. We do NOT abort the loop — other files in the
       // same batch may still be valid and must be uploaded normally.
       return;
@@ -3278,7 +3403,7 @@ function addGallery(input){
       galleryCount--;
       blocked++;
       _galleryFeedback('"'+file.name+'" 파일을 읽을 수 없습니다.', 'error');
-      _summarizeGalleryBatch(added, blocked);
+      _summarizeGalleryBatch(added, blocked, compressed);
     };
 
     reader.onload = function(e){
@@ -3309,7 +3434,7 @@ function addGallery(input){
       _wireGalleryItemDrag(div);
       updateImgCredits();
       added++;
-      _summarizeGalleryBatch(added, blocked);
+      _summarizeGalleryBatch(added, blocked, compressed);
       // First image to land becomes the default ★ THUMB until the
       // admin picks something else. Saves an extra click for the
       // common case of "use the first photo for the home card".
@@ -3322,7 +3447,7 @@ function addGallery(input){
       galleryCount--;
       blocked++;
       _galleryFeedback('"'+file.name+'" 파일 처리 중 오류: '+(err && err.message || err), 'error');
-      _summarizeGalleryBatch(added, blocked);
+      _summarizeGalleryBatch(added, blocked, compressed);
     }
   });
 
