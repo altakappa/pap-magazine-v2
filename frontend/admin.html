@@ -828,27 +828,26 @@ tr:hover td{background:rgba(0,0,0,.02)}
           <div class="pe-label" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
             <span>📷 인스타그램 이미지 생성 <span class="pe-opt">갤러리 이미지 + PAP 로고 + 4:5 (1080×1350)</span></span>
             <span style="display:flex;gap:6px;flex-wrap:wrap">
-              <button class="btn btn-sm" type="button" onclick="papInstaPreview()" title="첫 갤러리 이미지로 합성 결과 미리보기">👁️ 미리보기</button>
+              <button class="btn btn-sm" type="button" onclick="papInstaOpenEditor()" title="갤러리 이미지별 로고 크기/위치 편집">🎨 편집/미리보기</button>
               <button class="btn btn-sm btn-blue" type="button" onclick="papInstaDownloadAll()" title="모든 갤러리 이미지를 인스타용으로 합성 후 ZIP 다운로드">📦 전체 ZIP 다운로드</button>
             </span>
           </div>
 
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:2px">
-            <!-- 로고 크기 -->
+            <!-- 글로벌 기본값 — 편집 모달에서 개별 override 없으면 이 값 사용. -->
             <div>
               <label style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px">
-                <span>🏷️ 로고 너비 (이미지 너비 대비 %)</span>
-                <strong id="instaLogoSizeLabel" style="color:var(--text)">7%</strong>
+                <span>🏷️ 기본 로고 너비 <span class="pe-opt">전체 이미지 디폴트</span></span>
+                <strong id="instaLogoSizeLabel" style="color:var(--text)">14%</strong>
               </label>
-              <input type="range" id="instaLogoSize" min="4" max="14" step="0.5" value="7" style="width:100%" oninput="document.getElementById('instaLogoSizeLabel').textContent = this.value + '%'">
+              <input type="range" id="instaLogoSize" min="4" max="22" step="0.5" value="14" style="width:100%" oninput="document.getElementById('instaLogoSizeLabel').textContent = this.value + '%'">
             </div>
-            <!-- 하단 여백 -->
             <div>
               <label style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px">
-                <span>📏 하단 여백 (이미지 높이 대비 %)</span>
-                <strong id="instaPadLabel" style="color:var(--text)">5%</strong>
+                <span>📏 기본 하단 여백 <span class="pe-opt">전체 이미지 디폴트</span></span>
+                <strong id="instaPadLabel" style="color:var(--text)">3%</strong>
               </label>
-              <input type="range" id="instaBottomPad" min="2" max="10" step="0.5" value="5" style="width:100%" oninput="document.getElementById('instaPadLabel').textContent = this.value + '%'">
+              <input type="range" id="instaBottomPad" min="1" max="12" step="0.5" value="3" style="width:100%" oninput="document.getElementById('instaPadLabel').textContent = this.value + '%'">
             </div>
 
             <!-- 출력 비율 -->
@@ -2581,18 +2580,63 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
 </div>
 
 <script src="/pap-api.js?v=3" defer></script>
-<!-- QA #254 — Instagram image preview modal. Populated by papInstaPreview(). -->
+<!-- QA #254 v2 — Instagram editor modal. Each gallery image gets its
+     own logo size + position knobs (stored in _papInstaPerImageOpts).
+     Layout:
+       • thumbnail strip across the top (active card outlined)
+       • large canvas preview in the middle (no black wrapper)
+       • per-image sliders below the canvas
+       • prev/next + 전체 ZIP 다운로드 in the footer
+     The Cancel/Download buttons are visible without scrolling, the
+     thumb strip stays one row tall, and the slider labels update on
+     input + recomposite on change. -->
 <div class="modal-bg" id="instaPreviewModal" onclick="if(event.target===this) closeInstaPreview()">
-  <div class="modal" style="max-width:540px">
+  <div class="modal" style="max-width:720px">
     <button class="modal-close" onclick="closeInstaPreview()">×</button>
-    <h2>📷 인스타그램 이미지 미리보기</h2>
-    <div class="sub" id="instaPreviewSub">첫 갤러리 이미지로 합성한 결과입니다.</div>
-    <div style="margin-top:14px;text-align:center;background:#000;padding:14px">
-      <canvas id="instaPreviewCanvas" style="max-width:100%;height:auto;display:inline-block;background:#222"></canvas>
+    <h2>📷 인스타그램 이미지 편집</h2>
+    <div class="sub" id="instaPreviewSub">각 이미지를 클릭해서 개별 로고 크기 / 위치를 조정한 뒤 한 번에 ZIP으로 다운로드하세요.</div>
+
+    <!-- Thumbnail strip — built dynamically by papInstaOpenEditor() -->
+    <div id="instaThumbStrip" style="display:flex;gap:6px;overflow-x:auto;margin-top:14px;padding:6px 2px;border:1px solid var(--border);background:var(--surface);min-height:74px"></div>
+
+    <!-- Big preview canvas — no padding, no border, no background.
+         The image cover-crop fills 100% of the canvas, so what the
+         editor sees is exactly the exported PNG. Anything wrapping the
+         canvas (background color, border, padding) would read as a
+         "frame" around the image, which the QA flagged as confusing. -->
+    <div style="margin-top:14px;text-align:center">
+      <canvas id="instaPreviewCanvas" style="max-width:100%;max-height:420px;height:auto;display:inline-block"></canvas>
     </div>
-    <div class="modal-foot">
-      <button class="btn btn-primary" onclick="papInstaDownloadAll()">📦 전체 ZIP 다운로드</button>
-      <button class="btn" onclick="closeInstaPreview()">닫기</button>
+
+    <!-- Per-image sliders — these update _papInstaPerImageOpts[currentUrl]
+         on every input event, then re-composite the canvas above. -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px;padding:10px;background:var(--surface);border:1px solid var(--border)">
+      <div>
+        <label style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px">
+          <span>🏷️ 로고 너비</span>
+          <strong id="instaModalLogoSizeLabel" style="color:var(--text)">14%</strong>
+        </label>
+        <input type="range" id="instaModalLogoSize" min="4" max="22" step="0.5" value="14" style="width:100%" oninput="_papInstaOnSliderInput()">
+      </div>
+      <div>
+        <label style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px">
+          <span>📏 하단 여백</span>
+          <strong id="instaModalPadLabel" style="color:var(--text)">3%</strong>
+        </label>
+        <input type="range" id="instaModalBottomPad" min="1" max="12" step="0.5" value="3" style="width:100%" oninput="_papInstaOnSliderInput()">
+      </div>
+    </div>
+
+    <div class="modal-foot" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+      <div>
+        <button class="btn btn-sm" type="button" onclick="papInstaPrev()" title="이전 이미지">← 이전</button>
+        <button class="btn btn-sm" type="button" onclick="papInstaNext()" title="다음 이미지">다음 →</button>
+        <span id="instaModalCounter" style="margin-left:10px;font-size:11px;color:var(--text3)"></span>
+      </div>
+      <div>
+        <button class="btn btn-primary" onclick="papInstaDownloadAll()">📦 전체 ZIP 다운로드</button>
+        <button class="btn" onclick="closeInstaPreview()">닫기</button>
+      </div>
     </div>
   </div>
 </div>

@@ -7068,42 +7068,143 @@ function closeFilmModal(){
 // is CORS-blocked S3 fetches — handled below with crossOrigin and a
 // clear error toast on failure.
 
-// Default PAP logo — drawn from the on-screen mark in the sample IG
-// posts (rounded sans-serif "PAP", white on transparent). Inlined as
-// SVG so we don't ship another PNG asset; the file-input handler
-// overrides this with an <img> element on demand.
-var _PAP_INSTA_DEFAULT_LOGO_SVG =
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 110">' +
-  '<text x="150" y="86" text-anchor="middle" font-family="Montserrat, sans-serif" font-weight="900" font-size="92" fill="white" letter-spacing="-2">PAP</text>' +
-  '</svg>';
+// QA #254 v2 — default PAP logo source path. /pap-symbol-white.png is
+// already shipped (used as the hero watermark on the home page), so we
+// reuse it instead of drawing a runtime SVG. The editor can still
+// override via the file input (papInstaSetCustomLogo) when they want a
+// specific transparent-PNG mark for a given editorial.
+var _PAP_INSTA_DEFAULT_LOGO_URL = '/pap-symbol-white.png';
 
 var _papInstaLogoImg = null;       // cached HTMLImageElement of the logo
 var _papInstaLogoLoading = null;   // in-flight Promise so concurrent
                                     // preview + download calls share one load
 
-async function papInstaPreview(){
+// QA #254 v2 — per-image overrides for { logoPct, padPct }, keyed by
+// the gallery image URL. Edited via the modal sliders; falls back to
+// the global defaults read from #instaLogoSize / #instaBottomPad.
+var _papInstaPerImageOpts = {};
+var _papInstaCurrentUrls  = [];
+var _papInstaCurrentIdx   = 0;
+
+// QA #254 v2 — open the editor modal: build thumbnail strip, hydrate
+// per-image opts (falling back to globals), composite first image.
+async function papInstaOpenEditor(){
   var urls = _papInstaCollectGalleryUrls();
   if (!urls.length) {
     alert('갤러리에 이미지가 없습니다. 먼저 이미지를 추가해주세요.');
     return;
   }
-  _papInstaSetStatus('미리보기 합성 중...');
+  _papInstaCurrentUrls = urls;
+  _papInstaCurrentIdx = 0;
+  _papInstaRenderThumbStrip();
   try {
-    var opts = _papInstaReadOpts();
-    var modal = document.getElementById('instaPreviewModal');
-    var canvas = document.getElementById('instaPreviewCanvas');
-    if (canvas) { canvas.width = opts.W; canvas.height = opts.H; }
-    await _papInstaCompositeOne(urls[0], canvas, opts);
-    if (modal) modal.classList.add('show');
-    var sub = document.getElementById('instaPreviewSub');
-    if (sub) sub.textContent =
-      '첫 갤러리 이미지로 합성한 결과입니다. (전체 ' + urls.length + '장)';
-    _papInstaSetStatus('');
+    await _papInstaShowImage(0);
+    document.getElementById('instaPreviewModal').classList.add('show');
   } catch (e) {
-    console.error('[insta preview] failed:', e);
-    _papInstaSetStatus('❌ 미리보기 실패: ' + (e && e.message ? e.message : e));
+    console.error('[insta editor] failed:', e);
     alert('미리보기 합성에 실패했습니다.\nS3 CORS 제한 또는 이미지 로드 실패일 수 있습니다.\n\n상세: ' + (e && e.message ? e.message : e));
   }
+}
+
+// Backwards-compatible alias — older inline onclick may still call this.
+var papInstaPreview = papInstaOpenEditor;
+
+function _papInstaRenderThumbStrip(){
+  var strip = document.getElementById('instaThumbStrip');
+  if (!strip) return;
+  strip.innerHTML = '';
+  _papInstaCurrentUrls.forEach(function(url, idx){
+    var thumb = document.createElement('div');
+    thumb.style.cssText =
+      'flex:0 0 auto;width:60px;height:60px;cursor:pointer;border:2px solid ' +
+      (idx === _papInstaCurrentIdx ? 'var(--purple)' : 'transparent') +
+      ';background-image:url(' + JSON.stringify(url).replace(/"/g,'\'') +
+      ');background-size:cover;background-position:center;border-radius:2px;position:relative';
+    thumb.dataset.idx = String(idx);
+    thumb.title = '이미지 ' + (idx + 1);
+    thumb.onclick = function(){
+      var i = parseInt(this.dataset.idx, 10) || 0;
+      _papInstaShowImage(i);
+    };
+    // Indicator dot if this image has a per-image override.
+    if (_papInstaPerImageOpts[url]) {
+      var dot = document.createElement('div');
+      dot.style.cssText = 'position:absolute;top:2px;right:2px;width:7px;height:7px;background:#f97316;border-radius:50%;border:1px solid #fff';
+      dot.title = '개별 설정 적용됨';
+      thumb.appendChild(dot);
+    }
+    strip.appendChild(thumb);
+  });
+}
+
+async function _papInstaShowImage(idx){
+  if (idx < 0 || idx >= _papInstaCurrentUrls.length) return;
+  _papInstaCurrentIdx = idx;
+  var url = _papInstaCurrentUrls[idx];
+  var opts = _papInstaOptsForImage(url);
+  // Sync the modal sliders to this image's current effective opts.
+  var ls = document.getElementById('instaModalLogoSize');
+  var ps = document.getElementById('instaModalBottomPad');
+  var ll = document.getElementById('instaModalLogoSizeLabel');
+  var pl = document.getElementById('instaModalPadLabel');
+  if (ls) ls.value = opts.logoPct;
+  if (ps) ps.value = opts.padPct;
+  if (ll) ll.textContent = opts.logoPct + '%';
+  if (pl) pl.textContent = opts.padPct + '%';
+  // Counter label.
+  var cnt = document.getElementById('instaModalCounter');
+  if (cnt) cnt.textContent = (idx + 1) + ' / ' + _papInstaCurrentUrls.length +
+    (_papInstaPerImageOpts[url] ? ' · 🟠 개별 설정' : ' · 기본값');
+  // Composite onto the preview canvas.
+  var canvas = document.getElementById('instaPreviewCanvas');
+  if (canvas) {
+    canvas.width  = opts.W;
+    canvas.height = opts.H;
+    await _papInstaCompositeOne(url, canvas, opts);
+  }
+  // Refresh thumb-strip active border + override-dot.
+  _papInstaRenderThumbStrip();
+}
+
+function papInstaPrev(){
+  var i = _papInstaCurrentIdx - 1;
+  if (i < 0) i = _papInstaCurrentUrls.length - 1;
+  _papInstaShowImage(i);
+}
+function papInstaNext(){
+  var i = _papInstaCurrentIdx + 1;
+  if (i >= _papInstaCurrentUrls.length) i = 0;
+  _papInstaShowImage(i);
+}
+
+// Slider input handler — updates the per-image override and re-composites.
+function _papInstaOnSliderInput(){
+  var url = _papInstaCurrentUrls[_papInstaCurrentIdx];
+  if (!url) return;
+  var logoPct = parseFloat(document.getElementById('instaModalLogoSize').value);
+  var padPct  = parseFloat(document.getElementById('instaModalBottomPad').value);
+  _papInstaPerImageOpts[url] = { logoPct: logoPct, padPct: padPct };
+  document.getElementById('instaModalLogoSizeLabel').textContent = logoPct + '%';
+  document.getElementById('instaModalPadLabel').textContent     = padPct  + '%';
+  // Composite — same canvas, just rewrite.
+  var opts = _papInstaOptsForImage(url);
+  var canvas = document.getElementById('instaPreviewCanvas');
+  if (canvas) _papInstaCompositeOne(url, canvas, opts);
+  // Update strip orange-dot indicator.
+  var cnt = document.getElementById('instaModalCounter');
+  if (cnt) cnt.textContent = (_papInstaCurrentIdx + 1) + ' / ' +
+    _papInstaCurrentUrls.length + ' · 🟠 개별 설정';
+}
+
+// Resolve the effective opts for a given image: per-image override
+// (if any) wins over the global slider defaults.
+function _papInstaOptsForImage(url){
+  var base = _papInstaReadOpts();  // { W, H, logoPct, padPct } from global sliders
+  var ov = _papInstaPerImageOpts[url];
+  if (ov) {
+    return { W: base.W, H: base.H, logoPct: ov.logoPct, padPct: ov.padPct };
+  }
+  return base;
 }
 
 function closeInstaPreview(){
@@ -7112,21 +7213,28 @@ function closeInstaPreview(){
 }
 
 async function papInstaDownloadAll(){
-  var urls = _papInstaCollectGalleryUrls();
+  // QA #254 v2 — when the editor modal is open, use its in-memory
+  // url list (so per-image overrides win). Otherwise fall back to the
+  // current gallery snapshot.
+  var urls = (_papInstaCurrentUrls && _papInstaCurrentUrls.length)
+    ? _papInstaCurrentUrls
+    : _papInstaCollectGalleryUrls();
   if (!urls.length) { alert('갤러리에 이미지가 없습니다.'); return; }
   if (typeof JSZip === 'undefined') {
     alert('JSZip 라이브러리 로드 실패. 페이지를 새로고침해주세요.');
     return;
   }
   _papInstaSetStatus('처리 중 0 / ' + urls.length + '...');
-  var opts = _papInstaReadOpts();
+  var globalOpts = _papInstaReadOpts();
   var zip = new JSZip();
   var folder = zip.folder('pap-instagram-' + (new Date().toISOString().slice(0,10)));
   var canvas = document.createElement('canvas');
-  canvas.width = opts.W; canvas.height = opts.H;
+  canvas.width = globalOpts.W; canvas.height = globalOpts.H;
   var ok = 0, failed = 0;
   for (var i = 0; i < urls.length; i++) {
     try {
+      // Per-image override wins; resolve fresh on each loop iteration.
+      var opts = _papInstaOptsForImage(urls[i]);
       await _papInstaCompositeOne(urls[i], canvas, opts);
       var blob = await new Promise(function(res){
         canvas.toBlob(function(b){ res(b); }, 'image/png', 0.92);
@@ -7213,8 +7321,11 @@ async function _papInstaCompositeOne(url, canvas, opts){
   var W = opts.W, H = opts.H;
   if (canvas.width !== W) canvas.width = W;
   if (canvas.height !== H) canvas.height = H;
-  ctx.fillStyle = '#000';
-  ctx.fillRect(0, 0, W, H);
+  // QA #254 v2 — was fillStyle '#000' which left a black "frame" when
+  // the source image happened to be transparent. Clear to fully
+  // transparent and let cover-crop paint over it; on the off chance the
+  // image still leaves gaps, the export PNG will preserve transparency.
+  ctx.clearRect(0, 0, W, H);
   var img = await _papInstaLoadImage(url);
   var iw = img.naturalWidth, ih = img.naturalHeight;
   var scale = Math.max(W / iw, H / ih);
