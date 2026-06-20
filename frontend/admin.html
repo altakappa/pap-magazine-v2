@@ -838,16 +838,16 @@ tr:hover td{background:rgba(0,0,0,.02)}
             <div>
               <label style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px">
                 <span>🏷️ 기본 로고 너비 <span class="pe-opt">전체 이미지 디폴트</span></span>
-                <strong id="instaLogoSizeLabel" style="color:var(--text)">14%</strong>
+                <strong id="instaLogoSizeLabel" style="color:var(--text)">15%</strong>
               </label>
-              <input type="range" id="instaLogoSize" min="4" max="22" step="0.5" value="14" style="width:100%" oninput="document.getElementById('instaLogoSizeLabel').textContent = this.value + '%'">
+              <input type="range" id="instaLogoSize" min="4" max="22" step="0.5" value="15" style="width:100%" oninput="document.getElementById('instaLogoSizeLabel').textContent = this.value + '%'">
             </div>
             <div>
               <label style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px">
                 <span>📏 기본 하단 여백 <span class="pe-opt">전체 이미지 디폴트</span></span>
-                <strong id="instaPadLabel" style="color:var(--text)">3%</strong>
+                <strong id="instaPadLabel" style="color:var(--text)">1%</strong>
               </label>
-              <input type="range" id="instaBottomPad" min="1" max="12" step="0.5" value="3" style="width:100%" oninput="document.getElementById('instaPadLabel').textContent = this.value + '%'">
+              <input type="range" id="instaBottomPad" min="-5" max="20" step="0.5" value="1" style="width:100%" oninput="document.getElementById('instaPadLabel').textContent = this.value + '%'">
             </div>
 
             <!-- 출력 비율 -->
@@ -2630,30 +2630,32 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
       <div>
         <label style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px">
           <span>🏷️ 로고 너비</span>
-          <strong id="instaModalLogoSizeLabel" style="color:var(--text)">14%</strong>
+          <strong id="instaModalLogoSizeLabel" style="color:var(--text)">15%</strong>
         </label>
-        <input type="range" id="instaModalLogoSize" min="4" max="22" step="0.5" value="14" style="width:100%" oninput="_papInstaOnSliderInput()">
+        <input type="range" id="instaModalLogoSize" min="4" max="22" step="0.5" value="15" style="width:100%" oninput="_papInstaOnSliderInput()">
       </div>
       <div>
         <label style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px">
           <span>📏 하단 여백</span>
-          <strong id="instaModalPadLabel" style="color:var(--text)">3%</strong>
+          <strong id="instaModalPadLabel" style="color:var(--text)">1%</strong>
         </label>
         <!-- QA #257 — range widened to allow the logo to sit much lower
              (or even slightly outside the canvas with negative values).
              Editors wanted to push the wordmark closer to the very bottom
-             than the previous min=1% allowed. -->
-        <input type="range" id="instaModalBottomPad" min="-5" max="20" step="0.5" value="3" style="width:100%" oninput="_papInstaOnSliderInput()">
+             than the previous min=1% allowed.
+             QA #261 — default lowered from 3% to 1% per editor pref. -->
+        <input type="range" id="instaModalBottomPad" min="-5" max="20" step="0.5" value="1" style="width:100%" oninput="_papInstaOnSliderInput()">
       </div>
       <div>
         <label style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:4px">
           <span>🔆 투명도</span>
-          <strong id="instaModalLogoAlphaLabel" style="color:var(--text)">100%</strong>
+          <strong id="instaModalLogoAlphaLabel" style="color:var(--text)">85%</strong>
         </label>
         <!-- QA #258 — min lowered to 0 so editors can fully hide the
              overlay logo on images that already have a watermark burned
-             into the source pixels. -->
-        <input type="range" id="instaModalLogoAlpha" min="0" max="100" step="5" value="100" style="width:100%" oninput="_papInstaOnSliderInput()">
+             into the source pixels.
+             QA #261 — default 100% → 85% per editor pref. -->
+        <input type="range" id="instaModalLogoAlpha" min="0" max="100" step="5" value="85" style="width:100%" oninput="_papInstaOnSliderInput()">
       </div>
     </div>
     <!-- QA #258 — per-image "skip logo overlay" toggle. When the source
@@ -2732,7 +2734,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
     <div id="contentAuditBody" style="flex:1;overflow-y:auto;padding:0"></div>
   </div>
 </div>
-<script src="/pap-admin.js?v=56" defer></script>
+<script src="/pap-admin.js?v=57" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>

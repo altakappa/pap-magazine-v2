@@ -7624,8 +7624,12 @@ function _papInstaSetStatus(msg){
 
 function _papInstaReadOpts(){
   var aspect = (document.getElementById('instaAspect') || {}).value || '4:5';
-  var logoPct = parseFloat((document.getElementById('instaLogoSize') || {}).value || '14');
-  var padPct  = parseFloat((document.getElementById('instaBottomPad') || {}).value || '3');
+  // QA #261 — editor-preferred defaults: 15% width, 1% bottom pad, 85%
+  // opacity. These values are the brand-correct settings derived from
+  // the live editorial samples and were locked in after a full
+  // walkthrough of 6 representative IG covers.
+  var logoPct = parseFloat((document.getElementById('instaLogoSize') || {}).value || '15');
+  var padPct  = parseFloat((document.getElementById('instaBottomPad') || {}).value || '1');
   // QA #254 v3 — image positioning defaults (identity transform — image
   // is cover-fit centered, no zoom-in, no offset). Per-image overrides
   // can shift these via the modal sliders.
@@ -7634,8 +7638,8 @@ function _papInstaReadOpts(){
     H: (aspect === '1:1' ? 1080 : 1350),
     logoPct: logoPct, padPct: padPct,
     imgScale: 100, offsetX: 0, offsetY: 0,
-    // QA #257 — default logo opacity (no transparency).
-    logoAlpha: 100,
+    // QA #257 / #261 — default logo opacity 85% (was 100%).
+    logoAlpha: 85,
     // QA #258 — logo overlay enabled by default.
     logoEnabled: true,
   };
