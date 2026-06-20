@@ -7305,6 +7305,9 @@ async function _papInstaShowImage(idx){
   var lal = document.getElementById('instaModalLogoAlphaLabel');
   if (la)  la.value  = opts.logoAlpha;
   if (lal) lal.textContent = opts.logoAlpha + '%';
+  // QA #258 — "logo enabled" per-image toggle.
+  var le = document.getElementById('instaModalLogoEnabled');
+  if (le) le.checked = (opts.logoEnabled !== false);
   // Counter label.
   var cnt = document.getElementById('instaModalCounter');
   if (cnt) cnt.textContent = (idx + 1) + ' / ' + _papInstaCurrentUrls.length +
@@ -7341,12 +7344,16 @@ function _papInstaOnSliderInput(){
   var imgScale = parseFloat((document.getElementById('instaModalImgScale')||{}).value || '100');
   var offsetX  = parseFloat((document.getElementById('instaModalOffsetX') ||{}).value || '0');
   var offsetY  = parseFloat((document.getElementById('instaModalOffsetY') ||{}).value || '0');
-  // QA #257 — logo opacity (10-100%).
+  // QA #257 — logo opacity (0-100%).
   var logoAlpha = parseFloat((document.getElementById('instaModalLogoAlpha')||{}).value || '100');
+  // QA #258 — per-image enable toggle. Default true.
+  var leEl = document.getElementById('instaModalLogoEnabled');
+  var logoEnabled = leEl ? !!leEl.checked : true;
   _papInstaPerImageOpts[url] = {
     logoPct: logoPct, padPct: padPct,
     imgScale: imgScale, offsetX: offsetX, offsetY: offsetY,
     logoAlpha: logoAlpha,
+    logoEnabled: logoEnabled,
   };
   document.getElementById('instaModalLogoSizeLabel').textContent = logoPct + '%';
   document.getElementById('instaModalPadLabel').textContent     = padPct  + '%';
@@ -7400,6 +7407,8 @@ function _papInstaOptsForImage(url){
       offsetX:   (typeof ov.offsetX   === 'number') ? ov.offsetX   : base.offsetX,
       offsetY:   (typeof ov.offsetY   === 'number') ? ov.offsetY   : base.offsetY,
       logoAlpha: (typeof ov.logoAlpha === 'number') ? ov.logoAlpha : base.logoAlpha,
+      // QA #258 — per-image logo on/off (only false counts as off; undefined → default on).
+      logoEnabled: (ov.logoEnabled === false) ? false : true,
     };
   }
   return base;
@@ -7562,6 +7571,8 @@ function _papInstaReadOpts(){
     imgScale: 100, offsetX: 0, offsetY: 0,
     // QA #257 — default logo opacity (no transparency).
     logoAlpha: 100,
+    // QA #258 — logo overlay enabled by default.
+    logoEnabled: true,
   };
 }
 
@@ -7683,6 +7694,10 @@ async function _papInstaCompositeOne(url, canvas, opts){
   var dx = (W - dw) / 2 + (offsetX / 100) * W;
   var dy = (H - dh) / 2 + (offsetY / 100) * H;
   ctx.drawImage(img, dx, dy, dw, dh);
+  // QA #258 — early out when the per-image "logo enabled" toggle is off.
+  // The source pixels already have a watermark composited in, so adding
+  // our overlay would produce a duplicate logo.
+  if (opts.logoEnabled === false) return;
   var logo = await _papInstaLoadLogo();
   var logoW = W * (opts.logoPct / 100);
   var logoH = logoW * (logo.naturalHeight / logo.naturalWidth);
