@@ -166,6 +166,21 @@ module.exports = async function handler(req, res) {
       return res.status(404).json({ message: 'Editorial not found' });
     }
 
+    // QA #264 — accept brands/credits overrides from the admin form so
+    // the "Fashion by @brand1 @brand2" line composes correctly even
+    // when the editor presses 🤖 강제 재생성 BEFORE saving the form. The
+    // overrides take precedence over whatever's in the DB row, which
+    // matches editor intent (what they see in the modal == what gets
+    // composed). If the override isn't provided we fall back to the DB
+    // values so previously-saved editorials still work the same way.
+    if (Array.isArray(body.brandsOverride)) {
+      ed.fashion = (ed.fashion && typeof ed.fashion === 'object') ? ed.fashion : {};
+      ed.fashion.brands = body.brandsOverride;
+    }
+    if (Array.isArray(body.creditsOverride)) {
+      ed.credits = body.creditsOverride;
+    }
+
     // 2) If editorial was staged from a submission, pull the original
     // artistStatement so translate-mode (better quality) wins over
     // vision-only mode (no source text to anchor the prose).

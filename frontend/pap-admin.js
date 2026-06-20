@@ -3936,10 +3936,14 @@ async function papParseCreditsFromPdf(inputEl){
     return;
   }
 
-  var credits = Array.isArray(parsed.credits) ? parsed.credits : [];
-  var brands  = Array.isArray(parsed.brands)  ? parsed.brands  : [];
+  var credits     = Array.isArray(parsed.credits)     ? parsed.credits     : [];
+  var brands      = Array.isArray(parsed.brands)      ? parsed.brands      : [];
+  // QA #263 — per-image (look) credits. Each entry is { index, text }
+  // where index is 1-based to match the editor's mental model of
+  // "Image #1 / #2 / ...".
+  var lookCredits = Array.isArray(parsed.lookCredits) ? parsed.lookCredits : [];
 
-  if (!credits.length && !brands.length) {
+  if (!credits.length && !brands.length && !lookCredits.length) {
     _status('⚠️ PDF에서 크레딧을 찾지 못했습니다. 직접 입력해주세요.', 'warn');
     return;
   }
@@ -3998,7 +4002,30 @@ async function papParseCreditsFromPdf(inputEl){
     if (ig) ig.value = b.instagram || '';
   });
 
-  var msg = '✓ 크레딧 ' + credits.length + '명 + 브랜드 ' + brands.length + '개 추출 완료';
+  // QA #263 — per-image outfit credits. Match LOOK index (1-based from
+  // the PDF) to the gallery image at the same 1-based position so
+  // editor doesn't have to manually pair "Look 1 → Image #1". The
+  // backend already filtered out any look entries that don't look like
+  // valid { index, text }.
+  var lookHits = 0;
+  if (lookCredits.length && typeof galleryImages !== 'undefined' && Array.isArray(galleryImages)) {
+    lookCredits.forEach(function(lc){
+      var idx = lc.index - 1;  // PDF is 1-based; array is 0-based
+      if (idx >= 0 && idx < galleryImages.length) {
+        galleryImages[idx].credits = lc.text;
+        lookHits++;
+      }
+    });
+    // Re-render the per-image credits area so the new values appear.
+    if (typeof updateImgCredits === 'function') updateImgCredits();
+  }
+
+  var msg = '✓ 크레딧 ' + credits.length + '명 + 브랜드 ' + brands.length + '개';
+  if (lookHits > 0) msg += ' + 착장 ' + lookHits + '룩';
+  msg += ' 추출 완료';
+  if (lookCredits.length > galleryImages.length) {
+    msg += ' (PDF에 ' + lookCredits.length + '룩 있으나 갤러리는 ' + galleryImages.length + '장)';
+  }
   if (parsed.warnings && parsed.warnings.length) {
     msg += ' · ⚠️ ' + parsed.warnings.length + '건 확인 필요';
     console.warn('[pdf-parse] warnings:', parsed.warnings);
@@ -5336,6 +5363,18 @@ async function aiAutoGenerateEditorial(overwrite){
   var origLabel = btn ? btn.textContent : '';
   if(btn){ btn.disabled = true; btn.textContent = '🤖 생성 중…'; btn.style.opacity = '.7'; }
   try{
+    // QA #264 — also send the form's CURRENT credits + brands so the
+    // server-side caption builder can compose "Fashion by @brand1 …"
+    // even when the editor hasn't pressed Save yet. Without this, the
+    // server loads the DB row only and any unsaved brand additions in
+    // the form get ignored, producing a caption with no brand line.
+    var formSnapshot = (typeof _readEditorialFromForm === 'function')
+      ? _readEditorialFromForm()
+      : null;
+    var brandsOverride  = (formSnapshot && formSnapshot.fashion && Array.isArray(formSnapshot.fashion.brands))
+      ? formSnapshot.fashion.brands : null;
+    var creditsOverride = (formSnapshot && Array.isArray(formSnapshot.credits))
+      ? formSnapshot.credits : null;
     var resp = await fetch(_apiBase+'/admin/editorials/'+editingEditorialId+'/auto-generate',{
       method:'POST',
       headers:{
@@ -5343,7 +5382,11 @@ async function aiAutoGenerateEditorial(overwrite){
         'Authorization':'Bearer '+(localStorage.getItem('pap-token')||''),
         'X-Requested-With':'XMLHttpRequest'
       },
-      body: JSON.stringify({ overwrite: !!overwrite })
+      body: JSON.stringify({
+        overwrite: !!overwrite,
+        brandsOverride:  brandsOverride,
+        creditsOverride: creditsOverride,
+      })
     });
     var data = await resp.json();
     if(!resp.ok) throw new Error(data.message || ('Auto-generate failed: '+resp.status));
@@ -7943,6 +7986,324 @@ async function _papInstaCompositeOne(url, canvas, opts){
   ctx.globalAlpha = alpha;
   ctx.drawImage(logo, (W - logoW) / 2, H - logoH - (H * (opts.padPct / 100)), logoW, logoH);
   ctx.globalAlpha = prevAlpha;
+}
+
+// ── QA #265 — Magazine cover image generator ─────────────────────────────
+//
+// Mirrors the PAP magazine standard cover layout from live examples:
+//   • Top-left:  "[Month] Issue"        (white sans, ~22px)
+//   • Top-right: "[Year]"               (white sans, ~22px)
+//   • Left edge: "Published by Domenico Kang" (90° rotated, ~14px)
+//   • Top-center: PAP wordmark logo     (~22% canvas width)
+//   • Bottom-center: italic serif title (~70px)
+//   • Below title: contributors line    (italic serif, ~28px)
+//
+// All inputs are auto-derived from the editorial form so the editor can
+// usually just click "👁️ 미리보기" → "⬇️ PNG 다운로드" without typing
+// anything else. Manual overrides live in the cover-gen section's three
+// optional inputs (Issue label, Year, Contributors).
+
+var _PAP_COVER_W = 1080;
+var _PAP_COVER_H = 1350;
+
+// Month name in English for "May Issue" etc.
+var _PAP_MONTHS = ['January','February','March','April','May','June',
+                   'July','August','September','October','November','December'];
+
+function _papCoverReadFormMeta(){
+  // 1) Issue label: input > published_date month > current month
+  var issueEl = document.getElementById('coverIssueLabel');
+  var issueLabel = (issueEl && issueEl.value || '').trim();
+  if (!issueLabel) {
+    var dateEl = document.getElementById('postDate');
+    var dateStr = dateEl ? dateEl.value : '';
+    var d = dateStr ? new Date(dateStr) : new Date();
+    if (isNaN(d.getTime())) d = new Date();
+    issueLabel = _PAP_MONTHS[d.getMonth()] + ' Issue';
+  }
+
+  // 2) Year: input > published_date year > current year
+  var yearEl = document.getElementById('coverYearLabel');
+  var yearLabel = (yearEl && yearEl.value || '').trim();
+  if (!yearLabel) {
+    var dateEl2 = document.getElementById('postDate');
+    var dateStr2 = dateEl2 ? dateEl2.value : '';
+    var d2 = dateStr2 ? new Date(dateStr2) : new Date();
+    if (isNaN(d2.getTime())) d2 = new Date();
+    yearLabel = String(d2.getFullYear());
+  }
+
+  // 3) Title: editorial postTitle
+  var titleEl = document.getElementById('postTitle');
+  var title = titleEl ? (titleEl.value || '').trim() : '';
+
+  // 4) Contributors: input > credits area names joined
+  var contribEl = document.getElementById('coverContributors');
+  var contributors = (contribEl && contribEl.value || '').trim();
+  if (!contributors) {
+    var names = [];
+    document.querySelectorAll('#creditsArea .pe-credit-row .pe-credit-name').forEach(function(el){
+      var v = (el.value || '').trim();
+      if (v) names.push(v);
+    });
+    contributors = names.join(' ');
+  }
+
+  // 5) Cover image: existing preview <img> in the thumb upload box
+  var coverUrl = '';
+  var thumbPrev = document.getElementById('thumbPreview');
+  if (thumbPrev) {
+    var img = thumbPrev.querySelector('img');
+    if (img && img.src) coverUrl = img.src;
+  }
+  // Fallback to first gallery image if no cover_image uploaded yet.
+  if (!coverUrl) {
+    var firstGalleryImg = document.querySelector('#galleryGrid .pe-gallery-item img');
+    if (firstGalleryImg && firstGalleryImg.src) coverUrl = firstGalleryImg.src;
+  }
+
+  return {
+    issueLabel: issueLabel,
+    yearLabel:  yearLabel,
+    title:      title,
+    contributors: contributors,
+    coverUrl:   coverUrl,
+  };
+}
+
+function _papCoverSetStatus(msg, kind){
+  var el = document.getElementById('coverGenStatus');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.style.color = (kind === 'error') ? '#c62828'
+                : (kind === 'ok')    ? '#16a34a'
+                :                      'var(--text3)';
+}
+
+// Same image cache as the IG editor uses, so re-rendering the cover
+// doesn't re-fetch the source from S3 every time.
+async function _papCoverLoadImage(url){
+  if (!url) throw new Error('커버 이미지가 없습니다. 커버 이미지 업로드 또는 갤러리에 이미지를 추가해주세요.');
+  if (typeof _papInstaImageCache !== 'undefined' && _papInstaImageCache[url]) {
+    return _papInstaImageCache[url];
+  }
+  return new Promise(function(res, rej){
+    var img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload  = function(){ res(img); };
+    img.onerror = function(){
+      // Retry without crossOrigin so a missing CORS header doesn't fail
+      // the preview entirely (export may taint but at least the editor
+      // can SEE what they're laying out).
+      var fb = new Image();
+      fb.onload  = function(){ res(fb); };
+      fb.onerror = function(){ rej(new Error('커버 이미지 로드 실패')); };
+      fb.src = url;
+    };
+    img.src = url;
+  });
+}
+
+// Word-wrap helper. Splits `text` into lines that fit within `maxWidth`
+// at the current ctx font. Used for long titles + contributor lines.
+function _papCoverWrap(ctx, text, maxWidth){
+  var words = String(text || '').split(/\s+/).filter(Boolean);
+  var lines = [];
+  var cur = '';
+  for (var i = 0; i < words.length; i++) {
+    var probe = cur ? (cur + ' ' + words[i]) : words[i];
+    if (ctx.measureText(probe).width > maxWidth && cur) {
+      lines.push(cur);
+      cur = words[i];
+    } else {
+      cur = probe;
+    }
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+async function _papCoverComposite(canvas, meta){
+  var ctx = canvas.getContext('2d');
+  var W = _PAP_COVER_W, H = _PAP_COVER_H;
+  if (canvas.width !== W) canvas.width = W;
+  if (canvas.height !== H) canvas.height = H;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.clearRect(0, 0, W, H);
+
+  // 1) Cover-fit the source image to fill the canvas (4:5).
+  var img = await _papCoverLoadImage(meta.coverUrl);
+  var iw = img.naturalWidth, ih = img.naturalHeight;
+  var scale = Math.max(W / iw, H / ih);
+  var dw = iw * scale, dh = ih * scale;
+  ctx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+
+  // 2) Subtle bottom gradient so the title text reads cleanly even on
+  //    bright covers. Quarter-canvas darkening; doesn't touch the top
+  //    where Issue/Year/PAP logo live (those usually sit on bright skin/
+  //    background pixels and stay legible without help).
+  var grad = ctx.createLinearGradient(0, H * 0.55, 0, H);
+  grad.addColorStop(0, 'rgba(0,0,0,0)');
+  grad.addColorStop(1, 'rgba(0,0,0,0.45)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, H * 0.55, W, H * 0.45);
+
+  // Tiny top gradient too — Issue/Year/PAP logo can sit on bright sky
+  // backgrounds where pure white is washed out.
+  var gradTop = ctx.createLinearGradient(0, 0, 0, H * 0.2);
+  gradTop.addColorStop(0, 'rgba(0,0,0,0.25)');
+  gradTop.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = gradTop;
+  ctx.fillRect(0, 0, W, H * 0.2);
+
+  // 3) Top-left: Issue label (white sans)
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '400 24px system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif';
+  ctx.textBaseline = 'top';
+  ctx.textAlign = 'left';
+  ctx.fillText(meta.issueLabel, 38, 38);
+
+  // 4) Top-right: Year label
+  ctx.textAlign = 'right';
+  ctx.fillText(meta.yearLabel, W - 38, 38);
+
+  // 5) Left edge (rotated 90°): "Published by Domenico Kang"
+  ctx.save();
+  ctx.translate(38, H * 0.45);
+  ctx.rotate(-Math.PI / 2);
+  ctx.font = '400 14px system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText('Published by Domenico Kang', 0, 0);
+  ctx.restore();
+
+  // 6) Top-center: PAP wordmark logo (~22% canvas width).
+  //    Reuse the editor's persisted logo (custom in localStorage OR
+  //    factory default /pap-logo-white.png) — same source as IG.
+  try {
+    if (typeof _papInstaLoadLogo === 'function') {
+      var logo = await _papInstaLoadLogo();
+      var lw = W * 0.22;
+      var lh = lw * (logo.naturalHeight / logo.naturalWidth);
+      ctx.drawImage(logo, (W - lw) / 2, H * 0.06, lw, lh);
+    }
+  } catch(_){ /* logo failed; skip silently */ }
+
+  // 7) Bottom-center: italic serif title.
+  var titleSize = 70;
+  ctx.font = 'italic 400 ' + titleSize + 'px "Times New Roman", Georgia, serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#ffffff';
+  var titleMaxW = W - 100;
+  var titleLines = _papCoverWrap(ctx, meta.title || '', titleMaxW);
+  // If title is very long the wrap might produce >2 lines; shrink the
+  // font incrementally until it fits in 2 lines max.
+  while (titleLines.length > 2 && titleSize > 36) {
+    titleSize -= 6;
+    ctx.font = 'italic 400 ' + titleSize + 'px "Times New Roman", Georgia, serif';
+    titleLines = _papCoverWrap(ctx, meta.title || '', titleMaxW);
+  }
+  // Bottom block layout:
+  //   contributors line at H - 60 (baseline)
+  //   contributors-to-title gap = 24
+  //   title baselines stacked above
+  var contribSize = 26;
+  ctx.font = 'italic 400 ' + contribSize + 'px "Times New Roman", Georgia, serif';
+  var contribMaxW = W - 100;
+  var contribLines = _papCoverWrap(ctx, meta.contributors || '', contribMaxW);
+  // Limit contributors to 2 lines.
+  if (contribLines.length > 2) {
+    while (contribLines.length > 2 && contribSize > 16) {
+      contribSize -= 2;
+      ctx.font = 'italic 400 ' + contribSize + 'px "Times New Roman", Georgia, serif';
+      contribLines = _papCoverWrap(ctx, meta.contributors || '', contribMaxW);
+    }
+  }
+
+  // Draw contributor lines starting from bottom-up.
+  var bottomPad = 60;
+  var lineGap = 6;
+  var contribY = H - bottomPad;
+  for (var c = contribLines.length - 1; c >= 0; c--) {
+    ctx.fillText(contribLines[c], W / 2, contribY);
+    contribY -= (contribSize + lineGap);
+  }
+  // Title block sits above contributors with a 30px gap.
+  var titleY = contribY - 30;
+  ctx.font = 'italic 400 ' + titleSize + 'px "Times New Roman", Georgia, serif';
+  for (var t = titleLines.length - 1; t >= 0; t--) {
+    ctx.fillText(titleLines[t], W / 2, titleY);
+    titleY -= (titleSize + 8);
+  }
+}
+
+async function papCoverPreview(){
+  var meta = _papCoverReadFormMeta();
+  if (!meta.title) {
+    alert('에디토리얼 제목이 비어 있습니다. 먼저 제목을 입력해주세요.');
+    return;
+  }
+  if (!meta.coverUrl) {
+    alert('커버 이미지가 없습니다. 커버 이미지를 업로드하거나 갤러리에 이미지를 추가해주세요.');
+    return;
+  }
+  _papCoverSetStatus('커버 합성 중…');
+  try {
+    var canvas = document.getElementById('coverPreviewCanvas');
+    await _papCoverComposite(canvas, meta);
+    document.getElementById('coverPreviewModal').classList.add('show');
+    _papCoverSetStatus('✓ 미리보기 생성 완료', 'ok');
+  } catch (e) {
+    console.error('[cover] preview failed:', e);
+    _papCoverSetStatus('❌ ' + (e && e.message || e), 'error');
+    alert('미리보기 합성에 실패했습니다.\n상세: ' + (e && e.message || e));
+  }
+}
+
+function closeCoverPreview(){
+  var m = document.getElementById('coverPreviewModal');
+  if (m) m.classList.remove('show');
+}
+
+async function papCoverDownload(){
+  var meta = _papCoverReadFormMeta();
+  if (!meta.title) {
+    alert('에디토리얼 제목이 비어 있습니다.');
+    return;
+  }
+  if (!meta.coverUrl) {
+    alert('커버 이미지가 없습니다.');
+    return;
+  }
+  _papCoverSetStatus('PNG 변환 중…');
+  try {
+    // Render at full 1080×1350 (canvas backing buffer = output resolution).
+    var canvas = document.createElement('canvas');
+    canvas.width  = _PAP_COVER_W;
+    canvas.height = _PAP_COVER_H;
+    await _papCoverComposite(canvas, meta);
+    var blob = await new Promise(function(res){
+      canvas.toBlob(function(b){ res(b); }, 'image/png', 1);
+    });
+    if (!blob) throw new Error('PNG 변환 실패 (canvas tainted by CORS?)');
+    var fname = (meta.title || 'cover').toLowerCase()
+      .replace(/[^a-z0-9가-힯 ]+/g, '').replace(/\s+/g, '-') + '-cover.png';
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = fname;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function(){
+      URL.revokeObjectURL(a.href);
+      a.remove();
+    }, 3000);
+    _papCoverSetStatus('✓ 다운로드 완료 (' + fname + ')', 'ok');
+  } catch (e) {
+    console.error('[cover] download failed:', e);
+    _papCoverSetStatus('❌ ' + (e && e.message || e), 'error');
+    alert('다운로드 실패\n상세: ' + (e && e.message || e));
+  }
 }
 
 function toggleFilmSchedule(){

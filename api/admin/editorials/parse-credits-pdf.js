@@ -23,6 +23,8 @@
  *   {
  *     credits: [{ roles: [string], name: string, instagram: string }],
  *     brands:  [{ name: string,    instagram: string }],
+ *     lookCredits: [{ index: number, text: string }],  // QA #263 — per-image
+ *                                                       // outfit lines, 1-based
  *     warnings: [string]
  *   }
  *
@@ -133,10 +135,17 @@ module.exports = async function handler(req, res) {
     '- DO NOT invent handles you do not see in the text.',
     '- DO NOT include the editorial title, location, or photographer studio names in the brand list.',
     '',
+    'QA #263 — per-image outfit credits:',
+    '- The PDF may contain "LOOK 1 / LOOK 2 / ..." or "Image 1 / Image 2 / ..." or "#1 / #2 / ..." sections listing what the model wears in each image.',
+    '- For each such section, output one entry in `lookCredits` with the 1-based image index and a SHORT comma-separated text string in the format expected by the gallery: "@brand1 Jacket, @brand2 Pants, @brand3 Shoes".',
+    '- Use @handles when available, otherwise just the brand name. Capitalise item names (Jacket, not jacket).',
+    '- If no per-look section exists in the PDF, return `lookCredits: []`.',
+    '',
     'Output format (and nothing else — no prose, no markdown fences):',
     '{',
     '  "credits": [{"roles": ["Photographer"], "name": "Full Name", "instagram": "@handle"}, ...],',
-    '  "brands":  [{"name": "Balenciaga", "instagram": "@balenciaga"}, ...]',
+    '  "brands":  [{"name": "Balenciaga", "instagram": "@balenciaga"}, ...],',
+    '  "lookCredits": [{"index": 1, "text": "@balenciaga Jacket, @prada Bag"}, ...]',
     '}',
     '',
     'PDF transcript:',
@@ -200,6 +209,17 @@ module.exports = async function handler(req, res) {
   const brands  = Array.isArray(parsed.brands)
     ? parsed.brands.map(_coerceBrand).filter(Boolean)
     : [];
+  // QA #263 — per-image outfit lines. Coerce to { index, text } where
+  // index is 1-based positive integer and text is the trimmed string.
+  const lookCredits = Array.isArray(parsed.lookCredits)
+    ? parsed.lookCredits.map(function(l){
+        if (!l || typeof l !== 'object') return null;
+        const idx = parseInt(l.index, 10);
+        const txt = String(l.text || '').trim();
+        if (!idx || idx < 1 || !txt) return null;
+        return { index: idx, text: txt };
+      }).filter(Boolean)
+    : [];
 
   // Warnings for unknown role values so the editor double-checks them.
   const warnings = [];
@@ -211,13 +231,14 @@ module.exports = async function handler(req, res) {
       }
     });
   });
-  if (!credits.length && !brands.length) {
+  if (!credits.length && !brands.length && !lookCredits.length) {
     warnings.push('PDF에서 크레딧을 찾지 못했습니다. 텍스트 레이어가 비어 있거나 스캔 이미지 PDF일 가능성이 있습니다.');
   }
 
   return res.status(200).json({
     credits: credits,
     brands:  brands,
+    lookCredits: lookCredits,
     warnings: warnings,
   });
 };
