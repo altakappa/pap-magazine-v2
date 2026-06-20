@@ -8034,7 +8034,7 @@ function _papCoverReadStyleOpts(){
     topLabelTop:    _num('coverTopLabelTop', 42),    // px from canvas top
     topLabelSide:   _num('coverTopLabelSide', 52),   // px from each side edge
     sideLabelY:     _num('coverSideLabelY', 57),     // % canvas height (vertical pos for "Published by")
-    titleBottom:    _num('coverTitleBottom', 10),    // % canvas height from bottom (title baseline)
+    titleBottom:    _num('coverTitleBottom', 11),    // % canvas height from bottom (title baseline)
   };
 }
 
@@ -8055,7 +8055,7 @@ function papCoverResetSettings(){
     ['coverTopLabelTop',   42, 'px'],
     ['coverTopLabelSide',  52, 'px'],
     ['coverSideLabelY',    57, '%'],
-    ['coverTitleBottom',   10, '%'],
+    ['coverTitleBottom',   11, '%'],
   ];
   pairs.forEach(function(p){
     var el = document.getElementById(p[0]);

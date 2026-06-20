@@ -1124,6 +1124,9 @@
   <div class="ed-credits-wrap">
     <div class="ed-desc" id="edDetailDesc"></div>
     <div class="ed-credits-table" id="edDetailCredits"></div>
+    <!-- QA #271 — Standard 이상 회원 전용 다운로드 영역 (커버 이미지 + 로고 파일).
+         pap-content-editorial.js의 _renderEditorialDownloads()가 채움. -->
+    <div id="edDetailDownloads" style="display:none;margin-top:24px;padding:16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:6px"></div>
     <!-- QA #246 — clickable hashtag chips, identical UX to the article
          detail (.art-tag-chip). Rendered by pap-content-editorial.js
          when the editorial carries .tags. Clicking a chip links to

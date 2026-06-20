@@ -366,6 +366,91 @@ function _renderEditorialVideo(rawUrl){
 // services both content types. Looks up tags off edData by title — the
 // detail-cache (edDetails) is a partial mirror that doesn't always
 // include the tag list, but edData (the list row source) always does.
+// QA #271 — Standard 이상 회원에게 커버 + 로고 이미지 다운로드 영역 노출.
+//   • Free / 비로그인 → CTA "스탠다드 회원만 이용 가능" + 가입 유도 링크
+//   • Standard 이상     → 실제 다운로드 버튼 2개
+//
+// `det`는 SPA 오버레이 렌더 시 _normaliseEditorialDetail의 결과,
+// `d`는 raw API row (cover_image, gallery 등 직접 필드 포함).
+function _renderEditorialDownloads(det, d){
+  var box = document.getElementById('edDetailDownloads');
+  if (!box) return;
+  // 우선순위: det.coverImage → d.cover_image → d.thumbnail → det.thumb
+  var coverUrl = (det && (det.coverImage || det.cover_image)) ||
+                 (d && (d.cover_image || d.thumbnail)) || '';
+  // 갤러리 첫 이미지를 "로고 합성 베이스"로 사용. 라이브 합성 코드는
+  // 어드민 IG 생성기에 있어서 일반 사용자에게는 raw 커버만 제공.
+  // "로고 이미지"는 PAP 기본 로고 PNG 자체를 다운로드하는 방향으로 해석.
+  var title = (det && det.title) || (d && d.title) || 'editorial';
+  var safeTitle = String(title).replace(/[^a-zA-Z0-9가-힯 ]/g, '').replace(/\s+/g, '-').toLowerCase();
+  var standard = (typeof isStandardOrAbove === 'function') ? isStandardOrAbove() : false;
+
+  if (!standard){
+    // CTA — 비스탠다드 사용자에게는 가입 유도만.
+    box.style.display = '';
+    box.innerHTML =
+      '<div style="display:flex;flex-direction:column;gap:8px">' +
+        '<div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999">DOWNLOADS</div>' +
+        '<div style="font-size:13px;color:#ccc">커버 이미지 + PAP 로고 다운로드는 <strong style="color:#fff">스탠다드 이상 회원</strong> 전용입니다.</div>' +
+        '<a href="/subscription.html" style="display:inline-block;margin-top:6px;padding:8px 18px;border:1px solid #fff;color:#fff;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none;align-self:flex-start;transition:background .2s" onmouseover="this.style.background=\'#fff\';this.style.color=\'#000\'" onmouseout="this.style.background=\'transparent\';this.style.color=\'#fff\'">스탠다드 회원 가입하기 →</a>' +
+      '</div>';
+    return;
+  }
+
+  // Standard 이상 — 실제 다운로드 버튼.
+  // 1) 커버 이미지: cover_image URL을 fetch → blob → 다운로드.
+  // 2) 로고: /pap-logo-white.png 정적 자산을 직접 다운로드.
+  var coverHtml = '';
+  if (coverUrl) {
+    coverHtml =
+      '<a href="#" onclick="event.preventDefault();_papDownloadAsFile(\'' + coverUrl.replace(/'/g, "\\'") + '\',\'' + safeTitle + '-cover\');return false;" ' +
+      'style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border:1px solid #555;color:#fff;font-size:11px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" ' +
+      'onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">⬇️ 커버 이미지</a>';
+  }
+  var logoHtml =
+    '<a href="#" onclick="event.preventDefault();_papDownloadAsFile(\'/pap-logo-white.png\',\'pap-logo-white\');return false;" ' +
+    'style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border:1px solid #555;color:#fff;font-size:11px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" ' +
+    'onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">⬇️ PAP 로고 (PNG)</a>';
+
+  box.style.display = '';
+  box.innerHTML =
+    '<div style="display:flex;flex-direction:column;gap:10px">' +
+      '<div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999">DOWNLOADS</div>' +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap">' + coverHtml + logoHtml + '</div>' +
+      '<div style="font-size:11px;color:#888">스탠다드 회원 전용 · 개인 사용 및 비상업적 용도에 한해 사용 가능</div>' +
+    '</div>';
+}
+
+// Shared download helper — fetches a URL, converts to blob, triggers a
+// browser download with the given filename. Used by both the cover and
+// logo download links so CORS-friendly assets save with the right name.
+window._papDownloadAsFile = window._papDownloadAsFile || function(url, basename){
+  try {
+    fetch(url, { mode: 'cors' })
+      .then(function(r){ return r.blob(); })
+      .then(function(blob){
+        var ext = (blob.type && blob.type.split('/')[1]) || 'jpg';
+        if (ext === 'jpeg') ext = 'jpg';
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = (basename || 'pap-download') + '.' + ext;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function(){
+          URL.revokeObjectURL(a.href);
+          a.remove();
+        }, 3000);
+      })
+      .catch(function(e){
+        console.warn('[pap download] failed:', e);
+        // Fallback: open in new tab so user can save manually.
+        window.open(url, '_blank');
+      });
+  } catch(_) {
+    window.open(url, '_blank');
+  }
+};
+
 function _renderEditorialTags(title){
   var tagsEl = document.getElementById('edDetailTags');
   if (!tagsEl) return;
@@ -682,6 +767,10 @@ function _openEditorialInner(title,thumb){
   // Fashion by — removed (shown as hover credits on images)
   cr.innerHTML=ch;
 
+  // QA #271 — Standard 이상 회원에게 커버 이미지 + 갤러리 이미지 다운로드 링크 표시.
+  // isStandardOrAbove()는 pap-subscription.js에서 정의됨.
+  try { _renderEditorialDownloads(det, d); } catch(_) {}
+
   // QA #246 — Render clickable hashtag chips for this editorial.
   // Tags live on the edData list row (categories drive the filter pill
   // strip) — reused here as user-facing hashtags. Click routes to
@@ -893,6 +982,8 @@ function _openEditorialInner_noPush(title,thumb){
     ch+='<div class="ed-cred-row"><div class="ed-cred-role">'+c.r+'</div><div class="ed-cred-val">'+vals+'</div></div>';
   });
   cr.innerHTML=ch;
+  // QA #271 — Standard 이상 회원에게 다운로드 영역 표시 (popstate 경로).
+  try { _renderEditorialDownloads(det, d); } catch(_) {}
   // QA #246 — same hashtag chip rendering as the push path so back/
   // forward restoration preserves the tag UI.
   _renderEditorialTags(title);
