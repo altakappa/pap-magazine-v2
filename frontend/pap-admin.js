@@ -7298,10 +7298,14 @@ function _papInstaLoadLogo(){
   if (_papInstaLogoLoading) return _papInstaLogoLoading;
   _papInstaLogoLoading = new Promise(function(res, rej){
     var img = new Image();
+    // Same-origin static asset (`/pap-symbol-white.png` is served from
+    // the Vercel deployment), so crossOrigin isn't strictly required —
+    // but set it anyway so the loaded image is taint-safe for
+    // canvas.toBlob() if the URL is ever swapped to a CDN one.
+    img.crossOrigin = 'anonymous';
     img.onload  = function(){ _papInstaLogoImg = img; res(img); };
-    img.onerror = function(){ rej(new Error('로고 SVG 로드 실패')); };
-    var blob = new Blob([_PAP_INSTA_DEFAULT_LOGO_SVG], { type: 'image/svg+xml' });
-    img.src = URL.createObjectURL(blob);
+    img.onerror = function(){ rej(new Error('PAP 로고 PNG 로드 실패: ' + _PAP_INSTA_DEFAULT_LOGO_URL)); };
+    img.src = _PAP_INSTA_DEFAULT_LOGO_URL;
   });
   return _papInstaLogoLoading;
 }
