@@ -3841,6 +3841,171 @@ function addCredit(areaId){
   _onCreditCheckChange(areaId);
 }
 
+// ── QA #262 — Auto-extract credits + brands from a PDF ──────────────────
+//
+// Flow:
+//   1. Editor picks a PDF in <input type=file>. We grab File object.
+//   2. pdf.js parses every page's text layer client-side. The binary
+//      never leaves the browser, only the text does.
+//   3. We POST { text } to /api/admin/editorials/parse-credits-pdf which
+//      runs Claude to convert the freeform credit sheet into a JSON
+//      array of { roles, name, instagram } credit rows + { name,
+//      instagram } brand rows.
+//   4. Form is wiped + repopulated. Existing rows are replaced because
+//      partial merges from arbitrary PDF formats would mis-pair handles
+//      with the wrong person. Editor can manually add more after.
+//
+// Failure modes are visible — status text under the button surfaces any
+// of: PDF library not loaded, empty text layer (scanned image PDF),
+// Claude API error, malformed JSON.
+async function papParseCreditsFromPdf(inputEl){
+  var statusEl = document.getElementById('creditsPdfStatus');
+  function _status(msg, kind){
+    if (!statusEl) return;
+    statusEl.textContent = msg || '';
+    statusEl.style.color = (kind === 'error') ? '#c62828'
+                        : (kind === 'ok')    ? '#16a34a'
+                        : (kind === 'warn')  ? '#b86b00'
+                        :                      'var(--text3)';
+  }
+  if (!inputEl || !inputEl.files || !inputEl.files[0]) return;
+  var file = inputEl.files[0];
+  // Reset the input so picking the same file twice in a row still fires.
+  inputEl.value = '';
+  // pdf.js loaded?
+  if (!window.pdfjsLib) {
+    _status('❌ PDF 라이브러리가 아직 로드되지 않았습니다. 페이지를 새로고침해주세요.', 'error');
+    return;
+  }
+  // 10MB hard cap. Editorial credit sheets are tiny; anything bigger
+  // is almost certainly the wrong file.
+  if (file.size > 10 * 1024 * 1024) {
+    _status('❌ PDF가 너무 큽니다 (' + (file.size/1024/1024).toFixed(1) + 'MB > 10MB).', 'error');
+    return;
+  }
+
+  _status('PDF 텍스트 추출 중…');
+
+  var allText = '';
+  try {
+    var buf = await file.arrayBuffer();
+    var pdf = await window.pdfjsLib.getDocument({ data: buf }).promise;
+    for (var p = 1; p <= pdf.numPages; p++) {
+      var page = await pdf.getPage(p);
+      var content = await page.getTextContent();
+      // Each .items[i].str is a text fragment in reading order. Join with
+      // spaces and newline between pages — credit sheets are usually
+      // one role per line and the line breaks carry through fine.
+      var pageText = content.items.map(function(it){ return it.str || ''; }).join(' ');
+      allText += pageText + '\n';
+    }
+  } catch (e) {
+    console.error('[pdf-parse] pdf.js failed:', e);
+    _status('❌ PDF 텍스트 추출 실패: ' + (e && e.message || e), 'error');
+    return;
+  }
+
+  allText = (allText || '').trim();
+  if (!allText) {
+    _status('❌ PDF 안에 텍스트가 없습니다. 스캔 이미지 PDF는 지원되지 않습니다.', 'error');
+    return;
+  }
+
+  _status('Claude로 크레딧 분석 중…');
+
+  var parsed;
+  try {
+    var token = (typeof PAP !== 'undefined' && PAP.auth && PAP.auth.getToken) ? PAP.auth.getToken() : '';
+    var resp = await fetch('/api/admin/editorials/parse-credits-pdf', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
+      },
+      body: JSON.stringify({ text: allText }),
+    });
+    var json = await resp.json();
+    if (!resp.ok) {
+      _status('❌ ' + (json.error || ('서버 오류: ' + resp.status)), 'error');
+      return;
+    }
+    parsed = json;
+  } catch (e) {
+    console.error('[pdf-parse] fetch failed:', e);
+    _status('❌ 서버 호출 실패: ' + (e && e.message || e), 'error');
+    return;
+  }
+
+  var credits = Array.isArray(parsed.credits) ? parsed.credits : [];
+  var brands  = Array.isArray(parsed.brands)  ? parsed.brands  : [];
+
+  if (!credits.length && !brands.length) {
+    _status('⚠️ PDF에서 크레딧을 찾지 못했습니다. 직접 입력해주세요.', 'warn');
+    return;
+  }
+
+  // Confirm with the editor before overwriting any existing rows.
+  var creditsArea = document.getElementById('creditsArea');
+  var brandsArea  = document.getElementById('brandsArea');
+  var existingCreditRows = creditsArea ? creditsArea.querySelectorAll('.pe-credit-row').length : 0;
+  var existingBrandRows  = brandsArea ? brandsArea.querySelectorAll('.pe-brand-row').length : 0;
+  // Only ask for confirmation if there's something non-trivial to lose.
+  var hasNonEmpty = false;
+  if (existingCreditRows) {
+    creditsArea.querySelectorAll('.pe-credit-row').forEach(function(r){
+      var ig = r.querySelector('.pe-credit-ig');
+      var nm = r.querySelector('.pe-credit-name');
+      if ((ig && ig.value.trim()) || (nm && nm.value.trim())) hasNonEmpty = true;
+    });
+  }
+  if (hasNonEmpty) {
+    if (!confirm('PDF에서 ' + credits.length + '명의 크레딧 + ' + brands.length + '개의 브랜드를 추출했습니다.\n\n현재 입력된 크레딧을 모두 지우고 PDF 내용으로 교체할까요?')) {
+      _status('사용자가 취소했습니다.');
+      return;
+    }
+  }
+
+  // Wipe existing rows, then add one per parsed credit.
+  if (creditsArea) creditsArea.innerHTML = '';
+  credits.forEach(function(c){
+    if (typeof addCredit === 'function') addCredit('creditsArea');
+    var rows = creditsArea.querySelectorAll('.pe-credit-row');
+    var row = rows[rows.length - 1];
+    if (!row) return;
+    var ig = row.querySelector('.pe-credit-ig');
+    var nm = row.querySelector('.pe-credit-name');
+    var trig = row.querySelector('.pe-role-trigger');
+    if (nm) nm.value = c.name || '';
+    if (ig) ig.value = c.instagram || '';
+    // Roles attach via the chip trigger's hidden state; safest is to
+    // store via dataset and re-render.
+    if (trig && Array.isArray(c.roles)) {
+      trig.dataset.roles = JSON.stringify(c.roles);
+      if (typeof _renderRoleChips === 'function') _renderRoleChips(trig);
+    }
+  });
+
+  // Brands — wipe, then add one row per parsed brand.
+  if (brandsArea) brandsArea.innerHTML = '';
+  brands.forEach(function(b){
+    if (typeof addBrand === 'function') addBrand();
+    var rows = brandsArea.querySelectorAll('.pe-brand-row');
+    var row = rows[rows.length - 1];
+    if (!row) return;
+    var nm = row.querySelector('.pe-brand-name');
+    var ig = row.querySelector('.pe-brand-ig');
+    if (nm) nm.value = b.name || '';
+    if (ig) ig.value = b.instagram || '';
+  });
+
+  var msg = '✓ 크레딧 ' + credits.length + '명 + 브랜드 ' + brands.length + '개 추출 완료';
+  if (parsed.warnings && parsed.warnings.length) {
+    msg += ' · ⚠️ ' + parsed.warnings.length + '건 확인 필요';
+    console.warn('[pdf-parse] warnings:', parsed.warnings);
+  }
+  _status(msg, 'ok');
+}
+
 // ── QA #97 — Drag & drop reorder + bulk select on credit rows ──────────
 // Mirror of the gallery-row pattern (_wireGalleryItemDrag): native HTML5
 // DnD with a grip cell that acts as the visual affordance. DOM order IS
