@@ -8010,6 +8010,47 @@ var _PAP_COVER_H = 1350;
 var _PAP_MONTHS = ['January','February','March','April','May','June',
                    'July','August','September','October','November','December'];
 
+// QA #266 — read fine-tune slider values (or fall back to defaults if
+// the advanced section isn't open / wasn't touched). Each value
+// represents either a px or a % depending on the field.
+function _papCoverReadStyleOpts(){
+  function _num(id, fallback){
+    var el = document.getElementById(id);
+    var v = el ? parseFloat(el.value) : NaN;
+    return isNaN(v) ? fallback : v;
+  }
+  return {
+    logoSize:       _num('coverLogoSize', 22),       // % canvas width
+    logoShadow:     _num('coverLogoShadow', 35),     // 0-100, shadow intensity
+    logoTop:        _num('coverLogoTop', 6),         // % canvas height from top
+    titleSize:      _num('coverTitleSize', 70),      // px
+    contribSize:    _num('coverContribSize', 26),    // px
+    topLabelSize:   _num('coverTopLabelSize', 24),   // px
+    sideLabelSize:  _num('coverSideLabelSize', 14),  // px
+    bottomPad:      _num('coverBottomPad', 60),      // px from canvas bottom
+  };
+}
+
+// Reset button → restores all sliders to defaults.
+function papCoverResetSettings(){
+  var pairs = [
+    ['coverLogoSize',      22, '%'],
+    ['coverLogoShadow',    35, '%'],
+    ['coverLogoTop',        6, '%'],
+    ['coverTitleSize',     70, 'px'],
+    ['coverContribSize',   26, 'px'],
+    ['coverTopLabelSize',  24, 'px'],
+    ['coverSideLabelSize', 14, 'px'],
+    ['coverBottomPad',     60, 'px'],
+  ];
+  pairs.forEach(function(p){
+    var el = document.getElementById(p[0]);
+    if (el) el.value = p[1];
+    var lbl = document.getElementById(p[0] + 'Label');
+    if (lbl) lbl.textContent = p[1] + p[2];
+  });
+}
+
 function _papCoverReadFormMeta(){
   // 1) Issue label: input > published_date month > current month
   var issueEl = document.getElementById('coverIssueLabel');
@@ -8157,9 +8198,12 @@ async function _papCoverComposite(canvas, meta){
   ctx.fillStyle = gradTop;
   ctx.fillRect(0, 0, W, H * 0.2);
 
+  // QA #266 — read fine-tune slider values once for this composite.
+  var sty = _papCoverReadStyleOpts();
+
   // 3) Top-left: Issue label (white sans)
   ctx.fillStyle = '#ffffff';
-  ctx.font = '400 24px system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif';
+  ctx.font = '400 ' + sty.topLabelSize + 'px system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif';
   ctx.textBaseline = 'top';
   ctx.textAlign = 'left';
   ctx.fillText(meta.issueLabel, 38, 38);
@@ -8172,25 +8216,47 @@ async function _papCoverComposite(canvas, meta){
   ctx.save();
   ctx.translate(38, H * 0.45);
   ctx.rotate(-Math.PI / 2);
-  ctx.font = '400 14px system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif';
+  ctx.font = '400 ' + sty.sideLabelSize + 'px system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif';
   ctx.textAlign = 'left';
   ctx.fillText('Published by Domenico Kang', 0, 0);
   ctx.restore();
 
-  // 6) Top-center: PAP wordmark logo (~22% canvas width).
+  // 6) Top-center: PAP wordmark logo with optional 3D shadow.
   //    Reuse the editor's persisted logo (custom in localStorage OR
   //    factory default /pap-logo-white.png) — same source as IG.
+  //
+  //    QA #266 — drop-shadow on the logo creates the "popping out of
+  //    the page" look the user spotted on real PAP covers. Intensity is
+  //    slider-controlled (0% = flat, 100% = strongly raised).
   try {
     if (typeof _papInstaLoadLogo === 'function') {
       var logo = await _papInstaLoadLogo();
-      var lw = W * 0.22;
+      var lw = W * (sty.logoSize / 100);
       var lh = lw * (logo.naturalHeight / logo.naturalWidth);
-      ctx.drawImage(logo, (W - lw) / 2, H * 0.06, lw, lh);
+      var lx = (W - lw) / 2;
+      var ly = H * (sty.logoTop / 100);
+      if (sty.logoShadow > 0) {
+        ctx.save();
+        // Shadow intensity scaling: at 50% slider → alpha 0.4 / blur 14 /
+        // offset 7. Tweaked so 35% (default) feels like the magazine
+        // examples — visible but not heavy.
+        var sAlpha   = (sty.logoShadow / 100) * 0.65;
+        var sBlur    = (sty.logoShadow / 100) * 28;
+        var sOffsetY = (sty.logoShadow / 100) * 12;
+        ctx.shadowColor   = 'rgba(0, 0, 0, ' + sAlpha.toFixed(3) + ')';
+        ctx.shadowBlur    = sBlur;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = sOffsetY;
+        ctx.drawImage(logo, lx, ly, lw, lh);
+        ctx.restore();
+      } else {
+        ctx.drawImage(logo, lx, ly, lw, lh);
+      }
     }
   } catch(_){ /* logo failed; skip silently */ }
 
-  // 7) Bottom-center: italic serif title.
-  var titleSize = 70;
+  // 7) Bottom-center: italic serif title (size from slider).
+  var titleSize = sty.titleSize;
   ctx.font = 'italic 400 ' + titleSize + 'px "Times New Roman", Georgia, serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
@@ -8204,15 +8270,11 @@ async function _papCoverComposite(canvas, meta){
     ctx.font = 'italic 400 ' + titleSize + 'px "Times New Roman", Georgia, serif';
     titleLines = _papCoverWrap(ctx, meta.title || '', titleMaxW);
   }
-  // Bottom block layout:
-  //   contributors line at H - 60 (baseline)
-  //   contributors-to-title gap = 24
-  //   title baselines stacked above
-  var contribSize = 26;
+  // Contributors size from slider, with same wrap-and-shrink fallback.
+  var contribSize = sty.contribSize;
   ctx.font = 'italic 400 ' + contribSize + 'px "Times New Roman", Georgia, serif';
   var contribMaxW = W - 100;
   var contribLines = _papCoverWrap(ctx, meta.contributors || '', contribMaxW);
-  // Limit contributors to 2 lines.
   if (contribLines.length > 2) {
     while (contribLines.length > 2 && contribSize > 16) {
       contribSize -= 2;
@@ -8221,8 +8283,8 @@ async function _papCoverComposite(canvas, meta){
     }
   }
 
-  // Draw contributor lines starting from bottom-up.
-  var bottomPad = 60;
+  // Draw contributor lines starting from bottom-up. Bottom pad from slider.
+  var bottomPad = sty.bottomPad;
   var lineGap = 6;
   var contribY = H - bottomPad;
   for (var c = contribLines.length - 1; c >= 0; c--) {
