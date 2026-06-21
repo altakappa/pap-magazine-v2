@@ -5349,6 +5349,81 @@ function regenerateIgCaption(){
 //   • overwrite=true  → replace whatever's there (click on '🤖 강제 재생성')
 // On success we pull the new values straight into the open editor form
 // without a page reload so the admin can review/edit before saving.
+// QA #272 — AI 키워드 자동 생성. 제목 + 설명 + 갤러리 첫 3장 이미지로
+// 5~10개 영문 키워드 태그 제안 + postTags input에 자동 입력.
+async function papAutoGenerateTags(overwrite){
+  if (!editingEditorialId){
+    alert('먼저 에디토리얼을 저장해주세요.\n신규 작성 중에는 AI 키워드 자동 생성을 사용할 수 없습니다.\n(임시저장 후 다시 시도하시면 됩니다.)');
+    return;
+  }
+  var existingTags = (document.getElementById('postTags') || {}).value || '';
+  if (overwrite && existingTags.trim()) {
+    if (!confirm('기존 태그를 덮어쓰고 새로 생성합니다. 계속할까요?')) return;
+  } else if (!overwrite && existingTags.trim()) {
+    if (!confirm('태그가 이미 입력되어 있습니다. 그대로 덮어쓸까요?\n(아니오를 누르면 강제 재생성 버튼을 사용하세요.)')) return;
+  }
+
+  var btn = document.getElementById('aiTagsBtn');
+  var origLabel = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '🤖 키워드 생성 중…'; btn.style.opacity = '.7'; }
+  var statusEl = document.getElementById('tagsAiStatus');
+  function _s(msg, color){
+    if (!statusEl) return;
+    statusEl.textContent = msg || '';
+    statusEl.style.color = color || 'var(--text3)';
+  }
+  _s('Claude로 키워드 분석 중…');
+
+  try {
+    // 폼의 현재 값들을 override로 전송해 저장 안 한 상태에서도 정확한 결과.
+    var currentTitle = (document.getElementById('postTitle') || {}).value || '';
+    var currentDesc = (document.getElementById('postDescriptionEn') || {}).value
+                  || (document.getElementById('postDescription') || {}).value
+                  || '';
+    var currentGallery = [];
+    document.querySelectorAll('#galleryGrid .pe-gallery-item img').forEach(function(img){
+      if (img && img.src) currentGallery.push(img.src);
+    });
+
+    var resp = await fetch(_apiBase + '/admin/editorials/' + editingEditorialId + '/generate-tags', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + (localStorage.getItem('pap-token') || ''),
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: JSON.stringify({
+        overwrite: true,  // 항상 DB에도 저장 (다음 편집 시 유지)
+        currentTitle: currentTitle,
+        currentDescription: currentDesc,
+        currentGallery: currentGallery,
+      })
+    });
+    var data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || ('실패: ' + resp.status));
+
+    var tags = Array.isArray(data.tags) ? data.tags : [];
+    if (!tags.length) {
+      _s('⚠️ 생성된 태그가 없습니다.', '#b86b00');
+      return;
+    }
+    // postTags input에 쉼표 join으로 입력 + tagPreview 칩 갱신.
+    var tagsInput = document.getElementById('postTags');
+    if (tagsInput) {
+      tagsInput.value = tags.join(', ');
+      // 입력 이벤트 trigger — tagPreview chip rendering이 oninput으로 동작.
+      try { tagsInput.dispatchEvent(new Event('input', { bubbles: true })); } catch(_){}
+    }
+    _s('✓ ' + tags.length + '개 키워드 생성 완료', '#16a34a');
+  } catch (e) {
+    console.error('papAutoGenerateTags error:', e);
+    _s('❌ ' + (e && e.message || e), '#c62828');
+    alert('AI 키워드 생성 실패: ' + (e && e.message || e));
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = origLabel || '🤖 AI 키워드 자동 생성'; btn.style.opacity = '1'; }
+  }
+}
+
 async function aiAutoGenerateEditorial(overwrite){
   if(!editingEditorialId){
     alert('먼저 에디토리얼을 저장해주세요.\n신규 작성 중에는 AI 자동 생성을 사용할 수 없습니다.\n(임시저장 후 다시 시도하시면 됩니다.)');

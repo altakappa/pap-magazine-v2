@@ -1128,10 +1128,19 @@ tr:hover td{background:rgba(0,0,0,.02)}
 
         <!-- 검색 태그 -->
         <div class="pe-section">
-          <div class="pe-label">검색 태그 <span class="pe-opt">쉼표(,)로 구분 · 에디토리얼 검색 및 분류에 사용</span></div>
-          <input class="pe-input" id="postTags" placeholder="예: bold, colorful, retro, maximalist, street, minimal, dark, moody">
+          <div class="pe-label" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+            <span>검색 태그 <span class="pe-opt">쉼표(,)로 구분 · 에디토리얼 검색 및 분류에 사용</span></span>
+            <!-- QA #272 — AI 키워드 자동 생성 버튼. Claude가 제목 + 설명 +
+                 갤러리 첫 3장 이미지를 분석해 5~10개 태그 제안. -->
+            <span style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="btn btn-sm" type="button" id="aiTagsBtn" onclick="papAutoGenerateTags(false)" title="제목 + 설명 + 이미지로 5~10개 키워드 자동 생성 (빈 칸일 때만)" style="background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(37,99,235,.12));border-color:rgba(124,58,237,.35);color:var(--purple)">🤖 AI 키워드 자동 생성</button>
+              <button class="btn btn-sm" type="button" onclick="papAutoGenerateTags(true)" title="기존 태그를 덮어쓰며 새로 생성">🤖 강제 재생성</button>
+            </span>
+          </div>
+          <input class="pe-input" id="postTags" placeholder="예: bold, colorful, retro, maximalist, street, minimal, dark, moody" style="margin-top:8px">
           <div class="pe-hint">관련 키워드를 입력하면 메인 페이지 검색과 AI 추천에 활용됩니다.</div>
           <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px" id="tagPreview"></div>
+          <div id="tagsAiStatus" style="margin-top:6px;font-size:11px;color:var(--text3);min-height:14px"></div>
         </div>
 
         <!-- 영상 링크 -->
@@ -2913,7 +2922,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
     <div id="contentAuditBody" style="flex:1;overflow-y:auto;padding:0"></div>
   </div>
 </div>
-<script src="/pap-admin.js?v=68" defer></script>
+<script src="/pap-admin.js?v=69" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>
