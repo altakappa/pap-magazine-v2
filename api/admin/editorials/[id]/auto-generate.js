@@ -115,6 +115,10 @@ function _buildCaptionFromEditorial(ed, descKr, descEn, descIt) {
   lines.push('');
 
   // ── 5) Brands (deduped) ──
+  // QA #274 — Fashion by 라인의 핸들 소스를 2가지로 확장:
+  //   (a) ed.fashion.brands (패션 브랜드 태그 영역의 수동 입력)
+  //   (b) ed.fashion.imageCredits (이미지별 착장 크레딧 텍스트의 @handle들)
+  // 중복 제거 후 순서 유지로 합침.
   const fashion = (ed.fashion && typeof ed.fashion === 'object') ? ed.fashion : {};
   const brands = Array.isArray(fashion.brands) ? fashion.brands : [];
   const seen = new Set();
@@ -127,6 +131,27 @@ function _buildCaptionFromEditorial(ed, descKr, descEn, descIt) {
     if (seen.has(k)) return;
     seen.add(k);
     brandHandles.push(h);
+  });
+  // QA #274 — 이미지별 착장 크레딧에서 @handle 추출. imageCredits는
+  // { '1': '@brand1 Jacket, @brand2 Bag', '2': '@brand3 Shoes', ... }
+  // 형태 또는 단순 string 배열 — 둘 다 처리.
+  const imgCreditTexts = [];
+  if (fashion.imageCredits && typeof fashion.imageCredits === 'object'){
+    Object.values(fashion.imageCredits).forEach((v) => {
+      if (typeof v === 'string' && v.trim()) imgCreditTexts.push(v);
+    });
+  }
+  imgCreditTexts.forEach((text) => {
+    const matches = String(text).match(/@[a-zA-Z0-9._]+/g);
+    if (!matches) return;
+    matches.forEach((raw) => {
+      const h = _normalizeIgHandle(raw);
+      if (!h) return;
+      const k = h.toLowerCase();
+      if (seen.has(k)) return;
+      seen.add(k);
+      brandHandles.push(h);
+    });
   });
   if (brandHandles.length) lines.push('Fashion by ' + brandHandles.join(' '));
 
@@ -179,6 +204,12 @@ module.exports = async function handler(req, res) {
     }
     if (Array.isArray(body.creditsOverride)) {
       ed.credits = body.creditsOverride;
+    }
+    // QA #274 — 이미지별 착장 크레딧도 override 받아 ed.fashion.imageCredits에
+    // 주입. 캡션 빌더의 Fashion by 라인에서 핸들 추출 시 사용됨.
+    if (body.imageCreditsOverride && typeof body.imageCreditsOverride === 'object'){
+      ed.fashion = (ed.fashion && typeof ed.fashion === 'object') ? ed.fashion : {};
+      ed.fashion.imageCredits = body.imageCreditsOverride;
     }
 
     // 2) If editorial was staged from a submission, pull the original

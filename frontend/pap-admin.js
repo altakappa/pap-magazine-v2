@@ -5314,6 +5314,10 @@ function _buildIgCaptionFromEditorial(ed){
   lines.push('');
 
   // 5) Brands — single line
+  // QA #274 — Fashion by 라인의 핸들 소스를 2가지로 확장:
+  //   (a) ed.fashion.brands (기존: 패션 브랜드 태그 영역의 수동 입력)
+  //   (b) ed.fashion.imageCredits 또는 galleryImages[i].credits에서 추출한
+  //       이미지별 착장 크레딧의 @handle들. 중복 제거 후 순서 유지로 합침.
   var brands = (ed.fashion && Array.isArray(ed.fashion.brands)) ? ed.fashion.brands : [];
   var seen = {};
   var brandHandles = [];
@@ -5325,6 +5329,36 @@ function _buildIgCaptionFromEditorial(ed){
     if(seen[key]) return;
     seen[key] = true;
     brandHandles.push(h);
+  });
+  // QA #274 — 이미지별 착장 크레딧에서 @handle 추출.
+  // 데이터 위치: ed.fashion.imageCredits = { '1': 'string', ... } 또는
+  // 글로벌 galleryImages[i].credits (둘 다 폼에서 수집 가능).
+  var imgCreditTexts = [];
+  if (ed.fashion && ed.fashion.imageCredits && typeof ed.fashion.imageCredits === 'object'){
+    Object.keys(ed.fashion.imageCredits).forEach(function(k){
+      var v = ed.fashion.imageCredits[k];
+      if (typeof v === 'string' && v.trim()) imgCreditTexts.push(v);
+    });
+  }
+  if (typeof galleryImages !== 'undefined' && Array.isArray(galleryImages)){
+    galleryImages.forEach(function(gi){
+      if (gi && typeof gi.credits === 'string' && gi.credits.trim()){
+        imgCreditTexts.push(gi.credits);
+      }
+    });
+  }
+  // 모든 텍스트에서 @handle 정규식 추출 → seen 맵으로 중복 제거.
+  imgCreditTexts.forEach(function(text){
+    var matches = String(text).match(/@[a-zA-Z0-9._]+/g);
+    if (!matches) return;
+    matches.forEach(function(raw){
+      var h = _igNormalizeHandle(raw);
+      if (!h) return;
+      var key = h.toLowerCase();
+      if (seen[key]) return;
+      seen[key] = true;
+      brandHandles.push(h);
+    });
   });
   if(brandHandles.length) lines.push('Fashion by ' + brandHandles.join(' '));
 
@@ -5450,6 +5484,18 @@ async function aiAutoGenerateEditorial(overwrite){
       ? formSnapshot.fashion.brands : null;
     var creditsOverride = (formSnapshot && Array.isArray(formSnapshot.credits))
       ? formSnapshot.credits : null;
+    // QA #274 — 이미지별 착장 크레딧도 함께 전송하여 서버가 "Fashion by"에
+    // 포함시킬 수 있게 함. galleryImages[i].credits를 인덱스(1-based) 맵으로 변환.
+    var imageCreditsOverride = null;
+    if (typeof galleryImages !== 'undefined' && Array.isArray(galleryImages)){
+      imageCreditsOverride = {};
+      galleryImages.forEach(function(gi, idx){
+        if (gi && typeof gi.credits === 'string' && gi.credits.trim()){
+          imageCreditsOverride[String(idx + 1)] = gi.credits;
+        }
+      });
+      if (!Object.keys(imageCreditsOverride).length) imageCreditsOverride = null;
+    }
     var resp = await fetch(_apiBase+'/admin/editorials/'+editingEditorialId+'/auto-generate',{
       method:'POST',
       headers:{
@@ -5459,8 +5505,9 @@ async function aiAutoGenerateEditorial(overwrite){
       },
       body: JSON.stringify({
         overwrite: !!overwrite,
-        brandsOverride:  brandsOverride,
-        creditsOverride: creditsOverride,
+        brandsOverride:       brandsOverride,
+        creditsOverride:      creditsOverride,
+        imageCreditsOverride: imageCreditsOverride,
       })
     });
     var data = await resp.json();
