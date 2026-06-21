@@ -5592,8 +5592,14 @@ function _readEditorialFromForm(){
   document.querySelectorAll('#brandsArea .pe-brand-row').forEach(function(row){
     var nameEl = row.querySelector('.pe-brand-name');
     var igEl = row.querySelector('.pe-brand-ig');
-    if(nameEl && nameEl.value){
-      brands.push({ name:nameEl.value, instagram:igEl?igEl.value:'' });
+    // QA #273 — 이름 OR IG 핸들 둘 중 하나라도 있으면 브랜드로 포함.
+    // 이전에는 name이 비어있으면 IG가 있어도 누락되어 "Fashion by @brand"가
+    // 캡션에 안 나오는 버그가 있었음. _buildCaptionFromEditorial은 IG > name
+    // 순서로 핸들을 추출하므로 IG만 있어도 충분.
+    var name = (nameEl && nameEl.value || '').trim();
+    var ig   = (igEl   && igEl.value   || '').trim();
+    if (name || ig){
+      brands.push({ name: name, instagram: ig });
     }
   });
   return {
