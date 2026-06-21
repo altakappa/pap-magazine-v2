@@ -393,8 +393,28 @@ function _renderEditorialDownloads(det, d){
   }
 
   box.style.display = '';
-  // QA #271 v2 — 베타 안내 + 항상 표시.
-  // (정식 출시 후 isStandardOrAbove() 체크 활성 예정)
+
+  // QA #271 v3 — 회원 가입한 사용자만 다운로드 가능.
+  // 비로그인 → 회원가입 CTA 표시.
+  var loggedIn = (typeof isLoggedIn === 'function') ? isLoggedIn()
+              : (typeof PAP !== 'undefined' && PAP.auth && PAP.auth.isLoggedIn && PAP.auth.isLoggedIn());
+
+  if (!loggedIn){
+    // CTA — 회원가입 유도.
+    box.innerHTML =
+      '<div style="display:flex;flex-direction:column;gap:10px">' +
+        '<div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999">DOWNLOADS</div>' +
+        '<div style="font-size:13px;color:#ccc">커버 이미지 + PAP 로고 합성 갤러리 이미지 다운로드는 <strong style="color:#fff">회원가입한 사용자</strong> 전용입니다.</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">' +
+          '<a href="/auth.html?mode=signup" style="display:inline-block;padding:10px 22px;border:1px solid #fff;background:#fff;color:#000;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" onmouseover="this.style.background=\'transparent\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'#fff\';this.style.color=\'#000\'">회원가입하기 →</a>' +
+          '<a href="/auth.html" style="display:inline-block;padding:10px 22px;border:1px solid #555;color:#fff;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">로그인</a>' +
+        '</div>' +
+        '<div style="font-size:11px;color:#666;margin-top:4px">개인 사용 및 비상업적 용도에 한해 사용 가능</div>' +
+      '</div>';
+    return;
+  }
+
+  // 로그인 사용자 — 실제 다운로드 버튼.
   var coverHtml = '';
   if (coverUrl) {
     coverHtml =
@@ -404,7 +424,6 @@ function _renderEditorialDownloads(det, d){
   }
   var logoBtnHtml = '';
   if (gallery.length) {
-    // 데이터 어트리뷰트로 갤러리 + 제목 전달. _papDownloadLogoZip()이 읽어서 처리.
     var galleryJson = encodeURIComponent(JSON.stringify(gallery));
     logoBtnHtml =
       '<button id="edLogoDlBtn" type="button" onclick="_papDownloadLogoZip(this)" ' +
@@ -417,7 +436,7 @@ function _renderEditorialDownloads(det, d){
       '<div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999">DOWNLOADS</div>' +
       '<div style="display:flex;gap:10px;flex-wrap:wrap">' + coverHtml + logoBtnHtml + '</div>' +
       '<div id="edLogoDlStatus" style="font-size:11px;color:#888;min-height:14px"></div>' +
-      '<div style="font-size:11px;color:#666">베타 운영 기간 동안 모든 사용자에게 다운로드 제공 · 개인 사용 및 비상업적 용도에 한해 사용 가능</div>' +
+      '<div style="font-size:11px;color:#666">회원가입한 사용자 전용 · 개인 사용 및 비상업적 용도에 한해 사용 가능</div>' +
     '</div>';
 }
 
