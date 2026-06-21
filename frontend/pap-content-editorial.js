@@ -376,22 +376,30 @@ function _renderEditorialVideo(rawUrl){
 // `det`는 _normaliseEditorialDetail 결과, `d`는 raw API row.
 function _renderEditorialDownloads(det, d){
   var box = document.getElementById('edDetailDownloads');
-  if (!box) return;
+  if (!box) { console.warn('[downloads] #edDetailDownloads not found'); return; }
+  // 커버 URL: det / d / DOM의 actual rendered cover img 순서로 시도
   var coverUrl = (det && (det.coverImage || det.cover_image)) ||
                  (d && (d.cover_image || d.thumbnail)) || '';
-  // 갤러리 URL 수집 (det.gallery / d.gallery 둘 다 지원).
+  if (!coverUrl) {
+    var heroImg = document.querySelector('#edDetailCover img, #edDetailHero img, .ed-cover img');
+    if (heroImg && heroImg.src) coverUrl = heroImg.src;
+  }
+  // 갤러리 URL: det / d / DOM의 actual rendered gallery imgs 순서로 시도
   var gallery = (det && Array.isArray(det.gallery) && det.gallery.length) ? det.gallery
               : (d && Array.isArray(d.gallery)   && d.gallery.length)   ? d.gallery
               : [];
-  var title = (det && det.title) || (d && d.title) || 'editorial';
+  if (!gallery.length) {
+    var galleryImgs = document.querySelectorAll('#edDetailGallery img, .ed-gallery-item img');
+    gallery = Array.prototype.slice.call(galleryImgs).map(function(img){ return img.src; }).filter(Boolean);
+  }
+  var title = (det && det.title) || (d && d.title) ||
+              (document.getElementById('edDetailTitle') && document.getElementById('edDetailTitle').textContent) ||
+              'editorial';
   var safeTitle = String(title).replace(/[^a-zA-Z0-9가-힯 ]/g, '').replace(/\s+/g, '-').toLowerCase() || 'editorial';
 
-  // 다운로드 영역이 무의미하면 (커버도 갤러리도 없으면) 숨김.
-  if (!coverUrl && !gallery.length) {
-    box.style.display = 'none';
-    return;
-  }
+  console.log('[downloads] rendering', { coverUrl: !!coverUrl, galleryCount: gallery.length, title: title });
 
+  // 항상 박스 표시 — 커버/갤러리 없는 에지 케이스에도 회원가입 CTA는 보여줌.
   box.style.display = '';
 
   // QA #271 v3 — 회원 가입한 사용자만 다운로드 가능.

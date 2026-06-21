@@ -1124,10 +1124,21 @@
   <div class="ed-credits-wrap">
     <div class="ed-desc" id="edDetailDesc"></div>
     <div class="ed-credits-table" id="edDetailCredits"></div>
-    <!-- QA #271 v2 — 베타 기간 동안 모든 사용자가 커버 이미지 + PAP 로고
-         합성 갤러리 이미지를 다운로드 받을 수 있는 영역. JSZip로 갤러리
-         이미지들을 하나의 zip 파일로 묶어서 제공. -->
-    <div id="edDetailDownloads" style="display:none;margin-top:24px;padding:16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:6px"></div>
+    <!-- QA #271 v5 — 커버 + PAP 로고 합성 갤러리 ZIP 다운로드 영역.
+         초기값에 placeholder를 표시해 JS 로드 전이라도 자리가 비어 보이지
+         않도록 함. _renderEditorialDownloads()가 hydrate 시점에 정확한
+         내용으로 교체. -->
+    <div id="edDetailDownloads" style="margin-top:32px;padding:20px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:8px;color:#fff">
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#bbb">DOWNLOADS</div>
+        <div style="font-size:13px;color:#ccc">커버 이미지 + PAP 로고 합성 갤러리 이미지 다운로드는 <strong style="color:#fff">회원가입한 사용자</strong> 전용입니다.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+          <a href="/auth.html?mode=signup" style="display:inline-block;padding:10px 22px;border:1px solid #fff;background:#fff;color:#000;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none">회원가입하기 →</a>
+          <a href="/auth.html" style="display:inline-block;padding:10px 22px;border:1px solid #555;color:#fff;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none">로그인</a>
+        </div>
+        <div style="font-size:11px;color:#888;margin-top:4px">개인 사용 및 비상업적 용도에 한해 사용 가능</div>
+      </div>
+    </div>
     <!-- JSZip CDN — 갤러리 이미지 ZIP 패키징용. defer로 본문 파싱 후 로드. -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
     <!-- QA #246 — clickable hashtag chips, identical UX to the article
