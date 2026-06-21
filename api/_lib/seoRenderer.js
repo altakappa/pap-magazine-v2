@@ -353,6 +353,40 @@ function renderSeoHtml(kind, record) {
           '</ul></section>'
         : '');
 
+  /* QA #271 v4 — SSR 페이지에도 다운로드 영역 추가. SPA overlay와 동일한
+   * 동작: 회원가입 사용자만 다운로드 가능, 비로그인 시 CTA 표시.
+   * 로그인 상태는 클라이언트 JS가 결정 → 일단 placeholder만 출력하고
+   * pap-content-editorial.js가 hydrate 시점에 _renderEditorialDownloads()로
+   * 채움. coverUrl + gallery는 data-* attribute로 전달.
+   *
+   * 단, SSR 페이지는 SPA로 즉시 redirect 되므로 (QA #131), 실제로는 hydrate
+   * 시점에 SPA 오버레이가 열리고 그쪽이 다운로드 영역을 렌더한다. 그래도
+   * 혹시 redirect 전에 본문이 잠시 노출되는 경우를 대비해 SSR HTML에도
+   * 같은 div를 포함. */
+  const ssrCoverUrlForDl = String((record && record.cover_image) || '').replace(/"/g, '&quot;');
+  const ssrGalleryForDl = (() => {
+    try { return Buffer.from(JSON.stringify(asArray(record.gallery))).toString('base64'); }
+    catch (_) { return ''; }
+  })();
+  const ssrTitleForDl = String((record && record.title) || 'editorial')
+    .replace(/[^a-zA-Z0-9가-힯 ]/g, '').replace(/\s+/g, '-').toLowerCase() || 'editorial';
+  const downloadsHtml =
+    '<section class="seo-downloads" id="edDetailDownloads" ' +
+      'data-cover-url="' + ssrCoverUrlForDl + '" ' +
+      'data-gallery-b64="' + ssrGalleryForDl + '" ' +
+      'data-title="' + ssrTitleForDl + '" ' +
+      'style="margin-top:24px;padding:16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:6px">' +
+      '<div style="display:flex;flex-direction:column;gap:10px">' +
+        '<div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999">DOWNLOADS</div>' +
+        '<div style="font-size:13px;color:#ccc">커버 이미지 + PAP 로고 합성 갤러리 이미지 다운로드는 <strong style="color:#fff">회원가입한 사용자</strong> 전용입니다.</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">' +
+          '<a href="/auth.html?mode=signup" style="display:inline-block;padding:10px 22px;border:1px solid #fff;background:#fff;color:#000;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none">회원가입하기 →</a>' +
+          '<a href="/auth.html" style="display:inline-block;padding:10px 22px;border:1px solid #555;color:#fff;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none">로그인</a>' +
+        '</div>' +
+        '<div style="font-size:11px;color:#666;margin-top:4px">개인 사용 및 비상업적 용도에 한해 사용 가능</div>' +
+      '</div>' +
+    '</section>';
+
   /* QA #177 — fashion brand chips, mirrors the SPA overlay's "Fashion by"
    * row. Hidden when the editorial has no brands listed. */
   const fashionBrands = extractFashionBrands(record);
@@ -667,6 +701,7 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
     ${galleryHtml}
     ${videoHtml}
     ${creditsHtml}
+    ${downloadsHtml}
     ${fashionHtml}
     ${relatedEditorialHtml}
     ${relatedFilmsHtml}
