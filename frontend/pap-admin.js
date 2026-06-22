@@ -5385,6 +5385,47 @@ function regenerateIgCaption(){
 // without a page reload so the admin can review/edit before saving.
 // QA #272 — AI 키워드 자동 생성. 제목 + 설명 + 갤러리 첫 3장 이미지로
 // 5~10개 영문 키워드 태그 제안 + postTags input에 자동 입력.
+// QA #275 — Instagram 게시물 URL을 받아 Claude로 한국어/영어 바이링구얼 기사
+// 자동 생성 + articles 테이블에 draft로 저장. 성공 시 곧바로 편집 화면 진입.
+async function papImportFromInstagram(){
+  var url = prompt('Instagram 게시물 URL을 입력하세요\n예: https://www.instagram.com/p/Czxy1234abc/');
+  if (!url) return;
+  url = url.trim();
+  if (!/instagram\.com\/(?:p|reel|tv)\//.test(url)){
+    alert('유효한 Instagram URL이 아닙니다.\n예: https://www.instagram.com/p/XXXX/');
+    return;
+  }
+  var loadingAlert = '🤖 Claude로 기사 생성 중… (10~30초 소요)';
+  console.log('[ig import] ' + loadingAlert);
+  try {
+    var resp = await fetch(_apiBase + '/admin/articles/from-instagram', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + (localStorage.getItem('pap-token') || ''),
+      },
+      body: JSON.stringify({ instagramUrl: url, status: 'draft' }),
+    });
+    var data = await resp.json();
+    if (!resp.ok){
+      alert('Instagram 기사 생성 실패\n\n' + (data.error || ('상태 ' + resp.status)));
+      return;
+    }
+    var article = data.article;
+    if (data.duplicate){
+      if (!confirm('이 게시물은 이미 import되어 있습니다.\n기존 기사 (id: ' + article.id + ', 제목: "' + article.title + '")를 열까요?')) return;
+    } else {
+      alert('✓ Instagram 기사 생성 완료\n\n제목: ' + article.title + '\n카테고리: ' + article.category + '\n태그: ' + (Array.isArray(article.tags) ? article.tags.join(', ') : '') + '\n\n임시저장 상태로 저장되었습니다. 검토 후 발행해주세요.');
+    }
+    // 뉴스 목록 새로고침 → 편집 화면 진입.
+    if (typeof loadNews === 'function') await loadNews();
+    if (typeof editNewsArticle === 'function') editNewsArticle(article.id);
+  } catch (e){
+    console.error('[ig import] failed:', e);
+    alert('Instagram 기사 생성 실패: ' + (e && e.message || e));
+  }
+}
+
 async function papAutoGenerateTags(overwrite){
   if (!editingEditorialId){
     alert('먼저 에디토리얼을 저장해주세요.\n신규 작성 중에는 AI 키워드 자동 생성을 사용할 수 없습니다.\n(임시저장 후 다시 시도하시면 됩니다.)');

@@ -1460,7 +1460,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
 
   <!-- NEWS -->
   <div class="tab" id="t-news">
-    <div class="mn-header"><div class="mn-title">뉴스 관리</div><div class="mn-actions"><button class="btn btn-primary" onclick="newNewsArticle()">+ 새 뉴스</button> <button class="btn" onclick="loadNews()" style="background:transparent">🔄 새로고침</button></div></div>
+    <div class="mn-header"><div class="mn-title">뉴스 관리</div><div class="mn-actions"><button class="btn btn-primary" onclick="newNewsArticle()">+ 새 뉴스</button> <button class="btn" type="button" onclick="papImportFromInstagram()" style="background:linear-gradient(135deg,rgba(225,48,108,.18),rgba(247,119,55,.16));border-color:rgba(225,48,108,.45);color:#fff" title="Instagram URL을 붙여넣으면 Claude가 자동으로 한국어/영어 기사를 생성합니다">📷 Instagram에서 기사 생성</button> <button class="btn" onclick="loadNews()" style="background:transparent">🔄 새로고침</button></div></div>
     <div class="mn-body">
       <!-- QA #208 Phase 2a — status summary dashboard cards mirroring
            the editorial layout. Click → filter the list. Numbers come
@@ -2922,7 +2922,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
     <div id="contentAuditBody" style="flex:1;overflow-y:auto;padding:0"></div>
   </div>
 </div>
-<script src="/pap-admin.js?v=71" defer></script>
+<script src="/pap-admin.js?v=72" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>
