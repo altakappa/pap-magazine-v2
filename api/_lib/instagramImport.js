@@ -103,9 +103,25 @@ async function generateArticleFromPost(post){
 
   const visionBlocks = [];
   // 최대 3장의 이미지만 비전 컨텍스트로 사용 (Claude 비용/속도 고려).
-  (post.mediaUrls || []).slice(0, 3).forEach((u) => {
-    visionBlocks.push({ type: 'image', source: { type: 'url', url: u } });
-  });
+  // Instagram CDN이 Anthropic의 robots.txt 차단하므로 직접 fetch해서 base64로 전달.
+  for (const u of (post.mediaUrls || []).slice(0, 3)){
+    try {
+      const imgRes = await fetch(u);
+      if (!imgRes.ok){
+        console.warn('[ig] image fetch failed:', imgRes.status, u);
+        continue;
+      }
+      const arrayBuf = await imgRes.arrayBuffer();
+      const base64 = Buffer.from(arrayBuf).toString('base64');
+      const mediaType = (imgRes.headers.get('content-type') || 'image/jpeg').split(';')[0];
+      visionBlocks.push({
+        type: 'image',
+        source: { type: 'base64', media_type: mediaType, data: base64 },
+      });
+    } catch (e){
+      console.warn('[ig] image fetch error:', (e && e.message) || e);
+    }
+  }
 
   const prompt = [
     'You are a Korean fashion magazine editor at PAP Magazine.',
