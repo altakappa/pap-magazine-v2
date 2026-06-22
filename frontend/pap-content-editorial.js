@@ -618,7 +618,9 @@ window._papDownloadLogoZip = window._papDownloadLogoZip || async function(btn){
   }
 
   // 2) 각 갤러리 이미지를 합성.
-  var W = 1080, H = 1350;
+  // QA #278 — 원본 비율 그대로 유지. 4:5 강제 crop 제거 (피사체 잘림 방지).
+  // 캔버스 크기 = 원본 크기 (단, 너무 크면 한 변 최대 2000px로 제한).
+  var MAX_DIM = 2000;
   var LOGO_PCT = 15, PAD_PCT = 1, ALPHA = 0.85;
   var zip = new JSZip();
   var ok = 0, failed = 0;
@@ -640,19 +642,23 @@ window._papDownloadLogoZip = window._papDownloadLogoZip || async function(btn){
         };
         im.src = url;
       });
+      // 원본 비율 유지 + 한 변 최대 2000px.
+      var iw = srcImg.naturalWidth, ih = srcImg.naturalHeight;
+      var W = iw, H = ih;
+      if (W > MAX_DIM || H > MAX_DIM){
+        var ratio = MAX_DIM / Math.max(W, H);
+        W = Math.round(W * ratio);
+        H = Math.round(H * ratio);
+      }
       var canvas = document.createElement('canvas');
       canvas.width = W; canvas.height = H;
       var ctx = canvas.getContext('2d');
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
-      // 배경 fill (혹시 모를 투명도 보정)
       ctx.clearRect(0, 0, W, H);
-      // cover-fit 합성
-      var iw = srcImg.naturalWidth, ih = srcImg.naturalHeight;
-      var scale = Math.max(W / iw, H / ih);
-      var dw = iw * scale, dh = ih * scale;
-      ctx.drawImage(srcImg, (W - dw) / 2, (H - dh) / 2, dw, dh);
-      // 로고 합성
+      // 원본을 캔버스 전체로 그림 (비율 유지, crop 없음).
+      ctx.drawImage(srcImg, 0, 0, W, H);
+      // 로고 합성 (너비의 LOGO_PCT% 기준, 하단 PAD_PCT% 여백).
       var logoW = W * (LOGO_PCT / 100);
       var logoH = logoW * (logo.naturalHeight / logo.naturalWidth);
       var prevAlpha = ctx.globalAlpha;
