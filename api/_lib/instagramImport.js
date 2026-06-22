@@ -102,9 +102,9 @@ async function generateArticleFromPost(post){
   const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
 
   const visionBlocks = [];
-  // 최대 3장의 이미지만 비전 컨텍스트로 사용 (Claude 비용/속도 고려).
+  // 1장만 비전 컨텍스트로 사용 (Vercel function timeout 60초 제한 + 이미지 다운로드 시간 고려).
   // Instagram CDN이 Anthropic의 robots.txt 차단하므로 직접 fetch해서 base64로 전달.
-  for (const u of (post.mediaUrls || []).slice(0, 3)){
+  for (const u of (post.mediaUrls || []).slice(0, 1)){
     try {
       const imgRes = await fetch(u);
       if (!imgRes.ok){
