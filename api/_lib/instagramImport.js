@@ -46,51 +46,30 @@ async function listRecentMedia(opts){
 
 // 단일 게시물 fetch.
 //   shortcode 또는 media id 입력 → Graph API로 미디어 정보 가져옴.
-//   oEmbed fallback은 토큰이 없거나 Graph API가 실패할 때.
+//   Note: oEmbed는 Facebook이 2021년부터 앱 검수를 요구해서 일반 앱은 사용 불가.
+//         그래서 Graph API만 사용 (자신의 Business 계정 미디어만 조회 가능).
 async function fetchInstagramPost(input){
   const shortcode = _extractShortcode(input);
   if (!shortcode) throw new Error('유효한 Instagram URL/ID가 아닙니다.');
 
-  // 1) 토큰 있으면 Graph API로 가장 정확한 정보 시도.
-  if (process.env.IG_ACCESS_TOKEN && process.env.IG_USER_ID){
-    try {
-      // Business 계정 소유 미디어만 직접 조회 가능. shortcode → id 변환을
-      // 위해 최근 미디어 25개를 검색 (cron sync에서 흔히 발생하는 경로 그대로).
-      const media = await listRecentMedia({ limit: 25 });
-      const hit = media.find((m) =>
-        m.permalink && m.permalink.includes('/' + shortcode + '/')
-      );
-      if (hit){
-        return _normalizeMedia(hit);
-      }
-      // 최근 25개에 없으면 fallback으로 직접 ID 조회 시도. shortcode를 그대로
-      // ID로 쓸 수는 없으므로 oEmbed로 넘어감.
-    } catch (e){
-      console.warn('[ig fetch] Graph API 실패, oEmbed로 fallback:', e && e.message || e);
-    }
+  if (!process.env.IG_ACCESS_TOKEN || !process.env.IG_USER_ID){
+    throw new Error('IG_ACCESS_TOKEN/IG_USER_ID 환경변수가 설정되어 있지 않습니다.');
   }
 
-  // 2) oEmbed fallback (캡션 + 이미지 1개만).
-  // oEmbed는 반드시 app access token (`{app_id}|{app_secret}`) 형식 — user/page 토큰 불가.
-  if (!process.env.IG_APP_ID || !process.env.IG_APP_SECRET){
-    throw new Error('Instagram oEmbed에 필요한 IG_APP_ID/IG_APP_SECRET 환경변수가 없습니다.');
+  // Graph API는 자기 Business 계정 미디어만 직접 조회 가능. shortcode → id 변환을
+  // 위해 최근 미디어 50개를 검색해서 매칭.
+  const media = await listRecentMedia({ limit: 50 });
+  const hit = media.find((m) =>
+    m.permalink && m.permalink.includes('/' + shortcode + '/')
+  );
+  if (hit){
+    return _normalizeMedia(hit);
   }
-  const appAccessToken = process.env.IG_APP_ID + '|' + process.env.IG_APP_SECRET;
-  const oembedUrl = `${_IG_API}/instagram_oembed?url=${encodeURIComponent('https://www.instagram.com/p/' + shortcode + '/')}&access_token=${appAccessToken}`;
-  const oRes = await fetch(oembedUrl);
-  if (!oRes.ok){
-    const body = await oRes.text().catch(() => '');
-    throw new Error('Instagram oEmbed 실패 (' + oRes.status + '): ' + body.slice(0, 300));
-  }
-  const o = await oRes.json();
-  return {
-    id: shortcode,
-    caption: o.title || '',
-    mediaUrls: o.thumbnail_url ? [o.thumbnail_url] : [],
-    permalink: 'https://www.instagram.com/p/' + shortcode + '/',
-    timestamp: null,
-    author: o.author_name || 'pap_magazine',
-  };
+  throw new Error(
+    '해당 게시물(' + shortcode + ')을 최근 50개 게시물에서 찾지 못했습니다. ' +
+    '더 최근 게시물을 사용해 주세요. ' +
+    '(IG_USER_ID가 올바른 계정인지도 확인하세요.)'
+  );
 }
 
 function _normalizeMedia(m){
