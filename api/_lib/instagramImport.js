@@ -70,8 +70,13 @@ async function fetchInstagramPost(input){
     }
   }
 
-  // 2) oEmbed fallback (token 불필요, 캡션 + 이미지 1개만).
-  const oembedUrl = `${_IG_API}/instagram_oembed?url=${encodeURIComponent('https://www.instagram.com/p/' + shortcode + '/')}&access_token=${process.env.IG_ACCESS_TOKEN || (process.env.IG_APP_ID + '|' + process.env.IG_APP_SECRET)}`;
+  // 2) oEmbed fallback (캡션 + 이미지 1개만).
+  // oEmbed는 반드시 app access token (`{app_id}|{app_secret}`) 형식 — user/page 토큰 불가.
+  if (!process.env.IG_APP_ID || !process.env.IG_APP_SECRET){
+    throw new Error('Instagram oEmbed에 필요한 IG_APP_ID/IG_APP_SECRET 환경변수가 없습니다.');
+  }
+  const appAccessToken = process.env.IG_APP_ID + '|' + process.env.IG_APP_SECRET;
+  const oembedUrl = `${_IG_API}/instagram_oembed?url=${encodeURIComponent('https://www.instagram.com/p/' + shortcode + '/')}&access_token=${appAccessToken}`;
   const oRes = await fetch(oembedUrl);
   if (!oRes.ok){
     const body = await oRes.text().catch(() => '');
