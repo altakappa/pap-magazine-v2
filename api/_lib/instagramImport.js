@@ -206,7 +206,7 @@ function buildArticleRow(post, generated, opts){
     category: generated.category || 'News',
     tags: generated.tags || [],
     slug: generated.slug || null,
-    thumbnail: (post.mediaUrls && post.mediaUrls[0]) || null,
+    thumbnail_url: (post.mediaUrls && post.mediaUrls[0]) || null,
     status: opts.status || 'draft',
     // QA #275 — Instagram 소스 메타.
     source_instagram_url:     post.permalink || null,
