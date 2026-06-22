@@ -448,31 +448,114 @@ function _renderEditorialDownloads(det, d){
     '</div>';
 }
 
+// QA #277 — 회원 식별자로 파일명을 personalize. 유출 시 출처 추적용.
+// 형식: pap-{basename}-u{short8}-{timestamp}.{ext}
+window._papPersonalizeFilename = window._papPersonalizeFilename || function(basename, ext){
+  var short = '';
+  try {
+    // user.id가 UUID이면 처음 8자만, 없으면 email hash 흉내
+    var u = (window.PAP && PAP.auth && PAP.auth.getUser && PAP.auth.getUser()) ||
+            (window._currentUser) || null;
+    if (u && u.id) short = String(u.id).replace(/-/g, '').slice(0, 8);
+    else if (u && u.email) {
+      var s = 0;
+      for (var i = 0; i < u.email.length; i++) s = (s * 31 + u.email.charCodeAt(i)) >>> 0;
+      short = s.toString(16).slice(0, 8);
+    }
+  } catch(_) {}
+  var ts = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14);
+  var safe = (basename || 'pap-download').replace(/[^a-zA-Z0-9가-힯 _-]/g, '').replace(/\s+/g, '-').toLowerCase();
+  return 'pap-' + safe + (short ? '-u' + short : '') + '-' + ts + '.' + (ext || 'jpg');
+};
+
+// QA #277 — 약관 동의 모달. localStorage에 저장 → 1회만 표시.
+// resolve(true) 동의함, resolve(false) 거부.
+window._papEnsureDlConsent = window._papEnsureDlConsent || function(){
+  return new Promise(function(resolve){
+    try {
+      if (localStorage.getItem('pap_dl_consent_v1') === 'yes') return resolve(true);
+    } catch(_) {}
+    var modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;font-family:inherit';
+    modal.innerHTML =
+      '<div style="background:#111;border:1px solid #333;border-radius:8px;max-width:480px;padding:24px;color:#fff;line-height:1.55">' +
+        '<div style="font-size:11px;font-weight:700;letter-spacing:.15em;color:#999;margin-bottom:12px">DOWNLOAD TERMS</div>' +
+        '<div style="font-size:15px;font-weight:700;margin-bottom:14px">이미지 사용 약관 동의</div>' +
+        '<div style="font-size:12px;color:#ccc;margin-bottom:18px">' +
+          '다운로드한 이미지는 <strong style="color:#fff">개인의 비상업적 용도</strong>로만 사용할 수 있습니다.<br><br>' +
+          '· 재배포·재판매·SNS 외부 무단 게시 금지<br>' +
+          '· 광고·홍보·상품화 등 상업적 이용 금지<br>' +
+          '· 모든 이미지의 저작권은 PAP Magazine 및 원 제작자에게 있으며 위반 시 법적 책임이 따를 수 있습니다.<br>' +
+          '· 다운로드 이력은 회원 식별 정보와 함께 기록됩니다.' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;justify-content:flex-end">' +
+          '<button type="button" id="papDlCancel" style="padding:9px 18px;background:transparent;border:1px solid #555;color:#fff;font-size:11px;letter-spacing:.08em;cursor:pointer">취소</button>' +
+          '<button type="button" id="papDlAgree" style="padding:9px 18px;background:#fff;border:1px solid #fff;color:#000;font-size:11px;font-weight:700;letter-spacing:.08em;cursor:pointer">동의하고 다운로드</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(modal);
+    function done(ok){
+      try { if (ok) localStorage.setItem('pap_dl_consent_v1', 'yes'); } catch(_) {}
+      modal.remove();
+      resolve(!!ok);
+    }
+    modal.querySelector('#papDlAgree').onclick = function(){ done(true); };
+    modal.querySelector('#papDlCancel').onclick = function(){ done(false); };
+  });
+};
+
+// QA #277 — 다운로드 이력 로깅 (fire-and-forget).
+window._papLogDownload = window._papLogDownload || function(payload){
+  try {
+    var token = (typeof getToken === 'function') ? getToken() :
+                (window.localStorage && localStorage.getItem('token')) || '';
+    fetch('/api/downloads/log', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token ? ('Bearer ' + token) : '',
+      },
+      body: JSON.stringify(Object.assign({ consented: true }, payload || {})),
+      keepalive: true,
+    }).catch(function(){});
+  } catch(_) {}
+};
+
 // 커버/로고 단일 파일 다운로드 헬퍼.
 window._papDownloadAsFile = window._papDownloadAsFile || function(url, basename){
-  try {
-    fetch(url, { mode: 'cors' })
-      .then(function(r){ return r.blob(); })
-      .then(function(blob){
-        var ext = (blob.type && blob.type.split('/')[1]) || 'jpg';
-        if (ext === 'jpeg') ext = 'jpg';
-        var a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = (basename || 'pap-download') + '.' + ext;
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(function(){
-          URL.revokeObjectURL(a.href);
-          a.remove();
-        }, 3000);
-      })
-      .catch(function(e){
-        console.warn('[pap download] failed:', e);
-        window.open(url, '_blank');
-      });
-  } catch(_) {
-    window.open(url, '_blank');
-  }
+  window._papEnsureDlConsent().then(function(ok){
+    if (!ok) return;
+    try {
+      fetch(url, { mode: 'cors' })
+        .then(function(r){ return r.blob(); })
+        .then(function(blob){
+          var ext = (blob.type && blob.type.split('/')[1]) || 'jpg';
+          if (ext === 'jpeg') ext = 'jpg';
+          var fname = window._papPersonalizeFilename(basename || 'pap-download', ext);
+          var a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = fname;
+          document.body.appendChild(a);
+          a.click();
+          window._papLogDownload({
+            content_type: 'cover',
+            content_slug: basename || '',
+            image_url: url,
+            file_name: fname,
+          });
+          setTimeout(function(){
+            URL.revokeObjectURL(a.href);
+            a.remove();
+          }, 3000);
+        })
+        .catch(function(e){
+          console.warn('[pap download] failed:', e);
+          window.open(url, '_blank');
+        });
+    } catch(_) {
+      window.open(url, '_blank');
+    }
+  });
 };
 
 // QA #271 v2 — 갤러리 이미지에 PAP 로고 합성 후 ZIP 다운로드.
@@ -490,6 +573,9 @@ window._papDownloadLogoZip = window._papDownloadLogoZip || async function(btn){
     statusEl.textContent = msg || '';
     if (color) statusEl.style.color = color;
   }
+  // QA #277 — 약관 동의 (1회).
+  var agreed = await window._papEnsureDlConsent();
+  if (!agreed) return;
   if (typeof JSZip === 'undefined') {
     _s('❌ ZIP 라이브러리 로드 실패 — 페이지를 새로고침해주세요.', '#c62828');
     return;
@@ -595,11 +681,19 @@ window._papDownloadLogoZip = window._papDownloadLogoZip || async function(btn){
   _s('ZIP 생성 중…');
   try {
     var zipBlob = await zip.generateAsync({ type: 'blob' });
+    // QA #277 — 회원 식별자가 포함된 파일명.
+    var personalizedName = window._papPersonalizeFilename(safeTitle + '-logo-zip', 'zip');
     var a = document.createElement('a');
     a.href = URL.createObjectURL(zipBlob);
-    a.download = safeTitle + '-logo-images.zip';
+    a.download = personalizedName;
     document.body.appendChild(a);
     a.click();
+    // QA #277 — 다운로드 이력 로깅 (fire-and-forget).
+    window._papLogDownload({
+      content_type: 'editorial-zip',
+      content_slug: safeTitle,
+      file_name: personalizedName,
+    });
     setTimeout(function(){
       URL.revokeObjectURL(a.href);
       a.remove();
