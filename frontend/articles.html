@@ -192,13 +192,20 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
   </div>
 </div>
 <!-- QA #282 — 모바일 반응형 간격 재조정. -->
+<!-- QA #283 — 슬라이드 캐러셀 스크롤바 hidden + 모바일은 네비 버튼 숨김(스와이프로 대체). -->
 <style>
   @media (max-width:640px){
     #artDetailOverlay .art-detail-container{ margin:30px auto !important; padding:0 18px !important; }
     #artDetailOverlay .art-detail-header{ padding:28px 0 22px !important; margin-bottom:28px !important; }
     #artDetailOverlay #artDetailTitle{ font-size:22px !important; }
     #artDetailOverlay #artDetailDesc{ font-size:15px !important; line-height:1.85 !important; padding-bottom:24px !important; }
+    /* 모바일 — 좌우 네비 버튼 숨김. swipe로 대체. */
+    .article-slide-block .slide-nav-btn{ display:none !important; }
   }
+  /* webkit 스크롤바 숨김 (Firefox는 scrollbar-width:none으로 처리). */
+  .article-slide-track::-webkit-scrollbar{ display:none; }
+  /* 데스크탑 hover시 네비 버튼 강조. */
+  .article-slide-block .slide-nav-btn:hover{ background:rgba(0,0,0,.85) !important; transform:scale(1.05); }
 </style>
 
 <link rel="stylesheet" href="/pap-social.css">
@@ -213,7 +220,7 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
 <script src="/pap-home.js?v=1" defer></script>
 <script src="/pap-content-editorial.js?v=13" defer></script>
 <script src="/pap-content-film.js?v=6" defer></script>
-<script src="/pap-content-article.js?v=8" defer></script>
+<script src="/pap-content-article.js?v=9" defer></script>
 <script src="/pap-content-creator-shorts.js?v=1" defer></script>
 <script src="/pap-content-api-sync.js?v=2" defer></script>
 <script src="/pap-content-seo.js?v=4" defer></script>

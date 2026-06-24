@@ -128,6 +128,75 @@ function openArticleFromCard(card){
     if(at.length>3&&title.length>3&&(at.indexOf(title)===0||title.indexOf(at)===0)){openArticleDetail(i);return;}
   }
 }
+// QA #283 — 슬라이드 블록의 좌우 네비 버튼 클릭 핸들러.
+// 현재 가장 가운데 보이는 figure를 찾고, dir(±1)만큼 떨어진 figure로
+// 부드럽게 scroll. block 내부의 .article-slide-track + figure들 사용.
+function _papSlideNav(btn, dir){
+  var block = btn && btn.closest && btn.closest('.article-slide-block');
+  if(!block) return;
+  var track = block.querySelector('.article-slide-track');
+  if(!track) return;
+  var figures = block.querySelectorAll('.article-slide-track > figure');
+  if(!figures.length) return;
+  // 현재 view 중심 기준 가장 가까운 figure 인덱스
+  var center = track.scrollLeft + track.clientWidth / 2;
+  var current = 0, minDist = Infinity;
+  for(var i = 0; i < figures.length; i++){
+    var f = figures[i];
+    var fc = f.offsetLeft + f.offsetWidth / 2;
+    var d = Math.abs(fc - center);
+    if(d < minDist){ minDist = d; current = i; }
+  }
+  var target = Math.max(0, Math.min(figures.length - 1, current + dir));
+  var tgt = figures[target];
+  if(tgt){
+    var left = tgt.offsetLeft - (track.clientWidth - tgt.offsetWidth) / 2;
+    track.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
+  }
+}
+
+// QA #283 — article overlay 본문이 렌더된 직후 호출. 모든
+// .article-slide-block에 대해:
+//   - 스크롤 이벤트 listener 등록 (카운터 + 좌우 버튼 opacity 동기화)
+//   - 초기 카운터 표시 (1 / N)
+function _papInitSlideBlocks(root){
+  var scope = root || document;
+  var blocks = scope.querySelectorAll ? scope.querySelectorAll('.article-slide-block') : [];
+  blocks.forEach(function(block){
+    if(block.dataset.slideInit === '1') return;
+    block.dataset.slideInit = '1';
+    var track = block.querySelector('.article-slide-track');
+    var figures = block.querySelectorAll('.article-slide-track > figure');
+    var counter = block.querySelector('.slide-counter');
+    var prevBtn = block.querySelector('.slide-prev');
+    var nextBtn = block.querySelector('.slide-next');
+    var total = figures.length;
+    if(!track || !total) return;
+
+    function update(){
+      var center = track.scrollLeft + track.clientWidth / 2;
+      var current = 0, minDist = Infinity;
+      for(var i = 0; i < figures.length; i++){
+        var f = figures[i];
+        var fc = f.offsetLeft + f.offsetWidth / 2;
+        var d = Math.abs(fc - center);
+        if(d < minDist){ minDist = d; current = i; }
+      }
+      if(counter) counter.textContent = (current + 1) + ' / ' + total;
+      if(prevBtn) prevBtn.style.opacity = current === 0 ? '.3' : '1';
+      if(nextBtn) nextBtn.style.opacity = current === total - 1 ? '.3' : '1';
+    }
+
+    var raf = 0;
+    track.addEventListener('scroll', function(){
+      if(raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(update);
+    }, { passive: true });
+    // 초기 1회
+    update();
+  });
+}
+
 // QA #201 — block array → semantic HTML for the SPA article overlay.
 // Mirrors the admin editor's four block types so what the editor sees
 // is what the reader gets:
@@ -231,25 +300,31 @@ function _renderArticleBlocks(blocks){
       });
       html += '</div>';
     } else if(t === 'slide'){
-      // QA #281 Phase B — slide block: horizontal scroll-snap carousel with
-      // CSS scroll-snap so swipe (mobile) + drag (desktop) work natively
-      // without a JS library. Each slide takes ~80% viewport width.
+      // QA #281 Phase B + QA #283 — slide carousel:
+      //   - mobile: native swipe (CSS scroll-snap, momentum)
+      //   - desktop: ◀ ▶ 좌우 네비 버튼 → 다음/이전 슬라이드로 부드럽게 이동
+      //   - 인디케이터: "3 / 5" 카운터 (스크롤에 맞춰 자동 갱신)
       var slideImgs = Array.isArray(b.images) ? b.images : [];
       if(!slideImgs.length) return;
       var sid = 'slide-' + Math.random().toString(36).slice(2, 8);
-      // QA #282 — 슬라이드 블록도 36px 외곽 + 10px gap.
-      html += '<div class="article-slide-block" data-slide-id="' + sid + '" style="margin:36px 0;position:relative">'
-        + '<div class="article-slide-track" style="display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:thin;padding-bottom:8px;-webkit-overflow-scrolling:touch">';
+      html += '<div class="article-slide-block" data-slide-id="' + sid + '" data-total="' + slideImgs.length + '" style="margin:36px 0;position:relative">';
+      // 좌우 네비 버튼. 첫/마지막 슬라이드에서 opacity 감소.
+      html += '<button class="slide-nav-btn slide-prev" type="button" aria-label="이전 이미지" onclick="_papSlideNav(this,-1)" style="position:absolute;top:calc(50% - 30px);left:8px;z-index:5;width:40px;height:40px;border-radius:50%;border:none;background:rgba(0,0,0,.6);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:.3;transition:opacity .2s">‹</button>';
+      html += '<button class="slide-nav-btn slide-next" type="button" aria-label="다음 이미지" onclick="_papSlideNav(this,1)" style="position:absolute;top:calc(50% - 30px);right:8px;z-index:5;width:40px;height:40px;border-radius:50%;border:none;background:rgba(0,0,0,.6);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:1;transition:opacity .2s">›</button>';
+      html += '<div class="article-slide-track" style="display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding-bottom:8px;-webkit-overflow-scrolling:touch">';
       slideImgs.forEach(function(im){
         if(!im || !im.url) return;
         html += '<figure style="margin:0;flex:0 0 88%;scroll-snap-align:center">'
-          + '<img src="' + escapeHtml(im.url) + '" alt="' + escapeHtml(im.caption || '') + '" loading="lazy" style="width:100%;max-height:70vh;object-fit:cover;display:block;border-radius:2px" onerror="edImgError && edImgError(this)">'
-          + (im.caption ? '<figcaption style="margin-top:6px;font-size:11px;color:#888;text-align:center;letter-spacing:.04em">' + escapeHtml(im.caption) + '</figcaption>' : '')
+          + '<img src="' + escapeHtml(im.url) + '" alt="' + escapeHtml(im.caption || '') + '" loading="lazy" style="width:100%;max-height:70vh;object-fit:cover;display:block;border-radius:2px;cursor:zoom-in" onerror="edImgError && edImgError(this)">'
+          + (im.caption ? '<figcaption style="margin-top:8px;font-size:11px;color:#888;text-align:center;letter-spacing:.04em;line-height:1.6">' + escapeHtml(im.caption) + '</figcaption>' : '')
           + '</figure>';
       });
-      html += '</div>'
-        + '<div style="text-align:center;font-size:10px;color:#666;margin-top:4px;letter-spacing:.08em">← ' + slideImgs.length + ' images · swipe →</div>'
+      html += '</div>';
+      // 카운터 (n / total). 스와이프/버튼 둘 다에 의해 갱신됨.
+      html += '<div class="slide-indicator" style="display:flex;justify-content:center;align-items:center;gap:6px;margin-top:14px">'
+        + '<span class="slide-counter" style="font-size:11px;color:#aaa;letter-spacing:.12em;font-variant-numeric:tabular-nums">1 / ' + slideImgs.length + '</span>'
         + '</div>';
+      html += '</div>';
     } else {
       // Unknown type — render escaped so nothing ever vanishes silently.
       // QA #282 — margin/line-height 보강.
@@ -277,6 +352,8 @@ function _renderArticleDetail(a,det){
     if(Array.isArray(a.blocks) && a.blocks.length){
       descEl.innerHTML = _renderArticleBlocks(a.blocks);
       descEl.style.display='';
+      // QA #283 — 슬라이드 블록 좌우 네비 + 카운터 활성화.
+      try { _papInitSlideBlocks(descEl); } catch(_){}
     } else if(a.desc){
       if(a.desc.indexOf('<')!==-1&&a.desc.indexOf('>')!==-1){
         descEl.innerHTML=a.desc;
