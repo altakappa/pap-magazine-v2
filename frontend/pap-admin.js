@@ -2666,10 +2666,20 @@ function _resetNewsEditorForm(){
   if(blocks){
     // Leave a single empty text block so the editor doesn't open
     // completely barren the way it does on first render.
+    // QA #281 — 헤더에 위/아래 + 삭제 버튼 + 자동 번호 재계산.
     blocks.innerHTML = '<div class="news-block" style="background:var(--surface);border:1px solid var(--border);padding:14px">'
-      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:10px;font-weight:700;color:var(--text3)">블록 1 — 텍스트</span><button class="btn btn-sm btn-red" onclick="this.closest(\'.news-block\').remove()">삭제</button></div>'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+        +'<span style="font-size:10px;font-weight:700;color:var(--text3)">블록 1 — 텍스트</span>'
+        +'<div style="display:flex;gap:4px">'
+          +'<button class="btn btn-sm" title="위로 이동" onclick="_moveNewsBlock(this,-1)" style="padding:2px 8px">↑</button>'
+          +'<button class="btn btn-sm" title="아래로 이동" onclick="_moveNewsBlock(this,1)" style="padding:2px 8px">↓</button>'
+          +'<button class="btn btn-sm btn-red" onclick="this.closest(\'.news-block\').remove();_renumberNewsBlocks()">삭제</button>'
+        +'</div>'
+      +'</div>'
       +'<textarea class="modal-ta" style="min-height:100px" placeholder="본문 텍스트를 입력하세요..."></textarea>'
       +'</div>';
+    // QA #281 — Drag & Drop 다중 업로드 setup (한 번만).
+    if (typeof _setupNewsBlocksDragDrop === 'function') _setupNewsBlocksDragDrop();
   }
   newsBlockCount = 1;
   // QA #224 — reset the editorial-parity controls to their "fresh
@@ -2818,12 +2828,20 @@ function _hydrateNewsEditorForm(a){
 function _appendNewsBlock(type, content){
   newsBlockCount++;
   var area = document.getElementById('newsBlocks');
-  if(!area) return;
+  if(!area) return null;
   var div = document.createElement('div');
   div.className = 'news-block';
   div.style.cssText = 'background:var(--surface);border:1px solid var(--border);padding:14px';
   var label = ({text:'텍스트',image:'이미지',quote:'인용구',video:'영상'})[type] || '기타';
-  var inner = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:10px;font-weight:700;color:var(--text3)">블록 '+newsBlockCount+' — '+label+'</span><button class="btn btn-sm btn-red" onclick="this.closest(\'.news-block\').remove()">삭제</button></div>';
+  // QA #281 — 블록 순서 변경 (↑/↓) + 삭제 버튼.
+  var inner = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
+    +'<span style="font-size:10px;font-weight:700;color:var(--text3)">블록 '+newsBlockCount+' — '+label+'</span>'
+    +'<div style="display:flex;gap:4px">'
+      +'<button class="btn btn-sm" title="위로 이동" onclick="_moveNewsBlock(this,-1)" style="padding:2px 8px">↑</button>'
+      +'<button class="btn btn-sm" title="아래로 이동" onclick="_moveNewsBlock(this,1)" style="padding:2px 8px">↓</button>'
+      +'<button class="btn btn-sm btn-red" onclick="this.closest(\'.news-block\').remove();_renumberNewsBlocks()">삭제</button>'
+    +'</div>'
+    +'</div>';
   // Use a textContent-style fallback for the input value so any
   // single/double quotes in content don't break the attribute.
   if(type==='text'){
@@ -2853,7 +2871,9 @@ function _appendNewsBlock(type, content){
     } else {
       caption = content || '';
     }
-    inner += '<div class="pe-upload" onclick="this.querySelector(\'input\').click()" style="padding:16px"><input type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="handleNewsBlockImage(this)"><div class="pe-upload-text">클릭하여 이미지 업로드</div></div>';
+    // QA #281 — multiple 선택 지원. 여러 파일 선택 시 첫 파일은 현재 블록에,
+    // 나머지는 자동으로 새 이미지 블록을 생성해서 추가.
+    inner += '<div class="pe-upload" onclick="this.querySelector(\'input\').click()" style="padding:16px"><input type="file" multiple accept="image/jpeg,image/png,image/webp" style="display:none" onchange="handleNewsBlockImage(this)"><div class="pe-upload-text">클릭하여 이미지 업로드 (여러 장 선택 가능)</div></div>';
     inner += '<div class="news-block-img-preview" style="margin-top:8px;'+(imgUrl?'':'display:none')+'">'+(imgUrl?'<img src="'+esc(imgUrl)+'" style="max-width:240px;max-height:240px;object-fit:cover;border:1px solid var(--border)">':'')+'</div>';
     inner += '<div class="news-block-img-status" style="margin-top:4px;font-size:11px;color:var(--text3);min-height:14px"></div>';
     var capInput = document.createElement('input');
@@ -2910,6 +2930,94 @@ function _appendNewsBlock(type, content){
     div.appendChild(oInput);
   }
   area.appendChild(div);
+  return div;
+}
+
+// QA #281 — 블록 순서 변경 (위/아래). 헤더의 ↑/↓ 버튼이 호출.
+function _moveNewsBlock(btn, direction){
+  var block = btn && btn.closest && btn.closest('.news-block');
+  if (!block) return;
+  if (direction < 0){
+    var prev = block.previousElementSibling;
+    if (prev && prev.classList && prev.classList.contains('news-block')){
+      block.parentNode.insertBefore(block, prev);
+    }
+  } else {
+    var next = block.nextElementSibling;
+    if (next && next.classList && next.classList.contains('news-block')){
+      block.parentNode.insertBefore(next, block);
+    }
+  }
+  _renumberNewsBlocks();
+}
+
+// QA #281 — 블록 라벨의 번호를 현재 순서에 맞게 재계산.
+// 삭제/순서변경 후 호출하면 "블록 1 — 이미지", "블록 2 — 텍스트" 형태로 자연 정렬.
+function _renumberNewsBlocks(){
+  var area = document.getElementById('newsBlocks');
+  if (!area) return;
+  var blocks = area.querySelectorAll('.news-block');
+  blocks.forEach(function(b, i){
+    var labelSpan = b.querySelector('span');
+    if (!labelSpan) return;
+    // 기존 "블록 N — 라벨" 패턴에서 라벨만 보존하고 번호 갱신.
+    var m = labelSpan.textContent.match(/—\s*(.+)$/);
+    var label = m ? m[1] : '';
+    labelSpan.textContent = '블록 ' + (i + 1) + (label ? ' — ' + label : '');
+  });
+}
+
+// QA #281 — newsBlocks 컨테이너에 Drag&Drop 다중 업로드를 활성화.
+// 외부에서 이미지 파일들을 끌어다 놓으면 각 파일마다 자동으로 이미지 블록 추가.
+// idempotent — 같은 컨테이너에 여러 번 setup해도 한 번만 등록.
+function _setupNewsBlocksDragDrop(){
+  var area = document.getElementById('newsBlocks');
+  if (!area || area.dataset.dndSetup === '1') return;
+  area.dataset.dndSetup = '1';
+  // 시각적 안내 텍스트 (한 번만 추가).
+  if (!document.getElementById('newsBlocksDndHint')){
+    var hint = document.createElement('div');
+    hint.id = 'newsBlocksDndHint';
+    hint.style.cssText = 'border:1px dashed var(--border);padding:10px;text-align:center;color:var(--text3);font-size:11px;margin-bottom:10px;background:rgba(255,255,255,.02)';
+    hint.textContent = '🖼️ 이미지를 이 영역에 끌어다 놓으면 자동으로 이미지 블록이 추가됩니다 (여러 장 동시 가능)';
+    area.parentNode.insertBefore(hint, area);
+  }
+  area.addEventListener('dragover', function(e){
+    if (e.dataTransfer && Array.prototype.some.call(e.dataTransfer.items || [], function(it){ return it.kind === 'file'; })){
+      e.preventDefault();
+      area.style.outline = '2px dashed var(--text)';
+      area.style.outlineOffset = '4px';
+    }
+  });
+  area.addEventListener('dragleave', function(e){
+    if (e.target === area){
+      area.style.outline = '';
+    }
+  });
+  area.addEventListener('drop', function(e){
+    e.preventDefault();
+    area.style.outline = '';
+    var files = e.dataTransfer && e.dataTransfer.files;
+    if (!files || !files.length) return;
+    // 이미지 파일만 받음.
+    var imageFiles = Array.prototype.filter.call(files, function(f){ return f && f.type && f.type.indexOf('image/') === 0; });
+    if (!imageFiles.length){
+      alert('이미지 파일만 끌어다 놓을 수 있어요.');
+      return;
+    }
+    imageFiles.forEach(function(file){
+      var newBlock = _appendNewsBlock('image', '');
+      if (newBlock) _processNewsBlockImageFile(file, newBlock);
+    });
+    _renumberNewsBlocks();
+  });
+}
+
+// 페이지 로드 시 한 번 setup 시도 (모달이 열리기 전이라도).
+if (typeof document !== 'undefined' && document.addEventListener) {
+  document.addEventListener('DOMContentLoaded', function(){
+    try { _setupNewsBlocksDragDrop(); } catch(_){}
+  });
 }
 
 // Show/hide the schedule input depending on the chosen status radio.
@@ -3062,10 +3170,25 @@ function previewNewsThumb(input){
 //   - stash the public URL on the block's dataset so
 //     _collectNewsBlocks can read it back on save
 function handleNewsBlockImage(input){
-  if(!input || !input.files || !input.files[0]) return;
-  var file = input.files[0];
-  var block = input.closest('.news-block');
-  if(!block) return;
+  if(!input || !input.files || !input.files.length) return;
+  var files = Array.prototype.slice.call(input.files);
+  var originBlock = input.closest('.news-block');
+  if(!originBlock) return;
+  // QA #281 — 첫 파일은 현재 블록에, 나머지는 자동으로 새 이미지 블록 생성.
+  _processNewsBlockImageFile(files[0], originBlock);
+  for (var i = 1; i < files.length; i++){
+    var newBlock = _appendNewsBlock('image', '');
+    if (newBlock) _processNewsBlockImageFile(files[i], newBlock);
+  }
+  // input 값 초기화 (같은 파일 다시 선택해도 onchange가 발화하도록).
+  try { input.value = ''; } catch(_){}
+  _renumberNewsBlocks();
+}
+
+// QA #281 — 파일 1개 + 블록 1개를 처리하는 헬퍼. handleNewsBlockImage가 여러
+// 파일을 받아 각각 이 함수로 위임. Drag&Drop 경로에서도 재사용.
+function _processNewsBlockImageFile(file, block){
+  if (!file || !block) return;
   var statusEl = block.querySelector('.news-block-img-status');
   var previewEl = block.querySelector('.news-block-img-preview');
 
@@ -3076,7 +3199,6 @@ function handleNewsBlockImage(input){
       statusEl.style.color = '#c0392b';
       statusEl.textContent = '⚠ ' + v.message;
     }
-    try { input.value = ''; } catch(_){}
     alert(v.message);
     return;
   }
@@ -3098,8 +3220,6 @@ function handleNewsBlockImage(input){
 
   // 3) Real upload
   uploadFile(file).then(function(publicUrl){
-    // Store the canonical URL on the block element itself; the
-    // collector reads it back via dataset on save.
     block.dataset.imgUrl = publicUrl;
     if(previewEl){
       previewEl.innerHTML = '<img src="'+publicUrl+'" style="max-width:240px;max-height:240px;object-fit:cover;border:1px solid var(--border)">';
@@ -3109,7 +3229,6 @@ function handleNewsBlockImage(input){
       statusEl.textContent = '✓ 업로드 완료';
     }
   }).catch(function(err){
-    // Keep any previously-uploaded URL if this was a re-upload attempt.
     if(statusEl){
       statusEl.style.color = '#c0392b';
       statusEl.textContent = '⚠ 업로드 실패: ' + (err && err.message ? err.message : '알 수 없는 오류');
