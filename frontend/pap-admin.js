@@ -5802,25 +5802,29 @@ async function editEditorial(id){
   }
 
   // ── Phase 4: rehydrate scheduled-publish UI when editing ──
-  // If the editorial has a scheduled_publish_at value, tick the box and
-  // pre-fill the date/time inputs (in browser local time, KST).
+  // QA #280 — 이전 모달 작업의 schedule 값이 남아서 저장 시 scheduled_publish_at으로
+  // 잘못 전달되는 버그 fix. 항상 명시적으로 schedule 상태를 reset한 후, 이 게시물의
+  // 실제 scheduled_publish_at 값으로만 hydrate.
   var schedCb = document.getElementById('postSchedule');
   var schedDateEl = document.getElementById('scheduleDate');
   var schedTimeEl = document.getElementById('scheduleTime');
-  if (schedCb) {
-    schedCb.checked = !!ed.scheduled_publish_at;
-    if (ed.scheduled_publish_at) {
-      try {
-        var sd = new Date(ed.scheduled_publish_at);
-        if (!isNaN(sd.getTime())) {
-          var pad = function(n){ return n < 10 ? '0' + n : '' + n; };
-          if (schedDateEl) schedDateEl.value = sd.getFullYear() + '-' + pad(sd.getMonth() + 1) + '-' + pad(sd.getDate());
-          if (schedTimeEl) schedTimeEl.value = pad(sd.getHours()) + ':' + pad(sd.getMinutes());
-        }
-      } catch(e) {}
-    }
-    if (typeof toggleSchedule === 'function') toggleSchedule();
+  // 1) 항상 reset (체크박스 + 날짜/시간 입력 모두).
+  if (schedCb) schedCb.checked = false;
+  if (schedDateEl) schedDateEl.value = '';
+  if (schedTimeEl) schedTimeEl.value = '';
+  // 2) 이 게시물에 scheduled_publish_at 값이 있을 때만 hydrate.
+  if (ed.scheduled_publish_at) {
+    try {
+      var sd = new Date(ed.scheduled_publish_at);
+      if (!isNaN(sd.getTime())) {
+        if (schedCb) schedCb.checked = true;
+        var pad = function(n){ return n < 10 ? '0' + n : '' + n; };
+        if (schedDateEl) schedDateEl.value = sd.getFullYear() + '-' + pad(sd.getMonth() + 1) + '-' + pad(sd.getDate());
+        if (schedTimeEl) schedTimeEl.value = pad(sd.getHours()) + ':' + pad(sd.getMinutes());
+      }
+    } catch(e) {}
   }
+  if (typeof toggleSchedule === 'function') toggleSchedule();
 
   // Pre-fill the manual 발행 날짜 picker with the post's saved
   // published_date so editing doesn't silently shift the timestamp
