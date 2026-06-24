@@ -149,25 +149,28 @@ function _renderArticleBlocks(blocks){
     if(t === 'text'){
       // Split on blank lines so multi-paragraph blocks render correctly,
       // but escape so admin text never injects markup unintentionally.
+      // QA #282 — paragraph 간격 + line-height 확장 (기사 가독성).
       var paragraphs = content.split(/\n\n+/).map(function(p){
         // Single newlines inside a paragraph become <br>.
-        return '<p style="margin:0 0 14px;line-height:1.7">' +
+        return '<p style="margin:0 0 22px;line-height:1.9">' +
           escapeHtml(p).replace(/\n/g, '<br>') +
           '</p>';
       }).join('');
       html += paragraphs;
     } else if(t === 'image'){
       if(!url) return; // skip blocks that lost their upload
-      html += '<figure style="margin:18px 0">'
+      // QA #282 — 이미지 블록 위/아래 여백 확대 + 캡션 line-height 보강.
+      html += '<figure style="margin:36px 0">'
         + '<img src="' + escapeHtml(url) + '" alt="' + escapeHtml(content) + '" loading="lazy" style="width:100%;display:block;border-radius:2px" onerror="edImgError && edImgError(this)">'
-        + (content ? '<figcaption style="margin-top:6px;font-size:11px;color:#888;text-align:center;letter-spacing:.04em">' + escapeHtml(content) + '</figcaption>' : '')
+        + (content ? '<figcaption style="margin-top:12px;font-size:12px;color:#888;text-align:center;letter-spacing:.04em;line-height:1.6">' + escapeHtml(content) + '</figcaption>' : '')
         + '</figure>';
     } else if(t === 'quote'){
       // QA #201 — show attribution under the quote when it's provided.
+      // QA #282 — 인용구 위/아래 여백 + 내부 padding 확대 + 본문 폰트 크기 매칭.
       var source = (b.source || '').toString();
-      html += '<blockquote style="margin:18px 0;padding:14px 18px;border-left:3px solid #999;font-style:italic;color:#ddd;font-size:14px;line-height:1.7">'
+      html += '<blockquote style="margin:36px 0;padding:20px 26px;border-left:3px solid #999;font-style:italic;color:#ddd;font-size:16px;line-height:1.85">'
         + escapeHtml(content)
-        + (source ? '<footer style="margin-top:8px;font-size:11px;color:#888;font-style:normal;text-align:right">— ' + escapeHtml(source) + '</footer>' : '')
+        + (source ? '<footer style="margin-top:14px;font-size:11px;color:#888;font-style:normal;text-align:right">— ' + escapeHtml(source) + '</footer>' : '')
         + '</blockquote>';
     } else if(t === 'video'){
       // Reuse the normaliseEmbedUrl helper when available so we accept
@@ -178,20 +181,22 @@ function _renderArticleBlocks(blocks){
         if(typeof normaliseEmbedUrl === 'function') embed = normaliseEmbedUrl(src);
       } catch(_){ embed = null; }
       if(embed && embed.src){
-        html += '<div style="margin:18px 0;position:relative;padding-bottom:56.25%;height:0;overflow:hidden">'
+        // QA #282 — video iframe 위/아래 여백 확대.
+        html += '<div style="margin:36px 0;position:relative;padding-bottom:56.25%;height:0;overflow:hidden">'
           + '<iframe src="' + escapeHtml(embed.src) + '" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%"></iframe>'
           + '</div>';
       } else if(src){
         // Surface the raw URL as a clickable fallback rather than dropping
         // the block silently. This makes broken video entries obvious in QA.
-        html += '<p style="margin:18px 0;font-size:12px"><a href="' + escapeHtml(src) + '" target="_blank" rel="noopener" style="color:#aaa">' + escapeHtml(src) + '</a></p>';
+        html += '<p style="margin:36px 0;font-size:12px"><a href="' + escapeHtml(src) + '" target="_blank" rel="noopener" style="color:#aaa">' + escapeHtml(src) + '</a></p>';
       }
     } else if(t === 'videogroup'){
       // QA #281 Phase C — 여러 YouTube/Vimeo 영상을 세로로 쌓아 렌더.
       // 각 영상은 normaliseEmbedUrl로 정규화된 iframe + 캡션.
       var vids = Array.isArray(b.videos) ? b.videos : [];
       if(!vids.length) return;
-      html += '<div style="margin:18px 0;display:flex;flex-direction:column;gap:18px">';
+      // QA #282 — 영상 그룹 블록도 동일한 36px 외곽 + 내부 24px gap.
+      html += '<div style="margin:36px 0;display:flex;flex-direction:column;gap:24px">';
       vids.forEach(function(v){
         if(!v || !v.url) return;
         var vembed = null;
@@ -215,12 +220,13 @@ function _renderArticleBlocks(blocks){
       // Each cell shows the image full-bleed with an optional caption underneath.
       var galImgs = Array.isArray(b.images) ? b.images : [];
       if(!galImgs.length) return;
-      html += '<div style="margin:18px 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">';
+      // QA #282 — 갤러리 외곽 36px + 셀 간격 10px (가독성).
+      html += '<div style="margin:36px 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">';
       galImgs.forEach(function(im){
         if(!im || !im.url) return;
         html += '<figure style="margin:0">'
           + '<img src="' + escapeHtml(im.url) + '" alt="' + escapeHtml(im.caption || '') + '" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;border-radius:2px" onerror="edImgError && edImgError(this)">'
-          + (im.caption ? '<figcaption style="margin-top:4px;font-size:10px;color:#888;text-align:center">' + escapeHtml(im.caption) + '</figcaption>' : '')
+          + (im.caption ? '<figcaption style="margin-top:8px;font-size:11px;color:#888;text-align:center;line-height:1.5">' + escapeHtml(im.caption) + '</figcaption>' : '')
           + '</figure>';
       });
       html += '</div>';
@@ -231,8 +237,9 @@ function _renderArticleBlocks(blocks){
       var slideImgs = Array.isArray(b.images) ? b.images : [];
       if(!slideImgs.length) return;
       var sid = 'slide-' + Math.random().toString(36).slice(2, 8);
-      html += '<div class="article-slide-block" data-slide-id="' + sid + '" style="margin:18px 0;position:relative">'
-        + '<div class="article-slide-track" style="display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:thin;padding-bottom:8px;-webkit-overflow-scrolling:touch">';
+      // QA #282 — 슬라이드 블록도 36px 외곽 + 10px gap.
+      html += '<div class="article-slide-block" data-slide-id="' + sid + '" style="margin:36px 0;position:relative">'
+        + '<div class="article-slide-track" style="display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:thin;padding-bottom:8px;-webkit-overflow-scrolling:touch">';
       slideImgs.forEach(function(im){
         if(!im || !im.url) return;
         html += '<figure style="margin:0;flex:0 0 88%;scroll-snap-align:center">'
@@ -245,7 +252,8 @@ function _renderArticleBlocks(blocks){
         + '</div>';
     } else {
       // Unknown type — render escaped so nothing ever vanishes silently.
-      html += '<p style="margin:0 0 14px">' + escapeHtml(content) + '</p>';
+      // QA #282 — margin/line-height 보강.
+      html += '<p style="margin:0 0 22px;line-height:1.9">' + escapeHtml(content) + '</p>';
     }
   });
   return html;
@@ -273,7 +281,8 @@ function _renderArticleDetail(a,det){
       if(a.desc.indexOf('<')!==-1&&a.desc.indexOf('>')!==-1){
         descEl.innerHTML=a.desc;
       } else {
-        descEl.innerHTML=a.desc.split('\n').filter(function(p){return p.trim();}).map(function(p){return '<p style="margin:0 0 12px">'+escapeHtml(p)+'</p>';}).join('');
+        // QA #282 — legacy plain-text fallback도 동일한 paragraph spacing.
+        descEl.innerHTML=a.desc.split('\n').filter(function(p){return p.trim();}).map(function(p){return '<p style="margin:0 0 22px;line-height:1.9">'+escapeHtml(p)+'</p>';}).join('');
       }
       descEl.style.display='';
     } else { descEl.innerHTML='';descEl.style.display='none'; }
