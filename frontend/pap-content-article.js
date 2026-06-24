@@ -186,6 +186,30 @@ function _renderArticleBlocks(blocks){
         // the block silently. This makes broken video entries obvious in QA.
         html += '<p style="margin:18px 0;font-size:12px"><a href="' + escapeHtml(src) + '" target="_blank" rel="noopener" style="color:#aaa">' + escapeHtml(src) + '</a></p>';
       }
+    } else if(t === 'videogroup'){
+      // QA #281 Phase C — 여러 YouTube/Vimeo 영상을 세로로 쌓아 렌더.
+      // 각 영상은 normaliseEmbedUrl로 정규화된 iframe + 캡션.
+      var vids = Array.isArray(b.videos) ? b.videos : [];
+      if(!vids.length) return;
+      html += '<div style="margin:18px 0;display:flex;flex-direction:column;gap:18px">';
+      vids.forEach(function(v){
+        if(!v || !v.url) return;
+        var vembed = null;
+        try {
+          if(typeof normaliseEmbedUrl === 'function') vembed = normaliseEmbedUrl(v.url);
+        } catch(_){ vembed = null; }
+        if(vembed && vembed.src){
+          html += '<figure style="margin:0">'
+            + '<div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden">'
+            + '<iframe src="' + escapeHtml(vembed.src) + '" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%"></iframe>'
+            + '</div>'
+            + (v.caption ? '<figcaption style="margin-top:6px;font-size:11px;color:#888;text-align:center;letter-spacing:.04em">' + escapeHtml(v.caption) + '</figcaption>' : '')
+            + '</figure>';
+        } else {
+          html += '<p style="margin:0;font-size:12px"><a href="' + escapeHtml(v.url) + '" target="_blank" rel="noopener" style="color:#aaa">' + escapeHtml(v.url) + '</a></p>';
+        }
+      });
+      html += '</div>';
     } else if(t === 'gallery'){
       // QA #281 Phase B — gallery block: responsive grid (auto-fill, 2~3 columns).
       // Each cell shows the image full-bleed with an optional caption underneath.

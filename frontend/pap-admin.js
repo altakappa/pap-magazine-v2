@@ -2763,6 +2763,9 @@ function _hydrateNewsEditorForm(a){
         } else if(type === 'gallery' || type === 'slide'){
           // QA #281 Phase B — gallery/slide carry an images array.
           content = { images: Array.isArray(block.images) ? block.images : [] };
+        } else if(type === 'videogroup'){
+          // QA #281 Phase C — videogroup carries a videos array.
+          content = { videos: Array.isArray(block.videos) ? block.videos : [] };
         } else {
           content = block && block.content!==undefined ? block.content : '';
         }
@@ -2835,7 +2838,7 @@ function _appendNewsBlock(type, content){
   var div = document.createElement('div');
   div.className = 'news-block';
   div.style.cssText = 'background:var(--surface);border:1px solid var(--border);padding:14px';
-  var label = ({text:'텍스트',image:'이미지',gallery:'갤러리',slide:'슬라이드',quote:'인용구',video:'영상'})[type] || '기타';
+  var label = ({text:'텍스트',image:'이미지',gallery:'갤러리',slide:'슬라이드',quote:'인용구',video:'영상',videogroup:'영상 그룹'})[type] || '기타';
   // QA #281 — 블록 순서 변경 (↑/↓) + 삭제 버튼.
   var inner = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
     +'<span style="font-size:10px;font-weight:700;color:var(--text3)">블록 '+newsBlockCount+' — '+label+'</span>'
@@ -2925,6 +2928,25 @@ function _appendNewsBlock(type, content){
     vInput.value = content || '';
     div.innerHTML = inner;
     div.appendChild(vInput);
+  } else if(type==='videogroup'){
+    // QA #281 Phase C — 한 블록에 여러 YouTube/Vimeo 영상.
+    // `content` shape: { videos: [{url, caption}, ...] }
+    var videos = [];
+    if (content){
+      if (Array.isArray(content)) videos = content;
+      else if (Array.isArray(content.videos)) videos = content.videos;
+    }
+    inner += '<div style="font-size:11px;color:var(--text3);margin-bottom:8px">여러 YouTube/Vimeo 영상을 한 블록에 묶어 노출합니다. 같은 행사의 멀티앵글, 시리즈 영상 등.</div>';
+    inner += '<div class="news-block-videos" style="display:flex;flex-direction:column;gap:8px"></div>';
+    inner += '<button class="btn btn-sm" onclick="_addVideoToGroup(this)" style="margin-top:8px">+ 영상 URL 추가</button>';
+    div.innerHTML = inner;
+    var videosContainer = div.querySelector('.news-block-videos');
+    // hydrate 기존 영상
+    videos.forEach(function(v){
+      if (v && (v.url || v.content)) _appendVideoGroupRow(videosContainer, v.url || v.content || '', v.caption || '');
+    });
+    // 빈 상태면 기본 1줄 추가
+    if (videos.length === 0) _appendVideoGroupRow(videosContainer, '', '');
   } else if(type==='gallery' || type==='slide'){
     // QA #281 Phase B — 한 블록 안에 여러 이미지를 묶는 그룹 블록.
     // `content` shape: { images: [{url, caption}, ...] }  (or array fallback)
@@ -3335,6 +3357,27 @@ async function handleGroupImageUpload(input){
   });
 
   try { input.value = ''; } catch(_){}
+}
+
+// QA #281 Phase C — 영상 그룹 블록 내 1개 URL row 추가.
+function _appendVideoGroupRow(container, url, caption){
+  if (!container) return null;
+  var row = document.createElement('div');
+  row.className = 'news-block-video-row';
+  row.style.cssText = 'display:flex;gap:6px;align-items:center';
+  row.innerHTML = '<input class="pe-input news-block-video-url" type="text" placeholder="YouTube/Vimeo URL" value="'+esc(url||'').replace(/"/g,'&quot;')+'" style="flex:1">'
+    + '<input class="pe-input news-block-video-caption" type="text" placeholder="캡션 (선택)" value="'+esc(caption||'').replace(/"/g,'&quot;')+'" style="flex:1">'
+    + '<button class="btn btn-sm btn-red" onclick="this.closest(\'.news-block-video-row\').remove()" style="padding:4px 10px">×</button>';
+  container.appendChild(row);
+  return row;
+}
+
+// QA #281 Phase C — "+ 영상 URL 추가" 버튼 → 새 row 한 줄 추가.
+function _addVideoToGroup(btn){
+  var block = btn && btn.closest && btn.closest('.news-block');
+  if (!block) return;
+  var container = block.querySelector('.news-block-videos');
+  if (container) _appendVideoGroupRow(container, '', '');
 }
 
 // POST EDITOR FUNCTIONS
@@ -6811,10 +6854,11 @@ function _collectNewsBlocks(){
     // legacy text matching since the labels are user-visible Korean.
     var headLabel = (block.querySelector('span') && block.querySelector('span').textContent) || '';
     var t = 'text';
-    // QA #281 Phase B — 갤러리/슬라이드는 "이미지"보다 먼저 매칭해야 함
-    // ("갤러리"에는 "이미지"가 포함되지 않지만 future-proof로 명시적).
+    // QA #281 Phase B/C — 그룹 블록은 단일 블록보다 먼저 매칭. "영상 그룹"이
+    // "영상"보다 우선해야 함 (포함관계).
     if(headLabel.indexOf('갤러리')>=0) t = 'gallery';
     else if(headLabel.indexOf('슬라이드')>=0) t = 'slide';
+    else if(headLabel.indexOf('영상 그룹')>=0) t = 'videogroup';
     else if(headLabel.indexOf('이미지')>=0) t = 'image';
     else if(headLabel.indexOf('인용구')>=0) t = 'quote';
     else if(headLabel.indexOf('영상')>=0) t = 'video';
@@ -6845,6 +6889,19 @@ function _collectNewsBlocks(){
       blocks.push({type:'image', url: url, content: caption});
     } else if(t==='video'){
       blocks.push({type:'video', content: inp ? inp.value : ''});
+    } else if(t==='videogroup'){
+      // QA #281 Phase C — 영상 URL row들을 직렬화. URL이 빈 row는 skip.
+      var vrows = block.querySelectorAll('.news-block-video-row');
+      var videos = [];
+      vrows.forEach(function(row){
+        var urlEl = row.querySelector('.news-block-video-url');
+        var capEl = row.querySelector('.news-block-video-caption');
+        var u = urlEl ? urlEl.value.trim() : '';
+        if (!u) return;
+        videos.push({ url: u, caption: capEl ? capEl.value : '' });
+      });
+      if (videos.length === 0) return; // skip empty group
+      blocks.push({ type: 'videogroup', videos: videos });
     } else if(t==='gallery' || t==='slide'){
       // QA #281 Phase B — collect all images from .news-block-images
       // children. Each child has data-url + optional caption input.
