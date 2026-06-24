@@ -151,47 +151,57 @@ function _openFilmDetailInner(idx){
     // page used to render BOTH name and handles next to each other,
     // which read as a different style on the same dataset. Now both
     // surfaces look identical — name first, clickable, opens Instagram.
-    credEl.innerHTML=cr.map(function(c){
-      if (!c || typeof c !== 'object') return '';
+    // QA #279 — 같은 역할에 여러 사람이 있을 때 역할명 1회만 표기, 사람들은
+    // 콤마로 묶어 한 row에 표시. (에디토리얼 크레딧 표기 방식과 통일)
+    // 입력 순서를 유지하면서 그룹화 — Map의 insertion order 활용.
+    var groups = new Map();
+    cr.forEach(function(c){
+      if (!c || typeof c !== 'object') return;
       var roleRaw =
         c.r != null ? c.r
         : Array.isArray(c.roles) ? c.roles.join(' & ')
         : (c.roles || '');
       var nameRaw = (c.name || '').trim();
       var handlesRaw = c.p != null ? c.p : (c.instagram || '');
-      // Split the handles list once — we still use it as a fallback when
-      // no name was saved, and as the click target for the rendered token.
       var handleList = String(handlesRaw || '').split(',').map(function(h){
         h = (h || '').trim();
         if(!h) return '';
         return h.replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/\/$/, '');
       }).filter(Boolean);
-      // Build the display tokens. When there's a name, render ONE token
-      // labelled with the name and pointed at the first handle (if any).
-      // When there's no name, fall back to rendering each handle as its
-      // own token (legacy data shape) so older rows still surface
-      // SOMETHING instead of an empty cell.
-      var tokens = [];
-      if (nameRaw) {
+      // 한 credit 객체에서 토큰(들) 생성 — 이름 있으면 이름 1개, 없으면 핸들들.
+      var localTokens = [];
+      if (nameRaw){
         var primaryHandle = handleList[0] || '';
-        if (primaryHandle) {
-          tokens.push('<a href="#" class="film-cred-link" data-handle="' + primaryHandle.replace(/"/g,'') + '" style="cursor:pointer">' + escapeHtml(nameRaw) + '</a>');
+        if (primaryHandle){
+          localTokens.push('<a href="#" class="film-cred-link" data-handle="' + primaryHandle.replace(/"/g,'') + '" style="cursor:pointer">' + escapeHtml(nameRaw) + '</a>');
         } else {
-          // Name without a handle — render plain text (no link).
-          tokens.push(escapeHtml(nameRaw));
+          localTokens.push(escapeHtml(nameRaw));
         }
-      } else if (handleList.length) {
-        // Legacy / handle-only — each handle becomes its own clickable token.
+      } else if (handleList.length){
         handleList.forEach(function(h){
-          tokens.push('<a href="#" class="film-cred-link" data-handle="' + h.replace(/"/g,'') + '" style="cursor:pointer">' + escapeHtml(h) + '</a>');
+          localTokens.push('<a href="#" class="film-cred-link" data-handle="' + h.replace(/"/g,'') + '" style="cursor:pointer">' + escapeHtml(h) + '</a>');
         });
       }
-      var valueHtml = tokens.join(', ');
-      // Skip the row entirely if both role and value would be blank —
-      // a totally empty <div.ed-cred-row> would look like a stray gap.
-      if (!roleRaw && !valueHtml) return '';
-      return '<div class="ed-cred-row"><div class="ed-cred-role">'+escapeHtml(roleRaw)+'</div><div class="ed-cred-val">'+valueHtml+'</div></div>';
-    }).filter(Boolean).join('');
+      if (!roleRaw && !localTokens.length) return;
+      var key = String(roleRaw || '');
+      if (!groups.has(key)) groups.set(key, []);
+      // 같은 그룹 안에 중복 이름 방지 (text 비교 — 링크 HTML 차이는 무시).
+      var existing = groups.get(key);
+      localTokens.forEach(function(tok){
+        var plain = tok.replace(/<[^>]+>/g, '').trim().toLowerCase();
+        var dup = existing.some(function(e){ return e.replace(/<[^>]+>/g, '').trim().toLowerCase() === plain; });
+        if (!dup) existing.push(tok);
+      });
+    });
+    var html = '';
+    groups.forEach(function(tokens, roleKey){
+      if (!tokens.length) return;
+      html += '<div class="ed-cred-row">'
+            +   '<div class="ed-cred-role">' + escapeHtml(roleKey) + '</div>'
+            +   '<div class="ed-cred-val">' + tokens.join(', ') + '</div>'
+            + '</div>';
+    });
+    credEl.innerHTML = html;
     // Event delegation for credit link clicks (more robust than inline onclick)
     credEl.onclick=function(e){
       var link=e.target.closest('.film-cred-link');
