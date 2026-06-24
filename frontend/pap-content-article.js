@@ -186,6 +186,39 @@ function _renderArticleBlocks(blocks){
         // the block silently. This makes broken video entries obvious in QA.
         html += '<p style="margin:18px 0;font-size:12px"><a href="' + escapeHtml(src) + '" target="_blank" rel="noopener" style="color:#aaa">' + escapeHtml(src) + '</a></p>';
       }
+    } else if(t === 'gallery'){
+      // QA #281 Phase B — gallery block: responsive grid (auto-fill, 2~3 columns).
+      // Each cell shows the image full-bleed with an optional caption underneath.
+      var galImgs = Array.isArray(b.images) ? b.images : [];
+      if(!galImgs.length) return;
+      html += '<div style="margin:18px 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">';
+      galImgs.forEach(function(im){
+        if(!im || !im.url) return;
+        html += '<figure style="margin:0">'
+          + '<img src="' + escapeHtml(im.url) + '" alt="' + escapeHtml(im.caption || '') + '" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;border-radius:2px" onerror="edImgError && edImgError(this)">'
+          + (im.caption ? '<figcaption style="margin-top:4px;font-size:10px;color:#888;text-align:center">' + escapeHtml(im.caption) + '</figcaption>' : '')
+          + '</figure>';
+      });
+      html += '</div>';
+    } else if(t === 'slide'){
+      // QA #281 Phase B — slide block: horizontal scroll-snap carousel with
+      // CSS scroll-snap so swipe (mobile) + drag (desktop) work natively
+      // without a JS library. Each slide takes ~80% viewport width.
+      var slideImgs = Array.isArray(b.images) ? b.images : [];
+      if(!slideImgs.length) return;
+      var sid = 'slide-' + Math.random().toString(36).slice(2, 8);
+      html += '<div class="article-slide-block" data-slide-id="' + sid + '" style="margin:18px 0;position:relative">'
+        + '<div class="article-slide-track" style="display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:thin;padding-bottom:8px;-webkit-overflow-scrolling:touch">';
+      slideImgs.forEach(function(im){
+        if(!im || !im.url) return;
+        html += '<figure style="margin:0;flex:0 0 88%;scroll-snap-align:center">'
+          + '<img src="' + escapeHtml(im.url) + '" alt="' + escapeHtml(im.caption || '') + '" loading="lazy" style="width:100%;max-height:70vh;object-fit:cover;display:block;border-radius:2px" onerror="edImgError && edImgError(this)">'
+          + (im.caption ? '<figcaption style="margin-top:6px;font-size:11px;color:#888;text-align:center;letter-spacing:.04em">' + escapeHtml(im.caption) + '</figcaption>' : '')
+          + '</figure>';
+      });
+      html += '</div>'
+        + '<div style="text-align:center;font-size:10px;color:#666;margin-top:4px;letter-spacing:.08em">← ' + slideImgs.length + ' images · swipe →</div>'
+        + '</div>';
     } else {
       // Unknown type — render escaped so nothing ever vanishes silently.
       html += '<p style="margin:0 0 14px">' + escapeHtml(content) + '</p>';

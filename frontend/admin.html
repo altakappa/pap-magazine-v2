@@ -1684,6 +1684,8 @@ tr:hover td{background:rgba(0,0,0,.02)}
           <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">
             <button class="btn btn-sm" onclick="addNewsBlock('text')" title="일반 본문 단락을 추가합니다. 빈 줄로 단락을 구분할 수 있습니다.">+ 텍스트 블록</button>
             <button class="btn btn-sm" onclick="addNewsBlock('image')" title="기사 본문에 들어갈 이미지를 업로드합니다. 이미지 아래에 캡션을 달 수 있습니다.">+ 이미지 블록</button>
+            <button class="btn btn-sm" onclick="addNewsBlock('gallery')" title="여러 장의 이미지를 그리드(2~3열) 형태로 한 번에 보여줍니다. 한 블록 안에 여러 이미지를 업로드하세요.">+ 갤러리 블록</button>
+            <button class="btn btn-sm" onclick="addNewsBlock('slide')" title="여러 장의 이미지를 좌우 스와이프 가능한 슬라이드(캐러셀)로 보여줍니다.">+ 슬라이드 블록</button>
             <button class="btn btn-sm" onclick="addNewsBlock('quote')" title="강조하고 싶은 발언이나 인용문을 박스 형태로 강조합니다.">+ 인용구 블록</button>
             <button class="btn btn-sm" onclick="addNewsBlock('video')" title="YouTube 또는 Vimeo 영상을 임베드합니다. URL만 붙여넣으면 됩니다.">+ 영상 블록</button>
           </div>
@@ -2922,7 +2924,7 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
     <div id="contentAuditBody" style="flex:1;overflow-y:auto;padding:0"></div>
   </div>
 </div>
-<script src="/pap-admin.js?v=74" defer></script>
+<script src="/pap-admin.js?v=75" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>

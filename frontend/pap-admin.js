@@ -2760,6 +2760,9 @@ function _hydrateNewsEditorForm(a){
           // (attribution) field. Pass as object so the editor restores
           // both the body and the source input.
           content = { content: block.content || '', source: block.source || '' };
+        } else if(type === 'gallery' || type === 'slide'){
+          // QA #281 Phase B — gallery/slide carry an images array.
+          content = { images: Array.isArray(block.images) ? block.images : [] };
         } else {
           content = block && block.content!==undefined ? block.content : '';
         }
@@ -2832,7 +2835,7 @@ function _appendNewsBlock(type, content){
   var div = document.createElement('div');
   div.className = 'news-block';
   div.style.cssText = 'background:var(--surface);border:1px solid var(--border);padding:14px';
-  var label = ({text:'텍스트',image:'이미지',quote:'인용구',video:'영상'})[type] || '기타';
+  var label = ({text:'텍스트',image:'이미지',gallery:'갤러리',slide:'슬라이드',quote:'인용구',video:'영상'})[type] || '기타';
   // QA #281 — 블록 순서 변경 (↑/↓) + 삭제 버튼.
   var inner = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'
     +'<span style="font-size:10px;font-weight:700;color:var(--text3)">블록 '+newsBlockCount+' — '+label+'</span>'
@@ -2922,6 +2925,27 @@ function _appendNewsBlock(type, content){
     vInput.value = content || '';
     div.innerHTML = inner;
     div.appendChild(vInput);
+  } else if(type==='gallery' || type==='slide'){
+    // QA #281 Phase B — 한 블록 안에 여러 이미지를 묶는 그룹 블록.
+    // `content` shape: { images: [{url, caption}, ...] }  (or array fallback)
+    var images = [];
+    if (content){
+      if (Array.isArray(content)) images = content;
+      else if (Array.isArray(content.images)) images = content.images;
+    }
+    var hint = (type === 'gallery')
+      ? '여러 이미지를 그리드(자동 2~3열)로 한 번에 보여줍니다. 같은 룩북 / 화보 컷에 적합.'
+      : '여러 이미지를 좌우 스와이프 슬라이드로 보여줍니다. 같은 화보의 다른 컷을 캐러셀로 펼칠 때.';
+    inner += '<div style="font-size:11px;color:var(--text3);margin-bottom:8px">'+esc(hint)+'</div>';
+    inner += '<div class="pe-upload" onclick="this.querySelector(\'input\').click()" style="padding:16px"><input type="file" multiple accept="image/jpeg,image/png,image/webp" style="display:none" onchange="handleGroupImageUpload(this)"><div class="pe-upload-text">+ 이미지 추가 (여러 장 동시 선택 가능)</div></div>';
+    inner += '<div class="news-block-img-status" style="margin-top:4px;font-size:11px;color:var(--text3);min-height:14px"></div>';
+    inner += '<div class="news-block-images" style="margin-top:8px;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px"></div>';
+    div.innerHTML = inner;
+    // hydrate existing images on edit
+    var imagesContainer = div.querySelector('.news-block-images');
+    images.forEach(function(im){
+      if (im && im.url) _appendBlockImageThumb(imagesContainer, im.url, im.caption || '');
+    });
   } else {
     var oInput = document.createElement('input');
     oInput.className='pe-input';
@@ -3235,6 +3259,82 @@ function _processNewsBlockImageFile(file, block){
     }
     console.error('[news block upload]', err);
   });
+}
+
+// QA #281 Phase B — 갤러리/슬라이드 그룹 블록 내부의 이미지 1장을 표현하는 thumb.
+// `url`이 빈 문자열이면 placeholder(업로드 중) 상태로 렌더링.
+function _appendBlockImageThumb(container, url, caption){
+  if (!container) return null;
+  var item = document.createElement('div');
+  item.className = 'news-block-image-item';
+  item.style.cssText = 'border:1px solid var(--border);padding:4px;background:var(--surface)';
+  item.dataset.url = url || '';
+  var inner = '<div style="position:relative">';
+  if (url){
+    inner += '<img src="'+esc(url)+'" style="width:100%;aspect-ratio:1;object-fit:cover;display:block">';
+  } else {
+    inner += '<div class="news-block-image-placeholder" style="width:100%;aspect-ratio:1;background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:11px">업로드 중...</div>';
+  }
+  inner += '<button class="btn btn-sm btn-red" title="제거" onclick="this.closest(\'.news-block-image-item\').remove()" style="position:absolute;top:2px;right:2px;padding:0 6px;font-size:11px;line-height:18px">×</button>';
+  inner += '</div>';
+  inner += '<input class="news-block-image-caption" type="text" placeholder="캡션 (선택)" style="width:100%;margin-top:4px;font-size:11px;padding:4px 6px;background:var(--surface);border:1px solid var(--border);color:var(--text)" value="'+esc(caption||'').replace(/"/g,'&quot;')+'">';
+  item.innerHTML = inner;
+  container.appendChild(item);
+  return item;
+}
+
+// QA #281 Phase B — 갤러리/슬라이드 블록의 다중 이미지 업로드 핸들러.
+// 각 파일마다 placeholder thumb을 즉시 만들고, 업로드 완료되면 placeholder를
+// 실제 이미지로 교체. 업로드 도중에도 사용자가 다른 작업을 이어갈 수 있도록 비동기.
+async function handleGroupImageUpload(input){
+  if (!input || !input.files || !input.files.length) return;
+  var files = Array.prototype.slice.call(input.files);
+  var block = input.closest('.news-block');
+  if (!block) return;
+  var container = block.querySelector('.news-block-images');
+  var statusEl = block.querySelector('.news-block-img-status');
+  if (!container) return;
+
+  var total = files.length;
+  var done = 0;
+  function updateStatus(){
+    if (!statusEl) return;
+    statusEl.style.color = (done === total) ? '#27ae60' : 'var(--text3)';
+    statusEl.textContent = (done === total) ? ('✓ 업로드 완료 (' + total + '장)') : ('업로드 중... ' + done + '/' + total);
+  }
+  updateStatus();
+
+  // 모든 파일에 대해 동시에 업로드 (Supabase storage가 빠름). 각 thumb 객체에
+  // 자기 위치 정보를 보유해서 placeholder 교체할 수 있도록.
+  files.forEach(function(file){
+    var v = (typeof validateNewsImage === 'function') ? validateNewsImage(file) : { ok: true };
+    if (!v.ok){
+      if (statusEl){
+        statusEl.style.color = '#c0392b';
+        statusEl.textContent = '⚠ ' + v.message;
+      }
+      console.warn('[group upload] skip invalid', v.message);
+      return;
+    }
+    var thumb = _appendBlockImageThumb(container, '', '');
+    uploadFile(file).then(function(publicUrl){
+      if (!thumb || !publicUrl) return;
+      thumb.dataset.url = publicUrl;
+      var placeholder = thumb.querySelector('.news-block-image-placeholder');
+      if (placeholder){
+        placeholder.outerHTML = '<img src="'+esc(publicUrl)+'" style="width:100%;aspect-ratio:1;object-fit:cover;display:block">';
+      }
+      done++;
+      updateStatus();
+    }).catch(function(err){
+      console.error('[group upload]', err);
+      if (thumb) thumb.remove();
+      done++;
+      updateStatus();
+    });
+  });
+
+  try { input.value = ''; } catch(_){}
 }
 
 // POST EDITOR FUNCTIONS
@@ -6711,7 +6811,11 @@ function _collectNewsBlocks(){
     // legacy text matching since the labels are user-visible Korean.
     var headLabel = (block.querySelector('span') && block.querySelector('span').textContent) || '';
     var t = 'text';
-    if(headLabel.indexOf('이미지')>=0) t = 'image';
+    // QA #281 Phase B — 갤러리/슬라이드는 "이미지"보다 먼저 매칭해야 함
+    // ("갤러리"에는 "이미지"가 포함되지 않지만 future-proof로 명시적).
+    if(headLabel.indexOf('갤러리')>=0) t = 'gallery';
+    else if(headLabel.indexOf('슬라이드')>=0) t = 'slide';
+    else if(headLabel.indexOf('이미지')>=0) t = 'image';
     else if(headLabel.indexOf('인용구')>=0) t = 'quote';
     else if(headLabel.indexOf('영상')>=0) t = 'video';
 
@@ -6741,6 +6845,19 @@ function _collectNewsBlocks(){
       blocks.push({type:'image', url: url, content: caption});
     } else if(t==='video'){
       blocks.push({type:'video', content: inp ? inp.value : ''});
+    } else if(t==='gallery' || t==='slide'){
+      // QA #281 Phase B — collect all images from .news-block-images
+      // children. Each child has data-url + optional caption input.
+      var items = block.querySelectorAll('.news-block-image-item');
+      var images = [];
+      items.forEach(function(item){
+        var url = item.dataset.url || '';
+        if (!url) return; // skip placeholder/failed
+        var capEl = item.querySelector('.news-block-image-caption');
+        images.push({ url: url, caption: capEl ? capEl.value : '' });
+      });
+      if (images.length === 0) return; // skip empty group block
+      blocks.push({ type: t, images: images });
     }
   });
   return blocks;
