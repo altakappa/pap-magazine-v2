@@ -10315,3 +10315,189 @@ async function deleteAd(id){
     alert('삭제 실패: '+(e.message||e));
   }
 }
+
+// ============================================================================
+// QA #284 Phase 3 — 어드민 다운로드 이력 뷰어
+// ============================================================================
+// API: /api/admin/download-logs
+// 필터: 이메일 부분일치 / 콘텐츠 유형 / allowed-denied / 일자 범위
+// 페이지네이션: 50개씩, 이전/다음 + 페이지 표시
+// CSV 내보내기: 클라이언트에서 현재 필터 + 전체 결과(최대 200개) 받아서 변환
+
+var _papDlState = { offset: 0, limit: 50, total: 0, rows: [] };
+
+async function loadDownloadLogs(){
+  var body = document.getElementById('dlLogBody');
+  if (!body) return;
+  body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px 0">불러오는 중...</td></tr>';
+  var qs = _buildDlQuery();
+  try {
+    var token = (typeof getToken === 'function') ? getToken() : (localStorage.getItem('token') || '');
+    var r = await fetch('/api/admin/download-logs?' + qs, {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!r.ok){
+      body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#e74c3c;padding:40px 0">불러오기 실패 ('+r.status+')</td></tr>';
+      return;
+    }
+    var data = await r.json();
+    _papDlState.rows = data.logs || [];
+    _papDlState.total = data.total || 0;
+    _renderDownloadLogs();
+    _renderDownloadLogPager();
+    _renderDownloadLogStats();
+  } catch(err){
+    console.error('[downloads] load failed:', err);
+    body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#e74c3c;padding:40px 0">'+(err.message||err)+'</td></tr>';
+  }
+}
+
+function _buildDlQuery(){
+  var p = new URLSearchParams();
+  p.set('limit', String(_papDlState.limit));
+  p.set('offset', String(_papDlState.offset));
+  var em = document.getElementById('dlEmailFilter'); if (em && em.value) p.set('email', em.value);
+  var ty = document.getElementById('dlTypeFilter'); if (ty && ty.value) p.set('content_type', ty.value);
+  var al = document.getElementById('dlAllowedFilter'); if (al && al.value) p.set('allowed', al.value);
+  var fr = document.getElementById('dlFromFilter'); if (fr && fr.value) p.set('from', fr.value + 'T00:00:00');
+  var to = document.getElementById('dlToFilter'); if (to && to.value) p.set('to', to.value + 'T23:59:59');
+  return p.toString();
+}
+
+function _renderDownloadLogs(){
+  var body = document.getElementById('dlLogBody');
+  if (!body) return;
+  if (!_papDlState.rows.length){
+    body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px 0">조회된 다운로드 이력이 없습니다.</td></tr>';
+    return;
+  }
+  body.innerHTML = _papDlState.rows.map(function(r){
+    var dt = r.downloaded_at ? new Date(r.downloaded_at).toLocaleString('ko-KR', { hour12: false }) : '—';
+    var typeLabel = ({ 'cover':'커버', 'gallery':'갤러리', 'editorial-zip':'에디토리얼 ZIP', 'article-thumb':'아티클' })[r.content_type] || r.content_type;
+    var contentInfo = '';
+    if (r.content_slug) contentInfo += '<div style="font-size:10px;color:var(--text)">' + _papEsc(r.content_slug) + '</div>';
+    if (r.content_id) contentInfo += '<div style="font-size:10px;color:var(--text3)">id: ' + _papEsc(r.content_id) + '</div>';
+    if (!contentInfo) contentInfo = '<span style="color:var(--text3)">—</span>';
+    var statusBadge = r.consented
+      ? '<span style="display:inline-block;padding:2px 8px;background:#27ae60;color:#fff;font-size:9px;font-weight:700;letter-spacing:.1em;border-radius:2px">정상</span>'
+      : '<span style="display:inline-block;padding:2px 8px;background:#e74c3c;color:#fff;font-size:9px;font-weight:700;letter-spacing:.1em;border-radius:2px">거부</span>';
+    return '<tr>' +
+      '<td style="white-space:nowrap;color:var(--text3);font-size:10px">' + dt + '</td>' +
+      '<td style="font-size:11px">' + _papEsc(r.user_email || '—') + '</td>' +
+      '<td style="font-size:11px">' + _papEsc(typeLabel) + '</td>' +
+      '<td>' + contentInfo + '</td>' +
+      '<td style="font-size:10px;color:var(--text3);word-break:break-all">' + _papEsc(r.file_name || '—') + '</td>' +
+      '<td style="font-size:10px;color:var(--text3)">' + _papEsc(r.ip_address || '—') + '</td>' +
+      '<td>' + statusBadge + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function _renderDownloadLogPager(){
+  var pager = document.getElementById('dlLogPager');
+  if (!pager) return;
+  var page = Math.floor(_papDlState.offset / _papDlState.limit) + 1;
+  var totalPages = Math.max(1, Math.ceil(_papDlState.total / _papDlState.limit));
+  var prevDisabled = _papDlState.offset === 0;
+  var nextDisabled = _papDlState.offset + _papDlState.limit >= _papDlState.total;
+  pager.innerHTML =
+    '<button class="btn btn-sm" onclick="dlGoPrev()" ' + (prevDisabled?'disabled':'') + '>← 이전</button>' +
+    '<span style="font-size:11px;color:var(--text3)">' + page + ' / ' + totalPages + ' (총 ' + _papDlState.total + '건)</span>' +
+    '<button class="btn btn-sm" onclick="dlGoNext()" ' + (nextDisabled?'disabled':'') + '>다음 →</button>';
+}
+
+function _renderDownloadLogStats(){
+  // 현재 로드된 페이지 기준 stats. 정확한 전체 통계는 별도 endpoint가 필요하지만
+  // 우선 빠르게 sense check가 가능하도록 페이지 단위 표시.
+  var rows = _papDlState.rows;
+  var today = new Date().toISOString().slice(0, 10);
+  var todayCount = rows.filter(function(r){ return (r.downloaded_at || '').slice(0, 10) === today; }).length;
+  var allowed = rows.filter(function(r){ return r.consented; }).length;
+  var denied = rows.filter(function(r){ return !r.consented; }).length;
+  _setText('dlStatTotal', String(_papDlState.total));
+  _setText('dlStatToday', String(todayCount));
+  _setText('dlStatAllowed', String(allowed));
+  _setText('dlStatDenied', String(denied));
+}
+function _setText(id, v){ var el = document.getElementById(id); if (el) el.textContent = v; }
+function _papEsc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function dlGoPrev(){ if (_papDlState.offset >= _papDlState.limit){ _papDlState.offset -= _papDlState.limit; loadDownloadLogs(); } }
+function dlGoNext(){ if (_papDlState.offset + _papDlState.limit < _papDlState.total){ _papDlState.offset += _papDlState.limit; loadDownloadLogs(); } }
+function resetDownloadLogFilters(){
+  ['dlEmailFilter','dlTypeFilter','dlAllowedFilter','dlFromFilter','dlToFilter'].forEach(function(id){
+    var el = document.getElementById(id); if (!el) return;
+    if (el.tagName === 'SELECT') el.value = 'all';
+    else el.value = '';
+  });
+  _papDlState.offset = 0;
+  loadDownloadLogs();
+}
+
+// CSV 내보내기 — 현재 필터로 최대 200개씩 페이지네이션해서 collect 후 CSV 변환.
+async function exportDownloadLogsCSV(){
+  if (!confirm('현재 필터 조건의 모든 이력을 CSV로 내보냅니다. (최대 1,000건)\n계속하시겠습니까?')) return;
+  var token = (typeof getToken === 'function') ? getToken() : (localStorage.getItem('token') || '');
+  var allRows = [];
+  var savedOffset = _papDlState.offset;
+  try {
+    for (var off = 0; off < 1000; off += 200){
+      var p = new URLSearchParams();
+      p.set('limit', '200');
+      p.set('offset', String(off));
+      var em = document.getElementById('dlEmailFilter'); if (em && em.value) p.set('email', em.value);
+      var ty = document.getElementById('dlTypeFilter'); if (ty && ty.value) p.set('content_type', ty.value);
+      var al = document.getElementById('dlAllowedFilter'); if (al && al.value) p.set('allowed', al.value);
+      var fr = document.getElementById('dlFromFilter'); if (fr && fr.value) p.set('from', fr.value + 'T00:00:00');
+      var to = document.getElementById('dlToFilter'); if (to && to.value) p.set('to', to.value + 'T23:59:59');
+      var r = await fetch('/api/admin/download-logs?' + p.toString(), { headers: { 'Authorization': 'Bearer ' + token } });
+      if (!r.ok) throw new Error('fetch failed');
+      var data = await r.json();
+      var page = data.logs || [];
+      allRows = allRows.concat(page);
+      if (page.length < 200) break;
+    }
+    if (!allRows.length){ alert('내보낼 이력이 없습니다.'); return; }
+    var headers = ['일시','이메일','user_id','유형','content_id','content_slug','file_name','image_url','ip_address','user_agent','consented'];
+    var lines = [headers.join(',')];
+    allRows.forEach(function(r){
+      var row = [r.downloaded_at, r.user_email, r.user_id, r.content_type, r.content_id, r.content_slug, r.file_name, r.image_url, r.ip_address, r.user_agent, r.consented];
+      lines.push(row.map(function(v){
+        if (v == null) return '';
+        var s = String(v).replace(/"/g, '""');
+        if (/[",\n]/.test(s)) s = '"' + s + '"';
+        return s;
+      }).join(','));
+    });
+    var blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'pap-download-logs-' + new Date().toISOString().slice(0,10) + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 3000);
+  } catch(err){
+    console.error('[downloads CSV] failed:', err);
+    alert('CSV 내보내기 실패: ' + (err.message || err));
+  } finally {
+    _papDlState.offset = savedOffset;
+  }
+}
+
+// go('downloads', ...) 진입 시 자동으로 로드. go() 함수에서 case 'downloads' 처리 없어도
+// 사용자가 새로고침 버튼을 누를 수 있으므로 fallback도 OK. 자동 로드를 위해
+// DOMContentLoaded 후 hash-based 진입을 감지.
+(function(){
+  document.addEventListener('DOMContentLoaded', function(){
+    // tab id 매칭 시 자동 로드. go() 함수가 hash 변경하므로 hashchange listener도 추가.
+    function maybeLoad(){
+      var tab = document.getElementById('t-downloads');
+      if (tab && tab.classList.contains('show') && !tab.dataset.loaded){
+        tab.dataset.loaded = '1';
+        loadDownloadLogs();
+      }
+    }
+    window.addEventListener('hashchange', maybeLoad);
+    setTimeout(maybeLoad, 500);
+  });
+})();

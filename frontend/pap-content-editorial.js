@@ -422,6 +422,43 @@ function _renderEditorialDownloads(det, d){
     return;
   }
 
+  // QA #284 Phase 2 — 로그인 사용자라도 role에 따라 분기.
+  //   admin/staff             → 다운로드 버튼 노출
+  //   user + 본인 참여 editorial → 다운로드 버튼 노출
+  //   user + 그 외             → 안내 메시지 노출
+  // 권한 체크는 서버 호출 → loading 상태 먼저 표시.
+  box.innerHTML =
+    '<div style="display:flex;flex-direction:column;gap:10px">' +
+      '<div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999">DOWNLOADS</div>' +
+      '<div style="font-size:12px;color:#666">권한 확인 중...</div>' +
+    '</div>';
+
+  var edId = (d && d.id) || (det && det.id) || '';
+  window._papCheckDownloadPerm('editorial', edId).then(function(perm){
+    if (!perm || !perm.allowed){
+      // role별 메시지 분기.
+      var msg;
+      if (perm && perm.role === 'user'){
+        msg = '이 에디토리얼은 <strong style="color:#fff">참여 크리에이터 본인</strong>만 다운로드할 수 있습니다.<br>본인 참여작이라면 가입하신 이메일과 동일한 계정으로 로그인되어 있는지 확인해주세요.';
+      } else {
+        msg = '다운로드 권한이 없습니다.';
+      }
+      box.innerHTML =
+        '<div style="display:flex;flex-direction:column;gap:10px">' +
+          '<div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999">DOWNLOADS</div>' +
+          '<div style="font-size:12px;color:#bbb;line-height:1.6">' + msg + '</div>' +
+          '<div style="font-size:11px;color:#666;margin-top:4px">전체 권한이 필요한 경우 PAP Magazine 운영팀에 문의해주세요.</div>' +
+        '</div>';
+      return;
+    }
+    // 권한 OK — 다운로드 버튼 렌더링.
+    _renderEditorialDownloadButtons(box, coverUrl, gallery, safeTitle, perm);
+  });
+  return;
+}
+
+// QA #284 Phase 2 — 권한 OK인 사용자에게 실제 버튼 노출.
+function _renderEditorialDownloadButtons(box, coverUrl, gallery, safeTitle, perm){
   // 로그인 사용자 — 실제 다운로드 버튼.
   var coverHtml = '';
   if (coverUrl) {
@@ -439,14 +476,52 @@ function _renderEditorialDownloads(det, d){
       'style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border:1px solid #555;background:transparent;color:#fff;font-size:11px;font-weight:700;letter-spacing:.12em;cursor:pointer;transition:all .2s" ' +
       'onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">⬇️ 로고 이미지 (' + gallery.length + '장 ZIP)</button>';
   }
+  // QA #284 Phase 2 — role 배지 (어느 권한으로 노출되는지 명확하게).
+  var roleBadge = '';
+  if (perm && perm.reason){
+    var badgeText = { admin:'대표 관리자', staff:'서브 관리자', owner:'참여 크리에이터' }[perm.reason] || '';
+    var badgeColor = { admin:'#e74c3c', staff:'#f39c12', owner:'#27ae60' }[perm.reason] || '#888';
+    if (badgeText){
+      roleBadge = '<span style="display:inline-block;padding:2px 8px;background:' + badgeColor + ';color:#fff;font-size:9px;font-weight:700;letter-spacing:.1em;border-radius:2px">' + badgeText + ' 권한</span>';
+    }
+  }
   box.innerHTML =
     '<div style="display:flex;flex-direction:column;gap:10px">' +
-      '<div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999">DOWNLOADS</div>' +
+      '<div style="display:flex;align-items:center;gap:8px"><div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999">DOWNLOADS</div>' + roleBadge + '</div>' +
       '<div style="display:flex;gap:10px;flex-wrap:wrap">' + coverHtml + logoBtnHtml + '</div>' +
       '<div id="edLogoDlStatus" style="font-size:11px;color:#888;min-height:14px"></div>' +
-      '<div style="font-size:11px;color:#666">회원가입한 사용자 전용 · 개인 사용 및 비상업적 용도에 한해 사용 가능</div>' +
+      '<div style="font-size:11px;color:#666">개인 사용 및 비상업적 용도에 한해 사용 가능 · 다운로드 이력이 기록됩니다.</div>' +
     '</div>';
 }
+
+// QA #284 Phase 2 — 다운로드 권한 조회 헬퍼. role + 본인 참여 여부를
+// 백엔드 /api/downloads/check로 위임 (UI와 log 엔드포인트가 동일 정책 공유).
+// 결과 캐싱: 같은 (type, id) 쌍에 대해서는 페이지 세션 내 1회만 조회.
+window._papCheckDownloadPerm = window._papCheckDownloadPerm || function(type, id){
+  if (!window._papDlPermCache) window._papDlPermCache = {};
+  var key = type + '|' + (id || '');
+  if (window._papDlPermCache[key]) return window._papDlPermCache[key];
+  var p = new Promise(function(resolve){
+    try {
+      var token = (typeof getToken === 'function') ? getToken() :
+                  (window.localStorage && localStorage.getItem('token')) || '';
+      if (!token) return resolve({ allowed: false, role: 'guest', reason: 'guest' });
+      fetch('/api/downloads/check?type=' + encodeURIComponent(type) + '&id=' + encodeURIComponent(id || ''), {
+        headers: { 'Authorization': 'Bearer ' + token }
+      })
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(j){
+          if (!j) return resolve({ allowed: false, role: 'user', reason: 'not-owner' });
+          resolve(j);
+        })
+        .catch(function(){ resolve({ allowed: false, role: 'user', reason: 'not-owner' }); });
+    } catch(_) {
+      resolve({ allowed: false, role: 'user', reason: 'not-owner' });
+    }
+  });
+  window._papDlPermCache[key] = p;
+  return p;
+};
 
 // QA #277 — 회원 식별자로 파일명을 personalize. 유출 시 출처 추적용.
 // 형식: pap-{basename}-u{short8}-{timestamp}.{ext}

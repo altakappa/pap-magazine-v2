@@ -22,8 +22,17 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAuth } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
+const { checkDownloadPermission } = require('./check');
 
 const ALLOWED_TYPES = ['cover', 'gallery', 'editorial-zip', 'article-thumb'];
+
+// QA #284 Phase 2 — log content_type → permission check 시 사용할 콘텐츠 종류 매핑.
+//   cover/gallery/editorial-zip → editorial
+//   article-thumb               → article
+function _contentKindFor(t){
+  if (t === 'article-thumb') return 'article';
+  return 'editorial';
+}
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -42,6 +51,40 @@ module.exports = async function handler(req, res) {
   const ipAddr = (req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '')
     .split(',')[0].trim() || null;
   const userAgent = (req.headers['user-agent'] || '').slice(0, 500) || null;
+
+  // QA #284 Phase 2 — 권한 검증.
+  // 위반 시도(권한 없는데 클라이언트 우회) → 403 + 위반 로그 따로 적재
+  // (download_logs.consented=false + content_type 그대로 남겨 audit 가능).
+  try {
+    const perm = await checkDownloadPermission(
+      user,
+      _contentKindFor(contentType),
+      body.content_id ? String(body.content_id) : null
+    );
+    if (!perm.allowed){
+      // 위반 시도도 audit 차원에서 기록 (best-effort, response는 빠르게).
+      supabaseAdmin.from('download_logs').insert({
+        user_id:      user.id || null,
+        user_email:   user.email || null,
+        content_type: contentType,
+        content_id:   body.content_id ? String(body.content_id).slice(0, 100) : null,
+        content_slug: body.content_slug ? String(body.content_slug).slice(0, 200) : null,
+        image_url:    body.image_url ? String(body.image_url).slice(0, 1000) : null,
+        file_name:    body.file_name ? String(body.file_name).slice(0, 200) : null,
+        ip_address:   ipAddr,
+        user_agent:   userAgent,
+        consented:    false, // 권한 없음 → 정식 동의 흐름이 아님으로 표시
+      }).then(()=>{}).catch(()=>{});
+      return res.status(403).json({
+        ok: false, allowed: false, role: perm.role, reason: perm.reason,
+        message: '다운로드 권한이 없습니다.'
+      });
+    }
+  } catch (err){
+    console.error('[downloads/log] perm check error:', err && err.message || err);
+    // 권한 체크 실패 시 보수적으로 거부.
+    return res.status(500).json({ ok: false, error: 'permission check failed' });
+  }
 
   try {
     const row = {
