@@ -36,15 +36,62 @@ function _humanizeRoleKey(k) {
 // Parse legacy "Name (@handle)" / "Name (https://…)" credit strings into
 // the structured form. Used as a fallback when desc.team is absent
 // (submissions filed before QA #168 only stored desc.credits flat).
+// QA #286 — `@handle` 또는 `https://...` 만 들어 있는 케이스도 인식.
+// 기존 regex는 `Name (handle)` 패턴만 매칭해서, instagram만 입력된 entry는
+// 전체 string을 name으로 잘못 저장. `_normalizeCreditFields`가 후처리하지만
+// 이 단에서도 명확하게 분리.
 function _parseLegacyCreditString(s) {
   const str = String(s || '').trim();
   if (!str) return null;
+
+  // "Name (handle)" 패턴
   const m = str.match(/^(.+?)\s*\(\s*([^)]+?)\s*\)\s*$/);
-  if (!m) return { name: str, instagram: '', website: '' };
-  const name = m[1].trim();
-  const link = m[2].trim();
-  if (/^https?:\/\//i.test(link)) return { name, instagram: '', website: link };
-  return { name, instagram: link, website: '' };
+  if (m) {
+    const name = m[1].trim();
+    const link = m[2].trim();
+    if (/^https?:\/\//i.test(link)) return { name, instagram: '', website: link };
+    return { name, instagram: link, website: '' };
+  }
+
+  // 괄호 없음 — 전체가 instagram 핸들/URL인지 검사
+  if (/^@/.test(str)) {
+    return { name: '', instagram: str, website: '' };
+  }
+  if (/^https?:\/\//i.test(str)) {
+    return { name: '', instagram: '', website: str };
+  }
+  // 순수 이름 (링크 없음)
+  return { name: str, instagram: '', website: '' };
+}
+
+// QA #286 — name 자리에 @handle 또는 URL이 들어가 있는 잘못 매핑을 자동 보정.
+// 사용자가 서브미션 폼에서 실수로 이름 칸에 `@johnkim`을 입력한 케이스 + 레거시
+// 데이터에서 동일한 오매핑이 발생한 케이스를 모두 후처리로 정정.
+function _normalizeCreditFields(rawName, rawInstagram, rawWebsite) {
+  let name = String(rawName || '').trim();
+  let instagram = String(rawInstagram || '').trim();
+  let website = String(rawWebsite || '').trim();
+
+  // 이름 자리에 @handle이 들어 있고 instagram이 비어있으면 swap.
+  if (!instagram && /^@\S+$/.test(name)) {
+    instagram = name;
+    name = '';
+  }
+  // 이름 자리에 https URL이 들어 있고 website가 비어있으면 swap.
+  if (!website && /^https?:\/\//i.test(name)) {
+    website = name;
+    name = '';
+  }
+  // instagram 자리에 https URL이 들어 있고 website가 비어있으면 swap.
+  if (!website && /^https?:\/\//i.test(instagram)) {
+    website = instagram;
+    instagram = '';
+  }
+  // instagram이 @ 없이 들어 있으면 보강.
+  if (instagram && !/^@/.test(instagram) && !/^https?:\/\//i.test(instagram)) {
+    instagram = '@' + instagram.replace(/^@+/, '');
+  }
+  return { name, instagram, website };
 }
 
 // Build editorial.credits array from submission description.
@@ -57,13 +104,17 @@ function _buildEditorialCredits(desc) {
   const out = [];
   if (Array.isArray(desc.team) && desc.team.length) {
     desc.team.forEach((m) => {
-      if (!m || !m.name) return;
+      if (!m) return;
+      // QA #286 — name 자리에 @handle/URL 들어가는 잘못 매핑 자동 보정.
+      const fixed = _normalizeCreditFields(m.name, m.instagram, m.website);
+      // 모든 필드가 비어있으면 skip. name만 비어있고 instagram/website가 있으면 유지.
+      if (!fixed.name && !fixed.instagram && !fixed.website) return;
       const role = (m.role || '').trim() || 'Credit';
       out.push({
         roles: [role],
-        name: String(m.name || '').trim(),
-        instagram: String(m.instagram || '').trim(),
-        website: String(m.website || '').trim(),
+        name: fixed.name,
+        instagram: fixed.instagram,
+        website: fixed.website,
       });
     });
   } else if (desc.credits && typeof desc.credits === 'object') {
@@ -71,32 +122,41 @@ function _buildEditorialCredits(desc) {
       const arr = Array.isArray(desc.credits[roleKey]) ? desc.credits[roleKey] : [desc.credits[roleKey]];
       arr.forEach((entry) => {
         const parsed = _parseLegacyCreditString(entry);
-        if (!parsed || !parsed.name) return;
+        if (!parsed) return;
+        const fixed = _normalizeCreditFields(parsed.name, parsed.instagram, parsed.website);
+        if (!fixed.name && !fixed.instagram && !fixed.website) return;
         out.push({
           roles: [_humanizeRoleKey(roleKey)],
-          name: parsed.name,
-          instagram: parsed.instagram,
-          website: parsed.website || '',
+          name: fixed.name,
+          instagram: fixed.instagram,
+          website: fixed.website,
         });
       });
     });
   }
   if (Array.isArray(desc.models)) {
     desc.models.forEach((m) => {
-      if (!m || !m.name) return;
-      out.push({
-        roles: ['Starring'],
-        name: String(m.name || '').trim(),
-        instagram: String(m.instagram || '').trim(),
-        website: '',
-      });
-      if (m.agency) {
+      if (!m) return;
+      // QA #286 — model에도 동일 normalize 적용.
+      const fixedModel = _normalizeCreditFields(m.name, m.instagram, '');
+      if (fixedModel.name || fixedModel.instagram){
         out.push({
-          roles: ['Agency'],
-          name: String(m.agency || '').trim(),
-          instagram: String(m.agencyInstagram || '').trim(),
+          roles: ['Starring'],
+          name: fixedModel.name,
+          instagram: fixedModel.instagram,
           website: '',
         });
+      }
+      if (m.agency) {
+        const fixedAgency = _normalizeCreditFields(m.agency, m.agencyInstagram, '');
+        if (fixedAgency.name || fixedAgency.instagram){
+          out.push({
+            roles: ['Agency'],
+            name: fixedAgency.name,
+            instagram: fixedAgency.instagram,
+            website: '',
+          });
+        }
       }
     });
   }
