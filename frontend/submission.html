@@ -724,6 +724,8 @@ function navigateWithInterstitial(url){
     <div class="form-section" id="step3">
       <div class="section-title" data-i18n="sectionTeamCredits">TEAM CREDITS</div>
       <p style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:20px;line-height:1.8" data-i18n="teamCreditsDesc">Enter each team member's name, Instagram, and website. Instagram handles are used for social media credits.</p>
+      <!-- QA #285 — 필수 입력 안내 -->
+      <p style="font-size:11px;color:#ffb347;margin-bottom:14px;line-height:1.6;padding:8px 10px;border:1px solid rgba(255,179,71,.3);background:rgba(255,179,71,.04);border-radius:2px" data-i18n="teamCreditsRequiredHint">⚠ 각 크레딧 항목은 <strong>역할 · 이름 · 인스타그램</strong> 정보가 모두 입력되어야 합니다. 필요 없는 항목은 비워두세요 — 빈 항목은 자동으로 건너뜁니다.</p>
       <div class="error-summary" id="errSummary3"></div>
       <div class="team-header">
         <span data-i18n="hdrRole">ROLE</span><span data-i18n="hdrName">NAME</span><span data-i18n="hdrLink">LINK</span>
@@ -1305,8 +1307,13 @@ var _FT={
 ko:{
   errorSummaryTitle:'다음 항목을 확인해 주세요:',
   genreError:'최소 1개 이상의 카테고리를 선택해 주세요.',
-  teamCreditError:'팀 크레딧을 최소 1개 이상 입력해 주세요.',
+  teamCreditError:'팀 크레딧을 최소 1개 이상 입력해 주세요. 각 크레딧에 역할/이름/인스타그램을 모두 작성해 주세요.',
   modelError:'모델 정보를 최소 1명 이상 입력해 주세요.',
+  // QA #285 — 크레딧 필수 입력 검증 라벨/메시지.
+  creditRoleLabel:'역할',
+  creditNameLabel:'이름',
+  creditInstagramLabel:'인스타그램',
+  teamCreditFieldMissing:'팀 크레딧 "{role}"의 누락 항목: {fields}. 역할 / 이름 / 인스타그램 모두 입력해 주세요.',
   editorialTitle:{ph:'예: GAS',helper:'2~50자 범위의 제목을 입력해 주세요.',err:'에디토리얼 제목을 입력해 주세요.',errLen:'제목은 2~50자여야 합니다.'},
   studioName:{ph:'예: ThePinkBang Productions',helper:'스튜디오 또는 제작사의 이름을 입력해 주세요.',err:'제작사 또는 스튜디오 이름을 입력해 주세요.'},
   contactEmail:{ph:'예: hello@example.com',helper:'유효한 이메일 주소를 입력해 주세요.',err:'이메일 주소를 입력해 주세요.',errFmt:'올바른 이메일 형식으로 입력해 주세요.'},
@@ -1318,8 +1325,13 @@ ko:{
 en:{
   errorSummaryTitle:'Please check the following:',
   genreError:'Please select at least one category.',
-  teamCreditError:'Please enter at least one team credit.',
+  teamCreditError:'Please enter at least one team credit. Each credit must include Role, Name, and Instagram.',
   modelError:'Please enter at least one model (name or Instagram).',
+  // QA #285
+  creditRoleLabel:'Role',
+  creditNameLabel:'Name',
+  creditInstagramLabel:'Instagram',
+  teamCreditFieldMissing:'Team credit "{role}" is missing: {fields}. Please fill in all required fields (Role, Name, Instagram).',
   editorialTitle:{ph:'e.g. GAS',helper:'Please enter a title between 2 and 50 characters.',err:'Please enter the editorial title.',errLen:'Title must be between 2 and 50 characters.'},
   studioName:{ph:'e.g. ThePinkBang Productions',helper:'Enter the name of your studio or production company.',err:'Please enter your production or studio name.'},
   contactEmail:{ph:'e.g. hello@example.com',helper:'Please enter a valid email address.',err:'Please enter your email address.',errFmt:'Please enter a valid email address.'},
@@ -1383,8 +1395,13 @@ zh:{
 it:{
   errorSummaryTitle:'Controlla i seguenti campi:',
   genreError:'Seleziona almeno una categoria.',
-  teamCreditError:'Inserisci almeno un credito del team.',
+  teamCreditError:'Inserisci almeno un credito del team. Ogni credito deve includere Ruolo, Nome e Instagram.',
   modelError:'Inserisci almeno un modello (nome o Instagram).',
+  // QA #285
+  creditRoleLabel:'Ruolo',
+  creditNameLabel:'Nome',
+  creditInstagramLabel:'Instagram',
+  teamCreditFieldMissing:'Il credito del team "{role}" manca: {fields}. Compila tutti i campi obbligatori (Ruolo, Nome, Instagram).',
   editorialTitle:{ph:'es. GAS',helper:'Inserisci un titolo tra 2 e 50 caratteri.',err:'Inserisci il titolo editoriale.',errLen:'Il titolo deve essere tra 2 e 50 caratteri.'},
   studioName:{ph:'es. ThePinkBang Productions',helper:'Inserisci il nome dello studio o della produzione.',err:'Inserisci il nome della produzione.'},
   contactEmail:{ph:'es. hello@example.com',helper:'Inserisci un indirizzo email valido.',err:'Inserisci il tuo indirizzo email.',errFmt:'Inserisci un formato email valido.'},
@@ -1498,43 +1515,92 @@ function _validateStep(n){
     });
   }
   if(n===3){
-    // QA #87 — at least 1 team credit must be entered. A row is considered
-    // "filled" if any of its inputs (including the link cell input from
-    // QA #88) has a non-empty value. This treats the pre-filled rows
-    // (Photo / Art Dir. / Styling / etc.) and user-added rows uniformly
-    // without depending on column position.
+    // QA #285 — 크레딧 필수 입력 검증 (QA #87 강화).
+    //   • 빈 row: 무시 (사용자가 시작하지 않은 항목)
+    //   • 시작된 row (role/name/link 중 하나라도 입력): 셋 다 채워야 함
+    //   • 적어도 1개 row가 "완전히" 채워져 있어야 함
+    //
+    // Row 구조 두 가지:
+    //   1) Pre-filled (Photo, Art Dir. 등): .team-role(div, 고정 라벨)
+    //      + name input + link input
+    //   2) Added (+ Add Team Member): role input + name input + link input
     var teamList = document.getElementById('teamList');
     var rows = teamList ? teamList.querySelectorAll('.team-row') : [];
-    var hasAnyCredit = false;
+    var dft = _FT[_curLang] || _FT.en;
+    var completedCount = 0;
+    var incompleteRows = []; // {row, missingFields, roleLabel}
+
     rows.forEach(function(row){
-      // .team-input matches BOTH the role/name inputs AND the link input
-      // (since .team-link-input also has .team-input class).
-      var inputs = row.querySelectorAll('.team-input');
-      for(var i=0;i<inputs.length;i++){
-        if(inputs[i].value && inputs[i].value.trim()){
-          hasAnyCredit = true;
-          break;
-        }
+      var roleEl = row.querySelector('.team-role');                       // pre-filled label
+      var nameInputs = row.querySelectorAll('.team-input:not(.team-link-input)');
+      var linkInput = row.querySelector('.team-link-input');
+
+      var roleInput, nameInput, roleText;
+      if (roleEl){
+        // Pre-filled row — role은 div이므로 자동 채워짐.
+        roleInput = null;
+        nameInput = nameInputs[0];
+        roleText = (roleEl.textContent || '').trim();
+      } else {
+        // Added row — nameInputs[0]=Role, nameInputs[1]=Name
+        roleInput = nameInputs[0];
+        nameInput = nameInputs[1];
+        roleText = roleInput ? roleInput.value.trim() : '';
+      }
+      var nameText = nameInput ? nameInput.value.trim() : '';
+      var linkText = linkInput ? linkInput.value.trim() : '';
+
+      var started = !!(roleText || nameText || linkText);
+      if (!started) return; // 완전히 빈 row → skip
+
+      var missing = [];
+      if (!roleText)  missing.push({ key:'role',      label: dft.creditRoleLabel      || 'Role',      el: roleInput });
+      if (!nameText)  missing.push({ key:'name',      label: dft.creditNameLabel      || 'Name',      el: nameInput });
+      if (!linkText)  missing.push({ key:'instagram', label: dft.creditInstagramLabel || 'Instagram', el: linkInput });
+
+      if (missing.length === 0){
+        completedCount++;
+      } else {
+        incompleteRows.push({ row: row, missing: missing, roleLabel: roleText || ((dft.creditRoleLabel || 'Role') + ' #' + (Array.prototype.indexOf.call(rows, row) + 1)) });
       }
     });
-    if(!hasAnyCredit){
-      var dft = _FT[_curLang]||_FT.en;
-      var msg = dft.teamCreditError || 'Please enter at least one team credit (e.g. Photographer name).';
-      // Highlight the first team row's name field
-      if(rows.length){
+
+    // 1순위 에러: 시작된 row 중 누락이 있다면 그것부터 안내.
+    if (incompleteRows.length > 0){
+      var first = incompleteRows[0];
+      var missingLabels = first.missing.map(function(m){ return m.label; }).join(' / ');
+      var template = dft.teamCreditFieldMissing || 'Team credit "{role}" is missing: {fields}. Please fill in all required fields (Role, Name, Instagram).';
+      var msg = template.replace('{role}', first.roleLabel).replace('{fields}', missingLabels);
+      first.row.classList.add('error');
+      first.missing.forEach(function(m){
+        if (m.el){
+          m.el.classList.add('error');
+          (function(target){
+            target.addEventListener('input', function _clrM(){
+              target.classList.remove('error');
+              first.row.classList.remove('error');
+              target.removeEventListener('input', _clrM);
+            }, { once: false });
+          })(m.el);
+        }
+      });
+      errs.push({ field:'teamList', msg: msg });
+    } else if (completedCount === 0){
+      // 어느 row도 시작되지 않음 → 최소 1개 필요.
+      var msg2 = dft.teamCreditError || 'Please enter at least one team credit (Role, Name, Instagram).';
+      if (rows.length){
         rows[0].classList.add('error');
         var firstInput = rows[0].querySelector('.team-input');
         if(firstInput){
           firstInput.classList.add('error');
-          // Auto-clear highlight when the user starts typing
           firstInput.addEventListener('input', function _clr(){
             rows[0].classList.remove('error');
             firstInput.classList.remove('error');
             firstInput.removeEventListener('input', _clr);
-          }, {once:false});
+          }, { once: false });
         }
       }
-      errs.push({field:'teamList', msg:msg});
+      errs.push({ field:'teamList', msg: msg2 });
     }
     // QA #89 — at least 1 model must be entered. A model row is considered
     // "filled" when either Model Name (1st input) OR Model Insta (2nd input)
