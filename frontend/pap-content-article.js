@@ -318,8 +318,10 @@ function _renderArticleBlocks(blocks){
       html += '<div class="article-slide-track" style="display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding-bottom:8px;-webkit-overflow-scrolling:touch">';
       slideImgs.forEach(function(im){
         if(!im || !im.url) return;
+        // QA #289 — 슬라이드 이미지도 갤러리와 동일한 4:5 비율로 통일.
+        // max-height 제거 + aspect-ratio:4/5 명시 → 패션 화보 원본 비율에 가장 가깝게.
         html += '<figure style="margin:0;flex:0 0 88%;scroll-snap-align:center">'
-          + '<img src="' + escapeHtml(im.url) + '" alt="' + escapeHtml(im.caption || '') + '" loading="lazy" style="width:100%;max-height:70vh;object-fit:cover;display:block;border-radius:2px;cursor:zoom-in" onerror="edImgError && edImgError(this)">'
+          + '<img src="' + escapeHtml(im.url) + '" alt="' + escapeHtml(im.caption || '') + '" loading="lazy" style="width:100%;aspect-ratio:4/5;object-fit:cover;display:block;border-radius:2px;cursor:zoom-in" onerror="edImgError && edImgError(this)">'
           + (im.caption ? '<figcaption style="margin-top:8px;font-size:11px;color:#888;text-align:center;letter-spacing:.04em;line-height:1.6">' + escapeHtml(im.caption) + '</figcaption>' : '')
           + '</figure>';
       });
