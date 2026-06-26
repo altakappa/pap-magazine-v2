@@ -274,7 +274,15 @@ function closeFilmDetail(skipHistory){
   var overlay=document.getElementById('filmDetailOverlay');
   if(overlay&&overlay.classList.contains('active')){
     overlay.classList.remove('active');
-    document.getElementById('filmDetailPlayer').src='about:blank';
+    // QA #287 — iframe.src='about:blank' 변경은 YouTube embed에 따라 main window
+    // history에 entry를 남길 수 있어 뒤로가기가 "1회는 player 변경, 2회로 페이지 이동"
+    // 동작을 유발. iframe element 자체를 새 빈 노드로 교체해 부수효과 제거.
+    var oldPlayer = document.getElementById('filmDetailPlayer');
+    if(oldPlayer && oldPlayer.parentNode){
+      var newPlayer = oldPlayer.cloneNode(false);
+      newPlayer.removeAttribute('src');
+      oldPlayer.parentNode.replaceChild(newPlayer, oldPlayer);
+    }
     // Check if films list overlay is open underneath
     var filmAll=document.getElementById('filmAllOverlay');
     if(filmAll&&filmAll.classList.contains('active')){

@@ -487,12 +487,28 @@ window.addEventListener('popstate',function(e){
 
   // Back to a film detail page
   if(st && st.film){
-    if(cpOv && cpOv.classList.contains('active')){cpOv.classList.remove('active');unlockScroll();}
+    // QA #287 — creator popup이 film 위에 있다가 닫힌 경우만 popup 정리하고 film 유지.
+    // creator popup이 없는데 popstate(st.film)가 fired됐다면 → 사용자가 직접
+    // 뒤로가기를 눌렀거나 YouTube embed가 추가 entry를 만들어 stale state로 popped된 것.
+    // 둘 다 사용자의 의도는 "film에서 벗어나기" — film overlay도 닫음.
+    var _wasCpActive = !!(cpOv && cpOv.classList.contains('active'));
+    if(_wasCpActive){
+      cpOv.classList.remove('active');
+      unlockScroll();
+      return; // popup만 닫고 film 유지 (creator drilling 케이스)
+    }
     var _fd=document.getElementById('filmDetailOverlay');
-    if((!_fd || !_fd.classList.contains('active')) && typeof openFilmDetail==='function' && typeof st.idx==='number'){
-      // Forward/back across a page reload — overlay is gone; re-create it.
-      // openFilmDetail does replaceState when the URL hash already matches,
-      // so we don't double-push history.
+    if(_fd && _fd.classList.contains('active')){
+      // film이 이미 active + 위에 popup도 없음 → 사용자 뒤로가기 = film 닫기 의도.
+      closeFilmDetail(true);
+      // URL이 여전히 /film/<slug>면 한 단계 더 뒤로 가서 진짜 이전 페이지로.
+      if(window.location.pathname.indexOf('/film/') === 0){
+        try { history.back(); } catch(e){}
+      }
+      return;
+    }
+    // Forward/back across a page reload — overlay is gone; re-create it.
+    if(typeof openFilmDetail==='function' && typeof st.idx==='number'){
       openFilmDetail(st.idx);
     }
     return;
