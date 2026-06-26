@@ -289,12 +289,16 @@ function _renderArticleBlocks(blocks){
       // Each cell shows the image full-bleed with an optional caption underneath.
       var galImgs = Array.isArray(b.images) ? b.images : [];
       if(!galImgs.length) return;
-      // QA #282 — 갤러리 외곽 36px + 셀 간격 10px (가독성).
-      html += '<div style="margin:36px 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">';
+      // QA #288 — 패션/아트 콘텐츠에 맞게 변경:
+      //   • 데스크탑: 2열 (한 줄에 2개)
+      //   • 모바일 (≤640px): 1열로 자동 전환 (CSS 미디어쿼리)
+      //   • 비율: 4:5 (세로 화보 비율) — 1:1보다 크롭 최소화
+      var galId = 'gal-' + Math.random().toString(36).slice(2, 8);
+      html += '<div class="article-gallery-block" data-gal-id="' + galId + '" style="margin:36px 0;display:grid;grid-template-columns:1fr 1fr;gap:12px">';
       galImgs.forEach(function(im){
         if(!im || !im.url) return;
         html += '<figure style="margin:0">'
-          + '<img src="' + escapeHtml(im.url) + '" alt="' + escapeHtml(im.caption || '') + '" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;border-radius:2px" onerror="edImgError && edImgError(this)">'
+          + '<img src="' + escapeHtml(im.url) + '" alt="' + escapeHtml(im.caption || '') + '" loading="lazy" style="width:100%;aspect-ratio:4/5;object-fit:cover;display:block;border-radius:2px;cursor:zoom-in" onerror="edImgError && edImgError(this)">'
           + (im.caption ? '<figcaption style="margin-top:8px;font-size:11px;color:#888;text-align:center;line-height:1.5">' + escapeHtml(im.caption) + '</figcaption>' : '')
           + '</figure>';
       });
