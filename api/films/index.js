@@ -108,8 +108,9 @@ module.exports = async function handler(req, res) {
       if (Array.isArray(data)) await attachAuthorship(data);
 
       // QA #186 — edge cache the published list.
+      // QA #294 — Disk IO 경고 대응. 60→300, 600→3600.
       if (requestedStatus === 'published') {
-        res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=600');
+        res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
       } else {
         res.setHeader('Cache-Control', 'private, no-store');
       }

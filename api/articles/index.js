@@ -67,7 +67,8 @@ module.exports = async function handler(req, res) {
         && !req.headers.authorization
         && req.method === 'GET';
       if (isPublicAnon) {
-        res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=300');
+        // QA #294 — Disk IO 경고 대응. s-maxage 60→300, SWR 300→3600.
+        res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=300, stale-while-revalidate=3600');
       } else {
         res.setHeader('Cache-Control', 'no-store, max-age=0');
       }
@@ -135,7 +136,8 @@ module.exports = async function handler(req, res) {
       // QA #186 — edge cache the published list. Drafts/scheduled stay
       // no-store because they are admin-only and change frequently.
       if (requestedStatus === 'published' && !isScheduledFilter) {
-        res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=600');
+        // QA #294 — Disk IO 경고 대응.
+        res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
       } else {
         res.setHeader('Cache-Control', 'private, no-store');
       }

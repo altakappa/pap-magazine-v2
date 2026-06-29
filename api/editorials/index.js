@@ -131,9 +131,12 @@ module.exports = async function handler(req, res) {
       // Drafts/scheduled stay no-cache because they're admin-only and
       // change far more frequently.
       if (requestedStatus === 'published') {
+        // QA #294 — Disk IO 경고 대응. s-maxage 60→300 (5분), SWR 600→3600 (1시간).
+        // Edge에서 캐시된 응답 5분간 재사용 → DB 호출 약 1/5로 감소.
+        // 새 에디토리얼은 5분 후 반영.
         res.setHeader(
           'Cache-Control',
-          'public, s-maxage=60, stale-while-revalidate=600'
+          'public, s-maxage=300, stale-while-revalidate=3600'
         );
       } else {
         res.setHeader('Cache-Control', 'private, no-store');

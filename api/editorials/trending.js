@@ -53,7 +53,8 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ message: 'Trending lookup failed' });
     }
 
-    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=300');
+    // QA #294 — Disk IO 경고 대응. trending은 시간 단위 갱신으로 충분.
+    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=600, stale-while-revalidate=3600');
     res.status(200).json({ data: data || [], period: periodKey, limit });
   } catch (err) {
     console.error('[trending] uncaught', err);
