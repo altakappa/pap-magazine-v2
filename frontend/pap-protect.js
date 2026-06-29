@@ -28,15 +28,42 @@
   // QA #292 — 관리자(대표/서브 관리자)는 공개 페이지에서도 이미지를 우클릭으로
   // 다운받을 수 있어야 함 (콘텐츠 큐레이션 / SNS 업로드 / 검수 작업 등).
   // 매 이벤트마다 fresh check — 로그인/로그아웃 후 페이지 새로고침 없이 반영.
+  //
+  // 다중 경로로 user 정보 조회 (pap-protect.js가 defer 로드되는 pap-api.js보다
+  // 먼저 실행될 수 있어 PAP.auth가 아직 정의 안 된 케이스 대비):
+  //   1) PAP.auth.getUser() — 표준 경로
+  //   2) localStorage 'pap-user' — pap-api.js 로드 전 fallback
+  //   3) 이메일 fallback — role이 누락된 레거시 user payload 케이스
   function _papIsPrivileged(){
     try {
-      var u = (window.PAP && window.PAP.auth && typeof window.PAP.auth.getUser === 'function' && window.PAP.auth.getUser()) ||
-              window._currentUser || null;
+      var u = null;
+      // 1) PAP.auth
+      if (window.PAP && window.PAP.auth && typeof window.PAP.auth.getUser === 'function'){
+        u = window.PAP.auth.getUser();
+      }
+      // 2) localStorage 직접
+      if (!u){
+        try {
+          var raw = localStorage.getItem('pap-user');
+          if (raw) u = JSON.parse(raw);
+        } catch(_){}
+      }
+      // 3) window 전역
+      if (!u) u = window._currentUser || null;
       if (!u) return false;
+
       var role = String(u.role || '').toLowerCase();
-      return role === 'admin' || role === 'staff';
+      if (role === 'admin' || role === 'staff' || role === 'main_admin' || role === 'sub_admin') return true;
+
+      // 이메일 fallback (대표 관리자 이메일)
+      var email = String(u.email || '').toLowerCase().trim();
+      if (email === 'contact@pap-magazine.com') return true;
+
+      return false;
     } catch(_) { return false; }
   }
+  // 디버그용: window에 노출. 콘솔에서 _papIsPrivileged() 호출해서 확인 가능.
+  window._papIsPrivileged = _papIsPrivileged;
   // body에 클래스도 같이 toggle해서 CSS user-select 보호도 풀어줌.
   function _papApplyPrivilegedClass(){
     if (!document.body) return;
