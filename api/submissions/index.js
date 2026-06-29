@@ -254,8 +254,16 @@ module.exports = async function handler(req, res) {
           .select('id, slug, status, published_date, scheduled_publish_at, source_submission_id')
           .in('source_submission_id', submissionIds);
         if (Array.isArray(editorialRows)) {
+          // QA #290 — published editorial을 우선 매칭. 같은 submission에 draft + published
+          // 두 editorial이 모두 존재하는 경우, 마지막 row가 winner가 되면 published됐는데도
+          // 최종 승인 목록에 잘못 노출되는 버그(같은 submission이 두 상태에 동시 노출).
           for (const er of editorialRows) {
-            if (er && er.source_submission_id) {
+            if (!er || !er.source_submission_id) continue;
+            const existing = linkedEditorialBySubId[er.source_submission_id];
+            // Prefer published > scheduled-future > draft.
+            if (!existing) {
+              linkedEditorialBySubId[er.source_submission_id] = er;
+            } else if (er.status === 'published' && existing.status !== 'published') {
               linkedEditorialBySubId[er.source_submission_id] = er;
             }
           }
@@ -283,9 +291,15 @@ module.exports = async function handler(req, res) {
           for (const er of candidateEditorials) {
             if (!er || !er.title) continue;
             const k = String(er.title).trim().toLowerCase();
-            // First match wins. Multiple drafts with the same title
-            // are unusual; the editor can disambiguate via the edit URL.
-            if (!byTitle[k]) byTitle[k] = er;
+            // QA #290 — title 매칭에서도 published 우선. 같은 제목으로
+            // draft와 published가 둘 다 있다면 published를 link해서
+            // submission이 '업로드 완료'로 분류되도록.
+            const existing = byTitle[k];
+            if (!existing) {
+              byTitle[k] = er;
+            } else if (er.status === 'published' && existing.status !== 'published') {
+              byTitle[k] = er;
+            }
           }
           // Pair each unlinked submission with a same-title editorial,
           // backfill source_submission_id, and seed the lookup map so
