@@ -145,7 +145,9 @@ module.exports = async function handler(req, res) {
   // QA #186 — themes refresh slowly (curation level). 5-min edge cache.
   // Personalized themes (auth'd users) bypass the cache by varying on
   // Authorization header — Vercel honours that automatically.
-  res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=1800');
+  // QA #294 — Disk IO 경고 대응. themes는 큐레이션 단위로 매우 안정적이라
+  // 30분 Edge cache + 2시간 SWR로 강화. Vector RPC 호출 빈도 ~6배 감소.
+  res.setHeader('Cache-Control', 'public, s-maxage=1800, stale-while-revalidate=7200');
 
   const lang = safeLang(String(req.query.lang || 'ko'));
   let perRow = parseInt(req.query.perRow, 10);
@@ -270,7 +272,10 @@ module.exports = async function handler(req, res) {
       };
     });
 
-    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=300');
+    // QA #294 — 중요 fix: 이전 코드는 여기서 Cache-Control을 60초로 덮어써서
+    // line 148의 300초 설정이 무효화됐음. 결과적으로 Vector embedding RPC가
+    // 1시간 분당 480회 호출되어 Disk IO 1/4를 차지. 캐시 헤더를 제거해서
+    // line 148의 5분 캐시(SWR 30분)가 그대로 적용되도록.
     res.setHeader('Vary', 'Authorization');
     res.status(200).json({
       personalized: personalized,
