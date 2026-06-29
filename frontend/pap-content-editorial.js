@@ -544,28 +544,136 @@ window._papPersonalizeFilename = window._papPersonalizeFilename || function(base
 };
 
 // QA #277 — 약관 동의 모달. localStorage에 저장 → 1회만 표시.
+// QA #293 — 9개 언어로 다국어 분기 (ko/en/it/ja/zh/ru/de/fr/es).
 // resolve(true) 동의함, resolve(false) 거부.
 window._papEnsureDlConsent = window._papEnsureDlConsent || function(){
+  var _dlT = {
+    ko: {
+      head: 'DOWNLOAD TERMS', title: '이미지 사용 약관 동의',
+      lead: '다운로드한 이미지는 <strong style="color:#fff">개인의 비상업적 용도</strong>로만 사용할 수 있습니다.',
+      bullets: [
+        '재배포·재판매·SNS 외부 무단 게시 금지',
+        '광고·홍보·상품화 등 상업적 이용 금지',
+        '모든 이미지의 저작권은 PAP Magazine 및 원 제작자에게 있으며 위반 시 법적 책임이 따를 수 있습니다.',
+        '다운로드 이력은 회원 식별 정보와 함께 기록됩니다.'
+      ],
+      cancel: '취소', agree: '동의하고 다운로드'
+    },
+    en: {
+      head: 'DOWNLOAD TERMS', title: 'Image Usage Agreement',
+      lead: 'Downloaded images may be used <strong style="color:#fff">for personal, non-commercial purposes only</strong>.',
+      bullets: [
+        'No redistribution, resale, or unauthorized posting on external SNS',
+        'No commercial use including advertising, promotion, or merchandising',
+        'All images are copyrighted by PAP Magazine and the original creators; violations may result in legal action.',
+        'Download history is recorded together with your member identifier.'
+      ],
+      cancel: 'Cancel', agree: 'Agree & Download'
+    },
+    it: {
+      head: 'TERMINI DI DOWNLOAD', title: 'Accordo di utilizzo delle immagini',
+      lead: 'Le immagini scaricate possono essere utilizzate <strong style="color:#fff">solo per scopi personali e non commerciali</strong>.',
+      bullets: [
+        'Vietata la redistribuzione, rivendita o pubblicazione non autorizzata su social esterni',
+        'Vietato l\'uso commerciale come pubblicità, promozione o merchandising',
+        'Tutte le immagini sono protette dal copyright di PAP Magazine e dei creatori originali; le violazioni possono comportare azioni legali.',
+        'La cronologia dei download viene registrata insieme al tuo identificatore membro.'
+      ],
+      cancel: 'Annulla', agree: 'Accetto e scarico'
+    },
+    ja: {
+      head: 'ダウンロード規約', title: '画像使用同意',
+      lead: 'ダウンロードした画像は<strong style="color:#fff">個人の非営利目的</strong>のみご利用いただけます。',
+      bullets: [
+        '再配布・転売・外部SNSへの無断掲載禁止',
+        '広告・宣伝・商品化など商業利用禁止',
+        'すべての画像の著作権はPAP Magazineおよび制作者に帰属し、違反時は法的責任が発生する可能性があります。',
+        'ダウンロード履歴は会員識別情報とともに記録されます。'
+      ],
+      cancel: 'キャンセル', agree: '同意してダウンロード'
+    },
+    zh: {
+      head: '下载条款', title: '图片使用同意',
+      lead: '下载的图片<strong style="color:#fff">仅限个人非商业用途</strong>。',
+      bullets: [
+        '禁止再分发、转售或未经授权在外部社交媒体上发布',
+        '禁止商业用途，包括广告、宣传或商品化',
+        '所有图片版权归PAP Magazine及原创作者所有，违反将可能承担法律责任。',
+        '下载记录将与会员识别信息一同保存。'
+      ],
+      cancel: '取消', agree: '同意并下载'
+    },
+    ru: {
+      head: 'УСЛОВИЯ ЗАГРУЗКИ', title: 'Согласие на использование изображений',
+      lead: 'Загруженные изображения можно использовать <strong style="color:#fff">только в личных некоммерческих целях</strong>.',
+      bullets: [
+        'Запрещены перераспределение, перепродажа и несанкционированная публикация в сторонних соцсетях',
+        'Запрещено коммерческое использование, включая рекламу, продвижение или мерчандайзинг',
+        'Все изображения защищены авторским правом PAP Magazine и их создателей; нарушения могут повлечь юридическую ответственность.',
+        'История загрузок сохраняется вместе с идентификатором участника.'
+      ],
+      cancel: 'Отмена', agree: 'Согласен и скачать'
+    },
+    de: {
+      head: 'DOWNLOAD-BEDINGUNGEN', title: 'Einwilligung zur Bildnutzung',
+      lead: 'Heruntergeladene Bilder dürfen <strong style="color:#fff">nur für persönliche, nicht-kommerzielle Zwecke</strong> verwendet werden.',
+      bullets: [
+        'Keine Weitergabe, Weiterverkauf oder unautorisierte Veröffentlichung auf externen sozialen Netzwerken',
+        'Keine kommerzielle Nutzung wie Werbung, Promotion oder Merchandising',
+        'Alle Bilder sind durch das Copyright von PAP Magazine und der ursprünglichen Urheber geschützt; Verstöße können rechtliche Folgen haben.',
+        'Der Download-Verlauf wird zusammen mit Ihrer Mitgliederkennung erfasst.'
+      ],
+      cancel: 'Abbrechen', agree: 'Zustimmen & Herunterladen'
+    },
+    fr: {
+      head: 'CONDITIONS DE TÉLÉCHARGEMENT', title: 'Accord d\'utilisation des images',
+      lead: 'Les images téléchargées ne peuvent être utilisées <strong style="color:#fff">qu\'à des fins personnelles et non commerciales</strong>.',
+      bullets: [
+        'Pas de redistribution, revente ou publication non autorisée sur des réseaux sociaux externes',
+        'Pas d\'utilisation commerciale, y compris publicité, promotion ou marchandisage',
+        'Toutes les images sont protégées par le droit d\'auteur de PAP Magazine et des créateurs originaux ; les violations peuvent entraîner des poursuites.',
+        'L\'historique des téléchargements est enregistré avec votre identifiant de membre.'
+      ],
+      cancel: 'Annuler', agree: 'Accepter et télécharger'
+    },
+    es: {
+      head: 'TÉRMINOS DE DESCARGA', title: 'Acuerdo de uso de imágenes',
+      lead: 'Las imágenes descargadas pueden usarse <strong style="color:#fff">solo para fines personales y no comerciales</strong>.',
+      bullets: [
+        'Prohibida la redistribución, reventa o publicación no autorizada en redes sociales externas',
+        'Prohibido el uso comercial, incluyendo publicidad, promoción o merchandising',
+        'Todas las imágenes están protegidas por los derechos de autor de PAP Magazine y los creadores originales; las violaciones pueden acarrear acciones legales.',
+        'El historial de descargas se registra junto con su identificador de miembro.'
+      ],
+      cancel: 'Cancelar', agree: 'Aceptar y descargar'
+    }
+  };
+
   return new Promise(function(resolve){
     try {
       if (localStorage.getItem('pap_dl_consent_v1') === 'yes') return resolve(true);
     } catch(_) {}
+
+    // 현재 언어 감지 — global lang 변수 우선, 그 다음 localStorage.
+    var _curLang = (typeof lang === 'string' && lang) ? lang :
+                   ((typeof localStorage !== 'undefined' && localStorage.getItem('pap-lang')) || 'en');
+    var t = _dlT[_curLang] || _dlT.en;
+
+    var bulletsHtml = t.bullets.map(function(b){ return '· ' + b; }).join('<br>');
+
     var modal = document.createElement('div');
     modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;font-family:inherit';
     modal.innerHTML =
       '<div style="background:#111;border:1px solid #333;border-radius:8px;max-width:480px;padding:24px;color:#fff;line-height:1.55">' +
-        '<div style="font-size:11px;font-weight:700;letter-spacing:.15em;color:#999;margin-bottom:12px">DOWNLOAD TERMS</div>' +
-        '<div style="font-size:15px;font-weight:700;margin-bottom:14px">이미지 사용 약관 동의</div>' +
+        '<div style="font-size:11px;font-weight:700;letter-spacing:.15em;color:#999;margin-bottom:12px">' + t.head + '</div>' +
+        '<div style="font-size:15px;font-weight:700;margin-bottom:14px">' + t.title + '</div>' +
         '<div style="font-size:12px;color:#ccc;margin-bottom:18px">' +
-          '다운로드한 이미지는 <strong style="color:#fff">개인의 비상업적 용도</strong>로만 사용할 수 있습니다.<br><br>' +
-          '· 재배포·재판매·SNS 외부 무단 게시 금지<br>' +
-          '· 광고·홍보·상품화 등 상업적 이용 금지<br>' +
-          '· 모든 이미지의 저작권은 PAP Magazine 및 원 제작자에게 있으며 위반 시 법적 책임이 따를 수 있습니다.<br>' +
-          '· 다운로드 이력은 회원 식별 정보와 함께 기록됩니다.' +
+          t.lead + '<br><br>' +
+          bulletsHtml +
         '</div>' +
         '<div style="display:flex;gap:8px;justify-content:flex-end">' +
-          '<button type="button" id="papDlCancel" style="padding:9px 18px;background:transparent;border:1px solid #555;color:#fff;font-size:11px;letter-spacing:.08em;cursor:pointer">취소</button>' +
-          '<button type="button" id="papDlAgree" style="padding:9px 18px;background:#fff;border:1px solid #fff;color:#000;font-size:11px;font-weight:700;letter-spacing:.08em;cursor:pointer">동의하고 다운로드</button>' +
+          '<button type="button" id="papDlCancel" style="padding:9px 18px;background:transparent;border:1px solid #555;color:#fff;font-size:11px;letter-spacing:.08em;cursor:pointer">' + t.cancel + '</button>' +
+          '<button type="button" id="papDlAgree" style="padding:9px 18px;background:#fff;border:1px solid #fff;color:#000;font-size:11px;font-weight:700;letter-spacing:.08em;cursor:pointer">' + t.agree + '</button>' +
         '</div>' +
       '</div>';
     document.body.appendChild(modal);
