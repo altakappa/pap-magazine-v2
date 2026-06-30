@@ -9745,9 +9745,16 @@ function renderCovers(){
     var issueVal = _coverEscapeHtml(g.issue || '');
     var titleVal = _coverEscapeHtml(g.title || '');
     var linkVal  = _coverEscapeHtml(g.link_url || '');
-    var statusBadge = g.id
-      ? '<span style="font-size:10px;color:#27ae60;padding:2px 8px;background:#eafaf1;border-radius:3px">저장됨</span>'
-      : '<span style="font-size:10px;color:#e67e22;padding:2px 8px;background:#fef5e7;border-radius:3px">미저장 (저장 버튼을 눌러주세요)</span>';
+    // QA #297 — data-cover-status 어트리뷰트로 외부에서 직접 조작 가능.
+    // 초기 상태는 dirty set 우선, 없으면 id 기준.
+    var statusInitial = _coverDirtyGroups.has(gi)
+      ? { color:'#e67e22', bg:'#fef5e7', label:'미저장 (저장 버튼을 눌러주세요)' }
+      : (g.id
+          ? { color:'#27ae60', bg:'#eafaf1', label:'저장됨' }
+          : { color:'#e67e22', bg:'#fef5e7', label:'미저장 (저장 버튼을 눌러주세요)' });
+    var statusBadge = '<span data-cover-status '
+      + 'style="font-size:10px;color:'+statusInitial.color+';padding:2px 8px;background:'+statusInitial.bg+';border-radius:3px">'
+      + statusInitial.label + '</span>';
 
     html += '<div data-cover-card="'+gi+'" style="background:var(--surface);border:1px solid var(--border);padding:24px;margin-bottom:20px;border-radius:6px">';
 
@@ -9764,9 +9771,16 @@ function renderCovers(){
     html += '<label style="font-size:11px;font-weight:700;color:var(--text3)">제목</label>'
       + '<input class="pe-input" value="'+titleVal+'" placeholder="예: Masquerade (필수)"'
       + ' onchange="coverGroups['+gi+'].title=this.value;_coverMarkDirty('+gi+')">';
+    // QA #297 — 링크 행 옆에 "에디토리얼 연결" 버튼. 클릭 → popup picker
+    // → 선택 시 link_url = /editorial/<slug> 자동 채움 (+ 비어있으면
+    // issue/title 도 자동 채움).
     html += '<label style="font-size:11px;font-weight:700;color:var(--text3)">링크</label>'
-      + '<input class="pe-input" value="'+linkVal+'" placeholder="클릭 시 이동할 URL (예: /editorial/masquerade)"'
-      + ' onchange="coverGroups['+gi+'].link_url=this.value;_coverMarkDirty('+gi+')">';
+      + '<div style="display:flex;gap:6px;align-items:center">'
+      +   '<input class="pe-input" value="'+linkVal+'" placeholder="클릭 시 이동할 URL (예: /editorial/masquerade)"'
+      +     ' style="flex:1" onchange="coverGroups['+gi+'].link_url=this.value;_coverMarkDirty('+gi+')">'
+      +   '<button class="btn btn-sm" style="white-space:nowrap" '
+      +     'onclick="openCoverEditorialPicker('+gi+')" title="발행된 에디토리얼을 검색해서 자동 연결">📰 에디토리얼 연결</button>'
+      + '</div>';
     html += '</div>';
     html += '</div>';
 
@@ -9889,10 +9903,15 @@ function renderCovers(){
   el.innerHTML = html;
 }
 
-// "이 그룹은 저장이 필요합니다" 시각적 표시 ─ 카드 보더만 살짝 강조.
+// "이 그룹은 저장이 필요합니다" 시각적 표시 ─ 카드 보더 + status 배지.
+// QA #297: dirty set 에 추가해서 beforeunload 경고도 트리거.
 function _coverMarkDirty(gi){
+  _coverDirtyGroups.add(gi);
   var card = document.querySelector('[data-cover-card="'+gi+'"]');
   if(card) card.style.borderColor = '#e67e22';
+  if(typeof _coverUpdateCardStatus === 'function'){
+    _coverUpdateCardStatus(gi, 'dirty');
+  }
 }
 
 // ─── 그룹 액션 ────────────────────────────────────────────────────────
@@ -9977,12 +9996,22 @@ function saveCoverGroup(gi){
   var isUpdate = !!g.id;
   if(isUpdate) payload.id = g.id;
 
+  // QA #297 — 저장 시작 즉시 배지를 'saving' 으로 갱신 (사용자 피드백).
+  _coverUpdateCardStatus(gi, 'saving');
+
   fetch('/api/admin/banners', {
     method: isUpdate ? 'PUT' : 'POST',
     headers: Object.assign({ 'Content-Type': 'application/json' }, _papAuthHeaders()),
     body: JSON.stringify(payload)
   }).then(function(r){
-    if(!r.ok) throw new Error('save failed: ' + r.status);
+    if(!r.ok){
+      // 본문에 message 가 있으면 사용자에게 그대로.
+      return r.text().then(function(t){
+        var msg = '';
+        try { var j = JSON.parse(t); msg = j && j.message; } catch(_){}
+        throw new Error(msg || ('HTTP ' + r.status));
+      });
+    }
     return r.json();
   }).then(function(json){
     if(json && json.data){
@@ -9998,13 +10027,18 @@ function saveCoverGroup(gi){
         });
       }
     }
+    // QA #297 — 이 그룹의 dirty flag clear → 모두 비면 beforeunload 도 OK.
+    _coverDirtyGroups.delete(gi);
+    var card = document.querySelector('[data-cover-card="' + gi + '"]');
+    if(card) card.style.borderColor = '';
     renderCovers();
-    if(typeof showToast === 'function'){
-      showToast('저장되었습니다.');
-    }
+    _coverUpdateCardStatus(gi, 'saved-ok');
   }).catch(function(err){
     console.error('[cover] save failed', err);
-    alert('저장에 실패했습니다. 다시 시도해주세요.');
+    var msg = (err && err.message) ? err.message : '알 수 없는 오류';
+    _coverUpdateCardStatus(gi, 'error', msg);
+    // 인라인 배지 외에도 명확히 alert ─ 다른 그룹으로 옮겨가도 잊지 않도록.
+    alert('저장에 실패했습니다.\n\n사유: ' + msg + '\n\n다시 시도해주세요. 문제가 지속되면 새로고침 후 재시도해주세요.');
   });
 }
 
@@ -10235,6 +10269,211 @@ function loadCoverGroups(){
 }
 
 loadCoverGroups();
+
+// ─── QA #297 — 에디토리얼 picker 모달 ─────────────────────────────────
+// 그룹 카드의 "📰 에디토리얼 연결" 버튼이 호출. 단일 모달을 DOM 에 한
+// 번만 만들고 그룹 id 만 바꿔서 재사용.
+var _coverEdPickerCache = null;       // [{id, title, slug, thumbnail, published_date, ...}]
+var _coverEdPickerActiveGi = -1;      // 현재 어떤 그룹을 위해 열려있는지
+
+function _coverEnsurePickerDom(){
+  if(document.getElementById('coverEdPickerOverlay')) return;
+  var ov = document.createElement('div');
+  ov.id = 'coverEdPickerOverlay';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:none;align-items:center;justify-content:center;padding:24px';
+  ov.innerHTML = ''
+    + '<div id="coverEdPickerCard" style="background:#fff;width:560px;max-width:100%;max-height:80vh;display:flex;flex-direction:column;border-radius:6px;overflow:hidden;color:#111">'
+    +   '<div style="padding:18px 20px;border-bottom:1px solid #e6e6e6;display:flex;justify-content:space-between;align-items:center">'
+    +     '<div>'
+    +       '<div style="font-size:14px;font-weight:700">에디토리얼 연결</div>'
+    +       '<div style="font-size:11px;color:#888;margin-top:3px">선택하면 링크가 자동으로 채워집니다. 발행호/제목이 비어있으면 함께 채워집니다.</div>'
+    +     '</div>'
+    +     '<button class="btn btn-sm" onclick="closeCoverEditorialPicker()" style="background:transparent;border:none;font-size:18px;cursor:pointer">×</button>'
+    +   '</div>'
+    +   '<div style="padding:12px 20px;border-bottom:1px solid #e6e6e6">'
+    +     '<input id="coverEdPickerSearch" type="text" placeholder="제목, slug 로 검색…" '
+    +       'style="width:100%;padding:8px 10px;font-size:13px;border:1px solid #ddd;border-radius:3px"'
+    +       'oninput="_coverEdPickerRender()">'
+    +   '</div>'
+    +   '<div id="coverEdPickerList" style="flex:1;overflow-y:auto;min-height:200px"></div>'
+    +   '<div style="padding:10px 20px;border-top:1px solid #e6e6e6;font-size:11px;color:#888;text-align:right">'
+    +     '<span id="coverEdPickerCount">0</span>건 / 최근 500건 노출'
+    +   '</div>'
+    + '</div>';
+  // 빈 배경 클릭 시 닫기 (카드 안 클릭은 무시).
+  ov.addEventListener('click', function(e){
+    if(e.target === ov) closeCoverEditorialPicker();
+  });
+  document.body.appendChild(ov);
+
+  // ESC 키로 닫기.
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape' && ov.style.display === 'flex'){
+      closeCoverEditorialPicker();
+    }
+  });
+}
+
+async function openCoverEditorialPicker(gi){
+  _coverEnsurePickerDom();
+  _coverEdPickerActiveGi = gi;
+  var ov = document.getElementById('coverEdPickerOverlay');
+  ov.style.display = 'flex';
+  var listEl = document.getElementById('coverEdPickerList');
+  var searchEl = document.getElementById('coverEdPickerSearch');
+  if(searchEl){ searchEl.value = ''; setTimeout(function(){ searchEl.focus(); }, 50); }
+  if(!_coverEdPickerCache){
+    listEl.innerHTML = '<div style="padding:40px;text-align:center;color:#888;font-size:13px">에디토리얼 불러오는 중…</div>';
+    try {
+      var r = await fetch('/api/editorials?status=published&limit=500', { headers: _papAuthHeaders() });
+      var json = r.ok ? await r.json() : null;
+      _coverEdPickerCache = (json && (json.data || json.editorials)) || [];
+      if(!Array.isArray(_coverEdPickerCache)) _coverEdPickerCache = [];
+    } catch(err){
+      console.warn('[cover-picker] fetch failed', err);
+      _coverEdPickerCache = [];
+    }
+  }
+  _coverEdPickerRender();
+}
+
+function closeCoverEditorialPicker(){
+  var ov = document.getElementById('coverEdPickerOverlay');
+  if(ov) ov.style.display = 'none';
+  _coverEdPickerActiveGi = -1;
+}
+
+function _coverEdPickerRender(){
+  var listEl = document.getElementById('coverEdPickerList');
+  var searchEl = document.getElementById('coverEdPickerSearch');
+  var countEl = document.getElementById('coverEdPickerCount');
+  if(!listEl) return;
+  var q = ((searchEl && searchEl.value) || '').trim().toLowerCase();
+  var rows = (_coverEdPickerCache || []).slice();
+  if(q){
+    rows = rows.filter(function(ed){
+      if(!ed) return false;
+      var hay = ((ed.title || '') + ' ' + (ed.slug || '') + ' ' + (ed.issue || '')).toLowerCase();
+      return hay.indexOf(q) !== -1;
+    });
+  }
+  rows.sort(function(a, b){
+    var ad = new Date((a && (a.published_date || a.created_at)) || 0).getTime() || 0;
+    var bd = new Date((b && (b.published_date || b.created_at)) || 0).getTime() || 0;
+    return bd - ad;
+  });
+  if(countEl) countEl.textContent = rows.length;
+  if(rows.length === 0){
+    listEl.innerHTML = '<div style="padding:40px;text-align:center;color:#888;font-size:13px">'
+      + (q ? '검색 결과가 없습니다.' : '발행된 에디토리얼이 없습니다.')
+      + '</div>';
+    return;
+  }
+  var html = '';
+  rows.forEach(function(ed){
+    var thumb = ed.thumbnail || ed.thumbnail_url || ed.cover_image || '';
+    var safeThumb = String(thumb).replace(/"/g, '&quot;');
+    var title = _coverEscapeHtml(ed.title || ed.slug || ed.id || '');
+    var slug = _coverEscapeHtml(ed.slug || '');
+    var issue = _coverEscapeHtml(ed.issue || '');
+    var pd = ed.published_date || ed.created_at || '';
+    var dateStr = pd ? String(pd).split('T')[0] : '';
+    html += '<div onclick="selectCoverEditorial(\'' + String(ed.id).replace(/\'/g, "\\\'") + '\')" '
+      + 'style="display:flex;align-items:center;gap:12px;padding:10px 20px;cursor:pointer;border-bottom:1px solid #f0f0f0;transition:background .12s" '
+      + 'onmouseover="this.style.background=\'#fafafa\'" onmouseout="this.style.background=\'\'">';
+    html += '<div style="width:56px;height:42px;background:#eee;flex-shrink:0;border-radius:2px;background-size:cover;background-position:center'
+      + (thumb ? (';background-image:url(\'' + safeThumb + '\')') : '') + '"></div>';
+    html += '<div style="flex:1;min-width:0">';
+    html += '<div style="font-size:13px;font-weight:600;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + title + '</div>';
+    html += '<div style="font-size:11px;color:#888;margin-top:2px">'
+      + (issue ? '<span style="margin-right:8px">' + issue + '</span>' : '')
+      + (slug ? '<span style="margin-right:8px">/' + slug + '</span>' : '')
+      + dateStr
+      + '</div>';
+    html += '</div>';
+    html += '</div>';
+  });
+  listEl.innerHTML = html;
+}
+
+function selectCoverEditorial(edId){
+  var gi = _coverEdPickerActiveGi;
+  if(gi < 0 || !coverGroups[gi]) return;
+  var ed = null;
+  for(var i = 0; i < (_coverEdPickerCache || []).length; i++){
+    if(_coverEdPickerCache[i] && _coverEdPickerCache[i].id === edId){ ed = _coverEdPickerCache[i]; break; }
+  }
+  if(!ed){ closeCoverEditorialPicker(); return; }
+
+  var slug = ed.slug || ed.id;
+  var g = coverGroups[gi];
+  g.link_url = '/editorial/' + slug;
+  // 발행호 / 제목이 비어있으면 자동 채움 (이미 채워져 있으면 보존 ─
+  // 운영자가 직접 쓴 카피를 덮어쓰지 않음).
+  if(!String(g.issue || '').trim() && ed.issue){
+    g.issue = ed.issue;
+  }
+  if(!String(g.title || '').trim() && ed.title){
+    g.title = ed.title;
+  }
+  _coverMarkDirty(gi);
+  closeCoverEditorialPicker();
+  renderCovers();
+}
+
+// ─── QA #297 — 저장 UX 강화 + 미저장 경고 ─────────────────────────────
+//
+// _coverDirtyGroups: 그룹 인덱스 기준 dirty flag set. _coverMarkDirty 가
+// add, saveCoverGroup 성공 시 해당 그룹만 delete. 모두 비면 beforeunload
+// 경고가 안 뜸. (인덱스 기반이라 그룹 순서가 바뀌면 살짝 부정확하지만,
+// "뭔가 저장 안 된 상태가 있다" 만 판단하면 되므로 충분.)
+var _coverDirtyGroups = new Set();
+
+// 카드 헤더의 statusBadge 를 직접 갱신 (renderCovers 재호출 없이).
+// state: 'saved' | 'dirty' | 'saving' | 'saved-ok' | 'error'
+function _coverUpdateCardStatus(gi, state, message){
+  var card = document.querySelector('[data-cover-card="' + gi + '"]');
+  if(!card) return;
+  var statusEl = card.querySelector('[data-cover-status]');
+  if(!statusEl) return;
+  var styles = {
+    'saved':    'color:#27ae60;background:#eafaf1',
+    'dirty':    'color:#e67e22;background:#fef5e7',
+    'saving':   'color:#2980b9;background:#eaf4fb',
+    'saved-ok': 'color:#fff;background:#27ae60',
+    'error':    'color:#fff;background:#e74c3c'
+  };
+  var labels = {
+    'saved':    '저장됨',
+    'dirty':    '미저장 (저장 버튼을 눌러주세요)',
+    'saving':   '저장 중…',
+    'saved-ok': '✓ 저장 완료',
+    'error':    '⚠ ' + (message || '저장 실패')
+  };
+  statusEl.style.cssText = 'font-size:10px;padding:2px 8px;border-radius:3px;' + (styles[state] || '');
+  statusEl.textContent = labels[state] || '';
+  if(state === 'saved-ok'){
+    // 4초 뒤 'saved' 로 복귀.
+    setTimeout(function(){
+      var still = document.querySelector('[data-cover-card="' + gi + '"] [data-cover-status]');
+      if(still && still.textContent === '✓ 저장 완료'){
+        _coverUpdateCardStatus(gi, 'saved');
+      }
+    }, 4000);
+  }
+}
+
+// 페이지 닫기 / 새로고침 / 다른 탭 이동 시 — 저장 안 된 변경이 있으면 경고.
+// SPA admin 의 일부 라우팅은 beforeunload 를 우회하지만, 외부 이동
+// (URL 입력 / 탭 닫기) 은 막아줌. 사용자 데이터 보호 차원.
+window.addEventListener('beforeunload', function(e){
+  if(_coverDirtyGroups.size > 0){
+    e.preventDefault();
+    // Chrome 은 returnValue 가 truthy 면 자체 메시지 표시 (커스텀 텍스트는 무시).
+    e.returnValue = '저장되지 않은 배너 변경사항이 있습니다. 정말 나가시겠습니까?';
+    return e.returnValue;
+  }
+});
 
 // ======== SHORTS API ========
 // QA #208 Phase 2d — shorts dashboard pattern (matches editorial/news/film).
