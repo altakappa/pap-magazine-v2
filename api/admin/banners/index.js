@@ -41,13 +41,20 @@ function normalizeImages(rawImages) {
 }
 
 // group 본문(텍스트 필드만)을 정규화. null/undefined 처리.
+// QA #298 — scheduled_publish_at (ISO 문자열 또는 null) 도 함께 정규화.
 function normalizeGroupFields(body) {
+  let scheduledAt = null;
+  if (body.scheduled_publish_at) {
+    const d = new Date(body.scheduled_publish_at);
+    if (!isNaN(d.getTime())) scheduledAt = d.toISOString();
+  }
   return {
     issue:      body.issue      != null ? String(body.issue).trim()      : null,
     title:      String(body.title || '').trim(),
     link_url:   body.link_url   != null ? String(body.link_url).trim()   : null,
     sort_order: Number.isFinite(body.sort_order) ? body.sort_order : 0,
     is_active:  body.is_active === false ? false : true,
+    scheduled_publish_at: scheduledAt,
   };
 }
 
@@ -64,7 +71,7 @@ module.exports = async function handler(req, res) {
     try {
       const { data, error } = await supabaseAdmin
         .from('cover_groups')
-        .select('id,issue,title,link_url,sort_order,is_active,created_at,updated_at,images:cover_images(id,image_url,image_url_mobile,sort_order)')
+        .select('id,issue,title,link_url,sort_order,is_active,scheduled_publish_at,created_at,updated_at,images:cover_images(id,image_url,image_url_mobile,sort_order)')
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true });
 

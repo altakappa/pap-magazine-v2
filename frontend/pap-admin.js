@@ -9745,13 +9745,9 @@ function renderCovers(){
     var issueVal = _coverEscapeHtml(g.issue || '');
     var titleVal = _coverEscapeHtml(g.title || '');
     var linkVal  = _coverEscapeHtml(g.link_url || '');
-    // QA #297 — data-cover-status 어트리뷰트로 외부에서 직접 조작 가능.
-    // 초기 상태는 dirty set 우선, 없으면 id 기준.
-    var statusInitial = _coverDirtyGroups.has(gi)
-      ? { color:'#e67e22', bg:'#fef5e7', label:'미저장 (저장 버튼을 눌러주세요)' }
-      : (g.id
-          ? { color:'#27ae60', bg:'#eafaf1', label:'저장됨' }
-          : { color:'#e67e22', bg:'#fef5e7', label:'미저장 (저장 버튼을 눌러주세요)' });
+    // QA #297 + #298 — data-cover-status 어트리뷰트로 외부에서 조작.
+    // 초기 상태: dirty > 임시저장 > 예약 > 공개.
+    var statusInitial = _coverComputeStatusInitial(gi, g);
     var statusBadge = '<span data-cover-status '
       + 'style="font-size:10px;color:'+statusInitial.color+';padding:2px 8px;background:'+statusInitial.bg+';border-radius:3px">'
       + statusInitial.label + '</span>';
@@ -9784,16 +9780,32 @@ function renderCovers(){
     html += '</div>';
     html += '</div>';
 
-    // 우측 그룹 액션 (활성 / 순서 / 저장 / 삭제)
-    html += '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">';
-    html += '<label class="pe-check" style="white-space:nowrap"><input type="checkbox" '
-      + (g.is_active !== false ? 'checked' : '')
-      + ' onchange="coverGroups['+gi+'].is_active=this.checked;_coverMarkDirty('+gi+')"> 활성</label>';
-    html += '<div style="display:flex;gap:4px">'
-      + '<button class="btn btn-sm" title="위로" onclick="moveCoverGroup('+gi+',-1)">↑</button>'
-      + '<button class="btn btn-sm" title="아래로" onclick="moveCoverGroup('+gi+',1)">↓</button>'
+    // 우측 그룹 액션 ─ QA #298: 게시 모드 라디오 (공개/예약/임시저장)
+    // + 예약 일시 입력 + 순서/저장/삭제 버튼.
+    var mode = _coverDeriveMode(g);  // 'public' | 'scheduled' | 'draft'
+    html += '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;min-width:220px">';
+    html += '<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end;font-size:11px">'
+      + '<label class="pe-check" style="white-space:nowrap;font-weight:600"><input type="radio" name="coverMode_'+gi+'" value="public" '
+      +   (mode === 'public' ? 'checked' : '')
+      +   ' onchange="_coverSetMode('+gi+',\'public\')"> 공개 (즉시 노출)</label>'
+      + '<label class="pe-check" style="white-space:nowrap;font-weight:600"><input type="radio" name="coverMode_'+gi+'" value="scheduled" '
+      +   (mode === 'scheduled' ? 'checked' : '')
+      +   ' onchange="_coverSetMode('+gi+',\'scheduled\')"> ⏰ 예약 발행</label>'
+      + '<label class="pe-check" style="white-space:nowrap;font-weight:600"><input type="radio" name="coverMode_'+gi+'" value="draft" '
+      +   (mode === 'draft' ? 'checked' : '')
+      +   ' onchange="_coverSetMode('+gi+',\'draft\')"> 📦 임시저장</label>'
+      + '</div>';
+    // 예약 일시 입력 ─ 예약 모드일 때만 노출.
+    var schedDisplay = _coverDatetimeForInput(g.scheduled_publish_at);
+    html += '<div style="display:'+(mode === 'scheduled' ? 'flex' : 'none')+';flex-direction:column;gap:2px;width:100%">'
+      + '<input type="datetime-local" value="'+schedDisplay+'" '
+      +   'onchange="coverGroups['+gi+'].scheduled_publish_at=this.value;_coverMarkDirty('+gi+')" '
+      +   'style="font-size:11px;padding:4px 6px;border:1px solid var(--border)">'
+      + '<span style="font-size:10px;color:var(--text3);text-align:right">현지 시간 기준 · 시점 도래 시 자동 노출</span>'
       + '</div>';
     html += '<div style="display:flex;gap:4px;margin-top:4px">'
+      + '<button class="btn btn-sm" title="위로" onclick="moveCoverGroup('+gi+',-1)">↑</button>'
+      + '<button class="btn btn-sm" title="아래로" onclick="moveCoverGroup('+gi+',1)">↓</button>'
       + '<button class="btn btn-sm" style="background:#2c3e50;color:#fff" onclick="saveCoverGroup('+gi+')">저장</button>'
       + '<button class="btn btn-sm btn-red" onclick="deleteCoverGroup('+gi+')">삭제</button>'
       + '</div>';
@@ -9923,9 +9935,85 @@ function addCoverGroup(){
     link_url: '',
     sort_order: coverGroups.length,
     is_active: true,
+    scheduled_publish_at: null,  // QA #298
     images: []
   });
   renderCovers();
+}
+
+// ─── QA #298 게시 모드 헬퍼 ────────────────────────────────────────────
+// 모드 = 'public' | 'scheduled' | 'draft'  (저장은 is_active +
+// scheduled_publish_at 2개 컬럼 조합). UI 만 모드를 보여주고, 저장
+// 데이터는 기존 2개 필드 그대로 사용 ─ DB 스키마 추가 변경 없음.
+function _coverDeriveMode(g){
+  if(!g) return 'public';
+  if(g.is_active === false) return 'draft';
+  if(g.scheduled_publish_at){
+    var t = new Date(g.scheduled_publish_at).getTime();
+    if(!isNaN(t) && t > Date.now()) return 'scheduled';
+  }
+  return 'public';
+}
+
+function _coverSetMode(gi, mode){
+  var g = coverGroups[gi];
+  if(!g) return;
+  if(mode === 'draft'){
+    g.is_active = false;
+    // scheduled_publish_at 은 보존 (사용자가 임시저장 → 다시 예약 모드로
+    // 돌아갔을 때 입력값이 사라지지 않도록).
+  } else if(mode === 'scheduled'){
+    g.is_active = true;
+    // 예약 일시가 비어있거나 과거이면 기본값 = 현재 시간 + 24h.
+    var t = g.scheduled_publish_at ? new Date(g.scheduled_publish_at).getTime() : 0;
+    if(!t || isNaN(t) || t <= Date.now()){
+      var d = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      // YYYY-MM-DDTHH:MM (로컬 timezone)
+      g.scheduled_publish_at = _coverDatetimeForInput(d);
+    }
+  } else { // public
+    g.is_active = true;
+    g.scheduled_publish_at = null;
+  }
+  _coverMarkDirty(gi);
+  renderCovers();
+}
+
+// datetime-local input 의 value 포맷 (YYYY-MM-DDTHH:MM, 로컬 timezone).
+function _coverDatetimeForInput(value){
+  if(!value) return '';
+  var d = (value instanceof Date) ? value : new Date(value);
+  if(isNaN(d.getTime())) return '';
+  var pad = function(n){ return n < 10 ? '0' + n : '' + n; };
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate())
+    + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+
+// 카드 헤더 statusBadge 초기 값 계산 (저장된 경우 모드별 색상).
+function _coverComputeStatusInitial(gi, g){
+  if(_coverDirtyGroups.has(gi)){
+    return { color:'#e67e22', bg:'#fef5e7', label:'미저장 (저장 버튼을 눌러주세요)' };
+  }
+  if(!g.id){
+    return { color:'#e67e22', bg:'#fef5e7', label:'미저장 (저장 버튼을 눌러주세요)' };
+  }
+  var mode = _coverDeriveMode(g);
+  if(mode === 'draft'){
+    return { color:'#7f8c8d', bg:'#ecf0f1', label:'📦 임시저장' };
+  }
+  if(mode === 'scheduled'){
+    var t = new Date(g.scheduled_publish_at);
+    var label = '⏰ 예약: ' + _coverFormatScheduledLabel(t);
+    return { color:'#2980b9', bg:'#eaf4fb', label: label };
+  }
+  return { color:'#27ae60', bg:'#eafaf1', label:'공개 중' };
+}
+
+function _coverFormatScheduledLabel(d){
+  if(!d || isNaN(d.getTime())) return '';
+  var pad = function(n){ return n < 10 ? '0' + n : '' + n; };
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate())
+    + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
 }
 
 function deleteCoverGroup(gi){
@@ -9984,12 +10072,25 @@ function saveCoverGroup(gi){
       };
     });
 
+  // QA #298 — 예약 일시 validation. 예약 모드인데 일시가 비어있으면 거부.
+  var mode = _coverDeriveMode(g);
+  if(mode === 'scheduled' && !g.scheduled_publish_at){
+    alert('예약 발행을 선택했지만 예약 일시가 비어 있습니다.\n일시를 입력하거나 다른 모드를 선택해주세요.');
+    return;
+  }
+  var schedIso = null;
+  if(g.scheduled_publish_at){
+    var sd = new Date(g.scheduled_publish_at);
+    if(!isNaN(sd.getTime())) schedIso = sd.toISOString();
+  }
+
   var payload = {
     issue: g.issue || null,
     title: g.title,
     link_url: g.link_url || null,
     sort_order: gi,
     is_active: g.is_active !== false,
+    scheduled_publish_at: schedIso,  // QA #298
     images: imgsForSave
   };
 
@@ -10016,6 +10117,10 @@ function saveCoverGroup(gi){
   }).then(function(json){
     if(json && json.data){
       coverGroups[gi].id = json.data.id;
+      // QA #298 — 서버가 정규화한 scheduled_publish_at 으로 클라이언트 값을
+      // 다시 동기화 (서버 시각 기준 ISO).
+      coverGroups[gi].scheduled_publish_at = json.data.scheduled_publish_at || null;
+      coverGroups[gi].is_active = json.data.is_active !== false;
       if(Array.isArray(json.data.images)){
         coverGroups[gi].images = json.data.images.map(function(im){
           return {
@@ -10247,6 +10352,7 @@ function loadCoverGroups(){
           link_url: g.link_url || '',
           sort_order: typeof g.sort_order === 'number' ? g.sort_order : idx,
           is_active: g.is_active !== false,
+          scheduled_publish_at: g.scheduled_publish_at || null,  // QA #298
           images: Array.isArray(g.images) ? g.images.map(function(im){
             return {
               id: im.id || null,
@@ -10453,11 +10559,13 @@ function _coverUpdateCardStatus(gi, state, message){
   statusEl.style.cssText = 'font-size:10px;padding:2px 8px;border-radius:3px;' + (styles[state] || '');
   statusEl.textContent = labels[state] || '';
   if(state === 'saved-ok'){
-    // 4초 뒤 'saved' 로 복귀.
+    // QA #298 — 4초 뒤 모드별 적절한 라벨로 복귀 (공개 중 / 예약 / 임시저장).
     setTimeout(function(){
       var still = document.querySelector('[data-cover-card="' + gi + '"] [data-cover-status]');
       if(still && still.textContent === '✓ 저장 완료'){
-        _coverUpdateCardStatus(gi, 'saved');
+        var initial = _coverComputeStatusInitial(gi, coverGroups[gi]);
+        still.style.cssText = 'font-size:10px;padding:2px 8px;border-radius:3px;color:'+initial.color+';background:'+initial.bg;
+        still.textContent = initial.label;
       }
     }, 4000);
   }
