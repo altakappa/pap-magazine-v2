@@ -9723,6 +9723,71 @@ function _coverEscapeHtml(s){
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+// ─── QA #299 목록 페이지 상태 ───────────────────────────────────────
+var _coverSearch = '';
+var _coverStatusFilter = 'all';   // all | public | scheduled | draft | ended
+var _coverActiveEditGi = -1;      // 현재 펼쳐서 편집 중인 그룹 인덱스 (-1=없음)
+
+function _coverComputeStatus(g){
+  // 상태 우선순위: ended > draft > scheduled > public
+  if(!g) return 'draft';
+  if(g.ended_at){
+    var et = new Date(g.ended_at).getTime();
+    if(!isNaN(et) && et <= Date.now()) return 'ended';
+  }
+  if(g.is_active === false) return 'draft';
+  if(g.scheduled_publish_at){
+    var st = new Date(g.scheduled_publish_at).getTime();
+    if(!isNaN(st) && st > Date.now()) return 'scheduled';
+  }
+  return 'public';
+}
+
+function _coverStatusBadgeHtml(status){
+  var styles = {
+    'public':    { color:'#fff', bg:'#27ae60', label:'공개' },
+    'scheduled': { color:'#fff', bg:'#2980b9', label:'⏰ 예약' },
+    'draft':     { color:'#fff', bg:'#7f8c8d', label:'📦 임시저장' },
+    'ended':     { color:'#fff', bg:'#34495e', label:'종료' }
+  };
+  var s = styles[status] || styles['draft'];
+  return '<span style="font-size:10px;padding:3px 9px;border-radius:3px;color:'+s.color+';background:'+s.bg+';white-space:nowrap">'+s.label+'</span>';
+}
+
+function _coverFormatDateShort(v){
+  if(!v) return '<span style="color:var(--text3)">—</span>';
+  var d = new Date(v);
+  if(isNaN(d.getTime())) return '<span style="color:var(--text3)">—</span>';
+  var pad = function(n){ return n<10 ? '0'+n : ''+n; };
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate())
+    + ' <span style="color:var(--text3)">' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + '</span>';
+}
+
+function _coverGroupAuthor(g){
+  var who = g && (g._editor || g._creator);
+  if(who && who.display_name) return _coverEscapeHtml(who.display_name);
+  if(who && who.email) return _coverEscapeHtml(String(who.email).split('@')[0]);
+  return '<span style="color:var(--text3)">—</span>';
+}
+
+function _coverOnSearchInput(v){
+  _coverSearch = String(v || '').trim().toLowerCase();
+  renderCovers();
+}
+function _coverOnStatusFilter(v){
+  _coverStatusFilter = v || 'all';
+  renderCovers();
+}
+
+function toggleCoverEdit(gi){
+  if(_coverActiveEditGi === gi){
+    _coverActiveEditGi = -1;
+  } else {
+    _coverActiveEditGi = gi;
+  }
+  renderCovers();
+}
+
 function renderCovers(){
   var el = document.getElementById('coverList');
   if(!el) return;
@@ -9732,88 +9797,192 @@ function renderCovers(){
     return;
   }
 
+  // ── 상단: 검색 + 상태 필터 + 추가 버튼 ────────────────────────────
+  var statusCounts = { all: 0, public: 0, scheduled: 0, draft: 0, ended: 0 };
+  coverGroups.forEach(function(g){
+    statusCounts.all += 1;
+    var s = _coverComputeStatus(g);
+    statusCounts[s] = (statusCounts[s] || 0) + 1;
+  });
+
+  var html = '';
+  html += '<div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap">';
+  html += '<input type="text" placeholder="제목 / 발행호 검색" value="'+_coverEscapeHtml(_coverSearch)+'" '
+    + 'oninput="_coverOnSearchInput(this.value)" '
+    + 'style="flex:1;min-width:200px;padding:7px 10px;font-size:13px;border:1px solid var(--border);background:var(--surface)">';
+  html += '<select onchange="_coverOnStatusFilter(this.value)" '
+    + 'style="padding:7px 10px;font-size:12px;border:1px solid var(--border);background:var(--surface)">'
+    + '<option value="all"'      + (_coverStatusFilter==='all'?' selected':'')      + '>전체 ('+statusCounts.all+')</option>'
+    + '<option value="public"'   + (_coverStatusFilter==='public'?' selected':'')   + '>공개 ('+statusCounts.public+')</option>'
+    + '<option value="scheduled"'+ (_coverStatusFilter==='scheduled'?' selected':'')+ '>예약 ('+statusCounts.scheduled+')</option>'
+    + '<option value="draft"'    + (_coverStatusFilter==='draft'?' selected':'')    + '>임시저장 ('+statusCounts.draft+')</option>'
+    + '<option value="ended"'    + (_coverStatusFilter==='ended'?' selected':'')    + '>종료 ('+statusCounts.ended+')</option>'
+    + '</select>';
+  html += '<button class="btn" onclick="addCoverGroup()">+ 새 배너 추가</button>';
+  html += '</div>';
+
+  // ── 행 필터링 ─────────────────────────────────────────────────────
+  var rows = coverGroups.map(function(g, gi){ return { g: g, gi: gi, status: _coverComputeStatus(g) }; });
+  if(_coverStatusFilter !== 'all'){
+    rows = rows.filter(function(r){ return r.status === _coverStatusFilter; });
+  }
+  if(_coverSearch){
+    rows = rows.filter(function(r){
+      var hay = ((r.g.title || '') + ' ' + (r.g.issue || '')).toLowerCase();
+      return hay.indexOf(_coverSearch) !== -1;
+    });
+  }
+
+  // ── 빈 상태 ───────────────────────────────────────────────────────
   if(coverGroups.length === 0){
-    el.innerHTML = '<div style="padding:60px;text-align:center;color:var(--text3);border:1px dashed var(--border);background:var(--surface)">'
+    html += '<div style="padding:60px;text-align:center;color:var(--text3);border:1px dashed var(--border);background:var(--surface)">'
       + '등록된 배너 그룹이 없습니다.<br><br>'
       + '<button class="btn" onclick="addCoverGroup()">+ 첫 그룹 추가</button>'
       + '</div>';
+    el.innerHTML = html;
+    return;
+  }
+  if(rows.length === 0){
+    html += '<div style="padding:50px;text-align:center;color:var(--text3);border:1px dashed var(--border)">'
+      + '검색 / 필터 조건에 맞는 배너가 없습니다.</div>';
+    el.innerHTML = html;
     return;
   }
 
+  // ── 테이블 ─────────────────────────────────────────────────────────
+  html += '<div style="background:var(--surface);border:1px solid var(--border);overflow:hidden">';
+  html += '<table style="width:100%;border-collapse:collapse;font-size:12px">';
+  html += '<thead><tr style="background:rgba(0,0,0,.04);border-bottom:1px solid var(--border)">'
+    + '<th style="text-align:left;padding:10px 12px;font-weight:700;color:var(--text2);width:30%">제목</th>'
+    + '<th style="text-align:left;padding:10px 12px;font-weight:700;color:var(--text2);width:90px">상태</th>'
+    + '<th style="text-align:left;padding:10px 12px;font-weight:700;color:var(--text2);width:140px">작성일</th>'
+    + '<th style="text-align:left;padding:10px 12px;font-weight:700;color:var(--text2);width:140px">예약일</th>'
+    + '<th style="text-align:left;padding:10px 12px;font-weight:700;color:var(--text2);width:110px">작성자</th>'
+    + '<th style="text-align:left;padding:10px 12px;font-weight:700;color:var(--text2);width:140px">최종 수정일</th>'
+    + '<th style="text-align:right;padding:10px 12px;font-weight:700;color:var(--text2);width:140px">작업</th>'
+    + '</tr></thead><tbody>';
+
+  rows.forEach(function(r){
+    var g = r.g, gi = r.gi;
+    var isOpen = _coverActiveEditGi === gi;
+    var imageCount = Array.isArray(g.images) ? g.images.length : 0;
+    var titleCell = '<div style="font-weight:600;color:var(--text1)">' + _coverEscapeHtml(g.title || '(제목 없음)') + '</div>'
+      + (g.issue ? '<div style="font-size:10px;color:var(--text3);margin-top:2px">' + _coverEscapeHtml(g.issue) + '</div>' : '')
+      + '<div style="font-size:10px;color:var(--text3);margin-top:2px">🖼 ' + imageCount + '장</div>';
+
+    html += '<tr style="border-bottom:1px solid var(--border);' + (isOpen ? 'background:rgba(46,204,113,.06)' : '') + '">'
+      + '<td style="padding:10px 12px;vertical-align:top">' + titleCell + '</td>'
+      + '<td style="padding:10px 12px;vertical-align:top">' + _coverStatusBadgeHtml(r.status) + '</td>'
+      + '<td style="padding:10px 12px;vertical-align:top;color:var(--text2)">' + _coverFormatDateShort(g.created_at) + '</td>'
+      + '<td style="padding:10px 12px;vertical-align:top;color:var(--text2)">' + (g.scheduled_publish_at ? _coverFormatDateShort(g.scheduled_publish_at) : '<span style="color:var(--text3)">—</span>') + '</td>'
+      + '<td style="padding:10px 12px;vertical-align:top;color:var(--text2)">' + _coverGroupAuthor(g) + '</td>'
+      + '<td style="padding:10px 12px;vertical-align:top;color:var(--text2)">' + _coverFormatDateShort(g.updated_at) + '</td>'
+      + '<td style="padding:10px 12px;vertical-align:top;text-align:right">'
+      +   '<button class="btn btn-sm" onclick="toggleCoverEdit('+gi+')">'+ (isOpen ? '접기' : '수정') +'</button> '
+      +   '<button class="btn btn-sm btn-red" onclick="deleteCoverGroup('+gi+')">삭제</button>'
+      + '</td>'
+      + '</tr>';
+
+    // 펼친 편집 카드 → 같은 테이블에 colspan 행으로 inline 노출.
+    if(isOpen){
+      html += '<tr style="background:#fff"><td colspan="7" style="padding:0;border-bottom:1px solid var(--border)">'
+        + '<div style="padding:0">' + _coverRenderEditCard(g, gi) + '</div>'
+        + '</td></tr>';
+    }
+  });
+
+  html += '</tbody></table></div>';
+  el.innerHTML = html;
+}
+
+// ─── QA #299 편집 카드 HTML (기존 renderCovers 카드 부분을 분리) ───
+// 펼쳐진 한 그룹에 대해서만 호출됨. 반환값은 그대로 외부에서 innerHTML.
+function _coverRenderEditCard(g, gi){
+  var issueVal = _coverEscapeHtml(g.issue || '');
+  var titleVal = _coverEscapeHtml(g.title || '');
+  var linkVal  = _coverEscapeHtml(g.link_url || '');
+  // ── 게시 상태 배지 ────────────────────────────────────────────────
+  var statusInitial = _coverComputeStatusInitial(gi, g);
+  var statusBadge = '<span data-cover-status '
+    + 'style="font-size:10px;color:'+statusInitial.color+';padding:2px 8px;background:'+statusInitial.bg+';border-radius:3px">'
+    + statusInitial.label + '</span>';
+
+  var html = '<div data-cover-card="'+gi+'" style="background:var(--surface);padding:20px;border-top:2px solid #27ae60">';
+
+  // 헤더 (발행호/제목/링크 + 그룹 액션)
+  html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:12px">';
+  html += '<div style="flex:1">';
+  html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'
+    + '<span style="font-size:11px;font-weight:700;color:var(--text2)">배너 그룹 ' + (gi+1) + '</span>'
+    + statusBadge + '</div>';
+  html += '<div style="display:grid;grid-template-columns:80px 1fr;gap:10px 14px;align-items:center">';
+  html += '<label style="font-size:11px;font-weight:700;color:var(--text3)">발행호</label>'
+    + '<input class="pe-input" value="'+issueVal+'" placeholder="예: JULY ISSUE"'
+    + ' onchange="coverGroups['+gi+'].issue=this.value;_coverMarkDirty('+gi+')">';
+  html += '<label style="font-size:11px;font-weight:700;color:var(--text3)">제목</label>'
+    + '<input class="pe-input" value="'+titleVal+'" placeholder="예: Masquerade (필수)"'
+    + ' onchange="coverGroups['+gi+'].title=this.value;_coverMarkDirty('+gi+')">';
+  html += '<label style="font-size:11px;font-weight:700;color:var(--text3)">링크</label>'
+    + '<div style="display:flex;gap:6px;align-items:center">'
+    +   '<input class="pe-input" value="'+linkVal+'" placeholder="클릭 시 이동할 URL (예: /editorial/masquerade)"'
+    +     ' style="flex:1" onchange="coverGroups['+gi+'].link_url=this.value;_coverMarkDirty('+gi+')">'
+    +   '<button class="btn btn-sm" style="white-space:nowrap" '
+    +     'onclick="openCoverEditorialPicker('+gi+')" title="발행된 에디토리얼을 검색해서 자동 연결">📰 에디토리얼 연결</button>'
+    + '</div>';
+  html += '</div>';
+  html += '</div>';
+
+  // 게시 모드 + 예약 일시 + 액션 버튼
+  var mode = _coverDeriveMode(g);
+  var schedDisplay = _coverDatetimeForInput(g.scheduled_publish_at);
+  html += '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;min-width:220px">';
+  html += '<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end;font-size:11px">'
+    + '<label class="pe-check" style="white-space:nowrap;font-weight:600"><input type="radio" name="coverMode_'+gi+'" value="public" '
+    +   (mode === 'public' ? 'checked' : '')
+    +   ' onchange="_coverSetMode('+gi+',\'public\')"> 공개 (즉시 노출)</label>'
+    + '<label class="pe-check" style="white-space:nowrap;font-weight:600"><input type="radio" name="coverMode_'+gi+'" value="scheduled" '
+    +   (mode === 'scheduled' ? 'checked' : '')
+    +   ' onchange="_coverSetMode('+gi+',\'scheduled\')"> ⏰ 예약 발행</label>'
+    + '<label class="pe-check" style="white-space:nowrap;font-weight:600"><input type="radio" name="coverMode_'+gi+'" value="draft" '
+    +   (mode === 'draft' ? 'checked' : '')
+    +   ' onchange="_coverSetMode('+gi+',\'draft\')"> 📦 임시저장</label>'
+    + '</div>';
+  html += '<div style="display:'+(mode === 'scheduled' ? 'flex' : 'none')+';flex-direction:column;gap:2px;width:100%">'
+    + '<input type="datetime-local" value="'+schedDisplay+'" '
+    +   'onchange="coverGroups['+gi+'].scheduled_publish_at=this.value;_coverMarkDirty('+gi+')" '
+    +   'style="font-size:11px;padding:4px 6px;border:1px solid var(--border)">'
+    + '<span style="font-size:10px;color:var(--text3);text-align:right">현지 시간 기준 · 시점 도래 시 자동 노출</span>'
+    + '</div>';
+  // QA #299 — 운영 종료 일시 (선택 입력). 운영 종료 시점을 미리 예약해두면 hero 에서 자동 사라짐.
+  var endedDisplay = _coverDatetimeForInput(g.ended_at);
+  html += '<div style="display:flex;flex-direction:column;gap:2px;width:100%;margin-top:4px;border-top:1px dashed var(--border);padding-top:6px">'
+    + '<label style="font-size:10px;color:var(--text3)">운영 종료 (선택)</label>'
+    + '<input type="datetime-local" value="'+endedDisplay+'" '
+    +   'onchange="coverGroups['+gi+'].ended_at=this.value;_coverMarkDirty('+gi+')" '
+    +   'style="font-size:11px;padding:4px 6px;border:1px solid var(--border)">'
+    + '<div style="font-size:10px;color:var(--text3);text-align:right;display:flex;gap:6px;justify-content:flex-end">'
+    +   '<a href="#" onclick="event.preventDefault();coverGroups['+gi+'].ended_at=null;_coverMarkDirty('+gi+');renderCovers()" style="color:var(--text3)">비우기</a>'
+    +   '<a href="#" onclick="event.preventDefault();coverGroups['+gi+'].ended_at=new Date().toISOString();_coverMarkDirty('+gi+');renderCovers()" style="color:#e74c3c">지금 종료</a>'
+    + '</div>'
+    + '</div>';
+  html += '<div style="display:flex;gap:4px;margin-top:4px">'
+    + '<button class="btn btn-sm" style="background:#2c3e50;color:#fff" onclick="saveCoverGroup('+gi+')">저장</button>'
+    + '<button class="btn btn-sm" onclick="toggleCoverEdit('+gi+')">닫기</button>'
+    + '</div>';
+  html += '</div>';
+  html += '</div>'; // /header row
+
+  // 이미지 영역 (PC + 모바일 슬롯, 드래그&드롭) ─ 기존 코드 그대로 복사용
+  html += _coverRenderImagesArea(g, gi);
+
+  html += '</div>'; // /card
+  return html;
+}
+
+function _coverRenderImagesArea(g, gi){
   var html = '';
-  coverGroups.forEach(function(g, gi){
-    var issueVal = _coverEscapeHtml(g.issue || '');
-    var titleVal = _coverEscapeHtml(g.title || '');
-    var linkVal  = _coverEscapeHtml(g.link_url || '');
-    // QA #297 + #298 — data-cover-status 어트리뷰트로 외부에서 조작.
-    // 초기 상태: dirty > 임시저장 > 예약 > 공개.
-    var statusInitial = _coverComputeStatusInitial(gi, g);
-    var statusBadge = '<span data-cover-status '
-      + 'style="font-size:10px;color:'+statusInitial.color+';padding:2px 8px;background:'+statusInitial.bg+';border-radius:3px">'
-      + statusInitial.label + '</span>';
-
-    html += '<div data-cover-card="'+gi+'" style="background:var(--surface);border:1px solid var(--border);padding:24px;margin-bottom:20px;border-radius:6px">';
-
-    // ── 헤더 (발행호 + 제목 + 링크 + 그룹 액션 버튼들) ────────────────
-    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:12px">';
-    html += '<div style="flex:1">';
-    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'
-      + '<span style="font-size:11px;font-weight:700;color:var(--text2)">배너 그룹 ' + (gi+1) + '</span>'
-      + statusBadge + '</div>';
-    html += '<div style="display:grid;grid-template-columns:80px 1fr;gap:10px 14px;align-items:center">';
-    html += '<label style="font-size:11px;font-weight:700;color:var(--text3)">발행호</label>'
-      + '<input class="pe-input" value="'+issueVal+'" placeholder="예: JULY ISSUE"'
-      + ' onchange="coverGroups['+gi+'].issue=this.value;_coverMarkDirty('+gi+')">';
-    html += '<label style="font-size:11px;font-weight:700;color:var(--text3)">제목</label>'
-      + '<input class="pe-input" value="'+titleVal+'" placeholder="예: Masquerade (필수)"'
-      + ' onchange="coverGroups['+gi+'].title=this.value;_coverMarkDirty('+gi+')">';
-    // QA #297 — 링크 행 옆에 "에디토리얼 연결" 버튼. 클릭 → popup picker
-    // → 선택 시 link_url = /editorial/<slug> 자동 채움 (+ 비어있으면
-    // issue/title 도 자동 채움).
-    html += '<label style="font-size:11px;font-weight:700;color:var(--text3)">링크</label>'
-      + '<div style="display:flex;gap:6px;align-items:center">'
-      +   '<input class="pe-input" value="'+linkVal+'" placeholder="클릭 시 이동할 URL (예: /editorial/masquerade)"'
-      +     ' style="flex:1" onchange="coverGroups['+gi+'].link_url=this.value;_coverMarkDirty('+gi+')">'
-      +   '<button class="btn btn-sm" style="white-space:nowrap" '
-      +     'onclick="openCoverEditorialPicker('+gi+')" title="발행된 에디토리얼을 검색해서 자동 연결">📰 에디토리얼 연결</button>'
-      + '</div>';
-    html += '</div>';
-    html += '</div>';
-
-    // 우측 그룹 액션 ─ QA #298: 게시 모드 라디오 (공개/예약/임시저장)
-    // + 예약 일시 입력 + 순서/저장/삭제 버튼.
-    var mode = _coverDeriveMode(g);  // 'public' | 'scheduled' | 'draft'
-    html += '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;min-width:220px">';
-    html += '<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end;font-size:11px">'
-      + '<label class="pe-check" style="white-space:nowrap;font-weight:600"><input type="radio" name="coverMode_'+gi+'" value="public" '
-      +   (mode === 'public' ? 'checked' : '')
-      +   ' onchange="_coverSetMode('+gi+',\'public\')"> 공개 (즉시 노출)</label>'
-      + '<label class="pe-check" style="white-space:nowrap;font-weight:600"><input type="radio" name="coverMode_'+gi+'" value="scheduled" '
-      +   (mode === 'scheduled' ? 'checked' : '')
-      +   ' onchange="_coverSetMode('+gi+',\'scheduled\')"> ⏰ 예약 발행</label>'
-      + '<label class="pe-check" style="white-space:nowrap;font-weight:600"><input type="radio" name="coverMode_'+gi+'" value="draft" '
-      +   (mode === 'draft' ? 'checked' : '')
-      +   ' onchange="_coverSetMode('+gi+',\'draft\')"> 📦 임시저장</label>'
-      + '</div>';
-    // 예약 일시 입력 ─ 예약 모드일 때만 노출.
-    var schedDisplay = _coverDatetimeForInput(g.scheduled_publish_at);
-    html += '<div style="display:'+(mode === 'scheduled' ? 'flex' : 'none')+';flex-direction:column;gap:2px;width:100%">'
-      + '<input type="datetime-local" value="'+schedDisplay+'" '
-      +   'onchange="coverGroups['+gi+'].scheduled_publish_at=this.value;_coverMarkDirty('+gi+')" '
-      +   'style="font-size:11px;padding:4px 6px;border:1px solid var(--border)">'
-      + '<span style="font-size:10px;color:var(--text3);text-align:right">현지 시간 기준 · 시점 도래 시 자동 노출</span>'
-      + '</div>';
-    html += '<div style="display:flex;gap:4px;margin-top:4px">'
-      + '<button class="btn btn-sm" title="위로" onclick="moveCoverGroup('+gi+',-1)">↑</button>'
-      + '<button class="btn btn-sm" title="아래로" onclick="moveCoverGroup('+gi+',1)">↓</button>'
-      + '<button class="btn btn-sm" style="background:#2c3e50;color:#fff" onclick="saveCoverGroup('+gi+')">저장</button>'
-      + '<button class="btn btn-sm btn-red" onclick="deleteCoverGroup('+gi+')">삭제</button>'
-      + '</div>';
-    html += '</div>';
-    html += '</div>'; // /header row
-
     // ── 이미지 영역 (QA #296: PC/모바일 듀얼 슬롯) ─────────────────────
-    html += '<div style="border-top:1px solid var(--border);padding-top:14px">';
+    html += '<div style="border-top:1px solid var(--border);padding-top:14px;margin-top:14px">';
 
     // 헤더: 카운트 + 규격 안내 + 추가 버튼
     html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:12px;flex-wrap:wrap">'
@@ -9909,10 +10078,7 @@ function renderCovers(){
 
     html += '</div>'; // /drop zone
     html += '</div>'; // /image area
-    html += '</div>'; // /card
-  });
-
-  el.innerHTML = html;
+  return html;
 }
 
 // "이 그룹은 저장이 필요합니다" 시각적 표시 ─ 카드 보더 + status 배지.
@@ -10120,7 +10286,15 @@ function saveCoverGroup(gi){
       // QA #298 — 서버가 정규화한 scheduled_publish_at 으로 클라이언트 값을
       // 다시 동기화 (서버 시각 기준 ISO).
       coverGroups[gi].scheduled_publish_at = json.data.scheduled_publish_at || null;
+      coverGroups[gi].ended_at = json.data.ended_at || null;  // QA #299
       coverGroups[gi].is_active = json.data.is_active !== false;
+      // QA #299 — 작성자/수정자/타임스탬프도 서버 값으로 동기화 (목록 컬럼 즉시 반영).
+      coverGroups[gi].created_at = json.data.created_at || coverGroups[gi].created_at;
+      coverGroups[gi].updated_at = json.data.updated_at || coverGroups[gi].updated_at;
+      coverGroups[gi].created_by = json.data.created_by || coverGroups[gi].created_by;
+      coverGroups[gi].updated_by = json.data.updated_by || coverGroups[gi].updated_by;
+      if(json.data._creator) coverGroups[gi]._creator = json.data._creator;
+      if(json.data._editor)  coverGroups[gi]._editor  = json.data._editor;
       if(Array.isArray(json.data.images)){
         coverGroups[gi].images = json.data.images.map(function(im){
           return {
@@ -10353,6 +10527,13 @@ function loadCoverGroups(){
           sort_order: typeof g.sort_order === 'number' ? g.sort_order : idx,
           is_active: g.is_active !== false,
           scheduled_publish_at: g.scheduled_publish_at || null,  // QA #298
+          ended_at: g.ended_at || null,                          // QA #299
+          created_at: g.created_at || null,
+          updated_at: g.updated_at || null,
+          created_by: g.created_by || null,
+          updated_by: g.updated_by || null,
+          _creator: g._creator || null,
+          _editor: g._editor || null,
           images: Array.isArray(g.images) ? g.images.map(function(im){
             return {
               id: im.id || null,

@@ -36,15 +36,16 @@ module.exports = async function handler(req, res) {
 
   try {
     // 그룹 + 이미지 nested. PostgREST 의 embed 문법으로 단일 round-trip.
-    // QA #296 — image_url_mobile 추가 (모바일 viewport 에서 우선).
-    // QA #298 — scheduled_publish_at 게이트. is_active=true + (NULL or 이미 도래)
-    // 만 hero 에 노출. 미래 예약은 시각 도래 후 자동으로 보임.
+    // QA #296 — image_url_mobile (모바일 viewport 우선).
+    // QA #298 — scheduled_publish_at 게이트.
+    // QA #299 — ended_at 게이트. ended IS NULL 이거나 NOW() 이후일 때만 노출.
     const nowIso = new Date().toISOString();
     const { data: groups, error } = await supabaseAdmin
       .from('cover_groups')
       .select('id,issue,title,link_url,sort_order,images:cover_images(id,image_url,image_url_mobile,sort_order)')
       .eq('is_active', true)
       .or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${nowIso}`)
+      .or(`ended_at.is.null,ended_at.gt.${nowIso}`)
       .order('sort_order', { ascending: true });
 
     if (error) {

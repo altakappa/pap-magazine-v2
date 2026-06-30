@@ -21,6 +21,7 @@ const { supabaseAdmin } = require('../../_lib/supabase');
 const { handleCors }    = require('../../_lib/cors');
 const { requireAdmin }  = require('../../_lib/auth');
 const { rateLimit, RATE_LIMITS } = require('../../_lib/rateLimit');
+const { attachAuthorship } = require('../../_lib/audit');  // QA #299
 
 // 들어오는 image 배열을 sort_order 와 함께 정규화. 빈 image_url 은 drop.
 // QA #296 — image_url_mobile (옵션) 도 함께 정규화. 빈 문자열 → null.
@@ -41,12 +42,13 @@ function normalizeImages(rawImages) {
 }
 
 // group 본문(텍스트 필드만)을 정규화. null/undefined 처리.
-// QA #298 — scheduled_publish_at (ISO 문자열 또는 null) 도 함께 정규화.
+// QA #298 — scheduled_publish_at (ISO 또는 null).
+// QA #299 — ended_at (ISO 또는 null). 운영 종료 시점 마킹.
 function normalizeGroupFields(body) {
-  let scheduledAt = null;
-  if (body.scheduled_publish_at) {
-    const d = new Date(body.scheduled_publish_at);
-    if (!isNaN(d.getTime())) scheduledAt = d.toISOString();
+  function _toIso(v) {
+    if (!v) return null;
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? null : d.toISOString();
   }
   return {
     issue:      body.issue      != null ? String(body.issue).trim()      : null,
@@ -54,7 +56,8 @@ function normalizeGroupFields(body) {
     link_url:   body.link_url   != null ? String(body.link_url).trim()   : null,
     sort_order: Number.isFinite(body.sort_order) ? body.sort_order : 0,
     is_active:  body.is_active === false ? false : true,
-    scheduled_publish_at: scheduledAt,
+    scheduled_publish_at: _toIso(body.scheduled_publish_at),
+    ended_at:            _toIso(body.ended_at),
   };
 }
 
@@ -69,9 +72,10 @@ module.exports = async function handler(req, res) {
   // ── GET ────────────────────────────────────────────────────────────
   if (req.method === 'GET') {
     try {
+      // QA #299 — created_by/updated_by/ended_at 컬럼 + attachAuthorship.
       const { data, error } = await supabaseAdmin
         .from('cover_groups')
-        .select('id,issue,title,link_url,sort_order,is_active,scheduled_publish_at,created_at,updated_at,images:cover_images(id,image_url,image_url_mobile,sort_order)')
+        .select('id,issue,title,link_url,sort_order,is_active,scheduled_publish_at,ended_at,created_at,updated_at,created_by,updated_by,images:cover_images(id,image_url,image_url_mobile,sort_order)')
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true });
 
@@ -87,6 +91,9 @@ module.exports = async function handler(req, res) {
         });
         return Object.assign({}, g, { images: imgs });
       });
+
+      // QA #299 — _creator / _editor 객체 부여 (display_name 포함).
+      await attachAuthorship(out);
 
       res.setHeader('Cache-Control', 'private, no-store');
       return res.status(200).json({ data: out });
@@ -107,9 +114,14 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ message: 'title is required' });
       }
 
+      // QA #299 — 등록자 + 최초 수정자 = 현재 admin user.
+      const insertRow = Object.assign({}, group, {
+        created_by: user.id,
+        updated_by: user.id,
+      });
       const { data: created, error: insErr } = await supabaseAdmin
         .from('cover_groups')
-        .insert(group)
+        .insert(insertRow)
         .select()
         .single();
 
@@ -155,9 +167,11 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ message: 'title is required' });
       }
 
+      // QA #299 — 최종 수정자 자동 갱신 (created_by 는 보존).
+      const updateRow = Object.assign({}, group, { updated_by: user.id });
       const { data: updated, error: updErr } = await supabaseAdmin
         .from('cover_groups')
-        .update(group)
+        .update(updateRow)
         .eq('id', id)
         .select()
         .single();
