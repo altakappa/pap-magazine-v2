@@ -23,14 +23,17 @@ const { requireAdmin }  = require('../../_lib/auth');
 const { rateLimit, RATE_LIMITS } = require('../../_lib/rateLimit');
 
 // 들어오는 image 배열을 sort_order 와 함께 정규화. 빈 image_url 은 drop.
+// QA #296 — image_url_mobile (옵션) 도 함께 정규화. 빈 문자열 → null.
 function normalizeImages(rawImages) {
   if (!Array.isArray(rawImages)) return [];
   return rawImages
     .map(function (img, idx) {
-      const url = String((img && img.image_url) || '').trim();
+      const url       = String((img && img.image_url) || '').trim();
+      const urlMobile = String((img && img.image_url_mobile) || '').trim();
       if (!url) return null;
       return {
         image_url: url,
+        image_url_mobile: urlMobile || null,
         sort_order: Number.isFinite(img && img.sort_order) ? img.sort_order : idx,
       };
     })
@@ -61,7 +64,7 @@ module.exports = async function handler(req, res) {
     try {
       const { data, error } = await supabaseAdmin
         .from('cover_groups')
-        .select('id,issue,title,link_url,sort_order,is_active,created_at,updated_at,images:cover_images(id,image_url,sort_order)')
+        .select('id,issue,title,link_url,sort_order,is_active,created_at,updated_at,images:cover_images(id,image_url,image_url_mobile,sort_order)')
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true });
 

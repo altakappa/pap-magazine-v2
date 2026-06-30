@@ -212,19 +212,33 @@ function _heroInstallControls(){
 // QA #295 — DB 에서 받은 그룹 리스트로 hero 슬라이드 DOM 재구성. 활성
 // 그룹들의 모든 이미지를 평탄화해서 슬라이드로 렌더. 응답이 비어있거나
 // 실패하면 정적 fallback 그대로 두어 LCP 보호.
+// QA #296 — 모바일 viewport (≤768px) 에서는 image_url_mobile 우선
+// 사용. NULL 이면 image_url 으로 자연스럽게 폴백. 캐시된 그룹 데이터
+// (_heroBannerGroups) 를 보관해서 resize 시 재렌더.
+let _heroBannerGroups = null;
+
+function _heroIsMobile(){
+  try { return window.innerWidth <= 768; } catch(_) { return false; }
+}
+
 function _heroRenderFromBanners(groups){
   var heroEl = document.getElementById('hero');
   if(!heroEl) return;
   if(!Array.isArray(groups) || groups.length === 0) return;
 
-  // 활성 그룹 × 이미지 평탄화.
+  _heroBannerGroups = groups;
+  var isMobile = _heroIsMobile();
+
+  // 활성 그룹 × 이미지 평탄화. viewport 에 맞는 src 선택.
   var newSlides = [];
   groups.forEach(function(g){
     var imgs = Array.isArray(g.images) ? g.images : [];
     imgs.forEach(function(im){
-      if(im && im.image_url){
+      if(!im) return;
+      var chosen = (isMobile && im.image_url_mobile) ? im.image_url_mobile : im.image_url;
+      if(chosen){
         newSlides.push({
-          src: im.image_url,
+          src: chosen,
           alt: (g.title || '') + (g.issue ? ' — ' + g.issue : ''),
           link: g.link_url || '',
           issue: g.issue || '',
@@ -314,6 +328,22 @@ if(hSlides.length){
       })
       .catch(function(err){ console.warn('[hero] banners fetch failed', err); });
   } catch(_){}
+
+  // QA #296 — viewport 가 PC ↔ 모바일 breakpoint(768px) 를 가로질러
+  // resize 될 때만 hero 를 다시 그려서 image_url / image_url_mobile
+  // 사이를 자동 전환. debounce 200ms 로 회전/창 드래그 시 폭발 방지.
+  var _wasHeroMobile = _heroIsMobile();
+  var _heroResizeT = null;
+  window.addEventListener('resize', function(){
+    if(_heroResizeT) clearTimeout(_heroResizeT);
+    _heroResizeT = setTimeout(function(){
+      var nowMobile = _heroIsMobile();
+      if(nowMobile !== _wasHeroMobile && _heroBannerGroups){
+        _wasHeroMobile = nowMobile;
+        _heroRenderFromBanners(_heroBannerGroups);
+      }
+    }, 200);
+  });
 }
 // Expose for debugging / future manual nav buttons.
 window._papHero = { go: heroGo, pause: _heroPause, resume: _heroResume,

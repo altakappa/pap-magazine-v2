@@ -36,9 +36,10 @@ module.exports = async function handler(req, res) {
 
   try {
     // 그룹 + 이미지 nested. PostgREST 의 embed 문법으로 단일 round-trip.
+    // QA #296 — image_url_mobile 추가 (모바일 viewport 에서 우선).
     const { data: groups, error } = await supabaseAdmin
       .from('cover_groups')
-      .select('id,issue,title,link_url,sort_order,images:cover_images(id,image_url,sort_order)')
+      .select('id,issue,title,link_url,sort_order,images:cover_images(id,image_url,image_url_mobile,sort_order)')
       .eq('is_active', true)
       .order('sort_order', { ascending: true });
 

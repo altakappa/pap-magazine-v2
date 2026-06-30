@@ -9786,40 +9786,102 @@ function renderCovers(){
     html += '</div>';
     html += '</div>'; // /header row
 
-    // ── 이미지 영역 ────────────────────────────────────────────────────
+    // ── 이미지 영역 (QA #296: PC/모바일 듀얼 슬롯) ─────────────────────
     html += '<div style="border-top:1px solid var(--border);padding-top:14px">';
-    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
-      + '<span style="font-size:11px;font-weight:700;color:var(--text2)">이미지 ('+g.images.length+'장)</span>'
-      + '<button class="btn btn-sm" onclick="addCoverImage('+gi+')">+ 이미지 추가</button>'
+
+    // 헤더: 카운트 + 규격 안내 + 추가 버튼
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:12px;flex-wrap:wrap">'
+      + '<div>'
+      +   '<div style="font-size:11px;font-weight:700;color:var(--text2)">슬라이드 ('+g.images.length+'장)</div>'
+      +   '<div style="font-size:10px;color:var(--text3);margin-top:3px">권장 규격 · PC <strong>1920×1080</strong> (16:9) · 모바일 <strong>1080×1920</strong> (9:16) · 각 <strong>2MB</strong> 이하 (JPG/PNG/WebP)</div>'
+      + '</div>'
+      + '<button class="btn btn-sm" onclick="addCoverImage('+gi+')">+ 슬라이드 추가</button>'
       + '</div>';
 
+    // 드래그&드롭 영역 안내 + 슬라이드 리스트 컨테이너
+    html += '<div data-cover-drop="'+gi+'" '
+      + 'ondragover="_coverHandleDragOver(event,'+gi+')" '
+      + 'ondragleave="_coverHandleDragLeave(event,'+gi+')" '
+      + 'ondrop="_coverHandleDrop(event,'+gi+')" '
+      + 'style="border:2px dashed var(--border);border-radius:4px;padding:14px;transition:background .15s,border-color .15s">';
+
     if(g.images.length === 0){
-      html += '<div style="padding:30px;text-align:center;color:var(--text3);border:1px dashed var(--border);font-size:12px">'
-        + '이미지를 1장 이상 추가해야 라이브에 노출됩니다.</div>';
+      html += '<div style="padding:24px;text-align:center;color:var(--text3);font-size:12px">'
+        + '이미지를 1장 이상 등록해야 라이브에 노출됩니다.<br>'
+        + '<span style="font-size:11px">PC 이미지를 이 영역에 <strong>드래그&amp;드롭</strong>하시거나 위의 + 슬라이드 추가 버튼을 사용하세요. 여러 장 동시 드롭도 가능합니다.</span>'
+        + '</div>';
     } else {
-      html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">';
+      // 각 슬라이드 = PC 슬롯 + 모바일 슬롯 + 액션 버튼
+      html += '<div style="display:flex;flex-direction:column;gap:12px">';
       g.images.forEach(function(img, ii){
-        var src = img.image_url || '';
-        var isUploading = img._uploading;
-        html += '<div style="position:relative;border:1px solid var(--border);background:#fafafa">';
-        html += '<img loading="lazy" src="'+_coverEscapeHtml(src)+'" style="width:100%;height:120px;object-fit:cover;display:block">';
-        if(isUploading){
+        var pcSrc      = img.image_url || '';
+        var mobSrc     = img.image_url_mobile || '';
+        var pcUploading  = img._uploading_pc;
+        var mobUploading = img._uploading_mobile;
+        var pcError    = img._error_pc;
+        var mobError   = img._error_mobile;
+
+        html += '<div style="display:flex;gap:12px;align-items:stretch;border:1px solid var(--border);background:#fff;padding:10px;border-radius:4px">';
+        html += '<div style="display:flex;flex-direction:column;justify-content:center;font-size:10px;color:var(--text3);font-weight:700;width:24px">#' + (ii+1) + '</div>';
+
+        // ── PC 슬롯 (16:9) ─────────────────────────────────────────────
+        html += '<div style="flex:1.6;display:flex;flex-direction:column;gap:4px">';
+        html += '<div style="font-size:10px;font-weight:700;color:var(--text2)">PC <span style="color:var(--text3);font-weight:400">· 1920×1080 권장</span></div>';
+        html += '<div style="position:relative;aspect-ratio:16/9;background:#f3f3f3;border:1px solid var(--border);cursor:pointer" '
+          + 'onclick="replaceCoverImage('+gi+','+ii+',\'pc\')" '
+          + 'title="클릭하여 PC 이미지 교체">';
+        if(pcSrc){
+          html += '<img loading="lazy" src="'+_coverEscapeHtml(pcSrc)+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block">';
+        } else {
+          html += '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:11px">+ PC 이미지</div>';
+        }
+        if(pcUploading){
           html += '<div style="position:absolute;inset:0;background:rgba(0,0,0,.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px">업로드 중…</div>';
         }
-        html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px;background:#fff;border-top:1px solid var(--border)">';
-        html += '<span style="font-size:10px;color:var(--text3)">#' + (ii+1) + '</span>';
+        html += '</div>';
+        if(pcError){
+          html += '<div style="font-size:10px;color:#e74c3c">⚠ ' + _coverEscapeHtml(pcError) + '</div>';
+        }
+        html += '</div>';
+
+        // ── 모바일 슬롯 (9:16) ──────────────────────────────────────────
+        html += '<div style="flex:0.6;display:flex;flex-direction:column;gap:4px;max-width:120px">';
+        html += '<div style="font-size:10px;font-weight:700;color:var(--text2)">모바일 <span style="color:var(--text3);font-weight:400">· 1080×1920 권장 (옵션)</span></div>';
+        html += '<div style="position:relative;aspect-ratio:9/16;background:#f3f3f3;border:1px solid var(--border);cursor:pointer" '
+          + 'onclick="replaceCoverImage('+gi+','+ii+',\'mobile\')" '
+          + 'title="클릭하여 모바일 이미지 등록/교체">';
+        if(mobSrc){
+          html += '<img loading="lazy" src="'+_coverEscapeHtml(mobSrc)+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block">';
+        } else {
+          html += '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:11px;text-align:center;padding:6px">+ 모바일<br><span style="font-size:9px;font-weight:400">(생략 시 PC 사용)</span></div>';
+        }
+        if(mobUploading){
+          html += '<div style="position:absolute;inset:0;background:rgba(0,0,0,.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px">업로드 중…</div>';
+        }
+        html += '</div>';
+        if(mobError){
+          html += '<div style="font-size:10px;color:#e74c3c">⚠ ' + _coverEscapeHtml(mobError) + '</div>';
+        }
+        html += '</div>';
+
+        // ── 액션 버튼 (순서/모바일 제거/삭제) ───────────────────────────
+        html += '<div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;justify-content:center">';
         html += '<div style="display:flex;gap:2px">'
-          + '<button class="btn btn-sm" style="padding:2px 6px" title="이전" onclick="moveCoverImage('+gi+','+ii+',-1)">◀</button>'
-          + '<button class="btn btn-sm" style="padding:2px 6px" title="다음" onclick="moveCoverImage('+gi+','+ii+',1)">▶</button>'
-          + '<button class="btn btn-sm" style="padding:2px 6px" title="교체" onclick="replaceCoverImage('+gi+','+ii+')">⇆</button>'
-          + '<button class="btn btn-sm btn-red" style="padding:2px 6px" title="삭제" onclick="deleteCoverImage('+gi+','+ii+')">×</button>'
+          + '<button class="btn btn-sm" style="padding:2px 6px" title="위로" onclick="moveCoverImage('+gi+','+ii+',-1)">↑</button>'
+          + '<button class="btn btn-sm" style="padding:2px 6px" title="아래로" onclick="moveCoverImage('+gi+','+ii+',1)">↓</button>'
           + '</div>';
+        if(mobSrc){
+          html += '<button class="btn btn-sm" style="padding:2px 6px;font-size:10px" title="모바일 이미지만 비우기" onclick="clearMobileImage('+gi+','+ii+')">📱✕</button>';
+        }
+        html += '<button class="btn btn-sm btn-red" style="padding:2px 8px" title="이 슬라이드 삭제" onclick="deleteCoverImage('+gi+','+ii+')">삭제</button>';
         html += '</div>';
-        html += '</div>';
+
+        html += '</div>'; // /slide row
       });
       html += '</div>';
     }
 
+    html += '</div>'; // /drop zone
     html += '</div>'; // /image area
     html += '</div>'; // /card
   });
@@ -9896,7 +9958,11 @@ function saveCoverGroup(gi){
   var imgsForSave = g.images
     .filter(function(im){ return im.image_url; })
     .map(function(im, idx){
-      return { image_url: im.image_url, sort_order: idx };
+      return {
+        image_url: im.image_url,
+        image_url_mobile: im.image_url_mobile || null,  // QA #296
+        sort_order: idx
+      };
     });
 
   var payload = {
@@ -9923,7 +9989,12 @@ function saveCoverGroup(gi){
       coverGroups[gi].id = json.data.id;
       if(Array.isArray(json.data.images)){
         coverGroups[gi].images = json.data.images.map(function(im){
-          return { id: im.id || null, image_url: im.image_url, sort_order: im.sort_order || 0 };
+          return {
+            id: im.id || null,
+            image_url: im.image_url,
+            image_url_mobile: im.image_url_mobile || null,  // QA #296
+            sort_order: im.sort_order || 0
+          };
         });
       }
     }
@@ -9938,66 +10009,122 @@ function saveCoverGroup(gi){
 }
 
 // ─── 이미지 액션 ──────────────────────────────────────────────────────
-function _coverPickFile(cb){
+// QA #296 — 다중 파일 입력, PC/모바일 슬롯, 드래그&드롭, validation.
+
+var _COVER_MAX_BYTES = 2 * 1024 * 1024; // 2 MB
+var _COVER_ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+// 단일 파일 검증 ─ 통과시 null, 실패시 한국어 에러 메시지.
+function _coverValidateFile(file){
+  if(!file) return '파일을 선택해주세요.';
+  if(_COVER_ALLOWED_TYPES.indexOf(file.type) === -1){
+    return 'JPG, PNG, WebP 파일만 업로드할 수 있습니다.';
+  }
+  if(file.size > _COVER_MAX_BYTES){
+    var mb = (file.size / 1024 / 1024).toFixed(1);
+    return '파일이 너무 큽니다 (' + mb + ' MB). 2MB 이하로 줄여주세요.';
+  }
+  return null;
+}
+
+// 다중 파일 input 다이얼로그 ─ 사용자가 한 번에 여러 장 선택 가능.
+function _coverPickFiles(multiple, cb){
   var input = document.createElement('input');
   input.type = 'file';
-  input.accept = 'image/jpeg,image/png,image/webp';
+  input.accept = _COVER_ALLOWED_TYPES.join(',');
+  if(multiple) input.multiple = true;
   input.onchange = function(){
-    if(this.files && this.files[0]) cb(this.files[0]);
+    if(this.files && this.files.length) cb(Array.prototype.slice.call(this.files));
   };
   input.click();
 }
 
-function addCoverImage(gi){
-  _coverPickFile(function(file){
-    var slot = { image_url: '', sort_order: coverGroups[gi].images.length, _uploading: true };
-    coverGroups[gi].images.push(slot);
-    renderCovers();
-
-    // 기존 uploadFile() 헬퍼 재사용 ─ Supabase Storage 에 업로드.
-    if(typeof uploadFile !== 'function'){
-      alert('uploadFile 헬퍼를 찾을 수 없습니다.');
-      slot._uploading = false;
-      coverGroups[gi].images.pop();
+// 한 슬라이드의 특정 슬롯(pc|mobile)에 파일 업로드. 슬라이드가 없으면
+// (slot 인덱스 == 그룹 이미지 길이) 새 슬라이드를 만든 뒤 업로드.
+function _coverUploadToSlot(gi, ii, slot, file){
+  if(typeof uploadFile !== 'function'){
+    alert('uploadFile 헬퍼를 찾을 수 없습니다.');
+    return;
+  }
+  var validation = _coverValidateFile(file);
+  if(validation){
+    // 슬라이드가 존재할 때만 인라인 에러 표시. 없으면 알림.
+    var existing = coverGroups[gi].images[ii];
+    if(existing){
+      existing[slot === 'mobile' ? '_error_mobile' : '_error_pc'] = validation;
       renderCovers();
-      return;
+    } else {
+      alert(validation);
     }
-    uploadFile(file).then(function(publicUrl){
-      slot.image_url = publicUrl;
-      slot._uploading = false;
-      _coverMarkDirty(gi);
-      renderCovers();
-    }).catch(function(err){
-      console.error('[cover] image upload failed', err);
-      alert('이미지 업로드에 실패했습니다.');
-      coverGroups[gi].images.pop();
-      renderCovers();
-    });
+    return;
+  }
+
+  // 슬라이드가 없으면 만들어준다 (PC 신규 업로드 흐름).
+  if(!coverGroups[gi].images[ii]){
+    coverGroups[gi].images[ii] = {
+      image_url: '', image_url_mobile: null,
+      sort_order: coverGroups[gi].images.length
+    };
+  }
+  var target = coverGroups[gi].images[ii];
+  var uploadKey = slot === 'mobile' ? '_uploading_mobile' : '_uploading_pc';
+  var errorKey  = slot === 'mobile' ? '_error_mobile'     : '_error_pc';
+  target[uploadKey] = true;
+  target[errorKey]  = null;
+  renderCovers();
+
+  uploadFile(file).then(function(publicUrl){
+    if(slot === 'mobile') target.image_url_mobile = publicUrl;
+    else                  target.image_url = publicUrl;
+    target[uploadKey] = false;
+    _coverMarkDirty(gi);
+    renderCovers();
+  }).catch(function(err){
+    console.error('[cover] upload failed', err);
+    target[uploadKey] = false;
+    target[errorKey]  = '업로드에 실패했습니다. 다시 시도해주세요.';
+    // 빈 PC slot 으로 만들어진 임시 슬라이드는 정리.
+    if(slot === 'pc' && !target.image_url){
+      coverGroups[gi].images.splice(ii, 1);
+    }
+    renderCovers();
   });
 }
 
-function replaceCoverImage(gi, ii){
-  _coverPickFile(function(file){
-    var slot = coverGroups[gi].images[ii];
-    if(!slot) return;
-    slot._uploading = true;
-    renderCovers();
-    uploadFile(file).then(function(publicUrl){
-      slot.image_url = publicUrl;
-      slot._uploading = false;
-      _coverMarkDirty(gi);
-      renderCovers();
-    }).catch(function(err){
-      console.error('[cover] image replace failed', err);
-      alert('이미지 교체에 실패했습니다.');
-      slot._uploading = false;
-      renderCovers();
-    });
+// PC 슬롯에 N장을 한 번에 — 각 파일이 새 슬라이드를 차지. drag&drop /
+// 다중 파일 input 양쪽에서 사용.
+function _coverUploadPcBatch(gi, files){
+  files.forEach(function(file){
+    var newIndex = coverGroups[gi].images.length;
+    _coverUploadToSlot(gi, newIndex, 'pc', file);
   });
+}
+
+function addCoverImage(gi){
+  _coverPickFiles(true, function(files){
+    _coverUploadPcBatch(gi, files);
+  });
+}
+
+// slot: 'pc' | 'mobile'. 슬라이드의 해당 슬롯 이미지를 교체.
+function replaceCoverImage(gi, ii, slot){
+  slot = slot || 'pc';
+  _coverPickFiles(false, function(files){
+    _coverUploadToSlot(gi, ii, slot, files[0]);
+  });
+}
+
+function clearMobileImage(gi, ii){
+  var img = coverGroups[gi].images[ii];
+  if(!img) return;
+  img.image_url_mobile = null;
+  img._error_mobile = null;
+  _coverMarkDirty(gi);
+  renderCovers();
 }
 
 function deleteCoverImage(gi, ii){
-  if(!confirm('이 이미지를 그룹에서 제거하시겠습니까?\n(그룹 저장 후 영구 반영됩니다)')) return;
+  if(!confirm('이 슬라이드를 그룹에서 제거하시겠습니까?\n(그룹 저장 후 영구 반영됩니다)')) return;
   coverGroups[gi].images.splice(ii, 1);
   _coverMarkDirty(gi);
   renderCovers();
@@ -10012,6 +10139,48 @@ function moveCoverImage(gi, ii, dir){
   imgs[nj] = tmp;
   _coverMarkDirty(gi);
   renderCovers();
+}
+
+// ─── 드래그&드롭 핸들러 (PC 이미지 다중 업로드) ──────────────────────
+function _coverHandleDragOver(e, gi){
+  e.preventDefault();
+  e.stopPropagation();
+  var dz = e.currentTarget;
+  if(dz) dz.style.background = '#fff5d6'; // soft yellow highlight
+  if(dz) dz.style.borderColor = '#e67e22';
+}
+function _coverHandleDragLeave(e, gi){
+  e.preventDefault();
+  e.stopPropagation();
+  var dz = e.currentTarget;
+  if(dz) dz.style.background = '';
+  if(dz) dz.style.borderColor = '';
+}
+function _coverHandleDrop(e, gi){
+  e.preventDefault();
+  e.stopPropagation();
+  var dz = e.currentTarget;
+  if(dz) dz.style.background = '';
+  if(dz) dz.style.borderColor = '';
+
+  var files = [];
+  if(e.dataTransfer){
+    if(e.dataTransfer.files && e.dataTransfer.files.length){
+      files = Array.prototype.slice.call(e.dataTransfer.files);
+    } else if(e.dataTransfer.items){
+      Array.prototype.slice.call(e.dataTransfer.items).forEach(function(item){
+        if(item.kind === 'file'){
+          var f = item.getAsFile();
+          if(f) files.push(f);
+        }
+      });
+    }
+  }
+  if(files.length === 0) return;
+
+  // 드롭된 파일은 모두 PC 슬롯에 새 슬라이드로 추가. 파일 종류/크기
+  // 검증은 _coverUploadToSlot 내부에서 슬라이드별 인라인 에러로 표시.
+  _coverUploadPcBatch(gi, files);
 }
 
 // ─── 초기 로딩 ────────────────────────────────────────────────────────
@@ -10045,7 +10214,12 @@ function loadCoverGroups(){
           sort_order: typeof g.sort_order === 'number' ? g.sort_order : idx,
           is_active: g.is_active !== false,
           images: Array.isArray(g.images) ? g.images.map(function(im){
-            return { id: im.id || null, image_url: im.image_url, sort_order: im.sort_order || 0 };
+            return {
+              id: im.id || null,
+              image_url: im.image_url,
+              image_url_mobile: im.image_url_mobile || null,  // QA #296
+              sort_order: im.sort_order || 0
+            };
           }) : []
         };
       });
