@@ -26,6 +26,19 @@
 BEGIN;
 
 -- ───────────────────────────────────────────────────────────────
+-- 0. updated_at 트리거 헬퍼 ── 이 프로젝트엔 trigger_set_timestamp()
+--    이 정의돼 있지 않아서 inline 으로 정의 (CREATE OR REPLACE 라
+--    이후 마이그레이션에서 별도 정의되어 있어도 안전).
+-- ───────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION trigger_set_timestamp()
+RETURNS TRIGGER AS $func$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$func$ LANGUAGE plpgsql;
+
+-- ───────────────────────────────────────────────────────────────
 -- 1. cover_groups  ── 발행호 단위 카드
 -- ───────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS cover_groups (
@@ -134,10 +147,10 @@ INSERT INTO cover_images (group_id, image_url, sort_order)
 SELECT new_group.id, img, idx
 FROM new_group,
      LATERAL (VALUES
-       ('https://pap-magazine.com/img/hero/Pc_1_b784819584.jpg', 0),
-       ('https://pap-magazine.com/img/hero/Pc_2_dc9e6ac138.jpg', 1),
-       ('https://pap-magazine.com/img/hero/Pc_3_07bc8462e4.jpg', 2),
-       ('https://pap-magazine.com/img/hero/Pc_4_d8891e2914.jpg', 3)
+       ('https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Pc_1_b784819584.jpg', 0),
+       ('https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Pc_2_dc9e6ac138.jpg', 1),
+       ('https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Pc_3_07bc8462e4.jpg', 2),
+       ('https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/Pc_4_d8891e2914.jpg', 3)
      ) AS seed(img, idx);
 
 COMMIT;
