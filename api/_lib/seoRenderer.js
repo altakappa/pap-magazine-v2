@@ -124,10 +124,14 @@ function extractStructuredCredits(record) {
       if (!entry || typeof entry !== 'object') return;
       const handle = normalizeHandle(entry.instagram || entry.website || '');
       if (!handle && !entry.name) return;
-      const role = humanizeRoleKey(
-        Array.isArray(entry.roles) && entry.roles.length ? entry.roles[0]
-          : (entry.role || 'Credit')
-      );
+      // QA #302 — 다중 역할 병합. 'Photo & Art Director' 처럼 모두 표기.
+      const _rolesArr = Array.isArray(entry.roles) && entry.roles.length
+        ? entry.roles
+        : (entry.role ? [entry.role] : ['Credit']);
+      const role = _rolesArr
+        .map(function (r) { return humanizeRoleKey(r); })
+        .filter(Boolean)
+        .join(' & ') || humanizeRoleKey(_rolesArr[0]);
       const handles = handle ? [handle] : (entry.name ? [escText(entry.name)] : []);
       rows.push({ role, handles });
     });

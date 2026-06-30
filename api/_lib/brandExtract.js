@@ -145,9 +145,14 @@ function extractFromEditorial(editorial) {
       if (!c || typeof c !== 'object') continue;
 
       // Track ALL role labels for the stats report (even non-brand ones).
-      var roleSeen = c.r !== undefined ? c.r
-                    : (Array.isArray(c.roles) && c.roles.length ? c.roles[0] : c.role);
-      if (roleSeen) seenRoles.push(String(roleSeen));
+      // QA #302 — 다중 역할 모두 통계에 반영 (한 인물에 5개 역할이면 5건).
+      if (c.r !== undefined) {
+        if (c.r) seenRoles.push(String(c.r));
+      } else if (Array.isArray(c.roles) && c.roles.length) {
+        c.roles.forEach(function (r) { if (r) seenRoles.push(String(r)); });
+      } else if (c.role) {
+        seenRoles.push(String(c.role));
+      }
 
       // Format A: display-shape {r, h}
       if (c.r !== undefined) {

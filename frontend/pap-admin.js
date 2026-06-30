@@ -5610,13 +5610,15 @@ function _buildIgCaptionFromEditorial(ed){
     if(!c) return;
     var handle = _igNormalizeHandle(c.instagram || c.website || '');
     if(!handle) return;
-    var role = (Array.isArray(c.roles) && c.roles.length ? c.roles[0] : c.role) || 'Credit';
-    var label = _igRoleLabel(role);
-    if(label === 'Starring' || /^Model$/i.test(label)){
+    // QA #302 — 다중 역할 병합. 한 인물에 여러 역할이 있으면 모두 표기.
+    // starring 판정은 어느 역할이라도 starring/model 라벨이면 분리.
+    var rolesArr = (Array.isArray(c.roles) && c.roles.length) ? c.roles : (c.role ? [c.role] : ['Credit']);
+    var labels = rolesArr.map(function(r){ return _igRoleLabel(r); }).filter(Boolean);
+    var isModel = labels.some(function(l){ return l === 'Starring' || /^Model$/i.test(l); });
+    if(isModel){
       modelParts.push(handle);
-      // If the credit row also carries the agency in website or a sibling
-      // role, the editor can add it manually. Keep mapping simple here.
     }else{
+      var label = labels.join(' & ') || _igRoleLabel(rolesArr[0]) || 'Credit';
       creditParts.push(label + ' ' + handle);
     }
   });

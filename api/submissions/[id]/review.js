@@ -256,7 +256,11 @@ function _buildInstagramCaption(desc, title, opts) {
       if (!m || !m.name) return;
       const handle = _normalizeIgHandle(m.instagram || m.website || '');
       if (!handle) return;
-      const label = _normalizeRoleLabel(m.role);
+      // QA #302 — m.role 이 array (다중 역할) 형태로 들어올 수도 있어 모두 합침.
+      const rolesArr = Array.isArray(m.role) ? m.role : (m.role ? [m.role] : []);
+      const label = rolesArr.length
+        ? rolesArr.map(function (r) { return _normalizeRoleLabel(r); }).filter(Boolean).join(' & ')
+        : _normalizeRoleLabel('');
       creditParts.push(`${label} ${handle}`);
     });
   } else if (desc.credits && typeof desc.credits === 'object') {

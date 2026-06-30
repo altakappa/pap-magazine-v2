@@ -82,14 +82,23 @@ function _buildCaptionFromEditorial(ed, descKr, descEn, descIt) {
     if (!c || !c.name) return;
     const handle = _normalizeIgHandle(c.instagram || c.website || '');
     if (!handle) return;
+    // QA #302 — 다중 역할 병합. 한 인물에 여러 역할이 있으면 'Photo &
+    // Art Director' 처럼 모두 표기. starring 판정은 *어느 역할이라도*
+    // model/starring/talent/cast 에 매칭되면 starring 파트로 분리.
     const roles = Array.isArray(c.roles) ? c.roles : (c.roles ? [c.roles] : []);
-    const role = (roles[0] || c.role || 'Credit');
-    // Models go on a separate "Starring" line so the IG-style template
-    // matches the submission-approval output.
-    if (/^(model|starring|talent|cast)/i.test(role)) {
+    const primary = (roles[0] || c.role || 'Credit');
+    const allRoles = roles.length ? roles : [primary];
+    const isStarring = allRoles.some(function (r) {
+      return /^(model|starring|talent|cast)/i.test(String(r || ''));
+    });
+    if (isStarring) {
       starringParts.push(handle);
     } else {
-      creditParts.push(`${_normalizeRoleLabel(role)} ${handle}`);
+      const label = allRoles
+        .map(function (r) { return _normalizeRoleLabel(r); })
+        .filter(Boolean)
+        .join(' & ');
+      creditParts.push(`${label || _normalizeRoleLabel(primary)} ${handle}`);
     }
   });
   if (creditParts.length) lines.push(creditParts.join(' '));

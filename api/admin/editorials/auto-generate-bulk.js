@@ -70,10 +70,22 @@ function _buildCaption(ed, descKr, descEn, descIt) {
     if (!c || !c.name) return;
     const handle = _normalizeIgHandle(c.instagram || c.website || '');
     if (!handle) return;
+    // QA #302 — 다중 역할 병합 (auto-generate.js 와 동일 패턴).
     const roles = Array.isArray(c.roles) ? c.roles : (c.roles ? [c.roles] : []);
-    const role = roles[0] || c.role || 'Credit';
-    if (/^(model|starring|talent|cast)/i.test(role)) starringParts.push(handle);
-    else creditParts.push(`${_normalizeRoleLabel(role)} ${handle}`);
+    const primary = roles[0] || c.role || 'Credit';
+    const allRoles = roles.length ? roles : [primary];
+    const isStarring = allRoles.some(function (r) {
+      return /^(model|starring|talent|cast)/i.test(String(r || ''));
+    });
+    if (isStarring) {
+      starringParts.push(handle);
+    } else {
+      const label = allRoles
+        .map(function (r) { return _normalizeRoleLabel(r); })
+        .filter(Boolean)
+        .join(' & ');
+      creditParts.push(`${label || _normalizeRoleLabel(primary)} ${handle}`);
+    }
   });
   if (creditParts.length) lines.push(creditParts.join(' '));
   if (starringParts.length) {
