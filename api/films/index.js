@@ -9,6 +9,7 @@ const { handleCors } = require('../_lib/cors');
 const { requireAdmin } = require('../_lib/auth');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { recordContentChange, attachAuthorship } = require('../_lib/audit');
+const { normalizeCreditsArray } = require('../_lib/credits');  // QA #301
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -168,7 +169,8 @@ module.exports = async function handler(req, res) {
         published_date: published_date || null,
         categories: toArray(categories).length ? toArray(categories) : ['Film'],
         tags:       toArray(tags).length       ? toArray(tags)       : [title],
-        credits: Array.isArray(credits) ? credits : [],
+        // QA #301 — 각 credit 의 instagram 에 @ 자동 보강.
+        credits: normalizeCreditsArray(Array.isArray(credits) ? credits : []),
         status: status || 'published',
         // QA #164 — explicit null when unset so the column is clean rather
         // than absent (matters for the GET schedule gate to short-circuit

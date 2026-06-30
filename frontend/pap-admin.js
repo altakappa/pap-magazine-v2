@@ -9758,6 +9758,22 @@ function deleteMenuCat(i){
 
 renderMenuCats();
 
+// QA #301 — 인스타그램 핸들 입력 onblur 자동 정규화.
+// 운영자가 '@' 없이 'johnkim' 만 입력해도 blur 시점에 '@johnkim' 으로
+// 자동 보강 → 서버 정규화(_lib/credits.normalizeCreditsArray) 와 일관 +
+// 운영자가 시각적으로 즉시 확인 가능. URL 형태는 건드리지 않음.
+// blur 이벤트는 bubble 하지 않으므로 capture: true 필수.
+document.addEventListener('blur', function(e){
+  if(!e.target || !e.target.classList) return;
+  if(!e.target.classList.contains('pe-credit-ig')) return;
+  var v = String(e.target.value || '').trim();
+  if(!v) return;
+  if(/^https?:\/\//i.test(v)) return;  // URL 은 그대로
+  if(/^@/.test(v)) return;             // 이미 @ 있음
+  e.target.value = '@' + v.replace(/^@+/, '');
+  try { e.target.dispatchEvent(new Event('change', { bubbles: true })); } catch(_){}
+}, true);
+
 // ======== COVER SETTINGS (QA #295) ========
 //
 // 그룹 + 이미지(1:N) 모델. 각 카드 = 하나의 발행호 (issue + title +

@@ -202,6 +202,14 @@ module.exports = async function handler(req, res) {
       for (const key of allowed) {
         if (req.body[key] !== undefined) updates[key] = req.body[key];
       }
+      // QA #301 — credits 에 들어온 instagram 의 @ 자동 보강 + 잘못 매핑 정정.
+      // 헬퍼는 array 일 때만 작동, 비 array 면 그대로 통과.
+      try {
+        const { normalizeCreditsArray } = require('../_lib/credits');
+        if (Array.isArray(updates.credits)) {
+          updates.credits = normalizeCreditsArray(updates.credits);
+        }
+      } catch (_) {}
       // QA #214 — map review-modal payload keys (approval_day, approval_month)
       // onto the persisted column names so a single payload covers both
       // the mailer (which reads the camelCase variants) and the DB.

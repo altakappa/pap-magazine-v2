@@ -104,6 +104,14 @@ module.exports = async function handler(req, res) {
         updates[key] = v;
       }
 
+      // QA #301 — credits 정규화 (instagram @ 자동 보강 + 잘못 매핑 정정).
+      try {
+        const { normalizeCreditsArray } = require('../_lib/credits');
+        if (Array.isArray(updates.credits)) {
+          updates.credits = normalizeCreditsArray(updates.credits);
+        }
+      } catch (_) {}
+
       // QA #202 — pull prior row for both transition detection and the
       // audit diff.
       let priorRow = null;

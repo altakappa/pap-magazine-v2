@@ -10,6 +10,7 @@ const { requireAdmin } = require('../_lib/auth');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { embedAndStoreEditorial } = require('../_lib/embeddings');
 const { recordContentChange, attachAuthorship } = require('../_lib/audit');
+const { normalizeCreditsArray } = require('../_lib/credits');  // QA #301
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -205,7 +206,10 @@ module.exports = async function handler(req, res) {
           issue: issue || null,
           thumbnail: thumbnail || null,
           gallery: gallery || [],
-          credits: credits || {},
+          // QA #301 — credits 가 array 형태일 때 각 row 의 instagram 에
+          // @ 자동 보강 + name/instagram/website 스왑 정정. object 형태이면
+          // 그대로 통과 (헬퍼가 array 아닐 때 input 반환).
+          credits: normalizeCreditsArray(credits) || credits || {},
           fashion: fashion || {},
           status: status || 'published',
           description: description || null,
