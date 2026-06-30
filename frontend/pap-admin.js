@@ -9686,65 +9686,381 @@ function deleteMenuCat(i){
 
 renderMenuCats();
 
-// ======== COVER SETTINGS ========
-var coverSlides=[];
+// ======== COVER SETTINGS (QA #295) ========
+//
+// 그룹 + 이미지(1:N) 모델. 각 카드 = 하나의 발행호 (issue + title +
+// link_url 1회 입력) + 그 안에 N장의 이미지 (각각 ↑↓/삭제 가능).
+//
+// 데이터 형태:
+//   coverGroups = [
+//     {
+//       id: uuid|null,           // DB의 cover_groups.id (새로 만든 그룹은 null)
+//       issue: 'JULY ISSUE',
+//       title: 'Masquerade',
+//       link_url: '/editorial/masquerade',
+//       sort_order: 0,
+//       is_active: true,
+//       images: [
+//         { id: uuid|null, image_url: 'https://...', sort_order: 0 },
+//         ...
+//       ]
+//     }
+//   ]
+//
+// 저장은 그룹 단위. 사용자가 카드의 "이 그룹 저장" 버튼을 누르면 그
+// 그룹만 POST/PUT 으로 Supabase 와 동기화. 이미지 업로드는 기존
+// uploadFile() (Supabase Storage) 를 재사용.
+//
+// 기존 localStorage 만 쓰던 coverSlides 와 호환 X — admin 첫 방문 시
+// /api/admin/banners 에서 server-truth 를 로딩.
+
+var coverGroups = [];
+var coverGroupsLoaded = false;
+
+function _coverEscapeHtml(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
 
 function renderCovers(){
-  var el=document.getElementById('coverList');
-  el.innerHTML='';
-  coverSlides.forEach(function(s,i){
-    el.innerHTML+='<div style="background:var(--surface);border:1px solid var(--border);padding:20px;margin-bottom:12px;display:flex;gap:20px;align-items:flex-start">'
-      +'<div style="flex-shrink:0;position:relative;cursor:pointer" onclick="changeCoverImg('+i+')">'
-      +'<img loading="lazy" src="'+s.img+'" style="width:180px;height:110px;object-fit:cover;border:1px solid var(--border)">'
-      +'<div style="position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,.6);color:#fff;font-size:9px;padding:2px 6px">변경</div></div>'
-      +'<div style="flex:1">'
-      +'<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center"><span style="font-size:10px;font-weight:700;color:var(--text3);width:50px">발행호</span><input class="pe-input" value="'+s.issue+'" style="padding:6px 10px" onchange="coverSlides['+i+'].issue=this.value"></div>'
-      +'<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center"><span style="font-size:10px;font-weight:700;color:var(--text3);width:50px">제목</span><input class="pe-input" value="'+s.title+'" style="padding:6px 10px" onchange="coverSlides['+i+'].title=this.value"></div>'
-      +'<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center"><span style="font-size:10px;font-weight:700;color:var(--text3);width:50px">링크</span><input class="pe-input" value="'+(s.link||'')+'" placeholder="클릭 시 이동할 URL (선택)" style="padding:6px 10px" onchange="coverSlides['+i+'].link=this.value"></div>'
-      +'<div style="display:flex;gap:6px;align-items:center">'
-      +'<label class="pe-check"><input type="checkbox" '+(s.active?'checked':'')+' onchange="coverSlides['+i+'].active=this.checked"> 활성</label>'
-      +'<div style="flex:1"></div>'
-      +'<button class="btn btn-sm" onclick="moveCover('+i+',-1)">↑</button>'
-      +'<button class="btn btn-sm" onclick="moveCover('+i+',1)">↓</button>'
-      +'<button class="btn btn-sm btn-red" onclick="deleteCover('+i+')">삭제</button>'
-      +'</div></div></div>';
+  var el = document.getElementById('coverList');
+  if(!el) return;
+
+  if(!coverGroupsLoaded){
+    el.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text3)">불러오는 중…</div>';
+    return;
+  }
+
+  if(coverGroups.length === 0){
+    el.innerHTML = '<div style="padding:60px;text-align:center;color:var(--text3);border:1px dashed var(--border);background:var(--surface)">'
+      + '등록된 배너 그룹이 없습니다.<br><br>'
+      + '<button class="btn" onclick="addCoverGroup()">+ 첫 그룹 추가</button>'
+      + '</div>';
+    return;
+  }
+
+  var html = '';
+  coverGroups.forEach(function(g, gi){
+    var issueVal = _coverEscapeHtml(g.issue || '');
+    var titleVal = _coverEscapeHtml(g.title || '');
+    var linkVal  = _coverEscapeHtml(g.link_url || '');
+    var statusBadge = g.id
+      ? '<span style="font-size:10px;color:#27ae60;padding:2px 8px;background:#eafaf1;border-radius:3px">저장됨</span>'
+      : '<span style="font-size:10px;color:#e67e22;padding:2px 8px;background:#fef5e7;border-radius:3px">미저장 (저장 버튼을 눌러주세요)</span>';
+
+    html += '<div data-cover-card="'+gi+'" style="background:var(--surface);border:1px solid var(--border);padding:24px;margin-bottom:20px;border-radius:6px">';
+
+    // ── 헤더 (발행호 + 제목 + 링크 + 그룹 액션 버튼들) ────────────────
+    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:12px">';
+    html += '<div style="flex:1">';
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'
+      + '<span style="font-size:11px;font-weight:700;color:var(--text2)">배너 그룹 ' + (gi+1) + '</span>'
+      + statusBadge + '</div>';
+    html += '<div style="display:grid;grid-template-columns:80px 1fr;gap:10px 14px;align-items:center">';
+    html += '<label style="font-size:11px;font-weight:700;color:var(--text3)">발행호</label>'
+      + '<input class="pe-input" value="'+issueVal+'" placeholder="예: JULY ISSUE"'
+      + ' onchange="coverGroups['+gi+'].issue=this.value;_coverMarkDirty('+gi+')">';
+    html += '<label style="font-size:11px;font-weight:700;color:var(--text3)">제목</label>'
+      + '<input class="pe-input" value="'+titleVal+'" placeholder="예: Masquerade (필수)"'
+      + ' onchange="coverGroups['+gi+'].title=this.value;_coverMarkDirty('+gi+')">';
+    html += '<label style="font-size:11px;font-weight:700;color:var(--text3)">링크</label>'
+      + '<input class="pe-input" value="'+linkVal+'" placeholder="클릭 시 이동할 URL (예: /editorial/masquerade)"'
+      + ' onchange="coverGroups['+gi+'].link_url=this.value;_coverMarkDirty('+gi+')">';
+    html += '</div>';
+    html += '</div>';
+
+    // 우측 그룹 액션 (활성 / 순서 / 저장 / 삭제)
+    html += '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">';
+    html += '<label class="pe-check" style="white-space:nowrap"><input type="checkbox" '
+      + (g.is_active !== false ? 'checked' : '')
+      + ' onchange="coverGroups['+gi+'].is_active=this.checked;_coverMarkDirty('+gi+')"> 활성</label>';
+    html += '<div style="display:flex;gap:4px">'
+      + '<button class="btn btn-sm" title="위로" onclick="moveCoverGroup('+gi+',-1)">↑</button>'
+      + '<button class="btn btn-sm" title="아래로" onclick="moveCoverGroup('+gi+',1)">↓</button>'
+      + '</div>';
+    html += '<div style="display:flex;gap:4px;margin-top:4px">'
+      + '<button class="btn btn-sm" style="background:#2c3e50;color:#fff" onclick="saveCoverGroup('+gi+')">저장</button>'
+      + '<button class="btn btn-sm btn-red" onclick="deleteCoverGroup('+gi+')">삭제</button>'
+      + '</div>';
+    html += '</div>';
+    html += '</div>'; // /header row
+
+    // ── 이미지 영역 ────────────────────────────────────────────────────
+    html += '<div style="border-top:1px solid var(--border);padding-top:14px">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'
+      + '<span style="font-size:11px;font-weight:700;color:var(--text2)">이미지 ('+g.images.length+'장)</span>'
+      + '<button class="btn btn-sm" onclick="addCoverImage('+gi+')">+ 이미지 추가</button>'
+      + '</div>';
+
+    if(g.images.length === 0){
+      html += '<div style="padding:30px;text-align:center;color:var(--text3);border:1px dashed var(--border);font-size:12px">'
+        + '이미지를 1장 이상 추가해야 라이브에 노출됩니다.</div>';
+    } else {
+      html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">';
+      g.images.forEach(function(img, ii){
+        var src = img.image_url || '';
+        var isUploading = img._uploading;
+        html += '<div style="position:relative;border:1px solid var(--border);background:#fafafa">';
+        html += '<img loading="lazy" src="'+_coverEscapeHtml(src)+'" style="width:100%;height:120px;object-fit:cover;display:block">';
+        if(isUploading){
+          html += '<div style="position:absolute;inset:0;background:rgba(0,0,0,.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px">업로드 중…</div>';
+        }
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px;background:#fff;border-top:1px solid var(--border)">';
+        html += '<span style="font-size:10px;color:var(--text3)">#' + (ii+1) + '</span>';
+        html += '<div style="display:flex;gap:2px">'
+          + '<button class="btn btn-sm" style="padding:2px 6px" title="이전" onclick="moveCoverImage('+gi+','+ii+',-1)">◀</button>'
+          + '<button class="btn btn-sm" style="padding:2px 6px" title="다음" onclick="moveCoverImage('+gi+','+ii+',1)">▶</button>'
+          + '<button class="btn btn-sm" style="padding:2px 6px" title="교체" onclick="replaceCoverImage('+gi+','+ii+')">⇆</button>'
+          + '<button class="btn btn-sm btn-red" style="padding:2px 6px" title="삭제" onclick="deleteCoverImage('+gi+','+ii+')">×</button>'
+          + '</div>';
+        html += '</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+
+    html += '</div>'; // /image area
+    html += '</div>'; // /card
+  });
+
+  el.innerHTML = html;
+}
+
+// "이 그룹은 저장이 필요합니다" 시각적 표시 ─ 카드 보더만 살짝 강조.
+function _coverMarkDirty(gi){
+  var card = document.querySelector('[data-cover-card="'+gi+'"]');
+  if(card) card.style.borderColor = '#e67e22';
+}
+
+// ─── 그룹 액션 ────────────────────────────────────────────────────────
+function addCoverGroup(){
+  coverGroups.push({
+    id: null,
+    issue: 'NEW ISSUE',
+    title: '새 커버',
+    link_url: '',
+    sort_order: coverGroups.length,
+    is_active: true,
+    images: []
+  });
+  renderCovers();
+}
+
+function deleteCoverGroup(gi){
+  var g = coverGroups[gi];
+  if(!g) return;
+  if(!confirm('"' + (g.title || g.issue || '그룹 ' + (gi+1)) + '" 배너 그룹을 삭제하시겠습니까?\n그룹 안의 모든 이미지도 함께 삭제됩니다.')) return;
+
+  if(!g.id){
+    // 서버에 저장된 적이 없는 그룹 — 로컬에서만 제거.
+    coverGroups.splice(gi, 1);
+    renderCovers();
+    return;
+  }
+
+  fetch('/api/admin/banners?id=' + encodeURIComponent(g.id), {
+    method: 'DELETE',
+    headers: _papAuthHeaders()
+  }).then(function(r){
+    if(!r.ok) throw new Error('delete failed');
+    coverGroups.splice(gi, 1);
+    renderCovers();
+  }).catch(function(err){
+    console.error('[cover] delete failed', err);
+    alert('삭제에 실패했습니다. 다시 시도해주세요.');
   });
 }
 
-function changeCoverImg(i){
-  var input=document.createElement('input');
-  input.type='file';input.accept='image/*';
-  input.onchange=function(){
-    if(this.files&&this.files[0]){
-      var reader=new FileReader();
-      reader.onload=function(e){coverSlides[i].img=e.target.result;renderCovers();};
-      reader.readAsDataURL(this.files[0]);
+function moveCoverGroup(gi, dir){
+  var nj = gi + dir;
+  if(nj < 0 || nj >= coverGroups.length) return;
+  var tmp = coverGroups[gi];
+  coverGroups[gi] = coverGroups[nj];
+  coverGroups[nj] = tmp;
+  coverGroups[gi].sort_order = gi;
+  coverGroups[nj].sort_order = nj;
+  renderCovers();
+  // 서버 저장은 각 그룹의 "저장" 버튼으로 ─ 순서가 dirty 되었음만 표시.
+  _coverMarkDirty(gi);
+  _coverMarkDirty(nj);
+}
+
+function saveCoverGroup(gi){
+  var g = coverGroups[gi];
+  if(!g) return;
+  if(!String(g.title || '').trim()){
+    alert('제목은 필수입니다.');
+    return;
+  }
+  var imgsForSave = g.images
+    .filter(function(im){ return im.image_url; })
+    .map(function(im, idx){
+      return { image_url: im.image_url, sort_order: idx };
+    });
+
+  var payload = {
+    issue: g.issue || null,
+    title: g.title,
+    link_url: g.link_url || null,
+    sort_order: gi,
+    is_active: g.is_active !== false,
+    images: imgsForSave
+  };
+
+  var isUpdate = !!g.id;
+  if(isUpdate) payload.id = g.id;
+
+  fetch('/api/admin/banners', {
+    method: isUpdate ? 'PUT' : 'POST',
+    headers: Object.assign({ 'Content-Type': 'application/json' }, _papAuthHeaders()),
+    body: JSON.stringify(payload)
+  }).then(function(r){
+    if(!r.ok) throw new Error('save failed: ' + r.status);
+    return r.json();
+  }).then(function(json){
+    if(json && json.data){
+      coverGroups[gi].id = json.data.id;
+      if(Array.isArray(json.data.images)){
+        coverGroups[gi].images = json.data.images.map(function(im){
+          return { id: im.id || null, image_url: im.image_url, sort_order: im.sort_order || 0 };
+        });
+      }
     }
+    renderCovers();
+    if(typeof showToast === 'function'){
+      showToast('저장되었습니다.');
+    }
+  }).catch(function(err){
+    console.error('[cover] save failed', err);
+    alert('저장에 실패했습니다. 다시 시도해주세요.');
+  });
+}
+
+// ─── 이미지 액션 ──────────────────────────────────────────────────────
+function _coverPickFile(cb){
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/jpeg,image/png,image/webp';
+  input.onchange = function(){
+    if(this.files && this.files[0]) cb(this.files[0]);
   };
   input.click();
 }
 
-function addCoverSlide(){
-  coverSlides.push({id:Date.now(),img:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/yo_10_c3a703df29.jpg',issue:'NEW ISSUE',title:'새 커버',link:'',active:true});
+function addCoverImage(gi){
+  _coverPickFile(function(file){
+    var slot = { image_url: '', sort_order: coverGroups[gi].images.length, _uploading: true };
+    coverGroups[gi].images.push(slot);
+    renderCovers();
+
+    // 기존 uploadFile() 헬퍼 재사용 ─ Supabase Storage 에 업로드.
+    if(typeof uploadFile !== 'function'){
+      alert('uploadFile 헬퍼를 찾을 수 없습니다.');
+      slot._uploading = false;
+      coverGroups[gi].images.pop();
+      renderCovers();
+      return;
+    }
+    uploadFile(file).then(function(publicUrl){
+      slot.image_url = publicUrl;
+      slot._uploading = false;
+      _coverMarkDirty(gi);
+      renderCovers();
+    }).catch(function(err){
+      console.error('[cover] image upload failed', err);
+      alert('이미지 업로드에 실패했습니다.');
+      coverGroups[gi].images.pop();
+      renderCovers();
+    });
+  });
+}
+
+function replaceCoverImage(gi, ii){
+  _coverPickFile(function(file){
+    var slot = coverGroups[gi].images[ii];
+    if(!slot) return;
+    slot._uploading = true;
+    renderCovers();
+    uploadFile(file).then(function(publicUrl){
+      slot.image_url = publicUrl;
+      slot._uploading = false;
+      _coverMarkDirty(gi);
+      renderCovers();
+    }).catch(function(err){
+      console.error('[cover] image replace failed', err);
+      alert('이미지 교체에 실패했습니다.');
+      slot._uploading = false;
+      renderCovers();
+    });
+  });
+}
+
+function deleteCoverImage(gi, ii){
+  if(!confirm('이 이미지를 그룹에서 제거하시겠습니까?\n(그룹 저장 후 영구 반영됩니다)')) return;
+  coverGroups[gi].images.splice(ii, 1);
+  _coverMarkDirty(gi);
   renderCovers();
 }
 
-function deleteCover(i){
-  if(!confirm('이 커버 슬라이드를 삭제하시겠습니까?')) return;
-  coverSlides.splice(i,1);
+function moveCoverImage(gi, ii, dir){
+  var imgs = coverGroups[gi].images;
+  var nj = ii + dir;
+  if(nj < 0 || nj >= imgs.length) return;
+  var tmp = imgs[ii];
+  imgs[ii] = imgs[nj];
+  imgs[nj] = tmp;
+  _coverMarkDirty(gi);
   renderCovers();
 }
 
-function moveCover(i,dir){
-  var j=i+dir;
-  if(j<0||j>=coverSlides.length) return;
-  var tmp=coverSlides[i];
-  coverSlides[i]=coverSlides[j];
-  coverSlides[j]=tmp;
-  renderCovers();
+// ─── 초기 로딩 ────────────────────────────────────────────────────────
+function _papAuthHeaders(){
+  // 다른 admin 호출이 사용하는 동일 헤더 헬퍼 패턴. 모듈마다 약간씩
+  // 다른데 — 가장 보편적인 것: localStorage 의 pap-token.
+  var headers = {};
+  try {
+    var token = (window.PAP && window.PAP.auth && typeof window.PAP.auth.getToken === 'function')
+      ? window.PAP.auth.getToken()
+      : localStorage.getItem('pap-token');
+    if(token) headers['Authorization'] = 'Bearer ' + token;
+  } catch(_){}
+  return headers;
 }
 
-renderCovers();
+function loadCoverGroups(){
+  fetch('/api/admin/banners', { headers: _papAuthHeaders() })
+    .then(function(r){
+      if(!r.ok) throw new Error('load failed: ' + r.status);
+      return r.json();
+    })
+    .then(function(json){
+      var rows = (json && json.data) || [];
+      coverGroups = rows.map(function(g, idx){
+        return {
+          id: g.id,
+          issue: g.issue || '',
+          title: g.title || '',
+          link_url: g.link_url || '',
+          sort_order: typeof g.sort_order === 'number' ? g.sort_order : idx,
+          is_active: g.is_active !== false,
+          images: Array.isArray(g.images) ? g.images.map(function(im){
+            return { id: im.id || null, image_url: im.image_url, sort_order: im.sort_order || 0 };
+          }) : []
+        };
+      });
+      coverGroupsLoaded = true;
+      renderCovers();
+    })
+    .catch(function(err){
+      console.error('[cover] load failed', err);
+      coverGroupsLoaded = true;
+      coverGroups = [];
+      renderCovers();
+    });
+}
+
+loadCoverGroups();
 
 // ======== SHORTS API ========
 // QA #208 Phase 2d — shorts dashboard pattern (matches editorial/news/film).

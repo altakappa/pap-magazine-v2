@@ -107,10 +107,14 @@ setTimeout(function(){
 //   • setTimeout-loop instead of setInterval so pause/resume is exact
 //     and we never queue overlapping ticks across visibility flips.
 let hCur = 0;
-const hSlides = document.querySelectorAll('.hero-slide');
+let hSlides = document.querySelectorAll('.hero-slide');  // QA #295 — let, replaced after fetch.
 const HERO_INTERVAL_MS = 10000; // QA #242 — was 3000
 let _heroTimer = null;
 let _heroPaused = false;
+// QA #295 — DB 에서 받아온 그룹/슬라이드 메타데이터. 각 슬라이드의 link
+// 를 알아야 클릭 시 올바른 editorial 로 이동.
+//   _heroSlideMeta[i] = { link: '/editorial/foo', issue: '...', title: '...' }
+let _heroSlideMeta = [];
 
 function heroGo(n){
   if(!hSlides.length) return;
@@ -133,6 +137,146 @@ function _heroStop(){
 function _heroPause(){ _heroPaused = true; _heroStop(); }
 function _heroResume(){ _heroPaused = false; _heroStart(); }
 
+// QA #295 — 화살표 / 일시정지 컨트롤 + 클릭→링크 라우팅. DB 에서 그룹
+// 데이터가 도착한 뒤에도 동일 핸들러를 재사용하도록 별도 함수로 분리.
+function _heroInstallControls(){
+  var heroEl = document.getElementById('hero');
+  if(!heroEl) return;
+  if(heroEl.querySelector('.hero-nav')) return; // 중복 주입 방지
+
+  // ── prev / next 화살표 ─ 평소엔 거의 보이지 않고, hover 시 fade in.
+  var prevBtn = document.createElement('button');
+  prevBtn.type = 'button';
+  prevBtn.className = 'hero-nav hero-nav-prev';
+  prevBtn.setAttribute('aria-label', 'Previous slide');
+  prevBtn.innerHTML = '&#10094;';
+  var nextBtn = document.createElement('button');
+  nextBtn.type = 'button';
+  nextBtn.className = 'hero-nav hero-nav-next';
+  nextBtn.setAttribute('aria-label', 'Next slide');
+  nextBtn.innerHTML = '&#10095;';
+  // ── 일시정지 / 재생 토글 ─ 우측 하단.
+  var playBtn = document.createElement('button');
+  playBtn.type = 'button';
+  playBtn.className = 'hero-nav hero-nav-pause';
+  playBtn.setAttribute('aria-label', 'Pause autoplay');
+  playBtn.innerHTML = '&#10074;&#10074;'; // ❚❚
+  var _userPaused = false;
+  function _updatePlayBtn(){
+    playBtn.innerHTML = _userPaused ? '&#9654;' : '&#10074;&#10074;';
+    playBtn.setAttribute('aria-label', _userPaused ? 'Resume autoplay' : 'Pause autoplay');
+  }
+  prevBtn.addEventListener('click', function(e){
+    e.preventDefault(); e.stopPropagation();
+    heroGo(hCur - 1);
+  });
+  nextBtn.addEventListener('click', function(e){
+    e.preventDefault(); e.stopPropagation();
+    heroGo(hCur + 1);
+  });
+  playBtn.addEventListener('click', function(e){
+    e.preventDefault(); e.stopPropagation();
+    _userPaused = !_userPaused;
+    if(_userPaused) _heroPause(); else _heroResume();
+    _updatePlayBtn();
+  });
+
+  heroEl.appendChild(prevBtn);
+  heroEl.appendChild(nextBtn);
+  heroEl.appendChild(playBtn);
+
+  // ── 슬라이드 클릭 → 해당 슬라이드의 메타 링크로 이동. 정적
+  //    fallback HTML 에는 inline onclick 이 'Folie' 로 박혀 있는데
+  //    동적 렌더가 끝나면 그 onclick 을 제거하고 우리가 다시 위임.
+  heroEl.removeAttribute('onclick');
+  // 화살표/일시정지 버튼 클릭은 위에서 stopPropagation 으로 분리됨.
+  heroEl.addEventListener('click', function(e){
+    var meta = _heroSlideMeta[hCur];
+    if(meta && meta.link){
+      try {
+        // 패스 기반 URL 이면 SPA navigation, 아니면 풀 이동.
+        var url = String(meta.link);
+        if(url.indexOf('http') === 0){
+          window.location.href = url;
+        } else {
+          history.pushState({}, '', url);
+          window.dispatchEvent(new PopStateEvent('popstate'));
+        }
+      } catch(_){
+        window.location.href = meta.link;
+      }
+    }
+  });
+}
+
+// QA #295 — DB 에서 받은 그룹 리스트로 hero 슬라이드 DOM 재구성. 활성
+// 그룹들의 모든 이미지를 평탄화해서 슬라이드로 렌더. 응답이 비어있거나
+// 실패하면 정적 fallback 그대로 두어 LCP 보호.
+function _heroRenderFromBanners(groups){
+  var heroEl = document.getElementById('hero');
+  if(!heroEl) return;
+  if(!Array.isArray(groups) || groups.length === 0) return;
+
+  // 활성 그룹 × 이미지 평탄화.
+  var newSlides = [];
+  groups.forEach(function(g){
+    var imgs = Array.isArray(g.images) ? g.images : [];
+    imgs.forEach(function(im){
+      if(im && im.image_url){
+        newSlides.push({
+          src: im.image_url,
+          alt: (g.title || '') + (g.issue ? ' — ' + g.issue : ''),
+          link: g.link_url || '',
+          issue: g.issue || '',
+          title: g.title || ''
+        });
+      }
+    });
+  });
+  if(newSlides.length === 0) return;
+
+  // 기존 슬라이드 / 고정 콘텐츠 / 심볼 캐싱 → 모두 제거 후 재주입.
+  var existingContent = heroEl.querySelector('.hero-content');
+  var existingSymbol  = heroEl.querySelector('.hero-symbol');
+  Array.prototype.slice.call(heroEl.querySelectorAll('.hero-slide, .hero-nav'))
+    .forEach(function(el){ el.remove(); });
+
+  var frag = document.createDocumentFragment();
+  newSlides.forEach(function(s, i){
+    var slide = document.createElement('div');
+    slide.className = 'hero-slide' + (i === 0 ? ' active' : '');
+    slide.style.background = '#111';
+    var img = document.createElement('img');
+    img.className = 'hero-slide-img';
+    img.src = s.src;
+    img.alt = s.alt || '';
+    img.loading = (i === 0 ? 'eager' : 'lazy');
+    img.onerror = function(){ this.remove(); };
+    slide.appendChild(img);
+    var grad = document.createElement('div');
+    grad.className = 'hero-slide-gradient';
+    slide.appendChild(grad);
+    frag.appendChild(slide);
+  });
+  heroEl.insertBefore(frag, existingContent || existingSymbol || null);
+
+  // 슬라이드 노드 + 메타 갱신.
+  hSlides = heroEl.querySelectorAll('.hero-slide');
+  _heroSlideMeta = newSlides;
+  hCur = 0;
+
+  // 컨트롤 (화살표/일시정지) 재주입 + click 위임 다시 걸기.
+  _heroInstallControls();
+
+  // 자동 재생 재시작 (reduced-motion 사용자는 건너뜀).
+  var _rm = false;
+  try { _rm = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(_){}
+  if(!_rm){
+    _heroStop();
+    _heroStart();
+  }
+}
+
 if(hSlides.length){
   // Honor reduced-motion: hold on the first slide, no autoplay at all.
   var _heroReduceMotion = false;
@@ -153,10 +297,28 @@ if(hSlides.length){
       if(document.hidden) _heroPause(); else _heroResume();
     });
   }
+
+  // QA #295 — 기본 컨트롤(화살표/일시정지) 주입. 정적 fallback HTML 에
+  // 도 동작하도록 fetch 결과와 무관하게 먼저 설치.
+  _heroInstallControls();
+
+  // QA #295 — DB 그룹 데이터 fetch → 도착하면 슬라이드 동적 교체.
+  // edge cache 5분 + SWR 1h 라 가벼움. 실패해도 정적 fallback 유지.
+  try {
+    fetch('/api/banners')
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(json){
+        if(json && Array.isArray(json.data) && json.data.length > 0){
+          _heroRenderFromBanners(json.data);
+        }
+      })
+      .catch(function(err){ console.warn('[hero] banners fetch failed', err); });
+  } catch(_){}
 }
 // Expose for debugging / future manual nav buttons.
 window._papHero = { go: heroGo, pause: _heroPause, resume: _heroResume,
-                    intervalMs: HERO_INTERVAL_MS };
+                    intervalMs: HERO_INTERVAL_MS,
+                    renderFromBanners: _heroRenderFromBanners };
 
 // ======== SEARCH ========
 // ======== LANG HELPER ========
