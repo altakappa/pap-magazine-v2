@@ -1314,16 +1314,59 @@ function selectCoverImage(idx){
   renderReviewImageGrid(currentReviewSubmission.file_urls||[]);
 }
 
+// QA #300 — 이미지 순서 변경/삭제 시 description.fashion.imageCredits 의
+// 1-인덱스 키 (img_1, img_2, ...) 도 함께 재정렬. 서버 PATCH 핸들러
+// (api/submissions/[id].js QA #215) 와 동일한 URL-기반 매핑 로직을
+// 클라이언트에도 적용해서 (a) lightbox/미리보기가 깨진 인덱스로 그려지
+// 않게 하고 (b) 운영자가 저장 누르지 않고 바로 "최종 승인"을 눌렀을 때
+// editorial 로 잘못된 매핑이 전파되지 않게.
+//
+// originalUrls: splice 직전 배열
+// nextUrls:     splice 직후 배열 (current state)
+function _reindexFashionImageCredits(originalUrls, nextUrls){
+  if(!currentReviewSubmission) return;
+  // description 은 보통 객체로 도착하지만 일부 레거시 row 가 문자열로
+  // 들고 있을 수도 있어 모두 안전하게 처리.
+  var desc = currentReviewSubmission.description;
+  if(typeof desc === 'string'){
+    try { desc = JSON.parse(desc); } catch(_) { desc = {}; }
+  }
+  if(!desc || typeof desc !== 'object') return;
+  var fashion = desc.fashion;
+  if(!fashion || typeof fashion !== 'object') return;
+  var oldCredits = fashion.imageCredits;
+  if(!oldCredits || typeof oldCredits !== 'object') return;
+
+  var newCredits = {};
+  for(var newIdx = 0; newIdx < nextUrls.length; newIdx++){
+    var url = nextUrls[newIdx];
+    var origIdx = originalUrls.indexOf(url);
+    if(origIdx >= 0){
+      var oldKey = 'img_' + (origIdx + 1);
+      if(oldCredits[oldKey]){
+        newCredits['img_' + (newIdx + 1)] = oldCredits[oldKey];
+      }
+    }
+  }
+  fashion.imageCredits = newCredits;
+  desc.fashion = fashion;
+  currentReviewSubmission.description = desc;
+}
+
 // QA #180 — drag/drop reorder. Swap entries in file_urls, keep the
 // cover index pointing at the SAME image (not the same slot) so the
 // admin's pick survives the move.
+// QA #300 — fashion.imageCredits 도 같이 재정렬 (위 헬퍼).
 function _galleryReorder(from, to){
   if(!currentReviewSubmission || !Array.isArray(currentReviewSubmission.file_urls)) return;
-  var urls = currentReviewSubmission.file_urls.slice();
+  var originalUrls = currentReviewSubmission.file_urls.slice();
+  var urls = originalUrls.slice();
   if(from < 0 || from >= urls.length || to < 0 || to >= urls.length) return;
   var moved = urls.splice(from, 1)[0];
   urls.splice(to, 0, moved);
   currentReviewSubmission.file_urls = urls;
+  // QA #300 — fashion 키 재정렬을 file_urls 갱신 직후에 호출.
+  _reindexFashionImageCredits(originalUrls, urls);
   // Track cover index through the reorder
   if(selectedCoverImageIndex === from){
     selectedCoverImageIndex = to;
@@ -1339,9 +1382,11 @@ function _galleryReorder(from, to){
 // QA #180 — remove a single image from the working gallery. The
 // original file in Supabase Storage is NOT deleted; we only drop the
 // reference from submissions.file_urls when the admin clicks save.
+// QA #300 — 삭제된 URL 의 fashion 크레딧도 함께 제거 + 나머지 키 재정렬.
 function _galleryDelete(idx){
   if(!currentReviewSubmission || !Array.isArray(currentReviewSubmission.file_urls)) return;
-  var urls = currentReviewSubmission.file_urls.slice();
+  var originalUrls = currentReviewSubmission.file_urls.slice();
+  var urls = originalUrls.slice();
   if(idx < 0 || idx >= urls.length) return;
   if(urls.length <= 1){
     alert('이미지는 최소 1장 이상 유지해야 합니다.');
@@ -1349,6 +1394,10 @@ function _galleryDelete(idx){
   }
   urls.splice(idx, 1);
   currentReviewSubmission.file_urls = urls;
+  // QA #300 — 삭제된 인덱스의 imageCredits 도 자동 제거되고 나머지는 재정렬.
+  // _reindexFashionImageCredits 가 originalUrls.indexOf(url) 로 매핑하므로
+  // 삭제된 URL 은 자연스럽게 newCredits 에서 제외됨.
+  _reindexFashionImageCredits(originalUrls, urls);
   if(selectedCoverImageIndex === idx){
     selectedCoverImageIndex = 0;
   } else if(idx < selectedCoverImageIndex){
@@ -1376,9 +1425,15 @@ async function saveGalleryChanges(){
         'Authorization': 'Bearer ' + (localStorage.getItem('pap-token') || ''),
         'X-Requested-With': 'XMLHttpRequest'
       },
+      // QA #300 — description 도 함께 보내서 client 가 재정렬한
+      // description.fashion.imageCredits 가 server 에 반영되도록.
+      // server PATCH 핸들러는 originalUrls(DB) vs nextUrls(요청) 비교로
+      // 자체 재정렬도 하지만, 이미 client 가 재정렬한 description 을
+      // 같이 보내면 client/server 양쪽 결과가 일치함을 보장.
       body: JSON.stringify({
         file_urls: currentReviewSubmission.file_urls,
-        coverImageIndex: selectedCoverImageIndex
+        coverImageIndex: selectedCoverImageIndex,
+        description: currentReviewSubmission.description
       })
     });
     var data = await resp.json();
@@ -1493,6 +1548,23 @@ async function doReview(status){
   // the submission status and (for approved) stage the draft.
   if(!confirm(labels[status]+' 처리하시겠습니까?\n의견: '+(note||'(없음)'))){
     return;
+  }
+
+  // QA #300 — 갤러리 dirty 상태 자동 저장. 운영자가 이미지 삭제/순서
+  // 변경 후 "💾 갤러리 변경사항 저장" 을 누르지 않고 곧바로 ✓ 승인을
+  // 눌렀을 때 변경분이 손실 + fashion.imageCredits 매핑이 어긋난 채
+  // editorial 로 전파되는 시나리오 방지. saveGalleryChanges 가 PATCH 로
+  // file_urls + description 을 동기화한 후 review 진행.
+  try{
+    if(typeof _galleryDirty !== 'undefined' && _galleryDirty && typeof saveGalleryChanges === 'function'){
+      await saveGalleryChanges();
+    }
+  } catch(_){
+    // saveGalleryChanges 가 alert 으로 실패 처리하므로 여기선 무시 ─ 다만
+    // dirty 가 남아있으면 review 도 중단해서 사용자 데이터 보호.
+    if(typeof _galleryDirty !== 'undefined' && _galleryDirty){
+      return;
+    }
   }
 
   try{
