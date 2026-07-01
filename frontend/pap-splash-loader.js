@@ -24,10 +24,20 @@
   var MAX_DISPLAY_MS = 1800;   // 사용자 대기 상한
   var FADE_MS        = 400;
 
-  // 세션 내에서 이미 봤으면 skip
+  // QA #315 — 미리보기 모드. ?_splash=preview 로 접속하면 sessionStorage
+  // 를 무시하고 강제 노출 (관리자가 등록 후 즉시 확인 가능). 캐시도
+  // 우회하기 위해 fetch 시 no-store 사용.
+  var isPreview = false;
   try {
-    if (sessionStorage.getItem(STORAGE_KEY) === '1') return;
-  } catch(_){ /* private mode 등 — 그냥 진행 */ }
+    isPreview = /[?&]_splash=preview\b/.test(window.location.search || '');
+  } catch(_){}
+
+  // 세션 내에서 이미 봤으면 skip (미리보기 모드가 아닐 때만)
+  if (!isPreview){
+    try {
+      if (sessionStorage.getItem(STORAGE_KEY) === '1') return;
+    } catch(_){ /* private mode 등 — 그냥 진행 */ }
+  }
 
   var reduced = false;
   try {
@@ -143,8 +153,15 @@
   }
 
   // API 조회 — 실패해도 조용히 숨김.
+  // QA #315 — 미리보기 모드에서는 edge cache 우회 (cache: no-store + 랜덤 쿼리).
   var apiBase = (window.PAP_API_BASE || '/api').replace(/\/$/, '');
-  fetch(apiBase + '/loading-images', { credentials: 'omit' })
+  var fetchUrl = apiBase + '/loading-images';
+  var fetchOpts = { credentials: 'omit' };
+  if (isPreview){
+    fetchUrl += '?_bust=' + Date.now();
+    fetchOpts.cache = 'no-store';
+  }
+  fetch(fetchUrl, fetchOpts)
     .then(function(r){ if (!r.ok) throw new Error('bad status ' + r.status); return r.json(); })
     .then(function(json){
       var list = (json && json.data) || [];

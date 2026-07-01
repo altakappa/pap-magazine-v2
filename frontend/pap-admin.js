@@ -10249,9 +10249,10 @@ async function _uploadLoadingImgBatch(files){
     lines.push('실패한 파일은 잠시 후 다시 시도해주세요. 계속 실패하면 파일 크기/형식을 확인해주세요.');
   }
   // 성공만 있고 문제 없으면 짧게, 문제가 있으면 상세히.
+  // QA #315 — 등록 성공 시 웹사이트 반영 시간 안내.
   if (!rejected.length && !failures.length){
-    setStatus('✓ ' + successCount + '개 등록 완료', 'ok');
-    setTimeout(function(){ setStatus(''); }, 3000);
+    setStatus('✓ ' + successCount + '개 등록 완료 · 웹사이트에 최대 30초 내 반영', 'ok');
+    setTimeout(function(){ setStatus(''); }, 5000);
   } else {
     var statusMsg = successCount + '개 성공';
     if (rejected.length) statusMsg += ' · ' + rejected.length + '개 제외';
@@ -10386,6 +10387,110 @@ async function _pickMobileForLoadingImg(id){
 // 초기 렌더 (초기값은 빈 상태 → fetch 후 실 데이터로 재렌더)
 renderLoadingImgs();
 _fetchLoadingImgs();
+
+// QA #315 — 웹사이트 반영 확인 도구들.
+//
+// _openLoadingSplashPreview:
+//   새 창에서 홈페이지를 ?_splash=preview 로 열어 스플래시를 강제 재생.
+//   sessionStorage 무시 + edge cache 우회. 관리자가 등록 후 바로
+//   실제 결과를 눈으로 확인 가능.
+function _openLoadingSplashPreview(){
+  var base = (window.location.origin || 'https://pap-magazine.com');
+  // 로컬 dev 환경에서 origin 이 admin 도메인일 수 있으므로 정규화.
+  if (base.indexOf('localhost') === -1 && base.indexOf('127.0.0.1') === -1){
+    // 프로덕션: 공개 도메인으로.
+    base = 'https://pap-magazine.com';
+  }
+  var url = base + '/?_splash=preview&_t=' + Date.now();
+  var win = window.open(url, '_blank', 'noopener');
+  if (!win){
+    alert('⚠️ 새 창이 팝업 차단되었습니다.\n브라우저 팝업 허용 후 다시 시도하거나, 아래 주소를 직접 열어주세요:\n\n' + url);
+  }
+}
+
+// _verifyLoadingLive:
+//   공개 API (/api/loading-images) 를 edge cache 우회해서 직접 호출.
+//   응답을 요약해서 상단 상태 라인 + 상세 패널에 표시.
+//   저장/삭제 후 이 버튼을 눌러 실제로 웹사이트가 무엇을 서빙하는지 확인.
+async function _verifyLoadingLive(){
+  var statusEl = document.getElementById('loadingLiveStatus');
+  var detailEl = document.getElementById('loadingLiveDetail');
+  function setStatus(msg, kind){
+    if (!statusEl) return;
+    statusEl.textContent = msg || '';
+    statusEl.style.color = kind === 'error' ? '#c0392b' : (kind === 'ok' ? '#27ae60' : 'var(--text3)');
+  }
+  setStatus('공개 API 확인 중…');
+  if (detailEl){ detailEl.style.display = 'none'; detailEl.textContent = ''; }
+
+  // API_BASE 는 어드민 API (예: /api). 공개 GET 은 인증 불필요.
+  // cache: no-store + 랜덤 쿼리로 edge cache 우회.
+  var url = API_BASE.replace(/\/$/, '') + '/loading-images?_bust=' + Date.now();
+  try {
+    var r = await fetch(url, { credentials: 'omit', cache: 'no-store' });
+    var age = r.headers.get('age') || '0';
+    var xVercelCache = r.headers.get('x-vercel-cache') || 'UNKNOWN';
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var body = await r.json();
+    var list = (body && body.data) || [];
+    var activeCount = list.length;
+    var summary = '✓ 웹사이트가 지금 서빙하는 활성 이미지 ' + activeCount + '개' +
+                  ' · edge cache: ' + xVercelCache +
+                  (age !== '0' ? ' (age ' + age + 's)' : '');
+    setStatus(summary, activeCount ? 'ok' : 'error');
+    if (detailEl){
+      detailEl.style.display = 'block';
+      var lines = ['GET ' + url, ''];
+      lines.push('X-Vercel-Cache: ' + xVercelCache);
+      lines.push('Age: ' + age + 's');
+      lines.push('Cache-Control: ' + (r.headers.get('cache-control') || '—'));
+      lines.push('');
+      lines.push('활성 이미지 (' + activeCount + '개):');
+      if (!activeCount){
+        lines.push('  (없음 — 웹사이트에 스플래시가 노출되지 않습니다)');
+      } else {
+        list.forEach(function(x, i){
+          lines.push('  #' + (i + 1) + '  ' + (x.image_url_pc || '(no url)') +
+                     (x.image_url_mobile ? '  📱' : '') +
+                     '  ' + (x.alt_text || ''));
+        });
+      }
+      // 로컬 관리자 데이터와 비교.
+      var localActive = loadingImgs.filter(function(x){ return x.is_active; });
+      lines.push('');
+      lines.push('관리자 현재 상태 (활성 ' + localActive.length + '개):');
+      localActive.forEach(function(x, i){
+        lines.push('  #' + (i + 1) + '  ' + (x.image_url_pc || '(no url)') +
+                   (x.image_url_mobile ? '  📱' : '') +
+                   '  ' + (x.alt_text || ''));
+      });
+      // 불일치 감지.
+      var mismatch = false;
+      if (activeCount !== localActive.length) mismatch = true;
+      else {
+        for (var i = 0; i < activeCount; i++){
+          if (list[i].id !== localActive[i].id){ mismatch = true; break; }
+        }
+      }
+      lines.push('');
+      if (mismatch){
+        lines.push('⚠️ 관리자와 웹사이트 상태가 다릅니다.');
+        lines.push('   edge cache 가 최신화될 때까지 최대 30초 대기하거나');
+        lines.push('   이 버튼을 몇 초 뒤 다시 눌러 확인해주세요.');
+      } else {
+        lines.push('✅ 관리자와 웹사이트 상태가 일치합니다.');
+      }
+      detailEl.textContent = lines.join('\n');
+    }
+  } catch(e){
+    console.error('[loading-images] verify failed:', e);
+    setStatus('반영 상태 조회 실패: ' + (e && e.message || e), 'error');
+    if (detailEl){
+      detailEl.style.display = 'block';
+      detailEl.textContent = 'GET ' + url + '\n\n에러: ' + (e && e.message || e);
+    }
+  }
+}
 
 // ======== COMPANY INFO (About / Business / Contact) ========
 var companyImages={about:[],business:[],contact:[]};

@@ -44,7 +44,12 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ message: 'Failed to load loading images' });
     }
 
-    res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
+    // QA #315 — s-maxage 를 5분 → 30초 로 단축.
+    // 로딩 이미지는 저용량 (수 KB JSON) + 트래픽 낮음이라 캐시 TTL 을
+    // 짧게 잡아도 origin 부담 미미. 관리자가 등록/삭제/순서 변경 후
+    // 최대 30초 내에 실제 웹사이트에 반영되도록 함.
+    // SWR 은 300초로 유지 (짧게 안 하면 origin 실패 시 fallback 불가).
+    res.setHeader('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=300');
     return res.status(200).json({ data: data || [] });
   } catch (err) {
     console.error('[loading-images GET] uncaught', err);
