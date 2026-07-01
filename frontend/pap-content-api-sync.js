@@ -471,20 +471,20 @@ window._papFilmAutoPlay = function(){
   //   →  2025 Q2 (Apr-Jun) = Vol 26 …
   //
   // Examples:
-  //   "4월호"           + 2026 → "VOL.30 ISSUE"
-  //   "2026년 4월호"           → "VOL.30 ISSUE"
+  //   "4월호"           + 2026 → "VOL.31 ISSUE"
+  //   "2026년 4월호"           → "VOL.31 ISSUE"
   //   "MAR. ISSUE"      + 2026 → "VOL.29 ISSUE"
-  //   "APR."            + 2026 → "VOL.30 ISSUE"
-  //   "APR. 2026 ISSUE"        → "VOL.30 ISSUE"   (re-normalized)
-  //   "VOL.30 ISSUE"           → "VOL.30 ISSUE"   (early-return)
-  //   "2026-04-15" date         → "VOL.30 ISSUE"
+  //   "APR."            + 2026 → "VOL.31 ISSUE"
+  //   "APR. 2026 ISSUE"        → "VOL.31 ISSUE"   (re-normalized)
+  //   "VOL.31 ISSUE"           → "VOL.31 ISSUE"   (early-return)
+  //   "2026-04-15" date         → "VOL.31 ISSUE"
   function _normalizeIssueLabel(raw, dateSource){
     var monthAbbrevs = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
     var monthFullEn = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
     var s = (raw == null) ? '' : String(raw).trim();
 
     // Already vol-formatted? Keep the editor's exact wording. Matches
-    // "VOL.30", "Vol. 30", "VOL 30 ISSUE" etc.
+    // "VOL.31", "Vol. 30", "VOL 30 ISSUE" etc.
     if(/\bVOL\.?\s*\d+/i.test(s)) return s;
 
     var year = '';
