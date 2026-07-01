@@ -33,20 +33,20 @@ module.exports = async function handler(req, res) {
     let data = null;
 
     /* 1) Try slug column (some films do have slugs) */
-    let r = await supabaseAdmin.from('films').select('*')
+    let r = await supabaseAdmin.from('films').select('*, related_editorial:editorials!related_editorial_id(id,slug,title,cover_image,thumbnail,published_date,credits)')
       .eq('slug', slug).eq('status', 'published').limit(1).maybeSingle();
     data = r.data;
 
     /* 2) Title match (films are commonly addressed by title) */
     if (!data) {
-      r = await supabaseAdmin.from('films').select('*')
+      r = await supabaseAdmin.from('films').select('*, related_editorial:editorials!related_editorial_id(id,slug,title,cover_image,thumbnail,published_date,credits)')
         .eq('title', decoded).eq('status', 'published').limit(1).maybeSingle();
       data = r.data;
     }
 
     /* 2b) title with hyphens stripped — QA #222 */
     if (!data && dehyphenated !== decoded) {
-      r = await supabaseAdmin.from('films').select('*')
+      r = await supabaseAdmin.from('films').select('*, related_editorial:editorials!related_editorial_id(id,slug,title,cover_image,thumbnail,published_date,credits)')
         .eq('title', dehyphenated).eq('status', 'published').limit(1).maybeSingle();
       data = r.data;
     }
@@ -54,21 +54,21 @@ module.exports = async function handler(req, res) {
     /* 2c) title ilike — QA #222 */
     if (!data && dehyphenated.length >= 3) {
       const safe = dehyphenated.replace(/[\\%_]/g, ch => '\\' + ch);
-      r = await supabaseAdmin.from('films').select('*')
+      r = await supabaseAdmin.from('films').select('*, related_editorial:editorials!related_editorial_id(id,slug,title,cover_image,thumbnail,published_date,credits)')
         .ilike('title', safe).eq('status', 'published').limit(1).maybeSingle();
       data = r.data;
     }
 
     /* 3) youtube_id match (legacy URLs sometimes use the YT video id) */
     if (!data) {
-      r = await supabaseAdmin.from('films').select('*')
+      r = await supabaseAdmin.from('films').select('*, related_editorial:editorials!related_editorial_id(id,slug,title,cover_image,thumbnail,published_date,credits)')
         .eq('youtube_id', slug).eq('status', 'published').limit(1).maybeSingle();
       data = r.data;
     }
 
     /* 4) UUID id (admin-share links) */
     if (!data && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug)) {
-      r = await supabaseAdmin.from('films').select('*')
+      r = await supabaseAdmin.from('films').select('*, related_editorial:editorials!related_editorial_id(id,slug,title,cover_image,thumbnail,published_date,credits)')
         .eq('id', slug).eq('status', 'published').limit(1).maybeSingle();
       data = r.data;
     }

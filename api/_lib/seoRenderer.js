@@ -226,6 +226,26 @@ function renderSeoHtml(kind, record) {
   const cfg = KIND[kind] || KIND.editorial;
   const slug = record.slug || record.custom_url || record.id;
 
+  /* QA #308 — Film credit inheritance from a linked editorial.
+   *
+   * When a film is registered by linking an existing editorial (QA #229)
+   * we don't re-type the crew list on the film row. In that case the film
+   * has an empty `credits` array. If a related editorial IS linked and IT
+   * carries the credits, mirror them onto the record so both the SSR
+   * <section class="seo-credits"> block AND the Article-schema author list
+   * pick them up without any per-caller changes. Only kicks in for the
+   * 'film' kind — editorial/article/short don't inherit. */
+  if (kind === 'film'
+      && (!record.credits
+          || (Array.isArray(record.credits) && record.credits.length === 0))
+      && record.related_editorial
+      && Array.isArray(record.related_editorial.credits)
+      && record.related_editorial.credits.length){
+    record = Object.assign({}, record, {
+      credits: record.related_editorial.credits
+    });
+  }
+
   const titleKo = record.title || SITE_NAME;
   const titleEn = record.title_en || titleKo;
   const seoTitle = record.seo_title || `${titleKo} | ${SITE_NAME}`;
