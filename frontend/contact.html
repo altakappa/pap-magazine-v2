@@ -353,9 +353,13 @@ body:'<div class="contact-grid"><div class="contact-block"><h3>IT Office</h3><p>
 ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'}
 };
 function setLang(l){localStorage.setItem('pap-lang',l);var d=L[l]||L.ko;document.querySelectorAll('[data-i18n]').forEach(function(e){var k=e.getAttribute('data-i18n');if(d[k])e.textContent=d[k];});document.getElementById('contactBody').innerHTML=d.body;document.getElementById('footerLegal').innerHTML=d.ft;document.getElementById('langSelect').value=l;}
-// Media Kit — open Google Drive folder directly
+// Media Kit — open Google Drive preview page in a new tab.
+// 기존 `uc?export=download` 는 Google 이 큰 파일에 virus-scan 경고
+// 페이지를 끼워넣으면서 브라우저에서 다운로드가 트리거되지 않고 빈
+// 페이지만 뜨는 증상 발생. `/view` 는 뷰어에서 바로 열리고 우측 상단
+// 다운로드 버튼으로 저장 가능해 안정적.
 var mediaKitFiles={ko:'1nvTbgFPS3KrNSJbC2xhYsaWW3mMJbbsl',en:'1DpKhWe_zocTROb0AEoYnHsKXBJ3ei3xJ'};
-function downloadMediaKit(lang){var fid=mediaKitFiles[lang]||mediaKitFiles.en;window.open('https://drive.google.com/uc?export=download&id='+fid,'_blank','noopener');}
+function downloadMediaKit(lang){var fid=mediaKitFiles[lang]||mediaKitFiles.en;window.open('https://drive.google.com/file/d/'+fid+'/view','_blank','noopener');}
 // AUTO LANGUAGE DETECTION
 (function(){
   var saved=localStorage.getItem('pap-lang');
