@@ -7681,6 +7681,7 @@ function renderFilmRelatedList(){
 function selectFilmRelated(id){
   var hidden = document.getElementById('filmRelatedEditorial');
   if(!hidden) return;
+  var prev = hidden.value;
   if(hidden.value === id){
     hidden.value = '';
   } else {
@@ -7688,6 +7689,16 @@ function selectFilmRelated(id){
   }
   _updateFilmRelatedSelectedChip(hidden.value);
   renderFilmRelatedList();
+  // QA #307 — 에디토리얼을 새로 선택했을 때 (해제/재선택 아닌 실제 change)
+  // 크레딧을 자동으로 불러온다. 'auto' 모드는 area 가 비어있을 때만 침묵
+  // 채우기, 이미 내용이 있으면 confirm 다이얼로그로 덮어쓰기 여부를 묻는다.
+  if (hidden.value && hidden.value !== prev){
+    try {
+      _loadCreditsFromRelatedEditorial('auto');
+    } catch(e){
+      console.warn('[films] auto-load credits failed:', e && e.message);
+    }
+  }
 }
 
 function clearFilmRelated(){
@@ -7696,6 +7707,112 @@ function clearFilmRelated(){
   _updateFilmRelatedSelectedChip('');
   renderFilmRelatedList();
 }
+
+// QA #307 — 연결된 에디토리얼의 크레딧을 필름 크레딧 폼에 자동 로드.
+//
+//   mode = 'auto'  → area 가 비어있으면 침묵 populate. 내용이 있으면
+//                    confirm 다이얼로그로 덮어쓰기 여부 확인.
+//   mode = 'force' → 항상 덮어쓴다 (toolbar 의 "📥 크레딧 불러오기"
+//                    버튼용). area 가 이미 채워져 있을 때만 confirm.
+//
+// 데이터 소스는 _filmRelatedEdCache 에 이미 credits 필드가 포함돼 있어
+// 별도 fetch 불필요 (/api/editorials LIST_COLUMNS 에 credits 포함).
+// 필름 credits 스키마와 에디토리얼 credits 스키마가 동일하므로
+// {roles, name, instagram} 그대로 재사용 가능.
+function _loadCreditsFromRelatedEditorial(mode){
+  mode = mode || 'auto';
+  var hidden = document.getElementById('filmRelatedEditorial');
+  var relId = hidden && hidden.value;
+  if (!relId){
+    if (mode === 'force'){
+      alert('먼저 상단에서 연결할 에디토리얼을 선택해주세요.');
+    }
+    return;
+  }
+  // 캐시에서 에디토리얼 찾기
+  var match = null;
+  if (Array.isArray(_filmRelatedEdCache)){
+    for (var i = 0; i < _filmRelatedEdCache.length; i++){
+      if (_filmRelatedEdCache[i] && _filmRelatedEdCache[i].id === relId){
+        match = _filmRelatedEdCache[i]; break;
+      }
+    }
+  }
+  if (!match){
+    if (mode === 'force'){
+      alert('선택한 에디토리얼의 데이터를 찾을 수 없습니다. 페이지를 새로고침한 후 다시 시도해주세요.');
+    }
+    return;
+  }
+  var edCredits = Array.isArray(match.credits) ? match.credits : [];
+  if (!edCredits.length){
+    if (mode === 'force'){
+      alert('선택한 에디토리얼에 등록된 크레딧이 없습니다.');
+    }
+    return;
+  }
+  // 크레딧 모드 확인. 'inherit' 모드에서는 auto-load 스킵 (렌더시 자동
+  // fallback 되므로 폼 채울 필요 없음). force 모드에서만 direct 로 전환.
+  var currentModeEl = document.querySelector('input[name="filmCreditsMode"]:checked');
+  var currentMode = currentModeEl ? currentModeEl.value : 'direct';
+  if (mode === 'auto' && currentMode === 'inherit'){
+    return;
+  }
+  var directRadio = document.querySelector('input[name="filmCreditsMode"][value="direct"]');
+  if (directRadio && !directRadio.checked){
+    directRadio.checked = true;
+    _onFilmCreditsModeChange('direct');
+  }
+  // 기존 credits area 에 실제 내용이 있는지 확인 (빈 row 는 무시)
+  var area = document.getElementById('filmCreditsArea');
+  if (!area) return;
+  var existingRows = area.querySelectorAll('.pe-credit-row');
+  var hasContent = false;
+  existingRows.forEach(function(row){
+    var nameEl = row.querySelector('.pe-credit-name');
+    var igEl = row.querySelector('.pe-credit-ig');
+    var roles = (typeof _readCreditRoles === 'function') ? _readCreditRoles(row) : [];
+    if ((nameEl && nameEl.value.trim()) || (igEl && igEl.value.trim()) || roles.length){
+      hasContent = true;
+    }
+  });
+  if (hasContent){
+    // auto 모드에서 내용이 있으면 침묵 skip (사용자 입력 보호).
+    // force 모드에서는 confirm 다이얼로그.
+    if (mode === 'auto') return;
+    var msg = '📰 선택한 에디토리얼의 크레딧 ' + edCredits.length + '건을 불러옵니다.\n\n'
+            + '현재 입력된 크레딧이 있습니다. 모두 덮어쓸까요?\n'
+            + '(취소하면 기존 입력을 유지합니다)';
+    if (!confirm(msg)) return;
+  }
+  // area 비우고 에디토리얼 credits 로 재구성
+  area.innerHTML = '';
+  edCredits.forEach(function(c){
+    if (!c || typeof c !== 'object') return;
+    var row = document.createElement('div');
+    row.className = 'pe-credit-row';
+    row.setAttribute('draggable', 'true');
+    var roles = c.roles || (c.role ? [c.role] : []);
+    row.innerHTML = _buildCreditRowInner(roles, c.name || '', c.instagram || '');
+    area.appendChild(row);
+    _wireCreditRowDrag(row, 'filmCreditsArea');
+    var trig = row.querySelector('.pe-role-trigger');
+    if (trig) _renderRoleChips(trig);
+  });
+  // 빈 상태가 안 되도록 최소 1개 row 는 보장
+  if (!area.querySelector('.pe-credit-row')){
+    addCredit('filmCreditsArea');
+  }
+  _onCreditCheckChange('filmCreditsArea');
+  // 성공 토스트 — showToast 가 있으면 사용, 없으면 status 라인에 fallback
+  var toastMsg = '📥 에디토리얼 크레딧 ' + edCredits.length + '건을 불러왔습니다.';
+  if (typeof showToast === 'function'){
+    showToast(toastMsg, 'success');
+  } else if (typeof console !== 'undefined'){
+    console.log('[films]', toastMsg);
+  }
+}
+if (typeof window !== 'undefined') window._loadCreditsFromRelatedEditorial = _loadCreditsFromRelatedEditorial;
 
 // QA #232 — same shape as validateNewsImage (QA #200): reject the file
 // up front so the editor sees a Korean error before we burn an

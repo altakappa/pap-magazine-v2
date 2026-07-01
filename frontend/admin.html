@@ -2315,6 +2315,11 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
         <div class="pe-credits-toolbar">
           <label><input type="checkbox" id="filmCreditsCheckAll" onchange="_onCreditCheckAll(this, 'filmCreditsArea')"> 전체</label>
           <button id="filmCreditsBulkDel" type="button" class="btn btn-sm btn-red" onclick="bulkDeleteCredits('filmCreditsArea')" disabled>선택 삭제 <span class="pe-toolbar-count" id="filmCreditsSelCount">(0)</span></button>
+          <!-- QA #307 — 상단에서 선택한 연결 에디토리얼의 크레딧을
+               필름 크레딧 폼에 즉시 채워 넣는 명시적 재로드 버튼.
+               자동 로드는 에디토리얼을 새로 선택할 때 트리거되지만,
+               관리자가 수동으로 다시 불러오고 싶을 때 사용. -->
+          <button type="button" class="btn btn-sm" onclick="_loadCreditsFromRelatedEditorial('force')" title="연결된 에디토리얼의 크레딧을 다시 불러옵니다">📥 에디토리얼 크레딧 불러오기</button>
           <span class="pe-toolbar-spacer"></span>
           <span class="pe-toolbar-count">⋮⋮ 핸들로 드래그하여 순서 변경</span>
         </div>
