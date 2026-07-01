@@ -159,59 +159,23 @@ function _heroStop(){
 function _heroPause(){ _heroPaused = true; _heroStop(); }
 function _heroResume(){ _heroPaused = false; _heroStart(); }
 
-// QA #295 — 화살표 / 일시정지 컨트롤 + 클릭→링크 라우팅. DB 에서 그룹
-// 데이터가 도착한 뒤에도 동일 핸들러를 재사용하도록 별도 함수로 분리.
+// QA #295 — 슬라이드 클릭 → 그룹 링크로 이동 라우팅.
+// QA #304 — 좌우 화살표 + 재생/일시정지 버튼 제거. 매거진 톤에 UI 요소가
+// 과했다는 운영자 피드백. 자동 슬라이드 / hover-pause / visibilitychange /
+// reduced-motion 자동 제어는 그대로 유지 ─ 사용자 인터랙션은 콘텐츠 클릭
+// 만으로 축소해 시각적 잡음을 줄임.
+//
+// 이전 QA #297 에서 넣었던 컨트롤 (prev / next / play 버튼) 은 완전 제거.
+// CSS 의 .hero-nav* 스타일도 함께 삭제. 링크 라우팅만 남음.
 function _heroInstallControls(){
   var heroEl = document.getElementById('hero');
   if(!heroEl) return;
-  if(heroEl.querySelector('.hero-nav')) return; // 중복 주입 방지
+  if(heroEl._papClickBound) return; // 중복 바인딩 방지
+  heroEl._papClickBound = true;
 
-  // ── prev / next 화살표 ─ 평소엔 거의 보이지 않고, hover 시 fade in.
-  var prevBtn = document.createElement('button');
-  prevBtn.type = 'button';
-  prevBtn.className = 'hero-nav hero-nav-prev';
-  prevBtn.setAttribute('aria-label', 'Previous slide');
-  prevBtn.innerHTML = '&#10094;';
-  var nextBtn = document.createElement('button');
-  nextBtn.type = 'button';
-  nextBtn.className = 'hero-nav hero-nav-next';
-  nextBtn.setAttribute('aria-label', 'Next slide');
-  nextBtn.innerHTML = '&#10095;';
-  // ── 일시정지 / 재생 토글 ─ 우측 하단.
-  var playBtn = document.createElement('button');
-  playBtn.type = 'button';
-  playBtn.className = 'hero-nav hero-nav-pause';
-  playBtn.setAttribute('aria-label', 'Pause autoplay');
-  playBtn.innerHTML = '&#10074;&#10074;'; // ❚❚
-  var _userPaused = false;
-  function _updatePlayBtn(){
-    playBtn.innerHTML = _userPaused ? '&#9654;' : '&#10074;&#10074;';
-    playBtn.setAttribute('aria-label', _userPaused ? 'Resume autoplay' : 'Pause autoplay');
-  }
-  prevBtn.addEventListener('click', function(e){
-    e.preventDefault(); e.stopPropagation();
-    heroGo(hCur - 1);
-  });
-  nextBtn.addEventListener('click', function(e){
-    e.preventDefault(); e.stopPropagation();
-    heroGo(hCur + 1);
-  });
-  playBtn.addEventListener('click', function(e){
-    e.preventDefault(); e.stopPropagation();
-    _userPaused = !_userPaused;
-    if(_userPaused) _heroPause(); else _heroResume();
-    _updatePlayBtn();
-  });
-
-  heroEl.appendChild(prevBtn);
-  heroEl.appendChild(nextBtn);
-  heroEl.appendChild(playBtn);
-
-  // ── 슬라이드 클릭 → 해당 슬라이드의 메타 링크로 이동. 정적
-  //    fallback HTML 에는 inline onclick 이 'Folie' 로 박혀 있는데
-  //    동적 렌더가 끝나면 그 onclick 을 제거하고 우리가 다시 위임.
+  // 정적 fallback HTML 에 박혀 있는 inline onclick ('Folie' 하드코딩) 제거.
+  // 동적 렌더 후에는 아래 위임 핸들러로 그 슬라이드의 그룹 링크로 이동.
   heroEl.removeAttribute('onclick');
-  // 화살표/일시정지 버튼 클릭은 위에서 stopPropagation 으로 분리됨.
   heroEl.addEventListener('click', function(e){
     var meta = _heroSlideMeta[hCur];
     if(meta && meta.link){
