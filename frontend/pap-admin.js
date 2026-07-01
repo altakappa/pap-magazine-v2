@@ -7478,12 +7478,33 @@ async function _populateFilmRelatedEditorial(selectedId){
   if(hidden) hidden.value = selectedId || '';
   try {
     if (!_filmRelatedEdCache) {
-      // Bigger limit so the picker covers the full catalogue. The
-      // previous limit=100 silently capped what an editor could pick
-      // once the library grew past 100 titles.
-      var r = await apiGet('/editorials?status=published&limit=500');
-      _filmRelatedEdCache = (r && (r.data || r.editorials || r)) || [];
-      if (!Array.isArray(_filmRelatedEdCache)) _filmRelatedEdCache = [];
+      // QA #305 — published + scheduled 병합 fetch.
+      // 예약 게시 상태 (status=published + scheduled_publish_at 미래) 는
+      // 공개용 GET 이 hide 하므로 필름 등록 시 안 잡히던 결함. status=scheduled
+      // 로 별도 조회해서 병합 + _scheduled 플래그로 배지 표시.
+      // 두 요청 병렬 처리 + 실패해도 나머지는 사용.
+      var results = await Promise.all([
+        apiGet('/editorials?status=published&limit=500').catch(function(){ return null; }),
+        apiGet('/editorials?status=scheduled&limit=500').catch(function(){ return null; })
+      ]);
+      var pubList = (results[0] && (results[0].data || results[0].editorials || results[0])) || [];
+      var schList = (results[1] && (results[1].data || results[1].editorials || results[1])) || [];
+      if (!Array.isArray(pubList)) pubList = [];
+      if (!Array.isArray(schList)) schList = [];
+      // 예약분에 flag 마킹 → 렌더시 배지 표시.
+      schList = schList.map(function(ed){
+        return Object.assign({}, ed, { _scheduled: true });
+      });
+      // 중복 제거 (같은 id 중 예약분 우선 — 스케줄 정보 유지). Set 으로 id 트래킹.
+      var seen = {};
+      var merged = [];
+      schList.concat(pubList).forEach(function(ed){
+        if(!ed || !ed.id) return;
+        if(seen[ed.id]) return;
+        seen[ed.id] = 1;
+        merged.push(ed);
+      });
+      _filmRelatedEdCache = merged;
     }
   } catch(e){
     console.warn('[films] failed to load editorials list:', e && e.message);
@@ -7529,7 +7550,18 @@ function _updateFilmRelatedSelectedChip(id){
   var thumb = match.thumbnail || match.thumbnail_url || match.cover_image || '';
   var thumbEl = document.getElementById('filmRelatedSelectedThumb');
   if(thumbEl) thumbEl.style.backgroundImage = thumb ? ('url(' + JSON.stringify(thumb).slice(1, -1) + ')') : '';
-  document.getElementById('filmRelatedSelectedTitle').textContent = match.title || match.slug || match.id || '';
+  // QA #305 — 선택된 chip 에도 예약 상태 배지. innerHTML 로 배지 SPAN 삽입.
+  var titleEl = document.getElementById('filmRelatedSelectedTitle');
+  if(titleEl){
+    var titleText = match.title || match.slug || match.id || '';
+    if(match._scheduled && match.scheduled_publish_at){
+      var schedStr = _formatFilmEdDate(match.scheduled_publish_at);
+      titleEl.innerHTML = esc(titleText)
+        + ' <span style="font-size:10px;color:#fff;background:#2980b9;padding:2px 6px;border-radius:2px;margin-left:4px;white-space:nowrap">⏰ 예약 ' + esc(schedStr) + '</span>';
+    } else {
+      titleEl.textContent = titleText;
+    }
+  }
   var pd = match.published_date || match.created_at || '';
   document.getElementById('filmRelatedSelectedDate').textContent = pd ? _formatFilmEdDate(pd) : '';
 }
@@ -7603,6 +7635,13 @@ function renderFilmRelatedList(){
     var pd = ed.published_date || ed.created_at || '';
     var dateStr = pd ? _formatFilmEdDate(pd) : '';
     var sel = (ed.id === currentId);
+    // QA #305 — 예약 게시 상태 배지. scheduled_publish_at 이 미래이면
+    // 캐시 로딩 시 _scheduled 플래그가 마킹돼 있음. 예약 일시도 함께 노출.
+    var schedBadge = '';
+    if(ed._scheduled && ed.scheduled_publish_at){
+      var schedStr = _formatFilmEdDate(ed.scheduled_publish_at);
+      schedBadge = '<span style="font-size:10px;color:#fff;background:#2980b9;padding:2px 6px;border-radius:2px;margin-left:6px;white-space:nowrap">⏰ 예약 ' + esc(schedStr) + '</span>';
+    }
     html += '<div class="film-rel-row" data-id="' + esc(ed.id) + '" '
       + 'onclick="selectFilmRelated(\'' + String(ed.id).replace(/'/g, "\\'") + '\')" '
       + 'style="display:flex;align-items:center;gap:10px;padding:8px 10px;cursor:pointer;border-bottom:1px solid var(--border);'
@@ -7610,7 +7649,7 @@ function renderFilmRelatedList(){
       + '<div style="width:42px;height:42px;background:var(--surface);background-size:cover;background-position:center;flex-shrink:0;border-radius:2px'
       +   (thumb ? (';background-image:url(\'' + safeThumb + '\')') : '') + '"></div>'
       + '<div style="flex:1;min-width:0">'
-      +   '<div style="font-size:12px;font-weight:600;color:var(--text1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(title) + '</div>'
+      +   '<div style="font-size:12px;font-weight:600;color:var(--text1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(title) + schedBadge + '</div>'
       +   '<div style="font-size:10px;color:var(--text3);margin-top:2px">' + esc(dateStr) + '</div>'
       + '</div>'
       + (sel ? '<span style="font-size:11px;color:#3ad48a;flex-shrink:0">✓ 선택됨</span>' : '')
