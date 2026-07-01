@@ -9913,37 +9913,128 @@ function renderLoadingImgs(){
   };
 }
 
+// QA #311 — 다중 업로드 지원 (multiple + drag & drop).
+// 4~5장 이상을 한 번에 등록하는 실제 커버 교체 워크플로우에 맞춤.
+// alt_text 는 선택 사항이라 다중 업로드 시엔 프롬프트 생략 (등록 후
+// 개별 카드에서 편집 가능하도록 확장 여지). 단일 업로드 UX 는 유지.
 async function addLoadingImg(){
-  // 파일 선택 → uploadFile (기존 media/upload) → POST /api/admin/loading-images
   var input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/jpeg,image/png,image/webp';
+  input.multiple = true;
   input.onchange = async function(){
-    if (!this.files || !this.files[0]) return;
-    var file = this.files[0];
-    if (file.size > 3 * 1024 * 1024){
-      alert('파일 크기가 너무 큽니다. (' + (file.size / 1024 / 1024).toFixed(1) + 'MB → 최대 3MB)');
-      return;
-    }
-    var altText = prompt('이미지 설명(선택 사항, SEO/접근성용):', '') || '';
-    try {
-      var url = await uploadFile(file);
-      if (!url){ alert('업로드 실패 - URL 이 반환되지 않았습니다.'); return; }
-      var maxOrder = loadingImgs.reduce(function(m, x){ return Math.max(m, x.sort_order || 0); }, -1);
-      await apiPost('/admin/loading-images', {
-        image_url_pc: url,
-        alt_text: altText.trim() || null,
-        sort_order: maxOrder + 1,
-        is_active: true
-      });
-      await _fetchLoadingImgs();
-      alert('✓ 로딩 이미지가 등록되었습니다.');
-    } catch(e){
-      console.error('[loading-images] add failed:', e);
-      alert('업로드/등록 실패: ' + (e && e.message ? e.message : e));
-    }
+    if (!this.files || !this.files.length) return;
+    await _uploadLoadingImgBatch(Array.prototype.slice.call(this.files));
   };
   input.click();
+}
+
+// 배치 업로드 공통 로직 (파일 선택 + 드래그앤드롭 양쪽에서 재사용).
+// 진행 상황을 인라인 상태 라인으로 노출. 개별 실패는 나머지 진행에
+// 영향 없음 — 실패한 파일만 마지막에 요약 alert.
+async function _uploadLoadingImgBatch(files){
+  if (!files || !files.length) return;
+  // 이미지 파일만 필터 + 3MB 상한 사전 체크.
+  var MAX = 3 * 1024 * 1024;
+  var accepted = [];
+  var rejected = [];
+  files.forEach(function(f){
+    if (!f || !f.type || f.type.indexOf('image/') !== 0){
+      rejected.push({ name: (f && f.name) || 'unknown', reason: '이미지 아님' });
+      return;
+    }
+    if (f.size > MAX){
+      rejected.push({ name: f.name, reason: (f.size/1024/1024).toFixed(1) + 'MB > 3MB' });
+      return;
+    }
+    accepted.push(f);
+  });
+  if (!accepted.length){
+    alert('업로드 가능한 이미지가 없습니다.\n' + rejected.map(function(r){ return '• ' + r.name + ' (' + r.reason + ')'; }).join('\n'));
+    return;
+  }
+
+  var statusEl = document.getElementById('loadingUploadStatus');
+  function setStatus(msg, isError){
+    if (!statusEl) return;
+    statusEl.textContent = msg || '';
+    statusEl.style.color = isError ? '#c0392b' : 'var(--text3)';
+  }
+
+  // 이미 등록된 마지막 sort_order 뒤로 append (기존 순서 보존).
+  var maxOrder = loadingImgs.reduce(function(m, x){ return Math.max(m, x.sort_order || 0); }, -1);
+
+  var successCount = 0;
+  var failures = [];
+  for (var i = 0; i < accepted.length; i++){
+    var f = accepted[i];
+    setStatus('업로드 중… (' + (i + 1) + ' / ' + accepted.length + ') ' + f.name);
+    try {
+      var url = await uploadFile(f);
+      if (!url) throw new Error('업로드 응답에 URL 이 없습니다.');
+      await apiPost('/admin/loading-images', {
+        image_url_pc: url,
+        alt_text: null,
+        sort_order: maxOrder + 1 + i,
+        is_active: true
+      });
+      successCount++;
+    } catch(e){
+      console.error('[loading-images] upload failed for', f.name, e);
+      failures.push({ name: f.name, reason: (e && e.message) || String(e) });
+    }
+  }
+
+  await _fetchLoadingImgs();
+
+  var lines = ['✓ ' + successCount + '개 이미지가 등록되었습니다.'];
+  if (rejected.length){
+    lines.push('');
+    lines.push('업로드 전 제외 (' + rejected.length + '개):');
+    rejected.forEach(function(r){ lines.push('• ' + r.name + ' — ' + r.reason); });
+  }
+  if (failures.length){
+    lines.push('');
+    lines.push('업로드 실패 (' + failures.length + '개):');
+    failures.forEach(function(f){ lines.push('• ' + f.name + ' — ' + f.reason); });
+  }
+  setStatus(successCount + '개 등록 완료' + (failures.length ? ' · 실패 ' + failures.length + '개' : ''), failures.length > 0);
+  alert(lines.join('\n'));
+}
+
+// 드래그앤드롭 setup — 그리드 자체를 drop target 으로.
+// dnd 등록은 컨테이너가 준비된 뒤 한 번만.
+function _setupLoadingDragDrop(){
+  var zone = document.getElementById('loadingDropZone');
+  if (!zone || zone.dataset.dndSetup === '1') return;
+  zone.dataset.dndSetup = '1';
+  zone.addEventListener('dragover', function(e){
+    if (e.dataTransfer && Array.prototype.some.call(e.dataTransfer.items || [], function(it){ return it.kind === 'file'; })){
+      e.preventDefault();
+      zone.style.outline = '2px dashed var(--text)';
+      zone.style.outlineOffset = '4px';
+      zone.style.background = 'rgba(255,255,255,.04)';
+    }
+  });
+  zone.addEventListener('dragleave', function(e){
+    if (e.target === zone){
+      zone.style.outline = '';
+      zone.style.background = '';
+    }
+  });
+  zone.addEventListener('drop', async function(e){
+    e.preventDefault();
+    zone.style.outline = '';
+    zone.style.background = '';
+    var files = e.dataTransfer && e.dataTransfer.files;
+    if (!files || !files.length) return;
+    await _uploadLoadingImgBatch(Array.prototype.slice.call(files));
+  });
+}
+if (typeof document !== 'undefined' && document.addEventListener){
+  document.addEventListener('DOMContentLoaded', function(){
+    try { _setupLoadingDragDrop(); } catch(_){}
+  });
 }
 
 async function _toggleLoadingImg(id){
