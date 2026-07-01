@@ -9880,14 +9880,25 @@ function renderLoadingImgs(){
     return;
   }
   grid.innerHTML = '';
-  loadingImgs.forEach(function(img){
+  loadingImgs.forEach(function(img, idx){
     var pcUrl = img.image_url_pc || '';
     var mUrl  = img.image_url_mobile || '';
     var active = !!img.is_active;
     var card = document.createElement('div');
-    card.style.cssText = 'width:180px;background:var(--surface);border:1px solid var(--border);padding:10px;text-align:center';
+    card.className = 'loading-img-card';
+    card.setAttribute('draggable', 'true');
+    card.dataset.id = img.id;
+    card.dataset.idx = String(idx);
+    card.style.cssText = 'width:180px;background:var(--surface);border:1px solid var(--border);padding:10px;text-align:center;position:relative;cursor:move';
+    // QA #312 — 드래그 핸들 인디케이터 + 순서 배지.
+    // 카드 상단 좌우에 순서 번호 + 드래그 힌트를 배치해 순서 편집이
+    // 가능하다는 걸 즉시 인지할 수 있게 함.
     card.innerHTML =
-      '<img loading="lazy" src="' + esc(pcUrl) + '" style="width:100%;height:110px;object-fit:cover;margin-bottom:8px;border:1px solid var(--border);background:#111">' +
+      '<div style="position:absolute;top:6px;left:6px;font-size:10px;font-weight:700;color:var(--text3);background:rgba(0,0,0,.55);padding:2px 6px;border-radius:2px;pointer-events:none">' +
+        '#' + (idx + 1) +
+      '</div>' +
+      '<div style="position:absolute;top:6px;right:6px;font-size:11px;color:var(--text3);pointer-events:none" title="드래그하여 순서 변경">⋮⋮</div>' +
+      '<img loading="lazy" src="' + esc(pcUrl) + '" style="width:100%;height:110px;object-fit:cover;margin:8px 0;border:1px solid var(--border);background:#111;pointer-events:none">' +
       '<div style="font-size:10px;font-weight:600;margin-bottom:6px;color:' + (active ? 'var(--green)' : 'var(--red)') + '">' +
         (active ? '✓ 활성' : '✗ 비활성') +
       '</div>' +
@@ -9899,9 +9910,10 @@ function renderLoadingImgs(){
         '<button class="btn btn-sm" data-id="' + esc(img.id) + '" data-act="mobile">모바일 이미지</button>' +
         '<button class="btn btn-sm btn-red" data-id="' + esc(img.id) + '" data-act="del">삭제</button>' +
       '</div>';
+    _wireLoadingCardDrag(card);
     grid.appendChild(card);
   });
-  // 이벤트 위임
+  // 이벤트 위임 (버튼 클릭)
   grid.onclick = function(e){
     var btn = e.target.closest('button[data-id]');
     if (!btn) return;
@@ -9911,6 +9923,97 @@ function renderLoadingImgs(){
     else if (act === 'del') _deleteLoadingImg(id);
     else if (act === 'mobile') _pickMobileForLoadingImg(id);
   };
+}
+
+// QA #312 — 카드 하나에 드래그 리스너 부착.
+//   dragstart : source idx 를 dataTransfer 에 저장 + 원본 카드 반투명
+//   dragover  : 다른 카드 위에서 drop 허용 + 하이라이트 outline
+//   dragleave : outline 제거
+//   drop      : 배열 재정렬 + 서버 저장 + 재렌더
+// text/plain 을 사용하는 이유는 커스텀 MIME 을 거부하는 브라우저 회피
+// (예: Safari 일부 버전). 커버/뉴스 블록에서 이미 검증된 패턴 재사용.
+function _wireLoadingCardDrag(card){
+  card.addEventListener('dragstart', function(e){
+    var idx = card.dataset.idx || '';
+    try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(idx)); } catch(_){}
+    card.style.opacity = '0.4';
+    // grid drop zone 하이라이트가 겹치지 않게 dropZone dragover 를 잠깐 무시.
+    var zone = document.getElementById('loadingDropZone');
+    if (zone) zone.dataset.dragging = '1';
+  });
+  card.addEventListener('dragend', function(){
+    card.style.opacity = '';
+    var zone = document.getElementById('loadingDropZone');
+    if (zone) delete zone.dataset.dragging;
+    // 모든 카드의 outline 클리어.
+    var all = document.querySelectorAll('.loading-img-card');
+    all.forEach(function(c){ c.style.outline = ''; c.style.outlineOffset = ''; });
+  });
+  card.addEventListener('dragover', function(e){
+    // 내부 카드 간 이동일 때만 preventDefault (파일 드롭은 dropzone 이 처리)
+    var hasDragging = document.getElementById('loadingDropZone');
+    if (hasDragging && hasDragging.dataset.dragging === '1'){
+      e.preventDefault();
+      try { e.dataTransfer.dropEffect = 'move'; } catch(_){}
+      card.style.outline = '2px solid var(--text)';
+      card.style.outlineOffset = '-2px';
+    }
+  });
+  card.addEventListener('dragleave', function(){
+    card.style.outline = '';
+    card.style.outlineOffset = '';
+  });
+  card.addEventListener('drop', async function(e){
+    var zone = document.getElementById('loadingDropZone');
+    if (!zone || zone.dataset.dragging !== '1') return; // 파일 드롭은 zone 이 처리
+    e.preventDefault();
+    e.stopPropagation();
+    card.style.outline = '';
+    card.style.outlineOffset = '';
+    var from = parseInt(e.dataTransfer.getData('text/plain'), 10);
+    var to = parseInt(card.dataset.idx || '-1', 10);
+    if (isNaN(from) || isNaN(to) || from === to || from < 0 || to < 0) return;
+    if (from >= loadingImgs.length || to >= loadingImgs.length) return;
+    // 로컬 배열 재정렬.
+    var moved = loadingImgs.splice(from, 1)[0];
+    loadingImgs.splice(to, 0, moved);
+    // 즉시 renumber + 재렌더 (낙관적 업데이트)
+    loadingImgs.forEach(function(x, i){ x.sort_order = i; });
+    renderLoadingImgs();
+    await _saveLoadingImgOrder();
+  });
+}
+
+// QA #312 — 순서 저장. 서버에 각 이미지의 새 sort_order 를 PATCH.
+// 배치 크기가 작아 (보통 ≤10) 순차 호출로 충분. 실패 시 rollback
+// 대신 다음 fetch 로 서버 상태를 재동기화 (편집 도중 다른 세션이
+// 개입하는 케이스도 자연스럽게 해소).
+async function _saveLoadingImgOrder(){
+  var statusEl = document.getElementById('loadingUploadStatus');
+  function setStatus(msg, isError){
+    if (!statusEl) return;
+    statusEl.textContent = msg || '';
+    statusEl.style.color = isError ? '#c0392b' : 'var(--text3)';
+  }
+  setStatus('순서 저장 중…');
+  var failed = 0;
+  for (var i = 0; i < loadingImgs.length; i++){
+    var img = loadingImgs[i];
+    try {
+      await apiPatch('/admin/loading-images', { id: img.id, sort_order: i });
+    } catch(e){
+      console.error('[loading-images] reorder patch failed:', img.id, e);
+      failed++;
+    }
+  }
+  if (failed){
+    setStatus('순서 저장 부분 실패 (' + failed + '개)', true);
+    // 실패가 있으면 서버와 재동기화.
+    await _fetchLoadingImgs();
+  } else {
+    setStatus('✓ 순서가 저장되었습니다.');
+    setTimeout(function(){ setStatus(''); }, 2000);
+  }
 }
 
 // QA #311 — 다중 업로드 지원 (multiple + drag & drop).
