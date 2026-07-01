@@ -121,6 +121,28 @@ function heroGo(n){
   hSlides[hCur].classList.remove('active');
   hCur = (n + hSlides.length) % hSlides.length;
   hSlides[hCur].classList.add('active');
+  // QA #303 — 슬라이드 전환 시 hero-content (발행호/제목) 도 그 슬라이드
+  // 가 속한 그룹의 값으로 함께 업데이트. 이전에는 index.html 에 하드코딩
+  // 된 정적 텍스트가 그대로 남아 admin 저장 데이터와 노출 데이터가
+  // 어긋나는 결함이 있었음.
+  _heroUpdateContentText(hCur);
+}
+
+function _heroUpdateContentText(idx){
+  var meta = _heroSlideMeta[idx];
+  if(!meta) return;
+  var issueEl = document.querySelector('.hero-content .hero-issue');
+  var titleEl = document.querySelector('.hero-content .hero-title');
+  if(issueEl && meta.issue){
+    // 정적 HTML 은 data-i18n 다국어 훅을 갖고 있어서 setLang 훅이 다시
+    // 덮어쓸 수 있으므로 마킹 해제.
+    issueEl.removeAttribute('data-i18n');
+    issueEl.textContent = meta.issue;
+  }
+  if(titleEl && meta.title){
+    titleEl.removeAttribute('data-i18n');
+    titleEl.textContent = meta.title;
+  }
 }
 function _heroTick(){
   if(_heroPaused){ _heroTimer = null; return; }
@@ -278,6 +300,9 @@ function _heroRenderFromBanners(groups){
   hSlides = heroEl.querySelectorAll('.hero-slide');
   _heroSlideMeta = newSlides;
   hCur = 0;
+  // QA #303 — 첫 슬라이드에 맞춰 hero-content(발행호/제목) 도 즉시
+  // 반영. 이후 heroGo 가 슬라이드 전환 시마다 다시 갱신.
+  _heroUpdateContentText(0);
 
   // 컨트롤 (화살표/일시정지) 재주입 + click 위임 다시 걸기.
   _heroInstallControls();
