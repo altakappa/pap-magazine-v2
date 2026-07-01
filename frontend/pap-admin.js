@@ -9872,9 +9872,19 @@ async function _fetchLoadingImgs(){
   renderLoadingImgs();
 }
 
+// QA #314 — 선택 삭제용 로컬 상태. 렌더 사이에 유지.
+var _loadingSelectedIds = new Set();
+
 function renderLoadingImgs(){
   var grid = document.getElementById('loadingGrid');
   if (!grid) return;
+  // 존재하지 않는 id 는 선택 목록에서 자동 제거 (fetch 후 반영).
+  var currentIds = new Set(loadingImgs.map(function(x){ return x.id; }));
+  Array.from(_loadingSelectedIds).forEach(function(id){
+    if (!currentIds.has(id)) _loadingSelectedIds.delete(id);
+  });
+  _updateLoadingBulkBar();
+
   if (!loadingImgs.length){
     grid.innerHTML = '<div class="pe-hint" style="padding:24px;color:var(--text3)">등록된 로딩 이미지가 없습니다. <strong>+ 새 이미지</strong> 버튼으로 추가해주세요.</div>';
     return;
@@ -9884,18 +9894,21 @@ function renderLoadingImgs(){
     var pcUrl = img.image_url_pc || '';
     var mUrl  = img.image_url_mobile || '';
     var active = !!img.is_active;
+    var selected = _loadingSelectedIds.has(img.id);
     var card = document.createElement('div');
     card.className = 'loading-img-card';
     card.setAttribute('draggable', 'true');
     card.dataset.id = img.id;
     card.dataset.idx = String(idx);
-    card.style.cssText = 'width:180px;background:var(--surface);border:1px solid var(--border);padding:10px;text-align:center;position:relative;cursor:move';
-    // QA #312 — 드래그 핸들 인디케이터 + 순서 배지.
-    // 카드 상단 좌우에 순서 번호 + 드래그 힌트를 배치해 순서 편집이
-    // 가능하다는 걸 즉시 인지할 수 있게 함.
+    card.style.cssText = 'width:180px;background:var(--surface);border:' + (selected ? '2px solid #c0392b' : '1px solid var(--border)') + ';padding:10px;text-align:center;position:relative;cursor:move';
+    // QA #312 — 드래그 인디케이터 + 순서 배지.
+    // QA #314 — 좌상단에 선택 체크박스 (선택 삭제용), 우하단 삭제 버튼 강화.
     card.innerHTML =
-      '<div style="position:absolute;top:6px;left:6px;font-size:10px;font-weight:700;color:var(--text3);background:rgba(0,0,0,.55);padding:2px 6px;border-radius:2px;pointer-events:none">' +
-        '#' + (idx + 1) +
+      '<div style="position:absolute;top:6px;left:6px;display:flex;gap:4px;align-items:center;z-index:2">' +
+        '<label style="cursor:pointer;background:rgba(0,0,0,.55);padding:3px 6px;border-radius:2px;display:flex;align-items:center;gap:4px" title="선택 삭제용 체크박스">' +
+          '<input type="checkbox" ' + (selected ? 'checked' : '') + ' data-id="' + esc(img.id) + '" data-act="select" style="cursor:pointer;margin:0">' +
+          '<span style="font-size:10px;font-weight:700;color:#fff">#' + (idx + 1) + '</span>' +
+        '</label>' +
       '</div>' +
       '<div style="position:absolute;top:6px;right:6px;font-size:11px;color:var(--text3);pointer-events:none" title="드래그하여 순서 변경">⋮⋮</div>' +
       '<img loading="lazy" src="' + esc(pcUrl) + '" style="width:100%;height:110px;object-fit:cover;margin:8px 0;border:1px solid var(--border);background:#111;pointer-events:none">' +
@@ -9906,23 +9919,104 @@ function renderLoadingImgs(){
         (mUrl ? '📱 모바일 등록됨' : '📱 모바일 미등록 (PC 이미지 사용)') +
       '</div>' +
       '<div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap">' +
-        '<button class="btn btn-sm" data-id="' + esc(img.id) + '" data-act="toggle">' + (active ? '비활성화' : '활성화') + '</button>' +
-        '<button class="btn btn-sm" data-id="' + esc(img.id) + '" data-act="mobile">모바일 이미지</button>' +
-        '<button class="btn btn-sm btn-red" data-id="' + esc(img.id) + '" data-act="del">삭제</button>' +
+        '<button class="btn btn-sm" data-id="' + esc(img.id) + '" data-act="toggle" title="' + (active ? '비활성화하면 웹사이트에서 노출되지 않습니다' : '활성화하면 웹사이트 스플래시에 노출됩니다') + '">' + (active ? '비활성화' : '활성화') + '</button>' +
+        '<button class="btn btn-sm" data-id="' + esc(img.id) + '" data-act="mobile" title="모바일 전용 이미지를 업로드합니다">📱 모바일</button>' +
+        '<button class="btn btn-sm btn-red" data-id="' + esc(img.id) + '" data-act="del" title="이 이미지를 영구 삭제합니다">🗑️ 삭제</button>' +
       '</div>';
     _wireLoadingCardDrag(card);
     grid.appendChild(card);
   });
-  // 이벤트 위임 (버튼 클릭)
+  // 이벤트 위임 (버튼 클릭 + 체크박스).
   grid.onclick = function(e){
     var btn = e.target.closest('button[data-id]');
-    if (!btn) return;
-    var id = btn.getAttribute('data-id');
-    var act = btn.getAttribute('data-act');
-    if (act === 'toggle') _toggleLoadingImg(id);
-    else if (act === 'del') _deleteLoadingImg(id);
-    else if (act === 'mobile') _pickMobileForLoadingImg(id);
+    if (btn){
+      var id = btn.getAttribute('data-id');
+      var act = btn.getAttribute('data-act');
+      if (act === 'toggle') _toggleLoadingImg(id);
+      else if (act === 'del') _deleteLoadingImg(id);
+      else if (act === 'mobile') _pickMobileForLoadingImg(id);
+      return;
+    }
   };
+  grid.onchange = function(e){
+    var cb = e.target && e.target.matches && e.target.matches('input[type="checkbox"][data-act="select"]') ? e.target : null;
+    if (!cb) return;
+    var id = cb.getAttribute('data-id');
+    if (cb.checked) _loadingSelectedIds.add(id);
+    else _loadingSelectedIds.delete(id);
+    renderLoadingImgs();
+  };
+}
+
+// QA #314 — 상단 선택 삭제 bar 표시/갱신.
+// 선택된 카드가 1개 이상이면 표시, 0개면 숨김.
+function _updateLoadingBulkBar(){
+  var bar = document.getElementById('loadingBulkBar');
+  if (!bar) return;
+  var count = _loadingSelectedIds.size;
+  if (count === 0){
+    bar.style.display = 'none';
+    return;
+  }
+  bar.style.display = 'flex';
+  var countEl = document.getElementById('loadingBulkCount');
+  if (countEl) countEl.textContent = String(count);
+}
+
+function _loadingBulkClear(){
+  _loadingSelectedIds.clear();
+  renderLoadingImgs();
+}
+
+async function _loadingBulkDelete(){
+  var ids = Array.from(_loadingSelectedIds);
+  if (!ids.length) return;
+  // 삭제 대상 이미지 데이터 미리 수집 (다이얼로그 표시용).
+  var targets = ids.map(function(id){
+    return loadingImgs.filter(function(x){ return x.id === id; })[0];
+  }).filter(Boolean);
+  var msg = '⚠️ 선택한 로딩 이미지 ' + targets.length + '개를 영구 삭제합니다.\n\n';
+  targets.forEach(function(t, i){
+    var order = loadingImgs.indexOf(t) + 1;
+    msg += (i + 1) + '. #' + order + (t.is_active ? ' (활성)' : ' (비활성)') + ' — ' + (t.alt_text || '이름 없음') + '\n';
+  });
+  msg += '\n이 작업은 되돌릴 수 없습니다. 계속하시겠습니까?';
+  if (!confirm(msg)) return;
+
+  var statusEl = document.getElementById('loadingUploadStatus');
+  function setStatus(m, kind){
+    if (!statusEl) return;
+    statusEl.textContent = m || '';
+    statusEl.style.color = kind === 'error' ? '#c0392b' : (kind === 'ok' ? '#27ae60' : 'var(--text3)');
+  }
+
+  var successCount = 0;
+  var failures = [];
+  for (var i = 0; i < ids.length; i++){
+    setStatus('삭제 중… (' + (i + 1) + ' / ' + ids.length + ')');
+    try {
+      var resp = await apiDelete('/admin/loading-images?id=' + encodeURIComponent(ids[i]));
+      if (resp && resp.message && !resp.ok){
+        throw new Error(resp.message);
+      }
+      successCount++;
+    } catch(e){
+      console.error('[loading-images] bulk delete failed for', ids[i], e);
+      failures.push({ id: ids[i], reason: _extractLoadingErrReason(e) });
+    }
+  }
+  _loadingSelectedIds.clear();
+  await _fetchLoadingImgs();
+  if (!failures.length){
+    setStatus('✓ ' + successCount + '개 이미지가 삭제되었습니다.', 'ok');
+    setTimeout(function(){ setStatus(''); }, 3000);
+  } else {
+    setStatus(successCount + '개 삭제 완료 · 실패 ' + failures.length + '개', 'error');
+    var errMsg = '❌ 일부 이미지 삭제 실패\n\n성공: ' + successCount + '개\n실패: ' + failures.length + '개\n\n';
+    failures.forEach(function(f, i){ errMsg += (i + 1) + '. → ' + f.reason + '\n'; });
+    errMsg += '\n잠시 후 다시 시도해주세요.';
+    alert(errMsg);
+  }
 }
 
 // QA #312 — 카드 하나에 드래그 리스너 부착.
@@ -10217,14 +10311,45 @@ async function _toggleLoadingImg(id){
   }
 }
 
+// QA #314 — 개별 삭제 확인 팝업 강화.
+// 삭제 대상의 순서/상태/파일명을 팝업에 명시 → 실수로 다른 이미지를
+// 지우는 사고 방지. 성공 시 상단 상태 라인에 명확한 피드백.
 async function _deleteLoadingImg(id){
-  if (!confirm('이 로딩 이미지를 삭제하시겠습니까?\n(웹사이트 스플래시에서 즉시 제외됩니다)')) return;
+  var target = loadingImgs.filter(function(x){ return x.id === id; })[0];
+  if (!target) return;
+  var order = loadingImgs.indexOf(target) + 1;
+  var activeLabel = target.is_active ? '활성' : '비활성';
+  var altLabel = target.alt_text || '이름 없음';
+  var msg = '⚠️ 로딩 이미지 삭제 확인\n\n';
+  msg += '순서: #' + order + '\n';
+  msg += '상태: ' + activeLabel + '\n';
+  msg += '설명: ' + altLabel + '\n\n';
+  msg += '이 이미지는 영구 삭제되며 웹사이트 스플래시에서 즉시 제외됩니다.\n';
+  msg += '이 작업은 되돌릴 수 없습니다.\n\n';
+  msg += '삭제하시겠습니까?';
+  if (!confirm(msg)) return;
+
+  var statusEl = document.getElementById('loadingUploadStatus');
+  function setStatus(m, kind){
+    if (!statusEl) return;
+    statusEl.textContent = m || '';
+    statusEl.style.color = kind === 'error' ? '#c0392b' : (kind === 'ok' ? '#27ae60' : 'var(--text3)');
+  }
+  setStatus('삭제 중…');
   try {
-    await apiDelete('/admin/loading-images?id=' + encodeURIComponent(id));
+    var resp = await apiDelete('/admin/loading-images?id=' + encodeURIComponent(id));
+    if (resp && resp.message && !resp.ok){
+      throw new Error(resp.message);
+    }
+    // 선택 목록에서도 제거.
+    _loadingSelectedIds.delete(id);
     await _fetchLoadingImgs();
+    setStatus('✓ 이미지가 삭제되었습니다.', 'ok');
+    setTimeout(function(){ setStatus(''); }, 3000);
   } catch(e){
     console.error('[loading-images] delete failed:', e);
-    alert('삭제 실패: ' + (e && e.message ? e.message : e));
+    setStatus('삭제 실패', 'error');
+    alert('❌ 삭제 실패\n\n순서: #' + order + '\n→ ' + _extractLoadingErrReason(e) + '\n\n잠시 후 다시 시도해주세요.');
   }
 }
 
