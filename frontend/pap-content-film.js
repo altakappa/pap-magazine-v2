@@ -136,7 +136,13 @@ function _openFilmDetailInner(idx){
     // Ensure the grid container class is applied so .ed-cred-row children
     // form a proper 2-column layout (role | name).
     credEl.classList.add('ed-credits-table');
-    var cr=f.cr||[];
+    // QA #306 — 필름 크레딧이 비어있을 때 (관리자가 "에디토리얼과 동일"
+    // 모드로 저장한 경우) 연결된 에디토리얼의 credits로 fallback.
+    // /api/films 조인에 credits 컬럼을 포함시켜 별도 fetch 없이 처리.
+    var cr = (Array.isArray(f.cr) && f.cr.length) ? f.cr : [];
+    if (!cr.length && f.rel && Array.isArray(f.rel.credits) && f.rel.credits.length){
+      cr = f.rel.credits;
+    }
     // QA #162 — credits used to render only the legacy {r, p} short-key
     // shape (saved by the 2026-Q1 migration scripts). The admin form saves
     // the new {roles, name, instagram} long-key shape, so every admin-

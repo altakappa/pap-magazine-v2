@@ -30,7 +30,7 @@ module.exports = async function handler(req, res) {
       // can render "Related Editorial: <title>" without a second fetch.
       const { data, error } = await supabaseAdmin
         .from('films')
-        .select('*, related_editorial:editorials!related_editorial_id(id,slug,title,cover_image,thumbnail,published_date)')
+        .select('*, related_editorial:editorials!related_editorial_id(id,slug,title,cover_image,thumbnail,published_date,credits)')
         .eq('id', id)
         .single();
 

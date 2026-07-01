@@ -79,7 +79,7 @@ module.exports = async function handler(req, res) {
       const isScheduledFilter = requestedStatus === 'scheduled';
       let query = supabaseAdmin
         .from('films')
-        .select(LIST_COLUMNS + ', related_editorial:editorials!related_editorial_id(id,slug,title,cover_image,thumbnail,published_date)', { count: 'exact' });
+        .select(LIST_COLUMNS + ', related_editorial:editorials!related_editorial_id(id,slug,title,cover_image,thumbnail,published_date,credits)', { count: 'exact' });
 
       if (isScheduledFilter) {
         query = query.eq('status', 'published')

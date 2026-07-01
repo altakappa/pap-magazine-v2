@@ -7467,6 +7467,23 @@ function _filmSlugify(s){
     .slice(0, 100);
 }
 
+// QA #306 — 필름 크레딧 입력 모드 토글.
+// 'direct' 모드에서는 크레딧을 필름에 직접 저장 (에디토리얼과 별개).
+// 'inherit' 모드에서는 크레딧을 [] 저장하고, 프론트가 related_editorial.credits를
+// 자동으로 사용해서 렌더하도록 위임 (중복 입력 방지).
+function _onFilmCreditsModeChange(mode){
+  var wrap = document.getElementById('filmCreditsEditWrap');
+  var note = document.getElementById('filmCreditsInheritNote');
+  if (mode === 'inherit') {
+    if (wrap) wrap.style.display = 'none';
+    if (note) note.style.display = 'block';
+  } else {
+    if (wrap) wrap.style.display = '';
+    if (note) note.style.display = 'none';
+  }
+}
+if (typeof window !== 'undefined') window._onFilmCreditsModeChange = _onFilmCreditsModeChange;
+
 // QA #229 — Linked-editorial picker (was a plain dropdown).
 // Fetch editorials once per session, cache, then drive a searchable
 // list UI with thumbnail / title / date in admin.html. The hidden
@@ -7769,6 +7786,10 @@ function _resetFilmModalFields(){
   document.getElementById('filmActive').checked=true;
   document.getElementById('filmCreditsArea').innerHTML='';
   addCredit('filmCreditsArea');   // one blank row
+  // QA #306 — 신규 필름은 '직접 입력' 기본. UI wrap 초기 상태 세팅.
+  var _newModeDirect = document.querySelector('input[name="filmCreditsMode"][value="direct"]');
+  if (_newModeDirect) _newModeDirect.checked = true;
+  if (typeof _onFilmCreditsModeChange === 'function') _onFilmCreditsModeChange('direct');
   var thumbPrev = document.getElementById('filmThumbPreview');
   if(thumbPrev) thumbPrev.innerHTML = '<span class="pe-upload-icon" style="font-size:18px">📷</span><span class="pe-upload-text" style="margin-left:8px">또는 파일 업로드 (JPG · PNG · WebP)</span>';
   // QA #232 — clear the inline status line so a stale "✓ 업로드 완료" /
@@ -7896,6 +7917,13 @@ function openFilmModal(idx){
     var creditsArea = document.getElementById('filmCreditsArea');
     creditsArea.innerHTML = '';
     var creditsList = Array.isArray(f.credits) ? f.credits : [];
+    // QA #306 — credits 배열이 비어있고 related_editorial_id 가 있으면
+    // '에디토리얼과 동일' 모드로 초기화. 그 외에는 '직접 입력' 기본.
+    var _editMode = (creditsList.length === 0 && f.related_editorial_id)
+      ? 'inherit' : 'direct';
+    var _editModeInput = document.querySelector('input[name="filmCreditsMode"][value="' + _editMode + '"]');
+    if (_editModeInput) _editModeInput.checked = true;
+    if (typeof _onFilmCreditsModeChange === 'function') _onFilmCreditsModeChange(_editMode);
     if (creditsList.length === 0) {
       addCredit('filmCreditsArea');   // keep one blank row for editing
     } else {
@@ -9193,16 +9221,31 @@ async function saveFilm(forceStatus){
   }
 
   // Credits — same shape the editorial form serializes. Empty rows skipped.
+  // QA #306 — '에디토리얼과 동일' 모드일 때는 필름 credits 를 빈 배열로
+  // 저장. 필름 상세 렌더링 시 pap-content-film.js 가 related_editorial 의
+  // credits 로 자동 fallback (필름.credits.length === 0 조건).
   var credits = [];
-  document.querySelectorAll('#filmCreditsArea .pe-credit-row').forEach(function(row){
-    var nameEl = row.querySelector('.pe-credit-name');
-    var igEl   = row.querySelector('.pe-credit-ig');
-    var roles  = _readCreditRoles(row);
-    var nameVal = (nameEl && nameEl.value || '').trim();
-    if (roles.length > 0 && nameVal) {
-      credits.push({ roles: roles, name: nameVal, instagram: (igEl && igEl.value || '').trim() });
+  var _creditsModeEl = document.querySelector('input[name="filmCreditsMode"]:checked');
+  var _creditsMode = _creditsModeEl ? _creditsModeEl.value : 'direct';
+  if (_creditsMode === 'direct') {
+    document.querySelectorAll('#filmCreditsArea .pe-credit-row').forEach(function(row){
+      var nameEl = row.querySelector('.pe-credit-name');
+      var igEl   = row.querySelector('.pe-credit-ig');
+      var roles  = _readCreditRoles(row);
+      var nameVal = (nameEl && nameEl.value || '').trim();
+      if (roles.length > 0 && nameVal) {
+        credits.push({ roles: roles, name: nameVal, instagram: (igEl && igEl.value || '').trim() });
+      }
+    });
+  }
+  // '에디토리얼과 동일' 모드에서 관련 에디토리얼 미선택 시 경고.
+  if (_creditsMode === 'inherit') {
+    var _relEd = (document.getElementById('filmRelatedEditorial') || {}).value || '';
+    if (!_relEd) {
+      alert('크레딧 모드가 "에디토리얼과 동일"로 설정됐지만 상단의 연결 에디토리얼이 비어 있습니다.\n에디토리얼을 먼저 선택하거나 "직접 입력" 모드로 전환해주세요.');
+      return;
     }
-  });
+  }
 
   var relEd = (document.getElementById('filmRelatedEditorial').value || '').trim() || null;
   var thumb = (document.getElementById('filmThumb').value || '').trim() || null;
