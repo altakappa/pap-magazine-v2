@@ -23,6 +23,7 @@ function apiHeaders(){return {'Authorization':'Bearer '+getToken(),'Content-Type
 async function apiGet(path){var r=await fetch(API_BASE+path,{headers:apiHeaders()});return r.json();}
 async function apiPost(path,body){var r=await fetch(API_BASE+path,{method:'POST',headers:apiHeaders(),body:JSON.stringify(body)});return r.json();}
 async function apiPut(path,body){var r=await fetch(API_BASE+path,{method:'PUT',headers:apiHeaders(),body:JSON.stringify(body)});return r.json();}
+async function apiPatch(path,body){var r=await fetch(API_BASE+path,{method:'PATCH',headers:apiHeaders(),body:JSON.stringify(body)});return r.json();}
 async function apiDelete(path){var r=await fetch(API_BASE+path,{method:'DELETE',headers:apiHeaders()});return r.json();}
 function esc(s){var d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
 function fmtDate(d){if(!d)return'—';var dt=new Date(d);return dt.toLocaleDateString('ko-KR',{month:'long',day:'numeric'});}
@@ -9846,21 +9847,156 @@ function deleteBanner(idx){
 
 renderBanners();
 
-// ======== LOADING IMAGES ========
-var loadingImgs=[];
-function renderLoadingImgs(){
-  var grid=document.getElementById('loadingGrid');if(!grid)return;
-  grid.innerHTML='';
-  loadingImgs.forEach(function(img,i){
-    grid.innerHTML+='<div style="width:150px;background:var(--surface);border:1px solid var(--border);padding:10px;text-align:center"><img loading="lazy" src="'+img.url+'" style="width:100%;height:110px;object-fit:cover;margin-bottom:8px;border:1px solid var(--border)"><div style="font-size:10px;font-weight:600;margin-bottom:8px;color:'+(img.active?'var(--green)':'var(--red)')+'">'+(img.active?'✓ 활성':'✗ 비활성')+'</div><div style="display:flex;gap:4px;justify-content:center"><button class="btn btn-sm" onclick="loadingImgs['+i+'].active=!loadingImgs['+i+'].active;renderLoadingImgs()">'+(img.active?'비활성화':'활성화')+'</button><button class="btn btn-sm btn-red" onclick="if(confirm(\'삭제하시겠습니까?\')){loadingImgs.splice('+i+',1);renderLoadingImgs();}">삭제</button></div></div>';
-  });
-}
-function addLoadingImg(){
-  alert('이미지 업로드 (실제 운영 시 S3에 업로드됩니다)');
-  loadingImgs.push({id:Date.now(),url:'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/0_9a20ac2301.jpg',active:true});
+// ======== LOADING IMAGES (QA #310 — real API integration) ========
+//
+// 기존 addLoadingImg() 는 alert 만 띄우고 하드코딩 S3 URL 을 in-memory
+// 배열에 push 하는 순수 mock 이었음. QA #310 에서 다음으로 전환:
+//   - GET  /api/admin/loading-images  로 목록 조회
+//   - POST /api/admin/loading-images  로 신규 등록 (실제 media upload → URL 저장)
+//   - PATCH /api/admin/loading-images 로 활성/비활성/모바일 URL 수정
+//   - DELETE /api/admin/loading-images?id= 로 삭제
+// 이미지 업로드는 uploadFile() (기존 media/upload) 사용.
+// 등록된 이미지는 /api/loading-images public GET 로 공개되어
+// pap-splash-loader.js 가 스플래시 오버레이로 렌더.
+var loadingImgs = [];
+
+async function _fetchLoadingImgs(){
+  try {
+    var resp = await apiGet('/admin/loading-images');
+    var list = (resp && (resp.data || resp)) || [];
+    loadingImgs = Array.isArray(list) ? list : [];
+  } catch(e){
+    console.warn('[loading-images] fetch failed:', e && e.message);
+    loadingImgs = [];
+  }
   renderLoadingImgs();
 }
+
+function renderLoadingImgs(){
+  var grid = document.getElementById('loadingGrid');
+  if (!grid) return;
+  if (!loadingImgs.length){
+    grid.innerHTML = '<div class="pe-hint" style="padding:24px;color:var(--text3)">등록된 로딩 이미지가 없습니다. <strong>+ 새 이미지</strong> 버튼으로 추가해주세요.</div>';
+    return;
+  }
+  grid.innerHTML = '';
+  loadingImgs.forEach(function(img){
+    var pcUrl = img.image_url_pc || '';
+    var mUrl  = img.image_url_mobile || '';
+    var active = !!img.is_active;
+    var card = document.createElement('div');
+    card.style.cssText = 'width:180px;background:var(--surface);border:1px solid var(--border);padding:10px;text-align:center';
+    card.innerHTML =
+      '<img loading="lazy" src="' + esc(pcUrl) + '" style="width:100%;height:110px;object-fit:cover;margin-bottom:8px;border:1px solid var(--border);background:#111">' +
+      '<div style="font-size:10px;font-weight:600;margin-bottom:6px;color:' + (active ? 'var(--green)' : 'var(--red)') + '">' +
+        (active ? '✓ 활성' : '✗ 비활성') +
+      '</div>' +
+      '<div style="font-size:10px;color:var(--text3);margin-bottom:6px">' +
+        (mUrl ? '📱 모바일 등록됨' : '📱 모바일 미등록 (PC 이미지 사용)') +
+      '</div>' +
+      '<div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap">' +
+        '<button class="btn btn-sm" data-id="' + esc(img.id) + '" data-act="toggle">' + (active ? '비활성화' : '활성화') + '</button>' +
+        '<button class="btn btn-sm" data-id="' + esc(img.id) + '" data-act="mobile">모바일 이미지</button>' +
+        '<button class="btn btn-sm btn-red" data-id="' + esc(img.id) + '" data-act="del">삭제</button>' +
+      '</div>';
+    grid.appendChild(card);
+  });
+  // 이벤트 위임
+  grid.onclick = function(e){
+    var btn = e.target.closest('button[data-id]');
+    if (!btn) return;
+    var id = btn.getAttribute('data-id');
+    var act = btn.getAttribute('data-act');
+    if (act === 'toggle') _toggleLoadingImg(id);
+    else if (act === 'del') _deleteLoadingImg(id);
+    else if (act === 'mobile') _pickMobileForLoadingImg(id);
+  };
+}
+
+async function addLoadingImg(){
+  // 파일 선택 → uploadFile (기존 media/upload) → POST /api/admin/loading-images
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/jpeg,image/png,image/webp';
+  input.onchange = async function(){
+    if (!this.files || !this.files[0]) return;
+    var file = this.files[0];
+    if (file.size > 3 * 1024 * 1024){
+      alert('파일 크기가 너무 큽니다. (' + (file.size / 1024 / 1024).toFixed(1) + 'MB → 최대 3MB)');
+      return;
+    }
+    var altText = prompt('이미지 설명(선택 사항, SEO/접근성용):', '') || '';
+    try {
+      var url = await uploadFile(file);
+      if (!url){ alert('업로드 실패 - URL 이 반환되지 않았습니다.'); return; }
+      var maxOrder = loadingImgs.reduce(function(m, x){ return Math.max(m, x.sort_order || 0); }, -1);
+      await apiPost('/admin/loading-images', {
+        image_url_pc: url,
+        alt_text: altText.trim() || null,
+        sort_order: maxOrder + 1,
+        is_active: true
+      });
+      await _fetchLoadingImgs();
+      alert('✓ 로딩 이미지가 등록되었습니다.');
+    } catch(e){
+      console.error('[loading-images] add failed:', e);
+      alert('업로드/등록 실패: ' + (e && e.message ? e.message : e));
+    }
+  };
+  input.click();
+}
+
+async function _toggleLoadingImg(id){
+  var target = loadingImgs.filter(function(x){ return x.id === id; })[0];
+  if (!target) return;
+  try {
+    await apiPatch('/admin/loading-images', { id: id, is_active: !target.is_active });
+    await _fetchLoadingImgs();
+  } catch(e){
+    console.error('[loading-images] toggle failed:', e);
+    alert('상태 변경 실패: ' + (e && e.message ? e.message : e));
+  }
+}
+
+async function _deleteLoadingImg(id){
+  if (!confirm('이 로딩 이미지를 삭제하시겠습니까?\n(웹사이트 스플래시에서 즉시 제외됩니다)')) return;
+  try {
+    await apiDelete('/admin/loading-images?id=' + encodeURIComponent(id));
+    await _fetchLoadingImgs();
+  } catch(e){
+    console.error('[loading-images] delete failed:', e);
+    alert('삭제 실패: ' + (e && e.message ? e.message : e));
+  }
+}
+
+async function _pickMobileForLoadingImg(id){
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/jpeg,image/png,image/webp';
+  input.onchange = async function(){
+    if (!this.files || !this.files[0]) return;
+    var file = this.files[0];
+    if (file.size > 3 * 1024 * 1024){
+      alert('파일 크기가 너무 큽니다. (' + (file.size / 1024 / 1024).toFixed(1) + 'MB → 최대 3MB)');
+      return;
+    }
+    try {
+      var url = await uploadFile(file);
+      if (!url){ alert('업로드 실패 - URL 이 반환되지 않았습니다.'); return; }
+      await apiPatch('/admin/loading-images', { id: id, image_url_mobile: url });
+      await _fetchLoadingImgs();
+      alert('✓ 모바일 이미지가 저장되었습니다.');
+    } catch(e){
+      console.error('[loading-images] mobile update failed:', e);
+      alert('모바일 이미지 저장 실패: ' + (e && e.message ? e.message : e));
+    }
+  };
+  input.click();
+}
+
+// 초기 렌더 (초기값은 빈 상태 → fetch 후 실 데이터로 재렌더)
 renderLoadingImgs();
+_fetchLoadingImgs();
 
 // ======== COMPANY INFO (About / Business / Contact) ========
 var companyImages={about:[],business:[],contact:[]};
