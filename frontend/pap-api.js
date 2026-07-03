@@ -677,6 +677,62 @@ const PAP = (function() {
       return data;
     },
 
+    /**
+     * 해외 결제 — Paddle Billing 오버레이 체크아웃 (EUR/USD 등 다통화 + VAT 처리).
+     * 로그인 필수: custom_data.user_id 로 웹훅이 구독을 계정에 매핑한다.
+     * 결과 반영은 paddle-webhook 이 담당 — 여기선 오버레이만 연다.
+     */
+    async checkoutIntl(plan, billing) {
+      if (typeof Paddle === 'undefined') {
+        throw new Error('Payment SDK not loaded. Please refresh the page.');
+      }
+      var user = auth.getUser();
+      if (!user || !user.id) {
+        throw new Error('Please sign in first to subscribe with international payment.');
+      }
+      var cfg = await request('GET', '/subscriptions/paddle-config');
+      if (!cfg || !cfg.clientToken) {
+        throw new Error('International payment is not available yet.');
+      }
+      if (!window._papPaddleInit) {
+        if (cfg.environment === 'sandbox') {
+          try { Paddle.Environment.set('sandbox'); } catch (_) {}
+        }
+        Paddle.Initialize({
+          token: cfg.clientToken,
+          eventCallback: function (ev) {
+            // 체크아웃 완료 → 안내 + 새로고침으로 구독 상태 반영.
+            if (ev && ev.name === 'checkout.completed') {
+              try {
+                if (window.PAP && PAP.ui && PAP.ui.toast) {
+                  PAP.ui.toast('Payment complete! Updating your membership…', 'success');
+                }
+              } catch (_) {}
+              setTimeout(function () { window.location.href = 'mypage.html'; }, 1800);
+            }
+          },
+        });
+        window._papPaddleInit = true;
+      }
+      var key = plan + '_' + billing;
+      var priceId = cfg.prices && cfg.prices[key];
+      if (!priceId) {
+        throw new Error('This plan is not available for international checkout yet.');
+      }
+      Paddle.Checkout.open({
+        items: [{ priceId: priceId, quantity: 1 }],
+        customer: user.email ? { email: user.email } : undefined,
+        customData: { user_id: user.id, plan_key: key },
+        settings: { displayMode: 'overlay', theme: 'dark', locale: (localStorage.getItem('pap-lang') || 'en') },
+      });
+      return { opened: true };
+    },
+
+    /** 해외(Paddle) 구독 해지 — 현재 결제 기간 말에 종료. */
+    async cancelIntlSubscription() {
+      return await request('POST', '/subscriptions/paddle-portal', { action: 'cancel' });
+    },
+
     async cancelSubscription() {
       return await request('POST', '/subscriptions/portal', { action: 'cancel' });
     },

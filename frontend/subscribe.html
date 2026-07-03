@@ -540,8 +540,10 @@ function navigateWithInterstitial(url){
   <symbol id="icon-cross" viewBox="0 0 16 16"><line x1="4" y1="4" x2="12" y2="12" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="4" x2="4" y2="12" stroke-width="2" stroke-linecap="round"/></symbol>
 </svg>
 
-<!-- PortOne V2 Browser SDK -->
+<!-- PortOne V2 Browser SDK (국내 결제 — KRW 빌링키 정기결제) -->
 <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
+<!-- Paddle Billing SDK (해외 결제 — EUR/USD 다통화, VAT 는 Paddle 이 MoR 로 처리) -->
+<script src="https://cdn.paddle.com/paddle/v2/paddle.js" defer></script>
 <!-- PortOne config (storeId & channelKey set from Vercel env at build, or inline) -->
 <script>
 // PortOne V2 — PAP MAGAZINE 테스트 채널 (토스페이먼츠 정기결제, iamporttest_4).
@@ -550,7 +552,7 @@ function navigateWithInterstitial(url){
 window._PAP_PORTONE_STORE_ID    = 'store-7b6778d6-f24d-49d2-a939-19df4ec81381';
 window._PAP_PORTONE_CHANNEL_KEY = 'channel-key-1f8ffa8d-2039-48b1-9af1-db8421e9a058';
 </script>
-<script src="/pap-api.js?v=3" defer></script>
+<script src="/pap-api.js?v=5" defer></script>
 <script>
 var checkSvg = '<svg class="tbl-check" viewBox="0 0 16 16" width="16" height="16"><polyline points="3 8 7 12 13 4" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 var crossSvg = '<svg class="tbl-cross" viewBox="0 0 16 16" width="16" height="16"><line x1="4" y1="4" x2="12" y2="12" stroke="#fff" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="4" x2="4" y2="12" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>';
@@ -1348,12 +1350,76 @@ function setLang(l) {
   updatePrices();
 }
 
+// ── 결제 이원화: 국내(포트원/KRW) vs 해외(Paddle/EUR·USD) ──────────
+// 한국 사용자 추정(언어 ko + Asia/Seoul 시간대)이면 국내 카드를 먼저,
+// 아니면 International 을 먼저 보여준다. 어느 쪽이든 수동 선택 가능.
+function _papGuessKorea(){
+  try {
+    var lang = localStorage.getItem('pap-lang') || '';
+    var tz = (Intl.DateTimeFormat().resolvedOptions().timeZone) || '';
+    return lang === 'ko' || tz === 'Asia/Seoul';
+  } catch(_){ return false; }
+}
+
+function _choosePayRegion(){
+  return new Promise(function(resolve){
+    var isKr = _papGuessKorea();
+    var lang = localStorage.getItem('pap-lang') || (isKr ? 'ko' : 'en');
+    var t = lang === 'ko'
+      ? { title: '결제 수단 선택', kr: '🇰🇷 국내 카드 결제', krSub: '원화(KRW) · 국내 발급 카드',
+          intl: '🌍 International', intlSub: 'Card · EUR/USD · Global', cancel: '취소' }
+      : { title: 'Choose payment method', kr: '🇰🇷 Korean card', krSub: 'KRW · Korea-issued cards',
+          intl: '🌍 International', intlSub: 'Card · EUR/USD · Global', cancel: 'Cancel' };
+    var ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px';
+    var btn = function(label, sub){
+      return '<button style="display:block;width:100%;text-align:left;background:#111;border:1px solid #333;color:#fff;padding:16px 18px;margin-bottom:10px;cursor:pointer;font-family:inherit;transition:border-color .2s" '
+        + 'onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#333\'">'
+        + '<span style="font-size:14px;font-weight:700;letter-spacing:.05em">' + label + '</span>'
+        + '<span style="display:block;font-size:11px;color:#888;margin-top:4px">' + sub + '</span></button>';
+    };
+    // 한국 추정이면 국내 버튼 먼저, 아니면 International 먼저.
+    var first  = isKr ? btn(t.kr, t.krSub)     : btn(t.intl, t.intlSub);
+    var second = isKr ? btn(t.intl, t.intlSub) : btn(t.kr, t.krSub);
+    ov.innerHTML = '<div style="background:#000;border:1px solid #333;max-width:360px;width:100%;padding:26px">'
+      + '<div style="font-size:13px;font-weight:800;letter-spacing:.12em;color:#fff;margin-bottom:18px;text-transform:uppercase">' + t.title + '</div>'
+      + first + second
+      + '<button style="display:block;width:100%;background:none;border:none;color:#777;font-size:11px;padding:8px;cursor:pointer;font-family:inherit">' + t.cancel + '</button>'
+      + '</div>';
+    var buttons = ov.querySelectorAll('button');
+    buttons[0].onclick = function(){ document.body.removeChild(ov); resolve(isKr ? 'kr' : 'intl'); };
+    buttons[1].onclick = function(){ document.body.removeChild(ov); resolve(isKr ? 'intl' : 'kr'); };
+    buttons[2].onclick = function(){ document.body.removeChild(ov); resolve(null); };
+    ov.onclick = function(e){ if(e.target === ov){ document.body.removeChild(ov); resolve(null); } };
+    document.body.appendChild(ov);
+  });
+}
+
 async function handleCta(plan) {
   if(plan==='free'){
     window.location.href = PAP.auth.isLoggedIn() ? 'index.html' : (window.papLoginUrl?window.papLoginUrl('auth.html'):'auth.html');
     return;
   }
   var billing = currentBilling;
+
+  // 결제 지역 선택 (국내 = 포트원 / 해외 = Paddle)
+  var region = await _choosePayRegion();
+  if (!region) return;
+
+  if (region === 'intl') {
+    // 해외 결제는 로그인 필수 (웹훅이 custom_data.user_id 로 계정 매핑).
+    if (!PAP.auth.isLoggedIn()) {
+      var lang = localStorage.getItem('pap-lang') || 'en';
+      PAP.ui.toast(lang === 'ko'
+        ? '해외 결제는 간단한 가입 후 이용할 수 있어요. 가입 페이지로 이동합니다.'
+        : 'Please sign up first to subscribe. Redirecting…', 'error');
+      setTimeout(function(){ window.location.href = 'auth.html?redirect=subscribe'; }, 1500);
+      return;
+    }
+    try { await PAP.subscriptions.checkoutIntl(plan, billing); }
+    catch(e){ PAP.ui.toast(e.message || 'Checkout failed', 'error'); }
+    return;
+  }
 
   // Logged-in users: existing flow.
   if (PAP.auth.isLoggedIn()) {
