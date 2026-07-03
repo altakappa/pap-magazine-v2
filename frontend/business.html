@@ -66,10 +66,19 @@ a{color:#fff;text-decoration:none}
 .biz-text .media-kit a:hover{color:#fff}
 .badge-wrap{flex-shrink:0;width:120px;height:120px}
 /* QA #323 — 배지를 mailto 링크로 전환. 클릭 가능함을 알리는 어포던스:
-   cursor + hover 시 확대/테두리 강조 + 키보드 포커스 링. */
+   cursor + hover 시 확대/테두리 강조 + 키보드 포커스 링.
+   QA #324 — hover 색상 반전 추가 (원 흰색 채움 + 텍스트 검정) 로
+   '버튼임' 을 즉각 인지하게 강화. :active 축소 피드백 + 터치 환경
+   (hover 불가) 대응. 키보드 포커스에도 동일 반전 적용. */
 .badge-link{display:block;width:100%;height:100%;border-radius:50%;cursor:pointer;transition:transform .3s ease}
-.badge-link:hover{transform:scale(1.06)}
-.badge-link:hover .spinning-badge circle{stroke-width:2}
+.badge-link:hover,.badge-link:focus-visible{transform:scale(1.06)}
+.badge-link:active{transform:scale(.97);transition-duration:.1s}
+.badge-link .spinning-badge circle{transition:fill .3s ease,stroke-width .3s ease}
+.badge-link .spinning-badge text{transition:fill .3s ease}
+.badge-link:hover .spinning-badge circle,
+.badge-link:focus-visible .spinning-badge circle{fill:#fff;stroke:#fff;stroke-width:2}
+.badge-link:hover .spinning-badge text,
+.badge-link:focus-visible .spinning-badge text{fill:#000}
 .badge-link:focus-visible{outline:1.5px solid #fff;outline-offset:6px}
 .spinning-badge{width:100%;height:100%;animation:spin 10s linear infinite;display:block}
 @keyframes spin{100%{transform:rotate(360deg)}}
