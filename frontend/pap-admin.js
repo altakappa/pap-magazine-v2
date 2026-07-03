@@ -12022,16 +12022,21 @@ var _origSaveBanner=null;
 function persistSettings(){
   lsSet('banners',banners);
   lsSet('coverSlides',coverSlides);
-  lsSet('loadingImgs',loadingImgs);
+  // QA #320 — loadingImgs 는 localStorage 지속 대상에서 제거.
+  // QA #310 에서 DB/API (/api/admin/loading-images) 로 이관됐는데 이
+  // 레거시 계층이 mock 시절 임시 데이터를 localStorage 에 저장/복원해
+  // "업로드하지 않은 이미지가 목록에 생성됨" 현상을 만들었음.
   lsSet('menuCats',menuCats);
 }
 // Load settings from localStorage on init
 (function(){
   var b=lsGet('banners',null);if(b&&b.length)banners=b;
   var c=lsGet('coverSlides',null);if(c&&c.length)coverSlides=c;
-  var l=lsGet('loadingImgs',null);if(l&&l.length)loadingImgs=l;
+  // QA #320 — loadingImgs localStorage 복원 제거 (위 주석 참고).
+  // mock 시절 저장된 stale 키도 1회 청소.
+  try { localStorage.removeItem('pap_admin_loadingImgs'); } catch(_){}
   var m=lsGet('menuCats',null);if(m&&m.length)menuCats=m;
-  renderBanners();renderCovers();renderLoadingImgs();renderMenuCats();
+  renderBanners();renderCovers();renderMenuCats();
 })();
 // Override save functions to also persist
 var _origSaveBannerFn=saveBanner;
@@ -12048,8 +12053,8 @@ var _origAddMenuCat=addMenuCat;
 addMenuCat=function(){_origAddMenuCat();persistSettings();};
 var _origDeleteMenuCat=deleteMenuCat;
 deleteMenuCat=function(i){_origDeleteMenuCat(i);persistSettings();};
-var _origAddLoadingImg=addLoadingImg;
-addLoadingImg=function(){_origAddLoadingImg();persistSettings();};
+// QA #320 — addLoadingImg persistSettings 래퍼 제거. 로딩 이미지는
+// QA #310 부터 DB/API 가 단일 진실원이므로 localStorage 지속 불필요.
 
 // ======== UPDATED GO FUNCTION FOR NEW SECTIONS ========
 var _originalGo=go;

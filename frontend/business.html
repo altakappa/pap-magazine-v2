@@ -357,14 +357,14 @@ function navigateWithInterstitial(url){
 // Single brand contact across all locales (PAP Korea retired May 2026).
 var intlMail='contact@pap-magazine.com';
 
-// Media Kit — direct download from Google Drive
-var mediaKitFiles={
-  ko:'1nvTbgFPS3KrNSJbC2xhYsaWW3mMJbbsl',
-  en:'1DpKhWe_zocTROb0AEoYnHsKXBJ3ei3xJ'
-};
+// Media Kit — contact.html 과 동일한 링크/파일 ID 로 통일.
+// (기존: 구형 파일 ID + uc?export=download 직링크 — Drive 권한/용량
+// 확인 페이지로 빠지며 다운로드가 깨지던 형식. contact 페이지는
+// f17fabd 에서 /file/d/<id>/view 로 교체됨 — 여기도 동일하게 적용.)
+var mediaKitFiles={ko:'1gUeTUJrg-NLv8BUT1BnEzfa3oqXfFt3X',en:'1gVKLuOP2mksORuDuugV6_Ls0XAiQwo7S'};
 function downloadMediaKit(lang){
-  var fileId=mediaKitFiles[lang]||mediaKitFiles.en;
-  window.open('https://drive.google.com/uc?export=download&id='+fileId,'_blank','noopener');
+  var fid=mediaKitFiles[lang]||mediaKitFiles.en;
+  window.open('https://drive.google.com/file/d/'+fid+'/view','_blank','noopener');
 }
 
 var L={

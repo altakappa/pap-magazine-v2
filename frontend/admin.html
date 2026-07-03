@@ -3094,7 +3094,12 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
     <div id="contentAuditBody" style="flex:1;overflow-y:auto;padding:0"></div>
   </div>
 </div>
-<script src="/pap-admin.js?v=77" defer></script>
+<!-- QA #320 — v=77 → v=78. QA #310~315 가 pap-admin.js 를 대폭 변경했지만
+     버전 파라미터가 그대로라 edge/browser 캐시 (s-maxage=60 + SWR 86400)
+     가 mock 시절 번들을 계속 서빙 → '+새 이미지' 클릭 시 "실제 운영 시
+     S3에 업로드됩니다" 구형 alert 가 재현되던 원인. pap-admin.js 를
+     수정하는 커밋은 반드시 이 파라미터를 함께 올릴 것. -->
+<script src="/pap-admin.js?v=78" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>
