@@ -373,9 +373,11 @@
     '        <a href="auth.html" data-i18n="navLogin" style="color:rgba(255,255,255,.6)">LOGIN / JOIN</a>',
     '      </div>',
     '      <div class="nav-left-links nav-extra-links" style="margin-top:auto">',
-    '        <a href="#" onclick="' + _navDirect('about.html') + '" data-i18n="about">ABOUT</a>',
-    '        <a href="#" onclick="' + _navDirect('business.html') + '" data-i18n="business">BUSINESS</a>',
-    '        <a href="#" onclick="' + _navDirect('contact.html') + '" data-i18n="contact">CONTACT</a>',
+    // QA #325 — 클린 URL 정책: /about /business /contact (vercel.json 의
+    // rewrite 가 서빙, .html 직접 접근은 301 redirect 로 수렴).
+    '        <a href="#" onclick="' + _navDirect('/about') + '" data-i18n="about">ABOUT</a>',
+    '        <a href="#" onclick="' + _navDirect('/business') + '" data-i18n="business">BUSINESS</a>',
+    '        <a href="#" onclick="' + _navDirect('/contact') + '" data-i18n="contact">CONTACT</a>',
     '      </div>',
     '      <div class="nav-bottom-row">',
     '        <div class="nav-socials active" id="navSocials">' + socialHTML + '</div>',

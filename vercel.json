@@ -76,6 +76,9 @@
     { "source": "/magazine", "destination": "/magazine.html" }
   ],
   "redirects": [
+    { "source": "/about.html",    "destination": "/about",    "statusCode": 301 },
+    { "source": "/business.html", "destination": "/business", "statusCode": 301 },
+    { "source": "/contact.html",  "destination": "/contact",  "statusCode": 301 },
     { "source": "/.env",                "destination": "/404.html", "permanent": false },
     { "source": "/.env.local",          "destination": "/404.html", "permanent": false },
     { "source": "/.env.production",     "destination": "/404.html", "permanent": false },

@@ -24,9 +24,12 @@ const STATIC_PAGES = [
   { path: '/community.html',  priority: '0.8', changefreq: 'weekly'  },
   { path: '/subscribe.html',  priority: '0.9', changefreq: 'monthly' },
   { path: '/pullletter.html', priority: '0.7', changefreq: 'monthly' },
-  { path: '/about.html',      priority: '0.7', changefreq: 'monthly' },
-  { path: '/business.html',   priority: '0.6', changefreq: 'monthly' },
-  { path: '/contact.html',    priority: '0.6', changefreq: 'monthly' },
+  // QA #325 — 회사 정보 페이지는 클린 URL 로 색인 (canonical 과 일치.
+  // .html 은 vercel.json 에서 301 redirect). 나머지 정적 페이지도 클린
+  // rewrite 가 이미 존재하므로 링크/캐노니컬 정리 후 순차 전환 예정.
+  { path: '/about',           priority: '0.7', changefreq: 'monthly' },
+  { path: '/business',        priority: '0.6', changefreq: 'monthly' },
+  { path: '/contact',         priority: '0.6', changefreq: 'monthly' },
   { path: '/submission.html', priority: '0.7', changefreq: 'monthly' },
   { path: '/terms.html',      priority: '0.3', changefreq: 'yearly'  },
   { path: '/privacy.html',    priority: '0.3', changefreq: 'yearly'  },
