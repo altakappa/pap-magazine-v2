@@ -10571,7 +10571,8 @@ function saveCompanyInfo(page){
 }
 
 renderCompanyImages('about');
-renderCompanyImages('contact');
+// QA #329 — contact 의 '관련 이미지' 는 QA #326 에서 UI 제거됨 —
+// 렌더 호출도 함께 정리 (컨테이너 부재 시 no-op 이었지만 dead call).
 
 // ======== QA #321 — BUSINESS PAGE (real persistence) ========
 // 비즈니스 편집은 mock(saveCompanyInfo) 에서 분리 — /api/settings 의
