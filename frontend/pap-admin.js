@@ -10571,8 +10571,81 @@ function saveCompanyInfo(page){
 }
 
 renderCompanyImages('about');
-renderCompanyImages('business');
 renderCompanyImages('contact');
+
+// ======== QA #321 — BUSINESS PAGE (real persistence) ========
+// 비즈니스 편집은 mock(saveCompanyInfo) 에서 분리 — /api/settings 의
+// site_settings.business_page (JSONB) 에 실제 저장한다.
+//   value = {
+//     content_brand_ko: '…',   // 섹션 1 본문 (한국어)
+//     content_work_ko:  '…',   // 섹션 2 본문 (한국어)
+//     mediakit_title:   '',    // 비우면 언어별 기본 표기
+//     mediakit_link_en: '',    // 비우면 웹사이트 내장 기본 링크
+//     mediakit_link_ko: ''
+//   }
+// business.html 이 public GET 으로 읽어 반영 (한국어 본문 → ko 뷰,
+// 미디어킷 제목/링크 → 전 언어 공통).
+function _bizSetStatus(kind, text){
+  var el = document.getElementById('bizStatus');
+  if(!el) return;
+  if(!text){ el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.textContent = text;
+  el.style.background = kind === 'err' ? 'rgba(220,38,38,.08)' : 'rgba(22,163,74,.08)';
+  el.style.border = '1px solid ' + (kind === 'err' ? 'rgba(220,38,38,.3)' : 'rgba(22,163,74,.3)');
+  el.style.color = kind === 'err' ? '#dc2626' : '#16a34a';
+}
+
+async function loadBusinessPage(){
+  try {
+    var resp = await apiGet('/settings?key=business_page');
+    var v = (resp && resp.value) || {};
+    var set = function(id, val){ var el = document.getElementById(id); if(el) el.value = val || ''; };
+    set('bizBrandKo',      v.content_brand_ko);
+    set('bizWorkKo',       v.content_work_ko);
+    set('bizMediakitTitle',v.mediakit_title);
+    set('bizMediakitEn',   v.mediakit_link_en);
+    set('bizMediakitKo',   v.mediakit_link_ko);
+    _bizSetStatus(null, '');
+  } catch(e){
+    console.warn('[business] load failed:', e && e.message);
+    _bizSetStatus('err', '저장된 설정을 불러오지 못했습니다 — 저장 시 현재 입력값으로 덮어씁니다.');
+  }
+}
+
+function _bizValidUrl(u){
+  if(!u) return true; // 비움 = 기본 링크 사용
+  return /^https:\/\//i.test(u);
+}
+
+async function saveBusinessPage(){
+  var val = function(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; };
+  var payload = {
+    content_brand_ko: val('bizBrandKo'),
+    content_work_ko:  val('bizWorkKo'),
+    mediakit_title:   val('bizMediakitTitle'),
+    mediakit_link_en: val('bizMediakitEn'),
+    mediakit_link_ko: val('bizMediakitKo')
+  };
+  if(!_bizValidUrl(payload.mediakit_link_en) || !_bizValidUrl(payload.mediakit_link_ko)){
+    _bizSetStatus('err', '미디어킷 링크는 https:// 로 시작하는 전체 URL 이어야 합니다.');
+    return;
+  }
+  var btn = document.getElementById('bizSaveBtn');
+  if(btn){ btn.disabled = true; btn.textContent = '저장 중…'; }
+  try {
+    var resp = await apiPut('/settings', { key: 'business_page', value: payload });
+    if(resp && resp.data){
+      _bizSetStatus('ok', '✓ 저장되었습니다. 웹사이트에 최대 1분 내 반영됩니다 (edge cache 60초).');
+    } else {
+      _bizSetStatus('err', '저장 실패: ' + ((resp && resp.message) || '알 수 없는 오류'));
+    }
+  } catch(e){
+    _bizSetStatus('err', '저장 실패: ' + (e && e.message || '네트워크 오류'));
+  } finally {
+    if(btn){ btn.disabled = false; btn.textContent = '저장'; }
+  }
+}
 
 // ======== MENU CATEGORIES (Hamburger Nav) ========
 var menuCats=[
@@ -12064,6 +12137,7 @@ go=function(id,el){
   if(id==='community') loadCommunity();
   if(id==='subscriptions') loadSubscriptions();
   if(id==='intads') renderAds();
+  if(id==='business') loadBusinessPage(); // QA #321 — 저장된 설정 hydrate
 };
 
 // ======== INTERSTITIAL AD MANAGEMENT (backend-driven) ========

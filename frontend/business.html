@@ -362,10 +362,58 @@ var intlMail='contact@pap-magazine.com';
 // 확인 페이지로 빠지며 다운로드가 깨지던 형식. contact 페이지는
 // f17fabd 에서 /file/d/<id>/view 로 교체됨 — 여기도 동일하게 적용.)
 var mediaKitFiles={ko:'1gUeTUJrg-NLv8BUT1BnEzfa3oqXfFt3X',en:'1gVKLuOP2mksORuDuugV6_Ls0XAiQwo7S'};
+// QA #321 — 관리자(비즈니스 편집)가 저장한 미디어킷 링크 override.
+// null 이면 위 내장 기본 링크 사용.
+var _bizMediaKitLinks=null;
 function downloadMediaKit(lang){
+  if(_bizMediaKitLinks && _bizMediaKitLinks[lang]){
+    window.open(_bizMediaKitLinks[lang],'_blank','noopener');
+    return;
+  }
   var fid=mediaKitFiles[lang]||mediaKitFiles.en;
   window.open('https://drive.google.com/file/d/'+fid+'/view','_blank','noopener');
 }
+
+// QA #321 — /api/settings?key=business_page (관리자 저장 데이터) 반영.
+//   · mediakit_title / mediakit_link_* → 모든 언어 공통 적용
+//   · content_brand_ko / content_work_ko → 한국어 뷰의 본문 교체
+//     (타 언어는 아래 L 객체의 번역 텍스트 유지 — 자동 번역 연동 전까지)
+// fetch 실패 시 내장 기본값으로 그대로 동작 (progressive enhancement).
+var _bizSettings=null;
+function _bizTextToHtml(t){
+  var esc=String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return esc.split(/\n\s*\n/).map(function(p){
+    p=p.trim(); if(!p) return '';
+    return '<p>'+p.replace(/\n/g,'<br>')+'</p>';
+  }).join('');
+}
+function _bizApplyKoContent(){
+  if(!_bizSettings) return;
+  if(_bizSettings.content_brand_ko){
+    var b=document.getElementById('brandBody');
+    if(b) b.innerHTML=_bizTextToHtml(_bizSettings.content_brand_ko);
+  }
+  if(_bizSettings.content_work_ko){
+    var w=document.getElementById('workBody');
+    if(w) w.innerHTML=_bizTextToHtml(_bizSettings.content_work_ko);
+  }
+}
+fetch('/api/settings?key=business_page')
+  .then(function(r){ return r.ok ? r.json() : null; })
+  .then(function(j){
+    var v=j&&j.value; if(!v) return;
+    _bizSettings=v;
+    if(v.mediakit_link_en||v.mediakit_link_ko){
+      _bizMediaKitLinks={en:v.mediakit_link_en||'',ko:v.mediakit_link_ko||''};
+    }
+    if(v.mediakit_title){
+      var h=document.querySelector('.media-kit h3');
+      // data-i18n 마킹 해제 — setLang 이 언어별 기본 표기로 되돌리지 않게.
+      if(h){ h.removeAttribute('data-i18n'); h.textContent=v.mediakit_title; }
+    }
+    if((localStorage.getItem('pap-lang')||'en')==='ko') _bizApplyKoContent();
+  })
+  .catch(function(e){ console.warn('[business] settings fetch failed',e); });
 
 var L={
 ko:{about:'ABOUT',contact:'CONTACT',business:'BUSINESS',subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
@@ -458,6 +506,8 @@ function setLang(l){
   });
   document.getElementById('brandBody').innerHTML=d.brand;
   document.getElementById('workBody').innerHTML=d.work;
+  // QA #321 — 한국어 뷰는 관리자 저장 본문이 있으면 그것으로 교체.
+  if(l==='ko') _bizApplyKoContent();
   var mailHtml='<a href="mailto:'+d.mail+'">'+d.mail.toUpperCase()+'</a>';
   document.getElementById('brandEmail').innerHTML=mailHtml;
   document.getElementById('workEmail').innerHTML=mailHtml;

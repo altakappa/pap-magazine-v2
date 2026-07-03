@@ -2201,34 +2201,46 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
   </div>
 
   <!-- BUSINESS -->
+  <!-- QA #321 — 웹사이트(business.html) 구조와 1:1 로 재구성.
+       · 콘텐츠 영역 분리: BRAND CONTENT ADVERTISING / MAKE CONTENTS WITH PAP
+       · 미디어키트 관리: 제목 + English/Korean 다운로드 링크
+       · 미사용 '관련 이미지' 영역 제거
+       저장은 mock alert → /api/settings (site_settings.business_page) 실제
+       저장으로 전환. 콘텐츠(한국어)는 웹사이트의 한국어 뷰에 반영되고,
+       타 언어는 기존 번역 텍스트 유지 (자동 번역 연동 전까지).
+       미디어킷 제목/링크는 모든 언어에 공통 적용. -->
   <div class="tab" id="t-business">
-    <div class="mn-header"><div class="mn-title">비즈니스 편집</div><div class="mn-actions"><button class="btn" onclick="window.open('business.html','_blank')">미리보기</button> <button class="btn btn-primary" onclick="saveCompanyInfo('business')">저장</button></div></div>
+    <div class="mn-header"><div class="mn-title">비즈니스 편집</div><div class="mn-actions"><button class="btn" onclick="window.open('business.html','_blank')">미리보기</button> <button class="btn btn-primary" id="bizSaveBtn" onclick="saveBusinessPage()">저장</button></div></div>
     <div class="mn-body" style="max-width:800px">
+      <div id="bizStatus" class="pe-hint" style="display:none;margin-bottom:14px;padding:10px 12px;border-radius:4px"></div>
+
       <div class="pe-section">
-        <div class="pe-label">콘텐츠 <span class="pe-opt">한국어로 작성 → AI가 8개 언어로 자동 번역</span></div>
-        <textarea class="modal-ta" id="businessKo" style="min-height:200px">[BRAND CONTENT ADVERTISING]
-
-PAP는 귀하의 브랜드에서 제공하는 컨텐츠를 홍보합니다.
-관심 있는 브랜드 및 홍보 담당자들은 아래 이메일을 통해 문의해주세요.
-
-이메일: contact@papkorea.com (한국)
-이메일: contact@pap-magazine.com (해외)
-
-MEDIA KIT: https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF
-
-
-[MAKE CONTENTS WITH PAP]
-
-PAP는 캠페인, 룩북부터, 브랜디드 컨텐츠, 현장 취재등 다양한 컨텐츠를 만들고 있습니다.
-관심있는 브랜드 및 홍보 담당자들은 아래 이메일을 통해 문의해주세요.
-
-이메일: contact@papkorea.com (한국)
-이메일: contact@pap-magazine.com (해외)</textarea>
+        <div class="pe-label">섹션 1 — BRAND CONTENT ADVERTISING <span class="pe-opt">한국어 본문 · 웹사이트 한국어 뷰에 반영</span></div>
+        <textarea class="modal-ta" id="bizBrandKo" style="min-height:140px" placeholder="PAP는 귀하의 브랜드에서 제공하는 컨텐츠를 홍보합니다.&#10;관심 있는 브랜드 및 홍보 담당자들은 아래 이메일을 통해 문의해주세요."></textarea>
+        <div class="pe-hint">빈 줄로 문단을 구분합니다. 문의 이메일은 웹사이트가 자동 표기하므로 본문에 넣지 않아도 됩니다.</div>
       </div>
-      
+
       <div class="pe-section">
-        <div class="pe-label">관련 이미지</div>
-        <div id="businessImages" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+        <div class="pe-label">섹션 2 — MAKE CONTENTS WITH PAP <span class="pe-opt">한국어 본문 · 웹사이트 한국어 뷰에 반영</span></div>
+        <textarea class="modal-ta" id="bizWorkKo" style="min-height:140px" placeholder="PAP는 캠페인, 룩북부터 브랜디드 컨텐츠, 현장 취재 등 다양한 컨텐츠를 만들고 있습니다."></textarea>
+      </div>
+
+      <div class="pe-section">
+        <div class="pe-label">미디어키트 <span class="pe-opt">모든 언어 공통 적용</span></div>
+        <div class="modal-section" style="margin-bottom:12px">
+          <div class="modal-label">제목</div>
+          <input class="pe-input" id="bizMediakitTitle" placeholder="MEDIA KIT (비워두면 언어별 기본 표기)">
+          <div class="pe-hint">비워두면 언어별 기본 표기(MEDIA KIT / 미디어 키트 / メディアキット …)를 사용합니다.</div>
+        </div>
+        <div class="modal-section" style="margin-bottom:12px">
+          <div class="modal-label">English 다운로드 링크</div>
+          <input class="pe-input" id="bizMediakitEn" placeholder="https://drive.google.com/file/d/…/view">
+        </div>
+        <div class="modal-section" style="margin-bottom:0">
+          <div class="modal-label">Korean 다운로드 링크</div>
+          <input class="pe-input" id="bizMediakitKo" placeholder="https://drive.google.com/file/d/…/view">
+        </div>
+        <div class="pe-hint" style="margin-top:8px">링크를 비워두면 웹사이트에 내장된 기본 미디어킷 링크가 사용됩니다.</div>
       </div>
     </div>
   </div>
