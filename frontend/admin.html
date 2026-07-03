@@ -2268,6 +2268,13 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
         <textarea class="modal-ta" id="contactOfficeKr" style="min-height:80px" placeholder="1F, 18, Nonhyeon-ro 146-gil,&#10;Gangnam-gu, Seoul, Korea"></textarea>
         <div class="pe-hint">해외 독자도 보는 페이지이므로 영문 표기를 권장합니다. 비워두면 내장 기본 주소 사용.</div>
       </div>
+
+      <!-- QA #327 — 문의 이메일 관리 -->
+      <div class="pe-section">
+        <div class="pe-label">Email <span class="pe-opt">문의 이메일 — 모든 언어 공통 반영</span></div>
+        <input class="pe-input" id="contactEmail" type="email" placeholder="contact@pap-magazine.com">
+        <div class="pe-hint">Contact 페이지 Email 섹션의 표기·mailto 링크에 적용됩니다. 비워두면 내장 기본 이메일 사용.</div>
+      </div>
     </div>
   </div>
 <!-- FILM EDIT MODAL — films are video editorials. Same metadata model as
@@ -3107,7 +3114,7 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
      가 mock 시절 번들을 계속 서빙 → '+새 이미지' 클릭 시 "실제 운영 시
      S3에 업로드됩니다" 구형 alert 가 재현되던 원인. pap-admin.js 를
      수정하는 커밋은 반드시 이 파라미터를 함께 올릴 것. -->
-<script src="/pap-admin.js?v=79" defer></script>
+<script src="/pap-admin.js?v=80" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>

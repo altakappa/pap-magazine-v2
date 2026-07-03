@@ -369,6 +369,14 @@ function _contactApplyOffices(){
   var ps=block.querySelectorAll(':scope > p');
   if(_contactSettings.office_it && ps[0]) ps[0].innerHTML=_contactTextToHtml(_contactSettings.office_it);
   if(_contactSettings.office_kr && ps[1]) ps[1].innerHTML=_contactTextToHtml(_contactSettings.office_kr);
+  // QA #327 — Email 섹션: contactBody 내 mailto 앵커의 주소·표기 교체.
+  if(_contactSettings.email){
+    var mail=String(_contactSettings.email).trim();
+    document.querySelectorAll('#contactBody a[href^="mailto:"]').forEach(function(a){
+      a.setAttribute('href','mailto:'+mail);
+      a.textContent=mail;
+    });
+  }
 }
 fetch('/api/settings?key=contact_page')
   .then(function(r){ return r.ok ? r.json() : null; })

@@ -10612,9 +10612,10 @@ function _bizValidUrl(u){
 }
 
 // ======== QA #326 — CONTACT PAGE (real persistence) ========
-// site_settings.contact_page = { office_it: '…', office_kr: '…' }
+// site_settings.contact_page = { office_it, office_kr, email }
 // contact.html 이 public GET 으로 읽어 첫 번째 contact-block 의 오피스
 // 주소 <p> 두 개를 교체 (전 언어 공통 — 라벨은 언어별 번역 유지).
+// QA #327 — email 필드 추가: Email 섹션 표기 + mailto 링크에 적용.
 async function loadContactPage(){
   try {
     var resp = await apiGet('/settings?key=contact_page');
@@ -10622,6 +10623,7 @@ async function loadContactPage(){
     var set = function(id, val){ var el = document.getElementById(id); if(el) el.value = val || ''; };
     set('contactOfficeIt', v.office_it);
     set('contactOfficeKr', v.office_kr);
+    set('contactEmail',    v.email);
     _pageSetStatus('contactStatus', null, '');
   } catch(e){
     console.warn('[contact] load failed:', e && e.message);
@@ -10633,8 +10635,14 @@ async function saveContactPage(){
   var val = function(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; };
   var payload = {
     office_it: val('contactOfficeIt'),
-    office_kr: val('contactOfficeKr')
+    office_kr: val('contactOfficeKr'),
+    email:     val('contactEmail')
   };
+  // QA #327 — 이메일 형식 검증 (비움 = 내장 기본값 사용이므로 허용).
+  if(payload.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)){
+    _pageSetStatus('contactStatus', 'err', '이메일 형식이 올바르지 않습니다. (예: contact@pap-magazine.com)');
+    return;
+  }
   var btn = document.getElementById('contactSaveBtn');
   if(btn){ btn.disabled = true; btn.textContent = '저장 중…'; }
   try {
