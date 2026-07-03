@@ -794,20 +794,28 @@
       <span><a href="#" onclick="event.preventDefault();window.location.href='subscribe.html';" data-i18n="ftSubscribe">구독</a></span><span><a href="#" onclick="event.preventDefault();window.location.href='submission.html';" data-i18n="ftSubmission">서브미션</a></span><span><a href="#" onclick="event.preventDefault();window.location.href='pullletter.html';" data-i18n="ftPullletter">풀레터</a></span><span><a href="#" onclick="event.preventDefault();navigateWithInterstitial('community.html';" style="color:var(--pap-red)" data-i18n="ftCommunity">커뮤니티</a></span><span><a href="#" onclick="event.preventDefault();navigateWithInterstitial('magazine.html';" style="color:#c9a96e" data-i18n="ftMagazine">매거진</a></span>
     </div>
   </div>
+  <!-- PG 심사 대응 — 크롤러가 원본 HTML 에서 라벨 형식으로 읽을 수 있게
+       사업자 정보 명시 표기 (상호명/대표자명/사업자등록번호/주소/유선번호).
+       멤버십 가격도 정적 표기 (상품·가격 등록 요건). 언어 전환 시 JS 가
+       덮어쓰는 pap-i18n.js 의 footerLegal 문자열도 동일 형식으로 갱신됨. -->
   <div class="footer-legal" data-i18n-html="footerLegal">
-    <strong>주식회사 알타카파</strong><br>
-    CEO : 강동민 | 개인정보 관리자: 강동민 | 사업자번호 192-88-02644<br>
-    서울특별시 강남구 논현로146길 18, 1F PAP 매거진 | <a href="/cdn-cgi/l/email-protection#03606c6d77626077437362732e6e626462796a6d662d606c6e"><span class="__cf_email__" data-cfemail="f99a96978d989a8db9899889d494989e988390979cd79a9694">[email&#160;protected]</span></a>
+    <strong>주식회사 알타카파 (PAP MAGAZINE)</strong><br>
+    상호명: 주식회사 알타카파 | 대표자명: 강동민 | 사업자등록번호: 192-88-02644 | 개인정보 관리자: 강동민<br>
+    주소: 서울특별시 강남구 논현로146길 18, 1F | 유선번호: 02-547-1134 | 팩스: 02-547-1136 | 이메일: <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a><br>
+    멤버십 구독: STANDARD ₩8,500/월 (₩85,000/년) · PREMIUM ₩13,500/월 (₩135,000/년) — <a href="/subscribe">구독 안내 및 결제</a>
   </div>
   <div class="footer-bottom-nav">
     <div class="footer-bottom-nav-links">
-      <a href="#" onclick="event.preventDefault();window.location.href='about.html';" data-i18n="ftAbout">회사 소개</a>
-      <a href="#" onclick="event.preventDefault();window.location.href='business.html';" data-i18n="ftBusiness">비즈니스</a>
-      <a href="#" onclick="event.preventDefault();window.location.href='contact.html';" data-i18n="ftContact">문의하기</a>
+      <a href="#" onclick="event.preventDefault();window.location.href='/about';" data-i18n="ftAbout">회사 소개</a>
+      <a href="#" onclick="event.preventDefault();window.location.href='/business';" data-i18n="ftBusiness">비즈니스</a>
+      <a href="#" onclick="event.preventDefault();window.location.href='/contact';" data-i18n="ftContact">문의하기</a>
     </div>
     <div class="footer-bottom-nav-center">
-      <a href="#" onclick="event.preventDefault();openPage('termsPage')" data-i18n="terms">이용약관</a>
-      <a href="#" onclick="event.preventDefault();openPage('privacyPage')" data-i18n="privacy">개인정보처리방침</a>
+      <!-- PG 심사 대응 — href="#"+JS 오버레이는 크롤러가 감지 못 함.
+           실제 문서 페이지로 직링크 (이용약관/개인정보/환불정책). -->
+      <a href="terms.html" data-i18n="terms">이용약관</a>
+      <a href="privacy.html" data-i18n="privacy">개인정보처리방침</a>
+      <a href="refund.html">환불정책</a>
     </div>
     <div class="footer-bottom-nav-social">
       <a href="https://www.youtube.com/@pap-magazine" target="_blank">YOUTUBE</a>
@@ -820,7 +828,7 @@
 <!-- QA #310 — 스플래시 로더. defer 없이 즉시 실행돼서 첫 페인트 전에
      오버레이를 띄운다. 세션 내 재노출은 sessionStorage 로 방지. -->
 <script src="/pap-splash-loader.js?v=1"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script><script src="/pap-logos-data.js?v=1" defer></script><script src="/pap-api.js?v=5" defer></script><script src="/pap-social.js?v=2" defer></script><script src="/pap-utils.js?v=2" defer></script><script src="/pap-i18n.js?v=1" defer></script><script src="/pap-auth.js?v=2" defer></script><script src="/pap-search.js?v=3" defer></script><script src="/pap-static.js?v=1" defer></script><script src="/pap-subscription.js?v=1" defer></script><script src="/pap-home.js?v=1" defer></script><script src="/pap-content-editorial.js?v=15" defer></script><script src="/pap-content-film.js?v=7" defer></script><script src="/pap-content-article.js?v=11" defer></script><script src="/pap-content-creator-shorts.js?v=1" defer></script><script src="/pap-content-api-sync.js?v=5" defer></script><script src="/pap-content-seo.js?v=5" defer></script><script src="/pap-shell-bootstrap.js?v=7" defer></script><script src="/pap-app.js?v=20" defer></script><script src="/pap-lightbox.js?v=2" defer></script><script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=10" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script><script src="/pap-logos-data.js?v=1" defer></script><script src="/pap-api.js?v=5" defer></script><script src="/pap-social.js?v=2" defer></script><script src="/pap-utils.js?v=2" defer></script><script src="/pap-i18n.js?v=2" defer></script><script src="/pap-auth.js?v=2" defer></script><script src="/pap-search.js?v=3" defer></script><script src="/pap-static.js?v=1" defer></script><script src="/pap-subscription.js?v=1" defer></script><script src="/pap-home.js?v=1" defer></script><script src="/pap-content-editorial.js?v=15" defer></script><script src="/pap-content-film.js?v=7" defer></script><script src="/pap-content-article.js?v=11" defer></script><script src="/pap-content-creator-shorts.js?v=1" defer></script><script src="/pap-content-api-sync.js?v=5" defer></script><script src="/pap-content-seo.js?v=5" defer></script><script src="/pap-shell-bootstrap.js?v=7" defer></script><script src="/pap-app.js?v=20" defer></script><script src="/pap-lightbox.js?v=2" defer></script><script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=10" defer></script>
 <script src="/pap-protect.js?v=3" defer></script>
 <div class="creator-popup-overlay" id="creatorPopup" onclick="if(event.target===this)closeCreatorPopup()">
   <div class="creator-popup">
