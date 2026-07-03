@@ -221,8 +221,11 @@ body:has(.nav-overlay.active) .header{background:transparent;backdrop-filter:non
 .hero{margin-top:72px;position:relative;height:calc(100vh - 72px);min-height:500px;overflow:hidden;background:var(--bg)}
 /* QA #242 — eased crossfade. Was `opacity 1s ease`. Bumped to 1.2s with
    an ease-in-out cubic-bezier so the fade feels deliberate rather than
-   abrupt; pairs with the 10s autoplay interval set in pap-shell-bootstrap.js. */
-.hero-slide{position:absolute;inset:0;opacity:0;transition:opacity 1.2s cubic-bezier(.4,0,.2,1)}
+   abrupt; pairs with the 10s autoplay interval set in pap-shell-bootstrap.js.
+   QA #319 — 1.2s → 0.9s. 자동 전환 간격이 10s → 5s 로 줄면서 슬라이드당
+   fade 점유 비중이 커져 정지 노출 시간이 짧아 보이는 문제 보정. 모든
+   슬라이드에 동일한 duration/easing (in/out 대칭) 적용. */
+.hero-slide{position:absolute;inset:0;opacity:0;transition:opacity .9s cubic-bezier(.4,0,.2,1)}
 .hero-slide.active{opacity:1}
 .hero-slide-img{width:100%;height:100%;object-fit:cover}
 .hero-slide-gradient{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.3) 0%,transparent 40%)}

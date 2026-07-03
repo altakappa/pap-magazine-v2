@@ -108,9 +108,20 @@ setTimeout(function(){
 //     and we never queue overlapping ticks across visibility flips.
 let hCur = 0;
 let hSlides = document.querySelectorAll('.hero-slide');  // QA #295 — let, replaced after fetch.
-const HERO_INTERVAL_MS = 10000; // QA #242 — was 3000
+// QA #319 — 10000 → 5000. QA 권장 전환 시간 3~5초의 상한 채택.
+// (QA #242 에서 3s → 10s 로 늘렸으나, 운영 QA 에서 배너별 체감 전환
+// 시간이 들쭉날쭉하다는 리포트와 함께 3~5초 통일 요청.)
+const HERO_INTERVAL_MS = 5000;
 let _heroTimer = null;
 let _heroPaused = false;
+// QA #319 — tick 루프 세대 토큰. 관찰된 증상 (배너별 전환 간격이
+// 10s / 2~3s / 5s 로 제각각) 은 주기 10s 의 tick 루프 여러 개가
+// 오프셋을 두고 동시에 도는 패턴과 일치한다. _heroTimer 참조가
+// 어떤 경로로든 어긋나 clearTimeout 을 놓치면 이전 루프가 살아남아
+// 겹치는데, 세대 토큰 불일치 시 자멸하게 만들어 이 계열의 버그를
+// 구조적으로 차단한다 (start/stop 마다 세대 증가 → 이전 세대의
+// 예약된 tick 은 실행 즉시 return).
+let _heroLoopToken = 0;
 // QA #295 — DB 에서 받아온 그룹/슬라이드 메타데이터. 각 슬라이드의 link
 // 를 알아야 클릭 시 올바른 editorial 로 이동.
 //   _heroSlideMeta[i] = { link: '/editorial/foo', issue: '...', title: '...' }
@@ -144,16 +155,21 @@ function _heroUpdateContentText(idx){
     titleEl.textContent = meta.title;
   }
 }
-function _heroTick(){
+function _heroTick(token){
+  // QA #319 — stale 루프 자멸 가드. 새 start/stop 이후에 발화한
+  // 이전 세대의 tick 은 아무것도 하지 않는다.
+  if(token !== _heroLoopToken){ return; }
   if(_heroPaused){ _heroTimer = null; return; }
   heroGo(hCur + 1);
-  _heroTimer = setTimeout(_heroTick, HERO_INTERVAL_MS);
+  _heroTimer = setTimeout(function(){ _heroTick(token); }, HERO_INTERVAL_MS);
 }
 function _heroStart(){
   if(_heroTimer || _heroPaused) return;
-  _heroTimer = setTimeout(_heroTick, HERO_INTERVAL_MS);
+  var token = ++_heroLoopToken; // 새 세대 시작 — 이전 세대 전부 무효화
+  _heroTimer = setTimeout(function(){ _heroTick(token); }, HERO_INTERVAL_MS);
 }
 function _heroStop(){
+  _heroLoopToken++; // 진행 중인 모든 루프 무효화 (clearTimeout 누락 대비)
   if(_heroTimer){ clearTimeout(_heroTimer); _heroTimer = null; }
 }
 function _heroPause(){ _heroPaused = true; _heroStop(); }
