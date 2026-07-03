@@ -36,16 +36,32 @@ a{color:#fff;text-decoration:none}
 .nav-links a:hover{color:rgba(255,255,255,.7)}
 .nav-links a.active{color:#fff}
 .nav-divider{width:1px;height:20px;background:rgba(255,255,255,.1);margin:8px auto}
-.content{margin-left:120px;padding:100px 60px 80px 0}
-.biz-section{display:flex;align-items:center;gap:24px;margin-bottom:120px;max-width:900px}
+/* QA #322 — 황금비(×1.618) 기반 간격 스케일 도입.
+   기존 여백이 8/10/16/24/32/40/60/100/120px 로 배수 체계가 혼재 —
+   8 → 13 → 21 → 34 → 55 → 89 여섯 단계로 통일한다.
+   위계 규칙:
+     · 제목 ↔ 본문   : 좁은 단계 (--sp-2 13px ~ --sp-3 21px)
+     · 콘텐츠 그룹 구분: 중간 단계 (--sp-4 34px)
+     · 섹션 ↔ 섹션    : 넓은 단계 (--sp-5 55px ~ --sp-6 89px)
+   여백 수정 시 px 직접 입력 대신 반드시 아래 변수를 사용할 것. */
+:root{
+  --sp-1:8px;   /* base — 최소 간격 (칩/버튼 내부) */
+  --sp-2:13px;  /* 본문 문단 간, 소제목-내용 */
+  --sp-3:21px;  /* 제목-본문, 그룹 내부 상하 */
+  --sp-4:34px;  /* 콘텐츠 그룹(미디어킷 등) 구분 */
+  --sp-5:55px;  /* 페이지 패딩, 모바일 섹션 간 */
+  --sp-6:89px;  /* 데스크톱 섹션 간 최상위 구분 */
+}
+.content{margin-left:120px;padding:var(--sp-6) var(--sp-5) var(--sp-6) 0}
+.biz-section{display:flex;align-items:center;gap:var(--sp-4);margin-bottom:var(--sp-6);max-width:900px}
 .biz-section.reverse{flex-direction:row-reverse}
 .biz-text{flex:1}
-.biz-text h2{font-size:clamp(24px,4vw,40px);font-weight:800;letter-spacing:0;text-transform:uppercase;margin-bottom:32px;line-height:1.2}
-.biz-text p{font-size:14px;line-height:2.2;color:rgba(255,255,255,.75);margin-bottom:16px}
-.biz-text .email{font-size:14px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:#fff;margin-top:24px}
+.biz-text h2{font-size:clamp(24px,4vw,40px);font-weight:800;letter-spacing:0;text-transform:uppercase;margin-bottom:var(--sp-3);line-height:1.2}
+.biz-text p{font-size:14px;line-height:2.2;color:rgba(255,255,255,.75);margin-bottom:var(--sp-2)}
+.biz-text .email{font-size:14px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:#fff;margin-top:var(--sp-3)}
 .biz-text .email a{text-decoration:underline;text-underline-offset:3px}
-.biz-text .media-kit{margin-top:32px;padding-top:24px;border-top:1px solid rgba(255,255,255,.1)}
-.biz-text .media-kit h3{font-size:12px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:8px}
+.biz-text .media-kit{margin-top:var(--sp-4);padding-top:var(--sp-3);border-top:1px solid rgba(255,255,255,.1)}
+.biz-text .media-kit h3{font-size:12px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:var(--sp-2)}
 .biz-text .media-kit a{font-size:14px;text-decoration:underline;text-underline-offset:3px;color:rgba(255,255,255,.75);transition:color .2s}
 .biz-text .media-kit a:hover{color:#fff}
 .badge-wrap{flex-shrink:0;width:120px;height:120px}
@@ -54,21 +70,22 @@ a{color:#fff;text-decoration:none}
 .lang-selector{position:fixed;top:32px;right:40px;z-index:100}
 .lang-selector select{background:transparent;color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.2);padding:6px 12px;font-size:11px;font-family:'Montserrat',sans-serif;letter-spacing:.1em;cursor:pointer}
 .lang-selector select option{background:#000;color:#fff}
-.footer-legal{margin-left:120px;padding:40px 60px 40px 0;border-top:1px solid rgba(255,255,255,.1);font-size:11px;color:rgba(255,255,255,.3);line-height:2}
+.footer-legal{margin-left:120px;padding:var(--sp-4) var(--sp-5) var(--sp-4) 0;border-top:1px solid rgba(255,255,255,.1);font-size:11px;color:rgba(255,255,255,.3);line-height:2}
 .footer-legal a{color:rgba(255,255,255,.3)}
 @media(max-width:768px){
   .side-nav{width:50px;padding-top:20px}
   .side-nav .nav-group-label{font-size:8px;letter-spacing:.15em;padding:10px 0 6px}
   .side-nav .nav-links a{font-size:10px;letter-spacing:3px;padding:8px 0}
-  .content{margin-left:60px;padding:60px 20px}
-  .biz-section,.biz-section.reverse{flex-direction:column;gap:32px;margin-bottom:60px}
+  /* QA #322 — 모바일도 동일 스케일, 한 단계씩 좁게 (55/34 단계). */
+  .content{margin-left:60px;padding:var(--sp-5) var(--sp-3)}
+  .biz-section,.biz-section.reverse{flex-direction:column;gap:var(--sp-3);margin-bottom:var(--sp-5)}
   .badge-wrap{width:80px;height:80px}
   .spinning-badge{width:80px;height:80px}
-  .footer-legal{margin-left:60px;padding:20px 20px}
+  .footer-legal{margin-left:60px;padding:var(--sp-3) var(--sp-3)}
 }
 /* HIDE OLD NAV — unified header active */
 .lang-selector{display:none!important}
-@media(max-width:768px){.content{padding-left:20px!important;padding-right:20px!important}}
+@media(max-width:768px){.content{padding-left:var(--sp-3)!important;padding-right:var(--sp-3)!important}}
 </style>
 <!-- Favicon & PWA -->
 <link rel="icon" type="image/x-icon" href="favicon.ico">
@@ -331,7 +348,8 @@ function navigateWithInterstitial(url){
       <div class="email" id="brandEmail"></div>
       <div class="media-kit">
         <h3 data-i18n="mediaKit">MEDIA KIT</h3>
-        <div id="mediaKitBtns" style="display:flex;gap:10px;margin-top:8px;">
+        <!-- QA #322 — 버튼 간격 --sp-2(13px), 상단 여백은 h3 margin-bottom 이 담당 -->
+        <div id="mediaKitBtns" style="display:flex;gap:var(--sp-2);margin-top:0;">
           <a href="#" onclick="event.preventDefault();downloadMediaKit('en')" style="display:inline-block;padding:8px 20px;border:1px solid #fff;color:#fff;font-size:10px;font-weight:700;letter-spacing:.1em;text-decoration:none;transition:all .3s;" onmouseover="this.style.background='#fff';this.style.color='#000'" onmouseout="this.style.background='transparent';this.style.color='#fff'">English</a>
           <a href="#" onclick="event.preventDefault();downloadMediaKit('ko')" style="display:inline-block;padding:8px 20px;border:1px solid #fff;color:#fff;font-size:10px;font-weight:700;letter-spacing:.1em;text-decoration:none;transition:all .3s;" onmouseover="this.style.background='#fff';this.style.color='#000'" onmouseout="this.style.background='transparent';this.style.color='#fff'">Korean</a>
         </div>
