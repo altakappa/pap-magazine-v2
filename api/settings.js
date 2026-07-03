@@ -20,6 +20,7 @@ const { rateLimit, RATE_LIMITS } = require('./_lib/rateLimit');
 
 const ALLOWED_KEYS = [
   'business_page',   // QA #321 — 비즈니스 페이지 콘텐츠 + 미디어킷 링크
+  'contact_page',    // QA #326 — Italy/Korea 오피스 주소
 ];
 
 module.exports = async function handler(req, res) {

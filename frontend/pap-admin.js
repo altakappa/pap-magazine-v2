@@ -10585,16 +10585,9 @@ renderCompanyImages('contact');
 //   }
 // business.html 이 public GET 으로 읽어 반영 (한국어 본문 → ko 뷰,
 // 미디어킷 제목/링크 → 전 언어 공통).
-function _bizSetStatus(kind, text){
-  var el = document.getElementById('bizStatus');
-  if(!el) return;
-  if(!text){ el.style.display = 'none'; return; }
-  el.style.display = 'block';
-  el.textContent = text;
-  el.style.background = kind === 'err' ? 'rgba(220,38,38,.08)' : 'rgba(22,163,74,.08)';
-  el.style.border = '1px solid ' + (kind === 'err' ? 'rgba(220,38,38,.3)' : 'rgba(22,163,74,.3)');
-  el.style.color = kind === 'err' ? '#dc2626' : '#16a34a';
-}
+// QA #326 — 상태 배너가 business/contact 두 탭에서 쓰이게 되면서
+// _pageSetStatus(elId, kind, text) 로 범용화. 하위 호환 shim 유지.
+function _bizSetStatus(kind, text){ _pageSetStatus('bizStatus', kind, text); }
 
 async function loadBusinessPage(){
   try {
@@ -10616,6 +10609,58 @@ async function loadBusinessPage(){
 function _bizValidUrl(u){
   if(!u) return true; // 비움 = 기본 링크 사용
   return /^https:\/\//i.test(u);
+}
+
+// ======== QA #326 — CONTACT PAGE (real persistence) ========
+// site_settings.contact_page = { office_it: '…', office_kr: '…' }
+// contact.html 이 public GET 으로 읽어 첫 번째 contact-block 의 오피스
+// 주소 <p> 두 개를 교체 (전 언어 공통 — 라벨은 언어별 번역 유지).
+async function loadContactPage(){
+  try {
+    var resp = await apiGet('/settings?key=contact_page');
+    var v = (resp && resp.value) || {};
+    var set = function(id, val){ var el = document.getElementById(id); if(el) el.value = val || ''; };
+    set('contactOfficeIt', v.office_it);
+    set('contactOfficeKr', v.office_kr);
+    _pageSetStatus('contactStatus', null, '');
+  } catch(e){
+    console.warn('[contact] load failed:', e && e.message);
+    _pageSetStatus('contactStatus', 'err', '저장된 설정을 불러오지 못했습니다 — 저장 시 현재 입력값으로 덮어씁니다.');
+  }
+}
+
+async function saveContactPage(){
+  var val = function(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; };
+  var payload = {
+    office_it: val('contactOfficeIt'),
+    office_kr: val('contactOfficeKr')
+  };
+  var btn = document.getElementById('contactSaveBtn');
+  if(btn){ btn.disabled = true; btn.textContent = '저장 중…'; }
+  try {
+    var resp = await apiPut('/settings', { key: 'contact_page', value: payload });
+    if(resp && resp.data){
+      _pageSetStatus('contactStatus', 'ok', '✓ 저장되었습니다. 웹사이트에 최대 1분 내 반영됩니다 (edge cache 60초).');
+    } else {
+      _pageSetStatus('contactStatus', 'err', '저장 실패: ' + ((resp && resp.message) || '알 수 없는 오류'));
+    }
+  } catch(e){
+    _pageSetStatus('contactStatus', 'err', '저장 실패: ' + (e && e.message || '네트워크 오류'));
+  } finally {
+    if(btn){ btn.disabled = false; btn.textContent = '저장'; }
+  }
+}
+
+// QA #326 — bizStatus 전용이던 상태 배너 헬퍼를 범용화.
+function _pageSetStatus(elId, kind, text){
+  var el = document.getElementById(elId);
+  if(!el) return;
+  if(!text){ el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.textContent = text;
+  el.style.background = kind === 'err' ? 'rgba(220,38,38,.08)' : 'rgba(22,163,74,.08)';
+  el.style.border = '1px solid ' + (kind === 'err' ? 'rgba(220,38,38,.3)' : 'rgba(22,163,74,.3)');
+  el.style.color = kind === 'err' ? '#dc2626' : '#16a34a';
 }
 
 async function saveBusinessPage(){
@@ -12138,6 +12183,7 @@ go=function(id,el){
   if(id==='subscriptions') loadSubscriptions();
   if(id==='intads') renderAds();
   if(id==='business') loadBusinessPage(); // QA #321 — 저장된 설정 hydrate
+  if(id==='contact') loadContactPage();   // QA #326 — 오피스 주소 hydrate
 };
 
 // ======== INTERSTITIAL AD MANAGEMENT (backend-driven) ========

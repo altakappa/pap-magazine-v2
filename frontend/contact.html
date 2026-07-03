@@ -351,7 +351,33 @@ ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | 营业执照号
 body:'<div class="contact-grid"><div class="contact-block"><h3>IT Office</h3><p>Via San Vincenzo 18B,<br>20123 Milano</p><h3>KR Office</h3><p>Seoul, Gangnam-gu, Nonhyeon-ro 146-gil 18, 1F</p></div><div class="contact-block"><h3>Email</h3><p><a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a></p><h3>MEDIA KIT</h3><p style="display:flex;gap:8px"><a href="#" onclick="event.preventDefault();downloadMediaKit(\'en\')" style="border:1px solid #333;padding:4px 12px;font-size:10px;letter-spacing:.1em">English</a><a href="#" onclick="event.preventDefault();downloadMediaKit(\'ko\')" style="border:1px solid #333;padding:4px 12px;font-size:10px;letter-spacing:.1em">Korean</a></p></div></div>',
 ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'}
 };
-function setLang(l){localStorage.setItem('pap-lang',l);var d=L[l]||L.ko;document.querySelectorAll('[data-i18n]').forEach(function(e){var k=e.getAttribute('data-i18n');if(d[k])e.textContent=d[k];});document.getElementById('contactBody').innerHTML=d.body;document.getElementById('footerLegal').innerHTML=d.ft;document.getElementById('langSelect').value=l;}
+function setLang(l){localStorage.setItem('pap-lang',l);var d=L[l]||L.ko;document.querySelectorAll('[data-i18n]').forEach(function(e){var k=e.getAttribute('data-i18n');if(d[k])e.textContent=d[k];});document.getElementById('contactBody').innerHTML=d.body;document.getElementById('footerLegal').innerHTML=d.ft;document.getElementById('langSelect').value=l;_contactApplyOffices();}
+
+// QA #326 — /api/settings?key=contact_page (관리자 저장 오피스 주소) 반영.
+// 첫 번째 .contact-block 은 [h3 IT라벨, p 주소, h3 KR라벨, p 주소] 구조 —
+// 주소 <p> 두 개만 admin 값으로 교체 (오피스 라벨은 언어별 번역 유지).
+// setLang 이 contactBody 를 매번 다시 그리므로 setLang 끝에서 재적용.
+// fetch 실패/미설정 시 내장 기본 주소로 그대로 동작.
+var _contactSettings=null;
+function _contactTextToHtml(t){
+  return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+function _contactApplyOffices(){
+  if(!_contactSettings) return;
+  var block=document.querySelector('#contactBody .contact-grid .contact-block');
+  if(!block) return;
+  var ps=block.querySelectorAll(':scope > p');
+  if(_contactSettings.office_it && ps[0]) ps[0].innerHTML=_contactTextToHtml(_contactSettings.office_it);
+  if(_contactSettings.office_kr && ps[1]) ps[1].innerHTML=_contactTextToHtml(_contactSettings.office_kr);
+}
+fetch('/api/settings?key=contact_page')
+  .then(function(r){ return r.ok ? r.json() : null; })
+  .then(function(j){
+    var v=j&&j.value; if(!v) return;
+    _contactSettings=v;
+    _contactApplyOffices();
+  })
+  .catch(function(e){ console.warn('[contact] settings fetch failed',e); });
 // Media Kit — open Google Drive preview page in a new tab.
 // 기존 `uc?export=download` 는 Google 이 큰 파일에 virus-scan 경고
 // 페이지를 끼워넣으면서 브라우저에서 다운로드가 트리거되지 않고 빈
