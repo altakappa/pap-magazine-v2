@@ -178,19 +178,50 @@ function _heroInstallControls(){
   heroEl.removeAttribute('onclick');
   heroEl.addEventListener('click', function(e){
     var meta = _heroSlideMeta[hCur];
-    if(meta && meta.link){
-      try {
-        // 패스 기반 URL 이면 SPA navigation, 아니면 풀 이동.
-        var url = String(meta.link);
-        if(url.indexOf('http') === 0){
-          window.location.href = url;
-        } else {
-          history.pushState({}, '', url);
-          window.dispatchEvent(new PopStateEvent('popstate'));
-        }
-      } catch(_){
-        window.location.href = meta.link;
+    if(!(meta && meta.link)) return;
+    var url = String(meta.link);
+    try {
+      // QA #318 — 배너 클릭 시 URL 만 바뀌고 상세가 안 열리던 결함 fix.
+      // 기존 구현은 history.pushState({}, '', url) 후 state 없는
+      // PopStateEvent 를 수동 발송했는데, 아래 popstate 라우터는 전적으로
+      // e.state 플래그 (st.editorial / st.film / st.article / …) 로만
+      // 분기한다. 수동 이벤트는 e.state=null 이라 catch-all("열려 있는
+      // 오버레이 닫기") 로 떨어져 아무것도 열리지 않았다.
+      // 수정: /editorial/<slug> 링크는 slug → edData 행을 찾아
+      // openEditorial(title) 을 직접 호출 (openEditorial 이 오버레이
+      // 렌더 + pushState 를 모두 처리). 매칭 실패·그 외 경로는 풀
+      // 네비게이션 — /editorial/:slug, /film/:slug 는 Vercel rewrite 의
+      // SSR 페이지가 받으므로 어느 쪽이든 상세에 도달한다.
+      if(url.indexOf('http') === 0){
+        window.location.href = url;
+        return;
       }
+      var m = url.match(/^\/editorial\/([^\/?#]+)/);
+      if(m && typeof openEditorial === 'function'){
+        var slug = m[1];
+        try { slug = decodeURIComponent(slug); } catch(_){}
+        var slugLc = slug.toLowerCase();
+        var row = null;
+        if(typeof edData !== 'undefined' && Array.isArray(edData)){
+          for(var i = 0; i < edData.length; i++){
+            var r = edData[i];
+            if(!r) continue;
+            // 1순위: DB slug 일치. 2순위: 제목 기반 fallback slug 일치
+            // (slug 컬럼이 없는 legacy 정적 행 대비).
+            if(typeof r.slug === 'string' && r.slug.toLowerCase() === slugLc){ row = r; break; }
+            if(!row && typeof _editorialTitleToSlug === 'function'
+               && r.title && _editorialTitleToSlug(r.title) === slugLc){ row = r; }
+          }
+        }
+        if(row && row.title){
+          openEditorial(row.title, row.img || '');
+          return;
+        }
+      }
+      // edData 미로딩 / 매칭 실패 / editorial 외 경로 → SSR 풀 이동.
+      window.location.href = url;
+    } catch(_){
+      window.location.href = url;
     }
   });
 }
