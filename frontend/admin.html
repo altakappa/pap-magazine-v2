@@ -2262,8 +2262,6 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
       </div>
     </div>
   </div>
-</main>
-
 <!-- FILM EDIT MODAL — films are video editorials. Same metadata model as
      editorials (categories / credits / slug / published_date / tags / thumbnail)
      plus a YouTube video on top. The credits area reuses the editorial form's
@@ -2277,13 +2275,18 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
      - openFilmModal(idx) → editingFilmId set + go('newfilm') + hydrate
      - closeFilmModal()    → go('film') (목록으로 복귀)
      filmModal id는 더 이상 modal-bg로 사용되지 않습니다 — pap-admin.js
-     의 dirty-check 셀렉터는 #t-newfilm으로 갱신됩니다. -->
+     의 dirty-check 셀렉터는 #t-newfilm으로 갱신됩니다.
+     QA #316 — 이 탭이 </main> 바깥에 있어서 body{display:flex}의 별도
+     flex 아이템으로 렌더링 → 화면이 우측으로 밀리던 버그 수정. 탭을
+     <main> 안으로 이동하고, 에디토리얼/뉴스와 동일하게 .pe(max-width
+     800px) 래퍼를 적용해 공통 등록 레이아웃으로 통일. -->
 <div class="tab" id="t-newfilm">
   <div class="mn-header">
     <div class="mn-title" id="filmModalTitle">필름 작성 <button class="btn btn-sm" style="margin-left:10px;padding:2px 8px;font-size:10px;vertical-align:middle" id="filmAuditBtn" onclick="if(typeof editFilmId !== 'undefined' && editFilmId) openContentAuditLog('film', editFilmId)">📋 수정 이력 보기</button></div>
     <div class="mn-actions"><button class="btn" onclick="closeFilmModal()">← 목록으로</button></div>
   </div>
   <div class="mn-body">
+    <div class="pe"><!-- QA #316 — 공통 등록 폼 레이아웃 (에디토리얼/뉴스와 동일) -->
     <div class="sub" style="margin-bottom:18px">클릭 시 새 팝업창에서 YouTube 영상이 재생됩니다. 필름은 "동영상이 있는 에디토리얼"입니다.</div>
 
     <div class="modal-section">
@@ -2567,8 +2570,10 @@ https://drive.google.com/drive/folders/1BsWBRTsC0qZX4y9IfZYLSMW_UpFKfXxF</textar
       <button class="btn" onclick="saveFilm('draft')" title="공개/예약 체크와 무관하게 임시저장으로 저장">임시저장</button>
       <button class="btn" onclick="closeFilmModal()">취소</button>
     </div>
+    </div><!-- /.pe — QA #316 -->
   </div>
 </div>
+</main>
 
 <!-- SHORTS EDIT MODAL -->
 <div class="modal-bg" id="shortsModal">
