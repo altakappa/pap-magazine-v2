@@ -7495,33 +7495,59 @@ async function _populateFilmRelatedEditorial(selectedId){
   var hidden = document.getElementById('filmRelatedEditorial');
   if(hidden) hidden.value = selectedId || '';
   try {
-    if (!_filmRelatedEdCache) {
-      // QA #305 — published + scheduled 병합 fetch.
-      // 예약 게시 상태 (status=published + scheduled_publish_at 미래) 는
-      // 공개용 GET 이 hide 하므로 필름 등록 시 안 잡히던 결함. status=scheduled
-      // 로 별도 조회해서 병합 + _scheduled 플래그로 배지 표시.
-      // 두 요청 병렬 처리 + 실패해도 나머지는 사용.
-      var results = await Promise.all([
-        apiGet('/editorials?status=published&limit=500').catch(function(){ return null; }),
-        apiGet('/editorials?status=scheduled&limit=500').catch(function(){ return null; })
-      ]);
-      var pubList = (results[0] && (results[0].data || results[0].editorials || results[0])) || [];
-      var schList = (results[1] && (results[1].data || results[1].editorials || results[1])) || [];
-      if (!Array.isArray(pubList)) pubList = [];
-      if (!Array.isArray(schList)) schList = [];
-      // 예약분에 flag 마킹 → 렌더시 배지 표시.
-      schList = schList.map(function(ed){
-        return Object.assign({}, ed, { _scheduled: true });
+    // QA #305 — published + scheduled 병합 fetch.
+    // 예약 게시 상태 (status=published + scheduled_publish_at 미래) 는
+    // 공개용 GET 이 hide 하므로 필름 등록 시 안 잡히던 결함. status=scheduled
+    // 로 별도 조회해서 병합 + _scheduled 플래그로 배지 표시.
+    // 두 요청 병렬 처리 + 실패해도 나머지는 사용.
+    //
+    // QA #317 — 세션당 1회 캐시 (`if (!_filmRelatedEdCache)`) 제거.
+    // 관리자 페이지는 SPA 라 에디토리얼을 예약 게시한 직후 새로고침 없이
+    // 필름 폼을 열면 캐시가 예약 이전 상태 → 방금 등록한 예약 에디토리얼이
+    // 목록에 안 나오던 결함. 폼을 열 때마다 fresh fetch 한다 (admin 전용
+    // 목록 + no-store 응답이라 부담 없음). fetch 실패 시엔 이전 캐시를
+    // 유지해 목록이 비어 버리지 않게 한다.
+    var results = await Promise.all([
+      apiGet('/editorials?status=published&limit=100&page=1').catch(function(){ return null; }),
+      apiGet('/editorials?status=scheduled&limit=100').catch(function(){ return null; })
+    ]);
+    var pubResp = results[0];
+    var pubList = (pubResp && (pubResp.data || pubResp.editorials || pubResp)) || [];
+    var schList = (results[1] && (results[1].data || results[1].editorials || results[1])) || [];
+    if (!Array.isArray(pubList)) pubList = [];
+    if (!Array.isArray(schList)) schList = [];
+    // QA #317 — API 는 limit 을 100 으로 캡하므로 (기존 limit=500 요청은
+    // 조용히 100 으로 잘렸음) 공개 에디토리얼이 100개를 넘으면 나머지
+    // 페이지를 병렬로 추가 조회. 최대 5페이지(500개) — picker 검색이
+    // 클라이언트 필터라 전체 카탈로그가 캐시에 있어야 한다.
+    var totalPages = (pubResp && pubResp.pagination && parseInt(pubResp.pagination.pages, 10)) || 1;
+    if (totalPages > 1) {
+      var extraReqs = [];
+      for (var p = 2; p <= Math.min(totalPages, 5); p++) {
+        extraReqs.push(apiGet('/editorials?status=published&limit=100&page=' + p).catch(function(){ return null; }));
+      }
+      var extraResults = await Promise.all(extraReqs);
+      extraResults.forEach(function(r){
+        var l = (r && (r.data || r.editorials)) || [];
+        if (Array.isArray(l)) pubList = pubList.concat(l);
       });
-      // 중복 제거 (같은 id 중 예약분 우선 — 스케줄 정보 유지). Set 으로 id 트래킹.
-      var seen = {};
-      var merged = [];
-      schList.concat(pubList).forEach(function(ed){
-        if(!ed || !ed.id) return;
-        if(seen[ed.id]) return;
-        seen[ed.id] = 1;
-        merged.push(ed);
-      });
+    }
+    // 예약분에 flag 마킹 → 렌더시 배지 표시.
+    schList = schList.map(function(ed){
+      return Object.assign({}, ed, { _scheduled: true });
+    });
+    // 중복 제거 (같은 id 중 예약분 우선 — 스케줄 정보 유지). Set 으로 id 트래킹.
+    var seen = {};
+    var merged = [];
+    schList.concat(pubList).forEach(function(ed){
+      if(!ed || !ed.id) return;
+      if(seen[ed.id]) return;
+      seen[ed.id] = 1;
+      merged.push(ed);
+    });
+    // QA #317 — 두 fetch 가 모두 실패해 빈 결과가 나온 경우엔 이전
+    // 캐시를 보존 (일시적 네트워크 오류로 목록이 통째로 사라지는 것 방지).
+    if (merged.length || !Array.isArray(_filmRelatedEdCache)) {
       _filmRelatedEdCache = merged;
     }
   } catch(e){
