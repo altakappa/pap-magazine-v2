@@ -2,7 +2,11 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.portone.io https://*.portone.io https://*.iamport.co https://js.tosspayments.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co https://api.portone.io https://*.portone.io https://*.iamport.co https://api.pap-magazine.com https://*.tosspayments.com https://ipapi.co; frame-src https://service.portone.io https://*.portone.io https://*.iamport.co https://*.tosspayments.com https://pay.tosspayments.com;">
+<!-- CSP — 결제 이원화: PortOne(국내) + Paddle(해외) 도메인 허용.
+     Paddle 은 script(cdn.paddle.com) + 체크아웃 오버레이 iframe(buy/
+     sandbox-buy.paddle.com) + API(connect) 가 모두 필요 — *.paddle.com
+     으로 커버. 누락 시 'Payment SDK not loaded' 로 해외 결제 불가. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.portone.io https://*.portone.io https://*.iamport.co https://js.tosspayments.com https://*.paddle.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co https://api.portone.io https://*.portone.io https://*.iamport.co https://api.pap-magazine.com https://*.tosspayments.com https://ipapi.co https://*.paddle.com; frame-src https://service.portone.io https://*.portone.io https://*.iamport.co https://*.tosspayments.com https://pay.tosspayments.com https://*.paddle.com;">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="PAP Magazine 프리미엄 멤버십 — 에디토리얼·필름·아티클·셀럽 뉴스 등 모든 콘텐츠를 가장 먼저, 광고 없이, 풀해상도로. 패션·아트·뷰티·컬쳐의 모든 깊이를 누리세요. Subscribe to PAP Magazine premium.">
 <meta name="keywords" content="PAP Magazine 구독, 디지털 매거진 멤버십, fashion magazine subscription, premium editorial access, ad-free magazine, 매거진 정기구독, K-fashion magazine, Italian fashion publication">
