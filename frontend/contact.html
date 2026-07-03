@@ -377,12 +377,26 @@ function _contactApplyOffices(){
       a.textContent=mail;
     });
   }
+  // QA #328 — 미디어킷 제목: 두 번째 contact-block 의 두 번째 h3
+  // ([Email, MEDIA KIT] 순서 — 전 언어 동일 구조 검증 완료).
+  if(_contactSettings.mediakit_title){
+    var blocks=document.querySelectorAll('#contactBody .contact-grid .contact-block');
+    var b2=blocks[1];
+    if(b2){
+      var h3s=b2.querySelectorAll(':scope > h3');
+      if(h3s[1]) h3s[1].textContent=_contactSettings.mediakit_title;
+    }
+  }
 }
 fetch('/api/settings?key=contact_page')
   .then(function(r){ return r.ok ? r.json() : null; })
   .then(function(j){
     var v=j&&j.value; if(!v) return;
     _contactSettings=v;
+    // QA #328 — 미디어킷 다운로드 링크 override 세팅.
+    if(v.mediakit_link_en||v.mediakit_link_ko){
+      _contactMediaKitLinks={en:v.mediakit_link_en||'',ko:v.mediakit_link_ko||''};
+    }
     _contactApplyOffices();
   })
   .catch(function(e){ console.warn('[contact] settings fetch failed',e); });
@@ -392,7 +406,16 @@ fetch('/api/settings?key=contact_page')
 // 페이지만 뜨는 증상 발생. `/view` 는 뷰어에서 바로 열리고 우측 상단
 // 다운로드 버튼으로 저장 가능해 안정적.
 var mediaKitFiles={ko:'1gUeTUJrg-NLv8BUT1BnEzfa3oqXfFt3X',en:'1gVKLuOP2mksORuDuugV6_Ls0XAiQwo7S'};
-function downloadMediaKit(lang){var fid=mediaKitFiles[lang]||mediaKitFiles.en;window.open('https://drive.google.com/file/d/'+fid+'/view','_blank','noopener');}
+// QA #328 — 관리자(문의하기 편집)가 저장한 링크 override. null 이면 내장 기본.
+var _contactMediaKitLinks=null;
+function downloadMediaKit(lang){
+  if(_contactMediaKitLinks && _contactMediaKitLinks[lang]){
+    window.open(_contactMediaKitLinks[lang],'_blank','noopener');
+    return;
+  }
+  var fid=mediaKitFiles[lang]||mediaKitFiles.en;
+  window.open('https://drive.google.com/file/d/'+fid+'/view','_blank','noopener');
+}
 // AUTO LANGUAGE DETECTION
 (function(){
   var saved=localStorage.getItem('pap-lang');

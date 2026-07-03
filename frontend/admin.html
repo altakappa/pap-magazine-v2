@@ -2275,6 +2275,25 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
         <input class="pe-input" id="contactEmail" type="email" placeholder="contact@pap-magazine.com">
         <div class="pe-hint">Contact 페이지 Email 섹션의 표기·mailto 링크에 적용됩니다. 비워두면 내장 기본 이메일 사용.</div>
       </div>
+
+      <!-- QA #328 — 미디어키트 관리 (business 편집과 동일 패턴) -->
+      <div class="pe-section">
+        <div class="pe-label">미디어키트 <span class="pe-opt">모든 언어 공통 적용</span></div>
+        <div class="modal-section" style="margin-bottom:12px">
+          <div class="modal-label">제목</div>
+          <input class="pe-input" id="contactMediakitTitle" placeholder="MEDIA KIT (비워두면 언어별 기본 표기)">
+          <div class="pe-hint">비워두면 언어별 기본 표기(MEDIA KIT / 미디어 키트 / メディアキット …)를 사용합니다.</div>
+        </div>
+        <div class="modal-section" style="margin-bottom:12px">
+          <div class="modal-label">English 다운로드 링크</div>
+          <input class="pe-input" id="contactMediakitEn" placeholder="https://drive.google.com/file/d/…/view">
+        </div>
+        <div class="modal-section" style="margin-bottom:0">
+          <div class="modal-label">Korean 다운로드 링크</div>
+          <input class="pe-input" id="contactMediakitKo" placeholder="https://drive.google.com/file/d/…/view">
+        </div>
+        <div class="pe-hint" style="margin-top:8px">링크를 비워두면 웹사이트에 내장된 기본 미디어킷 링크가 사용됩니다.</div>
+      </div>
     </div>
   </div>
 <!-- FILM EDIT MODAL — films are video editorials. Same metadata model as
@@ -3114,7 +3133,7 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
      가 mock 시절 번들을 계속 서빙 → '+새 이미지' 클릭 시 "실제 운영 시
      S3에 업로드됩니다" 구형 alert 가 재현되던 원인. pap-admin.js 를
      수정하는 커밋은 반드시 이 파라미터를 함께 올릴 것. -->
-<script src="/pap-admin.js?v=80" defer></script>
+<script src="/pap-admin.js?v=81" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>

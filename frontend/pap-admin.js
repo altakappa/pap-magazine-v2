@@ -10624,6 +10624,10 @@ async function loadContactPage(){
     set('contactOfficeIt', v.office_it);
     set('contactOfficeKr', v.office_kr);
     set('contactEmail',    v.email);
+    // QA #328 — 미디어키트 필드
+    set('contactMediakitTitle', v.mediakit_title);
+    set('contactMediakitEn',    v.mediakit_link_en);
+    set('contactMediakitKo',    v.mediakit_link_ko);
     _pageSetStatus('contactStatus', null, '');
   } catch(e){
     console.warn('[contact] load failed:', e && e.message);
@@ -10636,11 +10640,20 @@ async function saveContactPage(){
   var payload = {
     office_it: val('contactOfficeIt'),
     office_kr: val('contactOfficeKr'),
-    email:     val('contactEmail')
+    email:     val('contactEmail'),
+    // QA #328 — 미디어키트 제목 + 언어별 다운로드 링크
+    mediakit_title:   val('contactMediakitTitle'),
+    mediakit_link_en: val('contactMediakitEn'),
+    mediakit_link_ko: val('contactMediakitKo')
   };
   // QA #327 — 이메일 형식 검증 (비움 = 내장 기본값 사용이므로 허용).
   if(payload.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)){
     _pageSetStatus('contactStatus', 'err', '이메일 형식이 올바르지 않습니다. (예: contact@pap-magazine.com)');
+    return;
+  }
+  // QA #328 — 링크는 https:// 전체 URL 만 허용 (비움 = 기본 링크).
+  if(!_bizValidUrl(payload.mediakit_link_en) || !_bizValidUrl(payload.mediakit_link_ko)){
+    _pageSetStatus('contactStatus', 'err', '미디어킷 링크는 https:// 로 시작하는 전체 URL 이어야 합니다.');
     return;
   }
   var btn = document.getElementById('contactSaveBtn');
