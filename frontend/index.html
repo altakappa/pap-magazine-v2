@@ -348,7 +348,7 @@
     <button class="signup-popup-close" onclick="closeSignupPopup()">&times;</button>
     <h2 data-i18n="popupTitle">PAP 멤버가 되어보세요</h2>
     <p class="popup-sub" data-i18n="popupDesc">에디토리얼, 필름, 아티클 등<br>PAP의 모든 콘텐츠를 가장 먼저 만나보세요.</p>
-    <a href="auth.html" class="popup-cta" data-i18n="popupCta">무료로 시작하기</a>
+    <a href="/auth" class="popup-cta" data-i18n="popupCta">무료로 시작하기</a>
     <button class="popup-skip" onclick="closeSignupPopup()" data-i18n="popupSkip">다음에 할게요</button>
   </div>
 </div>
@@ -374,17 +374,17 @@
   <div class="nav-overlay-inner">
     <div class="nav-left-col">
       <div class="nav-left-top">
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='subscribe.html';" data-i18n="subscribe">SUBSCRIBE</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/subscribe';" data-i18n="subscribe">SUBSCRIBE</a>
       </div>
       <div class="nav-left-links">
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='submission.html';" data-i18n="submission">SUBMISSION</a>
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='pullletter.html';" data-i18n="pullletter">PULL-LETTER</a>
-        <a href="auth.html" data-i18n="navLogin" style="color:rgba(255,255,255,.6)">LOGIN / JOIN</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/submission';" data-i18n="submission">SUBMISSION</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/pullletter';" data-i18n="pullletter">PULL-LETTER</a>
+        <a href="/auth" data-i18n="navLogin" style="color:rgba(255,255,255,.6)">LOGIN / JOIN</a>
       </div>
       <div class="nav-left-links nav-extra-links" style="margin-top:auto">
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='about.html';" data-i18n="about">ABOUT</a>
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='business.html';" data-i18n="business">BUSINESS</a>
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='contact.html';" data-i18n="contact">CONTACT</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/about';" data-i18n="about">ABOUT</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/business';" data-i18n="business">BUSINESS</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/contact';" data-i18n="contact">CONTACT</a>
       </div>
       <div class="nav-bottom-row">
         <div class="nav-socials active" id="navSocials">
@@ -397,11 +397,11 @@
       </div>
     </div>
     <div class="nav-right-col">
-      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='community.html';" data-i18n="navCommunity" style="color:var(--pap-red)">COMMUNITY</a>
-      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='magazine.html';" data-i18n="navMagazine" style="color:#c9a96e">MAGAZINE</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/community';" data-i18n="navCommunity" style="color:var(--pap-red)">COMMUNITY</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/magazine';" data-i18n="navMagazine" style="color:#c9a96e">MAGAZINE</a>
       <a href="#" onclick="event.preventDefault();toggleNav();openAllEditorials();" data-i18n="navEditorial">EDITORIAL</a>
-      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='articles.html';" data-i18n="navArticle">ARTICLE</a>
-      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='films.html';" data-i18n="navFilm">FILM</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/articles';" data-i18n="navArticle">ARTICLE</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/films';" data-i18n="navFilm">FILM</a>
     </div>
   </div>
 </div>
@@ -435,9 +435,9 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </button>
       <div class="account-dropdown" id="accountDropdown" style="cursor:default">
-        <a href="auth.html" data-i18n="navLogin">로그인 / 회원가입</a>
+        <a href="/auth" data-i18n="navLogin">로그인 / 회원가입</a>
         <div class="dropdown-divider"></div>
-        <a href="subscribe.html" data-i18n="subscribe">구독하기</a>
+        <a href="/subscribe" data-i18n="subscribe">구독하기</a>
       </div>
     </div>
   </div>
@@ -571,7 +571,7 @@
   }
 </style>
 <section class="community-cta" aria-label="PAP Community">
-  <a href="/community.html" class="community-cta-link">
+  <a href="/community" class="community-cta-link">
     <div class="community-cta-content">
       <div class="community-cta-eyebrow" data-i18n="ccaEyebrow">PAP COMMUNITY</div>
       <h2 class="community-cta-title" data-i18n="ccaTitle">크리에이터들이 함께하는 공간</h2>
@@ -819,7 +819,7 @@
 <footer class="footer">
   <div class="footer-marquee">
     <div class="footer-marquee-track" id="marqueeTrack">
-      <span><a href="#" onclick="event.preventDefault();window.location.href='subscribe.html';" data-i18n="ftSubscribe">구독</a></span><span><a href="#" onclick="event.preventDefault();window.location.href='submission.html';" data-i18n="ftSubmission">서브미션</a></span><span><a href="#" onclick="event.preventDefault();window.location.href='pullletter.html';" data-i18n="ftPullletter">풀레터</a></span><span><a href="#" onclick="event.preventDefault();navigateWithInterstitial('community.html';" style="color:var(--pap-red)" data-i18n="ftCommunity">커뮤니티</a></span><span><a href="#" onclick="event.preventDefault();navigateWithInterstitial('magazine.html';" style="color:#c9a96e" data-i18n="ftMagazine">매거진</a></span>
+      <span><a href="#" onclick="event.preventDefault();window.location.href='/subscribe';" data-i18n="ftSubscribe">구독</a></span><span><a href="#" onclick="event.preventDefault();window.location.href='/submission';" data-i18n="ftSubmission">서브미션</a></span><span><a href="#" onclick="event.preventDefault();window.location.href='/pullletter';" data-i18n="ftPullletter">풀레터</a></span><span><a href="#" onclick="event.preventDefault();navigateWithInterstitial('/community';" style="color:var(--pap-red)" data-i18n="ftCommunity">커뮤니티</a></span><span><a href="#" onclick="event.preventDefault();navigateWithInterstitial('/magazine';" style="color:#c9a96e" data-i18n="ftMagazine">매거진</a></span>
     </div>
   </div>
   <!-- PG 심사 대응 — 크롤러가 원본 HTML 에서 라벨 형식으로 읽을 수 있게
@@ -841,9 +841,9 @@
     <div class="footer-bottom-nav-center">
       <!-- PG 심사 대응 — href="#"+JS 오버레이는 크롤러가 감지 못 함.
            실제 문서 페이지로 직링크 (이용약관/개인정보/환불정책). -->
-      <a href="terms.html" data-i18n="terms">이용약관</a>
-      <a href="privacy.html" data-i18n="privacy">개인정보처리방침</a>
-      <a href="refund.html">환불정책</a>
+      <a href="/terms" data-i18n="terms">이용약관</a>
+      <a href="/privacy" data-i18n="privacy">개인정보처리방침</a>
+      <a href="/refund">환불정책</a>
       <a href="/archive">아카이브</a>
     </div>
     <div class="footer-bottom-nav-social">
@@ -857,7 +857,7 @@
 <!-- QA #310 — 스플래시 로더. defer 없이 즉시 실행돼서 첫 페인트 전에
      오버레이를 띄운다. 세션 내 재노출은 sessionStorage 로 방지. -->
 <script src="/pap-splash-loader.js?v=1"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script><script src="/pap-logos-data.js?v=1" defer></script><script src="/pap-api.js?v=5" defer></script><script src="/pap-social.js?v=2" defer></script><script src="/pap-utils.js?v=2" defer></script><script src="/pap-i18n.js?v=2" defer></script><script src="/pap-auth.js?v=2" defer></script><script src="/pap-search.js?v=3" defer></script><script src="/pap-static.js?v=1" defer></script><script src="/pap-subscription.js?v=1" defer></script><script src="/pap-home.js?v=1" defer></script><script src="/pap-content-editorial.js?v=15" defer></script><script src="/pap-content-film.js?v=8" defer></script><script src="/pap-content-article.js?v=12" defer></script><script src="/pap-content-creator-shorts.js?v=1" defer></script><script src="/pap-content-api-sync.js?v=8" defer></script><script src="/pap-content-seo.js?v=5" defer></script><script src="/pap-shell-bootstrap.js?v=8" defer></script><script src="/pap-app.js?v=20" defer></script><script src="/pap-lightbox.js?v=2" defer></script><script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=10" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script><script src="/pap-logos-data.js?v=1" defer></script><script src="/pap-api.js?v=6" defer></script><script src="/pap-social.js?v=3" defer></script><script src="/pap-utils.js?v=2" defer></script><script src="/pap-i18n.js?v=3" defer></script><script src="/pap-auth.js?v=3" defer></script><script src="/pap-search.js?v=3" defer></script><script src="/pap-static.js?v=1" defer></script><script src="/pap-subscription.js?v=2" defer></script><script src="/pap-home.js?v=1" defer></script><script src="/pap-content-editorial.js?v=16" defer></script><script src="/pap-content-film.js?v=9" defer></script><script src="/pap-content-article.js?v=12" defer></script><script src="/pap-content-creator-shorts.js?v=1" defer></script><script src="/pap-content-api-sync.js?v=9" defer></script><script src="/pap-content-seo.js?v=5" defer></script><script src="/pap-shell-bootstrap.js?v=8" defer></script><script src="/pap-app.js?v=20" defer></script><script src="/pap-lightbox.js?v=2" defer></script><script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=11" defer></script>
 <script src="/pap-protect.js?v=3" defer></script>
 <div class="creator-popup-overlay" id="creatorPopup" onclick="if(event.target===this)closeCreatorPopup()">
   <div class="creator-popup">
@@ -912,7 +912,7 @@
           <option value="de">Deutsch</option>
         </select>
       </div>
-      <a href="auth.html" class="header-right-item" aria-label="Account" style="display:flex;align-items:center;color:inherit;text-decoration:none">
+      <a href="/auth" class="header-right-item" aria-label="Account" style="display:flex;align-items:center;color:inherit;text-decoration:none">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </a>
     </div>
@@ -962,7 +962,7 @@
           <option value="de">Deutsch</option>
         </select>
       </div>
-      <a href="auth.html" class="header-right-item" aria-label="Account" style="display:flex;align-items:center;color:inherit;text-decoration:none">
+      <a href="/auth" class="header-right-item" aria-label="Account" style="display:flex;align-items:center;color:inherit;text-decoration:none">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </a>
     </div>
@@ -997,7 +997,7 @@
           <option value="ko">한국어</option><option value="en">English</option><option value="it">Italiano</option><option value="fr">Français</option><option value="es">Español</option><option value="ja">日本語</option><option value="zh">中文</option><option value="ru">Русский</option><option value="de">Deutsch</option>
         </select>
       </div>
-      <a href="auth.html" class="header-right-item" aria-label="Account" style="display:flex;align-items:center;color:inherit;text-decoration:none">
+      <a href="/auth" class="header-right-item" aria-label="Account" style="display:flex;align-items:center;color:inherit;text-decoration:none">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </a>
     </div>
@@ -1051,7 +1051,7 @@
           <option value="de">Deutsch</option>
         </select>
       </div>
-      <a href="auth.html" class="header-right-item" aria-label="Account" style="display:flex;align-items:center;color:inherit;text-decoration:none">
+      <a href="/auth" class="header-right-item" aria-label="Account" style="display:flex;align-items:center;color:inherit;text-decoration:none">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </a>
     </div>
@@ -1086,7 +1086,7 @@
           <option value="ko">한국어</option><option value="en">English</option><option value="it">Italiano</option><option value="fr">Français</option><option value="es">Español</option><option value="ja">日本語</option><option value="zh">中文</option><option value="ru">Русский</option><option value="de">Deutsch</option>
         </select>
       </div>
-      <a href="auth.html" class="header-right-item" aria-label="Account" style="display:flex;align-items:center;color:inherit;text-decoration:none">
+      <a href="/auth" class="header-right-item" aria-label="Account" style="display:flex;align-items:center;color:inherit;text-decoration:none">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </a>
     </div>
@@ -1130,7 +1130,7 @@
           <option value="ko">한국어</option><option value="en">English</option><option value="it">Italiano</option><option value="fr">Français</option><option value="es">Español</option><option value="ja">日本語</option><option value="zh">中文</option><option value="ru">Русский</option><option value="de">Deutsch</option>
         </select>
       </div>
-      <a href="auth.html" class="header-right-item" aria-label="Account" style="display:flex;align-items:center;color:inherit;text-decoration:none">
+      <a href="/auth" class="header-right-item" aria-label="Account" style="display:flex;align-items:center;color:inherit;text-decoration:none">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:22px;height:22px"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </a>
     </div>
@@ -1175,8 +1175,8 @@
         <div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#bbb">DOWNLOADS</div>
         <div style="font-size:13px;color:#ccc">커버 이미지 + PAP 로고 합성 갤러리 이미지 다운로드는 <strong style="color:#fff">회원가입한 사용자</strong> 전용입니다.</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
-          <a href="/auth.html?mode=signup" style="display:inline-block;padding:10px 22px;border:1px solid #fff;background:#fff;color:#000;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none">회원가입하기 →</a>
-          <a href="/auth.html" style="display:inline-block;padding:10px 22px;border:1px solid #555;color:#fff;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none">로그인</a>
+          <a href="/auth?mode=signup" style="display:inline-block;padding:10px 22px;border:1px solid #fff;background:#fff;color:#000;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none">회원가입하기 →</a>
+          <a href="/auth" style="display:inline-block;padding:10px 22px;border:1px solid #555;color:#fff;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none">로그인</a>
         </div>
         <div style="font-size:11px;color:#888;margin-top:4px">개인 사용 및 비상업적 용도에 한해 사용 가능</div>
       </div>
@@ -1186,7 +1186,7 @@
     <!-- QA #246 — clickable hashtag chips, identical UX to the article
          detail (.art-tag-chip). Rendered by pap-content-editorial.js
          when the editorial carries .tags. Clicking a chip links to
-         /articles.html?tag=<value>, where the existing tag-filter
+         /articles?tag=<value>, where the existing tag-filter
          pipeline picks up the query and surfaces matching articles
          alongside an "에디토리얼도 보기" affordance. -->
     <div class="ed-tags" id="edDetailTags" style="display:none"></div>
@@ -1217,6 +1217,6 @@
   </div>
 </div>
 
-<script src="/pap-auth-link.js" defer></script>
+<script src="/pap-auth-link.js?v=2" defer></script>
 </body>
 </html>

@@ -590,7 +590,7 @@ button{cursor:pointer;font-family:inherit}
 <script src="/pap-protect.js?v=3" defer></script>
 <link rel="stylesheet" href="pap-social.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="/pap-social.js?v=2" defer></script>
+<script src="/pap-social.js?v=3" defer></script>
 <!-- Print Styles -->
 <style media="print">
 @media print{
@@ -772,7 +772,7 @@ button{cursor:pointer;font-family:inherit}
     <button class="signup-popup-close" onclick="closeSignupPopup()">&times;</button>
     <h2 data-i18n="popupTitle">PAP 멤버가 되어보세요</h2>
     <p class="popup-sub" data-i18n="popupDesc">에디토리얼, 필름, 아티클 등<br>PAP의 모든 콘텐츠를 가장 먼저 만나보세요.</p>
-    <a href="auth.html" class="popup-cta" data-i18n="popupCta">무료로 시작하기</a>
+    <a href="/auth" class="popup-cta" data-i18n="popupCta">무료로 시작하기</a>
     <button class="popup-skip" onclick="closeSignupPopup()" data-i18n="popupSkip">다음에 할게요</button>
   </div>
 </div>
@@ -798,17 +798,17 @@ button{cursor:pointer;font-family:inherit}
   <div class="nav-overlay-inner">
     <div class="nav-left-col">
       <div class="nav-left-top">
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='subscribe.html';" data-i18n="subscribe">SUBSCRIBE</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/subscribe';" data-i18n="subscribe">SUBSCRIBE</a>
       </div>
       <div class="nav-left-links">
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='submission.html';" data-i18n="submission">SUBMISSION</a>
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='pullletter.html';" data-i18n="pullletter">PULL-LETTER</a>
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href=(window.papLoginUrl?window.papLoginUrl('auth.html'):'auth.html');" data-i18n="navLogin" style="color:rgba(255,255,255,.6)">LOGIN / JOIN</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/submission';" data-i18n="submission">SUBMISSION</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/pullletter';" data-i18n="pullletter">PULL-LETTER</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href=(window.papLoginUrl?window.papLoginUrl('/auth'):'/auth');" data-i18n="navLogin" style="color:rgba(255,255,255,.6)">LOGIN / JOIN</a>
       </div>
       <div class="nav-left-links" style="margin-top:auto">
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='about.html';" data-i18n="about">ABOUT</a>
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='business.html';" data-i18n="business">BUSINESS</a>
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='contact.html';" data-i18n="contact">CONTACT</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/about';" data-i18n="about">ABOUT</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/business';" data-i18n="business">BUSINESS</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/contact';" data-i18n="contact">CONTACT</a>
       </div>
       <div class="nav-bottom-row">
         <div class="nav-socials active" id="navSocials">
@@ -821,11 +821,11 @@ button{cursor:pointer;font-family:inherit}
       </div>
     </div>
     <div class="nav-right-col">
-      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='community.html';" data-i18n="navCommunity" style="color:var(--pap-red)">COMMUNITY</a>
-      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='magazine.html';" data-i18n="navMagazine" style="color:#c9a96e">MAGAZINE</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/community';" data-i18n="navCommunity" style="color:var(--pap-red)">COMMUNITY</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/magazine';" data-i18n="navMagazine" style="color:#c9a96e">MAGAZINE</a>
       <a href="#" onclick="event.preventDefault();toggleNav();openAllEditorials();" data-i18n="navEditorial">EDITORIAL</a>
-      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='articles.html';" data-i18n="navArticle">ARTICLE</a>
-      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='films.html';" data-i18n="navFilm">FILM</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/articles';" data-i18n="navArticle">ARTICLE</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/films';" data-i18n="navFilm">FILM</a>
     </div>
   </div>
 </div>
@@ -859,9 +859,9 @@ button{cursor:pointer;font-family:inherit}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </button>
       <div class="account-dropdown" id="accountDropdown" style="cursor:default">
-        <a href="auth.html" data-i18n="navLogin">로그인 / 회원가입</a>
+        <a href="/auth" data-i18n="navLogin">로그인 / 회원가입</a>
         <div class="dropdown-divider"></div>
-        <a href="subscribe.html" data-i18n="subscribe">구독하기</a>
+        <a href="/subscribe" data-i18n="subscribe">구독하기</a>
       </div>
     </div>
     </div>
@@ -1118,9 +1118,9 @@ button{cursor:pointer;font-family:inherit}
 <footer class="footer">
   <div class="footer-top">
     <div class="footer-links-left">
-      <a href="about.html" data-i18n="about">ABOUT</a>
-      <a href="business.html" data-i18n="business">BUSINESS</a>
-      <a href="contact.html" data-i18n="contact">CONTACT</a>
+      <a href="/about" data-i18n="about">ABOUT</a>
+      <a href="/business" data-i18n="business">BUSINESS</a>
+      <a href="/contact" data-i18n="contact">CONTACT</a>
     </div>
     <div class="footer-social">
       <a href="https://www.instagram.com/pap_magazine/" target="_blank">INSTAGRAM</a>
@@ -1130,8 +1130,8 @@ button{cursor:pointer;font-family:inherit}
   </div>
   <div class="footer-marquee">
     <div class="footer-marquee-track">
-      <span><a href="subscribe.html" data-i18n="subscribe">SUBSCRIBE</a></span><span class="sep">—</span><span><a href="submission.html" data-i18n="submission">SUBMISSION</a></span><span class="sep">—</span><span><a href="pullletter.html" data-i18n="pullletter">PULL-LETTER</a></span><span class="sep">—</span><span><a href="community.html" style="color:var(--pap-red)" data-i18n="navCommunity">COMMUNITY</a></span><span class="sep">—</span><span><a href="magazine.html" style="color:#c9a96e" data-i18n="navMagazine">MAGAZINE</a></span><span class="sep">—</span>
-      <span><a href="subscribe.html" data-i18n="subscribe">SUBSCRIBE</a></span><span class="sep">—</span><span><a href="submission.html" data-i18n="submission">SUBMISSION</a></span><span class="sep">—</span><span><a href="pullletter.html" data-i18n="pullletter">PULL-LETTER</a></span><span class="sep">—</span><span><a href="community.html" style="color:var(--pap-red)" data-i18n="navCommunity">COMMUNITY</a></span><span class="sep">—</span><span><a href="magazine.html" style="color:#c9a96e" data-i18n="navMagazine">MAGAZINE</a></span><span class="sep">—</span>
+      <span><a href="/subscribe" data-i18n="subscribe">SUBSCRIBE</a></span><span class="sep">—</span><span><a href="/submission" data-i18n="submission">SUBMISSION</a></span><span class="sep">—</span><span><a href="/pullletter" data-i18n="pullletter">PULL-LETTER</a></span><span class="sep">—</span><span><a href="/community" style="color:var(--pap-red)" data-i18n="navCommunity">COMMUNITY</a></span><span class="sep">—</span><span><a href="/magazine" style="color:#c9a96e" data-i18n="navMagazine">MAGAZINE</a></span><span class="sep">—</span>
+      <span><a href="/subscribe" data-i18n="subscribe">SUBSCRIBE</a></span><span class="sep">—</span><span><a href="/submission" data-i18n="submission">SUBMISSION</a></span><span class="sep">—</span><span><a href="/pullletter" data-i18n="pullletter">PULL-LETTER</a></span><span class="sep">—</span><span><a href="/community" style="color:var(--pap-red)" data-i18n="navCommunity">COMMUNITY</a></span><span class="sep">—</span><span><a href="/magazine" style="color:#c9a96e" data-i18n="navMagazine">MAGAZINE</a></span><span class="sep">—</span>
     </div>
   </div>
   <div class="footer-legal" data-i18n-html="footerLegal">
@@ -1145,7 +1145,7 @@ button{cursor:pointer;font-family:inherit}
   </div>
 </footer>
 
-<script src="/pap-api.js?v=5" defer></script><script>
+<script src="/pap-api.js?v=6" defer></script><script>
 
 // ======== i18n ========
 const T={
@@ -1652,7 +1652,7 @@ function _renderEdAllPage(){
   if(standard&&edAllCurrentPage===totalPages&&edData.length>100){
     var upsell=document.createElement('div');
     upsell.style.cssText='grid-column:1/-1;text-align:center;padding:40px 20px;';
-    upsell.innerHTML='<p style="color:#999;font-size:12px;letter-spacing:.1em;margin-bottom:12px;">PREMIUM MEMBERS CAN ACCESS ALL '+edData.length+' EDITORIALS</p><a href="subscribe.html" style="display:inline-block;padding:10px 28px;background:#fff;color:#000;font-size:11px;font-weight:700;letter-spacing:.1em;text-decoration:none;">UPGRADE TO PREMIUM</a>';
+    upsell.innerHTML='<p style="color:#999;font-size:12px;letter-spacing:.1em;margin-bottom:12px;">PREMIUM MEMBERS CAN ACCESS ALL '+edData.length+' EDITORIALS</p><a href="/subscribe" style="display:inline-block;padding:10px 28px;background:#fff;color:#000;font-size:11px;font-weight:700;letter-spacing:.1em;text-decoration:none;">UPGRADE TO PREMIUM</a>';
     grid.appendChild(upsell);
   }
   count.textContent=availableData.length+' EDITORIALS'+(premium?'':' (PREMIUM: '+edData.length+')');
@@ -2213,9 +2213,9 @@ function scrollFilm(dir){
       if(curTitle){
         var fi=_findFilmByTitle(curTitle);
         if(fi>=0) openFilmDetail(fi);
-        else window.location.href='films.html';
+        else window.location.href='/films';
       } else {
-        window.location.href='films.html';
+        window.location.href='/films';
       }
     });
   }
@@ -3262,7 +3262,7 @@ try{
   </div>
 </div>
 
-<script src="/pap-auth-link.js" defer></script>
+<script src="/pap-auth-link.js?v=2" defer></script>
 <script>
 (function(){
   try{
@@ -3287,8 +3287,8 @@ try{
     };
     var s=t[lang]||t.en;
     dd.innerHTML=
-      '<a href="mypage.html">'+s.mypage+'</a>'+
-      '<a href="subscribe.html">'+s.subscribe+'</a>'+
+      '<a href="/mypage">'+s.mypage+'</a>'+
+      '<a href="/subscribe">'+s.subscribe+'</a>'+
       '<div class="dropdown-divider"></div>'+
       '<button onclick="localStorage.removeItem(\'pap-token\');localStorage.removeItem(\'pap-user\');window.location.href=\'/\';">'+s.logout+'</button>';
   }catch(e){}

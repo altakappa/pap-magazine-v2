@@ -392,7 +392,7 @@ function _renderArticleDetail(a,det){
   var tagsEl=document.getElementById('artDetailTags');
   if(a.tags){
     var tagArr=Array.isArray(a.tags)?a.tags:(typeof a.tags==='string'?a.tags.split(','):[]);
-    // Each hashtag is now a clickable link → /articles.html?tag=<tag>.
+    // Each hashtag is now a clickable link → /articles?tag=<tag>.
     // The articles list page reads the query param and filters its grid
     // to only entries whose .tags include that value, with an active-tag
     // chip rendered at the top so the user knows the filter is on and
@@ -400,7 +400,7 @@ function _renderArticleDetail(a,det){
     tagsEl.innerHTML=tagArr.map(function(t){
       var tag = (typeof t === 'string' ? t.trim() : String(t));
       if(!tag) return '';
-      return '<a class="art-tag-chip" href="articles.html?tag=' +
+      return '<a class="art-tag-chip" href="/articles?tag=' +
         encodeURIComponent(tag) + '">#' + escapeHtml(tag) + '</a>';
     }).join('');
     tagsEl.style.display='';

@@ -41,13 +41,13 @@
 
   function enhanceLinks(root){
     if(!root || !root.querySelectorAll) return;
-    var links = root.querySelectorAll('a[href*="auth.html"]');
+    var links = root.querySelectorAll('a[href*="/auth"]');
     for(var i=0; i<links.length; i++){
       var a = links[i];
       var href = a.getAttribute('href');
       if(!href) continue;
       // Only process auth.html targets
-      if(href.indexOf('auth.html') === -1) continue;
+      if(href.indexOf('/auth') === -1) continue;
       // Skip same-page anchors (e.g. "#", "javascript:")
       if(href.charAt(0) === '#' || /^javascript:/i.test(href)) continue;
 
@@ -68,7 +68,7 @@
           for(var j=0; j<m.addedNodes.length; j++){
             var node = m.addedNodes[j];
             if(node.nodeType === 1){
-              if(node.matches && node.matches('a[href*="auth.html"]')){
+              if(node.matches && node.matches('a[href*="/auth"]')){
                 var href = node.getAttribute('href');
                 if(href && !node.hasAttribute('data-pap-auth-enhanced')){
                   node.setAttribute('href', addReturnParam(href));
@@ -85,9 +85,9 @@
   }
 
   // Global helper for JS-driven redirects:
-  //   location.href = window.papLoginUrl('auth.html') — returns URL with return param
+  //   location.href = window.papLoginUrl('/auth') — returns URL with return param
   window.papLoginUrl = function(base){
-    base = base || 'auth.html?mode=login';
+    base = base || '/auth?mode=login';
     return addReturnParam(base);
   };
 

@@ -130,7 +130,7 @@ window.sharePost = function(postId){
   var post = allPosts.find(function(p){ return p.id == postId; });
   if(!post) return;
   var title = typeof post.title==='object' ? tPost(post.title,post) : post.title;
-  var url = window.location.origin + '/community.html?post=' + postId;
+  var url = window.location.origin + '/community?post=' + postId;
 
   if(navigator.share){
     navigator.share({ title: 'PAP Magazine — ' + title, url: url }).catch(function(){});
@@ -1252,7 +1252,7 @@ window.openMoodboard = function(boardId){
       // Action buttons row (inspired-by chain, editorial bridge).
       // Pull-letter intentionally NOT here — community moodboards are for
       // expressing personal aesthetic; pull-letter is a separate formal flow
-      // at /pullletter.html that requires team info + 촬영시안 PDF.
+      // at /pullletter that requires team info + 촬영시안 PDF.
       html += '<div class="md-actions" id="mdActions">';
       html += '<button class="md-action-btn" onclick="createMoodboard(\''+b.id+'\')">✨ '+(L[lang]&&L[lang].moodInspireBtn||'이 보드에서 영감받기')+'</button>';
       html += '<button class="md-action-btn" onclick="bridgeToEditorial(\''+b.id+'\')">📸 '+(L[lang]&&L[lang].moodEditorialBtn||'에디토리얼로 제안')+'</button>';
@@ -1429,13 +1429,13 @@ window.closeMoodDetail = function(){
 };
 
 // ── Mission 5: Editorial bridge ─────────────────────────────────────────
-// Sends the user to /submission.html with the moodboard ID prefilled.
+// Sends the user to /submission with the moodboard ID prefilled.
 // submission.html reads ?moodboard= and pulls the board's images/title to
 // pre-fill the form so the member doesn't re-enter context they already
 // captured in the moodboard.
 window.bridgeToEditorial = function(boardId){
   if(!_canActLocal()) return;
-  window.location.href = '/submission.html?moodboard=' + encodeURIComponent(boardId);
+  window.location.href = '/submission?moodboard=' + encodeURIComponent(boardId);
 };
 
 // ── 4.7 SCRAPBOOK — personal visual collection (web-native curation) ──

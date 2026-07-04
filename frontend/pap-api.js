@@ -155,8 +155,8 @@ const PAP = (function() {
               window._papUpdateAuthDropdown();
             }
           } catch(_){}
-          if (window.location.pathname.indexOf('auth.html') === -1) {
-            window.location.href = 'auth.html';
+          if (window.location.pathname.indexOf('/auth') === -1) {
+            window.location.href = '/auth';
           }
           throw new Error('Session expired. Please log in again.');
         }
@@ -210,7 +210,7 @@ const PAP = (function() {
       }
       removeToken();
       removeUser();
-      window.location.href = 'index.html';
+      window.location.href = '/';
     },
 
     isLoggedIn() {
@@ -259,7 +259,7 @@ const PAP = (function() {
               // location.replace: the OAuth callback URL shouldn't sit in
               // history — back from index should go to wherever the user
               // started, not back through this auth roundtrip.
-              window.location.replace('index.html');
+              window.location.replace('/');
             }
           })
           .catch(() => {
@@ -708,7 +708,7 @@ const PAP = (function() {
                   PAP.ui.toast('Payment complete! Updating your membership…', 'success');
                 }
               } catch (_) {}
-              setTimeout(function () { window.location.href = 'mypage.html'; }, 1800);
+              setTimeout(function () { window.location.href = '/mypage'; }, 1800);
             }
           },
         });
@@ -768,12 +768,12 @@ const PAP = (function() {
       const authBtn = document.querySelector('.auth-btn-header');
       if (authBtn) {
         if (loggedIn) {
-          authBtn.href = 'mypage.html';
+          authBtn.href = '/mypage';
           authBtn.style.opacity = '1';
           // Change icon to filled circle to indicate logged-in
           authBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="0"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>';
         } else {
-          authBtn.href = 'auth.html';
+          authBtn.href = '/auth';
         }
       }
 
@@ -781,7 +781,7 @@ const PAP = (function() {
       const navLogin = document.querySelector('[data-i18n="navLogin"]');
       if (navLogin && loggedIn && user) {
         navLogin.textContent = user.name || 'MY PAGE';
-        navLogin.href = 'mypage.html';
+        navLogin.href = '/mypage';
         navLogin.style.color = 'rgba(255,255,255,.9)';
       }
 

@@ -1550,17 +1550,17 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
 </style>
 <script src="/pap-utils.js?v=1" defer></script>
 <script src="/pap-protect.js?v=3" defer></script>
-<script src="/pap-i18n.js?v=2" defer></script>
-<script src="/pap-auth.js?v=1" defer></script>
+<script src="/pap-i18n.js?v=3" defer></script>
+<script src="/pap-auth.js?v=3" defer></script>
 <script src="/pap-search.js?v=3" defer></script>
 <script src="/pap-static.js?v=1" defer></script>
-<script src="/pap-subscription.js?v=1" defer></script>
+<script src="/pap-subscription.js?v=2" defer></script>
 <script src="/pap-home.js?v=1" defer></script>
-<script src="/pap-content-editorial.js?v=15" defer></script>
-<script src="/pap-content-film.js?v=8" defer></script>
+<script src="/pap-content-editorial.js?v=16" defer></script>
+<script src="/pap-content-film.js?v=9" defer></script>
 <script src="/pap-content-article.js?v=9" defer></script>
 <script src="/pap-content-creator-shorts.js?v=1" defer></script>
-<script src="/pap-content-api-sync.js?v=8" defer></script>
+<script src="/pap-content-api-sync.js?v=9" defer></script>
 <script src="/pap-content-seo.js?v=4" defer></script>
 <script src="/pap-shell-bootstrap.js?v=8" defer></script>
 <script src="/pap-app.js?v=20" defer></script>
@@ -1586,17 +1586,17 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
   <div class="nav-overlay-inner">
     <div class="nav-left-col">
       <div class="nav-left-top">
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='subscribe.html';" data-i18n="subscribe">SUBSCRIBE</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/subscribe';" data-i18n="subscribe">SUBSCRIBE</a>
       </div>
       <div class="nav-left-links">
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='submission.html';" data-i18n="submission">SUBMISSION</a>
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='pullletter.html';" data-i18n="pullletter">PULL-LETTER</a>
-        <a href="auth.html" data-i18n="navLogin" style="color:rgba(255,255,255,.6)">LOGIN / JOIN</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/submission';" data-i18n="submission">SUBMISSION</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/pullletter';" data-i18n="pullletter">PULL-LETTER</a>
+        <a href="/auth" data-i18n="navLogin" style="color:rgba(255,255,255,.6)">LOGIN / JOIN</a>
       </div>
       <div class="nav-left-links nav-extra-links" style="margin-top:auto">
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='about.html';" data-i18n="about">ABOUT</a>
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='business.html';" data-i18n="business">BUSINESS</a>
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='contact.html';" data-i18n="contact">CONTACT</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/about';" data-i18n="about">ABOUT</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/business';" data-i18n="business">BUSINESS</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/contact';" data-i18n="contact">CONTACT</a>
       </div>
       <div class="nav-bottom-row">
         <div class="nav-socials active" id="navSocials">
@@ -1609,11 +1609,11 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
       </div>
     </div>
     <div class="nav-right-col">
-      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='community.html';" data-i18n="navCommunity" style="color:var(--pap-red)">COMMUNITY</a>
-      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='magazine.html';" data-i18n="navMagazine" style="color:#c9a96e">MAGAZINE</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/community';" data-i18n="navCommunity" style="color:var(--pap-red)">COMMUNITY</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/magazine';" data-i18n="navMagazine" style="color:#c9a96e">MAGAZINE</a>
       <a href="#" onclick="event.preventDefault();toggleNav();openAllEditorials();" data-i18n="navEditorial">EDITORIAL</a>
-      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='articles.html';" data-i18n="navArticle">ARTICLE</a>
-      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='films.html';" data-i18n="navFilm">FILM</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/articles';" data-i18n="navArticle">ARTICLE</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/films';" data-i18n="navFilm">FILM</a>
     </div>
   </div>
 </div>
@@ -1647,9 +1647,9 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </button>
       <div class="account-dropdown" id="accountDropdown" style="cursor:default">
-        <a href="auth.html" data-i18n="navLogin">로그인 / 회원가입</a>
+        <a href="/auth" data-i18n="navLogin">로그인 / 회원가입</a>
         <div class="dropdown-divider"></div>
-        <a href="subscribe.html" data-i18n="subscribe">구독하기</a>
+        <a href="/subscribe" data-i18n="subscribe">구독하기</a>
       </div>
     </div>
   </div>
@@ -1674,7 +1674,7 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
     <a href="#" onclick="goTab('scrapbook',this);return false" data-i18n="tabScrapbook">스크랩북</a>
   </nav>
   <div class="c-header-right">
-    <a href="index.html" class="c-back" data-i18n="backMag">← 매거진</a>
+    <a href="/" class="c-back" data-i18n="backMag">← 매거진</a>
     <button onclick="openDMPanel()" title="Messages" style="background:none;border:none;cursor:pointer;position:relative;padding:4px">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
     </button>
@@ -1749,11 +1749,11 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
 
     <div class="cafe-nav" style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
       <div style="font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--text4);margin-bottom:10px">QUICK LINKS</div>
-      <a href="index.html" style="display:block;padding:6px 0;font-size:11px;color:var(--text3)" data-i18n="backMag">← Magazine</a>
-      <a href="about.html" style="display:block;padding:6px 0;font-size:11px;color:var(--text3)" data-i18n="ftAbout">About PAP</a>
-      <a href="submission.html" style="display:block;padding:6px 0;font-size:11px;color:var(--text3)" data-i18n="ftSubmission">Submit Work</a>
-      <a href="subscribe.html" style="display:block;padding:6px 0;font-size:11px;color:var(--text3)" data-i18n="ftSubscribe">Subscribe</a>
-      <a href="contact.html" style="display:block;padding:6px 0;font-size:11px;color:var(--text3)" data-i18n="ftContact">Contact</a>
+      <a href="/" style="display:block;padding:6px 0;font-size:11px;color:var(--text3)" data-i18n="backMag">← Magazine</a>
+      <a href="/about" style="display:block;padding:6px 0;font-size:11px;color:var(--text3)" data-i18n="ftAbout">About PAP</a>
+      <a href="/submission" style="display:block;padding:6px 0;font-size:11px;color:var(--text3)" data-i18n="ftSubmission">Submit Work</a>
+      <a href="/subscribe" style="display:block;padding:6px 0;font-size:11px;color:var(--text3)" data-i18n="ftSubscribe">Subscribe</a>
+      <a href="/contact" style="display:block;padding:6px 0;font-size:11px;color:var(--text3)" data-i18n="ftContact">Contact</a>
     </div>
   </div>
 
@@ -2278,7 +2278,7 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
   </div>
 </div>
 
-<script src="/pap-api.js?v=5" defer></script>
+<script src="/pap-api.js?v=6" defer></script>
 <script>
 // ======== HTML ESCAPE (XSS prevention) ========
 function escHtml(s){
@@ -2446,7 +2446,7 @@ function setLang(l){
 }
 
 // Robust language-change hook via MutationObserver on <html lang>.
-// Both setLang implementations (community.html's local + pap-i18n.js's
+// Both setLang implementations (/community's local + pap-i18n.js's
 // global) update document.documentElement.lang, so observing that single
 // attribute reliably catches every language switch — regardless of which
 // setLang path the dropdown's onchange takes, regardless of script load
@@ -2761,7 +2761,7 @@ function renderSidebars(){
 // ======== ALERTS ========
 function alertLogin(){
   if(SB.user) return true;
-  window.location.href=(window.papLoginUrl?window.papLoginUrl('auth.html'):'auth.html');
+  window.location.href=(window.papLoginUrl?window.papLoginUrl('/auth'):'/auth');
   return false;
 }
 
@@ -3268,13 +3268,13 @@ if(_initChips)_initChips.style.display='flex';
 
 <div style="text-align:center;padding:32px 20px;border-top:1px solid rgba(0,0,0,.08);font-size:10px;color:rgba(0,0,0,.4);line-height:2.2;letter-spacing:.05em">
 PAP COMMUNITY<br>
-<a href="index.html" style="color:rgba(0,0,0,.35);text-decoration:underline;text-underline-offset:2px">Magazine</a> ·
-<a href="about.html" style="color:rgba(0,0,0,.35);text-decoration:underline;text-underline-offset:2px">About</a> ·
-<a href="contact.html" style="color:rgba(0,0,0,.35);text-decoration:underline;text-underline-offset:2px">Contact</a> ·
-<a href="subscribe.html" style="color:rgba(0,0,0,.35);text-decoration:underline;text-underline-offset:2px">Subscribe</a> ·
-<a href="submission.html" style="color:rgba(0,0,0,.35);text-decoration:underline;text-underline-offset:2px">Submission</a> ·
-<a href="pullletter.html" style="color:rgba(0,0,0,.35);text-decoration:underline;text-underline-offset:2px">Pull-letter</a> ·
-<a href="business.html" style="color:rgba(0,0,0,.35);text-decoration:underline;text-underline-offset:2px">Business</a>
+<a href="/" style="color:rgba(0,0,0,.35);text-decoration:underline;text-underline-offset:2px">Magazine</a> ·
+<a href="/about" style="color:rgba(0,0,0,.35);text-decoration:underline;text-underline-offset:2px">About</a> ·
+<a href="/contact" style="color:rgba(0,0,0,.35);text-decoration:underline;text-underline-offset:2px">Contact</a> ·
+<a href="/subscribe" style="color:rgba(0,0,0,.35);text-decoration:underline;text-underline-offset:2px">Subscribe</a> ·
+<a href="/submission" style="color:rgba(0,0,0,.35);text-decoration:underline;text-underline-offset:2px">Submission</a> ·
+<a href="/pullletter" style="color:rgba(0,0,0,.35);text-decoration:underline;text-underline-offset:2px">Pull-letter</a> ·
+<a href="/business" style="color:rgba(0,0,0,.35);text-decoration:underline;text-underline-offset:2px">Business</a>
 <br>© 2026 ALTAKAPPA Co., Ltd.
 </div>
 <!-- MOBILE BOTTOM TAB BAR -->
@@ -3304,8 +3304,8 @@ PAP COMMUNITY<br>
     <span data-i18n="tabScrapbook">스크랩북</span>
   </a>
 </nav>
-<script src="community-v2.js" defer></script>
-<script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=10"></script>
-<script src="/pap-auth-link.js" defer></script>
+<script src="/community-v2.js?v=2" defer></script>
+<script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=11"></script>
+<script src="/pap-auth-link.js?v=2" defer></script>
 </body>
 </html>

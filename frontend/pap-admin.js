@@ -80,14 +80,14 @@ document.addEventListener('DOMContentLoaded',function(){
   }, 0);
   if(typeof PAP!=='undefined'){
     if(!PAP.auth.isLoggedIn()){
-      window.location.href='auth.html?redirect=admin';
+      window.location.href='/auth?redirect=admin';
       return;
     }
     var user=PAP.auth.getUser();
     // QA #169 — admin page is accessible to BOTH 대표 ('admin') and 스태프
     // ('staff'). The UI itself is gated per-action below.
     if(!user || (user.role!=='admin' && user.role!=='staff')){
-      document.body.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:Montserrat,sans-serif;color:#fff;background:#000;flex-direction:column"><h1 style="font-size:18px;letter-spacing:.15em">ACCESS DENIED</h1><p style="margin-top:12px;font-size:12px;color:rgba(255,255,255,.4)">Admin privileges required.</p><a href="index.html" style="margin-top:24px;color:#fff;font-size:11px;letter-spacing:.1em">← BACK TO MAGAZINE</a></div>';
+      document.body.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:Montserrat,sans-serif;color:#fff;background:#000;flex-direction:column"><h1 style="font-size:18px;letter-spacing:.15em">ACCESS DENIED</h1><p style="margin-top:12px;font-size:12px;color:rgba(255,255,255,.4)">Admin privileges required.</p><a href="/" style="margin-top:24px;color:#fff;font-size:11px;letter-spacing:.1em">← BACK TO MAGAZINE</a></div>';
       return;
     }
     // Expose role globally so per-button gates below don't have to fetch.
@@ -1957,8 +1957,8 @@ window.recoverRejectedSubmission = recoverRejectedSubmission;
 
 // ======== PULL-LETTERS MANAGEMENT ========
 // Two flows write to the same `pullletters` table:
-//   - Legacy: /frontend/pullletter.html → multipart with file_urls (request_text)
-//   - Community: /frontend/community.html → JSON with mood_board_id + structured fields
+//   - Legacy: /frontend/pullletter → multipart with file_urls (request_text)
+//   - Community: /frontend/community → JSON with mood_board_id + structured fields
 // Status values: 'pending' → 'accepted'/'approved' → 'issued' (PDF delivered) | 'rejected'
 var currentPLFilter='';
 var _allPullLetters=[];
@@ -10716,7 +10716,7 @@ async function saveBusinessPage(){
 
 // ======== MENU CATEGORIES (Hamburger Nav) ========
 var menuCats=[
-  {id:1,name:'COMMUNITY',link:'community.html',style:'빨간색 (강조)',active:true,order:1},
+  {id:1,name:'COMMUNITY',link:'/community',style:'빨간색 (강조)',active:true,order:1},
   {id:2,name:'EDITORIAL',link:'#editorials',style:'기본 (검정)',active:true,order:2},
   {id:3,name:'ARTICLE',link:'#',style:'기본 (검정)',active:true,order:3},
   {id:4,name:'FILM',link:'#films',style:'기본 (검정)',active:true,order:4}

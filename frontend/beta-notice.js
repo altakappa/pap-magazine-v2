@@ -127,7 +127,7 @@
     overlay.setAttribute('role','dialog');
     overlay.setAttribute('aria-label','Beta test notice');
     var signupHTML = loggedIn ? '' :
-      '<a class="bn-btn-signup" href="auth.html">'+esc(t.btnSignup||'Sign Up')+'</a>';
+      '<a class="bn-btn-signup" href="/auth">'+esc(t.btnSignup||'Sign Up')+'</a>';
     var highlightText = loggedIn ? (t.highlightLoggedIn||t.highlight||'') : (t.highlight||'');
     var highlightHTML = highlightText ?
       '<div class="bn-highlight">'+esc(highlightText)+'</div>' : '';

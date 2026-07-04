@@ -361,7 +361,7 @@ function _renderEditorialVideo(rawUrl){
 // to hand off to the overlay because the overlay state lives in the
 // film page, not the editorial overlay.
 // QA #246 — Render clickable hashtag chips on the editorial detail.
-// Routes through the same /articles.html?tag=<value> URL the article
+// Routes through the same /articles?tag=<value> URL the article
 // detail uses, so a single tag-filter pipeline (and active-chip UI)
 // services both content types. Looks up tags off edData by title — the
 // detail-cache (edDetails) is a partial mirror that doesn't always
@@ -414,8 +414,8 @@ function _renderEditorialDownloads(det, d){
         '<div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999">DOWNLOADS</div>' +
         '<div style="font-size:13px;color:#ccc">커버 이미지 + PAP 로고 합성 갤러리 이미지 다운로드는 <strong style="color:#fff">회원가입한 사용자</strong> 전용입니다.</div>' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">' +
-          '<a href="/auth.html?mode=signup" style="display:inline-block;padding:10px 22px;border:1px solid #fff;background:#fff;color:#000;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" onmouseover="this.style.background=\'transparent\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'#fff\';this.style.color=\'#000\'">회원가입하기 →</a>' +
-          '<a href="/auth.html" style="display:inline-block;padding:10px 22px;border:1px solid #555;color:#fff;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">로그인</a>' +
+          '<a href="/auth?mode=signup" style="display:inline-block;padding:10px 22px;border:1px solid #fff;background:#fff;color:#000;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" onmouseover="this.style.background=\'transparent\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'#fff\';this.style.color=\'#000\'">회원가입하기 →</a>' +
+          '<a href="/auth" style="display:inline-block;padding:10px 22px;border:1px solid #555;color:#fff;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">로그인</a>' +
         '</div>' +
         '<div style="font-size:11px;color:#666;margin-top:4px">개인 사용 및 비상업적 용도에 한해 사용 가능</div>' +
       '</div>';
@@ -918,7 +918,7 @@ function _renderEditorialTags(title){
     return;
   }
   tagsEl.innerHTML = tagArr.map(function(t){
-    return '<a class="art-tag-chip" href="articles.html?tag=' +
+    return '<a class="art-tag-chip" href="/articles?tag=' +
       encodeURIComponent(t) + '">#' + escapeHtml(t) + '</a>';
   }).join('');
   tagsEl.style.display = '';
@@ -1255,7 +1255,7 @@ function _openEditorialInner(title,thumb){
             +(_t_dk.distKitDesc || '참여 크리에이터에게 제공되는 로고·배포용 파일 — 마이페이지에서 다운로드하세요')
           +'</div>'
         +'</div>'
-        +'<a href="/mypage.html#downloads" style="display:inline-block;padding:6px 16px;border:1px solid #555;color:#fff;font-size:9px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .3s;" onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'" data-i18n="distKitGoMypage">'
+        +'<a href="/mypage#downloads" style="display:inline-block;padding:6px 16px;border:1px solid #555;color:#fff;font-size:9px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .3s;" onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'" data-i18n="distKitGoMypage">'
           +(_t_dk.distKitGoMypage || '마이페이지로 이동 →')
         +'</a>'
       +'</div>';
@@ -1521,7 +1521,7 @@ function _openAllEditorialsInner(){
   // Membership check: free members cannot access all editorials
   if(!isStandardOrAbove()){
     alert(getLangText('edAccessFree','에디토리얼 전체보기는 스탠다드 이상 회원만 이용 가능합니다.\nStandard membership or above is required to browse all editorials.'));
-    window.location.href='subscribe.html';
+    window.location.href='/subscribe';
     return;
   }
   var overlay=document.getElementById('edAllOverlay');
@@ -1641,7 +1641,7 @@ function _renderEdAllPage(){
   if(standard&&edAllCurrentPage===totalPages&&filtered.length>100){
     var upsell=document.createElement('div');
     upsell.style.cssText='grid-column:1/-1;text-align:center;padding:40px 20px;';
-    upsell.innerHTML='<p style="color:#999;font-size:12px;letter-spacing:.1em;margin-bottom:12px;">PREMIUM MEMBERS CAN ACCESS ALL '+filtered.length+' EDITORIALS</p><a href="subscribe.html" style="display:inline-block;padding:10px 28px;background:#fff;color:#000;font-size:11px;font-weight:700;letter-spacing:.1em;text-decoration:none;">UPGRADE TO PREMIUM</a>';
+    upsell.innerHTML='<p style="color:#999;font-size:12px;letter-spacing:.1em;margin-bottom:12px;">PREMIUM MEMBERS CAN ACCESS ALL '+filtered.length+' EDITORIALS</p><a href="/subscribe" style="display:inline-block;padding:10px 28px;background:#fff;color:#000;font-size:11px;font-weight:700;letter-spacing:.1em;text-decoration:none;">UPGRADE TO PREMIUM</a>';
     grid.appendChild(upsell);
   }
   count.textContent=availableData.length+' EDITORIALS'+(premium?'':' (PREMIUM: '+filtered.length+')');

@@ -193,7 +193,7 @@ function _showBrandAdInterstitial(ad, callback){
   premWrap.style.cssText = 'position:absolute;bottom:24px;left:50%;transform:translateX(-50%);text-align:center;z-index:2;';
 
   var premBadge = document.createElement('a');
-  premBadge.href = 'subscribe.html';
+  premBadge.href = '/subscribe';
   // Premium upsell label — in pap-i18n.js (_interstitialPremTexts)
   premBadge.textContent = _interstitialPremTexts[lang] || _interstitialPremTexts.en;
   premBadge.style.cssText = 'font-size:11px;font-weight:600;letter-spacing:.05em;color:rgba(255,255,255,.45);text-decoration:none;font-family:Montserrat,sans-serif;transition:all .2s;border-bottom:1px solid rgba(255,255,255,.15);padding-bottom:2px;';
@@ -251,7 +251,7 @@ function _showPremiumUpsellInterstitial(callback){
 
   // CTA button
   var btn = document.createElement('a');
-  btn.href = 'subscribe.html';
+  btn.href = '/subscribe';
   btn.textContent = t.btn;
   btn.style.cssText = 'display:inline-block;padding:14px 40px;background:#fff;color:#000;font-size:11px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;text-decoration:none;font-family:Montserrat,sans-serif;transition:all .3s;border:1.5px solid #fff;';
   btn.onmouseover = function(){ this.style.background='transparent'; this.style.color='#fff'; };

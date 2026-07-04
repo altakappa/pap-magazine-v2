@@ -489,7 +489,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
   </div>
 
   <div class="sb-bottom">
-    <a href="index.html"><span>←</span> <span>사이트로 이동</span></a>
+    <a href="/"><span>←</span> <span>사이트로 이동</span></a>
   </div>
 </nav>
 
@@ -2176,7 +2176,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
 
   <!-- ABOUT -->
   <div class="tab" id="t-about">
-    <div class="mn-header"><div class="mn-title">회사 소개 편집</div><div class="mn-actions"><button class="btn" onclick="window.open('about.html','_blank')">미리보기</button> <button class="btn btn-primary" onclick="saveCompanyInfo('about')">저장</button></div></div>
+    <div class="mn-header"><div class="mn-title">회사 소개 편집</div><div class="mn-actions"><button class="btn" onclick="window.open('/about','_blank')">미리보기</button> <button class="btn btn-primary" onclick="saveCompanyInfo('about')">저장</button></div></div>
     <div class="mn-body" style="max-width:800px">
       <div class="pe-section">
         <div class="pe-label">콘텐츠 <span class="pe-opt">한국어로 작성 → AI가 8개 언어로 자동 번역</span></div>
@@ -2201,7 +2201,7 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
   </div>
 
   <!-- BUSINESS -->
-  <!-- QA #321 — 웹사이트(business.html) 구조와 1:1 로 재구성.
+  <!-- QA #321 — 웹사이트(/business) 구조와 1:1 로 재구성.
        · 콘텐츠 영역 분리: BRAND CONTENT ADVERTISING / MAKE CONTENTS WITH PAP
        · 미디어키트 관리: 제목 + English/Korean 다운로드 링크
        · 미사용 '관련 이미지' 영역 제거
@@ -2210,7 +2210,7 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
        타 언어는 기존 번역 텍스트 유지 (자동 번역 연동 전까지).
        미디어킷 제목/링크는 모든 언어에 공통 적용. -->
   <div class="tab" id="t-business">
-    <div class="mn-header"><div class="mn-title">비즈니스 편집</div><div class="mn-actions"><button class="btn" onclick="window.open('business.html','_blank')">미리보기</button> <button class="btn btn-primary" id="bizSaveBtn" onclick="saveBusinessPage()">저장</button></div></div>
+    <div class="mn-header"><div class="mn-title">비즈니스 편집</div><div class="mn-actions"><button class="btn" onclick="window.open('/business','_blank')">미리보기</button> <button class="btn btn-primary" id="bizSaveBtn" onclick="saveBusinessPage()">저장</button></div></div>
     <div class="mn-body" style="max-width:800px">
       <div id="bizStatus" class="pe-hint" style="display:none;margin-bottom:14px;padding:10px 12px;border-radius:4px"></div>
 
@@ -2246,7 +2246,7 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
   </div>
 
   <!-- CONTACT -->
-  <!-- QA #326 — 웹사이트(contact.html) 구조와 1:1 로 재구성.
+  <!-- QA #326 — 웹사이트(/contact) 구조와 1:1 로 재구성.
        · Italy Office / Korea Office 를 독립 입력 영역으로 분리
        · mock 텍스트영역 + 미사용 '관련 이미지' 제거
        저장은 QA #321 과 동일한 /api/settings (site_settings.contact_page)
@@ -2971,7 +2971,7 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
   </div>
 </div>
 
-<script src="/pap-api.js?v=5" defer></script>
+<script src="/pap-api.js?v=6" defer></script>
 <!-- QA #254 v2 — Instagram editor modal. Each gallery image gets its
      own logo size + position knobs (stored in _papInstaPerImageOpts).
      Layout:
@@ -3133,7 +3133,7 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
      가 mock 시절 번들을 계속 서빙 → '+새 이미지' 클릭 시 "실제 운영 시
      S3에 업로드됩니다" 구형 alert 가 재현되던 원인. pap-admin.js 를
      수정하는 커밋은 반드시 이 파라미터를 함께 올릴 것. -->
-<script src="/pap-admin.js?v=81" defer></script>
+<script src="/pap-admin.js?v=82" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>

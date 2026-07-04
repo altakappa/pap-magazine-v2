@@ -87,9 +87,9 @@
   function _loginUrl(){
     try{
       var here = location.pathname + location.search + location.hash;
-      return 'auth.html?mode=login&return=' + encodeURIComponent(here);
+      return '/auth?mode=login&return=' + encodeURIComponent(here);
     }catch(e){
-      return 'auth.html?mode=login';
+      return '/auth?mode=login';
     }
   }
 

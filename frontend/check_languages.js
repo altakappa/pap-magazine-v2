@@ -1,6 +1,6 @@
 const fs = require('fs');
 
-const files = ['subscribe.html', 'submission.html', 'pullletter.html', 'auth.html'];
+const files = ['/subscribe', '/submission', '/pullletter', '/auth'];
 const expectedLanguages = ['ko', 'en', 'it', 'fr', 'es', 'ja', 'zh', 'ru'];
 
 console.log('\n=== FINAL LANGUAGE SUPPORT VERIFICATION ===\n');

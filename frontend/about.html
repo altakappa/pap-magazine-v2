@@ -117,12 +117,12 @@ h1{font-size:clamp(48px,8vw,90px);font-weight:800;letter-spacing:5px;text-transf
   <div class="nav-overlay-inner">
     <div class="nav-left-col">
       <div class="nav-left-top">
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='subscribe.html';" data-i18n="subscribe">SUBSCRIBE</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/subscribe';" data-i18n="subscribe">SUBSCRIBE</a>
       </div>
       <div class="nav-left-links">
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='submission.html';" data-i18n="submission">SUBMISSION</a>
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='pullletter.html';" data-i18n="pullletter">PULL-LETTER</a>
-        <a href="auth.html" data-i18n="navLogin" style="color:rgba(255,255,255,.6)">LOGIN / JOIN</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/submission';" data-i18n="submission">SUBMISSION</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/pullletter';" data-i18n="pullletter">PULL-LETTER</a>
+        <a href="/auth" data-i18n="navLogin" style="color:rgba(255,255,255,.6)">LOGIN / JOIN</a>
       </div>
       <div class="nav-left-links nav-extra-links" style="margin-top:auto">
         <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/about';" data-i18n="about">ABOUT</a>
@@ -140,11 +140,11 @@ h1{font-size:clamp(48px,8vw,90px);font-weight:800;letter-spacing:5px;text-transf
       </div>
     </div>
     <div class="nav-right-col">
-      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='community.html';" data-i18n="navCommunity" style="color:var(--pap-red)">COMMUNITY</a>
-      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='magazine.html';" data-i18n="navMagazine" style="color:#c9a96e">MAGAZINE</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/community';" data-i18n="navCommunity" style="color:var(--pap-red)">COMMUNITY</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/magazine';" data-i18n="navMagazine" style="color:#c9a96e">MAGAZINE</a>
       <a href="#" onclick="event.preventDefault();toggleNav();openAllEditorials();" data-i18n="navEditorial">EDITORIAL</a>
-      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='articles.html';" data-i18n="navArticle">ARTICLE</a>
-      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='films.html';" data-i18n="navFilm">FILM</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/articles';" data-i18n="navArticle">ARTICLE</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/films';" data-i18n="navFilm">FILM</a>
     </div>
   </div>
 </div>
@@ -178,9 +178,9 @@ h1{font-size:clamp(48px,8vw,90px);font-weight:800;letter-spacing:5px;text-transf
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </button>
       <div class="account-dropdown" id="accountDropdown" style="cursor:default">
-        <a href="auth.html" data-i18n="navLogin">로그인 / 회원가입</a>
+        <a href="/auth" data-i18n="navLogin">로그인 / 회원가입</a>
         <div class="dropdown-divider"></div>
-        <a href="subscribe.html" data-i18n="subscribe">구독하기</a>
+        <a href="/subscribe" data-i18n="subscribe">구독하기</a>
       </div>
     </div>
   </div>
@@ -192,7 +192,7 @@ h1{font-size:clamp(48px,8vw,90px);font-weight:800;letter-spacing:5px;text-transf
 <div style="margin-top:12px;width:40px;height:1px;background:rgba(255,255,255,.1);position:relative;overflow:hidden;margin-left:auto;margin-right:auto"><div style="position:absolute;width:50%;height:100%;background:rgba(255,255,255,.5);animation:loaderSlide 1s ease infinite"></div></div></div></div>
 <style>@keyframes loaderSlide{0%{left:-50%}100%{left:100%}}</style>
 <script>window.addEventListener('load',function(){var l=document.getElementById('pageLoader');if(l){l.style.opacity='0';setTimeout(function(){l.remove();},400);}});</script>
-<a href="auth.html" class="auth-btn-header auth-btn-sidenav" aria-label="Login" style="position:fixed;top:32px;right:100px;z-index:1001;color:rgba(255,255,255,.4);transition:color .2s;text-decoration:none"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>
+<a href="/auth" class="auth-btn-header auth-btn-sidenav" aria-label="Login" style="position:fixed;top:32px;right:100px;z-index:1001;color:rgba(255,255,255,.4);transition:color .2s;text-decoration:none"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>
 
 <div class="lang-selector"><select id="langSelect" onchange="setLang(this.value)"><option value="ko">KO</option><option value="en">EN</option><option value="it">IT</option><option value="fr">FR</option><option value="es">ES</option><option value="ja">JA</option><option value="zh">ZH</option><option value="ru">RU</option>
         <option value="de">Deutsch</option></select></div>
@@ -252,7 +252,7 @@ function _showBrandAdInterstitial(ad,callback){
   function closeAd(){if(_timer)clearInterval(_timer);if(ad.type==='video'){var v=overlay.querySelector('video');if(v)v.pause();}overlay.style.opacity='0';unlockScroll();setTimeout(function(){if(overlay.parentNode)overlay.parentNode.removeChild(overlay);},400);if(callback)callback();}
   skip.onclick=function(){closeAd();};
   overlay.appendChild(skip);
-  var premBadge=document.createElement('a');premBadge.href='subscribe.html';
+  var premBadge=document.createElement('a');premBadge.href='/subscribe';
   var premTexts={ko:'광고 없이 즐기기',en:'Go ad-free',it:'Senza pubblicità',fr:'Sans publicité',es:'Sin anuncios',ja:'広告なし',zh:'去除广告'};
   premBadge.textContent=premTexts[lang]||premTexts.en;
   premBadge.style.cssText='position:absolute;bottom:26px;left:24px;font-size:10px;font-weight:600;letter-spacing:.08em;color:rgba(255,255,255,.3);text-decoration:none;font-family:Montserrat,sans-serif;transition:color .2s;z-index:2;';
@@ -285,7 +285,7 @@ function _showPremiumUpsellInterstitial(callback){
   var tag=document.createElement('div');tag.textContent=t.tag;tag.style.cssText='font-size:10px;font-weight:800;letter-spacing:.3em;color:rgba(255,255,255,.4);margin-bottom:24px;';
   var h=document.createElement('h2');h.textContent=t.title;h.style.cssText='font-size:22px;font-weight:800;letter-spacing:.06em;line-height:1.5;color:#fff;margin-bottom:16px;white-space:pre-line;font-family:Montserrat,sans-serif;';
   var desc=document.createElement('p');desc.textContent=t.desc;desc.style.cssText='font-size:12px;color:rgba(255,255,255,.5);line-height:1.9;margin-bottom:32px;white-space:pre-line;font-family:Montserrat,sans-serif;';
-  var btn=document.createElement('a');btn.href='subscribe.html';btn.textContent=t.btn;btn.style.cssText='display:inline-block;padding:14px 40px;background:#fff;color:#000;font-size:11px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;text-decoration:none;font-family:Montserrat,sans-serif;transition:all .3s;border:1.5px solid #fff;';
+  var btn=document.createElement('a');btn.href='/subscribe';btn.textContent=t.btn;btn.style.cssText='display:inline-block;padding:14px 40px;background:#fff;color:#000;font-size:11px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;text-decoration:none;font-family:Montserrat,sans-serif;transition:all .3s;border:1.5px solid #fff;';
   btn.onmouseover=function(){this.style.background='transparent';this.style.color='#fff';};
   btn.onmouseout=function(){this.style.background='#fff';this.style.color='#000';};
   var skip=document.createElement('button');skip.textContent=t.skip;
@@ -370,21 +370,21 @@ function setLang(l){localStorage.setItem('pap-lang',l);var d=L[l]||L.ko;document
 </script>
 <script src="/pap-utils.js?v=1"></script>
 <script src="/pap-protect.js?v=3" defer></script>
-<script src="/pap-i18n.js?v=2"></script>
-<script src="/pap-auth.js?v=1"></script>
+<script src="/pap-i18n.js?v=3"></script>
+<script src="/pap-auth.js?v=3"></script>
 <script src="/pap-search.js?v=3"></script>
 <script src="/pap-static.js?v=1"></script>
-<script src="/pap-subscription.js?v=1"></script>
+<script src="/pap-subscription.js?v=2"></script>
 <script src="/pap-home.js?v=1"></script>
-<script src="/pap-content-editorial.js?v=15"></script>
-<script src="/pap-content-film.js?v=8"></script>
+<script src="/pap-content-editorial.js?v=16"></script>
+<script src="/pap-content-film.js?v=9"></script>
 <script src="/pap-content-article.js?v=9"></script>
 <script src="/pap-content-creator-shorts.js?v=1"></script>
-<script src="/pap-content-api-sync.js?v=8"></script>
+<script src="/pap-content-api-sync.js?v=9"></script>
 <script src="/pap-content-seo.js?v=4"></script>
 <script src="/pap-shell-bootstrap.js?v=8"></script>
 <script src="/pap-app.js?v=20"></script>
-<script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=10" defer></script>
-<script src="/pap-auth-link.js" defer></script>
+<script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=11" defer></script>
+<script src="/pap-auth-link.js?v=2" defer></script>
 </body>
 </html>

@@ -41,3 +41,5 @@ pap-films-ALL.json
 pap-youtube-shorts.json
 scripts/output/*.json
 
+design-mockups/
+test_film_related_button.js

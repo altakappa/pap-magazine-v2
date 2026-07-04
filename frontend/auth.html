@@ -254,25 +254,25 @@ a{color:#fff;text-decoration:none}
 <meta property="og:site_name" content="PAP Magazine">
 <meta property="og:title" content="Join PAP | PAP Magazine">
 <meta property="og:description" content="Join PAP Magazine to submit work, connect with creatives, and access exclusive content.">
-<meta property="og:url" content="https://www.pap-magazine.com/auth.html">
+<meta property="og:url" content="https://www.pap-magazine.com/auth">
 <meta property="og:image" content="https://www.pap-magazine.com/apple-touch-icon.png">
 <meta property="og:locale" content="ko_KR">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Join PAP | PAP Magazine">
 <meta name="twitter:description" content="Join PAP Magazine to submit work, connect with creatives, and access exclusive content.">
 <meta name="twitter:image" content="https://www.pap-magazine.com/apple-touch-icon.png">
-<link rel="canonical" href="https://www.pap-magazine.com/auth.html">
+<link rel="canonical" href="https://www.pap-magazine.com/auth">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","name":"Join PAP - PAP Magazine"}</script>
 <!-- Back-navigation acceleration: pre-warm the home page so pressing back
      after auth doesn't trigger a full cold reload. prefetch is universal
      (HTTP cache); the speculation rules block additionally prerenders the
      full page on Chrome/Edge for an instant restore. -->
 <link rel="prefetch" href="/" as="document">
-<link rel="prefetch" href="/mypage.html" as="document">
+<link rel="prefetch" href="/mypage" as="document">
 <script type="speculationrules">
 {
   "prerender": [
-    { "source": "list", "urls": ["/", "/mypage.html"] }
+    { "source": "list", "urls": ["/", "/mypage"] }
   ]
 }
 </script>
@@ -567,7 +567,7 @@ a{color:#fff;text-decoration:none}
   </div>
 </div>
 
-<script src="/pap-api.js?v=5" defer></script>
+<script src="/pap-api.js?v=6" defer></script>
 <script>
 // ======== STATE ========
 var currentStep = 1;
@@ -1062,7 +1062,7 @@ async function sendResetEmail() {
   try {
     // redirectTo brings the user back to auth.html with a recovery hash.
     // IMPORTANT: use '/auth' (no .html) because vercel.json has
-    // cleanUrls:true, which 308-redirects /auth.html → /auth. That extra
+    // cleanUrls:true, which 308-redirects /auth → /auth. That extra
     // hop drops Supabase's #access_token=...&type=recovery fragment, so
     // we land on /auth with no recovery context and just see the login
     // panel. Targeting the clean URL directly skips the redirect and
@@ -1187,14 +1187,14 @@ function socialLogin(provider) {
   // so we stash it in a short-lived cookie that survives the provider redirects.
   try {
     var params = new URLSearchParams(window.location.search);
-    // params.get() URL-decodes once, so `ret` is the plain path (e.g., "/articles.html")
+    // params.get() URL-decodes once, so `ret` is the plain path (e.g., "/articles")
     var ret = params.get('return');
     if (!ret && document.referrer) {
       // Fall back to referrer if same-origin (user clicked login from some other page)
       if (document.referrer.indexOf(window.location.origin) === 0) {
         var refPath = document.referrer.substring(window.location.origin.length);
         // Don't loop back to auth.html itself
-        if (refPath && refPath.indexOf('auth.html') === -1 && refPath.indexOf('/auth') !== 0) {
+        if (refPath && refPath.indexOf('/auth') === -1 && refPath.indexOf('/auth') !== 0) {
           ret = refPath;
         }
       }
@@ -1830,7 +1830,7 @@ function setLang(l) {
         try { sessionStorage.setItem('pap-auth-bounce', String(bounces + 1)); } catch(_){}
         // Honour ?return= when present so admin → login → admin works.
         var ret = params.get('return');
-        var dest = (ret && /^\/[^\s]*$/.test(ret)) ? ret : 'mypage.html';
+        var dest = (ret && /^\/[^\s]*$/.test(ret)) ? ret : '/mypage';
         // location.replace so the previous page (whatever sent the user here)
         // remains directly accessible via back, instead of bouncing through auth.
         window.location.replace(dest);
@@ -1934,7 +1934,7 @@ function setLang(l) {
     // Fallback: pap-return-url cookie (set by socialLogin before OAuth roundtrip)
     var fromCookie = _consumeReturnCookie();
     if(fromCookie) return fromCookie;
-    return _authRedirect ? (_authRedirect + '.html') : 'mypage.html';
+    return _authRedirect ? (_authRedirect + '.html') : '/mypage';
   };
   if (_authRedirect === 'admin') {
     var sb = document.querySelector('#stepSuccess .auth-btn');
@@ -2033,7 +2033,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }));
           }
           window.history.replaceState({}, document.title, window.location.pathname);
-          window.location.replace(window.getRedirectUrl ? window.getRedirectUrl() : 'mypage.html');
+          window.location.replace(window.getRedirectUrl ? window.getRedirectUrl() : '/mypage');
         } else {
           if (typeof PAP !== 'undefined') { PAP.ui.toast('Login failed: ' + (data.message || 'Unknown error'), 'error'); }
           else { alert('Login failed: ' + (data.message || 'Unknown error')); }
@@ -2066,7 +2066,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }));
         deleteCookie('pap-pkce-verifier');
         window.history.replaceState({}, document.title, window.location.pathname);
-        window.location.replace(window.getRedirectUrl ? window.getRedirectUrl() : 'mypage.html');
+        window.location.replace(window.getRedirectUrl ? window.getRedirectUrl() : '/mypage');
         return true;
       } else {
         if (typeof PAP !== 'undefined') { PAP.ui.toast('Login failed: ' + (data.detail || data.message || 'Unknown error'), 'error'); }
@@ -2145,7 +2145,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     var _finishRedirect = function(){
       window.history.replaceState({}, document.title, window.location.pathname);
-      window.location.replace(window.getRedirectUrl ? window.getRedirectUrl() : 'mypage.html');
+      window.location.replace(window.getRedirectUrl ? window.getRedirectUrl() : '/mypage');
     };
     if (_userOk) {
       _finishRedirect();
@@ -2184,6 +2184,6 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 </script>
-<script src="/pap-header.js?v=10" defer></script>
+<script src="/pap-header.js?v=11" defer></script>
 </body>
 </html>

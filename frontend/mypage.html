@@ -397,7 +397,7 @@ a{color:#fff;text-decoration:none}
        so users get one consistent navigation surface. -->
 </div>
 
-<script src="/pap-api.js?v=5" defer></script>
+<script src="/pap-api.js?v=6" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 <script src="/pap-logos-data.js?v=1" defer></script>
 <style>
@@ -514,7 +514,7 @@ function renderSubscriptionCard(user){
       perk(true, _t.perkFeedback) +
       perk(true, _t.perkLogo) +
       perk(true, _t.perkPullletter);
-    actions = '<a class="mp-sub-action" href="subscribe.html">' + _t.manage + '</a>';
+    actions = '<a class="mp-sub-action" href="/subscribe">' + _t.manage + '</a>';
   } else if (plan === 'standard') {
     planLabel = 'STANDARD';
     perks =
@@ -525,8 +525,8 @@ function renderSubscriptionCard(user){
       perk(false, _t.perkArchiveFull) +
       perk(false, _t.perkPullletter);
     actions =
-      '<a class="mp-sub-action primary" href="subscribe.html">' + _t.upgradeTitlePrm + '</a>' +
-      '<a class="mp-sub-action" href="subscribe.html">' + _t.manage + '</a>';
+      '<a class="mp-sub-action primary" href="/subscribe">' + _t.upgradeTitlePrm + '</a>' +
+      '<a class="mp-sub-action" href="/subscribe">' + _t.manage + '</a>';
   } else {
     plan = 'free';
     planLabel = 'FREE';
@@ -536,7 +536,7 @@ function renderSubscriptionCard(user){
       perk(false, _t.perkArchiveFull) +
       perk(false, _t.perkFeedback) +
       perk(false, _t.perkPullletter);
-    actions = '<a class="mp-sub-action primary" href="subscribe.html">' + _t.subActionSubscribe + '</a>';
+    actions = '<a class="mp-sub-action primary" href="/subscribe">' + _t.subActionSubscribe + '</a>';
   }
 
   card.innerHTML =
@@ -754,7 +754,7 @@ function loadRecentSubmissions(){
         // QA #225 — wrap row + trash button so trash click doesn't bubble
         // up into the row's "go to revision form" navigation.
         html += '<div class="mp-sub-item" data-sub-id="'+(s.id||'').replace(/"/g,'')+'" style="position:relative">' +
-          '<div style="display:flex;align-items:center;gap:14px;flex:1;cursor:pointer" onclick="window.location.href=\'submission.html?revise=' + encodeURIComponent(s.id || '') + '\'">' +
+          '<div style="display:flex;align-items:center;gap:14px;flex:1;cursor:pointer" onclick="window.location.href=\'/submission?revise=' + encodeURIComponent(s.id || '') + '\'">' +
             '<div class="mp-sub-thumb" style="' + thumbStyle + '"></div>' +
             '<div class="mp-sub-info">' +
               '<div class="mp-sub-title">' + (title.replace(/</g,'&lt;')) + '</div>' +
@@ -768,7 +768,7 @@ function loadRecentSubmissions(){
         '</div>';
       });
       if (subs.length > 3) {
-        html += '<a href="submission.html#mine" style="display:block;text-align:center;margin-top:10px;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.5)">' + _t.viewAll + '</a>';
+        html += '<a href="/submission#mine" style="display:block;text-align:center;margin-top:10px;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.5)">' + _t.viewAll + '</a>';
       }
       box.innerHTML = html;
     })
@@ -796,7 +796,7 @@ function renderDownloads(user){
   if (!canAccess) {
     box.innerHTML = '<div class="mp-locked-card">' +
       '<div class="mp-locked-card-msg">' + _t.downloadsLocked + '</div>' +
-      '<a class="mp-locked-cta" href="subscribe.html">' + _t.upgradeTitleStd + ' →</a>' +
+      '<a class="mp-locked-cta" href="/subscribe">' + _t.upgradeTitleStd + ' →</a>' +
     '</div>';
     return;
   }
@@ -828,7 +828,7 @@ function loadProfile(){
   var token = localStorage.getItem('pap-token');
 
   if (!token || !userStr) {
-    window.location.href = (window.papLoginUrl ? window.papLoginUrl('auth.html?mode=login') : 'auth.html?mode=login');
+    window.location.href = (window.papLoginUrl ? window.papLoginUrl('/auth?mode=login') : '/auth?mode=login');
     return;
   }
 
@@ -884,7 +884,7 @@ function loadProfile(){
     renderDownloads(_user);
     loadConsent();
   } catch(e) {
-    window.location.href = (window.papLoginUrl ? window.papLoginUrl('auth.html?mode=login') : 'auth.html?mode=login');
+    window.location.href = (window.papLoginUrl ? window.papLoginUrl('/auth?mode=login') : '/auth?mode=login');
   }
 }
 function doLogout() { localStorage.removeItem('pap-token'); localStorage.removeItem('pap-user'); window.location.href = '/'; }
@@ -1069,7 +1069,7 @@ function setupMpSidebar(){
   setupMpSidebar();
 })();
 </script>
-<script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=10"></script>
-<script src="/pap-auth-link.js" defer></script>
+<script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=11"></script>
+<script src="/pap-auth-link.js?v=2" defer></script>
 </body>
 </html>

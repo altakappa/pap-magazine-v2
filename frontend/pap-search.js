@@ -24,7 +24,7 @@ function toggleSearch(){const o=document.getElementById('searchBar');if(!o)retur
 // That fails three ways on sub-pages:
 //   1) If the script ran before the search markup was fully parsed,
 //      _si was null and no events ever bound.
-//   2) Some pages had duplicate #searchInput IDs (films.html — fixed
+//   2) Some pages had duplicate #searchInput IDs (/films — fixed
 //      in QA #240), so only the first instance got listeners; the
 //      visible one silently lost every keystroke and Enter press.
 //   3) Any dynamically-injected search bar (overlay re-render, etc.)

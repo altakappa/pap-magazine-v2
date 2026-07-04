@@ -262,7 +262,7 @@ footer a:hover{color:#fff}
 <meta property="og:site_name" content="PAP Magazine">
 <meta property="og:title" content="Magazine | PAP Magazine">
 <meta property="og:description" content="Browse PAP Magazine editorials. Fashion, beauty, art, and culture photography.">
-<meta property="og:url" content="https://www.pap-magazine.com/magazine.html">
+<meta property="og:url" content="https://www.pap-magazine.com/magazine">
 <meta property="og:image" content="https://www.pap-magazine.com/apple-touch-icon.png">
 <meta property="og:locale" content="ko_KR">
 <meta name="twitter:card" content="summary_large_image">
@@ -278,8 +278,8 @@ footer a:hover{color:#fff}
 <script src="/pap-protect.js?v=3" defer></script>
 <link rel="stylesheet" href="pap-social.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="/pap-social.js?v=2" defer></script>
-<script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=10" defer></script>
+<script src="/pap-social.js?v=3" defer></script>
+<script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=11" defer></script>
 <!-- Print Styles -->
 <style media="print">
 @media print{
@@ -300,17 +300,17 @@ footer a:hover{color:#fff}
   <div class="nav-overlay-inner">
     <div class="nav-left-col">
       <div class="nav-left-top">
-        <a href="subscribe.html" data-i18n="subscribe">SUBSCRIBE</a>
+        <a href="/subscribe" data-i18n="subscribe">SUBSCRIBE</a>
       </div>
       <div class="nav-left-links">
-        <a href="submission.html" data-i18n="submission">SUBMISSION</a>
-        <a href="pullletter.html" data-i18n="pullletter">PULL-LETTER</a>
-        <a href="auth.html" data-i18n="navLogin" style="color:rgba(0,0,0,.4)">LOGIN / JOIN</a>
+        <a href="/submission" data-i18n="submission">SUBMISSION</a>
+        <a href="/pullletter" data-i18n="pullletter">PULL-LETTER</a>
+        <a href="/auth" data-i18n="navLogin" style="color:rgba(0,0,0,.4)">LOGIN / JOIN</a>
       </div>
       <div class="nav-left-links nav-extra-links" style="margin-top:auto">
-        <a href="about.html" data-i18n="about">ABOUT</a>
-        <a href="business.html" data-i18n="business">BUSINESS</a>
-        <a href="contact.html" data-i18n="contact">CONTACT</a>
+        <a href="/about" data-i18n="about">ABOUT</a>
+        <a href="/business" data-i18n="business">BUSINESS</a>
+        <a href="/contact" data-i18n="contact">CONTACT</a>
       </div>
       <div class="nav-bottom-row">
         <div class="nav-socials active" id="navSocials">
@@ -323,11 +323,11 @@ footer a:hover{color:#fff}
       </div>
     </div>
     <div class="nav-right-col">
-      <a href="community.html" data-i18n="navCommunity" style="color:var(--pap-red)">COMMUNITY</a>
-      <a href="magazine.html" data-i18n="navMagazine" style="color:#c9a96e">MAGAZINE</a>
+      <a href="/community" data-i18n="navCommunity" style="color:var(--pap-red)">COMMUNITY</a>
+      <a href="/magazine" data-i18n="navMagazine" style="color:#c9a96e">MAGAZINE</a>
       <a href="/" data-i18n="navEditorial">EDITORIAL</a>
-      <a href="articles.html" data-i18n="navArticle">ARTICLE</a>
-      <a href="films.html" data-i18n="navFilm">FILM</a>
+      <a href="/articles" data-i18n="navArticle">ARTICLE</a>
+      <a href="/films" data-i18n="navFilm">FILM</a>
     </div>
   </div>
 </div>
@@ -361,9 +361,9 @@ footer a:hover{color:#fff}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </button>
       <div class="account-dropdown" id="accountDropdown" style="cursor:default">
-        <a href="auth.html" data-i18n="navLogin">로그인 / 회원가입</a>
+        <a href="/auth" data-i18n="navLogin">로그인 / 회원가입</a>
         <div class="dropdown-divider"></div>
-        <a href="subscribe.html" data-i18n="subscribe">구독하기</a>
+        <a href="/subscribe" data-i18n="subscribe">구독하기</a>
       </div>
     </div>
     </div>
@@ -560,11 +560,11 @@ footer a:hover{color:#fff}
 <div class="sub-cta">
   <h3>Unlock the Full Archive</h3>
   <p id="subCtaDesc">Subscribe to PAP Premium for unlimited access to all 86 issues, 2,114+ editorials, and every future release. New issues drop monthly.</p>
-  <a href="subscribe.html" class="sub-btn">VIEW PLANS</a>
+  <a href="/subscribe" class="sub-btn">VIEW PLANS</a>
 </div>
 
 <footer>
-  <p><a href="pap-magazine-v5.html">HOME</a> &nbsp;·&nbsp; <a href="about.html">ABOUT</a> &nbsp;·&nbsp; <a href="contact.html">CONTACT</a> &nbsp;·&nbsp; <a href="subscribe.html">SUBSCRIBE</a></p>
+  <p><a href="/">HOME</a> &nbsp;·&nbsp; <a href="/about">ABOUT</a> &nbsp;·&nbsp; <a href="/contact">CONTACT</a> &nbsp;·&nbsp; <a href="/subscribe">SUBSCRIBE</a></p>
   <p>&copy; 2026 PAP MAGAZINE. All rights reserved.</p>
 </footer>
 
@@ -986,7 +986,7 @@ function openPreview(issueTitle,opts){
     preview.forEach(function(ed){
       var card=document.createElement('a');
       card.className='preview-card';
-      card.href='index.html?ed='+encodeURIComponent(ed.title);
+      card.href='/?ed='+encodeURIComponent(ed.title);
       // Pretty-format the date as "YYYY.MM.DD" for the badge
       var dateStr = '';
       if(ed.date){
@@ -1030,16 +1030,16 @@ document.getElementById('previewOverlay').addEventListener('click',function(e){
     <div class="sub-modal-divider"></div>
     <p class="sub-modal-desc" id="modalDesc">Subscribe to unlock this issue and the full PAP archive · 86 issues, 2,109+ editorials.</p>
     <div class="sub-modal-plans">
-      <div class="sub-modal-plan" onclick="location.href='subscribe.html'">
+      <div class="sub-modal-plan" onclick="location.href='/subscribe'">
         <div class="smp-name">STANDARD</div>
         <div class="smp-price"><span id="modalStdPrice">₩8,500</span><span id="modalStdPer"> /mo</span></div>
       </div>
-      <div class="sub-modal-plan rec" onclick="location.href='subscribe.html'">
+      <div class="sub-modal-plan rec" onclick="location.href='/subscribe'">
         <div class="smp-name">PREMIUM</div>
         <div class="smp-price"><span id="modalPremPrice">₩13,500</span><span id="modalPremPer"> /mo</span></div>
       </div>
     </div>
-    <button class="sub-modal-cta" id="modalCta" onclick="location.href='subscribe.html'">SUBSCRIBE NOW</button>
+    <button class="sub-modal-cta" id="modalCta" onclick="location.href='/subscribe'">SUBSCRIBE NOW</button>
     <button class="sub-modal-preview" id="modalPreview">Preview 3 editorials free →</button>
     <div class="sub-modal-note" id="modalNote">Cancel anytime · Instant access to all issues</div>
   </div>
@@ -1060,7 +1060,7 @@ document.getElementById('previewOverlay').addEventListener('click',function(e){
       <div class="preview-subtitle" id="previewSubtitle">3 EDITORIALS</div>
     </div>
     <div class="preview-grid" id="previewGrid"></div>
-    <a href="subscribe.html" class="preview-subscribe" id="previewCta">SUBSCRIBE TO READ ALL</a>
+    <a href="/subscribe" class="preview-subscribe" id="previewCta">SUBSCRIBE TO READ ALL</a>
     <div class="preview-lock-msg" id="previewLock">Subscribe to unlock all editorials in this issue</div>
   </div>
 </div>
@@ -1126,7 +1126,7 @@ document.getElementById('previewOverlay').addEventListener('click',function(e){
 })();
 </script>
 
-<script src="/pap-auth-link.js" defer></script>
+<script src="/pap-auth-link.js?v=2" defer></script>
 <script>
 (function(){
   try{
@@ -1151,8 +1151,8 @@ document.getElementById('previewOverlay').addEventListener('click',function(e){
     };
     var s=t[lang]||t.en;
     dd.innerHTML=
-      '<a href="mypage.html">'+s.mypage+'</a>'+
-      '<a href="subscribe.html">'+s.subscribe+'</a>'+
+      '<a href="/mypage">'+s.mypage+'</a>'+
+      '<a href="/subscribe">'+s.subscribe+'</a>'+
       '<div class="dropdown-divider"></div>'+
       '<button onclick="localStorage.removeItem(\'pap-token\');localStorage.removeItem(\'pap-user\');window.location.href=\'/\';">'+s.logout+'</button>';
   }catch(e){}

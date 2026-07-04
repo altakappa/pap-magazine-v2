@@ -293,7 +293,7 @@ window._papFilmAutoPlay = function(){
       } else {
         /* Using hardcoded films only */
       }
-      // Re-render film cards if the page has a renderCards function (films.html)
+      // Re-render film cards if the page has a renderCards function (/films)
       if(typeof window._papFilmRenderCards==='function'){
         window._papFilmRenderCards();
       }
@@ -313,7 +313,7 @@ window._papFilmAutoPlay = function(){
       } else {
         /* Using hardcoded articles only */
       }
-      // Re-render article cards if available (articles.html)
+      // Re-render article cards if available (/articles)
       if(typeof window._papArticleRenderCards==='function'){
         window._papArticleRenderCards();
       }

@@ -16,24 +16,26 @@ const BASE = 'https://www.pap-magazine.com';
 
 // Static pages with their priorities and change frequencies. Tuned for a
 // magazine — home and listing pages refresh weekly, legal/about monthly.
+// 구조 최적화 (2026-07) — QA #325 의 "순차 전환 예정"을 완결. 전 페이지
+// 클린 URL 통일: 내부 링크·canonical·사이트맵 모두 클린 경로만 사용하고
+// .html 은 vercel.json 301 로 수렴한다 (auth.html 만 리다이렉트 제외 —
+// Supabase 복구 메일 해시 보존 이슈).
 const STATIC_PAGES = [
-  { path: '/',                priority: '1.0', changefreq: 'daily'   },
-  { path: '/magazine.html',   priority: '0.9', changefreq: 'weekly'  },
-  { path: '/articles.html',   priority: '0.9', changefreq: 'weekly'  },
-  { path: '/films.html',      priority: '0.8', changefreq: 'weekly'  },
-  { path: '/community.html',  priority: '0.8', changefreq: 'weekly'  },
-  { path: '/subscribe.html',  priority: '0.9', changefreq: 'monthly' },
-  { path: '/pullletter.html', priority: '0.7', changefreq: 'monthly' },
-  // QA #325 — 회사 정보 페이지는 클린 URL 로 색인 (canonical 과 일치.
-  // .html 은 vercel.json 에서 301 redirect). 나머지 정적 페이지도 클린
-  // rewrite 가 이미 존재하므로 링크/캐노니컬 정리 후 순차 전환 예정.
-  { path: '/archive',         priority: '0.8', changefreq: 'daily'   },
-  { path: '/about',           priority: '0.7', changefreq: 'monthly' },
-  { path: '/business',        priority: '0.6', changefreq: 'monthly' },
-  { path: '/contact',         priority: '0.6', changefreq: 'monthly' },
-  { path: '/submission.html', priority: '0.7', changefreq: 'monthly' },
-  { path: '/terms.html',      priority: '0.3', changefreq: 'yearly'  },
-  { path: '/privacy.html',    priority: '0.3', changefreq: 'yearly'  },
+  { path: '/',            priority: '1.0', changefreq: 'daily'   },
+  { path: '/magazine',    priority: '0.9', changefreq: 'weekly'  },
+  { path: '/articles',    priority: '0.9', changefreq: 'weekly'  },
+  { path: '/films',       priority: '0.8', changefreq: 'weekly'  },
+  { path: '/community',   priority: '0.8', changefreq: 'weekly'  },
+  { path: '/subscribe',   priority: '0.9', changefreq: 'monthly' },
+  { path: '/pullletter',  priority: '0.7', changefreq: 'monthly' },
+  { path: '/archive',     priority: '0.8', changefreq: 'daily'   },
+  { path: '/about',       priority: '0.7', changefreq: 'monthly' },
+  { path: '/business',    priority: '0.6', changefreq: 'monthly' },
+  { path: '/contact',     priority: '0.6', changefreq: 'monthly' },
+  { path: '/submission',  priority: '0.7', changefreq: 'monthly' },
+  { path: '/terms',       priority: '0.3', changefreq: 'yearly'  },
+  { path: '/privacy',     priority: '0.3', changefreq: 'yearly'  },
+  { path: '/refund',      priority: '0.3', changefreq: 'yearly'  },
 ];
 
 // XML-escape special characters in URLs (mostly ampersands and Unicode)

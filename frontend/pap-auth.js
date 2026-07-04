@@ -55,11 +55,11 @@ function _papUpdateAuthDropdown(){
       // code returned early here, which is what produced "사람 아이콘
       // 클릭 시 로그인된 상태 UI가 그대로 노출됨" after a token expired.
       dd.innerHTML =
-        '<a href="auth.html?mode=login">'+s.login+'</a>'+
-        '<a href="auth.html?mode=signup">'+s.signup+'</a>';
+        '<a href="/auth?mode=login">'+s.login+'</a>'+
+        '<a href="/auth?mode=signup">'+s.signup+'</a>';
       // Reset the nav-overlay login link too.
       document.querySelectorAll('[data-auth-updated="1"]').forEach(function(el){
-        el.href='auth.html?mode=login';
+        el.href='/auth?mode=login';
         el.textContent=s.login;
         el.removeAttribute('data-auth-updated');
         el.setAttribute('data-i18n','navLogin');
@@ -70,13 +70,13 @@ function _papUpdateAuthDropdown(){
     var user=u?JSON.parse(u):null;
     var displayName=(user&&user.name)?user.name:(user&&user.email)?user.email:'Account';
     dd.innerHTML=
-      '<a href="mypage.html">'+s.mypage+'</a>'+
-      '<a href="subscribe.html">'+s.subscribe+'</a>'+
+      '<a href="/mypage">'+s.mypage+'</a>'+
+      '<a href="/subscribe">'+s.subscribe+'</a>'+
       '<div class="dropdown-divider"></div>'+
       '<button onclick="_papLogout()">'+s.logout+'</button>';
     // Also update nav overlay login link
     document.querySelectorAll('[data-i18n="navLogin"]').forEach(function(el){
-      el.href='mypage.html';
+      el.href='/mypage';
       el.textContent=displayName;
       el.removeAttribute('data-i18n');
       el.setAttribute('data-auth-updated','1');

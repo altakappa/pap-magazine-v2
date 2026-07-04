@@ -392,9 +392,9 @@ function scrollFilm(dir){
       if(curTitle){
         var fi=_findFilmByTitle(curTitle);
         if(fi>=0) openFilmDetail(fi);
-        else window.location.href='films.html';
+        else window.location.href='/films';
       } else {
-        window.location.href='films.html';
+        window.location.href='/films';
       }
     });
   }

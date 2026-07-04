@@ -89,17 +89,17 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
   <div class="nav-overlay-inner">
     <div class="nav-left-col">
       <div class="nav-left-top">
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='subscribe.html';" data-i18n="subscribe">SUBSCRIBE</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/subscribe';" data-i18n="subscribe">SUBSCRIBE</a>
       </div>
       <div class="nav-left-links">
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='submission.html';" data-i18n="submission">SUBMISSION</a>
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='pullletter.html';" data-i18n="pullletter">PULL-LETTER</a>
-        <a href="auth.html" data-i18n="navLogin" style="color:rgba(255,255,255,.6)">LOGIN / JOIN</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/submission';" data-i18n="submission">SUBMISSION</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/pullletter';" data-i18n="pullletter">PULL-LETTER</a>
+        <a href="/auth" data-i18n="navLogin" style="color:rgba(255,255,255,.6)">LOGIN / JOIN</a>
       </div>
       <div class="nav-left-links nav-extra-links" style="margin-top:auto">
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='about.html';" data-i18n="about">ABOUT</a>
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='business.html';" data-i18n="business">BUSINESS</a>
-        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='contact.html';" data-i18n="contact">CONTACT</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/about';" data-i18n="about">ABOUT</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/business';" data-i18n="business">BUSINESS</a>
+        <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/contact';" data-i18n="contact">CONTACT</a>
       </div>
       <div class="nav-bottom-row">
         <div class="nav-socials active" id="navSocials">
@@ -112,11 +112,11 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
       </div>
     </div>
     <div class="nav-right-col">
-      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='community.html';" data-i18n="navCommunity" style="color:var(--pap-red)">COMMUNITY</a>
-      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='magazine.html';" data-i18n="navMagazine" style="color:#c9a96e">MAGAZINE</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/community';" data-i18n="navCommunity" style="color:var(--pap-red)">COMMUNITY</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/magazine';" data-i18n="navMagazine" style="color:#c9a96e">MAGAZINE</a>
       <a href="#" onclick="event.preventDefault();toggleNav();openAllEditorials();" data-i18n="navEditorial">EDITORIAL</a>
-      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='articles.html';" data-i18n="navArticle">ARTICLE</a>
-      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='films.html';" data-i18n="navFilm">FILM</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/articles';" data-i18n="navArticle">ARTICLE</a>
+      <a href="#" onclick="event.preventDefault();toggleNav();window.location.href='/films';" data-i18n="navFilm">FILM</a>
     </div>
   </div>
 </div>
@@ -150,9 +150,9 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </button>
       <div class="account-dropdown" id="accountDropdown" style="cursor:default">
-        <a href="auth.html" data-i18n="navLogin">로그인 / 회원가입</a>
+        <a href="/auth" data-i18n="navLogin">로그인 / 회원가입</a>
         <div class="dropdown-divider"></div>
-        <a href="subscribe.html" data-i18n="subscribe">구독하기</a>
+        <a href="/subscribe" data-i18n="subscribe">구독하기</a>
       </div>
     </div>
   </div>
@@ -215,25 +215,25 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
 
 <link rel="stylesheet" href="/pap-social.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="/pap-social.js?v=2" defer></script>
+<script src="/pap-social.js?v=3" defer></script>
 <script src="/pap-utils.js?v=1" defer></script>
 <script src="/pap-protect.js?v=3" defer></script>
-<script src="/pap-i18n.js?v=2" defer></script>
-<script src="/pap-auth.js?v=1" defer></script>
+<script src="/pap-i18n.js?v=3" defer></script>
+<script src="/pap-auth.js?v=3" defer></script>
 <script src="/pap-search.js?v=3" defer></script>
 <script src="/pap-static.js?v=1" defer></script>
-<script src="/pap-subscription.js?v=1" defer></script>
+<script src="/pap-subscription.js?v=2" defer></script>
 <script src="/pap-home.js?v=1" defer></script>
-<script src="/pap-content-editorial.js?v=15" defer></script>
-<script src="/pap-content-film.js?v=8" defer></script>
+<script src="/pap-content-editorial.js?v=16" defer></script>
+<script src="/pap-content-film.js?v=9" defer></script>
 <script src="/pap-content-article.js?v=12" defer></script>
 <script src="/pap-content-creator-shorts.js?v=1" defer></script>
-<script src="/pap-content-api-sync.js?v=8" defer></script>
+<script src="/pap-content-api-sync.js?v=9" defer></script>
 <script src="/pap-content-seo.js?v=4" defer></script>
 <script src="/pap-shell-bootstrap.js?v=8" defer></script>
 <script src="/pap-app.js?v=20" defer></script>
 <script src="/pap-lightbox.js?v=2" defer></script>
-<script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=10" defer></script>
+<script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=11" defer></script>
 <script>
 var _ART_MONTHS = {
   en:['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'],
@@ -299,7 +299,7 @@ document.addEventListener('DOMContentLoaded', function() {
   var catList = FIXED_CATS.concat(extras);
   var activeFilter = 'ALL';
   // Tag filter — when the user clicks a hashtag in an article-detail
-  // overlay, that detail page links here as /articles.html?tag=<value>.
+  // overlay, that detail page links here as /articles?tag=<value>.
   // We read it on page load (and on URL changes via popstate) and treat
   // it as an additional filter on top of the category filter buttons.
   var activeTag = '';
@@ -507,6 +507,6 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 </script>
-<script src="/pap-auth-link.js" defer></script>
+<script src="/pap-auth-link.js?v=2" defer></script>
 </body>
 </html>
