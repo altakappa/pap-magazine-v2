@@ -90,6 +90,9 @@ module.exports = async function handler(req, res) {
         'category','tags','published_date','custom_url','status',
         'scheduled_publish_at','admin_edited_at','updated_at',
         'content',
+        // 참여 증폭 (2026-07) — SPA 기사 상세에서 "원본 IG 게시물에
+        // 좋아요·저장·보내기" CTA 딥링크 소스.
+        'source_instagram_url',
         // QA #202 — surface authorship in the admin list (created_at +
         // FK columns; attachAuthorship resolves to display_name).
         'created_at','created_by','updated_by'

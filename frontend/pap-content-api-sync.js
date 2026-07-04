@@ -205,6 +205,8 @@ window._papFilmAutoPlay = function(){
       blocks: parsedBlocks,
       gallery: Array.isArray(a.gallery)? a.gallery : [],
       _api_id: a.id,
+      // 참여 증폭 (2026-07) — 원본 IG 게시물 딥링크 (좋아요·저장·보내기 CTA)
+      ig: a.source_instagram_url || '',
       // Pass through any i18n fields the API exposes (varies by backend schema)
       ti18n: a.title_i18n || a.titleI18n || a.ti18n || null,
       subi18n: a.subtitle_i18n || a.subtitleI18n || a.subi18n || null,

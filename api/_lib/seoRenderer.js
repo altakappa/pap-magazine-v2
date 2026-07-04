@@ -757,6 +757,13 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
     ${relatedEditorialHtml}
     ${relatedFilmsHtml}
 
+    ${record.source_instagram_url && /instagram\.com/.test(String(record.source_instagram_url)) ? `
+    <aside class="ig-funnel" style="margin-bottom:0">
+      <div class="igf-kicker">On Instagram</div>
+      <p class="igf-copy">이 스토리의 원본 게시물이 인스타그램에 있습니다.<br><b>좋아요·저장</b>으로 소장하고, 좋아할 친구에게 <b>보내기</b>로 공유해보세요.</p>
+      <a class="igf-btn" href="${escAttr(record.source_instagram_url)}" target="_blank" rel="noopener">게시물에서 반응 남기기 →</a>
+    </aside>` : ''}
+
     <aside class="ig-funnel">
       <div class="igf-kicker">PAP Magazine — Instagram</div>
       <p class="igf-copy">매일 업데이트되는 에디토리얼과 패션·셀럽 뉴스,<br><b>인스타그램에서 가장 먼저</b> 만나보세요.</p>

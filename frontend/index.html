@@ -857,7 +857,7 @@
 <!-- QA #310 — 스플래시 로더. defer 없이 즉시 실행돼서 첫 페인트 전에
      오버레이를 띄운다. 세션 내 재노출은 sessionStorage 로 방지. -->
 <script src="/pap-splash-loader.js?v=1"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script><script src="/pap-logos-data.js?v=1" defer></script><script src="/pap-api.js?v=6" defer></script><script src="/pap-social.js?v=3" defer></script><script src="/pap-utils.js?v=2" defer></script><script src="/pap-i18n.js?v=3" defer></script><script src="/pap-auth.js?v=3" defer></script><script src="/pap-search.js?v=3" defer></script><script src="/pap-static.js?v=1" defer></script><script src="/pap-subscription.js?v=2" defer></script><script src="/pap-home.js?v=1" defer></script><script src="/pap-content-editorial.js?v=16" defer></script><script src="/pap-content-film.js?v=9" defer></script><script src="/pap-content-article.js?v=12" defer></script><script src="/pap-content-creator-shorts.js?v=1" defer></script><script src="/pap-content-api-sync.js?v=9" defer></script><script src="/pap-content-seo.js?v=5" defer></script><script src="/pap-shell-bootstrap.js?v=8" defer></script><script src="/pap-app.js?v=20" defer></script><script src="/pap-lightbox.js?v=2" defer></script><script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=11" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script><script src="/pap-logos-data.js?v=1" defer></script><script src="/pap-api.js?v=6" defer></script><script src="/pap-social.js?v=3" defer></script><script src="/pap-utils.js?v=2" defer></script><script src="/pap-i18n.js?v=3" defer></script><script src="/pap-auth.js?v=3" defer></script><script src="/pap-search.js?v=3" defer></script><script src="/pap-static.js?v=1" defer></script><script src="/pap-subscription.js?v=2" defer></script><script src="/pap-home.js?v=1" defer></script><script src="/pap-content-editorial.js?v=16" defer></script><script src="/pap-content-film.js?v=9" defer></script><script src="/pap-content-article.js?v=13" defer></script><script src="/pap-content-creator-shorts.js?v=1" defer></script><script src="/pap-content-api-sync.js?v=10" defer></script><script src="/pap-content-seo.js?v=5" defer></script><script src="/pap-shell-bootstrap.js?v=8" defer></script><script src="/pap-app.js?v=20" defer></script><script src="/pap-lightbox.js?v=2" defer></script><script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=11" defer></script>
 <script src="/pap-protect.js?v=3" defer></script>
 <div class="creator-popup-overlay" id="creatorPopup" onclick="if(event.target===this)closeCreatorPopup()">
   <div class="creator-popup">
@@ -1105,6 +1105,10 @@
     <div id="artDetailCredits" style="padding:12px 0;border-top:1px solid rgba(255,255,255,.08);font-size:12px;line-height:1.8"></div>
     <div id="artDetailGallery" style="display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:16px 0"></div>
     <div id="artDetailLink" style="display:none"></div>
+    <!-- 참여 증폭 (2026-07): 기사 원본 IG 게시물 딥링크 — 좋아요·저장·
+         보내기는 게시물 위에서만 일어나므로 방문자를 게시물로 보낸다.
+         _renderArticleDetail 이 source_instagram_url 존재 시 채움. -->
+    <div id="artIgPostCta" style="display:none"></div>
     <!-- 검색→인스타 전환 깔때기 (2026-07): 검색으로 들어와 기사를 읽은
          방문자를 @pap_magazine 팔로우로 전환. SSR(seoRenderer)의
          .ig-funnel 과 한 쌍 — SPA 오버레이 버전. -->

@@ -344,6 +344,21 @@ function _renderArticleBlocks(blocks){
 
 function _renderArticleDetail(a,det){
   document.getElementById('artDetailImg').src=a.img||a.th;
+  // 참여 증폭 (2026-07) — 원본 IG 게시물 딥링크 CTA. 좋아요·저장·보내기
+  // 신호는 게시물 위에서만 발생하므로, 원본 게시물이 있는 기사는 독자를
+  // 그 게시물로 보낸다 (없으면 섹션 자체를 숨김).
+  var igCta=document.getElementById('artIgPostCta');
+  if(igCta){
+    if(a.ig && /instagram\.com/.test(a.ig)){
+      igCta.innerHTML=
+        '<aside style="margin:28px 0 0;padding:26px 24px;border:1px solid rgba(255,255,255,.16);text-align:center">'
+        +'<div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:10px">On Instagram</div>'
+        +'<div style="font-size:13.5px;line-height:1.7;color:#ddd;margin-bottom:16px">이 스토리의 원본 게시물이 인스타그램에 있습니다.<br><b style="color:#fff">좋아요·저장</b>으로 소장하고, 좋아할 친구에게 <b style="color:#fff">보내기</b>로 공유해보세요.</div>'
+        +'<a href="'+a.ig.replace(/"/g,'&quot;')+'" target="_blank" rel="noopener" style="display:inline-block;background:#fff;color:#000;padding:11px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none">게시물에서 반응 남기기 →</a>'
+        +'</aside>';
+      igCta.style.display='';
+    } else { igCta.innerHTML=''; igCta.style.display='none'; }
+  }
   // Use localized title/sub if available
   var _curLang=(typeof lang!=='undefined'?lang:(localStorage.getItem('pap-lang')||'ko'));
   var _locTitle=(a.ti18n && (a.ti18n[_curLang]||a.ti18n.en))||a.t||'';
