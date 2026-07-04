@@ -29,7 +29,8 @@ const ORG_SAMEAS = [
   'https://www.instagram.com/pap_object/',
   'https://www.facebook.com/papmagazine/',
   'https://www.youtube.com/@pap-magazine',
-  'https://www.threads.net/@pap_magazine'
+  'https://www.threads.net/@pap_magazine',
+  'https://www.pinterest.com/07667zb6r6qwnjy4kbo8nl6hmxbcaz/'
 ];
 const ORG_PUBLISHER = {
   '@type': 'Organization',
