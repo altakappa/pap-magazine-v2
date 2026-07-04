@@ -14,6 +14,32 @@ const SITE_NAME = 'PAP Magazine';
 const DEFAULT_OG_IMAGE = 'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/c_1_7c42a14014.jpg';
 const ORG_LOGO = 'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/PAP_LOGO.png';
 
+/* Instagram SEO — 홈의 Organization(@id) 와 동일 엔티티로 묶고, 모든 SSR
+ * 상세 페이지의 publisher 에 sameAs 를 실어 Google 지식그래프가 사이트와
+ * @pap_magazine 계열 SNS 를 같은 브랜드로 인식하게 한다. */
+const ORG_ID = SITE + '/#organization';
+const ORG_SAMEAS = [
+  'https://www.instagram.com/pap_magazine/',
+  'https://www.instagram.com/pap_korea/',
+  'https://www.instagram.com/papceleb_/',
+  'https://www.instagram.com/papfashion_/',
+  'https://www.instagram.com/papbeauty_/',
+  'https://www.instagram.com/pap_trends/',
+  'https://www.instagram.com/papstudios_/',
+  'https://www.instagram.com/pap_object/',
+  'https://www.facebook.com/papmagazine/',
+  'https://www.youtube.com/@pap-magazine',
+  'https://www.threads.net/@pap_magazine'
+];
+const ORG_PUBLISHER = {
+  '@type': 'Organization',
+  '@id': ORG_ID,
+  name: SITE_NAME,
+  url: SITE,
+  logo: { '@type': 'ImageObject', url: ORG_LOGO },
+  sameAs: ORG_SAMEAS
+};
+
 /* ── escape helpers ─────────────────────────────────── */
 function escAttr(s) {
   return String(s == null ? '' : s)
@@ -290,11 +316,7 @@ function renderSeoHtml(kind, record) {
       uploadDate: published,
       contentUrl: `https://www.youtube.com/watch?v=${record.youtube_id}`,
       embedUrl: `https://www.youtube.com/embed/${record.youtube_id}`,
-      publisher: {
-        '@type': 'Organization',
-        name: SITE_NAME,
-        logo: { '@type': 'ImageObject', url: ORG_LOGO }
-      },
+      publisher: ORG_PUBLISHER,
       keywords: tags.length ? tags.join(', ') : undefined,
       inLanguage: 'ko-KR'
     };
@@ -329,12 +351,7 @@ function renderSeoHtml(kind, record) {
       author: contributors.length
         ? contributors.map(name => ({ '@type': 'Person', name }))
         : [{ '@type': 'Organization', name: SITE_NAME, url: SITE }],
-      publisher: {
-        '@type': 'Organization',
-        name: SITE_NAME,
-        logo: { '@type': 'ImageObject', url: ORG_LOGO },
-        url: SITE
-      },
+      publisher: ORG_PUBLISHER,
       mainEntityOfPage: { '@type': 'WebPage', '@id': canonical },
       keywords: tags.length ? tags.join(', ') : undefined,
       articleSection: record.issue || record.category || cfg.sectionFallback,
