@@ -29,6 +29,7 @@ const STATIC_PAGES = [
   { path: '/subscribe',   priority: '0.9', changefreq: 'monthly' },
   { path: '/pullletter',  priority: '0.7', changefreq: 'monthly' },
   { path: '/archive',     priority: '0.8', changefreq: 'daily'   },
+  { path: '/pepperit',    priority: '0.8', changefreq: 'weekly'  },
   { path: '/about',       priority: '0.7', changefreq: 'monthly' },
   { path: '/business',    priority: '0.6', changefreq: 'monthly' },
   { path: '/contact',     priority: '0.6', changefreq: 'monthly' },
