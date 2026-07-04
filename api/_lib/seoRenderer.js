@@ -520,7 +520,7 @@ function renderSeoHtml(kind, record) {
   const heroHtml = (cfg.schemaType === 'VideoObject' && isValidYtId)
     ? `<div class="seo-video"><iframe src="https://www.youtube-nocookie.com/embed/${escAttr(record.youtube_id)}?rel=0" title="${escAttr(titleKo)}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`
     : ogImage
-      ? `<div class="seo-hero"><img src="${escAttr(ogImage)}" alt="${escAttr(titleKo)} — Cover" loading="eager" fetchpriority="high" width="1200" height="800"></div>`
+      ? `<div class="seo-hero"><img src="${escAttr(ogImage)}" alt="${escAttr(titleKo)} — Cover" loading="eager" fetchpriority="high" width="1200" height="800" data-pin-url="${escAttr(canonical)}" data-pin-media="${escAttr(ogImage)}" data-pin-description="${escAttr(titleKo + ' — PAP Magazine editorial')}"></div>`
       : '';
 
   /* QA #177 — gallery now annotates each image with the per-look fashion
@@ -532,8 +532,13 @@ function renderSeoHtml(kind, record) {
     ? '<section class="seo-gallery" aria-label="Gallery">' +
         gallery.map((src, i) => {
           const credit = getImageCredit(record, i + 1);
+          // Pinterest 리치핀/저장 최적화 (2026-07): 각 이미지에 data-pin-*
+          // 를 실어 방문자가 핀 저장 시 캐노니컬 PAP 페이지로 역링크되고
+          // 룩·크레딧이 설명으로 채워진다 → 콘텐츠가 핀터레스트 검색
+          // 그래프로 유입되는 플라이휠.
+          const pinDesc = titleKo + ' — Look ' + (i + 1) + (credit ? ' · ' + credit : '') + ' | PAP Magazine';
           return `<figure>`
-            + `<img src="${escAttr(src)}" alt="${escAttr(titleKo)} — Look ${i + 1}" loading="lazy" decoding="async">`
+            + `<img src="${escAttr(src)}" alt="${escAttr(titleKo)} — Look ${i + 1}" loading="lazy" decoding="async" data-pin-url="${escAttr(canonical)}" data-pin-media="${escAttr(src)}" data-pin-description="${escAttr(pinDesc)}">`
             + (credit ? `<figcaption class="ed-img-credits">${escText(credit)}</figcaption>` : '')
             + `</figure>`;
         }).join('') +
@@ -696,6 +701,8 @@ ${cfg.schemaType !== 'VideoObject' && ogImage ? `<link rel="preload" as="image" 
   .ig-funnel .igf-btn{display:inline-block;background:#fff;color:#000;padding:13px 34px;font-size:11.5px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;text-decoration:none;transition:opacity .3s}
   .ig-funnel .igf-btn:hover{opacity:.82}
   .ig-funnel .igf-sub{margin-top:14px;font-size:11px;opacity:.5;letter-spacing:.04em}
+  .ig-funnel .pin-btn{display:inline-block;margin-left:10px;background:#E60023;color:#fff;padding:13px 30px;font-size:11.5px;font-weight:700;letter-spacing:.1em;text-decoration:none;transition:opacity .3s}
+  .ig-funnel .pin-btn:hover{opacity:.85}
 </style>
 </head>
 <body class="seo-loading">
@@ -768,6 +775,7 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
       <div class="igf-kicker">PAP Magazine — Instagram</div>
       <p class="igf-copy">매일 업데이트되는 에디토리얼과 패션·셀럽 뉴스,<br><b>인스타그램에서 가장 먼저</b> 만나보세요.</p>
       <a class="igf-btn" href="https://www.instagram.com/pap_magazine/" target="_blank" rel="noopener">Follow @pap_magazine</a>
+      ${ogImage ? `<a class="pin-btn" href="https://www.pinterest.com/pin/create/button/?url=${encodeURIComponent(canonical)}&media=${encodeURIComponent(ogImage)}&description=${encodeURIComponent(titleKo + ' — PAP Magazine editorial')}" target="_blank" rel="noopener" data-pin-do="none">Pinterest에 저장</a>` : ''}
       <div class="igf-sub">전 세계 크리에이티브 팀과 만드는 월 20+ 에디토리얼</div>
     </aside>
   </article>
