@@ -69,10 +69,15 @@ function isBetaActive(){
   if(bg){
     var slides=document.querySelectorAll('.hero-slide-img');
     if(slides.length){
-      var src=slides[Math.floor(Math.random()*slides.length)].src;
-      var img=new Image();
-      img.onload=function(){bg.style.backgroundImage='url('+src+')';bg.classList.add('loaded');};
-      img.src=src;
+      // 성능 최적화: 슬라이드 2~4 는 data-defer-src 로 지연되므로 src 가
+      // 빈 경우 defer 속성에서 읽는다 (랜덤 선택 동작은 그대로 유지).
+      var el=slides[Math.floor(Math.random()*slides.length)];
+      var src=el.getAttribute('src')||el.getAttribute('data-defer-src')||'';
+      if(src){
+        var img=new Image();
+        img.onload=function(){bg.style.backgroundImage='url('+src+')';bg.classList.add('loaded');};
+        img.src=src;
+      }
     }
   }
 })();

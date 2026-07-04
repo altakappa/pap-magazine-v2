@@ -48,6 +48,12 @@ window._papFilmAutoPlay = function(){
 };
 
 // ======== LAZY DATA LOADING ========
+// 성능 최적화 (2026-07): 정적 JSON 6개(합계 ~6.7MB, 그중
+// editorial-details.json 단독 4.5MB)가 첫 페인트와 대역폭을 놓고
+// 경쟁하며 홈 로드를 10MB급으로 만들던 문제. 이 데이터는 API 싱크의
+// 폴백/보강용이므로 첫 화면에는 필요 없다 → load 이벤트 후 유휴
+// 시점으로 지연. 단, 딥링크(/editorial/... 직접 진입 등)는 상세
+// 데이터가 곧바로 필요하므로 즉시 로드해 기존 동작을 100% 유지한다.
 (function(){
   function loadJSON(url, target, renderCb){
     fetch(url).then(function(r){ return r.json(); }).then(function(data){
@@ -59,19 +65,42 @@ window._papFilmAutoPlay = function(){
       console.warn('[PAP] Could not load ' + url + ', using API sync fallback');
     });
   }
-  // Only load JSON if not running from file:// protocol
-  if(window.location.protocol !== 'file:'){
+
+  function startStaticLoads(){
     // Use late-binding wrappers so callbacks are resolved when JSON arrives, not when loadJSON is called
     loadJSON('data/films.json', filmAllData, function(){ if(window._papFilmRenderCards) window._papFilmRenderCards(); if(window._papFilmAutoPlay) window._papFilmAutoPlay(); });
     loadJSON('data/articles.json', artData, function(){ if(window._papArticleRenderCards) window._papArticleRenderCards(); });
     loadJSON('data/editorials.json', edData);
     loadJSON('data/creators.json', creatorData);
     loadJSON('data/shorts.json', shortsData, function(){ if(window._papShortsRender) window._papShortsRender(); });
+  }
+  function startDetailsLoad(){
     // For edDetails (object, not array):
     fetch('data/editorial-details.json?v=2').then(function(r){return r.json();}).then(function(data){
       Object.keys(data).forEach(function(k){ edDetails[k]=data[k]; });
+      if(window._papEdDetailsReady){ window._papEdDetailsReady(); }
       /* Loaded editorial details */
     }).catch(function(e){ console.warn('[PAP] Could not load editorial details'); });
+  }
+
+  // Only load JSON if not running from file:// protocol
+  if(window.location.protocol !== 'file:'){
+    // 딥링크/해시 진입 = 상세 콘텐츠를 즉시 열어야 함 → 지연 없이 로드
+    var deepLink = /^\/(editorial|article|film|short)\//.test(window.location.pathname)
+      || /#(editorial|article|film|short)/.test(window.location.hash || '');
+
+    if(deepLink){
+      startStaticLoads();
+      startDetailsLoad();
+    } else {
+      var kick = function(){
+        // 가벼운 5종(합계 ~2.2MB)은 첫 유휴 시점, 4.5MB 상세맵은 그 뒤에
+        setTimeout(startStaticLoads, 800);
+        setTimeout(startDetailsLoad, 2000);
+      };
+      if(document.readyState === 'complete'){ kick(); }
+      else { window.addEventListener('load', kick); }
+    }
   }
 })();
 // Fetches films/articles from Supabase API and merges with hardcoded data.
