@@ -22,6 +22,7 @@ module.exports = async function handler(req, res) {
     '  <sitemap><loc>' + SITE + '/sitemap-editorials.xml</loc><lastmod>' + today + '</lastmod></sitemap>\n' +
     '  <sitemap><loc>' + SITE + '/sitemap-articles.xml</loc><lastmod>' + today + '</lastmod></sitemap>\n' +
     '  <sitemap><loc>' + SITE + '/sitemap-films.xml</loc><lastmod>' + today + '</lastmod></sitemap>\n' +
+    '  <sitemap><loc>' + SITE + '/sitemap-news.xml</loc><lastmod>' + today + '</lastmod></sitemap>\n' +
     '</sitemapindex>\n';
 
   res.setHeader('Content-Type', 'application/xml; charset=utf-8');

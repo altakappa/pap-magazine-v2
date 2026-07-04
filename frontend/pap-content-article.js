@@ -57,11 +57,13 @@ function _openAllArticlesInner(){
   });
   // Build article cards
   artData.forEach(function(a,i){
-    var card=document.createElement('div');
+    // SEO — 실제 <a href="/article/<slug>"> 카드 (크롤러 링크 그래프용).
+    var card=document.createElement('a');
     card.className='art-all-card';
+    card.setAttribute('href', a.slug ? '/article/'+encodeURIComponent(a.slug) : '#');
     card.setAttribute('data-cats',(a.cat||'').toLowerCase());
     card.setAttribute('data-idx',i);
-    card.onclick=function(){openArticleDetail(i);};
+    card.onclick=function(e){ if(e&&e.preventDefault)e.preventDefault(); openArticleDetail(i); };
     var dateStr=a.d?a.d.substring(0,10):'';
     card.innerHTML='<div class="art-all-thumb"><img src="'+(a.img||a.th)+'" alt="'+escapeHtml(a.t)+'" loading="lazy" onerror="edImgError(this)"></div><div class="art-all-info"><div class="art-all-cat">'+(a.cat||'ARTICLE').toUpperCase()+' · '+dateStr+'</div><div class="art-all-title">'+escapeHtml(a.t)+'</div>'+(a.sub?'<div class="art-all-sub">'+escapeHtml(a.sub)+'</div>':'')+'</div>';
     grid.appendChild(card);

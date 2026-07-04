@@ -350,12 +350,19 @@ window._papFilmAutoPlay = function(){
     });
     // Reverse so insertBefore(track.firstChild) yields newest-first order.
     candidates.reverse().forEach(function(a){
-      var card = document.createElement('div');
+      // SEO — 실제 <a href> 카드로 생성. 크롤러(구글 JS 렌더 포함)가
+      // 목록 → 상세(/article/<slug>) 링크 그래프를 따라갈 수 있게 한다.
+      // 클릭은 preventDefault 후 기존 SPA 오버레이 그대로.
+      var card = document.createElement('a');
       card.className = 'fashion-card';
       var slugAttr = a.slug || '';
-      if(slugAttr) card.setAttribute('data-slug', slugAttr);
-      card.style.cursor = 'pointer';
-      card.setAttribute('onclick', 'openArticleFromCard(this)');
+      if(slugAttr){
+        card.setAttribute('data-slug', slugAttr);
+        card.setAttribute('href', '/article/' + encodeURIComponent(slugAttr));
+      } else {
+        card.setAttribute('href', '#');
+      }
+      card.setAttribute('onclick', 'event.preventDefault();openArticleFromCard(this)');
       var img = a.th || a.img || '';
       var rawCat = a.cat || '';
       // Match the static-card formatting: "Fashion - 02 Mar 2026". We
@@ -700,9 +707,11 @@ window._papFilmAutoPlay = function(){
       var dateLabel = ed.date ? String(ed.date).split('T')[0] : '';
       var catLabel  = 'EDITORIAL' + (dateLabel ? (' - ' + dateLabel) : '');
       var tagsAttr  = Array.isArray(ed.tags) ? ed.tags.join(',') : '';
+      // SEO — 실제 <a href="/editorial/<slug>"> 카드 (크롤러 링크 그래프용).
+      var latestHref = ed.slug ? '/editorial/' + encodeURIComponent(ed.slug) : '#';
       html +=
-        '<div class="ed-row-card" data-tags="' + tagsAttr + '" data-api-rendered="1" ' +
-        'onclick=\'openEditorial("' + safeTitle + '","' + safeImg + '")\'>' +
+        '<a class="ed-row-card" href="' + latestHref + '" data-tags="' + tagsAttr + '" data-api-rendered="1" ' +
+        'onclick=\'event.preventDefault();openEditorial("' + safeTitle + '","' + safeImg + '")\'>' +
           '<div class="ed-row-card-img">' +
             '<img loading="lazy" src="' + safeImg + '" alt="' + safeTitle + '" ' +
                  'onerror="if(window.edImgError)edImgError(this)">' +
@@ -711,7 +720,7 @@ window._papFilmAutoPlay = function(){
             '<div class="ed-row-card-cat">' + catLabel + '</div>' +
             '<div class="ed-row-card-title">' + String(ed.title||'').toUpperCase() + '</div>' +
           '</div>' +
-        '</div>';
+        '</a>';
     }
     track.innerHTML = html;
   }
@@ -779,8 +788,14 @@ window._papFilmAutoPlay = function(){
             var dateLabel = ed.date ? String(ed.date).split('T')[0] : '';
             var catLabel  = 'EDITORIAL' + (dateLabel ? (' - ' + dateLabel) : '');
             var tagsAttr  = Array.isArray(ed.tags) ? ed.tags.join(',') : '';
-            h += '<div class="ed-row-card" data-tags="' + tagsAttr + '" data-api-rendered="1" ' +
-                 'onclick=\'openEditorial("' + safeTitle + '","' + safeImg + '")\'>' +
+            // SEO — 실제 <a href="/editorial/<slug>"> 로 렌더. 크롤러가
+            // 홈 → 에디토리얼 상세 링크를 따라갈 수 있게 한다 (클릭은
+            // preventDefault 후 기존 SPA 오버레이 유지).
+            var edHref = ed.slug
+              ? '/editorial/' + encodeURIComponent(ed.slug)
+              : '#';
+            h += '<a class="ed-row-card" href="' + edHref + '" data-tags="' + tagsAttr + '" data-api-rendered="1" ' +
+                 'onclick=\'event.preventDefault();openEditorial("' + safeTitle + '","' + safeImg + '")\'>' +
                    '<div class="ed-row-card-img">' +
                      '<img loading="lazy" src="' + safeImg + '" alt="' + safeTitle + '" ' +
                           'onerror="if(window.edImgError)edImgError(this)">' +
@@ -789,7 +804,7 @@ window._papFilmAutoPlay = function(){
                      '<div class="ed-row-card-cat">' + catLabel + '</div>' +
                      '<div class="ed-row-card-title">' + String(ed.title || '').toUpperCase() + '</div>' +
                    '</div>' +
-                 '</div>';
+                 '</a>';
           });
           h += '</div><button class="ed-row-arrow ed-row-right" onclick="scrollEdRow(this,1)" aria-label="Scroll right">&#8250;</button></div></div>';
           return h;
@@ -848,9 +863,11 @@ window._papFilmAutoPlay = function(){
           var dateLabel = ed.published_date ? String(ed.published_date).split('T')[0] : '';
           var catLabel  = 'EDITORIAL' + (dateLabel ? (' - ' + dateLabel) : '');
           var tagsAttr  = Array.isArray(ed.tags) ? ed.tags.join(',') : '';
+          // SEO — 실제 <a href="/editorial/<slug>"> 카드 (크롤러 링크 그래프용).
+          var trendHref = ed.slug ? '/editorial/' + encodeURIComponent(ed.slug) : '#';
           html +=
-            '<div class="ed-row-card" data-tags="' + tagsAttr + '" data-api-rendered="1" ' +
-            'onclick=\'openEditorial("' + safeTitle + '","' + safeImg + '")\'>' +
+            '<a class="ed-row-card" href="' + trendHref + '" data-tags="' + tagsAttr + '" data-api-rendered="1" ' +
+            'onclick=\'event.preventDefault();openEditorial("' + safeTitle + '","' + safeImg + '")\'>' +
               '<div class="ed-row-card-img">' +
                 '<img loading="lazy" src="' + safeImg + '" alt="' + safeTitle + '" ' +
                      'onerror="if(window.edImgError)edImgError(this)">' +
@@ -859,7 +876,7 @@ window._papFilmAutoPlay = function(){
                 '<div class="ed-row-card-cat">' + catLabel + '</div>' +
                 '<div class="ed-row-card-title">' + String(title).toUpperCase() + '</div>' +
               '</div>' +
-            '</div>';
+            '</a>';
         });
         if(html) track.innerHTML = html;
       })

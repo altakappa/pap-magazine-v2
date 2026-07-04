@@ -58,11 +58,14 @@ function _openAllFilmsInner(){
   });
   // Build film cards
   filmAllData.forEach(function(f,i){
-    var card=document.createElement('div');
+    // SEO — 실제 <a href="/film/<slug>"> 카드 (크롤러 링크 그래프용).
+    // 클릭은 preventDefault 후 기존 SPA 상세 오버레이 유지.
+    var card=document.createElement('a');
     card.className='film-all-card';
+    card.setAttribute('href', f.slug ? '/film/'+encodeURIComponent(f.slug) : '#');
     card.setAttribute('data-cats',(f.cat||'').toLowerCase());
     card.setAttribute('data-idx',i);
-    card.onclick=function(){openFilmDetail(i);};
+    card.onclick=function(e){ if(e&&e.preventDefault)e.preventDefault(); openFilmDetail(i); };
     var dateStr=f.d?f.d.substring(0,10):'';
     card.innerHTML='<div class="film-all-thumb"><img src="'+f.th+'" alt="'+escapeHtml(f.t)+'" loading="lazy" onerror="edImgError(this)"><div class="film-play-icon"><svg viewBox="0 0 24 24" fill="#fff" width="32" height="32"><path d="M8 5v14l11-7z"/></svg></div></div><div class="film-all-info"><div class="film-all-cat">'+(f.cat||'FILM').toUpperCase()+' · '+dateStr+'</div><div class="film-all-title">'+escapeHtml(f.t)+'</div></div>';
     grid.appendChild(card);
