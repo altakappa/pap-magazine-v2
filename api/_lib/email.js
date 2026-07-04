@@ -334,7 +334,7 @@ const templates = {
         <p>Hi ${user.name || 'there'},</p>
         <p>Your <strong style="color:#fff;">${planLabels[plan] || plan}</strong> subscription is now active.</p>
         <p>You now have access to all subscriber-exclusive content and features.</p>
-        <a href="${FRONTEND_URL}/subscribe.html" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">MANAGE SUBSCRIPTION</a>
+        <a href="${FRONTEND_URL}/subscribe" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">MANAGE SUBSCRIPTION</a>
       `),
     };
   },

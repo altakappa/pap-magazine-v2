@@ -223,25 +223,25 @@ function getImageCredit(record, oneBasedIdx) {
 const KIND = {
   editorial: {
     pathPrefix: '/editorial/',
-    breadcrumb: { name: 'Magazine', url: SITE + '/magazine.html' },
+    breadcrumb: { name: 'Magazine', url: SITE + '/magazine' },
     schemaType: 'Article',
     sectionFallback: 'Editorial'
   },
   article: {
     pathPrefix: '/article/',
-    breadcrumb: { name: 'Articles', url: SITE + '/articles.html' },
+    breadcrumb: { name: 'Articles', url: SITE + '/articles' },
     schemaType: 'NewsArticle',
     sectionFallback: 'Article'
   },
   film: {
     pathPrefix: '/film/',
-    breadcrumb: { name: 'Films', url: SITE + '/films.html' },
+    breadcrumb: { name: 'Films', url: SITE + '/films' },
     schemaType: 'VideoObject',
     sectionFallback: 'Film'
   },
   short: {
     pathPrefix: '/short/',
-    breadcrumb: { name: 'Films', url: SITE + '/films.html' },
+    breadcrumb: { name: 'Films', url: SITE + '/films' },
     schemaType: 'VideoObject',
     sectionFallback: 'Short'
   }
@@ -686,6 +686,16 @@ ${cfg.schemaType !== 'VideoObject' && ogImage ? `<link rel="preload" as="image" 
   .seo-back{max-width:800px;margin:48px auto 80px;padding:24px;border-top:1px solid rgba(255,255,255,.1);font-size:13px;letter-spacing:.06em;text-transform:uppercase;opacity:.7}
   .seo-back a{color:#fff;text-decoration:none;margin-right:8px}
   .seo-back a:hover{opacity:.7}
+  /* 검색 유입 → 인스타그램 전환 모듈 (2026-07). 구글/네이버에서 기사로
+     들어온 방문자에게 팔로우 CTA 노출 — 스트릿/셀럽/패션위크 주제 검색
+     트래픽을 IG 팔로워로 전환하는 깔때기의 착지점. */
+  .ig-funnel{max-width:800px;margin:56px auto 0;padding:36px 28px;border:1px solid rgba(255,255,255,.16);text-align:center}
+  .ig-funnel .igf-kicker{font-size:10px;letter-spacing:.32em;text-transform:uppercase;opacity:.55;margin-bottom:14px}
+  .ig-funnel .igf-copy{font-size:15px;line-height:1.75;margin-bottom:22px}
+  .ig-funnel .igf-copy b{font-weight:600}
+  .ig-funnel .igf-btn{display:inline-block;background:#fff;color:#000;padding:13px 34px;font-size:11.5px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;text-decoration:none;transition:opacity .3s}
+  .ig-funnel .igf-btn:hover{opacity:.82}
+  .ig-funnel .igf-sub{margin-top:14px;font-size:11px;opacity:.5;letter-spacing:.04em}
 </style>
 </head>
 <body class="seo-loading">
@@ -746,14 +756,21 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
     ${fashionHtml}
     ${relatedEditorialHtml}
     ${relatedFilmsHtml}
+
+    <aside class="ig-funnel">
+      <div class="igf-kicker">PAP Magazine — Instagram</div>
+      <p class="igf-copy">매일 업데이트되는 에디토리얼과 패션·셀럽 뉴스,<br><b>인스타그램에서 가장 먼저</b> 만나보세요.</p>
+      <a class="igf-btn" href="https://www.instagram.com/pap_magazine/" target="_blank" rel="noopener">Follow @pap_magazine</a>
+      <div class="igf-sub">전 세계 크리에이티브 팀과 만드는 월 20+ 에디토리얼</div>
+    </aside>
   </article>
 </main>
 
 <nav class="seo-back" aria-label="Site navigation">
   <a href="${SITE}/">← ${escText(SITE_NAME)}</a> ·
-  <a href="${SITE}/magazine.html">Magazine</a> ·
-  <a href="${SITE}/articles.html">Articles</a> ·
-  <a href="${SITE}/films.html">Films</a>
+  <a href="${SITE}/magazine">Magazine</a> ·
+  <a href="${SITE}/articles">Articles</a> ·
+  <a href="${SITE}/films">Films</a>
 </nav>
 
 <script>
