@@ -49,6 +49,7 @@
     { "source": "/admin/subscriptions", "destination": "/admin.html" },
     { "source": "/admin/(.*)", "destination": "/admin.html" },
     { "source": "/rss.xml", "destination": "/api/rss" },
+    { "source": "/rss-editorials.xml", "destination": "/api/rss-editorials" },
     { "source": "/sitemap-news.xml", "destination": "/api/sitemap-news" },
     { "source": "/sitemap.xml", "destination": "/api/sitemap" },
     { "source": "/sitemap-index.xml", "destination": "/api/sitemap-index" },
