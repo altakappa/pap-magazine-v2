@@ -43,6 +43,13 @@ function wrapHtml(content) {
   <tr><td style="padding:32px 40px;color:#ccc;font-size:14px;line-height:1.7;">
     ${content}
   </td></tr>
+  <!-- IG 팔로우 CTA (2026-07 성장 깔때기) — 모든 발신 메일 공통.
+       회원 메일은 열람률이 높은 접점이라 팔로워 전환 효율이 좋다. -->
+  <tr><td align="center" style="padding:26px 40px;border-top:1px solid #222;">
+    <div style="color:#888;font-size:10px;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;">PAP Magazine — Instagram</div>
+    <div style="color:#ccc;font-size:13px;line-height:1.7;margin-bottom:16px;">매일 업데이트되는 에디토리얼과 패션 뉴스,<br>인스타그램에서 가장 먼저 만나보세요.</div>
+    <a href="https://www.instagram.com/pap_magazine/" style="display:inline-block;background:#fff;color:#000;padding:11px 28px;font-size:11px;font-weight:700;letter-spacing:2px;text-decoration:none;">FOLLOW @PAP_MAGAZINE</a>
+  </td></tr>
   <!-- Footer -->
   <tr><td style="padding:24px 40px;border-top:1px solid #222;color:#666;font-size:11px;line-height:1.5;">
     &copy; ${new Date().getFullYear()} PAP Magazine. All rights reserved.<br>

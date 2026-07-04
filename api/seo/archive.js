@@ -139,6 +139,7 @@ ${JSON.stringify({
   ${section('Films', filmItems)}
   <footer>
     <a href="/">Home</a><a href="/articles">Articles</a><a href="/films">Films</a><a href="/subscribe">Subscribe</a><a href="/about">About</a><a href="/rss.xml">RSS</a>
+    <a href="https://www.instagram.com/pap_magazine/" rel="noopener">Instagram @pap_magazine →</a>
   </footer>
 </div>
 </body>

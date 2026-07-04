@@ -16,7 +16,7 @@ const { handleCors } = require('./_lib/cors');
 
 const SITE = 'https://www.pap-magazine.com';
 const FEED_TITLE = 'PAP MAGAZINE';
-const FEED_DESC = 'PAP Magazine — global fashion, editorial & film. 패션·아트·뷰티·컬쳐 매거진 PAP의 최신 에디토리얼과 기사.';
+const FEED_DESC = 'PAP Magazine — global fashion, editorial & film. 패션·아트·뷰티·컬쳐 매거진 PAP의 최신 에디토리얼과 기사. Instagram @pap_magazine';
 
 function xmlEscape(s) {
   return String(s == null ? '' : s)
