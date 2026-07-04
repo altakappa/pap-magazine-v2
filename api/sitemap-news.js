@@ -27,13 +27,27 @@ module.exports = async function handler(req, res) {
 
   try {
     const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-    const { data: arts } = await supabaseAdmin
+    let { data: arts } = await supabaseAdmin
       .from('articles')
       .select('id, title, custom_url, published_date')
       .eq('status', 'published')
       .gte('published_date', cutoff)
       .order('published_date', { ascending: false })
       .limit(100);
+
+    // GSC 는 <url> 이 0개인 사이트맵을 'XML 태그 누락' 오류로 표시한다.
+    // 48시간 내 기사가 없으면 최신 기사 1건을 폴백으로 포함 — Google News
+    // 는 2일 지난 항목을 조용히 무시하므로 (오류 아님) 가이드라인과
+    // 충돌하지 않으면서 사이트맵 구조는 항상 유효하게 유지된다.
+    if (!arts || !arts.length) {
+      const fb = await supabaseAdmin
+        .from('articles')
+        .select('id, title, custom_url, published_date')
+        .eq('status', 'published')
+        .order('published_date', { ascending: false })
+        .limit(1);
+      arts = fb.data || [];
+    }
 
     const urls = (arts || []).map(a => {
       const handle = a.custom_url || a.id;
