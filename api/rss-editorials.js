@@ -40,7 +40,7 @@ module.exports = async function handler(req, res) {
   try {
     const { data: eds } = await supabaseAdmin
       .from('editorials')
-      .select('id, title, title_en, slug, published_date, description, description_en, thumbnail, cover_image, og_image, issue, category')
+      .select('id, title, title_en, slug, published_date, description, description_en, thumbnail, cover_image, og_image, issue')
       .eq('status', 'published')
       .not('published_date', 'is', null)
       .lte('published_date', new Date().toISOString())
@@ -55,7 +55,6 @@ module.exports = async function handler(req, res) {
       // 설명 첫 줄에 키워드. 본문 설명(ko→en) 이어붙임.
       const baseDesc = cleanDesc(e.description) || cleanDesc(e.description_en);
       const kw = e.title + ' — PAP Magazine editorial'
-        + (e.category ? ' · ' + e.category : '')
         + (e.issue ? ' · ' + e.issue : '');
       const desc = baseDesc ? (kw + '. ' + baseDesc) : kw;
       return {

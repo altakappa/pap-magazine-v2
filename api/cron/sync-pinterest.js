@@ -53,7 +53,7 @@ module.exports = async function handler(req, res) {
     // 미처리 에디토리얼 (최신 우선)
     const { data: eds, error } = await supabaseAdmin
       .from('editorials')
-      .select('id, title, title_en, slug, description, description_en, cover_image, og_image, thumbnail, category, issue')
+      .select('id, title, title_en, slug, description, description_en, cover_image, og_image, thumbnail, issue')
       .eq('status', 'published')
       .is('pinterest_synced_at', null)
       .not('published_date', 'is', null)
@@ -83,7 +83,6 @@ module.exports = async function handler(req, res) {
 
       const link = SITE + '/editorial/' + encodeURIComponent(handle);
       const kw = e.title + ' — PAP Magazine editorial'
-        + (e.category ? ' · ' + e.category : '')
         + (e.issue ? ' · ' + e.issue : '');
       const baseDesc = String(e.description || e.description_en || '').replace(/<[^>]*>/g, ' ');
       const description = truncate(baseDesc ? (kw + '. ' + baseDesc) : kw, 480);

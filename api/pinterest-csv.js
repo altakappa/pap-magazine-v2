@@ -44,7 +44,7 @@ module.exports = async function handler(req, res) {
 
     const { data: eds, error } = await supabaseAdmin
       .from('editorials')
-      .select('id, title, title_en, slug, description, description_en, cover_image, og_image, thumbnail, category, issue')
+      .select('id, title, title_en, slug, description, description_en, cover_image, og_image, thumbnail, issue')
       .eq('status', 'published')
       .not('published_date', 'is', null)
       .lte('published_date', new Date().toISOString())
@@ -67,12 +67,12 @@ module.exports = async function handler(req, res) {
       // 한국어 키워드 + 인스타 팔로우 유도 (핀 자체에서 전환)
       const desc = clean(
         (base ? base + ' ' : '') +
-        `${e.title} — PAP 매거진 에디토리얼${e.category ? ' · ' + e.category : ''}. ` +
+        `${e.title} — PAP 매거진 에디토리얼${e.issue ? ' · ' + e.issue : ''}. ` +
         `패션·뷰티·컬쳐 화보. 더 많은 화보는 인스타그램 @pap_magazine 에서. #PAP매거진`,
         480
       );
       const keywords = ['패션 에디토리얼', '패션 화보', 'fashion editorial', 'PAP 매거진', 'pap magazine',
-        e.category || 'fashion'].filter(Boolean).join(', ');
+        'beauty', 'fashion'].filter(Boolean).join(', ');
 
       rows.push([
         csvCell(title),
