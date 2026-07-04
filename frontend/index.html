@@ -466,6 +466,20 @@
     <div class="hero-slide-gradient"></div>
   </div>
   <script>
+  /* 참여 증폭 (2026-07) — 네이티브 공유 시트. 모바일에서 카카오톡/인스타
+     DM 등으로 현재 스토리 URL 을 바로 보내게 한다 (수신자는 기사 착지 →
+     IG 깔때기 진입). 미지원 브라우저는 URL 복사 폴백. */
+  window._papShareStory = function(){
+    var url = window.location.href.split('#')[0];
+    var title = document.title;
+    if (navigator.share) {
+      navigator.share({ title: title, url: url }).catch(function(){});
+    } else if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(function(){
+        try { if (window.PAP && PAP.ui && PAP.ui.toast) PAP.ui.toast('링크가 복사되었습니다'); else alert('링크가 복사되었습니다'); } catch(_) { alert('링크가 복사되었습니다'); }
+      });
+    }
+  };
   /* 히어로 지연 슬라이드 복원 — LCP(1번 슬라이드) 로드가 끝난 뒤 나머지를
      내려받는다. 회전 주기(수 초)보다 훨씬 먼저 준비되므로 UX 변화 없음. */
   (function(){
@@ -1021,6 +1035,12 @@
       </div>
       <span style="font-size:18px;color:rgba(255,255,255,.4);flex-shrink:0">›</span>
     </a>
+    <!-- 검색→인스타 전환 깔때기 (2026-07) — 필름 오버레이 버전 -->
+    <aside style="margin:28px 0 8px;padding:30px 24px;border:1px solid rgba(255,255,255,.16);text-align:center">
+      <div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:12px">PAP Magazine — Instagram</div>
+      <div style="font-size:13.5px;line-height:1.75;color:#ddd;margin-bottom:18px">다음 필름과 비하인드 컷,<br><b style="color:#fff">인스타그램에서 가장 먼저</b> 공개됩니다.</div>
+      <a href="https://www.instagram.com/pap_magazine/" target="_blank" rel="noopener" style="display:inline-block;background:#fff;color:#000;padding:11px 28px;font-size:10.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;text-decoration:none">Follow @pap_magazine</a>
+    </aside>
   </div>
 </div>
 
@@ -1116,6 +1136,7 @@
       <div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:12px">PAP Magazine — Instagram</div>
       <div style="font-size:14px;line-height:1.75;color:#ddd;margin-bottom:20px">매일 업데이트되는 에디토리얼과 패션·셀럽 뉴스,<br><b style="color:#fff">인스타그램에서 가장 먼저</b> 만나보세요.</div>
       <a href="https://www.instagram.com/pap_magazine/" target="_blank" rel="noopener" style="display:inline-block;background:#fff;color:#000;padding:12px 30px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;text-decoration:none">Follow @pap_magazine</a>
+      <button onclick="_papShareStory()" style="display:inline-block;margin-left:10px;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);padding:12px 24px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;cursor:pointer">이 스토리 공유 ↗</button>
     </aside>
     <div id="artSocialSlot"></div>
   </div>
@@ -1221,6 +1242,7 @@
       <div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:12px">PAP Magazine — Instagram</div>
       <div style="font-size:14px;line-height:1.75;color:#ddd;margin-bottom:20px">이 에디토리얼의 비하인드와 다음 화보,<br><b style="color:#fff">인스타그램에서 가장 먼저</b> 공개됩니다.</div>
       <a href="https://www.instagram.com/pap_magazine/" target="_blank" rel="noopener" style="display:inline-block;background:#fff;color:#000;padding:12px 30px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;text-decoration:none">Follow @pap_magazine</a>
+      <button onclick="_papShareStory()" style="display:inline-block;margin-left:10px;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);padding:12px 24px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;cursor:pointer">이 스토리 공유 ↗</button>
     </aside>
   </div>
 
