@@ -45,7 +45,7 @@ module.exports = async function handler(req, res) {
       .not('published_date', 'is', null)
       .lte('published_date', new Date().toISOString())
       .order('published_date', { ascending: false })
-      .limit(50);
+      .limit(1000);  // 전체 에디토리얼 아카이브 (Pinterest 자동발행 + 소급 대응)
 
     const items = (eds || []).map(e => {
       const handle = e.slug || e.id;
