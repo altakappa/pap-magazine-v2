@@ -61,6 +61,7 @@
     { "source": "/sitemap-editorials.xml", "destination": "/api/sitemap-editorials" },
     { "source": "/sitemap-articles.xml", "destination": "/api/sitemap-articles" },
     { "source": "/sitemap-films.xml", "destination": "/api/sitemap-films" },
+    { "source": "/sitemap-brands.xml", "destination": "/api/sitemap-brands" },
     { "source": "/editorial/:slug", "destination": "/api/seo/editorial/:slug" },
     { "source": "/article/:slug", "destination": "/api/seo/article/:slug" },
     { "source": "/film/:slug", "destination": "/api/seo/film/:slug" },
@@ -84,7 +85,11 @@
     { "source": "/data-migration", "destination": "/data-migration.html" },
     { "source": "/pullletter", "destination": "/pullletter.html" },
     { "source": "/magazine", "destination": "/magazine.html" },
-    { "source": "/archive", "destination": "/api/seo/archive" }
+    { "source": "/archive", "destination": "/api/seo/archive" },
+    { "source": "/partners", "destination": "/api/seo/partners" },
+    { "source": "/brand/:id", "destination": "/api/seo/brand/:id" },
+    { "source": "/badge.svg", "destination": "/api/badge" },
+    { "source": "/badge", "destination": "/api/badge" }
   ],
   "images": {
     "remotePatterns": [

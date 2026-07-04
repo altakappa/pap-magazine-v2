@@ -36,6 +36,8 @@ const ORG_PUBLISHER = {
   '@type': 'Organization',
   '@id': ORG_ID,
   name: SITE_NAME,
+  // 전 검색엔진 브랜드 검색 대응 — PAP MAGAZINE / PAP MAG / PAP / PAP 매거진 / PAP매거진 / 팝매거진.
+  alternateName: ['PAP MAGAZINE', 'PAP MAG', 'PAP', 'PAP 매거진', 'PAP매거진', '팝매거진', '팹매거진'],
   url: SITE,
   logo: { '@type': 'ImageObject', url: ORG_LOGO },
   sameAs: ORG_SAMEAS
