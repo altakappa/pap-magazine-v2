@@ -943,7 +943,7 @@ window._papFilmAutoPlay = function(){
     }
 
     // STAGE 1: fast-path — newest 12 only.
-    fetch(PAP_API_BASE + '/editorials?status=published&limit=12&page=1')
+    fetch(PAP_API_BASE + '/editorials?status=published&limit=12&page=1&public=1')
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(res){
         if(!res || !Array.isArray(res.data) || res.data.length === 0) return;

@@ -83,9 +83,26 @@ module.exports = async function handler(req, res) {
         // see "who created / last edited" without a per-row lookup.
         'created_at','created_by','updated_by','admin_edited_at'
       ].join(',');
+
+      // 성능 최적화 (2026-07) — 공개 홈 싱크(?public=1)용 슬림 컬럼.
+      // apiEditorialToLocal 이 실제로 읽는 필드만 남긴다. instagram_caption
+      // (트라이링구얼 블롭)·seo_*·감사 필드는 SPA 목록 소비자가 전혀 읽지
+      // 않는 순수 페이로드 낭비였다 (12건 응답 510KB의 주범 중 하나).
+      // gallery/credits/fashion/description(ko·en) 은 openEditorial 이
+      // 목록 캐시에서 즉시 렌더하는 데 쓰므로 유지 (QA #191 회귀 방지).
+      // 어드민 목록은 public 파라미터를 안 보내므로 영향 없음.
+      const PUBLIC_LIST_COLUMNS = [
+        'id','title','slug','cover_image','thumbnail','published_date',
+        'url','tags','issue','status','title_en',
+        'description','description_en','gallery','credits','fashion',
+        'created_at','updated_at'
+      ].join(',');
+
+      const isPublicSlim = req.query.public === '1';
+      const cols = isPublicSlim ? PUBLIC_LIST_COLUMNS : LIST_COLUMNS;
       let query = supabaseAdmin
         .from('editorials')
-        .select(LIST_COLUMNS + ', related_films:films!related_editorial_id(id,slug,title,thumbnail_url,youtube_id,published_date,status)', { count: 'exact' });
+        .select(cols + ', related_films:films!related_editorial_id(id,slug,title,thumbnail_url,youtube_id,published_date,status)', { count: 'exact' });
 
       if (isScheduledFilter) {
         // QA #196 — scheduled = status='published' + future scheduled

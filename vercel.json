@@ -78,6 +78,14 @@
     { "source": "/magazine", "destination": "/magazine.html" },
     { "source": "/archive", "destination": "/api/seo/archive" }
   ],
+  "images": {
+    "remotePatterns": [
+      { "protocol": "https", "hostname": "pap-korea-bucket.s3.ap-northeast-2.amazonaws.com" }
+    ],
+    "sizes": [320, 640, 960, 1280, 1920],
+    "formats": ["image/avif", "image/webp"],
+    "minimumCacheTTL": 2678400
+  },
   "redirects": [
     { "source": "/about.html",    "destination": "/about",    "statusCode": 301 },
     { "source": "/business.html", "destination": "/business", "statusCode": 301 },
