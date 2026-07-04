@@ -47,9 +47,31 @@ module.exports = async function handler(req, res) {
     });
   }
 
-  const BATCH = Math.max(1, Math.min(50, parseInt(process.env.PINTEREST_SYNC_BATCH || '12', 10)));
+  // 안전 램프 (봇 판정 방지) — 신규 계정은 천천히, 성숙할수록 빠르게.
+  // 크론은 하루 4회 실행되므로 run당 배치 × 4 ≈ 하루 발행량.
+  // 이미 발행된 핀 수(pinnedCount)를 계정 성숙도 근사치로 사용.
+  //   ~50개 미만  : 3/run  ≈ 12/일  (1주차 워밍업)
+  //   ~200개 미만 : 5/run  ≈ 20/일
+  //   ~600개 미만 : 8/run  ≈ 32/일
+  //   ~1500개 미만: 12/run ≈ 48/일
+  //   그 이상      : 16/run ≈ 64/일 (계정 안정화 후 최대 속도)
+  // PINTEREST_SYNC_BATCH 를 세팅하면 램프 대신 수동 고정.
+  function rampBatch(n) {
+    if (n < 50) return 3;
+    if (n < 200) return 5;
+    if (n < 600) return 8;
+    if (n < 1500) return 12;
+    return 16;
+  }
 
   try {
+    const { count: pinnedCount } = await supabaseAdmin
+      .from('editorials').select('id', { count: 'exact', head: true })
+      .not('pinterest_pin_id', 'is', null);
+    const BATCH = process.env.PINTEREST_SYNC_BATCH
+      ? Math.max(1, Math.min(50, parseInt(process.env.PINTEREST_SYNC_BATCH, 10)))
+      : rampBatch(pinnedCount || 0);
+
     // 미처리 에디토리얼 (최신 우선)
     const { data: eds, error } = await supabaseAdmin
       .from('editorials')
