@@ -9,7 +9,7 @@ const { generateToken, setAuthCookie } = require('../_lib/auth');
 const { setCsrfCookie } = require('../_lib/csrf');
 const { handleCors } = require('../_lib/cors');
 const { sendEmail, templates } = require('../_lib/email');
-const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
+const { rateLimitStrict, RATE_LIMITS } = require('../_lib/rateLimit');
 const { isValidEmail } = require('../_lib/validate');
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -21,7 +21,7 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  if (rateLimit(req, res, RATE_LIMITS.auth)) return;
+  if (await rateLimitStrict(req, res, RATE_LIMITS.auth, 'signup')) return;
 
   let createdUserId = null;
 

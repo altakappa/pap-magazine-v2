@@ -6,7 +6,7 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { handleCors } = require('../_lib/cors');
-const { rateLimit } = require('../_lib/rateLimit');
+const { rateLimitStrict } = require('../_lib/rateLimit');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -34,7 +34,7 @@ module.exports = async function handler(req, res) {
   }
 
   // Strict rate limiting for code verification (5 req/min)
-  if (rateLimit(req, res, { limit: 5, windowMs: 60 * 1000 })) return;
+  if (await rateLimitStrict(req, res, { limit: 5, windowMs: 60 * 1000 }, 'verify-code')) return;
 
   try {
     const { code, verificationToken } = req.body;

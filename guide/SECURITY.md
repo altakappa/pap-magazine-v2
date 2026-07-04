@@ -1,0 +1,52 @@
+# PAP MAGAZINE — 보안 현황 및 운영 가이드
+
+> 2026-07-04 전체 보안 감사 + 강화 작업 완료 기준. 결론: **치명/높음 이슈 0건** (강화 후).
+
+## 감사 결과 요약
+
+### 이미 잘 구축돼 있던 것 (변경 없음)
+
+| 영역 | 상태 |
+|---|---|
+| 인증 | JWT(HS256) + httpOnly/Secure/SameSite=Lax 쿠키 — XSS로 토큰 탈취 불가 |
+| 권한 | 3계층 RBAC (requireAuth → requireAdmin → requireMainAdmin), admin은 매 요청 DB 재확인 |
+| CSRF | 더블 서브밋 쿠키 패턴 |
+| 웹훅 | Paddle/PortOne 모두 서명 검증 (HMAC + 리플레이 가드) |
+| CORS | 화이트리스트 기반 (와일드카드 아님) |
+| XSS | SSR 렌더러 전체 escText/escAttr/escJson 이스케이프 |
+| 인젝션 | Supabase 클라이언트 파라미터라이즈, 스토리지 경로 정규식 검증 |
+| 시크릿 | 하드코딩 0건, JWT_SECRET 폴백 없음, 프론트엔드엔 anon key만 (RLS 보호) |
+| HSTS | 2년 + includeSubDomains + preload |
+| 어택 프로브 차단 | /.env, /.git, /wp-* 등 → 404 |
+
+### 이번에 강화한 것 (2026-07-04)
+
+1. **영속 레이트리밋** — 기존 인메모리 리미터는 서버리스 콜드스타트마다 리셋되어 로그인 브루트포스를 실질적으로 못 막았음. login / signup / send-code / verify-code 4개 엔드포인트를 Supabase 기반 원자적 카운터(`rl_hit` RPC)로 전환. DB 장애 시 인메모리 폴백(fail-open — 로그인 불능 사고 방지).
+   - 파일: `supabase_migrations/060_rate_limits.sql`, `api/_lib/rateLimit.js` (rateLimitStrict)
+2. **강제 CSP 기본선 추가** — 기존 CSP는 Report-Only(모니터링만). 사이트를 깨뜨릴 수 없는 최소 강제 정책을 병행: `object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests`. 전체 정책은 Report-Only로 계속 관찰 후 위반 0 확인되면 강제 전환(아래 로드맵).
+3. **Permissions-Policy payment 수정** — `payment=()`가 Paddle 체크아웃의 Apple Pay/Google Pay(Payment Request API)를 차단할 수 있어 `payment=(self "https://buy.paddle.com" "https://sandbox-buy.paddle.com")`로 변경.
+4. **X-XSS-Protection: 1 → 0** — 구형 XSS Auditor는 오히려 취약점 벡터. 현대 권장값 0.
+5. **개발 유틸 페이지 차단** — `/data-migration.html`(service key 입력 유도 마이그레이션 툴), `/index.html.backup-pre-i18n-cards` → 404. 파일은 리포에 남아있으니 필요 시 로컬에서만 사용.
+6. **에러 상세 노출 제거** — `api/submissions/upload-url.js`(공개 엔드포인트)가 Supabase 내부 에러 메시지를 클라이언트에 반환하던 것 제거. `api/media/upload.js`의 상세 노출은 관리자 전용 + 의도적 디버깅(QA #100)이라 유지.
+
+## 배포 절차 (도메니코)
+
+1. **Supabase SQL Editor**에서 `supabase_migrations/060_rate_limits.sql` 실행 (Success 확인)
+2. 커밋/푸시 → Vercel 자동 배포
+3. 배포 후 확인: 로그인 1회 정상 동작 + 구독 페이지에서 Paddle 체크아웃 열림
+
+> 순서 중요: SQL을 먼저 실행해야 함. (먼저 배포해도 인메모리 폴백으로 동작은 하지만 RPC 에러 로그가 쌓임)
+
+## 운영 습관
+
+- **월 1회**: Vercel 대시보드 → 프로젝트 → Logs에서 `429`(레이트리밋 발동)와 `[rateLimitStrict] DB fallback` 검색. 429가 비정상적으로 많으면 공격 시도 — Vercel Firewall에서 해당 IP 차단.
+- **분기 1회**: Supabase 대시보드 → Authentication/Database에서 이상 트래픽 확인. `DELETE FROM rate_limits WHERE reset_at < now() - interval '1 day';`로 카운터 정리(선택).
+- **키 로테이션**: Paddle API key는 2027-07-02 만료 — 만료 전 재발급 후 Vercel env 교체. JWT_SECRET은 유출 의심 시에만 교체(전 사용자 재로그인 발생).
+- 새 API 엔드포인트를 만들 때는 반드시: `handleCors` + (쓰기 작업이면) `requireAdmin`/`requireAuth` + `rateLimit` 3종 세트.
+
+## 다음 단계 로드맵 (선택)
+
+1. **CSP 완전 강제 전환** — 2~4주간 Report-Only 위반 리포트 관찰 후, 위반이 없으면 Report-Only 정책을 Content-Security-Policy로 승격. 최대 효과 항목: `script-src`에서 `unsafe-eval` 제거 가능 여부 확인.
+2. **Vercel Firewall (WAF)** — Pro 플랜이면 대시보드에서 Bot 차단 + IP 레이트리밋 룰 추가 (코드 변경 없이 겹벽).
+3. **의존성 자동 점검** — GitHub 리포 Settings → Security → Dependabot alerts 활성화 (무료, 1클릭).
+4. **Supabase RLS 정기 감사** — 새 테이블 추가 시 RLS 활성화 여부 체크리스트화.

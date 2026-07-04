@@ -136,11 +136,10 @@ module.exports = async function handler(req, res) {
         .createSignedUploadUrl(storagePath);
 
       if (error || !data) {
+        // 보안: 내부 에러 상세는 서버 로그에만 — 클라이언트에는 일반 메시지
+        // (스토리지 내부 구조/버전 정보 노출 방지)
         console.error('[upload-url] createSignedUploadUrl failed:', error);
-        return res.status(500).json({
-          message: 'Failed to create signed upload URL' +
-            (error && error.message ? ` — ${error.message}` : ''),
-        });
+        return res.status(500).json({ message: 'Failed to create signed upload URL' });
       }
 
       const { data: pubData } = supabaseAdmin.storage

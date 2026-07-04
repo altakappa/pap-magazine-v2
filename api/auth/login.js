@@ -7,7 +7,7 @@ const { supabase, supabaseAdmin } = require('../_lib/supabase');
 const { generateToken, setAuthCookie } = require('../_lib/auth');
 const { setCsrfCookie } = require('../_lib/csrf');
 const { handleCors } = require('../_lib/cors');
-const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
+const { rateLimitStrict, RATE_LIMITS } = require('../_lib/rateLimit');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -16,7 +16,7 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  if (rateLimit(req, res, RATE_LIMITS.auth)) return;
+  if (await rateLimitStrict(req, res, RATE_LIMITS.auth, 'login')) return;
 
   try {
     const { email, password } = req.body;

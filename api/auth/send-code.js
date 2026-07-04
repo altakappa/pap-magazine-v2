@@ -8,7 +8,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { handleCors } = require('../_lib/cors');
 const { sendEmail } = require('../_lib/email');
-const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
+const { rateLimitStrict, RATE_LIMITS } = require('../_lib/rateLimit');
 const { isValidEmail } = require('../_lib/validate');
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -62,7 +62,7 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
-  if (rateLimit(req, res, RATE_LIMITS.auth)) return;
+  if (await rateLimitStrict(req, res, RATE_LIMITS.auth, 'send-code')) return;
 
   try {
     const { email } = req.body;
