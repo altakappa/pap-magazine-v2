@@ -45,7 +45,7 @@ module.exports = async function handler(req, res) {
       .not('published_date', 'is', null)
       .lte('published_date', new Date().toISOString())
       .order('published_date', { ascending: false })
-      .limit(1000);  // 전체 에디토리얼 아카이브 (Pinterest 자동발행 + 소급 대응)
+      .limit(100);  // 최근 100건 — 네이버/신디케이션용. Pinterest 대량 발행은 API 크론(sync-pinterest)이 담당.
 
     const items = (eds || []).map(e => {
       const handle = e.slug || e.id;
