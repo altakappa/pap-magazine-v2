@@ -23,6 +23,7 @@
   ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/", "has": [{ "type": "host", "value": "(www\\.)?pepperitmag\\.com" }], "destination": "/pepperit.html" },
     { "source": "/admin", "destination": "/admin.html" },
     { "source": "/admin/", "destination": "/admin.html" },
     { "source": "/admin/editorials", "destination": "/admin.html" },
