@@ -23,7 +23,6 @@
   ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/", "has": [{ "type": "host", "value": "(www\\.)?pepperitmag\\.com" }], "destination": "/pepperit.html" },
     { "source": "/admin", "destination": "/admin.html" },
     { "source": "/admin/", "destination": "/admin.html" },
     { "source": "/admin/editorials", "destination": "/admin.html" },
@@ -107,6 +106,7 @@
     { "source": "/refund.html",     "destination": "/refund",     "statusCode": 301 },
     { "source": "/pap-magazine-v5.html", "destination": "/",      "statusCode": 301 },
     { "source": "/pepperit.html", "destination": "/pepperit", "statusCode": 301 },
+    { "source": "/", "has": [{ "type": "host", "value": "(www\\.)?pepperitmag\\.com" }], "destination": "/pepperit", "statusCode": 307 },
     { "source": "/data-migration.html", "destination": "/404.html", "permanent": false },
     { "source": "/index.html.backup-pre-i18n-cards", "destination": "/404.html", "permanent": false },
     { "source": "/.env",                "destination": "/404.html", "permanent": false },
