@@ -75,7 +75,8 @@
     { "source": "/data-deletion", "destination": "/data-deletion.html" },
     { "source": "/data-migration", "destination": "/data-migration.html" },
     { "source": "/pullletter", "destination": "/pullletter.html" },
-    { "source": "/magazine", "destination": "/magazine.html" }
+    { "source": "/magazine", "destination": "/magazine.html" },
+    { "source": "/archive", "destination": "/api/seo/archive" }
   ],
   "redirects": [
     { "source": "/about.html",    "destination": "/about",    "statusCode": 301 },

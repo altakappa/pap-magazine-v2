@@ -27,6 +27,7 @@ const STATIC_PAGES = [
   // QA #325 — 회사 정보 페이지는 클린 URL 로 색인 (canonical 과 일치.
   // .html 은 vercel.json 에서 301 redirect). 나머지 정적 페이지도 클린
   // rewrite 가 이미 존재하므로 링크/캐노니컬 정리 후 순차 전환 예정.
+  { path: '/archive',         priority: '0.8', changefreq: 'daily'   },
   { path: '/about',           priority: '0.7', changefreq: 'monthly' },
   { path: '/business',        priority: '0.6', changefreq: 'monthly' },
   { path: '/contact',         priority: '0.6', changefreq: 'monthly' },
