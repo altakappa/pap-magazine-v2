@@ -440,6 +440,8 @@ window._papFilmAutoPlay = function(){
       // in-app navigation matches the SSR endpoint served on direct hits.
       slug:  slug,
       tags:  Array.isArray(e.tags) ? e.tags : (typeof e.tags==='string' ? e.tags.split(',').map(function(t){return t.trim();}).filter(Boolean) : []),
+      // 참여 증폭 2.0 (2026-07) — 원본 IG 게시물 permalink.
+      ig:    e.source_instagram_url || '',
       _api_id: e.id,
       // Carry the rest through so editorial-detail rendering can lift
       // credits / fashion / gallery off the same record without a
@@ -602,6 +604,8 @@ window._papFilmAutoPlay = function(){
       // Static-snapshot entries lack a slug; the consumer falls back to
       // a title-derived slug for those.
       slug:   apiEd.slug || existing.slug || '',
+      // 참여 증폭 2.0 — 원본 IG 게시물 permalink (detail 렌더러가 임베드).
+      ig:     apiEd.ig || existing.ig || '',
       // Issue subtitle. Priority: admin-typed value (apiEd.issue) wins
       // because that's the live source of truth; curated existing.issue
       // is the static-JSON snapshot and only used as fallback. Year is

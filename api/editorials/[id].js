@@ -193,6 +193,8 @@ module.exports = async function handler(req, res) {
         // QA #170 — editor-tunable Instagram caption (auto-seeded at
         // submission approval; admin can hand-edit before publishing).
         'instagram_caption',
+        // 참여 증폭 2.0 (2026-07) — 원본 IG 게시물 permalink.
+        'source_instagram_url',
         // QA #214 — persist approval-email curator settings so the
         // editor's day/month inputs survive a save+reopen cycle.
         // approval_email_status flips to 'pending' here, then the

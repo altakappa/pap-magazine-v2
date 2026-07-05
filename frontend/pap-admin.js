@@ -6081,6 +6081,8 @@ async function editEditorial(id){
   if(document.getElementById('postDescriptionIt'))document.getElementById('postDescriptionIt').value=ed.description_it||'';
   // QA #170 — Instagram caption (seeded at submission approval).
   if(document.getElementById('postIgCaption'))document.getElementById('postIgCaption').value=ed.instagram_caption||'';
+  // 참여 증폭 2.0 — 원본 IG 게시물 URL.
+  if(document.getElementById('postIgSourceUrl'))document.getElementById('postIgSourceUrl').value=ed.source_instagram_url||'';
   document.getElementById('postPublish').checked=(ed.status==='published');
 
   // QA #172 — surface the "✉️ 저장 시 승인 메일 발송" section only when
@@ -6771,6 +6773,12 @@ async function savePost(mode){
       // affordance on reopen instead of an empty textarea masquerading
       // as legitimate content.
       instagram_caption: igCaptionVal || null,
+      // 참여 증폭 2.0 — 원본 IG 게시물 permalink. instagram.com 링크만 저장.
+      source_instagram_url: (function(){
+        var el=document.getElementById('postIgSourceUrl');
+        var v=el?(el.value||'').trim():'';
+        return (v && /instagram\.com\//.test(v)) ? v : null;
+      })(),
       scheduled_publish_at: scheduledAt
     };
 

@@ -897,6 +897,36 @@ window._papDownloadLogoZip = window._papDownloadLogoZip || async function(btn){
   btn.style.opacity = '1';
 };
 
+// 참여 증폭 2.0 (2026-07) — 원본 IG 게시물 임베드 + '친구에게 보내기'.
+// 좋아요·저장·보내기 신호는 게시물 위에서만 발생하므로, 원본 게시물을
+// 페이지 안에 직접 띄워 반응까지의 거리를 한 클릭으로 줄인다.
+// igUrl 이 없으면 컨테이너를 숨긴다 (백필 전 대부분의 아카이브).
+function _papRenderEdIg(igUrl, title){
+  var box=document.getElementById('edIgPostCta');
+  if(!box) return;
+  if(!igUrl || !/instagram\.com\//.test(String(igUrl))){
+    box.innerHTML=''; box.style.display='none'; return;
+  }
+  var safe=String(igUrl).replace(/"/g,'&quot;');
+  var permalink=String(igUrl).split('?')[0];
+  if(!/\/$/.test(permalink)) permalink+='/';
+  var canEmbed=/instagram\.com\/(p|reel|tv)\//.test(permalink);
+  box.innerHTML=
+    (canEmbed
+      ? '<div style="margin:36px auto 0;max-width:540px">'
+        +'<blockquote class="instagram-media" data-instgrm-permalink="'+permalink.replace(/"/g,'&quot;')+'" data-instgrm-version="14" style="background:#000;border:1px solid rgba(255,255,255,.16);margin:0 auto;max-width:540px;min-width:280px;width:100%"></blockquote>'
+        +'</div>'
+      : '')
+    +'<aside style="margin:'+(canEmbed?'14px':'36px')+' 0 0;padding:26px 24px;border:1px solid rgba(255,255,255,.16);text-align:center">'
+    +'<div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:10px">On Instagram</div>'
+    +'<div style="font-size:13.5px;line-height:1.7;color:#ddd;margin-bottom:16px">이 에디토리얼의 원본 게시물이 인스타그램에 있습니다.<br><b style="color:#fff">좋아요·저장</b>으로 소장하고, 좋아할 친구에게 <b style="color:#fff">보내기</b>로 공유해보세요.</div>'
+    +'<a href="'+safe+'" target="_blank" rel="noopener" style="display:inline-block;background:#fff;color:#000;padding:11px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none">게시물에서 반응 남기기 →</a>'
+    +'<button onclick="_papShareStory()" style="display:inline-block;margin:8px 0 0 10px;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);padding:11px 22px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;cursor:pointer">친구에게 보내기 ↗</button>'
+    +'</aside>';
+  box.style.display='';
+  if(canEmbed && typeof _papLoadIgEmbed==='function'){try{_papLoadIgEmbed();}catch(_){}}
+}
+
 function _renderEditorialTags(title){
   var tagsEl = document.getElementById('edDetailTags');
   if (!tagsEl) return;
@@ -1027,6 +1057,8 @@ function _openEditorialInner(title,thumb){
         if(Array.isArray(full.related_films)) {
           dst.relatedFilms = full.related_films;
         }
+        // 참여 증폭 2.0 — 원본 IG 게시물 permalink.
+        if(full.source_instagram_url) dst.ig = full.source_instagram_url;
         edDetails[title] = dst;
         // Re-render through the no-push path so we don't push a duplicate
         // history entry on top of the one we already pushed below.
@@ -1090,7 +1122,7 @@ function _openEditorialInner(title,thumb){
   // already-display array. Normalise to {r, h} once so the renderer below
   // can stay simple. Empty credits fall back to the placeholder pair.
   var _normCr = _normalizeCreditsForDisplay(d.credits);
-  var det={issue:d.issue||'MAR. ISSUE',thumb:d.thumb||thumb,images:d.images||[thumb,thumb],credits:(_normCr.length?_normCr:[{r:'Photography',h:['@photographer']},{r:'Stylist',h:['@stylist']}]),fashion:d.fashion||['@brand'],imageCredits:d.imageCredits||{},desc:d.desc||''};
+  var det={issue:d.issue||'MAR. ISSUE',thumb:d.thumb||thumb,images:d.images||[thumb,thumb],credits:(_normCr.length?_normCr:[{r:'Photography',h:['@photographer']},{r:'Stylist',h:['@stylist']}]),fashion:d.fashion||['@brand'],imageCredits:d.imageCredits||{},desc:d.desc||'',ig:d.ig||''};
 
   // SEO — update meta tags + JSON-LD when an editorial opens. Helps
   // social-share previews (Kakao/Facebook/X) and Google's JS-aware
@@ -1106,6 +1138,8 @@ function _openEditorialInner(title,thumb){
   heroImg.src=det.thumb;
   document.getElementById('edDetailTitle').textContent=title;
   document.getElementById('edDetailIssue').textContent=det.issue;
+  // 참여 증폭 2.0 — 원본 IG 게시물 임베드 + 보내기 (det.ig 없으면 숨김).
+  if(typeof _papRenderEdIg==='function'){try{_papRenderEdIg(det.ig,title);}catch(_){}}
 
   // Editorial description
   var descEl=document.getElementById('edDetailDesc');
@@ -1339,7 +1373,7 @@ function _openEditorialInner_noPush(title,thumb){
   // already-display array. Normalise to {r, h} once so the renderer below
   // can stay simple. Empty credits fall back to the placeholder pair.
   var _normCr = _normalizeCreditsForDisplay(d.credits);
-  var det={issue:d.issue||'MAR. ISSUE',thumb:d.thumb||thumb,images:d.images||[thumb,thumb],credits:(_normCr.length?_normCr:[{r:'Photography',h:['@photographer']},{r:'Stylist',h:['@stylist']}]),fashion:d.fashion||['@brand'],imageCredits:d.imageCredits||{},desc:d.desc||''};
+  var det={issue:d.issue||'MAR. ISSUE',thumb:d.thumb||thumb,images:d.images||[thumb,thumb],credits:(_normCr.length?_normCr:[{r:'Photography',h:['@photographer']},{r:'Stylist',h:['@stylist']}]),fashion:d.fashion||['@brand'],imageCredits:d.imageCredits||{},desc:d.desc||'',ig:d.ig||''};
   // SEO — same meta refresh as _openEditorialInner (back/forward path).
   if(typeof _updateEditorialMeta === 'function'){
     try { _updateEditorialMeta(title, det); } catch(_){}
@@ -1349,6 +1383,8 @@ function _openEditorialInner_noPush(title,thumb){
   heroImg.src=det.thumb;
   document.getElementById('edDetailTitle').textContent=title;
   document.getElementById('edDetailIssue').textContent=det.issue;
+  // 참여 증폭 2.0 — 원본 IG 게시물 임베드 + 보내기 (det.ig 없으면 숨김).
+  if(typeof _papRenderEdIg==='function'){try{_papRenderEdIg(det.ig,title);}catch(_){}}
   var descEl=document.getElementById('edDetailDesc');
   if(descEl){var lang=localStorage.getItem('pap-lang')||'ko';var descText=typeof det.desc==='object'?(det.desc[lang]||det.desc.en||det.desc.ko||''):det.desc;descEl.innerHTML=descText;}
   var gal=document.getElementById('edDetailGallery');

@@ -95,6 +95,7 @@ module.exports = async function handler(req, res) {
         'id','title','slug','cover_image','thumbnail','published_date',
         'url','tags','issue','status','title_en',
         'description','description_en','gallery','credits','fashion',
+        'source_instagram_url',
         'created_at','updated_at'
       ].join(',');
 
@@ -205,6 +206,7 @@ module.exports = async function handler(req, res) {
         title_en, description_en,
         description_it,  // QA #204 — IT translation slot
         instagram_caption,  // QA #170 — editor-tunable IG caption
+        source_instagram_url,  // 참여 증폭 2.0 — 원본 IG 게시물 링크
       } = req.body;
 
       if (!title) {
@@ -242,6 +244,8 @@ module.exports = async function handler(req, res) {
           // direct-admin-create starts NULL so the textarea shows the
           // "generate" button instead of stale content).
           instagram_caption: instagram_caption || null,
+          // 참여 증폭 2.0 — 원본 IG 게시물 permalink (SSR/SPA 깔때기 착지점)
+          source_instagram_url: source_instagram_url || null,
           // QA #202 — authorship stamps. Both columns get the same id
           // on POST because the creator IS the most recent editor for a
           // brand-new row; subsequent PUTs will bump updated_by.
