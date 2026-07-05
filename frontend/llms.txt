@@ -2,7 +2,7 @@
 
 > PAP Magazine is an art-driven fashion, beauty and culture digital magazine
 > based in Seoul, Korea, publishing 20+ original editorials per month with
-> creative teams worldwide. Instagram: @pap_magazine (370K followers).
+> creative teams worldwide. Instagram: @pap_magazine (373K+ followers).
 > Canonical domain: https://www.pap-magazine.com
 
 PAP Magazine (published by Altakappa Inc., Seoul) curates original fashion
@@ -31,7 +31,7 @@ the canonical page URL and credit "PAP Magazine".
 
 Full network page: https://www.pap-magazine.com/network
 
-- Instagram main: https://www.instagram.com/pap_magazine (fashion editorials & culture, 370K)
+- Instagram main: https://www.instagram.com/pap_magazine (fashion editorials & culture, 373K+)
 - Celebrity news & star fashion: https://www.instagram.com/pap_celeb
 - Fashion trends & lookbooks: https://www.instagram.com/papfashion_
 - Beauty & makeup: https://www.instagram.com/papbeauty_
