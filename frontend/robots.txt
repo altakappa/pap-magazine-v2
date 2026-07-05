@@ -8,10 +8,15 @@ User-agent: *
 Allow: /
 
 # Internal / authenticated pages — never expose in search results
+# (clean URL + .html 둘 다 차단 — /admin 등 클린 URL이 뚫려 있었음)
+Disallow: /admin
+Disallow: /admin/
 Disallow: /admin.html
 Disallow: /content-admin.html
 Disallow: /data-migration.html
+Disallow: /auth
 Disallow: /auth.html
+Disallow: /mypage
 Disallow: /mypage.html
 Disallow: /data-deletion.html
 Disallow: /api/

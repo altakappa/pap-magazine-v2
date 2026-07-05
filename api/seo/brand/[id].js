@@ -140,8 +140,13 @@ module.exports = async function handler(req, res) {
 <meta property="og:url" content="${SITE}/brand/${encodeURIComponent(brand.brand_id)}">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="PAP Magazine">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:locale:alternate" content="en_US">
 ${eds[0] && (eds[0].cover_image || eds[0].og_image) ? '<meta property="og:image" content="' + esc(eds[0].cover_image || eds[0].og_image) + '">' : ''}
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${esc(name)} in PAP Magazine">
+<meta name="twitter:description" content="${esc(name)} featured across ${count} PAP Magazine editorials.">
+${eds[0] && (eds[0].cover_image || eds[0].og_image) ? '<meta name="twitter:image" content="' + esc(eds[0].cover_image || eds[0].og_image) + '">' : ''}
 <script type="application/ld+json">
 ${JSON.stringify(schema)}
 </script>

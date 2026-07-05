@@ -12,11 +12,17 @@
  *
  * 사용:
  *   GET /api/indexnow                    → 기본 세트(홈+주요 페이지+최신 콘텐츠) 제출
+ *   GET /api/indexnow?mode=recent        → 홈 + 최근 48시간 발행/갱신 콘텐츠만 제출
+ *                                          (매일 크론용 — 같은 URL 반복 제출은 IndexNow
+ *                                          가이드라인상 스팸 신호가 될 수 있어 변경분만)
  *   GET /api/indexnow?url=<단일 URL>      → 특정 URL 만 제출
  *   POST /api/indexnow  { urls:[...] }    → 지정 URL 목록 제출
  *
- * 선택 보호: INDEXNOW_SECRET 환경변수가 설정돼 있으면 ?secret= 로 일치 요구.
- * (자기 사이트 URL 재수집 요청이라 위험도는 낮음)
+ * Vercel cron 이 호출하면 (user-agent: vercel-cron) 자동으로 recent 모드.
+ *
+ * 보호: Vercel cron 의 `Authorization: Bearer CRON_SECRET` 또는
+ *       ?secret=INDEXNOW_SECRET 둘 중 하나가 맞으면 통과.
+ *       (자기 사이트 URL 재수집 요청이라 위험도는 낮음)
  */
 
 const { supabaseAdmin } = require('./_lib/supabase');
@@ -44,26 +50,46 @@ const STATIC_URLS = [
   SITE + '/archive',
 ];
 
-async function recentContentUrls() {
+/**
+ * 콘텐츠 URL 수집.
+ * @param {string|null} sinceIso — 지정 시 그 시각 이후 발행/갱신된 것만 (recent 모드)
+ */
+async function recentContentUrls(sinceIso) {
   const urls = [];
   try {
-    const { data: eds } = await supabaseAdmin
+    let q = supabaseAdmin
       .from('editorials').select('slug, id')
       .eq('status', 'published')
       .order('published_date', { ascending: false, nullsFirst: false })
       .limit(30);
+    if (sinceIso) q = q.gte('published_date', sinceIso);
+    const { data: eds } = await q;
     (eds || []).forEach(e => {
       const h = e.slug || e.id; if (h) urls.push(SITE + '/editorial/' + encodeURIComponent(h));
     });
   } catch (_) {}
   try {
-    const { data: arts } = await supabaseAdmin
+    let q = supabaseAdmin
       .from('articles').select('custom_url, id')
       .eq('status', 'published')
       .order('published_date', { ascending: false })
       .limit(30);
+    if (sinceIso) q = q.gte('published_date', sinceIso);
+    const { data: arts } = await q;
     (arts || []).forEach(a => {
       const h = a.custom_url || a.id; if (h) urls.push(SITE + '/article/' + encodeURIComponent(h));
+    });
+  } catch (_) {}
+  try {
+    let q = supabaseAdmin
+      .from('films').select('title, id')
+      .eq('status', 'published')
+      .order('published_date', { ascending: false })
+      .limit(20);
+    if (sinceIso) q = q.gte('published_date', sinceIso);
+    const { data: films } = await q;
+    (films || []).forEach(f => {
+      const h = f.title || f.id; if (h) urls.push(SITE + '/film/' + encodeURIComponent(h));
     });
   } catch (_) {}
   return urls;
@@ -78,6 +104,7 @@ async function submit(urlList) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
         body,
+        signal: AbortSignal.timeout(10000), // 엔드포인트 무응답이 함수 시간 다 먹지 않게
       });
       results.push({ endpoint: ep, status: r.status });
     } catch (err) {
@@ -88,14 +115,24 @@ async function submit(urlList) {
 }
 
 module.exports = async function handler(req, res) {
-  // 선택 보호
-  if (process.env.INDEXNOW_SECRET) {
+  // 보호: Vercel cron Bearer 또는 ?secret= 둘 중 하나 통과.
+  // (기존 버그 수정: INDEXNOW_SECRET 만 검사해서 Vercel cron 의
+  //  Bearer CRON_SECRET 호출이 401 로 튕겨 매일 크론이 조용히 실패하는 구조였음)
+  const auth = (req.headers && req.headers['authorization']) || '';
+  const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
+  if (process.env.INDEXNOW_SECRET && !cronOk) {
     const s = (req.query && req.query.secret) || '';
     if (s !== process.env.INDEXNOW_SECRET) return res.status(401).json({ error: 'unauthorized' });
   }
 
   try {
     let urlList = [];
+
+    // recent 모드: 크론 반복 실행용 — 최근 48h 변경분 + 홈만 제출.
+    // (같은 URL 을 매일 전량 재제출하면 IndexNow 쪽에서 스팸 신호로 볼 수 있음)
+    const ua = (req.headers && req.headers['user-agent']) || '';
+    const isCron = /vercel-cron/i.test(ua);
+    const mode = String((req.query && req.query.mode) || (isCron ? 'recent' : ''));
 
     if (req.method === 'POST') {
       const b = req.body && typeof req.body === 'object' ? req.body : {};
@@ -105,9 +142,18 @@ module.exports = async function handler(req, res) {
       if (u.startsWith(SITE)) urlList = [u];
     }
 
+    if (!urlList.length && mode === 'recent') {
+      const since = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
+      const recent = await recentContentUrls(since);
+      if (!recent.length) {
+        return res.status(200).json({ submitted: 0, mode, message: '최근 48시간 변경 콘텐츠 없음 — 제출 생략.' });
+      }
+      urlList = [SITE + '/'].concat(recent);
+    }
+
     // 기본 세트 (파라미터 없을 때): 정적 주요 페이지 + 최신 콘텐츠
     if (!urlList.length) {
-      urlList = STATIC_URLS.concat(await recentContentUrls());
+      urlList = STATIC_URLS.concat(await recentContentUrls(null));
     }
 
     // 중복 제거 + IndexNow 상한(1만) 보호
@@ -116,6 +162,7 @@ module.exports = async function handler(req, res) {
     const results = await submit(urlList);
     return res.status(200).json({
       submitted: urlList.length,
+      mode: mode || 'full',
       keyLocation: KEY_LOCATION,
       endpoints: results,
       sample: urlList.slice(0, 5),

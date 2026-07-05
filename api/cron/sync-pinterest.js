@@ -94,8 +94,8 @@ module.exports = async function handler(req, res) {
       const handle = e.slug || e.id;
       const img = e.cover_image || e.og_image || e.thumbnail || '';
 
-      // 이미지 없으면 영구 스킵
-      if (!img || !handle || !e.title) {
+      // 이미지 없거나 https 가 아니면(핀터레스트가 거부) 영구 스킵
+      if (!img || !/^https:\/\//i.test(img) || !handle || !e.title) {
         await supabaseAdmin.from('editorials')
           .update({ pinterest_synced_at: new Date().toISOString(), pinterest_error: 'no image/handle' })
           .eq('id', e.id);
@@ -114,6 +114,8 @@ module.exports = async function handler(req, res) {
         title: truncate(e.title, 95),
         description,
         link,
+        // alt_text: 접근성 + 핀터레스트 시각검색·SEO 신호
+        alt_text: truncate(e.title + ' — PAP Magazine fashion editorial' + (e.issue ? ' · ' + e.issue : ''), 480),
         media_source: { source_type: 'image_url', url: img },
       };
 
@@ -126,6 +128,7 @@ module.exports = async function handler(req, res) {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(body),
+          signal: AbortSignal.timeout(15000), // 무응답이 60s 함수 예산 다 먹지 않게
         });
       } catch (netErr) {
         // 네트워크 오류 — 이번 항목만 남겨두고 계속 (synced_at 미기록 → 다음에 재시도)
@@ -137,6 +140,17 @@ module.exports = async function handler(req, res) {
         // rate limit — 즉시 중단, 다음 크론 실행에 재개
         rateLimited = true;
         break;
+      }
+
+      if (resp.status === 401 || resp.status === 403) {
+        // 토큰 만료/권한 문제 — 항목 잘못이 아니므로 아무것도 마킹하지 않고
+        // 즉시 중단. (마킹하면 배치 전체가 '영구 실패'로 남아 재발행 불가)
+        const txt = await resp.text().catch(() => '');
+        console.error('[sync-pinterest] auth error', resp.status, txt.slice(0, 200));
+        return res.status(200).json({
+          pinned, skipped, authError: resp.status,
+          message: 'PINTEREST_ACCESS_TOKEN 만료/권한 오류 — 토큰 갱신 필요. 항목은 마킹하지 않음.',
+        });
       }
 
       if (resp.ok) {

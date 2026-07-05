@@ -24,10 +24,19 @@ module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
 
   try {
-    // 콘텐츠가 있는 브랜드 = editorial_brands 에 등장하는 brand_id
-    const { data: eb } = await supabaseAdmin
-      .from('editorial_brands').select('brand_id').limit(20000);
-    const withContent = new Set((eb || []).map(r => r.brand_id).filter(Boolean));
+    // 콘텐츠가 있는 브랜드 = editorial_brands 에 등장하고, 그 에디토리얼이
+    // 실제 '발행됨' 상태인 brand_id. (브랜드 페이지는 발행 에디토리얼 0개면
+    // noindex 를 내보내므로, 여기서도 같은 기준을 써야 GSC 'noindex 제출' 경고가 없다)
+    const [{ data: eb }, { data: pubs }] = await Promise.all([
+      supabaseAdmin.from('editorial_brands').select('brand_id, editorial_title').limit(20000),
+      supabaseAdmin.from('editorials').select('title').eq('status', 'published').limit(10000),
+    ]);
+    const publishedTitles = new Set((pubs || []).map(p => p.title).filter(Boolean));
+    const withContent = new Set(
+      (eb || [])
+        .filter(r => r.brand_id && r.editorial_title && publishedTitles.has(r.editorial_title))
+        .map(r => r.brand_id)
+    );
 
     // archived 제외한 유효 브랜드
     const { data: brands } = await supabaseAdmin
