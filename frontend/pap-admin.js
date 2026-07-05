@@ -4555,10 +4555,55 @@ function renderTrendChart(svg, series){
     '<text x="'+(w-pad)+'" y="'+(h-pad+2)+'" font-size="9" fill="var(--text3)" text-anchor="end">'+lastDate.slice(5)+'</text>';
 }
 
+// 데일리 성장 진단 위젯 (2026-07) — growth_reports 최신 리포트를 어드민 홈에 표시.
+// 전문 대시보드는 /site-analysis. 실패해도 대시보드 나머지에 영향 없음.
+async function loadDashboardGrowth(){
+  var badges=document.getElementById('dashGrowthBadges');
+  var fails=document.getElementById('dashGrowthFails');
+  var fb=document.getElementById('dashGrowthFeedback');
+  if(!badges||!fb) return;
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function md(src){ // 초경량 마크다운 (##, **, 목록)
+    var out=[],list=null;
+    String(src||'').split('\n').forEach(function(ln){
+      var t=ln.trim();
+      if(!t){if(list){out.push('</'+list+'>');list=null;}return;}
+      var inline=esc(t).replace(/\*\*([^*]+)\*\*/g,'<strong style="color:#fff">$1</strong>');
+      if(/^##\s+/.test(t)){if(list){out.push('</'+list+'>');list=null;}out.push('<div style="font-weight:800;color:#fff;margin:12px 0 4px;font-size:12.5px">'+inline.replace(/^##\s+/,'')+'</div>');}
+      else if(/^[-•]\s+/.test(t)){if(list!=='ul'){if(list)out.push('</'+list+'>');out.push('<ul style="margin:2px 0 8px 16px;padding:0">');list='ul';}out.push('<li style="margin-bottom:3px">'+inline.replace(/^[-•]\s+/,'')+'</li>');}
+      else if(/^\d+[.)]\s+/.test(t)){if(list!=='ol'){if(list)out.push('</'+list+'>');out.push('<ol style="margin:2px 0 8px 16px;padding:0">');list='ol';}out.push('<li style="margin-bottom:3px">'+inline.replace(/^\d+[.)]\s+/,'')+'</li>');}
+      else{if(list){out.push('</'+list+'>');list=null;}out.push('<p style="margin:0 0 6px">'+inline+'</p>');}
+    });
+    if(list)out.push('</'+list+'>');
+    return out.join('');
+  }
+  try{
+    var res=await apiGet('/growth-report');
+    var row=res&&res.data;
+    if(!row) throw new Error(res&&res.error||'리포트 없음');
+    var d=document.getElementById('dashGrowthDate');
+    if(d)d.textContent='· '+(row.report_date||'');
+    var s=(row.audit&&row.audit.summary)||{};
+    function badge(n,label,color){return '<span style="background:'+color+'22;color:'+color+';border:1px solid '+color+'44;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700">'+label+' '+(n||0)+'</span>';}
+    badges.innerHTML=badge(s.ok,'정상','#4ade80')+badge(s.warn,'주의','#fbbf24')+badge(s.fail,'긴급','#f87171')+badge(s.error,'측정실패','#a78bfa');
+    // fail 항목 라벨
+    var failLabels=[];
+    var secs=(row.audit&&row.audit.sections)||{};
+    Object.keys(secs).forEach(function(k){(secs[k]||[]).forEach(function(c){if(c.status==='fail')failLabels.push(c.label);});});
+    if(failLabels.length){fails.style.display='';fails.innerHTML='🚨 '+failLabels.map(esc).join(' · ');}
+    else{fails.style.display='none';}
+    fb.innerHTML=row.feedback?md(row.feedback):'<span style="color:var(--text3)">AI 피드백이 아직 없습니다 — 매일 07:30 자동 생성됩니다.</span>';
+  }catch(e){
+    fb.innerHTML='<span style="color:var(--text3)">성장 진단을 불러오지 못했습니다: '+esc(e.message||e)+'</span>';
+  }
+}
+
 async function loadDashboardStats(){
   // Date in header
   var dashDate=document.getElementById('dashDate');
   if(dashDate)dashDate.textContent=new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric'});
+  // 성장 진단 위젯 — 병렬 로드 (대시보드 본체와 독립)
+  try{loadDashboardGrowth();}catch(_){}
 
   function setText(id,v){var el=document.getElementById(id);if(el)el.textContent=v;}
   function fmtKRW(n){return '₩'+(n||0).toLocaleString('ko-KR');}

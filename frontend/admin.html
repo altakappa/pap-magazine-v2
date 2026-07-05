@@ -521,6 +521,22 @@ tr:hover td{background:rgba(0,0,0,.02)}
         <div class="stat"><div class="stat-n" id="dashRevenue">₩0</div><div class="stat-l">월 추정 매출 (MRR)</div><div class="stat-c" id="dashRevenueNote" style="color:var(--text3)">활성 구독 0건</div></div>
       </div>
 
+      <!-- 데일리 성장 진단 (2026-07) — growth_reports 최신 리포트 요약 + AI 피드백.
+           pap-admin.js#loadDashboardGrowth 가 채움. 전문은 /site-analysis. -->
+      <div class="tbl-wrap" style="margin-bottom:20px">
+        <div class="tbl-top">
+          <h3>오늘의 성장 진단 <span id="dashGrowthDate" style="font-weight:400;color:var(--text3);font-size:11px"></span></h3>
+          <a href="/site-analysis" target="_blank" style="font-size:11px;color:var(--text3)">전체 분석 보기 →</a>
+        </div>
+        <div style="padding:14px 18px">
+          <div id="dashGrowthBadges" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"></div>
+          <div id="dashGrowthFails" style="font-size:12px;color:#f87171;margin-bottom:10px;display:none"></div>
+          <div id="dashGrowthFeedback" style="font-size:12.5px;line-height:1.7;max-height:340px;overflow-y:auto;color:var(--text2,#ccc)">
+            <span style="color:var(--text3)">불러오는 중…</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Pull-letter signup trend (last 30 days) -->
       <div class="tbl-wrap" style="margin-bottom:20px">
         <div class="tbl-top"><h3>Pull-Letter 신청 추이 (최근 30일)</h3><div style="font-size:11px;color:var(--text3)" id="dashTrendSummary">총 0건</div></div>
