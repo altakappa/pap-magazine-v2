@@ -401,6 +401,14 @@ footer a:hover{color:#fff}
 </section>
 
 
+<!-- 분기 볼륨 (2026-07 신설) — 2026년 4월부터 3개월 = 1볼륨 (VOL.30 = APR–JUN).
+     아래 스크립트가 발행 에디토리얼을 분기별로 묶어 카드를 자동 생성한다.
+     새 분기가 차면 다음 볼륨이 자동으로 나타난다 — 수동 관리 불필요. -->
+<section class="issues" id="quarterVols" style="display:none">
+  <div class="sec-head"><h2 class="sec-title">VOLUMES</h2><span class="sec-count" id="qvCount"></span></div>
+  <div class="grid" id="qvGrid"></div>
+</section>
+
 <!-- 2026 -->
 <section class="issues">
   <div class="sec-head"><h2 class="sec-title">2026</h2><span class="sec-count">3 ISSUES</span></div>
@@ -1178,6 +1186,52 @@ document.getElementById('previewOverlay').addEventListener('click',function(e){
   });
   var sel=document.getElementById('langSelect');
   if(sel) sel.value=lang;
+})();
+</script>
+<script>
+/* 분기 볼륨 자동 생성 (2026-07) — VOL.30 = 2026 APR–JUN, 이후 3개월마다 +1.
+   완료된 분기 + 진행 중 분기(CURRENT 배지)를 렌더. 클릭 시 해당 분기
+   에디토리얼 오버레이. 데이터는 공개 API — 새 분기가 차면 자동 등장. */
+(function(){
+  var EPOCH=new Date('2026-04-01T00:00:00+09:00'); var BASE_VOL=30;
+  fetch('/api/editorials?public=1&limit=500').then(function(r){return r.json();}).then(function(j){
+    var eds=(j.data||j.editorials||[]).filter(function(e){return e.published_date&&new Date(e.published_date)>=EPOCH;});
+    if(!eds.length) return;
+    var qs={};
+    eds.forEach(function(e){
+      var d=new Date(e.published_date);
+      var qi=Math.floor(((d.getFullYear()-2026)*12+d.getMonth()-3)/3); // 0 = APR–JUN 2026
+      if(qi<0) return;
+      (qs[qi]=qs[qi]||[]).push(e);
+    });
+    var now=new Date(); var curQi=Math.floor(((now.getFullYear()-2026)*12+now.getMonth()-3)/3);
+    var MOS=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+    var keys=Object.keys(qs).map(Number).sort(function(a,b){return b-a;});
+    var grid=document.getElementById('qvGrid'); if(!grid) return;
+    grid.innerHTML=keys.map(function(qi){
+      var list=qs[qi].sort(function(a,b){return new Date(b.published_date)-new Date(a.published_date);});
+      var m0=3+qi*3, y=2026+Math.floor(m0/12), ms=m0%12;
+      var label=MOS[ms]+'–'+MOS[(ms+2)%12]+' '+y;
+      var cover=(list[0].cover_image||list[0].thumbnail||'');
+      var badge=qi===curQi?'<span class="latest-badge">CURRENT</span>':'';
+      return '<div class="card" data-qi="'+qi+'" onclick="qvOpen('+qi+')"><div class="cover"><img loading="lazy" src="'+cover.replace(/"/g,'&quot;')+'" alt="VOL.'+(BASE_VOL+qi)+'"><div class="covlay">'+badge+'<div class="cov-bot"><div class="cov-title">Vol. '+(BASE_VOL+qi)+'</div><div class="cov-ct">'+list.length+' EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. '+(BASE_VOL+qi)+'</span><span class="dt">'+label+'</span></div></div>';
+    }).join('');
+    window._qvData=qs; window._qvBase=BASE_VOL;
+    document.getElementById('qvCount').textContent=keys.length+' VOLUMES';
+    document.getElementById('quarterVols').style.display='';
+  }).catch(function(){});
+  window.qvOpen=function(qi){
+    var list=(window._qvData&&window._qvData[qi])||[]; if(!list.length) return;
+    var ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:9999;overflow-y:auto;padding:60px 24px';
+    ov.innerHTML='<div style="max-width:1100px;margin:0 auto"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:28px"><h2 style="color:#fff;font-size:26px;letter-spacing:.05em">VOL. '+(window._qvBase+qi)+'</h2><button style="background:none;border:1px solid rgba(255,255,255,.4);color:#fff;padding:9px 20px;cursor:pointer;font-size:12px" onclick="this.closest(\'div[data-qv]\').remove()">닫기 ✕</button></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px">'
+      +list.map(function(e){var img=(e.cover_image||e.thumbnail||'').replace(/"/g,'&quot;');var href='/editorial/'+encodeURIComponent(e.slug||e.id);
+        return '<a href="'+href+'" style="text-decoration:none;color:#fff"><div style="aspect-ratio:3/4;background:#141414;overflow:hidden">'+(img?'<img src="'+img+'" loading="lazy" style="width:100%;height:100%;object-fit:cover">':'')+'</div><div style="font-size:12.5px;font-weight:600;margin-top:8px">'+String(e.title||'').replace(/</g,'&lt;')+'</div></a>';}).join('')
+      +'</div></div>';
+    ov.setAttribute('data-qv','1');
+    ov.addEventListener('click',function(ev){if(ev.target===ov)ov.remove();});
+    document.body.appendChild(ov);
+  };
 })();
 </script>
 </body>
