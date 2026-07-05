@@ -62,8 +62,10 @@ module.exports = async function handler(req, res) {
       body.content_id ? String(body.content_id) : null
     );
     if (!perm.allowed){
-      // 위반 시도도 audit 차원에서 기록 (best-effort, response는 빠르게).
-      supabaseAdmin.from('download_logs').insert({
+      // 위반 시도도 audit 차원에서 기록. Vercel serverless는 응답 후
+      // 이벤트 루프가 정지될 수 있어 fire-and-forget이면 기록이 유실된다
+      // — await로 완료를 보장 (실패는 무시, best-effort 유지).
+      await supabaseAdmin.from('download_logs').insert({
         user_id:      user.id || null,
         user_email:   user.email || null,
         content_type: contentType,
@@ -74,7 +76,7 @@ module.exports = async function handler(req, res) {
         ip_address:   ipAddr,
         user_agent:   userAgent,
         consented:    false, // 권한 없음 → 정식 동의 흐름이 아님으로 표시
-      }).then(()=>{}).catch(()=>{});
+      }).then(()=>{}, ()=>{});
       return res.status(403).json({
         ok: false, allowed: false, role: perm.role, reason: perm.reason,
         message: '다운로드 권한이 없습니다.'

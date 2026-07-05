@@ -834,7 +834,7 @@ async function goToStep2() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: email })
     });
-    var data = await resp.json();
+    var data = await resp.json().catch(function(){ return {}; });
     if (!resp.ok) throw new Error(data.message || 'Failed');
     verificationToken = data.verificationToken;
     var d = (L[lang] || L.ko);
@@ -854,6 +854,7 @@ async function verifyEmailCode() {
   if (code.length !== 6) { PAP.ui.toast(msgs.codeInvalid || '6자리 코드를 입력해주세요.', 'error'); return; }
 
   var btn = document.getElementById('btnVerify');
+  if (!btn) return;
   btn.disabled = true; btn.textContent = '...';
   try {
     var resp = await fetch((window._PAP_API_BASE || '') + '/api/auth/verify-code', {
@@ -861,7 +862,7 @@ async function verifyEmailCode() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code: code, verificationToken: verificationToken })
     });
-    var data = await resp.json();
+    var data = await resp.json().catch(function(){ return {}; });
     if (!resp.ok) {
       if (resp.status === 410) throw new Error(msgs.codeExpired || '인증 코드가 만료되었습니다. 다시 요청해주세요.');
       if (resp.status === 401) throw new Error(msgs.codeWrong || '인증 코드가 올바르지 않습니다.');
@@ -886,7 +887,7 @@ async function resendCode() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: email })
     });
-    var data = await resp.json();
+    var data = await resp.json().catch(function(){ return {}; });
     if (!resp.ok) throw new Error(data.message || 'Failed');
     verificationToken = data.verificationToken;
     PAP.ui.toast(msgs.codeResent || '인증 코드를 다시 보냈습니다.', 'success');
