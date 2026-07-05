@@ -45,6 +45,7 @@ async function generateEditorialDescriptions({ title, artistStatement, imageUrls
       kr: slot === 'kr' ? raw : '',
       en: slot === 'en' ? raw : '',
       it: slot === 'it' ? raw : '',
+      hook: '', moodTag: '',
     };
   }
 
@@ -79,11 +80,14 @@ async function generateEditorialDescriptions({ title, artistStatement, imageUrls
       '  1. Detect the source language.',
       '  2. Keep the original text VERBATIM in its detected language slot.',
       '  3. Write a NATURAL translation (not a literal one) in each of the other two languages — Korean (kr), English (en), Italian (it).',
+      '  4. Write "hook": ONE short Korean line for the very top of the Instagram caption. It must stop the scroll with a fact or striking image from the editorial, in plain confident Korean. NO exclamation marks, NO clickbait, NO "이것 좀 봐" style. Good example: "인류가 사라진 지구에, 여왕이 내려왔다."',
+      '  5. Write "moodTag": ONE Korean hashtag word (no #) that Korean fashion fans would actually search for this editorial\'s mood/genre, e.g. "사이버펑크", "올드머니룩", "아방가르드".',
       '',
       'Tone for the translations: editorial, sensory, confident. Match the register of high-end fashion magazines (i-D, Dazed, Vogue Italia, Nylon). Avoid generic praise.',
+      'The Korean (kr) version must read like a Korean fashion editor wrote it — flowing connectives (~인데, ~하고), never literal translationese.',
       'Keep proper nouns, brand names, named subjects as-is in every language.',
       '',
-      'Output ONLY a JSON object: {"kr": "<korean>", "en": "<english>", "it": "<italian>"}. No prose, no markdown fences.',
+      'Output ONLY a JSON object: {"kr": "<korean>", "en": "<english>", "it": "<italian>", "hook": "<korean one-liner>", "moodTag": "<korean tag word>"}. No prose, no markdown fences.',
     ].join('\n');
     try {
       const resp = await fetch(apiUrl, {
@@ -102,6 +106,8 @@ async function generateEditorialDescriptions({ title, artistStatement, imageUrls
         kr: String(parsed.kr || '').trim(),
         en: String(parsed.en || '').trim(),
         it: String(parsed.it || '').trim(),
+        hook: String(parsed.hook || '').trim(),
+        moodTag: String(parsed.moodTag || '').trim(),
       };
       if (!out.kr && !out.en && !out.it) {
         const slot = _guessLanguage(raw);
@@ -115,6 +121,7 @@ async function generateEditorialDescriptions({ title, artistStatement, imageUrls
         kr: slot === 'kr' ? raw : '',
         en: slot === 'en' ? raw : '',
         it: slot === 'it' ? raw : '',
+        hook: '', moodTag: '',
       };
     }
   }
@@ -126,15 +133,17 @@ async function generateEditorialDescriptions({ title, artistStatement, imageUrls
     .map((url) => ({ type: 'image', source: { type: 'url', url } }));
 
   if (visionImages.length === 0) {
-    return { kr: '', en: '', it: '' };
+    return { kr: '', en: '', it: '', hook: '', moodTag: '' };
   }
 
   const visionSystem = [
     'You are the editorial copywriter for PAP Magazine — a global fashion / beauty / culture publication.',
     'You will see an editorial title and a few of its key images. Write a short, evocative 3-4 sentence description for the editorial in THREE languages.',
     'Tone: editorial, sensory, confident. Avoid generic praise; describe what is visually distinctive (palette, mood, styling references, conceptual angle).',
-    'Languages: Korean (kr), English (en), Italian (it). Each version must read natively — not a literal translation.',
-    'Output ONLY a JSON object: {"kr": "<korean>", "en": "<english>", "it": "<italian>"}. No prose, no markdown fences.',
+    'Languages: Korean (kr), English (en), Italian (it). Each version must read natively — not a literal translation. The Korean version must read like a Korean fashion editor wrote it — flowing connectives (~인데, ~하고), never translationese.',
+    'Also write "hook": ONE short Korean line for the very top of the Instagram caption. It must stop the scroll with a fact or striking image from the editorial, in plain confident Korean. NO exclamation marks, NO clickbait. Good example: "인류가 사라진 지구에, 여왕이 내려왔다."',
+    'Also write "moodTag": ONE Korean hashtag word (no #) Korean fashion fans would search for this mood/genre, e.g. "사이버펑크", "올드머니룩", "아방가르드".',
+    'Output ONLY a JSON object: {"kr": "<korean>", "en": "<english>", "it": "<italian>", "hook": "<korean one-liner>", "moodTag": "<korean tag word>"}. No prose, no markdown fences.',
   ].join('\n');
   const visionUser = [
     { type: 'text', text: 'Editorial title: ' + String(title || '').trim() + '\n\nReference images:' },
@@ -159,10 +168,12 @@ async function generateEditorialDescriptions({ title, artistStatement, imageUrls
       kr: String(parsed.kr || '').trim(),
       en: String(parsed.en || '').trim(),
       it: String(parsed.it || '').trim(),
+      hook: String(parsed.hook || '').trim(),
+      moodTag: String(parsed.moodTag || '').trim(),
     };
   } catch (err) {
     console.error('[editorialAi] vision-mode failed:', err && err.message);
-    return { kr: '', en: '', it: '' };
+    return { kr: '', en: '', it: '', hook: '', moodTag: '' };
   }
 }
 

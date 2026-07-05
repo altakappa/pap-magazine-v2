@@ -5531,29 +5531,28 @@ async function publishEditorial(id,title){
   }
 }
 
-// ── QA #170 — Instagram caption helpers (mirror review.js' server-side
-// builder so the editor can re-run it after tweaking credits/brands).
-// Format must match the server output verbatim:
+// ── QA #170 — Instagram caption helpers (mirror the server-side
+// builder api/_lib/igCaption.js so the editor can re-run it after
+// tweaking credits/brands). 새 형식 (2026-07):
 //
-//   'TITLE' exclusive for @pap_magazine published by @kangdm ㅡ link in bio
+//   {한국어 훅 — AI 생성에서만}
 //
-//   ————-
-//   Role @handle Role @handle Role @handle …
+//   'TITLE' — PAP 매거진 exclusive editorial
 //
+//   {KR 단락 … 전체 스토리는 프로필 링크에서.}
+//
+//   Role @handle          ← 한 줄에 하나
 //   Starring @model @agency
 //
-//   ————-
-//   (KR) …
+//   더 많은 에디토리얼 보기 | @pap_magazine | For more editorials
 //
 //   (EN) …
 //
 //   (IT) …
 //
-//   ————-
-//   Full Story link🔎
-//   https://www.pap-magazine.com/editorial/<slug>
-//
 //   Fashion by @brand1 @brand2 …
+//
+//   #태그 × 5 (줄바꿈 구분)
 var _IG_PUBLISHER_HANDLE = '@kangdm';
 var _IG_HOUSE_HANDLE     = '@pap_magazine';
 var _IG_SEPARATOR        = '————- ';     // em-dash × 4 + hyphen + space
@@ -5594,18 +5593,14 @@ function _igSlugify(title){
 //     fashion: { brands: [{name, instagram}, …] } }
 function _buildIgCaptionFromEditorial(ed){
   if(!ed) return '';
-  var lines = [];
   var title = String(ed.title||'').trim();
-  var slug  = ed.slug || _igSlugify(title);
 
-  // 1) Header
-  lines.push("'" + title + "' exclusive for " + _IG_HOUSE_HANDLE + ' published by ' + _IG_PUBLISHER_HANDLE + ' ㅡ link in bio');
-  lines.push('');
-
-  // 2) Credits (inline single line) + Starring
-  lines.push(_IG_SEPARATOR);
+  // ── 크레딧: 한 줄에 하나 ("Role @handle") + Starring 분리 ──
+  // 새 형식 (2026-07): 서버 api/_lib/igCaption.js 와 동일 포맷 미러.
+  // 훅(한국어 첫 줄)은 🤖 AI 자동 생성에서만 채워진다 — 템플릿 재조립은
+  // 훅 없이 타이틀 라인부터 시작 (기존 훅이 있으면 에디터가 수동 유지).
   var credits = Array.isArray(ed.credits) ? ed.credits : [];
-  var creditParts = [];
+  var creditLines = [];
   var modelParts = [];
   credits.forEach(function(c){
     if(!c) return;
@@ -5620,37 +5615,11 @@ function _buildIgCaptionFromEditorial(ed){
       modelParts.push(handle);
     }else{
       var label = labels.join(' & ') || _igRoleLabel(rolesArr[0]) || 'Credit';
-      creditParts.push(label + ' ' + handle);
+      creditLines.push(label + ' ' + handle);
     }
   });
-  if(creditParts.length) lines.push(creditParts.join(' '));
-  if(modelParts.length){
-    if(creditParts.length) lines.push('');
-    lines.push('Starring ' + modelParts.join(' '));
-  }
-  lines.push('');
 
-  // 3) Descriptions — three locales. (KR) from description (assumed
-  // primary), (EN) from description_en if present, (IT) blank for admin
-  // to fill.
-  var descKo = (ed.description||'').trim();
-  var descEn = (ed.description_en||'').trim();
-  var descIt = (ed.description_it||'').trim();  // not currently stored; surface as empty
-  lines.push(_IG_SEPARATOR);
-  lines.push('(KR) ' + descKo);
-  lines.push('');
-  lines.push('(EN) ' + descEn);
-  lines.push('');
-  lines.push('(IT) ' + descIt);
-  lines.push('');
-
-  // 4) Full Story link
-  lines.push(_IG_SEPARATOR);
-  lines.push('Full Story link🔎');
-  lines.push(_IG_SITE_BASE + slug);
-  lines.push('');
-
-  // 5) Brands — single line
+  // ── Brands ──
   // QA #274 — Fashion by 라인의 핸들 소스를 2가지로 확장:
   //   (a) ed.fashion.brands (기존: 패션 브랜드 태그 영역의 수동 입력)
   //   (b) ed.fashion.imageCredits 또는 galleryImages[i].credits에서 추출한
@@ -5697,7 +5666,49 @@ function _buildIgCaptionFromEditorial(ed){
       brandHandles.push(h);
     });
   });
-  if(brandHandles.length) lines.push('Fashion by ' + brandHandles.join(' '));
+
+  // ── 조립 (새 형식 2026-07 — 서버 공용 빌더와 동일 구조) ──
+  var lines = [];
+
+  // 1) 타이틀 라인
+  lines.push("'" + title + "' — PAP 매거진 exclusive editorial");
+  lines.push('');
+
+  // 2) KR 단락 — 프로필 링크 유도 문장 보장
+  var descKo = (ed.description||'').trim();
+  if(descKo){
+    if(descKo.indexOf('프로필 링크') === -1){
+      if(!/[.!?…"']$/.test(descKo)) descKo += '.';
+      descKo += ' 전체 스토리는 프로필 링크에서.';
+    }
+    lines.push(descKo);
+    lines.push('');
+  }
+
+  // 3) 크레딧 (한 줄에 하나) + Starring
+  creditLines.forEach(function(l){ lines.push(l); });
+  if(modelParts.length) lines.push('Starring ' + modelParts.join(' '));
+  if(creditLines.length || modelParts.length) lines.push('');
+
+  // 4) 구분선
+  lines.push('더 많은 에디토리얼 보기 | ' + _IG_HOUSE_HANDLE + ' | For more editorials');
+  lines.push('');
+
+  // 5) EN / IT
+  var descEn = (ed.description_en||'').trim();
+  var descIt = (ed.description_it||'').trim();
+  if(descEn){ lines.push('(EN) ' + descEn); lines.push(''); }
+  if(descIt){ lines.push('(IT) ' + descIt); lines.push(''); }
+
+  // 6) Fashion by
+  if(brandHandles.length){ lines.push('Fashion by ' + brandHandles.join(' ')); lines.push(''); }
+
+  // 7) 해시태그 — 정확히 5개, 줄바꿈 구분 (2025.12 정책: 캡션+댓글 합산 최대 5)
+  var tags = ['패션화보','에디토리얼'];
+  var tt = title.replace(/[^A-Za-z0-9가-힣]/g,'').toUpperCase();
+  if(tt.length >= 2 && tt.length <= 30) tags.push(tt);
+  tags.push('FASHIONEDITORIAL','PAPMAGAZINE');
+  lines.push(tags.slice(0,5).map(function(t){ return '#'+t; }).join('\n'));
 
   return lines.join('\n').replace(/\n{3,}/g,'\n\n').trim();
 }

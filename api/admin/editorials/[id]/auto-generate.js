@@ -27,6 +27,7 @@ const { requireAdmin } = require('../../../_lib/auth');
 const { handleCors } = require('../../../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../../../_lib/rateLimit');
 const { generateEditorialDescriptions } = require('../../../_lib/editorialAi');
+const { buildPapIgCaption } = require('../../../_lib/igCaption');
 
 // Same IG header constants as the submission-approval path so the
 // auto-fill caption matches the in-house style exactly.
@@ -64,19 +65,12 @@ function _slugify(title) {
 // SUBMISSION shape (desc.team / desc.looks / desc.models). The two
 // rendering styles are kept in sync visually but operate on different
 // inputs.
-function _buildCaptionFromEditorial(ed, descKr, descEn, descIt) {
-  const lines = [];
+function _buildCaptionFromEditorial(ed, descKr, descEn, descIt, extra) {
   const title = String(ed.title || '').trim() || 'Untitled';
-  const slug  = (ed.slug && String(ed.slug).trim()) || _slugify(title);
 
-  // ── 1) Header ──
-  lines.push(`'${title}' exclusive for ${_IG_HOUSE_HANDLE} published by ${_IG_PUBLISHER_HANDLE} ㅡ link in bio`);
-  lines.push('');
-
-  // ── 2) Credits — single line "Role @handle Role @handle …" ──
-  lines.push(_IG_SEPARATOR);
+  // ── 크레딧 (한 줄에 하나) + Starring 분리 ──
   const credits = Array.isArray(ed.credits) ? ed.credits : [];
-  const creditParts = [];
+  const creditLines = [];
   const starringParts = [];
   credits.forEach((c) => {
     if (!c || !c.name) return;
@@ -98,32 +92,11 @@ function _buildCaptionFromEditorial(ed, descKr, descEn, descIt) {
         .map(function (r) { return _normalizeRoleLabel(r); })
         .filter(Boolean)
         .join(' & ');
-      creditParts.push(`${label || _normalizeRoleLabel(primary)} ${handle}`);
+      creditLines.push(`${label || _normalizeRoleLabel(primary)} ${handle}`);
     }
   });
-  if (creditParts.length) lines.push(creditParts.join(' '));
-  if (starringParts.length) {
-    if (creditParts.length) lines.push('');
-    lines.push('Starring ' + starringParts.join(' '));
-  }
-  lines.push('');
 
-  // ── 3) Tri-lingual descriptions ──
-  lines.push(_IG_SEPARATOR);
-  lines.push('(KR) ' + (descKr || '').trim());
-  lines.push('');
-  lines.push('(EN) ' + (descEn || '').trim());
-  lines.push('');
-  lines.push('(IT) ' + (descIt || '').trim());
-  lines.push('');
-
-  // ── 4) Permalink ──
-  lines.push(_IG_SEPARATOR);
-  lines.push('Full Story link🔎');
-  lines.push(_IG_SITE_BASE + slug);
-  lines.push('');
-
-  // ── 5) Brands (deduped) ──
+  // ── Brands (deduped) ──
   // QA #274 — Fashion by 라인의 핸들 소스를 2가지로 확장:
   //   (a) ed.fashion.brands (패션 브랜드 태그 영역의 수동 입력)
   //   (b) ed.fashion.imageCredits (이미지별 착장 크레딧 텍스트의 @handle들)
@@ -162,9 +135,17 @@ function _buildCaptionFromEditorial(ed, descKr, descEn, descIt) {
       brandHandles.push(h);
     });
   });
-  if (brandHandles.length) lines.push('Fashion by ' + brandHandles.join(' '));
 
-  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  // 새 형식 조립은 공용 빌더(api/_lib/igCaption.js)가 담당.
+  return buildPapIgCaption({
+    title,
+    hook: (extra && extra.hook) || '',
+    moodTag: (extra && extra.moodTag) || '',
+    descKo: descKr, descEn, descIt,
+    creditLines,
+    starring: starringParts,
+    brandHandles,
+  });
 }
 
 module.exports = async function handler(req, res) {
@@ -253,8 +234,11 @@ module.exports = async function handler(req, res) {
     const descEn = (out && out.en) || '';
     const descIt = (out && out.it) || '';
 
-    // 4) Build caption
-    const caption = _buildCaptionFromEditorial(ed, descKr, descEn, descIt);
+    // 4) Build caption (새 형식 — 한국어 훅 + 해시태그 5개 포함)
+    const caption = _buildCaptionFromEditorial(ed, descKr, descEn, descIt, {
+      hook: (out && out.hook) || '',
+      moodTag: (out && out.moodTag) || '',
+    });
 
     // 5) Decide which fields to write — respect overwrite flag.
     //

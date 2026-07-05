@@ -28,6 +28,7 @@ const { requireMainAdmin } = require('../../_lib/auth');
 const { handleCors } = require('../../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../../_lib/rateLimit');
 const { generateEditorialDescriptions } = require('../../_lib/editorialAi');
+const { buildPapIgCaption } = require('../../_lib/igCaption');
 
 const _IG_PUBLISHER_HANDLE = '@kangdm';
 const _IG_HOUSE_HANDLE     = '@pap_magazine';
@@ -54,17 +55,11 @@ function _slugify(title) {
 function _isEmpty(v) {
   return v === null || v === undefined || String(v).trim() === '' || String(v).trim() === '(KR)';
 }
-function _buildCaption(ed, descKr, descEn, descIt) {
-  const lines = [];
+function _buildCaption(ed, descKr, descEn, descIt, extra) {
   const title = String(ed.title || '').trim() || 'Untitled';
-  const slug  = (ed.slug && String(ed.slug).trim()) || _slugify(title);
-
-  lines.push(`'${title}' exclusive for ${_IG_HOUSE_HANDLE} published by ${_IG_PUBLISHER_HANDLE} ㅡ link in bio`);
-  lines.push('');
-  lines.push(_IG_SEPARATOR);
 
   const credits = Array.isArray(ed.credits) ? ed.credits : [];
-  const creditParts = [];
+  const creditLines = [];
   const starringParts = [];
   credits.forEach((c) => {
     if (!c || !c.name) return;
@@ -84,26 +79,9 @@ function _buildCaption(ed, descKr, descEn, descIt) {
         .map(function (r) { return _normalizeRoleLabel(r); })
         .filter(Boolean)
         .join(' & ');
-      creditParts.push(`${label || _normalizeRoleLabel(primary)} ${handle}`);
+      creditLines.push(`${label || _normalizeRoleLabel(primary)} ${handle}`);
     }
   });
-  if (creditParts.length) lines.push(creditParts.join(' '));
-  if (starringParts.length) {
-    if (creditParts.length) lines.push('');
-    lines.push('Starring ' + starringParts.join(' '));
-  }
-  lines.push('');
-  lines.push(_IG_SEPARATOR);
-  lines.push('(KR) ' + (descKr || '').trim());
-  lines.push('');
-  lines.push('(EN) ' + (descEn || '').trim());
-  lines.push('');
-  lines.push('(IT) ' + (descIt || '').trim());
-  lines.push('');
-  lines.push(_IG_SEPARATOR);
-  lines.push('Full Story link🔎');
-  lines.push(_IG_SITE_BASE + slug);
-  lines.push('');
 
   const fashion = (ed.fashion && typeof ed.fashion === 'object') ? ed.fashion : {};
   const brands = Array.isArray(fashion.brands) ? fashion.brands : [];
@@ -118,8 +96,17 @@ function _buildCaption(ed, descKr, descEn, descIt) {
     seen.add(k);
     brandHandles.push(h);
   });
-  if (brandHandles.length) lines.push('Fashion by ' + brandHandles.join(' '));
-  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+
+  // 새 형식 조립은 공용 빌더(api/_lib/igCaption.js)가 담당.
+  return buildPapIgCaption({
+    title,
+    hook: (extra && extra.hook) || '',
+    moodTag: (extra && extra.moodTag) || '',
+    descKo: descKr, descEn, descIt,
+    creditLines,
+    starring: starringParts,
+    brandHandles,
+  });
 }
 
 function _sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
@@ -192,7 +179,10 @@ module.exports = async function handler(req, res) {
         const descKr = out.kr || '';
         const descEn = out.en || '';
         const descIt = out.it || '';
-        const caption = _buildCaption(ed, descKr, descEn, descIt);
+        const caption = _buildCaption(ed, descKr, descEn, descIt, {
+          hook: (out && out.hook) || '',
+          moodTag: (out && out.moodTag) || '',
+        });
 
         const upd = {};
         if (descKr && (overwrite || _isEmpty(ed.description)))             upd.description = descKr;

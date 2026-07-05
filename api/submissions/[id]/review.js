@@ -18,6 +18,7 @@ const { rateLimit, RATE_LIMITS } = require('../../_lib/rateLimit');
 // exact same prompts. Keeps the behaviour identical to what this file
 // has been doing on submission-approval.
 const { generateEditorialDescriptions: _generateEditorialDescriptions } = require('../../_lib/editorialAi');
+const { buildPapIgCaption } = require('../../_lib/igCaption');
 
 // (Old inline _generateEditorialDescriptions definition lived here. It is
 // now exclusively in api/_lib/editorialAi.js so the admin auto-generate
@@ -237,20 +238,15 @@ function _slugifyForUrl(title) {
 }
 
 function _buildInstagramCaption(desc, title, opts) {
-  const slug = (opts && opts.slug) || _slugifyForUrl(title);
+  // 새 형식 (2026-07) — 조립은 api/_lib/igCaption.js 공용 빌더가 담당.
+  // 여기서는 SUBMISSION shape(desc.team / desc.models / desc.looks)에서
+  // 부품(크레딧 줄·스타링·브랜드)만 추출한다.
   const descKo = (opts && opts.descKo) || (desc && desc.artistStatement) || '';
   const descEn = (opts && opts.descEn) || '';
   const descIt = (opts && opts.descIt) || '';
 
-  const lines = [];
-
-  // ── 1) Header ──
-  lines.push(`'${String(title || '').trim()}' exclusive for ${_IG_HOUSE_HANDLE} published by ${_IG_PUBLISHER_HANDLE} ㅡ link in bio`);
-  lines.push('');
-
-  // ── 2) Crew credits (inline single line) + Starring ──
-  lines.push(_IG_SEPARATOR);
-  const creditParts = [];
+  // 크레딧 — 한 줄에 하나 ("Role @handle")
+  const creditLines = [];
   if (Array.isArray(desc.team) && desc.team.length) {
     desc.team.forEach((m) => {
       if (!m || !m.name) return;
@@ -261,7 +257,7 @@ function _buildInstagramCaption(desc, title, opts) {
       const label = rolesArr.length
         ? rolesArr.map(function (r) { return _normalizeRoleLabel(r); }).filter(Boolean).join(' & ')
         : _normalizeRoleLabel('');
-      creditParts.push(`${label} ${handle}`);
+      creditLines.push(`${label} ${handle}`);
     });
   } else if (desc.credits && typeof desc.credits === 'object') {
     // Legacy {photographer: ["Name (@handle)"]} shape — parse back.
@@ -274,43 +270,24 @@ function _buildInstagramCaption(desc, title, opts) {
         if (!m) return;
         const handle = _normalizeIgHandle(m[1]);
         if (!handle) return;
-        creditParts.push(`${_normalizeRoleLabel(roleKey)} ${handle}`);
+        creditLines.push(`${_normalizeRoleLabel(roleKey)} ${handle}`);
       });
     });
   }
-  if (creditParts.length) lines.push(creditParts.join(' '));
 
-  // Models — "Starring @model @agency …"
+  // Starring — "@model @agency …"
+  const starring = [];
   if (Array.isArray(desc.models) && desc.models.length) {
-    if (creditParts.length) lines.push('');
-    const modelParts = [];
     desc.models.forEach((m) => {
       if (!m || !m.name) return;
       const model = _normalizeIgHandle(m.instagram || m.name);
       const agency = _normalizeIgHandle(m.agencyInstagram || m.agency || '');
-      if (model) modelParts.push(model);
-      if (agency) modelParts.push(agency);
+      if (model) starring.push(model);
+      if (agency) starring.push(agency);
     });
-    if (modelParts.length) lines.push('Starring ' + modelParts.join(' '));
   }
-  lines.push('');
 
-  // ── 3) Descriptions in three languages ──
-  lines.push(_IG_SEPARATOR);
-  lines.push('(KR) ' + (descKo || '').trim());
-  lines.push('');
-  lines.push('(EN) ' + (descEn || '').trim());
-  lines.push('');
-  lines.push('(IT) ' + (descIt || '').trim());
-  lines.push('');
-
-  // ── 4) Full Story link ──
-  lines.push(_IG_SEPARATOR);
-  lines.push('Full Story link🔎');
-  lines.push(_IG_SITE_BASE + slug);
-  lines.push('');
-
-  // ── 5) Brands — single line "Fashion by @brand1 @brand2 …" ──
+  // Brands
   const seen = new Set();
   const brandHandles = [];
   if (Array.isArray(desc.looks)) {
@@ -326,9 +303,14 @@ function _buildInstagramCaption(desc, title, opts) {
       });
     });
   }
-  if (brandHandles.length) lines.push('Fashion by ' + brandHandles.join(' '));
 
-  return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  return buildPapIgCaption({
+    title,
+    hook: (opts && opts.hook) || '',
+    moodTag: (opts && opts.moodTag) || '',
+    descKo, descEn, descIt,
+    creditLines, starring, brandHandles,
+  });
 }
 
 // Build editorial.fashion = { brands, imageCredits } from looks +
@@ -529,6 +511,8 @@ module.exports = async function handler(req, res) {
             descKo: igDescriptions.kr,
             descEn: igDescriptions.en,
             descIt: igDescriptions.it,
+            hook: igDescriptions.hook,
+            moodTag: igDescriptions.moodTag,
           });
 
           const { data: editorial, error: edErr } = await supabaseAdmin
