@@ -106,7 +106,8 @@
     { "source": "/brand/:id", "destination": "/api/seo/brand/:id" },
     { "source": "/badge.svg", "destination": "/api/badge" },
     { "source": "/badge", "destination": "/api/badge" },
-    { "source": "/site-analysis", "destination": "/site-analysis.html" }
+    { "source": "/site-analysis", "destination": "/site-analysis.html" },
+    { "source": "/network", "destination": "/network.html" }
   ],
   "images": {
     "remotePatterns": [

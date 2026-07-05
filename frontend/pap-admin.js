@@ -5809,6 +5809,54 @@ function _buildIgCaptionFromEditorial(ed){
 
   return lines.join('\n').replace(/\n{3,}/g,'\n\n').trim();
 }
+// ── IG 대체 텍스트(alt text) 추천 (2026-07, 검색 노출 세트) ──
+// 구글 이미지 검색·접근성용. IG 앱: 게시물 고급 설정 → 대체 텍스트에 붙여넣기.
+// 100자 이내 유지 (IG 커스텀 alt 권장 한도).
+function _buildIgAltTextFromEditorial(ed){
+  if(!ed) return '';
+  var title = String(ed.title||'').trim();
+  var credits = Array.isArray(ed.credits) ? ed.credits : [];
+  var models = [];
+  credits.forEach(function(c){
+    if(!c) return;
+    var rolesArr = (Array.isArray(c.roles) && c.roles.length) ? c.roles : (c.role ? [c.role] : []);
+    var isModel = rolesArr.some(function(r){ var l=_igRoleLabel(r); return l==='Starring' || /^Model$/i.test(l||''); });
+    if(isModel){
+      var nm = String(c.name||'').trim() || _igNormalizeHandle(c.instagram||'').replace(/^@/,'');
+      if(nm) models.push(nm);
+    }
+  });
+  var brands = (ed.fashion && Array.isArray(ed.fashion.brands)) ? ed.fashion.brands : [];
+  var brandNames = [];
+  brands.forEach(function(b){
+    if(!b) return;
+    var nm = String(b.name||'').trim() || _igNormalizeHandle(b.instagram||'').replace(/^@/,'');
+    if(nm && brandNames.indexOf(nm) === -1) brandNames.push(nm);
+  });
+  var alt = "패션 화보 '" + title + "' — PAP 매거진 에디토리얼";
+  if(models.length)     alt += ', 모델 ' + models.slice(0,2).join('·');
+  if(brandNames.length) alt += ', ' + brandNames.slice(0,3).join('·') + ' 착용';
+  if(alt.length > 100) alt = alt.slice(0, 97) + '…';
+  return alt;
+}
+// 캡션 textarea 아래에 alt 추천 박스를 주입/갱신 (admin.html 수정 없이 동적 생성).
+function _renderIgAltBox(ed){
+  var cap = document.getElementById('postIgCaption');
+  if(!cap) return;
+  var alt = _buildIgAltTextFromEditorial(ed);
+  if(!alt) return;
+  var box = document.getElementById('postIgAltBox');
+  if(!box){
+    box = document.createElement('div');
+    box.id = 'postIgAltBox';
+    box.style.cssText = 'margin-top:8px;padding:8px 10px;background:var(--surface,#f8f8f8);border:1px solid var(--border2,#e5e5e5);border-radius:8px;font-size:12px;';
+    box.innerHTML = '<div style="font-weight:600;margin-bottom:4px;">🖼 대체 텍스트 추천 <span style="font-weight:400;color:#888;">(IG 게시 시 고급 설정 → 대체 텍스트에 붙여넣기 — 구글 이미지 검색 노출)</span></div>'
+      + '<input id="postIgAltText" type="text" readonly onclick="this.select()" style="width:100%;border:1px solid var(--border2,#ddd);border-radius:6px;padding:6px 8px;font-size:12px;background:#fff;">';
+    cap.parentNode.insertBefore(box, cap.nextSibling);
+  }
+  var inp = document.getElementById('postIgAltText');
+  if(inp) inp.value = alt;
+}
 // Buttons in the editorial modal call into these. We rebuild a synthetic
 // "ed" object from the live form so the regenerate button reflects any
 // in-modal edits the user has made to credits/brands BEFORE saving.
@@ -5817,6 +5865,7 @@ function regenerateIgCaption(){
   var caption = _buildIgCaptionFromEditorial(ed);
   var el = document.getElementById('postIgCaption');
   if(el){ el.value = caption; }
+  _renderIgAltBox(ed);
 }
 
 // QA #184 — POST /api/admin/editorials/:id/auto-generate. Calls Claude
@@ -6189,6 +6238,7 @@ async function editEditorial(id){
   if(document.getElementById('postDescriptionIt'))document.getElementById('postDescriptionIt').value=ed.description_it||'';
   // QA #170 — Instagram caption (seeded at submission approval).
   if(document.getElementById('postIgCaption'))document.getElementById('postIgCaption').value=ed.instagram_caption||'';
+  try{ _renderIgAltBox(ed); }catch(_e){}
   // 참여 증폭 2.0 — 원본 IG 게시물 URL.
   if(document.getElementById('postIgSourceUrl'))document.getElementById('postIgSourceUrl').value=ed.source_instagram_url||'';
   document.getElementById('postPublish').checked=(ed.status==='published');

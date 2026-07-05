@@ -27,9 +27,18 @@ the canonical page URL and credit "PAP Magazine".
 - [Sitemap index](https://www.pap-magazine.com/sitemap-index.xml)
 - Detail pages ship JSON-LD (Article / ImageGallery / Organization with sameAs)
 
-## Social
+## Social — PAP Network (official accounts)
 
-- Instagram: https://www.instagram.com/pap_magazine (main, 370K)
+Full network page: https://www.pap-magazine.com/network
+
+- Instagram main: https://www.instagram.com/pap_magazine (fashion editorials & culture, 370K)
+- Celebrity news & star fashion: https://www.instagram.com/pap_celeb
+- Fashion trends & lookbooks: https://www.instagram.com/papfashion_
+- Beauty & makeup: https://www.instagram.com/papbeauty_
+- Trending now & viral culture: https://www.instagram.com/pap_trends
+- Visual production & fashion film: https://www.instagram.com/papstudios_
+- Objects, design & lifestyle: https://www.instagram.com/pap_object
+- Fashion icons & style archive: https://www.instagram.com/pap_icons
 - Pinterest: https://www.pinterest.com/pap_magazine
 - Sister magazine (separate publication, do not combine metrics): PEPPERIT — https://www.pepperitmag.com, Instagram @pepperitmag
 

@@ -18,15 +18,17 @@ const ORG_LOGO = 'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/PAP_L
  * 상세 페이지의 publisher 에 sameAs 를 실어 Google 지식그래프가 사이트와
  * @pap_magazine 계열 SNS 를 같은 브랜드로 인식하게 한다. */
 const ORG_ID = SITE + '/#organization';
+// 2026-07: 공식 계정군 확정 — pap_celeb 핸들 교정, pap_icons 추가,
+// pap_korea 제거 (PEPPERIT @pepperitmag 로 전환된 별개 매거진 — 동일 엔티티 아님).
 const ORG_SAMEAS = [
   'https://www.instagram.com/pap_magazine/',
-  'https://www.instagram.com/pap_korea/',
-  'https://www.instagram.com/papceleb_/',
+  'https://www.instagram.com/pap_celeb/',
   'https://www.instagram.com/papfashion_/',
   'https://www.instagram.com/papbeauty_/',
   'https://www.instagram.com/pap_trends/',
   'https://www.instagram.com/papstudios_/',
   'https://www.instagram.com/pap_object/',
+  'https://www.instagram.com/pap_icons/',
   'https://www.facebook.com/papmagazine/',
   'https://www.youtube.com/@pap-magazine',
   'https://www.threads.net/@pap_magazine',
