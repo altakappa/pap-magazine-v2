@@ -4592,6 +4592,20 @@ async function loadDashboardGrowth(){
     Object.keys(secs).forEach(function(k){(secs[k]||[]).forEach(function(c){if(c.status==='fail')failLabels.push(c.label);});});
     if(failLabels.length){fails.style.display='';fails.innerHTML='🚨 '+failLabels.map(esc).join(' · ');}
     else{fails.style.display='none';}
+    // 예상 질문 칩 — 리포트 상태 기반 동적 생성 (긴급 항목 우선)
+    var sug=document.getElementById('dashAskSuggest');
+    if(sug){
+      var qs=[];
+      if(failLabels.length) qs.push('"'+failLabels[0].split(' (')[0]+'" 문제, 원인과 해결책은?');
+      qs.push('이번 주 가장 큰 병목은?');
+      qs.push('지난주 대비 좋아진 것과 나빠진 것은?');
+      qs.push('오늘 딱 하나만 실행한다면?');
+      if((s.warn||0)>3) qs.push('주의 항목 '+s.warn+'개 중 뭐부터 처리해야 해?');
+      sug.innerHTML=qs.slice(0,4).map(function(q){
+        return '<button type="button" onclick="var i=document.getElementById(\'dashAskInput\');i.value=this.textContent;dashAskAI();" '
+          +'style="background:var(--bg2,#141418);border:1px solid var(--line,#2a2a32);border-radius:100px;padding:5px 12px;font-size:11px;color:var(--text3,#999);cursor:pointer">'+esc(q)+'</button>';
+      }).join('');
+    }
     fb.innerHTML=row.feedback?md(row.feedback):'<span style="color:var(--text3)">AI 피드백이 아직 없습니다 — 매일 07:30 자동 생성됩니다.</span>';
   }catch(e){
     fb.innerHTML='<span style="color:var(--text3)">성장 진단을 불러오지 못했습니다: '+esc(e.message||e)+'</span>';

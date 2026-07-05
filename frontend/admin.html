@@ -541,6 +541,8 @@ tr:hover td{background:rgba(0,0,0,.02)}
           </div>
           <!-- AI에게 질문 — 최신 진단·추세를 근거로 자연어 답변 -->
           <div style="margin-top:14px;border-top:1px solid var(--line,#2a2a32);padding-top:12px">
+            <!-- 예상 질문 칩 — 그날 리포트 상태(긴급·이상·추세)에 맞춰 동적 생성 -->
+            <div id="dashAskSuggest" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"></div>
             <div style="display:flex;gap:8px">
               <input id="dashAskInput" type="text" placeholder="데이터에 질문하세요 — 예: 이번 주 가장 큰 병목은? 조회가 왜 정체됐지?" style="flex:1;background:var(--bg2,#141418);border:1px solid var(--line,#2a2a32);border-radius:8px;padding:9px 12px;color:inherit;font-size:12.5px" onkeydown="if(event.key==='Enter')dashAskAI()">
               <button class="btn" onclick="dashAskAI()" id="dashAskBtn">AI 분석</button>
