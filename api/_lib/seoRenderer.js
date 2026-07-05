@@ -436,7 +436,7 @@ function renderSeoHtml(kind, record) {
   const fashionBrands = extractFashionBrands(record);
   const fashionHtml = fashionBrands.length
     ? '<section class="seo-fashion"><h2>Fashion</h2><div class="ed-fashion-chips">' +
-        fashionBrands.map(h => `<a class="ed-fashion-chip" href="https://www.instagram.com/${escAttr(h.replace(/^@/, ''))}/" target="_blank" rel="noopener noreferrer">${escText(h)}</a>`).join('') +
+        fashionBrands.map(h => `<span class="ed-fashion-pair"><a class="ed-fashion-chip" href="https://www.instagram.com/${escAttr(h.replace(/^@/, ''))}/" target="_blank" rel="noopener noreferrer">${escText(h)}</a><a class="ed-buy-chip" href="/go/${encodeURIComponent(h.replace(/^@/, '').toLowerCase())}" target="_blank" rel="sponsored nofollow noopener">구매</a></span>`).join('') +
       '</div></section>'
     : '';
 
@@ -668,6 +668,9 @@ ${cfg.schemaType !== 'VideoObject' && ogImage ? `<link rel="preload" as="image" 
   .ed-fashion-chips{display:flex;flex-wrap:wrap;gap:8px}
   .ed-fashion-chip{display:inline-block;padding:6px 12px;border:1px solid rgba(255,255,255,.18);font-size:12px;color:rgba(255,255,255,.85);text-decoration:none;transition:background .2s}
   .ed-fashion-chip:hover{background:rgba(255,255,255,.06)}
+  .ed-fashion-pair{display:inline-flex}
+  .ed-buy-chip{display:inline-block;padding:6px 10px;border:1px solid rgba(255,255,255,.18);border-left:none;font-size:11px;color:#000;background:#fff;text-decoration:none;font-weight:700}
+  .ed-buy-chip:hover{opacity:.85}
   .seo-video-section{max-width:1200px;margin:48px auto;padding:0 16px}
   .seo-embed{position:relative;width:100%;aspect-ratio:16/9;background:#111}
   .seo-embed iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}

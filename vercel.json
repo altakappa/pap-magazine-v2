@@ -27,6 +27,10 @@
     {
       "path": "/api/indexnow?mode=recent",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/daily-growth-feedback",
+      "schedule": "30 22 * * *"
     }
   ],
   "rewrites": [
@@ -93,7 +97,8 @@
     { "source": "/partners", "destination": "/api/seo/partners" },
     { "source": "/brand/:id", "destination": "/api/seo/brand/:id" },
     { "source": "/badge.svg", "destination": "/api/badge" },
-    { "source": "/badge", "destination": "/api/badge" }
+    { "source": "/badge", "destination": "/api/badge" },
+    { "source": "/site-analysis", "destination": "/site-analysis.html" }
   ],
   "images": {
     "remotePatterns": [

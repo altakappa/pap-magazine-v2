@@ -131,45 +131,65 @@ module.exports = async function handler(req, res) {
   // Always respond no-store — admin-changed URLs must propagate immediately.
   res.setHeader('Cache-Control', 'no-store, max-age=0');
 
-  const brandId = (req.query.id || '').toString().trim();
-  if (!brandId) {
+  // 수익화 2.0 (2026-07) — 입력을 brand_id 뿐 아니라 @핸들·별칭·이름으로도
+  // 해석한다. 화보 크레딧(Fashion by @handle)에서 바로 /go/<핸들> 로 걸 수
+  // 있게 하기 위함 — 렌더 시점 브랜드 조회 비용 0.
+  const raw = decodeURIComponent((req.query.id || '').toString()).trim();
+  const norm = raw.replace(/^@+/, '').toLowerCase();
+  if (!norm) {
     return res.redirect(302, HOME_URL);
   }
 
   const now = new Date();
+  const region = pickRegion(req);
 
-  let brand;
+  // 폴백 목적지 — 어필리에이트 URL이 없어도 빈손으로 돌려보내지 않는다.
+  // KR → 무신사 검색, 그 외 → FARFETCH 검색. SKIMLINKS_PUB_ID 가 설정되면
+  // 폴백 검색 URL을 Skimlinks 로 래핑해 자동 수익화한다.
+  // (brands.affiliate_url_* 는 관리자가 넣은 '완성된' 링크로 간주 — 래핑 안 함)
+  function searchFallback(name) {
+    const q = encodeURIComponent(String(name || norm).trim());
+    const dest = region === 'KR'
+      ? 'https://www.musinsa.com/search/goods?keyword=' + q
+      : 'https://www.farfetch.com/shopping/search/items.aspx?q=' + q;
+    const pub = process.env.SKIMLINKS_PUB_ID;
+    return pub
+      ? 'https://go.skimresources.com/?id=' + encodeURIComponent(pub) + '&xs=1&url=' + encodeURIComponent(dest)
+      : dest;
+  }
+
+  let brand = null;
   try {
-    const { data, error } = await supabaseAdmin
-      .from('brands')
-      .select('brand_id,status,affiliate_url_global,affiliate_url_korea')
-      .eq('brand_id', brandId)
-      .maybeSingle();
-    if (error) {
-      console.error('[go] brand lookup error', error.message);
-      return res.redirect(302, HOME_URL);
+    const SEL = 'brand_id,display_name,status,affiliate_url_global,affiliate_url_korea';
+    // 1) brand_id 직접
+    let r = await supabaseAdmin.from('brands').select(SEL).eq('brand_id', norm).maybeSingle();
+    brand = r.data || null;
+    // 2) 별칭 테이블 (크레딧 문자열 → brand_id)
+    if (!brand) {
+      const a = await supabaseAdmin.from('brand_aliases').select('brand_id').eq('alias', norm).maybeSingle();
+      if (a.data && a.data.brand_id) {
+        r = await supabaseAdmin.from('brands').select(SEL).eq('brand_id', a.data.brand_id).maybeSingle();
+        brand = r.data || null;
+      }
     }
-    brand = data;
+    // 3) 인스타 핸들
+    if (!brand) {
+      r = await supabaseAdmin.from('brands').select(SEL).eq('instagram_handle', norm).limit(1).maybeSingle();
+      brand = r.data || null;
+    }
   } catch (e) {
     console.error('[go] brand lookup threw', e && e.message);
-    return res.redirect(302, HOME_URL);
   }
 
   if (!brand || brand.status !== 'active') {
-    // Unknown / pending / archived → home. Log enough to debug.
-    console.warn('[go] no active brand for id=' + brandId + ' (status=' + (brand && brand.status) + ')');
-    return res.redirect(302, HOME_URL);
+    // 미등록/보류 브랜드 — 검색 폴백으로 보낸다 (로그는 브랜드 확정 시에만).
+    return res.redirect(302, searchFallback(norm.replace(/[._]+/g, ' ')));
   }
 
-  const region = pickRegion(req);
-  const dest = pickAffiliateUrl(brand, region);
-  if (!dest) {
-    console.warn('[go] no affiliate URL on active brand id=' + brandId);
-    return res.redirect(302, HOME_URL);
-  }
+  const dest = pickAffiliateUrl(brand, region) || searchFallback(brand.display_name || norm);
 
   // Record click before redirecting. If recording errors, we still redirect.
-  try { await recordClick({ brandId, region, req, now }); }
+  try { await recordClick({ brandId: brand.brand_id, region, req, now }); }
   catch (e) { console.warn('[go] recordClick threw', e && e.message); }
 
   return res.redirect(302, dest);

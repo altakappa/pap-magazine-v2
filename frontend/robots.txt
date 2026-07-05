@@ -18,6 +18,7 @@ Disallow: /auth
 Disallow: /auth.html
 Disallow: /mypage
 Disallow: /mypage.html
+Disallow: /site-analysis
 Disallow: /data-deletion.html
 Disallow: /api/
 

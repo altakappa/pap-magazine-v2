@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>사이트 정밀 분석 — PAP Magazine</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Inter','Pretendard','Apple SD Gothic Neo',-apple-system,sans-serif;background:#0c0c0e;color:#e8e8ea;line-height:1.65;-webkit-font-smoothing:antialiased}
+  a{color:#9db8ff;text-decoration:none}
+  .wrap{max-width:1080px;margin:0 auto;padding:36px 22px 90px}
+  header{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;margin-bottom:26px}
+  h1{font-size:22px;font-weight:800;letter-spacing:.01em}
+  h1 small{display:block;font-size:12px;font-weight:400;color:#8a8a92;margin-top:4px}
+  .hdr-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  select,button.btn{background:#1a1a1f;color:#e8e8ea;border:1px solid #2c2c34;border-radius:8px;padding:9px 14px;font-size:12.5px;cursor:pointer}
+  button.btn.primary{background:#2f5cff;border-color:#2f5cff;font-weight:700}
+  button.btn:disabled{opacity:.5;cursor:default}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:26px}
+  .card{background:#141418;border:1px solid #232329;border-radius:12px;padding:16px 18px}
+  .card .n{font-size:26px;font-weight:800}
+  .card .l{font-size:11.5px;color:#8a8a92;margin-top:2px}
+  .card.ok .n{color:#4ade80}.card.warn .n{color:#fbbf24}.card.fail .n{color:#f87171}.card.error .n{color:#a78bfa}
+
+  .grid{display:grid;grid-template-columns:1fr;gap:22px}
+  @media(min-width:960px){.grid{grid-template-columns:5fr 4fr}}
+
+  .panel{background:#141418;border:1px solid #232329;border-radius:14px;padding:22px 24px}
+  .panel h2{font-size:14px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#b9b9c2;margin-bottom:14px}
+  .sec{margin-bottom:20px}
+  .sec h3{font-size:12px;font-weight:700;letter-spacing:.08em;color:#7c7c86;text-transform:uppercase;margin-bottom:8px;border-bottom:1px solid #232329;padding-bottom:6px}
+  .row{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px dashed #1e1e24;font-size:13px}
+  .row:last-child{border-bottom:none}
+  .row .lab{color:#c9c9d1}
+  .row .val{white-space:nowrap;font-weight:700}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;vertical-align:1px}
+  .dot.ok{background:#4ade80}.dot.warn{background:#fbbf24}.dot.fail{background:#f87171}.dot.error{background:#a78bfa}
+  .note{font-size:11px;color:#77777f;margin:2px 0 4px 16px}
+  .items{font-size:11px;color:#9a9aa4;margin:0 0 6px 16px}
+  .items span{display:inline-block;background:#1c1c22;border-radius:6px;padding:2px 8px;margin:2px 4px 2px 0}
+
+  /* AI 피드백 */
+  .fb{font-size:14px}
+  .fb h2{font-size:16px;color:#fff;text-transform:none;letter-spacing:0;margin:18px 0 8px;border-bottom:1px solid #2a2a32;padding-bottom:6px}
+  .fb h2:first-child{margin-top:0}
+  .fb ul,.fb ol{margin:6px 0 12px 20px}
+  .fb li{margin-bottom:6px}
+  .fb p{margin-bottom:10px;color:#d6d6dd}
+  .fb strong{color:#fff}
+  .fb-meta{font-size:11px;color:#6f6f78;margin-top:14px}
+  .empty{color:#8a8a92;font-size:13px;padding:26px 0;text-align:center}
+  #status{font-size:12px;color:#8a8a92;margin-left:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>사이트 정밀 분석 <small>PAP Magazine — 데일리 성장 진단 · 매일 07:30 자동 갱신</small></h1>
+    <div class="hdr-actions">
+      <select id="dateSel" title="리포트 날짜"></select>
+      <button class="btn primary" id="rerunBtn" onclick="rerun()">지금 재분석</button>
+      <span id="status"></span>
+    </div>
+  </header>
+
+  <div class="cards" id="cards"></div>
+
+  <div class="grid">
+    <div class="panel">
+      <h2>정밀 검증 — 5개 영역</h2>
+      <div id="auditBox" class="empty">불러오는 중…</div>
+    </div>
+    <div class="panel">
+      <h2>오늘의 개선 피드백 (AI 분석)</h2>
+      <div id="fbBox" class="fb empty">불러오는 중…</div>
+    </div>
+  </div>
+</div>
+
+<script>
+var TOKEN = localStorage.getItem('pap-token');
+if (!TOKEN) location.href = '/auth?mode=login';
+
+var SECTION_LABELS = { content:'콘텐츠 무결성', cadence:'발행 페이스', engagement:'참여', pipelines:'파이프라인 건강', audience:'오디언스' };
+
+function api(path, opts) {
+  opts = opts || {};
+  opts.headers = Object.assign({ 'Authorization': 'Bearer ' + TOKEN }, opts.headers || {});
+  return fetch(path, opts).then(function(r){
+    if (r.status === 401) { location.href = '/auth?mode=login'; throw new Error('auth'); }
+    return r.json().then(function(j){ if(!r.ok) throw new Error(j.error||('HTTP '+r.status)); return j; });
+  });
+}
+
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* 초경량 마크다운 렌더러 (##, **, -, 숫자목록만 — 외부 라이브러리 불필요) */
+function md(src){
+  var lines = String(src||'').split('\n'), out=[], list=null;
+  function closeList(){ if(list){ out.push('</'+list+'>'); list=null; } }
+  lines.forEach(function(ln){
+    var t = ln.trim();
+    if(!t){ closeList(); return; }
+    var inline = esc(t).replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+    if(/^##\s+/.test(t)){ closeList(); out.push('<h2>'+inline.replace(/^##\s+/,'')+'</h2>'); }
+    else if(/^[-•]\s+/.test(t)){ if(list!=='ul'){ closeList(); out.push('<ul>'); list='ul'; } out.push('<li>'+inline.replace(/^[-•]\s+/,'')+'</li>'); }
+    else if(/^\d+[.)]\s+/.test(t)){ if(list!=='ol'){ closeList(); out.push('<ol>'); list='ol'; } out.push('<li>'+inline.replace(/^\d+[.)]\s+/,'')+'</li>'); }
+    else { closeList(); out.push('<p>'+inline+'</p>'); }
+  });
+  closeList();
+  return out.join('');
+}
+
+function renderCards(summary){
+  var el = document.getElementById('cards');
+  if(!summary){ el.innerHTML=''; return; }
+  el.innerHTML =
+    '<div class="card ok"><div class="n">'+ (summary.ok||0) +'</div><div class="l">정상</div></div>'+
+    '<div class="card warn"><div class="n">'+ (summary.warn||0) +'</div><div class="l">주의</div></div>'+
+    '<div class="card fail"><div class="n">'+ (summary.fail||0) +'</div><div class="l">긴급</div></div>'+
+    '<div class="card error"><div class="n">'+ (summary.error||0) +'</div><div class="l">측정 실패</div></div>';
+}
+
+function renderAudit(audit){
+  var box = document.getElementById('auditBox');
+  if(!audit || !audit.sections){ box.innerHTML='<div class="empty">감사 데이터 없음</div>'; return; }
+  var html = '';
+  Object.keys(audit.sections).forEach(function(key){
+    var checks = audit.sections[key] || [];
+    html += '<div class="sec"><h3>'+ (SECTION_LABELS[key]||key) +'</h3>';
+    checks.forEach(function(c){
+      var val = (c.value===null||c.value===undefined) ? '—' : c.value;
+      if (c.compare!==null && c.compare!==undefined) val += ' <span style="color:#6f6f78;font-weight:400">(전주 '+c.compare+')</span>';
+      html += '<div class="row"><span class="lab"><span class="dot '+(c.status||'error')+'"></span>'+esc(c.label)+'</span><span class="val">'+val+'</span></div>';
+      if (c.note) html += '<div class="note">'+esc(c.note)+'</div>';
+      if (c.items && c.items.length) html += '<div class="items">'+ c.items.map(function(t){return '<span>'+esc(t)+'</span>';}).join('') +'</div>';
+    });
+    html += '</div>';
+  });
+  box.className=''; box.innerHTML = html;
+}
+
+function renderFeedback(row){
+  var box = document.getElementById('fbBox');
+  if(!row || !row.feedback){
+    box.className='fb empty';
+    box.innerHTML = '아직 AI 피드백이 없습니다.<br>매일 07:30 자동 생성 — 또는 "지금 재분석"을 눌러주세요.';
+    return;
+  }
+  box.className='fb';
+  box.innerHTML = md(row.feedback) +
+    '<div class="fb-meta">생성: '+ esc(row.created_at ? new Date(row.created_at).toLocaleString('ko-KR') : '') +
+    (row.model ? ' · '+esc(row.model) : '') + '</div>';
+}
+
+function loadReport(date){
+  document.getElementById('status').textContent = '불러오는 중…';
+  return api('/api/growth-report' + (date ? '?date='+encodeURIComponent(date) : ''))
+    .then(function(j){
+      var row = j.data;
+      renderCards(row.audit && row.audit.summary);
+      renderAudit(row.audit);
+      renderFeedback(row);
+      document.getElementById('status').textContent = '';
+    })
+    .catch(function(e){
+      if(e.message==='auth') return;
+      document.getElementById('status').textContent = '';
+      // 저장된 리포트가 없으면 라이브 감사로 폴백 (피드백 없이)
+      return fetch('/api/growth-audit').then(function(r){return r.json();}).then(function(audit){
+        renderCards(audit.summary); renderAudit(audit); renderFeedback(null);
+      }).catch(function(){
+        document.getElementById('auditBox').innerHTML = '<div class="empty">'+esc(e.message)+'</div>';
+      });
+    });
+}
+
+function loadHistory(){
+  return api('/api/growth-report?history=1').then(function(j){
+    var sel = document.getElementById('dateSel');
+    var rows = j.data || [];
+    sel.innerHTML = rows.length
+      ? rows.map(function(r){
+          var s = r.summary ? (' · 긴급 '+(r.summary.fail||0)+' · 주의 '+(r.summary.warn||0)) : '';
+          return '<option value="'+esc(r.report_date)+'">'+esc(r.report_date)+s+'</option>';
+        }).join('')
+      : '<option value="">리포트 없음 (첫 실행 대기)</option>';
+    sel.onchange = function(){ if(sel.value) loadReport(sel.value); };
+  }).catch(function(){});
+}
+
+function rerun(){
+  var btn = document.getElementById('rerunBtn');
+  btn.disabled = true; document.getElementById('status').textContent = '분석 중… (최대 1분)';
+  api('/api/cron/daily-growth-feedback', { method:'POST' })
+    .then(function(){ return loadHistory(); })
+    .then(function(){ return loadReport(); })
+    .catch(function(e){ document.getElementById('status').textContent = '실패: '+e.message; })
+    .then(function(){ btn.disabled = false; });
+}
+
+loadHistory().then(function(){ loadReport(); });
+</script>
+</body>
+</html>

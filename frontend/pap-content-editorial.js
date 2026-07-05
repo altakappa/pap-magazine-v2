@@ -901,6 +901,30 @@ window._papDownloadLogoZip = window._papDownloadLogoZip || async function(btn){
 // 좋아요·저장·보내기 신호는 게시물 위에서만 발생하므로, 원본 게시물을
 // 페이지 안에 직접 띄워 반응까지의 거리를 한 클릭으로 줄인다.
 // igUrl 이 없으면 컨테이너를 숨긴다 (백필 전 대부분의 아카이브).
+// 수익화 2.0 (2026-07) — SHOP THE STORY. 착장 브랜드(det.fashion 핸들 목록)를
+// 구매 링크 행으로 렌더. 링크는 /go/<핸들> 리다이렉터를 거쳐 클릭이
+// affiliate_clicks 에 기록되고, 지오 라우팅(KR 무신사/글로벌 파페치 폴백,
+// 브랜드별 어필리에이트 URL 우선)으로 착지한다.
+function _papRenderShopRow(fashion){
+  var box=document.getElementById('edShopRow');
+  if(!box) return;
+  var brands=(Array.isArray(fashion)?fashion:[]).map(function(h){return String(h||'').trim();}).filter(function(h){return h && h!=='@brand';});
+  if(!brands.length){ box.innerHTML=''; box.style.display='none'; return; }
+  var chips=brands.slice(0,12).map(function(h){
+    var clean=h.replace(/^@+/,'');
+    return '<a href="/go/'+encodeURIComponent(clean.toLowerCase())+'" target="_blank" rel="sponsored nofollow noopener" '
+      +'style="display:inline-block;margin:0 8px 8px 0;padding:9px 16px;border:1px solid rgba(255,255,255,.25);font-size:12px;color:#fff;text-decoration:none;letter-spacing:.04em">'
+      +clean.replace(/</g,'&lt;')+' <span style="opacity:.55">구매 →</span></a>';
+  }).join('');
+  box.innerHTML=
+    '<div style="margin:36px 0 0;padding:24px;border:1px solid rgba(255,255,255,.16)">'
+    +'<div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:12px">Shop the Story</div>'
+    +'<div>'+chips+'</div>'
+    +'<div style="font-size:10.5px;color:#666;margin-top:8px">링크를 통해 구매 시 PAP에 수수료가 지급될 수 있습니다.</div>'
+    +'</div>';
+  box.style.display='';
+}
+
 function _papRenderEdIg(igUrl, title){
   var box=document.getElementById('edIgPostCta');
   if(!box) return;
@@ -1140,6 +1164,8 @@ function _openEditorialInner(title,thumb){
   document.getElementById('edDetailIssue').textContent=det.issue;
   // 참여 증폭 2.0 — 원본 IG 게시물 임베드 + 보내기 (det.ig 없으면 숨김).
   if(typeof _papRenderEdIg==='function'){try{_papRenderEdIg(det.ig,title);}catch(_){}}
+  // 수익화 2.0 — SHOP THE STORY (착장 브랜드 구매 링크).
+  if(typeof _papRenderShopRow==='function'){try{_papRenderShopRow(det.fashion);}catch(_){}}
 
   // Editorial description
   var descEl=document.getElementById('edDetailDesc');
@@ -1385,6 +1411,8 @@ function _openEditorialInner_noPush(title,thumb){
   document.getElementById('edDetailIssue').textContent=det.issue;
   // 참여 증폭 2.0 — 원본 IG 게시물 임베드 + 보내기 (det.ig 없으면 숨김).
   if(typeof _papRenderEdIg==='function'){try{_papRenderEdIg(det.ig,title);}catch(_){}}
+  // 수익화 2.0 — SHOP THE STORY (착장 브랜드 구매 링크).
+  if(typeof _papRenderShopRow==='function'){try{_papRenderShopRow(det.fashion);}catch(_){}}
   var descEl=document.getElementById('edDetailDesc');
   if(descEl){var lang=localStorage.getItem('pap-lang')||'ko';var descText=typeof det.desc==='object'?(det.desc[lang]||det.desc.en||det.desc.ko||''):det.desc;descEl.innerHTML=descText;}
   var gal=document.getElementById('edDetailGallery');
