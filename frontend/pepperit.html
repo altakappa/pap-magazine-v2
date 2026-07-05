@@ -140,6 +140,19 @@
   </div>
 </section>
 
+<!-- 참여 증폭 2.0 (2026-07) — 실제 게시물 임베드. 방문자가 랜딩에서
+     게시물을 직접 보고 좋아요·저장·팔로우까지 한 클릭 거리로.
+     ROTATE: 아래 _PP_EMBEDS 배열의 permalink 를 2~4주마다 최신
+     반응 좋은 게시물로 교체해 주세요 (3~4개 권장). -->
+<section style="padding-top:0">
+  <div class="wrap">
+    <span class="chip">NOW ON PEPPERIT</span>
+    <h2>지금 페퍼릿에서 뜨는 이야기</h2>
+    <p class="lead" style="margin-bottom:8px">이번 주 케이팝 셀럽 소식 — 마음에 들면 게시물에서 바로 반응을 남겨보세요.</p>
+    <div id="ppEmbeds" style="display:grid;gap:16px;margin-top:18px"></div>
+  </div>
+</section>
+
 <section style="padding-top:0">
   <div class="wrap">
     <div class="engage">
@@ -187,6 +200,23 @@ function _ppShare(){
   if(navigator.share){ navigator.share({title:'PEPPERIT — 케이팝 셀럽 데일리 매거진', url:url}).catch(function(){}); }
   else if(navigator.clipboard){ navigator.clipboard.writeText(url).then(function(){ alert('링크가 복사되었습니다'); }); }
 }
+
+/* 게시물 임베드 — ROTATE: 2~4주마다 최신 반응 좋은 게시물로 교체 */
+var _PP_EMBEDS = [
+  'https://www.instagram.com/p/DaZTx6vmUEg/',   // 제니 로스킬데 무대의상
+  'https://www.instagram.com/p/DaZ32uVqUmb/',   // 제이지 K-엔터 투자
+  'https://www.instagram.com/reel/DaZ8sQKKRuh/' // 2NE1 I LOVE YOU 추억
+];
+(function(){
+  var box=document.getElementById('ppEmbeds');
+  if(!box) return;
+  box.innerHTML=_PP_EMBEDS.map(function(u){
+    return '<blockquote class="instagram-media" data-instgrm-permalink="'+u+'" data-instgrm-version="14" style="background:#fff;border:1px solid #efe6dd;border-radius:14px;margin:0 auto;max-width:540px;min-width:280px;width:100%"></blockquote>';
+  }).join('');
+  var s=document.createElement('script');
+  s.async=true; s.src='https://www.instagram.com/embed.js';
+  document.body.appendChild(s);
+})();
 </script>
 </body>
 </html>

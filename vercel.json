@@ -122,6 +122,7 @@
     { "source": "/pap-magazine-v5.html", "destination": "/",      "statusCode": 301 },
     { "source": "/pepperit.html", "destination": "/pepperit", "statusCode": 301 },
     { "source": "/", "has": [{ "type": "host", "value": "(www\\.)?pepperitmag\\.com" }], "destination": "/pepperit", "statusCode": 307 },
+    { "source": "/pepperit", "has": [{ "type": "host", "value": "(www\\.)?pap-magazine\\.com" }], "destination": "https://www.pepperitmag.com/pepperit", "statusCode": 301 },
     { "source": "/data-migration.html", "destination": "/404.html", "permanent": false },
     { "source": "/index.html.backup-pre-i18n-cards", "destination": "/404.html", "permanent": false },
     { "source": "/.env",                "destination": "/404.html", "permanent": false },
