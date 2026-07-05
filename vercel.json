@@ -302,11 +302,7 @@
   ],
   "functions": {
     "api/**/*.js": {
-      "maxDuration": 60,
-      "memory": 1024
-    },
-    "api/cron/daily-growth-feedback.js": {
-      "maxDuration": 300,
+      "maxDuration": 120,
       "memory": 1024
     }
   },

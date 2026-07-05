@@ -58,8 +58,10 @@ async function generateFeedback(todayAudit, yesterdayAudit) {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({ model, max_tokens: 3000, system: FEEDBACK_SYSTEM, messages: [{ role: 'user', content: user }] }),
-      // 함수 maxDuration 300s (vercel.json 별도 설정) — Claude 에 넉넉히 준다.
-      signal: AbortSignal.timeout(180000),
+      // 함수 maxDuration 120s (vercel.json 전역) — Claude 에 100s 까지 허용.
+      // 주의: functions 에 개별 파일 키를 추가하면 글롭과 충돌해 빌드가
+      // 2초 만에 실패한다 (2026-07-06 배포 장애 원인) — 전역 글롭만 사용.
+      signal: AbortSignal.timeout(100000),
     });
     if (!resp.ok) throw new Error('Claude ' + resp.status);
     const j = await resp.json();
