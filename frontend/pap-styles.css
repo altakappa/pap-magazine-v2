@@ -505,11 +505,11 @@ section.hero + .shorts-section{
 .footer-legal{text-align:center;font-size:8px;color:rgba(255,255,255,.2);line-height:1.7;margin-top:200px}
 .footer-legal strong{font-weight:500;color:rgba(255,255,255,.35)}
 .footer-legal a{color:rgba(255,255,255,.25)}
-.footer-bottom-nav{display:flex;justify-content:space-between;align-items:center;margin-top:24px;padding-top:16px;border-top:1px solid rgba(255,255,255,.06)}
+.footer-bottom-nav{display:flex;justify-content:center;align-items:center;margin-top:24px;padding-top:16px;border-top:1px solid rgba(255,255,255,.06)}
 .footer-bottom-nav-links{display:flex;gap:16px}
 .footer-bottom-nav-links a,.footer-bottom-nav-social a{font-size:9px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.35);text-decoration:none;transition:color .2s}
 .footer-bottom-nav-links a:hover,.footer-bottom-nav-social a:hover{color:#fff}
-.footer-bottom-nav-center{display:flex;gap:16px}
+.footer-bottom-nav-center{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
 .footer-bottom-nav-center a{font-size:8px;font-weight:500;letter-spacing:.08em;color:rgba(255,255,255,.2);text-decoration:none;transition:color .2s}
 .footer-bottom-nav-center a:hover{color:#fff}
 .footer-bottom-nav-social{display:flex;gap:16px}
