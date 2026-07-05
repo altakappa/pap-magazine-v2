@@ -63,3 +63,4 @@ Sitemap: https://www.pap-magazine.com/sitemap-editorials.xml
 Sitemap: https://www.pap-magazine.com/sitemap-articles.xml
 Sitemap: https://www.pap-magazine.com/sitemap-films.xml
 Sitemap: https://www.pap-magazine.com/sitemap-news.xml
+Sitemap: https://www.pap-magazine.com/sitemap-brands.xml
