@@ -58,7 +58,8 @@ async function generateFeedback(todayAudit, yesterdayAudit) {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({ model, max_tokens: 3000, system: FEEDBACK_SYSTEM, messages: [{ role: 'user', content: user }] }),
-      signal: AbortSignal.timeout(50000),
+      // 함수 maxDuration 300s (vercel.json 별도 설정) — Claude 에 넉넉히 준다.
+      signal: AbortSignal.timeout(180000),
     });
     if (!resp.ok) throw new Error('Claude ' + resp.status);
     const j = await resp.json();
@@ -91,10 +92,12 @@ module.exports = async function handler(req, res) {
     // 3) Claude 분석
     const { feedback, model, error: aiError } = await generateFeedback(audit, prev);
 
-    // 4) upsert (KST 기준 오늘 날짜)
+    // 4) upsert (KST 기준 오늘 날짜). AI 실패 시 사유를 model 필드에 남겨
+    //    대시보드에서 원인이 보이게 한다 (feedback 은 null 유지).
     const kstDate = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+    const modelNote = feedback ? model : (model || '') + (aiError ? ' (실패: ' + String(aiError).slice(0, 100) + ')' : '');
     const { error } = await supabaseAdmin.from('growth_reports')
-      .upsert({ report_date: kstDate, audit, feedback, model }, { onConflict: 'report_date' });
+      .upsert({ report_date: kstDate, audit, feedback, model: modelNote }, { onConflict: 'report_date' });
     if (error) throw error;
 
     return res.status(200).json({
