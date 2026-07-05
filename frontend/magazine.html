@@ -1189,14 +1189,70 @@ document.getElementById('previewOverlay').addEventListener('click',function(e){
 })();
 </script>
 <script>
-/* 분기 볼륨 자동 생성 (2026-07) — VOL.30 = 2026 APR–JUN, 이후 3개월마다 +1.
-   완료된 분기 + 진행 중 분기(CURRENT 배지)를 렌더. 클릭 시 해당 분기
-   에디토리얼 오버레이. 데이터는 공개 API — 새 분기가 차면 자동 등장. */
+/* 분기 볼륨 체계 v2 (2026-07) — 매거진 전체를 달력 분기 볼륨으로 재편.
+   VOL 1 = 2019 JAN–MAR … VOL 29 = 2026 JAN–MAR (기존 월간 카드를 분기로
+   합산), VOL 30+ = DB 동적 (APR–JUN 2026 부터, 3개월마다 자동 +1).
+   히어로 카운트(N ISSUES · M+ EDITORIALS)도 자동 갱신. */
 (function(){
   var EPOCH=new Date('2026-04-01T00:00:00+09:00'); var BASE_VOL=30;
+  var MOS=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  function volLabel(vol){ // vol(1-base) → "JAN–MAR 2019"
+    var qi=vol-1, y=2019+Math.floor(qi/4), ms=(qi%4)*3;
+    return MOS[ms]+'–'+MOS[ms+2]+' '+y;
+  }
+  // ── 1) 구 월간 카드 파싱 → VOL 1~29 합산 ──
+  var legacy={}; var legacyEds=0;
+  document.querySelectorAll('section.issues:not(#quarterVols) .card').forEach(function(c){
+    var dt=(c.querySelector('.dt')||{}).textContent||'';       // "MAR 2026"
+    var m=dt.trim().split(/\s+/); var mi=MOS.indexOf(m[0]); var y=parseInt(m[1],10);
+    if(mi<0||!y) return;
+    var vol=(y-2019)*4+Math.floor(mi/3)+1;
+    var ct=parseInt(((c.querySelector('.cov-ct')||{}).textContent||'').replace(/\D/g,''),10)||0;
+    legacyEds+=ct;
+    var img=(c.querySelector('.cover img')||{}).src||'';
+    var title=((c.querySelector('.cov-title')||{}).textContent||'').trim();
+    (legacy[vol]=legacy[vol]||{count:0,months:[]});
+    legacy[vol].count+=ct;
+    legacy[vol].months.push({el:c,title:title,count:ct,mi:mi});
+    if(!legacy[vol].cover||mi>=legacy[vol].coverMi){legacy[vol].cover=img;legacy[vol].coverMi=mi;}
+  });
+  // 구 연도 섹션 숨김 (원본 카드는 openModal 용으로 DOM에 보존)
+  document.querySelectorAll('section.issues:not(#quarterVols)').forEach(function(s){s.style.display='none';});
+
+  function legacyCard(vol){
+    var v=legacy[vol];
+    return '<div class="card" onclick="qvOpenLegacy('+vol+')"><div class="cover"><img loading="lazy" src="'+(v.cover||'').replace(/"/g,'&quot;')+'" alt="VOL.'+vol+'"><div class="covlay"><div class="cov-bot"><div class="cov-title">Vol. '+vol+'</div><div class="cov-ct">'+v.count+' EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. '+vol+'</span><span class="dt">'+volLabel(vol)+'</span></div></div>';
+  }
+  window.qvOpenLegacy=function(vol){
+    var v=legacy[vol]; if(!v) return;
+    var ov=document.createElement('div'); ov.setAttribute('data-qv','1');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:9999;overflow-y:auto;padding:60px 24px';
+    ov.innerHTML='<div style="max-width:640px;margin:0 auto"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px"><h2 style="color:#fff;font-size:24px">VOL. '+vol+' <span style="font-size:12px;color:#888">'+volLabel(vol)+'</span></h2><button style="background:none;border:1px solid rgba(255,255,255,.4);color:#fff;padding:9px 20px;cursor:pointer;font-size:12px" onclick="this.closest(\'div[data-qv]\').remove()">닫기 ✕</button></div>'
+      +v.months.sort(function(a,b){return b.mi-a.mi;}).map(function(mo,i){
+        return '<div data-mo="'+i+'" style="display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border:1px solid rgba(255,255,255,.16);margin-bottom:10px;cursor:pointer;color:#fff"><span style="font-weight:600">'+mo.title+'</span><span style="font-size:12px;color:#999">'+mo.count+' EDITORIALS · READ →</span></div>';
+      }).join('')+'</div>';
+    ov.addEventListener('click',function(ev){
+      if(ev.target===ov){ov.remove();return;}
+      var row=ev.target.closest('[data-mo]');
+      if(row){var mo=v.months[parseInt(row.getAttribute('data-mo'),10)];ov.remove();if(mo&&mo.el&&typeof openModal==='function')openModal(mo.el);}
+    });
+    document.body.appendChild(ov);
+  };
+
+  function renderAll(dynHtml,dynVols,dynEds){
+    var grid=document.getElementById('qvGrid'); if(!grid) return;
+    var legacyVols=Object.keys(legacy).map(Number).sort(function(a,b){return b-a;});
+    grid.innerHTML=dynHtml+legacyVols.map(legacyCard).join('');
+    var total=legacyVols.length+dynVols;
+    document.getElementById('qvCount').textContent=total+' VOLUMES';
+    document.getElementById('quarterVols').style.display='';
+    var hb=document.getElementById('heroBadge');
+    if(hb)hb.textContent=total+' ISSUES · '+(legacyEds+dynEds).toLocaleString()+'+ EDITORIALS';
+  }
+
+  // ── 2) DB 동적 볼륨 (VOL 30+) ──
   fetch('/api/editorials?public=1&limit=500').then(function(r){return r.json();}).then(function(j){
     var eds=(j.data||j.editorials||[]).filter(function(e){return e.published_date&&new Date(e.published_date)>=EPOCH;});
-    if(!eds.length) return;
     var qs={};
     eds.forEach(function(e){
       var d=new Date(e.published_date);
@@ -1205,21 +1261,18 @@ document.getElementById('previewOverlay').addEventListener('click',function(e){
       (qs[qi]=qs[qi]||[]).push(e);
     });
     var now=new Date(); var curQi=Math.floor(((now.getFullYear()-2026)*12+now.getMonth()-3)/3);
-    var MOS=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
     var keys=Object.keys(qs).map(Number).sort(function(a,b){return b-a;});
-    var grid=document.getElementById('qvGrid'); if(!grid) return;
-    grid.innerHTML=keys.map(function(qi){
+    var dynEds=0;
+    var html=keys.map(function(qi){
       var list=qs[qi].sort(function(a,b){return new Date(b.published_date)-new Date(a.published_date);});
-      var m0=3+qi*3, y=2026+Math.floor(m0/12), ms=m0%12;
-      var label=MOS[ms]+'–'+MOS[(ms+2)%12]+' '+y;
+      dynEds+=list.length;
       var cover=(list[0].cover_image||list[0].thumbnail||'');
       var badge=qi===curQi?'<span class="latest-badge">CURRENT</span>':'';
-      return '<div class="card" data-qi="'+qi+'" onclick="qvOpen('+qi+')"><div class="cover"><img loading="lazy" src="'+cover.replace(/"/g,'&quot;')+'" alt="VOL.'+(BASE_VOL+qi)+'"><div class="covlay">'+badge+'<div class="cov-bot"><div class="cov-title">Vol. '+(BASE_VOL+qi)+'</div><div class="cov-ct">'+list.length+' EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. '+(BASE_VOL+qi)+'</span><span class="dt">'+label+'</span></div></div>';
+      return '<div class="card" data-qi="'+qi+'" onclick="qvOpen('+qi+')"><div class="cover"><img loading="lazy" src="'+cover.replace(/"/g,'&quot;')+'" alt="VOL.'+(BASE_VOL+qi)+'"><div class="covlay">'+badge+'<div class="cov-bot"><div class="cov-title">Vol. '+(BASE_VOL+qi)+'</div><div class="cov-ct">'+list.length+' EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. '+(BASE_VOL+qi)+'</span><span class="dt">'+volLabel(BASE_VOL+qi)+'</span></div></div>';
     }).join('');
     window._qvData=qs; window._qvBase=BASE_VOL;
-    document.getElementById('qvCount').textContent=keys.length+' VOLUMES';
-    document.getElementById('quarterVols').style.display='';
-  }).catch(function(){});
+    renderAll(html,keys.length,dynEds);
+  }).catch(function(){ renderAll('',0,0); });
   window.qvOpen=function(qi){
     var list=(window._qvData&&window._qvData[qi])||[]; if(!list.length) return;
     var ov=document.createElement('div');
