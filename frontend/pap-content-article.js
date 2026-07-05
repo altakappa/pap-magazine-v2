@@ -344,19 +344,31 @@ function _renderArticleBlocks(blocks){
 
 function _renderArticleDetail(a,det){
   document.getElementById('artDetailImg').src=a.img||a.th;
-  // 참여 증폭 (2026-07) — 원본 IG 게시물 딥링크 CTA. 좋아요·저장·보내기
-  // 신호는 게시물 위에서만 발생하므로, 원본 게시물이 있는 기사는 독자를
-  // 그 게시물로 보낸다 (없으면 섹션 자체를 숨김).
+  // 참여 증폭 2.0 (2026-07) — 원본 IG 게시물을 링크가 아니라 '임베드'로
+  // 페이지 안에 직접 띄운다. 게시물이 눈앞에 보이면 좋아요·저장이
+  // 한 클릭 거리로 줄어든다. 임베드 불가 URL(프로필 등)은 기존 링크 CTA만.
+  // '친구에게 보내기' 버튼은 모바일에서 카카오톡 포함 네이티브 공유 시트.
   var igCta=document.getElementById('artIgPostCta');
   if(igCta){
     if(a.ig && /instagram\.com/.test(a.ig)){
+      var _igSafe=a.ig.replace(/"/g,'&quot;');
+      var _permalink=String(a.ig).split('?')[0];
+      if(!/\/$/.test(_permalink)) _permalink+='/';
+      var _canEmbed=/instagram\.com\/(p|reel|tv)\//.test(_permalink);
       igCta.innerHTML=
-        '<aside style="margin:28px 0 0;padding:26px 24px;border:1px solid rgba(255,255,255,.16);text-align:center">'
+        (_canEmbed
+          ? '<div style="margin:28px auto 0;max-width:540px">'
+            +'<blockquote class="instagram-media" data-instgrm-permalink="'+_permalink.replace(/"/g,'&quot;')+'" data-instgrm-version="14" style="background:#000;border:1px solid rgba(255,255,255,.16);margin:0 auto;max-width:540px;min-width:280px;width:100%"></blockquote>'
+            +'</div>'
+          : '')
+        +'<aside style="margin:'+(_canEmbed?'14px':'28px')+' 0 0;padding:26px 24px;border:1px solid rgba(255,255,255,.16);text-align:center">'
         +'<div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:10px">On Instagram</div>'
         +'<div style="font-size:13.5px;line-height:1.7;color:#ddd;margin-bottom:16px">이 스토리의 원본 게시물이 인스타그램에 있습니다.<br><b style="color:#fff">좋아요·저장</b>으로 소장하고, 좋아할 친구에게 <b style="color:#fff">보내기</b>로 공유해보세요.</div>'
-        +'<a href="'+a.ig.replace(/"/g,'&quot;')+'" target="_blank" rel="noopener" style="display:inline-block;background:#fff;color:#000;padding:11px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none">게시물에서 반응 남기기 →</a>'
+        +'<a href="'+_igSafe+'" target="_blank" rel="noopener" style="display:inline-block;background:#fff;color:#000;padding:11px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none">게시물에서 반응 남기기 →</a>'
+        +'<button onclick="_papShareArticle()" style="display:inline-block;margin:8px 0 0 10px;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);padding:11px 22px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;cursor:pointer">친구에게 보내기 ↗</button>'
         +'</aside>';
       igCta.style.display='';
+      if(_canEmbed) _papLoadIgEmbed();
     } else { igCta.innerHTML=''; igCta.style.display='none'; }
   }
   // Use localized title/sub if available
@@ -553,6 +565,36 @@ function closeArticleDetail(skipHistory){
     if(!skipHistory){try{history.back();}catch(e){}}
   }
 }
+
+// ======== IG 임베드 / 공유 헬퍼 (참여 증폭 2.0, 2026-07) ========
+// embed.js 는 최초 1회만 삽입. 이미 로드돼 있으면 새 blockquote 재처리만.
+function _papLoadIgEmbed(){
+  try{
+    if(window.instgrm && window.instgrm.Embeds && window.instgrm.Embeds.process){
+      window.instgrm.Embeds.process(); return;
+    }
+    if(document.getElementById('pap-ig-embed-js')) return;
+    var s=document.createElement('script');
+    s.id='pap-ig-embed-js'; s.async=true;
+    s.src='https://www.instagram.com/embed.js';
+    document.body.appendChild(s);
+  }catch(_){}
+}
+// 네이티브 공유 시트 (모바일에서 카카오톡·인스타 DM 포함). 미지원 브라우저는
+// 링크 복사로 폴백 — 복사한 링크를 카톡/DM에 붙여넣는 한국식 공유 흐름.
+window._papShareArticle=function(){
+  try{
+    var url=window.location.href;
+    var tEl=document.getElementById('artDetailTitle');
+    var title=(tEl&&tEl.textContent)||document.title;
+    if(navigator.share){ navigator.share({title:title,url:url}).catch(function(){}); return; }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(function(){
+        alert('링크가 복사되었습니다. 카카오톡이나 DM에 붙여넣어 공유해보세요.');
+      }).catch(function(){});
+    }
+  }catch(_){}
+};
 
 // ======== ARTICLE DATABASE slot ========
 // ======== ARTICLE DATABASE ========
