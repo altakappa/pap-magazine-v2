@@ -39,7 +39,7 @@ const FEEDBACK_SYSTEM = [
   '원칙: 데이터에 없는 것을 지어내지 않는다. 하루 변동을 추세로 과대해석하지 않는다. 모든 권고는 도메니코(1인 운영에 가까움)가 오늘 실행 가능한 크기여야 한다. 과장·클리셰 금지, 컨설팅 보고서의 정확성으로.',
 ].join('\n');
 
-async function generateFeedback(todayAudit, yesterdayAudit) {
+async function generateFeedback(todayAudit, yesterdayAudit, events) {
   if (!process.env.ANTHROPIC_API_KEY) return { feedback: null, model: null, error: 'ANTHROPIC_API_KEY 미설정' };
   const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
   const user = [
@@ -48,6 +48,9 @@ async function generateFeedback(todayAudit, yesterdayAudit) {
     '',
     yesterdayAudit ? '어제의 감사 JSON (전일 대비 비교용):' : '어제 리포트 없음 (첫 실행).',
     yesterdayAudit ? JSON.stringify(yesterdayAudit) : '',
+    // 064: 운영 이벤트 로그 — 지표 변화의 원인 후보 (광고 시작·정책 변경 등).
+    // 변화를 설명할 때 이벤트와 날짜를 대조해 인과 가설을 세우게 한다.
+    events && events.length ? '\n운영 이벤트 로그 (최근 14일, 원인 가설용):\n' + JSON.stringify(events) : '',
   ].join('\n');
   try {
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
@@ -85,14 +88,20 @@ module.exports = async function handler(req, res) {
     // 1) 오늘 감사
     const audit = await runGrowthAudit();
 
-    // 2) 직전 리포트 (전일 대비)
-    const { data: prevRows } = await supabaseAdmin
-      .from('growth_reports').select('audit, report_date')
-      .order('report_date', { ascending: false }).limit(1);
+    // 2) 직전 리포트 (전일 대비) + 운영 이벤트 로그 (064, 원인 가설용)
+    const since14 = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10);
+    const [{ data: prevRows }, evQ] = await Promise.all([
+      supabaseAdmin.from('growth_reports').select('audit, report_date')
+        .order('report_date', { ascending: false }).limit(1),
+      supabaseAdmin.from('growth_events')
+        .select('event_date, kind, title, expected, outcome')
+        .gte('event_date', since14).order('event_date', { ascending: false }).limit(20),
+    ]);
     const prev = prevRows && prevRows[0] ? prevRows[0].audit : null;
+    const events = (evQ && evQ.data) || [];
 
     // 3) Claude 분석
-    const { feedback, model, error: aiError } = await generateFeedback(audit, prev);
+    const { feedback, model, error: aiError } = await generateFeedback(audit, prev, events);
 
     // 4) upsert (KST 기준 오늘 날짜). AI 실패 시 사유를 model 필드에 남겨
     //    대시보드에서 원인이 보이게 한다 (feedback 은 null 유지).

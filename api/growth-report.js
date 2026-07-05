@@ -62,6 +62,26 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ days: rows.length, trends });
     }
 
+    // 최신 주간 경영 브리핑 (064 weekly_briefings)
+    if (req.query.weekly === '1') {
+      const { data, error } = await supabaseAdmin
+        .from('weekly_briefings').select('*')
+        .order('week_start', { ascending: false }).limit(1);
+      if (error) throw error;
+      if (!data || !data.length) return res.status(404).json({ error: '주간 브리핑이 아직 없습니다. 매주 월 07:30 KST 생성됩니다.' });
+      return res.status(200).json({ data: data[0] });
+    }
+
+    // 최신 트렌드 스카우트 (064 trend_reports)
+    if (req.query.trendscout === '1') {
+      const { data, error } = await supabaseAdmin
+        .from('trend_reports').select('*')
+        .order('report_date', { ascending: false }).limit(1);
+      if (error) throw error;
+      if (!data || !data.length) return res.status(404).json({ error: '트렌드 리포트가 아직 없습니다. 화·금 06:00 KST 생성됩니다.' });
+      return res.status(200).json({ data: data[0] });
+    }
+
     if (req.query.history === '1') {
       const { data, error } = await supabaseAdmin
         .from('growth_reports')

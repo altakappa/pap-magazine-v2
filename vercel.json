@@ -31,6 +31,14 @@
     {
       "path": "/api/cron/daily-growth-feedback",
       "schedule": "30 22 * * *"
+    },
+    {
+      "path": "/api/cron/weekly-briefing",
+      "schedule": "45 22 * * 0"
+    },
+    {
+      "path": "/api/cron/trend-scout",
+      "schedule": "0 21 * * 1,4"
     }
   ],
   "rewrites": [

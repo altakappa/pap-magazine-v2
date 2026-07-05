@@ -23,14 +23,29 @@ module.exports = async function handler(req, res) {
   if (!question) return res.status(400).json({ error: '질문이 비어 있습니다' });
 
   try {
-    const { data } = await supabaseAdmin.from('growth_reports')
-      .select('report_date, audit, feedback')
-      .order('report_date', { ascending: false }).limit(8);
+    // 064: 이벤트 원장·주간 브리핑·트렌드까지 컨텍스트에 포함 (인과 가설·전략 질문 대응)
+    const [{ data }, evQ, wbQ, trQ] = await Promise.all([
+      supabaseAdmin.from('growth_reports')
+        .select('report_date, audit, feedback')
+        .order('report_date', { ascending: false }).limit(8),
+      supabaseAdmin.from('growth_events')
+        .select('event_date, kind, title, expected, review_date, outcome')
+        .order('event_date', { ascending: false }).limit(20),
+      supabaseAdmin.from('weekly_briefings')
+        .select('week_start, briefing')
+        .order('week_start', { ascending: false }).limit(1),
+      supabaseAdmin.from('trend_reports')
+        .select('report_date, items')
+        .order('report_date', { ascending: false }).limit(1),
+    ]);
     const rows = data || [];
     if (!rows.length) return res.status(404).json({ error: '아직 리포트가 없습니다' });
 
     const latest = rows[0];
     const history = rows.slice(1).map((r) => ({ date: r.report_date, summary: r.audit && r.audit.summary }));
+    const events = (evQ && evQ.data) || [];
+    const weekly = wbQ && wbQ.data && wbQ.data[0] ? String(wbQ.data[0].briefing || '').slice(0, 1200) : '';
+    const trends = trQ && trQ.data && trQ.data[0] ? (trQ.data[0].items || []).slice(0, 6) : [];
 
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -38,8 +53,8 @@ module.exports = async function handler(req, res) {
       body: JSON.stringify({
         model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5',
         max_tokens: 800,
-        system: 'PAP 매거진(인스타그램 중심 패션·뷰티·컬쳐 매거진)의 데이터 분석가. 제공된 감사 JSON 만을 근거로 한국어로 간결하게 답한다(5문장 이내, 필요시 수치·항목 id 인용). 데이터에 없는 것은 "이 데이터로는 알 수 없다"고 말하고 추측하지 않는다. 실행 제안은 마지막 한 문장으로.',
-        messages: [{ role: 'user', content: '오늘 감사: ' + JSON.stringify(latest.audit) + '\n지난 요약: ' + JSON.stringify(history) + '\n오늘 AI 피드백: ' + String(latest.feedback || '').slice(0, 1500) + '\n\n질문: ' + question }],
+        system: 'PAP 매거진(인스타그램 중심 패션·뷰티·컬쳐 매거진)의 데이터 분석가. 제공된 감사 JSON·이벤트 로그·주간 브리핑·트렌드만을 근거로 한국어로 간결하게 답한다(5문장 이내, 필요시 수치·항목 id 인용). 지표 변화의 원인을 물으면 이벤트 로그와 날짜를 대조해 가설을 세우되 "이벤트 로그 기준"임을 밝힌다. 데이터에 없는 것은 "이 데이터로는 알 수 없다"고 말하고 추측하지 않는다. 실행 제안은 마지막 한 문장으로.',
+        messages: [{ role: 'user', content: '오늘 감사: ' + JSON.stringify(latest.audit) + '\n지난 요약: ' + JSON.stringify(history) + '\n운영 이벤트 로그: ' + JSON.stringify(events) + (weekly ? '\n최근 주간 브리핑: ' + weekly : '') + (trends.length ? '\n최근 트렌드 스카우트: ' + JSON.stringify(trends) : '') + '\n오늘 AI 피드백: ' + String(latest.feedback || '').slice(0, 1500) + '\n\n질문: ' + question }],
       }),
       signal: AbortSignal.timeout(60000),
     });
