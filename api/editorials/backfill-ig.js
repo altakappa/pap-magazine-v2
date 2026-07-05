@@ -32,11 +32,14 @@ const { requireAdmin } = require('../_lib/auth');
 const IG_API = 'https://graph.facebook.com/v18.0';
 
 function norm(s) {
+  // 접기(folding) 매칭: 소문자 + 악센트 제거(Diagnóstico→diagnostico) +
+  // 알파넘·한글만 남김 → 구두점/공백 차이("ATHLETE- THE" vs "ATHLETE - THE"),
+  // 따옴표 스타일 차이에 강건해진다. 대신 최소 길이 기준을 5로 올려
+  // 과매칭을 방지한다.
   return String(s == null ? '' : s)
     .toLowerCase()
-    .replace(/[’'"“”‘]/g, "'")
-    .replace(/\s+/g, ' ')
-    .trim();
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9가-힣]/g, '');
 }
 
 module.exports = async function handler(req, res) {
@@ -69,7 +72,7 @@ module.exports = async function handler(req, res) {
     const ambiguousTitles = new Set();
     (eds || []).forEach(e => {
       const t = norm(e.title);
-      if (t.length < 4) return; // 너무 짧은 제목은 오매칭 위험
+      if (t.length < 5) return; // 너무 짧은 제목은 오매칭 위험 (접기 매칭이라 기준 상향)
       if (byTitle.has(t)) { ambiguousTitles.add(t); return; }
       byTitle.set(t, e);
     });
