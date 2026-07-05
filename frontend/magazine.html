@@ -1203,11 +1203,15 @@ document.getElementById('previewOverlay').addEventListener('click',function(e){
   // ── 1) 구 월간 카드 파싱 → VOL 1~29 합산 ──
   var legacy={}; var legacyEds=0;
   document.querySelectorAll('section.issues:not(#quarterVols) .card').forEach(function(c){
-    var dt=(c.querySelector('.dt')||{}).textContent||'';       // "MAR 2026"
-    var m=dt.trim().split(/\s+/); var mi=MOS.indexOf(m[0]); var y=parseInt(m[1],10);
+    // dt 형식 두 가지 지원: "MAR 2026" 또는 기존 분기 통합 스크립트의 "Jan – Mar 2026"
+    var dt=(c.querySelector('.dt')||{}).textContent||'';
+    var mm=dt.match(/([A-Za-z]{3})/); var yy=dt.match(/(\d{4})/);
+    var mi=mm?MOS.indexOf(mm[1].toUpperCase()):-1; var y=yy?parseInt(yy[1],10):0;
     if(mi<0||!y) return;
     var vol=(y-2019)*4+Math.floor(mi/3)+1;
-    var ct=parseInt(((c.querySelector('.cov-ct')||{}).textContent||'').replace(/\D/g,''),10)||0;
+    // cov-ct 는 "64 EDITORIALS · Jan – Mar 2026" 형식일 수 있어 첫 숫자만
+    var ctm=((c.querySelector('.cov-ct')||{}).textContent||'').match(/\d+/);
+    var ct=ctm?parseInt(ctm[0],10):0;
     legacyEds+=ct;
     var img=(c.querySelector('.cover img')||{}).src||'';
     var title=((c.querySelector('.cov-title')||{}).textContent||'').trim();
