@@ -4596,6 +4596,44 @@ async function loadDashboardGrowth(){
   }catch(e){
     fb.innerHTML='<span style="color:var(--text3)">성장 진단을 불러오지 못했습니다: '+esc(e.message||e)+'</span>';
   }
+  // 추세 레이더 로드 (독립 — 실패해도 위 내용 유지)
+  try{
+    var tr=await apiGet('/growth-report?trends=1');
+    var box=document.getElementById('dashGrowthTrends');
+    if(box&&tr&&tr.trends){
+      box.innerHTML=tr.trends.map(function(t){
+        var color=t.status==='anomaly'?'#f87171':t.status==='up'?'#4ade80':t.status==='down'?'#fbbf24':'#8a8a92';
+        var icon=t.status==='anomaly'?'⚠️':t.status==='up'?'▲':t.status==='down'?'▼':'—';
+        var body;
+        if(t.status==='collecting'){ body='<span style="color:var(--text3);font-size:11px">'+esc(t.note)+'</span>'; }
+        else{
+          // 스파크라인 (SVG)
+          var vs=t.points.map(function(p){return p.v;});
+          var mx=Math.max.apply(null,vs), mn=Math.min.apply(null,vs), rg=(mx-mn)||1;
+          var pts=vs.map(function(v,i){return (i*(96/Math.max(1,vs.length-1)))+','+(22-((v-mn)/rg)*18);}).join(' ');
+          body='<svg viewBox="0 0 96 24" style="width:100%;height:24px;display:block"><polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="1.5"/></svg>'
+            +'<div style="font-size:10.5px;color:var(--text3);margin-top:3px">현재 '+vs[vs.length-1]+' · 7일 뒤 예측 '+t.forecast7+(t.anomaly?' · <b style="color:#f87171">이상 z='+t.z+'</b>':'')+'</div>';
+        }
+        return '<div style="background:var(--bg2,#141418);border:1px solid var(--line,#2a2a32);border-radius:8px;padding:10px 12px">'
+          +'<div style="font-size:11px;font-weight:700;margin-bottom:5px;color:'+color+'">'+icon+' '+esc(t.label)+'</div>'+body+'</div>';
+      }).join('');
+    }
+  }catch(_){}
+}
+
+// AI에게 질문 — 최신 진단을 근거로 자연어 분석 답변
+async function dashAskAI(){
+  var inp=document.getElementById('dashAskInput'), out=document.getElementById('dashAskAnswer'), btn=document.getElementById('dashAskBtn');
+  if(!inp||!out) return;
+  var q=(inp.value||'').trim(); if(!q) return;
+  btn.disabled=true; out.style.display=''; out.innerHTML='<span style="color:var(--text3)">분석 중…</span>';
+  try{
+    var r=await fetch((window.API_BASE||'/api')+'/growth-ask',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+localStorage.getItem('pap-token')},body:JSON.stringify({question:q})});
+    var j=await r.json().catch(function(){return {};});
+    if(!r.ok) throw new Error(j.error||('HTTP '+r.status));
+    out.innerHTML='<b style="color:#fff">Q. '+q.replace(/</g,'&lt;')+'</b><br>'+String(j.answer||'').replace(/</g,'&lt;').replace(/\*\*([^*]+)\*\*/g,'<strong style="color:#fff">$1</strong>').replace(/\n/g,'<br>');
+  }catch(e){ out.innerHTML='<span style="color:#f87171">실패: '+String(e.message||e).replace(/</g,'&lt;')+'</span>'; }
+  btn.disabled=false;
 }
 
 async function loadDashboardStats(){

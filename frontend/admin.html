@@ -534,6 +534,19 @@ tr:hover td{background:rgba(0,0,0,.02)}
           <div id="dashGrowthFeedback" style="font-size:12.5px;line-height:1.7;max-height:340px;overflow-y:auto;color:var(--text2,#ccc)">
             <span style="color:var(--text3)">불러오는 중…</span>
           </div>
+          <!-- 추세 레이더 — 데일리 스냅샷 시계열의 회귀 예측 + z-score 이상 감지 -->
+          <div style="margin-top:14px;border-top:1px solid var(--line,#2a2a32);padding-top:12px">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--text3);margin-bottom:8px">추세 레이더 <span style="font-weight:400">— 7일 예측·이상 감지 (리포트 누적 시 자동 정밀화)</span></div>
+            <div id="dashGrowthTrends" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px"></div>
+          </div>
+          <!-- AI에게 질문 — 최신 진단·추세를 근거로 자연어 답변 -->
+          <div style="margin-top:14px;border-top:1px solid var(--line,#2a2a32);padding-top:12px">
+            <div style="display:flex;gap:8px">
+              <input id="dashAskInput" type="text" placeholder="데이터에 질문하세요 — 예: 이번 주 가장 큰 병목은? 조회가 왜 정체됐지?" style="flex:1;background:var(--bg2,#141418);border:1px solid var(--line,#2a2a32);border-radius:8px;padding:9px 12px;color:inherit;font-size:12.5px" onkeydown="if(event.key==='Enter')dashAskAI()">
+              <button class="btn" onclick="dashAskAI()" id="dashAskBtn">AI 분석</button>
+            </div>
+            <div id="dashAskAnswer" style="font-size:12.5px;line-height:1.7;margin-top:10px;color:var(--text2,#ccc);display:none"></div>
+          </div>
         </div>
       </div>
 

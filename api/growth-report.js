@@ -20,6 +20,48 @@ module.exports = async function handler(req, res) {
   if (!user) return;
 
   try {
+    // 추세 레이더 (2026-07) — 저장된 데일리 스냅샷을 시계열로 변환해
+    // 핵심 지표별 [값 배열, 선형회귀 기울기(일당 변화), 최신값의 z-score]를
+    // 계산한다. |z| >= 2 는 이상 신호. 데이터가 3일 미만이면 수집 중 표시.
+    if (req.query.trends === '1') {
+      const { data, error } = await supabaseAdmin
+        .from('growth_reports').select('report_date, audit')
+        .order('report_date', { ascending: true }).limit(30);
+      if (error) throw error;
+      const KEYS = [
+        ['views_last7', '조회(7일)'], ['signups_last7', '가입(7일)'],
+        ['editorials_pace', '에디토리얼 발행'], ['articles_pace', '기사 발행'],
+        ['comments_last7', '댓글(7일)'], ['community_scraps_last7', '스크랩(7일)'],
+        ['pinterest_backlog', 'Pinterest 잔량'], ['editorials_missing_description_en', 'EN설명 누락'],
+      ];
+      const rows = data || [];
+      const trends = KEYS.map(([id, label]) => {
+        const series = rows.map((r) => {
+          const all = Object.values((r.audit && r.audit.sections) || {}).flat();
+          const c = all.find((x) => x.id === id);
+          return { d: r.report_date, v: c && typeof c.value === 'number' ? c.value : null };
+        }).filter((p) => p.v !== null);
+        const vs = series.map((p) => p.v);
+        const n = vs.length;
+        if (n < 3) return { id, label, points: series, status: 'collecting', note: `데이터 수집 중 (${n}/3일)` };
+        const mean = vs.reduce((a, b) => a + b, 0) / n;
+        const sd = Math.sqrt(vs.reduce((a, b) => a + (b - mean) ** 2, 0) / n) || 1;
+        const xs = vs.map((_, i) => i);
+        const xm = (n - 1) / 2;
+        const slope = xs.reduce((a, x, i) => a + (x - xm) * (vs[i] - mean), 0)
+                    / xs.reduce((a, x) => a + (x - xm) ** 2, 0);
+        const z = (vs[n - 1] - mean) / sd;
+        const forecast7 = Math.max(0, Math.round(vs[n - 1] + slope * 7));
+        return {
+          id, label, points: series.slice(-14),
+          slope: Math.round(slope * 100) / 100, z: Math.round(z * 100) / 100,
+          forecast7, anomaly: Math.abs(z) >= 2,
+          status: Math.abs(z) >= 2 ? 'anomaly' : slope > 0 ? 'up' : slope < 0 ? 'down' : 'flat',
+        };
+      });
+      return res.status(200).json({ days: rows.length, trends });
+    }
+
     if (req.query.history === '1') {
       const { data, error } = await supabaseAdmin
         .from('growth_reports')
