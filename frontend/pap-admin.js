@@ -4568,8 +4568,8 @@ async function loadDashboardGrowth(){
     String(src||'').split('\n').forEach(function(ln){
       var t=ln.trim();
       if(!t){if(list){out.push('</'+list+'>');list=null;}return;}
-      var inline=esc(t).replace(/\*\*([^*]+)\*\*/g,'<strong style="color:#fff">$1</strong>');
-      if(/^##\s+/.test(t)){if(list){out.push('</'+list+'>');list=null;}out.push('<div style="font-weight:800;color:#fff;margin:12px 0 4px;font-size:12.5px">'+inline.replace(/^##\s+/,'')+'</div>');}
+      var inline=esc(t).replace(/\*\*([^*]+)\*\*/g,'<strong style="color:var(--text,#111)">$1</strong>');
+      if(/^##\s+/.test(t)){if(list){out.push('</'+list+'>');list=null;}out.push('<div style="font-weight:800;color:var(--text,#111);margin:12px 0 4px;font-size:12.5px">'+inline.replace(/^##\s+/,'')+'</div>');}
       else if(/^[-•]\s+/.test(t)){if(list!=='ul'){if(list)out.push('</'+list+'>');out.push('<ul style="margin:2px 0 8px 16px;padding:0">');list='ul';}out.push('<li style="margin-bottom:3px">'+inline.replace(/^[-•]\s+/,'')+'</li>');}
       else if(/^\d+[.)]\s+/.test(t)){if(list!=='ol'){if(list)out.push('</'+list+'>');out.push('<ol style="margin:2px 0 8px 16px;padding:0">');list='ol';}out.push('<li style="margin-bottom:3px">'+inline.replace(/^\d+[.)]\s+/,'')+'</li>');}
       else{if(list){out.push('</'+list+'>');list=null;}out.push('<p style="margin:0 0 6px">'+inline+'</p>');}
@@ -4585,7 +4585,7 @@ async function loadDashboardGrowth(){
     if(d)d.textContent='· '+(row.report_date||'');
     var s=(row.audit&&row.audit.summary)||{};
     function badge(n,label,color){return '<span style="background:'+color+'22;color:'+color+';border:1px solid '+color+'44;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700">'+label+' '+(n||0)+'</span>';}
-    badges.innerHTML=badge(s.ok,'정상','#4ade80')+badge(s.warn,'주의','#fbbf24')+badge(s.fail,'긴급','#f87171')+badge(s.error,'측정실패','#a78bfa');
+    badges.innerHTML=badge(s.ok,'정상','#16a34a')+badge(s.warn,'주의','#ca8a04')+badge(s.fail,'긴급','#dc2626')+badge(s.error,'측정실패','#7c3aed');
     // fail 항목 라벨
     var failLabels=[];
     var secs=(row.audit&&row.audit.sections)||{};
@@ -4603,7 +4603,7 @@ async function loadDashboardGrowth(){
       if((s.warn||0)>3) qs.push('주의 항목 '+s.warn+'개 중 뭐부터 처리해야 해?');
       sug.innerHTML=qs.slice(0,4).map(function(q){
         return '<button type="button" onclick="var i=document.getElementById(\'dashAskInput\');i.value=this.textContent;dashAskAI();" '
-          +'style="background:var(--bg2,#141418);border:1px solid var(--line,#2a2a32);border-radius:100px;padding:5px 12px;font-size:11px;color:var(--text3,#999);cursor:pointer">'+esc(q)+'</button>';
+          +'style="background:var(--surface,#fff);border:1px solid var(--border2,rgba(0,0,0,.12));border-radius:100px;padding:5px 12px;font-size:11px;color:var(--text2,rgba(0,0,0,.55));cursor:pointer">'+esc(q)+'</button>';
       }).join('');
     }
     fb.innerHTML=row.feedback?md(row.feedback):'<span style="color:var(--text3)">AI 피드백이 아직 없습니다 — 매일 07:30 자동 생성됩니다.</span>';
@@ -4616,7 +4616,7 @@ async function loadDashboardGrowth(){
     var box=document.getElementById('dashGrowthTrends');
     if(box&&tr&&tr.trends){
       box.innerHTML=tr.trends.map(function(t){
-        var color=t.status==='anomaly'?'#f87171':t.status==='up'?'#4ade80':t.status==='down'?'#fbbf24':'#8a8a92';
+        var color=t.status==='anomaly'?'#dc2626':t.status==='up'?'#16a34a':t.status==='down'?'#ca8a04':'#999';
         var icon=t.status==='anomaly'?'⚠️':t.status==='up'?'▲':t.status==='down'?'▼':'—';
         var body;
         if(t.status==='collecting'){ body='<span style="color:var(--text3);font-size:11px">'+esc(t.note)+'</span>'; }
@@ -4626,10 +4626,10 @@ async function loadDashboardGrowth(){
           var mx=Math.max.apply(null,vs), mn=Math.min.apply(null,vs), rg=(mx-mn)||1;
           var pts=vs.map(function(v,i){return (i*(96/Math.max(1,vs.length-1)))+','+(22-((v-mn)/rg)*18);}).join(' ');
           body='<svg viewBox="0 0 96 24" style="width:100%;height:24px;display:block"><polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="1.5"/></svg>'
-            +'<div style="font-size:10.5px;color:var(--text3);margin-top:3px">현재 '+vs[vs.length-1]+' · 7일 뒤 예측 '+t.forecast7+(t.anomaly?' · <b style="color:#f87171">이상 z='+t.z+'</b>':'')+'</div>';
+            +'<div style="font-size:10.5px;color:var(--text3);margin-top:3px">현재 '+vs[vs.length-1]+' · 7일 뒤 예측 '+t.forecast7+(t.anomaly?' · <b style="color:#dc2626">이상 z='+t.z+'</b>':'')+'</div>';
         }
-        return '<div style="background:var(--bg2,#141418);border:1px solid var(--line,#2a2a32);border-radius:8px;padding:10px 12px">'
-          +'<div style="font-size:11px;font-weight:700;margin-bottom:5px;color:'+color+'">'+icon+' '+esc(t.label)+'</div>'+body+'</div>';
+        return '<div style="background:var(--surface,#fff);border:1px solid var(--border2,rgba(0,0,0,.12));border-left:3px solid '+color+';border-radius:8px;padding:10px 12px">'
+          +'<div style="font-size:11px;font-weight:700;margin-bottom:5px;color:var(--text,#111)"><span style="color:'+color+'">'+icon+'</span> '+esc(t.label)+'</div>'+body+'</div>';
       }).join('');
     }
   }catch(_){}
@@ -4645,8 +4645,8 @@ async function dashAskAI(){
     var r=await fetch((window.API_BASE||'/api')+'/growth-ask',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+localStorage.getItem('pap-token')},body:JSON.stringify({question:q})});
     var j=await r.json().catch(function(){return {};});
     if(!r.ok) throw new Error(j.error||('HTTP '+r.status));
-    out.innerHTML='<b style="color:#fff">Q. '+q.replace(/</g,'&lt;')+'</b><br>'+String(j.answer||'').replace(/</g,'&lt;').replace(/\*\*([^*]+)\*\*/g,'<strong style="color:#fff">$1</strong>').replace(/\n/g,'<br>');
-  }catch(e){ out.innerHTML='<span style="color:#f87171">실패: '+String(e.message||e).replace(/</g,'&lt;')+'</span>'; }
+    out.innerHTML='<b style="color:var(--text,#111)">Q. '+q.replace(/</g,'&lt;')+'</b><br>'+String(j.answer||'').replace(/</g,'&lt;').replace(/\*\*([^*]+)\*\*/g,'<strong style="color:var(--text,#111)">$1</strong>').replace(/\n/g,'<br>');
+  }catch(e){ out.innerHTML='<span style="color:#dc2626">실패: '+String(e.message||e).replace(/</g,'&lt;')+'</span>'; }
   btn.disabled=false;
 }
 
