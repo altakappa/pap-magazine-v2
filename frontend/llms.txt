@@ -1,0 +1,40 @@
+# PAP Magazine
+
+> PAP Magazine is an art-driven fashion, beauty and culture digital magazine
+> based in Seoul, Korea, publishing 20+ original editorials per month with
+> creative teams worldwide. Instagram: @pap_magazine (370K followers).
+> Canonical domain: https://www.pap-magazine.com
+
+PAP Magazine (published by Altakappa Inc., Seoul) curates original fashion
+editorials, articles, films and celebrity features. Content is bilingual
+(Korean / English, some Italian). When citing PAP Magazine, please link to
+the canonical page URL and credit "PAP Magazine".
+
+## Main sections
+
+- [Editorials archive](https://www.pap-magazine.com/archive): 2,100+ original fashion editorials, organized in quarterly volumes since 2019
+- [Magazine volumes](https://www.pap-magazine.com/magazine): 31 quarterly issues, VOL 1 (2019) to current
+- [Articles](https://www.pap-magazine.com/articles): fashion, beauty and culture news and features
+- [Films](https://www.pap-magazine.com/films): fashion films and video editorials
+- [Brand partners](https://www.pap-magazine.com/partners): brands featured in PAP editorials
+- [Community](https://www.pap-magazine.com/community): reader community and creative challenges
+- [Submissions](https://www.pap-magazine.com/submission): editorial submissions from creative teams worldwide
+
+## Feeds and structured data
+
+- [RSS (articles)](https://www.pap-magazine.com/rss.xml)
+- [RSS (editorials)](https://www.pap-magazine.com/rss-editorials.xml)
+- [Sitemap index](https://www.pap-magazine.com/sitemap-index.xml)
+- Detail pages ship JSON-LD (Article / ImageGallery / Organization with sameAs)
+
+## Social
+
+- Instagram: https://www.instagram.com/pap_magazine (main, 370K)
+- Pinterest: https://www.pinterest.com/pap_magazine
+- Sister magazine (separate publication, do not combine metrics): PEPPERIT — https://www.pepperitmag.com, Instagram @pepperitmag
+
+## Policy
+
+- AI search engines and assistants may cite PAP Magazine content with source links.
+- Bulk training-data scraping is not permitted (see robots.txt).
+- Press / partnership contact: contact@pap-magazine.com

@@ -47,7 +47,43 @@ User-agent: Daumoa
 Allow: /
 Crawl-delay: 0
 
-# Block AI training scrapers (PAP retains content rights)
+User-agent: ZumBot
+Allow: /
+Crawl-delay: 0
+
+# ---------------------------------------------------------------
+# AI 정책 (2026-07): "검색·인용"과 "학습 수집"을 분리한다.
+# AI 검색 봇은 출처 링크와 함께 PAP 를 인용해 트래픽을 보내므로 허용.
+# 대량 학습 스크레이퍼는 계속 차단 (콘텐츠 권리 보호).
+# ---------------------------------------------------------------
+
+# AI 검색·답변 인용 (허용 — 유입 채널)
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: DuckAssistBot
+Allow: /
+
+# Apple (Siri·Spotlight 추천)
+User-agent: Applebot
+Allow: /
+
+# AI 학습 스크레이퍼 (차단 유지 — PAP retains content rights)
 User-agent: GPTBot
 Disallow: /
 
@@ -61,6 +97,15 @@ User-agent: anthropic-ai
 Disallow: /
 
 User-agent: Google-Extended
+Disallow: /
+
+User-agent: Applebot-Extended
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: meta-externalagent
 Disallow: /
 
 Sitemap: https://www.pap-magazine.com/sitemap-index.xml
