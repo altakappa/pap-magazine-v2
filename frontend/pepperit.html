@@ -140,6 +140,16 @@
   </div>
 </section>
 
+<!-- 최신 기사 (2026-07) — pepperit_articles 자동 수집분. 인스타 게시 후
+     10분 내 이곳과 검색엔진에 반영된다. -->
+<section style="padding-top:0">
+  <div class="wrap">
+    <span class="chip">LATEST</span>
+    <h2>방금 올라온 페퍼릿 기사</h2>
+    <div id="ppLatest" style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:18px"></div>
+  </div>
+</section>
+
 <!-- 참여 증폭 2.0 (2026-07) — 실제 게시물 임베드. 방문자가 랜딩에서
      게시물을 직접 보고 좋아요·저장·팔로우까지 한 클릭 거리로.
      ROTATE: 아래 _PP_EMBEDS 배열의 permalink 를 2~4주마다 최신
@@ -200,6 +210,29 @@ function _ppShare(){
   if(navigator.share){ navigator.share({title:'PEPPERIT — 케이팝 셀럽 데일리 매거진', url:url}).catch(function(){}); }
   else if(navigator.clipboard){ navigator.clipboard.writeText(url).then(function(){ alert('링크가 복사되었습니다'); }); }
 }
+
+/* 최신 기사 그리드 — pepperit_articles (10분 주기 자동 수집) */
+(function(){
+  var box=document.getElementById('ppLatest');
+  if(!box) return;
+  fetch('/api/pepperit-articles?limit=8')
+    .then(function(r){return r.json();})
+    .then(function(j){
+      var rows=(j&&j.data)||[];
+      if(!rows.length){ box.parentElement.parentElement.style.display='none'; return; }
+      box.innerHTML=rows.map(function(a){
+        var href='https://www.pepperitmag.com/article/'+encodeURIComponent(a.slug||a.id);
+        var d=(a.published_date||'').slice(0,10);
+        return '<a href="'+href+'" style="background:#fff;border:1px solid #efe6dd;border-radius:14px;overflow:hidden;display:block">'
+          +(a.thumbnail_url?'<img loading="lazy" src="'+a.thumbnail_url+'" alt="'+String(a.title||'').replace(/"/g,'&quot;')+'" style="width:100%;aspect-ratio:4/5;object-fit:cover">':'')
+          +'<div style="padding:12px 14px 16px">'
+          +'<span style="font-size:10px;font-weight:900;color:var(--pink);letter-spacing:.08em">'+(a.category||'NEWS')+'</span>'
+          +'<span style="display:block;font-size:13.5px;font-weight:700;line-height:1.45;margin-top:4px">'+String(a.title||'')+'</span>'
+          +'<span style="display:block;font-size:10.5px;color:#999;margin-top:6px">'+d+'</span>'
+          +'</div></a>';
+      }).join('');
+    }).catch(function(){});
+})();
 
 /* 게시물 임베드 — ROTATE: 2~4주마다 최신 반응 좋은 게시물로 교체 */
 var _PP_EMBEDS = [

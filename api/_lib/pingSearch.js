@@ -64,6 +64,33 @@ async function pingWebSub() {
 }
 
 /**
+ * 페퍼릿(pepperitmag.com) 전용 IndexNow — 같은 Vercel 프로젝트가 두 호스트를
+ * 서빙하므로 키 파일(<KEY>.txt)은 페퍼릿 도메인에서도 그대로 응답된다.
+ * IndexNow 규격상 host 와 keyLocation 호스트가 일치해야 해 별도 함수로 분리.
+ */
+const PEPPERIT_HOST = 'www.pepperitmag.com';
+const PEPPERIT_SITE = 'https://' + PEPPERIT_HOST;
+
+async function submitIndexNowPepperit(urls) {
+  const list = (urls || []).filter(Boolean);
+  if (!list.length) return { submitted: 0 };
+  const body = JSON.stringify({
+    host: PEPPERIT_HOST, key: KEY,
+    keyLocation: PEPPERIT_SITE + '/' + KEY + '.txt',
+    urlList: list.slice(0, 100),
+  });
+  const results = await Promise.allSettled(INDEXNOW_ENDPOINTS.map((ep) =>
+    fetch(ep, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      body,
+      signal: AbortSignal.timeout(8000),
+    })
+  ));
+  return { submitted: list.length, ok: results.filter((r) => r.status === 'fulfilled').length };
+}
+
+/**
  * 신규 기사 발행 직후 호출 — IndexNow(개별 URL) + WebSub(피드) 동시 핑.
  * @param {string[]} articleUrls 절대 URL 배열
  */
@@ -74,4 +101,4 @@ async function pingNewContent(articleUrls) {
   return out;
 }
 
-module.exports = { pingNewContent, submitIndexNow, pingWebSub, SITE };
+module.exports = { pingNewContent, submitIndexNow, submitIndexNowPepperit, pingWebSub, SITE, PEPPERIT_SITE };

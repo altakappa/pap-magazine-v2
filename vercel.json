@@ -47,6 +47,10 @@
     {
       "path": "/api/cron/tiktok-post?kind=article",
       "schedule": "30 */2 * * *"
+    },
+    {
+      "path": "/api/cron/sync-pepperit",
+      "schedule": "4-54/10 * * * *"
     }
   ],
   "rewrites": [
@@ -80,6 +84,7 @@
     { "source": "/rss-editorials.xml", "destination": "/api/rss-editorials" },
     { "source": "/pinterest-csv", "destination": "/api/pinterest-csv" },
     { "source": "/sitemap-news.xml", "destination": "/api/sitemap-news" },
+    { "source": "/sitemap.xml", "has": [{ "type": "host", "value": "(www\\.)?pepperitmag\\.com" }], "destination": "/api/sitemap-pepperit" },
     { "source": "/sitemap.xml", "destination": "/api/sitemap" },
     { "source": "/sitemap-index.xml", "destination": "/api/sitemap-index" },
     { "source": "/sitemap-editorials.xml", "destination": "/api/sitemap-editorials" },
@@ -87,6 +92,9 @@
     { "source": "/sitemap-films.xml", "destination": "/api/sitemap-films" },
     { "source": "/sitemap-brands.xml", "destination": "/api/sitemap-brands" },
     { "source": "/editorial/:slug", "destination": "/api/seo/editorial/:slug" },
+    { "source": "/article/:slug", "has": [{ "type": "host", "value": "(www\\.)?pepperitmag\\.com" }], "destination": "/api/seo/pepperit/:slug" },
+    { "source": "/pepperit/article/:slug", "destination": "/api/seo/pepperit/:slug" },
+    { "source": "/sitemap-pepperit.xml", "destination": "/api/sitemap-pepperit" },
     { "source": "/article/:slug", "destination": "/api/seo/article/:slug" },
     { "source": "/film/:slug", "destination": "/api/seo/film/:slug" },
     { "source": "/short/:slug", "destination": "/api/seo/short/:slug" },

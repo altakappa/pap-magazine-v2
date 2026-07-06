@@ -113,6 +113,12 @@ module.exports = async function handler(req, res) {
       ? emailLanguage
       : safeLang;
 
+    // Country capture (migration 038): Vercel's edge geo header, used
+    // as the locale fallback for newsletters when the member never
+    // explicitly picks a language. Best-effort — null if absent.
+    const { countryFromRequest } = require('../_lib/emailLocale');
+    const signupCountry = countryFromRequest(req);
+
     try {
       await supabaseAdmin
         .from('profiles')
@@ -121,6 +127,9 @@ module.exports = async function handler(req, res) {
           email,
           language: safeLang,
           email_language: safeEmailLang,
+          // Only set country when the header was present — never
+          // overwrite an existing value with null on upsert conflict.
+          ...(signupCountry ? { country: signupCountry } : {}),
           terms_consent_at: nowIso,
           privacy_consent_at: nowIso,
           age_consent_at: nowIso,

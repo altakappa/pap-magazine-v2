@@ -272,9 +272,10 @@ async function generateArticleFromPost(post){
 // IG CDN 이미지를 Supabase Storage('media' 버킷)로 복사해 영구 URL 배열 반환.
 // IG CDN URL 은 수일 내 만료되므로 웹사이트 썸네일·틱톡 게시 모두 영구본 필수.
 // 개별 실패는 건너뛰고 성공분만 반환 — 전량 실패 시 빈 배열 (호출부 fallback).
-async function archiveImagesToStorage(post, max){
+async function archiveImagesToStorage(post, max, prefix){
   const { supabaseAdmin } = require('./supabase');
   const out = [];
+  const dir = prefix || 'ig-articles'; // 페퍼릿 등 브랜드별 분리 저장 가능
   const urls = (post.mediaUrls || []).slice(0, max || 10);
   for (let i = 0; i < urls.length; i++){
     try {
@@ -284,7 +285,7 @@ async function archiveImagesToStorage(post, max){
       if (!/^image\//.test(ct)) continue;
       const buf = Buffer.from(await r.arrayBuffer());
       const ext = ct === 'image/png' ? 'png' : (ct === 'image/webp' ? 'webp' : 'jpg');
-      const path = 'ig-articles/' + String(post.id || 'unknown') + '/' + i + '.' + ext;
+      const path = dir + '/' + String(post.id || 'unknown') + '/' + i + '.' + ext;
       const { error } = await supabaseAdmin.storage.from('media')
         .upload(path, buf, { contentType: ct, upsert: true });
       if (error){ console.warn('[ig-archive] upload 실패:', error.message); continue; }

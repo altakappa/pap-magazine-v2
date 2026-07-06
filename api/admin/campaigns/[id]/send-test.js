@@ -19,6 +19,7 @@ const { requireAdmin } = require('../../../_lib/auth');
 const { handleCors } = require('../../../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../../../_lib/rateLimit');
 const { sendEmail, templates } = require('../../../_lib/email');
+const { resolveEmailLang } = require('../../../_lib/emailLocale');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -64,13 +65,13 @@ module.exports = async function handler(req, res) {
 
     // Look up the admin's preferred newsletter locale so the test
     // preview matches what a real recipient with the same preference
-    // would see. Precedence mirrors the cron path: email_language
-    // (explicit pref) > language (site UI) > 'en'.
+    // would see. Precedence mirrors the cron path (emailLocale.js):
+    // email_language > language > countryToLang(country) > 'en'.
     let adminLang = 'en';
     try {
       const { data: pr } = await supabaseAdmin
-        .from('profiles').select('language, email_language').eq('id', admin.id).single();
-      if (pr) adminLang = pr.email_language || pr.language || 'en';
+        .from('profiles').select('language, email_language, country').eq('id', admin.id).single();
+      if (pr) adminLang = resolveEmailLang(pr);
     } catch (_) { /* falls through to 'en' */ }
 
     const fakeUser = {

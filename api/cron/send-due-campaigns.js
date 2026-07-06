@@ -18,6 +18,7 @@
 const { supabaseAdmin } = require('../_lib/supabase');
 const { handleCors } = require('../_lib/cors');
 const { sendEmail, templates } = require('../_lib/email');
+const { resolveEmailLang } = require('../_lib/emailLocale');
 
 const BATCH_SIZE = 50;          // recipients per fan-out wave
 const MAX_CAMPAIGNS_PER_RUN = 5; // process at most N due campaigns per cron tick
@@ -82,15 +83,13 @@ module.exports = async function handler(req, res) {
 
     try {
       // 3) Fetch recipients — only members with email_consent = true.
-      // We pull BOTH language and email_language because they can
-      // diverge after migration 028 (e.g. KR designer who reads the
-      // site in Korean but receives newsletters in English). The
-      // template's pickI18nForWeekly() uses user.language, so we
-      // collapse the two columns here: email_language wins, falling
-      // back to language, then to 'en' as a last resort.
+      // We pull language, email_language AND country (migration 038)
+      // because they feed the locale resolution chain in
+      // _lib/emailLocale.js: email_language (explicit newsletter pref)
+      // > language (site UI) > country-derived guess > 'en'.
       const { data: recipients, error: recErr } = await supabaseAdmin
         .from('profiles')
-        .select('id, email, display_name, language, email_language')
+        .select('id, email, display_name, language, email_language, country')
         .eq('email_consent', true)
         .not('email', 'is', null);
       if (recErr) throw recErr;
@@ -123,14 +122,14 @@ module.exports = async function handler(req, res) {
           if (tokErr) throw tokErr;
 
           try {
-            // Collapse the two language columns into the single
-            // `language` field the template consumes. Precedence:
+            // Collapse the locale columns into the single `language`
+            // field the template consumes. Precedence (emailLocale.js):
             // email_language (explicit newsletter pref) > language
-            // (site UI) > 'en' (safe fallback). Done inline per-user
-            // so we don't mutate the original profiles row.
+            // (site UI) > countryToLang(country) > 'en'. Done inline
+            // per-user so we don't mutate the original profiles row.
             const renderUser = {
               ...user,
-              language: user.email_language || user.language || 'en',
+              language: resolveEmailLang(user),
             };
             const built = templateFn(campaign, renderUser, tok.token);
             const result = await sendEmail(user.email, built);

@@ -7,6 +7,7 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAuth, requireAuthStrict } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
+const { countryFromRequest } = require('../_lib/emailLocale');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -76,6 +77,16 @@ module.exports = async function handler(req, res) {
 
       if (error || !profile) {
         return res.status(404).json({ message: 'Profile not found' });
+      }
+
+      // Opportunistic country capture (migration 038): /me runs on
+      // every authenticated page load, so profiles.country self-heals
+      // for legacy members. Fire-and-forget — never blocks the response.
+      const cc = countryFromRequest(req);
+      if (cc && profile.country !== cc) {
+        supabaseAdmin.from('profiles').update({ country: cc }).eq('id', user.id)
+          .then(({ error: e }) => { if (e) console.error('[auth/me] country update:', e.message); })
+          .catch(err => console.error('[auth/me] country update threw:', err.message || err));
       }
 
       return res.status(200).json({
