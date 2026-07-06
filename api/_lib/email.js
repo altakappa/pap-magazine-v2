@@ -4,6 +4,7 @@
  */
 
 const nodemailer = require('nodemailer');
+const { SUPPORTED_LANGS, LANG_LABELS, emailUiStrings } = require('./emailLocale');
 
 // Create reusable transporter
 let transporter = null;
@@ -354,6 +355,8 @@ const templates = {
   // sender info + unsubscribe link as required by 정보통신망법 §50.
 
   weeklyEditorial: (campaign, user, unsubToken) => {
+    const lang = (user && user.language) || 'en';
+    const L = emailUiStrings(lang);
     const eds = (campaign.payload && campaign.payload.editorials) || [];
     const cards = eds.map(ed => `
       <tr><td style="padding-bottom:24px;">
@@ -372,16 +375,17 @@ const templates = {
     return {
       subject: campaign.subject,
       html: wrapMarketing({
-        preheader: campaign.preheader || '이주의 PAP 에디토리얼',
+        preheader: campaign.preheader || L.editorialPreheader,
         body: `
           <div style="font-size:11px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">THIS WEEK&apos;S EDITORIALS</div>
-          <h1 style="font-size:26px;color:#fff;margin:0 0 8px;letter-spacing:.5px;line-height:1.25;">${escapeHtml(campaign.hero_headline || '이주의 에디토리얼')}</h1>
+          <h1 style="font-size:26px;color:#fff;margin:0 0 8px;letter-spacing:.5px;line-height:1.25;">${escapeHtml(campaign.hero_headline || L.editorialTitle)}</h1>
           <p style="color:#999;font-size:13px;line-height:1.7;margin:0 0 24px;">${escapeHtml(campaign.hero_body || '')}</p>
-          <div style="font-size:12px;color:#aaa;margin-bottom:24px;">안녕하세요, <strong style="color:#fff;">${escapeHtml(greeting)}</strong>님.</div>
+          <div style="font-size:12px;color:#aaa;margin-bottom:24px;">${L.greeting.replace('{name}', `<strong style="color:#fff;">${escapeHtml(greeting)}</strong>`)}</div>
           <table width="100%" cellpadding="0" cellspacing="0">${cards}</table>
           <a href="${FRONTEND_URL}/" style="display:inline-block;background:#fff;color:#000;padding:14px 36px;font-size:11px;font-weight:700;letter-spacing:2px;text-decoration:none;margin-top:8px;">VIEW MORE ON PAP</a>
         `,
         unsubUrl: `${FRONTEND_URL}/api/auth/unsubscribe?token=${unsubToken}`,
+        lang,
       }),
     };
   },
@@ -402,6 +406,18 @@ const templates = {
   // makes the fallback chain explicit.
   weeklyNews: (campaign, user, unsubToken) => {
     const lang = (user && user.language) || 'en';
+    // Fixed chrome strings (legal footer, unsubscribe, selector label)
+    // follow the SAME locale as the article content, so the whole email
+    // reads in one language end-to-end.
+    const L = emailUiStrings(lang);
+    // In-email language selector: one link per site locale, hitting
+    // /api/email/language which flips profiles.email_language via the
+    // same per-recipient token as the unsubscribe link (not consumed).
+    // The recipient's current language renders bold + underlined.
+    const langBar = SUPPORTED_LANGS.map(l => l === lang
+      ? `<span style="color:#1a1a1a;font-weight:700;text-decoration:underline;white-space:nowrap;">${LANG_LABELS[l]}</span>`
+      : `<a href="${FRONTEND_URL}/api/email/language?token=${unsubToken}&amp;lang=${l}" style="color:#999;text-decoration:none;white-space:nowrap;">${LANG_LABELS[l]}</a>`
+    ).join(' &nbsp;·&nbsp; ');
     const view = pickI18nForWeekly(campaign, lang);
     const items = view.newsItems;
     const headerDate = (campaign.payload && campaign.payload.headerDate) || (() => {
@@ -436,13 +452,20 @@ const templates = {
     <tr><td align="center" style="background-color:#f5f0eb;padding:0 20px 18px;font-size:13px;color:#999;">${escapeHtml(issueLabel)} &mdash; ${escapeHtml(headerDate)}</td></tr>
     ${cards}
     <tr><td style="padding:18px 28px 0;"><hr style="border:none;border-top:1px solid #eee;"></td></tr>
-    <!-- Legal: unsubscribe + sender info, required for marketing email -->
+    <!-- Language selector: lets the recipient re-pick their newsletter
+         locale without logging in. Current locale is bold/underlined. -->
+    <tr><td align="center" style="padding:16px 28px 0;font-size:11px;color:#999;line-height:2;">
+      <div style="font-size:9px;letter-spacing:2px;color:#bbb;text-transform:uppercase;margin-bottom:4px;">${escapeHtml(L.languageLabel)}</div>
+      ${langBar}
+    </td></tr>
+    <!-- Legal: unsubscribe + sender info, required for marketing email.
+         Localized to the recipient's locale (emailLocale.js). -->
     <tr><td style="padding:18px 28px 0;font-size:11px;color:#888;line-height:1.6;">
-      본 메일은 PAP Magazine에 가입하시고 <strong style="color:#555;">이메일 수신에 동의</strong>하신 회원에게 발송됩니다.
+      ${L.consentNotice.replace(/<strong>/g, '<strong style="color:#555;">')}
       &nbsp;·&nbsp;
-      <a href="${FRONTEND_URL}/api/auth/unsubscribe?token=${unsubToken}" style="color:#6b1a1a;text-decoration:underline;">수신 거부</a>
+      <a href="${FRONTEND_URL}/api/auth/unsubscribe?token=${unsubToken}" style="color:#6b1a1a;text-decoration:underline;">${escapeHtml(L.unsubscribe)}</a>
       &nbsp;·&nbsp;
-      <a href="${FRONTEND_URL}/mypage#mp-preferences" style="color:#6b1a1a;text-decoration:underline;">알림 설정 변경</a>
+      <a href="${FRONTEND_URL}/mypage#mp-preferences" style="color:#6b1a1a;text-decoration:underline;">${escapeHtml(L.managePrefs)}</a>
     </td></tr>
     <tr><td align="center" style="background-color:#1a1a1a;padding:28px 20px;margin-top:18px;">
       <div style="font-size:11px;font-weight:700;color:#ffffff;letter-spacing:4px;">P A P &nbsp; M A G A Z I N E</div>
@@ -503,7 +526,10 @@ function escapeHtml(s) {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
-function wrapMarketing({ preheader, body, unsubUrl }) {
+function wrapMarketing({ preheader, body, unsubUrl, lang }) {
+  // Footer chrome follows the recipient's locale so the email reads in
+  // ONE language end-to-end (article content + legal strings alike).
+  const L = emailUiStrings(lang || 'en');
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -523,12 +549,12 @@ function wrapMarketing({ preheader, body, unsubUrl }) {
         <tr><td style="padding:32px 36px;color:#ccc;font-size:14px;line-height:1.7;">${body}</td></tr>
         <tr><td style="padding:28px 36px;border-top:1px solid #1a1a1a;color:#666;font-size:11px;line-height:1.6;">
           <p style="margin:0 0 14px;color:#888;">
-            본 메일은 PAP Magazine에 가입하시고 <strong style="color:#aaa;">이메일 수신에 동의</strong>하신 회원에게 발송됩니다.
+            ${L.consentNotice.replace(/<strong>/g, '<strong style="color:#aaa;">')}
           </p>
           <p style="margin:0 0 14px;">
-            <a href="${unsubUrl}" style="color:#bbb;text-decoration:underline;">수신 거부 / Unsubscribe</a>
+            <a href="${unsubUrl}" style="color:#bbb;text-decoration:underline;">${escapeHtml(L.unsubscribe)}</a>
             &nbsp;·&nbsp;
-            <a href="${FRONTEND_URL}/mypage#mp-preferences" style="color:#bbb;text-decoration:underline;">알림 설정 변경</a>
+            <a href="${FRONTEND_URL}/mypage#mp-preferences" style="color:#bbb;text-decoration:underline;">${escapeHtml(L.managePrefs)}</a>
           </p>
           <p style="margin:0;color:#555;font-size:10px;line-height:1.5;">
             PAP Magazine · contact@pap-magazine.com · ${FRONTEND_URL}<br>
