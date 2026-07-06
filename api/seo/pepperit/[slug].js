@@ -93,9 +93,10 @@ module.exports = async function handler(req, res) {
       '<meta name="keywords" content="' + esc(tags.join(', ')) + ', 페퍼릿, PEPPERIT, 케이팝 뉴스">' +
       '<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">' +
       '<link rel="canonical" href="' + esc(url) + '">' +
-      '<link rel="icon" type="image/png" sizes="192x192" href="/pepperit-favicon-192.png">' +
-      '<link rel="icon" type="image/png" sizes="32x32" href="/pepperit-favicon-32.png">' +
-      '<link rel="apple-touch-icon" href="/pepperit-apple-touch.png">' +
+      '<link rel="shortcut icon" href="/pepperit-favicon-192.png?v=2">' +
+      '<link rel="icon" type="image/png" sizes="192x192" href="/pepperit-favicon-192.png?v=2">' +
+      '<link rel="icon" type="image/png" sizes="32x32" href="/pepperit-favicon-32.png?v=2">' +
+      '<link rel="apple-touch-icon" href="/pepperit-apple-touch.png?v=2">' +
       '<meta property="og:type" content="article"><meta property="og:site_name" content="PEPPERIT">' +
       '<meta property="og:title" content="' + esc(title) + '">' +
       '<meta property="og:description" content="' + esc(descr) + '">' +
