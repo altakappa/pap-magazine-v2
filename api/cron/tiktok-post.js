@@ -41,6 +41,12 @@ module.exports = async function handler(req, res) {
     const user = await requireAdmin(req, res);
     if (!user) return;
   }
+  // 심사 승인 전 대기 모드: 미심사 앱은 공개 계정에 게시 불가하므로
+  // 크론 자동 실행은 TIKTOK_PUBLIC=1 설정 후에만 가동 (관리자 수동은 허용 —
+  // 샌드박스 테스트용). 승인되면 env 추가만으로 즉시 가동된다.
+  if (cronOk && process.env.TIKTOK_PUBLIC !== '1') {
+    return res.status(200).json({ ok: true, note: '심사 승인 대기 — TIKTOK_PUBLIC=1 설정 시 자동 게시 시작' });
+  }
 
   try {
     // 게시 처리 상태 조회: ?check=<publish_id>
