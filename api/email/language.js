@@ -13,14 +13,18 @@
  * resolution chain in _lib/emailLocale.js), so the very next campaign
  * renders in the chosen language.
  *
- * Response is a self-contained HTML confirmation page localized in
- * the newly chosen language — no login, no JS required.
+ * Response: the SAME newsletter re-rendered in the chosen language
+ * (web view), with a confirmation banner on top — so clicking a
+ * language instantly shows the translated content. Falls back to a
+ * plain confirmation page when the campaign can't be loaded.
+ * No login, no JS required.
  */
 
 const { supabaseAdmin } = require('../_lib/supabase');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { SUPPORTED_LANGS, LANG_LABELS } = require('../_lib/emailLocale');
+const { templates } = require('../_lib/email');
 
 const FRONTEND_URL = process.env.NEXT_PUBLIC_URL || 'https://www.pap-magazine.com';
 
@@ -93,7 +97,7 @@ module.exports = async function handler(req, res) {
     // Token authenticates the member; NOT consumed (unsubscribe stays valid).
     const { data: tokRow, error: tokErr } = await supabaseAdmin
       .from('email_unsubscribe_tokens')
-      .select('token, user_id')
+      .select('token, user_id, campaign_id')
       .eq('token', token)
       .maybeSingle();
     if (tokErr) throw tokErr;
@@ -111,6 +115,41 @@ module.exports = async function handler(req, res) {
       .update({ email_language: lang })
       .eq('id', tokRow.user_id);
     if (profErr) throw profErr;
+
+    // Re-render the newsletter this link came from IN the chosen
+    // language and serve it as a web view, so the reader immediately
+    // sees the translated content (the delivered email itself is
+    // static and can't change). Token row carries campaign_id.
+    try {
+      if (tokRow.campaign_id) {
+        const { data: campaign } = await supabaseAdmin
+          .from('email_campaigns').select('*').eq('id', tokRow.campaign_id).maybeSingle();
+        const templateFn = campaign && (
+          campaign.type === 'news-weekly' ? templates.weeklyNews
+          : campaign.type === 'editorial-weekly' ? templates.weeklyEditorial
+          : null);
+        if (templateFn) {
+          const { data: prof } = await supabaseAdmin
+            .from('profiles').select('display_name, email').eq('id', tokRow.user_id).maybeSingle();
+          const viewUser = {
+            id: tokRow.user_id,
+            email: (prof && prof.email) || '',
+            display_name: (prof && prof.display_name) || '',
+            language: lang,
+          };
+          const built = templateFn(campaign, viewUser, token);
+          const banner = `<div style="max-width:600px;margin:0 auto;background:#1a1a1a;color:#fff;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;line-height:1.6;padding:12px 20px;text-align:center;">`
+            + L.body.replace('{label}', `<strong>${LANG_LABELS[lang]}</strong>`)
+            + `</div>`;
+          const htmlOut = built.html.replace(/<body[^>]*>/i, (m) => m + banner);
+          return res.status(200).send(htmlOut);
+        }
+      }
+    } catch (renderErr) {
+      // Preference was saved — a web-view render failure must not turn
+      // the click into an error. Fall through to the confirmation page.
+      console.error('[email/language] web view render failed:', renderErr.message || renderErr);
+    }
 
     return res.status(200).send(page(lang, {
       title: L.title,
