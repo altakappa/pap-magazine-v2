@@ -79,11 +79,14 @@ module.exports = async function handler(req, res) {
     const ed = (await pickFrom(false)) || (await pickFrom(true));
     if (!ed) return res.status(200).json({ ok: true, note: '게시할 에디토리얼 없음 (전량 완료)' });
 
+    // 인증 도메인(pap-magazine.com) 경유 — PULL_FROM_URL 요건.
+    // 브랜딩: 커버(첫 장)는 원본 그대로, 나머지 갤러리 컷은 하단 중앙에
+    // PAP 워드마크 스탬프 (어드민 인스타 생성기 QA #261 과 동일 규격).
     const photos = [ed.cover_image].concat(ed.gallery || [])
       .filter(Boolean)
       .filter((v, i, a) => a.indexOf(v) === i)
       .slice(0, 10)
-      .map(toOwnedImageUrl); // 인증 도메인(pap-magazine.com) 경유 — PULL_FROM_URL 요건
+      .map((u, i) => toOwnedImageUrl(u, { logo: i > 0 }));
     const caption = buildCaption(ed);
 
     if (req.query && req.query.dry === '1') {

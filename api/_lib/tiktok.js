@@ -139,12 +139,20 @@ async function directPostPhotos(photoUrls, title, description) {
  * 최적화 프록시(자사 도메인)로 감싸 반환 — vercel.json images.remotePatterns
  * 에 두 호스트가 등록돼 있어야 한다.
  */
-function toOwnedImageUrl(u) {
+/**
+ * @param {string} u 원본 이미지 URL
+ * @param {{logo?: boolean}} [opts] logo:true 면 하단 중앙에 PAP 워드마크 합성
+ *   (어드민 인스타 생성기와 동일 규격 — 너비 15%, 하단 여백 1%, 투명도 85%)
+ */
+function toOwnedImageUrl(u, opts) {
   if (!u) return u;
-  if (/^https:\/\/www\.pap-magazine\.com\//.test(u)) return u;
-  // /api/img — 원본 JPEG 바이트 그대로 중계 (Vercel 이미지 최적화는 AVIF/WebP
+  const logo = !!(opts && opts.logo);
+  // 자사 도메인 URL 은 그대로 통과 — 단, 로고 스탬프가 필요한 정적 이미지는
+  // 프록시 경유 (API 경로는 재귀 방지를 위해 항상 원본 유지)
+  if (/^https:\/\/www\.pap-magazine\.com\//.test(u) && (!logo || u.indexOf('/api/') !== -1)) return u;
+  // /api/img — 1080px JPEG 정규화 중계 (Vercel 이미지 최적화는 AVIF/WebP
   // 협상 때문에 TikTok picture_size_check 에서 실패한다)
-  return 'https://www.pap-magazine.com/api/img?u=' + encodeURIComponent(u);
+  return 'https://www.pap-magazine.com/api/img?u=' + encodeURIComponent(u) + (logo ? '&logo=1' : '');
 }
 
 module.exports = { authorizeUrl, exchangeCode, getAccessToken, directPostPhotos, toOwnedImageUrl, REDIRECT_URI };
