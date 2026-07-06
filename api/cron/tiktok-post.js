@@ -43,6 +43,21 @@ module.exports = async function handler(req, res) {
   }
 
   try {
+    // 게시 처리 상태 조회: ?check=<publish_id>
+    // (PULL_FROM_URL 은 비동기 — 제출 후 다운로드·검증 단계에서 실패할 수 있어
+    //  status/fetch 로 PROCESSING_DOWNLOAD / PUBLISH_COMPLETE / FAILED 확인)
+    if (req.query && req.query.check) {
+      const { getAccessToken } = require('../_lib/tiktok');
+      const token = await getAccessToken();
+      const r = await fetch('https://open.tiktokapis.com/v2/post/publish/status/fetch/', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json; charset=UTF-8' },
+        body: JSON.stringify({ publish_id: String(req.query.check) }),
+        signal: AbortSignal.timeout(15000),
+      });
+      return res.status(200).json(await r.json());
+    }
+
     // 이미 게시된 에디토리얼 id 집합
     const { data: posted } = await supabaseAdmin.from('tiktok_posts').select('editorial_id').limit(5000);
     const done = new Set((posted || []).map((p) => p.editorial_id).filter(Boolean));
