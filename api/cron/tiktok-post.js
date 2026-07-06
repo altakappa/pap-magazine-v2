@@ -64,9 +64,10 @@ module.exports = async function handler(req, res) {
       return res.status(200).json(await r.json());
     }
 
-    // 이미 게시된 에디토리얼 id 집합
-    const { data: posted } = await supabaseAdmin.from('tiktok_posts').select('editorial_id').limit(5000);
-    const done = new Set((posted || []).map((p) => p.editorial_id).filter(Boolean));
+    // 이미 게시된 에디토리얼 id 집합 — 실패(failed) 기록은 제외해 재시도 허용
+    // (계정 비공개 미전환·일시 오류 등으로 실패한 편이 영구 건너뜀 되지 않게)
+    const { data: posted } = await supabaseAdmin.from('tiktok_posts').select('editorial_id, status').limit(5000);
+    const done = new Set((posted || []).filter((p) => p.status !== 'failed').map((p) => p.editorial_id).filter(Boolean));
 
     // 후보: 신규 우선 → legacy. 갤러리 2장 이상 필수 (포토 모드 품질)
     async function pickFrom(legacyFlag) {
@@ -102,9 +103,10 @@ module.exports = async function handler(req, res) {
       status = 'failed';
       detail = String(err && err.message || err).slice(0, 400);
     }
-    await supabaseAdmin.from('tiktok_posts').insert({
+    // upsert — 이전 실패 기록이 있는 편의 재시도 시 UNIQUE(editorial_id) 충돌 방지
+    await supabaseAdmin.from('tiktok_posts').upsert({
       editorial_id: ed.id, publish_id: publishId, status, detail,
-    });
+    }, { onConflict: 'editorial_id' });
 
     if (status === 'failed') return res.status(502).json({ error: 'tiktok post failed', title: ed.title, detail });
     return res.status(200).json({ ok: true, posted: ed.title, publish_id: publishId, photos: photos.length });
