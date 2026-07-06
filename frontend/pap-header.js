@@ -274,19 +274,38 @@
     var navCloseCss = document.createElement('style');
     navCloseCss.id = 'pap-nav-close-css';
     navCloseCss.textContent = [
-      /* Default state: hidden. The nav-overlay sits z-index:1500, the
-         hamburger 2000 — slot this X between (1700) so it floats above
-         the white menu but stays out of the hamburger's way. */
-      '.pap-nav-close{position:fixed!important;top:18px;left:18px;z-index:1700;width:44px;height:44px;display:none;align-items:center;justify-content:center;background:none;border:none;padding:0;cursor:pointer;color:#000;-webkit-tap-highlight-color:transparent;font-family:inherit}',
+      /* QA #328 — Unified close-button behaviour across ALL pages.
+         Previously two visible close affordances co-existed when the
+         overlay was open:
+           1) .hamburger.is-active — 3 bars morph into ×
+           2) .pap-nav-close       — dedicated X injected inside overlay
+         The hamburger sat at whatever left-offset the page-specific
+         header padding produced (index=20px, magazine=40px, others
+         varied), so users saw the × in different positions on different
+         pages, plus a second × from .pap-nav-close at (18,18). QA #328
+         asks for one canonical X position + motion on every page.
+
+         Fix: hide the hamburger completely while the overlay is open
+         and let .pap-nav-close be the sole close button, pinned to
+         (18,18). The hamburger's morphing animation is replaced by a
+         simple fade so pages whose padding sits the ≡ off-centre don't
+         reveal the morph. */
+      '.pap-nav-close{position:fixed!important;top:18px!important;left:18px!important;z-index:2001!important;width:44px;height:44px;display:none;align-items:center;justify-content:center;background:none;border:none;padding:0;cursor:pointer;color:#000;-webkit-tap-highlight-color:transparent;font-family:inherit;transition:opacity .2s ease,transform .3s cubic-bezier(.65,.05,.36,1);transform:rotate(0deg)}',
       /* Reveal whenever the nav-overlay is open. Two selectors cover both
          the "X is sibling of .nav-overlay" case AND the "X is INSIDE
-         .nav-overlay" case (this script injects it as a child). */
-      '.nav-overlay.active .pap-nav-close,body:has(.nav-overlay.active) .pap-nav-close{display:flex}',
+         .nav-overlay" case (this script injects it as a child). Both
+         selectors apply !important so page CSS can not hide it. */
+      '.nav-overlay.active .pap-nav-close,body:has(.nav-overlay.active) .pap-nav-close{display:flex!important;transform:rotate(90deg)}',
       '.pap-nav-close:hover{opacity:.6}',
       '.pap-nav-close svg{display:block;width:22px;height:22px;stroke:#000}',
       /* Compact spacing on phones to match the smaller header. */
-      '@media(max-width:768px){.pap-nav-close{top:12px;left:12px;width:40px;height:40px}}',
-      '@media(max-width:480px){.pap-nav-close{top:10px;left:10px;width:36px;height:36px}}'
+      '@media(max-width:768px){.pap-nav-close{top:12px!important;left:12px!important;width:40px;height:40px}}',
+      '@media(max-width:480px){.pap-nav-close{top:10px!important;left:10px!important;width:36px;height:36px}}',
+      /* Hide the hamburger button while the overlay is open — .pap-nav-close
+         is the sole X. `visibility:hidden` keeps the layout stable so the
+         header doesn't reflow when the menu opens. `pointer-events:none`
+         prevents accidental clicks landing on the invisible morph state. */
+      '.nav-overlay.active ~ header .hamburger,body:has(.nav-overlay.active) header .hamburger{visibility:hidden!important;pointer-events:none!important}'
     ].join('\n');
     document.head.appendChild(navCloseCss);
   }
@@ -453,8 +472,29 @@
     // QA #320 — DB 기반 nav menu 항목으로 우측 컬럼 교체.
     // 실패해도 하드코딩 fallback 이 유지되므로 조용히 처리.
     _papLoadDynamicNavMenu();
+    // QA #328 — Safety net: if any page still has a stale/legacy
+    // .nav-overlay lingering without the .pap-nav-close child (older
+    // static HTML that races the pap-header inject), inject a close
+    // button into every overlay found so the close affordance is
+    // guaranteed. Idempotent — bails when a close already exists.
+    _papEnsureNavClose();
   }
   _injectHeader();
+
+  function _papEnsureNavClose(){
+    var overlays = document.querySelectorAll('.nav-overlay');
+    for (var i = 0; i < overlays.length; i++){
+      var ov = overlays[i];
+      if (ov.querySelector('.pap-nav-close')) continue;
+      var btn = document.createElement('button');
+      btn.className = 'pap-nav-close';
+      btn.type = 'button';
+      btn.setAttribute('aria-label', 'Close menu');
+      btn.onclick = function(){ if (typeof _papCloseNav === 'function') _papCloseNav(); };
+      btn.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>';
+      ov.insertBefore(btn, ov.firstChild);
+    }
+  }
 
   /* QA #320 — /api/nav-menu 에서 활성 메뉴 목록을 받아 우측 컬럼 교체.
      link_url 이 '/#all-editorials' 인 경우 기존 특수 오버레이 핸들러를 재현.
