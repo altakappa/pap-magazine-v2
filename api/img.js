@@ -29,8 +29,20 @@ module.exports = async function handler(req, res) {
     const ct = r.headers.get('content-type') || 'image/jpeg';
     if (!/^image\//.test(ct)) return res.status(415).json({ error: '이미지 아님: ' + ct });
 
-    const buf = Buffer.from(await r.arrayBuffer());
-    res.setHeader('Content-Type', ct);
+    let buf = Buffer.from(await r.arrayBuffer());
+    // TikTok picture_size_check: 원본 화보(2000px+)가 해상도 한도를 초과해
+    // 거부된다 — 긴 변 1080px 이내 JPEG 로 정규화 (sharp).
+    try {
+      const sharp = require('sharp');
+      buf = await sharp(buf)
+        .resize({ width: 1080, height: 1080, fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 85 })
+        .toBuffer();
+      res.setHeader('Content-Type', 'image/jpeg');
+    } catch (e) {
+      console.error('[img-proxy] sharp 실패, 원본 중계:', e.message);
+      res.setHeader('Content-Type', ct);
+    }
     res.setHeader('Content-Length', String(buf.length));
     res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=604800, immutable');
     return res.status(200).send(buf);
