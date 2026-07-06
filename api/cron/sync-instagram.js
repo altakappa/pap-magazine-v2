@@ -22,29 +22,9 @@ const {
   generateArticleFromPost,
   buildArticleRow,
   isLikelyEditorialCaption,
+  normalizeMedia,
   _extractShortcode,
 } = require('../_lib/instagramImport');
-
-function _normalizeMediaForGenerator(m){
-  // listRecentMedia가 반환한 raw Graph API row를
-  // generateArticleFromPost가 기대하는 shape로 변환.
-  const mediaUrls = [];
-  if (m.media_type === 'CAROUSEL_ALBUM' && m.children && Array.isArray(m.children.data)){
-    m.children.data.forEach((c) => { if (c.media_url) mediaUrls.push(c.media_url); });
-  } else if (m.media_url){
-    mediaUrls.push(m.media_url);
-  } else if (m.thumbnail_url){
-    mediaUrls.push(m.thumbnail_url);
-  }
-  return {
-    id: m.id,
-    caption: m.caption || '',
-    mediaUrls: mediaUrls,
-    permalink: m.permalink || null,
-    timestamp: m.timestamp || null,
-    author: m.username || 'pap_magazine',
-  };
-}
 
 module.exports = async function handler(req, res){
   // Vercel cron 보호 — CRON_SECRET 일치 또는 관리자 토큰 (수동 진단·트리거용).
@@ -113,7 +93,7 @@ module.exports = async function handler(req, res){
       if (cls !== 'article') continue;
 
       try {
-        const post = _normalizeMediaForGenerator(m);
+        const post = normalizeMedia(m);
         const generated = await generateArticleFromPost(post);
         // ③ AI 분류: 크레딧 게시물로 판정되면 수집하지 않음.
         if (String(generated.category || '').toLowerCase() === 'editorial'){

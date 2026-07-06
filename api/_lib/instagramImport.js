@@ -33,7 +33,7 @@ async function listRecentMedia(opts){
   if (!process.env.IG_ACCESS_TOKEN || !process.env.IG_USER_ID){
     throw new Error('IG_ACCESS_TOKEN/IG_USER_ID 환경변수가 설정되어 있지 않습니다.');
   }
-  const fields = 'id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username,children{media_url,media_type}';
+  const fields = 'id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username,children{media_url,media_type,thumbnail_url}';
   const url = `${_IG_API}/${process.env.IG_USER_ID}/media?fields=${encodeURIComponent(fields)}&limit=${limit}&access_token=${process.env.IG_ACCESS_TOKEN}`;
   const res = await fetch(url);
   if (!res.ok){
@@ -80,12 +80,22 @@ function _normalizeMedia(m){
     permalink: m.permalink,
     timestamp: m.timestamp || null,
     author: m.username || 'pap_magazine',
+    isVideo: m.media_type === 'VIDEO',
   };
   // 단일 / 캐러셀 / 비디오 케이스 처리.
+  // mediaUrls 에는 "이미지 URL만" 넣는다 — 비전 분석(base64 image block)과
+  // 기사 썸네일 모두 이미지를 기대하므로 VIDEO 는 포스터(thumbnail_url)로 대체.
   if (m.media_type === 'CAROUSEL_ALBUM' && m.children && Array.isArray(m.children.data)){
     m.children.data.forEach((c) => {
-      if (c.media_url) out.mediaUrls.push(c.media_url);
+      if (!c) return;
+      if (c.media_type === 'VIDEO'){
+        if (c.thumbnail_url) out.mediaUrls.push(c.thumbnail_url);
+      } else if (c.media_url){
+        out.mediaUrls.push(c.media_url);
+      }
     });
+  } else if (m.media_type === 'VIDEO'){
+    if (m.thumbnail_url) out.mediaUrls.push(m.thumbnail_url);
   } else if (m.media_url){
     out.mediaUrls.push(m.media_url);
   } else if (m.thumbnail_url){
@@ -127,9 +137,15 @@ async function generateArticleFromPost(post){
         console.warn('[ig] image fetch failed:', imgRes.status, u);
         continue;
       }
+      const mediaType = (imgRes.headers.get('content-type') || 'image/jpeg').split(';')[0];
+      // 안전장치: 이미지가 아니면(예: 비디오 mp4) 비전 블록에서 제외 —
+      // Claude image block 에 비 이미지 타입을 넣으면 API 400 으로 전체 실패.
+      if (!/^image\//.test(mediaType)){
+        console.warn('[ig] 비 이미지 타입 제외:', mediaType, u);
+        continue;
+      }
       const arrayBuf = await imgRes.arrayBuffer();
       const base64 = Buffer.from(arrayBuf).toString('base64');
-      const mediaType = (imgRes.headers.get('content-type') || 'image/jpeg').split(';')[0];
       visionBlocks.push({
         type: 'image',
         source: { type: 'base64', media_type: mediaType, data: base64 },
@@ -249,5 +265,6 @@ module.exports = {
   generateArticleFromPost,
   buildArticleRow,
   isLikelyEditorialCaption,
+  normalizeMedia: _normalizeMedia,
   _extractShortcode,
 };
