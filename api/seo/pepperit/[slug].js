@@ -137,7 +137,7 @@ module.exports = async function handler(req, res) {
       '</article>' +
       ((latest || []).length ? '<div class="lat-wrap"><p class="lat-h">MORE PEPPERIT</p><div class="lat-grid">' + latestHtml + '</div></div>' : '') +
       '</main>' +
-      '<footer>PEPPERIT — 케이팝 셀럽의 모든 순간을 가장 빠르고 가볍게 · <a href="' + IG + '" target="_blank" rel="noopener">@pepperitmag</a><br><br>PAP Magazine 자매지 · <a href="https://www.pap-magazine.com/">pap-magazine.com</a></footer>' +
+      '<footer>PEPPERIT — 케이팝 · 패션 · 뷰티 · 컬쳐의 모든 순간, 가장 가볍게 · <a href="' + IG + '" target="_blank" rel="noopener">@pepperitmag</a><br><br>PAP Magazine 자매지 · <a href="https://www.pap-magazine.com/">pap-magazine.com</a> · 제휴 문의 hello@pepperitmag.com</footer>' +
       '</body></html>';
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');

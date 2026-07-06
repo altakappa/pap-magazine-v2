@@ -101,9 +101,11 @@ async function generatePepperitArticle(post) {
   }
 
   const prompt = [
-    'You are an editor at PEPPERIT (페퍼릿, @pepperitmag) — a Korean Gen-Z daily K-pop celeb magazine',
-    '(target: K-pop fans aged 17-24). Tone: 발랄하고 가볍고 트렌디한 한국어 존댓말, 팬心 자극,',
-    '이모지 아주 절제해서 0~2개. PAP Magazine 과는 완전히 다른 브랜드 — 아트/패션 톤 금지.',
+    'You are an editor at PEPPERIT (페퍼릿, @pepperitmag) — a Korean daily culture magazine',
+    'covering K-POP first, plus fashion·beauty·culture moments, for 잘파세대 (Gen Z + Gen Alpha).',
+    'Slogan: "케이팝 · 패션 · 뷰티 · 컬쳐의 모든 순간, 가장 가볍게."',
+    'Tone: 발랄하고 가볍고 트렌디한 한국어 존댓말, 친구가 톡으로 전해주는 감각, 팬心 자극,',
+    '이모지 아주 절제해서 0~2개. PAP Magazine 과는 완전히 다른 브랜드 — 진지한 아트 비평 톤 금지.',
     '',
     'Convert this Instagram post into a short web article.',
     '',
