@@ -854,8 +854,12 @@ function closeModal(){
   document.getElementById('subModal').classList.remove('active');
   document.body.style.overflow='';
 }
-document.getElementById('subModal').addEventListener('click',function(e){
-  if(e.target===this)closeModal();
+// 2026-07-06 버그픽스: #subModal 은 이 스크립트보다 아래(1032행)에 있어
+// 즉시 조회하면 null → 예외로 이 블록 나머지(ESC 핸들러 등)가 죽는다.
+// DOMContentLoaded 이후로 지연 등록.
+document.addEventListener('DOMContentLoaded',function(){
+  var _sm=document.getElementById('subModal');
+  if(_sm)_sm.addEventListener('click',function(e){ if(e.target===_sm)closeModal(); });
 });
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape'){
@@ -1252,6 +1256,19 @@ document.getElementById('previewOverlay').addEventListener('click',function(e){
     document.getElementById('quarterVols').style.display='';
     var hb=document.getElementById('heroBadge');
     if(hb)hb.textContent=total+' ISSUES · '+(legacyEds+dynEds).toLocaleString()+'+ EDITORIALS';
+    // 동적 생성 카드 리빌 (2026-07-06 버그픽스) — .card 는 CSS 기본이
+    // opacity:0 이고 페이지 로드 시점의 IntersectionObserver(782행)만
+    // .vis 를 붙인다. 이 카드들은 그 이후에 생성되므로 여기서 새 옵저버로
+    // 관찰해야 화면에 나타난다 (미등록 시 매거진이 통째로 빈 화면).
+    var qc=grid.querySelectorAll('.card');
+    if('IntersectionObserver' in window){
+      var o2=new IntersectionObserver(function(es){es.forEach(function(en){
+        if(en.isIntersecting){en.target.classList.add('vis');o2.unobserve(en.target);}
+      });},{threshold:.08});
+      qc.forEach(function(x,i){setTimeout(function(){o2.observe(x);},i*30);});
+    }else{
+      qc.forEach(function(x){x.classList.add('vis');});
+    }
   }
 
   // ── 2) DB 동적 볼륨 (VOL 30+) ──
