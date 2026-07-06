@@ -234,15 +234,47 @@ async function generateArticleFromPost(post){
   };
 }
 
+// IG CDN 이미지를 Supabase Storage('media' 버킷)로 복사해 영구 URL 배열 반환.
+// IG CDN URL 은 수일 내 만료되므로 웹사이트 썸네일·틱톡 게시 모두 영구본 필수.
+// 개별 실패는 건너뛰고 성공분만 반환 — 전량 실패 시 빈 배열 (호출부 fallback).
+async function archiveImagesToStorage(post, max){
+  const { supabaseAdmin } = require('./supabase');
+  const out = [];
+  const urls = (post.mediaUrls || []).slice(0, max || 10);
+  for (let i = 0; i < urls.length; i++){
+    try {
+      const r = await fetch(urls[i], { signal: AbortSignal.timeout(20000) });
+      if (!r.ok){ console.warn('[ig-archive] fetch ' + r.status + ':', urls[i]); continue; }
+      const ct = (r.headers.get('content-type') || 'image/jpeg').split(';')[0];
+      if (!/^image\//.test(ct)) continue;
+      const buf = Buffer.from(await r.arrayBuffer());
+      const ext = ct === 'image/png' ? 'png' : (ct === 'image/webp' ? 'webp' : 'jpg');
+      const path = 'ig-articles/' + String(post.id || 'unknown') + '/' + i + '.' + ext;
+      const { error } = await supabaseAdmin.storage.from('media')
+        .upload(path, buf, { contentType: ct, upsert: true });
+      if (error){ console.warn('[ig-archive] upload 실패:', error.message); continue; }
+      const { data } = supabaseAdmin.storage.from('media').getPublicUrl(path);
+      if (data && data.publicUrl) out.push(data.publicUrl);
+    } catch (e){
+      console.warn('[ig-archive] error:', (e && e.message) || e);
+    }
+  }
+  return out;
+}
+
 // articles INSERT용 row 구성 (DB 컬럼 명에 맞춰서).
 function buildArticleRow(post, generated, opts){
   opts = opts || {};
   const status = opts.status || 'draft';
+  // 영구 저장본(archiveImagesToStorage) 우선, 실패 시 IG CDN 원본 fallback.
+  const archived = Array.isArray(opts.archivedUrls) ? opts.archivedUrls : [];
+  const imgs = archived.length ? archived : (post.mediaUrls || []);
   return {
     // published 로 바로 내보낼 때는 게시일 필수 (목록·RSS·사이트맵이 published_date 정렬)
     published_date: status === 'published'
       ? (post.timestamp || new Date().toISOString())
       : null,
+    gallery: imgs,
     title: generated.title_ko || generated.title_en || ('Instagram post ' + post.id),
     title_en: generated.title_en || null,
     content: generated.body_ko || '',
@@ -250,7 +282,7 @@ function buildArticleRow(post, generated, opts){
     category: generated.category || 'News',
     tags: generated.tags || [],
     slug: generated.slug || null,
-    thumbnail_url: (post.mediaUrls && post.mediaUrls[0]) || null,
+    thumbnail_url: imgs[0] || null,
     status: status,
     // QA #275 — Instagram 소스 메타.
     source_instagram_url:     post.permalink || null,
@@ -264,6 +296,7 @@ module.exports = {
   fetchInstagramPost,
   generateArticleFromPost,
   buildArticleRow,
+  archiveImagesToStorage,
   isLikelyEditorialCaption,
   normalizeMedia: _normalizeMedia,
   _extractShortcode,

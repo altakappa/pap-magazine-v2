@@ -43,6 +43,10 @@
     {
       "path": "/api/cron/tiktok-post",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/tiktok-post?kind=article",
+      "schedule": "0 8 * * *"
     }
   ],
   "rewrites": [

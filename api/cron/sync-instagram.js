@@ -21,6 +21,7 @@ const {
   listRecentMedia,
   generateArticleFromPost,
   buildArticleRow,
+  archiveImagesToStorage,
   isLikelyEditorialCaption,
   normalizeMedia,
   _extractShortcode,
@@ -100,7 +101,10 @@ module.exports = async function handler(req, res){
           results.skipped_editorial_ai++;
           continue;
         }
-        const row = buildArticleRow(post, generated, { status: 'published' });
+        // IG CDN 이미지는 수일 내 만료 — Supabase Storage 영구본으로 교체
+        // (웹사이트 썸네일·갤러리 + 틱톡 기사 게시 공용)
+        const archivedUrls = await archiveImagesToStorage(post, 10);
+        const row = buildArticleRow(post, generated, { status: 'published', archivedUrls });
         const { error: insErr } = await supabaseAdmin.from('articles').insert(row);
         if (insErr){
           // unique index 충돌은 race condition (동시 cron 실행) — skip 처리.

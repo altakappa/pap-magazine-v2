@@ -1,13 +1,20 @@
 /**
  * PAP Magazine — TikTok 데일리 자동 게시 크론
- * Route: /api/cron/tiktok-post  (vercel.json: 매일 11:00 KST = 02:00 UTC)
+ * Route: /api/cron/tiktok-post            (매일 11:00 KST — 에디토리얼)
+ *        /api/cron/tiktok-post?kind=article (매일 17:00 KST — 기사)
  *
- * 전략 (에디토리얼 → 포토 모드 슬라이드):
+ * 에디토리얼 모드 (포토 슬라이드):
  *   1. 아직 게시 안 된 발행 에디토리얼 중 우선순위 선택
  *      — 신규(비 legacy) 최신 우선, 없으면 legacy 최신부터 (하루 1편, 스팸 방지)
  *   2. 갤러리 상위 10장 → TikTok 포토 모드 직접 게시 (PULL_FROM_URL)
- *   3. 캡션: 제목 + 한국어 설명 첫 문장 + 해시태그 5개 + 링크 안내
- *   4. tiktok_posts 에 기록 (편당 1회 보장)
+ *      — 커버 제외 전 컷 하단 PAP 워드마크 스탬프
+ *   3. 캡션: 제목 + 설명 첫 문장 + [Credits] + 직접 URL + 해시태그
+ *   4. tiktok_posts.editorial_id 에 기록 (편당 1회 보장)
+ *
+ * 기사 모드 (kind=article, 067 마이그레이션 필요):
+ *   — IG 수집 기사 중 갤러리 있는 최신 미게시분 1건 (영구 저장본 이미지)
+ *   — 로고 스탬프 없음 (뉴스 이미지), 캡션: 제목 + 본문 첫 문장 + URL
+ *   — tiktok_posts.article_id 에 기록
  *
  * 전제: /api/tiktok/oauth 1회 인증 완료 + TikTok 콘솔에서 이미지 도메인
  * (pap-magazine.com, *.supabase.co, pap-korea-bucket.s3...) URL 소유권 인증.
@@ -131,10 +138,61 @@ module.exports = async function handler(req, res) {
       return res.status(200).json(await r.json());
     }
 
-    // 이미 게시된 에디토리얼 id 집합 — 실패(failed) 기록은 제외해 재시도 허용
+    const kind = (req.query && req.query.kind) === 'article' ? 'article' : 'editorial';
+
+    // 이미 게시된 콘텐츠 id 집합 — 실패(failed) 기록은 제외해 재시도 허용
     // (계정 비공개 미전환·일시 오류 등으로 실패한 편이 영구 건너뜀 되지 않게)
-    const { data: posted } = await supabaseAdmin.from('tiktok_posts').select('editorial_id, status').limit(5000);
-    const done = new Set((posted || []).filter((p) => p.status !== 'failed').map((p) => p.editorial_id).filter(Boolean));
+    const idCol = kind === 'article' ? 'article_id' : 'editorial_id';
+    const { data: posted } = await supabaseAdmin.from('tiktok_posts').select(idCol + ', status').limit(5000);
+    const done = new Set((posted || []).filter((p) => p.status !== 'failed').map((p) => p[idCol]).filter(Boolean));
+
+    // ── 기사 모드 ─────────────────────────────────────────────
+    if (kind === 'article') {
+      const { data: arts } = await supabaseAdmin.from('articles')
+        .select('id, title, slug, custom_url, content, gallery, thumbnail_url, category')
+        .eq('status', 'published')
+        .order('published_date', { ascending: false }).limit(200);
+      const art = (arts || []).find((a) =>
+        !done.has(a.id) && Array.isArray(a.gallery) && a.gallery.length >= 1);
+      if (!art) return res.status(200).json({ ok: true, kind, note: '게시할 기사 없음' });
+
+      // 뉴스 이미지에는 로고 스탬프 없음 (자사 화보가 아닌 보도 이미지)
+      const photos = (art.gallery || [])
+        .filter(Boolean)
+        .filter((v, i, a) => a.indexOf(v) === i)
+        .slice(0, 10)
+        .map((u) => toOwnedImageUrl(u));
+      const artUrl = 'pap-magazine.com/article/' + (art.custom_url || art.slug || '');
+      const firstSentence = String(art.content || '')
+        .replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+        .split(/(?<=[.!?다요])\s/)[0] || '';
+      const capLines = [art.title + ' — PAP MAGAZINE', ''];
+      if (firstSentence && firstSentence.length <= 200) { capLines.push(firstSentence); capLines.push(''); }
+      capLines.push('▶ 기사 전문 : ' + artUrl);
+      capLines.push('');
+      capLines.push(['#PAPMAGAZINE', '#패션뉴스', art.category ? '#' + String(art.category).replace(/[^A-Za-z0-9가-힣]/g, '').toUpperCase() : null].filter(Boolean).join(' '));
+      const caption = capLines.join('  ').slice(0, 4000);
+
+      if (req.query && req.query.dry === '1') {
+        return res.status(200).json({ ok: true, dry: true, kind, pick: { title: art.title, photos: photos.length }, caption });
+      }
+
+      const shortTitle = (art.title + ' — PAP MAGAZINE').slice(0, 90);
+      let publishId = null; let status = 'submitted'; let detail = null;
+      try {
+        publishId = await directPostPhotos(photos, shortTitle, caption);
+      } catch (err) {
+        status = 'failed';
+        detail = String(err && err.message || err).slice(0, 400);
+      }
+      await supabaseAdmin.from('tiktok_posts').upsert({
+        article_id: art.id, publish_id: publishId, status, detail,
+      }, { onConflict: 'article_id' });
+
+      if (status === 'failed') return res.status(502).json({ error: 'tiktok article post failed', title: art.title, detail });
+      return res.status(200).json({ ok: true, kind, posted: art.title, publish_id: publishId, photos: photos.length });
+    }
+    // ── 에디토리얼 모드 (기본) ────────────────────────────────
 
     // 후보: 신규 우선 → legacy. 갤러리 2장 이상 필수 (포토 모드 품질)
     async function pickFrom(legacyFlag) {
