@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>네이버 블로그 초안 — PAP 관리자 도구</title>
+<style>
+  :root { --pink: #ff4f8b; --ink: #111; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; margin: 0; background: #fafafa; color: var(--ink); }
+  header { background: #000; color: #fff; padding: 14px 20px; display: flex; align-items: center; gap: 14px; }
+  header h1 { font-size: 15px; margin: 0; font-weight: 700; letter-spacing: .5px; }
+  header .brand-toggle { margin-left: auto; display: flex; gap: 6px; }
+  header button { border: 1px solid #555; background: transparent; color: #ccc; padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 13px; }
+  header button.on { background: #fff; color: #000; border-color: #fff; font-weight: 700; }
+  header button.on.pepperit { background: var(--pink); border-color: var(--pink); color: #fff; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 20px 80px; display: grid; grid-template-columns: 340px 1fr; gap: 24px; }
+  @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+  .panel { background: #fff; border: 1px solid #e5e5e5; border-radius: 12px; overflow: hidden; }
+  .panel h2 { font-size: 13px; letter-spacing: 1px; margin: 0; padding: 12px 16px; border-bottom: 1px solid #eee; color: #666; }
+  #list { max-height: 70vh; overflow-y: auto; }
+  .item { display: flex; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #f2f2f2; cursor: pointer; align-items: center; }
+  .item:hover { background: #f7f7f7; }
+  .item.sel { background: #fff0f6; }
+  .item img { width: 44px; height: 55px; object-fit: cover; border-radius: 6px; background: #eee; flex: none; }
+  .item .t { font-size: 13px; font-weight: 600; line-height: 1.35; }
+  .item .d { font-size: 11px; color: #999; margin-top: 3px; }
+  #draft { padding: 20px; }
+  .field { margin-bottom: 18px; }
+  .field label { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: #666; letter-spacing: 1px; margin-bottom: 7px; }
+  .copy { border: 1px solid #ddd; background: #fff; border-radius: 14px; padding: 3px 12px; font-size: 12px; cursor: pointer; }
+  .copy:hover { background: #000; color: #fff; border-color: #000; }
+  .copy.ok { background: #17a34a; color: #fff; border-color: #17a34a; }
+  #dTitle { font-size: 18px; font-weight: 800; line-height: 1.4; }
+  #dTags { font-size: 13px; color: #444; }
+  #dBody { border: 1px solid #eee; border-radius: 10px; padding: 18px; font-size: 14px; line-height: 1.75; max-height: 55vh; overflow-y: auto; background: #fff; }
+  #dBody h3 { font-size: 16px; margin: 22px 0 8px; }
+  #dBody img { max-width: 100%; border-radius: 8px; }
+  .hint { font-size: 12px; color: #888; line-height: 1.6; background: #f5f5f5; border-radius: 8px; padding: 10px 14px; margin-top: 14px; }
+  #status { padding: 40px 20px; text-align: center; color: #888; font-size: 14px; }
+  .spin { display: inline-block; width: 18px; height: 18px; border: 2px solid #ddd; border-top-color: #000; border-radius: 50%; animation: sp 0.8s linear infinite; vertical-align: -4px; margin-right: 8px; }
+  @keyframes sp { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<header>
+  <h1>네이버 블로그 초안 생성기</h1>
+  <div class="brand-toggle">
+    <button id="bPap" class="on" onclick="setBrand('pap')">PAP</button>
+    <button id="bPep" onclick="setBrand('pepperit')">페퍼릿</button>
+  </div>
+</header>
+<main>
+  <div class="panel">
+    <h2>최근 발행 기사</h2>
+    <div id="list"><div id="status">불러오는 중…</div></div>
+  </div>
+  <div class="panel">
+    <h2>블로그 초안</h2>
+    <div id="draft"><div id="status2" style="padding:40px 20px;text-align:center;color:#888;font-size:14px;">왼쪽에서 기사를 선택하면 네이버 블로그용 초안을 생성합니다. (기사당 20~30초)</div></div>
+  </div>
+</main>
+<script>
+const TOKEN = localStorage.getItem('pap-token');
+let brand = 'pap';
+let current = null;
+
+if (!TOKEN) {
+  document.getElementById('list').innerHTML = '<div id="status">관리자 로그인이 필요합니다. <a href="/admin">/admin</a> 에서 로그인 후 다시 열어주세요.</div>';
+}
+
+function api(qs) {
+  return fetch('/api/admin/naver-blog-draft?' + qs, { headers: { Authorization: 'Bearer ' + TOKEN } })
+    .then(async r => { const j = await r.json(); if (!r.ok) throw new Error(j.error || r.status); return j; });
+}
+
+function setBrand(b) {
+  brand = b;
+  document.getElementById('bPap').className = b === 'pap' ? 'on' : '';
+  document.getElementById('bPep').className = b === 'pepperit' ? 'on pepperit' : '';
+  loadList();
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+
+async function loadList() {
+  const el = document.getElementById('list');
+  el.innerHTML = '<div id="status"><span class="spin"></span>불러오는 중…</div>';
+  try {
+    const j = await api('list=1&brand=' + brand);
+    el.innerHTML = (j.articles || []).map(a => {
+      const slug = a.custom_url || a.slug || a.id;
+      return '<div class="item" data-slug="' + esc(slug) + '" onclick="pick(this)">' +
+        '<img src="' + esc(a.thumbnail_url || '') + '" loading="lazy" onerror="this.style.visibility=\'hidden\'">' +
+        '<div><div class="t">' + esc(a.title) + '</div>' +
+        '<div class="d">' + esc((a.published_date || '').slice(0, 10)) + (a.category ? ' · ' + esc(a.category) : '') + '</div></div></div>';
+    }).join('') || '<div id="status">발행된 기사가 없습니다.</div>';
+  } catch (e) { el.innerHTML = '<div id="status">오류: ' + esc(e.message) + '</div>'; }
+}
+
+async function pick(node) {
+  document.querySelectorAll('.item.sel').forEach(n => n.classList.remove('sel'));
+  node.classList.add('sel');
+  const slug = node.getAttribute('data-slug');
+  const el = document.getElementById('draft');
+  el.innerHTML = '<div style="padding:40px 20px;text-align:center;color:#888;font-size:14px;"><span class="spin"></span>초안 생성 중… (20~30초)</div>';
+  try {
+    const j = await api('slug=' + encodeURIComponent(slug) + '&brand=' + brand);
+    current = j;
+    el.innerHTML =
+      '<div class="field"><label>제목 <button class="copy" onclick="cpText(this, current.title)">복사</button></label><div id="dTitle">' + esc(j.title) + '</div></div>' +
+      '<div class="field"><label>태그 <button class="copy" onclick="cpText(this, current.tags.join(\', \'))">복사</button></label><div id="dTags">' + esc((j.tags || []).join(', ')) + '</div></div>' +
+      '<div class="field"><label>본문 <button class="copy" onclick="cpHtml(this)">서식 포함 복사</button></label><div id="dBody">' + j.body_html + '</div></div>' +
+      '<div class="hint">사용법: ① 네이버 블로그 글쓰기 열기 → ② 제목 붙여넣기 → ③ 본문란에 붙여넣기(서식·이미지 포함) → ④ 하단 태그 입력 → 발행. ' +
+      '이미지가 붙지 않으면 미리보기의 이미지를 하나씩 드래그하거나, <a href="' + esc(j.article_url) + '" target="_blank">원문</a>에서 저장 후 첨부해 주세요.</div>';
+  } catch (e) { el.innerHTML = '<div style="padding:40px 20px;text-align:center;color:#c00;font-size:14px;">오류: ' + esc(e.message) + '</div>'; }
+}
+
+function flash(btn) { btn.classList.add('ok'); btn.textContent = '복사됨!'; setTimeout(() => { btn.classList.remove('ok'); btn.textContent = btn.dataset.orig || '복사'; }, 1500); }
+
+function cpText(btn, text) {
+  btn.dataset.orig = btn.textContent;
+  navigator.clipboard.writeText(text).then(() => flash(btn));
+}
+
+function cpHtml(btn) {
+  btn.dataset.orig = btn.textContent;
+  const html = document.getElementById('dBody').innerHTML;
+  const plain = document.getElementById('dBody').innerText;
+  navigator.clipboard.write([new ClipboardItem({
+    'text/html': new Blob([html], { type: 'text/html' }),
+    'text/plain': new Blob([plain], { type: 'text/plain' }),
+  })]).then(() => flash(btn)).catch(() => navigator.clipboard.writeText(plain).then(() => flash(btn)));
+}
+
+if (TOKEN) loadList();
+</script>
+</body>
+</html>
