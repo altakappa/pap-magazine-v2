@@ -580,6 +580,21 @@ section.hero + .shorts-section{
 .creator-work-date{font-size:9px;color:rgba(255,255,255,.65);margin-top:2px}
 
 /* EDITORIAL DETAIL OVERLAY */
+/* QA #336 — 모바일 헤더 UI 통일. QA #329 에서 pap-shell-bootstrap.js 로 X + HOME
+   아이콘을 제거했지만 캐시된 JS 나 SSR 페이지에서 여전히 표시되는 케이스가
+   있어 CSS 로도 방어. 어떤 오버레이의 좌측 mini-header 에도 이 아이콘들이
+   보이지 않도록 !important 로 강제 hide. 이 규칙이 있어도 실제 X 닫기는
+   .pap-nav-close (햄버거 nav 용) 로 대체되어 있어서 UX 영향 없음. */
+.overlay-mini-close,
+.overlay-mini-home,
+.art-detail-overlay .overlay-mini-close,
+.art-detail-overlay .overlay-mini-home,
+.film-detail-overlay .overlay-mini-close,
+.film-detail-overlay .overlay-mini-home,
+.ed-overlay .overlay-mini-close,
+.ed-overlay .overlay-mini-home,
+.ed-all-overlay .overlay-mini-close,
+.ed-all-overlay .overlay-mini-home{display:none!important;visibility:hidden!important}
 /* QA #333 — 상세 오버레이 가로 스크롤 방지. overflow-y:auto 만 있었기 때문에
    자식이 100vw 를 넘으면 가로 스크롤이 열려서 모바일 세로 스크롤 중 좌우로 밀림. */
 .ed-overlay{position:fixed;inset:0;z-index:3000;background:#000;overflow-y:auto;overflow-x:hidden;opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s}
