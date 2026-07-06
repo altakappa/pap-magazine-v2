@@ -155,6 +155,39 @@ var allMembers=[];
 var memberFilter='all';
 var _apiBase=(window.PAP_CONFIG&&window.PAP_CONFIG.API_BASE)||'/api';
 
+// QA #325 — 회원 목록 페이지네이션 상태. `/admin/members` 는 서버측
+// 페이지네이션을 지원하지 않으므로 클라이언트에서 filtered 배열을 slice.
+// perPage 값은 localStorage 에 저장해서 새로고침해도 유지.
+var _memberLimit = (function(){
+  try {
+    var saved = parseInt(localStorage.getItem('pap-member-limit'), 10);
+    if(saved === 10 || saved === 30 || saved === 50 || saved === 100) return saved;
+  } catch(_){}
+  return 30;
+})();
+var _memberPage = 1;
+
+function setMemberLimit(n){
+  n = parseInt(n, 10);
+  if(!n || [10,30,50,100].indexOf(n) === -1) n = 30;
+  _memberLimit = n;
+  try { localStorage.setItem('pap-member-limit', String(n)); } catch(_){}
+  _memberPage = 1; // perPage 바뀌면 첫 페이지로 리셋
+  renderMembers();
+}
+window.setMemberLimit = setMemberLimit;
+
+function goMemberPage(p){
+  p = parseInt(p, 10);
+  if(!p || p < 1) p = 1;
+  _memberPage = p;
+  renderMembers();
+  // 목록 상단으로 스크롤 — 대량 페이지 이동 시 사용자 위치 유지 UX.
+  var top = document.querySelector('#t-users .tbl-wrap');
+  if(top && top.scrollIntoView) top.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+window.goMemberPage = goMemberPage;
+
 async function loadMembers(){
   var tbody=document.getElementById('memberTableBody');
   tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text4);padding:40px">불러오는 중...</td></tr>';
@@ -189,12 +222,21 @@ function _getMemberPlan(m){return m.subscriptionPlan||m.subscription_plan||'free
 function _getMemberStatus(m){return m.subscriptionStatus||m.subscription_status||'inactive';}
 function _getMemberRole(m){return m.role||'member';}
 
-function renderMembers(){
+// QA #325 — 검색/필터 컨트롤이 이전에 renderMembers 를 직접 호출했지만,
+// 페이지 상태를 함께 리셋하려면 반드시 이 wrapper 를 거쳐야 함.
+// (검색어 입력 후 3페이지에 머무르면 "결과 없음" 처럼 보이는 UX 버그 방지)
+function renderMembersFiltered(){
+  _memberPage = 1;
+  renderMembers();
+}
+window.renderMembersFiltered = renderMembersFiltered;
+
+// 현재 검색/필터를 만족하는 회원 배열 반환 (렌더링 + 페이지네이터 공용).
+function _computeFilteredMembers(){
   var searchVal=(document.getElementById('memberSearch')?document.getElementById('memberSearch').value:'').toLowerCase().trim();
   var roleVal=document.getElementById('memberRoleFilter')?document.getElementById('memberRoleFilter').value:'all';
   var statusVal=document.getElementById('memberStatusFilter')?document.getElementById('memberStatusFilter').value:'all';
-
-  var filtered=allMembers.filter(function(m){
+  return allMembers.filter(function(m){
     // Plan filter
     if(memberFilter!=='all'){
       var plan=_getMemberPlan(m);
@@ -212,9 +254,28 @@ function renderMembers(){
     }
     return true;
   });
+}
+
+function renderMembers(){
+  var filtered = _computeFilteredMembers();
 
   var tbody=document.getElementById('memberTableBody');
-  if(!filtered.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text4);padding:40px">회원이 없습니다</td></tr>';return;}
+  // 페이지네이션 상태 정규화 — filter 로 전체 페이지 수가 줄어 현재 페이지가
+  // 넘어가면 마지막 페이지로 붙임 (예: 3페이지 보다가 검색해서 총 2페이지).
+  var total = filtered.length;
+  var totalPages = Math.max(1, Math.ceil(total / _memberLimit));
+  if(_memberPage > totalPages) _memberPage = totalPages;
+  if(_memberPage < 1) _memberPage = 1;
+
+  if(!total){
+    tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text4);padding:40px">회원이 없습니다</td></tr>';
+    _renderMemberPagination(_memberPage, totalPages, total);
+    return;
+  }
+
+  var startIdx = (_memberPage - 1) * _memberLimit;
+  var endIdx = Math.min(total, startIdx + _memberLimit);
+  var pageSlice = filtered.slice(startIdx, endIdx);
   var h='';
   var esc=function(s){var d=document.createElement('div');d.textContent=s||'';return d.innerHTML;};
   // QA #217 — use the shared role-meta map so member table labels match
@@ -253,8 +314,8 @@ function renderMembers(){
       }
     };
   }
-  for(var i=0;i<filtered.length;i++){
-    var m=filtered[i];
+  for(var i=0;i<pageSlice.length;i++){
+    var m=pageSlice[i];
     var plan=_getMemberPlan(m);
     var status=_getMemberStatus(m);
     var role=_getMemberRole(m);
@@ -297,12 +358,93 @@ function renderMembers(){
     h+='</tr>';
   }
   tbody.innerHTML=h;
+  _renderMemberPagination(_memberPage, totalPages, total);
+}
+
+// QA #325 — 회원 목록 페이지네이터 (서브미션 페이지네이터와 동일한 레이아웃).
+// tfoot 을 재사용해서 매 렌더마다 innerHTML 만 갈아치우는 방식.
+function _renderMemberPagination(page, totalPages, total){
+  var tbody = document.getElementById('memberTableBody');
+  if(!tbody) return;
+  var tableEl = tbody.closest('table');
+  if(!tableEl) return;
+  var existing = tableEl.querySelector('tfoot.member-pagination');
+
+  // 페이지 번호 윈도우 — 활성 페이지 좌우 2개씩, 총 <=7 개.
+  var WINDOW_RADIUS = 2;
+  var pages = [];
+  if(totalPages <= 7){
+    for(var i = 1; i <= totalPages; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    var lo = Math.max(2, page - WINDOW_RADIUS);
+    var hi = Math.min(totalPages - 1, page + WINDOW_RADIUS);
+    if(lo > 2) pages.push('…');
+    for(var j = lo; j <= hi; j++) pages.push(j);
+    if(hi < totalPages - 1) pages.push('…');
+    pages.push(totalPages);
+  }
+
+  var jump = function(p){ return 'onclick="goMemberPage('+p+')"'; };
+  var btnBase = 'display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:28px;padding:0 8px;border:1px solid var(--border2);background:#fff;color:var(--text);font-size:11px;cursor:pointer;border-radius:3px';
+  var btnActive = 'background:var(--purple);color:#fff;border-color:var(--purple);font-weight:700';
+  var btnDisabled = 'opacity:.4;cursor:not-allowed';
+  var ellipsis = '<span style="padding:0 6px;color:var(--text3)">…</span>';
+
+  var numHtml = pages.map(function(p){
+    if(p === '…') return ellipsis;
+    var style = btnBase + (p === page ? ';' + btnActive : '');
+    return '<button type="button" style="'+style+'" '+jump(p)+'>'+p+'</button>';
+  }).join('');
+
+  var firstStyle = btnBase + (page <= 1 ? ';' + btnDisabled : '');
+  var prevStyle  = btnBase + (page <= 1 ? ';' + btnDisabled : '');
+  var nextStyle  = btnBase + (page >= totalPages ? ';' + btnDisabled : '');
+  var lastStyle  = btnBase + (page >= totalPages ? ';' + btnDisabled : '');
+
+  var limitOptions = [10,30,50,100].map(function(n){
+    var sel = n === _memberLimit ? ' selected' : '';
+    return '<option value="'+n+'"'+sel+'>'+n+'개</option>';
+  }).join('');
+
+  var startIdx = total ? ((page - 1) * _memberLimit + 1) : 0;
+  var endIdx = Math.min(total, page * _memberLimit);
+  var rangeLabel = total
+    ? ('<strong style="color:var(--text)">'+startIdx+'-'+endIdx+'</strong> / 총 <strong style="color:var(--text)">'+total+'</strong>명')
+    : '결과 없음';
+
+  var html =
+    '<tr><td colspan="7" style="padding:14px 12px;border-top:1px solid var(--border);background:var(--surface)">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--text3)">'+
+        '<span>'+rangeLabel+'</span>'+
+        '<span style="display:flex;gap:4px;align-items:center">'+
+          '<button type="button" style="'+firstStyle+'" '+(page<=1?'disabled':jump(1))+' title="첫 페이지">«</button>'+
+          '<button type="button" style="'+prevStyle+'" '+(page<=1?'disabled':jump(page-1))+' title="이전">‹</button>'+
+          numHtml +
+          '<button type="button" style="'+nextStyle+'" '+(page>=totalPages?'disabled':jump(page+1))+' title="다음">›</button>'+
+          '<button type="button" style="'+lastStyle+'" '+(page>=totalPages?'disabled':jump(totalPages))+' title="마지막 페이지">»</button>'+
+        '</span>'+
+        '<span style="display:flex;align-items:center;gap:6px">'+
+          '<label style="color:var(--text3)">페이지당</label>'+
+          '<select onchange="setMemberLimit(this.value)" style="background:#fff;border:1px solid var(--border2);padding:5px 8px;border-radius:3px;font-size:11px;cursor:pointer">'+limitOptions+'</select>'+
+        '</span>'+
+      '</div>'+
+    '</td></tr>';
+  if(existing){
+    existing.innerHTML = html;
+  } else {
+    var tf = document.createElement('tfoot');
+    tf.className = 'member-pagination';
+    tf.innerHTML = html;
+    tableEl.appendChild(tf);
+  }
 }
 
 function filterMembers(plan,btn){
   memberFilter=plan;
   document.querySelectorAll('#t-users .tbl-top .tf').forEach(function(b){b.classList.remove('on');});
   if(btn) btn.classList.add('on');
+  _memberPage = 1; // QA #325 — 상단 필터 변경 시 첫 페이지로 리셋
   renderMembers();
 }
 

@@ -1391,14 +1391,14 @@ tr:hover td{background:rgba(0,0,0,.02)}
       </div>
       <!-- Search -->
       <div style="margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <input class="pe-input" id="memberSearch" placeholder="이름, 이메일, 인스타그램으로 검색..." style="max-width:320px;flex:1" oninput="renderMembers()">
-        <select class="pe-select" id="memberRoleFilter" style="max-width:140px" onchange="renderMembers()">
+        <input class="pe-input" id="memberSearch" placeholder="이름, 이메일, 인스타그램으로 검색..." style="max-width:320px;flex:1" oninput="renderMembersFiltered()">
+        <select class="pe-select" id="memberRoleFilter" style="max-width:140px" onchange="renderMembersFiltered()">
           <option value="all">전체 역할</option>
           <option value="admin">대표 관리자</option>
           <option value="staff">서브 관리자</option>
           <option value="member">일반 회원</option>
         </select>
-        <select class="pe-select" id="memberStatusFilter" style="max-width:160px" onchange="renderMembers()">
+        <select class="pe-select" id="memberStatusFilter" style="max-width:160px" onchange="renderMembersFiltered()">
           <option value="all">전체 상태</option>
           <option value="active">활성</option>
           <option value="inactive">비활성</option>
@@ -3456,7 +3456,7 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
      mock 시절 번들을 계속 캐시 → '+새 이미지' 클릭 시 "실제 운영 시
      S3에 업로드됩니다" 구형 alert 가 재현. pap-admin.js 를 수정하는
      커밋은 반드시 이 파라미터를 함께 올릴 것. -->
-<script src="/pap-admin.js?v=95" defer></script>
+<script src="/pap-admin.js?v=96" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>
