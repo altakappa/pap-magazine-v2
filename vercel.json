@@ -37,6 +37,10 @@
       "schedule": "45 22 * * 0"
     },
     {
+      "path": "/api/cron/weekly-news",
+      "schedule": "30 21 * * 0"
+    },
+    {
       "path": "/api/cron/trend-scout",
       "schedule": "0 21 * * 1,4"
     },
