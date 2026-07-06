@@ -93,17 +93,21 @@ async function getAccessToken() {
 
 /**
  * 포토 모드 직접 게시 (PULL_FROM_URL — 이미지 도메인은 TikTok 콘솔에서
- * URL 소유권 인증 필요: pap-magazine.com + Supabase 스토리지 도메인).
+ * URL 소유권 인증 필요: pap-magazine.com 프록시 경유).
+ * 주의: 포토 게시는 title(≤90자)과 description(캡션·해시태그, ≤4000자)이
+ * 분리 필드다 — title에 긴 캡션을 넣으면 invalid_params 로 거부된다.
  * @param {string[]} photoUrls 최대 35장
- * @param {string} title 캡션 (해시태그 포함, 최대 ~2200자)
+ * @param {string} title 짧은 제목 (≤90자)
+ * @param {string} description 캡션 본문 + 해시태그
  * @returns publish_id
  */
-async function directPostPhotos(photoUrls, title) {
+async function directPostPhotos(photoUrls, title, description) {
   const token = await getAccessToken();
   const isPublic = process.env.TIKTOK_PUBLIC === '1';
   const payload = {
     post_info: {
-      title: String(title || '').slice(0, 2000),
+      title: String(title || '').slice(0, 90),
+      description: String(description || '').slice(0, 4000),
       privacy_level: isPublic ? 'PUBLIC_TO_EVERYONE' : 'SELF_ONLY',
       disable_comment: false,
       auto_add_music: true,

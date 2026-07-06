@@ -69,9 +69,11 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ ok: true, dry: true, pick: { title: ed.title, slug: ed.slug, legacy: ed.legacy, photos: photos.length }, caption });
     }
 
+    // 포토 게시: title(짧은 제목 ≤90자)과 description(캡션) 분리 필수
+    const shortTitle = ("'" + ed.title + "' — PAP MAGAZINE").slice(0, 90);
     let publishId = null; let status = 'submitted'; let detail = null;
     try {
-      publishId = await directPostPhotos(photos, caption);
+      publishId = await directPostPhotos(photos, shortTitle, caption);
     } catch (err) {
       status = 'failed';
       detail = String(err && err.message || err).slice(0, 400);
