@@ -20,18 +20,61 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { directPostPhotos, toOwnedImageUrl } = require('../_lib/tiktok');
 
+// 크레딧 → 캡션 라인. 두 스키마 모두 지원:
+//   레거시 JSON:  [{r:'Photographer', h:[{n:'이름', id:'@핸들'}, …]}, …]
+//   신규 어드민:  [{roles:['Photographer'], name, instagram, website}, …]
+// 출력: "Photographer — Maren @marennl" (역할당 1줄, 이름들 쉼표 연결)
+function formatCredits(credits, maxChars) {
+  if (!Array.isArray(credits) || !credits.length) return '';
+  const lines = [];
+  for (const c of credits) {
+    if (!c || typeof c !== 'object') continue;
+    let role = '', people = [];
+    if (c.r !== undefined || c.h !== undefined) {
+      // 레거시 스키마
+      role = String(c.r || '').trim();
+      (Array.isArray(c.h) ? c.h : []).forEach((p) => {
+        if (!p) return;
+        const bits = [String(p.n || '').trim(), String(p.id || '').trim()].filter(Boolean);
+        if (bits.length) people.push(bits.join(' '));
+      });
+    } else {
+      // 신규 스키마
+      role = Array.isArray(c.roles) ? c.roles.filter(Boolean).join(', ') : String(c.role || '').trim();
+      const bits = [String(c.name || '').trim(), String(c.instagram || '').trim()].filter(Boolean);
+      if (bits.length) people.push(bits.join(' '));
+    }
+    if (!people.length) continue;
+    lines.push((role ? role + ' — ' : '') + people.join(', '));
+  }
+  let out = lines.join('\n');
+  if (maxChars && out.length > maxChars) {
+    // 줄 단위로 잘라 한도 내 유지 (중간 절단 방지)
+    const kept = [];
+    let len = 0;
+    for (const l of lines) {
+      if (len + l.length + 1 > maxChars) break;
+      kept.push(l); len += l.length + 1;
+    }
+    out = kept.join('\n');
+  }
+  return out;
+}
+
 function buildCaption(ed) {
   const lines = [];
   lines.push("'" + ed.title + "' — PAP MAGAZINE editorial");
   const ko = String(ed.description || '').split(/(?<=[.!?다요])\s/)[0] || '';
   if (ko && ko.length <= 160) lines.push(ko);
+  const credits = formatCredits(ed.credits, 1800); // 캡션 4000자 한도 내 안전 몫
+  if (credits) lines.push('[Credits]\n' + credits);
   lines.push('전체 화보는 프로필 링크에서 ↗');
   const tt = String(ed.title || '').replace(/[^A-Za-z0-9가-힣]/g, '').toUpperCase();
   const tags = ['#패션화보', '#에디토리얼'];
   if (tt.length >= 2 && tt.length <= 25) tags.push('#' + tt);
   tags.push('#FASHIONEDITORIAL', '#PAPMAGAZINE');
   lines.push(tags.slice(0, 5).join(' '));
-  return lines.join('\n\n');
+  return lines.join('\n\n').slice(0, 4000);
 }
 
 module.exports = async function handler(req, res) {
@@ -72,7 +115,7 @@ module.exports = async function handler(req, res) {
     // 후보: 신규 우선 → legacy. 갤러리 2장 이상 필수 (포토 모드 품질)
     async function pickFrom(legacyFlag) {
       const { data } = await supabaseAdmin.from('editorials')
-        .select('id, title, slug, description, gallery, cover_image, legacy')
+        .select('id, title, slug, description, gallery, cover_image, legacy, credits')
         .eq('status', 'published').eq('legacy', legacyFlag)
         .order('published_date', { ascending: false }).limit(200);
       return (data || []).find((e) => !done.has(e.id) && Array.isArray(e.gallery) && e.gallery.length >= 2);
