@@ -1737,7 +1737,12 @@ tr:hover td{background:rgba(0,0,0,.02)}
     <div class="pe-modal-backdrop" onclick="closeLoadingImgModal()"></div>
     <div class="pe-modal-content" style="max-width:720px">
       <div class="modal-header">
-        <div class="modal-title" id="loadingImgModalTitle">새 로딩 이미지</div>
+        <!-- QA #338 — id 오타 fix: loadingImgModalTitle → loadImgModalTitle
+             (JS 의 openLoadingImgModal 이 loadImgModalTitle 로 참조하는데
+             HTML 에만 "ing" 가 붙어있어 addLoadingImg → openLoadingImgModal
+             호출 시 `Cannot set properties of null` 에러가 나서 모달이
+             열리지 않았음. 다른 loadImg* id 들과 규칙 통일). -->
+        <div class="modal-title" id="loadImgModalTitle">새 로딩 이미지</div>
         <button class="modal-close" onclick="closeLoadingImgModal()">&times;</button>
       </div>
       <div class="modal-body" style="max-height:75vh;overflow-y:auto">
@@ -3456,7 +3461,7 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
      mock 시절 번들을 계속 캐시 → '+새 이미지' 클릭 시 "실제 운영 시
      S3에 업로드됩니다" 구형 alert 가 재현. pap-admin.js 를 수정하는
      커밋은 반드시 이 파라미터를 함께 올릴 것. -->
-<script src="/pap-admin.js?v=96" defer></script>
+<script src="/pap-admin.js?v=97" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>
