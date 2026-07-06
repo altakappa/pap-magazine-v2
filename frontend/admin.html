@@ -3166,12 +3166,12 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
     <div id="contentAuditBody" style="flex:1;overflow-y:auto;padding:0"></div>
   </div>
 </div>
-<!-- QA #320 — v=77 → v=78. QA #310~315 가 pap-admin.js 를 대폭 변경했지만
-     버전 파라미터가 그대로라 edge/browser 캐시 (s-maxage=60 + SWR 86400)
-     가 mock 시절 번들을 계속 서빙 → '+새 이미지' 클릭 시 "실제 운영 시
-     S3에 업로드됩니다" 구형 alert 가 재현되던 원인. pap-admin.js 를
-     수정하는 커밋은 반드시 이 파라미터를 함께 올릴 것. -->
-<script src="/pap-admin.js?v=84" defer></script>
+<!-- QA #316 — v=84 → v=90. QA #310~315 (loading images 실운영 전환)
+     가 pap-admin.js 를 대폭 변경했지만 버전이 정체돼 사용자 브라우저가
+     mock 시절 번들을 계속 캐시 → '+새 이미지' 클릭 시 "실제 운영 시
+     S3에 업로드됩니다" 구형 alert 가 재현. pap-admin.js 를 수정하는
+     커밋은 반드시 이 파라미터를 함께 올릴 것. -->
+<script src="/pap-admin.js?v=90" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>
