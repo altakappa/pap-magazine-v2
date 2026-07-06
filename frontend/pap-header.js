@@ -383,7 +383,9 @@
     '        <div class="nav-socials active" id="navSocials">' + socialHTML + '</div>',
     '      </div>',
     '    </div>',
-    '    <div class="nav-right-col">',
+    /* QA #320 — 이 컬럼의 내용은 pap-header.js 로딩 후 /api/nav-menu 응답으로
+       덮어씌워진다. 아래 하드코딩 5개는 API 실패 시 fallback. */
+    '    <div class="nav-right-col" id="papNavRightCol">',
     '      <a href="#" onclick="' + _navGo('/community') + '" data-i18n="navCommunity" style="color:var(--pap-red)">COMMUNITY</a>',
     '      <a href="#" onclick="' + _navGo('/magazine') + '" data-i18n="navMagazine" style="color:#c9a96e">MAGAZINE</a>',
     /* EDITORIAL — on index.html (where #edAllOverlay exists) open the
@@ -445,8 +447,60 @@
     document.body.insertBefore(frag, document.body.firstChild);
 
     _afterInject();
+    // QA #320 — DB 기반 nav menu 항목으로 우측 컬럼 교체.
+    // 실패해도 하드코딩 fallback 이 유지되므로 조용히 처리.
+    _papLoadDynamicNavMenu();
   }
   _injectHeader();
+
+  /* QA #320 — /api/nav-menu 에서 활성 메뉴 목록을 받아 우측 컬럼 교체.
+     link_url 이 '/#all-editorials' 인 경우 기존 특수 오버레이 핸들러를 재현.
+     다른 URL 은 일반 _navGo() 로 처리. i18n 딕셔너리 키가 있으면 data-i18n 부착. */
+  function _papLoadDynamicNavMenu(){
+    var col = document.getElementById('papNavRightCol');
+    if (!col) return;
+    var apiBase = (window.PAP_API_BASE || '/api').replace(/\/$/, '');
+    fetch(apiBase + '/nav-menu', { credentials: 'omit' })
+      .then(function(r){ if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function(json){
+        var list = (json && json.data) || [];
+        if (!list.length) return; // fallback 유지
+        var styleColor = { red: 'var(--pap-red)', gold: '#c9a96e', muted: 'rgba(255,255,255,.5)', default: '' };
+        var html = '';
+        list.forEach(function(item){
+          var url = String(item.link_url || '');
+          var color = styleColor[item.style] || '';
+          var styleAttr = color ? (' style="color:' + color + '"') : '';
+          var i18nAttr = item.label_key ? (' data-i18n="' + item.label_key + '"') : '';
+          var label = _escNav(item.label_default || '');
+          var onclick;
+          if (url === '/#all-editorials'){
+            // EDITORIAL 특수 케이스: 홈페이지 오버레이 트리거.
+            onclick = 'event.preventDefault();_papCloseNav();if(document.getElementById(\'edAllOverlay\')&&typeof openAllEditorials===\'function\'){openAllEditorials();}else{window.location.href=\'/#all-editorials\';}';
+            html += '<a href="/#all-editorials" onclick="' + onclick + '"' + i18nAttr + styleAttr + '>' + label + '</a>';
+          } else if (/^https?:\/\//i.test(url)){
+            // 외부 URL: 새 탭.
+            html += '<a href="' + _escNav(url) + '" target="_blank" rel="noopener noreferrer" onclick="_papCloseNav()"' + i18nAttr + styleAttr + '>' + label + '</a>';
+          } else {
+            // 내부 경로.
+            html += '<a href="#" onclick="' + _navGo(url) + '"' + i18nAttr + styleAttr + '>' + label + '</a>';
+          }
+        });
+        col.innerHTML = html;
+        // i18n 재적용 (사용자가 이미 선택한 언어로).
+        try { if (typeof window.applyI18n === 'function') window.applyI18n(); } catch(_){}
+      })
+      .catch(function(err){
+        if (typeof console !== 'undefined') console.warn('[nav-menu] load failed, fallback:', err && err.message);
+      });
+  }
+  function _escNav(s){
+    return String(s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
 
   function _afterInject() {
     /* ================================================================

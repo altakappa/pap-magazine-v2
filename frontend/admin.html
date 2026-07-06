@@ -1483,13 +1483,111 @@ tr:hover td{background:rgba(0,0,0,.02)}
 
   <!-- CATEGORIES -->
   <!-- MENU CATEGORIES (hamburger nav) -->
+  <!-- QA #320 — 햄버거 우측 메뉴 카테고리 실운영 CRUD -->
   <div class="tab" id="t-menucats">
-    <div class="mn-header"><div class="mn-title">메뉴 카테고리 관리</div><div class="mn-actions"><button class="btn btn-primary" onclick="addMenuCat()">+ 새 메뉴 추가</button></div></div>
+    <div class="mn-header">
+      <div class="mn-title">메뉴 카테고리 관리</div>
+      <div class="mn-actions">
+        <button class="btn btn-primary" onclick="openNavMenuModal(null)">+ 새 메뉴 추가</button>
+        <button class="btn" onclick="loadNavMenuItems()" style="background:transparent">🔄 새로고침</button>
+      </div>
+    </div>
     <div class="mn-body">
-      <p style="color:var(--text3);margin-bottom:16px">햄버거 메뉴(≡)를 눌렀을 때 우측에 표시되는 카테고리 목록을 관리합니다. 드래그로 순서를 변경할 수 있습니다.</p>
+      <p style="color:var(--text3);margin-bottom:8px">햄버거 메뉴(≡)를 눌렀을 때 <strong>우측 컬럼</strong>에 표시되는 카테고리 목록을 관리합니다.</p>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:14px;line-height:1.7">
+        <strong style="color:var(--text2)">동작:</strong> 저장 시 <strong>즉시 웹사이트 전체 페이지</strong>의 햄버거 메뉴에 반영됩니다 (edge cache 최대 1분).<br>
+        <strong style="color:var(--text2)">링크 유형:</strong> <code>/community</code> (정적 페이지), <code>/#all-editorials</code> (홈페이지 오버레이), <code>https://...</code> (외부 URL) 모두 가능.<br>
+        <strong style="color:var(--text2)">스타일:</strong> default(흰) · red(빨강 강조) · gold(매거진 골드) · muted(회색). 다국어 라벨을 원하면 <strong>i18n 키</strong>(navEditorial 등)를 입력.
+      </div>
+
+      <!-- 웹사이트 반영 상태 -->
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 14px;margin-bottom:14px;background:rgba(46,204,113,.06);border:1px solid rgba(46,204,113,.28);border-radius:4px">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#27ae60">🌐 웹사이트 반영</div>
+        <button type="button" class="btn btn-sm" onclick="_verifyNavMenuLive()">🔄 반영 상태 확인</button>
+        <span id="navMenuLiveStatus" style="font-size:11px;color:var(--text3);flex:1;min-width:200px;text-align:right"></span>
+      </div>
+      <div id="navMenuLiveDetail" style="display:none;padding:10px 14px;margin-bottom:14px;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:4px;font-size:11px;font-family:'SF Mono',Menlo,Consolas,monospace;color:var(--text2);white-space:pre-wrap;max-height:200px;overflow:auto"></div>
+
       <div class="tbl-wrap">
-        <table><thead><tr><th>순서</th><th>메뉴 이름</th><th>링크</th><th>스타일</th><th>활성</th><th>작업</th></tr></thead>
-        <tbody id="menuCatBody"></tbody></table>
+        <table>
+          <thead>
+            <tr>
+              <th style="width:70px">순서</th>
+              <th>라벨</th>
+              <th>i18n 키</th>
+              <th>링크 URL</th>
+              <th style="width:110px">스타일</th>
+              <th style="width:70px">활성</th>
+              <th style="width:180px">작업</th>
+            </tr>
+          </thead>
+          <tbody id="menuCatBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- QA #320 — 메뉴 항목 등록/편집 모달 -->
+  <div class="pe-modal" id="navMenuModal" style="display:none">
+    <div class="pe-modal-backdrop" onclick="closeNavMenuModal()"></div>
+    <div class="pe-modal-content" style="max-width:560px">
+      <div class="modal-header">
+        <div class="modal-title" id="navMenuModalTitle">새 메뉴 항목</div>
+        <button class="modal-close" onclick="closeNavMenuModal()">&times;</button>
+      </div>
+      <div class="modal-body" style="max-height:70vh;overflow-y:auto">
+        <input type="hidden" id="navMenuId">
+        <div class="modal-section">
+          <div class="modal-label">라벨 (기본/영어) <span style="color:#e74c3c">*</span></div>
+          <input class="pe-input" id="navMenuLabelDefault" placeholder="예: BEAUTY">
+          <div class="pe-hint" style="margin-top:4px">i18n 키가 없거나 번역이 없는 언어에서 노출됩니다. 보통 영어 대문자.</div>
+        </div>
+        <div class="modal-section">
+          <div class="modal-label">i18n 딕셔너리 키 <span style="color:var(--text3);font-weight:400;font-size:10px">(선택)</span></div>
+          <input class="pe-input" id="navMenuLabelKey" placeholder="예: navBeauty (pap-i18n.js 에 등록된 키)">
+          <div class="pe-hint" style="margin-top:4px">있으면 사용자 언어에 맞춰 자동 번역됩니다. 없으면 라벨(기본) 그대로 표시.</div>
+        </div>
+        <div class="modal-section">
+          <div class="modal-label">링크 URL <span style="color:#e74c3c">*</span></div>
+          <input class="pe-input" id="navMenuLinkUrl" placeholder="예: /beauty">
+          <div class="pe-hint" style="margin-top:4px">정적 페이지: <code>/community</code> · 오버레이: <code>/#all-editorials</code> · 외부: <code>https://...</code></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="modal-section">
+            <div class="modal-label">스타일 (색상)</div>
+            <select class="pe-select" id="navMenuStyle">
+              <option value="default">default — 흰색 (기본)</option>
+              <option value="red">red — 빨강 (강조)</option>
+              <option value="gold">gold — 골드 (매거진)</option>
+              <option value="muted">muted — 회색 (약함)</option>
+            </select>
+          </div>
+          <div class="modal-section">
+            <div class="modal-label">정렬 순서</div>
+            <input class="pe-input" id="navMenuSortOrder" type="number" placeholder="예: 60">
+            <div class="pe-hint" style="margin-top:4px">낮을수록 위(먼저) 노출.</div>
+          </div>
+        </div>
+        <div class="modal-section">
+          <label class="pe-check" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="navMenuActive" checked>
+            <span>활성화 (웹사이트 메뉴에 노출)</span>
+          </label>
+        </div>
+        <div id="navMenuFormError" style="display:none;padding:10px 12px;background:rgba(192,57,43,.08);border:1px solid rgba(192,57,43,.35);border-radius:4px;font-size:12px;color:#c0392b"></div>
+
+        <!-- 미리보기 -->
+        <div class="modal-section">
+          <div class="modal-label" style="margin-bottom:6px">👁️ 미리보기</div>
+          <div style="padding:14px;background:#000;border-radius:4px;text-align:center">
+            <a id="navMenuPreviewLink" href="#" onclick="return false" style="display:inline-block;font-size:14px;font-weight:600;letter-spacing:.08em;color:#fff;text-decoration:none">MENU</a>
+            <div id="navMenuPreviewUrl" style="font-size:10px;color:#666;margin-top:4px">/</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeNavMenuModal()">취소</button>
+        <button class="btn btn-primary" onclick="saveNavMenuItem()">저장</button>
       </div>
     </div>
   </div>
@@ -3355,7 +3453,7 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
      mock 시절 번들을 계속 캐시 → '+새 이미지' 클릭 시 "실제 운영 시
      S3에 업로드됩니다" 구형 alert 가 재현. pap-admin.js 를 수정하는
      커밋은 반드시 이 파라미터를 함께 올릴 것. -->
-<script src="/pap-admin.js?v=93" defer></script>
+<script src="/pap-admin.js?v=94" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>

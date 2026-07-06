@@ -11367,46 +11367,228 @@ async function saveBusinessPage(){
   }
 }
 
-// ======== MENU CATEGORIES (Hamburger Nav) ========
-var menuCats=[
-  {id:1,name:'COMMUNITY',link:'/community',style:'빨간색 (강조)',active:true,order:1},
-  {id:2,name:'EDITORIAL',link:'#editorials',style:'기본 (검정)',active:true,order:2},
-  {id:3,name:'ARTICLE',link:'#',style:'기본 (검정)',active:true,order:3},
-  {id:4,name:'FILM',link:'#films',style:'기본 (검정)',active:true,order:4}
-];
+// ======== NAV MENU ITEMS (Hamburger Nav) — QA #320 실운영 전환 ========
+//
+// 기존은 완전한 mock (in-memory + localStorage) 였음. QA #320 에서
+// DB (nav_menu_items) + API (/api/(admin/)?nav-menu) + 모달 UI 로 재구축.
+// 관리자 편집이 즉시 웹사이트 햄버거 우측 메뉴에 반영됨 (edge cache 60s).
+var menuCats = [];
+
+async function loadNavMenuItems(){
+  try {
+    var resp = await apiGet('/admin/nav-menu');
+    menuCats = (resp && (resp.data || resp)) || [];
+    if (!Array.isArray(menuCats)) menuCats = [];
+  } catch(e){
+    console.warn('[nav-menu] fetch failed:', e && e.message);
+    menuCats = [];
+  }
+  renderMenuCats();
+}
 
 function renderMenuCats(){
-  var tb=document.getElementById('menuCatBody');
-  tb.innerHTML='';
-  menuCats.sort(function(a,b){return a.order-b.order;});
-  menuCats.forEach(function(m,i){
-    tb.innerHTML+='<tr><td>'+m.order+'</td><td style="font-weight:700;letter-spacing:.04em'+(m.style.indexOf('빨간')>-1?';color:var(--red)':'')+'">'+m.name+'</td><td><input class="pe-input" value="'+m.link+'" style="width:200px;padding:5px 8px" onchange="menuCats['+i+'].link=this.value"></td><td><select class="pe-select" style="width:140px;padding:5px 8px" onchange="menuCats['+i+'].style=this.value;renderMenuCats()"><option'+(m.style.indexOf('기본')>-1?' selected':'')+'>기본 (검정)</option><option'+(m.style.indexOf('빨간')>-1?' selected':'')+'>빨간색 (강조)</option><option'+(m.style.indexOf('회색')>-1?' selected':'')+'>회색 (비활성)</option></select></td><td><label class="pe-check" style="justify-content:center"><input type="checkbox" '+(m.active?'checked':'')+' onchange="menuCats['+i+'].active=this.checked"></label></td><td><button class="btn btn-sm" onclick="editMenuCat('+i+')">편집</button> <button class="btn btn-sm btn-red" onclick="deleteMenuCat('+i+')">삭제</button></td></tr>';
+  var tb = document.getElementById('menuCatBody');
+  if (!tb) return;
+  if (!menuCats.length){
+    tb.innerHTML = '<tr><td colspan="7" style="padding:24px;text-align:center;color:var(--text3)">등록된 메뉴 항목이 없습니다. <strong>+ 새 메뉴 추가</strong> 버튼으로 등록해주세요.</td></tr>';
+    return;
+  }
+  tb.innerHTML = '';
+  var styleColor = { red: 'var(--red)', gold: '#c9a96e', muted: 'var(--text3)', default: 'var(--text1)' };
+  menuCats.forEach(function(m){
+    var color = styleColor[m.style] || styleColor.default;
+    tb.innerHTML +=
+      '<tr>' +
+        '<td>' + esc(String(m.sort_order || 0)) + '</td>' +
+        '<td style="font-weight:700;letter-spacing:.04em;color:' + color + '">' + esc(m.label_default || '') + '</td>' +
+        '<td style="font-family:monospace;font-size:11px;color:var(--text3)">' + esc(m.label_key || '—') + '</td>' +
+        '<td style="font-family:monospace;font-size:11px;color:var(--text2)">' + esc(m.link_url || '') + '</td>' +
+        '<td><span style="display:inline-block;padding:3px 8px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:2px;font-size:10px;color:' + color + '">' + esc(m.style || 'default') + '</span></td>' +
+        '<td style="text-align:center">' + (m.is_active ? '<span style="color:var(--green)">✓</span>' : '<span style="color:var(--red)">✗</span>') + '</td>' +
+        '<td>' +
+          '<button class="btn btn-sm" onclick="openNavMenuModal(\'' + esc(m.id) + '\')" title="편집">✏️ 편집</button> ' +
+          '<button class="btn btn-sm" onclick="_toggleNavMenuActive(\'' + esc(m.id) + '\')" title="' + (m.is_active ? '비활성화' : '활성화') + '">' + (m.is_active ? '숨김' : '표시') + '</button> ' +
+          '<button class="btn btn-sm btn-red" onclick="deleteNavMenuItem(\'' + esc(m.id) + '\')" title="삭제">🗑️</button>' +
+        '</td>' +
+      '</tr>';
   });
 }
 
-function addMenuCat(){
-  var name=prompt('메뉴 이름을 입력하세요 (예: BEAUTY, INTERVIEW):');
-  if(!name) return;
-  var link=prompt('링크 URL을 입력하세요 (예: #beauty, beauty.html):','#');
-  menuCats.push({id:Date.now(),name:name.toUpperCase(),link:link||'#',style:'기본 (검정)',active:true,order:menuCats.length+1});
-  renderMenuCats();
+function openNavMenuModal(id){
+  var target = id ? menuCats.filter(function(x){ return x.id === id; })[0] : null;
+  document.getElementById('navMenuId').value = target ? target.id : '';
+  document.getElementById('navMenuLabelKey').value = target ? (target.label_key || '') : '';
+  document.getElementById('navMenuLabelDefault').value = target ? (target.label_default || '') : '';
+  document.getElementById('navMenuLinkUrl').value = target ? (target.link_url || '') : '';
+  document.getElementById('navMenuStyle').value = target ? (target.style || 'default') : 'default';
+  document.getElementById('navMenuSortOrder').value = target ? (target.sort_order || 0)
+    : (menuCats.reduce(function(m, x){ return Math.max(m, x.sort_order || 0); }, 0) + 10);
+  document.getElementById('navMenuActive').checked = target ? !!target.is_active : true;
+  document.getElementById('navMenuModalTitle').textContent = target ? ('메뉴 항목 편집 — ' + (target.label_default || '')) : '새 메뉴 항목';
+  var errEl = document.getElementById('navMenuFormError');
+  if (errEl){ errEl.style.display = 'none'; errEl.textContent = ''; }
+  _updateNavMenuPreview();
+  var modal = document.getElementById('navMenuModal');
+  modal.style.display = 'flex';
+  modal.classList.add('show');
+  // 미리보기 실시간 업데이트
+  ['navMenuLabelDefault','navMenuLinkUrl','navMenuStyle'].forEach(function(id){
+    var el = document.getElementById(id);
+    if (el && !el.dataset.previewBound){
+      el.dataset.previewBound = '1';
+      var evt = el.tagName === 'SELECT' ? 'change' : 'input';
+      el.addEventListener(evt, _updateNavMenuPreview);
+    }
+  });
 }
 
-function editMenuCat(i){
-  var name=prompt('메뉴 이름:',menuCats[i].name);
-  if(name) menuCats[i].name=name.toUpperCase();
-  var order=prompt('순서 (숫자):',menuCats[i].order);
-  if(order) menuCats[i].order=Number(order);
-  renderMenuCats();
+function closeNavMenuModal(){
+  var modal = document.getElementById('navMenuModal');
+  modal.classList.remove('show');
+  modal.style.display = 'none';
 }
 
-function deleteMenuCat(i){
-  if(!confirm('"'+menuCats[i].name+'" 메뉴를 삭제하시겠습니까?')) return;
-  menuCats.splice(i,1);
-  renderMenuCats();
+function _updateNavMenuPreview(){
+  var label = document.getElementById('navMenuLabelDefault').value || 'MENU';
+  var url = document.getElementById('navMenuLinkUrl').value || '/';
+  var style = document.getElementById('navMenuStyle').value || 'default';
+  var styleColor = { red: '#e74c3c', gold: '#c9a96e', muted: '#666', default: '#fff' };
+  var linkEl = document.getElementById('navMenuPreviewLink');
+  var urlEl  = document.getElementById('navMenuPreviewUrl');
+  if (linkEl){ linkEl.textContent = label; linkEl.style.color = styleColor[style] || '#fff'; }
+  if (urlEl){ urlEl.textContent = url; }
 }
 
-renderMenuCats();
+async function saveNavMenuItem(){
+  var id = (document.getElementById('navMenuId').value || '').trim();
+  var payload = {
+    label_key:     (document.getElementById('navMenuLabelKey').value || '').trim() || null,
+    label_default: (document.getElementById('navMenuLabelDefault').value || '').trim(),
+    link_url:      (document.getElementById('navMenuLinkUrl').value || '').trim(),
+    style:         document.getElementById('navMenuStyle').value || 'default',
+    sort_order:    parseInt(document.getElementById('navMenuSortOrder').value, 10) || 0,
+    is_active:     !!document.getElementById('navMenuActive').checked,
+  };
+  var errEl = document.getElementById('navMenuFormError');
+  function showError(msg){
+    if (!errEl) return;
+    errEl.style.display = 'block';
+    errEl.textContent = msg;
+  }
+  if (errEl){ errEl.style.display = 'none'; errEl.textContent = ''; }
+  if (!payload.label_default){ showError('⚠️ 라벨(기본)을 입력해주세요.'); return; }
+  if (!payload.link_url){ showError('⚠️ 링크 URL 을 입력해주세요.'); return; }
+  try {
+    var resp;
+    if (id){
+      payload.id = id;
+      resp = await apiPatch('/admin/nav-menu', payload);
+    } else {
+      resp = await apiPost('/admin/nav-menu', payload);
+    }
+    if (resp && resp.message && !resp.data){
+      var detail = resp.detail ? (resp.message + ' — ' + resp.detail) : resp.message;
+      throw new Error(detail);
+    }
+    closeNavMenuModal();
+    await loadNavMenuItems();
+    var statusEl = document.getElementById('navMenuLiveStatus');
+    if (statusEl){
+      statusEl.textContent = '✓ ' + (id ? '수정' : '등록') + ' 완료 · 웹사이트에 최대 1분 내 반영';
+      statusEl.style.color = '#27ae60';
+      setTimeout(function(){ statusEl.textContent = ''; }, 5000);
+    }
+  } catch(e){
+    console.error('[nav-menu] save failed:', e);
+    showError('❌ 저장 실패\n\n' + (e && e.message || e));
+  }
+}
+
+async function _toggleNavMenuActive(id){
+  var target = menuCats.filter(function(x){ return x.id === id; })[0];
+  if (!target) return;
+  try {
+    await apiPatch('/admin/nav-menu', { id: id, is_active: !target.is_active });
+    await loadNavMenuItems();
+  } catch(e){
+    console.error('[nav-menu] toggle failed:', e);
+    alert('상태 변경 실패: ' + (e && e.message || e));
+  }
+}
+
+async function deleteNavMenuItem(id){
+  var target = menuCats.filter(function(x){ return x.id === id; })[0];
+  if (!target) return;
+  var msg = '⚠️ 메뉴 항목 삭제\n\n';
+  msg += '라벨: ' + (target.label_default || '') + '\n';
+  msg += '링크: ' + (target.link_url || '') + '\n\n';
+  msg += '삭제하면 웹사이트 햄버거 메뉴에서 즉시 제외됩니다.\n';
+  msg += '이 작업은 되돌릴 수 없습니다.\n\n';
+  msg += '삭제하시겠습니까?';
+  if (!confirm(msg)) return;
+  try {
+    var resp = await apiDelete('/admin/nav-menu?id=' + encodeURIComponent(id));
+    if (resp && resp.message && !resp.ok){
+      throw new Error(resp.message);
+    }
+    await loadNavMenuItems();
+    var statusEl = document.getElementById('navMenuLiveStatus');
+    if (statusEl){
+      statusEl.textContent = '✓ 삭제 완료';
+      statusEl.style.color = '#27ae60';
+      setTimeout(function(){ statusEl.textContent = ''; }, 3000);
+    }
+  } catch(e){
+    console.error('[nav-menu] delete failed:', e);
+    alert('❌ 삭제 실패: ' + (e && e.message || e));
+  }
+}
+
+// 웹사이트 반영 상태 확인 (QA #315 패턴).
+async function _verifyNavMenuLive(){
+  var statusEl = document.getElementById('navMenuLiveStatus');
+  var detailEl = document.getElementById('navMenuLiveDetail');
+  function setStatus(msg, kind){
+    if (!statusEl) return;
+    statusEl.textContent = msg || '';
+    statusEl.style.color = kind === 'error' ? '#c0392b' : (kind === 'ok' ? '#27ae60' : 'var(--text3)');
+  }
+  setStatus('공개 API 확인 중…');
+  if (detailEl){ detailEl.style.display = 'none'; detailEl.textContent = ''; }
+  var url = API_BASE.replace(/\/$/, '') + '/nav-menu?_bust=' + Date.now();
+  try {
+    var r = await fetch(url, { credentials: 'omit', cache: 'no-store' });
+    var age = r.headers.get('age') || '0';
+    var xVercelCache = r.headers.get('x-vercel-cache') || 'UNKNOWN';
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var body = await r.json();
+    var list = (body && body.data) || [];
+    setStatus('✓ 웹사이트가 서빙 중인 활성 메뉴 ' + list.length + '개 · edge cache: ' + xVercelCache + (age !== '0' ? ' (age ' + age + 's)' : ''), list.length ? 'ok' : 'error');
+    if (detailEl){
+      detailEl.style.display = 'block';
+      var lines = ['GET ' + url, '', 'X-Vercel-Cache: ' + xVercelCache, 'Age: ' + age + 's', '', '활성 메뉴 (' + list.length + '개):'];
+      list.forEach(function(x, i){ lines.push('  ' + (i + 1) + '. [' + x.style + '] ' + x.label_default + '  →  ' + x.link_url); });
+      var localActive = menuCats.filter(function(x){ return x.is_active; });
+      lines.push('', '관리자 활성 (' + localActive.length + '개):');
+      localActive.forEach(function(x, i){ lines.push('  ' + (i + 1) + '. [' + x.style + '] ' + x.label_default + '  →  ' + x.link_url); });
+      var mismatch = (list.length !== localActive.length);
+      if (!mismatch) for (var i = 0; i < list.length; i++) if (list[i].id !== localActive[i].id){ mismatch = true; break; }
+      lines.push('', mismatch ? '⚠️ 관리자와 웹사이트 상태가 다릅니다. edge cache 갱신 대기 (최대 1분).' : '✅ 관리자와 웹사이트 상태가 일치합니다.');
+      detailEl.textContent = lines.join('\n');
+    }
+  } catch(e){
+    console.error('[nav-menu] verify failed:', e);
+    setStatus('반영 상태 조회 실패: ' + (e && e.message || e), 'error');
+  }
+}
+
+// Legacy 별칭 유지 (호환용).
+function addMenuCat(){ openNavMenuModal(null); }
+function editMenuCat(id){ openNavMenuModal(id); }
+function deleteMenuCat(id){ deleteNavMenuItem(id); }
+
+// 초기 로드.
+loadNavMenuItems();
 
 // QA #301 — 인스타그램 핸들 입력 onblur 자동 정규화.
 // 운영자가 '@' 없이 'johnkim' 만 입력해도 blur 시점에 '@johnkim' 으로
@@ -12828,8 +13010,9 @@ function persistSettings(){
   // QA #320 — loadingImgs localStorage 복원 제거 (위 주석 참고).
   // mock 시절 저장된 stale 키도 1회 청소.
   try { localStorage.removeItem('pap_admin_loadingImgs'); } catch(_){}
-  var m=lsGet('menuCats',null);if(m&&m.length)menuCats=m;
-  renderBanners();renderCovers();renderMenuCats();
+  // QA #320 — menuCats 도 DB (nav_menu_items) 로 이관. localStorage 정리.
+  try { localStorage.removeItem('pap_admin_menuCats'); } catch(_){}
+  renderBanners();renderCovers();
 })();
 // Override save functions to also persist
 var _origSaveBannerFn=saveBanner;
@@ -12842,10 +13025,7 @@ var _origDeleteCover=deleteCover;
 deleteCover=function(i){_origDeleteCover(i);persistSettings();};
 var _origDeleteBanner=deleteBanner;
 deleteBanner=function(i){_origDeleteBanner(i);persistSettings();};
-var _origAddMenuCat=addMenuCat;
-addMenuCat=function(){_origAddMenuCat();persistSettings();};
-var _origDeleteMenuCat=deleteMenuCat;
-deleteMenuCat=function(i){_origDeleteMenuCat(i);persistSettings();};
+// QA #320 — addMenuCat/deleteMenuCat 는 이제 DB 저장이라 persistSettings 래퍼 불필요.
 // QA #320 — addLoadingImg persistSettings 래퍼 제거. 로딩 이미지는
 // QA #310 부터 DB/API 가 단일 진실원이므로 localStorage 지속 불필요.
 
