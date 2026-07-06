@@ -87,7 +87,8 @@ function buildArticleTweet(art) {
   const tags = [];
   (art.tags || []).forEach((t) => {
     const clean = String(t).replace(/[^A-Za-z0-9가-힣_]/g, '');
-    if (clean.length >= 2 && clean.length <= 20 && tags.length < 3) tags.push('#' + clean.toUpperCase());
+    const tag = '#' + clean.toUpperCase();
+    if (clean.length >= 2 && clean.length <= 20 && tags.length < 3 && !tags.includes(tag)) tags.push(tag);
   });
   if (!tags.includes('#KPOP') && tags.length < 3) tags.push('#KPOP');
   tags.push('#PAPMAGAZINE');
