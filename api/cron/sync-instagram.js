@@ -18,6 +18,7 @@
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { pingNewContent, SITE } = require('../_lib/pingSearch');
+const { postTweet, buildArticleTweet, isConfigured: xConfigured } = require('../_lib/xPost');
 const {
   listRecentMedia,
   listMediaPaged,
@@ -137,7 +138,18 @@ module.exports = async function handler(req, res){
         results.imported++;
         if (inserted){
           const h = inserted.custom_url || inserted.slug || inserted.id;
-          if (h) newUrls.push(SITE + '/article/' + encodeURIComponent(h));
+          if (h){
+            const artUrl = SITE + '/article/' + encodeURIComponent(h);
+            newUrls.push(artUrl);
+            // X 자동 게시 — 발행 즉시 트윗 (키 미설정 시 조용히 스킵).
+            // 링크 카드가 SSR og/twitter 이미지로 자동 생성된다.
+            if (xConfigured()){
+              try {
+                const tw = await postTweet(buildArticleTweet({ title: generated.title_ko || row.title, url: artUrl, tags: generated.tags }));
+                results.tweets = (results.tweets || []).concat(tw.ok ? [tw.id] : ['실패:' + (tw.detail || tw.status)]);
+              } catch (_) {}
+            }
+          }
         }
       } catch (e){
         results.failed++;
