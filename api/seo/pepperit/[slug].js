@@ -129,7 +129,7 @@ module.exports = async function handler(req, res) {
       '.lat-t{display:block;font-size:13.5px;font-weight:700;line-height:1.4;margin-top:3px}' +
       'footer{background:var(--pink);color:#fff;text-align:center;padding:34px 24px;font-size:12px}footer a{font-weight:900}' +
       '</style></head><body>' +
-      '<header><a href="/pepperit" class="logo">Pepperit<span class="h">!</span></a></header>' +
+      '<header><a href="/pepperit"><img src="/pepperit-logo-white.png" alt="Pepperit" style="height:34px;width:auto;display:block;margin:0 auto"></a></header>' +
       '<main class="wrap"><article>' +
       '<span class="cat">' + esc(a.category || 'NEWS') + '</span>' +
       '<h1>' + esc(title) + '</h1>' +
