@@ -110,7 +110,7 @@ async function pick(node) {
     current = j;
     el.innerHTML =
       '<div class="field"><label>제목 <button class="copy" onclick="cpText(this, current.title)">복사</button></label><div id="dTitle">' + esc(j.title) + '</div></div>' +
-      '<div class="field"><label>태그 <button class="copy" onclick="cpText(this, current.tags.map(function(t){return \'#\'+t;}).join(\' \'))">복사</button></label><div id="dTags">' + esc((j.tags || []).map(function (t) { return '#' + t; }).join(' ')) + '</div></div>' +
+      '<div class="field"><label>태그 <button class="copy" onclick="cpText(this, current.tags.join(\' \'))">복사</button></label><div id="dTags">' + esc((j.tags || []).join(' ')) + '</div></div>' +
       '<div class="field"><label>본문 <button class="copy" onclick="cpHtml(this)">서식 포함 복사</button></label><div id="dBody">' + j.body_html + '</div></div>' +
       '<div class="hint">사용법: ① 네이버 블로그 글쓰기 열기 → ② 제목 붙여넣기 → ③ 본문란에 붙여넣기(서식·이미지 포함) → ④ 하단 태그 입력 → 발행. ' +
       '이미지가 붙지 않으면 미리보기의 이미지를 하나씩 드래그하거나, <a href="' + esc(j.article_url) + '" target="_blank">원문</a>에서 저장 후 첨부해 주세요.</div>';
