@@ -249,9 +249,12 @@ a{color:#fff;text-decoration:none}
 <nav role="navigation" aria-label="Main navigation" class="side-nav" id="sideNav">
   <div class="nav-dots open" id="navToggle"><span>&#8942;</span></div>
   <div class="nav-links">
+    <!-- QA #337 — About/Business/Contact 3개 페이지 side-nav 구성 통일.
+         기존에 Business 에만 PARTNERS 링크가 있어 다른 두 페이지와 불일치했음.
+         PARTNERS 페이지 자체는 유지(/api/seo/partners) 하되, 회사 정보 side-nav
+         에서는 3개(ABOUT/BUSINESS/CONTACT) 로 통일. -->
     <a href="#" onclick="event.preventDefault();window.location.href='/about';" data-i18n="about">ABOUT</a>
     <a href="/business" class="active" data-i18n="business">BUSINESS</a>
-    <a href="#" onclick="event.preventDefault();window.location.href='/partners';" data-i18n="partners">PARTNERS</a>
     <a href="#" onclick="event.preventDefault();window.location.href='/contact';" data-i18n="contact">CONTACT</a>
   </div>
 </nav>
