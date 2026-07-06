@@ -582,7 +582,7 @@ section.hero + .shorts-section{
 .ed-overlay-close:hover{opacity:.6}
 
 /* HERO: 50/50 split */
-.ed-hero-split{display:flex;width:100%;min-height:100vh}
+.ed-hero-split{display:flex;width:100%;min-height:100vh;overflow:hidden}
 .ed-hero-img{width:50%;position:relative;overflow:hidden}
 .ed-hero-img img{width:100%;height:100%;object-fit:cover;display:block}
 .ed-hero-info{width:50%;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px}
@@ -877,10 +877,21 @@ section.hero + .shorts-section{
   .nf-card{min-width:260px;max-width:260px}
   .nf-card-img{aspect-ratio:1/1}
   .editorial-grid{grid-template-columns:repeat(2,1fr)}
-  /* Editorial hero title — render at headline scale on mobile (≈3× the
-     prior compact size) so the editorial name dominates the hero card
-     the way it does on desktop. */
-  .ed-hero-title{font-size:clamp(72px,18vw,108px);line-height:1.05}
+  /* QA #332 — 에디토리얼 상세 대형 타이틀 모바일 반응형.
+     이전: 72–108px + letter-spacing:.06em 로 "DECADENCE" 등 긴 타이틀이
+     375px 뷰포트 폭을 초과 → 가로 스크롤 발생.
+     조정: font-size 를 폭에 비례해 축소 + letter-spacing 완화 + overflow-wrap
+     으로 극단적으로 긴 단어도 잘리지 않게 함. */
+  .ed-hero-title{
+    font-size:clamp(36px,10vw,72px);
+    line-height:1.05;
+    letter-spacing:.02em;
+    word-break:break-word;
+    overflow-wrap:break-word;
+    hyphens:auto;
+    max-width:100%;
+  }
+  .ed-hero-info{overflow:hidden}
   .ed-hero-issue{font-size:11px;letter-spacing:.18em}
   .fashion-card-title{font-size:12px}
   .ed-card-title{font-size:14px}
@@ -1030,8 +1041,9 @@ section.hero + .shorts-section{
   .footer-bottom-nav-center a{font-size:10px}
 
   /* Editorial detail */
-  .ed-hero-info{min-height:35vh;padding:24px var(--pad-x)}
-  .ed-hero-title{font-size:clamp(64px,20vw,96px);line-height:1.05}
+  .ed-hero-info{min-height:35vh;padding:24px var(--pad-x);overflow:hidden}
+  /* QA #332 — 480px 이하에서는 더 작은 스케일 (긴 영어 타이틀 대응). */
+  .ed-hero-title{font-size:clamp(30px,9vw,58px);line-height:1.08;letter-spacing:.015em;word-break:break-word;overflow-wrap:break-word;max-width:100%}
   .ed-gallery{padding:24px var(--pad-x)}
   .ed-credits-wrap{padding:32px var(--pad-x)}
   .ed-credits-table{
@@ -1105,7 +1117,8 @@ section.hero + .shorts-section{
   .footer-marquee-track span{font-size:1.275rem}
 
   /* Editorial detail */
-  .ed-hero-title{font-size:clamp(60px,22vw,84px);line-height:1.05}
+  /* QA #332 — 380px 이하 (구형/작은 폰) 극단 케이스 대응. */
+  .ed-hero-title{font-size:clamp(26px,8.5vw,48px);line-height:1.1;letter-spacing:.01em;word-break:break-word;overflow-wrap:break-word;max-width:100%}
   .ed-gallery-grid{gap:8px}
   .creator-works-grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
 }

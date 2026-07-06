@@ -155,7 +155,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/pap-styles.css?v=27">
+<link rel="stylesheet" href="/pap-styles.css?v=28">
 <link rel="stylesheet" href="/pap-social.css">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
 <!-- Favicon & PWA -->
@@ -1134,7 +1134,10 @@
     <!-- 검색→인스타 전환 깔때기 (2026-07): 검색으로 들어와 기사를 읽은
          방문자를 @pap_magazine 팔로우로 전환. SSR(seoRenderer)의
          .ig-funnel 과 한 쌍 — SPA 오버레이 버전. -->
-    <aside style="margin:28px 0 8px;padding:32px 24px;border:1px solid rgba(255,255,255,.16);text-align:center">
+    <!-- 2026-07 - 원본 IG 게시물 CTA(artIgPostCta)가 표시되는 기사에서는
+         역할이 겹쳐 숨긴다 (_renderArticleDetail 이 토글). IG 소스가 없는
+         기사에서만 팔로우 깔때기로 노출. -->
+    <aside id="artIgFunnel" style="margin:28px 0 8px;padding:32px 24px;border:1px solid rgba(255,255,255,.16);text-align:center">
       <div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:12px">PAP Magazine — Instagram</div>
       <div style="font-size:14px;line-height:1.75;color:#ddd;margin-bottom:20px">매일 업데이트되는 에디토리얼과 패션·셀럽 뉴스,<br><b style="color:#fff">인스타그램에서 가장 먼저</b> 만나보세요.</div>
       <a href="https://www.instagram.com/pap_magazine/" target="_blank" rel="noopener" style="display:inline-block;background:#fff;color:#000;padding:12px 30px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;text-decoration:none">Follow @pap_magazine</a>
