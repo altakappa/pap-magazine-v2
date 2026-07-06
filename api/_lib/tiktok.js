@@ -152,7 +152,9 @@ function toOwnedImageUrl(u, opts) {
   if (/^https:\/\/www\.pap-magazine\.com\//.test(u) && (!logo || u.indexOf('/api/') !== -1)) return u;
   // /api/img — 1080px JPEG 정규화 중계 (Vercel 이미지 최적화는 AVIF/WebP
   // 협상 때문에 TikTok picture_size_check 에서 실패한다)
-  return 'https://www.pap-magazine.com/api/img?u=' + encodeURIComponent(u) + (logo ? '&logo=1' : '');
+  // pad=7 — 틱톡은 캡션·음악 오버레이가 하단을 덮어 1% 여백이면 로고가
+  // 잘려 보인다. 하단 여백 7%로 올려 오버레이·크롭 안전지대 확보.
+  return 'https://www.pap-magazine.com/api/img?u=' + encodeURIComponent(u) + (logo ? '&logo=1&pad=7' : '');
 }
 
 module.exports = { authorizeUrl, exchangeCode, getAccessToken, directPostPhotos, toOwnedImageUrl, REDIRECT_URI };

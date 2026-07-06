@@ -33,12 +33,14 @@ function loadLogo() {
 }
 
 // buf(JPEG) 하단 중앙에 로고 합성. 실패 시 호출부에서 원본 유지.
-async function stampLogo(sharp, buf) {
+// padPct: 하단 여백(이미지 높이 대비 %). 인스타 규격은 1, 틱톡은 캡션·음악
+// 오버레이가 하단을 덮으므로 7 안팎 권장.
+async function stampLogo(sharp, buf, padPct) {
   const meta = await sharp(buf).metadata();
   const W = meta.width, H = meta.height;
   if (!W || !H) return buf;
   const logoW = Math.max(1, Math.round(W * 0.15)); // 로고 너비 15%
-  const pad = Math.round(H * 0.01);                // 하단 여백 1%
+  const pad = Math.round(H * (padPct / 100));      // 하단 여백
   const logoRaw = await loadLogo();
   let logo = await sharp(logoRaw).resize({ width: logoW }).ensureAlpha().png().toBuffer();
   // 투명도 85% — 1×1 픽셀(alpha 217/255)을 dest-in 블렌드로 타일링해
@@ -71,6 +73,10 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'API 경로는 프록시 불가' });
     }
     const wantLogo = String((req.query && req.query.logo) || '') === '1';
+    // 하단 여백 % (기본 1 — 인스타 규격). 0~20 클램프.
+    let padPct = parseFloat((req.query && req.query.pad) || '1');
+    if (!isFinite(padPct)) padPct = 1;
+    padPct = Math.min(20, Math.max(0, padPct));
 
     const r = await fetch(url.toString(), { signal: AbortSignal.timeout(20000) });
     if (!r.ok) return res.status(502).json({ error: 'origin ' + r.status });
@@ -93,7 +99,7 @@ module.exports = async function handler(req, res) {
         .toBuffer();
       if (wantLogo) {
         try {
-          buf = await stampLogo(sharp, buf);
+          buf = await stampLogo(sharp, buf, padPct);
         } catch (e) {
           // 로고 합성 실패는 치명적이지 않음 — 로고 없는 정규화본으로 진행.
           console.error('[img-proxy] 로고 합성 실패, 무로고 중계:', e.message);
