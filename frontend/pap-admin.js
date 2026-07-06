@@ -10349,12 +10349,17 @@ function _validateLoadingImg(f){
 }
 
 // 서버 에러 응답에서 사람이 읽을 수 있는 사유를 추출.
-// 우리 API 는 { message: "..." } 형태로 실패 사유를 내려주므로
-// message 필드 우선, 그 외에는 status 코드/문자열 fallback.
+// QA #318 — 서버는 이제 { message, detail, code } 를 내려주므로
+// message + detail (+ code) 를 조합해서 완전한 진단 문자열을 만듦.
+// message 만 있는 옛날 응답에도 호환.
 function _extractLoadingErrReason(err){
   if (!err) return '알 수 없는 오류';
   if (typeof err === 'string') return err;
-  if (err.message) return String(err.message);
+  var parts = [];
+  if (err.message) parts.push(String(err.message));
+  if (err.detail && err.detail !== err.message) parts.push(String(err.detail));
+  if (err.code) parts.push('[' + String(err.code) + ']');
+  if (parts.length) return parts.join(' — ');
   if (err.error) return String(err.error);
   try { return JSON.stringify(err); } catch(_){ return String(err); }
 }

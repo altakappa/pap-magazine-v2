@@ -63,9 +63,22 @@ module.exports = async function handler(req, res) {
       if (!row.image_url_pc) {
         return res.status(400).json({ message: 'image_url_pc is required' });
       }
+      // QA #318 — created_by/updated_by 는 profiles(id) 를 FK 로 참조.
+      // 서브 관리자 등 profiles 에 row 가 없는 계정으로 요청 시 FK 위반 →
+      // 500 로 실패. 우선 FK 유효성을 사전 체크해서 없으면 null 로 대체.
+      let creatorId = null;
+      try {
+        const { data: profRow } = await supabaseAdmin
+          .from('profiles')
+          .select('id')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (profRow && profRow.id) creatorId = profRow.id;
+      } catch (_){ /* profiles 조회 실패는 무시하고 null 로 진행 */ }
+
       const insertRow = Object.assign({}, row, {
-        created_by: user.id,
-        updated_by: user.id,
+        created_by: creatorId,
+        updated_by: creatorId,
       });
       const { data, error } = await supabaseAdmin
         .from('loading_images')
@@ -73,13 +86,25 @@ module.exports = async function handler(req, res) {
         .select()
         .single();
       if (error || !data) {
-        console.error('[admin loading-images POST] insert failed', error);
-        return res.status(500).json({ message: 'Failed to create loading image' });
+        // QA #318 — 진단을 위해 서버가 감췄던 실제 Supabase 에러를
+        // 클라이언트로 노출. code + message + hint 를 상세히 전달.
+        console.error('[admin loading-images POST] insert failed', {
+          error,
+          insertRow: Object.assign({}, insertRow, { image_url_pc: '(redacted)' })
+        });
+        return res.status(500).json({
+          message: 'Failed to create loading image',
+          detail:  (error && (error.message || error.hint)) || 'unknown DB error',
+          code:    (error && error.code) || null,
+        });
       }
       return res.status(201).json({ data });
     } catch (err) {
       console.error('[admin loading-images POST] uncaught', err);
-      return res.status(500).json({ message: 'Failed to create loading image' });
+      return res.status(500).json({
+        message: 'Failed to create loading image',
+        detail:  (err && err.message) || String(err),
+      });
     }
   }
 
@@ -91,8 +116,19 @@ module.exports = async function handler(req, res) {
       if (!id) {
         return res.status(400).json({ message: 'id is required' });
       }
+      // QA #318 — updated_by FK 사전 체크. profiles 에 없으면 null 로.
+      let editorId = null;
+      try {
+        const { data: profRow } = await supabaseAdmin
+          .from('profiles')
+          .select('id')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (profRow && profRow.id) editorId = profRow.id;
+      } catch (_){}
+
       // 부분 업데이트: 명시적으로 넘어온 필드만 반영.
-      const patch = { updated_by: user.id };
+      const patch = { updated_by: editorId };
       if (body.image_url_pc !== undefined) {
         const v = String(body.image_url_pc || '').trim();
         if (!v) return res.status(400).json({ message: 'image_url_pc cannot be empty' });
@@ -117,13 +153,20 @@ module.exports = async function handler(req, res) {
         .select()
         .single();
       if (error || !data) {
-        console.error('[admin loading-images PATCH] update failed', error);
-        return res.status(500).json({ message: 'Failed to update loading image' });
+        console.error('[admin loading-images PATCH] update failed', { error, patch });
+        return res.status(500).json({
+          message: 'Failed to update loading image',
+          detail:  (error && (error.message || error.hint)) || 'unknown DB error',
+          code:    (error && error.code) || null,
+        });
       }
       return res.status(200).json({ data });
     } catch (err) {
       console.error('[admin loading-images PATCH] uncaught', err);
-      return res.status(500).json({ message: 'Failed to update loading image' });
+      return res.status(500).json({
+        message: 'Failed to update loading image',
+        detail:  (err && err.message) || String(err),
+      });
     }
   }
 

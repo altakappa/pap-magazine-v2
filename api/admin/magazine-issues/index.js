@@ -89,9 +89,20 @@ module.exports = async function handler(req, res) {
           .eq('is_latest', true);
       }
 
+      // QA #318 — created_by FK 사전 체크.
+      let creatorId = null;
+      try {
+        const { data: profRow } = await supabaseAdmin
+          .from('profiles')
+          .select('id')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (profRow && profRow.id) creatorId = profRow.id;
+      } catch (_){}
+
       const insertRow = Object.assign({}, row, {
-        created_by: user.id,
-        updated_by: user.id,
+        created_by: creatorId,
+        updated_by: creatorId,
       });
       const { data, error } = await supabaseAdmin
         .from('magazine_issues')
@@ -99,17 +110,23 @@ module.exports = async function handler(req, res) {
         .select()
         .single();
       if (error || !data) {
-        console.error('[admin magazine-issues POST] insert failed', error);
-        // unique violation 은 사용자에게 명시적으로 알림
+        console.error('[admin magazine-issues POST] insert failed', { error, insertRow });
         if (error && String(error.code) === '23505'){
           return res.status(409).json({ message: '이미 존재하는 발행 번호(#' + row.issue_number + ')입니다. 다른 번호를 사용해주세요.' });
         }
-        return res.status(500).json({ message: 'Failed to create magazine issue' });
+        return res.status(500).json({
+          message: 'Failed to create magazine issue',
+          detail:  (error && (error.message || error.hint)) || 'unknown DB error',
+          code:    (error && error.code) || null,
+        });
       }
       return res.status(201).json({ data });
     } catch (err) {
       console.error('[admin magazine-issues POST] uncaught', err);
-      return res.status(500).json({ message: 'Failed to create magazine issue' });
+      return res.status(500).json({
+        message: 'Failed to create magazine issue',
+        detail:  (err && err.message) || String(err),
+      });
     }
   }
 
