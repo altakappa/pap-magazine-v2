@@ -117,7 +117,7 @@ function openArticleFromCard(card){
     }
   }
   var titleEl=card.querySelector('.fashion-card-title')||card.querySelector('.art-all-title');
-  if(!titleEl) return;
+  if(!titleEl){ _papArticleCardFallback(card, slug); return; }
   var raw=titleEl.innerHTML||'';
   var title=_normWs(_decHtml(raw));
   // Match by any language variant in ti18n
@@ -135,6 +135,15 @@ function openArticleFromCard(card){
     var at=_normWs(artData[i].t||'');
     if(at.length>3&&title.length>3&&(at.indexOf(title)===0||title.indexOf(at)===0)){openArticleDetail(i);return;}
   }
+  // 2026-07 — 매칭 전부 실패 시(카드가 artData 보다 최신인 레이스 등)
+  // 조용히 죽지 않고 SSR 기사 페이지로 직접 이동. 모든 기사에 /article/<slug>
+  // SSR 이 존재하므로 클릭이 절대 무반응이 되지 않는다.
+  _papArticleCardFallback(card, slug);
+}
+function _papArticleCardFallback(card, slug){
+  var href=card.getAttribute && card.getAttribute('href');
+  if(href && href!=='#'){ window.location.href=href; return; }
+  if(slug){ window.location.href='/article/'+encodeURIComponent(slug); }
 }
 // QA #283 — 슬라이드 블록의 좌우 네비 버튼 클릭 핸들러.
 // 현재 가장 가운데 보이는 figure를 찾고, dir(±1)만큼 떨어진 figure로
