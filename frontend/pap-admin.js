@@ -10111,8 +10111,8 @@ function renderLoadingImgs(){
         (mUrl ? '📱 모바일 등록됨' : '📱 모바일 미등록 (PC 이미지 사용)') +
       '</div>' +
       '<div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap">' +
+        '<button class="btn btn-sm" data-id="' + esc(img.id) + '" data-act="edit" title="PC/모바일 이미지 편집 (모달)">✏️ 편집</button>' +
         '<button class="btn btn-sm" data-id="' + esc(img.id) + '" data-act="toggle" title="' + (active ? '비활성화하면 웹사이트에서 노출되지 않습니다' : '활성화하면 웹사이트 스플래시에 노출됩니다') + '">' + (active ? '비활성화' : '활성화') + '</button>' +
-        '<button class="btn btn-sm" data-id="' + esc(img.id) + '" data-act="mobile" title="모바일 전용 이미지를 업로드합니다">📱 모바일</button>' +
         '<button class="btn btn-sm btn-red" data-id="' + esc(img.id) + '" data-act="del" title="이 이미지를 영구 삭제합니다">🗑️ 삭제</button>' +
       '</div>';
     _wireLoadingCardDrag(card);
@@ -10126,6 +10126,7 @@ function renderLoadingImgs(){
       var act = btn.getAttribute('data-act');
       if (act === 'toggle') _toggleLoadingImg(id);
       else if (act === 'del') _deleteLoadingImg(id);
+      else if (act === 'edit') openLoadingImgModal(id);
       else if (act === 'mobile') _pickMobileForLoadingImg(id);
       return;
     }
@@ -10302,20 +10303,187 @@ async function _saveLoadingImgOrder(){
   }
 }
 
-// QA #311 — 다중 업로드 지원 (multiple + drag & drop).
-// 4~5장 이상을 한 번에 등록하는 실제 커버 교체 워크플로우에 맞춤.
-// alt_text 는 선택 사항이라 다중 업로드 시엔 프롬프트 생략 (등록 후
-// 개별 카드에서 편집 가능하도록 확장 여지). 단일 업로드 UX 는 유지.
-async function addLoadingImg(){
-  var input = document.createElement('input');
-  input.type = 'file';
-  input.accept = 'image/jpeg,image/png,image/webp';
-  input.multiple = true;
-  input.onchange = async function(){
-    if (!this.files || !this.files.length) return;
-    await _uploadLoadingImgBatch(Array.prototype.slice.call(this.files));
-  };
-  input.click();
+// QA #319 — '+ 새 이미지' 는 이제 모달을 연다. PC 와 모바일 이미지를
+// 각각 개별 업로드할 수 있는 구조.
+function addLoadingImg(){
+  openLoadingImgModal(null);
+}
+
+// QA #319 — 로딩 이미지 등록/편집 모달.
+// id 가 있으면 편집 모드로 기존 값 사전 채움.
+function openLoadingImgModal(id){
+  var target = id ? loadingImgs.filter(function(x){ return x.id === id; })[0] : null;
+  document.getElementById('loadImgId').value = target ? target.id : '';
+  document.getElementById('loadImgUrlPc').value = target ? (target.image_url_pc || '') : '';
+  document.getElementById('loadImgUrlMobile').value = target ? (target.image_url_mobile || '') : '';
+  document.getElementById('loadImgAltText').value = target ? (target.alt_text || '') : '';
+  document.getElementById('loadImgActive').checked = target ? !!target.is_active : true;
+  document.getElementById('loadImgModalTitle').textContent = target ? ('로딩 이미지 편집 — #' + (loadingImgs.indexOf(target) + 1)) : '새 로딩 이미지';
+  document.getElementById('loadImgPcStatus').textContent = '';
+  document.getElementById('loadImgMobileStatus').textContent = '';
+  var errEl = document.getElementById('loadImgFormError');
+  if (errEl){ errEl.style.display = 'none'; errEl.textContent = ''; }
+  // 프리뷰 세팅
+  var pcPrev = document.getElementById('loadImgPcPreview');
+  var mPrev  = document.getElementById('loadImgMobilePreview');
+  if (target && target.image_url_pc){
+    pcPrev.innerHTML = _loadImgPreviewHtml(target.image_url_pc, '16 / 9');
+  } else {
+    pcPrev.innerHTML = '<div style="font-size:32px;line-height:1;margin-bottom:8px">🖼️</div>'
+                    + '<div style="font-size:12px;color:var(--text2);font-weight:600">클릭 또는 파일 드롭</div>'
+                    + '<div style="font-size:10px;color:var(--text3);margin-top:4px">JPG · PNG · WEBP · 최대 3MB</div>';
+  }
+  if (target && target.image_url_mobile){
+    mPrev.innerHTML = _loadImgPreviewHtml(target.image_url_mobile, '9 / 16');
+  } else {
+    mPrev.innerHTML = '<div style="font-size:32px;line-height:1;margin-bottom:8px">📱</div>'
+                   + '<div style="font-size:12px;color:var(--text2);font-weight:600">클릭 또는 파일 드롭</div>'
+                   + '<div style="font-size:10px;color:var(--text3);margin-top:4px">JPG · PNG · WEBP · 최대 3MB</div>';
+  }
+  // 파일 input 리셋 (같은 파일 다시 선택 가능)
+  var pcInput = document.getElementById('loadImgPcFile'); if (pcInput) pcInput.value = '';
+  var mInput  = document.getElementById('loadImgMobileFile'); if (mInput) mInput.value = '';
+  _setupLoadingImgModalDrag();
+  var modal = document.getElementById('loadingImgModal');
+  modal.style.display = 'flex';
+  modal.classList.add('show');
+}
+
+function closeLoadingImgModal(){
+  var modal = document.getElementById('loadingImgModal');
+  modal.classList.remove('show');
+  modal.style.display = 'none';
+}
+
+function _loadImgPreviewHtml(url, aspect){
+  return '<img src="' + esc(url) + '" style="width:100%;max-height:140px;aspect-ratio:' + aspect + ';object-fit:cover;border-radius:2px;background:#111">'
+       + '<div style="font-size:10px;color:var(--text3);margin-top:6px">클릭하여 변경</div>';
+}
+
+// 모달 drop 영역 setup (모달 열 때마다 idempotent).
+function _setupLoadingImgModalDrag(){
+  ['pc','mobile'].forEach(function(kind){
+    var zone = document.getElementById(kind === 'pc' ? 'loadImgPcDrop' : 'loadImgMobileDrop');
+    if (!zone || zone.dataset.dndSetup === '1') return;
+    zone.dataset.dndSetup = '1';
+    zone.addEventListener('dragover', function(e){
+      if (e.dataTransfer && Array.prototype.some.call(e.dataTransfer.items || [], function(it){ return it.kind === 'file'; })){
+        e.preventDefault();
+        zone.style.borderColor = 'var(--text)';
+        zone.style.background = 'rgba(255,255,255,.05)';
+      }
+    });
+    zone.addEventListener('dragleave', function(e){
+      if (e.target === zone){
+        zone.style.borderColor = '';
+        zone.style.background = '';
+      }
+    });
+    zone.addEventListener('drop', async function(e){
+      e.preventDefault();
+      zone.style.borderColor = '';
+      zone.style.background = '';
+      var files = e.dataTransfer && e.dataTransfer.files;
+      if (!files || !files.length) return;
+      // 첫 파일만 사용 (모달은 개별 슬롯).
+      var fakeInput = { files: [files[0]], value: '' };
+      await _onLoadingImgFile(fakeInput, kind);
+    });
+  });
+}
+
+// 파일 선택/드롭 → 검증 → uploadFile → hidden URL 필드 세팅 + 프리뷰.
+async function _onLoadingImgFile(input, kind){
+  if (!input.files || !input.files[0]) return;
+  var file = input.files[0];
+  var statusId  = kind === 'pc' ? 'loadImgPcStatus'  : 'loadImgMobileStatus';
+  var urlId     = kind === 'pc' ? 'loadImgUrlPc'    : 'loadImgUrlMobile';
+  var previewId = kind === 'pc' ? 'loadImgPcPreview' : 'loadImgMobilePreview';
+  var aspect    = kind === 'pc' ? '16 / 9' : '9 / 16';
+  var statusEl = document.getElementById(statusId);
+  function setStatus(msg, kind2){
+    if (!statusEl) return;
+    statusEl.textContent = msg || '';
+    statusEl.style.color = kind2 === 'error' ? '#c0392b' : (kind2 === 'ok' ? '#27ae60' : 'var(--text3)');
+  }
+  var v = _validateLoadingImg(file);
+  if (!v.ok){
+    setStatus('⚠ ' + v.reason, 'error');
+    try { input.value = ''; } catch(_){}
+    return;
+  }
+  setStatus('업로드 중…');
+  try {
+    var url = await uploadFile(file);
+    if (!url) throw new Error('업로드 서버 응답에 URL 이 없습니다.');
+    document.getElementById(urlId).value = url;
+    var prev = document.getElementById(previewId);
+    if (prev) prev.innerHTML = _loadImgPreviewHtml(url, aspect);
+    setStatus('✓ 업로드 완료', 'ok');
+  } catch(e){
+    console.error('[loading-images] modal upload failed:', e);
+    setStatus('업로드 실패: ' + (e && e.message || e), 'error');
+  }
+}
+
+// 모달의 저장 버튼.
+async function saveLoadingImgFromModal(){
+  var id = (document.getElementById('loadImgId').value || '').trim();
+  var urlPc     = (document.getElementById('loadImgUrlPc').value || '').trim();
+  var urlMobile = (document.getElementById('loadImgUrlMobile').value || '').trim();
+  var altText   = (document.getElementById('loadImgAltText').value || '').trim();
+  var isActive  = !!document.getElementById('loadImgActive').checked;
+  var errEl = document.getElementById('loadImgFormError');
+  function showError(msg){
+    if (!errEl) return;
+    errEl.style.display = 'block';
+    errEl.textContent = msg;
+  }
+  if (errEl){ errEl.style.display = 'none'; errEl.textContent = ''; }
+  if (!urlPc){
+    showError('⚠️ PC 이미지는 필수입니다. 좌측 영역에 이미지를 업로드해주세요.');
+    return;
+  }
+  try {
+    var resp;
+    if (id){
+      resp = await apiPatch('/admin/loading-images', {
+        id: id,
+        image_url_pc: urlPc,
+        image_url_mobile: urlMobile || null,
+        alt_text: altText || null,
+        is_active: isActive
+      });
+    } else {
+      var maxOrder = loadingImgs.reduce(function(m, x){ return Math.max(m, x.sort_order || 0); }, -1);
+      resp = await apiPost('/admin/loading-images', {
+        image_url_pc: urlPc,
+        image_url_mobile: urlMobile || null,
+        alt_text: altText || null,
+        sort_order: maxOrder + 1,
+        is_active: isActive
+      });
+    }
+    if (resp && resp.message && !resp.data){
+      throw new Error(_extractLoadingErrReason(resp));
+    }
+    closeLoadingImgModal();
+    await _fetchLoadingImgs();
+    var statusEl = document.getElementById('loadingUploadStatus');
+    if (statusEl){
+      statusEl.textContent = '✓ ' + (id ? '수정' : '등록') + ' 완료 · 웹사이트에 최대 30초 내 반영';
+      statusEl.style.color = '#27ae60';
+      setTimeout(function(){ statusEl.textContent = ''; }, 5000);
+    }
+  } catch(e){
+    console.error('[loading-images] modal save failed:', e);
+    showError('❌ 저장 실패\n\n' + (e && e.message || e) + '\n\n입력값을 확인하고 다시 시도해주세요.');
+  }
+}
+
+// 카드의 "편집" 버튼에서 호출. openLoadingImgModal 을 래핑.
+function editLoadingImg(id){
+  openLoadingImgModal(id);
 }
 
 // QA #313 — 지원 형식/용량 상수. 안내 카드와 실제 검증이 항상 일치하도록
