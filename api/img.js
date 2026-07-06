@@ -74,8 +74,13 @@ module.exports = async function handler(req, res) {
 
     const r = await fetch(url.toString(), { signal: AbortSignal.timeout(20000) });
     if (!r.ok) return res.status(502).json({ error: 'origin ' + r.status });
+    // S3 레거시 업로드 일부는 content-type 이 binary/octet-stream 으로 저장돼
+    // 있다 — 타입 헤더만으로 거르지 않고 octet-stream 은 통과시켜 sharp 가
+    // 실제 픽셀 디코드로 판정하게 한다 (이미지가 아니면 sharp 단계에서 실패).
     const ct = r.headers.get('content-type') || 'image/jpeg';
-    if (!/^image\//.test(ct)) return res.status(415).json({ error: '이미지 아님: ' + ct });
+    if (!/^image\//.test(ct) && !/octet-stream/.test(ct)) {
+      return res.status(415).json({ error: '이미지 아님: ' + ct });
+    }
 
     let buf = Buffer.from(await r.arrayBuffer());
     // TikTok picture_size_check: 원본 화보(2000px+)가 해상도 한도를 초과해
