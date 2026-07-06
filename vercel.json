@@ -84,6 +84,7 @@
     { "source": "/admin/business", "destination": "/admin.html" },
     { "source": "/admin/subscriptions", "destination": "/admin.html" },
     { "source": "/admin/(.*)", "destination": "/admin.html" },
+    { "source": "/rss.xml", "has": [{ "type": "host", "value": "(www\\.)?pepperitmag\\.com" }], "destination": "/api/rss-pepperit" },
     { "source": "/rss.xml", "destination": "/api/rss" },
     { "source": "/rss-editorials.xml", "destination": "/api/rss-editorials" },
     { "source": "/pinterest-csv", "destination": "/api/pinterest-csv" },
