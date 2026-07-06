@@ -1247,11 +1247,28 @@ document.getElementById('previewOverlay').addEventListener('click',function(e){
     document.body.appendChild(ov);
   };
 
-  function renderAll(dynHtml,dynVols,dynEds){
+  // 볼륨 번호 → 연도 (VOL 1~4 = 2019 … 4개 분기 = 1년)
+  function volYear(vol){ return 2019 + Math.floor((vol-1)/4); }
+
+  // 볼륨별 커버 수동 지정 — 분기 안의 slug(또는 소문자 제목)로 매칭.
+  // 미지정 볼륨은 기존처럼 최신 에디토리얼 커버 사용.
+  var QV_COVER_PICKS = { 30: 'folie' };
+
+  function renderAll(dynCards,dynVols,dynEds){
     var grid=document.getElementById('qvGrid'); if(!grid) return;
     var legacyVols=Object.keys(legacy).map(Number).sort(function(a,b){return b-a;});
-    grid.innerHTML=dynHtml+legacyVols.map(legacyCard).join('');
-    var total=legacyVols.length+dynVols;
+    // 연도별 섹션 (2026-07-06): 한 덩어리 그리드는 답답 — 연도 헤더로 분리.
+    var all=(dynCards||[]).concat(legacyVols.map(function(v){return {vol:v,html:legacyCard(v)};}));
+    all.sort(function(a,b){return b.vol-a.vol;});
+    var byYear={}; var order=[];
+    all.forEach(function(c){ var y=volYear(c.vol); if(!byYear[y]){byYear[y]=[];order.push(y);} byYear[y].push(c.html); });
+    grid.style.display='block';
+    grid.innerHTML=order.map(function(y){
+      return '<div class="qv-yearblock" style="margin-bottom:56px">'
+        +'<div class="sec-head" style="margin-bottom:20px"><h2 class="sec-title">'+y+'</h2><span class="sec-count">'+byYear[y].length+' VOLUMES</span></div>'
+        +'<div class="grid">'+byYear[y].join('')+'</div></div>';
+    }).join('');
+    var total=all.length;
     document.getElementById('qvCount').textContent=total+' VOLUMES';
     document.getElementById('quarterVols').style.display='';
     var hb=document.getElementById('heroBadge');
@@ -1284,16 +1301,22 @@ document.getElementById('previewOverlay').addEventListener('click',function(e){
     var now=new Date(); var curQi=Math.floor(((now.getFullYear()-2026)*12+now.getMonth()-3)/3);
     var keys=Object.keys(qs).map(Number).sort(function(a,b){return b-a;});
     var dynEds=0;
-    var html=keys.map(function(qi){
+    var cards=keys.map(function(qi){
       var list=qs[qi].sort(function(a,b){return new Date(b.published_date)-new Date(a.published_date);});
       dynEds+=list.length;
-      var cover=(list[0].cover_image||list[0].thumbnail||'');
+      var vol=BASE_VOL+qi;
+      // 커버 지정: QV_COVER_PICKS 매칭 에디토리얼 우선, 없으면 최신 커버
+      var pick=QV_COVER_PICKS[vol];
+      var coverEd=pick ? list.find(function(e){
+        return String(e.slug||'').toLowerCase()===pick || String(e.title||'').toLowerCase()===pick;
+      }) : null;
+      var cover=((coverEd||list[0]).cover_image||(coverEd||list[0]).thumbnail||'');
       var badge=qi===curQi?'<span class="latest-badge">CURRENT</span>':'';
-      return '<div class="card" data-qi="'+qi+'" onclick="qvOpen('+qi+')"><div class="cover"><img loading="lazy" src="'+cover.replace(/"/g,'&quot;')+'" alt="VOL.'+(BASE_VOL+qi)+'"><div class="covlay">'+badge+'<div class="cov-bot"><div class="cov-title">Vol. '+(BASE_VOL+qi)+'</div><div class="cov-ct">'+list.length+' EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. '+(BASE_VOL+qi)+'</span><span class="dt">'+volLabel(BASE_VOL+qi)+'</span></div></div>';
-    }).join('');
+      return {vol:vol, html:'<div class="card" data-qi="'+qi+'" onclick="qvOpen('+qi+')"><div class="cover"><img loading="lazy" src="'+cover.replace(/"/g,'&quot;')+'" alt="VOL.'+vol+'"><div class="covlay">'+badge+'<div class="cov-bot"><div class="cov-title">Vol. '+vol+'</div><div class="cov-ct">'+list.length+' EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">VOL. '+vol+'</span><span class="dt">'+volLabel(vol)+'</span></div></div>'};
+    });
     window._qvData=qs; window._qvBase=BASE_VOL;
-    renderAll(html,keys.length,dynEds);
-  }).catch(function(){ renderAll('',0,0); });
+    renderAll(cards,keys.length,dynEds);
+  }).catch(function(){ renderAll([],0,0); });
   window.qvOpen=function(qi){
     var list=(window._qvData&&window._qvData[qi])||[]; if(!list.length) return;
     var ov=document.createElement('div');
