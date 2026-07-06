@@ -93,9 +93,14 @@ a{color:#fff;text-decoration:none}
   .side-nav .nav-links a{font-size:10px;letter-spacing:3px;padding:8px 0}
   /* QA #322 — 모바일도 동일 스케일, 한 단계씩 좁게 (55/34 단계). */
   .content{margin-left:60px;padding:var(--sp-5) var(--sp-3)}
-  .biz-section,.biz-section.reverse{flex-direction:column;gap:var(--sp-3);margin-bottom:var(--sp-5)}
-  .badge-wrap{width:80px;height:80px}
-  .spinning-badge{width:80px;height:80px}
+  /* QA #335 — 모바일에서 biz-section 이 column 으로 전환될 때 badge 가
+     명시적으로 중앙정렬되지 않아 시각적으로 어중간한 위치에 놓임.
+     .biz-text 는 100% 폭 확보, badge-wrap 은 자체 중앙정렬 +
+     상단 여백을 부여해 콘텐츠 흐름과 시각적으로 분리. */
+  .biz-section,.biz-section.reverse{flex-direction:column;align-items:center;gap:var(--sp-4);margin-bottom:var(--sp-5)}
+  .biz-text{width:100%;text-align:left}
+  .badge-wrap{width:100px;height:100px;margin:var(--sp-3) auto 0;align-self:center;display:flex;align-items:center;justify-content:center}
+  .spinning-badge{width:100px;height:100px}
   .footer-legal{margin-left:60px;padding:var(--sp-3) var(--sp-3)}
 }
 /* HIDE OLD NAV — unified header active */
