@@ -126,23 +126,62 @@ a{text-decoration:none;color:inherit}
 .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:clamp(20px,3vw,48px);max-width:1100px;margin-left:auto;margin-right:auto}
 .card{cursor:pointer;opacity:0;transform:translateY(24px);display:block}
 .card.vis{opacity:1;transform:translateY(0);transition:opacity .6s ease,transform .6s ease}
-.card:hover .cover img{transform:scale(1.04)}
+/* QA #342 — Hover 시 이미지에 blur + 어두운 오버레이 → Read 버튼 가독성 강화. */
+.card:hover .cover img{transform:scale(1.04);filter:blur(6px) brightness(.55)}
 .card:hover .rd{opacity:1;transform:translateY(0)}
-.card:hover .hov{opacity:1}
+.card:hover .hov{opacity:1;background:rgba(0,0,0,.35)}
 .cover{position:relative;aspect-ratio:3/4;overflow:hidden;margin-bottom:16px}
-.cover img{width:100%;height:100%;object-fit:cover;transition:transform .7s cubic-bezier(.16,1,.3,1)}
+.cover img{width:100%;height:100%;object-fit:cover;transition:transform .7s cubic-bezier(.16,1,.3,1),filter .45s ease}
+/* QA #342 — 이미지 위 오버레이 텍스트 (제목/개수) 제거. LATEST 배지는 유지. */
 .covlay{position:absolute;inset:0;z-index:2;pointer-events:none}
-.mo-badge{position:absolute;top:20px;right:20px;font-size:9px;letter-spacing:2px;color:rgba(255,255,255,.8);background:rgba(0,0,0,.5);backdrop-filter:blur(8px);padding:4px 10px}
+.mo-badge{display:none!important}
 .latest-badge{position:absolute;top:20px;right:20px;font-size:8px;letter-spacing:3px;color:#fff;background:var(--accent);padding:3px 10px;font-weight:500;z-index:4}
-.cov-bot{position:absolute;bottom:0;left:0;right:0;padding:60px 20px 20px;background:linear-gradient(to top,rgba(0,0,0,.75),transparent)}
-.cov-title{font-size:clamp(10px,1vw,12px);font-weight:400;letter-spacing:3px;color:rgba(255,255,255,.75);text-transform:uppercase}
-.cov-ct{font-size:9px;letter-spacing:2px;color:rgba(255,255,255,.5);margin-top:4px}
-.hov{position:absolute;inset:0;background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .35s;z-index:3}
-.rd{border:1px solid rgba(255,255,255,.6);padding:10px 28px;font-size:10px;letter-spacing:4px;color:#fff;font-weight:400;transform:translateY(8px);opacity:0;transition:all .35s ease .08s}
-.card:hover .rd{background:var(--accent);border-color:var(--accent)}
-.meta{display:flex;justify-content:space-between}
-.vol{font-size:10px;letter-spacing:2px;color:var(--dim);font-weight:300}
-.dt{font-size:10px;color:var(--dimmer)}
+/* 하단 그라디언트 + 텍스트 (cov-title/cov-ct)는 이미지 위 중복 정보 → 숨김. 아래 .meta 에서 통합 노출. */
+.cov-bot{display:none!important}
+.cov-title{display:none!important}
+.cov-ct{display:none!important}
+/* Hover 오버레이 - 이미지 blur 배경 위에 얹어짐. */
+.hov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .35s,background .35s;z-index:3;background:transparent}
+/* QA #342 — Read 버튼 가독성 강화: 두꺼운 테두리 + 반투명 흰 배경 + 큰 letter-spacing. */
+.rd{
+  border:2px solid #fff;
+  background:rgba(255,255,255,.15);
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
+  padding:14px 44px;
+  font-size:12px;
+  letter-spacing:6px;
+  color:#fff;
+  font-weight:700;
+  transform:translateY(8px);
+  opacity:0;
+  transition:all .35s ease .08s;
+  text-transform:uppercase;
+}
+.card:hover .rd{background:#fff;color:#000;border-color:#fff}
+/* QA #342 — 이미지 하단 통합 정보: Vol.31 · N Editorial · Jul–Sep 2026. */
+.meta{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:4px;
+  padding-top:2px;
+}
+.vol{
+  font-size:14px;
+  font-weight:700;
+  letter-spacing:.08em;
+  color:#fff;
+  text-transform:none;
+}
+.dt{font-size:10px;letter-spacing:.16em;color:var(--dim);text-transform:uppercase}
+/* 신규: Editorial 개수 라인 (JS가 채움; 하드코딩 fallback 은 없어도 안전) */
+.meta .ct{
+  font-size:11px;
+  letter-spacing:.06em;
+  color:var(--dimmer);
+  font-weight:400;
+}
 
 .year-divider{padding:80px clamp(20px,5vw,80px) 0}
 .year-divider-line{height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent)}
@@ -724,6 +763,49 @@ document.addEventListener('keydown', function(e) {
 });
 
 setTimeout(function(){document.getElementById('hc').classList.add('vis')},200);
+
+/* QA #342 — 매거진 카드 하단 메타(.meta) 정보 통합.
+   기존: 이미지 위 .cov-title/.cov-ct(제목·개수)  +  아래 .meta(.vol/.dt)
+   개선: 이미지 위 텍스트는 CSS 로 숨김. 개수 정보는 여기서 파싱해 아래 .meta 에
+   '.ct' 라인으로 삽입 → 결과적으로 카드 아래에서 발행호(.vol) · Editorial 개수(.ct)
+   · 발행기간(.dt) 3줄로 통합 노출된다. 다국어 라벨은 향후 i18n 훅 확장 여지. */
+(function papEnrichMagCardMeta(){
+  function enrich(root){
+    var scope = root || document;
+    scope.querySelectorAll('.card').forEach(function(card){
+      var meta = card.querySelector('.meta');
+      if (!meta || meta.querySelector('.ct')) return;
+      var ctText = ((card.querySelector('.cov-ct') || {}).textContent || '').trim();
+      // 숫자만 추출 → "5 Editorial" 로 통일 (단수/복수 처리 간단화).
+      var n = (ctText.match(/\d+/) || [null])[0];
+      if (!n) return;
+      var ct = document.createElement('span');
+      ct.className = 'ct';
+      ct.textContent = n + ' EDITORIAL' + (Number(n) === 1 ? '' : 'S');
+      // .vol 바로 뒤에 삽입 (Vol → Editorial 개수 → 발행기간 순서).
+      var vol = meta.querySelector('.vol');
+      if (vol && vol.nextSibling){
+        meta.insertBefore(ct, vol.nextSibling);
+      } else {
+        meta.appendChild(ct);
+      }
+    });
+  }
+  // 초기 렌더 + regroup/dynamic inject 후 재실행 훅.
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', function(){ enrich(); });
+  } else {
+    enrich();
+  }
+  // DOM 변경 감지 (동적 삽입 대응).
+  var mo = new MutationObserver(function(mutations){
+    var addedAny = mutations.some(function(m){ return m.addedNodes && m.addedNodes.length; });
+    if (addedAny) enrich();
+  });
+  try {
+    mo.observe(document.body, { childList: true, subtree: true });
+  } catch(_){}
+})();
 (function(){var b=document.querySelectorAll('.hero-bg-img'),i=0;setInterval(function(){b[i].classList.remove('active');i=(i+1)%b.length;b[i].classList.add('active')},4000)})();
 
 /* ======== QUARTER GROUPING ========
