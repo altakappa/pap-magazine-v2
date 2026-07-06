@@ -1,7 +1,7 @@
 /**
  * PAP Magazine — TikTok 데일리 자동 게시 크론
  * Route: /api/cron/tiktok-post            (매일 11:00 KST — 에디토리얼)
- *        /api/cron/tiktok-post?kind=article (매일 17:00 KST — 기사)
+ *        /api/cron/tiktok-post?kind=article (2시간마다 :30 — 기사 수시 게시)
  *
  * 에디토리얼 모드 (포토 슬라이드):
  *   1. 아직 게시 안 된 발행 에디토리얼 중 우선순위 선택
@@ -147,10 +147,14 @@ module.exports = async function handler(req, res) {
     const done = new Set((posted || []).filter((p) => p.status !== 'failed').map((p) => p[idCol]).filter(Boolean));
 
     // ── 기사 모드 ─────────────────────────────────────────────
+    // 수시 게시(2시간 주기): 신선도 창(최근 3일) 안의 미게시 기사만 1건씩.
+    // 오래된 백로그가 쏟아지는 것을 막고, 새 뉴스는 수집 후 몇 시간 내 게시.
     if (kind === 'article') {
+      const freshCutoff = new Date(Date.now() - 3 * 86400000).toISOString();
       const { data: arts } = await supabaseAdmin.from('articles')
         .select('id, title, slug, custom_url, content, gallery, thumbnail_url, category')
         .eq('status', 'published')
+        .gte('published_date', freshCutoff)
         .order('published_date', { ascending: false }).limit(200);
       const art = (arts || []).find((a) =>
         !done.has(a.id) && Array.isArray(a.gallery) && a.gallery.length >= 1);

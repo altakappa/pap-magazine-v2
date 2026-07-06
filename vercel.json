@@ -46,7 +46,7 @@
     },
     {
       "path": "/api/cron/tiktok-post?kind=article",
-      "schedule": "0 8 * * *"
+      "schedule": "30 */2 * * *"
     }
   ],
   "rewrites": [
