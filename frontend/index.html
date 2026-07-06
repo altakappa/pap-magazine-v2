@@ -873,7 +873,7 @@
 <!-- QA #310 — 스플래시 로더. defer 없이 즉시 실행돼서 첫 페인트 전에
      오버레이를 띄운다. 세션 내 재노출은 sessionStorage 로 방지. -->
 <script src="/pap-splash-loader.js?v=2"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script><script src="/pap-logos-data.js?v=1" defer></script><script src="/pap-api.js?v=6" defer></script><script src="/pap-social.js?v=3" defer></script><script src="/pap-utils.js?v=2" defer></script><script src="/pap-i18n.js?v=3" defer></script><script src="/pap-auth.js?v=3" defer></script><script src="/pap-search.js?v=3" defer></script><script src="/pap-static.js?v=1" defer></script><script src="/pap-subscription.js?v=2" defer></script><script src="/pap-home.js?v=1" defer></script><script src="/pap-content-editorial.js?v=17" defer></script><script src="/pap-content-film.js?v=9" defer></script><script src="/pap-content-article.js?v=14" defer></script><script src="/pap-content-creator-shorts.js?v=1" defer></script><script src="/pap-content-api-sync.js?v=10" defer></script><script src="/pap-content-seo.js?v=5" defer></script><script src="/pap-shell-bootstrap.js?v=8" defer></script><script src="/pap-app.js?v=20" defer></script><script src="/pap-lightbox.js?v=2" defer></script><script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=15" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script><script src="/pap-logos-data.js?v=1" defer></script><script src="/pap-api.js?v=6" defer></script><script src="/pap-social.js?v=3" defer></script><script src="/pap-utils.js?v=2" defer></script><script src="/pap-i18n.js?v=3" defer></script><script src="/pap-auth.js?v=3" defer></script><script src="/pap-search.js?v=3" defer></script><script src="/pap-static.js?v=1" defer></script><script src="/pap-subscription.js?v=2" defer></script><script src="/pap-home.js?v=1" defer></script><script src="/pap-content-editorial.js?v=17" defer></script><script src="/pap-content-film.js?v=9" defer></script><script src="/pap-content-article.js?v=14" defer></script><script src="/pap-content-creator-shorts.js?v=1" defer></script><script src="/pap-content-api-sync.js?v=10" defer></script><script src="/pap-content-seo.js?v=5" defer></script><script src="/pap-shell-bootstrap.js?v=9" defer></script><script src="/pap-app.js?v=20" defer></script><script src="/pap-lightbox.js?v=2" defer></script><script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=15" defer></script>
 <script src="/pap-protect.js?v=3" defer></script>
 <div class="creator-popup-overlay" id="creatorPopup" onclick="if(event.target===this)closeCreatorPopup()">
   <div class="creator-popup">
@@ -903,10 +903,10 @@
 <div class="ed-all-overlay" id="edAllOverlay">
   <div class="overlay-mini-header">
     <div class="overlay-mini-left">
-      <!-- QA #239 — left-side X close, unified across every overlay so
-           the same affordance lives in the same spot regardless of how
-           deep the user drilled in. -->
-      <button class="overlay-mini-close" onclick="closeAllEditorials()" aria-label="닫기">&times;</button>
+      <!-- QA #329 — 이전에는 좌측에 X + HOME 아이콘이 함께 렌더링되어 다른 페이지
+           (articles/films 등) 헤더와 구성이 달랐음. 다른 페이지 헤더와 동일하게
+           햄버거 + 검색만 유지 (X + HOME 은 제거). 오버레이 닫기는 햄버거 클릭시
+           자동 처리되며, 중앙 로고 클릭으로 홈 이동 가능. -->
       <button class="hamburger" onclick="closeAllEditorials();closeAllFilms();closeAllArticles();toggleNav();" aria-label="Menu"><span></span><span></span><span></span></button>
       <button class="search-btn header-left-item" onclick="closeAllEditorials();closeAllFilms();closeAllArticles();setTimeout(toggleSearch,0);" aria-label="Search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>

@@ -517,67 +517,35 @@ window._papCloseOtherOverlays = function(exceptId){
   });
 };
 
-// QA #239 — Universal left-side X close + HOME icon on every overlay.
-// Inject from JS so the close + home affordances stay in sync across
-// six different overlay markup blocks. Skips overlays whose markup
-// already includes .overlay-mini-close (idempotent re-runs OK too).
-(function _papWireOverlayCloseButtons(){
-  var MAP = window._PAP_OVERLAY_CLOSE_MAP;
-  // QA #239 v2 — same SVG used for both wired-from-markup and JS-wired
-  // home buttons so they paint identically.
-  var HOME_SVG =
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">' +
-      '<path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1V9.5z"/>' +
-    '</svg>';
-  function _wire(){
+// QA #329 — 오버레이 미니헤더에서 X + HOME 버튼 제거.
+// 기존(QA #239): edAll/filmAll/artAll 오버레이 좌측에 X + HOME 을 자동 주입해서
+// "닫기 + 홈 이동" 을 1-클릭 제공했지만, 사용자가 "다른 페이지 헤더와 UI 가 다르다"
+// 는 이슈를 제기 → 다른 페이지(articles.html, films.html 등)처럼 햄버거 + 검색만
+// 남기고 X + HOME 은 삭제. 오버레이 닫기는:
+//   - 햄버거 클릭 시 자동 닫힘 (기존 로직 유지)
+//   - 중앙 PAP 로고 클릭 시 홈 이동 (기존 로직 유지)
+//   - 브라우저 뒤로가기 (히스토리 popstate)
+// 로 해소되므로 사용성 저하 없음.
+//
+// 아래 IIFE 는 이전에 X + HOME 을 주입하던 로직이었음.
+// 렌더링은 완전 비활성화하고, 이미 DOM 에 남아있는 legacy 마크업/JS-주입 버튼도
+// 정리해서 어느 배포 시점에 로드된 페이지든 즉시 통일된 UI 를 보게 함.
+(function _papCleanOverlayLegacyButtons(){
+  function _clean(){
+    var MAP = window._PAP_OVERLAY_CLOSE_MAP || {};
     Object.keys(MAP).forEach(function(id){
       var overlay = document.getElementById(id);
-      if(!overlay) return;
-      var miniLeft = overlay.querySelector('.overlay-mini-left');
-      if(!miniLeft) return;
-      var fnName = MAP[id];
-      // 1) X close (left-most). Skip if already wired in markup.
-      if(!miniLeft.querySelector('.overlay-mini-close')){
-        var btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'overlay-mini-close';
-        btn.setAttribute('aria-label', '닫기');
-        btn.innerHTML = '&times;';
-        btn.addEventListener('click', function(){
-          try { if(typeof window[fnName] === 'function') window[fnName](); } catch(_){}
-        });
-        miniLeft.insertBefore(btn, miniLeft.firstChild);
-      }
-      // 2) HOME button (right after the X). Closes the overlay then
-      //    routes to /. Surfaces the "1-click out" affordance the user
-      //    asked for — clicking the centered PAP logo also goes home,
-      //    but users don't always discover the logo is interactive.
-      if(!miniLeft.querySelector('.overlay-mini-home')){
-        var home = document.createElement('a');
-        home.href = '/';
-        home.className = 'overlay-mini-home';
-        home.setAttribute('aria-label', '메인 홈으로');
-        home.title = '메인 홈으로';
-        home.innerHTML = HOME_SVG;
-        home.addEventListener('click', function(e){
-          e.preventDefault();
-          try { if(typeof window[fnName] === 'function') window[fnName](true); } catch(_){}
-          window.location.href = '/';
-        });
-        // Insert AFTER the close button (which is now firstChild).
-        var closeEl = miniLeft.querySelector('.overlay-mini-close');
-        if(closeEl && closeEl.nextSibling){
-          miniLeft.insertBefore(home, closeEl.nextSibling);
-        } else {
-          miniLeft.appendChild(home);
-        }
-      }
+      if (!overlay) return;
+      // 정적 마크업(index.html edAllOverlay 등)에 남아있는 X + HOME 제거.
+      overlay.querySelectorAll('.overlay-mini-close, .overlay-mini-home').forEach(function(el){
+        el.remove();
+      });
     });
   }
-  if(document.readyState === 'loading'){
-    document.addEventListener('DOMContentLoaded', _wire);
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', _clean);
   } else {
-    _wire();
+    _clean();
   }
 })();
 
