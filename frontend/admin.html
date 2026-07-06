@@ -1927,6 +1927,33 @@ tr:hover td{background:rgba(0,0,0,.02)}
             선택 시 해당 에디토리얼 썸네일이 <strong>커버 이미지</strong> 필드에, 슬러그가 <strong>링크 URL</strong> 필드에 자동으로 채워집니다.
           </div>
         </div>
+
+        <!-- QA #341 — 발행호 포함 에디토리얼 다중 선택 -->
+        <div class="modal-section">
+          <div class="modal-label">
+            포함 에디토리얼 <span style="color:var(--text3);font-weight:400;font-size:11px">(Read 클릭 시 노출될 에디토리얼들)</span>
+          </div>
+          <div style="position:relative">
+            <input class="pe-input" id="magIssueIncEdSearch"
+              placeholder="에디토리얼 검색 후 클릭하면 아래 목록에 추가됩니다..."
+              oninput="_searchMagIncludedEditorial(this.value)"
+              onfocus="if(this.value){_searchMagIncludedEditorial(this.value);}"
+              autocomplete="off">
+            <div id="magIssueIncEdDropdown"
+              style="display:none;position:absolute;top:100%;left:0;right:0;max-height:280px;overflow-y:auto;background:#fff;border:1px solid var(--border2);border-radius:4px;box-shadow:0 4px 12px rgba(0,0,0,.15);z-index:100;margin-top:2px"></div>
+          </div>
+          <!-- 선택된 에디토리얼 chip 목록 -->
+          <div id="magIssueIncEdList"
+            style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;min-height:40px;padding:8px;background:rgba(255,255,255,.02);border:1px dashed var(--border);border-radius:4px">
+            <div id="magIssueIncEdEmpty" style="color:var(--text3);font-size:11px;padding:6px 4px">
+              아직 선택된 에디토리얼이 없습니다. 위 검색창에서 찾아 클릭하세요.
+            </div>
+          </div>
+          <div class="pe-hint" style="margin-top:6px">
+            💡 이 목록은 매거진 발행호의 <strong>Read</strong> 버튼 클릭 시 노출됩니다. 순서 대로 표시됨.
+            에디토리얼 수 필드는 이 목록의 개수로 <strong>자동 갱신</strong>됩니다.
+          </div>
+        </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div class="modal-section">
             <div class="modal-label">제목 <span style="color:#e74c3c">*</span></div>
@@ -3563,7 +3590,7 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
      mock 시절 번들을 계속 캐시 → '+새 이미지' 클릭 시 "실제 운영 시
      S3에 업로드됩니다" 구형 alert 가 재현. pap-admin.js 를 수정하는
      커밋은 반드시 이 파라미터를 함께 올릴 것. -->
-<script src="/pap-admin.js?v=99" defer></script>
+<script src="/pap-admin.js?v=100" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>
