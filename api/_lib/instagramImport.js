@@ -94,6 +94,22 @@ function _normalizeMedia(m){
   return out;
 }
 
+// 캡션이 "에디토리얼 크레딧 게시물"인지 휴리스틱 판별.
+// 에디토리얼은 사용자가 웹사이트에 사전 업로드하므로 기사 수집에서 제외해야 한다.
+// 신호: ① 자사 에디토리얼 페이지 링크, ② 크레딧 역할 라인 2개 이상 + @핸들 3개 이상,
+// ③ 'editorial' 명시 + 크레딧 역할 1개 이상.
+function isLikelyEditorialCaption(caption){
+  const c = String(caption || '');
+  if (!c) return false;
+  if (/pap-magazine\.com\/editorial\//i.test(c)) return true;
+  const roleRe = /(photograph(?:er|y)|stylist|styling|starring|model|make.?up|mua|hair|retouch|art director|set design|videograph)/gi;
+  const roles = (c.match(roleRe) || []).length;
+  const handles = (c.match(/@[A-Za-z0-9._]{2,}/g) || []).length;
+  if (roles >= 2 && handles >= 3) return true;
+  if (/editorial/i.test(c) && roles >= 1) return true;
+  return false;
+}
+
 // Claude API로 IG 게시물을 PAP 매거진 톤의 바이링구얼 기사로 변환.
 //   입력: { caption, mediaUrls, author, permalink }
 //   출력: { title_ko, title_en, body_ko, body_en, category, tags, slug }
@@ -134,6 +150,13 @@ async function generateArticleFromPost(post){
     '  "body_ko": "(존댓말, 3~5단락 4~6문장. 각 단락은 두 줄 빈 줄로 구분. <br><br>로 단락 구분. HTML 인라인 태그만 사용 가능.)",',
     '  "body_en": "Same structure as body_ko in English. 3-5 paragraphs separated by <br><br>.",',
     '  "category": "Fashion | Beauty | Culture | News | Editorial",  // 가장 적합한 것 1개',
+    '',
+    'IMPORTANT — category "Editorial" is reserved for fashion-editorial CREDIT posts:',
+    'a photo spread announcement whose caption is mostly a credits list',
+    '(Photographer/Stylist/Starring/@handles) rather than news content.',
+    'If this post is such an editorial credit post, set category to "Editorial"',
+    '(the system will skip importing it — editorials are uploaded separately).',
+    'Otherwise NEVER use "Editorial".',
     '  "tags": ["5-10 lowercase keyword tags"],',
     '  "slug": "english-url-friendly-slug-from-title"',
     '}',
@@ -198,7 +221,12 @@ async function generateArticleFromPost(post){
 // articles INSERT용 row 구성 (DB 컬럼 명에 맞춰서).
 function buildArticleRow(post, generated, opts){
   opts = opts || {};
+  const status = opts.status || 'draft';
   return {
+    // published 로 바로 내보낼 때는 게시일 필수 (목록·RSS·사이트맵이 published_date 정렬)
+    published_date: status === 'published'
+      ? (post.timestamp || new Date().toISOString())
+      : null,
     title: generated.title_ko || generated.title_en || ('Instagram post ' + post.id),
     title_en: generated.title_en || null,
     content: generated.body_ko || '',
@@ -207,7 +235,7 @@ function buildArticleRow(post, generated, opts){
     tags: generated.tags || [],
     slug: generated.slug || null,
     thumbnail_url: (post.mediaUrls && post.mediaUrls[0]) || null,
-    status: opts.status || 'draft',
+    status: status,
     // QA #275 — Instagram 소스 메타.
     source_instagram_url:     post.permalink || null,
     source_instagram_post_id: post.id || null,
@@ -220,5 +248,6 @@ module.exports = {
   fetchInstagramPost,
   generateArticleFromPost,
   buildArticleRow,
+  isLikelyEditorialCaption,
   _extractShortcode,
 };
