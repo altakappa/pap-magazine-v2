@@ -1833,8 +1833,45 @@ tr:hover td{background:rgba(0,0,0,.02)}
       </div>
       <div id="magazineLiveDetail" style="display:none;padding:10px 14px;margin-bottom:14px;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:4px;font-size:11px;font-family:'SF Mono',Menlo,Consolas,monospace;color:var(--text2);white-space:pre-wrap;max-height:200px;overflow:auto"></div>
 
+      <!-- QA #339 — 검색/필터 + 요약 카드 -->
+      <div class="stats" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
+        <div class="stat"><div class="stat-n" id="magIssueStatTotal">—</div><div class="stat-l">전체</div></div>
+        <div class="stat"><div class="stat-n" id="magIssueStatActive">—</div><div class="stat-l">활성</div></div>
+        <div class="stat"><div class="stat-n" id="magIssueStatInactive">—</div><div class="stat-l">비활성</div></div>
+        <div class="stat"><div class="stat-n" id="magIssueStatLatest">—</div><div class="stat-l">LATEST</div></div>
+      </div>
+      <div style="margin-bottom:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <input class="pe-input" id="magIssueSearch" placeholder="제목·발행번호·연도로 검색..." style="max-width:320px;flex:1" oninput="renderMagazineIssuesFiltered()">
+        <select class="pe-select" id="magIssueStatusFilter" style="max-width:150px" onchange="renderMagazineIssuesFiltered()">
+          <option value="all">전체 상태</option>
+          <option value="active">활성만</option>
+          <option value="inactive">비활성만</option>
+          <option value="latest">LATEST만</option>
+        </select>
+        <select class="pe-select" id="magIssueYearFilter" style="max-width:130px" onchange="renderMagazineIssuesFiltered()">
+          <option value="all">전체 연도</option>
+        </select>
+      </div>
+
       <!-- 목록 그리드 -->
       <div id="magazineIssuesGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px"></div>
+
+      <!-- QA #339 — 페이지네이션 -->
+      <div id="magIssuePagination" style="margin-top:20px;padding:14px 12px;border-top:1px solid var(--border);background:var(--surface);display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--text3)">
+          <span id="magIssueRangeLabel">—</span>
+          <span id="magIssuePageBtns" style="display:flex;gap:4px;align-items:center"></span>
+          <span style="display:flex;align-items:center;gap:6px">
+            <label style="color:var(--text3)">페이지당</label>
+            <select id="magIssuePerPage" onchange="setMagIssueLimit(this.value)" style="background:#fff;border:1px solid var(--border2);padding:5px 8px;border-radius:3px;font-size:11px;cursor:pointer">
+              <option value="10">10개</option>
+              <option value="30" selected>30개</option>
+              <option value="50">50개</option>
+              <option value="100">100개</option>
+            </select>
+          </span>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -3461,7 +3498,7 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
      mock 시절 번들을 계속 캐시 → '+새 이미지' 클릭 시 "실제 운영 시
      S3에 업로드됩니다" 구형 alert 가 재현. pap-admin.js 를 수정하는
      커밋은 반드시 이 파라미터를 함께 올릴 것. -->
-<script src="/pap-admin.js?v=97" defer></script>
+<script src="/pap-admin.js?v=98" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>
