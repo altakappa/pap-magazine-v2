@@ -20,12 +20,12 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { directPostPhotos, toOwnedImageUrl } = require('../_lib/tiktok');
 
-// 크레딧 → 캡션 라인. 두 스키마 모두 지원:
+// 크레딧 → 캡션 줄 배열. 두 스키마 모두 지원:
 //   레거시 JSON:  [{r:'Photographer', h:[{n:'이름', id:'@핸들'}, …]}, …]
 //   신규 어드민:  [{roles:['Photographer'], name, instagram, website}, …]
-// 출력: "Photographer — Maren @marennl" (역할당 1줄, 이름들 쉼표 연결)
-function formatCredits(credits, maxChars) {
-  if (!Array.isArray(credits) || !credits.length) return '';
+// 출력 줄: "▪ Photographer : Maren @marennl" (역할당 1줄, 이름들 ' · ' 연결)
+function formatCreditLines(credits, maxChars) {
+  if (!Array.isArray(credits) || !credits.length) return [];
   const lines = [];
   for (const c of credits) {
     if (!c || typeof c !== 'object') continue;
@@ -45,37 +45,46 @@ function formatCredits(credits, maxChars) {
       if (bits.length) people.push(bits.join(' '));
     }
     if (!people.length) continue;
-    lines.push((role ? role + ' — ' : '') + people.join(', '));
+    lines.push('▪ ' + (role ? role + ' : ' : '') + people.join(' · '));
   }
-  let out = lines.join('\n');
-  if (maxChars && out.length > maxChars) {
-    // 줄 단위로 잘라 한도 내 유지 (중간 절단 방지)
+  // 줄 단위로 한도 내 유지 (중간 절단 방지)
+  if (maxChars) {
     const kept = [];
     let len = 0;
     for (const l of lines) {
-      if (len + l.length + 1 > maxChars) break;
-      kept.push(l); len += l.length + 1;
+      if (len + l.length + 2 > maxChars) break;
+      kept.push(l); len += l.length + 2;
     }
-    out = kept.join('\n');
+    return kept;
   }
-  return out;
+  return lines;
 }
 
+// 틱톡은 API 로 넣은 줄바꿈(\n)을 클라이언트에 따라 뭉개서 표시하기도 한다.
+// 대비책: ① 모든 줄을 공백+줄바꿈(' \n')으로 연결해 줄바꿈이 사라져도
+// 단어가 붙지 않게 하고, ② 각 줄 앞에 구분 기호(▪/▶)를 둬 한 줄로
+// 흘러도 시각적으로 구획이 유지되게 한다.
 function buildCaption(ed) {
   const lines = [];
   lines.push("'" + ed.title + "' — PAP MAGAZINE editorial");
+  lines.push('');
   const ko = String(ed.description || '').split(/(?<=[.!?다요])\s/)[0] || '';
-  if (ko && ko.length <= 160) lines.push(ko);
-  const credits = formatCredits(ed.credits, 1800); // 캡션 4000자 한도 내 안전 몫
-  if (credits) lines.push('[Credits]\n' + credits);
-  // 직접 URL — 틱톡 캡션에서 클릭은 안 되지만 복사·검색 가능한 명시적 출처
-  lines.push('전체 화보 보기 ↓\nhttps://www.pap-magazine.com/editorial/' + (ed.slug || ''));
+  if (ko && ko.length <= 160) { lines.push(ko); lines.push(''); }
+  const creditLines = formatCreditLines(ed.credits, 1800); // 4000자 한도 내 안전 몫
+  if (creditLines.length) {
+    lines.push('[ Credits ]');
+    creditLines.forEach((l) => lines.push(l));
+    lines.push('');
+  }
+  // 직접 URL — 클릭은 안 되지만 복사·검색 가능한 명시적 출처
+  lines.push('▶ 전체 화보 : https://www.pap-magazine.com/editorial/' + (ed.slug || ''));
+  lines.push('');
   const tt = String(ed.title || '').replace(/[^A-Za-z0-9가-힣]/g, '').toUpperCase();
   const tags = ['#패션화보', '#에디토리얼'];
   if (tt.length >= 2 && tt.length <= 25) tags.push('#' + tt);
   tags.push('#FASHIONEDITORIAL', '#PAPMAGAZINE');
   lines.push(tags.slice(0, 5).join(' '));
-  return lines.join('\n\n').slice(0, 4000);
+  return lines.join(' \n').slice(0, 4000);
 }
 
 module.exports = async function handler(req, res) {
