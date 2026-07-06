@@ -61,7 +61,7 @@ module.exports = async function handler(req, res) {
       author: { '@type': 'Organization', name: 'PEPPERIT', url: SITE + '/pepperit' },
       publisher: {
         '@type': 'Organization', name: 'PEPPERIT',
-        logo: { '@type': 'ImageObject', url: 'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/PAP_LOGO.png' },
+        logo: { '@type': 'ImageObject', url: SITE + '/pepperit-icon-512.png' },
         sameAs: [IG],
         parentOrganization: { '@id': 'https://www.pap-magazine.com/#organization' },
       },
@@ -93,6 +93,9 @@ module.exports = async function handler(req, res) {
       '<meta name="keywords" content="' + esc(tags.join(', ')) + ', 페퍼릿, PEPPERIT, 케이팝 뉴스">' +
       '<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">' +
       '<link rel="canonical" href="' + esc(url) + '">' +
+      '<link rel="icon" type="image/png" sizes="192x192" href="/pepperit-favicon-192.png">' +
+      '<link rel="icon" type="image/png" sizes="32x32" href="/pepperit-favicon-32.png">' +
+      '<link rel="apple-touch-icon" href="/pepperit-apple-touch.png">' +
       '<meta property="og:type" content="article"><meta property="og:site_name" content="PEPPERIT">' +
       '<meta property="og:title" content="' + esc(title) + '">' +
       '<meta property="og:description" content="' + esc(descr) + '">' +
