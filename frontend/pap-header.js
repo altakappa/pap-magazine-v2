@@ -386,7 +386,10 @@
     /* QA #320 — 이 컬럼의 내용은 pap-header.js 로딩 후 /api/nav-menu 응답으로
        덮어씌워진다. 아래 하드코딩 5개는 API 실패 시 fallback. */
     '    <div class="nav-right-col" id="papNavRightCol">',
-    '      <a href="#" onclick="' + _navGo('/community') + '" data-i18n="navCommunity" style="color:var(--pap-red)">COMMUNITY</a>',
+    /* QA #327 — 하드코딩된 hex 를 사용 (var(--pap-red) 를 정의하지 않는 페이지에서
+       COMMUNITY 가 회색으로 렌더링되던 버그 fix. magazine.html 등 pap-styles.css 를
+       링크하지 않은 페이지에서 CSS 변수가 비어있어 fallback 색으로 렌더링됨). */
+    '      <a href="#" onclick="' + _navGo('/community') + '" data-i18n="navCommunity" style="color:#891717">COMMUNITY</a>',
     '      <a href="#" onclick="' + _navGo('/magazine') + '" data-i18n="navMagazine" style="color:#c9a96e">MAGAZINE</a>',
     /* EDITORIAL — on index.html (where #edAllOverlay exists) open the
        overlay directly; on any other page navigate to the home-page hash
@@ -465,7 +468,11 @@
       .then(function(json){
         var list = (json && json.data) || [];
         if (!list.length) return; // fallback 유지
-        var styleColor = { red: 'var(--pap-red)', gold: '#c9a96e', muted: 'rgba(255,255,255,.5)', default: '' };
+        // QA #327 — 하드코딩된 hex 사용. CSS 변수(var(--pap-red))는
+        // pap-styles.css 를 링크하지 않은 페이지(magazine.html 등)에서
+        // 정의되지 않아 브라우저가 fallback 컬러(회색 등)로 렌더링해서
+        // 페이지마다 COMMUNITY 색상이 달라 보이던 이슈 fix.
+        var styleColor = { red: '#891717', gold: '#c9a96e', muted: 'rgba(255,255,255,.5)', default: '' };
         var html = '';
         list.forEach(function(item){
           var url = String(item.link_url || '');
