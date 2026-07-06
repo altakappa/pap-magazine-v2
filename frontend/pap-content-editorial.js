@@ -971,8 +971,13 @@ function _renderEditorialTags(title){
     tagsEl.style.display = 'none';
     return;
   }
+  // QA #326 — Route tag clicks to the unified /search page so the results
+  // grid spans editorials + articles (not just articles). Old /articles?tag=
+  // links only surfaced tag-matched articles; the unified page also shows
+  // editorials that carry the same tag/category, matching the QA expectation
+  // of "이 태그의 콘텐츠 전부".
   tagsEl.innerHTML = tagArr.map(function(t){
-    return '<a class="art-tag-chip" href="/articles?tag=' +
+    return '<a class="art-tag-chip" href="/search?tag=' +
       encodeURIComponent(t) + '">#' + escapeHtml(t) + '</a>';
   }).join('');
   tagsEl.style.display = '';

@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,follow">
+<title>Search | PAP Magazine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/pap-styles.css?v=16">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-height:100vh; padding-top:72px; }
+.search-wrap { padding:40px 48px 8px; max-width:1200px; margin:0 auto; }
+.search-eyebrow { font-size:11px; letter-spacing:.18em; color:#666; margin-bottom:8px; }
+.search-title { font-size:28px; font-weight:800; letter-spacing:.15em; color:#fff; margin-bottom:6px; }
+.search-title .highlight { color:#c9a96e; word-break:break-word; }
+.search-count { font-size:11px; color:#666; letter-spacing:.12em; margin-bottom:24px; }
+
+.search-form { display:flex; gap:8px; align-items:center; margin-bottom:24px; flex-wrap:wrap; }
+.search-form input {
+  flex:1; min-width:220px; background:transparent; border:1px solid #333; color:#fff;
+  padding:12px 16px; font-size:13px; letter-spacing:.06em;
+  font-family:'Montserrat',sans-serif;
+}
+.search-form input:focus { border-color:#c9a96e; outline:none; }
+.search-form button {
+  background:#c9a96e; border:none; color:#0a0a0a; padding:12px 22px; font-size:11px;
+  font-weight:800; letter-spacing:.14em; cursor:pointer;
+  font-family:'Montserrat',sans-serif; transition:opacity .2s;
+}
+.search-form button:hover { opacity:.85; }
+.search-form .clear-btn {
+  background:transparent; border:1px solid #333; color:#888; padding:11px 18px;
+  font-size:10px; font-weight:600; letter-spacing:.12em; cursor:pointer;
+  font-family:'Montserrat',sans-serif;
+}
+.search-form .clear-btn:hover { border-color:#666; color:#fff; }
+
+.type-tabs { display:flex; gap:6px; padding:0 48px 20px; max-width:1200px; margin:0 auto; flex-wrap:wrap; }
+.type-tab {
+  background:transparent; border:1px solid #333; color:#888; padding:6px 14px;
+  font-size:10px; font-weight:600; letter-spacing:.1em; cursor:pointer; transition:all .2s;
+  font-family:'Montserrat',sans-serif;
+}
+.type-tab:hover { border-color:#666; color:#fff; }
+.type-tab.active { background:#fff; color:#000; border-color:#fff; }
+.type-tab .n { color:#666; margin-left:6px; font-weight:500; }
+.type-tab.active .n { color:#333; }
+
+.results-grid {
+  display:grid; grid-template-columns:repeat(3,1fr); gap:24px 20px; padding:0 48px 60px;
+  max-width:1200px; margin:0 auto;
+}
+.res-card { cursor:pointer; transition:opacity .2s; text-decoration:none; color:inherit; display:block; }
+.res-card:hover { opacity:.85; }
+.res-card:hover .res-title { color:#c9a96e; }
+.res-img { width:100%; aspect-ratio:3/2; overflow:hidden; border-radius:2px; background:#111; position:relative; }
+.res-img img { width:100%; height:100%; object-fit:cover; display:block; }
+.res-badge {
+  position:absolute; top:8px; left:8px; padding:3px 8px; font-size:9px;
+  font-weight:800; letter-spacing:.14em; border-radius:2px;
+}
+.res-badge.b-ed  { background:#c9a96e; color:#0a0a0a; }
+.res-badge.b-art { background:#fff; color:#0a0a0a; }
+.res-meta { display:flex; gap:8px; align-items:center; font-size:10px; color:#666; letter-spacing:.08em; margin-top:10px; }
+.res-title { font-size:13px; font-weight:700; letter-spacing:.05em; margin-top:4px; color:#fff; transition:color .2s; line-height:1.4; }
+.res-excerpt { font-size:11px; color:#888; margin-top:6px; line-height:1.5; }
+.res-tags { display:flex; gap:5px; flex-wrap:wrap; margin-top:8px; }
+.res-tag { font-size:9px; color:#666; letter-spacing:.06em; }
+.res-tag.match { color:#c9a96e; font-weight:600; }
+
+.empty-state {
+  padding:80px 48px; text-align:center; color:#666; max-width:640px; margin:0 auto;
+}
+.empty-state h2 { font-size:16px; font-weight:700; letter-spacing:.12em; color:#fff; margin-bottom:12px; }
+.empty-state p { font-size:12px; line-height:1.7; margin-bottom:8px; }
+.empty-state a { color:#c9a96e; text-decoration:none; letter-spacing:.06em; }
+.empty-state a:hover { text-decoration:underline; }
+
+.loading { padding:80px 48px; text-align:center; color:#444; font-size:11px; letter-spacing:.18em; }
+
+@media(max-width:900px) {
+  .results-grid { grid-template-columns:repeat(2,1fr); gap:16px; padding:0 24px 60px; }
+  .search-wrap, .type-tabs { padding-left:24px; padding-right:24px; }
+  .search-title { font-size:22px; }
+}
+@media(max-width:500px) {
+  .results-grid { grid-template-columns:1fr; }
+}
+</style>
+<script src="/pap-geo-lang.js"></script>
+<script src="/pap-img-fallback.js" defer></script>
+<script src="cookie-consent.js" defer></script>
+</head>
+<body>
+<h1 style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0;">Search Results - PAP Magazine</h1>
+
+<!-- Header (papHeader will inject) -->
+<div id="papHeader"></div>
+
+<!-- Search bar (site-wide) -->
+<div class="search-bar" id="searchBar">
+  <div class="search-bar-inner">
+    <svg class="search-bar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input class="search-bar-input" type="text" placeholder="SEARCH" id="searchInput" data-i18n-ph="searchPh">
+    <button class="search-bar-close" onclick="toggleSearch()">&times;</button>
+  </div>
+  <div class="search-dropdown" id="searchDropdown"></div>
+</div>
+
+<main>
+  <section class="search-wrap">
+    <div class="search-eyebrow" id="searchEyebrow">SEARCH RESULTS</div>
+    <h2 class="search-title" id="searchTitle">—</h2>
+    <div class="search-count" id="searchCount">Loading...</div>
+
+    <form class="search-form" id="refineForm" onsubmit="return _submitRefine(event)">
+      <input type="text" id="refineInput" placeholder="제목·본문·태그로 다시 검색 / Search title, body, tag..." aria-label="Refine search">
+      <button type="submit">검색 / SEARCH</button>
+      <button type="button" class="clear-btn" onclick="_clearAll()">초기화 / CLEAR</button>
+    </form>
+  </section>
+
+  <div class="type-tabs" id="typeTabs" style="display:none">
+    <button type="button" class="type-tab active" data-type="all"       onclick="_setType('all')">전체 <span class="n" id="cntAll">0</span></button>
+    <button type="button" class="type-tab"        data-type="editorial" onclick="_setType('editorial')">에디토리얼 <span class="n" id="cntEd">0</span></button>
+    <button type="button" class="type-tab"        data-type="article"   onclick="_setType('article')">아티클 <span class="n" id="cntArt">0</span></button>
+  </div>
+
+  <div class="loading" id="loadingMsg">LOADING…</div>
+  <div class="results-grid" id="resultsGrid" style="display:none"></div>
+  <div class="empty-state" id="emptyState" style="display:none">
+    <h2>검색 결과가 없습니다 / No results found</h2>
+    <p id="emptyDetail">다른 키워드로 검색하거나, 브라우징으로 콘텐츠를 발견해보세요.</p>
+    <p>
+      <a href="/">Home →</a> &nbsp;·&nbsp;
+      <a href="/articles">Articles →</a> &nbsp;·&nbsp;
+      <a href="/#all-editorials">Editorials →</a>
+    </p>
+  </div>
+</main>
+
+<script src="/pap-header.js?v=13" defer></script>
+<script src="/pap-i18n.js?v=1" defer></script>
+<script src="/pap-search.js?v=2" defer></script>
+<script>
+// QA #326 — Unified search-results page.
+// Handles both tag-clicked navigation (?tag=…) and full-text refinement
+// (?q=…), rendering editorials + articles in one grid so the user can
+// discover related content across content types from a single tag click.
+//
+// Tag matching  : case-insensitive equality against tags[]/tag string.
+// Full-text match: substring across title + descriptions + tags + content
+//                 blocks + credits. Editorial content blocks live in
+//                 `blocks`/`credits` — article content lives in `content`
+//                 (JSON block array).
+//
+// URL params
+//   ?tag=<value>  active tag filter (rendered as a highlighted chip)
+//   ?q=<query>    substring query (extends the search beyond tags)
+//   ?type=all|editorial|article  filter to a single content type
+(function(){
+  var qs = new URLSearchParams(window.location.search);
+  var activeTag  = (qs.get('tag') || '').trim();
+  var activeQ    = (qs.get('q')   || '').trim();
+  var activeType = (qs.get('type') || 'all').toLowerCase();
+  if (['all','editorial','article'].indexOf(activeType) < 0) activeType = 'all';
+
+  var edList = [];
+  var artList = [];
+  var loaded = 0;
+
+  var esc = function(s){var d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML;};
+
+  function _titleText(){
+    if(activeTag && activeQ){
+      return '<span class="highlight">#' + esc(activeTag) + '</span> · "' + esc(activeQ) + '"';
+    }
+    if(activeTag) return '<span class="highlight">#' + esc(activeTag) + '</span>';
+    if(activeQ) return '"' + esc(activeQ) + '"';
+    return '<span style="color:#888">검색어를 입력하세요 / Enter a query above</span>';
+  }
+
+  function _syncHeader(){
+    document.getElementById('searchTitle').innerHTML = _titleText();
+    document.getElementById('refineInput').value = activeQ;
+    var eyebrow = activeTag ? 'TAG SEARCH · 태그 검색' : (activeQ ? 'SEARCH · 검색 결과' : 'SEARCH · 검색');
+    document.getElementById('searchEyebrow').textContent = eyebrow;
+  }
+
+  function _pickImg(row){
+    return row.th || row.img || row.thumbnail_url || row.cover_url || row.image_url || '';
+  }
+  function _pickExcerpt(row){
+    // Prefer the current locale, fall back to KO → EN → any populated field.
+    var lang = (localStorage.getItem('pap-lang') || navigator.language || 'en').substring(0,2);
+    var candidates = [
+      row['description_'+lang], row.description_ko, row.description_en, row.description_it, row.description,
+      row.excerpt, row.subtitle
+    ];
+    for (var i=0;i<candidates.length;i++){
+      var v = candidates[i];
+      if (typeof v === 'string' && v.trim()) return v.trim();
+    }
+    // Articles carry structured content — pull first text-ish block.
+    if (Array.isArray(row.content)) {
+      for (var j=0;j<row.content.length;j++){
+        var b = row.content[j];
+        if (b && typeof b === 'object'){
+          if (typeof b.text === 'string' && b.text.trim()) return b.text.trim();
+          if (typeof b.body === 'string' && b.body.trim()) return b.body.trim();
+          if (typeof b.paragraph === 'string' && b.paragraph.trim()) return b.paragraph.trim();
+        }
+      }
+    }
+    return '';
+  }
+  function _extractTags(row){
+    var raw = row.tags;
+    if (Array.isArray(raw)) return raw.map(function(t){return String(t).trim();}).filter(Boolean);
+    if (typeof raw === 'string') return raw.split(',').map(function(t){return t.trim();}).filter(Boolean);
+    return [];
+  }
+  // Flatten anything text-ish (nested content blocks + credits) into one
+  // string so `?q=` can substring-match across the whole record.
+  function _fullText(row){
+    var parts = [
+      row.title, row.subtitle, row.description, row.description_ko, row.description_en, row.description_it,
+      row.excerpt, row.cat, row.category
+    ];
+    _extractTags(row).forEach(function(t){ parts.push(t); });
+    if (Array.isArray(row.content)){
+      row.content.forEach(function(b){
+        if (b && typeof b === 'object'){
+          ['text','body','paragraph','caption','title','html'].forEach(function(k){
+            if (typeof b[k] === 'string') parts.push(b[k]);
+          });
+        }
+      });
+    }
+    if (Array.isArray(row.credits)){
+      row.credits.forEach(function(c){
+        if (!c) return;
+        if (typeof c === 'string') { parts.push(c); return; }
+        // Both legacy {p,r} and new {roles,name,instagram} schemas.
+        parts.push(c.name, c.p, c.instagram);
+        if (Array.isArray(c.roles)) c.roles.forEach(function(r){ parts.push(r); });
+        else parts.push(c.roles || c.r);
+      });
+    }
+    return parts.filter(Boolean).join(' \n ').toLowerCase();
+  }
+
+  function _match(row){
+    // Tag filter: exact case-insensitive equality on any tag.
+    if (activeTag){
+      var tags = _extractTags(row);
+      var wanted = activeTag.toLowerCase();
+      var hit = tags.some(function(t){ return String(t).toLowerCase() === wanted; });
+      if (!hit) return false;
+    }
+    // Full-text query filter.
+    if (activeQ){
+      var hay = _fullText(row);
+      if (hay.indexOf(activeQ.toLowerCase()) < 0) return false;
+    }
+    return true;
+  }
+
+  function _detailHref(kind, row){
+    var slug = row.slug || row.id || '';
+    if (!slug) return '#';
+    if (kind === 'editorial') return '/editorial/' + encodeURIComponent(slug);
+    if (kind === 'article')   return '/article/'   + encodeURIComponent(slug);
+    return '#';
+  }
+
+  function _renderCard(kind, row){
+    var href = _detailHref(kind, row);
+    var img  = _pickImg(row);
+    var title = row.title || '';
+    var excerpt = _pickExcerpt(row);
+    if (excerpt.length > 140) excerpt = excerpt.slice(0, 140) + '…';
+    var tags = _extractTags(row).slice(0, 5);
+    var kindLabel = kind === 'editorial' ? 'EDITORIAL' : 'ARTICLE';
+    var kindCls   = kind === 'editorial' ? 'b-ed' : 'b-art';
+    var wantedTag = activeTag.toLowerCase();
+
+    var tagsHtml = tags.map(function(t){
+      var isMatch = wantedTag && t.toLowerCase() === wantedTag;
+      return '<span class="res-tag'+(isMatch?' match':'')+'">#'+esc(t)+'</span>';
+    }).join(' ');
+
+    var metaBits = [];
+    if (row.cat) metaBits.push(String(row.cat).toUpperCase());
+    if (row.date) metaBits.push(row.date);
+    var meta = metaBits.length ? metaBits.join(' · ') : kindLabel;
+
+    return '<a class="res-card" href="'+esc(href)+'">' +
+      '<div class="res-img">' +
+        (img ? '<img src="'+esc(img)+'" alt="'+esc(title)+'" loading="lazy" onerror="this.style.display=\'none\'">' : '') +
+        '<span class="res-badge '+kindCls+'">'+kindLabel+'</span>' +
+      '</div>' +
+      '<div class="res-meta">'+esc(meta)+'</div>' +
+      '<div class="res-title">'+esc(title)+'</div>' +
+      (excerpt ? '<div class="res-excerpt">'+esc(excerpt)+'</div>' : '') +
+      (tagsHtml ? '<div class="res-tags">'+tagsHtml+'</div>' : '') +
+    '</a>';
+  }
+
+  function _render(){
+    // Nothing to search yet — invite the user to type.
+    if (!activeTag && !activeQ){
+      document.getElementById('loadingMsg').style.display = 'none';
+      document.getElementById('resultsGrid').style.display = 'none';
+      document.getElementById('emptyState').style.display = '';
+      document.getElementById('emptyDetail').textContent = '위의 검색창에서 제목·본문·태그로 검색하거나, 에디토리얼/아티클의 해시태그를 클릭해서 관련 콘텐츠를 탐색해보세요.';
+      document.getElementById('searchCount').textContent = '';
+      return;
+    }
+
+    var eds = edList.filter(_match).map(function(r){ return { kind:'editorial', row:r }; });
+    var arts = artList.filter(_match).map(function(r){ return { kind:'article', row:r }; });
+
+    document.getElementById('cntAll').textContent = String(eds.length + arts.length);
+    document.getElementById('cntEd').textContent  = String(eds.length);
+    document.getElementById('cntArt').textContent = String(arts.length);
+    document.getElementById('typeTabs').style.display = '';
+    // Highlight the correct tab
+    document.querySelectorAll('.type-tab').forEach(function(t){
+      t.classList.toggle('active', t.getAttribute('data-type') === activeType);
+    });
+
+    var pool = [];
+    if (activeType === 'all')       pool = eds.concat(arts);
+    else if (activeType === 'editorial') pool = eds;
+    else if (activeType === 'article')   pool = arts;
+
+    document.getElementById('loadingMsg').style.display = 'none';
+    var grid = document.getElementById('resultsGrid');
+    var empty = document.getElementById('emptyState');
+    var count = document.getElementById('searchCount');
+
+    if (!pool.length){
+      grid.style.display = 'none';
+      empty.style.display = '';
+      count.textContent = '검색 결과 없음 / No results (편집자용: 0)';
+      document.getElementById('emptyDetail').textContent =
+        activeTag
+          ? '"' + activeTag + '" 태그가 적용된 콘텐츠가 없습니다. 다른 태그 또는 키워드로 검색해보세요.'
+          : '"' + activeQ + '" 로 매칭된 콘텐츠가 없습니다.';
+      return;
+    }
+    empty.style.display = 'none';
+    grid.style.display = '';
+    grid.innerHTML = pool.map(function(x){ return _renderCard(x.kind, x.row); }).join('');
+    var totalEdArt = eds.length + arts.length;
+    count.textContent = totalEdArt + ' 건 · ' + eds.length + ' EDITORIAL · ' + arts.length + ' ARTICLE';
+  }
+
+  function _bootDone(){
+    loaded++;
+    if (loaded >= 2) _render();
+  }
+
+  // Fetch editorial + article lists in parallel. The public list endpoints
+  // already return everything we need (tags, thumbnails, descriptions).
+  function _fetchList(url, key){
+    fetch(url).then(function(r){ return r.json(); }).then(function(j){
+      var list = j[key] || j.data || j || [];
+      return Array.isArray(list) ? list : [];
+    }).catch(function(){ return []; }).then(function(list){
+      if (key === 'editorials') edList = list;
+      else if (key === 'articles') artList = list;
+      _bootDone();
+    });
+  }
+
+  window._setType = function(t){
+    activeType = t;
+    var url = new URL(window.location.href);
+    if (t === 'all') url.searchParams.delete('type');
+    else url.searchParams.set('type', t);
+    history.replaceState(null, '', url.pathname + (url.search || '') + url.hash);
+    _render();
+  };
+
+  window._submitRefine = function(e){
+    e.preventDefault();
+    var v = (document.getElementById('refineInput').value || '').trim();
+    var url = new URL(window.location.origin + '/search');
+    if (activeTag) url.searchParams.set('tag', activeTag);
+    if (v) url.searchParams.set('q', v);
+    if (activeType !== 'all') url.searchParams.set('type', activeType);
+    window.location.href = url.pathname + (url.search || '');
+    return false;
+  };
+
+  window._clearAll = function(){
+    window.location.href = '/search';
+  };
+
+  _syncHeader();
+  _fetchList('/api/editorials?limit=500', 'editorials');
+  _fetchList('/api/articles?limit=500',   'articles');
+})();
+</script>
+
+</body>
+</html>

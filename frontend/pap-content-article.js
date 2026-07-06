@@ -419,15 +419,14 @@ function _renderArticleDetail(a,det){
   var tagsEl=document.getElementById('artDetailTags');
   if(a.tags){
     var tagArr=Array.isArray(a.tags)?a.tags:(typeof a.tags==='string'?a.tags.split(','):[]);
-    // Each hashtag is now a clickable link → /articles?tag=<tag>.
-    // The articles list page reads the query param and filters its grid
-    // to only entries whose .tags include that value, with an active-tag
-    // chip rendered at the top so the user knows the filter is on and
-    // can clear it. Hover/active styling defined under .art-tag-chip.
+    // QA #326 — Unified tag search. Route the click to /search?tag=<value>
+    // which surfaces BOTH editorials + articles carrying that tag, so
+    // discovery isn't limited to one content type. Previous /articles?tag=
+    // filtered only articles and the user reported dead-end tag clicks.
     tagsEl.innerHTML=tagArr.map(function(t){
       var tag = (typeof t === 'string' ? t.trim() : String(t));
       if(!tag) return '';
-      return '<a class="art-tag-chip" href="/articles?tag=' +
+      return '<a class="art-tag-chip" href="/search?tag=' +
         encodeURIComponent(tag) + '">#' + escapeHtml(tag) + '</a>';
     }).join('');
     tagsEl.style.display='';

@@ -99,6 +99,7 @@
     { "source": "/film", "destination": "/films.html" },
     { "source": "/article", "destination": "/articles.html" },
     { "source": "/editorial", "destination": "/index.html" },
+    { "source": "/search", "destination": "/search.html" },
     { "source": "/auth", "destination": "/auth.html" },
     { "source": "/mypage", "destination": "/mypage.html" },
     { "source": "/submission", "destination": "/submission.html" },

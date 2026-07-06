@@ -224,9 +224,9 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
 <script src="/pap-static.js?v=1" defer></script>
 <script src="/pap-subscription.js?v=2" defer></script>
 <script src="/pap-home.js?v=1" defer></script>
-<script src="/pap-content-editorial.js?v=16" defer></script>
+<script src="/pap-content-editorial.js?v=17" defer></script>
 <script src="/pap-content-film.js?v=9" defer></script>
-<script src="/pap-content-article.js?v=13" defer></script>
+<script src="/pap-content-article.js?v=14" defer></script>
 <script src="/pap-content-creator-shorts.js?v=1" defer></script>
 <script src="/pap-content-api-sync.js?v=10" defer></script>
 <script src="/pap-content-seo.js?v=4" defer></script>
@@ -351,7 +351,9 @@ document.addEventListener('DOMContentLoaded', function() {
     var xref = document.createElement('a');
     xref.id = 'artActiveTagXref';
     xref.className = 'art-active-tag-xref';
-    xref.href = '/?tag=' + encodeURIComponent(activeTag) + '#all-editorials';
+    // QA #326 — Route to the unified /search page so the user sees both
+    // editorials and articles carrying this tag on a single results view.
+    xref.href = '/search?tag=' + encodeURIComponent(activeTag) + '&type=editorial';
     xref.textContent = xrefLabel;
     if(fw && fw.parentNode){
       fw.parentNode.insertBefore(xref, fw);
