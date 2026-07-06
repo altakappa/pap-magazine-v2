@@ -474,10 +474,14 @@
           var i18nAttr = item.label_key ? (' data-i18n="' + item.label_key + '"') : '';
           var label = _escNav(item.label_default || '');
           var onclick;
-          if (url === '/#all-editorials'){
-            // EDITORIAL 특수 케이스: 홈페이지 오버레이 트리거.
-            onclick = 'event.preventDefault();_papCloseNav();if(document.getElementById(\'edAllOverlay\')&&typeof openAllEditorials===\'function\'){openAllEditorials();}else{window.location.href=\'/#all-editorials\';}';
-            html += '<a href="/#all-editorials" onclick="' + onclick + '"' + i18nAttr + styleAttr + '>' + label + '</a>';
+          if (url === '/#all-editorials' || url === '/editorial'){
+            // QA #323 — EDITORIAL 특수 케이스. 두 가지 URL 스타일 지원:
+            //   /#all-editorials  (레거시 hash 기반)
+            //   /editorial        (clean singular path — 권장)
+            // 두 경우 모두 홈페이지의 openAllEditorials() 오버레이를 트리거.
+            // 홈페이지가 아니면 clean path 로 navigate 후 랜딩 스크립트가 auto-open.
+            onclick = 'event.preventDefault();_papCloseNav();if(document.getElementById(\'edAllOverlay\')&&typeof openAllEditorials===\'function\'){openAllEditorials();}else{window.location.href=\'/editorial\';}';
+            html += '<a href="/editorial" onclick="' + onclick + '"' + i18nAttr + styleAttr + '>' + label + '</a>';
           } else if (/^https?:\/\//i.test(url)){
             // 외부 URL: 새 탭.
             html += '<a href="' + _escNav(url) + '" target="_blank" rel="noopener noreferrer" onclick="_papCloseNav()"' + i18nAttr + styleAttr + '>' + label + '</a>';

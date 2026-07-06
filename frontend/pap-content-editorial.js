@@ -1746,7 +1746,13 @@ function closeAllEditorials(skipHistory){
     }
   }
   function tryOpen(){
-    if(window.location.hash !== '#all-editorials') return;
+    // QA #323 — clean singular path 지원. hash 기반 legacy 트리거와 함께
+    // vercel.json 의 /editorial → /index.html rewrite 를 통해 도착한
+    // pathname='/editorial' 도 인식.
+    var isEditorialTrigger = (window.location.hash === '#all-editorials')
+      || (window.location.pathname === '/editorial')
+      || (window._papAutoOpenEditorials === true);
+    if(!isEditorialTrigger) return;
     var overlay=document.getElementById('edAllOverlay');
     if(!overlay){ setTimeout(revealBody,60); return; }
     if(typeof openAllEditorials !== 'function'){ setTimeout(tryOpen,100); return; }

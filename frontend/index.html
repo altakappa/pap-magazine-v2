@@ -18,7 +18,14 @@
     // hash handler in pap-content-seo.js polls for edDetails, producing a
     // visible "home → editorial" flash on refresh.
     var hasEditorialHash=(typeof window.location.hash==='string' && window.location.hash.indexOf('#editorial/')===0);
-    if(!hasEdParam && !hasAllHash && !hasEditorialHash) return;
+    // QA #323 — Clean singular path deep-links. vercel.json 이 /editorial 를
+    // /index.html 로 rewrite 하고, 여기서 pathname 을 감지해 오버레이를 auto-open.
+    // /article /film 은 각각 /articles.html /films.html 로 rewrite 되므로 이 브랜치엔 안 들어옴.
+    var hasEditorialPath=(typeof window.location.pathname==='string' && window.location.pathname==='/editorial');
+    if(hasEditorialPath){
+      window._papAutoOpenEditorials=true;
+    }
+    if(!hasEdParam && !hasAllHash && !hasEditorialHash && !hasEditorialPath) return;
     window._papDeepLinkMode=true;
     var style=document.createElement('style');
     style.id='pap-deeplink-cover-style';
@@ -866,7 +873,7 @@
 <!-- QA #310 — 스플래시 로더. defer 없이 즉시 실행돼서 첫 페인트 전에
      오버레이를 띄운다. 세션 내 재노출은 sessionStorage 로 방지. -->
 <script src="/pap-splash-loader.js?v=2"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script><script src="/pap-logos-data.js?v=1" defer></script><script src="/pap-api.js?v=6" defer></script><script src="/pap-social.js?v=3" defer></script><script src="/pap-utils.js?v=2" defer></script><script src="/pap-i18n.js?v=3" defer></script><script src="/pap-auth.js?v=3" defer></script><script src="/pap-search.js?v=3" defer></script><script src="/pap-static.js?v=1" defer></script><script src="/pap-subscription.js?v=2" defer></script><script src="/pap-home.js?v=1" defer></script><script src="/pap-content-editorial.js?v=16" defer></script><script src="/pap-content-film.js?v=9" defer></script><script src="/pap-content-article.js?v=13" defer></script><script src="/pap-content-creator-shorts.js?v=1" defer></script><script src="/pap-content-api-sync.js?v=10" defer></script><script src="/pap-content-seo.js?v=5" defer></script><script src="/pap-shell-bootstrap.js?v=8" defer></script><script src="/pap-app.js?v=20" defer></script><script src="/pap-lightbox.js?v=2" defer></script><script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=12" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script><script src="/pap-logos-data.js?v=1" defer></script><script src="/pap-api.js?v=6" defer></script><script src="/pap-social.js?v=3" defer></script><script src="/pap-utils.js?v=2" defer></script><script src="/pap-i18n.js?v=3" defer></script><script src="/pap-auth.js?v=3" defer></script><script src="/pap-search.js?v=3" defer></script><script src="/pap-static.js?v=1" defer></script><script src="/pap-subscription.js?v=2" defer></script><script src="/pap-home.js?v=1" defer></script><script src="/pap-content-editorial.js?v=17" defer></script><script src="/pap-content-film.js?v=9" defer></script><script src="/pap-content-article.js?v=13" defer></script><script src="/pap-content-creator-shorts.js?v=1" defer></script><script src="/pap-content-api-sync.js?v=10" defer></script><script src="/pap-content-seo.js?v=5" defer></script><script src="/pap-shell-bootstrap.js?v=8" defer></script><script src="/pap-app.js?v=20" defer></script><script src="/pap-lightbox.js?v=2" defer></script><script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=13" defer></script>
 <script src="/pap-protect.js?v=3" defer></script>
 <div class="creator-popup-overlay" id="creatorPopup" onclick="if(event.target===this)closeCreatorPopup()">
   <div class="creator-popup">
