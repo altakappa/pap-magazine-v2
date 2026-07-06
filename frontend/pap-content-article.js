@@ -380,12 +380,17 @@ function _renderArticleDetail(a,det){
         +'<div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:10px">On Instagram</div>'
         +'<div style="font-size:13.5px;line-height:1.7;color:#ddd;margin-bottom:16px">이 스토리의 원본 게시물이 인스타그램에 있습니다.<br><b style="color:#fff">좋아요·저장</b>으로 소장하고, 좋아할 친구에게 <b style="color:#fff">보내기</b>로 공유해보세요.</div>'
         +'<a href="'+_igSafe+'" target="_blank" rel="noopener" style="display:inline-block;background:#fff;color:#000;padding:11px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none">게시물에서 반응 남기기 →</a>'
+        +'<a href="https://www.instagram.com/pap_magazine/" target="_blank" rel="noopener" style="display:inline-block;margin:8px 0 0 10px;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);padding:11px 22px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none">Follow @pap_magazine</a>'
         +'<button onclick="_papShareArticle()" style="display:inline-block;margin:8px 0 0 10px;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);padding:11px 22px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;cursor:pointer">친구에게 보내기 ↗</button>'
         +'</aside>';
       igCta.style.display='';
       if(_canEmbed) _papLoadIgEmbed();
     } else { igCta.innerHTML=''; igCta.style.display='none'; }
   }
+  // 2026-07 — 원본 게시물 CTA 와 팔로우 깔때기의 역할 중복 해소:
+  // IG 소스가 있으면(위 박스에 Follow 포함) 아래 깔때기는 숨긴다.
+  var funnelEl=document.getElementById('artIgFunnel');
+  if(funnelEl){ funnelEl.style.display=(a.ig && /instagram\.com/.test(a.ig)) ? 'none' : ''; }
   // Use localized title/sub if available
   var _curLang=(typeof lang!=='undefined'?lang:(localStorage.getItem('pap-lang')||'ko'));
   var _locTitle=(a.ti18n && (a.ti18n[_curLang]||a.ti18n.en))||a.t||'';
