@@ -142,7 +142,9 @@ async function directPostPhotos(photoUrls, title, description) {
 function toOwnedImageUrl(u) {
   if (!u) return u;
   if (/^https:\/\/www\.pap-magazine\.com\//.test(u)) return u;
-  return 'https://www.pap-magazine.com/_vercel/image?url=' + encodeURIComponent(u) + '&w=1280&q=80';
+  // /api/img — 원본 JPEG 바이트 그대로 중계 (Vercel 이미지 최적화는 AVIF/WebP
+  // 협상 때문에 TikTok picture_size_check 에서 실패한다)
+  return 'https://www.pap-magazine.com/api/img?u=' + encodeURIComponent(u);
 }
 
 module.exports = { authorizeUrl, exchangeCode, getAccessToken, directPostPhotos, toOwnedImageUrl, REDIRECT_URI };
