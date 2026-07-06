@@ -11386,32 +11386,216 @@ async function loadNavMenuItems(){
   renderMenuCats();
 }
 
+// QA #324 — 인라인 편집 렌더링.
+// 각 행이 입력 가능한 상태로 표시되고, 값이 변하면 '저장' 버튼이 노란색으로
+// 강조돼 dirty 상태를 시각적으로 표시. 저장 성공 시 원본 값 동기화.
+// 팝업 모달은 하위 호환용으로 유지 (openNavMenuModal 은 그대로 노출).
 function renderMenuCats(){
   var tb = document.getElementById('menuCatBody');
   if (!tb) return;
-  if (!menuCats.length){
-    tb.innerHTML = '<tr><td colspan="7" style="padding:24px;text-align:center;color:var(--text3)">등록된 메뉴 항목이 없습니다. <strong>+ 새 메뉴 추가</strong> 버튼으로 등록해주세요.</td></tr>';
-    return;
-  }
   tb.innerHTML = '';
   var styleColor = { red: 'var(--red)', gold: '#c9a96e', muted: 'var(--text3)', default: 'var(--text1)' };
   menuCats.forEach(function(m){
     var color = styleColor[m.style] || styleColor.default;
-    tb.innerHTML +=
-      '<tr>' +
-        '<td>' + esc(String(m.sort_order || 0)) + '</td>' +
-        '<td style="font-weight:700;letter-spacing:.04em;color:' + color + '">' + esc(m.label_default || '') + '</td>' +
-        '<td style="font-family:monospace;font-size:11px;color:var(--text3)">' + esc(m.label_key || '—') + '</td>' +
-        '<td style="font-family:monospace;font-size:11px;color:var(--text2)">' + esc(m.link_url || '') + '</td>' +
-        '<td><span style="display:inline-block;padding:3px 8px;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:2px;font-size:10px;color:' + color + '">' + esc(m.style || 'default') + '</span></td>' +
-        '<td style="text-align:center">' + (m.is_active ? '<span style="color:var(--green)">✓</span>' : '<span style="color:var(--red)">✗</span>') + '</td>' +
-        '<td>' +
-          '<button class="btn btn-sm" onclick="openNavMenuModal(\'' + esc(m.id) + '\')" title="편집">✏️ 편집</button> ' +
-          '<button class="btn btn-sm" onclick="_toggleNavMenuActive(\'' + esc(m.id) + '\')" title="' + (m.is_active ? '비활성화' : '활성화') + '">' + (m.is_active ? '숨김' : '표시') + '</button> ' +
-          '<button class="btn btn-sm btn-red" onclick="deleteNavMenuItem(\'' + esc(m.id) + '\')" title="삭제">🗑️</button>' +
-        '</td>' +
-      '</tr>';
+    var rid = 'nav-row-' + esc(m.id);
+    var tr = document.createElement('tr');
+    tr.id = rid;
+    tr.dataset.id = m.id;
+    // 원본 값을 dataset 에 저장해서 dirty 감지 + reset 에 사용.
+    tr.dataset.origLabelKey     = m.label_key || '';
+    tr.dataset.origLabelDefault = m.label_default || '';
+    tr.dataset.origLinkUrl      = m.link_url || '';
+    tr.dataset.origStyle        = m.style || 'default';
+    tr.dataset.origSortOrder    = String(m.sort_order || 0);
+    tr.dataset.origIsActive     = m.is_active ? '1' : '0';
+    tr.innerHTML =
+      '<td><input type="number" class="pe-input" value="' + esc(String(m.sort_order || 0)) + '" oninput="_markNavRowDirty(\'' + esc(m.id) + '\')" style="width:60px;padding:5px 6px;font-size:12px" data-field="sort_order"></td>' +
+      '<td><input type="text" class="pe-input" value="' + esc(m.label_default || '') + '" oninput="_markNavRowDirty(\'' + esc(m.id) + '\')" style="width:100%;padding:5px 8px;font-size:12px;font-weight:700;letter-spacing:.04em;color:' + color + '" data-field="label_default" placeholder="예: BEAUTY"></td>' +
+      '<td><input type="text" class="pe-input" value="' + esc(m.label_key || '') + '" oninput="_markNavRowDirty(\'' + esc(m.id) + '\')" style="width:100%;padding:5px 8px;font-size:11px;font-family:monospace;color:var(--text3)" data-field="label_key" placeholder="예: navBeauty (선택)"></td>' +
+      '<td><input type="text" class="pe-input" value="' + esc(m.link_url || '') + '" oninput="_markNavRowDirty(\'' + esc(m.id) + '\')" style="width:100%;padding:5px 8px;font-size:11px;font-family:monospace;color:var(--text2)" data-field="link_url" placeholder="예: /beauty"></td>' +
+      '<td>' +
+        '<select class="pe-select" onchange="_markNavRowDirty(\'' + esc(m.id) + '\')" style="width:100%;padding:5px 6px;font-size:12px" data-field="style">' +
+          '<option value="default"' + (m.style === 'default' ? ' selected' : '') + '>default</option>' +
+          '<option value="red"'     + (m.style === 'red'     ? ' selected' : '') + '>red</option>' +
+          '<option value="gold"'    + (m.style === 'gold'    ? ' selected' : '') + '>gold</option>' +
+          '<option value="muted"'   + (m.style === 'muted'   ? ' selected' : '') + '>muted</option>' +
+        '</select>' +
+      '</td>' +
+      '<td style="text-align:center">' +
+        '<label class="pe-check" style="justify-content:center;cursor:pointer">' +
+          '<input type="checkbox"' + (m.is_active ? ' checked' : '') + ' onchange="_markNavRowDirty(\'' + esc(m.id) + '\')" data-field="is_active">' +
+        '</label>' +
+      '</td>' +
+      '<td>' +
+        '<button class="btn btn-sm" onclick="_saveNavRow(\'' + esc(m.id) + '\')" data-role="save" style="opacity:.4" disabled title="변경사항이 있으면 활성화됩니다">💾 저장</button> ' +
+        '<button class="btn btn-sm" onclick="_resetNavRow(\'' + esc(m.id) + '\')" data-role="reset" style="opacity:.4" disabled title="원래 값으로 되돌립니다">↺</button> ' +
+        '<button class="btn btn-sm btn-red" onclick="deleteNavMenuItem(\'' + esc(m.id) + '\')" title="삭제">🗑️</button>' +
+      '</td>';
+    tb.appendChild(tr);
   });
+  // 하단 '새 메뉴 추가' 행 렌더링.
+  _renderNavNewRow();
+}
+
+// 새 메뉴 추가용 인라인 행 (테이블 최하단).
+function _renderNavNewRow(){
+  var tb = document.getElementById('menuCatBody');
+  if (!tb) return;
+  var maxOrder = menuCats.reduce(function(m, x){ return Math.max(m, x.sort_order || 0); }, 0);
+  var suggestedOrder = maxOrder + 10;
+  var tr = document.createElement('tr');
+  tr.id = 'nav-row-new';
+  tr.style.background = 'rgba(46,204,113,.05)';
+  tr.style.borderTop = '2px solid rgba(46,204,113,.35)';
+  tr.innerHTML =
+    '<td><input type="number" class="pe-input" id="navNewSortOrder" value="' + suggestedOrder + '" style="width:60px;padding:5px 6px;font-size:12px"></td>' +
+    '<td><input type="text" class="pe-input" id="navNewLabelDefault" placeholder="라벨 (예: BEAUTY)" style="width:100%;padding:5px 8px;font-size:12px;font-weight:700"></td>' +
+    '<td><input type="text" class="pe-input" id="navNewLabelKey" placeholder="i18n 키 (선택)" style="width:100%;padding:5px 8px;font-size:11px;font-family:monospace"></td>' +
+    '<td><input type="text" class="pe-input" id="navNewLinkUrl" placeholder="/beauty" style="width:100%;padding:5px 8px;font-size:11px;font-family:monospace"></td>' +
+    '<td>' +
+      '<select class="pe-select" id="navNewStyle" style="width:100%;padding:5px 6px;font-size:12px">' +
+        '<option value="default">default</option>' +
+        '<option value="red">red</option>' +
+        '<option value="gold">gold</option>' +
+        '<option value="muted">muted</option>' +
+      '</select>' +
+    '</td>' +
+    '<td style="text-align:center">' +
+      '<label class="pe-check" style="justify-content:center;cursor:pointer">' +
+        '<input type="checkbox" id="navNewActive" checked>' +
+      '</label>' +
+    '</td>' +
+    '<td>' +
+      '<button class="btn btn-sm btn-primary" onclick="_addNavRowInline()">➕ 추가</button>' +
+    '</td>';
+  tb.appendChild(tr);
+}
+
+// 행 값이 원본과 다르면 dirty 표시 (저장/리셋 버튼 활성화).
+function _markNavRowDirty(id){
+  var tr = document.getElementById('nav-row-' + id);
+  if (!tr) return;
+  var current = _readNavRowValues(tr);
+  var dirty = String(current.label_key)     !== tr.dataset.origLabelKey
+           || String(current.label_default) !== tr.dataset.origLabelDefault
+           || String(current.link_url)      !== tr.dataset.origLinkUrl
+           || String(current.style)         !== tr.dataset.origStyle
+           || String(current.sort_order)    !== tr.dataset.origSortOrder
+           || (current.is_active ? '1' : '0') !== tr.dataset.origIsActive;
+  var saveBtn = tr.querySelector('button[data-role="save"]');
+  var resetBtn = tr.querySelector('button[data-role="reset"]');
+  if (saveBtn){
+    saveBtn.disabled = !dirty;
+    saveBtn.style.opacity = dirty ? '1' : '.4';
+    saveBtn.style.background = dirty ? 'linear-gradient(135deg,#f39c12,#e67e22)' : '';
+    saveBtn.style.color = dirty ? '#fff' : '';
+    saveBtn.style.borderColor = dirty ? '#d68910' : '';
+  }
+  if (resetBtn){
+    resetBtn.disabled = !dirty;
+    resetBtn.style.opacity = dirty ? '1' : '.4';
+  }
+}
+
+// 행에서 현재 편집 중인 값 읽기.
+function _readNavRowValues(tr){
+  var q = function(field){ return tr.querySelector('[data-field="' + field + '"]'); };
+  return {
+    label_default: (q('label_default').value || '').trim(),
+    label_key:     (q('label_key').value || '').trim() || null,
+    link_url:      (q('link_url').value || '').trim(),
+    style:         q('style').value || 'default',
+    sort_order:    parseInt(q('sort_order').value, 10) || 0,
+    is_active:     !!q('is_active').checked,
+  };
+}
+
+// 개별 행 저장.
+async function _saveNavRow(id){
+  var tr = document.getElementById('nav-row-' + id);
+  if (!tr) return;
+  var vals = _readNavRowValues(tr);
+  if (!vals.label_default){ alert('⚠️ 라벨을 입력해주세요.'); return; }
+  if (!vals.link_url){ alert('⚠️ 링크 URL 을 입력해주세요.'); return; }
+  var saveBtn = tr.querySelector('button[data-role="save"]');
+  if (saveBtn){ saveBtn.disabled = true; saveBtn.textContent = '저장 중…'; }
+  try {
+    var resp = await apiPatch('/admin/nav-menu', Object.assign({ id: id }, vals));
+    if (resp && resp.message && !resp.data){
+      var detail = resp.detail ? (resp.message + ' — ' + resp.detail) : resp.message;
+      throw new Error(detail);
+    }
+    // 로컬 데이터 동기화 + 원본 dataset 갱신.
+    var idx = menuCats.findIndex(function(x){ return x.id === id; });
+    if (idx >= 0) menuCats[idx] = Object.assign({}, menuCats[idx], resp.data || vals);
+    tr.dataset.origLabelKey     = vals.label_key || '';
+    tr.dataset.origLabelDefault = vals.label_default;
+    tr.dataset.origLinkUrl      = vals.link_url;
+    tr.dataset.origStyle        = vals.style;
+    tr.dataset.origSortOrder    = String(vals.sort_order);
+    tr.dataset.origIsActive     = vals.is_active ? '1' : '0';
+    _markNavRowDirty(id); // 저장 후 dirty 해제
+    // 저장 성공 표시 (2초간 초록 배경)
+    tr.style.transition = 'background .3s ease';
+    tr.style.background = 'rgba(46,204,113,.15)';
+    setTimeout(function(){ tr.style.background = ''; }, 1500);
+    var statusEl = document.getElementById('navMenuLiveStatus');
+    if (statusEl){
+      statusEl.textContent = '✓ 저장 완료 · 웹사이트에 최대 1분 내 반영';
+      statusEl.style.color = '#27ae60';
+      setTimeout(function(){ statusEl.textContent = ''; }, 3000);
+    }
+  } catch(e){
+    console.error('[nav-menu] inline save failed:', e);
+    alert('❌ 저장 실패\n\n' + (e && e.message || e));
+  } finally {
+    if (saveBtn){ saveBtn.textContent = '💾 저장'; }
+  }
+}
+
+// 행을 원본 값으로 되돌리기.
+function _resetNavRow(id){
+  var tr = document.getElementById('nav-row-' + id);
+  if (!tr) return;
+  var q = function(field){ return tr.querySelector('[data-field="' + field + '"]'); };
+  q('label_default').value = tr.dataset.origLabelDefault;
+  q('label_key').value     = tr.dataset.origLabelKey;
+  q('link_url').value      = tr.dataset.origLinkUrl;
+  q('style').value         = tr.dataset.origStyle;
+  q('sort_order').value    = tr.dataset.origSortOrder;
+  q('is_active').checked   = tr.dataset.origIsActive === '1';
+  _markNavRowDirty(id);
+}
+
+// 신규 메뉴 인라인 추가.
+async function _addNavRowInline(){
+  var payload = {
+    label_default: (document.getElementById('navNewLabelDefault').value || '').trim(),
+    label_key:     (document.getElementById('navNewLabelKey').value || '').trim() || null,
+    link_url:      (document.getElementById('navNewLinkUrl').value || '').trim(),
+    style:         document.getElementById('navNewStyle').value || 'default',
+    sort_order:    parseInt(document.getElementById('navNewSortOrder').value, 10) || 0,
+    is_active:     !!document.getElementById('navNewActive').checked,
+  };
+  if (!payload.label_default){ alert('⚠️ 라벨을 입력해주세요.'); return; }
+  if (!payload.link_url){ alert('⚠️ 링크 URL 을 입력해주세요.'); return; }
+  try {
+    var resp = await apiPost('/admin/nav-menu', payload);
+    if (resp && resp.message && !resp.data){
+      var detail = resp.detail ? (resp.message + ' — ' + resp.detail) : resp.message;
+      throw new Error(detail);
+    }
+    await loadNavMenuItems();
+    var statusEl = document.getElementById('navMenuLiveStatus');
+    if (statusEl){
+      statusEl.textContent = '✓ 새 메뉴 등록 완료 · 웹사이트에 최대 1분 내 반영';
+      statusEl.style.color = '#27ae60';
+      setTimeout(function(){ statusEl.textContent = ''; }, 3000);
+    }
+  } catch(e){
+    console.error('[nav-menu] inline add failed:', e);
+    alert('❌ 등록 실패\n\n' + (e && e.message || e));
+  }
 }
 
 function openNavMenuModal(id){
