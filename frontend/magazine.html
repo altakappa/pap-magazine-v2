@@ -409,6 +409,15 @@ footer a:hover{color:#fff}
   <div class="grid" id="qvGrid"></div>
 </section>
 
+<!-- QA #317 — 관리자 API 에서 로드되는 동적 발행호 컨테이너.
+     성공 시 magIssuesInject 스크립트가 채우고 아래 하드코딩 fallback 은 숨긴다.
+     실패 시 fallback 이 그대로 유지되어 사이트가 깨지지 않는다. -->
+<div id="magIssuesDynamic" style="display:none"></div>
+
+<!-- 하드코딩 fallback. 아래는 QA #317 이전에 노출되던 정적 마크업.
+     API 응답이 성공하면 magIssuesFallback 컨테이너가 통째로 숨겨진다. -->
+<div id="magIssuesFallback">
+
 <!-- 2026 -->
 <section class="issues">
   <div class="sec-head"><h2 class="sec-title">2026</h2><span class="sec-count">3 ISSUES</span></div>
@@ -564,6 +573,92 @@ footer a:hover{color:#fff}
     <div data-href="PAP_Magazine_February_2019.html" class="card" onclick="openModal(this)"><div class="cover"><img loading="lazy" src="https://drive.google.com/thumbnail?id=1NKDNBwPaGn1AZeoc0aq2J2-OADEVnrmt&sz=w1600" alt="Feb 2019" loading="lazy"><div class="covlay"><span class="mo-badge">FEB 2019</span><div class="cov-bot"><div class="cov-title">February 2019</div><div class="cov-ct">21 EDITORIALS</div></div></div><div class="hov"><div class="rd">READ</div></div></div><div class="meta"><span class="vol">ISSUE #01</span><span class="dt">FEB 2019</span></div></div>
   </div>
 </section>
+
+</div><!-- /magIssuesFallback -->
+
+<!-- QA #317 — API 로부터 발행호 목록을 로드해 magIssuesDynamic 에 주입.
+     성공 시 하드코딩 fallback 을 숨기고, 실패 시 fallback 을 유지 (backward-compat).
+     연도별 섹션 그룹핑 + 카드 마크업 은 하드코딩 UI 와 동일한 CSS 클래스 사용. -->
+<script>
+(function(){
+  var apiBase = (window.PAP_API_BASE || '/api').replace(/\/$/, '');
+  function esc(s){ var d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
+  function escAttr(s){ return String(s||'').replace(/"/g,'&quot;'); }
+  function renderCard(iss){
+    var cover = iss.cover_image || '';
+    var title = iss.title || '';
+    var alt = iss.month_label || title;
+    var monthLabel = iss.month_label || '';
+    var edCount = (iss.editorial_count != null) ? iss.editorial_count : 0;
+    var issueNum = iss.issue_number ? String(iss.issue_number).padStart(2,'0') : '--';
+    var linkAttr = iss.link_url ? ('data-href="' + escAttr(iss.link_url) + '"') : '';
+    var clickAttr = iss.link_url ? 'onclick="openModal(this)"' : '';
+    var latestBadge = iss.is_latest
+      ? '<span class="latest-badge">LATEST</span>'
+      : (monthLabel ? '<span class="mo-badge">' + esc(monthLabel) + '</span>' : '');
+    return ''
+      + '<div ' + linkAttr + ' class="card" ' + clickAttr + '>'
+      +   '<div class="cover">'
+      +     '<img loading="lazy" src="' + escAttr(cover) + '" alt="' + escAttr(alt) + '">'
+      +     '<div class="covlay">' + latestBadge
+      +       '<div class="cov-bot">'
+      +         '<div class="cov-title">' + esc(title) + '</div>'
+      +         '<div class="cov-ct">' + esc(edCount) + ' EDITORIALS</div>'
+      +       '</div>'
+      +     '</div>'
+      +     '<div class="hov"><div class="rd">READ</div></div>'
+      +   '</div>'
+      +   '<div class="meta">'
+      +     '<span class="vol">ISSUE #' + esc(issueNum) + '</span>'
+      +     '<span class="dt">' + esc(monthLabel) + '</span>'
+      +   '</div>'
+      + '</div>';
+  }
+  function renderYearSection(year, items){
+    var count = items.length;
+    var cards = items.map(renderCard).join('');
+    return ''
+      + '<section class="issues">'
+      +   '<div class="sec-head"><h2 class="sec-title">' + esc(year) + '</h2>'
+      +     '<span class="sec-count">' + esc(count) + ' ISSUE' + (count === 1 ? '' : 'S') + '</span></div>'
+      +   '<div class="grid">' + cards + '</div>'
+      + '</section>';
+  }
+  fetch(apiBase + '/magazine-issues', { credentials: 'omit' })
+    .then(function(r){ if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(json){
+      var list = (json && json.data) || [];
+      if (!list.length) return;
+      // 연도별 그룹핑 (API 는 이미 issue_year DESC, sort_order DESC 로 정렬).
+      var byYear = {};
+      var years = [];
+      list.forEach(function(iss){
+        var y = iss.issue_year || 0;
+        if (!byYear[y]){ byYear[y] = []; years.push(y); }
+        byYear[y].push(iss);
+      });
+      years.sort(function(a,b){ return b - a; });
+      var html = '';
+      years.forEach(function(y, i){
+        html += renderYearSection(y, byYear[y]);
+        if (i < years.length - 1){
+          html += '<div class="year-divider"><div class="year-divider-line"></div></div>';
+        }
+      });
+      var dyn = document.getElementById('magIssuesDynamic');
+      var fb  = document.getElementById('magIssuesFallback');
+      if (dyn){
+        dyn.innerHTML = html;
+        dyn.style.display = 'block';
+      }
+      if (fb) fb.style.display = 'none';
+    })
+    .catch(function(err){
+      // 실패 시 하드코딩 fallback 그대로 유지 (조용히).
+      if (typeof console !== 'undefined') console.warn('[magazine] API load failed, using fallback:', err && err.message);
+    });
+})();
+</script>
 
 <div class="sub-cta">
   <h3>Unlock the Full Archive</h3>

@@ -19,6 +19,7 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const {
   listRecentMedia,
+  listMediaPaged,
   generateArticleFromPost,
   buildArticleRow,
   archiveImagesToStorage,
@@ -43,10 +44,17 @@ module.exports = async function handler(req, res){
   }
 
   const dry = !!(req.query && req.query.dry === '1');
+  // 백필 모드: ?backfill=<일수>&max=<회당 처리 상한, 기본 5>
+  // Vercel 함수 120초 제한 내에서 (AI 생성 + 이미지 아카이브) 처리 가능한
+  // 만큼만 하고 remaining 을 반환 — 반복 호출로 기간 전체를 채운다.
+  const backfillDays = parseInt((req.query && req.query.backfill) || '0', 10) || 0;
+  const perCall = Math.max(1, Math.min(10, parseInt((req.query && req.query.max) || '5', 10) || 5));
 
   try {
-    // 1) 최근 25개 가져오기.
-    const media = await listRecentMedia({ limit: 25 });
+    // 1) 게시물 가져오기 — 기본: 최근 25개 / 백필: 기간 내 전체 (페이지네이션)
+    const media = backfillDays > 0
+      ? await listMediaPaged({ sinceDays: backfillDays, maxCount: 200 })
+      : await listRecentMedia({ limit: 25 });
     if (!media.length) return res.status(200).json({ imported: 0, message: '게시물 없음.' });
 
     // 2) 이미 import된 게시물 ID들 조회 (중복 방지).
@@ -92,6 +100,12 @@ module.exports = async function handler(req, res){
         continue;
       }
       if (cls !== 'article') continue;
+
+      // 백필: 회당 처리 상한 도달 시 나머지는 다음 호출로 (타임아웃 방지)
+      if (backfillDays > 0 && (results.imported + results.failed + results.skipped_editorial_ai) >= perCall){
+        results.remaining = (results.remaining || 0) + 1;
+        continue;
+      }
 
       try {
         const post = normalizeMedia(m);

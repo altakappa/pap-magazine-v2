@@ -441,6 +441,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
     <a href="#" onclick="go('cover',this)"><span>🎨</span> <span>커버 설정</span></a>
     <a href="#" onclick="go('categories',this)"><span>📁</span> <span>게시글 카테고리</span></a>
     <a href="#" onclick="go('loading',this)"><span>🖼️</span> <span>로딩 이미지 관리</span></a>
+    <a href="#" onclick="go('magazine',this)"><span>📖</span> <span>매거진 발행호 관리</span></a>
   </div>
 
   <div class="sb-section">
@@ -1625,6 +1626,118 @@ tr:hover td{background:rgba(0,0,0,.02)}
           <div id="loadingUploadStatus" style="font-size:12px;color:var(--text3);min-height:16px;text-align:right"></div>
         </div>
         <div id="loadingGrid" style="display:flex;flex-wrap:wrap;gap:12px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- QA #317 — MAGAZINE 발행호 관리 -->
+  <div class="tab" id="t-magazine">
+    <div class="mn-header">
+      <div class="mn-title">매거진 발행호 관리</div>
+      <div class="mn-actions">
+        <button class="btn btn-primary" onclick="openMagazineIssueModal()">+ 새 발행호</button>
+        <button class="btn" onclick="loadMagazineIssues()" style="background:transparent">🔄 새로고침</button>
+      </div>
+    </div>
+    <div class="mn-body">
+      <p style="color:var(--text3);margin-bottom:12px">웹사이트 <strong>Magazine</strong> 메뉴에 노출되는 월간 발행호를 관리합니다.</p>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:14px;line-height:1.7">
+        <strong style="color:var(--text2)">필드:</strong> 발행 번호(ISSUE #N) · 제목 (예: March 2026) · 발행 연·월 · 커버 이미지 · 에디토리얼 수 · 링크 URL<br>
+        <strong style="color:var(--text2)">LATEST 배지:</strong> 활성화된 항목 중 <strong>1건만</strong> LATEST 로 표시됩니다. 새 발행호를 LATEST 로 설정하면 이전 LATEST 는 자동 해제됩니다.<br>
+        <strong style="color:var(--text2)">정렬:</strong> 연도(내림차순) → sort_order(내림차순). 같은 연도 내에서 sort_order 가 높을수록 앞에 노출됩니다.
+      </div>
+
+      <!-- 웹사이트 반영 상태 -->
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 14px;margin-bottom:14px;background:rgba(46,204,113,.06);border:1px solid rgba(46,204,113,.28);border-radius:4px">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:#27ae60">🌐 웹사이트 반영</div>
+        <button type="button" class="btn btn-sm" onclick="_openMagazinePreview()" title="새 창에서 magazine.html 을 엽니다">🔍 매거진 페이지 열기</button>
+        <button type="button" class="btn btn-sm" onclick="_verifyMagazineLive()" title="edge cache 를 우회해 공개 API 가 지금 반환하는 목록을 조회합니다">🔄 반영 상태 확인</button>
+        <span id="magazineLiveStatus" style="font-size:11px;color:var(--text3);flex:1;min-width:200px;text-align:right"></span>
+      </div>
+      <div id="magazineLiveDetail" style="display:none;padding:10px 14px;margin-bottom:14px;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:4px;font-size:11px;font-family:'SF Mono',Menlo,Consolas,monospace;color:var(--text2);white-space:pre-wrap;max-height:200px;overflow:auto"></div>
+
+      <!-- 목록 그리드 -->
+      <div id="magazineIssuesGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px"></div>
+    </div>
+  </div>
+
+  <!-- QA #317 — 발행호 등록/편집 모달 -->
+  <div class="pe-modal" id="magazineIssueModal" style="display:none">
+    <div class="pe-modal-backdrop" onclick="closeMagazineIssueModal()"></div>
+    <div class="pe-modal-content" style="max-width:640px">
+      <div class="modal-header">
+        <div class="modal-title" id="magazineIssueModalTitle">새 발행호</div>
+        <button class="modal-close" onclick="closeMagazineIssueModal()">&times;</button>
+      </div>
+      <div class="modal-body" style="max-height:70vh;overflow-y:auto">
+        <input type="hidden" id="magIssueId">
+        <div class="modal-section">
+          <div class="modal-label">발행 번호 (ISSUE #N) <span style="color:#e74c3c">*</span></div>
+          <input class="pe-input" id="magIssueNumber" type="number" min="1" placeholder="예: 87">
+          <div class="pe-hint" style="margin-top:4px">고유값. 카드의 'ISSUE #87' 로 노출됩니다.</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="modal-section">
+            <div class="modal-label">제목 <span style="color:#e74c3c">*</span></div>
+            <input class="pe-input" id="magIssueTitle" placeholder="예: April 2026">
+          </div>
+          <div class="modal-section">
+            <div class="modal-label">배지 라벨</div>
+            <input class="pe-input" id="magIssueMonthLabel" placeholder="예: APR 2026">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+          <div class="modal-section">
+            <div class="modal-label">발행 연도 <span style="color:#e74c3c">*</span></div>
+            <input class="pe-input" id="magIssueYear" type="number" min="2000" max="2100" placeholder="예: 2026">
+          </div>
+          <div class="modal-section">
+            <div class="modal-label">발행 월 (1-12)</div>
+            <input class="pe-input" id="magIssueMonth" type="number" min="1" max="12" placeholder="예: 4">
+          </div>
+          <div class="modal-section">
+            <div class="modal-label">에디토리얼 수</div>
+            <input class="pe-input" id="magIssueEdCount" type="number" min="0" placeholder="예: 20">
+          </div>
+        </div>
+        <div class="modal-section">
+          <div class="modal-label">커버 이미지 URL <span style="color:#e74c3c">*</span></div>
+          <input class="pe-input" id="magIssueCoverUrl" placeholder="https://...">
+          <div class="pe-upload" onclick="document.getElementById('magIssueCoverFile').click()" style="margin-top:8px;min-height:auto;padding:10px">
+            <input type="file" id="magIssueCoverFile" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="_onMagCoverFile(this)">
+            <div class="pe-upload-inner">
+              <span class="pe-upload-icon" style="font-size:18px">📷</span>
+              <span class="pe-upload-text" style="margin-left:8px">또는 파일 업로드 (JPG · PNG · WEBP · 최대 3MB)</span>
+            </div>
+          </div>
+          <div id="magIssueCoverStatus" style="margin-top:6px;font-size:11px;color:var(--text3);min-height:14px"></div>
+          <div id="magIssueCoverPreview" style="margin-top:8px"></div>
+        </div>
+        <div class="modal-section">
+          <div class="modal-label">링크 URL</div>
+          <input class="pe-input" id="magIssueLinkUrl" placeholder="예: PAP_Magazine_April_2026.html 또는 외부 URL">
+          <div class="pe-hint" style="margin-top:4px">클릭 시 이동할 페이지 (선택). 비워두면 정적 페이지 미연결.</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="modal-section">
+            <div class="modal-label">정렬 순서</div>
+            <input class="pe-input" id="magIssueSortOrder" type="number" placeholder="예: 87">
+            <div class="pe-hint" style="margin-top:4px">같은 연도 내에서 값이 클수록 위에 노출.</div>
+          </div>
+          <div class="modal-section">
+            <div class="modal-label">상태</div>
+            <label class="pe-check" style="display:block;margin-top:8px;cursor:pointer">
+              <input type="checkbox" id="magIssueActive" checked> 활성화 (웹사이트에 노출)
+            </label>
+            <label class="pe-check" style="display:block;margin-top:6px;cursor:pointer">
+              <input type="checkbox" id="magIssueLatest"> LATEST 배지 (1건만)
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeMagazineIssueModal()">취소</button>
+        <button class="btn btn-primary" onclick="saveMagazineIssue()">저장</button>
       </div>
     </div>
   </div>
@@ -3171,7 +3284,7 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
      mock 시절 번들을 계속 캐시 → '+새 이미지' 클릭 시 "실제 운영 시
      S3에 업로드됩니다" 구형 alert 가 재현. pap-admin.js 를 수정하는
      커밋은 반드시 이 파라미터를 함께 올릴 것. -->
-<script src="/pap-admin.js?v=90" defer></script>
+<script src="/pap-admin.js?v=91" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>

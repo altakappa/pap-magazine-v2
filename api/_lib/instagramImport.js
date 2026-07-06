@@ -44,6 +44,41 @@ async function listRecentMedia(opts){
   return Array.isArray(json.data) ? json.data : [];
 }
 
+// 기간 기반 페이지네이션 수집 — sinceDays 이내 게시물을 최대 maxCount 개까지.
+// Graph API paging.next 커서를 따라가며, 게시 시각이 컷오프보다 오래되면 중단.
+async function listMediaPaged(opts){
+  const sinceDays = (opts && opts.sinceDays) || 30;
+  const maxCount = (opts && opts.maxCount) || 200;
+  if (!process.env.IG_ACCESS_TOKEN || !process.env.IG_USER_ID){
+    throw new Error('IG_ACCESS_TOKEN/IG_USER_ID 환경변수가 설정되어 있지 않습니다.');
+  }
+  const cutoff = Date.now() - sinceDays * 86400000;
+  const fields = 'id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username,children{media_url,media_type,thumbnail_url}';
+  let url = `${_IG_API}/${process.env.IG_USER_ID}/media?fields=${encodeURIComponent(fields)}&limit=50&access_token=${process.env.IG_ACCESS_TOKEN}`;
+  const out = [];
+  let guard = 0;
+  while (url && out.length < maxCount && guard < 10){
+    guard++;
+    const res = await fetch(url, { signal: AbortSignal.timeout(20000) });
+    if (!res.ok){
+      const body = await res.text().catch(() => '');
+      throw new Error('Graph API media list 실패 (' + res.status + '): ' + body.slice(0, 300));
+    }
+    const json = await res.json();
+    const rows = Array.isArray(json.data) ? json.data : [];
+    let reachedCutoff = false;
+    for (const m of rows){
+      const ts = m.timestamp ? new Date(m.timestamp).getTime() : 0;
+      if (ts && ts < cutoff){ reachedCutoff = true; break; }
+      out.push(m);
+      if (out.length >= maxCount) break;
+    }
+    if (reachedCutoff) break;
+    url = json.paging && json.paging.next ? json.paging.next : null;
+  }
+  return out;
+}
+
 // 단일 게시물 fetch.
 //   shortcode 또는 media id 입력 → Graph API로 미디어 정보 가져옴.
 //   Note: oEmbed는 Facebook이 2021년부터 앱 검수를 요구해서 일반 앱은 사용 불가.
@@ -293,6 +328,7 @@ function buildArticleRow(post, generated, opts){
 
 module.exports = {
   listRecentMedia,
+  listMediaPaged,
   fetchInstagramPost,
   generateArticleFromPost,
   buildArticleRow,
