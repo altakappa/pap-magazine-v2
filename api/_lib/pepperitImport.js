@@ -57,17 +57,21 @@ async function listPepperitMedia(opts) {
   return out;
 }
 
-// raw media row → generator 입력 shape (이미지 URL 만 — VIDEO 는 제외)
+// raw media row → generator 입력 shape (이미지/영상 분리 수집)
 function normalizePepperitMedia(m) {
   const mediaUrls = [];
+  const videoUrls = []; // 릴스/영상 원본 — 아카이브 후 기사에서 직접 재생
   if (m.media_type === 'CAROUSEL_ALBUM' && m.children && Array.isArray(m.children.data)) {
     m.children.data.forEach((c) => {
-      if (c && c.media_type === 'IMAGE' && c.media_url) mediaUrls.push(c.media_url);
+      if (!c) return;
+      if (c.media_type === 'IMAGE' && c.media_url) mediaUrls.push(c.media_url);
+      else if (c.media_type === 'VIDEO' && c.media_url) videoUrls.push(c.media_url);
     });
     // 캐러셀이 전부 영상인 극단 케이스 — 앨범 커버라도 확보
     if (!mediaUrls.length && m.media_url) mediaUrls.push(m.media_url);
   } else if (m.media_type === 'VIDEO') {
     if (m.thumbnail_url) mediaUrls.push(m.thumbnail_url);
+    if (m.media_url) videoUrls.push(m.media_url);
   } else if (m.media_url) {
     mediaUrls.push(m.media_url);
   }
@@ -75,6 +79,7 @@ function normalizePepperitMedia(m) {
     id: m.id,
     caption: m.caption || '',
     mediaUrls,
+    videoUrls,
     permalink: m.permalink || null,
     timestamp: m.timestamp || null,
     author: PEPPERIT_USERNAME,

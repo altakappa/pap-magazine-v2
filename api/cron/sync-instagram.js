@@ -24,6 +24,7 @@ const {
   generateArticleFromPost,
   buildArticleRow,
   archiveImagesToStorage,
+  archiveVideosToStorage,
   isLikelyEditorialCaption,
   normalizeMedia,
   _extractShortcode,
@@ -120,7 +121,9 @@ module.exports = async function handler(req, res){
         // IG CDN 이미지는 수일 내 만료 — Supabase Storage 영구본으로 교체
         // (웹사이트 썸네일·갤러리 + 틱톡 기사 게시 공용)
         const archivedUrls = await archiveImagesToStorage(post, 10);
-        const row = buildArticleRow(post, generated, { status: 'published', archivedUrls });
+        // 릴스/영상 게시물 — 영상 원본도 영구 보관해 기사에서 직접 재생
+        const videoUrls = await archiveVideosToStorage(post, 2);
+        const row = buildArticleRow(post, generated, { status: 'published', archivedUrls, videoUrls });
         const { data: inserted, error: insErr } = await supabaseAdmin.from('articles')
           .insert(row).select('id, custom_url, slug').single();
         if (insErr){

@@ -67,7 +67,10 @@ module.exports = async function handler(req, res) {
       },
     };
 
-    const galleryHtml = gallery.slice(1, 10).map((g) =>
+    const videos = Array.isArray(a.videos) ? a.videos : [];
+    const videosHtml = videos.map((v) =>
+      '<video class="g" src="' + esc(v) + '" controls playsinline preload="metadata" style="background:#000;max-height:80vh"></video>').join('');
+    const galleryHtml = videosHtml + gallery.slice(1, 10).map((g) =>
       '<img class="g" loading="lazy" src="' + esc(g) + '" alt="' + esc(title) + '">').join('');
 
     const igEmbed = a.source_instagram_url ? (

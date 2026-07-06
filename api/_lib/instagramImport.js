@@ -112,6 +112,7 @@ function _normalizeMedia(m){
     id: m.id,
     caption: m.caption || '',
     mediaUrls: [],
+    videoUrls: [], // 릴스/영상 원본 mp4 — 아카이브 후 기사에서 직접 재생
     permalink: m.permalink,
     timestamp: m.timestamp || null,
     author: m.username || 'pap_magazine',
@@ -120,17 +121,20 @@ function _normalizeMedia(m){
   // 단일 / 캐러셀 / 비디오 케이스 처리.
   // mediaUrls 에는 "이미지 URL만" 넣는다 — 비전 분석(base64 image block)과
   // 기사 썸네일 모두 이미지를 기대하므로 VIDEO 는 포스터(thumbnail_url)로 대체.
+  // 영상 원본은 videoUrls 로 별도 수집 (Storage 영구 보관 → <video> 재생).
   if (m.media_type === 'CAROUSEL_ALBUM' && m.children && Array.isArray(m.children.data)){
     m.children.data.forEach((c) => {
       if (!c) return;
       if (c.media_type === 'VIDEO'){
         if (c.thumbnail_url) out.mediaUrls.push(c.thumbnail_url);
+        if (c.media_url) out.videoUrls.push(c.media_url);
       } else if (c.media_url){
         out.mediaUrls.push(c.media_url);
       }
     });
   } else if (m.media_type === 'VIDEO'){
     if (m.thumbnail_url) out.mediaUrls.push(m.thumbnail_url);
+    if (m.media_url) out.videoUrls.push(m.media_url);
   } else if (m.media_url){
     out.mediaUrls.push(m.media_url);
   } else if (m.thumbnail_url){
@@ -298,6 +302,36 @@ async function archiveImagesToStorage(post, max, prefix){
   return out;
 }
 
+// 릴스/영상 원본을 Storage 로 영구 복사 (IG CDN 영상 URL 도 수일 내 만료).
+// 60MB 초과 파일은 서버리스 메모리·시간 한도 보호를 위해 건너뛴다.
+async function archiveVideosToStorage(post, max, prefix){
+  const { supabaseAdmin } = require('./supabase');
+  const out = [];
+  const dir = prefix || 'ig-articles';
+  const urls = (post.videoUrls || []).slice(0, max || 2);
+  for (let i = 0; i < urls.length; i++){
+    try {
+      const r = await fetch(urls[i], { signal: AbortSignal.timeout(45000) });
+      if (!r.ok){ console.warn('[ig-video] fetch ' + r.status); continue; }
+      const ct = (r.headers.get('content-type') || 'video/mp4').split(';')[0];
+      if (!/^video\//.test(ct) && !/octet-stream/.test(ct)) continue;
+      const len = parseInt(r.headers.get('content-length') || '0', 10);
+      if (len > 60 * 1024 * 1024){ console.warn('[ig-video] 60MB 초과 스킵'); continue; }
+      const buf = Buffer.from(await r.arrayBuffer());
+      if (buf.length > 60 * 1024 * 1024) continue;
+      const path = dir + '/' + String(post.id || 'unknown') + '/v' + i + '.mp4';
+      const { error } = await supabaseAdmin.storage.from('media')
+        .upload(path, buf, { contentType: 'video/mp4', upsert: true });
+      if (error){ console.warn('[ig-video] upload 실패:', error.message); continue; }
+      const { data } = supabaseAdmin.storage.from('media').getPublicUrl(path);
+      if (data && data.publicUrl) out.push(data.publicUrl);
+    } catch (e){
+      console.warn('[ig-video] error:', (e && e.message) || e);
+    }
+  }
+  return out;
+}
+
 // articles INSERT용 row 구성 (DB 컬럼 명에 맞춰서).
 function buildArticleRow(post, generated, opts){
   opts = opts || {};
@@ -311,6 +345,7 @@ function buildArticleRow(post, generated, opts){
       ? (post.timestamp || new Date().toISOString())
       : null,
     gallery: imgs,
+    videos: Array.isArray(opts.videoUrls) ? opts.videoUrls : [],
     title: generated.title_ko || generated.title_en || ('Instagram post ' + post.id),
     title_en: generated.title_en || null,
     content: generated.body_ko || '',
@@ -334,6 +369,7 @@ module.exports = {
   generateArticleFromPost,
   buildArticleRow,
   archiveImagesToStorage,
+  archiveVideosToStorage,
   isLikelyEditorialCaption,
   normalizeMedia: _normalizeMedia,
   _extractShortcode,

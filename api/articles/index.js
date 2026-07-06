@@ -94,6 +94,7 @@ module.exports = async function handler(req, res) {
         // 과 같은 논리: SPA 는 목록 응답만 소비하므로 여기 없으면 사라진다.
         // 갤러리는 URL 배열이라 가볍고 QA #220 에지 캐시가 흡수).
         'gallery',
+        'videos',
         // 참여 증폭 (2026-07) — SPA 기사 상세에서 "원본 IG 게시물에
         // 좋아요·저장·보내기" CTA 딥링크 소스.
         'source_instagram_url',

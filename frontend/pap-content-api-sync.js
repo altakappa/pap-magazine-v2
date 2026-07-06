@@ -204,6 +204,7 @@ window._papFilmAutoPlay = function(){
       desc: parsedBlocks ? '' : rawContent,
       blocks: parsedBlocks,
       gallery: Array.isArray(a.gallery)? a.gallery : [],
+      videos: Array.isArray(a.videos)? a.videos : [],
       _api_id: a.id,
       // 참여 증폭 (2026-07) — 원본 IG 게시물 딥링크 (좋아요·저장·보내기 CTA)
       ig: a.source_instagram_url || '',

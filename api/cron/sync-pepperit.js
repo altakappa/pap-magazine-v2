@@ -11,7 +11,7 @@
 
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
-const { archiveImagesToStorage } = require('../_lib/instagramImport');
+const { archiveImagesToStorage, archiveVideosToStorage } = require('../_lib/instagramImport');
 const { listPepperitMedia, normalizePepperitMedia, generatePepperitArticle } = require('../_lib/pepperitImport');
 const { submitIndexNowPepperit, pingWebSub, PEPPERIT_SITE } = require('../_lib/pingSearch');
 
@@ -58,6 +58,7 @@ module.exports = async function handler(req, res) {
         const generated = await generatePepperitArticle(post);
         const archived = await archiveImagesToStorage(post, 10, 'ig-pepperit');
         const imgs = archived.length ? archived : post.mediaUrls;
+        const videoUrls = await archiveVideosToStorage(post, 2, 'ig-pepperit');
         const row = {
           title: generated.title || ('PEPPERIT ' + m.id),
           slug: generated.slug,
@@ -66,6 +67,7 @@ module.exports = async function handler(req, res) {
           tags: generated.tags,
           thumbnail_url: imgs[0] || null,
           gallery: imgs,
+          videos: videoUrls,
           status: 'published',
           published_date: post.timestamp || new Date().toISOString(),
           source_instagram_url: post.permalink,

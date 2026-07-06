@@ -461,8 +461,12 @@ function _renderArticleDetail(a,det){
       galImgs=galImgs.filter(function(u){return u && u!==_heroSrc;});
       if(!galImgs.length) galImgs=null;
     }
-    if(galImgs){
-      galEl.innerHTML=galImgs.map(function(url){return '<div style="overflow:hidden;border-radius:2px;background:#111"><img src="'+url+'" alt="'+escapeHtml(a.t)+'" loading="lazy" style="width:100%;display:block" onerror="edImgError(this)"></div>';}).join('');
+    // 2026-07 — 릴스/영상 게시물: 영구 보관된 영상을 갤러리 상단에 전체 폭
+    // 플레이어로 렌더 (섬네일만 보이던 문제 해소).
+    var vids=(a.videos&&a.videos.length>0)?a.videos:[];
+    var vidHtml=vids.map(function(url){return '<div style="grid-column:1/-1;overflow:hidden;border-radius:2px;background:#000"><video src="'+url+'" controls playsinline preload="metadata" style="width:100%;display:block;max-height:80vh"></video></div>';}).join('');
+    if(galImgs||vids.length){
+      galEl.innerHTML=vidHtml+(galImgs?galImgs.map(function(url){return '<div style="overflow:hidden;border-radius:2px;background:#111"><img src="'+url+'" alt="'+escapeHtml(a.t)+'" loading="lazy" style="width:100%;display:block" onerror="edImgError(this)"></div>';}).join(''):'');
       galEl.style.display='grid';
     } else { galEl.innerHTML='';galEl.style.display='none'; }
   }
