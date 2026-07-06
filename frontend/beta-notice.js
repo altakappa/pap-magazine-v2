@@ -78,7 +78,15 @@
     var style=document.createElement('style');
     style.id='pap-beta-styles';
     style.textContent=[
-      '#betaNotice{position:fixed;top:0;left:0;right:0;bottom:0;z-index:10001;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);opacity:0;font-family:"Montserrat",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}',
+      /* QA #331 — Chrome iOS 호환성 개선.
+         `backdrop-filter` 는 Chrome iOS (WKWebView) 특정 버전에서 fixed
+         overlay 내부 버튼의 터치 이벤트를 삼키는 이슈가 있어서 조건부로
+         @supports 안에서만 적용. 미지원/버그 브라우저는 반투명 배경만 사용해도
+         비주얼 차이가 크지 않고 클릭 안정성이 우선. */
+      '#betaNotice{position:fixed;top:0;left:0;right:0;bottom:0;z-index:10001;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.85);opacity:0;font-family:"Montserrat",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-tap-highlight-color:transparent;touch-action:manipulation}',
+      '@supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){',
+      '  #betaNotice{background:rgba(0,0,0,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}',
+      '}',
       '#betaNotice.bn-ready{animation:bnFadeIn .3s ease forwards}',
       '#betaNotice *{box-sizing:border-box}',
       '#betaNotice.bn-hide{animation:bnFadeOut .3s ease forwards}',
@@ -88,9 +96,12 @@
       '#betaNotice .bn-msg{font-size:13px;line-height:1.7;color:rgba(255,255,255,.75);margin:0 0 14px}',
       '#betaNotice .bn-highlight{font-size:13px;line-height:1.7;color:#fff;font-weight:500;background:rgba(255,255,255,.06);border-left:3px solid #fff;padding:12px 14px;margin:0 0 24px;text-align:left}',
       '#betaNotice .bn-actions{display:flex;flex-direction:column;gap:10px;align-items:center}',
-      '#betaNotice .bn-btn-signup{display:inline-block;padding:12px 32px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;background:#fff;color:#000;border:1.5px solid #fff;cursor:pointer;font-family:"Montserrat",sans-serif;transition:all .25s;border-radius:0;line-height:1;text-decoration:none;min-width:220px}',
+      /* QA #331 — 명시적 pointer-events + touch-action + user-select 설정으로
+         Chrome iOS 에서 터치가 부모 overlay 로 전달되어 backdrop-close 로
+         잘못 처리되는 케이스 방지. */
+      '#betaNotice .bn-btn-signup{display:inline-block;padding:14px 32px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;background:#fff;color:#000;border:1.5px solid #fff;cursor:pointer;font-family:"Montserrat",sans-serif;transition:all .25s;border-radius:0;line-height:1;text-decoration:none;min-width:220px;pointer-events:auto;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:rgba(255,255,255,.15);position:relative;z-index:2}',
       '#betaNotice .bn-btn-signup:hover{background:transparent;color:#fff}',
-      '#betaNotice .bn-btn{display:inline-block;padding:10px 32px;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;background:transparent;color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.25);cursor:pointer;font-family:"Montserrat",sans-serif;transition:all .25s;border-radius:0;line-height:1;min-width:220px}',
+      '#betaNotice .bn-btn{display:inline-block;padding:14px 32px;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;background:transparent;color:rgba(255,255,255,.75);border:1px solid rgba(255,255,255,.35);cursor:pointer;font-family:"Montserrat",sans-serif;transition:all .25s;border-radius:0;line-height:1;min-width:220px;pointer-events:auto;touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:rgba(255,255,255,.15);position:relative;z-index:2}',
       '#betaNotice .bn-btn:hover{background:#fff;color:#000;border-color:#fff}',
       '#betaNotice .bn-feedback{font-size:11px;line-height:1.6;color:rgba(255,255,255,.5);margin:18px 0 0;letter-spacing:.01em;word-break:keep-all}',
       '#betaNotice .bn-feedback a{color:rgba(255,255,255,.85);text-decoration:underline;text-underline-offset:2px;transition:color .2s;white-space:nowrap;display:inline-block}',
@@ -161,21 +172,46 @@
     /* Fallback reveal if geo-detection takes too long */
     setTimeout(revealNotice, 600);
 
+    /* QA #331 — Chrome iOS 는 fixed overlay 위의 버튼에서 종종 click 이벤트가
+       유실되는 케이스가 보고됨 (특히 backdrop-filter + 큰 z-index 조합).
+       click / touchend 를 함께 리스닝해서 어느 쪽이 발화하든 dismiss 가
+       확실히 실행되도록 함. Both-fire 를 막기 위해 closed 플래그 사용. */
+    var _closed = false;
     function _close(){
-      api.dismiss(); // registry records dismissal flag and frees the slot
+      if (_closed) return;
+      _closed = true;
+      try { api.dismiss(); } catch(_){}
       overlay.classList.add('bn-hide');
-      setTimeout(function(){ overlay.remove(); }, 300);
+      setTimeout(function(){
+        try { overlay.remove(); } catch(_){}
+        // Chrome iOS 방어: 만약 무슨 이유로 overlay 가 남으면 강제 hide.
+        var stuck = document.getElementById('betaNotice');
+        if (stuck) stuck.style.display = 'none';
+      }, 300);
     }
-    document.getElementById('bnClose').addEventListener('click', _close);
-    /* close on backdrop click (outside card) */
+    var closeBtn = document.getElementById('bnClose');
+    if (closeBtn){
+      closeBtn.addEventListener('click', function(e){ e.preventDefault(); _close(); });
+      // touchend fallback — click 이 유실되어도 반응하도록.
+      closeBtn.addEventListener('touchend', function(e){ e.preventDefault(); _close(); }, { passive: false });
+    }
+    /* Backdrop click. e.target === overlay 만 close 로 취급. */
     overlay.addEventListener('click', function(e){
       if(e.target === overlay) _close();
     });
-    /* Also count the signup-CTA click as an implicit dismissal — the
-       user acknowledged the notice by acting on it. */
+    /* ESC 키 지원 — 데스크톱 키보드 사용자 접근성 + 안전망. */
+    document.addEventListener('keydown', function onKey(e){
+      if (e.key === 'Escape' || e.keyCode === 27){
+        _close();
+        document.removeEventListener('keydown', onKey);
+      }
+    });
+    /* Signup CTA 클릭도 암묵적 dismissal 로 처리. */
     var signupBtn = overlay.querySelector('.bn-btn-signup');
     if(signupBtn){
-      signupBtn.addEventListener('click', function(){ api.dismiss(); });
+      var dismissOnSignup = function(){ try { api.dismiss(); } catch(_){} };
+      signupBtn.addEventListener('click', dismissOnSignup);
+      signupBtn.addEventListener('touchend', dismissOnSignup, { passive: true });
     }
   }
 
