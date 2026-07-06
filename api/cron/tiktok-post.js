@@ -26,24 +26,34 @@ const { directPostPhotos, toOwnedImageUrl } = require('../_lib/tiktok');
 // 출력 줄: "▪ Photographer : Maren @marennl" (역할당 1줄, 이름들 ' · ' 연결)
 function formatCreditLines(credits, maxChars) {
   if (!Array.isArray(credits) || !credits.length) return [];
-  const lines = [];
+  // 1차: 역할별로 사람 수집 (같은 역할 여러 행 — 레거시 Starring ×4 등 — 병합)
+  const order = [];
+  const byRole = new Map();
+  function add(role, person) {
+    const key = role || '';
+    if (!byRole.has(key)) { byRole.set(key, []); order.push(key); }
+    if (person) byRole.get(key).push(person);
+  }
   for (const c of credits) {
     if (!c || typeof c !== 'object') continue;
-    let role = '', people = [];
     if (c.r !== undefined || c.h !== undefined) {
       // 레거시 스키마
-      role = String(c.r || '').trim();
+      const role = String(c.r || '').trim();
       (Array.isArray(c.h) ? c.h : []).forEach((p) => {
         if (!p) return;
         const bits = [String(p.n || '').trim(), String(p.id || '').trim()].filter(Boolean);
-        if (bits.length) people.push(bits.join(' '));
+        if (bits.length) add(role, bits.join(' '));
       });
     } else {
       // 신규 스키마
-      role = Array.isArray(c.roles) ? c.roles.filter(Boolean).join(', ') : String(c.role || '').trim();
+      const role = Array.isArray(c.roles) ? c.roles.filter(Boolean).join(', ') : String(c.role || '').trim();
       const bits = [String(c.name || '').trim(), String(c.instagram || '').trim()].filter(Boolean);
-      if (bits.length) people.push(bits.join(' '));
+      if (bits.length) add(role, bits.join(' '));
     }
+  }
+  const lines = [];
+  for (const role of order) {
+    const people = byRole.get(role) || [];
     if (!people.length) continue;
     lines.push('▪ ' + (role ? role + ' : ' : '') + people.join(' · '));
   }
@@ -76,15 +86,19 @@ function buildCaption(ed) {
     creditLines.forEach((l) => lines.push(l));
     lines.push('');
   }
-  // 직접 URL — 클릭은 안 되지만 복사·검색 가능한 명시적 출처
-  lines.push('▶ 전체 화보 : https://www.pap-magazine.com/editorial/' + (ed.slug || ''));
+  // 직접 URL — 클릭은 안 되지만 복사·검색 가능한 명시적 출처 (표기는 짧게)
+  lines.push('▶ 전체 화보 : pap-magazine.com/editorial/' + (ed.slug || ''));
   lines.push('');
   const tt = String(ed.title || '').replace(/[^A-Za-z0-9가-힣]/g, '').toUpperCase();
   const tags = ['#패션화보', '#에디토리얼'];
   if (tt.length >= 2 && tt.length <= 25) tags.push('#' + tt);
   tags.push('#FASHIONEDITORIAL', '#PAPMAGAZINE');
   lines.push(tags.slice(0, 5).join(' '));
-  return lines.join(' \n').slice(0, 4000);
+  // U+2028 (LINE SEPARATOR): 틱톡이 API 캡션의 \n 을 뭉개는 것이 확인돼
+  // (2026-07-06 실측) 유니코드 줄구분자로 대체 — 다수 클라이언트에서
+  // 실제 줄바꿈으로 렌더된다. 미지원 클라이언트에서도 공백처럼 표시돼
+  // 앞뒤 공백 + ▪/▶ 구분 기호 덕에 가독성이 유지된다.
+  return lines.join('  ').slice(0, 4000);
 }
 
 module.exports = async function handler(req, res) {
