@@ -48,7 +48,7 @@ module.exports = async function handler(req, res) {
         .eq('status', 'published')
         .or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${nowIso}`)
         .order('published_date', { ascending: false, nullsFirst: false })
-        .limit(1000),
+        .limit(3000),
       supabaseAdmin.from('articles')
         .select('title, custom_url, id, published_date')
         .eq('status', 'published')

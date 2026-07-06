@@ -49,11 +49,13 @@ async function runGrowthAudit() {
   const sections = {};
 
   // ── A. 콘텐츠 무결성 ──────────────────────────────────────────
+  // 065: legacy(IG 시절 대량 임포트) 에디토리얼은 무결성 검사에서 제외 —
+  // 설명·EN 번역이 없는 게 정상이라 경보만 오염시킨다.
   const missing = (col, label, failOver) =>
     check(`editorials_missing_${col}`, label, async () => {
-      const v = await cnt(db.from('editorials').select('*', CSEL).eq('status', 'published').is(col, null));
+      const v = await cnt(db.from('editorials').select('*', CSEL).eq('status', 'published').eq('legacy', false).is(col, null));
       const items = v > 0
-        ? await titles(db.from('editorials').select('title').eq('status', 'published').is(col, null))
+        ? await titles(db.from('editorials').select('title').eq('status', 'published').eq('legacy', false).is(col, null))
         : [];
       const status = v === 0 ? 'ok' : (failOver && v > failOver) ? 'fail' : 'warn';
       return { value: v, status, items };

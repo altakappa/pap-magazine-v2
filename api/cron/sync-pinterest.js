@@ -77,6 +77,7 @@ module.exports = async function handler(req, res) {
       .from('editorials')
       .select('id, title, title_en, slug, description, description_en, cover_image, og_image, thumbnail, issue')
       .eq('status', 'published')
+      .eq('legacy', false)
       .is('pinterest_synced_at', null)
       .not('published_date', 'is', null)
       .lte('published_date', new Date().toISOString())
