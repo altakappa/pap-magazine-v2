@@ -68,7 +68,8 @@ function buildCaption(ed) {
   if (ko && ko.length <= 160) lines.push(ko);
   const credits = formatCredits(ed.credits, 1800); // 캡션 4000자 한도 내 안전 몫
   if (credits) lines.push('[Credits]\n' + credits);
-  lines.push('전체 화보는 프로필 링크에서 ↗');
+  // 직접 URL — 틱톡 캡션에서 클릭은 안 되지만 복사·검색 가능한 명시적 출처
+  lines.push('전체 화보 보기 ↓\nhttps://www.pap-magazine.com/editorial/' + (ed.slug || ''));
   const tt = String(ed.title || '').replace(/[^A-Za-z0-9가-힣]/g, '').toUpperCase();
   const tags = ['#패션화보', '#에디토리얼'];
   if (tt.length >= 2 && tt.length <= 25) tags.push('#' + tt);
