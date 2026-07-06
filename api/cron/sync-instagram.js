@@ -17,6 +17,7 @@
 
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
+const { pingNewContent, SITE } = require('../_lib/pingSearch');
 const {
   listRecentMedia,
   listMediaPaged,
@@ -83,6 +84,7 @@ module.exports = async function handler(req, res){
       skipped_editorial_db: 0, skipped_editorial_caption: 0, skipped_editorial_ai: 0,
       failed: 0, errors: [], dry: dry, classified: [],
     };
+    const newUrls = []; // 이번 실행에서 발행된 기사 URL — 종료 시 즉시 검색 핑
     for (const m of media){
       if (existingSet.has(m.id)) continue;
       const shortcode = _extractShortcode(m.permalink);
@@ -119,7 +121,8 @@ module.exports = async function handler(req, res){
         // (웹사이트 썸네일·갤러리 + 틱톡 기사 게시 공용)
         const archivedUrls = await archiveImagesToStorage(post, 10);
         const row = buildArticleRow(post, generated, { status: 'published', archivedUrls });
-        const { error: insErr } = await supabaseAdmin.from('articles').insert(row);
+        const { data: inserted, error: insErr } = await supabaseAdmin.from('articles')
+          .insert(row).select('id, custom_url, slug').single();
         if (insErr){
           // unique index 충돌은 race condition (동시 cron 실행) — skip 처리.
           if (insErr.code === '23505'){
@@ -129,6 +132,10 @@ module.exports = async function handler(req, res){
           throw insErr;
         }
         results.imported++;
+        if (inserted){
+          const h = inserted.custom_url || inserted.slug || inserted.id;
+          if (h) newUrls.push(SITE + '/article/' + encodeURIComponent(h));
+        }
       } catch (e){
         results.failed++;
         results.errors.push({ post_id: m.id, error: (e && e.message) || String(e) });
@@ -137,6 +144,13 @@ module.exports = async function handler(req, res){
     }
 
     if (dry) results.editorial_shortcodes_known = editorialShortcodes.size;
+
+    // 신규 발행 즉시 검색엔진 알림 — IndexNow(네이버·빙·얀덱스) + WebSub(구글
+    // 계열 피드 재수집). 일간 IndexNow 크론은 보험으로 유지, 여기는 실시간 채널.
+    if (newUrls.length){
+      try { results.search_ping = await pingNewContent(newUrls); }
+      catch (e){ results.search_ping = { error: String(e && e.message || e).slice(0, 100) }; }
+    }
     return res.status(200).json(results);
   } catch (e){
     console.error('[sync-instagram] top-level failure:', e);
