@@ -1609,19 +1609,35 @@ function _openAllEditorialsInner(){
   edAllBuilt=true;
   overlay.classList.add('active');
   document.body.style.overflow='hidden';
-  // If we arrived via a direct hash navigation (e.g. user clicked
-  // EDITORIAL in the hamburger menu of a sub-page, which sends them to
-  // /index.html#all-editorials as a full nav), the hash is ALREADY in
-  // place from the navigation. A pushState would create a duplicate
-  // history entry — back from there lands on the same hash again,
-  // which appears to the user as "X did nothing useful" or "X dumped
-  // me on home". Use replaceState in that case so back goes to the
-  // actual previous page.
+  // QA #330 — 히스토리 스택 관리 개선.
+  // 세 가지 진입 시나리오를 각각 다르게 처리해서 X 닫기 시 정확히 이전
+  // 페이지로 돌아가도록 한다:
+  //
+  //   1) `/#all-editorials` 로 직접 진입 (deep-link) 또는 SPA 내 hash 이동
+  //      → hash 가 이미 URL 에 있음 → replaceState (신규 entry 없음)
+  //
+  //   2) `/editorial` clean path 로 진입 (QA #323, 다른 페이지에서 햄버거
+  //      메뉴 클릭 등) → auto-open IIFE 가 트리거. URL 자체가 이미 이 상태를
+  //      나타내므로 pushState 로 새 entry 를 추가하면 X 닫기 → history.back()
+  //      후 여전히 `/editorial` 에 머물러서 이전 페이지로 돌아가려면 back 을
+  //      한 번 더 눌러야 하는 UX 문제 → replaceState 사용.
+  //
+  //   3) 메인 홈 `/` 에서 오버레이 오픈 → hash 도 없고 pathname 도 editorial
+  //      아님 → 새 state 를 반드시 pushState 로 추가. 그래야 X 닫기 시
+  //      history.back() 이 `/` 로 정확히 복귀.
+  //
+  // 이전 구현은 케이스 2 에서 pushState 를 사용해 모바일에서 "뒤로가기가
+  // 이전 방문 경로로 안 가고 홈으로 튀어버리는" 이슈의 원인이 되었음.
   var _h='#all-editorials';
-  if(window.location.hash===_h){
-    history.replaceState({allEditorials:true},'',window.location.pathname+_h);
-  }else{
-    history.pushState({allEditorials:true},'',window.location.pathname+_h);
+  var alreadyOnEditorialUrl =
+    window.location.hash === _h ||
+    window.location.pathname === '/editorial' ||
+    window._papAutoOpenEditorials === true;
+  var targetUrl = window.location.pathname + _h;
+  if(alreadyOnEditorialUrl){
+    history.replaceState({allEditorials:true},'', targetUrl);
+  } else {
+    history.pushState({allEditorials:true},'', targetUrl);
   }
 }
 // QA #84: active category filter (default 'all'). Persisted in-memory only;

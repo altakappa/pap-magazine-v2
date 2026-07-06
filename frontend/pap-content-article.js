@@ -69,11 +69,17 @@ function _openAllArticlesInner(){
     grid.appendChild(card);
   });
   count.textContent=artData.length+' ARTICLES';
-  // replaceState if user arrived via direct #articles-all nav, else push.
-  if(window.location.hash==='#articles-all'){
-    history.replaceState({overlay:'articles'},'',window.location.pathname+'#articles-all');
-  }else{
-    history.pushState({overlay:'articles'},'',window.location.pathname+'#articles-all');
+  // QA #330 — 히스토리 스택 정합성 (film/editorial 과 동일 로직).
+  // `/articles` clean path 또는 `/#articles-all` hash 로 진입한 경우 URL 이
+  // 이미 이 상태를 나타냄 → replaceState. 그 외는 pushState.
+  var alreadyOnArticlesUrl =
+    window.location.hash === '#articles-all' ||
+    window.location.pathname === '/articles';
+  var targetArticlesUrl = window.location.pathname + '#articles-all';
+  if(alreadyOnArticlesUrl){
+    history.replaceState({overlay:'articles'},'', targetArticlesUrl);
+  } else {
+    history.pushState({overlay:'articles'},'', targetArticlesUrl);
   }
   overlay.classList.add('active');
   document.body.style.overflow='hidden';
@@ -434,6 +440,13 @@ function _renderArticleDetail(a,det){
   var galEl=document.getElementById('artDetailGallery');
   if(galEl){
     var galImgs=(det&&det.images&&det.images.length>0)?det.images:(a.gallery&&a.gallery.length>0?a.gallery:null);
+    // 2026-07 — 히어로(artDetailImg)로 이미 표시된 첫 장은 갤러리에서 제외
+    // (IG 수집 기사는 gallery[0] == thumbnail 이라 중복으로 보였다)
+    if(galImgs){
+      var _heroSrc=a.img||a.th||'';
+      galImgs=galImgs.filter(function(u){return u && u!==_heroSrc;});
+      if(!galImgs.length) galImgs=null;
+    }
     if(galImgs){
       galEl.innerHTML=galImgs.map(function(url){return '<div style="overflow:hidden;border-radius:2px;background:#111"><img src="'+url+'" alt="'+escapeHtml(a.t)+'" loading="lazy" style="width:100%;display:block" onerror="edImgError(this)"></div>';}).join('');
       galEl.style.display='grid';

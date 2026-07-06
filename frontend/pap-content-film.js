@@ -71,11 +71,19 @@ function _openAllFilmsInner(){
     grid.appendChild(card);
   });
   count.textContent=filmAllData.length+' FILMS';
-  // replaceState if user arrived via direct #films-all nav, else push.
-  if(window.location.hash==='#films-all'){
-    history.replaceState({overlay:'films'},'',window.location.pathname+'#films-all');
-  }else{
-    history.pushState({overlay:'films'},'',window.location.pathname+'#films-all');
+  // QA #330 — 히스토리 스택 정합성. `/films` clean path (vercel rewrite로
+  // films.html 서빙) 또는 `/#films-all` hash 로 진입한 경우 URL 이 이미
+  // 이 상태를 나타내므로 replaceState. 그 외(홈에서 오버레이 오픈)는
+  // pushState 로 새 entry 를 만들어야 X 닫기 → history.back() 이 정확히
+  // 원래 있던 페이지로 복귀.
+  var alreadyOnFilmsUrl =
+    window.location.hash === '#films-all' ||
+    window.location.pathname === '/films';
+  var targetFilmsUrl = window.location.pathname + '#films-all';
+  if(alreadyOnFilmsUrl){
+    history.replaceState({overlay:'films'},'', targetFilmsUrl);
+  } else {
+    history.pushState({overlay:'films'},'', targetFilmsUrl);
   }
   overlay.classList.add('active');
   document.body.style.overflow='hidden';
