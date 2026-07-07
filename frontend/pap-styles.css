@@ -646,7 +646,7 @@ section.hero + .shorts-section{
 .ed-img-credits a:hover{text-decoration:underline;opacity:1}
 
 /* EDITORIAL DESCRIPTION */
-.ed-desc{max-width:600px;width:100%;text-align:center;margin-bottom:48px;font-size:15px;line-height:1.9;color:rgba(255,255,255,.7);letter-spacing:.01em}
+.ed-desc{max-width:600px;width:100%;text-align:left;margin-bottom:48px;font-size:15px;line-height:1.9;color:rgba(255,255,255,.7);letter-spacing:.01em}
 .ed-desc:empty{display:none;margin:0}
 
 /* CREDITS: centered two-column grid

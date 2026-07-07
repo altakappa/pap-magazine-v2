@@ -3,6 +3,60 @@
 <head>
 <meta charset="UTF-8">
 <script>
+/* QA(모바일 Chrome 진단) — ?debug=1 (또는 localStorage.pap_debug='1') 일 때만
+   활성화되는 온스크린 에러 캐처. 모바일에서 콘솔을 못 볼 때 JS 에러를 화면
+   하단 빨간 박스로 노출해 원인 파악을 돕는다. 평소(플래그 없음)엔 완전 무동작. */
+(function(){
+  try{
+    var on = /(?:^|[?&])debug=1(?:&|$)/.test(location.search) ||
+             (function(){ try{ return localStorage.getItem('pap_debug')==='1'; }catch(_){ return false; } })();
+    if(!on) return;
+    try{ localStorage.setItem('pap_debug','1'); }catch(_){}
+    var box;
+    function ensureBox(){
+      if(box) return box;
+      box=document.createElement('div');
+      box.id='papDebugBox';
+      box.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:2147483647;max-height:55vh;overflow:auto;background:rgba(140,0,0,.96);color:#fff;font:12px/1.5 -apple-system,Menlo,monospace;padding:10px 12px 14px;white-space:pre-wrap;word-break:break-all;box-shadow:0 -4px 20px rgba(0,0,0,.5)';
+      var hdr=document.createElement('div');
+      hdr.style.cssText='font-weight:700;letter-spacing:.05em;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center';
+      hdr.innerHTML='<span>PAP DEBUG · JS 에러 (스크린샷 후 전달)</span>';
+      var x=document.createElement('button');
+      x.textContent='닫기';
+      x.style.cssText='background:#fff;color:#8c0000;border:0;padding:4px 10px;font-weight:700;border-radius:3px';
+      x.onclick=function(){ try{ localStorage.removeItem('pap_debug'); }catch(_){}; box.remove(); box=null; };
+      hdr.appendChild(x);
+      box.appendChild(hdr);
+      var info=document.createElement('div');
+      info.style.cssText='opacity:.85;margin-bottom:8px';
+      info.textContent='UA: '+navigator.userAgent;
+      box.appendChild(info);
+      (document.body||document.documentElement).appendChild(box);
+      return box;
+    }
+    function log(kind,msg){
+      try{
+        ensureBox();
+        var line=document.createElement('div');
+        line.style.cssText='border-top:1px solid rgba(255,255,255,.25);padding-top:6px;margin-top:6px';
+        line.textContent='['+kind+'] '+msg;
+        box.appendChild(line);
+      }catch(_){}
+    }
+    window.addEventListener('error',function(e){
+      var m=(e && (e.message||''))+' @ '+((e && e.filename)||'')+':'+((e && e.lineno)||'')+':'+((e && e.colno)||'');
+      log('error', m);
+    },true);
+    window.addEventListener('unhandledrejection',function(e){
+      var r=e && e.reason; log('promise', (r && (r.message||r.stack))||String(r));
+    });
+    var _ce=console.error;
+    console.error=function(){ try{ log('console.error', Array.prototype.map.call(arguments,function(a){ try{return (a&&a.stack)||(typeof a==='object'?JSON.stringify(a):String(a));}catch(_){return String(a);} }).join(' ')); }catch(_){}; return _ce.apply(console,arguments); };
+    log('info','디버그 캐처 활성화됨 — 이 화면(빨간 박스 전체)을 스크린샷으로 보내주세요.');
+  }catch(_){}
+})();
+</script>
+<script>
 /* Deep-link cover: when landing on index.html with ?ed=<title> or
    #all-editorials, hide the homepage content with a black cover so the user
    doesn't see the home page briefly flash before the overlay opens. The
@@ -159,7 +213,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/pap-styles.css?v=32">
+<link rel="stylesheet" href="/pap-styles.css?v=33">
 <link rel="stylesheet" href="/pap-social.css">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
 <!-- Favicon & PWA -->
@@ -178,7 +232,7 @@
      beta-notice.js (and future popups) can call window.papPopups.register
      at module load. Both files use `defer`, so they execute in source order. -->
 <script src="pap-popup-registry.js?v=1" defer></script>
-<script src="beta-notice.js?v=10" defer></script>
+<script src="beta-notice.js?v=11" defer></script>
 <!-- Print Styles -->
 <style media="print">
 @media print{

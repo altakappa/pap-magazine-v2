@@ -181,13 +181,29 @@
       if (_closed) return;
       _closed = true;
       try { api.dismiss(); } catch(_){}
+      // QA(모바일 Chrome 접속 오류) — 팝업을 닫아도 전체화면 오버레이
+      // (#betaNotice, z-index 10001)가 남아 뒤 페이지의 터치/클릭을 전부
+      // 가로채면 "접속은 됐는데 아무 조작이 안 되는" 상태가 된다. Safari 는
+      // fade-out 후 정상 제거되지만 일부 Chrome(모바일)에서 animation/타이머
+      // 처리 차이로 오버레이가 남는 케이스가 보고됨. 애니메이션·타이머에
+      // 의존하지 않고 다음을 즉시/중복 보장한다:
+      //   1) 즉시 pointer-events 차단 → fade-out 중에도 뒤 페이지 조작 가능
+      //   2) body 스크롤 잠금 방어적 해제
+      //   3) animationend 발화 시 즉시 제거, 안 되면 350ms 백업 타이머로 제거
+      try { overlay.style.pointerEvents = 'none'; } catch(_){}
+      try { document.body.style.overflow = ''; } catch(_){}
       overlay.classList.add('bn-hide');
-      setTimeout(function(){
+      var _killed = false;
+      function _kill(){
+        if (_killed) return;
+        _killed = true;
         try { overlay.remove(); } catch(_){}
-        // Chrome iOS 방어: 만약 무슨 이유로 overlay 가 남으면 강제 hide.
+        // 어떤 이유로든 노드가 남으면 완전 무력화 (숨김 + 터치 통과).
         var stuck = document.getElementById('betaNotice');
-        if (stuck) stuck.style.display = 'none';
-      }, 300);
+        if (stuck){ stuck.style.display = 'none'; stuck.style.pointerEvents = 'none'; }
+      }
+      try { overlay.addEventListener('animationend', _kill, { once: true }); } catch(_){}
+      setTimeout(_kill, 350);
     }
     var closeBtn = document.getElementById('bnClose');
     if (closeBtn){
