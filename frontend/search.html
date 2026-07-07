@@ -138,7 +138,7 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
     <p>
       <a href="/">Home →</a> &nbsp;·&nbsp;
       <a href="/articles">Articles →</a> &nbsp;·&nbsp;
-      <a href="/#all-editorials">Editorials →</a>
+      <a href="/editorial">Editorials →</a>
     </p>
   </div>
 </main>
@@ -192,7 +192,17 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
   }
 
   function _pickImg(row){
-    return row.th || row.img || row.thumbnail_url || row.cover_url || row.image_url || '';
+    // QA(검색 썸네일) — 아티클은 thumbnail_url 을 쓰지만 에디토리얼은
+    // cover_image / thumbnail / gallery[0] 에 썸네일이 있어 기존 필드 목록으로는
+    // 에디토리얼 썸네일이 누락됐다. 콘텐츠 유형이 섞인 검색 결과에서 모두
+    // 정상 노출되도록 에디토리얼 필드까지 폴백 처리한다.
+    var g = '';
+    if (Array.isArray(row.gallery) && row.gallery.length){
+      var g0 = row.gallery[0];
+      g = (typeof g0 === 'string') ? g0 : ((g0 && (g0.url || g0.src || g0.image_url)) || '');
+    }
+    return row.th || row.img || row.thumbnail_url || row.cover_url || row.image_url
+        || row.cover_image || row.thumbnail || row.hero_image_url || g || '';
   }
   function _pickExcerpt(row){
     // Prefer the current locale, fall back to KO → EN → any populated field.

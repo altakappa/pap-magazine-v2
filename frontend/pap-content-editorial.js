@@ -1637,7 +1637,10 @@ function _openAllEditorialsInner(){
     window.location.hash === _h ||
     window.location.pathname === '/editorial' ||
     window._papAutoOpenEditorials === true;
-  var targetUrl = window.location.pathname + _h;
+  // QA(에디토리얼 URL) — URL 정책 통일: 내부 상태 해시(#all-editorials) 대신
+  // clean singular path(/editorial)로 표기. 다른 메뉴(/articles, /films)와 동일한
+  // 단순 경로 형태가 되고, 레거시 해시로 진입해도 여기서 /editorial 로 정규화됨.
+  var targetUrl = '/editorial';
   if(alreadyOnEditorialUrl){
     history.replaceState({allEditorials:true},'', targetUrl);
   } else {

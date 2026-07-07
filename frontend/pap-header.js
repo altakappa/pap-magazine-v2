@@ -413,7 +413,7 @@
     /* EDITORIAL — on index.html (where #edAllOverlay exists) open the
        overlay directly; on any other page navigate to the home-page hash
        so pap-app.js auto-opens the overlay after landing. */
-    '      <a href="/#all-editorials" onclick="event.preventDefault();_papCloseNav();if(document.getElementById(\'edAllOverlay\')&&typeof openAllEditorials===\'function\'){openAllEditorials();}else{window.location.href=\'/#all-editorials\';}" data-i18n="navEditorial">EDITORIAL</a>',
+    '      <a href="/editorial" onclick="event.preventDefault();_papCloseNav();if(document.getElementById(\'edAllOverlay\')&&typeof openAllEditorials===\'function\'){openAllEditorials();}else{window.location.href=\'/editorial\';}" data-i18n="navEditorial">EDITORIAL</a>',
     '      <a href="#" onclick="' + _navGo('/articles') + '" data-i18n="navArticle">ARTICLE</a>',
     '      <a href="#" onclick="' + _navGo('/films') + '" data-i18n="navFilm">FILM</a>',
     '    </div>',
