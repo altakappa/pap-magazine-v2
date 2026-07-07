@@ -331,8 +331,12 @@ function _renderEditorialVideo(rawUrl){
     // Allow list mirrors YouTube's documented embed permissions; the
     // attribute is required for fullscreen + autoplay-on-tap to work
     // inside iOS Safari, and is harmless for Vimeo.
+    // 사용자 요청 — 재생 버튼 클릭 없이 자동재생. 브라우저 정책상 mute 필수.
+    var _autoSrc = (typeof appendAutoplayParams === 'function')
+      ? appendAutoplayParams(info.src, info.provider)
+      : info.src;
     frame.innerHTML =
-      '<iframe src="' + info.src + '" loading="lazy" '
+      '<iframe src="' + _autoSrc + '" loading="lazy" '
       + 'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" '
       + 'allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>';
     wrap.hidden = false;

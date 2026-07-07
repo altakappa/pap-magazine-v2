@@ -269,7 +269,7 @@ function _renderArticleBlocks(blocks){
       if(embed && embed.src){
         // QA #282 — video iframe 위/아래 여백 확대.
         html += '<div style="margin:36px 0;position:relative;padding-bottom:56.25%;height:0;overflow:hidden">'
-          + '<iframe src="' + escapeHtml(embed.src) + '" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%"></iframe>'
+          + '<iframe src="' + escapeHtml((typeof appendAutoplayParams==='function'?appendAutoplayParams(embed.src,embed.provider):embed.src)) + '" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%"></iframe>'
           + '</div>';
       } else if(src){
         // Surface the raw URL as a clickable fallback rather than dropping
@@ -501,7 +501,8 @@ function _renderArticleDetail(a,det){
     // 2026-07 — 릴스/영상 게시물: 영구 보관된 영상을 갤러리 상단에 전체 폭
     // 플레이어로 렌더 (섬네일만 보이던 문제 해소).
     var vids=(a.videos&&a.videos.length>0)?a.videos:[];
-    var vidHtml=vids.map(function(url){return '<div style="grid-column:1/-1;overflow:hidden;border-radius:2px;background:#000"><video src="'+url+'" controls playsinline preload="metadata" style="width:100%;display:block;max-height:80vh"></video></div>';}).join('');
+    // 사용자 요청 — 재생 버튼 없이 자동 재생. autoplay+muted+playsinline+loop 조합 필수.
+    var vidHtml=vids.map(function(url){return '<div style="grid-column:1/-1;overflow:hidden;border-radius:2px;background:#000"><video src="'+url+'" autoplay muted loop playsinline controls preload="metadata" style="width:100%;display:block;max-height:80vh"></video></div>';}).join('');
     if(galImgs||vids.length){
       galEl.innerHTML=vidHtml+(galImgs?galImgs.map(function(url){return '<div style="overflow:hidden;border-radius:2px;background:#111"><img src="'+url+'" alt="'+escapeHtml(a.t)+'" loading="lazy" style="width:100%;display:block" onerror="edImgError(this)"></div>';}).join(''):'');
       galEl.style.display='grid';

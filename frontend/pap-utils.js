@@ -101,6 +101,37 @@ function normaliseEmbedUrl(rawUrl){
 // detail) which read it as a bare global.
 if (typeof window !== 'undefined') window.normaliseEmbedUrl = normaliseEmbedUrl;
 
+// QA #343 (사용자 요청) — 기사/에디토리얼 상세페이지 영상 자동재생.
+// 브라우저 정책상 사용자 제스처 없이 재생하려면 반드시 mute + playsinline 필요.
+// - YouTube: autoplay=1, mute=1, playsinline=1, rel=0
+// - Vimeo:   autoplay=1, muted=1, playsinline=1
+// 기존 query 를 보존하면서 필요한 파라미터만 병합.
+function appendAutoplayParams(src, provider){
+  if (!src) return src;
+  var isYouTube = provider === 'youtube'
+    || /youtube\.com\/embed|youtube-nocookie\.com\/embed/i.test(src);
+  var isVimeo   = provider === 'vimeo' || /player\.vimeo\.com\/video/i.test(src);
+  if (!isYouTube && !isVimeo) return src;
+  var params = isYouTube
+    ? { autoplay:'1', mute:'1', playsinline:'1', rel:'0' }
+    : { autoplay:'1', muted:'1', playsinline:'1' };
+  var qIdx = src.indexOf('?');
+  var base = qIdx >= 0 ? src.slice(0, qIdx) : src;
+  var existing = qIdx >= 0 ? src.slice(qIdx + 1) : '';
+  var seen = {};
+  existing.split('&').filter(Boolean).forEach(function(kv){
+    var eq = kv.indexOf('=');
+    var k = eq >= 0 ? kv.slice(0, eq) : kv;
+    seen[k] = kv;
+  });
+  Object.keys(params).forEach(function(k){
+    seen[k] = k + '=' + params[k];
+  });
+  var qs = Object.keys(seen).map(function(k){ return seen[k]; }).join('&');
+  return base + (qs ? '?' + qs : '');
+}
+if (typeof window !== 'undefined') window.appendAutoplayParams = appendAutoplayParams;
+
 
 //
 // Foundational pure-ish helpers shared across every page and harness:
