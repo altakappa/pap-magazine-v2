@@ -140,10 +140,13 @@
       '.pap-search-overlay .search-input{width:100%;background:transparent;border:none;border-bottom:2px solid rgba(255,255,255,.3);color:#fff;font-size:24px;font-family:"Montserrat",sans-serif;padding:12px 0;outline:none;letter-spacing:.05em}',
       '.pap-search-overlay .search-input::placeholder{color:rgba(255,255,255,.3)}',
       /* nav overlay */
-      '.nav-overlay{position:fixed;inset:0;z-index:1500;background:#fff;opacity:0;visibility:hidden;transition:all .3s}',
+      /* QA(햄버거 통일) — 매거진 페이지의 nav 오버레이 연출(좌/우 컬럼 staggered
+         slide-in)을 공통 주입 스타일로 승격해 전 페이지가 동일한 UX 로 통일되도록 함. */
+      '.nav-overlay{position:fixed;inset:0;z-index:1500;background:#fff;opacity:0;visibility:hidden;transition:opacity .4s cubic-bezier(.23,1,.32,1),visibility .4s}',
       '.nav-overlay.active{opacity:1;visibility:visible}',
       '.nav-overlay-inner{display:flex;width:100%;height:100%;padding:80px 60px 60px}',
-      '.nav-left-col{display:flex;flex-direction:column;justify-content:space-between;width:280px;flex-shrink:0}',
+      '.nav-left-col{display:flex;flex-direction:column;justify-content:space-between;width:280px;flex-shrink:0;transform:translateX(-30px);opacity:0;transition:none}',
+      '.nav-overlay.active .nav-left-col{transform:translateX(0);opacity:1;transition:transform .5s cubic-bezier(.23,1,.32,1) .15s,opacity .5s cubic-bezier(.23,1,.32,1) .15s}',
       '.nav-left-top{margin-bottom:auto}',
       '.nav-left-top a{font-family:"Montserrat",sans-serif;font-size:clamp(18px,2.5vw,24px);font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#000;transition:opacity .2s}',
       '.nav-left-top a:hover{opacity:.4}',
@@ -154,7 +157,8 @@
       '.nav-socials{display:flex;flex-direction:row;gap:12px;align-items:center}',
       '.nav-social-icon{display:block;transition:opacity .2s}',
       '.nav-social-icon:hover{opacity:.5}',
-      '.nav-right-col{flex:1;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:0}',
+      '.nav-right-col{flex:1;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:0;transform:translateX(30px);opacity:0;transition:none}',
+      '.nav-overlay.active .nav-right-col{transform:translateX(0);opacity:1;transition:transform .5s cubic-bezier(.23,1,.32,1) .25s,opacity .5s cubic-bezier(.23,1,.32,1) .25s}',
       '.nav-right-col a{font-family:"Montserrat",sans-serif;font-size:clamp(40px,7vw,90px);font-weight:900;letter-spacing:.03em;text-transform:uppercase;color:#000;line-height:1.1;transition:opacity .2s}',
       '.nav-right-col a:hover{opacity:.4}',
       // .pap-nav-close style is appended below via the always-injected
