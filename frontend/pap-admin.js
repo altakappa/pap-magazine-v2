@@ -621,6 +621,28 @@ async function deleteMemberFromModal(){
   }
 }
 
+// QA(관리자 페이지) — 라우트/메뉴 전환 시 이전 화면의 모달·폼·에러 등
+// 세션성 UI 가 잔존해 새 페이지에 겹쳐 보이던 문제 수정. go() 진입 시
+// 열려 있던 모든 오버레이를 닫고 임시 상태를 초기화한다.
+function _closeTransientAdminUI(){
+  try {
+    // pe-modal 계열(로딩 이미지 / 매거진 발행호 / 내비 메뉴) 오버레이 닫기
+    document.querySelectorAll('.pe-modal').forEach(function(m){
+      m.classList.remove('show');
+      m.style.display = 'none';
+    });
+    // modal-bg 계열 오버레이 닫기
+    document.querySelectorAll('.modal-bg.show').forEach(function(m){
+      m.classList.remove('show');
+    });
+    // 로딩 이미지 등록 폼의 에러/상태 문구 초기화 — 다른 페이지로 이월 방지
+    var errEl = document.getElementById('loadImgFormError');
+    if(errEl){ errEl.style.display = 'none'; errEl.textContent = ''; }
+    var stEl = document.getElementById('loadingUploadStatus');
+    if(stEl){ stEl.textContent = ''; }
+  } catch(_){}
+}
+
 // Auto-load members when users tab is shown
 function go(id,el,opts){
   opts = opts || {};
@@ -635,6 +657,8 @@ function go(id,el,opts){
     var _ev = (typeof window !== 'undefined' && window.event) ? window.event : null;
     if(_ev && _ev.preventDefault) _ev.preventDefault();
   } catch(_){}
+  // QA(관리자 페이지) — 페이지 전환 시 이전 화면의 잔존 모달/폼/에러 제거·초기화
+  _closeTransientAdminUI();
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
   var tab=document.getElementById('t-'+id);
   if(tab)tab.classList.add('on');
