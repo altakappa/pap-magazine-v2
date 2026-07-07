@@ -8,38 +8,11 @@
  *   ?limit=30                 계정당 최근 게시물 수 (기본 30, 최대 50)
  *
  * 반환: 계정별 { profile, media[] } — 분석은 호출자(Claude/운영자)가 수행.
+ * 일일 자동 감시는 /api/cron/competitor-watch 참조.
  */
 
 const { requireAdmin } = require('../_lib/auth');
-
-const IG_API = 'https://graph.facebook.com/v25.0';
-
-async function discover(username, limit) {
-  const mediaSpec = 'media.limit(' + limit + '){caption,media_type,like_count,comments_count,timestamp,permalink}';
-  const fields = 'business_discovery.username(' + username + '){username,name,biography,followers_count,follows_count,media_count,website,' + mediaSpec + '}';
-  const url = IG_API + '/' + process.env.IG_USER_ID +
-    '?fields=' + encodeURIComponent(fields) + '&access_token=' + process.env.IG_ACCESS_TOKEN;
-  const r = await fetch(url, { signal: AbortSignal.timeout(20000) });
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) {
-    return { username, error: (j.error && j.error.message || ('HTTP ' + r.status)).slice(0, 200) };
-  }
-  const d = j.business_discovery || {};
-  const media = ((d.media && d.media.data) || []).map((m) => ({
-    type: m.media_type,
-    likes: m.like_count == null ? null : m.like_count,
-    comments: m.comments_count == null ? null : m.comments_count,
-    ts: m.timestamp,
-    permalink: m.permalink,
-    caption_head: String(m.caption || '').slice(0, 200),
-  }));
-  return {
-    username: d.username || username,
-    name: d.name, biography: d.biography, website: d.website,
-    followers: d.followers_count, follows: d.follows_count, media_count: d.media_count,
-    media,
-  };
-}
+const { discoverAccount } = require('../_lib/igDiscovery');
 
 module.exports = async function handler(req, res) {
   const user = await requireAdmin(req, res);
@@ -50,11 +23,11 @@ module.exports = async function handler(req, res) {
   const names = String((req.query && req.query.u) || '').split(',')
     .map((s) => s.trim().replace(/^@/, '')).filter(Boolean).slice(0, 8);
   if (!names.length) return res.status(400).json({ error: '?u=계정1,계정2 필요' });
-  const limit = Math.max(5, Math.min(50, parseInt((req.query && req.query.limit) || '30', 10) || 30));
+  const limit = parseInt((req.query && req.query.limit) || '30', 10) || 30;
 
   const out = [];
   for (const n of names) {
-    try { out.push(await discover(n, limit)); }
+    try { out.push(await discoverAccount(n, limit)); }
     catch (e) { out.push({ username: n, error: String(e && e.message || e).slice(0, 200) }); }
   }
   res.setHeader('Cache-Control', 'no-store');

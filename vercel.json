@@ -55,6 +55,10 @@
     {
       "path": "/api/cron/sync-pepperit",
       "schedule": "4-54/10 * * * *"
+    },
+    {
+      "path": "/api/cron/competitor-watch",
+      "schedule": "50 22 * * *"
     }
   ],
   "rewrites": [
