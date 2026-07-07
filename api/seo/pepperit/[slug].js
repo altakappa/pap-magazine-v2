@@ -62,7 +62,7 @@ module.exports = async function handler(req, res) {
       publisher: {
         '@type': 'Organization', name: 'PEPPERIT',
         logo: { '@type': 'ImageObject', url: SITE + '/pepperit-icon-512.png' },
-        sameAs: [IG],
+        sameAs: [IG, 'https://x.com/pepperitmag'],
         parentOrganization: { '@id': 'https://www.pap-magazine.com/#organization' },
       },
     };
