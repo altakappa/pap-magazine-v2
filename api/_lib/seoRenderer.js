@@ -33,10 +33,10 @@ const ORG_SAMEAS = [
   'https://www.youtube.com/@pap-magazine',
   'https://www.threads.net/@pap_magazine',
   'https://www.pinterest.com/07667zb6r6qwnjy4kbo8nl6hmxbcaz/',
-  // 2026-07-07: 신규 공식 채널 — X 자동 게시 + 네이버 블로그.
-  // 틱톡은 실계정 핸들 확정 후 추가 (@pap_mag vs @pap_magazine 상충).
+  // 2026-07-07: 신규 공식 채널 — X 자동 게시 + 네이버 블로그 + 틱톡(공식 핸들 확정).
   'https://x.com/papmagazine_',
-  'https://blog.naver.com/pap_magazine'
+  'https://blog.naver.com/pap_magazine',
+  'https://www.tiktok.com/@pap_magazine'
 ];
 const ORG_PUBLISHER = {
   '@type': 'Organization',
