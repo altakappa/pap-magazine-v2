@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex,nofollow" />
+<title>PAP · 소셜 재가공 (샤오홍슈 / 카카오 채널)</title>
+<style>
+  :root { --bg:#0f0f10; --card:#1a1a1c; --line:#2a2a2e; --fg:#f2f2f3; --dim:#9a9aa2; --accent:#e14d4d; --ok:#3ec46d; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.55 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif; }
+  header { position:sticky; top:0; z-index:5; background:#141416; border-bottom:1px solid var(--line); padding:14px 20px; display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
+  header h1 { font-size:16px; margin:0; letter-spacing:.5px; }
+  header .grow { flex:1; }
+  .seg { display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .seg button { background:transparent; color:var(--dim); border:0; padding:7px 14px; cursor:pointer; font-size:13px; }
+  .seg button.on { background:var(--accent); color:#fff; }
+  .seg.plat button.on { background:#2b6fe0; }
+  .btn { background:#242427; color:var(--fg); border:1px solid var(--line); border-radius:8px; padding:7px 12px; cursor:pointer; font-size:13px; }
+  .btn:hover { border-color:#454550; }
+  .btn.pri { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .btn.mini { padding:4px 9px; font-size:12px; }
+  main { max-width:920px; margin:0 auto; padding:20px; }
+  .muted { color:var(--dim); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; margin-bottom:16px; overflow:hidden; }
+  .card .head { display:flex; gap:14px; padding:14px; align-items:flex-start; }
+  .thumb { width:74px; height:74px; border-radius:8px; object-fit:cover; background:#000; flex:none; }
+  .card .head .meta { flex:1; min-width:0; }
+  .card .head .meta h3 { margin:0 0 3px; font-size:15px; line-height:1.35; }
+  .card .head .meta .sub { color:var(--dim); font-size:12px; }
+  .card .head .actions { display:flex; gap:8px; align-items:center; }
+  .pill { font-size:11px; padding:2px 8px; border-radius:999px; border:1px solid var(--line); color:var(--dim); }
+  .pill.done { color:var(--ok); border-color:#2f6b45; }
+  .gen { border-top:1px solid var(--line); padding:14px; display:none; }
+  .gen.show { display:block; }
+  .field { margin-bottom:12px; }
+  .field label { display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--dim); margin-bottom:5px; }
+  .field textarea, .field input { width:100%; background:#101012; color:var(--fg); border:1px solid var(--line); border-radius:8px; padding:9px; font:13px/1.5 inherit; resize:vertical; }
+  .tags { display:flex; flex-wrap:wrap; gap:6px; }
+  .tag { background:#101012; border:1px solid var(--line); border-radius:999px; padding:3px 9px; font-size:12px; }
+  .imgs { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
+  .imgs img { width:60px; height:60px; object-fit:cover; border-radius:6px; border:1px solid var(--line); }
+  .foot { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:6px; }
+  .toast { position:fixed; bottom:22px; left:50%; transform:translateX(-50%); background:#000; border:1px solid var(--line); padding:9px 16px; border-radius:10px; opacity:0; transition:.2s; pointer-events:none; }
+  .toast.show { opacity:1; }
+  .empty { text-align:center; color:var(--dim); padding:60px 20px; }
+  a { color:#7ab0ff; }
+  .spin { display:inline-block; width:13px; height:13px; border:2px solid var(--dim); border-top-color:transparent; border-radius:50%; animation:sp .7s linear infinite; vertical-align:-2px; }
+  @keyframes sp { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+<header>
+  <h1>소셜 재가공 <span class="muted" style="font-weight:400">· 자동 생성 → 수동 게시</span></h1>
+  <div class="grow"></div>
+  <div class="seg plat" id="platSeg">
+    <button data-plat="xiaohongshu" class="on">샤오홍슈</button>
+    <button data-plat="kakao">카카오 채널</button>
+  </div>
+  <div class="seg" id="typeSeg">
+    <button data-type="article" class="on">기사</button>
+    <button data-type="editorial">에디토리얼</button>
+  </div>
+  <button class="btn" id="refreshBtn">새로고침</button>
+</header>
+
+<main id="main">
+  <div class="empty">불러오는 중… <span class="spin"></span></div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  var API = (window.API_BASE || '/api');
+  var state = { plat:'xiaohongshu', type:'article', items:[] };
+  var TOKEN = (function(){ try { return localStorage.getItem('pap-token') || ''; } catch(e){ return ''; } })();
+
+  function headers(json){
+    var h = { 'Authorization':'Bearer '+TOKEN, 'X-Requested-With':'XMLHttpRequest' };
+    if (json) h['Content-Type'] = 'application/json';
+    return h;
+  }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function toast(msg){ var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(function(){ t.classList.remove('show'); },1600); }
+  function copy(text){ navigator.clipboard.writeText(text).then(function(){ toast('복사됨'); }, function(){ toast('복사 실패 — 직접 선택해 복사하세요'); }); }
+
+  function platLabel(){ return state.plat==='xiaohongshu' ? '샤오홍슈' : '카카오 채널'; }
+  function fmtTags(tags){
+    tags = tags || [];
+    return tags.map(function(t){ return '#'+t; }).join(state.plat==='xiaohongshu' ? ' ' : ' ');
+  }
+  function fullCaption(rep){
+    var parts = [];
+    if (rep.title) parts.push(rep.title);
+    if (rep.body) parts.push(rep.body);
+    if (rep.hashtags && rep.hashtags.length) parts.push(fmtTags(rep.hashtags));
+    return parts.join('\n\n');
+  }
+
+  if (!TOKEN){
+    document.getElementById('main').innerHTML =
+      '<div class="empty">로그인이 필요해요.<br><br>같은 브라우저에서 <a href="/admin">/admin</a> 으로 먼저 로그인한 뒤 이 페이지를 새로고침하세요.</div>';
+    return;
+  }
+
+  function load(){
+    var main = document.getElementById('main');
+    main.innerHTML = '<div class="empty">불러오는 중… <span class="spin"></span></div>';
+    fetch(API+'/admin/repurpose?type='+state.type+'&limit=40', { headers: headers(false) })
+      .then(function(r){ if(!r.ok) throw new Error(r.status===401||r.status===403 ? '권한 없음 (관리자 계정으로 로그인 필요)' : ('HTTP '+r.status)); return r.json(); })
+      .then(function(d){ state.items = d.items || []; render(); })
+      .catch(function(e){ main.innerHTML = '<div class="empty">불러오기 실패: '+esc(e.message)+'</div>'; });
+  }
+
+  function render(){
+    var main = document.getElementById('main');
+    if (!state.items.length){ main.innerHTML = '<div class="empty">발행된 '+(state.type==='article'?'기사':'에디토리얼')+'가 없어요.</div>'; return; }
+    main.innerHTML = '';
+    state.items.forEach(function(it){ main.appendChild(cardEl(it)); });
+  }
+
+  function cardEl(it){
+    var rep = (it.repurpose && it.repurpose[state.plat]) || null;
+    var card = document.createElement('div'); card.className='card';
+    var posted = rep && rep.status==='posted';
+
+    var head = document.createElement('div'); head.className='head';
+    head.innerHTML =
+      '<img class="thumb" src="'+esc(it.thumbnail||'')+'" onerror="this.style.visibility=\'hidden\'"/>'+
+      '<div class="meta"><h3>'+esc(it.title||'(제목 없음)')+'</h3>'+
+        '<div class="sub">'+esc((it.published_date||'').slice(0,10))+' · 이미지 '+(it.image_count||0)+'장'+
+        (rep ? ' · <span class="pill'+(posted?' done':'')+'">'+platLabel()+(posted?' 게시완료':' 생성됨')+'</span>' : '')+'</div></div>';
+    var actions = document.createElement('div'); actions.className='actions';
+    var genBtn = document.createElement('button'); genBtn.className='btn pri'; genBtn.textContent = rep ? '재생성' : '생성';
+    genBtn.onclick = function(){ generate(it, !!rep, genBtn, card); };
+    actions.appendChild(genBtn);
+    head.appendChild(actions);
+    card.appendChild(head);
+
+    var gen = document.createElement('div'); gen.className='gen'+(rep?' show':'');
+    card.appendChild(gen);
+    if (rep) fillGen(gen, it, rep);
+    card._gen = gen; card._it = it;
+    return card;
+  }
+
+  function fillGen(gen, it, rep){
+    var posted = rep.status==='posted';
+    gen.innerHTML =
+      '<div class="field"><label>제목 <button class="btn mini" data-c="t">복사</button></label>'+
+        '<input value="'+esc(rep.title||'')+'" readonly/></div>'+
+      '<div class="field"><label>본문 <button class="btn mini" data-c="b">복사</button></label>'+
+        '<textarea rows="7" readonly>'+esc(rep.body||'')+'</textarea></div>'+
+      '<div class="field"><label>해시태그 <button class="btn mini" data-c="h">복사</button></label>'+
+        '<div class="tags">'+(rep.hashtags||[]).map(function(t){return '<span class="tag">#'+esc(t)+'</span>';}).join('')+'</div></div>'+
+      ((rep.image_urls&&rep.image_urls.length)?'<div class="field"><label>선택된 이미지 ('+rep.image_urls.length+'장) <button class="btn mini" data-c="i">URL 복사</button></label>'+
+        '<div class="imgs">'+rep.image_urls.map(function(u){return '<img src="'+esc(u)+'" onerror="this.style.display=\'none\'"/>';}).join('')+'</div></div>':'')+
+      '<div class="foot">'+
+        '<button class="btn pri" data-c="all">전체 복사</button>'+
+        '<button class="btn" data-c="mark">'+(posted?'게시완료 해제':'게시완료 표시')+'</button>'+
+        '<span class="muted" style="font-size:12px">생성: '+esc((rep.generated_at||'').slice(0,16).replace('T',' '))+(rep.lang?(' · '+rep.lang):'')+'</span>'+
+      '</div>';
+    gen.querySelectorAll('button[data-c]').forEach(function(b){
+      b.onclick = function(){
+        var c=b.getAttribute('data-c');
+        if(c==='t') copy(rep.title||'');
+        else if(c==='b') copy(rep.body||'');
+        else if(c==='h') copy(fmtTags(rep.hashtags));
+        else if(c==='i') copy((rep.image_urls||[]).join('\n'));
+        else if(c==='all') copy(fullCaption(rep));
+        else if(c==='mark') markPosted(it, rep, b);
+      };
+    });
+  }
+
+  function generate(it, isRegen, btn, card){
+    if (isRegen && !confirm('이미 생성된 '+platLabel()+' 콘텐츠를 새로 덮어씁니다. 계속할까요?')) return;
+    var old = btn.textContent; btn.disabled=true; btn.innerHTML='<span class="spin"></span> 생성 중';
+    fetch(API+'/admin/repurpose', { method:'POST', headers: headers(true),
+      body: JSON.stringify({ target_type: state.type, target_id: it.id, platform: state.plat, overwrite: isRegen }) })
+      .then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error(j.message||('HTTP '+r.status)); return j; }); })
+      .then(function(j){
+        it.repurpose = it.repurpose || {}; it.repurpose[state.plat] = j.item;
+        btn.disabled=false; btn.textContent='재생성';
+        card._gen.classList.add('show'); fillGen(card._gen, it, j.item);
+        // 상태 pill 갱신
+        var pillWrap = card.querySelector('.sub');
+        toast(j.reused ? '기존 결과를 불러왔어요' : '생성 완료');
+        load._quiet = true; // avoid double reload flash
+        var sub = card.querySelector('.meta .sub');
+        if (sub && sub.querySelector('.pill')==null) sub.innerHTML += ' · <span class="pill">'+platLabel()+' 생성됨</span>';
+      })
+      .catch(function(e){ btn.disabled=false; btn.textContent=old; toast('실패: '+e.message); });
+  }
+
+  function markPosted(it, rep, btn){
+    var to = rep.status==='posted' ? 'unmark_posted' : 'mark_posted';
+    btn.disabled=true;
+    fetch(API+'/admin/repurpose', { method:'POST', headers: headers(true),
+      body: JSON.stringify({ target_type: state.type, target_id: it.id, platform: state.plat, op: to }) })
+      .then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error(j.message||('HTTP '+r.status)); return j; }); })
+      .then(function(j){ it.repurpose[state.plat]=j.item; render(); toast(to==='mark_posted'?'게시완료로 표시':'표시 해제'); })
+      .catch(function(e){ btn.disabled=false; toast('실패: '+e.message); });
+  }
+
+  // 세그먼트 토글
+  document.getElementById('platSeg').addEventListener('click', function(e){
+    var b=e.target.closest('button'); if(!b) return;
+    state.plat=b.getAttribute('data-plat');
+    this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('on', x===b); });
+    render();
+  });
+  document.getElementById('typeSeg').addEventListener('click', function(e){
+    var b=e.target.closest('button'); if(!b) return;
+    state.type=b.getAttribute('data-type');
+    this.querySelectorAll('button').forEach(function(x){ x.classList.toggle('on', x===b); });
+    load();
+  });
+  document.getElementById('refreshBtn').addEventListener('click', load);
+
+  load();
+})();
+</script>
+</body>
+</html>
