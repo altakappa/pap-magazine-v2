@@ -235,6 +235,18 @@ tr:hover td{background:rgba(0,0,0,.02)}
 #loadingImgModal .modal-body{padding:20px 24px}
 #loadingImgModal .modal-footer{display:flex;gap:8px;justify-content:flex-end;padding:16px 24px 24px;border-top:1px solid var(--border)}
 
+/* QA(관_매거진) — 매거진 발행호 등록/편집 모달도 CSS 가 없어 클릭 시
+   화면에 제대로 안 뜨던 문제 수정. 로딩 모달과 동일한 중앙 오버레이 규칙. */
+#magazineIssueModal{position:fixed;inset:0;z-index:1200;display:none;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto}
+#magazineIssueModal.show{display:flex}
+#magazineIssueModal .pe-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(4px)}
+#magazineIssueModal .pe-modal-content{position:relative;width:100%;max-width:760px;background:var(--surface);border:1px solid var(--border2);border-radius:8px;box-shadow:0 24px 70px rgba(0,0,0,.4);display:flex;flex-direction:column}
+#magazineIssueModal .modal-header{display:flex;align-items:center;justify-content:space-between;padding:20px 24px 12px;border-bottom:1px solid var(--border)}
+#magazineIssueModal .modal-title{font-size:16px;font-weight:700}
+#magazineIssueModal .modal-close{position:static}
+#magazineIssueModal .modal-body{padding:20px 24px;max-height:70vh;overflow-y:auto}
+#magazineIssueModal .modal-footer{display:flex;gap:8px;justify-content:flex-end;padding:16px 24px 24px;border-top:1px solid var(--border)}
+
 /* TABS */
 .tab{display:none}.tab.on{display:block}
 
@@ -1893,7 +1905,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
     <div class="pe-modal-backdrop" onclick="closeMagazineIssueModal()"></div>
     <div class="pe-modal-content" style="max-width:640px">
       <div class="modal-header">
-        <div class="modal-title" id="magazineIssueModalTitle">새 발행호</div>
+        <div class="modal-title" id="magIssueModalTitle">새 발행호</div>
         <button class="modal-close" onclick="closeMagazineIssueModal()">&times;</button>
       </div>
       <div class="modal-body" style="max-height:70vh;overflow-y:auto">
