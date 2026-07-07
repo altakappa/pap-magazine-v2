@@ -1,0 +1,122 @@
+/**
+ * PAP Magazine — Threads API 공유 라이브러리 (@pap_magazine)
+ *
+ * 의존 env: THREADS_APP_ID, THREADS_APP_SECRET
+ * 토큰 저장: threads_auth 테이블 (071) — 장기 토큰 60일, 만료 임박 시 자동 연장.
+ *
+ * 소비자:
+ *   api/threads/oauth.js    — 인증 시작 (관리자 1회, @pap_magazine 로그인 상태)
+ *   api/threads/callback.js — 코드 교환 → 장기 토큰 저장
+ *   api/cron/threads-post.js — 신규 기사 자동 게시 (TEXT + 링크 프리뷰)
+ *
+ * 앱은 개발 모드 + @pap_magazine 이 Threads 테스터 — 본 계정 게시는 심사 없이
+ * 즉시 실사용 가능 (테스터 계정의 게시물은 실제 공개 게시물이다).
+ */
+
+const { supabaseAdmin } = require('./supabase');
+
+const AUTH_BASE = 'https://threads.net/oauth/authorize';
+const GRAPH = 'https://graph.threads.net';
+const SCOPES = 'threads_basic,threads_content_publish';
+const REDIRECT_URI = 'https://www.pap-magazine.com/api/threads/callback';
+
+function authorizeUrl(state) {
+  const p = new URLSearchParams({
+    client_id: process.env.THREADS_APP_ID,
+    redirect_uri: REDIRECT_URI,
+    scope: SCOPES,
+    response_type: 'code',
+    state: state || 'pap',
+  });
+  return AUTH_BASE + '?' + p.toString();
+}
+
+// 코드 → 단기 토큰 → 장기 토큰(60일) 교환 후 저장
+async function exchangeCode(code) {
+  const body = new URLSearchParams({
+    client_id: process.env.THREADS_APP_ID,
+    client_secret: process.env.THREADS_APP_SECRET,
+    code,
+    grant_type: 'authorization_code',
+    redirect_uri: REDIRECT_URI,
+  });
+  const r = await fetch(GRAPH + '/oauth/access_token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body,
+    signal: AbortSignal.timeout(15000),
+  });
+  const j = await r.json();
+  if (!r.ok || j.error) throw new Error('token exchange 실패: ' + JSON.stringify(j).slice(0, 200));
+
+  const lr = await fetch(GRAPH + '/access_token?grant_type=th_exchange_token&client_secret='
+    + encodeURIComponent(process.env.THREADS_APP_SECRET) + '&access_token=' + encodeURIComponent(j.access_token), {
+    signal: AbortSignal.timeout(15000),
+  });
+  const lj = await lr.json();
+  if (!lr.ok || lj.error) throw new Error('장기 토큰 교환 실패: ' + JSON.stringify(lj).slice(0, 200));
+
+  await saveToken({ user_id: String(j.user_id || ''), access_token: lj.access_token, expires_in: lj.expires_in });
+  return { user_id: j.user_id, expires_in: lj.expires_in };
+}
+
+async function saveToken(t) {
+  const patch = {
+    id: 1,
+    access_token: t.access_token,
+    expires_at: new Date(Date.now() + (t.expires_in || 5184000) * 1000).toISOString(),
+    scope: SCOPES,
+    updated_at: new Date().toISOString(),
+  };
+  if (t.user_id) patch.user_id = t.user_id;
+  const { error } = await supabaseAdmin.from('threads_auth').upsert(patch);
+  if (error) throw error;
+}
+
+// 유효 토큰 반환 — 만료 7일 전부터 th_refresh_token 으로 60일 연장
+async function getAccessToken() {
+  const { data: row, error } = await supabaseAdmin.from('threads_auth').select('*').eq('id', 1).single();
+  if (error || !row || !row.access_token) throw new Error('Threads 미인증 — /api/threads/oauth 로 1회 인증 필요');
+  const msLeft = new Date(row.expires_at || 0).getTime() - Date.now();
+  if (msLeft > 7 * 86400000) return { token: row.access_token, userId: row.user_id };
+  const r = await fetch(GRAPH + '/refresh_access_token?grant_type=th_refresh_token&access_token='
+    + encodeURIComponent(row.access_token), { signal: AbortSignal.timeout(15000) });
+  const j = await r.json();
+  if (!r.ok || j.error) {
+    // 연장 실패 — 남은 기간 내면 기존 토큰으로 계속, 완전 만료면 재인증 요구
+    if (msLeft > 0) return { token: row.access_token, userId: row.user_id };
+    throw new Error('token refresh 실패 (만료) — /api/threads/oauth 재인증 필요: ' + JSON.stringify(j).slice(0, 150));
+  }
+  await saveToken({ access_token: j.access_token, expires_in: j.expires_in });
+  return { token: j.access_token, userId: row.user_id };
+}
+
+/**
+ * TEXT 스레드 게시 (본문 내 첫 URL이 링크 프리뷰 카드가 된다).
+ * 2단계: 컨테이너 생성 → 게시.
+ * @param {string} text ≤500자
+ * @returns {Promise<string>} thread id
+ */
+async function postText(text) {
+  const { token, userId } = await getAccessToken();
+  if (!userId) throw new Error('threads_auth.user_id 없음 — 재인증 필요');
+  const create = await fetch(GRAPH + '/v1.0/' + userId + '/threads', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ media_type: 'TEXT', text: String(text || '').slice(0, 500), access_token: token }),
+    signal: AbortSignal.timeout(20000),
+  });
+  const cj = await create.json();
+  if (!create.ok || !cj.id) throw new Error('컨테이너 생성 실패: ' + JSON.stringify(cj).slice(0, 300));
+  const pub = await fetch(GRAPH + '/v1.0/' + userId + '/threads_publish', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ creation_id: cj.id, access_token: token }),
+    signal: AbortSignal.timeout(20000),
+  });
+  const pj = await pub.json();
+  if (!pub.ok || !pj.id) throw new Error('게시 실패: ' + JSON.stringify(pj).slice(0, 300));
+  return pj.id;
+}
+
+module.exports = { authorizeUrl, exchangeCode, getAccessToken, postText, REDIRECT_URI };

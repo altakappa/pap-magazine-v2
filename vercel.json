@@ -57,6 +57,10 @@
       "schedule": "15 1,13 * * *"
     },
     {
+      "path": "/api/cron/threads-post",
+      "schedule": "45 */3 * * *"
+    },
+    {
       "path": "/api/cron/sync-pepperit",
       "schedule": "4-54/10 * * * *"
     },
