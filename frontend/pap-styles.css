@@ -892,7 +892,10 @@ section.hero + .shorts-section{
   .creator-results{padding:0 var(--pad-x)}
 
   /* Cards */
-  .fashion-card{min-width:calc(75% - 12px)}
+  /* QA #343 — 모바일 홈 아티클 썸네일을 에디토리얼과 유사한 크기로 축소.
+     이전: min-width:calc(75% - 12px) → 카드 1개가 화면 3/4 차지 (에디토리얼 대비 2배 이상)
+     조정: 200px 고정폭 → 에디토리얼(.ed-row-card 180px)과 유사한 스케일 유지 */
+  .fashion-card{min-width:200px;max-width:200px}
   .carousel-arrow{top:50%;transform:translateY(-50%)}
   .ed-carousel-card{min-width:calc(50% - 14px)}
   .ed-row-card{min-width:180px;max-width:180px}
@@ -1076,7 +1079,8 @@ section.hero + .shorts-section{
   .creator-results{padding:0 var(--pad-x)}
 
   /* Cards — smaller for phone screens */
-  .fashion-card{min-width:calc(85% - 8px)}
+  /* QA #343 — 아티클 카드도 에디토리얼과 유사 스케일 */
+  .fashion-card{min-width:170px;max-width:170px}
   .ed-row-card{min-width:155px;max-width:155px}
   .nf-card{min-width:240px;max-width:240px}
   .creator-card{min-width:160px;max-width:160px;padding:12px}
@@ -1155,7 +1159,8 @@ section.hero + .shorts-section{
   /* Cards */
   .ed-row-card{min-width:140px;max-width:140px}
   .nf-card{min-width:220px;max-width:220px}
-  .fashion-card{min-width:calc(90% - 8px)}
+  /* QA #343 — 아티클 카드도 에디토리얼과 유사 스케일 */
+  .fashion-card{min-width:155px;max-width:155px}
   .creator-card{min-width:150px;max-width:150px}
 
   /* Nav */
@@ -1231,7 +1236,8 @@ section.hero + .shorts-section{
 
   .ed-row-card{min-width:115px;max-width:115px}
   .nf-card{min-width:180px;max-width:180px}
-  .fashion-card{min-width:95%}
+  /* QA #343 — 아티클 카드도 에디토리얼과 유사 스케일 */
+  .fashion-card{min-width:130px;max-width:130px}
 
   .nav-right-col a{font-size:18px}
   .nav-left-top a{font-size:13px}
