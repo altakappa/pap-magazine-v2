@@ -86,25 +86,18 @@ module.exports = async function handler(req, res) {
         .select()
         .single();
       if (error || !data) {
-        // QA #318 — 진단을 위해 서버가 감췄던 실제 Supabase 에러를
-        // 클라이언트로 노출. code + message + hint 를 상세히 전달.
+        // QA(긴급) — 원본 Supabase 에러(테이블명·PGRST 코드 등)는 서버 로그로만
+        // 남기고, 클라이언트에는 시스템 상세를 노출하지 않는다.
         console.error('[admin loading-images POST] insert failed', {
           error,
           insertRow: Object.assign({}, insertRow, { image_url_pc: '(redacted)' })
         });
-        return res.status(500).json({
-          message: 'Failed to create loading image',
-          detail:  (error && (error.message || error.hint)) || 'unknown DB error',
-          code:    (error && error.code) || null,
-        });
+        return res.status(500).json({ message: 'Failed to create loading image' });
       }
       return res.status(201).json({ data });
     } catch (err) {
       console.error('[admin loading-images POST] uncaught', err);
-      return res.status(500).json({
-        message: 'Failed to create loading image',
-        detail:  (err && err.message) || String(err),
-      });
+      return res.status(500).json({ message: 'Failed to create loading image' });
     }
   }
 
@@ -154,19 +147,12 @@ module.exports = async function handler(req, res) {
         .single();
       if (error || !data) {
         console.error('[admin loading-images PATCH] update failed', { error, patch });
-        return res.status(500).json({
-          message: 'Failed to update loading image',
-          detail:  (error && (error.message || error.hint)) || 'unknown DB error',
-          code:    (error && error.code) || null,
-        });
+        return res.status(500).json({ message: 'Failed to update loading image' });
       }
       return res.status(200).json({ data });
     } catch (err) {
       console.error('[admin loading-images PATCH] uncaught', err);
-      return res.status(500).json({
-        message: 'Failed to update loading image',
-        detail:  (err && err.message) || String(err),
-      });
+      return res.status(500).json({ message: 'Failed to update loading image' });
     }
   }
 

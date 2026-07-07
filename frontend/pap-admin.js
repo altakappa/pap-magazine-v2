@@ -10619,7 +10619,7 @@ async function saveLoadingImgFromModal(){
     }
   } catch(e){
     console.error('[loading-images] modal save failed:', e);
-    showError('❌ 저장 실패\n\n' + (e && e.message || e) + '\n\n입력값을 확인하고 다시 시도해주세요.');
+    showError('❌ ' + _extractLoadingErrReason(e));
   }
 }
 
@@ -10662,16 +10662,39 @@ function _validateLoadingImg(f){
 // QA #318 — 서버는 이제 { message, detail, code } 를 내려주므로
 // message + detail (+ code) 를 조합해서 완전한 진단 문자열을 만듦.
 // message 만 있는 옛날 응답에도 호환.
+// QA(긴급) — 시스템/코드 레벨 에러(테이블명·PGRST 코드·스키마 오류 등)를
+// 사용자 화면에 그대로 노출하지 않는다. 원본 진단은 콘솔 로그로만 남기고,
+// 사용자에겐 원인 유형별(서버/네트워크/규격)로 친화적 문구를 보여준다.
 function _extractLoadingErrReason(err){
-  if (!err) return '알 수 없는 오류';
+  if (!err) return '요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.';
+  // 이미 사용자 친화적으로 만들어진 문자열(클라 검증 사유 등)은 그대로 사용.
   if (typeof err === 'string') return err;
-  var parts = [];
-  if (err.message) parts.push(String(err.message));
-  if (err.detail && err.detail !== err.message) parts.push(String(err.detail));
-  if (err.code) parts.push('[' + String(err.code) + ']');
-  if (parts.length) return parts.join(' — ');
-  if (err.error) return String(err.error);
-  try { return JSON.stringify(err); } catch(_){ return String(err); }
+
+  // 원본 진단 정보 — 로그로만 보존.
+  var rawParts = [];
+  if (err.message) rawParts.push(String(err.message));
+  if (err.detail && err.detail !== err.message) rawParts.push(String(err.detail));
+  if (err.code) rawParts.push('[' + String(err.code) + ']');
+  var raw = rawParts.join(' — ') || (function(){ try { return JSON.stringify(err); } catch(_){ return String(err); } })();
+  try { console.error('[loading-images] raw error detail (사용자 비노출):', raw); } catch(_){}
+
+  var probe = raw.toLowerCase();
+  // 네트워크/연결 오류
+  if (/failed to fetch|networkerror|network error|load failed|timeout|err_|net::/.test(probe)){
+    return '네트워크 오류로 요청에 실패했습니다. 연결 상태를 확인하고 다시 시도해주세요.';
+  }
+  // 규격/입력 문제(서버가 명시적으로 규격 관련 message 를 준 경우)
+  if (/규격|형식|용량|size|too large|invalid image|unsupported/.test(probe)){
+    return '이미지가 권장 규격에서 벗어났습니다. 형식(JPG·PNG·WebP)과 용량(최대 3MB)을 확인해주세요.';
+  }
+  // 시스템/DB 레벨 오류(PGRST·스키마·테이블·제약조건·권한 등) → 코드/테이블명 비노출
+  if (/pgrst|schema cache|could not find the table|relation|does not exist|duplicate|foreign key|violates|constraint|permission|denied|jwt|internal|failed to (create|update|delete|load)|500/.test(probe)
+      || /^pgrst/i.test(String(err.code || ''))){
+    return '서버 오류로 저장에 실패했습니다. 잠시 후 다시 시도해주세요. 문제가 계속되면 관리자에게 문의해주세요.';
+  }
+  // 그 외 — 서버가 준 사용자용 메시지가 한국어면 사용, 아니면 일반 안내.
+  if (err.message && /[가-힯]/.test(String(err.message))) return String(err.message);
+  return '요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.';
 }
 
 // 배치 업로드 공통 로직 (파일 선택 + 드래그앤드롭 양쪽에서 재사용).

@@ -221,6 +221,20 @@ tr:hover td{background:rgba(0,0,0,.02)}
 .modal-close{position:absolute;top:14px;right:16px;background:none;border:none;color:var(--text3);font-size:18px}
 .modal-foot{display:flex;gap:6px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
 
+/* QA(긴급) — 로딩 이미지 등록 모달(#loadingImgModal): pe-modal 계열 클래스에
+   스타일이 없어 인라인·좌측 정렬로 뜨고 하단 버튼이 화면 끝에 붙던 문제 수정.
+   상단 안내 카드와 동일하게 화면 중앙에 오버레이로 띄우고, 등록 영역 하단에
+   충분한 여백을 준다. (범위를 #loadingImgModal 로 한정해 다른 모달 미영향) */
+#loadingImgModal{position:fixed;inset:0;z-index:1200;display:none;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto}
+#loadingImgModal.show{display:flex}
+#loadingImgModal .pe-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(4px)}
+#loadingImgModal .pe-modal-content{position:relative;width:100%;background:var(--surface);border:1px solid var(--border2);border-radius:8px;box-shadow:0 24px 70px rgba(0,0,0,.4);display:flex;flex-direction:column}
+#loadingImgModal .modal-header{display:flex;align-items:center;justify-content:space-between;padding:20px 24px 12px;border-bottom:1px solid var(--border)}
+#loadingImgModal .modal-title{font-size:16px;font-weight:700}
+#loadingImgModal .modal-close{position:static}
+#loadingImgModal .modal-body{padding:20px 24px}
+#loadingImgModal .modal-footer{display:flex;gap:8px;justify-content:flex-end;padding:16px 24px 24px;border-top:1px solid var(--border)}
+
 /* TABS */
 .tab{display:none}.tab.on{display:block}
 
@@ -1755,7 +1769,6 @@ tr:hover td{background:rgba(0,0,0,.02)}
           <div class="modal-section">
             <div class="modal-label">
               🖥️ PC 이미지 <span style="color:#e74c3c">*</span>
-              <span style="display:block;font-size:10px;font-weight:400;color:var(--text3);margin-top:2px">권장 16:9 (예: 1920×1080)</span>
             </div>
             <div class="pe-upload" id="loadImgPcDrop" onclick="document.getElementById('loadImgPcFile').click()" style="min-height:160px;padding:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:pointer;border:2px dashed var(--border);border-radius:4px;background:rgba(255,255,255,.02);position:relative">
               <input type="file" id="loadImgPcFile" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="_onLoadingImgFile(this,'pc')">
@@ -1772,7 +1785,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
           <div class="modal-section">
             <div class="modal-label">
               📱 모바일 이미지 <span style="color:var(--text3);font-weight:400;font-size:10px">(선택)</span>
-              <span style="display:block;font-size:10px;font-weight:400;color:var(--text3);margin-top:2px">권장 9:16 (예: 1080×1920). 없으면 PC 이미지 사용.</span>
+              <span style="display:block;font-size:10px;font-weight:400;color:var(--text3);margin-top:2px">없으면 PC 이미지 사용</span>
             </div>
             <div class="pe-upload" id="loadImgMobileDrop" onclick="document.getElementById('loadImgMobileFile').click()" style="min-height:160px;padding:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:pointer;border:2px dashed var(--border);border-radius:4px;background:rgba(255,255,255,.02);position:relative">
               <input type="file" id="loadImgMobileFile" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="_onLoadingImgFile(this,'mobile')">
