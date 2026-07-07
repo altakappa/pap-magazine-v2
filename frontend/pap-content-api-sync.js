@@ -370,9 +370,12 @@ window._papFilmAutoPlay = function(){
         .replace(/&/g,'&amp;').replace(/"/g,'&quot;')
         .replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
-    // newest first — the list comes from /api/articles sorted by
-    // published_date DESC already, so we just take the first 8.
-    var candidates = apiArticles.slice(0, 8).filter(function(a){
+    // QA #344 — 이전에는 slice(0,8)로 최신 8개만 prepend했는데,
+    // 그러면 API에는 있고 정적 HTML에는 없는 "중간 시기" 아티클들이
+    // 홈 최신기사 캐로셀에 영원히 노출되지 않는 문제가 있었다.
+    // 이제는 전체 API 결과 중 정적 카드에 없는 것을 모두 prepend한다.
+    // /api/articles가 published_date DESC로 정렬돼 오므로 순서는 그대로.
+    var candidates = apiArticles.filter(function(a){
       if(!a) return false;
       var title = (a.t || '').trim();
       var slug = a.slug || '';
@@ -381,7 +384,16 @@ window._papFilmAutoPlay = function(){
       return !!(title);
     });
     // Reverse so insertBefore(track.firstChild) yields newest-first order.
-    candidates.reverse().forEach(function(a){
+    // QA #344 — 첫 화면에 노출되는 카드 3장은 loading="eager" + fetchpriority="high"
+    // 로 명시해서 lazy-load 지연으로 인한 '뒤늦게 로드' 체감을 줄인다.
+    // (candidates가 reverse된 상태이므로 원래 배열 기준 앞 3개 = reverse의 뒤 3개)
+    var _n = candidates.length;
+    var _eagerCutoff = Math.max(0, _n - 3); // 이 인덱스 이상은 eager
+    candidates.reverse().forEach(function(a, idx){
+      // reverse 이후 idx가 클수록 원래 배열의 앞쪽(=최신). 상위 3장은 eager.
+      var isTop = idx >= _eagerCutoff;
+      var loadingAttr = isTop ? 'eager' : 'lazy';
+      var priorityAttr = isTop ? ' fetchpriority="high"' : '';
       // SEO — 실제 <a href> 카드로 생성. 크롤러(구글 JS 렌더 포함)가
       // 목록 → 상세(/article/<slug>) 링크 그래프를 따라갈 수 있게 한다.
       // 클릭은 preventDefault 후 기존 SPA 오버레이 그대로.
@@ -408,13 +420,23 @@ window._papFilmAutoPlay = function(){
       var dateStr = _fmt(a.d || a.published_date || '');
       var meta = catLabel + (catLabel && dateStr ? ' - ' : '') + dateStr;
       card.innerHTML =
-        '<div class="fashion-card-img"><img loading="lazy" src="' + _esc(img) + '" alt="' + _esc(a.t || '') + '"></div>' +
+        '<div class="fashion-card-img"><img loading="' + loadingAttr + '" decoding="async"' + priorityAttr + ' src="' + _esc(img) + '" alt="' + _esc(a.t || '') + '"></div>' +
         '<div class="fashion-card-info">' +
           '<div class="fashion-card-cat">' + _esc(meta) + '</div>' +
           '<div class="fashion-card-title">' + _esc(a.t || '') + '</div>' +
         '</div>';
       track.insertBefore(card, track.firstChild);
     });
+    // QA #344 — 위 prepend가 끝난 뒤, 정적 HTML의 첫 3장도 eager로 강제 승격.
+    // (사용자 최초 뷰포트에 들어가는 카드가 항상 즉시 로드되도록 안전 장치)
+    try {
+      var _allCards = track.querySelectorAll('.fashion-card img');
+      for(var i = 0; i < Math.min(3, _allCards.length); i++){
+        _allCards[i].setAttribute('loading', 'eager');
+        _allCards[i].setAttribute('fetchpriority', 'high');
+        _allCards[i].setAttribute('decoding', 'async');
+      }
+    } catch(_){}
   }
 
   // Convert Supabase editorial record → hardcoded edData format.
