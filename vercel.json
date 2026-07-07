@@ -58,7 +58,7 @@
     },
     {
       "path": "/api/cron/competitor-watch",
-      "schedule": "50 22 * * *"
+      "schedule": "7,37 * * * *"
     }
   ],
   "rewrites": [
