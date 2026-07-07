@@ -38,6 +38,20 @@ const ORG_SAMEAS = [
   'https://blog.naver.com/pap_magazine',
   'https://www.tiktok.com/@pap_magazine'
 ];
+// 허브-스포크 퍼널 — 기사 카테고리에 맞는 니치 계정 (메인과 나란히 노출).
+const NICHE_IG = [
+  [/beauty/i, 'papbeauty_'],
+  [/fashion/i, 'papfashion_'],
+  [/news|celeb|music/i, 'pap_celeb'],
+  [/art/i, 'papstudios_'],
+  [/culture|life|trend/i, 'pap_trends'],
+];
+function nicheIg(category) {
+  const c = String(category || '');
+  for (const [re, acct] of NICHE_IG) if (re.test(c)) return acct;
+  return null;
+}
+
 const ORG_PUBLISHER = {
   '@type': 'Organization',
   '@id': ORG_ID,
@@ -787,8 +801,9 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
       <div class="igf-kicker">PAP Magazine — Instagram</div>
       <p class="igf-copy">매일 업데이트되는 에디토리얼과 패션·셀럽 뉴스,<br><b>인스타그램에서 가장 먼저</b> 만나보세요.</p>
       <a class="igf-btn" href="https://www.instagram.com/pap_magazine/" target="_blank" rel="noopener">Follow @pap_magazine</a>
+      ${nicheIg(record.category) ? `<a class="igf-btn" style="background:transparent;color:#bbb;border:1px solid rgba(255,255,255,.25)" href="https://www.instagram.com/${nicheIg(record.category)}/" target="_blank" rel="noopener">+ @${nicheIg(record.category)}</a>` : ''}
       ${ogImage ? `<a class="pin-btn" href="https://www.pinterest.com/pin/create/button/?url=${encodeURIComponent(canonical)}&media=${encodeURIComponent(ogImage)}&description=${encodeURIComponent(titleKo + ' — PAP Magazine editorial')}" target="_blank" rel="noopener" data-pin-do="none">Pinterest에 저장</a>` : ''}
-      <div class="igf-sub">전 세계 크리에이티브 팀과 만드는 월 20+ 에디토리얼</div>
+      <div class="igf-sub">전 세계 크리에이티브 팀과 만드는 월 20+ 에디토리얼 · <a href="${SITE}/network" style="color:inherit">PAP 인스타그램 네트워크 →</a></div>
     </aside>
   </article>
 </main>

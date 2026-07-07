@@ -357,6 +357,18 @@ function _renderArticleBlocks(blocks){
   return html;
 }
 
+// 허브-스포크 퍼널 (2026-07) — 기사 카테고리에 맞는 PAP 니치 계정을
+// 메인(@pap_magazine)과 나란히 노출해 이중 팔로우를 유도한다.
+function _papNicheIg(cat){
+  var c=String(cat||'').toLowerCase();
+  if(c.indexOf('beauty')>-1) return 'papbeauty_';
+  if(c.indexOf('fashion')>-1) return 'papfashion_';
+  if(c.indexOf('news')>-1||c.indexOf('celeb')>-1||c.indexOf('music')>-1) return 'pap_celeb';
+  if(c.indexOf('art')>-1) return 'papstudios_';
+  if(c.indexOf('culture')>-1||c.indexOf('life')>-1||c.indexOf('trend')>-1) return 'pap_trends';
+  return null;
+}
+
 function _renderArticleDetail(a,det){
   document.getElementById('artDetailImg').src=a.img||a.th;
   // 참여 증폭 2.0 (2026-07) — 원본 IG 게시물을 링크가 아니라 '임베드'로
@@ -381,6 +393,7 @@ function _renderArticleDetail(a,det){
         +'<div style="font-size:13.5px;line-height:1.7;color:#ddd;margin-bottom:16px">이 스토리의 원본 게시물이 인스타그램에 있습니다.<br><b style="color:#fff">좋아요·저장</b>으로 소장하고, 좋아할 친구에게 <b style="color:#fff">보내기</b>로 공유해보세요.</div>'
         +'<a href="'+_igSafe+'" target="_blank" rel="noopener" style="display:inline-block;background:#fff;color:#000;padding:11px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none">게시물에서 반응 남기기 →</a>'
         +'<a href="https://www.instagram.com/pap_magazine/" target="_blank" rel="noopener" style="display:inline-block;margin:8px 0 0 10px;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);padding:11px 22px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none">Follow @pap_magazine</a>'
+        +(function(){var n=_papNicheIg(a.cat);return n?'<a href="https://www.instagram.com/'+n+'/" target="_blank" rel="noopener" style="display:inline-block;margin:8px 0 0 10px;background:transparent;color:#bbb;border:1px solid rgba(255,255,255,.22);padding:11px 22px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none">+ @'+n+'</a>':'';})()
         +'<button onclick="_papShareArticle()" style="display:inline-block;margin:8px 0 0 10px;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);padding:11px 22px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;cursor:pointer">친구에게 보내기 ↗</button>'
         +'</aside>';
       igCta.style.display='';
@@ -390,7 +403,31 @@ function _renderArticleDetail(a,det){
   // 2026-07 — 원본 게시물 CTA 와 팔로우 깔때기의 역할 중복 해소:
   // IG 소스가 있으면(위 박스에 Follow 포함) 아래 깔때기는 숨긴다.
   var funnelEl=document.getElementById('artIgFunnel');
-  if(funnelEl){ funnelEl.style.display=(a.ig && /instagram\.com/.test(a.ig)) ? 'none' : ''; }
+  if(funnelEl){
+    funnelEl.style.display=(a.ig && /instagram\.com/.test(a.ig)) ? 'none' : '';
+    // 허브-스포크: 카테고리 니치 계정 버튼 + 네트워크 링크 (기사마다 갱신)
+    var _nn=_papNicheIg(a.cat);
+    var _nEl=funnelEl.querySelector('[data-niche-follow]');
+    if(_nn){
+      if(!_nEl){
+        _nEl=document.createElement('a');
+        _nEl.setAttribute('data-niche-follow','1');
+        _nEl.target='_blank'; _nEl.rel='noopener';
+        _nEl.style.cssText='display:inline-block;margin:10px 0 0 10px;background:transparent;color:#bbb;border:1px solid rgba(255,255,255,.22);padding:12px 24px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;text-decoration:none';
+        funnelEl.appendChild(_nEl);
+      }
+      _nEl.href='https://www.instagram.com/'+_nn+'/';
+      _nEl.textContent='+ @'+_nn;
+      _nEl.style.display='';
+    } else if(_nEl){ _nEl.style.display='none'; }
+    if(!funnelEl.querySelector('[data-network-link]')){
+      var _net=document.createElement('div');
+      _net.setAttribute('data-network-link','1');
+      _net.style.cssText='margin-top:14px;font-size:11px;letter-spacing:.08em';
+      _net.innerHTML='<a href="/network" style="color:#888;text-decoration:underline">패션·뷰티·셀럽·아트 — PAP 인스타그램 네트워크 전체 보기 →</a>';
+      funnelEl.appendChild(_net);
+    }
+  }
   // Use localized title/sub if available
   var _curLang=(typeof lang!=='undefined'?lang:(localStorage.getItem('pap-lang')||'ko'));
   var _locTitle=(a.ti18n && (a.ti18n[_curLang]||a.ti18n.en))||a.t||'';
