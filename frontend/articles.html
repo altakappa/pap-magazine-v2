@@ -50,14 +50,19 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
 }
 .card { cursor:pointer; transition:opacity .2s; }
 .card:hover { opacity:.85; }
-.card-img { width:100%; aspect-ratio:3/2; overflow:hidden; border-radius:2px; background:#111; }
+/* QA #345 — 아티클 목록 썸네일을 인스타그램 세로형(4:5, 1080×1350)에
+   맞춰 통일. 이전 3/2(가로형)에서는 홈 최신기사(.fashion-card-img 4/5)와
+   비율이 달라서 동일 이미지가 잘려 보였다. */
+.card-img { width:100%; aspect-ratio:4/5; overflow:hidden; border-radius:2px; background:#111; }
 .card-img img { width:100%; height:100%; object-fit:cover; display:block; }
 .card-cat { font-size:10px; color:#666; letter-spacing:.08em; margin-top:10px; }
 .card-title { font-size:13px; font-weight:700; letter-spacing:.06em; margin-top:4px; color:#fff; }
 .page-footer { padding:40px 48px; border-top:1px solid rgba(255,255,255,.06); text-align:center; }
 .page-footer p { font-size:10px; color:#444; letter-spacing:.1em; }
 @media(max-width:900px) { .card-grid{grid-template-columns:repeat(2,1fr);gap:16px;} .page-title,.filter-wrap,.card-grid,.page-count{padding-left:24px;padding-right:24px;} }
-@media(max-width:500px) { .card-grid{grid-template-columns:1fr;} }
+/* QA #345 — 세로형(4:5)로 바뀌면서 1-col은 카드가 지나치게 세로로 길어짐.
+   에디토리얼 목록과 동일하게 2-col 유지 */
+@media(max-width:500px) { .card-grid{grid-template-columns:repeat(2,1fr);gap:10px;} }
 </style>
 <script src="/pap-geo-lang.js"></script>
 <script src="/pap-img-fallback.js" defer></script>
