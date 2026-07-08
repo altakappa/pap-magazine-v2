@@ -153,6 +153,7 @@
     { "source": "/badge", "destination": "/api/badge" },
     { "source": "/site-analysis", "destination": "/site-analysis.html" },
     { "source": "/naver-blog", "destination": "/naver-blog.html" },
+    { "source": "/instagram-diagnose", "destination": "/instagram-diagnose.html" },
     { "source": "/network", "destination": "/network.html" }
   ],
   "images": {

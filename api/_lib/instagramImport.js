@@ -145,8 +145,15 @@ function _normalizeMedia(m){
 
 // 캡션이 "에디토리얼 크레딧 게시물"인지 휴리스틱 판별.
 // 에디토리얼은 사용자가 웹사이트에 사전 업로드하므로 기사 수집에서 제외해야 한다.
-// 신호: ① 자사 에디토리얼 페이지 링크, ② 크레딧 역할 라인 2개 이상 + @핸들 3개 이상,
-// ③ 'editorial' 명시 + 크레딧 역할 1개 이상.
+//
+// QA #347 — 임계값 상향. 이전 (roles>=2 && handles>=3)에서는 뉴스 캡션이
+// 브랜드 @handle 2-3개 + 이벤트에 관여한 스타일리스트/포토그래퍼 언급을 하는
+// 정도로도 걸려 "샤넬이 그린 또 하나의 히바로", "쿠튀르는 못 갔어도, 베뉴는
+// 봐야겠지" 같은 일반 뉴스 게시물이 잘못 스킵되는 문제 발생.
+// 신호:
+//   ① 자사 에디토리얼 페이지 링크 (강력한 신호 유지)
+//   ② 진짜 크레딧 게시물의 특징 — role 라벨과 @handle이 모두 다수 (>= 4/5)
+//   ③ 'editorial' 명시 + 강한 크레딧 형태(role 3, handle 3 이상)
 function isLikelyEditorialCaption(caption){
   const c = String(caption || '');
   if (!c) return false;
@@ -154,8 +161,10 @@ function isLikelyEditorialCaption(caption){
   const roleRe = /(photograph(?:er|y)|stylist|styling|starring|model|make.?up|mua|hair|retouch|art director|set design|videograph)/gi;
   const roles = (c.match(roleRe) || []).length;
   const handles = (c.match(/@[A-Za-z0-9._]{2,}/g) || []).length;
-  if (roles >= 2 && handles >= 3) return true;
-  if (/editorial/i.test(c) && roles >= 1) return true;
+  // 진짜 크레딧 게시물은 role 라벨 4개 이상 + @핸들 5개 이상이 일반적.
+  if (roles >= 4 && handles >= 5) return true;
+  // 'editorial' 단어가 있더라도 뉴스 캡션에도 등장 가능하므로 강한 크레딧 조합 필요.
+  if (/editorial/i.test(c) && roles >= 3 && handles >= 3) return true;
   return false;
 }
 

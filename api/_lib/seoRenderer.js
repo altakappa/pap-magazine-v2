@@ -630,8 +630,8 @@ ${tags.length ? `<meta name="keywords" content="${escAttr(tags.join(', '))}">` :
 ${tags.map(t => `<meta property="article:tag" content="${escAttr(t)}">`).join('\n')}
 
 <meta name="twitter:card" content="${cfg.schemaType === 'VideoObject' ? 'player' : 'summary_large_image'}">
-<meta name="twitter:site" content="@pap_magazine">
-<meta name="twitter:creator" content="@kangdm">
+<meta name="twitter:site" content="@papmagazine_">
+<meta name="twitter:creator" content="@papmagazine_">
 <meta name="twitter:title" content="${escAttr(seoTitle)}">
 <meta name="twitter:description" content="${escAttr(desc)}">
 <meta name="twitter:image" content="${escAttr(ogImage)}">
