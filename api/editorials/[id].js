@@ -12,6 +12,7 @@ const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { embedAndStoreEditorial } = require('../_lib/embeddings');
 const { sendEmail, templates } = require('../_lib/email');
 const { recordContentChange, diffFields, attachAuthorship } = require('../_lib/audit');
+const { sendEditorialToTelegramSafe } = require('../_lib/telegram');
 
 // QA #202 — fields we care about in the audit diff. Long opaque JSONB
 // like `embedding` is intentionally excluded so the diff stays small
@@ -302,6 +303,15 @@ module.exports = async function handler(req, res) {
       if (shouldReembed(updates) || becomingPublished) {
         try { await embedAndStoreEditorial(data); }
         catch (e) { console.warn('[editorial PUT] re-embed failed', e && e.message); }
+      }
+
+      // 새 에디토리얼이 처음 공개되는 순간, 인스타그램용(5:4 · 아래 로고) 이미지들
+      // = 저장된 cover_image + gallery 를 텔레그램으로 자동 전송한다.
+      // await 로 두어 serverless 함수가 응답 후 종료되며 전송이 잘려나가는 것을
+      // 방지한다. Safe 래퍼라 실패해도 예외를 던지지 않아 발행은 항상 성공한다.
+      // (env TELEGRAM_BOT_TOKEN/CHAT_ID 미설정 시 즉시 skip.)
+      if (becomingPublished) {
+        await sendEditorialToTelegramSafe(data);
       }
 
       // QA #172 — fire the approval email when the admin ticked the
