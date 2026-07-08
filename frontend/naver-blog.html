@@ -12,9 +12,12 @@
   header { background: #000; color: #fff; padding: 14px 20px; display: flex; align-items: center; gap: 14px; }
   header h1 { font-size: 15px; margin: 0; font-weight: 700; letter-spacing: .5px; }
   header .brand-toggle { margin-left: auto; display: flex; gap: 6px; }
+  header .kind-toggle { display: flex; gap: 6px; margin-left: 12px; padding-left: 12px; border-left: 1px solid #333; }
+  header .kind-toggle.hidden { display: none; }
   header button { border: 1px solid #555; background: transparent; color: #ccc; padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 13px; }
   header button.on { background: #fff; color: #000; border-color: #fff; font-weight: 700; }
   header button.on.pepperit { background: var(--pink); border-color: var(--pink); color: #fff; }
+  header button.kind-btn.on { background: #ffd54a; color: #000; border-color: #ffd54a; font-weight: 700; }
   main { max-width: 1100px; margin: 0 auto; padding: 24px 20px 80px; display: grid; grid-template-columns: 340px 1fr; gap: 24px; }
   @media (max-width: 800px) { main { grid-template-columns: 1fr; } }
   .panel { background: #fff; border: 1px solid #e5e5e5; border-radius: 12px; overflow: hidden; }
@@ -50,10 +53,15 @@
     <button id="bPap" class="on" onclick="setBrand('pap')">PAP</button>
     <button id="bPep" onclick="setBrand('pepperit')">페퍼릿</button>
   </div>
+  <!-- QA #346 — PAP 브랜드일 때만 콘텐츠 타입 선택 -->
+  <div class="kind-toggle" id="kindToggle">
+    <button id="kArt" class="kind-btn on" onclick="setKind('article')">기사</button>
+    <button id="kEd" class="kind-btn" onclick="setKind('editorial')">에디토리얼</button>
+  </div>
 </header>
 <main>
   <div class="panel">
-    <h2>최근 발행 기사</h2>
+    <h2 id="listTitle">최근 발행 기사</h2>
     <div id="list"><div id="status">불러오는 중…</div></div>
   </div>
   <div class="panel">
@@ -64,6 +72,7 @@
 <script>
 const TOKEN = localStorage.getItem('pap-token');
 let brand = 'pap';
+let kind = 'article'; // QA #346 — article | editorial
 let current = null;
 
 if (!TOKEN) {
@@ -79,6 +88,23 @@ function setBrand(b) {
   brand = b;
   document.getElementById('bPap').className = b === 'pap' ? 'on' : '';
   document.getElementById('bPep').className = b === 'pepperit' ? 'on pepperit' : '';
+  // QA #346 — 페퍼릿은 에디토리얼 없음 → kind 토글 숨김 + 강제 article
+  const kt = document.getElementById('kindToggle');
+  if (b === 'pepperit') {
+    kt.classList.add('hidden');
+    kind = 'article';
+    document.getElementById('kArt').className = 'kind-btn on';
+    document.getElementById('kEd').className = 'kind-btn';
+  } else {
+    kt.classList.remove('hidden');
+  }
+  loadList();
+}
+
+function setKind(k) {
+  kind = k;
+  document.getElementById('kArt').className = 'kind-btn' + (k === 'article' ? ' on' : '');
+  document.getElementById('kEd').className = 'kind-btn' + (k === 'editorial' ? ' on' : '');
   loadList();
 }
 
@@ -86,16 +112,19 @@ function esc(s) { const d = document.createElement('div'); d.textContent = s == 
 
 async function loadList() {
   const el = document.getElementById('list');
+  const titleEl = document.getElementById('listTitle');
+  const emptyMsg = kind === 'editorial' ? '발행된 에디토리얼이 없습니다.' : '발행된 기사가 없습니다.';
+  if (titleEl) titleEl.textContent = kind === 'editorial' ? '최근 발행 에디토리얼' : '최근 발행 기사';
   el.innerHTML = '<div id="status"><span class="spin"></span>불러오는 중…</div>';
   try {
-    const j = await api('list=1&brand=' + brand);
+    const j = await api('list=1&brand=' + brand + '&kind=' + kind);
     el.innerHTML = (j.articles || []).map(a => {
       const slug = a.custom_url || a.slug || a.id;
       return '<div class="item" data-slug="' + esc(slug) + '" onclick="pick(this)">' +
         '<img src="' + esc(a.thumbnail_url || '') + '" loading="lazy" onerror="this.style.visibility=\'hidden\'">' +
         '<div><div class="t">' + esc(a.title) + '</div>' +
         '<div class="d">' + esc((a.published_date || '').slice(0, 10)) + (a.category ? ' · ' + esc(a.category) : '') + '</div></div></div>';
-    }).join('') || '<div id="status">발행된 기사가 없습니다.</div>';
+    }).join('') || '<div id="status">' + emptyMsg + '</div>';
   } catch (e) { el.innerHTML = '<div id="status">오류: ' + esc(e.message) + '</div>'; }
 }
 
@@ -104,9 +133,10 @@ async function pick(node) {
   node.classList.add('sel');
   const slug = node.getAttribute('data-slug');
   const el = document.getElementById('draft');
-  el.innerHTML = '<div style="padding:40px 20px;text-align:center;color:#888;font-size:14px;"><span class="spin"></span>초안 생성 중… (20~30초)</div>';
+  const genLabel = kind === 'editorial' ? '에디토리얼 초안 생성 중…' : '초안 생성 중…';
+  el.innerHTML = '<div style="padding:40px 20px;text-align:center;color:#888;font-size:14px;"><span class="spin"></span>' + genLabel + ' (20~30초)</div>';
   try {
-    const j = await api('slug=' + encodeURIComponent(slug) + '&brand=' + brand);
+    const j = await api('slug=' + encodeURIComponent(slug) + '&brand=' + brand + '&kind=' + kind);
     current = j;
     el.innerHTML =
       '<div class="field"><label>제목 <button class="copy" onclick="cpText(this, current.title)">복사</button></label><div id="dTitle">' + esc(j.title) + '</div></div>' +
