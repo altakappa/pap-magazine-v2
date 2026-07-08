@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>운영 대시보드 — PAP 관리자</title>
+<style>
+  :root{
+    --bg:#0c0c0e; --panel:#161619; --panel2:#1d1d21; --line:#2a2a30;
+    --ink:#f4f2ee; --muted:#9a9aa4; --faint:#6b6b74;
+    --red:#e5352b; --red-dim:#7a221d;
+    --gold:#d9b06a; --teal:#5cc4b7; --violet:#9a8cff; --blue:#5aa2f0;
+    --serif:"Playfair Display",Georgia,"Times New Roman",serif;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;line-height:1.5}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1240px;margin:0 auto;padding:28px 26px 80px}
+  header{display:flex;justify-content:space-between;align-items:flex-end;
+    flex-wrap:wrap;gap:16px;border-bottom:1px solid var(--line);padding-bottom:22px}
+  .brand{display:flex;align-items:baseline;gap:14px}
+  .logo{font-family:var(--serif);font-weight:800;font-size:32px;letter-spacing:1px}
+  .logo .p{color:var(--red)}
+  .sub{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+  .backlink{font-size:12px;color:var(--faint);margin-top:3px;display:inline-block}
+  .backlink:hover{color:var(--muted)}
+  .meta{text-align:right;font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+  .live{display:inline-flex;align-items:center;gap:7px;color:var(--ink);font-weight:600}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--teal);animation:pulse 2s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(92,196,183,.5)}70%{box-shadow:0 0 0 9px rgba(92,196,183,0)}100%{box-shadow:0 0 0 0 rgba(92,196,183,0)}}
+  .btn{border:1px solid var(--line);background:var(--panel);color:var(--ink);
+    padding:7px 15px;border-radius:20px;cursor:pointer;font-size:13px;font-family:inherit}
+  .btn:hover{border-color:var(--red);color:#fff}
+  h2{font-family:var(--serif);font-weight:700;font-size:20px;margin:38px 0 16px;
+    letter-spacing:.3px;display:flex;align-items:center;gap:10px}
+  h2 .bar{width:22px;height:2px;background:var(--red)}
+  .grid{display:grid;gap:16px}
+  .kpis{grid-template-columns:repeat(6,1fr)}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 18px 16px;position:relative;overflow:hidden}
+  .kpi .lab{font-size:12px;color:var(--muted)}
+  .kpi .num{font-family:var(--serif);font-size:32px;font-weight:700;margin-top:8px;line-height:1;font-variant-numeric:tabular-nums}
+  .kpi .fo{font-size:12px;color:var(--faint);margin-top:8px}
+  .kpi .up{color:var(--teal)} .kpi .warn{color:var(--gold)}
+  .kpi .accent{position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--red)}
+  .cols{grid-template-columns:1.35fr 1fr;align-items:start}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 22px}
+  .card h3{margin:0 0 14px;font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .row:last-child{border-bottom:none}
+  .row .t{display:flex;align-items:baseline;gap:10px;min-width:0}
+  .row .t .rank{font-family:var(--serif);color:var(--faint);font-size:13px;width:20px;flex:none}
+  .row .t .name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14.5px}
+  .row .d{font-size:12px;color:var(--faint);flex:none}
+  .row .v{font-size:13px;color:var(--muted);flex:none;font-variant-numeric:tabular-nums}
+  .row .v b{color:var(--ink);font-weight:600}
+  .pill{font-size:10.5px;letter-spacing:.05em;padding:2px 8px;border-radius:20px;flex:none;border:1px solid var(--line);color:var(--muted)}
+  .pill.new{color:var(--gold);border-color:var(--red-dim)}
+  .pill.rev{color:var(--blue);border-color:#254063}
+  .tag{font-size:11px;color:var(--faint)}
+  .chartcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 22px}
+  svg{display:block;width:100%;height:auto;overflow:visible}
+  .axlab{fill:var(--faint);font-size:10px} .glab{fill:var(--muted);font-size:10px;font-variant-numeric:tabular-nums}
+  .barv{fill:var(--red)} .barv.dim{fill:var(--red-dim)}
+  .subgrid{grid-template-columns:1fr 1fr;gap:16px}
+  .stat-mini{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+  .stat-mini:last-child{border-bottom:none}
+  .stat-mini .n{font-variant-numeric:tabular-nums;font-weight:600}
+  .sw{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:8px;vertical-align:middle}
+  footer{margin-top:46px;padding-top:20px;border-top:1px solid var(--line);font-size:12px;color:var(--faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  #status{padding:70px 20px;text-align:center;color:var(--muted);font-size:14px}
+  .spin{display:inline-block;width:18px;height:18px;border:2px solid #333;border-top-color:var(--red);border-radius:50%;animation:sp .8s linear infinite;vertical-align:-4px;margin-right:8px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  @media(max-width:1000px){.kpis{grid-template-columns:repeat(3,1fr)}.cols{grid-template-columns:1fr}.subgrid{grid-template-columns:1fr}}
+  @media(max-width:560px){.kpis{grid-template-columns:repeat(2,1fr)}.wrap{padding:20px 16px 60px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="logo"><span class="p">P</span>A<span class="p">P</span></div>
+      <div>
+        <div class="sub">Magazine · Operations</div>
+        <a class="backlink" href="/admin">← 관리자 홈</a>
+      </div>
+    </div>
+    <div class="meta">
+      <div class="live"><span class="dot"></span> LIVE · 사이트 DB</div>
+      <div>최종 갱신 <b id="upd">—</b></div>
+      <button class="btn" onclick="load()">새로고침</button>
+    </div>
+  </header>
+  <main id="root"><div id="status"><span class="spin"></span>로딩 중…</div></main>
+  <footer>
+    <div>PAP MAGAZINE 운영 대시보드 · 사이트 Supabase DB 실시간 집계</div>
+    <div>이 화면은 열람 시점의 데이터입니다 · “새로고침”으로 최신화</div>
+  </footer>
+</div>
+
+<script>
+const TOKEN = localStorage.getItem('pap-token');
+const root = document.getElementById('root');
+if (!TOKEN) {
+  root.innerHTML = '<div id="status">관리자 로그인이 필요합니다. <a href="/admin" style="color:var(--red)">/admin</a> 에서 로그인 후 다시 열어주세요.</div>';
+}
+
+function esc(s){const d=document.createElement('div');d.textContent=s==null?'':s;return d.innerHTML;}
+function nf(n){return (n==null?0:n).toLocaleString('ko-KR');}
+function el(h){const d=document.createElement('div');d.innerHTML=h;return d.firstElementChild;}
+
+async function load(){
+  if(!TOKEN) return;
+  root.innerHTML='<div id="status"><span class="spin"></span>집계 중…</div>';
+  try{
+    const res=await fetch('/api/admin/ops-dashboard',{headers:{Authorization:'Bearer '+TOKEN}});
+    const j=await res.json();
+    if(!res.ok) throw new Error(j.error||res.status);
+    render(j);
+  }catch(e){
+    root.innerHTML='<div id="status">오류: '+esc(e.message)+'</div>';
+  }
+}
+
+function render(d){
+  const k=d.kpi||{}, s=d.submissions||{};
+  document.getElementById('upd').textContent = new Date(d.generated_at||Date.now())
+    .toLocaleString('ko-KR',{timeZone:'Asia/Seoul',hour12:false});
+
+  root.innerHTML=`
+    <div class="grid kpis" style="margin-top:26px">
+      <div class="kpi"><span class="accent"></span><div class="lab">발행 에디토리얼</div><div class="num">${nf(k.editorials_published)}</div><div class="fo">초안 ${nf(k.editorials_draft)}건 대기</div></div>
+      <div class="kpi"><span class="accent" style="background:var(--gold)"></span><div class="lab">기사 (Articles)</div><div class="num">${nf(k.articles)}</div><div class="fo">누적 발행</div></div>
+      <div class="kpi"><span class="accent" style="background:var(--teal)"></span><div class="lab">필름 (Films)</div><div class="num">${nf(k.films)}</div><div class="fo">영상 에디토리얼</div></div>
+      <div class="kpi"><span class="accent" style="background:var(--violet)"></span><div class="lab">커뮤니티 회원</div><div class="num">${nf(k.members)}</div><div class="fo up">이번 주 +${nf(k.members_week)} · 크리에이터 ${nf(k.creators)}</div></div>
+      <div class="kpi"><span class="accent" style="background:var(--blue)"></span><div class="lab">조회수 (최근 7일)</div><div class="num">${nf(k.views_7d)}</div><div class="fo">최근 30일 ${nf(k.views_30d)}</div></div>
+      <div class="kpi"><span class="accent" style="background:var(--gold)"></span><div class="lab">검토 대기 투고</div><div class="num">${nf(s.pending)}</div><div class="fo warn">수정요청 ${nf(s.revision)}건 진행 중</div></div>
+    </div>
+
+    <h2><span class="bar"></span>최근 발행 &amp; 콘텐츠 피드</h2>
+    <div class="grid cols">
+      <div class="card"><h3>최근 발행 에디토리얼</h3><div id="recentEd"></div></div>
+      <div class="card"><h3>최신 기사 피드</h3><div id="recentArt"></div></div>
+    </div>
+
+    <h2><span class="bar"></span>발행 &amp; 트래픽 추이</h2>
+    <div class="grid cols">
+      <div class="chartcard"><h3>월별 에디토리얼 발행 (최근 12개월)</h3><svg id="barChart" viewBox="0 0 640 240" role="img"></svg></div>
+      <div class="chartcard"><h3>일별 조회수 (최근 30일)</h3><svg id="lineChart" viewBox="0 0 480 240" role="img"></svg></div>
+    </div>
+
+    <h2><span class="bar"></span>인기 콘텐츠 &amp; 투고 현황</h2>
+    <div class="grid cols">
+      <div class="card"><h3>인기 에디토리얼 TOP 8 (누적 조회)</h3><div id="topEd"></div></div>
+      <div class="card"><h3>투고(Submissions) 현황 · 총 ${nf(s.total)}건</h3>
+        <div class="grid subgrid">
+          <div>
+            <div class="stat-mini"><span><span class="sw" style="background:var(--teal)"></span>승인 (approved)</span><span class="n">${nf(s.approved)}</span></div>
+            <div class="stat-mini"><span><span class="sw" style="background:var(--blue)"></span>수정요청 (revision)</span><span class="n">${nf(s.revision)}</span></div>
+            <div class="stat-mini"><span><span class="sw" style="background:var(--gold)"></span>검토대기 (pending)</span><span class="n">${nf(s.pending)}</span></div>
+            <div class="stat-mini"><span><span class="sw" style="background:var(--red-dim)"></span>반려 (rejected)</span><span class="n">${nf(s.rejected)}</span></div>
+          </div>
+          <div><div class="tag" style="margin-bottom:8px">지금 확인 필요 ↓</div><div id="pendSubs"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <h2><span class="bar"></span>발행호 &amp; 채널</h2>
+    <div class="grid cols">
+      <div class="card"><h3>등록된 매거진 발행호</h3><div id="issues"></div></div>
+      <div class="card"><h3>채널 &amp; 확장</h3><div id="channels"></div></div>
+    </div>`;
+
+  // recent editorials
+  (d.recent_editorials||[]).forEach((r,i)=>{
+    document.getElementById('recentEd').appendChild(el(
+      `<div class="row"><div class="t"><span class="rank">${String(i+1).padStart(2,'0')}</span>
+       <span class="name">${esc(r.title)}</span></div>
+       <div style="display:flex;gap:14px;align-items:center"><span class="d">${esc((r.published_date||'').slice(5))}</span>
+       <span class="v"><b>${nf(r.view_count)}</b> views</span></div></div>`));
+  });
+  // recent articles
+  (d.recent_articles||[]).forEach(r=>{
+    document.getElementById('recentArt').appendChild(el(
+      `<div class="row"><div class="t"><span class="name" style="max-width:230px">${esc(r.title)}</span></div>
+       <span class="d">${esc((r.published_date||'').slice(5,10))}</span></div>`));
+  });
+  // top editorials
+  const tops=d.top_editorials||[]; const tmax=tops.length?Math.max(...tops.map(x=>x.view_count||0)):1;
+  tops.forEach((r,i)=>{
+    document.getElementById('topEd').appendChild(el(
+      `<div class="row"><div class="t"><span class="rank">${i+1}</span><span class="name">${esc(r.title)}</span></div>
+       <div style="display:flex;gap:10px;align-items:center;flex:none">
+       <span style="width:90px;height:6px;background:var(--panel2);border-radius:4px;overflow:hidden;display:inline-block">
+       <span style="display:block;height:100%;width:${Math.round((r.view_count||0)/tmax*100)}%;background:var(--red)"></span></span>
+       <span class="v"><b>${nf(r.view_count)}</b></span></div></div>`));
+  });
+  // pending submissions
+  const ps=document.getElementById('pendSubs');
+  if(!(d.pending_submissions||[]).length) ps.innerHTML='<div class="tag">대기 건 없음 ✓</div>';
+  (d.pending_submissions||[]).forEach(r=>{
+    ps.appendChild(el(
+      `<div class="row"><div class="t"><span class="name" style="max-width:150px;font-size:13px">${esc(r.title)}</span></div>
+       <span class="pill ${r.status==='pending'?'new':'rev'}">${r.status==='pending'?'대기':'수정'}</span></div>`));
+  });
+  // issues
+  (d.issues||[]).forEach(r=>{
+    document.getElementById('issues').appendChild(el(
+      `<div class="row"><div class="t"><span class="rank">#${esc(r.issue_number)}</span>
+       <span class="name">${esc(r.month_label||r.title)}</span>${r.is_latest?'<span class="pill new">LATEST</span>':''}</div>
+       <span class="v"><b>${nf(r.editorial_count)}</b> 에디토리얼</span></div>`));
+  });
+  // channels
+  const ch=document.getElementById('channels');
+  [['PEPPERIT 매거진 기사 <span class="tag">(자매지 @pepperitmag)</span>',k.pepperit],
+   ['이메일 캠페인',k.campaigns],['활성 유료 구독',k.active_subs],
+   ['크리에이터 회원',k.creators],['누적 에디토리얼 조회 기록',k.views_total]].forEach(c=>{
+    ch.appendChild(el(`<div class="row"><div class="t"><span class="name">${c[0]}</span></div><div class="v"><b>${nf(c[1])}</b></div></div>`));
+  });
+
+  drawBar(d.monthly||[]);
+  drawLine(d.daily||[]);
+}
+
+function drawBar(monthly){
+  const svg=document.getElementById('barChart'); if(!svg) return;
+  const W=640,H=240,pl=34,pr=10,pt=14,pb=28;
+  const max=Math.max(1,...monthly.map(m=>m.count||0));
+  const iw=W-pl-pr, ih=H-pt-pb, bw=iw/Math.max(1,monthly.length);
+  let s=`<line x1="${pl}" y1="${pt+ih}" x2="${W-pr}" y2="${pt+ih}" stroke="var(--line)"/>`;
+  const step=niceStep(max);
+  for(let g=0; g<=max; g+=step){const y=pt+ih-(g/max*ih);
+    s+=`<line x1="${pl}" y1="${y}" x2="${W-pr}" y2="${y}" stroke="var(--line)" stroke-dasharray="2 4" opacity=".5"/>
+        <text x="${pl-6}" y="${y+3}" text-anchor="end" class="axlab">${g}</text>`;}
+  monthly.forEach((m,i)=>{
+    const h=(m.count||0)/max*ih, x=pl+i*bw+bw*0.22, y=pt+ih-h, w=bw*0.56;
+    const dim=i===monthly.length-1?' dim':'';
+    s+=`<rect class="barv${dim}" x="${x}" y="${y}" width="${w}" height="${h}" rx="2"><title>${m.label}: ${m.count}건</title></rect>
+        <text x="${x+w/2}" y="${y-5}" text-anchor="middle" class="glab">${m.count}</text>
+        <text x="${x+w/2}" y="${pt+ih+16}" text-anchor="middle" class="axlab">${m.label}</text>`;
+  });
+  svg.innerHTML=s;
+}
+function drawLine(daily){
+  const svg=document.getElementById('lineChart'); if(!svg||!daily.length) return;
+  const W=480,H=240,pl=30,pr=12,pt=16,pb=26;
+  const vals=daily.map(d=>d.count||0), max=Math.max(1,...vals), iw=W-pl-pr, ih=H-pt-pb;
+  const xs=i=>pl+i/Math.max(1,daily.length-1)*iw, ys=v=>pt+ih-v/max*ih;
+  let path='',area=`M ${xs(0)} ${pt+ih} `;
+  vals.forEach((v,i)=>{const x=xs(i),y=ys(v);path+=(i?'L':'M')+` ${x.toFixed(1)} ${y.toFixed(1)} `;area+=`L ${x.toFixed(1)} ${y.toFixed(1)} `;});
+  area+=`L ${xs(daily.length-1)} ${pt+ih} Z`;
+  let g=''; const step=niceStep(max);
+  for(let gl=0; gl<=max; gl+=step){const y=ys(gl);
+    g+=`<line x1="${pl}" y1="${y}" x2="${W-pr}" y2="${y}" stroke="var(--line)" stroke-dasharray="2 4" opacity=".5"/>
+        <text x="${pl-6}" y="${y+3}" text-anchor="end" class="axlab">${gl}</text>`;}
+  let dots='',xlab='';
+  daily.forEach((d,i)=>{ if((d.count||0)>=max*0.66||i===daily.length-1) dots+=`<circle cx="${xs(i)}" cy="${ys(d.count)}" r="3" fill="var(--gold)"><title>${d.label}: ${d.count}</title></circle>`;
+    if(i%5===0||i===daily.length-1) xlab+=`<text x="${xs(i)}" y="${pt+ih+16}" text-anchor="middle" class="axlab">${d.label}</text>`;});
+  svg.innerHTML=`<defs><linearGradient id="ag" x1="0" x2="0" y1="0" y2="1">
+     <stop offset="0" stop-color="var(--gold)" stop-opacity=".28"/><stop offset="1" stop-color="var(--gold)" stop-opacity="0"/></linearGradient></defs>
+     ${g}<path d="${area}" fill="url(#ag)"/>
+     <path d="${path}" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>${dots}${xlab}`;
+}
+function niceStep(max){
+  const raw=max/4, pow=Math.pow(10,Math.floor(Math.log10(raw||1)));
+  const n=raw/pow; const m=n>=5?5:n>=2?2:1; return Math.max(1,m*pow);
+}
+
+if (TOKEN) load();
+</script>
+</body>
+</html>

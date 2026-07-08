@@ -155,6 +155,7 @@
     { "source": "/naver-blog", "destination": "/naver-blog.html" },
     { "source": "/instagram-diagnose", "destination": "/instagram-diagnose.html" },
     { "source": "/youtube-diagnose", "destination": "/youtube-diagnose.html" },
+    { "source": "/ops-dashboard", "destination": "/ops-dashboard.html" },
     { "source": "/network", "destination": "/network.html" }
   ],
   "images": {
