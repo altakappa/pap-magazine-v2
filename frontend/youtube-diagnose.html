@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>유튜브 자동 업로드 진단 — PAP 관리자 도구</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; margin: 0; background: #fafafa; color: #111; }
+  header { background: #cc0000; color: #fff; padding: 14px 20px; display: flex; align-items: center; gap: 14px; }
+  header h1 { font-size: 15px; margin: 0; font-weight: 700; letter-spacing: .5px; }
+  header .schedule { margin-left: auto; font-size: 12px; opacity: .9; }
+  header button { border: 1px solid #fff; background: transparent; color: #fff; padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 13px; font-family: inherit; margin-left: 8px; }
+  header button:hover { background: #fff; color: #cc0000; }
+  main { max-width: 1000px; margin: 0 auto; padding: 24px 20px 80px; }
+  .card { background: #fff; border: 1px solid #e5e5e5; border-radius: 10px; padding: 16px 20px; margin-bottom: 16px; }
+  .card h2 { font-size: 12px; letter-spacing: 1px; margin: 0 0 12px; color: #666; text-transform: uppercase; }
+  .kv { display: grid; grid-template-columns: 160px 1fr; gap: 6px 16px; font-size: 13px; line-height: 1.6; }
+  .kv .k { color: #888; }
+  .kv .v { color: #111; word-break: break-word; }
+  .kv .v.ok { color: #059669; font-weight: 700; }
+  .kv .v.warn { color: #ca8a04; font-weight: 700; }
+  .kv .v.error { color: #dc2626; font-weight: 700; }
+  .diag { list-style: none; padding: 0; margin: 0; }
+  .diag li { padding: 10px 14px; border-radius: 8px; margin-bottom: 8px; font-size: 13px; line-height: 1.5; }
+  .diag li.ok { background: #f0fdf4; border-left: 4px solid #059669; color: #065f46; }
+  .diag li.info { background: #eff6ff; border-left: 4px solid #2563eb; color: #1e3a8a; }
+  .diag li.warn { background: #fefce8; border-left: 4px solid #ca8a04; color: #713f12; }
+  .diag li.error { background: #fef2f2; border-left: 4px solid #dc2626; color: #7f1d1d; }
+  .stats { display: flex; gap: 12px; flex-wrap: wrap; }
+  .stat { flex: 1; min-width: 120px; padding: 12px 14px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; text-align: center; }
+  .stat .n { font-size: 26px; font-weight: 800; }
+  .stat .l { font-size: 11px; color: #666; margin-top: 4px; letter-spacing: .5px; text-transform: uppercase; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #f2f2f2; vertical-align: top; }
+  th { font-size: 11px; letter-spacing: 1px; color: #888; text-transform: uppercase; background: #fafafa; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+  .badge.submitted { background: #059669; color: #fff; }
+  .badge.failed { background: #dc2626; color: #fff; }
+  .badge.pending { background: #ca8a04; color: #fff; }
+  .badge.posted { background: #059669; color: #fff; }
+  a { color: #cc0000; }
+  #status { padding: 40px 20px; text-align: center; color: #888; font-size: 14px; }
+  .spin { display: inline-block; width: 18px; height: 18px; border: 2px solid #ddd; border-top-color: #cc0000; border-radius: 50%; animation: sp 0.8s linear infinite; vertical-align: -4px; margin-right: 8px; }
+  @keyframes sp { to { transform: rotate(360deg); } }
+  .code { font-family: 'Menlo', monospace; font-size: 12px; color: #444; }
+  .actions { margin-top: 8px; }
+  .actions a { display: inline-block; padding: 4px 10px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 12px; text-decoration: none; margin-right: 6px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>▶ YouTube 자동 업로드 진단</h1>
+  <span class="schedule">크론: 매일 KST 10:15 / 22:15</span>
+  <button onclick="load()">새로고침</button>
+  <button onclick="triggerDry()">테스트 트리거 (dry)</button>
+</header>
+<main id="root"><div id="status">로딩 중…</div></main>
+<script>
+const TOKEN = localStorage.getItem('pap-token');
+if (!TOKEN) {
+  document.getElementById('root').innerHTML = '<div id="status">관리자 로그인이 필요합니다. <a href="/admin">/admin</a> 에서 로그인 후 다시 열어주세요.</div>';
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+function ago(iso) {
+  if (!iso) return '';
+  const t = new Date(iso).getTime();
+  const s = Math.round((Date.now() - t) / 1000);
+  if (s < 60) return s + '초 전';
+  if (s < 3600) return Math.round(s / 60) + '분 전';
+  if (s < 86400) return Math.round(s / 3600) + '시간 전';
+  return Math.round(s / 86400) + '일 전';
+}
+
+async function load() {
+  if (!TOKEN) return;
+  const root = document.getElementById('root');
+  root.innerHTML = '<div id="status"><span class="spin"></span>진단 중…</div>';
+  try {
+    const res = await fetch('/api/admin/youtube-diagnose', { headers: { Authorization: 'Bearer ' + TOKEN } });
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error || res.status);
+    render(j);
+  } catch (e) {
+    root.innerHTML = '<div id="status">오류: ' + esc(e.message) + '</div>';
+  }
+}
+
+function render(d) {
+  const root = document.getElementById('root');
+  const env = d.env || {}, oauth = d.oauth || {}, summary = d.summary || {};
+
+  const publicGate = env.public_gate === '1'
+    ? '<span class="v ok">1 (자동 업로드 활성)</span>'
+    : '<span class="v warn">' + esc(env.public_gate || '(미설정)') + ' — 크론이 대기 모드</span>';
+  const oauthState = oauth.authorized
+    ? '<span class="v ok">인증 완료</span>'
+    : '<span class="v error">미인증</span>';
+
+  const diagHtml = (d.diagnosis || []).map(x =>
+    '<li class="' + esc(x.level) + '">' + esc(x.msg) + '</li>').join('') ||
+    '<li class="info">진단 항목 없음.</li>';
+
+  const postsRows = (d.recent_posts || []).map(p =>
+    '<tr>' +
+      '<td>' + esc(ago(p.created_at)) + '<div class="code" style="color:#aaa">' + esc((p.created_at || '').slice(0, 19).replace('T', ' ')) + '</div></td>' +
+      '<td>' + esc(p.article_title || '(삭제된 기사)') +
+        (p.article_url ? '<div class="actions"><a href="' + esc(p.article_url) + '" target="_blank">기사 →</a>' +
+        (p.video_url ? '<a href="' + esc(p.video_url) + '" target="_blank">YouTube ↗</a>' : '') + '</div>' : '') + '</td>' +
+      '<td><span class="badge ' + esc(p.status) + '">' + esc(p.status || '') + '</span>' +
+      (p.detail ? '<div class="code" style="margin-top:4px">' + esc(p.detail) + '</div>' : '') + '</td>' +
+    '</tr>').join('') || '<tr><td colspan="3" style="text-align:center;color:#888;padding:20px">유튜브 업로드 기록 없음</td></tr>';
+
+  const candRows = (d.candidates || []).map(c =>
+    '<tr>' +
+      '<td>' + esc((c.published_date || '').slice(0, 10)) + '</td>' +
+      '<td>' + esc(c.title) + ' <a href="' + esc(c.article_url) + '" target="_blank" style="font-size:11px">기사 →</a></td>' +
+      '<td>' + (c.posted ? '<span class="badge posted">업로드됨</span>' : '<span class="badge pending">대기중</span>') + '</td>' +
+    '</tr>').join('') || '<tr><td colspan="3" style="text-align:center;color:#888;padding:20px">최근 3일 내 영상 있는 기사 없음</td></tr>';
+
+  root.innerHTML =
+    '<div class="card"><h2>종합 진단</h2><ul class="diag">' + diagHtml + '</ul></div>' +
+    '<div class="card"><h2>최근 24시간 요약</h2><div class="stats">' +
+      '<div class="stat"><div class="n" style="color:#059669">' + (summary.last24h_success || 0) + '</div><div class="l">업로드 성공</div></div>' +
+      '<div class="stat"><div class="n" style="color:#dc2626">' + (summary.last24h_failed || 0) + '</div><div class="l">업로드 실패</div></div>' +
+      '<div class="stat"><div class="n" style="color:#ca8a04">' + (summary.pending_candidates || 0) + '</div><div class="l">대기 중 후보</div></div>' +
+      '<div class="stat"><div class="n">' + (summary.total_youtube_posts || 0) + '</div><div class="l">전체 기록</div></div>' +
+    '</div></div>' +
+    '<div class="card"><h2>환경변수 / OAuth</h2><div class="kv">' +
+      '<div class="k">YOUTUBE_PUBLIC</div><div>' + publicGate + '</div>' +
+      '<div class="k">CLIENT_ID</div><div class="v ' + (env.has_client_id ? 'ok' : 'error') + '">' + (env.has_client_id ? '설정됨' : '미설정') + '</div>' +
+      '<div class="k">CLIENT_SECRET</div><div class="v ' + (env.has_client_secret ? 'ok' : 'error') + '">' + (env.has_client_secret ? '설정됨' : '미설정') + '</div>' +
+      '<div class="k">CRON_SECRET</div><div class="v ' + (env.has_cron_secret ? 'ok' : 'warn') + '">' + (env.has_cron_secret ? '설정됨' : '미설정') + '</div>' +
+      '<div class="k">OAuth</div><div>' + oauthState + (oauth.error ? ' <span class="code">(' + esc(oauth.error) + ')</span>' : '') + '</div>' +
+      (oauth.expires_at ? '<div class="k">access_token 만료</div><div class="v">' + esc(oauth.expires_at) + ' (' + esc(String(oauth.expires_in_sec)) + '초 후)</div>' : '') +
+      (oauth.updated_at ? '<div class="k">토큰 갱신 시각</div><div class="v">' + esc(oauth.updated_at) + '</div>' : '') +
+      '<div class="k">크론 스케줄</div><div class="v code">' + esc(d.schedule || '') + '</div>' +
+    '</div></div>' +
+    '<div class="card"><h2>최근 유튜브 업로드 기록 (최대 20건)</h2>' +
+      '<table><thead><tr><th style="width:120px">시각</th><th>기사</th><th style="width:200px">상태</th></tr></thead><tbody>' +
+      postsRows + '</tbody></table></div>' +
+    '<div class="card"><h2>다음 업로드 후보 (최근 3일 · 영상 포함 기사)</h2>' +
+      '<table><thead><tr><th style="width:100px">발행일</th><th>제목</th><th style="width:120px">상태</th></tr></thead><tbody>' +
+      candRows + '</tbody></table></div>';
+}
+
+async function triggerDry() {
+  if (!TOKEN) return;
+  if (!confirm('크론을 dry 모드로 트리거합니다. 다음 업로드 대상만 확인하고 실제 업로드는 하지 않습니다. 진행할까요?')) return;
+  try {
+    const res = await fetch('/api/cron/youtube-post?dry=1', { headers: { Authorization: 'Bearer ' + TOKEN } });
+    const j = await res.json();
+    alert('dry 결과:\n\n' + JSON.stringify(j, null, 2).slice(0, 1200));
+  } catch (e) {
+    alert('오류: ' + e.message);
+  }
+}
+
+if (TOKEN) load();
+</script>
+</body>
+</html>
