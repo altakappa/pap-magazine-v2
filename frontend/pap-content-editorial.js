@@ -1333,10 +1333,21 @@ function _openEditorialInner(title,thumb){
     logoSection.style.display='none';
   }
 
-  // Social: rating + comments
+  // Social: comments (별점은 아래 상단 CTA로 이전됨)
   var socialSlot=document.getElementById('edSocialSlot');
   if(socialSlot && typeof PAPSocial!=='undefined'){
     PAPSocial.renderEditorialSocial(socialSlot, title);
+  }
+
+  // 참여율 개선 (2026-07) — 별점 CTA(본문 상단). ratings 테이블 재사용.
+  var edRatingCta=document.getElementById('edRatingCta');
+  if(edRatingCta && typeof PAPSocial!=='undefined' && PAPSocial.renderEditorialRatingCta){
+    PAPSocial.renderEditorialRatingCta(edRatingCta, title);
+  }
+  // 체류시간 개선 (2026-07) — 임베딩 기반 관련 화보. id 없거나 결과 없으면 숨김.
+  var edRelated=document.getElementById('edRelatedEditorials');
+  if(edRelated && typeof PAPSocial!=='undefined' && PAPSocial.renderRelatedEditorials){
+    PAPSocial.renderRelatedEditorials(edRelated, d && d.id);
   }
 
   // More content carousel
@@ -1518,6 +1529,11 @@ function _openEditorialInner_noPush(title,thumb){
   }
   var socialSlot=document.getElementById('edSocialSlot');
   if(socialSlot&&typeof PAPSocial!=='undefined') PAPSocial.renderEditorialSocial(socialSlot,title);
+  // 참여율/체류시간 개선 (2026-07) — popstate 복원 경로도 push 경로와 동일하게.
+  var edRatingCta2=document.getElementById('edRatingCta');
+  if(edRatingCta2&&typeof PAPSocial!=='undefined'&&PAPSocial.renderEditorialRatingCta) PAPSocial.renderEditorialRatingCta(edRatingCta2,title);
+  var edRelated2=document.getElementById('edRelatedEditorials');
+  if(edRelated2&&typeof PAPSocial!=='undefined'&&PAPSocial.renderRelatedEditorials) PAPSocial.renderRelatedEditorials(edRelated2, d && d.id);
   var track=document.getElementById('edMoreTrack');
   track.innerHTML='';
   var shown=0;
@@ -1535,6 +1551,31 @@ function _openEditorialInner_noPush(title,thumb){
   if(typeof _resetCursorForModal==='function') _resetCursorForModal();
   // No pushState — this is called from popstate
 }
+
+// 체류시간 개선 (2026-07) — 관련 화보 카드 클릭 핸들러.
+// pap-social.js#renderRelatedEditorials 가 각 카드에서 호출한다.
+// 캐시(edDetails)에 해당 화보가 있으면 SPA 인앱 오픈(openEditorial 이 URL 을
+// /editorial/<slug> 로 갱신) — 없으면 정식 경로로 하드 이동(SSR/rewrite 렌더).
+// 앵커 기본 이동은 항상 막는다.
+window._papOpenRelatedEd = function(ev, title, cover, slug){
+  try { if(ev && ev.preventDefault) ev.preventDefault(); } catch(_){}
+  try {
+    var hit = false;
+    if(title && typeof edDetails !== 'undefined'){
+      if(edDetails[title]) hit = true;
+      else {
+        var tl = title.toLowerCase();
+        for(var k in edDetails){ if(k.toLowerCase()===tl){ hit = true; break; } }
+      }
+    }
+    if(hit && typeof openEditorial === 'function'){
+      openEditorial(title, cover || '');
+      return false;
+    }
+  } catch(_){}
+  try { location.href = '/editorial/' + slug; } catch(_){}
+  return false;
+};
 
 function closeEditorial(skipHistory){
   document.getElementById('edOverlay').classList.remove('active');

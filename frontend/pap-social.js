@@ -23,8 +23,8 @@
   // available, so this module also works on pages that don't ship the
   // full app (e.g. articles.html, mypage.html if they ever use this).
   var _PAP_SOC_I18N = {
-    ko:{loginToRate:'로그인하시면 별점을 남길 수 있습니다',loginToComment:'댓글 작성은 로그인이 필요합니다',noComments:'아직 댓글이 없습니다. 첫 댓글을 남겨주세요.',login:'로그인',commentPh:'댓글을 남겨주세요',submit:'등록',rateCancel:'별점 취소',rateDeleteTitle:'별점 삭제'},
-    en:{loginToRate:'Sign in to leave a rating',loginToComment:'Sign in to leave a comment',noComments:'No comments yet. Be the first to comment.',login:'Sign In',commentPh:'Leave a comment',submit:'Post',rateCancel:'Remove rating',rateDeleteTitle:'Delete rating'},
+    ko:{loginToRate:'로그인하시면 별점을 남길 수 있습니다',loginToComment:'댓글 작성은 로그인이 필요합니다',noComments:'아직 댓글이 없습니다. 첫 댓글을 남겨주세요.',login:'로그인',commentPh:'댓글을 남겨주세요',submit:'등록',rateCancel:'별점 취소',rateDeleteTitle:'별점 삭제',ratingCtaQ:'이 화보가 마음에 드셨나요?',ratingLoading:'별점 불러오는 중...',ratingAvg:'평균',ratingCountSuffix:'명 참여',ratingNone:'아직 평가가 없어요. 첫 별점을 남겨보세요!',ratingMine:'내 평점',ratingScoreSuffix:'점',relatedHeading:'이것도 좋아할 거예요'},
+    en:{loginToRate:'Sign in to leave a rating',loginToComment:'Sign in to leave a comment',noComments:'No comments yet. Be the first to comment.',login:'Sign In',commentPh:'Leave a comment',submit:'Post',rateCancel:'Remove rating',rateDeleteTitle:'Delete rating',ratingCtaQ:'Did you enjoy this editorial?',ratingLoading:'Loading rating...',ratingAvg:'Avg',ratingCountSuffix:' ratings',ratingNone:'No ratings yet. Be the first!',ratingMine:'Your rating',ratingScoreSuffix:'',relatedHeading:'You might also like'},
     it:{loginToRate:'Accedi per lasciare una valutazione',loginToComment:'Accedi per lasciare un commento',noComments:'Nessun commento. Lascia il primo commento.',login:'Accedi',commentPh:'Lascia un commento',submit:'Pubblica',rateCancel:'Rimuovi valutazione',rateDeleteTitle:'Elimina valutazione'},
     fr:{loginToRate:'Connectez-vous pour laisser une note',loginToComment:'Connectez-vous pour laisser un commentaire',noComments:'Aucun commentaire pour le moment. Soyez le premier à commenter.',login:'Connexion',commentPh:'Laissez un commentaire',submit:'Publier',rateCancel:'Retirer la note',rateDeleteTitle:'Supprimer la note'},
     es:{loginToRate:'Inicia sesión para dejar una valoración',loginToComment:'Inicia sesión para dejar un comentario',noComments:'Aún no hay comentarios. Sé el primero en comentar.',login:'Iniciar Sesión',commentPh:'Deja un comentario',submit:'Publicar',rateCancel:'Quitar valoración',rateDeleteTitle:'Eliminar valoración'},
@@ -488,9 +488,146 @@
   // ======== EDITORIAL SOCIAL (rating + comments) ========
   function renderEditorialSocial(container, editorialTitle){
     if(!container) return;
-    container.innerHTML = '<div class="pap-social-wrap"><div id="pap-rating-slot"></div><div id="pap-comments-slot"></div></div>';
-    renderRatingBlock(container.querySelector('#pap-rating-slot'), editorialTitle);
+    // 참여율 개선 (2026-07) — 별점은 본문 상단 CTA(renderEditorialRatingCta)로
+    // 이전했다. 이 하단 슬롯은 이제 댓글만 렌더한다. 두 위젯이 같은 ratings
+    // 테이블을 중복 표시하지 않도록 rating-slot 을 제거.
+    container.innerHTML = '<div class="pap-social-wrap"><div id="pap-comments-slot"></div></div>';
     renderCommentsBlock(container.querySelector('#pap-comments-slot'), 'editorial', editorialTitle);
+  }
+
+  // ======== EDITORIAL RATING CTA (본문 상단, 참여율 개선 2026-07) ========
+  // 하단 소셜 블록에서 분리한 별점 위젯. 데이터 계층(sbGetRatingStats /
+  // sbGetMyRating / sbSetRating, editorial_title 기준)은 그대로 재사용한다.
+  // - PAP 브랜드 레드(#891717) 별 5개 (스타일은 pap-social.css)
+  // - "이 화보가 마음에 드셨나요?" + 평균 평점·참여 수
+  // - 비로그인 상태에서 별 클릭 → 기존 로그인 흐름(_loginUrl, return 경로 포함)
+  function renderEditorialRatingCta(container, editorialTitle){
+    if(!container) return;
+    var user = currentUser();
+
+    // Skeleton (빈 별 + 문구) — 데이터 로딩 중 레이아웃 점프 방지.
+    container.innerHTML = '<div class="pap-ed-rating-cta">'
+      + '<div class="pap-ed-rating-cta-q">'+_papSocT('ratingCtaQ')+'</div>'
+      + '<div class="pap-ed-rating-cta-stars">'+starHTML(0,false)+'</div>'
+      + '<div class="pap-ed-rating-cta-meta">'+_papSocT('ratingLoading')+'</div>'
+      + '</div>';
+
+    Promise.all([
+      sbGetRatingStats(editorialTitle),
+      user ? sbGetMyRating(editorialTitle, user.id) : Promise.resolve(0)
+    ]).then(function(results){
+      var stats   = results[0];
+      var myScore = results[1] || 0;
+      // 내가 평가했으면 내 별점을, 아니면 평균을 별로 표시.
+      var shownScore = myScore > 0 ? myScore : stats.avg;
+
+      var meta;
+      if(stats.count > 0){
+        meta = _papSocT('ratingAvg') + ' ' + stats.avg.toFixed(1)
+             + ' · ' + stats.count + _papSocT('ratingCountSuffix');
+      } else {
+        meta = _papSocT('ratingNone');
+      }
+      if(myScore > 0){
+        meta += ' · <b>' + _papSocT('ratingMine') + ' ' + myScore + _papSocT('ratingScoreSuffix') + '</b>';
+      }
+
+      container.innerHTML = '<div class="pap-ed-rating-cta'+(myScore>0?' is-rated':'')+'">'
+        + '<div class="pap-ed-rating-cta-q">'+_papSocT('ratingCtaQ')+'</div>'
+        + '<div class="pap-ed-rating-cta-stars" data-editorial="'+escapeHTML(editorialTitle)+'">'+starHTML(shownScore,true)+'</div>'
+        + '<div class="pap-ed-rating-cta-meta">'+meta+'</div>'
+        + '</div>';
+
+      var wrap = container.querySelector('.pap-ed-rating-cta-stars');
+      if(!wrap) return;
+      var stars = wrap.querySelectorAll('.pap-star');
+      stars.forEach(function(st){
+        st.addEventListener('mouseenter', function(){
+          var s = parseInt(st.getAttribute('data-score'),10);
+          stars.forEach(function(x,i){ x.classList.toggle('pap-star-hover', i<s); });
+        });
+        st.addEventListener('mouseleave', function(){
+          stars.forEach(function(x){ x.classList.remove('pap-star-hover'); });
+        });
+        st.addEventListener('click', function(){
+          var s = parseInt(st.getAttribute('data-score'),10);
+          // 비로그인 → 로그인/가입으로 유도 (로그인 후 이 화보로 복귀).
+          if(!user){ try{ location.href = _loginUrl(); }catch(e){} return; }
+          wrap.style.pointerEvents = 'none';
+          sbSetRating(editorialTitle, user.id, s).then(function(){
+            renderEditorialRatingCta(container, editorialTitle);
+          }).catch(function(err){
+            console.error('[PAPSocial] rating save failed:', err);
+            alert('별점 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+            wrap.style.pointerEvents = '';
+          });
+        });
+      });
+    }).catch(function(err){
+      console.error('[PAPSocial] rating CTA load failed:', err);
+      // 실패 시 CTA 를 조용히 숨김 — 본문 상단이라 깨진 위젯을 남기지 않는다.
+      container.innerHTML = '';
+    });
+  }
+
+  // ======== RELATED EDITORIALS (체류시간 개선 2026-07) ========
+  // related_editorials(target_id uuid, match_count int) RPC 를 현재 화보 id 로
+  // 호출해 임베딩 유사도 상위 4편을 렌더한다. 임베딩이 없는 화보는 RPC 가
+  // 빈 결과를 주므로 그 경우 섹션 자체를 숨긴다.
+  function renderRelatedEditorials(container, editorialId){
+    if(!container) return;
+    function hide(){ container.hidden = true; container.style.display = 'none'; container.innerHTML = ''; }
+    var sb = initSupabase();
+    if(!sb || !editorialId){ hide(); return; }
+
+    sb.rpc('related_editorials', { target_id: editorialId, match_count: 4 })
+      .then(function(res){
+        if(res.error){ console.warn('[PAPSocial] related_editorials error:', res.error); hide(); return; }
+        var rows = (res.data || []).filter(function(r){ return r && r.slug; });
+        if(!rows.length){ hide(); return; }
+
+        var cards = rows.map(function(r){
+          var t     = escapeHTML(r.title || '');
+          var cover = escapeHTML(r.cover_image || '');
+          var slug  = escapeHTML(r.slug || '');
+          // data-* 는 escapeHTML 로 인용부호가 인코딩돼 속성 안전. 클릭 시
+          // getAttribute 로 원본을 복원해 _papOpenRelatedEd 에 넘긴다.
+          return '<a class="pap-related-ed-card" href="/editorial/'+encodeURIComponent(r.slug)+'"'
+            + ' data-title="'+t+'" data-cover="'+cover+'" data-slug="'+slug+'">'
+            + '<div class="pap-related-ed-thumb"><img src="'+cover+'" alt="'+t+'" loading="lazy"></div>'
+            + '<div class="pap-related-ed-title">'+t+'</div>'
+            + '</a>';
+        }).join('');
+
+        container.innerHTML = '<div class="pap-related-ed-heading">'+_papSocT('relatedHeading')+'</div>'
+          + '<div class="pap-related-ed-grid">'+cards+'</div>';
+        container.hidden = false;
+        container.style.display = '';
+
+        // 썸네일 로드 처리 — 진짜 실패(naturalWidth 0)한 이미지만 숨기고,
+        // lazy 로딩 중 일시적 error 로 숨겨졌던 이미지는 load 시 되살린다.
+        // (인라인 onerror 로 opacity 를 끄면 정상 이미지가 영구히 숨는 버그가 있었음.)
+        container.querySelectorAll('.pap-related-ed-thumb img').forEach(function(im){
+          im.addEventListener('load', function(){ im.style.visibility=''; });
+          im.addEventListener('error', function(){ if(!im.naturalWidth) im.style.visibility='hidden'; });
+          if(im.complete){ im.style.visibility = im.naturalWidth ? '' : 'hidden'; }
+        });
+
+        // 클릭: 캐시(edDetails)에 있으면 SPA 인앱 오픈, 없으면 정식 경로 하드 이동.
+        // 핸들러는 pap-content-editorial.js 가 window 에 정의(_papOpenRelatedEd).
+        container.querySelectorAll('.pap-related-ed-card').forEach(function(a){
+          a.addEventListener('click', function(ev){
+            if(typeof global._papOpenRelatedEd === 'function'){
+              return global._papOpenRelatedEd(ev,
+                a.getAttribute('data-title') || '',
+                a.getAttribute('data-cover') || '',
+                a.getAttribute('data-slug') || '');
+            }
+            // 폴백: 앵커 기본 이동(/editorial/<slug>) 허용.
+          });
+        });
+      })
+      .catch(function(err){ console.warn('[PAPSocial] related_editorials failed:', err); hide(); });
   }
 
   // ======== ARTICLE SOCIAL (comments only) ========
@@ -561,6 +698,8 @@
   // ======== EXPORT ========
   global.PAPSocial = {
     renderEditorialSocial: renderEditorialSocial,
+    renderEditorialRatingCta: renderEditorialRatingCta,
+    renderRelatedEditorials: renderRelatedEditorials,
     renderArticleSocial: renderArticleSocial,
     getCreatorAvgRating: getCreatorAvgRating,
     currentUser: currentUser,
