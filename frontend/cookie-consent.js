@@ -13,6 +13,7 @@
   // because the dashboard the editor watches is on the new property.
   var GA_ID='G-TPPJGKJXYV';
   var META_PIXEL_ID='482856832429283'; /* PAPMAGAZINE 픽셀 — Meta Events Manager */
+  var SKIMLINKS_SITE_ID='305982X1794214'; /* Skimlinks — 본문 인라인 상점 링크 자동 어필리에이트화. 동의 시에만 로드. (관리형 "구매" 버튼은 /go/ 가 담당 — 역할 분리) */
   var STORAGE_KEY='pap-cookie-consent';
 
   /* ── i18n ─────────────────────────────────────────── */
@@ -157,6 +158,21 @@
     gtag('config',GA_ID,{anonymize_ip:true});
   }
 
+  /* ── load Skimlinks ─────────────────────────────────
+     본문·SSR 콘텐츠의 정적 상점 링크를 자동으로 어필리에이트 링크로 변환.
+     추적 쿠키를 심으므로 GA4/Pixel 과 동일하게 동의('accepted')일 때만 로드.
+     내부 /go/ 리다이렉트 링크는 같은 도메인 상대경로라 Skimlinks 가 건드리지
+     않음(역할 분리 — 관리형 "구매" 버튼·IG 폴백·클릭 로깅은 /go/ 담당). */
+  function loadSkimlinks(){
+    if(!SKIMLINKS_SITE_ID || document.getElementById('skimlinks-script')) return;
+    var s=document.createElement('script');
+    s.id='skimlinks-script';
+    s.type='text/javascript';
+    s.async=true;
+    s.src='https://s.skimresources.com/js/'+SKIMLINKS_SITE_ID+'.skimlinks.js';
+    document.body.appendChild(s);
+  }
+
   /* ── helpers: cookie reader (for Meta browser IDs) + UUID ────────── */
   function _readBrowserCookie(name){
     try{
@@ -297,6 +313,7 @@
       setConsent('accepted');
       loadGA4();
       loadMetaPixel();
+      loadSkimlinks();
       closeBanner();
       _fireResolved('accepted');
     });
@@ -317,6 +334,7 @@
   if(consent==='accepted'){
     loadGA4();
     loadMetaPixel();
+    loadSkimlinks();
     _fireResolved('accepted');
   } else if(consent==='rejected'){
     _fireResolved('rejected');
