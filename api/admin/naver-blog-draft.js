@@ -28,110 +28,43 @@ function stripHtml(s) {
   return String(s || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-// QA #350 — 체류형 포스팅 프레임워크 공유 블록.
-// 5개 프롬프트(주제 검증 / 제목·훅 / 글 구조 / 자동화 / CTA)를
-// 아티클·에디토리얼 두 프롬프트가 공통으로 참조한다.
-// 심리 트리거 4종: 놀라움, 공감, 불안, 욕망.
+// QA #351 — 체류형 포스팅 프레임워크(내부 지침).
+// Claude가 프롬프트 안에서 5개 후보를 저울질한 뒤 "반응이 가장 좋을" 하나만
+// 최종 응답에 담도록 지시하는 지침 문자열. 응답 스키마는 title/body_html/tags 만.
+// 심리 트리거 4종(놀라움/공감/불안/욕망), 훅 3문장, 공감→정보→사례→정리 흐름,
+// 체크리스트, 부드러운 CTA는 모두 body_html 안에 자연스럽게 녹여넣는다.
 const FRAMEWORK_BLOCK = [
   '',
-  '━ 체류형 포스팅 프레임워크 ━',
-  'A) 제목 5개 후보 (title_candidates)',
-  '   • 각 후보에 감정 트리거 라벨(놀라움 / 공감 / 불안 / 욕망) 하나 지정',
-  '   • 클릭을 부르는 상위 글 패턴 반영: 핵심 키워드 앞배치, 숫자·물음표·역설 활용',
-  '   • 25~35자, 한국어 자연스러움 우선',
-  'B) 도입부 훅 5개 (hook_candidates)',
-  '   • 각 후보는 첫 3문장 (스크롤 이탈 방지가 목적)',
-  '   • 각 후보에 감정 트리거(놀라움/공감/불안/욕망) 라벨',
+  '━ 체류형 포스팅 프레임워크 (내부 저울질 후 최고 1개만 응답) ━',
+  '너는 최종 응답에 담기 전에 아래 5가지를 머릿속으로 각각 5개씩 만들어보고,',
+  '"네이버 검색 상위 노출 + 체류시간"이 가장 잘 나올 조합 1개만 골라 반환한다.',
+  '',
+  '1) 제목 (title): 후보 5개를 만들어보고 그 중 최고 1개만 반환.',
+  '   • 25~35자, 핵심 키워드(브랜드·인물·이슈) 앞배치',
+  '   • 감정 트리거 4종 중 콘텐츠에 가장 맞는 것 선택: 놀라움 · 공감 · 불안 · 욕망',
+  '   • 패션·에디토리얼은 놀라움 · 욕망 · 공감이 반응 좋음. 뉴스는 놀라움 · 불안이 좋음.',
+  '   • 낚시성 과장 금지, 자연스러운 한국어',
+  '',
+  '2) 도입부 훅 (body_html 첫 문단): 후보 5개를 만들어보고 최고 3문장을 첫 <p>에 배치.',
   '   • "여러분", "혹시" 같은 대화 시작어 활용 가능',
-  'C) 본문 흐름 (body_html) — 공감 → 정보 → 사례 → 정리 4구간',
-  '   • 문단은 1~3문장으로 짧게. 소제목(h3) 2~4개 사용',
-  '   • 스크롤이 끊기지 않게 리듬감 있게. 이모지는 최대 3개',
+  '   • 스크롤 이탈을 막는 강한 첫 문장',
+  '',
+  '3) 본문 흐름 (body_html): 공감 → 정보 → 사례 → 정리 4구간.',
+  '   • h3 소제목 2~4개, 각 문단 1~3문장으로 짧게',
   '   • [IMG1] [IMG2] ... 마커를 자연스러운 위치에 (사용 가능한 이미지 수만큼)',
-  'D) 마무리 체크리스트 5개 (checklist)',
-  '   • 독자가 오늘 바로 실행할 수 있는 짧은 문장 (~30자)',
-  'E) 부드러운 CTA (cta) — 1~2문장',
-  '   • "궁금한 점이 있다면 댓글로 남겨주세요" 톤. 강매 X.',
-  'F) 썸네일 문구 후보 5개 (thumbnail_texts)',
-  '   • 각 8~14자, 시선을 잡는 짧은 카피',
-  '━━━━━━━━━━━━━━━━━━━━━━━━',
+  '   • 이모지는 전체 최대 3개',
+  '',
+  '4) 마무리 체크리스트 (body_html 끝부분에 <h3>오늘의 체크리스트</h3><ul>...): 5개 항목.',
+  '   • 각 30자 이내, 오늘 바로 실행할 수 있는 문장',
+  '',
+  '5) 부드러운 CTA (체크리스트 아래 <p><em>...</em></p> 한 줄): 댓글 유도 톤.',
+  '   • "궁금한 점이 있다면 댓글로 남겨주세요" 같은 결. 강매·과장 X.',
+  '',
+  '※ 시스템이 자동으로 뒤에 원문 링크 + 인스타 CTA + 저작권 라인을 붙이므로',
+  '  body_html에는 URL을 직접 넣지 말 것.',
+  '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
   '',
 ].join('\n');
-
-// 응답에 추가된 후보 필드들을 안전하게 정규화한다.
-// 옛 스키마(title/body_html/tags만) 응답도 무리 없이 통과되도록 fallback 채움.
-function _normalizeExtras(draft, defaults) {
-  var out = {
-    title_candidates: [],
-    hook_candidates: [],
-    checklist: [],
-    thumbnail_texts: [],
-    cta: '',
-  };
-  var toStr = function(v) { return typeof v === 'string' ? v.trim() : ''; };
-  var pickLabel = function(v) {
-    var s = toStr(v).toLowerCase();
-    if (!s) return null;
-    if (/놀라|surprise/.test(s)) return '놀라움';
-    if (/공감|empath/.test(s)) return '공감';
-    if (/불안|anx|fear/.test(s)) return '불안';
-    if (/욕망|desire|want/.test(s)) return '욕망';
-    return v;
-  };
-  // title_candidates 정규화
-  if (Array.isArray(draft.title_candidates)) {
-    out.title_candidates = draft.title_candidates.slice(0, 5).map(function(t) {
-      if (typeof t === 'string') return { title: t, trigger: '' };
-      return {
-        title: toStr(t && (t.title || t.text)),
-        trigger: pickLabel(t && (t.trigger || t.emotion || t.label)) || '',
-      };
-    }).filter(function(x) { return !!x.title; });
-  }
-  if (!out.title_candidates.length && defaults.title) {
-    out.title_candidates = [{ title: defaults.title, trigger: '' }];
-  }
-  // hook_candidates 정규화
-  if (Array.isArray(draft.hook_candidates)) {
-    out.hook_candidates = draft.hook_candidates.slice(0, 5).map(function(h) {
-      if (typeof h === 'string') return { hook: h, trigger: '' };
-      return {
-        hook: toStr(h && (h.hook || h.text)),
-        trigger: pickLabel(h && (h.trigger || h.emotion || h.label)) || '',
-      };
-    }).filter(function(x) { return !!x.hook; });
-  }
-  // checklist 정규화
-  if (Array.isArray(draft.checklist)) {
-    out.checklist = draft.checklist.slice(0, 5)
-      .map(toStr).filter(Boolean);
-  }
-  // thumbnail_texts 정규화
-  if (Array.isArray(draft.thumbnail_texts)) {
-    out.thumbnail_texts = draft.thumbnail_texts.slice(0, 5)
-      .map(toStr).filter(Boolean);
-  }
-  // cta 정규화
-  out.cta = toStr(draft.cta) || '';
-  return out;
-}
-
-// 본문 HTML 뒤에 체크리스트 블록 + CTA 라인을 붙인다.
-// 원문 링크 + 인스타 CTA 앞에 삽입 (사용자 경험상 자연스러운 순서).
-function _renderChecklistHtml(checklist, cta) {
-  var parts = [];
-  if (Array.isArray(checklist) && checklist.length) {
-    parts.push('<p>&nbsp;</p><h3>오늘의 체크리스트</h3>');
-    parts.push('<ul>');
-    checklist.forEach(function(item) {
-      parts.push('<li>' + String(item).replace(/</g, '&lt;') + '</li>');
-    });
-    parts.push('</ul>');
-  }
-  if (cta) {
-    parts.push('<p><em>' + String(cta).replace(/</g, '&lt;') + '</em></p>');
-  }
-  return parts.join('');
-}
 
 async function generateDraft(art, brand) {
   if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY 환경변수 누락.');
@@ -159,16 +92,11 @@ async function generateDraft(art, brand) {
     '기사 본문: ' + stripHtml(art.content).slice(0, 3000),
     '기사 태그: ' + JSON.stringify(art.tags || []),
     '',
-    '아래 JSON 스키마로만 응답하라. 어떤 필드도 누락 금지, 마크다운 fence 금지:',
+    '아래 JSON 스키마로만 응답하라. 마크다운 fence 금지. 반드시 이 3개 필드만:',
     '{',
-    '  "title": "가장 추천하는 제목 1개 (25~35자)",',
-    '  "title_candidates": [ {"title": "...", "trigger": "놀라움|공감|불안|욕망"}, ... 총 5개 ],',
-    '  "hook_candidates":  [ {"hook": "첫 3문장(2~3문장). 문장 사이 개행", "trigger": "..."}, ... 총 5개 ],',
-    '  "body_html": "<p>공감 도입 3문장</p><h3>정보</h3><p>...[IMG1]...</p><h3>사례</h3><p>...[IMG2]...</p><h3>정리</h3><p>...</p>",',
-    '  "checklist": ["오늘 실행 가능한 짧은 문장", ... 5개],',
-    '  "thumbnail_texts": ["8~14자 카피", ... 5개],',
-    '  "cta": "부드러운 CTA 1~2문장",',
-    '  "tags": ["...", ... 10개]',
+    '  "title": "내부 저울질을 거쳐 최종 선택한 제목 1개 (25~35자)",',
+    '  "body_html": "<p>훅 3문장</p><h3>공감/정보</h3><p>...[IMG1]...</p><h3>사례</h3><p>...[IMG2]...</p><h3>정리</h3><p>...</p><h3>오늘의 체크리스트</h3><ul><li>...</li> × 5</ul><p><em>부드러운 CTA 한 줄</em></p>",',
+    '  "tags": ["...", ... 총 10개]',
     '}',
   ].join('\n');
 
@@ -204,10 +132,8 @@ async function generateDraft(art, brand) {
       String(art.title).replace(/"/g, '') + ' ' + (i + 1) + '"></p><p>');
   });
   body = body.replace(/\[IMG\d+\]/g, '');
-  // QA #350 — 체크리스트 + 부드러운 CTA 블록 (원문 링크보다 앞)
-  var extras = _normalizeExtras(draft, { title: draft.title || art.title });
-  body += _renderChecklistHtml(extras.checklist, extras.cta);
-  // 원문 링크 + 인스타 CTA 블록
+  // QA #351 — 체크리스트 + CTA는 프롬프트가 body_html 안에 직접 넣도록 지시했음.
+  // 시스템은 원문 링크 + 인스타 CTA 블록만 뒤에 붙인다.
   body += '<p>&nbsp;</p><p>전체 기사와 더 많은 이미지는 <a href="' + artUrl + '">' + b.name +
     ' 원문</a>에서 보실 수 있어요.</p>' +
     '<p>매일 업데이트되는 소식은 인스타그램 <a href="https://www.instagram.com/' +
@@ -219,12 +145,6 @@ async function generateDraft(art, brand) {
     body_html: body,
     images: gallery,
     article_url: artUrl,
-    // QA #350 — 체류형 포스팅 프레임워크 필드 (프론트가 후보 카드 UI로 표시)
-    title_candidates: extras.title_candidates,
-    hook_candidates: extras.hook_candidates,
-    checklist: extras.checklist,
-    thumbnail_texts: extras.thumbnail_texts,
-    cta: extras.cta,
   };
 }
 
@@ -284,15 +204,10 @@ async function generateEditorialDraft(ed, brand) {
     creditLines.length ? creditLines.map(l => '  - ' + l).join('\n') : '  - (없음)',
     '기존 태그: ' + JSON.stringify(ed.tags || []),
     '',
-    '아래 JSON 스키마로만 응답하라. 어떤 필드도 누락 금지, 마크다운 fence 금지:',
+    '아래 JSON 스키마로만 응답하라. 마크다운 fence 금지. 반드시 이 3개 필드만:',
     '{',
-    '  "title": "가장 추천하는 제목 1개 (25~35자, 브랜드·컨셉 키워드 앞배치)",',
-    '  "title_candidates": [ {"title": "...", "trigger": "놀라움|욕망|공감"}, ... 총 5개 ],',
-    '  "hook_candidates":  [ {"hook": "첫 3문장(2~3문장). 화보 무드를 감각적으로 전달", "trigger": "..."}, ... 총 5개 ],',
-    '  "body_html": "<p>인트로 훅</p>[IMG1]<h3>무드와 컨셉</h3><p>...[IMG2]...</p><h3>룩과 스타일링</h3><p>...[IMG3]...</p><h3>크레딧</h3><ul><li>...</li></ul>",',
-    '  "checklist": ["오늘 시도해볼 스타일링 팁 등 짧은 문장", ... 5개],',
-    '  "thumbnail_texts": ["8~14자 카피 (컨셉·브랜드 감성)", ... 5개],',
-    '  "cta": "부드러운 CTA 1~2문장 (댓글 유도)",',
+    '  "title": "내부 저울질을 거쳐 최종 선택한 제목 1개 (25~35자, 브랜드·컨셉 키워드 앞배치)",',
+    '  "body_html": "<p>인트로 훅 3문장</p>[IMG1]<h3>무드와 컨셉</h3><p>...[IMG2]...</p><h3>룩과 스타일링</h3><p>...[IMG3]...</p><h3>크레딧</h3><ul><li>...</li></ul><h3>오늘의 체크리스트</h3><ul><li>...</li> × 5</ul><p><em>부드러운 CTA 한 줄</em></p>",',
     '  "tags": ["PAP매거진", "패션에디토리얼", "패션화보", ... 총 10개]',
     '}',
   ].join('\n');
@@ -329,10 +244,8 @@ async function generateEditorialDraft(ed, brand) {
       String(ed.title).replace(/"/g, '') + ' 화보 ' + (i + 1) + ' — PAP매거진"></p><p>');
   });
   body = body.replace(/\[IMG\d+\]/g, '');
-  // QA #350 — 체크리스트 + 부드러운 CTA 블록 (원문 링크보다 앞)
-  var extras = _normalizeExtras(draft, { title: draft.title || ed.title });
-  body += _renderChecklistHtml(extras.checklist, extras.cta);
-  // 원문 링크 + 인스타 CTA + 저작권 라인
+  // QA #351 — 체크리스트 + CTA는 프롬프트가 body_html 안에 직접 포함하도록 지시.
+  // 시스템은 원문 링크 + 인스타 CTA + 저작권 라인만 뒤에 붙인다.
   body += '<p>&nbsp;</p><p>전체 화보와 더 많은 컷은 <a href="' + url + '">' + b.name +
     ' 웹사이트</a>에서 만나보실 수 있어요.</p>' +
     '<p>매일 업데이트되는 에디토리얼과 셀럽 소식은 인스타그램 <a href="https://www.instagram.com/' +
@@ -345,12 +258,6 @@ async function generateEditorialDraft(ed, brand) {
     body_html: body,
     images: gallery,
     article_url: url,
-    // QA #350 — 체류형 포스팅 프레임워크 필드 (프론트가 후보 카드 UI로 표시)
-    title_candidates: extras.title_candidates,
-    hook_candidates: extras.hook_candidates,
-    checklist: extras.checklist,
-    thumbnail_texts: extras.thumbnail_texts,
-    cta: extras.cta,
   };
 }
 
