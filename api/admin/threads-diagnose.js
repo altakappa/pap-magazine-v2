@@ -82,8 +82,8 @@ module.exports = async function handler(req, res){
       };
     });
 
-    // 후보: 최근 3일 published 아티클 중 아직 성공 게시 안 된 것
-    const cutoff = new Date(Date.now() - 3 * 86400000).toISOString();
+    // 후보: 최근 7일 published 아티클 중 아직 성공 게시 안 된 것 (cron 과 일치)
+    const cutoff = new Date(Date.now() - 7 * 86400000).toISOString();
     const { data: fresh } = await supabaseAdmin.from('articles')
       .select('id, title, slug, custom_url, published_date')
       .eq('status', 'published')
@@ -101,8 +101,11 @@ module.exports = async function handler(req, res){
 
     const dayAgo = Date.now() - 86400000;
     const last24 = posts.filter(p => p.created_at && new Date(p.created_at).getTime() > dayAgo);
+    // NOTE: threads-post cron 은 성공 시 status='published' 를 쓴다 ('submitted' 는 legacy).
+    // 두 값 모두 성공으로 계산해서 UI 가 실제 성공 건수를 놓치지 않도록.
+    const isSuccess = (s) => s === 'published' || s === 'submitted';
     const summary = {
-      last24h_success: last24.filter(p => p.status === 'submitted').length,
+      last24h_success: last24.filter(p => isSuccess(p.status)).length,
       last24h_failed:  last24.filter(p => p.status === 'failed').length,
       pending_candidates: candidates.filter(c => !c.posted).length,
       total_posts: posts.length,
@@ -123,9 +126,11 @@ module.exports = async function handler(req, res){
       diagnosis.push({ level: 'warn', msg: 'CRON_SECRET 미설정 — Vercel 크론이 인증되지 않아 실행 안 될 수 있음.' });
     }
     if (oauth.authorized && summary.last24h_success === 0 && summary.pending_candidates === 0){
-      diagnosis.push({ level: 'info', msg: '최근 3일 내 신규 published 아티클이 없어 게시할 소스가 없음.' });
+      diagnosis.push({ level: 'info', msg: '최근 7일 내 신규 published 아티클이 없어 게시할 소스가 없음.' });
     }
-    if (oauth.authorized && summary.last24h_success === 0 && summary.pending_candidates > 0){
+    if (oauth.authorized && summary.last24h_success === 0 && summary.pending_candidates > 0 && summary.total_posts === 0){
+      diagnosis.push({ level: 'error', msg: summary.pending_candidates + '건의 후보가 있는데 threads_posts 테이블에 기록이 전혀 없음. Vercel Cron Logs → /api/cron/threads-post 로그로 실행 여부 확인 필요 (cron 미실행 or 초입 조기 return 가능성).' });
+    } else if (oauth.authorized && summary.last24h_success === 0 && summary.pending_candidates > 0){
       diagnosis.push({ level: 'warn', msg: summary.pending_candidates + '건의 후보가 있는데 최근 24시간 게시 없음. Vercel Cron Logs 확인 필요.' });
     }
     if (summary.last24h_failed > 0){

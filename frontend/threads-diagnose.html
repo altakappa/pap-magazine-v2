@@ -104,7 +104,7 @@ function render(d) {
       '<td>' + esc((c.published_date || '').slice(0, 10)) + '</td>' +
       '<td>' + esc(c.title) + ' <a href="' + esc(c.article_url) + '" target="_blank" style="font-size:11px">기사 →</a></td>' +
       '<td>' + (c.posted ? '<span class="badge posted">게시됨</span>' : '<span class="badge pending">대기</span>') + '</td>' +
-    '</tr>').join('') || '<tr><td colspan="3" style="text-align:center;color:#888;padding:20px">최근 3일 내 published 아티클 없음</td></tr>';
+    '</tr>').join('') || '<tr><td colspan="3" style="text-align:center;color:#888;padding:20px">최근 7일 내 published 아티클 없음</td></tr>';
 
   const setupPanel = !oauth.authorized || !env.has_app_id || !env.has_app_secret
     ? '<div class="action-panel"><b>활성화 순서:</b><br>' +

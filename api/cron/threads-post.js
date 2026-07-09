@@ -51,24 +51,38 @@ module.exports = async function handler(req, res) {
     if (!user) return;
   }
 
+  const invokedAt = new Date().toISOString();
+  console.log('[threads-post] invoked at', invokedAt, 'via', cronOk ? 'cron' : 'admin');
+
   try {
     // 인증 전이면 대기 모드 (크론이 에러 알림을 쏟아내지 않게)
     const { data: authRow } = await supabaseAdmin.from('threads_auth').select('access_token').eq('id', 1).maybeSingle();
     if (!authRow || !authRow.access_token) {
+      console.log('[threads-post] skip: no access_token');
       return res.status(200).json({ ok: true, note: 'Threads 미인증 — /api/threads/oauth 1회 인증 시 자동 게시 시작' });
     }
 
     const { data: posted } = await supabaseAdmin.from('threads_posts').select('article_id, status').limit(5000);
     const done = new Set((posted || []).filter((p) => p.status !== 'failed').map((p) => p.article_id).filter(Boolean));
 
-    const freshCutoff = new Date(Date.now() - 3 * 86400000).toISOString();
-    const { data: arts } = await supabaseAdmin.from('articles')
-      .select('id, title, slug, custom_url, content, category')
+    // freshCutoff — 최근 7일 창 (기존 3일은 너무 좁아서 발행 빈도 낮으면 항상 후보 없음)
+    const freshCutoff = new Date(Date.now() - 7 * 86400000).toISOString();
+    const { data: arts, error: artsErr } = await supabaseAdmin.from('articles')
+      .select('id, title, slug, custom_url, content, category, published_date')
       .eq('status', 'published')
       .gte('published_date', freshCutoff)
       .order('published_date', { ascending: false }).limit(200);
+    if (artsErr) {
+      console.error('[threads-post] articles query failed:', artsErr);
+      return res.status(500).json({ error: 'articles query failed', detail: artsErr.message });
+    }
+    console.log('[threads-post] found', (arts || []).length, 'published articles in last 7d, done set has', done.size);
     const art = (arts || []).find((a) => !done.has(a.id) && a.title);
-    if (!art) return res.status(200).json({ ok: true, note: '게시할 기사 없음' });
+    if (!art) {
+      console.log('[threads-post] no candidate article to post');
+      return res.status(200).json({ ok: true, note: '게시할 기사 없음', articles_found: (arts || []).length, done_count: done.size });
+    }
+    console.log('[threads-post] picked article:', art.id, art.title);
 
     const url = 'https://www.pap-magazine.com/article/' + (art.custom_url || art.slug || '');
     const text = buildText(art, url);
