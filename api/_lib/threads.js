@@ -94,13 +94,18 @@ async function getAccessToken() {
 /**
  * TEXT 스레드 게시 (본문 내 첫 URL이 링크 프리뷰 카드가 된다).
  * 2단계: 컨테이너 생성 → 게시.
+ *
+ * 엔드포인트: `/v1.0/me/threads` — 저장된 user_id 로 요청하면 Threads API 가
+ * Instagram user ID 를 Threads user ID 로 오인하여 code 100 subcode 33
+ * ('Object does not exist / missing permissions') 반환한다. `me` 사용 시
+ * 토큰 소유자로 자동 매핑되어 안전.
+ *
  * @param {string} text ≤500자
  * @returns {Promise<string>} thread id
  */
 async function postText(text) {
-  const { token, userId } = await getAccessToken();
-  if (!userId) throw new Error('threads_auth.user_id 없음 — 재인증 필요');
-  const create = await fetch(GRAPH + '/v1.0/' + userId + '/threads', {
+  const { token } = await getAccessToken();
+  const create = await fetch(GRAPH + '/v1.0/me/threads', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ media_type: 'TEXT', text: String(text || '').slice(0, 500), access_token: token }),
@@ -108,7 +113,7 @@ async function postText(text) {
   });
   const cj = await create.json();
   if (!create.ok || !cj.id) throw new Error('컨테이너 생성 실패: ' + JSON.stringify(cj).slice(0, 300));
-  const pub = await fetch(GRAPH + '/v1.0/' + userId + '/threads_publish', {
+  const pub = await fetch(GRAPH + '/v1.0/me/threads_publish', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ creation_id: cj.id, access_token: token }),
