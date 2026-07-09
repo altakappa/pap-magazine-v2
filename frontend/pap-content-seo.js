@@ -324,6 +324,13 @@ function _papResolveEditorialName(input){
     var elapsed = Date.now() - pollStart;
     if(!foundMatch && elapsed < 4000){ setTimeout(tryOpen, 120); return; }
     try{ openEditorial(resolved, ''); }catch(e){}
+    // 리다이렉트 루프 가드 해제 — 오버레이가 실제로 열렸으면(성공) SSR 브릿지의
+    // bounce 레코드를 지운다. 그래야 이후 정상 재방문·새로고침이 카운트에
+    // 걸리지 않고 매번 SPA 로 넘어간다. (실패 시엔 지우지 않아 루프 브레이크 유지)
+    try{
+      var _ov=document.getElementById('edOverlay');
+      if(_ov && _ov.classList.contains('active')) sessionStorage.removeItem('_pap_ssr_bounce');
+    }catch(_){}
     /* Reveal shortly after openEditorial triggers its own render so the
        editorial overlay is painted before we fade in. */
     setTimeout(revealBody,60);
@@ -383,6 +390,11 @@ function _papResolveEditorialName(input){
     if(idx < 0 && elapsed < 4000){ setTimeout(tryOpenFilm, 120); return; }
     if(idx >= 0){
       try { openFilmDetail(idx); } catch(_){}
+      // 에디토리얼과 동일 — 필름 상세가 실제로 열렸으면 루프 가드 해제.
+      try{
+        var _fov=document.getElementById('filmDetailOverlay');
+        if(_fov && _fov.classList.contains('active')) sessionStorage.removeItem('_pap_ssr_bounce');
+      }catch(_){}
     }
     setTimeout(revealBody, 60);
   }

@@ -755,9 +755,31 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
     try {
       var qs = (window.location.search || '').toLowerCase();
       if (qs.indexOf('raw=1') !== -1 || qs.indexOf('no-spa=1') !== -1) return;
+      // 리다이렉트 루프 가드 (2026-07 교체) — 예전 영구 boolean 플래그
+      // (_pap_ssr_redirect_done)는 세션당 1회만 리다이렉트해서, 다이렉트
+      // 진입/새로고침이 SSR 에 갇히는 버그가 있었다. 이제 (kind/slug)별 +
+      // 15초 창 + 최대 4회로 좁힌다: 정상 재방문·새로고침은 항상 SPA 로 넘기고
+      // (SPA 오픈 성공 시 pap-content-seo.js 가 이 레코드를 즉시 삭제),
+      // SPA 오픈이 짧은 시간에 반복 실패할 때만 SSR 에 안착시킨다(무한 루프 차단).
+      var _KEY = '_pap_ssr_bounce', _WINDOW_MS = 15000, _MAX = 4;
+      var _id = ${JSON.stringify(kind)} + '/' + ${JSON.stringify(slug)};
+      var _now = Date.now();
       try {
-        if (sessionStorage.getItem('_pap_ssr_redirect_done')) return;
-        sessionStorage.setItem('_pap_ssr_redirect_done', String(Date.now()));
+        var _rec = null;
+        try { _rec = JSON.parse(sessionStorage.getItem(_KEY) || 'null'); } catch(_){}
+        if (_rec && _rec.id === _id && (_now - _rec.first) < _WINDOW_MS) {
+          if (_rec.n >= _MAX) {
+            // 짧은 시간에 MAX회 반복 진입 = SPA 가 못 잡는 상황. 레코드를 그대로
+            // 두고 리다이렉트 없이 SSR 에 머문다(정상 폴백). 지우지 않기 때문에
+            // 창(15초)이 지날 때까지 계속 머물러 루프가 실제로 끊긴다. 창이
+            // 만료되면 아래 else 로 리셋되어 이후 정상 재방문은 다시 재시도된다.
+            return;
+          }
+          _rec.n++;
+        } else {
+          _rec = { id: _id, n: 1, first: _now };
+        }
+        try { sessionStorage.setItem(_KEY, JSON.stringify(_rec)); } catch(_){}
       } catch(_){}
       document.documentElement.classList.add('js-redirecting');
       // SPA homepage picks up the right query param via deep-link IIFEs
