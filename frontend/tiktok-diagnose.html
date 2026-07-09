@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow">
+<title>TikTok 자동 게시 진단 — PAP 관리자 도구</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; margin: 0; background: #fafafa; color: #111; }
+  header { background: linear-gradient(90deg, #ff0050, #000); color: #fff; padding: 14px 20px; display: flex; align-items: center; gap: 14px; }
+  header h1 { font-size: 15px; margin: 0; font-weight: 700; letter-spacing: .5px; }
+  header .schedule { margin-left: auto; font-size: 12px; opacity: .9; }
+  header button { border: 1px solid #fff; background: transparent; color: #fff; padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 13px; font-family: inherit; margin-left: 8px; }
+  header button:hover { background: #fff; color: #000; }
+  main { max-width: 1000px; margin: 0 auto; padding: 24px 20px 80px; }
+  .card { background: #fff; border: 1px solid #e5e5e5; border-radius: 10px; padding: 16px 20px; margin-bottom: 16px; }
+  .card h2 { font-size: 12px; letter-spacing: 1px; margin: 0 0 12px; color: #666; text-transform: uppercase; }
+  .kv { display: grid; grid-template-columns: 180px 1fr; gap: 6px 16px; font-size: 13px; line-height: 1.6; }
+  .kv .k { color: #888; }
+  .kv .v.ok { color: #059669; font-weight: 700; }
+  .kv .v.warn { color: #ca8a04; font-weight: 700; }
+  .kv .v.error { color: #dc2626; font-weight: 700; }
+  .diag { list-style: none; padding: 0; margin: 0; }
+  .diag li { padding: 10px 14px; border-radius: 8px; margin-bottom: 8px; font-size: 13px; line-height: 1.5; }
+  .diag li.ok    { background: #f0fdf4; border-left: 4px solid #059669; color: #065f46; }
+  .diag li.info  { background: #eff6ff; border-left: 4px solid #2563eb; color: #1e3a8a; }
+  .diag li.warn  { background: #fefce8; border-left: 4px solid #ca8a04; color: #713f12; }
+  .diag li.error { background: #fef2f2; border-left: 4px solid #dc2626; color: #7f1d1d; }
+  .stats { display: flex; gap: 12px; flex-wrap: wrap; }
+  .stat { flex: 1; min-width: 100px; padding: 12px 14px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; text-align: center; }
+  .stat .n { font-size: 26px; font-weight: 800; }
+  .stat .l { font-size: 11px; color: #666; margin-top: 4px; letter-spacing: .5px; text-transform: uppercase; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid #f2f2f2; vertical-align: top; }
+  th { font-size: 11px; letter-spacing: 1px; color: #888; text-transform: uppercase; background: #fafafa; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+  .badge.submitted, .badge.PUBLISH_COMPLETE, .badge.posted { background: #059669; color: #fff; }
+  .badge.failed, .badge.FAILED { background: #dc2626; color: #fff; }
+  .badge.pending { background: #ca8a04; color: #fff; }
+  .badge.PROCESSING_DOWNLOAD, .badge.PROCESSING_UPLOAD { background: #6b7280; color: #fff; }
+  .badge.kind-editorial { background: #7c3aed; color: #fff; }
+  .badge.kind-article   { background: #0891b2; color: #fff; }
+  a { color: #ff0050; }
+  .actions a { display: inline-block; padding: 4px 10px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 12px; text-decoration: none; margin-right: 6px; color: #000; }
+  #status { padding: 40px 20px; text-align: center; color: #888; font-size: 14px; }
+  .spin { display: inline-block; width: 18px; height: 18px; border: 2px solid #ddd; border-top-color: #ff0050; border-radius: 50%; animation: sp 0.8s linear infinite; vertical-align: -4px; margin-right: 8px; }
+  @keyframes sp { to { transform: rotate(360deg); } }
+  .code { font-family: 'Menlo', monospace; font-size: 12px; color: #444; }
+  .action-panel { background: #fff5f7; border: 1px solid #fecdd3; border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; font-size: 13px; line-height: 1.7; color: #881337; }
+  .action-panel b { color: #ff0050; }
+  .action-panel a { color: #be185d; font-weight: 700; }
+  .tab-row { display: flex; gap: 8px; margin-bottom: 12px; }
+  .tab-row button { flex: 1; padding: 8px 14px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  .tab-row button.on { background: #000; color: #fff; border-color: #000; }
+</style>
+</head>
+<body>
+<header>
+  <h1>♪ TikTok 자동 게시 진단</h1>
+  <span class="schedule">에디토리얼 11:00 KST · 아티클 2h마다 :30</span>
+  <button onclick="load()">새로고침</button>
+  <button onclick="triggerDry('editorial')">에디토리얼 dry</button>
+  <button onclick="triggerDry('article')">아티클 dry</button>
+</header>
+<main id="root"><div id="status">로딩 중…</div></main>
+<script>
+const TOKEN = localStorage.getItem('pap-token');
+if (!TOKEN) document.getElementById('root').innerHTML = '<div id="status">관리자 로그인이 필요합니다. <a href="/admin">/admin</a> 에서 로그인 후 다시 열어주세요.</div>';
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+function ago(iso) {
+  if (!iso) return '';
+  const s = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return s + '초 전';
+  if (s < 3600) return Math.round(s / 60) + '분 전';
+  if (s < 86400) return Math.round(s / 3600) + '시간 전';
+  return Math.round(s / 86400) + '일 전';
+}
+
+let currentTab = 'editorials';
+async function load() {
+  if (!TOKEN) return;
+  const root = document.getElementById('root');
+  root.innerHTML = '<div id="status"><span class="spin"></span>진단 중…</div>';
+  try {
+    const res = await fetch('/api/admin/tiktok-diagnose', { headers: { Authorization: 'Bearer ' + TOKEN } });
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error || res.status);
+    window._diag = j;
+    render(j);
+  } catch (e) { root.innerHTML = '<div id="status">오류: ' + esc(e.message) + '</div>'; }
+}
+
+function switchTab(t) { currentTab = t; render(window._diag); }
+
+function render(d) {
+  if (!d) return;
+  const root = document.getElementById('root');
+  const env = d.env || {}, oauth = d.oauth || {}, summary = d.summary || {};
+  const publicGate = env.public_gate === '1'
+    ? '<span class="v ok">1 (자동 게시 활성)</span>'
+    : '<span class="v warn">' + esc(env.public_gate || '(미설정)') + ' — 크론 대기 모드</span>';
+  const oauthState = oauth.authorized
+    ? '<span class="v ok">인증 완료 (open_id: ' + esc(oauth.open_id || '') + ')</span>'
+    : '<span class="v error">미인증</span>';
+  const diagHtml = (d.diagnosis || []).map(x => '<li class="' + esc(x.level) + '">' + esc(x.msg) + '</li>').join('') || '<li class="info">진단 항목 없음.</li>';
+
+  const postsRows = (d.recent_posts || []).map(p =>
+    '<tr>' +
+      '<td>' + esc(ago(p.created_at)) + '<div class="code" style="color:#aaa">' + esc((p.created_at || '').slice(0, 19).replace('T', ' ')) + '</div></td>' +
+      '<td><span class="badge kind-' + esc(p.kind) + '">' + esc(p.kind) + '</span> ' + esc(p.title || '(삭제됨)') + (p.content_url ? '<div class="actions"><a href="' + esc(p.content_url) + '" target="_blank">원문 →</a></div>' : '') + '</td>' +
+      '<td><span class="badge ' + esc(p.status) + '">' + esc(p.status || '') + '</span>' + (p.publish_id ? '<div class="code" style="margin-top:4px">publish_id: ' + esc(p.publish_id) + '</div>' : '') + (p.detail ? '<div class="code" style="margin-top:4px">' + esc(p.detail) + '</div>' : '') + '</td>' +
+    '</tr>').join('') || '<tr><td colspan="3" style="text-align:center;color:#888;padding:20px">TikTok 게시 기록 없음</td></tr>';
+
+  const cands = d.candidates || { editorials: [], articles: [] };
+  const activeList = currentTab === 'editorials' ? cands.editorials : cands.articles;
+  const candRows = (activeList || []).map(c =>
+    '<tr>' +
+      '<td>' + esc((c.published_date || '').slice(0, 10)) + '</td>' +
+      '<td>' + esc(c.title) + ' <a href="' + esc(c.content_url) + '" target="_blank" style="font-size:11px">원문 →</a></td>' +
+      '<td>' + esc(c.image_count || 0) + '장</td>' +
+      '<td>' + (c.posted ? '<span class="badge posted">게시됨</span>' : '<span class="badge pending">대기</span>') + '</td>' +
+    '</tr>').join('') || '<tr><td colspan="4" style="text-align:center;color:#888;padding:20px">2장 이상 갤러리 콘텐츠 없음</td></tr>';
+
+  const setupPanel = (!env.has_client_key || !env.has_client_secret || !oauth.authorized || env.public_gate !== '1')
+    ? '<div class="action-panel"><b>활성화 순서 (TikTok은 심사 7~14일 필요):</b><br>' +
+      '① TikTok Developers 앱 등록 → Content Posting API + <span class="code">video.publish</span> 스코프 활성화<br>' +
+      '② URL 소유권 인증: <span class="code">pap-magazine.com</span>, 이미지 도메인 (Supabase Storage, S3)<br>' +
+      '③ Callback URL: <span class="code">https://www.pap-magazine.com/api/tiktok/callback</span><br>' +
+      '④ 심사(Audit) 제출 → 7~14일 대기 → 승인되면 <span class="code">PUBLIC_TO_EVERYONE</span> 게시 가능<br>' +
+      '⑤ 승인 후 Vercel 환경변수: <span class="code">TIKTOK_CLIENT_KEY</span>, <span class="code">TIKTOK_CLIENT_SECRET</span>, <span class="code">TIKTOK_PUBLIC=1</span><br>' +
+      '⑥ @pap_magazine TikTok 로그인 상태로 <a href="/api/tiktok/oauth" target="_blank">/api/tiktok/oauth</a> 방문 → 승인<br>' +
+      '⑦ 다음 크론(에디토리얼 11시 / 아티클 2h마다 :30)부터 자동 게시</div>'
+    : '';
+
+  root.innerHTML =
+    setupPanel +
+    '<div class="card"><h2>종합 진단</h2><ul class="diag">' + diagHtml + '</ul></div>' +
+    '<div class="card"><h2>최근 24시간 요약</h2><div class="stats">' +
+      '<div class="stat"><div class="n" style="color:#059669">' + (summary.last24h_success || 0) + '</div><div class="l">성공</div></div>' +
+      '<div class="stat"><div class="n" style="color:#dc2626">' + (summary.last24h_failed || 0) + '</div><div class="l">실패</div></div>' +
+      '<div class="stat"><div class="n" style="color:#7c3aed">' + (summary.pending_editorials || 0) + '</div><div class="l">에디토리얼 대기</div></div>' +
+      '<div class="stat"><div class="n" style="color:#0891b2">' + (summary.pending_articles || 0) + '</div><div class="l">아티클 대기</div></div>' +
+      '<div class="stat"><div class="n">' + (summary.total_posts || 0) + '</div><div class="l">전체 기록</div></div>' +
+    '</div></div>' +
+    '<div class="card"><h2>환경변수 / OAuth</h2><div class="kv">' +
+      '<div class="k">TIKTOK_PUBLIC</div><div>' + publicGate + '</div>' +
+      '<div class="k">CLIENT_KEY</div><div class="v ' + (env.has_client_key ? 'ok' : 'error') + '">' + (env.has_client_key ? '설정됨' : '미설정') + '</div>' +
+      '<div class="k">CLIENT_SECRET</div><div class="v ' + (env.has_client_secret ? 'ok' : 'error') + '">' + (env.has_client_secret ? '설정됨' : '미설정') + '</div>' +
+      '<div class="k">CRON_SECRET</div><div class="v ' + (env.has_cron_secret ? 'ok' : 'warn') + '">' + (env.has_cron_secret ? '설정됨' : '미설정') + '</div>' +
+      '<div class="k">OAuth</div><div>' + oauthState + (oauth.error ? ' <span class="code">(' + esc(oauth.error) + ')</span>' : '') + '</div>' +
+      (oauth.access_expires_at ? '<div class="k">Access token 만료</div><div class="v">' + esc(oauth.access_expires_at) + ' (' + esc(String(oauth.access_expires_in_hours)) + 'h 남음)</div>' : '') +
+      (oauth.refresh_expires_at ? '<div class="k">Refresh token 만료</div><div class="v">' + esc(oauth.refresh_expires_at) + ' (' + esc(String(oauth.refresh_expires_in_days)) + '일 남음)</div>' : '') +
+      '<div class="k">크론 스케줄</div><div class="v code">' + esc(d.schedule || '') + '</div>' +
+    '</div></div>' +
+    '<div class="card"><h2>최근 TikTok 게시 기록 (최대 20건)</h2>' +
+      '<table><thead><tr><th style="width:120px">시각</th><th>콘텐츠</th><th style="width:240px">상태</th></tr></thead><tbody>' + postsRows + '</tbody></table></div>' +
+    '<div class="card"><h2>다음 게시 후보</h2>' +
+      '<div class="tab-row"><button class="' + (currentTab === 'editorials' ? 'on' : '') + '" onclick="switchTab(\'editorials\')">에디토리얼 (' + cands.editorials.length + ')</button><button class="' + (currentTab === 'articles' ? 'on' : '') + '" onclick="switchTab(\'articles\')">아티클 (' + cands.articles.length + ')</button></div>' +
+      '<table><thead><tr><th style="width:100px">발행일</th><th>제목</th><th style="width:80px">이미지</th><th style="width:100px">상태</th></tr></thead><tbody>' + candRows + '</tbody></table></div>';
+}
+
+async function triggerDry(kind) {
+  if (!TOKEN) return;
+  if (!confirm(kind + ' 크론을 dry 모드로 트리거합니다. 진행할까요?')) return;
+  try {
+    const res = await fetch('/api/cron/tiktok-post?dry=1&kind=' + kind, { headers: { Authorization: 'Bearer ' + TOKEN } });
+    const j = await res.json();
+    alert('dry 결과 (' + kind + '):\n\n' + JSON.stringify(j, null, 2).slice(0, 1200));
+  } catch (e) { alert('오류: ' + e.message); }
+}
+
+if (TOKEN) load();
+</script>
+</body>
+</html>
