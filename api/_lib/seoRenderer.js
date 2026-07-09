@@ -814,9 +814,8 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
 
     ${record.source_instagram_url && /instagram\.com/.test(String(record.source_instagram_url)) ? `
     <aside class="ig-funnel" style="margin-bottom:0">
-      <div class="igf-kicker">On Instagram</div>
-      <p class="igf-copy">이 스토리의 원본 게시물이 인스타그램에 있습니다.<br><b>좋아요·저장</b>으로 소장하고, 좋아할 친구에게 <b>보내기</b>로 공유해보세요.</p>
-      <a class="igf-btn" href="${escAttr(record.source_instagram_url)}" target="_blank" rel="noopener">게시물에서 반응 남기기 →</a>
+      <div class="igf-kicker">${kind === 'editorial' ? 'Full Editorial' : kind === 'film' ? 'Full Film' : 'Full Story'}</div>
+      <p class="igf-copy">인스타그램에서는 일부만 공개됩니다.<br>전체는 지금 이 페이지, <b>PAP에서 완전판</b>으로 감상하실 수 있습니다.</p>
     </aside>` : ''}
 
     <aside class="ig-funnel">

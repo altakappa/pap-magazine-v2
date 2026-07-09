@@ -389,12 +389,20 @@ function _renderArticleDetail(a,det){
             +'</div>'
           : '')
         +'<aside style="margin:'+(_canEmbed?'14px':'28px')+' 0 0;padding:26px 24px;border:1px solid rgba(255,255,255,.16);text-align:center">'
-        +'<div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:10px">On Instagram</div>'
-        +'<div style="font-size:13.5px;line-height:1.7;color:#ddd;margin-bottom:16px">이 스토리의 원본 게시물이 인스타그램에 있습니다.<br><b style="color:#fff">좋아요·저장</b>으로 소장하고, 좋아할 친구에게 <b style="color:#fff">보내기</b>로 공유해보세요.</div>'
-        +'<a href="'+_igSafe+'" target="_blank" rel="noopener" style="display:inline-block;background:#fff;color:#000;padding:11px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none">게시물에서 반응 남기기 →</a>'
+        +(function(){
+          // 웹 감상 유도 (2026-07) — 원본 IG 게시물로 내보내는 대신 이 웹사이트에서
+          // 전체를 읽도록 전환. IG 임베드(위)는 유지, 카피·주버튼은 웹 중심.
+          var _ko=(localStorage.getItem('pap-lang')||'ko')==='ko';
+          var _body=_ko
+            ? '인스타그램에서는 일부만. 전체 이야기는 <b style="color:#fff">PAP에서</b> 읽어보세요.'
+            : 'Instagram shows only part of it. Read the full story here, <b style="color:#fff">on PAP</b>.';
+          var _share=_ko ? '이 기사 공유 ↗' : 'Share this story ↗';
+          return '<div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:10px">Full Story</div>'
+            +'<div style="font-size:13.5px;line-height:1.7;color:#ddd;margin-bottom:16px">'+_body+'</div>'
+            +'<button onclick="_papShareArticle()" style="display:inline-block;background:#fff;color:#000;border:none;padding:11px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;cursor:pointer">'+_share+'</button>';
+          })()
         +'<a href="https://www.instagram.com/pap_magazine/" target="_blank" rel="noopener" style="display:inline-block;margin:8px 0 0 10px;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);padding:11px 22px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none">Follow @pap_magazine</a>'
         +(function(){var n=_papNicheIg(a.cat);return n?'<a href="https://www.instagram.com/'+n+'/" target="_blank" rel="noopener" style="display:inline-block;margin:8px 0 0 10px;background:transparent;color:#bbb;border:1px solid rgba(255,255,255,.22);padding:11px 22px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none">+ @'+n+'</a>':'';})()
-        +'<button onclick="_papShareArticle()" style="display:inline-block;margin:8px 0 0 10px;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);padding:11px 22px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;cursor:pointer">친구에게 보내기 ↗</button>'
         +'</aside>';
       igCta.style.display='';
       if(_canEmbed) _papLoadIgEmbed();

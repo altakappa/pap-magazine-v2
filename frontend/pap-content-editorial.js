@@ -945,12 +945,21 @@ function _papRenderEdIg(igUrl, title){
         +'<blockquote class="instagram-media" data-instgrm-permalink="'+permalink.replace(/"/g,'&quot;')+'" data-instgrm-version="14" style="background:#000;border:1px solid rgba(255,255,255,.16);margin:0 auto;max-width:540px;min-width:280px;width:100%"></blockquote>'
         +'</div>'
       : '')
-    +'<aside style="margin:'+(canEmbed?'14px':'36px')+' 0 0;padding:26px 24px;border:1px solid rgba(255,255,255,.16);text-align:center">'
-    +'<div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:10px">On Instagram</div>'
-    +'<div style="font-size:13.5px;line-height:1.7;color:#ddd;margin-bottom:16px">이 에디토리얼의 원본 게시물이 인스타그램에 있습니다.<br><b style="color:#fff">좋아요·저장</b>으로 소장하고, 좋아할 친구에게 <b style="color:#fff">보내기</b>로 공유해보세요.</div>'
-    +'<a href="'+safe+'" target="_blank" rel="noopener" style="display:inline-block;background:#fff;color:#000;padding:11px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none">게시물에서 반응 남기기 →</a>'
-    +'<button onclick="_papShareStory()" style="display:inline-block;margin:8px 0 0 10px;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);padding:11px 22px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;cursor:pointer">친구에게 보내기 ↗</button>'
-    +'</aside>';
+    +(function(){
+       // 웹 감상 유도 (2026-07) — 원본은 인스타가 아니라 이 웹사이트에 완전판으로
+       // 있다는 방향으로 전환. IG 임베드(위)는 사회적 증거로 유지하되, 카피·버튼은
+       // 웹 중심(공유=PAP 페이지). 언어에 따라 KO/EN 노출(그 외 언어는 EN).
+       var _ko=(localStorage.getItem('pap-lang')||'ko')==='ko';
+       var _body=_ko
+         ? '인스타그램에서는 한 컷만. 이 화보의 전체 시리즈는 <b style="color:#fff">PAP에서 완전판</b>으로 감상하세요.'
+         : 'Instagram shows a single frame. The complete series lives here, <b style="color:#fff">on PAP</b>.';
+       var _share=_ko ? '이 화보 공유 ↗' : 'Share this editorial ↗';
+       return '<aside style="margin:'+(canEmbed?'14px':'36px')+' 0 0;padding:26px 24px;border:1px solid rgba(255,255,255,.16);text-align:center">'
+         +'<div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:10px">Full Editorial</div>'
+         +'<div style="font-size:13.5px;line-height:1.7;color:#ddd;margin-bottom:16px">'+_body+'</div>'
+         +'<button onclick="_papShareStory()" style="display:inline-block;background:#fff;color:#000;border:none;padding:11px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;cursor:pointer">'+_share+'</button>'
+         +'</aside>';
+     })();
   box.style.display='';
   if(canEmbed && typeof _papLoadIgEmbed==='function'){try{_papLoadIgEmbed();}catch(_){}}
 }
