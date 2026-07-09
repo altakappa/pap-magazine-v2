@@ -41,6 +41,24 @@
   #dBody h3 { font-size: 16px; margin: 22px 0 8px; }
   #dBody img { max-width: 100%; border-radius: 8px; }
   .hint { font-size: 12px; color: #888; line-height: 1.6; background: #f5f5f5; border-radius: 8px; padding: 10px 14px; margin-top: 14px; }
+  /* QA #350 — 체류형 포스팅 프레임워크 카드들 */
+  .cand-list { display: grid; gap: 8px; }
+  .cand { border: 1px solid #eee; border-radius: 10px; padding: 10px 12px; background: #fafafa; display: flex; gap: 10px; align-items: flex-start; }
+  .cand .num { font-size: 11px; color: #999; font-weight: 700; padding-top: 2px; min-width: 18px; }
+  .cand .body { flex: 1; font-size: 13px; line-height: 1.55; color: #222; }
+  .cand .trg { display: inline-block; font-size: 10px; font-weight: 800; letter-spacing: 1px; padding: 2px 8px; border-radius: 8px; margin-right: 6px; vertical-align: 1px; }
+  .cand .trg.wonder  { background: #fef3c7; color: #92400e; }   /* 놀라움 */
+  .cand .trg.empathy { background: #dcfce7; color: #14532d; }   /* 공감 */
+  .cand .trg.anxiety { background: #ffe4e6; color: #881337; }   /* 불안 */
+  .cand .trg.desire  { background: #ede9fe; color: #4c1d95; }   /* 욕망 */
+  .cand button.copy { flex: none; align-self: center; }
+  .thumb-list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .thumb-list .chip { border: 1px solid #ddd; border-radius: 999px; padding: 6px 12px; font-size: 12px; background: #fff; cursor: pointer; }
+  .thumb-list .chip:hover { background: #000; color: #fff; border-color: #000; }
+  .thumb-list .chip.ok { background: #17a34a; color: #fff; border-color: #17a34a; }
+  .checklist-box { border: 1px solid #eee; border-radius: 10px; padding: 12px 14px; background: #f9fafb; font-size: 13px; line-height: 1.6; }
+  .checklist-box ul { margin: 0; padding-left: 18px; }
+  .cta-box { margin-top: 8px; padding: 10px 14px; background: #fff8e1; border-left: 3px solid #f59e0b; border-radius: 6px; font-size: 13px; color: #78350f; font-style: italic; }
   #status { padding: 40px 20px; text-align: center; color: #888; font-size: 14px; }
   .spin { display: inline-block; width: 18px; height: 18px; border: 2px solid #ddd; border-top-color: #000; border-radius: 50%; animation: sp 0.8s linear infinite; vertical-align: -4px; margin-right: 8px; }
   @keyframes sp { to { transform: rotate(360deg); } }
@@ -128,6 +146,50 @@ async function loadList() {
   } catch (e) { el.innerHTML = '<div id="status">오류: ' + esc(e.message) + '</div>'; }
 }
 
+// QA #350 — 심리 트리거 라벨 → CSS 클래스 매핑
+function trgClass(t) {
+  var s = String(t || '').trim();
+  if (s === '놀라움') return 'wonder';
+  if (s === '공감')   return 'empathy';
+  if (s === '불안')   return 'anxiety';
+  if (s === '욕망')   return 'desire';
+  return '';
+}
+function trgBadge(t) {
+  var cls = trgClass(t);
+  return cls ? '<span class="trg ' + cls + '">' + esc(t) + '</span>' : '';
+}
+// 후보 카드 리스트 렌더 (제목/훅 공용)
+function renderCandidates(items, field) {
+  if (!items || !items.length) return '';
+  return '<div class="cand-list">' + items.map(function(it, i) {
+    var text = it[field] || '';
+    return '<div class="cand">' +
+      '<div class="num">' + (i + 1) + '</div>' +
+      '<div class="body">' + trgBadge(it.trigger) + esc(text).replace(/\n/g, '<br>') + '</div>' +
+      '<button class="copy" onclick="cpCandidate(this)" data-text="' + esc(text) + '">복사</button>' +
+    '</div>';
+  }).join('') + '</div>';
+}
+// 썸네일 문구 chip 렌더
+function renderThumbs(items) {
+  if (!items || !items.length) return '';
+  return '<div class="thumb-list">' + items.map(function(t) {
+    return '<button type="button" class="chip" onclick="cpChip(this)" data-text="' + esc(t) + '">' + esc(t) + '</button>';
+  }).join('') + '</div>';
+}
+// 체크리스트 박스 렌더
+function renderChecklist(items, cta) {
+  var parts = [];
+  if (items && items.length) {
+    parts.push('<div class="checklist-box"><ul>');
+    items.forEach(function(it) { parts.push('<li>' + esc(it) + '</li>'); });
+    parts.push('</ul></div>');
+  }
+  if (cta) parts.push('<div class="cta-box">' + esc(cta) + '</div>');
+  return parts.join('');
+}
+
 async function pick(node) {
   document.querySelectorAll('.item.sel').forEach(n => n.classList.remove('sel'));
   node.classList.add('sel');
@@ -138,13 +200,38 @@ async function pick(node) {
   try {
     const j = await api('slug=' + encodeURIComponent(slug) + '&brand=' + brand + '&kind=' + kind);
     current = j;
+    var titleCands = renderCandidates(j.title_candidates || [], 'title');
+    var hookCands  = renderCandidates(j.hook_candidates  || [], 'hook');
+    var thumbs     = renderThumbs(j.thumbnail_texts || []);
+    var checklistBox = renderChecklist(j.checklist || [], j.cta || '');
     el.innerHTML =
-      '<div class="field"><label>제목 <button class="copy" onclick="cpText(this, current.title)">복사</button></label><div id="dTitle">' + esc(j.title) + '</div></div>' +
+      '<div class="field"><label>제목 (추천) <button class="copy" onclick="cpText(this, current.title)">복사</button></label><div id="dTitle">' + esc(j.title) + '</div></div>' +
+      (titleCands ? '<div class="field"><label>제목 후보 5개 · 감정 트리거</label>' + titleCands + '</div>' : '') +
+      (hookCands  ? '<div class="field"><label>도입부 훅 5개 · 첫 3문장</label>' + hookCands + '</div>' : '') +
+      (thumbs ? '<div class="field"><label>썸네일 문구 후보 <span style="font-weight:400;color:#999;letter-spacing:0">— 클릭 시 복사</span></label>' + thumbs + '</div>' : '') +
       '<div class="field"><label>태그 <button class="copy" onclick="cpText(this, current.tags.join(\' \'))">복사</button></label><div id="dTags">' + esc((j.tags || []).join(' ')) + '</div></div>' +
-      '<div class="field"><label>본문 <button class="copy" onclick="cpHtml(this)">서식 포함 복사</button></label><div id="dBody">' + j.body_html + '</div></div>' +
-      '<div class="hint">사용법: ① 네이버 블로그 글쓰기 열기 → ② 제목 붙여넣기 → ③ 본문란에 붙여넣기(서식·이미지 포함) → ④ 하단 태그 입력 → 발행. ' +
+      '<div class="field"><label>본문 (체크리스트 · CTA 포함) <button class="copy" onclick="cpHtml(this)">서식 포함 복사</button></label><div id="dBody">' + j.body_html + '</div></div>' +
+      (checklistBox ? '<div class="field"><label>체크리스트 · CTA (본문 하단에도 포함)</label>' + checklistBox + '</div>' : '') +
+      '<div class="hint">사용법: ① 네이버 블로그 글쓰기 열기 → ② 원하는 제목·훅 후보 선택해 복사 → ③ 본문란에 <b>서식 포함 복사</b> 결과 붙여넣기 (체크리스트·CTA 자동 포함) → ④ 하단 태그 입력 → 썸네일 이미지에 위 후보 문구 얹기 → 발행. ' +
       '이미지가 붙지 않으면 미리보기의 이미지를 하나씩 드래그하거나, <a href="' + esc(j.article_url) + '" target="_blank">원문</a>에서 저장 후 첨부해 주세요.</div>';
   } catch (e) { el.innerHTML = '<div style="padding:40px 20px;text-align:center;color:#c00;font-size:14px;">오류: ' + esc(e.message) + '</div>'; }
+}
+
+// 후보 카드 복사 (data-text 사용)
+function cpCandidate(btn) {
+  btn.dataset.orig = btn.textContent;
+  var text = btn.getAttribute('data-text') || '';
+  navigator.clipboard.writeText(text).then(() => flash(btn));
+}
+// 썸네일 문구 chip 복사
+function cpChip(btn) {
+  var text = btn.getAttribute('data-text') || '';
+  navigator.clipboard.writeText(text).then(function() {
+    btn.classList.add('ok');
+    var orig = btn.textContent;
+    btn.textContent = '복사됨';
+    setTimeout(function() { btn.classList.remove('ok'); btn.textContent = orig; }, 1500);
+  });
 }
 
 function flash(btn) { btn.classList.add('ok'); btn.textContent = '복사됨!'; setTimeout(() => { btn.classList.remove('ok'); btn.textContent = btn.dataset.orig || '복사'; }, 1500); }
