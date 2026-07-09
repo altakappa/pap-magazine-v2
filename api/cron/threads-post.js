@@ -54,6 +54,13 @@ module.exports = async function handler(req, res) {
   const invokedAt = new Date().toISOString();
   console.log('[threads-post] invoked at', invokedAt, 'via', cronOk ? 'cron' : 'admin');
 
+  // DISABLED — 인스타그램 공동게시로 이미 @pap_magazine Threads에 자동 노출되고 있어
+  // 별도 자동 게시는 중복임. THREADS_CRON_ENABLED=true 를 명시적으로 켤 때만 동작.
+  if (process.env.THREADS_CRON_ENABLED !== 'true') {
+    console.log('[threads-post] disabled — set THREADS_CRON_ENABLED=true to enable');
+    return res.status(200).json({ ok: true, note: 'Threads 자동 게시 비활성화 — 인스타 공동게시와 중복이라 vercel.json 크론에서도 제거됨. THREADS_CRON_ENABLED=true 로 다시 켤 수 있음.' });
+  }
+
   try {
     // 인증 전이면 대기 모드 (크론이 에러 알림을 쏟아내지 않게)
     const { data: authRow } = await supabaseAdmin.from('threads_auth').select('access_token').eq('id', 1).maybeSingle();
