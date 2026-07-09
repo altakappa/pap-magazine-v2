@@ -80,20 +80,20 @@ async function isDuplicate(ipHash, brandId, now) {
  * finishes — but errors are swallowed so a Postgres hiccup never breaks
  * the redirect for a real visitor.
  */
-async function recordClick({ brandId, region, req, now }) {
+async function recordClick({ brandId, region, req, now, destType }) {
   const ip = extractClientIp(req);
-  const ipHash = hashIp(ip);
-  if (!ipHash) {
-    // Phase 0 default: no salt → no log. The redirect still completes.
-    console.warn('[go] PAP_IP_HASH_SALT unset — click not logged');
-    return;
-  }
+  // salt(PAP_IP_HASH_SALT) 있으면 SHA256(ip+salt) — PII 최소화 + 24h 중복제거 가능.
+  // 없으면 null — IP 를 아예 저장하지 않되(프라이버시 안전) 클릭 자체는 기록한다.
+  // (2026-07: 예전 "salt 없으면 로그 안 함" Phase 0 방침을 전환 — 전환 추적 우선)
+  const ipHash = hashIp(ip); // null 가능 (ip_hash 컬럼은 nullable)
 
   const ua = String(req.headers['user-agent'] || '');
   const referrer = sanitizeReferrer(req.headers['referer'] || req.headers['referrer']);
   const device = detectDeviceType(ua);
 
-  const counted = !(await isDuplicate(ipHash, brandId, now));
+  // 중복제거는 안정적인 salted hash 가 있을 때만 의미가 있다. ip_hash 가 null 이면
+  // 서로 다른 클릭을 묶을 수 없으므로 모두 counted=true 로 집계한다.
+  const counted = ipHash ? !(await isDuplicate(ipHash, brandId, now)) : true;
 
   const sessionId = require('crypto').randomBytes(16).toString('hex');
   const sessionExpiresAt = new Date(now.getTime() + SESSION_TTL_MS).toISOString();
@@ -110,6 +110,7 @@ async function recordClick({ brandId, region, req, now }) {
       session_id: sessionId,
       session_expires_at: sessionExpiresAt,
       counted: counted,
+      destination_type: destType || null, // 'affiliate' | 'instagram' | 'search'
       // editorial_id + lead_creator_id intentionally null in Phase 0;
       // Phase 1 backfills both via the credit-extraction job.
     });
@@ -160,7 +161,7 @@ module.exports = async function handler(req, res) {
 
   let brand = null;
   try {
-    const SEL = 'brand_id,display_name,status,affiliate_url_global,affiliate_url_korea';
+    const SEL = 'brand_id,display_name,status,affiliate_url_global,affiliate_url_korea,instagram_handle';
     // 1) brand_id 직접
     let r = await supabaseAdmin.from('brands').select(SEL).eq('brand_id', norm).maybeSingle();
     brand = r.data || null;
@@ -181,16 +182,50 @@ module.exports = async function handler(req, res) {
     console.error('[go] brand lookup threw', e && e.message);
   }
 
-  if (!brand || brand.status !== 'active') {
-    // 미등록/보류 브랜드 — 검색 폴백으로 보낸다 (로그는 브랜드 확정 시에만).
-    return res.redirect(302, searchFallback(norm.replace(/[._]+/g, ' ')));
+  // 목적지 우선순위 (2026-07 개선):
+  //   1) active 브랜드 + affiliate_url(global/korea) 있음 → affiliate_url
+  //      (archived 브랜드의 낡은/만료 링크로 보내지 않도록 active 일 때만 사용)
+  //   2) 아니면 브랜드 공식 인스타그램 프로필 (instagram_handle)
+  //      — 어필리에이트 승인 전에도 "엉뚱한 검색"보다 훨씬 자연스러운 목적지.
+  //   3) 아니면 검색 폴백 (최후의 수단)
+  // 승인이 나면 affiliate_url 이 채워지고 자동으로 1) 로 처리된다(코드 재배포 불필요).
+  let dest = null;
+  let destType = null;
+
+  if (brand && brand.status === 'active') {
+    const url = pickAffiliateUrl(brand, region);
+    if (url) { dest = url; destType = 'affiliate'; }
   }
 
-  const dest = pickAffiliateUrl(brand, region) || searchFallback(brand.display_name || norm);
+  if (!dest) {
+    const handle = sanitizeIgHandle(brand && brand.instagram_handle);
+    if (handle) {
+      dest = 'https://www.instagram.com/' + handle + '/';
+      destType = 'instagram';
+    }
+  }
 
-  // Record click before redirecting. If recording errors, we still redirect.
-  try { await recordClick({ brandId: brand.brand_id, region, req, now }); }
-  catch (e) { console.warn('[go] recordClick threw', e && e.message); }
+  if (!dest) {
+    dest = brand
+      ? (searchFallback(brand.display_name || norm))
+      : searchFallback(norm.replace(/[._]+/g, ' '));
+    destType = 'search';
+  }
+
+  // 전환 추적 — 브랜드를 찾은 모든 경우에 클릭을 기록한다(affiliate_clicks.brand_id
+  // 는 NOT NULL FK 라 브랜드 미확정 검색 폴백은 기록 불가 → 스킵). destination_type
+  // 으로 어떤 폴백이었는지 남긴다. 기록이 실패해도 리다이렉트는 항상 완료된다.
+  if (brand) {
+    try { await recordClick({ brandId: brand.brand_id, region, req, now, destType }); }
+    catch (e) { console.warn('[go] recordClick threw', e && e.message); }
+  }
 
   return res.redirect(302, dest);
 };
+
+// 인스타 핸들 정규화 — @/공백 제거 후 IG 허용문자만. 유효하지 않으면 null.
+function sanitizeIgHandle(raw) {
+  if (!raw) return null;
+  const h = String(raw).trim().replace(/^@+/, '').split(/[/?#\s]/)[0];
+  return /^[A-Za-z0-9._]{1,30}$/.test(h) ? h : null;
+}
