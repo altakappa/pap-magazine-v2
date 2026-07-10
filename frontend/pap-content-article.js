@@ -370,7 +370,28 @@ function _papNicheIg(cat){
 }
 
 function _renderArticleDetail(a,det){
-  document.getElementById('artDetailImg').src=a.img||a.th;
+  // #1 (2026-07) — 릴스/영상 게시물 재생.
+  // 릴스 연동 기사는 대부분 원본 mp4 가 수집되지 않고(예: 49건 중 46건 videos 빈값)
+  // permalink 와 썸네일만 있다. 이 경우 히어로에 정지 썸네일 대신 인스타그램
+  // 임베드(재생 가능)를 노출한다. mp4(videos)가 있으면 기존 <video>(갤러리)가
+  // 처리하므로 히어로는 썸네일 유지. 하단 CTA 의 중복 임베드는 제거(아래).
+  var _heroImg=document.getElementById('artDetailImg');
+  var _heroWrap=_heroImg?_heroImg.parentNode:null;
+  var _artEmbeddable=!!(a.ig && /instagram\.com\/(p|reel|tv)\//.test(String(a.ig)));
+  var _artHasVideo=Array.isArray(a.videos)&&a.videos.length>0;
+  if(_heroWrap){var _oldHero=_heroWrap.querySelector('.art-hero-ig');if(_oldHero)_oldHero.remove();}
+  if(_artEmbeddable && !_artHasVideo && _heroWrap){
+    if(_heroImg) _heroImg.style.display='none';
+    var _hp=String(a.ig).split('?')[0]; if(!/\/$/.test(_hp)) _hp+='/';
+    _heroWrap.insertAdjacentHTML('beforeend',
+      '<div class="art-hero-ig" style="max-width:420px;margin:0 auto;background:#000">'
+      +'<blockquote class="instagram-media" data-instgrm-permalink="'+_hp.replace(/"/g,'&quot;')+'" data-instgrm-version="14" style="background:#000;border:0;margin:0 auto;max-width:420px;min-width:280px;width:100%"></blockquote>'
+      +'</div>');
+    if(typeof _papLoadIgEmbed==='function'){try{_papLoadIgEmbed();}catch(_){}}
+  } else if(_heroImg){
+    _heroImg.style.display='block';
+    _heroImg.src=a.img||a.th;
+  }
   // 참여 증폭 2.0 (2026-07) — 원본 IG 게시물을 링크가 아니라 '임베드'로
   // 페이지 안에 직접 띄운다. 게시물이 눈앞에 보이면 좋아요·저장이
   // 한 클릭 거리로 줄어든다. 임베드 불가 URL(프로필 등)은 기존 링크 CTA만.
@@ -382,13 +403,9 @@ function _renderArticleDetail(a,det){
       var _permalink=String(a.ig).split('?')[0];
       if(!/\/$/.test(_permalink)) _permalink+='/';
       var _canEmbed=/instagram\.com\/(p|reel|tv)\//.test(_permalink);
+      // #1 (2026-07) — 원본 IG 임베드는 히어로로 승격했으므로 하단엔 텍스트 CTA만.
       igCta.innerHTML=
-        (_canEmbed
-          ? '<div style="margin:28px auto 0;max-width:540px">'
-            +'<blockquote class="instagram-media" data-instgrm-permalink="'+_permalink.replace(/"/g,'&quot;')+'" data-instgrm-version="14" style="background:#000;border:1px solid rgba(255,255,255,.16);margin:0 auto;max-width:540px;min-width:280px;width:100%"></blockquote>'
-            +'</div>'
-          : '')
-        +'<aside style="margin:'+(_canEmbed?'14px':'28px')+' 0 0;padding:26px 24px;border:1px solid rgba(255,255,255,.16);text-align:center">'
+        '<aside style="margin:28px 0 0;padding:26px 24px;border:1px solid rgba(255,255,255,.16);text-align:center">'
         +(function(){
           // 웹 감상 유도 (2026-07) — 원본 IG 게시물로 내보내는 대신 이 웹사이트에서
           // 전체를 읽도록 전환. IG 임베드(위)는 유지, 카피·주버튼은 웹 중심.

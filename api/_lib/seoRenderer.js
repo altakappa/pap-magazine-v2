@@ -568,11 +568,74 @@ function renderSeoHtml(kind, record) {
       '</section>'
     : '';
 
-  /* Content body for articles (rich text from `content` field) */
+  /* Content body for articles.
+     QA(2026-07): admin v2 는 content 를 JSON 블록 배열
+     ([{type:'text'|'image'|'quote'|'video'|'videogroup'|'gallery'|'slide', …}])
+     로 저장한다. 예전엔 이 문자열을 그대로 출력해서, /article/<slug> 직접
+     진입 시(기사 SSR 은 SPA 로 리다이렉트하지 않음) PC·모바일 모두 원본
+     JSON([{"type":...}])이 노출됐다. 여기서 파싱해 정적 시맨틱 HTML 로
+     렌더한다 — SPA 의 _renderArticleBlocks(pap-content-article.js) 서버 미러.
+     상호작용(슬라이드 화살표·라이트박스)은 없지만 텍스트·이미지·영상·갤러리는
+     정상 노출된다. 블록 배열이 아니면(레거시 HTML/텍스트) 원문을 그대로 쓴다. */
+  function _renderArticleBody(content) {
+    let blocks = null;
+    if (typeof content === 'string' && content.trim().charAt(0) === '[') {
+      try { const p = JSON.parse(content); if (Array.isArray(p)) blocks = p; } catch { blocks = null; }
+    } else if (Array.isArray(content)) {
+      blocks = content;
+    }
+    if (!blocks) {
+      return typeof content === 'string' ? content : escText(JSON.stringify(content));
+    }
+    const iframe = (src) => `<div style="margin:36px 0;position:relative;padding-bottom:56.25%;height:0;overflow:hidden"><iframe src="${escAttr(src)}" loading="lazy" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%"></iframe></div>`;
+    const vid = (u) => {
+      const e = _extractEmbed(u);
+      if (e && e.kind === 'iframe') return iframe(e.src);
+      if (u) return `<p style="margin:36px 0;font-size:12px"><a href="${escAttr(u)}" target="_blank" rel="noopener" style="color:#aaa">${escText(u)} ↗</a></p>`;
+      return '';
+    };
+    let html = '';
+    for (const b of blocks) {
+      if (!b || typeof b !== 'object') continue;
+      const t = b.type || 'text';
+      const c = (b.content || '').toString();
+      const url = (b.url || '').toString();
+      if (t === 'text') {
+        html += c.split(/\n\n+/).map(p => `<p style="margin:0 0 22px;line-height:1.9">${escText(p).replace(/\n/g, '<br>')}</p>`).join('');
+      } else if (t === 'image') {
+        if (!url) continue;
+        html += `<figure style="margin:36px 0"><img src="${escAttr(url)}" alt="${escAttr(c)}" loading="lazy" style="width:100%;display:block;border-radius:2px">${c ? `<figcaption style="margin-top:12px;font-size:12px;color:#888;text-align:center;letter-spacing:.04em;line-height:1.6">${escText(c)}</figcaption>` : ''}</figure>`;
+      } else if (t === 'quote') {
+        const src = (b.source || '').toString();
+        html += `<blockquote style="margin:36px 0;padding:20px 26px;border-left:3px solid #999;font-style:italic;color:#ddd;font-size:16px;line-height:1.85">${escText(c)}${src ? `<footer style="margin-top:14px;font-size:11px;color:#888;font-style:normal;text-align:right">— ${escText(src)}</footer>` : ''}</blockquote>`;
+      } else if (t === 'video') {
+        html += vid(c || url);
+      } else if (t === 'videogroup') {
+        const vids = Array.isArray(b.videos) ? b.videos : [];
+        if (!vids.length) continue;
+        html += '<div style="margin:36px 0;display:flex;flex-direction:column;gap:24px">';
+        for (const v of vids) { if (v && v.url) html += `<div style="margin:0">${vid(v.url)}${v.caption ? `<div style="margin-top:6px;font-size:11px;color:#888;text-align:center">${escText(v.caption)}</div>` : ''}</div>`; }
+        html += '</div>';
+      } else if (t === 'gallery') {
+        const imgs = Array.isArray(b.images) ? b.images : [];
+        if (!imgs.length) continue;
+        html += '<div style="margin:36px 0;display:grid;grid-template-columns:1fr 1fr;gap:12px">';
+        for (const im of imgs) { if (im && im.url) html += `<figure style="margin:0"><img src="${escAttr(im.url)}" alt="${escAttr(im.caption || '')}" loading="lazy" style="width:100%;aspect-ratio:4/5;object-fit:cover;display:block;border-radius:2px">${im.caption ? `<figcaption style="margin-top:8px;font-size:11px;color:#888;text-align:center;line-height:1.5">${escText(im.caption)}</figcaption>` : ''}</figure>`; }
+        html += '</div>';
+      } else if (t === 'slide') {
+        const imgs = Array.isArray(b.images) ? b.images : [];
+        if (!imgs.length) continue;
+        html += '<div style="margin:36px 0;display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch">';
+        for (const im of imgs) { if (im && im.url) html += `<figure style="margin:0;flex:0 0 88%;scroll-snap-align:center"><img src="${escAttr(im.url)}" alt="${escAttr(im.caption || '')}" loading="lazy" style="width:100%;aspect-ratio:4/5;object-fit:cover;display:block;border-radius:2px">${im.caption ? `<figcaption style="margin-top:8px;font-size:11px;color:#888;text-align:center;line-height:1.6">${escText(im.caption)}</figcaption>` : ''}</figure>`; }
+        html += '</div>';
+      } else {
+        html += `<p style="margin:0 0 22px;line-height:1.9">${escText(c)}</p>`;
+      }
+    }
+    return html;
+  }
   const bodyHtml = record.content
-    ? `<div class="seo-body">${typeof record.content === 'string'
-        ? record.content
-        : escText(JSON.stringify(record.content))}</div>`
+    ? `<div class="seo-body">${_renderArticleBody(record.content)}</div>`
     : '';
 
   return `<!DOCTYPE html>

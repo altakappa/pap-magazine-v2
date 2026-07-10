@@ -338,7 +338,11 @@ function updateShortsPositions(){
   var trackEl=document.getElementById('shortsTrack');
   var trackW=trackEl.offsetWidth;
   var sides=getShortsVisibleCount();
-  var itemW=240;
+  // QA(2026-07): 카드 폭을 하드코딩(240)하지 않고 실제 렌더 폭에서 읽는다.
+  // CSS 가 모바일 브레이크포인트마다 .shorts-item 폭을 줄이는데(240→…→140),
+  // 아래 중앙정렬(50% - 폭/2)이 이 값에 물려 있어 하드코딩 시 모바일에서 카드가
+  // 왼쪽으로 치우쳤다. (transform:scale 은 offsetWidth 에 영향 없음 → CSS width 반환)
+  var itemW=(items[0] && items[0].offsetWidth) ? items[0].offsetWidth : 240;
   var gap=Math.min(30, (trackW - itemW) / (sides * 2 + 1));
   var step=itemW * 0.82 + gap;
 
@@ -358,7 +362,7 @@ function updateShortsPositions(){
     }
     else{item.classList.add('hidden');x=diff<0?-(sides+1)*step:(sides+1)*step;}
 
-    item.style.left='calc(50% - 120px + '+x+'px)';
+    item.style.left='calc(50% - '+(itemW/2)+'px + '+x+'px)';
 
     var iframe=item.querySelector('iframe');
     if(ad<=sides){
