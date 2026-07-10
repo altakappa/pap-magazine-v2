@@ -978,6 +978,36 @@ function _magHasLoginSession(){
     return !!(parsed && (parsed.id || parsed.email));
   }catch(e){ return false; }
 }
+// ── 정식 서비스 열람 정책 (2026-07-10 베타 종료) ──
+//   premium  → 전체 발행호 열람
+//   standard → 최신 볼륨 2개만 열람 (에디토리얼 "최신 100개" 정책과 정합)
+//   free/비로그인 → 호당 미리보기 3편 + 구독 모달
+// 최신 볼륨 N개의 키('year-quarter')를 발행호 카드 DOM에서 계산 (렌더 후 호출)
+function _magLatestVolKeys(n){
+  try{
+    var cards=document.querySelectorAll('.card[data-year][data-quarter]');
+    var keys=[],seen={};
+    Array.prototype.forEach.call(cards,function(c){
+      var y=parseInt(c.getAttribute('data-year'),10),q=parseInt(c.getAttribute('data-quarter'),10);
+      if(!y||!q)return; var k=y+'-'+q; if(seen[k])return; seen[k]=1; keys.push({y:y,q:q,k:k});
+    });
+    keys.sort(function(a,b){return (b.y-a.y)||(b.q-a.q);});
+    return keys.slice(0,n).map(function(x){return x.k;});
+  }catch(e){return [];}
+}
+function _magHasFullAccess(qOpts){
+  try{
+    var u=localStorage.getItem('pap-user');
+    if(!u) return false;
+    var user=JSON.parse(u);
+    var sub=user&&user.subscription;
+    if(sub==='premium') return true;
+    if(sub!=='standard') return false;
+    var k=(qOpts&&qOpts.year&&qOpts.quarter)?(qOpts.year+'-'+qOpts.quarter):null;
+    if(!k) return false; // 레거시(월간) 호는 구볼륨 → Standard 미리보기만
+    return _magLatestVolKeys(2).indexOf(k)>-1;
+  }catch(e){return false;}
+}
 function _magIsOpenAccess(){
   try{
     var isBeta = !PAP_BETA_END_MAG; // null = 무기한 베타
@@ -1008,7 +1038,7 @@ function openModal(el){
   var dY = el.getAttribute('data-year');
   var quarterOpts = (dQ && dY) ? {year: parseInt(dY,10), quarter: parseInt(dQ,10)} : null;
   // 베타 기간 중(또는 구독자)에는 구독 팝업을 건너뛰고 바로 전체 이슈 프리뷰 오픈
-  if(_magIsOpenAccess()){
+  if(_magHasFullAccess(quarterOpts)){
     var opts = {unlimited:true};
     if(quarterOpts){ opts.year = quarterOpts.year; opts.quarter = quarterOpts.quarter; }
     openPreview(title,opts);
@@ -1067,7 +1097,7 @@ function parseIssueMonthYear(title){
 
 function openPreview(issueTitle,opts){
   opts=opts||{};
-  var unlimited=!!opts.unlimited || _magIsOpenAccess();
+  var unlimited=!!opts.unlimited || _magHasFullAccess((opts&&opts.year&&opts.quarter)?{year:opts.year,quarter:opts.quarter}:null);
   closeModal();
   var overlay=document.getElementById('previewOverlay');
   var grid=document.getElementById('previewGrid');

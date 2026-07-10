@@ -161,9 +161,30 @@ async function sendEditorialToTelegramSafe(ed) {
   }
 }
 
+
+// ── 운영 텍스트 알림 (서브미션 반려 피드백 알림 등) ──
+// 실패해도 호출부(리뷰 저장 등)를 절대 막지 않는다.
+async function sendTextToTelegramSafe(text) {
+  try {
+    if (!isConfigured() || !text) return { ok: false, skipped: 'not_configured_or_empty' };
+    const r = await fetch('https://api.telegram.org/bot' + BOT_TOKEN() + '/sendMessage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: CHAT_ID(), text: String(text).slice(0, 4000), disable_web_page_preview: true }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!j || j.ok !== true) throw new Error((j && j.description) || ('HTTP ' + r.status));
+    return { ok: true };
+  } catch (e) {
+    console.warn('[telegram] 텍스트 전송 실패 (호출부에는 영향 없음):', e && e.message);
+    return { ok: false, error: String((e && e.message) || e) };
+  }
+}
+
 module.exports = {
   sendEditorialToTelegram,
   sendEditorialToTelegramSafe,
   collectImageUrls,
   isConfigured,
+  sendTextToTelegramSafe,
 };
