@@ -12,6 +12,20 @@
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 
+// 환경 판별 — token prefix 로 auto-detect (PADDLE_ENV 미설정·오설정 방지)
+//   Production client token: 'live_...'
+//   Sandbox client token:    'test_...'
+// PADDLE_ENV 를 명시하면 그 값을 우선하되, token prefix 와 어긋나면 token 을 신뢰.
+function detectEnvironment(token) {
+  const envExplicit = process.env.PADDLE_ENV;
+  const tokenIsLive = /^live_/i.test(token || '');
+  const tokenIsTest = /^test_/i.test(token || '');
+  if (envExplicit === 'production' && !tokenIsTest) return 'production';
+  if (envExplicit === 'sandbox' && !tokenIsLive) return 'sandbox';
+  if (tokenIsLive) return 'production';
+  return 'sandbox';
+}
+
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
   if (rateLimit(req, res, RATE_LIMITS.api)) return;
@@ -37,7 +51,7 @@ module.exports = async function handler(req, res) {
   // 설정은 배포 단위로만 바뀜 — 5분 edge cache.
   res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
   return res.status(200).json({
-    environment: process.env.PADDLE_ENV === 'production' ? 'production' : 'sandbox',
+    environment: detectEnvironment(clientToken),
     clientToken,
     prices,
   });
