@@ -26,7 +26,9 @@ const { supabaseAdmin } = require('./_lib/supabase');
 const { handleCors } = require('./_lib/cors');
 
 const SITE = 'https://www.pap-magazine.com';
-const IG = 'https://www.instagram.com/pap_magazine/';
+// B-5 (2026-07) — 블로그 본문에 들어가는 IG 링크는 /api/ig-out 경유로 유입 계측
+const IG = 'https://www.pap-magazine.com/api/ig-out?src=naverblog&to=profile&url='
+  + encodeURIComponent('https://www.instagram.com/pap_magazine/');
 
 function esc(s) {
   return String(s == null ? '' : s)

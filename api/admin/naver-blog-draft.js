@@ -28,6 +28,27 @@ function stripHtml(s) {
   return String(s || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+// B-5 (2026-07) — 모든 초안 하단 IG 유도 블록.
+// 링크는 /api/ig-out?src=naverblog 경유(절대 URL — 블로그 본문은 상대경로 불가)로
+// 유입을 계측한다. 네이버는 외부링크에 관대하지 않으므로 이 블록의 링크는
+// 2개 이내(원본 게시물 + 프로필)로 유지한다.
+const IG_OUT = 'https://www.pap-magazine.com/api/ig-out';
+function igCtaBlock(sourceIgUrl, igHandle, kindWord) {
+  const handle = String(igHandle || '@pap_magazine');
+  const profileOut = IG_OUT + '?src=naverblog&to=profile&url='
+    + encodeURIComponent('https://www.instagram.com/' + handle.replace('@', '') + '/');
+  let html = '';
+  if (sourceIgUrl && /instagram\.com/.test(String(sourceIgUrl))) {
+    const postOut = IG_OUT + '?src=naverblog&to=post&url='
+      + encodeURIComponent(String(sourceIgUrl).split('?')[0]);
+    html += '<p>이 ' + kindWord + '의 원본 게시물과 비하인드는 <a href="' + postOut
+      + '">인스타그램에서</a> 보실 수 있어요.</p>';
+  }
+  html += '<p>매일 업데이트되는 에디토리얼과 셀럽 소식은 인스타그램 <a href="' + profileOut
+    + '">' + handle + '</a>에서 가장 먼저 만나보세요 💌</p>';
+  return html;
+}
+
 // QA #351 — 체류형 포스팅 프레임워크(내부 지침).
 // Claude가 프롬프트 안에서 5개 후보를 저울질한 뒤 "반응이 가장 좋을" 하나만
 // 최종 응답에 담도록 지시하는 지침 문자열. 응답 스키마는 title/body_html/tags 만.
@@ -136,8 +157,7 @@ async function generateDraft(art, brand) {
   // 시스템은 원문 링크 + 인스타 CTA 블록만 뒤에 붙인다.
   body += '<p>&nbsp;</p><p>전체 기사와 더 많은 이미지는 <a href="' + artUrl + '">' + b.name +
     ' 원문</a>에서 보실 수 있어요.</p>' +
-    '<p>매일 업데이트되는 소식은 인스타그램 <a href="https://www.instagram.com/' +
-    b.ig.replace('@', '') + '/">' + b.ig + '</a>에서 가장 먼저 만나보세요 💌</p>';
+    igCtaBlock(art.source_instagram_url, b.ig, '소식');
 
   return {
     title: draft.title || art.title,
@@ -248,8 +268,7 @@ async function generateEditorialDraft(ed, brand) {
   // 시스템은 원문 링크 + 인스타 CTA + 저작권 라인만 뒤에 붙인다.
   body += '<p>&nbsp;</p><p>전체 화보와 더 많은 컷은 <a href="' + url + '">' + b.name +
     ' 웹사이트</a>에서 만나보실 수 있어요.</p>' +
-    '<p>매일 업데이트되는 에디토리얼과 셀럽 소식은 인스타그램 <a href="https://www.instagram.com/' +
-    b.ig.replace('@', '') + '/">' + b.ig + '</a>에서 가장 먼저 확인하세요 💌</p>' +
+    igCtaBlock(ed.source_instagram_url, b.ig, '화보') +
     '<p style="color:#888;font-size:12px">ⓒ PAP MAGAZINE (PAP매거진) — 무단 전재 및 재배포 금지</p>';
 
   return {
@@ -312,7 +331,7 @@ module.exports = async function handler(req, res) {
       // 에디토리얼 단건 → 초안
       const { data: ed, error } = await supabaseAdmin
         .from('editorials')
-        .select('id, title, title_en, slug, description, description_en, cover_image, gallery, credits, issue, published_date, tags')
+        .select('id, title, title_en, slug, description, description_en, cover_image, gallery, credits, issue, published_date, tags, source_instagram_url')
         .eq('slug', q.slug).eq('status', 'published')
         .limit(1).maybeSingle();
       if (error || !ed) return res.status(404).json({ error: '에디토리얼을 찾지 못함: ' + q.slug });
@@ -321,7 +340,7 @@ module.exports = async function handler(req, res) {
     }
 
     let sel = supabaseAdmin.from(b.table)
-      .select('id, title, slug' + (brand === 'pap' ? ', custom_url' : '') + ', content, tags, gallery, thumbnail_url')
+      .select('id, title, slug' + (brand === 'pap' ? ', custom_url' : '') + ', content, tags, gallery, thumbnail_url, source_instagram_url')
       .eq('status', 'published');
     sel = brand === 'pap'
       ? sel.or('custom_url.eq.' + q.slug + ',slug.eq.' + q.slug)
