@@ -676,6 +676,12 @@ section.hero + .shorts-section{
   width: 100%;
   margin: 0 auto;
 }
+/* 2026-07 — 에디토리얼 하단 블록 폭 통일 (QA 에디토리얼 하단군).
+   desc(600) · credits(720) · 다운로드/태그/샵/IG/댓글/팔로우 깔때기(전폭)가
+   제각각이라 하단 컬럼이 들쭉날쭉했다. 직계 블록을 모두 동일한 700px 리딩
+   컬럼으로 정렬해 크기를 통일한다. 넓은 갤러리/캐러셀(.ed-related-films,
+   .ed-more-wrap)은 별도 섹션이라 영향 없음. */
+.ed-credits-wrap > *{ width:100%; max-width:700px; margin-left:auto; margin-right:auto; }
 .ed-cred-row{display:contents}
 .ed-cred-role{
   text-align:right;
