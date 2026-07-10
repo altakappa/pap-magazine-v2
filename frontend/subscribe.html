@@ -1190,15 +1190,15 @@ function renderComparison(comp) {
 // ======== BILLING TOGGLE ========
 var currentBilling = 'monthly';
 var PRICES = {
-  ko:  { symbol:'₩', std_m:8500,  prem_m:13500, std_y:85000,  prem_y:135000 },
-  en:  { symbol:'$', std_m:5.99,  prem_m:9.49,  std_y:49.99,  prem_y:79.99 },
-  de:{ symbol:'$', std_m:5.99,  prem_m:9.49,  std_y:49.99,  prem_y:79.99 },
-  it:  { symbol:'€', std_m:5.49,  prem_m:8.99,  std_y:45.99,  prem_y:74.99 },
-  fr:  { symbol:'€', std_m:5.49,  prem_m:8.99,  std_y:45.99,  prem_y:74.99 },
-  es:  { symbol:'€', std_m:5.49,  prem_m:8.99,  std_y:45.99,  prem_y:74.99 },
-  ja:  { symbol:'¥', std_m:890,   prem_m:1400,  std_y:7400,   prem_y:11800 },
-  zh:  { symbol:'¥', std_m:39.9,  prem_m:65.9,  std_y:339,    prem_y:549 },
-  ru:  { symbol:'₽', std_m:599,   prem_m:949,   std_y:4999,   prem_y:7999 }
+  ko:  { symbol:'₩',  std_m:8500,  prem_m:13500, std_y:85000,  prem_y:135000 },
+  en:  { symbol:'$',  std_m:5.99,  prem_m:9.49,  std_y:49.99,  prem_y:79.99 },
+  de:  { symbol:'€',  std_m:5.49,  prem_m:8.99,  std_y:45.99,  prem_y:74.99 },
+  it:  { symbol:'€',  std_m:5.49,  prem_m:8.99,  std_y:45.99,  prem_y:74.99 },
+  fr:  { symbol:'€',  std_m:5.49,  prem_m:8.99,  std_y:45.99,  prem_y:74.99 },
+  es:  { symbol:'€',  std_m:5.49,  prem_m:8.99,  std_y:45.99,  prem_y:74.99 },
+  ja:  { symbol:'¥',  std_m:890,   prem_m:1400,  std_y:7400,   prem_y:11800 },
+  zh:  { symbol:'元', std_m:39.9,  prem_m:65.9,  std_y:339,    prem_y:549 },
+  ru:  { symbol:'₽',  std_m:599,   prem_m:949,   std_y:4999,   prem_y:7999 }
 };
 
 function formatPrice(n) {
