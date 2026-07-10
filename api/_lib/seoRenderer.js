@@ -729,11 +729,14 @@ ${cfg.schemaType !== 'VideoObject' && ogImage ? `<link rel="preload" as="image" 
   .seo-hero img{display:block;width:100%;height:auto}
   .seo-video{aspect-ratio:16/9;background:#111}
   .seo-video iframe{width:100%;height:100%;display:block;border:0}
+  /* QA(2026-07) #9 — 타이틀 그룹(제목·부제·발행일)은 밀착시키고, 발행일은
+     보조 정보로 축소, 그 아래 본문과는 여백을 벌려 위계·리듬을 명확히 한다.
+     (제목→부제 12→4, 부제→발행일 24→4, 발행일 13→11px, 발행일→본문 여백 확대) */
   .seo-meta{max-width:800px;margin:32px auto;padding:0 24px;line-height:1.6}
-  .seo-meta h1{font-family:'Playfair Display',serif;font-size:clamp(28px,5vw,56px);margin:0 0 12px}
-  .seo-meta .alt{opacity:.65;font-style:italic;margin:0 0 24px}
-  .seo-meta time{opacity:.55;font-size:13px;letter-spacing:.08em;text-transform:uppercase;display:block;margin-bottom:20px}
-  .seo-meta .seo-desc-primary{font-size:15px;line-height:1.8;margin:16px 0 12px;white-space:pre-line}
+  .seo-meta h1{font-family:'Playfair Display',serif;font-size:clamp(28px,5vw,56px);margin:0 0 4px}
+  .seo-meta .alt{opacity:.65;font-style:italic;margin:0 0 4px}
+  .seo-meta time{opacity:.5;font-size:11px;letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:0}
+  .seo-meta .seo-desc-primary{font-size:15px;line-height:1.8;margin:32px 0 12px;white-space:pre-line}
   .seo-meta .seo-desc-en{font-size:13px;line-height:1.75;margin:0 0 12px;opacity:.6;white-space:pre-line;padding-top:14px;border-top:1px dashed rgba(255,255,255,.12)}
   .seo-tags{display:flex;flex-wrap:wrap;gap:8px;list-style:none;padding:0;margin:24px 0}
   .seo-tags li{padding:4px 10px;border:1px solid rgba(255,255,255,.2);font-size:12px}
