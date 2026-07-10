@@ -46,3 +46,4 @@ test_film_related_button.js
 
 # Claude agent worktrees (local tooling)
 .claude/
+_to_delete/
