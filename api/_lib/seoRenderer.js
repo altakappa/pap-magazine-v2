@@ -905,6 +905,12 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
 </script>
 <script src="/pap-geo-lang.js"></script>
 <script src="/cookie-consent.js" defer></script>
+<!-- QA(2026-07) #11 — 공통 헤더/햄버거 nav 통일. pap-header.js 는 자체 CSS·함수를
+     주입하는 self-contained 스크립트라 이 SSR 페이지에서도 SPA 와 동일한 헤더를
+     보여준다. (에디토리얼/필름 SSR 은 위 브릿지로 SPA 리다이렉트되지만, 기사 SSR 은
+     리다이렉트하지 않으므로 직접 진입 시 헤더 일치가 특히 중요.) _navGo 는
+     navigateWithInterstitial 부재 시 location.href 로 폴백한다. -->
+<script src="/pap-header.js?v=17" defer></script>
 </body>
 </html>`;
 }

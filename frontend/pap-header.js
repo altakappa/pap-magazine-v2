@@ -417,7 +417,7 @@
     /* EDITORIAL — on index.html (where #edAllOverlay exists) open the
        overlay directly; on any other page navigate to the home-page hash
        so pap-app.js auto-opens the overlay after landing. */
-    '      <a href="/editorial" onclick="event.preventDefault();_papCloseNav();if(document.getElementById(\'edAllOverlay\')&&typeof openAllEditorials===\'function\'){openAllEditorials();}else{window.location.href=\'/editorial\';}" data-i18n="navEditorial">EDITORIAL</a>',
+    '      <a href="#" onclick="' + _navGo('/editorial') + '" data-i18n="navEditorial">EDITORIAL</a>',
     '      <a href="#" onclick="' + _navGo('/articles') + '" data-i18n="navArticle">ARTICLE</a>',
     '      <a href="#" onclick="' + _navGo('/films') + '" data-i18n="navFilm">FILM</a>',
     '    </div>',
@@ -526,13 +526,13 @@
           var label = _escNav(item.label_default || '');
           var onclick;
           if (url === '/#all-editorials' || url === '/editorial'){
-            // QA #323 — EDITORIAL 특수 케이스. 두 가지 URL 스타일 지원:
-            //   /#all-editorials  (레거시 hash 기반)
-            //   /editorial        (clean singular path — 권장)
-            // 두 경우 모두 홈페이지의 openAllEditorials() 오버레이를 트리거.
-            // 홈페이지가 아니면 clean path 로 navigate 후 랜딩 스크립트가 auto-open.
-            onclick = 'event.preventDefault();_papCloseNav();if(document.getElementById(\'edAllOverlay\')&&typeof openAllEditorials===\'function\'){openAllEditorials();}else{window.location.href=\'/editorial\';}';
-            html += '<a href="/editorial" onclick="' + onclick + '"' + i18nAttr + styleAttr + '>' + label + '</a>';
+            // QA(2026-07) #11 — EDITORIAL 을 다른 메뉴 항목과 동일하게 /editorial 로
+            // 이동시킨다. 예전엔 홈에서 openAllEditorials()(회원전용 전체보기)를 열어
+            // 비회원이 alert+/subscribe 로 튕겨 "콘텐츠 미노출"처럼 보였고, 페이지마다
+            // 동작이 달라 불일치했다. 이제 _navGo 로 통일 → 모든 페이지에서 에디토리얼
+            // 콘텐츠로 이동(비회원도 볼 수 있음).
+            onclick = _navGo('/editorial');
+            html += '<a href="#" onclick="' + onclick + '"' + i18nAttr + styleAttr + '>' + label + '</a>';
           } else if (/^https?:\/\//i.test(url)){
             // 외부 URL: 새 탭.
             html += '<a href="' + _escNav(url) + '" target="_blank" rel="noopener noreferrer" onclick="_papCloseNav()"' + i18nAttr + styleAttr + '>' + label + '</a>';
