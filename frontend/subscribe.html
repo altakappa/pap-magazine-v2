@@ -1407,51 +1407,22 @@ async function handleCta(plan) {
   }
   var billing = currentBilling;
 
-  // 결제 지역 선택 (국내 = 포트원 / 해외 = Paddle)
-  var region = await _choosePayRegion();
-  if (!region) return;
-
-  if (region === 'intl') {
-    // 해외 결제는 로그인 필수 (웹훅이 custom_data.user_id 로 계정 매핑).
-    if (!PAP.auth.isLoggedIn()) {
-      var lang = localStorage.getItem('pap-lang') || 'en';
-      PAP.ui.toast(lang === 'ko'
-        ? '해외 결제는 간단한 가입 후 이용할 수 있어요. 가입 페이지로 이동합니다.'
-        : 'Please sign up first to subscribe. Redirecting…', 'error');
-      setTimeout(function(){ window.location.href = '/auth?redirect=subscribe'; }, 1500);
-      return;
-    }
-    try { await PAP.subscriptions.checkoutIntl(plan, billing); }
-    catch(e){ PAP.ui.toast(e.message || 'Checkout failed', 'error'); }
+  // Paddle 단일화 결제: 국내(포트원)/해외(Paddle) 이원화 UI 를 걷어내고
+  // 모든 결제를 Paddle 오버레이로 통일한다. Paddle 이 KRW 를 자동 감지·표시하고
+  // 세금·환불·chargeback 을 Merchant of Record 로 처리하며,
+  // 정산은 Payoneer 로 자동 흐른다.
+  //
+  // 결제는 로그인 필수 — 웹훅이 custom_data.user_id 로 구독을 계정에 매핑한다.
+  if (!PAP.auth.isLoggedIn()) {
+    var lang = localStorage.getItem('pap-lang') || 'en';
+    PAP.ui.toast(lang === 'ko'
+      ? '구독은 간단한 가입 후 이용할 수 있어요. 가입 페이지로 이동합니다.'
+      : 'Please sign up first to subscribe. Redirecting…', 'error');
+    setTimeout(function(){ window.location.href = '/auth?redirect=subscribe'; }, 1500);
     return;
   }
-
-  // Logged-in users: existing flow.
-  if (PAP.auth.isLoggedIn()) {
-    try { await PAP.subscriptions.checkout(plan, billing); }
-    catch(e){ PAP.ui.toast(e.message || 'Checkout failed', 'error'); }
-    return;
-  }
-
-  // Guests: prompt for email + name, then run guest checkout.
-  // No redirect to /auth — we create the account silently and email a
-  // "비밀번호 설정" link after successful payment.
-  var guest = await _promptGuestInfo();
-  if (!guest) return; // user cancelled
-  try {
-    await PAP.subscriptions.guestCheckout(plan, billing, guest);
-    PAP.ui.toast('결제가 완료되었어요. 비밀번호 설정 메일을 확인해 주세요.', 'success');
-    // Auto-login JWT was already saved in localStorage by guestCheckout.
-    setTimeout(function(){ window.location.href = '/mypage'; }, 1200);
-  } catch(e) {
-    if (e && e.existingAccount) {
-      // Polite redirect to login flow.
-      PAP.ui.toast(e.message, 'error');
-      setTimeout(function(){ window.location.href = '/auth?redirect=subscribe'; }, 1500);
-    } else {
-      PAP.ui.toast((e && e.message) || 'Checkout failed', 'error');
-    }
-  }
+  try { await PAP.subscriptions.checkoutIntl(plan, billing); }
+  catch(e){ PAP.ui.toast(e.message || 'Checkout failed', 'error'); }
 }
 
 // ── Minimal prompt for guest email + name ──────────────────────────
