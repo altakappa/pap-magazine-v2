@@ -360,11 +360,30 @@ check('setLang("en") sets localStorage("pap-lang") to "en"', 'setLang("en"); loc
 check('localStorage.setItem("pap-token", x) → isLoggedIn() true', 'localStorage.setItem("pap-token", "fake.jwt"); isLoggedIn()');
 check('localStorage.removeItem("pap-token") → isLoggedIn() false (no user)', 'localStorage.removeItem("pap-token"); !isLoggedIn()');
 
-// isStandardOrAbove during beta + no token → false
-check('isStandardOrAbove() during beta + logged-out → false', '!isStandardOrAbove()');
+// ── 2026-07-10 베타 종료 → tier-strict semantics ──────────────────────────
+// PAP_BETA_END가 과거로 설정되어 isBetaActive()는 항상 false여야 한다.
+// (누군가 실수로 베타를 재활성화하면 여기서 잡힌다)
+check('isBetaActive() → false (베타 종료, 정식 오픈)', '!isBetaActive()');
 
-// During beta with token → isStandardOrAbove true (beta grants access to logged-in users)
-check('isStandardOrAbove() during beta + logged-in → true', 'localStorage.setItem("pap-token", "x"); isStandardOrAbove()');
+// logged-out → false
+check('isStandardOrAbove() post-beta + logged-out → false',
+  'localStorage.removeItem("pap-token"); localStorage.removeItem("pap-user"); !isStandardOrAbove()');
+
+// 로그인만으로는 더 이상 접근 불가 (베타 시절 특례 종료)
+check('isStandardOrAbove() post-beta + logged-in without subscription → false',
+  'localStorage.setItem("pap-token", "x"); !isStandardOrAbove()');
+
+// standard 구독자 → standard true / premium false
+check('isStandardOrAbove() post-beta + standard subscriber → true (isPremium false)',
+  'localStorage.setItem("pap-user", JSON.stringify({subscription:"standard"})); isStandardOrAbove() && !isPremium()');
+
+// premium 구독자 → 둘 다 true
+check('isPremium() post-beta + premium subscriber → true',
+  'localStorage.setItem("pap-user", JSON.stringify({subscription:"premium"})); isPremium() && isStandardOrAbove()');
+
+// 다음 검사들에 영향 없도록 정리
+check('tier-check cleanup: pap-user/pap-token removed → false',
+  'localStorage.removeItem("pap-user"); localStorage.removeItem("pap-token"); !isStandardOrAbove()');
 
 // edImgError sets fallback on a fake img
 check('edImgError sets img.dataset.fallback = "1" then again is no-op', `

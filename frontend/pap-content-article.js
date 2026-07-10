@@ -418,8 +418,9 @@ function _renderArticleDetail(a,det){
             +'<div style="font-size:13.5px;line-height:1.7;color:#ddd;margin-bottom:16px">'+_body+'</div>'
             +'<button onclick="_papShareArticle()" style="display:inline-block;background:#fff;color:#000;border:none;padding:11px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;cursor:pointer">'+_share+'</button>';
           })()
-        +'<a href="https://www.instagram.com/pap_magazine/" target="_blank" rel="noopener" style="display:inline-block;margin:8px 0 0 10px;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);padding:11px 22px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none">Follow @pap_magazine</a>'
-        +(function(){var n=_papNicheIg(a.cat);return n?'<a href="https://www.instagram.com/'+n+'/" target="_blank" rel="noopener" style="display:inline-block;margin:8px 0 0 10px;background:transparent;color:#bbb;border:1px solid rgba(255,255,255,.22);padding:11px 22px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none">+ @'+n+'</a>':'';})()
+        // 2026-07 — 아티클 Full Story 박스는 '공유'만. 팔로우/니치 계정 버튼은
+        // 제거(사용자 결정: 공유만 남김). 팔로우 전환은 IG 소스 없는 기사의
+        // artIgFunnel 이 담당하므로 여기서 중복 노출하지 않는다.
         +'</aside>';
       igCta.style.display='';
       if(_canEmbed) _papLoadIgEmbed();
