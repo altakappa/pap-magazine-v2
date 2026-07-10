@@ -300,7 +300,11 @@ section.hero + .shorts-section{
 .fashion-card-cat{font-size:10px;font-weight:600;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.5)}
 .fashion-card-title{font-size:15px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-top:4px;line-height:1.3;color:#fff}
 .fashion-card-desc{font-size:12px;color:var(--gray-500);margin-top:4px;font-weight:400}
-.carousel-arrow{position:absolute;top:50%;transform:translateY(-70%);width:36px;height:36px;background:rgba(255,255,255,.15);border:none;font-size:22px;color:#fff;z-index:5;display:flex;align-items:center;justify-content:center;border-radius:50%}
+/* QA(2026-07): 최신기사 카드(.fashion-card = 이미지 4/5 + 제목/카테고리)에서
+   버튼을 카드 전체 중앙이 아니라 이미지 박스 중앙에 맞춘다. 이미지 중앙 =
+   카드 중앙 - (제목영역 높이의 절반). 매직값 translateY(-70%) 대신 제목영역
+   높이(약 44px)의 절반만큼 위로 올려 카드 폭이 달라져도 이미지 중앙 유지. */
+.carousel-arrow{position:absolute;top:calc(50% - 40px);transform:translateY(-50%);width:36px;height:36px;background:rgba(255,255,255,.15);border:none;font-size:22px;color:#fff;z-index:5;display:flex;align-items:center;justify-content:center;border-radius:50%}
 .carousel-arrow.left{left:12px}
 .carousel-arrow.right{right:12px}
 .carousel-arrow:hover{opacity:.5}
@@ -323,7 +327,14 @@ section.hero + .shorts-section{
 .ed-row{margin-bottom:32px}
 .ed-row-label{font-family:'Montserrat',var(--sans);font-size:15px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:#e5e5e5;padding:0 48px;margin-bottom:12px}
 .ed-row-wrap{position:relative}
-.ed-row-arrow{position:absolute;top:0;width:44px;height:100%;z-index:10;background:rgba(0,0,0,.6);border:none;color:#fff;font-size:28px;cursor:pointer;opacity:0;transition:opacity .3s;display:flex;align-items:center;justify-content:center}
+/* QA(2026-07): 좌우 화살표를 카드 전체(제목 포함, 예전 height:100%)가 아니라
+   썸네일 이미지 박스 높이에 맞춰 이미지 중앙에 정렬한다. 이미지 박스는
+   .ed-row-card-img(aspect 3/4) → 높이 = 카드폭 × 4/3. 카드폭 브레이크포인트
+   (.ed-row-card)와 동일한 식을 써서 모든 행에서 일관 정렬. */
+.ed-row-arrow{position:absolute;top:0;width:44px;height:calc((100vw - 96px - 56px) / 7 * 4 / 3);z-index:10;background:rgba(0,0,0,.6);border:none;color:#fff;font-size:28px;cursor:pointer;opacity:0;transition:opacity .3s;display:flex;align-items:center;justify-content:center}
+@media(max-width:1200px){.ed-row-arrow{height:calc((100vw - 96px - 40px) / 5 * 4 / 3)}}
+@media(max-width:768px){.ed-row-arrow{height:calc((100vw - 96px - 24px) / 3 * 4 / 3)}}
+@media(max-width:480px){.ed-row-arrow{height:calc((100vw - 96px - 16px) / 2.3 * 4 / 3)}}
 .ed-row-wrap:hover .ed-row-arrow{opacity:1}
 .ed-row-arrow:hover{background:rgba(0,0,0,.8)}
 .ed-row-left{left:0}
@@ -896,7 +907,7 @@ section.hero + .shorts-section{
      이전: min-width:calc(75% - 12px) → 카드 1개가 화면 3/4 차지 (에디토리얼 대비 2배 이상)
      조정: 200px 고정폭 → 에디토리얼(.ed-row-card 180px)과 유사한 스케일 유지 */
   .fashion-card{min-width:200px;max-width:200px}
-  .carousel-arrow{top:50%;transform:translateY(-50%)}
+  .carousel-arrow{top:calc(50% - 28px);transform:translateY(-50%)}
   .ed-carousel-card{min-width:calc(50% - 14px)}
   .ed-row-card{min-width:180px;max-width:180px}
   .fashion-card-img{aspect-ratio:4/5} /* 모바일도 IG 세로형 유지 */
