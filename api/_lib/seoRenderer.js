@@ -674,14 +674,13 @@ ${tags.length ? `<meta name="keywords" content="${escAttr(tags.join(', '))}">` :
 <meta property="og:image" content="${escAttr(ogImage)}">
 <meta property="og:image:secure_url" content="${escAttr(ogImage)}">
 <meta property="og:image:alt" content="${escAttr(titleKo)} — Editorial Cover">
-<!-- QA #187 — Explicit OG image dimensions. Facebook / LinkedIn /
-     KakaoTalk all warn when these are missing; 1200×800 matches the
-     aspect we crop to in admin (4:5 portrait via .ed-gallery-item but
-     the cover_image upload box is unconstrained — most editors export
-     1200×800-ish). Twitter accepts the same image dimensions for the
-     summary_large_image card. -->
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="800">
+<!-- QA #187 + B-4 (2026-07) — Explicit OG image dimensions.
+     실측 결과 콘텐츠 커버는 일관되게 IG 표준 4:5 세로(1080×1350, 2000×2500)인데
+     기존 1200×800(가로) 선언은 실물과 달라 FB/카카오 첫 공유 시 잘못된 크롭
+     힌트를 줬다. 스크레이퍼는 이 값을 비율 힌트로 쓰므로 4:5로 선언한다.
+     기본 폴백 이미지만 가로형(2000×1250)이라 분기. -->
+<meta property="og:image:width" content="${ogImage === DEFAULT_OG_IMAGE ? '2000' : /img\.youtube\.com/.test(ogImage) ? '1280' : '1080'}">
+<meta property="og:image:height" content="${ogImage === DEFAULT_OG_IMAGE ? '1250' : /img\.youtube\.com/.test(ogImage) ? '720' : '1350'}">
 <meta property="og:image:type" content="image/jpeg">
 <meta property="og:locale" content="ko_KR">
 <meta property="og:locale:alternate" content="en_US">
