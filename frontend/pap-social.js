@@ -136,51 +136,59 @@
       });
   }
 
+  // ── 쓰기 경로는 전부 서버 API(/api/social/*) 경유 ──
+  // Supabase anon 키에는 auth.uid()가 없어 RLS로 "본인만" 검증이 불가능하다.
+  // 서버가 PAP JWT(pap-token)를 검증하고 service_role로 대신 쓴다. (2026-07 A-2)
+  function _socialApi(method, path, body){
+    var headers = { 'Content-Type': 'application/json' };
+    try{
+      var token = localStorage.getItem('pap-token');
+      if(token) headers['Authorization'] = 'Bearer ' + token;
+    }catch(e){}
+    return fetch(path, {
+      method: method,
+      headers: headers,
+      credentials: 'same-origin', // httpOnly pap_auth 쿠키 폴백
+      body: body ? JSON.stringify(body) : undefined
+    }).then(function(res){
+      if(!res.ok){
+        return res.json().catch(function(){ return {}; }).then(function(j){
+          throw new Error(j.message || ('Request failed: ' + res.status));
+        });
+      }
+      return res.json();
+    });
+  }
+
   function sbAddComment(targetType, targetId, text, user, parentId){
-    var sb = initSupabase();
-    if(!sb) return Promise.reject(new Error('Supabase not available'));
     var payload = {
       target_type: targetType,
       target_id: targetId,
-      user_id: user.id,
       user_name: user.name,
       user_handle: user.handle||null,
       text: text
     };
     if(parentId) payload.parent_id = parentId;
-    return sb.from('comments').insert([payload]).select().then(function(res){
-      if(res.error) throw res.error;
-      return res.data && res.data[0];
+    return _socialApi('POST', '/api/social/comments', payload).then(function(j){
+      return j && j.comment;
     });
   }
 
   function sbDeleteRating(editorialTitle, userId){
-    var sb = initSupabase();
-    if(!sb) return Promise.reject(new Error('Supabase not available'));
-    return sb.from('ratings').delete()
-      .eq('editorial_title', editorialTitle)
-      .eq('user_id', userId)
-      .then(function(res){ if(res.error) throw res.error; return true; });
+    return _socialApi('DELETE', '/api/social/ratings', { editorial_title: editorialTitle })
+      .then(function(){ return true; });
   }
 
   function sbDeleteComment(commentId, userId){
-    var sb = initSupabase();
-    if(!sb) return Promise.reject(new Error('Supabase not available'));
-    return sb.from('comments').delete().eq('id', commentId).eq('user_id', userId)
-      .then(function(res){ if(res.error) throw res.error; return true; });
+    return _socialApi('DELETE', '/api/social/comments', { id: commentId })
+      .then(function(){ return true; });
   }
 
   function sbSetRating(editorialTitle, userId, score){
-    var sb = initSupabase();
-    if(!sb) return Promise.reject(new Error('Supabase not available'));
-    // UPSERT: insert or update on conflict (editorial_title, user_id)
-    return sb.from('ratings').upsert([{
+    return _socialApi('POST', '/api/social/ratings', {
       editorial_title: editorialTitle,
-      user_id: userId,
-      score: score,
-      updated_at: new Date().toISOString()
-    }], { onConflict: 'editorial_title,user_id' })
-    .then(function(res){ if(res.error) throw res.error; return true; });
+      score: score
+    }).then(function(){ return true; });
   }
 
   function sbGetMyRating(editorialTitle, userId){
