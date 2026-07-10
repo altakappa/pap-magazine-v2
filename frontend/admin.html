@@ -2278,7 +2278,8 @@ tr:hover td{background:rgba(0,0,0,.02)}
                (validateNewsImage in pap-admin.js) enforces the same
                limits and surfaces a Korean error when a file fails. -->
           <div class="pe-hint" style="margin-top:8px">
-            권장 1200×675px (16:9) · JPG / PNG / WEBP · 최대 2MB
+            권장 1080×1350px (4:5 세로형) · JPG / PNG / WEBP · 최대 2MB
+            <br>홈 최신기사 카드가 4:5 세로형으로 노출되므로, 4:5로 올리면 크롭 없이 그대로 표시됩니다. (다른 비율은 4:5로 자동 cover crop)
           </div>
           <!-- Inline status line — flips to "업로드 중...", "✓ 업로드 완료",
                or a red error message during the upload lifecycle. -->
@@ -3616,7 +3617,7 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
      mock 시절 번들을 계속 캐시 → '+새 이미지' 클릭 시 "실제 운영 시
      S3에 업로드됩니다" 구형 alert 가 재현. pap-admin.js 를 수정하는
      커밋은 반드시 이 파라미터를 함께 올릴 것. -->
-<script src="/pap-admin.js?v=100" defer></script>
+<script src="/pap-admin.js?v=101" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>

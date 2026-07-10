@@ -11273,8 +11273,15 @@ function _buildMagazineIssueCard(iss){
       }
     } catch(_){}
   }
+  // QA(2026-07) #4 — 발행호의 분기 볼륨(Vol)을 issue_number(#N)와 함께 노출해
+  // 관계를 명확히 한다. Vol 은 웹의 _normalizeIssueLabel 과 동일 식(3개월=1볼륨):
+  //   vol = year*4 + ceil(month/3) - 8076  → 2026 Q1(1~3월)=29, Q2=30, Q3(7~9월)=31
+  // 참고: 목록이 Vol.31(현재 분기)까지 안 보이면 최신 발행호(4~7월)가 아직
+  // 등록되지 않은 것 — 계산 오류가 아니라 데이터 미등록이다.
+  var _vol = (iss.issue_year && iss.issue_month)
+    ? (iss.issue_year * 4 + Math.ceil(iss.issue_month / 3) - 8076) : '';
   card.innerHTML =
-    '<div style="position:absolute;top:6px;left:6px;font-size:10px;font-weight:700;color:#fff;background:rgba(0,0,0,.55);padding:2px 6px;border-radius:2px;z-index:2">#' + esc(String(iss.issue_number || '')) + '</div>' +
+    '<div style="position:absolute;top:6px;left:6px;font-size:10px;font-weight:700;color:#fff;background:rgba(0,0,0,.55);padding:2px 6px;border-radius:2px;z-index:2">#' + esc(String(iss.issue_number || '')) + (_vol ? ' · Vol.' + _vol : '') + '</div>' +
     (isLatest ? '<div style="position:absolute;top:6px;right:6px;font-size:9px;font-weight:700;letter-spacing:.1em;color:#000;background:#c9a96e;padding:2px 6px;border-radius:2px;z-index:2">LATEST</div>' : '') +
     '<img loading="lazy" src="' + esc(iss.cover_image || '') + '" style="width:100%;aspect-ratio:2 / 3;object-fit:cover;margin:8px 0;border:1px solid var(--border);background:#111" onerror="this.style.opacity=\'.3\'">' +
     '<div style="font-size:12px;font-weight:600;color:var(--text1);margin-bottom:4px">' + esc(iss.title || '') + '</div>' +
