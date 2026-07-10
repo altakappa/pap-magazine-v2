@@ -68,7 +68,10 @@ window._papFilmAutoPlay = function(){
   function loadJSON(url, target, renderCb, key){
     fetch(url).then(function(r){ return r.json(); }).then(function(data){
       // 이 fetch 가 도착했을 때 이미 API 가 최신으로 채웠으면 덮어쓰지 않는다.
-      if(key && _apiSynced[key]) return;
+      // FIX(2026-07-10): 단, 렌더 콜백은 실행한다 — 콜백에는 홈 필름 플레이어
+      // 오토플레이(_papFilmAutoPlay) 같은 초기화가 실려 있어, 통째로 return
+      // 하면 API 가 이긴 날 메인 필름이 about:blank 로 남는다.
+      if(key && _apiSynced[key]){ if(renderCb) renderCb(); return; }
       target.length = 0;
       data.forEach(function(item){ target.push(item); });
       if(renderCb) renderCb();
@@ -312,6 +315,11 @@ window._papFilmAutoPlay = function(){
       // Re-render film cards if the page has a renderCards function (/films)
       if(typeof window._papFilmRenderCards==='function'){
         window._papFilmRenderCards();
+      }
+      // FIX(2026-07-10): 홈 메인 필름 플레이어 시작 — 정적 films.json 경로에만
+      // 있던 호출이라 API 동기화가 먼저 끝나면 재생이 시작되지 않았다.
+      if(typeof window._papFilmAutoPlay==='function'){
+        window._papFilmAutoPlay();
       }
     });
   }
