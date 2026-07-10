@@ -880,8 +880,9 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
 
     ${record.source_instagram_url && /instagram\.com/.test(String(record.source_instagram_url)) ? `
     <aside class="ig-funnel" style="margin-bottom:0">
-      <div class="igf-kicker">${kind === 'editorial' ? 'Full Editorial' : kind === 'film' ? 'Full Film' : 'Full Story'}</div>
-      <p class="igf-copy">인스타그램에서는 일부만 공개됩니다.<br>전체는 지금 이 페이지, <b>PAP에서 완전판</b>으로 감상하실 수 있습니다.</p>
+      <div class="igf-kicker">On Instagram</div>
+      <p class="igf-copy">이 콘텐츠의 원본 게시물이 <b>인스타그램</b>에 있습니다.<br>좋아요·저장하고, 매일 공개되는 새 에디토리얼을 가장 먼저 만나보세요.</p>
+      <a class="igf-btn" href="${escAttr(String(record.source_instagram_url).split('?')[0])}" target="_blank" rel="noopener">인스타그램에서 보기 ↗</a>
     </aside>` : ''}
 
     <aside class="ig-funnel">

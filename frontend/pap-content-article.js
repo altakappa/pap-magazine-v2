@@ -404,23 +404,25 @@ function _renderArticleDetail(a,det){
       if(!/\/$/.test(_permalink)) _permalink+='/';
       var _canEmbed=/instagram\.com\/(p|reel|tv)\//.test(_permalink);
       // #1 (2026-07) — 원본 IG 임베드는 히어로로 승격했으므로 하단엔 텍스트 CTA만.
+      // IG 유입 전환 (2026-07-10, 도메니코 결정) — '웹에서 읽으세요' 카피 폐기.
+      // 인스타그램 유입이 최우선 목표: 주버튼=원본 게시물 열기, 보조=팔로우,
+      // 공유는 텍스트 링크로 유지. (이전 '공유만 남김' 결정을 대체한다)
       igCta.innerHTML=
         '<aside style="margin:28px 0 0;padding:26px 24px;border:1px solid rgba(255,255,255,.16);text-align:center">'
         +(function(){
-          // 웹 감상 유도 (2026-07) — 원본 IG 게시물로 내보내는 대신 이 웹사이트에서
-          // 전체를 읽도록 전환. IG 임베드(위)는 유지, 카피·주버튼은 웹 중심.
           var _ko=(localStorage.getItem('pap-lang')||'ko')==='ko';
+          var _pSafe=_permalink.replace(/"/g,'&quot;');
           var _body=_ko
-            ? '인스타그램에서는 일부만. 전체 이야기는 <b style="color:#fff">PAP에서</b> 읽어보세요.'
-            : 'Instagram shows only part of it. Read the full story here, <b style="color:#fff">on PAP</b>.';
-          var _share=_ko ? '이 기사 공유 ↗' : 'Share this story ↗';
-          return '<div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:10px">Full Story</div>'
+            ? '이 기사의 원본 게시물이 <b style="color:#fff">인스타그램</b>에 있습니다.<br>좋아요·저장하고, 매일 공개되는 새 에디토리얼을 가장 먼저 만나보세요.'
+            : 'The original post lives on <b style="color:#fff">Instagram</b>.<br>Like &amp; save it — and catch new editorials there first, every day.';
+          var _view=_ko ? '인스타그램에서 보기 ↗' : 'View on Instagram ↗';
+          var _share=_ko ? '이 기사 공유' : 'Share this story';
+          return '<div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:10px">On Instagram</div>'
             +'<div style="font-size:13.5px;line-height:1.7;color:#ddd;margin-bottom:16px">'+_body+'</div>'
-            +'<button onclick="_papShareArticle()" style="display:inline-block;background:#fff;color:#000;border:none;padding:11px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;cursor:pointer">'+_share+'</button>';
+            +'<a href="'+_pSafe+'" target="_blank" rel="noopener" style="display:inline-block;margin:4px 5px 0;background:#fff;color:#000;padding:12px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none">'+_view+'</a>'
+            +'<a href="https://www.instagram.com/pap_magazine/" target="_blank" rel="noopener" style="display:inline-block;margin:4px 5px 0;background:transparent;color:#ddd;border:1px solid rgba(255,255,255,.28);padding:12px 22px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none">Follow @pap_magazine</a>'
+            +'<div style="margin-top:14px"><button onclick="_papShareArticle()" style="background:none;border:none;color:#888;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;text-decoration:underline;text-underline-offset:3px">'+_share+' ↗</button></div>';
           })()
-        // 2026-07 — 아티클 Full Story 박스는 '공유'만. 팔로우/니치 계정 버튼은
-        // 제거(사용자 결정: 공유만 남김). 팔로우 전환은 IG 소스 없는 기사의
-        // artIgFunnel 이 담당하므로 여기서 중복 노출하지 않는다.
         +'</aside>';
       igCta.style.display='';
       if(_canEmbed) _papLoadIgEmbed();
