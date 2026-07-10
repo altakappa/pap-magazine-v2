@@ -433,24 +433,140 @@ for (const html of HTMLS_LOADING_FULL_CHAIN) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Summary
+// Phase 5 — API sync callbacks, SUCCESS path
+//
+// 2026-07-10 프로덕션 장애 재발 방지: `_apiSynced` 가 lazy-load IIFE 지역
+// 스코프에 var 로 선언돼 sync 콜백(별도 스코프)에서 ReferenceError 가 났고,
+// API 동기화 전체가 죽어 사이트 카드가 스켈레톤으로 남았다. 기존 하네스는
+// fetch 목이 `{ok:false}` 만 돌려줘 "데이터가 실제로 도착한 뒤 실행되는
+// 콜백 경로"를 한 번도 타지 않아 이를 잡지 못했다.
+//
+// 이 페이즈는 fetch 를 실제 API 응답 형태({data, pagination})로 스텁한
+// 새 컨텍스트에 15개 모듈을 다시 로드하고, syncEditorials / syncFilms /
+// syncArticles 의 성공 경로가 끝까지 실행되는지 검증한다:
+//   • window._apiSynced 3개 플래그가 전부 세팅되는가 (콜백 완주 증명)
+//   • API 아이템이 edData / filmAllData / artData 에 실제로 머지되는가
+//   • 실행 중 ReferenceError 계열 unhandled rejection 이 없는가
 // ─────────────────────────────────────────────────────────────────────────
 
-console.log('\n=== SUMMARY ===');
-console.log(`Phase 1 modules: ${MODULE_ORDER.length - loadErrors.length}/${MODULE_ORDER.length} loaded`);
-console.log(`Phase 2+3 assertions: ${passed}/${passed + failed} passed`);
-console.log(`Phase 4 HTMLs: ${HTMLS_LOADING_FULL_CHAIN.length} checked`);
+const API_SAMPLE = {
+  film: {
+    id: 'test-film-uuid', title: 'Harness Test Film', youtube_id: 'dQw4w9WgXcQ',
+    thumbnail_url: 'https://example.com/f.jpg', published_date: '2026-07-10',
+    categories: ['Film'], tags: ['test'], credits: [], slug: 'harness-test-film',
+  },
+  article: {
+    id: 'test-article-uuid', title: 'Harness Test Article', subtitle: 'sub',
+    content: '[{"type":"text","content":"hello"}]', published_date: '2026-07-10',
+    slug: 'harness-test-article', custom_url: '', category: 'Fashion',
+    thumbnail_url: 'https://example.com/a.jpg', hero_image_url: '',
+    tags: [], credits: [],
+  },
+  editorial: {
+    id: 'test-editorial-uuid', title: 'Harness Test Editorial',
+    slug: 'harness-test-editorial', thumbnail: 'https://example.com/e.jpg',
+    cover_image: 'https://example.com/e-cover.jpg', published_date: '2026-07-10',
+    tags: ['test'], credits: [], gallery: [], related_films: [],
+    issue: 'JUL. 2026 ISSUE', description: 'test', description_en: 'test',
+    source_instagram_url: '',
+  },
+};
 
-if (failed > 0 || loadErrors.length > 0) {
-  console.log('\n⚠  FAILURES:');
-  for (const f of failures) console.log(`  - ${f.label}${f.detail ? ' — ' + f.detail : ''}`);
-  for (const e of loadErrors) console.log(`  - load ${e.module}: ${e.error.split('\n')[0]}`);
-  process.exit(1);
+function buildSyncContext() {
+  const c = buildContext();
+  // idle 콜백을 즉시 실행시켜 테스트 대기시간 단축 (구현은 setTimeout 폴백과 동일 경로)
+  c.requestIdleCallback = (cb) => setTimeout(cb, 0);
+  c.fetch = (url) => {
+    url = String(url);
+    const respond = (obj) => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(obj) });
+    const page = (item) => respond({ data: [item], pagination: { page: 1, pages: 1, total: 1 } });
+    if (url.indexOf('/api/films') !== -1) return page(API_SAMPLE.film);
+    if (url.indexOf('/api/articles') !== -1) return page(API_SAMPLE.article);
+    if (url.indexOf('/api/editorials') !== -1) return page(API_SAMPLE.editorial);
+    // 그 외(정적 JSON, 기타 엔드포인트)는 기존 목과 동일하게 무해한 실패
+    return Promise.resolve({ ok: false, json: () => Promise.resolve(null) });
+  };
+  return c;
 }
 
-console.log('\n✓ All checks passed.');
-// Explicit exit so post-test async noise from the modules' fetch IIFEs
-// (which chain `.then(j => ...j.x...)` on our `{ok:false, json:null}` mock
-// and then log to console.warn) doesn't pollute the CI output. The synchronous
-// assertions above are the source of truth — async leak-through is mock noise.
-process.exit(0);
+(async function phase5AndSummary() {
+  group('=== Phase 5: API sync callbacks (success path) ===');
+
+  const ctx2 = buildSyncContext();
+  let syncLoadFailed = null;
+  for (const m of MODULE_ORDER) {
+    try {
+      vm.runInContext(fs.readFileSync(path.join(FRONTEND, m), 'utf8'), ctx2, { filename: 'sync:' + m });
+    } catch (e) { syncLoadFailed = m + ': ' + e.message.split('\n')[0]; break; }
+  }
+  ok('sync context: all modules reloaded with data-stubbed fetch', !syncLoadFailed, syncLoadFailed);
+
+  // sync 실행 중 발생하는 스코프 오류(ReferenceError)를 잡는다.
+  // (mock DOM 특성상 발생 가능한 TypeError 노이즈와 구분하기 위해
+  //  ReferenceError 계열만 실패로 친다 — 2026-07-10 장애가 정확히 이 유형)
+  const refErrors = [];
+  const onRejection = (err) => {
+    if (err && err.name === 'ReferenceError') refErrors.push(err);
+  };
+  process.on('unhandledRejection', onRejection);
+
+  // 트리거 체인: readyState 'complete' → setTimeout(100) → syncEditorials +
+  // idle(syncFilms/syncArticles). 플래그 3개가 다 설 때까지 폴링 (최대 5초).
+  const allFlagsSet = () => {
+    try {
+      return vm.runInContext(
+        'window._apiSynced && window._apiSynced.films === true && window._apiSynced.articles === true && window._apiSynced.editorials === true',
+        ctx2);
+    } catch (_) { return false; }
+  };
+  const deadline = Date.now() + 5000;
+  while (Date.now() < deadline && !allFlagsSet()) {
+    await new Promise(r => setTimeout(r, 50));
+  }
+  // 남은 마이크로태스크/타이머 정리 여유
+  await new Promise(r => setTimeout(r, 100));
+  process.removeListener('unhandledRejection', onRejection);
+
+  const flag = (k) => {
+    try { return vm.runInContext(`window._apiSynced && window._apiSynced.${k} === true`, ctx2); }
+    catch (_) { return false; }
+  };
+  ok('sync callback: _apiSynced.editorials set (syncEditorials 완주)', flag('editorials'));
+  ok('sync callback: _apiSynced.films set (syncFilms 완주)', flag('films'));
+  ok('sync callback: _apiSynced.articles set (syncArticles 완주)', flag('articles'));
+
+  const merged = (expr) => { try { return vm.runInContext(expr, ctx2); } catch (_) { return false; } };
+  ok('sync merge: API editorial merged into edData',
+     merged('edData.some(function(e){ return e._api_id === "test-editorial-uuid"; })'));
+  ok('sync merge: API film merged into filmAllData',
+     merged('filmAllData.some(function(f){ return f._api_id === "test-film-uuid"; })'));
+  ok('sync merge: API article merged into artData',
+     merged('artData.some(function(a){ return a._api_id === "test-article-uuid"; })'));
+
+  ok('sync run: no ReferenceError during sync callbacks (scope regression guard)',
+     refErrors.length === 0,
+     refErrors[0] ? String(refErrors[0].message || refErrors[0]) : '');
+
+  // ───────────────────────────────────────────────────────────────────────
+  // Summary
+  // ───────────────────────────────────────────────────────────────────────
+
+  console.log('\n=== SUMMARY ===');
+  console.log(`Phase 1 modules: ${MODULE_ORDER.length - loadErrors.length}/${MODULE_ORDER.length} loaded`);
+  console.log(`Phase 2+3+5 assertions: ${passed}/${passed + failed} passed`);
+  console.log(`Phase 4 HTMLs: ${HTMLS_LOADING_FULL_CHAIN.length} checked`);
+
+  if (failed > 0 || loadErrors.length > 0) {
+    console.log('\n⚠  FAILURES:');
+    for (const f of failures) console.log(`  - ${f.label}${f.detail ? ' — ' + f.detail : ''}`);
+    for (const e of loadErrors) console.log(`  - load ${e.module}: ${e.error.split('\n')[0]}`);
+    process.exit(1);
+  }
+
+  console.log('\n✓ All checks passed.');
+  // Explicit exit so post-test async noise from the modules' fetch IIFEs
+  // (which chain `.then(j => ...j.x...)` on our `{ok:false, json:null}` mock
+  // and then log to console.warn) doesn't pollute the CI output. The
+  // assertions above are the source of truth — async leak-through is mock noise.
+  process.exit(0);
+})();
