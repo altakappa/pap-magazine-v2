@@ -60,7 +60,11 @@ window._papFilmAutoPlay = function(){
   // 배열을 비우고 채우는데, 늦게 끝난 쪽이 이겨서 정적 fetch 가 API 뒤에 도착하면
   // 최신 데이터가 오래된 정적 스냅샷으로 '리셋'됐다(특히 필름). 아래 플래그로
   // API 가 이미 채운 컬렉션은 정적 로드가 건드리지 않게 한다(API 가 항상 최신).
-  var _apiSynced = {};
+  // FIX(2026-07-10): 이 플래그는 아래 sync 함수들(별도 스코프)에서도 쓰이므로
+  // IIFE 지역변수가 아닌 전역이어야 한다. var 선언이면 sync 쪽에서 ReferenceError
+  // 로 동기화 전체가 죽어 카드가 스켈레톤으로 남는다.
+  window._apiSynced = window._apiSynced || {};
+  var _apiSynced = window._apiSynced;
   function loadJSON(url, target, renderCb, key){
     fetch(url).then(function(r){ return r.json(); }).then(function(data){
       // 이 fetch 가 도착했을 때 이미 API 가 최신으로 채웠으면 덮어쓰지 않는다.
@@ -300,7 +304,7 @@ window._papFilmAutoPlay = function(){
         // Replace filmAllData in-place (preserve reference)
         filmAllData.length=0;
         merged.forEach(function(f){filmAllData.push(f);});
-        _apiSynced.films = true; // 이후 늦게 도착하는 정적 films.json 이 덮어쓰지 못하게
+        window._apiSynced.films = true; // 이후 늦게 도착하는 정적 films.json 이 덮어쓰지 못하게
         /* Films synced from API */
       } else {
         /* Using hardcoded films only */
@@ -321,7 +325,7 @@ window._papFilmAutoPlay = function(){
         var merged=mergeData(apiArticles, artData);
         artData.length=0;
         merged.forEach(function(a){artData.push(a);});
-        _apiSynced.articles = true; // 늦게 도착하는 정적 articles.json 이 덮어쓰지 못하게
+        window._apiSynced.articles = true; // 늦게 도착하는 정적 articles.json 이 덮어쓰지 못하게
         /* Articles synced from API */
       } else {
         /* Using hardcoded articles only */
@@ -979,7 +983,7 @@ window._papFilmAutoPlay = function(){
         edData.push(e);
         _populateEdDetailsFromApi(e);
       });
-      _apiSynced.editorials = true; // 늦게 도착하는 정적 editorials.json 이 2371로 되돌리지 못하게
+      window._apiSynced.editorials = true; // 늦게 도착하는 정적 editorials.json 이 2371로 되돌리지 못하게
     }
 
     // STAGE 1: fast-path — newest 12 only.
