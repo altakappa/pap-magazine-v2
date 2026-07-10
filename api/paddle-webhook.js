@@ -27,6 +27,7 @@ const { sendEmail, templates } = require('./_lib/email');
 const crypto = require('crypto');
 
 const PADDLE_WEBHOOK_SECRET = process.env.PADDLE_WEBHOOK_SECRET;
+const { sendTextToTelegramSafe } = require('./_lib/telegram');
 const PADDLE_API_KEY = process.env.PADDLE_API_KEY;
 const PADDLE_API_BASE = process.env.PADDLE_ENV === 'production'
   ? 'https://api.paddle.com'
@@ -190,6 +191,18 @@ module.exports = async function handler(req, res) {
           .from('profiles').select('email, name').eq('id', userId).single();
         if (profile && templates.subscriptionConfirmed) {
           sendEmail(profile.email, templates.subscriptionConfirmed({ name: profile.name }, plan)).catch(() => {});
+        }
+        // 유료 구독 발생 → 도메니코 텔레그램 즉시 알림 (2026-07-10 요청, 실패 무해)
+        {
+          const _item = (data.items && data.items[0]) || {};
+          const _up = (_item.price && _item.price.unit_price) || {};
+          const _amt = _up.amount ? (_up.currency_code === 'KRW' ? '₩' + Number(_up.amount).toLocaleString('ko-KR') : _up.amount + ' ' + (_up.currency_code || '')) : '';
+          sendTextToTelegramSafe(
+            '🎉 새 유료 구독자!\n'
+            + '플랜: ' + String(plan).toUpperCase().replace('_', ' ') + (_amt ? (' · ' + _amt) : '') + '\n'
+            + '회원: ' + ((profile && (profile.name || profile.email)) || '알 수 없음') + ((profile && profile.name && profile.email) ? (' (' + profile.email + ')') : '') + '\n'
+            + '구독 ID: ' + data.id
+          );
         }
         console.log('[paddle-webhook] subscription created:', data.id, '→ user', userId);
         break;
