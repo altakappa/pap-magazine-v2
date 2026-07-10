@@ -4,33 +4,29 @@
  * QA #317 — Magazine 발행호 목록 public read.
  * magazine.html 이 호출해 발행호 카드를 동적 렌더링.
  *
- * 응답:
- *   {
- *     "data": [
- *       {
- *         "id": "uuid",
- *         "issue_number": 86,
- *         "title": "March 2026",
- *         "issue_year": 2026,
- *         "issue_month": 3,
- *         "month_label": "MAR 2026",
- *         "cover_image": "...",
- *         "editorial_count": 19,
- *         "link_url": "PAP_Magazine_March_2026.html",
- *         "is_latest": true,
- *         "sort_order": 86
- *       },
- *       ...
- *     ]
- *   }
+ * QA(2026-07) 자동화:
+ *   (1) 분기 볼륨(title 이 "VOL.N")의 editorial_count 를 해당 분기의 실제 published
+ *       에디토리얼 수로 동적 계산 → 발행할수록 자동으로 늘어난다("차곡차곡").
+ *   (2) 아직 완성되지 않은(진행 중인) 분기 볼륨은 공개하지 않는다. 분기가 끝나는
+ *       마지막 날(예: Q3 → 9월 30일)부터 노출된다. 미래 볼륨도 동일하게 자동 처리.
+ *   (3) is_latest 는 "공개된 것 중 최신"으로 재계산 → 진행 볼륨이 숨겨진 동안에는
+ *       가장 최근 '완성된' 볼륨이 최신으로 표기된다.
+ *   ※ (1)(2)(3) 은 public 응답에만 적용된다. 관리자(api/admin/magazine-issues)는
+ *      원본 데이터를 그대로 보므로 편집/미리보기에 영향 없다.
  *
  * 정렬: issue_year DESC, sort_order DESC (최신 발행이 먼저).
- * Edge cache: s-maxage=60 + SWR 300. 새 발행호 등록/수정 시 최대 1분 반영.
+ * Edge cache: s-maxage=60 + SWR 300.
  */
 
 const { supabaseAdmin } = require('../_lib/supabase');
 const { handleCors }    = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
+
+const quarterOf = (m) => Math.ceil((Number(m) || 1) / 3);            // 1..4
+const isQuarterlyVolume = (r) => /^\s*VOL\.?\s*\d+/i.test(String(r.title || ''));
+// 분기의 마지막 날(=완성 시점). 그 날짜 이전이면 아직 미완성.
+// new Date(y, q*3, 0) → q*3 월(1-index)의 "0일" = 그 분기 마지막 달의 말일.
+const quarterEndDate = (y, m) => new Date(Number(y), quarterOf(m) * 3, 0);
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -52,10 +48,42 @@ module.exports = async function handler(req, res) {
       return res.status(500).json({ message: 'Failed to load magazine issues' });
     }
 
-    // QA #317 — s-maxage=60 (1분), SWR=300 (5분).
-    // 발행호 등록/수정 시 최대 1분 내 웹사이트 반영.
+    const rows = data || [];
+    const now = new Date();
+
+    // (2) 진행 중(미완성) 분기 볼륨 숨김 — 분기 종료일이 아직 안 온 발행호 제외.
+    //     날짜가 불명확한 행은 기존처럼 노출.
+    let visible = rows.filter((r) => {
+      if (!r.issue_year || !r.issue_month) return true;
+      return now >= quarterEndDate(r.issue_year, r.issue_month);
+    });
+
+    // (1) 공개된 분기 볼륨의 editorial_count 를 실제 분기별 published 수로 교체.
+    const quarterlyVisible = visible.filter(isQuarterlyVolume);
+    if (quarterlyVisible.length) {
+      await Promise.all(quarterlyVisible.map(async (r) => {
+        try {
+          const q = quarterOf(r.issue_month);
+          const startMonth = (q - 1) * 3 + 1;                 // 1,4,7,10
+          const start = `${r.issue_year}-${String(startMonth).padStart(2, '0')}-01`;
+          const end = new Date(Date.UTC(Number(r.issue_year), q * 3, 0))
+            .toISOString().slice(0, 10);                       // 분기 말일 YYYY-MM-DD
+          const { count, error: cErr } = await supabaseAdmin
+            .from('editorials')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'published')
+            .gte('published_date', start)
+            .lte('published_date', end);
+          if (!cErr && typeof count === 'number') r.editorial_count = count;
+        } catch (_) { /* 실패 시 정적 값 유지 */ }
+      }));
+    }
+
+    // (3) is_latest 재계산 — 공개된 것 중 최신(정렬 첫 행)만 latest.
+    visible = visible.map((r, i) => Object.assign({}, r, { is_latest: i === 0 }));
+
     res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
-    return res.status(200).json({ data: data || [] });
+    return res.status(200).json({ data: visible });
   } catch (err) {
     console.error('[magazine-issues GET] uncaught', err);
     return res.status(500).json({ message: 'Failed to load magazine issues' });
