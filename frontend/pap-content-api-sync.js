@@ -55,8 +55,16 @@ window._papFilmAutoPlay = function(){
 // 시점으로 지연. 단, 딥링크(/editorial/... 직접 진입 등)는 상세
 // 데이터가 곧바로 필요하므로 즉시 로드해 기존 동작을 100% 유지한다.
 (function(){
-  function loadJSON(url, target, renderCb){
+  // QA(2026-07) — 정적 스냅샷이 API 동기화 결과를 덮어쓰는 경합 방지.
+  // 정적 JSON 로드와 API 동기화(syncFilms/syncArticles/syncEditorials)가 각각
+  // 배열을 비우고 채우는데, 늦게 끝난 쪽이 이겨서 정적 fetch 가 API 뒤에 도착하면
+  // 최신 데이터가 오래된 정적 스냅샷으로 '리셋'됐다(특히 필름). 아래 플래그로
+  // API 가 이미 채운 컬렉션은 정적 로드가 건드리지 않게 한다(API 가 항상 최신).
+  var _apiSynced = {};
+  function loadJSON(url, target, renderCb, key){
     fetch(url).then(function(r){ return r.json(); }).then(function(data){
+      // 이 fetch 가 도착했을 때 이미 API 가 최신으로 채웠으면 덮어쓰지 않는다.
+      if(key && _apiSynced[key]) return;
       target.length = 0;
       data.forEach(function(item){ target.push(item); });
       if(renderCb) renderCb();
@@ -68,9 +76,9 @@ window._papFilmAutoPlay = function(){
 
   function startStaticLoads(){
     // Use late-binding wrappers so callbacks are resolved when JSON arrives, not when loadJSON is called
-    loadJSON('data/films.json', filmAllData, function(){ if(window._papFilmRenderCards) window._papFilmRenderCards(); if(window._papFilmAutoPlay) window._papFilmAutoPlay(); });
-    loadJSON('data/articles.json', artData, function(){ if(window._papArticleRenderCards) window._papArticleRenderCards(); });
-    loadJSON('data/editorials.json', edData);
+    loadJSON('data/films.json', filmAllData, function(){ if(window._papFilmRenderCards) window._papFilmRenderCards(); if(window._papFilmAutoPlay) window._papFilmAutoPlay(); }, 'films');
+    loadJSON('data/articles.json', artData, function(){ if(window._papArticleRenderCards) window._papArticleRenderCards(); }, 'articles');
+    loadJSON('data/editorials.json', edData, null, 'editorials');
     loadJSON('data/creators.json', creatorData);
     loadJSON('data/shorts.json', shortsData, function(){ if(window._papShortsRender) window._papShortsRender(); });
   }
@@ -292,6 +300,7 @@ window._papFilmAutoPlay = function(){
         // Replace filmAllData in-place (preserve reference)
         filmAllData.length=0;
         merged.forEach(function(f){filmAllData.push(f);});
+        _apiSynced.films = true; // 이후 늦게 도착하는 정적 films.json 이 덮어쓰지 못하게
         /* Films synced from API */
       } else {
         /* Using hardcoded films only */
@@ -312,6 +321,7 @@ window._papFilmAutoPlay = function(){
         var merged=mergeData(apiArticles, artData);
         artData.length=0;
         merged.forEach(function(a){artData.push(a);});
+        _apiSynced.articles = true; // 늦게 도착하는 정적 articles.json 이 덮어쓰지 못하게
         /* Articles synced from API */
       } else {
         /* Using hardcoded articles only */
@@ -969,6 +979,7 @@ window._papFilmAutoPlay = function(){
         edData.push(e);
         _populateEdDetailsFromApi(e);
       });
+      _apiSynced.editorials = true; // 늦게 도착하는 정적 editorials.json 이 2371로 되돌리지 못하게
     }
 
     // STAGE 1: fast-path — newest 12 only.
