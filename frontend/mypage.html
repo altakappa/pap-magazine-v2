@@ -50,7 +50,7 @@ a{color:#fff;text-decoration:none}
 .mp-email{text-align:center;font-size:11px;color:rgba(255,255,255,.35);letter-spacing:.04em;margin-bottom:32px}
 
 /* SECTIONS */
-.mp-section{margin-bottom:28px}
+.mp-section{margin-bottom:28px;scroll-margin-top:72px}/* 탭 클릭 시 섹션이 56px 고정 헤더 아래로 숨지 않도록 오프셋 */
 .mp-section-title{font-size:10px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:14px}
 
 .mp-card{border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);padding:18px 20px;margin-bottom:10px;transition:border-color .3s}
@@ -162,11 +162,15 @@ a{color:#fff;text-decoration:none}
    pinned to the top of the page. Same links, same active state, just
    laid out on the X axis. */
 @media(max-width:900px){
-  .mp-sidebar{position:relative;width:100%;height:auto;padding:64px 12px 12px;border-right:none;border-bottom:1px solid rgba(255,255,255,.08);overflow-x:auto;overflow-y:hidden;background:rgba(0,0,0,.6)}
+  /* 모바일 상단 탭바 — 가로 스크롤(스와이프) 바. position:sticky 는 body 에
+     걸린 overflow(pap-header) 때문에 동작하지 않아 relative 유지.
+     overscroll-behavior-x:contain 으로 가로 스와이프가 브라우저 뒤로가기
+     제스처로 새지 않게 하고, 탭 터치 영역을 키워 탭 반응을 개선한다. */
+  .mp-sidebar{position:relative;width:100%;height:auto;padding:60px 12px 10px;border-right:none;border-bottom:1px solid rgba(255,255,255,.1);overflow-x:auto;overflow-y:hidden;background:rgba(0,0,0,.6);overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
   .mp-side-nav{flex-direction:row;flex-wrap:nowrap;gap:0;align-items:center}
   .mp-side-group{flex-direction:row;padding:0 4px;align-items:center;gap:0;flex-shrink:0}
   .mp-side-group-title{display:none}
-  .mp-side-link{padding:6px 12px;margin:0;border-left:none;border-bottom:2px solid transparent;white-space:nowrap}
+  .mp-side-link{padding:10px 16px;margin:0;border-left:none;border-bottom:2px solid transparent;white-space:nowrap}
   .mp-side-link.active{border-left-color:transparent;border-bottom-color:#fff}
   .mp-side-spacer{display:none}
   .mp-side-divider{width:1px;height:18px;margin:0 8px;flex-shrink:0}
