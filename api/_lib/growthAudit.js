@@ -108,6 +108,19 @@ async function runGrowthAudit() {
     weekly('comments', 'created_at', '댓글 (7일)'),
     weekly('ratings', 'created_at', '평점 (7일)'),
     weekly('community_scraps', 'created_at', '커뮤니티 스크랩 (7일)'),
+    check('ig_outclicks_yesterday', '웹→IG 아웃클릭 (24시간, 소스별)', async () => {
+      // B-2 IG 유입 계측 — 모든 인스타 버튼이 /api/ig-out 경유로 기록된다.
+      const last24 = await cnt(db.from('ig_outclicks').select('*', CSEL).gte('clicked_at', iso(DAY)));
+      const prev24 = await cnt(db.from('ig_outclicks').select('*', CSEL).gte('clicked_at', iso(2 * DAY)).lt('clicked_at', iso(DAY)));
+      const { data } = await db.from('ig_outclicks').select('src').gte('clicked_at', iso(DAY)).limit(1000);
+      const bySrc = {};
+      (data || []).forEach((r) => { bySrc[r.src] = (bySrc[r.src] || 0) + 1; });
+      const breakdown = Object.entries(bySrc).sort((a, b) => b[1] - a[1]).map(([s, n]) => `${s} ${n}`).join(' · ');
+      return {
+        value: last24, compare: prev24, status: 'ok',
+        note: `어제 ${last24} vs 그제 ${prev24}${breakdown ? ' — ' + breakdown : ''}`,
+      };
+    }),
     check('top_recent_editorials', '최근 10편 조회 상위/하위 (커버·훅 품질 신호)', async () => {
       const { data, error } = await db.from('editorials').select('title, view_count')
         .eq('status', 'published').order('published_date', { ascending: false }).limit(10);

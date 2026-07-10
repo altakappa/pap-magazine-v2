@@ -411,7 +411,8 @@ function _renderArticleDetail(a,det){
         '<aside style="margin:28px 0 0;padding:26px 24px;border:1px solid rgba(255,255,255,.16);text-align:center">'
         +(function(){
           var _ko=(localStorage.getItem('pap-lang')||'ko')==='ko';
-          var _pSafe=_permalink.replace(/"/g,'&quot;');
+          // IG 유입 계측 (B-2) — 직링크 대신 /api/ig-out 경유로 클릭 로깅
+          var _pSafe='/api/ig-out?src=article&to=post&url='+encodeURIComponent(_permalink);
           var _body=_ko
             ? '이 기사의 원본 게시물이 <b style="color:#fff">인스타그램</b>에 있습니다.<br>좋아요·저장하고, 매일 공개되는 새 에디토리얼을 가장 먼저 만나보세요.'
             : 'The original post lives on <b style="color:#fff">Instagram</b>.<br>Like &amp; save it — and catch new editorials there first, every day.';
@@ -420,7 +421,7 @@ function _renderArticleDetail(a,det){
           return '<div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:10px">On Instagram</div>'
             +'<div style="font-size:13.5px;line-height:1.7;color:#ddd;margin-bottom:16px">'+_body+'</div>'
             +'<a href="'+_pSafe+'" target="_blank" rel="noopener" style="display:inline-block;margin:4px 5px 0;background:#fff;color:#000;padding:12px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none">'+_view+'</a>'
-            +'<a href="https://www.instagram.com/pap_magazine/" target="_blank" rel="noopener" style="display:inline-block;margin:4px 5px 0;background:transparent;color:#ddd;border:1px solid rgba(255,255,255,.28);padding:12px 22px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none">Follow @pap_magazine</a>'
+            +'<a href="/api/ig-out?src=article&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener" style="display:inline-block;margin:4px 5px 0;background:transparent;color:#ddd;border:1px solid rgba(255,255,255,.28);padding:12px 22px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none">Follow @pap_magazine</a>'
             +'<div style="margin-top:14px"><button onclick="_papShareArticle()" style="background:none;border:none;color:#888;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;text-decoration:underline;text-underline-offset:3px">'+_share+' ↗</button></div>';
           })()
         +'</aside>';
@@ -444,7 +445,7 @@ function _renderArticleDetail(a,det){
         _nEl.style.cssText='display:inline-block;margin:10px 0 0 10px;background:transparent;color:#bbb;border:1px solid rgba(255,255,255,.22);padding:12px 24px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;text-decoration:none';
         funnelEl.appendChild(_nEl);
       }
-      _nEl.href='https://www.instagram.com/'+_nn+'/';
+      _nEl.href='/api/ig-out?src=article&to=profile&url='+encodeURIComponent('https://www.instagram.com/'+_nn+'/');
       _nEl.textContent='+ @'+_nn;
       _nEl.style.display='';
     } else if(_nEl){ _nEl.style.display='none'; }

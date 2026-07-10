@@ -882,14 +882,14 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
     <aside class="ig-funnel" style="margin-bottom:0">
       <div class="igf-kicker">On Instagram</div>
       <p class="igf-copy">이 콘텐츠의 원본 게시물이 <b>인스타그램</b>에 있습니다.<br>좋아요·저장하고, 매일 공개되는 새 에디토리얼을 가장 먼저 만나보세요.</p>
-      <a class="igf-btn" href="${escAttr(String(record.source_instagram_url).split('?')[0])}" target="_blank" rel="noopener">인스타그램에서 보기 ↗</a>
+      <a class="igf-btn" href="/api/ig-out?src=ssr&to=post&url=${encodeURIComponent(String(record.source_instagram_url).split('?')[0])}" target="_blank" rel="noopener">인스타그램에서 보기 ↗</a>
     </aside>` : ''}
 
     <aside class="ig-funnel">
       <div class="igf-kicker">PAP Magazine — Instagram</div>
       <p class="igf-copy">매일 업데이트되는 에디토리얼과 패션·셀럽 뉴스,<br><b>인스타그램에서 가장 먼저</b> 만나보세요.</p>
-      <a class="igf-btn" href="https://www.instagram.com/pap_magazine/" target="_blank" rel="noopener">Follow @pap_magazine</a>
-      ${nicheIg(record.category) ? `<a class="igf-btn" style="background:transparent;color:#bbb;border:1px solid rgba(255,255,255,.25)" href="https://www.instagram.com/${nicheIg(record.category)}/" target="_blank" rel="noopener">+ @${nicheIg(record.category)}</a>` : ''}
+      <a class="igf-btn" href="/api/ig-out?src=ssr&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener">Follow @pap_magazine</a>
+      ${nicheIg(record.category) ? `<a class="igf-btn" style="background:transparent;color:#bbb;border:1px solid rgba(255,255,255,.25)" href="/api/ig-out?src=ssr&to=profile&url=${encodeURIComponent('https://www.instagram.com/' + nicheIg(record.category) + '/')}" target="_blank" rel="noopener">+ @${nicheIg(record.category)}</a>` : ''}
       ${ogImage ? `<a class="pin-btn" href="https://www.pinterest.com/pin/create/button/?url=${encodeURIComponent(canonical)}&media=${encodeURIComponent(ogImage)}&description=${encodeURIComponent(titleKo + ' — PAP Magazine editorial')}" target="_blank" rel="noopener" data-pin-do="none">Pinterest에 저장</a>` : ''}
       <div class="igf-sub">전 세계 크리에이티브 팀과 만드는 월 20+ 에디토리얼 · <a href="${SITE}/network" style="color:inherit">PAP 인스타그램 네트워크 →</a></div>
     </aside>
