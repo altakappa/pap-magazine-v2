@@ -565,6 +565,33 @@
   <div class="hero-content"><div class="hero-issue" data-i18n="coverStory">VOL.31 COVER STORY</div><div class="hero-title" data-i18n="coverTitle">MASQUERADE</div></div>
   <img class="hero-symbol" src="pap-symbol-white.png" alt="PAP">
 </section>
+<script>
+/* QA(2026-07) #4 — 홈 히어로의 "VOL.N"을 날짜 기반 '최신 완성 볼륨'으로 자동 표기.
+   분기(3개월)가 끝나야 그 볼륨이 완성됨 → 진행 중 분기(예: 7~9월=Vol.31)는 9/30까지
+   직전 완성 볼륨(Vol.30)을 표기하고 9/30부터 Vol.31 로 자동 전환. 매거진 목록의
+   공개 규칙(api/magazine-issues)과 일치. i18n(coverStory)이 텍스트를 덮어써도
+   MutationObserver 로 재적용한다(문구·언어는 유지, VOL 숫자만 교체). */
+(function(){
+  function latestCompleteVol(){
+    var n=new Date(), q=Math.ceil((n.getMonth()+1)/3);
+    var v=n.getFullYear()*4+q-8076;                       // 현재 분기 볼륨
+    return (n>=new Date(n.getFullYear(),q*3,0)) ? v : v-1; // 분기 완성 전이면 직전 볼륨
+  }
+  function fix(el){
+    if(!el) return;
+    var want='VOL.'+latestCompleteVol();
+    var cur=el.textContent||'';
+    var next=cur.replace(/VOL\.?\s*\d+/i, want);
+    if(next!==cur) el.textContent=next;                   // 바뀔 때만 → 무한루프 방지
+  }
+  function init(){
+    var el=document.querySelector('.hero-issue'); if(!el) return;
+    fix(el);
+    try{ new MutationObserver(function(){ fix(el); }).observe(el,{childList:true,characterData:true,subtree:true}); }catch(_){}
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init); else init();
+})();
+</script>
 
 <!-- Community CTA banner — sits between cover hero and the latest-articles
      carousel. Goal: drive both visitors and signed-in members into the
