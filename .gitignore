@@ -25,8 +25,8 @@ npm-debug.log*
 .idea/
 
 # Development/migration tools (should not be deployed)
-frontend/data-migration.html
-frontend/community_updated.html
+dev-tools/data-migration.html
+dev-tools/community_updated.html
 
 # SQL schemas and dev docs in frontend (should not be public)
 frontend/js/*.sql
