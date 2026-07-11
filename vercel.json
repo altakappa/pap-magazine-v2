@@ -74,289 +74,920 @@
     }
   ],
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/admin", "destination": "/admin.html" },
-    { "source": "/admin/", "destination": "/admin.html" },
-    { "source": "/admin/editorials", "destination": "/admin.html" },
-    { "source": "/admin/news", "destination": "/admin.html" },
-    { "source": "/admin/film", "destination": "/admin.html" },
-    { "source": "/admin/shorts", "destination": "/admin.html" },
-    { "source": "/admin/users", "destination": "/admin.html" },
-    { "source": "/admin/submissions", "destination": "/admin.html" },
-    { "source": "/admin/pullletters", "destination": "/admin.html" },
-    { "source": "/admin/newpost", "destination": "/admin.html" },
-    { "source": "/admin/newnews", "destination": "/admin.html" },
-    { "source": "/admin/intads", "destination": "/admin.html" },
-    { "source": "/admin/campaigns", "destination": "/admin.html" },
-    { "source": "/admin/community", "destination": "/admin.html" },
-    { "source": "/admin/categories", "destination": "/admin.html" },
-    { "source": "/admin/menucats", "destination": "/admin.html" },
-    { "source": "/admin/banners", "destination": "/admin.html" },
-    { "source": "/admin/cover", "destination": "/admin.html" },
-    { "source": "/admin/loading", "destination": "/admin.html" },
-    { "source": "/admin/home", "destination": "/admin.html" },
-    { "source": "/admin/about", "destination": "/admin.html" },
-    { "source": "/admin/contact", "destination": "/admin.html" },
-    { "source": "/admin/business", "destination": "/admin.html" },
-    { "source": "/admin/subscriptions", "destination": "/admin.html" },
-    { "source": "/admin/(.*)", "destination": "/admin.html" },
-    { "source": "/rss.xml", "has": [{ "type": "host", "value": "(www\\.)?pepperitmag\\.com" }], "destination": "/api/rss-pepperit" },
-    { "source": "/rss.xml", "destination": "/api/rss" },
-    { "source": "/rss-editorials.xml", "destination": "/api/rss-editorials" },
-    { "source": "/pinterest-csv", "destination": "/api/pinterest-csv" },
-    { "source": "/sitemap-news.xml", "destination": "/api/sitemap-news" },
-    { "source": "/sitemap.xml", "has": [{ "type": "host", "value": "(www\\.)?pepperitmag\\.com" }], "destination": "/api/sitemap-pepperit" },
-    { "source": "/sitemap.xml", "destination": "/api/sitemap" },
-    { "source": "/sitemap-index.xml", "destination": "/api/sitemap-index" },
-    { "source": "/sitemap-editorials.xml", "destination": "/api/sitemap-editorials" },
-    { "source": "/sitemap-articles.xml", "destination": "/api/sitemap-articles" },
-    { "source": "/sitemap-films.xml", "destination": "/api/sitemap-films" },
-    { "source": "/sitemap-brands.xml", "destination": "/api/sitemap-brands" },
-    { "source": "/editorial/:slug", "destination": "/api/seo/editorial/:slug" },
-    { "source": "/article/:slug", "has": [{ "type": "host", "value": "(www\\.)?pepperitmag\\.com" }], "destination": "/api/seo/pepperit/:slug" },
-    { "source": "/pepperit/article/:slug", "destination": "/api/seo/pepperit/:slug" },
-    { "source": "/sitemap-pepperit.xml", "destination": "/api/sitemap-pepperit" },
-    { "source": "/article/:slug", "destination": "/api/seo/article/:slug" },
-    { "source": "/film/:slug", "destination": "/api/seo/film/:slug" },
-    { "source": "/short/:slug", "destination": "/api/seo/short/:slug" },
-    { "source": "/go/:id", "destination": "/api/go/:id" },
-    { "source": "/about", "destination": "/about.html" },
-    { "source": "/contact", "destination": "/contact.html" },
-    { "source": "/business", "destination": "/business.html" },
-    { "source": "/films", "destination": "/films.html" },
-    { "source": "/articles", "destination": "/articles.html" },
-    { "source": "/film", "destination": "/films.html" },
-    { "source": "/article", "destination": "/articles.html" },
-    { "source": "/editorial", "destination": "/index.html" },
-    { "source": "/search", "destination": "/search.html" },
-    { "source": "/auth", "destination": "/auth.html" },
-    { "source": "/mypage", "destination": "/mypage.html" },
-    { "source": "/submission", "destination": "/submission.html" },
-    { "source": "/subscribe", "destination": "/subscribe.html" },
-    { "source": "/community", "destination": "/community.html" },
-    { "source": "/privacy", "destination": "/privacy.html" },
-    { "source": "/refund",  "destination": "/refund.html" },
-    { "source": "/pepperit", "destination": "/pepperit.html" },
-    { "source": "/terms", "destination": "/terms.html" },
-    { "source": "/data-deletion", "destination": "/data-deletion.html" },
-    { "source": "/pullletter", "destination": "/pullletter.html" },
-    { "source": "/magazine", "destination": "/magazine.html" },
-    { "source": "/archive", "destination": "/api/seo/archive" },
-    { "source": "/partners", "destination": "/api/seo/partners" },
-    { "source": "/brand/:id", "destination": "/api/seo/brand/:id" },
-    { "source": "/badge.svg", "destination": "/api/badge" },
-    { "source": "/badge", "destination": "/api/badge" },
-    { "source": "/site-analysis", "destination": "/site-analysis.html" },
-    { "source": "/naver-blog", "destination": "/naver-blog.html" },
-    { "source": "/instagram-diagnose", "destination": "/instagram-diagnose.html" },
-    { "source": "/youtube-diagnose", "destination": "/youtube-diagnose.html" },
-    { "source": "/threads-diagnose", "destination": "/threads-diagnose.html" },
-    { "source": "/tiktok-diagnose", "destination": "/tiktok-diagnose.html" },
-    { "source": "/pinterest-diagnose", "destination": "/pinterest-diagnose.html" },
-    { "source": "/ops-dashboard", "destination": "/ops-dashboard.html" },
-    { "source": "/network", "destination": "/network.html" }
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/admin",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin/",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin/editorials",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin/news",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin/film",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin/shorts",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin/users",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin/submissions",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin/pullletters",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin/newpost",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin/newnews",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin/intads",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin/campaigns",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin/community",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin/categories",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin/menucats",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin/banners",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin/cover",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin/loading",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin/home",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin/about",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin/contact",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin/business",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin/subscriptions",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/admin/(.*)",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/rss.xml",
+      "has": [
+        {
+          "type": "host",
+          "value": "(www\\.)?pepperitmag\\.com"
+        }
+      ],
+      "destination": "/api/rss-pepperit"
+    },
+    {
+      "source": "/rss.xml",
+      "destination": "/api/rss"
+    },
+    {
+      "source": "/rss-editorials.xml",
+      "destination": "/api/rss-editorials"
+    },
+    {
+      "source": "/pinterest-csv",
+      "destination": "/api/pinterest-csv"
+    },
+    {
+      "source": "/sitemap-news.xml",
+      "destination": "/api/sitemap-news"
+    },
+    {
+      "source": "/sitemap.xml",
+      "has": [
+        {
+          "type": "host",
+          "value": "(www\\.)?pepperitmag\\.com"
+        }
+      ],
+      "destination": "/api/sitemap-pepperit"
+    },
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap"
+    },
+    {
+      "source": "/sitemap-index.xml",
+      "destination": "/api/sitemap-index"
+    },
+    {
+      "source": "/sitemap-editorials.xml",
+      "destination": "/api/sitemap-editorials"
+    },
+    {
+      "source": "/sitemap-articles.xml",
+      "destination": "/api/sitemap-articles"
+    },
+    {
+      "source": "/sitemap-films.xml",
+      "destination": "/api/sitemap-films"
+    },
+    {
+      "source": "/sitemap-brands.xml",
+      "destination": "/api/sitemap-brands"
+    },
+    {
+      "source": "/editorial/:slug",
+      "destination": "/api/seo/editorial/:slug"
+    },
+    {
+      "source": "/article/:slug",
+      "has": [
+        {
+          "type": "host",
+          "value": "(www\\.)?pepperitmag\\.com"
+        }
+      ],
+      "destination": "/api/seo/pepperit/:slug"
+    },
+    {
+      "source": "/pepperit/article/:slug",
+      "destination": "/api/seo/pepperit/:slug"
+    },
+    {
+      "source": "/sitemap-pepperit.xml",
+      "destination": "/api/sitemap-pepperit"
+    },
+    {
+      "source": "/article/:slug",
+      "destination": "/api/seo/article/:slug"
+    },
+    {
+      "source": "/film/:slug",
+      "destination": "/api/seo/film/:slug"
+    },
+    {
+      "source": "/short/:slug",
+      "destination": "/api/seo/short/:slug"
+    },
+    {
+      "source": "/go/:id",
+      "destination": "/api/go/:id"
+    },
+    {
+      "source": "/about",
+      "destination": "/about.html"
+    },
+    {
+      "source": "/contact",
+      "destination": "/contact.html"
+    },
+    {
+      "source": "/business",
+      "destination": "/business.html"
+    },
+    {
+      "source": "/films",
+      "destination": "/films.html"
+    },
+    {
+      "source": "/articles",
+      "destination": "/articles.html"
+    },
+    {
+      "source": "/film",
+      "destination": "/films.html"
+    },
+    {
+      "source": "/article",
+      "destination": "/articles.html"
+    },
+    {
+      "source": "/editorial",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/search",
+      "destination": "/search.html"
+    },
+    {
+      "source": "/auth",
+      "destination": "/auth.html"
+    },
+    {
+      "source": "/mypage",
+      "destination": "/mypage.html"
+    },
+    {
+      "source": "/submission",
+      "destination": "/submission.html"
+    },
+    {
+      "source": "/subscribe",
+      "destination": "/subscribe.html"
+    },
+    {
+      "source": "/community",
+      "destination": "/community.html"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/privacy.html"
+    },
+    {
+      "source": "/refund",
+      "destination": "/refund.html"
+    },
+    {
+      "source": "/pepperit",
+      "destination": "/pepperit.html"
+    },
+    {
+      "source": "/terms",
+      "destination": "/terms.html"
+    },
+    {
+      "source": "/data-deletion",
+      "destination": "/data-deletion.html"
+    },
+    {
+      "source": "/pullletter",
+      "destination": "/pullletter.html"
+    },
+    {
+      "source": "/magazine",
+      "destination": "/magazine.html"
+    },
+    {
+      "source": "/archive",
+      "destination": "/api/seo/archive"
+    },
+    {
+      "source": "/partners",
+      "destination": "/api/seo/partners"
+    },
+    {
+      "source": "/brand/:id",
+      "destination": "/api/seo/brand/:id"
+    },
+    {
+      "source": "/badge.svg",
+      "destination": "/api/badge"
+    },
+    {
+      "source": "/badge",
+      "destination": "/api/badge"
+    },
+    {
+      "source": "/site-analysis",
+      "destination": "/site-analysis.html"
+    },
+    {
+      "source": "/naver-blog",
+      "destination": "/naver-blog.html"
+    },
+    {
+      "source": "/instagram-diagnose",
+      "destination": "/instagram-diagnose.html"
+    },
+    {
+      "source": "/youtube-diagnose",
+      "destination": "/youtube-diagnose.html"
+    },
+    {
+      "source": "/threads-diagnose",
+      "destination": "/threads-diagnose.html"
+    },
+    {
+      "source": "/tiktok-diagnose",
+      "destination": "/tiktok-diagnose.html"
+    },
+    {
+      "source": "/pinterest-diagnose",
+      "destination": "/pinterest-diagnose.html"
+    },
+    {
+      "source": "/ops-dashboard",
+      "destination": "/ops-dashboard.html"
+    },
+    {
+      "source": "/network",
+      "destination": "/network.html"
+    },
+    {
+      "source": "/:slug([^./]+)",
+      "destination": "/api/seo/editorial/:slug?root=1"
+    }
   ],
   "images": {
     "remotePatterns": [
-      { "protocol": "https", "hostname": "pap-korea-bucket.s3.ap-northeast-2.amazonaws.com" },
-      { "protocol": "https", "hostname": "igcazquhkwxtqsaqpznx.supabase.co" }
+      {
+        "protocol": "https",
+        "hostname": "pap-korea-bucket.s3.ap-northeast-2.amazonaws.com"
+      },
+      {
+        "protocol": "https",
+        "hostname": "igcazquhkwxtqsaqpznx.supabase.co"
+      }
     ],
-    "sizes": [320, 640, 960, 1280, 1920],
-    "formats": ["image/avif", "image/webp"],
+    "sizes": [
+      320,
+      640,
+      960,
+      1280,
+      1920
+    ],
+    "formats": [
+      "image/avif",
+      "image/webp"
+    ],
     "minimumCacheTTL": 2678400
   },
   "redirects": [
-    { "source": "/about.html",    "destination": "/about",    "statusCode": 301 },
-    { "source": "/business.html", "destination": "/business", "statusCode": 301 },
-    { "source": "/contact.html",  "destination": "/contact",  "statusCode": 301 },
-    { "source": "/index.html",      "destination": "/",           "statusCode": 301 },
-    { "source": "/magazine.html",   "destination": "/magazine",   "statusCode": 301 },
-    { "source": "/articles.html",   "destination": "/articles",   "statusCode": 301 },
-    { "source": "/films.html",      "destination": "/films",      "statusCode": 301 },
-    { "source": "/community.html",  "destination": "/community",  "statusCode": 301 },
-    { "source": "/subscribe.html",  "destination": "/subscribe",  "statusCode": 301 },
-    { "source": "/pullletter.html", "destination": "/pullletter", "statusCode": 301 },
-    { "source": "/submission.html", "destination": "/submission", "statusCode": 301 },
-    { "source": "/mypage.html",     "destination": "/mypage",     "statusCode": 301 },
-    { "source": "/terms.html",      "destination": "/terms",      "statusCode": 301 },
-    { "source": "/privacy.html",    "destination": "/privacy",    "statusCode": 301 },
-    { "source": "/refund.html",     "destination": "/refund",     "statusCode": 301 },
-    { "source": "/pap-magazine-v5.html", "destination": "/",      "statusCode": 301 },
-    { "source": "/pepperit.html", "destination": "/pepperit", "statusCode": 301 },
-    { "source": "/", "has": [{ "type": "host", "value": "(www\\.)?pepperitmag\\.com" }], "destination": "/pepperit", "statusCode": 307 },
-    { "source": "/pepperit", "has": [{ "type": "host", "value": "(www\\.)?pap-magazine\\.com" }], "destination": "https://www.pepperitmag.com/pepperit", "statusCode": 301 },
-    { "source": "/data-migration", "destination": "/404.html", "permanent": false },
-    { "source": "/data-migration.html", "destination": "/404.html", "permanent": false },
-    { "source": "/index.html.backup-pre-i18n-cards", "destination": "/404.html", "permanent": false },
-    { "source": "/pap-article-db.json.backup-pre-i18n", "destination": "/404.html", "permanent": false },
-    { "source": "/check_languages.js", "destination": "/404.html", "permanent": false },
-    { "source": "/.env",                "destination": "/404.html", "permanent": false },
-    { "source": "/.env.local",          "destination": "/404.html", "permanent": false },
-    { "source": "/.env.production",     "destination": "/404.html", "permanent": false },
-    { "source": "/.env.development",    "destination": "/404.html", "permanent": false },
-    { "source": "/.git/:path*",         "destination": "/404.html", "permanent": false },
-    { "source": "/.aws/:path*",         "destination": "/404.html", "permanent": false },
-    { "source": "/wp-admin/:path*",     "destination": "/404.html", "permanent": false },
-    { "source": "/wp-login.php",        "destination": "/404.html", "permanent": false },
-    { "source": "/wp-config.php",       "destination": "/404.html", "permanent": false },
-    { "source": "/wp-content/:path*",   "destination": "/404.html", "permanent": false },
-    { "source": "/wp-includes/:path*",  "destination": "/404.html", "permanent": false },
-    { "source": "/wordpress/:path*",    "destination": "/404.html", "permanent": false },
-    { "source": "/phpmyadmin/:path*",   "destination": "/404.html", "permanent": false },
-    { "source": "/xmlrpc.php",          "destination": "/404.html", "permanent": false },
-    { "source": "/backup/:path*",       "destination": "/404.html", "permanent": false },
-    { "source": "/backups/:path*",      "destination": "/404.html", "permanent": false },
-    { "source": "/db/:path*",           "destination": "/404.html", "permanent": false },
-    { "source": "/database/:path*",     "destination": "/404.html", "permanent": false },
-    { "source": "/dump/:path*",         "destination": "/404.html", "permanent": false },
+    {
+      "source": "/about.html",
+      "destination": "/about",
+      "statusCode": 301
+    },
+    {
+      "source": "/business.html",
+      "destination": "/business",
+      "statusCode": 301
+    },
+    {
+      "source": "/contact.html",
+      "destination": "/contact",
+      "statusCode": 301
+    },
+    {
+      "source": "/index.html",
+      "destination": "/",
+      "statusCode": 301
+    },
+    {
+      "source": "/magazine.html",
+      "destination": "/magazine",
+      "statusCode": 301
+    },
+    {
+      "source": "/articles.html",
+      "destination": "/articles",
+      "statusCode": 301
+    },
+    {
+      "source": "/films.html",
+      "destination": "/films",
+      "statusCode": 301
+    },
+    {
+      "source": "/community.html",
+      "destination": "/community",
+      "statusCode": 301
+    },
+    {
+      "source": "/subscribe.html",
+      "destination": "/subscribe",
+      "statusCode": 301
+    },
+    {
+      "source": "/pullletter.html",
+      "destination": "/pullletter",
+      "statusCode": 301
+    },
+    {
+      "source": "/submission.html",
+      "destination": "/submission",
+      "statusCode": 301
+    },
+    {
+      "source": "/mypage.html",
+      "destination": "/mypage",
+      "statusCode": 301
+    },
+    {
+      "source": "/terms.html",
+      "destination": "/terms",
+      "statusCode": 301
+    },
+    {
+      "source": "/privacy.html",
+      "destination": "/privacy",
+      "statusCode": 301
+    },
+    {
+      "source": "/refund.html",
+      "destination": "/refund",
+      "statusCode": 301
+    },
+    {
+      "source": "/pap-magazine-v5.html",
+      "destination": "/",
+      "statusCode": 301
+    },
+    {
+      "source": "/pepperit.html",
+      "destination": "/pepperit",
+      "statusCode": 301
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "(www\\.)?pepperitmag\\.com"
+        }
+      ],
+      "destination": "/pepperit",
+      "statusCode": 307
+    },
+    {
+      "source": "/pepperit",
+      "has": [
+        {
+          "type": "host",
+          "value": "(www\\.)?pap-magazine\\.com"
+        }
+      ],
+      "destination": "https://www.pepperitmag.com/pepperit",
+      "statusCode": 301
+    },
+    {
+      "source": "/data-migration",
+      "destination": "/404.html",
+      "permanent": false
+    },
+    {
+      "source": "/data-migration.html",
+      "destination": "/404.html",
+      "permanent": false
+    },
+    {
+      "source": "/index.html.backup-pre-i18n-cards",
+      "destination": "/404.html",
+      "permanent": false
+    },
+    {
+      "source": "/pap-article-db.json.backup-pre-i18n",
+      "destination": "/404.html",
+      "permanent": false
+    },
+    {
+      "source": "/check_languages.js",
+      "destination": "/404.html",
+      "permanent": false
+    },
+    {
+      "source": "/.env",
+      "destination": "/404.html",
+      "permanent": false
+    },
+    {
+      "source": "/.env.local",
+      "destination": "/404.html",
+      "permanent": false
+    },
+    {
+      "source": "/.env.production",
+      "destination": "/404.html",
+      "permanent": false
+    },
+    {
+      "source": "/.env.development",
+      "destination": "/404.html",
+      "permanent": false
+    },
+    {
+      "source": "/.git/:path*",
+      "destination": "/404.html",
+      "permanent": false
+    },
+    {
+      "source": "/.aws/:path*",
+      "destination": "/404.html",
+      "permanent": false
+    },
+    {
+      "source": "/wp-admin/:path*",
+      "destination": "/404.html",
+      "permanent": false
+    },
+    {
+      "source": "/wp-login.php",
+      "destination": "/404.html",
+      "permanent": false
+    },
+    {
+      "source": "/wp-config.php",
+      "destination": "/404.html",
+      "permanent": false
+    },
+    {
+      "source": "/wp-content/:path*",
+      "destination": "/404.html",
+      "permanent": false
+    },
+    {
+      "source": "/wp-includes/:path*",
+      "destination": "/404.html",
+      "permanent": false
+    },
+    {
+      "source": "/wordpress/:path*",
+      "destination": "/404.html",
+      "permanent": false
+    },
+    {
+      "source": "/phpmyadmin/:path*",
+      "destination": "/404.html",
+      "permanent": false
+    },
+    {
+      "source": "/xmlrpc.php",
+      "destination": "/404.html",
+      "permanent": false
+    },
+    {
+      "source": "/backup/:path*",
+      "destination": "/404.html",
+      "permanent": false
+    },
+    {
+      "source": "/backups/:path*",
+      "destination": "/404.html",
+      "permanent": false
+    },
+    {
+      "source": "/db/:path*",
+      "destination": "/404.html",
+      "permanent": false
+    },
+    {
+      "source": "/database/:path*",
+      "destination": "/404.html",
+      "permanent": false
+    },
+    {
+      "source": "/dump/:path*",
+      "destination": "/404.html",
+      "permanent": false
+    },
     {
       "source": "/:path*",
-      "has": [{ "type": "host", "value": "www.papkorea.com" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "www.papkorea.com"
+        }
+      ],
       "destination": "https://www.pap-magazine.com/:path*",
       "permanent": true
     },
     {
       "source": "/:path*",
-      "has": [{ "type": "host", "value": "papkorea.com" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "papkorea.com"
+        }
+      ],
       "destination": "https://www.pap-magazine.com/:path*",
       "permanent": true
     },
     {
       "source": "/:path*",
-      "has": [{ "type": "host", "value": "m.papkorea.com" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "m.papkorea.com"
+        }
+      ],
       "destination": "https://www.pap-magazine.com/:path*",
       "permanent": true
     },
     {
       "source": "/:path*",
-      "has": [{ "type": "host", "value": "m.pap-magazine.com" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "m.pap-magazine.com"
+        }
+      ],
       "destination": "https://www.pap-magazine.com/:path*",
       "permanent": true
     },
     {
       "source": "/:path*",
-      "has": [{ "type": "host", "value": "pap-magazine.com" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "pap-magazine.com"
+        }
+      ],
       "destination": "https://www.pap-magazine.com/:path*",
       "permanent": true
     },
-    { "source": "/ko", "destination": "/", "permanent": true },
-    { "source": "/ko/", "destination": "/", "permanent": true },
-    { "source": "/ko/about", "destination": "/about.html", "permanent": true },
-    { "source": "/ko/about/", "destination": "/about.html", "permanent": true },
-    { "source": "/ko/contact", "destination": "/contact.html", "permanent": true },
-    { "source": "/ko/contact/", "destination": "/contact.html", "permanent": true },
-    { "source": "/ko/business", "destination": "/business.html", "permanent": true },
-    { "source": "/ko/business/", "destination": "/business.html", "permanent": true },
-    { "source": "/ko/filmList", "destination": "/", "permanent": true },
-    { "source": "/ko/filmList/", "destination": "/", "permanent": true },
-    { "source": "/ko/category/:cat*", "destination": "/", "permanent": true },
-    { "source": "/ko/:slug", "destination": "/editorial/:slug", "permanent": true },
-    { "source": "/ko/:slug/", "destination": "/editorial/:slug", "permanent": true }
+    {
+      "source": "/ko",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/ko/",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/ko/about",
+      "destination": "/about.html",
+      "permanent": true
+    },
+    {
+      "source": "/ko/about/",
+      "destination": "/about.html",
+      "permanent": true
+    },
+    {
+      "source": "/ko/contact",
+      "destination": "/contact.html",
+      "permanent": true
+    },
+    {
+      "source": "/ko/contact/",
+      "destination": "/contact.html",
+      "permanent": true
+    },
+    {
+      "source": "/ko/business",
+      "destination": "/business.html",
+      "permanent": true
+    },
+    {
+      "source": "/ko/business/",
+      "destination": "/business.html",
+      "permanent": true
+    },
+    {
+      "source": "/ko/filmList",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/ko/filmList/",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/ko/category/:cat*",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/ko/:slug",
+      "destination": "/editorial/:slug",
+      "permanent": true
+    },
+    {
+      "source": "/ko/:slug/",
+      "destination": "/editorial/:slug",
+      "permanent": true
+    }
   ],
   "headers": [
     {
       "source": "/admin",
       "headers": [
-        { "key": "Cache-Control", "value": "no-store, max-age=0" }
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
       ]
     },
     {
       "source": "/admin/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "no-store, max-age=0" }
+        {
+          "key": "Cache-Control",
+          "value": "no-store, max-age=0"
+        }
       ]
     },
     {
       "source": "/data/(.*).json",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" },
-        { "key": "Content-Type", "value": "application/json; charset=utf-8" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, stale-while-revalidate=604800"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/json; charset=utf-8"
+        }
       ]
     },
     {
       "source": "/(.*).css",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, stale-while-revalidate=604800"
+        }
       ]
     },
     {
       "source": "/(.*).js",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate, s-maxage=60, stale-while-revalidate=86400" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate, s-maxage=60, stale-while-revalidate=86400"
+        }
       ]
     },
     {
       "source": "/(.*).html",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate, s-maxage=60, stale-while-revalidate=86400" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate, s-maxage=60, stale-while-revalidate=86400"
+        }
       ]
     },
     {
       "source": "/(.*).png",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
       ]
     },
     {
       "source": "/(.*).(jpg|jpeg|webp|avif|gif|svg|ico)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
       ]
     },
     {
       "source": "/(.*).(woff|woff2|ttf|otf)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" },
-        { "key": "Access-Control-Allow-Origin", "value": "*" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        }
       ]
     },
     {
       "source": "/sitemap(.*).xml",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=3600, stale-while-revalidate=86400" },
-        { "key": "Content-Type", "value": "application/xml; charset=utf-8" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, stale-while-revalidate=86400"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/xml; charset=utf-8"
+        }
       ]
     },
     {
       "source": "/editorial/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=0, s-maxage=300, stale-while-revalidate=86400" },
-        { "key": "X-Robots-Tag", "value": "index, follow, max-image-preview:large" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, s-maxage=300, stale-while-revalidate=86400"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow, max-image-preview:large"
+        }
       ]
     },
     {
       "source": "/article/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=0, s-maxage=300, stale-while-revalidate=86400" },
-        { "key": "X-Robots-Tag", "value": "index, follow, max-image-preview:large" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, s-maxage=300, stale-while-revalidate=86400"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow, max-image-preview:large"
+        }
       ]
     },
     {
       "source": "/film/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=0, s-maxage=300, stale-while-revalidate=86400" },
-        { "key": "X-Robots-Tag", "value": "index, follow, max-image-preview:large, max-video-preview:-1" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, s-maxage=300, stale-while-revalidate=86400"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow, max-image-preview:large, max-video-preview:-1"
+        }
       ]
     },
     {
       "source": "/short/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=0, s-maxage=300, stale-while-revalidate=86400" },
-        { "key": "X-Robots-Tag", "value": "index, follow, max-image-preview:large, max-video-preview:-1" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, s-maxage=300, stale-while-revalidate=86400"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "index, follow, max-image-preview:large, max-video-preview:-1"
+        }
       ]
     },
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" },
-        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), payment=(self \"https://buy.paddle.com\" \"https://sandbox-buy.paddle.com\")" },
-        { "key": "X-XSS-Protection", "value": "0" },
-        { "key": "Content-Security-Policy", "value": "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests" },
-        { "key": "Content-Security-Policy-Report-Only", "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://www.googletagmanager.com https://www.google-analytics.com https://www.gstatic.com https://platform.instagram.com https://www.instagram.com https://connect.facebook.net https://js.stripe.com https://*.vercel-scripts.com https://*.paddle.com https://*.portone.io https://cdn.portone.io; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://api.anthropic.com https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com https://www.google-analytics.com https://*.vercel-insights.com wss://*.supabase.co; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://platform.instagram.com https://www.instagram.com https://js.stripe.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://www.paypal.com; upgrade-insecure-requests" },
-        { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains; preload"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=(), payment=(self \"https://buy.paddle.com\" \"https://sandbox-buy.paddle.com\")"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "0"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+        },
+        {
+          "key": "Content-Security-Policy-Report-Only",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://www.googletagmanager.com https://www.google-analytics.com https://www.gstatic.com https://platform.instagram.com https://www.instagram.com https://connect.facebook.net https://js.stripe.com https://*.vercel-scripts.com https://*.paddle.com https://*.portone.io https://cdn.portone.io; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://api.anthropic.com https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com https://www.google-analytics.com https://*.vercel-insights.com wss://*.supabase.co; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://platform.instagram.com https://www.instagram.com https://js.stripe.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://www.paypal.com; upgrade-insecure-requests"
+        },
+        {
+          "key": "Cross-Origin-Opener-Policy",
+          "value": "same-origin"
+        }
       ]
     }
   ],

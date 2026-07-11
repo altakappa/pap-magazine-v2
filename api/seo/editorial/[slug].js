@@ -89,10 +89,31 @@ module.exports = async function handler(req, res) {
       if (!isNaN(ms) && ms > Date.now()) data = null;
     }
 
+    /* 5) 레거시(구 Wix) 잘린 슬러그 — 'emergency' → 'emergency-landing'.
+       접두 일치가 정확히 1건일 때만 301 (모호하면 404 유지). 2026-07-10 */
+    if (!data && dehyphenated.length >= 3 && !/%/.test(decoded)) {
+      const safePrefix = decoded.replace(/[\\%_]/g, ch => '\\' + ch);
+      const pr = await supabaseAdmin.from('editorials').select('slug')
+        .like('slug', safePrefix + '-%').eq('status', 'published').limit(2);
+      if (pr.data && pr.data.length === 1 && pr.data[0].slug) {
+        res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=3600');
+        res.setHeader('Location', '/editorial/' + encodeURIComponent(pr.data[0].slug));
+        return res.status(301).end();
+      }
+    }
+
     if (!data) {
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300');
       return res.status(404).send(renderNotFoundHtml('editorial', slug));
+    }
+
+    /* 루트 경로(/<slug>)로 들어온 요청은 표준 주소(/editorial/<slug>)로 301 —
+       SPA가 만드는 루트형 URL·구 인덱스가 캐노니컬로 수렴한다. 2026-07-10 */
+    if (req.query && req.query.root === '1') {
+      res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=3600');
+      res.setHeader('Location', '/editorial/' + encodeURIComponent(data.slug || slug));
+      return res.status(301).end();
     }
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
