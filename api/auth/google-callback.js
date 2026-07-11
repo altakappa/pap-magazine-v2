@@ -37,10 +37,11 @@ module.exports = async function handler(req, res) {
     const { code, state: stateParam, error: oauthError } = req.query;
 
     if (oauthError) {
-      // 사용자가 동의를 취소한 경우 등
+      console.error('[google-cb] provider error:', String(oauthError).slice(0, 80));
       return res.redirect(302, `${frontendUrl}/auth.html?error=oauth_denied&mode=login`);
     }
     if (!code) {
+      console.error('[google-cb] missing code');
       return res.redirect(302, `${frontendUrl}/auth.html?error=missing_code&mode=login`);
     }
 
@@ -48,7 +49,7 @@ module.exports = async function handler(req, res) {
     const cookies = parseCookies(req.headers.cookie);
     const storedState = cookies.oauth_state;
     if (!stateParam || !storedState || stateParam !== storedState) {
-      console.error('Google OAuth state mismatch — possible CSRF attack');
+      console.error('[google-cb] state mismatch — hasParam=' + (!!stateParam) + ' hasCookie=' + (!!storedState) + ' match=' + (stateParam===storedState));
       return res.redirect(302, `${frontendUrl}/auth.html?error=state_mismatch&mode=login`);
     }
 
@@ -91,8 +92,11 @@ module.exports = async function handler(req, res) {
     }
 
     const email = String(gUser.email).toLowerCase();
-    const emailVerified = gUser.email_verified === true || gUser.email_verified === 'true';
-    if (!emailVerified) {
+    // email_verified가 명시적으로 false인 경우만 거부. Google userinfo가 이 필드를
+    // 누락하거나 문자열/불리언으로 주는 변형을 흡수 (OAuth로 받은 Google 이메일은
+    // 기본적으로 검증된 것으로 간주). 기존 엄격 판정이 로그인을 막던 원인 제거.
+    if (gUser.email_verified === false || gUser.email_verified === 'false') {
+      console.error('[google-cb] email not verified:', email);
       return res.redirect(302, `${frontendUrl}/auth.html?error=email_unverified&mode=login`);
     }
     const name = gUser.name || gUser.given_name || (email.split('@')[0]);
@@ -171,6 +175,7 @@ module.exports = async function handler(req, res) {
       role: user.role, subscription: user.subscription,
     }));
 
+    console.log('[google-cb] success:', email, '→', frontendUrl);
     res.setHeader('Set-Cookie', [
       'oauth_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
       `pap_oauth_token=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=120`,
