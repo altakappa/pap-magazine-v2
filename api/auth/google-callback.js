@@ -9,6 +9,7 @@
 const { supabaseAdmin } = require('../_lib/supabase');
 const { generateToken } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
+const { sendOAuthSuccessHtml } = require('../_lib/oauthSuccess');
 
 function getRequestOrigin(req) {
   const proto = (req.headers['x-forwarded-proto'] || 'https').split(',')[0].trim();
@@ -170,19 +171,11 @@ module.exports = async function handler(req, res) {
     };
 
     const token = generateToken(user);
-    // 2026-07-12 — 프론트 auth.html의 초기 IIFE(_authStateUrl)가 쿼리스트링은
-    // 버리고 해시는 보존하므로, ?oauth=success 방식은 신호가 사라져 로그인이
-    // 완료되지 않는다. 프론트가 정식 지원하는 해시-토큰(#token=...&user=...)
-    // 방식으로 넘긴다(설계 주석: "OAuth 콜백은 프래그먼트를 쓴다").
-    const userJson = encodeURIComponent(JSON.stringify({
-      id: user.id, email: user.email, name: user.name,
-      role: user.role, subscription: user.subscription,
-    }));
-    console.log('[google-cb] success:', email, '→', frontendUrl);
-    res.setHeader('Set-Cookie', [
-      'oauth_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
-    ]);
-    return res.redirect(302, `${frontendUrl}/auth.html#token=${encodeURIComponent(token)}&user=${userJson}`);
+    // 2026-07-12 — URL 쿼리(?oauth=success)는 auth.html 초기 IIFE가 제거하고
+    // 프래그먼트(#token=)는 Safari ITP가 교차사이트 체인에서 제거할 수 있어,
+    // 페이스북(callback.js)이 검증한 HTML 직접 반환 방식으로 통일한다.
+    console.log('[google-cb] success:', email);
+    return sendOAuthSuccessHtml(res, token, user);
   } catch (error) {
     console.error('Google callback error:', (error && error.code) || 'UNKNOWN');
     return res.redirect(302, `${frontendUrl}/auth.html?error=auth_failed&mode=login`);

@@ -7,6 +7,7 @@
 const { supabaseAdmin } = require('../_lib/supabase');
 const { generateToken } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
+const { sendOAuthSuccessHtml } = require('../_lib/oauthSuccess');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -181,18 +182,9 @@ module.exports = async function handler(req, res) {
     };
 
     const token = generateToken(user);
-    // 2026-07-12 — ?oauth=success 쿼리는 프론트 초기 IIFE가 지워버려 신규
-    // 로그인이 완료되지 않던 잠복 버그. 해시는 보존되므로 프론트가 정식
-    // 지원하는 해시-토큰(#token=...&user=...)으로 넘긴다. (프래그먼트는 서버
-    // 로그/리퍼러에 남지 않음 — 기존 설계 주석과 동일 취지)
-    const userJson = encodeURIComponent(JSON.stringify({
-      id: user.id, email: user.email, name: user.name,
-      role: user.role, subscription: user.subscription,
-    }));
-    res.setHeader('Set-Cookie', [
-      'oauth_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
-    ]);
-    return res.redirect(302, `${frontendUrl}/auth.html#token=${encodeURIComponent(token)}&user=${userJson}`);
+    // 2026-07-12 — 쿼리(초기 IIFE 제거)·프래그먼트(Safari ITP 제거) 모두 위험이
+    // 있어, 페이스북(callback.js)이 검증한 HTML 직접 반환 방식으로 통일한다.
+    return sendOAuthSuccessHtml(res, token, user);
   } catch (error) {
     console.error('Kakao callback error:', error.code || 'UNKNOWN');
     return res.redirect(302, `${frontendUrl}/auth.html?error=auth_failed&mode=login`);
