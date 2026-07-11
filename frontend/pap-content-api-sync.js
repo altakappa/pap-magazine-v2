@@ -84,7 +84,23 @@ window._papFilmAutoPlay = function(){
   function startStaticLoads(){
     // Use late-binding wrappers so callbacks are resolved when JSON arrives, not when loadJSON is called
     loadJSON('data/films.json', filmAllData, function(){ if(window._papFilmRenderCards) window._papFilmRenderCards(); if(window._papFilmAutoPlay) window._papFilmAutoPlay(); }, 'films');
-    loadJSON('data/articles.json', artData, function(){ if(window._papArticleRenderCards) window._papArticleRenderCards(); }, 'articles');
+    // 2026-07-12 — 정적 스냅샷(articles.json)이 stale해지는 문제 해소: DB에서 항상
+    // 최신을 주는 스냅샷 API(엣지 캐시)를 우선 사용, 실패 시 정적 파일로 폴백.
+    (function(){
+      var _artRender = function(){ if(window._papArticleRenderCards) window._papArticleRenderCards(); };
+      fetch(PAP_API_BASE + '/articles-snapshot')
+        .then(function(r){ if(!r.ok) throw new Error('snap'); return r.json(); })
+        .then(function(data){
+          if(!Array.isArray(data) || !data.length) throw new Error('empty');
+          if(_apiSynced.articles){ _artRender(); return; } // API가 이미 최신이면 덮어쓰지 않음
+          artData.length = 0; data.forEach(function(i){ artData.push(i); });
+          _artRender();
+        })
+        .catch(function(){
+          // 스냅샷 API 실패 → 기존 정적 파일 폴백(현행과 동일 동작)
+          loadJSON('data/articles.json', artData, _artRender, 'articles');
+        });
+    })();
     loadJSON('data/editorials.json', edData, null, 'editorials');
     loadJSON('data/creators.json', creatorData);
     loadJSON('data/shorts.json', shortsData, function(){ if(window._papShortsRender) window._papShortsRender(); });
