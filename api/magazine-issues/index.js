@@ -27,6 +27,8 @@ const isQuarterlyVolume = (r) => /^\s*VOL\.?\s*\d+/i.test(String(r.title || ''))
 // 분기의 마지막 날(=완성 시점). 그 날짜 이전이면 아직 미완성.
 // new Date(y, q*3, 0) → q*3 월(1-index)의 "0일" = 그 분기 마지막 달의 말일.
 const quarterEndDate = (y, m) => new Date(Number(y), quarterOf(m) * 3, 0);
+// 월의 마지막 날(=월별 발행호 완성 시점). new Date(y, m, 0) → m월(1-index)의 0일 = 그 달 말일.
+const monthEndDate = (y, m) => new Date(Number(y), Number(m), 0);
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -55,29 +57,40 @@ module.exports = async function handler(req, res) {
     //     날짜가 불명확한 행은 기존처럼 노출.
     let visible = rows.filter((r) => {
       if (!r.issue_year || !r.issue_month) return true;
-      return now >= quarterEndDate(r.issue_year, r.issue_month);
+      // 2026-07: 발행호가 월별로 전환됨. 월별은 '월말', 레거시 VOL.N은 '분기말' 기준.
+      var endDate = isQuarterlyVolume(r)
+        ? quarterEndDate(r.issue_year, r.issue_month)
+        : monthEndDate(r.issue_year, r.issue_month);
+      return now >= endDate;
     });
 
-    // (1) 공개된 분기 볼륨의 editorial_count 를 실제 분기별 published 수로 교체.
-    const quarterlyVisible = visible.filter(isQuarterlyVolume);
-    if (quarterlyVisible.length) {
-      await Promise.all(quarterlyVisible.map(async (r) => {
-        try {
+    // (1) editorial_count 를 실제 published 수로 동적 교체 — 월별/분기별 모두.
+    //     비용 제한: 작년~올해 발행호만 재계산(과거는 저장값 유지). 엣지캐시 60s.
+    const _curY = now.getFullYear();
+    await Promise.all(visible.map(async (r) => {
+      if (!r.issue_year || !r.issue_month) return;
+      if (Number(r.issue_year) < _curY - 1) return;          // 오래된 호는 저장값 유지
+      try {
+        let start, end;
+        if (isQuarterlyVolume(r)) {
           const q = quarterOf(r.issue_month);
-          const startMonth = (q - 1) * 3 + 1;                 // 1,4,7,10
-          const start = `${r.issue_year}-${String(startMonth).padStart(2, '0')}-01`;
-          const end = new Date(Date.UTC(Number(r.issue_year), q * 3, 0))
-            .toISOString().slice(0, 10);                       // 분기 말일 YYYY-MM-DD
-          const { count, error: cErr } = await supabaseAdmin
-            .from('editorials')
-            .select('*', { count: 'exact', head: true })
-            .eq('status', 'published')
-            .gte('published_date', start)
-            .lte('published_date', end);
-          if (!cErr && typeof count === 'number') r.editorial_count = count;
-        } catch (_) { /* 실패 시 정적 값 유지 */ }
-      }));
-    }
+          const sm = (q - 1) * 3 + 1;                          // 1,4,7,10
+          start = `${r.issue_year}-${String(sm).padStart(2, '0')}-01`;
+          end = new Date(Date.UTC(Number(r.issue_year), q * 3, 0)).toISOString().slice(0, 10);
+        } else {
+          const mm = String(r.issue_month).padStart(2, '0');
+          start = `${r.issue_year}-${mm}-01`;
+          end = new Date(Date.UTC(Number(r.issue_year), Number(r.issue_month), 0)).toISOString().slice(0, 10);
+        }
+        const { count, error: cErr } = await supabaseAdmin
+          .from('editorials')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'published')
+          .gte('published_date', start)
+          .lte('published_date', end);
+        if (!cErr && typeof count === 'number') r.editorial_count = count;
+      } catch (_) { /* 실패 시 저장값 유지 */ }
+    }));
 
     // (3) is_latest 재계산 — 공개된 것 중 최신(정렬 첫 행)만 latest.
     visible = visible.map((r, i) => Object.assign({}, r, { is_latest: i === 0 }));
