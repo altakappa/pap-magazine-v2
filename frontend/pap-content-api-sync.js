@@ -336,6 +336,16 @@ window._papFilmAutoPlay = function(){
       .then(function(res){
         if(!res || !Array.isArray(res.data) || !res.data.length) return;
         var quick = res.data.map(apiArticleToLocal);
+        // 2026-07-12 — 목록 페이지(/articles)도 최신이 즉시 뜨도록 quick을 artData에
+        // 병합 후 재렌더. 기존엔 홈 캐러셀만 갱신하고 artData 미병합이라, 목록은 전체
+        // syncArticles(수 페이지, ~10초)가 끝나야 최신이 떠 '최근 기사 안 뜸'으로 보였다.
+        // mergeData는 제목 기준 dedup이라 이후 전체 동기화와 충돌 없음.
+        try {
+          var _merged = mergeData(quick, artData);
+          artData.length = 0;
+          _merged.forEach(function(a){ artData.push(a); });
+          window._apiSynced.articles = true; // 늦게 도착하는 정적 스냅샷이 덮어쓰지 못하게
+        } catch(e){ /* non-fatal */ }
         try { _renderHomeFashionArticles(quick); } catch(e){ /* non-fatal */ }
         if(typeof window._papArticleRenderCards==='function'){
           try { window._papArticleRenderCards(); } catch(_){}
