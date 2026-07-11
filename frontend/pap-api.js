@@ -225,6 +225,30 @@ const PAP = (function() {
       return await request('GET', '/auth/me');
     },
 
+    // 2026-07-11 — 저장된 회원 정보를 서버 기준으로 동기화.
+    // 결제 웹훅·해지·관리자 변경으로 등급이 바뀌어도 재로그인 없이 반영된다.
+    // (기존에는 로그인 시점의 등급이 localStorage에 박제되어, 결제 직후에도
+    //  재로그인 전까지 무료 회원 취급되는 문제가 있었다)
+    async refreshUser() {
+      if (!getToken()) return null;
+      try {
+        const res = await request('GET', '/auth/me');
+        if (res && res.user) {
+          const cur = getUser() || {};
+          const merged = Object.assign({}, cur, {
+            id: res.user.id || cur.id,
+            email: res.user.email || cur.email,
+            name: res.user.name || cur.name,
+            role: res.user.role || cur.role,
+            subscription: res.user.subscription || 'free',
+          });
+          setUser(merged);
+          return merged;
+        }
+      } catch (_) { /* 네트워크 실패 시 기존 저장값 유지 */ }
+      return null;
+    },
+
     async updateProfile(data) {
       return await request('PUT', '/auth/me', data);
     },
@@ -708,7 +732,20 @@ const PAP = (function() {
                   PAP.ui.toast('Payment complete! Updating your membership…', 'success');
                 }
               } catch (_) {}
-              setTimeout(function () { window.location.href = '/mypage'; }, 1800);
+              // 2026-07-11 — Paddle 웹훅이 등급을 올릴 때까지 짧게 폴링한 뒤 이동.
+              // 곧바로 이동하면 결제 직후에도 '무료 회원'으로 보이는 문제가 있었다.
+              // 최대 8회 × 1.5초(약 12초) 대기 후에는 그냥 이동 (페이지 로드 동기화가 후속 보정).
+              var _tries = 0;
+              (function _waitUpgrade() {
+                auth.refreshUser().then(function (u) {
+                  var up = u && (u.subscription === 'standard' || u.subscription === 'premium');
+                  if (up || _tries >= 8) { window.location.href = '/mypage'; return; }
+                  _tries++; setTimeout(_waitUpgrade, 1500);
+                }).catch(function () {
+                  if (_tries >= 8) { window.location.href = '/mypage'; return; }
+                  _tries++; setTimeout(_waitUpgrade, 1500);
+                });
+              })();
             }
           },
         });
@@ -846,6 +883,20 @@ const PAP = (function() {
   document.addEventListener('DOMContentLoaded', function() {
     ui.updateLoginState();
     auth.handleOAuthCallback();
+    // 2026-07-11 — 로그인 상태면 회원 등급을 서버와 동기화 (5분 스로틀).
+    // 결제·해지·관리자 변경이 재로그인 없이도 다음 페이지 이동 시 반영된다.
+    try {
+      if (auth.isLoggedIn()) {
+        var _last = 0;
+        try { _last = parseInt(sessionStorage.getItem('pap-user-sync') || '0', 10) || 0; } catch (_) {}
+        if (Date.now() - _last > 5 * 60 * 1000) {
+          try { sessionStorage.setItem('pap-user-sync', String(Date.now())); } catch (_) {}
+          auth.refreshUser().then(function (u) {
+            if (u) { try { ui.updateLoginState(); } catch (_) {} }
+          });
+        }
+      }
+    } catch (_) {}
   });
 
   return { auth, submissions, pullLetters, community, subscriptions, ui, sanitize };

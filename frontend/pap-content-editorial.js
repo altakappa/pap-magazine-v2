@@ -1751,17 +1751,24 @@ function _renderEdAllPage(){
   var filtered = edData.filter(function(e){
     return _edEditorialMatchesCategory(e, edAllCurrentCategory);
   });
-  // 2026-07 정책 변경: Standard 열람을 '최신 100개'에서 '최신 6개월(발행일 롤링)'로.
-  // Premium은 전체. 발행 속도(월 20~27편)상 6개월 ≈ 130~150편으로 기존보다 후하다.
+  // 2026-07 정책: Premium 전체 / Standard 최신 6개월(발행일 롤링) /
+  // FREE·비로그인 최신 10개 — /subscribe 약속("최신 10개 에디토리얼")과 정합.
+  // (2026-07-11 수정: 기존엔 free도 standard와 동일하게 6개월치가 열려
+  //  Standard 구독 유인이 훼손되던 문제)
   var availableData;
   if(premium){
     availableData=filtered;
-  }else{
+  }else if(standard){
     var _cut6=new Date(); _cut6.setMonth(_cut6.getMonth()-6); _cut6.setHours(0,0,0,0);
     availableData=filtered.filter(function(e){
       var d=(e&&e.date)?new Date(e.date):null;
       return (d&&!isNaN(d.getTime()))?(d>=_cut6):false;
     });
+  }else{
+    // 정렬 보장 후 최신 10개 (카테고리 필터 적용 뒤라 카테고리별로도 일관)
+    availableData=filtered.slice().sort(function(a,b){
+      return String(b.date||'').localeCompare(String(a.date||''));
+    }).slice(0,10);
   }
   var totalPages=Math.ceil(availableData.length/PAP_PER_PAGE);
   if(edAllCurrentPage>totalPages) edAllCurrentPage=totalPages||1;
@@ -1790,10 +1797,14 @@ function _renderEdAllPage(){
     empty.textContent = 'NO EDITORIALS IN THIS CATEGORY';
     grid.appendChild(empty);
   }
-  if(standard&&edAllCurrentPage===totalPages&&filtered.length>availableData.length){
+  if(!premium&&edAllCurrentPage===totalPages&&filtered.length>availableData.length){
     var upsell=document.createElement('div');
     upsell.style.cssText='grid-column:1/-1;text-align:center;padding:40px 20px;';
-    upsell.innerHTML='<p style="color:#999;font-size:12px;letter-spacing:.1em;margin-bottom:12px;">PREMIUM MEMBERS CAN ACCESS ALL '+filtered.length+' EDITORIALS</p><a href="/subscribe" style="display:inline-block;padding:10px 28px;background:#fff;color:#000;font-size:11px;font-weight:700;letter-spacing:.1em;text-decoration:none;">UPGRADE TO PREMIUM</a>';
+    var _upMsg=standard
+      ? 'PREMIUM MEMBERS CAN ACCESS ALL '+filtered.length+' EDITORIALS'
+      : 'FREE PREVIEW SHOWS THE LATEST 10 — MEMBERS CAN ACCESS '+filtered.length+' EDITORIALS';
+    var _upBtn=standard?'UPGRADE TO PREMIUM':'SUBSCRIBE';
+    upsell.innerHTML='<p style="color:#999;font-size:12px;letter-spacing:.1em;margin-bottom:12px;">'+_upMsg+'</p><a href="/subscribe" style="display:inline-block;padding:10px 28px;background:#fff;color:#000;font-size:11px;font-weight:700;letter-spacing:.1em;text-decoration:none;">'+_upBtn+'</a>';
     grid.appendChild(upsell);
   }
   count.textContent=availableData.length+' EDITORIALS'+(premium?'':' (PREMIUM: '+filtered.length+')');
