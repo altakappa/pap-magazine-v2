@@ -1270,8 +1270,12 @@ function closePreview(){
   document.getElementById('previewOverlay').classList.remove('active');
   document.body.style.overflow='';
 }
-document.getElementById('previewOverlay').addEventListener('click',function(e){
-  if(e.target===this)closePreview();
+// 2026-07-12 버그픽스: #previewOverlay는 이 스크립트보다 아래 마크업이라 즉시 조회 시
+// null → TypeError (콘솔 예외 발생, 오버레이 바깥 클릭 닫기 미동작).
+// subModal 처리(위쪽 DOMContentLoaded 지연)와 동일 패턴으로 수정.
+document.addEventListener('DOMContentLoaded',function(){
+  var _po=document.getElementById('previewOverlay');
+  if(_po)_po.addEventListener('click',function(e){ if(e.target===_po)closePreview(); });
 });
 </script>
 

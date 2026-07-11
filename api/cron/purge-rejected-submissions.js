@@ -71,7 +71,7 @@ module.exports = async function handler(req, res) {
     // oldest go first — keeps the queue from starving if MAX_PER_RUN is hit.
     const { data: rows, error: scanErr } = await supabaseAdmin
       .from('submissions')
-      .select('id, file_urls, rejected_at, project_title')
+      .select('id, file_urls, rejected_at, title')  // 2026-07-12: title 컬럼 부재(42703)로 크론 실패하던 버그 — 실제 컬럼명 title
       .eq('status', 'rejected')
       .lt('rejected_at', cutoff)
       .order('rejected_at', { ascending: true })

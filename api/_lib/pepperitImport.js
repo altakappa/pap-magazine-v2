@@ -30,12 +30,22 @@ async function listPepperitMedia(opts) {
   let guard = 0;
   while (out.length < maxCount && guard < 10) {
     guard++;
-    const mediaSpec = 'media.limit(25)' + (after ? '.after(' + after + ')' : '') +
+    // 2026-07-12: limit 25 → 12. 25는 Graph API가 간헐적으로
+    // "Please reduce the amount of data"(code 1)·20초 타임아웃을 내던 원인.
+    const mediaSpec = 'media.limit(12)' + (after ? '.after(' + after + ')' : '') +
       '{caption,media_type,media_url,thumbnail_url,permalink,timestamp,children{media_url,media_type}}';
     const fields = 'business_discovery.username(' + PEPPERIT_USERNAME + '){' + mediaSpec + '}';
     const url = _IG_API + '/' + process.env.IG_USER_ID +
       '?fields=' + encodeURIComponent(fields) + '&access_token=' + process.env.IG_ACCESS_TOKEN;
-    const res = await fetch(url, { signal: AbortSignal.timeout(20000) });
+    // 타임아웃 1회 재시도 (Graph API가 콜드 상태에서 첫 응답이 느린 케이스 흡수)
+    let res;
+    try {
+      res = await fetch(url, { signal: AbortSignal.timeout(25000) });
+    } catch (e) {
+      if (e && (e.name === 'TimeoutError' || e.name === 'AbortError')) {
+        res = await fetch(url, { signal: AbortSignal.timeout(25000) });
+      } else { throw e; }
+    }
     if (!res.ok) {
       const body = await res.text().catch(() => '');
       throw new Error('business_discovery 실패 (' + res.status + '): ' + body.slice(0, 300));
