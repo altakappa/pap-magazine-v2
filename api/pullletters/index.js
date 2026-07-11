@@ -26,6 +26,7 @@ const { requireAuth, requireAdmin } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { parseForm, uploadFiles } = require('../_lib/upload');
 const { sendEmail, templates } = require('../_lib/email');
+const { resolveEmailLang } = require('../_lib/emailLocale');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 
 module.exports.config = { api: { bodyParser: false } };
@@ -145,9 +146,10 @@ module.exports = async function handler(req, res) {
 
       // Confirmation email (non-blocking)
       const { data: profile } = await supabaseAdmin
-        .from('profiles').select('email, name').eq('id', user.id).single();
+        .from('profiles').select('email, name, email_language, language, country').eq('id', user.id).single();
       if (profile) {
-        sendEmail(profile.email, templates.pullletterReceived({ name: profile.name })).catch(() => {});
+        const _lang = resolveEmailLang(profile);
+        sendEmail(profile.email, templates.pullletterReceived({ name: profile.name }, _lang)).catch(() => {});
       }
 
       return res.status(201).json({ pullLetter });

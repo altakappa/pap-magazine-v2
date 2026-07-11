@@ -24,6 +24,7 @@
 
 const { supabaseAdmin } = require('./_lib/supabase');
 const { sendEmail, templates } = require('./_lib/email');
+const { resolveEmailLang } = require('./_lib/emailLocale');
 const crypto = require('crypto');
 
 const PADDLE_WEBHOOK_SECRET = process.env.PADDLE_WEBHOOK_SECRET;
@@ -188,9 +189,9 @@ module.exports = async function handler(req, res) {
         const { plan } = await upsertSubscription(data, userId);
         // 확인 메일 (실패해도 무시)
         const { data: profile } = await supabaseAdmin
-          .from('profiles').select('email, name').eq('id', userId).single();
+          .from('profiles').select('email, name, email_language, language, country').eq('id', userId).single();
         if (profile && templates.subscriptionConfirmed) {
-          sendEmail(profile.email, templates.subscriptionConfirmed({ name: profile.name }, plan)).catch(() => {});
+          sendEmail(profile.email, templates.subscriptionConfirmed({ name: profile.name }, plan, resolveEmailLang(profile))).catch(() => {});
         }
         // 유료 구독 발생 → 도메니코 텔레그램 즉시 알림 (2026-07-10 요청, 실패 무해)
         {

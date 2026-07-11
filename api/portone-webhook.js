@@ -12,6 +12,7 @@
 
 const { supabaseAdmin } = require('./_lib/supabase');
 const { sendEmail, templates } = require('./_lib/email');
+const { resolveEmailLang } = require('./_lib/emailLocale');
 const crypto = require('crypto');
 
 const PORTONE_API_SECRET = process.env.PORTONE_API_SECRET;
@@ -123,12 +124,13 @@ module.exports = async function handler(req, res) {
 
         // Send confirmation email
         const { data: profile } = await supabaseAdmin
-          .from('profiles').select('email, display_name, subscription_plan').eq('id', userId).single();
+          .from('profiles').select('email, display_name, subscription_plan, email_language, language, country').eq('id', userId).single();
 
         if (profile && profile.email) {
           sendEmail(profile.email, templates.subscriptionConfirmed(
             { name: profile.display_name || profile.email },
-            profile.subscription_plan
+            profile.subscription_plan,
+            resolveEmailLang(profile)
           )).catch(() => {});
         }
 

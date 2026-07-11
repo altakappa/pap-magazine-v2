@@ -7,6 +7,7 @@ const { requireAdmin } = require('../../_lib/auth');
 const { handleCors } = require('../../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../../_lib/rateLimit');
 const { sendEmail, templates } = require('../../_lib/email');
+const { resolveEmailLang } = require('../../_lib/emailLocale');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -55,12 +56,13 @@ module.exports = async function handler(req, res) {
     // Send notification email (non-blocking). 'issued' uses the accepted
     // template until a dedicated 'issued' template is added.
     const { data: profile } = await supabaseAdmin
-      .from('profiles').select('email, name').eq('id', pullLetter.user_id).single();
+      .from('profiles').select('email, name, email_language, language, country').eq('id', pullLetter.user_id).single();
     if (profile) {
+      const _lang = resolveEmailLang(profile);
       const isPositive = status === 'accepted' || status === 'approved' || status === 'issued';
       const tpl = isPositive
-        ? templates.pullletterAccepted({ name: profile.name }, reviewNote)
-        : templates.pullletterRejected({ name: profile.name }, reviewNote);
+        ? templates.pullletterAccepted({ name: profile.name }, reviewNote, _lang)
+        : templates.pullletterRejected({ name: profile.name }, reviewNote, _lang);
       sendEmail(profile.email, tpl).catch(() => {});
     }
 

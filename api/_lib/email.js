@@ -28,7 +28,9 @@ const FROM = process.env.EMAIL_FROM || 'PAP Magazine <contact@pap-magazine.com>'
 const FRONTEND_URL = process.env.NEXT_PUBLIC_URL || 'https://www.pap-magazine.com';
 
 // ── Shared HTML wrapper ──
-function wrapHtml(content) {
+function wrapHtml(content, lang) {
+  const _ui = emailUiStrings(lang || 'en');
+  const _igTag = _ui.igFollowTagline || "New editorials and fashion news, every day —<br>see them first on Instagram.";
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head>
@@ -48,7 +50,7 @@ function wrapHtml(content) {
        회원 메일은 열람률이 높은 접점이라 팔로워 전환 효율이 좋다. -->
   <tr><td align="center" style="padding:26px 40px;border-top:1px solid #222;">
     <div style="color:#888;font-size:10px;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;">PAP Magazine — Instagram</div>
-    <div style="color:#ccc;font-size:13px;line-height:1.7;margin-bottom:16px;">매일 업데이트되는 에디토리얼과 패션 뉴스,<br>인스타그램에서 가장 먼저 만나보세요.</div>
+    <div style="color:#ccc;font-size:13px;line-height:1.7;margin-bottom:16px;">${_igTag}</div>
     <a href="https://www.instagram.com/pap_magazine/" style="display:inline-block;background:#fff;color:#000;padding:11px 28px;font-size:11px;font-weight:700;letter-spacing:2px;text-decoration:none;">FOLLOW @PAP_MAGAZINE</a>
   </td></tr>
   <!-- Footer -->
@@ -164,6 +166,292 @@ const SUBMISSION_REVIEW_I18N = {
 
 // ── Email Templates ──
 
+// i18n for Pull-Letter + Subscription emails (2026-07-11) — 수신자 언어 통일
+const PULLLETTER_I18N = {
+  "ko": {
+    "received": {
+      "subject": "Pull-Letter 요청이 접수되었습니다",
+      "heading": "Pull-Letter 요청 접수",
+      "body1": "Pull-Letter 요청이 접수되었습니다. 담당 팀이 요청하신 제품의 대여 가능 여부를 확인하고 관련 쇼룸과 조율하겠습니다.",
+      "statusLabel": "상태",
+      "statusValue": "처리 중",
+      "body2": "Pull이 확정되면 다음 단계를 안내드리겠습니다."
+    },
+    "accepted": {
+      "subject": "Pull-Letter가 승인되었습니다",
+      "heading": "Pull-Letter 승인",
+      "body1": "Pull-Letter 요청이 승인되었습니다. 쇼룸과 의상 전달 일정을 조율하겠습니다.",
+      "detailsLabel": "상세",
+      "cta": "요청 보기"
+    },
+    "rejected": {
+      "subject": "Pull-Letter 요청 안내",
+      "heading": "Pull-Letter 안내",
+      "body1": "죄송합니다. 현재 Pull-Letter 요청을 진행하기 어렵습니다. 제품 대여 가능 여부 또는 일정 문제일 수 있습니다.",
+      "reasonLabel": "사유",
+      "body2": "준비가 되시면 언제든 새로운 요청을 제출해 주세요."
+    }
+  },
+  "en": {
+    "received": {
+      "subject": "Pull-Letter Request Received",
+      "heading": "Pull-Letter Request Received",
+      "body1": "Your pull-letter request has been received. Our team will review the availability of the requested pieces and coordinate with the relevant showrooms.",
+      "statusLabel": "Status",
+      "statusValue": "Processing",
+      "body2": "We'll reach out with next steps once the pull has been confirmed."
+    },
+    "accepted": {
+      "subject": "Pull-Letter Approved",
+      "heading": "Pull-Letter Approved",
+      "body1": "Your pull-letter request has been approved. We will coordinate the delivery of the garments with the showroom.",
+      "detailsLabel": "Details",
+      "cta": "VIEW REQUESTS"
+    },
+    "rejected": {
+      "subject": "Pull-Letter Request Update",
+      "heading": "Pull-Letter Update",
+      "body1": "Unfortunately, we're unable to fulfill your pull-letter request at this time. This could be due to piece availability or scheduling conflicts.",
+      "reasonLabel": "Reason",
+      "body2": "Please feel free to submit a new request when you're ready."
+    }
+  },
+  "it": {
+    "received": {
+      "subject": "Richiesta Pull-Letter ricevuta",
+      "heading": "Richiesta Pull-Letter ricevuta",
+      "body1": "La tua richiesta di pull-letter è stata ricevuta. Il nostro team verificherà la disponibilità dei capi richiesti e si coordinerà con gli showroom.",
+      "statusLabel": "Stato",
+      "statusValue": "In elaborazione",
+      "body2": "Ti contatteremo con i prossimi passi una volta confermato il pull."
+    },
+    "accepted": {
+      "subject": "Pull-Letter approvata",
+      "heading": "Pull-Letter approvata",
+      "body1": "La tua richiesta di pull-letter è stata approvata. Coordineremo la consegna dei capi con lo showroom.",
+      "detailsLabel": "Dettagli",
+      "cta": "VEDI RICHIESTE"
+    },
+    "rejected": {
+      "subject": "Aggiornamento richiesta Pull-Letter",
+      "heading": "Aggiornamento Pull-Letter",
+      "body1": "Purtroppo non possiamo soddisfare la tua richiesta di pull-letter in questo momento, per disponibilità dei capi o conflitti di programmazione.",
+      "reasonLabel": "Motivo",
+      "body2": "Sentiti libero di inviare una nuova richiesta quando vuoi."
+    }
+  },
+  "fr": {
+    "received": {
+      "subject": "Demande Pull-Letter reçue",
+      "heading": "Demande Pull-Letter reçue",
+      "body1": "Votre demande de pull-letter a bien été reçue. Notre équipe vérifiera la disponibilité des pièces demandées et se coordonnera avec les showrooms concernés.",
+      "statusLabel": "Statut",
+      "statusValue": "En cours",
+      "body2": "Nous vous recontacterons avec les prochaines étapes une fois le pull confirmé."
+    },
+    "accepted": {
+      "subject": "Pull-Letter approuvée",
+      "heading": "Pull-Letter approuvée",
+      "body1": "Votre demande de pull-letter a été approuvée. Nous coordonnerons la livraison des pièces avec le showroom.",
+      "detailsLabel": "Détails",
+      "cta": "VOIR LES DEMANDES"
+    },
+    "rejected": {
+      "subject": "Mise à jour de la demande Pull-Letter",
+      "heading": "Mise à jour Pull-Letter",
+      "body1": "Malheureusement, nous ne pouvons pas répondre à votre demande de pull-letter pour le moment, en raison de la disponibilité des pièces ou de contraintes de planning.",
+      "reasonLabel": "Motif",
+      "body2": "N'hésitez pas à soumettre une nouvelle demande quand vous le souhaitez."
+    }
+  },
+  "es": {
+    "received": {
+      "subject": "Solicitud de Pull-Letter recibida",
+      "heading": "Solicitud de Pull-Letter recibida",
+      "body1": "Hemos recibido tu solicitud de pull-letter. Nuestro equipo verificará la disponibilidad de las piezas solicitadas y coordinará con los showrooms correspondientes.",
+      "statusLabel": "Estado",
+      "statusValue": "En proceso",
+      "body2": "Nos pondremos en contacto con los próximos pasos una vez confirmado el pull."
+    },
+    "accepted": {
+      "subject": "Pull-Letter aprobada",
+      "heading": "Pull-Letter aprobada",
+      "body1": "Tu solicitud de pull-letter ha sido aprobada. Coordinaremos la entrega de las prendas con el showroom.",
+      "detailsLabel": "Detalles",
+      "cta": "VER SOLICITUDES"
+    },
+    "rejected": {
+      "subject": "Actualización de la solicitud de Pull-Letter",
+      "heading": "Actualización de Pull-Letter",
+      "body1": "Lamentablemente, no podemos atender tu solicitud de pull-letter en este momento, por disponibilidad de las piezas o conflictos de agenda.",
+      "reasonLabel": "Motivo",
+      "body2": "No dudes en enviar una nueva solicitud cuando quieras."
+    }
+  },
+  "ja": {
+    "received": {
+      "subject": "Pull-Letterのリクエストを受け付けました",
+      "heading": "Pull-Letter リクエスト受付",
+      "body1": "Pull-Letterのリクエストを受け付けました。担当チームがリクエストされたアイテムの貸出可否を確認し、関連ショールームと調整いたします。",
+      "statusLabel": "ステータス",
+      "statusValue": "処理中",
+      "body2": "Pullが確定次第、次のステップをご案内いたします。"
+    },
+    "accepted": {
+      "subject": "Pull-Letterが承認されました",
+      "heading": "Pull-Letter 承認",
+      "body1": "Pull-Letterのリクエストが承認されました。ショールームと衣装のお届けを調整いたします。",
+      "detailsLabel": "詳細",
+      "cta": "リクエストを見る"
+    },
+    "rejected": {
+      "subject": "Pull-Letterリクエストのお知らせ",
+      "heading": "Pull-Letter のお知らせ",
+      "body1": "申し訳ございませんが、現在Pull-Letterのリクエストにお応えできません。アイテムの貸出状況またはスケジュールの都合による場合があります。",
+      "reasonLabel": "理由",
+      "body2": "ご準備が整いましたら、いつでも新しいリクエストをお送りください。"
+    }
+  },
+  "zh": {
+    "received": {
+      "subject": "已收到 Pull-Letter 申请",
+      "heading": "已收到 Pull-Letter 申请",
+      "body1": "我们已收到您的 pull-letter 申请。团队将确认所申请单品的可借用情况，并与相关 showroom 进行协调。",
+      "statusLabel": "状态",
+      "statusValue": "处理中",
+      "body2": "确认借调后，我们将与您沟通后续步骤。"
+    },
+    "accepted": {
+      "subject": "Pull-Letter 已批准",
+      "heading": "Pull-Letter 已批准",
+      "body1": "您的 pull-letter 申请已获批准。我们将与 showroom 协调服装的交付。",
+      "detailsLabel": "详情",
+      "cta": "查看申请"
+    },
+    "rejected": {
+      "subject": "Pull-Letter 申请更新",
+      "heading": "Pull-Letter 更新",
+      "body1": "很抱歉，我们目前无法满足您的 pull-letter 申请，可能是由于单品可借用情况或档期冲突。",
+      "reasonLabel": "原因",
+      "body2": "准备就绪后，欢迎随时提交新的申请。"
+    }
+  },
+  "ru": {
+    "received": {
+      "subject": "Запрос Pull-Letter получен",
+      "heading": "Запрос Pull-Letter получен",
+      "body1": "Ваш запрос pull-letter получен. Наша команда проверит доступность запрошенных вещей и согласует детали с соответствующими шоурумами.",
+      "statusLabel": "Статус",
+      "statusValue": "В обработке",
+      "body2": "Мы свяжемся с вами и сообщим о следующих шагах после подтверждения."
+    },
+    "accepted": {
+      "subject": "Pull-Letter одобрен",
+      "heading": "Pull-Letter одобрен",
+      "body1": "Ваш запрос pull-letter одобрен. Мы согласуем доставку вещей с шоурумом.",
+      "detailsLabel": "Детали",
+      "cta": "СМОТРЕТЬ ЗАПРОСЫ"
+    },
+    "rejected": {
+      "subject": "Обновление запроса Pull-Letter",
+      "heading": "Обновление Pull-Letter",
+      "body1": "К сожалению, сейчас мы не можем выполнить ваш запрос pull-letter — из-за доступности вещей или несовпадения сроков.",
+      "reasonLabel": "Причина",
+      "body2": "Вы можете отправить новый запрос в любое удобное время."
+    }
+  },
+  "de": {
+    "received": {
+      "subject": "Pull-Letter-Anfrage erhalten",
+      "heading": "Pull-Letter-Anfrage erhalten",
+      "body1": "Deine Pull-Letter-Anfrage ist eingegangen. Unser Team prüft die Verfügbarkeit der angefragten Teile und stimmt sich mit den entsprechenden Showrooms ab.",
+      "statusLabel": "Status",
+      "statusValue": "In Bearbeitung",
+      "body2": "Sobald der Pull bestätigt ist, melden wir uns mit den nächsten Schritten."
+    },
+    "accepted": {
+      "subject": "Pull-Letter genehmigt",
+      "heading": "Pull-Letter genehmigt",
+      "body1": "Deine Pull-Letter-Anfrage wurde genehmigt. Wir koordinieren die Lieferung der Teile mit dem Showroom.",
+      "detailsLabel": "Details",
+      "cta": "ANFRAGEN ANSEHEN"
+    },
+    "rejected": {
+      "subject": "Update zu deiner Pull-Letter-Anfrage",
+      "heading": "Pull-Letter-Update",
+      "body1": "Leider können wir deine Pull-Letter-Anfrage derzeit nicht erfüllen – aufgrund der Verfügbarkeit der Teile oder terminlicher Überschneidungen.",
+      "reasonLabel": "Grund",
+      "body2": "Du kannst jederzeit gerne eine neue Anfrage stellen."
+    }
+  }
+};
+
+const SUBSCRIPTION_I18N = {
+  "ko": {
+    "subject": "구독이 확정되었습니다",
+    "heading": "구독이 활성화되었습니다",
+    "body1": "{plan} 구독이 지금 활성화되었습니다.",
+    "body2": "이제 구독자 전용 콘텐츠와 기능을 모두 이용하실 수 있습니다.",
+    "cta": "구독 관리"
+  },
+  "en": {
+    "subject": "Subscription Confirmed",
+    "heading": "Subscription Active",
+    "body1": "Your {plan} subscription is now active.",
+    "body2": "You now have access to all subscriber-exclusive content and features.",
+    "cta": "MANAGE SUBSCRIPTION"
+  },
+  "it": {
+    "subject": "Abbonamento confermato",
+    "heading": "Abbonamento attivo",
+    "body1": "Il tuo abbonamento {plan} è ora attivo.",
+    "body2": "Ora hai accesso a tutti i contenuti e le funzionalità riservati agli abbonati.",
+    "cta": "GESTISCI ABBONAMENTO"
+  },
+  "fr": {
+    "subject": "Abonnement confirmé",
+    "heading": "Abonnement actif",
+    "body1": "Votre abonnement {plan} est désormais actif.",
+    "body2": "Vous avez maintenant accès à tous les contenus et fonctionnalités réservés aux abonnés.",
+    "cta": "GÉRER L'ABONNEMENT"
+  },
+  "es": {
+    "subject": "Suscripción confirmada",
+    "heading": "Suscripción activa",
+    "body1": "Tu suscripción {plan} ya está activa.",
+    "body2": "Ahora tienes acceso a todo el contenido y las funciones exclusivas para suscriptores.",
+    "cta": "GESTIONAR SUSCRIPCIÓN"
+  },
+  "ja": {
+    "subject": "サブスクリプションが確定しました",
+    "heading": "サブスクリプション有効",
+    "body1": "{plan} サブスクリプションが有効になりました。",
+    "body2": "これで購読者限定のコンテンツと機能をすべてご利用いただけます。",
+    "cta": "サブスクリプション管理"
+  },
+  "zh": {
+    "subject": "订阅已确认",
+    "heading": "订阅已生效",
+    "body1": "您的 {plan} 订阅现已生效。",
+    "body2": "您现在可以访问所有订阅者专享内容与功能。",
+    "cta": "管理订阅"
+  },
+  "ru": {
+    "subject": "Подписка подтверждена",
+    "heading": "Подписка активна",
+    "body1": "Ваша подписка {plan} теперь активна.",
+    "body2": "Теперь вам доступны все материалы и функции для подписчиков.",
+    "cta": "УПРАВЛЕНИЕ ПОДПИСКОЙ"
+  },
+  "de": {
+    "subject": "Abonnement bestätigt",
+    "heading": "Abonnement aktiv",
+    "body1": "Dein {plan}-Abonnement ist jetzt aktiv.",
+    "body2": "Du hast jetzt Zugriff auf alle exklusiven Inhalte und Funktionen für Abonnenten.",
+    "cta": "ABONNEMENT VERWALTEN"
+  }
+};
+
 const templates = {
   // 1. Welcome email after signup
   welcome(user) {
@@ -261,7 +549,7 @@ const templates = {
         <p>${L.body2}</p>
         <a href="${ctaUrl}" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">${L.cta}</a>
         <p style="font-size:12px;color:#888;margin-top:24px;">${L.footer}</p>
-      `),
+      `, lang),
     };
   },
 
@@ -281,69 +569,78 @@ const templates = {
 
 
   // 5. Pull-letter request received
-  pullletterReceived(user) {
+  pullletterReceived(user, lang) {
+    const L = (PULLLETTER_I18N[lang] || PULLLETTER_I18N.en).received;
+    const greet = emailUiStrings(lang).greeting.replace('{name}', (user && user.name) || 'there');
     return {
-      subject: 'Pull-Letter Request Received',
+      subject: L.subject,
       html: wrapHtml(`
-        <h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">Pull-Letter Request Received</h2>
-        <p>Hi ${user.name || 'there'},</p>
-        <p>Your pull-letter request has been received. Our team will review the availability of the requested pieces and coordinate with the relevant showrooms.</p>
+        <h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">${L.heading}</h2>
+        <p>${greet}</p>
+        <p>${L.body1}</p>
         <table style="margin:20px 0;width:100%;">
           <tr><td style="padding:12px 16px;background:#1a1a1a;border-left:3px solid #fff;">
-            <span style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:1px;">Status</span><br>
-            <span style="color:#fff;font-size:14px;font-weight:600;">Processing</span>
+            <span style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:1px;">${L.statusLabel}</span><br>
+            <span style="color:#fff;font-size:14px;font-weight:600;">${L.statusValue}</span>
           </td></tr>
         </table>
-        <p>We'll reach out with next steps once the pull has been confirmed.</p>
-      `),
+        <p>${L.body2}</p>
+      `, lang),
     };
   },
 
   // 6. Pull-letter accepted
-  pullletterAccepted(user, note) {
+  pullletterAccepted(user, note, lang) {
+    const L = (PULLLETTER_I18N[lang] || PULLLETTER_I18N.en).accepted;
+    const greet = emailUiStrings(lang).greeting.replace('{name}', (user && user.name) || 'there');
     return {
-      subject: 'Pull-Letter Approved',
+      subject: L.subject,
       html: wrapHtml(`
-        <h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">Pull-Letter Approved</h2>
-        <p>Hi ${user.name || 'there'},</p>
-        <p>Your pull-letter request has been approved. We will coordinate the delivery of the garments with the showroom.</p>
-        ${note ? `<div style="margin:20px 0;padding:16px;background:#1a1a1a;border-left:3px solid #4CAF50;"><span style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:1px;">Details</span><br><span style="color:#ccc;font-size:14px;">${note}</span></div>` : ''}
-        <a href="${FRONTEND_URL}/pullletter.html" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">VIEW REQUESTS</a>
-      `),
+        <h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">${L.heading}</h2>
+        <p>${greet}</p>
+        <p>${L.body1}</p>
+        ${note ? `<div style="margin:20px 0;padding:16px;background:#1a1a1a;border-left:3px solid #4CAF50;"><span style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:1px;">${L.detailsLabel}</span><br><span style="color:#ccc;font-size:14px;">${note}</span></div>` : ''}
+        <a href="${FRONTEND_URL}/pullletter.html" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">${L.cta}</a>
+      `, lang),
     };
   },
 
   // 7. Pull-letter rejected
-  pullletterRejected(user, note) {
+  pullletterRejected(user, note, lang) {
+    const L = (PULLLETTER_I18N[lang] || PULLLETTER_I18N.en).rejected;
+    const greet = emailUiStrings(lang).greeting.replace('{name}', (user && user.name) || 'there');
     return {
-      subject: 'Pull-Letter Request Update',
+      subject: L.subject,
       html: wrapHtml(`
-        <h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">Pull-Letter Update</h2>
-        <p>Hi ${user.name || 'there'},</p>
-        <p>Unfortunately, we're unable to fulfill your pull-letter request at this time. This could be due to piece availability or scheduling conflicts.</p>
-        ${note ? `<div style="margin:20px 0;padding:16px;background:#1a1a1a;border-left:3px solid #888;"><span style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:1px;">Reason</span><br><span style="color:#ccc;font-size:14px;">${note}</span></div>` : ''}
-        <p>Please feel free to submit a new request when you're ready.</p>
-      `),
+        <h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">${L.heading}</h2>
+        <p>${greet}</p>
+        <p>${L.body1}</p>
+        ${note ? `<div style="margin:20px 0;padding:16px;background:#1a1a1a;border-left:3px solid #888;"><span style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:1px;">${L.reasonLabel}</span><br><span style="color:#ccc;font-size:14px;">${note}</span></div>` : ''}
+        <p>${L.body2}</p>
+      `, lang),
     };
   },
 
   // 8. Subscription confirmation
-  subscriptionConfirmed(user, plan) {
+  subscriptionConfirmed(user, plan, lang) {
     const planLabels = {
       standard_monthly: 'Standard (Monthly)',
       standard_yearly: 'Standard (Yearly)',
       premium_monthly: 'Premium (Monthly)',
       premium_yearly: 'Premium (Yearly)',
     };
+    const L = SUBSCRIPTION_I18N[lang] || SUBSCRIPTION_I18N.en;
+    const greet = emailUiStrings(lang).greeting.replace('{name}', (user && user.name) || 'there');
+    const planHtml = `<strong style="color:#fff;">${planLabels[plan] || plan}</strong>`;
     return {
-      subject: 'Subscription Confirmed',
+      subject: L.subject,
       html: wrapHtml(`
-        <h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">Subscription Active</h2>
-        <p>Hi ${user.name || 'there'},</p>
-        <p>Your <strong style="color:#fff;">${planLabels[plan] || plan}</strong> subscription is now active.</p>
-        <p>You now have access to all subscriber-exclusive content and features.</p>
-        <a href="${FRONTEND_URL}/subscribe" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">MANAGE SUBSCRIPTION</a>
-      `),
+        <h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">${L.heading}</h2>
+        <p>${greet}</p>
+        <p>${L.body1.replace('{plan}', planHtml)}</p>
+        <p>${L.body2}</p>
+        <a href="${FRONTEND_URL}/subscribe" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">${L.cta}</a>
+      `, lang),
     };
   },
 

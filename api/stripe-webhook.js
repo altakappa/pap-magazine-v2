@@ -6,6 +6,7 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { supabaseAdmin } = require('./_lib/supabase');
 const { sendEmail, templates } = require('./_lib/email');
+const { resolveEmailLang } = require('./_lib/emailLocale');
 
 // Disable body parsing — Stripe needs raw body for signature verification
 module.exports.config = {
@@ -79,9 +80,9 @@ module.exports = async function handler(req, res) {
 
         // Send confirmation email
         const { data: subProfile } = await supabaseAdmin
-          .from('profiles').select('email, name').eq('id', userId).single();
+          .from('profiles').select('email, name, email_language, language, country').eq('id', userId).single();
         if (subProfile) {
-          sendEmail(subProfile.email, templates.subscriptionConfirmed({ name: subProfile.name }, plan)).catch(() => {});
+          sendEmail(subProfile.email, templates.subscriptionConfirmed({ name: subProfile.name }, plan, resolveEmailLang(subProfile))).catch(() => {});
         }
 
         console.log('Subscription created for:', userId);
