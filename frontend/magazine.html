@@ -1257,9 +1257,38 @@ function openPreview(issueTitle,opts){
   if(_magEdCache){
     renderPreviewCards(_magEdCache);
   } else {
-    fetch('data/editorials.json').then(function(r){return r.json()}).then(function(data){
-      _magEdCache=data;
-      renderPreviewCards(data);
+    // 2026-07-12 버그픽스 — 정적 스냅샷(data/editorials.json, ~2026-04-05까지만
+    // 수록)만 읽어 그 이후 발행호(May~July)가 '0 에디토리얼'로 비어 보이던 문제.
+    // 최신 200편(≈8개월)을 API에서 받아 스냅샷과 병합한다. API 실패 시엔
+    // 스냅샷만으로 동작(구 아카이브는 그대로 열람 가능).
+    var _staticP = fetch('data/editorials.json').then(function(r){return r.json()}).catch(function(){return []});
+    var _apiP = (function(){
+      var base=(window.PAP_API_BASE||'/api').replace(/\/$/,'');
+      function pg(n){
+        return fetch(base+'/editorials?status=published&limit=100&page='+n)
+          .then(function(r){return r.ok?r.json():null})
+          .then(function(res){return (res&&Array.isArray(res.data))?res.data:[];})
+          .catch(function(){return [];});
+      }
+      return Promise.all([pg(1),pg(2)]).then(function(ps){
+        return ps[0].concat(ps[1]).map(function(e){
+          return {
+            title: e.title||'',
+            img: e.thumbnail||e.cover_image||e.thumbnail_url||'',
+            date: String(e.published_date||e.created_at||'').slice(0,10),
+            url: e.slug?('/'+e.slug+'/'):'',
+            tags: e.tags||[]
+          };
+        });
+      });
+    })();
+    Promise.all([_staticP,_apiP]).then(function(rs){
+      var stat=Array.isArray(rs[0])?rs[0]:[], api=rs[1]||[];
+      var seen={};
+      api.forEach(function(e){ var k=e.url||e.title; if(k) seen[k]=1; });
+      var merged=api.concat(stat.filter(function(e){ var k=e.url||e.title; return !seen[k]; }));
+      _magEdCache=merged;
+      renderPreviewCards(merged);
     }).catch(function(){
       grid.innerHTML='<div style="color:#999;padding:40px;grid-column:1/-1">Failed to load editorials</div>';
     });
