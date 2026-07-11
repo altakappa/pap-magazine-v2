@@ -181,15 +181,18 @@ module.exports = async function handler(req, res) {
     };
 
     const token = generateToken(user);
-    const userJson = encodeURIComponent(JSON.stringify(user));
-
-    // Pass token via httpOnly cookie instead of URL parameter (prevents leakage via referrer/logs)
+    // 2026-07-12 — ?oauth=success 쿼리는 프론트 초기 IIFE가 지워버려 신규
+    // 로그인이 완료되지 않던 잠복 버그. 해시는 보존되므로 프론트가 정식
+    // 지원하는 해시-토큰(#token=...&user=...)으로 넘긴다. (프래그먼트는 서버
+    // 로그/리퍼러에 남지 않음 — 기존 설계 주석과 동일 취지)
+    const userJson = encodeURIComponent(JSON.stringify({
+      id: user.id, email: user.email, name: user.name,
+      role: user.role, subscription: user.subscription,
+    }));
     res.setHeader('Set-Cookie', [
       'oauth_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
-      `pap_oauth_token=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=120`,
-      `pap_oauth_user=${userJson}; Path=/; SameSite=Lax; Max-Age=120`,
     ]);
-    return res.redirect(302, `${frontendUrl}/auth.html?oauth=success`);
+    return res.redirect(302, `${frontendUrl}/auth.html#token=${encodeURIComponent(token)}&user=${userJson}`);
   } catch (error) {
     console.error('Kakao callback error:', error.code || 'UNKNOWN');
     return res.redirect(302, `${frontendUrl}/auth.html?error=auth_failed&mode=login`);

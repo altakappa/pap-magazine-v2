@@ -170,18 +170,19 @@ module.exports = async function handler(req, res) {
     };
 
     const token = generateToken(user);
+    // 2026-07-12 — 프론트 auth.html의 초기 IIFE(_authStateUrl)가 쿼리스트링은
+    // 버리고 해시는 보존하므로, ?oauth=success 방식은 신호가 사라져 로그인이
+    // 완료되지 않는다. 프론트가 정식 지원하는 해시-토큰(#token=...&user=...)
+    // 방식으로 넘긴다(설계 주석: "OAuth 콜백은 프래그먼트를 쓴다").
     const userJson = encodeURIComponent(JSON.stringify({
       id: user.id, email: user.email, name: user.name,
       role: user.role, subscription: user.subscription,
     }));
-
     console.log('[google-cb] success:', email, '→', frontendUrl);
     res.setHeader('Set-Cookie', [
       'oauth_state=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
-      `pap_oauth_token=${token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=120`,
-      `pap_oauth_user=${userJson}; Path=/; SameSite=Lax; Max-Age=120`,
     ]);
-    return res.redirect(302, `${frontendUrl}/auth.html?oauth=success`);
+    return res.redirect(302, `${frontendUrl}/auth.html#token=${encodeURIComponent(token)}&user=${userJson}`);
   } catch (error) {
     console.error('Google callback error:', (error && error.code) || 'UNKNOWN');
     return res.redirect(302, `${frontendUrl}/auth.html?error=auth_failed&mode=login`);
