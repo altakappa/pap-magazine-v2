@@ -145,10 +145,17 @@ async function upsertSubscription(sub, userId) {
   }, { onConflict: 'user_id' });
   if (error) console.error('[paddle-webhook] subscription upsert failed:', error.message);
 
-  await supabaseAdmin.from('profiles').update({
-    subscription_plan: plan,
+  // 2026-07-11 — plan_key('premium_monthly' 등)를 그대로 profiles에 쓰면
+  // 모든 등급 게이트(subscription_plan==='premium' 등가 비교: 풀레터 403,
+  // 매거진/에디토리얼 열람, 프론트 checkAccess)가 실결제 회원을 막아버린다.
+  // profiles에는 기본 등급만 저장하고 원본 키는 subscriptions.plan에 보존한다.
+  const basePlan = /^premium/i.test(plan) ? 'premium'
+    : /^standard/i.test(plan) ? 'standard' : null;
+  const profileUpdate = {
     subscription_status: status === 'active' ? 'active' : 'inactive',
-  }).eq('id', userId);
+  };
+  if (basePlan) profileUpdate.subscription_plan = basePlan;
+  await supabaseAdmin.from('profiles').update(profileUpdate).eq('id', userId);
 
   return { plan, status };
 }
@@ -236,8 +243,12 @@ module.exports = async function handler(req, res) {
           status: type === 'subscription.canceled' ? 'canceled' : 'paused',
           updated_at: new Date().toISOString(),
         }).eq('paddle_subscription_id', data.id);
+        // 해지/일시정지 확정 시 등급도 free로 하향 — 게이트는 subscription_plan만
+        // 보므로 status만 바꾸면 해지 회원이 영구히 premium 접근을 유지하게 된다.
+        // (resumed/updated 재활성 시 upsertSubscription이 등급을 복원한다)
         await supabaseAdmin.from('profiles').update({
           subscription_status: 'inactive',
+          subscription_plan: 'free',
         }).eq('id', row.user_id);
         console.log('[paddle-webhook]', type, data.id, '→ user', row.user_id);
         break;

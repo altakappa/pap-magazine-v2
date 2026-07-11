@@ -600,7 +600,7 @@ const templates = {
         <p>${greet}</p>
         <p>${L.body1}</p>
         ${note ? `<div style="margin:20px 0;padding:16px;background:#1a1a1a;border-left:3px solid #4CAF50;"><span style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:1px;">${L.detailsLabel}</span><br><span style="color:#ccc;font-size:14px;">${note}</span></div>` : ''}
-        <a href="${FRONTEND_URL}/pullletter.html" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">${L.cta}</a>
+        <a href="${FRONTEND_URL}/mypage#mp-pullletters" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">${L.cta}</a>
       `, lang),
     };
   },

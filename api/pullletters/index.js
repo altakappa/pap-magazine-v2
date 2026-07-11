@@ -28,6 +28,7 @@ const { parseForm, uploadFiles } = require('../_lib/upload');
 const { sendEmail, templates } = require('../_lib/email');
 const { resolveEmailLang } = require('../_lib/emailLocale');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
+const { sendTextToTelegramSafe } = require('../_lib/telegram');
 
 module.exports.config = { api: { bodyParser: false } };
 
@@ -130,10 +131,16 @@ module.exports = async function handler(req, res) {
       }
 
       // ── Insert row ──
+      // 프로필을 먼저 조회해 요청 행에 email을 함께 저장 (RLS의 email 매칭
+      // 조건·관리자 목록 표시용) — 확인 메일에도 재사용.
+      const { data: profile } = await supabaseAdmin
+        .from('profiles').select('email, name, email_language, language, country').eq('id', user.id).single();
+
       const { data: pullLetter, error } = await supabaseAdmin
         .from('pullletters')
         .insert({
           user_id: user.id,
+          email: (profile && profile.email) || '',
           request_text: data.requestText || data.description || '',
           file_urls: moodboardUrls,
           team_info: team,
@@ -145,12 +152,21 @@ module.exports = async function handler(req, res) {
       if (error) throw error;
 
       // Confirmation email (non-blocking)
-      const { data: profile } = await supabaseAdmin
-        .from('profiles').select('email, name, email_language, language, country').eq('id', user.id).single();
       if (profile) {
         const _lang = resolveEmailLang(profile);
         sendEmail(profile.email, templates.pullletterReceived({ name: profile.name }, _lang)).catch(() => {});
       }
+
+      // Premium 전용 서비스 — 운영자가 바로 검토할 수 있도록 텔레그램 즉시 알림.
+      // (전송 실패해도 접수에는 영향 없음 — sendTextToTelegramSafe는 throw하지 않는다)
+      sendTextToTelegramSafe(
+        '📮 새 풀레터 요청 (PREMIUM)\n'
+        + '회원: ' + ((profile && profile.name) || '이름 없음') + ' (' + ((profile && profile.email) || '') + ')\n'
+        + '포토그래퍼: ' + team.photographer.name + ' (' + team.photographer.instagram + ')\n'
+        + '스타일리스트: ' + team.stylist.name + ' (' + team.stylist.instagram + ')\n'
+        + (pullLetter && pullLetter.id ? ('요청 ID: ' + pullLetter.id + '\n') : '')
+        + '검토·발급: https://www.pap-magazine.com/admin'
+      );
 
       return res.status(201).json({ pullLetter });
     } catch (error) {
