@@ -1751,8 +1751,18 @@ function _renderEdAllPage(){
   var filtered = edData.filter(function(e){
     return _edEditorialMatchesCategory(e, edAllCurrentCategory);
   });
-  var limit=premium?filtered.length:100;
-  var availableData=filtered.slice(0,limit);
+  // 2026-07 정책 변경: Standard 열람을 '최신 100개'에서 '최신 6개월(발행일 롤링)'로.
+  // Premium은 전체. 발행 속도(월 20~27편)상 6개월 ≈ 130~150편으로 기존보다 후하다.
+  var availableData;
+  if(premium){
+    availableData=filtered;
+  }else{
+    var _cut6=new Date(); _cut6.setMonth(_cut6.getMonth()-6); _cut6.setHours(0,0,0,0);
+    availableData=filtered.filter(function(e){
+      var d=(e&&e.date)?new Date(e.date):null;
+      return (d&&!isNaN(d.getTime()))?(d>=_cut6):false;
+    });
+  }
   var totalPages=Math.ceil(availableData.length/PAP_PER_PAGE);
   if(edAllCurrentPage>totalPages) edAllCurrentPage=totalPages||1;
   var startIdx=(edAllCurrentPage-1)*PAP_PER_PAGE;
@@ -1780,7 +1790,7 @@ function _renderEdAllPage(){
     empty.textContent = 'NO EDITORIALS IN THIS CATEGORY';
     grid.appendChild(empty);
   }
-  if(standard&&edAllCurrentPage===totalPages&&filtered.length>100){
+  if(standard&&edAllCurrentPage===totalPages&&filtered.length>availableData.length){
     var upsell=document.createElement('div');
     upsell.style.cssText='grid-column:1/-1;text-align:center;padding:40px 20px;';
     upsell.innerHTML='<p style="color:#999;font-size:12px;letter-spacing:.1em;margin-bottom:12px;">PREMIUM MEMBERS CAN ACCESS ALL '+filtered.length+' EDITORIALS</p><a href="/subscribe" style="display:inline-block;padding:10px 28px;background:#fff;color:#000;font-size:11px;font-weight:700;letter-spacing:.1em;text-decoration:none;">UPGRADE TO PREMIUM</a>';
