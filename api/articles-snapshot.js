@@ -12,7 +12,7 @@
  * (loadJSON 이 그대로 소비. 상세용 blocks/videos 는 전체 syncArticles 가 채움)
  */
 
-const { supabaseAdmin } = require('../_lib/supabase');
+const { supabaseAdmin } = require('./_lib/supabase');
 const { handleCors } = require('./_lib/cors');
 
 module.exports = async function handler(req, res) {
