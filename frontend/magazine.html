@@ -634,12 +634,23 @@ footer a:hover{color:#fff}
     var edCount = (iss.editorial_count != null) ? iss.editorial_count : 0;
     var issueNum = iss.issue_number ? String(iss.issue_number).padStart(2,'0') : '--';
     var linkAttr = iss.link_url ? ('data-href="' + escAttr(iss.link_url) + '"') : '';
-    var clickAttr = iss.link_url ? 'onclick="openModal(this)"' : '';
+    // 2026-07-11 — 월별 발행호(link_url 없음)도 in-page 뷰어(openModal→openPreview)로
+    // 열리도록 클릭을 상시 활성화. 게이트 판별용 연/월 data 속성을 카드에 노출한다.
+    // 레거시 "VOL. N" 볼륨은 분기(data-quarter), 월별 호는 data-month.
+    var clickAttr = 'onclick="openModal(this)"';
+    var gateAttr = '';
+    if (iss.issue_year && iss.issue_month) {
+      var isVol = /^\s*VOL\.?\s*\d+/i.test(title);
+      gateAttr = ' data-year="' + escAttr(iss.issue_year) + '"'
+        + (isVol
+            ? ' data-quarter="' + escAttr(Math.ceil(Number(iss.issue_month) / 3)) + '"'
+            : ' data-month="' + escAttr(iss.issue_month) + '"');
+    }
     var latestBadge = iss.is_latest
       ? '<span class="latest-badge">LATEST</span>'
       : (monthLabel ? '<span class="mo-badge">' + esc(monthLabel) + '</span>' : '');
     return ''
-      + '<div ' + linkAttr + ' class="card" ' + clickAttr + '>'
+      + '<div ' + linkAttr + gateAttr + ' class="card" ' + clickAttr + '>'
       +   '<div class="cover">'
       +     '<img loading="lazy" src="' + escAttr(cover) + '" alt="' + escAttr(alt) + '">'
       +     '<div class="covlay">' + latestBadge
@@ -983,7 +994,7 @@ function _magHasLoginSession(){
 }
 // ── 정식 서비스 열람 정책 (2026-07-10 베타 종료) ──
 //   premium  → 전체 발행호 열람
-//   standard → 최신 볼륨 2개만 열람 (에디토리얼 "최신 100개" 정책과 정합)
+//   standard → 최신 6개월 발행호 열람 (에디토리얼 '최신 6개월' 정책과 정합, 2026-07-11)
 //   free/비로그인 → 호당 미리보기 3편 + 구독 모달
 // 최신 볼륨 N개의 키('year-quarter')를 발행호 카드 DOM에서 계산 (렌더 후 호출)
 function _magLatestVolKeys(n){
@@ -1006,9 +1017,17 @@ function _magHasFullAccess(qOpts){
     var sub=user&&user.subscription;
     if(sub==='premium') return true;
     if(sub!=='standard') return false;
-    var k=(qOpts&&qOpts.year&&qOpts.quarter)?(qOpts.year+'-'+qOpts.quarter):null;
-    if(!k) return false; // 레거시(월간) 호는 구볼륨 → Standard 미리보기만
-    return _magLatestVolKeys(2).indexOf(k)>-1;
+    // 2026-07-11 정책 — Standard: 최신 6개월(발행월 롤링) 발행호 열람.
+    // 월별 호는 {year, month}, 레거시 분기 볼륨은 {year, quarter}→분기 마지막 달로 환산.
+    var y=qOpts?parseInt(qOpts.year,10):0;
+    if(!y) return false;
+    var m=0;
+    if(qOpts.month) m=parseInt(qOpts.month,10);
+    else if(qOpts.quarter) m=parseInt(qOpts.quarter,10)*3;
+    if(!m) return false;
+    var now=new Date();
+    var diff=(now.getFullYear()*12+now.getMonth()+1)-(y*12+m);
+    return diff>=0 && diff<6;
   }catch(e){return false;}
 }
 function _magIsOpenAccess(){
@@ -1039,11 +1058,23 @@ function openModal(el){
   // back to a month/year — we read the data attrs instead).
   var dQ = el.getAttribute('data-quarter');
   var dY = el.getAttribute('data-year');
-  var quarterOpts = (dQ && dY) ? {year: parseInt(dY,10), quarter: parseInt(dQ,10)} : null;
+  var dM = el.getAttribute('data-month');
+  var quarterOpts = null;
+  if (dY && dM) quarterOpts = {year: parseInt(dY,10), month: parseInt(dM,10)};
+  else if (dY && dQ) quarterOpts = {year: parseInt(dY,10), quarter: parseInt(dQ,10)};
+  // 폴백(하드코딩) 카드에는 data 속성이 없다 — 제목("March 2026")에서 월/연 파싱.
+  if (!quarterOpts) {
+    var _pm = parseIssueMonthYear(title);
+    if (_pm && _pm.month) quarterOpts = {year: _pm.year, month: _pm.month};
+  }
   // 베타 기간 중(또는 구독자)에는 구독 팝업을 건너뛰고 바로 전체 이슈 프리뷰 오픈
   if(_magHasFullAccess(quarterOpts)){
     var opts = {unlimited:true};
-    if(quarterOpts){ opts.year = quarterOpts.year; opts.quarter = quarterOpts.quarter; }
+    if(quarterOpts){
+      opts.year = quarterOpts.year;
+      if(quarterOpts.quarter) opts.quarter = quarterOpts.quarter;
+      if(quarterOpts.month) opts.month = quarterOpts.month;
+    }
     openPreview(title,opts);
     return;
   }
@@ -1053,7 +1084,7 @@ function openModal(el){
   document.getElementById('modalTitle').textContent=title;
   document.getElementById('modalCount').textContent=count.toLowerCase();
   document.getElementById('modalPreview').onclick=function(){
-    var pOpts = _currentQuarterOpts ? {year: _currentQuarterOpts.year, quarter: _currentQuarterOpts.quarter} : undefined;
+    var pOpts = _currentQuarterOpts ? {year: _currentQuarterOpts.year, quarter: _currentQuarterOpts.quarter, month: _currentQuarterOpts.month} : undefined;
     openPreview(title, pOpts);
   };
   var m=document.getElementById('subModal');
@@ -1100,7 +1131,7 @@ function parseIssueMonthYear(title){
 
 function openPreview(issueTitle,opts){
   opts=opts||{};
-  var unlimited=!!opts.unlimited || _magHasFullAccess((opts&&opts.year&&opts.quarter)?{year:opts.year,quarter:opts.quarter}:null);
+  var unlimited=!!opts.unlimited || _magHasFullAccess((opts&&opts.year&&(opts.quarter||opts.month))?{year:opts.year,quarter:opts.quarter,month:opts.month}:null);
   closeModal();
   var overlay=document.getElementById('previewOverlay');
   var grid=document.getElementById('previewGrid');
@@ -1156,6 +1187,8 @@ function openPreview(issueTitle,opts){
   if(opts.year && opts.quarter){
     var startM = (opts.quarter - 1) * 3 + 1;
     parsed = {year: opts.year, months: [startM, startM+1, startM+2]};
+  } else if(opts.year && opts.month){
+    parsed = {year: opts.year, month: Number(opts.month), months: [Number(opts.month)]};
   } else {
     parsed = parseIssueMonthYear(issueTitle);
   }
