@@ -324,6 +324,29 @@ window._papFilmAutoPlay = function(){
     });
   }
 
+  // FAST PATH (2026-07-11): 홈 '최신기사' 갱신 지연 해소.
+  // 기존엔 정적 4월 스냅샷이 먼저 깔리고, syncArticles가 유휴 시점에
+  // 전체(451편·5페이지)를 다 받은 뒤에야 새 기사를 앞에 붙여서 갭이 컸다.
+  // 여기서 최신 12편만 즉시 받아 홈 캐러셀에 프리펜드 → 새 기사가 바로 뜬다.
+  // 전체 동기화(검색·전체목록용)는 기존대로 백그라운드에서 이어진다.
+  function syncArticlesFast(){
+    if(typeof artData==='undefined') return;
+    fetch(PAP_API_BASE + '/articles?status=published&limit=12&page=1')
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(res){
+        if(!res || !Array.isArray(res.data) || !res.data.length) return;
+        var quick = res.data.map(apiArticleToLocal);
+        try { _renderHomeFashionArticles(quick); } catch(e){ /* non-fatal */ }
+        if(typeof window._papArticleRenderCards==='function'){
+          try { window._papArticleRenderCards(); } catch(_){}
+        }
+        if(window.papReveal && typeof window.papReveal.refresh === 'function'){
+          try { window.papReveal.refresh(); } catch(_){}
+        }
+      })
+      .catch(function(){ /* 실패 시 전체 syncArticles가 백업 */ });
+  }
+
   // Sync articles
   function syncArticles(){
     if(typeof artData==='undefined') return;
@@ -1051,12 +1074,14 @@ window._papFilmAutoPlay = function(){
   if(document.readyState==='loading'){
     document.addEventListener('DOMContentLoaded',function(){
       syncEditorials();
+      syncArticlesFast();   // 홈 최신기사 즉시 갱신 (전체 목록은 아래 유휴 동기화)
       _kickDeferredSyncs();
     });
   } else {
     // DOM already loaded — small delay to let page scripts initialize first
     setTimeout(function(){
       syncEditorials();
+      syncArticlesFast();   // 홈 최신기사 즉시 갱신 (전체 목록은 아래 유휴 동기화)
       _kickDeferredSyncs();
     },100);
   }
