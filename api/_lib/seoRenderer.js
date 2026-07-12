@@ -349,7 +349,23 @@ function renderSeoHtml(kind, record) {
     // editorial, and switches `image` from bare URLs to ImageObject
     // arrays with caption text — boosts image-search ranking and gives
     // the AI overviews enough metadata to attribute the photographer.
-    const bodyForWordCount = String(descKo || '').replace(/\s+/g, ' ').trim();
+    // 2026-07-12 — articleBody 를 요약문(descKo)이 아니라 실제 본문 전문으로.
+    // record.content 는 (a) HTML/plain 문자열 (b) 블록 JSON 문자열 (c) 블록 배열
+    // 세 형태가 오므로 전부 평문으로 정규화한다. 본문이 없으면 기존처럼 요약문 폴백.
+    const bodyPlain = (function (content) {
+      let blocks = null;
+      if (typeof content === 'string' && content.trim().charAt(0) === '[') {
+        try { const p = JSON.parse(content); if (Array.isArray(p)) blocks = p; } catch { blocks = null; }
+      } else if (Array.isArray(content)) { blocks = content; }
+      let raw = '';
+      if (blocks) {
+        raw = blocks
+          .map(b => !b ? '' : (typeof b === 'string' ? b : String(b.text || b.content || b.caption || '')))
+          .join(' ');
+      } else if (typeof content === 'string') { raw = content; }
+      return raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    })(record.content);
+    const bodyForWordCount = bodyPlain || String(descKo || '').replace(/\s+/g, ' ').trim();
     const wordCount = bodyForWordCount
       ? bodyForWordCount.split(' ').filter(Boolean).length
       : undefined;
@@ -367,7 +383,7 @@ function renderSeoHtml(kind, record) {
       alternativeHeadline: titleEn,
       description: descKo,
       image: imageObjects,
-      articleBody: bodyForWordCount ? truncate(bodyForWordCount, 600) : undefined,
+      articleBody: bodyForWordCount ? truncate(bodyForWordCount, 8000) : undefined,
       wordCount,
       datePublished: published,
       dateModified: modified,
