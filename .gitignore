@@ -45,6 +45,10 @@ design-mockups/
 test_film_related_button.js
 
 # Claude agent worktrees (local tooling)
-.claude/
+# .claude: 공유 설정(rules/agents/commands/hooks/settings.json)은 추적, 로컬 전용만 무시
+.claude/settings.local.json
+.claude/launch.json
+.claude/worktrees/
+.claude/agent-memory/
 _to_delete/
 *.command

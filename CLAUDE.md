@@ -27,3 +27,11 @@
 - Vercel: project `prj_bJ4s6cgv7HbrDYYU0mu0B9xyl3n5` / team `team_EmYMio2vO29fe2ZFbeRJ2Nsi` (env 추가 시 재배포 필요, Sensitive 값은 저장 후 읽기 불가)
 - Supabase: `igcazquhkwxtqsaqpznx` (서버는 service_role)
 - 결제: Paddle (plan_key는 premium_*/standard_* → base plan으로 정규화되어 profiles 저장)
+
+## .claude/ 구조 (2026-07-12 추가)
+
+- `.claude/rules/api.md` — api/** 작업 규칙 · `.claude/rules/frontend.md` — frontend/** 작업 규칙 (작업 전 해당 규칙 읽기)
+- `.claude/agents/code-reviewer.md` — 읽기 전용 리뷰어 (커밋 전 "code-reviewer로 리뷰해줘")
+- `.claude/commands/deploy-check.md` — /deploy-check 배포 검증
+- `.claude/hooks/block-push.sh` + `settings.json` — **git push·rm -rf·파괴적 SQL을 기계적으로 차단** (문서 규칙의 강제 집행)
+- 사업 판단·전략·기록은 이 저장소가 아니라 PAP-Vault(옵시디언)에 있다 — 중복 저장 금지
