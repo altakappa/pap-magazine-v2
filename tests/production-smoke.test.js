@@ -135,12 +135,15 @@ async function checkScriptOrder() {
 // Phase 3 — key API endpoint sanity.
 async function checkAPIEndpoints() {
   group('=== Phase 3: API endpoints reachable ===');
-  // /api/auth/google should 302 to Supabase
+  // /api/auth/google should 302 straight to Google (자체 처리 전환, 8883c16 —
+  // 동의 화면에 pap-magazine.com 표시. Supabase authorize 경유는 폐기됨)
   try {
     const res = await fetch(`${PROD}/api/auth/google`, { redirect: 'manual' });
     const loc = res.headers.get('location') || '';
-    const looksRight = res.status === 302 && loc.includes('supabase.co/auth/v1/authorize') && loc.includes('redirect_to=');
-    ok('/api/auth/google → 302 to Supabase OAuth', looksRight,
+    const looksRight = res.status === 302 &&
+      loc.includes('accounts.google.com/o/oauth2/v2/auth') &&
+      loc.includes('redirect_uri=') && loc.includes('google-callback');
+    ok('/api/auth/google → 302 to Google OAuth (self-hosted flow)', looksRight,
        looksRight ? '' : `status=${res.status} location=${loc.slice(0, 80)}`);
   } catch (e) {
     ok('/api/auth/google reachable', false, e.message);
