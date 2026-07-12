@@ -117,6 +117,9 @@ function _normalizeMedia(m){
     timestamp: m.timestamp || null,
     author: m.username || 'pap_magazine',
     isVideo: m.media_type === 'VIDEO',
+    // 원본 IG media_type: 'IMAGE' | 'VIDEO' | 'CAROUSEL_ALBUM'.
+    // articles.source_media_type 으로 저장 → YouTube Shorts 크론이 VIDEO(릴스)만 필터링.
+    mediaType: m.media_type || null,
   };
   // 단일 / 캐러셀 / 비디오 케이스 처리.
   // mediaUrls 에는 "이미지 URL만" 넣는다 — 비전 분석(base64 image block)과
@@ -367,6 +370,8 @@ function buildArticleRow(post, generated, opts){
     // QA #275 — Instagram 소스 메타.
     source_instagram_url:     post.permalink || null,
     source_instagram_post_id: post.id || null,
+    // 원본 IG media_type — YouTube Shorts 크론이 VIDEO(릴스)만 골라내는 데 사용.
+    source_media_type:        post.mediaType || null,
     instagram_imported_at:    new Date().toISOString(),
   };
 }

@@ -2,9 +2,9 @@
  * PAP Magazine — YouTube Shorts 자동 업로드 크론
  * Route: /api/cron/youtube-post   (하루 2회 — 10:15 / 22:15 KST)
  *
- * 소스: IG 수집 기사 중 영상(articles.videos — 영구 보관 mp4)이 있는
- * 최근 3일 내 미게시 기사 1건. 릴스 원본(세로 ≤3분)이라 Shorts 로
- * 자동 분류된다 — 별도 렌더링 불필요.
+ * 소스: IG 수집 기사 중 **원본 media_type = 'VIDEO' (=릴스)** 기사 최근 3일
+ * 내 미게시 1건. 캐러셀(CAROUSEL_ALBUM) 안에 섞인 영상이나 단일 이미지
+ * 게시물은 대상 아님. 릴스 원본(세로 ≤3분)이라 Shorts 로 자동 분류된다.
  *
  * 흐름: mp4 다운로드(Storage) → YouTube resumable 업로드 →
  *       youtube_posts.article_id 기록 (기사당 1회 보장, failed 는 재시도 허용)
@@ -61,16 +61,19 @@ module.exports = async function handler(req, res) {
     const { data: posted } = await supabaseAdmin.from('youtube_posts').select('article_id, status').limit(5000);
     const done = new Set((posted || []).filter((p) => p.status !== 'failed').map((p) => p.article_id).filter(Boolean));
 
-    // 신선도 창(최근 3일) 안의 영상 있는 미게시 기사 1건
+    // 신선도 창(최근 3일) 안의 릴스(원본 IG media_type = 'VIDEO') 미게시 기사 1건.
+    // 캐러셀(CAROUSEL_ALBUM) 안에 영상이 섞여 있어도 스킵 — 릴스 원본만 세로 3분 이하가
+    // 보장되어 Shorts 자동 분류에 적합. IMAGE 게시물도 당연히 제외.
     const freshCutoff = new Date(Date.now() - 3 * 86400000).toISOString();
     const { data: arts } = await supabaseAdmin.from('articles')
-      .select('id, title, slug, custom_url, content, videos, category')
+      .select('id, title, slug, custom_url, content, videos, category, source_media_type')
       .eq('status', 'published')
+      .eq('source_media_type', 'VIDEO')
       .gte('published_date', freshCutoff)
       .order('published_date', { ascending: false }).limit(200);
     const art = (arts || []).find((a) =>
       !done.has(a.id) && Array.isArray(a.videos) && a.videos.length >= 1 && a.videos[0]);
-    if (!art) return res.status(200).json({ ok: true, note: '업로드할 영상 기사 없음' });
+    if (!art) return res.status(200).json({ ok: true, note: '업로드할 릴스 기사 없음 (source_media_type=VIDEO 필터)' });
 
     const artUrl = 'https://www.pap-magazine.com/article/' + (art.custom_url || art.slug || '');
     const isPublic = process.env.YOUTUBE_PUBLIC === '1';
