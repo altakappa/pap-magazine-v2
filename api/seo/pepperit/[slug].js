@@ -67,6 +67,16 @@ module.exports = async function handler(req, res) {
       },
     };
 
+    const breadcrumbLd = {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'PAP Magazine', item: 'https://www.pap-magazine.com/' },
+        { '@type': 'ListItem', position: 2, name: 'PEPPERIT', item: SITE + '/pepperit' },
+        { '@type': 'ListItem', position: 3, name: title, item: url },
+      ],
+    };
+
     const videos = Array.isArray(a.videos) ? a.videos : [];
     const videosHtml = videos.map((v) =>
       '<video class="g" src="' + esc(v) + '" controls playsinline preload="metadata" style="background:#000;max-height:80vh"></video>').join('');
@@ -108,7 +118,11 @@ module.exports = async function handler(req, res) {
       '<meta property="og:locale" content="ko_KR">' +
       '<meta property="article:published_time" content="' + esc(pub) + '">' +
       '<meta name="twitter:card" content="summary_large_image">' +
+      '<meta name="twitter:title" content="' + esc(title) + '">' +
+      '<meta name="twitter:description" content="' + esc(descr) + '">' +
+      (thumb ? '<meta name="twitter:image" content="' + esc(thumb) + '">' : '') +
       '<script type="application/ld+json">' + JSON.stringify(ld) + '</' + 'script>' +
+      '<script type="application/ld+json">' + JSON.stringify(breadcrumbLd) + '</' + 'script>' +
       '<link rel="preconnect" href="https://fonts.googleapis.com">' +
       '<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@1,600&family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">' +
       '<style>*{margin:0;padding:0;box-sizing:border-box}:root{--pink:#FF4F8B;--powder:#FFE5EE;--cream:#FAF6F0;--ink:#1A1A1A;--lemon:#FFE94F}' +
