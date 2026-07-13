@@ -213,9 +213,12 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
       <div id="artDetailCat" style="font-size:11px;color:#888;letter-spacing:.12em;text-transform:uppercase;margin-top:14px"></div>
     </div>
     <div id="artDetailDesc" style="padding:0 0 32px;font-size:16px;line-height:1.9;color:#ccc;letter-spacing:.02em"></div>
-    <div id="artDetailTags" style="padding:12px 0 24px"></div>
     <div id="artDetailCredits" style="padding:24px 0;border-top:1px solid rgba(255,255,255,.08);font-size:12px;line-height:1.8"></div>
     <div id="artDetailGallery" style="display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:24px 0"></div>
+    <!-- QA(2026-07) #5 — 해시태그를 본문 하단(콘텐츠 종료 후)으로 이동해 SSR
+         (/article/<slug>)·관리자 등록 기사와 노출 위치를 통일. 기존엔 본문 설명
+         바로 아래(상단)라 유형별로 위치가 어긋났다. -->
+    <div id="artDetailTags" style="padding:12px 0 24px"></div>
     <div id="artDetailLink" style="display:none"></div>
     <!-- 참여 증폭 CTA — 그동안 articles.html 오버레이엔 이 노드가 없어 /articles 진입 시
          Full Story 박스가 조용히 렌더되지 않았다. index 오버레이와 동일하게 추가. -->

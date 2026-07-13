@@ -886,7 +886,6 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
       <time datetime="${escAttr(published)}">${escText(published.slice(0, 10))}${record.issue ? ' · ' + escText(record.issue) : record.category ? ' · ' + escText(record.category) : ''}</time>
       <p class="seo-desc-primary">${escText(descKo)}</p>
       ${descEn && descEn !== descKo ? `<p class="seo-desc-en">${escText(descEn)}</p>` : ''}
-      ${tagHtml}
     </div>
     ${bodyHtml}
     ${galleryHtml}
@@ -896,6 +895,12 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
     ${fashionHtml}
     ${relatedEditorialHtml}
     ${relatedFilmsHtml}
+    <!-- QA(2026-07) #5 — 해시태그 노출 위치 통일. record.tags 로 오는 해시태그는
+         기존에 seo-meta(본문 설명 바로 아래·상단)에 렌더돼, 본문 블록 안에
+         해시태그를 배치하는 관리자 등록 기사(최하단)와 위치가 어긋났다. IG
+         연동/기존 데이터 기사도 콘텐츠가 모두 끝난 최하단(참여 CTA 직전)에
+         해시태그를 노출하도록 tagHtml 을 이 위치로 이동한다. -->
+    ${tagHtml}
 
     ${record.source_instagram_url && /instagram\.com/.test(String(record.source_instagram_url)) ? `
     <aside class="ig-funnel" style="margin-bottom:0">

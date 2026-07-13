@@ -1217,9 +1217,11 @@
       <div id="artDetailCat" style="font-size:11px;color:#888;letter-spacing:.12em;text-transform:uppercase;margin-top:14px"></div>
     </div>
     <div id="artDetailDesc" style="padding:0 0 32px;font-size:16px;line-height:1.9;color:#ccc;letter-spacing:.02em"></div>
-    <div id="artDetailTags" style="padding:12px 0 24px"></div>
     <div id="artDetailCredits" style="padding:24px 0;border-top:1px solid rgba(255,255,255,.08);font-size:12px;line-height:1.8"></div>
     <div id="artDetailGallery" style="display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:24px 0"></div>
+    <!-- QA(2026-07) #5 — 해시태그를 본문 하단(콘텐츠 종료 후)으로 이동해 SSR·관리자
+         등록 기사와 노출 위치 통일. -->
+    <div id="artDetailTags" style="padding:12px 0 24px"></div>
     <div id="artDetailLink" style="display:none"></div>
     <!-- 참여 증폭 (2026-07): 기사 원본 IG 게시물 딥링크 — 좋아요·저장·
          보내기는 게시물 위에서만 일어나므로 방문자를 게시물로 보낸다.
