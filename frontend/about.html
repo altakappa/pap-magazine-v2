@@ -98,6 +98,7 @@ h1{font-size:clamp(48px,8vw,90px);font-weight:800;letter-spacing:5px;text-transf
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"Organization","@id":"https://www.pap-magazine.com/#organization","name":"PAP Magazine","alternateName":["PAP MAGAZINE","PAP 매거진","PAP매거진","팝매거진"],"url":"https://www.pap-magazine.com","logo":"https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/PAP_LOGO.png","sameAs":["https://www.instagram.com/pap_magazine/","https://x.com/papmagazine_","https://www.youtube.com/@pap-magazine","https://blog.naver.com/pap_magazine","https://www.tiktok.com/@pap_magazine"]}
 </script>
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "inLanguage": "ko-KR", "mainEntity": [{"@type": "Question", "name": "PAP 매거진은 어떤 매체인가요?", "acceptedAnswer": {"@type": "Answer", "text": "PAP 매거진은 2018년 1월 이탈리아 밀라노에서 창간해 현재 서울을 기반으로 운영되는 아트 기반 패션·뷰티·컬쳐 디지털 매거진입니다. 전 세계 크리에이티브 팀과 협업해 매월 20편 이상의 오리지널 에디토리얼을 발행합니다."}}, {"@type": "Question", "name": "PAP에 에디토리얼을 어떻게 투고하나요?", "acceptedAnswer": {"@type": "Answer", "text": "투고 페이지 에서 전 세계 크리에이티브 팀 누구나 작품을 제출할 수 있습니다."}}, {"@type": "Question", "name": "브랜드가 PAP와 광고·협업하려면 어떻게 하나요?", "acceptedAnswer": {"@type": "Answer", "text": "언제든 편하게 contact@pap-magazine.com 으로 연락 주세요. 미디어킷과 함께 에디토리얼·필름·큐레이션 등 브랜드에 맞는 협업 방식을 안내해 드립니다."}}, {"@type": "Question", "name": "풀레터(Pull-Letter)는 무엇이고 어떻게 요청하나요?", "acceptedAnswer": {"@type": "Answer", "text": "풀레터는 PAP 크리에이티브 팀에게 원하는 에디토리얼 제작·협업을 요청하는 Premium 멤버 전용 기능입니다. 풀레터 페이지 에서 신청하면 검토 후 회신드립니다."}}, {"@type": "Question", "name": "PAP 콘텐츠는 무료인가요?", "acceptedAnswer": {"@type": "Answer", "text": "기본 콘텐츠는 무료로 열람할 수 있으며, Standard·Premium 멤버십은 광고 없이 풀해상도 이미지와 우선 열람 등의 혜택을 제공합니다. 자세한 요금은 구독 페이지 에서 확인하세요."}}, {"@type": "Question", "name": "PAP 에디토리얼 이미지를 다운로드할 수 있나요?", "acceptedAnswer": {"@type": "Answer", "text": "Standard 멤버부터 개인·비상업적 용도로 이미지를 다운로드할 수 있습니다. 상업적 사용은 contact@pap-magazine.com 으로 문의해 주세요."}}, {"@type": "Question", "name": "PAP는 얼마나 자주 발행하나요?", "acceptedAnswer": {"@type": "Answer", "text": "매월 20편 이상의 오리지널 에디토리얼을 발행하며, 분기별 볼륨(현재 VOL 31)으로 아카이빙합니다."}}, {"@type": "Question", "name": "PAP 매거진은 어디에 있나요?", "acceptedAnswer": {"@type": "Answer", "text": "서울 강남에 본사를 두고 이탈리아 밀라노에도 사무실을 운영합니다. 문의는 contact@pap-magazine.com ."}}]}</script>
 </head>
 <body class="pap-keep-side-nav">
 <!-- Nav Overlay -->
@@ -316,6 +317,18 @@ function navigateWithInterstitial(url){
 <main role="main" class="content">
   <h1 data-i18n="aboutTitle">ABOUT</h1>
   <div class="about-text" id="aboutBody"></div>
+<style>
+#papFaq{max-width:760px;margin:56px auto 0;padding:0 24px}
+#papFaq .pap-faq-h{font-size:13px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.85);margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.12)}
+#papFaq .pap-faq-item{border-bottom:1px solid rgba(255,255,255,.08)}
+#papFaq summary{list-style:none;cursor:pointer;padding:16px 28px 16px 0;position:relative;font-size:14.5px;font-weight:600;color:#fff;line-height:1.5}
+#papFaq summary::-webkit-details-marker{display:none}
+#papFaq summary::after{content:'+';position:absolute;right:2px;top:14px;font-size:18px;color:rgba(255,255,255,.5);transition:transform .2s}
+#papFaq details[open] summary::after{content:'\2212'}
+#papFaq .pap-faq-a{padding:0 0 18px;font-size:13.5px;line-height:1.8;color:rgba(255,255,255,.7)}
+#papFaq .pap-faq-a a{color:#fff;text-decoration:underline;text-underline-offset:2px}
+</style>
+<section id="papFaq" aria-label="FAQ"></section>
 </main>
 <div class="footer-legal" id="footerLegal"></div>
 <script>
@@ -389,5 +402,6 @@ function setLang(l){localStorage.setItem('pap-lang',l);var d=L[l]||L.ko;document
 <script src="/pap-app.js?v=20"></script>
 <script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=18" defer></script>
 <script src="/pap-auth-link.js?v=2" defer></script>
+<script src="/pap-faq-i18n.js?v=1"></script>
 </body>
 </html>
