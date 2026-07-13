@@ -27,11 +27,16 @@ module.exports = async function handler(req, res) {
         setListCacheHeader(req, res, { isPublic: requestedStatus === 'published' });
       }
 
+      // QA(2026-07) #11 — shorts 테이블에는 published_date 컬럼이 없다(schema:
+      // sort_order, created_at). 존재하지 않는 컬럼으로 order 하면 Postgres 가
+      // 에러를 던져 GET 이 통째로 500 이 됐다(홈/관리자 숏츠 조회 실패). 실제
+      // 컬럼(sort_order 오름차순 → created_at 내림차순)으로 정렬한다.
       let query = supabaseAdmin
         .from('shorts')
         .select('*', { count: 'exact' })
         .eq('status', status || 'published')
-        .order('published_date', { ascending: false })
+        .order('sort_order', { ascending: true, nullsFirst: false })
+        .order('created_at', { ascending: false })
         .range(offset, offset + parseInt(limit) - 1);
 
       const { data, error, count } = await query;
@@ -61,7 +66,10 @@ module.exports = async function handler(req, res) {
     if (!user) return;
 
     try {
-      const { title, youtube_id, thumbnail_url, published_date, tags, status } = req.body;
+      // QA(2026-07) #11 — published_date/tags 컬럼은 shorts 스키마에 없다.
+      // 유효 컬럼(sort_order)만 insert 하도록 정리(기존엔 존재하지 않는 컬럼을
+      // insert 해 create 도 500 이었다).
+      const { title, youtube_id, thumbnail_url, sort_order, status } = req.body;
 
       if (!title || !youtube_id) {
         return res.status(400).json({ error: 'title and youtube_id are required' });
@@ -73,8 +81,7 @@ module.exports = async function handler(req, res) {
           title,
           youtube_id,
           thumbnail_url: thumbnail_url || null,
-          published_date: published_date || null,
-          tags: tags || title,
+          sort_order: (sort_order != null ? sort_order : 0),
           status: status || 'published',
           // QA #202 — authorship.
           created_by: user.id,

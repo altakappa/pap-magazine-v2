@@ -406,3 +406,30 @@ var shortsObserver=new IntersectionObserver(function(entries){
 var shortsSec=document.getElementById('shortsSection');
 if(shortsSec) shortsObserver.observe(shortsSec);
 
+// QA(2026-07) #11 — 홈 숏츠 미노출 자가복구.
+// 공용 정적 로더(pap-content-api-sync.js#startStaticLoads)가 라이브에서
+// 간헐적으로 shortsData 를 채우지 못해(로드 타이밍/전역 경합) 숏츠 트랙이
+// 빈 껍데기(제목+좌우버튼만)로 남는 사례가 재현됐다. 홈에 트랙이 존재하는데
+// 데이터가 비어 있으면 정적 JSON 을 직접 한 번 더 로드해 복구한다. 공용
+// 로더를 건드리지 않는 격리된 방어라 다른 컬렉션에 영향이 없다.
+(function(){
+  function _healShorts(){
+    var track=document.getElementById('shortsTrack');
+    if(!track) return;                              // 홈이 아니면 무시
+    if(shortsData && shortsData.length) return;     // 이미 채워짐
+    fetch('data/shorts.json',{cache:'no-store'})
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(data){
+        if(!Array.isArray(data) || !data.length) return;
+        if(shortsData.length) return;               // 그 사이 채워졌으면 스킵
+        data.forEach(function(x){ shortsData.push(x); });
+        if(window._papShortsRender) window._papShortsRender();
+        else buildShortsCarousel();
+      })
+      .catch(function(){ /* 조용히 무시 — 트랙은 비어도 페이지는 정상 */ });
+  }
+  // startStaticLoads 는 load 후 ~800ms 에 도는 지연 로더라 여유 있게 2.5s 뒤 확인.
+  if(document.readyState==='complete'){ setTimeout(_healShorts,2500); }
+  else { window.addEventListener('load', function(){ setTimeout(_healShorts,2500); }); }
+})();
+

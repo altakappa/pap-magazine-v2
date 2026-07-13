@@ -432,6 +432,16 @@
    pap-social.js#renderEditorialRatingCta 가 채운다.
    별은 PAP 브랜드 레드(#891717). 어두운 에디토리얼 오버레이 배경 기준.
    ============================================================ */
+/* QA(2026-07) #4 — 별점 CTA 컨테이너는 .ed-credits-wrap 밖의 bare div 라
+   full-width 로 노출됐다. 다른 하단 블록과 동일하게 700px 중앙 정렬 +
+   좌우 var(--pad-x) 거터를 맞춘다(.ed-credits-wrap > * 와 동일 규격). */
+#edRatingCta {
+  padding: 0 var(--pad-x);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+#edRatingCta > * { width: 100%; max-width: 700px; }
 .pap-ed-rating-cta {
   margin: 26px 0 6px;
   padding: 22px 20px;
@@ -477,7 +487,21 @@
    Editorial detail — related editorials (체류시간 개선, 2026-07)
    pap-social.js#renderRelatedEditorials — related_editorials RPC.
    ============================================================ */
-#edRelatedEditorials { margin: 44px 0 8px; }
+/* QA(2026-07) #12 — "이것도 좋아할 거예요" 추천 영역도 bare section 이라
+   full-width 로 노출됐다. 별점 CTA 와 동일하게 700px 중앙 정렬 + 좌우
+   거터를 적용해 다른 하단 블록과 좌우 여백 기준을 통일한다. */
+#edRelatedEditorials {
+  margin: 44px 0 8px;
+  padding: 0 var(--pad-x);
+}
+/* display 를 :not([hidden]) 로 한정 — 스타일시트의 display 가 hidden 속성을
+   무력화하지 않도록(초기 hidden 상태 유지). JS 는 표시 시 hidden=false 로 푼다. */
+#edRelatedEditorials:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+#edRelatedEditorials > * { width: 100%; max-width: 700px; }
 .pap-related-ed-heading {
   font-size: 13px;
   font-weight: 700;

@@ -120,6 +120,10 @@ a{text-decoration:none;color:inherit}
 .scroll-hint-line{width:1px;height:24px;background:linear-gradient(to bottom,rgba(255,255,255,.45),transparent)}
 
 .issues{padding:0 clamp(20px,5vw,80px) 60px}
+/* QA(2026-07) #14 — VOLUMES(발행호 목록) 섹션 상단 여백 부재. .issues 는
+   상단 padding 0 이라 바로 위 히어로/통계 영역과 붙어 보였다. VOLUMES
+   섹션에 상단 여백을 부여해 섹션 구분을 명확히 한다(PC/모바일 반응형). */
+#quarterVols{padding-top:clamp(48px,7vw,96px)}
 .sec-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:50px;border-bottom:1px solid var(--border);padding-bottom:16px}
 .sec-title{font-family:var(--display);font-size:clamp(26px,3.5vw,42px);font-weight:700;letter-spacing:-.5px}
 .sec-count{font-size:10px;letter-spacing:2px;color:var(--dimmer)}
