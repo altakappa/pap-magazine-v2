@@ -123,7 +123,10 @@ module.exports = async function handler(req, res){
       const archivedUrls = await archiveImagesToStorage(post, 10);
       const videoUrls = await archiveVideosToStorage(post, 2);
       const row = buildArticleRow(post, generated, {
-        status: body.status || 'draft',
+        // sync-instagram cron 과 동일한 정책: 강제 임포트도 즉시 발행.
+        // (이전 'draft' 기본값은 게시물이 published 리스트/네이버 블로그 초안에 안 뜨는 문제 야기.)
+        // 명시적으로 draft로 저장하려면 body.status='draft' 로 넘길 것.
+        status: body.status || 'published',
         archivedUrls, videoUrls,
       });
       row.created_by = user.id;
