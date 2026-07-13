@@ -369,11 +369,15 @@ function renderSeoHtml(kind, record) {
     const wordCount = bodyForWordCount
       ? bodyForWordCount.split(' ').filter(Boolean).length
       : undefined;
+    const imgCreditText = contributors.length ? contributors.join(', ') : SITE_NAME;
     const imageObjects = allImages.map((u, i) => ({
       '@type': 'ImageObject',
       url: u,
       caption: i === 0 ? `${titleKo} — Cover` : `${titleKo} — Look ${i}`,
-      copyrightHolder: { '@type': 'Organization', name: SITE_NAME }
+      creditText: imgCreditText,
+      copyrightNotice: `© ${SITE_NAME}`,
+      copyrightHolder: { '@type': 'Organization', name: SITE_NAME },
+      representativeOfPage: i === 0 ? true : undefined
     }));
 
     primarySchema = {
