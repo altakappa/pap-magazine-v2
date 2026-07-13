@@ -21,6 +21,7 @@
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { uploadVideo } = require('../_lib/youtube');
+const { withCronGuard } = require('../_lib/cronGuard');
 
 const MAX_BYTES = 100 * 1024 * 1024; // 안전 상한 (IG 아카이브는 ≤60MB)
 
@@ -44,7 +45,7 @@ function buildDescription(art, url) {
   return lines.join('\n').slice(0, 4900);
 }
 
-module.exports = async function handler(req, res) {
+module.exports = withCronGuard('youtube-post', async function handler(req, res) {
   const auth = (req.headers && req.headers['authorization']) || '';
   const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
   if (!cronOk) {
@@ -117,6 +118,6 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ ok: true, posted: art.title, video_id: videoId, url: 'https://youtube.com/shorts/' + videoId, note: detail || undefined });
   } catch (err) {
     console.error('[youtube-post] error:', err);
-    return res.status(500).json({ error: 'youtube cron failed', detail: String(err && err.message || err).slice(0, 200) });
+    throw err; // cronGuard 가 이메일 알림 + cron_runs 기록
   }
-};
+});

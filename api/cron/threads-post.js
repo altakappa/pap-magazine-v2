@@ -17,6 +17,7 @@
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { postText } = require('../_lib/threads');
+const { withCronGuard } = require('../_lib/cronGuard');
 
 function firstSentence(html) {
   return String(html || '')
@@ -43,7 +44,7 @@ function buildText(art, url) {
   return text;
 }
 
-module.exports = async function handler(req, res) {
+module.exports = withCronGuard('threads-post', async function handler(req, res) {
   const auth = (req.headers && req.headers['authorization']) || '';
   const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
   if (!cronOk) {
@@ -114,6 +115,6 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ ok: true, posted: art.title, thread_id: threadId });
   } catch (err) {
     console.error('[threads-post] error:', err);
-    return res.status(500).json({ error: 'threads cron failed', detail: String(err && err.message || err).slice(0, 200) });
+    throw err; // cronGuard 가 이메일 알림 + cron_runs 기록
   }
-};
+});

@@ -17,6 +17,7 @@
 
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
+const { withCronGuard } = require('../_lib/cronGuard');
 const { pingNewContent, SITE } = require('../_lib/pingSearch');
 const { postTweet, buildArticleTweet, isConfigured: xConfigured } = require('../_lib/xPost');
 const {
@@ -31,7 +32,7 @@ const {
   _extractShortcode,
 } = require('../_lib/instagramImport');
 
-module.exports = async function handler(req, res){
+module.exports = withCronGuard('sync-instagram', async function handler(req, res){
   // Vercel cron 보호 — CRON_SECRET 일치 또는 관리자 토큰 (수동 진단·트리거용).
   const auth = (req.headers && req.headers['authorization']) || '';
   const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
@@ -169,6 +170,7 @@ module.exports = async function handler(req, res){
     return res.status(200).json(results);
   } catch (e){
     console.error('[sync-instagram] top-level failure:', e);
-    return res.status(500).json({ error: (e && e.message) || String(e) });
+    // cronGuard 가 이 예외를 잡아 이메일 알림 + cron_runs 기록.
+    throw e;
   }
-};
+});
