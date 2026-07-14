@@ -1640,14 +1640,59 @@ function openAllEditorials(){
   }
   _openAllEditorialsInner();
 }
+// QA(2026-07) #21 — 구독 게이트 UX. 베타 종료(PAP_BETA_END=2026-07-09) 이후
+// 에디토리얼 전체보기는 Standard 이상 전용이 됐는데, 기존 구현은 네이티브
+// alert() 를 띄운 뒤 곧바로 /subscribe 로 하드 리다이렉트했다. 사용자 입장에선
+// "에디토리얼 목록 페이지가 아예 뜨지 않는다"로 보였고(QA: 모바일 에디토리얼
+// 목록 전체 미노출), 특히 모바일에서 alert → 이동이라 목록을 본 적이 없다.
+//
+// 과금 정책(Standard 이상)은 그대로 두고, 목록 화면 안에서 잠금 상태 + 업셀을
+// 보여준다 → 페이지는 정상적으로 뜨고, 왜 못 보는지/무엇을 하면 되는지 전달.
+function _renderEdAllPaywall(overlay){
+  var grid=document.getElementById('edAllGrid');
+  var count=document.getElementById('edAllCount');
+  var pag=document.getElementById('edAllPagination');
+  var filt=document.getElementById('edCatFilter');
+  // 잠금 화면에서는 카테고리 필터·개수·페이지네이션을 숨긴다.
+  if(count) count.textContent='';
+  if(pag) pag.innerHTML='';
+  if(filt) filt.style.display='none';
+
+  var loggedIn=(typeof isLoggedIn==='function') && isLoggedIn();
+  if(grid){
+    grid.style.display='block';
+    grid.innerHTML=
+      '<div style="max-width:520px;margin:40px auto;padding:40px 28px;border:1px solid rgba(255,255,255,.16);text-align:center;color:#fff">'
+      + '<div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:14px">Editorial Archive</div>'
+      + '<div style="font-size:20px;font-weight:700;letter-spacing:.02em;margin-bottom:12px">에디토리얼 전체보기는 멤버 전용입니다</div>'
+      + '<div style="font-size:13.5px;line-height:1.75;color:#bbb;margin-bottom:24px">'
+      +   'Standard 이상 멤버가 되시면 2,400편 이상의 에디토리얼 아카이브를<br>제한 없이 열람하실 수 있습니다.'
+      + '</div>'
+      + '<a href="/subscribe" style="display:inline-block;margin:4px 5px 0;background:#fff;color:#000;padding:13px 32px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;text-decoration:none">구독하기</a>'
+      + (loggedIn ? '' :
+          '<a href="/auth" style="display:inline-block;margin:4px 5px 0;background:transparent;color:#ddd;border:1px solid rgba(255,255,255,.28);padding:13px 26px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;text-decoration:none">로그인</a>')
+      + '</div>';
+  }
+  overlay.classList.add('active');
+  document.body.style.overflow='hidden';
+  // URL 은 /editorial 로 맞춰 둔다(뒤로가기 시 이전 페이지로 정확히 복귀).
+  try{
+    if(window.location.pathname==='/editorial') history.replaceState({allEditorials:true},'','/editorial');
+    else history.pushState({allEditorials:true},'','/editorial');
+  }catch(e){}
+}
+
 function _openAllEditorialsInner(){
-  // Membership check: free members cannot access all editorials
+  var overlay=document.getElementById('edAllOverlay');
+  if(!overlay) return;
+  // 멤버십 체크 — 미달 시 alert/리다이렉트 대신 목록 화면 안에서 잠금 + 업셀.
   if(!isStandardOrAbove()){
-    alert(getLangText('edAccessFree','에디토리얼 전체보기는 스탠다드 이상 회원만 이용 가능합니다.\nStandard membership or above is required to browse all editorials.'));
-    window.location.href='/subscribe';
+    _renderEdAllPaywall(overlay);
     return;
   }
-  var overlay=document.getElementById('edAllOverlay');
+  // 잠금 화면을 거쳤다가 권한이 생긴 경우를 대비해 필터를 되살린다.
+  var _filt=document.getElementById('edCatFilter');
+  if(_filt) _filt.style.display='';
   if(!overlay) return;
   // QA #84: always start at the ALL category on fresh entry so the user
   // sees the full collection, not a stale filter from a previous visit.
