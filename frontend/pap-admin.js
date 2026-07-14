@@ -11273,19 +11273,21 @@ function _buildMagazineIssueCard(iss){
       }
     } catch(_){}
   }
-  // QA(2026-07) #4 — 발행호의 분기 볼륨(Vol)을 issue_number(#N)와 함께 노출해
-  // 관계를 명확히 한다. Vol 은 웹의 _normalizeIssueLabel 과 동일 식(3개월=1볼륨):
-  //   vol = year*4 + ceil(month/3) - 8076  → 2026 Q1(1~3월)=29, Q2=30, Q3(7~9월)=31
-  // 참고: 목록이 Vol.31(현재 분기)까지 안 보이면 최신 발행호(4~7월)가 아직
-  // 등록되지 않은 것 — 계산 오류가 아니라 데이터 미등록이다.
-  var _vol = (iss.issue_year && iss.issue_month)
-    ? (iss.issue_year * 4 + Math.ceil(iss.issue_month / 3) - 8076) : '';
+  // QA(2026-07) #17 — 발행호 구조가 '분기 볼륨(Vol)'로 통일됐다.
+  // 이제 magazine_issues 는 분기당 1행이고 issue_number 가 곧 Vol 번호다.
+  // (예전엔 월간 1행 + Vol 을 계산해 붙여서, 같은 Vol 이 여러 행으로 보였다 — #16.)
+  // months 에는 그 분기에 속한 월간 매거진들(link_url 포함)이 보존돼 있다.
+  var _months = Array.isArray(iss.months) ? iss.months : [];
+  var _monthsLine = _months.length
+    ? _months.map(function(m){ return esc(String((m && m.label) || '')); }).filter(Boolean).join(' · ')
+    : '';
   card.innerHTML =
-    '<div style="position:absolute;top:6px;left:6px;font-size:10px;font-weight:700;color:#fff;background:rgba(0,0,0,.55);padding:2px 6px;border-radius:2px;z-index:2">#' + esc(String(iss.issue_number || '')) + (_vol ? ' · Vol.' + _vol : '') + '</div>' +
+    '<div style="position:absolute;top:6px;left:6px;font-size:10px;font-weight:700;color:#fff;background:rgba(0,0,0,.55);padding:2px 6px;border-radius:2px;z-index:2">Vol. ' + esc(String(iss.issue_number || '')) + '</div>' +
     (isLatest ? '<div style="position:absolute;top:6px;right:6px;font-size:9px;font-weight:700;letter-spacing:.1em;color:#000;background:#c9a96e;padding:2px 6px;border-radius:2px;z-index:2">LATEST</div>' : '') +
     '<img loading="lazy" src="' + esc(iss.cover_image || '') + '" style="width:100%;aspect-ratio:2 / 3;object-fit:cover;margin:8px 0;border:1px solid var(--border);background:#111" onerror="this.style.opacity=\'.3\'">' +
     '<div style="font-size:12px;font-weight:600;color:var(--text1);margin-bottom:4px">' + esc(iss.title || '') + '</div>' +
     '<div style="font-size:10px;color:var(--text3);margin-bottom:4px">' + esc(iss.month_label || '') + ' · ' + esc(String(iss.editorial_count || 0)) + ' EDITORIALS</div>' +
+    (_monthsLine ? '<div style="font-size:9px;color:var(--text3);margin-bottom:4px">📰 ' + _monthsLine + '</div>' : '') +
     (publishedDate ? '<div style="font-size:10px;color:var(--text3);margin-bottom:4px">📅 ' + esc(publishedDate) + '</div>' : '') +
     '<div style="font-size:10px;font-weight:600;margin-bottom:6px;color:' + (isActive ? 'var(--green)' : 'var(--red)') + '">' + (isActive ? '✓ 활성' : '✗ 비활성') + '</div>' +
     (byLine ? '<div style="font-size:9px;color:var(--text3);margin-bottom:8px;line-height:1.4">' + byLine + '</div>' : '') +
@@ -11299,15 +11301,20 @@ function _buildMagazineIssueCard(iss){
 function openMagazineIssueModal(){
   // 신규 등록 모드로 초기화.
   document.getElementById('magIssueId').value = '';
-  document.getElementById('magIssueModalTitle').textContent = '새 발행호';
-  // 다음 번호 자동 제안: 현재 최대 issue_number + 1
+  document.getElementById('magIssueModalTitle').textContent = '새 발행호 (Vol.)';
+  // QA(2026-07) #17 — 분기 볼륨 구조. 다음 Vol 번호 = 현재 최대 + 1.
   var maxNum = magazineIssues.reduce(function(m, x){ return Math.max(m, x.issue_number || 0); }, 0);
-  document.getElementById('magIssueNumber').value = maxNum + 1;
-  document.getElementById('magIssueTitle').value = '';
-  document.getElementById('magIssueMonthLabel').value = '';
+  var nextVol = maxNum + 1;
+  document.getElementById('magIssueNumber').value = nextVol;
+  document.getElementById('magIssueTitle').value = 'Vol. ' + nextVol;
+  // 기본값을 '현재 분기'로 제안 — 분기 시작월(1/4/7/10) + "APR–JUN 2026" 형식 라벨.
   var now = new Date();
+  var qStart = Math.floor(now.getMonth() / 3) * 3 + 1;           // 1, 4, 7, 10
+  var Q_LABELS = ['JAN–MAR', 'APR–JUN', 'JUL–SEP', 'OCT–DEC'];
+  document.getElementById('magIssueMonthLabel').value =
+    Q_LABELS[(qStart - 1) / 3] + ' ' + now.getFullYear();
   document.getElementById('magIssueYear').value = now.getFullYear();
-  document.getElementById('magIssueMonth').value = now.getMonth() + 1;
+  document.getElementById('magIssueMonth').value = qStart;
   document.getElementById('magIssueEdCount').value = 0;
   document.getElementById('magIssueCoverUrl').value = '';
   document.getElementById('magIssueCoverStatus').textContent = '';

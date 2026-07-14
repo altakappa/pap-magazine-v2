@@ -1912,9 +1912,11 @@ tr:hover td{background:rgba(0,0,0,.02)}
       <div class="modal-body" style="max-height:70vh;overflow-y:auto">
         <input type="hidden" id="magIssueId">
         <div class="modal-section">
-          <div class="modal-label">발행 번호 (ISSUE #N) <span style="color:#e74c3c">*</span></div>
+          <!-- QA(2026-07) #17 — 발행호 구조를 '분기 볼륨(Vol)'으로 통일.
+               한 분기(3개월)=1볼륨. issue_number 가 곧 Vol 번호다. -->
+          <div class="modal-label">볼륨 번호 (VOL. N) <span style="color:#e74c3c">*</span></div>
           <input class="pe-input" id="magIssueNumber" type="number" min="1" placeholder="예: 31">
-          <div class="pe-hint" style="margin-top:4px">고유값. 카드의 'Vol.31' 로 노출됩니다.</div>
+          <div class="pe-hint" style="margin-top:4px">고유값. 한 분기(3개월) = 1볼륨. 웹 매거진의 'VOL. 31' 카드로 노출됩니다.</div>
         </div>
 
         <!-- QA #340 — 커버 에디토리얼 검색 picker -->
@@ -1983,11 +1985,11 @@ tr:hover td{background:rgba(0,0,0,.02)}
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div class="modal-section">
             <div class="modal-label">제목 <span style="color:#e74c3c">*</span></div>
-            <input class="pe-input" id="magIssueTitle" placeholder="예: April 2026">
+            <input class="pe-input" id="magIssueTitle" placeholder="예: Vol. 31">
           </div>
           <div class="modal-section">
-            <div class="modal-label">배지 라벨</div>
-            <input class="pe-input" id="magIssueMonthLabel" placeholder="예: APR 2026">
+            <div class="modal-label">기간 라벨</div>
+            <input class="pe-input" id="magIssueMonthLabel" placeholder="예: JUL–SEP 2026">
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
@@ -1996,8 +1998,9 @@ tr:hover td{background:rgba(0,0,0,.02)}
             <input class="pe-input" id="magIssueYear" type="number" min="2000" max="2100" placeholder="예: 2026">
           </div>
           <div class="modal-section">
-            <div class="modal-label">발행 월 (1-12)</div>
-            <input class="pe-input" id="magIssueMonth" type="number" min="1" max="12" placeholder="예: 7">
+            <!-- QA(2026-07) #17 — 분기 구조: 분기 시작월(1/4/7/10)을 넣는다. -->
+            <div class="modal-label">분기 시작월 (1/4/7/10)</div>
+            <input class="pe-input" id="magIssueMonth" type="number" min="1" max="12" placeholder="예: 7 (JUL–SEP)">
           </div>
           <div class="modal-section">
             <div class="modal-label">에디토리얼 수</div>
@@ -3617,7 +3620,7 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
      mock 시절 번들을 계속 캐시 → '+새 이미지' 클릭 시 "실제 운영 시
      S3에 업로드됩니다" 구형 alert 가 재현. pap-admin.js 를 수정하는
      커밋은 반드시 이 파라미터를 함께 올릴 것. -->
-<script src="/pap-admin.js?v=101" defer></script>
+<script src="/pap-admin.js?v=102" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>

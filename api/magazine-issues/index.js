@@ -38,9 +38,11 @@ module.exports = async function handler(req, res) {
   if (rateLimit(req, res, RATE_LIMITS.api)) return;
 
   try {
+    // QA(2026-07) #17 — 분기 볼륨 구조 전환. months(분기에 속한 월간 매거진들)를
+    // 함께 내려 웹이 Vol 하위 월간호 목록을 DB 기준으로 렌더할 수 있게 한다.
     const { data, error } = await supabaseAdmin
       .from('magazine_issues')
-      .select('id,issue_number,title,issue_year,issue_month,month_label,cover_image,editorial_count,link_url,is_latest,sort_order')
+      .select('id,issue_number,title,issue_year,issue_month,month_label,cover_image,editorial_count,link_url,is_latest,sort_order,months')
       .eq('is_active', true)
       .order('issue_year', { ascending: false })
       .order('sort_order', { ascending: false });
@@ -53,9 +55,18 @@ module.exports = async function handler(req, res) {
     const rows = data || [];
     const now = new Date();
 
+    // QA(2026-07) #15/#17 — 커버 조회용 예외.
+    // 규칙(2)는 "완성된 분기만 공개"라 진행 중인 현재 분기(예: Vol.31)가 응답에서
+    // 빠진다. 그런데 웹 /magazine 의 VOLUMES 카드는 현재 분기도 보여주고, 그
+    // 커버를 관리자 지정값으로 고정해야 한다(#15: 커버가 최신 에디토리얼로 자동
+    // 전환되던 문제). include_current=1 이면 규칙(2)를 건너뛰고 진행 분기까지
+    // 내려준다 — 공개 커버/메타 조회용이므로 노출에 문제 없다.
+    const includeCurrent = String(req.query.include_current || '') === '1';
+
     // (2) 진행 중(미완성) 분기 볼륨 숨김 — 분기 종료일이 아직 안 온 발행호 제외.
     //     날짜가 불명확한 행은 기존처럼 노출.
     let visible = rows.filter((r) => {
+      if (includeCurrent) return true;
       if (!r.issue_year || !r.issue_month) return true;
       // 2026-07: 발행호가 월별로 전환됨. 월별은 '월말', 레거시 VOL.N은 '분기말' 기준.
       var endDate = isQuarterlyVolume(r)
