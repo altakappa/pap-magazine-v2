@@ -333,8 +333,15 @@ section.hero + .shorts-section{
    (.ed-row-card)와 동일한 식을 써서 모든 행에서 일관 정렬. */
 .ed-row-arrow{position:absolute;top:0;width:44px;height:calc((100vw - 96px - 56px) / 7 * 4 / 3);z-index:10;background:rgba(0,0,0,.6);border:none;color:#fff;font-size:28px;cursor:pointer;opacity:0;transition:opacity .3s;display:flex;align-items:center;justify-content:center}
 @media(max-width:1200px){.ed-row-arrow{height:calc((100vw - 96px - 40px) / 5 * 4 / 3)}}
-@media(max-width:768px){.ed-row-arrow{height:calc((100vw - 96px - 24px) / 3 * 4 / 3)}}
-@media(max-width:480px){.ed-row-arrow{height:calc((100vw - 96px - 16px) / 2.3 * 4 / 3)}}
+/* QA(2026-07) #19 — ≤768px 부터 .ed-row-card 는 폭 공식이 아니라 고정 px
+   (180/155/140/130/115)로 전환된다. 화살표 높이가 계속 공식(/N)을 쓰면 실제
+   이미지 박스보다 짧아져 상단으로 치우쳤다(모바일 버튼 위 치우침). 카드 고정폭
+   ×4/3 로 이미지 박스 높이에 정확히 맞춘다. 브레이크포인트는 .ed-row-card 와 동일. */
+@media(max-width:768px){.ed-row-arrow{height:calc(180px * 4 / 3)}}
+@media(max-width:480px){.ed-row-arrow{height:calc(155px * 4 / 3)}}
+@media(max-width:390px){.ed-row-arrow{height:calc(140px * 4 / 3)}}
+@media(max-width:375px){.ed-row-arrow{height:calc(130px * 4 / 3)}}
+@media(max-width:320px){.ed-row-arrow{height:calc(115px * 4 / 3)}}
 .ed-row-wrap:hover .ed-row-arrow{opacity:1}
 .ed-row-arrow:hover{background:rgba(0,0,0,.8)}
 .ed-row-left{left:0}
