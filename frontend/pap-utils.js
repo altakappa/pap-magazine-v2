@@ -255,6 +255,17 @@ function _papSmoothScrollBy(track, dx){
 
 // ======== HTML helpers ========
 function escapeHtml(t){if(!t)return '';return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+// QA(2026-07) #8 — 발행일 표기 통일용 공용 포맷터. 메인홈 카드가 쓰는
+// "DD Mon YYYY"(예: 12 Jul 2026) 형식을 목록/상세 등 다른 표면에서도 재사용해
+// 페이지 위치에 따라 날짜 형식이 달라지던 문제(ISO·한글월 혼재)를 없앤다.
+var _PAP_MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function papFmtDate(dateStr){
+  if(!dateStr) return '';
+  var d=new Date(dateStr);
+  if(isNaN(d.getTime())) return typeof dateStr==='string'?dateStr.substring(0,10):'';
+  return ('0'+d.getDate()).slice(-2)+' '+_PAP_MONTHS[d.getMonth()]+' '+d.getFullYear();
+}
+if (typeof window !== 'undefined') window.papFmtDate = papFmtDate;
 function _decHtml(s){var d=document.createElement('div');d.innerHTML=s;return d.textContent||d.innerText||'';}
 function _normWs(s){return s.replace(/[\u2018\u2019\u201C\u201D]/g,"'").replace(/\s+/g,' ').trim();}
 

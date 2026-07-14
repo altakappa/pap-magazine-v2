@@ -64,7 +64,9 @@ function _openAllArticlesInner(){
     card.setAttribute('data-cats',(a.cat||'').toLowerCase());
     card.setAttribute('data-idx',i);
     card.onclick=function(e){ if(e&&e.preventDefault)e.preventDefault(); openArticleDetail(i); };
-    var dateStr=a.d?a.d.substring(0,10):'';
+    // QA(2026-07) #8 — 목록 카드 발행일도 홈과 동일한 "DD Mon YYYY" 로 통일
+    // (기존 ISO "2026-07-12" → 12 Jul 2026). papFmtDate 는 pap-utils.js 공용.
+    var dateStr=a.d?(typeof papFmtDate==='function'?papFmtDate(a.d):a.d.substring(0,10)):'';
     card.innerHTML='<div class="art-all-thumb"><img src="'+(a.img||a.th)+'" alt="'+escapeHtml(a.t)+'" loading="lazy" onerror="edImgError(this)"></div><div class="art-all-info"><div class="art-all-cat">'+(a.cat||'ARTICLE').toUpperCase()+' · '+dateStr+'</div><div class="art-all-title">'+escapeHtml(a.t)+'</div>'+(a.sub?'<div class="art-all-sub">'+escapeHtml(a.sub)+'</div>':'')+'</div>';
     grid.appendChild(card);
   });

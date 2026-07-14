@@ -79,6 +79,16 @@ function fmtIsoDate(d) {
   if (!d) return new Date().toISOString();
   try { return new Date(d).toISOString(); } catch { return new Date().toISOString(); }
 }
+// QA(2026-07) #8 — 발행일 표기 통일. 메인홈 카드가 쓰는 "DD Mon YYYY"
+// (예: 12 Jul 2026) 형식을 상세 SSR 에서도 동일하게 사용한다(기존엔
+// ISO "2026-07-12" 라 홈/목록과 형식이 달랐다). datetime 속성은 ISO 유지.
+const _SEO_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function fmtDisplayDate(d) {
+  if (!d) return '';
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return '';
+  return ('0' + dt.getDate()).slice(-2) + ' ' + _SEO_MONTHS[dt.getMonth()] + ' ' + dt.getFullYear();
+}
 function truncate(s, n) {
   if (!s) return '';
   s = String(s).replace(/\s+/g, ' ').trim();
@@ -883,7 +893,7 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
     <div class="seo-meta">
       <h1>${escText(titleKo)}</h1>
       ${titleEn !== titleKo ? `<p class="alt">${escText(titleEn)}</p>` : ''}
-      <time datetime="${escAttr(published)}">${escText(published.slice(0, 10))}${record.issue ? ' · ' + escText(record.issue) : record.category ? ' · ' + escText(record.category) : ''}</time>
+      <time datetime="${escAttr(published)}">${escText(fmtDisplayDate(record.published_date) || published.slice(0, 10))}${record.issue ? ' · ' + escText(String(record.issue).toUpperCase()) : record.category ? ' · ' + escText(String(record.category).toUpperCase()) : ''}</time>
       <p class="seo-desc-primary">${escText(descKo)}</p>
       ${descEn && descEn !== descKo ? `<p class="seo-desc-en">${escText(descEn)}</p>` : ''}
     </div>
