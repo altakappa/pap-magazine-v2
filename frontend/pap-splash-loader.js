@@ -57,9 +57,16 @@
       'display:flex',
       'align-items:center',
       'justify-content:center',
-      'opacity:1',
+      // QA(2026-07) #3 — 검정 단독 구간 제거. 예전엔 오버레이를 opacity:1 로
+      // 즉시 띄워 검정+심볼만 먼저 보이고, fetch+이미지 다운로드가 끝난 뒤에야
+      // 이미지가 하드컷으로 붙어 "로딩 화면이 두 번" 뜨는 것처럼 보였다. 이제
+      // 오버레이는 opacity:0 으로 대기하고, 이미지가 프리로드 완료된 뒤에만
+      // 페이드인해 이미지가 포함된 단일 화면으로 한 번에 노출한다.
+      'opacity:0',
       'transition:opacity ' + FADE_MS + 'ms ease',
-      'pointer-events:auto'
+      // opacity:0 대기 동안 오버레이가 페이지 클릭을 가로채지 않도록 none.
+      // reveal 시점에 auto 로 바꿔 클릭-디스미스를 복구한다.
+      'pointer-events:none'
     ].join(';');
     var img = document.createElement('img');
     img.id = 'pap-splash-img';
@@ -129,27 +136,40 @@
     }, FADE_MS);
   }
 
+  // QA(2026-07) #3 — 이미지 프리로드 후 노출.
+  // 예전엔 visible <img> 에 곧바로 src 를 넣어, 다운로드가 끝나기 전까지
+  // 검정+심볼만 보이다가 이미지가 뒤늦게 하드컷으로 붙었다(이중 로딩).
+  // 이제 off-DOM Image() 로 먼저 디코드까지 마친 뒤, 준비된 이미지를 visible
+  // <img> 에 넣고 오버레이 전체를 페이드인해 단일 화면으로 한 번에 노출한다.
   function showWithItem(item){
     var url = pickUrl(item);
     if (!url){ hide(); return; }
-    var imgEl = document.getElementById('pap-splash-img');
-    if (imgEl){
-      // alt_text 없으면 빈 alt (decorative)
-      imgEl.alt = item.alt_text || '';
-      imgEl.onload = function(){
-        shown = true;
-        shownAt = Date.now();
-        // MIN_DISPLAY_MS 만큼 유지 후 자동 dismiss
-        setTimeout(hide, MIN_DISPLAY_MS);
-      };
-      imgEl.onerror = function(){
-        // 이미지 로드 실패 → 즉시 dismiss
-        hide();
-      };
-      imgEl.src = url;
-    }
-    // 안전 상한 — 어떤 사유든 MAX_DISPLAY_MS 넘으면 강제 dismiss
+    // 안전 상한 — 프리로드가 지연돼도 MAX_DISPLAY_MS 넘으면 강제 종료.
     safetyTimer = setTimeout(hide, MAX_DISPLAY_MS);
+
+    function reveal(){
+      if (hidden) return;                       // 이미 안전타이머 등으로 종료됨
+      var imgEl = document.getElementById('pap-splash-img');
+      if (!imgEl){ hide(); return; }
+      imgEl.alt = item.alt_text || '';
+      imgEl.src = url;                          // 프리로드 완료 → 즉시 표시
+      // 오버레이 페이드인 (reduced-motion 은 즉시).
+      if (reduced){ splash.style.transition = 'none'; }
+      // 강제 리플로우 후 opacity 전환이 트랜지션되도록.
+      void splash.offsetWidth;
+      splash.style.opacity = '1';
+      splash.style.pointerEvents = 'auto';      // 클릭-디스미스 복구
+      shown = true;
+      shownAt = Date.now();
+      setTimeout(hide, MIN_DISPLAY_MS);
+    }
+
+    var pre = new Image();
+    pre.onload = reveal;
+    pre.onerror = function(){ hide(); };        // 이미지 실패 → 스플래시 안 띄움
+    pre.src = url;
+    // 이미 캐시돼 즉시 complete 인 경우 onload 가 안 걸릴 수 있어 방어.
+    if (pre.complete && pre.naturalWidth){ reveal(); }
   }
 
   // API 조회 — 실패해도 조용히 숨김.
