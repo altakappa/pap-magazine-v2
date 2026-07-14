@@ -162,11 +162,16 @@ a{color:#fff;text-decoration:none}
    pinned to the top of the page. Same links, same active state, just
    laid out on the X axis. */
 @media(max-width:900px){
-  /* 모바일 상단 탭바 — 가로 스크롤(스와이프) 바. position:sticky 는 body 에
-     걸린 overflow(pap-header) 때문에 동작하지 않아 relative 유지.
-     overscroll-behavior-x:contain 으로 가로 스와이프가 브라우저 뒤로가기
-     제스처로 새지 않게 하고, 탭 터치 영역을 키워 탭 반응을 개선한다. */
-  .mp-sidebar{position:relative;width:100%;height:auto;padding:60px 12px 10px;border-right:none;border-bottom:1px solid rgba(255,255,255,.1);overflow-x:auto;overflow-y:hidden;background:rgba(0,0,0,.6);overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+  /* QA(2026-07) #20 — 모바일 상단 탭바 스크롤 고정(sticky).
+     예전 주석은 "body overflow 때문에 sticky 가 안 된다"고 했으나, 실측 결과
+     html{overflow-x:hidden}·body{overflow-x:hidden→overflow-y:auto} 환경에서도
+     body 직속 자식(.mp-sidebar)의 position:sticky 는 정상 동작한다(600px 스크롤
+     후에도 top 고정 확인). 상단 탭바를 sticky 로 고정해 스크롤해도 항상 노출.
+     top:0 + 상단 padding 60px(고정 헤더 높이만큼)로 헤더 바로 아래에 탭이 오게
+     하고, z-index 는 헤더(1600) 아래·콘텐츠 위(1400). 스크롤 콘텐츠가 비쳐
+     지저분하지 않도록 배경 불투명도를 높이고 blur 를 준다.
+     overscroll-behavior-x:contain 으로 가로 스와이프가 뒤로가기로 새지 않게 유지. */
+  .mp-sidebar{position:sticky;top:0;z-index:1400;width:100%;height:auto;padding:60px 12px 10px;border-right:none;border-bottom:1px solid rgba(255,255,255,.1);overflow-x:auto;overflow-y:hidden;background:rgba(0,0,0,.92);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
   .mp-side-nav{flex-direction:row;flex-wrap:nowrap;gap:0;align-items:center}
   .mp-side-group{flex-direction:row;padding:0 4px;align-items:center;gap:0;flex-shrink:0}
   .mp-side-group-title{display:none}
