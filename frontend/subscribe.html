@@ -64,14 +64,17 @@ a{color:#fff;text-decoration:none}
 .subscribe-hero p{font-size:14px;line-height:2;color:rgba(255,255,255,.55);max-width:520px;margin:0 auto}
 
 /* BILLING TOGGLE */
-.billing-toggle{display:flex;align-items:center;justify-content:center;gap:16px;margin:0 auto 48px;max-width:1100px}
+/* QA(2026-07) #27 — 토글 행(월간·스위치·연간)은 한 줄로 중앙정렬하고,
+   "2개월 무료" 배지는 그 아래 줄에 배치해 정렬 밸런스를 맞춘다. */
+.billing-toggle{display:flex;flex-direction:column;align-items:center;gap:10px;margin:0 auto 48px;max-width:1100px}
+.billing-row{display:flex;align-items:center;justify-content:center;gap:16px}
 .billing-label{font-size:12px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.35);cursor:pointer;transition:color .3s}
 .billing-label.active{color:#fff}
 .toggle-track{width:48px;height:26px;background:rgba(255,255,255,.15);border-radius:13px;position:relative;cursor:pointer;transition:background .3s;flex-shrink:0}
 .toggle-track.yearly{background:rgba(255,255,255,.3)}
 .toggle-knob{width:20px;height:20px;background:#fff;border-radius:50%;position:absolute;top:3px;left:3px;transition:transform .3s cubic-bezier(.4,0,.2,1)}
 .toggle-track.yearly .toggle-knob{transform:translateX(22px)}
-.billing-save{font-size:10px;font-weight:700;letter-spacing:.1em;color:#000;background:#fff;padding:3px 10px;border-radius:10px;margin-left:4px}
+.billing-save{font-size:10px;font-weight:700;letter-spacing:.1em;color:#000;background:#fff;padding:3px 10px;border-radius:10px}
 
 /* Price transition */
 .plan-price,.plan-price-free{transition:opacity .3s}
@@ -471,12 +474,17 @@ function navigateWithInterstitial(url){
   </div>
 
   <!-- BILLING TOGGLE -->
+  <!-- QA(2026-07) #27 — "2개월 무료" 배지가 연간 버튼 오른쪽에 나란히 붙어 있어
+       토글 그룹의 시각적 중심이 왼쪽으로 밀리고 정렬 밸런스가 무너졌다.
+       배지를 토글 아래 줄로 내려 월간/연간 토글이 정확히 중앙에 오도록 한다. -->
   <div class="billing-toggle">
-    <span class="billing-label active" id="labelMonthly" data-i18n="monthly" onclick="setBilling('monthly')">월간</span>
-    <div class="toggle-track" id="billingToggle" onclick="toggleBilling()">
-      <div class="toggle-knob"></div>
+    <div class="billing-row">
+      <span class="billing-label active" id="labelMonthly" data-i18n="monthly" onclick="setBilling('monthly')">월간</span>
+      <div class="toggle-track" id="billingToggle" onclick="toggleBilling()">
+        <div class="toggle-knob"></div>
+      </div>
+      <span class="billing-label" id="labelYearly" data-i18n="yearly" onclick="setBilling('yearly')">연간</span>
     </div>
-    <span class="billing-label" id="labelYearly" data-i18n="yearly" onclick="setBilling('yearly')">연간</span>
     <span class="billing-save" id="billingSave" data-i18n="save2mo">2개월 무료</span>
   </div>
 
@@ -1496,7 +1504,7 @@ setBilling('monthly');
 <script src="/pap-content-seo.js?v=4"></script>
 <script src="/pap-shell-bootstrap.js?v=9"></script>
 <script src="/pap-app.js?v=20"></script>
-<script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=18" defer></script>
+<script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=19" defer></script>
 <script src="/pap-auth-link.js?v=2" defer></script>
 </body>
 </html>

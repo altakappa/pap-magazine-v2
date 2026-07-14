@@ -216,8 +216,17 @@
     var layoutFix = document.createElement('style');
     layoutFix.id = 'pap-header-layout';
     layoutFix.textContent = [
-      /* push content below header on sub-pages */
-      '.pap-has-header:not(.pap-keep-side-nav) .content{margin-left:0!important;padding-top:100px!important}',
+      /* push content below header on sub-pages.
+         QA(2026-07) #24·#25·#26 — 예전엔 margin-left:0!important 이었다. 원래는
+         레거시 좌측 사이드바 오프셋(.content{margin-left:220px})을 지우려는 규칙인데,
+         이 선택자는 특이도가 높아 페이지의 .content{margin:0 auto} 중앙정렬까지
+         덮어써 버렸다. 그 결과 구독/서브미션/풀레터처럼 max-width 가 걸린 단일
+         박스 페이지가 좌측으로 치우쳤다(각 페이지가 margin-left:auto!important 로
+         방어해도 이 규칙의 특이도가 더 높아 무력화됐다).
+         auto 로 바꾸면 (a) 레거시 사이드바 오프셋은 그대로 제거되고
+         (b) max-width 가 있는 .content 는 정상적으로 중앙정렬된다.
+         max-width 가 없는 .content 는 auto 가 0 처럼 동작하므로 영향 없음. */
+      '.pap-has-header:not(.pap-keep-side-nav) .content{margin-left:auto!important;margin-right:auto!important;padding-top:100px!important}',
       '.pap-has-header:not(.pap-keep-side-nav) .footer-legal{margin-left:0!important}',
       /* pages that opt-in to keep the legacy .side-nav coexist with unified header */
       '.pap-has-header.pap-keep-side-nav .content{padding-top:100px!important}',

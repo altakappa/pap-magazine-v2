@@ -948,7 +948,7 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
      보여준다. (에디토리얼/필름 SSR 은 위 브릿지로 SPA 리다이렉트되지만, 기사 SSR 은
      리다이렉트하지 않으므로 직접 진입 시 헤더 일치가 특히 중요.) _navGo 는
      navigateWithInterstitial 부재 시 location.href 로 폴백한다. -->
-<script src="/pap-header.js?v=17" defer></script>
+<script src="/pap-header.js?v=19" defer></script>
 </body>
 </html>`;
 }
