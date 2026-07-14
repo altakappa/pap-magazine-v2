@@ -609,7 +609,7 @@ const PAP = (function() {
     /**
      * Issue billing key via PortOne popup, then create subscription on backend
      */
-    async checkout(plan, billing) {
+    async checkout(plan, billing, trial) {
       if (typeof PortOne === 'undefined') {
         throw new Error('Payment SDK not loaded. Please refresh the page.');
       }
@@ -635,6 +635,7 @@ const PAP = (function() {
         billingKey: issueResponse.billingKey,
         plan: plan,
         billing: billing,
+        trial: trial === true,
       });
       return res;
     },

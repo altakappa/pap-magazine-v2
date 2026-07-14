@@ -96,6 +96,63 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ message: 'Invalid plan or billing cycle' });
     }
 
+    // 게이트(isPremium/isStandardOrAbove)는 base plan('premium'/'standard')만 본다.
+    // planKey('standard_monthly')를 그대로 profiles에 쓰면 결제 회원이 막힌다
+    // (paddle-webhook.js와 동일 규칙 — 원본 키는 subscriptions.plan에 보존).
+    const basePlan = /^premium/.test(planKey) ? 'premium'
+      : /^standard/.test(planKey) ? 'standard' : 'free';
+    const now = new Date();
+
+    // ── 7일 무료 체험 ─────────────────────────────────────────────
+    // 첫 구독자(구독 이력 없음)만 대상. 즉시 청구 대신 첫 결제를 7일 뒤로 예약하고
+    // status='trialing'로 접근을 부여한다. 7일 뒤 예약결제가 성사되면
+    // portone-webhook(PaymentSchedule.Paid)이 status='active'로 올리고 다음 결제를
+    // 재예약하므로 정기결제가 자연히 이어진다.
+    let wantTrial = req.body.trial === true;
+    if (wantTrial) {
+      const { data: _existing } = await supabaseAdmin
+        .from('subscriptions').select('id').eq('user_id', user.id).maybeSingle();
+      if (_existing) wantTrial = false; // 이미 구독 이력 → 재체험 방지
+    }
+    if (wantTrial) {
+      const TRIAL_DAYS = 7;
+      const trialEnd = new Date(now.getTime() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
+      const trialSchedId = `pap_sched_${user.id}_${Date.now()}`;
+      // 첫 결제(=체험 종료일) 예약. 즉시 청구 없음.
+      await portoneRequest('POST', `/payment-schedules`, {
+        paymentId: trialSchedId,
+        billingKey,
+        orderName: planInfo.name,
+        amount: { total: planInfo.amount },
+        currency: 'KRW',
+        customer: { id: user.id, email: user.email },
+        timeToPay: trialEnd.toISOString(),
+      });
+      const { error: trialErr } = await supabaseAdmin.from('subscriptions').upsert({
+        user_id: user.id,
+        portone_billing_key: billingKey,
+        portone_payment_id: trialSchedId,
+        plan: planKey,
+        billing_cycle: billing,
+        status: 'trialing',
+        current_period_start: now.toISOString(),
+        current_period_end: trialEnd.toISOString(),
+      }, { onConflict: 'user_id' });
+      if (trialErr) console.error('Trial subscription upsert failed:', trialErr.message || trialErr);
+      // 체험 중에도 접근 부여 — 게이트는 base plan만 본다.
+      await supabaseAdmin.from('profiles').update({
+        subscription_plan: basePlan,
+        subscription_status: 'active',
+      }).eq('id', user.id);
+      return res.status(200).json({
+        success: true,
+        trial: true,
+        plan: planKey,
+        trialEnd: trialEnd.toISOString(),
+        nextBilling: trialEnd.toISOString(),
+      });
+    }
+
     // Generate unique payment ID
     const paymentId = `pap_${user.id}_${Date.now()}`;
 
@@ -140,7 +197,6 @@ module.exports = async function handler(req, res) {
     // 3. Store subscription in Supabase. We use the existing `subscriptions`
     //    table (extended in migration 007 with portone_* columns) rather than
     //    a parallel `subscribers` table — keeps a single source of truth.
-    const now = new Date();
     const { error: subErr } = await supabaseAdmin.from('subscriptions').upsert({
       user_id: user.id,
       portone_billing_key: billingKey,
@@ -161,7 +217,7 @@ module.exports = async function handler(req, res) {
     //    immediately on next login. Also bump token_version so any active
     //    JWTs are forced to refresh (prevents stale free-tier flags).
     await supabaseAdmin.from('profiles').update({
-      subscription_plan: planKey,
+      subscription_plan: basePlan,
       subscription_status: 'active',
     }).eq('id', user.id);
 
