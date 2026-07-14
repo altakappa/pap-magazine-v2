@@ -933,7 +933,22 @@ function _papRenderEdIg(igUrl, title){
   var box=document.getElementById('edIgPostCta');
   if(!box) return;
   if(!igUrl || !/instagram\.com\//.test(String(igUrl))){
-    box.innerHTML=''; box.style.display='none'; return;
+    // 링크 백필 전 아카이브(레거시 다수)·미게시 신작 — IG 임베드는 없지만 섹션을
+    // 숨기지 않고 '전체 화보=PAP + 공유 + @pap_magazine 팔로우' 폴백으로 유입·참여 동선 유지.
+    var _kf=(localStorage.getItem('pap-lang')||'ko')==='ko';
+    var _bf=_kf
+      ? '이 화보의 전체 시리즈는 <b style="color:#fff">PAP에서 완전판</b>으로. 새 에디토리얼은 인스타그램에서도 만나요.'
+      : 'The complete series lives here, <b style="color:#fff">on PAP</b>. Catch new editorials on Instagram too.';
+    var _sf=_kf ? '이 화보 공유 ↗' : 'Share this editorial ↗';
+    var _ff=_kf ? 'PAP 인스타그램 →' : 'PAP on Instagram →';
+    box.innerHTML=
+      '<aside style="margin:36px 0 0;padding:26px 24px;border:1px solid rgba(255,255,255,.16);text-align:center">'
+      +'<div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:10px">Full Editorial</div>'
+      +'<div style="font-size:13.5px;line-height:1.7;color:#ddd;margin-bottom:16px">'+_bf+'</div>'
+      +'<button onclick="_papShareStory()" style="background:#fff;color:#000;border:none;padding:11px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;margin:0 6px 8px">'+_sf+'</button>'
+      +'<a href="https://www.instagram.com/pap_magazine/" target="_blank" rel="noopener" style="display:inline-block;padding:11px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#fff;border:1px solid rgba(255,255,255,.28);text-decoration:none;margin:0 6px 8px">'+_ff+'</a>'
+      +'</aside>';
+    box.style.display=''; return;
   }
   var safe=String(igUrl).replace(/"/g,'&quot;');
   var permalink=String(igUrl).split('?')[0];
