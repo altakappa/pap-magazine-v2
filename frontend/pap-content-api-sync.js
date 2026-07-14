@@ -240,7 +240,17 @@ window._papFilmAutoPlay = function(){
       // 참여 증폭 (2026-07) — 원본 IG 게시물 딥링크 (좋아요·저장·보내기 CTA)
       ig: a.source_instagram_url || '',
       // Pass through any i18n fields the API exposes (varies by backend schema)
-      ti18n: a.title_i18n || a.titleI18n || a.ti18n || null,
+      //
+      // QA(2026-07) #30 — 다국어 전환 시 제목 번역 미적용.
+      // 프론트는 ti18n(다국어 맵)만 소비하는데 articles 테이블엔 title_i18n 컬럼이
+      // 없고 title_en(영문 단일)만 있다. 게다가 title_en 은 API select 에서도
+      // 빠져 있어(지금 추가) 프론트까지 오지도 않았다 → 언어를 바꿔도 대부분의
+      // 기사 제목이 한국어로 고정됐다(IG 연동 기사만 정적 JSON 의 ti18n 덕에 번역됨).
+      // 이제 title_en 을 ti18n.en 으로 실어 일관된 폴백을 만든다:
+      //   한국어 → 원문 제목,  그 외 언어 → 영문 제목(있으면), 없으면 원문.
+      // (상세 렌더는 ti18n[lang] || ti18n.en || 원문 순으로 고른다)
+      ti18n: a.title_i18n || a.titleI18n || a.ti18n
+             || (a.title_en && String(a.title_en).trim() ? { en: String(a.title_en).trim() } : null),
       subi18n: a.subtitle_i18n || a.subtitleI18n || a.subi18n || null,
       desci18n: a.content_i18n || a.contentI18n || a.desci18n || null
     };

@@ -75,6 +75,10 @@ module.exports = async function handler(req, res) {
       //           entirely from the POP after the first hit.
       const LIST_COLUMNS = [
         'id','title','subtitle','slug','thumbnail_url','hero_image_url',
+        // QA(2026-07) #30 — 다국어 제목. title_en 이 select 에 없어서 프론트까지
+        // 도달하지 못했고(프론트는 ti18n 맵만 소비), 그 결과 언어를 바꿔도 대부분의
+        // 기사 제목이 한국어로 고정됐다. 영문 제목을 내려 ti18n.en 폴백에 쓴다.
+        'title_en',
         'category','tags','published_date','custom_url','status',
         'scheduled_publish_at','admin_edited_at','updated_at',
         'content',

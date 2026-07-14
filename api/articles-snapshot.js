@@ -27,7 +27,9 @@ module.exports = async function handler(req, res) {
     // 공개 발행분만, 최신순, 최대 600편(목록 첫 페인트로 충분).
     const { data, error } = await supabaseAdmin
       .from('articles')
-      .select('title,subtitle,slug,custom_url,category,tags,thumbnail_url,hero_image_url,credits,gallery,content,published_date')
+      // QA(2026-07) #30 — title_en 추가. 홈/목록은 이 스냅샷을 소비하는데 영문
+      // 제목이 빠져 있어 언어를 바꿔도 대부분의 기사 제목이 한국어로 남았다.
+      .select('title,title_en,subtitle,slug,custom_url,category,tags,thumbnail_url,hero_image_url,credits,gallery,content,published_date')
       .eq('status', 'published')
       .or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${nowIso}`)
       .order('published_date', { ascending: false })

@@ -27,6 +27,28 @@
 // and closeAllArticles as bare globals at click time.
 
 // ======== ALL ARTICLES OVERLAY + openArticleBySlug + openArticleFromCard + openArticleDetail + closeArticleDetail ========
+// QA(2026-07) #30 — 기사 제목/부제 다국어 해석 공용 헬퍼.
+//
+// 언어 전환 시 대부분의 기사 제목이 한국어로 고정되던 문제의 표면 중 하나가
+// "목록 카드는 원문(a.t)을 그대로 박고, 상세만 ti18n 을 봤다"는 불일치였다.
+// 여기서 한 곳으로 모아 목록·상세가 동일한 규칙을 쓰게 한다.
+//
+// 폴백 순서:  현재 언어 → 영문(en) → 원문
+// (영문은 DB title_en 이 pap-content-api-sync 에서 ti18n.en 으로 실린다.
+//  번역 데이터가 아예 없는 기사는 원문이 그대로 유지된다 — 일관된 대체 처리.)
+function _papCurLang(){
+  try { return (typeof lang!=='undefined' && lang) || localStorage.getItem('pap-lang') || 'ko'; }
+  catch(e){ return 'ko'; }
+}
+function _papLocTitle(a){
+  var L=_papCurLang();
+  return (a && a.ti18n && (a.ti18n[L] || a.ti18n.en)) || (a && a.t) || '';
+}
+function _papLocSub(a){
+  var L=_papCurLang();
+  return (a && a.subi18n && (a.subi18n[L] || a.subi18n.en)) || (a && a.sub) || '';
+}
+
 // ======== ALL ARTICLES OVERLAY ========
 function openAllArticles(){
   if(!isStandardOrAbove() && _interstitialCount < _INTERSTITIAL_MAX){
@@ -67,7 +89,10 @@ function _openAllArticlesInner(){
     // QA(2026-07) #8 — 목록 카드 발행일도 홈과 동일한 "DD Mon YYYY" 로 통일
     // (기존 ISO "2026-07-12" → 12 Jul 2026). papFmtDate 는 pap-utils.js 공용.
     var dateStr=a.d?(typeof papFmtDate==='function'?papFmtDate(a.d):a.d.substring(0,10)):'';
-    card.innerHTML='<div class="art-all-thumb"><img src="'+(a.img||a.th)+'" alt="'+escapeHtml(a.t)+'" loading="lazy" onerror="edImgError(this)"></div><div class="art-all-info"><div class="art-all-cat">'+(a.cat||'ARTICLE').toUpperCase()+' · '+dateStr+'</div><div class="art-all-title">'+escapeHtml(a.t)+'</div>'+(a.sub?'<div class="art-all-sub">'+escapeHtml(a.sub)+'</div>':'')+'</div>';
+    // QA(2026-07) #30 — 목록 카드도 현재 언어에 맞는 제목/부제를 쓴다.
+    // 기존엔 a.t(원문)를 그대로 박아, 언어를 바꿔도 목록 제목이 한국어로 남았다.
+    var cTitle=_papLocTitle(a), cSub=_papLocSub(a);
+    card.innerHTML='<div class="art-all-thumb"><img src="'+(a.img||a.th)+'" alt="'+escapeHtml(cTitle)+'" loading="lazy" onerror="edImgError(this)"></div><div class="art-all-info"><div class="art-all-cat">'+(a.cat||'ARTICLE').toUpperCase()+' · '+dateStr+'</div><div class="art-all-title">'+escapeHtml(cTitle)+'</div>'+(cSub?'<div class="art-all-sub">'+escapeHtml(cSub)+'</div>':'')+'</div>';
     grid.appendChild(card);
   });
   count.textContent=artData.length+' ARTICLES';
@@ -490,10 +515,10 @@ function _renderArticleDetail(a,det){
       funnelEl.appendChild(_net);
     }
   }
-  // Use localized title/sub if available
-  var _curLang=(typeof lang!=='undefined'?lang:(localStorage.getItem('pap-lang')||'ko'));
-  var _locTitle=(a.ti18n && (a.ti18n[_curLang]||a.ti18n.en))||a.t||'';
-  var _locSub=(a.subi18n && (a.subi18n[_curLang]||a.subi18n.en))||a.sub||'';
+  // Use localized title/sub if available.
+  // QA(2026-07) #30 — 목록 카드와 동일한 공용 헬퍼를 써서 규칙을 일치시킨다.
+  var _locTitle=_papLocTitle(a);
+  var _locSub=_papLocSub(a);
   document.getElementById('artDetailTitle').textContent=_locTitle;
   document.getElementById('artDetailCat').textContent=(a.cat||'ARTICLE')+' · '+(a.d||'');
   document.getElementById('artDetailSub').textContent=_locSub;
