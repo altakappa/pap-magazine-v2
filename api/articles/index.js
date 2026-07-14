@@ -10,24 +10,12 @@ const { requireAdmin } = require('../_lib/auth');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { recordContentChange, attachAuthorship } = require('../_lib/audit');
 
-// QA #222 — auto-generate a URL slug from the title when the editor
-// leaves it blank. We keep Hangul/CJK characters as-is (modern browsers
-// + Vercel routes handle UTF-8 path segments fine) and only collapse
-// whitespace → hyphen + strip a small set of punctuation. The result
-// lets the SSR /article/:slug handler do a direct slug lookup instead
-// of falling back to the fragile title-ilike path.
-function generateArticleSlug(title) {
-  if (!title) return null;
-  const s = String(title)
-    .normalize('NFC')
-    .replace(/[‘’“”]/g, '')
-    .replace(/[.,!?;:'"…]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 200);
-  return s || null;
-}
+// QA #222 — 편집자가 슬러그를 비워두면 제목에서 자동 생성한다(콜드 로드 시
+// /article/<slug> 가 인덱스 조회로 바로 풀리도록).
+// QA(2026-07) #7 — 예전에는 한글을 그대로 남기는 정책이라 URL 이 퍼센트
+// 인코딩으로 노출됐다. 이제 공용 유틸(_lib/slug)로 ASCII 슬러그를 만든다:
+// 영문 제목 우선 → 없으면 국어의 로마자 표기법으로 음역.
+const { generateAsciiSlug, toAsciiSlug, ensureUniqueSlug } = require('../_lib/slug');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -172,7 +160,7 @@ module.exports = async function handler(req, res) {
 
     try {
       const {
-        title, subtitle, slug, published_date, category, tags,
+        title, title_en, subtitle, slug, published_date, category, tags,
         thumbnail_url, hero_image_url, content, gallery, credits,
         custom_url, status,
         // QA #199 — editor-tunable scheduled-publish stamp. Optional.
@@ -186,7 +174,18 @@ module.exports = async function handler(req, res) {
       // QA #222 — when the admin leaves slug empty we fill it from the
       // title so cold-load /article/<slug> resolves on a fast indexed
       // path instead of the SSR title-ilike fallback.
-      const finalSlug = (slug && slug.trim()) || generateArticleSlug(title);
+      //
+      // QA(2026-07) #7 — 슬러그 정책 통일. 기존 generateArticleSlug 는 한글을
+      // 그대로 남겨(정책상 의도) 관리자 등록 기사 URL 이 퍼센트 인코딩
+      // (%EA%B2%90%EC%A1%B0…)으로 노출됐고, IG 연동 기사(영문 슬러그)와 형식이
+      // 갈렸다. 이제 영문 제목 우선 → 없으면 한글을 국어의 로마자 표기법으로
+      // 음역해 ASCII 슬러그를 만든다(예: 겐조 니고의 세 번째 컬렉션 →
+      // genjo-nigoui-se-beonjjae-keolreksyeon). 중복 시 -2, -3 … 을 붙인다.
+      // 이미 발행된 한글 슬러그 기사는 건드리지 않는다(공유 링크·색인 보존).
+      const baseSlug = (slug && slug.trim())
+        ? toAsciiSlug(slug.trim()) || generateAsciiSlug(title, title_en)
+        : generateAsciiSlug(title, title_en);
+      const finalSlug = await ensureUniqueSlug(supabaseAdmin, 'articles', baseSlug);
       const { data, error } = await supabaseAdmin
         .from('articles')
         .insert({
