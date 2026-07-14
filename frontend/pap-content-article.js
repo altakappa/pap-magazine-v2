@@ -387,7 +387,33 @@ function _renderArticleDetail(a,det){
   if(_heroWrap){var _oldHero=_heroWrap.querySelector('.art-hero-ig');if(_oldHero)_oldHero.remove();}
   if(_heroImg){
     _heroImg.style.display='block';
+    // QA(2026-07) #18 — PC 썸네일 레터박스(필러박스) 제거 + 높이 규격 통일.
+    //
+    // 기존 인라인 스타일은 width:auto + max-height:75vh 라, PC(컨테이너 800px)에서
+    // 세로형(4:5) 이미지는 높이가 75vh 로 먼저 잘려 폭이 컨테이너보다 좁아졌고,
+    // 그 결과 좌우에 #111 배경 여백(레터박스)이 남았다. 모바일은 컨테이너가 좁아
+    // max-width:100% 가 먼저 걸려 꽉 차므로 정상이었다(보고서의 "모바일만 정상").
+    //
+    // 관리자 안내 규격이 4:5 이므로, 세로형 이미지는 컨테이너를 4:5 로 고정하고
+    // object-fit:cover 로 꽉 채운다(여백 없음, 강제 늘림(fill) 아님).
+    // 기존 16:9 등 가로형 이미지는 폭 100% + 높이 자동 — 현행과 동일하게 유지.
+    var _fitHero=function(){
+      var w=_heroImg.naturalWidth, h=_heroImg.naturalHeight;
+      if(!w || !h) return;
+      if(h > w){
+        // 세로형(4:5 등) — 4:5 규격 박스에 cover 로 꽉 채움.
+        if(_heroWrap) _heroWrap.style.aspectRatio='4 / 5';
+        _heroImg.style.cssText='width:100%;height:100%;object-fit:cover;display:block;margin:0';
+      } else {
+        // 가로형(16:9 등) — 기존 노출 방식 유지(폭 100%, 높이 자동, 여백 없음).
+        if(_heroWrap) _heroWrap.style.aspectRatio='';
+        _heroImg.style.cssText='width:100%;height:auto;object-fit:cover;display:block;margin:0';
+      }
+    };
+    _heroImg.onload=_fitHero;
     _heroImg.src=a.img||a.th;
+    // 캐시된 이미지는 onload 가 안 걸릴 수 있어 방어.
+    if(_heroImg.complete && _heroImg.naturalWidth) _fitHero();
   }
   // 참여 증폭 2.0 (2026-07) — 원본 IG 게시물을 링크가 아니라 '임베드'로
   // 페이지 안에 직접 띄운다. 게시물이 눈앞에 보이면 좋아요·저장이
