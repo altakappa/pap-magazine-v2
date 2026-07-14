@@ -32,24 +32,39 @@ function toggleSearch(){const o=document.getElementById('searchBar');if(!o)retur
 // Delegating from `document` makes the behavior identical on every
 // page and every input that matches the selector, regardless of mount
 // timing or duplication.
+// QA(2026-07) #28 — 검색 결과를 인라인 리스트가 아니라 별도 검색 결과 페이지로.
+//
+// 예전 동작:
+//   · 입력할 때마다 검색창 아래에 에디토리얼 목록(#searchDropdown)이 인라인으로
+//     계속 렌더됐다.
+//   · Enter 를 누르면 그 드롭다운의 "첫 번째 결과를 자동 클릭"해 곧바로 상세로
+//     튀거나, 결과가 없으면 홈(/?q=)으로 보냈다.
+//   → 해시태그 클릭은 /search?tag=… 결과 페이지로 가는데 검색창만 다른 방식이라
+//     사용자 경험이 갈렸다.
+//
+// 새 동작: 검색창은 입력 중 인라인 결과를 렌더하지 않고, 실행(Enter) 시 항상
+// /search?q=<검색어> 결과 페이지로 이동한다 → 해시태그 검색과 동일한 결과
+// 페이지 레이아웃을 공유한다. (search.html 은 이미 ?tag= 와 ?q= 를 모두 지원)
+function _papGoSearch(q){
+  q = (q || '').trim();
+  if(!q) return;
+  window.location.href = '/search?q=' + encodeURIComponent(q);
+}
+window._papGoSearch = _papGoSearch;
+
 document.addEventListener('input', function(e){
   var t = e.target;
-  if(!t || !t.matches || !t.matches('#searchInput, .search-bar-input')) return;
-  try { searchEditorials(t.value); } catch(_){}
+  if(!t || !t.matches || !t.matches('#searchInput, #papSearchInput, .search-bar-input, .search-input')) return;
+  // 인라인 결과 렌더 제거 — 열려 있던 드롭다운이 있으면 닫아둔다.
+  var dd = document.getElementById('searchDropdown');
+  if(dd) dd.classList.remove('active');
 });
 document.addEventListener('keydown', function(e){
   var t = e.target;
-  if(!t || !t.matches || !t.matches('#searchInput, .search-bar-input')) return;
+  if(!t || !t.matches || !t.matches('#searchInput, #papSearchInput, .search-bar-input, .search-input')) return;
   if(e.key !== 'Enter') return;
   e.preventDefault();
-  // Enter opens the first dropdown result — same UX home + sub pages.
-  var first = document.querySelector('#searchDropdown .search-dropdown-item');
-  if(first){ first.click(); return; }
-  // No match — fall back to home with the query so the home page can
-  // show a no-results state. Works even when the current page has no
-  // edData (sub-pages whose datasets haven't synced yet).
-  var q = (t.value||'').trim();
-  if(q) window.location.href = '/?q=' + encodeURIComponent(q);
+  _papGoSearch(t.value);
 });
 // Click delegation for dropdown items. The per-item onclick installed
 // in searchEditorials() is still the primary handler, but this
