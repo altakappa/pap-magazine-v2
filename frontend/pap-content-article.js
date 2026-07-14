@@ -372,25 +372,20 @@ function _papNicheIg(cat){
 }
 
 function _renderArticleDetail(a,det){
-  // #1 (2026-07) — 릴스/영상 게시물 재생.
-  // 릴스 연동 기사는 대부분 원본 mp4 가 수집되지 않고(예: 49건 중 46건 videos 빈값)
-  // permalink 와 썸네일만 있다. 이 경우 히어로에 정지 썸네일 대신 인스타그램
-  // 임베드(재생 가능)를 노출한다. mp4(videos)가 있으면 기존 <video>(갤러리)가
-  // 처리하므로 히어로는 썸네일 유지. 하단 CTA 의 중복 임베드는 제거(아래).
+  // QA(2026-07) #1 — 썸네일(히어로) 영역은 예외 없이 정적 이미지로 통일.
+  //
+  // 기존엔 "IG 임베드 가능 && mp4(videos) 없음" 이면 히어로 썸네일을 숨기고
+  // 인스타그램 임베드(blockquote)로 교체했다. 그 결과 같은 IG 연동 기사인데도
+  // mp4 수집 여부에 따라 어떤 기사는 정적 이미지, 어떤 기사는 IG 임베드(좋아요·
+  // 댓글 UI 포함)가 썸네일 자리에 떠서 기사별 처리가 불일치했다.
+  //
+  // 이제 히어로는 항상 썸네일 이미지고, 재생 가능한 IG 임베드는 본문 영역의
+  // 하단 CTA(#artIgPostCta)에서만 노출한다 → 릴스 재생은 유지하면서 썸네일은 통일.
   var _heroImg=document.getElementById('artDetailImg');
   var _heroWrap=_heroImg?_heroImg.parentNode:null;
-  var _artEmbeddable=!!(a.ig && /instagram\.com\/(p|reel|tv)\//.test(String(a.ig)));
-  var _artHasVideo=Array.isArray(a.videos)&&a.videos.length>0;
+  // 이전 렌더에서 남은 히어로 임베드 제거(오버레이 재사용 대비).
   if(_heroWrap){var _oldHero=_heroWrap.querySelector('.art-hero-ig');if(_oldHero)_oldHero.remove();}
-  if(_artEmbeddable && !_artHasVideo && _heroWrap){
-    if(_heroImg) _heroImg.style.display='none';
-    var _hp=String(a.ig).split('?')[0]; if(!/\/$/.test(_hp)) _hp+='/';
-    _heroWrap.insertAdjacentHTML('beforeend',
-      '<div class="art-hero-ig" style="max-width:420px;margin:0 auto;background:#000">'
-      +'<blockquote class="instagram-media" data-instgrm-permalink="'+_hp.replace(/"/g,'&quot;')+'" data-instgrm-version="14" style="background:#000;border:0;margin:0 auto;max-width:420px;min-width:280px;width:100%"></blockquote>'
-      +'</div>');
-    if(typeof _papLoadIgEmbed==='function'){try{_papLoadIgEmbed();}catch(_){}}
-  } else if(_heroImg){
+  if(_heroImg){
     _heroImg.style.display='block';
     _heroImg.src=a.img||a.th;
   }
@@ -410,7 +405,14 @@ function _renderArticleDetail(a,det){
       // 인스타그램 유입이 최우선 목표: 주버튼=원본 게시물 열기, 보조=팔로우,
       // 공유는 텍스트 링크로 유지. (이전 '공유만 남김' 결정을 대체한다)
       igCta.innerHTML=
-        '<aside style="margin:28px 0 0;padding:26px 24px;border:1px solid rgba(255,255,255,.16);text-align:center">'
+        // QA(2026-07) #1 — 재생 가능한 원본 IG 임베드는 썸네일(히어로)이 아니라
+        // 여기(본문 하단)에서만 노출한다. 임베드 불가 URL(프로필 등)은 텍스트 CTA만.
+        (_canEmbed
+          ? '<div class="art-body-ig" style="max-width:420px;margin:28px auto 0;background:#000">'
+            +'<blockquote class="instagram-media" data-instgrm-permalink="'+_permalink.replace(/"/g,'&quot;')+'" data-instgrm-version="14" style="background:#000;border:0;margin:0 auto;max-width:420px;min-width:280px;width:100%"></blockquote>'
+            +'</div>'
+          : '')
+        +'<aside style="margin:28px 0 0;padding:26px 24px;border:1px solid rgba(255,255,255,.16);text-align:center">'
         +(function(){
           var _ko=(localStorage.getItem('pap-lang')||'ko')==='ko';
           // IG 유입 계측 (B-2) — 직링크 대신 /api/ig-out 경유로 클릭 로깅
