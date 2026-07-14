@@ -1843,13 +1843,30 @@ function _renderEdAllPage(){
     grid.appendChild(empty);
   }
   if(!premium&&edAllCurrentPage===totalPages&&filtered.length>availableData.length){
+    // 소프트 페이월(2026-07 전환): 차단이 아니라 프리미엄 가치를 보여주는 카드로 설득.
+    var _ko=(localStorage.getItem('pap-lang')||'ko')==='ko';
+    var _more=filtered.length-availableData.length;
     var upsell=document.createElement('div');
-    upsell.style.cssText='grid-column:1/-1;text-align:center;padding:40px 20px;';
-    var _upMsg=standard
-      ? 'PREMIUM MEMBERS CAN ACCESS ALL '+filtered.length+' EDITORIALS'
-      : 'FREE PREVIEW SHOWS THE LATEST 10 — MEMBERS CAN ACCESS '+filtered.length+' EDITORIALS';
-    var _upBtn=standard?'UPGRADE TO PREMIUM':'SUBSCRIBE';
-    upsell.innerHTML='<p style="color:#999;font-size:12px;letter-spacing:.1em;margin-bottom:12px;">'+_upMsg+'</p><a href="/subscribe" style="display:inline-block;padding:10px 28px;background:#fff;color:#000;font-size:11px;font-weight:700;letter-spacing:.1em;text-decoration:none;">'+_upBtn+'</a>';
+    upsell.style.cssText='grid-column:1/-1;padding:8px 20px 48px;';
+    var _head=standard
+      ? (_ko?'Premium으로 전체 아카이브 열기':'Open the full archive with Premium')
+      : (_ko?'무료 미리보기는 여기까지예요':'The free preview ends here');
+    var _sub=standard
+      ? (_ko?'지금은 최근 6개월치를 보고 계세요. Premium 멤버는 2,400편 이상 전체 아카이브와 풀레터까지 이용할 수 있어요.':'You are seeing the last 6 months. Premium unlocks the full 2,400+ editorial archive and Pull-Letters.')
+      : (_ko?('멤버가 되면 '+_more+'편을 더 볼 수 있어요 — 광고 없이, 이미지 다운로드와 서브미션 피드백까지.'):('Become a member to unlock '+_more+' more editorials — ad-free, with image downloads and submission feedback.'));
+    var _feats=standard
+      ? [_ko?'2,400+ 전체 아카이브':'Full 2,400+ archive',_ko?'풀레터 요청':'Pull-Letter requests',_ko?'광고 없이 · 다운로드':'Ad-free · downloads']
+      : [_ko?'최근 6개월 에디토리얼':'Last 6 months of editorials',_ko?'광고 없이 감상':'Ad-free reading',_ko?'이미지 다운로드':'Image downloads',_ko?'서브미션 피드백':'Submission feedback'];
+    var _btn=standard?(_ko?'Premium 업그레이드':'Upgrade to Premium'):(_ko?'구독하고 전체 보기':'Subscribe to see all');
+    var _chips=_feats.map(function(f){return '<span style="display:inline-block;border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:6px 13px;font-size:11px;color:#cfcfcf;margin:4px">'+f+'</span>';}).join('');
+    upsell.innerHTML=
+      '<div style="max-width:560px;margin:8px auto 0;padding:34px 26px;border:1px solid rgba(255,255,255,.16);border-radius:14px;text-align:center;background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0))">'
+      + '<div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#8a8a8a;margin-bottom:12px">Editorial Archive</div>'
+      + '<div style="font-size:19px;font-weight:700;letter-spacing:.01em;color:#fff;margin-bottom:10px">'+_head+'</div>'
+      + '<div style="font-size:13px;line-height:1.7;color:#b4b4b4;margin-bottom:16px">'+_sub+'</div>'
+      + '<div style="margin-bottom:22px">'+_chips+'</div>'
+      + '<a href="/subscribe" style="display:inline-block;background:#fff;color:#000;padding:13px 34px;font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;border-radius:2px">'+_btn+'</a>'
+      + '</div>';
     grid.appendChild(upsell);
   }
   count.textContent=availableData.length+' EDITORIALS'+(premium?'':' (PREMIUM: '+filtered.length+')');
