@@ -412,21 +412,23 @@ function _renderArticleDetail(a,det){
             +'<blockquote class="instagram-media" data-instgrm-permalink="'+_permalink.replace(/"/g,'&quot;')+'" data-instgrm-version="14" style="background:#000;border:0;margin:0 auto;max-width:420px;min-width:280px;width:100%"></blockquote>'
             +'</div>'
           : '')
-        +'<aside style="margin:28px 0 0;padding:26px 24px;border:1px solid rgba(255,255,255,.16);text-align:center">'
+        // QA(2026-07) #9 — SSR·다른 오버레이와 동일한 .ig-funnel 공용 컴포넌트.
+        +'<aside class="ig-funnel">'
         +(function(){
           var _ko=(localStorage.getItem('pap-lang')||'ko')==='ko';
           // IG 유입 계측 (B-2) — 직링크 대신 /api/ig-out 경유로 클릭 로깅
           var _pSafe='/api/ig-out?src=article&to=post&url='+encodeURIComponent(_permalink);
           var _body=_ko
-            ? '이 기사의 원본 게시물이 <b style="color:#fff">인스타그램</b>에 있습니다.<br>좋아요·저장하고, 매일 공개되는 새 에디토리얼을 가장 먼저 만나보세요.'
-            : 'The original post lives on <b style="color:#fff">Instagram</b>.<br>Like &amp; save it — and catch new editorials there first, every day.';
+            ? '이 기사의 원본 게시물이 <b>인스타그램</b>에 있습니다.<br>좋아요·저장하고, 매일 공개되는 새 에디토리얼을 가장 먼저 만나보세요.'
+            : 'The original post lives on <b>Instagram</b>.<br>Like &amp; save it — and catch new editorials there first, every day.';
           var _view=_ko ? '인스타그램에서 보기 ↗' : 'View on Instagram ↗';
           var _share=_ko ? '이 기사 공유' : 'Share this story';
-          return '<div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:10px">On Instagram</div>'
-            +'<div style="font-size:13.5px;line-height:1.7;color:#ddd;margin-bottom:16px">'+_body+'</div>'
-            +'<a href="'+_pSafe+'" target="_blank" rel="noopener" style="display:inline-block;margin:4px 5px 0;background:#fff;color:#000;padding:12px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none">'+_view+'</a>'
-            +'<a href="/api/ig-out?src=article&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener" style="display:inline-block;margin:4px 5px 0;background:transparent;color:#ddd;border:1px solid rgba(255,255,255,.28);padding:12px 22px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none">Follow @pap_magazine</a>'
-            +'<div style="margin-top:14px"><button onclick="_papShareArticle()" style="background:none;border:none;color:#888;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;text-decoration:underline;text-underline-offset:3px">'+_share+' ↗</button></div>';
+          // 공용 .ig-funnel 클래스(igf-*)로 통일 — 인라인 스타일 제거.
+          return '<div class="igf-kicker">On Instagram</div>'
+            +'<div class="igf-copy">'+_body+'</div>'
+            +'<a class="igf-btn" href="'+_pSafe+'" target="_blank" rel="noopener">'+_view+'</a>'
+            +'<a class="igf-btn igf-btn-ghost" href="/api/ig-out?src=article&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener">Follow @pap_magazine</a>'
+            +'<div><button class="igf-share" onclick="_papShareArticle()">'+_share+' ↗</button></div>';
           })()
         +'</aside>';
       igCta.style.display='';
@@ -446,7 +448,8 @@ function _renderArticleDetail(a,det){
         _nEl=document.createElement('a');
         _nEl.setAttribute('data-niche-follow','1');
         _nEl.target='_blank'; _nEl.rel='noopener';
-        _nEl.style.cssText='display:inline-block;margin:10px 0 0 10px;background:transparent;color:#bbb;border:1px solid rgba(255,255,255,.22);padding:12px 24px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;text-decoration:none';
+        // QA(2026-07) #9 — 공용 .ig-funnel 보조 버튼 클래스 사용(인라인 제거).
+        _nEl.className='igf-btn igf-btn-ghost';
         funnelEl.appendChild(_nEl);
       }
       _nEl.href='/api/ig-out?src=article&to=profile&url='+encodeURIComponent('https://www.instagram.com/'+_nn+'/');
@@ -456,8 +459,8 @@ function _renderArticleDetail(a,det){
     if(!funnelEl.querySelector('[data-network-link]')){
       var _net=document.createElement('div');
       _net.setAttribute('data-network-link','1');
-      _net.style.cssText='margin-top:14px;font-size:11px;letter-spacing:.08em';
-      _net.innerHTML='<a href="/network" style="color:#888;text-decoration:underline">패션·뷰티·셀럽·아트 — PAP 인스타그램 네트워크 전체 보기 →</a>';
+      _net.className='igf-sub';
+      _net.innerHTML='<a href="/network">패션·뷰티·셀럽·아트 — PAP 인스타그램 네트워크 전체 보기 →</a>';
       funnelEl.appendChild(_net);
     }
   }

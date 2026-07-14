@@ -29,7 +29,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/pap-styles.css?v=36">
+<link rel="stylesheet" href="/pap-styles.css?v=37">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-height:100vh; padding-top:72px; }
@@ -223,11 +223,13 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
     <!-- 참여 증폭 CTA — 그동안 articles.html 오버레이엔 이 노드가 없어 /articles 진입 시
          Full Story 박스가 조용히 렌더되지 않았다. index 오버레이와 동일하게 추가. -->
     <div id="artIgPostCta" style="display:none"></div>
-    <aside id="artIgFunnel" style="margin:28px 0 8px;padding:32px 24px;border:1px solid rgba(255,255,255,.16);text-align:center">
-      <div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:12px">PAP Magazine — Instagram</div>
-      <div style="font-size:14px;line-height:1.75;color:#ddd;margin-bottom:20px">매일 업데이트되는 에디토리얼과 패션·셀럽 뉴스,<br><b style="color:#fff">인스타그램에서 가장 먼저</b> 만나보세요.</div>
-      <a href="/api/ig-out?src=article&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener" style="display:inline-block;background:#fff;color:#000;padding:12px 30px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;text-decoration:none">Follow @pap_magazine</a>
-      <button onclick="_papShareStory()" style="display:inline-block;margin-left:10px;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);padding:12px 24px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;cursor:pointer">이 스토리 공유 ↗</button>
+    <!-- QA(2026-07) #9 — SSR(/article)과 동일한 .ig-funnel 공용 컴포넌트 사용.
+         기존 인라인 스타일(박스 규격·자간이 SSR과 미묘하게 달랐다)을 제거. -->
+    <aside id="artIgFunnel" class="ig-funnel">
+      <div class="igf-kicker">PAP Magazine — Instagram</div>
+      <div class="igf-copy">매일 업데이트되는 에디토리얼과 패션·셀럽 뉴스,<br><b>인스타그램에서 가장 먼저</b> 만나보세요.</div>
+      <a class="igf-btn" href="/api/ig-out?src=article&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener">Follow @pap_magazine</a>
+      <div><button class="igf-share" onclick="_papShareStory()">이 스토리 공유 ↗</button></div>
     </aside>
     <div id="artSocialSlot"></div>
   </div>
@@ -266,7 +268,7 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
 <script src="/pap-home.js?v=1" defer></script>
 <script src="/pap-content-editorial.js?v=25" defer></script>
 <script src="/pap-content-film.js?v=10" defer></script>
-<script src="/pap-content-article.js?v=28" defer></script>
+<script src="/pap-content-article.js?v=29" defer></script>
 <script src="/pap-content-creator-shorts.js?v=1" defer></script>
 <script src="/pap-content-api-sync.js?v=106" defer></script>
 <script src="/pap-content-seo.js?v=4" defer></script>

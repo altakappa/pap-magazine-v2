@@ -1689,3 +1689,32 @@ section.hero + .shorts-section{
 .nf-nav.is-disabled{
   display: none !important;
 }
+
+/* ============================================================
+   QA(2026-07) #9 — 인스타그램 유도 팝업 공용 컴포넌트.
+
+   기존엔 IG 유도 박스가 표면마다 따로 존재했다:
+     · SSR(/article, api/_lib/seoRenderer) → .ig-funnel 클래스 스타일
+     · SPA 오버레이(articles.html / index.html) → 인라인 스타일 하드코딩
+   그 결과 같은 성격의 박스인데 박스 규격·자간·폰트가 서로 달라 보였다.
+
+   여기서 SSR 과 동일한 규격을 공용 클래스로 올려 SPA 오버레이도 같은 클래스를
+   쓰게 한다 → 문구·링크는 소스에 따라 조건부로 달라지되(원본 게시물 링크 유무),
+   레이아웃·스타일은 전 표면 동일.
+   ============================================================ */
+.ig-funnel{max-width:800px;margin:56px auto 0;padding:36px 28px;border:1px solid rgba(255,255,255,.16);text-align:center}
+.ig-funnel .igf-kicker{font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:14px}
+.ig-funnel .igf-copy{font-size:15px;line-height:1.75;color:#ddd;margin-bottom:22px}
+.ig-funnel .igf-copy b{color:#fff;font-weight:600}
+.ig-funnel .igf-btn{display:inline-block;margin:4px 5px 0;background:#fff;color:#000;padding:13px 34px;font-size:11.5px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;text-decoration:none;transition:opacity .3s}
+.ig-funnel .igf-btn:hover{opacity:.82}
+/* 보조 버튼(니치 계정 등) — 테두리만. */
+.ig-funnel .igf-btn.igf-btn-ghost{background:transparent;color:#bbb;border:1px solid rgba(255,255,255,.25)}
+.ig-funnel .igf-share{background:none;border:none;color:#888;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;text-decoration:underline;text-underline-offset:3px;margin-top:14px;display:inline-block}
+.ig-funnel .igf-sub{margin-top:14px;font-size:11px;opacity:.5;letter-spacing:.04em}
+.ig-funnel .igf-sub a{color:inherit}
+@media(max-width:640px){
+  .ig-funnel{margin:36px auto 0;padding:28px 20px}
+  .ig-funnel .igf-copy{font-size:14px}
+  .ig-funnel .igf-btn{padding:12px 26px;letter-spacing:.18em}
+}

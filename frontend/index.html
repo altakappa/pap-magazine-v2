@@ -221,7 +221,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/pap-styles.css?v=36">
+<link rel="stylesheet" href="/pap-styles.css?v=37">
 <link rel="stylesheet" href="/pap-social.css?v=2">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
 <!-- Favicon & PWA -->
@@ -966,7 +966,7 @@
 <!-- QA #310 — 스플래시 로더. defer 없이 즉시 실행돼서 첫 페인트 전에
      오버레이를 띄운다. 세션 내 재노출은 sessionStorage 로 방지. -->
 <script src="/pap-splash-loader.js?v=3"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script><script src="/pap-logos-data.js?v=1" defer></script><script src="/pap-api.js?v=7" defer></script><script src="/pap-social.js?v=5" defer></script><script src="/pap-utils.js?v=4" defer></script><script src="/pap-i18n.js?v=3" defer></script><script src="/pap-auth.js?v=3" defer></script><script src="/pap-search.js?v=3" defer></script><script src="/pap-static.js?v=1" defer></script><script src="/pap-subscription.js?v=2" defer></script><script src="/pap-home.js?v=1" defer></script><script src="/pap-content-editorial.js?v=25" defer></script><script src="/pap-content-film.js?v=10" defer></script><script src="/pap-content-article.js?v=28" defer></script><script src="/pap-content-creator-shorts.js?v=3" defer></script><script src="/pap-content-api-sync.js?v=106" defer></script><script src="/pap-content-seo.js?v=6" defer></script><script src="/pap-shell-bootstrap.js?v=9" defer></script><script src="/pap-app.js?v=20" defer></script><script src="/pap-lightbox.js?v=2" defer></script><script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=18" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script><script src="/pap-logos-data.js?v=1" defer></script><script src="/pap-api.js?v=7" defer></script><script src="/pap-social.js?v=5" defer></script><script src="/pap-utils.js?v=4" defer></script><script src="/pap-i18n.js?v=3" defer></script><script src="/pap-auth.js?v=3" defer></script><script src="/pap-search.js?v=3" defer></script><script src="/pap-static.js?v=1" defer></script><script src="/pap-subscription.js?v=2" defer></script><script src="/pap-home.js?v=1" defer></script><script src="/pap-content-editorial.js?v=25" defer></script><script src="/pap-content-film.js?v=10" defer></script><script src="/pap-content-article.js?v=29" defer></script><script src="/pap-content-creator-shorts.js?v=3" defer></script><script src="/pap-content-api-sync.js?v=106" defer></script><script src="/pap-content-seo.js?v=6" defer></script><script src="/pap-shell-bootstrap.js?v=9" defer></script><script src="/pap-app.js?v=20" defer></script><script src="/pap-lightbox.js?v=2" defer></script><script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=18" defer></script>
 <script src="/pap-protect.js?v=3" defer></script>
 <div class="creator-popup-overlay" id="creatorPopup" onclick="if(event.target===this)closeCreatorPopup()">
   <div class="creator-popup">
@@ -1130,11 +1130,12 @@
       </div>
       <span style="font-size:18px;color:rgba(255,255,255,.4);flex-shrink:0">›</span>
     </a>
-    <!-- 검색→인스타 전환 깔때기 (2026-07) — 필름 오버레이 버전 -->
-    <aside style="margin:28px 0 8px;padding:30px 24px;border:1px solid rgba(255,255,255,.16);text-align:center">
-      <div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:12px">PAP Magazine — Instagram</div>
-      <div style="font-size:13.5px;line-height:1.75;color:#ddd;margin-bottom:18px">다음 필름과 비하인드 컷,<br><b style="color:#fff">인스타그램에서 가장 먼저</b> 공개됩니다.</div>
-      <a href="/api/ig-out?src=funnel&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener" style="display:inline-block;background:#fff;color:#000;padding:11px 28px;font-size:10.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;text-decoration:none">Follow @pap_magazine</a>
+    <!-- 검색→인스타 전환 깔때기 (2026-07) — 필름 오버레이 버전.
+         QA(2026-07) #9 — 공용 .ig-funnel 컴포넌트 사용(문구만 맥락별). -->
+    <aside class="ig-funnel">
+      <div class="igf-kicker">PAP Magazine — Instagram</div>
+      <div class="igf-copy">다음 필름과 비하인드 컷,<br><b>인스타그램에서 가장 먼저</b> 공개됩니다.</div>
+      <a class="igf-btn" href="/api/ig-out?src=funnel&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener">Follow @pap_magazine</a>
     </aside>
   </div>
 </div>
@@ -1233,11 +1234,12 @@
     <!-- 2026-07 - 원본 IG 게시물 CTA(artIgPostCta)가 표시되는 기사에서는
          역할이 겹쳐 숨긴다 (_renderArticleDetail 이 토글). IG 소스가 없는
          기사에서만 팔로우 깔때기로 노출. -->
-    <aside id="artIgFunnel" style="margin:28px 0 8px;padding:32px 24px;border:1px solid rgba(255,255,255,.16);text-align:center">
-      <div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:12px">PAP Magazine — Instagram</div>
-      <div style="font-size:14px;line-height:1.75;color:#ddd;margin-bottom:20px">매일 업데이트되는 에디토리얼과 패션·셀럽 뉴스,<br><b style="color:#fff">인스타그램에서 가장 먼저</b> 만나보세요.</div>
-      <a href="/api/ig-out?src=article&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener" style="display:inline-block;background:#fff;color:#000;padding:12px 30px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;text-decoration:none">Follow @pap_magazine</a>
-      <button onclick="_papShareStory()" style="display:inline-block;margin-left:10px;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);padding:12px 24px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;cursor:pointer">이 스토리 공유 ↗</button>
+    <!-- QA(2026-07) #9 — SSR(/article)과 동일한 .ig-funnel 공용 컴포넌트 사용. -->
+    <aside id="artIgFunnel" class="ig-funnel">
+      <div class="igf-kicker">PAP Magazine — Instagram</div>
+      <div class="igf-copy">매일 업데이트되는 에디토리얼과 패션·셀럽 뉴스,<br><b>인스타그램에서 가장 먼저</b> 만나보세요.</div>
+      <a class="igf-btn" href="/api/ig-out?src=article&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener">Follow @pap_magazine</a>
+      <div><button class="igf-share" onclick="_papShareStory()">이 스토리 공유 ↗</button></div>
     </aside>
     <div id="artSocialSlot"></div>
   </div>
@@ -1358,12 +1360,13 @@
          pap-content-editorial.js#_papRenderEdIg 가 det.ig 존재 시 채움. -->
     <div id="edIgPostCta" style="display:none"></div>
     <div id="edSocialSlot"></div>
-    <!-- 검색→인스타 전환 깔때기 (2026-07) — 에디토리얼 오버레이 버전 -->
-    <aside style="margin:36px 0 8px;padding:34px 24px;border:1px solid rgba(255,255,255,.16);text-align:center">
-      <div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:12px">PAP Magazine — Instagram</div>
-      <div style="font-size:14px;line-height:1.75;color:#ddd;margin-bottom:20px">이 에디토리얼의 비하인드와 다음 화보,<br><b style="color:#fff">인스타그램에서 가장 먼저</b> 공개됩니다.</div>
-      <a href="/api/ig-out?src=editorial&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener" style="display:inline-block;background:#fff;color:#000;padding:12px 30px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;text-decoration:none">Follow @pap_magazine</a>
-      <button onclick="_papShareStory()" style="display:inline-block;margin-left:10px;background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4);padding:12px 24px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;cursor:pointer">이 스토리 공유 ↗</button>
+    <!-- 검색→인스타 전환 깔때기 (2026-07) — 에디토리얼 오버레이 버전.
+         QA(2026-07) #9 — 공용 .ig-funnel 컴포넌트 사용(문구만 맥락별). -->
+    <aside class="ig-funnel">
+      <div class="igf-kicker">PAP Magazine — Instagram</div>
+      <div class="igf-copy">이 에디토리얼의 비하인드와 다음 화보,<br><b>인스타그램에서 가장 먼저</b> 공개됩니다.</div>
+      <a class="igf-btn" href="/api/ig-out?src=editorial&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener">Follow @pap_magazine</a>
+      <div><button class="igf-share" onclick="_papShareStory()">이 스토리 공유 ↗</button></div>
     </aside>
   </div>
 
