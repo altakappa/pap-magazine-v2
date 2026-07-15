@@ -56,6 +56,10 @@ module.exports = async function handler(req, res) {
   const apply = req.query.apply === '1';
   const maxPages = Math.max(1, Math.min(20, parseInt(req.query.pages || '10', 10)));
   let after = req.query.after ? String(req.query.after) : null;
+  // 페이지당 요청 개수 — 오래된 아카이브 구간에서 Graph API가
+  // "Please reduce the amount of data" (code 1) 를 반환하면 자동으로 절반씩
+  // 줄여 재시도한다 (최소 10). ?limit= 으로 시작값 지정 가능.
+  let pageLimit = Math.max(10, Math.min(100, parseInt(req.query.limit || '100', 10) || 100));
 
   try {
     // 1) 링크가 비어 있는 에디토리얼 (발행분만)
@@ -97,12 +101,18 @@ module.exports = async function handler(req, res) {
     while (pages < maxPages) {
       const url = IG_API + '/' + process.env.IG_USER_ID + '/media'
         + '?fields=' + encodeURIComponent(fields)
-        + '&limit=100'
+        + '&limit=' + pageLimit
         + (after ? '&after=' + encodeURIComponent(after) : '')
         + '&access_token=' + process.env.IG_ACCESS_TOKEN;
       const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
       if (!r.ok) {
         const body = await r.text().catch(() => '');
+        // Graph API code 1: 응답 데이터가 너무 큼 (캡션이 긴 옛 게시물 구간에서
+        // limit=100 이 초과) → 같은 커서에서 페이지 크기를 절반으로 줄여 재시도.
+        if (body.indexOf('reduce the amount of data') !== -1 && pageLimit > 10) {
+          pageLimit = Math.max(10, Math.floor(pageLimit / 2));
+          continue;
+        }
         throw new Error('Graph API 실패 (' + r.status + '): ' + body.slice(0, 200));
       }
       const j = await r.json();
@@ -152,6 +162,8 @@ module.exports = async function handler(req, res) {
       mode: apply ? 'apply' : 'dry-run',
       scanned_posts: scanned,
       pages_scanned: pages,
+      page_limit: pageLimit, // code 1 축소 재시도 후 최종값 (시작 기본 100)
+
       unlinked_editorials: byTitle.size,
       ambiguous_titles_skipped: ambiguousTitles.size,
       matched: matches.length,
