@@ -290,6 +290,21 @@
     },
     {
       "source": "/films",
+      "has": [{ "type": "header", "key": "user-agent", "value": "(?i).*(bot|crawl|spider|slurp|yeti|daumoa|zumbot|bingpreview|facebookexternalhit|kakaotalk|applebot|petalbot|duckduck|perplexity|gpt|claude).*" }],
+      "destination": "/api/seo/listing?kind=films"
+    },
+    {
+      "source": "/articles",
+      "has": [{ "type": "header", "key": "user-agent", "value": "(?i).*(bot|crawl|spider|slurp|yeti|daumoa|zumbot|bingpreview|facebookexternalhit|kakaotalk|applebot|petalbot|duckduck|perplexity|gpt|claude).*" }],
+      "destination": "/api/seo/listing?kind=articles"
+    },
+    {
+      "source": "/magazine",
+      "has": [{ "type": "header", "key": "user-agent", "value": "(?i).*(bot|crawl|spider|slurp|yeti|daumoa|zumbot|bingpreview|facebookexternalhit|kakaotalk|applebot|petalbot|duckduck|perplexity|gpt|claude).*" }],
+      "destination": "/api/seo/listing?kind=magazine"
+    },
+    {
+      "source": "/films",
       "destination": "/films.html"
     },
     {

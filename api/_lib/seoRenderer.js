@@ -52,8 +52,34 @@ function nicheIg(category) {
   return null;
 }
 
+/* ── 반응형 이미지 (2026-07-16) ──────────────────────────────────────
+ * vercel.json 의 `images` 설정(avif/webp 변환, sizes 320~1920)은 지금까지
+ * SPA 전용이었고 SSR 은 원본 S3/Supabase URL 을 그대로 내보냈다.
+ * /_vercel/image 변환 URL 로 srcset 을 깔아 SSR 페이지(구글이 실제로
+ * 렌더링·측정하는 대상)의 LCP/전송량을 줄인다.
+ * 허용된 remotePatterns 호스트만 변환 — 그 외(유튜브 썸네일 등)는 원본 유지. */
+const IMG_OPT_HOSTS = [
+  'pap-korea-bucket.s3.ap-northeast-2.amazonaws.com',
+  'igcazquhkwxtqsaqpznx.supabase.co',
+];
+const IMG_OPT_WIDTHS = [320, 640, 960, 1280, 1920]; // vercel.json images.sizes 와 동일
+function canOptimizeImg(url) {
+  try { return IMG_OPT_HOSTS.indexOf(new URL(url).hostname) !== -1; } catch (_) { return false; }
+}
+function vercelImgUrl(url, w, q) {
+  return '/_vercel/image?url=' + encodeURIComponent(url) + '&w=' + w + '&q=' + (q || 75);
+}
+/* srcset+sizes 속성 문자열 (이스케이프 포함). 최적화 불가 URL 이면 빈 문자열. */
+function srcsetAttrs(url, sizes) {
+  if (!canOptimizeImg(url)) return '';
+  const srcset = IMG_OPT_WIDTHS.map(w => vercelImgUrl(url, w) + ' ' + w + 'w').join(', ');
+  return ' srcset="' + escAttr(srcset) + '" sizes="' + escAttr(sizes) + '"';
+}
+
 const ORG_PUBLISHER = {
-  '@type': 'Organization',
+  // 2026-07-16: 홈(index.html)의 NewsMediaOrganization 과 동일 @id·동일 타입으로
+  // 통일 — 같은 엔티티가 페이지마다 다른 @type 이면 지식그래프 신호가 갈라진다.
+  '@type': 'NewsMediaOrganization',
   '@id': ORG_ID,
   name: SITE_NAME,
   // 전 검색엔진 브랜드 검색 대응 — PAP MAGAZINE / PAP MAG / PAP / PAP 매거진 / PAP매거진 / 팝매거진.
@@ -411,7 +437,13 @@ function renderSeoHtml(kind, record) {
       inLanguage: 'ko-KR',
       // QA #187 — explicit isAccessibleForFree so Google news/Discover
       // doesn't mistake the editorial for paywalled content.
-      isAccessibleForFree: true
+      isAccessibleForFree: true,
+      // 2026-07-16 (GEO) — speakable: 음성 어시스턴트/AI 답변 엔진에게
+      // "이 페이지를 읽어줄 때 인용할 핵심 구간"을 명시. 제목 + 리드 문단.
+      speakable: {
+        '@type': 'SpeakableSpecification',
+        cssSelector: ['.seo-meta h1', '.seo-desc-primary']
+      }
     };
   }
 
@@ -527,7 +559,7 @@ function renderSeoHtml(kind, record) {
   const relatedEditorialHtml = (cfg.schemaType === 'VideoObject' && rel && rel.title)
     ? `<section class="seo-related"><h2>Related Editorial</h2>
         <a class="seo-related-card" href="/editorial/${escAttr(rel.slug || rel.id || '')}">
-          ${rel.cover_image || rel.thumbnail ? `<img src="${escAttr(rel.cover_image || rel.thumbnail)}" alt="${escAttr(rel.title)} — Cover" loading="lazy" width="240" height="160">` : ''}
+          ${rel.cover_image || rel.thumbnail ? `<img src="${escAttr(rel.cover_image || rel.thumbnail)}"${srcsetAttrs(rel.cover_image || rel.thumbnail, '120px')} alt="${escAttr(rel.title)} — Cover" loading="lazy" width="240" height="160">` : ''}
           <div class="seo-related-meta">
             <div class="seo-related-tagline">RELATED EDITORIAL</div>
             <div class="seo-related-title">${escText(rel.title)}</div>
@@ -549,7 +581,7 @@ function renderSeoHtml(kind, record) {
             ? `https://img.youtube.com/vi/${f.youtube_id}/hqdefault.jpg` : '';
           const thumb = f.thumbnail_url || ytThumb || '';
           return `<a class="seo-related-card" href="/film/${escAttr(f.slug || f.id)}">
-            ${thumb ? `<img src="${escAttr(thumb)}" alt="${escAttr(f.title)} — Cover" loading="lazy" width="240" height="160">` : ''}
+            ${thumb ? `<img src="${escAttr(thumb)}"${srcsetAttrs(thumb, '120px')} alt="${escAttr(f.title)} — Cover" loading="lazy" width="240" height="160">` : ''}
             <div class="seo-related-meta">
               <div class="seo-related-tagline">FILM</div>
               <div class="seo-related-title">${escText(f.title)}</div>
@@ -573,7 +605,7 @@ function renderSeoHtml(kind, record) {
   const heroHtml = (cfg.schemaType === 'VideoObject' && isValidYtId)
     ? `<div class="seo-video"><iframe src="https://www.youtube-nocookie.com/embed/${escAttr(record.youtube_id)}?rel=0" title="${escAttr(titleKo)}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`
     : ogImage
-      ? `<div class="seo-hero"><img src="${escAttr(ogImage)}" alt="${escAttr(titleKo)} — Cover" loading="eager" fetchpriority="high" width="1200" height="800" data-pin-url="${escAttr(canonical)}" data-pin-media="${escAttr(ogImage)}" data-pin-description="${escAttr(titleKo + ' — PAP Magazine editorial')}"></div>`
+      ? `<div class="seo-hero"><img src="${escAttr(ogImage)}"${srcsetAttrs(ogImage, '(max-width:1200px) 100vw, 1200px')} alt="${escAttr(titleKo)} — Cover" loading="eager" fetchpriority="high" width="1200" height="800" data-pin-url="${escAttr(canonical)}" data-pin-media="${escAttr(ogImage)}" data-pin-description="${escAttr(titleKo + ' — PAP Magazine editorial')}"></div>`
       : '';
 
   /* QA #177 — gallery now annotates each image with the per-look fashion
@@ -591,7 +623,7 @@ function renderSeoHtml(kind, record) {
           // 그래프로 유입되는 플라이휠.
           const pinDesc = titleKo + ' — Look ' + (i + 1) + (credit ? ' · ' + credit : '') + ' | PAP Magazine';
           return `<figure>`
-            + `<img src="${escAttr(src)}" alt="${escAttr(titleKo)} — Look ${i + 1}" loading="lazy" decoding="async" data-pin-url="${escAttr(canonical)}" data-pin-media="${escAttr(src)}" data-pin-description="${escAttr(pinDesc)}">`
+            + `<img src="${escAttr(src)}"${srcsetAttrs(src, '(max-width:900px) 100vw, 584px')} alt="${escAttr(titleKo)} — Look ${i + 1}" loading="lazy" decoding="async" data-pin-url="${escAttr(canonical)}" data-pin-media="${escAttr(src)}" data-pin-description="${escAttr(pinDesc)}">`
             + (credit ? `<figcaption class="ed-img-credits">${escText(credit)}</figcaption>` : '')
             + `</figure>`;
         }).join('') +
@@ -634,7 +666,7 @@ function renderSeoHtml(kind, record) {
         html += c.split(/\n\n+/).map(p => `<p style="margin:0 0 22px;line-height:1.9">${escText(p).replace(/\n/g, '<br>')}</p>`).join('');
       } else if (t === 'image') {
         if (!url) continue;
-        html += `<figure style="margin:36px 0"><img src="${escAttr(url)}" alt="${escAttr(c)}" loading="lazy" style="width:100%;display:block;border-radius:2px">${c ? `<figcaption style="margin-top:12px;font-size:12px;color:#888;text-align:center;letter-spacing:.04em;line-height:1.6">${escText(c)}</figcaption>` : ''}</figure>`;
+        html += `<figure style="margin:36px 0"><img src="${escAttr(url)}"${srcsetAttrs(url, '(max-width:800px) 100vw, 752px')} alt="${escAttr(c)}" loading="lazy" style="width:100%;display:block;border-radius:2px">${c ? `<figcaption style="margin-top:12px;font-size:12px;color:#888;text-align:center;letter-spacing:.04em;line-height:1.6">${escText(c)}</figcaption>` : ''}</figure>`;
       } else if (t === 'quote') {
         const src = (b.source || '').toString();
         html += `<blockquote style="margin:36px 0;padding:20px 26px;border-left:3px solid #999;font-style:italic;color:#ddd;font-size:16px;line-height:1.85">${escText(c)}${src ? `<footer style="margin-top:14px;font-size:11px;color:#888;font-style:normal;text-align:right">— ${escText(src)}</footer>` : ''}</blockquote>`;
@@ -650,13 +682,13 @@ function renderSeoHtml(kind, record) {
         const imgs = Array.isArray(b.images) ? b.images : [];
         if (!imgs.length) continue;
         html += '<div style="margin:36px 0;display:grid;grid-template-columns:1fr 1fr;gap:12px">';
-        for (const im of imgs) { if (im && im.url) html += `<figure style="margin:0"><img src="${escAttr(im.url)}" alt="${escAttr(im.caption || '')}" loading="lazy" style="width:100%;aspect-ratio:4/5;object-fit:cover;display:block;border-radius:2px">${im.caption ? `<figcaption style="margin-top:8px;font-size:11px;color:#888;text-align:center;line-height:1.5">${escText(im.caption)}</figcaption>` : ''}</figure>`; }
+        for (const im of imgs) { if (im && im.url) html += `<figure style="margin:0"><img src="${escAttr(im.url)}"${srcsetAttrs(im.url, '(max-width:800px) 100vw, 376px')} alt="${escAttr(im.caption || '')}" loading="lazy" style="width:100%;aspect-ratio:4/5;object-fit:cover;display:block;border-radius:2px">${im.caption ? `<figcaption style="margin-top:8px;font-size:11px;color:#888;text-align:center;line-height:1.5">${escText(im.caption)}</figcaption>` : ''}</figure>`; }
         html += '</div>';
       } else if (t === 'slide') {
         const imgs = Array.isArray(b.images) ? b.images : [];
         if (!imgs.length) continue;
         html += '<div style="margin:36px 0;display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch">';
-        for (const im of imgs) { if (im && im.url) html += `<figure style="margin:0;flex:0 0 88%;scroll-snap-align:center"><img src="${escAttr(im.url)}" alt="${escAttr(im.caption || '')}" loading="lazy" style="width:100%;aspect-ratio:4/5;object-fit:cover;display:block;border-radius:2px">${im.caption ? `<figcaption style="margin-top:8px;font-size:11px;color:#888;text-align:center;line-height:1.6">${escText(im.caption)}</figcaption>` : ''}</figure>`; }
+        for (const im of imgs) { if (im && im.url) html += `<figure style="margin:0;flex:0 0 88%;scroll-snap-align:center"><img src="${escAttr(im.url)}"${srcsetAttrs(im.url, '88vw')} alt="${escAttr(im.caption || '')}" loading="lazy" style="width:100%;aspect-ratio:4/5;object-fit:cover;display:block;border-radius:2px">${im.caption ? `<figcaption style="margin-top:8px;font-size:11px;color:#888;text-align:center;line-height:1.6">${escText(im.caption)}</figcaption>` : ''}</figure>`; }
         html += '</div>';
       } else {
         html += `<p style="margin:0 0 22px;line-height:1.9">${escText(c)}</p>`;
@@ -681,20 +713,12 @@ ${tags.length ? `<meta name="keywords" content="${escAttr(tags.join(', '))}">` :
 <meta name="googlebot" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 
 <link rel="canonical" href="${escAttr(canonical)}">
-<!-- QA #187 — hreflang covers every locale that has an i18n bundle on
-     the SPA. Same canonical URL because translation happens client-side;
-     when we ship per-locale SSR variants, point each href to its prefix
-     (e.g. /it/editorial/...). x-default keeps non-mapped locales here. -->
-<link rel="alternate" hreflang="x-default" href="${escAttr(canonical)}">
-<link rel="alternate" hreflang="ko" href="${escAttr(canonical)}">
-<link rel="alternate" hreflang="en" href="${escAttr(canonical)}">
-<link rel="alternate" hreflang="it" href="${escAttr(canonical)}">
-<link rel="alternate" hreflang="fr" href="${escAttr(canonical)}">
-<link rel="alternate" hreflang="es" href="${escAttr(canonical)}">
-<link rel="alternate" hreflang="ja" href="${escAttr(canonical)}">
-<link rel="alternate" hreflang="zh" href="${escAttr(canonical)}">
-<link rel="alternate" hreflang="ru" href="${escAttr(canonical)}">
-<link rel="alternate" hreflang="de" href="${escAttr(canonical)}">
+<!-- hreflang 제거 (2026-07-16). 이전에는 10개 로케일 alternate 가 전부 이
+     canonical 하나를 가리켰는데, 구글은 "언어별로 서로 다른 URL"일 때만
+     hreflang 을 인정한다 — 동일 URL 세트는 무시되거나 잘못된 신호가 된다.
+     번역이 클라이언트 사이드(같은 URL)인 동안은 hreflang 을 내보내지 않는 게
+     정석. 언어별 SSR 경로(/en/editorial/... 등)가 생기면 그때 복원한다. -->
+
 
 <meta property="og:type" content="${cfg.schemaType === 'VideoObject' ? 'video.other' : 'article'}">
 <meta property="og:title" content="${escAttr(seoTitle)}">
@@ -721,7 +745,10 @@ ${tags.length ? `<meta name="keywords" content="${escAttr(tags.join(', '))}">` :
 <meta property="article:modified_time" content="${escAttr(modified)}">
 ${tags.map(t => `<meta property="article:tag" content="${escAttr(t)}">`).join('\n')}
 
-<meta name="twitter:card" content="${cfg.schemaType === 'VideoObject' ? 'player' : 'summary_large_image'}">
+<!-- 2026-07-16: 영상도 summary_large_image 로 통일. player 카드는
+     twitter:player(iframe URL)·width·height 가 필수인데 미제공 상태라
+     카드 검증 자체가 실패하고 있었다 — 큰 썸네일 카드가 항상 안전하다. -->
+<meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@papmagazine_">
 <meta name="twitter:creator" content="@papmagazine_">
 <meta name="twitter:title" content="${escAttr(seoTitle)}">
@@ -743,7 +770,9 @@ ${tags.map(t => `<meta property="article:tag" content="${escAttr(t)}">`).join('\
      fetchpriority=high) gives Lighthouse a tangible LCP boost — usually
      -300~800ms on cold cache. We DON'T preload for VideoObject pages
      because the LCP element there is the YouTube iframe, not an image. -->
-${cfg.schemaType !== 'VideoObject' && ogImage ? `<link rel="preload" as="image" fetchpriority="high" href="${escAttr(ogImage)}">` : ''}
+${cfg.schemaType !== 'VideoObject' && ogImage ? (canOptimizeImg(ogImage)
+  ? `<link rel="preload" as="image" fetchpriority="high" href="${escAttr(ogImage)}" imagesrcset="${escAttr(IMG_OPT_WIDTHS.map(w => vercelImgUrl(ogImage, w) + ' ' + w + 'w').join(', '))}" imagesizes="(max-width:1200px) 100vw, 1200px">`
+  : `<link rel="preload" as="image" fetchpriority="high" href="${escAttr(ogImage)}">`) : ''}
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
