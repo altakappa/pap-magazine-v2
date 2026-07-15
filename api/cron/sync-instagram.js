@@ -3,7 +3,16 @@
  *
  * QA #275 + 2026-07 확장. @pap_magazine 최근 25개 게시물 fetch →
  * "에디토리얼이 아닌" 신규 게시물만 Claude로 기사 생성 → articles 에
- * published 상태로 INSERT (운영자 결정: 자동 공개).
+ * 품질 게이트 통과 시 published, 미달 시 draft 상태로 INSERT.
+ *
+ * ─── 품질 게이트 (2026-07-15 추가) ───
+ * 환경변수 IG_QUALITY_GATE=on 시 활성화 (기본: off = 기존 동작 유지).
+ * · IG_MIN_LIKES (기본 200): 좋아요 이상이면 자동 발행
+ * · IG_MIN_COMMENTS (기본 10): 댓글 이상이면 자동 발행
+ * 둘 중 하나라도 충족하면 published, 모두 미달이면 draft (수동 승인 대기).
+ * 좋아요/댓글 수 조회 불가(null) 시 → draft 로 안전하게 처리.
+ * IG_WEEKLY_AUTO_LIMIT (기본 5): 이번 주 자동발행 기사 수 상한. 초과 시
+ *   나머지는 조건 충족해도 draft 처리 → 큐레이션 정체성 보호.
  *
  * 에디토리얼 제외 3겹 (에디토리얼은 운영자가 웹사이트에 사전 업로드하므로
  * 중복 수집 금지):
@@ -54,6 +63,12 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
   const backfillDays = parseInt((req.query && req.query.backfill) || '0', 10) || 0;
   const perCall = Math.max(1, Math.min(10, parseInt((req.query && req.query.max) || '5', 10) || 5));
 
+  // ── 품질 게이트 설정 ──
+  const qualityGateOn = String(process.env.IG_QUALITY_GATE || '').toLowerCase() === 'on';
+  const MIN_LIKES = parseInt(process.env.IG_MIN_LIKES || '200', 10) || 200;
+  const MIN_COMMENTS = parseInt(process.env.IG_MIN_COMMENTS || '10', 10) || 10;
+  const WEEKLY_LIMIT = parseInt(process.env.IG_WEEKLY_AUTO_LIMIT || '5', 10) || 5;
+
   try {
     // 1) 게시물 가져오기 — 기본: 최근 25개 / 백필: 기간 내 전체 (페이지네이션)
     const media = backfillDays > 0
@@ -81,7 +96,24 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
         .filter(Boolean)
     );
 
-    // 4) 게시물 분류.
+    // 4) 품질 게이트: 이번 주 자동발행 기사 수 확인 (월요일~현재).
+    let weeklyPublished = 0;
+    if (qualityGateOn){
+      const now = new Date();
+      const day = now.getUTCDay(); // 0=Sun
+      const monday = new Date(now);
+      monday.setUTCDate(now.getUTCDate() - ((day + 6) % 7));
+      monday.setUTCHours(0, 0, 0, 0);
+      const { count } = await supabaseAdmin
+        .from('articles')
+        .select('id', { count: 'exact', head: true })
+        .not('source_instagram_post_id', 'is', null)
+        .eq('status', 'published')
+        .gte('instagram_imported_at', monday.toISOString());
+      weeklyPublished = count || 0;
+    }
+
+    // 5) 게시물 분류.
     const results = {
       imported: 0, skipped_existing: existingSet.size,
       skipped_editorial_db: 0, skipped_editorial_caption: 0, skipped_editorial_ai: 0,
@@ -101,6 +133,8 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
         results.classified.push({
           id: m.id, permalink: m.permalink, class: cls,
           caption_head: String(m.caption || '').slice(0, 80),
+          like_count: m.like_count || null,
+          comments_count: m.comments_count || null,
         });
         continue;
       }
@@ -125,7 +159,23 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
         const archivedUrls = await archiveImagesToStorage(post, 10);
         // 릴스/영상 게시물 — 영상 원본도 영구 보관해 기사에서 직접 재생
         const videoUrls = await archiveVideosToStorage(post, 2);
-        const row = buildArticleRow(post, generated, { status: 'published', archivedUrls, videoUrls });
+        // ── 품질 게이트: 발행 상태 결정 ──
+        let pubStatus = 'published'; // 기본: 기존 동작 유지
+        if (qualityGateOn){
+          const likes = post.likeCount;
+          const comments = post.commentsCount;
+          const passQuality = (typeof likes === 'number' && likes >= MIN_LIKES)
+            || (typeof comments === 'number' && comments >= MIN_COMMENTS);
+          const withinLimit = (weeklyPublished + results.imported) < WEEKLY_LIMIT;
+          if (passQuality && withinLimit){
+            pubStatus = 'published';
+          } else {
+            pubStatus = 'draft';
+            results.gated_draft = (results.gated_draft || 0) + 1;
+            if (!withinLimit) results.weekly_limit_hit = true;
+          }
+        }
+        const row = buildArticleRow(post, generated, { status: pubStatus, archivedUrls, videoUrls });
         const { data: inserted, error: insErr } = await supabaseAdmin.from('articles')
           .insert(row).select('id, custom_url, slug').single();
         if (insErr){
@@ -139,11 +189,11 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
         results.imported++;
         if (inserted){
           const h = inserted.custom_url || inserted.slug || inserted.id;
-          if (h){
+          if (h && pubStatus === 'published'){
             const artUrl = SITE + '/article/' + encodeURIComponent(h);
             newUrls.push(artUrl);
             // X 자동 게시 — 발행 즉시 트윗 (키 미설정 시 조용히 스킵).
-            // 링크 카드가 SSR og/twitter 이미지로 자동 생성된다.
+            // draft 기사는 X 게시하지 않음 (품질 게이트 미달).
             if (xConfigured()){
               try {
                 const tw = await postTweet(buildArticleTweet({ title: generated.title_ko || row.title, url: artUrl, tags: generated.tags }));
@@ -159,7 +209,10 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
       }
     }
 
-    if (dry) results.editorial_shortcodes_known = editorialShortcodes.size;
+    if (dry){
+      results.editorial_shortcodes_known = editorialShortcodes.size;
+      if (qualityGateOn) results.quality_gate = { on: true, min_likes: MIN_LIKES, min_comments: MIN_COMMENTS, weekly_limit: WEEKLY_LIMIT, weekly_published: weeklyPublished };
+    }
 
     // 신규 발행 즉시 검색엔진 알림 — IndexNow(네이버·빙·얀덱스) + WebSub(구글
     // 계열 피드 재수집). 일간 IndexNow 크론은 보험으로 유지, 여기는 실시간 채널.

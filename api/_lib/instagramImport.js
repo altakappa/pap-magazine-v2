@@ -33,7 +33,7 @@ async function listRecentMedia(opts){
   if (!process.env.IG_ACCESS_TOKEN || !process.env.IG_USER_ID){
     throw new Error('IG_ACCESS_TOKEN/IG_USER_ID 환경변수가 설정되어 있지 않습니다.');
   }
-  const fields = 'id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username,children{media_url,media_type,thumbnail_url}';
+  const fields = 'id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username,like_count,comments_count,children{media_url,media_type,thumbnail_url}';
   const url = `${_IG_API}/${process.env.IG_USER_ID}/media?fields=${encodeURIComponent(fields)}&limit=${limit}&access_token=${process.env.IG_ACCESS_TOKEN}`;
   const res = await fetch(url);
   if (!res.ok){
@@ -53,7 +53,7 @@ async function listMediaPaged(opts){
     throw new Error('IG_ACCESS_TOKEN/IG_USER_ID 환경변수가 설정되어 있지 않습니다.');
   }
   const cutoff = Date.now() - sinceDays * 86400000;
-  const fields = 'id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username,children{media_url,media_type,thumbnail_url}';
+  const fields = 'id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username,like_count,comments_count,children{media_url,media_type,thumbnail_url}';
   let url = `${_IG_API}/${process.env.IG_USER_ID}/media?fields=${encodeURIComponent(fields)}&limit=50&access_token=${process.env.IG_ACCESS_TOKEN}`;
   const out = [];
   let guard = 0;
@@ -117,6 +117,8 @@ function _normalizeMedia(m){
     timestamp: m.timestamp || null,
     author: m.username || 'pap_magazine',
     isVideo: m.media_type === 'VIDEO',
+    likeCount: typeof m.like_count === 'number' ? m.like_count : null,
+    commentsCount: typeof m.comments_count === 'number' ? m.comments_count : null,
     // 원본 IG media_type: 'IMAGE' | 'VIDEO' | 'CAROUSEL_ALBUM'.
     // articles.source_media_type 으로 저장 → YouTube Shorts 크론이 VIDEO(릴스)만 필터링.
     mediaType: m.media_type || null,
