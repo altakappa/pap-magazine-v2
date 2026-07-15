@@ -48,6 +48,16 @@
   #status { padding: 40px 20px; text-align: center; color: #888; font-size: 14px; }
   .spin { display: inline-block; width: 18px; height: 18px; border: 2px solid #ddd; border-top-color: #000; border-radius: 50%; animation: sp 0.8s linear infinite; vertical-align: -4px; margin-right: 8px; }
   @keyframes sp { to { transform: rotate(360deg); } }
+  /* 079 — 일괄 초안 큐 */
+  .batchbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px 14px; border-bottom: 1px solid #eee; background: #fcfcfc; }
+  .batchbar button { border: 1px solid #111; background: #111; color: #fff; border-radius: 16px; padding: 5px 12px; font-size: 12px; cursor: pointer; }
+  .batchbar button.ghost { background: #fff; color: #111; }
+  .batchbar button:disabled { opacity: .5; cursor: default; }
+  .batchbar #batchStatus { font-size: 11px; color: #888; flex-basis: 100%; }
+  .qitem { justify-content: space-between; }
+  .qitem .t { font-size: 12.5px; }
+  .qitem .copy { flex: none; }
+  .qempty { padding: 14px; font-size: 12px; color: #aaa; line-height: 1.6; }
 </style>
 </head>
 <body>
@@ -65,7 +75,14 @@
 </header>
 <main>
   <div class="panel">
-    <h2 id="listTitle">최근 발행 기사</h2>
+    <h2 id="queueTitle">일괄 큐 — 미발행 초안</h2>
+    <div class="batchbar">
+      <button onclick="genNext()">+ 다음 미전환 초안</button>
+      <button class="ghost" onclick="genBatch(5)">5개 연속 생성</button>
+      <span id="batchStatus">최근 발행분 중 아직 초안 없는 것을 1건씩 미리 생성합니다.</span>
+    </div>
+    <div id="queue"></div>
+    <h2 id="listTitle" style="border-top:1px solid #eee">최근 발행 기사</h2>
     <div id="list"><div id="status">불러오는 중…</div></div>
   </div>
   <div class="panel">
@@ -120,6 +137,7 @@ async function loadList() {
   const emptyMsg = kind === 'editorial' ? '발행된 에디토리얼이 없습니다.' : '발행된 기사가 없습니다.';
   if (titleEl) titleEl.textContent = kind === 'editorial' ? '최근 발행 에디토리얼' : '최근 발행 기사';
   el.innerHTML = '<div id="status"><span class="spin"></span>불러오는 중…</div>';
+  loadQueue();   // 브랜드·종류 전환 시 큐도 함께 갱신
   try {
     const j = await api('list=1&brand=' + brand + '&kind=' + kind);
     el.innerHTML = (j.articles || []).map(a => {
@@ -132,6 +150,18 @@ async function loadList() {
   } catch (e) { el.innerHTML = '<div id="status">오류: ' + esc(e.message) + '</div>'; }
 }
 
+// 초안(온디맨드·저장분·일괄 공용) 렌더.
+function renderDraft(j) {
+  current = j;
+  const el = document.getElementById('draft');
+  el.innerHTML =
+    '<div class="field"><label>제목 <button class="copy" onclick="cpText(this, current.title)">복사</button></label><div id="dTitle">' + esc(j.title) + '</div></div>' +
+    '<div class="field"><label>태그 <button class="copy" onclick="cpText(this, current.tags.join(\' \'))">복사</button></label><div id="dTags">' + esc((j.tags || []).join(' ')) + '</div></div>' +
+    '<div class="field"><label>본문 (체크리스트 · CTA 자동 포함) <button class="copy" onclick="cpHtml(this)">서식 포함 복사</button></label><div id="dBody">' + j.body_html + '</div></div>' +
+    '<div class="hint">사용법: ① 네이버 블로그 글쓰기 열기 → ② 제목 붙여넣기 → ③ 본문란에 <b>서식 포함 복사</b> 결과 붙여넣기 (체크리스트·CTA 이미 포함됨) → ④ 하단 태그 입력 → 발행. ' +
+    '이미지가 붙지 않으면 미리보기의 이미지를 하나씩 드래그하거나, <a href="' + esc(j.article_url) + '" target="_blank">원문</a>에서 저장 후 첨부해 주세요.</div>';
+}
+
 async function pick(node) {
   document.querySelectorAll('.item.sel').forEach(n => n.classList.remove('sel'));
   node.classList.add('sel');
@@ -141,16 +171,73 @@ async function pick(node) {
   el.innerHTML = '<div style="padding:40px 20px;text-align:center;color:#888;font-size:14px;"><span class="spin"></span>' + genLabel + ' (20~30초)</div>';
   try {
     const j = await api('slug=' + encodeURIComponent(slug) + '&brand=' + brand + '&kind=' + kind);
-    current = j;
-    // QA #351 — UI 심플 롤백. Claude가 내부 저울질 후 최고 1개만 보내주므로
-    // 프론트는 이전처럼 제목/태그/본문 3개 필드만 표시.
-    el.innerHTML =
-      '<div class="field"><label>제목 <button class="copy" onclick="cpText(this, current.title)">복사</button></label><div id="dTitle">' + esc(j.title) + '</div></div>' +
-      '<div class="field"><label>태그 <button class="copy" onclick="cpText(this, current.tags.join(\' \'))">복사</button></label><div id="dTags">' + esc((j.tags || []).join(' ')) + '</div></div>' +
-      '<div class="field"><label>본문 (체크리스트 · CTA 자동 포함) <button class="copy" onclick="cpHtml(this)">서식 포함 복사</button></label><div id="dBody">' + j.body_html + '</div></div>' +
-      '<div class="hint">사용법: ① 네이버 블로그 글쓰기 열기 → ② 제목 붙여넣기 → ③ 본문란에 <b>서식 포함 복사</b> 결과 붙여넣기 (체크리스트·CTA 이미 포함됨) → ④ 하단 태그 입력 → 발행. ' +
-      '이미지가 붙지 않으면 미리보기의 이미지를 하나씩 드래그하거나, <a href="' + esc(j.article_url) + '" target="_blank">원문</a>에서 저장 후 첨부해 주세요.</div>';
+    renderDraft(j);
   } catch (e) { el.innerHTML = '<div style="padding:40px 20px;text-align:center;color:#c00;font-size:14px;">오류: ' + esc(e.message) + '</div>'; }
+}
+
+// ── 079: 일괄 초안 큐 (미전환 콘텐츠를 미리 생성해 저장 → 관리자가 복사·발행) ──
+async function loadQueue() {
+  const el = document.getElementById('queue');
+  const tt = document.getElementById('queueTitle');
+  if (!el || !TOKEN) return;
+  try {
+    const j = await api('queue=1&brand=' + brand + '&kind=' + kind);
+    const items = j.queue || [];
+    if (tt) tt.textContent = '일괄 큐 — 미발행 초안 ' + items.length + '건';
+    el.innerHTML = items.map(d =>
+      '<div class="item qitem" data-id="' + esc(d.id) + '">' +
+        '<div style="flex:1;min-width:0" onclick="openStored(\'' + esc(d.id) + '\')">' +
+          '<div class="t">' + esc(d.title) + '</div>' +
+          '<div class="d">' + esc((d.created_at || '').slice(0, 10)) + ' · ' + esc(d.source_slug) + '</div>' +
+        '</div>' +
+        '<button class="copy" onclick="markPosted(\'' + esc(d.id) + '\', this)">발행함</button>' +
+      '</div>'
+    ).join('') || '<div class="qempty">큐가 비어 있습니다. “+ 다음 미전환 초안”으로 미리 만들어두세요.</div>';
+  } catch (e) { el.innerHTML = '<div class="qempty">큐 로드 오류: ' + esc(e.message) + '</div>'; }
+}
+
+let _batchBusy = false;
+async function genNext() {
+  if (_batchBusy) return { error: true };
+  _batchBusy = true;
+  const st = document.getElementById('batchStatus');
+  if (st) st.innerHTML = '<span class="spin"></span>초안 생성 중… (최대 90초)';
+  try {
+    const j = await api('generate_next=1&brand=' + brand + '&kind=' + kind);
+    if (j.done) { if (st) st.textContent = j.message || '미전환 콘텐츠가 없습니다.'; }
+    else {
+      if (st) st.textContent = '✓ 생성: ' + j.draft.title + ' (남은 미전환 ' + j.remaining + '건)';
+      await loadQueue();
+      renderDraft(j.draft);
+    }
+    return j;
+  } catch (e) { if (st) st.textContent = '오류: ' + e.message; return { error: true }; }
+  finally { _batchBusy = false; }
+}
+
+async function genBatch(n) {
+  for (let i = 0; i < n; i++) {
+    const j = await genNext();
+    if (!j || j.done || j.error) break;   // 남은 게 없거나 오류면 중단
+  }
+}
+
+async function openStored(id) {
+  const el = document.getElementById('draft');
+  el.innerHTML = '<div style="padding:40px 20px;text-align:center;color:#888;font-size:14px;"><span class="spin"></span>불러오는 중…</div>';
+  try {
+    const j = await api('stored=1&id=' + encodeURIComponent(id));
+    renderDraft(j);
+  } catch (e) { el.innerHTML = '<div style="padding:40px 20px;text-align:center;color:#c00;font-size:14px;">오류: ' + esc(e.message) + '</div>'; }
+}
+
+async function markPosted(id, btn) {
+  if (!confirm('이 초안을 네이버에 발행 완료로 표시할까요? 큐에서 사라집니다.')) return;
+  btn.disabled = true;
+  try {
+    await api('set_status=posted&id=' + encodeURIComponent(id));
+    await loadQueue();
+  } catch (e) { alert('오류: ' + e.message); btn.disabled = false; }
 }
 
 function flash(btn) { btn.classList.add('ok'); btn.textContent = '복사됨!'; setTimeout(() => { btn.classList.remove('ok'); btn.textContent = btn.dataset.orig || '복사'; }, 1500); }

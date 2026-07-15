@@ -280,6 +280,50 @@ async function generateEditorialDraft(ed, brand) {
   };
 }
 
+// slug 하나로 원본 조회 → 초안 생성 (기사/에디토리얼 자동 분기).
+// ?slug= 단건 경로와 generate_next 일괄 경로가 공유한다.
+async function generateBySlug(brand, kind, slug) {
+  const b = SITES[brand];
+  if (kind === 'editorial') {
+    const { data: ed, error } = await supabaseAdmin
+      .from('editorials')
+      .select('id, title, title_en, slug, description, description_en, cover_image, gallery, credits, issue, published_date, tags, source_instagram_url')
+      .eq('slug', slug).eq('status', 'published')
+      .limit(1).maybeSingle();
+    if (error || !ed) throw new Error('에디토리얼을 찾지 못함: ' + slug);
+    const draft = await generateEditorialDraft(ed, brand);
+    return { draft, sourceId: ed.id };
+  }
+  let sel = supabaseAdmin.from(b.table)
+    .select('id, title, slug' + (brand === 'pap' ? ', custom_url' : '') + ', content, tags, gallery, thumbnail_url, source_instagram_url')
+    .eq('status', 'published');
+  sel = brand === 'pap'
+    ? sel.or('custom_url.eq.' + slug + ',slug.eq.' + slug)
+    : sel.eq('slug', slug);
+  const { data: art, error } = await sel.limit(1).single();
+  if (error || !art) throw new Error('기사를 찾지 못함: ' + slug);
+  const draft = await generateDraft(art, brand);
+  return { draft, sourceId: art.id };
+}
+
+// 최근 발행 콘텐츠 중 아직 초안이 없는 첫 건의 slug 를 찾는다.
+// recent = [{ slug, id }] 최신순, doneSet = 이미 초안 있는 slug 집합.
+async function _recentPublished(brand, kind, limit) {
+  const b = SITES[brand];
+  if (kind === 'editorial') {
+    const { data } = await supabaseAdmin.from('editorials')
+      .select('id, slug').eq('status', 'published').not('slug', 'is', null)
+      .order('published_date', { ascending: false }).limit(limit);
+    return (data || []).map((r) => ({ slug: r.slug, id: r.id })).filter((r) => r.slug);
+  }
+  const { data } = await supabaseAdmin.from(b.table)
+    .select('id, slug' + (brand === 'pap' ? ', custom_url' : ''))
+    .eq('status', 'published').order('published_date', { ascending: false }).limit(limit);
+  return (data || [])
+    .map((r) => ({ slug: brand === 'pap' ? (r.custom_url || r.slug) : r.slug, id: r.id }))
+    .filter((r) => r.slug);
+}
+
 module.exports = async function handler(req, res) {
   const user = await requireAdmin(req, res);
   if (!user) return;
@@ -325,30 +369,70 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ brand, kind, articles: data || [] });
     }
 
-    if (!q.slug) return res.status(400).json({ error: '?slug= 또는 ?list=1 필요' });
-
-    if (kind === 'editorial') {
-      // 에디토리얼 단건 → 초안
-      const { data: ed, error } = await supabaseAdmin
-        .from('editorials')
-        .select('id, title, title_en, slug, description, description_en, cover_image, gallery, credits, issue, published_date, tags, source_instagram_url')
-        .eq('slug', q.slug).eq('status', 'published')
-        .limit(1).maybeSingle();
-      if (error || !ed) return res.status(404).json({ error: '에디토리얼을 찾지 못함: ' + q.slug });
-      const draft = await generateEditorialDraft(ed, brand);
-      return res.status(200).json({ brand, kind, ...draft });
+    // ── 큐 조회: 미발행(draft) 초안 목록 ──
+    if (q.queue === '1') {
+      const { data, error } = await supabaseAdmin.from('naver_blog_drafts')
+        .select('id, title, source_slug, article_url, tags, status, created_at')
+        .eq('brand', brand).eq('kind', kind).eq('status', 'draft')
+        .order('created_at', { ascending: false }).limit(50);
+      if (error) throw error;
+      return res.status(200).json({ brand, kind, queue: data || [] });
     }
 
-    let sel = supabaseAdmin.from(b.table)
-      .select('id, title, slug' + (brand === 'pap' ? ', custom_url' : '') + ', content, tags, gallery, thumbnail_url, source_instagram_url')
-      .eq('status', 'published');
-    sel = brand === 'pap'
-      ? sel.or('custom_url.eq.' + q.slug + ',slug.eq.' + q.slug)
-      : sel.eq('slug', q.slug);
-    const { data: art, error } = await sel.limit(1).single();
-    if (error || !art) return res.status(404).json({ error: '기사를 찾지 못함: ' + q.slug });
+    // ── 저장된 초안 단건 조회 (큐에서 열기) ──
+    if (q.stored === '1' && q.id) {
+      const { data, error } = await supabaseAdmin.from('naver_blog_drafts')
+        .select('*').eq('id', String(q.id)).maybeSingle();
+      if (error || !data) return res.status(404).json({ error: '저장된 초안을 찾지 못함' });
+      return res.status(200).json({
+        brand: data.brand, kind: data.kind, id: data.id, title: data.title,
+        tags: data.tags || [], body_html: data.body_html,
+        images: data.image_urls || [], article_url: data.article_url,
+      });
+    }
 
-    const draft = await generateDraft(art, brand);
+    // ── 상태 변경: 발행 완료(posted) / 건너뛰기(skipped) ──
+    if (q.set_status && q.id) {
+      const st = q.set_status === 'posted' ? 'posted' : q.set_status === 'skipped' ? 'skipped' : null;
+      if (!st) return res.status(400).json({ error: 'set_status 는 posted|skipped' });
+      const { error } = await supabaseAdmin.from('naver_blog_drafts')
+        .update({ status: st, posted_at: st === 'posted' ? new Date().toISOString() : null })
+        .eq('id', String(q.id));
+      if (error) throw error;
+      return res.status(200).json({ ok: true, id: q.id, status: st });
+    }
+
+    // ── 일괄: 아직 초안 없는 최신 발행 1건을 생성·저장 (1요청 1건, 120s 내) ──
+    if (q.generate_next === '1') {
+      const recent = await _recentPublished(brand, kind, 40);
+      const { data: done } = await supabaseAdmin.from('naver_blog_drafts')
+        .select('source_slug').eq('brand', brand).eq('kind', kind);
+      const doneSet = new Set((done || []).map((d) => d.source_slug));
+      const pending = recent.filter((r) => !doneSet.has(r.slug));
+      if (!pending.length) {
+        return res.status(200).json({ brand, kind, done: true, remaining: 0, message: '미전환 콘텐츠가 없습니다. 최근 발행분 모두 초안 생성 완료.' });
+      }
+      const next = pending[0];
+      const { draft, sourceId } = await generateBySlug(brand, kind, next.slug);
+      const { data: saved, error: sErr } = await supabaseAdmin.from('naver_blog_drafts')
+        .upsert({
+          brand, kind, source_slug: next.slug, source_id: String(sourceId || ''),
+          title: draft.title, body_html: draft.body_html,
+          tags: draft.tags || [], image_urls: draft.images || [],
+          article_url: draft.article_url, status: 'draft',
+        }, { onConflict: 'brand,kind,source_slug' })
+        .select('id').single();
+      if (sErr) throw sErr;
+      return res.status(200).json({
+        brand, kind, generated: true, remaining: pending.length - 1,
+        draft: { id: saved.id, ...draft },
+      });
+    }
+
+    if (!q.slug) return res.status(400).json({ error: '?slug= / ?list=1 / ?queue=1 / ?generate_next=1 필요' });
+
+    // ── 단건 온디맨드 생성 (?slug=) ──
+    const { draft } = await generateBySlug(brand, kind, q.slug);
     return res.status(200).json({ brand, kind, ...draft });
   } catch (e) {
     console.error('[naver-blog-draft] error:', e);
