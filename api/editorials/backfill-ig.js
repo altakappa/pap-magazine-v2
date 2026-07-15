@@ -60,6 +60,17 @@ module.exports = async function handler(req, res) {
   // "Please reduce the amount of data" (code 1) 를 반환하면 자동으로 절반씩
   // 줄여 재시도한다 (최소 10). ?limit= 으로 시작값 지정 가능.
   let pageLimit = Math.max(10, Math.min(100, parseInt(req.query.limit || '100', 10) || 100));
+  // Graph API 요청 타임아웃(ms). 딥 커서 페이지네이션(수천 개 뒤)은 limit=10
+  // 에서도 15초를 넘길 수 있어 ?timeout= 으로 최대 50초까지 완화 가능.
+  const fetchTimeout = Math.max(5000, Math.min(50000, parseInt(req.query.timeout || '15000', 10) || 15000));
+  // 시간 필터 — 딥 커서를 따라가는 대신 옛 구간으로 바로 점프.
+  // ?until=<unix초 또는 YYYY-MM-DD> → 해당 시각 이전 게시물부터 스캔.
+  let until = null;
+  if (req.query.until) {
+    const raw = String(req.query.until);
+    until = /^\d+$/.test(raw) ? raw : String(Math.floor(new Date(raw).getTime() / 1000) || '');
+    if (!until || until === 'NaN') until = null;
+  }
 
   try {
     // 1) 링크가 비어 있는 에디토리얼 (발행분만)
@@ -102,9 +113,10 @@ module.exports = async function handler(req, res) {
       const url = IG_API + '/' + process.env.IG_USER_ID + '/media'
         + '?fields=' + encodeURIComponent(fields)
         + '&limit=' + pageLimit
+        + (until ? '&until=' + encodeURIComponent(until) : '')
         + (after ? '&after=' + encodeURIComponent(after) : '')
         + '&access_token=' + process.env.IG_ACCESS_TOKEN;
-      const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
+      const r = await fetch(url, { signal: AbortSignal.timeout(fetchTimeout) });
       if (!r.ok) {
         const body = await r.text().catch(() => '');
         // Graph API code 1: 응답 데이터가 너무 큼 (캡션이 긴 옛 게시물 구간에서
