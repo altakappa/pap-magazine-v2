@@ -16,6 +16,7 @@
  */
 
 const { supabaseAdmin } = require('./supabase');
+const { listRecentMedia } = require('./instagramImport');
 
 const DAY = 24 * 3600 * 1000;
 const iso = (msAgo) => new Date(Date.now() - msAgo).toISOString();
@@ -103,6 +104,34 @@ async function runGrowthAudit() {
       const prev7 = await cnt(db.from(table).select('*', CSEL).gte(tsCol, iso(14 * DAY)).lt(tsCol, iso(7 * DAY)));
       return { value: last7, compare: prev7, status: last7 >= prev7 ? 'ok' : 'warn', note: `이번 주 ${last7} vs 지난주 ${prev7}` };
     });
+
+  // IG 참여 스냅샷 (Graph API) — 최근 25편의 좋아요·댓글. 게시 48h 미만은
+  // 좋아요가 아직 누적 중이라 평균에서 제외한다(2026-07-15 진단의 핵심 교훈:
+  // 갓 올린 글을 넣으면 "참여 저조" 오판). 토큰 미설정·API 지연에도 감사 전체가
+  // 멈추지 않도록 5초 타임아웃 + 개별 check 단위 에러 격리.
+  let _igMedia = null, _igErr = null;
+  try {
+    _igMedia = await Promise.race([
+      listRecentMedia({ limit: 25 }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('IG Graph API 타임아웃(5s)')), 5000)),
+    ]);
+  } catch (e) {
+    _igErr = String((e && e.message) || e).slice(0, 120);
+  }
+  const _IG48 = 48 * 3600 * 1000;
+  const _igNow = Date.now();
+  const _igMature = (_igMedia || [])
+    .map((m) => ({
+      t: m.timestamp ? new Date(m.timestamp).getTime() : 0,
+      type: m.media_type || 'UNKNOWN',
+      likes: typeof m.like_count === 'number' ? m.like_count : 0,
+      comments: typeof m.comments_count === 'number' ? m.comments_count : 0,
+    }))
+    .filter((m) => m.t > 0 && (_igNow - m.t) >= _IG48);   // 48h 이상 경과분만
+  const _igAvg = (arr, k) => (arr.length ? Math.round(arr.reduce((s, x) => s + (x[k] || 0), 0) / arr.length) : 0);
+  const _igRecent = _igMature.filter((m) => (_igNow - m.t) < 9 * DAY);                          // 48h ~ 9일
+  const _igPrior  = _igMature.filter((m) => (_igNow - m.t) >= 9 * DAY && (_igNow - m.t) < 16 * DAY); // 9 ~ 16일
+
   sections.engagement = await Promise.all([
     weekly('editorial_views', 'viewed_at', '에디토리얼 조회 (7일)', 'views_last7'),
     weekly('comments', 'created_at', '댓글 (7일)'),
@@ -132,6 +161,41 @@ async function runGrowthAudit() {
         note: rows.length ? `상위: ${rows[0].t}(${rows[0].v}) · 하위: ${rows[rows.length - 1].t}(${rows[rows.length - 1].v})` : '데이터 없음',
         items: rows.map((r) => `${r.t} — ${r.v}회`),
       };
+    }),
+    check('ig_avg_likes_48h', 'IG 평균 좋아요 (48h+ 경과분)', async () => {
+      if (!_igMedia) throw new Error(_igErr || 'IG 데이터 없음');
+      const v = _igAvg(_igRecent, 'likes');
+      const p = _igAvg(_igPrior, 'likes');
+      const status = _igRecent.length === 0 ? 'warn' : v >= p ? 'ok' : 'warn';
+      return {
+        value: v, compare: p, status,
+        note: `최근(48h~9일) ${_igRecent.length}편 평균 ${v} vs 이전(9~16일) ${_igPrior.length}편 평균 ${p} · 게시 48h 미만 제외`,
+      };
+    }),
+    check('ig_avg_comments_48h', 'IG 평균 댓글 (48h+ 경과분)', async () => {
+      if (!_igMedia) throw new Error(_igErr || 'IG 데이터 없음');
+      const v = _igAvg(_igRecent, 'comments');
+      const p = _igAvg(_igPrior, 'comments');
+      return {
+        value: v, compare: p, status: _igRecent.length === 0 ? 'warn' : v >= p ? 'ok' : 'warn',
+        note: `최근 ${_igRecent.length}편 평균 댓글 ${v} vs 이전 ${_igPrior.length}편 ${p}`,
+      };
+    }),
+    check('ig_engagement_by_type', 'IG 유형별 참여 (릴스/캐러셀/단일, 48h+)', async () => {
+      if (!_igMedia) throw new Error(_igErr || 'IG 데이터 없음');
+      if (!_igMature.length) return { value: 0, status: 'warn', note: '48h 이상 경과한 게시물이 없음' };
+      const label = { VIDEO: '릴스', CAROUSEL_ALBUM: '캐러셀', IMAGE: '단일' };
+      const groups = {};
+      _igMature.forEach((m) => { (groups[m.type] = groups[m.type] || []).push(m); });
+      const items = Object.entries(groups)
+        .sort((a, b) => _igAvg(b[1], 'likes') - _igAvg(a[1], 'likes'))
+        .map(([type, arr]) => `${label[type] || type} ${arr.length}편 — 좋아요 ${_igAvg(arr, 'likes')} · 댓글 ${_igAvg(arr, 'comments')}`);
+      const reels = groups.VIDEO || [];
+      const carousel = groups.CAROUSEL_ALBUM || [];
+      const note = (reels.length && carousel.length)
+        ? `릴스 좋아요 ${_igAvg(reels, 'likes')} vs 캐러셀 ${_igAvg(carousel, 'likes')} — 우세: ${_igAvg(reels, 'likes') >= _igAvg(carousel, 'likes') ? '릴스' : '캐러셀'}`
+        : `48h+ 경과 ${_igMature.length}편 유형별 집계`;
+      return { value: _igMature.length, status: 'ok', note, items };
     }),
   ]);
 

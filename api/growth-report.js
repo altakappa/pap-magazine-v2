@@ -33,6 +33,7 @@ module.exports = async function handler(req, res) {
         ['editorials_pace', '에디토리얼 발행'], ['articles_pace', '기사 발행'],
         ['comments_last7', '댓글(7일)'], ['community_scraps_last7', '스크랩(7일)'],
         ['pinterest_backlog', 'Pinterest 잔량'], ['editorials_missing_description_en', 'EN설명 누락'],
+        ['ig_avg_likes_48h', 'IG 평균 좋아요(48h+)'], ['ig_avg_comments_48h', 'IG 평균 댓글(48h+)'],
       ];
       const rows = data || [];
       const trends = KEYS.map(([id, label]) => {

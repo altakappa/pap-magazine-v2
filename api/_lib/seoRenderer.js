@@ -39,16 +39,24 @@ const ORG_SAMEAS = [
   'https://www.tiktok.com/@pap_magazine'
 ];
 // 허브-스포크 퍼널 — 기사 카테고리에 맞는 니치 계정 (메인과 나란히 노출).
+// [정규식, 니치 계정, 주제어] — 주제어는 카테고리 맞춤 CTA 문구에 쓰인다.
+// 정규식은 하위 카테고리·영문 변형까지 폭넓게 매칭(2026-07-16 참여개선).
 const NICHE_IG = [
-  [/beauty/i, 'papbeauty_'],
-  [/fashion/i, 'papfashion_'],
-  [/news|celeb|music/i, 'pap_celeb'],
-  [/art/i, 'papstudios_'],
-  [/culture|life|trend/i, 'pap_trends'],
+  [/beaut|cosmetic|makeup|skin|fragrance|hair|nail/i, 'papbeauty_',  '뷰티'],
+  [/fashion|runway|street|designer|collection|couture/i, 'papfashion_', '패션'],
+  [/news|celeb|music|k-?pop|idol|interview|award/i, 'pap_celeb',   '셀럽·뮤직'],
+  [/\bart\b|photograph|exhibit|gallery/i, 'papstudios_', '아트'],
+  [/culture|life|trend|film|movie|book/i, 'pap_trends',  '컬처·트렌드'],
 ];
 function nicheIg(category) {
   const c = String(category || '');
   for (const [re, acct] of NICHE_IG) if (re.test(c)) return acct;
+  return null;
+}
+// 카테고리별 맞춤 CTA 문구용 — { acct, topic }. 매칭 없으면 null.
+function nicheMeta(category) {
+  const c = String(category || '');
+  for (const [re, acct, topic] of NICHE_IG) if (re.test(c)) return { acct, topic };
   return null;
 }
 
@@ -950,9 +958,16 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
 
     <aside class="ig-funnel">
       <div class="igf-kicker">PAP Magazine — Instagram</div>
-      <p class="igf-copy">매일 업데이트되는 에디토리얼과 패션·셀럽 뉴스,<br><b>인스타그램에서 가장 먼저</b> 만나보세요.</p>
-      <a class="igf-btn" href="/api/ig-out?src=ssr&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener">Follow @pap_magazine</a>
-      ${nicheIg(record.category) ? `<a class="igf-btn" style="background:transparent;color:#bbb;border:1px solid rgba(255,255,255,.25)" href="/api/ig-out?src=ssr&to=profile&url=${encodeURIComponent('https://www.instagram.com/' + nicheIg(record.category) + '/')}" target="_blank" rel="noopener">+ @${nicheIg(record.category)}</a>` : ''}
+      ${(() => {
+        const nm = nicheMeta(record.category);
+        // 카테고리 매칭 시: 해당 니치 채널을 주 CTA 로 앞세우고 문구도 맞춤.
+        if (nm) return `<p class="igf-copy">이 <b>${nm.topic}</b> 스토리가 마음에 드셨다면 —<br>${nm.topic} 전용 채널 <b>@${nm.acct}</b>에서 더 많은 ${nm.topic} 콘텐츠를, <b>@pap_magazine</b>에서 매일 새 에디토리얼을 가장 먼저 만나보세요.</p>
+      <a class="igf-btn" href="/api/ig-out?src=ssr_niche&to=profile&url=${encodeURIComponent('https://www.instagram.com/' + nm.acct + '/')}" target="_blank" rel="noopener">Follow @${nm.acct}</a>
+      <a class="igf-btn" style="background:transparent;color:#bbb;border:1px solid rgba(255,255,255,.25)" href="/api/ig-out?src=ssr&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener">+ @pap_magazine</a>`;
+        // 매칭 없으면 기존 메인 채널 CTA.
+        return `<p class="igf-copy">매일 업데이트되는 에디토리얼과 패션·셀럽 뉴스,<br><b>인스타그램에서 가장 먼저</b> 만나보세요.</p>
+      <a class="igf-btn" href="/api/ig-out?src=ssr&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener">Follow @pap_magazine</a>`;
+      })()}
       ${ogImage ? `<a class="pin-btn" href="https://www.pinterest.com/pin/create/button/?url=${encodeURIComponent(canonical)}&media=${encodeURIComponent(ogImage)}&description=${encodeURIComponent(titleKo + ' — PAP Magazine editorial')}" target="_blank" rel="noopener" data-pin-do="none">Pinterest에 저장</a>` : ''}
       <div class="igf-sub">전 세계 크리에이티브 팀과 만드는 월 20+ 에디토리얼 · <a href="${SITE}/network" style="color:inherit">PAP 인스타그램 네트워크 →</a></div>
     </aside>

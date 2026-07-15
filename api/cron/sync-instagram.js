@@ -196,7 +196,7 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
             // draft 기사는 X 게시하지 않음 (품질 게이트 미달).
             if (xConfigured()){
               try {
-                const tw = await postTweet(buildArticleTweet({ title: generated.title_ko || row.title, url: artUrl, tags: generated.tags }));
+                const tw = await postTweet(buildArticleTweet({ title: generated.title_ko || row.title, url: artUrl, tags: generated.tags, body: generated.body_ko }));
                 results.tweets = (results.tweets || []).concat(tw.ok ? [tw.id] : ['실패:' + (tw.detail || tw.status)]);
               } catch (_) {}
             }

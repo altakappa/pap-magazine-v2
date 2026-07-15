@@ -121,15 +121,38 @@ function _cleanTags(tags, max) {
   return out;
 }
 
+// 본문(body_ko, HTML)에서 첫 문장을 훅으로 추출. 태그·엔티티 제거 후 첫
+// 종결부호(. ! ? …)까지. 너무 길거나 없으면 '' 반환(제목만 사용).
+function _firstSentence(html) {
+  const text = String(html || '')
+    .replace(/<br\s*\/?>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&[a-z]+;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!text) return '';
+  const m = text.match(/^[\s\S]{12,140}?[.!?…]/);
+  const s = (m ? m[0] : text).trim();
+  return weightedLen(s) > 130 ? '' : s;
+}
+
 /**
- * PAP 기사 → 트윗 텍스트: 제목 훅 + 링크 + 해시태그 (280 가중자 내).
- * @param {{title:string, url:string, tags?:string[]}} art
+ * PAP 기사 → 트윗 텍스트: 제목 훅 + (본문 첫 문장) + 링크 + 해시태그 2~3개.
+ * 2026-07-16 참여개선 — 강제 #KPOP 제거(패션·뷰티엔 부적절, 기사 실제
+ * 태그만 최대 2개 + #PAPMAGAZINE), 본문 첫 문장을 리드로 추가(280 가중자 내).
+ * @param {{title:string, url:string, tags?:string[], body?:string}} art
  */
 function buildArticleTweet(art) {
-  const tags = _cleanTags(art.tags, 3);
-  if (!tags.includes('#KPOP') && tags.length < 3) tags.push('#KPOP');
-  tags.push('#PAPMAGAZINE');
-  return _clampTitle(art.title) + '\n\n' + art.url + '\n\n' + tags.join(' ');
+  const title = _clampTitle(art.title);
+  const tags = _cleanTags(art.tags, 2);   // 실제 태그 최대 2개
+  tags.push('#PAPMAGAZINE');              // + 브랜드 태그 → 총 2~3개
+  const tagLine = tags.join(' ');
+  const hook = _firstSentence(art.body);
+  if (hook && hook !== title) {
+    const withHook = title + '\n\n' + hook + '\n\n' + art.url + '\n\n' + tagLine;
+    if (weightedLen(withHook) <= 280) return withHook;
+  }
+  return title + '\n\n' + art.url + '\n\n' + tagLine;
 }
 
 /**
