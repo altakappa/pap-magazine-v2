@@ -11,8 +11,8 @@
 
 const SITE = 'https://www.pap-magazine.com';
 const SITE_NAME = 'PAP Magazine';
-const DEFAULT_OG_IMAGE = 'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/c_1_7c42a14014.jpg';
-const ORG_LOGO = 'https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/PAP_LOGO.png';
+const DEFAULT_OG_IMAGE = 'https://igcazquhkwxtqsaqpznx.supabase.co/storage/v1/object/public/media/uploads/1782883490406_pbkv6ny169.jpg';
+const ORG_LOGO = 'https://www.pap-magazine.com/pap-logo.png';
 
 /* Instagram SEO — 홈의 Organization(@id) 와 동일 엔티티로 묶고, 모든 SSR
  * 상세 페이지의 publisher 에 sameAs 를 실어 Google 지식그래프가 사이트와
@@ -708,9 +708,9 @@ ${tags.length ? `<meta name="keywords" content="${escAttr(tags.join(', '))}">` :
      실측 결과 콘텐츠 커버는 일관되게 IG 표준 4:5 세로(1080×1350, 2000×2500)인데
      기존 1200×800(가로) 선언은 실물과 달라 FB/카카오 첫 공유 시 잘못된 크롭
      힌트를 줬다. 스크레이퍼는 이 값을 비율 힌트로 쓰므로 4:5로 선언한다.
-     기본 폴백 이미지만 가로형(2000×1250)이라 분기. -->
+     기본 폴백 이미지만 가로형(2000×1125)이라 분기. -->
 <meta property="og:image:width" content="${ogImage === DEFAULT_OG_IMAGE ? '2000' : /img\.youtube\.com/.test(ogImage) ? '1280' : '1080'}">
-<meta property="og:image:height" content="${ogImage === DEFAULT_OG_IMAGE ? '1250' : /img\.youtube\.com/.test(ogImage) ? '720' : '1350'}">
+<meta property="og:image:height" content="${ogImage === DEFAULT_OG_IMAGE ? '1125' : /img\.youtube\.com/.test(ogImage) ? '720' : '1350'}">
 <meta property="og:image:type" content="image/jpeg">
 <meta property="og:locale" content="ko_KR">
 <meta property="og:locale:alternate" content="en_US">

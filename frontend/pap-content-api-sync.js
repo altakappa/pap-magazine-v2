@@ -88,7 +88,7 @@ window._papFilmAutoPlay = function(){
     // 최신을 주는 스냅샷 API(엣지 캐시)를 우선 사용, 실패 시 정적 파일로 폴백.
     (function(){
       var _artRender = function(){ if(window._papArticleRenderCards) window._papArticleRenderCards(); };
-      fetch(PAP_API_BASE + '/articles-snapshot')
+      fetch((window.PAP_API_BASE || '/api') + '/articles-snapshot')
         .then(function(r){ if(!r.ok) throw new Error('snap'); return r.json(); })
         .then(function(data){
           if(!Array.isArray(data) || !data.length) throw new Error('empty');
