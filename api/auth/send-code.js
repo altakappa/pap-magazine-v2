@@ -8,7 +8,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { handleCors } = require('../_lib/cors');
 const { sendEmail } = require('../_lib/email');
-const { rateLimitStrict, RATE_LIMITS } = require('../_lib/rateLimit');
+const { rateLimitStrict, rateLimitAccount, RATE_LIMITS } = require('../_lib/rateLimit');
 const { isValidEmail } = require('../_lib/validate');
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -70,6 +70,10 @@ module.exports = async function handler(req, res) {
     if (!email || !isValidEmail(email)) {
       return res.status(400).json({ message: 'Valid email is required' });
     }
+
+    // 보안 감사 ③ — 계정 단위 레이트리밋(이메일 폭탄 방지). 한 주소로 코드가
+    // 무한 발송되지 않도록 계정(이메일)당 5회/15분으로 제한(IP 리밋과 병행).
+    if (await rateLimitAccount(res, email, { limit: 5, windowMs: 15 * 60 * 1000, name: 'sendcode:acct' })) return;
 
     const code = generateCode();
     const codeHash = hashCode(code);

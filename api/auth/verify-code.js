@@ -6,7 +6,7 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { handleCors } = require('../_lib/cors');
-const { rateLimitStrict } = require('../_lib/rateLimit');
+const { rateLimitStrict, rateLimitAccount } = require('../_lib/rateLimit');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -53,6 +53,11 @@ module.exports = async function handler(req, res) {
       }
       return res.status(400).json({ message: 'Invalid verification token.' });
     }
+
+    // 보안 감사 ③ — 계정 단위 DB 레이트리밋(코드 추측 방어). 아래 인메모리
+    // failedAttempts 는 콜드스타트/멀티인스턴스에서 리셋되므로, 계정(이메일)
+    // 기준 영속 카운터(8회/15분)를 병행해 IP 로테이션 OTP 브루트포스를 막는다.
+    if (await rateLimitAccount(res, decoded.email, { limit: 8, windowMs: 15 * 60 * 1000, name: 'verifycode:acct' })) return;
 
     // Brute-force check: lock out after MAX_ATTEMPTS failed tries
     const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';

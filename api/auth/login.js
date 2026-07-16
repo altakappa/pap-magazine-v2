@@ -7,7 +7,7 @@ const { supabase, supabaseAdmin } = require('../_lib/supabase');
 const { generateToken, setAuthCookie } = require('../_lib/auth');
 const { setCsrfCookie } = require('../_lib/csrf');
 const { handleCors } = require('../_lib/cors');
-const { rateLimitStrict, RATE_LIMITS } = require('../_lib/rateLimit');
+const { rateLimitStrict, rateLimitAccount, RATE_LIMITS } = require('../_lib/rateLimit');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -24,6 +24,10 @@ module.exports = async function handler(req, res) {
     if (!email || !password) {
       return res.status(400).json({ message: 'Email and password are required' });
     }
+
+    // 보안 감사 ③ — 계정 단위 레이트리밋(IP 리밋과 병행). IP 를 바꿔가며 이
+    // 계정을 노리는 분산 브루트포스를 계정별 총 시도(15회/15분)로 제한.
+    if (await rateLimitAccount(res, email, { limit: 15, windowMs: 15 * 60 * 1000, name: 'login:acct' })) return;
 
     // Authenticate via Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({

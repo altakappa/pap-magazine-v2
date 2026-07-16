@@ -129,4 +129,48 @@ async function rateLimitStrict(req, res, { limit = 10, windowMs = 60000 } = {}, 
   }
 }
 
-module.exports = { rateLimit, rateLimitStrict, checkRateLimit, RATE_LIMITS };
+/**
+ * 계정(이메일 등 식별자) 단위 레이트리밋 — 보안 감사 ③(2026-07).
+ *
+ * 기존 rateLimit/rateLimitStrict 는 키가 IP 라서, 공격자가 IP 를 바꿔가며
+ * 특정 계정을 노리는 분산 브루트포스를 못 막았다. 이 함수는 IP 가 아니라
+ * "계정 식별자"(주로 이메일) 기준으로 rl_hit 카운트 → 같은 계정을 여러 IP 로
+ * 노려도 계정별 총 시도가 제한된다. IP 리밋과 **병행**(IP=1차, 계정=2차).
+ *
+ * - 식별자는 sha256 해시로 키에 저장 → rate_limits 테이블에 이메일 평문을
+ *   남기지 않는다(PII 최소화).
+ * - X-RateLimit 헤더는 세팅하지 않는다(IP 리밋이 이미 세팅했고, 계정 리밋
+ *   상태를 응답으로 노출하지 않기 위함).
+ * - fail-open: DB 오류 시 통과(가용성 우선 — IP 리밋이 1차 방어로 남아있음).
+ *
+ * 사용:
+ *   if (await rateLimitAccount(res, email, { limit: 15, windowMs: 15*60*1000, name: 'login:acct' })) return;
+ */
+async function rateLimitAccount(res, identifier, { limit = 15, windowMs = 15 * 60 * 1000, name = 'acct' } = {}) {
+  if (!identifier) return false;
+  const crypto = require('crypto');
+  const h = crypto.createHash('sha256').update(String(identifier).toLowerCase().trim()).digest('hex').slice(0, 40);
+  const key = name + ':' + h;
+  try {
+    const { supabaseAdmin } = require('./supabase');
+    const { data, error } = await supabaseAdmin.rpc('rl_hit', {
+      p_key: key, p_limit: limit, p_window_ms: windowMs,
+    });
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row.allowed) {
+      const resetSec = Math.ceil(new Date(row.reset_at).getTime() / 1000);
+      res.status(429).json({
+        message: 'Too many attempts for this account. Please try again later.',
+        retryAfter: Math.max(resetSec - Math.ceil(Date.now() / 1000), 1),
+      });
+      return true;
+    }
+    return false;
+  } catch (err) {
+    console.error('[rateLimitAccount] skip (DB err):', err.message || err);
+    return false; // fail-open
+  }
+}
+
+module.exports = { rateLimit, rateLimitStrict, rateLimitAccount, checkRateLimit, RATE_LIMITS };
