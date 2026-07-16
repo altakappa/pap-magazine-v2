@@ -21,10 +21,10 @@ const { extractClientIp, hashIp, detectDeviceType, sanitizeReferrer } = require(
 const HOME_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.com';
 // spa_fallback (2026-07-16): 원본 IG 게시물이 없는 에디토리얼(구계정 게시분 등)의
 // SPA 폴백 CTA — 프로필 전환도 아웃클릭 지표에 잡히게 한다.
-// pepperit-* (2026-07-17): 페퍼릿 기사 상세 CTA(pepperit-article)·랜딩 CTA(pepperit-spa)
-// 아웃클릭을 PAP와 분리 집계하기 위한 소스 태그. 화이트리스트 밖이면 'other'로 뭉뚱그려져
-// 주간 리포트에서 매체 분리가 안 되므로 반드시 여기 등록해야 한다.
-const SRC_WHITELIST = new Set(['article', 'editorial', 'ssr', 'ssr_niche', 'naverblog', 'footer', 'nav', 'funnel', 'spa_fallback', 'pepperit-article', 'pepperit-spa']);
+// pepperit-* (2026-07-17): 페퍼릿 기사 상세 CTA(pepperit-article)·랜딩 CTA(pepperit-spa)·
+// 페퍼릿 footer CTA(pepperit-footer) 아웃클릭을 PAP와 분리 집계하기 위한 소스 태그.
+// 화이트리스트 밖이면 'other'로 뭉뚱그려져 주간 리포트에서 매체 분리가 안 되므로 반드시 등록.
+const SRC_WHITELIST = new Set(['article', 'editorial', 'ssr', 'ssr_niche', 'naverblog', 'footer', 'nav', 'funnel', 'spa_fallback', 'pepperit-article', 'pepperit-spa', 'pepperit-footer']);
 const IG_HOSTS = new Set(['instagram.com', 'www.instagram.com']);
 
 /** instagram.com URL만 통과. 쿼리스트링(igshid 등 추적 노이즈)은 제거. */
