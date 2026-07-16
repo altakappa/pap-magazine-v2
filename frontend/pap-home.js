@@ -43,16 +43,25 @@
     fLogo.style.position = 'fixed';
     return;
   }
-  const header = document.querySelector('.header');
   const heroEl = document.querySelector('.hero');
-  const headerLogo = document.querySelector('.logo-wrap');
-  if(!headerLogo) return;
+  // Single-source header rebuild: the header (and its .logo-wrap) is now
+  // INJECTED by pap-header.js, which loads AFTER this file. So .logo-wrap
+  // may not exist yet at IIFE time — do NOT hard-bail on it, and always
+  // re-query it LIVE so we never hold a stale reference to a header that
+  // pap-header.js removed/re-injected. pap-header.js calls
+  // window._papResetFloatingLogo() once its header is in the DOM.
   let onHero = false;
   let mouseX = 0, mouseY = 0;
   let rafId = null;
 
   function getHeaderLogoPos(){
-    const r = headerLogo.getBoundingClientRect();
+    const hl = document.querySelector('.logo-wrap');
+    if(!hl){
+      // Header not injected yet — fall back to the header's visual centre
+      // (72px bar → ~36px). _papResetFloatingLogo() re-runs once it exists.
+      return { x: window.innerWidth / 2, y: 36 };
+    }
+    const r = hl.getBoundingClientRect();
     return { x: window.innerWidth / 2, y: r.top + r.height/2 };
   }
 

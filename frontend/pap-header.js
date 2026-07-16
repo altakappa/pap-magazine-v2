@@ -30,15 +30,19 @@
   /* ── opt-out hook (rare: only if a page truly wants its own header) ── */
   if (document.body && document.body.getAttribute('data-pap-no-header') === '1') return;
 
-  /* Index.html has a .floating-logo element whose animation JS (in pap-app.js)
-     captures a live reference to the original <header>'s .logo-wrap via
-     getBoundingClientRect(). If we remove and re-inject the header on that
-     page, the captured reference becomes stale and the floating logo docks
-     at 0,0 (top-left). Since index.html already has the canonical inline
-     header design we want to unify everyone around, we simply exit early
-     on pages that host the floating logo. All OTHER pages still get the
-     unified header. */
-  if (document.querySelector('.floating-logo')) return;
+  /* ── index.html (floating-logo) is NO LONGER exempt ──────────────
+     Historically this script bailed on any page hosting `.floating-logo`
+     (index.html) because pap-home.js's floating-logo IIFE captured a live
+     reference to the ORIGINAL inline <header>'s .logo-wrap; removing that
+     header left the reference stale so the logo docked at the top-left.
+     That exemption is exactly what let index.html's hand-maintained header
+     drift out of sync with every other page (e.g. it was missing Russian
+     in the language selector). The single-source rebuild removes it:
+       • index.html's inline <header>/.nav-overlay are deleted from source.
+       • pap-home.js re-queries .logo-wrap LIVE (no cached stale node).
+       • After injecting, we call window._papResetFloatingLogo() below so
+         the floating logo docks onto the freshly injected header.
+     Result: index.html uses THIS header like every other page. */
 
   /* ================================================================
      0. Clean up any pre-existing header / legacy nav markup
@@ -491,8 +495,29 @@
     // button into every overlay found so the close affordance is
     // guaranteed. Idempotent — bails when a close already exists.
     _papEnsureNavClose();
+    // Single-source rebuild — dock index.html's floating logo onto the
+    // freshly injected header. pap-home.js runs BEFORE this file, so its
+    // floating-logo IIFE initialised while .logo-wrap did not yet exist;
+    // _papResetFloatingLogo() re-reads the live .logo-wrap and repositions
+    // the logo to the header centre. Guarded + deferred so layout is ready.
+    _papDockFloatingLogo();
   }
   _injectHeader();
+
+  function _papDockFloatingLogo(){
+    if (!document.getElementById('floatingLogo')) return;
+    function dock(){
+      if (typeof window._papResetFloatingLogo === 'function') {
+        try { window._papResetFloatingLogo(); } catch (_) {}
+      }
+    }
+    // rAF: after the injected header has been laid out this frame.
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(dock);
+    else setTimeout(dock, 0);
+    // Belt-and-suspenders: also re-dock once fonts/images settle (the logo
+    // image height can shift the header-centre by a couple of pixels).
+    window.addEventListener('load', dock);
+  }
 
   function _papEnsureNavClose(){
     var overlays = document.querySelectorAll('.nav-overlay');
@@ -625,6 +650,11 @@
           hb.classList.remove('active');
         }
       }
+      // index.html — hide the floating hero logo while the white menu is
+      // open (it would otherwise sit on top of the overlay), restore on
+      // close. No-op on every other page (no #floatingLogo present).
+      var fLogo = document.getElementById('floatingLogo');
+      if (fLogo) fLogo.style.display = opening ? 'none' : '';
       if (opening) lockScroll();
       else unlockScroll();
     };
