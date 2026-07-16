@@ -24,6 +24,7 @@
 1. **영속 레이트리밋** — 기존 인메모리 리미터는 서버리스 콜드스타트마다 리셋되어 로그인 브루트포스를 실질적으로 못 막았음. login / signup / send-code / verify-code 4개 엔드포인트를 Supabase 기반 원자적 카운터(`rl_hit` RPC)로 전환. DB 장애 시 인메모리 폴백(fail-open — 로그인 불능 사고 방지).
    - 파일: `supabase_migrations/060_rate_limits.sql`, `api/_lib/rateLimit.js` (rateLimitStrict)
 2. **강제 CSP 기본선 추가** — 기존 CSP는 Report-Only(모니터링만). 사이트를 깨뜨릴 수 없는 최소 강제 정책을 병행: `object-src 'none'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests`. 전체 정책은 Report-Only로 계속 관찰 후 위반 0 확인되면 강제 전환(아래 로드맵).
+   - **(2026-07-16 갱신) 완전 강제 전환 완료.** 위 단계적 롤아웃이 승격되지 않은 채 방치돼(게다가 `report-uri` 미설정으로 위반 수집 자체가 불가능했음) 콘텐츠 페이지(index/editorial/articles 등, meta CSP 없는 페이지)가 사실상 무방비였음. Report-Only 정책 + 결제/로그인 페이지 5종의 `<meta>` CSP + 콘텐츠 렌더러 실측(youtube/vimeo/instagram 임베드, S3 영상)의 **합집합(superset)**으로 정식 `Content-Security-Policy` 를 구성해 enforcing 으로 승격, Report-Only 는 제거(이중 구조 해소). 보강분: `cdn.jsdelivr.net`(Supabase 라이브러리 — 기존 Report-Only 에 누락되어 그대로 승격했다면 로그인/DB 가 깨졌을 gap), `js.tosspayments.com`/`*.iamport.co`(결제), `media-src`(영상 재생), `worker-src`, GA 리전 엔드포인트(`*.google-analytics.com`). 제거: 미사용 `api.anthropic.com` connect(브라우저→Anthropic 직결은 불필요·스멜). superset 이므로 meta CSP 페이지와 교집합돼도 새로 차단되는 리소스 없음.
 3. **Permissions-Policy payment 수정** — `payment=()`가 Paddle 체크아웃의 Apple Pay/Google Pay(Payment Request API)를 차단할 수 있어 `payment=(self "https://buy.paddle.com" "https://sandbox-buy.paddle.com")`로 변경.
 4. **X-XSS-Protection: 1 → 0** — 구형 XSS Auditor는 오히려 취약점 벡터. 현대 권장값 0.
 5. **개발 유틸 페이지 차단** — `/data-migration.html`(service key 입력 유도 마이그레이션 툴), `/index.html.backup-pre-i18n-cards` → 404. 파일은 리포에 남아있으니 필요 시 로컬에서만 사용.
@@ -46,7 +47,7 @@
 
 ## 다음 단계 로드맵 (선택)
 
-1. **CSP 완전 강제 전환** — 2~4주간 Report-Only 위반 리포트 관찰 후, 위반이 없으면 Report-Only 정책을 Content-Security-Policy로 승격. 최대 효과 항목: `script-src`에서 `unsafe-eval` 제거 가능 여부 확인.
+1. ~~**CSP 완전 강제 전환**~~ — ✅ 완료(2026-07-16, 위 "이번에 강화한 것" 2번 참조). 남은 하드닝: `script-src`에서 `'unsafe-eval'`·`'unsafe-inline'` 제거(nonce 기반 전환). **운영 프로세스:** 향후 CSP 변경분은 먼저 `Content-Security-Policy-Report-Only` 헤더로 병행 배포해 라이브 위반을 관찰(가능하면 `report-uri`/`report-to` 수집 엔드포인트 추가)한 뒤 정식 헤더로 승격할 것 — 이번처럼 승격 없이 방치되지 않도록 변경 단위로 처리.
 2. **Vercel Firewall (WAF)** — Pro 플랜이면 대시보드에서 Bot 차단 + IP 레이트리밋 룰 추가 (코드 변경 없이 겹벽).
 3. **의존성 자동 점검** — GitHub 리포 Settings → Security → Dependabot alerts 활성화 (무료, 1클릭).
 4. **Supabase RLS 정기 감사** — 새 테이블 추가 시 RLS 활성화 여부 체크리스트화.
