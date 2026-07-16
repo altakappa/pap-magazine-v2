@@ -929,24 +929,30 @@ function _papRenderShopRow(fashion){
   box.style.display='';
 }
 
+// 폴백 CTA 사회적 증거 (2026-07-16) — 팔로워 수는 대략치로 표기하고 성장 시
+// 여기 한 곳만 갱신한다. (실시간 조회는 Graph API 호출 비용 대비 과함)
+var _PAP_IG_FOLLOWERS_KO='37만';
+var _PAP_IG_FOLLOWERS_EN='370K+';
 function _papRenderEdIg(igUrl, title){
   var box=document.getElementById('edIgPostCta');
   if(!box) return;
   if(!igUrl || !/instagram\.com\//.test(String(igUrl))){
-    // 링크 백필 전 아카이브(레거시 다수)·미게시 신작 — IG 임베드는 없지만 섹션을
-    // 숨기지 않고 '전체 화보=PAP + 공유 + @pap_magazine 팔로우' 폴백으로 유입·참여 동선 유지.
+    // 원본 IG 게시물이 없는 아카이브(옛 계정 게시분·미게시) — 영구 폴백.
+    // 2026-07-16 개선: ① 팔로워 수 사회적 증거 ② 주 CTA=팔로우(채움)·보조=공유(외곽선)
+    // 로 계층 역전 ③ 프로필 링크를 /api/ig-out 경유로 바꿔 아웃클릭 계측(src=spa_fallback).
     var _kf=(localStorage.getItem('pap-lang')||'ko')==='ko';
     var _bf=_kf
-      ? '이 화보의 전체 시리즈는 <b style="color:#fff">PAP에서 완전판</b>으로. 새 에디토리얼은 인스타그램에서도 만나요.'
-      : 'The complete series lives here, <b style="color:#fff">on PAP</b>. Catch new editorials on Instagram too.';
+      ? '이 화보의 전체 시리즈는 <b style="color:#fff">PAP에서 완전판</b>으로.<br><b style="color:#fff">'+_PAP_IG_FOLLOWERS_KO+' 팔로워</b>가 매일 만나는 새 에디토리얼은 인스타그램에서.'
+      : 'The complete series lives here, <b style="color:#fff">on PAP</b>.<br>Join <b style="color:#fff">'+_PAP_IG_FOLLOWERS_EN+' followers</b> for new editorials daily.';
     var _sf=_kf ? '이 화보 공유 ↗' : 'Share this editorial ↗';
-    var _ff=_kf ? 'PAP 인스타그램 →' : 'PAP on Instagram →';
+    var _ff=_kf ? '@pap_magazine 팔로우 →' : 'Follow @pap_magazine →';
+    var _igOut='/api/ig-out?src=spa_fallback&to=profile&url='+encodeURIComponent('https://www.instagram.com/pap_magazine/');
     box.innerHTML=
       '<aside style="margin:36px 0 0;padding:26px 24px;border:1px solid rgba(255,255,255,.16);text-align:center">'
       +'<div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:10px">Full Editorial</div>'
       +'<div style="font-size:13.5px;line-height:1.7;color:#ddd;margin-bottom:16px">'+_bf+'</div>'
-      +'<button onclick="_papShareStory()" style="background:#fff;color:#000;border:none;padding:11px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;margin:0 6px 8px">'+_sf+'</button>'
-      +'<a href="https://www.instagram.com/pap_magazine/" target="_blank" rel="noopener" style="display:inline-block;padding:11px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#fff;border:1px solid rgba(255,255,255,.28);text-decoration:none;margin:0 6px 8px">'+_ff+'</a>'
+      +'<a href="'+_igOut+'" target="_blank" rel="noopener" style="display:inline-block;background:#fff;color:#000;padding:11px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;margin:0 6px 8px">'+_ff+'</a>'
+      +'<button onclick="_papShareStory()" style="background:none;color:#fff;border:1px solid rgba(255,255,255,.28);padding:11px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;margin:0 6px 8px">'+_sf+'</button>'
       +'</aside>';
     box.style.display=''; return;
   }

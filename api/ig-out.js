@@ -1,5 +1,5 @@
 /**
- * GET /api/ig-out?to=(profile|post)&url=(인스타그램 URL)&src=(article|editorial|ssr|ssr_niche|naverblog|footer|nav|funnel)
+ * GET /api/ig-out?to=(profile|post)&url=(인스타그램 URL)&src=(article|editorial|ssr|ssr_niche|naverblog|footer|nav|funnel|spa_fallback)
  *
  * 웹 → 인스타그램 유입 계측 리다이렉트 (B-2, 2026-07).
  * 지금까지 IG 버튼이 전부 직링크라 "몇 명이 인스타로 넘어갔는지"를 알 수
@@ -19,7 +19,9 @@ const { rateLimitStrict } = require('./_lib/rateLimit');
 const { extractClientIp, hashIp, detectDeviceType, sanitizeReferrer } = require('./_lib/clickGuard');
 
 const HOME_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.com';
-const SRC_WHITELIST = new Set(['article', 'editorial', 'ssr', 'ssr_niche', 'naverblog', 'footer', 'nav', 'funnel']);
+// spa_fallback (2026-07-16): 원본 IG 게시물이 없는 에디토리얼(구계정 게시분 등)의
+// SPA 폴백 CTA — 프로필 전환도 아웃클릭 지표에 잡히게 한다.
+const SRC_WHITELIST = new Set(['article', 'editorial', 'ssr', 'ssr_niche', 'naverblog', 'footer', 'nav', 'funnel', 'spa_fallback']);
 const IG_HOSTS = new Set(['instagram.com', 'www.instagram.com']);
 
 /** instagram.com URL만 통과. 쿼리스트링(igshid 등 추적 노이즈)은 제거. */
