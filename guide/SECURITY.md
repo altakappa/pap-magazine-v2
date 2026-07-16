@@ -30,11 +30,23 @@
 5. **개발 유틸 페이지 차단** — `/data-migration.html`(service key 입력 유도 마이그레이션 툴), `/index.html.backup-pre-i18n-cards` → 404. 파일은 리포에 남아있으니 필요 시 로컬에서만 사용.
 6. **에러 상세 노출 제거** — `api/submissions/upload-url.js`(공개 엔드포인트)가 Supabase 내부 에러 메시지를 클라이언트에 반환하던 것 제거. `api/media/upload.js`의 상세 노출은 관리자 전용 + 의도적 디버깅(QA #100)이라 유지.
 
+### 추가 하드닝 (2026-07-16)
+
+7. **CSP 정식 강제 + 위반 수집** — CSP 이중구조 해소(위 2번), 강제 정책에 `report-uri /api/csp-report; report-to csp-endpoint` + `Reporting-Endpoints` 헤더 추가. 새 엔드포인트 `api/csp-report.js` 가 위반을 Vercel Logs 에 `[csp-report]` 로 기록(DB 불필요, IP당 분당 30 레이트리밋, 항상 204). 이제 "뭐가 막혔는지"가 관측 가능 → 이중구조 방치의 근본 원인(수집 부재) 해소.
+8. **cron_runs RLS 활성화** — `078_cron_runs.sql` 이 RLS 없이 테이블을 만들어 방어 격차가 있었음(라이브 anon 조회는 0행이라 확정 유출은 아니나, RLS 없는 public 테이블은 anon 키만으로 읽기/쓰기 가능한 구조). `080_cron_runs_rls.sql` 로 RLS on(정책 0개=anon 전면 차단, service_role 우회라 동작 불변).
+9. **시크릿 스캔 통과** — 추적 파일에 하드코딩된 비밀값 없음 확인. 프론트 Supabase 키는 전부 `role=anon`(공개 설계상 안전), service_role/개인키/실 stripe 키 커밋 없음. `.env*` gitignore 확인.
+
 ## 배포 절차 (도메니코)
 
-1. **Supabase SQL Editor**에서 `supabase_migrations/060_rate_limits.sql` 실행 (Success 확인)
+1. **Supabase SQL Editor**에서 실행 (각 Success 확인):
+   - `supabase_migrations/060_rate_limits.sql`
+   - `supabase_migrations/080_cron_runs_rls.sql` ← 2026-07-16 추가
 2. 커밋/푸시 → Vercel 자동 배포
-3. 배포 후 확인: 로그인 1회 정상 동작 + 구독 페이지에서 Paddle 체크아웃 열림
+3. 배포 후 확인:
+   - 로그인 1회 정상 동작 + 구독 페이지에서 결제창 열림(Paddle/포트원/토스)
+   - 응답 헤더에 통합 `Content-Security-Policy`(강제) 1개만 존재(Report-Only 없음)
+   - 콘솔에 `Refused to ... Content-Security-Policy` 위반 없는지 주요 페이지 순회
+   - `POST /api/csp-report` 가 204 반환하는지(위반 발생 시 Vercel Logs `[csp-report]` 확인)
 
 > 순서 중요: SQL을 먼저 실행해야 함. (먼저 배포해도 인메모리 폴백으로 동작은 하지만 RPC 에러 로그가 쌓임)
 
