@@ -5,6 +5,7 @@
  */
 
 const { supabaseAdmin } = require('../../_lib/supabase');
+const { logSocialInclick } = require('../../_lib/socialInclick');
 
 const SITE = 'https://www.pepperitmag.com';
 const IG = 'https://www.instagram.com/pepperitmag/';
@@ -160,6 +161,9 @@ module.exports = async function handler(req, res) {
       '</main>' +
       '<footer>PEPPERIT — 케이팝 · 패션 · 뷰티 · 컬쳐의 모든 순간, 가장 가볍게 · <a href="' + IG + '" target="_blank" rel="noopener">@pepperitmag</a><br><br>PAP Magazine 자매지 · <a href="https://www.pap-magazine.com/">pap-magazine.com</a> · 제휴 문의 hello@pepperitmag.com</footer>' +
       '</body></html>';
+
+    // 소셜 유입 계측 (utm_source 있을 때만 기록, 실패는 삼킨다 — 2026-07-16)
+    await logSocialInclick(req, 'pepperit');
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=600, stale-while-revalidate=3600');

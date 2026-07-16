@@ -105,6 +105,25 @@ function weightedLen(s) {
   return n;
 }
 
+// X 는 URL 을 t.co 로 감싸 항상 23자로 계산한다 — 길이 판정 시 실제 URL 대신
+// 이 placeholder 를 넣어 측정한다 (UTM 이 붙어도 길이 판정이 왜곡되지 않게).
+const URL_PLACEHOLDER = 'x'.repeat(23);
+
+/**
+ * 유입 계측용 UTM 부착 (2026-07-16 케이팝 참여 개선).
+ * 로드맵의 X 자동게시 중단 사유가 "성과 미측정"이었다 — utm_source 가 붙으면
+ * SSR 이 social_inclicks 에 기록해 X 유입을 셀 수 있다 (socialInclick.js).
+ */
+function withUtm(url, source, campaign) {
+  try {
+    const u = new URL(String(url));
+    u.searchParams.set('utm_source', source);
+    u.searchParams.set('utm_medium', 'social');
+    if (campaign) u.searchParams.set('utm_campaign', campaign);
+    return u.toString();
+  } catch (_) { return url; }
+}
+
 function _clampTitle(title) {
   let t = String(title || '').trim();
   while (weightedLen(t) > 90 && t.length > 10) t = t.slice(0, t.length - 4).trim() + '…';
@@ -147,12 +166,14 @@ function buildArticleTweet(art) {
   const tags = _cleanTags(art.tags, 2);   // 실제 태그 최대 2개
   tags.push('#PAPMAGAZINE');              // + 브랜드 태그 → 총 2~3개
   const tagLine = tags.join(' ');
+  const link = withUtm(art.url, 'x', 'pap_auto'); // 유입 계측 (2026-07-16)
   const hook = _firstSentence(art.body);
   if (hook && hook !== title) {
-    const withHook = title + '\n\n' + hook + '\n\n' + art.url + '\n\n' + tagLine;
-    if (weightedLen(withHook) <= 280) return withHook;
+    // 길이 판정은 URL=23자 규칙으로 (UTM 길이는 t.co 로 감싸져 무관)
+    const measured = title + '\n\n' + hook + '\n\n' + URL_PLACEHOLDER + '\n\n' + tagLine;
+    if (weightedLen(measured) <= 280) return title + '\n\n' + hook + '\n\n' + link + '\n\n' + tagLine;
   }
-  return title + '\n\n' + art.url + '\n\n' + tagLine;
+  return title + '\n\n' + link + '\n\n' + tagLine;
 }
 
 /**
@@ -164,7 +185,8 @@ function buildPepperitTweet(art) {
   const tags = _cleanTags(art.tags, 4);
   if (!tags.includes('#KPOP') && tags.length < 4) tags.push('#KPOP');
   tags.push('#PEPPERIT');
-  return _clampTitle(art.title) + '\n\n' + art.url + '\n\n' + tags.join(' ');
+  const link = withUtm(art.url, 'x', 'pepperit_auto'); // 유입 계측 (2026-07-16)
+  return _clampTitle(art.title) + '\n\n' + link + '\n\n' + tags.join(' ');
 }
 
 /**

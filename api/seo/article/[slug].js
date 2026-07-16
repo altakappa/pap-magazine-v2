@@ -11,6 +11,7 @@
 const { supabaseAdmin } = require('../../_lib/supabase');
 const { handleCors } = require('../../_lib/cors');
 const { renderSeoHtml, renderNotFoundHtml } = require('../../_lib/seoRenderer');
+const { logSocialInclick } = require('../../_lib/socialInclick');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -112,10 +113,16 @@ module.exports = async function handler(req, res) {
      */
     const canonicalSlug = (data.slug || '').trim();
     if (canonicalSlug && canonicalSlug !== decoded && canonicalSlug !== slug) {
+      // 쿼리스트링(utm 등) 보존 — X 유입 계측이 301 을 거쳐도 살아남게 (2026-07-16)
+      const qi = String(req.url || '').indexOf('?');
+      const qs = qi >= 0 ? String(req.url).slice(qi).replace(/[\r\n]/g, '') : '';
       res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=86400');
-      res.setHeader('Location', '/article/' + encodeURIComponent(canonicalSlug));
+      res.setHeader('Location', '/article/' + encodeURIComponent(canonicalSlug) + qs);
       return res.status(301).end();
     }
+
+    // 소셜 유입 계측 (utm_source 있을 때만 기록, 실패는 삼킨다 — 2026-07-16)
+    await logSocialInclick(req, 'article');
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=300, stale-while-revalidate=86400');
