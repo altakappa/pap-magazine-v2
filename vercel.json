@@ -243,6 +243,10 @@
       "destination": "/api/seo/editorial/:slug?lang=en"
     },
     {
+      "source": "/:lang(it|fr|es)/editorial/:slug",
+      "destination": "/api/seo/editorial/:slug?lang=:lang"
+    },
+    {
       "source": "/en/article/:slug",
       "destination": "/api/seo/article/:slug?lang=en"
     },

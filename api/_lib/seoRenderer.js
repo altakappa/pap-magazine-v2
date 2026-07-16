@@ -314,15 +314,30 @@ const KIND = {
   }
 };
 
+/* ── 다국어 SEO (2026-07-16) ─────────────────────────── */
+// 1단계 'en' — DB 원본 필드(title_en/description_en) 사용.
+// 2단계 'it'|'fr'|'es' — content_translations(080) 의 번역을 opts.translation 으로
+// 받아 렌더 (에디토리얼만, 번역 없으면 핸들러가 /en/ 으로 302).
+const LANG_META = {
+  ko: { og: 'ko_KR', inLang: 'ko-KR' },
+  en: { og: 'en_US', inLang: 'en-US' },
+  it: { og: 'it_IT', inLang: 'it-IT' },
+  fr: { og: 'fr_FR', inLang: 'fr-FR' },
+  es: { og: 'es_ES', inLang: 'es-ES' },
+};
+
 /* ── main render function ───────────────────────────── */
-// opts.lang (2026-07-16): 'ko'(기본) | 'en'. 'en'이면 /en/<kind>/<slug> 캐노니컬로
-// 영어 우선 렌더 — 다국어 검색 유입 1단계. 콘텐츠 DB의 title_en/description_en을
-// 그대로 쓰므로 기계번역 대량생성 리스크 없음. ko/en 상호 hreflang 은 아래 head 에서.
+// opts.lang: 'ko'(기본)|'en'|'it'|'fr'|'es'
+// opts.translation: {title, description} — it/fr/es 전용
+// opts.availableLangs: hreflang 으로 선언할 언어 목록 (기본 ['ko','en'])
 function renderSeoHtml(kind, record, opts) {
   const cfg = KIND[kind] || KIND.editorial;
   const slug = record.slug || record.custom_url || record.id;
-  const lang = (opts && opts.lang === 'en') ? 'en' : 'ko';
-  const isEn = lang === 'en';
+  const lang = (opts && LANG_META[opts.lang]) ? opts.lang : 'ko';
+  const isEn = lang !== 'ko'; // '비한국어 페이지' 공통 플래그 (기존 분기 재사용)
+  const tr = (opts && opts.translation) || null;
+  const availableLangs = (opts && Array.isArray(opts.availableLangs) && opts.availableLangs.length)
+    ? opts.availableLangs : ['ko', 'en'];
 
   /* QA #308 — Film credit inheritance from a linked editorial.
    *
@@ -346,17 +361,17 @@ function renderSeoHtml(kind, record, opts) {
 
   const titleKo = record.title || SITE_NAME;
   const titleEn = record.title_en || titleKo;
-  const seoTitle = isEn
-    ? `${titleEn} | ${SITE_NAME}`
-    : (record.seo_title || `${titleKo} | ${SITE_NAME}`);
   const descKo = record.seo_description || record.description || record.subtitle || `${titleKo} — ${SITE_NAME}`;
   const descEn = record.description_en || descKo;
-  const desc = truncate(isEn ? descEn : descKo, 160);
-  // 언어 우선 표기 (본문 h1·리드·스키마 공용)
-  const titleMain = isEn ? titleEn : titleKo;
-  const titleAlt = isEn ? titleKo : titleEn;
-  const descMain = isEn ? descEn : descKo;
-  const descAlt = isEn ? descKo : descEn;
+  // 언어 우선 표기 (본문 h1·리드·스키마 공용) — it/fr/es 는 번역본, 없으면 EN 폴백
+  const titleMain = lang === 'ko' ? titleKo : (lang === 'en' ? titleEn : ((tr && tr.title) || titleEn));
+  const titleAlt = lang === 'ko' ? titleEn : titleKo;
+  const descMain = lang === 'ko' ? descKo : (lang === 'en' ? descEn : ((tr && tr.description) || descEn));
+  const descAlt = lang === 'ko' ? descEn : (lang === 'en' ? descKo : descEn);
+  const seoTitle = lang === 'ko'
+    ? (record.seo_title || `${titleKo} | ${SITE_NAME}`)
+    : `${titleMain} | ${SITE_NAME}`;
+  const desc = truncate(descMain, 160);
 
   /* Cover image: per-kind preferred fields */
   const ogImage = record.og_image
@@ -370,8 +385,59 @@ function renderSeoHtml(kind, record, opts) {
     || DEFAULT_OG_IMAGE;
 
   const koCanonical = `${SITE}${cfg.pathPrefix}${encodeURIComponent(slug)}`;
-  const enCanonical = `${SITE}/en${cfg.pathPrefix}${encodeURIComponent(slug)}`;
-  const canonical = isEn ? enCanonical : koCanonical;
+  const langUrl = (l) => l === 'ko' ? koCanonical : `${SITE}/${l}${cfg.pathPrefix}${encodeURIComponent(slug)}`;
+  const canonical = langUrl(lang);
+  // hreflang: 실재하는 언어 변형만 선언 (ko/en 은 항상, it/fr/es 는 번역 존재 시)
+  const hreflangLinks = availableLangs
+    .filter(l => LANG_META[l])
+    .map(l => `<link rel="alternate" hreflang="${l}" href="${escAttr(langUrl(l))}">`)
+    .concat([`<link rel="alternate" hreflang="x-default" href="${escAttr(koCanonical)}">`])
+    .join('\n');
+
+  /* IG 퍼널 CTA 카피 — 언어별. 유입자가 인스타로 넘어가는 마지막 관문까지 해당 언어로. */
+  const FUNNEL_T = {
+    ko: {
+      srcCopy: '이 콘텐츠의 원본 게시물이 <b>인스타그램</b>에 있습니다.<br>좋아요·저장하고, 매일 공개되는 새 에디토리얼을 가장 먼저 만나보세요.',
+      srcBtn: '인스타그램에서 보기 ↗',
+      niche: (nm) => `이 <b>${nm.topic}</b> 스토리가 마음에 드셨다면 —<br>${nm.topic} 전용 채널 <b>@${nm.acct}</b>에서 더 많은 ${nm.topic} 콘텐츠를, <b>@pap_magazine</b>에서 매일 새 에디토리얼을 가장 먼저 만나보세요.`,
+      main: '매일 업데이트되는 에디토리얼과 패션·셀럽 뉴스,<br><b>인스타그램에서 가장 먼저</b> 만나보세요.',
+      pin: 'Pinterest에 저장',
+      sub: '전 세계 크리에이티브 팀과 만드는 월 20+ 에디토리얼 · <a href="' + SITE + '/network" style="color:inherit">PAP 인스타그램 네트워크 →</a>',
+    },
+    en: {
+      srcCopy: 'The original post lives on <b>Instagram</b>.<br>Like &amp; save it — and catch new editorials there first, every day.',
+      srcBtn: 'View on Instagram ↗',
+      niche: (nm) => `Loved this <b>${nm.topic}</b> story? —<br>More ${nm.topic} on <b>@${nm.acct}</b>, and new editorials first on <b>@pap_magazine</b>, daily.`,
+      main: 'Daily editorials, fashion &amp; celeb news —<br>catch them <b>first on Instagram</b>.',
+      pin: 'Save to Pinterest',
+      sub: '20+ editorials a month with creative teams worldwide · <a href="' + SITE + '/network" style="color:inherit">PAP Instagram network →</a>',
+    },
+    it: {
+      srcCopy: 'Il post originale è su <b>Instagram</b>.<br>Metti like e salvalo — e scopri lì per primo i nuovi editoriali, ogni giorno.',
+      srcBtn: 'Guarda su Instagram ↗',
+      niche: (nm) => `Ti è piaciuta questa storia <b>${nm.topic}</b>? —<br>Altro ${nm.topic} su <b>@${nm.acct}</b>, e i nuovi editoriali prima di tutti su <b>@pap_magazine</b>, ogni giorno.`,
+      main: 'Editoriali quotidiani, moda e celebrity news —<br>scoprili <b>prima su Instagram</b>.',
+      pin: 'Salva su Pinterest',
+      sub: '20+ editoriali al mese con team creativi da tutto il mondo · <a href="' + SITE + '/network" style="color:inherit">Il network Instagram di PAP →</a>',
+    },
+    fr: {
+      srcCopy: 'Le post original est sur <b>Instagram</b>.<br>Likez-le, enregistrez-le — et découvrez-y les nouveaux éditoriaux en premier, chaque jour.',
+      srcBtn: 'Voir sur Instagram ↗',
+      niche: (nm) => `Cette histoire <b>${nm.topic}</b> vous a plu ? —<br>Plus de ${nm.topic} sur <b>@${nm.acct}</b>, et les nouveaux éditoriaux en avant-première sur <b>@pap_magazine</b>, chaque jour.`,
+      main: 'Éditoriaux quotidiens, mode et actus célébrités —<br>découvrez-les <b>d’abord sur Instagram</b>.',
+      pin: 'Enregistrer sur Pinterest',
+      sub: '20+ éditoriaux par mois avec des équipes créatives du monde entier · <a href="' + SITE + '/network" style="color:inherit">Le réseau Instagram de PAP →</a>',
+    },
+    es: {
+      srcCopy: 'La publicación original está en <b>Instagram</b>.<br>Dale like y guárdala — y descubre allí los nuevos editoriales primero, cada día.',
+      srcBtn: 'Ver en Instagram ↗',
+      niche: (nm) => `¿Te gustó esta historia de <b>${nm.topic}</b>? —<br>Más ${nm.topic} en <b>@${nm.acct}</b>, y los nuevos editoriales primero en <b>@pap_magazine</b>, cada día.`,
+      main: 'Editoriales diarios, moda y noticias de celebridades —<br>descúbrelos <b>primero en Instagram</b>.',
+      pin: 'Guardar en Pinterest',
+      sub: '20+ editoriales al mes con equipos creativos de todo el mundo · <a href="' + SITE + '/network" style="color:inherit">La red de Instagram de PAP →</a>',
+    },
+  };
+  const FT = FUNNEL_T[lang] || FUNNEL_T.ko;
   const published = fmtIsoDate(record.published_date);
   const modified = fmtIsoDate(record.updated_at || record.published_date);
 
@@ -399,7 +465,7 @@ function renderSeoHtml(kind, record, opts) {
       embedUrl: `https://www.youtube.com/embed/${record.youtube_id}`,
       publisher: ORG_PUBLISHER,
       keywords: tags.length ? tags.join(', ') : undefined,
-      inLanguage: isEn ? 'en-US' : 'ko-KR'
+      inLanguage: LANG_META[lang].inLang
     };
   } else {
     // QA #187 — richer Article schema. Adds wordCount + articleBody
@@ -457,7 +523,7 @@ function renderSeoHtml(kind, record, opts) {
       mainEntityOfPage: { '@type': 'WebPage', '@id': canonical },
       keywords: tags.length ? tags.join(', ') : undefined,
       articleSection: record.issue || record.category || cfg.sectionFallback,
-      inLanguage: isEn ? 'en-US' : 'ko-KR',
+      inLanguage: LANG_META[lang].inLang,
       // QA #187 — explicit isAccessibleForFree so Google news/Discover
       // doesn't mistake the editorial for paywalled content.
       isAccessibleForFree: true,
@@ -736,12 +802,9 @@ ${tags.length ? `<meta name="keywords" content="${escAttr(tags.join(', '))}">` :
 <meta name="googlebot" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 
 <link rel="canonical" href="${escAttr(canonical)}">
-<!-- hreflang 복원 (2026-07-16): /en/ SSR 경로가 생겨 이제 언어별 URL 이
-     실재한다 — ko/en/x-default 만 유효하게 선언 (동일 URL 10개 세트였던
-     과거 무효 hreflang 과 다름). 추가 언어는 해당 SSR 경로 도입 시 확장. -->
-<link rel="alternate" hreflang="ko" href="${escAttr(koCanonical)}">
-<link rel="alternate" hreflang="en" href="${escAttr(enCanonical)}">
-<link rel="alternate" hreflang="x-default" href="${escAttr(koCanonical)}">
+<!-- hreflang (2026-07-16): 실재하는 언어별 SSR URL 만 선언 — ko/en 항상,
+     it/fr/es 는 content_translations 에 번역이 있는 경우만 (핸들러가 전달). -->
+${hreflangLinks}
 
 
 <meta property="og:type" content="${cfg.schemaType === 'VideoObject' ? 'video.other' : 'article'}">
@@ -760,8 +823,8 @@ ${tags.length ? `<meta name="keywords" content="${escAttr(tags.join(', '))}">` :
 <meta property="og:image:width" content="${ogImage === DEFAULT_OG_IMAGE ? '2000' : /img\.youtube\.com/.test(ogImage) ? '1280' : '1080'}">
 <meta property="og:image:height" content="${ogImage === DEFAULT_OG_IMAGE ? '1125' : /img\.youtube\.com/.test(ogImage) ? '720' : '1350'}">
 <meta property="og:image:type" content="image/jpeg">
-<meta property="og:locale" content="${isEn ? 'en_US' : 'ko_KR'}">
-<meta property="og:locale:alternate" content="${isEn ? 'ko_KR' : 'en_US'}">
+<meta property="og:locale" content="${LANG_META[lang].og}">
+<meta property="og:locale:alternate" content="${lang === 'ko' ? 'en_US' : 'ko_KR'}">
 <meta property="article:author" content="${escAttr(SITE_NAME)}">
 <meta property="article:section" content="${escAttr(record.issue || record.category || cfg.sectionFallback)}">
 <meta property="article:published_time" content="${escAttr(published)}">
@@ -967,10 +1030,8 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
     ${record.source_instagram_url && /instagram\.com/.test(String(record.source_instagram_url)) ? `
     <aside class="ig-funnel" style="margin-bottom:0">
       <div class="igf-kicker">On Instagram</div>
-      <p class="igf-copy">${isEn
-        ? 'The original post lives on <b>Instagram</b>.<br>Like &amp; save it — and catch new editorials there first, every day.'
-        : '이 콘텐츠의 원본 게시물이 <b>인스타그램</b>에 있습니다.<br>좋아요·저장하고, 매일 공개되는 새 에디토리얼을 가장 먼저 만나보세요.'}</p>
-      <a class="igf-btn" href="/api/ig-out?src=ssr&to=post&url=${encodeURIComponent(String(record.source_instagram_url).split('?')[0])}" target="_blank" rel="noopener">${isEn ? 'View on Instagram ↗' : '인스타그램에서 보기 ↗'}</a>
+      <p class="igf-copy">${FT.srcCopy}</p>
+      <a class="igf-btn" href="/api/ig-out?src=ssr&to=post&url=${encodeURIComponent(String(record.source_instagram_url).split('?')[0])}" target="_blank" rel="noopener">${FT.srcBtn}</a>
     </aside>` : ''}
 
     <aside class="ig-funnel">
@@ -978,19 +1039,15 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
       ${(() => {
         const nm = nicheMeta(record.category);
         // 카테고리 매칭 시: 해당 니치 채널을 주 CTA 로 앞세우고 문구도 맞춤.
-        if (nm) return `<p class="igf-copy">${isEn
-          ? `Loved this <b>${nm.topic}</b> story? —<br>More ${nm.topic} on <b>@${nm.acct}</b>, and new editorials first on <b>@pap_magazine</b>, daily.`
-          : `이 <b>${nm.topic}</b> 스토리가 마음에 드셨다면 —<br>${nm.topic} 전용 채널 <b>@${nm.acct}</b>에서 더 많은 ${nm.topic} 콘텐츠를, <b>@pap_magazine</b>에서 매일 새 에디토리얼을 가장 먼저 만나보세요.`}</p>
+        if (nm) return `<p class="igf-copy">${FT.niche(nm)}</p>
       <a class="igf-btn" href="/api/ig-out?src=ssr_niche&to=profile&url=${encodeURIComponent('https://www.instagram.com/' + nm.acct + '/')}" target="_blank" rel="noopener">Follow @${nm.acct}</a>
       <a class="igf-btn" style="background:transparent;color:#bbb;border:1px solid rgba(255,255,255,.25)" href="/api/ig-out?src=ssr&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener">+ @pap_magazine</a>`;
         // 매칭 없으면 기존 메인 채널 CTA.
-        return `<p class="igf-copy">${isEn
-          ? 'Daily editorials, fashion &amp; celeb news —<br>catch them <b>first on Instagram</b>.'
-          : '매일 업데이트되는 에디토리얼과 패션·셀럽 뉴스,<br><b>인스타그램에서 가장 먼저</b> 만나보세요.'}</p>
+        return `<p class="igf-copy">${FT.main}</p>
       <a class="igf-btn" href="/api/ig-out?src=ssr&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener">Follow @pap_magazine</a>`;
       })()}
-      ${ogImage ? `<a class="pin-btn" href="https://www.pinterest.com/pin/create/button/?url=${encodeURIComponent(canonical)}&media=${encodeURIComponent(ogImage)}&description=${encodeURIComponent(titleKo + ' — PAP Magazine editorial')}" target="_blank" rel="noopener" data-pin-do="none">Pinterest에 저장</a>` : ''}
-      <div class="igf-sub">전 세계 크리에이티브 팀과 만드는 월 20+ 에디토리얼 · <a href="${SITE}/network" style="color:inherit">PAP 인스타그램 네트워크 →</a></div>
+      ${ogImage ? `<a class="pin-btn" href="https://www.pinterest.com/pin/create/button/?url=${encodeURIComponent(canonical)}&media=${encodeURIComponent(ogImage)}&description=${encodeURIComponent(titleMain + ' — PAP Magazine editorial')}" target="_blank" rel="noopener" data-pin-do="none">${FT.pin}</a>` : ''}
+      <div class="igf-sub">${FT.sub}</div>
     </aside>
   </article>
 </main>

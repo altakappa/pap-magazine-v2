@@ -33,16 +33,32 @@ module.exports = async function handler(req, res) {
       .order('published_date', { ascending: false })
       .limit(5000);
 
+    // it/fr/es 번역 존재 여부 (2026-07-16, 다국어 2단계) — 번역이 있는
+    // 에디토리얼만 해당 언어 URL·alternate 를 선언한다. 테이블 미생성/실패
+    // 시엔 ko/en 만으로 동작.
+    const trMap = new Map();
+    try {
+      const { data: trs } = await supabaseAdmin
+        .from('content_translations')
+        .select('content_id, lang')
+        .eq('kind', 'editorial')
+        .limit(20000);
+      for (const t of trs || []) {
+        if (!trMap.has(t.content_id)) trMap.set(t.content_id, []);
+        trMap.get(t.content_id).push(t.lang);
+      }
+    } catch (_) { /* ko/en only */ }
+
     const urls = (eds || []).map(ed => {
       const handle = ed.slug || ed.id;
       if (!handle) return '';
       const loc = SITE + '/editorial/' + encodeURIComponent(handle);
-      // /en/ SSR (2026-07-16) — 언어별 URL + hreflang alternate 를 사이트맵에도 선언.
-      const locEn = SITE + '/en/editorial/' + encodeURIComponent(handle);
+      // 언어별 URL + hreflang alternate (2026-07-16) — ko/en 항상, it/fr/es 는 번역 존재 시.
+      const langs = ['ko', 'en'].concat((trMap.get(ed.id) || []).filter(l => ['it', 'fr', 'es'].includes(l)));
+      const urlFor = (l) => l === 'ko' ? loc : SITE + '/' + l + '/editorial/' + encodeURIComponent(handle);
       const lastmod = fmtDate(ed.updated_at || ed.published_date);
       const altBlock =
-        '    <xhtml:link rel="alternate" hreflang="ko" href="' + xmlEscape(loc) + '"/>\n' +
-        '    <xhtml:link rel="alternate" hreflang="en" href="' + xmlEscape(locEn) + '"/>\n' +
+        langs.map(l => '    <xhtml:link rel="alternate" hreflang="' + l + '" href="' + xmlEscape(urlFor(l)) + '"/>\n').join('') +
         '    <xhtml:link rel="alternate" hreflang="x-default" href="' + xmlEscape(loc) + '"/>\n';
 
       // Build image:image entries — cover first, then up to 29 gallery
@@ -82,14 +98,16 @@ module.exports = async function handler(req, res) {
         altBlock +
         imgBlocks +
         '  </url>\n' +
-        // EN 변형 — 이미지 블록은 ko 항목이 이미 선언했으므로 생략(파일 크기 절약).
-        '  <url>\n' +
-        '    <loc>' + xmlEscape(locEn) + '</loc>\n' +
-        '    <lastmod>' + lastmod + '</lastmod>\n' +
-        '    <changefreq>monthly</changefreq>\n' +
-        '    <priority>0.6</priority>\n' +
-        altBlock +
-        '  </url>';
+        // 언어 변형 — 이미지 블록은 ko 항목이 이미 선언했으므로 생략(파일 크기 절약).
+        langs.filter(l => l !== 'ko').map(l =>
+          '  <url>\n' +
+          '    <loc>' + xmlEscape(urlFor(l)) + '</loc>\n' +
+          '    <lastmod>' + lastmod + '</lastmod>\n' +
+          '    <changefreq>monthly</changefreq>\n' +
+          '    <priority>0.6</priority>\n' +
+          altBlock +
+          '  </url>'
+        ).join('\n');
     }).filter(Boolean);
 
     const xml =

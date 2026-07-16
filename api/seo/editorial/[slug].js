@@ -116,10 +116,35 @@ module.exports = async function handler(req, res) {
       return res.status(301).end();
     }
 
+    /* 다국어 (2026-07-16): ko|en 은 DB 원본 필드, it|fr|es 는 content_translations.
+       번역이 아직 없으면 /en/ 으로 302 (빈 번역 페이지를 인덱싱시키지 않는다). */
+    const VALID_LANGS = ['ko', 'en', 'it', 'fr', 'es'];
+    const lang = VALID_LANGS.includes(String(req.query.lang || '')) ? String(req.query.lang) : 'ko';
+
+    let translation = null;
+    let availableLangs = ['ko', 'en'];
+    try {
+      const { data: trs } = await supabaseAdmin
+        .from('content_translations')
+        .select('lang, title, description')
+        .eq('kind', 'editorial')
+        .eq('content_id', data.id);
+      for (const t of trs || []) {
+        if (!availableLangs.includes(t.lang)) availableLangs.push(t.lang);
+        if (t.lang === lang) translation = { title: t.title, description: t.description };
+      }
+    } catch (_) { /* 테이블 미생성 등 — ko/en 만으로 렌더 */ }
+
+    if (lang !== 'ko' && lang !== 'en' && !translation) {
+      res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=1800');
+      res.setHeader('Location', '/en/editorial/' + encodeURIComponent(data.slug || slug));
+      return res.status(302).end();
+    }
+
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=300, stale-while-revalidate=86400');
     res.setHeader('X-Robots-Tag', 'index, follow, max-image-preview:large');
-    return res.status(200).send(renderSeoHtml('editorial', data, { lang: req.query.lang === 'en' ? 'en' : 'ko' }));
+    return res.status(200).send(renderSeoHtml('editorial', data, { lang, translation, availableLangs }));
 
   } catch (err) {
     console.error('[seo/editorial] error', err);
