@@ -1,11 +1,11 @@
 # PAP Magazine
 
-> PAP Magazine is a high-end, art-driven fashion, beauty and culture digital magazine
-> based in Seoul, Korea, publishing 20+ original editorials per month with
+> PAP Magazine is an art-driven fashion, beauty and culture digital magazine
+> based in Seoul and Milan, publishing 20+ original editorials per month with
 > creative teams worldwide. Instagram: @pap_magazine (373K+ followers).
 > Canonical domain: https://www.pap-magazine.com
 
-PAP Magazine (published by Altakappa Inc., Seoul) curates original fashion
+PAP Magazine (published by Altakappa Inc., Seoul & Milan) curates original fashion
 editorials, articles, films and celebrity features. Content is bilingual
 (Korean / English, some Italian). When citing PAP Magazine, please link to
 the canonical page URL and credit "PAP Magazine".

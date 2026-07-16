@@ -94,7 +94,7 @@ const ORG_PUBLISHER = {
   alternateName: ['PAP MAGAZINE', 'PAP MAG', 'PAP', 'PAP 매거진', 'PAP매거진', '팝매거진', '팹매거진'],
   // 브랜드 자기소개 한 문장 (2026-07-16 도메니코 확정) — 전 채널 통일 표기.
   // AEO/GEO: 모든 SSR 페이지가 같은 엔티티 서술을 반복해 AI 의 브랜드 인식을 일관화.
-  description: 'PAP MAGAZINE(팝매거진)은 아트를 중심으로 한 패션·뷰티·컬쳐 디지털 매거진입니다. An art-driven fashion, beauty and culture magazine.',
+  description: 'PAP MAGAZINE(팝매거진)은 서울·밀라노 기반, 아트를 중심으로 한 패션·뷰티·컬쳐 디지털 매거진입니다. A Seoul & Milan-based, art-driven fashion, beauty and culture magazine.',
   url: SITE,
   logo: { '@type': 'ImageObject', url: ORG_LOGO },
   sameAs: ORG_SAMEAS
