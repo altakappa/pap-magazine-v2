@@ -536,6 +536,26 @@ function renderSeoHtml(kind, record, opts) {
     };
   }
 
+  /* AEO FAQ (2026-07-16, 083) — 기사 생성 파이프라인이 만든 {q,a} 배열.
+     한국어 콘텐츠이므로 ko 페이지에서만 노출 (언어 신호 혼선 방지). */
+  const faqItems = (() => {
+    if (lang !== 'ko') return [];
+    let f = record.faq;
+    if (typeof f === 'string') { try { f = JSON.parse(f); } catch (_) { f = null; } }
+    return Array.isArray(f)
+      ? f.filter(x => x && typeof x.q === 'string' && typeof x.a === 'string' && x.q.trim() && x.a.trim()).slice(0, 5)
+      : [];
+  })();
+  const faqSchema = faqItems.length ? {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqItems.map(f => ({
+      '@type': 'Question',
+      name: f.q,
+      acceptedAnswer: { '@type': 'Answer', text: f.a },
+    })),
+  } : null;
+
   const breadcrumbSchema = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -844,6 +864,7 @@ ${tags.map(t => `<meta property="article:tag" content="${escAttr(t)}">`).join('\
 
 <script type="application/ld+json">${escJson(primarySchema)}</script>
 <script type="application/ld+json">${escJson(breadcrumbSchema)}</script>
+${faqSchema ? `<script type="application/ld+json">${escJson(faqSchema)}</script>` : ''}
 
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
@@ -924,6 +945,12 @@ ${cfg.schemaType !== 'VideoObject' && ogImage ? (canOptimizeImg(ogImage)
   .seo-body{max-width:800px;margin:32px auto;padding:0 24px;line-height:1.7;font-size:16px}
   .seo-body p{margin:0 0 1.2em}
   .seo-body img{max-width:100%;height:auto;display:block;margin:24px auto}
+  /* AEO FAQ (2026-07-16) — details/summary 는 JS 없이 크롤러에 원문 노출 */
+  .seo-faq{max-width:800px;margin:48px auto;padding:0 24px}
+  .seo-faq h2{font-size:14px;letter-spacing:.12em;text-transform:uppercase;opacity:.7;margin-bottom:16px}
+  .seo-faq details{border-bottom:1px solid rgba(255,255,255,.1);padding:12px 0}
+  .seo-faq summary{font-size:14.5px;font-weight:600;cursor:pointer;line-height:1.6}
+  .seo-faq p{margin:10px 0 4px;font-size:13.5px;line-height:1.75;color:rgba(255,255,255,.75)}
   .seo-back{max-width:800px;margin:48px auto 80px;padding:24px;border-top:1px solid rgba(255,255,255,.1);font-size:13px;letter-spacing:.06em;text-transform:uppercase;opacity:.7}
   .seo-back a{color:#fff;text-decoration:none;margin-right:8px}
   .seo-back a:hover{opacity:.7}
@@ -1026,6 +1053,15 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
          연동/기존 데이터 기사도 콘텐츠가 모두 끝난 최하단(참여 CTA 직전)에
          해시태그를 노출하도록 tagHtml 을 이 위치로 이동한다. -->
     ${tagHtml}
+
+    ${faqItems.length ? `
+    <section class="seo-faq">
+      <h2>자주 묻는 질문</h2>
+      ${faqItems.map(f => `<details open>
+        <summary>${escText(f.q)}</summary>
+        <p>${escText(f.a)}</p>
+      </details>`).join('\n')}
+    </section>` : ''}
 
     ${record.source_instagram_url && /instagram\.com/.test(String(record.source_instagram_url)) ? `
     <aside class="ig-funnel" style="margin-bottom:0">

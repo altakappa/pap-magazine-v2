@@ -227,7 +227,11 @@ async function generateArticleFromPost(post){
     '(the system will skip importing it — editorials are uploaded separately).',
     'Otherwise NEVER use "Editorial".',
     '  "tags": ["5-10 lowercase keyword tags"],',
-    '  "slug": "english-url-friendly-slug-from-title"',
+    '  "slug": "english-url-friendly-slug-from-title",',
+    '  "faq": [  // AEO: 독자가 검색엔진/AI에 실제로 물어볼 자연어 질문 3개 (한국어)',
+    '    {"q": "자연어 질문 (예: 발렌시아가 2026 쿠튀르 쇼는 어디서 열렸나요?)",',
+    '     "a": "질문에 대한 자기완결형 직접 답변 20~60단어. 답을 먼저 말하고 근거를 붙일 것. 기사 본문에 없는 사실 금지."}',
+    '  ]',
     '}',
     '',
     'Article rules:',
@@ -284,6 +288,13 @@ async function generateArticleFromPost(post){
     category: String(parsed.category || 'News').trim(),
     tags:     Array.isArray(parsed.tags) ? parsed.tags.map((t) => String(t).toLowerCase().replace(/^#+/, '').trim()).filter(Boolean).slice(0, 10) : [],
     slug:     String(parsed.slug || '').toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || null,
+    // AEO FAQ (2026-07-16) — {q,a} 검증 후 최대 5개
+    faq: Array.isArray(parsed.faq)
+      ? parsed.faq
+          .filter((f) => f && typeof f.q === 'string' && typeof f.a === 'string' && f.q.trim() && f.a.trim())
+          .map((f) => ({ q: String(f.q).trim().slice(0, 200), a: String(f.a).trim().slice(0, 600) }))
+          .slice(0, 5)
+      : [],
   };
 }
 
@@ -367,6 +378,8 @@ function buildArticleRow(post, generated, opts){
     category: generated.category || 'News',
     tags: generated.tags || [],
     slug: generated.slug || null,
+    // AEO FAQ (083) — 빈 배열이면 null (스키마 미노출)
+    faq: (Array.isArray(generated.faq) && generated.faq.length) ? generated.faq : null,
     thumbnail_url: imgs[0] || null,
     status: status,
     // QA #275 — Instagram 소스 메타.

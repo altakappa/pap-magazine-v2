@@ -83,30 +83,33 @@ Allow: /
 User-agent: Applebot
 Allow: /
 
-# AI 학습 스크레이퍼 (차단 유지 — PAP retains content rights)
+# AI 학습 스크레이퍼 — 2026-07-16 정책 전환 (도메니코 승인): 차단 → 허용.
+# 근거(AEO/GEO 교육자료): 차기 모델의 학습 데이터에 브랜드가 각인되는 것이
+# 생성형 검색 시대의 최대 장기 레버리지 — 링크 없는 언급도 복리로 작동한다.
+# 공개 웹 콘텐츠의 학습 활용을 허용하되, 관리자/회원 영역은 위 Disallow 로 계속 차단.
 User-agent: GPTBot
-Disallow: /
+Allow: /
 
 User-agent: ClaudeBot
-Disallow: /
+Allow: /
 
 User-agent: CCBot
-Disallow: /
+Allow: /
 
 User-agent: anthropic-ai
-Disallow: /
+Allow: /
 
 User-agent: Google-Extended
-Disallow: /
+Allow: /
 
 User-agent: Applebot-Extended
-Disallow: /
+Allow: /
 
 User-agent: Bytespider
-Disallow: /
+Allow: /
 
 User-agent: meta-externalagent
-Disallow: /
+Allow: /
 
 Sitemap: https://www.pap-magazine.com/sitemap-index.xml
 Sitemap: https://www.pap-magazine.com/sitemap.xml
