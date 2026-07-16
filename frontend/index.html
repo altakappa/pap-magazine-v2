@@ -419,7 +419,11 @@
   </div>
 </div>
 
-<div class="loader" id="loader"><div class="loader-bg" id="loaderBg"></div><div class="loader-logo"><img src="pap-symbol-white.png" alt="PAP"></div></div>
+<!-- 개선요청 2026-07-16 — 홈 진입(로그인 직후 리다이렉트 포함) 시 정중앙에
+     심볼로고가 뜨는 풀스크린 로더(#loader) 제거. pap-shell-bootstrap.js 의
+     loaderBg / hidden 처리 코드는 null-guard(if(bg), if(_l)) 되어 있어
+     마크업만 제거해도 안전하다. -->
+
 
 <!-- Search -->
 <div class="search-bar" id="searchBar">
@@ -884,7 +888,7 @@
 <!-- QA #310 — 스플래시 로더. defer 없이 즉시 실행돼서 첫 페인트 전에
      오버레이를 띄운다. 세션 내 재노출은 sessionStorage 로 방지. -->
 <script src="/pap-splash-loader.js?v=3"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script><script src="/pap-logos-data.js?v=1" defer></script><script src="/pap-api.js?v=8" defer></script><script src="/pap-social.js?v=5" defer></script><script src="/pap-utils.js?v=4" defer></script><script src="/pap-i18n.js?v=3" defer></script><script src="/pap-auth.js?v=3" defer></script><script src="/pap-search.js?v=4" defer></script><script src="/pap-static.js?v=1" defer></script><script src="/pap-subscription.js?v=2" defer></script><script src="/pap-home.js?v=2" defer></script><script src="/pap-content-editorial.js?v=29" defer></script><script src="/pap-content-film.js?v=10" defer></script><script src="/pap-content-article.js?v=31" defer></script><script src="/pap-content-creator-shorts.js?v=3" defer></script><script src="/pap-content-api-sync.js?v=108" defer></script><script src="/pap-content-seo.js?v=6" defer></script><script src="/pap-shell-bootstrap.js?v=9" defer></script><script src="/pap-app.js?v=20" defer></script><script src="/pap-lightbox.js?v=2" defer></script><script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=22" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script><script src="/pap-logos-data.js?v=1" defer></script><script src="/pap-api.js?v=8" defer></script><script src="/pap-social.js?v=5" defer></script><script src="/pap-utils.js?v=4" defer></script><script src="/pap-i18n.js?v=3" defer></script><script src="/pap-auth.js?v=3" defer></script><script src="/pap-search.js?v=4" defer></script><script src="/pap-static.js?v=1" defer></script><script src="/pap-subscription.js?v=2" defer></script><script src="/pap-home.js?v=2" defer></script><script src="/pap-content-editorial.js?v=29" defer></script><script src="/pap-content-film.js?v=10" defer></script><script src="/pap-content-article.js?v=31" defer></script><script src="/pap-content-creator-shorts.js?v=3" defer></script><script src="/pap-content-api-sync.js?v=109" defer></script><script src="/pap-content-seo.js?v=6" defer></script><script src="/pap-shell-bootstrap.js?v=9" defer></script><script src="/pap-app.js?v=20" defer></script><script src="/pap-lightbox.js?v=2" defer></script><script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=22" defer></script>
 <script src="/pap-protect.js?v=3" defer></script>
 <div class="creator-popup-overlay" id="creatorPopup" onclick="if(event.target===this)closeCreatorPopup()">
   <div class="creator-popup">

@@ -42,7 +42,10 @@ window._papFilmAutoPlay = function(){
   if(filmAllData.length > 0){
     var fp = document.getElementById('filmMainPlayer');
     if(fp && (fp.src === 'about:blank' || fp.src === '')){
-      fp.src = 'https://www.youtube.com/embed/' + filmAllData[0].yt + '?rel=0&autoplay=1&mute=1&loop=1&playlist=' + filmAllData[0].yt;
+      // 개선요청 2026-07-16 — playsinline=1 추가. iOS/모바일 사파리·크롬은
+      // 인라인 재생 허용이 없으면 muted 여도 자동재생을 차단한다(전체화면
+      // 강제 전환 방지 정책). 데스크톱에는 영향 없음.
+      fp.src = 'https://www.youtube.com/embed/' + filmAllData[0].yt + '?rel=0&autoplay=1&mute=1&loop=1&playsinline=1&playlist=' + filmAllData[0].yt;
     }
   }
 };
@@ -425,16 +428,32 @@ window._papFilmAutoPlay = function(){
   function _renderHomeFashionArticles(apiArticles){
     var track = document.getElementById('fashionTrack');
     if(!track || !Array.isArray(apiArticles) || !apiArticles.length) return;
+    // 버그수정 2026-07-16 — "홈 최신기사가 옛 기사에서 멈춤" (이중 prepend 순서 버그).
+    // 이 함수는 syncArticlesFast(최신 12)와 syncArticles(전체)가 각각 호출하는데,
+    // 기존엔 이미 화면에 있는 카드(JS 생성분 포함)를 전부 dedup 으로 건너뛰고
+    // 나머지만 맨 앞에 prepend 했다. 그래서 fast 가 먼저 붙인 "진짜 최신 12장" 위로
+    // 뒤늦은 전체 동기화가 그보다 오래된 중간 시기 기사를 얹어, 최신 기사가
+    // 캐러셀 400번대 위치로 밀렸다(실측: 첫 카드가 07-14 안티뱅크시).
+    // 수정: JS 생성 카드에 data-dyn 마킹을 하고, dedup(건너뛰기)은 정적 HTML 카드에만
+    // 적용한다. 기존 dyn 카드는 candidates 에 다시 포함시키되 DOM 요소를 재사용해
+    // (insertBefore 는 이동) 항상 apiArticles(published_date DESC) 순서로 재정렬한다.
+    // 정적 마크업은 기존처럼 건드리지 않는다(첫 페인트 무변화).
     var existingSlugs = {};
     var existingTitles = {};
+    var dynBySlug = {};
+    var dynByTitle = {};
     var cards = track.querySelectorAll('.fashion-card');
     for(var ci = 0; ci < cards.length; ci++){
       var c = cards[ci];
+      var isDyn = c.getAttribute('data-dyn') === '1';
       var s = c.getAttribute('data-slug');
-      if(s) existingSlugs[s] = 1;
       var tEl = c.querySelector('.fashion-card-title');
-      if(tEl){
-        var tt = String(tEl.textContent || '').trim();
+      var tt = tEl ? String(tEl.textContent || '').trim() : '';
+      if(isDyn){
+        if(s) dynBySlug[s] = c;
+        if(tt) dynByTitle[tt] = c;
+      } else {
+        if(s) existingSlugs[s] = 1;
         if(tt) existingTitles[tt] = 1;
       }
     }
@@ -475,11 +494,21 @@ window._papFilmAutoPlay = function(){
       var isTop = idx >= _eagerCutoff;
       var loadingAttr = isTop ? 'eager' : 'lazy';
       var priorityAttr = isTop ? ' fetchpriority="high"' : '';
+      // 버그수정 2026-07-16 — 이미 JS 로 생성돼 화면에 있는 dyn 카드는 새로 만들지
+      // 않고 기존 요소를 맨 앞으로 이동(insertBefore 는 move)시켜 재정렬만 한다.
+      // 이미지 재로드 없이 순서가 항상 apiArticles(최신순)를 따르게 된다.
+      var _title = (a.t || '').trim();
+      var existingDyn = (a.slug && dynBySlug[a.slug]) || (_title && dynByTitle[_title]) || null;
+      if(existingDyn){
+        track.insertBefore(existingDyn, track.firstChild);
+        return;
+      }
       // SEO — 실제 <a href> 카드로 생성. 크롤러(구글 JS 렌더 포함)가
       // 목록 → 상세(/article/<slug>) 링크 그래프를 따라갈 수 있게 한다.
       // 클릭은 preventDefault 후 기존 SPA 오버레이 그대로.
       var card = document.createElement('a');
       card.className = 'fashion-card';
+      card.setAttribute('data-dyn', '1');
       var slugAttr = a.slug || '';
       if(slugAttr){
         card.setAttribute('data-slug', slugAttr);
