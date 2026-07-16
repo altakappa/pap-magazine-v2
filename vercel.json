@@ -54,7 +54,11 @@
     },
     {
       "path": "/api/cron/youtube-post",
-      "schedule": "15 1,13 * * *"
+      "schedule": "8-58/10 * * * *"
+    },
+    {
+      "path": "/api/cron/threads-post",
+      "schedule": "2-52/10 * * * *"
     },
     {
       "path": "/api/cron/sync-pepperit",

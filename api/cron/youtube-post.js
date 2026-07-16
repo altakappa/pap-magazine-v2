@@ -58,6 +58,21 @@ module.exports = withCronGuard('youtube-post', async function handler(req, res) 
   }
 
   try {
+    // 일일 업로드 상한 — 크론이 10분 주기 스위퍼로 바뀌면서 쿼터 보호 필요.
+    // 업로드당 1,600 units, 기본 쿼터 10,000/일 ≈ 6회 → 기본 상한 4로 여유 확보.
+    // 관리자 수동 트리거는 상한을 우회한다 (cronOk 일 때만 적용).
+    if (cronOk) {
+      const DAILY_LIMIT = parseInt(process.env.YOUTUBE_DAILY_LIMIT || '4', 10) || 4;
+      const dayStart = new Date(); dayStart.setUTCHours(0, 0, 0, 0);
+      const { count: todayCount } = await supabaseAdmin.from('youtube_posts')
+        .select('id', { count: 'exact', head: true })
+        .neq('status', 'failed')
+        .gte('created_at', dayStart.toISOString());
+      if ((todayCount || 0) >= DAILY_LIMIT) {
+        return res.status(200).json({ ok: true, note: '일일 업로드 상한 도달 (' + DAILY_LIMIT + '/일) — 내일 재개', today: todayCount });
+      }
+    }
+
     // 이미 게시된 기사 집합 — failed 는 제외해 재시도 허용
     const { data: posted } = await supabaseAdmin.from('youtube_posts').select('article_id, status').limit(5000);
     const done = new Set((posted || []).filter((p) => p.status !== 'failed').map((p) => p.article_id).filter(Boolean));

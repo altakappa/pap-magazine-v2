@@ -29,6 +29,7 @@ const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { pingNewContent, SITE } = require('../_lib/pingSearch');
 const { postTweet, buildArticleTweet, isConfigured: xConfigured } = require('../_lib/xPost');
+const { postArticleToThreads } = require('../_lib/threadsAutopost');
 const {
   listRecentMedia,
   listMediaPaged,
@@ -120,6 +121,7 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
       failed: 0, errors: [], dry: dry, classified: [],
     };
     const newUrls = []; // 이번 실행에서 발행된 기사 URL — 종료 시 즉시 검색 핑
+    let videoImported = false; // 이번 실행에서 릴스(VIDEO) 기사 발행 여부 — 유튜브 즉시 넛지용
     for (const m of media){
       if (existingSet.has(m.id)) continue;
       const shortcode = _extractShortcode(m.permalink);
@@ -200,6 +202,25 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
                 results.tweets = (results.tweets || []).concat(tw.ok ? [tw.id] : ['실패:' + (tw.detail || tw.status)]);
               } catch (_) {}
             }
+            // Threads 자동 게시 — IG 수집 즉시, 인스타 캡션 복사가 아닌
+            // Threads 어투로 재편집해 게시 (2026-07-16 도메니코 결정).
+            // 실패해도 수집 흐름은 계속 — 10분 주기 threads-post 스위퍼가 재시도.
+            if (process.env.THREADS_AUTOPOST !== 'false'){
+              try {
+                const th = await postArticleToThreads({
+                  id: inserted.id, title: row.title, content: row.content,
+                  category: row.category, url: artUrl,
+                });
+                results.threads = (results.threads || []).concat(
+                  th.status === 'published' ? [th.thread_id]
+                    : th.status === 'skipped' ? ['스킵:' + (th.detail || '')]
+                    : ['실패:' + String(th.detail || '').slice(0, 80)]);
+              } catch (e){
+                results.threads = (results.threads || []).concat(['실패:' + String(e && e.message || e).slice(0, 80)]);
+              }
+            }
+            // 릴스(VIDEO) 기사면 유튜브 즉시 업로드 넛지 대상으로 표시
+            if (row.source_media_type === 'VIDEO' && Array.isArray(row.videos) && row.videos.length) videoImported = true;
           }
         }
       } catch (e){
@@ -219,6 +240,22 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
     if (newUrls.length){
       try { results.search_ping = await pingNewContent(newUrls); }
       catch (e){ results.search_ping = { error: String(e && e.message || e).slice(0, 100) }; }
+    }
+
+    // YouTube Shorts 즉시 업로드 넛지 — 릴스 기사가 이번 실행에서 발행됐으면
+    // 스위퍼 크론(10분)을 기다리지 않고 youtube-post 를 바로 호출한다.
+    // 짧은 타임아웃 후 끊어도 대상 함수는 서버에서 계속 실행되므로 best-effort
+    // 넛지로 충분하다. 실패/타임아웃 시 10분 주기 스위퍼가 처리 (백필 모드 제외).
+    if (videoImported && !dry && backfillDays === 0 && process.env.CRON_SECRET){
+      try {
+        const yr = await fetch(SITE + '/api/cron/youtube-post', {
+          headers: { authorization: 'Bearer ' + process.env.CRON_SECRET },
+          signal: AbortSignal.timeout(15000),
+        });
+        results.youtube_nudge = yr.status;
+      } catch (_){
+        results.youtube_nudge = 'nudged (응답 대기 안 함 — 업로드는 서버에서 계속, 스위퍼가 보증)';
+      }
     }
     return res.status(200).json(results);
   } catch (e){
