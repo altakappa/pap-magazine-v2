@@ -627,11 +627,32 @@
       };
     }
 
+    /* QA(햄버거 강제 이동) — index.html/articles.html 의 풀스크린 SPA 오버레이
+       (에디토리얼·필름·아티클 목록/상세, z-index 3000~8500)가 열린 상태에서 그
+       오버레이의 mini-header 햄버거/검색을 누르면, 예전엔 오버레이를 먼저
+       closeAll…()/closeXxxDetail() 로 닫아야 nav(1500)·searchBar(2000)가 보였고,
+       그 close 가 history.back() 을 호출해 /editorial → 홈으로 강제 이동하는
+       버그가 있었다(동시에 메뉴가 열려 "홈으로 튕기면서 메뉴 열림"). 이제
+       오버레이를 닫지 않고 nav/search 를 그 오버레이 위(9000)로 끌어올려
+       "현재 페이지 위에 메뉴만" 열리게 한다. 오버레이가 없으면 기본값으로
+       되돌린다(홈 UX 불변). */
+    function _papFullscreenOverlayOpen() {
+      return document.querySelector(
+        '#edAllOverlay.active,#filmAllOverlay.active,#artAllOverlay.active,' +
+        '#edOverlay.active,#filmDetailOverlay.active,#artDetailOverlay.active'
+      );
+    }
+
     /* Toggle Nav */
     window._papToggleNav = function () {
       var n = document.getElementById('navOverlay');
       if (!n) return;
       var opening = !n.classList.contains('active');
+      // Raise above any open SPA overlay when opening; restore default
+      // otherwise. Not touched on close — nav is hidden so a stale z-index
+      // is harmless, the fade-out stays visible above the overlay, and the
+      // next open recomputes the value.
+      if (opening) n.style.zIndex = _papFullscreenOverlayOpen() ? '9000' : '';
       n.classList.toggle('active');
       // QA #98 — toggle BOTH .is-active AND .active on the hamburger so
       // pages that ship their own (stale) `.hamburger.active span:...`
@@ -678,6 +699,11 @@
     window._papToggleSearch = function () {
       var legacyBar = document.getElementById('searchBar');
       if (legacyBar) {
+        var _openingBar = !legacyBar.classList.contains('active');
+        // Same fix as the hamburger: float the search bar above an open
+        // SPA overlay instead of closing it (which used to history.back()
+        // → home). searchBar is z-index 2000; raise to 9000 when needed.
+        if (_openingBar) legacyBar.style.zIndex = _papFullscreenOverlayOpen() ? '9000' : '';
         legacyBar.classList.toggle('active');
         if (legacyBar.classList.contains('active')) {
           setTimeout(function () {
@@ -695,6 +721,7 @@
       // Fallback for pages without the full search component
       var o = document.getElementById('papSearchOverlay');
       if (!o) return;
+      if (!o.classList.contains('active')) o.style.zIndex = _papFullscreenOverlayOpen() ? '9000' : '';
       o.classList.toggle('active');
       if (o.classList.contains('active')) {
         lockScroll();
