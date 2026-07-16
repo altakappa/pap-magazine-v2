@@ -32,7 +32,13 @@ module.exports = async function handler(req, res) {
       const handle = a.custom_url || a.id;
       if (!handle) return '';
       const loc = SITE + '/article/' + encodeURIComponent(handle);
+      // /en/ SSR (2026-07-16) — 언어별 URL + hreflang alternate
+      const locEn = SITE + '/en/article/' + encodeURIComponent(handle);
       const lastmod = fmtDate(a.updated_at || a.published_date);
+      const altBlock =
+        '    <xhtml:link rel="alternate" hreflang="ko" href="' + xmlEscape(loc) + '"/>\n' +
+        '    <xhtml:link rel="alternate" hreflang="en" href="' + xmlEscape(locEn) + '"/>\n' +
+        '    <xhtml:link rel="alternate" hreflang="x-default" href="' + xmlEscape(loc) + '"/>\n';
       const img = a.hero_image_url || a.thumbnail_url;
       const imgBlock = img
         ? '    <image:image>\n      <image:loc>' + xmlEscape(img) + '</image:loc>\n      <image:title>' + xmlEscape(a.title || '') + '</image:title>\n    </image:image>\n'
@@ -42,14 +48,23 @@ module.exports = async function handler(req, res) {
         '    <lastmod>' + lastmod + '</lastmod>\n' +
         '    <changefreq>weekly</changefreq>\n' +
         '    <priority>0.7</priority>\n' +
+        altBlock +
         imgBlock +
+        '  </url>\n' +
+        '  <url>\n' +
+        '    <loc>' + xmlEscape(locEn) + '</loc>\n' +
+        '    <lastmod>' + lastmod + '</lastmod>\n' +
+        '    <changefreq>weekly</changefreq>\n' +
+        '    <priority>0.5</priority>\n' +
+        altBlock +
         '  </url>';
     }).filter(Boolean);
 
     const xml =
       '<?xml version="1.0" encoding="UTF-8"?>\n' +
       '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n' +
-      '        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n' +
+      '        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"\n' +
+      '        xmlns:xhtml="http://www.w3.org/1999/xhtml">\n' +
       urls.join('\n') + '\n' +
       '</urlset>\n';
 

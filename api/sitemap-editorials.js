@@ -37,7 +37,13 @@ module.exports = async function handler(req, res) {
       const handle = ed.slug || ed.id;
       if (!handle) return '';
       const loc = SITE + '/editorial/' + encodeURIComponent(handle);
+      // /en/ SSR (2026-07-16) — 언어별 URL + hreflang alternate 를 사이트맵에도 선언.
+      const locEn = SITE + '/en/editorial/' + encodeURIComponent(handle);
       const lastmod = fmtDate(ed.updated_at || ed.published_date);
+      const altBlock =
+        '    <xhtml:link rel="alternate" hreflang="ko" href="' + xmlEscape(loc) + '"/>\n' +
+        '    <xhtml:link rel="alternate" hreflang="en" href="' + xmlEscape(locEn) + '"/>\n' +
+        '    <xhtml:link rel="alternate" hreflang="x-default" href="' + xmlEscape(loc) + '"/>\n';
 
       // Build image:image entries — cover first, then up to 29 gallery
       // images. Dedupe so the cover doesn't repeat if it's also the
@@ -73,14 +79,24 @@ module.exports = async function handler(req, res) {
         '    <lastmod>' + lastmod + '</lastmod>\n' +
         '    <changefreq>monthly</changefreq>\n' +
         '    <priority>0.8</priority>\n' +
+        altBlock +
         imgBlocks +
+        '  </url>\n' +
+        // EN 변형 — 이미지 블록은 ko 항목이 이미 선언했으므로 생략(파일 크기 절약).
+        '  <url>\n' +
+        '    <loc>' + xmlEscape(locEn) + '</loc>\n' +
+        '    <lastmod>' + lastmod + '</lastmod>\n' +
+        '    <changefreq>monthly</changefreq>\n' +
+        '    <priority>0.6</priority>\n' +
+        altBlock +
         '  </url>';
     }).filter(Boolean);
 
     const xml =
       '<?xml version="1.0" encoding="UTF-8"?>\n' +
       '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n' +
-      '        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">\n' +
+      '        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"\n' +
+      '        xmlns:xhtml="http://www.w3.org/1999/xhtml">\n' +
       urls.join('\n') + '\n' +
       '</urlset>\n';
 

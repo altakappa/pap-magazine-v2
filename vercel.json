@@ -239,6 +239,22 @@
       "destination": "/api/sitemap-brands"
     },
     {
+      "source": "/en/editorial/:slug",
+      "destination": "/api/seo/editorial/:slug?lang=en"
+    },
+    {
+      "source": "/en/article/:slug",
+      "destination": "/api/seo/article/:slug?lang=en"
+    },
+    {
+      "source": "/en/film/:slug",
+      "destination": "/api/seo/film/:slug?lang=en"
+    },
+    {
+      "source": "/en/short/:slug",
+      "destination": "/api/seo/short/:slug?lang=en"
+    },
+    {
       "source": "/editorial/:slug",
       "destination": "/api/seo/editorial/:slug"
     },

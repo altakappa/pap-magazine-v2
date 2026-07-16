@@ -82,7 +82,7 @@ module.exports = async function handler(req, res) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=300, stale-while-revalidate=86400');
     res.setHeader('X-Robots-Tag', 'index, follow, max-image-preview:large, max-video-preview:-1');
-    return res.status(200).send(renderSeoHtml('film', data));
+    return res.status(200).send(renderSeoHtml('film', data, { lang: req.query.lang === 'en' ? 'en' : 'ko' }));
 
   } catch (err) {
     console.error('[seo/film] error', err);
