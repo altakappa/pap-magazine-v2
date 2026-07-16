@@ -316,7 +316,7 @@ const KIND = {
 
 /* ── 다국어 SEO (2026-07-16) ─────────────────────────── */
 // 1단계 'en' — DB 원본 필드(title_en/description_en) 사용.
-// 2단계 'it'|'fr'|'es' — content_translations(080) 의 번역을 opts.translation 으로
+// 2단계 'it'|'fr'|'es' — seo_translations(082) 의 번역을 opts.translation 으로
 // 받아 렌더 (에디토리얼만, 번역 없으면 핸들러가 /en/ 으로 302).
 const LANG_META = {
   ko: { og: 'ko_KR', inLang: 'ko-KR' },
@@ -803,7 +803,7 @@ ${tags.length ? `<meta name="keywords" content="${escAttr(tags.join(', '))}">` :
 
 <link rel="canonical" href="${escAttr(canonical)}">
 <!-- hreflang (2026-07-16): 실재하는 언어별 SSR URL 만 선언 — ko/en 항상,
-     it/fr/es 는 content_translations 에 번역이 있는 경우만 (핸들러가 전달). -->
+     it/fr/es 는 seo_translations 에 번역이 있는 경우만 (핸들러가 전달). -->
 ${hreflangLinks}
 
 

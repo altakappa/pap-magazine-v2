@@ -39,7 +39,7 @@ module.exports = async function handler(req, res) {
     const trMap = new Map();
     try {
       const { data: trs } = await supabaseAdmin
-        .from('content_translations')
+        .from('seo_translations')
         .select('content_id, lang')
         .eq('kind', 'editorial')
         .limit(20000);

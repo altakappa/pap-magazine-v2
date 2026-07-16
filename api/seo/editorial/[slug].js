@@ -116,7 +116,7 @@ module.exports = async function handler(req, res) {
       return res.status(301).end();
     }
 
-    /* 다국어 (2026-07-16): ko|en 은 DB 원본 필드, it|fr|es 는 content_translations.
+    /* 다국어 (2026-07-16): ko|en 은 DB 원본 필드, it|fr|es 는 seo_translations.
        번역이 아직 없으면 /en/ 으로 302 (빈 번역 페이지를 인덱싱시키지 않는다). */
     const VALID_LANGS = ['ko', 'en', 'it', 'fr', 'es'];
     const lang = VALID_LANGS.includes(String(req.query.lang || '')) ? String(req.query.lang) : 'ko';
@@ -125,7 +125,7 @@ module.exports = async function handler(req, res) {
     let availableLangs = ['ko', 'en'];
     try {
       const { data: trs } = await supabaseAdmin
-        .from('content_translations')
+        .from('seo_translations')
         .select('lang, title, description')
         .eq('kind', 'editorial')
         .eq('content_id', data.id);
