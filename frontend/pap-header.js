@@ -370,13 +370,18 @@
     '<option value="zh">中文</option>' +
     '<option value="ru">Русский</option>';
 
-  /* Sub-pages: direct navigation (no interstitial ads) */
+  /* Sub-pages: direct navigation (no interstitial ads).
+     _papBeginTransition() 는 (a) 300ms 이상 걸리면 로딩 인디케이터를 띄우고
+     (b) 이미 전환 중이면 false 를 리턴해 중복 클릭을 무시한다(디바운스). */
   function _navDirect(url) {
-    return 'event.preventDefault();_papCloseNav();window.location.href=\'' + url + '\';';
+    return 'event.preventDefault();_papCloseNav();' +
+      'if(window._papBeginTransition&&!_papBeginTransition())return;' +
+      'window.location.href=\'' + url + '\';';
   }
   /* Main content pages: use navigateWithInterstitial if available */
   function _navGo(url) {
     return 'event.preventDefault();_papCloseNav();' +
+      'if(window._papBeginTransition&&!_papBeginTransition())return;' +
       '(typeof window.navigateWithInterstitial===\'function\'' +
       '?navigateWithInterstitial(\'' + url + '\')' +
       ':(window.location.href=\'' + url + '\'));';
@@ -589,6 +594,110 @@
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
+  }
+
+  /* ================================================================
+     3.5 전역 페이지 전환 로딩 인디케이터 (개선요청 2026-07-16)
+     ----------------------------------------------------------------
+     콘텐츠 증가로 메뉴 클릭 후 다음 페이지 응답까지 체감 지연이 있는데
+     피드백이 없어 사용자가 반복 클릭한다. 전 페이지 공통(pap-header.js)으로
+     상단 프로그레스바 + 스피너를 주입하고:
+       - 전환이 300ms 이상 걸릴 때만 노출(빠른 전환의 깜빡임 방지)
+       - 전환 중 재클릭은 무시(_papBeginTransition 이 false 리턴 → 핸들러 return)
+       - 인터스티셜 광고(#premiumInterstitial)가 떠 있으면 스피너를 띄우지 않음
+         (광고 자체가 진행 피드백이고, 스피너의 클릭 차단이 스킵 버튼을 가리는
+          것도 방지)
+     풀페이지 네비게이션이므로 새 페이지가 로드되면 이 오버레이는 함께 파괴된다.
+     bfcache 뒤로가기 복귀 시엔 pageshow 로 강제 해제. ================ */
+  function _papInitPageLoading() {
+    if (!document.body || document.getElementById('papPageLoading')) return;
+
+    if (!document.getElementById('pap-page-loading-css')) {
+      var pls = document.createElement('style');
+      pls.id = 'pap-page-loading-css';
+      pls.textContent = [
+        /* z-index 99990: nav-overlay(≤9000)·검색 위, 인터스티셜(99999) 아래 */
+        '#papPageLoading{position:fixed;inset:0;z-index:99990;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease}',
+        /* .show 일 때만 보이고 pointer-events:auto 로 중복 클릭을 물리 차단 */
+        '#papPageLoading.show{opacity:1;visibility:visible;pointer-events:auto}',
+        '#papPageLoading .ppl-scrim{position:absolute;inset:0;background:rgba(0,0,0,.15)}',
+        /* 상단 인디터미넌트 프로그레스바(브랜드 레드→골드) */
+        '#papPageLoading .ppl-bar{position:absolute;top:0;left:0;right:0;height:3px;overflow:hidden;background:rgba(0,0,0,.08)}',
+        '#papPageLoading .ppl-bar::before{content:"";position:absolute;top:0;height:100%;width:42%;left:-42%;background:linear-gradient(90deg,transparent,#891717 35%,#c9a96e 70%,transparent);animation:pplSlide 1.05s cubic-bezier(.4,0,.2,1) infinite}',
+        '@keyframes pplSlide{0%{left:-42%}60%{left:100%}100%{left:100%}}',
+        /* 중앙 스피너 — 어떤 배경(흑/백)에서도 보이도록 어두운 카드 위에 흰 스피너 */
+        '#papPageLoading .ppl-spin{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:66px;height:66px;background:rgba(18,18,18,.82);border-radius:16px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 30px rgba(0,0,0,.35)}',
+        '#papPageLoading .ppl-spin i{display:block;width:30px;height:30px;border:3px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:pplSpin .7s linear infinite}',
+        '@keyframes pplSpin{to{transform:rotate(360deg)}}',
+        /* 접근성: 모션 최소화 선호 시 회전만 유지, 슬라이드 완화 */
+        '@media(prefers-reduced-motion:reduce){#papPageLoading .ppl-bar::before{animation-duration:1.8s}}'
+      ].join('\n');
+      document.head.appendChild(pls);
+    }
+
+    var el = document.createElement('div');
+    el.id = 'papPageLoading';
+    el.setAttribute('role', 'status');
+    el.setAttribute('aria-live', 'polite');
+    el.setAttribute('aria-label', 'Loading');
+    el.innerHTML =
+      '<div class="ppl-scrim"></div>' +
+      '<div class="ppl-bar"></div>' +
+      '<div class="ppl-spin"><i></i></div>';
+    document.body.appendChild(el);
+
+    var _revealTimer = null;   // 300ms 지연 후 노출
+    var _safetyTimer = null;   // 전환이 끝나지 않을 때(취소 등) 강제 해제
+
+    window._papBeginTransition = function () {
+      // 이미 전환 중이면 false → 호출부에서 중복 네비게이션 차단(디바운스)
+      if (window._papNavigating) return false;
+      window._papNavigating = true;
+      _revealTimer = setTimeout(function () {
+        // 인터스티셜 광고가 떠 있으면 스피너를 띄우지 않는다(광고가 곧 피드백)
+        if (document.getElementById('premiumInterstitial')) return;
+        var n = document.getElementById('papPageLoading');
+        if (n) n.classList.add('show');
+      }, 300);
+      // 20s 안에 실제 이동이 없으면(취소/실패) 잠금 해제 — 정상적인 느린
+      // 전환은 그 전에 새 페이지 로드로 오버레이가 파괴되므로 영향 없음.
+      _safetyTimer = setTimeout(function () { window._papEndTransition(); }, 20000);
+      return true;
+    };
+
+    window._papEndTransition = function () {
+      window._papNavigating = false;
+      if (_revealTimer) { clearTimeout(_revealTimer); _revealTimer = null; }
+      if (_safetyTimer) { clearTimeout(_safetyTimer); _safetyTimer = null; }
+      var n = document.getElementById('papPageLoading');
+      if (n) n.classList.remove('show');
+    };
+
+    // bfcache 뒤로/앞으로 복귀 시 남아있던 로딩 상태를 초기화
+    window.addEventListener('pageshow', function (e) {
+      if (e.persisted) window._papEndTransition();
+    });
+
+    // 전역 링크 위임 — 메뉴 외 일반 링크(로고·카드·푸터 등)의 풀페이지 이동에도
+    // 로딩 인디케이터를 붙인다. 버블 단계에서 실행되므로, onclick 이
+    // preventDefault() 한 링크(SPA 오버레이 열기·본 메뉴 핸들러)는 자동 제외된다.
+    document.addEventListener('click', function (e) {
+      if (e.defaultPrevented) return;
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
+      if (!a) return;
+      if (a.target && a.target !== '' && a.target !== '_self') return;
+      if (a.hasAttribute('download')) return;
+      var raw = a.getAttribute('href') || '';
+      if (!raw || raw.charAt(0) === '#' || /^(javascript|mailto|tel):/i.test(raw)) return;
+      var dest;
+      try { dest = new URL(a.href, location.href); } catch (_) { return; }
+      if (dest.origin !== location.origin) return;
+      // 동일 URL 이거나 해시만 다른 경우는 실제 전환 아님
+      if (dest.href === location.href) return;
+      if (dest.pathname === location.pathname && dest.search === location.search && dest.hash) return;
+      if (window._papBeginTransition) window._papBeginTransition();
+    }, false);
   }
 
   function _afterInject() {
@@ -869,6 +978,9 @@
       } catch (e) { }
     }
     _updateAuthDropdown();
+
+    /* 전역 페이지 전환 로딩 인디케이터 설치 (전 페이지 공통) */
+    _papInitPageLoading();
   }
 
 })();
