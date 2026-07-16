@@ -16,6 +16,10 @@ function esc(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 function stripHtml(s) { return String(s || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(); }
+// 웹→IG 아웃클릭 계측 경유 (ig-out.js, src=pepperit-article). 직링크면 계측이 안 잡힌다.
+function igOut(target, to) {
+  return '/api/ig-out?src=pepperit-article&to=' + to + '&url=' + encodeURIComponent(target);
+}
 
 module.exports = async function handler(req, res) {
   try {
@@ -89,8 +93,8 @@ module.exports = async function handler(req, res) {
       '<p class="igbox-t">이 소식, 인스타그램에서 반응 남기기</p>' +
       '<p class="igbox-d">좋아요 · 댓글 · 저장 · 친구에게 보내기는 원본 게시물에서!</p>' +
       '<blockquote class="instagram-media" data-instgrm-permalink="' + esc(a.source_instagram_url) + '" data-instgrm-version="14" style="background:#fff;border:1px solid #FFD3E2;margin:16px auto 0;max-width:540px;min-width:280px;width:100%"></blockquote>' +
-      '<a class="btn" href="' + esc(a.source_instagram_url) + '" target="_blank" rel="noopener">게시물에서 반응 남기기 →</a>' +
-      '<a class="btn ghost" href="' + IG + '" target="_blank" rel="noopener">Follow @pepperitmag</a>' +
+      '<a class="btn" href="' + esc(igOut(a.source_instagram_url, 'post')) + '" target="_blank" rel="noopener">게시물에서 반응 남기기 →</a>' +
+      '<a class="btn ghost" href="' + esc(igOut(IG, 'profile')) + '" target="_blank" rel="noopener">Follow @pepperitmag</a>' +
       '</div><script async src="https://www.instagram.com/embed.js"></' + 'script>'
     ) : '';
 
