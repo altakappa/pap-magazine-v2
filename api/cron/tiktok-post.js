@@ -189,6 +189,12 @@ module.exports = async function handler(req, res) {
         status = 'failed';
         detail = String(err && err.message || err).slice(0, 400);
       }
+      // 미심사 앱 방어: TIKTOK_PUBLIC 이 심사 승인 전에 실수로 켜져 있으면 공개
+      // 게시가 거부된다(unaudited_client_can_only_post_to_private_accounts).
+      // 이때는 '실패'로 기록·알림하지 않고 조용히 보류한다(심사 승인 후 자동 재개).
+      if (status === 'failed' && detail && detail.indexOf('unaudited_client_can_only_post_to_private_accounts') !== -1) {
+        return res.status(200).json({ ok: true, kind, note: 'TikTok 앱 심사 전 — 공개 게시 보류. 심사 승인 후에만 TIKTOK_PUBLIC=1 유지.' });
+      }
       await supabaseAdmin.from('tiktok_posts').upsert({
         article_id: art.id, publish_id: publishId, status, detail,
       }, { onConflict: 'article_id' });
@@ -231,6 +237,10 @@ module.exports = async function handler(req, res) {
     } catch (err) {
       status = 'failed';
       detail = String(err && err.message || err).slice(0, 400);
+    }
+    // 미심사 앱 방어(에디토리얼): 위와 동일 — 심사 전 공개거부는 보류 처리.
+    if (status === 'failed' && detail && detail.indexOf('unaudited_client_can_only_post_to_private_accounts') !== -1) {
+      return res.status(200).json({ ok: true, note: 'TikTok 앱 심사 전 — 공개 게시 보류. 심사 승인 후에만 TIKTOK_PUBLIC=1 유지.' });
     }
     // upsert — 이전 실패 기록이 있는 편의 재시도 시 UNIQUE(editorial_id) 충돌 방지
     await supabaseAdmin.from('tiktok_posts').upsert({
