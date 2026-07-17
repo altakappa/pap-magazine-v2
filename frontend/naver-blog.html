@@ -35,6 +35,14 @@
   .copy { border: 1px solid #ddd; background: #fff; border-radius: 14px; padding: 3px 12px; font-size: 12px; cursor: pointer; }
   .copy:hover { background: #000; color: #fff; border-color: #000; }
   .copy.ok { background: #17a34a; color: #fff; border-color: #17a34a; }
+  /* 태그 칩 — 네이버는 태그를 하나씩 입력해야 해서, 각 칩을 한 번 누르면
+     그 태그 하나만 복사된다. 붙여넣고 엔터 → 다음 칩. 누른 칩은 done 표시. */
+  .tagwrap { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .tagchip { border: 1px solid #ccd; background: #fff; border-radius: 14px; padding: 4px 11px; font-size: 13px; cursor: pointer; color: #223; transition: all .12s; }
+  .tagchip:hover { background: #000; color: #fff; border-color: #000; }
+  .tagchip.done { background: #eaf6ee; color: #17a34a; border-color: #bfe6cd; text-decoration: line-through; }
+  .tagchip.next { border-color: #17a34a; box-shadow: 0 0 0 2px rgba(23,163,74,.18); }
+  .tagcount { font-size: 12px; color: #888; margin-left: 6px; }
   #dTitle { font-size: 18px; font-weight: 800; line-height: 1.4; }
   #dTags { font-size: 13px; color: #444; }
   #dBody { border: 1px solid #eee; border-radius: 10px; padding: 18px; font-size: 14px; line-height: 1.75; max-height: 55vh; overflow-y: auto; background: #fff; }
@@ -151,14 +159,39 @@ async function loadList() {
 }
 
 // 초안(온디맨드·저장분·일괄 공용) 렌더.
+// 태그 칩 렌더 — 각 칩은 클릭 시 그 태그 하나만 클립보드에 복사.
+function tagChips(tags) {
+  if (!tags.length) return '<span style="color:#aaa;font-size:13px">태그 없음</span>';
+  return tags.map(function (t, i) {
+    var cls = 'tagchip' + (i === 0 ? ' next' : '');
+    return '<button class="' + cls + '" data-i="' + i + '" onclick="cpTag(this)">#' + esc(t) + '</button>';
+  }).join('');
+}
+
+// 칩 한 개 복사 → done 표시 → 다음 칩을 next 로 하이라이트 → 진행도 갱신.
+function cpTag(btn) {
+  var tag = (current.tags || [])[parseInt(btn.dataset.i, 10)] || btn.textContent.replace(/^#/, '');
+  navigator.clipboard.writeText(tag).then(function () {
+    btn.classList.remove('next');
+    btn.classList.add('done');
+    var chips = Array.prototype.slice.call(document.querySelectorAll('.tagchip'));
+    var nextChip = chips.find(function (c) { return !c.classList.contains('done'); });
+    chips.forEach(function (c) { c.classList.remove('next'); });
+    if (nextChip) nextChip.classList.add('next');
+    var done = chips.filter(function (c) { return c.classList.contains('done'); }).length;
+    var prog = document.getElementById('tagProgress');
+    if (prog) prog.textContent = done + ' / ' + chips.length + (done === chips.length ? ' ✓ 모두 복사됨' : ' 복사됨');
+  });
+}
+
 function renderDraft(j) {
   current = j;
   const el = document.getElementById('draft');
   el.innerHTML =
     '<div class="field"><label>제목 <button class="copy" onclick="cpText(this, current.title)">복사</button></label><div id="dTitle">' + esc(j.title) + '</div></div>' +
-    '<div class="field"><label>태그 <button class="copy" onclick="cpText(this, current.tags.join(\' \'))">복사</button></label><div id="dTags">' + esc((j.tags || []).join(' ')) + '</div></div>' +
+    '<div class="field"><label>태그 <span class="tagcount" id="tagProgress"></span> <button class="copy" onclick="cpText(this, current.tags.join(\' \'))">전체 복사</button></label><div class="tagwrap" id="dTags">' + tagChips(j.tags || []) + '</div></div>' +
     '<div class="field"><label>본문 (체크리스트 · CTA 자동 포함) <button class="copy" onclick="cpHtml(this)">서식 포함 복사</button></label><div id="dBody">' + j.body_html + '</div></div>' +
-    '<div class="hint">사용법: ① 네이버 블로그 글쓰기 열기 → ② 제목 붙여넣기 → ③ 본문란에 <b>서식 포함 복사</b> 결과 붙여넣기 (체크리스트·CTA 이미 포함됨) → ④ 하단 태그 입력 → 발행. ' +
+    '<div class="hint">사용법: ① 네이버 블로그 글쓰기 열기 → ② 제목 붙여넣기 → ③ 본문란에 <b>서식 포함 복사</b> 결과 붙여넣기 (체크리스트·CTA 이미 포함됨) → ④ 하단 태그: 칩을 하나씩 눌러 복사 → 네이버 태그란에 붙여넣기 → 엔터, 다음 칩 반복 → 발행. ' +
     '이미지가 붙지 않으면 미리보기의 이미지를 하나씩 드래그하거나, <a href="' + esc(j.article_url) + '" target="_blank">원문</a>에서 저장 후 첨부해 주세요.</div>';
 }
 

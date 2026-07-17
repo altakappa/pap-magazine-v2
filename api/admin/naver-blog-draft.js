@@ -324,6 +324,30 @@ async function _recentPublished(brand, kind, limit) {
     .filter((r) => r.slug);
 }
 
+// 재사용 함수 — "다음 미전환 콘텐츠 1건을 네이버 초안으로 생성·저장".
+// 관리자 generate_next 경로와 크론(naver-draft-sweep)이 공유한다.
+// 반환: { done, remaining, draft, slug } — done=true 면 미전환 콘텐츠 없음.
+async function generateNext(brand, kind) {
+  const recent = await _recentPublished(brand, kind, 40);
+  const { data: done } = await supabaseAdmin.from('naver_blog_drafts')
+    .select('source_slug').eq('brand', brand).eq('kind', kind);
+  const doneSet = new Set((done || []).map((d) => d.source_slug));
+  const pending = recent.filter((r) => !doneSet.has(r.slug));
+  if (!pending.length) return { done: true, remaining: 0, draft: null, slug: null };
+  const next = pending[0];
+  const { draft, sourceId } = await generateBySlug(brand, kind, next.slug);
+  const { data: saved, error: sErr } = await supabaseAdmin.from('naver_blog_drafts')
+    .upsert({
+      brand, kind, source_slug: next.slug, source_id: String(sourceId || ''),
+      title: draft.title, body_html: draft.body_html,
+      tags: draft.tags || [], image_urls: draft.images || [],
+      article_url: draft.article_url, status: 'draft',
+    }, { onConflict: 'brand,kind,source_slug' })
+    .select('id').single();
+  if (sErr) throw sErr;
+  return { done: false, remaining: pending.length - 1, draft: { id: saved.id, ...draft }, slug: next.slug };
+}
+
 module.exports = async function handler(req, res) {
   const user = await requireAdmin(req, res);
   if (!user) return;
@@ -404,29 +428,11 @@ module.exports = async function handler(req, res) {
 
     // ── 일괄: 아직 초안 없는 최신 발행 1건을 생성·저장 (1요청 1건, 120s 내) ──
     if (q.generate_next === '1') {
-      const recent = await _recentPublished(brand, kind, 40);
-      const { data: done } = await supabaseAdmin.from('naver_blog_drafts')
-        .select('source_slug').eq('brand', brand).eq('kind', kind);
-      const doneSet = new Set((done || []).map((d) => d.source_slug));
-      const pending = recent.filter((r) => !doneSet.has(r.slug));
-      if (!pending.length) {
+      const r = await generateNext(brand, kind);
+      if (r.done) {
         return res.status(200).json({ brand, kind, done: true, remaining: 0, message: '미전환 콘텐츠가 없습니다. 최근 발행분 모두 초안 생성 완료.' });
       }
-      const next = pending[0];
-      const { draft, sourceId } = await generateBySlug(brand, kind, next.slug);
-      const { data: saved, error: sErr } = await supabaseAdmin.from('naver_blog_drafts')
-        .upsert({
-          brand, kind, source_slug: next.slug, source_id: String(sourceId || ''),
-          title: draft.title, body_html: draft.body_html,
-          tags: draft.tags || [], image_urls: draft.images || [],
-          article_url: draft.article_url, status: 'draft',
-        }, { onConflict: 'brand,kind,source_slug' })
-        .select('id').single();
-      if (sErr) throw sErr;
-      return res.status(200).json({
-        brand, kind, generated: true, remaining: pending.length - 1,
-        draft: { id: saved.id, ...draft },
-      });
+      return res.status(200).json({ brand, kind, generated: true, remaining: r.remaining, draft: r.draft });
     }
 
     if (!q.slug) return res.status(400).json({ error: '?slug= / ?list=1 / ?queue=1 / ?generate_next=1 필요' });
@@ -439,3 +445,6 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: String(e && e.message || e).slice(0, 300) });
   }
 };
+
+// 크론 재사용을 위한 export (핸들러 함수 객체에 속성으로 부착)
+module.exports.generateNext = generateNext;

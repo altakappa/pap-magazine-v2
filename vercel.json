@@ -75,6 +75,10 @@
     {
       "path": "/api/cron/daily-digest-email",
       "schedule": "40 23 * * *"
+    },
+    {
+      "path": "/api/cron/naver-draft-sweep",
+      "schedule": "0 16,20 * * *"
     }
   ],
   "rewrites": [
