@@ -1,6 +1,6 @@
 ---
 name: deploy-verifier
-description: 배포 검증 담당(읽기 전용). push 이후 Vercel READY 확인과 라이브 동작 검증 전담. "방금 푸시했어, 검증해줘" 류 작업은 이 에이전트에 위임.
+description: "[비콘 BEACON] 배포 검증 담당(읽기 전용). push 이후 Vercel READY 확인과 라이브 동작 검증 전담. "방금 푸시했어, 검증해줘" 류 작업은 이 에이전트에 위임."
 tools: Read, Grep, Glob, Bash, WebFetch
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: code-reviewer
-description: 커밋 전 읽기 전용 코드 리뷰. 수정하지 않고 문제만 보고한다.
+description: "[렌즈 LENS] 커밋 전 읽기 전용 코드 리뷰. 수정하지 않고 문제만 보고한다."
 tools: Read, Grep, Glob, Bash
 ---
 
