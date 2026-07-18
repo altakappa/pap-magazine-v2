@@ -364,16 +364,36 @@ function renderSeoHtml(kind, record, opts) {
 
   const titleKo = record.title || SITE_NAME;
   const titleEn = record.title_en || titleKo;
-  const descKo = record.seo_description || record.description || record.subtitle || `${titleKo} — ${SITE_NAME}`;
-  const descEn = record.description_en || descKo;
+  // 필름 설명 보강 (2026-07-18, 지우/다인) — 필름은 본문 텍스트가 없어 검색엔진이
+  // '내용 부족'으로 색인을 낮춘다. 실 설명이 없을 때만 보유한 사실 데이터
+  // (제목·연계 에디토리얼·크레딧)로 사실 기반 디스크립터를 생성한다(허구 서술 금지).
+  let _filmDescKo = null, _filmDescEn = null;
+  if (kind === 'film' && !(record.seo_description || record.description || record.subtitle)) {
+    const _relT = (record.related_editorial && record.related_editorial.title) ? String(record.related_editorial.title) : '';
+    const _credArr = Array.isArray(record.credits) ? record.credits : [];
+    const _credLine = _credArr
+      .map(c => typeof c === 'string' ? c : (c && (c.value || c.name) ? String(c.value || c.name) : ''))
+      .filter(Boolean).slice(0, 6).join(', ');
+    _filmDescKo = `《${titleKo}》는 PAP 매거진이 선보이는 패션 필름입니다.`
+      + (_relT ? ` 에디토리얼 〈${_relT}〉와 함께 제작됐습니다.` : '')
+      + (_credLine ? ` 크레딧: ${_credLine}.` : '')
+      + ` 서울·밀라노 기반 아트 중심 패션·뷰티·컬처 매거진 PAP.`;
+    _filmDescEn = `"${titleEn}" is a fashion film by PAP Magazine`
+      + (_relT ? `, created alongside the editorial "${_relT}"` : '')
+      + '.'
+      + (_credLine ? ` Credits: ${_credLine}.` : '')
+      + ` Art-driven fashion, beauty and culture from Seoul & Milan.`;
+  }
+  const descKo = record.seo_description || record.description || record.subtitle || _filmDescKo || `${titleKo} — ${SITE_NAME}`;
+  const descEn = record.description_en || _filmDescEn || descKo;
   // 언어 우선 표기 (본문 h1·리드·스키마 공용) — it/fr/es 는 번역본, 없으면 EN 폴백
   const titleMain = lang === 'ko' ? titleKo : (lang === 'en' ? titleEn : ((tr && tr.title) || titleEn));
   const titleAlt = lang === 'ko' ? titleEn : titleKo;
   const descMain = lang === 'ko' ? descKo : (lang === 'en' ? descEn : ((tr && tr.description) || descEn));
   const descAlt = lang === 'ko' ? descEn : (lang === 'en' ? descKo : descEn);
   const seoTitle = lang === 'ko'
-    ? (record.seo_title || `${titleKo} | ${SITE_NAME}`)
-    : `${titleMain} | ${SITE_NAME}`;
+    ? (record.seo_title || (kind === 'film' ? `${titleKo} 패션 필름 | ${SITE_NAME}` : `${titleKo} | ${SITE_NAME}`))
+    : (kind === 'film' ? `${titleMain} — Fashion Film | ${SITE_NAME}` : `${titleMain} | ${SITE_NAME}`);
   const desc = truncate(descMain, 160);
 
   /* Cover image: per-kind preferred fields */
