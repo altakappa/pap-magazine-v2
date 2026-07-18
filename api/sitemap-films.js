@@ -20,8 +20,17 @@ function fmtDate(d) {
   try { return new Date(d).toISOString().slice(0, 10); } catch { return new Date().toISOString().slice(0, 10); }
 }
 
+function safeSitemapHandle(h) {
+  // SEO 2026-07 — advertise only URL-clean handles (mirrors sitemap.js).
+  // Films/shorts are canonicalized by slug; using the title here produced
+  // %20-encoded URLs that mismatched the canonical ("duplicate / redirect").
+  if (h == null) return null;
+  const s = String(h);
+  return /^[A-Za-z0-9._~-]+$/.test(s) ? s : null;
+}
+
 function buildVideoEntry(prefix, item) {
-  const handle = item.title || item.id;
+  const handle = safeSitemapHandle(item.slug || item.id);
   if (!handle) return '';
   const loc = SITE + prefix + encodeURIComponent(handle);
   const lastmod = fmtDate(item.updated_at || item.published_date);
@@ -70,7 +79,7 @@ module.exports = async function handler(req, res) {
   try {
     const [filmsRes, shortsRes] = await Promise.all([
       supabaseAdmin.from('films')
-        .select('id, title, youtube_id, thumbnail_url, published_date, updated_at')
+        .select('id, title, slug, youtube_id, thumbnail_url, published_date, updated_at')
         .eq('status', 'published').order('published_date', { ascending: false }).limit(2000),
       supabaseAdmin.from('shorts')
         .select('id, title, youtube_id, thumbnail_url, published_date, updated_at')
