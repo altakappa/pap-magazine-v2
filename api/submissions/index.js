@@ -14,6 +14,7 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAuth, requireAdmin } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
+const { normalizeGenres } = require('../_lib/submissionCategories');
 
 const BUCKET = 'submissions';
 
@@ -73,6 +74,21 @@ module.exports = async function handler(req, res) {
       if (!data.genre || !Array.isArray(data.genre) || data.genre.length === 0) {
         return res.status(400).json({ message: 'At least one genre is required' });
       }
+
+      // FIX-1 (2026-07-19) — persist the selected category into the dedicated
+      // `submissions.category` column. Historically the genre pick lived ONLY
+      // inside the description JSON, so `category` was NULL for every row and
+      // admin analytics (SELECT category, count(*) ... GROUP BY 1) was blind.
+      // Whitelist against the 8 buttons in submission.html to reject arbitrary
+      // values; store the primary (first) pick in `category` and keep the full
+      // normalized list in description.genre for the multi-select UI. The
+      // whitelist + normalization live in api/_lib/submissionCategories.js so
+      // the rule is regression-tested against the real code.
+      const normalizedGenres = normalizeGenres(data.genre);
+      if (normalizedGenres.length === 0) {
+        return res.status(400).json({ message: 'At least one valid category is required' });
+      }
+      const primaryCategory = normalizedGenres[0];
 
       // Validate + scope URLs to the caller's own folder
       const lookUrls = sanitizeUrlList(body.lookUrls, prefix);
@@ -134,8 +150,9 @@ module.exports = async function handler(req, res) {
         .insert({
           user_id: user.id,
           title: data.title || 'Untitled',
+          category: primaryCategory,
           description: JSON.stringify({
-            genre: data.genre || [],
+            genre: normalizedGenres,
             artistStatement: data.artistStatement || '',
             credits: data.credits || {},
             team,

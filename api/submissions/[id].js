@@ -10,6 +10,7 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAuth, requireAdmin } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
+const { normalizeGenres } = require('../_lib/submissionCategories');
 
 // Build the same `{SUPABASE_URL}/storage/v1/object/public/submissions/{user.id}/`
 // prefix the POST endpoint enforces — caller can only attach URLs in their
@@ -120,6 +121,16 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ message: 'At least one genre is required' });
       }
 
+      // FIX-1 (2026-07-19) — mirror the create path: normalize + whitelist the
+      // category and persist the primary pick into the `category` column. Without
+      // this, any submission that went through a revision round returned to
+      // category=NULL on resubmit, re-opening the very gap FIX-1 closes.
+      const normalizedGenres = normalizeGenres(data.genre);
+      if (normalizedGenres.length === 0) {
+        return res.status(400).json({ message: 'At least one valid category is required' });
+      }
+      const primaryCategory = normalizedGenres[0];
+
       // Sanitize URL lists — both kept-from-original and newly uploaded must
       // live in the caller's own Supabase folder.
       const prefix = _userPathPrefix(user.id);
@@ -166,8 +177,9 @@ module.exports = async function handler(req, res) {
         .from('submissions')
         .update({
           title: data.title || 'Untitled',
+          category: primaryCategory,
           description: JSON.stringify({
-            genre: data.genre || [],
+            genre: normalizedGenres,
             artistStatement: data.artistStatement || '',
             credits: data.credits || {},
             team,
