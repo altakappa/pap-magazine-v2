@@ -56,6 +56,16 @@ function fmtDate(d) {
   catch (e) { return new Date().toISOString().slice(0, 10); }
 }
 
+function safeSitemapHandle(h) {
+  // SEO 2026-07 — only advertise URL-clean handles. Malformed slugs (spaces,
+  // control chars, %, apostrophes, ligatures, etc.) emit %20-encoded duplicate
+  // URLs Google flags as "duplicate / page with redirect". Skip them; the page
+  // stays reachable, it just isn't advertised until the slug is cleaned in DB.
+  if (h == null) return null;
+  const s = String(h);
+  return /^[A-Za-z0-9._~-]+$/.test(s) ? s : null;
+}
+
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
 
@@ -93,7 +103,7 @@ module.exports = async function handler(req, res) {
     // Falls back to id when slug is missing on legacy rows.
     // Includes <image:image> child so Google Images can index the cover.
     (eds || []).forEach(ed => {
-      const handle = ed.slug || ed.id;
+      const handle = safeSitemapHandle(ed.slug || ed.id);
       if (!handle) return;
       const loc = BASE + '/editorial/' + encodeURIComponent(handle);
       const lastmod = fmtDate(ed.updated_at || ed.published_date);

@@ -17,6 +17,16 @@ function fmtDate(d) {
   try { return new Date(d).toISOString().slice(0, 10); } catch { return new Date().toISOString().slice(0, 10); }
 }
 
+function safeSitemapHandle(h) {
+  // SEO 2026-07 — only advertise URL-clean handles. Malformed slugs (spaces,
+  // control chars, %, apostrophes, ligatures, etc.) emit %20-encoded duplicate
+  // URLs Google flags as "duplicate / page with redirect". Skip them; the page
+  // stays reachable, it just isn't advertised until the slug is cleaned in DB.
+  if (h == null) return null;
+  const s = String(h);
+  return /^[A-Za-z0-9._~-]+$/.test(s) ? s : null;
+}
+
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
 
@@ -50,7 +60,7 @@ module.exports = async function handler(req, res) {
     } catch (_) { /* ko/en only */ }
 
     const urls = (eds || []).map(ed => {
-      const handle = ed.slug || ed.id;
+      const handle = safeSitemapHandle(ed.slug || ed.id);
       if (!handle) return '';
       const loc = SITE + '/editorial/' + encodeURIComponent(handle);
       // 언어별 URL + hreflang alternate (2026-07-16) — ko/en 항상, it/fr/es 는 번역 존재 시.
