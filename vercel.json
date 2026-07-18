@@ -583,7 +583,7 @@
         }
       ],
       "destination": "/pepperit",
-      "statusCode": 307
+      "statusCode": 301
     },
     {
       "source": "/pepperit",
