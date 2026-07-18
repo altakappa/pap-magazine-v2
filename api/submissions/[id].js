@@ -11,6 +11,7 @@ const { requireAuth, requireAdmin } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { normalizeGenres } = require('../_lib/submissionCategories');
+const { classifySubmissionType } = require('../_lib/submissionType');
 
 // Build the same `{SUPABASE_URL}/storage/v1/object/public/submissions/{user.id}/`
 // prefix the POST endpoint enforces — caller can only attach URLs in their
@@ -162,6 +163,9 @@ module.exports = async function handler(req, res) {
         : (data.credits?.photographer || '');
       const looks = Array.isArray(data.looks) ? data.looks : [];
       const lookImageMap = Array.isArray(data.lookImageMap) ? data.lookImageMap : [];
+      // Recompute submission-type on resubmit so a revision that changes the
+      // look count or brand mix re-classifies correctly (mirror of POST path).
+      const { submissionType } = classifySubmissionType(looks, lookImageMap);
 
       // Append a "[Resubmitted on …]" line to admin_notes so the editor can
       // see the history of the original feedback + what got revised.
@@ -191,6 +195,7 @@ module.exports = async function handler(req, res) {
             videoUrl,
             looks,
             lookImageMap,
+            submissionType,
           }),
           file_urls: [...lookUrls, ...additionalUrls],
           status: 'pending',           // back into the editorial queue

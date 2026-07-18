@@ -15,6 +15,7 @@ const { requireAuth, requireAdmin } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { normalizeGenres } = require('../_lib/submissionCategories');
+const { classifySubmissionType } = require('../_lib/submissionType');
 
 const BUCKET = 'submissions';
 
@@ -137,6 +138,13 @@ module.exports = async function handler(req, res) {
       // brand crew per image.
       const looks = Array.isArray(data.looks) ? data.looks : [];
       const lookImageMap = Array.isArray(data.lookImageMap) ? data.lookImageMap : [];
+      // Submission-type classification (2026-07-19) — DETECT + STORE only, no
+      // payment/email. Recomputed AUTHORITATIVELY here from the persisted
+      // looks + lookImageMap so the stored type can't be spoofed by the client
+      // (the form computes its own copy only for on-page guidance). Shared
+      // helper (api/_lib/submissionType.js) keeps front/back rules in lockstep
+      // and is regression-tested. 'free' | 'paid_few_looks' | 'branded'.
+      const { submissionType } = classifySubmissionType(looks, lookImageMap);
       // QA #168 — also persist the STRUCTURED team array
       // [{ role, name, instagram, website }, …]. data.credits is a lossy
       // flat-string view kept for legacy consumers; review.js stage-as-
@@ -164,6 +172,7 @@ module.exports = async function handler(req, res) {
             videoUrl,
             looks,
             lookImageMap,
+            submissionType,
           }),
           file_urls: [...lookUrls, ...additionalUrls],
           status: 'pending',
