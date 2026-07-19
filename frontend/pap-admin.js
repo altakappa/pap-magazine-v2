@@ -9252,8 +9252,8 @@ function _papCoverReadStyleOpts(){
     logoSize:       _num('coverLogoSize', 27),       // % canvas width
     logoShadow:     _num('coverLogoShadow', 70),     // 0-100, shadow intensity
     logoTop:        _num('coverLogoTop', 6),         // % canvas height from top
-    titleSize:      _num('coverTitleSize', 70),      // px
-    contribSize:    _num('coverContribSize', 26),    // px
+    titleSize:      _num('coverTitleSize', 48),      // px
+    contribSize:    _num('coverContribSize', 24),    // px
     topLabelSize:   _num('coverTopLabelSize', 19),   // px
     sideLabelSize:  _num('coverSideLabelSize', 14),  // px
     bottomPad:      _num('coverBottomPad', 52),      // px from canvas bottom (contributors baseline)
@@ -9261,7 +9261,7 @@ function _papCoverReadStyleOpts(){
     topLabelTop:    _num('coverTopLabelTop', 42),    // px from canvas top
     topLabelSide:   _num('coverTopLabelSide', 52),   // px from each side edge
     sideLabelY:     _num('coverSideLabelY', 57),     // % canvas height (vertical pos for "Published by")
-    titleBottom:    _num('coverTitleBottom', 11),    // % canvas height from bottom (title baseline)
+    titleBottom:    _num('coverTitleBottom', 10),    // % canvas height from bottom (title baseline)
   };
 }
 
@@ -9273,8 +9273,8 @@ function papCoverResetSettings(){
     ['coverLogoSize',      27, '%'],
     ['coverLogoShadow',    70, '%'],
     ['coverLogoTop',        6, '%'],
-    ['coverTitleSize',     70, 'px'],
-    ['coverContribSize',   26, 'px'],
+    ['coverTitleSize',     48, 'px'],
+    ['coverContribSize',   24, 'px'],
     ['coverTopLabelSize',  19, 'px'],
     ['coverSideLabelSize', 14, 'px'],
     ['coverBottomPad',     52, 'px'],
@@ -9282,7 +9282,7 @@ function papCoverResetSettings(){
     ['coverTopLabelTop',   42, 'px'],
     ['coverTopLabelSide',  52, 'px'],
     ['coverSideLabelY',    57, '%'],
-    ['coverTitleBottom',   11, '%'],
+    ['coverTitleBottom',   10, '%'],
   ];
   pairs.forEach(function(p){
     var el = document.getElementById(p[0]);
