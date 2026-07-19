@@ -1266,6 +1266,60 @@ function buildFashionLine(desc){
   return ordered.join(' ');
 }
 
+// ─── SUBMISSION-TYPE BADGE (표시 전용 / display-only) ────────────────────────
+// The authoritative submission type is computed server-side
+// (api/_lib/submissionType.js) and persisted inside the description JSON as
+// `submissionType` ('free' | 'paid_few_looks' | 'branded'). These helpers only
+// SURFACE that value in the admin UI so the editor can see the policy tier +
+// indicative price at a glance. No schema/API/gate change — pure read+display.
+//   paid_few_looks → 유료 · 소수 룩 €345 (강조: standard tone)
+//   branded        → 브랜디드 €720      (강조: premium tone)
+//   free / 값없음(구버전) / 알 수 없음 → 미표시(뱃지 없음) — 안전 처리
+function _submissionTypeBadge(submissionType){
+  var map={
+    paid_few_looks: { cls:'b-standard', label:'유료 · 소수 룩 €345' },
+    branded:        { cls:'b-premium',  label:'브랜디드 €720' }
+  };
+  var info=map[submissionType];
+  if(!info) return '';
+  return '<span class="badge '+info.cls+'" title="서브미션 유형 (표시 전용)">'+info.label+'</span>';
+}
+// Safely read submissionType out of a submission's description (string or object).
+function _submissionTypeOf(s){
+  if(!s) return '';
+  var d=s.description;
+  if(typeof d==='string'){ try{ d=JSON.parse(d); }catch(_){ return ''; } }
+  return (d&&d.submissionType)||'';
+}
+
+// ─── PAYMENT-STATUS BADGE (표시 전용 / display-only) — 2b (2026-07-19) ────────
+// 유료/브랜디드 서브미션 기본료의 결제 상태를 SURFACE 만 한다 (컬럼 payment_status).
+// 결제 확정은 Paddle 웹훅(키퍼)이 payment_status 를 갱신 — 어드민은 읽기+표시 전용.
+//   paid            → 결제완료 · €<실결제액> · 게재대기 (green)
+//   awaiting_payment→ 결제대기                          (amber)
+//   none / 값없음    → 미표시 (뱃지 없음) — 안전 처리
+// 라벨은 코드 고정값 · payment_status 는 화이트리스트로만 매핑 → innerHTML 안전.
+// paidAmount(유로 cents, 정수) 를 병기해 도메니코가 유형 뱃지의 기대금액
+// (예: 브랜디드 €720)과 실결제액을 비교, 과소결제(€345만 결제 등)를 인지할 수 있게.
+// cents→euros 는 /100, 정수 유로로 표기. 값 없거나 비정상이면 금액 생략(기존 라벨).
+function _paymentStatusBadge(paymentStatus, paidAmount){
+  var map={
+    paid:            { bg:'rgba(100,200,150,.14)', bd:'rgba(100,200,150,.5)', fg:'rgba(140,230,180,.98)', label:'결제완료·게재대기' },
+    awaiting_payment:{ bg:'rgba(201,168,106,.14)', bd:'rgba(201,168,106,.5)', fg:'rgba(220,190,130,.98)', label:'결제대기' }
+  };
+  var info=map[paymentStatus];
+  if(!info) return '';
+  var label=info.label;
+  if(paymentStatus==='paid'){
+    var cents=Number(paidAmount);
+    if(isFinite(cents) && cents>0){
+      var euros=Math.round(cents/100);
+      label='결제완료 · €'+euros+' · 게재대기';
+    }
+  }
+  return '<span title="결제 상태 (표시 전용)" style="display:inline-block;font-size:10px;font-weight:700;letter-spacing:.02em;padding:2px 8px;border-radius:3px;background:'+info.bg+';border:1px solid '+info.bd+';color:'+info.fg+'">'+label+'</span>';
+}
+
 function populateReviewModal(submission){
   var desc={};
   try{desc=submission.description?JSON.parse(submission.description):{};}catch(e){desc={};}
@@ -1277,7 +1331,26 @@ function populateReviewModal(submission){
   var imgCount=Array.isArray(submission.file_urls)?submission.file_urls.length:0;
 
   // Header (compact context strip)
-  document.getElementById('reviewModalHeader').textContent=submitterName+' · '+createdDate+genreText+' · '+imgCount+' images';
+  var _hdr=document.getElementById('reviewModalHeader');
+  _hdr.textContent=submitterName+' · '+createdDate+genreText+' · '+imgCount+' images';
+  // Submission-type badge (표시 전용). textContent above already cleared any
+  // prior badge from a previously-reviewed submission, so we just append.
+  // Badge markup is code-controlled (fixed labels) — safe to set via innerHTML.
+  var _typeBadge=_submissionTypeBadge(desc.submissionType);
+  if(_typeBadge){
+    var _b=document.createElement('span');
+    _b.style.marginLeft='8px';
+    _b.innerHTML=_typeBadge;
+    _hdr.appendChild(_b);
+  }
+  // Payment-status badge (표시 전용) — 유료/브랜디드 기본료 결제 상태 + 실결제액. 옆에 나란히.
+  var _payBadge=_paymentStatusBadge(submission.payment_status, submission.paid_amount);
+  if(_payBadge){
+    var _pb=document.createElement('span');
+    _pb.style.marginLeft='8px';
+    _pb.innerHTML=_payBadge;
+    _hdr.appendChild(_pb);
+  }
 
   // Title
   document.getElementById('reviewModalTitle').textContent=submission.title||'Untitled';
@@ -1999,7 +2072,13 @@ async function loadSubmissions(statusFilter, opts){
           }
         }
       }
-      tb.innerHTML+='<tr><td class="td-title" onclick="openModal(\''+s.id+'\')">'+esc(s.title)+'</td><td>'+esc(s.submitterName||s.submitterEmail||'—')+'</td><td><span class="badge '+planCls+'">'+planLabel+'</span></td><td>'+looks+'</td><td>'+fmtDate(s.created_at)+'</td><td><span class="badge '+statusCls+'">'+statusLabel+'</span>'+rejectedInfo+'</td><td>'+actionBtns+'</td></tr>';
+      // Submission-type badge (표시 전용) — shown under the status badge so paid
+      // / branded submissions stand out; free & 구버전(값 없음) rows show nothing.
+      var typeBadge=_submissionTypeBadge(_submissionTypeOf(s));
+      // Payment-status badge (표시 전용) — 유형 뱃지 아래에 함께 노출 (+실결제액).
+      var payBadge=_paymentStatusBadge(s.payment_status, s.paid_amount);
+      var badgeStack=(typeBadge||payBadge)?'<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">'+typeBadge+payBadge+'</div>':'';
+      tb.innerHTML+='<tr><td class="td-title" onclick="openModal(\''+s.id+'\')">'+esc(s.title)+'</td><td>'+esc(s.submitterName||s.submitterEmail||'—')+'</td><td><span class="badge '+planCls+'">'+planLabel+'</span></td><td>'+looks+'</td><td>'+fmtDate(s.created_at)+'</td><td><span class="badge '+statusCls+'">'+statusLabel+'</span>'+rejectedInfo+badgeStack+'</td><td>'+actionBtns+'</td></tr>';
     });
     _renderSubPagination(currentSubPage, totalPages, total);
   }catch(err){

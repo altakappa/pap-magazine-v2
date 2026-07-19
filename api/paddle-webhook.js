@@ -11,7 +11,10 @@
  *   subscription.canceled   — 구독 해지 확정
  *   subscription.paused     — 일시정지 (inactive 처리)
  *   subscription.resumed    — 재개
- *   transaction.completed   — 결제 완료 (로그용 — 상태 반영은 subscription.* 이 담당)
+ *   transaction.completed   — 구독 결제: 로그용(상태 반영은 subscription.* 담당).
+ *                             일회성 서브미션 기본료(custom_data.kind='submission_fee'):
+ *                             해당 submission을 payment_status='paid'로만 전환(발행 X).
+ *                             → api/_lib/submissionPayment.js (멱등: paddle_transaction_id)
  *
  * 유저 매핑:
  *   1순위 custom_data.user_id  (체크아웃 시 pap-api.js 가 심음)
@@ -25,6 +28,7 @@
 const { supabaseAdmin } = require('./_lib/supabase');
 const { sendEmail, templates } = require('./_lib/email');
 const { resolveEmailLang } = require('./_lib/emailLocale');
+const { handleSubmissionFeeTransaction, isSubmissionFeeEvent } = require('./_lib/submissionPayment');
 const crypto = require('crypto');
 
 const PADDLE_WEBHOOK_SECRET = process.env.PADDLE_WEBHOOK_SECRET;
@@ -255,6 +259,43 @@ module.exports = async function handler(req, res) {
       }
 
       case 'transaction.completed': {
+        // ── 서브미션 일회성 기본료 (kind:'submission_fee') ──────────────
+        // 구독과 완전 분리: custom_data.kind + submission_id 로만 진입한다.
+        // payment_status 만 건드리고 발행/status(approved)는 절대 손대지 않는다
+        // (draft-only). 멱등: 같은 paddle_transaction_id 재수신은 스킵.
+        if (isSubmissionFeeEvent(data)) {
+          const r = await handleSubmissionFeeTransaction(data, supabaseAdmin);
+          switch (r.outcome) {
+            case 'paid':
+              console.log('[paddle-webhook] submission fee paid:', r.submissionId, 'tx:', r.txId, 'amount(cents):', r.paidAmount, 'storedType:', r.storedType || '-');
+              if (r.underpaid) {
+                // 실제 결제액 < 저장 유형 기대액 — 과소결제. 결제는 발생했으므로
+                // paid로 기록하되, 도메니코가 발행(수동) 전 반드시 검토하도록 loud log.
+                console.warn('[paddle-webhook] submission fee UNDERPAID — sub:', r.submissionId, 'tx:', r.txId, 'paid(cents):', r.paidAmount, 'expected(cents):', r.expectedAmount, 'storedType:', r.storedType);
+              }
+              if (r.userMismatch) {
+                console.warn('[paddle-webhook] submission fee USER MISMATCH — custom_data.user_id != submission.user_id, sub:', r.submissionId, 'tx:', r.txId);
+              }
+              break;
+            case 'duplicate':
+              console.log('[paddle-webhook] submission fee duplicate (idempotent skip):', r.submissionId, 'tx:', r.txId);
+              break;
+            case 'unresolved':
+              // 200 반환 + loud log — 재시도해도 해결 안 됨(수동 정합). 재시도 루프 방지.
+              console.error('[paddle-webhook] submission fee UNRESOLVED —', r.reason, 'submission:', r.submissionId, 'tx:', r.txId);
+              break;
+            case 'already_paid_other_tx':
+              console.error('[paddle-webhook] submission fee already paid by DIFFERENT tx — sub:', r.submissionId, 'existing:', r.existingTx, 'new:', r.txId);
+              break;
+            case 'error':
+              console.error('[paddle-webhook] submission fee update failed:', r.error, 'sub:', r.submissionId, 'tx:', r.txId);
+              break;
+            default:
+              console.warn('[paddle-webhook] submission fee unexpected outcome:', r.outcome, r.submissionId);
+          }
+          break;
+        }
+        // ── 구독 결제 로그 (기존 동작 보존) ──────────────────────────────
         // 상태 반영은 subscription.updated 가 담당 — 여기선 결제 로그만.
         console.log('[paddle-webhook] transaction completed:', data.id, 'sub:', data.subscription_id || '-');
         break;

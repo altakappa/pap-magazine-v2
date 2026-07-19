@@ -48,11 +48,21 @@ module.exports = async function handler(req, res) {
     premium_yearly:   process.env.PADDLE_PRICE_PREM_Y || null,
   };
 
+  // 서브미션 일회성 기본료 price id (구독과 별개 — one-time). 미설정 시 null →
+  // 프론트는 해당 유형 결제 버튼을 비활성/안내 처리. 체크아웃 시 프론트가
+  // custom_data { submission_id, submission_type, user_id, kind:'submission_fee' }
+  // 를 심어 paddle-webhook.js 의 submission_fee 분기로 라우팅한다.
+  const submissionFees = {
+    paid_few_looks: process.env.PADDLE_PRICE_SUB_FEWLOOKS || null, // €345
+    branded:        process.env.PADDLE_PRICE_SUB_BRANDED || null,  // €720
+  };
+
   // 설정은 배포 단위로만 바뀜 — 5분 edge cache.
   res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');
   return res.status(200).json({
     environment: detectEnvironment(clientToken),
     clientToken,
     prices,
+    submissionFees,
   });
 };

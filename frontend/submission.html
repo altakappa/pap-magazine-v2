@@ -2,7 +2,10 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co https://api.stripe.com https://api.pap-magazine.com; frame-src https://js.stripe.com;">
+<!-- CSP — 2b(2026-07-19): 승인된 유료/브랜디드 서브미션 기본료 Paddle 결제 오버레이용으로
+     *.paddle.com 을 script/connect/frame-src 에 추가 (subscribe.html 과 동일 패턴).
+     vercel.json 전역 헤더가 이미 *.paddle.com 을 허용하므로 이 meta 는 superset 안에 있음. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://js.stripe.com https://*.paddle.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co https://api.stripe.com https://api.pap-magazine.com https://*.paddle.com; frame-src https://js.stripe.com https://*.paddle.com;">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="PAP 매거진에 에디토리얼을 제출하세요. 서브미션 유형을 선택하고, 작품 정보·팀 크레딧·룩별 의상 크레딧·고해상도 이미지를 제출해 주세요.">
 <link rel="canonical" href="https://www.pap-magazine.com/submission">
@@ -939,6 +942,9 @@ function navigateWithInterstitial(url){
 <div class="footer-legal" id="footerLegal"></div>
 
 <script src="/pap-api.js?v=8" defer></script>
+<!-- Paddle Billing SDK — 2b(2026-07-19): 승인된 유료/브랜디드 서브미션 '기본료' 오버레이 결제.
+     추가옵션(PayPal 정적 링크)은 별개 · 기본료만 Paddle. 미설정(price ID 없음) 시 버튼은 안내 토스트로 안전 처리. -->
+<script src="https://cdn.paddle.com/paddle/v2/paddle.js" defer></script>
 <script src="/pap-name-validator.js?v=2" defer></script>
 <script src="submission-terms.js?v=1"></script>
 <script>
@@ -1210,10 +1216,20 @@ async function viewSubmission(id){
                   }
                 }catch(_){}
               }
+              // ── 2b(2026-07-19): 승인된 유료/브랜디드 서브미션 '기본료' Paddle 결제 블록 ──
+              // 조건: submissionType ∈ {paid_few_looks(€345), branded(€720)} AND payment_status!=='paid'.
+              //   → 유형별 금액 버튼(Paddle 오버레이). price ID 미설정이면 안내 토스트로 안전 처리.
+              // payment_status==='paid' → 버튼 대신 '결제 완료 · 게재 대기' 상태 표시.
+              // free/구버전(값 없음)/그 외 → 미표시. 발행은 여전히 수동(도메니코).
+              // 아래 추가옵션(PayPal 정적 링크 3종)은 그대로 유지 — 기본료만 Paddle 신설.
+              var _subType = (desc && desc.submissionType) || '';
+              var _payStatus = s.payment_status || '';
+              var baseFeeBlock = _baseFeeApprovalBlock(s.id, _subType, _payStatus);
               return '<div style="margin-top:24px;padding:20px 22px;background:rgba(255,255,255,.03);border-left:3px solid rgba(201,168,106,.7);font-size:13px;line-height:1.75;color:rgba(255,255,255,.85)">'+
                 '<p style="margin:0 0 12px">Dear '+_esc(s.submitterName||'')+',</p>'+
                 '<p style="margin:0 0 12px">We are pleased to inform you that the project is scheduled to be published as an exclusive digital editorial on PAP <strong style="color:#fff">'+_esc(schedTxt)+'</strong>. Please note that the dates mentioned are approximate and may be subject to slight changes depending on the circumstances.</p>'+
                 '<p style="margin:0 0 12px">The editorial will be shared on our social media within a few days following its release on the PAP website. We kindly ask for your patience and understanding in the meantime.</p>'+
+                baseFeeBlock+
                 '<p style="margin:0 0 12px">Additionally, if you require any additional services, you can make the payment through the links below and kindly let us know once it\'s done.</p>'+
                 '<ul style="margin:0 0 12px;padding-left:0;list-style:none">'+
                   '<li style="margin:0 0 14px"><div style="color:#fff;font-weight:600">• Instagram Collaborators</div><div style="color:rgba(255,255,255,.6);font-size:12px;margin:2px 0 4px">€100 per feed</div><a href="https://www.paypal.com/ncp/payment/6JJQ8DFABNNCA" target="_blank" rel="noopener" style="color:rgba(201,168,106,.95);text-decoration:underline;word-break:break-all;font-size:12px">https://www.paypal.com/ncp/payment/6JJQ8DFABNNCA</a></li>'+
@@ -1231,6 +1247,150 @@ async function viewSubmission(id){
   }catch(e){
     console.error('viewSubmission error:',e);
     if(typeof PAP!=='undefined') PAP.ui.toast('Failed to load submission: '+(e.message||''),'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// SUBMISSION BASE-FEE PAYMENT (Paddle) — 2b (2026-07-19)
+// 승인된 유료(paid_few_looks €345) / 브랜디드(branded €720) 서브미션의 '기본료'를
+// Paddle 오버레이로 결제한다. 결제 확정은 웹훅(키퍼 담당)의 몫 — 프론트는 낙관적 안내만.
+// 발행은 여전히 수동(도메니코). 추가옵션(PayPal 정적 링크)은 별개로 유지.
+// ─── i18n (9개 언어, 초안 / DRAFT) ──────────────────────────────────────
+//   payBaseFeeBtn / payBasePaid / payBaseUnavailable ... 문구는 도메니코 확정 전
+//   초안입니다. 금액(€345/€720)은 {amt} 로 주입. 최종 카피 확정 대기.
+var _PAY_I18N = {
+  ko:{ payBaseIntro:'게재를 확정하려면 아래에서 기본 게재료를 결제해 주세요.', payBaseFeeBtn:'기본 게재료 {amt} 결제하기', payBasePaid:'결제 완료 · 게재 대기', payBasePaidHint:'기본 게재료 결제가 확인되었습니다. PAP 편집팀이 게재를 진행합니다.', payBaseUnavailable:'결제가 아직 준비되지 않았습니다. 잠시 후 다시 시도하거나 PAP에 문의해 주세요.', paySdkMissing:'결제 모듈을 불러오지 못했습니다. 페이지를 새로고침해 주세요.', payLoginFirst:'결제하려면 먼저 로그인해 주세요.', payCompleteOptimistic:'결제가 접수되었습니다! 확인되면 상태가 업데이트됩니다.', payGenericError:'결제창을 여는 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.' },
+  en:{ payBaseIntro:'To confirm publication, please pay the base publication fee below.', payBaseFeeBtn:'Pay base fee {amt}', payBasePaid:'Paid · awaiting publication', payBasePaidHint:'Your base publication fee has been confirmed. PAP will proceed with publication.', payBaseUnavailable:'Payment is not available yet. Please try again shortly or contact PAP.', paySdkMissing:'Payment module failed to load. Please refresh the page.', payLoginFirst:'Please sign in first to pay.', payCompleteOptimistic:'Payment received! Your status will update once confirmed.', payGenericError:'Something went wrong opening the checkout. Please try again shortly.' },
+  de:{ payBaseIntro:'Um die Veröffentlichung zu bestätigen, zahlen Sie bitte unten die Grundgebühr.', payBaseFeeBtn:'Grundgebühr {amt} zahlen', payBasePaid:'Bezahlt · Veröffentlichung ausstehend', payBasePaidHint:'Ihre Grundgebühr wurde bestätigt. PAP wird die Veröffentlichung fortsetzen.', payBaseUnavailable:'Zahlung ist noch nicht verfügbar. Bitte versuchen Sie es später erneut oder kontaktieren Sie PAP.', paySdkMissing:'Zahlungsmodul konnte nicht geladen werden. Bitte Seite neu laden.', payLoginFirst:'Bitte zuerst anmelden, um zu zahlen.', payCompleteOptimistic:'Zahlung erhalten! Ihr Status wird nach Bestätigung aktualisiert.', payGenericError:'Beim Öffnen des Checkouts ist ein Fehler aufgetreten. Bitte erneut versuchen.' },
+  it:{ payBaseIntro:'Per confermare la pubblicazione, paga la tariffa base qui sotto.', payBaseFeeBtn:'Paga la tariffa base {amt}', payBasePaid:'Pagato · in attesa di pubblicazione', payBasePaidHint:'La tua tariffa base è stata confermata. PAP procederà con la pubblicazione.', payBaseUnavailable:'Il pagamento non è ancora disponibile. Riprova a breve o contatta PAP.', paySdkMissing:'Impossibile caricare il modulo di pagamento. Ricarica la pagina.', payLoginFirst:'Accedi prima di pagare.', payCompleteOptimistic:'Pagamento ricevuto! Lo stato si aggiornerà una volta confermato.', payGenericError:'Si è verificato un errore nell’apertura del checkout. Riprova a breve.' },
+  fr:{ payBaseIntro:'Pour confirmer la publication, veuillez payer les frais de base ci-dessous.', payBaseFeeBtn:'Payer les frais de base {amt}', payBasePaid:'Payé · en attente de publication', payBasePaidHint:'Vos frais de base ont été confirmés. PAP procédera à la publication.', payBaseUnavailable:'Le paiement n’est pas encore disponible. Réessayez bientôt ou contactez PAP.', paySdkMissing:'Le module de paiement n’a pas pu se charger. Veuillez rafraîchir la page.', payLoginFirst:'Veuillez vous connecter pour payer.', payCompleteOptimistic:'Paiement reçu ! Votre statut sera mis à jour une fois confirmé.', payGenericError:'Une erreur est survenue à l’ouverture du paiement. Veuillez réessayer.' },
+  es:{ payBaseIntro:'Para confirmar la publicación, pague la tarifa base a continuación.', payBaseFeeBtn:'Pagar tarifa base {amt}', payBasePaid:'Pagado · pendiente de publicación', payBasePaidHint:'Su tarifa base ha sido confirmada. PAP procederá con la publicación.', payBaseUnavailable:'El pago aún no está disponible. Inténtelo de nuevo pronto o contacte con PAP.', paySdkMissing:'No se pudo cargar el módulo de pago. Actualice la página.', payLoginFirst:'Inicie sesión primero para pagar.', payCompleteOptimistic:'¡Pago recibido! Su estado se actualizará una vez confirmado.', payGenericError:'Ocurrió un error al abrir el pago. Inténtelo de nuevo pronto.' },
+  ja:{ payBaseIntro:'掲載を確定するには、以下から基本掲載料をお支払いください。', payBaseFeeBtn:'基本掲載料 {amt} を支払う', payBasePaid:'支払い完了 · 掲載待ち', payBasePaidHint:'基本掲載料の支払いが確認されました。PAPが掲載を進めます。', payBaseUnavailable:'決済はまだ利用できません。しばらくしてから再度お試しいただくか、PAPにお問い合わせください。', paySdkMissing:'決済モジュールの読み込みに失敗しました。ページを再読み込みしてください。', payLoginFirst:'お支払いには先にログインしてください。', payCompleteOptimistic:'お支払いを受け付けました！確認され次第ステータスが更新されます。', payGenericError:'決済画面を開く際に問題が発生しました。しばらくしてから再度お試しください。' },
+  zh:{ payBaseIntro:'如需确认刊登，请在下方支付基本刊登费。', payBaseFeeBtn:'支付基本刊登费 {amt}', payBasePaid:'已支付 · 等待刊登', payBasePaidHint:'您的基本刊登费已确认。PAP 将继续刊登。', payBaseUnavailable:'支付暂未开放。请稍后重试或联系 PAP。', paySdkMissing:'支付模块加载失败。请刷新页面。', payLoginFirst:'请先登录再支付。', payCompleteOptimistic:'已收到付款！确认后状态将更新。', payGenericError:'打开支付时出错。请稍后重试。' },
+  ru:{ payBaseIntro:'Чтобы подтвердить публикацию, оплатите базовый сбор ниже.', payBaseFeeBtn:'Оплатить базовый сбор {amt}', payBasePaid:'Оплачено · ожидает публикации', payBasePaidHint:'Ваш базовый сбор подтверждён. PAP приступит к публикации.', payBaseUnavailable:'Оплата пока недоступна. Повторите попытку позже или свяжитесь с PAP.', paySdkMissing:'Не удалось загрузить платёжный модуль. Обновите страницу.', payLoginFirst:'Войдите, чтобы оплатить.', payCompleteOptimistic:'Платёж получен! Статус обновится после подтверждения.', payGenericError:'Произошла ошибка при открытии оплаты. Повторите попытку позже.' }
+};
+// Resolve a payment i18n key against the current pap-lang (English fallback),
+// interpolating {amt}. Kept separate from _t/L so this DRAFT copy stays isolated.
+function _payT(k,amt){
+  var lang; try{ lang = localStorage.getItem('pap-lang')||'en'; }catch(_){ lang='en'; }
+  var d = _PAY_I18N[lang] || _PAY_I18N.en;
+  var s = (d && d[k]) || (_PAY_I18N.en && _PAY_I18N.en[k]) || k;
+  if(amt) s = s.replace(/\{amt\}/g, amt);
+  return s;
+}
+// Build the approval-block base-fee sub-block. Returns '' for free / legacy /
+// unknown types (safe no-op). Pure string builder — no side effects.
+//   paid_few_looks → €345 · branded → €720
+function _baseFeeApprovalBlock(submissionId, submissionType, paymentStatus){
+  if(submissionType!=='paid_few_looks' && submissionType!=='branded') return '';
+  var amt = submissionType==='branded' ? '€720' : '€345';
+  // 이미 결제됨(서버 payment_status) 또는 이번 세션에서 방금 결제 완료(로컬 잠금 플래그)
+  // → 버튼 대신 '결제 완료 · 게재 대기' 상태. 로컬 플래그는 checkout.completed 시 설정되어
+  //   같은 세션에서 모달을 다시 열어도 버튼이 재노출되지 않게 한다(이중청구 방지).
+  var _locallyPaid=false;
+  try{ _locallyPaid = !!(window._papSubFeePaidLocal && window._papSubFeePaidLocal[submissionId]); }catch(_){}
+  if(paymentStatus==='paid' || _locallyPaid){
+    return _baseFeePaidHtml();
+  }
+  // 미결제 → Paddle 오버레이 버튼. onclick 인자는 UUID + 고정 유형값이라 안전.
+  // 컨테이너/버튼에 id 부여 → checkout.completed 콜백이 이 박스를 즉시 '결제 완료'로 교체.
+  return '<div id="_baseFeeBox_'+submissionId+'" style="margin:0 0 16px;padding:16px 18px;background:rgba(201,168,106,.06);border:1px solid rgba(201,168,106,.35);border-radius:2px">'+
+           '<div style="font-size:12px;color:rgba(255,255,255,.8);margin-bottom:12px">'+_payT('payBaseIntro')+'</div>'+
+           '<button type="button" id="_baseFeeBtn_'+submissionId+'" onclick="payBaseFee(\''+submissionId+'\',\''+submissionType+'\')" '+
+             'style="display:inline-block;background:#c9a86a;color:#000;border:none;padding:13px 30px;font-size:12px;font-weight:700;letter-spacing:.08em;cursor:pointer;border-radius:2px">'+
+             _payT('payBaseFeeBtn', amt)+'</button>'+
+         '</div>';
+}
+// Green '결제 완료 · 게재 대기' state — reused by the approval block (paid) and by
+// the checkout.completed lock (session-level double-charge guard).
+function _baseFeePaidHtml(){
+  return '<div style="margin:0 0 16px;padding:14px 16px;background:rgba(100,200,150,.08);border:1px solid rgba(100,200,150,.35);border-radius:2px">'+
+           '<div style="font-size:12px;font-weight:700;color:rgba(120,220,160,.95);letter-spacing:.04em;margin-bottom:4px">✓ '+_payT('payBasePaid')+'</div>'+
+           '<div style="font-size:12px;color:rgba(255,255,255,.6)">'+_payT('payBasePaidHint')+'</div>'+
+         '</div>';
+}
+// Lock a submission's base-fee button after a completed checkout — sets the
+// session paid flag and swaps the button box for the paid state so a second
+// click can't open a second Paddle transaction (real re-charge). Webhook
+// idempotency protects the DB; this protects the wallet within the session.
+function _lockBaseFeeButton(submissionId){
+  if(!submissionId) return;
+  try{ window._papSubFeePaidLocal = window._papSubFeePaidLocal || {}; window._papSubFeePaidLocal[submissionId]=true; }catch(_){}
+  try{
+    var box=document.getElementById('_baseFeeBox_'+submissionId);
+    if(box) box.outerHTML=_baseFeePaidHtml();
+  }catch(_){}
+}
+// Open the Paddle checkout overlay for a submission's base fee.
+// Mirrors pap-api.js checkoutIntl pattern: paddle-config → Paddle.Initialize →
+// Paddle.Checkout.open. customData.kind='submission_fee' 로 웹훅(키퍼)이 처리.
+async function payBaseFee(submissionId, submissionType){
+  try{
+    if(typeof Paddle==='undefined'){
+      if(typeof PAP!=='undefined') PAP.ui.toast(_payT('paySdkMissing'),'error');
+      return;
+    }
+    // 이중청구 방지 — 이번 세션에서 이미 결제 완료된 서브미션이면 오버레이를 다시 열지 않는다.
+    // (웹훅 멱등은 DB 중복만 막고 실제 2번째 tx=재청구는 못 막으므로 클릭 진입점에서 차단.)
+    try{
+      if(window._papSubFeePaidLocal && window._papSubFeePaidLocal[submissionId]){
+        if(typeof PAP!=='undefined') PAP.ui.toast(_payT('payBasePaidHint'),'success');
+        _lockBaseFeeButton(submissionId);
+        return;
+      }
+    }catch(_){}
+    var user=null;
+    try{ user = (window.PAP&&PAP.auth&&PAP.auth.getUser)?PAP.auth.getUser():null; }catch(_){}
+    if(!user||!user.id){
+      if(typeof PAP!=='undefined') PAP.ui.toast(_payT('payLoginFirst'),'error');
+      return;
+    }
+    // paddle-config 소비 — clientToken + submissionFees{paid_few_looks,branded}.
+    // 계약 정합(2026-07-19): 키퍼 paddle-config 응답 키는 `submissionFees` (과업 지시서의
+    // 가정 `submissionFeePrices`가 아님). 실제 키에 맞춤. 키 없으면 안전 처리.
+    var cfg=null;
+    try{ cfg = await fetch('/api/subscriptions/paddle-config',{headers:{'X-Requested-With':'XMLHttpRequest'}}).then(function(r){return r.ok?r.json():null;}); }catch(_){}
+    if(!cfg || !cfg.clientToken){
+      if(typeof PAP!=='undefined') PAP.ui.toast(_payT('payBaseUnavailable'),'error');
+      return;
+    }
+    var fees = cfg.submissionFees || cfg.submissionFeePrices || {};
+    var priceId = fees[submissionType] || '';
+    if(!priceId){
+      // 도메니코 Paddle 미설정(price ID 없음) → 안내 후 중단 (버튼 안전 처리).
+      if(typeof PAP!=='undefined') PAP.ui.toast(_payT('payBaseUnavailable'),'error');
+      return;
+    }
+    if(!window._papPaddleInitSub){
+      if(cfg.environment==='sandbox'){ try{ Paddle.Environment.set('sandbox'); }catch(_){} }
+      Paddle.Initialize({
+        token: cfg.clientToken,
+        eventCallback: function(ev){
+          // 확정은 webhook(payment_status=paid)이 담당 — 여기선 낙관적 안내 + 세션 잠금.
+          if(ev && ev.name==='checkout.completed'){
+            // 완료된 결제의 submission_id 를 event custom_data 로 식별(폴백: 마지막 in-flight).
+            var _sid='';
+            try{ _sid = (ev.data && ev.data.custom_data && ev.data.custom_data.submission_id) || ''; }catch(_){}
+            if(!_sid){ try{ _sid = window._papSubFeeInFlight || ''; }catch(_){ _sid=''; } }
+            // 버튼 잠금 + 세션 paid 플래그 → 같은 세션 재클릭으로 2번째 tx(재청구) 방지.
+            if(_sid) _lockBaseFeeButton(_sid);
+            try{ if(window.PAP&&PAP.ui&&PAP.ui.toast) PAP.ui.toast(_payT('payCompleteOptimistic'),'success'); }catch(_){}
+          }
+        }
+      });
+      window._papPaddleInitSub=true;
+    }
+    // checkout.completed 콜백이 잠글 대상을 식별할 수 있게 in-flight submission_id 기록.
+    try{ window._papSubFeeInFlight = submissionId; }catch(_){}
+    Paddle.Checkout.open({
+      items:[{ priceId: priceId, quantity:1 }],
+      customer: user.email?{ email:user.email }:undefined,
+      customData:{ submission_id:submissionId, submission_type:submissionType, user_id:user.id, kind:'submission_fee' },
+      settings:{ displayMode:'overlay', theme:'dark', locale:(function(){try{return localStorage.getItem('pap-lang')||'en';}catch(_){return 'en';}})() }
+    });
+  }catch(e){
+    console.error('payBaseFee error:',e);
+    try{ if(typeof PAP!=='undefined') PAP.ui.toast(_payT('payGenericError'),'error'); }catch(_){}
   }
 }
 
