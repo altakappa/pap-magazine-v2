@@ -12,17 +12,20 @@
  *
  *   '{TITLE}' — PAP 매거진 exclusive editorial
  *
- *   {KR 단락}(끝에 "전체 스토리는 프로필 링크에서." 자동 보장)
+ *   {KR 단락}
  *
  *   {Role} @handle                             ← 한 줄에 하나
  *   …
  *   Starring @model @agency
  *
- *   더 많은 에디토리얼 보기 | @pap_magazine | For more editorials
+ *   FOR MORE EDITORIALS | @pap_magazine
  *
  *   (EN) {영어 단락}
  *
  *   (IT) {이탈리아어 단락}
+ *
+ *   Full Story link🔎 <Screenshot and copy-paste>   ← slug 있으면
+ *   https://www.pap-magazine.com/editorial/<slug>
  *
  *   Fashion by @brand1 @brand2 …
  *
@@ -54,6 +57,7 @@ function _titleTag(title) {
  * @param {string[]} [p.starring]      ['@model', '@agency', …]
  * @param {string[]} [p.brandHandles]  ['@brand1', …]
  * @param {string}   [p.moodTag]       AI가 뽑은 한국어 무드 태그 1개 (# 없이)
+ * @param {string}   [p.slug]          에디토리얼 슬러그 (Full Story link URL: /editorial/<slug>)
  */
 function buildPapIgCaption(p) {
   const title = String(p.title || '').trim();
@@ -67,14 +71,9 @@ function buildPapIgCaption(p) {
   lines.push(`'${title}' — PAP 매거진 exclusive editorial`);
   lines.push('');
 
-  // 3) KR 단락 — 프로필 링크 유도 문장 보장
-  let descKo = String(p.descKo || '').trim();
+  // 3) KR 단락 (전체 스토리 유도는 하단 "Full Story link" 블록으로 이관)
+  const descKo = String(p.descKo || '').trim();
   if (descKo) {
-    if (!/프로필 링크/.test(descKo)) {
-      descKo = descKo.replace(/\s+$/, '');
-      if (!/[.!?…」』"']$/.test(descKo)) descKo += '.';
-      descKo += ' 전체 스토리는 프로필 링크에서.';
-    }
     lines.push(descKo);
     lines.push('');
   }
@@ -87,7 +86,7 @@ function buildPapIgCaption(p) {
   if (creditLines.length || starring.length) lines.push('');
 
   // 5) 구분선
-  lines.push(`더 많은 에디토리얼 보기 | ${HOUSE_HANDLE} | For more editorials`);
+  lines.push(`FOR MORE EDITORIALS | ${HOUSE_HANDLE}`);
   lines.push('');
 
   // 6) EN / IT
@@ -96,18 +95,26 @@ function buildPapIgCaption(p) {
   if (descEn) { lines.push('(EN) ' + descEn); lines.push(''); }
   if (descIt) { lines.push('(IT) ' + descIt); lines.push(''); }
 
-  // 7) Fashion by
+  // 7) Full Story link — 프로필 링크 대신 에디토리얼 상세 URL 직접 노출.
+  const slug = String(p.slug || '').trim();
+  if (slug) {
+    lines.push('Full Story link🔎 <Screenshot and copy-paste>');
+    lines.push('https://www.pap-magazine.com/editorial/' + slug);
+    lines.push('');
+  }
+
+  // 8) Fashion by
   const brands = Array.isArray(p.brandHandles) ? p.brandHandles.filter(Boolean) : [];
   if (brands.length) { lines.push('Fashion by ' + brands.join(' ')); lines.push(''); }
 
-  // 8) 해시태그 — 정확히 5개, 줄바꿈 구분.
+  // 9) 해시태그 — 정확히 5개, 줄바꿈 구분.
   //    고정 2(#패션화보 #에디토리얼) + 무드 1(AI) or 제목 태그 + 영문 2.
   const tags = ['패션화보', '에디토리얼'];
   const mood = String(p.moodTag || '').replace(/^#/, '').trim();
   if (mood && tags.indexOf(mood) === -1) tags.push(mood);
   const tt = _titleTag(title);
   if (tags.length < 3 && tt) tags.push(tt);
-  tags.push('FASHIONEDITORIAL', 'PAPMAGAZINE');
+  tags.push('FASHIONEDITORIAL', 'papmagazine');
   lines.push(tags.slice(0, 5).map((t) => '#' + t).join('\n'));
 
   return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();

@@ -311,6 +311,7 @@ function _buildInstagramCaption(desc, title, opts) {
     moodTag: (opts && opts.moodTag) || '',
     descKo, descEn, descIt,
     creditLines, starring, brandHandles,
+    slug: (opts && opts.slug) || _slugifyForUrl(title),
   });
 }
 

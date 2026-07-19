@@ -6065,13 +6065,9 @@ function _buildIgCaptionFromEditorial(ed){
   lines.push("'" + title + "' — PAP 매거진 exclusive editorial");
   lines.push('');
 
-  // 2) KR 단락 — 프로필 링크 유도 문장 보장
+  // 2) KR 단락 (전체 스토리 유도는 하단 Full Story link 블록으로 이관)
   var descKo = (ed.description||'').trim();
   if(descKo){
-    if(descKo.indexOf('프로필 링크') === -1){
-      if(!/[.!?…"']$/.test(descKo)) descKo += '.';
-      descKo += ' 전체 스토리는 프로필 링크에서.';
-    }
     lines.push(descKo);
     lines.push('');
   }
@@ -6082,7 +6078,7 @@ function _buildIgCaptionFromEditorial(ed){
   if(creditLines.length || modelParts.length) lines.push('');
 
   // 4) 구분선
-  lines.push('더 많은 에디토리얼 보기 | ' + _IG_HOUSE_HANDLE + ' | For more editorials');
+  lines.push('FOR MORE EDITORIALS | ' + _IG_HOUSE_HANDLE);
   lines.push('');
 
   // 5) EN / IT
@@ -6091,14 +6087,22 @@ function _buildIgCaptionFromEditorial(ed){
   if(descEn){ lines.push('(EN) ' + descEn); lines.push(''); }
   if(descIt){ lines.push('(IT) ' + descIt); lines.push(''); }
 
-  // 6) Fashion by
+  // 6) Full Story link — slug 있으면 상세 URL 직접 노출 (서버 빌더와 동일).
+  var _fsSlug = String(ed.slug||'').trim();
+  if(_fsSlug){
+    lines.push('Full Story link🔎 <Screenshot and copy-paste>');
+    lines.push('https://www.pap-magazine.com/editorial/' + _fsSlug);
+    lines.push('');
+  }
+
+  // 7) Fashion by
   if(brandHandles.length){ lines.push('Fashion by ' + brandHandles.join(' ')); lines.push(''); }
 
-  // 7) 해시태그 — 정확히 5개, 줄바꿈 구분 (2025.12 정책: 캡션+댓글 합산 최대 5)
+  // 8) 해시태그 — 정확히 5개, 줄바꿈 구분 (2025.12 정책: 캡션+댓글 합산 최대 5)
   var tags = ['패션화보','에디토리얼'];
   var tt = title.replace(/[^A-Za-z0-9가-힣]/g,'').toUpperCase();
   if(tt.length >= 2 && tt.length <= 30) tags.push(tt);
-  tags.push('FASHIONEDITORIAL','PAPMAGAZINE');
+  tags.push('FASHIONEDITORIAL','papmagazine');
   lines.push(tags.slice(0,5).map(function(t){ return '#'+t; }).join('\n'));
 
   return lines.join('\n').replace(/\n{3,}/g,'\n\n').trim();

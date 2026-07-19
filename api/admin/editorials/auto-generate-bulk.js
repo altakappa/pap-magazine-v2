@@ -106,6 +106,7 @@ function _buildCaption(ed, descKr, descEn, descIt, extra) {
     creditLines,
     starring: starringParts,
     brandHandles,
+    slug: (ed && ed.slug) || _slugify(title),
   });
 }
 
