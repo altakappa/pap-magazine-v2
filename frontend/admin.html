@@ -338,6 +338,11 @@ tr:hover td{background:rgba(0,0,0,.02)}
 .pe-gallery-item.is-excluded .pe-gallery-del{opacity:1;background:rgba(60,150,80,.9);font-size:14px}
 .pe-gallery-item.is-excluded .pe-gallery-thumb,
 .pe-gallery-item.is-excluded .pe-gallery-cover{display:none}
+/* 🟦 부분 모자이크 버튼 — 우하단, ★(right:2)·◆(right:28) 옆 right:54 */
+.pe-gallery-item .pe-gallery-mosaic{position:absolute;bottom:2px;right:54px;width:22px;height:22px;background:rgba(0,0,0,.55);color:rgba(255,255,255,.7);border:none;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s,background .2s;z-index:2;border-radius:2px;line-height:1;padding:0;font-family:inherit}
+.pe-gallery-item:hover .pe-gallery-mosaic{opacity:1}
+.pe-gallery-item .pe-gallery-mosaic:hover{background:rgba(0,0,0,.85)}
+.pe-gallery-item.is-excluded .pe-gallery-mosaic{display:none}
 .pe-gallery-item .pe-tag-thumb,
 .pe-gallery-item .pe-tag-cover{position:absolute;right:2px;font-size:8px;font-weight:800;letter-spacing:.1em;padding:2px 5px;border-radius:2px;z-index:2;line-height:1;display:none}
 .pe-gallery-item .pe-tag-cover{top:2px;background:#4dabf7;color:#fff}
@@ -3622,7 +3627,33 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
      mock 시절 번들을 계속 캐시 → '+새 이미지' 클릭 시 "실제 운영 시
      S3에 업로드됩니다" 구형 alert 가 재현. pap-admin.js 를 수정하는
      커밋은 반드시 이 파라미터를 함께 올릴 것. -->
-<script src="/pap-admin.js?v=104" defer></script>
+<!-- 🟦 부분 모자이크 에디터 (Feature ③) — 화보 이미지의 특정 영역만
+     픽셀화한 검열본을 canvas 로 구워 업로드하고 해당 화보 URL 을 교체.
+     원본은 서버에서 삭제하지 않음(참조만 교체). -->
+<div id="mosaicModal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.85);align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)closeMosaicEditor()">
+  <div style="background:var(--surface,#111);border:1px solid var(--border,#333);border-radius:8px;max-width:860px;width:96%;max-height:92vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border,#333);display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:14px;font-weight:600;color:var(--text,#fff)">🟦 부분 모자이크 — 가릴 영역을 드래그하세요</span>
+      <button class="btn btn-sm" type="button" onclick="closeMosaicEditor()">×</button>
+    </div>
+    <div style="flex:1;overflow:auto;padding:14px;text-align:center;background:#0a0a0a">
+      <canvas id="mosaicCanvas" style="max-width:100%;touch-action:none;cursor:crosshair;outline:1px dashed rgba(255,255,255,.2)"></canvas>
+    </div>
+    <div style="padding:12px 16px;border-top:1px solid var(--border,#333);display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <label style="font-size:12px;color:var(--text2,#bbb);display:flex;align-items:center;gap:6px">모자이크 강도
+        <input type="range" id="mosaicStrength" min="6" max="48" step="2" value="18" style="width:120px">
+        <strong id="mosaicStrengthLabel" style="color:var(--text,#fff);font-size:11px">18</strong>
+      </label>
+      <button class="btn btn-sm" type="button" onclick="mosaicUndo()">↩ 마지막 영역</button>
+      <button class="btn btn-sm" type="button" onclick="mosaicClearRects()">전체 지우기</button>
+      <span id="mosaicStatus" style="font-size:11px;color:var(--text3,#888);flex:1;min-width:120px"></span>
+      <button class="btn btn-sm" type="button" onclick="closeMosaicEditor()">취소</button>
+      <button id="mosaicApplyBtn" class="btn btn-sm btn-primary" type="button" onclick="applyMosaic()">✅ 적용 + 저장</button>
+    </div>
+    <div style="padding:8px 16px 14px;font-size:11px;color:var(--text3,#888);border-top:1px solid var(--border,#222)">지정한 영역만 픽셀화된 <strong>검열본이 새 이미지로 업로드</strong>되어 이 화보를 대체합니다. 원본 파일은 서버에서 삭제되지 않습니다. 드래그로 여러 영역 지정 가능 · 적용 후 "저장"을 눌러야 발행본에 반영됩니다.</div>
+  </div>
+</div>
+<script src="/pap-admin.js?v=105" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>

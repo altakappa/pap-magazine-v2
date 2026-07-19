@@ -4033,6 +4033,7 @@ function addGallery(input){
         + '<button class="pe-gallery-del" onclick="removeGalleryImg('+num+')" title="이 이미지를 발행에서 제외 (실제 삭제는 아님)">×</button>'
         + '<button class="pe-gallery-thumb" onclick="event.stopPropagation();setGalleryThumb('+num+')" title="썸네일로 지정 (홈 카드 작은 이미지)" aria-label="썸네일로 지정">★</button>'
         + '<button class="pe-gallery-cover" onclick="event.stopPropagation();setGalleryCover('+num+')" title="커버로 사용 (에디토리얼 최상단 · 매거진 커버 합성 소스)" aria-label="커버로 사용">◆</button>'
+        + '<button class="pe-gallery-mosaic" onclick="event.stopPropagation();openMosaicEditor('+num+')" title="부분 모자이크 (외설 부분만 가리기)" aria-label="부분 모자이크">🟦</button>'
         + '<span class="pe-tag-thumb">THUMB</span>'
         + '<span class="pe-tag-cover">COVER</span>'
         + '<span class="pe-gallery-num">#'+num+'</span>';
@@ -6683,6 +6684,7 @@ async function editEditorial(id){
           +'<button class="pe-gallery-del" onclick="removeGalleryImg('+galleryCount+')" title="이 이미지를 발행에서 제외 (실제 삭제는 아님)">×</button>'
           +'<button class="pe-gallery-thumb" onclick="event.stopPropagation();setGalleryThumb('+galleryCount+')" title="썸네일로 지정 (홈 카드 작은 이미지)" aria-label="썸네일로 지정">★</button>'
           +'<button class="pe-gallery-cover" onclick="event.stopPropagation();setGalleryCover('+galleryCount+')" title="커버로 사용 (에디토리얼 최상단 · 매거진 커버 합성 소스)" aria-label="커버로 사용">◆</button>'
+          +'<button class="pe-gallery-mosaic" onclick="event.stopPropagation();openMosaicEditor('+galleryCount+')" title="부분 모자이크 (외설 부분만 가리기)" aria-label="부분 모자이크">🟦</button>'
           +'<span class="pe-tag-thumb">THUMB</span>'
           +'<span class="pe-tag-cover">COVER</span>'
           +'<span class="pe-gallery-num">#'+galleryCount+'</span>';
@@ -9754,6 +9756,204 @@ async function papCoverConfirmAsCover(){
     alert('커버 확정 실패\n상세: ' + (e && e.message || e));
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = orig || '✅ 이 디자인을 커버로 확정'; }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 🟦 부분 모자이크 에디터 (Feature ③)
+// 화보 이미지의 특정 영역만 픽셀화한 "검열본"을 canvas 로 구워 uploadFile
+// 로 업로드하고, 해당 gallery 이미지의 URL 을 교체한다. 원본은 서버에서
+// 삭제하지 않음(참조만 교체) → 공개되는 건 검열본 URL 뿐이라 개발자도구로도
+// 원본(외설 부분)이 노출되지 않는다. 저장(savePost) 시 교체된 URL 이
+// file_urls/gallery 로 반영된다.
+// ═══════════════════════════════════════════════════════════════
+var _mosaicNum = null;      // 대상 gallery 이미지 num
+var _mosaicImg = null;      // 로드된 원본 Image
+var _mosaicRects = [];      // 지정 영역들 (표시 canvas 좌표계)
+var _mosaicDrawing = false;
+var _mosaicStart = null;    // {x,y}
+var _mosaicCur = null;      // 드래그 중 임시 rect
+var _mosaicDispScale = 1;   // naturalW / displayW
+var _mosaicWired = false;
+
+function _mosaicLoadImage(url){
+  return new Promise(function(res, rej){
+    var im = new Image();
+    im.crossOrigin = 'anonymous';
+    im.onload  = function(){ res(im); };
+    im.onerror = function(){ rej(new Error('이미지 로드 실패 (CORS?)')); };
+    im.src = url;
+  });
+}
+
+async function openMosaicEditor(num){
+  var g = galleryImages.find(function(x){ return x.num === num; });
+  if(!g){ alert('이미지를 찾을 수 없습니다.'); return; }
+  _mosaicNum = num;
+  _mosaicRects = [];
+  _mosaicDrawing = false; _mosaicStart = null; _mosaicCur = null;
+  var modal  = document.getElementById('mosaicModal');
+  var canvas = document.getElementById('mosaicCanvas');
+  var status = document.getElementById('mosaicStatus');
+  if(status) status.textContent = '이미지 로딩 중…';
+  if(modal) modal.style.display = 'flex';
+  try{
+    var img = await _mosaicLoadImage(g.src);
+    _mosaicImg = img;
+    // 표시 크기: 가로 최대 760px 로 스케일다운.
+    var dispW = Math.min(img.naturalWidth || 760, 760);
+    var dispH = Math.round((img.naturalHeight || dispW) * (dispW / (img.naturalWidth || dispW)));
+    canvas.width = dispW; canvas.height = dispH;
+    _mosaicDispScale = (img.naturalWidth || dispW) / dispW;
+    _mosaicWireCanvas(canvas);
+    _mosaicRedraw();
+    if(status) status.textContent = '가릴 영역을 드래그하세요 (여러 개 가능)';
+  }catch(e){
+    if(status) status.textContent = '❌ ' + (e && e.message || e);
+    alert('이미지를 불러오지 못했습니다: ' + (e && e.message || e));
+  }
+}
+
+function closeMosaicEditor(){
+  var modal = document.getElementById('mosaicModal');
+  if(modal) modal.style.display = 'none';
+  _mosaicImg = null; _mosaicRects = []; _mosaicNum = null;
+  _mosaicDrawing = false; _mosaicStart = null; _mosaicCur = null;
+}
+
+function _mosaicWireCanvas(canvas){
+  var strength = document.getElementById('mosaicStrength');
+  var slabel   = document.getElementById('mosaicStrengthLabel');
+  if(strength && !strength._mosaicWired){
+    strength.addEventListener('input', function(){
+      if(slabel) slabel.textContent = strength.value;
+      _mosaicRedraw();
+    });
+    strength._mosaicWired = true;
+  }
+  if(_mosaicWired) return;
+  _mosaicWired = true;
+  function pos(e){
+    var r = canvas.getBoundingClientRect();
+    var src = (e.touches && e.touches[0]) ? e.touches[0] : e;
+    var cx = src.clientX - r.left, cy = src.clientY - r.top;
+    var sx = canvas.width / r.width, sy = canvas.height / r.height;
+    return { x: Math.max(0, Math.min(canvas.width,  cx*sx)),
+             y: Math.max(0, Math.min(canvas.height, cy*sy)) };
+  }
+  canvas.addEventListener('mousedown', function(e){ e.preventDefault(); _mosaicStart = pos(e); _mosaicDrawing = true; });
+  canvas.addEventListener('mousemove', function(e){ if(!_mosaicDrawing) return; _mosaicCur = _mosaicRectFrom(_mosaicStart, pos(e)); _mosaicRedraw(); });
+  window.addEventListener('mouseup', function(){
+    if(!_mosaicDrawing) return;
+    _mosaicDrawing = false;
+    if(_mosaicCur && _mosaicCur.w > 4 && _mosaicCur.h > 4) _mosaicRects.push(_mosaicCur);
+    _mosaicCur = null; _mosaicStart = null; _mosaicRedraw();
+  });
+  canvas.addEventListener('touchstart', function(e){ e.preventDefault(); _mosaicStart = pos(e); _mosaicDrawing = true; }, {passive:false});
+  canvas.addEventListener('touchmove',  function(e){ e.preventDefault(); if(!_mosaicDrawing) return; _mosaicCur = _mosaicRectFrom(_mosaicStart, pos(e)); _mosaicRedraw(); }, {passive:false});
+  canvas.addEventListener('touchend',   function(){ if(!_mosaicDrawing) return; _mosaicDrawing=false; if(_mosaicCur&&_mosaicCur.w>4&&_mosaicCur.h>4)_mosaicRects.push(_mosaicCur); _mosaicCur=null; _mosaicStart=null; _mosaicRedraw(); });
+}
+
+function _mosaicRectFrom(a, b){
+  return { x: Math.min(a.x,b.x), y: Math.min(a.y,b.y), w: Math.abs(b.x-a.x), h: Math.abs(b.y-a.y) };
+}
+
+function _mosaicReadBlock(){
+  var el = document.getElementById('mosaicStrength');
+  var v = el ? parseInt(el.value, 10) : 18;
+  return isNaN(v) ? 18 : Math.max(4, v);
+}
+
+function _mosaicRedraw(){
+  var canvas = document.getElementById('mosaicCanvas');
+  if(!canvas || !_mosaicImg) return;
+  var ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(_mosaicImg, 0, 0, canvas.width, canvas.height);
+  // 확정된 영역 = 실제 픽셀화 미리보기(표시 스케일에 맞춘 블록)
+  var dispBlock = Math.max(3, Math.round(_mosaicReadBlock() / _mosaicDispScale));
+  _mosaicRects.forEach(function(r){ _pixelateRect(ctx, r.x, r.y, r.w, r.h, dispBlock); });
+  // 드래그 중 임시 영역 = 파란 오버레이
+  if(_mosaicCur){
+    ctx.save();
+    ctx.fillStyle = 'rgba(31,111,235,.35)';
+    ctx.strokeStyle = 'rgba(31,111,235,.95)';
+    ctx.lineWidth = 2;
+    ctx.fillRect(_mosaicCur.x, _mosaicCur.y, _mosaicCur.w, _mosaicCur.h);
+    ctx.strokeRect(_mosaicCur.x, _mosaicCur.y, _mosaicCur.w, _mosaicCur.h);
+    ctx.restore();
+  }
+}
+
+// 지정 영역을 블록 단위로 픽셀화. ctx 에 이미 그려진 픽셀을 축소→확대해
+// 블록모자이크를 만든다(같은 canvas 를 소스로 읽는 것은 허용됨).
+function _pixelateRect(ctx, x, y, w, h, block){
+  x=Math.round(x); y=Math.round(y); w=Math.round(w); h=Math.round(h);
+  if(w<1||h<1) return;
+  var sw = Math.max(1, Math.round(w/block));
+  var sh = Math.max(1, Math.round(h/block));
+  var tmp = document.createElement('canvas');
+  tmp.width = sw; tmp.height = sh;
+  var tctx = tmp.getContext('2d');
+  tctx.imageSmoothingEnabled = true;
+  tctx.drawImage(ctx.canvas, x, y, w, h, 0, 0, sw, sh);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(tmp, 0, 0, sw, sh, x, y, w, h);
+  ctx.imageSmoothingEnabled = true;
+}
+
+function mosaicUndo(){ _mosaicRects.pop(); _mosaicRedraw(); }
+function mosaicClearRects(){ _mosaicRects = []; _mosaicRedraw(); }
+
+async function applyMosaic(){
+  if(!_mosaicImg) return;
+  if(!_mosaicRects.length){ alert('가릴 영역을 최소 1개 이상 드래그해주세요.'); return; }
+  var g = galleryImages.find(function(x){ return x.num === _mosaicNum; });
+  if(!g){ alert('대상 이미지를 찾을 수 없습니다.'); return; }
+  var btn    = document.getElementById('mosaicApplyBtn');
+  var status = document.getElementById('mosaicStatus');
+  var orig = btn ? btn.textContent : '';
+  if(btn){ btn.disabled = true; btn.textContent = '처리 중…'; }
+  if(status) status.textContent = '검열본 합성 + 업로드 중…';
+  try{
+    // 원본 해상도로 검열본을 굽는다.
+    var full = document.createElement('canvas');
+    full.width  = _mosaicImg.naturalWidth  || _mosaicImg.width;
+    full.height = _mosaicImg.naturalHeight || _mosaicImg.height;
+    var fctx = full.getContext('2d');
+    fctx.drawImage(_mosaicImg, 0, 0, full.width, full.height);
+    var block = _mosaicReadBlock();
+    _mosaicRects.forEach(function(r){
+      // 표시 좌표 → 원본 좌표
+      _pixelateRect(fctx, r.x*_mosaicDispScale, r.y*_mosaicDispScale, r.w*_mosaicDispScale, r.h*_mosaicDispScale, block);
+    });
+    var blob = await new Promise(function(res, rej){
+      full.toBlob(function(b){ b ? res(b) : rej(new Error('이미지 변환 실패 (CORS tainted?)')); }, 'image/jpeg', 0.92);
+    });
+    var fname = 'mosaic-' + _mosaicNum + '-' + blob.size + '.jpg';
+    var file = new File([blob], fname, { type: 'image/jpeg' });
+    var url = await uploadFile(file);
+    // gallery 이미지 URL 교체 (원본은 서버에서 삭제하지 않음, 참조만 교체).
+    g.src = url; g.isUrl = true; g.file = null;
+    var card = document.querySelector('.pe-gallery-item[data-img-num="'+_mosaicNum+'"]');
+    if(card){ var im = card.querySelector('img'); if(im) im.src = url; }
+    // 이 이미지가 커버 소스였다면 커버 소스도 검열본으로 갱신.
+    if(galleryCoverNum === _mosaicNum){
+      _papCoverSourceUrl = url;
+      _papComposedCoverUrl = null;
+      var tb = document.getElementById('thumbUploadBox');
+      if(tb) tb.dataset.existingUrl = url;
+      if(typeof _papCoverScheduleLiveRender==='function') _papCoverScheduleLiveRender();
+    }
+    if(status) status.textContent = '✓ 완료';
+    closeMosaicEditor();
+    alert('모자이크 적용 완료 — 검열본이 이 화보를 대체했습니다.\n"저장"을 눌러야 발행본에 반영됩니다.');
+  }catch(e){
+    console.error('[mosaic] apply failed:', e);
+    if(status) status.textContent = '❌ ' + (e && e.message || e);
+    alert('모자이크 적용 실패\n상세: ' + (e && e.message || e));
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = orig || '✅ 적용 + 저장'; }
   }
 }
 
