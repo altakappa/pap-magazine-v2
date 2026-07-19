@@ -843,14 +843,14 @@ tr:hover td{background:rgba(0,0,0,.02)}
              변수/엘리먼트 ID(thumbInput, thumbUploadBox 등)는 변경 비용이 커서
              그대로 두지만, 사용자/저장 측면에서는 cover_image로 매핑된다. -->
         <div class="pe-section">
-          <div class="pe-label">커버 이미지 <span class="pe-opt">에디토리얼 최상단 노출</span></div>
+          <div class="pe-label">커버 이미지 <span class="pe-opt">화보에서 ◆ 선택 → 아래에서 커버 확정 · 최상단 노출</span></div>
           <div class="pe-upload" id="thumbUploadBox" onclick="document.getElementById('thumbInput').click()">
             <input type="file" id="thumbInput" accept="image/*" style="display:none" onchange="previewThumb(this)">
             <button type="button" class="pe-upload-x" onclick="event.stopPropagation();clearThumbnailInput()" aria-label="커버 이미지 제거">×</button>
             <div class="pe-upload-inner" id="thumbPreview">
               <div class="pe-upload-icon">📷</div>
-              <div class="pe-upload-text">클릭하여 이미지를 업로드하세요</div>
-              <div class="pe-upload-hint">JPG, PNG · 권장 1080×1350px</div>
+              <div class="pe-upload-text">아래 화보 이미지의 ◆ 를 눌러 커버 선택</div>
+              <div class="pe-upload-hint">직접 업로드하려면 여기 클릭 · 권장 1080×1350px</div>
             </div>
           </div>
         </div>
@@ -865,7 +865,8 @@ tr:hover td{background:rgba(0,0,0,.02)}
               <span>🖼️ <strong>형식</strong> JPG · PNG · WebP</span>
               <span>📐 <strong>표시</strong> 4:5 박스에 contain (비율 무관, 잘리지 않음)</span>
               <span>↕️ <strong>정렬</strong> 카드를 드래그하여 순서 변경</span>
-              <span style="color:#b86b00">⭐ <strong>썸네일(★)</strong> 홈 카드 작은 이미지 — 우측하단 ★ 클릭 (커버 이미지는 상단 영역에서 별도 업로드)</span>
+              <span style="color:#b86b00">⭐ <strong>썸네일(★)</strong> 홈 카드 작은 이미지 — 우측하단 ★ 클릭</span>
+              <span style="color:#1f6feb">◆ <strong>커버(◆)</strong> 에디토리얼 최상단 — ◆ 클릭 후 상단 커버 영역에서 "커버로 확정"</span>
             </div>
           </div>
           <div class="pe-gallery" id="galleryGrid">
@@ -951,7 +952,8 @@ tr:hover td{background:rgba(0,0,0,.02)}
             <span style="display:flex;gap:6px;flex-wrap:wrap">
               <!-- QA #270 — modal preview removed; live preview canvas in
                    the 🎛️ 고급 설정 panel makes a separate modal redundant. -->
-              <button class="btn btn-sm btn-primary" type="button" onclick="papCoverDownload()" title="고해상도 PNG 다운로드">⬇️ PNG 다운로드</button>
+              <button id="coverConfirmBtn" class="btn btn-sm btn-primary" type="button" onclick="papCoverConfirmAsCover()" title="아래 라이브 미리보기의 합성 커버를 업로드해 에디토리얼 최상단(hero) 이미지로 확정">✅ 이 디자인을 커버로 확정</button>
+              <button class="btn btn-sm" type="button" onclick="papCoverDownload()" title="고해상도 PNG 다운로드">⬇️ PNG</button>
             </span>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
@@ -981,7 +983,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
                  below it, so every drag is reflected in real time. -->
             <div style="margin-top:12px;padding:10px;background:#000;text-align:center;position:sticky;top:8px;z-index:2;border:1px solid var(--border)">
               <div style="font-size:11px;color:#aaa;margin-bottom:6px;text-align:left;display:flex;justify-content:space-between;align-items:center">
-                <span style="color:#fff">🔍 라이브 미리보기 <span style="color:#aaa">· 슬라이더 조정 시 즉시 반영</span></span>
+                <span style="color:#fff">🔍 라이브 미리보기 <span style="color:#aaa">· 커버 이미지·제목 있으면 자동 반영 (슬라이더 조정도 즉시 반영)</span></span>
                 <span id="coverLivePreviewStatus" style="font-size:10px;color:#aaa"></span>
               </div>
               <canvas id="coverLivePreviewCanvas" style="max-width:100%;max-height:360px;height:auto;display:inline-block;outline:1px dashed rgba(255,255,255,.2)"></canvas>
@@ -3620,7 +3622,7 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
      mock 시절 번들을 계속 캐시 → '+새 이미지' 클릭 시 "실제 운영 시
      S3에 업로드됩니다" 구형 alert 가 재현. pap-admin.js 를 수정하는
      커밋은 반드시 이 파라미터를 함께 올릴 것. -->
-<script src="/pap-admin.js?v=103" defer></script>
+<script src="/pap-admin.js?v=104" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>

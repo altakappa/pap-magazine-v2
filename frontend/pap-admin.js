@@ -3708,11 +3708,20 @@ function previewThumb(input){
   if(input.files&&input.files[0]){
     var reader=new FileReader();
     reader.onload=function(e){
-      document.getElementById('thumbPreview').innerHTML='<img loading="lazy" src="'+e.target.result+'" style="max-width:200px;max-height:250px;object-fit:cover"><div class="pe-upload-text" style="margin-top:8px">클릭하여 변경</div>';
+      document.getElementById('thumbPreview').innerHTML='<img loading="lazy" src="'+e.target.result+'" style="max-width:200px;max-height:250px;object-fit:cover"><div class="pe-upload-text" style="margin-top:8px">업로드됨 · 클릭하여 변경</div>';
       // Mark the wrapping .pe-upload as having a thumb so the X button
       // becomes visible (the X is hidden until is-current = true).
       var box=document.getElementById('thumbUploadBox');
       if(box) box.classList.add('has-thumb');
+      // 커버 선택 시스템 — 업로드는 "보조" 소스. 업로드한 파일이 커버
+      // 생성기의 소스가 되도록 data URL 을 기록하고, 갤러리 커버 선택은
+      // 해제한다. 이전에 확정된 합성 커버도 무효화(소스가 바뀌었으므로).
+      _papCoverSourceUrl = e.target.result;
+      galleryCoverNum = null;
+      _papComposedCoverUrl = null;
+      if(typeof _renderGalleryCoverState==='function') _renderGalleryCoverState();
+      if(typeof _papCoverEnsureLiveWired==='function') _papCoverEnsureLiveWired();
+      if(typeof _papCoverScheduleLiveRender==='function') _papCoverScheduleLiveRender();
     };
     reader.readAsDataURL(input.files[0]);
   }
@@ -3740,6 +3749,12 @@ function clearThumbnailInput(){
     // Wipe the stashed existing URL too — admin explicitly removed it.
     box.dataset.existingUrl = '';
   }
+  // 커버 선택 시스템 상태도 함께 초기화.
+  _papCoverSourceUrl = '';
+  galleryCoverNum = null;
+  _papComposedCoverUrl = null;
+  if(typeof _renderGalleryCoverState==='function') _renderGalleryCoverState();
+  if(typeof _papCoverScheduleLiveRender==='function') _papCoverScheduleLiveRender();
 }
 
 var galleryCount=0;
@@ -3749,11 +3764,20 @@ var galleryImages=[];
 // Defaults to null; the first uploaded image takes the role until
 // the admin picks something else. Stored as data-img-num so
 // reordering doesn't drift the selection.
-// (galleryCoverNum kept for back-compat with any stale code paths;
-//  no UI surfaces it any more — cover_image comes from the top
-//  단독 "커버 이미지" upload section, not gallery.)
+// (galleryCoverNum — 화보 갤러리에서 커버 SOURCE 로 고른 이미지의
+//  data-img-num. 커버 피커가 이 값을 채우고, 커버 생성기가 이 소스로
+//  매거진 커버를 합성한다. null 이면 첫 갤러리 이미지를 기본 소스로 사용.)
 var galleryThumbNum=null;
 var galleryCoverNum=null;
+
+// 커버 생성기(매거진 커버 합성)의 SOURCE 이미지 URL — data URL(업로드)
+// 또는 http URL(갤러리 선택). 결과물(합성 커버)과 분리해서 보관해야
+// 라이브 미리보기가 이미 합성된 이미지를 다시 합성(이중 오버레이)하지
+// 않는다.
+var _papCoverSourceUrl='';
+// "이 디자인을 커버로 확정" 클릭 시 업로드된 합성 매거진 커버 URL.
+// savePost 에서 cover_image(상세 hero)로 저장된다.
+var _papComposedCoverUrl=null;
 
 // ── Editorial gallery upload constants (admin-side validation) ──────────────
 // QA #94 — bumped from 500KB to 2MB to match the editorial-quality budget
@@ -4008,7 +4032,9 @@ function addGallery(input){
         // the editor isn't surprised by the card staying on screen.
         + '<button class="pe-gallery-del" onclick="removeGalleryImg('+num+')" title="이 이미지를 발행에서 제외 (실제 삭제는 아님)">×</button>'
         + '<button class="pe-gallery-thumb" onclick="event.stopPropagation();setGalleryThumb('+num+')" title="썸네일로 지정 (홈 카드 작은 이미지)" aria-label="썸네일로 지정">★</button>'
+        + '<button class="pe-gallery-cover" onclick="event.stopPropagation();setGalleryCover('+num+')" title="커버로 사용 (에디토리얼 최상단 · 매거진 커버 합성 소스)" aria-label="커버로 사용">◆</button>'
         + '<span class="pe-tag-thumb">THUMB</span>'
+        + '<span class="pe-tag-cover">COVER</span>'
         + '<span class="pe-gallery-num">#'+num+'</span>';
       grid.insertBefore(div, addBtn);
       _wireGalleryItemDrag(div);
@@ -4092,19 +4118,41 @@ function setGalleryThumb(num){
   galleryThumbNum = num;
   _renderGalleryCoverState();
 }
-// Stub kept for back-compat with any stale render path that might
-// still wire up a ◆ button; modern paths emit only ★ so this is
-// effectively dead code, but keeping it avoids ReferenceError if a
-// cached HTML chunk somewhere still calls it.
-function setGalleryCover(num){ /* no-op — ◆ removed from gallery */ }
+// 화보 갤러리에서 커버 SOURCE 이미지를 고른다(◆ 버튼). 고른 이미지를
+// 커버 생성기의 소스로 지정하고, 상단 "커버 이미지" 프리뷰에도 반영한
+// 뒤 라이브 미리보기를 즉시 다시 그린다(슬라이더를 건드릴 필요 없음).
+function setGalleryCover(num){
+  var hit = galleryImages.find(function(g){ return g.num===num; });
+  if(!hit) return;
+  galleryCoverNum = num;
+  _papCoverSourceUrl = hit.src;        // 생성기 소스 = 이 화보 이미지
+  _papComposedCoverUrl = null;         // 소스가 바뀌었으니 이전 확정 무효
+  var thumbPrev = document.getElementById('thumbPreview');
+  var thumbBox  = document.getElementById('thumbUploadBox');
+  if(thumbPrev){
+    thumbPrev.innerHTML = '<img loading="lazy" src="'+esc(hit.src)+'" style="max-width:200px;max-height:250px;object-fit:cover"><div class="pe-upload-text" style="margin-top:8px">화보에서 선택됨 · 아래에서 커버로 확정</div>';
+  }
+  if(thumbBox){
+    thumbBox.classList.add('has-thumb');
+    thumbBox.setAttribute('data-thumb-cleared','0');
+    // 미확정 상태로 저장하면 원본 화보 이미지를 커버로 사용(fallback).
+    thumbBox.dataset.existingUrl = hit.src;
+  }
+  // 갤러리 선택이 이겼으니 대기 중이던 업로드 파일은 비운다.
+  var thumbInput = document.getElementById('thumbInput');
+  if(thumbInput){ try{ thumbInput.value=''; }catch(_){} }
+  _renderGalleryCoverState();
+  if(typeof _papCoverEnsureLiveWired==='function') _papCoverEnsureLiveWired();
+  if(typeof _papCoverScheduleLiveRender==='function') _papCoverScheduleLiveRender();
+}
 
 function _renderGalleryCoverState(){
-  // Single render pass updates the ★ thumb class on every row so
-  // the visual outline + label always reflects current state.
+  // Single render pass updates the ★ thumb + ◆ cover class on every row
+  // so the visual outline + label always reflects current state.
   document.querySelectorAll('#galleryGrid .pe-gallery-item').forEach(function(el){
     var n = parseInt(el.getAttribute('data-img-num'),10);
     el.classList.toggle('is-thumb', n === galleryThumbNum);
-    el.classList.remove('is-cover'); // ◆ no longer in use
+    el.classList.toggle('is-cover', n === galleryCoverNum);
   });
 }
 
@@ -6611,6 +6659,9 @@ async function editEditorial(id){
 
   // Populate gallery
   galleryImages=[];galleryCount=0;galleryThumbNum=null;
+  // Reset cover-picker state so a previously-opened editorial's cover
+  // source doesn't leak into this one (esp. when this post has no gallery).
+  galleryCoverNum=null;_papCoverSourceUrl='';_papComposedCoverUrl=null;
   var grid=document.getElementById('galleryGrid');
   var addBtn=grid?grid.querySelector('.pe-gallery-add'):null;
   if(grid)grid.querySelectorAll('.pe-gallery-item').forEach(function(el){el.remove();});
@@ -6631,7 +6682,9 @@ async function editEditorial(id){
           // QA #182 — soft delete on the editorial edit path as well
           +'<button class="pe-gallery-del" onclick="removeGalleryImg('+galleryCount+')" title="이 이미지를 발행에서 제외 (실제 삭제는 아님)">×</button>'
           +'<button class="pe-gallery-thumb" onclick="event.stopPropagation();setGalleryThumb('+galleryCount+')" title="썸네일로 지정 (홈 카드 작은 이미지)" aria-label="썸네일로 지정">★</button>'
+          +'<button class="pe-gallery-cover" onclick="event.stopPropagation();setGalleryCover('+galleryCount+')" title="커버로 사용 (에디토리얼 최상단 · 매거진 커버 합성 소스)" aria-label="커버로 사용">◆</button>'
           +'<span class="pe-tag-thumb">THUMB</span>'
+          +'<span class="pe-tag-cover">COVER</span>'
           +'<span class="pe-gallery-num">#'+galleryCount+'</span>';
         grid.insertBefore(div,addBtn);
         if(typeof _wireGalleryItemDrag === 'function') _wireGalleryItemDrag(div);
@@ -6641,8 +6694,6 @@ async function editEditorial(id){
     // QA — restore the ★ THUMB (`thumbnail`) by matching the saved
     // URL against the loaded gallery items, falling back to the first
     // image so an old post with no thumb saved still gets one.
-    // ◆ COVER picker was removed — cover_image now lives in the top
-    // 커버 이미지 section (loaded into thumbPreview earlier).
     var savedThumbUrl = ed.thumbnail || '';
     if(savedThumbUrl){
       var thumbMatch = galleryImages.find(function(g){ return g.src === savedThumbUrl; });
@@ -6651,7 +6702,19 @@ async function editEditorial(id){
     if(galleryImages.length && galleryThumbNum===null){
       galleryThumbNum = galleryImages[0].num;
     }
+    // ◆ COVER picker (revived) — default the cover SOURCE to the first
+    // gallery image so the live 매거진 커버 미리보기 renders as soon as the
+    // editor opens (no slider nudge). The already-saved cover_image stays
+    // the hero in the DB until the editor re-confirms a new design; we
+    // never feed the (possibly already-composited) saved cover back into
+    // the generator, which would double-overlay the wordmark/title.
+    galleryCoverNum = galleryImages.length ? galleryImages[0].num : null;
+    _papCoverSourceUrl = galleryImages.length ? galleryImages[0].src : '';
+    _papComposedCoverUrl = null;
     _renderGalleryCoverState();
+    // Kick a first live render on open (always-visible preview).
+    if(typeof _papCoverEnsureLiveWired==='function') _papCoverEnsureLiveWired();
+    if(typeof _papCoverScheduleLiveRender==='function') setTimeout(_papCoverScheduleLiveRender, 300);
   }
 
   // Populate credits
@@ -9266,14 +9329,12 @@ function _papCoverReadFormMeta(){
     contributors = names.join(' ');
   }
 
-  // 5) Cover image: existing preview <img> in the thumb upload box
-  var coverUrl = '';
-  var thumbPrev = document.getElementById('thumbPreview');
-  if (thumbPrev) {
-    var img = thumbPrev.querySelector('img');
-    if (img && img.src) coverUrl = img.src;
-  }
-  // Fallback to first gallery image if no cover_image uploaded yet.
+  // 5) Cover SOURCE image for the composite. Uses the decoupled cover
+  //    source URL (set by the ◆ gallery picker or the 보조 업로드) so the
+  //    generator never re-composites an already-composited cover (which
+  //    would stack a second wordmark/title). Falls back to the first
+  //    gallery image so the preview still renders on a fresh open.
+  var coverUrl = _papCoverSourceUrl || '';
   if (!coverUrl) {
     var firstGalleryImg = document.querySelector('#galleryGrid .pe-gallery-item img');
     if (firstGalleryImg && firstGalleryImg.src) coverUrl = firstGalleryImg.src;
@@ -9633,6 +9694,66 @@ async function papCoverDownload(){
     console.error('[cover] download failed:', e);
     _papCoverSetStatus('❌ ' + (e && e.message || e), 'error');
     alert('다운로드 실패\n상세: ' + (e && e.message || e));
+  }
+}
+
+// "이 디자인을 커버로 확정" — 라이브 미리보기의 합성 매거진 커버를 실제
+// 이미지 파일로 구워 업로드하고, 그 URL 을 cover_image(에디토리얼 상세
+// 최상단 hero)로 채택한다. savePost 의 finalCover 는
+//   thumbUrl(신규 업로드) || existingCoverUrl(dataset) || finalThumb
+// 순이므로, 확정 시 대기 중인 업로드 파일을 비우고 dataset.existingUrl 에
+// 합성 커버 URL 을 심어 두면 저장 시 그 합성본이 hero 로 반영된다.
+async function papCoverConfirmAsCover(){
+  var meta = _papCoverReadFormMeta();
+  if (!meta.title) {
+    alert('에디토리얼 제목이 비어 있습니다. 먼저 제목을 입력해주세요.');
+    return;
+  }
+  if (!meta.coverUrl) {
+    alert('커버 이미지가 없습니다. 화보에서 커버로 쓸 이미지를 ◆ 버튼으로 먼저 선택해주세요.');
+    return;
+  }
+  var btn = document.getElementById('coverConfirmBtn');
+  var orig = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '확정 중…'; }
+  _papCoverSetStatus('커버 합성 + 업로드 중…');
+  try {
+    // Render at full 1080×1350 then upload the PNG blob via the shared
+    // media upload endpoint (same path gallery/thumbnail uploads use).
+    var canvas = document.createElement('canvas');
+    canvas.width  = _PAP_COVER_W;
+    canvas.height = _PAP_COVER_H;
+    await _papCoverComposite(canvas, meta);
+    var blob = await new Promise(function(res, rej){
+      canvas.toBlob(function(b){ b ? res(b) : rej(new Error('PNG 변환 실패 (CORS tainted?)')); }, 'image/png', 1);
+    });
+    var slug = (meta.title || 'cover').toLowerCase()
+      .replace(/[^a-z0-9가-힯 ]+/g, '').replace(/\s+/g, '-');
+    var file = new File([blob], slug + '-cover.png', { type: 'image/png' });
+    var url = await uploadFile(file);
+    _papComposedCoverUrl = url;
+    // Adopt as cover_image source for savePost.
+    var thumbBox  = document.getElementById('thumbUploadBox');
+    var thumbPrev = document.getElementById('thumbPreview');
+    if (thumbBox) {
+      thumbBox.classList.add('has-thumb');
+      thumbBox.setAttribute('data-thumb-cleared', '0');
+      thumbBox.dataset.existingUrl = url;
+    }
+    if (thumbPrev) {
+      thumbPrev.innerHTML = '<img loading="lazy" src="'+esc(url)+'" style="max-width:200px;max-height:250px;object-fit:cover"><div class="pe-upload-text" style="margin-top:8px">✅ 확정된 커버 — 저장 시 최상단 노출</div>';
+    }
+    // Clear any pending file upload so finalCover uses the composited URL,
+    // not a raw re-upload of thumbInput.files[0].
+    var ti = document.getElementById('thumbInput');
+    if (ti) { try { ti.value = ''; } catch(_){ } }
+    _papCoverSetStatus('✓ 커버 확정 완료 — 저장 시 최상단(hero) 이미지로 반영됩니다', 'ok');
+  } catch (e) {
+    console.error('[cover] confirm failed:', e);
+    _papCoverSetStatus('❌ ' + (e && e.message || e), 'error');
+    alert('커버 확정 실패\n상세: ' + (e && e.message || e));
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = orig || '✅ 이 디자인을 커버로 확정'; }
   }
 }
 
