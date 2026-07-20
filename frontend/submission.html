@@ -1301,9 +1301,12 @@ var _PAY_I18N = {
 // Resolve a payment i18n key against the current pap-lang (English fallback),
 // interpolating {amt}. Kept separate from _t/L so this DRAFT copy stays isolated.
 function _payT(k,amt){
-  var lang; try{ lang = localStorage.getItem('pap-lang')||'en'; }catch(_){ lang='en'; }
-  var d = _PAY_I18N[lang] || _PAY_I18N.en;
-  var s = (d && d[k]) || (_PAY_I18N.en && _PAY_I18N.en[k]) || k;
+  // 2026-07-20 (도메니코 지시) — 승인 안내문(영문)과 결제 UI가 언어 혼용으로
+  // 보이는 문제 해소: 서브미션 결제 영역은 항상 영어로 통일한다.
+  // (서브미션 정책 자체가 '모든 내용 영어 작성'이므로 심사·결제 흐름도 영어 고정.
+  //  다국어 사전(_PAY_I18N)은 추후 안내문 전체가 다국어화될 때 재활성화.)
+  var d = _PAY_I18N.en;
+  var s = (d && d[k]) || k;
   if(amt) s = s.replace(/\{amt\}/g, amt);
   return s;
 }
