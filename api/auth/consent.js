@@ -19,6 +19,15 @@ const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 
 const MUTABLE_TYPES = ['marketing', 'email'];
 
+// 2026-07-21 — 동의를 켠 "지점"을 구분해 기록한다. 기존엔 전부 'mypage' 로
+// 박혀 있어서, 사이트에 새로 붙인 동의 배너가 실제로 효과가 있었는지
+// consent_history 로 측정할 수 없었다. 화이트리스트로만 받는다(임의 문자열이
+// 감사 로그에 들어가지 않게).
+const CONSENT_SOURCES = ['mypage', 'banner'];
+function normalizeSource(raw) {
+  return CONSENT_SOURCES.indexOf(String(raw || '')) !== -1 ? String(raw) : 'mypage';
+}
+
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
   if (rateLimit(req, res, RATE_LIMITS.api)) return;
@@ -94,7 +103,7 @@ module.exports = async function handler(req, res) {
           user_id: user.id,
           consent_type: type,
           granted: want,
-          source: 'mypage',
+          source: normalizeSource(body.source),
           ip_address: ipAddr,
           user_agent: userAgent,
         });
