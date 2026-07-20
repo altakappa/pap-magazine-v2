@@ -431,18 +431,18 @@ function renderSeoHtml(kind, record, opts) {
   /* IG 퍼널 CTA 카피 — 언어별. 유입자가 인스타로 넘어가는 마지막 관문까지 해당 언어로. */
   const FUNNEL_T = {
     ko: {
-      srcCopy: '이 콘텐츠의 원본은 <b>인스타그램</b>에 있습니다.<br>화보, 필름, 패션·셀럽 소식까지 더 많은 콘텐츠를 만나보세요.',
+      srcCopy: 'PAP의 화보와 필름, 패션·셀럽 소식을<br><b>인스타그램</b>에서 편하게 만나보세요.',
       srcBtn: '인스타그램에서 보기 ↗',
-      niche: (nm) => `${nm.topic} 콘텐츠는 전용 채널 <b>@${nm.acct}</b>에 더 있습니다.<br>화보와 매거진 전체는 <b>@pap_magazine</b>에서 보실 수 있습니다.`,
-      main: '화보, 필름, 패션·셀럽 소식까지<br><b>인스타그램</b>에서 더 많은 콘텐츠를 만나보세요.',
+      niche: (nm) => `${nm.topic} 소식은 <b>@${nm.acct}</b>에서,<br>PAP의 화보와 매거진 전체는 <b>@pap_magazine</b>에서 편하게 보실 수 있습니다.`,
+      main: 'PAP의 화보와 필름, 패션·셀럽 소식을<br><b>인스타그램</b>에서 편하게 만나보세요.',
       pin: 'Pinterest에 저장',
       sub: '전 세계 크리에이티브 팀과 만드는 월 20+ 에디토리얼 · <a href="' + SITE + '/network" style="color:inherit">PAP 인스타그램 네트워크 →</a>',
     },
     en: {
-      srcCopy: 'The original is on <b>Instagram</b>.<br>Editorials, films, fashion and celebrity news — there&rsquo;s more over there.',
+      srcCopy: 'Editorials, films, fashion and celebrity news —<br>all in one place on <b>Instagram</b>.',
       srcBtn: 'View on Instagram ↗',
-      niche: (nm) => `More ${nm.topic} on <b>@${nm.acct}</b>.<br>The full magazine lives on <b>@pap_magazine</b>.`,
-      main: 'Editorials, films, fashion and celebrity news —<br>see more on <b>Instagram</b>.',
+      niche: (nm) => `More ${nm.topic} on <b>@${nm.acct}</b>,<br>and the full magazine on <b>@pap_magazine</b>.`,
+      main: 'Editorials, films, fashion and celebrity news —<br>all in one place on <b>Instagram</b>.',
       pin: 'Save to Pinterest',
       sub: '20+ editorials a month with creative teams worldwide · <a href="' + SITE + '/network" style="color:inherit">PAP Instagram network →</a>',
     },

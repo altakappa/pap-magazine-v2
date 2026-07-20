@@ -471,8 +471,8 @@ function _renderArticleDetail(a,det){
           // IG 유입 계측 (B-2) — 직링크 대신 /api/ig-out 경유로 클릭 로깅
           var _pSafe='/api/ig-out?src=article&to=post&url='+encodeURIComponent(_permalink);
           var _body=_ko
-            ? '이 기사의 원본은 <b>인스타그램</b>에 있습니다.<br>화보, 필름, 패션·셀럽 소식까지 더 많은 콘텐츠를 만나보세요.'
-            : 'The original of this story is on <b>Instagram</b>.<br>Editorials, films, fashion and celebrity news — there\'s more over there.';
+            ? 'PAP의 화보와 필름, 패션·셀럽 소식을<br><b>인스타그램</b>에서 편하게 만나보세요.'
+            : 'Editorials, films, fashion and celebrity news —<br>all in one place on <b>Instagram</b>.';
           var _view=_ko ? '인스타그램에서 보기 ↗' : 'View on Instagram ↗';
           var _share=_ko ? '이 기사 공유' : 'Share this story';
           // 공용 .ig-funnel 클래스(igf-*)로 통일 — 인라인 스타일 제거.
