@@ -827,6 +827,71 @@
       "permanent": true
     },
     {
+      "source": "/en",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/en/",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/en/about",
+      "destination": "/about",
+      "permanent": true
+    },
+    {
+      "source": "/en/about/",
+      "destination": "/about",
+      "permanent": true
+    },
+    {
+      "source": "/en/contact",
+      "destination": "/contact",
+      "permanent": true
+    },
+    {
+      "source": "/en/contact/",
+      "destination": "/contact",
+      "permanent": true
+    },
+    {
+      "source": "/en/business",
+      "destination": "/business",
+      "permanent": true
+    },
+    {
+      "source": "/en/business/",
+      "destination": "/business",
+      "permanent": true
+    },
+    {
+      "source": "/en/filmList",
+      "destination": "/films",
+      "permanent": true
+    },
+    {
+      "source": "/en/filmList/",
+      "destination": "/films",
+      "permanent": true
+    },
+    {
+      "source": "/en/category/:cat*",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/en/:slug",
+      "destination": "/en/editorial/:slug",
+      "permanent": true
+    },
+    {
+      "source": "/en/:slug/",
+      "destination": "/en/editorial/:slug",
+      "permanent": true
+    },
+    {
       "source": "/ko/",
       "destination": "/",
       "permanent": true

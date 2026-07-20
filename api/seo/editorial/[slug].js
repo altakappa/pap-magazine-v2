@@ -102,6 +102,32 @@ module.exports = async function handler(req, res) {
       }
     }
 
+    /* 6) 타 콘텐츠 타입 폴백 (2026-07-21).
+       루트형 URL(/<slug>)은 이 핸들러로 rewrite 되는데, 에디토리얼에서 못 찾으면
+       곧장 404 였다. 그런데 구 사이트의 루트 URL 에는 필름·기사도 섞여 있다 —
+       서치콘솔 404 분석에서 m.pap-magazine.com/glacia-regina-film/ 이 실제로는
+       films.glacia-regina-78 로 살아 있는 것을 확인했다.
+       접두 일치가 정확히 1건일 때만 301 (모호하면 404 유지 — 위 5)와 같은 방침). */
+    if (!data && decoded && !/%/.test(decoded)) {
+      const safe = decoded.replace(/[\\%_]/g, ch => '\\' + ch);
+      for (const [table, path] of [['films', '/film/'], ['articles', '/article/']]) {
+        const exact = await supabaseAdmin.from(table).select('slug')
+          .eq('slug', decoded).eq('status', 'published').limit(1).maybeSingle();
+        if (exact.data && exact.data.slug) {
+          res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=3600');
+          res.setHeader('Location', path + encodeURIComponent(exact.data.slug));
+          return res.status(301).end();
+        }
+        const pr = await supabaseAdmin.from(table).select('slug')
+          .like('slug', safe + '-%').eq('status', 'published').limit(2);
+        if (pr.data && pr.data.length === 1 && pr.data[0].slug) {
+          res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=3600');
+          res.setHeader('Location', path + encodeURIComponent(pr.data[0].slug));
+          return res.status(301).end();
+        }
+      }
+    }
+
     if (!data) {
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300');
