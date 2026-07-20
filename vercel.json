@@ -69,6 +69,10 @@
       "schedule": "7,37 * * * *"
     },
     {
+      "path": "/api/cron/celeb-watch",
+      "schedule": "*/15 * * * *"
+    },
+    {
       "path": "/api/cron/ad-candidate-scan",
       "schedule": "20 23 * * *"
     },
