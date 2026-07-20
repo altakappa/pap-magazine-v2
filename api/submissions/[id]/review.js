@@ -13,6 +13,9 @@ const { handleCors } = require('../../_lib/cors');
 const { sendEmail, templates } = require('../../_lib/email');
 const { getOptimizedThumbnail, getOptimizedHero } = require('../../_lib/imageOptimize');
 const { rateLimit, RATE_LIMITS } = require('../../_lib/rateLimit');
+// 크레딧 역할 표준화 — 서브미션 라벨('Photo')을 관리자 기준값('Photographer')으로.
+// 매핑 정의와 배경은 api/_lib/creditRoles.js 참조.
+const { normalizeRole } = require('../../_lib/creditRoles');
 // QA #184 — AI description generator was moved into the shared lib so
 // the admin-side "🤖 자동 생성" button + bulk-fill endpoint can reuse the
 // exact same prompts. Keeps the behaviour identical to what this file
@@ -216,11 +219,11 @@ function _normalizeIgHandle(s) {
 function _normalizeRoleLabel(raw) {
   const str = String(raw || '').trim();
   if (!str) return 'Credit';
-  // If it looks like a snake/lower key, Title-Case it.
-  if (/^[a-z0-9_]+$/.test(str)) {
-    return str.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-  }
-  return str;
+  // 2026-07-21 — 여기서 표준값 매핑까지 한다. 예전엔 snake_case 를 Title Case
+  // 로 바꾸는 게 전부여서 서브미션의 'Photo'/'MUAH' 가 그대로 에디토리얼에
+  // 꽂혔고, 관리자 목록('Photographer'/'Make Up & Hair')과 영영 어긋났다.
+  // 모르는 값은 creditRoles 가 원본을 보존하므로 자유입력 역할은 안 깨진다.
+  return normalizeRole(str) || 'Credit';
 }
 
 // Slug fallback when the editorial row hasn't been slugged yet (review.js

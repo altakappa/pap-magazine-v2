@@ -4247,11 +4247,16 @@ function updateImgCredits(){
 // Extended list driven by QA #82 — covers assistants and the long tail of
 // production roles. The trailing __custom__ option swaps the select for a
 // free-text input so editors can enter any role not in the list.
+// ⚠ 이 목록은 api/_lib/creditRoles.js 의 CANONICAL_ROLES 복제본이다.
+//   브라우저에서 require 를 못 쓰므로 복제하되, tests/credit-roles.test.js 가
+//   두 파일을 대조해 어긋나면 실패한다. 한쪽만 고치면 테스트가 막아준다.
+//   순서·철자까지 정확히 같아야 한다.
 var EDITORIAL_CREDIT_ROLES = [
   'Photographer','Photographer assist',
   'Stylist','Stylist assist',
   'Make Up','Make Up assist',
   'Hair','Hair assist',
+  'Make Up & Hair',
   'Set Design','Set Design assist',
   'Producer','Production assist',
   'Creative Director','Art Director','Casting Director',
