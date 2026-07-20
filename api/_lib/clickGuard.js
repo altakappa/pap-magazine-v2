@@ -85,4 +85,19 @@ function sanitizeReferrer(refRaw) {
   }
 }
 
-module.exports = { extractClientIp, hashIp, detectDeviceType, sanitizeReferrer };
+/**
+ * 크롤러/봇 UA 판별 (2026-07-20, 지표 오염 방지).
+ *
+ * 배경: 7/16 시드 기사 대량 발행 → 사이트맵 갱신 → 크롤러가 SSR 페이지의
+ * /api/ig-out 링크를 일제히 따라가며 ig_outclicks 'ssr' 소스가 1000회
+ * 스파이크(다음 날 -90%로 복귀). 봇은 리다이렉트만 하고 로그는 남기지
+ * 않아야 사람 지표가 오염되지 않는다. 판별은 보수적으로 — 애매하면 사람
+ * 취급 (로그 유실보다 허수 소량이 낫다는 방침의 역: 여기선 명백한 봇만 제외).
+ */
+function isLikelyBot(uaRaw) {
+  const ua = String(uaRaw || '');
+  if (!ua) return true; // UA 없는 요청은 스크립트로 간주
+  return /bot|crawl|spider|slurp|headless|preview|fetch\b|scrape|python|curl\/|wget|httpclient|okhttp|go-http|lighthouse|pingdom|uptime|monitor|facebookexternalhit|whatsapp|telegrambot|embedly|quora link|vkshare|snapchat|pinterestbot/i.test(ua);
+}
+
+module.exports = { extractClientIp, hashIp, detectDeviceType, sanitizeReferrer, isLikelyBot };

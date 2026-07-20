@@ -13,7 +13,7 @@
  */
 
 const { supabaseAdmin } = require('./supabase');
-const { extractClientIp, hashIp, detectDeviceType, sanitizeReferrer } = require('./clickGuard');
+const { extractClientIp, hashIp, detectDeviceType, sanitizeReferrer, isLikelyBot } = require('./clickGuard');
 
 const SRC_WHITELIST = new Set(['x', 'ig', 'naver', 'kakao', 'newsletter']);
 
@@ -27,6 +27,7 @@ async function logSocialInclick(req, page) {
     const q = req.query || {};
     const srcRaw = String(q.utm_source || '').toLowerCase();
     if (!srcRaw) return;
+    if (isLikelyBot(req.headers['user-agent'])) return; // 크롤러 제외 (사람 지표만)
     const src = SRC_WHITELIST.has(srcRaw) ? srcRaw : 'other';
     const path = String(req.url || '').split('?')[0].slice(0, 300);
     const { error } = await supabaseAdmin.from('social_inclicks').insert({

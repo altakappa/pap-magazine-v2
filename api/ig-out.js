@@ -16,7 +16,7 @@
 
 const { supabaseAdmin } = require('./_lib/supabase');
 const { rateLimitStrict } = require('./_lib/rateLimit');
-const { extractClientIp, hashIp, detectDeviceType, sanitizeReferrer } = require('./_lib/clickGuard');
+const { extractClientIp, hashIp, detectDeviceType, sanitizeReferrer, isLikelyBot } = require('./_lib/clickGuard');
 
 const HOME_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.com';
 // spa_fallback (2026-07-16): 원본 IG 게시물이 없는 에디토리얼(구계정 게시분 등)의
@@ -50,6 +50,12 @@ module.exports = async function handler(req, res) {
   const dest = normalizeIgUrl(req.query.url);
   if (!dest) {
     return res.redirect(302, HOME_URL);
+  }
+
+  // 크롤러는 리다이렉트만, 로그 제외 (2026-07-20 — 7/16 대량 발행 때 'ssr'
+  // 소스 1000회 스파이크가 크롤러발 허수였던 교훈. 사람 지표만 남긴다)
+  if (isLikelyBot(req.headers['user-agent'])) {
+    return res.redirect(302, dest);
   }
 
   const srcRaw = String(req.query.src || '').toLowerCase();
