@@ -682,7 +682,7 @@ function navigateWithInterstitial(url){
         <span data-i18n="hdrRole">ROLE</span><span data-i18n="hdrName">NAME</span><span data-i18n="hdrLink">LINK</span><span></span>
       </div>
       <div id="teamList">
-        <div class="team-row"><div class="team-role">Photo</div><input class="team-input" placeholder="Name"><div class="team-link-cell"><select class="team-link-type" onchange="_onTeamLinkTypeChange(this)"><option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option><option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option></select><input class="team-input team-link-input" placeholder="@instagram"></div><button class="team-remove" onclick="removeTeamRow(this)" aria-label="Remove credit">×</button></div>
+        <div class="team-row"><div class="team-role">Photo</div><input class="team-input" placeholder="Name"><div class="team-link-cell"><select class="team-link-type" onchange="_onTeamLinkTypeChange(this)"><option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option><option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option></select><input class="team-input team-link-input" placeholder="@instagram"></div><span class="team-remove" style="visibility:hidden" aria-hidden="true" title="Photographer credit is required">×</span></div>
         <div class="team-row"><div class="team-role">Art Director</div><input class="team-input" placeholder="Name"><div class="team-link-cell"><select class="team-link-type" onchange="_onTeamLinkTypeChange(this)"><option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option><option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option></select><input class="team-input team-link-input" placeholder="@instagram"></div><button class="team-remove" onclick="removeTeamRow(this)" aria-label="Remove credit">×</button></div>
         <div class="team-row"><div class="team-role">Styling</div><input class="team-input" placeholder="Name"><div class="team-link-cell"><select class="team-link-type" onchange="_onTeamLinkTypeChange(this)"><option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option><option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option></select><input class="team-input team-link-input" placeholder="@instagram"></div><button class="team-remove" onclick="removeTeamRow(this)" aria-label="Remove credit">×</button></div>
         <div class="team-row"><div class="team-role">MUAH</div><input class="team-input" placeholder="Name"><div class="team-link-cell"><select class="team-link-type" onchange="_onTeamLinkTypeChange(this)"><option value="instagram" selected data-i18n="linkTypeInsta">@ INSTAGRAM</option><option value="website" data-i18n="linkTypeWeb">🌐 WEBSITE</option></select><input class="team-input team-link-input" placeholder="@instagram"></div><button class="team-remove" onclick="removeTeamRow(this)" aria-label="Remove credit">×</button></div>
@@ -1642,6 +1642,8 @@ function _validateStep(n){
     var dft = _FT[_curLang] || _FT.en;
     var completedCount = 0;
     var incompleteRows = []; // {row, missingFields, roleLabel}
+    // 2026-07-20 (도메니코 지시) — 포토그래퍼는 유일한 필수 크레딧.
+    var photoRow = null, photoComplete = false;
 
     rows.forEach(function(row){
       var roleEl = row.querySelector('.team-role');                       // pre-filled label
@@ -1663,8 +1665,11 @@ function _validateStep(n){
       var nameText = nameInput ? nameInput.value.trim() : '';
       var linkText = linkInput ? linkInput.value.trim() : '';
 
+      var isPhoto = /^photo(grapher)?$/i.test(roleText);
+      if (isPhoto) photoRow = row;
+
       var started = !!(roleText || nameText || linkText);
-      if (!started) return; // 완전히 빈 row → skip
+      if (!started) return; // 완전히 빈 row → skip (단, Photo는 아래에서 별도 필수 검증)
 
       var missing = [];
       if (!roleText)  missing.push({ key:'role',      label: dft.creditRoleLabel      || 'Role',      el: roleInput });
@@ -1673,6 +1678,7 @@ function _validateStep(n){
 
       if (missing.length === 0){
         completedCount++;
+        if (isPhoto) photoComplete = true;
       } else {
         incompleteRows.push({ row: row, missing: missing, roleLabel: roleText || ((dft.creditRoleLabel || 'Role') + ' #' + (Array.prototype.indexOf.call(rows, row) + 1)) });
       }
@@ -1714,6 +1720,25 @@ function _validateStep(n){
         }
       }
       errs.push({ field:'teamList', msg: msg2 });
+    } else if (!photoComplete){
+      // 2026-07-20 (도메니코 지시) — 포토그래퍼 크레딧은 필수. 다른 크레딧이
+      // 채워져 있어도 Photo가 비어 있으면 제출 불가 (삭제 불가 규칙과 짝).
+      var msgPhoto = (_curLang === 'ko')
+        ? '포토그래퍼(Photo) 크레딧은 필수입니다. 이름과 인스타그램을 입력해 주세요.'
+        : 'The Photographer (Photo) credit is required. Please fill in the name and Instagram.';
+      if (photoRow){
+        photoRow.classList.add('error');
+        var pInput = photoRow.querySelector('.team-input');
+        if(pInput){
+          pInput.classList.add('error');
+          pInput.addEventListener('input', function _clrP(){
+            photoRow.classList.remove('error');
+            pInput.classList.remove('error');
+            pInput.removeEventListener('input', _clrP);
+          }, { once: false });
+        }
+      }
+      errs.push({ field:'teamList', msg: msgPhoto });
     }
     // QA #89 — at least 1 model must be entered. A model row is considered
     // "filled" when either Model Name (1st input) OR Model Insta (2nd input)
@@ -1865,7 +1890,16 @@ function removeTeamRow(btn){
   }
   var row=btn.closest ? btn.closest('.team-row') : null;
   if(!row){ var p=btn.parentElement; while(p&&!p.classList.contains('team-row')) p=p.parentElement; row=p; }
-  if(row) row.remove();
+  if(!row) return;
+  // 2026-07-20 (도메니코 지시) — 포토그래퍼는 유일하게 삭제 불가능한 크레딧.
+  // (마크업에서도 Photo 행의 × 를 제거했지만, 방어적으로 로직에서도 차단)
+  var roleEl=row.querySelector('.team-role');
+  var roleTxt=roleEl?String(roleEl.textContent||'').trim().toLowerCase():'';
+  if(roleTxt==='photo'||roleTxt==='photographer'){
+    if(typeof PAP!=='undefined'&&PAP.ui&&PAP.ui.toast) PAP.ui.toast('Photographer credit cannot be removed · 포토그래퍼 크레딧은 삭제할 수 없습니다','error');
+    return;
+  }
+  row.remove();
 }
 
 // QA #88: when the link-type select changes, rewrite the input placeholder
