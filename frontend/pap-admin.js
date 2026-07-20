@@ -9684,8 +9684,9 @@ async function papCoverDownload(){
       canvas.toBlob(function(b){ res(b); }, 'image/png', 1);
     });
     if (!blob) throw new Error('PNG 변환 실패 (canvas tainted by CORS?)');
-    var fname = (meta.title || 'cover').toLowerCase()
-      .replace(/[^a-z0-9가-힯 ]+/g, '').replace(/\s+/g, '-') + '-cover.png';
+    var base = (meta.title || 'cover').toLowerCase()
+      .replace(/[^a-z0-9가-힯 ]+/g, '').replace(/\s+/g, '-');
+    var fname = base + '-cover.png';
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = fname;
@@ -9695,7 +9696,30 @@ async function papCoverDownload(){
       URL.revokeObjectURL(a.href);
       a.remove();
     }, 3000);
-    _papCoverSetStatus('✓ 다운로드 완료 (' + fname + ')', 'ok');
+    // 2026-07-20 (도메니코 요청) — 합성 커버와 함께 "원본 커버 이미지"도 같이
+    // 다운로드한다. 실패해도 합성본 다운로드는 이미 끝났으므로 조용히 경고만.
+    try {
+      _papCoverSetStatus('원본 커버 다운로드 중…');
+      var srcBlob;
+      if (/^data:/.test(meta.coverUrl)) {
+        srcBlob = await (await fetch(meta.coverUrl)).blob();
+      } else {
+        var r = await fetch(meta.coverUrl, { mode: 'cors' });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        srcBlob = await r.blob();
+      }
+      var ext = (srcBlob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg').split('+')[0];
+      var a2 = document.createElement('a');
+      a2.href = URL.createObjectURL(srcBlob);
+      a2.download = base + '-cover-original.' + ext;
+      document.body.appendChild(a2);
+      a2.click();
+      setTimeout(function(){ URL.revokeObjectURL(a2.href); a2.remove(); }, 3000);
+      _papCoverSetStatus('✓ 다운로드 완료 — 합성 커버 + 원본 커버 2장 (' + fname + ')', 'ok');
+    } catch (e2) {
+      console.warn('[cover] original download failed:', e2);
+      _papCoverSetStatus('✓ 합성 커버 다운로드 완료 · 원본 커버는 실패 (CORS 제한 가능): ' + (e2 && e2.message || e2), 'ok');
+    }
   } catch (e) {
     console.error('[cover] download failed:', e);
     _papCoverSetStatus('❌ ' + (e && e.message || e), 'error');
