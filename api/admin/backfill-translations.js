@@ -1,6 +1,6 @@
 /**
  * PAP Magazine — 다국어 SEO 번역 백필 (관리자 수동 트리거)
- * Route: GET /api/admin/backfill-translations?lang=it|fr|es&batch=10
+ * Route: GET /api/admin/backfill-translations?lang=it|fr|es|ja&batch=10
  *
  * 실제 처리 로직은 `api/_lib/seoTranslateBackfill.js` 에 있다 (크론과 공용).
  * 이 파일은 "관리자 인증 + 쿼리 파싱 + 응답" 만 담당하는 얇은 진입점이다.

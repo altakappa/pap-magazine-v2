@@ -43,9 +43,9 @@ module.exports = async function handler(req, res) {
       .order('published_date', { ascending: false })
       .limit(5000);
 
-    // it/fr/es 번역 존재 여부 (2026-07-16, 다국어 2단계) — 번역이 있는
-    // 에디토리얼만 해당 언어 URL·alternate 를 선언한다. 테이블 미생성/실패
-    // 시엔 ko/en 만으로 동작.
+    // it/fr/es/ja 번역 존재 여부 (2026-07-16 다국어 2단계, ja 2026-07-21 추가) —
+    // 번역이 있는 에디토리얼만 해당 언어 URL·alternate 를 선언한다. 테이블
+    // 미생성/실패 시엔 ko/en 만으로 동작.
     const trMap = new Map();
     try {
       const { data: trs } = await supabaseAdmin
@@ -63,8 +63,9 @@ module.exports = async function handler(req, res) {
       const handle = safeSitemapHandle(ed.slug || ed.id);
       if (!handle) return '';
       const loc = SITE + '/editorial/' + encodeURIComponent(handle);
-      // 언어별 URL + hreflang alternate (2026-07-16) — ko/en 항상, it/fr/es 는 번역 존재 시.
-      const langs = ['ko', 'en'].concat((trMap.get(ed.id) || []).filter(l => ['it', 'fr', 'es'].includes(l)));
+      // 언어별 URL + hreflang alternate (2026-07-16, ja 추가 2026-07-21) —
+      // ko/en 항상, it/fr/es/ja 는 번역 존재 시.
+      const langs = ['ko', 'en'].concat((trMap.get(ed.id) || []).filter(l => ['it', 'fr', 'es', 'ja'].includes(l)));
       const urlFor = (l) => l === 'ko' ? loc : SITE + '/' + l + '/editorial/' + encodeURIComponent(handle);
       const lastmod = fmtDate(ed.updated_at || ed.published_date);
       const altBlock =

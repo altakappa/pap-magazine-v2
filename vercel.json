@@ -61,6 +61,10 @@
       "schedule": "8-58/10 * * * *"
     },
     {
+      "path": "/api/cron/youtube-sync",
+      "schedule": "20 */3 * * *"
+    },
+    {
       "path": "/api/cron/threads-post",
       "schedule": "2-52/10 * * * *"
     },
@@ -263,7 +267,7 @@
       "destination": "/api/seo/editorial/:slug?lang=en"
     },
     {
-      "source": "/:lang(it|fr|es)/editorial/:slug",
+      "source": "/:lang(it|fr|es|ja)/editorial/:slug",
       "destination": "/api/seo/editorial/:slug?lang=:lang"
     },
     {

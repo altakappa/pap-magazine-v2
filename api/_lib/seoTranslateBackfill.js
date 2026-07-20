@@ -2,7 +2,9 @@
  * PAP Magazine — 다국어 SEO 번역 백필 공용 로직
  *
  * 무엇: 발행 에디토리얼의 제목+설명을 Claude API 로 번역해 seo_translations(080)
- * 에 저장하는 "1배치" 단위 처리기. /it /fr /es SSR 페이지의 데이터 소스.
+ * 에 저장하는 "1배치" 단위 처리기. /it /fr /es /ja SSR 페이지의 데이터 소스
+ * (ja는 2026-07-21 추가 — 서치콘솔 확인 결과 전용 페이지 없이도 노출이 it/fr/es
+ * 보다 커 최우선 후보였음, PAP-Vault/45_Business/2026-07-21-다국어SEO-2단계-성과검토.md).
  *
  * 왜 _lib 로 뽑았나 (2026-07-21):
  *   관리자 수동 엔드포인트(api/admin/backfill-translations.js)와
@@ -23,7 +25,7 @@
 
 const { supabaseAdmin } = require('./supabase');
 
-const LANG_NAMES = { it: 'Italian', fr: 'French', es: 'Spanish' };
+const LANG_NAMES = { it: 'Italian', fr: 'French', es: 'Spanish', ja: 'Japanese' };
 
 /** 배치 크기 정규화 — 1~20. Claude 1콜 max_tokens(4000) 안에 안전하게 들어가는 상한. */
 function normalizeBatch(v, fallback) {
@@ -36,7 +38,7 @@ function normalizeBatch(v, fallback) {
  * 한 언어에 대해 1배치를 처리한다.
  *
  * @param {object}  opts
- * @param {string}  opts.lang        'it' | 'fr' | 'es'
+ * @param {string}  opts.lang        'it' | 'fr' | 'es' | 'ja'
  * @param {number} [opts.batch=10]   1~20
  * @param {number} [opts.timeoutMs]  Claude fetch 타임아웃 (기본 90초).
  *                                   크론은 함수 예산(120초)을 3언어가 나눠 쓰므로 짧게 준다.
@@ -46,7 +48,7 @@ function normalizeBatch(v, fallback) {
  */
 async function runBackfillBatch({ lang, batch = 10, timeoutMs = 90000 } = {}) {
   if (!LANG_NAMES[lang]) {
-    const e = new Error('lang 은 it|fr|es 중 하나여야 합니다.');
+    const e = new Error('lang 은 it|fr|es|ja 중 하나여야 합니다.');
     e.statusCode = 400;
     throw e;
   }

@@ -329,12 +329,15 @@ const KIND = {
 // 1단계 'en' — DB 원본 필드(title_en/description_en) 사용.
 // 2단계 'it'|'fr'|'es' — seo_translations(082) 의 번역을 opts.translation 으로
 // 받아 렌더 (에디토리얼만, 번역 없으면 핸들러가 /en/ 으로 302).
+// 3단계 'ja' 추가 (2026-07-21) — 서치콘솔 확인 결과 전용 페이지 없이도 일본
+// 노출이 it/fr/es 보다 커 최우선 후보. 나머지는 seo_translations 경로 그대로.
 const LANG_META = {
   ko: { og: 'ko_KR', inLang: 'ko-KR' },
   en: { og: 'en_US', inLang: 'en-US' },
   it: { og: 'it_IT', inLang: 'it-IT' },
   fr: { og: 'fr_FR', inLang: 'fr-FR' },
   es: { og: 'es_ES', inLang: 'es-ES' },
+  ja: { og: 'ja_JP', inLang: 'ja-JP' },
 };
 
 /* ── main render function ───────────────────────────── */
@@ -466,6 +469,14 @@ function renderSeoHtml(kind, record, opts) {
       main: 'Editoriales diarios, moda y noticias de celebridades —<br>descúbrelos <b>primero en Instagram</b>.',
       pin: 'Guardar en Pinterest',
       sub: '20+ editoriales al mes con equipos creativos de todo el mundo · <a href="' + SITE + '/network" style="color:inherit">La red de Instagram de PAP →</a>',
+    },
+    ja: {
+      srcCopy: 'このコンテンツのオリジナル投稿は<b>Instagram</b>にあります。<br>いいね・保存して、毎日公開される新しいエディトリアルを誰よりも早くチェックしましょう。',
+      srcBtn: 'Instagramで見る ↗',
+      niche: (nm) => `この<b>${nm.topic}</b>のストーリーが気に入ったら —<br>${nm.topic}専門アカウント<b>@${nm.acct}</b>でもっと${nm.topic}コンテンツを、<b>@pap_magazine</b>で毎日新しいエディトリアルを誰よりも早く。`,
+      main: '毎日更新されるエディトリアルとファッション・セレブニュースを、<br><b>Instagramで真っ先に</b>チェック。',
+      pin: 'Pinterestに保存',
+      sub: '世界中のクリエイティブチームと制作する月20本以上のエディトリアル · <a href="' + SITE + '/network" style="color:inherit">PAP Instagramネットワーク →</a>',
     },
   };
   const FT = FUNNEL_T[lang] || FUNNEL_T.ko;

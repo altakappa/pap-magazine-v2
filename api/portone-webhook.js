@@ -294,17 +294,24 @@ module.exports = async function handler(req, res) {
         const billingKey = data?.billingKey;
         if (!billingKey) break;
 
+        // 2026-07-20 감사 재확인 교정(C2): 기존 코드는 portone_billing_key를 먼저
+        // null로 update한 뒤 같은 billingKey로 select해서 유저를 찾으려 했다.
+        // 이미 null로 바뀐 뒤라 select가 항상 0건 → downgradeToFree가 호출되지
+        // 않아 빌링키를 삭제해도 등급이 그대로 유지되는 결함이었다.
+        // select를 update보다 먼저 실행해 user_id를 먼저 확보하도록 순서를 바꾼다.
+        const { data: subscriber } = await supabaseAdmin
+          .from('subscriptions').select('user_id').eq('portone_billing_key', billingKey).single();
+
         await supabaseAdmin.from('subscriptions').update({
           status: 'canceled',
           portone_billing_key: null,
         }).eq('portone_billing_key', billingKey);
 
-        // Also update profile
-        const { data: subscriber } = await supabaseAdmin
-          .from('subscriptions').select('user_id').eq('portone_billing_key', billingKey).single();
         if (subscriber) {
           // 빌링키 삭제 = 정기결제 수단 소멸 → 등급도 free로 강등(plan+status).
           await downgradeToFree(supabaseAdmin, subscriber.user_id);
+        } else {
+          console.error('[PortOne] BillingKey.Deleted — no subscription row found for billingKey; profiles NOT downgraded');
         }
         break;
       }
