@@ -139,9 +139,16 @@ async function runGrowthAudit() {
     weekly('community_scraps', 'created_at', '커뮤니티 스크랩 (7일)'),
     check('ig_outclicks_yesterday', '웹→IG 아웃클릭 (24시간, 소스별)', async () => {
       // B-2 IG 유입 계측 — 모든 인스타 버튼이 /api/ig-out 경유로 기록된다.
-      const last24 = await cnt(db.from('ig_outclicks').select('*', CSEL).gte('clicked_at', iso(DAY)));
-      const prev24 = await cnt(db.from('ig_outclicks').select('*', CSEL).gte('clicked_at', iso(2 * DAY)).lt('clicked_at', iso(DAY)));
-      const { data } = await db.from('ig_outclicks').select('src').gte('clicked_at', iso(DAY)).limit(1000);
+      //
+      // 원본 ig_outclicks 가 아니라 ig_outclicks_human 뷰(087)를 읽는다.
+      // 봇 필터(fbd2c87, 2026-07-20 11:11)가 켜지기 전 'ssr' 기록은 크롤러로
+      // 오염돼 있고, 그 허수 때문에 2026-07-21 데일리 체크가 "웹→IG 유입
+      // -90.7% 급락"으로 오독해 멀쩡한 SSR 을 뜯을 뻔했다. 실제로는 하루 두
+      // IP 가 1,300여 회씩 훑은 것이고 사람 아웃클릭은 30~50 으로 평평했다.
+      // 지표는 반드시 이 뷰로만 읽는다 — 45_Business/학습메모/2026-07-20-크롤러-지표오염.md
+      const last24 = await cnt(db.from('ig_outclicks_human').select('*', CSEL).gte('clicked_at', iso(DAY)));
+      const prev24 = await cnt(db.from('ig_outclicks_human').select('*', CSEL).gte('clicked_at', iso(2 * DAY)).lt('clicked_at', iso(DAY)));
+      const { data } = await db.from('ig_outclicks_human').select('src').gte('clicked_at', iso(DAY)).limit(1000);
       const bySrc = {};
       (data || []).forEach((r) => { bySrc[r.src] = (bySrc[r.src] || 0) + 1; });
       const breakdown = Object.entries(bySrc).sort((a, b) => b[1] - a[1]).map(([s, n]) => `${s} ${n}`).join(' · ');

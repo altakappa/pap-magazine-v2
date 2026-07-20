@@ -969,10 +969,13 @@ function _papRenderEdIg(igUrl, title){
        // 카피를 폐기. 목표는 웹 방문자를 IG 원본(좋아요·저장)과 팔로우로 보내는 것.
        // 버튼은 /api/ig-out 경유로 아웃클릭 계측(src=editorial). 언어 KO/EN.
        var _ko=(localStorage.getItem('pap-lang')||'ko')==='ko';
+       // 카피 톤 (2026-07-21, 도메니코 지적: "너무 AI 멘트 느낌"):
+       // 광고 문구를 걷어내고 사실만 남긴다. "마음에 드셨다면" 같은 조건절 권유,
+       // "더 많은 사람에게 닿습니다" 같은 번역투 미사여구, 팔로워 수 자랑을 뺐다.
        var _body=_ko
-         ? '마음에 드셨다면 <b style="color:#fff">인스타그램 원본에 좋아요·저장</b>을 — 이 화보가 더 많은 사람에게 닿습니다.<br><b style="color:#fff">'+_PAP_IG_FOLLOWERS_KO+' 팔로워</b>는 새 에디토리얼을 인스타그램에서 가장 먼저 만나요.'
-         : 'Loved it? <b style="color:#fff">Like &amp; save the original on Instagram</b> — it helps this editorial travel.<br>Join <b style="color:#fff">'+_PAP_IG_FOLLOWERS_EN+' followers</b> who see new editorials first.';
-       var _post=_ko ? '인스타그램에서 이 화보 ↗' : 'This editorial on Instagram ↗';
+         ? '이 화보의 원본은 <b style="color:#fff">인스타그램</b>에 있습니다.<br>좋아요와 저장이 쌓이면 더 많은 사람에게 보입니다. 새 화보도 인스타그램에 먼저 올라갑니다.'
+         : 'The original of this editorial is on <b style="color:#fff">Instagram</b>.<br>Likes and saves there push it further. New editorials go up on Instagram first.';
+       var _post=_ko ? '인스타그램에서 보기 ↗' : 'View on Instagram ↗';
        var _follow=_ko ? '@pap_magazine 팔로우 →' : 'Follow @pap_magazine →';
        var _outPost='/api/ig-out?src=editorial&to=post&url='+encodeURIComponent(permalink);
        var _outProfile='/api/ig-out?src=editorial&to=profile&url='+encodeURIComponent('https://www.instagram.com/pap_magazine/');

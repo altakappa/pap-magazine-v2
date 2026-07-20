@@ -431,18 +431,18 @@ function renderSeoHtml(kind, record, opts) {
   /* IG 퍼널 CTA 카피 — 언어별. 유입자가 인스타로 넘어가는 마지막 관문까지 해당 언어로. */
   const FUNNEL_T = {
     ko: {
-      srcCopy: '이 콘텐츠의 원본 게시물이 <b>인스타그램</b>에 있습니다.<br>좋아요·저장하고, 매일 공개되는 새 에디토리얼을 가장 먼저 만나보세요.',
+      srcCopy: '이 콘텐츠의 원본은 <b>인스타그램</b>에 있습니다.<br>좋아요와 저장이 쌓이면 더 많은 사람에게 보입니다. 새 화보도 인스타그램에 먼저 올라갑니다.',
       srcBtn: '인스타그램에서 보기 ↗',
-      niche: (nm) => `이 <b>${nm.topic}</b> 스토리가 마음에 드셨다면 —<br>${nm.topic} 전용 채널 <b>@${nm.acct}</b>에서 더 많은 ${nm.topic} 콘텐츠를, <b>@pap_magazine</b>에서 매일 새 에디토리얼을 가장 먼저 만나보세요.`,
-      main: '매일 업데이트되는 에디토리얼과 패션·셀럽 뉴스,<br><b>인스타그램에서 가장 먼저</b> 만나보세요.',
+      niche: (nm) => `${nm.topic} 이야기는 전용 채널 <b>@${nm.acct}</b>에 더 있습니다.<br>새 화보는 <b>@pap_magazine</b>에 먼저 올라갑니다.`,
+      main: '새 에디토리얼과 패션·셀럽 뉴스는<br><b>인스타그램에 먼저</b> 올라갑니다.',
       pin: 'Pinterest에 저장',
       sub: '전 세계 크리에이티브 팀과 만드는 월 20+ 에디토리얼 · <a href="' + SITE + '/network" style="color:inherit">PAP 인스타그램 네트워크 →</a>',
     },
     en: {
-      srcCopy: 'The original post lives on <b>Instagram</b>.<br>Like &amp; save it — and catch new editorials there first, every day.',
+      srcCopy: 'The original is on <b>Instagram</b>.<br>Likes and saves there push it further. New editorials go up on Instagram first.',
       srcBtn: 'View on Instagram ↗',
-      niche: (nm) => `Loved this <b>${nm.topic}</b> story? —<br>More ${nm.topic} on <b>@${nm.acct}</b>, and new editorials first on <b>@pap_magazine</b>, daily.`,
-      main: 'Daily editorials, fashion &amp; celeb news —<br>catch them <b>first on Instagram</b>.',
+      niche: (nm) => `More ${nm.topic} lives on <b>@${nm.acct}</b>.<br>New editorials go up on <b>@pap_magazine</b> first.`,
+      main: 'New editorials, fashion and celeb news<br>go up <b>on Instagram first</b>.',
       pin: 'Save to Pinterest',
       sub: '20+ editorials a month with creative teams worldwide · <a href="' + SITE + '/network" style="color:inherit">PAP Instagram network →</a>',
     },
