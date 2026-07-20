@@ -967,18 +967,22 @@ function _papRenderEdIg(igUrl, title){
         +'</div>'
       : '')
     +(function(){
-       // 웹 감상 유도 (2026-07) — 원본은 인스타가 아니라 이 웹사이트에 완전판으로
-       // 있다는 방향으로 전환. IG 임베드(위)는 사회적 증거로 유지하되, 카피·버튼은
-       // 웹 중심(공유=PAP 페이지). 언어에 따라 KO/EN 노출(그 외 언어는 EN).
+       // 웹→IG 전환 유도 (2026-07-20, 도메니코 지시) — 이전의 "웹에 붙잡아두기"
+       // 카피를 폐기. 목표는 웹 방문자를 IG 원본(좋아요·저장)과 팔로우로 보내는 것.
+       // 버튼은 /api/ig-out 경유로 아웃클릭 계측(src=editorial). 언어 KO/EN.
        var _ko=(localStorage.getItem('pap-lang')||'ko')==='ko';
        var _body=_ko
-         ? '인스타그램에서는 한 컷만. 이 화보의 전체 시리즈는 <b style="color:#fff">PAP에서 완전판</b>으로 감상하세요.'
-         : 'Instagram shows a single frame. The complete series lives here, <b style="color:#fff">on PAP</b>.';
-       var _share=_ko ? '이 화보 공유 ↗' : 'Share this editorial ↗';
+         ? '마음에 드셨다면 <b style="color:#fff">인스타그램 원본에 좋아요·저장</b>을 — 이 화보가 더 많은 사람에게 닿습니다.<br><b style="color:#fff">'+_PAP_IG_FOLLOWERS_KO+' 팔로워</b>는 새 에디토리얼을 인스타그램에서 가장 먼저 만나요.'
+         : 'Loved it? <b style="color:#fff">Like &amp; save the original on Instagram</b> — it helps this editorial travel.<br>Join <b style="color:#fff">'+_PAP_IG_FOLLOWERS_EN+' followers</b> who see new editorials first.';
+       var _post=_ko ? '인스타그램에서 이 화보 ↗' : 'This editorial on Instagram ↗';
+       var _follow=_ko ? '@pap_magazine 팔로우 →' : 'Follow @pap_magazine →';
+       var _outPost='/api/ig-out?src=editorial&to=post&url='+encodeURIComponent(permalink);
+       var _outProfile='/api/ig-out?src=editorial&to=profile&url='+encodeURIComponent('https://www.instagram.com/pap_magazine/');
        return '<aside style="margin:'+(canEmbed?'14px':'36px')+' 0 0;padding:26px 24px;border:1px solid rgba(255,255,255,.16);text-align:center">'
-         +'<div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:10px">Full Editorial</div>'
+         +'<div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:10px">On Instagram</div>'
          +'<div style="font-size:13.5px;line-height:1.7;color:#ddd;margin-bottom:16px">'+_body+'</div>'
-         +'<button onclick="_papShareStory()" style="display:inline-block;background:#fff;color:#000;border:none;padding:11px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;cursor:pointer">'+_share+'</button>'
+         +'<a href="'+_outPost+'" target="_blank" rel="noopener" style="display:inline-block;background:#fff;color:#000;padding:11px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;margin:0 6px 8px">'+_post+'</a>'
+         +'<a href="'+_outProfile+'" target="_blank" rel="noopener" style="display:inline-block;background:none;color:#fff;border:1px solid rgba(255,255,255,.28);padding:11px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;margin:0 6px 8px">'+_follow+'</a>'
          +'</aside>';
      })();
   box.style.display='';
