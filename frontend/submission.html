@@ -1119,74 +1119,48 @@ function loadMySubmissions(){
         // submission. Reuses the revision-blue style for visual
         // continuity with the REVISION REQUESTED badge.
         else if(s.status==='pending' && s.resubmitted_at){statusClass='status-revision';statusText='RESUBMITTED';}
-        html+='<div class="sub-item"><div><div class="sub-item-title">'+PAP.sanitize(s.title||'Untitled')+'</div></div><div class="sub-item-date">'+PAP.sanitize(s.created_at||'')+'</div><div class="sub-item-status '+statusClass+'">'+statusText+'</div><div class="sub-item-action" onclick="viewSubmission(\''+s.id+'\')">VIEW</div></div>';
+        html+='<div class="sub-item"><div><div class="sub-item-title">'+PAP.sanitize(s.title||'Untitled')+'</div></div><div class="sub-item-date">'+PAP.sanitize(s.created_at||'')+'</div><div class="sub-item-status '+statusClass+'">'+statusText+'</div><div class="sub-item-action" onclick="viewSubmission(\''+s.id+'\')">VIEW</div></div>'+'<div class="sub-item-inline" id="_subDet_'+s.id+'" style="display:none;border:1px solid rgba(255,255,255,.08);border-top:none;padding:20px 22px 24px;background:rgba(255,255,255,.02);font-size:13px;line-height:1.7;color:rgba(255,255,255,.85)"></div>';
       });
       document.getElementById('mySubsList').innerHTML=html;
+      _papInlineSubDetails(subs); // 상세 자동 펼침 (2026-07-20 도메니코 지시)
     }).catch(function(e){console.error('loadMySubmissions error:',e);});
   }
 }
 
-// View one of MY SUBMISSIONS — fetches the full submission and shows status,
-// admin's review note (especially important for REVISION REQUESTED), and a
-// quick visual summary so creators don't have to chase down email.
-async function viewSubmission(id){
-  try{
-    // QA #173 — include the Bearer token explicitly. credentials:'include'
-    // covers the httpOnly cookie path, but users who only have the
-    // localStorage JWT (no cookie) would get a 401 here. Mirror the auth
-    // header pattern used by every authenticated fetch in pap-api.js.
-    var _token = '';
-    try{ _token = localStorage.getItem('pap-token') || ''; }catch(_){}
-    var _headers = {'X-Requested-With':'XMLHttpRequest'};
-    if(_token) _headers['Authorization'] = 'Bearer ' + _token;
-    var res=await fetch('/api/submissions/'+id,{
-      credentials:'include',
-      headers:_headers
-    });
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    var data=await res.json();
-    var s=data.submission||data.data||data;
-    if(!s||!s.id) throw new Error('Empty submission payload');
-
-    var desc={};
-    try{desc=s.description?JSON.parse(s.description):{};}catch(_){}
-
-    // Status copy + accent colour
-    // QA #175 — a re-submitted entry (pending + resubmitted_at) reads as
-    // "Resubmitted" so the user knows their revision was received and is
-    // back in the review queue (vs. a generic "Reviewing" that could
-    // imply nothing changed).
-    var statusText='Reviewing', accent='rgba(255,180,50,.8)';
-    if(s.status==='approved'||s.status==='accepted'){statusText='Accepted';accent='rgba(100,255,150,.8)';}
-    else if(s.status==='published'){statusText='Published';accent='rgba(100,200,255,.8)';}
-    else if(s.status==='rejected'){statusText='Rejected';accent='rgba(255,100,100,.8)';}
-    else if(s.status==='revision'){statusText='Revision Requested';accent='rgba(100,150,255,.9)';}
-    else if(s.status==='pending' && s.resubmitted_at){statusText='Resubmitted';accent='rgba(100,150,255,.9)';}
-
-    var note=s.admin_notes||s.adminNotes||'';
-    var imageCount=Array.isArray(s.file_urls)?s.file_urls.length:0;
-    var coverUrl=Array.isArray(s.file_urls)&&s.file_urls.length?s.file_urls[desc.coverImageIndex||0]:'';
-
-    var bg=document.createElement('div');
-    bg.id='_mySubModalBg';
-    bg.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:2000;display:flex;align-items:center;justify-content:center;padding:24px;';
-    bg.onclick=function(e){if(e.target===bg)bg.remove();};
-
-    var card=document.createElement('div');
-    card.style.cssText='background:#0a0a0a;border:1px solid rgba(255,255,255,.1);max-width:680px;width:100%;max-height:90vh;overflow-y:auto;padding:32px;color:rgba(255,255,255,.85);font-family:Inter,sans-serif;font-size:13px;line-height:1.7;';
-
+// 2026-07-20 (도메니코 지시) — VIEW 모달의 상세(승인 안내·결제 버튼·에디터 노트)를
+// 내 서브미션 목록에 바로 펼쳐 보여준다. 본문 빌더를 공용 함수로 분리해 모달(VIEW)과
+// 인라인 자동 펼침이 같은 내용을 공유한다.
+function _svPrep(s){
+  var desc={}; try{desc=s.description?JSON.parse(s.description):{};}catch(_){}
+  var statusText='Reviewing', accent='rgba(255,180,50,.8)';
+  if(s.status==='approved'||s.status==='accepted'){statusText='Accepted';accent='rgba(100,255,150,.8)';}
+  else if(s.status==='published'){statusText='Published';accent='rgba(100,200,255,.8)';}
+  else if(s.status==='rejected'){statusText='Rejected';accent='rgba(255,100,100,.8)';}
+  else if(s.status==='revision'){statusText='Revision Requested';accent='rgba(100,150,255,.9)';}
+  else if(s.status==='pending' && s.resubmitted_at){statusText='Resubmitted';accent='rgba(100,150,255,.9)';}
+  var note=s.admin_notes||s.adminNotes||'';
+  var imageCount=Array.isArray(s.file_urls)?s.file_urls.length:0;
+  var coverUrl=Array.isArray(s.file_urls)&&s.file_urls.length?s.file_urls[desc.coverImageIndex||0]:'';
+  return {desc:desc,statusText:statusText,accent:accent,note:note,imageCount:imageCount,coverUrl:coverUrl};
+}
+async function _svFetchSubmission(id){
+  var _token=''; try{_token=localStorage.getItem('pap-token')||'';}catch(_){}
+  var _headers={'X-Requested-With':'XMLHttpRequest'};
+  if(_token) _headers['Authorization']='Bearer '+_token;
+  var res=await fetch('/api/submissions/'+id,{credentials:'include',headers:_headers});
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  var data=await res.json();
+  var s=data.submission||data.data||data;
+  return (s&&s.id)?s:null;
+}
+function _svDetailBody(s, p, inModal){
+  var desc=p.desc, statusText=p.statusText, accent=p.accent, note=p.note, imageCount=p.imageCount, coverUrl=p.coverUrl;
     function _esc(t){var d=document.createElement('div');d.textContent=t==null?'':String(t);return d.innerHTML;}
     function _safeUrl(u){return _esc(u||'').replace(/"/g,'&quot;');}
 
-    var revisionBanner=s.status==='revision'?'<div style="margin:0 -32px 24px;padding:16px 32px;background:rgba(100,150,255,.08);border-top:1px solid rgba(100,150,255,.3);border-bottom:1px solid rgba(100,150,255,.3);"><div style="font-size:10px;letter-spacing:.18em;font-weight:700;color:rgba(100,150,255,.9);margin-bottom:8px">REVISION REQUESTED — PLEASE READ</div><div style="font-size:12px;color:rgba(255,255,255,.85)">Address the editor\'s feedback below and resubmit using the same SUBMIT form. Your original images and credits stay attached for reference.</div></div>':'';
+    var revisionBanner=s.status==='revision'?'<div style="margin:0 '+(inModal?'-32px':'0')+' 24px;padding:16px '+(inModal?'32px':'16px')+';background:rgba(100,150,255,.08);border-top:1px solid rgba(100,150,255,.3);border-bottom:1px solid rgba(100,150,255,.3);"><div style="font-size:10px;letter-spacing:.18em;font-weight:700;color:rgba(100,150,255,.9);margin-bottom:8px">REVISION REQUESTED — PLEASE READ</div><div style="font-size:12px;color:rgba(255,255,255,.85)">Address the editor\'s feedback below and resubmit using the same SUBMIT form. Your original images and credits stay attached for reference.</div></div>':'';
 
-    card.innerHTML=
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:18px">'+
-        '<div><div style="font-size:9px;letter-spacing:.2em;font-weight:700;color:rgba(255,255,255,.4);margin-bottom:6px">SUBMISSION</div>'+
-        '<div style="font-size:18px;font-weight:600;color:#fff">'+_esc(s.title||'Untitled')+'</div></div>'+
-        '<button onclick="document.getElementById(\'_mySubModalBg\').remove()" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:24px;cursor:pointer;line-height:1">×</button>'+
-      '</div>'+
-      revisionBanner+
+    return revisionBanner+
       '<div style="margin-bottom:18px"><span style="display:inline-block;font-size:9px;letter-spacing:.16em;font-weight:700;color:'+accent+';border:1px solid '+accent+';padding:5px 12px;text-transform:uppercase">'+statusText+'</span><span style="margin-left:10px;font-size:11px;color:rgba(255,255,255,.4)">Submitted '+_esc(new Date(s.created_at).toLocaleDateString())+' · '+imageCount+' images</span></div>'+
       (note?'<div style="margin-bottom:24px;padding:18px;background:rgba(255,255,255,.04);border-left:3px solid '+accent+';"><div style="font-size:10px;letter-spacing:.16em;font-weight:700;color:rgba(255,255,255,.5);margin-bottom:8px">EDITOR\'S NOTE</div><div style="font-size:13px;color:rgba(255,255,255,.85);white-space:pre-line;line-height:1.8">'+_esc(note)+'</div></div>':'')+
       (coverUrl?'<div style="margin-bottom:18px"><img src="'+_safeUrl(coverUrl)+'" style="width:100%;max-height:360px;object-fit:cover;display:block;border:1px solid rgba(255,255,255,.08)"></div>':'')+
@@ -1242,6 +1216,59 @@ async function viewSubmission(id){
                 '<p style="margin:0">Kind regards,<br>PAP Magazine Editorial Team</p>'+
               '</div>';
             })():'');
+}
+// 목록의 각 서브미션 아래에 상세를 자동으로 펼친다 (최근 5건).
+function _papInlineSubDetails(subs){
+  (subs||[]).slice(0,5).forEach(function(sub){
+    _svFetchSubmission(sub.id).then(function(s){
+      if(!s) return;
+      var box=document.getElementById('_subDet_'+sub.id);
+      if(!box) return;
+      box.innerHTML=_svDetailBody(s,_svPrep(s),false);
+      box.style.display='block';
+    }).catch(function(e){console.warn('inline sub detail failed:',sub.id,e);});
+  });
+}
+
+// View one of MY SUBMISSIONS — fetches the full submission and shows status,
+// admin's review note (especially important for REVISION REQUESTED), and a
+// quick visual summary so creators don't have to chase down email.
+async function viewSubmission(id){
+  try{
+    // QA #173 — include the Bearer token explicitly. credentials:'include'
+    // covers the httpOnly cookie path, but users who only have the
+    // localStorage JWT (no cookie) would get a 401 here. Mirror the auth
+    // header pattern used by every authenticated fetch in pap-api.js.
+    var _token = '';
+    try{ _token = localStorage.getItem('pap-token') || ''; }catch(_){}
+    var _headers = {'X-Requested-With':'XMLHttpRequest'};
+    if(_token) _headers['Authorization'] = 'Bearer ' + _token;
+    var res=await fetch('/api/submissions/'+id,{
+      credentials:'include',
+      headers:_headers
+    });
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    var data=await res.json();
+    var s=data.submission||data.data||data;
+    if(!s||!s.id) throw new Error('Empty submission payload');
+
+    var _p=_svPrep(s); // 상태·요약 계산 공용화 (2026-07-20)
+
+    var bg=document.createElement('div');
+    bg.id='_mySubModalBg';
+    bg.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:2000;display:flex;align-items:center;justify-content:center;padding:24px;';
+    bg.onclick=function(e){if(e.target===bg)bg.remove();};
+
+    var card=document.createElement('div');
+    card.style.cssText='background:#0a0a0a;border:1px solid rgba(255,255,255,.1);max-width:680px;width:100%;max-height:90vh;overflow-y:auto;padding:32px;color:rgba(255,255,255,.85);font-family:Inter,sans-serif;font-size:13px;line-height:1.7;';
+
+    card.innerHTML=
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:18px">'+
+        '<div><div style="font-size:9px;letter-spacing:.2em;font-weight:700;color:rgba(255,255,255,.4);margin-bottom:6px">SUBMISSION</div>'+
+        '<div style="font-size:18px;font-weight:600;color:#fff">'+PAP.sanitize(s.title||'Untitled')+'</div></div>'+
+        '<button onclick="document.getElementById(&quot;_mySubModalBg&quot;).remove()" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:24px;cursor:pointer;line-height:1">×</button>'+
+      '</div>'+
+      _svDetailBody(s, _p, true);
 
 
     bg.appendChild(card);
