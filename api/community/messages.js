@@ -8,7 +8,6 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAuth } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
-const { assertActivePlan } = require('../_lib/subscriptionAccess');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -119,8 +118,6 @@ module.exports = async function handler(req, res) {
 
   // ── POST: Send message ──
   if (req.method === 'POST') {
-    // 2026-07-20 — DM 보내기는 스탠다드+ (대화 열람은 무료).
-    if (!(await assertActivePlan(supabaseAdmin, res, user, 'standard'))) return;
     try {
       const { recipientId, content } = req.body;
 

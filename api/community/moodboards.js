@@ -10,7 +10,6 @@ const { requireAuth } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { getOrTranslate } = require('../_lib/translate');
-const { assertActivePlan } = require('../_lib/subscriptionAccess');
 
 const SUPPORTED_LANGS = new Set(['ko','en','it','fr','es','ja','zh','ru','de']);
 
@@ -194,8 +193,7 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    // Create mood board — 스탠다드+ 필요 (투표는 위에서 무료 통과)
-    if (!(await assertActivePlan(supabaseAdmin, res, user, 'standard'))) return;
+    // Create mood board
     try {
       const { title, description, tags, items, inspiredById } = req.body;
       if (!title) return res.status(400).json({ message: 'Title is required' });

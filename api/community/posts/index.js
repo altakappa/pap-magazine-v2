@@ -13,7 +13,6 @@ const { requireAuth } = require('../../_lib/auth');
 const { handleCors } = require('../../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../../_lib/rateLimit');
 const { getOrTranslate } = require('../../_lib/translate');
-const { assertActivePlan } = require('../../_lib/subscriptionAccess');
 
 const SUPPORTED_LANGS = new Set(['ko','en','it','fr','es','ja','zh','ru','de']);
 
@@ -90,8 +89,6 @@ module.exports = async function handler(req, res) {
 
   // ── POST: Create post ──
   if (req.method === 'POST') {
-    // 2026-07-20 — 커뮤니티 원본 콘텐츠 작성은 스탠다드+ (열람·댓글·반응은 무료).
-    if (!(await assertActivePlan(supabaseAdmin, res, user, 'standard'))) return;
     try {
       const { title, content, tag } = req.body;
 
