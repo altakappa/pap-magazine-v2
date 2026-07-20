@@ -339,6 +339,16 @@ module.exports = async function handler(req, res) {
           }
           break;
         }
+        // ── 서브미션 부가서비스 (kind:'submission_addon') — 2026-07-20 ────
+        // PayPal→Paddle 전환분. DB 스키마 변경 없이 우선 loud log로 기록
+        // (도메니코가 Vercel 로그·Paddle 대시보드에서 대조). 발행·상태는 불변.
+        {
+          const _cd = data && data.custom_data;
+          if (_cd && _cd.kind === 'submission_addon') {
+            console.log('[paddle-webhook] submission ADDON paid — sub:', _cd.submission_id || '-', 'addon:', _cd.addon || '-', 'tx:', data.id, 'user:', _cd.user_id || '-');
+            break;
+          }
+        }
         // ── 구독 결제 로그 (기존 동작 보존) ──────────────────────────────
         // 상태 반영은 subscription.updated 가 담당 — 여기선 결제 로그만.
         console.log('[paddle-webhook] transaction completed:', data.id, 'sub:', data.subscription_id || '-');
