@@ -19,27 +19,8 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { runGrowthAudit } = require('../_lib/growthAudit');
 const { sendEmail } = require('../_lib/email');
-
-// 2026-07-21 — 브리핑 마크다운을 이메일용 기본 HTML로 변환 (경량, 라이브러리 없이).
-// 지원: # ## ### 헤더 · - 불릿 · **굵게** · 빈 줄 문단. XSS 방지 escape 후 변환.
-function mdToBasicHtml(md) {
-  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const inline = (s) => esc(s).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  const lines = String(md || '').split('\n');
-  let html = '', inList = false;
-  const closeList = () => { if (inList) { html += '</ul>'; inList = false; } };
-  for (const raw of lines) {
-    const line = raw.replace(/\s+$/, '');
-    if (/^###\s+/.test(line)) { closeList(); html += '<h3 style="font-size:14px;margin:18px 0 6px">' + inline(line.replace(/^###\s+/, '')) + '</h3>'; }
-    else if (/^##\s+/.test(line)) { closeList(); html += '<h2 style="font-size:16px;margin:22px 0 8px">' + inline(line.replace(/^##\s+/, '')) + '</h2>'; }
-    else if (/^#\s+/.test(line)) { closeList(); html += '<h1 style="font-size:18px;margin:24px 0 10px">' + inline(line.replace(/^#\s+/, '')) + '</h1>'; }
-    else if (/^\s*[-*]\s+/.test(line)) { if (!inList) { html += '<ul style="margin:6px 0 6px 18px;padding:0">'; inList = true; } html += '<li style="margin:3px 0">' + inline(line.replace(/^\s*[-*]\s+/, '')) + '</li>'; }
-    else if (line.trim() === '') { closeList(); }
-    else { closeList(); html += '<p style="margin:8px 0;line-height:1.7;font-size:13px">' + inline(line) + '</p>'; }
-  }
-  closeList();
-  return html;
-}
+// 2026-07-21 — 마크다운→메일 HTML 변환은 주간 브리핑과 공유하므로 _lib/mdEmail 로 추출됨.
+const { briefingEmailHtml, briefingRecipients } = require('../_lib/mdEmail');
 
 const FEEDBACK_SYSTEM = [
   '너는 디지털 매거진 전문 성장 컨설턴트다. PAP 매거진(아트 기반 패션·뷰티·컬쳐, 인스타그램 @pap_magazine 37만 팔로워 중심, 웹사이트 pap-magazine.com, 자매지 페퍼릿 @pepperitmag 14만)의 일일 데이터를 분석해 실행 가능한 개선 피드백을 쓴다.',
@@ -143,18 +124,13 @@ module.exports = async function handler(req, res) {
     let emailed = false;
     if (feedback) {
       try {
-        const to = process.env.DIGEST_TO || 'contact@pap-magazine.com';
-        const bodyHtml = mdToBasicHtml(feedback);
-        const html =
-          '<div style="font-family:-apple-system,\'Apple SD Gothic Neo\',sans-serif;max-width:640px;margin:0 auto;color:#111">' +
-          '<div style="border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:14px">' +
-          '<div style="font-size:11px;letter-spacing:.2em;color:#888">PAP MAGAZINE</div>' +
-          '<div style="font-size:20px;font-weight:800">데일리 성장 브리핑</div>' +
-          '<div style="font-size:12px;color:#888">' + kstDate + '</div></div>' +
-          bodyHtml +
-          '<div style="margin-top:24px;padding-top:14px;border-top:1px solid #eee;font-size:11px;color:#aaa">' +
-          '자세한 지표는 <a href="https://www.pap-magazine.com/site-analysis" style="color:#2980b9">/site-analysis</a> 대시보드에서 · 자동 발송</div></div>';
-        const r = await sendEmail(to, { subject: '[PAP] 데일리 성장 브리핑 — ' + kstDate, html });
+        const html = briefingEmailHtml({
+          title: '데일리 성장 브리핑',
+          dateLabel: kstDate,
+          markdown: feedback,
+          footerHtml: '자세한 지표는 <a href="https://www.pap-magazine.com/site-analysis" style="color:#2980b9">/site-analysis</a> 대시보드에서',
+        });
+        const r = await sendEmail(briefingRecipients(), { subject: '[PAP] 데일리 성장 브리핑 — ' + kstDate, html });
         emailed = !!(r && r.sent);
       } catch (e) {
         console.warn('[daily-growth-feedback] email failed:', e && e.message);

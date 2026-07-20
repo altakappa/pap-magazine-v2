@@ -1,0 +1,125 @@
+// PAP Magazine — celeb-watch 중복 판정 테스트
+//
+// 지키는 회귀 (2026-07-21, 도메니코: "중복된 기사가 너무 많이 온다"):
+//   - 한국어 헤드라인의 키워드가 살아남을 것 (기존 length>=3 은 한국어를 전멸시켰다)
+//   - 표현만 바꾼 재탕은 중복으로 잡힐 것
+//   - **새 인물이 추가되면 다른 사건으로 볼 것** (도메니코: "정호연 BTS 출연은 다른 기사")
+//   - BTS ↔ 방탄소년단 처럼 한·영 표기가 갈려도 같은 토큰일 것
+//   - 시그니처가 클러스터 항목 순서에 흔들리지 않을 것
+//
+// Run with `node tests/celeb-dedup.test.js` (wired into `npm test`).
+
+'use strict';
+
+const {
+  keywords, canonicalize, clusterEvents, clusterCore, sameEvent, hotScore, HOT_MIN,
+} = require('../api/_lib/celebDedup');
+
+let pass = 0, fail = 0;
+function ok(name, cond) {
+  if (cond) { pass++; console.log('  ✓ ' + name); }
+  else { fail++; console.log('  ✗ ' + name); }
+}
+function section(t) { console.log('\n=== ' + t + ' ==='); }
+
+/* ---------------------------------------------------------------- */
+section('keywords — 한국어가 살아남는가');
+
+const koKw = keywords('BTS 정국, 월드컵 결승 하프타임쇼 무대 확정');
+ok('한국어 2자 단어를 버리지 않는다 (정국)', koKw.includes('정국'));
+ok('월드컵은 정규표기 worldcup 으로 통일된다', koKw.includes('worldcup'));
+ok('영문 3자 이상은 그대로 (bts)', koKw.includes('bts'));
+ok('영문 불용어는 제외 (the)', !keywords('The New Look of the Year').includes('the'));
+
+/* ---------------------------------------------------------------- */
+section('canonicalize — 한·영 표기 통일');
+
+ok('방탄소년단 → bts 토큰', keywords('방탄소년단 월드투어').includes('bts'));
+ok('BTS 도 같은 토큰', keywords('BTS world tour').includes('bts'));
+ok('샤넬 → chanel', keywords('샤넬 신임 디렉터').includes('chanel'));
+ok('하프타임 → halftime', keywords('월드컵 하프타임쇼').includes('halftime'));
+
+/* ---------------------------------------------------------------- */
+section('sameEvent — 도메니코 규칙: 새 요소가 추가되면 다른 사건');
+
+// 이미 알린 사건: BTS 2026 하프타임쇼 출연
+const seen = ['bts', 'halftime', 'worldcup'];
+
+// ① 표현만 바꾼 재탕 → 중복 (다시 안 보냄)
+ok('"BTS 하프타임쇼 무대 확정" 재탕은 중복',
+  sameEvent(['bts', 'halftime', 'worldcup'], seen));
+ok('일부만 언급한 후속(부분집합)도 중복',
+  sameEvent(['bts', 'halftime'], seen));
+
+// ② 새 인물이 추가되면 다른 사건 → 알림 보냄
+ok('"정호연·BTS 하프타임쇼"는 정호연이 추가됐으므로 새 사건',
+  !sameEvent(['bts', 'halftime', 'worldcup', '정호연'], seen));
+ok('새 요소가 하나만 늘어도 새 사건',
+  !sameEvent(['bts', 'halftime', 'worldcup', '리허설공개'], seen));
+
+// ③ 완전히 다른 사건
+ok('샤넬 디렉터 선임은 무관한 사건', !sameEvent(['chanel', '디렉터', '선임'], seen));
+ok('겹침이 1개뿐이면 중복으로 보지 않는다', !sameEvent(['worldcup'], seen));
+
+// ④ 방어
+ok('빈 배열은 항상 false', !sameEvent([], seen) && !sameEvent(seen, []));
+
+/* ---------------------------------------------------------------- */
+section('clusterCore — 리워딩 노이즈는 빼고 공통 요소만 남는가');
+
+const grp = [
+  { title: 'BTS 정국, 월드컵 하프타임쇼 무대 확정' },
+  { title: 'BTS 정국 월드컵 하프타임쇼 무대 오른다' },
+  { title: 'BTS 정국, 월드컵 하프타임쇼 출연 발표' },
+];
+const core = clusterCore(grp);
+ok('공통 요소(bts)는 남는다', core.includes('bts'));
+ok('공통 요소(정국)도 남는다', core.includes('정국'));
+ok('한 곳에만 나온 표현(오른다)은 빠진다', !core.includes('오른다'));
+ok('한 곳에만 나온 표현(발표)도 빠진다', !core.includes('발표'));
+
+// 같은 사건 + 새 인물이 붙은 클러스터는 core 가 달라야 한다
+const grp2 = [
+  { title: '정호연·BTS 정국, 월드컵 하프타임쇼 동반 출연' },
+  { title: '정호연 BTS 정국 월드컵 하프타임쇼 함께 오른다' },
+];
+ok('새 인물(정호연)이 core 에 들어간다', clusterCore(grp2).includes('정호연'));
+ok('그래서 기존 사건과 중복이 아니다', !sameEvent(clusterCore(grp2), core));
+ok('반대로 원래 사건은 여전히 중복', sameEvent(core, core));
+
+/* ---------------------------------------------------------------- */
+section('clusterEvents — 교차 검증과 시그니처 안정성');
+
+const mk = (title, source, topic) => ({ title, link: 'https://x/' + encodeURIComponent(title), source, topic, ts: Date.now() });
+
+const items = [
+  mk('BTS 정국 월드컵 하프타임쇼 무대 확정', 'Soompi', 'kpop'),
+  mk('정국, 월드컵 하프타임쇼 무대 확정 발표', 'Allkpop', 'kpop'),
+  mk('전혀 다른 소식: 신인 브랜드 서울 팝업', 'WWD', 'fashion'),
+];
+const cl = clusterEvents(items);
+ok('2개 매체가 다룬 사건만 클러스터가 된다', cl.length === 1);
+ok('단독 기사는 버려진다', !cl.some(c => c.headlines.some(x => x.title.includes('팝업'))));
+ok('클러스터에 kw 배열이 붙는다', Array.isArray(cl[0].kw) && cl[0].kw.length > 0);
+ok('클러스터에 core 배열이 붙는다', Array.isArray(cl[0].core) && cl[0].core.length > 0);
+
+// 시그니처 안정성 — 입력 순서를 뒤집어도 같은 시그니처여야 한다.
+const cl2 = clusterEvents([items[1], items[0], items[2]]);
+ok('시그니처가 입력 순서에 흔들리지 않는다', cl[0].signature === cl2[0].signature);
+
+/* ---------------------------------------------------------------- */
+section('hotScore — 화제성 임계값');
+
+const big = {
+  sourceCount: 3, headlines: [{ title: 'BTS 월드컵 하프타임쇼' }], newestTs: Date.now(),
+};
+const small = {
+  sourceCount: 2, headlines: [{ title: '어느 브랜드의 조용한 소식' }], newestTs: Date.now(),
+};
+ok('대형 사건은 임계값을 넘는다', hotScore(big) >= HOT_MIN);
+ok('평범한 2개 매체 건은 임계값 미달 → 알림 안 감', hotScore(small) < HOT_MIN);
+
+/* ---------------------------------------------------------------- */
+console.log('\npassed: ' + pass + '   failed: ' + fail);
+if (fail) { console.error('❌ celeb-dedup tests failed'); process.exit(1); }
+console.log('✅ celeb-dedup tests passed');

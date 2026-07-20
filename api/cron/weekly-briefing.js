@@ -18,6 +18,8 @@
 
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
+const { sendEmail } = require('../_lib/email');
+const { briefingEmailHtml, briefingRecipients } = require('../_lib/mdEmail');
 
 const SYSTEM = [
   '너는 PAP 매거진(아트 기반 패션·뷰티·컬쳐 디지털 매거진, IG @pap_magazine 37만, 웹 pap-magazine.com, 자매지 페퍼릿 @pepperitmag 14만 — 두 매체 지표는 절대 합산 금지)의 주간 경영 브리핑을 쓰는 전략 컨설턴트다.',
@@ -115,7 +117,28 @@ module.exports = async function handler(req, res) {
     }, { onConflict: 'week_start' });
     if (error) throw error;
 
-    return res.status(200).json({ ok: true, week_start: weekStart, briefing_generated: !!briefing, ai_error: aiError || undefined });
+    // 2026-07-21 (도메니코 지시) — 주간 브리핑도 이메일 발송.
+    // 기존엔 weekly_briefings 저장만 해서 대시보드를 열어봐야 했다. 데일리와
+    // 동일 수신자(DIGEST_TO)에게 월요일 아침 메일로 도착시킨다. 이로써 맥 앱이
+    // 꺼져 있어도 주간 브리핑이 전달된다(Cowork 예약 의존 제거).
+    // 발송 실패는 삼킨다 — 저장(핵심)은 이미 끝났으므로 크론을 실패로 만들지 않는다.
+    let emailed = false;
+    if (briefing) {
+      try {
+        const html = briefingEmailHtml({
+          title: '주간 브리핑',
+          dateLabel: weekStart + ' 주',
+          markdown: briefing,
+          footerHtml: '지표 상세는 <a href="https://www.pap-magazine.com/site-analysis" style="color:#2980b9">/site-analysis</a> 대시보드에서',
+        });
+        const r = await sendEmail(briefingRecipients(), { subject: '[PAP] 주간 브리핑 — ' + weekStart + ' 주', html });
+        emailed = !!(r && r.sent);
+      } catch (e) {
+        console.warn('[weekly-briefing] email failed:', e && e.message);
+      }
+    }
+
+    return res.status(200).json({ ok: true, week_start: weekStart, briefing_generated: !!briefing, emailed, ai_error: aiError || undefined });
   } catch (err) {
     console.error('[weekly-briefing] error:', err);
     return res.status(500).json({ error: 'weekly briefing failed', detail: String(err && err.message || err).slice(0, 150) });

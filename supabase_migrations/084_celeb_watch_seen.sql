@@ -24,3 +24,18 @@ CREATE INDEX IF NOT EXISTS idx_celeb_watch_seen_created ON public.celeb_watch_se
 
 ALTER TABLE public.celeb_watch_seen ENABLE ROW LEVEL SECURITY;
 -- 정책 없음 = service_role 만 접근 (서버 크론 전용).
+
+-- 2026-07-21 추가 — 중복 판정 강화 (도메니코: "중복된 기사가 너무 많이 온다")
+-- kw: 클러스터 대표 키워드. 다음 실행에서 Jaccard 유사도로 같은 사건인지 판정.
+-- entity: 사건의 "주인공"(BTS·월드컵·샤넬 등). 같은 주인공은 6시간 쿨다운.
+ALTER TABLE public.celeb_watch_seen ADD COLUMN IF NOT EXISTS kw     TEXT[];
+ALTER TABLE public.celeb_watch_seen ADD COLUMN IF NOT EXISTS entity TEXT;  -- (미사용, 아래 core 로 대체)
+CREATE INDEX IF NOT EXISTS idx_celeb_watch_seen_entity
+  ON public.celeb_watch_seen(entity, created_at DESC);
+
+-- 2026-07-21 2차 — 도메니코 규칙 반영.
+--   "단어나 문장만 바꿔가며 BTS가 출연했다는 기사는 중복이므로 또 알려줄 필요 없어.
+--    다만 '정호연 BTS와 출연'은 정호연이 추가됐으므로 다른 기사야."
+-- → 사건의 정체성을 "등장 요소의 집합"(core)으로 잡는다. 새 요소가 추가되면 새 알림.
+-- entity(단일 주인공) 기반 쿨다운은 폐기 — 그 방식이면 정호연 건까지 막혔다.
+ALTER TABLE public.celeb_watch_seen ADD COLUMN IF NOT EXISTS core TEXT[];

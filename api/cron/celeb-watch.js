@@ -98,55 +98,53 @@ function decodeEntities(s) {
     .replace(/&nbsp;/g, ' ');
 }
 
-const norm = (s) => String(s || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
-const STOP = new Set(['the','a','an','of','in','on','at','for','to','and','or','with','his','her','its','new','says','after','from','over','into','this','that','be','is','are','was','were','has','have','will','k','pop']);
-function keywords(title) {
-  return norm(title).split(' ').filter(w => w.length >= 3 && !STOP.has(w));
-}
+const {
+  keywords, clusterEvents, clusterCore, sameEvent, hotScore, HOT_MIN,
+} = require('../_lib/celebDedup');
 
-/* 교차 검증 클러스터링 — 키워드 3개 이상 겹치고 소스가 서로 다르면 같은 사건.
-   두 개 이상 매체가 다룬 사건만 속보 후보 (단독 낚시 기사 배제). */
-function clusterEvents(items) {
-  const used = new Set();
-  const clusters = [];
-  for (let i = 0; i < items.length; i++) {
-    if (used.has(i)) continue;
-    const base = keywords(items[i].title);
-    if (base.length < 2) continue;
-    const group = [items[i]];
-    used.add(i);
-    for (let k = i + 1; k < items.length; k++) {
-      if (used.has(k)) continue;
-      const other = keywords(items[k].title);
-      const overlap = base.filter(w => other.includes(w));
-      if (overlap.length >= 3) { group.push(items[k]); used.add(k); }
-    }
-    const sources = new Set(group.map(g => g.source));
-    if (sources.size >= 2) {
-      clusters.push({
-        signature: base.slice(0, 6).sort().join('-'),
-        headlines: group.map(g => ({ title: g.title, link: g.link, source: g.source })),
-        sourceCount: sources.size,
-        topic: group[0].topic,
-        newestTs: Math.max(...group.map(g => g.ts || 0)),
-      });
-    }
+
+/* 영문 헤드라인 → 한국어. 이미 한국어인 제목은 건드리지 않는다.
+   반환: { 원문: 번역문 }. 실패·키 없음이면 빈 객체 → 호출부가 원문으로 폴백. */
+const HANGUL_RE = /[가-힣]/;
+async function translateTitles(titles) {
+  const targets = [...new Set(titles.filter(t => t && !HANGUL_RE.test(t)))];
+  if (!targets.length || !process.env.ANTHROPIC_API_KEY) return {};
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        // 제목 몇 줄만 옮기는 작업이라 가장 싼 모델로 충분하다.
+        model: process.env.CELEB_TRANSLATE_MODEL || 'claude-haiku-4-5-20251001',
+        max_tokens: 1000,
+        system: [
+          '뉴스 헤드라인을 한국어로 옮긴다. 속보 알림용이므로 간결하게.',
+          '- 아티스트·브랜드명은 한국에서 통용되는 표기로 (BTS, 블랙핑크, 샤넬…).',
+          '- 의역하지 말고 헤드라인의 사실만 그대로 옮긴다. 추측·수식 금지.',
+          '- 입력 배열과 같은 길이·같은 순서의 JSON 문자열 배열만 출력. 다른 텍스트 금지.',
+        ].join('\n'),
+        messages: [{ role: 'user', content: JSON.stringify(targets) }],
+      }),
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!r.ok) throw new Error('translate ' + r.status);
+    const j = await r.json();
+    const block = Array.isArray(j.content) ? j.content.find(b => b && typeof b.text === 'string') : null;
+    const raw = block ? block.text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim() : '';
+    const arr = JSON.parse(raw.startsWith('[') ? raw : (raw.match(/\[[\s\S]*\]/) || ['[]'])[0]);
+    if (!Array.isArray(arr) || arr.length !== targets.length) throw new Error('길이 불일치');
+    const map = {};
+    targets.forEach((t, i) => { if (typeof arr[i] === 'string' && arr[i].trim()) map[t] = arr[i].trim(); });
+    return map;
+  } catch (e) {
+    console.warn('[celeb-watch] 번역 실패, 원문으로 발송:', (e && e.message) || e);
+    return {};
   }
-  return clusters.sort((a, b) => b.sourceCount - a.sourceCount);
 }
-
-/* 화제성 점수 — 알림을 보낼 가치가 있는가.
-   도메니코 결정(2026-07-21): "5분마다 검토해서 화제성이 있는 것만 텔레그램".
-   교차 매체 수가 가장 강한 신호이고, 대형 이벤트 키워드·최신성을 가산한다. */
-const HOT_RE = /(bts|blackpink|방탄|블랙핑크|월드컵|world\s?cup|super\s?bowl|halftime|met\s?gala|oscar|grammy|cannes|comeback|debut|creative\s+director|artistic\s+director|steps?\s+down|appointed|사망|은퇴|열애|결혼|입대|전역|수상|1위)/i;
-function hotScore(c) {
-  let s = c.sourceCount * 2;                              // 교차 검증 = 핵심 신호
-  if (HOT_RE.test(c.headlines.map(h => h.title).join(' '))) s += 3;
-  if (c.newestTs && Date.now() - c.newestTs < 60 * 60 * 1000) s += 2; // 1시간 이내
-  if (c.headlines.length >= 4) s += 1;                    // 헤드라인 물량
-  return s;
-}
-const HOT_MIN = 7; // 2개 매체(4) + 최신(2) 만으로는 안 보냄. 3개 매체 또는 대형 키워드 필요.
 
 module.exports = withCronGuard('celeb-watch', async function handler(req, res) {
   const auth = (req.headers && req.headers['authorization']) || '';
@@ -188,21 +186,36 @@ module.exports = withCronGuard('celeb-watch', async function handler(req, res) {
       .sort((a, b) => b.score - a.score);
     if (!clusters.length) return res.status(200).json({ ok: true, note: '화제성 기준 미달', scanned: items.length });
 
-    /* 5) 이미 알린 사건 제외 — celeb_watch_seen 최근 48시간 기록과 키워드 대조.
-       (2026-07-20 draft 스팸 재발 방지: 시그니처 + 키워드 겹침 이중 판정) */
+    /* 5) 이미 알린 사건 제외 (2026-07-21 강화).
+       도메니코 규칙: "단어나 문장만 바꿔가며 BTS가 출연했다는 기사는 중복이므로
+       또 알려줄 필요 없어. 다만 '정호연·BTS 출연'은 정호연이 추가됐으므로 다른 기사."
+       → 사건의 정체성은 **등장 요소의 집합**. 새 요소가 추가되면 새 알림을 보낸다.
+         ① 시그니처(실체 키워드 집합) 완전 일치
+         ② 새 요소가 없는 부분집합 = 표현만 바꾼 재탕
+         ③ 같은 실행 안에서 서로 중복인 클러스터 병합 */
     const since = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
     const { data: seen } = await supabaseAdmin.from('celeb_watch_seen')
-      .select('signature, title').gte('created_at', since).limit(500);
-    const seenSig = new Set((seen || []).map(s => s.signature));
-    const seenKw = (seen || []).map(s => keywords(s.title || ''));
+      .select('signature, title, kw, core, created_at').gte('created_at', since).limit(500);
+    const seenRows = seen || [];
+    const seenSig = new Set(seenRows.map(s => s.signature));
+    const seenCores = seenRows.map(s => {
+      if (Array.isArray(s.core) && s.core.length) return s.core;
+      if (Array.isArray(s.kw) && s.kw.length) return s.kw;
+      return keywords(s.title || '');
+    });
+
     clusters = clusters.filter(c => {
       if (seenSig.has(c.signature)) return false;
-      const ck = keywords(c.headlines[0].title);
-      return !seenKw.some(rk => ck.filter(w => rk.includes(w)).length >= 3);
+      return !seenCores.some(sc => sameEvent(c.core, sc));
     });
     if (!clusters.length) return res.status(200).json({ ok: true, note: '신규 속보 없음 (이미 알림)', scanned: items.length });
 
-    const picked = clusters.slice(0, MAX_PER_RUN);
+    // ③ 같은 실행 안에서의 중복 제거 — 클러스터링이 놓친 같은 사건을 한 번 더 접는다.
+    const picked = [];
+    for (const c of clusters) {
+      if (!picked.some(p => sameEvent(c.core, p.core) || sameEvent(p.core, c.core))) picked.push(c);
+      if (picked.length >= MAX_PER_RUN) break;
+    }
     if (dry) {
       return res.status(200).json({ ok: true, dry: true, scanned: items.length,
         picked: picked.map(c => ({ score: c.score, sources: c.sourceCount, topic: c.topic,
@@ -215,6 +228,8 @@ module.exports = withCronGuard('celeb-watch', async function handler(req, res) {
         await supabaseAdmin.from('celeb_watch_seen').insert({
           signature: c.signature,
           title: c.headlines[0].title,
+          kw: c.kw,      // 참고용 전체 키워드
+          core: c.core,  // 다음 실행의 중복 판정 근거 (사건의 등장 요소)
           topic: c.topic,
           source_count: c.sourceCount,
           score: c.score,
@@ -223,18 +238,32 @@ module.exports = withCronGuard('celeb-watch', async function handler(req, res) {
       } catch (e) { console.warn('[celeb-watch] seen 기록 실패:', (e && e.message) || e); }
     }
 
-    /* 7) 텔레그램 즉시 알림 — 기사는 만들지 않는다.
-       도메니코 결정(2026-07-21): "화제성이 있는 것만 텔레그램으로".
-       기사화 여부는 사람이 판단하고, 웹사이트 자동게시는 sync-instagram 이 담당. */
+    /* 7) 한국어 번역 (도메니코 2026-07-21: "영어 기사는 한글로 번역해서 알려줘야 해").
+       감시 소스 대부분이 영문(Soompi·Billboard·WWD·Reddit)이라 새벽에 영문
+       헤드라인만 오면 판단이 느려진다. 알림 직전에 제목만 번역한다 —
+       본문 생성이 아니라 제목 몇 줄이므로 비용·지연이 작다.
+       실패하면 원문 그대로 보낸다 (알림을 놓치는 것이 최악). */
+    const toTranslate = [];
+    for (const c of picked) for (const h of c.headlines.slice(0, 4)) toTranslate.push(h);
+    const koMap = await translateTitles(toTranslate.map(h => h.title));
+    const ko = (t) => {
+      const v = koMap[t];
+      return v && v !== t ? `${v}\n   (${t})` : t;
+    };
+
     const top = picked[0];
     const more = picked.length > 1 ? ` 외 ${picked.length - 1}건` : '';
+    const topKo = koMap[top.headlines[0].title] || top.headlines[0].title;
     const pushResult = await pushAlert({
-      title: `🚨 PAP 속보 감지 — ${top.headlines[0].title}${more}`,
+      title: `🚨 PAP 속보 감지 — ${topKo}${more}`,
       lines: [
         `${top.sourceCount}개 매체 교차 확인 · 화제성 ${top.score}점 · ${top.topic}`,
-        ...top.headlines.slice(0, 4).map(h => `· ${h.source}: ${h.title}`),
+        ...top.headlines.slice(0, 4).map(h => `· ${h.source}: ${ko(h.title)}`),
         '',
-        ...picked.slice(1).map(c => `▸ ${c.headlines[0].title} (${c.sourceCount}개 매체)`),
+        ...picked.slice(1).map(c => {
+          const t = c.headlines[0].title;
+          return `▸ ${koMap[t] || t} (${c.sourceCount}개 매체)`;
+        }),
         '',
         '기사화할지는 직접 판단하세요.',
       ].filter((l, i, a) => !(l === '' && a[i - 1] === '')),
