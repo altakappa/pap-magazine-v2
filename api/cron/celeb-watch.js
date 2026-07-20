@@ -1,6 +1,6 @@
 /**
  * PAP Magazine — 셀럽·속보 감시 크론 (2026-07-17 신설)
- * Route: /api/cron/celeb-watch  (vercel.json: 15분마다)
+ * Route: /api/cron/celeb-watch  (vercel.json: 5분마다)
  *
  * 왜: 새벽에 터지는 대형 이벤트(예: 월드컵 결승 하프타임쇼)를 팀이 자느라
  * 놓친다. 기존 sync-instagram 은 "IG 에 이미 올라간 것"만 기사화하므로,
@@ -32,38 +32,70 @@ const SITE = 'https://www.pap-magazine.com';
 
 /* 감시 소스 — 도메니코 선택 3개 영역 (K-pop 셀럽 / 시상식 레드카펫 / 패션 브랜드).
    구글 뉴스 RSS 쿼리는 키워드 기반이라 이벤트성 속보를 빠르게 잡는다. */
+// 2026-07-20 속도 개선: 인스타/X 가 RSS 보다 빠르지만 타 계정 API 감시가
+// 불가(Graph API 제약)·유료(X)라, 대신 ① 구글뉴스 when:1h 로 최신만 좁혀
+// 폴링 주기(5분)와 맞추고 ② 팬덤 커뮤니티(Reddit) RSS 를 추가한다.
+// Reddit 은 무료·실시간에 가깝고 팬이 매체보다 먼저 올리는 경우가 많다.
 const FEEDS = [
-  // K-pop · 셀럽
+  // K-pop · 셀럽 (매체)
   { source: 'Soompi', url: 'https://www.soompi.com/feed', topic: 'kpop' },
   { source: 'Allkpop', url: 'https://www.allkpop.com/rss', topic: 'kpop' },
   { source: 'Billboard', url: 'https://www.billboard.com/feed/', topic: 'kpop' },
   { source: 'GoogleNews-KPOP', topic: 'kpop',
-    url: 'https://news.google.com/rss/search?q=(BTS+OR+blackpink+OR+%22K-pop%22)+when:1d&hl=en-US&gl=US&ceid=US:en' },
+    url: 'https://news.google.com/rss/search?q=(BTS+OR+blackpink+OR+%22K-pop%22)+when:1h&hl=en-US&gl=US&ceid=US:en' },
+  { source: 'GoogleNews-KPOP-KR', topic: 'kpop',
+    url: 'https://news.google.com/rss/search?q=(%EB%B0%A9%ED%83%84%EC%86%8C%EB%85%84%EB%8B%A8+OR+%EB%B8%94%EB%9E%99%ED%95%91%ED%81%AC+OR+%EC%BC%80%EC%9D%B4%ED%8C%9D)+when:1h&hl=ko&gl=KR&ceid=KR:ko' },
+  // K-pop · 셀럽 (팬덤 커뮤니티 — 매체보다 먼저 뜨는 경우가 많음)
+  { source: 'Reddit-kpop', topic: 'kpop',
+    url: 'https://www.reddit.com/r/kpop/new/.rss?limit=25' },
+  { source: 'Reddit-bangtan', topic: 'kpop',
+    url: 'https://www.reddit.com/r/bangtan/new/.rss?limit=25' },
   // 시상식 · 레드카펫
   { source: 'GoogleNews-RedCarpet', topic: 'redcarpet',
-    url: 'https://news.google.com/rss/search?q=(%22red+carpet%22+OR+MetGala+OR+Oscars+OR+Grammys+OR+Cannes)+fashion+when:1d&hl=en-US&gl=US&ceid=US:en' },
+    url: 'https://news.google.com/rss/search?q=(%22red+carpet%22+OR+MetGala+OR+Oscars+OR+Grammys+OR+Cannes)+fashion+when:1h&hl=en-US&gl=US&ceid=US:en' },
+  { source: 'Reddit-fauxmoi', topic: 'redcarpet',
+    url: 'https://www.reddit.com/r/Fauxmoi/new/.rss?limit=25' },
   // 패션 브랜드 속보 (디렉터 선임·사임 등)
   { source: 'WWD', url: 'https://wwd.com/feed/', topic: 'fashion' },
   { source: 'Hypebeast', url: 'https://hypebeast.com/feed', topic: 'fashion' },
   { source: 'GoogleNews-Fashion', topic: 'fashion',
-    url: 'https://news.google.com/rss/search?q=(%22creative+director%22+OR+%22artistic+director%22)+(appointed+OR+named+OR+steps+down)+fashion+when:1d&hl=en-US&gl=US&ceid=US:en' },
+    url: 'https://news.google.com/rss/search?q=(%22creative+director%22+OR+%22artistic+director%22)+(appointed+OR+named+OR+steps+down)+fashion+when:1h&hl=en-US&gl=US&ceid=US:en' },
+  { source: 'Reddit-fashion', topic: 'fashion',
+    url: 'https://www.reddit.com/r/fashion/new/.rss?limit=25' },
 ];
 
-// 의존성 없는 최소 RSS 파서 (trend-scout 과 동일 방식)
+// 의존성 없는 최소 피드 파서.
+// RSS(<item>/<pubDate>/<link>텍스트) 와 Atom(<entry>/<updated>/<link href=>) 둘 다 처리 —
+// Reddit 은 Atom 을 내려주므로 분기가 필요하다.
 function parseRss(xml, source, topic) {
+  const raw = String(xml);
+  const isAtom = /<entry[\s>]/.test(raw) && !/<item[\s>]/.test(raw);
   const items = [];
-  const chunks = String(xml).split(/<item[\s>]/).slice(1, 21);
+  const chunks = raw.split(isAtom ? /<entry[\s>]/ : /<item[\s>]/).slice(1, 26);
   for (const c of chunks) {
-    const t = c.match(/<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/);
-    const l = c.match(/<link>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/link>/);
-    const d = c.match(/<pubDate>([\s\S]*?)<\/pubDate>/);
-    const title = t && t[1] ? t[1].replace(/<[^>]+>/g, '').trim() : '';
-    const link = l && l[1] ? l[1].trim() : '';
+    const t = c.match(/<title[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/);
+    const title = t && t[1] ? decodeEntities(t[1].replace(/<[^>]+>/g, '')).trim() : '';
+    let link = '';
+    if (isAtom) {
+      const l = c.match(/<link[^>]*href=["']([^"']+)["']/);
+      link = l && l[1] ? l[1].trim() : '';
+    } else {
+      const l = c.match(/<link>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/link>/);
+      link = l && l[1] ? l[1].trim() : '';
+    }
     if (!title || !link) continue;
+    const d = c.match(isAtom ? /<updated>([\s\S]*?)<\/updated>/ : /<pubDate>([\s\S]*?)<\/pubDate>/);
     const ts = d && d[1] ? Date.parse(d[1]) : NaN;
     items.push({ title, link, source, topic, ts: isNaN(ts) ? null : ts });
   }
   return items;
+}
+// Atom 제목에 흔한 HTML 엔티티 복원 (&amp;#39; 등 이중 인코딩 포함)
+function decodeEntities(s) {
+  return String(s)
+    .replace(/&amp;/g, '&').replace(/&#0?39;|&apos;/g, "'")
+    .replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&nbsp;/g, ' ');
 }
 
 const norm = (s) => String(s || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
@@ -128,8 +160,8 @@ module.exports = withCronGuard('celeb-watch', async function handler(req, res) {
     let items = results.flatMap(r => (r.status === 'fulfilled' ? r.value : []));
     if (!items.length) return res.status(200).json({ ok: true, note: '수집 0건' });
 
-    /* 2) 최근 6시간 이내 항목만 (속보성). pubDate 없으면 통과. */
-    const CUTOFF = Date.now() - 6 * 3600 * 1000;
+    /* 2) 최근 3시간 이내 항목만 (5분 폴링에 맞춰 속보성 강화). 날짜 없으면 통과. */
+    const CUTOFF = Date.now() - 3 * 3600 * 1000;
     items = items.filter(i => !i.ts || i.ts >= CUTOFF);
 
     /* 3) 교차 검증 클러스터링 */
