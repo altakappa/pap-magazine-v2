@@ -109,7 +109,14 @@ module.exports = async function handler(req, res) {
        films.glacia-regina-78 로 살아 있는 것을 확인했다.
        접두 일치가 정확히 1건일 때만 301 (모호하면 404 유지 — 위 5)와 같은 방침). */
     if (!data && decoded && !/%/.test(decoded)) {
-      const safe = decoded.replace(/[\\%_]/g, ch => '\\' + ch);
+      const esc = (s) => s.replace(/[\\%_]/g, ch => '\\' + ch);
+      /* 구 URL 은 뒤에 타입 접미어가 붙어 있는 경우가 많다
+         (glacia-regina-film → films.glacia-regina-78). 마지막 세그먼트를 떼고
+         한 번 더 접두 일치를 시도한다. 남는 어간이 2세그먼트 이상일 때만 —
+         한 단어까지 깎으면 엉뚱한 글로 보내기 쉽다. */
+      const parts = decoded.split('-').filter(Boolean);
+      const stem = parts.length >= 3 ? parts.slice(0, -1).join('-') : null;
+
       for (const [table, path] of [['films', '/film/'], ['articles', '/article/']]) {
         const exact = await supabaseAdmin.from(table).select('slug')
           .eq('slug', decoded).eq('status', 'published').limit(1).maybeSingle();
@@ -118,11 +125,24 @@ module.exports = async function handler(req, res) {
           res.setHeader('Location', path + encodeURIComponent(exact.data.slug));
           return res.status(301).end();
         }
-        const pr = await supabaseAdmin.from(table).select('slug')
-          .like('slug', safe + '-%').eq('status', 'published').limit(2);
+        for (const base of [decoded, stem]) {
+          if (!base) continue;
+          const pr = await supabaseAdmin.from(table).select('slug')
+            .like('slug', esc(base) + '-%').eq('status', 'published').limit(2);
+          if (pr.data && pr.data.length === 1 && pr.data[0].slug) {
+            res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=3600');
+            res.setHeader('Location', path + encodeURIComponent(pr.data[0].slug));
+            return res.status(301).end();
+          }
+        }
+      }
+      /* 에디토리얼도 같은 접미어 문제를 겪는다 (5)는 원형 접두만 본다). */
+      if (stem) {
+        const pr = await supabaseAdmin.from('editorials').select('slug')
+          .like('slug', esc(stem) + '-%').eq('status', 'published').limit(2);
         if (pr.data && pr.data.length === 1 && pr.data[0].slug) {
           res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=3600');
-          res.setHeader('Location', path + encodeURIComponent(pr.data[0].slug));
+          res.setHeader('Location', '/editorial/' + encodeURIComponent(pr.data[0].slug));
           return res.status(301).end();
         }
       }
