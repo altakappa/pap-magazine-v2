@@ -591,7 +591,11 @@ function _renderArticleDetail(a,det){
     // 사용자 요청 — 재생 버튼 없이 자동 재생. autoplay+muted+playsinline+loop 조합 필수.
     var vidHtml=vids.map(function(url){return '<div style="grid-column:1/-1;overflow:hidden;border-radius:2px;background:#000"><video src="'+url+'" autoplay muted loop playsinline controls preload="metadata" style="width:100%;display:block;max-height:80vh"></video></div>';}).join('');
     if(galImgs||vids.length){
-      galEl.innerHTML=vidHtml+(galImgs?galImgs.map(function(url){return '<div style="overflow:hidden;border-radius:2px;background:#111"><img src="'+url+'" alt="'+escapeHtml(a.t)+'" loading="lazy" style="width:100%;display:block" onerror="edImgError(this)"></div>';}).join(''):'');
+      // 로딩 스켈레톤 (2026-07-20, QA 공백 페이지 대응) — 로딩 중 빈 블록으로
+      // 보이지 않게 min-height + 셔머 배경. 로드 완료 시 이미지가 덮는다.
+      if(!document.getElementById('papSkelKF')){var _st=document.createElement('style');_st.id='papSkelKF';_st.textContent='@keyframes papSkel{0%{background-position:200% 0}100%{background-position:-200% 0}}';document.head.appendChild(_st);}
+      var _skel='min-height:240px;background:linear-gradient(110deg,#101010 35%,#1e1e1e 50%,#101010 65%);background-size:200% 100%;animation:papSkel 1.6s linear infinite;';
+      galEl.innerHTML=vidHtml+(galImgs?galImgs.map(function(url){return '<div style="overflow:hidden;border-radius:2px;background:#111"><img src="'+url+'" alt="'+escapeHtml(a.t)+'" loading="lazy" style="width:100%;display:block;'+_skel+'" onerror="edImgError(this)"></div>';}).join(''):'');
       galEl.style.display='grid';
     } else { galEl.innerHTML='';galEl.style.display='none'; }
   }

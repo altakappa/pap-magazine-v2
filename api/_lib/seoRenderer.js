@@ -963,7 +963,13 @@ ${cfg.schemaType !== 'VideoObject' && ogImage ? (canOptimizeImg(ogImage)
   .seo-related-films{display:flex;flex-direction:column;gap:0}
   .seo-gallery{max-width:1200px;margin:48px auto;padding:0 16px;display:grid;grid-template-columns:1fr;gap:24px}
   .seo-gallery figure{margin:0}
-  .seo-gallery img{display:block;width:100%;height:auto;background:#111}
+  /* 로딩 스켈레톤 (2026-07-20, QA 공백 페이지 대응) — 이미지가 로딩되는 동안
+     검은 배경과 구분되는 은은한 셔머를 보여줘 "빈 블록"으로 보이지 않게 한다.
+     로딩 완료 후에는 이미지가 배경을 덮어 보이지 않는다. */
+  @keyframes papSkel{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  .seo-gallery img{display:block;width:100%;height:auto;min-height:240px;
+    background:linear-gradient(110deg,#101010 35%,#1e1e1e 50%,#101010 65%);
+    background-size:200% 100%;animation:papSkel 1.6s linear infinite}
   @media(min-width:900px){.seo-gallery{grid-template-columns:1fr 1fr;gap:32px}}
   .seo-body{max-width:800px;margin:32px auto;padding:0 24px;line-height:1.7;font-size:16px}
   .seo-body p{margin:0 0 1.2em}
