@@ -124,10 +124,38 @@ module.exports = async function handler(req, res) {
     // 소셜 유입 계측 (utm_source 있을 때만 기록, 실패는 삼킨다 — 2026-07-16)
     await logSocialInclick(req, 'article');
 
+    /* 다국어 (2026-07-21): 에디토리얼은 2026-07-16 부터 it/fr/es/ja SSR 이
+       있었는데 기사는 en 하나뿐이었다 — 밀라노 기반 매체가 이탈리아어 기사
+       검색에 잡히지 않는 상태. 에디토리얼과 동일한 구조로 맞춘다.
+       ko|en 은 DB 원본 필드, 그 외는 seo_translations(kind='article').
+       번역이 없으면 /en/ 으로 302 — 빈 번역 페이지를 색인시키지 않는다. */
+    const VALID_LANGS = ['ko', 'en', 'it', 'fr', 'es', 'ja'];
+    const lang = VALID_LANGS.includes(String(req.query.lang || '')) ? String(req.query.lang) : 'ko';
+
+    let translation = null;
+    let availableLangs = ['ko', 'en'];
+    try {
+      const { data: trs } = await supabaseAdmin
+        .from('seo_translations')
+        .select('lang, title, description')
+        .eq('kind', 'article')
+        .eq('content_id', data.id);
+      for (const t of trs || []) {
+        if (!availableLangs.includes(t.lang)) availableLangs.push(t.lang);
+        if (t.lang === lang) translation = { title: t.title, description: t.description };
+      }
+    } catch (_) { /* 테이블 미생성 등 — ko/en 만으로 렌더 */ }
+
+    if (lang !== 'ko' && lang !== 'en' && !translation) {
+      res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=1800');
+      res.setHeader('Location', '/en/article/' + encodeURIComponent(data.custom_url || data.slug || slug));
+      return res.status(302).end();
+    }
+
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=300, stale-while-revalidate=86400');
     res.setHeader('X-Robots-Tag', 'index, follow, max-image-preview:large');
-    return res.status(200).send(renderSeoHtml('article', data, { lang: req.query.lang === 'en' ? 'en' : 'ko' }));
+    return res.status(200).send(renderSeoHtml('article', data, { lang, translation, availableLangs }));
 
   } catch (err) {
     console.error('[seo/article] error', err);

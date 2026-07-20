@@ -103,6 +103,10 @@
     {
       "path": "/api/cron/backfill-translations",
       "schedule": "6-56/10 * * * *"
+    },
+    {
+      "path": "/api/cron/backfill-faq",
+      "schedule": "3-53/10 * * * *"
     }
   ],
   "rewrites": [
@@ -281,6 +285,10 @@
     {
       "source": "/en/article/:slug",
       "destination": "/api/seo/article/:slug?lang=en"
+    },
+    {
+      "source": "/:lang(it|fr|es|ja)/article/:slug",
+      "destination": "/api/seo/article/:slug?lang=:lang"
     },
     {
       "source": "/en/film/:slug",
