@@ -108,6 +108,15 @@ function withCronGuard(cronName, handler) {
     } finally {
       const duration = Date.now() - start;
       const note = (res.locals && res.locals.cronNote) ? res.locals.cronNote : null;
+
+      // 2026-07-21 — 자체 try/catch 로 에러를 삼키고 res.status(500) 만 반환하는
+      // 핸들러(브리핑 3종이 이 방식)를 '성공'으로 기록하던 구멍을 막는다.
+      // 예외가 밖으로 안 나와도 5xx 응답이면 실패다.
+      if (ok && res && typeof res.statusCode === 'number' && res.statusCode >= 500) {
+        ok = false;
+        error = 'HTTP ' + res.statusCode + ' (핸들러가 예외를 자체 처리하고 5xx 반환)';
+      }
+
       // 로그는 항상 기록
       await _logRun(cronName, ok, duration, note, error);
       // 실패 알림 (쿨다운 있음)

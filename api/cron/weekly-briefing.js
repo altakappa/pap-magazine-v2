@@ -17,6 +17,7 @@
  */
 
 const { supabaseAdmin } = require('../_lib/supabase');
+const { withCronGuard } = require('../_lib/cronGuard');
 const { requireAdmin } = require('../_lib/auth');
 const { sendEmail } = require('../_lib/email');
 const { briefingEmailHtml, briefingRecipients } = require('../_lib/mdEmail');
@@ -45,7 +46,7 @@ function kstDate(offsetDays) {
   return new Date(Date.now() + 9 * 3600 * 1000 - (offsetDays || 0) * 86400000).toISOString().slice(0, 10);
 }
 
-module.exports = async function handler(req, res) {
+module.exports = withCronGuard('weekly-briefing', async function handler(req, res) {
   const auth = (req.headers && req.headers['authorization']) || '';
   const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
   if (!cronOk) {
@@ -143,4 +144,4 @@ module.exports = async function handler(req, res) {
     console.error('[weekly-briefing] error:', err);
     return res.status(500).json({ error: 'weekly briefing failed', detail: String(err && err.message || err).slice(0, 150) });
   }
-};
+});

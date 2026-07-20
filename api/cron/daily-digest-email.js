@@ -11,6 +11,7 @@
  */
 
 const { supabaseAdmin } = require('../_lib/supabase');
+const { withCronGuard } = require('../_lib/cronGuard');
 const { requireAdmin } = require('../_lib/auth');
 const { sendEmail } = require('../_lib/email');
 
@@ -19,7 +20,7 @@ function esc(s) {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-module.exports = async function handler(req, res) {
+module.exports = withCronGuard('daily-digest-email', async function handler(req, res) {
   const auth = (req.headers && req.headers['authorization']) || '';
   const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
   if (!cronOk) {
@@ -86,4 +87,4 @@ module.exports = async function handler(req, res) {
     console.error('[daily-digest-email] error:', e);
     return res.status(500).json({ error: String(e && e.message || e).slice(0, 300) });
   }
-};
+});

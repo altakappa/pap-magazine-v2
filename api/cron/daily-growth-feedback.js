@@ -16,6 +16,7 @@
  */
 
 const { supabaseAdmin } = require('../_lib/supabase');
+const { withCronGuard } = require('../_lib/cronGuard');
 const { requireAdmin } = require('../_lib/auth');
 const { runGrowthAudit } = require('../_lib/growthAudit');
 const { sendEmail } = require('../_lib/email');
@@ -80,7 +81,7 @@ async function generateFeedback(todayAudit, yesterdayAudit, events) {
   }
 }
 
-module.exports = async function handler(req, res) {
+module.exports = withCronGuard('daily-growth-feedback', async function handler(req, res) {
   // 크론 Bearer 또는 관리자 (대시보드 수동 재분석)
   const auth = (req.headers && req.headers['authorization']) || '';
   const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
@@ -148,4 +149,4 @@ module.exports = async function handler(req, res) {
     console.error('[daily-growth-feedback] error:', err);
     return res.status(500).json({ error: 'daily feedback failed', detail: String(err && err.message || err) });
   }
-};
+});
