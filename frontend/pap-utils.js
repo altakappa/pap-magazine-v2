@@ -266,6 +266,24 @@ function papFmtDate(dateStr){
   return ('0'+d.getDate()).slice(-2)+' '+_PAP_MONTHS[d.getMonth()]+' '+d.getFullYear();
 }
 if (typeof window !== 'undefined') window.papFmtDate = papFmtDate;
+
+// 2026-07-20 (QA 재발 — 카테고리·발행일 표기 통일) — 메인홈/목록/상세 전 페이지
+// 공통 포맷터. 표준: "Title,Case - DD Mon YYYY" (홈 카드 형식에 맞춤).
+//   • 카테고리: 쉼표 구분 각 조각 첫 글자만 대문자 (DB는 소문자 저장 — QA #223)
+//   • 발행일: papFmtDate (DD Mon YYYY)
+//   • 구분자: " - " (카테고리·날짜 둘 다 있을 때만)
+function papTitleCat(cat){
+  return String(cat || '').split(',').map(function(p){
+    p = p.trim();
+    return p ? p.charAt(0).toUpperCase() + p.slice(1) : '';
+  }).filter(Boolean).join(',');
+}
+function papFmtMeta(cat, date){
+  var c = papTitleCat(cat || 'Article');
+  var d = papFmtDate(date);
+  return c + (c && d ? ' - ' : '') + d;
+}
+if (typeof window !== 'undefined') { window.papTitleCat = papTitleCat; window.papFmtMeta = papFmtMeta; }
 function _decHtml(s){var d=document.createElement('div');d.innerHTML=s;return d.textContent||d.innerText||'';}
 function _normWs(s){return s.replace(/[\u2018\u2019\u201C\u201D]/g,"'").replace(/\s+/g,' ').trim();}
 

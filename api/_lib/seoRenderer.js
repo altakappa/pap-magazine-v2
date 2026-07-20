@@ -126,6 +126,14 @@ function fmtDisplayDate(d) {
   if (isNaN(dt.getTime())) return '';
   return ('0' + dt.getDate()).slice(-2) + ' ' + _SEO_MONTHS[dt.getMonth()] + ' ' + dt.getFullYear();
 }
+// 2026-07-20 QA 표기통일 — 프론트 papTitleCat(pap-utils.js)의 서버측 대응.
+// 쉼표 구분 카테고리 각 조각 첫 글자만 대문자 (DB 소문자 저장 — QA #223).
+function fmtTitleCat(cat) {
+  return String(cat || '').split(',').map(p => {
+    p = p.trim();
+    return p ? p.charAt(0).toUpperCase() + p.slice(1) : '';
+  }).filter(Boolean).join(',');
+}
 function truncate(s, n) {
   if (!s) return '';
   s = String(s).replace(/\s+/g, ' ').trim();
@@ -1064,7 +1072,14 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
     <div class="seo-meta">
       <h1>${escText(titleMain)}</h1>
       ${titleAlt !== titleMain ? `<p class="alt">${escText(titleAlt)}</p>` : ''}
-      <time datetime="${escAttr(published)}">${escText(fmtDisplayDate(record.published_date) || published.slice(0, 10))}${record.issue ? ' · ' + escText(String(record.issue).toUpperCase()) : record.category ? ' · ' + escText(String(record.category).toUpperCase()) : ''}</time>
+      <time datetime="${escAttr(published)}">${(() => {
+        // 2026-07-20 QA 표기통일 — 메인홈/목록/상세 SPA와 동일 포맷:
+        //   "Title,Case - DD Mon YYYY" (카테고리 먼저, Title-case, ' - ' 구분).
+        //   기존엔 "DD Mon YYYY · CATEGORY(대문자)" 라 다른 페이지와 순서·대소문자가 달랐다.
+        const _label = record.issue ? String(record.issue) : fmtTitleCat(record.category);
+        const _date = fmtDisplayDate(record.published_date) || published.slice(0, 10);
+        return escText((_label ? _label + ' - ' : '') + _date);
+      })()}</time>
       <p class="seo-desc-primary">${escText(descMain)}</p>
       ${descAlt && descAlt !== descMain ? `<p class="seo-desc-en">${escText(descAlt)}</p>` : ''}
     </div>

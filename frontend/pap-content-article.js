@@ -88,11 +88,12 @@ function _openAllArticlesInner(){
     card.onclick=function(e){ if(e&&e.preventDefault)e.preventDefault(); openArticleDetail(i); };
     // QA(2026-07) #8 — 목록 카드 발행일도 홈과 동일한 "DD Mon YYYY" 로 통일
     // (기존 ISO "2026-07-12" → 12 Jul 2026). papFmtDate 는 pap-utils.js 공용.
-    var dateStr=a.d?(typeof papFmtDate==='function'?papFmtDate(a.d):a.d.substring(0,10)):'';
+    // 2026-07-20 QA 표기통일 — 공통 papFmtMeta 사용 (Title - DD Mon YYYY)
+    var metaStr=(typeof papFmtMeta==='function')?papFmtMeta(a.cat, a.d):((a.cat||'ARTICLE').toUpperCase()+(a.d?' · '+a.d.substring(0,10):''));
     // QA(2026-07) #30 — 목록 카드도 현재 언어에 맞는 제목/부제를 쓴다.
     // 기존엔 a.t(원문)를 그대로 박아, 언어를 바꿔도 목록 제목이 한국어로 남았다.
     var cTitle=_papLocTitle(a), cSub=_papLocSub(a);
-    card.innerHTML='<div class="art-all-thumb"><img src="'+(a.img||a.th)+'" alt="'+escapeHtml(cTitle)+'" loading="lazy" onerror="edImgError(this)"></div><div class="art-all-info"><div class="art-all-cat">'+(a.cat||'ARTICLE').toUpperCase()+' · '+dateStr+'</div><div class="art-all-title">'+escapeHtml(cTitle)+'</div>'+(cSub?'<div class="art-all-sub">'+escapeHtml(cSub)+'</div>':'')+'</div>';
+    card.innerHTML='<div class="art-all-thumb"><img src="'+(a.img||a.th)+'" alt="'+escapeHtml(cTitle)+'" loading="lazy" onerror="edImgError(this)"></div><div class="art-all-info"><div class="art-all-cat">'+escapeHtml(metaStr)+'</div><div class="art-all-title">'+escapeHtml(cTitle)+'</div>'+(cSub?'<div class="art-all-sub">'+escapeHtml(cSub)+'</div>':'')+'</div>';
     grid.appendChild(card);
   });
   count.textContent=artData.length+' ARTICLES';
@@ -520,7 +521,9 @@ function _renderArticleDetail(a,det){
   var _locTitle=_papLocTitle(a);
   var _locSub=_papLocSub(a);
   document.getElementById('artDetailTitle').textContent=_locTitle;
-  document.getElementById('artDetailCat').textContent=(a.cat||'ARTICLE')+' · '+(a.d||'');
+  // 2026-07-20 QA 표기통일 — 상세도 홈/목록과 동일 포맷 (Title - DD Mon YYYY).
+  // 기존엔 원본 소문자 카테고리 + ISO 날짜(2026-03-02)라 3면이 전부 달랐다.
+  document.getElementById('artDetailCat').textContent=(typeof papFmtMeta==='function')?papFmtMeta(a.cat, a.d):((a.cat||'ARTICLE')+' · '+(a.d||''));
   document.getElementById('artDetailSub').textContent=_locSub;
   var descEl=document.getElementById('artDetailDesc');
   if(descEl){

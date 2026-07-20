@@ -518,17 +518,12 @@ window._papFilmAutoPlay = function(){
       }
       card.setAttribute('onclick', 'event.preventDefault();openArticleFromCard(this)');
       var img = a.th || a.img || '';
-      var rawCat = a.cat || '';
-      // Match the static-card formatting: "Fashion - 02 Mar 2026". We
-      // Title-case the first letter of each comma-separated category
-      // (incoming values are stored lowercase since QA #223).
-      var catLabel = rawCat.split(',').map(function(p){
-        p = p.trim();
-        if(!p) return '';
-        return p.charAt(0).toUpperCase() + p.slice(1);
-      }).filter(Boolean).join(',');
-      var dateStr = _fmt(a.d || a.published_date || '');
-      var meta = catLabel + (catLabel && dateStr ? ' - ' : '') + dateStr;
+      // 2026-07-20 QA 표기통일 — 공통 papFmtMeta(pap-utils)로 단일화.
+      // (기존 로컬 Title-case + _fmt 조합과 동일 결과지만, 이제 전 페이지가
+      //  한 함수를 공유해 표기가 갈릴 여지를 없앤다.)
+      var meta = (typeof papFmtMeta === 'function')
+        ? papFmtMeta(a.cat || '', a.d || a.published_date || '')
+        : ((a.cat || '') + ' - ' + _fmt(a.d || a.published_date || ''));
       card.innerHTML =
         '<div class="fashion-card-img"><img loading="' + loadingAttr + '" decoding="async"' + priorityAttr + ' src="' + _esc(img) + '" alt="' + _esc(a.t || '') + '"></div>' +
         '<div class="fashion-card-info">' +
