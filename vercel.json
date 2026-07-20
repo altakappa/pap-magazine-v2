@@ -87,6 +87,10 @@
     {
       "path": "/api/cron/naver-draft-sweep",
       "schedule": "0 16,20 * * *"
+    },
+    {
+      "path": "/api/cron/backfill-translations",
+      "schedule": "6-56/10 * * * *"
     }
   ],
   "rewrites": [
