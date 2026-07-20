@@ -1,13 +1,13 @@
 /**
  * GET /api/downloads/check — 현재 사용자의 콘텐츠 다운로드 권한 조회.
  *
- * QA #284 Phase 2. 정책:
+ * QA #284 Phase 2 → 2026-07-20 개정 (도메니코 결정). 정책:
  *   • admin (Main Admin)        → 모든 콘텐츠 다운로드 가능
  *   • staff (Sub Admin)         → 모든 콘텐츠 다운로드 가능
  *   • user (일반 회원/Contributor)
- *     - 본인이 참여한 에디토리얼만 (source_submission_id → submission.user_id 매칭)
- *     - 그 외 콘텐츠는 다운로드 불가
- *   • 비로그인                  → 401 (회원가입 CTA로 유도)
+ *     - 본인이 참여한 에디토리얼 → 무료 (source_submission_id → submission.user_id 매칭)
+ *     - 남의 화보·기사·필름     → 스탠다드 멤버십부터 (profiles.subscription_plan ∈ standard|premium)
+ *   • 비로그인                  → 401 (구독/로그인 CTA로 유도)
  *
  * 입력 (query):
  *   • type : 'editorial' | 'film' | 'article'  (필수)
@@ -44,42 +44,47 @@ async function checkDownloadPermission(user, contentType, contentId) {
   if (role === 'admin') return { allowed: true, role: 'admin', reason: 'admin' };
   if (role === 'staff') return { allowed: true, role: 'staff', reason: 'staff' };
 
-  // 2) 일반 회원 — editorial인 경우에만 본인 참여 여부 확인.
-  //    film/article은 admin/staff만 다운로드 가능 (Contributor 매칭 대상 아님).
-  if (contentType !== 'editorial') {
-    return { allowed: false, role, reason: 'not-supported' };
-  }
-  if (!contentId) {
-    return { allowed: false, role, reason: 'not-owner' };
+  // 2) 참여 크리에이터 본인 — 에디토리얼만 해당 (기사·필름은 Contributor 매칭 대상 아님).
+  if (contentType === 'editorial' && contentId) {
+    try {
+      const { data: ed, error: e1 } = await supabaseAdmin
+        .from('editorials')
+        .select('source_submission_id')
+        .eq('id', contentId)
+        .single();
+      if (!e1 && ed && ed.source_submission_id) {
+        const { data: sub, error: e2 } = await supabaseAdmin
+          .from('submissions')
+          .select('user_id')
+          .eq('id', ed.source_submission_id)
+          .single();
+        if (!e2 && sub && String(sub.user_id) === String(user.id)) {
+          return { allowed: true, role, reason: 'owner' };
+        }
+      }
+    } catch (err) {
+      console.error('[downloads/check] owner lookup error:', err && err.message || err);
+      // 본인 판정 실패는 구독 판정으로 계속 진행 (아래).
+    }
   }
 
+  // 3) 스탠다드 멤버십부터 모든 콘텐츠 다운로드 가능 (2026-07-20 개정).
+  //    게이트 기준은 다른 등급 게이트와 동일하게 profiles.subscription_plan.
   try {
-    // editorial → source_submission_id 조회.
-    const { data: ed, error: e1 } = await supabaseAdmin
-      .from('editorials')
-      .select('source_submission_id')
-      .eq('id', contentId)
+    const { data: prof, error: pe } = await supabaseAdmin
+      .from('profiles')
+      .select('subscription_plan')
+      .eq('id', user.id)
       .single();
-    if (e1 || !ed || !ed.source_submission_id) {
-      return { allowed: false, role, reason: 'not-owner' };
+    const plan = !pe && prof ? String(prof.subscription_plan || '').toLowerCase() : '';
+    if (plan === 'standard' || plan === 'premium') {
+      return { allowed: true, role, reason: 'subscriber' };
     }
-    // submission.user_id 조회 후 본인과 비교.
-    const { data: sub, error: e2 } = await supabaseAdmin
-      .from('submissions')
-      .select('user_id')
-      .eq('id', ed.source_submission_id)
-      .single();
-    if (e2 || !sub) {
-      return { allowed: false, role, reason: 'not-owner' };
-    }
-    if (String(sub.user_id) === String(user.id)){
-      return { allowed: true, role, reason: 'owner' };
-    }
-    return { allowed: false, role, reason: 'not-owner' };
   } catch (err) {
-    console.error('[downloads/check] error:', err && err.message || err);
-    return { allowed: false, role, reason: 'not-owner' };
+    console.error('[downloads/check] plan lookup error:', err && err.message || err);
   }
+
+  return { allowed: false, role, reason: 'need-subscription' };
 }
 
 module.exports = async function handler(req, res) {

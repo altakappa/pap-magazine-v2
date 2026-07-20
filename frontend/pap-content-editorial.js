@@ -416,9 +416,9 @@ function _renderEditorialDownloads(det, d){
     box.innerHTML =
       '<div style="display:flex;flex-direction:column;gap:10px">' +
         '<div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999">DOWNLOADS</div>' +
-        '<div style="font-size:13px;color:#ccc">커버 이미지 + PAP 로고 합성 갤러리 이미지 다운로드는 <strong style="color:#fff">회원가입한 사용자</strong> 전용입니다.</div>' +
+        '<div style="font-size:13px;color:#ccc">커버 이미지 + PAP 로고 합성 갤러리 이미지 다운로드는 <strong style="color:#fff">스탠다드 멤버십</strong> 전용입니다.<br>참여 크리에이터는 본인 작품을 무료로 다운로드할 수 있어요.</div>' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">' +
-          '<a href="/auth?mode=signup" style="display:inline-block;padding:10px 22px;border:1px solid #fff;background:#fff;color:#000;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" onmouseover="this.style.background=\'transparent\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'#fff\';this.style.color=\'#000\'">회원가입하기 →</a>' +
+          '<a href="/subscribe" style="display:inline-block;padding:10px 22px;border:1px solid #fff;background:#fff;color:#000;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" onmouseover="this.style.background=\'transparent\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'#fff\';this.style.color=\'#000\'">멤버십 구독하기 →</a>' +
           '<a href="/auth" style="display:inline-block;padding:10px 22px;border:1px solid #555;color:#fff;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">로그인</a>' +
         '</div>' +
         '<div style="font-size:11px;color:#666;margin-top:4px">개인 사용 및 비상업적 용도에 한해 사용 가능</div>' +
@@ -440,17 +440,15 @@ function _renderEditorialDownloads(det, d){
   var edId = (d && d.id) || (det && det.id) || '';
   window._papCheckDownloadPerm('editorial', edId).then(function(perm){
     if (!perm || !perm.allowed){
-      // role별 메시지 분기.
-      var msg;
-      if (perm && perm.role === 'user'){
-        msg = '이 에디토리얼은 <strong style="color:#fff">참여 크리에이터 본인</strong>만 다운로드할 수 있습니다.<br>본인 참여작이라면 가입하신 이메일과 동일한 계정으로 로그인되어 있는지 확인해주세요.';
-      } else {
-        msg = '다운로드 권한이 없습니다.';
-      }
+      // 2026-07-20 정책 개정 — 스탠다드 멤버십부터 전체 다운로드 가능.
+      // 무료 회원에게는 업그레이드 CTA를 보여준다 (참여 크리에이터 안내 병기).
       box.innerHTML =
         '<div style="display:flex;flex-direction:column;gap:10px">' +
           '<div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999">DOWNLOADS</div>' +
-          '<div style="font-size:12px;color:#bbb;line-height:1.6">' + msg + '</div>' +
+          '<div style="font-size:12px;color:#bbb;line-height:1.6"><strong style="color:#fff">스탠다드 멤버십</strong>부터 커버 + PAP 로고 합성 이미지를 다운로드할 수 있습니다.<br>참여 크리에이터는 본인 작품을 무료로 받을 수 있어요 — 본인 참여작이라면 가입하신 이메일과 동일한 계정인지 확인해주세요.</div>' +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">' +
+            '<a href="/subscribe" style="display:inline-block;padding:10px 22px;border:1px solid #fff;background:#fff;color:#000;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" onmouseover="this.style.background=\'transparent\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'#fff\';this.style.color=\'#000\'">스탠다드 구독하기 →</a>' +
+          '</div>' +
           '<div style="font-size:11px;color:#666;margin-top:4px">전체 권한이 필요한 경우 PAP Magazine 운영팀에 문의해주세요.</div>' +
         '</div>';
       return;
@@ -483,8 +481,8 @@ function _renderEditorialDownloadButtons(box, coverUrl, gallery, safeTitle, perm
   // QA #284 Phase 2 — role 배지 (어느 권한으로 노출되는지 명확하게).
   var roleBadge = '';
   if (perm && perm.reason){
-    var badgeText = { admin:'대표 관리자', staff:'서브 관리자', owner:'참여 크리에이터' }[perm.reason] || '';
-    var badgeColor = { admin:'#e74c3c', staff:'#f39c12', owner:'#27ae60' }[perm.reason] || '#888';
+    var badgeText = { admin:'대표 관리자', staff:'서브 관리자', owner:'참여 크리에이터', subscriber:'멤버십 회원' }[perm.reason] || '';
+    var badgeColor = { admin:'#e74c3c', staff:'#f39c12', owner:'#27ae60', subscriber:'#3498db' }[perm.reason] || '#888';
     if (badgeText){
       roleBadge = '<span style="display:inline-block;padding:2px 8px;background:' + badgeColor + ';color:#fff;font-size:9px;font-weight:700;letter-spacing:.1em;border-radius:2px">' + badgeText + ' 권한</span>';
     }
