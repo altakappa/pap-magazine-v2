@@ -26,6 +26,7 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { sendEmail } = require('../_lib/email');
+const { pushAlert } = require('../_lib/pushAlert');
 
 const SITE = 'https://www.pap-magazine.com';
 
@@ -216,7 +217,27 @@ module.exports = withCronGuard('celeb-watch', async function handler(req, res) {
       }
     }
 
-    /* 6) 알림 메일 — 도메니코가 일어나서 바로 발행하도록 */
+    /* 6) 즉시 푸시 알림 (텔레그램 그룹 + 카카오톡 나에게) — 새벽에도 폰이 울리게.
+       이메일은 아래에서 기록용으로 병행 발송. */
+    let pushResult = null;
+    if (created.length) {
+      const a = created[0];
+      const more = created.length > 1 ? ` 외 ${created.length - 1}건` : '';
+      pushResult = await pushAlert({
+        title: `🚨 PAP 속보 초안 — ${a.title}${more}`,
+        lines: [
+          `${a.sources}개 매체 교차 확인`,
+          ...a.headlines.slice(0, 3),
+          '',
+          '검토 후 발행하면 X 게시·검색엔진 핑 자동 실행',
+        ],
+        url: `${SITE}/admin/news`,
+        urlLabel: '어드민에서 발행',
+      });
+      console.log('[celeb-watch] push:', JSON.stringify(pushResult));
+    }
+
+    /* 6b) 알림 메일 (기록용) */
     if (created.length) {
       const to = process.env.DIGEST_TO || 'contact@pap-magazine.com';
       const rows = created.map(a => `
@@ -241,7 +262,7 @@ module.exports = withCronGuard('celeb-watch', async function handler(req, res) {
     }
 
     return res.status(200).json({ ok: true, scanned: items.length, clusters: clusters.length, created: created.length,
-      titles: created.map(c => c.title) });
+      titles: created.map(c => c.title), push: pushResult });
   } catch (err) {
     console.error('[celeb-watch] error:', err);
     throw err;
