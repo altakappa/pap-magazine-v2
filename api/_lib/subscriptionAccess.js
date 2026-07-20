@@ -56,10 +56,45 @@ async function downgradeToFree(db, userId) {
   return { error };
 }
 
+/**
+ * 서버측 등급 게이트. 이미 인증된 user가 minTier 이상 활성 구독인지 검증한다.
+ * - 운영진(admin/staff)은 통과 (DB의 최신 role 기준).
+ * - 미달이면 res에 403을 쓰고 false를 반환 → 호출부는 `if(!ok) return;`.
+ *
+ * @param {object} db       supabaseAdmin
+ * @param {object} res
+ * @param {{id:string, role?:string}} user  requireAuth로 얻은 사용자
+ * @param {'standard'|'premium'} minTier
+ * @returns {Promise<boolean>} 통과 여부
+ */
+async function assertActivePlan(db, res, user, minTier) {
+  if (!user) {
+    try { res.status(401).json({ message: 'Authentication required' }); } catch (_) {}
+    return false;
+  }
+  const { data: prof } = await db
+    .from('profiles')
+    .select('subscription_plan, subscription_status, role')
+    .eq('id', user.id)
+    .maybeSingle();
+  const role = (prof && prof.role) || (user && user.role) || 'member';
+  if (role === 'admin' || role === 'staff') return true; // 운영진 통과
+  if (hasActivePlan(prof, minTier)) return true;
+  res.status(403).json({
+    message: minTier === 'premium'
+      ? '프리미엄 구독이 필요한 기능이에요.'
+      : '스탠다드 이상 구독이 필요한 기능이에요.',
+    requiresPlan: minTier,
+    upgradeUrl: '/subscribe',
+  });
+  return false;
+}
+
 module.exports = {
   basePlanFromPlanKey,
   hasActivePlan,
   hasActivePremium,
+  assertActivePlan,
   downgradeToFree,
   TIER_RANK,
   ACTIVE_STATUSES,

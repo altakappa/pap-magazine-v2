@@ -7,6 +7,7 @@ const { supabaseAdmin } = require('../../_lib/supabase');
 const { requireAuth } = require('../../_lib/auth');
 const { handleCors } = require('../../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../../_lib/rateLimit');
+const { assertActivePlan } = require('../../_lib/subscriptionAccess');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -59,6 +60,8 @@ module.exports = async function handler(req, res) {
 
   // ── POST: Create project ──
   if (req.method === 'POST') {
+    // 2026-07-20 — 협업 프로젝트(모집글) 작성은 스탠다드+ (지원·열람은 무료).
+    if (!(await assertActivePlan(supabaseAdmin, res, user, 'standard'))) return;
     try {
       const { title, description, rolesNeeded, location, deadline } = req.body;
 
