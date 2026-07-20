@@ -161,6 +161,23 @@ function _firstSentence(html) {
  * 태그만 최대 2개 + #PAPMAGAZINE), 본문 첫 문장을 리드로 추가(280 가중자 내).
  * @param {{title:string, url:string, tags?:string[], body?:string}} art
  */
+/**
+ * 대화형 트윗 (2026-07-21, 도메니코 요청). 기사에 "사람들이 이미 얘기하는
+ * 거리"가 있을 때만 기사 소개 대신 말을 거는 글을 쓴다. 글감이 없으면
+ * null 이 돌아오고 호출부는 buildArticleTweet 로 간다.
+ * 비동기 — Claude 를 부르므로 기존 동기 빌더와 분리해 둔다.
+ */
+async function buildConversationalTweet(art) {
+  const { generateConversationalPost } = require('./socialHook');
+  const hook = await generateConversationalPost(art, 'x');
+  if (!hook) return null;
+  const link = withUtm(art.url, 'x', 'pap_auto');
+  const tagLine = '#PAPMAGAZINE';
+  const measured = hook.text + '\n\n' + URL_PLACEHOLDER + '\n\n' + tagLine;
+  if (weightedLen(measured) > 280) return null; // 넘치면 기존 방식으로
+  return { text: hook.text + '\n\n' + link + '\n\n' + tagLine, angle: hook.angle, score: hook.score };
+}
+
 function buildArticleTweet(art) {
   const title = _clampTitle(art.title);
   const tags = _cleanTags(art.tags, 2);   // 실제 태그 최대 2개
@@ -234,6 +251,7 @@ async function accessToken(oauthToken, oauthTokenSecret, pin) {
 }
 
 module.exports = {
+  buildConversationalTweet,
   postTweet, postPepperitTweet, buildArticleTweet, buildPepperitTweet,
   isConfigured, isPepperitConfigured, requestToken, accessToken,
 };

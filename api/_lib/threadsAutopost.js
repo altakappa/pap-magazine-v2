@@ -13,6 +13,7 @@
  */
 
 const { supabaseAdmin } = require('./supabase');
+const { generateConversationalPost } = require('./socialHook');
 const { postText } = require('./threads');
 
 function htmlToText(html, cap) {
@@ -70,6 +71,23 @@ const SYSTEM_PROMPT = [
  */
 async function generateThreadsText(art, url) {
   if (!process.env.ANTHROPIC_API_KEY) return { text: fallbackText(art, url), ai: false };
+
+  /* 대화형 우선 (2026-07-21, 도메니코 요청). 기사에 "사람들이 이미 얘기하는
+     거리"가 있으면 기사 소개 대신 말을 거는 글을 쓴다. 글감이 없으면 null 이
+     돌아오고 아래 기존 경로로 간다 — 모든 기사에 쓰는 장치가 아니다. */
+  try {
+    const hook = await generateConversationalPost(
+      { title: art.title, body: art.content, tags: art.tags, category: art.category },
+      'threads');
+    if (hook) {
+      const text = (hook.text.slice(0, 430) + '\n\n' + url).slice(0, 500);
+      console.log('[threadsAutopost] 대화형 (점수 ' + hook.score + '): ' + hook.angle);
+      return { text, ai: true, conversational: true, angle: hook.angle, score: hook.score };
+    }
+  } catch (e) {
+    console.warn('[threadsAutopost] 대화형 실패, 기본 카피로:', (e && e.message) || e);
+  }
+
   try {
     const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
     const user = [

@@ -28,7 +28,7 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { pingNewContent, SITE } = require('../_lib/pingSearch');
-const { postTweet, buildArticleTweet, isConfigured: xConfigured } = require('../_lib/xPost');
+const { postTweet, buildArticleTweet, isConfigured: xConfigured, buildConversationalTweet } = require('../_lib/xPost');
 const { postArticleToThreads } = require('../_lib/threadsAutopost');
 const {
   listRecentMedia,
@@ -198,7 +198,14 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
             // draft 기사는 X 게시하지 않음 (품질 게이트 미달).
             if (xConfigured()){
               try {
-                const tw = await postTweet(buildArticleTweet({ title: generated.title_ko || row.title, url: artUrl, tags: generated.tags, body: generated.body_ko }));
+                const artForX = { title: generated.title_ko || row.title, url: artUrl, tags: generated.tags, body: generated.body_ko, category: generated.category };
+                // 대화형 우선 (2026-07-21) — 대화거리가 있는 기사만. 없으면 null → 기존 빌더.
+                let xText = null;
+                try {
+                  const conv = await buildConversationalTweet(artForX);
+                  if (conv) { xText = conv.text; console.log('[sync-ig] 대화형 트윗 (점수 ' + conv.score + '): ' + conv.angle); }
+                } catch (_) { /* 실패는 삼키고 기본 빌더로 */ }
+                const tw = await postTweet(xText || buildArticleTweet(artForX));
                 results.tweets = (results.tweets || []).concat(tw.ok ? [tw.id] : ['실패:' + (tw.detail || tw.status)]);
               } catch (_) {}
             }
