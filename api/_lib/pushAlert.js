@@ -29,32 +29,33 @@ async function sendTelegram({ title, lines, url, urlLabel }) {
   if (!token || !idsRaw) return { skipped: 'telegram env 미설정' };
 
   const ids = String(idsRaw).split(',').map(s => s.trim()).filter(Boolean);
-  const text = ['*' + escapeMd(title) + '*', '', ...lines.map(escapeMd)].join('\n');
+  // 서식 없는 평문으로 전송 — MarkdownV2 는 특수문자 이스케이프가 까다로워
+  // 기사 제목(따옴표·하이픈·괄호 등)에서 400 을 유발한다. 가독성은 줄바꿈으로 확보.
+  const text = [title, '', ...lines].join('\n').slice(0, 4000); // 텔레그램 4096자 제한
   const results = [];
   for (const chatId of ids) {
     try {
+      const payload = {
+        chat_id: chatId,
+        text,
+        disable_web_page_preview: false,
+      };
+      if (url) payload.reply_markup = { inline_keyboard: [[{ text: (urlLabel || '열기').slice(0, 30), url }]] };
       const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: chatId,
-          text,
-          parse_mode: 'MarkdownV2',
-          disable_web_page_preview: false,
-          reply_markup: url ? { inline_keyboard: [[{ text: urlLabel || '열기', url }]] } : undefined,
-        }),
+        body: JSON.stringify(payload),
         signal: AbortSignal.timeout(TIMEOUT),
       });
-      results.push({ chatId, ok: r.ok, status: r.status });
+      // 실패 시 텔레그램의 description 을 그대로 담아 원인 파악이 가능하게
+      let detail;
+      if (!r.ok) { try { detail = (await r.json()).description; } catch (_) {} }
+      results.push({ chatId, ok: r.ok, status: r.status, detail });
     } catch (e) {
       results.push({ chatId, ok: false, error: String(e && e.message || e).slice(0, 80) });
     }
   }
   return { telegram: results };
-}
-// MarkdownV2 예약문자 이스케이프
-function escapeMd(s) {
-  return String(s == null ? '' : s).replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
 }
 
 /* ── 카카오톡 "나에게 보내기" ───────────────────────── */
