@@ -973,8 +973,8 @@ function _papRenderEdIg(igUrl, title){
        // 광고 문구를 걷어내고 사실만 남긴다. "마음에 드셨다면" 같은 조건절 권유,
        // "더 많은 사람에게 닿습니다" 같은 번역투 미사여구, 팔로워 수 자랑을 뺐다.
        var _body=_ko
-         ? '이 화보의 원본은 <b style="color:#fff">인스타그램</b>에 있습니다.<br>좋아요와 저장이 쌓이면 더 많은 사람에게 보입니다. 새 화보도 인스타그램에 먼저 올라갑니다.'
-         : 'The original of this editorial is on <b style="color:#fff">Instagram</b>.<br>Likes and saves there push it further. New editorials go up on Instagram first.';
+         ? '이 화보의 원본은 <b style="color:#fff">인스타그램</b>에 있습니다.<br>화보, 필름, 패션·셀럽 소식까지 더 많은 콘텐츠를 만나보세요.'
+         : 'The original of this editorial is on <b style="color:#fff">Instagram</b>.<br>Editorials, films, fashion and celebrity news — there\'s more over there.';
        var _post=_ko ? '인스타그램에서 보기 ↗' : 'View on Instagram ↗';
        var _follow=_ko ? '@pap_magazine 팔로우 →' : 'Follow @pap_magazine →';
        var _outPost='/api/ig-out?src=editorial&to=post&url='+encodeURIComponent(permalink);
