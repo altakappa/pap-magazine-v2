@@ -1158,7 +1158,7 @@ function _svDetailBody(s, p, inModal){
     function _esc(t){var d=document.createElement('div');d.textContent=t==null?'':String(t);return d.innerHTML;}
     function _safeUrl(u){return _esc(u||'').replace(/"/g,'&quot;');}
 
-    var revisionBanner=s.status==='revision'?'<div style="margin:0 '+(inModal?'-32px':'0')+' 24px;padding:16px '+(inModal?'32px':'16px')+';background:rgba(100,150,255,.08);border-top:1px solid rgba(100,150,255,.3);border-bottom:1px solid rgba(100,150,255,.3);"><div style="font-size:10px;letter-spacing:.18em;font-weight:700;color:rgba(100,150,255,.9);margin-bottom:8px">REVISION REQUESTED — PLEASE READ</div><div style="font-size:12px;color:rgba(255,255,255,.85)">Address the editor\'s feedback below and resubmit using the same SUBMIT form. Your original images and credits stay attached for reference.</div></div>':'';
+    var revisionBanner=s.status==='revision'?'<div style="margin:0 '+(inModal?'-32px':'0')+' 24px;padding:16px '+(inModal?'32px':'16px')+';background:rgba(100,150,255,.08);border-top:1px solid rgba(100,150,255,.3);border-bottom:1px solid rgba(100,150,255,.3);"><div style="font-size:10px;letter-spacing:.18em;font-weight:700;color:rgba(100,150,255,.9);margin-bottom:8px">'+_apT('revHeader')+'</div><div style="font-size:12px;color:rgba(255,255,255,.85)">'+_apT('revBody')+'</div></div>':'';
 
     return revisionBanner+
       '<div style="margin-bottom:18px"><span style="display:inline-block;font-size:9px;letter-spacing:.16em;font-weight:700;color:'+accent+';border:1px solid '+accent+';padding:5px 12px;text-transform:uppercase">'+statusText+'</span><span style="margin-left:10px;font-size:11px;color:rgba(255,255,255,.4)">Submitted '+_esc(new Date(s.created_at).toLocaleDateString())+' · '+imageCount+' images</span></div>'+
@@ -1167,11 +1167,11 @@ function _svDetailBody(s, p, inModal){
       (Array.isArray(desc.genre)&&desc.genre.length?'<div style="margin-bottom:14px"><div style="font-size:9px;letter-spacing:.18em;font-weight:700;color:rgba(255,255,255,.4);margin-bottom:6px">GENRE</div><div>'+_esc(desc.genre.join(', '))+'</div></div>':'')+
       (desc.artistStatement?'<div style="margin-bottom:14px"><div style="font-size:9px;letter-spacing:.18em;font-weight:700;color:rgba(255,255,255,.4);margin-bottom:6px">STATEMENT</div><div style="white-space:pre-line">'+_esc(desc.artistStatement)+'</div></div>':'')+
       (desc.videoUrl?'<div style="margin-bottom:14px"><div style="font-size:9px;letter-spacing:.18em;font-weight:700;color:rgba(255,255,255,.4);margin-bottom:6px">VIDEO LINK</div><a href="'+_safeUrl(desc.videoUrl)+'" target="_blank" rel="noopener" style="color:rgba(100,150,255,.9);word-break:break-all">'+_esc(desc.videoUrl)+'</a></div>':'')+
-            (s.status==='revision'?'<div style="margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,.08);text-align:center"><a href="?revise='+encodeURIComponent(s.id)+'#step1" style="display:inline-block;background:#fff;color:#000;padding:14px 36px;font-size:11px;font-weight:700;letter-spacing:.16em;text-decoration:none">RESUBMIT REVISED VERSION</a><div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:10px">Opens the submission form with your previous data prefilled.</div></div>':'')+
+            (s.status==='revision'?'<div style="margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,.08);text-align:center"><a href="?revise='+encodeURIComponent(s.id)+'#step1" style="display:inline-block;background:#fff;color:#000;padding:14px 36px;font-size:11px;font-weight:700;letter-spacing:.16em;text-decoration:none">'+_apT('revBtn')+'</a><div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:10px">'+_apT('revHint')+'</div></div>':'')+
             // QA #189 — rejection courtesy block moved out of the email
             // into the submitter's MY SUBMISSIONS modal. Same warm tone the
             // editorial team approved in May 2026.
-            (s.status==='rejected'?'<div style="margin-top:24px;padding:20px 22px;background:rgba(255,255,255,.03);border-left:3px solid rgba(180,180,180,.5);font-size:13px;line-height:1.75;color:rgba(255,255,255,.78)"><p style="margin:0 0 12px">Dear '+_esc(s.submitterName||'')+',</p><p style="margin:0 0 12px">Thank you for your email and for sharing your materials with us. Unfortunately, it does not quite align with our aesthetic standard.</p><p style="margin:0 0 12px">Please rest assured that any images not selected for publication will remain private and will be promptly deleted.</p><p style="margin:0 0 12px">We truly appreciate your kind offer and hope for the opportunity to collaborate again in the future.</p><p style="margin:0">All the best,<br>PAP Magazine Editorial Team</p></div>':'')+
+            (s.status==='rejected'?'<div style="margin-top:24px;padding:20px 22px;background:rgba(255,255,255,.03);border-left:3px solid rgba(180,180,180,.5);font-size:13px;line-height:1.75;color:rgba(255,255,255,.78)"><p style="margin:0 0 12px">'+_apT('greeting',{name:_esc(s.submitterName||'')})+'</p><p style="margin:0 0 12px">'+_apT('rejThanks')+'</p><p style="margin:0 0 12px">'+_apT('rejPrivate')+'</p><p style="margin:0 0 12px">'+_apT('rejFuture')+'</p><p style="margin:0">'+_apT('rejBest')+'<br>'+_apT('team')+'</p></div>':'')+
             // QA #189 — approval block (publication schedule + add-on
             // payment options) lives here now. Lookup published_date /
             // scheduled_publish_at via linked_editorial (server attaches
@@ -1182,13 +1182,13 @@ function _svDetailBody(s, p, inModal){
               // then published_date, otherwise leave a generic "in the
               // coming weeks" placeholder.
               var schedTs = le && (le.scheduled_publish_at || le.published_date);
-              var schedTxt = 'in the coming weeks';
+              var schedTxt = _apT('schedComing');
               if(schedTs){
                 try{
                   var d = new Date(schedTs);
                   if(!isNaN(d.getTime())){
-                    var month = d.toLocaleString('en-US',{month:'long'});
-                    schedTxt = 'around the '+d.getDate()+' of '+month;
+                    var month = d.toLocaleString((_APPROVE_I18N[_apLang()]||_APPROVE_I18N.en).locale,{month:'long'});
+                    schedTxt = _apT('schedAround',{day:d.getDate(),month:month});
                   }
                 }catch(_){}
               }
@@ -1202,21 +1202,163 @@ function _svDetailBody(s, p, inModal){
               var _payStatus = s.payment_status || '';
               var baseFeeBlock = _baseFeeApprovalBlock(s.id, _subType, _payStatus);
               return '<div style="margin-top:24px;padding:20px 22px;background:rgba(255,255,255,.03);border-left:3px solid rgba(201,168,106,.7);font-size:13px;line-height:1.75;color:rgba(255,255,255,.85)">'+
-                '<p style="margin:0 0 12px">Dear '+_esc(s.submitterName||'')+',</p>'+
-                '<p style="margin:0 0 12px">We are pleased to inform you that the project is scheduled to be published as an exclusive digital editorial on PAP <strong style="color:#fff">'+_esc(schedTxt)+'</strong>. Please note that the dates mentioned are approximate and may be subject to slight changes depending on the circumstances.</p>'+
-                '<p style="margin:0 0 12px">The editorial will be shared on our social media within a few days following its release on the PAP website. We kindly ask for your patience and understanding in the meantime.</p>'+
+                '<p style="margin:0 0 12px">'+_apT('greeting',{name:_esc(s.submitterName||'')})+'</p>'+
+                '<p style="margin:0 0 12px">'+_apT('apScheduled',{sched:_esc(schedTxt)})+'</p>'+
+                '<p style="margin:0 0 12px">'+_apT('apSocial')+'</p>'+
                 baseFeeBlock+
-                '<p style="margin:0 0 12px">Additionally, if you require any additional services, you can make the payment using the buttons below and kindly let us know once it\'s done.</p>'+
+                '<p style="margin:0 0 12px">'+_apT('apAddonIntro')+'</p>'+
                 '<ul style="margin:0 0 12px;padding-left:0;list-style:none">'+
-                  '<li style="margin:0 0 14px"><div style="color:#fff;font-weight:600">• Instagram Collaborators</div><div style="color:rgba(255,255,255,.6);font-size:12px;margin:2px 0 6px">€100 per feed</div><button type="button" onclick="payAddonFee(\''+s.id+'\',\'ig_collab\')" style="background:rgba(201,168,106,.92);color:#111;border:none;padding:9px 20px;font-size:12px;font-weight:700;letter-spacing:.08em;cursor:pointer;border-radius:2px">Pay €100</button></li>'+
-                  '<li style="margin:0 0 14px"><div style="color:#fff;font-weight:600">• Specific images for Instagram + cover selection</div><div style="color:rgba(255,255,255,.6);font-size:12px;margin:2px 0 6px">€200 per feed</div><button type="button" onclick="payAddonFee(\''+s.id+'\',\'ig_images_cover\')" style="background:rgba(201,168,106,.92);color:#111;border:none;padding:9px 20px;font-size:12px;font-weight:700;letter-spacing:.08em;cursor:pointer;border-radius:2px">Pay €200</button></li>'+
-                  '<li style="margin:0 0 14px"><div style="color:#fff;font-weight:600">• Specifying a posting date</div><div style="color:rgba(255,255,255,.6);font-size:12px;margin:2px 0 6px">€100 per feed</div><button type="button" onclick="payAddonFee(\''+s.id+'\',\'posting_date\')" style="background:rgba(201,168,106,.92);color:#111;border:none;padding:9px 20px;font-size:12px;font-weight:700;letter-spacing:.08em;cursor:pointer;border-radius:2px">Pay €100</button></li>'+
+                  '<li style="margin:0 0 14px"><div style="color:#fff;font-weight:600">• '+_apT('addonCollab')+'</div><div style="color:rgba(255,255,255,.6);font-size:12px;margin:2px 0 6px">'+_apT('perFeed',{amt:'€100'})+'</div><button type="button" onclick="payAddonFee(\''+s.id+'\',\'ig_collab\')" style="background:rgba(201,168,106,.92);color:#111;border:none;padding:9px 20px;font-size:12px;font-weight:700;letter-spacing:.08em;cursor:pointer;border-radius:2px">'+_apT('payBtn',{amt:'€100'})+'</button></li>'+
+                  '<li style="margin:0 0 14px"><div style="color:#fff;font-weight:600">• '+_apT('addonImages')+'</div><div style="color:rgba(255,255,255,.6);font-size:12px;margin:2px 0 6px">'+_apT('perFeed',{amt:'€200'})+'</div><button type="button" onclick="payAddonFee(\''+s.id+'\',\'ig_images_cover\')" style="background:rgba(201,168,106,.92);color:#111;border:none;padding:9px 20px;font-size:12px;font-weight:700;letter-spacing:.08em;cursor:pointer;border-radius:2px">'+_apT('payBtn',{amt:'€200'})+'</button></li>'+
+                  '<li style="margin:0 0 14px"><div style="color:#fff;font-weight:600">• '+_apT('addonDate')+'</div><div style="color:rgba(255,255,255,.6);font-size:12px;margin:2px 0 6px">'+_apT('perFeed',{amt:'€100'})+'</div><button type="button" onclick="payAddonFee(\''+s.id+'\',\'posting_date\')" style="background:rgba(201,168,106,.92);color:#111;border:none;padding:9px 20px;font-size:12px;font-weight:700;letter-spacing:.08em;cursor:pointer;border-radius:2px">'+_apT('payBtn',{amt:'€100'})+'</button></li>'+
                 '</ul>'+
-                '<p style="margin:0 0 12px">Thank you once again for the collaboration.</p>'+
-                '<p style="margin:0">Kind regards,<br>PAP Magazine Editorial Team</p>'+
+                '<p style="margin:0 0 12px">'+_apT('apThanks')+'</p>'+
+                '<p style="margin:0">'+_apT('regards')+'<br>'+_apT('team')+'</p>'+
               '</div>';
             })():'');
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// 2026-07-20 (도메니코 지시) — 서브미션 승인/반려/수정 안내문 9개 언어 완전 다국어화.
+// 브라우저 언어(localStorage 'pap-lang')에 맞춰 안내문·결제 버튼이 함께 표시된다.
+// {name}{sched}{amt}{day}{month}{feedback} 은 런타임 치환.
+// ─────────────────────────────────────────────────────────────────────
+var _APPROVE_I18N = {
+  en:{ locale:'en-US',
+    greeting:'Dear {name},',
+    apScheduled:'We are pleased to inform you that the project is scheduled to be published as an exclusive digital editorial on PAP <strong style="color:#fff">{sched}</strong>. Please note that the dates mentioned are approximate and may be subject to slight changes depending on the circumstances.',
+    apSocial:'The editorial will be shared on our social media within a few days following its release on the PAP website. We kindly ask for your patience and understanding in the meantime.',
+    apAddonIntro:'Additionally, if you require any additional services, you can make the payment using the buttons below and kindly let us know once it\'s done.',
+    addonCollab:'Instagram Collaborators', addonImages:'Specific images for Instagram + cover selection', addonDate:'Specifying a posting date',
+    perFeed:'{amt} per feed', payBtn:'Pay {amt}',
+    apThanks:'Thank you once again for the collaboration.', regards:'Kind regards,', team:'PAP Magazine Editorial Team',
+    schedComing:'in the coming weeks', schedAround:'around the {day} of {month}',
+    revHeader:'REVISION REQUESTED — PLEASE READ', revBody:'Address the editor\'s feedback below and resubmit using the same SUBMIT form. Your original images and credits stay attached for reference.',
+    revBtn:'RESUBMIT REVISED VERSION', revHint:'Opens the submission form with your previous data prefilled.',
+    rejThanks:'Thank you for your email and for sharing your materials with us. Unfortunately, it does not quite align with our aesthetic standard.',
+    rejPrivate:'Please rest assured that any images not selected for publication will remain private and will be promptly deleted.',
+    rejFuture:'We truly appreciate your kind offer and hope for the opportunity to collaborate again in the future.', rejBest:'All the best,' },
+  ko:{ locale:'ko-KR',
+    greeting:'{name}님께,',
+    apScheduled:'귀하의 프로젝트가 PAP의 독점 디지털 에디토리얼로 <strong style="color:#fff">{sched}</strong> 게재될 예정임을 알려드립니다. 안내된 일정은 대략적인 것으로, 상황에 따라 다소 변경될 수 있습니다.',
+    apSocial:'에디토리얼은 PAP 웹사이트 공개 후 며칠 내에 저희 소셜 미디어에도 공유됩니다. 그동안 조금만 기다려 주시면 감사하겠습니다.',
+    apAddonIntro:'추가로, 부가 서비스가 필요하시면 아래 버튼으로 결제하신 뒤 완료 여부를 알려주세요.',
+    addonCollab:'인스타그램 공동 작업자', addonImages:'인스타그램용 지정 이미지 + 커버 선택', addonDate:'게시 날짜 지정',
+    perFeed:'피드당 {amt}', payBtn:'{amt} 결제',
+    apThanks:'함께해 주셔서 다시 한번 감사드립니다.', regards:'감사합니다,', team:'PAP 매거진 에디토리얼 팀',
+    schedComing:'수 주 내', schedAround:'{month} {day}일경',
+    revHeader:'수정 요청 — 반드시 확인해 주세요', revBody:'아래 에디터 피드백을 반영하여 동일한 SUBMIT 폼으로 다시 제출해 주세요. 기존 이미지와 크레딧은 참고용으로 그대로 유지됩니다.',
+    revBtn:'수정본 다시 제출하기', revHint:'이전에 입력하신 내용이 채워진 상태로 제출 폼이 열립니다.',
+    rejThanks:'메일과 자료를 공유해 주셔서 감사합니다. 다만 이번 작품은 저희의 미학적 기준과는 다소 결이 달랐습니다.',
+    rejPrivate:'게재에 선정되지 않은 이미지는 비공개로 유지되며 신속히 삭제되니 안심하셔도 됩니다.',
+    rejFuture:'제안해 주셔서 진심으로 감사드리며, 앞으로 다시 함께할 기회가 있기를 바랍니다.', rejBest:'감사합니다,' },
+  ja:{ locale:'ja-JP',
+    greeting:'{name} 様,',
+    apScheduled:'このたびのプロジェクトが、PAPの独占デジタルエディトリアルとして<strong style="color:#fff">{sched}</strong>公開される予定であることをお知らせいたします。記載の日程はおおよその目安であり、状況により多少変更となる場合がございます。',
+    apSocial:'エディトリアルはPAPウェブサイトでの公開後、数日以内に当社のソーシャルメディアでも共有されます。それまで今しばらくお待ちくださいますようお願い申し上げます。',
+    apAddonIntro:'また、追加サービスをご希望の場合は、以下のボタンからお支払いいただき、完了後にお知らせください。',
+    addonCollab:'Instagramコラボレーター', addonImages:'Instagram用指定画像＋カバー選択', addonDate:'投稿日の指定',
+    perFeed:'1フィードあたり{amt}', payBtn:'{amt}を支払う',
+    apThanks:'この度のご協力に、改めて感謝申し上げます。', regards:'よろしくお願いいたします,', team:'PAP Magazine 編集チーム',
+    schedComing:'数週間以内に', schedAround:'{month}{day}日頃',
+    revHeader:'修正のご依頼 — 必ずお読みください', revBody:'以下の編集者フィードバックを反映し、同じSUBMITフォームから再提出してください。元の画像とクレジットは参考用にそのまま保持されます。',
+    revBtn:'修正版を再提出', revHint:'以前入力された内容が反映された状態で提出フォームが開きます。',
+    rejThanks:'メールと資料をご共有いただきありがとうございます。しかしながら、今回の作品は当誌の美的基準とは少し方向性が異なりました。',
+    rejPrivate:'掲載に選ばれなかった画像は非公開のまま速やかに削除されますのでご安心ください。',
+    rejFuture:'ご提案に心より感謝申し上げます。またいつかご一緒できる機会を楽しみにしております。', rejBest:'敬具,' },
+  zh:{ locale:'zh-CN',
+    greeting:'尊敬的 {name}，',
+    apScheduled:'我们很高兴地通知您，该项目计划<strong style="color:#fff">{sched}</strong>作为PAP的独家数字社论发布。请注意，所述日期为大致时间，可能视情况略有调整。',
+    apSocial:'社论在PAP网站发布后数日内，也将在我们的社交媒体上分享。在此期间恳请您耐心等待。',
+    apAddonIntro:'此外，如需任何附加服务，您可通过下方按钮付款，并在完成后告知我们。',
+    addonCollab:'Instagram 合作者', addonImages:'Instagram 指定图片＋封面选择', addonDate:'指定发布日期',
+    perFeed:'每条 {amt}', payBtn:'支付 {amt}',
+    apThanks:'再次感谢您的合作。', regards:'此致敬礼，', team:'PAP Magazine 编辑团队',
+    schedComing:'未来几周内', schedAround:'{month}{day}日左右',
+    revHeader:'请求修改 — 请务必阅读', revBody:'请根据下方编辑反馈进行修改，并使用同一SUBMIT表单重新提交。您的原始图片和署名将保留以供参考。',
+    revBtn:'重新提交修改版', revHint:'将打开已预填您先前数据的提交表单。',
+    rejThanks:'感谢您的来信及分享的素材。遗憾的是，本次作品与我们的审美标准略有出入。',
+    rejPrivate:'请放心，未被选用的图片将保持私密并会被及时删除。',
+    rejFuture:'我们由衷感谢您的美意，期待未来有机会再度合作。', rejBest:'顺祝安好，' },
+  it:{ locale:'it-IT',
+    greeting:'Gentile {name},',
+    apScheduled:'Siamo lieti di informarla che il progetto sarà pubblicato come editoriale digitale esclusivo su PAP <strong style="color:#fff">{sched}</strong>. La preghiamo di notare che le date indicate sono approssimative e potrebbero subire lievi variazioni a seconda delle circostanze.',
+    apSocial:'L\'editoriale sarà condiviso sui nostri social media entro pochi giorni dalla pubblicazione sul sito PAP. Le chiediamo cortesemente pazienza e comprensione nel frattempo.',
+    apAddonIntro:'Inoltre, se desidera servizi aggiuntivi, può effettuare il pagamento con i pulsanti qui sotto e comunicarci una volta completato.',
+    addonCollab:'Collaboratori Instagram', addonImages:'Immagini specifiche per Instagram + selezione copertina', addonDate:'Definizione della data di pubblicazione',
+    perFeed:'{amt} per feed', payBtn:'Paga {amt}',
+    apThanks:'Grazie ancora per la collaborazione.', regards:'Cordiali saluti,', team:'Team Editoriale di PAP Magazine',
+    schedComing:'nelle prossime settimane', schedAround:'intorno al {day} {month}',
+    revHeader:'REVISIONE RICHIESTA — SI PREGA DI LEGGERE', revBody:'Tenga conto del feedback dell\'editor qui sotto e reinvii utilizzando lo stesso modulo SUBMIT. Le immagini e i crediti originali restano allegati come riferimento.',
+    revBtn:'REINVIA VERSIONE RIVISTA', revHint:'Apre il modulo di invio con i dati precedenti già compilati.',
+    rejThanks:'Grazie per la sua email e per aver condiviso i suoi materiali. Purtroppo non è del tutto in linea con il nostro standard estetico.',
+    rejPrivate:'Le assicuriamo che le immagini non selezionate per la pubblicazione resteranno private e saranno prontamente eliminate.',
+    rejFuture:'Apprezziamo sinceramente la sua proposta e speriamo di poter collaborare di nuovo in futuro.', rejBest:'Un cordiale saluto,' },
+  fr:{ locale:'fr-FR',
+    greeting:'Cher/Chère {name},',
+    apScheduled:'Nous avons le plaisir de vous informer que le projet sera publié en tant qu\'éditorial numérique exclusif sur PAP <strong style="color:#fff">{sched}</strong>. Veuillez noter que les dates indiquées sont approximatives et peuvent légèrement varier selon les circonstances.',
+    apSocial:'L\'éditorial sera partagé sur nos réseaux sociaux dans les jours suivant sa parution sur le site PAP. Nous vous remercions de votre patience et de votre compréhension.',
+    apAddonIntro:'Par ailleurs, si vous souhaitez des services supplémentaires, vous pouvez régler via les boutons ci-dessous et nous prévenir une fois effectué.',
+    addonCollab:'Collaborateurs Instagram', addonImages:'Images spécifiques pour Instagram + choix de couverture', addonDate:'Définir une date de publication',
+    perFeed:'{amt} par feed', payBtn:'Payer {amt}',
+    apThanks:'Merci encore pour cette collaboration.', regards:'Cordialement,', team:'Équipe éditoriale de PAP Magazine',
+    schedComing:'dans les prochaines semaines', schedAround:'aux alentours du {day} {month}',
+    revHeader:'RÉVISION DEMANDÉE — À LIRE', revBody:'Prenez en compte les retours de l\'éditeur ci-dessous et renvoyez via le même formulaire SUBMIT. Vos images et crédits d\'origine restent joints à titre de référence.',
+    revBtn:'RENVOYER LA VERSION RÉVISÉE', revHint:'Ouvre le formulaire d\'envoi avec vos données précédentes pré-remplies.',
+    rejThanks:'Merci pour votre message et pour le partage de vos documents. Malheureusement, cela ne correspond pas tout à fait à notre exigence esthétique.',
+    rejPrivate:'Soyez assuré(e) que les images non retenues resteront privées et seront rapidement supprimées.',
+    rejFuture:'Nous apprécions sincèrement votre proposition et espérons pouvoir collaborer à nouveau à l\'avenir.', rejBest:'Bien à vous,' },
+  es:{ locale:'es-ES',
+    greeting:'Estimado/a {name}:',
+    apScheduled:'Nos complace informarle de que el proyecto se publicará como editorial digital exclusivo en PAP <strong style="color:#fff">{sched}</strong>. Tenga en cuenta que las fechas indicadas son aproximadas y pueden variar ligeramente según las circunstancias.',
+    apSocial:'El editorial se compartirá en nuestras redes sociales pocos días después de su publicación en el sitio de PAP. Le agradecemos su paciencia y comprensión mientras tanto.',
+    apAddonIntro:'Además, si desea servicios adicionales, puede realizar el pago con los botones de abajo y avisarnos una vez hecho.',
+    addonCollab:'Colaboradores de Instagram', addonImages:'Imágenes específicas para Instagram + selección de portada', addonDate:'Especificar una fecha de publicación',
+    perFeed:'{amt} por feed', payBtn:'Pagar {amt}',
+    apThanks:'Gracias de nuevo por la colaboración.', regards:'Un cordial saludo,', team:'Equipo Editorial de PAP Magazine',
+    schedComing:'en las próximas semanas', schedAround:'alrededor del {day} de {month}',
+    revHeader:'REVISIÓN SOLICITADA — POR FAVOR, LEA', revBody:'Atienda los comentarios del editor a continuación y reenvíe usando el mismo formulario SUBMIT. Sus imágenes y créditos originales permanecen adjuntos como referencia.',
+    revBtn:'REENVIAR VERSIÓN REVISADA', revHint:'Abre el formulario de envío con sus datos anteriores ya rellenados.',
+    rejThanks:'Gracias por su correo y por compartir sus materiales. Lamentablemente, no encaja del todo con nuestro estándar estético.',
+    rejPrivate:'Tenga la seguridad de que las imágenes no seleccionadas permanecerán privadas y se eliminarán de inmediato.',
+    rejFuture:'Agradecemos sinceramente su propuesta y esperamos poder colaborar de nuevo en el futuro.', rejBest:'Un cordial saludo,' },
+  de:{ locale:'de-DE',
+    greeting:'Liebe/r {name},',
+    apScheduled:'Wir freuen uns, Ihnen mitteilen zu können, dass das Projekt <strong style="color:#fff">{sched}</strong> als exklusives digitales Editorial auf PAP veröffentlicht wird. Bitte beachten Sie, dass die genannten Termine ungefähr sind und sich je nach Umständen leicht ändern können.',
+    apSocial:'Das Editorial wird innerhalb weniger Tage nach der Veröffentlichung auf der PAP-Website auch auf unseren Social-Media-Kanälen geteilt. Wir bitten Sie in der Zwischenzeit um Ihre Geduld und Ihr Verständnis.',
+    apAddonIntro:'Falls Sie zusätzliche Leistungen wünschen, können Sie über die Schaltflächen unten bezahlen und uns nach Abschluss Bescheid geben.',
+    addonCollab:'Instagram-Kollaborateure', addonImages:'Spezifische Bilder für Instagram + Cover-Auswahl', addonDate:'Festlegung eines Veröffentlichungsdatums',
+    perFeed:'{amt} pro Feed', payBtn:'{amt} bezahlen',
+    apThanks:'Nochmals vielen Dank für die Zusammenarbeit.', regards:'Mit freundlichen Grüßen,', team:'PAP Magazine Redaktionsteam',
+    schedComing:'in den kommenden Wochen', schedAround:'um den {day}. {month}',
+    revHeader:'ÜBERARBEITUNG ERBETEN — BITTE LESEN', revBody:'Bitte berücksichtigen Sie das Feedback der Redaktion unten und reichen Sie über dasselbe SUBMIT-Formular erneut ein. Ihre ursprünglichen Bilder und Credits bleiben als Referenz erhalten.',
+    revBtn:'ÜBERARBEITETE VERSION ERNEUT EINREICHEN', revHint:'Öffnet das Einreichungsformular mit Ihren zuvor eingegebenen Daten.',
+    rejThanks:'Vielen Dank für Ihre E-Mail und das Teilen Ihrer Materialien. Leider passt es nicht ganz zu unserem ästhetischen Standard.',
+    rejPrivate:'Seien Sie versichert, dass nicht ausgewählte Bilder privat bleiben und umgehend gelöscht werden.',
+    rejFuture:'Wir schätzen Ihr Angebot sehr und hoffen, in Zukunft erneut zusammenarbeiten zu können.', rejBest:'Alles Gute,' },
+  ru:{ locale:'ru-RU',
+    greeting:'Уважаемый(ая) {name},',
+    apScheduled:'Рады сообщить, что проект будет опубликован в качестве эксклюзивного цифрового эдиториала на PAP <strong style="color:#fff">{sched}</strong>. Обратите внимание, что указанные даты являются приблизительными и могут незначительно измениться в зависимости от обстоятельств.',
+    apSocial:'Эдиториал будет опубликован в наших социальных сетях в течение нескольких дней после выхода на сайте PAP. Благодарим за терпение и понимание.',
+    apAddonIntro:'Кроме того, если вам нужны дополнительные услуги, вы можете оплатить их с помощью кнопок ниже и сообщить нам после завершения.',
+    addonCollab:'Соавторы в Instagram', addonImages:'Специальные изображения для Instagram + выбор обложки', addonDate:'Указание даты публикации',
+    perFeed:'{amt} за публикацию', payBtn:'Оплатить {amt}',
+    apThanks:'Ещё раз благодарим за сотрудничество.', regards:'С уважением,', team:'Редакционная команда PAP Magazine',
+    schedComing:'в ближайшие недели', schedAround:'около {day} {month}',
+    revHeader:'ТРЕБУЕТСЯ ДОРАБОТКА — ПОЖАЛУЙСТА, ПРОЧТИТЕ', revBody:'Учтите отзыв редактора ниже и отправьте повторно через ту же форму SUBMIT. Ваши исходные изображения и кредиты сохраняются для справки.',
+    revBtn:'ОТПРАВИТЬ ИСПРАВЛЕННУЮ ВЕРСИЮ', revHint:'Откроет форму отправки с уже заполненными прежними данными.',
+    rejThanks:'Благодарим за письмо и предоставленные материалы. К сожалению, работа не вполне соответствует нашему эстетическому стандарту.',
+    rejPrivate:'Будьте уверены, что изображения, не выбранные для публикации, останутся приватными и будут незамедлительно удалены.',
+    rejFuture:'Мы искренне признательны за ваше предложение и надеемся на сотрудничество в будущем.', rejBest:'Всего наилучшего,' }
+};
+function _apLang(){ var l; try{ l=localStorage.getItem('pap-lang')||'en'; }catch(_){ l='en'; } return _APPROVE_I18N[l]?l:'en'; }
+function _apT(key, vars){
+  var d=_APPROVE_I18N[_apLang()]||_APPROVE_I18N.en;
+  var t=d[key]!=null?d[key]:(_APPROVE_I18N.en[key]||key);
+  if(vars){ for(var k in vars){ t=t.replace(new RegExp('\\{'+k+'\\}','g'), vars[k]); } }
+  return t;
+}
+
 // 목록의 각 서브미션 아래에 상세를 자동으로 펼친다 (최근 5건).
 function _papInlineSubDetails(subs){
   (subs||[]).slice(0,5).forEach(function(sub){
@@ -1301,13 +1443,12 @@ var _PAY_I18N = {
 // Resolve a payment i18n key against the current pap-lang (English fallback),
 // interpolating {amt}. Kept separate from _t/L so this DRAFT copy stays isolated.
 function _payT(k,amt){
-  // 2026-07-20 (도메니코 지시) — 승인 안내문(영문)과 결제 UI가 언어 혼용으로
-  // 보이는 문제 해소: 서브미션 결제 영역은 항상 영어로 통일한다.
-  // (서브미션 정책 자체가 '모든 내용 영어 작성'이므로 심사·결제 흐름도 영어 고정.
-  //  다국어 사전(_PAY_I18N)은 추후 안내문 전체가 다국어화될 때 재활성화.)
-  var d = _PAY_I18N.en;
-  var s = (d && d[k]) || k;
-  if(amt) s = s.replace(/\{amt\}/g, amt);
+  // 2026-07-20 (도메니코 지시) — 안내문 전체가 9개 언어로 다국어화되어, 기본 게재료
+  // 블록도 브라우저 언어에 맞춘다 (_PAY_I18N 9개 언어 사전 사용).
+  var lang; try{ lang=localStorage.getItem('pap-lang')||'en'; }catch(_){ lang='en'; }
+  var d=_PAY_I18N[lang]||_PAY_I18N.en;
+  var s=(d&&d[k])||(_PAY_I18N.en&&_PAY_I18N.en[k])||k;
+  if(amt) s=s.replace(/\{amt\}/g, amt);
   return s;
 }
 // Build the approval-block base-fee sub-block. Returns '' for free / legacy /
