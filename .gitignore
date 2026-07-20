@@ -52,3 +52,10 @@ test_film_related_button.js
 .claude/agent-memory/
 _to_delete/
 *.command
+
+# 2026-07-21 — 저장소에 들어가면 안 되는 로컬 부산물
+# git lock 파일 격리 폴더 (로컬 전용) / Claude 데이터 내보내기 덤프
+_gitlock_quarantine/
+data-*-batch-*/
+PAP_한국성장_데일리브리프_*.md
+2026-*_PAP_한국성장_브리프.md

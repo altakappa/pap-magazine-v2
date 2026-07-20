@@ -26,6 +26,7 @@ module.exports = async function handler(req, res) {
       .select('id, title, custom_url, published_date, updated_at, hero_image_url, thumbnail_url')
       .eq('status', 'published')
       .order('published_date', { ascending: false })
+      .order('created_at', { ascending: false })
       .limit(5000);
 
     const urls = (arts || []).map(a => {

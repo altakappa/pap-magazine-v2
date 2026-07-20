@@ -42,6 +42,7 @@ module.exports = async function handler(req, res) {
         .select('id, title, custom_url, published_date, description, hero_image_url, thumbnail_url')
         .eq('status', 'published')
         .order('published_date', { ascending: false })
+      .order('created_at', { ascending: false })
         .limit(30),
       supabaseAdmin
         .from('editorials')
@@ -50,6 +51,7 @@ module.exports = async function handler(req, res) {
         .not('published_date', 'is', null)
         .lte('published_date', new Date().toISOString())
         .order('published_date', { ascending: false })
+      .order('created_at', { ascending: false })
         .limit(30),
     ]);
 

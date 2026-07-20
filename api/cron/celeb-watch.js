@@ -6,26 +6,26 @@
  * 놓친다. 기존 sync-instagram 은 "IG 에 이미 올라간 것"만 기사화하므로,
  * IG 게시조차 못 하는 새벽엔 아무것도 나가지 않는다.
  *
- * 무엇: 셀럽·시상식·패션 속보 소스를 15분마다 폴링해
+ * 무엇: 셀럽·시상식·패션 속보 소스를 5분마다 폴링해
  *   ① 여러 매체가 동시에 다루는 사건 = 속보로 판정 (교차 검증 — 오보·낚시 방지)
- *   ② Claude 가 PAP 톤 기사 + AEO FAQ 3개 생성
- *   ③ articles 에 status='draft' 로 저장 (CLAUDE.md 규칙)
- *   ④ 도메니코에게 즉시 메일 — 일어나서 어드민에서 발행 1클릭
+ *   ② 화제성 점수(교차 매체 수 + 대형 키워드 + 최신성)가 기준 이상인 것만 선별
+ *   ③ 도메니코에게 즉시 텔레그램 알림 — 기사화 여부는 사람이 판단
  *
- * 발행 정책(도메니코 결정 2026-07-17): draft + 알림.
- * 자동 발행하지 않는다 — 오보 리스크보다 "즉시 발행 가능한 완성 초안"이 목표.
+ * ⚠️ 2026-07-21 정책 변경 (도메니코): "셀럽 기사는 5분마다 검토해서 화제성이
+ * 있는 것만 텔레그램으로 보내주면 돼."
+ * → 이 크론은 **DB 기사를 만들지 않는다**. 알림 전용.
+ *   (이전 버전은 사건마다 draft 를 생성했고, 중복 판정 실패로 2026-07-20 에
+ *    144건 draft 스팸이 발생했다. 그 설계를 폐기한 것.)
+ * → 웹사이트 기사 자동게시는 sync-instagram(인스타 게시물 → 기사)이 담당한다.
  *
- * 저작권: 타 매체 이미지를 복제하지 않는다. 기사 본문은 사실 요약 + PAP 시각이며,
- * 이미지는 어드민에서 사람이 붙인다 (초안엔 출처 링크만).
- *
- * 멱등성: 같은 사건(정규화 제목 시그니처)으로 이미 draft/published 가 있으면 생성 안 함.
- * 수동 트리거: 관리자 토큰.
+ * 중복 방지: celeb_watch_seen 테이블(migration 084)에 시그니처를 남기고
+ * 최근 48시간 기록과 시그니처·키워드 이중 대조.
+ * 수동 트리거: 관리자 토큰. `?dry=1` 미리보기, `?min=N` 화제성 임계값 조정.
  */
 
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
-const { sendEmail } = require('../_lib/email');
 const { pushAlert } = require('../_lib/pushAlert');
 
 const SITE = 'https://www.pap-magazine.com';
@@ -135,6 +135,19 @@ function clusterEvents(items) {
   return clusters.sort((a, b) => b.sourceCount - a.sourceCount);
 }
 
+/* 화제성 점수 — 알림을 보낼 가치가 있는가.
+   도메니코 결정(2026-07-21): "5분마다 검토해서 화제성이 있는 것만 텔레그램".
+   교차 매체 수가 가장 강한 신호이고, 대형 이벤트 키워드·최신성을 가산한다. */
+const HOT_RE = /(bts|blackpink|방탄|블랙핑크|월드컵|world\s?cup|super\s?bowl|halftime|met\s?gala|oscar|grammy|cannes|comeback|debut|creative\s+director|artistic\s+director|steps?\s+down|appointed|사망|은퇴|열애|결혼|입대|전역|수상|1위)/i;
+function hotScore(c) {
+  let s = c.sourceCount * 2;                              // 교차 검증 = 핵심 신호
+  if (HOT_RE.test(c.headlines.map(h => h.title).join(' '))) s += 3;
+  if (c.newestTs && Date.now() - c.newestTs < 60 * 60 * 1000) s += 2; // 1시간 이내
+  if (c.headlines.length >= 4) s += 1;                    // 헤드라인 물량
+  return s;
+}
+const HOT_MIN = 7; // 2개 매체(4) + 최신(2) 만으로는 안 보냄. 3개 매체 또는 대형 키워드 필요.
+
 module.exports = withCronGuard('celeb-watch', async function handler(req, res) {
   const auth = (req.headers && req.headers['authorization']) || '';
   const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
@@ -142,10 +155,10 @@ module.exports = withCronGuard('celeb-watch', async function handler(req, res) {
     const user = await requireAdmin(req, res);
     if (!user) return;
   }
-  if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'ANTHROPIC_API_KEY 미설정' });
 
   const dry = !!(req.query && req.query.dry === '1');
   const MAX_PER_RUN = Math.max(1, Math.min(3, parseInt((req.query && req.query.max) || '2', 10) || 2));
+  const minScore = parseInt((req.query && req.query.min) || '', 10) || HOT_MIN;
 
   try {
     /* 1) 수집 — 실패 피드는 건너뜀 */
@@ -168,133 +181,72 @@ module.exports = withCronGuard('celeb-watch', async function handler(req, res) {
     let clusters = clusterEvents(items);
     if (!clusters.length) return res.status(200).json({ ok: true, note: '교차 확인된 속보 없음', scanned: items.length });
 
-    /* 4) 이미 다룬 사건 제외 — 최근 기사 120건 제목과 키워드 대조 */
-    const { data: recent } = await supabaseAdmin.from('articles')
-      .select('title, created_at').order('created_at', { ascending: false }).limit(120);
-    const recentKw = (recent || []).map(a => keywords(a.title));
+    /* 4) 화제성 필터 — 점수 미달은 조용히 버린다 (알림 스팸 방지) */
+    clusters = clusters
+      .map(c => Object.assign({}, c, { score: hotScore(c) }))
+      .filter(c => c.score >= minScore)
+      .sort((a, b) => b.score - a.score);
+    if (!clusters.length) return res.status(200).json({ ok: true, note: '화제성 기준 미달', scanned: items.length });
+
+    /* 5) 이미 알린 사건 제외 — celeb_watch_seen 최근 48시간 기록과 키워드 대조.
+       (2026-07-20 draft 스팸 재발 방지: 시그니처 + 키워드 겹침 이중 판정) */
+    const since = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
+    const { data: seen } = await supabaseAdmin.from('celeb_watch_seen')
+      .select('signature, title').gte('created_at', since).limit(500);
+    const seenSig = new Set((seen || []).map(s => s.signature));
+    const seenKw = (seen || []).map(s => keywords(s.title || ''));
     clusters = clusters.filter(c => {
+      if (seenSig.has(c.signature)) return false;
       const ck = keywords(c.headlines[0].title);
-      return !recentKw.some(rk => ck.filter(w => rk.includes(w)).length >= 3);
+      return !seenKw.some(rk => ck.filter(w => rk.includes(w)).length >= 3);
     });
-    if (!clusters.length) return res.status(200).json({ ok: true, note: '신규 속보 없음 (이미 다룸)' });
+    if (!clusters.length) return res.status(200).json({ ok: true, note: '신규 속보 없음 (이미 알림)', scanned: items.length });
 
     const picked = clusters.slice(0, MAX_PER_RUN);
     if (dry) {
       return res.status(200).json({ ok: true, dry: true, scanned: items.length,
-        clusters: picked.map(c => ({ sources: c.sourceCount, topic: c.topic, headlines: c.headlines.map(h => h.source + ': ' + h.title) })) });
+        picked: picked.map(c => ({ score: c.score, sources: c.sourceCount, topic: c.topic,
+          headlines: c.headlines.map(h => h.source + ': ' + h.title) })) });
     }
 
-    /* 5) 기사 생성 (Claude) → draft 저장 */
-    const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
-    const created = [];
+    /* 6) 중복 방지 기록 먼저 — 알림 실패해도 재시도 폭주를 막는다 */
     for (const c of picked) {
       try {
-        const resp = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-          body: JSON.stringify({
-            model, max_tokens: 3000,
-            system: [
-              'PAP MAGAZINE(서울·밀라노 기반, 아트를 중심으로 한 패션·뷰티·컬쳐 매거진)의 셀럽·컬쳐 속보 에디터.',
-              '여러 매체 헤드라인을 받아 PAP 독자용 한국어 속보 기사를 쓴다.',
-              '규칙:',
-              '- 헤드라인들이 공통으로 말하는 사실만 쓴다. 추측·미확인 정보 금지. 확인 안 된 건 "~로 알려졌다" 대신 아예 쓰지 않는다.',
-              '- 패션·스타일·비주얼 관점을 반드시 포함 (PAP 정체성). 무대의상·스타일링·연출 등.',
-              '- 존댓말, 3~4단락, 단락 구분은 <br><br>.',
-              '- 첫 문장은 사건의 핵심을 직접 말한다 (AEO: 답변 먼저).',
-              'JSON 객체만 출력:',
-              '{"title_ko":"30자 이내 제목","title_en":"English title","body_ko":"<br><br> 구분 본문","body_en":"English body",',
-              '"category":"News","tags":["소문자 태그 5~8개"],"slug":"english-slug",',
-              '"faq":[{"q":"독자가 검색할 자연어 질문","a":"20~60단어 자기완결 답변"}]}',
-              'faq 는 3개. JSON 외 텍스트 금지.',
-            ].join('\n'),
-            messages: [{ role: 'user', content: JSON.stringify({ headlines: c.headlines, topic: c.topic }) }],
-          }),
-          signal: AbortSignal.timeout(90000),
+        await supabaseAdmin.from('celeb_watch_seen').insert({
+          signature: c.signature,
+          title: c.headlines[0].title,
+          topic: c.topic,
+          source_count: c.sourceCount,
+          score: c.score,
+          alerted: true,
         });
-        if (!resp.ok) throw new Error('Claude ' + resp.status);
-        const j = await resp.json();
-        const block = Array.isArray(j.content) ? j.content.find(b => b && typeof b.text === 'string') : null;
-        const raw = block ? block.text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim() : '';
-        let g;
-        try { g = JSON.parse(raw); } catch (_) {
-          const m = raw.match(/\{[\s\S]*\}/); g = m ? JSON.parse(m[0]) : null;
-        }
-        if (!g || !g.title_ko || !g.body_ko) throw new Error('생성 결과 파싱 실패');
-
-        const sourceLinks = c.headlines.slice(0, 4)
-          .map(h => `<a href="${h.link}" target="_blank" rel="noopener nofollow">${h.source}</a>`).join(' · ');
-        const body = String(g.body_ko) +
-          '<br><br><span style="font-size:12px;opacity:.6">출처: ' + sourceLinks + '</span>';
-
-        const { data: ins, error: insErr } = await supabaseAdmin.from('articles').insert({
-          title: String(g.title_ko).slice(0, 200),
-          title_en: g.title_en ? String(g.title_en).slice(0, 200) : null,
-          content: body,
-          content_en: g.body_en || null,
-          category: 'News',
-          tags: Array.isArray(g.tags) ? g.tags.map(t => String(t).toLowerCase().replace(/^#+/, '').trim()).filter(Boolean).slice(0, 10) : [],
-          slug: g.slug ? String(g.slug).toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') : null,
-          faq: (Array.isArray(g.faq) && g.faq.length)
-            ? g.faq.filter(f => f && f.q && f.a).map(f => ({ q: String(f.q).slice(0, 200), a: String(f.a).slice(0, 600) })).slice(0, 5)
-            : null,
-          status: 'draft', // CLAUDE.md: DB INSERT 는 draft 만. 발행 판단은 도메니코.
-        }).select('id, title, slug').single();
-        if (insErr) throw insErr;
-
-        created.push({ id: ins.id, title: ins.title, slug: ins.slug, sources: c.sourceCount,
-          headlines: c.headlines.map(h => h.source + ': ' + h.title) });
-      } catch (e) {
-        console.error('[celeb-watch] 생성 실패:', (e && e.message) || e);
-      }
+      } catch (e) { console.warn('[celeb-watch] seen 기록 실패:', (e && e.message) || e); }
     }
 
-    /* 6) 즉시 푸시 알림 (텔레그램 그룹 + 카카오톡 나에게) — 새벽에도 폰이 울리게.
-       이메일은 아래에서 기록용으로 병행 발송. */
-    let pushResult = null;
-    if (created.length) {
-      const a = created[0];
-      const more = created.length > 1 ? ` 외 ${created.length - 1}건` : '';
-      pushResult = await pushAlert({
-        title: `🚨 PAP 속보 초안 — ${a.title}${more}`,
-        lines: [
-          `${a.sources}개 매체 교차 확인`,
-          ...a.headlines.slice(0, 3),
-          '',
-          '검토 후 발행하면 X 게시·검색엔진 핑 자동 실행',
-        ],
-        url: `${SITE}/admin/news`,
-        urlLabel: '어드민에서 발행',
-      });
-      console.log('[celeb-watch] push:', JSON.stringify(pushResult));
-    }
+    /* 7) 텔레그램 즉시 알림 — 기사는 만들지 않는다.
+       도메니코 결정(2026-07-21): "화제성이 있는 것만 텔레그램으로".
+       기사화 여부는 사람이 판단하고, 웹사이트 자동게시는 sync-instagram 이 담당. */
+    const top = picked[0];
+    const more = picked.length > 1 ? ` 외 ${picked.length - 1}건` : '';
+    const pushResult = await pushAlert({
+      title: `🚨 PAP 속보 감지 — ${top.headlines[0].title}${more}`,
+      lines: [
+        `${top.sourceCount}개 매체 교차 확인 · 화제성 ${top.score}점 · ${top.topic}`,
+        ...top.headlines.slice(0, 4).map(h => `· ${h.source}: ${h.title}`),
+        '',
+        ...picked.slice(1).map(c => `▸ ${c.headlines[0].title} (${c.sourceCount}개 매체)`),
+        '',
+        '기사화할지는 직접 판단하세요.',
+      ].filter((l, i, a) => !(l === '' && a[i - 1] === '')),
+      url: top.headlines[0].link,
+      urlLabel: '원문 보기',
+    });
+    console.log('[celeb-watch] push:', JSON.stringify(pushResult));
 
-    /* 6b) 알림 메일 (기록용) */
-    if (created.length) {
-      const to = process.env.DIGEST_TO || 'contact@pap-magazine.com';
-      const rows = created.map(a => `
-        <div style="border:1px solid #ddd;padding:16px;margin-bottom:12px">
-          <div style="font-size:11px;color:#888;letter-spacing:.1em">속보 · ${a.sources}개 매체 교차 확인</div>
-          <div style="font-size:18px;font-weight:700;margin:6px 0">${a.title}</div>
-          <div style="font-size:12px;color:#666;line-height:1.7">${a.headlines.join('<br>')}</div>
-          <a href="${SITE}/admin/news" style="display:inline-block;margin-top:12px;background:#000;color:#fff;padding:10px 20px;text-decoration:none;font-size:12px;font-weight:700">어드민에서 검토·발행 →</a>
-        </div>`).join('');
-      try {
-        await sendEmail({
-          to,
-          subject: `[PAP 속보] 초안 ${created.length}건 생성 — ${created[0].title}`,
-          html: `<div style="font-family:-apple-system,sans-serif;max-width:600px">
-            <h2 style="font-size:16px">셀럽·속보 감시가 초안을 만들었습니다</h2>
-            <p style="font-size:13px;color:#555">여러 매체가 동시에 다룬 사건입니다. 검토 후 발행하세요 — 발행 시 X 자동 게시 + 검색엔진 즉시 핑이 함께 나갑니다.</p>
-            ${rows}
-            <p style="font-size:11px;color:#999">PAP celeb-watch · 15분마다 감시 · 이미지는 어드민에서 직접 첨부</p>
-          </div>`,
-        });
-      } catch (e) { console.warn('[celeb-watch] 메일 실패:', (e && e.message) || e); }
-    }
-
-    return res.status(200).json({ ok: true, scanned: items.length, clusters: clusters.length, created: created.length,
-      titles: created.map(c => c.title), push: pushResult });
+    return res.status(200).json({
+      ok: true, scanned: items.length, alerted: picked.length,
+      titles: picked.map(c => c.headlines[0].title), push: pushResult,
+    });
   } catch (err) {
     console.error('[celeb-watch] error:', err);
     throw err;

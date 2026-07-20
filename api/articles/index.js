@@ -107,8 +107,13 @@ module.exports = async function handler(req, res) {
                      .gt('scheduled_publish_at', new Date().toISOString())
                      .order('scheduled_publish_at', { ascending: true });
       } else {
+        // 정렬 (2026-07-20 수정): published_date 는 DATE 타입(시각 없음)이라
+        // 같은 날 발행분의 순서가 불확정이었다 — 인스타 자동수입은 하루에도
+        // 여러 건이 올라오므로 최신 기사가 아래로 밀리는 현상이 생긴다.
+        // created_at(타임스탬프)을 2차 키로 넣어 항상 최신이 위로 오게 고정.
         query = query.eq('status', requestedStatus)
-                     .order('published_date', { ascending: false });
+                     .order('published_date', { ascending: false })
+                     .order('created_at', { ascending: false });
       }
 
       if (category) {

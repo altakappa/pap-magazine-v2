@@ -78,6 +78,7 @@ async function fetchItems(kind) {
       .eq('status', 'published')
       .or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${nowIso}`)
       .order('published_date', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false })
       .limit(LIMIT);
     return (data || []).filter(e => e.title).map(e => ({
       title: e.title,
@@ -91,6 +92,7 @@ async function fetchItems(kind) {
       .select('title, custom_url, slug, id, published_date, hero_image_url, thumbnail_url')
       .eq('status', 'published')
       .order('published_date', { ascending: false })
+      .order('created_at', { ascending: false })
       .limit(LIMIT);
     return (data || []).filter(a => a.title).map(a => ({
       title: a.title,
@@ -102,15 +104,21 @@ async function fetchItems(kind) {
   // films: 필름 + 쇼츠 통합 (sitemap-films 와 동일 구성)
   const [films, shorts] = await Promise.all([
     supabaseAdmin.from('films')
-      .select('title, slug, id, published_date, thumbnail_url, youtube_id')
-      .eq('status', 'published').order('published_date', { ascending: false }).limit(LIMIT),
+      .select('title, slug, id, published_date, created_at, thumbnail_url, youtube_id')
+      .eq('status', 'published').order('published_date', { ascending: false })
+      .order('created_at', { ascending: false }).limit(LIMIT),
     supabaseAdmin.from('shorts')
-      .select('title, slug, id, published_date, thumbnail_url, youtube_id')
-      .eq('status', 'published').order('published_date', { ascending: false }).limit(LIMIT),
+      .select('title, slug, id, published_date, created_at, thumbnail_url, youtube_id')
+      .eq('status', 'published').order('published_date', { ascending: false })
+      .order('created_at', { ascending: false }).limit(LIMIT),
   ]);
   return [].concat(films.data || [], shorts.data || [])
     .filter(f => f.title)
-    .sort((a, b) => String(b.published_date || '').localeCompare(String(a.published_date || '')))
+    // 2026-07-20 — published_date 는 DATE(시각 없음)이라 같은 날 항목의
+    // 순서가 불확정. created_at(타임스탬프)을 2차 키로 써서 최신이 항상 위로.
+    .sort((a, b) =>
+      String(b.published_date || '').localeCompare(String(a.published_date || ''))
+      || String(b.created_at || '').localeCompare(String(a.created_at || '')))
     .slice(0, LIMIT)
     .map(f => ({
       title: f.title,
