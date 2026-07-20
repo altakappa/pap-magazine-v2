@@ -81,6 +81,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/ig-snapshot",
+      "schedule": "15 */3 * * *"
+    },
+    {
       "path": "/api/cron/ad-candidate-scan",
       "schedule": "20 23 * * *"
     },
@@ -334,17 +338,35 @@
     },
     {
       "source": "/films",
-      "has": [{ "type": "header", "key": "user-agent", "value": "(?i).*(bot|crawl|spider|slurp|yeti|daumoa|zumbot|bingpreview|facebookexternalhit|kakaotalk|applebot|petalbot|duckduck|perplexity|gpt|claude).*" }],
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i).*(bot|crawl|spider|slurp|yeti|daumoa|zumbot|bingpreview|facebookexternalhit|kakaotalk|applebot|petalbot|duckduck|perplexity|gpt|claude).*"
+        }
+      ],
       "destination": "/api/seo/listing?kind=films"
     },
     {
       "source": "/articles",
-      "has": [{ "type": "header", "key": "user-agent", "value": "(?i).*(bot|crawl|spider|slurp|yeti|daumoa|zumbot|bingpreview|facebookexternalhit|kakaotalk|applebot|petalbot|duckduck|perplexity|gpt|claude).*" }],
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i).*(bot|crawl|spider|slurp|yeti|daumoa|zumbot|bingpreview|facebookexternalhit|kakaotalk|applebot|petalbot|duckduck|perplexity|gpt|claude).*"
+        }
+      ],
       "destination": "/api/seo/listing?kind=articles"
     },
     {
       "source": "/magazine",
-      "has": [{ "type": "header", "key": "user-agent", "value": "(?i).*(bot|crawl|spider|slurp|yeti|daumoa|zumbot|bingpreview|facebookexternalhit|kakaotalk|applebot|petalbot|duckduck|perplexity|gpt|claude).*" }],
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i).*(bot|crawl|spider|slurp|yeti|daumoa|zumbot|bingpreview|facebookexternalhit|kakaotalk|applebot|petalbot|duckduck|perplexity|gpt|claude).*"
+        }
+      ],
       "destination": "/api/seo/listing?kind=magazine"
     },
     {
