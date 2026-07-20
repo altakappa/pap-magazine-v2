@@ -117,13 +117,13 @@ module.exports = withCronGuard('daily-growth-feedback', async function handler(r
       .upsert({ report_date: kstDate, audit, feedback, model: modelNote }, { onConflict: 'report_date' });
     if (error) throw error;
 
-    // 2026-07-21 (도메니코 지시) — 데일리브리핑을 이메일로도 발송.
-    // 기존엔 DB 저장 + /site-analysis 대시보드 표시만 했다. 이제 선점 브리핑과
-    // 동일 수신자(DIGEST_TO)에게 성장 피드백을 매일 메일로 보낸다.
-    // 발송 실패는 삼킨다 — 리포트 저장(핵심)은 이미 끝났으므로 메일 때문에
-    // 크론을 실패로 만들지 않는다. AI 피드백이 없으면(감사 스냅샷만) 메일 스킵.
+    // 이메일 발송 (2026-07-21 도메니코 지시로 중단).
+    // 처음엔 같은 날 "메일로도 보내달라"였는데, 받아보고 나서 "데일리 성장
+    // 브리핑은 이메일로 발송 안 해줘도 괜찮다"로 바꿨다. 리포트는 DB 에
+    // 저장되고 /site-analysis 대시보드에서 볼 수 있으므로 정보 손실은 없다.
+    // 다시 켜려면 GROWTH_BRIEFING_EMAIL=on.
     let emailed = false;
-    if (feedback) {
+    if (feedback && process.env.GROWTH_BRIEFING_EMAIL === 'on') {
       try {
         const html = briefingEmailHtml({
           title: '데일리 성장 브리핑',
