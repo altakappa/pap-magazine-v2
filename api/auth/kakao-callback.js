@@ -82,10 +82,17 @@ module.exports = async function handler(req, res) {
     const kakaoId = kakaoUser.id;
     const nickname = kakaoUser.properties?.nickname || kakaoUser.kakao_account?.profile?.nickname || '';
     const profileImage = kakaoUser.properties?.profile_image || kakaoUser.kakao_account?.profile?.profile_image_url || '';
-    const kakaoEmail = kakaoUser.kakao_account?.email || null;
 
-    // Use kakao email if available, otherwise generate a placeholder
-    const email = kakaoEmail || `kakao_${kakaoId}@kakao.papkorea.com`;
+    // 2026-07-20 보안 교정: 검증된(is_email_verified) 이메일만 기존 계정 매칭에 사용한다.
+    // 카카오가 넘긴 미검증 이메일을 신뢰하면, 공격자가 victim@pap-magazine.com(어드민)
+    // 등으로 미검증 이메일을 설정해 '카카오 로그인'만으로 그 계정을 탈취할 수 있다.
+    // (google-callback.js의 email_verified 가드와 동일 수준으로 통일)
+    const kakaoAcc = kakaoUser.kakao_account || {};
+    const verifiedEmail = (kakaoAcc.is_email_verified === true && kakaoAcc.email)
+      ? String(kakaoAcc.email).trim().toLowerCase()
+      : null;
+    // 매칭/저장에 쓰는 이메일: 검증된 것이 있으면 그것, 없으면 provider 고유 placeholder.
+    const email = verifiedEmail || `kakao_${kakaoId}@kakao.papkorea.com`;
 
     // 3. Find or create user in Supabase
     // First, check if user already exists by looking up profiles
@@ -103,12 +110,15 @@ module.exports = async function handler(req, res) {
       userId = existingProfiles[0].id;
       profile = existingProfiles[0];
     } else {
-      // Check by email
-      const { data: emailProfiles } = await supabaseAdmin
-        .from('profiles')
-        .select('id, name, role, subscription_plan')
-        .eq('email', email)
-        .limit(1);
+      // 검증된 이메일이 있을 때만 이메일로 기존 계정과 매칭한다(미검증이면 탈취 방지 위해
+      // 매칭하지 않고 새 계정 흐름으로). 대소문자 무관(ilike).
+      const { data: emailProfiles } = verifiedEmail
+        ? await supabaseAdmin
+            .from('profiles')
+            .select('id, name, role, subscription_plan')
+            .ilike('email', verifiedEmail)
+            .limit(1)
+        : { data: null };
 
       if (emailProfiles && emailProfiles.length > 0) {
         userId = emailProfiles[0].id;
@@ -144,30 +154,42 @@ module.exports = async function handler(req, res) {
           userId = newUser.user.id;
         }
 
-        // Wait for profile trigger, then update
+        // Wait for profile trigger, then reconcile.
         await new Promise(r => setTimeout(r, 1000));
 
-        await supabaseAdmin
-          .from('profiles')
-          .upsert({
-            id: userId,
-            email,
-            name: nickname,
-            avatar_url: profileImage,
-            provider: 'kakao',
-            provider_id: `kakao_${kakaoId}`,
-            role: 'member',
-            subscription_plan: 'free',
-          });
-
-        // Re-fetch profile
-        const { data: newProfile } = await supabaseAdmin
+        // 2026-07-20 — 기존 프로필이 이미 있으면(트리거·이메일가입 등) role/subscription_plan을
+        // 절대 덮어쓰지 않는다. 폴백 경로가 유료·admin 회원을 free/member로 강등하던 결함 방지.
+        const { data: existing } = await supabaseAdmin
           .from('profiles')
           .select('id, name, role, subscription_plan')
           .eq('id', userId)
-          .single();
+          .maybeSingle();
 
-        profile = newProfile;
+        if (existing) {
+          const patch = { provider: 'kakao', provider_id: `kakao_${kakaoId}` };
+          if (!existing.name) patch.name = nickname;
+          await supabaseAdmin.from('profiles').update(patch).eq('id', userId);
+          profile = existing;
+        } else {
+          await supabaseAdmin
+            .from('profiles')
+            .upsert({
+              id: userId,
+              email,
+              name: nickname,
+              avatar_url: profileImage,
+              provider: 'kakao',
+              provider_id: `kakao_${kakaoId}`,
+              role: 'member',
+              subscription_plan: 'free',
+            });
+          const { data: newProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('id, name, role, subscription_plan')
+            .eq('id', userId)
+            .single();
+          profile = newProfile;
+        }
       }
     }
 

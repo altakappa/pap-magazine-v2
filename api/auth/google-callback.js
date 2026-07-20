@@ -107,10 +107,12 @@ module.exports = async function handler(req, res) {
     let userId;
     let profile;
 
+    // 2026-07-20 — 대소문자 무관(ilike) 조회. 이메일이 혼합대소문자로 저장된 기존
+    // 회원이 소문자 .eq 조회에서 누락돼, 아래 폴백이 기존 등급/역할을 덮어쓰던 경로 차단.
     const { data: emailProfiles } = await supabaseAdmin
       .from('profiles')
       .select('id, name, role, subscription_plan, token_version')
-      .eq('email', email)
+      .ilike('email', email)
       .limit(1);
 
     if (emailProfiles && emailProfiles.length > 0) {
@@ -139,25 +141,44 @@ module.exports = async function handler(req, res) {
         userId = newUser.user.id;
       }
 
-      // 프로필 트리거 대기 후 upsert (존재하는 컬럼만)
+      // 프로필 트리거 대기 후 정합.
       await new Promise(function (r) { setTimeout(r, 1000); });
-      await supabaseAdmin
-        .from('profiles')
-        .upsert({
-          id: userId,
-          email,
-          name,
-          avatar_url: avatar,
-          role: 'member',
-          subscription_plan: 'free',
-        });
 
-      const { data: newProfile } = await supabaseAdmin
+      // 2026-07-20 — 기존 프로필이 이미 있으면 role/subscription_plan을 절대 덮어쓰지
+      // 않는다. 폴백(기존 auth 유저 발견) 경로가 유료·admin 회원을 free/member로
+      // 강등하던 결함 방지. 없을 때만 기본값으로 생성한다.
+      const { data: existing } = await supabaseAdmin
         .from('profiles')
         .select('id, name, role, subscription_plan, token_version')
         .eq('id', userId)
-        .single();
-      profile = newProfile;
+        .maybeSingle();
+
+      if (existing) {
+        const patch = {};
+        if (!existing.name) patch.name = name;
+        if (avatar) patch.avatar_url = avatar;
+        if (Object.keys(patch).length) {
+          await supabaseAdmin.from('profiles').update(patch).eq('id', userId);
+        }
+        profile = existing;
+      } else {
+        await supabaseAdmin
+          .from('profiles')
+          .upsert({
+            id: userId,
+            email,
+            name,
+            avatar_url: avatar,
+            role: 'member',
+            subscription_plan: 'free',
+          });
+        const { data: newProfile } = await supabaseAdmin
+          .from('profiles')
+          .select('id, name, role, subscription_plan, token_version')
+          .eq('id', userId)
+          .single();
+        profile = newProfile;
+      }
     }
 
     // 4. PAP 세션 발급 (카카오와 동일: httpOnly 쿠키 → /auth.html?oauth=success)

@@ -62,6 +62,12 @@ function paddleSubtotalCents(data) {
   return Number.isFinite(n) ? n : null;
 }
 
+/** Transaction currency code (e.g. 'EUR','USD'), or null. */
+function paddleCurrency(data) {
+  const t = data && data.details && data.details.totals;
+  return (t && t.currency_code) || (data && data.currency_code) || null;
+}
+
 /** True iff this transaction is a submission base-fee (has kind + submission_id). */
 function isSubmissionFeeEvent(data) {
   const cd = (data && data.custom_data) || {};
@@ -155,7 +161,14 @@ async function handleSubmissionFeeTransaction(data, db) {
   // Underpayment: real charge is below the fee owed for the stored type. Still
   // recorded as paid (money did change hands) — publication is a manual gate, and
   // the webhook loud-logs so Domenico catches it before publishing.
-  const underpaid = expectedCents != null && actualCents != null && actualCents < expectedCents;
+  //
+  // 2026-07-20 — expectedCents는 euro-cents 상수다. 실제 결제 통화가 EUR가 아니면
+  // minor-unit 직접 비교가 무의미(오탐)하므로 과소결제 판정을 보류한다. 통화 미상은
+  // 기존 동작 유지(EUR 가정).
+  const currency = paddleCurrency(data);
+  const comparableCurrency = !currency || String(currency).toUpperCase() === 'EUR';
+  const underpaid = comparableCurrency
+    && expectedCents != null && actualCents != null && actualCents < expectedCents;
 
   const { error: updErr } = await db
     .from('submissions')
@@ -173,6 +186,7 @@ async function handleSubmissionFeeTransaction(data, db) {
   return {
     handled: true, outcome: 'paid', submissionId, txId,
     paidAmount, expectedAmount: expectedCents, storedType, underpaid, userMismatch,
+    currency,
   };
 }
 
@@ -181,5 +195,6 @@ module.exports = {
   isSubmissionFeeEvent,
   feeForType,
   paddleSubtotalCents,
+  paddleCurrency,
   SUBMISSION_FEE_CENTS,
 };

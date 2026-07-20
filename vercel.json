@@ -5,6 +5,10 @@
   "framework": null,
   "crons": [
     {
+      "path": "/api/cron/subscription-expiry-sweep",
+      "schedule": "40 17 * * *"
+    },
+    {
       "path": "/api/cron/send-due-campaigns",
       "schedule": "0 * * * *"
     },

@@ -21,6 +21,7 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { generateToken } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
+const { basePlanFromPlanKey } = require('../_lib/subscriptionAccess');
 
 const PORTONE_API_BASE = 'https://api.portone.io';
 const PORTONE_API_SECRET = process.env.PORTONE_API_SECRET;
@@ -186,8 +187,13 @@ module.exports = async function handler(req, res) {
       console.error('[guest-checkout] subscription upsert failed:', subErr.message);
       // Don't fail the request — first payment already succeeded.
     }
+    // 2026-07-20 — 게이트는 base plan('premium'/'standard')만 인식한다. 원본 planKey
+    // ('premium_monthly' 등)를 그대로 쓰면 결제한 게스트가 오히려 전 게이트에서 free로
+    // 막힌다(checkout.js·paddle-webhook.js와 동일 규칙). base plan으로 정규화해 저장하고
+    // 원본 키는 subscriptions.plan에만 보존한다.
+    const basePlan = basePlanFromPlanKey(planKey);
     await supabaseAdmin.from('profiles').update({
-      subscription_plan: planKey,
+      subscription_plan: basePlan,
       subscription_status: 'active',
     }).eq('id', userId);
 
@@ -210,7 +216,7 @@ module.exports = async function handler(req, res) {
       email: normalizedEmail,
       name: displayName,
       role: 'member',
-      subscription: planKey,
+      subscription: basePlan,
       token_version: 0,
     };
     const token = generateToken(userObj);

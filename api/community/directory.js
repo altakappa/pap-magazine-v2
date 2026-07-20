@@ -27,7 +27,9 @@ module.exports = async function handler(req, res) {
     // Directory is based on profiles with public info
     let query = supabaseAdmin
       .from('profiles')
-      .select('id, name, avatar_url, bio, location, instagram, website, subscription_plan', { count: 'exact' })
+      // 2026-07-20 — subscription_plan 제거: 로그인만 하면(무료 포함) 누가 유료회원인지
+      // 열거할 수 있던 등급 노출을 차단(응답에서도 plan 미포함).
+      .select('id, name, avatar_url, bio, location, instagram, website', { count: 'exact' })
       .not('name', 'is', null)
       .order('created_at', { ascending: false })
       .range(offset, offset + perPage - 1);
@@ -61,7 +63,6 @@ module.exports = async function handler(req, res) {
         location: m.location,
         instagram: m.instagram,
         website: m.website,
-        plan: m.subscription_plan,
       })),
       total: count,
       page: parseInt(page),

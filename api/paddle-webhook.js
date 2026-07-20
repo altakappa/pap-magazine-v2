@@ -96,23 +96,42 @@ async function paddleGet(path) {
 }
 
 // 구독 이벤트 → user_id 해석
+//
+// 2026-07-20 감사 교정: custom_data.user_id 는 클라이언트(localStorage)가 심는 값이라
+// 위조 가능하다. 결제자의 실제 이메일(Paddle customer, 원장 기반)로 해석한 유저와
+// 대조해, 불일치하면 이메일 쪽을 신뢰하고 loud 알림을 남긴다(타 계정 구독행
+// 덮어쓰기·오배정 방지). 이메일 조회는 대소문자 무관(ilike)으로 통일한다.
 async function resolveUserId(sub) {
   const custom = sub.custom_data || {};
-  if (custom.user_id) return custom.user_id;
-  // Fallback: customer email → profiles
+  const claimedId = custom.user_id || null;
+
+  // 결제 customer email → profiles (위조 어려움)
+  let emailUserId = null;
   if (sub.customer_id && PADDLE_API_KEY) {
     try {
       const customer = await paddleGet(`/customers/${sub.customer_id}`);
       if (customer && customer.email) {
         const { data: profile } = await supabaseAdmin
-          .from('profiles').select('id').eq('email', customer.email).maybeSingle();
-        if (profile) return profile.id;
+          .from('profiles').select('id').ilike('email', customer.email).maybeSingle();
+        if (profile) emailUserId = profile.id;
       }
     } catch (e) {
       console.warn('[paddle-webhook] customer lookup failed:', e.message);
     }
   }
-  return null;
+
+  if (claimedId && emailUserId && claimedId !== emailUserId) {
+    console.error('[paddle-webhook] user_id MISMATCH — custom:', claimedId, 'email-resolved:', emailUserId, 'sub:', sub.id);
+    sendTextToTelegramSafe('🚨 Paddle 구독 user_id 불일치 — 결제자 이메일 기준으로 배정. custom=' + claimedId + ' email=' + emailUserId + ' sub=' + sub.id);
+    return emailUserId;
+  }
+  if (claimedId) {
+    // claimed 만 있는 경우 실존 프로필인지 최소 확인 후 채택.
+    const { data: p } = await supabaseAdmin.from('profiles').select('id').eq('id', claimedId).maybeSingle();
+    if (p) return claimedId;
+    console.warn('[paddle-webhook] custom.user_id not a real profile:', claimedId, '→ email-resolved fallback');
+  }
+  return emailUserId;
 }
 
 // Paddle 구독 상태 → 내부 상태
@@ -131,7 +150,16 @@ async function upsertSubscription(sub, userId) {
   const item = (sub.items && sub.items[0]) || {};
   const priceId = item.price && item.price.id;
   const custom = sub.custom_data || {};
-  const plan = custom.plan_key || planFromPriceId(priceId) || 'unknown';
+  // 2026-07-20 감사 교정: 등급은 Paddle이 실제 청구한 검증된 price ID로만 결정한다.
+  // 기존엔 custom_data.plan_key(클라이언트가 심음)를 우선 신뢰해, 저가 price로 결제하고
+  // plan_key만 상위로 조작하면 상위 등급을 취득할 수 있었다. price 매핑이 없을 때만
+  // plan_key로 폴백하고, 둘이 어긋나면 price를 신뢰하며 알림을 남긴다.
+  const priceIdPlan = planFromPriceId(priceId);
+  const plan = priceIdPlan || custom.plan_key || 'unknown';
+  if (custom.plan_key && priceIdPlan && custom.plan_key !== priceIdPlan) {
+    console.warn('[paddle-webhook] plan_key != price-derived plan — trusting price. plan_key:', custom.plan_key, 'price:', priceIdPlan, 'sub:', sub.id);
+    sendTextToTelegramSafe('⚠️ Paddle 결제 무결성 경고 — 요청 plan_key(' + custom.plan_key + ')와 실제 결제 price(' + priceIdPlan + ') 불일치. 실제 price로 처리함. sub=' + sub.id);
+  }
   const interval = item.price && item.price.billing_cycle && item.price.billing_cycle.interval;
   const period = sub.current_billing_period || {};
   const status = mapStatus(sub.status);
@@ -147,7 +175,13 @@ async function upsertSubscription(sub, userId) {
     current_period_end: period.ends_at || null,
     updated_at: new Date().toISOString(),
   }, { onConflict: 'user_id' });
-  if (error) console.error('[paddle-webhook] subscription upsert failed:', error.message);
+  // 2026-07-20 감사 교정: 저장 실패를 삼키고 200을 반환하면 Paddle이 재시도하지 않아
+  // 유료 구독이 영구 유실된다. 일시적 DB 오류는 throw 하여 핸들러가 500을 반환하고,
+  // Paddle의 지수 백오프 재시도를 유도한다(멱등 upsert이므로 재시도 안전).
+  if (error) {
+    console.error('[paddle-webhook] subscription upsert failed:', error.message);
+    throw new Error('subscription upsert failed: ' + error.message);
+  }
 
   // 2026-07-11 — plan_key('premium_monthly' 등)를 그대로 profiles에 쓰면
   // 모든 등급 게이트(subscription_plan==='premium' 등가 비교: 풀레터 403,
@@ -159,7 +193,12 @@ async function upsertSubscription(sub, userId) {
     subscription_status: status === 'active' ? 'active' : 'inactive',
   };
   if (basePlan) profileUpdate.subscription_plan = basePlan;
-  await supabaseAdmin.from('profiles').update(profileUpdate).eq('id', userId);
+  const { error: profErr } = await supabaseAdmin.from('profiles').update(profileUpdate).eq('id', userId);
+  if (profErr) {
+    // 게이트가 읽는 것은 profiles 이므로 이 실패도 재시도 가치가 있다 → throw→500.
+    console.error('[paddle-webhook] profile update failed:', profErr.message);
+    throw new Error('profile update failed: ' + profErr.message);
+  }
 
   return { plan, status };
 }
@@ -195,9 +234,14 @@ module.exports = async function handler(req, res) {
         const userId = await resolveUserId(data);
         if (!userId) {
           console.error('[paddle-webhook] subscription.created — user unresolved. sub:', data.id, 'customer:', data.customer_id);
-          break; // 200 반환 (재시도해도 해결 안 됨) — 로그 기반 수동 정합
+          // 검증 통과한 실이벤트인데 회원 매핑 실패 = "결제됐는데 미반영" 위험 → 즉시 알림.
+          sendTextToTelegramSafe('🚨 Paddle 구독 생성됐으나 회원 매핑 실패 — 수동 정합 필요. sub=' + data.id + ' customer=' + data.customer_id);
+          break; // 200 반환 (재시도해도 해결 안 됨) — 로그·알림 기반 수동 정합
         }
         const { plan } = await upsertSubscription(data, userId);
+        if (plan === 'unknown') {
+          sendTextToTelegramSafe('⚠️ Paddle 구독 plan=unknown — price ID/plan_key 매핑 확인 필요. sub=' + data.id + ' user=' + userId);
+        }
         // 확인 메일 (실패해도 무시)
         const { data: profile } = await supabaseAdmin
           .from('profiles').select('email, name, email_language, language, country').eq('id', userId).single();

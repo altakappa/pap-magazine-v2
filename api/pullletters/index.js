@@ -29,6 +29,7 @@ const { sendEmail, templates } = require('../_lib/email');
 const { resolveEmailLang } = require('../_lib/emailLocale');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { sendTextToTelegramSafe } = require('../_lib/telegram');
+const { hasActivePremium } = require('../_lib/subscriptionAccess');
 
 module.exports.config = { api: { bodyParser: false } };
 
@@ -46,14 +47,17 @@ module.exports = async function handler(req, res) {
     const user = requireAuth(req, res);
     if (!user) return;
 
-    // Premium gate (server-side, can't be bypassed from client)
+    // Premium gate (server-side, can't be bypassed from client).
+    // 2026-07-20 — plan 뿐 아니라 subscription_status='active'도 함께 검사한다.
+    // 기존엔 plan만 봐서 past_due(미납)·해지·suspended 상태의 premium 회원이
+    // 게이트를 통과하던 과다부여가 있었다. (공용 헬퍼 hasActivePremium 로 통일)
     try {
       const { data: prof, error: profErr } = await supabaseAdmin
         .from('profiles')
-        .select('subscription_plan')
+        .select('subscription_plan, subscription_status')
         .eq('id', user.id)
         .single();
-      if (profErr || !prof || prof.subscription_plan !== 'premium') {
+      if (profErr || !hasActivePremium(prof)) {
         return res.status(403).json({ message: 'Premium subscription required' });
       }
     } catch (e) {
