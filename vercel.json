@@ -85,6 +85,10 @@
       "schedule": "15 */3 * * *"
     },
     {
+      "path": "/api/cron/pipeline-watch",
+      "schedule": "*/30 * * * *"
+    },
+    {
       "path": "/api/cron/ad-candidate-scan",
       "schedule": "20 23 * * *"
     },

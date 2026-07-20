@@ -137,7 +137,10 @@ async function runBackfillBatch({ lang, batch = 10, timeoutMs = 90000 } = {}) {
     },
     body: JSON.stringify({
       model,
-      max_tokens: 4000,
+      // 2026-07-21: 4000 이었으나 batch=20 + ja(멀티바이트, 토큰 소모 큼)
+      // 조합에서 응답이 중간에 잘려 JSON 파싱 실패가 재현됨(운영 관찰,
+      // batch<=10 은 재현 안 됨). it/fr/es 는 영향 없이 여유만 늘어남.
+      max_tokens: 8000,
       messages: [{ role: 'user', content: prompt }],
     }),
     signal: AbortSignal.timeout(timeoutMs),
