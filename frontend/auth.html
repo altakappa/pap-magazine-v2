@@ -495,7 +495,7 @@ a{color:#fff;text-decoration:none}
     <svg viewBox="0 0 56 56" fill="none"><circle cx="28" cy="28" r="26" stroke-width="2"/><polyline points="17 29 24 36 39 21" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
     <h2 data-i18n="successTitle">환영합니다!</h2>
     <p data-i18n="successDesc">PAP Magazine 회원이 되신 것을 환영합니다.<br>이제 서브미션 제출, 커뮤니티 참여 등 다양한 혜택을 이용할 수 있습니다.</p>
-    <button class="auth-btn" onclick="location.href=(window.getRedirectUrl?window.getRedirectUrl():'index.html')" data-i18n="successBtn">홈으로 이동</button>
+    <button class="auth-btn" onclick="location.href=(window.getRedirectUrl?window.getRedirectUrl():'/')" data-i18n="successBtn">홈으로 이동</button>
   </div>
 
   <!-- ============ LOGIN PANEL (toggle view) ============ -->
@@ -658,7 +658,7 @@ function goBack() {
   if (window.history.length > 1 && (currentStep > 1 || isLoginView)) {
     window.history.back();
   } else {
-    window.location.href = (window.getRedirectUrl ? window.getRedirectUrl() : 'index.html');
+    window.location.href = (window.getRedirectUrl ? window.getRedirectUrl() : '/');
   }
 }
 
