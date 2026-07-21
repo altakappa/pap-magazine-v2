@@ -38,7 +38,12 @@ t('PROPOSAL_MAX_BYTES 상수가 선언돼 있다', !!m);
 t(`상수가 ${LIMIT_MB}MB`, m && parseInt(m[1], 10) === LIMIT_MB, m ? m[1] + 'MB' : '');
 
 console.log('\n=== 검증 위치 (두 군데 다 있어야) ===');
-t('파일 선택 즉시 용량 검증', /_onProposalSelected[\s\S]{0,600}?f\.size\s*>\s*PROPOSAL_MAX_BYTES/.test(front));
+/* 2026-07-21 — 글자수 창(0,600)으로 찾다가, 주석이 늘자 검증이 창 밖으로
+   밀려 실패했다(로직은 그대로였다). 창 크기가 아니라 "함수 본문 안에
+   있는가"를 본다 — 코드가 자라도 의도는 안 바뀐다. */
+const _propBody = (front.match(/function _onProposalSelected\([\s\S]*?\n\}/) || [''])[0];
+t('_onProposalSelected 를 찾았다', _propBody.length > 0);
+t('파일 선택 즉시 용량 검증', /f\.size\s*>\s*PROPOSAL_MAX_BYTES/.test(_propBody));
 t('제출 직전에도 재검증 (input 조작 방어)',
   /proposalFile\.size\s*>\s*PROPOSAL_MAX_BYTES/.test(front));
 
