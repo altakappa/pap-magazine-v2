@@ -199,24 +199,16 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
 <script src="/pap-content-film.js?v=10" defer></script>
 <script src="/pap-content-article.js?v=36" defer></script>
 <script src="/pap-content-creator-shorts.js?v=1" defer></script>
-<script src="/pap-content-api-sync.js?v=111" defer></script>
+<script src="/pap-content-api-sync.js?v=112" defer></script>
 <script src="/pap-content-seo.js?v=4" defer></script>
 <script src="/pap-shell-bootstrap.js?v=9" defer></script>
 <script src="/pap-app.js?v=20" defer></script>
 <script src="/pap-lightbox.js?v=2" defer></script>
 <script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=24" defer></script>
 <script>
-var _ART_MONTHS = {
-  en:['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'],
-  ko:['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'],
-  ja:['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
-  zh:['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'],
-  it:['GEN','FEB','MAR','APR','MAG','GIU','LUG','AGO','SET','OTT','NOV','DIC'],
-  fr:['JAN','FÉV','MAR','AVR','MAI','JUN','JUL','AOÛ','SEP','OCT','NOV','DÉC'],
-  es:['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'],
-  ru:['ЯНВ','ФЕВ','МАР','АПР','МАЙ','ИЮН','ИЮЛ','АВГ','СЕН','ОКТ','НОЯ','ДЕК'],
-  de:['JAN','FEB','MÄR','APR','MAI','JUN','JUL','AUG','SEP','OKT','NOV','DEZ']
-};
+// 2026-07-21 QA(표기 재발) — 언어별 월 이름표(_ART_MONTHS) 제거.
+// 목록만 "05 1월 2025", 홈·상세는 "05 Jan 2025" 로 갈리던 원인이었다.
+// 세 화면 표기는 papFmtMeta(pap-utils.js) 하나로 통일한다.
 var _ART_LABELS = {
   en:{all:'ALL',articles:'ARTICLES'},
   ko:{all:'전체',articles:'아티클'},
@@ -230,15 +222,9 @@ var _ART_LABELS = {
 };
 function _artLang(){ return (localStorage.getItem('pap-lang')||'ko').substring(0,2); }
 function _artL(){ return _ART_LABELS[_artLang()] || _ART_LABELS.en; }
-function formatDate(dateStr) {
-  if (!dateStr) return '';
-  var d = new Date(dateStr);
-  var months = _ART_MONTHS[_artLang()] || _ART_MONTHS.en;
-  var day = String(d.getDate()).padStart(2, '0');
-  var month = months[d.getMonth()];
-  var year = d.getFullYear();
-  return day + ' ' + month + ' ' + year;
-}
+// 2026-07-21 QA(표기 재발) — 자체 formatDate 제거. 남겨두면 다음 수정 때
+// 누군가 다시 이걸 부르고 표기가 또 갈린다. 발행일 표기는 pap-utils.js 의
+// papFmtMeta / papFmtDate 하나만 쓴다.
 
 document.addEventListener('DOMContentLoaded', function() {
   if (typeof artData === 'undefined') {
@@ -429,7 +415,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
       var cat = document.createElement('div');
       cat.className = 'card-cat';
-      cat.textContent = (a.cat || 'ARTICLE') + ' - ' + formatDate(a.d);
+      // 2026-07-21 QA(표기 재발) — 홈·상세와 같은 공통 포맷터를 쓴다.
+      // 기존엔 이 페이지만 자체 formatDate + 언어별 대문자 월(1월/JAN)이라
+      // 홈("Fashion - 05 Jan 2025")과 목록("ARTICLE - 05 1월 2025")이 갈렸다.
+      cat.textContent = papFmtMeta(a.cat || 'Article', a.d);
 
       var title = document.createElement('div');
       title.className = 'card-title';

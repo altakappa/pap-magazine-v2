@@ -14,6 +14,8 @@
 
 const { supabaseAdmin } = require('../_lib/supabase');
 const { handleCors } = require('../_lib/cors');
+// 2026-07-21 QA(표기 재발) — 표기 포맷터는 seoRenderer 하나에서 가져온다
+const { fmtDisplayDate } = require('../_lib/seoRenderer');
 
 const SITE = 'https://www.pap-magazine.com';
 const LIMIT = 100; // 최근 100개 — 전량 인덱스는 /archive 허브가 담당
@@ -168,7 +170,9 @@ module.exports = async function handler(req, res) {
     '<a class="card" href="' + esc(it.href) + '">' +
     thumbImg(it.img, it.title + ' — Cover') +
     '<span class="t">' + esc(it.title) + '</span>' +
-    (it.date ? '<time datetime="' + it.date + '">' + it.date + '</time>' : '') +
+    // 2026-07-21 QA(표기 재발) — 보이는 텍스트는 홈·목록·상세와 같은
+    // "DD Mon YYYY". datetime 속성은 기계용이라 ISO 를 유지한다.
+    (it.date ? '<time datetime="' + it.date + '">' + esc(fmtDisplayDate(it.date)) + '</time>' : '') +
     '</a>'
   ).join('\n');
 

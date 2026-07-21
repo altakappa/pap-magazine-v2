@@ -475,14 +475,8 @@ window._papFilmAutoPlay = function(){
         if(tt) existingTitles[tt] = 1;
       }
     }
-    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    function _fmt(dateStr){
-      if(!dateStr) return '';
-      var d = new Date(dateStr);
-      if(isNaN(d.getTime())) return '';
-      var dd = ('0' + d.getDate()).slice(-2);
-      return dd + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
-    }
+    // 2026-07-21 QA(표기 재발) — 자체 월 이름표/_fmt 제거.
+    // 발행일 표기는 pap-utils.js 의 papFmtMeta 하나만 쓴다.
     function _esc(s){
       return String(s == null ? '' : s)
         .replace(/&/g,'&amp;').replace(/"/g,'&quot;')
@@ -539,9 +533,11 @@ window._papFilmAutoPlay = function(){
       // 2026-07-20 QA 표기통일 — 공통 papFmtMeta(pap-utils)로 단일화.
       // (기존 로컬 Title-case + _fmt 조합과 동일 결과지만, 이제 전 페이지가
       //  한 함수를 공유해 표기가 갈릴 여지를 없앤다.)
-      var meta = (typeof papFmtMeta === 'function')
-        ? papFmtMeta(a.cat || '', a.d || a.published_date || '')
-        : ((a.cat || '') + ' - ' + _fmt(a.d || a.published_date || ''));
+      // 2026-07-21 QA(표기 재발) — 폴백을 없앴다. 폴백은 Title-case 를 안 해서
+      // 조용히 다른 표기를 만들었고, 그게 이 QA 가 반복된 방식이다.
+      // pap-utils.js 는 이 파일보다 먼저 로드된다(전 페이지 defer 순서 확인).
+      // 만에 하나 없으면 눈에 띄게 실패하는 편이 조용히 갈리는 것보다 낫다.
+      var meta = papFmtMeta(a.cat || '', a.d || a.published_date || '');
       card.innerHTML =
         '<div class="fashion-card-img"><img loading="' + loadingAttr + '" decoding="async"' + priorityAttr + ' src="' + _esc(img) + '" alt="' + _esc(a.t || '') + '"></div>' +
         '<div class="fashion-card-info">' +

@@ -1202,4 +1202,7 @@ function renderNotFoundHtml(kind, slug) {
 </main></body></html>`;
 }
 
-module.exports = { renderSeoHtml, renderNotFoundHtml, KIND, SITE, SITE_NAME };
+// 2026-07-21 QA(표기 재발) — fmtDisplayDate/fmtTitleCat 을 내보낸다.
+// api/seo/listing.js 가 자체 ISO 포맷(dateStr)을 쓰고 있어 목록 SSR 만
+// "2025-01-05" 로 갈렸다. 서버측 표기도 이 두 함수 하나로 모은다.
+module.exports = { renderSeoHtml, renderNotFoundHtml, KIND, SITE, SITE_NAME, fmtDisplayDate, fmtTitleCat };
