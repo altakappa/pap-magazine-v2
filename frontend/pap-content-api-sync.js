@@ -262,7 +262,9 @@ window._papFilmAutoPlay = function(){
   // Merge: API items first, then hardcoded (deduplicated by slug/title).
   // If local JSON has ti18n/subi18n for an API-matched article, enrich the API item
   // with those translations so the UI can render non-Korean titles.
-  function mergeData(apiItems, localItems){
+  // authoritative=true 는 "apiItems 가 공개 기사 전량"이라는 뜻이다.
+  // 이때 API 에 없는 시드 항목은 목록에서 뺀다 — 자세한 이유는 아래 마지막 블록 참고.
+  function mergeData(apiItems, localItems, authoritative){
     var localBySlug={};
     var localByTitle={};
     localItems.forEach(function(item){
@@ -285,13 +287,28 @@ window._papFilmAutoPlay = function(){
       }
       merged.push(item);
     });
-    localItems.forEach(function(item){
-      var key=(item.t||'').trim().toLowerCase();
-      if(key && !seen[key]){
-        seen[key]=true;
-        merged.push(item);
-      }
-    });
+    // ── QA 2026-07-21 "아티클 상세 공백 페이지" 근본 원인 ──────────────────
+    // 여기서 "API 가 안 돌려준 시드 항목"을 목록에 그대로 밀어넣고 있었다.
+    // 그런데 API 가 안 돌려주는 이유는 대개 "그 기사가 공개 상태가 아니다"이다.
+    // 결과: 카드는 시드에서 생기고(제목·카테고리·날짜·해시태그 있음),
+    // 상세는 DB 를 보는데 공개 본문이 없어 대표이미지·본문만 빈 페이지가 됐다.
+    // 실측(2026-07-21): 시드 61건 중 20건이 이 상태 — draft 19 + 본문 없는 published 1.
+    //
+    // 시드 파일(pap-article-db.json)은 "번역 사전"이지 콘텐츠 소스가 아니다.
+    // 위쪽 ti18n 보강은 그대로 두고, 목록 주입만 막는다.
+    //
+    // 단 authoritative=false(최신 12건만 받은 fast path)에서는 시드를 빼면 안 된다.
+    // 그 순간엔 API 결과가 전량이 아니라서, 빼면 목록이 12건으로 쪼그라든다.
+    // 전량을 받은 syncArticles 가 authoritative=true 로 정리한다.
+    if(!authoritative || !merged.length){
+      localItems.forEach(function(item){
+        var key=(item.t||'').trim().toLowerCase();
+        if(key && !seen[key]){
+          seen[key]=true;
+          merged.push(item);
+        }
+      });
+    }
     return merged;
   }
 
@@ -392,7 +409,8 @@ window._papFilmAutoPlay = function(){
     fetchAll('/articles',apiArticleToLocal,function(apiArticles){
       if(apiArticles.length>0){
         var origLen=artData.length;
-        var merged=mergeData(apiArticles, artData);
+        // 전량 동기화이므로 authoritative — API 에 없는 시드는 여기서 정리된다
+        var merged=mergeData(apiArticles, artData, true);
         artData.length=0;
         merged.forEach(function(a){artData.push(a);});
         window._apiSynced.articles = true; // 늦게 도착하는 정적 articles.json 이 덮어쓰지 못하게
