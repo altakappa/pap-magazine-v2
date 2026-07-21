@@ -30,7 +30,7 @@
  *   SEO_TRANSLATE_LANGS     : (선택) 대상 언어 CSV, 기본 "it,fr,es"
  */
 
-const { runBackfillBatch, normalizeBatch, LANG_NAMES } = require('../_lib/seoTranslateBackfill');
+const { runBackfillBatch, normalizeBatch, LANG_NAMES, KINDS } = require('../_lib/seoTranslateBackfill');
 
 /* 함수 상한 120초 중 105초만 쓴다 — 응답 직렬화/네트워크 여유 15초. */
 const BUDGET_MS = 105000;
@@ -63,23 +63,45 @@ module.exports = async function handler(req, res) {
 
   const batch = normalizeBatch(process.env.SEO_TRANSLATE_BATCH, 20);
 
+  /* 2026-07-21 — 아티클 본문 번역 추가.
+     ─────────────────────────────────────────────────────────────────
+     (lang × kind) 조합을 한 바퀴 돌린다. 한 번 실행에 시간 예산(105초)
+     안에서 1~3개 조합만 처리되므로, 매번 같은 순서로 돌면 뒤쪽 조합이
+     영원히 굶는다 → 실행마다 시작점을 회전시켜 공정하게 나눈다.
+
+     아티클 배치를 작게 잡는 이유: 본문 번역은 1건에 15~20초가 걸린다
+     (운영 실측: batch=5 가 약 85초). 크론 예산 안에 확실히 들어오도록
+     2건으로 제한한다. 관리자 수동 실행은 기본값(5)을 그대로 쓴다. */
+  const kinds = String(process.env.SEO_TRANSLATE_KINDS || 'editorial,article')
+    .split(',').map(s => s.trim().toLowerCase()).filter(k => KINDS[k]);
+  const CRON_ARTICLE_BATCH = 2;
+
+  const tasks = [];
+  for (const lang of langs) for (const kind of kinds) tasks.push({ lang, kind });
+  const offset = tasks.length ? Math.floor(Date.now() / 600000) % tasks.length : 0;
+  const ordered = tasks.slice(offset).concat(tasks.slice(0, offset));
+
   const results = [];
   let totalProcessed = 0;
   let rateLimited = false;
 
-  for (const lang of langs) {
+  for (const task of ordered) {
+    const { lang, kind } = task;
     if (rateLimited) {
-      results.push({ lang, skipped: 'rate-limited-earlier' });
+      results.push({ lang, kind, skipped: 'rate-limited-earlier' });
       continue;
     }
     if (left() < MIN_PER_LANG_MS) {
-      results.push({ lang, skipped: 'time-budget', leftMs: left() });
+      results.push({ lang, kind, skipped: 'time-budget', leftMs: left() });
       continue;
     }
 
     const timeoutMs = Math.max(15000, Math.min(MAX_CALL_MS, left() - 10000));
     try {
-      const r = await runBackfillBatch({ lang, batch, timeoutMs });
+      const r = await runBackfillBatch({
+        lang, kind, timeoutMs,
+        batch: kind === 'article' ? CRON_ARTICLE_BATCH : batch,
+      });
       totalProcessed += r.processed || 0;
       results.push(r);
     } catch (err) {
@@ -88,15 +110,15 @@ module.exports = async function handler(req, res) {
       if (/Claude API 실패 \(429/.test(msg) || /rate.?limit/i.test(msg)) {
         rateLimited = true;
       }
-      console.error('[cron/backfill-translations]', lang, msg);
-      results.push({ lang, error: msg.slice(0, 300) });
+      console.error('[cron/backfill-translations]', kind, lang, msg);
+      results.push({ lang, kind, error: msg.slice(0, 300) });
     }
   }
 
   // 이번 실행에서 실제로 확인된 언어들의 잔량 합계 (건너뛴 언어는 알 수 없음)
   const measured = results.filter(r => typeof r.remaining === 'number');
   const remainingTotal = measured.reduce((a, r) => a + r.remaining, 0);
-  const allMeasured = measured.length === langs.length;
+  const allMeasured = measured.length === ordered.length;
 
   return res.status(200).json({
     ok: true,
