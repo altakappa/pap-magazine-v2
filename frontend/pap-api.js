@@ -528,18 +528,67 @@ const PAP = (function() {
     // }
     // moodboardFiles: image File[]
     // proposalPdf: PDF File (REQUIRED — 촬영시안)
-    async create(data, moodboardFiles, proposalPdf) {
-      const formData = new FormData();
-      if (moodboardFiles) {
-        moodboardFiles.forEach(function(file, idx) {
-          formData.append('moodboard', safeFile(file, 'mood' + idx));
+    // 2026-07-21 — 서브미션과 동일한 2단계 직접 업로드로 전환.
+    //   1. POST /pullletters/upload-url → 파일별 서명 URL
+    //   2. 각 파일을 스토리지로 직접 PUT
+    //   3. POST /pullletters 에 JSON 메타데이터 + 경로만 전송
+    //
+    // 이전엔 무드보드와 PDF 를 multipart 로 한 요청에 실어 보냈는데,
+    // Vercel 서버리스 요청 본문 한계가 4.5MB 라서 3MB PDF 하나로도
+    // "Request payload too large" 가 났다. 게다가 파일은 신청 버튼을
+    // 누를 때까지 전혀 전송되지 않아, 화면엔 업로드된 것처럼 보이지만
+    // 실제로는 아무것도 올라가 있지 않았다.
+    //
+    // onProgress(done, total, phase) — phase: 'sign' | 'upload'
+    async create(data, moodboardFiles, proposalPdf, onProgress) {
+      const moods = moodboardFiles || [];
+      if (moods.length === 0) throw new Error('At least one moodboard image is required');
+      if (!proposalPdf) throw new Error('Proposal PDF is required');
+
+      const metas = moods.map(function(f) { return { file: safeFile(f, 'mood'), category: 'moodboard' }; });
+      metas.push({ file: safeFile(proposalPdf, 'proposal.pdf'), category: 'proposal' });
+
+      if (typeof onProgress === 'function') onProgress(0, metas.length, 'sign');
+
+      // ── 1) 서명 URL 발급 ──
+      const signRes = await request('POST', '/pullletters/upload-url', {
+        files: metas.map(function(m) {
+          return {
+            name: m.file.name || 'file',
+            type: m.file.type || 'application/octet-stream',
+            size: m.file.size || 0,
+            category: m.category,
+          };
+        }),
+      });
+      if (!signRes || !Array.isArray(signRes.uploads) || signRes.uploads.length !== metas.length) {
+        throw new Error('Failed to obtain upload URLs');
+      }
+
+      // ── 2) 스토리지로 직접 업로드 ──
+      var done = 0;
+      await Promise.all(signRes.uploads.map(function(u, i) {
+        return fetch(u.signedUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': metas[i].file.type || 'application/octet-stream' },
+          body: metas[i].file,
+        }).then(function(r) {
+          if (!r.ok) throw new Error('Upload failed (' + r.status + ')');
+          done++;
+          if (typeof onProgress === 'function') onProgress(done, metas.length, 'upload');
         });
-      }
-      if (proposalPdf) {
-        formData.append('proposal_pdf', safeFile(proposalPdf, 'proposal.pdf'));
-      }
-      formData.append('data', JSON.stringify(data));
-      return await request('POST', '/pullletters', formData, true);
+      }));
+
+      // ── 3) 메타데이터만 전송 ──
+      const moodboardUrls = signRes.uploads
+        .filter(function(u) { return u.category === 'moodboard'; })
+        .map(function(u) { return u.publicUrl; });
+      const proposal = signRes.uploads.find(function(u) { return u.category === 'proposal'; });
+
+      return await request('POST', '/pullletters', Object.assign({}, data, {
+        moodboardUrls: moodboardUrls,
+        proposalPath: proposal ? proposal.path : '',
+      }));
     },
 
     async getMine() {

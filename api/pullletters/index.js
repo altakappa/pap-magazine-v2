@@ -65,12 +65,40 @@ module.exports = async function handler(req, res) {
     }
 
     try {
-      // 2026-07-21 (도메니코 지시) — 촬영시안 PDF 상한 50MB → 20MB.
-      // 프론트(pullletter.html PROPOSAL_MAX_BYTES)와 같은 값이어야 한다.
-      // 프론트 검증은 개발자도구로 우회 가능하므로 여기가 최종 방어선.
-      const { fields, files } = await parseForm(req, { maxFileSize: 20 * 1024 * 1024 });
-      const dataRaw = Array.isArray(fields.data) ? fields.data[0] : fields.data;
-      const data = dataRaw ? JSON.parse(dataRaw) : {};
+      // ── 2026-07-21 — 전송 방식 2가지를 모두 받는다 ────────────────
+      // (A) JSON  : 새 방식. 클라이언트가 /pullletters/upload-url 로 받은
+      //             서명 URL 에 파일을 직접 올린 뒤, 경로만 보낸다.
+      //             Vercel 의 4.5MB 요청 본문 한계를 우회한다.
+      // (B) multipart : 옛 방식. 배포 직후 브라우저에 캐시된 구버전
+      //             프론트가 아직 이 형태로 보낼 수 있어 당분간 함께 받는다.
+      //             (신규 코드는 전부 A 를 쓴다)
+      const ctype = String(req.headers['content-type'] || '');
+      const isJson = ctype.includes('application/json');
+
+      let data, moodboardUrls, proposalPath;
+
+      if (isJson) {
+        data = req.body || {};
+        // 클라이언트가 이미 올린 파일들의 경로. 여기서는 형식만 검증한다.
+        const mUrls = Array.isArray(data.moodboardUrls) ? data.moodboardUrls : [];
+        const pPath = typeof data.proposalPath === 'string' ? data.proposalPath : '';
+        if (mUrls.length === 0) {
+          return res.status(400).json({ message: 'At least one moodboard image is required' });
+        }
+        // 경로 위조 방지 — 반드시 이 사용자 폴더 아래여야 한다.
+        const safeUid = String(user.id || '').replace(/[^a-zA-Z0-9_-]/g, '');
+        if (!pPath || pPath.indexOf(`proposals/${safeUid}/`) !== 0 || !/\.pdf$/i.test(pPath)) {
+          return res.status(400).json({ message: '촬영시안 PDF is required' });
+        }
+        moodboardUrls = mUrls;
+        proposalPath = pPath;
+      } else {
+        // 촬영시안 PDF 상한은 프론트(PROPOSAL_MAX_BYTES)와 같은 20MB.
+        const { fields, files } = await parseForm(req, { maxFileSize: 20 * 1024 * 1024 });
+        const dataRaw = Array.isArray(fields.data) ? fields.data[0] : fields.data;
+        data = dataRaw ? JSON.parse(dataRaw) : {};
+        req._legacyFiles = files;   // 아래 레거시 업로드 블록에서 사용
+      }
 
       // ── Validate required team info ──
       const ph = data.photographer || {};
@@ -102,39 +130,43 @@ module.exports = async function handler(req, res) {
         team.extras = data.extras;
       }
 
-      // ── Validate + upload files ──
-      const moodboardFiles = files.moodboard
-        ? (Array.isArray(files.moodboard) ? files.moodboard : [files.moodboard])
-        : [];
-      if (moodboardFiles.length === 0) {
-        return res.status(400).json({ message: 'At least one moodboard image is required' });
-      }
+      // ── 레거시(multipart) 경로에서만 서버가 파일을 받아 올린다 ──
+      // JSON 경로는 클라이언트가 이미 스토리지에 직접 올렸으므로 건너뛴다.
+      if (!isJson) {
+        const files = req._legacyFiles || {};
+        const moodboardFiles = files.moodboard
+          ? (Array.isArray(files.moodboard) ? files.moodboard : [files.moodboard])
+          : [];
+        if (moodboardFiles.length === 0) {
+          return res.status(400).json({ message: 'At least one moodboard image is required' });
+        }
 
-      const proposalRaw = files.proposal_pdf || files.proposalPdf;
-      const proposalFile = Array.isArray(proposalRaw) ? proposalRaw[0] : proposalRaw;
-      if (!proposalFile) {
-        return res.status(400).json({ message: '촬영시안 PDF is required (field "proposal_pdf")' });
-      }
-      if (proposalFile.mimetype && proposalFile.mimetype !== 'application/pdf') {
-        return res.status(415).json({ message: 'Proposal must be application/pdf' });
-      }
+        const proposalRaw = files.proposal_pdf || files.proposalPdf;
+        const proposalFile = Array.isArray(proposalRaw) ? proposalRaw[0] : proposalRaw;
+        if (!proposalFile) {
+          return res.status(400).json({ message: '촬영시안 PDF is required (field "proposal_pdf")' });
+        }
+        if (proposalFile.mimetype && proposalFile.mimetype !== 'application/pdf') {
+          return res.status(415).json({ message: 'Proposal must be application/pdf' });
+        }
 
-      // Upload moodboard images to pullletters bucket
-      const moodboardUrls = await uploadFiles('pullletters', moodboardFiles, user.id);
+        // Upload moodboard images to pullletters bucket
+        moodboardUrls = await uploadFiles('pullletters', moodboardFiles, user.id);
 
-      // Upload proposal PDF to PRIVATE 'pull-letters' bucket (same bucket
-      // admin-issued PDFs use). Members read via signed URL minted in mine.js.
-      const proposalBuffer = fs.readFileSync(proposalFile.filepath);
-      const proposalPath = `proposals/${safeId(user.id)}/${Date.now()}.pdf`;
-      const { error: pdfErr } = await supabaseAdmin.storage
-        .from('pull-letters')
-        .upload(proposalPath, proposalBuffer, {
-          contentType: 'application/pdf',
-          upsert: false,
-        });
-      if (pdfErr) {
-        console.error('Proposal PDF upload error:', pdfErr);
-        return res.status(500).json({ message: '촬영시안 PDF upload failed: ' + pdfErr.message });
+        // Upload proposal PDF to PRIVATE 'pull-letters' bucket (same bucket
+        // admin-issued PDFs use). Members read via signed URL minted in mine.js.
+        const proposalBuffer = fs.readFileSync(proposalFile.filepath);
+        proposalPath = `proposals/${safeId(user.id)}/${Date.now()}.pdf`;
+        const { error: pdfErr } = await supabaseAdmin.storage
+          .from('pull-letters')
+          .upload(proposalPath, proposalBuffer, {
+            contentType: 'application/pdf',
+            upsert: false,
+          });
+        if (pdfErr) {
+          console.error('Proposal PDF upload error:', pdfErr);
+          return res.status(500).json({ message: '촬영시안 PDF upload failed: ' + pdfErr.message });
+        }
       }
 
       // ── Insert row ──

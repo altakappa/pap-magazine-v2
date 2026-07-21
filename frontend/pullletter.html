@@ -485,7 +485,7 @@ function navigateWithInterstitial(url){
 
 <div class="footer-legal" id="footerLegal"></div>
 
-<script src="/pap-api.js?v=8" defer></script>
+<script src="/pap-api.js?v=9" defer></script>
 <script src="/pap-name-validator.js?v=2" defer></script>
 <script>
 var L = {
@@ -649,6 +649,11 @@ function _getValText(key,fallback){
     invalidInsta:{ko:'@로 시작하는 인스타그램 계정을 입력해주세요',en:'Enter an Instagram handle starting with @',it:"Inserisci un handle Instagram che inizi con @",fr:"Entrez un identifiant Instagram commençant par @",es:'Ingrese un handle de Instagram que comience con @',ja:'@から始まるInstagramハンドルを入力してください',zh:'请输入以@开头的Instagram用户名',ru:'Введите Instagram-аккаунт, начинающийся с @'},
     noFiles:{ko:'무드보드 파일을 1개 이상 업로드해주세요',en:'Please upload at least one mood board file',it:'Carica almeno un file mood board',fr:'Veuillez télécharger au moins un fichier mood board',es:'Cargue al menos un archivo de mood board',ja:'ムードボードファイルを1つ以上アップロードしてください',zh:'请至少上传一个情绪板文件',ru:'Загрузите хотя бы один файл мудборда'},
     noProposal:{ko:'촬영시안 PDF를 첨부해주세요',en:'Please attach the shoot proposal PDF',it:'Allega il PDF della proposta di shooting',fr:'Veuillez joindre le PDF de la proposition de shoot',es:'Adjunte el PDF de la propuesta de shoot',ja:'撮影シアン PDF を添付してください',zh:'请附上拍摄方案 PDF',ru:'Прикрепите PDF с предложением по съёмке'},
+    uploading:{ko:'업로드 중…',en:'Uploading…',it:'Caricamento…',fr:'Envoi…',es:'Subiendo…',ja:'アップロード中…',zh:'上传中…',ru:'Загрузка…'},
+    uploadTooLarge:{ko:'첨부파일 용량이 너무 큽니다. 무드보드는 25MB, 촬영시안 PDF는 20MB 이하로 줄여주세요.',en:'Attachments are too large. Keep moodboards under 25MB and the proposal PDF under 20MB.',it:'Allegati troppo grandi. Moodboard sotto 25MB e PDF sotto 20MB.',fr:'Pièces jointes trop volumineuses. Moodboards sous 25 Mo, PDF sous 20 Mo.',es:'Archivos demasiado grandes. Moodboards menos de 25MB y PDF menos de 20MB.',ja:'添付ファイルが大きすぎます。ムードボードは25MB、PDFは20MB以下にしてください。',zh:'附件过大。情绪板请小于 25MB，PDF 请小于 20MB。',ru:'Файлы слишком большие. Мудборды до 25 МБ, PDF до 20 МБ.'},
+    uploadFailed:{ko:'파일 업로드에 실패했습니다. 잠시 후 다시 시도해 주세요.',en:'File upload failed. Please try again in a moment.',it:'Caricamento non riuscito. Riprova tra poco.',fr:'Échec de l’envoi. Réessayez dans un instant.',es:'Error al subir. Inténtalo de nuevo en un momento.',ja:'アップロードに失敗しました。しばらくしてからお試しください。',zh:'上传失败，请稍后再试。',ru:'Не удалось загрузить файл. Попробуйте позже.'},
+    networkError:{ko:'네트워크 연결이 불안정합니다. 연결을 확인하고 다시 시도해 주세요.',en:'Network connection is unstable. Check your connection and try again.',it:'Connessione instabile. Verifica la rete e riprova.',fr:'Connexion instable. Vérifiez votre réseau et réessayez.',es:'Conexión inestable. Revisa tu red e inténtalo de nuevo.',ja:'ネットワークが不安定です。接続を確認して再試行してください。',zh:'网络不稳定，请检查连接后重试。',ru:'Нестабильное соединение. Проверьте сеть и повторите.'},
+    submitFailed:{ko:'신청에 실패했습니다. 잠시 후 다시 시도해 주세요.',en:'Submission failed. Please try again in a moment.',it:'Invio non riuscito. Riprova tra poco.',fr:'Échec de l’envoi. Réessayez dans un instant.',es:'Error al enviar. Inténtalo de nuevo en un momento.',ja:'申請に失敗しました。しばらくしてからお試しください。',zh:'提交失败，请稍后再试。',ru:'Не удалось отправить заявку. Попробуйте позже.'},
     proposalTooLarge:{ko:'PDF 파일은 20MB 이하만 업로드할 수 있습니다',en:'The PDF must be 20MB or smaller',it:'Il PDF deve essere di 20MB o meno',fr:'Le PDF doit faire 20 Mo ou moins',es:'El PDF debe pesar 20MB o menos',ja:'PDFは20MB以下にしてください',zh:'PDF 文件需小于 20MB',ru:'PDF должен быть не больше 20 МБ'},
     proposalNotPdf:{ko:'PDF 형식의 파일만 업로드 가능합니다',en:'Only PDF files are accepted',it:'Sono accettati solo file PDF',fr:'Seuls les fichiers PDF sont acceptés',es:'Solo se aceptan archivos PDF',ja:'PDFファイルのみアップロード可能です',zh:'只接受 PDF 文件',ru:'Принимаются только PDF-файлы'},
     nameOnlyInvalid:{ko:'이름 칸은 영문(A–Z, a–z), 숫자, 공백, . - \' 만 입력 가능합니다',en:'Name fields accept English letters, digits, space, . - \' only',it:'I campi nome accettano solo lettere inglesi, cifre, spazio, . - \'',fr:'Les champs nom n\'acceptent que les lettres anglaises, chiffres, espace, . - \'',es:'Los campos de nombre solo aceptan letras inglesas, dígitos, espacio, . - \'',ja:'名前欄は英字 (A–Z, a–z)・数字・空白・. - \' のみ入力可能です',zh:'姓名栏仅接受英文字母、数字、空格、. - \'',ru:'В полях имени допустимы только латинские буквы, цифры, пробел, . - \''},
@@ -770,14 +775,46 @@ async function submitFL(){
     data.videographer = { name: vgN, instagram: vgI, portfolio: vgP };
   }
 
+  // 제출 버튼 잠금 + 업로드 진행률 표시.
+  // 파일이 실제로 올라가는 동안 사용자가 기다리는 구간이 생겼으므로
+  // 무슨 일이 벌어지는지 보여준다(이전엔 전송이 순식간이었지만 그건
+  // 파일이 아예 안 올라가고 있었기 때문이다).
+  var _btn = document.querySelector('#flForm .btn-submit') || document.querySelector('.btn-submit');
+  var _btnLabel = _btn ? _btn.textContent : '';
+  function _setBtn(txt, disabled){
+    if(!_btn) return;
+    _btn.textContent = txt;
+    _btn.disabled = !!disabled;
+    _btn.style.opacity = disabled ? '.6' : '';
+  }
+
   try{
-    await PAP.pullLetters.create(data, uploadedFiles||[], proposalFile);
+    _setBtn(_getValText('uploading'), true);
+    await PAP.pullLetters.create(data, uploadedFiles||[], proposalFile, function(done,total,phase){
+      if(phase === 'upload'){
+        _setBtn(_getValText('uploading') + ' ' + done + '/' + total, true);
+      }
+    });
     document.getElementById('flForm').style.display='none';
     document.getElementById('submitSuccess').style.display='block';
     document.getElementById('reviewPanel').classList.add('visible');
     window.scrollTo({top:0,behavior:'smooth'});
   }catch(e){
-    PAP.ui.toast(e.message||'Submission failed','error');
+    _setBtn(_btnLabel, false);
+    // 영문 시스템 메시지를 그대로 노출하지 않는다.
+    // (payload/네트워크 계열 오류는 사용자가 손쓸 수 있는 말로 바꿔준다)
+    var raw = (e && e.message) ? String(e.message) : '';
+    var msg;
+    if(/payload too large|413|entity too large/i.test(raw)){
+      msg = _getValText('uploadTooLarge');
+    } else if(/upload failed|failed to obtain upload/i.test(raw)){
+      msg = _getValText('uploadFailed');
+    } else if(/network|fetch|load failed/i.test(raw)){
+      msg = _getValText('networkError');
+    } else {
+      msg = raw || _getValText('submitFailed');
+    }
+    PAP.ui.toast(msg,'error');
   }
 }
 
