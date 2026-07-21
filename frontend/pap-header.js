@@ -449,7 +449,12 @@
     '      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
     '    </button>',
     '  </div>',
-    '  <a href="/" class="logo-wrap"><img src="pap-logo.png" alt="PAP Magazine"></a>',
+    /* QA(2026-07-21) — 절대경로여야 한다. 상대경로 'pap-logo.png' 는
+       중첩 경로 페이지(/en/article/{slug}, /ja/article/{slug} 등)에서
+       /en/article/pap-logo.png 로 해석돼 404 가 나고, 로고 자리에 alt
+       텍스트만 남았다(실측: naturalWidth 0). 헤더는 모든 경로에 주입되므로
+       경로 깊이에 의존하면 안 된다. */
+    '  <a href="/" class="logo-wrap"><img src="/pap-logo.png" alt="PAP Magazine"></a>',
     '  <div class="header-right">',
     '    <div class="lang-btn">',
     '      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10A15.3 15.3 0 0 1 12 2z"/></svg>',

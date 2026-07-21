@@ -14,6 +14,22 @@ const SITE_NAME = 'PAP Magazine';
 const DEFAULT_OG_IMAGE = 'https://igcazquhkwxtqsaqpznx.supabase.co/storage/v1/object/public/media/uploads/1782883490406_pbkv6ny169.jpg';
 const ORG_LOGO = 'https://www.pap-magazine.com/pap-logo.png';
 
+/* QA(2026-07-21) — SSR 이 참조하는 pap-styles.css 캐시버스트 버전.
+   ─────────────────────────────────────────────────────────────────
+   기사·에디토리얼 상세는 SSR 페이지가 곧 실제 화면이다(SPA 셸이 아니다).
+   그런데 여기가 ?v=15 로 하드코딩돼 있었고 프론트 HTML 은 이미 v=39 였다 —
+   24개 버전만큼의 CSS 변경이 상세 페이지에만 빠져 있었다는 뜻이다.
+   SPA 안에서 기사를 열면 최신 CSS 로 보이다가, 새로고침해서 이 SSR 페이지에
+   직접 착지하면 옛 CSS 로 그려져 "레이아웃·폰트가 붕괴된" 것처럼 보였다
+   (QA: "새로고침하면 레이아웃과 폰트가 완전히 붕괴").
+   프론트 HTML 의 ?v= 와 반드시 같아야 하며, tests/seo-css-version.test.js
+   가 두 값이 어긋나면 실패시킨다. pap-styles.css 를 고칠 땐 여기도 같이. */
+const PAP_STYLES_VERSION = 39;
+/* 같은 이유로 pap-header.js 도 버전이 어긋나 있었다(SSR v=19 vs 프론트 v=23).
+   헤더 스크립트가 옛 버전이면 로고 경로·햄버거 동작 같은 수정이 상세 페이지에만
+   반영되지 않는다. 위와 동일하게 테스트가 드리프트를 감시한다. */
+const PAP_HEADER_VERSION = 23;
+
 /* Instagram SEO — 홈의 Organization(@id) 와 동일 엔티티로 묶고, 모든 SSR
  * 상세 페이지의 publisher 에 sameAs 를 실어 Google 지식그래프가 사이트와
  * @pap_magazine 계열 SNS 를 같은 브랜드로 인식하게 한다. */
@@ -928,7 +944,7 @@ ${cfg.schemaType !== 'VideoObject' && ogImage ? (canOptimizeImg(ogImage)
 <link rel="preconnect" href="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com">
 <link rel="preconnect" href="https://igcazquhkwxtqsaqpznx.supabase.co">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/pap-styles.css?v=15">
+<link rel="stylesheet" href="/pap-styles.css?v=${PAP_STYLES_VERSION}">
 
 <style>
   body.seo-loading{background:#000;color:#fff;font-family:Inter,-apple-system,sans-serif;margin:0;padding:0}
@@ -1161,7 +1177,7 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
      보여준다. (에디토리얼/필름 SSR 은 위 브릿지로 SPA 리다이렉트되지만, 기사 SSR 은
      리다이렉트하지 않으므로 직접 진입 시 헤더 일치가 특히 중요.) _navGo 는
      navigateWithInterstitial 부재 시 location.href 로 폴백한다. -->
-<script src="/pap-header.js?v=19" defer></script>
+<script src="/pap-header.js?v=${PAP_HEADER_VERSION}" defer></script>
 </body>
 </html>`;
 }
