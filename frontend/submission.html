@@ -253,8 +253,8 @@ textarea.form-input{min-height:100px;resize:vertical;line-height:1.8}
 .my-subs-toggle:hover{border-color:rgba(255,255,255,.55);color:rgba(255,255,255,.7)}
 .sub-item{display:grid;grid-template-columns:1fr 100px 120px 80px;gap:12px;align-items:center;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.35)}
 .sub-item:last-child{border-bottom:none}
-.sub-item-title{font-size:12px;font-weight:700;letter-spacing:.04em}
-.sub-item-date{font-size:10px;color:rgba(255,255,255,.55)}
+.sub-item-title{font-size:12px;font-weight:700;letter-spacing:.04em;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sub-item-date{font-size:10px;color:rgba(255,255,255,.55);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sub-item-status{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:4px 10px;text-align:center;border:1px solid}
 .status-reviewing{color:rgba(255,180,50,.8);border-color:rgba(255,180,50,.25);background:rgba(255,180,50,.05)}
 .status-accepted{color:rgba(100,255,150,.8);border-color:rgba(100,255,150,.25);background:rgba(100,255,150,.05)}
@@ -1119,7 +1119,7 @@ function loadMySubmissions(){
         // submission. Reuses the revision-blue style for visual
         // continuity with the REVISION REQUESTED badge.
         else if(s.status==='pending' && s.resubmitted_at){statusClass='status-revision';statusText='RESUBMITTED';}
-        html+='<div class="sub-item"><div><div class="sub-item-title">'+PAP.sanitize(s.title||'Untitled')+'</div></div><div class="sub-item-date">'+PAP.sanitize(s.created_at||'')+'</div><div class="sub-item-status '+statusClass+'">'+statusText+'</div><div class="sub-item-action" onclick="viewSubmission(\''+s.id+'\')">VIEW</div></div>'+'<div class="sub-item-inline" id="_subDet_'+s.id+'" style="display:none;border:1px solid rgba(255,255,255,.35);border-top:none;padding:20px 22px 24px;background:rgba(255,255,255,.02);font-size:13px;line-height:1.7;color:rgba(255,255,255,.85)"></div>';
+        html+='<div class="sub-item"><div><div class="sub-item-title">'+PAP.sanitize(s.title||'Untitled')+'</div></div><div class="sub-item-date">'+(window.papFmtDate?window.papFmtDate(s.created_at):PAP.sanitize(s.created_at||''))+'</div><div class="sub-item-status '+statusClass+'">'+statusText+'</div><div class="sub-item-action" onclick="viewSubmission(\''+s.id+'\')">VIEW</div></div>'+'<div class="sub-item-inline" id="_subDet_'+s.id+'" style="display:none;border:1px solid rgba(255,255,255,.35);border-top:none;padding:20px 22px 24px;background:rgba(255,255,255,.02);font-size:13px;line-height:1.7;color:rgba(255,255,255,.85)"></div>';
       });
       document.getElementById('mySubsList').innerHTML=html;
       _papInlineSubDetails(subs); // 상세 자동 펼침 (2026-07-20 도메니코 지시)
@@ -1161,7 +1161,7 @@ function _svDetailBody(s, p, inModal){
     var revisionBanner=s.status==='revision'?'<div style="margin:0 '+(inModal?'-32px':'0')+' 24px;padding:16px '+(inModal?'32px':'16px')+';background:rgba(100,150,255,.08);border-top:1px solid rgba(100,150,255,.3);border-bottom:1px solid rgba(100,150,255,.3);"><div style="font-size:10px;letter-spacing:.18em;font-weight:700;color:rgba(100,150,255,.9);margin-bottom:8px">'+_apT('revHeader')+'</div><div style="font-size:12px;color:rgba(255,255,255,.85)">'+_apT('revBody')+'</div></div>':'';
 
     return revisionBanner+
-      '<div style="margin-bottom:18px"><span style="display:inline-block;font-size:9px;letter-spacing:.16em;font-weight:700;color:'+accent+';border:1px solid '+accent+';padding:5px 12px;text-transform:uppercase">'+statusText+'</span><span style="margin-left:10px;font-size:11px;color:rgba(255,255,255,.55)">Submitted '+_esc(new Date(s.created_at).toLocaleDateString())+' · '+imageCount+' images</span></div>'+
+      '<div style="margin-bottom:18px">'+(inModal?'<span style="display:inline-block;font-size:9px;letter-spacing:.16em;font-weight:700;color:'+accent+';border:1px solid '+accent+';padding:5px 12px;text-transform:uppercase">'+statusText+'</span>':'')+'<span style="'+(inModal?'margin-left:10px;':'')+'font-size:11px;color:rgba(255,255,255,.55)">Submitted '+_esc(window.papFmtDate?window.papFmtDate(s.created_at):new Date(s.created_at).toLocaleDateString())+' · '+imageCount+' images</span></div>'+
       (note?'<div style="margin-bottom:24px;padding:18px;background:rgba(255,255,255,.04);border-left:3px solid '+accent+';"><div style="font-size:10px;letter-spacing:.16em;font-weight:700;color:rgba(255,255,255,.55);margin-bottom:8px">EDITOR\'S NOTE</div><div style="font-size:13px;color:rgba(255,255,255,.85);white-space:pre-line;line-height:1.8">'+_esc(note)+'</div></div>':'')+
       (coverUrl?'<div style="margin-bottom:18px"><img src="'+_safeUrl(coverUrl)+'" style="width:100%;max-height:360px;object-fit:cover;display:block;border:1px solid rgba(255,255,255,.35)"></div>':'')+
       (Array.isArray(desc.genre)&&desc.genre.length?'<div style="margin-bottom:14px"><div style="font-size:9px;letter-spacing:.18em;font-weight:700;color:rgba(255,255,255,.55);margin-bottom:6px">GENRE</div><div>'+_esc(desc.genre.join(', '))+'</div></div>':'')+
