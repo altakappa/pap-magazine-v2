@@ -95,9 +95,24 @@ module.exports = async function handler(req, res) {
         'created_at','created_by','updated_by'
       ].join(',');
 
+      /* 관리자 목록(?fields=admin)용 슬림 컬럼 — QA(2026-07) 페이지네이션 건.
+         기본 LIST_COLUMNS 는 SPA 기사 상세가 목록 응답만 소비하는 구조라
+         content·gallery·videos 까지 실어 보낸다(행당 2.3KB). 관리자 목록은
+         646행을 전부 순회해야 해서 그대로 쓰면 1.5MB 가 된다.
+         관리자 테이블·검색·정렬·기간필터가 읽는 필드만 남긴다. 편집 폼은
+         이미 단건 재조회를 한다(editArticle: "Always re-fetch the full row
+         instead of trusting the list cache").
+         ⚠ 기본 LIST_COLUMNS 는 절대 줄이지 말 것 — SPA 상세가 깨진다. */
+      const ADMIN_LIST_COLUMNS = [
+        'id','title','slug','custom_url','thumbnail_url','category','tags',
+        'published_date','status','scheduled_publish_at','view_count',
+        'created_at','created_by','updated_at','updated_by','admin_edited_at'
+      ].join(',');
+
+      const isAdminList = req.query.fields === 'admin';
       let query = supabaseAdmin
         .from('articles')
-        .select(LIST_COLUMNS, { count: 'exact' });
+        .select(isAdminList ? ADMIN_LIST_COLUMNS : LIST_COLUMNS, { count: 'exact' });
 
       if (isScheduledFilter) {
         // QA #199 — scheduled = status='published' + future

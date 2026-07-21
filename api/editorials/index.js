@@ -99,11 +99,35 @@ module.exports = async function handler(req, res) {
         'created_at','updated_at'
       ].join(',');
 
+      /* 관리자 목록(?fields=admin)용 슬림 컬럼 — QA(2026-07) 페이지네이션 건.
+         관리자 게시글 목록은 2,448행을 전부 순회해야 하는데, LIST_COLUMNS 는
+         gallery·credits·fashion·instagram_caption·description×3·seo_* 같은
+         큰 JSON 블롭까지 실어 행당 6.7KB(100행 = 668KB, 3.8초)였다.
+         전량을 받으면 16MB·95초가 되어 목록 관리가 불가능하다.
+
+         여기 남긴 필드는 관리자 테이블 렌더러·검색·정렬·기간필터·일괄작업이
+         "실제로 읽는" 것만 전수 조사해 추린 것이다. 큰 필드가 필요한 편집
+         폼은 이미 단건 재조회를 한다(editEditorial, QA #216) — 그 주석도
+         "목록 응답은 큰 필드를 뺀다"를 전제로 쓰여 있다.
+         related_films 조인도 목록에선 쓰이지 않아 제외한다. */
+      const ADMIN_LIST_COLUMNS = [
+        'id','title','slug','cover_image','thumbnail','published_date',
+        'scheduled_publish_at','status','tags','issue','view_count',
+        'created_at','created_by','updated_at','updated_by',
+        'admin_edited_at','source_submission_id'
+      ].join(',');
+
       const isPublicSlim = req.query.public === '1';
-      const cols = isPublicSlim ? PUBLIC_LIST_COLUMNS : LIST_COLUMNS;
+      const isAdminList = req.query.fields === 'admin';
+      const cols = isAdminList ? ADMIN_LIST_COLUMNS
+                 : isPublicSlim ? PUBLIC_LIST_COLUMNS
+                 : LIST_COLUMNS;
       let query = supabaseAdmin
         .from('editorials')
-        .select(cols + ', related_films:films!related_editorial_id(id,slug,title,thumbnail_url,youtube_id,published_date,status)', { count: 'exact' });
+        .select(isAdminList
+          ? cols
+          : cols + ', related_films:films!related_editorial_id(id,slug,title,thumbnail_url,youtube_id,published_date,status)',
+          { count: 'exact' });
 
       if (isScheduledFilter) {
         // QA #196 — scheduled = status='published' + future scheduled

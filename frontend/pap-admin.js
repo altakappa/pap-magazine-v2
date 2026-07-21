@@ -2420,9 +2420,9 @@ async function loadNews(){
     // Fan-out the three list calls so the page is fully populated in
     // one round-trip. Same pattern editorial admin uses since QA #196.
     var results = await Promise.all([
-      apiGet('/articles?limit=100&status=published').catch(function(){return{data:[]};}),
-      apiGet('/articles?limit=100&status=draft').catch(function(){return{data:[]};}),
-      apiGet('/articles?limit=100&status=scheduled').catch(function(){return{data:[]};})
+      papFetchAllPages('/articles?fields=admin&status=published').catch(function(){return{data:[]};}),
+      papFetchAllPages('/articles?fields=admin&status=draft').catch(function(){return{data:[]};}),
+      papFetchAllPages('/articles?fields=admin&status=scheduled').catch(function(){return{data:[]};})
     ]);
     var published = results[0].data || [];
     var drafts    = results[1].data || [];
@@ -2603,6 +2603,12 @@ function renderNews(){
   // QA #208 Phase 2b — date range + sort.
   visible = _papApplyDateRange(visible, newsDateRange, newsDateBasis, newsDateFrom, newsDateTo);
   visible = _papApplySort(visible, newsSortBy);
+  /* QA(2026-07-16) 페이지네이션 — 필터·정렬이 전부 끝난 뒤에 자른다.
+     먼저 자르면 검색·정렬이 현재 페이지 안에서만 도는(원래 문제와 같은)
+     상태가 된다. 위 상태별 카운트는 전량 배열 기준이라 페이지와 무관하다. */
+  PAP_LIST_RERENDER.news = renderNews;
+  var _pg = papPaginate('news', visible);
+  papRenderPager('news','newsListBody',_pg);
 
   if(!visible.length){
     tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px 0">'+(newsActiveStatus==='all'?'뉴스가 없습니다':'해당 상태의 뉴스가 없습니다')+'</td></tr>';
@@ -2610,7 +2616,7 @@ function renderNews(){
     return;
   }
   tb.innerHTML='';
-  visible.forEach(function(a){
+  _pg.slice.forEach(function(a){
     var st=_articleEffectiveStatus(a);
     var cls,label;
     if(st==='scheduled'){
@@ -5267,9 +5273,9 @@ async function loadEditorials(){
     // bucket the published-filter on the backend hides those rows for
     // both public AND admin, so the editor couldn't see / edit them.
     var results = await Promise.all([
-      apiGet('/editorials?limit=100&status=published'),
-      apiGet('/editorials?limit=100&status=draft'),
-      apiGet('/editorials?limit=100&status=scheduled'),
+      papFetchAllPages('/editorials?fields=admin&status=published'),
+      papFetchAllPages('/editorials?fields=admin&status=draft'),
+      papFetchAllPages('/editorials?fields=admin&status=scheduled'),
     ]);
     var pub = results[0], draft = results[1], scheduled = results[2];
     // Tag scheduled rows with a synthetic _virtualStatus so the
@@ -5692,8 +5698,15 @@ function renderEditorialList(){
   var tb=document.getElementById('edListBody');
   if(!tb) return;
   tb.innerHTML='';
+  /* QA(2026-07-16) 페이지네이션 — 필터·정렬이 "전부" 끝난 뒤에 자른다.
+     순서가 중요하다: 먼저 자르면 검색·정렬이 현재 페이지 안에서만 도는
+     (원래 문제와 똑같은) 상태가 된다. 위 counts 도 filtered 가 아니라
+     editorials 전량 기준이라 페이지와 무관하게 정확하다. */
+  PAP_LIST_RERENDER.editorial = renderEditorialList;
+  var _pg = papPaginate('editorial', filtered);
+  papRenderPager('editorial', 'edListBody', _pg);
   if(!filtered.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:40px 0">에디토리얼이 없습니다</td></tr>';if(document.getElementById('edCountLabel'))document.getElementById('edCountLabel').textContent='0';_editorialRefreshBulkToolbar();return;}
-  filtered.forEach(function(e){
+  _pg.slice.forEach(function(e){
     var tags=Array.isArray(e.tags)?e.tags:[];
     var tagBadges=tags.slice(0,3).map(function(t){return '<span class="pe-tag">'+esc(t)+'</span>';}).join(' ');
     var st=_effectiveStatus(e);
@@ -7685,9 +7698,9 @@ async function loadFilmsFromAPI(){
   tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:40px">불러오는 중...</td></tr>';
   try{
     var results = await Promise.all([
-      apiGet('/films?limit=100&status=published').catch(function(){return{data:[]};}),
-      apiGet('/films?limit=100&status=draft').catch(function(){return{data:[]};}),
-      apiGet('/films?limit=100&status=scheduled').catch(function(){return{data:[]};}),
+      papFetchAllPages('/films?status=published').catch(function(){return{data:[]};}),
+      papFetchAllPages('/films?status=draft').catch(function(){return{data:[]};}),
+      papFetchAllPages('/films?status=scheduled').catch(function(){return{data:[]};}),
     ]);
     var pub=results[0], draft=results[1], scheduled=results[2];
     (scheduled.data||[]).forEach(function(r){ r._virtualStatus='scheduled'; });
@@ -7769,6 +7782,12 @@ function renderFilms(){
   // QA #208 Phase 2b — date range + sort.
   visible = _papApplyDateRange(visible, filmDateRange, filmDateBasis, filmDateFrom, filmDateTo);
   visible = _papApplySort(visible, filmSortBy);
+  /* QA(2026-07-16) 페이지네이션 — 필터·정렬이 전부 끝난 뒤에 자른다.
+     먼저 자르면 검색·정렬이 현재 페이지 안에서만 도는(원래 문제와 같은)
+     상태가 된다. 위 상태별 카운트는 전량 배열 기준이라 페이지와 무관하다. */
+  PAP_LIST_RERENDER.film = renderFilms;
+  var _pg = papPaginate('film', visible);
+  papRenderPager('film','filmListBody',_pg);
 
   tb.innerHTML='';
   if(!visible.length){
@@ -7776,7 +7795,7 @@ function renderFilms(){
     _filmRefreshBulkToolbar();
     return;
   }
-  visible.forEach(function(f,i){
+  _pg.slice.forEach(function(f,i){
     var origIdx = films.indexOf(f);
     var yt=f.youtube_id||'';
     var thumb=f.thumbnail_url||('https://img.youtube.com/vi/'+yt+'/mqdefault.jpg');
@@ -14106,8 +14125,8 @@ async function loadShortsFromAPI(){
   var tb=document.getElementById('shortsListBody');if(!tb)return;
   tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:40px">불러오는 중...</td></tr>';
   try{
-    var pub=await apiGet('/shorts?limit=100&status=published');
-    var draft=await apiGet('/shorts?limit=100&status=draft');
+    var pub=await papFetchAllPages('/shorts?status=published');
+    var draft=await papFetchAllPages('/shorts?status=draft');
     shortsList=(pub.data||[]).concat(draft.data||[]);
     renderShortsFromAPI();
   }catch(e){
@@ -14155,6 +14174,12 @@ function renderShortsFromAPI(){
   });
   visible = _papApplyDateRange(visible, shortsDateRange, shortsDateBasis, shortsDateFrom, shortsDateTo);
   visible = _papApplySort(visible, shortsSortBy);
+  /* QA(2026-07-16) 페이지네이션 — 필터·정렬이 전부 끝난 뒤에 자른다.
+     먼저 자르면 검색·정렬이 현재 페이지 안에서만 도는(원래 문제와 같은)
+     상태가 된다. 위 상태별 카운트는 전량 배열 기준이라 페이지와 무관하다. */
+  PAP_LIST_RERENDER.shorts = renderShortsFromAPI;
+  var _pg = papPaginate('shorts', visible);
+  papRenderPager('shorts','shortsListBody',_pg);
 
   if(document.getElementById('shortsCountLabel')) document.getElementById('shortsCountLabel').textContent = visible.length;
 
@@ -14165,7 +14190,7 @@ function renderShortsFromAPI(){
     papInitAdvPanel('shorts');
     return;
   }
-  visible.forEach(function(s){
+  _pg.slice.forEach(function(s){
     var origIdx = shortsList.indexOf(s);
     var yt = s.youtube_id || s.yt || '';
     var st = s.status || 'published';
@@ -14300,41 +14325,147 @@ async function loadSubscriptions(){
   }catch(e){console.error('Subscriptions load error:',e);}
 }
 
-// ======== PAGINATION SUPPORT ========
-var edPage=1,newsPage=1,filmPage=1;
-async function loadEditorialsPage(page){
-  edPage=page||1;
-  var tb=document.getElementById('edListBody');if(!tb)return;
-  tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:40px">불러오는 중...</td></tr>';
-  try{
-    var pub=await apiGet('/editorials?limit=25&page='+edPage+'&status=published');
-    var draft=edPage===1?await apiGet('/editorials?limit=25&status=draft'):{data:[]};
-    editorials=(pub.data||[]).concat(draft.data||[]);
-    renderEditorialList();
-    var totalPages=pub.pagination?pub.pagination.pages:1;
-    renderPagination('edPaginationArea',edPage,totalPages,function(p){loadEditorialsPage(p);});
-  }catch(e){tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:#ff6b6b;padding:40px">불러오기 실패</td></tr>';}
+// ======== 목록 전량 로드 + 페이지네이션 (QA 2026-07-16) ========
+//
+// 무엇이 문제였나 —
+//   1. 페이지네이션이 "사라진" 게 아니라 호출부가 끊겨 있었다. 여기 있던
+//      loadEditorialsPage()/renderPagination() 은 어디서도 호출되지 않는
+//      죽은 코드였다. QA #196(예약 게시물 노출) 때 목록 로더가 상태 3종을
+//      각각 limit=100 으로 받아 합치는 방식으로 바뀌면서 페이지 개념이
+//      빠졌고, 옛 함수만 파일에 남았다.
+//   2. 그래서 에디토리얼은 2,448건 중 106건만 관리자에 보였다.
+//   3. 카운트도 API 가 주는 pagination.total 을 무시하고 "받아온 배열
+//      길이"를 세어 limit 상한 100 에서 멈췄다 — QA 가 함께 보고한
+//      "100건 초과 집계 누락"이 같은 뿌리다.
+//   4. 검색·정렬·기간필터도 전부 메모리 배열 기준이라 100건 안에서만
+//      동작했다(보고되지 않았지만 같은 원인).
+//
+// 어떻게 고쳤나 —
+//   목록을 "전량" 받아 메모리에 두고, 기존 필터·정렬을 그대로 태운 뒤
+//   마지막에 페이지 단위로 잘라 보여준다. 이렇게 해야 검색·정렬·기간이
+//   전체 데이터 기준으로 정확해진다(서버 페이지네이션으로 가면 필터가
+//   현재 페이지 안에서만 도는 지금 문제가 그대로 남는다).
+//   전량 로드가 가능하도록 API 에 관리자용 슬림 컬럼(?fields=admin)을
+//   추가했다 — 에디토리얼 기준 행당 6.7KB → 대폭 축소.
+//
+// 옛 renderPagination 은 삭제한다(죽은 코드 + 컨테이너를 edListBody 에
+// 하드코딩해 다른 목록에 재사용 불가).
+
+/** 1페이지를 받아 pagination.total 을 보고 나머지 페이지를 병렬로 받아온다.
+ *  반환: { rows, total, pages, truncated }
+ *  truncated=true 는 안전상한(MAX_PAGES)에 걸려 전량을 못 받았다는 뜻 —
+ *  이 경우 호출부가 카운트에 "이상" 표시를 할 수 있도록 알려준다. */
+async function papFetchAllPages(path, opts){
+  opts = opts || {};
+  var perPage = opts.limit || 100;          // API 상한이 100
+  var MAX_PAGES = opts.maxPages || 60;      // 6,000행 — 폭주 방어
+  var BATCH = opts.batch || 5;              // 동시 요청 수
+  function url(p){
+    return path + (path.indexOf('?') > -1 ? '&' : '?') + 'limit=' + perPage + '&page=' + p;
+  }
+  var first = await apiGet(url(1));
+  var rows = (first && first.data) || [];
+  var pg = (first && first.pagination) || {};
+  var total = (typeof pg.total === 'number') ? pg.total : rows.length;
+  var pages = pg.pages || 1;
+  var truncated = false;
+  if (pages > MAX_PAGES) { pages = MAX_PAGES; truncated = true; }
+  for (var p = 2; p <= pages; p += BATCH) {
+    var batch = [];
+    for (var q = p; q < p + BATCH && q <= pages; q++) {
+      // URL 은 push 시점에 확정되므로 클로저 문제 없음
+      batch.push(apiGet(url(q)).catch(function(){ return { data: [] }; }));
+    }
+    var res = await Promise.all(batch);
+    for (var i = 0; i < res.length; i++) rows = rows.concat((res[i] && res[i].data) || []);
+  }
+  // data: rows 별칭 — 기존 로더들이 응답을 `.data` 로 읽고 있어서, 호출부를
+  // 최소로 바꾸려고 같은 배열을 두 이름으로 노출한다.
+  return { rows: rows, data: rows, total: total, pages: pages, truncated: truncated };
 }
-function renderPagination(containerId,current,total,callback){
-  var el=document.getElementById(containerId);
-  if(!el){
-    // Create pagination area
-    var parent=document.getElementById('edListBody');
-    if(!parent)return;
-    var wrap=parent.closest('.tbl-wrap');
-    if(!wrap)return;
-    el=document.createElement('div');
-    el.id=containerId;
-    el.style.cssText='padding:12px 18px;display:flex;gap:4px;justify-content:center;border-top:1px solid var(--border)';
+
+/** 목록별 페이지 상태. key 는 'editorial' | 'news' | 'film' | 'shorts'. */
+var PAP_PAGE_SIZES = [25, 50, 100, 200];
+var papPageState = {};
+function _papPageSt(key){
+  if (!papPageState[key]) {
+    var saved = parseInt(localStorage.getItem('pap-admin-pagesize-' + key), 10);
+    papPageState[key] = { page: 1, size: (PAP_PAGE_SIZES.indexOf(saved) > -1 ? saved : 25) };
+  }
+  return papPageState[key];
+}
+/** 필터·정렬이 끝난 배열을 받아 현재 페이지 조각을 돌려준다. */
+function papPaginate(key, rows){
+  var st = _papPageSt(key);
+  var pages = Math.max(1, Math.ceil(rows.length / st.size));
+  if (st.page > pages) st.page = pages;   // 필터로 줄었을 때 빈 화면 방지
+  if (st.page < 1) st.page = 1;
+  var start = (st.page - 1) * st.size;
+  return {
+    slice: rows.slice(start, start + st.size),
+    page: st.page, pages: pages, size: st.size,
+    total: rows.length, from: rows.length ? start + 1 : 0,
+    to: Math.min(start + st.size, rows.length)
+  };
+}
+function papGoPage(key, p){
+  var st = _papPageSt(key);
+  st.page = p;
+  var r = PAP_LIST_RERENDER[key];
+  if (typeof r === 'function') r();
+}
+function papSetPageSize(key, n){
+  var st = _papPageSt(key);
+  st.size = parseInt(n, 10) || 25;
+  st.page = 1;
+  try { localStorage.setItem('pap-admin-pagesize-' + key, String(st.size)); } catch(_){}
+  var r = PAP_LIST_RERENDER[key];
+  if (typeof r === 'function') r();
+}
+/** key → 재렌더 함수. 각 목록이 자기 렌더러를 등록한다. */
+var PAP_LIST_RERENDER = {};
+
+/** 페이지네이션 UI. tbody 가 속한 .tbl-wrap 아래에 영역을 만들어 붙인다. */
+function papRenderPager(key, tbodyId, info){
+  var id = 'papPager-' + key;
+  var el = document.getElementById(id);
+  if (!el) {
+    var tb = document.getElementById(tbodyId);
+    if (!tb) return;
+    var wrap = tb.closest('.tbl-wrap') || tb.closest('table').parentElement;
+    if (!wrap) return;
+    el = document.createElement('div');
+    el.id = id;
+    el.style.cssText = 'padding:10px 14px;display:flex;gap:8px;align-items:center;'
+      + 'justify-content:space-between;flex-wrap:wrap;border-top:1px solid var(--border)';
     wrap.appendChild(el);
   }
-  if(total<=1){el.innerHTML='';return;}
-  var h='';
-  if(current>1)h+='<button class="btn btn-sm" onclick="window._pgCb'+containerId+'('+(current-1)+')">← 이전</button>';
-  h+='<span style="padding:5px 10px;font-size:11px;color:var(--text3)">'+current+' / '+total+'</span>';
-  if(current<total)h+='<button class="btn btn-sm" onclick="window._pgCb'+containerId+'('+(current+1)+')">다음 →</button>';
-  el.innerHTML=h;
-  window['_pgCb'+containerId]=callback;
+  var esc2 = function(s){ return String(s).replace(/'/g, "\\'"); };
+  var sizeSel = '<select onchange="papSetPageSize(\'' + esc2(key) + '\',this.value)"'
+    + ' style="background:#fff;border:1px solid var(--border2);padding:3px 6px;font-size:11px;border-radius:4px">'
+    + PAP_PAGE_SIZES.map(function(n){
+        return '<option value="' + n + '"' + (n === info.size ? ' selected' : '') + '>' + n + '개씩</option>';
+      }).join('') + '</select>';
+
+  // 좌: "전체 2,448건 중 1–25" — 전체 건수를 항상 보여준다(QA 집계 누락 건)
+  var left = '<div style="font-size:11px;color:var(--text3)">전체 <b style="color:var(--text)">'
+    + info.total.toLocaleString() + '</b>건 중 ' + info.from.toLocaleString()
+    + '–' + info.to.toLocaleString() + ' &nbsp; ' + sizeSel + '</div>';
+
+  var btn = function(p, label, disabled){
+    if (disabled) {
+      return '<span style="padding:4px 9px;font-size:11px;color:var(--text3);opacity:.4">' + label + '</span>';
+    }
+    return '<button class="btn btn-sm" onclick="papGoPage(\'' + esc2(key) + '\',' + p + ')">' + label + '</button>';
+  };
+  var right = '<div style="display:flex;gap:4px;align-items:center">'
+    + btn(1, '« 처음', info.page <= 1)
+    + btn(info.page - 1, '‹ 이전', info.page <= 1)
+    + '<span style="padding:4px 10px;font-size:11px;color:var(--text2)"><b>' + info.page + '</b> / ' + info.pages + '</span>'
+    + btn(info.page + 1, '다음 ›', info.page >= info.pages)
+    + btn(info.pages, '마지막 »', info.page >= info.pages)
+    + '</div>';
+  el.innerHTML = left + right;
 }
 
 // ======== SETTINGS PERSISTENCE (localStorage) ========
