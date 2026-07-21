@@ -1494,6 +1494,32 @@ function _lockBaseFeeButton(submissionId){
     if(box) box.outerHTML=_baseFeePaidHtml();
   }catch(_){}
 }
+// 2026-07-21 근본수정 (도메니코 QA 재발) — 결제 로그인 판정을 '서버 진실'로 통일.
+// pap_auth httpOnly 쿠키만 있고 localStorage 토큰이 없는 세션(OAuth 쿠키→토큰 교환
+// 실패·Safari ITP 로 localStorage 유실·401 로 토큰만 지워진 경우 등)에서 기존 게이트는
+// isLoggedIn()=localStorage 토큰 유무 만 봤기에 '로그인 필요'로 잘못 막혔다. 서버는
+// 쿠키로도 인증하므로(api/_lib/auth.js verifyToken: Bearer > pap_auth 쿠키), 로컬 신호가
+// 비면 서버에 직접 물어(user 를) 복구한다. 진짜 비로그인이면 null → 안내 후 차단.
+async function _resolvePayUser(){
+  // 1) 로컬 캐시(pap-user)
+  var user=null;
+  try{ user=(window.PAP&&PAP.auth&&PAP.auth.getUser)?PAP.auth.getUser():null; }catch(_){}
+  if(user&&user.id) return user;
+  // 2) 토큰은 있으나 캐시가 빈 경우 → refreshUser (Bearer 경로)
+  try{
+    if(window.PAP&&PAP.auth&&PAP.auth.isLoggedIn&&PAP.auth.isLoggedIn()&&PAP.auth.refreshUser){
+      var u=await PAP.auth.refreshUser(); if(u&&u.id) return u;
+    }
+  }catch(_){}
+  // 3) 쿠키 전용 세션 → 서버에 직접 확인. credentials:'same-origin' 로 pap_auth 쿠키 전송.
+  //    request() 를 우회한 raw fetch — 401 시 request() 의 자동 /auth 리다이렉트 부작용을
+  //    피하고, 여기서 조용히 null 반환해 호출부가 토스트로 부드럽게 처리하도록 한다.
+  try{
+    var r=await fetch('/api/auth/me',{headers:{'X-Requested-With':'XMLHttpRequest'},credentials:'same-origin'});
+    if(r.ok){ var j=await r.json(); if(j&&j.user&&j.user.id) return j.user; }
+  }catch(_){}
+  return null;
+}
 // Open the Paddle checkout overlay for a submission's base fee.
 // Mirrors pap-api.js checkoutIntl pattern: paddle-config → Paddle.Initialize →
 // Paddle.Checkout.open. customData.kind='submission_fee' 로 웹훅(키퍼)이 처리.
@@ -1512,25 +1538,13 @@ async function payBaseFee(submissionId, submissionType){
         return;
       }
     }catch(_){}
-    var user=null;
-    try{ user = (window.PAP&&PAP.auth&&PAP.auth.getUser)?PAP.auth.getUser():null; }catch(_){}
-    // 2026-07-20 버그수정 (도메니코 보고) — 로그인 상태(토큰 존재)여도 로컬 사용자
-    // 캐시(pap-user)가 비어 있으면 "로그인해 주세요"가 잘못 떴다. 토큰이 있으면
-    // 서버(/auth/me)에서 사용자 정보를 복구한 뒤 진행한다.
-    if((!user||!user.id) && window.PAP && PAP.auth && PAP.auth.isLoggedIn && PAP.auth.isLoggedIn() && PAP.auth.refreshUser){
-      try{ user = await PAP.auth.refreshUser(); }catch(_){}
-    }
-    // 2026-07-21 재수정 (QA 재발) — 게이트가 user.id 를 강제해, 토큰은 있는데(=로그인
-    // 상태) 캐시/refreshUser 가 일시적으로 비면 '로그인 필요'로 잘못 막혔다. 진짜 차단
-    // 기준은 로그인 여부(토큰)다. 토큰이 있으면 유저 캐시가 비어도 결제를 막지 않는다 —
-    // customData.user_id 는 없어도 웹훅이 submission_id 로 처리(불일치는 비차단 loud-log).
-    var _loggedIn=false;
-    try{ _loggedIn = !!(window.PAP && PAP.auth && PAP.auth.isLoggedIn && PAP.auth.isLoggedIn()); }catch(_){}
-    if(!(user&&user.id) && !_loggedIn){
+    // 2026-07-21 근본수정 — 로그인 판정을 서버 진실(_resolvePayUser)로 통일.
+    // 쿠키 전용 세션(토큰 유실)에서도 서버가 인증하면 결제를 막지 않는다.
+    var user = await _resolvePayUser();
+    if(!user){
       if(typeof PAP!=='undefined') PAP.ui.toast(_payT('payLoginFirst'),'error');
       return;
     }
-    user = user || {};
     // paddle-config 소비 — clientToken + submissionFees{paid_few_looks,branded}.
     // 계약 정합(2026-07-19): 키퍼 paddle-config 응답 키는 `submissionFees` (과업 지시서의
     // 가정 `submissionFeePrices`가 아님). 실제 키에 맞춤. 키 없으면 안전 처리.
@@ -1596,20 +1610,12 @@ async function payAddonFee(submissionId, addonKey){
       if(fallback) window.open(fallback,'_blank','noopener');
       return;
     }
-    var user=null;
-    try{ user=(window.PAP&&PAP.auth&&PAP.auth.getUser)?PAP.auth.getUser():null; }catch(_){}
-    if((!user||!user.id) && window.PAP && PAP.auth && PAP.auth.isLoggedIn && PAP.auth.isLoggedIn() && PAP.auth.refreshUser){
-      try{ user=await PAP.auth.refreshUser(); }catch(_){}
-    }
-    // 2026-07-21 재수정 (QA 재발) — 로그인(토큰)이면 유저 캐시가 비어도 막지 않는다.
-    // 위 기본료 게이트와 동일 기준(부가서비스 결제 버튼도 같은 오탐이 있었다).
-    var _loggedIn2=false;
-    try{ _loggedIn2 = !!(window.PAP && PAP.auth && PAP.auth.isLoggedIn && PAP.auth.isLoggedIn()); }catch(_){}
-    if(!(user&&user.id) && !_loggedIn2){
+    // 2026-07-21 근본수정 — 기본료 게이트와 동일하게 서버 진실(_resolvePayUser)로 판정.
+    var user = await _resolvePayUser();
+    if(!user){
       if(typeof PAP!=='undefined') PAP.ui.toast(_payT('payLoginFirst'),'error');
       return;
     }
-    user = user || {};
     var cfg=null;
     try{ cfg=await fetch('/api/subscriptions/paddle-config',{headers:{'X-Requested-With':'XMLHttpRequest'}}).then(function(r){return r.ok?r.json():null;}); }catch(_){}
     var priceId=(cfg && cfg.clientToken && (cfg.submissionAddons||{})[addonKey])||'';
