@@ -11885,6 +11885,8 @@ async function _pickMagCoverEditorial(edId){
   if(!e) return;
   document.getElementById('magIssueCoverEdId').value=e.id;
   document.getElementById('magIssueCoverEdSlug').value=e.slug||'';
+  // 제목 = 커버 에디토리얼 제목 (도메니코 지시 2026-07-21).
+  var _tt=document.getElementById('magIssueTitle'); if(_tt && e.title) _tt.value=e.title;
   var thumb=e.thumbnail_url||e.thumb||e.cover_image||(Array.isArray(e.images)&&e.images[0])||'';
   var date=_magEdDate(e); if(date) date=String(date).slice(0,10);
   var th=document.getElementById('magIssueCoverEdThumb');
