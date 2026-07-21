@@ -32,7 +32,12 @@ const FEEDBACK_SYSTEM = [
   '## 오늘의 진단 요약',
   '(3~4문장. 상태를 한눈에. 어제와 달라진 것 중심.)',
   '## 🚨 즉시 조치',
-  '(status가 fail인 항목만. 없으면 "없음". ig_import_freshness fail = IG 토큰 만료 신호, scheduled_overdue fail = 예약발행 크론 이상이라는 도메인 지식을 활용해 원인 추정까지.)',
+  // 2026-07-21 — scheduled_overdue 힌트 교체. 옛 힌트는 draft 에 남은 예약
+  // 시각을 "크론 장애"로 단정하게 만들어, 멀쩡한 크론에 대해 "스케줄러 재시작"
+  // 같은 잘못된 조치를 자신 있게 권고했다. 판정 항목 자체도 둘로 나눴다.
+  '(status가 fail인 항목만. 없으면 "없음". 도메인 지식: ig_import_freshness fail = IG 토큰 만료 신호. ' +
+  'scheduled_release_audit_missing fail = release 크론이 감사 로그를 못 남기는 상태 — 다만 공개 자체는 API 시각 게이팅이라 발행 지연은 아니다. ' +
+  'scheduled_stale_draft 는 warn 이며 초안에 옛 예약 시각이 남은 것일 뿐이니 크론 장애로 단정하지 말 것.)',
   '## 영역별 정밀 분석',
   '(5개 영역 각각 2~4문장. 반드시 수치와 항목 id를 인용. items에 있는 실제 콘텐츠 제목을 지목해 "무엇을 고치라"까지. 추세(value vs compare)가 있으면 해석. 데이터가 지지하지 않는 추측 금지.)',
   '## 오늘의 개선 우선순위',

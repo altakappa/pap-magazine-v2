@@ -224,12 +224,55 @@ async function runGrowthAudit() {
       const v = await cnt(db.from('editorials').select('*', CSEL).not('pinterest_error', 'is', null));
       return { value: v, status: v === 0 ? 'ok' : 'warn' };
     }),
-    check('scheduled_overdue', '예약발행 시각 지난 미발행 (release 크론 이상 신호)', async () => {
-      const v = await cnt(db.from('editorials').select('*', CSEL).neq('status', 'published').lt('scheduled_publish_at', new Date().toISOString()));
+    // ── 2026-07-21 재정의 ────────────────────────────────────────
+    // 기존 scheduled_overdue 는 status != 'published' + 시각 경과 를
+    // "release 크론 이상"으로 판정했다. 이는 크론의 실제 계약과 정반대다.
+    //   · release-due-scheduled 는 status='published' 인 행만 본다
+    //     (이 시스템에서 "예약" = status='published' + 미래 시각).
+    //   · 그래서 draft 는 크론이 애초에 취급하지 않는 대상이고,
+    //     draft 에 남은 옛 예약 시각은 "예약을 취소하고 초안으로 되돌린 흔적"이다.
+    // 결과: 크론이 멀쩡해도 fail 이 뜨고, 진짜 크론 장애는 영영 못 잡았다.
+    // (실측 2026-07-21: "Synthetic Skin" draft 1건이 59일째 fail 을 만들고 있었고,
+    //  같은 기간 다른 예약 12편 이상은 정상 공개됐다.)
+    //
+    // 또한 "발행"자체는 크론이 하지 않는다 — 공개 API 가
+    // status='published' AND (scheduled_publish_at IS NULL OR <= now())
+    // 로 시각 게이팅하므로 시각이 되면 크론과 무관하게 공개된다.
+    // 크론이 하는 일은 감사 로그(auto_published) 기록뿐이다.
+    // 따라서 크론 생사를 알 수 있는 유일한 신호는 "감사 로그 누락"이다.
+    check('scheduled_release_audit_missing', '예약 공개됐으나 자동발행 감사로그 없음 (release 크론 생사 신호)', async () => {
+      const nowIso = new Date().toISOString();
+      const { data: due, error: e1 } = await db.from('editorials')
+        .select('id, title').eq('status', 'published')
+        .not('scheduled_publish_at', 'is', null).lte('scheduled_publish_at', nowIso);
+      if (e1) throw e1;
+      if (!due || !due.length) return { value: 0, status: 'ok' };
+      const { data: logged, error: e2 } = await db.from('content_audit_log')
+        .select('content_id').eq('content_type', 'editorial').eq('action', 'auto_published')
+        .in('content_id', due.map((r) => r.id));
+      if (e2) throw e2;
+      const seen = new Set((logged || []).map((r) => r.content_id));
+      const miss = due.filter((r) => !seen.has(r.id));
+      return {
+        value: miss.length,
+        status: miss.length === 0 ? 'ok' : 'fail',
+        items: miss.slice(0, 5).map((r) => r.title).filter(Boolean),
+        note: miss.length ? '공개 자체는 시각 게이팅으로 정상 — 누락된 것은 감사 기록이다' : undefined,
+      };
+    }),
+    // 초안에 남은 옛 예약 시각. 인프라 장애가 아니라 콘텐츠 정리 신호라 warn.
+    check('scheduled_stale_draft', '예약 시각이 지난 채 초안으로 남은 건', async () => {
+      const nowIso = new Date().toISOString();
+      const v = await cnt(db.from('editorials').select('*', CSEL)
+        .neq('status', 'published').lt('scheduled_publish_at', nowIso));
       const items = v > 0
-        ? await titles(db.from('editorials').select('title').neq('status', 'published').lt('scheduled_publish_at', new Date().toISOString()))
+        ? await titles(db.from('editorials').select('title')
+            .neq('status', 'published').lt('scheduled_publish_at', nowIso))
         : [];
-      return { value: v, status: v === 0 ? 'ok' : 'fail', items };
+      return {
+        value: v, status: v === 0 ? 'ok' : 'warn', items,
+        note: v ? '발행 의사가 없다면 scheduled_publish_at 을 비우면 경고가 사라진다' : undefined,
+      };
     }),
     check('embeddings_missing', '임베딩 없는 발행 에디토리얼 (추천·테마 제외)', async () => {
       const v = await cnt(db.from('editorials').select('*', CSEL).eq('status', 'published').is('embedding', null));

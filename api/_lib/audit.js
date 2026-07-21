@@ -59,7 +59,13 @@ function diffFields(prev, next, fields){
  * @param {object} opts
  * @param {string} opts.content_type — 'editorial'|'article'|'film'|'shorts'
  * @param {string} opts.content_id   — uuid of the row
- * @param {string} opts.action       — 'create'|'update'|'delete'|'publish'|'unpublish'
+ * @param {string} opts.action       — 'create'|'update'|'delete'|'publish'|'unpublish'|'auto_published'
+ *   ⚠️ 이 목록은 DB 의 content_audit_log_action_check 와 반드시 일치해야 한다.
+ *   목록에 없는 값을 넣으면 insert 가 제약 위반으로 거부되는데, 호출부가 예외를
+ *   삼키는 경우가 있어 조용히 사라진다 (2026-07-21 'auto_published' 사고:
+ *   예약발행 감사 로그가 26건 통째로 누락됐고 아무도 몰랐다).
+ *   값을 추가할 때는 supabase_migrations 에 CHECK 확장 마이그레이션을 함께 넣을 것.
+ *   tests/audit-action-contract.test.js 가 코드↔제약 일치를 검사한다.
  * @param {object} [opts.actor]      — the {id, email} from requireAdmin
  * @param {string} [opts.actor_label]— pre-computed display name (optional)
  * @param {string} [opts.summary]    — short Korean phrase for the UI row
