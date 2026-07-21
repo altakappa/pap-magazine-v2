@@ -162,16 +162,35 @@ a{color:#fff;text-decoration:none}
    pinned to the top of the page. Same links, same active state, just
    laid out on the X axis. */
 @media(max-width:900px){
-  /* QA(2026-07) #20 — 모바일 상단 탭바 스크롤 고정(sticky).
-     예전 주석은 "body overflow 때문에 sticky 가 안 된다"고 했으나, 실측 결과
-     html{overflow-x:hidden}·body{overflow-x:hidden→overflow-y:auto} 환경에서도
-     body 직속 자식(.mp-sidebar)의 position:sticky 는 정상 동작한다(600px 스크롤
-     후에도 top 고정 확인). 상단 탭바를 sticky 로 고정해 스크롤해도 항상 노출.
-     top:0 + 상단 padding 60px(고정 헤더 높이만큼)로 헤더 바로 아래에 탭이 오게
-     하고, z-index 는 헤더(1600) 아래·콘텐츠 위(1400). 스크롤 콘텐츠가 비쳐
-     지저분하지 않도록 배경 불투명도를 높이고 blur 를 준다.
+  /* QA(2026-07) #20 재수정 — 모바일 상단 탭바를 "헤더 바로 아래"에 고정.
+     ─────────────────────────────────────────────────────────────────
+     1차 수정(sticky, z-index:1400)은 두 가지가 틀렸다. 실측으로 확인함:
+
+     (A) 헤더의 실제 z-index 는 1600 이 아니라 1000 이다.
+         pap-styles.css 의 .header{z-index:1600} 은 런타임에 무효가 된다 —
+         pap-header.js 가 <head> 맨 뒤에 "safety net" <style> 을 주입하면서
+         header.header{...z-index:1000} 을 덮어쓰기 때문(선택자 특이도도 더 높음).
+         CSS 파일만 보고 1600 으로 판단해 탭바를 1400 으로 뒀고, 1400 > 1000 이라
+         탭바가 헤더를 완전히 덮어버렸다. → 헤더 아래인 999 로 내린다.
+         (커뮤니티 탭바 .c-header 가 이미 z-index:999 로 같은 자리를 쓰고 있다)
+
+     (B) position:sticky 는 이 페이지에서 애초에 작동하지 않는다.
+         body 에 overflow-x:hidden 이 걸려 있으면 CSS 규격상 overflow-y 가
+         visible → auto 로 계산되고(computed: "hidden auto"), body 가 스크롤
+         컨테이너가 되어 그 자식의 sticky 가 고정될 대상을 잃는다. 1차 수정 때
+         "sticky 정상 동작 확인"이라고 적었던 건 window 를 스크롤해 잰 오측이다.
+         → position:fixed 로 바꾼다. 어느 요소가 스크롤 컨테이너든 영향받지 않는다.
+
+     헤더 높이는 pap-header.js safety net 기준 72 / 60(≤768) / 56(≤480)px 이고,
+     탭바 높이는 37px 이다. .mp-wrapper 상단 여백은 그 합 + 8px 여유로 준다.
+     pap-header.js 의 `.pap-has-header .mp-wrapper{padding-top:100px!important}`
+     보다 뒤에 로드될 수 없으므로, body 를 앞에 붙여 특이도로 이긴다.
+     탭 스트립의 가로 스크롤바는 숨긴다 — 데스크톱 클래식 스크롤바가 보이면
+     탭바 높이가 37→53px 로 변해 아래 여백 계산이 어긋난다.
      overscroll-behavior-x:contain 으로 가로 스와이프가 뒤로가기로 새지 않게 유지. */
-  .mp-sidebar{position:sticky;top:0;z-index:1400;width:100%;height:auto;padding:60px 12px 10px;border-right:none;border-bottom:1px solid rgba(255,255,255,.1);overflow-x:auto;overflow-y:hidden;background:rgba(0,0,0,.92);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+  .mp-sidebar{position:fixed;top:72px;left:0;right:0;z-index:999;width:100%;height:auto;padding:0 12px;border-right:none;border-bottom:1px solid rgba(255,255,255,.1);overflow-x:auto;overflow-y:hidden;background:rgba(0,0,0,.92);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none}
+  .mp-sidebar::-webkit-scrollbar{display:none}
+  body.pap-has-header .mp-wrapper{padding-top:117px}
   .mp-side-nav{flex-direction:row;flex-wrap:nowrap;gap:0;align-items:center}
   .mp-side-group{flex-direction:row;padding:0 4px;align-items:center;gap:0;flex-shrink:0}
   .mp-side-group-title{display:none}
@@ -180,6 +199,17 @@ a{color:#fff;text-decoration:none}
   .mp-side-spacer{display:none}
   .mp-side-divider{width:1px;height:18px;margin:0 8px;flex-shrink:0}
   .mp-back{padding:0 16px 0 0;flex-shrink:0}
+}
+/* 탭바 top 은 "그 시점의 헤더 높이"와 정확히 같아야 헤더 바로 아래에 붙는다.
+   헤더 높이는 pap-header.js safety net 이 정한다 — 72 / 60(≤768) / 56(≤480).
+   여기 값을 바꾸면 pap-header.js 도 함께 봐야 한다(tests/mypage-sticky-tabs 가 감시). */
+@media(max-width:768px){
+  .mp-sidebar{top:60px}
+  body.pap-has-header .mp-wrapper{padding-top:105px}
+}
+@media(max-width:480px){
+  .mp-sidebar{top:56px}
+  body.pap-has-header .mp-wrapper{padding-top:101px}
 }
 @media(max-width:500px){
   .mp-wrapper{padding:24px 16px 40px}

@@ -64,7 +64,15 @@ button{cursor:pointer;font-family:inherit}
    z-index 1600 — must out-stack .nav-overlay (1500) so the hamburger
    (now an X) stays clickable while the menu is open. The hamburger's
    own z-index:2000 is bounded by THIS header's stacking context — it
-   cannot escape upward — so the header itself has to win the layer. */
+   cannot escape upward — so the header itself has to win the layer.
+
+   ⚠ 이 1600 은 런타임에 적용되지 않는다 (2026-07-21 QA 로 확인).
+   pap-header.js 가 <head> 맨 뒤에 "safety net" <style> 을 주입하면서
+   header.header{...z-index:1000} 으로 덮어쓴다 — 선택자 특이도(0,1,1)도
+   여기(0,1,0)보다 높다. 즉 라이브 헤더의 실효 z-index 는 1000 이다.
+   헤더 위/아래에 무언가를 쌓을 때는 이 숫자가 아니라 pap-header.js 의
+   safety net 을 기준으로 삼을 것. (마이페이지 탭바가 1400 이라 헤더를
+   통째로 가렸던 사고의 원인 — tests/mypage-sticky-tabs.test.js 가 감시) */
 .header{position:fixed;top:0;left:0;right:0;z-index:1600;background:rgba(0,0,0,.97);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:0 40px;display:flex;align-items:center;justify-content:space-between;height:72px;cursor:default!important}
 /* When the menu is open, drop the dark backdrop so the white nav
    overlay reads cleanly behind the X — without this the 72px dark band
