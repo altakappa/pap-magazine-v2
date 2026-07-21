@@ -96,6 +96,25 @@ t('프론트가 from/to 를 붙여 분기만 요청한다',
 t('볼륨별 응답을 캐시한다 (같은 볼륨 재요청 방지)', /_volEdCache/.test(mag));
 t('네트워크 실패 시 폴백이 있다', /qvOpenLegacyRaw\(vol\)/.test(mag));
 
+console.log('\n=== 5. 아카이브 총계가 한 값으로 통일되는가 (QA: 하단 CTA 숫자 불일치) ===');
+/* 같은 숫자를 쓰는 곳이 셋이다 — 히어로 배지 / 하단 구독 CTA / 구독 모달.
+   앞선 papRegroupByQuarter 가 정적 카드 기준으로 셋을 채우는데, 최종
+   renderAll 이 배지만 갈아끼우면 화면에 두 숫자가 공존한다.
+   실측(수정 전 라이브): 배지 "31 ISSUES · 2,206+" vs CTA "29 issues, 2,120+". */
+const renderAllBody = (mag.match(/function renderAll\(dynCards,dynVols,dynEds\)\{[\s\S]*?\n  \}/) || [''])[0];
+t('renderAll 을 찾았다', renderAllBody.length > 0);
+t('renderAll 이 히어로 배지를 갱신한다', /getElementById\('heroBadge'\)/.test(renderAllBody));
+t('renderAll 이 하단 구독 CTA 도 함께 갱신한다',
+  /getElementById\('subCtaDesc'\)/.test(renderAllBody),
+  '배지만 갱신하면 CTA 가 옛 숫자로 남는다');
+t('renderAll 이 구독 모달용 전역값도 갱신한다',
+  /_papTotalVolumes\s*=\s*total/.test(renderAllBody) &&
+  /_papTotalEditorialsBucket\s*=/.test(renderAllBody),
+  '모달만 옛 숫자로 남는다');
+t('세 곳이 같은 소스(total / legacyEds+dynEds)를 쓴다',
+  /var _edTotal = legacyEds \+ dynEds/.test(renderAllBody) &&
+  (renderAllBody.match(/_edTotal/g) || []).length >= 3);
+
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if (fail) { console.log('❌ magazine-issue-detail tests FAILED'); process.exit(1); }
 console.log('✅ magazine-issue-detail tests passed');

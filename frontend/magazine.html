@@ -1422,8 +1422,25 @@ document.addEventListener('DOMContentLoaded',function(){
     var total=all.length;
     document.getElementById('qvCount').textContent=total+' VOLUMES';
     document.getElementById('quarterVols').style.display='';
+    /* QA(2026-07-21) — 총계를 "한 군데서" 갱신한다.
+       예전엔 여기서 heroBadge 만 덮어썼다. 그런데 같은 숫자를 쓰는 곳이
+       셋이다: 히어로 배지 · 하단 구독 CTA · 구독 모달 문구(_papTotal*).
+       앞선 papRegroupByQuarter 가 정적 카드 기준으로 셋 다 채워두는데,
+       이 스크립트가 배지만 최신 값으로 갈아끼워서 화면에 두 숫자가
+       공존했다 — 배지 "31 ISSUES · 2,206+" vs CTA "29 issues, 2,120+".
+       (QA 가 하단 블록을 "맥락 없는 오류성 콘텐츠"로 본 이유 중 하나)
+       배지가 쓰는 값이 실제 렌더링 결과이므로 그 값으로 셋을 통일한다. */
+    var _edTotal = legacyEds + dynEds;
     var hb=document.getElementById('heroBadge');
-    if(hb)hb.textContent=total+' ISSUES · '+(legacyEds+dynEds).toLocaleString()+'+ EDITORIALS';
+    if(hb)hb.textContent=total+' ISSUES · '+_edTotal.toLocaleString()+'+ EDITORIALS';
+    var _sc=document.getElementById('subCtaDesc');
+    if(_sc)_sc.textContent='Subscribe to PAP Premium for unlimited access to all '
+      +total+' issues, '+_edTotal.toLocaleString()
+      +'+ editorials, and every future release. New issues drop quarterly.';
+    // 구독 모달 문구(9개 언어)가 읽는 전역 값도 함께 갱신 — 안 하면 모달만
+    // 옛 숫자로 남는다.
+    window._papTotalVolumes = total;
+    window._papTotalEditorialsBucket = _edTotal;
     // 동적 생성 카드 리빌 (2026-07-06 버그픽스) — .card 는 CSS 기본이
     // opacity:0 이고 페이지 로드 시점의 IntersectionObserver(782행)만
     // .vis 를 붙인다. 이 카드들은 그 이후에 생성되므로 여기서 새 옵저버로
