@@ -65,7 +65,10 @@ module.exports = async function handler(req, res) {
     }
 
     try {
-      const { fields, files } = await parseForm(req, { maxFileSize: 50 * 1024 * 1024 });
+      // 2026-07-21 (도메니코 지시) — 촬영시안 PDF 상한 50MB → 20MB.
+      // 프론트(pullletter.html PROPOSAL_MAX_BYTES)와 같은 값이어야 한다.
+      // 프론트 검증은 개발자도구로 우회 가능하므로 여기가 최종 방어선.
+      const { fields, files } = await parseForm(req, { maxFileSize: 20 * 1024 * 1024 });
       const dataRaw = Array.isArray(fields.data) ? fields.data[0] : fields.data;
       const data = dataRaw ? JSON.parse(dataRaw) : {};
 

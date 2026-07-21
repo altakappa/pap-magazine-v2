@@ -416,11 +416,11 @@ body.submit-overlay-active{overflow:hidden}
 
 <!-- Loading State -->
 <div id="pageLoader" style="position:fixed;inset:0;z-index:10000;background:#000;display:flex;align-items:center;justify-content:center;transition:opacity .4s">
-<div style="text-align:center"><div style="font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;letter-spacing:.3em;color:rgba(255,255,255,.4);text-transform:uppercase">PAP</div>
+<div style="text-align:center"><div style="font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;letter-spacing:.3em;color:rgba(255,255,255,.55);text-transform:uppercase">PAP</div>
 <div style="margin-top:12px;width:40px;height:1px;background:rgba(255,255,255,.1);position:relative;overflow:hidden;margin-left:auto;margin-right:auto"><div style="position:absolute;width:50%;height:100%;background:rgba(255,255,255,.5);animation:loaderSlide 1s ease infinite"></div></div></div></div>
 <style>@keyframes loaderSlide{0%{left:-50%}100%{left:100%}}</style>
 <script>window.addEventListener('load',function(){var l=document.getElementById('pageLoader');if(l){l.style.opacity='0';setTimeout(function(){l.remove();},400);}});</script>
-<a href="/auth" class="auth-btn-header auth-btn-sidenav" aria-label="Login" style="position:fixed;top:32px;right:100px;z-index:1001;color:rgba(255,255,255,.4);transition:color .2s;text-decoration:none"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>
+<a href="/auth" class="auth-btn-header auth-btn-sidenav" aria-label="Login" style="position:fixed;top:32px;right:100px;z-index:1001;color:rgba(255,255,255,.55);transition:color .2s;text-decoration:none"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>
 
 <div class="lang-selector"><select id="langSelect" onchange="setLang(this.value)"><option value="ko">KO</option><option value="en">EN</option><option value="it">IT</option><option value="fr">FR</option><option value="es">ES</option><option value="ja">JA</option><option value="zh">ZH</option><option value="ru">RU</option>
         <option value="de">Deutsch</option></select></div>
@@ -460,7 +460,7 @@ function _showBrandAdInterstitial(ad,callback){
   overlay.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.95);display:flex;align-items:center;justify-content:center;flex-direction:column;opacity:0;transition:opacity .4s;';
   var label=document.createElement('div');
   label.textContent='AD'+(ad.brand?' · '+ad.brand:'');
-  label.style.cssText='position:absolute;top:16px;left:20px;font-size:9px;font-weight:700;letter-spacing:.2em;color:rgba(255,255,255,.35);font-family:Montserrat,sans-serif;z-index:2;';
+  label.style.cssText='position:absolute;top:16px;left:20px;font-size:9px;font-weight:700;letter-spacing:.2em;color:rgba(255,255,255,.55);font-family:Montserrat,sans-serif;z-index:2;';
   overlay.appendChild(label);
   var mediaWrap=document.createElement('div');
   mediaWrap.style.cssText='position:relative;max-width:90vw;max-height:75vh;display:flex;align-items:center;justify-content:center;cursor:pointer;';
@@ -472,7 +472,7 @@ function _showBrandAdInterstitial(ad,callback){
   var skipTexts={ko:'건너뛰기',en:'Skip',it:'Salta',fr:'Passer',es:'Saltar',ja:'スキップ',zh:'跳过'};
   var skipLabel=skipTexts[lang]||skipTexts.en;
   var skip=document.createElement('button');
-  skip.style.cssText='position:absolute;bottom:24px;right:24px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.55);font-size:11px;font-weight:600;letter-spacing:.1em;cursor:pointer;font-family:Montserrat,sans-serif;padding:8px 20px;border-radius:2px;transition:all .2s;z-index:2;';
+  skip.style.cssText='position:absolute;bottom:24px;right:24px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.35);color:rgba(255,255,255,.55);font-size:11px;font-weight:600;letter-spacing:.1em;cursor:pointer;font-family:Montserrat,sans-serif;padding:8px 20px;border-radius:2px;transition:all .2s;z-index:2;';
   skip.onmouseover=function(){this.style.background='rgba(255,255,255,.15)';this.style.color='rgba(255,255,255,.9)';};
   skip.onmouseout=function(){this.style.background='rgba(255,255,255,.1)';this.style.color='rgba(255,255,255,.55)';};
   var _countdown=duration;var _timer=null;
@@ -483,7 +483,7 @@ function _showBrandAdInterstitial(ad,callback){
   var premBadge=document.createElement('a');premBadge.href='/subscribe';
   var premTexts={ko:'광고 없이 즐기기',en:'Go ad-free',it:'Senza pubblicità',fr:'Sans publicità',es:'Sin anuncios',ja:'広告なし',zh:'去除广告'};
   premBadge.textContent=premTexts[lang]||premTexts.en;
-  premBadge.style.cssText='position:absolute;bottom:26px;left:24px;font-size:10px;font-weight:600;letter-spacing:.08em;color:rgba(255,255,255,.3);text-decoration:none;font-family:Montserrat,sans-serif;transition:color .2s;z-index:2;';
+  premBadge.style.cssText='position:absolute;bottom:26px;left:24px;font-size:10px;font-weight:600;letter-spacing:.08em;color:rgba(255,255,255,.55);text-decoration:none;font-family:Montserrat,sans-serif;transition:color .2s;z-index:2;';
   premBadge.onmouseover=function(){this.style.color='rgba(255,255,255,.7)';};
   premBadge.onmouseout=function(){this.style.color='rgba(255,255,255,.3)';};
   overlay.appendChild(premBadge);
@@ -510,9 +510,9 @@ function _showPremiumUpsellInterstitial(callback){
   overlay.id='premiumInterstitial';
   overlay.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .4s;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);';
   var box=document.createElement('div');box.style.cssText='text-align:center;max-width:420px;padding:48px 32px;';
-  var tag=document.createElement('div');tag.textContent=t.tag;tag.style.cssText='font-size:10px;font-weight:800;letter-spacing:.3em;color:rgba(255,255,255,.4);margin-bottom:24px;';
+  var tag=document.createElement('div');tag.textContent=t.tag;tag.style.cssText='font-size:10px;font-weight:800;letter-spacing:.3em;color:rgba(255,255,255,.55);margin-bottom:24px;';
   var h=document.createElement('h2');h.textContent=t.title;h.style.cssText='font-size:22px;font-weight:800;letter-spacing:.06em;line-height:1.5;color:#fff;margin-bottom:16px;white-space:pre-line;font-family:Montserrat,sans-serif;';
-  var desc=document.createElement('p');desc.textContent=t.desc;desc.style.cssText='font-size:12px;color:rgba(255,255,255,.5);line-height:1.9;margin-bottom:32px;white-space:pre-line;font-family:Montserrat,sans-serif;';
+  var desc=document.createElement('p');desc.textContent=t.desc;desc.style.cssText='font-size:12px;color:rgba(255,255,255,.55);line-height:1.9;margin-bottom:32px;white-space:pre-line;font-family:Montserrat,sans-serif;';
   var btn=document.createElement('a');btn.href='/subscribe';btn.textContent=t.btn;btn.style.cssText='display:inline-block;padding:14px 40px;background:#fff;color:#000;font-size:11px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;text-decoration:none;font-family:Montserrat,sans-serif;transition:all .3s;border:1.5px solid #fff;';
   btn.onmouseover=function(){this.style.background='transparent';this.style.color='#fff';};
   btn.onmouseout=function(){this.style.background='#fff';this.style.color='#000';};
@@ -594,7 +594,7 @@ function navigateWithInterstitial(url){
     <div class="form-section active" id="step1">
       <div class="section-title"><span data-i18n="sectionCategory">CATEGORY</span> <span class="req">*</span></div>
       <div class="error-summary" id="errSummary1"></div>
-      <p style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:16px;line-height:1.8" data-i18n-html="step1Desc">Select the categories that apply to your editorial (multiple allowed).</p>
+      <p style="font-size:11px;color:rgba(255,255,255,.55);margin-bottom:16px;line-height:1.8" data-i18n-html="step1Desc">Select the categories that apply to your editorial (multiple allowed).</p>
       <div class="genre-tags" id="genreTags">
         <button class="genre-tag" onclick="selectGenre(this)">FASHION</button>
         <button class="genre-tag" onclick="selectGenre(this)">BEAUTY</button>
@@ -676,7 +676,7 @@ function navigateWithInterstitial(url){
     <!-- STEP 3: Team Credits -->
     <div class="form-section" id="step3">
       <div class="section-title" data-i18n="sectionTeamCredits">TEAM CREDITS</div>
-      <p style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:20px;line-height:1.8" data-i18n="teamCreditsDesc">Enter each team member's name, Instagram, and website. Instagram handles are used for social media credits.</p>
+      <p style="font-size:11px;color:rgba(255,255,255,.55);margin-bottom:20px;line-height:1.8" data-i18n="teamCreditsDesc">Enter each team member's name, Instagram, and website. Instagram handles are used for social media credits.</p>
       <!-- QA #285 — 필수 입력 안내 -->
       <p style="font-size:11px;color:#ffb347;margin-bottom:14px;line-height:1.6;padding:8px 10px;border:1px solid rgba(255,179,71,.3);background:rgba(255,179,71,.04);border-radius:2px" data-i18n="teamCreditsRequiredHint">⚠ 각 크레딧 항목은 <strong>역할 · 이름 · 인스타그램</strong> 정보가 모두 입력되어야 합니다. <strong>필요 없는 항목은 오른쪽 끝 <span style="color:#ff6b6b">×</span> 버튼을 눌러 삭제</strong>해 주세요. 포토그래퍼(Photographer)는 필수 크레딧이라 삭제할 수 없습니다.</p>
       <div class="error-summary" id="errSummary3"></div>
@@ -696,14 +696,14 @@ function navigateWithInterstitial(url){
       <button class="add-btn" style="margin-top:12px" onclick="addTeamRow()" data-i18n="btnAddTeam">+ Add Team Member</button>
 
       <!-- MODELS (Multiple) -->
-      <div style="margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,.08)">
+      <div style="margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,.35)">
         <div class="section-title" style="border-bottom:none;padding-bottom:0" data-i18n="sectionModels">MODELS</div>
-        <p style="font-size:10px;color:rgba(255,255,255,.25);margin-bottom:12px;line-height:1.8" data-i18n="modelsDesc">Enter the model's name and Instagram, and the agency's name and Instagram separately.</p>
+        <p style="font-size:10px;color:rgba(255,255,255,.55);margin-bottom:12px;line-height:1.8" data-i18n="modelsDesc">Enter the model's name and Instagram, and the agency's name and Instagram separately.</p>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 30px;gap:10px;margin-bottom:6px">
-          <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25)" data-i18n="hdrModelName">MODEL NAME</span>
-          <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25)" data-i18n="hdrModelInsta">MODEL INSTA</span>
-          <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25)" data-i18n="hdrAgencyName">AGENCY NAME</span>
-          <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25)" data-i18n="hdrAgencyInsta">AGENCY INSTA</span>
+          <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.55)" data-i18n="hdrModelName">MODEL NAME</span>
+          <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.55)" data-i18n="hdrModelInsta">MODEL INSTA</span>
+          <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.55)" data-i18n="hdrAgencyName">AGENCY NAME</span>
+          <span style="font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.55)" data-i18n="hdrAgencyInsta">AGENCY INSTA</span>
           <span></span>
         </div>
         <div id="modelList">
@@ -728,13 +728,13 @@ function navigateWithInterstitial(url){
     <!-- STEP 4: Look Credits -->
     <div class="form-section" id="step4">
       <div class="section-title" data-i18n="sectionLookCredits">LOOK CREDITS</div>
-      <p style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:20px;line-height:1.8" data-i18n="lookCreditsDesc">Upload images for each look and enter brand/accessory credits. Each look needs at least one image; fewer than 4 looks is accepted as a paid submission (€345) — you can still submit and PAP will follow up. Drag thumbnails to reorder. You can also add additional images below.</p>
+      <p style="font-size:11px;color:rgba(255,255,255,.55);margin-bottom:20px;line-height:1.8" data-i18n="lookCreditsDesc">Upload images for each look and enter brand/accessory credits. Each look needs at least one image; fewer than 4 looks is accepted as a paid submission (€345) — you can still submit and PAP will follow up. Drag thumbnails to reorder. You can also add additional images below.</p>
       <div class="error-summary" id="errSummary4"></div>
       <div id="lookList"></div>
       <button class="add-btn" onclick="addLook()" data-i18n="btnAddLook">+ Add Look</button>
 
       <!-- ADDITIONAL IMAGES -->
-      <div style="margin-top:32px;padding-top:24px;border-top:1px solid rgba(255,255,255,.08)">
+      <div style="margin-top:32px;padding-top:24px;border-top:1px solid rgba(255,255,255,.35)">
         <div class="section-title" style="border-bottom:none;padding-bottom:0" data-i18n="sectionAdditionalImages">ADDITIONAL IMAGES</div>
         <div class="form-group">
           <label class="form-label" data-i18n="labelAdditionalImages">High-resolution images — additional images not included in looks (optional)</label>
@@ -755,7 +755,7 @@ function navigateWithInterstitial(url){
         <select id="coverImageSelect" onchange="setCoverImage()">
           <option value="" data-i18n="coverImageAuto">Auto (first image)</option>
         </select>
-        <div style="font-size:9px;color:rgba(255,255,255,.2)" data-i18n="coverImageHint">Specify which image to use as the cover. If not selected, the first image will be used.</div>
+        <div style="font-size:9px;color:rgba(255,255,255,.55)" data-i18n="coverImageHint">Specify which image to use as the cover. If not selected, the first image will be used.</div>
       </div>
 
       <div class="form-nav">
@@ -786,27 +786,27 @@ function navigateWithInterstitial(url){
             ① The editorial submitted through this submission process (hereinafter "Work") will be published exclusively in PAP Magazine (hereinafter "PAP"). Submitters may not publish or distribute the same work on other magazines, online media, publications, or equivalent platforms.<br>
             ② If it is confirmed that the work has been published on other media in violation of this provision, PAP may immediately delete the work and impose sanctions on the submitter, including restrictions on future submissions and legal action.<br>
             ③ The exclusive publication period applies indefinitely from the date the work is posted on the PAP website.<br>
-            <em style="color:rgba(255,255,255,.3)">The submitted editorial is exclusive to PAP Magazine. The submitter may not publish, distribute, or display the same work in any other magazine, online media, publication, or comparable platform. Violation of this clause may result in immediate removal of the content, restriction of future submissions, and potential legal action. The exclusivity period applies indefinitely from the date of publication on PAP's website.</em></li>
+            <em style="color:rgba(255,255,255,.55)">The submitted editorial is exclusive to PAP Magazine. The submitter may not publish, distribute, or display the same work in any other magazine, online media, publication, or comparable platform. Violation of this clause may result in immediate removal of the content, restriction of future submissions, and potential legal action. The exclusivity period applies indefinitely from the date of publication on PAP's website.</em></li>
 
             <li><strong>Article 2 (Website and Social Media Use Consent)</strong><br>
             ① The submitted work will be published on PAP's official website (pap-magazine.com) and may be used for promotional and introductory purposes through PAP's official social media accounts (Instagram, Facebook, YouTube, etc.) before and after publication.<br>
             ② PAP may perform reasonable edits within appropriate scope, such as cropping, resizing, and applying filters to images for promotional purposes. However, changes that compromise the essential content of the work will not be made.<br>
             ③ Proper credit will be given to the submitter and team members on all social media posts.<br>
-            <em style="color:rgba(255,255,255,.3)">Submitted works will be published on PAP's official websites and may be used for promotional purposes on PAP's social media accounts before and after publication. PAP may perform reasonable edits such as cropping, resizing, or filtering for promotional purposes, without altering the essential content. All social media posts will include proper credits for the submitter and team members.</em></li>
+            <em style="color:rgba(255,255,255,.55)">Submitted works will be published on PAP's official websites and may be used for promotional purposes on PAP's social media accounts before and after publication. PAP may perform reasonable edits such as cropping, resizing, or filtering for promotional purposes, without altering the essential content. All social media posts will include proper credits for the submitter and team members.</em></li>
 
             <li><strong>Article 3 (Accuracy of Credit Information and Correction Fee)</strong><br>
             ① The submitter warrants that all credit information (team member names, Instagram handles, brand names, look-by-look outfit credits, etc.) is accurate and up to date.<br>
             ② If credit information needs to be corrected after publication due to the submitter's responsibility, a correction fee of €100 per item will be charged. The fee must be paid before the correction work begins.<br>
             ③ Information not entered in the submission form may be omitted, and PAP assumes no responsibility for this.<br>
             ④ Do not use all capitals (ALL CAPS) when writing credits.<br>
-            <em style="color:rgba(255,255,255,.3)">The submitter guarantees that all credit information is accurate and up-to-date. Post-publication corrections due to submitter error will incur a fee of €100 per correction, payable before work commences. Information not entered in the submission form may be omitted, and PAP assumes no responsibility for such omissions. Do not use ALL CAPS in credits.</em></li>
+            <em style="color:rgba(255,255,255,.55)">The submitter guarantees that all credit information is accurate and up-to-date. Post-publication corrections due to submitter error will incur a fee of €100 per correction, payable before work commences. Information not entered in the submission form may be omitted, and PAP assumes no responsibility for such omissions. Do not use ALL CAPS in credits.</em></li>
 
             <li><strong>Article 4 (Content Usage Rights and Revenue Sharing)</strong><br>
             ① If the submitted work is published in PAP's digital magazine (website, app, etc.) or print materials (paper magazine, printed publications, etc.), all revenue generated (subscription fees, sales revenue, advertising revenue, etc.) belongs entirely to PAP. Submitters and creative teams cannot claim additional compensation for revenue generated by magazine publications.<br>
             ② If the work is used in secondary processing or derivative commercial activities (advertising campaigns, brand collaborations, licensing, exhibitions, merchandise, etc.) outside the scope of magazine publication and revenue is generated, the net profit from such activities (total revenue minus direct costs) will be shared at a 50:50 ratio between PAP and the creative team.<br>
             ③ Revenue distributed to the creative team will be paid in full to the submitter or team representative. The manner, ratio, and timing of how the team representative distributes the revenue to team members are entirely at the team representative's discretion, and PAP will not be involved in the internal revenue distribution process among team members and assumes no responsibility for it.<br>
             ④ If commercial use through secondary processing occurs, PAP will notify the submitter in writing (including email) in advance.<br>
-            <em style="color:rgba(255,255,255,.3)">Article 4 (Content Usage Rights and Revenue Sharing)<br>
+            <em style="color:rgba(255,255,255,.55)">Article 4 (Content Usage Rights and Revenue Sharing)<br>
             ① All revenue generated from publication of submitted works in PAP's digital magazine (website, app, etc.) or print publications (print magazine, printed publications, etc.), including subscription fees, sales revenue, and advertising revenue, shall belong entirely to PAP. The submitter and creative team may not claim separate compensation for revenue arising from magazine publication.<br>
             ② If the work is used for secondary processing or derivative commercial activities beyond magazine publication (digital and print), such as advertising campaigns, brand collaborations, licensing, exhibitions, or merchandising, the net profit (gross revenue minus direct costs) from such activities shall be split 50:50 between PAP and the creative team.<br>
             ③ The creative team's share of revenue shall be paid in a lump sum to the submitter or team representative. The manner, ratio, and timing in which the team representative distributes such revenue among team members is entirely at the team representative's discretion. PAP shall have no involvement whatsoever in the internal revenue distribution process within the team and assumes no liability in this regard.<br>
@@ -816,50 +816,50 @@ function navigateWithInterstitial(url){
             ① The copyright of the submitted work belongs to the original author. However, the submitter grants PAP exclusive usage rights within the scope specified in these terms.<br>
             ② The submitter warrants that they have legitimate rights to all submitted content (photos, videos, text, etc.) and that such content does not infringe third-party copyrights, right of publicity, trademarks, other intellectual property rights, or personal rights.<br>
             ③ If PAP incurs damages due to infringement of third-party rights, the submitter assumes all responsibility for this.<br>
-            <em style="color:rgba(255,255,255,.3)">Copyright of submitted works remains with the original creator. The submitter grants PAP exclusive usage rights as specified in these terms. The submitter warrants that all content does not infringe any third-party copyrights, portrait rights, trademarks, or other intellectual property rights. The submitter assumes all liability for any damages to PAP resulting from third-party rights infringement.</em></li>
+            <em style="color:rgba(255,255,255,.55)">Copyright of submitted works remains with the original creator. The submitter grants PAP exclusive usage rights as specified in these terms. The submitter warrants that all content does not infringe any third-party copyrights, portrait rights, trademarks, or other intellectual property rights. The submitter assumes all liability for any damages to PAP resulting from third-party rights infringement.</em></li>
 
             <li><strong>Article 6 (Publication Schedule)</strong><br>
             ① Publication of the editorial may take up to 2-3 weeks from the date the submission is approved, and the specific publication schedule may be adjusted according to PAP's editorial calendar.<br>
-            <em style="color:rgba(255,255,255,.3)">Publication takes up to approximately 2-3 weeks from the date of submission approval, subject to PAP's editorial schedule.</em></li>
+            <em style="color:rgba(255,255,255,.55)">Publication takes up to approximately 2-3 weeks from the date of submission approval, subject to PAP's editorial schedule.</em></li>
 
             <li><strong>Article 7 (Brand Inclusion Criteria and Branded Content)</strong><br>
             ① Editorials must include a minimum of 4 different clothing brands.<br>
             ② Editorials that use only a single brand or have the primary purpose of promoting a specific brand are classified as "Branded Content."<br>
             ③ Branded content is subject to an additional publication fee, and the specific amount will be determined through prior consultation with PAP.<br>
             ④ Compliance with the brand inclusion criteria is determined by PAP's editorial team.<br>
-            <em style="color:rgba(255,255,255,.3)">Editorials must include at least 4 different clothing brands. Single-brand or brand-promotional editorials are classified as Branded Content and require a separate posting fee determined through prior consultation with PAP. Compliance with brand inclusion criteria is determined by PAP's editorial team.</em></li>
+            <em style="color:rgba(255,255,255,.55)">Editorials must include at least 4 different clothing brands. Single-brand or brand-promotional editorials are classified as Branded Content and require a separate posting fee determined through prior consultation with PAP. Compliance with brand inclusion criteria is determined by PAP's editorial team.</em></li>
 
             <li><strong>Article 8 (Modifications and Deletions After Publication)</strong><br>
             ① Once an editorial is published on the PAP website and social media, modifications, replacements, or deletions are generally not permitted.<br>
             ② However, in cases where there are significant reasons as follows, such matters may be handled through consultation with PAP: (a) legal disputes or court orders, (b) confirmation of third-party rights infringement, (c) discovery of serious factual errors.<br>
             ③ Requests for modifications or deletions for the above reasons may incur additional processing fees.<br>
-            <em style="color:rgba(255,255,255,.3)">Once published, editorials cannot be modified, replaced, or removed in principle. Exceptions may be made through consultation with PAP only for: (a) legal disputes or court orders, (b) confirmed third-party rights infringement, or (c) critical factual errors. Additional processing fees may apply.</em></li>
+            <em style="color:rgba(255,255,255,.55)">Once published, editorials cannot be modified, replaced, or removed in principle. Exceptions may be made through consultation with PAP only for: (a) legal disputes or court orders, (b) confirmed third-party rights infringement, or (c) critical factual errors. Additional processing fees may apply.</em></li>
 
             <li><strong>Article 9 (Collection and Use of Personal Information)</strong><br>
             ① PAP collects and uses personal information (name, email address, Instagram handle, website URL, etc.) of submitters and team members for the purposes of submission receipt, review, publication, credit attribution, and contact.<br>
             ② Collected personal information will not be used for purposes other than those stated above and will be safely managed in accordance with PAP's privacy policy.<br>
             ③ The submitter confirms that they have obtained consent from team members for the provision of their personal information before submission.<br>
             ④ For inquiries regarding personal information, please contact contact@pap-magazine.com.<br>
-            <em style="color:rgba(255,255,255,.3)">PAP collects and uses personal information (names, email addresses, Instagram handles, website URLs, etc.) for submission review, publication, credit attribution, and communication. Information is managed per PAP's privacy policy and will not be used for other purposes. The submitter confirms that consent has been obtained from all team members whose information is submitted. For inquiries regarding personal information, please contact contact@pap-magazine.com.</em></li>
+            <em style="color:rgba(255,255,255,.55)">PAP collects and uses personal information (names, email addresses, Instagram handles, website URLs, etc.) for submission review, publication, credit attribution, and communication. Information is managed per PAP's privacy policy and will not be used for other purposes. The submitter confirms that consent has been obtained from all team members whose information is submitted. For inquiries regarding personal information, please contact contact@pap-magazine.com.</em></li>
 
             <li><strong>Article 10 (Disclaimer and Limitation of Liability)</strong><br>
             ① PAP does not accept objections to submission review results. Review criteria and results are determined by PAP's editorial team's professional judgment.<br>
             ② PAP is not responsible for service interruptions or data loss due to force majeure events such as natural disasters, system failures, or network errors.<br>
             ③ The submitter is responsible for all disputes and damages arising from violation of these terms.<br>
-            <em style="color:rgba(255,255,255,.3)">PAP does not accept appeals regarding submission review results. Review criteria and results are at the professional discretion of PAP's editorial team. PAP is not liable for service interruptions or data loss due to force majeure, system failures, or network errors. The submitter is responsible for all disputes and damages arising from violations of these terms.</em></li>
+            <em style="color:rgba(255,255,255,.55)">PAP does not accept appeals regarding submission review results. Review criteria and results are at the professional discretion of PAP's editorial team. PAP is not liable for service interruptions or data loss due to force majeure, system failures, or network errors. The submitter is responsible for all disputes and damages arising from violations of these terms.</em></li>
 
             <li><strong>Article 11 (Amendment of Terms)</strong><br>
             ① PAP may amend these terms if there are reasonable causes such as changes in relevant laws or service policies.<br>
             ② Amended terms take effect 7 days after notification on the PAP website.<br>
             ③ If the submitter does not agree to amended terms, they may discontinue submission.<br>
-            <em style="color:rgba(255,255,255,.3)">PAP may modify these terms when reasonable grounds exist, such as changes in applicable laws or service policies. Modified terms take effect 7 days after posting on PAP's website. Submitters who disagree with modified terms may discontinue their submissions.</em></li>
+            <em style="color:rgba(255,255,255,.55)">PAP may modify these terms when reasonable grounds exist, such as changes in applicable laws or service policies. Modified terms take effect 7 days after posting on PAP's website. Submitters who disagree with modified terms may discontinue their submissions.</em></li>
 
             <li><strong>Article 12 (Governing Law and Jurisdiction)</strong><br>
             ① The interpretation and application of these terms are governed by the laws of the Republic of Korea.<br>
             ② All disputes arising from or related to these terms shall be exclusively under the jurisdiction of the Seoul Central District Court as the court of first instance.<br>
-            <em style="color:rgba(255,255,255,.3)">These terms shall be governed by and construed in accordance with the laws of the Republic of Korea. The Seoul Central District Court shall have exclusive jurisdiction over any disputes arising from these terms.</em></li>
+            <em style="color:rgba(255,255,255,.55)">These terms shall be governed by and construed in accordance with the laws of the Republic of Korea. The Seoul Central District Court shall have exclusive jurisdiction over any disputes arising from these terms.</em></li>
           </ol>
-          <p style="margin-top:16px;font-size:11px;color:rgba(255,255,255,.3);text-align:center" data-i18n="termsEffective">Effective: January 1, 2026 | Last Updated: March 1, 2026</p>
+          <p style="margin-top:16px;font-size:11px;color:rgba(255,255,255,.55);text-align:center" data-i18n="termsEffective">Effective: January 1, 2026 | Last Updated: March 1, 2026</p>
         </div>
         <div class="terms-check">
           <input type="checkbox" id="termsAgree">
@@ -908,10 +908,10 @@ function navigateWithInterstitial(url){
         </div>
       </div>
 
-      <p style="font-size:11px;color:rgba(255,255,255,.3);margin-top:16px;line-height:2">
+      <p style="font-size:11px;color:rgba(255,255,255,.55);margin-top:16px;line-height:2">
         <span id="reviewTimeNote">Review: 1-3 business days</span><br>
         After approval, publication takes up to 2-3 weeks<br>
-        You can check real-time status in the <strong style="color:rgba(255,255,255,.5)">MY SUBMISSIONS</strong> tab.
+        You can check real-time status in the <strong style="color:rgba(255,255,255,.55)">MY SUBMISSIONS</strong> tab.
       </p>
     </div>
   </div>
@@ -1119,7 +1119,7 @@ function loadMySubmissions(){
         // submission. Reuses the revision-blue style for visual
         // continuity with the REVISION REQUESTED badge.
         else if(s.status==='pending' && s.resubmitted_at){statusClass='status-revision';statusText='RESUBMITTED';}
-        html+='<div class="sub-item"><div><div class="sub-item-title">'+PAP.sanitize(s.title||'Untitled')+'</div></div><div class="sub-item-date">'+PAP.sanitize(s.created_at||'')+'</div><div class="sub-item-status '+statusClass+'">'+statusText+'</div><div class="sub-item-action" onclick="viewSubmission(\''+s.id+'\')">VIEW</div></div>'+'<div class="sub-item-inline" id="_subDet_'+s.id+'" style="display:none;border:1px solid rgba(255,255,255,.08);border-top:none;padding:20px 22px 24px;background:rgba(255,255,255,.02);font-size:13px;line-height:1.7;color:rgba(255,255,255,.85)"></div>';
+        html+='<div class="sub-item"><div><div class="sub-item-title">'+PAP.sanitize(s.title||'Untitled')+'</div></div><div class="sub-item-date">'+PAP.sanitize(s.created_at||'')+'</div><div class="sub-item-status '+statusClass+'">'+statusText+'</div><div class="sub-item-action" onclick="viewSubmission(\''+s.id+'\')">VIEW</div></div>'+'<div class="sub-item-inline" id="_subDet_'+s.id+'" style="display:none;border:1px solid rgba(255,255,255,.35);border-top:none;padding:20px 22px 24px;background:rgba(255,255,255,.02);font-size:13px;line-height:1.7;color:rgba(255,255,255,.85)"></div>';
       });
       document.getElementById('mySubsList').innerHTML=html;
       _papInlineSubDetails(subs); // 상세 자동 펼침 (2026-07-20 도메니코 지시)
@@ -1161,13 +1161,13 @@ function _svDetailBody(s, p, inModal){
     var revisionBanner=s.status==='revision'?'<div style="margin:0 '+(inModal?'-32px':'0')+' 24px;padding:16px '+(inModal?'32px':'16px')+';background:rgba(100,150,255,.08);border-top:1px solid rgba(100,150,255,.3);border-bottom:1px solid rgba(100,150,255,.3);"><div style="font-size:10px;letter-spacing:.18em;font-weight:700;color:rgba(100,150,255,.9);margin-bottom:8px">'+_apT('revHeader')+'</div><div style="font-size:12px;color:rgba(255,255,255,.85)">'+_apT('revBody')+'</div></div>':'';
 
     return revisionBanner+
-      '<div style="margin-bottom:18px"><span style="display:inline-block;font-size:9px;letter-spacing:.16em;font-weight:700;color:'+accent+';border:1px solid '+accent+';padding:5px 12px;text-transform:uppercase">'+statusText+'</span><span style="margin-left:10px;font-size:11px;color:rgba(255,255,255,.4)">Submitted '+_esc(new Date(s.created_at).toLocaleDateString())+' · '+imageCount+' images</span></div>'+
-      (note?'<div style="margin-bottom:24px;padding:18px;background:rgba(255,255,255,.04);border-left:3px solid '+accent+';"><div style="font-size:10px;letter-spacing:.16em;font-weight:700;color:rgba(255,255,255,.5);margin-bottom:8px">EDITOR\'S NOTE</div><div style="font-size:13px;color:rgba(255,255,255,.85);white-space:pre-line;line-height:1.8">'+_esc(note)+'</div></div>':'')+
-      (coverUrl?'<div style="margin-bottom:18px"><img src="'+_safeUrl(coverUrl)+'" style="width:100%;max-height:360px;object-fit:cover;display:block;border:1px solid rgba(255,255,255,.08)"></div>':'')+
-      (Array.isArray(desc.genre)&&desc.genre.length?'<div style="margin-bottom:14px"><div style="font-size:9px;letter-spacing:.18em;font-weight:700;color:rgba(255,255,255,.4);margin-bottom:6px">GENRE</div><div>'+_esc(desc.genre.join(', '))+'</div></div>':'')+
-      (desc.artistStatement?'<div style="margin-bottom:14px"><div style="font-size:9px;letter-spacing:.18em;font-weight:700;color:rgba(255,255,255,.4);margin-bottom:6px">STATEMENT</div><div style="white-space:pre-line">'+_esc(desc.artistStatement)+'</div></div>':'')+
-      (desc.videoUrl?'<div style="margin-bottom:14px"><div style="font-size:9px;letter-spacing:.18em;font-weight:700;color:rgba(255,255,255,.4);margin-bottom:6px">VIDEO LINK</div><a href="'+_safeUrl(desc.videoUrl)+'" target="_blank" rel="noopener" style="color:rgba(100,150,255,.9);word-break:break-all">'+_esc(desc.videoUrl)+'</a></div>':'')+
-            (s.status==='revision'?'<div style="margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,.08);text-align:center"><a href="?revise='+encodeURIComponent(s.id)+'#step1" style="display:inline-block;background:#fff;color:#000;padding:14px 36px;font-size:11px;font-weight:700;letter-spacing:.16em;text-decoration:none">'+_apT('revBtn')+'</a><div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:10px">'+_apT('revHint')+'</div></div>':'')+
+      '<div style="margin-bottom:18px"><span style="display:inline-block;font-size:9px;letter-spacing:.16em;font-weight:700;color:'+accent+';border:1px solid '+accent+';padding:5px 12px;text-transform:uppercase">'+statusText+'</span><span style="margin-left:10px;font-size:11px;color:rgba(255,255,255,.55)">Submitted '+_esc(new Date(s.created_at).toLocaleDateString())+' · '+imageCount+' images</span></div>'+
+      (note?'<div style="margin-bottom:24px;padding:18px;background:rgba(255,255,255,.04);border-left:3px solid '+accent+';"><div style="font-size:10px;letter-spacing:.16em;font-weight:700;color:rgba(255,255,255,.55);margin-bottom:8px">EDITOR\'S NOTE</div><div style="font-size:13px;color:rgba(255,255,255,.85);white-space:pre-line;line-height:1.8">'+_esc(note)+'</div></div>':'')+
+      (coverUrl?'<div style="margin-bottom:18px"><img src="'+_safeUrl(coverUrl)+'" style="width:100%;max-height:360px;object-fit:cover;display:block;border:1px solid rgba(255,255,255,.35)"></div>':'')+
+      (Array.isArray(desc.genre)&&desc.genre.length?'<div style="margin-bottom:14px"><div style="font-size:9px;letter-spacing:.18em;font-weight:700;color:rgba(255,255,255,.55);margin-bottom:6px">GENRE</div><div>'+_esc(desc.genre.join(', '))+'</div></div>':'')+
+      (desc.artistStatement?'<div style="margin-bottom:14px"><div style="font-size:9px;letter-spacing:.18em;font-weight:700;color:rgba(255,255,255,.55);margin-bottom:6px">STATEMENT</div><div style="white-space:pre-line">'+_esc(desc.artistStatement)+'</div></div>':'')+
+      (desc.videoUrl?'<div style="margin-bottom:14px"><div style="font-size:9px;letter-spacing:.18em;font-weight:700;color:rgba(255,255,255,.55);margin-bottom:6px">VIDEO LINK</div><a href="'+_safeUrl(desc.videoUrl)+'" target="_blank" rel="noopener" style="color:rgba(100,150,255,.9);word-break:break-all">'+_esc(desc.videoUrl)+'</a></div>':'')+
+            (s.status==='revision'?'<div style="margin-top:24px;padding-top:20px;border-top:1px solid rgba(255,255,255,.35);text-align:center"><a href="?revise='+encodeURIComponent(s.id)+'#step1" style="display:inline-block;background:#fff;color:#000;padding:14px 36px;font-size:11px;font-weight:700;letter-spacing:.16em;text-decoration:none">'+_apT('revBtn')+'</a><div style="font-size:10px;color:rgba(255,255,255,.55);margin-top:10px">'+_apT('revHint')+'</div></div>':'')+
             // QA #189 — rejection courtesy block moved out of the email
             // into the submitter's MY SUBMISSIONS modal. Same warm tone the
             // editorial team approved in May 2026.
@@ -1402,13 +1402,13 @@ async function viewSubmission(id){
     bg.onclick=function(e){if(e.target===bg)bg.remove();};
 
     var card=document.createElement('div');
-    card.style.cssText='background:#0a0a0a;border:1px solid rgba(255,255,255,.1);max-width:680px;width:100%;max-height:90vh;overflow-y:auto;padding:32px;color:rgba(255,255,255,.85);font-family:Inter,sans-serif;font-size:13px;line-height:1.7;';
+    card.style.cssText='background:#0a0a0a;border:1px solid rgba(255,255,255,.35);max-width:680px;width:100%;max-height:90vh;overflow-y:auto;padding:32px;color:rgba(255,255,255,.85);font-family:Inter,sans-serif;font-size:13px;line-height:1.7;';
 
     card.innerHTML=
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:18px">'+
-        '<div><div style="font-size:9px;letter-spacing:.2em;font-weight:700;color:rgba(255,255,255,.4);margin-bottom:6px">SUBMISSION</div>'+
+        '<div><div style="font-size:9px;letter-spacing:.2em;font-weight:700;color:rgba(255,255,255,.55);margin-bottom:6px">SUBMISSION</div>'+
         '<div style="font-size:18px;font-weight:600;color:#fff">'+PAP.sanitize(s.title||'Untitled')+'</div></div>'+
-        '<button onclick="document.getElementById(&quot;_mySubModalBg&quot;).remove()" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:24px;cursor:pointer;line-height:1">×</button>'+
+        '<button onclick="document.getElementById(&quot;_mySubModalBg&quot;).remove()" style="background:none;border:none;color:rgba(255,255,255,.55);font-size:24px;cursor:pointer;line-height:1">×</button>'+
       '</div>'+
       _svDetailBody(s, _p, true);
 
@@ -2693,7 +2693,7 @@ function _renderRemoteThumb(parent, url, onRemove){
   div.appendChild(badge);
   var rm = document.createElement('button');
   rm.textContent='×';
-  rm.style.cssText='position:absolute;top:-6px;right:-6px;width:18px;height:18px;background:#000;color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:50%;cursor:pointer;font-size:10px;line-height:1';
+  rm.style.cssText='position:absolute;top:-6px;right:-6px;width:18px;height:18px;background:#000;color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:50%;cursor:pointer;font-size:10px;line-height:1';
   rm.onclick = onRemove;
   div.appendChild(rm);
   parent.appendChild(div);
@@ -3434,7 +3434,7 @@ function _prefillFromMoodboard(){
         if(formArea && !document.getElementById('mbBridgeNotice')){
           var notice = document.createElement('div');
           notice.id = 'mbBridgeNotice';
-          notice.style.cssText = 'background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);padding:14px 18px;margin-bottom:24px;font-size:13px;color:rgba(255,255,255,.85);letter-spacing:.02em';
+          notice.style.cssText = 'background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.35);padding:14px 18px;margin-bottom:24px;font-size:13px;color:rgba(255,255,255,.85);letter-spacing:.02em';
           notice.innerHTML = '✨ <strong>'+ (b.title||'') + '</strong> 무드보드를 기반으로 제안 중입니다. 제목과 컨셉이 자동 입력되었어요.';
           formArea.insertBefore(notice, formArea.firstChild);
         }

@@ -240,7 +240,7 @@ select.form-input option{background:#111;color:#fff}
 
 <!-- Loading State -->
 <div id="pageLoader" style="position:fixed;inset:0;z-index:10000;background:#000;display:flex;align-items:center;justify-content:center;transition:opacity .4s">
-<div style="text-align:center"><div style="font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;letter-spacing:.3em;color:rgba(255,255,255,.4);text-transform:uppercase">PAP</div>
+<div style="text-align:center"><div style="font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;letter-spacing:.3em;color:rgba(255,255,255,.55);text-transform:uppercase">PAP</div>
 <div style="margin-top:12px;width:40px;height:1px;background:rgba(255,255,255,.1);position:relative;overflow:hidden;margin-left:auto;margin-right:auto"><div style="position:absolute;width:50%;height:100%;background:rgba(255,255,255,.5);animation:loaderSlide 1s ease infinite"></div></div></div></div>
 <style>@keyframes loaderSlide{0%{left:-50%}100%{left:100%}}</style>
 <script>window.addEventListener('load',function(){var l=document.getElementById('pageLoader');if(l){l.style.opacity='0';setTimeout(function(){l.remove();},400);}});</script>
@@ -285,7 +285,7 @@ function _showBrandAdInterstitial(ad,callback){
   overlay.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.95);display:flex;align-items:center;justify-content:center;flex-direction:column;opacity:0;transition:opacity .4s;';
   var label=document.createElement('div');
   label.textContent='AD'+(ad.brand?' · '+ad.brand:'');
-  label.style.cssText='position:absolute;top:16px;left:20px;font-size:9px;font-weight:700;letter-spacing:.2em;color:rgba(255,255,255,.35);font-family:Montserrat,sans-serif;z-index:2;';
+  label.style.cssText='position:absolute;top:16px;left:20px;font-size:9px;font-weight:700;letter-spacing:.2em;color:rgba(255,255,255,.55);font-family:Montserrat,sans-serif;z-index:2;';
   overlay.appendChild(label);
   var mediaWrap=document.createElement('div');
   mediaWrap.style.cssText='position:relative;max-width:90vw;max-height:75vh;display:flex;align-items:center;justify-content:center;cursor:pointer;';
@@ -297,7 +297,7 @@ function _showBrandAdInterstitial(ad,callback){
   var skipTexts={ko:'Skip',en:'Skip',it:'Salta',fr:'Passer',es:'Saltar',ja:'スキップ',zh:'跳过'};
   var skipLabel=skipTexts[lang]||skipTexts.en;
   var skip=document.createElement('button');
-  skip.style.cssText='position:absolute;bottom:24px;right:24px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.55);font-size:11px;font-weight:600;letter-spacing:.1em;cursor:pointer;font-family:Montserrat,sans-serif;padding:8px 20px;border-radius:2px;transition:all .2s;z-index:2;';
+  skip.style.cssText='position:absolute;bottom:24px;right:24px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.35);color:rgba(255,255,255,.55);font-size:11px;font-weight:600;letter-spacing:.1em;cursor:pointer;font-family:Montserrat,sans-serif;padding:8px 20px;border-radius:2px;transition:all .2s;z-index:2;';
   skip.onmouseover=function(){this.style.background='rgba(255,255,255,.15)';this.style.color='rgba(255,255,255,.9)';};
   skip.onmouseout=function(){this.style.background='rgba(255,255,255,.1)';this.style.color='rgba(255,255,255,.55)';};
   var _countdown=duration;var _timer=null;
@@ -308,7 +308,7 @@ function _showBrandAdInterstitial(ad,callback){
   var premBadge=document.createElement('a');premBadge.href='/subscribe';
   var premTexts={ko:'Go ad-free',en:'Go ad-free',it:'Senza pubblicità',fr:'Sans publicité',es:'Sin anuncios',ja:'広告なし',zh:'去除广告'};
   premBadge.textContent=premTexts[lang]||premTexts.en;
-  premBadge.style.cssText='position:absolute;bottom:26px;left:24px;font-size:10px;font-weight:600;letter-spacing:.08em;color:rgba(255,255,255,.3);text-decoration:none;font-family:Montserrat,sans-serif;transition:color .2s;z-index:2;';
+  premBadge.style.cssText='position:absolute;bottom:26px;left:24px;font-size:10px;font-weight:600;letter-spacing:.08em;color:rgba(255,255,255,.55);text-decoration:none;font-family:Montserrat,sans-serif;transition:color .2s;z-index:2;';
   premBadge.onmouseover=function(){this.style.color='rgba(255,255,255,.7)';};
   premBadge.onmouseout=function(){this.style.color='rgba(255,255,255,.3)';};
   overlay.appendChild(premBadge);
@@ -335,9 +335,9 @@ function _showPremiumUpsellInterstitial(callback){
   overlay.id='premiumInterstitial';
   overlay.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .4s;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);';
   var box=document.createElement('div');box.style.cssText='text-align:center;max-width:420px;padding:48px 32px;';
-  var tag=document.createElement('div');tag.textContent=t.tag;tag.style.cssText='font-size:10px;font-weight:800;letter-spacing:.3em;color:rgba(255,255,255,.4);margin-bottom:24px;';
+  var tag=document.createElement('div');tag.textContent=t.tag;tag.style.cssText='font-size:10px;font-weight:800;letter-spacing:.3em;color:rgba(255,255,255,.55);margin-bottom:24px;';
   var h=document.createElement('h2');h.textContent=t.title;h.style.cssText='font-size:22px;font-weight:800;letter-spacing:.06em;line-height:1.5;color:#fff;margin-bottom:16px;white-space:pre-line;font-family:Montserrat,sans-serif;';
-  var desc=document.createElement('p');desc.textContent=t.desc;desc.style.cssText='font-size:12px;color:rgba(255,255,255,.5);line-height:1.9;margin-bottom:32px;white-space:pre-line;font-family:Montserrat,sans-serif;';
+  var desc=document.createElement('p');desc.textContent=t.desc;desc.style.cssText='font-size:12px;color:rgba(255,255,255,.55);line-height:1.9;margin-bottom:32px;white-space:pre-line;font-family:Montserrat,sans-serif;';
   var btn=document.createElement('a');btn.href='/subscribe';btn.textContent=t.btn;btn.style.cssText='display:inline-block;padding:14px 40px;background:#fff;color:#000;font-size:11px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;text-decoration:none;font-family:Montserrat,sans-serif;transition:all .3s;border:1.5px solid #fff;';
   btn.onmouseover=function(){this.style.background='transparent';this.style.color='#fff';};
   btn.onmouseout=function(){this.style.background='#fff';this.style.color='#000';};
@@ -378,9 +378,9 @@ function navigateWithInterstitial(url){
 
   <!-- PROCESS FLOW -->
   <div class="process-flow" style="display:grid;grid-template-columns:repeat(3,1fr);gap:2px;margin-bottom:60px">
-    <div style="background:rgba(255,255,255,.03);padding:28px 24px"><div style="font-size:28px;font-weight:900;color:rgba(255,255,255,.08);margin-bottom:12px;line-height:1">01</div><div style="font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:6px" data-i18n="proc1Label">REQUEST</div><div style="font-size:11px;color:rgba(255,255,255,.3);line-height:1.8" data-i18n="proc1Desc">Submit portfolios, Instagram, and mood board</div></div>
-    <div style="background:rgba(255,255,255,.03);padding:28px 24px"><div style="font-size:28px;font-weight:900;color:rgba(255,255,255,.08);margin-bottom:12px;line-height:1">02</div><div style="font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:6px" data-i18n="proc2Label">REVIEW</div><div style="font-size:11px;color:rgba(255,255,255,.3);line-height:1.8" data-i18n="proc2Desc">PAP editors evaluate capabilities and direction</div></div>
-    <div style="background:rgba(255,255,255,.03);padding:28px 24px"><div style="font-size:28px;font-weight:900;color:rgba(255,255,255,.08);margin-bottom:12px;line-height:1">03</div><div style="font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:6px" data-i18n="proc3Label">RESULT</div><div style="font-size:11px;color:rgba(255,255,255,.3);line-height:1.8" data-i18n="proc3Desc">Pull-Letter issued or reasons for decline provided</div></div>
+    <div style="background:rgba(255,255,255,.03);padding:28px 24px"><div style="font-size:28px;font-weight:900;color:rgba(255,255,255,.55);margin-bottom:12px;line-height:1">01</div><div style="font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:6px" data-i18n="proc1Label">REQUEST</div><div style="font-size:11px;color:rgba(255,255,255,.55);line-height:1.8" data-i18n="proc1Desc">Submit portfolios, Instagram, and mood board</div></div>
+    <div style="background:rgba(255,255,255,.03);padding:28px 24px"><div style="font-size:28px;font-weight:900;color:rgba(255,255,255,.55);margin-bottom:12px;line-height:1">02</div><div style="font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:6px" data-i18n="proc2Label">REVIEW</div><div style="font-size:11px;color:rgba(255,255,255,.55);line-height:1.8" data-i18n="proc2Desc">PAP editors evaluate capabilities and direction</div></div>
+    <div style="background:rgba(255,255,255,.03);padding:28px 24px"><div style="font-size:28px;font-weight:900;color:rgba(255,255,255,.55);margin-bottom:12px;line-height:1">03</div><div style="font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:6px" data-i18n="proc3Label">RESULT</div><div style="font-size:11px;color:rgba(255,255,255,.55);line-height:1.8" data-i18n="proc3Desc">Pull-Letter issued or reasons for decline provided</div></div>
   </div>
 
   <!-- ACCESS GATE - FULL PAGE OVERLAY -->
@@ -414,7 +414,7 @@ function navigateWithInterstitial(url){
     <div class="form-group"><label class="form-label"><span data-i18n="labelStPortfolio">Portfolio Site</span> <span class="required">*</span></label><input type="url" class="form-input" id="stPortfolio" placeholder="https://..."><div class="field-error" id="err-stPortfolio"></div></div>
 
     <!-- Videographer is optional — fill only if a videographer is part of the team -->
-    <div class="form-section-title" style="margin-top:40px" data-i18n="secVideographer">VIDEOGRAPHER INFO <span style="font-size:9px;font-weight:600;color:rgba(255,255,255,.4);letter-spacing:.12em;margin-left:6px" data-i18n="optional">(OPTIONAL)</span></div>
+    <div class="form-section-title" style="margin-top:40px" data-i18n="secVideographer">VIDEOGRAPHER INFO <span style="font-size:9px;font-weight:600;color:rgba(255,255,255,.55);letter-spacing:.12em;margin-left:6px" data-i18n="optional">(OPTIONAL)</span></div>
     <div class="form-row">
       <div class="form-group"><label class="form-label" data-i18n="labelVgName">Videographer Name</label><input type="text" class="form-input" id="vgName" placeholder="Full Name"></div>
       <div class="form-group"><label class="form-label" data-i18n="labelVgInsta">Instagram</label><input type="text" class="form-input" id="vgInsta" placeholder="@username"></div>
@@ -448,7 +448,7 @@ function navigateWithInterstitial(url){
           <svg viewBox="0 0 36 36" fill="none"><path d="M14 4h12l8 8v18a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4V8a4 4 0 0 1 4-4h4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 22h8M14 26h8" stroke-width="2" stroke-linecap="round"/></svg>
         </div>
         <div class="upload-text" id="proposalDropText"><strong data-i18n="uploadClick">Click</strong> <span data-i18n="proposalUploadHint">to attach your 촬영시안 PDF</span></div>
-        <div class="upload-hint" data-i18n="proposalSpec">PDF only · max 50MB</div>
+        <div class="upload-hint" data-i18n="proposalSpec">PDF only · max 20MB</div>
       </div>
       <div class="field-error" id="err-proposal"></div>
       <div class="form-hint" data-i18n="proposalHelp">시안에는 촬영 컨셉, 룩별 무드, 일정, 예산, 팀 구성 등을 포함해주세요. 시안이 자세할수록 검토가 빨라집니다.</div>
@@ -478,7 +478,7 @@ function navigateWithInterstitial(url){
   <!-- WHAT IS PULL-LETTER -->
   <div class="fl-info">
     <div class="fl-info-title" data-i18n="infoTitle">WHAT IS A PULL-LETTER?</div>
-    <p class="pl-info-text" style="font-size:13px;color:rgba(255,255,255,.45);line-height:2.2;max-width:600px" data-i18n="infoText">A Pull-Letter is an official letter issued by PAP Magazine after reviewing a creator's capabilities and shoot direction.</p>
+    <p class="pl-info-text" style="font-size:13px;color:rgba(255,255,255,.55);line-height:2.2;max-width:600px" data-i18n="infoText">A Pull-Letter is an official letter issued by PAP Magazine after reviewing a creator's capabilities and shoot direction.</p>
   </div>
 
 </main>
@@ -497,7 +497,7 @@ ko:{
   gateTitle:'PREMIUM 회원 전용',gateDesc:'이 서비스는 Premium 구독 회원만 이용할 수 있습니다.',gateTier:'프리미엄 요금제: $9.49/월 · 연간 $79.99',gateLogin:'로그인',gateUpgrade:'Premium 구독하기',
   secPhotographer:'포토그래퍼 정보',labelPhName:'포토그래퍼명',labelPhInsta:'인스타그램',labelPhPortfolio:'포트폴리오 사이트',
   secVideographer:'비디오그래퍼 정보',optional:'(선택)',labelVgName:'비디오그래퍼명',labelVgInsta:'인스타그램',labelVgPortfolio:'포트폴리오 사이트',vgHint:'영상 촬영이 포함되면 비디오그래퍼 정보를 입력하세요. 사진만 촬영이면 비워두세요.',
-  secProposal:'촬영시안 (PDF)',labelProposal:'촬영시안 PDF 업로드',proposalUploadHint:'클릭해서 촬영시안 PDF 첨부',proposalSpec:'PDF 전용 · 최대 50MB',proposalHelp:'시안에는 촬영 컨셉, 룩별 무드, 일정, 예산, 팀 구성 등을 포함해주세요. 시안이 자세할수록 검토가 빨라집니다.',
+  secProposal:'촬영시안 (PDF)',labelProposal:'촬영시안 PDF 업로드',proposalUploadHint:'클릭해서 촬영시안 PDF 첨부',proposalSpec:'PDF 전용 · 최대 20MB',proposalHelp:'시안에는 촬영 컨셉, 룩별 무드, 일정, 예산, 팀 구성 등을 포함해주세요. 시안이 자세할수록 검토가 빨라집니다.',
   secStylist:'스타일리스트 정보',labelStName:'스타일리스트명',labelStInsta:'인스타그램',labelStPortfolio:'포트폴리오 사이트',
   secContact:'연락처 정보',labelContactName:'이름',labelContactEmail:'이메일',
   secMoodboard:'촬영 방향성 / 무드보드',labelMoodboard:'무드보드 파일 업로드',uploadClick:'클릭',uploadOr:'또는 파일을 드래그하세요',uploadSpec:'JPG, PNG, PDF, PPT · 파일당 최대 25MB',moodboardHint:'무드보드, 레퍼런스 이미지, 콘셉트 자료를 첨부해주세요.',
@@ -649,6 +649,7 @@ function _getValText(key,fallback){
     invalidInsta:{ko:'@로 시작하는 인스타그램 계정을 입력해주세요',en:'Enter an Instagram handle starting with @',it:"Inserisci un handle Instagram che inizi con @",fr:"Entrez un identifiant Instagram commençant par @",es:'Ingrese un handle de Instagram que comience con @',ja:'@から始まるInstagramハンドルを入力してください',zh:'请输入以@开头的Instagram用户名',ru:'Введите Instagram-аккаунт, начинающийся с @'},
     noFiles:{ko:'무드보드 파일을 1개 이상 업로드해주세요',en:'Please upload at least one mood board file',it:'Carica almeno un file mood board',fr:'Veuillez télécharger au moins un fichier mood board',es:'Cargue al menos un archivo de mood board',ja:'ムードボードファイルを1つ以上アップロードしてください',zh:'请至少上传一个情绪板文件',ru:'Загрузите хотя бы один файл мудборда'},
     noProposal:{ko:'촬영시안 PDF를 첨부해주세요',en:'Please attach the shoot proposal PDF',it:'Allega il PDF della proposta di shooting',fr:'Veuillez joindre le PDF de la proposition de shoot',es:'Adjunte el PDF de la propuesta de shoot',ja:'撮影シアン PDF を添付してください',zh:'请附上拍摄方案 PDF',ru:'Прикрепите PDF с предложением по съёмке'},
+    proposalTooLarge:{ko:'PDF 파일은 20MB 이하만 업로드할 수 있습니다',en:'The PDF must be 20MB or smaller',it:'Il PDF deve essere di 20MB o meno',fr:'Le PDF doit faire 20 Mo ou moins',es:'El PDF debe pesar 20MB o menos',ja:'PDFは20MB以下にしてください',zh:'PDF 文件需小于 20MB',ru:'PDF должен быть не больше 20 МБ'},
     proposalNotPdf:{ko:'PDF 형식의 파일만 업로드 가능합니다',en:'Only PDF files are accepted',it:'Sono accettati solo file PDF',fr:'Seuls les fichiers PDF sont acceptés',es:'Solo se aceptan archivos PDF',ja:'PDFファイルのみアップロード可能です',zh:'只接受 PDF 文件',ru:'Принимаются только PDF-файлы'},
     nameOnlyInvalid:{ko:'이름 칸은 영문(A–Z, a–z), 숫자, 공백, . - \' 만 입력 가능합니다',en:'Name fields accept English letters, digits, space, . - \' only',it:'I campi nome accettano solo lettere inglesi, cifre, spazio, . - \'',fr:'Les champs nom n\'acceptent que les lettres anglaises, chiffres, espace, . - \'',es:'Los campos de nombre solo aceptan letras inglesas, dígitos, espacio, . - \'',ja:'名前欄は英字 (A–Z, a–z)・数字・空白・. - \' のみ入力可能です',zh:'姓名栏仅接受英文字母、数字、空格、. - \'',ru:'В полях имени допустимы только латинские буквы, цифры, пробел, . - \''},
     premiumRequired:{ko:'Premium 구독 회원만 이용할 수 있는 기능입니다',en:'This feature is available only for Premium subscribers',it:'Funzione disponibile solo per abbonati Premium',fr:'Fonctionnalité réservée aux abonnés Premium',es:'Función disponible solo para suscriptores Premium',ja:'Premium会員限定の機能です',zh:'此功能仅限Premium订阅用户使用',ru:'Функция доступна только для подписчиков Premium'}
@@ -736,6 +737,11 @@ async function submitFL(){
     var pErr2=document.getElementById('err-proposal');
     if(pErr2){pErr2.textContent=_getValText('proposalNotPdf');pErr2.classList.add('visible');}
     valid=false;
+  } else if(proposalFile.size > PROPOSAL_MAX_BYTES){
+    // 선택 시점에 이미 걸러지지만, 제출 직전에도 확인한다.
+    var pErr3=document.getElementById('err-proposal');
+    if(pErr3){pErr3.textContent=_getValText('proposalTooLarge');pErr3.classList.add('visible');}
+    valid=false;
   }
 
   // Name-only check (English alphabet/digits/space/. - ' for name fields)
@@ -776,6 +782,7 @@ async function submitFL(){
 }
 
 // Proposal PDF preview/clear handler — invoked when user picks a file
+var PROPOSAL_MAX_BYTES = 20*1024*1024;   // 촬영시안 PDF 상한 (서버와 동일)
 function _onProposalSelected(files){
   var f = files && files[0];
   var txt = document.getElementById('proposalDropText');
@@ -783,6 +790,16 @@ function _onProposalSelected(files){
   var pz = document.getElementById('proposalZone');
   if(pErr){ pErr.textContent=''; pErr.classList.remove('visible'); }
   if(pz) pz.style.borderColor = '';
+  // 2026-07-21 (도메니코 지시) — 촬영시안 PDF 는 20MB 이하.
+  // 기존엔 타입만 보고 용량 검증이 아예 없어서, 큰 파일이 업로드 단계까지
+  // 갔다가 서버에서 잘렸다. 고르는 즉시 알려주는 편이 친절하다.
+  if(f && f.size > PROPOSAL_MAX_BYTES){
+    if(pErr){ pErr.textContent=_getValText('proposalTooLarge'); pErr.classList.add('visible'); }
+    if(pz) pz.style.borderColor='rgba(255,80,80,.7)';
+    if(txt) txt.innerHTML = '<strong>'+ (f.name||'proposal.pdf') +'</strong> · '+ (f.size/1024/1024).toFixed(1) +'MB';
+    try{ files && (document.getElementById('proposalInput').value=''); }catch(_){}
+    return;
+  }
   if(txt && f){
     txt.innerHTML = '<strong>'+ (f.name||'proposal.pdf') +'</strong> · '+ (f.size/1024/1024).toFixed(1) +'MB';
   }

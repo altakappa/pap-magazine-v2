@@ -60,11 +60,17 @@ for (const rel of TARGETS) {
   console.log(`\n=== ${path.basename(rel)} ===`);
   t('인라인 <style> 을 찾았다', css.length > 0);
 
-  // 텍스트
-  const texts = [...css.matchAll(/color:\s*rgba\(255,\s*255,\s*255,\s*([\d.]+)\)/g)]
+  // ⚠ 2026-07-21 범위 확대 — 처음엔 <style> 블록만 검사했는데, 그건 내가
+  // 고친 범위와 똑같아서 "미달 0개"가 나와도 실제 화면은 그대로였다.
+  // 서브미션 페이지는 HTML 인라인 style="" 속성과 JS 로 만드는 요소에도
+  // 색상이 58곳 박혀 있었고 QA 스크린샷의 흐린 부분이 전부 거기였다.
+  // 검증 범위를 수정 범위에 맞추면 테스트가 아무것도 못 막는다 —
+  // 이제 파일 전체를 본다.
+  const texts = [...src.matchAll(/color:\s*rgba\(255,\s*255,\s*255,\s*([\d.]+)\)/g)]
     .map((m) => parseFloat(m[1]));
   const lowText = texts.filter((a) => a < TEXT_MIN);
-  t(`텍스트 ${texts.length}개 전부 α≥${TEXT_MIN} (AA 이상)`, lowText.length === 0,
+  t(`텍스트 ${texts.length}개 전부 α≥${TEXT_MIN} (파일 전체 — style+인라인+JS)`,
+    lowText.length === 0,
     lowText.length ? '미달: ' + [...new Set(lowText)].sort().join(', ') : '');
 
   // 보더 — 장식 요소 제외
