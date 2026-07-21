@@ -1291,6 +1291,16 @@ function _submissionTypeOf(s){
   if(typeof d==='string'){ try{ d=JSON.parse(d); }catch(_){ return ''; } }
   return (d&&d.submissionType)||'';
 }
+function _isFeeRequiredType(t){
+  var k=String(t==null?'':t).trim().toLowerCase().replace(/[\s-]+/g,'_');
+  return k==='branded'||k==='paid_few_looks'||k==='few_looks'||k==='fewlooks';
+}
+// 게재료 미결제 서브미션의 에디토리얼 편집 진입 가드 (정책 A, 2026-07-21 QA).
+// 하드 차단이 아니라 경고 — 오프라인/사전협의 결제를 관리자가 확인했으면 진행 가능.
+function openEditorialEditorGuarded(editorialId){
+  if(!window.confirm('\u26a0\ufe0f 이 서브미션은 게재료(브랜디드/유료)가 미결제 상태입니다.\n결제 완료가 확인되지 않았습니다. 그래도 에디토리얼 편집을 진행하시겠습니까?')) return;
+  openEditorialEditor(editorialId);
+}
 
 // ─── PAYMENT-STATUS BADGE (표시 전용 / display-only) — 2b (2026-07-19) ────────
 // 유료/브랜디드 서브미션 기본료의 결제 상태를 SURFACE 만 한다 (컬럼 payment_status).
@@ -1302,22 +1312,27 @@ function _submissionTypeOf(s){
 // paidAmount(유로 cents, 정수) 를 병기해 도메니코가 유형 뱃지의 기대금액
 // (예: 브랜디드 €720)과 실결제액을 비교, 과소결제(€345만 결제 등)를 인지할 수 있게.
 // cents→euros 는 /100, 정수 유로로 표기. 값 없거나 비정상이면 금액 생략(기존 라벨).
-function _paymentStatusBadge(paymentStatus, paidAmount){
-  var map={
-    paid:            { bg:'rgba(100,200,150,.14)', bd:'rgba(100,200,150,.5)', fg:'rgba(140,230,180,.98)', label:'결제완료·게재대기' },
-    awaiting_payment:{ bg:'rgba(201,168,106,.14)', bd:'rgba(201,168,106,.5)', fg:'rgba(220,190,130,.98)', label:'결제대기' }
-  };
-  var info=map[paymentStatus];
-  if(!info) return '';
-  var label=info.label;
-  if(paymentStatus==='paid'){
-    var cents=Number(paidAmount);
-    if(isFinite(cents) && cents>0){
-      var euros=Math.round(cents/100);
-      label='결제완료 · €'+euros+' · 게재대기';
-    }
+function _paymentStatusBadge(paymentStatus, paidAmount, submissionType){
+  function _span(bg,bd,fg,label,title){
+    return '<span title="'+(title||'결제 상태 (표시 전용)')+'" style="display:inline-block;font-size:10px;font-weight:700;letter-spacing:.02em;padding:2px 8px;border-radius:3px;background:'+bg+';border:1px solid '+bd+';color:'+fg+'">'+label+'</span>';
   }
-  return '<span title="결제 상태 (표시 전용)" style="display:inline-block;font-size:10px;font-weight:700;letter-spacing:.02em;padding:2px 8px;border-radius:3px;background:'+info.bg+';border:1px solid '+info.bd+';color:'+info.fg+'">'+label+'</span>';
+  if(paymentStatus==='paid'){
+    var cents=Number(paidAmount); var label='결제완료 · 게재대기';
+    if(isFinite(cents) && cents>0){ label='결제완료 · \u20ac'+Math.round(cents/100)+' · 게재대기'; }
+    return _span('rgba(100,200,150,.14)','rgba(100,200,150,.5)','rgba(140,230,180,.98)',label);
+  }
+  // 유료/브랜디드인데 아직 미결제 → 관리자 경고 (정책 A, 2026-07-21 QA)
+  if(_isFeeRequiredType(submissionType)){
+    return _span('rgba(220,80,80,.16)','rgba(220,80,80,.6)','rgba(240,150,150,.98)','\u26a0 미결제','게재료 미결제 — 편집 전 결제 확인 필요');
+  }
+  if(paymentStatus==='awaiting_payment'){
+    return _span('rgba(201,168,106,.14)','rgba(201,168,106,.5)','rgba(220,190,130,.98)','결제대기');
+  }
+  var _t=String(submissionType==null?'':submissionType).trim().toLowerCase();
+  if(_t==='free'){
+    return _span('rgba(255,255,255,.05)','rgba(255,255,255,.16)','rgba(255,255,255,.5)','결제 불필요');
+  }
+  return '';
 }
 
 function populateReviewModal(submission){
@@ -1344,7 +1359,7 @@ function populateReviewModal(submission){
     _hdr.appendChild(_b);
   }
   // Payment-status badge (표시 전용) — 유료/브랜디드 기본료 결제 상태 + 실결제액. 옆에 나란히.
-  var _payBadge=_paymentStatusBadge(submission.payment_status, submission.paid_amount);
+  var _payBadge=_paymentStatusBadge(submission.payment_status, submission.paid_amount, desc.submissionType);
   if(_payBadge){
     var _pb=document.createElement('span');
     _pb.style.marginLeft='8px';
@@ -2053,7 +2068,13 @@ async function loadSubmissions(statusFilter, opts){
         // "에디토리얼 보기" (informational, already published);
         // 최종승인 (still draft) → "에디토리얼 편집" (work in progress).
         var btnLabel = ds === 'uploaded' ? '에디토리얼 보기' : '에디토리얼 편집';
+        // 게재료 미결제 게이트 (정책 A, 2026-07-21 QA) — 유료/브랜디드 미결제면 편집 진입에 경고
+        var _unpaidFee = _isFeeRequiredType(_submissionTypeOf(s)) && s.payment_status !== 'paid';
+        if(ds !== 'uploaded' && _unpaidFee){
+        actionBtns += ' <button class="btn btn-sm btn-primary" style="border-color:#dc2626;color:#fca5a5" onclick="openEditorialEditorGuarded(\''+editorialId+'\')" title="게재료 미결제 — 클릭 시 경고 후 진행">\u26a0 '+btnLabel+'</button>';
+        } else {
         actionBtns += ' <button class="btn btn-sm btn-primary" onclick="openEditorialEditor(\''+editorialId+'\')" title="연결된 에디토리얼 편집 화면으로 이동">'+btnLabel+'</button>';
+        }
       }
       // QA #211 — rejected rows surface days-to-auto-purge + recover button.
       // Hard delete happens 30 days after rejected_at via a daily cron;
@@ -2076,7 +2097,7 @@ async function loadSubmissions(statusFilter, opts){
       // / branded submissions stand out; free & 구버전(값 없음) rows show nothing.
       var typeBadge=_submissionTypeBadge(_submissionTypeOf(s));
       // Payment-status badge (표시 전용) — 유형 뱃지 아래에 함께 노출 (+실결제액).
-      var payBadge=_paymentStatusBadge(s.payment_status, s.paid_amount);
+      var payBadge=_paymentStatusBadge(s.payment_status, s.paid_amount, _submissionTypeOf(s));
       var badgeStack=(typeBadge||payBadge)?'<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">'+typeBadge+payBadge+'</div>':'';
       tb.innerHTML+='<tr><td class="td-title" onclick="openModal(\''+s.id+'\')">'+esc(s.title)+'</td><td>'+esc(s.submitterName||s.submitterEmail||'—')+'</td><td><span class="badge '+planCls+'">'+planLabel+'</span></td><td>'+looks+'</td><td>'+fmtDate(s.created_at)+'</td><td><span class="badge '+statusCls+'">'+statusLabel+'</span>'+rejectedInfo+badgeStack+'</td><td>'+actionBtns+'</td></tr>';
     });
