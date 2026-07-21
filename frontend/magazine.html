@@ -558,100 +558,13 @@ footer a:hover{color:#fff}
 
 </div><!-- /magIssuesFallback -->
 
-<!-- QA #317 — API 로부터 발행호 목록을 로드해 magIssuesDynamic 에 주입.
-     성공 시 하드코딩 fallback 을 숨기고, 실패 시 fallback 을 유지 (backward-compat).
-     연도별 섹션 그룹핑 + 카드 마크업 은 하드코딩 UI 와 동일한 CSS 클래스 사용. -->
-<script>
-(function(){
-  var apiBase = (window.PAP_API_BASE || '/api').replace(/\/$/, '');
-  function esc(s){ var d=document.createElement('div'); d.textContent=s||''; return d.innerHTML; }
-  function escAttr(s){ return String(s||'').replace(/"/g,'&quot;'); }
-  function renderCard(iss){
-    var cover = iss.cover_image || '';
-    var title = iss.title || '';
-    var alt = iss.month_label || title;
-    var monthLabel = iss.month_label || '';
-    var edCount = (iss.editorial_count != null) ? iss.editorial_count : 0;
-    var issueNum = iss.issue_number ? String(iss.issue_number).padStart(2,'0') : '--';
-    var linkAttr = iss.link_url ? ('data-href="' + escAttr(iss.link_url) + '"') : '';
-    // 2026-07-11 — 월별 발행호(link_url 없음)도 in-page 뷰어(openModal→openPreview)로
-    // 열리도록 클릭을 상시 활성화. 게이트 판별용 연/월 data 속성을 카드에 노출한다.
-    // 레거시 "VOL. N" 볼륨은 분기(data-quarter), 월별 호는 data-month.
-    var clickAttr = 'onclick="openModal(this)"';
-    var gateAttr = '';
-    if (iss.issue_year && iss.issue_month) {
-      var isVol = /^\s*VOL\.?\s*\d+/i.test(title);
-      gateAttr = ' data-year="' + escAttr(iss.issue_year) + '"'
-        + (isVol
-            ? ' data-quarter="' + escAttr(Math.ceil(Number(iss.issue_month) / 3)) + '"'
-            : ' data-month="' + escAttr(iss.issue_month) + '"');
-    }
-    var latestBadge = iss.is_latest
-      ? '<span class="latest-badge">LATEST</span>'
-      : (monthLabel ? '<span class="mo-badge">' + esc(monthLabel) + '</span>' : '');
-    return ''
-      + '<div ' + linkAttr + gateAttr + ' class="card" ' + clickAttr + '>'
-      +   '<div class="cover">'
-      +     '<img loading="lazy" src="' + escAttr(cover) + '" alt="' + escAttr(alt) + '">'
-      +     '<div class="covlay">' + latestBadge
-      +       '<div class="cov-bot">'
-      +         '<div class="cov-title">' + esc(title) + '</div>'
-      +         '<div class="cov-ct">' + esc(edCount) + ' EDITORIALS</div>'
-      +       '</div>'
-      +     '</div>'
-      +     '<div class="hov"><div class="rd">READ</div></div>'
-      +   '</div>'
-      +   '<div class="meta">'
-      +     '<span class="vol">ISSUE #' + esc(issueNum) + '</span>'
-      +     '<span class="dt">' + esc(monthLabel) + '</span>'
-      +   '</div>'
-      + '</div>';
-  }
-  function renderYearSection(year, items){
-    var count = items.length;
-    var cards = items.map(renderCard).join('');
-    return ''
-      + '<section class="issues">'
-      +   '<div class="sec-head"><h2 class="sec-title">' + esc(year) + '</h2>'
-      +     '<span class="sec-count">' + esc(count) + ' ISSUE' + (count === 1 ? '' : 'S') + '</span></div>'
-      +   '<div class="grid">' + cards + '</div>'
-      + '</section>';
-  }
-  fetch(apiBase + '/magazine-issues', { credentials: 'omit' })
-    .then(function(r){ if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-    .then(function(json){
-      var list = (json && json.data) || [];
-      if (!list.length) return;
-      // 연도별 그룹핑 (API 는 이미 issue_year DESC, sort_order DESC 로 정렬).
-      var byYear = {};
-      var years = [];
-      list.forEach(function(iss){
-        var y = iss.issue_year || 0;
-        if (!byYear[y]){ byYear[y] = []; years.push(y); }
-        byYear[y].push(iss);
-      });
-      years.sort(function(a,b){ return b - a; });
-      var html = '';
-      years.forEach(function(y, i){
-        html += renderYearSection(y, byYear[y]);
-        if (i < years.length - 1){
-          html += '<div class="year-divider"><div class="year-divider-line"></div></div>';
-        }
-      });
-      var dyn = document.getElementById('magIssuesDynamic');
-      var fb  = document.getElementById('magIssuesFallback');
-      if (dyn){
-        dyn.innerHTML = html;
-        dyn.style.display = 'block';
-      }
-      if (fb) fb.style.display = 'none';
-    })
-    .catch(function(err){
-      // 실패 시 하드코딩 fallback 그대로 유지 (조용히).
-      if (typeof console !== 'undefined') console.warn('[magazine] API load failed, using fallback:', err && err.message);
-    });
-})();
-</script>
+<!-- 2026-07-21 — QA #317 동적 발행호 렌더러 제거.
+     이 스크립트는 /magazine-issues 를 받아 "연도별 아카이브" 섹션을 그렸는데,
+     아래 '분기 볼륨 체계 v2' 스크립트가 이미 같은 볼륨을 VOLUMES 섹션에
+     그리고 있어 같은 내용이 화면에 두 번 나왔다(실측: VOLUMES 31장 +
+     연도별 30장). 발행호는 VOLUMES 한 곳에서만 보여준다.
+     ※ magIssuesDynamic 컨테이너는 위에 남겨두되 비어 있다(다른 스크립트가
+       참조하지 않음을 확인). -->
 
 <div class="sub-cta">
   <h3>Unlock the Full Archive</h3>
