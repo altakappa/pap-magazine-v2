@@ -66,8 +66,8 @@ function _openAllFilmsInner(){
     card.setAttribute('data-cats',(f.cat||'').toLowerCase());
     card.setAttribute('data-idx',i);
     card.onclick=function(e){ if(e&&e.preventDefault)e.preventDefault(); openFilmDetail(i); };
-    var dateStr=f.d?f.d.substring(0,10):'';
-    card.innerHTML='<div class="film-all-thumb"><img src="'+f.th+'" alt="'+escapeHtml(f.t)+'" loading="lazy" onerror="edImgError(this)"><div class="film-play-icon"><svg viewBox="0 0 24 24" fill="#fff" width="32" height="32"><path d="M8 5v14l11-7z"/></svg></div></div><div class="film-all-info"><div class="film-all-cat">'+(f.cat||'FILM').toUpperCase()+' · '+dateStr+'</div><div class="film-all-title">'+escapeHtml(f.t)+'</div></div>';
+    // 2026-07-21 QA(전역 통일) — 공통 papFmtMeta 사용
+    card.innerHTML='<div class="film-all-thumb"><img src="'+f.th+'" alt="'+escapeHtml(f.t)+'" loading="lazy" onerror="edImgError(this)"><div class="film-play-icon"><svg viewBox="0 0 24 24" fill="#fff" width="32" height="32"><path d="M8 5v14l11-7z"/></svg></div></div><div class="film-all-info"><div class="film-all-cat">'+papFmtMeta(f.cat||'Film', f.d)+'</div><div class="film-all-title">'+escapeHtml(f.t)+'</div></div>';
     grid.appendChild(card);
   });
   count.textContent=filmAllData.length+' FILMS';
@@ -139,8 +139,8 @@ function _openFilmDetailInner(idx){
     if (typeof console !== 'undefined') console.warn('[film] invalid youtube_id, skipping embed:', f && f.yt);
   }
   document.getElementById('filmDetailTitle').textContent=f.t||'';
-  var catStr=(f.cat||'Film');
-  if(f.d) catStr+=' · '+f.d;
+  // 2026-07-21 QA(전역 통일) — 공통 papFmtMeta 사용
+  var catStr=papFmtMeta(f.cat||'Film', f.d);
   document.getElementById('filmDetailCat').textContent=catStr;
   var credEl=document.getElementById('filmDetailCredits');
   if(credEl){

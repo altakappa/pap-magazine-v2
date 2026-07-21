@@ -89,7 +89,7 @@ function _openAllArticlesInner(){
     // QA(2026-07) #8 — 목록 카드 발행일도 홈과 동일한 "DD Mon YYYY" 로 통일
     // (기존 ISO "2026-07-12" → 12 Jul 2026). papFmtDate 는 pap-utils.js 공용.
     // 2026-07-20 QA 표기통일 — 공통 papFmtMeta 사용 (Title - DD Mon YYYY)
-    var metaStr=(typeof papFmtMeta==='function')?papFmtMeta(a.cat, a.d):((a.cat||'ARTICLE').toUpperCase()+(a.d?' · '+a.d.substring(0,10):''));
+    var metaStr=papFmtMeta(a.cat, a.d);
     // QA(2026-07) #30 — 목록 카드도 현재 언어에 맞는 제목/부제를 쓴다.
     // 기존엔 a.t(원문)를 그대로 박아, 언어를 바꿔도 목록 제목이 한국어로 남았다.
     var cTitle=_papLocTitle(a), cSub=_papLocSub(a);
@@ -523,7 +523,7 @@ function _renderArticleDetail(a,det){
   document.getElementById('artDetailTitle').textContent=_locTitle;
   // 2026-07-20 QA 표기통일 — 상세도 홈/목록과 동일 포맷 (Title - DD Mon YYYY).
   // 기존엔 원본 소문자 카테고리 + ISO 날짜(2026-03-02)라 3면이 전부 달랐다.
-  document.getElementById('artDetailCat').textContent=(typeof papFmtMeta==='function')?papFmtMeta(a.cat, a.d):((a.cat||'ARTICLE')+' · '+(a.d||''));
+  document.getElementById('artDetailCat').textContent=papFmtMeta(a.cat, a.d);
   document.getElementById('artDetailSub').textContent=_locSub;
   var descEl=document.getElementById('artDetailDesc');
   if(descEl){

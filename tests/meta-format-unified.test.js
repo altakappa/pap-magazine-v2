@@ -46,6 +46,9 @@ const utils = fs.readFileSync(path.join(ROOT, 'frontend/pap-utils.js'), 'utf8');
 const articles = fs.readFileSync(path.join(ROOT, 'frontend/articles.html'), 'utf8');
 const films = fs.readFileSync(path.join(ROOT, 'frontend/films.html'), 'utf8');
 const apiSync = fs.readFileSync(path.join(ROOT, 'frontend/pap-content-api-sync.js'), 'utf8');
+const edJs = fs.readFileSync(path.join(ROOT, 'frontend/pap-content-editorial.js'), 'utf8');
+const filmJs = fs.readFileSync(path.join(ROOT, 'frontend/pap-content-film.js'), 'utf8');
+const artJs = fs.readFileSync(path.join(ROOT, 'frontend/pap-content-article.js'), 'utf8');
 const listing = fs.readFileSync(path.join(ROOT, 'api/seo/listing.js'), 'utf8');
 
 function extractFn(src, name) {
@@ -92,6 +95,27 @@ t('필름 목록이 papFmtMeta 를 쓴다',
   /cat\.textContent\s*=\s*papFmtMeta\(/.test(films));
 t('홈 동적 카드가 papFmtMeta 를 쓴다',
   /var meta\s*=\s*papFmtMeta\(/.test(apiSync));
+/* 2026-07-21 QA(전역 통일) — 지적받은 화면만 고치는 방식을 끝내기 위해
+   날짜를 표시하는 공개 표면을 전부 여기에 등록한다. 새 화면이 생기면
+   이 목록에 추가하는 것이 규칙이다. */
+t('에디토리얼 행 카드가 papFmtMeta 를 쓴다',
+  /ed-row-card-cat">'\+papFmtMeta\(/.test(edJs),
+  'e.date 를 그대로 붙이면 ISO 로 나온다 — 이번 QA 가 지적한 지점');
+t('필름 카드가 papFmtMeta 를 쓴다',
+  /film-all-cat">'\+papFmtMeta\(/.test(filmJs));
+t('필름 상세가 papFmtMeta 를 쓴다',
+  /var catStr\s*=\s*papFmtMeta\(/.test(filmJs));
+t('아티클 목록·상세에 폴백 분기가 없다',
+  !/typeof papFmtMeta\s*===\s*'function'/.test(artJs),
+  '폴백은 Title-case 를 빠뜨려 조용히 다른 표기를 만든다');
+/* 원시 날짜를 그대로 붙이는 패턴이 되살아나면 실패. */
+[['pap-content-editorial.js', edJs], ['pap-content-film.js', filmJs],
+ ['pap-content-article.js', artJs]].forEach(([n, src]) => {
+  const raw = /\+\s*'\s*·\s*'\s*\+\s*[a-z]\.(date|d)\b|[a-z]\.(date|d)\s*\.substring\(0,\s*10\)/.test(
+    src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, ''));
+  t(n + ' 에 원시 날짜 출력이 없다', !raw,
+    'ISO 문자열을 그대로 화면에 붙이면 형식이 갈린다');
+});
 
 /* 표준을 정의하는 pap-utils.js 밖에서 "월 번호 → 월 이름"으로 날짜 문자열을
    만들면 안 된다. 그 신호는 months[d.getMonth()] 꼴의 배열 인덱싱이다.
