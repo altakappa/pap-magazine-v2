@@ -123,7 +123,9 @@
       '.logo-wrap img{height:32px;width:auto}',
       /* right side */
       '.header-right{display:flex;align-items:center;gap:6px}',
-      '.header-right-item{display:inline-flex;align-items:center;justify-content:center;padding:4px;color:rgba(255,255,255,.4);text-decoration:none;transition:color .2s;background:none;border:none;cursor:pointer;font-family:inherit}',
+      /* QA(2026-07-21) — pap-styles.css 와 같은 값 유지. 한쪽만 고치면
+         주입 헤더를 쓰는 페이지에서 다시 갈라진다. */
+      '.header-right-item{display:inline-flex;align-items:center;justify-content:center;padding:4px;color:#fff;text-decoration:none;transition:color .2s;background:none;border:none;cursor:pointer;font-family:inherit}',
       '.header-right-item:hover{color:#fff}',
       '.header-right-item svg{width:20px;height:20px}',
       '.lang-btn{display:flex;align-items:center;gap:4px;background:none;border:none;border-radius:0;padding:4px 2px;font-size:11px;font-weight:500;color:#fff}',
