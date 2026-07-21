@@ -75,8 +75,20 @@ async function testHelper() {
   ok('숫자 아니면 기본값', nb('abc', 20) === 20);
 
   console.log('\n=== 입력 검증 ===');
-  try { await helper.runBackfillBatch({ lang: 'de' }); ok('지원 안 하는 lang 거부', false); }
+  /* 2026-07-21 — de 는 이제 지원 언어다(9개 언어 확장). 진짜 미지원 코드로 검사한다. */
+  try { await helper.runBackfillBatch({ lang: 'xx' }); ok('지원 안 하는 lang 거부', false); }
   catch (e) { ok('지원 안 하는 lang → 400', e.statusCode === 400); }
+  ok('9개 언어 지원 (it fr es ja zh ru de)',
+    ['it','fr','es','ja','zh','ru','de'].every(l => !!helper.LANG_NAMES[l])
+    && Object.keys(helper.LANG_NAMES).length === 7);
+  ok('kind 는 editorial|article', 
+    !!helper.KINDS && !!helper.KINDS.editorial && !!helper.KINDS.article);
+  ok('아티클만 본문을 번역한다',
+    helper.KINDS.article.translateBody === true && helper.KINDS.editorial.translateBody === false);
+  ok('아티클 배치가 더 작다 (본문 길이 때문)',
+    helper.KINDS.article.defaultBatch < helper.KINDS.editorial.defaultBatch);
+  try { await helper.runBackfillBatch({ lang: 'it', kind: 'nope' }); ok('잘못된 kind 거부', false); }
+  catch (e) { ok('잘못된 kind → 400', e.statusCode === 400); }
 
   const savedKey = process.env.ANTHROPIC_API_KEY;
   delete process.env.ANTHROPIC_API_KEY;

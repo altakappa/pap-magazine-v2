@@ -25,7 +25,49 @@
 
 const { supabaseAdmin } = require('./supabase');
 
-const LANG_NAMES = { it: 'Italian', fr: 'French', es: 'Spanish', ja: 'Japanese' };
+/* 2026-07-21 — 도메니코 결정으로 선택기의 9개 언어를 전부 지원한다.
+   (ko/en 은 원본 컬럼을 쓰므로 여기 없다) */
+const LANG_NAMES = {
+  it: 'Italian', fr: 'French', es: 'Spanish', ja: 'Japanese',
+  zh: 'Simplified Chinese', ru: 'Russian', de: 'German',
+};
+
+/* 콘텐츠 종류별 설정. 진입점(관리자·크론)이 kind 를 넘긴다.
+   ─────────────────────────────────────────────────────────────────
+   에디토리얼은 사진 중심이라 제목+요약만 번역한다(설명 평균 15자).
+   아티클은 본문이 곧 콘텐츠라 body 까지 번역한다 — 대량 기계번역
+   본문은 구글 스팸 정책 리스크가 있으나, 도메니코가 리스크를 인지하고
+   진행을 선택했다(2026-07-21). 완료 후 서치콘솔로 색인·노출 추이를 본다.
+
+   batch 가 종류마다 다른 이유: 아티클 본문이 평균 1,228자라
+   에디토리얼과 같은 10개씩 묶으면 응답이 max_tokens 안에서 잘린다
+   (ja 배치20 에서 이미 겪은 문제 — 아래 max_tokens 주석 참고). */
+const KINDS = {
+  editorial: {
+    table: 'editorials',
+    columns: 'id, title, title_en, description, description_en, description_it',
+    translateBody: false,
+    defaultBatch: 10,
+    order: 'published_date',
+    src: (e) => ({
+      title: e.title,
+      title_en: e.title_en || null,
+      description: e.description_en || e.description || '',
+    }),
+  },
+  article: {
+    table: 'articles',
+    columns: 'id, title, title_en, content, content_en',
+    translateBody: true,
+    defaultBatch: 3,
+    order: 'published_date',
+    src: (a) => ({
+      title: a.title,
+      title_en: a.title_en || null,
+      body: a.content_en || a.content || '',
+    }),
+  },
+};
 
 /** 배치 크기 정규화 — 1~20. Claude 1콜 max_tokens(4000) 안에 안전하게 들어가는 상한. */
 function normalizeBatch(v, fallback) {
@@ -46,9 +88,15 @@ function normalizeBatch(v, fallback) {
  * @throws  {Error}  설정 누락·API 실패·DB 오류 — 호출자가 상태코드로 변환한다.
  *                   err.statusCode 가 있으면 그 코드를 쓴다.
  */
-async function runBackfillBatch({ lang, batch = 10, timeoutMs = 90000 } = {}) {
+async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 90000 } = {}) {
   if (!LANG_NAMES[lang]) {
-    const e = new Error('lang 은 it|fr|es|ja 중 하나여야 합니다.');
+    const e = new Error('lang 은 ' + Object.keys(LANG_NAMES).join('|') + ' 중 하나여야 합니다.');
+    e.statusCode = 400;
+    throw e;
+  }
+  const cfg = KINDS[kind];
+  if (!cfg) {
+    const e = new Error('kind 는 ' + Object.keys(KINDS).join('|') + ' 중 하나여야 합니다.');
     e.statusCode = 400;
     throw e;
   }
@@ -57,13 +105,13 @@ async function runBackfillBatch({ lang, batch = 10, timeoutMs = 90000 } = {}) {
     e.statusCode = 503;
     throw e;
   }
-  const size = normalizeBatch(batch, 10);
+  const size = normalizeBatch(batch, cfg.defaultBatch);
 
   /* 1) 해당 언어 번역이 이미 있는 에디토리얼 id 집합 */
   const { data: done, error: doneErr } = await supabaseAdmin
     .from('seo_translations')
     .select('content_id')
-    .eq('kind', 'editorial')
+    .eq('kind', kind)
     .eq('lang', lang)
     .limit(10000);
   if (doneErr) throw doneErr;
@@ -73,21 +121,21 @@ async function runBackfillBatch({ lang, batch = 10, timeoutMs = 90000 } = {}) {
      description_it: 039 마이그레이션으로 이미 존재하는 이탈리아어 설명 —
      lang=it 이고 이 값이 있으면 Claude 호출 없이 그대로 저장 (fast-path). */
   const { data: eds, error: edErr } = await supabaseAdmin
-    .from('editorials')
-    .select('id, title, title_en, description, description_en, description_it')
+    .from(cfg.table)
+    .select(cfg.columns)
     .eq('status', 'published')
-    .order('published_date', { ascending: false })
+    .order(cfg.order, { ascending: false })
     .limit(5000);
   if (edErr) throw edErr;
 
   const pending = (eds || []).filter(e => e.title && !doneSet.has(e.id));
   const remainingTotal = pending.length;
   if (!remainingTotal) {
-    return { lang, processed: 0, remaining: 0, message: '전부 번역 완료.' };
+      return { lang, kind, processed: 0, remaining: 0, message: '전부 번역 완료.' };
   }
 
   /* 2b) fast-path — lang=it 이고 description_it 보유분은 API 호출 없이 일괄 저장 */
-  if (lang === 'it') {
+  if (lang === 'it' && kind === 'editorial') {
     const ready = pending.filter(e => e.description_it && String(e.description_it).trim());
     if (ready.length) {
       let fastSaved = 0;
@@ -114,19 +162,26 @@ async function runBackfillBatch({ lang, batch = 10, timeoutMs = 90000 } = {}) {
 
   /* 3) Claude 번역 — 배치 전체를 한 번에 JSON 으로 */
   const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
-  const src = items.map((e, i) => ({
-    i,
-    title: e.title,
-    title_en: e.title_en || null,
-    description: e.description_en || e.description || '',
-  }));
-  const prompt =
-    `You are translating fashion-magazine editorial metadata for PAP MAGAZINE into ${LANG_NAMES[lang]}.\n` +
-    `Rules:\n` +
-    `- Keep proper nouns, brand names, and stylized titles (e.g. "CRIMSON", "Rotten Roots") unchanged unless a natural ${LANG_NAMES[lang]} rendering exists; when in doubt, keep the original title and translate only the description.\n` +
-    `- The description must read like native ${LANG_NAMES[lang]} fashion-editorial copy — elegant, concise, no literal word-by-word translation.\n` +
-    `- Return ONLY a JSON array, one object per input, shape: {"i":<index>,"title":"...","description":"..."}. No prose, no code fences.\n\n` +
-    `Input JSON:\n` + JSON.stringify(src);
+  const src = items.map((e, i) => Object.assign({ i }, cfg.src(e)));
+  /* 프롬프트는 kind 별로 다르다.
+     · 에디토리얼 — 제목+요약(사진 중심, 짧은 카피)
+     · 아티클     — 제목+본문. 본문은 HTML 조각이 섞여 있어 "태그는 그대로
+                    두고 텍스트만 번역"을 명시해야 마크업이 깨지지 않는다. */
+  const prompt = cfg.translateBody
+    ? `You are translating fashion-magazine ARTICLES for PAP MAGAZINE into ${LANG_NAMES[lang]}.\n` +
+      `Rules:\n` +
+      `- Keep proper nouns, brand names, and stylized titles unchanged unless a natural localized form exists.\n` +
+      `- Translate the body faithfully into native ${LANG_NAMES[lang]} — magazine register, not literal machine translation.\n` +
+      `- The body may contain HTML tags. Keep every tag, attribute and URL EXACTLY as-is; translate only the visible text.\n` +
+      `- Do not summarize, omit, or add content. Preserve paragraph structure.\n` +
+      `- Return ONLY a JSON array, one object per input, shape: {"i":<index>,"title":"...","body":"..."}. No prose, no code fences.\n` +
+      `Input JSON:\n` + JSON.stringify(src)
+    : `You are translating fashion-magazine editorial metadata for PAP MAGAZINE into ${LANG_NAMES[lang]}.\n` +
+      `Rules:\n` +
+      `- Keep proper nouns, brand names, and stylized titles (e.g. "CRIMSON", "Rotten Roots") unchanged unless a natural localized form exists.\n` +
+      `- The description must read like native ${LANG_NAMES[lang]} fashion-editorial copy — elegant, concise, no literal machine translation.\n` +
+      `- Return ONLY a JSON array, one object per input, shape: {"i":<index>,"title":"...","description":"..."}. No prose, no code fences.\n` +
+      `Input JSON:\n` + JSON.stringify(src);
 
   const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -168,11 +223,14 @@ async function runBackfillBatch({ lang, batch = 10, timeoutMs = 90000 } = {}) {
     const { error: upErr } = await supabaseAdmin
       .from('seo_translations')
       .upsert({
-        kind: 'editorial',
+        kind,
         content_id: srcItem.id,
         lang,
         title: String(t.title).slice(0, 300),
         description: t.description ? String(t.description).slice(0, 2000) : null,
+        // 본문은 아티클만. 길이 제한을 두지 않는다 — 잘린 본문을 저장하면
+        // 사용자에게 문장이 끊긴 페이지가 나간다.
+        body: cfg.translateBody && t.body ? String(t.body) : null,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'kind,content_id,lang' });
     if (upErr) { errors.push({ i: t.i, reason: upErr.message }); continue; }
@@ -181,6 +239,7 @@ async function runBackfillBatch({ lang, batch = 10, timeoutMs = 90000 } = {}) {
 
   return {
     lang,
+    kind,
     processed,
     remaining: remainingTotal - processed,
     errors: errors.length ? errors : undefined,
@@ -188,4 +247,4 @@ async function runBackfillBatch({ lang, batch = 10, timeoutMs = 90000 } = {}) {
   };
 }
 
-module.exports = { runBackfillBatch, normalizeBatch, LANG_NAMES };
+module.exports = { runBackfillBatch, normalizeBatch, LANG_NAMES, KINDS };

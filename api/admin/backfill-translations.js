@@ -30,9 +30,12 @@ module.exports = async function handler(req, res) {
 
   const lang = String(req.query.lang || '').toLowerCase();
   const batch = req.query.batch;
+  /* 2026-07-21 — kind 추가(editorial 기본). 아티클 본문 번역을 수동으로
+     돌릴 수 있어야 한다. 예: ?lang=ja&kind=article&batch=3 */
+  const kind = String(req.query.kind || 'editorial').toLowerCase();
 
   try {
-    const result = await runBackfillBatch({ lang, batch });
+    const result = await runBackfillBatch({ lang, kind, batch });
     return res.status(200).json(result);
   } catch (err) {
     const code = err && err.statusCode ? err.statusCode : 500;
