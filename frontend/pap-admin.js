@@ -11772,95 +11772,82 @@ function _buildMagazineIssueCard(iss){
 }
 
 function openMagazineIssueModal(){
-  // 신규 등록 모드로 초기화.
-  document.getElementById('magIssueId').value = '';
-  document.getElementById('magIssueModalTitle').textContent = '새 발행호 (Vol.)';
-  // QA(2026-07) #17 — 분기 볼륨 구조. 다음 Vol 번호 = 현재 최대 + 1.
-  var maxNum = magazineIssues.reduce(function(m, x){ return Math.max(m, x.issue_number || 0); }, 0);
-  var nextVol = maxNum + 1;
-  document.getElementById('magIssueNumber').value = nextVol;
-  document.getElementById('magIssueTitle').value = 'Vol. ' + nextVol;
-  // 기본값을 '현재 분기'로 제안 — 분기 시작월(1/4/7/10) + "APR–JUN 2026" 형식 라벨.
-  var now = new Date();
-  var qStart = Math.floor(now.getMonth() / 3) * 3 + 1;           // 1, 4, 7, 10
-  var Q_LABELS = ['JAN–MAR', 'APR–JUN', 'JUL–SEP', 'OCT–DEC'];
-  document.getElementById('magIssueMonthLabel').value =
-    Q_LABELS[(qStart - 1) / 3] + ' ' + now.getFullYear();
-  document.getElementById('magIssueYear').value = now.getFullYear();
-  document.getElementById('magIssueMonth').value = qStart;
-  document.getElementById('magIssueEdCount').value = 0;
-  document.getElementById('magIssueCoverUrl').value = '';
-  document.getElementById('magIssueCoverStatus').textContent = '';
-  document.getElementById('magIssueCoverPreview').innerHTML = '';
-  document.getElementById('magIssueLinkUrl').value = '';
-  document.getElementById('magIssueSortOrder').value = maxNum + 1;
-  document.getElementById('magIssueActive').checked = true;
-  document.getElementById('magIssueLatest').checked = false;
-  // QA #340 — 커버 에디토리얼 picker + 발행기간 초기화
+  document.getElementById('magIssueId').value='';
+  document.getElementById('magIssueModalTitle').textContent='새 발행호 (Vol.)';
+  var maxNum=magazineIssues.reduce(function(m,x){ return Math.max(m,x.issue_number||0); },0);
+  var nextVol=maxNum+1;
+  document.getElementById('magIssueNumber').value=nextVol;
+  document.getElementById('magIssueTitle').value='Vol. '+nextVol;
+  document.getElementById('magIssueActive').checked=true;
   _clearMagCoverEditorial();
-  var ps = document.getElementById('magIssuePeriodStart'); if (ps) ps.value = '';
-  var pe = document.getElementById('magIssuePeriodEnd');   if (pe) pe.value = '';
-  // QA #341 — 포함 에디토리얼 목록 초기화
-  _resetMagIncludedList();
-  var modal = document.getElementById('magazineIssueModal');
-  modal.style.display = 'flex';
-  modal.classList.add('show');
+  _renderMagCoverList('');
+  var modal=document.getElementById('magazineIssueModal');
+  modal.style.display='flex'; modal.classList.add('show');
 }
 
 function editMagazineIssue(id){
-  var iss = magazineIssues.filter(function(x){ return x.id === id; })[0];
-  if (!iss) return;
-  document.getElementById('magIssueId').value = iss.id;
-  document.getElementById('magIssueModalTitle').textContent = '발행호 편집 — ISSUE #' + iss.issue_number;
-  document.getElementById('magIssueNumber').value = iss.issue_number || '';
-  document.getElementById('magIssueTitle').value = iss.title || '';
-  document.getElementById('magIssueMonthLabel').value = iss.month_label || '';
-  document.getElementById('magIssueYear').value = iss.issue_year || '';
-  document.getElementById('magIssueMonth').value = iss.issue_month || '';
-  document.getElementById('magIssueEdCount').value = iss.editorial_count || 0;
-  document.getElementById('magIssueCoverUrl').value = iss.cover_image || '';
-  document.getElementById('magIssueLinkUrl').value = iss.link_url || '';
-  document.getElementById('magIssueSortOrder').value = iss.sort_order || 0;
-  document.getElementById('magIssueActive').checked = !!iss.is_active;
-  document.getElementById('magIssueLatest').checked = !!iss.is_latest;
-  document.getElementById('magIssueCoverStatus').textContent = '';
-  var prev = document.getElementById('magIssueCoverPreview');
-  if (iss.cover_image){
-    prev.innerHTML = '<img src="' + esc(iss.cover_image) + '" style="max-height:120px;max-width:200px;object-fit:cover;border:1px solid var(--border);border-radius:2px">';
-  } else {
-    prev.innerHTML = '';
-  }
-  // QA #340 — 커버 에디토리얼 복원 (cover_editorial_id + slug 가 저장되었으면 UI 에도 반영).
+  var iss=magazineIssues.filter(function(x){ return x.id===id; })[0];
+  if(!iss) return;
+  document.getElementById('magIssueId').value=iss.id;
+  document.getElementById('magIssueModalTitle').textContent='발행호 편집 — VOL. '+iss.issue_number;
+  document.getElementById('magIssueNumber').value=iss.issue_number||'';
+  document.getElementById('magIssueTitle').value=iss.title||'';
+  document.getElementById('magIssueActive').checked=!!iss.is_active;
   _clearMagCoverEditorial();
-  if (iss.cover_editorial_id || iss.cover_editorial_slug){
-    _setMagCoverEditorialFromIssue(iss);
+  // 커버 에디토리얼 원본 참조는 저장하지 않으므로, 현재 커버 이미지를 미리보기로만 표시.
+  if(iss.cover_image){
+    var th=document.getElementById('magIssueCoverEdThumb');
+    var ti=document.getElementById('magIssueCoverEdTitle');
+    var me=document.getElementById('magIssueCoverEdMeta');
+    var wrap=document.getElementById('magIssueCoverEdSelected');
+    if(th) th.src=iss.cover_image;
+    if(ti) ti.textContent='현재 커버 ('+(iss.month_label||'')+')';
+    if(me) me.textContent='변경하려면 아래 목록에서 새 커버 에디토리얼을 고르세요';
+    if(wrap) wrap.style.display='';
   }
-  // QA #341 — 포함 에디토리얼 목록 복원
-  _restoreMagIncludedFromIssue(iss);
-  // 발행기간 복원 — month_label 에서 시작월/종료월 파싱 시도.
-  var ps = document.getElementById('magIssuePeriodStart');
-  var pe = document.getElementById('magIssuePeriodEnd');
-  if (ps) ps.value = '';
-  if (pe) pe.value = '';
-  var lbl = String(iss.month_label || '');
-  // 예: "Jul-Sep 2026" / "Jul–Sep 2026" / "JULY 2026"
-  var m = lbl.match(/^([A-Za-z]{3,})\s*[–\-]\s*([A-Za-z]{3,})\b/);
-  if (m && ps && pe){
-    ps.value = m[1].slice(0,1).toUpperCase() + m[1].slice(1,3).toLowerCase();
-    pe.value = m[2].slice(0,1).toUpperCase() + m[2].slice(1,3).toLowerCase();
-  } else if (ps){
-    var m2 = lbl.match(/^([A-Za-z]{3,})\b/);
-    if (m2) ps.value = m2[1].slice(0,1).toUpperCase() + m2[1].slice(1,3).toLowerCase();
-  }
-  var modal = document.getElementById('magazineIssueModal');
-  modal.style.display = 'flex';
-  modal.classList.add('show');
+  _renderMagCoverList('');
+  var modal=document.getElementById('magazineIssueModal');
+  modal.style.display='flex'; modal.classList.add('show');
 }
 
 // QA #340 — 커버 에디토리얼 검색 picker + 발행기간 자동 라벨 빌더.
 // 검색은 published + scheduled 병합 fetch (QA #305 필름 admin 패턴 재사용).
 var _magEdSearchCache = null;
 var _magEdSearchDebounce = null;
+
+// 2026-07-21 개편 — 커버 에디토리얼을 '최신순 목록'으로 훑어보고 클릭 선택.
+function _coverDeriveHint(dateStr){
+  if(!dateStr) return '발행일 없음 — 자동 산출 불가';
+  var d=new Date(dateStr); if(isNaN(d.getTime())) return '';
+  var y=d.getUTCFullYear(), m=d.getUTCMonth()+1;
+  var q=m<=3?1:m<=6?4:m<=9?7:10;
+  var MON=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  return MON[q-1]+'–'+MON[q+1]+' '+y+' (분기 자동 산출)';
+}
+function _magEdDate(e){ return e.published_date||e.publish_date||e.scheduled_publish_at||e.published_at||''; }
+async function _renderMagCoverList(filter){
+  var box=document.getElementById('magIssueCoverEdList'); if(!box) return;
+  box.innerHTML='<div style="padding:14px;color:var(--text3);font-size:12px;text-align:center">불러오는 중…</div>';
+  var pool=await _fetchMagEditorialSearchPool();
+  var q=String(filter||'').trim().toLowerCase();
+  var list=pool.slice().sort(function(a,b){ return String(_magEdDate(b)).localeCompare(String(_magEdDate(a))); });
+  if(q){ list=list.filter(function(e){ var hay=((e.title||'')+' '+(Array.isArray(e.tags)?e.tags.join(' '):(e.tags||''))).toLowerCase(); return hay.indexOf(q)>=0; }); }
+  var cap=300, shown=list.slice(0,cap);
+  if(!shown.length){ box.innerHTML='<div style="padding:14px;color:var(--text3);font-size:12px;text-align:center">결과 없음</div>'; return; }
+  var selId=(document.getElementById('magIssueCoverEdId')||{}).value||'';
+  box.innerHTML=shown.map(function(e){
+    var thumb=e.thumbnail_url||e.thumb||e.cover_image||(Array.isArray(e.images)&&e.images[0])||'';
+    var badge=e.status==='scheduled'?'<span style="background:#f39c12;color:#fff;font-size:9px;padding:1px 5px;border-radius:2px;margin-left:6px">예약</span>':'';
+    var date=_magEdDate(e); if(date) date=String(date).slice(0,10);
+    var sel=e.id===selId, bg=sel?'rgba(46,204,113,.14)':'';
+    return '<div onclick="_pickMagCoverEditorial(\''+esc(e.id)+'\')" style="padding:7px 9px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;color:#111;background:'+bg+'" onmouseover="this.style.background=\'rgba(46,204,113,.06)\'" onmouseout="this.style.background=\''+bg+'\'">'
+      +'<img src="'+esc(thumb)+'" style="width:40px;height:56px;object-fit:cover;background:#eee;border-radius:2px;flex-shrink:0" onerror="this.style.opacity=\'.3\'">'
+      +'<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(e.title||'(제목 없음)')+badge+'</div>'
+      +'<div style="font-size:10px;color:#888;margin-top:2px">'+esc(date)+'</div></div>'
+      +(sel?'<div style="color:#27ae60;font-size:16px;font-weight:700">✓</div>':'')+'</div>';
+  }).join('')+(list.length>cap?'<div style="padding:8px;text-align:center;color:var(--text3);font-size:10px">상위 '+cap+'개 표시 · 검색으로 좁혀주세요</div>':'');
+}
+window._renderMagCoverList=_renderMagCoverList;
 
 async function _fetchMagEditorialSearchPool(){
   if (_magEdSearchCache) return _magEdSearchCache;
@@ -11888,89 +11875,35 @@ async function _fetchMagEditorialSearchPool(){
 
 async function _searchMagCoverEditorial(query){
   clearTimeout(_magEdSearchDebounce);
-  _magEdSearchDebounce = setTimeout(async function(){
-    var dd = document.getElementById('magIssueCoverEdDropdown');
-    if (!dd) return;
-    var q = String(query || '').trim().toLowerCase();
-    if (q.length < 1){ dd.style.display = 'none'; dd.innerHTML = ''; return; }
-    var pool = await _fetchMagEditorialSearchPool();
-    var hits = pool.filter(function(e){
-      var hay = ((e.title || '') + ' ' + (Array.isArray(e.tags) ? e.tags.join(' ') : (e.tags || ''))).toLowerCase();
-      return hay.indexOf(q) >= 0;
-    }).slice(0, 30);
-    if (!hits.length){
-      dd.innerHTML = '<div style="padding:14px;color:var(--text3);font-size:12px;text-align:center">검색 결과 없음</div>';
-      dd.style.display = '';
-      return;
-    }
-    dd.innerHTML = hits.map(function(e){
-      var thumb = e.thumbnail_url || e.thumb || e.cover_image || (Array.isArray(e.images) && e.images[0]) || '';
-      var isSched = e.status === 'scheduled';
-      var badge = isSched
-        ? '<span style="background:#f39c12;color:#fff;font-size:9px;padding:1px 5px;border-radius:2px;margin-left:6px">예약</span>'
-        : '<span style="background:#27ae60;color:#fff;font-size:9px;padding:1px 5px;border-radius:2px;margin-left:6px">공개</span>';
-      var date = e.publish_date || e.published_at || e.scheduled_publish_at || '';
-      if (date) date = String(date).slice(0, 10);
-      return '<div onclick="_pickMagCoverEditorial(\''+esc(e.id)+'\')" '
-           + 'style="padding:8px 10px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;transition:background .15s" '
-           + 'onmouseover="this.style.background=\'rgba(46,204,113,.06)\'" '
-           + 'onmouseout="this.style.background=\'\'">'
-           +   '<img src="'+esc(thumb)+'" style="width:44px;height:60px;object-fit:cover;background:#eee;border-radius:2px;flex-shrink:0" onerror="this.style.opacity=\'.3\'">'
-           +   '<div style="flex:1;min-width:0">'
-           +     '<div style="font-size:12px;font-weight:600;color:var(--text1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
-           +       esc(e.title || '(제목 없음)') + badge
-           +     '</div>'
-           +     '<div style="font-size:10px;color:var(--text3);margin-top:2px">'+esc(date)+'</div>'
-           +   '</div>'
-           + '</div>';
-    }).join('');
-    dd.style.display = '';
-  }, 200);
+  _magEdSearchDebounce=setTimeout(function(){ _renderMagCoverList(query); },200);
 }
 window._searchMagCoverEditorial = _searchMagCoverEditorial;
 
 async function _pickMagCoverEditorial(edId){
-  var pool = await _fetchMagEditorialSearchPool();
-  var e = pool.filter(function(x){ return x.id === edId; })[0];
-  if (!e) return;
-  document.getElementById('magIssueCoverEdId').value = e.id;
-  document.getElementById('magIssueCoverEdSlug').value = e.slug || '';
-  var thumb = e.thumbnail_url || e.thumb || e.cover_image || (Array.isArray(e.images) && e.images[0]) || '';
-  var thumbEl = document.getElementById('magIssueCoverEdThumb');
-  var titleEl = document.getElementById('magIssueCoverEdTitle');
-  var metaEl  = document.getElementById('magIssueCoverEdMeta');
-  var wrap    = document.getElementById('magIssueCoverEdSelected');
-  var search  = document.getElementById('magIssueCoverEdSearch');
-  var dd      = document.getElementById('magIssueCoverEdDropdown');
-  if (thumbEl) thumbEl.src = thumb;
-  if (titleEl) titleEl.textContent = e.title || '';
-  var date = e.publish_date || e.published_at || e.scheduled_publish_at || '';
-  if (date) date = String(date).slice(0, 10);
-  if (metaEl) metaEl.textContent = date + ' · ' + (e.status === 'scheduled' ? '예약 게시' : '공개') + ' · slug: ' + (e.slug || '');
-  if (wrap) wrap.style.display = '';
-  if (search) search.value = e.title || '';
-  if (dd){ dd.style.display = 'none'; dd.innerHTML = ''; }
-  // 자동 연동: 커버 이미지 + 링크 URL
-  var coverInput = document.getElementById('magIssueCoverUrl');
-  var linkInput  = document.getElementById('magIssueLinkUrl');
-  var coverPrev  = document.getElementById('magIssueCoverPreview');
-  if (coverInput && thumb) coverInput.value = thumb;
-  if (linkInput && e.slug) linkInput.value  = '/editorial/' + e.slug;
-  if (coverPrev && thumb){
-    coverPrev.innerHTML = '<img src="' + esc(thumb) + '" style="max-height:120px;max-width:200px;object-fit:cover;border:1px solid var(--border);border-radius:2px">';
-  }
+  var pool=await _fetchMagEditorialSearchPool();
+  var e=pool.filter(function(x){ return x.id===edId; })[0];
+  if(!e) return;
+  document.getElementById('magIssueCoverEdId').value=e.id;
+  document.getElementById('magIssueCoverEdSlug').value=e.slug||'';
+  var thumb=e.thumbnail_url||e.thumb||e.cover_image||(Array.isArray(e.images)&&e.images[0])||'';
+  var date=_magEdDate(e); if(date) date=String(date).slice(0,10);
+  var th=document.getElementById('magIssueCoverEdThumb');
+  var ti=document.getElementById('magIssueCoverEdTitle');
+  var me=document.getElementById('magIssueCoverEdMeta');
+  var wrap=document.getElementById('magIssueCoverEdSelected');
+  if(th) th.src=thumb;
+  if(ti) ti.textContent=e.title||'';
+  if(me) me.textContent='발행일 '+date+' → '+_coverDeriveHint(date);
+  if(wrap) wrap.style.display='';
+  var srch=document.getElementById('magIssueCoverEdSearch');
+  _renderMagCoverList(srch?srch.value:'');
 }
 window._pickMagCoverEditorial = _pickMagCoverEditorial;
 
 function _clearMagCoverEditorial(){
-  var ids = ['magIssueCoverEdId','magIssueCoverEdSlug'];
-  ids.forEach(function(id){ var el = document.getElementById(id); if (el) el.value = ''; });
-  var wrap = document.getElementById('magIssueCoverEdSelected');
-  if (wrap) wrap.style.display = 'none';
-  var search = document.getElementById('magIssueCoverEdSearch');
-  if (search) search.value = '';
-  var dd = document.getElementById('magIssueCoverEdDropdown');
-  if (dd){ dd.style.display = 'none'; dd.innerHTML = ''; }
+  ['magIssueCoverEdId','magIssueCoverEdSlug'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  var wrap=document.getElementById('magIssueCoverEdSelected'); if(wrap) wrap.style.display='none';
+  var srch=document.getElementById('magIssueCoverEdSearch'); if(srch) srch.value='';
 }
 window._clearMagCoverEditorial = _clearMagCoverEditorial;
 
@@ -12202,76 +12135,30 @@ async function _onMagCoverFile(input){
 }
 
 async function saveMagazineIssue(){
-  var id = (document.getElementById('magIssueId').value || '').trim();
-  // QA #340 — 발행기간 자동 라벨 (사용자가 자동 생성 안 눌러도 저장 시 자동 반영)
-  var periodStart = (document.getElementById('magIssuePeriodStart') || {}).value || '';
-  var periodEnd   = (document.getElementById('magIssuePeriodEnd')   || {}).value || '';
-  var yearVal     = document.getElementById('magIssueYear').value;
-  if (periodStart && yearVal && !document.getElementById('magIssueMonthLabel').value){
-    var autoLabel = (periodEnd && periodEnd !== periodStart)
-      ? (periodStart + '–' + periodEnd + ' ' + yearVal)
-      : (periodStart.toUpperCase() + ' ' + yearVal);
-    document.getElementById('magIssueMonthLabel').value = autoLabel;
-  }
-  var payload = {
-    issue_number:    parseInt(document.getElementById('magIssueNumber').value, 10),
-    title:           (document.getElementById('magIssueTitle').value || '').trim(),
-    issue_year:      parseInt(document.getElementById('magIssueYear').value, 10),
-    issue_month:     parseInt(document.getElementById('magIssueMonth').value, 10),
-    month_label:     (document.getElementById('magIssueMonthLabel').value || '').trim(),
-    cover_image:     (document.getElementById('magIssueCoverUrl').value || '').trim(),
-    editorial_count: parseInt(document.getElementById('magIssueEdCount').value, 10) || 0,
-    link_url:        (document.getElementById('magIssueLinkUrl').value || '').trim(),
-    sort_order:      parseInt(document.getElementById('magIssueSortOrder').value, 10) || 0,
-    is_active:       !!document.getElementById('magIssueActive').checked,
-    is_latest:       !!document.getElementById('magIssueLatest').checked,
-    // QA #340 — 커버 에디토리얼 & 발행기간. 서버가 이 필드를 인식 못하면 무시.
-    cover_editorial_id:   (document.getElementById('magIssueCoverEdId')   || {}).value || null,
-    cover_editorial_slug: (document.getElementById('magIssueCoverEdSlug') || {}).value || null,
-    period_start_month:   periodStart || null,
-    period_end_month:     periodEnd || null,
-    // QA #341 — 발행호에 포함되는 에디토리얼들 (id + slug 배열, 순서 유지).
-    included_editorial_ids:   _magIncludedEds.map(function(x){ return x.id; }),
-    included_editorial_slugs: _magIncludedEds.map(function(x){ return x.slug; }),
+  var id=(document.getElementById('magIssueId').value||'').trim();
+  var coverId=(document.getElementById('magIssueCoverEdId')||{}).value||null;
+  var coverSlug=(document.getElementById('magIssueCoverEdSlug')||{}).value||null;
+  var payload={
+    issue_number: parseInt(document.getElementById('magIssueNumber').value,10),
+    title: (document.getElementById('magIssueTitle').value||'').trim(),
+    is_active: !!document.getElementById('magIssueActive').checked,
+    cover_editorial_id: coverId,
+    cover_editorial_slug: coverSlug,
   };
-  // 목록에서 개수 자동 계산 (수동 입력값 override).
-  if (_magIncludedEds.length){
-    payload.editorial_count = _magIncludedEds.length;
-  }
-  // 필수 검증
-  if (!Number.isFinite(payload.issue_number) || payload.issue_number < 1){
-    alert('⚠️ 발행 번호를 입력해주세요.'); return;
-  }
-  if (!payload.title){
-    alert('⚠️ 제목을 입력해주세요.'); return;
-  }
-  if (!Number.isFinite(payload.issue_year)){
-    alert('⚠️ 발행 연도를 입력해주세요.'); return;
-  }
-  if (!payload.cover_image){
-    alert('⚠️ 커버 이미지 URL 또는 파일을 업로드해주세요.'); return;
-  }
-  // month 는 NaN 이면 null 로.
-  if (!Number.isFinite(payload.issue_month)) payload.issue_month = null;
-  if (!payload.month_label) payload.month_label = null;
-  if (!payload.link_url) payload.link_url = null;
-  try {
+  if(!Number.isFinite(payload.issue_number)||payload.issue_number<1){ alert('⚠️ VOL 번호를 입력해주세요.'); return; }
+  if(!payload.title){ alert('⚠️ 제목을 입력해주세요.'); return; }
+  if(!id && !coverId && !coverSlug){ alert('⚠️ 커버 에디토리얼을 목록에서 선택해주세요.\n\n(발행연도·분기·기간·커버 이미지가 자동으로 채워집니다)'); return; }
+  try{
     var resp;
-    if (id){
-      payload.id = id;
-      resp = await apiPatch('/admin/magazine-issues', payload);
-    } else {
-      resp = await apiPost('/admin/magazine-issues', payload);
-    }
-    if (resp && resp.message && !resp.data){
-      throw new Error(resp.message);
-    }
+    if(id){ payload.id=id; resp=await apiPatch('/admin/magazine-issues',payload); }
+    else { resp=await apiPost('/admin/magazine-issues',payload); }
+    if(resp && resp.message && !resp.data){ throw new Error(resp.message); }
     closeMagazineIssueModal();
     await loadMagazineIssues();
     alert('✅ 발행호가 저장되었습니다. 웹사이트에 최대 1분 내 반영됩니다.');
-  } catch(e){
-    console.error('[magazine-issues] save failed:', e);
-    alert('❌ 저장 실패\n\n' + (e && e.message || e) + '\n\n입력값을 확인하고 다시 시도해주세요.');
+  }catch(e){
+    console.error('[magazine-issues] save failed:',e);
+    alert('❌ 저장 실패\n\n'+(e&&e.message||e)+'\n\n입력값을 확인하고 다시 시도해주세요.');
   }
 }
 

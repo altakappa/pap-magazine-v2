@@ -1918,163 +1918,45 @@ tr:hover td{background:rgba(0,0,0,.02)}
       </div>
       <div class="modal-body" style="max-height:70vh;overflow-y:auto">
         <input type="hidden" id="magIssueId">
-        <div class="modal-section">
-          <!-- QA(2026-07) #17 — 발행호 구조를 '분기 볼륨(Vol)'으로 통일.
-               한 분기(3개월)=1볼륨. issue_number 가 곧 Vol 번호다. -->
-          <div class="modal-label">볼륨 번호 (VOL. N) <span style="color:#e74c3c">*</span></div>
-          <input class="pe-input" id="magIssueNumber" type="number" min="1" placeholder="예: 31">
-          <div class="pe-hint" style="margin-top:4px">고유값. 한 분기(3개월) = 1볼륨. 웹 매거진의 'VOL. 31' 카드로 노출됩니다.</div>
+        <input type="hidden" id="magIssueCoverEdId">
+        <input type="hidden" id="magIssueCoverEdSlug">
+
+        <div style="margin-bottom:14px;padding:10px 12px;font-size:11px;line-height:1.6;color:var(--text2);background:rgba(46,204,113,.06);border:1px solid rgba(46,204,113,.28);border-radius:4px">
+          💡 <b>커버 에디토리얼</b> 하나만 고르면 <b>발행연도 · 분기 · 기간라벨(JUL–SEP 2026) · 커버 이미지</b>가 자동으로 채워집니다. 포함 에디토리얼 수는 발행일 기준으로 웹사이트가 자동 집계합니다.
         </div>
 
-        <!-- QA #340 — 커버 에디토리얼 검색 picker -->
-        <div class="modal-section">
-          <div class="modal-label">
-            커버 에디토리얼 <span style="color:var(--text3);font-weight:400;font-size:11px">(공개 + 예약 게시물 모두 선택 가능)</span>
+        <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px">
+          <div class="modal-section">
+            <div class="modal-label">VOL. N <span style="color:#e74c3c">*</span></div>
+            <input class="pe-input" id="magIssueNumber" type="number" min="1" placeholder="예: 31">
           </div>
-          <div style="position:relative">
-            <input class="pe-input" id="magIssueCoverEdSearch"
-              placeholder="제목·태그로 에디토리얼 검색 후 선택..."
-              oninput="_searchMagCoverEditorial(this.value)"
-              onfocus="if(this.value){_searchMagCoverEditorial(this.value);}"
-              autocomplete="off">
-            <button type="button" class="btn btn-sm"
-              onclick="_clearMagCoverEditorial()"
-              style="position:absolute;right:6px;top:6px;padding:3px 8px;font-size:10px"
-              title="선택 해제">✕</button>
-            <div id="magIssueCoverEdDropdown"
-              style="display:none;position:absolute;top:100%;left:0;right:0;max-height:280px;overflow-y:auto;background:#fff;border:1px solid var(--border2);border-radius:4px;box-shadow:0 4px 12px rgba(0,0,0,.15);z-index:100;margin-top:2px"></div>
-          </div>
-          <input type="hidden" id="magIssueCoverEdId">
-          <input type="hidden" id="magIssueCoverEdSlug">
-          <div id="magIssueCoverEdSelected"
-            style="display:none;margin-top:8px;padding:10px;background:rgba(46,204,113,.08);border:1px solid rgba(46,204,113,.32);border-radius:4px;font-size:12px">
-            <div style="display:flex;gap:10px;align-items:center">
-              <img id="magIssueCoverEdThumb" src=""
-                style="width:64px;height:96px;object-fit:cover;background:#111;border-radius:2px">
-              <div style="flex:1;min-width:0">
-                <div id="magIssueCoverEdTitle" style="font-weight:700;margin-bottom:4px"></div>
-                <div id="magIssueCoverEdMeta" style="font-size:10px;color:var(--text3)"></div>
-                <div style="font-size:10px;color:#27ae60;margin-top:4px">✓ 썸네일이 자동으로 커버 이미지 필드에 연동되었습니다</div>
-              </div>
-            </div>
-          </div>
-          <div class="pe-hint" style="margin-top:4px">
-            선택 시 해당 에디토리얼 썸네일이 <strong>커버 이미지</strong> 필드에, 슬러그가 <strong>링크 URL</strong> 필드에 자동으로 채워집니다.
-          </div>
-        </div>
-
-        <!-- QA #341 — 발행호 포함 에디토리얼 다중 선택 -->
-        <div class="modal-section">
-          <div class="modal-label">
-            포함 에디토리얼 <span style="color:var(--text3);font-weight:400;font-size:11px">(Read 클릭 시 노출될 에디토리얼들)</span>
-          </div>
-          <div style="position:relative">
-            <input class="pe-input" id="magIssueIncEdSearch"
-              placeholder="에디토리얼 검색 후 클릭하면 아래 목록에 추가됩니다..."
-              oninput="_searchMagIncludedEditorial(this.value)"
-              onfocus="if(this.value){_searchMagIncludedEditorial(this.value);}"
-              autocomplete="off">
-            <div id="magIssueIncEdDropdown"
-              style="display:none;position:absolute;top:100%;left:0;right:0;max-height:280px;overflow-y:auto;background:#fff;border:1px solid var(--border2);border-radius:4px;box-shadow:0 4px 12px rgba(0,0,0,.15);z-index:100;margin-top:2px"></div>
-          </div>
-          <!-- 선택된 에디토리얼 chip 목록 -->
-          <div id="magIssueIncEdList"
-            style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;min-height:40px;padding:8px;background:rgba(255,255,255,.02);border:1px dashed var(--border);border-radius:4px">
-            <div id="magIssueIncEdEmpty" style="color:var(--text3);font-size:11px;padding:6px 4px">
-              아직 선택된 에디토리얼이 없습니다. 위 검색창에서 찾아 클릭하세요.
-            </div>
-          </div>
-          <div class="pe-hint" style="margin-top:6px">
-            💡 이 목록은 매거진 발행호의 <strong>Read</strong> 버튼 클릭 시 노출됩니다. 순서 대로 표시됨.
-            에디토리얼 수 필드는 이 목록의 개수로 <strong>자동 갱신</strong>됩니다.
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div class="modal-section">
             <div class="modal-label">제목 <span style="color:#e74c3c">*</span></div>
             <input class="pe-input" id="magIssueTitle" placeholder="예: Vol. 31">
           </div>
-          <div class="modal-section">
-            <div class="modal-label">기간 라벨</div>
-            <input class="pe-input" id="magIssueMonthLabel" placeholder="예: JUL–SEP 2026">
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
-          <div class="modal-section">
-            <div class="modal-label">발행 연도 <span style="color:#e74c3c">*</span></div>
-            <input class="pe-input" id="magIssueYear" type="number" min="2000" max="2100" placeholder="예: 2026">
-          </div>
-          <div class="modal-section">
-            <!-- QA(2026-07) #17 — 분기 구조: 분기 시작월(1/4/7/10)을 넣는다. -->
-            <div class="modal-label">분기 시작월 (1/4/7/10)</div>
-            <input class="pe-input" id="magIssueMonth" type="number" min="1" max="12" placeholder="예: 7 (JUL–SEP)">
-          </div>
-          <div class="modal-section">
-            <div class="modal-label">에디토리얼 수</div>
-            <input class="pe-input" id="magIssueEdCount" type="number" min="0" placeholder="예: 20">
-          </div>
         </div>
 
-        <!-- QA #340 — 발행기간 (예: Jul–Sep 2026) -->
         <div class="modal-section">
-          <div class="modal-label">발행 기간 <span style="color:var(--text3);font-weight:400;font-size:11px">(예: Jul–Sep 2026, Q3 2026, JULY 2026)</span></div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
-            <select class="pe-select" id="magIssuePeriodStart">
-              <option value="">시작월</option>
-              <option value="Jan">Jan</option><option value="Feb">Feb</option><option value="Mar">Mar</option>
-              <option value="Apr">Apr</option><option value="May">May</option><option value="Jun">Jun</option>
-              <option value="Jul">Jul</option><option value="Aug">Aug</option><option value="Sep">Sep</option>
-              <option value="Oct">Oct</option><option value="Nov">Nov</option><option value="Dec">Dec</option>
-            </select>
-            <select class="pe-select" id="magIssuePeriodEnd">
-              <option value="">종료월 (선택)</option>
-              <option value="Jan">Jan</option><option value="Feb">Feb</option><option value="Mar">Mar</option>
-              <option value="Apr">Apr</option><option value="May">May</option><option value="Jun">Jun</option>
-              <option value="Jul">Jul</option><option value="Aug">Aug</option><option value="Sep">Sep</option>
-              <option value="Oct">Oct</option><option value="Nov">Nov</option><option value="Dec">Dec</option>
-            </select>
-            <button type="button" class="btn btn-sm" onclick="_buildMagPeriodLabel()"
-              style="padding:6px 10px" title="시작월 · 종료월 · 연도로 배지 라벨 자동 생성">
-              🔤 자동 생성
-            </button>
-          </div>
-          <div class="pe-hint" style="margin-top:6px">
-            <strong>시작월</strong>만 채우면 단일월(예: <code>JULY 2026</code>). <strong>종료월</strong>까지 채우면 기간(예: <code>Jul–Sep 2026</code>) 이 <strong>배지 라벨</strong> 필드에 자동 채워집니다.
-          </div>
-        </div>
-        <div class="modal-section">
-          <div class="modal-label">커버 이미지 URL <span style="color:#e74c3c">*</span></div>
-          <input class="pe-input" id="magIssueCoverUrl" placeholder="https://...">
-          <div class="pe-upload" onclick="document.getElementById('magIssueCoverFile').click()" style="margin-top:8px;min-height:auto;padding:10px">
-            <input type="file" id="magIssueCoverFile" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="_onMagCoverFile(this)">
-            <div class="pe-upload-inner">
-              <span class="pe-upload-icon" style="font-size:18px">📷</span>
-              <span class="pe-upload-text" style="margin-left:8px">또는 파일 업로드 (JPG · PNG · WEBP · 최대 3MB)</span>
+          <div class="modal-label">커버 에디토리얼 <span style="color:#e74c3c">*</span> <span style="color:var(--text3);font-weight:400;font-size:11px">(목록에서 클릭 · 검색은 보조)</span></div>
+          <div id="magIssueCoverEdSelected" style="display:none;margin-bottom:8px;padding:10px;background:rgba(46,204,113,.08);border:1px solid rgba(46,204,113,.32);border-radius:4px;font-size:12px">
+            <div style="display:flex;gap:10px;align-items:center">
+              <img id="magIssueCoverEdThumb" src="" style="width:56px;height:84px;object-fit:cover;background:#111;border-radius:2px">
+              <div style="flex:1;min-width:0">
+                <div id="magIssueCoverEdTitle" style="font-weight:700;margin-bottom:4px"></div>
+                <div id="magIssueCoverEdMeta" style="font-size:10px;color:var(--text3)"></div>
+              </div>
             </div>
           </div>
-          <div id="magIssueCoverStatus" style="margin-top:6px;font-size:11px;color:var(--text3);min-height:14px"></div>
-          <div id="magIssueCoverPreview" style="margin-top:8px"></div>
+          <input class="pe-input" id="magIssueCoverEdSearch" placeholder="🔍 제목·태그로 좁히기 (선택)" oninput="_searchMagCoverEditorial(this.value)" autocomplete="off">
+          <div id="magIssueCoverEdList" style="margin-top:8px;max-height:300px;overflow-y:auto;background:#fff;border:1px solid var(--border2);border-radius:4px"></div>
+          <div class="pe-hint" style="margin-top:4px">최신순으로 노출됩니다. 클릭하면 커버로 지정되고 위 정보가 자동 산출됩니다.</div>
         </div>
+
         <div class="modal-section">
-          <div class="modal-label">링크 URL</div>
-          <input class="pe-input" id="magIssueLinkUrl" placeholder="예: PAP_Magazine_April_2026.html 또는 외부 URL">
-          <div class="pe-hint" style="margin-top:4px">클릭 시 이동할 페이지 (선택). 비워두면 정적 페이지 미연결.</div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div class="modal-section">
-            <div class="modal-label">정렬 순서</div>
-            <input class="pe-input" id="magIssueSortOrder" type="number" placeholder="예: 87">
-            <div class="pe-hint" style="margin-top:4px">같은 연도 내에서 값이 클수록 위에 노출.</div>
-          </div>
-          <div class="modal-section">
-            <div class="modal-label">상태</div>
-            <label class="pe-check" style="display:block;margin-top:8px;cursor:pointer">
-              <input type="checkbox" id="magIssueActive" checked> 활성화 (웹사이트에 노출)
-            </label>
-            <label class="pe-check" style="display:block;margin-top:6px;cursor:pointer">
-              <input type="checkbox" id="magIssueLatest"> LATEST 배지 (1건만)
-            </label>
-          </div>
+          <div class="modal-label">상태</div>
+          <label class="pe-check" style="display:block;margin-top:8px;cursor:pointer">
+            <input type="checkbox" id="magIssueActive" checked> 활성화 (웹사이트에 노출)
+          </label>
         </div>
       </div>
       <div class="modal-footer">
@@ -3653,7 +3535,7 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
     <div style="padding:8px 16px 14px;font-size:11px;color:var(--text3,#888);border-top:1px solid var(--border,#222)">지정한 영역만 픽셀화된 <strong>검열본이 새 이미지로 업로드</strong>되어 이 화보를 대체합니다. 원본 파일은 서버에서 삭제되지 않습니다. 드래그로 여러 영역 지정 가능 · 적용 후 "저장"을 눌러야 발행본에 반영됩니다.</div>
   </div>
 </div>
-<script src="/pap-admin.js?v=111" defer></script>
+<script src="/pap-admin.js?v=112" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>
