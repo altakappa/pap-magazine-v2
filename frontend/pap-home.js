@@ -399,6 +399,12 @@
     gameCanvas.height = window.innerHeight;
     gameCtx = gameCanvas.getContext('2d');
 
+    // QA(2026-07-21) — 숨기기 전에 먼저 헤더 상태로 되돌린다.
+    // on-cursor(96px) 인 채로 감추면 그 상태가 그대로 보존됐다가 게임을 닫는
+    // 순간 배너 한가운데에 큰 로고로 되살아난다.
+    if(typeof window._papResetFloatingLogo === 'function'){
+      try { window._papResetFloatingLogo(); } catch(_){}
+    }
     fLogo.style.display = 'none';
     setupGameLevel(gameLevel);
     gameStarted = true;
@@ -421,6 +427,15 @@
     if(gameCanvas) gameCanvas.remove();
     gameCanvas = null;
     fLogo.style.display = '';
+    /* QA(2026-07-21) "로고가 배너 중앙에 큰 사이즈로 고정" —
+       여기서 display 만 되돌리고 클래스·좌표는 그대로 뒀다. 그래서 게임을
+       시작할 때 커서를 따라다니던 상태(on-cursor, 96px)가 그대로 되살아났다.
+       특히 Esc 로 닫으면 마우스가 움직이지 않아 복귀 로직(mousemove)이 아예
+       돌지 않는다. 스크롤 핸들러도 onHero 일 때만 재평가하므로 구제되지 않는
+       경우가 있다. 닫을 때 명시적으로 헤더 상태로 되돌린다. */
+    if(typeof window._papResetFloatingLogo === 'function'){
+      try { window._papResetFloatingLogo(); } catch(_){}
+    }
     document.removeEventListener('keydown', gameKeyHandler);
   }
 
