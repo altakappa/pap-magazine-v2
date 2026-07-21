@@ -143,6 +143,13 @@ let calls = [];
 let behavior = () => ({ processed: 20, remaining: 100 });
 
 async function testCron() {
+  /* 2026-07-21 — 크론이 (lang × kind) 를 순회하도록 확장됐다.
+     아래 검증들은 "언어 순차 처리" 계약을 보는 것이므로 kind 를 editorial
+     하나로 고정하고, 회전도 꺼서 순서를 결정적으로 만든다.
+     (kind 확장 자체는 아래 별도 케이스에서 본다) */
+  process.env.SEO_TRANSLATE_KINDS = 'editorial';
+  process.env.SEO_TRANSLATE_ROTATE = '0';
+
   delete require.cache[CRON];
   inject(HELPER, {
     LANG_NAMES: { it: 'Italian', fr: 'French', es: 'Spanish' },
@@ -224,6 +231,33 @@ async function testCron() {
   process.env.SEO_TRANSLATE_BATCH = '999';
   await run();
   ok('batch 상한 20 유지', calls.every(c => c.batch === 20));
+
+  /* ── kind 확장 (2026-07-21) ─────────────────────────────────────
+     아티클 본문 번역이 크론에도 들어왔다. 확인할 것:
+       · (lang × kind) 조합을 모두 순회하는가
+       · 아티클 배치가 작은가 (본문 1건당 15~20초라 예산을 넘기면 안 된다) */
+  {
+    process.env.SEO_TRANSLATE_KINDS = 'editorial,article';
+    process.env.SEO_TRANSLATE_LANGS = 'it';   // 스텁 LANG_NAMES 에 있는 언어라야 통과한다
+    behavior = () => ({ processed: 1, remaining: 0 });
+    await run();
+    const seen = calls.slice();
+    ok('it × (editorial, article) 두 조합 모두 호출',
+      seen.length === 2 && seen.some(x => x.kind === 'editorial') && seen.some(x => x.kind === 'article'));
+    const art = seen.find(x => x.kind === 'article');
+    const edi = seen.find(x => x.kind === 'editorial');
+    ok('아티클 배치가 크론에서 더 작다', !!art && !!edi && art.batch < edi.batch);
+    ok('아티클 크론 배치는 2', !!art && art.batch === 2);
+    /* 위 검증들은 SEO_TRANSLATE_KINDS 를 명시로 넘기므로 "기본값"은 보호하지
+       못한다(역검증에서 실제로 안 잡혔다). 기본값이 article 을 포함하는지는
+       소스를 직접 확인한다 — 기본에서 빠지면 운영에서 아티클이 영영 안 돈다. */
+    const cronSrc = require('fs').readFileSync(
+      require('path').join(__dirname, '..', 'api/cron/backfill-translations.js'), 'utf8');
+    ok('크론 기본 대상에 article 이 포함된다',
+      /SEO_TRANSLATE_KINDS \|\| 'editorial,article'/.test(cronSrc));
+    process.env.SEO_TRANSLATE_KINDS = 'editorial';
+    process.env.SEO_TRANSLATE_LANGS = 'it,fr,es';
+  }
   delete process.env.SEO_TRANSLATE_BATCH;
 }
 

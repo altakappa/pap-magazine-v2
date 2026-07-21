@@ -73,12 +73,19 @@ module.exports = async function handler(req, res) {
      (운영 실측: batch=5 가 약 85초). 크론 예산 안에 확실히 들어오도록
      2건으로 제한한다. 관리자 수동 실행은 기본값(5)을 그대로 쓴다. */
   const kinds = String(process.env.SEO_TRANSLATE_KINDS || 'editorial,article')
-    .split(',').map(s => s.trim().toLowerCase()).filter(k => KINDS[k]);
+    .split(',').map(s => s.trim().toLowerCase())
+    /* KINDS 가 없을 수도 있다(테스트가 모듈을 스텁으로 갈아끼운다).
+       그래도 죽지 않게 하고, 최종 검증은 runBackfillBatch 에 맡긴다 —
+       거기서 잘못된 kind 는 400 으로 거부된다. */
+    .filter(k => !KINDS || !!KINDS[k]);
   const CRON_ARTICLE_BATCH = 2;
 
   const tasks = [];
   for (const lang of langs) for (const kind of kinds) tasks.push({ lang, kind });
-  const offset = tasks.length ? Math.floor(Date.now() / 600000) % tasks.length : 0;
+  /* 회전은 기본 동작이지만 테스트에서는 순서가 고정돼야 검증이 가능하다.
+     SEO_TRANSLATE_ROTATE=0 이면 정의된 순서를 그대로 쓴다. */
+  const rotate = process.env.SEO_TRANSLATE_ROTATE !== '0';
+  const offset = (rotate && tasks.length) ? Math.floor(Date.now() / 600000) % tasks.length : 0;
   const ordered = tasks.slice(offset).concat(tasks.slice(0, offset));
 
   const results = [];
