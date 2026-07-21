@@ -870,7 +870,15 @@ section.hero + .shorts-section{
   .lang-btn{min-height:44px}
   .carousel-arrow{width:44px;height:44px}
   .ed-row-arrow{min-width:44px}
-  .nf-nav{width:44px;height:44px}
+  /* QA(2026-07-21) — 여기서 height:44px 를 주면 안 된다.
+     .nf-nav 는 기본이 `top:0;height:100%` 인 세로 바(bar)라서, height 만
+     44px 로 줄이면 top:0 이 그대로 남아 화살표가 썸네일 행의 "맨 위"에
+     붙어버린다(가운데가 아니라). 이 블록은 hover:none + pointer:coarse —
+     즉 실제 터치 기기에서만 적용되므로 데스크톱 브라우저 검증으로는
+     절대 재현되지 않는다. 이전 정렬 수정이 "완료"로 보고됐는데 폰에서만
+     계속 어긋나 보였던 이유가 이것이다.
+     탭 타깃 44px 는 width 로 이미 충족되고 height 는 180~220px 라 넉넉하다. */
+  .nf-nav{width:44px}
   .shorts-nav{width:48px;height:48px}
   .ed-overlay-close{width:44px;height:44px}
   /* .nav-close hidden — hamburger morphs to X */
@@ -928,7 +936,20 @@ section.hero + .shorts-section{
      이전: min-width:calc(75% - 12px) → 카드 1개가 화면 3/4 차지 (에디토리얼 대비 2배 이상)
      조정: 200px 고정폭 → 에디토리얼(.ed-row-card 180px)과 유사한 스케일 유지 */
   .fashion-card{min-width:200px;max-width:200px}
-  .carousel-arrow{top:calc(50% - 28px);transform:translateY(-50%)}
+  /* QA(2026-07-21) — 최신기사 화살표를 "썸네일 박스 중앙"에 정확히 맞춘다.
+     이전 값 `top:calc(50% - 28px)` 은 카드 전체 높이의 절반에서 텍스트
+     블록 절반(28px 가정)을 빼는 방식이었는데, 두 가지 이유로 정확할 수 없다:
+       ① .fashion-card-info 높이가 제목 줄 수에 따라 54~81px 로 달라진다
+          (같은 줄에서도 카드마다 다르다 — 실측: 54.3 / 68.6 / 80.6px)
+       ② 50% 의 기준인 트랙 높이는 "가장 키 큰 카드"가 정한다
+     그래서 상수 보정으로는 어떤 값을 넣어도 카드마다 어긋난다.
+     실측 오차: 384px 폭에서 +19.4px, 314px 폭에서 +26.6px (아래로 치우침).
+
+     대신 위(트랙 상단 = 이미지 박스 상단)에서부터 잡는다. 이미지 박스는
+     aspect-ratio:4/5 이므로 높이 = 카드폭 × 5/4, 중앙 = 그 절반.
+     카드폭은 breakpoint 마다 고정 px 이라 값이 딱 떨어진다.
+     (에디토리얼 .ed-row-arrow 가 이미 쓰는 방식과 같은 원리) */
+  .carousel-arrow{top:calc(200px * 5 / 4 / 2);transform:translateY(-50%)}
   .ed-carousel-card{min-width:calc(50% - 14px)}
   .ed-row-card{min-width:180px;max-width:180px}
   .fashion-card-img{aspect-ratio:4/5} /* 모바일도 IG 세로형 유지 */
@@ -1126,6 +1147,7 @@ section.hero + .shorts-section{
   /* Cards — smaller for phone screens */
   /* QA #343 — 아티클 카드도 에디토리얼과 유사 스케일 */
   .fashion-card{min-width:170px;max-width:170px}
+  .carousel-arrow{top:calc(170px * 5 / 4 / 2)}   /* 썸네일 박스 중앙 */
   .ed-row-card{min-width:155px;max-width:155px}
   .ed-more-card{min-width:155px;max-width:155px}
   .nf-card{min-width:240px;max-width:240px}
@@ -1208,6 +1230,7 @@ section.hero + .shorts-section{
   .nf-card{min-width:220px;max-width:220px}
   /* QA #343 — 아티클 카드도 에디토리얼과 유사 스케일 */
   .fashion-card{min-width:155px;max-width:155px}
+  .carousel-arrow{top:calc(155px * 5 / 4 / 2)}   /* 썸네일 박스 중앙 */
   .creator-card{min-width:150px;max-width:150px}
 
   /* Nav */
@@ -1287,6 +1310,7 @@ section.hero + .shorts-section{
   .nf-card{min-width:180px;max-width:180px}
   /* QA #343 — 아티클 카드도 에디토리얼과 유사 스케일 */
   .fashion-card{min-width:130px;max-width:130px}
+  .carousel-arrow{top:calc(130px * 5 / 4 / 2)}   /* 썸네일 박스 중앙 */
 
   .nav-right-col a{font-size:18px}
   .nav-left-top a{font-size:13px}
