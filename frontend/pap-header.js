@@ -889,7 +889,47 @@
     /* ================================================================
        5. Sync language selector with page state (9 languages)
        ================================================================ */
-    var saved = localStorage.getItem('pap-lang') || 'ko';
+    /* QA(2026-07-21) — SSR 상세 페이지의 언어 처리.
+       ────────────────────────────────────────────────────────────────
+       기사·에디토리얼 상세는 SSR 이 곧 화면이고, 서버가 URL 접두어
+       (/en/article/…, /ja/article/… )로 언어를 정해 렌더한다.
+       그런데 헤더 선택기는 localStorage 만 보고 UI 문자열만 바꿔서
+         · /en/article/… 에 있어도 선택기엔 "한국어" 가 떠 있고
+         · 언어를 바꿔도 본문은 서버가 그린 그대로 → "변화 없음"
+       이었다(QA 보고 그대로). URL 이 실제 언어이므로 URL 을 진실로 삼는다.
+
+       SSR 이 실제로 렌더하는 언어만 이동 대상에 넣는다. vercel.json 의
+       rewrite 가 it|fr|es|ja 만 받으므로 zh/ru/de 로 이동하면 404 가 난다
+       — 그 언어들은 기존처럼 UI 문자열만 바꾼다. */
+    var PAP_SEO_LANGS = ['ko', 'en', 'it', 'fr', 'es', 'ja'];
+    function _papSeoPath() {
+      // /article/{slug} | /{lang}/article/{slug} (editorial 도 동일)
+      return location.pathname.match(/^\/(?:([a-z]{2})\/)?(article|editorial)\/(.+?)\/?$/);
+    }
+    function _papIsSeoDetail() {
+      return !!(document.querySelector('main.seo-content') && _papSeoPath());
+    }
+    /** 현재 페이지의 "실제" 언어 — SSR 상세면 URL 접두어, 아니면 저장값. */
+    window._papCurrentLang = function () {
+      var m = _papIsSeoDetail() ? _papSeoPath() : null;
+      if (m) return m[1] || 'ko';
+      return localStorage.getItem('pap-lang') || 'ko';
+    };
+    /** 언어 전환 시 이동할 URL. 이동이 필요 없으면 null. */
+    window._papSeoLangHref = function (lang) {
+      if (PAP_SEO_LANGS.indexOf(lang) === -1) return null;   // SSR 미지원 언어
+      var m = _papIsSeoDetail() ? _papSeoPath() : null;
+      if (!m) return null;
+      var cur = m[1] || 'ko';
+      if (lang === cur) return null;
+      var tail = m[2] + '/' + m[3];
+      return lang === 'ko' ? '/' + tail : '/' + lang + '/' + tail;
+    };
+
+    var saved = window._papCurrentLang();
+    // URL 이 언어를 정하는 페이지에서는 저장값도 URL 에 맞춰 둔다 —
+    // 안 그러면 다음 페이지로 넘어갈 때 언어가 되돌아간다.
+    try { localStorage.setItem('pap-lang', saved); } catch (_) {}
     var sel = document.getElementById('langSelect');
     if (sel) sel.value = saved;
 
@@ -926,6 +966,10 @@
     /* Wrap existing setLang so header updates on language change */
     var _origSetLang = typeof window.setLang === 'function' ? window.setLang : null;
     window.setLang = function (l) {
+      /* QA(2026-07-21) — SSR 상세에서는 UI 문자열만 바꿔도 본문이 그대로다.
+         해당 언어 URL 로 이동해 서버가 다시 렌더하게 한다. 선택값을 먼저
+         저장해 두어야 이동한 페이지에서 선택기가 맞게 뜬다. */
+      var _navTo = (typeof window._papSeoLangHref === 'function') ? window._papSeoLangHref(l) : null;
       if (_origSetLang && _origSetLang !== window.setLang) _origSetLang(l);
       else localStorage.setItem('pap-lang', l);
       window._papApplyHeaderI18n(l);
@@ -947,6 +991,11 @@
           }).catch(function () { /* no-op */ });
         }
       } catch (_) { /* localStorage may throw in some private modes */ }
+
+      /* 마지막에 이동한다 — 위의 프로필 언어 동기화(뉴스레터 언어에 쓰인다)와
+         localStorage 저장이 먼저 일어나야 하기 때문. 조기 return 하면 그
+         부수효과들이 통째로 건너뛰어진다. */
+      if (_navTo) location.href = _navTo;
     };
 
     /* Update login links based on user state */
