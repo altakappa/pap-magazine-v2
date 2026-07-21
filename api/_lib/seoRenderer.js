@@ -358,7 +358,7 @@ const LANG_META = {
 
 /* ── main render function ───────────────────────────── */
 // opts.lang: 'ko'(기본)|'en'|'it'|'fr'|'es'
-// opts.translation: {title, description} — it/fr/es 전용
+// opts.translation: {title, description, body} — it/fr/es/ja 전용 (body 는 기사 SSR 본문 번역)
 // opts.availableLangs: hreflang 으로 선언할 언어 목록 (기본 ['ko','en'])
 function renderSeoHtml(kind, record, opts) {
   const cfg = KIND[kind] || KIND.editorial;
@@ -863,8 +863,16 @@ function renderSeoHtml(kind, record, opts) {
     }
     return html;
   }
-  const bodyHtml = record.content
-    ? `<div class="seo-body">${_renderArticleBody(record.content)}</div>`
+  // 2026-07-21 — SSR 본문을 언어에 맞춰 고른다. 기존엔 record.content(한국어)를
+  // 모든 언어에 렌더해, 비한국어 SSR 페이지가 lang=xx 인데 본문이 한국어였다
+  // (크롤러·초기 페인트가 한국어를 색인). 우선순위: 번역 본문(tr.body) → en은
+  // content_en → 없으면 한국어 원문(fallback). tr.body 는 기사 핸들러만 전달하므로
+  // editorial/film/short 는 record.content 로 기존 동작을 그대로 유지한다.
+  const _trBody = (tr && typeof tr.body === 'string' && tr.body.trim()) ? tr.body : null;
+  const _enBody = (lang === 'en' && typeof record.content_en === 'string' && record.content_en.trim()) ? record.content_en : null;
+  const bodySource = _trBody || _enBody || record.content;
+  const bodyHtml = bodySource
+    ? `<div class="seo-body">${_renderArticleBody(bodySource)}</div>`
     : '';
 
   return `<!DOCTYPE html>
