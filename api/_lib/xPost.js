@@ -168,14 +168,19 @@ function _firstSentence(html) {
  * 비동기 — Claude 를 부르므로 기존 동기 빌더와 분리해 둔다.
  */
 async function buildConversationalTweet(art) {
-  const { generateConversationalPost } = require('./socialHook');
+  const { generateConversationalPost, stripDashes } = require('./socialHook');
   const hook = await generateConversationalPost(art, 'x');
   if (!hook) return null;
   const link = withUtm(art.url, 'x', 'pap_auto');
   const tagLine = '#PAPMAGAZINE';
-  const measured = hook.text + '\n\n' + URL_PLACEHOLDER + '\n\n' + tagLine;
+  // 2026-07-21 도메니코 지시 — 줄표는 AI 티가 나니 항상 뺀다. 프롬프트로도
+  // 금지하지만 프롬프트는 확률이라 새서, 게시 직전에 기계적으로 한 번 더 거른다.
+  // 길이 판정 전에 걸러야 한다. 나중에 걸면 제거로 줄어든 길이가 반영되지 않아
+  // 280자를 넘는다고 잘못 판단하고 멀쩡한 트윗을 버린다.
+  const body = stripDashes(hook.text);
+  const measured = body + '\n\n' + URL_PLACEHOLDER + '\n\n' + tagLine;
   if (weightedLen(measured) > 280) return null; // 넘치면 기존 방식으로
-  return { text: hook.text + '\n\n' + link + '\n\n' + tagLine, angle: hook.angle, score: hook.score };
+  return { text: body + '\n\n' + link + '\n\n' + tagLine, angle: hook.angle, score: hook.score };
 }
 
 function buildArticleTweet(art) {

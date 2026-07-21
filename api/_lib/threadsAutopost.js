@@ -13,7 +13,7 @@
  */
 
 const { supabaseAdmin } = require('./supabase');
-const { generateConversationalPost } = require('./socialHook');
+const { generateConversationalPost, stripDashes } = require('./socialHook');
 const { postText } = require('./threads');
 
 function htmlToText(html, cap) {
@@ -47,52 +47,6 @@ function fallbackText(art, url) {
     text = [art.title, '', trimmed, '', url, '', '#PAPMAGAZINE'].join('\n').slice(0, 500);
   }
   return text;
-}
-
-/**
- * 줄표 제거 (2026-07-21 도메니코 지시 — "AI 티가 나니까 항상 빼줘").
- *
- * 프롬프트로도 금지하지만 프롬프트는 확률이라 샌다. 게시 직전에 기계적으로
- * 한 번 더 걸러야 "항상"이 보장된다. 이게 마지막 관문이다.
- *
- * 대상: em dash(—) / en dash(–) / horizontal bar(―) / figure dash(‒)
- *       한글 'ㅡ'(U+3161 — 줄표 대신 흔히 타이핑되는 글자) / 연속 하이픈(--)
- * 주의: 'ㅡ'는 낱자로 쓰일 일이 사실상 없지만, 안전하게 "앞뒤가 공백이거나
- *       문장부호일 때"만 지운다. 단어 안(예: 자모 분리 텍스트)은 건드리지 않는다.
- *
- * 치환 규칙: 줄표는 대개 앞뒤 절을 잇는 자리라 쉼표로 바꾸면 자연스럽다.
- * 앞이 이미 문장부호면 쉼표를 겹치지 않도록 공백만 남긴다.
- */
-function stripDashes(input) {
-  let s = String(input == null ? '' : input);
-
-  // URL 은 건드리지 않는다. 슬러그에 '--' 가 들어있으면 링크가 깨지고,
-  // 그러면 링크 프리뷰 카드까지 같이 죽는다. 잠시 치워두고 마지막에 되돌린다.
-  const urls = [];
-  s = s.replace(/https?:\/\/\S+/g, (u) => {
-    urls.push(u);
-    return '%%PAPURL' + (urls.length - 1) + '%%';
-  });
-
-  // 한글 'ㅡ' 는 앞뒤가 공백/문장부호일 때만 줄표로 간주한다.
-  // (단어 안이나 자모 분리 텍스트를 건드리지 않기 위한 안전장치)
-  s = s.replace(/(^|[\s,.!?…])ㅡ(?=[\s,.!?…]|$)/g, '$1—');
-
-  const DASH = '[\\u2014\\u2013\\u2015\\u2012]|--';
-  // 1) 앞이 이미 문장부호면 쉼표를 겹치지 않게 줄표만 뺀다
-  s = s.replace(new RegExp('([,.!?…])\\s*(?:' + DASH + ')\\s*', 'g'), '$1 ');
-  // 2) 그 외에는 쉼표로. 줄표 자리는 대개 앞뒤 절을 잇는 자리다
-  s = s.replace(new RegExp('\\s*(?:' + DASH + ')\\s*', 'g'), ', ');
-
-  // 뒷정리: 쉼표 중복, 문장부호 앞 쉼표, 줄 끝 쉼표, 공백 중복
-  s = s.replace(/,\s*,+/g, ',')
-       .replace(/,\s*([.!?…])/g, '$1')
-       .replace(/[ \t]+/g, ' ')
-       .replace(/ ?, *\n/g, '\n')
-       .replace(/,\s*$/g, '')
-       .replace(/[ \t]+\n/g, '\n');
-
-  return s.replace(/%%PAPURL(\d+)%%/g, (_, i) => urls[Number(i)]).trim();
 }
 
 const SYSTEM_PROMPT = [

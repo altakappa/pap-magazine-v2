@@ -1,5 +1,5 @@
 /**
- * 스레드 어투 규칙 테스트 (2026-07-21 도메니코 지시)
+ * 소셜 어투 규칙 테스트 — 스레드 + X (2026-07-21 도메니코 지시)
  * ═══════════════════════════════════════════════════════════════════
  * 지시 두 가지:
  *   1. 줄표('ㅡ')는 AI 티가 나니까 항상 뺀다
@@ -17,15 +17,19 @@
  * → 게시 직전 stripDashes() 로 기계적으로 한 번 더 거른다. 이게 마지막 관문.
  *
  * ── 적용 범위 ───────────────────────────────────────────────────────
- * socialHook.js 는 X 와 공유한다. 지시 범위가 스레드였으므로 반말 규칙은
- * platform==='threads' 일 때만 붙인다. X 어투는 건드리지 않았다.
+ * 1차 지시는 스레드였고, 이어진 "전부 반말로 통일" 지시로 X 까지 넓혔다.
+ * 그래서 어투 규칙(SOCIAL_TONE)은 플랫폼 분기 없이 항상 붙고,
+ * stripDashes 는 공용 모듈(socialHook.js)로 옮겨 스레드·X 가 함께 쓴다.
+ *
+ * 샤오홍슈·카카오톡(socialRepurpose.js)은 넣지 않았다. 중국어에는 반말/존댓말
+ * 구분이 없고, 카톡 채널은 고객 공지 성격이라 별도 판단이 필요하다.
  *
  * ── 이 테스트가 지키는 것 ──────────────────────────────────────────
  *  1. 줄표가 실제로 제거될 것 (문자열 검사 아닌 실행 검증)
  *  2. URL 은 손상되지 않을 것 (슬러그의 '--' 가 깨지면 링크 프리뷰까지 죽는다)
  *  3. 생성 경로 전부에 필터가 걸려 있을 것 (한 경로라도 새면 의미 없다)
  *  4. 프롬프트가 반말을 지시하고, 존댓말 예시가 되살아나지 않을 것
- *  5. X 어투에는 반말 규칙이 새지 않을 것
+ *  5. 스레드·X 양쪽에 적용될 것 (플랫폼 분기 부활 금지)
  */
 const fs = require('fs');
 const path = require('path');
@@ -39,6 +43,7 @@ function t(name, cond, detail) {
 
 const threads = fs.readFileSync(path.join(ROOT, 'api/_lib/threadsAutopost.js'), 'utf8');
 const hook = fs.readFileSync(path.join(ROOT, 'api/_lib/socialHook.js'), 'utf8');
+const xpost = fs.readFileSync(path.join(ROOT, 'api/_lib/xPost.js'), 'utf8');
 
 /* 이 모듈들은 supabase 를 require 하므로 통째로 로드할 수 없다.
    함수만 떼어내 실제로 실행한다 — 정규식 검사만으로는 동작을 못 본다. */
@@ -54,8 +59,9 @@ function extractFn(src, name) {
 }
 
 console.log('\n=== 1. 줄표가 실제로 제거되는가 (실행 검증) ===');
-const fnSrc = extractFn(threads, 'stripDashes');
-t('stripDashes 를 추출했다', !!fnSrc);
+const fnSrc = extractFn(hook, 'stripDashes');
+t('stripDashes 를 공용 모듈(socialHook)에서 추출했다', !!fnSrc,
+  '스레드 전용이 아니라 X 도 함께 쓴다');
 let strip = null;
 if (fnSrc) { strip = new Function(fnSrc + '; return stripDashes;')(); }
 t('stripDashes 를 실행 가능한 함수로 만들었다', typeof strip === 'function');
@@ -122,12 +128,19 @@ t('스레드 프롬프트 본문에 줄표가 없다',
   !/[—–―]/.test(promptLines.replace(/줄표\([^)]*\)/g, '')),
   '지시가 쓰인 문체까지 따라한다');
 
-console.log('\n=== 5. X 어투에는 새지 않는가 ===');
-t('반말 규칙은 threads 일 때만 붙는다',
-  /platform === 'threads' \? SYSTEM \+ '\\n' \+ THREADS_TONE : SYSTEM/.test(hook),
-  'socialHook 은 X 와 공유한다. 지시 범위는 스레드였다');
-t('THREADS_TONE 이 정의돼 있다', /const THREADS_TONE = \[/.test(hook));
+console.log('\n=== 5. 전 채널(스레드+X) 공통 적용인가 ===');
+/* 2026-07-21 2차 지시 "전부 반말로 통일" — 처음엔 스레드에만 붙였다가
+   X 를 포함한 전 채널 공통으로 올렸다. 플랫폼 분기가 되살아나면 안 된다. */
+t('어투 규칙이 플랫폼 분기 없이 항상 붙는다',
+  /system: SYSTEM \+ '\\n' \+ SOCIAL_TONE/.test(hook),
+  "platform === 'threads' 분기가 되살아나면 X 가 다시 존댓말로 샌다");
+t('SOCIAL_TONE 이 정의돼 있다', /const SOCIAL_TONE = \[/.test(hook));
+t('X 도 줄표 필터를 거친다', /stripDashes\(hook\.text\)/.test(xpost),
+  '스레드만 걸면 X 에 줄표가 남는다');
+t('X 는 길이 판정 전에 필터를 건다',
+  /const body = stripDashes\(hook\.text\);[\s\S]{0,200}weightedLen\(measured\)/.test(xpost),
+  '나중에 걸면 줄어든 길이가 반영 안 돼 멀쩡한 트윗을 280자 초과로 버린다');
 
 console.log(`\npassed: ${pass}   failed: ${fail}`);
-if (fail) { console.log('❌ threads-tone tests FAILED'); process.exit(1); }
-console.log('✅ threads-tone tests passed');
+if (fail) { console.log('❌ social-tone tests FAILED'); process.exit(1); }
+console.log('✅ social-tone tests passed');

@@ -108,11 +108,59 @@ const SYSTEM = [
   'JSON 객체만 출력: {"text":"본문(링크 제외)","angle":"무엇으로 말을 걸었는지 한 줄"}',
 ].join('\n');
 
-/* 스레드 전용 어투 규칙 (2026-07-21 도메니코 지시).
-   X 에는 붙이지 않는다 — 지시 범위가 스레드였다. */
-const THREADS_TONE = [
+/**
+ * 줄표 제거 (2026-07-21 도메니코 지시 — "AI 티가 나니까 항상 빼줘").
+ *
+ * 프롬프트로도 금지하지만 프롬프트는 확률이라 샌다. 게시 직전에 기계적으로
+ * 한 번 더 걸러야 "항상"이 보장된다. 이게 마지막 관문이다.
+ *
+ * 대상: em dash(—) / en dash(–) / horizontal bar(―) / figure dash(‒)
+ *       한글 'ㅡ'(U+3161 — 줄표 대신 흔히 타이핑되는 글자) / 연속 하이픈(--)
+ * 주의: 'ㅡ'는 낱자로 쓰일 일이 사실상 없지만, 안전하게 "앞뒤가 공백이거나
+ *       문장부호일 때"만 지운다. 단어 안(예: 자모 분리 텍스트)은 건드리지 않는다.
+ *
+ * 치환 규칙: 줄표는 대개 앞뒤 절을 잇는 자리라 쉼표로 바꾸면 자연스럽다.
+ * 앞이 이미 문장부호면 쉼표를 겹치지 않도록 공백만 남긴다.
+ */
+function stripDashes(input) {
+  let s = String(input == null ? '' : input);
+
+  // URL 은 건드리지 않는다. 슬러그에 '--' 가 들어있으면 링크가 깨지고,
+  // 그러면 링크 프리뷰 카드까지 같이 죽는다. 잠시 치워두고 마지막에 되돌린다.
+  const urls = [];
+  s = s.replace(/https?:\/\/\S+/g, (u) => {
+    urls.push(u);
+    return '%%PAPURL' + (urls.length - 1) + '%%';
+  });
+
+  // 한글 'ㅡ' 는 앞뒤가 공백/문장부호일 때만 줄표로 간주한다.
+  // (단어 안이나 자모 분리 텍스트를 건드리지 않기 위한 안전장치)
+  s = s.replace(/(^|[\s,.!?…])ㅡ(?=[\s,.!?…]|$)/g, '$1—');
+
+  const DASH = '[\\u2014\\u2013\\u2015\\u2012]|--';
+  // 1) 앞이 이미 문장부호면 쉼표를 겹치지 않게 줄표만 뺀다
+  s = s.replace(new RegExp('([,.!?…])\\s*(?:' + DASH + ')\\s*', 'g'), '$1 ');
+  // 2) 그 외에는 쉼표로. 줄표 자리는 대개 앞뒤 절을 잇는 자리다
+  s = s.replace(new RegExp('\\s*(?:' + DASH + ')\\s*', 'g'), ', ');
+
+  // 뒷정리: 쉼표 중복, 문장부호 앞 쉼표, 줄 끝 쉼표, 공백 중복
+  s = s.replace(/,\s*,+/g, ',')
+       .replace(/,\s*([.!?…])/g, '$1')
+       .replace(/[ \t]+/g, ' ')
+       .replace(/ ?, *\n/g, '\n')
+       .replace(/,\s*$/g, '')
+       .replace(/[ \t]+\n/g, '\n');
+
+  return s.replace(/%%PAPURL(\d+)%%/g, (_, i) => urls[Number(i)]).trim();
+}
+
+/* 소셜 공통 어투 규칙 (2026-07-21 도메니코 지시 "전부 반말로 통일").
+   처음엔 스레드에만 붙였다가 지시에 따라 X 포함 전 채널 공통으로 올렸다.
+   샤오홍슈·카카오톡(socialRepurpose.js)은 여기 묶지 않았다. 중국어에는
+   반말/존댓말 구분이 없고, 카톡 채널은 고객 공지 성격이라 판단이 따로 필요하다. */
+const SOCIAL_TONE = [
   '',
-  '스레드 어투 (반드시 지킬 것):',
+  '어투 (반드시 지킬 것):',
   '- 처음부터 끝까지 반말. 마지막 질문도 반말이다. ("다들 어떻게 봐?" 처럼)',
   '  본문만 반말로 쓰고 질문에서 존댓말로 바꾸면 어색하다. 한 사람 목소리로 간다.',
   '  ※ 하지 말라는 표현을 예시로 적지 않는다. 모델이 그 문구를 오히려 집는다.',
@@ -146,10 +194,10 @@ async function generateConversationalPost(art, platform, opts) {
       body: JSON.stringify({
         model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5',
         max_tokens: 700,
-        // 2026-07-21 도메니코 지시 — 스레드는 전체 반말. 기존엔 본문은 반말인데
-        // 마지막 질문만 존댓말("다들 어떻게 보세요?")로 튀어 어색했다(프롬프트의
-        // 예시 문구를 모델이 그대로 따라 쓴 결과). X 는 지시 범위 밖이라 그대로 둔다.
-        system: platform === 'threads' ? SYSTEM + '\n' + THREADS_TONE : SYSTEM,
+        // 2026-07-21 도메니코 지시 — 스레드·X 전 채널 반말 통일.
+        // 기존엔 본문은 반말인데 마지막 질문만 존댓말("다들 어떻게 보세요?")로
+        // 튀어 어색했다. 프롬프트의 예시 문구를 모델이 그대로 따라 쓴 결과였다.
+        system: SYSTEM + '\n' + SOCIAL_TONE,
         messages: [{
           role: 'user',
           content: JSON.stringify({
@@ -183,4 +231,5 @@ async function generateConversationalPost(art, platform, opts) {
   }
 }
 
-module.exports = { hookScore, generateConversationalPost, HOOK_MIN, SIGNALS, BLOCK };
+module.exports = {
+  stripDashes, hookScore, generateConversationalPost, HOOK_MIN, SIGNALS, BLOCK };
