@@ -15,7 +15,7 @@ const { requireAuth, requireAdmin } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { normalizeGenres } = require('../_lib/submissionCategories');
-const { classifySubmissionType } = require('../_lib/submissionType');
+const { classifySubmissionType, looksMissingCredit } = require('../_lib/submissionType');
 
 const BUCKET = 'submissions';
 
@@ -145,6 +145,16 @@ module.exports = async function handler(req, res) {
       // helper (api/_lib/submissionType.js) keeps front/back rules in lockstep
       // and is regression-tested. 'free' | 'paid_few_looks' | 'branded'.
       const { submissionType } = classifySubmissionType(looks, lookImageMap);
+      // 2026-07-21 (도메니코 지시) — 모든 룩은 최소 1개 크레딧(브랜드 또는 인스타)이
+      // 있어야 제출/재제출 가능. 과거엔 강제하지 않아 룩 크레딧 없이 통과됐다(예: Marooned).
+      const _missingCreditLooks = looksMissingCredit(looks);
+      if (looks.length && _missingCreditLooks.length) {
+        return res.status(400).json({
+          code: 'LOOK_CREDIT_REQUIRED',
+          message: 'Each look needs at least one credit (brand or Instagram). Missing: Look ' + _missingCreditLooks.join(', '),
+          missingLooks: _missingCreditLooks,
+        });
+      }
       // QA #168 — also persist the STRUCTURED team array
       // [{ role, name, instagram, website }, …]. data.credits is a lossy
       // flat-string view kept for legacy consumers; review.js stage-as-

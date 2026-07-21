@@ -155,8 +155,27 @@ function classifySubmissionType(looks, lookImageMap) {
   return { submissionType, realLookCount, branded, sharedBrands };
 }
 
+/**
+ * 크레딧이 없는 룩의 번호 배열을 돌려준다 — 브랜드/인스타가 모두 빈 룩.
+ * (2026-07-21 도메니코 지시: 모든 룩은 최소 1개 크레딧 필수)
+ */
+function looksMissingCredit(looks) {
+  if (!Array.isArray(looks)) return [];
+  const out = [];
+  for (const L of looks) {
+    const items = (L && Array.isArray(L.items)) ? L.items : [];
+    const credited = items.some(function (it) {
+      return it && (String(it.brand == null ? '' : it.brand).trim()
+        || String(it.instagram == null ? '' : it.instagram).trim());
+    });
+    if (!credited) out.push((L && L.n != null) ? L.n : null);
+  }
+  return out;
+}
+
 module.exports = {
   MIN_LOOKS,
   normBrand,
   classifySubmissionType,
+  looksMissingCredit,
 };

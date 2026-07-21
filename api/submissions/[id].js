@@ -11,7 +11,7 @@ const { requireAuth, requireAdmin } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { normalizeGenres } = require('../_lib/submissionCategories');
-const { classifySubmissionType } = require('../_lib/submissionType');
+const { classifySubmissionType, looksMissingCredit } = require('../_lib/submissionType');
 
 // Build the same `{SUPABASE_URL}/storage/v1/object/public/submissions/{user.id}/`
 // prefix the POST endpoint enforces — caller can only attach URLs in their
@@ -166,6 +166,16 @@ module.exports = async function handler(req, res) {
       // Recompute submission-type on resubmit so a revision that changes the
       // look count or brand mix re-classifies correctly (mirror of POST path).
       const { submissionType } = classifySubmissionType(looks, lookImageMap);
+      // 2026-07-21 (도메니코 지시) — 모든 룩은 최소 1개 크레딧(브랜드 또는 인스타)이
+      // 있어야 제출/재제출 가능. 과거엔 강제하지 않아 룩 크레딧 없이 통과됐다(예: Marooned).
+      const _missingCreditLooks = looksMissingCredit(looks);
+      if (looks.length && _missingCreditLooks.length) {
+        return res.status(400).json({
+          code: 'LOOK_CREDIT_REQUIRED',
+          message: 'Each look needs at least one credit (brand or Instagram). Missing: Look ' + _missingCreditLooks.join(', '),
+          missingLooks: _missingCreditLooks,
+        });
+      }
 
       // Append a "[Resubmitted on …]" line to admin_notes so the editor can
       // see the history of the original feedback + what got revised.
