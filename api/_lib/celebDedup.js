@@ -11,14 +11,71 @@
 'use strict';
 
 const norm = (s) => String(s || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
-const STOP = new Set(['the','a','an','of','in','on','at','for','to','and','or','with','his','her','its','new','says','after','from','over','into','this','that','be','is','are','was','were','has','have','will','k','pop']);
+
+/* HTML 엔티티 복원 — 숫자 엔티티까지.
+   2026-07-21 2차: 이걸 안 하면 `&#038;` `&#160;` `&#8216;` 가 토큰화 단계에서
+   038·160·8216 이라는 "단어"가 된다. 실측 celeb_watch_seen 에 그대로 남아 있었고,
+   매체마다 인코딩이 달라 실행마다 이 숫자들이 들쭉날쭉 → 매번 "새 요소"로 잡혀
+   같은 사건이 6번씩 알림으로 나갔다. 중복 폭주의 1번 원인. */
+function decodeHtml(s) {
+  return String(s || '')
+    .replace(/&amp;/g, '&')
+    .replace(/&#(\d+);/g, (_, n) => { try { return String.fromCodePoint(Number(n)); } catch (_e) { return ' '; } })
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => { try { return String.fromCodePoint(parseInt(n, 16)); } catch (_e) { return ' '; } })
+    .replace(/&apos;/g, "'").replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ');
+}
+
+/* 구글뉴스·매체 RSS 의 제목 끝 " - 매체명" 꼬리 제거.
+   2026-07-21 2차: 이 꼬리 때문에 chosunbiz·starnewskorea·com·네이트 같은
+   **매체 이름이 사건의 구성 요소로** 들어갔다. 같은 사건이라도 어느 매체가
+   클러스터에 잡히느냐에 따라 core 가 달라져 중복 판정이 새어나갔다.
+   중복 폭주의 2번 원인. */
+function stripSource(title) {
+  return decodeHtml(title)
+    .replace(/\s+[-–—|]\s+[^-–—|]{2,40}$/u, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+const STOP = new Set([
+  // 영어 기능어
+  'the','a','an','of','in','on','at','for','to','and','or','with','his','her','its',
+  'new','says','said','after','from','over','into','this','that','be','is','are','was',
+  'were','has','have','had','will','k','pop','as','by','but','not','out','up','off','all',
+  'more','most','than','then','who','what','when','where','why','how','here','there',
+  'it','he','she','they','we','you','their','our','your','one','two','about',
+  // 2026-07-21 2차 — 헤드라인 상용어. 사건의 "요소"가 아니라 문장을 채우는 말이라
+  // 리워딩마다 들락날락하며 가짜 새 요소를 만든다 (bold·dress·ball·having…).
+  'watch','video','photo','photos','pic','pics','image','images','star','stars','show',
+  'shows','news','report','reports','update','look','looks','style','styles','wear',
+  'wears','wore','dress','dressed','outfit','sneakers','ball','kick','bold','having',
+  'shop','release','releases','released','drops','drop','first','best','top','global',
+  'official','ahead','link','links','behind','scenes','back','fans','fan','moment',
+  'reveal','reveals','revealed','share','shares','shared','post','posts','via','com','www',
+  // 한국어 상용어 (2026-07-21 2차)
+  '사진','영상','기사','뉴스','공연','무대','모습','현장','네이트','스타일','화보',
+  '공개','발표','소식','오늘','어제','관련','이번','지난','최근','대한','통해','위해',
+]);
+
 // 2026-07-21 — 한국어 대응. 기존 `length >= 3` 은 영어 기준이라 한국어 헤드라인의
 // 핵심어(정국·결승·무대·수상…)를 거의 전부 버렸고, 그래서 한국어 기사끼리는
 // 중복 판정이 사실상 작동하지 않았다. CJK 는 2자부터 의미가 있으므로 분리한다.
 const CJK_RE = /[぀-ヿ㐀-䶿一-鿿가-힯]/;
 function keywords(title) {
-  return norm(canonicalize(title)).split(' ')
+  return norm(canonicalize(stripSource(title))).split(' ')
+    // 순수 숫자는 사건의 요소가 아니다 (연도·엔티티 코드 잔재).
+    .filter(w => !/^\d+$/.test(w))
     .filter(w => (CJK_RE.test(w) ? w.length >= 2 : w.length >= 3) && !STOP.has(w));
+}
+
+/* 헤드라인 하나의 지문 — 같은 기사가 실행마다 다시 잡히는 것을 막는다.
+   단어 순서·꼬리 매체명·엔티티 인코딩 차이를 흡수하도록 정렬된 키워드 집합으로 만든다.
+   (클러스터 core 는 어떤 헤드라인이 함께 묶이느냐에 따라 흔들리지만, 이 키는
+    헤드라인 하나만 보므로 흔들리지 않는다 — 중복 방지의 마지막 방어선.) */
+function titleKey(title) {
+  const ks = [...new Set(keywords(title))].sort();
+  return ks.length ? ks.join('-') : norm(stripSource(title)).slice(0, 60);
 }
 
 /* 한·영 표기 통일 — BTS 와 방탄소년단이 다른 토큰이면 같은 사건이 갈라진다.
@@ -158,5 +215,5 @@ const HOT_MIN = 7; // 2개 매체(4) + 최신(2) 만으로는 안 보냄. 3개 �
 
 module.exports = {
   norm, canonicalize, keywords, clusterEvents, clusterKeywords, clusterCore,
-  sameEvent, hotScore, HOT_MIN,
+  sameEvent, hotScore, HOT_MIN, decodeHtml, stripSource, titleKey, STOP,
 };

@@ -100,14 +100,28 @@ function decodeEntities(s) {
 
 const {
   keywords, clusterEvents, clusterCore, sameEvent, hotScore, HOT_MIN,
+  titleKey, stripSource,
 } = require('../_lib/celebDedup');
 
 
-/* 영문 헤드라인 → 한국어. 이미 한국어인 제목은 건드리지 않는다.
+/* 영문 헤드라인 → 한국어.
+   2026-07-21 2차 버그픽스 (도메니코: "영어 기사도 여전히 오고 있어"):
+   기존엔 제목 전체에 한글이 하나라도 있으면 번역 대상에서 뺐다. 그런데
+   구글뉴스는 제목 끝에 " - 조선일보" 처럼 **매체명을 붙인다**. 그래서
+   "BLACKPINK's Jennie Releases New Single - 조선일보" 같은 영문 헤드라인이
+   "한국어"로 오판돼 번역 없이 그대로 나갔다. 실측 celeb_watch_seen 의
+   영문 알림 대부분이 이 경우였다.
+   → 매체명 꼬리를 뗀 본문으로 한글 여부를 판정한다.
    반환: { 원문: 번역문 }. 실패·키 없음이면 빈 객체 → 호출부가 원문으로 폴백. */
 const HANGUL_RE = /[가-힣]/;
+const LATIN_RE = /[A-Za-z]{3}/;
+function needsTranslation(title) {
+  const body = stripSource(title);           // " - 조선일보" 제거 후 판정
+  if (!LATIN_RE.test(body)) return false;    // 라틴 문자가 없으면 번역할 게 없다
+  return !HANGUL_RE.test(body);              // 본문이 한글이면 그대로 둔다
+}
 async function translateTitles(titles) {
-  const targets = [...new Set(titles.filter(t => t && !HANGUL_RE.test(t)))];
+  const targets = [...new Set(titles.filter(t => t && needsTranslation(t)))];
   if (!targets.length || !process.env.ANTHROPIC_API_KEY) return {};
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -195,7 +209,7 @@ module.exports = withCronGuard('celeb-watch', async function handler(req, res) {
          ③ 같은 실행 안에서 서로 중복인 클러스터 병합 */
     const since = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
     const { data: seen } = await supabaseAdmin.from('celeb_watch_seen')
-      .select('signature, title, kw, core, created_at').gte('created_at', since).limit(500);
+      .select('signature, title, kw, core, titles, created_at').gte('created_at', since).limit(500);
     const seenRows = seen || [];
     const seenSig = new Set(seenRows.map(s => s.signature));
     const seenCores = seenRows.map(s => {
@@ -203,11 +217,28 @@ module.exports = withCronGuard('celeb-watch', async function handler(req, res) {
       if (Array.isArray(s.kw) && s.kw.length) return s.kw;
       return keywords(s.title || '');
     });
+    /* ⓪ 헤드라인 단위 방어선 (2026-07-21 2차 신설).
+       실측: 같은 기사("Watch Burna Boy Link Up With Justin Bieber…")가 5분 간격으로
+       6번 알림에 실렸다. 클러스터 core 는 어떤 헤드라인들이 함께 묶이느냐에 따라
+       실행마다 달라지지만, **헤드라인 자체는 그대로**다. 그래서 이미 보낸 헤드라인을
+       기억해 두고, 클러스터에서 그 헤드라인을 빼버린다. 남는 게 없으면 알림 없음. */
+    const seenTitleKeys = new Set();
+    for (const s of seenRows) {
+      if (Array.isArray(s.titles)) for (const k of s.titles) if (k) seenTitleKeys.add(k);
+      if (s.title) seenTitleKeys.add(titleKey(s.title));
+    }
 
-    clusters = clusters.filter(c => {
-      if (seenSig.has(c.signature)) return false;
-      return !seenCores.some(sc => sameEvent(c.core, sc));
-    });
+    clusters = clusters
+      .map(c => {
+        const fresh = c.headlines.filter(h => !seenTitleKeys.has(titleKey(h.title)));
+        return Object.assign({}, c, { headlines: fresh });
+      })
+      // 새 헤드라인이 하나도 없으면 이미 다 알린 사건이다 — 조용히 버린다.
+      .filter(c => c.headlines.length > 0)
+      .filter(c => {
+        if (seenSig.has(c.signature)) return false;
+        return !seenCores.some(sc => sameEvent(c.core, sc));
+      });
     if (!clusters.length) return res.status(200).json({ ok: true, note: '신규 속보 없음 (이미 알림)', scanned: items.length });
 
     // ③ 같은 실행 안에서의 중복 제거 — 클러스터링이 놓친 같은 사건을 한 번 더 접는다.
@@ -230,6 +261,8 @@ module.exports = withCronGuard('celeb-watch', async function handler(req, res) {
           title: c.headlines[0].title,
           kw: c.kw,      // 참고용 전체 키워드
           core: c.core,  // 다음 실행의 중복 판정 근거 (사건의 등장 요소)
+          // 이번에 실제로 보낸 헤드라인들의 지문 — 다음 실행에서 같은 기사를 뺀다.
+          titles: c.headlines.map(h => titleKey(h.title)),
           topic: c.topic,
           source_count: c.sourceCount,
           score: c.score,
@@ -246,14 +279,15 @@ module.exports = withCronGuard('celeb-watch', async function handler(req, res) {
     const toTranslate = [];
     for (const c of picked) for (const h of c.headlines.slice(0, 4)) toTranslate.push(h);
     const koMap = await translateTitles(toTranslate.map(h => h.title));
+    // 원문을 보여줄 때도 HTML 엔티티·매체명 꼬리를 정리해서 읽기 좋게.
     const ko = (t) => {
       const v = koMap[t];
-      return v && v !== t ? `${v}\n   (${t})` : t;
+      return v && v !== t ? `${v}\n   (${stripSource(t)})` : stripSource(t);
     };
 
     const top = picked[0];
     const more = picked.length > 1 ? ` 외 ${picked.length - 1}건` : '';
-    const topKo = koMap[top.headlines[0].title] || top.headlines[0].title;
+    const topKo = koMap[top.headlines[0].title] || stripSource(top.headlines[0].title);
     const pushResult = await pushAlert({
       title: `🚨 PAP 속보 감지 — ${topKo}${more}`,
       lines: [
@@ -262,7 +296,7 @@ module.exports = withCronGuard('celeb-watch', async function handler(req, res) {
         '',
         ...picked.slice(1).map(c => {
           const t = c.headlines[0].title;
-          return `▸ ${koMap[t] || t} (${c.sourceCount}개 매체)`;
+          return `▸ ${koMap[t] || stripSource(t)} (${c.sourceCount}개 매체)`;
         }),
         '',
         '기사화할지는 직접 판단하세요.',

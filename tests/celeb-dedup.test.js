@@ -13,6 +13,7 @@
 
 const {
   keywords, canonicalize, clusterEvents, clusterCore, sameEvent, hotScore, HOT_MIN,
+  decodeHtml, stripSource, titleKey,
 } = require('../api/_lib/celebDedup');
 
 let pass = 0, fail = 0;
@@ -118,6 +119,53 @@ const small = {
 };
 ok('대형 사건은 임계값을 넘는다', hotScore(big) >= HOT_MIN);
 ok('평범한 2개 매체 건은 임계값 미달 → 알림 안 감', hotScore(small) < HOT_MIN);
+
+/* ---------------------------------------------------------------- */
+// 2026-07-21 2차 — 도메니코: "여전히 중복된 기사가 여러 번 온다".
+// 아래는 실제 celeb_watch_seen 에 남아 있던 데이터로 만든 회귀 테스트다.
+// 같은 기사가 5분 간격으로 6번 나간 원인 세 가지를 각각 못 박는다.
+section('노이즈 제거 — 중복 폭주의 실제 원인');
+
+// ① HTML 숫자 엔티티가 "단어"가 되던 문제 (038·160·8216 이 core 에 박혀 있었다)
+const billboard = 'Watch Burna Boy Link Up With Justin Bieber, Shakira &#038; More in Behind-the-Scenes World Cup Halftime Video&#160;Diary';
+const bbKw = keywords(billboard);
+ok('숫자 엔티티가 키워드로 남지 않는다 (038/160)', !bbKw.some(w => /^\d+$/.test(w)));
+ok('엔티티 디코딩', decodeHtml('A &#038; B') === 'A & B');
+
+// ② 구글뉴스 " - 매체명" 꼬리가 사건 구성요소로 들어가던 문제
+ok('매체명 꼬리를 뗀다', stripSource("BLACKPINK's Jennie Releases New Single - 조선일보") === "BLACKPINK's Jennie Releases New Single");
+const gnKw = keywords("BTS Proves K-pop's Global Status at FIFA World Cup Final Halftime Show - 조선일보");
+ok('매체명이 키워드에 섞이지 않는다', !gnKw.includes('조선일보') && !gnKw.includes('chosunbiz'));
+ok('매체 도메인 조각(com)이 키워드에 없다',
+  !keywords('BTS Jimin Stuns Global Fans - starnewskorea.com').includes('com'));
+
+// ③ 헤드라인 상용어가 실행마다 들락날락하며 가짜 "새 요소"를 만들던 문제
+ok('헤드라인 상용어는 버린다 (watch/video/show/photo)',
+  !bbKw.includes('watch') && !bbKw.includes('video'));
+
+section('titleKey — 같은 기사는 몇 번을 봐도 같은 지문');
+
+ok('인코딩·꼬리가 달라도 같은 지문', titleKey(billboard) === titleKey(
+  'Watch Burna Boy Link Up With Justin Bieber, Shakira & More in Behind-the-Scenes World Cup Halftime Video Diary - Billboard'));
+ok('단어 순서가 바뀌어도 같은 지문',
+  titleKey('BTS 지민 월드컵 하프타임 무대') === titleKey('월드컵 하프타임 무대 BTS 지민'));
+ok('다른 사건은 다른 지문',
+  titleKey('BTS 월드컵 하프타임쇼 출연') !== titleKey('블랙핑크 제니 신곡 공개'));
+ok('빈 제목도 죽지 않는다', typeof titleKey('') === 'string');
+
+section('실측 재현 — 같은 사건이 6번 나가던 core 들');
+
+// celeb_watch_seen 22:40 / 22:50 / 23:00 행에서 뽑은 실제 core.
+// 노이즈를 걷어내면 남는 요소가 같아야 하고, sameEvent 가 중복으로 잡아야 한다.
+const runA = keywords("BTS Proves K-pop's Global Status at FIFA World Cup Final Halftime Show - 조선일보");
+const runB = keywords("BTS Proves K-pop's Global Status at FIFA World Cup Final Halftime Show - chosunbiz.com");
+ok('같은 헤드라인이면 매체가 달라도 같은 요소 집합', titleKey(runA.join(' ')) === titleKey(runB.join(' ')));
+ok('같은 헤드라인은 중복으로 판정된다', sameEvent(runA, runB) === true);
+
+// 도메니코 규칙은 그대로 살아 있어야 한다 — 새 인물이 들어오면 다른 사건.
+ok('새 인물이 추가되면 여전히 다른 사건 (정호연 규칙 유지)',
+  sameEvent(keywords('정호연 BTS 월드컵 하프타임쇼 동반 출연'),
+            keywords('BTS 월드컵 하프타임쇼 출연')) === false);
 
 /* ---------------------------------------------------------------- */
 console.log('\npassed: ' + pass + '   failed: ' + fail);
