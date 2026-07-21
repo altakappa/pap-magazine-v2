@@ -44,8 +44,7 @@ module.exports = async function handler(req, res) {
       .from('magazine_issues')
       .select('id,issue_number,title,issue_year,issue_month,month_label,cover_image,editorial_count,link_url,is_latest,sort_order,months')
       .eq('is_active', true)
-      .order('issue_year', { ascending: false })
-      .order('sort_order', { ascending: false });
+      .order('issue_number', { ascending: false });
 
     if (error) {
       console.error('[magazine-issues GET] supabase error', error);

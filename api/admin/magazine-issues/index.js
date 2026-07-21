@@ -26,6 +26,18 @@ const { supabaseAdmin } = require('../../_lib/supabase');
 const { handleCors }    = require('../../_lib/cors');
 const { requireAdmin }  = require('../../_lib/auth');
 const { rateLimit, RATE_LIMITS } = require('../../_lib/rateLimit');
+const { deriveFromCoverEditorial } = require('../../_lib/magazineIssueDerive');
+
+// 커버 에디토리얼(id 또는 slug)을 조회한다 — 발행호 자동 산출용.
+async function _resolveCoverEditorial(body) {
+  const edId   = body && body.cover_editorial_id   ? String(body.cover_editorial_id).trim()   : '';
+  const edSlug = body && body.cover_editorial_slug ? String(body.cover_editorial_slug).trim() : '';
+  if (!edId && !edSlug) return null;
+  let q = supabaseAdmin.from('editorials').select('id,slug,published_date,cover_image,thumbnail,gallery').limit(1);
+  q = edId ? q.eq('id', edId) : q.eq('slug', edSlug);
+  const { data } = await q.maybeSingle();
+  return data || null;
+}
 
 function normalizeRow(body) {
   return {
@@ -56,8 +68,7 @@ module.exports = async function handler(req, res) {
       const { data, error } = await supabaseAdmin
         .from('magazine_issues')
         .select('*')
-        .order('issue_year', { ascending: false })
-        .order('sort_order', { ascending: false });
+        .order('issue_number', { ascending: false });
 
       if (error) {
         console.error('[admin magazine-issues GET] supabase error', error);
@@ -76,6 +87,17 @@ module.exports = async function handler(req, res) {
   if (req.method === 'POST') {
     try {
       const row = normalizeRow(req.body || {});
+      // 2026-07-21 개편 — 커버 에디토리얼을 고르면 발행연도·분기·기간라벨·커버이미지 자동 산출.
+      const _coverEd = await _resolveCoverEditorial(req.body || {});
+      if (_coverEd) {
+        const d = deriveFromCoverEditorial(_coverEd);
+        if (d.issue_year  != null) row.issue_year  = d.issue_year;
+        if (d.issue_month != null) row.issue_month = d.issue_month;
+        if (d.month_label)         row.month_label = d.month_label;
+        if (d.cover_image)         row.cover_image = d.cover_image;
+      }
+      // 정렬은 VOL.N(issue_number) 기준으로 통일.
+      if (row.issue_number) row.sort_order = row.issue_number;
       if (!row.issue_number) return res.status(400).json({ message: 'issue_number is required' });
       if (!row.title)        return res.status(400).json({ message: 'title is required' });
       if (!row.issue_year)   return res.status(400).json({ message: 'issue_year is required' });
@@ -160,6 +182,18 @@ module.exports = async function handler(req, res) {
       if (typeof body.is_latest === 'boolean')   patch.is_latest       = body.is_latest;
       if (typeof body.is_active === 'boolean')   patch.is_active       = body.is_active;
       if (Number.isFinite(body.sort_order))      patch.sort_order      = body.sort_order;
+
+      // 2026-07-21 개편 — 커버 에디토리얼 참조가 오면 자동 산출값으로 덮어쓴다.
+      const _coverEd2 = await _resolveCoverEditorial(body);
+      if (_coverEd2) {
+        const d = deriveFromCoverEditorial(_coverEd2);
+        if (d.issue_year  != null) patch.issue_year  = d.issue_year;
+        if (d.issue_month != null) patch.issue_month = d.issue_month;
+        if (d.month_label)         patch.month_label = d.month_label;
+        if (d.cover_image)         patch.cover_image = d.cover_image;
+      }
+      // 정렬은 VOL.N 기준.
+      if (patch.issue_number != null) patch.sort_order = patch.issue_number;
 
       // is_latest=true 로 바뀌면 다른 이슈들의 is_latest 를 false 로 리셋
       if (patch.is_latest === true){
