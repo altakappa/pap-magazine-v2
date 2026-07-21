@@ -48,6 +48,8 @@ const KINDS = {
     columns: 'id, title, title_en, description, description_en, description_it',
     translateBody: false,
     defaultBatch: 10,
+    charBudget: 0,      // 설명이 평균 15자라 개수 제한만으로 충분
+    maxTokens: 8000,
     order: 'published_date',
     src: (e) => ({
       title: e.title,
@@ -59,7 +61,15 @@ const KINDS = {
     table: 'articles',
     columns: 'id, title, title_en, content, content_en',
     translateBody: true,
-    defaultBatch: 3,
+    defaultBatch: 5,
+    /* 파일럿(2026-07-21)에서 발견 — 개수만으로 묶으면 안 된다.
+       486건 중 465건(95.7%)이 2,000자 이하인데 최대 12,963자짜리가 있다.
+       고정 batch 로 묶으면 긴 글이 걸린 배치에서 응답이 max_tokens 안에서
+       잘려 통째로 실패한다(ja 배치20 에서 겪은 것과 같은 계열).
+       → 개수 상한과 함께 "본문 문자수 예산"으로도 자른다. 긴 글은 자연히
+         혼자 처리된다. 예산은 일본어/중국어 확장을 감안해 보수적으로 잡았다. */
+    charBudget: 6000,
+    maxTokens: 16000,
     order: 'published_date',
     src: (a) => ({
       title: a.title,
@@ -158,7 +168,20 @@ async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 9
     }
   }
 
-  const items = pending.slice(0, size);
+  /* 개수 상한 + 문자수 예산 중 먼저 걸리는 쪽으로 자른다(최소 1건은 보장 —
+     예산보다 긴 글도 혼자서는 처리돼야 한다). */
+  let items = pending.slice(0, size);
+  if (cfg.charBudget > 0) {
+    const picked = [];
+    let used = 0;
+    for (const it of items) {
+      const len = String((cfg.src(it) || {}).body || '').length;
+      if (picked.length && used + len > cfg.charBudget) break;
+      picked.push(it);
+      used += len;
+    }
+    items = picked;
+  }
 
   /* 3) Claude 번역 — 배치 전체를 한 번에 JSON 으로 */
   const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
@@ -195,7 +218,7 @@ async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 9
       // 2026-07-21: 4000 이었으나 batch=20 + ja(멀티바이트, 토큰 소모 큼)
       // 조합에서 응답이 중간에 잘려 JSON 파싱 실패가 재현됨(운영 관찰,
       // batch<=10 은 재현 안 됨). it/fr/es 는 영향 없이 여유만 늘어남.
-      max_tokens: 8000,
+      max_tokens: cfg.maxTokens || 8000,
       messages: [{ role: 'user', content: prompt }],
     }),
     signal: AbortSignal.timeout(timeoutMs),

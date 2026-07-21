@@ -87,6 +87,15 @@ async function testHelper() {
     helper.KINDS.article.translateBody === true && helper.KINDS.editorial.translateBody === false);
   ok('아티클 배치가 더 작다 (본문 길이 때문)',
     helper.KINDS.article.defaultBatch < helper.KINDS.editorial.defaultBatch);
+  /* 파일럿(2026-07-21)에서 발견: 개수만으로 묶으면 긴 글이 몰린 배치가
+     max_tokens 안에서 잘려 통째로 실패한다. 실측 분포는 486건 중 465건이
+     2,000자 이하인데 최대 12,963자가 있어 편차가 크다. */
+  ok('아티클은 문자수 예산으로도 자른다', helper.KINDS.article.charBudget > 0);
+  ok('에디토리얼은 예산 불필요 (설명 평균 15자)', helper.KINDS.editorial.charBudget === 0);
+  ok('아티클 max_tokens 가 더 크다 (본문 번역)',
+    helper.KINDS.article.maxTokens > helper.KINDS.editorial.maxTokens);
+  ok('최장 아티클(12,963자)도 단독 배치로 처리 가능',
+    helper.KINDS.article.maxTokens >= 16000);
   try { await helper.runBackfillBatch({ lang: 'it', kind: 'nope' }); ok('잘못된 kind 거부', false); }
   catch (e) { ok('잘못된 kind → 400', e.statusCode === 400); }
 
