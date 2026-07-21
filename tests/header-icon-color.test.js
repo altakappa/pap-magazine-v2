@@ -77,6 +77,18 @@ console.log('\n=== 3. 주입 헤더(pap-header.js)와 값이 같은가 ===');
     '두 곳의 값이 다르면 페이지마다 헤더 색이 달라진다');
 });
 
+console.log('\n=== 4. index.html 오버레이 미니헤더 계정 아이콘이 안 흐린가 (2026-07-21 QA) ===');
+/* 에디토리얼 목록/상세는 .overlay-mini-header 를 따로 쓴다. 그 계정 아이콘이
+   인라인 color:inherit 이면 클래스(#fff)를 이기고 어두운 배경색을 상속해
+   검정 위 검정으로 사라진다. bcb7594 가 클래스만 고쳐 이 경로를 놓쳤다. */
+const idx = fs.readFileSync(path.join(ROOT, 'frontend/index.html'), 'utf8');
+const acctInherit = (idx.match(/class="header-right-item"[^>]*aria-label="Account"[^>]*color:\s*inherit/g) || []).length;
+t('오버레이 계정 아이콘에 color:inherit 가 없다', acctInherit === 0,
+  acctInherit + '곳이 color:inherit — 어두운 오버레이에서 아이콘이 안 보인다. color:#fff 로.');
+const acctWhite = (idx.match(/class="header-right-item"[^>]*aria-label="Account"[^>]*color:\s*#fff/g) || []).length;
+t('오버레이 계정 아이콘이 흰색으로 지정됐다', acctWhite >= 6,
+  '현재 흰색 지정: ' + acctWhite + '곳');
+
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if (fail) { console.log('❌ header-icon-color tests FAILED'); process.exit(1); }
 console.log('✅ header-icon-color tests passed');
