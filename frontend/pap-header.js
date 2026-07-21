@@ -588,8 +588,27 @@
           }
         });
         col.innerHTML = html;
-        // i18n 재적용 (사용자가 이미 선택한 언어로).
-        try { if (typeof window.applyI18n === 'function') window.applyI18n(); } catch(_){}
+        /* QA(2026-07-21) 우측 메뉴만 영문으로 뜨던 문제 —
+           여기서 window.applyI18n() 을 부르고 있었는데 그런 함수는 이 코드베이스
+           어디에도 없다. typeof 가드가 조용히 건너뛰어 아무 일도 일어나지 않았고,
+           API 가 준 label_default(영문)가 그대로 남았다.
+
+           증상이 페이지마다 달라 보인 건 경쟁 조건 때문이다. 헤더 주입 직후의
+           _papApplyHeaderI18n(saved) 는 하드코딩 폴백 마크업을 번역해 두는데,
+           그 뒤 이 fetch 가 도착하면 통째로 영문으로 갈아끼운다.
+             · API 가 느리거나 실패 → 번역된 폴백이 살아남아 한글
+             · API 가 캐시로 즉시 도착 → 영문으로 교체된 뒤 그대로
+           "커뮤니티가 처음엔 한글인데 다른 페이지 갔다 오면 영문 고정"이 정확히
+           이 순서 차이다(재방문 시 응답이 캐시에서 즉시 온다).
+
+           헤더가 그린 DOM 은 헤더가 번역한다. _hdrT 에 우측 5개 키가 모두 있다. */
+        try {
+          var _lang = (typeof window._papCurrentLang === 'function')
+            ? window._papCurrentLang() : null;
+          if (_lang && typeof window._papApplyHeaderI18n === 'function') {
+            window._papApplyHeaderI18n(_lang);
+          }
+        } catch(_){}
       })
       .catch(function(err){
         if (typeof console !== 'undefined') console.warn('[nav-menu] load failed, fallback:', err && err.message);
