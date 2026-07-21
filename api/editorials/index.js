@@ -152,6 +152,21 @@ module.exports = async function handler(req, res) {
                      .order('published_date', { ascending: false });
       }
 
+      /* 2026-07-21 — published_date 기간 필터(from/to).
+         QA("매거진 발행호 상세 구조 이원화") 대응. 발행호 상세는 분기
+         단위라 그 분기의 에디토리얼만 있으면 되는데, 기간 필터가 없어서
+         VOL.30+ 는 "전체 500건을 받아 클라이언트에서 거르는" 방식이었고
+         VOL.1~29 는 아예 에디토리얼을 못 불러와 다른 화면을 쓰고 있었다.
+         분기 범위를 서버에서 자르면 13~125건만 받아 두 경로가 같은
+         템플릿을 쓸 수 있다. YYYY-MM-DD 형식만 허용한다. */
+      const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+      if (DATE_RE.test(String(req.query.from || ''))) {
+        query = query.gte('published_date', req.query.from);
+      }
+      if (DATE_RE.test(String(req.query.to || ''))) {
+        query = query.lte('published_date', req.query.to);
+      }
+
       query = query.range(offset, offset + parseInt(limit) - 1);
 
       // For the public-facing 'published' view, hide editorials whose
