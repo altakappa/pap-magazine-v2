@@ -39,7 +39,10 @@ a{color:#fff;text-decoration:none}
 /* Each anchor target gets a small top offset so smooth-scroll doesn't tuck
    the heading under the global fixed header when the user clicks a sidebar
    item. */
-#mp-profile,#mp-subscription,#mp-activity,#mp-contributions,#mp-submissions,#mp-pullletters,#mp-downloads,#mp-account{scroll-margin-top:28px}
+/* 탭 클릭 시 섹션이 고정 헤더 밑으로 숨지 않도록 하는 오프셋.
+   #mp-preferences 가 빠져 있어 알림설정만 오프셋 0 이었다(2026-07-21 발견). */
+#mp-profile,#mp-subscription,#mp-activity,#mp-contributions,#mp-submissions,
+#mp-pullletters,#mp-downloads,#mp-preferences,#mp-account{scroll-margin-top:28px}
 
 /* AVATAR */
 .mp-avatar{width:72px;height:72px;border-radius:50%;border:2px solid rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;overflow:hidden;background:rgba(255,255,255,.04)}
@@ -190,12 +193,49 @@ a{color:#fff;text-decoration:none}
      overscroll-behavior-x:contain 으로 가로 스와이프가 뒤로가기로 새지 않게 유지. */
   .mp-sidebar{position:fixed;top:72px;left:0;right:0;z-index:999;width:100%;height:auto;padding:0 12px;border-right:none;border-bottom:1px solid rgba(255,255,255,.1);overflow-x:auto;overflow-y:hidden;background:rgba(0,0,0,.92);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none}
   .mp-sidebar::-webkit-scrollbar{display:none}
-  body.pap-has-header .mp-wrapper{padding-top:117px}
+  body.pap-has-header{--mp-chrome:117px}
+  body.pap-has-header .mp-wrapper{padding-top:var(--mp-chrome)}
   .mp-side-nav{flex-direction:row;flex-wrap:nowrap;gap:0;align-items:center}
   .mp-side-group{flex-direction:row;padding:0 4px;align-items:center;gap:0;flex-shrink:0}
   .mp-side-group-title{display:none}
-  .mp-side-link{padding:10px 16px;margin:0;border-left:none;border-bottom:2px solid transparent;white-space:nowrap}
+  .mp-side-link{padding:14px 16px;margin:0;border-left:none;border-bottom:2px solid transparent;white-space:nowrap}
   .mp-side-link.active{border-left-color:transparent;border-bottom-color:#fff}
+
+  /* ── QA 2026-07-21 (탭 재점검) ──────────────────────────────────────
+     실측(390px 화면): 트랙 폭 819px / 화면 386px. 9개 탭 중 6개만 보이고
+     나머지는 가로 스크롤해야 나온다. 여기까지는 설계대로다.
+
+     문제 1 — 탭이 아닌 것이 탭 트랙에 섞여 있었다.
+       데스크톱 세로 사이드바에선 아래쪽에 따로 떨어져 있던 "관리자 페이지"와
+       "로그아웃"이, 가로 탭바가 되면 10·11번째 탭처럼 나란히 붙는다.
+       로그아웃은 doLogout() → 메인홈 이동이라, 탭을 훑다 잘못 누르면
+       마이페이지를 이탈한다. 모바일 탭 트랙에서는 뺀다.
+       (로그아웃은 헤더 계정 메뉴에 있으므로 접근성은 유지된다)
+
+     문제 2 — 스크롤 손잡이가 너무 얇았다. 탭바 높이가 36px 뿐이라
+       손가락으로 가로로 밀기 어렵고 세로 스와이프로 인식되기 쉽다.
+       위 padding 을 10 → 14px 로 키워 터치 영역을 확보한다.
+
+     문제 3 — 마지막 탭이 화면 경계에 딱 붙어 잘려, "더 있다"는 신호가 없었다.
+       트랙 끝에 여백을 줘서 잘린 탭이 눈에 띄게 한다. */
+  .mp-side-divider,
+  .mp-side-link.danger{display:none}
+  /* 관리자 그룹은 JS 가 인라인 style 로 display:flex 를 넣으므로 !important 가 필요하다 */
+  #mpSideAdminGroup{display:none!important}
+  .mp-side-nav::after{content:'';flex:0 0 24px}
+
+  /* 문제 4 — 탭을 눌러도 그 섹션이 안 보였다 (QA "엉뚱한 화면으로 이동").
+     오프셋이 28px 인데 모바일은 헤더 + 탭바가 화면 위를 덮는다.
+     참여작품·업로드·풀레터·다운로드는 섹션 높이가 88px 라, 스크롤 후 섹션
+     전체가 가림막 뒤로 완전히 숨고 화면에는 그 다음 섹션이 보였다.
+     프로필(140)·구독(274)·활동(313)은 키가 커서 일부라도 보이니 "이 셋만
+     정상"으로 느껴진 것이다. QA 가 나눈 3개/3개 경계와 정확히 맞는다.
+
+     가림막 높이는 이미 .mp-wrapper 의 padding-top 이 알고 있다. 두 곳에
+     숫자를 따로 적으면 한쪽만 고쳤을 때 이 버그가 그대로 재발하므로,
+     --mp-chrome 하나를 두고 둘 다 그걸 쓴다. */
+  #mp-profile,#mp-subscription,#mp-activity,#mp-contributions,#mp-submissions,
+  #mp-pullletters,#mp-downloads,#mp-preferences,#mp-account{scroll-margin-top:calc(var(--mp-chrome) + 8px)}
   .mp-side-spacer{display:none}
   .mp-side-divider{width:1px;height:18px;margin:0 8px;flex-shrink:0}
   .mp-back{padding:0 16px 0 0;flex-shrink:0}
@@ -205,11 +245,15 @@ a{color:#fff;text-decoration:none}
    여기 값을 바꾸면 pap-header.js 도 함께 봐야 한다(tests/mypage-sticky-tabs 가 감시). */
 @media(max-width:768px){
   .mp-sidebar{top:60px}
-  body.pap-has-header .mp-wrapper{padding-top:105px}
+  body.pap-has-header{--mp-chrome:105px}
+  body.pap-has-header .mp-wrapper{padding-top:var(--mp-chrome)}
+
 }
 @media(max-width:480px){
   .mp-sidebar{top:56px}
-  body.pap-has-header .mp-wrapper{padding-top:101px}
+  body.pap-has-header{--mp-chrome:101px}
+  body.pap-has-header .mp-wrapper{padding-top:var(--mp-chrome)}
+
 }
 @media(max-width:500px){
   .mp-wrapper{padding:24px 16px 40px}
@@ -1089,6 +1133,17 @@ function setupMpSidebar(){
       if(!link) return;
       links.forEach(function(a){ a.classList.remove('active'); });
       link.classList.add('active');
+      // QA 2026-07-21 — 모바일 가로 탭바에서 활성 탭이 화면 밖이면 아무 탭도
+      // 선택돼 보이지 않는다(9개 중 6개만 보인다). 활성 탭을 트랙 안으로 끌어와
+      // "지금 어디인지"와 "오른쪽에 더 있다"를 동시에 보여준다.
+      // 세로 스크롤은 건드리지 않는다(block:'nearest') — 건드리면 사용자가
+      // 읽고 있던 위치가 튄다.
+      try {
+        var bar = document.getElementById('mpSidebar');
+        if (bar && bar.scrollWidth > bar.clientWidth + 1) {
+          link.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        }
+      } catch(_){}
     });
   }, { rootMargin:'-20% 0px -60% 0px', threshold:0 });
   Object.keys(bySectionId).forEach(function(id){

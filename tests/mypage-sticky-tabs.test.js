@@ -119,14 +119,34 @@ const tops = { 900: num(side900, 'top'), 768: num(ruleIn(b768, '.mp-sidebar'), '
 });
 
 console.log('\n=== 4. 본문이 탭바에 가리지 않는가 ===');
-/* 탭바 높이 37px — .mp-side-link{padding:10px 16px} 기준 라이브 실측.
-   가로 스크롤바가 보이면 53px 이 되므로 스크롤바는 숨겨야 한다(아래 5번). */
-const BAR = 37;
-const pads = {
-  900: num(ruleIn(b900, 'body.pap-has-header .mp-wrapper'), 'padding-top'),
-  768: num(ruleIn(b768, 'body.pap-has-header .mp-wrapper'), 'padding-top'),
-  480: num(ruleIn(b480, 'body.pap-has-header .mp-wrapper'), 'padding-top'),
+/* 탭바 높이 45px — .mp-side-link{padding:14px 16px} 기준.
+   2026-07-21 QA(탭 재점검)에서 10 → 14px 로 키웠다. 36px 짜리 얇은 띠는
+   손가락으로 가로로 밀기 어려워 "슬라이드해도 안 나온다"의 한 원인이었다.
+   가로 스크롤바가 보이면 더 두꺼워지므로 스크롤바는 숨겨야 한다(아래 5번). */
+/* 상수로 박아두면 CSS 의 padding 을 바꿔도 테스트가 안 잡는다(실제로
+   45 로 박아둔 채 padding 을 되돌리는 역검증이 통과해버렸다).
+   CSS 에서 읽어 계산한다: 위아래 padding + 글자줄 16px + border-bottom 1px. */
+const LINK_PAD = (() => {
+  const m = (ruleIn(b900, '.mp-side-link') || '').match(/padding:\s*(\d+)px/);
+  return m ? Number(m[1]) : null;
+})();
+const BAR = LINK_PAD === null ? null : LINK_PAD * 2 + 17;
+t(`탭바 높이를 CSS 에서 계산했다 (padding ${LINK_PAD}px → ${BAR}px)`,
+  BAR !== null, '.mp-side-link 의 padding 을 못 읽었다');
+/* 2026-07-21 — 여백 값이 --mp-chrome 변수로 옮겨졌다. 탭 클릭 시 쓰는
+   scroll-margin-top 과 같은 출처를 쓰게 하려는 것이다(두 곳에 숫자를 따로
+   적어 한쪽만 고친 것이 이번 QA 의 원인이었다). 그래서 변수를 풀어서 읽는다. */
+const chromeVar = (block) => {
+  const m = (block || '').match(/--mp-chrome:\s*(\d+)px/);
+  return m ? Number(m[1]) : null;
 };
+const padOf = (block) => {
+  const rule = ruleIn(block, 'body.pap-has-header .mp-wrapper');
+  const direct = num(rule, 'padding-top');
+  if (direct !== null) return direct;
+  return /padding-top:var\(--mp-chrome\)/.test(rule || '') ? chromeVar(block) : null;
+};
+const pads = { 900: padOf(b900), 768: padOf(b768), 480: padOf(b480) };
 [900, 768, 480].forEach((bp) => {
   const need = headerH[bp] + BAR;
   t(`≤${bp}px — 본문 여백 ${pads[bp]}px ≥ 헤더+탭바 ${need}px`,
