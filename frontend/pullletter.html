@@ -90,7 +90,7 @@ a{color:#fff;text-decoration:none}
 /* FORM */
 .pl-form{display:none}
 .form-group{margin-bottom:28px}
-.form-label{display:block;font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.85);margin-bottom:10px}
+.form-label{display:block;font-size:13px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.85);margin-bottom:10px}
 .form-label .required{color:rgba(255,255,255,1)}
 .form-input{width:100%;background:transparent;border:1px solid rgba(255,255,255,.35);padding:14px 16px;font-size:13px;font-family:'Montserrat',sans-serif;color:#fff;letter-spacing:.02em;transition:border-color .3s;outline:none}
 .form-input:focus{border-color:rgba(255,255,255,.55)}
@@ -120,6 +120,12 @@ select.form-input option{background:#111;color:#fff}
 .file-item .file-size{color:rgba(255,255,255,.6);margin-right:12px;flex-shrink:0}
 .file-item .file-remove{background:none;border:none;color:rgba(255,255,255,.6);cursor:pointer;font-size:16px;padding:0 4px;transition:color .2s}
 .file-item .file-remove:hover{color:#fff}
+/* QA(2026-07-22): .form-hint 규칙이 이 파일에 없어 브라우저 기본 16px를 상속 →
+   라벨(.form-label 13px)보다 안내 문구가 더 커 보이던 위계 역전 + 파일명 바(.file-list)에
+   margin-top 0 으로 붙던 여백 문제. 형제 submission.html 규칙(10px)을 기준으로 정렬하되
+   업로드 바 아래 숨 쉴 여백(margin-top:12px) 확보. 라벨 > 박스 안내(12px) > 파일바(11px) >
+   form-hint(11px) 위계 확립. (videographer 인라인 margin-top 오버라이드는 의도된 예외로 유지) */
+.form-hint{font-size:11px;color:rgba(255,255,255,.55);margin-top:12px;line-height:1.6;letter-spacing:.02em}
 
 /* SUBMIT */
 .form-actions{margin-top:40px;padding-top:32px;border-top:1px solid rgba(255,255,255,.35)}
