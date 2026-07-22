@@ -889,6 +889,25 @@
       window.toggleSearch = window._papToggleSearch;
     }
 
+    /* QA(2026-07-22) — 폴백 오버레이의 검색 "제출" 핸들러.
+       SSR 페이지(에디토리얼/아티클/필름 목록·상세 등)는 legacy #searchBar 가
+       없어 #papSearchOverlay 폴백이 열리는데, 입력창(#papSearchInput)에
+       핸들러가 전혀 없어서 "검색창은 열리는데 입력해도 아무 일도 안 일어나는"
+       상태였다(QA 보고 그대로 — 라이브 실측: overlayOpens true, onkeydown null).
+       Enter 시 통합 결과 페이지 /search?q=… 로 보낸다 — 홈(legacy 드롭다운)과
+       달리 폴백은 페이지 이동형 검색으로 전 페이지 동일 플로우를 보장한다. */
+    (function () {
+      var inp = document.getElementById('papSearchInput');
+      if (!inp || inp._papSearchBound) return;
+      inp._papSearchBound = true;
+      inp.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        var q = String(inp.value || '').trim();
+        if (!q) return;
+        window.location.href = '/search?q=' + encodeURIComponent(q);
+      });
+    })();
+
     /* Toggle Account dropdown */
     function _closeAcctH(e) {
       var d = document.getElementById('accountDropdown');
