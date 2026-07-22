@@ -39,7 +39,7 @@ module.exports = async function handler(req, res) {
     const [artsR, edsR] = await Promise.all([
       supabaseAdmin
         .from('articles')
-        .select('id, title, custom_url, published_date, description, hero_image_url, thumbnail_url')
+        .select('id, title, slug, custom_url, published_date, description, hero_image_url, thumbnail_url')
         .eq('status', 'published')
         .order('published_date', { ascending: false })
       .order('created_at', { ascending: false })
@@ -58,7 +58,7 @@ module.exports = async function handler(req, res) {
     const items = [];
 
     (artsR.data || []).forEach(a => {
-      const handle = a.custom_url || a.id;
+      const handle = a.slug || a.custom_url || a.id; // 2026-07-22 정식 slug 우선 (RSS 링크 301 제거)
       if (!handle || !a.title) return;
       items.push({
         title: a.title,

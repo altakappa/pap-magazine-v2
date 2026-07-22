@@ -23,14 +23,17 @@ module.exports = async function handler(req, res) {
   try {
     const { data: arts } = await supabaseAdmin
       .from('articles')
-      .select('id, title, custom_url, published_date, updated_at, hero_image_url, thumbnail_url')
+      .select('id, title, slug, custom_url, published_date, updated_at, hero_image_url, thumbnail_url')
       .eq('status', 'published')
       .order('published_date', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(5000);
 
     const urls = (arts || []).map(a => {
-      const handle = a.custom_url || a.id;
+      // 2026-07-22 (Ahrefs 감사: 사이트맵 내 301 690건) — custom_url 은 레거시 경로형
+      // 값(발행 504건 중 268건 불량·68건 공백)이라 광고하면 전부 정식 slug 로 301 된다.
+      // articles.slug 는 504/504 전건 URL-clean(DB 실측) — 정식 슬러그를 1순위로 광고.
+      const handle = a.slug || a.custom_url || a.id;
       if (!handle) return '';
       const loc = SITE + '/article/' + encodeURIComponent(handle);
       // /en/ SSR (2026-07-16) — 언어별 URL + hreflang alternate

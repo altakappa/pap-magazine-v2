@@ -29,7 +29,7 @@ module.exports = async function handler(req, res) {
     const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
     let { data: arts } = await supabaseAdmin
       .from('articles')
-      .select('id, title, custom_url, published_date')
+      .select('id, title, slug, custom_url, published_date')
       .eq('status', 'published')
       .gte('published_date', cutoff)
       .order('published_date', { ascending: false })
@@ -43,7 +43,7 @@ module.exports = async function handler(req, res) {
     if (!arts || !arts.length) {
       const fb = await supabaseAdmin
         .from('articles')
-        .select('id, title, custom_url, published_date')
+        .select('id, title, slug, custom_url, published_date')
         .eq('status', 'published')
         .order('published_date', { ascending: false })
       .order('created_at', { ascending: false })
@@ -52,7 +52,7 @@ module.exports = async function handler(req, res) {
     }
 
     const urls = (arts || []).map(a => {
-      const handle = a.custom_url || a.id;
+      const handle = a.slug || a.custom_url || a.id; // 2026-07-22 정식 slug 우선 (사이트맵 301 제거)
       if (!handle || !a.title) return '';
       const loc = SITE + '/article/' + encodeURIComponent(handle);
       const pubDate = new Date(a.published_date).toISOString();
