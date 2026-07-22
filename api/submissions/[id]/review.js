@@ -471,15 +471,34 @@ module.exports = async function handler(req, res) {
     // can't parse "{photographer: ['Name (@handle)']}". The converters
     // below normalise everything before INSERT.
     let stagedEditorialId = null;
+    let alreadyStaged = false;
     if (status === 'approved') {
       try {
+        // ── 중복 스테이징 가드 (2026-07-22, ASIATOPIA 사고 근본수정) ──
+        // 재승인(운영자가 1차 승인이 실패한 줄 알고 다시 누르는 케이스)이
+        // 같은 서브미션에서 에디토리얼을 한 번 더 INSERT 해 슬러그 중복을
+        // 만들어 왔다 (DB 실측: 동일 패턴 5건 — ASIATOPIA·ALTER EGO·
+        // Synthetic Skin·HYPER VENUS·CARAMELLE). 이미 스테이징된 에디토리얼이
+        // 있으면 그 id 를 재사용해 승인 요청을 멱등(idempotent)으로 만든다.
+        // AI 캡션 생성보다 먼저 검사해 비용/지연도 아낀다. DB 에도
+        // editorials_source_submission_uniq 부분 유니크 인덱스로 2차 방어.
+        const { data: existingEd } = await supabaseAdmin
+          .from('editorials')
+          .select('id')
+          .eq('source_submission_id', submission.id)
+          .limit(1)
+          .maybeSingle();
+        if (existingEd && existingEd.id) {
+          stagedEditorialId = existingEd.id;
+          alreadyStaged = true;
+        }
         const desc = submission.description ? JSON.parse(submission.description) : {};
         const coverIdx = typeof coverImageIndex === 'number' ? coverImageIndex : (desc.coverImageIndex || 0);
         const coverUrl = submission.file_urls && submission.file_urls[coverIdx]
           ? submission.file_urls[coverIdx]
           : (submission.file_urls && submission.file_urls[0]) || null;
 
-        if (coverUrl) {
+        if (coverUrl && !alreadyStaged) {
           const tagsArr = Array.isArray(desc.genre) ? desc.genre : [];
           const description = (desc.artistStatement || '').trim() || null;
 
@@ -666,7 +685,7 @@ module.exports = async function handler(req, res) {
     // editorialId lets the admin UI deep-link straight into the edit
     // screen for the staged draft, skipping the manual nav through
     // 에디토리얼 관리 → 임시저장 탭.
-    return res.status(200).json({ submission, editorialId: stagedEditorialId });
+    return res.status(200).json({ submission, editorialId: stagedEditorialId, alreadyStaged });
   } catch (error) {
     console.error('Review submission error:', error);
     return res.status(500).json({ message: 'Failed to review submission' });

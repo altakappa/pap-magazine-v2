@@ -1851,7 +1851,10 @@ async function doReview(status){
         return;
       }catch(navErr){
         console.warn('Could not auto-open editorial editor:',navErr);
-        alert('승인되었습니다. 에디토리얼 관리 → 임시저장 탭에서 편집할 수 있습니다.');
+        // QA(2026-07-22) — 자동 스테이징된 미수정 draft 는 임시저장 탭에 안 보인다
+        // (QA #197 필터). 잘못된 안내가 "업로드 실패" 오인 → 재승인 → 중복 생성으로
+        // 이어졌으므로 실제 접근 경로를 안내한다.
+        alert('승인되었습니다. 서브미션 심사 목록의 [에디토리얼 편집] 버튼으로 이어서 편집할 수 있습니다.');
       }
     } else {
       alert('심사가 완료되었습니다.');
