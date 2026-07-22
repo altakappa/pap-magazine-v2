@@ -772,6 +772,77 @@ function _statusBadge(status){
   return '<span class="mp-badge ' + cls + '">' + label + '</span>';
 }
 
+// ───── 세부 상태 + 상태별 액션 (QA 2026-07-22, 관리자 배지 체계 미러링) ─────
+// 관리자 _deriveDisplayStatus(pap-admin.js·api/submissions/index.js)와 동일 규칙:
+//   rejected / revision / pending / resubmitted(pending+resubmitted_at)
+//   / uploaded(approved+published editorial) / final_approved(approved)
+// 여기에 사용자 관점 상태 하나를 추가한다:
+//   payment_required — final_approved 인데 유료 유형(paid_few_looks/branded)이고
+//   payment_status!=='paid'. "승인됨"으로만 보이면 사용자가 결제할 일을 모른다(매출 직결).
+function _mpDeriveStatus(s){
+  if (!s) return 'pending';
+  if (s.status === 'rejected') return 'rejected';
+  if (s.status === 'revision') return 'revision';
+  if (s.status === 'pending') return s.resubmitted_at ? 'resubmitted' : 'pending';
+  if (s.status === 'approved' || s.status === 'accepted') {
+    var le = s.linked_editorial;
+    if (le && le.status === 'published') return 'uploaded';
+    var d = {}; try { d = s.description ? JSON.parse(s.description) : {}; } catch(_){}
+    var t = d.submissionType || '';
+    if ((t === 'paid_few_looks' || t === 'branded') && s.payment_status !== 'paid') return 'payment_required';
+    return 'final_approved';
+  }
+  if (s.status === 'published') return 'uploaded';
+  return s.status || 'pending';
+}
+var _MP_STATUS_META = {
+  pending:          { ko:'대기 중',          en:'Pending',           fg:'rgba(255,180,50,.95)',  bg:'rgba(255,180,50,.1)',  bd:'rgba(255,180,50,.4)'  },
+  resubmitted:      { ko:'보완 완료',        en:'Resubmitted',       fg:'rgba(100,150,255,.95)', bg:'rgba(100,150,255,.1)', bd:'rgba(100,150,255,.4)' },
+  revision:         { ko:'보완 요청',        en:'Revision requested',fg:'rgba(100,150,255,.95)', bg:'rgba(100,150,255,.1)', bd:'rgba(100,150,255,.4)' },
+  payment_required: { ko:'게재료 결제 대기', en:'Payment required',  fg:'#000',                  bg:'#c9a86a',              bd:'#c9a86a'              },
+  final_approved:   { ko:'최종 승인',        en:'Approved',          fg:'rgba(120,220,160,.95)', bg:'rgba(120,220,160,.1)', bd:'rgba(120,220,160,.4)' },
+  uploaded:         { ko:'업로드 완료',      en:'Published',         fg:'rgba(100,200,255,.95)', bg:'rgba(100,200,255,.1)', bd:'rgba(100,200,255,.4)' },
+  rejected:         { ko:'거절',             en:'Rejected',          fg:'rgba(255,107,107,.95)', bg:'rgba(255,107,107,.1)', bd:'rgba(255,107,107,.4)' }
+};
+function _mpDetailBadge(ds){
+  var m = _MP_STATUS_META[ds] || _MP_STATUS_META.pending;
+  var lang = (localStorage.getItem('pap-lang') || 'ko');
+  var label = (lang === 'ko') ? m.ko : m.en;
+  // 결제 대기는 매출 직결 — 솔리드 골드로 강조(다른 배지는 틴트).
+  return '<span style="display:inline-block;padding:4px 10px;font-size:10px;font-weight:700;letter-spacing:.08em;white-space:nowrap;border-radius:2px;color:'+m.fg+';background:'+m.bg+';border:1px solid '+m.bd+'">'+label+'</span>';
+}
+// 상태별 즉시 액션 — 목록 행에서 바로 실행. (row 클릭=상세 토글과 분리: stopPropagation)
+function _mpActionBtn(ds, s){
+  var lang = (localStorage.getItem('pap-lang') || 'ko');
+  var id = (s.id || '').replace(/[^a-zA-Z0-9-]/g, '');
+  function btn(label, onclick, solid){
+    return '<button onclick="event.stopPropagation();' + onclick + '" style="' +
+      (solid
+        ? 'background:#c9a86a;border:1px solid #c9a86a;color:#000;'
+        : 'background:transparent;border:1px solid rgba(255,255,255,.3);color:rgba(255,255,255,.85);') +
+      'font-size:11px;font-weight:700;letter-spacing:.05em;padding:6px 12px;margin-left:8px;cursor:pointer;border-radius:2px;font-family:inherit;white-space:nowrap">' + label + '</button>';
+  }
+  if (ds === 'revision') {
+    return btn(lang==='ko' ? '수정하러 가기' : 'Revise now',
+      "window.location.href='/submission?revise=" + encodeURIComponent(s.id||'') + "'");
+  }
+  if (ds === 'payment_required') {
+    var d = {}; try { d = s.description ? JSON.parse(s.description) : {}; } catch(_){}
+    var t = d.submissionType || '';
+    // 공용 모듈 payBaseFee 직행(Paddle 오버레이). 모듈 미로드 시 상세 토글로 폴백.
+    return btn(lang==='ko' ? '결제하기' : 'Pay now',
+      "if(typeof payBaseFee==='function'){payBaseFee('" + id + "','" + t + "');}else{mpToggleSubDetail('" + id + "');}", true);
+  }
+  if (ds === 'uploaded' && s.linked_editorial && s.linked_editorial.slug) {
+    return btn(lang==='ko' ? '게시물 보러가기' : 'View post',
+      "window.open('/editorial/" + encodeURIComponent(s.linked_editorial.slug) + "','_blank')");
+  }
+  if (ds === 'rejected') {
+    return btn(lang==='ko' ? '사유 확인' : 'See reason', "mpToggleSubDetail('" + id + "')");
+  }
+  return '';
+}
+
 function _formatDate(dt){
   if (!dt) return '';
   try {
@@ -850,7 +921,7 @@ function loadRecentSubmissions(){
               '<div class="mp-sub-date">' + _formatDate(s.created_at) + '</div>' +
             '</div>' +
           '</div>' +
-          _statusBadge(s.status) +
+          (function(){ var _ds=_mpDeriveStatus(s); return _mpDetailBadge(_ds) + _mpActionBtn(_ds, s); })() +
           (canDelete
             ? '<button class="mp-sub-delete" title="이 서브미션을 삭제합니다" onclick="event.stopPropagation();deleteMySubmission(\''+(s.id||'')+'\','+JSON.stringify(title).replace(/"/g,'&quot;')+')" style="background:transparent;border:1px solid rgba(255,107,107,.3);color:rgba(255,107,107,.85);font-size:11px;padding:6px 10px;margin-left:8px;cursor:pointer;border-radius:2px;font-family:inherit;letter-spacing:.05em">삭제</button>'
             : '') +
@@ -906,7 +977,7 @@ async function _mpRenderSubDetail(id, box){
     var esc = function(t){ return String(t).replace(/[<>&]/g,function(c){ return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c]; }); };
     var h = '<div style="border:1px solid rgba(255,255,255,.1);border-top:none;padding:16px 18px;background:rgba(255,255,255,.02);font-size:13px;line-height:1.7;color:rgba(255,255,255,.85);margin:-6px 0 6px">';
     h += '<div style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:8px">' + L.status + '</div>';
-    h += '<div style="margin-bottom:14px">' + _statusBadge(s.status) + '</div>';
+    h += '<div style="margin-bottom:14px">' + _mpDetailBadge(_mpDeriveStatus(s)) + '</div>';
     // 게재료 기본료 결제 (Phase 2) — 공용 모듈 _baseFeeApprovalBlock 재사용.
     // 유료 유형(paid_few_looks/branded) + 미결제일 때만 결제 버튼, 결제 완료면 상태 표시,
     // 그 외 유형은 '' 반환. submission.html 과 동일 로직·동일 Paddle 흐름.
