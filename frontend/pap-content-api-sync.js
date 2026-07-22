@@ -37,17 +37,38 @@
 // Define render callbacks BEFORE lazy loading so they're available when JSON arrives
 window._papShortsRender = function(){ buildShortsCarousel(); };
 
-// Auto-play first film in main player when film data loads (muted for autoplay policy)
+// 홈 메인 플레이어에 넣을 videoId 로 iframe 을 세팅한다(자동재생·무음·루프).
+function _papSetHomeVideo(vid){
+  if(!vid) return false;
+  var fp = document.getElementById('filmMainPlayer');
+  if(!fp || !(fp.src === 'about:blank' || fp.src === '')) return false;
+  // 개선요청 2026-07-16 — playsinline=1. iOS/모바일 사파리·크롬은 인라인 재생
+  // 허용이 없으면 muted 여도 자동재생을 차단한다(전체화면 강제 전환 방지 정책).
+  fp.src = 'https://www.youtube.com/embed/' + vid + '?rel=0&autoplay=1&mute=1&loop=1&playsinline=1&playlist=' + vid;
+  return true;
+}
+
+// Auto-play in main player when film data loads (muted for autoplay policy)
+//
+// 2026-07-21 도메니코 요청 — "유튜브에서 홈 영상을 바꿀 때마다 그 영상이
+// 홈페이지 영상으로 대체되게." 유튜브 채널 대표 영상(트레일러)을 /api/home-video
+// 로 조회해 그걸 우선 튼다. 값이 없거나 조회 실패면 기존대로 최신 필름을 튼다.
+// 폴백이 있어 유튜브 쪽 문제로 홈이 비지 않는다.
 window._papFilmAutoPlay = function(){
-  if(filmAllData.length > 0){
-    var fp = document.getElementById('filmMainPlayer');
-    if(fp && (fp.src === 'about:blank' || fp.src === '')){
-      // 개선요청 2026-07-16 — playsinline=1 추가. iOS/모바일 사파리·크롬은
-      // 인라인 재생 허용이 없으면 muted 여도 자동재생을 차단한다(전체화면
-      // 강제 전환 방지 정책). 데스크톱에는 영향 없음.
-      fp.src = 'https://www.youtube.com/embed/' + filmAllData[0].yt + '?rel=0&autoplay=1&mute=1&loop=1&playsinline=1&playlist=' + filmAllData[0].yt;
-    }
-  }
+  var fp = document.getElementById('filmMainPlayer');
+  if(!fp || !(fp.src === 'about:blank' || fp.src === '')) return;
+  var apiBase = (window.PAP_API_BASE || '/api').replace(/\/$/, '');
+  fetch(apiBase + '/home-video')
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(j){
+      var vid = j && j.videoId;
+      if(vid && _papSetHomeVideo(vid)) return;         // 대표 영상 우선
+      if(filmAllData.length > 0) _papSetHomeVideo(filmAllData[0].yt); // 폴백: 최신 필름
+    })
+    .catch(function(){
+      // 네트워크 실패 — 기존 동작(최신 필름)으로 폴백
+      if(filmAllData.length > 0) _papSetHomeVideo(filmAllData[0].yt);
+    });
 };
 
 // ======== LAZY DATA LOADING ========
