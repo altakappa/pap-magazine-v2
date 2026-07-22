@@ -104,7 +104,26 @@ window._papFilmAutoPlay = function(){
           loadJSON('data/articles.json', artData, _artRender, 'articles');
         });
     })();
-    loadJSON('data/editorials.json', edData, null, 'editorials');
+    // 2026-07-22 QA(/editorial 1분 지연) — 기존 loadJSON(renderCb=null) 은 두 가지 문제:
+    //  (a) 시드(2371건)가 도착해도 목록 오버레이를 재렌더하지 않음
+    //  (b) API STAGE 1(최신 12건)이 _apiSynced 플래그를 먼저 세우면 시드가 통째로 버려져,
+    //      전체 동기화가 끝날 때까지 edData 가 12건뿐 → /editorial 이 빈 화면으로 대기.
+    // 시드를 'API 아래에' 제목 중복 제거로 병합하고, 오버레이가 열려 있으면 즉시 그린다.
+    // (STAGE 2 전체 동기화가 끝나면 어차피 authoritative 데이터로 재정리된다.)
+    fetch('data/editorials.json').then(function(r){ return r.json(); }).then(function(data){
+      if(!Array.isArray(data) || !data.length) return;
+      if(_apiSynced.editorials){
+        var seen = {};
+        edData.forEach(function(e){ var k=(e.title||'').trim().toLowerCase(); if(k) seen[k]=true; });
+        data.forEach(function(e){ var k=(e.title||'').trim().toLowerCase(); if(k && !seen[k]){ seen[k]=true; edData.push(e); } });
+      } else {
+        edData.length = 0;
+        data.forEach(function(e){ edData.push(e); });
+      }
+      if(typeof _renderEdAllPage === 'function' && typeof edAllBuilt !== 'undefined' && edAllBuilt){
+        try { _renderEdAllPage(); } catch(_){}
+      }
+    }).catch(function(){ console.warn('[PAP] Could not load data/editorials.json, using API sync fallback'); });
     loadJSON('data/creators.json', creatorData);
     loadJSON('data/shorts.json', shortsData, function(){ if(window._papShortsRender) window._papShortsRender(); });
   }
@@ -1104,6 +1123,13 @@ window._papFilmAutoPlay = function(){
         _renderLatestRow();
         _renderTrendingRow();
         _renderThemeRows();
+        // 2026-07-22 QA(/editorial 1분 지연) — 목록 오버레이가 이미 열려 있으면
+        // STAGE 2(전체 카탈로그, 수십 초)를 기다리지 말고 최신 12건으로 먼저 그린다.
+        // 기존엔 STAGE 2 완료時에만 재렌더해, /editorial 진입 시 빈 화면이 length
+        // 동기화 내내 유지됐다(실측: 카드 0개가 20초+).
+        if(typeof _renderEdAllPage === 'function' && typeof edAllBuilt !== 'undefined' && edAllBuilt){
+          try { _renderEdAllPage(); } catch(_){}
+        }
         // QA #238 — re-scan the DOM so the freshly inserted cards pick up
         // the global fade-in-up scroll reveal. Without this, dynamic rows
         // bypassed the IntersectionObserver setup (which only ran once at
