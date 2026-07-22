@@ -179,6 +179,9 @@ module.exports = async function handler(req, res) {
         .from('pullletters')
         .insert({
           user_id: user.id,
+          // 2026-07-22 (도메니코 제안) — 컨셉 제목. 목록 식별용. 구버전 캐시 프론트
+          // 호환을 위해 서버는 누락 허용(빈 값이면 null).
+          title: (typeof data.title === 'string' && data.title.trim()) ? data.title.trim().slice(0, 80) : null,
           email: (profile && profile.email) || '',
           request_text: data.requestText || data.description || '',
           file_urls: moodboardUrls,

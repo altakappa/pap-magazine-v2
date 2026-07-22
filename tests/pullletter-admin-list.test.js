@@ -38,6 +38,17 @@ t('loadActivityStats 의 sb-실패 블록에 return 없음', sbBlock !== '' && !
   'initSupabase 실패가 풀레터 로드를 다시 삼키게 된다');
 t('loadPullletterRequests 호출이 loadActivityStats 안에 존재', /loadPullletterRequests\(\);/.test(statsFn));
 
+
+console.log('--- 마이페이지 풀레터 카드 (2026-07-22 컨셉제목·상세·다운로드) ---');
+const plFn = (mp.match(/function loadPullletterRequests[\s\S]*?function mpTogglePlDetail[\s\S]*?\n\}/) || [''])[0];
+t('발급 PDF 다운로드는 상태 무관(서명 URL 존재 조건)', /if\(r\.pullLetterSignedUrl\)\{/.test(plFn) && !/status === 'issued' && r\.pullLetterSignedUrl/.test(plFn),
+  "approved+PDF 건이 다시 숨겨진다 (status==='issued' 게이트 금지)");
+t('컨셉 제목(r.title) 최우선 표시', /var title = r\.title\s*\|\| r\.moodBoardTitle/.test(plFn));
+t('클릭 인라인 상세(mpTogglePlDetail) 존재', /function mpTogglePlDetail/.test(mp));
+t('상세에 무드보드·시안 PDF 렌더', /file_urls/.test(plFn) && /proposalPdfSignedUrl/.test(plFn));
+const plApi = require('fs').readFileSync(require('path').join(__dirname,'..','api','pullletters','index.js'),'utf8');
+t('서버 insert 에 title 저장(80자 제한·누락 허용)', /title: \(typeof data\.title === 'string'/.test(plApi));
+
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if(fail){ console.log('❌ pullletter-admin-list tests FAILED'); process.exit(1); }
 console.log('✅ pullletter-admin-list tests passed');

@@ -405,7 +405,17 @@ function navigateWithInterstitial(url){
 
   <!-- PULL-LETTER REQUEST FORM -->
   <div class="pl-form" id="flForm">
-    <div class="form-section-title" data-i18n="secPhotographer">PHOTOGRAPHER INFO</div>
+    <!-- 2026-07-22 (도메니코 제안) — 컨셉 제목. 목록(마이페이지·관리자)에서 신청을
+         식별할 이름이 없어 "—" 로 표시되던 문제의 근본 해결. 영어 전용(전 폼 공통 원칙). -->
+    <div class="form-section-title" data-i18n="secConcept">SHOOT CONCEPT</div>
+    <div class="form-group">
+      <label class="form-label"><span data-i18n="labelConceptTitle">Concept Title</span> <span class="required">*</span></label>
+      <input type="text" class="form-input" id="conceptTitle" maxlength="80" placeholder="e.g. Midnight Bloom">
+      <div class="field-error" id="err-conceptTitle"></div>
+      <div class="form-hint" data-i18n="conceptTitleHint">A short English title for this shoot — shown in your request list and to PAP editors.</div>
+    </div>
+
+    <div class="form-section-title" style="margin-top:40px" data-i18n="secPhotographer">PHOTOGRAPHER INFO</div>
     <div class="form-row">
       <div class="form-group"><label class="form-label"><span data-i18n="labelPhName">Photographer Name</span> <span class="required">*</span></label><input type="text" class="form-input" id="phName" placeholder="Full Name"><div class="field-error" id="err-phName"></div></div>
       <div class="form-group"><label class="form-label"><span data-i18n="labelPhInsta">Instagram</span> <span class="required">*</span></label><input type="text" class="form-input" id="phInsta" placeholder="@username"><div class="field-error" id="err-phInsta"></div></div>
@@ -519,7 +529,7 @@ ko:{
   secProposal:'촬영시안 (PDF)',labelProposal:'촬영시안 PDF 업로드',proposalUploadHint:'클릭해서 촬영시안 PDF 첨부',proposalSpec:'PDF 전용 · 최대 25MB',proposalHelp:'시안에는 촬영 컨셉, 룩별 무드, 일정, 예산, 팀 구성 등을 포함해주세요. 시안이 자세할수록 검토가 빨라집니다.',
   secStylist:'스타일리스트 정보',labelStName:'스타일리스트명',labelStInsta:'인스타그램',labelStPortfolio:'포트폴리오 사이트',
   secContact:'연락처 정보',labelContactName:'이름',labelContactEmail:'이메일',
-  secMoodboard:'촬영 방향성 / 무드보드',labelMoodboard:'무드보드 파일 업로드',uploadClick:'클릭',uploadOr:'또는 파일을 드래그하세요',uploadSpec:'JPG, PNG, PDF, PPT · 파일당 최대 25MB',moodboardHint:'무드보드, 레퍼런스 이미지, 콘셉트 자료를 첨부해주세요.',
+  secConcept:'촬영 컨셉',labelConceptTitle:'컨셉 제목',conceptTitleHint:'이 촬영을 대표할 짧은 영어 제목 — 내 요청 목록과 PAP 에디터에게 표시됩니다.',secMoodboard:'촬영 방향성 / 무드보드',labelMoodboard:'무드보드 파일 업로드',uploadClick:'클릭',uploadOr:'또는 파일을 드래그하세요',uploadSpec:'JPG, PNG, PDF, PPT · 파일당 최대 25MB',moodboardHint:'무드보드, 레퍼런스 이미지, 콘셉트 자료를 첨부해주세요.',
   labelAdditional:'추가 메시지 (선택사항)',
   proc1Label:'요청',proc1Desc:'포트폴리오, 인스타그램, 무드보드 제출',proc2Label:'검토',proc2Desc:'PAP 에디터가 역량과 방향성을 검토',proc3Label:'결과',proc3Desc:'Pull-Letter 발급 또는 반려 사유 안내',
   btnSubmit:'Pull-Letter 신청',
@@ -542,7 +552,7 @@ en:{
   secPhotographer:'PHOTOGRAPHER INFO',labelPhName:'Photographer Name',labelPhInsta:'Instagram',labelPhPortfolio:'Portfolio Site',
   secStylist:'STYLIST INFO',labelStName:'Stylist Name',labelStInsta:'Instagram',labelStPortfolio:'Portfolio Site',
   secContact:'CONTACT INFO',labelContactName:'Your Name',labelContactEmail:'Email',
-  secMoodboard:'SHOOT DIRECTION / MOOD BOARD',labelMoodboard:'Mood Board File Upload',uploadClick:'Click',uploadOr:'or drag files here',uploadSpec:'JPG, PNG, PDF, PPT · Max 25MB per file',moodboardHint:'Attach mood boards, reference images, and concept materials.',
+  secConcept:'SHOOT CONCEPT',labelConceptTitle:'Concept Title',conceptTitleHint:'A short English title for this shoot — shown in your request list and to PAP editors.',secMoodboard:'SHOOT DIRECTION / MOOD BOARD',labelMoodboard:'Mood Board File Upload',uploadClick:'Click',uploadOr:'or drag files here',uploadSpec:'JPG, PNG, PDF, PPT · Max 25MB per file',moodboardHint:'Attach mood boards, reference images, and concept materials.',
   labelAdditional:'Additional Message (Optional)',
   proc1Label:'REQUEST',proc1Desc:'Submit portfolios, Instagram, and mood board',proc2Label:'REVIEW',proc2Desc:'PAP editors evaluate capabilities and direction',proc3Label:'RESULT',proc3Desc:'Pull-Letter issued or reasons for decline provided',
   btnSubmit:'Request Pull-Letter',
@@ -733,6 +743,7 @@ async function submitFL(){
   var firstErr=null;
 
   var requiredFields=[
+    {id:'conceptTitle',type:'text'},
     {id:'phName',type:'text'},
     {id:'phInsta',type:'insta'},
     {id:'phPortfolio',type:'url'},
@@ -816,6 +827,7 @@ async function submitFL(){
   // 3) Collect structured team_info + submit
   function _val(id){ var el=document.getElementById(id); return el ? el.value.trim() : ''; }
   var data = {
+    title: _val('conceptTitle'),
     photographer: { name: _val('phName'), instagram: _val('phInsta'), portfolio: _val('phPortfolio') },
     stylist:      { name: _val('stName'), instagram: _val('stInsta'), portfolio: _val('stPortfolio') },
     contact:      { name: _val('contactName'), email: _val('contactEmail') },

@@ -743,15 +743,20 @@ function loadPullletterRequests(){
           + '</div>';
         return;
       }
+      // 2026-07-22 (도메니코) — ①클릭 시 업로드 내역(무드보드·시안 PDF·팀) 인라인 상세
+      // ②컨셉 제목(title) 최우선 표시 ③발급 PDF 다운로드는 상태 무관, 서명 URL 이
+      // 있으면 노출(예전엔 status==='issued' 만 기다려 approved+PDF 건이 숨겨졌다).
+      window._mpPlReqs = {};
       var html = '';
       reqs.forEach(function(r){
-        // Title: prefer moodboard title (community flow), fall back to first
-        // line of request_text (legacy flow).
-        var title = r.moodBoardTitle
+        var rid = (r.id || '').replace(/[^a-zA-Z0-9-]/g, '');
+        window._mpPlReqs[rid] = r;
+        var title = r.title
+          || r.moodBoardTitle
           || (r.shoot_purpose ? r.shoot_purpose.split('\n')[0] : null)
           || (r.request_text ? r.request_text.split('\n')[0].slice(0, 60) : '—');
         var shootDate = r.shoot_date_planned;
-        html += '<div class="mp-card" style="padding:18px 20px;margin-bottom:8px">';
+        html += '<div class="mp-card" style="padding:18px 20px;margin-bottom:8px;cursor:pointer" onclick="mpTogglePlDetail(\'' + rid + '\')">';
         html += '<div class="mp-row" style="margin-bottom:6px"><span class="mp-value">' + esc(title) + '</span>' + _plBadge(r.status) + '</div>';
         html += '<div style="font-size:11px;color:rgba(255,255,255,.45);margin-bottom:8px">' + _formatDate(r.created_at) + (shootDate ? ' · ' + (lang==='ko'?'촬영 예정 ':'Shoot ') + shootDate : '') + '</div>';
         if(r.shoot_purpose){
@@ -760,15 +765,66 @@ function loadPullletterRequests(){
         if(r.admin_notes){
           html += '<div style="margin-top:8px;padding:8px 10px;background:rgba(255,255,255,.03);border-left:2px solid rgba(255,255,255,.15);font-size:11px;color:rgba(255,255,255,.65)"><strong style="font-weight:700;letter-spacing:.05em">PAP:</strong> ' + esc(r.admin_notes) + '</div>';
         }
-        if(r.status === 'issued' && r.pullLetterSignedUrl){
-          html += '<a class="mp-sub-cta" style="margin-top:10px;display:inline-block;padding:8px 14px;font-size:10px" href="' + esc(r.pullLetterSignedUrl) + '" target="_blank" rel="noopener noreferrer">' + (lang==='ko'?'풀레터 PDF 다운로드':'Download Pull-Letter PDF') + '</a>';
+        if(r.pullLetterSignedUrl){
+          html += '<a class="mp-sub-cta" style="margin-top:10px;display:inline-block;padding:8px 14px;font-size:10px;background:#c9a86a;color:#000;font-weight:700" href="' + esc(r.pullLetterSignedUrl) + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">' + (lang==='ko'?'풀레터 PDF 다운로드':'Download Pull-Letter PDF') + '</a>';
         }
+        html += '<div id="_mpPlDet_' + rid + '" style="display:none"></div>';
         html += '</div>';
       });
       box.innerHTML = html;
     }).catch(function(){
       box.innerHTML = '<div class="mp-empty">Failed to load</div>';
     });
+}
+
+// 풀레터 카드 클릭 → 업로드 내역 인라인 상세 (2026-07-22 도메니코 요청).
+// mine 응답에 이미 담긴 데이터(file_urls 무드보드 공개 URL · proposalPdfSignedUrl
+// 촬영시안 서명 URL · team_info)만 사용 — 추가 요청 없음.
+function mpTogglePlDetail(rid){
+  var det = document.getElementById('_mpPlDet_' + rid);
+  var r = (window._mpPlReqs || {})[rid];
+  if(!det || !r) return;
+  if(det.style.display !== 'none'){ det.style.display = 'none'; return; }
+  if(!det.dataset.loaded){
+    var ko = (lang === 'ko');
+    var h = '<div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08)">';
+    // 팀 정보
+    var ti = r.team_info || {};
+    function _line(label, o){
+      if(!o || (!o.name && !o.instagram)) return '';
+      return '<div style="font-size:11px;color:rgba(255,255,255,.6);margin-bottom:3px"><span style="letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.4)">' + label + '</span>  ' + esc(o.name || '') + (o.instagram ? ' · ' + esc(o.instagram) : '') + '</div>';
+    }
+    var team = _line(ko?'포토그래퍼':'Photographer', ti.photographer)
+             + _line(ko?'스타일리스트':'Stylist', ti.stylist)
+             + _line(ko?'비디오그래퍼':'Videographer', ti.videographer);
+    if(team) h += '<div style="margin-bottom:12px">' + team + '</div>';
+    // 무드보드 썸네일 (공개 버킷 URL)
+    var imgs = Array.isArray(r.file_urls) ? r.file_urls : [];
+    if(imgs.length){
+      h += '<div style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:6px">' + (ko?'무드보드':'Mood board') + ' (' + imgs.length + ')</div>';
+      h += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">';
+      imgs.slice(0, 12).forEach(function(u){
+        var isPdfLike = /\.(pdf|ppt|pptx)(\?|$)/i.test(u);
+        if(isPdfLike){
+          h += '<a href="' + esc(u) + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="display:flex;align-items:center;justify-content:center;width:72px;height:72px;border:1px solid rgba(255,255,255,.2);font-size:9px;letter-spacing:.08em;color:rgba(255,255,255,.7);text-decoration:none">FILE ↗</a>';
+        } else {
+          h += '<a href="' + esc(u) + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()"><img loading="lazy" src="' + esc(u) + '" alt="" style="width:72px;height:72px;object-fit:cover;background:#111"></a>';
+        }
+      });
+      h += '</div>';
+    }
+    // 촬영시안 PDF (비공개 버킷 — 서명 URL)
+    if(r.proposalPdfSignedUrl){
+      h += '<a href="' + esc(r.proposalPdfSignedUrl) + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="display:inline-block;padding:7px 12px;border:1px solid rgba(255,255,255,.25);font-size:10px;letter-spacing:.08em;color:rgba(255,255,255,.8);text-decoration:none;margin-bottom:6px">' + (ko?'촬영시안 PDF 보기 ↗':'View proposal PDF ↗') + '</a>';
+    }
+    if(r.request_text){
+      h += '<div style="font-size:12px;color:rgba(255,255,255,.6);line-height:1.6;margin-top:8px;white-space:pre-line">' + esc(r.request_text) + '</div>';
+    }
+    h += '</div>';
+    det.innerHTML = h;
+    det.dataset.loaded = '1';
+  }
+  det.style.display = 'block';
 }
 
 function esc(s){ var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
