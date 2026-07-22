@@ -770,6 +770,12 @@ section.hero + .shorts-section{
 /* QA #84: legacy .ed-all-close kept hidden in case markup persists. */
 .ed-all-close{display:none!important}
 .ed-all-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;padding:16px 48px 80px;transition:opacity .25s ease,transform .25s ease}
+/* 2026-07-21 도메니코 요청 — 에디토리얼 목록 4열 고정. 기존 auto-fill 은
+   화면폭에 따라 5~6열까지 늘어났다. #edAllGrid(에디토리얼 오버레이 전용 ID)로만
+   스코프해, 같은 .ed-all-grid 클래스를 쓰는 필름/아티클 오버레이는 건드리지
+   않는다. 모바일(≤900)은 2열 유지. */
+#edAllGrid{grid-template-columns:repeat(4,1fr)}
+@media(max-width:900px){#edAllGrid{grid-template-columns:repeat(2,1fr)}}
 .ed-all-grid.is-fading{opacity:0;transform:translateY(8px)}
 .ed-all-grid .ed-row-card{min-width:unset;max-width:unset}
 

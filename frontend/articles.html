@@ -29,7 +29,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/pap-styles.css?v=40">
+<link rel="stylesheet" href="/pap-styles.css?v=41">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-height:100vh; padding-top:72px; }
@@ -46,7 +46,8 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
 .filter-btn:hover { border-color:#666; color:#fff; }
 .filter-btn.active { background:#fff; color:#000; border-color:#fff; }
 .card-grid {
-  display:grid; grid-template-columns:repeat(3,1fr); gap:20px; padding:0 48px 60px;
+  /* 2026-07-21 도메니코 요청 — 데스크톱 3 → 4열 고정. 모바일은 아래 2열 유지. */
+  display:grid; grid-template-columns:repeat(4,1fr); gap:20px; padding:0 48px 60px;
 }
 .card { cursor:pointer; transition:opacity .2s; }
 .card:hover { opacity:.85; }
