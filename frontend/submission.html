@@ -134,6 +134,15 @@ textarea.form-input{min-height:100px;resize:vertical;line-height:1.8}
 /* QA #87 — required-field highlight for team credits */
 .team-input.error{border-color:#ff6b6b;background:rgba(255,107,107,.08)}
 .team-row.error{box-shadow:inset 3px 0 0 #ff6b6b;padding-left:8px;background:rgba(255,107,107,.04)}
+/* QA(2026-07-22) — 영어전용 경고(.pap-name-hint, pap-name-validator.js 가 input 뒤에
+   삽입)가 레이아웃 공간을 침범하던 문제.
+   · 링크 셀(.team-link-cell, flex row): 힌트가 input '옆' 가로 공간을 차지해 입력창이
+     쪼그라들고 경고가 덮어씌운 것처럼 보였다 → wrap + basis:100% 로 아랫줄 전체로.
+   · 이름 칸(.team-row grid 직속): 힌트가 grid 의 새 셀이 되어 행이 뭉개짐 →
+     grid-column:1/-1 로 행 전체 폭의 새 줄로. 입력창 크기는 그대로 유지된다. */
+.team-link-cell{flex-wrap:wrap}
+.team-link-cell .pap-name-hint{flex-basis:100%}
+.team-row > .pap-name-hint{grid-column:1/-1}
 /* QA #88 — link cell: type-toggle on the left + URL/handle input on the right */
 .team-link-cell{display:flex;align-items:stretch;gap:0}
 .team-link-type{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.35);border-right:0;padding:10px 8px;font-size:11px;font-family:'Montserrat',sans-serif;color:#fff;outline:none;cursor:pointer;flex-shrink:0;width:90px;letter-spacing:.04em;-webkit-appearance:none;-moz-appearance:none;appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path d='M3 5l3 3 3-3' stroke='%23ffffff' stroke-opacity='0.5' stroke-width='1.5' fill='none'/></svg>");background-repeat:no-repeat;background-position:right 8px center;background-size:12px 12px;padding-right:24px}
