@@ -430,7 +430,7 @@ function navigateWithInterstitial(url){
 
     <div class="form-section-title" style="margin-top:40px" data-i18n="secMoodboard">SHOOT DIRECTION / MOOD BOARD</div>
     <div class="form-group"><label class="form-label"><span data-i18n="labelMoodboard">Mood Board File Upload</span> <span class="required">*</span></label>
-      <div class="upload-zone" id="uploadZone"><input type="file" class="upload-input" id="fileInput" multiple accept="image/*,.pdf,.doc,.docx,.pptx"><div class="upload-icon"><svg viewBox="0 0 36 36" fill="none"><path d="M18 26V10M18 10L12 16M18 10L24 16" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 26v3a2 2 0 002 2h22a2 2 0 002-2v-3" stroke-width="2" stroke-linecap="round"/></svg></div><div class="upload-text"><strong data-i18n="uploadClick">Click</strong> <span data-i18n="uploadOr">or drag files here</span></div><div class="upload-hint" data-i18n="uploadSpec">JPG, PNG, PDF, PPT · Max 25MB per file</div></div>
+      <div class="upload-zone" id="uploadZone"><input type="file" class="upload-input" id="fileInput" multiple accept="image/*,.pdf,.ppt,.pptx"><div class="upload-icon"><svg viewBox="0 0 36 36" fill="none"><path d="M18 26V10M18 10L12 16M18 10L24 16" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 26v3a2 2 0 002 2h22a2 2 0 002-2v-3" stroke-width="2" stroke-linecap="round"/></svg></div><div class="upload-text"><strong data-i18n="uploadClick">Click</strong> <span data-i18n="uploadOr">or drag files here</span></div><div class="upload-hint" data-i18n="uploadSpec">JPG, PNG, PDF, PPT · Max 25MB per file</div></div>
       <div class="file-list" id="fileList"></div>
       <div class="field-error" id="err-moodboard"></div>
       <div class="form-hint" data-i18n="moodboardHint">Attach mood boards, reference images, and concept materials.</div>
@@ -602,19 +602,25 @@ if(uploadZone){
   uploadZone.addEventListener('drop',function(e){e.preventDefault();uploadZone.classList.remove('dragover');addFiles(e.dataTransfer.files);});
 }
 function addFiles(files){
-  var allowed=['image/jpeg','image/png','image/tiff','image/webp','application/pdf'];
-  var maxSize=20*1024*1024;
+  // 무드보드 허용 형식 — 안내(JPG·PNG·PDF·PPT)·서버 화이트리스트와 반드시 일치.
+  // 빈 MIME(일부 브라우저의 PPT 등)는 확장자로 보조 판정한다.
+  var allowedMime=['image/jpeg','image/jpg','image/png','image/webp','image/tiff','application/pdf','application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation'];
+  var allowedExt=['.jpg','.jpeg','.png','.webp','.tif','.tiff','.pdf','.ppt','.pptx'];
+  var maxSize=25*1024*1024;   // 안내·서버(MAX_MOODBOARD_SIZE)와 동일
+  function _extOf(n){var m=String(n||'').toLowerCase().match(/\.([a-z0-9]{1,8})$/);return m?('.'+m[1]):'';}
   for(var i=0;i<files.length;i++){
-    if(allowed.indexOf(files[i].type)===-1){
-      if(typeof PAP!=='undefined') PAP.ui.toast('Invalid file type: '+files[i].name,'error');
+    var _t=String(files[i].type||'').toLowerCase();
+    var _e=_extOf(files[i].name);
+    if(allowedMime.indexOf(_t)===-1 && allowedExt.indexOf(_e)===-1){
+      if(typeof PAP!=='undefined') PAP.ui.toast(_getValText('moodBadType')+' ('+(files[i].name||'')+')','error');
       continue;
     }
     if(files[i].size>maxSize){
-      if(typeof PAP!=='undefined') PAP.ui.toast('File too large (max 20MB): '+files[i].name,'error');
+      if(typeof PAP!=='undefined') PAP.ui.toast(_getValText('moodTooLarge')+' ('+(files[i].name||'')+')','error');
       continue;
     }
     if(uploadedFiles.length>=20){
-      if(typeof PAP!=='undefined') PAP.ui.toast('Maximum 20 files allowed','error');
+      if(typeof PAP!=='undefined') PAP.ui.toast(_getValText('moodMaxCount'),'error');
       break;
     }
     uploadedFiles.push(files[i]);
@@ -672,6 +678,9 @@ function _getValText(key,fallback){
     invalidUrl:{ko:'유효한 URL을 입력해주세요 (https://...)',en:'Please enter a valid URL (https://...)',it:'Inserisci un URL valido (https://...)',fr:'Veuillez entrer une URL valide (https://...)',es:'Ingrese una URL válida (https://...)',ja:'有効なURLを入力してください (https://...)',zh:'请输入有效的URL (https://...)',ru:'Введите корректный URL (https://...)'},
     invalidInsta:{ko:'@로 시작하는 인스타그램 계정을 입력해주세요',en:'Enter an Instagram handle starting with @',it:"Inserisci un handle Instagram che inizi con @",fr:"Entrez un identifiant Instagram commençant par @",es:'Ingrese un handle de Instagram que comience con @',ja:'@から始まるInstagramハンドルを入力してください',zh:'请输入以@开头的Instagram用户名',ru:'Введите Instagram-аккаунт, начинающийся с @'},
     noFiles:{ko:'무드보드 파일을 1개 이상 업로드해주세요',en:'Please upload at least one mood board file',it:'Carica almeno un file mood board',fr:'Veuillez télécharger au moins un fichier mood board',es:'Cargue al menos un archivo de mood board',ja:'ムードボードファイルを1つ以上アップロードしてください',zh:'请至少上传一个情绪板文件',ru:'Загрузите хотя бы один файл мудборда'},
+    moodBadType:{ko:'지원하지 않는 파일 형식입니다. JPG·PNG·PDF·PPT만 업로드할 수 있습니다',en:'Unsupported file type. Only JPG, PNG, PDF, PPT are allowed',it:'Formato non supportato. Solo JPG, PNG, PDF, PPT',fr:'Format non pris en charge. Uniquement JPG, PNG, PDF, PPT',es:'Formato no admitido. Solo JPG, PNG, PDF, PPT',ja:'対応していない形式です。JPG・PNG・PDF・PPTのみアップロード可能です',zh:'不支持的文件格式。仅支持 JPG、PNG、PDF、PPT',ru:'Неподдерживаемый формат. Только JPG, PNG, PDF, PPT'},
+    moodTooLarge:{ko:'무드보드 파일은 25MB 이하만 업로드할 수 있습니다',en:'Mood board files must be 25MB or smaller',it:'I file mood board devono essere 25MB o meno',fr:'Les fichiers mood board doivent faire 25 Mo ou moins',es:'Los archivos de mood board deben pesar 25MB o menos',ja:'ムードボードファイルは25MB以下にしてください',zh:'情绪板文件需小于 25MB',ru:'Файлы мудборда должны быть не больше 25 МБ'},
+    moodMaxCount:{ko:'무드보드는 최대 20개까지 업로드할 수 있습니다',en:'You can upload up to 20 mood board files',it:'Puoi caricare fino a 20 file mood board',fr:'Vous pouvez télécharger jusqu’à 20 fichiers mood board',es:'Puede subir hasta 20 archivos de mood board',ja:'ムードボードは最大20個までアップロードできます',zh:'情绪板最多可上传 20 个文件',ru:'Можно загрузить до 20 файлов мудборда'},
     noProposal:{ko:'촬영시안 PDF를 첨부해주세요',en:'Please attach the shoot proposal PDF',it:'Allega il PDF della proposta di shooting',fr:'Veuillez joindre le PDF de la proposition de shoot',es:'Adjunte el PDF de la propuesta de shoot',ja:'撮影シアン PDF を添付してください',zh:'请附上拍摄方案 PDF',ru:'Прикрепите PDF с предложением по съёмке'},
     uploading:{ko:'업로드 중…',en:'Uploading…',it:'Caricamento…',fr:'Envoi…',es:'Subiendo…',ja:'アップロード中…',zh:'上传中…',ru:'Загрузка…'},
     uploadTooLarge:{ko:'첨부파일 용량이 너무 큽니다. 무드보드는 25MB, 촬영시안 PDF는 20MB 이하로 줄여주세요.',en:'Attachments are too large. Keep moodboards under 25MB and the proposal PDF under 20MB.',it:'Allegati troppo grandi. Moodboard sotto 25MB e PDF sotto 20MB.',fr:'Pièces jointes trop volumineuses. Moodboards sous 25 Mo, PDF sous 20 Mo.',es:'Archivos demasiado grandes. Moodboards menos de 25MB y PDF menos de 20MB.',ja:'添付ファイルが大きすぎます。ムードボードは25MB、PDFは20MB以下にしてください。',zh:'附件过大。情绪板请小于 25MB，PDF 请小于 20MB。',ru:'Файлы слишком большие. Мудборды до 25 МБ, PDF до 20 МБ.'},
@@ -835,6 +844,12 @@ async function submitFL(){
       msg = _getValText('uploadFailed');
     } else if(/network|fetch|load failed/i.test(raw)){
       msg = _getValText('networkError');
+    } else if(/unsupported moodboard type/i.test(raw)){
+      msg = _getValText('moodBadType');
+    } else if(/proposal must be|proposal.*application\/pdf/i.test(raw)){
+      msg = _getValText('proposalNotPdf');
+    } else if(/moodboard size|proposal size|exceeds max/i.test(raw)){
+      msg = _getValText('uploadTooLarge');
     } else {
       msg = raw || _getValText('submitFailed');
     }

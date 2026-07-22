@@ -2314,7 +2314,15 @@ function openPullLetterReview(id){
   if(pl.file_urls && pl.file_urls.length){
     filesHtml += '<div class="plr-row"><label>Mood board ('+pl.file_urls.length+')</label><div>'
       + pl.file_urls.slice(0,8).map(function(u){
-          return '<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer"><img src="'+esc(u)+'" alt="" style="width:48px;height:48px;object-fit:cover;border:1px solid var(--border);margin-right:4px;margin-bottom:4px"></a>';
+          // 2026-07-22 — 무드보드가 이미지 외(PDF·PPT)도 허용되면서, 비이미지 URL 을
+          // <img> 로 그리면 깨진 썸네일이 뜬다. 확장자를 보고 비이미지는 라벨 타일로.
+          var _low=String(u||'').toLowerCase().split('?')[0];
+          var _isImg=/\.(jpe?g|png|webp|tiff?|gif)$/.test(_low);
+          if(_isImg){
+            return '<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer"><img src="'+esc(u)+'" alt="" style="width:48px;height:48px;object-fit:cover;border:1px solid var(--border);margin-right:4px;margin-bottom:4px"></a>';
+          }
+          var _tag = /\.pdf$/.test(_low) ? 'PDF' : (/\.pptx?$/.test(_low) ? 'PPT' : 'FILE');
+          return '<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer" title="'+_tag+'" style="display:inline-flex;flex-direction:column;align-items:center;justify-content:center;width:48px;height:48px;border:1px solid var(--border);margin-right:4px;margin-bottom:4px;font-size:9px;font-weight:700;color:var(--text2);text-decoration:none;background:var(--surface2,#f4f4f4)">📄<span>'+_tag+'</span></a>';
         }).join('')
       + (pl.file_urls.length > 8 ? '<span style="font-size:11px;color:var(--text3)">+ '+(pl.file_urls.length-8)+' more</span>' : '')
       + '</div></div>';
