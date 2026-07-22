@@ -40,7 +40,8 @@ t('결과 텔레그램 보고 (정상/깨짐 모두)', /주간 이미지 점검/
 
 console.log('=== vercel.json 크론 등록 ===');
 const paths = vj.crons.map(c => c.path + ' ' + c.schedule);
-t('이관 크론 매시 등록', paths.some(p => p.startsWith('/api/cron/migrate-external-images ')));
+t('이관 크론 10분 주기 등록 (도메니코: 하루 반 완주)',
+  vj.crons.some(c => c.path === '/api/cron/migrate-external-images' && c.schedule === '5-55/10 * * * *'));
 t('점검 크론 주 1회(월) 등록', vj.crons.some(c => c.path === '/api/cron/image-link-check' && /\* \* 1$/.test(c.schedule)));
 
 console.log(`\npassed: ${pass}   failed: ${fail}`);

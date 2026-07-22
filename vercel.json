@@ -110,7 +110,7 @@
     },
     {
       "path": "/api/cron/migrate-external-images",
-      "schedule": "22 * * * *"
+      "schedule": "5-55/10 * * * *"
     },
     {
       "path": "/api/cron/image-link-check",
