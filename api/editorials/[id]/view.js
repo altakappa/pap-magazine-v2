@@ -17,6 +17,7 @@
 const { supabaseAdmin } = require('../../_lib/supabase');
 const { handleCors } = require('../../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../../_lib/rateLimit');
+const { isBot } = require('../../_lib/botDetect');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -24,6 +25,13 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
   if (rateLimit(req, res, RATE_LIMITS.api)) return;
+
+  // 봇/크롤러 조회는 기록하지 않는다 (2026-07-22, 조회지표 봇 오염 방지).
+  // Googlebot 등 JS 렌더 크롤러가 이 fire-and-forget 호출을 그대로 실행해
+  // editorial_views 를 부풀리던 문제 차단. 봇에게도 204 로 응답해 정상 흐름 유지.
+  if (isBot(req.headers['user-agent'])) {
+    return res.status(204).end();
+  }
 
   const id = req.query.id;
   if (!id || typeof id !== 'string') {
