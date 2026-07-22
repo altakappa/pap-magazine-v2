@@ -94,7 +94,7 @@ module.exports = async function handler(req, res) {
         proposalPath = pPath;
       } else {
         // 촬영시안 PDF 상한은 프론트(PROPOSAL_MAX_BYTES)와 같은 20MB.
-        const { fields, files } = await parseForm(req, { maxFileSize: 20 * 1024 * 1024 });
+        const { fields, files } = await parseForm(req, { maxFileSize: 25 * 1024 * 1024 });
         const dataRaw = Array.isArray(fields.data) ? fields.data[0] : fields.data;
         data = dataRaw ? JSON.parse(dataRaw) : {};
         req._legacyFiles = files;   // 아래 레거시 업로드 블록에서 사용

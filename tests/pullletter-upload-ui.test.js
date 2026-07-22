@@ -63,8 +63,8 @@ t('안내 문구(proposalDropText)를 더 이상 덮어쓰지 않는다',
   '문구를 갈아끼우면 무드보드와 완료 화면이 다시 달라진다');
 t('용량 초과 시 목록을 비운다 (잘못된 파일이 남지 않게)',
   /PROPOSAL_MAX_BYTES[\s\S]{0,400}list\.innerHTML\s*=\s*''/.test(propBody));
-t('용량 상한은 서버와 같은 20MB 유지',
-  /PROPOSAL_MAX_BYTES\s*=\s*20\*1024\*1024/.test(pl));
+t('용량 상한은 서버와 같은 25MB 유지 (무드보드와 통일)',
+  /PROPOSAL_MAX_BYTES\s*=\s*25\*1024\*1024/.test(pl));
 
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if (fail) { console.log('❌ pullletter-upload-ui tests FAILED'); process.exit(1); }

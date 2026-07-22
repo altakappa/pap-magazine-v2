@@ -48,6 +48,12 @@ t('프론트: 영문 하드코딩 토스트 제거(Invalid file type 등 없음)
   '영문 하드코딩이 남아 있으면 한국어화 회귀');
 t('프론트: 형식 오류를 i18n(moodBadType)으로 안내', /_getValText\('moodBadType'\)/.test(addFiles));
 
+// 4b) 용량 통일 — 무드보드·촬영시안 모두 25MB (2026-07-22 도메니코 지시)
+t('서버: 촬영시안 상한 25MB', /MAX_PROPOSAL_SIZE = 25 \* 1024 \* 1024/.test(server));
+t('서버: 무드보드 상한 25MB', /MAX_MOODBOARD_SIZE = 25 \* 1024 \* 1024/.test(server));
+t('프론트: 촬영시안 상한 25MB', /PROPOSAL_MAX_BYTES = 25\*1024\*1024/.test(html));
+t('프론트: 촬영시안 안내문구에 20MB 잔존 없음', !/max 20MB|최대 20MB|20MB 이하|20 Mo|20 МБ/.test(html), '20MB 문구가 남으면 통일 실패');
+
 // 5) i18n 키 존재 (한국어)
 t('프론트: moodBadType 한국어 문구 존재', /moodBadType:\{ko:'지원하지 않는 파일 형식/.test(html));
 

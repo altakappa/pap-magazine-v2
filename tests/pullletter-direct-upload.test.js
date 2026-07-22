@@ -60,7 +60,7 @@ t('카테고리 화이트리스트 (moodboard|proposal)',
   /category !== 'moodboard' && category !== 'proposal'/.test(signSrc));
 t('촬영시안은 PDF 만 허용', /proposal must be application\/pdf/i.test(signSrc));
 t('무드보드 25MB 상한', /MAX_MOODBOARD_SIZE = 25 \* 1024 \* 1024/.test(signSrc));
-t('촬영시안 20MB 상한 (프론트와 동일)', /MAX_PROPOSAL_SIZE = 20 \* 1024 \* 1024/.test(signSrc));
+t('촬영시안 25MB 상한 (무드보드와 동일 통일)', /MAX_PROPOSAL_SIZE = 25 \* 1024 \* 1024/.test(signSrc));
 t('시안은 1개만', /Only one proposal PDF is allowed/.test(signSrc));
 t('스토리지 경로 화이트리스트 검사', /Refusing unsafe storage path/.test(signSrc));
 
@@ -87,7 +87,7 @@ dictKeys.forEach((k) => {
   t(`  ${k} 8개 언어`, ['ko','en','it','fr','es','ja','zh','ru'].every((l) => new RegExp(l + ":'").test(block)));
 });
 t('한국어 안내에 구체적 용량이 적혀 있다 (무엇을 어떻게 줄일지)',
-  /무드보드는 25MB, 촬영시안 PDF는 20MB 이하로/.test(front));
+  /25MB 이하로/.test(front));
 
 console.log('\n=== 6. 업로드 중 상태 표시 ===');
 t('제출 버튼 선택자가 실제 DOM 과 맞는다 (.btn-submit)',

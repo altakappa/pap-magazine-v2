@@ -46,7 +46,7 @@ const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 
 const MAX_FILES = 21;                               // 무드보드 20 + 시안 1
 const MAX_MOODBOARD_SIZE = 25 * 1024 * 1024;        // 안내 문구와 동일
-const MAX_PROPOSAL_SIZE = 20 * 1024 * 1024;         // 프론트 PROPOSAL_MAX_BYTES 와 동일
+const MAX_PROPOSAL_SIZE = 25 * 1024 * 1024;         // 무드보드와 동일하게 통일 (도메니코 2026-07-22)
 
 // 무드보드 허용 형식 — 안내 문구(JPG·PNG·PDF·PPT)와 반드시 일치시킨다.
 // 2026-07-22 (QA: 'unsupported moodboard type') — 안내는 PDF·PPT 를 허용한다고 했는데

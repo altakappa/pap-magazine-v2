@@ -448,7 +448,7 @@ function navigateWithInterstitial(url){
           <svg viewBox="0 0 36 36" fill="none"><path d="M14 4h12l8 8v18a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4V8a4 4 0 0 1 4-4h4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 22h8M14 26h8" stroke-width="2" stroke-linecap="round"/></svg>
         </div>
         <div class="upload-text" id="proposalDropText"><strong data-i18n="uploadClick">Click</strong> <span data-i18n="proposalUploadHint">to attach your 촬영시안 PDF</span></div>
-        <div class="upload-hint" data-i18n="proposalSpec">PDF only · max 20MB</div>
+        <div class="upload-hint" data-i18n="proposalSpec">PDF only · max 25MB</div>
       </div>
       <div class="file-list" id="proposalFileList"></div>
       <div class="field-error" id="err-proposal"></div>
@@ -498,7 +498,7 @@ ko:{
   gateTitle:'PREMIUM 회원 전용',gateDesc:'이 서비스는 Premium 구독 회원만 이용할 수 있습니다.',gateTier:'프리미엄 요금제: $9.49/월 · 연간 $79.99',gateLogin:'로그인',gateUpgrade:'Premium 구독하기',
   secPhotographer:'포토그래퍼 정보',labelPhName:'포토그래퍼명',labelPhInsta:'인스타그램',labelPhPortfolio:'포트폴리오 사이트',
   secVideographer:'비디오그래퍼 정보',optional:'(선택)',labelVgName:'비디오그래퍼명',labelVgInsta:'인스타그램',labelVgPortfolio:'포트폴리오 사이트',vgHint:'영상 촬영이 포함되면 비디오그래퍼 정보를 입력하세요. 사진만 촬영이면 비워두세요.',
-  secProposal:'촬영시안 (PDF)',labelProposal:'촬영시안 PDF 업로드',proposalUploadHint:'클릭해서 촬영시안 PDF 첨부',proposalSpec:'PDF 전용 · 최대 20MB',proposalHelp:'시안에는 촬영 컨셉, 룩별 무드, 일정, 예산, 팀 구성 등을 포함해주세요. 시안이 자세할수록 검토가 빨라집니다.',
+  secProposal:'촬영시안 (PDF)',labelProposal:'촬영시안 PDF 업로드',proposalUploadHint:'클릭해서 촬영시안 PDF 첨부',proposalSpec:'PDF 전용 · 최대 25MB',proposalHelp:'시안에는 촬영 컨셉, 룩별 무드, 일정, 예산, 팀 구성 등을 포함해주세요. 시안이 자세할수록 검토가 빨라집니다.',
   secStylist:'스타일리스트 정보',labelStName:'스타일리스트명',labelStInsta:'인스타그램',labelStPortfolio:'포트폴리오 사이트',
   secContact:'연락처 정보',labelContactName:'이름',labelContactEmail:'이메일',
   secMoodboard:'촬영 방향성 / 무드보드',labelMoodboard:'무드보드 파일 업로드',uploadClick:'클릭',uploadOr:'또는 파일을 드래그하세요',uploadSpec:'JPG, PNG, PDF, PPT · 파일당 최대 25MB',moodboardHint:'무드보드, 레퍼런스 이미지, 콘셉트 자료를 첨부해주세요.',
@@ -683,11 +683,11 @@ function _getValText(key,fallback){
     moodMaxCount:{ko:'무드보드는 최대 20개까지 업로드할 수 있습니다',en:'You can upload up to 20 mood board files',it:'Puoi caricare fino a 20 file mood board',fr:'Vous pouvez télécharger jusqu’à 20 fichiers mood board',es:'Puede subir hasta 20 archivos de mood board',ja:'ムードボードは最大20個までアップロードできます',zh:'情绪板最多可上传 20 个文件',ru:'Можно загрузить до 20 файлов мудборда'},
     noProposal:{ko:'촬영시안 PDF를 첨부해주세요',en:'Please attach the shoot proposal PDF',it:'Allega il PDF della proposta di shooting',fr:'Veuillez joindre le PDF de la proposition de shoot',es:'Adjunte el PDF de la propuesta de shoot',ja:'撮影シアン PDF を添付してください',zh:'请附上拍摄方案 PDF',ru:'Прикрепите PDF с предложением по съёмке'},
     uploading:{ko:'업로드 중…',en:'Uploading…',it:'Caricamento…',fr:'Envoi…',es:'Subiendo…',ja:'アップロード中…',zh:'上传中…',ru:'Загрузка…'},
-    uploadTooLarge:{ko:'첨부파일 용량이 너무 큽니다. 무드보드는 25MB, 촬영시안 PDF는 20MB 이하로 줄여주세요.',en:'Attachments are too large. Keep moodboards under 25MB and the proposal PDF under 20MB.',it:'Allegati troppo grandi. Moodboard sotto 25MB e PDF sotto 20MB.',fr:'Pièces jointes trop volumineuses. Moodboards sous 25 Mo, PDF sous 20 Mo.',es:'Archivos demasiado grandes. Moodboards menos de 25MB y PDF menos de 20MB.',ja:'添付ファイルが大きすぎます。ムードボードは25MB、PDFは20MB以下にしてください。',zh:'附件过大。情绪板请小于 25MB，PDF 请小于 20MB。',ru:'Файлы слишком большие. Мудборды до 25 МБ, PDF до 20 МБ.'},
+    uploadTooLarge:{ko:'첨부파일 용량이 너무 큽니다. 무드보드·촬영시안 PDF 모두 25MB 이하로 줄여주세요.',en:'Attachments are too large. Keep each file (moodboard and proposal PDF) under 25MB.',it:'Allegati troppo grandi. Ogni file (moodboard e PDF) deve essere sotto 25MB.',fr:'Pièces jointes trop volumineuses. Chaque fichier (moodboard et PDF) sous 25 Mo.',es:'Archivos demasiado grandes. Cada archivo (moodboard y PDF) debe pesar menos de 25MB.',ja:'添付ファイルが大きすぎます。ムードボード・PDF いずれも25MB以下にしてください。',zh:'附件过大。情绪板和 PDF 每个文件请小于 25MB。',ru:'Файлы слишком большие. Каждый файл (мудборд и PDF) до 25 МБ.'},
     uploadFailed:{ko:'파일 업로드에 실패했습니다. 잠시 후 다시 시도해 주세요.',en:'File upload failed. Please try again in a moment.',it:'Caricamento non riuscito. Riprova tra poco.',fr:'Échec de l’envoi. Réessayez dans un instant.',es:'Error al subir. Inténtalo de nuevo en un momento.',ja:'アップロードに失敗しました。しばらくしてからお試しください。',zh:'上传失败，请稍后再试。',ru:'Не удалось загрузить файл. Попробуйте позже.'},
     networkError:{ko:'네트워크 연결이 불안정합니다. 연결을 확인하고 다시 시도해 주세요.',en:'Network connection is unstable. Check your connection and try again.',it:'Connessione instabile. Verifica la rete e riprova.',fr:'Connexion instable. Vérifiez votre réseau et réessayez.',es:'Conexión inestable. Revisa tu red e inténtalo de nuevo.',ja:'ネットワークが不安定です。接続を確認して再試行してください。',zh:'网络不稳定，请检查连接后重试。',ru:'Нестабильное соединение. Проверьте сеть и повторите.'},
     submitFailed:{ko:'신청에 실패했습니다. 잠시 후 다시 시도해 주세요.',en:'Submission failed. Please try again in a moment.',it:'Invio non riuscito. Riprova tra poco.',fr:'Échec de l’envoi. Réessayez dans un instant.',es:'Error al enviar. Inténtalo de nuevo en un momento.',ja:'申請に失敗しました。しばらくしてからお試しください。',zh:'提交失败，请稍后再试。',ru:'Не удалось отправить заявку. Попробуйте позже.'},
-    proposalTooLarge:{ko:'PDF 파일은 20MB 이하만 업로드할 수 있습니다',en:'The PDF must be 20MB or smaller',it:'Il PDF deve essere di 20MB o meno',fr:'Le PDF doit faire 20 Mo ou moins',es:'El PDF debe pesar 20MB o menos',ja:'PDFは20MB以下にしてください',zh:'PDF 文件需小于 20MB',ru:'PDF должен быть не больше 20 МБ'},
+    proposalTooLarge:{ko:'PDF 파일은 25MB 이하만 업로드할 수 있습니다',en:'The PDF must be 25MB or smaller',it:'Il PDF deve essere di 25MB o meno',fr:'Le PDF doit faire 25 Mo ou moins',es:'El PDF debe pesar 25MB o menos',ja:'PDFは25MB以下にしてください',zh:'PDF 文件需小于 25MB',ru:'PDF должен быть не больше 25 МБ'},
     proposalNotPdf:{ko:'PDF 형식의 파일만 업로드 가능합니다',en:'Only PDF files are accepted',it:'Sono accettati solo file PDF',fr:'Seuls les fichiers PDF sont acceptés',es:'Solo se aceptan archivos PDF',ja:'PDFファイルのみアップロード可能です',zh:'只接受 PDF 文件',ru:'Принимаются только PDF-файлы'},
     nameOnlyInvalid:{ko:'이름 칸은 영문(A–Z, a–z), 숫자, 공백, . - \' 만 입력 가능합니다',en:'Name fields accept English letters, digits, space, . - \' only',it:'I campi nome accettano solo lettere inglesi, cifre, spazio, . - \'',fr:'Les champs nom n\'acceptent que les lettres anglaises, chiffres, espace, . - \'',es:'Los campos de nombre solo aceptan letras inglesas, dígitos, espacio, . - \'',ja:'名前欄は英字 (A–Z, a–z)・数字・空白・. - \' のみ入力可能です',zh:'姓名栏仅接受英文字母、数字、空格、. - \'',ru:'В полях имени допустимы только латинские буквы, цифры, пробел, . - \''},
     premiumRequired:{ko:'Premium 구독 회원만 이용할 수 있는 기능입니다',en:'This feature is available only for Premium subscribers',it:'Funzione disponibile solo per abbonati Premium',fr:'Fonctionnalité réservée aux abonnés Premium',es:'Función disponible solo para suscriptores Premium',ja:'Premium会員限定の機能です',zh:'此功能仅限Premium订阅用户使用',ru:'Функция доступна только для подписчиков Premium'}
@@ -858,7 +858,7 @@ async function submitFL(){
 }
 
 // Proposal PDF preview/clear handler — invoked when user picks a file
-var PROPOSAL_MAX_BYTES = 20*1024*1024;   // 촬영시안 PDF 상한 (서버와 동일)
+var PROPOSAL_MAX_BYTES = 25*1024*1024;   // 촬영시안 PDF 상한 (무드보드와 동일 25MB)
 function _onProposalSelected(files){
   var f = files && files[0];
   /* 안내 문구(proposalDropText)는 더 이상 건드리지 않는다 — 박스는 무드보드처럼
@@ -867,7 +867,7 @@ function _onProposalSelected(files){
   var pz = document.getElementById('proposalZone');
   if(pErr){ pErr.textContent=''; pErr.classList.remove('visible'); }
   if(pz) pz.style.borderColor = '';
-  // 2026-07-21 (도메니코 지시) — 촬영시안 PDF 는 20MB 이하.
+  // 2026-07-22 (도메니코 지시) — 촬영시안 PDF 도 무드보드와 동일 25MB 이하.
   // 기존엔 타입만 보고 용량 검증이 아예 없어서, 큰 파일이 업로드 단계까지
   // 갔다가 서버에서 잘렸다. 고르는 즉시 알려주는 편이 친절하다.
   /* QA(2026-07-21) — 무드보드와 같은 표기 방식으로 통일.

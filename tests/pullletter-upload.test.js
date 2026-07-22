@@ -1,7 +1,7 @@
 /**
  * 풀레터 촬영시안 PDF 업로드 제한 테스트 (2026-07-21)
  * ═══════════════════════════════════════════════════════════════════
- * 도메니코 지시: 풀레터 PDF 첨부는 20MB 이하로 제한.
+ * 도메니코 지시: 풀레터 PDF 첨부는 25MB 이하로 제한 (2026-07-22 — 무드보드와 동일하게 통일).
  *
  * ── 손대기 전 상태 (실측) ──────────────────────────────────────────
  *   · 화면 안내: "PDF only · max 50MB"
@@ -14,7 +14,7 @@
  * 즉 한 페이지 안에서 두 업로더의 상한이 20/50 으로 갈려 있었다.
  *
  * ── 이 테스트가 지키는 것 ──────────────────────────────────────────
- * 프론트 상수 · 화면 문구 · 서버 상한 세 곳이 전부 20MB 로 일치해야 한다.
+ * 프론트 상수 · 화면 문구 · 서버 상한 세 곳이 전부 25MB 로 일치해야 한다.
  * 하나만 바꾸면 실패한다 — 예전에 안내(50MB)와 실제 동작이 어긋났던
  * 것과 같은 상황을 다시 만들지 않기 위해서다.
  */
@@ -22,7 +22,7 @@ const fs = require('fs');
 const path = require('path');
 const ROOT = path.join(__dirname, '..');
 
-const LIMIT_MB = 20;
+const LIMIT_MB = 25;  // 2026-07-22 도메니코 지시 — 무드보드와 동일 25MB 로 통일
 let pass = 0, fail = 0;
 function t(name, cond, detail) {
   if (cond) { pass++; console.log('  ✓', name); }
@@ -48,8 +48,8 @@ t('제출 직전에도 재검증 (input 조작 방어)',
   /proposalFile\.size\s*>\s*PROPOSAL_MAX_BYTES/.test(front));
 
 console.log('\n=== 화면 문구 (실제 동작과 일치) ===');
-t('영문 안내가 20MB', /PDF only · max 20MB/.test(front));
-t('한글 안내가 20MB', /PDF 전용 · 최대 20MB/.test(front));
+t('영문 안내가 25MB', /PDF only · max 25MB/.test(front));
+t('한글 안내가 25MB', /PDF 전용 · 최대 25MB/.test(front));
 t('50MB 표기가 남아있지 않다', !/max 50MB|최대 50MB/.test(front),
   (front.match(/[^\n]*50MB[^\n]*/g) || []).slice(0, 2).join(' / '));
 
