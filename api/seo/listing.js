@@ -98,7 +98,7 @@ async function fetchItems(kind) {
       .limit(LIMIT);
     return (data || []).filter(a => a.title).map(a => ({
       title: a.title,
-      href: '/article/' + encodeURIComponent(a.custom_url || a.slug || a.id),
+      href: '/article/' + encodeURIComponent(a.slug || a.custom_url || a.id), // 2026-07-22 정식 slug 우선
       date: dateStr(a.published_date),
       img: a.thumbnail_url || a.hero_image_url || '',
     }));

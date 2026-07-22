@@ -756,6 +756,30 @@ function renderSeoHtml(kind, record, opts) {
   const relFilms = (cfg.schemaType !== 'VideoObject' && Array.isArray(record.related_films))
     ? record.related_films.filter(f => f && f.title && (f.slug || f.id))
     : [];
+  /* 2026-07-22 (Ahrefs: 고아 페이지 1,378) — 에디토리얼 상세 본문 내 내부링크 블록.
+     이전/다음(발행일 체인)으로 전 에디토리얼이 그래프에 연결되고, 태그 관련 4건이
+     링크 에쿼티를 분배한다. record.more_editorials 는 [slug].js 가 탑재(에디토리얼 전용). */
+  const _more = record.more_editorials || null;
+  const _edCard = (e, tag) => {
+    if (!e || !e.title || !(e.slug || e.id)) return '';
+    const th = e.thumbnail || e.cover_image || e.og_image || '';
+    return `<a class="seo-related-card" href="/editorial/${escAttr(e.slug || e.id)}">
+      ${th ? `<img src="${escAttr(th)}" alt="${escAttr(e.title)} — Cover" loading="lazy" width="240" height="160">` : ''}
+      <div class="seo-related-meta">
+        <div class="seo-related-tagline">${tag}</div>
+        <div class="seo-related-title">${escText(e.title)}</div>
+      </div>
+    </a>`;
+  };
+  const moreEditorialsHtml = _more && (_more.prev || _more.next || (_more.related && _more.related.length))
+    ? `<section class="seo-related"><h2>More Editorials</h2>
+        <div class="seo-related-films">${[
+          _edCard(_more.prev, 'PREVIOUS'),
+          ...(Array.isArray(_more.related) ? _more.related.map(e => _edCard(e, 'RELATED')) : []),
+          _edCard(_more.next, 'NEXT'),
+        ].join('')}</div></section>`
+    : '';
+
   const relatedFilmsHtml = relFilms.length
     ? `<section class="seo-related"><h2>Related Films</h2>
         <div class="seo-related-films">${relFilms.map(f => {
@@ -1162,6 +1186,7 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
     ${fashionHtml}
     ${relatedEditorialHtml}
     ${relatedFilmsHtml}
+    ${moreEditorialsHtml}
     <!-- QA(2026-07) #5 — 해시태그 노출 위치 통일. record.tags 로 오는 해시태그는
          기존에 seo-meta(본문 설명 바로 아래·상단)에 렌더돼, 본문 블록 안에
          해시태그를 배치하는 관리자 등록 기사(최하단)와 위치가 어긋났다. IG

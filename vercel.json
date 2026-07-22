@@ -399,6 +399,17 @@
     },
     {
       "source": "/editorial",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i).*(bot|crawl|spider|slurp|yeti|daumoa|zumbot|bingpreview|facebookexternalhit|kakaotalk|applebot|petalbot|duckduck|perplexity|gpt|claude).*"
+        }
+      ],
+      "destination": "/api/seo/listing?kind=magazine"
+    },
+    {
+      "source": "/editorial",
       "destination": "/index.html"
     },
     {

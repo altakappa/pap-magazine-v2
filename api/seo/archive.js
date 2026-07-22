@@ -50,7 +50,7 @@ module.exports = async function handler(req, res) {
         .order('published_date', { ascending: false, nullsFirst: false })
         .limit(3000),
       supabaseAdmin.from('articles')
-        .select('title, custom_url, id, published_date')
+        .select('title, slug, custom_url, id, published_date')
         .eq('status', 'published')
         .order('published_date', { ascending: false })
         .limit(1000),
@@ -68,7 +68,7 @@ module.exports = async function handler(req, res) {
     }));
     const artItems = (arts.data || []).filter(a => a.title).map(a => ({
       title: a.title,
-      href: '/article/' + encodeURIComponent(a.custom_url || a.id),
+      href: '/article/' + encodeURIComponent(a.slug || a.custom_url || a.id), // 2026-07-22 정식 slug 우선 (내부 301 링크 제거)
       date: dateStr(a.published_date),
     }));
     const filmItems = (films.data || []).filter(f => f.title).map(f => ({

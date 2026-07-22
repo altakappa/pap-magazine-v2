@@ -191,6 +191,35 @@ module.exports = async function handler(req, res) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=300, stale-while-revalidate=86400');
     res.setHeader('X-Robots-Tag', 'index, follow, max-image-preview:large');
+    /* 2026-07-22 (Ahrefs 감사: 고아 페이지) — 본문 내 내부링크 블록용 데이터.
+       · 이전/다음: 발행일 체인으로 '모든' 에디토리얼이 서로 연결되게 (고아 방지의 핵심)
+       · 관련: 태그 겹침 상위 4건 (없으면 최신 4건) — 링크 에쿼티/체류 모두 기여
+       실패해도 페이지는 정상 렌더 (try/catch·비어있으면 섹션 생략). */
+    try {
+      const pd = data.published_date || '1970-01-01';
+      const ca = data.created_at || '1970-01-01T00:00:00Z';
+      const sel = 'title, slug, id, published_date, thumbnail, cover_image, og_image';
+      const [prevR, nextR, relR] = await Promise.all([
+        supabaseAdmin.from('editorials').select(sel).eq('status','published')
+          .or(`published_date.lt.${pd},and(published_date.eq.${pd},created_at.lt.${ca})`)
+          .order('published_date',{ascending:false}).order('created_at',{ascending:false}).limit(1),
+        supabaseAdmin.from('editorials').select(sel).eq('status','published')
+          .or(`published_date.gt.${pd},and(published_date.eq.${pd},created_at.gt.${ca})`)
+          .order('published_date',{ascending:true}).order('created_at',{ascending:true}).limit(1),
+        (Array.isArray(data.tags) && data.tags.length
+          ? supabaseAdmin.from('editorials').select(sel).eq('status','published')
+              .neq('id', data.id).overlaps('tags', data.tags.slice(0,4))
+              .order('published_date',{ascending:false}).limit(4)
+          : supabaseAdmin.from('editorials').select(sel).eq('status','published')
+              .neq('id', data.id).order('published_date',{ascending:false}).limit(4)),
+      ]);
+      data.more_editorials = {
+        prev: (prevR.data && prevR.data[0]) || null,
+        next: (nextR.data && nextR.data[0]) || null,
+        related: (relR.data || []).filter(e => e && e.id !== data.id).slice(0,4),
+      };
+    } catch (_) { /* 내부링크 블록은 best-effort */ }
+
     return res.status(200).send(renderSeoHtml('editorial', data, { lang, translation, availableLangs }));
 
   } catch (err) {
