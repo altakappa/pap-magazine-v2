@@ -197,7 +197,7 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
 <script src="/pap-home.js?v=3" defer></script>
 <script src="/pap-content-editorial.js?v=35" defer></script>
 <script src="/pap-content-film.js?v=11" defer></script>
-<script src="/pap-content-article.js?v=37" defer></script>
+<script src="/pap-content-article.js?v=38" defer></script>
 <script src="/pap-content-creator-shorts.js?v=1" defer></script>
 <script src="/pap-content-api-sync.js?v=113" defer></script>
 <script src="/pap-content-seo.js?v=4" defer></script>
@@ -423,7 +423,10 @@ document.addEventListener('DOMContentLoaded', function() {
       var title = document.createElement('div');
       title.className = 'card-title';
       var _curLang=(localStorage.getItem('pap-lang')||'ko');
-      var _locT=(a.ti18n&&(a.ti18n[_curLang]||a.ti18n.en))||a.t||'';
+      // 2026-07-22 QA — 한국어는 원문(t)이 우선. (ti18n.en 우선 폴백이 ko 를 영문으로 만들던 버그)
+      var _locT = _curLang==='ko'
+        ? ((a.ti18n&&a.ti18n.ko)||a.t||(a.ti18n&&a.ti18n.en)||'')
+        : ((a.ti18n&&(a.ti18n[_curLang]||a.ti18n.en))||a.t||'');
       title.textContent = _locT.toUpperCase();
 
       // data-slug for language-agnostic linking

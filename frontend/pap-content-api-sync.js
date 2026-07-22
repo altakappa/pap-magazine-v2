@@ -251,7 +251,7 @@ window._papFilmAutoPlay = function(){
       // 기사 제목이 한국어로 고정됐다(IG 연동 기사만 정적 JSON 의 ti18n 덕에 번역됨).
       // 이제 title_en 을 ti18n.en 으로 실어 일관된 폴백을 만든다:
       //   한국어 → 원문 제목,  그 외 언어 → 영문 제목(있으면), 없으면 원문.
-      // (상세 렌더는 ti18n[lang] || ti18n.en || 원문 순으로 고른다)
+      // (렌더 폴백: ko → ti18n.ko||원문||en, 그 외 → ti18n[lang]||en||원문 — 2026-07-22 교정)
       ti18n: a.title_i18n || a.titleI18n || a.ti18n
              || (a.title_en && String(a.title_en).trim() ? { en: String(a.title_en).trim() } : null),
       subi18n: a.subtitle_i18n || a.subtitleI18n || a.subi18n || null,

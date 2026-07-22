@@ -40,13 +40,23 @@ function _papCurLang(){
   try { return (typeof lang!=='undefined' && lang) || localStorage.getItem('pap-lang') || 'ko'; }
   catch(e){ return 'ko'; }
 }
+// 2026-07-22 QA(한국어인데 제목 영문) — 한국어 원문은 ti18n 이 아니라 기본 필드(t/sub)에
+// 있다. 기존 순서(ti18n[L] || ti18n.en || t)는 L='ko' 일 때 ti18n.ko 가 없으면 곧장
+// '영문'으로 떨어져, title_en 이 실리기 시작한 QA #30 이후 한국어 목록·상세가 영문이 됐다.
+// (QA #30 주석의 의도 '한국어 → 원문 제목'과 구현이 정반대였던 것.) 언어별 순서로 교정:
+//   ko     → ti18n.ko(명시 번역 있으면) → 원문(t) → en
+//   그 외  → ti18n[L] → en → 원문(t)
 function _papLocTitle(a){
+  if(!a) return '';
   var L=_papCurLang();
-  return (a && a.ti18n && (a.ti18n[L] || a.ti18n.en)) || (a && a.t) || '';
+  if(L==='ko') return (a.ti18n && a.ti18n.ko) || a.t || (a.ti18n && a.ti18n.en) || '';
+  return (a.ti18n && (a.ti18n[L] || a.ti18n.en)) || a.t || '';
 }
 function _papLocSub(a){
+  if(!a) return '';
   var L=_papCurLang();
-  return (a && a.subi18n && (a.subi18n[L] || a.subi18n.en)) || (a && a.sub) || '';
+  if(L==='ko') return (a.subi18n && a.subi18n.ko) || a.sub || (a.subi18n && a.subi18n.en) || '';
+  return (a.subi18n && (a.subi18n[L] || a.subi18n.en)) || a.sub || '';
 }
 
 // ======== ALL ARTICLES OVERLAY ========
