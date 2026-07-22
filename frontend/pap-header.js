@@ -233,7 +233,11 @@
          (b) max-width 가 있는 .content 는 정상적으로 중앙정렬된다.
          max-width 가 없는 .content 는 auto 가 0 처럼 동작하므로 영향 없음. */
       '.pap-has-header:not(.pap-keep-side-nav) .content{margin-left:auto!important;margin-right:auto!important;padding-top:100px!important}',
-      '.pap-has-header:not(.pap-keep-side-nav) .footer-legal{margin-left:0!important}',
+      /* QA(2026-07-22) — margin-left:0!important 가 subscribe·submission·pullletter 의
+         .footer-legal{margin:0 auto}(중앙) 좌측 auto 를 죽여 푸터가 왼쪽에 붙었다
+         (실측: margin 0/400px). 원래 의도(옛 side-nav 좌측 고정 여백 상쇄)는 auto 로도
+         충족되므로 중앙 정렬을 살린다. */
+      '.pap-has-header:not(.pap-keep-side-nav) .footer-legal{margin-left:auto!important;margin-right:auto!important}',
       /* pages that opt-in to keep the legacy .side-nav coexist with unified header */
       '.pap-has-header.pap-keep-side-nav .content{padding-top:100px!important}',
       '.pap-has-header.pap-keep-side-nav .footer-legal{padding-top:0!important}',
