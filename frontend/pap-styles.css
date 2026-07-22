@@ -752,7 +752,10 @@ section.hero + .shorts-section{
 .ed-more-carousel{position:relative;overflow:hidden;padding:0 32px}
 .ed-more-track{display:flex;gap:10px;overflow-x:auto;scroll-behavior:smooth;-ms-overflow-style:none;scrollbar-width:none}
 .ed-more-track::-webkit-scrollbar{display:none}
-.ed-more-card{flex:1 1 0;min-width:0;cursor:pointer}
+/* QA(2026-07-22) — flex:1 1 0 은 카드가 개수만큼 수축해 트랙이 넘치지 않아
+   좌우 버튼이 무반응. 데스크톱 4장 고정 폭, 초과분은 가로 스크롤.
+   (모바일 브레이크포인트의 고정 min/max-width 오버라이드는 기존대로) */
+.ed-more-card{flex:0 0 calc((100% - 30px)/4);min-width:0;cursor:pointer}
 .ed-more-card img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block}
 .ed-more-card-cat{font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.03em;margin-top:6px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ed-more-card-title{font-family:'Montserrat',sans-serif;font-size:10px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;color:#fff;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

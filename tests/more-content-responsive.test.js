@@ -81,8 +81,12 @@ const m768 = rulesInMedia(768, '.ed-more-card') || '';
 t('≤768px 에서 flex:1 1 0 이 아니다 (개수 균등분할 금지)',
   !/flex\s*:\s*1\s+1\s+0/.test(m768), m768.trim().slice(0, 60));
 t('≤768px 에서 고정 폭을 갖는다', widthOf(m768) !== null);
-t('데스크톱은 기존대로 균등분할 유지',
-  /\.ed-more-card\{flex:1 1 0;min-width:0/.test(css));
+/* QA(2026-07-22 갱신) — 데스크톱 균등분할(flex:1 1 0)도 같은 버그였음이
+   확인됨(8장이 96px 로 수축, scrollWidth==clientWidth → 좌우 버튼 무반응).
+   데스크톱은 4장 고정 폭 + 초과분 가로 스크롤이 정답.
+   상세는 tests/more-content-carousel.test.js */
+t('데스크톱은 4장 고정 폭 (균등분할 금지)',
+  /\.ed-more-card\{flex:0 0 calc\(\(100% - 30px\)\/4\)/.test(css));
 
 console.log('\n=== 모바일 캐러셀 마무리 ===');
 t('화살표는 모바일에서 숨김 (터치는 스와이프)',

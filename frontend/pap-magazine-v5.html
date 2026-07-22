@@ -444,7 +444,10 @@ button{cursor:pointer;font-family:inherit}
 .ed-more-carousel{position:relative;overflow:hidden;padding:0 32px}
 .ed-more-track{display:flex;gap:10px;overflow-x:auto;scroll-behavior:smooth;-ms-overflow-style:none;scrollbar-width:none}
 .ed-more-track::-webkit-scrollbar{display:none}
-.ed-more-card{flex:1 1 0;min-width:0;cursor:pointer}
+/* QA(2026-07-22) — flex:1 1 0 은 카드가 개수만큼 수축해 트랙이 절대 넘치지
+   않아(실측: 8장 scrollWidth==clientWidth) 좌우 버튼이 무반응이었다.
+   4장 고정 폭(초과분은 가로 스크롤)으로 캐러셀 본연의 구조 복원. */
+.ed-more-card{flex:0 0 calc((100% - 30px)/4);min-width:0;cursor:pointer}
 .ed-more-card img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block}
 .ed-more-card-cat{font-size:8px;color:rgba(255,255,255,.4);letter-spacing:.03em;margin-top:6px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ed-more-card-title{font-family:'Montserrat',sans-serif;font-size:10px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;color:#fff;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -496,7 +499,7 @@ button{cursor:pointer;font-family:inherit}
 #artDetailDesc,#artDetailDesc *{color:#ccc !important}
 #artDetailDesc a{color:#7eaaed !important;text-decoration:underline}
 
-@media(max-width:768px){.ed-hero-split{flex-direction:column}.ed-hero-img,.ed-hero-info{width:100%}.ed-hero-info{min-height:40vh}.ed-gallery-grid{grid-template-columns:1fr}.ed-more-card{flex:1 1 0;min-width:0}.ed-all-header{padding:24px 16px 12px}.ed-all-grid{padding:8px 16px 60px;grid-template-columns:repeat(2,1fr);gap:10px}.film-all-grid{grid-template-columns:repeat(2,1fr)}.art-all-grid{grid-template-columns:repeat(2,1fr)}#filmFilterWrap,#artFilterWrap{padding:0 16px 12px!important}}
+@media(max-width:768px){.ed-hero-split{flex-direction:column}.ed-hero-img,.ed-hero-info{width:100%}.ed-hero-info{min-height:40vh}.ed-gallery-grid{grid-template-columns:1fr}.ed-more-card{flex:0 0 calc((100% - 10px)/2);min-width:0}.ed-all-header{padding:24px 16px 12px}.ed-all-grid{padding:8px 16px 60px;grid-template-columns:repeat(2,1fr);gap:10px}.film-all-grid{grid-template-columns:repeat(2,1fr)}.art-all-grid{grid-template-columns:repeat(2,1fr)}#filmFilterWrap,#artFilterWrap{padding:0 16px 12px!important}}
 
 
 /* AI RECOMMENDED THEMES */
