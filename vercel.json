@@ -107,6 +107,14 @@
     {
       "path": "/api/cron/backfill-faq",
       "schedule": "3-53/10 * * * *"
+    },
+    {
+      "path": "/api/cron/migrate-external-images",
+      "schedule": "22 * * * *"
+    },
+    {
+      "path": "/api/cron/image-link-check",
+      "schedule": "30 0 * * 1"
     }
   ],
   "rewrites": [
