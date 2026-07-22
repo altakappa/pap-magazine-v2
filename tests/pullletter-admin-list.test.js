@@ -27,6 +27,17 @@ console.log('--- 마이페이지 오류 표시 ---');
 t('mine 실패(!r.ok)를 throw 로 표면화', /pullletters\/mine[\s\S]{0,400}if\(!r\.ok\) throw new Error/.test(mp));
 t('catch 가 실패 문구 표시(빈 목록 위장 아님)', /loadPullletterRequests[\s\S]*?catch\(function\(\)\{\s*box\.innerHTML/.test(mp));
 
+
+console.log('--- 마이페이지 로드 체인 독립성 ---');
+// QA(2026-07-22 추가) — initSupabase 실패의 조기 return 이 loadPullletterRequests
+// 호출을 삼키던 구조 회귀 방지: loadActivityStats 안에 통계용 조기 return 금지.
+const statsFn = (mp.match(/function loadActivityStats\([\s\S]*?loadPullletterRequests\(\);/) || [''])[0];
+// if(!sb){...} 블록 '내부'만 추출해 return 검사 (블록 밖 코드는 무관)
+const sbBlock = (statsFn.match(/if \(!sb\) \{[^{}]*\}/) || [''])[0];
+t('loadActivityStats 의 sb-실패 블록에 return 없음', sbBlock !== '' && !/return/.test(sbBlock),
+  'initSupabase 실패가 풀레터 로드를 다시 삼키게 된다');
+t('loadPullletterRequests 호출이 loadActivityStats 안에 존재', /loadPullletterRequests\(\);/.test(statsFn));
+
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if(fail){ console.log('❌ pullletter-admin-list tests FAILED'); process.exit(1); }
 console.log('✅ pullletter-admin-list tests passed');

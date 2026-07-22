@@ -654,20 +654,24 @@ function loadActivityStats(user){
     .catch(function(){ document.getElementById('mpStatSubs').textContent = '0'; });
 
   // 2) comments + ratings via Supabase anon
+  // QA(2026-07-22) — 예전엔 initSupabase() 실패 시 `return` 으로 함수 전체를
+  // 중단해, 아래의 loadPullletterRequests()·커뮤니티 활동 fetch 까지 통째로
+  // 건너뛰었다. 마이페이지 '내 풀레터 요청'이 "불러오는 중..."에서 영구히
+  // 멈춰 보인 근본 원인. 통계 실패는 통계('0' 표시)에만 국한시킨다.
   var sb = initSupabase();
   if (!sb) {
     document.getElementById('mpStatComments').textContent = '0';
     document.getElementById('mpStatRatings').textContent = '0';
-    return;
+  } else {
+    sb.from('comments').select('id', { count:'exact', head:true }).eq('user_id', user.id)
+      .then(function(res){
+        document.getElementById('mpStatComments').textContent = res.count || 0;
+      }).catch(function(){ document.getElementById('mpStatComments').textContent = '0'; });
+    sb.from('ratings').select('user_id', { count:'exact', head:true }).eq('user_id', user.id)
+      .then(function(res){
+        document.getElementById('mpStatRatings').textContent = res.count || 0;
+      }).catch(function(){ document.getElementById('mpStatRatings').textContent = '0'; });
   }
-  sb.from('comments').select('id', { count:'exact', head:true }).eq('user_id', user.id)
-    .then(function(res){
-      document.getElementById('mpStatComments').textContent = res.count || 0;
-    }).catch(function(){ document.getElementById('mpStatComments').textContent = '0'; });
-  sb.from('ratings').select('user_id', { count:'exact', head:true }).eq('user_id', user.id)
-    .then(function(res){
-      document.getElementById('mpStatRatings').textContent = res.count || 0;
-    }).catch(function(){ document.getElementById('mpStatRatings').textContent = '0'; });
 
   // Pull-letter requests (premium-only)
   loadPullletterRequests();
