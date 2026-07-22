@@ -597,11 +597,18 @@ module.exports = async function handler(req, res) {
             stagedEditorialId = editorial.id;
             const notePrefix = reviewNote || '';
             const newNote = notePrefix + (notePrefix ? '\n' : '') + '[Staged as editorial id: ' + editorial.id + ']';
-            await supabaseAdmin
-              .from('submissions')
-              .update({ admin_notes: newNote })
-              .eq('id', submission.id)
-              .catch(err => console.error('Failed to update admin_notes:', err));
+            // 2026-07-22 — PostgREST 빌더는 .catch 가 없다(thenable 이지만
+            // Promise 아님). 런타임 로그 실측: "TypeError: ....catch is not a
+            // function" (ASIATOPIA 승인 때 3회) → admin_notes 의 스테이징
+            // 마커가 아예 안 남고 있었다. try/catch 로 교체.
+            try {
+              await supabaseAdmin
+                .from('submissions')
+                .update({ admin_notes: newNote })
+                .eq('id', submission.id);
+            } catch (err) {
+              console.error('Failed to update admin_notes:', err);
+            }
           }
         }
       } catch (stageErr) {

@@ -22,6 +22,8 @@ t('크론 인증 규약 (CRON_SECRET Bearer + admin 폴백)',
 t('선별은 SQL 함수 external_image_editorials (gallery 배열 포함 검색)',
   /rpc\('external_image_editorials'/.test(mig));
 t('이미지 MIME 검증 (비이미지 응답 거부)', /\^image\\\//.test(mig));
+t('구 S3 octet-stream 응답은 확장자 폴백 (1차 배치 173건 전량 실패 교훈)',
+  /binary\\\/octet-stream/.test(mig) && /contentTypeFromUrl/.test(mig));
 t('용량 상한 15MB + fetch 타임아웃', /MAX_BYTES = 15 \* 1024 \* 1024/.test(mig) && /FETCH_TIMEOUT_MS/.test(mig));
 t('media 버킷 migrated/ 경로 업로드', /storage\.from\('media'\)/.test(mig) && /'migrated\/' \+ row\.id/.test(mig));
 t('실패 URL 기록 + 재시도 건너뜀 (무한 재시도 방지)',

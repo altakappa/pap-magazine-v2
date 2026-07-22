@@ -38,18 +38,35 @@ function extFromContentType(ct) {
   return 'jpg';
 }
 
+// 구 S3 버킷은 이미지를 binary/octet-stream 으로 서빙한다(업로드 당시
+// Content-Type 미지정 — 첫 배치 173건 전량 이 사유로 실패한 실측 교훈).
+// MIME 이 무의미한 응답은 URL 확장자로 이미지 여부·타입을 판정한다.
+const IMG_EXT_RE = /\.(jpe?g|png|webp|gif|avif|heic)(\?|$)/i;
+function contentTypeFromUrl(url) {
+  const m = String(url).toLowerCase().match(IMG_EXT_RE);
+  if (!m) return null;
+  const ext = m[1] === 'jpg' ? 'jpeg' : m[1];
+  return 'image/' + ext;
+}
+
 async function fetchImage(url) {
   const ctrl = new AbortController();
   const to = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
   try {
     const r = await fetch(url, { signal: ctrl.signal, redirect: 'follow' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    const ct = r.headers.get('content-type') || '';
-    if (!/^image\//i.test(ct)) throw new Error('not an image: ' + ct.slice(0, 40));
+    let ct = (r.headers.get('content-type') || '').split(';')[0].trim();
+    if (!/^image\//i.test(ct)) {
+      // octet-stream/빈 MIME 은 확장자 폴백 (구 S3 대응). html 등은 여전히 거부.
+      const inferred = (/^(binary\/octet-stream|application\/octet-stream)?$/i.test(ct))
+        ? contentTypeFromUrl(url) : null;
+      if (!inferred) throw new Error('not an image: ' + (ct || 'no content-type').slice(0, 40));
+      ct = inferred;
+    }
     const buf = Buffer.from(await r.arrayBuffer());
     if (buf.length === 0) throw new Error('empty body');
     if (buf.length > MAX_BYTES) throw new Error('too large: ' + buf.length);
-    return { buf, contentType: ct.split(';')[0] };
+    return { buf, contentType: ct };
   } finally {
     clearTimeout(to);
   }
