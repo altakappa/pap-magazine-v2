@@ -3334,12 +3334,56 @@ function _prefillFromMoodboard(){
   }catch(e){}
 }
 
+// 구조개편 Phase 2 — 신규 페이지 상단에 "내 서브미션 관리는 마이페이지" 안내 링크.
+// (기존 mySubsSection 목록을 대체 — 목록·상세·재제출·결제는 마이페이지가 담당)
+function _showManageLink(){
+  try{
+    if(document.getElementById('_subManageLink')) return;
+    var lang=''; try{ lang = localStorage.getItem('pap-lang')||'ko'; }catch(_){ lang='ko'; }
+    var txt = (lang==='ko')
+      ? '내가 제출한 서브미션의 상태 확인·수정·재제출은 <a href="/mypage#mp-submissions" style="color:rgba(255,255,255,.9);text-decoration:underline;text-underline-offset:3px">마이페이지 → SUBMISSIONS</a> 에서 관리할 수 있습니다.'
+      : 'Track, revise, and manage your submitted work in <a href="/mypage#mp-submissions" style="color:rgba(255,255,255,.9);text-decoration:underline;text-underline-offset:3px">My Page → SUBMISSIONS</a>.';
+    var d=document.createElement('div');
+    d.id='_subManageLink';
+    d.style.cssText='max-width:800px;margin:0 auto 28px;padding:12px 16px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.03);font-size:12px;line-height:1.7;color:rgba(255,255,255,.65);text-align:left';
+    d.innerHTML=txt;
+    var fa=document.getElementById('formArea');
+    if(fa && fa.parentNode) fa.parentNode.insertBefore(d, fa);
+  }catch(_){}
+}
+
+// 구조개편 Phase 2 — 신규 모드 방어 리셋. ?revise 가 없으면 revise 전역 상태를
+// 명시적으로 비운다. 신규 로드에선 어차피 초기값이지만, Safari/모바일 bfcache 가
+// revise 세션의 페이지를 통째로 복원한 뒤 사용자가 URL 만 /submission 으로 바꾼
+// 경우 등 경계 사례에서 과거 상태가 신규 폼에 스며드는 것을 기계적으로 차단한다.
+function _resetReviseStateIfNew(){
+  try{
+    var p=new URLSearchParams(window.location.search);
+    if(p.get('revise')) return;
+    REVISE_ID=null;
+    existingLookUrls={};
+    existingAdditionalUrls=[];
+    var b=document.querySelector('.btn-submit[data-revise-mode]');
+    if(b){ delete b.dataset.reviseMode; }
+    var banner=document.getElementById('_reviseBanner');
+    if(banner && banner.parentNode) banner.parentNode.removeChild(banner);
+  }catch(_){}
+}
+window.addEventListener('pageshow',function(e){ if(e && e.persisted) _resetReviseStateIfNew(); });
+_resetReviseStateIfNew();
+
 // Auto-check login on load
 document.addEventListener('DOMContentLoaded',function(){
   if(typeof PAP!=='undefined'&&PAP.auth.isLoggedIn()){
     document.getElementById('accessGateOverlay').classList.add('hidden');
     document.getElementById('formArea').style.display='block';
-    loadMySubmissions();
+    // 구조개편 Phase 2 (2026-07-22) — /submission 은 '신규 등록 전용'.
+    // 예전엔 loadMySubmissions() 가 폼 위에 과거 제출 최대 5건의 상세를 자동
+    // 펼쳐(2026-07-20 지시), 신규 작성 중 과거 제출 데이터가 화면에 등장했다
+    // (QA "다음 단계 진행 시 과거 데이터 노출"의 실체). 내 제출 목록·관리
+    // (피드백·재제출·결제)는 마이페이지 #mp-submissions 로 이관됨 — 여기선
+    // 목록을 로드하지 않고, 안내 링크만 남긴다(_showManageLink).
+    _showManageLink();
     _prefillFromMoodboard();
   }
   // Real-time validation: blur + input handlers

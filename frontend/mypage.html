@@ -825,7 +825,9 @@ function loadRecentSubmissions(){
         box.innerHTML = '<div class="mp-empty">' + _t.emptySubs + '</div>';
         return;
       }
-      var top = subs.slice(0, 3);
+      // 구조개편 Phase 2 (2026-07-22) — /submission 의 '내 서브미션' 목록이 여기로
+      // 완전 이관됨(신규 페이지는 신규 전용). 상위 3건 미리보기 → 전체 표시로 확장.
+      var top = subs;
       var html = '';
       // QA #225 — statuses where the owner is allowed to self-delete. Must
       // stay in sync with DELETE handler in api/submissions/[id].js.
@@ -855,9 +857,8 @@ function loadRecentSubmissions(){
         '</div>' +
         '<div class="mp-sub-detail" id="_mpSubDet_'+(s.id||'').replace(/[^a-zA-Z0-9-]/g,'')+'" style="display:none"></div>';
       });
-      if (subs.length > 3) {
-        html += '<a href="/submission#mine" style="display:block;text-align:center;margin-top:10px;font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.5)">' + _t.viewAll + '</a>';
-      }
+      // (구조개편 Phase 2) '전체 보기 → /submission#mine' 링크 제거 — 그 목록이
+      // 이 섹션으로 이관돼 여기가 전체 목록이다. 순환 링크 방지.
       box.innerHTML = html;
     })
     .catch(function(){
