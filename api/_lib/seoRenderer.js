@@ -28,7 +28,7 @@ const PAP_STYLES_VERSION = 40;
 /* 같은 이유로 pap-header.js 도 버전이 어긋나 있었다(SSR v=19 vs 프론트 v=23).
    헤더 스크립트가 옛 버전이면 로고 경로·햄버거 동작 같은 수정이 상세 페이지에만
    반영되지 않는다. 위와 동일하게 테스트가 드리프트를 감시한다. */
-const PAP_HEADER_VERSION = 25;
+const PAP_HEADER_VERSION = 26;
 
 /* Instagram SEO — 홈의 Organization(@id) 와 동일 엔티티로 묶고, 모든 SSR
  * 상세 페이지의 publisher 에 sameAs 를 실어 Google 지식그래프가 사이트와

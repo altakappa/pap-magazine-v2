@@ -518,6 +518,16 @@
 
   function _papDockFloatingLogo(){
     if (!document.getElementById('floatingLogo')) return;
+    // 2026-07-22 (QA: 메인홈 로고 중첩 재발) — 이 페이지엔 마우스 추종 '플로팅 로고'가
+    // 있으므로, 헤더가 주입한 자체 정적 로고(.logo-wrap img)를 숨겨 이중 노출을 막는다.
+    // 헤더 개편(v25)으로 index.html 예외가 사라지며 헤더가 홈에도 자기 로고를 그리기
+    // 시작해 플로팅 로고와 같은 자리에 겹쳐 보였다. visibility:hidden 으로 .logo-wrap
+    // 레이아웃 박스는 유지 → getHeaderLogoPos(.logo-wrap 측정) 도킹 좌표가 정확하다.
+    // (모바일도 in-header 플로팅 로고가 보이므로 로고가 사라지지 않는다.)
+    try {
+      var _hdrLogoImg = document.querySelector('header.header .logo-wrap img');
+      if (_hdrLogoImg) _hdrLogoImg.style.visibility = 'hidden';
+    } catch (_) {}
     function dock(){
       if (typeof window._papResetFloatingLogo === 'function') {
         try { window._papResetFloatingLogo(); } catch (_) {}
