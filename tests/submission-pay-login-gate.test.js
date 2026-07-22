@@ -16,18 +16,23 @@
 const fs = require('fs');
 const path = require('path');
 const html = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'submission.html'), 'utf8');
+// 2026-07-22 구조개편 Phase 2 — 기본료 결제 로직(_resolvePayUser/payBaseFee/_PAY_I18N 등)이
+// frontend/pap-submission-fee.js 공용 모듈로 추출됨. payAddonFee 는 submission.html 에 남음.
+// 이 게이트 테스트의 불변식(window.PAP&& 금지·서버진실 판정)은 그대로 — 소스만 합쳐서 검사한다.
+const mod = fs.readFileSync(path.join(__dirname, '..', 'frontend', 'pap-submission-fee.js'), 'utf8');
+const src = html + '\n' + mod;
 
 let pass = 0, fail = 0;
 function t(n, c, d){ if(c){pass++;console.log('  ✓',n);} else {fail++;console.log('  ✗',n); if(d)console.log('     ',d);} }
 
 console.log('\n=== 서브미션 결제 로그인 오탐 근본수정 (window.PAP → 맨이름 PAP) ===');
 
-const helper = (html.match(/async\s+function\s+_resolvePayUser\s*\([\s\S]*?\n\}/) || [''])[0];
-const base   = (html.match(/async\s+function\s+payBaseFee\s*\([\s\S]*?\n\}\n/) || [''])[0];
-const addon  = (html.match(/async\s+function\s+payAddonFee\s*\([\s\S]*?\n\}\n/) || [''])[0];
+const helper = (src.match(/async\s+function\s+_resolvePayUser\s*\([\s\S]*?\n\}/) || [''])[0];
+const base   = (src.match(/async\s+function\s+payBaseFee\s*\([\s\S]*?\n\}\n/) || [''])[0];
+const addon  = (src.match(/async\s+function\s+payAddonFee\s*\([\s\S]*?\n\}\n/) || [''])[0];
 
 // 1) 헬퍼 존재 + 맨이름 PAP 를 typeof 가드로 캡처
-t('_resolvePayUser 헬퍼 존재', /async\s+function\s+_resolvePayUser\s*\(/.test(html));
+t('_resolvePayUser 헬퍼 존재', /async\s+function\s+_resolvePayUser\s*\(/.test(src));
 t('맨이름 PAP 를 typeof 가드로 참조(_P)', /var\s+_P\s*=\s*\(typeof\s+PAP\s*!==\s*'undefined'/.test(helper));
 t('로컬 캐시 getUser 시도(_P 경유)', /_P&&_P\.auth\.getUser/.test(helper));
 t('refreshUser 복구 시도(_P 경유)', /_P\.auth\.refreshUser/.test(helper));
@@ -47,7 +52,7 @@ t('payBaseFee: !user 일 때만 차단', /if\(!user\)\{[\s\S]*?payLoginFirst/.te
 t('payAddonFee: !user 일 때만 차단', /if\(!user\)\{[\s\S]*?payLoginFirst/.test(addon));
 
 // 4) 구(舊) 토큰전용 게이트(_loggedIn=isLoggedIn())가 없어야 한다
-t('구 토큰전용 게이트(_loggedIn) 제거됨', !/_loggedIn2?\s*=\s*!!\(/.test(html));
+t('구 토큰전용 게이트(_loggedIn) 제거됨', !/_loggedIn2?\s*=\s*!!\(/.test(src));
 
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if(fail){ console.log('❌ submission-pay-login-gate tests FAILED'); process.exit(1); }

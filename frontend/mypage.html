@@ -483,6 +483,10 @@ a{color:#fff;text-decoration:none}
 <script src="/pap-api.js?v=9" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 <script src="/pap-logos-data.js?v=1" defer></script>
+<!-- 서브미션 기본료 Paddle 결제 (구조개편 Phase 2) — submission.html 과 공용 모듈 공유.
+     vercel.json 전역 CSP 가 이미 *.paddle.com 을 허용하므로 페이지 CSP 추가 불필요. -->
+<script src="https://cdn.paddle.com/paddle/v2/paddle.js" defer></script>
+<script src="/pap-submission-fee.js?v=1" defer></script>
 <style>
 .mp-dl-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 14px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02);margin-bottom:6px;transition:all .2s}
 .mp-dl-item:hover{border-color:rgba(255,255,255,.18);background:rgba(255,255,255,.04)}
@@ -902,6 +906,16 @@ async function _mpRenderSubDetail(id, box){
     var h = '<div style="border:1px solid rgba(255,255,255,.1);border-top:none;padding:16px 18px;background:rgba(255,255,255,.02);font-size:13px;line-height:1.7;color:rgba(255,255,255,.85);margin:-6px 0 6px">';
     h += '<div style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:8px">' + L.status + '</div>';
     h += '<div style="margin-bottom:14px">' + _statusBadge(s.status) + '</div>';
+    // 게재료 기본료 결제 (Phase 2) — 공용 모듈 _baseFeeApprovalBlock 재사용.
+    // 유료 유형(paid_few_looks/branded) + 미결제일 때만 결제 버튼, 결제 완료면 상태 표시,
+    // 그 외 유형은 '' 반환. submission.html 과 동일 로직·동일 Paddle 흐름.
+    var _desc = {}; try{ _desc = s.description ? JSON.parse(s.description) : {}; }catch(_){}
+    try{
+      if(typeof _baseFeeApprovalBlock === 'function'){
+        var _pb = _baseFeeApprovalBlock(id, _desc.submissionType || '', s.payment_status || '');
+        if(_pb) h += _pb;
+      }
+    }catch(_){}
     h += '<div style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:6px">' + L.feedback + '</div>';
     h += '<div style="white-space:pre-line;color:' + (note ? 'rgba(255,255,255,.9)' : 'rgba(255,255,255,.4)') + '">' + (note ? esc(note) : L.none) + '</div>';
     if(s.status === 'revision'){
