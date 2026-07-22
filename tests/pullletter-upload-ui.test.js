@@ -39,17 +39,17 @@ const inlineBuilds = (pl.match(/'<div class="file-item"/g) || []).length;
 t(`.file-item 을 조립하는 곳이 1군데뿐 (발견 ${inlineBuilds})`, inlineBuilds === 1,
   '두 곳에서 각자 만들면 다시 갈라진다');
 
-console.log('\n=== 2. 두 영역 모두 공용 렌더러를 쓰는가 ===');
-t('무드보드가 공용 렌더러 사용',
-  /renderFileList\(\)[\s\S]{0,400}_papFileItemHtml\(/.test(pl));
+console.log('\n=== 2. 촬영시안이 공용 렌더러를 쓰는가 ===');
+/* 2026-07-22 갱신 — 무드보드란 폐지(시안 PDF 통합)로 업로드 영역은 촬영시안
+   하나가 됐다. 무드보드 관련 어서션은 tests/pullletter-moodboard-format.test.js
+   (통합 구조 회귀)로 이관. 공용 렌더러 원칙은 그대로 지킨다. */
 t('촬영시안이 공용 렌더러 사용',
   /_onProposalSelected[\s\S]{0,1500}_papFileItemHtml\(/.test(pl));
 t('촬영시안에도 목록 컨테이너가 있다', /id="proposalFileList"/.test(pl));
-t('두 컨테이너가 같은 클래스(.file-list)를 쓴다',
-  (pl.match(/class="file-list"/g) || []).length >= 2);
+t('목록 컨테이너가 표준 클래스(.file-list)를 쓴다',
+  (pl.match(/class="file-list"/g) || []).length >= 1);
 
-console.log('\n=== 3. 두 영역 모두 삭제 수단이 있는가 ===');
-t('무드보드 삭제 함수', /function removeFile\(/.test(pl));
+console.log('\n=== 3. 삭제 수단이 있는가 ===');
 t('촬영시안 삭제 함수', /function removeProposalFile\(/.test(pl));
 t('촬영시안 삭제가 input 값도 비운다',
   /function removeProposalFile\(\)[\s\S]{0,400}proposalInput[\s\S]{0,120}value\s*=\s*''/.test(pl),

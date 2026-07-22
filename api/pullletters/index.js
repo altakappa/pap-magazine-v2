@@ -10,7 +10,8 @@
  *     requestText:   string (short summary)           — optional
  *
  *   Files:
- *     moodboard:    image file(s)  — REQUIRED (≥1)  — uploaded to `pullletters` bucket
+ *     moodboard:    image file(s)  — optional (2026-07-22 통합: 무드보드·촬영
+ *                   컨셉·팀 구성은 촬영시안 PDF 하나에 포함. 과거 요청 호환용)
  *     proposal_pdf: PDF file       — REQUIRED        — uploaded to `pullletters` bucket
  *
  *   Premium-only (server-side enforcement); rejects non-premium requesters
@@ -82,9 +83,9 @@ module.exports = async function handler(req, res) {
         // 클라이언트가 이미 올린 파일들의 경로. 여기서는 형식만 검증한다.
         const mUrls = Array.isArray(data.moodboardUrls) ? data.moodboardUrls : [];
         const pPath = typeof data.proposalPath === 'string' ? data.proposalPath : '';
-        if (mUrls.length === 0) {
-          return res.status(400).json({ message: 'At least one moodboard image is required' });
-        }
+        // 2026-07-22 (도메니코 지시) — 무드보드 별도 업로드 폐지. 무드보드·촬영
+        // 컨셉·팀 구성은 촬영시안 PDF 하나에 포함. moodboardUrls 는 빈 배열 허용
+        // (전달되면 하위 호환으로 그대로 저장·표시).
         // 경로 위조 방지 — 반드시 이 사용자 폴더 아래여야 한다.
         const safeUid = String(user.id || '').replace(/[^a-zA-Z0-9_-]/g, '');
         if (!pPath || pPath.indexOf(`proposals/${safeUid}/`) !== 0 || !/\.pdf$/i.test(pPath)) {
@@ -137,9 +138,7 @@ module.exports = async function handler(req, res) {
         const moodboardFiles = files.moodboard
           ? (Array.isArray(files.moodboard) ? files.moodboard : [files.moodboard])
           : [];
-        if (moodboardFiles.length === 0) {
-          return res.status(400).json({ message: 'At least one moodboard image is required' });
-        }
+        // 2026-07-22 — 무드보드는 더 이상 필수가 아니다 (시안 PDF 에 포함).
 
         const proposalRaw = files.proposal_pdf || files.proposalPdf;
         const proposalFile = Array.isArray(proposalRaw) ? proposalRaw[0] : proposalRaw;

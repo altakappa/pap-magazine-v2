@@ -541,8 +541,10 @@ const PAP = (function() {
     //
     // onProgress(done, total, phase) — phase: 'sign' | 'upload'
     async create(data, moodboardFiles, proposalPdf, onProgress) {
+      // 2026-07-22 (도메니코 지시) — 무드보드 업로드란 폐지. 무드보드·촬영
+      // 컨셉·팀 구성은 촬영시안 PDF 하나에 포함한다. moodboardFiles 는
+      // 하위 호환용 파라미터로만 남기고(전달되면 여전히 업로드) 필수 아님.
       const moods = moodboardFiles || [];
-      if (moods.length === 0) throw new Error('At least one moodboard image is required');
       if (!proposalPdf) throw new Error('Proposal PDF is required');
 
       const metas = moods.map(function(f) { return { file: safeFile(f, 'mood'), category: 'moodboard' }; });

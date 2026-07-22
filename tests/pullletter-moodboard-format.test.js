@@ -1,69 +1,65 @@
 /**
- * 풀레터 무드보드 형식 검증 3계층 정합 (2026-07-22 QA: "unsupported moodboard type").
+ * 풀레터 촬영시안 통합 구조 회귀 (2026-07-22 도메니코 지시).
  *
- * [원인] 무드보드 안내 문구는 "JPG·PNG·PDF·PPT" 인데 서버 화이트리스트
- * (api/pullletters/upload-url.js MOODBOARD_MIME)는 이미지만 허용했다. 그래서
- * 안내대로 올린 PDF 가 415 로 거부되고 영문 "unsupported moodboard type" 팝업이 떴다.
+ * [변경] 별도 "무드보드 파일 업로드" 란을 폐지하고, 무드보드·촬영 컨셉·
+ * 팀 구성을 촬영시안 PDF 하나에 포함하는 구조로 통합했다.
+ * (이 파일의 이전 버전은 무드보드 형식 3계층 정합 테스트였다 — 폼에서
+ *  무드보드 업로드 자체가 사라지며 프론트 어서션을 통합 구조 기준으로 교체.
+ *  서버 upload-url 의 moodboard category 는 과거 요청 호환용으로 유지.)
  *
  * [이 테스트가 지키는 것]
- *  1. 서버 무드보드 화이트리스트가 PDF·PPT 를 허용한다 (안내와 일치)
- *  2. 서버가 빈 MIME 대비 확장자 폴백을 갖는다
- *  3. 촬영시안(proposal)은 여전히 PDF 전용 (형식 분리 유지)
- *  4. 프론트 addFiles 허용 목록도 PDF·PPT 포함, 용량 25MB, 영문 하드코딩 토스트 제거
- *  5. 무드보드/촬영시안 검증이 서로 뒤바뀌지 않음(각자 category 로 분기)
+ *  1. 폼에 무드보드 업로드란이 되살아나지 않는다 (단일 시안 PDF 원칙)
+ *  2. 시안 안내문구에 무드보드·촬영 컨셉·팀 구성 포함이 명시된다 (ko+기본)
+ *  3. 프론트·서버 모두 무드보드 없이 제출 가능 (필수 검증 제거)
+ *  4. 촬영시안 PDF 는 여전히 필수 + PDF 전용 + 25MB
+ *  5. 과거 요청의 무드보드(file_urls)는 마이페이지에서 계속 표시 (하위 호환)
  */
 'use strict';
 const fs = require('fs');
 const path = require('path');
 const R = (f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
 const server = R('api/pullletters/upload-url.js');
+const idx    = R('api/pullletters/index.js');
 const html   = R('frontend/pullletter.html');
+const papi   = R('frontend/pap-api.js');
+const mp     = R('frontend/mypage.html');
 
 let pass = 0, fail = 0;
 function t(n, c, d){ if(c){pass++;console.log('  ✓',n);} else {fail++;console.log('  ✗',n); if(d)console.log('     ',d);} }
 
-console.log('\n=== 풀레터 무드보드 형식 정합 (JPG/PNG/PDF/PPT) ===');
+console.log('\n=== 풀레터 촬영시안 통합 (무드보드란 폐지) ===');
 
-// 1) 서버 화이트리스트
-const moodSet = (server.match(/const MOODBOARD_MIME = new Set\(\[([\s\S]*?)\]\)/) || ['',''])[1];
-t('서버: 무드보드가 application/pdf 허용', /application\/pdf/.test(moodSet));
-t('서버: 무드보드가 PPT(ms-powerpoint) 허용', /vnd\.ms-powerpoint/.test(moodSet));
-t('서버: 무드보드가 PPTX 허용', /presentationml\.presentation/.test(moodSet));
+// 1) 폼에서 무드보드 업로드란 제거 유지
+t('폼: 무드보드 업로드 마크업(uploadZone/fileInput) 없음',
+  !/id="uploadZone"/.test(html) && !/id="fileInput"/.test(html),
+  '무드보드 업로드란이 되살아나면 단일 시안 PDF 원칙 붕괴');
+t('폼: 무드보드 필수 검증(err-moodboard/noFiles 체크) 없음',
+  !/getElementById\('err-moodboard'\)/.test(html));
+t('폼: create 호출이 무드보드 빈 배열 전달', /pullLetters\.create\(data, \[\], proposalFile/.test(html));
 
-// 1b) 버킷(Supabase allowed_mime_types)과 정합 — heic/gif/avif 허용, tiff 제거
-t('서버: HEIC 허용(아이폰)', /image\/heic/.test(moodSet));
-t('서버: GIF·AVIF 허용', /image\/gif/.test(moodSet) && /image\/avif/.test(moodSet));
-t('서버: tiff 제거됨(버킷이 거부하는 형식)', !/image\/tiff/.test(moodSet), 'tiff 가 남으면 스토리지에서 조용히 거부');
-const addFilesEarly = (html.match(/function addFiles\(files\)\{[\s\S]*?renderFileList\(\);\n\}/) || [''])[0];
-t('프론트: HEIC 허용', /image\/heic/.test(addFilesEarly));
-t('프론트: tiff 제거됨', !/image\/tiff|\x27\.tiff?\x27/.test(addFilesEarly));
+// 2) 시안 안내문구 — 무드보드·촬영 컨셉·팀 구성 포함 명시
+t('안내(ko): 무드보드·촬영 컨셉·팀 구성 포함 명시',
+  /proposalHelp:'[^']*무드보드[^']*촬영 컨셉[^']*팀 구성[^']*'/.test(html));
+t('안내(기본/EN): mood board·concept·team 명시',
+  /data-i18n="proposalHelp">[^<]*mood board[^<]*concept[^<]*team/i.test(html));
 
-// 2) 확장자 폴백
-t('서버: 확장자 폴백 세트(MOODBOARD_EXT) 존재', /const MOODBOARD_EXT = new Set\(/.test(server));
-t('서버: 검증이 MIME 또는 확장자로 통과', /!MOODBOARD_MIME\.has\(type\)\s*&&\s*!MOODBOARD_EXT\.has\(/.test(server));
+// 3) 무드보드 없이 제출 가능
+t('pap-api: 무드보드 필수 throw 제거',
+  !/At least one moodboard image is required/.test(papi));
+t('서버(index): JSON·레거시 경로 모두 무드보드 필수 400 제거',
+  !/At least one moodboard image is required/.test(idx));
 
-// 3) 촬영시안은 PDF 전용 유지 (형식 분리)
-t('서버: proposal 은 application/pdf 강제 유지', /type !== 'application\/pdf'[\s\S]*?proposal must be application\/pdf/.test(server));
-t('서버: category 로 moodboard/proposal 분기 유지', /category === 'proposal'/.test(server) && /unsupported moodboard type/.test(server));
+// 4) 촬영시안 PDF 는 여전히 필수·PDF 전용·25MB
+t('pap-api: proposal PDF 필수 유지', /if \(!proposalPdf\) throw new Error\('Proposal PDF is required'\)/.test(papi));
+t('서버(index): proposalPath 검증 유지(경로+pdf 확장자)', /촬영시안 PDF is required/.test(idx));
+t('서버(upload-url): proposal 은 application/pdf 강제 유지',
+  /type !== 'application\/pdf'[\s\S]*?proposal must be application\/pdf/.test(server));
+t('프론트: 촬영시안 상한 25MB 유지', /PROPOSAL_MAX_BYTES = 25\*1024\*1024/.test(html));
+t('프론트: 제출 검증에 proposal 필수 체크 유지', /_getValText\('noProposal'\)/.test(html));
 
-// 4) 프론트 addFiles
-const addFiles = (html.match(/function addFiles\(files\)\{[\s\S]*?renderFileList\(\);\n\}/) || [''])[0];
-t('프론트: addFiles 가 application/pdf 허용', /application\/pdf/.test(addFiles));
-t('프론트: addFiles 가 PPT 허용', /vnd\.ms-powerpoint/.test(addFiles) && /presentationml\.presentation/.test(addFiles));
-t('프론트: 무드보드 용량 25MB 로 정합', /maxSize=25\*1024\*1024/.test(addFiles));
-t('프론트: 영문 하드코딩 토스트 제거(Invalid file type 등 없음)',
-  !/Invalid file type|File too large \(max 20MB\)|Maximum 20 files allowed/.test(addFiles),
-  '영문 하드코딩이 남아 있으면 한국어화 회귀');
-t('프론트: 형식 오류를 i18n(moodBadType)으로 안내', /_getValText\('moodBadType'\)/.test(addFiles));
-
-// 4b) 용량 통일 — 무드보드·촬영시안 모두 25MB (2026-07-22 도메니코 지시)
-t('서버: 촬영시안 상한 25MB', /MAX_PROPOSAL_SIZE = 25 \* 1024 \* 1024/.test(server));
-t('서버: 무드보드 상한 25MB', /MAX_MOODBOARD_SIZE = 25 \* 1024 \* 1024/.test(server));
-t('프론트: 촬영시안 상한 25MB', /PROPOSAL_MAX_BYTES = 25\*1024\*1024/.test(html));
-t('프론트: 촬영시안 안내문구에 20MB 잔존 없음', !/max 20MB|최대 20MB|20MB 이하|20 Mo|20 МБ/.test(html), '20MB 문구가 남으면 통일 실패');
-
-// 5) i18n 키 존재 (한국어)
-t('프론트: moodBadType 한국어 문구 존재', /moodBadType:\{ko:'지원하지 않는 파일 형식/.test(html));
+// 5) 하위 호환 — 과거 요청 무드보드 표시 + 서버 category 유지
+t('서버(upload-url): moodboard category 하위 호환 유지', /category === 'proposal'/.test(server) && /MOODBOARD_MIME/.test(server));
+t('마이페이지: 과거 무드보드(file_urls) 렌더 유지', /Array\.isArray\(r\.file_urls\)/.test(mp));
 
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if(fail){ console.log('❌ pullletter-moodboard-format tests FAILED'); process.exit(1); }
