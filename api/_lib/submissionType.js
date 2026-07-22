@@ -54,6 +54,11 @@ function normBrand(s) {
   return String(s == null ? '' : s).trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
+/** Normalize an instagram handle: trim → strip leading @ → strip ws → lower. */
+function normHandle(s) {
+  return String(s == null ? '' : s).trim().replace(/^@+/, '').replace(/\s+/g, '').toLowerCase();
+}
+
 /**
  * Count images per look number from lookImageMap. Falls back to counting
  * looks[].items when lookImageMap is absent/empty is NOT done here — image
@@ -85,7 +90,19 @@ function brandSetsFromLooks(looks) {
       if (Array.isArray(lk.items)) {
         for (const it of lk.items) {
           const b = normBrand(it && it.brand);
-          if (b) set.add(b);
+          if (b) {
+            set.add(b);
+          } else {
+            // 2026-07-22 (도메니코 QA) — 브랜드명을 비우고 @핸들만 입력하면
+            // 브랜디드 탐지가 통째로 우회되던 구멍. 실제 사례: 4룩 전부
+            // brand 공란 + 같은 인스타 핸들 → 모든 브랜드 집합이 비어
+            // union=0 → free 로 분류됨. 브랜드명이 없으면 인스타 핸들을
+            // 브랜드 식별자로 사용한다(같은 핸들 = 같은 브랜드).
+            // '@' 접두로 네임스페이스를 분리해 브랜드명 문자열과의 우연한
+            // 충돌은 피한다(보수적 — 확실한 동일성만 잡는다).
+            const h = normHandle(it && it.instagram);
+            if (h) set.add('@' + h);
+          }
         }
       }
       byLook[key] = set;
@@ -176,6 +193,7 @@ function looksMissingCredit(looks) {
 module.exports = {
   MIN_LOOKS,
   normBrand,
+  normHandle,
   classifySubmissionType,
   looksMissingCredit,
 };

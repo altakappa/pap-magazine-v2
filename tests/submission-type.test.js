@@ -98,6 +98,28 @@ ok('lookImageMap entries with null/missing lookN are ignored',
    typeOf(looksFor([['A'], ['B'], ['C'], ['D']]),
      [{ lookN: 1 }, { lookN: null }, {}, { lookN: 2 }, { lookN: 3 }, { lookN: 4 }]) === 'free');
 
+/* ── 2026-07-22 (도메니코 QA) — 핸들-온리 브랜디드 우회 구멍 회귀 ──
+ * 실사례(Formositas): 4룩 전부 brand 공란 + 같은 인스타 핸들(@taely__n)
+ * → 브랜드 집합이 전부 비어 union=0 → free 로 오분류. 브랜드명이 없으면
+ * 인스타 핸들을 브랜드 식별자('@'+handle)로 사용해 잡는다. */
+(function(){
+  const mk = (handles) => handles.map((h,i)=>({n:i+1,items:[{type:'Dress',brand:'',instagram:h}]}));
+  const map4 = [1,2,3,4].map(n=>({lookN:n,imgIdxInLook:0}));
+  const same = classifySubmissionType(mk(['taely__n','@taely__n',' taely__n ','TAELY__N']), map4);
+  ok('핸들-온리 단일(표기 변형 포함) 4룩 → branded', same.submissionType==='branded' && same.sharedBrands[0]==='@taely__n');
+  const diff = classifySubmissionType(mk(['a1','b2','c3','d4']), map4);
+  ok('핸들-온리 상이 4룩 → free (오탐 없음)', diff.submissionType==='free');
+  const mixed = classifySubmissionType([
+    {n:1,items:[{type:'Dress',brand:'Gucci',instagram:''}]},
+    {n:2,items:[{type:'Shoes',brand:'',instagram:'other_h'}]},
+    {n:3,items:[{type:'Top',brand:'Prada',instagram:''}]},
+    {n:4,items:[{type:'Other',brand:'',instagram:'third_h'}]},
+  ], map4);
+  ok('브랜드·핸들 혼합 상이 4룩 → free', mixed.submissionType==='free');
+  const two = classifySubmissionType(mk(['same_h','same_h']), [1,2].map(n=>({lookN:n,imgIdxInLook:0})));
+  ok('핸들-온리 공유 2룩 → branded (교집합 트리거)', two.submissionType==='branded');
+})();
+
 console.log('\n=== SUMMARY ===');
 console.log(`passed: ${passed}   failed: ${failed}`);
 if (failed > 0) {
