@@ -51,6 +51,10 @@ a{color:#fff;text-decoration:none}
    under the PAP logo regardless of any other rule. */
 .content{max-width:900px!important;margin-left:auto!important;margin-right:auto!important;padding:100px 40px 80px;text-align:center}
 .content .section-title,.content .form-label,.content .form-input,.content .form-hint,.content .field-helper,.content .field-error,.content textarea.form-input,.content .team-input{text-align:left}
+/* 2026-07-22 (QA: 약관 좌측정렬 미해결) — .content 가 text-align:center 라, 위 좌측정렬 예외
+   목록에 없던 약관 조항이 중앙정렬을 상속했다(text-align 은 상속 속성). 명시적으로 좌측 고정.
+   .content .x 형태라 .content{center} 보다 우선한다. 약관 팝업/스텝5 공통 적용. */
+.content .terms-title,.content .terms-box,.content .terms-box ol,.content .terms-box li,.content .terms-box li strong,.content .terms-box em,.content .terms-check label,.content .terms-check{text-align:left}
 .content .page-hero{text-align:center!important}
 .content .page-hero h1{text-align:center!important}
 .content .page-hero p{margin-left:auto;margin-right:auto;text-align:center!important}
@@ -859,7 +863,7 @@ function navigateWithInterstitial(url){
             ② All disputes arising from or related to these terms shall be exclusively under the jurisdiction of the Seoul Central District Court as the court of first instance.<br>
             <em style="color:rgba(255,255,255,.55)">These terms shall be governed by and construed in accordance with the laws of the Republic of Korea. The Seoul Central District Court shall have exclusive jurisdiction over any disputes arising from these terms.</em></li>
           </ol>
-          <p style="margin-top:16px;font-size:11px;color:rgba(255,255,255,.55);text-align:center" data-i18n="termsEffective">Effective: January 1, 2026 | Last Updated: March 1, 2026</p>
+          <p style="margin-top:16px;font-size:11px;color:rgba(255,255,255,.55);text-align:left" data-i18n="termsEffective">Effective: January 1, 2026 | Last Updated: March 1, 2026</p>
         </div>
         <div class="terms-check">
           <input type="checkbox" id="termsAgree">
