@@ -881,7 +881,8 @@ window._papFilmAutoPlay = function(){
       var ed = top[j];
       var safeTitle = String(ed.title||'').replace(/"/g, '&quot;');
       var safeImg   = String(ed.img||'').replace(/"/g, '&quot;');
-      var dateLabel = ed.date ? String(ed.date).split('T')[0] : '';
+      // 2026-07-22 QA 날짜 표기통일 — 홈 카드도 공통 papFmtDate(DD Mon YYYY) 사용
+      var dateLabel = ed.date ? (window.papFmtDate ? papFmtDate(ed.date) : String(ed.date).split('T')[0]) : '';
       var catLabel  = 'EDITORIAL' + (dateLabel ? (' - ' + dateLabel) : '');
       var tagsAttr  = Array.isArray(ed.tags) ? ed.tags.join(',') : '';
       // SEO — 실제 <a href="/editorial/<slug>"> 카드 (크롤러 링크 그래프용).
@@ -962,7 +963,8 @@ window._papFilmAutoPlay = function(){
           ordered.forEach(function(ed){
             var safeTitle = String(ed.title || '').replace(/"/g, '&quot;');
             var safeImg   = String(ed.img   || '').replace(/"/g, '&quot;');
-            var dateLabel = ed.date ? String(ed.date).split('T')[0] : '';
+            // 2026-07-22 QA 날짜 표기통일 — 공통 papFmtDate
+            var dateLabel = ed.date ? (window.papFmtDate ? papFmtDate(ed.date) : String(ed.date).split('T')[0]) : '';
             var catLabel  = 'EDITORIAL' + (dateLabel ? (' - ' + dateLabel) : '');
             var tagsAttr  = Array.isArray(ed.tags) ? ed.tags.join(',') : '';
             // SEO — 실제 <a href="/editorial/<slug>"> 로 렌더. 크롤러가
@@ -1037,7 +1039,8 @@ window._papFilmAutoPlay = function(){
           if(!thumb || !title) return;
           var safeTitle = String(title).replace(/"/g, '&quot;');
           var safeImg   = String(thumb).replace(/"/g, '&quot;');
-          var dateLabel = ed.published_date ? String(ed.published_date).split('T')[0] : '';
+          // 2026-07-22 QA 날짜 표기통일 — 공통 papFmtDate
+          var dateLabel = ed.published_date ? (window.papFmtDate ? papFmtDate(ed.published_date) : String(ed.published_date).split('T')[0]) : '';
           var catLabel  = 'EDITORIAL' + (dateLabel ? (' - ' + dateLabel) : '');
           var tagsAttr  = Array.isArray(ed.tags) ? ed.tags.join(',') : '';
           // SEO — 실제 <a href="/editorial/<slug>"> 카드 (크롤러 링크 그래프용).

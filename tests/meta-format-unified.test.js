@@ -172,6 +172,21 @@ if (seo && seo.fmtDisplayDate && seo.fmtTitleCat && typeof papFmtMeta === 'funct
     mismatch ? JSON.stringify(mismatch) : '');
 }
 
+// ── 2026-07-22 QA 재발 방지: 메인홈 에디토리얼 카드 3개 섹션도 papFmtDate ──
+// (최신 에디토리얼 행 · 하단 테마 추천 행들 · 인기(트렌딩) 행 — 전부
+//  pap-content-api-sync.js 가 렌더한다. 서브페이지만 통일되고 홈이 빠졌던 건.)
+console.log('\n=== 메인홈 카드 날짜 표기 (papFmtDate) ===');
+{
+  const dateLabelLines = apiSync.split('\n').filter(l => /var dateLabel =/.test(l));
+  t('홈 카드 dateLabel 생성 지점이 3곳이다', dateLabelLines.length === 3,
+    '실제 ' + dateLabelLines.length + '곳 — 섹션이 늘었으면 이 테스트와 papFmtDate 적용을 함께 확장할 것');
+  dateLabelLines.forEach((l, i) => {
+    t('  섹션 ' + (i+1) + ': papFmtDate 를 쓴다', /papFmtDate\(/.test(l), l.trim().slice(0, 90));
+  });
+  t('papFmtDate 없이 하이픈 날짜(split)만 쓰는 지점이 없다',
+    dateLabelLines.every(l => !/split\('T'\)/.test(l) || /papFmtDate/.test(l)));
+}
+
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if (fail) { console.log('❌ meta-format-unified tests FAILED'); process.exit(1); }
 console.log('✅ meta-format-unified tests passed');
