@@ -210,7 +210,23 @@ module.exports = async function handler(req, res) {
       return res.status(201).json({ pullLetter });
     } catch (error) {
       console.error('Create pull-letter error:', error);
-      return res.status(500).json({ message: error.message || 'Failed to create pull-letter request' });
+      // QA 3차(2026-07-22) 근본원인: pullletters.email UNIQUE 제약이 재신청을 전부
+      // 23505 로 거부 → 원시 DB 영문 메시지가 그대로 내려가 "신청에 실패했습니다"
+      // 폴백만 보였다. 제약은 마이그레이션(drop_pullletters_email_unique)으로 제거
+      // (도메니코 승인: 다건 신청 허용). 아래는 이중 방어 — 혹시 다른 unique 가
+      // 남거나 재도입돼도 사용자에게 원인이 보이는 안내를 내려보낸다.
+      if (error && error.code === '23505') {
+        return res.status(409).json({
+          message: 'A pull-letter request with this account already exists. If you believe this is an error, contact contact@pap-magazine.com',
+          code: 'duplicate_request',
+        });
+      }
+      // 원시 DB/내부 메시지를 그대로 노출하지 않는다 — 서버 로그에만 남기고,
+      // 사용자에겐 문의처가 포함된 일반 안내를 내려보낸다(프론트가 이 문구를 표시).
+      return res.status(500).json({
+        message: 'Server error while creating your pull-letter request. If this keeps happening, contact contact@pap-magazine.com',
+        code: 'create_failed',
+      });
     }
   }
 
