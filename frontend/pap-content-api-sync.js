@@ -1082,6 +1082,27 @@ window._papFilmAutoPlay = function(){
       .catch(function(){ /* trending is a nice-to-have, never block UX */ });
   }
 
+  // 2026-07-22 QA(히어로 배너 공백) — slug 로 에디토리얼 1건을 서버에서 직접 가져와
+  // 로컬 카탈로그(edData/edDetails)에 주입하는 훅. 딥링크(?ed=)·배너 클릭이 클라이언트
+  // 카탈로그에 아직 없는 항목(최신12 밖 + 정적 시드 밖)을 만나면 이걸로 복구한다.
+  window._papFetchEditorialBySlug = function(slug, cb){
+    cb = (typeof cb === 'function') ? cb : function(){};
+    if(!slug){ cb(null); return; }
+    fetch(PAP_API_BASE + '/editorials/' + encodeURIComponent(String(slug).toLowerCase()))
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){
+        var row = j && (j.data || j.editorial || (j.id ? j : null));
+        if(!row || !row.id){ cb(null); return; }
+        var local = apiEditorialToLocal(row);
+        var exists = false;
+        try{ exists = edData.some(function(e){ return e && (e._api_id === row.id || (e.title||'') === (local.title||'')); }); }catch(_){}
+        if(!exists){ try{ edData.push(local); }catch(_){} }
+        try{ _populateEdDetailsFromApi(local); }catch(_){}
+        cb(local);
+      })
+      .catch(function(){ cb(null); });
+  };
+
   function syncEditorials(){
     if(typeof edData==='undefined') return;
 

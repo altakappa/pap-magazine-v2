@@ -238,6 +238,15 @@ function _heroInstallControls(){
           openEditorial(row.title, row.img || '');
           return;
         }
+        // 2026-07-22 QA(히어로 배너 공백) — 카탈로그에 없는 slug(최신12 밖 + 시드 밖)는
+        // 서버에서 1건 직조회해 주입 후 리로드 없이 연다. 실패 시에만 SSR 풀 이동.
+        if(typeof window._papFetchEditorialBySlug === 'function'){
+          window._papFetchEditorialBySlug(slug, function(local){
+            if(local && local.title){ try{ openEditorial(local.title, local.img || ''); return; }catch(_){} }
+            window.location.href = url;
+          });
+          return;
+        }
       }
       // edData 미로딩 / 매칭 실패 / editorial 외 경로 → SSR 풀 이동.
       window.location.href = url;

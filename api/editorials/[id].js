@@ -141,11 +141,16 @@ module.exports = async function handler(req, res) {
       // published films and a sane projection (id/slug/title/thumbnail/
       // youtube_id/published_date) so the response stays small even when
       // a single editorial gets multiple linked films over time.
-      const { data, error } = await supabaseAdmin
+      // 2026-07-22 QA(히어로 배너 공백) — UUID 가 아니면 slug 로 조회를 허용한다.
+      // 딥링크(?ed=<slug>)가 클라이언트 카탈로그에 아직 없는 에디토리얼을 서버에서
+      // 직접 가져올 수 있는 유일한 경로. slug 조회는 published 만 노출(드래프트 유출 방지;
+      // 관리자·상세 하이드레이트는 기존대로 UUID 를 쓴다).
+      const _isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id || ''));
+      let q = supabaseAdmin
         .from('editorials')
-        .select('*, related_films:films!related_editorial_id(id,slug,title,thumbnail_url,youtube_id,published_date,status)')
-        .eq('id', id)
-        .single();
+        .select('*, related_films:films!related_editorial_id(id,slug,title,thumbnail_url,youtube_id,published_date,status)');
+      q = _isUuid ? q.eq('id', id) : q.eq('slug', String(id || '').toLowerCase()).eq('status', 'published');
+      const { data, error } = await q.single();
 
       if (error || !data) {
         return res.status(404).json({ error: 'Editorial not found' });

@@ -323,6 +323,20 @@ function _papResolveEditorialName(input){
       || resolved !== edName;
     var elapsed = Date.now() - pollStart;
     if(!foundMatch && elapsed < 4000){ setTimeout(tryOpen, 120); return; }
+    // 2026-07-22 QA(히어로 배너 공백) — 4초 폴링에도 카탈로그에 없는 slug 는
+    // (최신12 밖 + 정적 시드 밖 항목) 서버에서 직접 1건을 가져와 주입 후 연다.
+    // 기존엔 이 경우 미해결 slug 그대로 openEditorial 에 넘겨 빈 오버레이가 떴다.
+    if(!foundMatch && typeof window._papFetchEditorialBySlug === 'function'){
+      window._papFetchEditorialBySlug(edName, function(local){
+        try{ openEditorial((local && local.title) || resolved, (local && local.img) || ''); }catch(e){}
+        try{
+          var _ov2=document.getElementById('edOverlay');
+          if(_ov2 && _ov2.classList.contains('active')) sessionStorage.removeItem('_pap_ssr_bounce');
+        }catch(_){}
+        setTimeout(revealBody,60);
+      });
+      return;
+    }
     try{ openEditorial(resolved, ''); }catch(e){}
     // 리다이렉트 루프 가드 해제 — 오버레이가 실제로 열렸으면(성공) SSR 브릿지의
     // bounce 레코드를 지운다. 그래야 이후 정상 재방문·새로고침이 카운트에
