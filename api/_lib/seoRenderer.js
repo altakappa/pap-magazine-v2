@@ -1178,7 +1178,7 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
   window._papServerRendered = true;
   window._papInitialContent = ${JSON.stringify({ kind, slug })};
 </script>
-<script src="/pap-geo-lang.js"></script>
+<script src="/pap-geo-lang.js?v=2"></script>
 <script src="/cookie-consent.js" defer></script>
 <!-- QA(2026-07) #11 — 공통 헤더/햄버거 nav 통일. pap-header.js 는 자체 CSS·함수를
      주입하는 self-contained 스크립트라 이 SSR 페이지에서도 SPA 와 동일한 헤더를

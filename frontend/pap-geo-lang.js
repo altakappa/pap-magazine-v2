@@ -4,7 +4,8 @@
  * Automatically sets the site language based on visitor's geographic location.
  *
  * Priority:
- *   1. User's manual selection (localStorage.pap-lang) — never overridden
+ *   1. User's manual selection — never overridden. 저장된 pap-lang 에 출처(source)
+ *      기록이 없으면(레거시·직접 setLang) 그것도 사용자 선택으로 간주해 보호한다.
  *   2. IP-based country detection (cached 7 days)
  *   3. Browser language / timezone fallback
  *   4. English (default)
@@ -82,15 +83,19 @@
     return COUNTRY_LANG[cc.toUpperCase()] || 'en';
   }
 
+  var _applying = false; // applyLang 내부에서 window.setLang 호출 중임을 표시 (외부 수동호출과 구분)
   function applyLang(lang, source){
     if(!lang || SUPPORTED.indexOf(lang) < 0) return;
     var prev = getLang();
-    if(prev === lang){ setSource(source); return; }
+    // 2026-07-22 QA — 'user' 소스는 자동 감지가 절대 강등하지 못한다.
+    if(prev === lang){ if(source === 'user' || getSource() !== 'user') setSource(source); return; }
     setLang(lang);
     setSource(source);
     // If page has its own setLang(), call it to re-render
     if(typeof window.setLang === 'function' && window.setLang !== applyLang){
+      _applying = true;
       try{ window.setLang(lang); }catch(e){}
+      _applying = false;
     }
     // Update <select id="langSelect"> if present
     var sel = document.getElementById && document.getElementById('langSelect');
@@ -140,18 +145,33 @@
     if(existing && source === 'user'){
       return Promise.resolve(existing);
     }
+    // 2026-07-22 QA (아티클 제목 영문 표기) — 저장된 언어가 있는데 출처 기록이 없으면
+    // 이 스크립트 도입 전(레거시) 또는 다른 경로(setLang 직접 호출)로 사용자가 고른
+    // 값이다. 자동 감지가 이를 덮으면 안 되므로 사용자 선택으로 승격·보호한다.
+    // (기존엔 source 가 'user' 딱 하나일 때만 보호돼, 'auto'/'geo'/null 상태의 ko 가
+    //  IP 미매핑 국가(VPN·프록시·해외망)에서 'en' 으로 덮였다 — 라이브 재현 확인.)
+    if(existing && !source){
+      setSource('user');
+      return Promise.resolve(existing);
+    }
 
     // Instant fallback: browser/timezone detection
     var syncLang = browserSyncDetect();
+    var autoSetNow = false; // 이번 로드에서 '방금' 자동 추측을 넣었는가
     if(!existing){
       applyLang(syncLang, 'auto');
+      autoSetNow = true;
     }
 
-    // Refine with IP-based detection
+    // Refine with IP-based detection.
+    // 2026-07-22 QA — IP 보정은 '이번 로드에서 방금 넣은 자동 추측'만 고칠 수 있다.
+    // (첫 방문: 브라우저 추측 → 수 초 뒤 IP 로 정정 = 정상 UX)
+    // 지난 방문에서 저장된 값은 출처가 'auto' 였어도 사용자가 그 언어로 써 온 것이므로
+    // 절대 덮지 않는다 — VPN·프록시·해외망에서 ko 가 en 으로 뒤집히던 원인.
     return fetchCountry().then(function(cc){
       if(!cc) return getLang();
       var geoLang = countryToLang(cc);
-      if(geoLang && geoLang !== getLang()){
+      if(autoSetNow && geoLang && geoLang !== getLang()){
         applyLang(geoLang, 'geo');
       }
       return geoLang;
@@ -178,13 +198,24 @@
   // Auto-run
   detectAndApply();
 
-  // Intercept manual language selector changes: mark as 'user' source
+  // Intercept manual language selector changes: mark as 'user' source.
+  // 2026-07-22 QA — 기존 방식(DOMContentLoaded 에 #langSelect 를 한 번 찾아 리스너 부착)은
+  // 헤더가 주입/재구성되며 셀렉터 노드가 교체되면 리스너가 사라져 'user' 표시가 누락됐다.
+  // 문서 레벨 위임(캡처)으로 바꿔 노드 교체와 무관하게 항상 잡는다.
+  document.addEventListener('change', function(e){
+    var t = e.target;
+    if(t && (t.id === 'langSelect' || (t.matches && t.matches('select[id*="lang" i], select[class*="lang" i]')))){
+      setSource('user');
+    }
+  }, true);
+  // 보강: 어떤 UI 경로든 전역 setLang(pap-i18n.js) 이 직접 불리면 — 이 스크립트 내부
+  // 호출(_applying)이 아닌 한 — 사용자 의사로 간주해 'user' 로 기록한다.
   document.addEventListener('DOMContentLoaded', function(){
-    var sel = document.getElementById('langSelect');
-    if(sel){
-      sel.addEventListener('change', function(){
-        setSource('user');
-      }, true); // capture: true so we run before the inline onchange
+    var orig = window.setLang;
+    if(typeof orig === 'function' && !orig._papGeoWrapped){
+      var wrapped = function(l){ if(!_applying) setSource('user'); return orig.apply(this, arguments); };
+      wrapped._papGeoWrapped = true;
+      window.setLang = wrapped;
     }
   });
 })();
