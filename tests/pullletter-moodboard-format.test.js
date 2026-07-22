@@ -30,6 +30,14 @@ t('서버: 무드보드가 application/pdf 허용', /application\/pdf/.test(mood
 t('서버: 무드보드가 PPT(ms-powerpoint) 허용', /vnd\.ms-powerpoint/.test(moodSet));
 t('서버: 무드보드가 PPTX 허용', /presentationml\.presentation/.test(moodSet));
 
+// 1b) 버킷(Supabase allowed_mime_types)과 정합 — heic/gif/avif 허용, tiff 제거
+t('서버: HEIC 허용(아이폰)', /image\/heic/.test(moodSet));
+t('서버: GIF·AVIF 허용', /image\/gif/.test(moodSet) && /image\/avif/.test(moodSet));
+t('서버: tiff 제거됨(버킷이 거부하는 형식)', !/image\/tiff/.test(moodSet), 'tiff 가 남으면 스토리지에서 조용히 거부');
+const addFilesEarly = (html.match(/function addFiles\(files\)\{[\s\S]*?renderFileList\(\);\n\}/) || [''])[0];
+t('프론트: HEIC 허용', /image\/heic/.test(addFilesEarly));
+t('프론트: tiff 제거됨', !/image\/tiff|\x27\.tiff?\x27/.test(addFilesEarly));
+
 // 2) 확장자 폴백
 t('서버: 확장자 폴백 세트(MOODBOARD_EXT) 존재', /const MOODBOARD_EXT = new Set\(/.test(server));
 t('서버: 검증이 MIME 또는 확장자로 통과', /!MOODBOARD_MIME\.has\(type\)\s*&&\s*!MOODBOARD_EXT\.has\(/.test(server));

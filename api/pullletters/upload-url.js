@@ -48,23 +48,26 @@ const MAX_FILES = 21;                               // 무드보드 20 + 시안 
 const MAX_MOODBOARD_SIZE = 25 * 1024 * 1024;        // 안내 문구와 동일
 const MAX_PROPOSAL_SIZE = 25 * 1024 * 1024;         // 무드보드와 동일하게 통일 (도메니코 2026-07-22)
 
-// 무드보드 허용 형식 — 안내 문구(JPG·PNG·PDF·PPT)와 반드시 일치시킨다.
-// 2026-07-22 (QA: 'unsupported moodboard type') — 안내는 PDF·PPT 를 허용한다고 했는데
-// 서버 화이트리스트는 이미지뿐이라, 안내대로 올린 PDF 가 415 로 거부됐다. 안내에 맞춰 확장.
+// 무드보드 허용 형식 — Supabase 버킷 'pullletters' 의 allowed_mime_types 와 정확히
+// 일치시킨다. 버킷이 실제 최종 관문이므로(서명 업로드 PUT 이 버킷 MIME 을 검사),
+// 앱이 통과시킨 형식이 스토리지에서 거부되면 안 된다.
+// 2026-07-22 정합: 버킷이 허용하는 gif·heic·heif·avif 추가, 버킷이 거부하는 tiff 제거
+// (예전엔 tiff 를 앱이 통과시켜 스토리지에서 조용히 실패할 수 있었다).
 const MOODBOARD_MIME = new Set([
-  'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/tiff',
+  'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+  'image/heic', 'image/heif', 'image/avif',                                    // 아이폰/모던 이미지
   'application/pdf',
   'application/vnd.ms-powerpoint',                                              // .ppt
   'application/vnd.openxmlformats-officedocument.presentationml.presentation',  // .pptx
 ]);
-// 확장자 폴백 — 일부 브라우저/OS 는 PPT 등에 빈 MIME 를 실어 보낸다. 그때는 파일명
-// 확장자로 판정해 '안내대로 올렸는데 거부'를 막는다.
+// 확장자 폴백 — 일부 브라우저/OS 는 HEIC·PPT 등에 빈 MIME 를 실어 보낸다. 그때는
+// 파일명 확장자로 판정해 '올렸는데 거부'를 막는다. (버킷 허용 세트와 동일 범위)
 const MOODBOARD_EXT = new Set([
-  '.jpg', '.jpeg', '.png', '.webp', '.tif', '.tiff', '.pdf', '.ppt', '.pptx',
+  '.jpg', '.jpeg', '.png', '.webp', '.gif', '.heic', '.heif', '.avif', '.pdf', '.ppt', '.pptx',
 ]);
 const MIME_TO_EXT = {
-  'image/jpeg': '.jpg', 'image/jpg': '.jpg', 'image/png': '.png',
-  'image/webp': '.webp', 'image/tiff': '.tiff', 'application/pdf': '.pdf',
+  'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/gif': '.gif',
+  'image/heic': '.heic', 'image/heif': '.heif', 'image/avif': '.avif', 'application/pdf': '.pdf',
   'application/vnd.ms-powerpoint': '.ppt',
   'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx',
 };
