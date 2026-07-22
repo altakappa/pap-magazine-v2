@@ -159,7 +159,11 @@ a{color:#fff;text-decoration:none}
 
 /* RESPONSIVE */
 @media(max-width:1024px){
-  .pricing-grid{grid-template-columns:1fr;max-width:420px}
+  /* 2026-07-22 (도메니코 지시) — 3개 구독 상품은 이 폭에서도 가로(3열) 유지.
+     기존 1열 전환이 ~900px 창에서 세로 나열로 보이던 원인. 간격만 줄인다.
+     1열 스택은 아래 768px 미만(모바일)에서만. */
+  .pricing-grid{gap:12px}
+  .plan-card{padding:32px 20px 28px}
   .comparison-table{font-size:11px}
 }
 @media(max-width:768px){
