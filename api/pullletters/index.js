@@ -237,13 +237,30 @@ module.exports = async function handler(req, res) {
 
     try {
       const { status } = req.query;
+      // QA(2026-07-22, 관리자 목록 0건 표시) — 근본 원인:
+      // `profiles!inner(...)` PostgREST 임베드는 pullletters→profiles FK 를 요구하는데
+      // pullletters.user_id 의 FK 는 auth.users 를 가리켜 profiles 와의 관계가 없다.
+      // → PGRST200 ("Could not find a relationship between 'pullletters' and 'profiles'")
+      // → 목록 전체가 500 → 관리자 화면은 "요청이 없습니다"(0건)로 보였다.
+      // 신청 저장 자체는 정상(INSERT 는 임베드와 무관) — '조회'만 죽어 있었다.
+      // 관리자 서브미션 목록과 동일하게 profiles 를 별도 조회해 매핑한다.
       let query = supabaseAdmin
         .from('pullletters')
-        .select('*, profiles!inner(name, email, subscription_plan)')
+        .select('*')
         .order('created_at', { ascending: false });
       if (status) query = query.eq('status', status);
       const { data: pullLetters, error } = await query;
       if (error) throw error;
+
+      const userIds = [...new Set((pullLetters || []).map(pl => pl.user_id).filter(Boolean))];
+      let profilesById = {};
+      if (userIds.length > 0) {
+        const { data: profs } = await supabaseAdmin
+          .from('profiles')
+          .select('id, name, email, subscription_plan')
+          .in('id', userIds);
+        for (const p of (profs || [])) profilesById[p.id] = p;
+      }
 
       // Mint signed URLs for the two private-bucket PDFs so admin UI can
       // render direct download links without an extra round-trip.
@@ -262,11 +279,12 @@ module.exports = async function handler(req, res) {
           sign(pl.proposal_pdf_url),
           sign(pl.pull_letter_url),
         ]);
+        const prof = profilesById[pl.user_id] || {};
         return {
           ...pl,
-          requesterName: pl.profiles?.name,
-          requesterEmail: pl.profiles?.email,
-          requesterPlan: pl.profiles?.subscription_plan,
+          requesterName: prof.name || null,
+          requesterEmail: prof.email || pl.email || null,
+          requesterPlan: prof.subscription_plan || null,
           proposalPdfSignedUrl,
           pullLetterSignedUrl,
         };

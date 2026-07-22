@@ -723,7 +723,12 @@ function loadPullletterRequests(){
   // Calls the unified /api/pullletters/mine — returns both legacy multipart
   // requests and community/moodboard-based requests with signed PDF URLs.
   fetch('/api/pullletters/mine', { headers:{ 'Authorization':'Bearer ' + token }, credentials:'include' })
-    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(r){
+      // QA(2026-07-22) — 서버 오류(500 등)를 '요청 없음'으로 위장하지 않는다.
+      // 실패는 실패로 보여야 사용자·QA 가 문제를 인지하고 알릴 수 있다.
+      if(!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
     .then(function(j){
       var reqs = (j && j.pullLetters) || [];
       if(reqs.length === 0){
