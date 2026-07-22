@@ -418,6 +418,21 @@ function renderSeoHtml(kind, record, opts) {
   const titleAlt = lang === 'ko' ? titleEn : titleKo;
   const descMain = lang === 'ko' ? descKo : (lang === 'en' ? descEn : ((tr && tr.description) || descEn));
   const descAlt = lang === 'ko' ? descEn : (lang === 'en' ? descKo : descEn);
+  /* 2026-07-22 (SPA 룩 통일) — 일부 요약(desc)이 "제목 — PAP Magazine" 줄로 시작해
+     화면에서 h1 바로 아래 제목이 한 번 더 보였다(백필 산출물). SPA 에는 이 줄이 없다.
+     '정확히 그 형태로 시작할 때만' 화면 표시에서 잘라낸다 — meta description(desc)과
+     JSON-LD 는 descMain 원본을 그대로 쓰므로 SEO 에는 영향 없음. */
+  const _stripTitleEcho = (s) => {
+    if (!s) return s;
+    for (const t of [titleKo, titleMain]) {
+      if (!t) continue;
+      const echo = `${t} — ${SITE_NAME}`;
+      if (s.startsWith(echo)) return s.slice(echo.length).replace(/^[\s\n]+/, '');
+    }
+    return s;
+  };
+  const descDisplay = _stripTitleEcho(descMain);
+  const descAltDisplay = _stripTitleEcho(descAlt);
   const seoTitle = lang === 'ko'
     ? (record.seo_title || (kind === 'film' ? `${titleKo} 패션 필름 | ${SITE_NAME}` : `${titleKo} | ${SITE_NAME}`))
     : (kind === 'film' ? `${titleMain} — Fashion Film | ${SITE_NAME}` : `${titleMain} | ${SITE_NAME}`);
@@ -951,7 +966,7 @@ ${cfg.schemaType !== 'VideoObject' && ogImage ? (canOptimizeImg(ogImage)
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com">
 <link rel="preconnect" href="https://igcazquhkwxtqsaqpznx.supabase.co">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700;800;900&family=Montserrat:wght@700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/pap-styles.css?v=${PAP_STYLES_VERSION}">
 
 <style>
@@ -1038,9 +1053,30 @@ ${cfg.schemaType !== 'VideoObject' && ogImage ? (canOptimizeImg(ogImage)
   .ig-funnel .igf-sub{margin-top:14px;font-size:11px;opacity:.5;letter-spacing:.04em}
   .ig-funnel .pin-btn{display:inline-block;margin-left:10px;background:#E60023;color:#fff;padding:13px 30px;font-size:11.5px;font-weight:700;letter-spacing:.1em;text-decoration:none;transition:opacity .3s}
   .ig-funnel .pin-btn:hover{opacity:.85}
+  /* ── 2026-07-22 (도메니코 지시) — 기사(article) SSR 을 SPA 오버레이(artDetail) 룩과 통일.
+     "링크 직접 진입 시 이미지가 크게 나오고 정렬이 뒤죽박죽" 보고의 실체는 두 렌더러의
+     디자인 불일치였다(frontend/rules 'SSR·SPA 불일치 금지'). 기준은 SPA:
+     articles.html #artDetail* 인라인 스타일 실측값을 그대로 옮긴다.
+     editorial/film SSR 은 건드리지 않도록 .seo-kind-article 로 스코프. */
+  .seo-kind-article .seo-hero{max-width:800px;margin:40px auto 0;padding:0 20px}
+  .seo-kind-article .seo-hero img{width:auto;max-width:100%;max-height:75vh;height:auto;margin:0 auto;background:#111}
+  .seo-kind-article .seo-meta{max-width:800px;padding:0 20px}
+  .seo-kind-article .seo-meta h1{font-family:'Montserrat',sans-serif;font-size:26px;font-weight:700;letter-spacing:.04em;line-height:1.35;margin:0}
+  .seo-kind-article .seo-meta .alt{font-style:normal;font-size:14px;color:#aaa;opacity:1;margin:12px 0 0;line-height:1.6}
+  .seo-kind-article .seo-meta time{font-size:11px;color:#888;letter-spacing:.12em;margin-top:14px;opacity:1}
+  .seo-kind-article .seo-meta .seo-desc-primary{font-size:16px;line-height:1.9;letter-spacing:.02em;color:#ccc;margin-top:36px}
+  .seo-kind-article .seo-gallery{max-width:800px;margin:24px auto;padding:0 20px;gap:4px}
+  .seo-kind-article .seo-gallery img{min-height:0}
+  @media(min-width:900px){.seo-kind-article .seo-gallery{grid-template-columns:1fr 1fr;gap:4px}}
+  .seo-kind-article .seo-video-section{max-width:800px;padding:0 20px}
+  .seo-kind-article .seo-body{font-size:16px;line-height:1.9;letter-spacing:.02em}
+  @media(max-width:768px){
+    .seo-kind-article .seo-meta h1{font-size:22px}
+    .seo-kind-article .seo-meta .seo-desc-primary{font-size:15px;line-height:1.85}
+  }
 </style>
 </head>
-<body class="seo-loading">
+<body class="seo-loading seo-kind-${kind}">
 ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-browser redirect bridge.
      The SSR HTML above + meta tags is what crawlers / social-preview
      scrapers consume (they don't run JS). Real users instead get sent to
@@ -1115,8 +1151,8 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
         const _date = fmtDisplayDate(record.published_date) || published.slice(0, 10);
         return escText((_label ? _label + ' - ' : '') + _date);
       })()}</time>
-      <p class="seo-desc-primary">${escText(descMain)}</p>
-      ${descAlt && descAlt !== descMain ? `<p class="seo-desc-en">${escText(descAlt)}</p>` : ''}
+      <p class="seo-desc-primary">${escText(descDisplay)}</p>
+      ${descAltDisplay && descAltDisplay !== descDisplay ? `<p class="seo-desc-en">${escText(descAltDisplay)}</p>` : ''}
     </div>
     ${bodyHtml}
     ${galleryHtml}
