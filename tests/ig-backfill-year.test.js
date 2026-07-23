@@ -34,6 +34,17 @@ t('완주(신규0·잔여0) 시 done 플래그 + 개인 텔레그램', /ig_backf
 t('완주 후 조기 종료(IG 재조회 없이 반환)', /backfill_done: true/.test(cron));
 t('중복 방지 — 기존 article/editorial dedup 재사용', /existingSet\.has\(m\.id\)/.test(cron) && /editorialShortcodes/.test(cron));
 
+console.log('--- 다계정 백필 ---');
+const impLib2 = R('api/_lib/instagramImport.js');
+t('임포트 함수가 계정 자격증명 파라미터화(_creds)', /function _creds\(opts\)/.test(impLib2) && /opts && opts\.userId/.test(impLib2));
+t('cron: ?account=<key> 로 하위 계정 자격증명 선택', /req\.query && req\.query\.account/.test(cron) && /IG_' \+ account\.toUpperCase\(\) \+ '_USER_ID/.test(cron));
+t('cron: account 미설정 env 는 무해 스킵(실패 알림 방지)', /env 미설정.*skipped|skipped:.*env 미설정/.test(cron));
+t('cron: 기본(account 없음)은 @pap_magazine env 불변', /account \? \('ig_backfill_done_' \+ account\) : 'ig_backfill_done'/.test(cron));
+t('cron: 완주 통보에 계정 라벨(acctLabel)', /acctLabel/.test(cron));
+t('vercel.json 5개 하위 계정 백필 크론 등록',
+  ['celeb','beauty','fashion','trends','object'].every(a =>
+    vj.crons.some(c => c.path.includes('account=' + a + '&backfill=365'))));
+
 console.log('--- 스케줄 등록 ---');
 t('vercel.json 백필 크론 등록(backfill=365)',
   vj.crons.some(c => c.path.includes('/api/cron/sync-instagram?backfill=365')));

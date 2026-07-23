@@ -51,11 +51,31 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
     if (!user) return;
   }
 
-  if (!process.env.IG_ACCESS_TOKEN || !process.env.IG_USER_ID){
+  // 2026-07-23 — 다계정 백필. ?account=celeb|beauty|fashion|trends|object 면
+  // 해당 하위 계정 자격증명(IG_<KEY>_USER_ID / IG_<KEY>_ACCESS_TOKEN)을 쓴다.
+  // account 미지정 = 기본 @pap_magazine(IG_USER_ID/IG_ACCESS_TOKEN, 불변).
+  const ACCOUNT_KEYS = ['celeb', 'beauty', 'fashion', 'trends', 'object'];
+  const account = String((req.query && req.query.account) || '').toLowerCase().trim();
+  let cred = null; // null = 기본 env
+  if (account){
+    if (!ACCOUNT_KEYS.includes(account)){
+      return res.status(400).json({ error: 'account 는 ' + ACCOUNT_KEYS.join('|') + ' 중 하나' });
+    }
+    const uid = process.env['IG_' + account.toUpperCase() + '_USER_ID'];
+    const tok = process.env['IG_' + account.toUpperCase() + '_ACCESS_TOKEN'];
+    if (!uid || !tok){
+      // env 미설정 계정은 조용히 스킵(200) — 크론이 실패 알림을 쏟지 않게.
+      return res.status(200).json({ ok: true, skipped: 'account ' + account + ' env 미설정', account });
+    }
+    cred = { userId: uid, token: tok };
+  } else if (!process.env.IG_ACCESS_TOKEN || !process.env.IG_USER_ID){
     return res.status(503).json({
       error: 'Instagram 환경변수 미설정 (IG_ACCESS_TOKEN / IG_USER_ID).',
     });
   }
+  // 계정별 done 플래그 키 — 백필 완주 상태를 계정마다 따로 관리
+  const doneKey = account ? ('ig_backfill_done_' + account) : 'ig_backfill_done';
+  const acctLabel = account ? ('@pap_' + account) : '@pap_magazine';
 
   const dry = !!(req.query && req.query.dry === '1');
   // 백필 모드: ?backfill=<일수>&max=<회당 처리 상한, 기본 5>
@@ -75,14 +95,15 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
     // (스케줄 크론이 완주 뒤에도 계속 돌며 IG API·컴퓨트를 낭비하지 않게).
     if (backfillDays > 0 && !dry){
       const { data: doneSt } = await supabaseAdmin.from('ops_alert_state')
-        .select('key').eq('key', 'ig_backfill_done').maybeSingle();
-      if (doneSt) return res.status(200).json({ ok: true, backfill_done: true, note: '1년 백필 완주 — 재실행하려면 ops_alert_state 의 ig_backfill_done 삭제' });
+        .select('key').eq('key', doneKey).maybeSingle();
+      if (doneSt) return res.status(200).json({ ok: true, backfill_done: true, account: account || 'magazine', note: '백필 완주 — 재실행하려면 ops_alert_state 의 ' + doneKey + ' 삭제' });
     }
 
     // 1) 게시물 가져오기 — 기본: 최근 25개 / 백필: 기간 내 전체 (페이지네이션)
+    // cred(하위 계정) 있으면 그 계정, 없으면 기본 env(@pap_magazine)
     const media = backfillDays > 0
-      ? await listMediaPaged({ sinceDays: backfillDays, maxCount: 2000 })
-      : await listRecentMedia({ limit: 25 });
+      ? await listMediaPaged({ sinceDays: backfillDays, maxCount: 2000, ...(cred || {}) })
+      : await listRecentMedia({ limit: 25, ...(cred || {}) });
     if (!media.length) return res.status(200).json({ imported: 0, message: '게시물 없음.' });
 
     // 2) 이미 import된 게시물 ID들 조회 (중복 방지).
@@ -284,15 +305,15 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
       if (noNew){
         try {
           const { data: st } = await supabaseAdmin.from('ops_alert_state')
-            .select('key').eq('key', 'ig_backfill_done').maybeSingle();
+            .select('key').eq('key', doneKey).maybeSingle();
           if (!st){
             await supabaseAdmin.from('ops_alert_state').upsert({
-              key: 'ig_backfill_done', last_alert_at: new Date().toISOString(),
+              key: doneKey, last_alert_at: new Date().toISOString(),
               last_payload: { done: true }, updated_at: new Date().toISOString(),
             }, { onConflict: 'key' });
             const { sendTextToTelegramPersonalSafe } = require('../_lib/telegram');
             sendTextToTelegramPersonalSafe(
-              '✅ 인스타그램 1년 백필 완주 — @pap_magazine 최근 1년 게시물을 웹사이트 기사로 전량 가져왔습니다.'
+              '✅ 인스타그램 1년 백필 완주 — ' + acctLabel + ' 최근 1년 게시물을 웹사이트 기사로 전량 가져왔습니다.'
             ).catch(() => {});
           }
         } catch (_) {}

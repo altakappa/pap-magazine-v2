@@ -28,13 +28,22 @@ function _extractShortcode(input){
 
 // Graph API로 IG Business Account 소속 미디어 목록 가져오기.
 // limit: 최대 25 (Graph API 기본값).
-async function listRecentMedia(opts){
-  const limit = (opts && opts.limit) || 25;
-  if (!process.env.IG_ACCESS_TOKEN || !process.env.IG_USER_ID){
+// 2026-07-23 — 다계정 지원. opts.userId/opts.token 이 오면 그 계정, 없으면
+// 기본 env(IG_USER_ID/IG_ACCESS_TOKEN = @pap_magazine). 하위 계정 백필용.
+function _creds(opts){
+  const userId = (opts && opts.userId) || process.env.IG_USER_ID;
+  const token = (opts && opts.token) || process.env.IG_ACCESS_TOKEN;
+  if (!userId || !token){
     throw new Error('IG_ACCESS_TOKEN/IG_USER_ID 환경변수가 설정되어 있지 않습니다.');
   }
+  return { userId, token };
+}
+
+async function listRecentMedia(opts){
+  const limit = (opts && opts.limit) || 25;
+  const { userId, token } = _creds(opts);
   const fields = 'id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username,like_count,comments_count,children{media_url,media_type,thumbnail_url}';
-  const url = `${_IG_API}/${process.env.IG_USER_ID}/media?fields=${encodeURIComponent(fields)}&limit=${limit}&access_token=${process.env.IG_ACCESS_TOKEN}`;
+  const url = `${_IG_API}/${userId}/media?fields=${encodeURIComponent(fields)}&limit=${limit}&access_token=${token}`;
   const res = await fetch(url);
   if (!res.ok){
     const body = await res.text().catch(() => '');
@@ -53,12 +62,10 @@ async function listMediaPaged(opts){
   // 동적 계산(50개/페이지). 기존 하드코딩 10페이지(=500개)는 1년치를 다
   // 못 훑었다. cutoff(sinceDays) 가 먼저 걸리면 조기 종료되므로 안전.
   const pageGuard = (opts && opts.pageGuard) || Math.max(10, Math.ceil(maxCount / 50) + 2);
-  if (!process.env.IG_ACCESS_TOKEN || !process.env.IG_USER_ID){
-    throw new Error('IG_ACCESS_TOKEN/IG_USER_ID 환경변수가 설정되어 있지 않습니다.');
-  }
+  const { userId, token } = _creds(opts);
   const cutoff = Date.now() - sinceDays * 86400000;
   const fields = 'id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username,like_count,comments_count,children{media_url,media_type,thumbnail_url}';
-  let url = `${_IG_API}/${process.env.IG_USER_ID}/media?fields=${encodeURIComponent(fields)}&limit=50&access_token=${process.env.IG_ACCESS_TOKEN}`;
+  let url = `${_IG_API}/${userId}/media?fields=${encodeURIComponent(fields)}&limit=50&access_token=${token}`;
   const out = [];
   let guard = 0;
   while (url && out.length < maxCount && guard < pageGuard){
