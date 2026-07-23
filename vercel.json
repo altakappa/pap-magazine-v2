@@ -115,6 +115,10 @@
     {
       "path": "/api/cron/image-link-check",
       "schedule": "30 0 * * 1"
+    },
+    {
+      "path": "/api/cron/backfill-meta-desc",
+      "schedule": "9-59/10 * * * *"
     }
   ],
   "rewrites": [
