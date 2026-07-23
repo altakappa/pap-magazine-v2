@@ -125,7 +125,7 @@ module.exports = withCronGuard('pipeline-watch', async function handler(req, res
   if (!d.healthy) {
     const cooled = Date.now() - lastAt > COOLDOWN_HOURS * 3600000;
     if (cooled) {
-      pushed = await pushAlert(buildAlert(d));
+      pushed = await pushAlert({ ...buildAlert(d), personalOnly: true });
       await supabaseAdmin.from('ops_alert_state').upsert({
         key: ALERT_KEY,
         last_alert_at: new Date().toISOString(),
@@ -136,6 +136,7 @@ module.exports = withCronGuard('pipeline-watch', async function handler(req, res
   } else if (wasBroken) {
     // 복구 알림은 쿨다운과 무관하게 한 번 — "고쳐졌다"는 정보는 늦으면 의미가 없다.
     pushed = await pushAlert({
+      personalOnly: true,
       title: '✅ PAP 파이프라인 정상화 — IG → 웹사이트 자동발행 복구',
       lines: [`유예 시간 지난 게시물 ${d.checked}건 모두 발행됨`],
       url: `${SITE}/articles`,

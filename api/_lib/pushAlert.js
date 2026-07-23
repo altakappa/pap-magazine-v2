@@ -23,9 +23,15 @@
 const TIMEOUT = 8000;
 
 /* ── 텔레그램 ─────────────────────────────────────── */
-async function sendTelegram({ title, lines, url, urlLabel }) {
+async function sendTelegram({ title, lines, url, urlLabel, personalOnly }) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
-  const idsRaw = process.env.TELEGRAM_CHAT_IDS || process.env.TELEGRAM_CHAT_ID;
+  // 2026-07-23 (도메니코 지시) — 운영자 개인용 알림(파이프라인 정체 등)은
+  // personalOnly:true 로 호출하면 그룹 대신 개인방으로만 보낸다.
+  // TELEGRAM_PERSONAL_CHAT_ID 미설정 시 기존 그룹 목록으로 폴백(유실 방지).
+  const personal = process.env.TELEGRAM_PERSONAL_CHAT_ID || '';
+  const idsRaw = (personalOnly && personal)
+    ? personal
+    : (process.env.TELEGRAM_CHAT_IDS || process.env.TELEGRAM_CHAT_ID);
   if (!token || !idsRaw) return { skipped: 'telegram env 미설정' };
 
   const ids = String(idsRaw).split(',').map(s => s.trim()).filter(Boolean);
