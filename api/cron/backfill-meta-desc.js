@@ -30,6 +30,7 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { generateEditorialDescriptions } = require('../_lib/editorialAi');
+const { sendTextToTelegramPersonalSafe } = require('../_lib/telegram');
 
 const TIME_BUDGET_MS = 90000;
 
@@ -51,7 +52,8 @@ module.exports = withCronGuard('backfill-meta-desc', async function handler(req,
   }
 
   const started = Date.now();
-  const lim = Math.max(1, Math.min(20, parseInt((req.query && req.query.limit) || '6', 10) || 6));
+  // 배치 8 (비전 호출 ~8s × 8 ≈ 64s < 90s 예산). 예산 무관 진행 지시로 상향.
+  const lim = Math.max(1, Math.min(20, parseInt((req.query && req.query.limit) || '8', 10) || 8));
 
   const { data: rows, error } = await supabaseAdmin.rpc('short_desc_editorials', { lim });
   if (error) throw new Error('selector failed: ' + error.message);
@@ -90,6 +92,20 @@ module.exports = withCronGuard('backfill-meta-desc', async function handler(req,
     if (upErr) console.error('[backfill-meta-desc] update 실패', row.slug, upErr.message);
   }
 
-  console.log('[backfill-meta-desc]', { filled, empty, batch: rows.length, ms: Date.now() - started });
-  return res.status(200).json({ ok: true, filled, empty, batch: rows.length });
+  // 완주 통보 — 이번 배치가 실제로 일했고(batch>0) 남은 게 0 이면 개인
+  // 텔레그램으로 1회 알린다. idle 런은 위에서 early-return 하므로 여기 안 옴 → 중복 없음.
+  let remaining = null;
+  try {
+    const { count } = await supabaseAdmin.rpc('short_desc_editorials', { lim: 100000 })
+      .then(r => ({ count: (r.data || []).length }), () => ({ count: null }));
+    remaining = count;
+  } catch (_) {}
+  if (remaining === 0) {
+    sendTextToTelegramPersonalSafe(
+      '✅ 메타 설명 AI 백필 완주 — 짧은 에디토리얼 설명 보강이 끝났습니다. Ahrefs "too short" 잔여 0. 다음 크롤에 반영됩니다.'
+    ).catch(() => {});
+  }
+
+  console.log('[backfill-meta-desc]', { filled, empty, batch: rows.length, remaining, ms: Date.now() - started });
+  return res.status(200).json({ ok: true, filled, empty, batch: rows.length, remaining });
 });

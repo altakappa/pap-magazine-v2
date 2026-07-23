@@ -25,6 +25,8 @@ t('성공·실패 무관 attempted_at 스탬프(무한 재시도 방지)', /meta
 t('시간 예산 90s 가드', /TIME_BUDGET_MS = 90000/.test(c) && /Date\.now\(\) - started > TIME_BUDGET_MS/.test(c));
 t('vercel.json 10분 주기 등록', vj.crons.some(x => x.path === '/api/cron/backfill-meta-desc' && /\/10 \* \* \*/.test(x.schedule)));
 
+t('완주 시 개인 텔레그램 통보(중복 방지)', /remaining === 0/.test(c) && /sendTextToTelegramPersonalSafe/.test(c));
+
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if(fail){ console.log('❌ backfill-meta-desc tests FAILED'); process.exit(1); }
 console.log('✅ backfill-meta-desc tests passed');
