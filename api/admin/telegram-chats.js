@@ -11,6 +11,7 @@
  */
 'use strict';
 const { requireAdmin } = require('../_lib/auth');
+const { sendTextToTelegramPersonalSafe } = require('../_lib/telegram');
 
 module.exports = async function handler(req, res) {
   const user = await requireAdmin(req, res);
@@ -18,6 +19,20 @@ module.exports = async function handler(req, res) {
 
   const token = process.env.TELEGRAM_BOT_TOKEN || '';
   if (!token) return res.status(400).json({ error: 'TELEGRAM_BOT_TOKEN 미설정' });
+
+  // ?test=1 — 개인방 알림 경로 실전 테스트 (env 설정 직후 검증용)
+  if (req.query && req.query.test === '1') {
+    const r = await sendTextToTelegramPersonalSafe(
+      '✅ PAP 개인 알림 테스트 — 이 메시지가 보이면 크론 실패 알림이 이 방으로 옵니다. (' + new Date().toISOString() + ')'
+    );
+    return res.status(r.ok ? 200 : 502).json({
+      ok: r.ok,
+      note: r.ok ? '개인방 전송 성공 — 텔레그램을 확인하세요.'
+        : (r.skipped === 'no_personal_chat_id'
+            ? 'TELEGRAM_PERSONAL_CHAT_ID 미설정 또는 재배포 전입니다.'
+            : '전송 실패: ' + (r.error || '알 수 없음')),
+    });
+  }
 
   try {
     const r = await fetch('https://api.telegram.org/bot' + token + '/getUpdates?limit=100', {
