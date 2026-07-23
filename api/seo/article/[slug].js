@@ -155,6 +155,38 @@ module.exports = async function handler(req, res) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=300, stale-while-revalidate=86400');
     res.setHeader('X-Robots-Tag', 'index, follow, max-image-preview:large');
+
+    /* 2026-07-23 (Ahrefs Tip #3: 내부 링크로 중요 페이지 강화) — 아티클 상세
+       본문 내 "More Articles" 내부링크 블록. 이전/다음(발행일 체인) + 같은
+       카테고리 최신 4건(없으면 전체 최신 4건). 에디토리얼과 동일 패턴,
+       렌더러가 record.more_articles 를 /article/ 링크로 렌더. best-effort. */
+    try {
+      const pd = data.published_date || '1970-01-01';
+      const ca = data.created_at || '1970-01-01T00:00:00Z';
+      const sel = 'title, slug, id, published_date, thumbnail_url, hero_image_url, category';
+      const [prevR, nextR, relR] = await Promise.all([
+        supabaseAdmin.from('articles').select(sel).eq('status','published')
+          .or(`published_date.lt.${pd},and(published_date.eq.${pd},created_at.lt.${ca})`)
+          .order('published_date',{ascending:false}).order('created_at',{ascending:false}).limit(1),
+        supabaseAdmin.from('articles').select(sel).eq('status','published')
+          .or(`published_date.gt.${pd},and(published_date.eq.${pd},created_at.gt.${ca})`)
+          .order('published_date',{ascending:true}).order('created_at',{ascending:true}).limit(1),
+        (data.category
+          ? supabaseAdmin.from('articles').select(sel).eq('status','published')
+              .neq('id', data.id).eq('category', data.category)
+              .order('published_date',{ascending:false}).limit(4)
+          : supabaseAdmin.from('articles').select(sel).eq('status','published')
+              .neq('id', data.id).order('published_date',{ascending:false}).limit(4)),
+      ]);
+      const _norm = a => a && ({ title: a.title, slug: a.slug, id: a.id,
+        thumbnail: a.thumbnail_url || a.hero_image_url || '' });
+      data.more_articles = {
+        prev: _norm(prevR.data && prevR.data[0]) || null,
+        next: _norm(nextR.data && nextR.data[0]) || null,
+        related: (relR.data || []).filter(a => a && a.id !== data.id).slice(0,4).map(_norm),
+      };
+    } catch (_) { /* 내부링크 블록은 best-effort */ }
+
     return res.status(200).send(renderSeoHtml('article', data, { lang, translation, availableLangs }));
 
   } catch (err) {

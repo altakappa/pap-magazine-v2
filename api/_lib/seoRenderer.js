@@ -469,9 +469,20 @@ function renderSeoHtml(kind, record, opts) {
     // 여전히 짧으면 제목(유니크) + 매체 소개 서명으로 110자 이상 확보.
     // 제목이 앞에 오므로 페이지마다 고유 — 중복 meta 로 잡히지 않는다.
     if (parts.join(' ').length < 110) {
-      parts.push(isKo
-        ? `${titleKo} — PAP MAGAZINE 독점 패션 에디토리얼. 서울과 밀라노를 기반으로 활동하는 아트 중심 매거진 PAP이 전 세계 포토그래퍼·스타일리스트와 함께 선보이는 패션·뷰티·컬처 화보와 크리에이티브 스토리를 만나보세요.`
-        : `${titleMain} — an exclusive fashion editorial by PAP Magazine, the art-driven fashion, beauty and culture magazine based in Seoul and Milan, created with photographers and stylists worldwide.`);
+      // kind 별 정확한 서명 — 아티클(뉴스)에 "패션 에디토리얼"을 붙이면 부정확.
+      if (kind === 'article') {
+        parts.push(isKo
+          ? `${titleKo} — PAP MAGAZINE 뉴스. 서울과 밀라노 기반 아트 중심 패션·뷰티·컬처 매거진 PAP이 전하는 패션·셀럽·컬처 소식입니다.`
+          : `${titleMain} — news from PAP Magazine, the art-driven fashion, beauty and culture magazine based in Seoul and Milan.`);
+      } else if (kind === 'film') {
+        parts.push(isKo
+          ? `${titleKo} — PAP MAGAZINE 패션 필름. 서울과 밀라노 기반 아트 중심 매거진 PAP이 전 세계 크리에이티브 팀과 만든 영상입니다.`
+          : `${titleMain} — a fashion film by PAP Magazine, art-driven fashion, beauty and culture from Seoul and Milan.`);
+      } else {
+        parts.push(isKo
+          ? `${titleKo} — PAP MAGAZINE 독점 패션 에디토리얼. 서울과 밀라노를 기반으로 활동하는 아트 중심 매거진 PAP이 전 세계 포토그래퍼·스타일리스트와 함께 선보이는 패션·뷰티·컬처 화보와 크리에이티브 스토리를 만나보세요.`
+          : `${titleMain} — an exclusive fashion editorial by PAP Magazine, the art-driven fashion, beauty and culture magazine based in Seoul and Milan, created with photographers and stylists worldwide.`);
+      }
     }
     return parts.join(' ').replace(/\s+/g, ' ').trim();
   }
@@ -798,11 +809,16 @@ function renderSeoHtml(kind, record, opts) {
   /* 2026-07-22 (Ahrefs: 고아 페이지 1,378) — 에디토리얼 상세 본문 내 내부링크 블록.
      이전/다음(발행일 체인)으로 전 에디토리얼이 그래프에 연결되고, 태그 관련 4건이
      링크 에쿼티를 분배한다. record.more_editorials 는 [slug].js 가 탑재(에디토리얼 전용). */
-  const _more = record.more_editorials || null;
+  /* 2026-07-23 (Ahrefs Tip #3: 내부 링크로 중요 페이지 강화) — kind 별 일반화.
+     에디토리얼은 record.more_editorials(/editorial/·"More Editorials"), 아티클은
+     record.more_articles(/article/·"More Articles"). 둘 다 [slug].js 가 탑재. */
+  const _more = record.more_editorials || record.more_articles || null;
+  const _moreBase = record.more_articles ? '/article/' : '/editorial/';
+  const _moreHeading = record.more_articles ? 'More Articles' : 'More Editorials';
   const _edCard = (e, tag) => {
     if (!e || !e.title || !(e.slug || e.id)) return '';
     const th = e.thumbnail || e.cover_image || e.og_image || '';
-    return `<a class="seo-related-card" href="/editorial/${escAttr(e.slug || e.id)}">
+    return `<a class="seo-related-card" href="${_moreBase}${escAttr(e.slug || e.id)}">
       ${th ? `<img src="${escAttr(th)}" alt="${escAttr(e.title)} — Cover" loading="lazy" width="240" height="160">` : ''}
       <div class="seo-related-meta">
         <div class="seo-related-tagline">${tag}</div>
@@ -811,7 +827,7 @@ function renderSeoHtml(kind, record, opts) {
     </a>`;
   };
   const moreEditorialsHtml = _more && (_more.prev || _more.next || (_more.related && _more.related.length))
-    ? `<section class="seo-related"><h2>More Editorials</h2>
+    ? `<section class="seo-related"><h2>${_moreHeading}</h2>
         <div class="seo-related-films">${[
           _edCard(_more.prev, 'PREVIOUS'),
           ...(Array.isArray(_more.related) ? _more.related.map(e => _edCard(e, 'RELATED')) : []),

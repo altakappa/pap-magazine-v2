@@ -16,6 +16,7 @@ const path = require('path');
 const R = f => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
 const handler = R('api/seo/editorial/[slug].js');
 const renderer = R('api/_lib/seoRenderer.js');
+const { renderSeoHtml } = require(path.join(__dirname, '..', 'api', '_lib', 'seoRenderer.js'));
 const vercel = JSON.parse(R('vercel.json'));
 
 let pass = 0, fail = 0;
@@ -28,7 +29,12 @@ t('핸들러: 태그 관련(overlaps) 조회 + 무태그 폴백', /\.overlaps\('
 t('핸들러: more_editorials 를 record 에 탑재', /data\.more_editorials\s*=/.test(handler));
 t('핸들러: best-effort (실패해도 렌더 진행)', /more_editorials[\s\S]{0,900}catch \(_\)/.test(handler) || /try \{[\s\S]{0,1500}more_editorials/.test(handler));
 t('렌더러: More Editorials 섹션 존재', /More Editorials/.test(renderer));
-t('렌더러: /editorial/ 링크로 카드 렌더', renderer.includes('href="/editorial/${escAttr(e.slug || e.id)}"'));
+// 2026-07-23 — 카드 링크가 kind별로 일반화됨(_moreBase: /editorial/ | /article/).
+// 소스 문자열 대신 실제 에디토리얼 렌더 출력이 /editorial/ 링크를 내는지로 검증.
+t('렌더러: 에디토리얼은 /editorial/ 링크로 카드 렌더',
+  renderer.includes('${_moreBase}${escAttr(e.slug || e.id)}')
+  && renderSeoHtml('editorial', { title:'ED', slug:'ed-x', status:'published', published_date:'2026-07-22', description:'짧', cover_image:'c.jpg',
+       more_editorials:{ prev:{title:'P',slug:'p-x',thumbnail:'t.jpg'}, next:null, related:[] } }, {lang:'ko'}).includes('href="/editorial/p-x"'));
 t('렌더러: 템플릿에 moreEditorialsHtml 삽입', /\$\{moreEditorialsHtml\}/.test(renderer));
 
 console.log('\n=== 허브·라우팅 ===');
