@@ -22,6 +22,13 @@ t('백필 수집 상한 상향(maxCount 2000)', /maxCount: 2000/.test(cron));
 t('페이지 상한을 maxCount 기준 동적 계산(500 하드캡 제거)',
   /pageGuard.*Math\.ceil\(maxCount \/ 50\)/.test(lib) && /guard < pageGuard/.test(lib));
 
+console.log('--- 발행일 = IG 게시일 (오늘로 덮어쓰기 금지) ---');
+const impLib = R('api/_lib/instagramImport.js');
+t('published_date 는 IG 게시 timestamp 사용(new Date() 폴백은 timestamp 없을 때만)',
+  /published_date: status === 'published'[\s\S]{0,80}post\.timestamp \|\| new Date/.test(impLib),
+  '오늘 날짜로 저장하면 과거 백필 기사의 목록·RSS·사이트맵 정렬이 전부 오늘로 몰린다');
+t('normalizeMedia 가 IG timestamp 를 보존', /timestamp: m\.timestamp/.test(impLib));
+
 console.log('--- 완주 감지·통보·조기종료 ---');
 t('완주(신규0·잔여0) 시 done 플래그 + 개인 텔레그램', /ig_backfill_done/.test(cron) && /sendTextToTelegramPersonalSafe/.test(cron));
 t('완주 후 조기 종료(IG 재조회 없이 반환)', /backfill_done: true/.test(cron));
