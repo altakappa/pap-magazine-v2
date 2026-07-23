@@ -81,6 +81,19 @@ module.exports = async function handler(req, res) {
       countOf('editorial_views', q => q.gte('viewed_at', isoDaysAgo(30))),
     ]);
 
+    // 봇 조회 차단 건수 (최근 7일 합계) — bot_view_blocks(마이그레이션 093).
+    // 봇 필터가 editorial_views 오염을 막은 효과를 숫자로 보여주는 관측 지표.
+    // 테이블 미배포/오류 시 0 반환(방어적) → 대시보드는 그대로 뜬다.
+    const botBlocked7d = await (async () => {
+      try {
+        const since = ymd(new Date(Date.now() - 7 * 86400000));
+        const { data, error } = await A.from('bot_view_blocks')
+          .select('blocked_count').gte('day', since);
+        if (error || !data) return 0;
+        return data.reduce((s, r) => s + (Number(r.blocked_count) || 0), 0);
+      } catch (_) { return 0; }
+    })();
+
     // ── 2) 투고(submissions) 상태별 ────────────────────────────────────
     const subKeys = ['pending', 'revision', 'approved', 'rejected'];
     const subVals = await Promise.all(subKeys.map(s => countOf('submissions', q => q.eq('status', s))));
@@ -160,6 +173,7 @@ module.exports = async function handler(req, res) {
         views_total: viewsTotal,
         views_7d: views7d,
         views_30d: views30d,
+        bot_blocked_7d: botBlocked7d,
       },
       submissions,
       monthly: months,

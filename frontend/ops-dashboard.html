@@ -147,6 +147,7 @@ function render(d){
       <div class="kpi"><span class="accent"></span><div class="lab">필름 Films</div><div class="num">${nf(k.films)}</div><div class="fo">영상 에디토리얼</div></div>
       <div class="kpi"><span class="accent"></span><div class="lab">커뮤니티 회원</div><div class="num">${nf(k.members)}</div><div class="fo up">이번 주 +${nf(k.members_week)} · 크리에이터 ${nf(k.creators)}</div></div>
       <div class="kpi"><span class="accent"></span><div class="lab">조회수 · 최근 7일</div><div class="num">${nf(k.views_7d)}</div><div class="fo">최근 30일 ${nf(k.views_30d)}</div></div>
+      <div class="kpi"><span class="accent"></span><div class="lab">봇 조회 차단 · 최근 7일</div><div class="num">${nf(k.bot_blocked_7d)}</div><div class="fo">성장지표 오염 방지</div></div>
       <div class="kpi"><span class="accent" style="background:var(--gold)"></span><div class="lab">검토 대기 투고</div><div class="num">${nf(s.pending)}</div><div class="fo warn">수정요청 ${nf(s.revision)}건 진행 중</div></div>
     </div>
 
