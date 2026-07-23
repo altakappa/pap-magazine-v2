@@ -113,6 +113,20 @@ async function postText(text) {
   });
   const cj = await create.json();
   if (!create.ok || !cj.id) throw new Error('컨테이너 생성 실패: ' + JSON.stringify(cj).slice(0, 300));
+  // 2026-07-23 — 생성 직후 즉시 발행하면 컨테이너 처리(텍스트에 링크가
+  // 있으면 미리보기 페치 포함)가 안 끝난 상태라 "Media Not Found"(code 24)
+  // 가 난다 (제니 기사 무한 재시도 사고 실측). Meta 권고대로 상태를
+  // 폴링해 FINISHED 확인 후 발행하고, ERROR 면 사유를 그대로 표면화한다.
+  for (let i = 0; i < 6; i++) {
+    await new Promise((r) => setTimeout(r, i === 0 ? 3000 : 4000));
+    const st = await fetch(GRAPH + '/v1.0/' + cj.id + '?fields=status,error_message&access_token=' + encodeURIComponent(token), {
+      signal: AbortSignal.timeout(10000),
+    });
+    const sj = await st.json().catch(() => ({}));
+    if (sj.status === 'FINISHED') break;
+    if (sj.status === 'ERROR') throw new Error('컨테이너 처리 실패: ' + (sj.error_message || JSON.stringify(sj).slice(0, 200)));
+    if (i === 5) throw new Error('컨테이너 처리 대기 초과 (status=' + (sj.status || '?') + ')');
+  }
   const pub = await fetch(GRAPH + '/v1.0/me/threads_publish', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

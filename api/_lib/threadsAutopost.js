@@ -149,11 +149,17 @@ async function generateThreadsText(art, url) {
 async function postArticleToThreads(art) {
   const { data: existing } = await supabaseAdmin
     .from('threads_posts')
-    .select('id, status')
+    .select('id, status, attempts')
     .eq('article_id', art.id)
     .maybeSingle();
   if (existing && existing.status !== 'failed') {
     return { status: 'skipped', detail: '이미 게시됨' };
+  }
+  // 2026-07-23 — 재시도 상한. 같은 기사가 영구성 오류로 계속 실패하면
+  // 10분마다 무한 재시도 + 6시간마다 실패 메일이 반복됐다 (제니 기사 실측).
+  // 3회 실패한 기사는 건너뛴다 — 픽커의 done set 과 이중 방어.
+  if (existing && existing.status === 'failed' && (existing.attempts || 0) >= 3) {
+    return { status: 'skipped', detail: '실패 ' + existing.attempts + '회 — 재시도 상한 도달' };
   }
 
   const { text, ai } = await generateThreadsText(art, art.url);
@@ -167,6 +173,8 @@ async function postArticleToThreads(art) {
   }
   const { error: upErr } = await supabaseAdmin.from('threads_posts').upsert({
     article_id: art.id, thread_id: threadId, status, detail,
+    // 실패 시 시도 횟수 누적 (3회 도달 시 위의 상한 가드가 스킵)
+    attempts: status === 'failed' ? ((existing && existing.attempts) || 0) + 1 : 1,
   }, { onConflict: 'article_id' });
   if (upErr) console.error('[threadsAutopost] threads_posts 기록 실패:', upErr.message);
 

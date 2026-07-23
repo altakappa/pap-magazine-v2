@@ -51,8 +51,13 @@ module.exports = withCronGuard('threads-post', async function handler(req, res) 
       return res.status(200).json({ ok: true, note: 'Threads 미인증 — /api/threads/oauth 1회 인증 시 자동 게시 시작' });
     }
 
-    const { data: posted } = await supabaseAdmin.from('threads_posts').select('article_id, status').limit(5000);
-    const done = new Set((posted || []).filter((p) => p.status !== 'failed').map((p) => p.article_id).filter(Boolean));
+    // 2026-07-23 — 실패 3회 이상 기사는 done 취급해 다음 기사로 넘어간다.
+    // (이전엔 failed 를 무조건 재시도해, 영구성 오류 기사 하나가 큐 전체를
+    //  막고 10분마다 실패 + 6시간마다 알림 메일을 반복했다 — 제니 기사 실측)
+    const { data: posted } = await supabaseAdmin.from('threads_posts').select('article_id, status, attempts').limit(5000);
+    const done = new Set((posted || [])
+      .filter((p) => p.status !== 'failed' || (p.attempts || 0) >= 3)
+      .map((p) => p.article_id).filter(Boolean));
 
     // freshCutoff — 최근 7일 창
     const freshCutoff = new Date(Date.now() - 7 * 86400000).toISOString();
