@@ -30,6 +30,9 @@ module.exports = async function handler(req, res) {
   // Googlebot 등 JS 렌더 크롤러가 이 fire-and-forget 호출을 그대로 실행해
   // editorial_views 를 부풀리던 문제 차단. 봇에게도 204 로 응답해 정상 흐름 유지.
   if (isBot(req.headers['user-agent'])) {
+    // 차단 건수만 하루 1행으로 집계(관측용). fire-and-forget — 실패해도
+    // 봇 응답(204)에 영향 없음. 함수 미배포/에러 시 카운터만 안 쌓일 뿐.
+    supabaseAdmin.rpc('bump_bot_view_block').then(() => {}, () => {});
     return res.status(204).end();
   }
 
