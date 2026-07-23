@@ -436,7 +436,46 @@ function renderSeoHtml(kind, record, opts) {
   const seoTitle = lang === 'ko'
     ? (record.seo_title || (kind === 'film' ? `${titleKo} 패션 필름 | ${SITE_NAME}` : `${titleKo} | ${SITE_NAME}`))
     : (kind === 'film' ? `${titleMain} — Fashion Film | ${SITE_NAME}` : `${titleMain} | ${SITE_NAME}`);
-  const desc = truncate(descMain, 160);
+  /* 2026-07-23 (Ahrefs 감사 — meta description too short 3,261건) — 온페이지
+     표시(descDisplay)는 그대로 두고, <meta name="description"> 만 짧을 때
+     실제 맥락(등장 패션 브랜드·카테고리)으로 보강한다. AI·크론·DB 쓰기 없이
+     렌더 시점 조립이라 다음 크롤에 전편 일괄 개선되고 Vercel 부하도 0.
+     브랜드명은 검색어라 SEO 실익이 크고, 없으면 매체 소개로 폴백한다. */
+  function _enrichMeta(base) {
+    const isKo = lang === 'ko';
+    // 제목 에코("제목 — PAP Magazine") 폴백은 실질 설명이 아니므로 비운다
+    // — 안 그러면 아래 매체 서명과 제목이 두 번 겹친다(HIJA…HIJA).
+    let s = String(base || '').trim();
+    for (const t of [titleKo, titleMain, titleEn]) {
+      if (t && s === `${t} — ${SITE_NAME}`) { s = ''; break; }
+    }
+    if (s.length >= 110) return s;               // 이미 충분히 길면 그대로
+    const parts = s ? [s] : [];
+    // 등장 브랜드 (record.fashion.brands[].name) — 최대 6개
+    let brands = [];
+    try {
+      const f = record.fashion;
+      const arr = f && Array.isArray(f.brands) ? f.brands : [];
+      brands = arr.map(b => (b && b.name ? String(b.name).trim() : '')).filter(Boolean).slice(0, 6);
+    } catch (_) {}
+    if (brands.length) parts.push((isKo ? '패션: ' : 'Fashion: ') + brands.join(', ') + '.');
+    // 카테고리/태그 (해시태그·중복 제외, 최대 3개)
+    let tags = [];
+    try {
+      tags = asArray(record.tags).map(t => String(t || '').replace(/^#/, '').trim())
+        .filter(t => t && !/^\d+$/.test(t)).slice(0, 3);
+    } catch (_) {}
+    if (tags.length && parts.join(' ').length < 130) parts.push(tags.join(' · ') + '.');
+    // 여전히 짧으면 제목(유니크) + 매체 소개 서명으로 110자 이상 확보.
+    // 제목이 앞에 오므로 페이지마다 고유 — 중복 meta 로 잡히지 않는다.
+    if (parts.join(' ').length < 110) {
+      parts.push(isKo
+        ? `${titleKo} — PAP MAGAZINE 독점 패션 에디토리얼. 서울과 밀라노를 기반으로 활동하는 아트 중심 매거진 PAP이 전 세계 포토그래퍼·스타일리스트와 함께 선보이는 패션·뷰티·컬처 화보와 크리에이티브 스토리를 만나보세요.`
+        : `${titleMain} — an exclusive fashion editorial by PAP Magazine, the art-driven fashion, beauty and culture magazine based in Seoul and Milan, created with photographers and stylists worldwide.`);
+    }
+    return parts.join(' ').replace(/\s+/g, ' ').trim();
+  }
+  const desc = truncate(_enrichMeta(descMain), 175);
 
   /* Cover image: per-kind preferred fields */
   const ogImage = record.og_image
