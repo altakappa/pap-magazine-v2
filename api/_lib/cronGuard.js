@@ -18,6 +18,7 @@
 
 const { supabaseAdmin } = require('./supabase');
 const { sendEmail } = require('./email');
+const { sendTextToTelegramPersonalSafe } = require('./telegram');
 
 // 관리자 이메일 (env 로 오버라이드 가능)
 const ADMIN_EMAIL = process.env.ADMIN_ALERT_EMAIL || 'contact@pap-magazine.com';
@@ -40,6 +41,17 @@ async function _hasRecentAlert(cronName) {
 
 async function _sendAlert(cronName, error, durationMs) {
   try {
+    // 2026-07-23 (도메니코 지시) — 크론 실패 알림은 이메일 대신 개인
+    // 텔레그램으로. TELEGRAM_PERSONAL_CHAT_ID 미설정/전송 실패 시에만
+    // 기존 이메일로 폴백해 알림이 유실되지 않게 한다.
+    const tg = await sendTextToTelegramPersonalSafe(
+      '🚨 [PAP 크론 실패] ' + cronName + '\n' +
+      '시각: ' + new Date().toISOString() + ' · 소요 ' + durationMs + 'ms\n\n' +
+      '에러: ' + String(error || '').slice(0, 800) + '\n\n' +
+      '다음 스텝: Vercel Function Logs 상세 확인 · 이 알림은 6시간에 1회'
+    );
+    if (tg && tg.ok) return;
+
     const subject = `[PAP 크론 실패] ${cronName}`;
     const html = `
       <div style="font-family:system-ui,sans-serif;max-width:600px;padding:20px">

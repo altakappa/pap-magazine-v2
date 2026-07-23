@@ -181,10 +181,34 @@ async function sendTextToTelegramSafe(text) {
   }
 }
 
+// ── 개인방 텍스트 알림 (2026-07-23, 도메니코 지시) ──
+// 크론 실패 같은 운영자 개인 대상 알림용. TELEGRAM_PERSONAL_CHAT_ID 가
+// 설정돼 있어야 하며(그룹 CHAT_ID 로 폴백하지 않는다 — "그룹방 말고
+// 개인방" 지시), 미설정이면 skipped 를 반환해 호출부가 이메일 등으로
+// 폴백할 수 있게 한다.
+async function sendTextToTelegramPersonalSafe(text) {
+  try {
+    const personal = process.env.TELEGRAM_PERSONAL_CHAT_ID || '';
+    if (!BOT_TOKEN() || !personal || !text) return { ok: false, skipped: 'no_personal_chat_id' };
+    const r = await fetch('https://api.telegram.org/bot' + BOT_TOKEN() + '/sendMessage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: personal, text: String(text).slice(0, 4000), disable_web_page_preview: true }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!j || j.ok !== true) throw new Error((j && j.description) || ('HTTP ' + r.status));
+    return { ok: true };
+  } catch (e) {
+    console.warn('[telegram] 개인방 전송 실패:', e && e.message);
+    return { ok: false, error: String((e && e.message) || e) };
+  }
+}
+
 module.exports = {
   sendEditorialToTelegram,
   sendEditorialToTelegramSafe,
   collectImageUrls,
   isConfigured,
   sendTextToTelegramSafe,
+  sendTextToTelegramPersonalSafe,
 };
