@@ -71,9 +71,17 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
   const WEEKLY_LIMIT = parseInt(process.env.IG_WEEKLY_AUTO_LIMIT || '5', 10) || 5;
 
   try {
+    // 백필 완주 후 조기 종료 — done 플래그가 있으면 IG 재조회 없이 반환
+    // (스케줄 크론이 완주 뒤에도 계속 돌며 IG API·컴퓨트를 낭비하지 않게).
+    if (backfillDays > 0 && !dry){
+      const { data: doneSt } = await supabaseAdmin.from('ops_alert_state')
+        .select('key').eq('key', 'ig_backfill_done').maybeSingle();
+      if (doneSt) return res.status(200).json({ ok: true, backfill_done: true, note: '1년 백필 완주 — 재실행하려면 ops_alert_state 의 ig_backfill_done 삭제' });
+    }
+
     // 1) 게시물 가져오기 — 기본: 최근 25개 / 백필: 기간 내 전체 (페이지네이션)
     const media = backfillDays > 0
-      ? await listMediaPaged({ sinceDays: backfillDays, maxCount: 200 })
+      ? await listMediaPaged({ sinceDays: backfillDays, maxCount: 2000 })
       : await listRecentMedia({ limit: 25 });
     if (!media.length) return res.status(200).json({ imported: 0, message: '게시물 없음.' });
 
@@ -162,8 +170,11 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
         // 릴스/영상 게시물 — 영상 원본도 영구 보관해 기사에서 직접 재생
         const videoUrls = await archiveVideosToStorage(post, 2);
         // ── 품질 게이트: 발행 상태 결정 ──
+        // 2026-07-23 (도메니코: 최근 1년 IG 전량 백필, 바로 발행) — 백필 모드는
+        // 품질 게이트를 건너뛰고 무조건 published(원본 게시일 유지). 최근-동기화
+        // 경로(backfillDays===0)는 기존 게이트 그대로.
         let pubStatus = 'published'; // 기본: 기존 동작 유지
-        if (qualityGateOn){
+        if (qualityGateOn && backfillDays === 0){
           const likes = post.likeCount;
           const comments = post.commentsCount;
           const passQuality = (typeof likes === 'number' && likes >= MIN_LIKES)
@@ -262,6 +273,29 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
         results.youtube_nudge = yr.status;
       } catch (_){
         results.youtube_nudge = 'nudged (응답 대기 안 함 — 업로드는 서버에서 계속, 스위퍼가 보증)';
+      }
+    }
+    // 2026-07-23 — 1년 백필 완주 감지 + 개인 텔레그램 통보(1회).
+    // 백필 실행에서 신규 발행 0 & 잔여 0 이면 창(sinceDays) 내 전량 완료로 본다.
+    // ops_alert_state 로 done 플래그를 남겨 이후 백필 실행은 IG 재조회 없이
+    // 조기 종료(무한 재조회 비용 방지). 재실행은 도메니코가 플래그 삭제로.
+    if (backfillDays > 0 && !dry){
+      const noNew = (results.imported || 0) === 0 && (results.remaining || 0) === 0;
+      if (noNew){
+        try {
+          const { data: st } = await supabaseAdmin.from('ops_alert_state')
+            .select('key').eq('key', 'ig_backfill_done').maybeSingle();
+          if (!st){
+            await supabaseAdmin.from('ops_alert_state').upsert({
+              key: 'ig_backfill_done', last_alert_at: new Date().toISOString(),
+              last_payload: { done: true }, updated_at: new Date().toISOString(),
+            }, { onConflict: 'key' });
+            const { sendTextToTelegramPersonalSafe } = require('../_lib/telegram');
+            sendTextToTelegramPersonalSafe(
+              '✅ 인스타그램 1년 백필 완주 — @pap_magazine 최근 1년 게시물을 웹사이트 기사로 전량 가져왔습니다.'
+            ).catch(() => {});
+          }
+        } catch (_) {}
       }
     }
     return res.status(200).json(results);

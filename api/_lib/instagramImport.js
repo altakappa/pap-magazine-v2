@@ -49,6 +49,10 @@ async function listRecentMedia(opts){
 async function listMediaPaged(opts){
   const sinceDays = (opts && opts.sinceDays) || 30;
   const maxCount = (opts && opts.maxCount) || 200;
+  // 2026-07-23 — 최근 1년 전량 백필 대응. 페이지 상한을 maxCount 에 맞춰
+  // 동적 계산(50개/페이지). 기존 하드코딩 10페이지(=500개)는 1년치를 다
+  // 못 훑었다. cutoff(sinceDays) 가 먼저 걸리면 조기 종료되므로 안전.
+  const pageGuard = (opts && opts.pageGuard) || Math.max(10, Math.ceil(maxCount / 50) + 2);
   if (!process.env.IG_ACCESS_TOKEN || !process.env.IG_USER_ID){
     throw new Error('IG_ACCESS_TOKEN/IG_USER_ID 환경변수가 설정되어 있지 않습니다.');
   }
@@ -57,7 +61,7 @@ async function listMediaPaged(opts){
   let url = `${_IG_API}/${process.env.IG_USER_ID}/media?fields=${encodeURIComponent(fields)}&limit=50&access_token=${process.env.IG_ACCESS_TOKEN}`;
   const out = [];
   let guard = 0;
-  while (url && out.length < maxCount && guard < 10){
+  while (url && out.length < maxCount && guard < pageGuard){
     guard++;
     const res = await fetch(url, { signal: AbortSignal.timeout(20000) });
     if (!res.ok){
