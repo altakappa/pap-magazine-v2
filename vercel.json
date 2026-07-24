@@ -997,6 +997,11 @@
       "source": "/ko/:slug/",
       "destination": "/editorial/:slug",
       "permanent": true
+    },
+    {
+      "source": "/fxlb-x-citty-kitty",
+      "destination": "/editorial",
+      "statusCode": 301
     }
   ],
   "headers": [
