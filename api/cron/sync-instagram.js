@@ -234,13 +234,17 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
         cursorUrl = (data && data.last_payload && data.last_payload.next_url) || null;
       }
 
+      const runStartCursor = cursorUrl;   // 이 실행 시작점 — 처리 미완 시 되돌림(유실 방지)
+      const startedAt = Date.now();
+      const TIME_BUDGET_MS = 90000;        // 90s 예산 — 120s 함수 한도 전에 커서 저장 보장
       const toProcess = [];
       let pageUrl = cursorUrl;     // 이번에 부를 페이지 (null=최신부터)
       let advanceUrl = cursorUrl;  // 다음 실행 재개 지점 (기본: 현재 유지)
       let reachedEnd = false;
       let scanned = 0;
-      const PAGE_SCAN_CAP = 30;    // 실행당 최대 30페이지(=1500개) 스캔 — 타임아웃 방지
-      while (toProcess.length < perCall && scanned < PAGE_SCAN_CAP){
+      const PAGE_SCAN_CAP = 30;    // 실행당 최대 30페이지(=1500개) 스캔
+      while (toProcess.length < perCall && scanned < PAGE_SCAN_CAP
+             && Date.now() - startedAt < TIME_BUDGET_MS){
         scanned++;
         const { rows, next } = await fetchMediaPage({ afterUrl: pageUrl, ...(cred || {}) });
         if (!rows.length){
@@ -265,13 +269,13 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
         pageUrl = next; advanceUrl = next;
       }
 
-      // 실행 내 병렬 처리 — AI 생성·이미지 아카이브가 I/O 대기라 동시 처리로
-      // 실행당 처리량을 크게 늘린다(타임아웃 나도 커서 미전진+existing 으로
-      // 자가치유). 동시 5건. results 증가는 JS 단일스레드라 경합 없음.
+      // 실행 내 병렬 처리(동시 5건) + 시간 예산 가드 — 예산 초과 시 새 게시물
+      // 착수를 멈춰 반드시 커서 저장 줄에 도달(120s 강제종료 전, 504 방지).
+      // AI 생성·이미지 아카이브가 I/O 대기라 동시 처리로 처리량↑.
       const BACKFILL_CONCURRENCY = 5;
-      let _qi = 0;
+      let _qi = 0, _processed = 0;
       async function _worker(){
-        while (_qi < toProcess.length){
+        while (_qi < toProcess.length && Date.now() - startedAt < TIME_BUDGET_MS){
           const m = toProcess[_qi++];
           try { await processOne(m); }
           catch (e){
@@ -279,11 +283,16 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
             results.errors.push({ post_id: m.id, error: (e && e.message) || String(e) });
             console.error('[sync-instagram] backfill post ' + m.id + ' failed:', e);
           }
+          _processed++;
         }
       }
       await Promise.all(
         Array.from({ length: Math.min(BACKFILL_CONCURRENCY, toProcess.length) }, () => _worker())
       );
+
+      // 처리 미완(시간 예산 소진)이면 커서를 시작점으로 되돌려 유실 방지 —
+      // 다음 실행이 재수집(이미 처리분은 existing 으로 스킵).
+      if (_processed < toProcess.length){ advanceUrl = runStartCursor; reachedEnd = false; }
 
       // 커서 저장 (다음 실행 재개점).
       try {
@@ -294,6 +303,7 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
       } catch (_) {}
 
       results.scanned_pages = scanned;
+      results.processed = _processed;
       results.reached_end = reachedEnd;
 
       // 완주(가장 오래된 게시물 도달) → done 플래그 + 개인 텔레그램(1회).

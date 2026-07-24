@@ -48,6 +48,11 @@ t('공용 처리 함수 processOne 로 백필·일반 경로 통합', /async fun
 t('실행 내 병렬 처리(동시 5건 워커풀) — 속도 상향',
   /BACKFILL_CONCURRENCY = 5/.test(cron) && /Promise\.all\(/.test(cron) && /_worker\(\)/.test(cron));
 t('백필 회당 상한 상향(perCall cap 40)', /Math\.min\(40,/.test(cron));
+t('시간 예산 90s 가드 — 120s 강제종료 전 커서 저장 보장(504 방지)',
+  /TIME_BUDGET_MS = 90000/.test(cron)
+  && /Date\.now\(\) - startedAt < TIME_BUDGET_MS/.test(cron));
+t('처리 미완 시 커서 되돌림 — 게시물 유실 방지',
+  /_processed < toProcess\.length\)\{ advanceUrl = runStartCursor/.test(cron));
 
 console.log('--- 반드시 기사만 (에디토리얼 배제 강화, 2026-07-24) ---');
 t('백필은 엄격 에디토리얼 모드로 AI 호출(strictEditorial: backfillMode)',
