@@ -90,6 +90,28 @@ async function listMediaPaged(opts){
   return out;
 }
 
+// 커서 기반 단일 페이지 수집 — 전체 이력 백필 재개용.
+// afterUrl(직전 실행이 저장한 paging.next) 있으면 그 지점부터, 없으면 최신부터
+// 50개 한 페이지만 가져온다. 반환: { rows, next }.
+//   next = 다음(더 오래된) 페이지 URL 또는 null(가장 오래된 게시물 도달).
+// listMediaPaged 는 매 실행 최신부터 재-페이징(수천 개 백필 시 rate-limit·타임아웃
+// 위험)하지만, 이 함수는 커서를 저장해 이어받으므로 실행당 API 호출 1회로 끝난다.
+async function fetchMediaPage(opts){
+  const { userId, token } = _creds(opts);
+  const fields = 'id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username,like_count,comments_count,children{media_url,media_type,thumbnail_url}';
+  const startUrl = (opts && opts.afterUrl)
+    || `${_IG_API}/${userId}/media?fields=${encodeURIComponent(fields)}&limit=50&access_token=${token}`;
+  const res = await fetch(startUrl, { signal: AbortSignal.timeout(20000) });
+  if (!res.ok){
+    const body = await res.text().catch(() => '');
+    throw new Error('Graph API media list 실패 (' + res.status + '): ' + body.slice(0, 300));
+  }
+  const json = await res.json();
+  const rows = Array.isArray(json.data) ? json.data : [];
+  const next = (json.paging && json.paging.next) ? json.paging.next : null;
+  return { rows, next };
+}
+
 // 단일 게시물 fetch.
 //   shortcode 또는 media id 입력 → Graph API로 미디어 정보 가져옴.
 //   Note: oEmbed는 Facebook이 2021년부터 앱 검수를 요구해서 일반 앱은 사용 불가.
@@ -405,6 +427,7 @@ function buildArticleRow(post, generated, opts){
 module.exports = {
   listRecentMedia,
   listMediaPaged,
+  fetchMediaPage,
   fetchInstagramPost,
   generateArticleFromPost,
   buildArticleRow,

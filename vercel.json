@@ -121,7 +121,7 @@
       "schedule": "9-59/10 * * * *"
     },
     {
-      "path": "/api/cron/sync-instagram?backfill=365&max=6",
+      "path": "/api/cron/sync-instagram?backfill=4000&max=6",
       "schedule": "1-51/10 * * * *"
     },
     {

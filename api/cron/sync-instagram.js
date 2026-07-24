@@ -33,6 +33,7 @@ const { postArticleToThreads } = require('../_lib/threadsAutopost');
 const {
   listRecentMedia,
   listMediaPaged,
+  fetchMediaPage,
   generateArticleFromPost,
   buildArticleRow,
   archiveImagesToStorage,
@@ -99,8 +100,207 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
       if (doneSt) return res.status(200).json({ ok: true, backfill_done: true, account: account || 'magazine', note: '백필 완주 — 재실행하려면 ops_alert_state 의 ' + doneKey + ' 삭제' });
     }
 
-    // 1) 게시물 가져오기 — 기본: 최근 25개 / 백필: 기간 내 전체 (페이지네이션)
-    // cred(하위 계정) 있으면 그 계정, 없으면 기본 env(@pap_magazine)
+    // ── 공용 상태 (백필·일반 양 경로 공용) ──
+    const results = {
+      imported: 0, skipped_existing: 0,
+      skipped_editorial_db: 0, skipped_editorial_caption: 0, skipped_editorial_ai: 0,
+      failed: 0, errors: [], dry: dry, classified: [],
+    };
+    const newUrls = []; // 이번 실행에서 발행된 기사 URL — 종료 시 즉시 검색 핑
+    let videoImported = false; // 릴스(VIDEO) 기사 발행 여부 — 유튜브 즉시 넛지용
+    const backfillMode = backfillDays > 0;
+
+    // 에디토리얼 shortcode 집합 (①번 필터) — 양 경로 공용.
+    const { data: eds } = await supabaseAdmin
+      .from('editorials').select('source_instagram_url')
+      .not('source_instagram_url', 'is', null).limit(5000);
+    const editorialShortcodes = new Set(
+      (eds || []).map((e) => _extractShortcode(e.source_instagram_url)).filter(Boolean)
+    );
+
+    // 품질 게이트 주간 카운트 — 일반(최근-동기화) 경로에서만 사용.
+    let weeklyPublished = 0;
+    if (qualityGateOn && !backfillMode){
+      const now = new Date();
+      const day = now.getUTCDay(); // 0=Sun
+      const monday = new Date(now);
+      monday.setUTCDate(now.getUTCDate() - ((day + 6) % 7));
+      monday.setUTCHours(0, 0, 0, 0);
+      const { count } = await supabaseAdmin
+        .from('articles').select('id', { count: 'exact', head: true })
+        .not('source_instagram_post_id', 'is', null)
+        .eq('status', 'published').gte('instagram_imported_at', monday.toISOString());
+      weeklyPublished = count || 0;
+    }
+
+    // ── 공용: 단일 게시물 처리 ──
+    // AI 생성 → 에디토리얼(AI) 스킵 → 이미지/영상 아카이브 → articles INSERT →
+    // 사이드이펙트. backfillMode 면 X·Threads 자동게시·검색핑을 전부 차단한다:
+    // 과거 기사 수천 건 백필 시 소셜/검색엔진 스팸 방지 (2026-07-24).
+    async function processOne(m){
+      const post = normalizeMedia(m);
+      const generated = await generateArticleFromPost(post);
+      // ③ AI 분류: 크레딧(에디토리얼) 게시물이면 수집하지 않음.
+      if (String(generated.category || '').toLowerCase() === 'editorial'){
+        results.skipped_editorial_ai++; return;
+      }
+      // IG CDN 이미지는 수일 내 만료 — Supabase Storage 영구본으로 교체.
+      const archivedUrls = await archiveImagesToStorage(post, 10);
+      const videoUrls = await archiveVideosToStorage(post, 2);
+      // ── 품질 게이트: 발행 상태 결정. 백필은 무조건 published(원본 게시일 유지) ──
+      let pubStatus = 'published';
+      if (qualityGateOn && !backfillMode){
+        const likes = post.likeCount;
+        const comments = post.commentsCount;
+        const passQuality = (typeof likes === 'number' && likes >= MIN_LIKES)
+          || (typeof comments === 'number' && comments >= MIN_COMMENTS);
+        const withinLimit = (weeklyPublished + results.imported) < WEEKLY_LIMIT;
+        if (passQuality && withinLimit){
+          pubStatus = 'published';
+        } else {
+          pubStatus = 'draft';
+          results.gated_draft = (results.gated_draft || 0) + 1;
+          if (!withinLimit) results.weekly_limit_hit = true;
+        }
+      }
+      const row = buildArticleRow(post, generated, { status: pubStatus, archivedUrls, videoUrls });
+      const { data: inserted, error: insErr } = await supabaseAdmin.from('articles')
+        .insert(row).select('id, custom_url, slug').single();
+      if (insErr){
+        if (insErr.code === '23505'){ results.skipped_existing++; return; } // 동시 실행 race — skip
+        throw insErr;
+      }
+      results.imported++;
+      if (inserted){
+        const h = inserted.custom_url || inserted.slug || inserted.id;
+        if (h && pubStatus === 'published'){
+          const artUrl = SITE + '/article/' + encodeURIComponent(h);
+          if (!backfillMode){
+            newUrls.push(artUrl);
+            // X 자동 게시 — 발행 즉시 트윗 (키 미설정 시 조용히 스킵).
+            if (xConfigured()){
+              try {
+                const artForX = { title: generated.title_ko || row.title, url: artUrl, tags: generated.tags, body: generated.body_ko, category: generated.category };
+                let xText = null;
+                try {
+                  const conv = await buildConversationalTweet(artForX);
+                  if (conv) { xText = conv.text; console.log('[sync-ig] 대화형 트윗 (점수 ' + conv.score + '): ' + conv.angle); }
+                } catch (_) { /* 실패는 삼키고 기본 빌더로 */ }
+                const tw = await postTweet(xText || buildArticleTweet(artForX));
+                results.tweets = (results.tweets || []).concat(tw.ok ? [tw.id] : ['실패:' + (tw.detail || tw.status)]);
+              } catch (_) {}
+            }
+            // Threads 자동 게시 — 실패해도 수집 흐름 계속(스위퍼가 재시도).
+            if (process.env.THREADS_AUTOPOST !== 'false'){
+              try {
+                const th = await postArticleToThreads({
+                  id: inserted.id, title: row.title, content: row.content,
+                  category: row.category, url: artUrl,
+                });
+                results.threads = (results.threads || []).concat(
+                  th.status === 'published' ? [th.thread_id]
+                    : th.status === 'skipped' ? ['스킵:' + (th.detail || '')]
+                    : ['실패:' + String(th.detail || '').slice(0, 80)]);
+              } catch (e){
+                results.threads = (results.threads || []).concat(['실패:' + String(e && e.message || e).slice(0, 80)]);
+              }
+            }
+          }
+          if (row.source_media_type === 'VIDEO' && Array.isArray(row.videos) && row.videos.length) videoImported = true;
+        }
+      }
+    }
+
+    // ═══ 전체 이력 백필 (커서 재개) ═══
+    // listMediaPaged 는 매 실행 최신부터 재-페이징하므로 수천 개(@pap_magazine
+    // 4,240 등) 백필 시 rate-limit·타임아웃 위험이 크다. 여기서는 paging 커서를
+    // ops_alert_state 에 저장해 실행마다 이어받아 실행당 IG API 호출을 최소화한다.
+    // 커서 전진: 한 페이지의 후보(에디토리얼·기존 제외)를 perCall 예산 안에서 전부
+    // 수집하면 다음 페이지로 전진, 예산 초과(후보 더 있음)면 커서 유지 → 다음 실행
+    // 같은 페이지 재수집(처리분은 existing 으로 스킵).
+    if (backfillMode && !dry){
+      const cursorKey = account ? ('ig_backfill_cursor_' + account) : 'ig_backfill_cursor';
+      let cursorUrl = null;
+      {
+        const { data } = await supabaseAdmin.from('ops_alert_state')
+          .select('last_payload').eq('key', cursorKey).maybeSingle();
+        cursorUrl = (data && data.last_payload && data.last_payload.next_url) || null;
+      }
+
+      const toProcess = [];
+      let pageUrl = cursorUrl;     // 이번에 부를 페이지 (null=최신부터)
+      let advanceUrl = cursorUrl;  // 다음 실행 재개 지점 (기본: 현재 유지)
+      let reachedEnd = false;
+      let scanned = 0;
+      const PAGE_SCAN_CAP = 30;    // 실행당 최대 30페이지(=1500개) 스캔 — 타임아웃 방지
+      while (toProcess.length < perCall && scanned < PAGE_SCAN_CAP){
+        scanned++;
+        const { rows, next } = await fetchMediaPage({ afterUrl: pageUrl, ...(cred || {}) });
+        if (!rows.length){
+          if (!next){ reachedEnd = true; advanceUrl = null; break; }
+          pageUrl = next; advanceUrl = next; continue;
+        }
+        const ids = rows.map((r) => r.id).filter(Boolean);
+        const { data: ex } = await supabaseAdmin.from('articles')
+          .select('source_instagram_post_id').in('source_instagram_post_id', ids);
+        const exSet = new Set((ex || []).map((r) => r.source_instagram_post_id));
+        let overflow = false;
+        for (const m of rows){
+          if (exSet.has(m.id)){ results.skipped_existing++; continue; }
+          const shortcode = _extractShortcode(m.permalink);
+          if (shortcode && editorialShortcodes.has(shortcode)){ results.skipped_editorial_db++; continue; }
+          if (isLikelyEditorialCaption(m.caption)){ results.skipped_editorial_caption++; continue; }
+          if (toProcess.length < perCall){ toProcess.push(m); }
+          else { overflow = true; break; }
+        }
+        if (overflow){ advanceUrl = pageUrl; break; }   // 후보 더 있음 → 이 페이지 재수집
+        if (!next){ reachedEnd = true; advanceUrl = null; break; }
+        pageUrl = next; advanceUrl = next;
+      }
+
+      for (const m of toProcess){
+        try { await processOne(m); }
+        catch (e){
+          results.failed++;
+          results.errors.push({ post_id: m.id, error: (e && e.message) || String(e) });
+          console.error('[sync-instagram] backfill post ' + m.id + ' failed:', e);
+        }
+      }
+
+      // 커서 저장 (다음 실행 재개점).
+      try {
+        await supabaseAdmin.from('ops_alert_state').upsert({
+          key: cursorKey, last_alert_at: new Date().toISOString(),
+          last_payload: { next_url: advanceUrl || null }, updated_at: new Date().toISOString(),
+        }, { onConflict: 'key' });
+      } catch (_) {}
+
+      results.scanned_pages = scanned;
+      results.reached_end = reachedEnd;
+
+      // 완주(가장 오래된 게시물 도달) → done 플래그 + 개인 텔레그램(1회).
+      // 이후 백필 실행은 상단 조기 종료(ig_backfill_done)로 IG 재조회 없이 반환.
+      if (reachedEnd){
+        try {
+          const { data: st } = await supabaseAdmin.from('ops_alert_state')
+            .select('key').eq('key', doneKey).maybeSingle();
+          if (!st){
+            await supabaseAdmin.from('ops_alert_state').upsert({
+              key: doneKey, last_alert_at: new Date().toISOString(),
+              last_payload: { done: true }, updated_at: new Date().toISOString(),
+            }, { onConflict: 'key' });
+            const { sendTextToTelegramPersonalSafe } = require('../_lib/telegram');
+            sendTextToTelegramPersonalSafe(
+              '✅ 인스타그램 전체 이력 백필 완주 — ' + acctLabel + ' 과거 게시물을 웹사이트 기사로 전량 가져왔습니다.'
+            ).catch(() => {});
+          }
+        } catch (_) {}
+      }
+      return res.status(200).json(results);
+    }
+
+    // ═══ 최근-동기화(backfillDays===0) + dry 진단 경로 ═══
+    // 1) 게시물 가져오기 — 기본: 최근 25개 / dry+백필: 기간 내 전체(페이지네이션)
     const media = backfillDays > 0
       ? await listMediaPaged({ sinceDays: backfillDays, maxCount: 2000, ...(cred || {}) })
       : await listRecentMedia({ limit: 25, ...(cred || {}) });
@@ -109,48 +309,12 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
     // 2) 이미 import된 게시물 ID들 조회 (중복 방지).
     const allIds = media.map((m) => m.id).filter(Boolean);
     const { data: existing } = await supabaseAdmin
-      .from('articles')
-      .select('source_instagram_post_id')
+      .from('articles').select('source_instagram_post_id')
       .in('source_instagram_post_id', allIds);
     const existingSet = new Set((existing || []).map((r) => r.source_instagram_post_id));
+    results.skipped_existing = existingSet.size;
 
-    // 3) 에디토리얼 shortcode 집합 (①번 필터) — 백필된 source_instagram_url 기반.
-    const { data: eds } = await supabaseAdmin
-      .from('editorials')
-      .select('source_instagram_url')
-      .not('source_instagram_url', 'is', null)
-      .limit(5000);
-    const editorialShortcodes = new Set(
-      (eds || [])
-        .map((e) => _extractShortcode(e.source_instagram_url))
-        .filter(Boolean)
-    );
-
-    // 4) 품질 게이트: 이번 주 자동발행 기사 수 확인 (월요일~현재).
-    let weeklyPublished = 0;
-    if (qualityGateOn){
-      const now = new Date();
-      const day = now.getUTCDay(); // 0=Sun
-      const monday = new Date(now);
-      monday.setUTCDate(now.getUTCDate() - ((day + 6) % 7));
-      monday.setUTCHours(0, 0, 0, 0);
-      const { count } = await supabaseAdmin
-        .from('articles')
-        .select('id', { count: 'exact', head: true })
-        .not('source_instagram_post_id', 'is', null)
-        .eq('status', 'published')
-        .gte('instagram_imported_at', monday.toISOString());
-      weeklyPublished = count || 0;
-    }
-
-    // 5) 게시물 분류.
-    const results = {
-      imported: 0, skipped_existing: existingSet.size,
-      skipped_editorial_db: 0, skipped_editorial_caption: 0, skipped_editorial_ai: 0,
-      failed: 0, errors: [], dry: dry, classified: [],
-    };
-    const newUrls = []; // 이번 실행에서 발행된 기사 URL — 종료 시 즉시 검색 핑
-    let videoImported = false; // 이번 실행에서 릴스(VIDEO) 기사 발행 여부 — 유튜브 즉시 넛지용
+    // 3) 게시물 분류·처리.
     for (const m of media){
       if (existingSet.has(m.id)) continue;
       const shortcode = _extractShortcode(m.permalink);
@@ -170,99 +334,8 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
         continue;
       }
       if (cls !== 'article') continue;
-
-      // 백필: 회당 처리 상한 도달 시 나머지는 다음 호출로 (타임아웃 방지)
-      if (backfillDays > 0 && (results.imported + results.failed + results.skipped_editorial_ai) >= perCall){
-        results.remaining = (results.remaining || 0) + 1;
-        continue;
-      }
-
-      try {
-        const post = normalizeMedia(m);
-        const generated = await generateArticleFromPost(post);
-        // ③ AI 분류: 크레딧 게시물로 판정되면 수집하지 않음.
-        if (String(generated.category || '').toLowerCase() === 'editorial'){
-          results.skipped_editorial_ai++;
-          continue;
-        }
-        // IG CDN 이미지는 수일 내 만료 — Supabase Storage 영구본으로 교체
-        // (웹사이트 썸네일·갤러리 + 틱톡 기사 게시 공용)
-        const archivedUrls = await archiveImagesToStorage(post, 10);
-        // 릴스/영상 게시물 — 영상 원본도 영구 보관해 기사에서 직접 재생
-        const videoUrls = await archiveVideosToStorage(post, 2);
-        // ── 품질 게이트: 발행 상태 결정 ──
-        // 2026-07-23 (도메니코: 최근 1년 IG 전량 백필, 바로 발행) — 백필 모드는
-        // 품질 게이트를 건너뛰고 무조건 published(원본 게시일 유지). 최근-동기화
-        // 경로(backfillDays===0)는 기존 게이트 그대로.
-        let pubStatus = 'published'; // 기본: 기존 동작 유지
-        if (qualityGateOn && backfillDays === 0){
-          const likes = post.likeCount;
-          const comments = post.commentsCount;
-          const passQuality = (typeof likes === 'number' && likes >= MIN_LIKES)
-            || (typeof comments === 'number' && comments >= MIN_COMMENTS);
-          const withinLimit = (weeklyPublished + results.imported) < WEEKLY_LIMIT;
-          if (passQuality && withinLimit){
-            pubStatus = 'published';
-          } else {
-            pubStatus = 'draft';
-            results.gated_draft = (results.gated_draft || 0) + 1;
-            if (!withinLimit) results.weekly_limit_hit = true;
-          }
-        }
-        const row = buildArticleRow(post, generated, { status: pubStatus, archivedUrls, videoUrls });
-        const { data: inserted, error: insErr } = await supabaseAdmin.from('articles')
-          .insert(row).select('id, custom_url, slug').single();
-        if (insErr){
-          // unique index 충돌은 race condition (동시 cron 실행) — skip 처리.
-          if (insErr.code === '23505'){
-            results.skipped_existing++;
-            continue;
-          }
-          throw insErr;
-        }
-        results.imported++;
-        if (inserted){
-          const h = inserted.custom_url || inserted.slug || inserted.id;
-          if (h && pubStatus === 'published'){
-            const artUrl = SITE + '/article/' + encodeURIComponent(h);
-            newUrls.push(artUrl);
-            // X 자동 게시 — 발행 즉시 트윗 (키 미설정 시 조용히 스킵).
-            // draft 기사는 X 게시하지 않음 (품질 게이트 미달).
-            if (xConfigured()){
-              try {
-                const artForX = { title: generated.title_ko || row.title, url: artUrl, tags: generated.tags, body: generated.body_ko, category: generated.category };
-                // 대화형 우선 (2026-07-21) — 대화거리가 있는 기사만. 없으면 null → 기존 빌더.
-                let xText = null;
-                try {
-                  const conv = await buildConversationalTweet(artForX);
-                  if (conv) { xText = conv.text; console.log('[sync-ig] 대화형 트윗 (점수 ' + conv.score + '): ' + conv.angle); }
-                } catch (_) { /* 실패는 삼키고 기본 빌더로 */ }
-                const tw = await postTweet(xText || buildArticleTweet(artForX));
-                results.tweets = (results.tweets || []).concat(tw.ok ? [tw.id] : ['실패:' + (tw.detail || tw.status)]);
-              } catch (_) {}
-            }
-            // Threads 자동 게시 — IG 수집 즉시, 인스타 캡션 복사가 아닌
-            // Threads 어투로 재편집해 게시 (2026-07-16 도메니코 결정).
-            // 실패해도 수집 흐름은 계속 — 10분 주기 threads-post 스위퍼가 재시도.
-            if (process.env.THREADS_AUTOPOST !== 'false'){
-              try {
-                const th = await postArticleToThreads({
-                  id: inserted.id, title: row.title, content: row.content,
-                  category: row.category, url: artUrl,
-                });
-                results.threads = (results.threads || []).concat(
-                  th.status === 'published' ? [th.thread_id]
-                    : th.status === 'skipped' ? ['스킵:' + (th.detail || '')]
-                    : ['실패:' + String(th.detail || '').slice(0, 80)]);
-              } catch (e){
-                results.threads = (results.threads || []).concat(['실패:' + String(e && e.message || e).slice(0, 80)]);
-              }
-            }
-            // 릴스(VIDEO) 기사면 유튜브 즉시 업로드 넛지 대상으로 표시
-            if (row.source_media_type === 'VIDEO' && Array.isArray(row.videos) && row.videos.length) videoImported = true;
-          }
-        }
-      } catch (e){
+      try { await processOne(m); }
+      catch (e){
         results.failed++;
         results.errors.push({ post_id: m.id, error: (e && e.message) || String(e) });
         console.error('[sync-instagram] post ' + m.id + ' failed:', e);
@@ -296,29 +369,8 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
         results.youtube_nudge = 'nudged (응답 대기 안 함 — 업로드는 서버에서 계속, 스위퍼가 보증)';
       }
     }
-    // 2026-07-23 — 1년 백필 완주 감지 + 개인 텔레그램 통보(1회).
-    // 백필 실행에서 신규 발행 0 & 잔여 0 이면 창(sinceDays) 내 전량 완료로 본다.
-    // ops_alert_state 로 done 플래그를 남겨 이후 백필 실행은 IG 재조회 없이
-    // 조기 종료(무한 재조회 비용 방지). 재실행은 도메니코가 플래그 삭제로.
-    if (backfillDays > 0 && !dry){
-      const noNew = (results.imported || 0) === 0 && (results.remaining || 0) === 0;
-      if (noNew){
-        try {
-          const { data: st } = await supabaseAdmin.from('ops_alert_state')
-            .select('key').eq('key', doneKey).maybeSingle();
-          if (!st){
-            await supabaseAdmin.from('ops_alert_state').upsert({
-              key: doneKey, last_alert_at: new Date().toISOString(),
-              last_payload: { done: true }, updated_at: new Date().toISOString(),
-            }, { onConflict: 'key' });
-            const { sendTextToTelegramPersonalSafe } = require('../_lib/telegram');
-            sendTextToTelegramPersonalSafe(
-              '✅ 인스타그램 1년 백필 완주 — ' + acctLabel + ' 최근 1년 게시물을 웹사이트 기사로 전량 가져왔습니다.'
-            ).catch(() => {});
-          }
-        } catch (_) {}
-      }
-    }
+    // (백필 완주 감지·done 플래그·텔레그램 통보는 커서 백필 브랜치에서 처리 —
+    //  최근-동기화/dry 경로는 여기까지.)
     return res.status(200).json(results);
   } catch (e){
     console.error('[sync-instagram] top-level failure:', e);
