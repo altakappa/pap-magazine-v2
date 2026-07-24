@@ -121,8 +121,8 @@
       "schedule": "9-59/10 * * * *"
     },
     {
-      "path": "/api/cron/sync-instagram?backfill=4000&max=6",
-      "schedule": "1-51/10 * * * *"
+      "path": "/api/cron/sync-instagram?backfill=4000&max=20",
+      "schedule": "*/3 * * * *"
     },
     {
       "path": "/api/cron/sync-instagram?account=celeb&backfill=365&max=6",

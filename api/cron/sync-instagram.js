@@ -83,7 +83,9 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
   // Vercel 함수 120초 제한 내에서 (AI 생성 + 이미지 아카이브) 처리 가능한
   // 만큼만 하고 remaining 을 반환 — 반복 호출로 기간 전체를 채운다.
   const backfillDays = parseInt((req.query && req.query.backfill) || '0', 10) || 0;
-  const perCall = Math.max(1, Math.min(10, parseInt((req.query && req.query.max) || '5', 10) || 5));
+  // 백필은 실행 내 병렬 처리(BACKFILL_CONCURRENCY)로 회당 상한을 크게 잡을 수
+  // 있다(타임아웃 자가치유). 상한 40. 최근-동기화 경로는 perCall 미사용.
+  const perCall = Math.max(1, Math.min(40, parseInt((req.query && req.query.max) || '5', 10) || 5));
 
   // ── 품질 게이트 설정 ──
   const qualityGateOn = String(process.env.IG_QUALITY_GATE || '').toLowerCase() === 'on';
@@ -258,14 +260,25 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
         pageUrl = next; advanceUrl = next;
       }
 
-      for (const m of toProcess){
-        try { await processOne(m); }
-        catch (e){
-          results.failed++;
-          results.errors.push({ post_id: m.id, error: (e && e.message) || String(e) });
-          console.error('[sync-instagram] backfill post ' + m.id + ' failed:', e);
+      // 실행 내 병렬 처리 — AI 생성·이미지 아카이브가 I/O 대기라 동시 처리로
+      // 실행당 처리량을 크게 늘린다(타임아웃 나도 커서 미전진+existing 으로
+      // 자가치유). 동시 5건. results 증가는 JS 단일스레드라 경합 없음.
+      const BACKFILL_CONCURRENCY = 5;
+      let _qi = 0;
+      async function _worker(){
+        while (_qi < toProcess.length){
+          const m = toProcess[_qi++];
+          try { await processOne(m); }
+          catch (e){
+            results.failed++;
+            results.errors.push({ post_id: m.id, error: (e && e.message) || String(e) });
+            console.error('[sync-instagram] backfill post ' + m.id + ' failed:', e);
+          }
         }
       }
+      await Promise.all(
+        Array.from({ length: Math.min(BACKFILL_CONCURRENCY, toProcess.length) }, () => _worker())
+      );
 
       // 커서 저장 (다음 실행 재개점).
       try {

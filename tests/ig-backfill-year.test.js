@@ -45,6 +45,9 @@ t('예산 초과 페이지는 커서 유지(재수집), 완주 시 커서 null',
 t('백필 모드는 X·Threads 자동게시 차단(소셜 스팸 방지)',
   /if \(!backfillMode\)\{[\s\S]{0,600}xConfigured\(\)/.test(cron) && /!backfillMode/.test(cron));
 t('공용 처리 함수 processOne 로 백필·일반 경로 통합', /async function processOne\(m\)/.test(cron));
+t('실행 내 병렬 처리(동시 5건 워커풀) — 속도 상향',
+  /BACKFILL_CONCURRENCY = 5/.test(cron) && /Promise\.all\(/.test(cron) && /_worker\(\)/.test(cron));
+t('백필 회당 상한 상향(perCall cap 40)', /Math\.min\(40,/.test(cron));
 
 console.log('--- 다계정 백필 ---');
 const impLib2 = R('api/_lib/instagramImport.js');
