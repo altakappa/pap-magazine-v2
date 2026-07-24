@@ -1341,7 +1341,8 @@ function populateReviewModal(submission){
   var createdDate=submission.created_at?new Date(submission.created_at).toLocaleDateString('ko-KR',{month:'long',day:'numeric'}):'-';
   var submitterName=submission.submitterName||(submission.profiles&&submission.profiles.name)||desc.contactName||'—';
   var submitterEmail=submission.submitterEmail||(submission.profiles&&submission.profiles.email)||desc.contactEmail||'';
-  var plan=submission.submitterPlan?' · '+submission.submitterPlan:'';
+  var _g=String(submission.submitterGrade||submission.submitterPlan||'').toLowerCase();
+  var plan=_g?(' · '+(_g.indexOf('premium')>-1?'프리미엄':_g.indexOf('standard')>-1?'스탠다드':'무료')+' 회원'):'';
   var genreText=Array.isArray(desc.genre)&&desc.genre.length?' · '+desc.genre.join(', '):'';
   var imgCount=Array.isArray(submission.file_urls)?submission.file_urls.length:0;
 
@@ -2055,9 +2056,10 @@ async function loadSubmissions(statusFilter, opts){
       var statusCls = sInfo.cls;
       var statusLabel = sInfo.label;
       var looks=s.file_urls?s.file_urls.length:'?';
-      var plan=s.submitterPlan||'free';
+      // 2026-07-21 — 회원 기본등급(profiles.subscription_plan) 기준. submitterPlan은 subscriptions.plan 원본키라 무료·수동부여(스태프) 회원이 Free로 잘못 뜨던 것 교정.
+      var plan=String(s.submitterGrade||s.submitterPlan||'free').toLowerCase();
       var planCls=plan.indexOf('premium')>-1?'b-premium':plan.indexOf('standard')>-1?'b-standard':'b-free';
-      var planLabel=plan.indexOf('premium')>-1?'Premium':plan.indexOf('standard')>-1?'Standard':'Free';
+      var planLabel=plan.indexOf('premium')>-1?'프리미엄':plan.indexOf('standard')>-1?'스탠다드':'무료';
       // For approved submissions, surface a deep-link to the staged
       // editorial's edit screen. Prefer linked_editorial.id (QA #172,
       // populated server-side from source_submission_id) over the legacy
@@ -2260,7 +2262,7 @@ async function loadPullLetters(statusFilter){
         : ((pl.file_urls && pl.file_urls.length) ? (pl.file_urls.length+'개 파일') : '—');
       var actions = '<button class="btn btn-sm" onclick="openPullLetterReview(\''+pl.id+'\')">검토</button>';
       tb.innerHTML += '<tr>'
-        + '<td>'+esc(pl.requesterName||pl.requesterEmail||'—')+'</td>'
+        + '<td>'+esc(pl.requesterName||pl.requesterEmail||'—')+(function(g){g=String(g||'').toLowerCase();if(!g)return '';var c=g.indexOf('premium')>-1?'b-premium':g.indexOf('standard')>-1?'b-standard':'b-free';var l=g.indexOf('premium')>-1?'프리미엄':g.indexOf('standard')>-1?'스탠다드':'무료';return ' <span class="badge '+c+'" style="margin-left:6px">'+l+'</span>';})(pl.requesterPlan)+'</td>'
         + '<td><strong>'+esc(title||'—')+'</strong>'+(detail?'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+esc(detail)+'</div>':'')+'</td>'
         + '<td>'+(pl.mood_board_id ? '🔗 community' : (pl.file_urls?(pl.file_urls.length+'개'):'—'))+'</td>'
         + '<td>'+fmtDate(pl.created_at)+'</td>'
@@ -2348,7 +2350,7 @@ function openPullLetterReview(id){
 
   var body = bg.querySelector('.plr-body');
   body.innerHTML = ''
-    + '<div class="plr-row"><label>Requester</label><div>'+esc(pl.requesterName||'—')+' · '+esc(pl.requesterEmail||'')+'</div></div>'
+    + '<div class="plr-row"><label>Requester</label><div>'+esc(pl.requesterName||'—')+' · '+esc(pl.requesterEmail||'')+(function(g){g=String(g||'').toLowerCase();if(!g)return '';var c=g.indexOf('premium')>-1?'b-premium':g.indexOf('standard')>-1?'b-standard':'b-free';var l=g.indexOf('premium')>-1?'프리미엄':g.indexOf('standard')>-1?'스탠다드':'무료';return ' <span class="badge '+c+'" style="margin-left:8px">'+l+'</span>';})(pl.requesterPlan)+'</div></div>'
     + teamHtml
     + filesHtml
     + miscHtml

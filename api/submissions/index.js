@@ -374,7 +374,7 @@ module.exports = async function handler(req, res) {
         const [profRes, subRes] = await Promise.all([
           supabaseAdmin
             .from('profiles')
-            .select('id, display_name, email')
+            .select('id, display_name, email, subscription_plan')
             .in('id', userIds),
           supabaseAdmin
             .from('subscriptions')
@@ -420,6 +420,7 @@ module.exports = async function handler(req, res) {
           submitterName: p.display_name || null,
           submitterEmail: p.email || null,
           submitterPlan: plansById[s.user_id] || null,
+          submitterGrade: (p.subscription_plan || 'free'),
           linked_editorial: le,
           display_status: _deriveDisplayStatus(s, le),
         };
