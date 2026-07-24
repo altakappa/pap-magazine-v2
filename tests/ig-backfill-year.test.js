@@ -48,12 +48,15 @@ t('커서는 불투명 after 값만 저장 — access_token 미저장(비밀값 
 t('백필 모드는 X·Threads 자동게시 차단(소셜 스팸 방지)',
   /if \(!backfillMode\)\{[\s\S]{0,600}xConfigured\(\)/.test(cron) && /!backfillMode/.test(cron));
 t('공용 처리 함수 processOne 로 백필·일반 경로 통합', /async function processOne\(m\)/.test(cron));
-t('실행 내 병렬 처리(동시 5건 워커풀) — 속도 상향',
-  /BACKFILL_CONCURRENCY = 5/.test(cron) && /Promise\.all\(/.test(cron) && /_worker\(\)/.test(cron));
+t('실행 내 병렬 처리(동시 4건 워커풀) — 속도 상향',
+  /BACKFILL_CONCURRENCY = 4/.test(cron) && /Promise\.all\(/.test(cron) && /_worker\(\)/.test(cron));
 t('백필 회당 상한 상향(perCall cap 40)', /Math\.min\(40,/.test(cron));
-t('시간 예산 90s 가드 — 120s 강제종료 전 커서 저장 보장(504 방지)',
-  /TIME_BUDGET_MS = 90000/.test(cron)
+t('시간 예산 80s 가드 — 120s 강제종료 전 커서 저장 보장(504 방지)',
+  /TIME_BUDGET_MS = 80000/.test(cron)
   && /Date\.now\(\) - startedAt < TIME_BUDGET_MS/.test(cron));
+t('게시물별 25s 타임아웃(Promise.race) — 한 게시물이 실행 전체 붙잡는 것 차단',
+  /POST_TIMEOUT_MS = 25000/.test(cron)
+  && /Promise\.race\(\[\s*processOne\(m\)/.test(cron));
 t('처리 미완 시 커서 되돌림 — 게시물 유실 방지',
   /_processed < toProcess\.length\)\{ advanceAfter = runStartAfter/.test(cron));
 

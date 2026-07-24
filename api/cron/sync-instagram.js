@@ -238,7 +238,7 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
 
       const runStartAfter = cursorAfter;  // 이 실행 시작점 — 처리 미완 시 되돌림(유실 방지)
       const startedAt = Date.now();
-      const TIME_BUDGET_MS = 90000;        // 90s 예산 — 120s 함수 한도 전에 커서 저장 보장
+      const TIME_BUDGET_MS = 80000;        // 80s 예산 — 게시물 25s 타임아웃과 합쳐 120s 한도 여유
       const toProcess = [];
       let pageAfter = cursorAfter;     // 이번에 부를 페이지 after 커서 (null=최신부터)
       let advanceAfter = cursorAfter;  // 다음 실행 재개 지점 (기본: 현재 유지)
@@ -271,16 +271,23 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
         pageAfter = nextCursor; advanceAfter = nextCursor;
       }
 
-      // 실행 내 병렬 처리(동시 5건) + 시간 예산 가드 — 예산 초과 시 새 게시물
-      // 착수를 멈춰 반드시 커서 저장 줄에 도달(120s 강제종료 전, 504 방지).
-      // AI 생성·이미지 아카이브가 I/O 대기라 동시 처리로 처리량↑.
-      const BACKFILL_CONCURRENCY = 5;
+      // 실행 내 병렬 처리(동시 4건) + 이중 시간 가드로 504 방지:
+      //  (a) 시간 예산 80s 초과 시 새 게시물 착수 중단.
+      //  (b) 게시물별 25s 타임아웃(Promise.race) — 느린 이미지 아카이브·AI 로
+      //      한 게시물이 실행 전체를 붙잡아 120s 넘기는 걸 차단(504 근본 원인).
+      //      타임아웃 게시물은 실패 처리(수집 시 커서 전진하므로 재발 없음).
+      const BACKFILL_CONCURRENCY = 4;
+      const POST_TIMEOUT_MS = 25000;
       let _qi = 0, _processed = 0;
       async function _worker(){
         while (_qi < toProcess.length && Date.now() - startedAt < TIME_BUDGET_MS){
           const m = toProcess[_qi++];
-          try { await processOne(m); }
-          catch (e){
+          try {
+            await Promise.race([
+              processOne(m),
+              new Promise((_, rej) => setTimeout(() => rej(new Error('post timeout ' + POST_TIMEOUT_MS + 'ms')), POST_TIMEOUT_MS)),
+            ]);
+          } catch (e){
             results.failed++;
             results.errors.push({ post_id: m.id, error: (e && e.message) || String(e) });
             console.error('[sync-instagram] backfill post ' + m.id + ' failed:', e);
