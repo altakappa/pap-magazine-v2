@@ -208,8 +208,10 @@ function isLikelyEditorialCaption(caption){
 
 // Claude API로 IG 게시물을 PAP 매거진 톤의 바이링구얼 기사로 변환.
 //   입력: { caption, mediaUrls, author, permalink }
+//   opts.strictEditorial=true → 백필 전용 엄격 모드: 뉴스가 아닌(에디토리얼·
+//     룩북·화보·크레딧) 게시물은 반드시 Editorial 로 판정해 스킵. 애매하면 Editorial.
 //   출력: { title_ko, title_en, body_ko, body_en, category, tags, slug }
-async function generateArticleFromPost(post){
+async function generateArticleFromPost(post, opts){
   if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY 환경변수 누락.');
   const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
 
@@ -241,7 +243,7 @@ async function generateArticleFromPost(post){
     }
   }
 
-  const prompt = [
+  const promptLines = [
     'You are a Korean fashion magazine editor at PAP Magazine.',
     'Convert the following Instagram post into a published-quality bilingual (Korean + English) article.',
     '',
@@ -280,7 +282,20 @@ async function generateArticleFromPost(post){
     '- Original caption: """',
     String(post.caption || '(no caption)').slice(0, 4000),
     '"""',
-  ].join('\n');
+  ];
+  // 백필 전용 엄격 모드 — 에디토리얼 배제가 최우선. 애매하면 Editorial 로.
+  if (opts && opts.strictEditorial){
+    promptLines.push(
+      '',
+      'STRICT BACKFILL — editorial exclusion is the TOP priority:',
+      'Collect NEWS ARTICLES ONLY. If this post is a fashion photo editorial,',
+      'lookbook, campaign or photoshoot visual, photo spread, model/collection',
+      'showcase, or a credits/collaborators post rather than a WRITTEN NEWS story,',
+      'you MUST set "category":"Editorial" so it is skipped. When you are unsure',
+      'whether it is news or editorial, you MUST choose "Editorial".'
+    );
+  }
+  const prompt = promptLines.join('\n');
 
   visionBlocks.push({ type: 'text', text: prompt });
 

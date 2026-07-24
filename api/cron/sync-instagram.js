@@ -139,13 +139,18 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
     // AI 생성 → 에디토리얼(AI) 스킵 → 이미지/영상 아카이브 → articles INSERT →
     // 사이드이펙트. backfillMode 면 X·Threads 자동게시·검색핑을 전부 차단한다:
     // 과거 기사 수천 건 백필 시 소셜/검색엔진 스팸 방지 (2026-07-24).
+    // 기사 카테고리 화이트리스트 — 백필은 이 목록 밖(에디토리얼·미상)이면 무조건 스킵.
+    const ARTICLE_CATEGORIES = ['news', 'fashion', 'beauty', 'culture', 'celeb'];
     async function processOne(m){
       const post = normalizeMedia(m);
-      const generated = await generateArticleFromPost(post);
-      // ③ AI 분류: 크레딧(에디토리얼) 게시물이면 수집하지 않음.
-      if (String(generated.category || '').toLowerCase() === 'editorial'){
-        results.skipped_editorial_ai++; return;
-      }
+      // 백필은 엄격 모드(에디토리얼·룩북·화보·크레딧 → Editorial 판정, 애매하면 Editorial).
+      const generated = await generateArticleFromPost(post, { strictEditorial: backfillMode });
+      // ③ AI 분류 게이트: 'editorial' 이거나 (백필에서) 기사 카테고리 화이트리스트
+      // 밖이면 수집하지 않는다 — "반드시 기사만" 보장.
+      const cat = String(generated.category || '').toLowerCase();
+      const isEditorial = cat === 'editorial'
+        || (backfillMode && !ARTICLE_CATEGORIES.includes(cat));
+      if (isEditorial){ results.skipped_editorial_ai++; return; }
       // IG CDN 이미지는 수일 내 만료 — Supabase Storage 영구본으로 교체.
       const archivedUrls = await archiveImagesToStorage(post, 10);
       const videoUrls = await archiveVideosToStorage(post, 2);

@@ -49,6 +49,17 @@ t('실행 내 병렬 처리(동시 5건 워커풀) — 속도 상향',
   /BACKFILL_CONCURRENCY = 5/.test(cron) && /Promise\.all\(/.test(cron) && /_worker\(\)/.test(cron));
 t('백필 회당 상한 상향(perCall cap 40)', /Math\.min\(40,/.test(cron));
 
+console.log('--- 반드시 기사만 (에디토리얼 배제 강화, 2026-07-24) ---');
+t('백필은 엄격 에디토리얼 모드로 AI 호출(strictEditorial: backfillMode)',
+  /generateArticleFromPost\(post, \{ strictEditorial: backfillMode \}\)/.test(cron));
+t('임포트 함수가 strictEditorial 옵션 지원',
+  /opts && opts\.strictEditorial/.test(lib) && /STRICT BACKFILL/.test(lib));
+t('AI 결과 카테고리 화이트리스트 게이트(백필은 기사 외 전부 스킵)',
+  /ARTICLE_CATEGORIES = \['news'/.test(cron)
+  && /backfillMode && !ARTICLE_CATEGORIES\.includes\(cat\)/.test(cron));
+t('일반 동기화 경로는 불변 — editorial 만 스킵(화이트리스트는 백필 한정)',
+  /cat === 'editorial'\s*\|\|\s*\(backfillMode/.test(cron));
+
 console.log('--- 다계정 백필 ---');
 const impLib2 = R('api/_lib/instagramImport.js');
 t('임포트 함수가 계정 자격증명 파라미터화(_creds)', /function _creds\(opts\)/.test(impLib2) && /opts && opts\.userId/.test(impLib2));
