@@ -99,17 +99,24 @@ async function listMediaPaged(opts){
 async function fetchMediaPage(opts){
   const { userId, token } = _creds(opts);
   const fields = 'id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username,like_count,comments_count,children{media_url,media_type,thumbnail_url}';
-  const startUrl = (opts && opts.afterUrl)
-    || `${_IG_API}/${userId}/media?fields=${encodeURIComponent(fields)}&limit=50&access_token=${token}`;
-  const res = await fetch(startUrl, { signal: AbortSignal.timeout(20000) });
+  // 커서는 불투명 after 값만 저장·전달한다. Graph 의 paging.next 전체 URL 에는
+  // access_token 이 박혀 있어 DB(ops_alert_state)에 저장하면 비밀값이 유출된다.
+  // → after 파라미터만 넘기고 URL 은 매 호출 재구성(토큰은 DB 에 안 남는다).
+  const base = `${_IG_API}/${userId}/media?fields=${encodeURIComponent(fields)}&limit=50&access_token=${token}`;
+  const url = (opts && opts.afterCursor)
+    ? (base + '&after=' + encodeURIComponent(opts.afterCursor))
+    : base;
+  const res = await fetch(url, { signal: AbortSignal.timeout(20000) });
   if (!res.ok){
     const body = await res.text().catch(() => '');
     throw new Error('Graph API media list 실패 (' + res.status + '): ' + body.slice(0, 300));
   }
   const json = await res.json();
   const rows = Array.isArray(json.data) ? json.data : [];
-  const next = (json.paging && json.paging.next) ? json.paging.next : null;
-  return { rows, next };
+  // 다음(더 오래된) 페이지가 있을 때만 after 커서 반환, 없으면 null(가장 오래된 도달).
+  const nextCursor = (json.paging && json.paging.next && json.paging.cursors)
+    ? (json.paging.cursors.after || null) : null;
+  return { rows, nextCursor };
 }
 
 // 단일 게시물 fetch.

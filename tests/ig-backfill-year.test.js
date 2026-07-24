@@ -37,11 +37,14 @@ t('중복 방지 — 기존 article/editorial dedup 재사용', /existingSet\.ha
 console.log('--- 전체 이력 커서 백필 (2026-07-24 @pap_magazine 4,240 대응) ---');
 t('커서 기반 페이지 수집 함수(fetchMediaPage) 존재+export',
   /async function fetchMediaPage\(opts\)/.test(lib) && /fetchMediaPage,/.test(lib));
-t('cron 이 fetchMediaPage 로 커서 재개 백필', /fetchMediaPage\(\{ afterUrl: pageUrl/.test(cron));
+t('cron 이 fetchMediaPage 로 커서 재개 백필', /fetchMediaPage\(\{ afterCursor: pageAfter/.test(cron));
 t('커서를 ops_alert_state 에 저장(계정별 ig_backfill_cursor)',
-  /ig_backfill_cursor/.test(cron) && /next_url: advanceUrl/.test(cron));
+  /ig_backfill_cursor/.test(cron) && /after: advanceAfter/.test(cron));
 t('예산 초과 페이지는 커서 유지(재수집), 완주 시 커서 null',
-  /overflow\).*advanceUrl = pageUrl/.test(cron) && /reachedEnd = true; advanceUrl = null/.test(cron));
+  /overflow\).*advanceAfter = pageAfter/.test(cron) && /reachedEnd = true; advanceAfter = null/.test(cron));
+t('커서는 불투명 after 값만 저장 — access_token 미저장(비밀값 유출 방지)',
+  /paging\.cursors/.test(lib) && !/next_url:/.test(cron)
+  && /access_token 이 박혀 있어/.test(lib));
 t('백필 모드는 X·Threads 자동게시 차단(소셜 스팸 방지)',
   /if \(!backfillMode\)\{[\s\S]{0,600}xConfigured\(\)/.test(cron) && /!backfillMode/.test(cron));
 t('공용 처리 함수 processOne 로 백필·일반 경로 통합', /async function processOne\(m\)/.test(cron));
@@ -52,7 +55,7 @@ t('시간 예산 90s 가드 — 120s 강제종료 전 커서 저장 보장(504 �
   /TIME_BUDGET_MS = 90000/.test(cron)
   && /Date\.now\(\) - startedAt < TIME_BUDGET_MS/.test(cron));
 t('처리 미완 시 커서 되돌림 — 게시물 유실 방지',
-  /_processed < toProcess\.length\)\{ advanceUrl = runStartCursor/.test(cron));
+  /_processed < toProcess\.length\)\{ advanceAfter = runStartAfter/.test(cron));
 
 console.log('--- 반드시 기사만 (에디토리얼 배제 강화, 2026-07-24) ---');
 t('백필은 엄격 에디토리얼 모드로 AI 호출(strictEditorial: backfillMode)',

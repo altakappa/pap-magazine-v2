@@ -227,29 +227,31 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
     // 같은 페이지 재수집(처리분은 existing 으로 스킵).
     if (backfillMode && !dry){
       const cursorKey = account ? ('ig_backfill_cursor_' + account) : 'ig_backfill_cursor';
-      let cursorUrl = null;
+      let cursorAfter = null;
       {
         const { data } = await supabaseAdmin.from('ops_alert_state')
           .select('last_payload').eq('key', cursorKey).maybeSingle();
-        cursorUrl = (data && data.last_payload && data.last_payload.next_url) || null;
+        // 불투명 after 커서만 저장(토큰 미저장). 구 next_url 값이 남아있으면 무시하고
+        // 최신부터 재시작(existing 스킵으로 무해) — 토큰 유출 잔재도 다음 저장에 정리.
+        cursorAfter = (data && data.last_payload && data.last_payload.after) || null;
       }
 
-      const runStartCursor = cursorUrl;   // 이 실행 시작점 — 처리 미완 시 되돌림(유실 방지)
+      const runStartAfter = cursorAfter;  // 이 실행 시작점 — 처리 미완 시 되돌림(유실 방지)
       const startedAt = Date.now();
       const TIME_BUDGET_MS = 90000;        // 90s 예산 — 120s 함수 한도 전에 커서 저장 보장
       const toProcess = [];
-      let pageUrl = cursorUrl;     // 이번에 부를 페이지 (null=최신부터)
-      let advanceUrl = cursorUrl;  // 다음 실행 재개 지점 (기본: 현재 유지)
+      let pageAfter = cursorAfter;     // 이번에 부를 페이지 after 커서 (null=최신부터)
+      let advanceAfter = cursorAfter;  // 다음 실행 재개 지점 (기본: 현재 유지)
       let reachedEnd = false;
       let scanned = 0;
       const PAGE_SCAN_CAP = 30;    // 실행당 최대 30페이지(=1500개) 스캔
       while (toProcess.length < perCall && scanned < PAGE_SCAN_CAP
              && Date.now() - startedAt < TIME_BUDGET_MS){
         scanned++;
-        const { rows, next } = await fetchMediaPage({ afterUrl: pageUrl, ...(cred || {}) });
+        const { rows, nextCursor } = await fetchMediaPage({ afterCursor: pageAfter, ...(cred || {}) });
         if (!rows.length){
-          if (!next){ reachedEnd = true; advanceUrl = null; break; }
-          pageUrl = next; advanceUrl = next; continue;
+          if (!nextCursor){ reachedEnd = true; advanceAfter = null; break; }
+          pageAfter = nextCursor; advanceAfter = nextCursor; continue;
         }
         const ids = rows.map((r) => r.id).filter(Boolean);
         const { data: ex } = await supabaseAdmin.from('articles')
@@ -264,9 +266,9 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
           if (toProcess.length < perCall){ toProcess.push(m); }
           else { overflow = true; break; }
         }
-        if (overflow){ advanceUrl = pageUrl; break; }   // 후보 더 있음 → 이 페이지 재수집
-        if (!next){ reachedEnd = true; advanceUrl = null; break; }
-        pageUrl = next; advanceUrl = next;
+        if (overflow){ advanceAfter = pageAfter; break; }   // 후보 더 있음 → 이 페이지 재수집
+        if (!nextCursor){ reachedEnd = true; advanceAfter = null; break; }
+        pageAfter = nextCursor; advanceAfter = nextCursor;
       }
 
       // 실행 내 병렬 처리(동시 5건) + 시간 예산 가드 — 예산 초과 시 새 게시물
@@ -292,13 +294,13 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
 
       // 처리 미완(시간 예산 소진)이면 커서를 시작점으로 되돌려 유실 방지 —
       // 다음 실행이 재수집(이미 처리분은 existing 으로 스킵).
-      if (_processed < toProcess.length){ advanceUrl = runStartCursor; reachedEnd = false; }
+      if (_processed < toProcess.length){ advanceAfter = runStartAfter; reachedEnd = false; }
 
-      // 커서 저장 (다음 실행 재개점).
+      // 커서 저장 (다음 실행 재개점) — 불투명 after 값만(토큰 미포함).
       try {
         await supabaseAdmin.from('ops_alert_state').upsert({
           key: cursorKey, last_alert_at: new Date().toISOString(),
-          last_payload: { next_url: advanceUrl || null }, updated_at: new Date().toISOString(),
+          last_payload: { after: advanceAfter || null }, updated_at: new Date().toISOString(),
         }, { onConflict: 'key' });
       } catch (_) {}
 
