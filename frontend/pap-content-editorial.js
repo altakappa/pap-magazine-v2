@@ -416,12 +416,12 @@ function _renderEditorialDownloads(det, d){
     box.innerHTML =
       '<div style="display:flex;flex-direction:column;gap:10px">' +
         '<div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999">DOWNLOADS</div>' +
-        '<div style="font-size:13px;color:#ccc">커버 이미지 + PAP 로고 합성 갤러리 이미지 다운로드는 <strong style="color:#fff">스탠다드 멤버십</strong> 전용입니다.<br>참여 크리에이터는 본인 작품을 무료로 다운로드할 수 있어요.</div>' +
+        '<div style="font-size:13px;color:#ccc">'+(lang==='ko'?'커버 이미지 + PAP 로고 합성 갤러리 이미지 다운로드는 <strong style="color:#fff">스탠다드 멤버십</strong> 전용입니다.<br>참여 크리에이터는 본인 작품을 무료로 다운로드할 수 있어요.':'Cover + PAP-logo composite gallery downloads are for <strong style="color:#fff">Standard members</strong> only.<br>Contributing creators can download their own work for free.')+'</div>' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">' +
-          '<a href="/subscribe" style="display:inline-block;padding:10px 22px;border:1px solid #fff;background:#fff;color:#000;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" onmouseover="this.style.background=\'transparent\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'#fff\';this.style.color=\'#000\'">멤버십 구독하기 →</a>' +
-          '<a href="/auth" style="display:inline-block;padding:10px 22px;border:1px solid #555;color:#fff;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">로그인</a>' +
+          '<a href="/subscribe" style="display:inline-block;padding:10px 22px;border:1px solid #fff;background:#fff;color:#000;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" onmouseover="this.style.background=\'transparent\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'#fff\';this.style.color=\'#000\'">'+(lang==='ko'?'멤버십 구독하기 →':'Subscribe →')+'</a>' +
+          '<a href="/auth" style="display:inline-block;padding:10px 22px;border:1px solid #555;color:#fff;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">'+(lang==='ko'?'로그인':'Log in')+'</a>' +
         '</div>' +
-        '<div style="font-size:11px;color:#666;margin-top:4px">개인 사용 및 비상업적 용도에 한해 사용 가능</div>' +
+        '<div style="font-size:11px;color:#666;margin-top:4px">'+(lang==='ko'?'개인 사용 및 비상업적 용도에 한해 사용 가능':'For personal, non-commercial use only')+'</div>' +
       '</div>';
     return;
   }
@@ -434,7 +434,7 @@ function _renderEditorialDownloads(det, d){
   box.innerHTML =
     '<div style="display:flex;flex-direction:column;gap:10px">' +
       '<div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999">DOWNLOADS</div>' +
-      '<div style="font-size:12px;color:#666">권한 확인 중...</div>' +
+      '<div style="font-size:12px;color:#666">'+(lang==='ko'?'권한 확인 중...':'Checking access...')+'</div>' +
     '</div>';
 
   var edId = (d && d.id) || (det && det.id) || '';
@@ -445,11 +445,11 @@ function _renderEditorialDownloads(det, d){
       box.innerHTML =
         '<div style="display:flex;flex-direction:column;gap:10px">' +
           '<div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999">DOWNLOADS</div>' +
-          '<div style="font-size:12px;color:#bbb;line-height:1.6"><strong style="color:#fff">스탠다드 멤버십</strong>부터 커버 + PAP 로고 합성 이미지를 다운로드할 수 있습니다.<br>참여 크리에이터는 본인 작품을 무료로 받을 수 있어요 — 본인 참여작이라면 가입하신 이메일과 동일한 계정인지 확인해주세요.</div>' +
+          '<div style="font-size:12px;color:#bbb;line-height:1.6">'+(lang==='ko'?'<strong style="color:#fff">스탠다드 멤버십</strong>부터 커버 + PAP 로고 합성 이미지를 다운로드할 수 있습니다.<br>참여 크리에이터는 본인 작품을 무료로 받을 수 있어요 — 본인 참여작이라면 가입하신 이메일과 동일한 계정인지 확인해주세요.':'<strong style="color:#fff">Standard membership</strong> unlocks cover + PAP-logo composite image downloads.<br>Contributing creators can get their own work for free — if it is your work, make sure you are signed in with the email you contributed under.')+'</div>' +
           '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">' +
-            '<a href="/subscribe" style="display:inline-block;padding:10px 22px;border:1px solid #fff;background:#fff;color:#000;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" onmouseover="this.style.background=\'transparent\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'#fff\';this.style.color=\'#000\'">스탠다드 구독하기 →</a>' +
+            '<a href="/subscribe" style="display:inline-block;padding:10px 22px;border:1px solid #fff;background:#fff;color:#000;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" onmouseover="this.style.background=\'transparent\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'#fff\';this.style.color=\'#000\'">'+(lang==='ko'?'스탠다드 구독하기 →':'Subscribe to Standard →')+'</a>' +
           '</div>' +
-          '<div style="font-size:11px;color:#666;margin-top:4px">전체 권한이 필요한 경우 PAP Magazine 운영팀에 문의해주세요.</div>' +
+          '<div style="font-size:11px;color:#666;margin-top:4px">'+(lang==='ko'?'전체 권한이 필요한 경우 PAP Magazine 운영팀에 문의해주세요.':'Need full access? Contact the PAP Magazine team.')+'</div>' +
         '</div>';
       return;
     }
@@ -467,7 +467,7 @@ function _renderEditorialDownloadButtons(box, coverUrl, gallery, safeTitle, perm
     coverHtml =
       '<a href="#" onclick="event.preventDefault();_papDownloadAsFile(\'' + coverUrl.replace(/'/g, "\\'") + '\',\'' + safeTitle + '-cover\');return false;" ' +
       'style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border:1px solid #555;color:#fff;font-size:11px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" ' +
-      'onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">⬇️ 커버 이미지</a>';
+      'onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">'+(lang==='ko'?'⬇️ 커버 이미지':'⬇️ Cover image')+'</a>';
   }
   var logoBtnHtml = '';
   if (gallery.length) {
@@ -476,15 +476,15 @@ function _renderEditorialDownloadButtons(box, coverUrl, gallery, safeTitle, perm
       '<button id="edLogoDlBtn" type="button" onclick="_papDownloadLogoZip(this)" ' +
       'data-gallery="' + galleryJson + '" data-title="' + safeTitle + '" ' +
       'style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border:1px solid #555;background:transparent;color:#fff;font-size:11px;font-weight:700;letter-spacing:.12em;cursor:pointer;transition:all .2s" ' +
-      'onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">⬇️ 로고 이미지 (' + gallery.length + '장 ZIP)</button>';
+      'onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">'+(lang==='ko'?'⬇️ 로고 이미지 (':'⬇️ Logo images (')+'' + gallery.length + (lang==='ko'?'장 ZIP)':' images ZIP)')+'</button>';
   }
   // QA #284 Phase 2 — role 배지 (어느 권한으로 노출되는지 명확하게).
   var roleBadge = '';
   if (perm && perm.reason){
-    var badgeText = { admin:'대표 관리자', staff:'서브 관리자', owner:'참여 크리에이터', subscriber:'멤버십 회원' }[perm.reason] || '';
+    var badgeText = (lang==='ko'?{ admin:'대표 관리자', staff:'서브 관리자', owner:'참여 크리에이터', subscriber:'멤버십 회원' }:{ admin:'Editor-in-Chief', staff:'Editor', owner:'Contributing creator', subscriber:'Member' })[perm.reason] || '';
     var badgeColor = { admin:'#e74c3c', staff:'#f39c12', owner:'#27ae60', subscriber:'#3498db' }[perm.reason] || '#888';
     if (badgeText){
-      roleBadge = '<span style="display:inline-block;padding:2px 8px;background:' + badgeColor + ';color:#fff;font-size:9px;font-weight:700;letter-spacing:.1em;border-radius:2px">' + badgeText + ' 권한</span>';
+      roleBadge = '<span style="display:inline-block;padding:2px 8px;background:' + badgeColor + ';color:#fff;font-size:9px;font-weight:700;letter-spacing:.1em;border-radius:2px">' + badgeText + (lang==='ko'?' 권한':' access')+'</span>';
     }
   }
   box.innerHTML =
@@ -492,7 +492,7 @@ function _renderEditorialDownloadButtons(box, coverUrl, gallery, safeTitle, perm
       '<div style="display:flex;align-items:center;gap:8px"><div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999">DOWNLOADS</div>' + roleBadge + '</div>' +
       '<div style="display:flex;gap:10px;flex-wrap:wrap">' + coverHtml + logoBtnHtml + '</div>' +
       '<div id="edLogoDlStatus" style="font-size:11px;color:#888;min-height:14px"></div>' +
-      '<div style="font-size:11px;color:#666">개인 사용 및 비상업적 용도에 한해 사용 가능 · 다운로드 이력이 기록됩니다.</div>' +
+      '<div style="font-size:11px;color:#666">'+(lang==='ko'?'개인 사용 및 비상업적 용도에 한해 사용 가능 · 다운로드 이력이 기록됩니다.':'For personal, non-commercial use only · downloads are logged.')+'</div>' +
     '</div>';
 }
 
@@ -916,13 +916,13 @@ function _papRenderShopRow(fashion){
     var clean=h.replace(/^@+/,'');
     return '<a href="/go/'+encodeURIComponent(clean.toLowerCase())+'" target="_blank" rel="sponsored nofollow noopener" '
       +'style="display:inline-block;margin:0 8px 8px 0;padding:9px 16px;border:1px solid rgba(255,255,255,.25);font-size:12px;color:#fff;text-decoration:none;letter-spacing:.04em">'
-      +clean.replace(/</g,'&lt;')+' <span style="opacity:.55">구매 →</span></a>';
+      +clean.replace(/</g,'&lt;')+' <span style="opacity:.55">'+(lang==='ko'?'구매 →':'Shop →')+'</span></a>';
   }).join('');
   box.innerHTML=
     '<div style="margin:36px 0 0;padding:24px;border:1px solid rgba(255,255,255,.16)">'
     +'<div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:12px">Shop the Story</div>'
     +'<div>'+chips+'</div>'
-    +'<div style="font-size:10.5px;color:#666;margin-top:8px">링크를 통해 구매 시 PAP에 수수료가 지급될 수 있습니다.</div>'
+    +'<div style="font-size:10.5px;color:#666;margin-top:8px">'+(lang==='ko'?'링크를 통해 구매 시 PAP에 수수료가 지급될 수 있습니다.':'PAP may earn a commission on purchases made through these links.')+'</div>'
     +'</div>';
   box.style.display='';
 }
@@ -1696,7 +1696,7 @@ function _renderEdAllPaywall(overlay){
       + '</div>'
       + '<a href="/subscribe" style="display:inline-block;margin:4px 5px 0;background:#fff;color:#000;padding:13px 32px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;text-decoration:none">구독하기</a>'
       + (loggedIn ? '' :
-          '<a href="/auth" style="display:inline-block;margin:4px 5px 0;background:transparent;color:#ddd;border:1px solid rgba(255,255,255,.28);padding:13px 26px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;text-decoration:none">로그인</a>')
+          '<a href="/auth" style="display:inline-block;margin:4px 5px 0;background:transparent;color:#ddd;border:1px solid rgba(255,255,255,.28);padding:13px 26px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;text-decoration:none">'+(lang==='ko'?'로그인':'Log in')+'</a>')
       + '</div>';
   }
   overlay.classList.add('active');
