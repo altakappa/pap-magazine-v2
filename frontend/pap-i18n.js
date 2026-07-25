@@ -159,6 +159,8 @@ function setLang(l){localStorage.setItem('pap-lang',l);
   _applyArticleCardI18n(l);
   // Re-translate AI theme row headings on homepage (if present)
   if(typeof window._papReapplyAIThemeLabels==='function'){ try{ window._papReapplyAIThemeLabels(l); }catch(e){} }
+  // 2026-07-26 — 언어 즉시 전환: 열린 동적 오버레이(기사/에디토리얼 본문·별점·댓글·다운로드·SHOP)를 새 언어로 재렌더.
+  try{ window.dispatchEvent(new CustomEvent('pap:langchange',{detail:{lang:l}})); }catch(e){}
 }
 // Auto-load article i18n data as soon as possible
 if(document.readyState==='loading'){

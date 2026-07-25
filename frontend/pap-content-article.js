@@ -642,6 +642,7 @@ function openArticleDetail(idx){
   _openArticleDetailInner(idx);
 }
 function _openArticleDetailInner(idx){
+  try{ window.__papOpenArtIdx=idx; }catch(e){}
   // QA #239 v2 — close any other open overlay first so article detail
   // doesn't stack on top of editorial / film / list overlays.
   try { if(typeof _papCloseOtherOverlays === 'function') _papCloseOtherOverlays('artDetailOverlay'); } catch(_){}
@@ -785,4 +786,5 @@ window._papShareArticle=function(){
 // ======== ARTICLE DATABASE slot ========
 // ======== ARTICLE DATABASE ========
 var artData=[];
-
+// 2026-07-26 — 언어 전환 시 열린 기사 상세를 새 언어로 재렌더(같은 URL→replaceState, 히스토리 무오염).
+try{ window.addEventListener('pap:langchange',function(){ try{ var ov=document.getElementById('artDetailOverlay'); if(ov&&ov.classList.contains('active')&&typeof window.__papOpenArtIdx==='number'){ _openArticleDetailInner(window.__papOpenArtIdx); } }catch(e){} }); }catch(e){}

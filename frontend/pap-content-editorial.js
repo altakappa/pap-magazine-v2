@@ -1055,6 +1055,7 @@ function _renderRelatedFilms(films){
 }
 
 function _openEditorialInner(title,thumb){
+  try{ window.__papOpenEd={t:title,th:thumb}; }catch(e){}
   // QA #239 v2 — collapse any other active overlay (film detail, article
   // detail, list overlays, …) before opening this one. Stops layer
   // stacking when the user jumps between content types via in-overlay
@@ -1969,5 +1970,5 @@ function closeAllEditorials(skipHistory){
   }
   window.addEventListener('hashchange', tryOpen);
 })();
-
-
+// 2026-07-26 — 언어 전환 시 열린 에디토리얼 상세를 새 언어로 재렌더(noPush: 히스토리 무오염).
+try{ window.addEventListener('pap:langchange',function(){ try{ var ov=document.getElementById('edOverlay'); if(ov&&ov.classList.contains('active')&&window.__papOpenEd&&typeof _openEditorialInner_noPush==='function'){ _openEditorialInner_noPush(window.__papOpenEd.t,window.__papOpenEd.th); } }catch(e){} }); }catch(e){}
