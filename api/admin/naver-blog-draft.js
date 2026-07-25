@@ -386,6 +386,7 @@ module.exports = async function handler(req, res) {
           .eq('status', 'published')
           .not('slug', 'is', null)
           .order('published_date', { ascending: false })
+          .order('created_at', { ascending: false })
           .limit(30);
         if (error) throw error;
         // 프론트 UI 호환 위해 articles 배열 키 유지 (thumbnail_url/category 필드로 매핑)
@@ -402,6 +403,7 @@ module.exports = async function handler(req, res) {
         .select('id, title, slug' + (brand === 'pap' ? ', custom_url' : '') + ', thumbnail_url, published_date, category')
         .eq('status', 'published')
         .order('published_date', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(30);
       if (error) throw error;
       return res.status(200).json({ brand, kind, articles: data || [] });
