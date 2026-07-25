@@ -2030,6 +2030,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
         <!-- QA #208 Phase 2c — news quick filter chips -->
         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
           <span style="font-size:11px;font-weight:600;color:var(--text3);margin-right:4px">⚡ 빠른 필터</span>
+          <input style="background:#f5f5f7;border:1px solid var(--border2);padding:6px 12px;color:var(--text);outline:none;width:220px;border-radius:4px" placeholder="🔍 제목 · 태그 · 작성자 검색" id="newsSearchAdmin" oninput="renderNews()">
           <button class="btn btn-sm" onclick="applyNewsPreset('scheduled')" title="예약 발행만" style="border-color:#f97316;color:#f97316">⏰ 예약 발행만</button>
           <button class="btn btn-sm" onclick="applyNewsPreset('today')" title="오늘 작성된 게시물" style="border-color:#16a34a;color:#16a34a">📅 오늘 업로드</button>
           <button class="btn btn-sm" onclick="applyNewsPreset('draft')" title="임시저장 + 최근 수정순">📝 임시저장만</button>
@@ -3535,7 +3536,7 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
     <div style="padding:8px 16px 14px;font-size:11px;color:var(--text3,#888);border-top:1px solid var(--border,#222)">지정한 영역만 픽셀화된 <strong>검열본이 새 이미지로 업로드</strong>되어 이 화보를 대체합니다. 원본 파일은 서버에서 삭제되지 않습니다. 드래그로 여러 영역 지정 가능 · 적용 후 "저장"을 눌러야 발행본에 반영됩니다.</div>
   </div>
 </div>
-<script src="/pap-admin.js?v=119" defer></script>
+<script src="/pap-admin.js?v=120" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>

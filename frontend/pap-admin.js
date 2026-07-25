@@ -2621,6 +2621,7 @@ function applyNewsPreset(preset){
 function renderNews(){
   var tb=document.getElementById('newsListBody');
   if(!tb)return;
+  var q=(document.getElementById('newsSearchAdmin')?document.getElementById('newsSearchAdmin').value:'').toLowerCase();
 
   // Counts roll up across all rows regardless of active filter so the
   // tab badges always show the global totals.
@@ -2673,6 +2674,15 @@ function renderNews(){
       var tagStr = (Array.isArray(a.tags)?a.tags.join(' '):a.tags||'').toLowerCase();
       var needle = String(newsCategoryFilter).toLowerCase();
       if(cat !== needle && tagStr.indexOf(needle) === -1) return false;
+    }
+    if(q){
+      var _tags=Array.isArray(a.tags)?a.tags.join(' '):a.tags||'';
+      var _creator=(a._creator && (a._creator.display_name || a._creator.email)) || '';
+      var _editor=(a._editor && (a._editor.display_name || a._editor.email)) || '';
+      if(!((a.title||'').toLowerCase().indexOf(q)>-1
+        || _tags.toLowerCase().indexOf(q)>-1
+        || _creator.toLowerCase().indexOf(q)>-1
+        || _editor.toLowerCase().indexOf(q)>-1)) return false;
     }
     return true;
   });
