@@ -572,21 +572,42 @@ ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-026
 
 function setLang(l){
   localStorage.setItem('pap-lang',l);
-  var d=L[l]||L.ko;
+  // 2026-07-26 — 폴백을 한국어에서 영어로 + 키 단위 영어 폴백.
+  var d=L[l]||L.en||L.ko;
+  function _tk(k){ return d[k]||(L.en&&L.en[k]); }
   document.querySelectorAll('[data-i18n]').forEach(function(e){
-    var k=e.getAttribute('data-i18n');
-    if(d[k]) e.textContent=d[k];
+    var v=_tk(e.getAttribute('data-i18n'));
+    if(v) e.textContent=v;
   });
-  document.getElementById('brandBody').innerHTML=d.brand;
-  document.getElementById('workBody').innerHTML=d.work;
+  var _brand=_tk('brand'); if(_brand) document.getElementById('brandBody').innerHTML=_brand;
+  var _work=_tk('work');   if(_work)  document.getElementById('workBody').innerHTML=_work;
   // QA #321 — 한국어 뷰는 관리자 저장 본문이 있으면 그것으로 교체.
   if(l==='ko') _bizApplyKoContent();
-  var mailHtml='<a href="mailto:'+d.mail+'">'+d.mail.toUpperCase()+'</a>';
-  document.getElementById('brandEmail').innerHTML=mailHtml;
-  document.getElementById('workEmail').innerHTML=mailHtml;
-  document.getElementById('footerLegal').innerHTML=d.ft;
-  document.getElementById('langSelect').value=l;
+  var _mail=_tk('mail');
+  if(_mail){
+    var mailHtml='<a href="mailto:'+_mail+'">'+_mail.toUpperCase()+'</a>';
+    document.getElementById('brandEmail').innerHTML=mailHtml;
+    document.getElementById('workEmail').innerHTML=mailHtml;
+  }
+  var _f=_tk('ft'); if(_f) document.getElementById('footerLegal').innerHTML=_f;
+  var _s=document.getElementById('langSelect'); if(_s) _s.value=l;
 }
+// ── 전역 setLang 충돌 해소 (2026-07-26) ───────────────────────────────
+// pap-i18n.js(defer) 가 전역 setLang 을 덮어써, 언어 선택기로 바꿀 때
+// 이 페이지 전용 사전이 반영되지 않았다. 덮어쓰이기 전 참조를 잡아
+// "공용 처리 → 페이지 사전" 순서로 이어서 적용한다.
+var _papPageSetLang = setLang;
+document.addEventListener('DOMContentLoaded', function(){
+  var g = window.setLang;
+  if(typeof g !== 'function'){ window.setLang = _papPageSetLang; return; }
+  if(g === _papPageSetLang || g._papPageChained) return;
+  var chained = function(l){
+    try{ g.apply(this, arguments); }catch(e){}
+    try{ _papPageSetLang(l); }catch(e){}
+  };
+  chained._papPageChained = true;
+  window.setLang = chained;
+});
 // AUTO LANGUAGE DETECTION
 (function(){
   var saved=localStorage.getItem('pap-lang');

@@ -1086,6 +1086,7 @@ ru:{
 function renderFeatures(containerId, features) {
   var el = document.getElementById(containerId);
   if (!el) return;
+  if (!features || !features.length) return;   // 사전에 키가 없어도 throw 하지 않는다
   var html = '';
   for (var i = 0; i < features.length; i++) {
     var f = features[i];
@@ -1101,6 +1102,7 @@ function renderFeatures(containerId, features) {
 function renderComparison(comp) {
   var table = document.getElementById('comparisonTable');
   if (!table) return;
+  if (!comp || !comp.headers) return;   // 사전에 키가 없어도 throw 하지 않는다
   var html = '<thead><tr>';
   for (var h = 0; h < comp.headers.length; h++) {
     html += '<th>' + comp.headers[h] + '</th>';
@@ -1145,7 +1147,7 @@ function formatPrice(n) {
 
 function _applyTrialCta(){
   var lang = localStorage.getItem('pap-lang')||'ko';
-  var d = L[lang]||L.ko;
+  var d = L[lang]||L.en||L.ko;   // 2026-07-26 — 폴백을 영어로
   var isMonthly = (currentBilling !== 'yearly');
   var isLoggedIn = !!localStorage.getItem('pap-token');
   var currentPlan = _getCurrentUserPlan();
@@ -1189,8 +1191,10 @@ function toggleBilling() {
 
 function updatePrices() {
   var lang = localStorage.getItem('pap-lang') || 'ko';
-  var d = L[lang] || L.ko;
-  var p = PRICES[lang] || PRICES.ko;
+  // 2026-07-26 — 폴백을 영어로. 사전에 없는 언어에 원화(KRW) 가격을 보여주던
+  // 것도 함께 정리 — 알 수 없는 로케일이면 국제 기본가(en)가 맞다.
+  var d = L[lang] || L.en || L.ko;
+  var p = PRICES[lang] || PRICES.en || PRICES.ko;
   var isYearly = currentBilling === 'yearly';
   var periodText = isYearly ? (d.perYear || '/ yr') : (d.perMonth || '/ mo');
   var sym = p.symbol;
@@ -1262,7 +1266,10 @@ function _markCurrentPlan(d){
 // ======== LANGUAGE ========
 function setLang(l) {
   localStorage.setItem('pap-lang', l);
-  var d = L[l] || L.ko;
+  // 2026-07-26 — 폴백을 한국어에서 영어로. features/comparison 같은 중첩
+  // 객체도 언어별로 빠질 수 있어 한 번에 영어로 떨어뜨린다.
+  var d = L[l] || L.en || L.ko;
+  function _tk(k){ return d[k] || (L.en && L.en[k]); }
 
   // Check login state for CTA button text (check localStorage directly since pap-api.js may not be loaded yet)
   var isLoggedIn = !!localStorage.getItem('pap-token');
@@ -1288,29 +1295,50 @@ function setLang(l) {
       if (k === 'ctaStd' && d.ctaStdLoggedIn) { e.textContent = d.ctaStdLoggedIn; return; }
       if (k === 'ctaPrem' && d.ctaPremLoggedIn) { e.textContent = d.ctaPremLoggedIn; return; }
     }
-    if (d[k]) e.textContent = d[k];
+    var v = _tk(k);
+    if (v) e.textContent = v;
   });
 
   // Badge
   var recCard = document.getElementById('planStandard');
-  if (recCard && d.badge) recCard.setAttribute('data-badge', d.badge);
+  var _badge = _tk('badge');
+  if (recCard && _badge) recCard.setAttribute('data-badge', _badge);
 
   // Features
-  renderFeatures('featuresFree', d.features.free);
-  renderFeatures('featuresStd', d.features.std);
-  renderFeatures('featuresPrem', d.features.prem);
+  var _feat = _tk('features') || {};
+  renderFeatures('featuresFree', _feat.free);
+  renderFeatures('featuresStd', _feat.std);
+  renderFeatures('featuresPrem', _feat.prem);
 
   // Comparison
-  renderComparison(d.comparison);
+  renderComparison(_tk('comparison'));
 
   // Footer
-  document.getElementById('footerLegal').innerHTML = d.ft;
-  document.getElementById('langSelect').value = l;
+  var _f = _tk('ft');
+  if (_f) document.getElementById('footerLegal').innerHTML = _f;
+  var _s = document.getElementById('langSelect');
+  if (_s) _s.value = l;
 
   // Update prices with current billing mode
   updatePrices();
   _applyTrialCta();
 }
+// ── 전역 setLang 충돌 해소 (2026-07-26) ───────────────────────────────
+// pap-i18n.js(defer) 가 전역 setLang 을 덮어써, 언어 전환 시 이 페이지 전용
+// 사전(요금제 카드·기능 비교표·CTA)이 반영되지 않았다. 덮어쓰이기 전 참조를
+// 잡아 "공용 처리 → 페이지 사전" 순서로 이어서 적용한다.
+var _papPageSetLang = setLang;
+document.addEventListener('DOMContentLoaded', function(){
+  var g = window.setLang;
+  if(typeof g !== 'function'){ window.setLang = _papPageSetLang; return; }
+  if(g === _papPageSetLang || g._papPageChained) return;
+  var chained = function(l){
+    try{ g.apply(this, arguments); }catch(e){}
+    try{ _papPageSetLang(l); }catch(e){}
+  };
+  chained._papPageChained = true;
+  window.setLang = chained;
+});
 
 // ── 결제 이원화: 국내(포트원/KRW) vs 해외(Paddle/EUR·USD) ──────────
 // 한국 사용자 추정(언어 ko + Asia/Seoul 시간대)이면 국내 카드를 먼저,

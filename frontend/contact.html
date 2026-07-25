@@ -284,7 +284,24 @@ ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | 营业执照号
 body:'<div class="contact-grid"><div class="contact-block"><h3>IT Office</h3><p>Via San Vincenzo 18B,<br>20123 Milano</p><h3>KR Office</h3><p>Seoul, Gangnam-gu, Nonhyeon-ro 146-gil 18, 1F</p></div><div class="contact-block"><h3>Email</h3><p><a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a></p><h3>MEDIA KIT</h3><p style="display:flex;gap:8px"><a href="#" onclick="event.preventDefault();downloadMediaKit(\'en\')" style="border:1px solid #333;padding:4px 12px;font-size:10px;letter-spacing:.1em">English</a><a href="#" onclick="event.preventDefault();downloadMediaKit(\'ko\')" style="border:1px solid #333;padding:4px 12px;font-size:10px;letter-spacing:.1em">Korean</a></p></div></div>',
 ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'}
 };
-function setLang(l){localStorage.setItem('pap-lang',l);var d=L[l]||L.ko;document.querySelectorAll('[data-i18n]').forEach(function(e){var k=e.getAttribute('data-i18n');if(d[k])e.textContent=d[k];});document.getElementById('contactBody').innerHTML=d.body;document.getElementById('footerLegal').innerHTML=d.ft;document.getElementById('langSelect').value=l;_contactApplyOffices();}
+// 2026-07-26 — 폴백을 한국어에서 영어로 + 키 단위 영어 폴백.
+function setLang(l){localStorage.setItem('pap-lang',l);var d=L[l]||L.en||L.ko;function _tk(k){return d[k]||(L.en&&L.en[k]);}document.querySelectorAll('[data-i18n]').forEach(function(e){var v=_tk(e.getAttribute('data-i18n'));if(v)e.textContent=v;});var _b=_tk('body');if(_b)document.getElementById('contactBody').innerHTML=_b;var _f=_tk('ft');if(_f)document.getElementById('footerLegal').innerHTML=_f;var _s=document.getElementById('langSelect');if(_s)_s.value=l;_contactApplyOffices();}
+// ── 전역 setLang 충돌 해소 (2026-07-26) ───────────────────────────────
+// pap-i18n.js(defer) 가 전역 setLang 을 덮어써, 언어 선택기로 바꿀 때
+// 이 페이지 전용 사전이 반영되지 않았다. 덮어쓰이기 전 참조를 잡아
+// "공용 처리 → 페이지 사전" 순서로 이어서 적용한다.
+var _papPageSetLang = setLang;
+document.addEventListener('DOMContentLoaded', function(){
+  var g = window.setLang;
+  if(typeof g !== 'function'){ window.setLang = _papPageSetLang; return; }
+  if(g === _papPageSetLang || g._papPageChained) return;
+  var chained = function(l){
+    try{ g.apply(this, arguments); }catch(e){}
+    try{ _papPageSetLang(l); }catch(e){}
+  };
+  chained._papPageChained = true;
+  window.setLang = chained;
+});
 
 // QA #326 — /api/settings?key=contact_page (관리자 저장 오피스 주소) 반영.
 // 첫 번째 .contact-block 은 [h3 IT라벨, p 주소, h3 KR라벨, p 주소] 구조 —

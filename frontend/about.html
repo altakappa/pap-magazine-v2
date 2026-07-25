@@ -299,7 +299,28 @@ ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | 营业执照号
 body:'<p>PAP Magazine — это глобальный цифровой журнал, запущенный в январе 2018 года, базирующийся в Сеуле и Милане. Это медиа-платформа, охватывающая моду, красоту и культуру через призму искусства.</p><p>PAP рассматривает моду не как ограниченную одной индустрией или стилем, а как расширенную форму художественного выражения. Глубоко анализируя уникальные мировоззрения брендов, дизайнеров и художников, PAP переводит их в чувственные визуальные образы и контент.</p><p>Помимо своей роли журнала, PAP также функционирует как креативная студия, сотрудничая с мировыми брендами для создания редакционных материалов, кампаний и видеоконтента.</p>',
 ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'}
 };
-function setLang(l){localStorage.setItem('pap-lang',l);var d=L[l]||L.ko;document.querySelectorAll('[data-i18n]').forEach(function(e){var k=e.getAttribute('data-i18n');if(d[k])e.textContent=d[k];});document.getElementById('aboutBody').innerHTML=d.body;document.getElementById('footerLegal').innerHTML=d.ft;document.getElementById('langSelect').value=l;}
+// 2026-07-26 — 폴백을 한국어에서 영어로 + 키 단위 영어 폴백. 자세한 배경은
+// 아래 '전역 setLang 충돌 해소' 주석 참고.
+function setLang(l){localStorage.setItem('pap-lang',l);var d=L[l]||L.en||L.ko;function _tk(k){return d[k]||(L.en&&L.en[k]);}document.querySelectorAll('[data-i18n]').forEach(function(e){var v=_tk(e.getAttribute('data-i18n'));if(v)e.textContent=v;});var _b=_tk('body');if(_b)document.getElementById('aboutBody').innerHTML=_b;var _f=_tk('ft');if(_f)document.getElementById('footerLegal').innerHTML=_f;var _s=document.getElementById('langSelect');if(_s)_s.value=l;}
+// ── 전역 setLang 충돌 해소 (2026-07-26) ───────────────────────────────
+// pap-i18n.js 는 defer 로 로드되며 전역 setLang 을 '자기 것'으로 덮어쓴다.
+// 인라인 스크립트가 먼저 실행되므로 이 페이지의 setLang 은 항상 진다.
+// 최초 로드는 아래 자동감지 IIFE 가 페이지 함수를 직접 불러 정상이지만,
+// 언어 선택기(onchange="setLang(...)")로 바꾸면 공용 사전만 적용되고 이
+// 페이지 전용 키가 이전 언어로 남았다. 덮어쓰이기 전에 참조를 잡아
+// "공용 처리 → 페이지 사전" 순서로 이어서 적용한다.
+var _papPageSetLang = setLang;
+document.addEventListener('DOMContentLoaded', function(){
+  var g = window.setLang;
+  if(typeof g !== 'function'){ window.setLang = _papPageSetLang; return; }
+  if(g === _papPageSetLang || g._papPageChained) return;
+  var chained = function(l){
+    try{ g.apply(this, arguments); }catch(e){}
+    try{ _papPageSetLang(l); }catch(e){}
+  };
+  chained._papPageChained = true;
+  window.setLang = chained;
+});
 // AUTO LANGUAGE DETECTION
 (function(){
   var saved=localStorage.getItem('pap-lang');

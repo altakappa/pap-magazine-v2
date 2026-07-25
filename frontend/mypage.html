@@ -545,19 +545,40 @@ var _supabase = null;    // supabase anon client
 
 function setLang(l) {
   localStorage.setItem('pap-lang', l);
-  _t = LANG[l] || LANG.ko;
+  // 2026-07-26 — 폴백을 한국어에서 영어로 + 키 단위 영어 폴백.
+  _t = LANG[l] || LANG.en || LANG.ko;
   document.querySelectorAll('[data-i18n]').forEach(function(el){
     var k = el.getAttribute('data-i18n');
-    if (_t[k]) el.textContent = _t[k];
+    var v = _t[k] || (LANG.en && LANG.en[k]);
+    if (v) el.textContent = v;
   });
-  document.getElementById('langSelect').value = l;
+  var _s = document.getElementById('langSelect');
+  if (_s) _s.value = l;
   // Re-render dynamic sections that include translated copy
   if (_user) {
     renderSubscriptionCard(_user);
     loadRecentSubmissions();
     renderDownloads(_user);
   }
+  // 풀레터 카드도 언어 문구를 포함한다 (등급 배지·철회 버튼·다운로드 CTA)
+  if (typeof loadPullletterRequests === 'function') { try{ loadPullletterRequests(); }catch(e){} }
 }
+// ── 전역 setLang 충돌 해소 (2026-07-26) ───────────────────────────────
+// pap-i18n.js(defer) 가 전역 setLang 을 덮어써, 언어 전환 시 이 페이지 전용
+// 사전(LANG)과 동적 렌더 구역이 갱신되지 않았다. 덮어쓰이기 전 참조를 잡아
+// "공용 처리 → 페이지 사전" 순서로 이어서 적용한다.
+var _papPageSetLang = setLang;
+document.addEventListener('DOMContentLoaded', function(){
+  var g = window.setLang;
+  if(typeof g !== 'function'){ window.setLang = _papPageSetLang; return; }
+  if(g === _papPageSetLang || g._papPageChained) return;
+  var chained = function(l){
+    try{ g.apply(this, arguments); }catch(e){}
+    try{ _papPageSetLang(l); }catch(e){}
+  };
+  chained._papPageChained = true;
+  window.setLang = chained;
+});
 
 // ───── Supabase init ─────
 function initSupabase(){
@@ -1398,12 +1419,15 @@ function setupMpSidebar(){
 }
 (function(){
   var saved = localStorage.getItem('pap-lang') || 'ko';
-  _t = LANG[saved] || LANG.ko;
+  // 2026-07-26 — 폴백을 한국어에서 영어로 + 키 단위 영어 폴백 (setLang 과 동일 규칙)
+  _t = LANG[saved] || LANG.en || LANG.ko;
   document.querySelectorAll('[data-i18n]').forEach(function(el){
     var k = el.getAttribute('data-i18n');
-    if (_t[k]) el.textContent = _t[k];
+    var v = _t[k] || (LANG.en && LANG.en[k]);
+    if (v) el.textContent = v;
   });
-  document.getElementById('langSelect').value = saved;
+  var _s0 = document.getElementById('langSelect');
+  if (_s0) _s0.value = saved;
   loadProfile();
   setupMpSidebar();
 })();

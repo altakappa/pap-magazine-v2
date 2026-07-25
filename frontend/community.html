@@ -2343,13 +2343,20 @@ function toggleOriginal(postId, btn){
 // a hook that pap-app.js can call after its own translation pass.
 function _communityTranslations(){
   // Apply community-specific L translations (overrides/supplements global T)
+  // 2026-07-26 — 키 단위 영어 폴백 추가. L 의 비-ko/en 언어는 커뮤니티 전용 키가
+  // 일부 비어 있는데, 폴백이 없으면 마크업 리터럴(한글인 경우가 있다)이 그대로
+  // 남아 "영어를 골랐는데 한글이 섞이는" 상태가 된다.
+  function _tk(key){
+    var d=L[lang];
+    return (d&&d[key]) || (L.en&&L.en[key]);
+  }
   document.querySelectorAll('[data-i18n]').forEach(function(e){
-    var key=e.getAttribute('data-i18n');
-    if(L[lang]&&L[lang][key]) e.textContent=L[lang][key];
+    var v=_tk(e.getAttribute('data-i18n'));
+    if(v) e.textContent=v;
   });
   document.querySelectorAll('[data-i18n-ph]').forEach(function(e){
-    var key=e.getAttribute('data-i18n-ph');
-    if(L[lang]&&L[lang][key]) e.placeholder=L[lang][key];
+    var v=_tk(e.getAttribute('data-i18n-ph'));
+    if(v) e.placeholder=v;
   });
   if(document.getElementById('postTableBody')) updatePostTable();
   if(document.getElementById('topPosts')) renderSidebars();

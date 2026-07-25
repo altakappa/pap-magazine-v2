@@ -692,12 +692,12 @@ function showStep(n, opts) {
 function _updateHeaderLogin(){
   var el=document.querySelector('.auth-header-login');if(!el)return;
   var lang=localStorage.getItem('pap-lang')||'ko';
-  if(typeof L==='undefined')return;var t=L[lang]||L.ko||{};
+  if(typeof L==='undefined')return;var t=L[lang]||L.en||L.ko||{};
   if(isLoginView){
-    el.textContent=t.headerSignup||'가입하기';
+    el.textContent=t.headerSignup||'Sign up';
     el.onclick=function(e){e.preventDefault();showSignup();};
   }else{
-    el.textContent=t.headerLogin||'로그인';
+    el.textContent=t.headerLogin||'Log in';
     el.onclick=function(e){e.preventDefault();showLogin();};
   }
 }
@@ -821,7 +821,7 @@ window.addEventListener('popstate', function(e){
 async function goToStep2() {
   var email = document.getElementById('signupEmail').value.trim();
   var lang = localStorage.getItem('pap-lang') || 'ko';
-  var msgs = ERR[lang] || ERR.ko;
+  var msgs = ERR[lang] || ERR.en || ERR.ko;
   if (!email) { PAP.ui.toast(msgs.emailEmpty, 'error'); return; }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { PAP.ui.toast(msgs.emailInvalid, 'error'); return; }
 
@@ -837,21 +837,21 @@ async function goToStep2() {
     var data = await resp.json().catch(function(){ return {}; });
     if (!resp.ok) throw new Error(data.message || 'Failed');
     verificationToken = data.verificationToken;
-    var d = (L[lang] || L.ko);
-    document.getElementById('step2EmailMsg').textContent = email + (d.codeSentTo || ' 으로 인증 코드를 보냈습니다.');
+    var d = (L[lang] || L.en || L.ko);
+    document.getElementById('step2EmailMsg').textContent = email + (d.codeSentTo || ' — verification code sent.');
     showStep(2);
   } catch (e) {
     PAP.ui.toast(e.message || msgs.networkError, 'error');
   }
   btn.disabled = false;
-  btn.textContent = (L[lang] && L[lang].btnStart) || '시작하기';
+  btn.textContent = (L[lang] && L[lang].btnStart) || 'Get started';
 }
 
 async function verifyEmailCode() {
   var code = document.getElementById('verifyCode').value.trim();
   var lang = localStorage.getItem('pap-lang') || 'ko';
-  var msgs = ERR[lang] || ERR.ko;
-  if (code.length !== 6) { PAP.ui.toast(msgs.codeInvalid || '6자리 코드를 입력해주세요.', 'error'); return; }
+  var msgs = ERR[lang] || ERR.en || ERR.ko;
+  if (code.length !== 6) { PAP.ui.toast(msgs.codeInvalid || 'Please enter the 6-digit code.', 'error'); return; }
 
   var btn = document.getElementById('btnVerify');
   if (!btn) return;
@@ -864,8 +864,8 @@ async function verifyEmailCode() {
     });
     var data = await resp.json().catch(function(){ return {}; });
     if (!resp.ok) {
-      if (resp.status === 410) throw new Error(msgs.codeExpired || '인증 코드가 만료되었습니다. 다시 요청해주세요.');
-      if (resp.status === 401) throw new Error(msgs.codeWrong || '인증 코드가 올바르지 않습니다.');
+      if (resp.status === 410) throw new Error(msgs.codeExpired || 'The verification code has expired. Please request a new one.');
+      if (resp.status === 401) throw new Error(msgs.codeWrong || 'That verification code is not correct.');
       throw new Error(data.message || 'Verification failed');
     }
     verifiedToken = data.verifiedToken;
@@ -874,13 +874,13 @@ async function verifyEmailCode() {
     PAP.ui.toast(e.message, 'error');
   }
   btn.disabled = false;
-  btn.textContent = (L[lang] && L[lang].btnVerify) || '인증하기';
+  btn.textContent = (L[lang] && L[lang].btnVerify) || 'Verify';
 }
 
 async function resendCode() {
   var email = document.getElementById('signupEmail').value.trim();
   var lang = localStorage.getItem('pap-lang') || 'ko';
-  var msgs = ERR[lang] || ERR.ko;
+  var msgs = ERR[lang] || ERR.en || ERR.ko;
   try {
     var resp = await fetch((window._PAP_API_BASE || '') + '/api/auth/send-code', {
       method: 'POST',
@@ -890,7 +890,7 @@ async function resendCode() {
     var data = await resp.json().catch(function(){ return {}; });
     if (!resp.ok) throw new Error(data.message || 'Failed');
     verificationToken = data.verificationToken;
-    PAP.ui.toast(msgs.codeResent || '인증 코드를 다시 보냈습니다.', 'success');
+    PAP.ui.toast(msgs.codeResent || 'Verification code sent again.', 'success');
   } catch (e) {
     PAP.ui.toast(e.message || msgs.networkError, 'error');
   }
@@ -901,7 +901,7 @@ function goToStep4() {
   var firstName = document.getElementById('signupFirstName').value.trim();
   var pw = document.getElementById('signupPw').value;
   var lang = localStorage.getItem('pap-lang') || 'ko';
-  var msgs = ERR[lang] || ERR.ko;
+  var msgs = ERR[lang] || ERR.en || ERR.ko;
   if (!lastName) { PAP.ui.toast(msgs.lastNameEmpty, 'error'); return; }
   if (!firstName) { PAP.ui.toast(msgs.firstNameEmpty, 'error'); return; }
   if (pw.length < 8) { PAP.ui.toast(msgs.pwShort, 'error'); return; }
@@ -922,11 +922,11 @@ function updateConsentAll() {
 }
 function validateConsent() {
   var lang = localStorage.getItem('pap-lang') || 'ko';
-  var msgs = ERR[lang] || ERR.ko;
+  var msgs = ERR[lang] || ERR.en || ERR.ko;
   var required = document.querySelectorAll('.consent-required');
   for(var i = 0; i < required.length; i++){
     if(!required[i].checked){
-      PAP.ui.toast(msgs.consentRequired || '필수 동의 항목에 모두 동의해주세요.', 'error');
+      PAP.ui.toast(msgs.consentRequired || 'Please agree to all required items.', 'error');
       return false;
     }
   }
@@ -944,7 +944,7 @@ async function completeSignup() {
   var pw = document.getElementById('signupPw').value;
   var btn = document.getElementById('btnComplete');
   var lang = localStorage.getItem('pap-lang') || 'ko';
-  var msgs = ERR[lang] || ERR.ko;
+  var msgs = ERR[lang] || ERR.en || ERR.ko;
 
   // Gather consent data
   var consentData = {
@@ -980,7 +980,7 @@ async function completeSignup() {
       PAP.ui.toast(msgs.signupFail, 'error');
     }
     btn.disabled = false;
-    btn.textContent = (L[lang] && L[lang].btnComplete) || '가입 완료';
+    btn.textContent = (L[lang] && L[lang].btnComplete) || 'Complete sign-up';
   }
 }
 
@@ -1011,7 +1011,7 @@ async function doLogin() {
   var email = document.getElementById('loginEmail').value.trim();
   var pw = document.getElementById('loginPw').value;
   var lang = localStorage.getItem('pap-lang') || 'ko';
-  var msgs = ERR[lang] || ERR.ko;
+  var msgs = ERR[lang] || ERR.en || ERR.ko;
   if (!email) { PAP.ui.toast(msgs.emailEmpty, 'error'); return; }
   if (!pw) { PAP.ui.toast(msgs.pwEmpty, 'error'); return; }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { PAP.ui.toast(msgs.emailInvalid, 'error'); return; }
@@ -1049,8 +1049,8 @@ async function doLogin() {
 async function sendResetEmail() {
   var email = document.getElementById('forgotEmail').value.trim();
   var lang = localStorage.getItem('pap-lang') || 'ko';
-  var msgs = ERR[lang] || ERR.ko;
-  var d = (L[lang] || L.ko);
+  var msgs = ERR[lang] || ERR.en || ERR.ko;
+  var d = (L[lang] || L.en || L.ko);
   if (!email) { PAP.ui.toast(msgs.emailEmpty, 'error'); return; }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { PAP.ui.toast(msgs.emailInvalid, 'error'); return; }
 
@@ -1078,7 +1078,7 @@ async function sendResetEmail() {
     }
     // Always show "check your email" — even when the email isn't registered,
     // because Supabase silently succeeds in that case (anti-enumeration).
-    PAP.ui.toast(d.forgotSent || '이메일을 확인해주세요. 재설정 링크를 보내드렸습니다.', 'success');
+    PAP.ui.toast(d.forgotSent || 'Please check your email — we sent you a reset link.', 'success');
   } catch (e) {
     PAP.ui.toast((e && e.message) || msgs.networkError, 'error');
   }
@@ -1090,8 +1090,8 @@ async function doResetPassword() {
   var pw1 = document.getElementById('resetPw1').value;
   var pw2 = document.getElementById('resetPw2').value;
   var lang = localStorage.getItem('pap-lang') || 'ko';
-  var msgs = ERR[lang] || ERR.ko;
-  var d = (L[lang] || L.ko);
+  var msgs = ERR[lang] || ERR.en || ERR.ko;
+  var d = (L[lang] || L.en || L.ko);
 
   if (!pw1 || !pw2) { PAP.ui.toast(msgs.pwEmpty, 'error'); return; }
   if (pw1.length < 8) { PAP.ui.toast(msgs.pwTooShort || msgs.pwWeak || 'Password must be at least 8 characters.', 'error'); return; }
@@ -1110,7 +1110,7 @@ async function doResetPassword() {
     // new password using that scoped session.
     var { data, error } = await sb.auth.updateUser({ password: pw1 });
     if (error) throw error;
-    PAP.ui.toast(d.resetSuccess || '비밀번호가 변경되었습니다. 로그인해주세요.', 'success');
+    PAP.ui.toast(d.resetSuccess || 'Your password has been changed. Please log in.', 'success');
     // Sign out the recovery session so the user is forced to log in fresh
     // with the new password — catches the "I forgot my password but I'm
     // still logged in" edge case.
@@ -1788,19 +1788,29 @@ ru: {
 
 function setLang(l) {
   localStorage.setItem('pap-lang', l);
-  var d = L[l] || L.ko;
+  // 2026-07-26 — 폴백을 한국어에서 영어로 + 키 단위 영어 폴백.
+  var d = L[l] || L.en || L.ko;
+  function _tk(k){ return d[k] || (L.en && L.en[k]); }
   document.querySelectorAll('[data-i18n]').forEach(function(e) {
     var k = e.getAttribute('data-i18n');
-    if (d[k]) {
+    var v = _tk(k);
+    if (v) {
       // Keys with HTML content
       var htmlKeys = ['heroTitle','benefit1','benefit2','benefit3','hasAccount','noAccount','successDesc'];
-      if (htmlKeys.indexOf(k) > -1) e.innerHTML = d[k];
-      else e.textContent = d[k];
+      if (htmlKeys.indexOf(k) > -1) e.innerHTML = v;
+      else e.textContent = v;
     }
   });
+  // 2026-07-26 — data-i18n-html 을 아예 처리하지 않아, noAccount("회원이
+  // 아니신가요? 가입하기")가 모든 언어에서 한글 그대로 남아 있었다.
+  // 공용 pap-i18n.js 사전에는 이 키가 없어 대신 채워주지도 못했다.
+  document.querySelectorAll('[data-i18n-html]').forEach(function(e) {
+    var v = _tk(e.getAttribute('data-i18n-html'));
+    if (v) e.innerHTML = v;
+  });
   document.querySelectorAll('[data-i18n-ph]').forEach(function(e) {
-    var k = e.getAttribute('data-i18n-ph');
-    if (d[k]) e.placeholder = d[k];
+    var v = _tk(e.getAttribute('data-i18n-ph'));
+    if (v) e.placeholder = v;
   });
   // langSelect was removed when the unified header migration absorbed the
   // language switcher — the element no longer exists. Null-guard this so
@@ -1809,6 +1819,22 @@ function setLang(l) {
   var langSel = document.getElementById('langSelect');
   if (langSel) langSel.value = l;
 }
+// ── 전역 setLang 충돌 해소 (2026-07-26) ───────────────────────────────
+// pap-i18n.js(defer) 가 전역 setLang 을 덮어써, 헤더 언어 전환 시 이 페이지
+// 전용 사전(로그인/회원가입 폼 문구)이 반영되지 않았다. 덮어쓰이기 전
+// 참조를 잡아 "공용 처리 → 페이지 사전" 순서로 이어서 적용한다.
+var _papPageSetLang = setLang;
+document.addEventListener('DOMContentLoaded', function(){
+  var g = window.setLang;
+  if(typeof g !== 'function'){ window.setLang = _papPageSetLang; return; }
+  if(g === _papPageSetLang || g._papPageChained) return;
+  var chained = function(l){
+    try{ g.apply(this, arguments); }catch(e){}
+    try{ _papPageSetLang(l); }catch(e){}
+  };
+  chained._papPageChained = true;
+  window.setLang = chained;
+});
 
 // === EARLY REDIRECT: run synchronously before anything else ===
 (function(){
