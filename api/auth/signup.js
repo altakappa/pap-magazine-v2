@@ -119,8 +119,15 @@ module.exports = async function handler(req, res) {
     const { countryFromRequest } = require('../_lib/emailLocale');
     const signupCountry = countryFromRequest(req);
 
+    // 사일런트 실패 방지(2026-07-25 진단): supabase-js 의 upsert 는 실패해도
+    // 예외를 던지지 않고 { error } 를 반환한다. 예전 코드는 try/catch 로만
+    // 감싸 두어서, 025_consent_tracking.sql 이 절반만 적용돼 있던
+    // 2026-05-12~07-05 구간 내내 이 문장이 통째로 거부되는데도 로그가 한 줄도
+    // 남지 않았다. 결과: 회원 65명의 email_consent 가 유실돼 뉴스레터 발송
+    // 대상에서 빠졌다. 반환값 error 를 반드시 읽는다.
+    // 참고: 45_Business/2026-07-25-동의기록-유실-진단.md
     try {
-      await supabaseAdmin
+      const { error: consentWriteErr } = await supabaseAdmin
         .from('profiles')
         .upsert({
           id: userId,
@@ -138,6 +145,15 @@ module.exports = async function handler(req, res) {
           email_consent: !!consentObj.emailNotification,
           email_consent_at: consentObj.emailNotification ? nowIso : null,
         }, { onConflict: 'id' });
+      if (consentWriteErr) {
+        // 가입 자체는 막지 않는다(감사로그 consent_history 로 복구 가능).
+        // 다만 반드시 시끄럽게 남겨서 다음엔 두 달이 아니라 하루 만에 잡는다.
+        console.error(
+          '[signup] CONSENT PERSIST FAILED — profiles 동의 컬럼 미저장:',
+          consentWriteErr.message || consentWriteErr,
+          '| user:', userId,
+        );
+      }
     } catch (consentErr) {
       console.error('[signup] failed to persist consent:', consentErr.message || consentErr);
     }
