@@ -691,7 +691,7 @@ function navigateWithInterstitial(url){
       <div class="section-title" data-i18n="sectionTeamCredits">TEAM CREDITS</div>
       <p style="font-size:11px;color:rgba(255,255,255,.55);margin-bottom:20px;line-height:1.8" data-i18n="teamCreditsDesc">Enter each team member's name, Instagram, and website. Instagram handles are used for social media credits.</p>
       <!-- QA #285 — 필수 입력 안내 -->
-      <p style="font-size:11px;color:#ffb347;margin-bottom:14px;line-height:1.6;padding:8px 10px;border:1px solid rgba(255,179,71,.3);background:rgba(255,179,71,.04);border-radius:2px" data-i18n="teamCreditsRequiredHint">⚠ 각 크레딧 항목은 <strong>역할 · 이름 · 인스타그램</strong> 정보가 모두 입력되어야 합니다. <strong>필요 없는 항목은 오른쪽 끝 <span style="color:#ff6b6b">×</span> 버튼을 눌러 삭제</strong>해 주세요. 포토그래퍼(Photographer)는 필수 크레딧이라 삭제할 수 없습니다.</p>
+      <p style="font-size:11px;color:#ffb347;margin-bottom:14px;line-height:1.6;padding:8px 10px;border:1px solid rgba(255,179,71,.3);background:rgba(255,179,71,.04);border-radius:2px" data-i18n-html="teamCreditsRequiredHint">⚠ 각 크레딧 항목은 <strong>역할 · 이름 · 인스타그램</strong> 정보가 모두 입력되어야 합니다. <strong>필요 없는 항목은 오른쪽 끝 <span style="color:#ff6b6b">×</span> 버튼을 눌러 삭제</strong>해 주세요. 포토그래퍼(Photographer)는 필수 크레딧이라 삭제할 수 없습니다.</p>
       <div class="error-summary" id="errSummary3"></div>
       <div class="team-header">
         <span data-i18n="hdrRole">ROLE</span><span data-i18n="hdrName">NAME</span><span data-i18n="hdrLink">LINK</span><span></span>
@@ -1098,7 +1098,7 @@ function toggleMySubmissions(){
   var list=document.getElementById('mySubsList');
   var btn=document.querySelector('.my-subs-toggle');
   if(!list||!btn) return;
-  var d=L[_curLang]||L.ko;
+  var d=L[_curLang]||L.en||L.ko;   // 2026-07-26 — 폴백을 영어로 (setLang 과 동일 규칙)
   if(list.style.display==='none'){
     list.style.display='block';
     btn.textContent = d.mySubsHide || 'HIDE';
@@ -1529,6 +1529,9 @@ var _ERR_I18N = {
   loadSubmission:{ko:'서브미션을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.',en:'Could not load the submission. Please try again in a moment.',de:'Die Einreichung konnte nicht geladen werden. Bitte später erneut versuchen.',it:'Impossibile caricare la submission. Riprova tra poco.',fr:'Impossible de charger la soumission. Réessayez dans un instant.',es:'No se pudo cargar la submission. Inténtalo de nuevo en un momento.',ja:'サブミッションを読み込めませんでした。しばらくしてからお試しください。',zh:'无法加载投稿，请稍后再试。',ru:'Не удалось загрузить заявку. Попробуйте позже.'},
   loadRevise:{ko:'이전 제출본을 불러오지 못했습니다.',en:'Could not load your previous submission.',de:'Ihre vorherige Einreichung konnte nicht geladen werden.',it:'Impossibile caricare la submission precedente.',fr:'Impossible de charger votre soumission précédente.',es:'No se pudo cargar tu submission anterior.',ja:'以前の提出内容を読み込めませんでした。',zh:'无法加载您之前的投稿。',ru:'Не удалось загрузить вашу предыдущую заявку.'},
   retry:{ko:'다시 시도',en:'Try again',de:'Erneut versuchen',it:'Riprova',fr:'Réessayer',es:'Reintentar',ja:'再試行',zh:'重试',ru:'Повторить'},
+  // 2026-07-26 — 사전을 우회해 화면에 나가던 하드코딩 문구 2건을 여기로 이전.
+  photoCreditLocked:{ko:'포토그래퍼 크레딧은 삭제할 수 없습니다',en:'The photographer credit cannot be removed',de:'Der Fotografen-Credit kann nicht entfernt werden',it:'Il credito del fotografo non può essere rimosso',fr:'Le crédit du photographe ne peut pas être supprimé',es:'El crédito del fotógrafo no se puede eliminar',ja:'フォトグラファーのクレジットは削除できません',zh:'摄影师署名无法删除',ru:'Кредит фотографа нельзя удалить'},
+  moodboardPrefill:{ko:'무드보드를 기반으로 제안 중입니다. 제목과 컨셉이 자동 입력되었어요.',en:'mood board is being used as the basis for this submission. The title and concept were filled in automatically.',de:'Mood Board dient als Grundlage für diese Einreichung. Titel und Konzept wurden automatisch übernommen.',it:'mood board è la base di questa submission. Titolo e concept sono stati compilati automaticamente.',fr:'mood board sert de base à cette soumission. Le titre et le concept ont été remplis automatiquement.',es:'mood board es la base de esta submission. El título y el concepto se han rellenado automáticamente.',ja:'ムードボードを基にした提案です。タイトルとコンセプトが自動入力されました。',zh:'正在以该情绪板为基础提交。标题与概念已自动填入。',ru:'мудборд использован как основа этой заявки. Название и концепция заполнены автоматически.'},
   lookCredit:{ko:'각 룩에는 최소 1개의 크레딧(브랜드 또는 인스타그램)이 필요합니다. 누락된 룩: {looks}',en:'Each look needs at least one credit (brand or Instagram). Missing: Look {looks}',de:'Jeder Look braucht mindestens einen Credit (Marke oder Instagram). Fehlt: Look {looks}',it:'Ogni look richiede almeno un credito (brand o Instagram). Mancanti: Look {looks}',fr:'Chaque look doit avoir au moins un crédit (marque ou Instagram). Manquant : Look {looks}',es:'Cada look necesita al menos un crédito (marca o Instagram). Faltan: Look {looks}',ja:'各ルックには最低1つのクレジット（ブランドまたはInstagram）が必要です。不足：ルック {looks}',zh:'每个造型至少需要一个署名（品牌或 Instagram）。缺少：造型 {looks}',ru:'Каждому образу нужен хотя бы один кредит (бренд или Instagram). Отсутствует: образ {looks}'}
 };
 function _errT(k,p){
@@ -2043,7 +2046,8 @@ function removeTeamRow(btn){
   var roleEl=row.querySelector('.team-role');
   var roleTxt=roleEl?String(roleEl.textContent||'').trim().toLowerCase():'';
   if(roleTxt==='photo'||roleTxt==='photographer'){
-    if(typeof PAP!=='undefined'&&PAP.ui&&PAP.ui.toast) PAP.ui.toast('Photographer credit cannot be removed · 포토그래퍼 크레딧은 삭제할 수 없습니다','error');
+    // 2026-07-26 — 영/한 병기 하드코딩이었다. 언어별로 하나만 나가야 한다.
+    if(typeof PAP!=='undefined'&&PAP.ui&&PAP.ui.toast) PAP.ui.toast(_errT('photoCreditLocked'),'error');
     return;
   }
   row.remove();
@@ -3332,6 +3336,25 @@ Object.keys(_PAP_SUBMISSION_I18N_EXT).forEach(function(lang){
   });
 });
 
+// 2026-07-26 — teamCreditsRequiredHint 는 어느 언어 사전에도 값이 없어
+// 마크업의 한글 리터럴이 9개 언어 전부에 그대로 노출되고 있었다.
+// (마크업에 <strong>/<span> 이 들어 있어 data-i18n → data-i18n-html 로 함께 전환)
+var _PAP_TEAM_HINT_I18N = {
+  ko:'⚠ 각 크레딧 항목은 <strong>역할 · 이름 · 인스타그램</strong> 정보가 모두 입력되어야 합니다. <strong>필요 없는 항목은 오른쪽 끝 <span style="color:#ff6b6b">×</span> 버튼을 눌러 삭제</strong>해 주세요. 포토그래퍼(Photographer)는 필수 크레딧이라 삭제할 수 없습니다.',
+  en:'⚠ Every credit entry must include <strong>Role · Name · Instagram</strong>. <strong>Remove any entry you don’t need with the <span style="color:#ff6b6b">×</span> button on the right.</strong> The Photographer credit is required and cannot be removed.',
+  de:'⚠ Jeder Credit-Eintrag muss <strong>Rolle · Name · Instagram</strong> enthalten. <strong>Nicht benötigte Einträge über die Schaltfläche <span style="color:#ff6b6b">×</span> rechts entfernen.</strong> Der Fotografen-Credit ist Pflicht und kann nicht entfernt werden.',
+  it:'⚠ Ogni voce dei crediti deve contenere <strong>Ruolo · Nome · Instagram</strong>. <strong>Rimuovi le voci non necessarie con il pulsante <span style="color:#ff6b6b">×</span> a destra.</strong> Il credito del fotografo è obbligatorio e non può essere rimosso.',
+  fr:'⚠ Chaque crédit doit comporter <strong>Rôle · Nom · Instagram</strong>. <strong>Supprimez les entrées inutiles avec le bouton <span style="color:#ff6b6b">×</span> à droite.</strong> Le crédit du photographe est obligatoire et ne peut pas être supprimé.',
+  es:'⚠ Cada crédito debe incluir <strong>Rol · Nombre · Instagram</strong>. <strong>Elimina las entradas que no necesites con el botón <span style="color:#ff6b6b">×</span> de la derecha.</strong> El crédito del fotógrafo es obligatorio y no se puede eliminar.',
+  ja:'⚠ 各クレジット項目には <strong>役割 · 名前 · Instagram</strong> をすべて入力してください。<strong>不要な項目は右端の <span style="color:#ff6b6b">×</span> ボタンで削除</strong>してください。フォトグラファーは必須クレジットのため削除できません。',
+  zh:'⚠ 每条署名都必须填写 <strong>角色 · 姓名 · Instagram</strong>。<strong>不需要的条目请点击右侧 <span style="color:#ff6b6b">×</span> 按钮删除</strong>。摄影师为必填署名，无法删除。',
+  ru:'⚠ В каждом кредите должны быть указаны <strong>роль · имя · Instagram</strong>. <strong>Ненужные записи удаляйте кнопкой <span style="color:#ff6b6b">×</span> справа.</strong> Кредит фотографа обязателен и не может быть удалён.'
+};
+Object.keys(_PAP_TEAM_HINT_I18N).forEach(function(lang){
+  if(!L[lang]) L[lang] = {};
+  if(L[lang].teamCreditsRequiredHint === undefined) L[lang].teamCreditsRequiredHint = _PAP_TEAM_HINT_I18N[lang];
+});
+
 function _applyTerms(){
   // Swap the Articles 1–12 body in #termsBox <ol> to match _curLang.
   // _PAPTerms lives in submission-terms.js. Silently no-op if unavailable.
@@ -3344,17 +3367,40 @@ function _applyTerms(){
   if(html) ol.innerHTML=html;
 }
 function setLang(l){
-  localStorage.setItem('pap-lang',l);_curLang=l;var d=L[l]||L.ko;
-  document.querySelectorAll('[data-i18n]').forEach(function(e){var k=e.getAttribute('data-i18n');if(d[k])e.textContent=d[k];});
-  document.querySelectorAll('[data-i18n-html]').forEach(function(e){var k=e.getAttribute('data-i18n-html');if(d[k])e.innerHTML=d[k].replace(/\\n/g,'<br>');});
+  // 2026-07-26 — 폴백을 한국어에서 영어로. 사전에 없는 언어·키가 한국어로
+  // 떨어지면 "영어를 골랐는데 한글이 섞여 나오는" 상태가 된다. _tk() 로
+  // 키 단위까지 영어 폴백을 걸어 마크업 리터럴이 남는 경로도 막는다.
+  localStorage.setItem('pap-lang',l);_curLang=l;var d=L[l]||L.en||L.ko;
+  function _tk(k){ return d[k]||(L.en&&L.en[k]); }
+  document.querySelectorAll('[data-i18n]').forEach(function(e){var v=_tk(e.getAttribute('data-i18n'));if(v)e.textContent=v;});
+  document.querySelectorAll('[data-i18n-html]').forEach(function(e){var v=_tk(e.getAttribute('data-i18n-html'));if(v)e.innerHTML=v.replace(/\\n/g,'<br>');});
   // QA #86 — also process data-i18n-ph for input/textarea placeholders
-  document.querySelectorAll('[data-i18n-ph]').forEach(function(e){var k=e.getAttribute('data-i18n-ph');if(d[k])e.placeholder=d[k];});
-  if(document.getElementById('footerLegal')&&d.ft) document.getElementById('footerLegal').innerHTML=d.ft;
+  document.querySelectorAll('[data-i18n-ph]').forEach(function(e){var v=_tk(e.getAttribute('data-i18n-ph'));if(v)e.placeholder=v;});
+  var _ft=_tk('ft');
+  if(document.getElementById('footerLegal')&&_ft) document.getElementById('footerLegal').innerHTML=_ft;
   var sel=document.getElementById('langSelect');
   if(sel) sel.value=l;
   _applyFieldTexts();
   _applyTerms();
 }
+// ── 전역 setLang 충돌 해소 (2026-07-26) ───────────────────────────────
+// pap-i18n.js(defer) 가 전역 setLang 을 덮어쓴다. 인라인 스크립트가 먼저
+// 실행되므로 이 페이지의 setLang 은 항상 진다. 최초 로드는 아래 자동감지
+// IIFE 가 페이지 함수를 직접 불러 정상이지만, 언어 선택기로 바꾸면 공용
+// 사전만 적용되고 이 페이지 전용 키·_curLang(= _t/_errT 가 참조) 이 갱신되지
+// 않아 이전 언어 문구가 남았다. 덮어쓰이기 전에 참조를 잡아 이어서 적용한다.
+var _papPageSetLang = setLang;
+document.addEventListener('DOMContentLoaded', function(){
+  var g = window.setLang;
+  if(typeof g !== 'function'){ window.setLang = _papPageSetLang; return; }
+  if(g === _papPageSetLang || g._papPageChained) return;
+  var chained = function(l){
+    try{ g.apply(this, arguments); }catch(e){}
+    try{ _papPageSetLang(l); }catch(e){}
+  };
+  chained._papPageChained = true;
+  window.setLang = chained;
+});
 // AUTO LANGUAGE DETECTION
 (function(){
   var saved=localStorage.getItem('pap-lang');
@@ -3398,7 +3444,8 @@ function _prefillFromMoodboard(){
           var notice = document.createElement('div');
           notice.id = 'mbBridgeNotice';
           notice.style.cssText = 'background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.35);padding:14px 18px;margin-bottom:24px;font-size:13px;color:rgba(255,255,255,.85);letter-spacing:.02em';
-          notice.innerHTML = '✨ <strong>'+ (b.title||'') + '</strong> 무드보드를 기반으로 제안 중입니다. 제목과 컨셉이 자동 입력되었어요.';
+          // 2026-07-26 — 한국어 하드코딩이었다. 제목은 그대로 두고 안내문만 언어별로.
+          notice.innerHTML = '✨ <strong>'+ PAP.sanitize(b.title||'') + '</strong> ' + _errT('moodboardPrefill');
           formArea.insertBefore(notice, formArea.firstChild);
         }
       }).catch(function(){});

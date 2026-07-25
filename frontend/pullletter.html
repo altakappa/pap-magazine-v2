@@ -451,13 +451,13 @@ function navigateWithInterstitial(url){
          무드보드·촬영 컨셉·팀 구성을 이 시안 PDF 하나에 포함하는 구조로 통합. -->
     <div class="form-section-title" style="margin-top:40px" data-i18n="secProposal">SHOOT PROPOSAL (PDF)</div>
     <div class="form-group">
-      <label class="form-label"><span data-i18n="labelProposal">촬영시안 PDF Upload</span> <span class="required">*</span></label>
+      <label class="form-label"><span data-i18n="labelProposal">Shoot Proposal PDF Upload</span> <span class="required">*</span></label>
       <div class="upload-zone" id="proposalZone" style="cursor:pointer" onclick="document.getElementById('proposalInput').click()">
         <input type="file" class="upload-input" id="proposalInput" accept="application/pdf" style="display:none" onchange="_onProposalSelected(this.files)">
         <div class="upload-icon">
           <svg viewBox="0 0 36 36" fill="none"><path d="M14 4h12l8 8v18a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4V8a4 4 0 0 1 4-4h4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 22h8M14 26h8" stroke-width="2" stroke-linecap="round"/></svg>
         </div>
-        <div class="upload-text" id="proposalDropText"><strong data-i18n="uploadClick">Click</strong> <span data-i18n="proposalUploadHint">to attach your 촬영시안 PDF</span></div>
+        <div class="upload-text" id="proposalDropText"><strong data-i18n="uploadClick">Click</strong> <span data-i18n="proposalUploadHint">to attach your shoot proposal PDF</span></div>
         <div class="upload-hint" data-i18n="proposalSpec">PDF only · max 25MB</div>
       </div>
       <div class="file-list" id="proposalFileList"></div>
@@ -611,6 +611,170 @@ fr:{business:'BUSINESS',contact:'CONTACT',about:'À PROPOS',subscribe:"S'ABONNER
 ja:{business:'BUSINESS',contact:'CONTACT',about:'ABOUT',subscribe:'購読',premiumOnly:'PREMIUM限定',pageTitle:'PULL-LETTER',pageDesc:'PAP Magazineエディターに直接フルレターフィードバックをリクエストしてください。Premiumサブスクリプション会員限定の専門コンサルティングサービスです。',gateTitle:'PREMIUM会員限定',gateDesc:'フルレターフィードバックはPremium購読会員のみご利用いただけます。',gateTier:'Premiumプラン：¥1,400/月 · 年間¥11,800',gateLogin:'ログイン',gateUpgrade:'Premiumを購読',secPhotographer:'\u30d5\u30a9\u30c8\u30b0\u30e9\u30d5\u30a1\u30fc\u60c5\u5831',labelPhName:'\u30d5\u30a9\u30c8\u30b0\u30e9\u30d5\u30a1\u30fc\u540d',labelPhInsta:'Instagram',labelPhPortfolio:'\u30dd\u30fc\u30c8\u30d5\u30a9\u30ea\u30aa\u30b5\u30a4\u30c8',secStylist:'\u30b9\u30bf\u30a4\u30ea\u30b9\u30c8\u60c5\u5831',labelStName:'\u30b9\u30bf\u30a4\u30ea\u30b9\u30c8\u540d',labelStInsta:'Instagram',labelStPortfolio:'\u30dd\u30fc\u30c8\u30d5\u30a9\u30ea\u30aa\u30b5\u30a4\u30c8',secContact:'\u9023\u7d61\u5148',labelContactName:'\u304a\u540d\u524d',labelContactEmail:'\u30e1\u30fc\u30eb',secMoodboard:'\u64ae\u5f71\u65b9\u5411\u6027 / \u30e0\u30fc\u30c9\u30dc\u30fc\u30c9',labelMoodboard:'\u30e0\u30fc\u30c9\u30dc\u30fc\u30c9\u30a2\u30c3\u30d7\u30ed\u30fc\u30c9',uploadClick:'\u30af\u30ea\u30c3\u30af',uploadOr:'\u307e\u305f\u306f\u30d5\u30a1\u30a4\u30eb\u3092\u30c9\u30e9\u30c3\u30b0',uploadSpec:'JPG, PNG, PDF, PPT \u00b7 \u6700\u592725MB',moodboardHint:'\u30e0\u30fc\u30c9\u30dc\u30fc\u30c9\u3001\u30ea\u30d5\u30a1\u30ec\u30f3\u30b9\u753b\u50cf\u3092\u6dfb\u4ed8\u3057\u3066\u304f\u3060\u3055\u3044\u3002',labelAdditional:'\u8ffd\u52a0\u30e1\u30c3\u30bb\u30fc\u30b8\uff08\u4efb\u610f\uff09',proc1Label:'\u30ea\u30af\u30a8\u30b9\u30c8',proc1Desc:'\u30dd\u30fc\u30c8\u30d5\u30a9\u30ea\u30aa\u3001Instagram\u3001\u30e0\u30fc\u30c9\u30dc\u30fc\u30c9\u3092\u63d0\u51fa',proc2Label:'\u5be9\u67fb',proc2Desc:'PAP\u30a8\u30c7\u30a3\u30bf\u30fc\u304c\u5b9f\u529b\u3068\u65b9\u5411\u6027\u3092\u5be9\u67fb',proc3Label:'\u7d50\u679c',proc3Desc:'Pull-Letter\u767a\u884c\u307e\u305f\u306f\u4e0d\u767a\u884c\u7406\u7531\u3092\u3054\u6848\u5185',btnSubmit:'Pull-Letter\u3092\u30ea\u30af\u30a8\u30b9\u30c8',successTitle:'\u30ea\u30af\u30a8\u30b9\u30c8\u53d7\u4ed8\u5b8c\u4e86',successDesc:'Pull-Letter\u30ea\u30af\u30a8\u30b9\u30c8\u304c\u53d7\u3051\u4ed8\u3051\u3089\u308c\u307e\u3057\u305f\u3002',infoTitle:'PULL-LETTER\u3068\u306f\uff1f',infoText:'Pull-Letter\u306f\u3001PAP Magazine\u304c\u30af\u30ea\u30a8\u30a4\u30bf\u30fc\u306e\u5b9f\u529b\u3068\u64ae\u5f71\u65b9\u5411\u6027\u3092\u5be9\u67fb\u3057\u305f\u4e0a\u3067\u516c\u5f0f\u306b\u767a\u884c\u3059\u308b\u30ec\u30bf\u30fc\u3067\u3059\u3002',ft:'<strong>株式会社アルタカッパ</strong> | CEO : カン・ドンミン | 事業者番号 192-88-02644<br>ソウル特別市江南区論峴路146キル18, 1F | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},
 zh:{business:'商务',contact:'联系',about:'关于',subscribe:'订阅',premiumOnly:'仅限PREMIUM',pageTitle:'PULL-LETTER',pageDesc:'直接向PAP Magazine编辑请求Pull-Letter反馈。这是仅限Premium订阅会员使用的专业咨询服务。',gateTitle:'仅限PREMIUM会员',gateDesc:'Pull-Letter反馈仅限Premium订阅会员使用。',gateTier:'Premium方案：¥65.9/月 · 年付¥549',gateLogin:'登录',gateUpgrade:'订阅Premium',secPhotographer:'\u6444\u5f71\u5e08\u4fe1\u606f',labelPhName:'\u6444\u5f71\u5e08\u59d3\u540d',labelPhInsta:'Instagram',labelPhPortfolio:'\u4f5c\u54c1\u96c6\u7f51\u7ad9',secStylist:'\u9020\u578b\u5e08\u4fe1\u606f',labelStName:'\u9020\u578b\u5e08\u59d3\u540d',labelStInsta:'Instagram',labelStPortfolio:'\u4f5c\u54c1\u96c6\u7f51\u7ad9',secContact:'\u8054\u7cfb\u65b9\u5f0f',labelContactName:'\u60a8\u7684\u59d3\u540d',labelContactEmail:'\u90ae\u7bb1',secMoodboard:'\u62cd\u6444\u65b9\u5411 / \u60c5\u7eea\u677f',labelMoodboard:'\u4e0a\u4f20\u60c5\u7eea\u677f',uploadClick:'\u70b9\u51fb',uploadOr:'\u6216\u5c06\u6587\u4ef6\u62d6\u81f3\u6b64\u5904',uploadSpec:'JPG, PNG, PDF, PPT \u00b7 \u6700\u592725MB',moodboardHint:'\u8bf7\u9644\u4e0a\u60c5\u7eea\u677f\u3001\u53c2\u8003\u56fe\u7247\u548c\u6982\u5ff5\u6750\u6599\u3002',labelAdditional:'\u8865\u5145\u4fe1\u606f\uff08\u53ef\u9009\uff09',proc1Label:'\u7533\u8bf7',proc1Desc:'\u63d0\u4ea4\u4f5c\u54c1\u96c6\u3001Instagram\u548c\u60c5\u7eea\u677f',proc2Label:'\u5ba1\u6838',proc2Desc:'PAP\u7f16\u8f91\u8bc4\u4f30\u80fd\u529b\u548c\u65b9\u5411',proc3Label:'\u7ed3\u679c',proc3Desc:'\u53d1\u653ePull-Letter\u6216\u544a\u77e5\u62d2\u7edd\u539f\u56e0',btnSubmit:'\u7533\u8bf7Pull-Letter',successTitle:'\u7533\u8bf7\u5df2\u63a5\u6536',successDesc:'\u60a8\u7684Pull-Letter\u7533\u8bf7\u5df2\u88ab\u63a5\u6536\u3002PAP\u7f16\u8f91\u5c06\u5ba1\u6838\u540e\u901a\u8fc7\u90ae\u4ef6\u544a\u77e5\u7ed3\u679c\u3002',infoTitle:'\u4ec0\u4e48\u662fPULL-LETTER\uff1f',infoText:'Pull-Letter\u662fPAP Magazine\u5728\u5168\u9762\u5ba1\u6838\u521b\u4f5c\u8005\u80fd\u529b\u548c\u62cd\u6444\u65b9\u5411\u540e\u6b63\u5f0f\u53d1\u51fa\u7684\u4fe1\u51fd\u3002',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | 营业执照号 192-88-02644<br>首尔特别市江南区论岘路146街18, 1F | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'},ru:{business:'БИЗНЕС',contact:'КОНТАКТ',about:'О НАС',subscribe:'ПОДПИСКА',submission:'ПОДАЧА',pullletter:'PULL-LETTER',premiumOnly:'ТОЛЬКО PREMIUM',pageTitle:'PULL-LETTER',pageDesc:'Pull-Letter — это официальное письмо, выдаваемое PAP Magazine после проверки компетенций и творческого направления автора. Предоставьте портфолио и Instagram фотографа и стилиста, а также мудборд.',gateTitle:'ТОЛЬКО ДЛЯ PREMIUM',gateDesc:'Этот сервис доступен только для подписчиков Premium.',gateTier:'Premium: $9.49/мес · Годовой $79.99',gateLogin:'ВОЙТИ',gateUpgrade:'Подписаться на Premium',secPhotographer:'ИНФОРМАЦИЯ О ФОТОГРАФЕ',labelPhName:'Имя фотографа',labelPhInsta:'Instagram',labelPhPortfolio:'Портфолио',secStylist:'ИНФОРМАЦИЯ О СТИЛИСТЕ',labelStName:'Имя стилиста',labelStInsta:'Instagram',labelStPortfolio:'Портфолио',secContact:'КОНТАКТНАЯ ИНФОРМАЦИЯ',labelContactName:'Ваше имя',labelContactEmail:'Email',secMoodboard:'НАПРАВЛЕНИЕ СЪЕМКИ / МУДБОРД',labelMoodboard:'Загрузить мудборд',uploadClick:'Нажмите',uploadOr:'или перетащите файлы',uploadSpec:'JPG, PNG, PDF, PPT · Макс 25MB на файл',moodboardHint:'Прикрепите мудборды, справочные изображения и концептуальные материалы.',labelAdditional:'Дополнительное сообщение (необязательно)',proc1Label:'ЗАПРОС',proc1Desc:'Отправьте портфолио, Instagram и мудборд',proc2Label:'ПРОВЕРКА',proc2Desc:'Редакторы PAP оценивают компетенции и направление',proc3Label:'РЕЗУЛЬТАТ',proc3Desc:'Pull-Letter выдан или указаны причины отказа',btnSubmit:'Запросить Pull-Letter',successTitle:'ЗАПРОС ПОЛУЧЕН',successDesc:'Ваш запрос на Pull-Letter получен. Редакторы PAP проверят ваши портфолио и мудборд и сообщат результат по email.',infoTitle:'ЧТО ТАКОЕ PULL-LETTER?',infoText:'Pull-Letter — это официальное письмо, выданное PAP Magazine после полной проверки компетенций творца и направления съемки.',reviewTitle:'РЕЗУЛЬТАТ ПРОВЕРКИ',reviewPending:'Ваш запрос на Pull-Letter находится на проверке. Вам будет отправлено уведомление на этой странице и по email.',demoApproved:'Пример одобрения',demoDeclined:'Пример отказа',demoRevision:'Пример запроса изменений',demoPending:'На проверке',statusApproved:'ОДОБРЕНО',statusDeclined:'ОТКАЗАНО',statusRevision:'ТРЕБУЮТСЯ ИЗМЕНЕНИЯ',msgApproved:'Ваш Pull-Letter одобрен. Мы отправим официальное письмо на ваш email с подробностями сотрудничества.',msgDeclined:'После проверки ваш запрос на Pull-Letter не был одобрен.\n\n[Причина отказа]\nСтиль работ в портфолио отличается от редакционного направления PAP. Рекомендуем переотправить портфолио с более экспериментальными и артистическими визуальными работами.',msgRevision:'После проверки ваши материалы требуют доработки.\n\n[Требуемые изменения]\nМудборд не имеет четкого направления. Переотправьте с конкретными справочными изображениями и более четким описанием концепции. Ссылка на портфолио стилиста недоступна.',ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Рег. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'}
 };
+
+// ═══════════════════════════════════════════════════════════════════
+// 언어 정합 보강 (2026-07-26 — 도메니코 지시: "영어면 전부 영어, 한국어면 전부 한국어")
+// ═══════════════════════════════════════════════════════════════════
+// [발견한 문제]
+//  ① es 사전이 통째로 없었다. setLang 의 폴백이 L.ko 라서, 스페인어를 고르거나
+//     Madrid/Mexico 타임존으로 자동 감지되면 페이지 전체가 한국어로 떴다.
+//  ② 2026-07-22 에 추가된 촬영시안(proposal)·비디오그래퍼·컨셉 블록의 키가
+//     ko 에만 있었다. en 을 포함한 나머지 8개 언어에서 마크업 리터럴이 그대로
+//     남았고, 그중 labelProposal/proposalUploadHint 는 리터럴 자체가
+//     "촬영시안 PDF Upload" 라 영어 모드에도 한글이 섞여 나왔다.
+//  ③ it/fr/ja/zh 는 검토결과(reviewTitle/demo*/reviewPending) 키도 없었다.
+//
+// [원칙] 아래는 '누락분만' 채운다 — 기존 값은 절대 덮어쓰지 않는다(병합 루프의
+// undefined 검사). 한국어 출력은 한 글자도 바뀌지 않는다.
+var _PAP_PULLLETTER_I18N_EXT = {
+  en: {
+    secVideographer:'VIDEOGRAPHER INFO (OPTIONAL)', optional:'(OPTIONAL)',
+    labelVgName:'Videographer Name', labelVgInsta:'Instagram', labelVgPortfolio:'Portfolio Site',
+    vgHint:"If your shoot includes video, please add the videographer's info. Leave blank if photo-only.",
+    secProposal:'SHOOT PROPOSAL (PDF)', labelProposal:'Shoot Proposal PDF Upload',
+    proposalUploadHint:'to attach your shoot proposal PDF', proposalSpec:'PDF only · max 25MB',
+    proposalHelp:'Your proposal PDF must include the mood board, shoot concept, and team composition. Adding schedule and budget speeds up the review.'
+  },
+  de: {
+    secVideographer:'VIDEOGRAFEN-INFO (OPTIONAL)', optional:'(OPTIONAL)',
+    labelVgName:'Name des Videografen', labelVgInsta:'Instagram', labelVgPortfolio:'Portfolio-Website',
+    vgHint:'Wenn Ihr Shooting Video umfasst, geben Sie die Videografen-Infos an. Bei reinen Fotoshootings freilassen.',
+    secProposal:'SHOOTING-KONZEPT (PDF)', labelProposal:'Shooting-Konzept als PDF hochladen',
+    proposalUploadHint:'um Ihr Shooting-Konzept als PDF anzuhängen', proposalSpec:'Nur PDF · max. 25MB',
+    proposalHelp:'Das Konzept-PDF muss Mood Board, Shooting-Konzept und Teamzusammensetzung enthalten. Zeitplan und Budget beschleunigen die Prüfung.',
+    secConcept:'SHOOTING-KONZEPT', labelConceptTitle:'Konzept-Titel',
+    conceptTitleHint:'Ein kurzer englischer Titel für dieses Shooting — erscheint in Ihrer Anfrageliste und für die PAP-Redaktion.'
+  },
+  it: {
+    secVideographer:'INFO VIDEOMAKER (OPZIONALE)', optional:'(OPZIONALE)',
+    labelVgName:'Nome del videomaker', labelVgInsta:'Instagram', labelVgPortfolio:'Sito Portfolio',
+    vgHint:'Se lo shooting include video, inserisci i dati del videomaker. Lascia vuoto se è solo fotografico.',
+    secProposal:'PROPOSTA DI SHOOTING (PDF)', labelProposal:'Carica la proposta di shooting in PDF',
+    proposalUploadHint:'per allegare la tua proposta di shooting in PDF', proposalSpec:'Solo PDF · max 25MB',
+    proposalHelp:'Il PDF deve includere mood board, concept dello shooting e composizione del team. Aggiungere tempistiche e budget velocizza la revisione.',
+    secConcept:'CONCEPT DELLO SHOOTING', labelConceptTitle:'Titolo del concept',
+    conceptTitleHint:'Un breve titolo in inglese per questo shooting — visibile nella tua lista richieste e agli editor PAP.',
+    submission:'SUBMISSION', pullletter:'PULL-LETTER', reviewTitle:'ESITO DELLA REVISIONE',
+    demoApproved:'Esempio approvato', demoDeclined:'Esempio rifiutato',
+    demoRevision:'Esempio di revisione', demoPending:'In revisione',
+    reviewPending:'La tua richiesta di Pull-Letter è in fase di revisione. Riceverai una notifica su questa pagina e via email non appena ci sarà una decisione.',
+    statusApproved:'APPROVATA', statusDeclined:'RIFIUTATA', statusRevision:'MODIFICHE RICHIESTE',
+    msgApproved:'La tua Pull-Letter è stata approvata. Invieremo la lettera ufficiale alla tua email insieme ai dettagli della collaborazione.',
+    msgDeclined:'Dopo la revisione, la tua richiesta di Pull-Letter non è stata approvata.\n\n[Motivo del rifiuto]\nLo stile del portfolio si discosta dalla direzione editoriale che PAP persegue attualmente. Consigliamo di riproporre un portfolio con lavori visivi più sperimentali e artistici.',
+    msgRevision:'Dopo la revisione, il materiale inviato richiede modifiche.\n\n[Modifiche necessarie]\nIl mood board non ha una direzione chiara. Riproponilo con immagini di riferimento specifiche e una descrizione del concept più netta. Il link al portfolio dello stilista non sembra valido.'
+  },
+  fr: {
+    secVideographer:'INFOS VIDÉASTE (OPTIONNEL)', optional:'(OPTIONNEL)',
+    labelVgName:'Nom du vidéaste', labelVgInsta:'Instagram', labelVgPortfolio:'Site Portfolio',
+    vgHint:'Si votre shooting comprend de la vidéo, indiquez les infos du vidéaste. Laissez vide si photo uniquement.',
+    secProposal:'PROPOSITION DE SHOOTING (PDF)', labelProposal:'Importer la proposition de shooting en PDF',
+    proposalUploadHint:'pour joindre votre proposition de shooting en PDF', proposalSpec:'PDF uniquement · max 25 Mo',
+    proposalHelp:'Le PDF doit contenir le mood board, le concept du shooting et la composition de l’équipe. Ajouter le planning et le budget accélère l’examen.',
+    secConcept:'CONCEPT DU SHOOTING', labelConceptTitle:'Titre du concept',
+    conceptTitleHint:'Un titre court en anglais pour ce shooting — affiché dans votre liste de demandes et pour les éditeurs PAP.',
+    submission:'SUBMISSION', pullletter:'PULL-LETTER', reviewTitle:'RÉSULTAT DE L’EXAMEN',
+    demoApproved:'Exemple approuvé', demoDeclined:'Exemple refusé',
+    demoRevision:'Exemple de révision', demoPending:'En cours d’examen',
+    reviewPending:'Votre demande de Pull-Letter est en cours d’examen. Vous serez notifié sur cette page et par email dès qu’une décision sera prise.',
+    statusApproved:'APPROUVÉE', statusDeclined:'REFUSÉE', statusRevision:'RÉVISION REQUISE',
+    msgApproved:'Votre Pull-Letter a été approuvée. Nous enverrons la lettre officielle à votre email avec les détails de la collaboration.',
+    msgDeclined:'Après examen, votre demande de Pull-Letter n’a pas été approuvée.\n\n[Motif du refus]\nLe style du portfolio diffère de la direction éditoriale que PAP poursuit actuellement. Nous recommandons de renvoyer un portfolio comportant un travail visuel plus expérimental et artistique.',
+    msgRevision:'Après examen, les éléments envoyés nécessitent des modifications.\n\n[Modifications requises]\nLe mood board manque de direction claire. Renvoyez-le avec des images de référence précises et une description du concept plus nette. Le lien vers le portfolio du styliste semble invalide.'
+  },
+  ja: {
+    secVideographer:'ビデオグラファー情報（任意）', optional:'（任意）',
+    labelVgName:'ビデオグラファー名', labelVgInsta:'Instagram', labelVgPortfolio:'ポートフォリオサイト',
+    vgHint:'映像撮影を含む場合はビデオグラファー情報をご記入ください。写真のみの撮影なら空欄で構いません。',
+    secProposal:'撮影提案書（PDF）', labelProposal:'撮影提案書PDFをアップロード',
+    proposalUploadHint:'して撮影提案書PDFを添付', proposalSpec:'PDFのみ · 最大25MB',
+    proposalHelp:'提案書PDFにはムードボード・撮影コンセプト・チーム構成を必ず含めてください。スケジュールと予算まで記載すると審査が早まります。',
+    secConcept:'撮影コンセプト', labelConceptTitle:'コンセプトタイトル',
+    conceptTitleHint:'この撮影を表す短い英語タイトル — リクエスト一覧とPAPエディターに表示されます。',
+    submission:'SUBMISSION', pullletter:'PULL-LETTER', reviewTitle:'審査結果',
+    demoApproved:'承認例', demoDeclined:'却下例', demoRevision:'修正依頼例', demoPending:'審査中',
+    reviewPending:'Pull-Letterのリクエストは現在審査中です。結果が出次第、このページとメールでお知らせします。',
+    statusApproved:'承認', statusDeclined:'却下', statusRevision:'修正が必要',
+    msgApproved:'Pull-Letterが承認されました。コラボレーションの詳細とあわせて、公式レターをメールでお送りします。',
+    msgDeclined:'審査の結果、Pull-Letterのリクエストは承認されませんでした。\n\n[却下理由]\nポートフォリオのスタイルが、PAPが現在志向するエディトリアルの方向性と異なります。より実験的でアート性の高いビジュアル作品を含むポートフォリオでの再申請をおすすめします。',
+    msgRevision:'審査の結果、ご提出いただいた資料に修正が必要です。\n\n[修正が必要な点]\nムードボードの方向性が明確ではありません。具体的なリファレンス画像と、より明確なコンセプト説明を添えて再提出してください。スタイリストのポートフォリオリンクが無効のようです。'
+  },
+  zh: {
+    secVideographer:'视频摄影师信息（选填）', optional:'（选填）',
+    labelVgName:'视频摄影师姓名', labelVgInsta:'Instagram', labelVgPortfolio:'作品集网站',
+    vgHint:'若拍摄包含视频，请填写视频摄影师信息。仅拍摄照片可留空。',
+    secProposal:'拍摄方案（PDF）', labelProposal:'上传拍摄方案 PDF',
+    proposalUploadHint:'以附上拍摄方案 PDF', proposalSpec:'仅限 PDF · 最大 25MB',
+    proposalHelp:'方案 PDF 须包含情绪板、拍摄概念与团队构成。附上日程与预算可加快审核。',
+    secConcept:'拍摄概念', labelConceptTitle:'概念标题',
+    conceptTitleHint:'为本次拍摄取一个简短的英文标题 — 将显示在您的申请列表中并提供给 PAP 编辑。',
+    submission:'SUBMISSION', pullletter:'PULL-LETTER', reviewTitle:'审核结果',
+    demoApproved:'通过示例', demoDeclined:'拒绝示例', demoRevision:'修改示例', demoPending:'审核中',
+    reviewPending:'您的 Pull-Letter 申请正在审核中。有结果后将在本页面及邮件通知您。',
+    statusApproved:'已通过', statusDeclined:'未通过', statusRevision:'需要修改',
+    msgApproved:'您的 Pull-Letter 已通过审核。我们将把正式信函连同合作细节发送至您的邮箱。',
+    msgDeclined:'经审核，您的 Pull-Letter 申请未获通过。\n\n[拒绝原因]\n作品集风格与 PAP 目前追求的编辑方向存在差异。建议补充更具实验性与艺术性的视觉作品后重新提交。',
+    msgRevision:'经审核，您提交的材料需要修改。\n\n[需要修改的内容]\n情绪板缺乏明确方向。请附上具体的参考图片与更清晰的概念说明后重新提交。造型师的作品集链接似乎无效。'
+  },
+  ru: {
+    secVideographer:'ИНФОРМАЦИЯ О ВИДЕОГРАФЕ (НЕОБЯЗАТЕЛЬНО)', optional:'(НЕОБЯЗАТЕЛЬНО)',
+    labelVgName:'Имя видеографа', labelVgInsta:'Instagram', labelVgPortfolio:'Портфолио',
+    vgHint:'Если съёмка включает видео, укажите данные видеографа. Для фотосъёмки оставьте поле пустым.',
+    secProposal:'ПРЕДЛОЖЕНИЕ ПО СЪЁМКЕ (PDF)', labelProposal:'Загрузить предложение по съёмке в PDF',
+    proposalUploadHint:'чтобы прикрепить предложение по съёмке в PDF', proposalSpec:'Только PDF · до 25 МБ',
+    proposalHelp:'PDF должен включать мудборд, концепцию съёмки и состав команды. Указание сроков и бюджета ускорит рассмотрение.',
+    secConcept:'КОНЦЕПЦИЯ СЪЁМКИ', labelConceptTitle:'Название концепции',
+    conceptTitleHint:'Короткое название съёмки на английском — отображается в вашем списке заявок и для редакторов PAP.'
+  },
+  // es 는 사전 자체가 없었다 — 마크업이 쓰는 키 전부를 새로 채운다.
+  es: {
+    premiumOnly:'SOLO PREMIUM', subscribe:'SUSCRIBIRSE',
+    submission:'SUBMISSION', pullletter:'PULL-LETTER',
+    pageTitle:'PULL-LETTER',
+    pageDesc:'Una Pull-Letter es una carta oficial que PAP Magazine emite tras revisar la capacidad y la dirección creativa del creador. Envía los portfolios e Instagram del fotógrafo y del estilista junto con tu mood board.',
+    gateTitle:'SOLO MIEMBROS PREMIUM', gateDesc:'Este servicio está disponible exclusivamente para suscriptores Premium.',
+    gateTier:'Plan Premium: €8.99/mes · Anual €74.99', gateLogin:'INICIAR SESIÓN', gateUpgrade:'Suscribirse a Premium',
+    secConcept:'CONCEPTO DE LA SESIÓN', labelConceptTitle:'Título del concepto',
+    conceptTitleHint:'Un título breve en inglés para esta sesión — se muestra en tu lista de solicitudes y a los editores de PAP.',
+    secPhotographer:'INFORMACIÓN DEL FOTÓGRAFO', labelPhName:'Nombre del fotógrafo',
+    labelPhInsta:'Instagram', labelPhPortfolio:'Sitio de portfolio',
+    secStylist:'INFORMACIÓN DEL ESTILISTA', labelStName:'Nombre del estilista',
+    labelStInsta:'Instagram', labelStPortfolio:'Sitio de portfolio',
+    secVideographer:'INFORMACIÓN DEL VIDEÓGRAFO (OPCIONAL)', optional:'(OPCIONAL)',
+    labelVgName:'Nombre del videógrafo', labelVgInsta:'Instagram', labelVgPortfolio:'Sitio de portfolio',
+    vgHint:'Si tu sesión incluye vídeo, añade los datos del videógrafo. Déjalo vacío si es solo fotografía.',
+    secContact:'INFORMACIÓN DE CONTACTO', labelContactName:'Tu nombre', labelContactEmail:'Email',
+    secProposal:'PROPUESTA DE SESIÓN (PDF)', labelProposal:'Subir la propuesta de sesión en PDF',
+    uploadClick:'Haz clic', proposalUploadHint:'para adjuntar tu propuesta de sesión en PDF',
+    proposalSpec:'Solo PDF · máx 25MB',
+    proposalHelp:'El PDF debe incluir el mood board, el concepto de la sesión y la composición del equipo. Añadir calendario y presupuesto agiliza la revisión.',
+    labelAdditional:'Mensaje adicional (opcional)',
+    proc1Label:'SOLICITUD', proc1Desc:'Envía portfolios, Instagram y mood board',
+    proc2Label:'REVISIÓN', proc2Desc:'Los editores de PAP evalúan capacidad y dirección',
+    proc3Label:'RESULTADO', proc3Desc:'Pull-Letter emitida o motivos del rechazo',
+    btnSubmit:'Solicitar Pull-Letter',
+    successTitle:'SOLICITUD RECIBIDA',
+    successDesc:'Hemos recibido tu solicitud de Pull-Letter. Los editores de PAP revisarán tus portfolios y mood board y te informarán del resultado por email.',
+    infoTitle:'¿QUÉ ES UNA PULL-LETTER?',
+    infoText:'Una Pull-Letter es una carta oficial emitida por PAP Magazine tras revisar la capacidad del creador y la dirección de la sesión.',
+    reviewTitle:'RESULTADO DE LA REVISIÓN',
+    reviewPending:'Tu solicitud de Pull-Letter está en revisión. Te avisaremos en esta página y por email en cuanto haya una decisión.',
+    demoApproved:'Ejemplo aprobado', demoDeclined:'Ejemplo rechazado',
+    demoRevision:'Ejemplo de revisión', demoPending:'En revisión',
+    statusApproved:'APROBADA', statusDeclined:'RECHAZADA', statusRevision:'REQUIERE CAMBIOS',
+    msgApproved:'Tu Pull-Letter ha sido aprobada. Enviaremos la carta oficial a tu email junto con los detalles de la colaboración.',
+    msgDeclined:'Tras la revisión, tu solicitud de Pull-Letter no ha sido aprobada.\n\n[Motivo del rechazo]\nEl estilo del portfolio difiere de la dirección editorial que PAP persigue actualmente. Recomendamos volver a enviarla con un portfolio que incluya trabajo visual más experimental y artístico.',
+    msgRevision:'Tras la revisión, el material enviado requiere cambios.\n\n[Cambios necesarios]\nEl mood board carece de una dirección clara. Vuelve a enviarlo con imágenes de referencia concretas y una descripción del concepto más nítida. El enlace al portfolio del estilista no parece válido.',
+    ft:'<strong>ALTAKAPPA Co., Ltd.</strong> | CEO : Domenico Kang | Reg. 192-88-02644<br>1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seúl, Corea | <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a>'
+  }
+};
+// 병합 — 기존 값은 건드리지 않고 없는 키만 채운다. L[lang] 자체가 없으면(es) 만든다.
+Object.keys(_PAP_PULLLETTER_I18N_EXT).forEach(function(lang){
+  if(!L[lang]) L[lang] = {};
+  var ext = _PAP_PULLLETTER_I18N_EXT[lang];
+  Object.keys(ext).forEach(function(k){
+    if(L[lang][k] === undefined) L[lang][k] = ext[k];
+  });
+});
 
 // ======== FILE UPLOAD ========
 /* 2026-07-22 (도메니코 지시) — 별도 무드보드 업로드란 제거.
@@ -890,14 +1054,17 @@ document.querySelectorAll('#flForm .form-input').forEach(function(el){
 function showReview(type){
   var container=document.getElementById('reviewContent');
   var lang=localStorage.getItem('pap-lang')||'ko';
-  var d=L[lang]||L.ko;
+  // 2026-07-26 — setLang 과 같은 규칙: 없는 언어는 한국어가 아니라 영어로 폴백.
+  var d=L[lang]||L.en||L.ko;
 
   // Highlight active demo button
   document.querySelectorAll('.demo-btn').forEach(function(b){b.classList.remove('active');});
   event.target.classList.add('active');
 
   if(type==='pending'){
-    container.innerHTML='<div class="review-empty">'+d.reviewPending+'</div>';
+    // 다른 키들과 달리 여기만 폴백이 없어, 사전에 키가 없는 언어에서
+    // "undefined" 가 그대로 찍혔다 (it/fr/ja/zh). 영어 폴백 추가.
+    container.innerHTML='<div class="review-empty">'+(d.reviewPending||(L.en&&L.en.reviewPending)||'')+'</div>';
     return;
   }
 
@@ -932,11 +1099,40 @@ function simulateLogin(){
 // ======== LANGUAGE ========
 function setLang(l){
   localStorage.setItem('pap-lang',l);
-  var d=L[l]||L.ko;
-  document.querySelectorAll('[data-i18n]').forEach(function(e){var k=e.getAttribute('data-i18n');if(d[k])e.textContent=d[k];});
-  document.getElementById('footerLegal').innerHTML=d.ft;
+  // 2026-07-26 — 폴백을 한국어에서 영어로. 예전엔 L[l] 이 없으면(es) 페이지
+  // 전체가 한국어로 떴다. 사전에 없는 언어·키는 영어로 떨어져야 한다.
+  var d=L[l]||L.en||L.ko;
+  document.querySelectorAll('[data-i18n]').forEach(function(e){
+    var k=e.getAttribute('data-i18n');
+    // 키 단위 폴백 — 특정 키만 비어 있어도 마크업 리터럴(한글이 섞인 경우가 있다)이
+    // 남지 않도록 영어 값으로 채운다.
+    var v=d[k]||(L.en&&L.en[k]);
+    if(v)e.textContent=v;
+  });
+  document.getElementById('footerLegal').innerHTML=d.ft||(L.en&&L.en.ft)||'';
   document.getElementById('langSelect').value=l;
 }
+// ── 전역 setLang 충돌 해소 (2026-07-26) ───────────────────────────────
+// pap-i18n.js 는 defer 로 로드되며 전역 setLang 을 '자기 것'으로 덮어쓴다.
+// 인라인 스크립트가 먼저 실행되므로 이 페이지의 setLang 은 항상 진다.
+// 그 결과:
+//   · 최초 로드 → 아래 자동감지 IIFE 가 이 페이지 함수를 직접 부르므로 정상
+//   · 언어 선택기(onchange="setLang(...)") → 전역(공용 T 사전)만 실행되어
+//     이 페이지 전용 키(btnSubmit·secPhotographer·proposal* 등)가 그대로 남았다
+// → "새로고침하면 맞는데 선택기로 바꾸면 이전 언어가 남는" 증상의 원인.
+// 덮어쓰이기 전에 참조를 잡아두고, 공용 함수 뒤에 이 페이지 사전을 이어서 적용한다.
+var _papPageSetLang = setLang;
+document.addEventListener('DOMContentLoaded', function(){
+  var g = window.setLang;
+  if(typeof g !== 'function'){ window.setLang = _papPageSetLang; return; }
+  if(g === _papPageSetLang || g._papPageChained) return;
+  var chained = function(l){
+    try{ g.apply(this, arguments); }catch(e){}
+    try{ _papPageSetLang(l); }catch(e){}
+  };
+  chained._papPageChained = true;
+  window.setLang = chained;
+});
 // AUTO LANGUAGE DETECTION
 (function(){
   var saved=localStorage.getItem('pap-lang');
