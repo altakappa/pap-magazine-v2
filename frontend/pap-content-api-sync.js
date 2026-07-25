@@ -578,11 +578,17 @@ window._papFilmAutoPlay = function(){
       // pap-utils.js 는 이 파일보다 먼저 로드된다(전 페이지 defer 순서 확인).
       // 만에 하나 없으면 눈에 띄게 실패하는 편이 조용히 갈리는 것보다 낫다.
       var meta = papFmtMeta(a.cat || '', a.d || a.published_date || '');
+      // 2026-07-26 — 카드 제목을 현재 언어로. ko/en 을 data 속성에 실어
+      // setLang→_applyArticleCardI18n 이 정적 JSON 없이도 즉시 전환하게 한다.
+      var _lt = (typeof _papLocTitle==='function' && a.ti18n) ? (_papLocTitle(a)||a.t||'') : (a.t||'');
+      var _enT = (a.ti18n && a.ti18n.en) ? a.ti18n.en : '';
+      if(a.t) card.setAttribute('data-title-ko', a.t);
+      if(_enT) card.setAttribute('data-title-en', _enT);
       card.innerHTML =
-        '<div class="fashion-card-img"><img loading="' + loadingAttr + '" decoding="async"' + priorityAttr + ' src="' + _esc(img) + '" alt="' + _esc(a.t || '') + '"></div>' +
+        '<div class="fashion-card-img"><img loading="' + loadingAttr + '" decoding="async"' + priorityAttr + ' src="' + _esc(img) + '" alt="' + _esc(_lt) + '"></div>' +
         '<div class="fashion-card-info">' +
           '<div class="fashion-card-cat">' + _esc(meta) + '</div>' +
-          '<div class="fashion-card-title">' + _esc(a.t || '') + '</div>' +
+          '<div class="fashion-card-title">' + _esc(_lt) + '</div>' +
         '</div>';
       track.insertBefore(card, track.firstChild);
     });

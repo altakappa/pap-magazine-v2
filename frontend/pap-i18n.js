@@ -106,6 +106,17 @@ function _applyArticleCardI18n(l){
         if(tr) titleEl.textContent = tr.toUpperCase();
       }
     });
+    // 3) API-렌더 카드(정적 JSON 미포함): 카드가 실은 data-title-ko/en 으로 즉시 전환.
+    document.querySelectorAll('.fashion-card[data-title-en],.fashion-card[data-title-ko],.card[data-title-en],.card[data-title-ko]').forEach(function(card){
+      var ko=card.getAttribute('data-title-ko')||'';
+      var en=card.getAttribute('data-title-en')||'';
+      var pick=(l==='ko')?(ko||en):(en||ko);
+      if(!pick) return;
+      var titleEl=card.querySelector('.fashion-card-title')||card.querySelector('.card-title');
+      if(titleEl){ titleEl.textContent = card.classList.contains('card') ? pick.toUpperCase() : pick; }
+      var imgEl=card.querySelector('.fashion-card-img img')||card.querySelector('img');
+      if(imgEl) imgEl.setAttribute('alt', pick);
+    });
   }catch(e){console.warn('Card i18n error:',e);}
 }
 function _loadArticleI18n(){
