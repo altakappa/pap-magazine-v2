@@ -415,7 +415,7 @@ module.exports = async function handler(req, res) {
         .limit(200);
       if (error) throw error;
       const rows = data || [];
-      // 실제 기사 발행 순서(오래된→최신)로 정렬 — 위→아래로 붙여넣으면 발행 순서와 일치.
+      // 실제 기사 발행 순서 기준 최신순(내림차순) 정렬 — 최신 발행 기사가 맨 위.
       // published_date(날짜)+created_at(시각) 으로 같은 날도 정확히. 조회 실패분은 맨 뒤.
       const pubKey = {};
       try {
@@ -433,11 +433,12 @@ module.exports = async function handler(req, res) {
         }
       } catch (_) { /* 정렬 보조 실패 시 created_at 로 대체 */ }
       rows.sort((x, y) => {
-        const kx = pubKey[x.source_slug] || ('9999-12-31|' + (x.created_at || ''));
-        const ky = pubKey[y.source_slug] || ('9999-12-31|' + (y.created_at || ''));
-        if (kx < ky) return -1;
-        if (kx > ky) return 1;
-        return (x.created_at || '') < (y.created_at || '') ? -1 : 1;
+        // 2026-07-25 — 최신순(내림차순): 최신 발행 기사를 맨 위로. 발행일 미상은 맨 뒤.
+        const kx = pubKey[x.source_slug] || ('0000-00-00|' + (x.created_at || ''));
+        const ky = pubKey[y.source_slug] || ('0000-00-00|' + (y.created_at || ''));
+        if (kx > ky) return -1;
+        if (kx < ky) return 1;
+        return (x.created_at || '') > (y.created_at || '') ? -1 : 1;
       });
       return res.status(200).json({ brand, kind, queue: rows });
     }
