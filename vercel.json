@@ -98,7 +98,7 @@
     },
     {
       "path": "/api/cron/naver-draft-sweep",
-      "schedule": "0 16,20 * * *"
+      "schedule": "0 */4 * * *"
     },
     {
       "path": "/api/cron/backfill-translations",

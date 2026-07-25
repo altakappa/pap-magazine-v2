@@ -8,10 +8,12 @@
  * 복사 → 네이버 붙여넣기 → 발행만 하면 된다(사람 손 = 마지막 붙여넣기뿐).
  *
  * 발행/게시가 아니라 '초안 생성·저장'만 하므로 파괴적 작업 아님.
- * NAVER_DRAFT_SWEEP_ENABLED=false 로 끌 수 있다. 하루 상한 = NAVER_DRAFT_DAILY_MAX(기본 2).
+ * NAVER_DRAFT_SWEEP_ENABLED=false 로 끌 수 있다. 실행 1회당 상한 = NAVER_DRAFT_DAILY_MAX(기본 4,
+ * 최대 4 — 함수 타임아웃 120s 안전선). 크론이 4시간마다(하루 6회) 돌아 하루 최대 24건까지
+ * 자동 생성 → 발행 속도(하루 7~11건)를 앞지른다. 생성은 '오래된 미전환부터'(발행 순서).
  *
  * 초안 생성은 Claude API(ANTHROPIC_API_KEY)를 호출하므로 건당 비용이 있어
- * 한 실행에 소량(기본 2건)만 생성한다.
+ * 한 실행에 최대 4건(기본 4건)만 생성하고, 부족분은 다음 크론 실행이 이어서 채운다.
  */
 
 const { supabaseAdmin } = require('../_lib/supabase');
@@ -30,7 +32,7 @@ module.exports = withCronGuard('naver-draft-sweep', async function handler(req, 
     return res.status(200).json({ ok: true, note: '비활성화 (NAVER_DRAFT_SWEEP_ENABLED=false)' });
   }
 
-  const dailyMax = Math.max(1, Math.min(5, parseInt(process.env.NAVER_DRAFT_DAILY_MAX || '2', 10) || 2));
+  const dailyMax = Math.max(1, Math.min(4, parseInt(process.env.NAVER_DRAFT_DAILY_MAX || '4', 10) || 4));
 
   const generated = [];
   let doneReason = null;

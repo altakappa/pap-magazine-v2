@@ -307,20 +307,31 @@ async function generateBySlug(brand, kind, slug) {
 }
 
 // 최근 발행 콘텐츠 중 아직 초안이 없는 첫 건의 slug 를 찾는다.
-// recent = [{ slug, id }] 최신순, doneSet = 이미 초안 있는 slug 집합.
-async function _recentPublished(brand, kind, limit) {
+// pending = 발행순(오름차순) 미전환 목록, doneSet = 이미 초안 있는 slug 집합.
+// 최근 발행 콘텐츠 목록 — 발행 순서(오래된→최신) 오름차순으로 반환.
+// opt.lookbackDays 가 있으면 그 기간 내 발행분만(오래된 누락 백필 방지).
+// published_date 는 날짜 단위라 같은 날 순서는 created_at 로 확정한다.
+async function _recentPublished(brand, kind, opt) {
+  opt = (typeof opt === 'number') ? { limit: opt } : (opt || {});
+  const limit = opt.limit || 60;
+  const since = opt.lookbackDays
+    ? new Date(Date.now() - opt.lookbackDays * 86400000).toISOString().slice(0, 10)
+    : null;
   const b = SITES[brand];
   if (kind === 'editorial') {
-    const { data } = await supabaseAdmin.from('editorials')
-      .select('id, slug').eq('status', 'published').not('slug', 'is', null)
-      .order('published_date', { ascending: false }).limit(limit);
-    return (data || []).map((r) => ({ slug: r.slug, id: r.id })).filter((r) => r.slug);
+    let qy = supabaseAdmin.from('editorials')
+      .select('id, slug, published_date, created_at').eq('status', 'published').not('slug', 'is', null);
+    if (since) qy = qy.gte('published_date', since);
+    const { data } = await qy.order('published_date', { ascending: true }).order('created_at', { ascending: true }).limit(limit);
+    return (data || []).map((r) => ({ slug: r.slug, id: r.id, published_date: r.published_date, created_at: r.created_at })).filter((r) => r.slug);
   }
-  const { data } = await supabaseAdmin.from(b.table)
-    .select('id, slug' + (brand === 'pap' ? ', custom_url' : ''))
-    .eq('status', 'published').order('published_date', { ascending: false }).limit(limit);
+  let qy = supabaseAdmin.from(b.table)
+    .select('id, slug, published_date, created_at' + (brand === 'pap' ? ', custom_url' : ''))
+    .eq('status', 'published');
+  if (since) qy = qy.gte('published_date', since);
+  const { data } = await qy.order('published_date', { ascending: true }).order('created_at', { ascending: true }).limit(limit);
   return (data || [])
-    .map((r) => ({ slug: brand === 'pap' ? (r.custom_url || r.slug) : r.slug, id: r.id }))
+    .map((r) => ({ slug: brand === 'pap' ? (r.custom_url || r.slug) : r.slug, id: r.id, published_date: r.published_date, created_at: r.created_at }))
     .filter((r) => r.slug);
 }
 
@@ -328,13 +339,16 @@ async function _recentPublished(brand, kind, limit) {
 // 관리자 generate_next 경로와 크론(naver-draft-sweep)이 공유한다.
 // 반환: { done, remaining, draft, slug } — done=true 면 미전환 콘텐츠 없음.
 async function generateNext(brand, kind) {
-  const recent = await _recentPublished(brand, kind, 40);
+  // 발행 순서 유지 + 오래된 누락 백필 방지: 최근 NAVER_DRAFT_LOOKBACK_DAYS(기본 3)일
+  // 내 발행분만 대상으로, '가장 오래된 미전환' 기사부터(= 다음 발행 순서) 생성한다.
+  const lookbackDays = Math.max(1, parseInt(process.env.NAVER_DRAFT_LOOKBACK_DAYS || '3', 10) || 3);
+  const recent = await _recentPublished(brand, kind, { lookbackDays, limit: 120 });
   const { data: done } = await supabaseAdmin.from('naver_blog_drafts')
     .select('source_slug').eq('brand', brand).eq('kind', kind);
   const doneSet = new Set((done || []).map((d) => d.source_slug));
-  const pending = recent.filter((r) => !doneSet.has(r.slug));
+  const pending = recent.filter((r) => !doneSet.has(r.slug)); // 발행 오름차순 정렬됨
   if (!pending.length) return { done: true, remaining: 0, draft: null, slug: null };
-  const next = pending[0];
+  const next = pending[0]; // 가장 오래된 미전환 = 다음 발행 순서
   const { draft, sourceId } = await generateBySlug(brand, kind, next.slug);
   const { data: saved, error: sErr } = await supabaseAdmin.from('naver_blog_drafts')
     .upsert({
@@ -398,9 +412,34 @@ module.exports = async function handler(req, res) {
       const { data, error } = await supabaseAdmin.from('naver_blog_drafts')
         .select('id, title, source_slug, article_url, tags, status, created_at')
         .eq('brand', brand).eq('kind', kind).eq('status', 'draft')
-        .order('created_at', { ascending: false }).limit(50);
+        .limit(200);
       if (error) throw error;
-      return res.status(200).json({ brand, kind, queue: data || [] });
+      const rows = data || [];
+      // 실제 기사 발행 순서(오래된→최신)로 정렬 — 위→아래로 붙여넣으면 발행 순서와 일치.
+      // published_date(날짜)+created_at(시각) 으로 같은 날도 정확히. 조회 실패분은 맨 뒤.
+      const pubKey = {};
+      try {
+        const b = SITES[brand];
+        const table = kind === 'editorial' ? 'editorials' : (b && b.table);
+        const useCustom = (brand === 'pap' && kind !== 'editorial');
+        if (table) {
+          const { data: arts } = await supabaseAdmin.from(table)
+            .select('slug, published_date, created_at' + (useCustom ? ', custom_url' : ''))
+            .eq('status', 'published');
+          (arts || []).forEach((a) => {
+            const key = useCustom ? (a.custom_url || a.slug) : a.slug;
+            if (key) pubKey[key] = (a.published_date || '9999-12-31') + '|' + (a.created_at || '');
+          });
+        }
+      } catch (_) { /* 정렬 보조 실패 시 created_at 로 대체 */ }
+      rows.sort((x, y) => {
+        const kx = pubKey[x.source_slug] || ('9999-12-31|' + (x.created_at || ''));
+        const ky = pubKey[y.source_slug] || ('9999-12-31|' + (y.created_at || ''));
+        if (kx < ky) return -1;
+        if (kx > ky) return 1;
+        return (x.created_at || '') < (y.created_at || '') ? -1 : 1;
+      });
+      return res.status(200).json({ brand, kind, queue: rows });
     }
 
     // ── 저장된 초안 단건 조회 (큐에서 열기) ──
