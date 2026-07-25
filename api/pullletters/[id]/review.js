@@ -36,12 +36,22 @@ module.exports = async function handler(req, res) {
       reviewed_by: admin.id,
       reviewed_at: new Date().toISOString(),
     };
+    // A-4 (2026-07-26 감사) — 발급 PDF 경로 위조 방지. upload.js 가 만드는
+    // '<uid>/<파일>.pdf' 형식(폴더 1단계 + .pdf, 경로 이탈 금지)만 허용.
+    var _plPath = null;
+    if (typeof pullLetterPath === 'string' && pullLetterPath) {
+      if (pullLetterPath.indexOf('..') === -1 && /^[A-Za-z0-9_-]+\/[A-Za-z0-9._-]+\.pdf$/i.test(pullLetterPath)) {
+        _plPath = pullLetterPath;
+      } else {
+        return res.status(400).json({ message: 'Invalid pullLetterPath', code: 'invalid_path' });
+      }
+    }
     if (status === 'issued') {
       update.issued_at = new Date().toISOString();
-      if (pullLetterPath) update.pull_letter_url = pullLetterPath;
-    } else if (typeof pullLetterPath === 'string') {
+      if (_plPath) update.pull_letter_url = _plPath;
+    } else if (_plPath) {
       // Allow attaching the PDF on approval too (pre-issue), optional.
-      update.pull_letter_url = pullLetterPath;
+      update.pull_letter_url = _plPath;
     }
 
     const { data: pullLetter, error } = await supabaseAdmin
@@ -60,9 +70,11 @@ module.exports = async function handler(req, res) {
     if (profile) {
       const _lang = resolveEmailLang(profile);
       const isPositive = status === 'accepted' || status === 'approved' || status === 'issued';
-      const tpl = isPositive
-        ? templates.pullletterAccepted({ name: profile.name }, reviewNote, _lang)
-        : templates.pullletterRejected({ name: profile.name }, reviewNote, _lang);
+      const tpl = status === 'issued'
+        ? templates.pullletterIssued({ name: profile.name }, reviewNote, _lang)
+        : isPositive
+          ? templates.pullletterAccepted({ name: profile.name }, reviewNote, _lang)
+          : templates.pullletterRejected({ name: profile.name }, reviewNote, _lang);
       sendEmail(profile.email, tpl).catch(() => {});
     }
 

@@ -452,6 +452,20 @@ const SUBSCRIPTION_I18N = {
   }
 };
 
+// B-3 (2026-07-26 감사) — 발급(issued) 전용 다국어 카피. 예전엔 'accepted'
+// 템플릿을 재사용해 "승인" 문구가 나갔다. 발급 완료 = PDF 다운로드 안내가 맞다.
+const PULLLETTER_ISSUED_I18N = {
+  ko: { subject: 'Pull-Letter가 발급되었습니다', heading: 'Pull-Letter 발급 완료', body: '요청하신 Pull-Letter가 발급되었습니다. 마이페이지에서 PDF를 다운로드하실 수 있습니다.', cta: 'PDF 다운로드' },
+  en: { subject: 'Your Pull-Letter Has Been Issued', heading: 'Pull-Letter Issued', body: 'Your pull-letter has been issued. You can download the PDF from your My Page.', cta: 'DOWNLOAD PDF' },
+  it: { subject: 'La tua Pull-Letter è stata emessa', heading: 'Pull-Letter emessa', body: 'La tua pull-letter è stata emessa. Puoi scaricare il PDF dalla tua My Page.', cta: 'SCARICA PDF' },
+  fr: { subject: 'Votre Pull-Letter a été émise', heading: 'Pull-Letter émise', body: 'Votre pull-letter a été émise. Vous pouvez télécharger le PDF depuis votre My Page.', cta: 'TÉLÉCHARGER LE PDF' },
+  es: { subject: 'Tu Pull-Letter ha sido emitida', heading: 'Pull-Letter emitida', body: 'Tu pull-letter ha sido emitida. Puedes descargar el PDF desde tu My Page.', cta: 'DESCARGAR PDF' },
+  ja: { subject: 'Pull-Letterが発行されました', heading: 'Pull-Letter 発行完了', body: 'Pull-Letterが発行されました。マイページからPDFをダウンロードできます。', cta: 'PDFをダウンロード' },
+  zh: { subject: '您的 Pull-Letter 已签发', heading: 'Pull-Letter 已签发', body: '您的 pull-letter 已签发。您可以在“我的页面”下载 PDF。', cta: '下载 PDF' },
+  ru: { subject: 'Ваш Pull-Letter выписан', heading: 'Pull-Letter выписан', body: 'Ваш pull-letter выписан. Вы можете скачать PDF в личном кабинете (My Page).', cta: 'СКАЧАТЬ PDF' },
+  de: { subject: 'Ihre Pull-Letter wurde ausgestellt', heading: 'Pull-Letter ausgestellt', body: 'Ihre Pull-Letter wurde ausgestellt. Sie können das PDF in Ihrer My Page herunterladen.', cta: 'PDF HERUNTERLADEN' },
+};
+
 const templates = {
   // 1. Welcome email after signup
   welcome(user) {
@@ -619,6 +633,20 @@ const templates = {
         <p>${L.body2}</p>
       `, lang),
     };
+  },
+
+  // 7b. Pull-letter issued (PDF ready to download) — B-3
+  pullletterIssued(user, note, lang) {
+    var L = PULLLETTER_ISSUED_I18N[lang] || PULLLETTER_ISSUED_I18N.en;
+    var greet = emailUiStrings(lang).greeting.replace('{name}', (user && user.name) || 'there');
+    var detailsLabel = (PULLLETTER_I18N[lang] || PULLLETTER_I18N.en).accepted.detailsLabel;
+    var noteHtml = note ? ('<div style="margin:20px 0;padding:16px;background:#1a1a1a;border-left:3px solid #4CAF50;"><span style="color:#999;font-size:11px;text-transform:uppercase;letter-spacing:1px;">' + detailsLabel + '</span><br><span style="color:#ccc;font-size:14px;">' + note + '</span></div>') : '';
+    var html = '<h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">' + L.heading + '</h2>'
+      + '<p>' + greet + '</p>'
+      + '<p>' + L.body + '</p>'
+      + noteHtml
+      + '<a href="' + FRONTEND_URL + '/mypage#mp-pullletters" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">' + L.cta + '</a>';
+    return { subject: L.subject, html: wrapHtml(html, lang) };
   },
 
   // 8. Subscription confirmation
