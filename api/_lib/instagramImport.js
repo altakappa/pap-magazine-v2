@@ -42,7 +42,7 @@ function _creds(opts){
 async function listRecentMedia(opts){
   const limit = (opts && opts.limit) || 25;
   const { userId, token } = _creds(opts);
-  const fields = 'id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username,like_count,comments_count,children{media_url,media_type,thumbnail_url}';
+  const fields = 'id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username,like_count,comments_count';
   const url = `${_IG_API}/${userId}/media?fields=${encodeURIComponent(fields)}&limit=${limit}&access_token=${token}`;
   const res = await fetch(url);
   if (!res.ok){
@@ -64,7 +64,7 @@ async function listMediaPaged(opts){
   const pageGuard = (opts && opts.pageGuard) || Math.max(10, Math.ceil(maxCount / 50) + 2);
   const { userId, token } = _creds(opts);
   const cutoff = Date.now() - sinceDays * 86400000;
-  const fields = 'id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username,like_count,comments_count,children{media_url,media_type,thumbnail_url}';
+  const fields = 'id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username,like_count,comments_count';
   let url = `${_IG_API}/${userId}/media?fields=${encodeURIComponent(fields)}&limit=50&access_token=${token}`;
   const out = [];
   let guard = 0;
@@ -98,7 +98,7 @@ async function listMediaPaged(opts){
 // 위험)하지만, 이 함수는 커서를 저장해 이어받으므로 실행당 API 호출 1회로 끝난다.
 async function fetchMediaPage(opts){
   const { userId, token } = _creds(opts);
-  const fields = 'id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username,like_count,comments_count,children{media_url,media_type,thumbnail_url}';
+  const fields = 'id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username,like_count,comments_count';
   // 커서는 불투명 after 값만 저장·전달한다. Graph 의 paging.next 전체 URL 에는
   // access_token 이 박혀 있어 DB(ops_alert_state)에 저장하면 비밀값이 유출된다.
   // → after 파라미터만 넘기고 URL 은 매 호출 재구성(토큰은 DB 에 안 남는다).
@@ -138,6 +138,7 @@ async function fetchInstagramPost(input){
     m.permalink && m.permalink.includes('/' + shortcode + '/')
   );
   if (hit){
+    await hydrateChildren(hit);
     return _normalizeMedia(hit);
   }
   throw new Error(
@@ -145,6 +146,36 @@ async function fetchInstagramPost(input){
     '더 최근 게시물을 사용해 주세요. ' +
     '(IG_USER_ID가 올바른 계정인지도 확인하세요.)'
   );
+}
+
+// 캐러셀 자식 미디어를 단건 조회한다. 벌크 미디어 목록에서 children{} 중첩 확장을
+// 제거(Graph API 500 "Please reduce the amount of data" 방지)한 뒤, 실제로 수집하는
+// CAROUSEL_ALBUM 게시물에 대해서만 이 함수로 지연 조회한다. 반환: children.data 배열.
+async function fetchMediaChildren(mediaId, opts){
+  const { token } = _creds(opts);
+  const fields = 'children{media_url,media_type,thumbnail_url}';
+  const url = `${_IG_API}/${mediaId}?fields=${encodeURIComponent(fields)}&access_token=${token}`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+  if (!res.ok){
+    const body = await res.text().catch(() => '');
+    throw new Error('Graph API children 조회 실패 (' + res.status + '): ' + body.slice(0, 200));
+  }
+  const json = await res.json();
+  return (json.children && Array.isArray(json.children.data)) ? json.children.data : [];
+}
+
+// 캐러셀이면 children 을 지연 조회해 m.children.data 에 붙인다(이미 있으면 통과).
+// 조회 실패는 치명적이지 않게 삼켜 대표 이미지/썸네일 폴백으로 기사화되게 둔다.
+async function hydrateChildren(m, opts){
+  if (!m || m.media_type !== 'CAROUSEL_ALBUM') return m;
+  if (m.children && Array.isArray(m.children.data) && m.children.data.length) return m;
+  try {
+    const data = await fetchMediaChildren(m.id, opts);
+    m.children = { data };
+  } catch (e){
+    console.error('[instagramImport] hydrateChildren ' + (m && m.id) + ' 실패:', (e && e.message) || e);
+  }
+  return m;
 }
 
 function _normalizeMedia(m){
@@ -456,6 +487,8 @@ module.exports = {
   archiveImagesToStorage,
   archiveVideosToStorage,
   isLikelyEditorialCaption,
+  fetchMediaChildren,
+  hydrateChildren,
   normalizeMedia: _normalizeMedia,
   _extractShortcode,
 };

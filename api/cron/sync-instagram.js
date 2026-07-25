@@ -40,6 +40,7 @@ const {
   archiveVideosToStorage,
   isLikelyEditorialCaption,
   normalizeMedia,
+  hydrateChildren,
   _extractShortcode,
 } = require('../_lib/instagramImport');
 
@@ -142,6 +143,7 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
     // 기사 카테고리 화이트리스트 — 백필은 이 목록 밖(에디토리얼·미상)이면 무조건 스킵.
     const ARTICLE_CATEGORIES = ['news', 'fashion', 'beauty', 'culture', 'celeb'];
     async function processOne(m){
+      await hydrateChildren(m, cred);
       const post = normalizeMedia(m);
       // 백필은 엄격 모드(에디토리얼·룩북·화보·크레딧 → Editorial 판정, 애매하면 Editorial).
       const generated = await generateArticleFromPost(post, { strictEditorial: backfillMode });
