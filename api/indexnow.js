@@ -54,14 +54,15 @@ const STATIC_URLS = [
  * 콘텐츠 URL 수집.
  * @param {string|null} sinceIso — 지정 시 그 시각 이후 발행/갱신된 것만 (recent 모드)
  */
-async function recentContentUrls(sinceIso) {
+async function recentContentUrls(sinceIso, limits) {
   const urls = [];
+  const L = limits || {};
   try {
     let q = supabaseAdmin
       .from('editorials').select('slug, id')
       .eq('status', 'published')
       .order('published_date', { ascending: false, nullsFirst: false })
-      .limit(30);
+      .limit(L.editorial || 30);
     if (sinceIso) q = q.gte('published_date', sinceIso);
     const { data: eds } = await q;
     (eds || []).forEach(e => {
@@ -70,14 +71,14 @@ async function recentContentUrls(sinceIso) {
   } catch (_) {}
   try {
     let q = supabaseAdmin
-      .from('articles').select('custom_url, id')
+      .from('articles').select('slug, custom_url, id')
       .eq('status', 'published')
       .order('published_date', { ascending: false })
-      .limit(30);
+      .limit(L.article || 30);
     if (sinceIso) q = q.gte('published_date', sinceIso);
     const { data: arts } = await q;
     (arts || []).forEach(a => {
-      const h = a.custom_url || a.id; if (h) urls.push(SITE + '/article/' + encodeURIComponent(h));
+      const h = a.slug || a.custom_url || a.id; if (h) urls.push(SITE + '/article/' + encodeURIComponent(h));
     });
   } catch (_) {}
   try {
@@ -85,7 +86,7 @@ async function recentContentUrls(sinceIso) {
       .from('films').select('title, id')
       .eq('status', 'published')
       .order('published_date', { ascending: false })
-      .limit(20);
+      .limit(L.film || 20);
     if (sinceIso) q = q.gte('published_date', sinceIso);
     const { data: films } = await q;
     (films || []).forEach(f => {
@@ -142,9 +143,18 @@ module.exports = async function handler(req, res) {
       if (u.startsWith(SITE)) urlList = [u];
     }
 
+    // backfill 모드: 레거시/대량 발행분 catch-up — 최근 N일(기본 30, 최대 90) 발행물의
+    // 정식 슬러그 URL 을 대량 재제출(네이버·빙 색인 가속). 수동 트리거용.
+    if (!urlList.length && mode === 'backfill') {
+      const days = Math.min(parseInt((req.query && req.query.days) || '30', 10) || 30, 90);
+      const since = new Date(Date.now() - days * 86400000).toISOString();
+      urlList = await recentContentUrls(since, { editorial: 500, article: 2000, film: 200 });
+      if (!urlList.length) return res.status(200).json({ submitted: 0, mode, message: '해당 기간 발행물 없음.' });
+    }
+
     if (!urlList.length && mode === 'recent') {
       const since = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
-      const recent = await recentContentUrls(since);
+      const recent = await recentContentUrls(since, { article: 200 });
       if (!recent.length) {
         return res.status(200).json({ submitted: 0, mode, message: '최근 48시간 변경 콘텐츠 없음 — 제출 생략.' });
       }
