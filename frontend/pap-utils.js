@@ -327,7 +327,7 @@ function buildPagination(container,currentPage,totalPages,onPageChange,isDark){
     var b=document.createElement('button');
     b.type='button';
     b.className='pag-jump '+(direction<0?'pag-jump-prev':'pag-jump-next');
-    var label=(direction<0?'이전 ':'다음 ')+PAP_PAGE_JUMP+'페이지로 이동';
+    var label=(typeof lang!=='undefined'&&lang==='ko')?((direction<0?'이전 ':'다음 ')+PAP_PAGE_JUMP+'페이지로 이동'):((direction<0?'Previous ':'Next ')+PAP_PAGE_JUMP+' pages');
     b.setAttribute('aria-label',label);
     b.title=(direction<0?'-':'+')+PAP_PAGE_JUMP+' pages';
     b.innerHTML='<span class="pag-jump-dots" aria-hidden="true">···</span>'+

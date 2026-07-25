@@ -186,16 +186,16 @@ function openCreatorPopup(cr){
     if(lvlEl2 && lvlEl2.parentNode) lvlEl2.parentNode.insertBefore(ratingSlot, lvlEl2.nextSibling);
   }
   if(typeof PAPSocial!=='undefined'){
-    ratingSlot.innerHTML='<div class="pap-profile-rating-empty">별점 불러오는 중...</div>';
+    ratingSlot.innerHTML='<div class="pap-profile-rating-empty">'+(lang==='ko'?'별점 불러오는 중...':'Loading ratings...')+'</div>';
     Promise.resolve(PAPSocial.getCreatorAvgRating(handle)).then(function(cav){
       if(cav && cav.count>0){
         ratingSlot.innerHTML='<div class="pap-profile-rating">'+
           '<span class="pap-profile-rating-num">'+cav.avg.toFixed(1)+'</span>'+
           '<span class="pap-profile-rating-stars">'+PAPSocial.starHTML(cav.avg,false)+'</span>'+
-          '<span class="pap-profile-rating-count">'+cav.count+'명 평가 · '+(cav.ratedEditorials||0)+'/'+(cav.editorials||editorials.length)+' 에디토리얼</span>'+
+          '<span class="pap-profile-rating-count">'+cav.count+(lang==='ko'?'명 평가 · ':' ratings · ')+(cav.ratedEditorials||0)+'/'+(cav.editorials||editorials.length)+(lang==='ko'?' 에디토리얼':' editorials')+'</span>'+
         '</div>';
       } else if(editorials.length>0){
-        ratingSlot.innerHTML='<div class="pap-profile-rating-empty">아직 별점이 등록되지 않았습니다</div>';
+        ratingSlot.innerHTML='<div class="pap-profile-rating-empty">'+(lang==='ko'?'아직 별점이 등록되지 않았습니다':'No ratings yet')+'</div>';
       } else {
         ratingSlot.innerHTML='';
       }
@@ -260,7 +260,7 @@ function _openCreatorPopup_noPush(cr){
   if(ratingSlot) ratingSlot.innerHTML='';
   if(typeof PAPSocial!=='undefined' && ratingSlot){
     Promise.resolve(PAPSocial.getCreatorAvgRating(handle)).then(function(cav){
-      if(cav&&cav.count>0){ratingSlot.innerHTML='<div class="pap-profile-rating"><span class="pap-profile-rating-num">'+cav.avg.toFixed(1)+'</span><span class="pap-profile-rating-stars">'+PAPSocial.starHTML(cav.avg,false)+'</span><span class="pap-profile-rating-count">'+cav.count+'명 평가 · '+(cav.ratedEditorials||0)+'/'+(cav.editorials||editorials.length)+' 에디토리얼</span></div>';}
+      if(cav&&cav.count>0){ratingSlot.innerHTML='<div class="pap-profile-rating"><span class="pap-profile-rating-num">'+cav.avg.toFixed(1)+'</span><span class="pap-profile-rating-stars">'+PAPSocial.starHTML(cav.avg,false)+'</span><span class="pap-profile-rating-count">'+cav.count+(lang==='ko'?'명 평가 · ':' ratings · ')+(cav.ratedEditorials||0)+'/'+(cav.editorials||editorials.length)+' 에디토리얼</span></div>';}
     }).catch(function(){});
   }
   var grid=document.getElementById('cpWorks');

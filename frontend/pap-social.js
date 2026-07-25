@@ -23,8 +23,8 @@
   // available, so this module also works on pages that don't ship the
   // full app (e.g. articles.html, mypage.html if they ever use this).
   var _PAP_SOC_I18N = {
-    ko:{loginToRate:'로그인하시면 별점을 남길 수 있습니다',loginToComment:'댓글 작성은 로그인이 필요합니다',noComments:'아직 댓글이 없습니다. 첫 댓글을 남겨주세요.',login:'로그인',commentPh:'댓글을 남겨주세요',submit:'등록',rateCancel:'별점 취소',rateDeleteTitle:'별점 삭제',ratingCtaQ:'이 화보가 마음에 드셨나요?',ratingLoading:'별점 불러오는 중...',ratingAvg:'평균',ratingCountSuffix:'명 참여',ratingNone:'아직 평가가 없어요. 첫 별점을 남겨보세요!',ratingMine:'내 평점',ratingScoreSuffix:'점',relatedHeading:'이것도 좋아할 거예요'},
-    en:{loginToRate:'Sign in to leave a rating',loginToComment:'Sign in to leave a comment',noComments:'No comments yet. Be the first to comment.',login:'Sign In',commentPh:'Leave a comment',submit:'Post',rateCancel:'Remove rating',rateDeleteTitle:'Delete rating',ratingCtaQ:'Did you enjoy this editorial?',ratingLoading:'Loading rating...',ratingAvg:'Avg',ratingCountSuffix:' ratings',ratingNone:'No ratings yet. Be the first!',ratingMine:'Your rating',ratingScoreSuffix:'',relatedHeading:'You might also like'},
+    ko:{loginToRate:'로그인하시면 별점을 남길 수 있습니다',loginToComment:'댓글 작성은 로그인이 필요합니다',noComments:'아직 댓글이 없습니다. 첫 댓글을 남겨주세요.',login:'로그인',commentPh:'댓글을 남겨주세요',submit:'등록',rateCancel:'별점 취소',rateDeleteTitle:'별점 삭제',ratingCtaQ:'이 화보가 마음에 드셨나요?',ratingLoading:'별점 불러오는 중...',ratingAvg:'평균',ratingCountSuffix:'명 참여',ratingNone:'아직 평가가 없어요. 첫 별점을 남겨보세요!',ratingMine:'내 평점',ratingScoreSuffix:'점',relatedHeading:'이것도 좋아할 거예요',timeJustNow:'방금 전',timeMinAgo:'분 전',timeHourAgo:'시간 전',timeDayAgo:'일 전',myRatingLabel:'나의 평점:',notRated:'미평가',ratingSaveFail:'별점 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.',ratingDeleteConfirm:'내 별점을 취소하시겠습니까?',ratingDeleteFail:'별점 취소에 실패했습니다.',ratingLoadFail:'별점을 불러오지 못했습니다. 페이지를 새로고침해 주세요.',commentDeleteTitle:'삭제',reply:'답글',commentsLoading:'댓글 불러오는 중...',submitting:'등록 중...',commentSubmitFail:'댓글 등록에 실패했습니다. 잠시 후 다시 시도해 주세요.',commentDeleteConfirm:'이 댓글을 삭제하시겠습니까? 달린 답글도 함께 삭제됩니다.',commentDeleteFail:'삭제에 실패했습니다.',cancel:'취소',replyPh:'답글을 남겨주세요',replySubmit:'답글 등록',replySubmitFail:'답글 등록에 실패했습니다.',commentsLoadFail:'댓글을 불러오지 못했습니다.'},
+    en:{loginToRate:'Sign in to leave a rating',loginToComment:'Sign in to leave a comment',noComments:'No comments yet. Be the first to comment.',login:'Sign In',commentPh:'Leave a comment',submit:'Post',rateCancel:'Remove rating',rateDeleteTitle:'Delete rating',ratingCtaQ:'Did you enjoy this editorial?',ratingLoading:'Loading rating...',ratingAvg:'Avg',ratingCountSuffix:' ratings',ratingNone:'No ratings yet. Be the first!',ratingMine:'Your rating',ratingScoreSuffix:'',relatedHeading:'You might also like',timeJustNow:'just now',timeMinAgo:'m ago',timeHourAgo:'h ago',timeDayAgo:'d ago',myRatingLabel:'Your rating:',notRated:'Not rated',ratingSaveFail:'Failed to save your rating. Please try again shortly.',ratingDeleteConfirm:'Remove your rating?',ratingDeleteFail:'Failed to remove rating.',ratingLoadFail:'Could not load ratings. Please refresh the page.',commentDeleteTitle:'Delete',reply:'Reply',commentsLoading:'Loading comments...',submitting:'Posting...',commentSubmitFail:'Failed to post comment. Please try again shortly.',commentDeleteConfirm:'Delete this comment? Its replies will be deleted too.',commentDeleteFail:'Failed to delete.',cancel:'Cancel',replyPh:'Write a reply',replySubmit:'Post reply',replySubmitFail:'Failed to post reply.',commentsLoadFail:'Could not load comments.'},
     it:{loginToRate:'Accedi per lasciare una valutazione',loginToComment:'Accedi per lasciare un commento',noComments:'Nessun commento. Lascia il primo commento.',login:'Accedi',commentPh:'Lascia un commento',submit:'Pubblica',rateCancel:'Rimuovi valutazione',rateDeleteTitle:'Elimina valutazione'},
     fr:{loginToRate:'Connectez-vous pour laisser une note',loginToComment:'Connectez-vous pour laisser un commentaire',noComments:'Aucun commentaire pour le moment. Soyez le premier à commenter.',login:'Connexion',commentPh:'Laissez un commentaire',submit:'Publier',rateCancel:'Retirer la note',rateDeleteTitle:'Supprimer la note'},
     es:{loginToRate:'Inicia sesión para dejar una valoración',loginToComment:'Inicia sesión para dejar un comentario',noComments:'Aún no hay comentarios. Sé el primero en comentar.',login:'Iniciar Sesión',commentPh:'Deja un comentario',submit:'Publicar',rateCancel:'Quitar valoración',rateDeleteTitle:'Eliminar valoración'},
@@ -102,10 +102,10 @@
   function timeAgo(ts){
     var t = typeof ts === 'string' ? new Date(ts).getTime() : ts;
     var diff = (Date.now() - t) / 1000;
-    if(diff < 60) return '방금 전';
-    if(diff < 3600) return Math.floor(diff/60) + '분 전';
-    if(diff < 86400) return Math.floor(diff/3600) + '시간 전';
-    if(diff < 2592000) return Math.floor(diff/86400) + '일 전';
+    if(diff < 60) return _papSocT('timeJustNow');
+    if(diff < 3600) return Math.floor(diff/60) + _papSocT('timeMinAgo');
+    if(diff < 86400) return Math.floor(diff/3600) + _papSocT('timeHourAgo');
+    if(diff < 2592000) return Math.floor(diff/86400) + _papSocT('timeDayAgo');
     return new Date(t).toISOString().slice(0,10);
   }
 
@@ -245,7 +245,7 @@
     container.innerHTML = '<div class="pap-social-section pap-rating-block">'+
       '<div class="pap-social-label">RATING</div>'+
       '<div class="pap-rating-row"><div class="pap-rating-avg"><span class="pap-rating-num">—</span></div></div>'+
-      '<div class="pap-rating-me pap-login-hint">별점 불러오는 중...</div>'+
+      '<div class="pap-rating-me pap-login-hint">'+_papSocT('ratingLoading')+'</div>'+
     '</div>';
 
     Promise.all([
@@ -267,9 +267,9 @@
 
       if(user){
         h += '<div class="pap-rating-me">';
-        h += '  <span class="pap-rating-me-label">나의 평점:</span>';
+        h += '  <span class="pap-rating-me-label">'+_papSocT('myRatingLabel')+'</span>';
         h += '  <div class="pap-rating-stars pap-rating-input" data-editorial="'+escapeHTML(editorialTitle)+'">'+starHTML(myScore,true)+'</div>';
-        h += '  <span class="pap-rating-my-score">'+(myScore>0?(myScore+'점'):'미평가')+'</span>';
+        h += '  <span class="pap-rating-my-score">'+(myScore>0?(myScore+_papSocT('ratingScoreSuffix')):_papSocT('notRated'))+'</span>';
         if(myScore>0){
           h += '  <button class="pap-rating-delete" title="'+_papSocT('rateDeleteTitle')+'">'+_papSocT('rateCancel')+'</button>';
         }
@@ -299,7 +299,7 @@
               renderRatingBlock(container, editorialTitle);
             }).catch(function(err){
               console.error('[PAPSocial] rating save failed:', err);
-              alert('별점 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+              alert(_papSocT('ratingSaveFail'));
               st.style.pointerEvents='';
             });
           });
@@ -310,13 +310,13 @@
       var delBtn = container.querySelector('.pap-rating-delete');
       if(delBtn && user){
         delBtn.addEventListener('click', function(){
-          if(!confirm('내 별점을 취소하시겠습니까?')) return;
+          if(!confirm(_papSocT('ratingDeleteConfirm'))) return;
           delBtn.disabled = true;
           sbDeleteRating(editorialTitle, user.id).then(function(){
             renderRatingBlock(container, editorialTitle);
           }).catch(function(err){
             console.error('[PAPSocial] rating delete failed:', err);
-            alert('별점 취소에 실패했습니다.');
+            alert(_papSocT('ratingDeleteFail'));
             delBtn.disabled = false;
           });
         });
@@ -324,7 +324,7 @@
     }).catch(function(err){
       console.error('[PAPSocial] rating load failed:', err);
       container.innerHTML = '<div class="pap-social-section"><div class="pap-social-label">RATING</div>'+
-        '<div class="pap-login-hint">별점을 불러오지 못했습니다. 페이지를 새로고침해 주세요.</div></div>';
+        '<div class="pap-login-hint">'+_papSocT('ratingLoadFail')+'</div></div>';
     });
   }
 
@@ -337,13 +337,13 @@
     h += '    <span class="pap-comment-author">'+escapeHTML(c.userName)+'</span>';
     h += '    <span class="pap-comment-time">'+timeAgo(c.ts)+'</span>';
     if(canDelete){
-      h += '    <button class="pap-comment-delete" data-id="'+c.id+'" title="삭제">✕</button>';
+      h += '    <button class="pap-comment-delete" data-id="'+c.id+'" title="'+_papSocT('commentDeleteTitle')+'">✕</button>';
     }
     h += '  </div>';
     h += '  <div class="pap-comment-text">'+escapeHTML(c.text).replace(/\n/g,'<br>')+'</div>';
     h += '  <div class="pap-comment-actions">';
     if(canReply){
-      h += '<button class="pap-comment-reply-btn" data-id="'+c.id+'">답글</button>';
+      h += '<button class="pap-comment-reply-btn" data-id="'+c.id+'">'+_papSocT('reply')+'</button>';
     }
     h += '  </div>';
     h += '  <div class="pap-reply-form-slot" data-parent="'+c.id+'"></div>';
@@ -356,7 +356,7 @@
 
     container.innerHTML = '<div class="pap-social-section pap-comments-block">'+
       '<div class="pap-social-label">COMMENTS</div>'+
-      '<div class="pap-comments-empty">댓글 불러오는 중...</div>'+
+      '<div class="pap-comments-empty">'+_papSocT('commentsLoading')+'</div>'+
     '</div>';
 
     sbListComments(targetType, targetId).then(function(comments){
@@ -415,15 +415,15 @@
           var txt = (input.value||'').trim();
           if(!txt) return;
           submitBtn.disabled = true;
-          submitBtn.textContent = '등록 중...';
+          submitBtn.textContent = _papSocT('submitting');
           sbAddComment(targetType, targetId, txt, user, null).then(function(){
             input.value='';
             renderCommentsBlock(container, targetType, targetId);
           }).catch(function(err){
             console.error('[PAPSocial] comment submit failed:', err);
-            alert('댓글 등록에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+            alert(_papSocT('commentSubmitFail'));
             submitBtn.disabled = false;
-            submitBtn.textContent = '등록';
+            submitBtn.textContent = _papSocT('submit');
           });
         });
       }
@@ -431,7 +431,7 @@
       // Delete handlers
       container.querySelectorAll('.pap-comment-delete').forEach(function(btn){
         btn.addEventListener('click', function(){
-          if(!confirm('이 댓글을 삭제하시겠습니까? 달린 답글도 함께 삭제됩니다.')) return;
+          if(!confirm(_papSocT('commentDeleteConfirm'))) return;
           var u = currentUser();
           if(!u) return;
           btn.disabled = true;
@@ -439,7 +439,7 @@
             renderCommentsBlock(container, targetType, targetId);
           }).catch(function(err){
             console.error('[PAPSocial] delete failed:', err);
-            alert('삭제에 실패했습니다.');
+            alert(_papSocT('commentDeleteFail'));
             btn.disabled = false;
           });
         });
@@ -454,18 +454,18 @@
           // Toggle: if already has form, remove it
           if(slot.querySelector('.pap-reply-form')){
             slot.innerHTML='';
-            btn.textContent='답글';
+            btn.textContent=_papSocT('reply');
             return;
           }
           // Close other open reply forms
           container.querySelectorAll('.pap-reply-form-slot').forEach(function(s){ s.innerHTML=''; });
-          container.querySelectorAll('.pap-comment-reply-btn').forEach(function(b){ b.textContent='답글'; });
-          btn.textContent='취소';
+          container.querySelectorAll('.pap-comment-reply-btn').forEach(function(b){ b.textContent=_papSocT('reply'); });
+          btn.textContent=_papSocT('cancel');
           // Render reply form
           slot.innerHTML = '<div class="pap-reply-form">'+
             '<div class="pap-comment-user">'+escapeHTML(user.name)+'</div>'+
-            '<textarea class="pap-comment-input pap-reply-input" placeholder="답글을 남겨주세요" maxlength="1000"></textarea>'+
-            '<button class="pap-comment-submit pap-reply-submit">답글 등록</button>'+
+            '<textarea class="pap-comment-input pap-reply-input" placeholder="'+_papSocT('replyPh')+'" maxlength="1000"></textarea>'+
+            '<button class="pap-comment-submit pap-reply-submit">'+_papSocT('replySubmit')+'</button>'+
           '</div>';
           var replyInput = slot.querySelector('.pap-reply-input');
           var replySubmit = slot.querySelector('.pap-reply-submit');
@@ -474,14 +474,14 @@
             var txt = (replyInput.value||'').trim();
             if(!txt) return;
             replySubmit.disabled = true;
-            replySubmit.textContent = '등록 중...';
+            replySubmit.textContent = _papSocT('submitting');
             sbAddComment(targetType, targetId, txt, user, parentId).then(function(){
               renderCommentsBlock(container, targetType, targetId);
             }).catch(function(err){
               console.error('[PAPSocial] reply submit failed:', err);
-              alert('답글 등록에 실패했습니다.');
+              alert(_papSocT('replySubmitFail'));
               replySubmit.disabled = false;
-              replySubmit.textContent = '답글 등록';
+              replySubmit.textContent = _papSocT('replySubmit');
             });
           });
         });
@@ -489,7 +489,7 @@
     }).catch(function(err){
       console.error('[PAPSocial] comments load failed:', err);
       container.innerHTML = '<div class="pap-social-section"><div class="pap-social-label">COMMENTS</div>'+
-        '<div class="pap-login-hint">댓글을 불러오지 못했습니다.</div></div>';
+        '<div class="pap-login-hint">'+_papSocT('commentsLoadFail')+'</div></div>';
     });
   }
 
@@ -566,7 +566,7 @@
             renderEditorialRatingCta(container, editorialTitle);
           }).catch(function(err){
             console.error('[PAPSocial] rating save failed:', err);
-            alert('별점 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+            alert(_papSocT('ratingSaveFail'));
             wrap.style.pointerEvents = '';
           });
         });

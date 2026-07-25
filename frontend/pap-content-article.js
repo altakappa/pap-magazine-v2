@@ -370,8 +370,8 @@ function _renderArticleBlocks(blocks){
       var sid = 'slide-' + Math.random().toString(36).slice(2, 8);
       html += '<div class="article-slide-block" data-slide-id="' + sid + '" data-total="' + slideImgs.length + '" style="margin:36px 0;position:relative">';
       // 좌우 네비 버튼. 첫/마지막 슬라이드에서 opacity 감소.
-      html += '<button class="slide-nav-btn slide-prev" type="button" aria-label="이전 이미지" onclick="_papSlideNav(this,-1)" style="position:absolute;top:calc(50% - 30px);left:8px;z-index:5;width:40px;height:40px;border-radius:50%;border:none;background:rgba(0,0,0,.6);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:.3;transition:opacity .2s">‹</button>';
-      html += '<button class="slide-nav-btn slide-next" type="button" aria-label="다음 이미지" onclick="_papSlideNav(this,1)" style="position:absolute;top:calc(50% - 30px);right:8px;z-index:5;width:40px;height:40px;border-radius:50%;border:none;background:rgba(0,0,0,.6);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:1;transition:opacity .2s">›</button>';
+      html += '<button class="slide-nav-btn slide-prev" type="button" aria-label="'+(lang==='ko'?'이전 이미지':'Previous image')+'" onclick="_papSlideNav(this,-1)" style="position:absolute;top:calc(50% - 30px);left:8px;z-index:5;width:40px;height:40px;border-radius:50%;border:none;background:rgba(0,0,0,.6);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:.3;transition:opacity .2s">‹</button>';
+      html += '<button class="slide-nav-btn slide-next" type="button" aria-label="'+(lang==='ko'?'다음 이미지':'Next image')+'" onclick="_papSlideNav(this,1)" style="position:absolute;top:calc(50% - 30px);right:8px;z-index:5;width:40px;height:40px;border-radius:50%;border:none;background:rgba(0,0,0,.6);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:1;transition:opacity .2s">›</button>';
       html += '<div class="article-slide-track" style="display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding-bottom:8px;-webkit-overflow-scrolling:touch">';
       slideImgs.forEach(function(im){
         if(!im || !im.url) return;
@@ -524,7 +524,7 @@ function _renderArticleDetail(a,det){
       var _net=document.createElement('div');
       _net.setAttribute('data-network-link','1');
       _net.className='igf-sub';
-      _net.innerHTML='<a href="/network">패션·뷰티·셀럽·아트 — PAP 인스타그램 네트워크 전체 보기 →</a>';
+      _net.innerHTML='<a href="/network">'+(lang==='ko'?'패션·뷰티·셀럽·아트 — PAP 인스타그램 네트워크 전체 보기 →':'Fashion · Beauty · Celeb · Art — Explore the full PAP Instagram network →')+'</a>';
       funnelEl.appendChild(_net);
     }
   }
@@ -776,7 +776,7 @@ window._papShareArticle=function(){
     if(navigator.share){ navigator.share({title:title,url:url}).catch(function(){}); return; }
     if(navigator.clipboard && navigator.clipboard.writeText){
       navigator.clipboard.writeText(url).then(function(){
-        alert('링크가 복사되었습니다. 카카오톡이나 DM에 붙여넣어 공유해보세요.');
+        alert(lang==='ko'?'링크가 복사되었습니다. 카카오톡이나 DM에 붙여넣어 공유해보세요.':'Link copied. Paste it into a chat or DM to share.');
       }).catch(function(){});
     }
   }catch(_){}

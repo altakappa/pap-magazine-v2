@@ -395,7 +395,7 @@ const PAP = (function() {
         return fetch(slot.signedUrl, {
           method: 'PUT',
           headers: {
-            'Content-Type': safe.type || 'application/octet-stream',
+            'Content-Type': slot.contentType || safe.type || 'application/octet-stream',
             'x-upsert': 'true',
           },
           body: safe,
@@ -469,7 +469,7 @@ const PAP = (function() {
           const safe = safeFile(m.file, m.category);
           return fetch(slot.signedUrl, {
             method: 'PUT',
-            headers: { 'Content-Type': safe.type || 'application/octet-stream', 'x-upsert': 'true' },
+            headers: { 'Content-Type': slot.contentType || safe.type || 'application/octet-stream', 'x-upsert': 'true' },
             body: safe,
           }).then(function(r) {
             if (!r.ok) {
@@ -579,7 +579,7 @@ const PAP = (function() {
       await Promise.all(signRes.uploads.map(function(u, i) {
         return fetch(u.signedUrl, {
           method: 'PUT',
-          headers: { 'Content-Type': metas[i].file.type || 'application/octet-stream' },
+          headers: { 'Content-Type': u.contentType || metas[i].file.type || 'application/octet-stream' },
           body: metas[i].file,
         }).then(function(r) {
           if (!r.ok) throw new Error('Upload failed (' + r.status + ')');
@@ -720,7 +720,7 @@ const PAP = (function() {
         throw new Error('Payment configuration missing');
       }
       if (!guestInfo || !guestInfo.email || !guestInfo.name) {
-        throw new Error('이메일과 이름이 필요해요.');
+        throw new Error((typeof lang!=='undefined'&&lang==='ko')?'이메일과 이름이 필요해요.':'Email and name are required.');
       }
 
       // 1) Issue billing key in the same PortOne popup as authenticated checkout.
@@ -921,7 +921,7 @@ const PAP = (function() {
       // Confirm button
       const btn = document.createElement('button');
       btn.style.cssText = 'background:#fff;color:#000;border:none;padding:11px 40px;font-size:12px;font-weight:700;letter-spacing:.08em;cursor:pointer;font-family:Montserrat,sans-serif;transition:opacity .2s;';
-      btn.textContent = '확인';
+      btn.textContent = (typeof lang!=='undefined'&&lang==='ko')?'확인':'OK';
       btn.onmouseenter = function(){ btn.style.opacity='.8'; };
       btn.onmouseleave = function(){ btn.style.opacity='1'; };
       btn.onclick = function(){ overlay.style.opacity='0'; setTimeout(function(){ overlay.remove(); }, 200); };
