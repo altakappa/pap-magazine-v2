@@ -98,11 +98,24 @@ async function runGrowthAudit() {
   ]);
 
   // ── C. 참여 ──────────────────────────────────────────────────
+  // 표본 하한(2026-07-25 진단): 댓글·평점·스크랩은 8주 내내 주 0~9건이라
+  // 주간대비(WoW) 판정을 그대로 걸면 "1 → 0" 같은 노이즈에도 warn 이 뜬다.
+  // 실제로 거의 매일 경고가 떠서 진짜 경고가 묻혔다. 두 주 모두 MIN_WOW 미만이면
+  // 비교 자체를 보류하고 ok 로 둔다(값은 그대로 노출하니 정보는 잃지 않는다).
+  // 참고: 45_Business/2026-07-25-참여지표-진단-활성화갭.md
+  const MIN_WOW = 10;
   const weekly = (table, tsCol, label, id) =>
     check(id || `${table}_last7`, label, async () => {
       const last7 = await cnt(db.from(table).select('*', CSEL).gte(tsCol, iso(7 * DAY)));
       const prev7 = await cnt(db.from(table).select('*', CSEL).gte(tsCol, iso(14 * DAY)).lt(tsCol, iso(7 * DAY)));
-      return { value: last7, compare: prev7, status: last7 >= prev7 ? 'ok' : 'warn', note: `이번 주 ${last7} vs 지난주 ${prev7}` };
+      const tooSmall = last7 < MIN_WOW && prev7 < MIN_WOW;
+      return {
+        value: last7,
+        compare: prev7,
+        status: (tooSmall || last7 >= prev7) ? 'ok' : 'warn',
+        note: `이번 주 ${last7} vs 지난주 ${prev7}`
+          + (tooSmall ? ` — 표본 부족(주 ${MIN_WOW}건 미만)으로 주간대비 판정 보류` : ''),
+      };
     });
 
   // IG 참여 스냅샷 (Graph API) — 최근 25편의 좋아요·댓글. 게시 48h 미만은
@@ -133,6 +146,10 @@ async function runGrowthAudit() {
   const _igPrior  = _igMature.filter((m) => (_igNow - m.t) >= 9 * DAY && (_igNow - m.t) < 16 * DAY); // 9 ~ 16일
 
   sections.engagement = await Promise.all([
+    // 주의: editorial_views 에는 봇 플래그 컬럼이 없고, 봇 차단은 2026-07-22~23
+    // 쓰기 시점에 들어갔다. 그 경계를 가로지르는 주간대비는 원리적으로 무효다
+    // (필터 전 주 = 봇 포함 / 후 주 = 봇 제외). 2026-08-05 이후부터 신뢰할 것.
+    // 급락·급등이 보이면 먼저 views/distinct_editorial 비율을 본다 — 1.5 미만이면 크롤러.
     weekly('editorial_views', 'viewed_at', '에디토리얼 조회 (7일)', 'views_last7'),
     weekly('comments', 'created_at', '댓글 (7일)'),
     weekly('ratings', 'created_at', '평점 (7일)'),
