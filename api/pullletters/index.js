@@ -39,6 +39,19 @@ function safeId(s) {
   return String(s || '').replace(/[^a-zA-Z0-9_-]/g, '') || 'anon';
 }
 
+// 보안(2026-07-26 감사 A-1) — 회원이 입력한 URL 은 반드시 http/https 여야 한다.
+// 이 값들은 관리자 검토 화면에서 <a href> 로 렌더되므로, `javascript:` /
+// `data:` 스킴을 저장하게 두면 관리자가 링크를 클릭하는 순간 관리자 세션
+// 컨텍스트에서 스크립트가 실행되는 저장형 XSS 가 된다.
+// 서브미션의 videoUrl 검증(api/submissions/[id].js PUT)과 같은 패턴.
+function isHttpUrl(v) {
+  if (typeof v !== 'string' || !v.trim()) return false;
+  try {
+    const u = new URL(v.trim());
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch (_) { return false; }
+}
+
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
   if (rateLimit(req, res, RATE_LIMITS.upload)) return;
@@ -91,7 +104,15 @@ module.exports = async function handler(req, res) {
         if (!pPath || pPath.indexOf(`proposals/${safeUid}/`) !== 0 || !/\.pdf$/i.test(pPath)) {
           return res.status(400).json({ message: '촬영시안 PDF is required' });
         }
-        moodboardUrls = mUrls;
+        // A-1 (2026-07-26) — 무드보드 URL 도 경로 위조 방지. 예전엔 클라이언트가
+        // 보낸 문자열을 그대로 file_urls 에 저장해, `javascript:` 같은 값이
+        // 관리자 화면의 <a href>/<img src> 로 그대로 렌더될 수 있었다.
+        // 서브미션(_userPathPrefix)과 같은 규칙 — 자기 폴더의 공개 URL 만 허용.
+        const _base = String(process.env.SUPABASE_URL || '').replace(/\/+$/, '');
+        const _moodPrefix = `${_base}/storage/v1/object/public/pullletters/${safeUid || 'anon'}/`;
+        moodboardUrls = mUrls.filter(function (u) {
+          return typeof u === 'string' && u.indexOf(_moodPrefix) === 0 && u.indexOf('..') === -1;
+        });
         proposalPath = pPath;
       } else {
         // 촬영시안 PDF 상한은 프론트(PROPOSAL_MAX_BYTES)와 같은 20MB.
@@ -113,6 +134,21 @@ module.exports = async function handler(req, res) {
       }
       if (!ct.name || !ct.email) {
         return res.status(400).json({ message: 'Contact name and email are required' });
+      }
+      // A-1 — 포트폴리오 링크 스킴 검증. 필수 2종 + 선택(비디오그래퍼)까지.
+      const vdRaw = data.videographer || {};
+      const _portfolioChecks = [
+        ['photographer', ph.portfolio],
+        ['stylist', st.portfolio],
+      ];
+      if (vdRaw.portfolio) _portfolioChecks.push(['videographer', vdRaw.portfolio]);
+      for (const [role, url] of _portfolioChecks) {
+        if (!isHttpUrl(url)) {
+          return res.status(400).json({
+            message: `Portfolio URL for ${role} must start with http:// or https://`,
+            code: 'invalid_portfolio_url',
+          });
+        }
       }
 
       // Build structured team_info (videographer is optional — included only if any field is set)
@@ -163,8 +199,9 @@ module.exports = async function handler(req, res) {
             upsert: false,
           });
         if (pdfErr) {
+          // A-3 (2026-07-26 감사) — 스토리지 원문 메시지는 서버 로그에만.
           console.error('Proposal PDF upload error:', pdfErr);
-          return res.status(500).json({ message: '촬영시안 PDF upload failed: ' + pdfErr.message });
+          return res.status(500).json({ message: '촬영시안 PDF upload failed', code: 'proposal_upload_failed' });
         }
       }
 

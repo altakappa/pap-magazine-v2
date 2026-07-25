@@ -162,7 +162,14 @@ const PAP = (function() {
         }
 
         if (!res.ok) {
-          throw new Error(json.message || 'Request failed');
+          // 2026-07-26 감사 C-1 — 서버가 내려주는 code/본문을 에러에 실어 보낸다.
+          // 호출부(프론트)가 원문 영문 message 대신 code 로 언어별 문구를 고를 수
+          // 있게 하기 위한 것. message 자체는 그대로 둬 기존 분기 로직과 호환된다.
+          const err = new Error(json.message || 'Request failed');
+          err.code = json.code || '';
+          err.status = res.status;
+          err.payload = json;
+          throw err;
         }
         return json;
       } catch (error) {
@@ -595,6 +602,12 @@ const PAP = (function() {
 
     async getMine() {
       return await request('GET', '/pullletters/mine');
+    },
+
+    // 신청자 본인의 철회 (2026-07-26 감사 B-2). 서버가 status='pending' 이고
+    // 발급 PDF 가 없을 때만 허용한다 — 그 외에는 409 로 거절된다.
+    async cancel(id) {
+      return await request('DELETE', '/pullletters/' + encodeURIComponent(id));
     },
 
     // Admin

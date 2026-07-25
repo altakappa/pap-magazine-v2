@@ -508,7 +508,7 @@ function navigateWithInterstitial(url){
 
 <div class="footer-legal" id="footerLegal"></div>
 
-<script src="/pap-api.js?v=10" defer></script>
+<script src="/pap-api.js?v=11" defer></script>
 <script src="/pap-name-validator.js?v=3" defer></script>
 <script>
 var L = {
@@ -664,6 +664,9 @@ function _getValText(key,fallback){
     proposalTooLarge:{ko:'PDF 파일은 25MB 이하만 업로드할 수 있습니다',en:'The PDF must be 25MB or smaller',it:'Il PDF deve essere di 25MB o meno',fr:'Le PDF doit faire 25 Mo ou moins',es:'El PDF debe pesar 25MB o menos',ja:'PDFは25MB以下にしてください',zh:'PDF 文件需小于 25MB',ru:'PDF должен быть не больше 25 МБ'},
     proposalNotPdf:{ko:'PDF 형식의 파일만 업로드 가능합니다',en:'Only PDF files are accepted',it:'Sono accettati solo file PDF',fr:'Seuls les fichiers PDF sont acceptés',es:'Solo se aceptan archivos PDF',ja:'PDFファイルのみアップロード可能です',zh:'只接受 PDF 文件',ru:'Принимаются только PDF-файлы'},
     nameOnlyInvalid:{ko:'이름 칸은 영문(A–Z, a–z), 숫자, 공백, . - \' 만 입력 가능합니다',en:'Name fields accept English letters, digits, space, . - \' only',it:'I campi nome accettano solo lettere inglesi, cifre, spazio, . - \'',fr:'Les champs nom n\'acceptent que les lettres anglaises, chiffres, espace, . - \'',es:'Los campos de nombre solo aceptan letras inglesas, dígitos, espacio, . - \'',ja:'名前欄は英字 (A–Z, a–z)・数字・空白・. - \' のみ入力可能です',zh:'姓名栏仅接受英文字母、数字、空格、. - \'',ru:'В полях имени допустимы только латинские буквы, цифры, пробел, . - \''},
+    // 2026-07-26 감사 A-1/C-1 — 서버가 포트폴리오 URL 스킴을 거절할 때(400,
+    // code:'invalid_portfolio_url') 영문 원문 대신 보여줄 문구.
+    badPortfolioUrl:{ko:'포트폴리오 주소는 http:// 또는 https:// 로 시작해야 합니다',en:'Portfolio links must start with http:// or https://',de:'Portfolio-Links müssen mit http:// oder https:// beginnen',it:'I link del portfolio devono iniziare con http:// o https://',fr:'Les liens de portfolio doivent commencer par http:// ou https://',es:'Los enlaces de portfolio deben empezar por http:// o https://',ja:'ポートフォリオのURLは http:// または https:// で始まる必要があります',zh:'作品集链接必须以 http:// 或 https:// 开头',ru:'Ссылка на портфолио должна начинаться с http:// или https://'},
     premiumRequired:{ko:'Premium 구독 회원만 이용할 수 있는 기능입니다',en:'This feature is available only for Premium subscribers',it:'Funzione disponibile solo per abbonati Premium',fr:'Fonctionnalité réservée aux abonnés Premium',es:'Función disponible solo para suscriptores Premium',ja:'Premium会員限定の機能です',zh:'此功能仅限Premium订阅用户使用',ru:'Функция доступна только для подписчиков Premium'}
   };
   var m=msgs[key];if(!m) return fallback||'';
@@ -818,6 +821,8 @@ async function submitFL(){
       msg = _getValText('proposalNotPdf');
     } else if(/moodboard size|proposal size|exceeds max/i.test(raw)){
       msg = _getValText('uploadTooLarge');
+    } else if(/invalid_portfolio_url|portfolio url for/i.test(raw)){
+      msg = _getValText('badPortfolioUrl');
     } else if(/duplicate_request|already exists|duplicate key/i.test(raw)){
       // QA 3차(2026-07-22) — email UNIQUE 제약의 23505 가 원시 영문으로 새던 경로.
       // 제약은 제거됐지만(다건 허용), 서버 409/유사 unique 재발 시에도 친절 안내.

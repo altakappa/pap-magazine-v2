@@ -157,10 +157,12 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({ uploads });
   } catch (err) {
+    // 보안(2026-07-26 감사 A-3) — 원문 에러(err.message)를 클라이언트에 붙여
+    // 내려보내지 않는다. 스토리지/DB 내부 구조가 노출된다. 상세는 서버 로그에만.
     console.error('[upload-url] error:', err);
     return res.status(500).json({
-      message: 'Failed to create upload URLs' +
-        (err && err.message ? ` — ${err.message}` : ''),
+      message: 'Failed to create upload URLs. If this keeps happening, contact contact@pap-magazine.com',
+      code: 'upload_url_failed',
     });
   }
 };

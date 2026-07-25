@@ -22,6 +22,21 @@ function _userPathPrefix(userId) {
   return `${base}/storage/v1/object/public/submissions/${safeId}/`;
 }
 
+// B-1 (2026-07-26 감사) — 공개 스토리지 URL 에서 "<uid>/<filename>" 을 뽑는다.
+// purge-rejected-submissions 크론의 _storagePathFromUrl 과 같은 규칙 —
+// 크론은 status='rejected' 만 청소하므로, 소유자가 직접 지운 행의 파일은
+// 어떤 크론에도 걸리지 않아 영구 고아 객체가 됐다. DELETE 에서 함께 정리한다.
+const STORAGE_BUCKET = 'submissions';
+function _storagePathFromUrl(url) {
+  if (!url || typeof url !== 'string') return null;
+  const marker = '/storage/v1/object/public/' + STORAGE_BUCKET + '/';
+  const idx = url.indexOf(marker);
+  if (idx === -1) return null;
+  const tail = url.slice(idx + marker.length);
+  const qIdx = tail.indexOf('?');
+  return qIdx === -1 ? tail : tail.slice(0, qIdx);
+}
+
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
   if (rateLimit(req, res, RATE_LIMITS.api)) return;
@@ -70,10 +85,12 @@ module.exports = async function handler(req, res) {
     // 'uploaded', 'resubmitted') because those are linked to either an
     // editorial (source_submission_id) or to an in-flight workflow the
     // admin owns. Admins still have the admin-side reject + 30-day purge
-    // path for cleanup. Storage objects under
-    // submissions/<user.id>/<sub.id>/ are NOT swept here — they age out
-    // with the rejected-submissions purge cron, and a stray file in the
-    // user's own folder isn't a security risk.
+    // path for cleanup.
+    //
+    // 2026-07-26 감사 B-1 — 예전엔 스토리지 객체를 여기서 청소하지 않았다.
+    // 퍼지 크론은 status='rejected' 만 훑기 때문에, 소유자가 직접 지운
+    // (pending/revision 포함) 행의 이미지는 어떤 크론에도 걸리지 않고
+    // 버킷에 영구히 남았다. 이제 행 삭제 직후 함께 정리한다.
     if (req.method === 'DELETE') {
       if (submission.user_id !== user.id) {
         return res.status(403).json({ message: 'Only the submitter can delete this submission' });
@@ -90,10 +107,38 @@ module.exports = async function handler(req, res) {
         .eq('id', id)
         .eq('user_id', user.id);
       if (delErr) {
+        // A-3 — 원문 DB 메시지는 서버 로그에만 (풀레터 엔드포인트와 동일 규칙)
         console.error('Submission DELETE failed:', delErr);
-        return res.status(500).json({ message: 'Failed to delete submission', detail: delErr.message });
+        return res.status(500).json({ message: 'Failed to delete submission', code: 'delete_failed' });
       }
-      return res.status(200).json({ ok: true, id });
+
+      // B-1 — 행이 사라졌으니 이 행만 참조하던 스토리지 객체도 함께 정리한다.
+      // 실패는 비치명(로그만) — 사용자의 삭제 자체는 이미 성공했고, 고아 파일
+      // 하나가 남는 것보다 삭제가 막히는 편이 나쁘다.
+      let storageDeleted = 0;
+      try {
+        const paths = [];
+        const fileUrls = Array.isArray(submission.file_urls) ? submission.file_urls : [];
+        for (const u of fileUrls) {
+          const p = _storagePathFromUrl(u);
+          if (p) paths.push(p);
+        }
+        if (paths.length) {
+          const { error: rmErr } = await supabaseAdmin
+            .storage
+            .from(STORAGE_BUCKET)
+            .remove(paths);
+          if (rmErr) {
+            console.warn('[submissions DELETE] storage remove failed for', id, '—', rmErr.message);
+          } else {
+            storageDeleted = paths.length;
+          }
+        }
+      } catch (swErr) {
+        console.warn('[submissions DELETE] storage sweep threw for', id, '—', swErr && swErr.message);
+      }
+
+      return res.status(200).json({ ok: true, id, storageDeleted });
     }
 
     // ── PUT: Owner resubmits a revised version ─────────────────────────────
@@ -221,8 +266,9 @@ module.exports = async function handler(req, res) {
         .single();
 
       if (updateErr) {
+        // A-3 — 원문 DB 메시지는 서버 로그에만
         console.error('Resubmit update failed:', updateErr);
-        return res.status(500).json({ message: 'Failed to resubmit', detail: updateErr.message });
+        return res.status(500).json({ message: 'Failed to resubmit', code: 'resubmit_failed' });
       }
 
       return res.status(200).json({ submission: updated });
@@ -320,8 +366,9 @@ module.exports = async function handler(req, res) {
         .single();
 
       if (updateErr) {
+        // A-3 — 원문 DB 메시지는 서버 로그에만
         console.error('Gallery curation update failed:', updateErr);
-        return res.status(500).json({ message: 'Failed to save gallery changes', detail: updateErr.message });
+        return res.status(500).json({ message: 'Failed to save gallery changes', code: 'curate_failed' });
       }
       return res.status(200).json({ submission: updated });
     }
@@ -405,12 +452,12 @@ module.exports = async function handler(req, res) {
       });
     } catch (_) { console.error('Get submission error (raw):', error); }
 
-    const parts = [];
-    if (error && error.message) parts.push(String(error.message));
-    if (error && error.code) parts.push('code=' + error.code);
-    const hint = parts.join(' | ').slice(0, 300);
+    // A-3 (2026-07-26) — 원문 DB 메시지·컬럼명·제약 이름을 응답에 싣지 않는다.
+    // 진단은 위 console.error 로 충분하고, 사용자에겐 문의처가 포함된
+    // 일반 안내 + 분류용 code 만 내려보낸다. (풀레터 엔드포인트와 동일 규칙)
     return res.status(500).json({
-      message: 'Failed to fetch submission' + (hint ? ` — ${hint}` : ''),
+      message: 'Failed to fetch submission. If this keeps happening, contact contact@pap-magazine.com',
+      code: 'fetch_failed',
     });
   }
 };

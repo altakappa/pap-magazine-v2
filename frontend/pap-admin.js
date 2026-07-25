@@ -26,6 +26,17 @@ async function apiPut(path,body){var r=await fetch(API_BASE+path,{method:'PUT',h
 async function apiPatch(path,body){var r=await fetch(API_BASE+path,{method:'PATCH',headers:apiHeaders(),body:JSON.stringify(body)});return r.json();}
 async function apiDelete(path){var r=await fetch(API_BASE+path,{method:'DELETE',headers:apiHeaders()});return r.json();}
 function esc(s){var d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
+// 보안(2026-07-26 감사 A-1) — 회원이 입력한 URL 을 href 로 깔 때 쓴다.
+// esc() 는 HTML 엔티티만 이스케이프할 뿐 스킴은 보지 않으므로,
+// `javascript:` / `data:` 링크를 관리자가 클릭하면 관리자 세션에서
+// 스크립트가 실행된다. http/https 가 아니면 빈 문자열을 돌려주고,
+// 호출부는 링크 대신 텍스트로 표시한다. (서버 검증과 이중 방어)
+function safeUrl(u){
+  var s=String(u||'').trim();
+  if(!s) return '';
+  if(!/^https?:\/\//i.test(s)) return '';
+  return esc(s);
+}
 function fmtDate(d){if(!d)return'—';var dt=new Date(d);return dt.toLocaleDateString('ko-KR',{month:'long',day:'numeric'});}
 
 // ======== IMAGE UPLOAD ========
@@ -1385,8 +1396,13 @@ function populateReviewModal(submission){
   // Video link
   var videoEl=document.getElementById('reviewModalVideo');
   if(desc.videoUrl){
-    var safe=String(desc.videoUrl).replace(/"/g,'&quot;');
-    videoEl.innerHTML='<a href="'+safe+'" target="_blank" rel="noopener noreferrer" style="color:var(--blue);word-break:break-all">'+esc(desc.videoUrl)+'</a>';
+    // A-1 — 스킴 검증(safeUrl). 예전엔 큰따옴표만 치환해 `javascript:` 가 통과했다.
+    var safe=safeUrl(desc.videoUrl);
+    if(safe){
+      videoEl.innerHTML='<a href="'+safe+'" target="_blank" rel="noopener noreferrer" style="color:var(--blue);word-break:break-all">'+esc(desc.videoUrl)+'</a>';
+    }else{
+      videoEl.textContent=String(desc.videoUrl);
+    }
   }else{
     videoEl.textContent='—';
   }
@@ -2295,7 +2311,13 @@ function openPullLetterReview(id){
     var parts = [];
     if(t.name) parts.push('<strong>'+esc(t.name)+'</strong>');
     if(t.instagram) parts.push('<a href="https://instagram.com/'+esc((t.instagram||'').replace(/^@/,''))+'" target="_blank" rel="noopener noreferrer">'+esc(t.instagram)+'</a>');
-    if(t.portfolio) parts.push('<a href="'+esc(t.portfolio)+'" target="_blank" rel="noopener noreferrer">portfolio ↗</a>');
+    if(t.portfolio){
+      // A-1 — http/https 가 아니면 링크로 만들지 않고 텍스트로만 보여준다.
+      var _pf=safeUrl(t.portfolio);
+      parts.push(_pf
+        ? '<a href="'+_pf+'" target="_blank" rel="noopener noreferrer">portfolio ↗</a>'
+        : '<span style="color:var(--text3)" title="unsafe URL — link disabled">portfolio: '+esc(t.portfolio)+'</span>');
+    }
     return '<div class="plr-row"><label>'+esc(label)+'</label><div>'+parts.join(' · ')+'</div></div>';
   }
   var teamHtml = ''
@@ -2323,11 +2345,17 @@ function openPullLetterReview(id){
           // <img> 로 그리면 깨진 썸네일이 뜬다. 확장자를 보고 비이미지는 라벨 타일로.
           var _low=String(u||'').toLowerCase().split('?')[0];
           var _isImg=/\.(jpe?g|png|webp|gif|avif)$/.test(_low);  // 브라우저가 <img> 로 렌더 가능한 것만
+          // A-1 — 과거 행에는 검증 전 저장된 URL 이 남아 있을 수 있다.
+          // http/https 가 아니면 링크·이미지로 만들지 않는다.
+          var _u=safeUrl(u);
+          if(!_u){
+            return '<span style="display:inline-block;padding:4px 6px;margin-right:4px;margin-bottom:4px;border:1px solid var(--border);font-size:9px;color:var(--text3)" title="unsafe URL — link disabled">'+esc(u)+'</span>';
+          }
           if(_isImg){
-            return '<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer"><img src="'+esc(u)+'" alt="" style="width:48px;height:48px;object-fit:cover;border:1px solid var(--border);margin-right:4px;margin-bottom:4px"></a>';
+            return '<a href="'+_u+'" target="_blank" rel="noopener noreferrer"><img src="'+_u+'" alt="" style="width:48px;height:48px;object-fit:cover;border:1px solid var(--border);margin-right:4px;margin-bottom:4px"></a>';
           }
           var _tag = /\.pdf$/.test(_low) ? 'PDF' : (/\.pptx?$/.test(_low) ? 'PPT' : (/\.hei[cf]$/.test(_low) ? 'HEIC' : 'FILE'));
-          return '<a href="'+esc(u)+'" target="_blank" rel="noopener noreferrer" title="'+_tag+'" style="display:inline-flex;flex-direction:column;align-items:center;justify-content:center;width:48px;height:48px;border:1px solid var(--border);margin-right:4px;margin-bottom:4px;font-size:9px;font-weight:700;color:var(--text2);text-decoration:none;background:var(--surface2,#f4f4f4)">📄<span>'+_tag+'</span></a>';
+          return '<a href="'+_u+'" target="_blank" rel="noopener noreferrer" title="'+_tag+'" style="display:inline-flex;flex-direction:column;align-items:center;justify-content:center;width:48px;height:48px;border:1px solid var(--border);margin-right:4px;margin-bottom:4px;font-size:9px;font-weight:700;color:var(--text2);text-decoration:none;background:var(--surface2,#f4f4f4)">📄<span>'+_tag+'</span></a>';
         }).join('')
       + (pl.file_urls.length > 8 ? '<span style="font-size:11px;color:var(--text3)">+ '+(pl.file_urls.length-8)+' more</span>' : '')
       + '</div></div>';

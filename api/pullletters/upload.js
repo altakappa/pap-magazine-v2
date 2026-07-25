@@ -62,8 +62,9 @@ module.exports = async function handler(req, res) {
         upsert: false,
       });
     if (upErr) {
+      // A-3 (2026-07-26 감사) — 스토리지 원문 메시지는 서버 로그에만.
       console.error('Pull-letter PDF upload error:', upErr);
-      return res.status(500).json({ message: 'Storage upload failed: ' + upErr.message });
+      return res.status(500).json({ message: 'Storage upload failed', code: 'storage_upload_failed' });
     }
 
     return res.status(200).json({ pullLetterPath: storagePath });
