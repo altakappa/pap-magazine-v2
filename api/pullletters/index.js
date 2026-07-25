@@ -31,6 +31,7 @@ const { resolveEmailLang } = require('../_lib/emailLocale');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { sendTextToTelegramSafe } = require('../_lib/telegram');
 const { hasActivePremium } = require('../_lib/subscriptionAccess');
+const { verifySignature, SNIFF_BYTES } = require('../_lib/fileSignature');
 
 module.exports.config = { api: { bodyParser: false } };
 
@@ -115,6 +116,19 @@ module.exports = async function handler(req, res) {
         });
         proposalPath = pPath;
       } else {
+        // ── B-4 (2026-07-26 감사) — 레거시 multipart 사용량 계측 ──────────
+        // 이 분기는 2026-07-21 이전 프론트가 브라우저에 캐시된 경우만 탄다.
+        // 감사 문서가 "제거 전 로그로 최근 사용 여부 확인"을 조건으로 걸었고,
+        // 도메니코가 '로깅 후 보류'로 결정(2026-07-26).
+        // ▶ 제거 판단 기준: Vercel 로그에서 아래 태그가 1~2주간 0건이면 안전.
+        //   검색어: [pullletters][LEGACY-MULTIPART]
+        console.warn('[pullletters][LEGACY-MULTIPART] 구버전 프론트 요청 수신', JSON.stringify({
+          userId: user.id,
+          contentType: ctype.slice(0, 80),
+          ua: String(req.headers['user-agent'] || '').slice(0, 160),
+          referer: String(req.headers['referer'] || '').slice(0, 120),
+          at: new Date().toISOString(),
+        }));
         // 촬영시안 PDF 상한은 프론트(PROPOSAL_MAX_BYTES)와 같은 20MB.
         const { fields, files } = await parseForm(req, { maxFileSize: 25 * 1024 * 1024 });
         const dataRaw = Array.isArray(fields.data) ? fields.data[0] : fields.data;
@@ -191,6 +205,12 @@ module.exports = async function handler(req, res) {
         // Upload proposal PDF to PRIVATE 'pull-letters' bucket (same bucket
         // admin-issued PDFs use). Members read via signed URL minted in mine.js.
         const proposalBuffer = fs.readFileSync(proposalFile.filepath);
+        // A-5 (2026-07-26 감사) — 확장자·Content-Type 위장 방어.
+        const _sig = verifySignature(proposalBuffer.slice(0, SNIFF_BYTES), 'application/pdf');
+        if (!_sig.ok) {
+          console.warn('[pullletters] proposal signature mismatch —', _sig.reason);
+          return res.status(415).json({ message: 'The uploaded 촬영시안 file is not a valid PDF', code: 'not_a_pdf' });
+        }
         proposalPath = `proposals/${safeId(user.id)}/${Date.now()}.pdf`;
         const { error: pdfErr } = await supabaseAdmin.storage
           .from('pull-letters')

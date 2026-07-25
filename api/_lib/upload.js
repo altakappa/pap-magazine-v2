@@ -19,6 +19,7 @@ const IncomingFormCtor =
 const fs = require('fs');
 const path = require('path');
 const { supabaseAdmin } = require('./supabase');
+const { verifyFileOnDisk } = require('./fileSignature');
 
 /**
  * Parse multipart form data
@@ -164,6 +165,17 @@ async function uploadFiles(bucket, files, userId) {
     // Supabase path whitelist: alphanumerics, -, _, ., /. Validate before sending.
     if (!/^[A-Za-z0-9/_.-]+$/.test(storagePath)) {
       throw new Error(`Refusing unsafe storage path: ${storagePath}`);
+    }
+
+    // A-5 (2026-07-26 감사) — 매직바이트 검증. 서버가 바이트를 쥐고 있는
+    // 유일한 초크포인트라 여기서 한 번만 걸면 media/scrap/레거시 multipart가
+    // 모두 덮인다. 모르는 형식은 통과시키고, '알아본 내용이 선언과 다를 때'만
+    // 거부한다 (정상 업로드를 깨지 않는 것이 우선).
+    const _sig = verifyFileOnDisk(fs, file.filepath, file.mimetype);
+    if (!_sig.ok) {
+      const _name = file.originalFilename || file.newFilename || 'file';
+      console.warn('[upload] signature mismatch:', _name, '—', _sig.reason);
+      throw new Error(`Upload of "${_name}" rejected: file content does not match its type`);
     }
 
     try {

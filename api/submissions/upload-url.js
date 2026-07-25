@@ -57,6 +57,20 @@ const MIME_TO_EXT = {
   'image/tiff': '.tiff',
 };
 
+// A-6 정합 (2026-07-26) — 버킷 'submissions' 의 allowed_mime_types 는
+// image/jpeg·png·webp·tiff 다. `image/jpg` 는 비표준이지만 일부 브라우저/OS 가
+// 그대로 실어 보내고, 앱은 그걸 통과시킨다. 그 값으로 스토리지에 PUT 하면
+// 버킷이 거부해 "앱은 통과시켰는데 업로드만 실패"하는 조용한 실패가 된다.
+// 서명 URL 과 함께 '실제로 PUT 할 Content-Type' 을 정규화해 돌려주고,
+// 클라이언트는 그 값을 그대로 쓴다.
+const MIME_CANONICAL = {
+  'image/jpg': 'image/jpeg',
+};
+function canonicalMime(type) {
+  const t = String(type || '').toLowerCase();
+  return MIME_CANONICAL[t] || t;
+}
+
 function sanitizeExt(filename) {
   if (!filename) return '';
   const raw = path.extname(String(filename)).toLowerCase();
@@ -152,6 +166,8 @@ module.exports = async function handler(req, res) {
         token: data.token,
         publicUrl: pubData && pubData.publicUrl ? pubData.publicUrl : '',
         category: String(f.category).toLowerCase(),
+        // A-6 — 클라이언트는 이 값으로 PUT 해야 버킷 MIME 검사를 통과한다.
+        contentType: canonicalMime(type),
       });
     }
 

@@ -17,6 +17,7 @@ const { requireAdmin } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { parseForm } = require('../_lib/upload');
+const { verifySignature, SNIFF_BYTES } = require('../_lib/fileSignature');
 
 const BUCKET = 'pull-letters';
 const MAX_PDF_BYTES = 15 * 1024 * 1024; // 15 MB
@@ -52,6 +53,13 @@ module.exports = async function handler(req, res) {
     }
 
     const buffer = fs.readFileSync(file.filepath);
+    // A-5 (2026-07-26 감사) — 확장자·Content-Type 위장 방어. 발급 레터는
+    // 회원에게 서명 URL 로 나가는 파일이라 실제 내용이 PDF 인지 확인한다.
+    const _sig = verifySignature(buffer.slice(0, SNIFF_BYTES), 'application/pdf');
+    if (!_sig.ok) {
+      console.warn('[pullletters/upload] signature mismatch —', _sig.reason);
+      return res.status(415).json({ message: 'The uploaded file is not a valid PDF', code: 'not_a_pdf' });
+    }
     const safeUserId = String(row.user_id || '').replace(/[^a-zA-Z0-9_-]/g, '') || 'anon';
     const storagePath = `${safeUserId}/${id}-${Date.now()}.pdf`;
 

@@ -480,7 +480,7 @@ a{color:#fff;text-decoration:none}
        so users get one consistent navigation surface. -->
 </div>
 
-<script src="/pap-api.js?v=11" defer></script>
+<script src="/pap-api.js?v=12" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 <script src="/pap-logos-data.js?v=1" defer></script>
 <!-- 서브미션 기본료 Paddle 결제 (구조개편 Phase 2) — submission.html 과 공용 모듈 공유.
@@ -787,7 +787,7 @@ function loadPullletterRequests(){
           html += '<div style="margin-top:8px;padding:8px 10px;background:rgba(255,255,255,.03);border-left:2px solid rgba(255,255,255,.15);font-size:11px;color:rgba(255,255,255,.65)"><strong style="font-weight:700;letter-spacing:.05em">PAP:</strong> ' + esc(r.admin_notes) + '</div>';
         }
         if(r.pullLetterSignedUrl){
-          html += '<a class="mp-sub-cta" style="margin-top:10px;display:inline-block;padding:8px 14px;font-size:10px;background:#c9a86a;color:#000;font-weight:700" href="' + esc(r.pullLetterSignedUrl) + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">' + (lang==='ko'?'풀레터 PDF 다운로드':'Download Pull-Letter PDF') + '</a>';
+          html += '<a class="mp-sub-cta" style="margin-top:10px;display:inline-block;padding:8px 14px;font-size:10px;background:#c9a86a;color:#000;font-weight:700" href="' + safeUrl(r.pullLetterSignedUrl) + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">' + (lang==='ko'?'풀레터 PDF 다운로드':'Download Pull-Letter PDF') + '</a>';
         }
         // B-2 (2026-07-26 감사) — 신청자 철회. 서버가 pending + 발급 PDF 없음을
         // 다시 검사하므로, 화면 상태가 낡아 있어도 검토가 진행된 건은 지워지지 않는다.
@@ -866,16 +866,16 @@ function mpTogglePlDetail(rid){
       imgs.slice(0, 12).forEach(function(u){
         var isPdfLike = /\.(pdf|ppt|pptx)(\?|$)/i.test(u);
         if(isPdfLike){
-          h += '<a href="' + esc(u) + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="display:flex;align-items:center;justify-content:center;width:72px;height:72px;border:1px solid rgba(255,255,255,.2);font-size:9px;letter-spacing:.08em;color:rgba(255,255,255,.7);text-decoration:none">FILE ↗</a>';
+          h += '<a href="' + safeUrl(u) + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="display:flex;align-items:center;justify-content:center;width:72px;height:72px;border:1px solid rgba(255,255,255,.2);font-size:9px;letter-spacing:.08em;color:rgba(255,255,255,.7);text-decoration:none">FILE ↗</a>';
         } else {
-          h += '<a href="' + esc(u) + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()"><img loading="lazy" src="' + esc(u) + '" alt="" style="width:72px;height:72px;object-fit:cover;background:#111"></a>';
+          h += '<a href="' + safeUrl(u) + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()"><img loading="lazy" src="' + safeUrl(u) + '" alt="" style="width:72px;height:72px;object-fit:cover;background:#111"></a>';
         }
       });
       h += '</div>';
     }
     // 촬영시안 PDF (비공개 버킷 — 서명 URL)
     if(r.proposalPdfSignedUrl){
-      h += '<a href="' + esc(r.proposalPdfSignedUrl) + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="display:inline-block;padding:7px 12px;border:1px solid rgba(255,255,255,.25);font-size:10px;letter-spacing:.08em;color:rgba(255,255,255,.8);text-decoration:none;margin-bottom:6px">' + (ko?'촬영시안 PDF 보기 ↗':'View proposal PDF ↗') + '</a>';
+      h += '<a href="' + safeUrl(r.proposalPdfSignedUrl) + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="display:inline-block;padding:7px 12px;border:1px solid rgba(255,255,255,.25);font-size:10px;letter-spacing:.08em;color:rgba(255,255,255,.8);text-decoration:none;margin-bottom:6px">' + (ko?'촬영시안 PDF 보기 ↗':'View proposal PDF ↗') + '</a>';
     }
     if(r.request_text){
       h += '<div style="font-size:12px;color:rgba(255,255,255,.6);line-height:1.6;margin-top:8px;white-space:pre-line">' + esc(r.request_text) + '</div>';
@@ -888,6 +888,19 @@ function mpTogglePlDetail(rid){
 }
 
 function esc(s){ var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+// 2026-07-26 감사 B-6 — esc() 는 textContent→innerHTML 직렬화라 따옴표를
+// 이스케이프하지 않는다. 속성 값에 쓰면 `" onerror="…` 로 탈출이 가능하다.
+// 텍스트 노드엔 esc(), 속성 값엔 escAttr(), URL 은 safeUrl() 을 쓴다.
+function escAttr(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function safeUrl(u){
+  var s = String(u == null ? '' : u).trim();
+  if(!s || !/^https?:\/\//i.test(s)) return '';
+  return escAttr(s);
+}
 
 // ───── Recent submissions list ─────
 function _statusBadge(status){

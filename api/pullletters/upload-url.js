@@ -79,6 +79,27 @@ function sanitizeExt(filename) {
   return m ? `.${m[1]}` : '';
 }
 
+// A-6 정합 (2026-07-26) — 버킷이 최종 관문이라, 클라이언트가 PUT 에 실을
+// Content-Type 이 버킷 allowed_mime_types 안에 있어야 한다.
+// 이 엔드포인트는 확장자 폴백을 허용한다(일부 브라우저/OS 가 HEIC·PPT 에 빈
+// MIME 을 실어 보낸다). 그 경우 클라이언트가 그대로 PUT 하면 타입이
+// application/octet-stream 이 되어 버킷이 거부한다 —
+// 확장자로 정식 MIME 을 되살려 함께 돌려준다.
+const EXT_TO_MIME = {
+  '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
+  '.webp': 'image/webp', '.gif': 'image/gif', '.heic': 'image/heic',
+  '.heif': 'image/heif', '.avif': 'image/avif', '.pdf': 'application/pdf',
+  '.ppt': 'application/vnd.ms-powerpoint',
+  '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+};
+function resolveContentType(type, filename, isProposal) {
+  if (isProposal) return 'application/pdf';
+  const t = String(type || '').toLowerCase();
+  if (t === 'image/jpg') return 'image/jpeg';          // 비표준 별칭 정규화
+  if (MOODBOARD_MIME.has(t)) return t;
+  return EXT_TO_MIME[sanitizeExt(filename)] || 'application/octet-stream';
+}
+
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
   if (req.method !== 'POST') {
@@ -187,6 +208,8 @@ module.exports = async function handler(req, res) {
         publicUrl,
         category,
         bucket,
+        // A-6 — 클라이언트는 이 값으로 PUT 해야 버킷 MIME 검사를 통과한다.
+        contentType: resolveContentType(f.type, f.name, isProposal),
       });
     }
 

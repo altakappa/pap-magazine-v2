@@ -26,6 +26,17 @@ async function apiPut(path,body){var r=await fetch(API_BASE+path,{method:'PUT',h
 async function apiPatch(path,body){var r=await fetch(API_BASE+path,{method:'PATCH',headers:apiHeaders(),body:JSON.stringify(body)});return r.json();}
 async function apiDelete(path){var r=await fetch(API_BASE+path,{method:'DELETE',headers:apiHeaders()});return r.json();}
 function esc(s){var d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
+// 보안(2026-07-26 감사 B-6) — **속성 안**에 값을 넣을 때는 esc() 로 부족하다.
+// esc() 는 textContent→innerHTML 직렬화라 <, >, & 만 엔티티가 되고 따옴표는
+// 그대로 남는다. `value="'+escAttr(x)+'"` 형태에 x=`" onerror="alert(1)` 를 넣으면
+// 브라우저 파서가 속성을 끊고 onerror 핸들러를 실제로 만들어 버린다
+// (실측 확인: value="" + onerror="alert(1)" 두 속성으로 파싱됨).
+// 텍스트 노드에는 esc(), 속성 값에는 반드시 escAttr() 를 쓴다.
+function escAttr(s){
+  return String(s==null?'':s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
 // 보안(2026-07-26 감사 A-1) — 회원이 입력한 URL 을 href 로 깔 때 쓴다.
 // esc() 는 HTML 엔티티만 이스케이프할 뿐 스킴은 보지 않으므로,
 // `javascript:` / `data:` 링크를 관리자가 클릭하면 관리자 세션에서
@@ -35,7 +46,10 @@ function safeUrl(u){
   var s=String(u||'').trim();
   if(!s) return '';
   if(!/^https?:\/\//i.test(s)) return '';
-  return esc(s);
+  // 반환값은 언제나 href/src **속성 안**에 들어가므로 escAttr 를 쓴다.
+  // esc() 를 쓰면 따옴표가 남아 `https://x/" onerror="alert(1)` 같은 값이
+  // 스킴 검사를 통과한 뒤 속성을 빠져나온다.
+  return escAttr(s);
 }
 function fmtDate(d){if(!d)return'—';var dt=new Date(d);return dt.toLocaleDateString('ko-KR',{month:'long',day:'numeric'});}
 
@@ -2334,7 +2348,7 @@ function openPullLetterReview(id){
   // ── Files block — proposal PDF (signed) + moodboard thumbnail grid ──
   var filesHtml = '';
   if(pl.proposalPdfSignedUrl){
-    filesHtml += '<div class="plr-row"><label>📄 촬영시안 PDF</label><div><a href="'+esc(pl.proposalPdfSignedUrl)+'" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">Download proposal ↗</a></div></div>';
+    filesHtml += '<div class="plr-row"><label>📄 촬영시안 PDF</label><div><a href="'+escAttr(pl.proposalPdfSignedUrl)+'" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">Download proposal ↗</a></div></div>';
   } else if(pl.proposal_pdf_url){
     filesHtml += '<div class="plr-row"><label>촬영시안 PDF</label><div style="color:var(--text3)">Path: '+esc(pl.proposal_pdf_url)+' (signing failed)</div></div>';
   }
@@ -2369,7 +2383,7 @@ function openPullLetterReview(id){
   // ── Admin actions block (issued PDF status) ──
   var pdfStatusHtml = '';
   if(pl.pullLetterSignedUrl){
-    pdfStatusHtml = '✅ Already issued — <a href="'+esc(pl.pullLetterSignedUrl)+'" target="_blank" rel="noopener noreferrer">Download issued letter ↗</a>';
+    pdfStatusHtml = '✅ Already issued — <a href="'+escAttr(pl.pullLetterSignedUrl)+'" target="_blank" rel="noopener noreferrer">Download issued letter ↗</a>';
   } else if(pl.pull_letter_url){
     pdfStatusHtml = 'Uploaded but signing failed: '+esc(pl.pull_letter_url);
   } else {
@@ -2703,7 +2717,7 @@ function renderNews(){
     // QA #208 Phase 2a — checkbox column for bulk selection.
     var isChecked = newsSelectedIds.has(a.id) ? ' checked' : '';
     tb.innerHTML+='<tr style="cursor:pointer" onclick="editArticle(\''+a.id+'\')">'
-      + '<td onclick="event.stopPropagation()"><input type="checkbox" class="news-row-check" data-id="'+a.id+'" onchange="newsToggleRow(this)"'+isChecked+'></td>'
+      + '<td onclick="event.stopPropagation()"><input type="checkbox" class="news-row-check" data-id="'+escAttr(a.id)+'" onchange="newsToggleRow(this)"'+isChecked+'></td>'
       + '<td style="font-size:10px">'+shortId+'</td>'
       + '<td class="td-title">'+safeTitle+'</td>'
       + '<td><span class="badge '+cls+'">'+label+'</span></td>'
@@ -3117,7 +3131,7 @@ function _hydrateNewsEditorForm(a){
   if(thumbUrlEl) thumbUrlEl.value = a.thumbnail_url || '';
   if(thumb && a.thumbnail_url){
     thumb.innerHTML = '<input type="file" accept="image/*" style="display:none" onchange="previewNewsThumb(this)">'
-      +'<img loading="lazy" src="'+esc(a.thumbnail_url)+'" style="max-width:200px;max-height:250px;object-fit:cover">'
+      +'<img loading="lazy" src="'+escAttr(a.thumbnail_url)+'" style="max-width:200px;max-height:250px;object-fit:cover">'
       +'<div class="pe-upload-text" style="margin-top:8px">클릭하여 변경</div>';
     thumb.classList.add('has-thumb');
   }
@@ -3266,7 +3280,7 @@ function _appendNewsBlock(type, content){
     // QA #281 — multiple 선택 지원. 여러 파일 선택 시 첫 파일은 현재 블록에,
     // 나머지는 자동으로 새 이미지 블록을 생성해서 추가.
     inner += '<div class="pe-upload" onclick="this.querySelector(\'input\').click()" style="padding:16px"><input type="file" multiple accept="image/jpeg,image/png,image/webp" style="display:none" onchange="handleNewsBlockImage(this)"><div class="pe-upload-text">클릭하여 이미지 업로드 (여러 장 선택 가능)</div></div>';
-    inner += '<div class="news-block-img-preview" style="margin-top:8px;'+(imgUrl?'':'display:none')+'">'+(imgUrl?'<img src="'+esc(imgUrl)+'" style="max-width:240px;max-height:240px;object-fit:cover;border:1px solid var(--border)">':'')+'</div>';
+    inner += '<div class="news-block-img-preview" style="margin-top:8px;'+(imgUrl?'':'display:none')+'">'+(imgUrl?'<img src="'+escAttr(imgUrl)+'" style="max-width:240px;max-height:240px;object-fit:cover;border:1px solid var(--border)">':'')+'</div>';
     inner += '<div class="news-block-img-status" style="margin-top:4px;font-size:11px;color:var(--text3);min-height:14px"></div>';
     var capInput = document.createElement('input');
     capInput.className='pe-input news-block-img-caption';
@@ -3583,7 +3597,7 @@ function previewNewsThumb(input){
     if(thumb){
       var existing = hidden && hidden.value;
       thumb.innerHTML = '<input type="file" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="previewNewsThumb(this)">'
-        + (existing ? '<img loading="lazy" src="'+esc(existing)+'" style="max-width:200px;max-height:250px;object-fit:cover">' : '')
+        + (existing ? '<img loading="lazy" src="'+escAttr(existing)+'" style="max-width:200px;max-height:250px;object-fit:cover">' : '')
         + '<div class="pe-upload-text" style="margin-top:8px">'+(existing?'클릭하여 변경':'클릭하여 썸네일 업로드')+'</div>';
       if(!existing) thumb.classList.remove('has-thumb');
     }
@@ -3679,13 +3693,13 @@ function _appendBlockImageThumb(container, url, caption){
   item.dataset.url = url || '';
   var inner = '<div style="position:relative">';
   if (url){
-    inner += '<img src="'+esc(url)+'" style="width:100%;aspect-ratio:1;object-fit:cover;display:block">';
+    inner += '<img src="'+escAttr(url)+'" style="width:100%;aspect-ratio:1;object-fit:cover;display:block">';
   } else {
     inner += '<div class="news-block-image-placeholder" style="width:100%;aspect-ratio:1;background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:11px">업로드 중...</div>';
   }
   inner += '<button class="btn btn-sm btn-red" title="제거" onclick="this.closest(\'.news-block-image-item\').remove()" style="position:absolute;top:2px;right:2px;padding:0 6px;font-size:11px;line-height:18px">×</button>';
   inner += '</div>';
-  inner += '<input class="news-block-image-caption" type="text" placeholder="캡션 (선택)" style="width:100%;margin-top:4px;font-size:11px;padding:4px 6px;background:var(--surface);border:1px solid var(--border);color:var(--text)" value="'+esc(caption||'').replace(/"/g,'&quot;')+'">';
+  inner += '<input class="news-block-image-caption" type="text" placeholder="캡션 (선택)" style="width:100%;margin-top:4px;font-size:11px;padding:4px 6px;background:var(--surface);border:1px solid var(--border);color:var(--text)" value="'+escAttr(caption||'').replace(/"/g,'&quot;')+'">';
   item.innerHTML = inner;
   container.appendChild(item);
   return item;
@@ -3730,7 +3744,7 @@ async function handleGroupImageUpload(input){
       thumb.dataset.url = publicUrl;
       var placeholder = thumb.querySelector('.news-block-image-placeholder');
       if (placeholder){
-        placeholder.outerHTML = '<img src="'+esc(publicUrl)+'" style="width:100%;aspect-ratio:1;object-fit:cover;display:block">';
+        placeholder.outerHTML = '<img src="'+escAttr(publicUrl)+'" style="width:100%;aspect-ratio:1;object-fit:cover;display:block">';
       }
       done++;
       updateStatus();
@@ -3751,8 +3765,8 @@ function _appendVideoGroupRow(container, url, caption){
   var row = document.createElement('div');
   row.className = 'news-block-video-row';
   row.style.cssText = 'display:flex;gap:6px;align-items:center';
-  row.innerHTML = '<input class="pe-input news-block-video-url" type="text" placeholder="YouTube/Vimeo URL" value="'+esc(url||'').replace(/"/g,'&quot;')+'" style="flex:1">'
-    + '<input class="pe-input news-block-video-caption" type="text" placeholder="캡션 (선택)" value="'+esc(caption||'').replace(/"/g,'&quot;')+'" style="flex:1">'
+  row.innerHTML = '<input class="pe-input news-block-video-url" type="text" placeholder="YouTube/Vimeo URL" value="'+escAttr(url||'').replace(/"/g,'&quot;')+'" style="flex:1">'
+    + '<input class="pe-input news-block-video-caption" type="text" placeholder="캡션 (선택)" value="'+escAttr(caption||'').replace(/"/g,'&quot;')+'" style="flex:1">'
     + '<button class="btn btn-sm btn-red" onclick="this.closest(\'.news-block-video-row\').remove()" style="padding:4px 10px">×</button>';
   container.appendChild(row);
   return row;
@@ -4199,7 +4213,7 @@ function setGalleryCover(num){
   var thumbPrev = document.getElementById('thumbPreview');
   var thumbBox  = document.getElementById('thumbUploadBox');
   if(thumbPrev){
-    thumbPrev.innerHTML = '<img loading="lazy" src="'+esc(hit.src)+'" style="max-width:200px;max-height:250px;object-fit:cover"><div class="pe-upload-text" style="margin-top:8px">화보에서 선택됨 · 아래에서 커버로 확정</div>';
+    thumbPrev.innerHTML = '<img loading="lazy" src="'+escAttr(hit.src)+'" style="max-width:200px;max-height:250px;object-fit:cover"><div class="pe-upload-text" style="margin-top:8px">화보에서 선택됨 · 아래에서 커버로 확정</div>';
   }
   if(thumbBox){
     thumbBox.classList.add('has-thumb');
@@ -4301,10 +4315,14 @@ function updateImgCredits(){
     var excludedTag = excluded
       ? '<span style="display:inline-block;font-size:9px;font-weight:800;letter-spacing:.08em;background:#c62828;color:#fff;padding:2px 6px;border-radius:2px;margin-left:6px">발행 제외</span>'
       : '';
-    div.innerHTML='<div style="flex-shrink:0;width:60px;height:75px;border:1px solid var(--border);overflow:hidden"><img loading="lazy" src="'+img.src+'" style="width:100%;height:100%;object-fit:cover'+(excluded?';filter:grayscale(1)':'')+'"></div>'
+    // B-6 (2026-07-26 감사) — img.credits 는 회원/관리자가 쓴 값인데 value="..."
+    // 속성에 그대로 들어가고 있었다. 큰따옴표 하나로 속성을 빠져나와
+    // onerror= 같은 핸들러를 주입할 수 있는 자리라 esc() 를 건다.
+    // img.src 도 URL 이므로 safeUrl() 경유.
+    div.innerHTML='<div style="flex-shrink:0;width:60px;height:75px;border:1px solid var(--border);overflow:hidden"><img loading="lazy" src="'+safeUrl(img.src)+'" style="width:100%;height:100%;object-fit:cover'+(excluded?';filter:grayscale(1)':'')+'"></div>'
       +'<div style="flex:1">'
-      +'<div style="font-size:10px;font-weight:700;color:var(--text3);margin-bottom:4px">이미지 #'+img.num+' 착장 크레딧'+excludedTag+'</div>'
-      +'<input class="pe-input" placeholder="@brand1 Jacket, @brand2 Pants, @brand3 Shoes..." style="padding:7px 10px;font-size:11px" value="'+(img.credits||'')+'" oninput="galleryImages['+i+'].credits=this.value">'
+      +'<div style="font-size:10px;font-weight:700;color:var(--text3);margin-bottom:4px">이미지 #'+esc(img.num)+' 착장 크레딧'+excludedTag+'</div>'
+      +'<input class="pe-input" placeholder="@brand1 Jacket, @brand2 Pants, @brand3 Shoes..." style="padding:7px 10px;font-size:11px" value="'+escAttr(img.credits||'')+'" oninput="galleryImages['+i+'].credits=this.value">'
       +'<div style="font-size:9px;color:var(--text3);margin-top:3px">형식: @인스타그램 아이템명 (쉼표로 구분)</div>'
       +'</div>';
     area.appendChild(div);
@@ -4379,7 +4397,7 @@ function _renderRoleChips(trigger){
     chipsHtml='<span class="pe-role-placeholder">역할 선택…</span>';
   } else {
     chipsHtml=roles.map(function(r){
-      return '<span class="pe-role-chip" data-role="'+esc(r)+'">'+esc(r)
+      return '<span class="pe-role-chip" data-role="'+escAttr(r)+'">'+esc(r)
         +'<button type="button" class="pe-chip-x" onclick="event.stopPropagation();_removeCreditRoleChip(this)" aria-label="역할 삭제">×</button></span>';
     }).join('');
   }
@@ -4480,7 +4498,7 @@ function _buildCreditRowInner(roles, name, ig){
   // in EDITORIAL_CREDIT_ROLES) skip the checkbox layer and live purely
   // as chips.
   var checkboxes = EDITORIAL_CREDIT_ROLES.map(function(r){
-    return '<label><input type="checkbox" value="'+esc(r)+'" onchange="_onCreditRoleCheckbox(this)">'+esc(r)+'</label>';
+    return '<label><input type="checkbox" value="'+escAttr(r)+'" onchange="_onCreditRoleCheckbox(this)">'+esc(r)+'</label>';
   }).join('');
   // QA — escape DOUBLE QUOTES in the JSON because data-roles uses
   // double-quote delimiters in the attribute. The shared esc() helper
@@ -4506,8 +4524,8 @@ function _buildCreditRowInner(roles, name, ig){
     +     '<div class="pe-role-custom-wrap"><input type="text" placeholder="+ 직접 입력 후 Enter" onkeydown="_onCreditRoleCustomKey(this,event)"></div>'
     +   '</div>'
     + '</div>'
-    +'<input class="pe-input pe-credit-name" placeholder="이름" value="'+esc(name)+'">'
-    +'<input class="pe-input pe-credit-ig" placeholder="@instagram" value="'+esc(ig)+'">'
+    +'<input class="pe-input pe-credit-name" placeholder="이름" value="'+escAttr(name)+'">'
+    +'<input class="pe-input pe-credit-ig" placeholder="@instagram" value="'+escAttr(ig)+'">'
     +'<button class="btn btn-sm btn-red" onclick="_removeCreditRow(this)">삭제</button>';
 }
 
@@ -5104,7 +5122,7 @@ async function loadDashboardStats(){
       }else{
         edTb.innerHTML=eds.map(function(e){
           var thumb=e.thumbnail||e.cover_image||'';
-          var thumbHtml=thumb?'<img loading="lazy" class="td-thumb" src="'+esc(thumb)+'" style="width:30px;height:38px">':'<span style="color:var(--text3)">—</span>';
+          var thumbHtml=thumb?'<img loading="lazy" class="td-thumb" src="'+escAttr(thumb)+'" style="width:30px;height:38px">':'<span style="color:var(--text3)">—</span>';
           return '<tr><td style="width:40px">'+thumbHtml+'</td><td class="td-title" style="max-width:200px;overflow:hidden;text-overflow:ellipsis" onclick="go(\'editorials\')">'+esc(e.title||'')+'</td><td>'+fmtDate(e.published_date)+'</td></tr>';
         }).join('');
       }
@@ -5800,7 +5818,7 @@ function renderEditorialList(){
       cls='b-published'; label='공개';
     }
     var thumb=e.thumbnail||e.cover_image||'';
-    var thumbHtml=thumb?'<img loading="lazy" class="td-thumb" src="'+esc(thumb)+'">':'—';
+    var thumbHtml=thumb?'<img loading="lazy" class="td-thumb" src="'+escAttr(thumb)+'">':'—';
     // Highlight non-live rows with a subtle background tint
     var rowStyle='';
     if(st==='draft')          rowStyle=' style="background:rgba(255,152,0,0.06)"';
@@ -5839,7 +5857,7 @@ function renderEditorialList(){
     var updatedCell = fmtDate(e.admin_edited_at || e.updated_at);
     var isChecked = editorialSelectedIds.has(e.id) ? ' checked' : '';
     tb.innerHTML+='<tr'+rowStyle+'>'
-      + '<td onclick="event.stopPropagation()"><input type="checkbox" class="ed-row-check" data-id="'+e.id+'" onchange="editorialToggleRow(this)"'+isChecked+'></td>'
+      + '<td onclick="event.stopPropagation()"><input type="checkbox" class="ed-row-check" data-id="'+escAttr(e.id)+'" onchange="editorialToggleRow(this)"'+isChecked+'></td>'
       + '<td>'+thumbHtml+'</td>'
       + '<td class="td-title" onclick="editEditorial(\''+e.id+'\')">'+esc(e.title)+'</td>'
       + '<td>'+tagBadges+'</td>'
@@ -6731,7 +6749,7 @@ async function editEditorial(id){
     // Prefer cover_image; fall back to thumbnail for legacy posts that
     // only have the old field populated.
     var existingCoverUrl = ed.cover_image || ed.thumbnail;
-    thumbPrev.innerHTML='<img loading="lazy" src="'+esc(existingCoverUrl)+'" style="max-width:200px;max-height:250px;object-fit:cover"><div class="pe-upload-text" style="margin-top:8px">클릭하여 변경</div>';
+    thumbPrev.innerHTML='<img loading="lazy" src="'+escAttr(existingCoverUrl)+'" style="max-width:200px;max-height:250px;object-fit:cover"><div class="pe-upload-text" style="margin-top:8px">클릭하여 변경</div>';
     if(thumbBox){
       thumbBox.classList.add('has-thumb');
       // Stash the saved URL so savePost can keep it when the admin
@@ -6763,7 +6781,7 @@ async function editEditorial(id){
         // applied to the edit-post path so existing images can also be
         // re-ordered without the browser hijacking the drag for an image URL.
         div.innerHTML='<span class="pe-gallery-grip">⋮⋮</span>'
-          +'<img loading="lazy" draggable="false" src="'+esc(url)+'">'
+          +'<img loading="lazy" draggable="false" src="'+escAttr(url)+'">'
           // QA #182 — soft delete on the editorial edit path as well
           +'<button class="pe-gallery-del" onclick="removeGalleryImg('+galleryCount+')" title="이 이미지를 발행에서 제외 (실제 삭제는 아님)">×</button>'
           +'<button class="pe-gallery-thumb" onclick="event.stopPropagation();setGalleryThumb('+galleryCount+')" title="썸네일로 지정 (홈 카드 작은 이미지)" aria-label="썸네일로 지정">★</button>'
@@ -6852,7 +6870,7 @@ async function editEditorial(id){
     brandsArea.innerHTML='';
     ed.fashion.brands.forEach(function(b){
       var row=document.createElement('div');row.className='pe-brand-row';
-      row.innerHTML='<input class="pe-input pe-brand-name" placeholder="브랜드명" value="'+esc(b.name||'')+'"><input class="pe-input pe-brand-ig" placeholder="@instagram" value="'+esc(b.instagram||'')+'"><button class="btn btn-sm btn-red" onclick="this.parentElement.remove()">삭제</button>';
+      row.innerHTML='<input class="pe-input pe-brand-name" placeholder="브랜드명" value="'+escAttr(b.name||'')+'"><input class="pe-input pe-brand-ig" placeholder="@instagram" value="'+escAttr(b.instagram||'')+'"><button class="btn btn-sm btn-red" onclick="this.parentElement.remove()">삭제</button>';
       brandsArea.appendChild(row);
     });
   }
@@ -7892,8 +7910,8 @@ function renderFilms(){
     var authorshipCell = _renderAuthorshipCell(f);
     var updatedCell = fmtDate(f.updated_at);
     tb.innerHTML+='<tr'+rowStyle+'>'
-      + '<td onclick="event.stopPropagation()"><input type="checkbox" class="film-row-check" data-id="'+f.id+'" onchange="filmToggleRow(this)"'+isChecked+'></td>'
-      + '<td><img loading="lazy" class="td-thumb" src="'+esc(thumb)+'"></td>'
+      + '<td onclick="event.stopPropagation()"><input type="checkbox" class="film-row-check" data-id="'+escAttr(f.id)+'" onchange="filmToggleRow(this)"'+isChecked+'></td>'
+      + '<td><img loading="lazy" class="td-thumb" src="'+escAttr(thumb)+'"></td>'
       + '<td class="td-title" onclick="openFilmModal('+origIdx+')">'+esc(f.title||'')+'</td>'
       + '<td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis">'+esc(yt)+'</td>'
       + '<td><span class="badge '+cls+'">'+label+'</span></td>'
@@ -8462,7 +8480,7 @@ async function _onFilmThumbFile(input){
     var url = await uploadFile(file);
     document.getElementById('filmThumb').value = url;
     if(prev){
-      prev.innerHTML = '<img loading="lazy" src="'+esc(url)+'" style="max-height:60px;max-width:100px;object-fit:cover;border-radius:2px"><span class="pe-upload-text" style="margin-left:8px">업로드 완료 — 클릭하여 변경</span>';
+      prev.innerHTML = '<img loading="lazy" src="'+escAttr(url)+'" style="max-height:60px;max-width:100px;object-fit:cover;border-radius:2px"><span class="pe-upload-text" style="margin-left:8px">업로드 완료 — 클릭하여 변경</span>';
     }
     _setStatus('✓ 업로드 완료', false);
   } catch(e){
@@ -8655,7 +8673,7 @@ function openFilmModal(idx){
     if (f.thumbnail_url) {
       var prev = document.getElementById('filmThumbPreview');
       if(prev){
-        prev.innerHTML = '<img loading="lazy" src="'+esc(f.thumbnail_url)+'" style="max-height:60px;max-width:100px;object-fit:cover;border-radius:2px"><span class="pe-upload-text" style="margin-left:8px">현재 썸네일 — 클릭하여 변경</span>';
+        prev.innerHTML = '<img loading="lazy" src="'+escAttr(f.thumbnail_url)+'" style="max-height:60px;max-width:100px;object-fit:cover;border-radius:2px"><span class="pe-upload-text" style="margin-left:8px">현재 썸네일 — 클릭하여 변경</span>';
       }
     }
 
@@ -9857,7 +9875,7 @@ async function papCoverConfirmAsCover(){
       thumbBox.dataset.existingUrl = url;
     }
     if (thumbPrev) {
-      thumbPrev.innerHTML = '<img loading="lazy" src="'+esc(url)+'" style="max-width:200px;max-height:250px;object-fit:cover"><div class="pe-upload-text" style="margin-top:8px">✅ 확정된 커버 — 저장 시 최상단 노출</div>';
+      thumbPrev.innerHTML = '<img loading="lazy" src="'+escAttr(url)+'" style="max-width:200px;max-height:250px;object-fit:cover"><div class="pe-upload-text" style="margin-top:8px">✅ 확정된 커버 — 저장 시 최상단 노출</div>';
     }
     // Clear any pending file upload so finalCover uses the composited URL,
     // not a raw re-upload of thumbInput.files[0].
@@ -10507,7 +10525,9 @@ var editShortsIdx=-1;
 function renderShorts(){
   var tb=document.getElementById('shortsListBody');if(!tb)return;tb.innerHTML='';
   shortsList.forEach(function(s,i){
-    tb.innerHTML+='<tr><td>'+s.id+'</td><td class="td-title" onclick="openShortsModal('+i+')">'+s.title+'</td><td style="font-size:11px">youtube.com/shorts/'+s.yt+'</td><td><span style="font-size:10px;color:var(--green)">'+s.play+'</span></td><td><span class="badge '+(s.active?'b-published':'b-draft')+'">'+(s.active?'공개':'비공개')+'</span></td><td><button class="btn btn-sm" onclick="openShortsModal('+i+')">편집</button> <button class="btn btn-sm btn-red" onclick="deleteShorts('+i+')">삭제</button></td></tr>';
+    // B-6 (2026-07-26 감사) — 숏츠는 크리에이터 제출분도 섞이므로 사용자 유래
+    // 문자열이다. 전부 esc() 경유로 통일.
+    tb.innerHTML+='<tr><td>'+esc(s.id)+'</td><td class="td-title" onclick="openShortsModal('+i+')">'+esc(s.title)+'</td><td style="font-size:11px">youtube.com/shorts/'+esc(s.yt)+'</td><td><span style="font-size:10px;color:var(--green)">'+esc(s.play)+'</span></td><td><span class="badge '+(s.active?'b-published':'b-draft')+'">'+(s.active?'공개':'비공개')+'</span></td><td><button class="btn btn-sm" onclick="openShortsModal('+i+')">편집</button> <button class="btn btn-sm btn-red" onclick="deleteShorts('+i+')">삭제</button></td></tr>';
   });
 }
 function openShortsModal(idx){
@@ -10546,7 +10566,8 @@ function renderCats(){
   var tb=document.getElementById('catTableBody');
   tb.innerHTML='';
   categories.forEach(function(c,i){
-    tb.innerHTML+='<tr><td>'+c.order+'</td><td>'+c.nameKo+'</td><td>'+c.nameEn+'</td><td>'+c.slug+'</td><td>'+(c.active?'✓':'✗')+'</td><td><button class="btn btn-sm" onclick="openCatModal('+i+')">편집</button> <button class="btn btn-sm btn-red" onclick="deleteCat('+i+')">삭제</button></td></tr>';
+    // B-6 — 렌더 헬퍼로 통일 (관리자 입력이라도 예외를 두지 않는다)
+    tb.innerHTML+='<tr><td>'+esc(c.order)+'</td><td>'+esc(c.nameKo)+'</td><td>'+esc(c.nameEn)+'</td><td>'+esc(c.slug)+'</td><td>'+(c.active?'✓':'✗')+'</td><td><button class="btn btn-sm" onclick="openCatModal('+i+')">편집</button> <button class="btn btn-sm btn-red" onclick="deleteCat('+i+')">삭제</button></td></tr>';
   });
 }
 
@@ -10612,7 +10633,8 @@ function renderBanners(){
   tb.innerHTML='';
   banners.forEach(function(b,i){
     if(b.type!==currentBannerFilter) return;
-    tb.innerHTML+='<tr><td>'+b.order+'</td><td><img loading="lazy" class="td-thumb" src="'+b.img+'" style="width:80px;height:40px"></td><td>'+b.titleKo+'</td><td>'+b.link+'</td><td>'+(b.active?'✓':'✗')+'</td><td><button class="btn btn-sm" onclick="openBannerModal('+i+')">편집</button> <button class="btn btn-sm btn-red" onclick="deleteBanner('+i+')">삭제</button></td></tr>';
+    // B-6 — 배너 이미지/링크는 URL 이므로 safeUrl(), 나머지는 esc().
+    tb.innerHTML+='<tr><td>'+esc(b.order)+'</td><td><img loading="lazy" class="td-thumb" src="'+safeUrl(b.img)+'" style="width:80px;height:40px"></td><td>'+esc(b.titleKo)+'</td><td>'+esc(b.link)+'</td><td>'+(b.active?'✓':'✗')+'</td><td><button class="btn btn-sm" onclick="openBannerModal('+i+')">편집</button> <button class="btn btn-sm btn-red" onclick="deleteBanner('+i+')">삭제</button></td></tr>';
   });
 }
 
@@ -10641,7 +10663,7 @@ function openBannerModal(idx){
     document.querySelectorAll('#bannerModal input[name=bannerType]').forEach(function(r){
       if(r.value===b.type){r.checked=true;r.parentElement.classList.add('sel');}
     });
-    document.getElementById('bannerImgPreview').innerHTML='<img loading="lazy" src="'+b.img+'" style="max-width:100%;max-height:120px;object-fit:cover"><div class="pe-upload-text" style="margin-top:6px;font-size:10px">클릭하여 변경</div>';
+    document.getElementById('bannerImgPreview').innerHTML='<img loading="lazy" src="'+safeUrl(b.img)+'" style="max-width:100%;max-height:120px;object-fit:cover"><div class="pe-upload-text" style="margin-top:6px;font-size:10px">클릭하여 변경</div>';
     document.getElementById('bannerDateRow').style.display=b.type==='이벤트'?'grid':'none';
   } else {
     document.getElementById('bannerModalTitle').textContent='배너 추가';
@@ -11882,7 +11904,7 @@ async function _renderMagCoverList(filter){
     var date=_magEdDate(e); if(date) date=String(date).slice(0,10);
     var sel=e.id===selId, bg=sel?'rgba(46,204,113,.14)':'';
     return '<div onclick="_pickMagCoverEditorial(\''+esc(e.id)+'\')" style="padding:7px 9px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;color:#111;background:'+bg+'" onmouseover="this.style.background=\'rgba(46,204,113,.06)\'" onmouseout="this.style.background=\''+bg+'\'">'
-      +'<img src="'+esc(thumb)+'" style="width:40px;height:56px;object-fit:cover;background:#eee;border-radius:2px;flex-shrink:0" onerror="this.style.opacity=\'.3\'">'
+      +'<img src="'+escAttr(thumb)+'" style="width:40px;height:56px;object-fit:cover;background:#eee;border-radius:2px;flex-shrink:0" onerror="this.style.opacity=\'.3\'">'
       +'<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(e.title||'(제목 없음)')+badge+'</div>'
       +'<div style="font-size:10px;color:#888;margin-top:2px">'+esc(date)+'</div></div>'
       +(sel?'<div style="color:#27ae60;font-size:16px;font-weight:700">✓</div>':'')+'</div>';
@@ -12019,7 +12041,7 @@ async function _searchMagIncludedEditorial(query){
            + 'style="padding:8px 10px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;transition:background .15s" '
            + 'onmouseover="this.style.background=\'rgba(46,204,113,.06)\'" '
            + 'onmouseout="this.style.background=\'\'">'
-           +   '<img src="'+esc(thumb)+'" style="width:44px;height:60px;object-fit:cover;background:#eee;border-radius:2px;flex-shrink:0" onerror="this.style.opacity=\'.3\'">'
+           +   '<img src="'+escAttr(thumb)+'" style="width:44px;height:60px;object-fit:cover;background:#eee;border-radius:2px;flex-shrink:0" onerror="this.style.opacity=\'.3\'">'
            +   '<div style="flex:1;min-width:0">'
            +     '<div style="font-size:12px;font-weight:600;color:var(--text1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
            +       esc(e.title || '(제목 없음)') + badge
@@ -14151,7 +14173,7 @@ function renderShortsFromAPI(){
     var authorshipCell = _renderAuthorshipCell(s);
     var updatedCell = fmtDate(s.updated_at || s.created_at);
     tb.innerHTML += '<tr>'
-      + '<td onclick="event.stopPropagation()"><input type="checkbox" class="shorts-row-check" data-id="'+s.id+'" onchange="shortsToggleRow(this)"'+isChecked+'></td>'
+      + '<td onclick="event.stopPropagation()"><input type="checkbox" class="shorts-row-check" data-id="'+escAttr(s.id)+'" onchange="shortsToggleRow(this)"'+isChecked+'></td>'
       + '<td style="font-size:10px">'+(s.id ? s.id.substring(0,8) : '—')+'</td>'
       + '<td class="td-title" onclick="openShortsModal('+origIdx+')">'+esc(s.title)+'</td>'
       + '<td style="font-size:11px">'+esc(yt)+'</td>'
@@ -14501,8 +14523,8 @@ async function renderAds(){
   tb.innerHTML='';
   intAds.forEach(function(ad,i){
     var thumb=ad.type==='video'
-      ?(ad.poster?'<img loading="lazy" src="'+esc(ad.poster)+'" style="width:80px;height:50px;object-fit:cover">':'<div style="width:80px;height:50px;background:#222;display:flex;align-items:center;justify-content:center;font-size:9px;color:#666">VIDEO</div>')
-      :'<img loading="lazy" src="'+esc(ad.src)+'" style="width:80px;height:50px;object-fit:cover">';
+      ?(ad.poster?'<img loading="lazy" src="'+escAttr(ad.poster)+'" style="width:80px;height:50px;object-fit:cover">':'<div style="width:80px;height:50px;background:#222;display:flex;align-items:center;justify-content:center;font-size:9px;color:#666">VIDEO</div>')
+      :'<img loading="lazy" src="'+escAttr(ad.src)+'" style="width:80px;height:50px;object-fit:cover">';
     var linkText=ad.link||'';
     var shortLink=linkText.length>25?linkText.substring(0,25)+'...':linkText;
     tb.innerHTML+='<tr>'+
