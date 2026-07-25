@@ -295,7 +295,7 @@ window._papFilmAutoPlay = function(){
       ti18n: a.title_i18n || a.titleI18n || a.ti18n
              || (a.title_en && String(a.title_en).trim() ? { en: String(a.title_en).trim() } : null),
       subi18n: a.subtitle_i18n || a.subtitleI18n || a.subi18n || null,
-      desci18n: a.content_i18n || a.contentI18n || a.desci18n || null
+      desci18n: a.content_i18n || a.contentI18n || a.desci18n || (a.content_en && String(a.content_en).trim() ? { en: String(a.content_en).trim() } : null)
     };
   }
 

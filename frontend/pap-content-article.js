@@ -56,7 +56,9 @@ function _papLocSub(a){
   if(!a) return '';
   var L=_papCurLang();
   if(L==='ko') return (a.subi18n && a.subi18n.ko) || a.sub || (a.subi18n && a.subi18n.en) || '';
-  return (a.subi18n && (a.subi18n[L] || a.subi18n.en)) || a.sub || '';
+  // 2026-07-25 — 비-한국어 모드에선 한국어 원문 부제(a.sub) 폴백 제거 → 영어 모드에
+  // 한국어 부제가 남지 않게. (영문 부제 데이터가 없는 기사는 부제 미표시.)
+  return (a.subi18n && (a.subi18n[L] || a.subi18n.en)) || '';
 }
 
 // ======== ALL ARTICLES OVERLAY ========
@@ -541,7 +543,18 @@ function _renderArticleDetail(a,det){
     // If `a.blocks` was parsed by apiArticleToLocal, walk it and emit
     // semantic markup per block type. Otherwise fall back to the
     // legacy raw-HTML / raw-text path so older articles still render.
-    if(Array.isArray(a.blocks) && a.blocks.length){
+    // 2026-07-25 — 영어(비-한국어) 모드: DB content_en(=desci18n.en)을 본문으로
+    // 렌더해 '언어 변경 시 본문도 영어' 를 보장. 한국어 모드는 원문(blocks/desc) 유지.
+    var _bodyL = _papCurLang();
+    var _enBody = (_bodyL !== 'ko' && a.desci18n) ? (a.desci18n[_bodyL] || a.desci18n.en || '') : '';
+    if(_enBody){
+      if(_enBody.indexOf('<')!==-1 && _enBody.indexOf('>')!==-1){
+        descEl.innerHTML=_enBody;
+      } else {
+        descEl.innerHTML=_enBody.split('\n').filter(function(p){return p.trim();}).map(function(p){return '<p style="margin:0 0 22px;line-height:1.9">'+escapeHtml(p)+'</p>';}).join('');
+      }
+      descEl.style.display='';
+    } else if(Array.isArray(a.blocks) && a.blocks.length){
       descEl.innerHTML = _renderArticleBlocks(a.blocks);
       descEl.style.display='';
       // QA #283 — 슬라이드 블록 좌우 네비 + 카운터 활성화.
@@ -663,6 +676,7 @@ function _openArticleDetailInner(idx){
     .then(function(j){
       var fullA = j && (j.data || j.article);
       if(!fullA) return;
+      if(fullA.content_en && String(fullA.content_en).trim()){ a.desci18n = a.desci18n || {}; if(!a.desci18n.en){ a.desci18n.en = String(fullA.content_en).trim(); } }
       var raw = fullA.content || '';
       var parsed = null;
       if(typeof raw === 'string' && raw){

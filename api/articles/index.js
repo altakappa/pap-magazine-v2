@@ -82,6 +82,9 @@ module.exports = async function handler(req, res) {
         'category','tags','published_date','custom_url','status',
         'scheduled_publish_at','admin_edited_at','updated_at',
         'content',
+        // 2026-07-25 — 영어 본문. content_en 을 목록에 실어야 SPA 리더가
+        // 언어 변경 시 본문을 영어로 렌더할 수 있다(title_en 과 동일 논리).
+        'content_en',
         // 2026-07 — IG 수집 기사의 캐러셀 전체를 SPA 상세에서 표시 (QA #221
         // 과 같은 논리: SPA 는 목록 응답만 소비하므로 여기 없으면 사라진다.
         // 갤러리는 URL 배열이라 가볍고 QA #220 에지 캐시가 흡수).
