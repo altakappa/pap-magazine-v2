@@ -5,8 +5,11 @@
  *
  *   1. Look up brand by `brand_id` (must be status='active' AND have a URL
  *      for at least one region).
- *   2. Geo-route — KR visitors → affiliate_url_korea (when set),
- *                  everyone else → affiliate_url_global.
+ *   2. Geo-route — KR visitors → affiliate_url_korea (falling back to
+ *                  affiliate_url_global), everyone else → affiliate_url_global
+ *                  ONLY. `affiliate_url_korea` is a KR-scoped link and must
+ *                  never be served to non-KR traffic (2026-07-26; see
+ *                  api/_lib/affiliateUrl.js for the reasoning).
  *      Vercel sets `x-vercel-ip-country` for serverless functions; we
  *      fall back to header-only detection (no IP API roundtrip).
  *   3. Record a click in `affiliate_clicks` — PII minimised:
@@ -32,6 +35,7 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { extractClientIp, hashIp, detectDeviceType, sanitizeReferrer } = require('../_lib/clickGuard');
+const { pickAffiliateUrl } = require('../_lib/affiliateUrl');
 
 const HOME_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.com';
 const DEDUP_WINDOW_MS = 24 * 60 * 60 * 1000; // 24h
@@ -46,10 +50,8 @@ function pickRegion(req) {
   return country === 'KR' ? 'KR' : 'GLOBAL';
 }
 
-function pickAffiliateUrl(brand, region) {
-  if (region === 'KR' && brand.affiliate_url_korea) return brand.affiliate_url_korea;
-  return brand.affiliate_url_global || brand.affiliate_url_korea || null;
-}
+// 지역별 어필리에이트 URL 선택 — 규칙·근거는 ../_lib/affiliateUrl.js 주석 참조.
+// (순수 함수라 유닛 테스트 가능하도록 _lib 로 분리: tests/affiliate-region-scope.test.js)
 
 /**
  * Same-IP-same-brand-24h check. Returns true if a previous COUNTED click
