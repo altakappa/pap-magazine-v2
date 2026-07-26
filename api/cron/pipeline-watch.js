@@ -23,7 +23,7 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { pushAlert } = require('../_lib/pushAlert');
-const { listRecentMedia } = require('../_lib/instagramImport');
+const { listRecentMedia, isLikelyEditorialCaption, _extractShortcode } = require('../_lib/instagramImport');
 
 const ALERT_KEY = 'ig-to-site-pipeline';
 const SITE = 'https://www.pap-magazine.com';
@@ -56,6 +56,13 @@ function diagnose(media, rows, opts) {
     if (!m || !m.id || !m.timestamp) continue;
     const ts = Date.parse(m.timestamp);
     if (isNaN(ts) || now - ts < graceMs) continue; // 아직 유예 중
+    // 2026-07-26 — 에디토리얼(운영자 수동 업로드 대상)은 기사 자동수집 감시 대상이
+    // 아니다. articles 에 없는 게 정상이라 '미수집' 오탐을 유발했다 → 제외한다.
+    {
+      const _edSet = (opts && opts.editorialShortcodes) || null;
+      const _sc = _extractShortcode(m.permalink);
+      if ((_edSet && _sc && _edSet.has(_sc)) || isLikelyEditorialCaption(m.caption)) continue;
+    }
     checked++;
     const status = byId.get(String(m.id));
     const info = {
@@ -112,7 +119,14 @@ module.exports = withCronGuard('pipeline-watch', async function handler(req, res
         .in('source_instagram_post_id', ids)
     : { data: [] };
 
-  const d = diagnose(media, rows);
+  // 에디토리얼 shortcode 집합 — 감시에서 에디토리얼 제외(미수집 오탐 방지, 2026-07-26).
+  const { data: _eds } = await supabaseAdmin
+    .from('editorials').select('source_instagram_url')
+    .not('source_instagram_url', 'is', null).limit(5000);
+  const editorialShortcodes = new Set(
+    (_eds || []).map((e) => _extractShortcode(e.source_instagram_url)).filter(Boolean)
+  );
+  const d = diagnose(media, rows, { editorialShortcodes });
   if (dry) return res.status(200).json({ ok: true, dry: true, ...d });
 
   const { data: state } = await supabaseAdmin.from('ops_alert_state')
