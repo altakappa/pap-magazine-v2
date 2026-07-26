@@ -29,19 +29,33 @@ module.exports = async function handler(req, res) {
       .order('created_at', { ascending: false })
       .limit(5000);
 
+    // it/fr/es/ja 번역 존재 여부 (2026-07-26 다국어 확장) — 번역이 있는 기사만
+    // 해당 언어 URL·alternate 를 선언한다. 에디토리얼 사이트맵과 동일 규칙.
+    // (이미 만들어진 번역을 구글에 알려 해당 언어 검색에 노출.)
+    const trMap = new Map();
+    try {
+      const { data: trs } = await supabaseAdmin
+        .from('seo_translations')
+        .select('content_id, lang')
+        .eq('kind', 'article')
+        .limit(20000);
+      for (const t of trs || []) {
+        if (!trMap.has(t.content_id)) trMap.set(t.content_id, []);
+        trMap.get(t.content_id).push(t.lang);
+      }
+    } catch (_) { /* ko/en only */ }
+
     const urls = (arts || []).map(a => {
-      // 2026-07-22 (Ahrefs 감사: 사이트맵 내 301 690건) — custom_url 은 레거시 경로형
-      // 값(발행 504건 중 268건 불량·68건 공백)이라 광고하면 전부 정식 slug 로 301 된다.
-      // articles.slug 는 504/504 전건 URL-clean(DB 실측) — 정식 슬러그를 1순위로 광고.
+      // 2026-07-22 (Ahrefs 감사: 사이트맵 내 301) — custom_url 은 레거시라 slug 1순위.
       const handle = a.slug || a.custom_url || a.id;
       if (!handle) return '';
       const loc = SITE + '/article/' + encodeURIComponent(handle);
-      // /en/ SSR (2026-07-16) — 언어별 URL + hreflang alternate
-      const locEn = SITE + '/en/article/' + encodeURIComponent(handle);
+      // ko/en 항상, it/fr/es/ja 는 번역 존재 시 (2026-07-26 다국어 확장).
+      const langs = ['ko', 'en'].concat((trMap.get(a.id) || []).filter(l => ['it', 'fr', 'es', 'ja'].includes(l)));
+      const urlFor = (l) => l === 'ko' ? loc : SITE + '/' + l + '/article/' + encodeURIComponent(handle);
       const lastmod = fmtDate(a.updated_at || a.published_date);
       const altBlock =
-        '    <xhtml:link rel="alternate" hreflang="ko" href="' + xmlEscape(loc) + '"/>\n' +
-        '    <xhtml:link rel="alternate" hreflang="en" href="' + xmlEscape(locEn) + '"/>\n' +
+        langs.map(l => '    <xhtml:link rel="alternate" hreflang="' + l + '" href="' + xmlEscape(urlFor(l)) + '"/>\n').join('') +
         '    <xhtml:link rel="alternate" hreflang="x-default" href="' + xmlEscape(loc) + '"/>\n';
       const img = a.hero_image_url || a.thumbnail_url;
       const imgBlock = img
@@ -55,13 +69,15 @@ module.exports = async function handler(req, res) {
         altBlock +
         imgBlock +
         '  </url>\n' +
-        '  <url>\n' +
-        '    <loc>' + xmlEscape(locEn) + '</loc>\n' +
-        '    <lastmod>' + lastmod + '</lastmod>\n' +
-        '    <changefreq>weekly</changefreq>\n' +
-        '    <priority>0.5</priority>\n' +
-        altBlock +
-        '  </url>';
+        langs.filter(l => l !== 'ko').map(l =>
+          '  <url>\n' +
+          '    <loc>' + xmlEscape(urlFor(l)) + '</loc>\n' +
+          '    <lastmod>' + lastmod + '</lastmod>\n' +
+          '    <changefreq>weekly</changefreq>\n' +
+          '    <priority>0.5</priority>\n' +
+          altBlock +
+          '  </url>'
+        ).join('\n');
     }).filter(Boolean);
 
     const xml =
