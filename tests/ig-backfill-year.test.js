@@ -78,12 +78,11 @@ t('cron: ?account=<key> 로 하위 계정 자격증명 선택', /req\.query && r
 t('cron: account 미설정 env 는 무해 스킵(실패 알림 방지)', /env 미설정.*skipped|skipped:.*env 미설정/.test(cron));
 t('cron: 기본(account 없음)은 @pap_magazine env 불변', /account \? \('ig_backfill_done_' \+ account\) : 'ig_backfill_done'/.test(cron));
 t('cron: 완주 통보에 계정 라벨(acctLabel)', /acctLabel/.test(cron));
-// 2026-07-26: 하위 계정 IG_*_ACCESS_TOKEN 이 전부 파싱 불가(OAuthException 190)라
-// 5개 크론이 24h 719회 전량 실패 중이었다. 코드의 다계정 지원(위 5개 검증)은 그대로 두고
-// 스케줄 등록만 해제한다. 토큰 재발급 후 vercel.json 에 되돌리고 이 검증도 원복할 것.
-t('vercel.json 하위 계정 백필 크론 미등록(토큰 재발급 전까지)',
+// 2026-07-26: 토큰 재발급 없이 본계정 토큰 폴백으로 복구되어 5개 크론을 되살렸다.
+// (dry=1 실측 5계정 전부 200, token_source='main (계정 토큰 형식 불량)')
+t('vercel.json 5개 하위 계정 백필 크론 등록',
   ['celeb','beauty','fashion','trends','object'].every(a =>
-    !vj.crons.some(c => c.path.includes('account=' + a + '&backfill=365'))));
+    vj.crons.some(c => c.path.includes('account=' + a + '&backfill=365'))));
 
 console.log('--- 토큰 위생·본계정 폴백 (2026-07-26 OAuth 190 대응) ---');
 const II = require('../api/_lib/instagramImport');
