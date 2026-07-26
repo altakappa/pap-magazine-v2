@@ -385,6 +385,14 @@
       "destination": "/business.html"
     },
     {
+      "source": "/studio",
+      "destination": "/studio.html"
+    },
+    {
+      "source": "/studio/",
+      "destination": "/studio.html"
+    },
+    {
       "source": "/films",
       "has": [
         {
@@ -594,6 +602,11 @@
     {
       "source": "/business.html",
       "destination": "/business",
+      "statusCode": 301
+    },
+    {
+      "source": "/studio.html",
+      "destination": "/studio",
       "statusCode": 301
     },
     {
