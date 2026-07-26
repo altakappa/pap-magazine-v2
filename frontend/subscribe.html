@@ -1417,7 +1417,7 @@ async function handleCta(plan) {
 function _promptGuestInfo() {
   return new Promise(function(resolve){
     var lang = (localStorage.getItem('pap-lang') || 'ko');
-    var T = {
+    var T = {it:{email:"Inserisci l'email per ricevere la ricevuta.",invalid:"Inserisci un'email valida.",name:"Inserisci il nome del titolare della carta."},fr:{email:"Saisissez l'e-mail pour recevoir votre reçu.",invalid:"Veuillez saisir un e-mail valide.",name:"Saisissez le nom du titulaire de la carta."},es:{email:"Introduce el correo para recibir tu recibo.",invalid:"Introduce un correo válido.",name:"Introduce el nombre del titular de la tarjeta."},ja:{email:"領収書を受け取るメールアドレスを入力してください。",invalid:"有効なメールアドレスを入力してください。",name:"カード名義人の名前を入力してください。"},zh:{email:"请输入接收收据的邮箱。",invalid:"请输入有效的邮箱。",name:"请输入持卡人姓名。"},ru:{email:"Введите email для получения чека.",invalid:"Введите корректный email.",name:"Введите имя владельца карты."},de:{email:"E-Mail für den Beleg eingeben.",invalid:"Bitte gültige E-Mail eingeben.",name:"Namen des Karteninhabers eingeben."},
       ko: { email: '결제 영수증을 받을 이메일을 입력해 주세요.',
             invalid: '이메일 형식을 확인해 주세요.',
             name: '카드 명의자(이름)을 입력해 주세요.' },
