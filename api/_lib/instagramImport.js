@@ -30,9 +30,34 @@ function _extractShortcode(input){
 // limit: 최대 25 (Graph API 기본값).
 // 2026-07-23 — 다계정 지원. opts.userId/opts.token 이 오면 그 계정, 없으면
 // 기본 env(IG_USER_ID/IG_ACCESS_TOKEN = @pap_magazine). 하위 계정 백필용.
+// 2026-07-26 — 자격증명 위생 처리 + 본계정 토큰 폴백.
+// 배경: Vercel env 에 저장된 하위 5계정 IG_*_ACCESS_TOKEN 이 파싱 불가 상태여서
+// 24시간 719회 OAuthException 190 'Cannot parse access token' 이 났다. 원본 토큰은
+// 멀쩡했고 붙여넣기 과정(끝 줄바꿈·따옴표·공백)에서 깨진 것으로 보인다.
+// 대응 두 가지: ① 쓰기 직전에 공백·따옴표를 제거한다 ② 하위 계정 토큰이 비었거나
+// 토큰 형식이 아니면 본계정 토큰(IG_ACCESS_TOKEN)으로 폴백한다.
+// ②가 안전한 이유: 5계정 토큰은 애초에 본계정과 같은 유저 토큰 하나다
+// (도메니코 유저가 6계정 전부 접근권 보유 — 45_Business/2026-07-24 세팅 기록).
+const _TOKEN_SHAPE = /^[A-Za-z0-9_.-]{50,}$/;
+
+function sanitizeCredential(v){
+  return String(v == null ? '' : v).replace(/[\s"'`]/g, '');
+}
+
+// 하위 계정 토큰과 본계정 토큰을 받아 실제로 쓸 토큰을 고른다.
+// 반환 source 는 진단·로그용 라벨일 뿐 토큰 값 자체는 절대 노출하지 않는다.
+function pickAccountToken(accountToken, mainToken){
+  const acct = sanitizeCredential(accountToken);
+  if (_TOKEN_SHAPE.test(acct)) return { token: acct, source: 'account' };
+  const main = sanitizeCredential(mainToken);
+  const why = acct ? '계정 토큰 형식 불량' : '계정 토큰 없음';
+  if (!_TOKEN_SHAPE.test(main)) return { token: '', source: 'none (' + why + ' + 본계정 토큰도 사용 불가)' };
+  return { token: main, source: 'main (' + why + ')' };
+}
+
 function _creds(opts){
-  const userId = (opts && opts.userId) || process.env.IG_USER_ID;
-  const token = (opts && opts.token) || process.env.IG_ACCESS_TOKEN;
+  const userId = sanitizeCredential((opts && opts.userId) || process.env.IG_USER_ID);
+  const token = sanitizeCredential((opts && opts.token) || process.env.IG_ACCESS_TOKEN);
   if (!userId || !token){
     throw new Error('IG_ACCESS_TOKEN/IG_USER_ID 환경변수가 설정되어 있지 않습니다.');
   }
@@ -491,4 +516,6 @@ module.exports = {
   hydrateChildren,
   normalizeMedia: _normalizeMedia,
   _extractShortcode,
+  sanitizeCredential,
+  pickAccountToken,
 };

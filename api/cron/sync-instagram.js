@@ -42,6 +42,8 @@ const {
   normalizeMedia,
   hydrateChildren,
   _extractShortcode,
+  sanitizeCredential,
+  pickAccountToken,
 } = require('../_lib/instagramImport');
 
 module.exports = withCronGuard('sync-instagram', async function handler(req, res){
@@ -59,17 +61,28 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
   const ACCOUNT_KEYS = ['celeb', 'beauty', 'fashion', 'trends', 'object'];
   const account = String((req.query && req.query.account) || '').toLowerCase().trim();
   let cred = null; // null = 기본 env
+  let tokenSource = 'main'; // 진단용 라벨 (토큰 값은 절대 노출하지 않는다)
   if (account){
     if (!ACCOUNT_KEYS.includes(account)){
       return res.status(400).json({ error: 'account 는 ' + ACCOUNT_KEYS.join('|') + ' 중 하나' });
     }
-    const uid = process.env['IG_' + account.toUpperCase() + '_USER_ID'];
-    const tok = process.env['IG_' + account.toUpperCase() + '_ACCESS_TOKEN'];
-    if (!uid || !tok){
+    const uid = sanitizeCredential(process.env['IG_' + account.toUpperCase() + '_USER_ID']);
+    // 2026-07-26 — 계정 토큰이 비었거나 형식이 깨졌으면 본계정 토큰으로 폴백.
+    // (5계정 토큰 = 본계정과 같은 유저 토큰 하나. 45_Business/2026-07-24 세팅 기록)
+    const picked = pickAccountToken(
+      process.env['IG_' + account.toUpperCase() + '_ACCESS_TOKEN'],
+      process.env.IG_ACCESS_TOKEN
+    );
+    if (!uid || !picked.token){
       // env 미설정 계정은 조용히 스킵(200) — 크론이 실패 알림을 쏟지 않게.
-      return res.status(200).json({ ok: true, skipped: 'account ' + account + ' env 미설정', account });
+      return res.status(200).json({ ok: true, skipped: 'account ' + account + ' env 미설정', account, token_source: picked.source });
     }
-    cred = { userId: uid, token: tok };
+    cred = { userId: uid, token: picked.token };
+    tokenSource = picked.source;
+    // 실패해도 cron_runs.note 에 남게 미리 기록 — 190 이 또 나면 어느 토큰으로
+    // 시도했는지 브라우저 없이 DB 만으로 갈린다. 값이 아니라 라벨만 남는다.
+    res.locals = res.locals || {};
+    res.locals.cronNote = 'account=' + account + ' token_source=' + tokenSource;
   } else if (!process.env.IG_ACCESS_TOKEN || !process.env.IG_USER_ID){
     return res.status(503).json({
       error: 'Instagram 환경변수 미설정 (IG_ACCESS_TOKEN / IG_USER_ID).',
@@ -382,6 +395,8 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
     }
 
     if (dry){
+      results.account = account || 'magazine';
+      results.token_source = tokenSource;
       results.editorial_shortcodes_known = editorialShortcodes.size;
       if (qualityGateOn) results.quality_gate = { on: true, min_likes: MIN_LIKES, min_comments: MIN_COMMENTS, weekly_limit: WEEKLY_LIMIT, weekly_published: weeklyPublished };
     }

@@ -85,6 +85,30 @@ t('vercel.json 하위 계정 백필 크론 미등록(토큰 재발급 전까지)
   ['celeb','beauty','fashion','trends','object'].every(a =>
     !vj.crons.some(c => c.path.includes('account=' + a + '&backfill=365'))));
 
+console.log('--- 토큰 위생·본계정 폴백 (2026-07-26 OAuth 190 대응) ---');
+const II = require('../api/_lib/instagramImport');
+const GOOD = 'EAAB' + 'x'.repeat(80);
+const OTHER = 'EAAC' + 'y'.repeat(80);
+t('sanitizeCredential: 끝 줄바꿈·공백 제거', II.sanitizeCredential(' ' + GOOD + '\n') === GOOD);
+t('sanitizeCredential: 감싼 따옴표 제거', II.sanitizeCredential('"' + GOOD + '"') === GOOD);
+t('sanitizeCredential: null/undefined 는 빈 문자열', II.sanitizeCredential(null) === '' && II.sanitizeCredential(undefined) === '');
+t('pickAccountToken: 계정 토큰이 멀쩡하면 그대로 사용',
+  II.pickAccountToken(GOOD, OTHER).token === GOOD && II.pickAccountToken(GOOD, OTHER).source === 'account');
+t('pickAccountToken: 줄바꿈만 붙은 계정 토큰은 정리해서 그대로 사용(폴백 아님)',
+  II.pickAccountToken(GOOD + '\n', OTHER).token === GOOD);
+t('pickAccountToken: 계정 토큰 없으면 본계정 토큰 폴백',
+  II.pickAccountToken('', GOOD).token === GOOD && /^main /.test(II.pickAccountToken('', GOOD).source));
+t('pickAccountToken: 계정 토큰 형식 불량이면 본계정 토큰 폴백',
+  II.pickAccountToken('깨진값', GOOD).token === GOOD && /형식 불량/.test(II.pickAccountToken('깨진값', GOOD).source));
+t('pickAccountToken: 둘 다 못 쓰면 빈 토큰(무해 스킵 경로로)',
+  II.pickAccountToken('x', 'y').token === '');
+t('pickAccountToken: source 라벨에 토큰 값이 새지 않는다',
+  !II.pickAccountToken('', GOOD).source.includes(GOOD) && !II.pickAccountToken('깨진값', GOOD).source.includes('깨진값'));
+t('cron: 하위 계정 경로가 pickAccountToken 사용', /pickAccountToken\(/.test(cron) && /sanitizeCredential\(process\.env\['IG_'/.test(cron));
+t('cron: dry 응답에 token_source 노출(값 아님)', /results\.token_source = tokenSource/.test(cron));
+t('cron: 실패해도 cron_runs.note 에 token_source 남김', /res\.locals\.cronNote = 'account=' \+ account \+ ' token_source='/.test(cron));
+t('lib: _creds 가 양쪽 자격증명을 sanitize', /const userId = sanitizeCredential\(/.test(lib) && /const token = sanitizeCredential\(/.test(lib));
+
 console.log('--- 스케줄 등록 ---');
 t('vercel.json @pap_magazine 백필 크론 전체 이력(backfill=4000)',
   vj.crons.some(c => c.path.includes('/api/cron/sync-instagram?backfill=4000')));
