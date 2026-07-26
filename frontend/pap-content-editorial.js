@@ -1084,7 +1084,12 @@ function _openEditorialInner(title,thumb){
       return false;
     })();
     var _needsHydrate = (!_imgs && _credsArr.length === 0 && !_hasDesc);
-    if(_needsHydrate && d.id){
+    // 2026-07-26 — 다국어: 활성 언어가 ko가 아니고 해당 언어 요약이 없고 아직
+    // 하이드레이트 안 했으면 상세 GET 으로 description_i18n 을 당겨온다(1회).
+    var _edL2 = (function(){try{return localStorage.getItem('pap-lang')||'ko';}catch(e){return 'ko';}})();
+    var _edDetC = (typeof edDetails!=='undefined' && edDetails[title]) || {};
+    var _edNeedTr = (_edL2!=='ko' && d.id && !_edDetC._i18nHydrated && !(d.desc && typeof d.desc==='object' && d.desc[_edL2]));
+    if((_needsHydrate || _edNeedTr) && d.id){
       var _t = '';
       try { _t = localStorage.getItem('pap-token') || ''; } catch(_){}
       var _h = {};
@@ -1118,7 +1123,10 @@ function _openEditorialInner(title,thumb){
         }
         var ko = full.description || '';
         var en = full.description_en || '';
-        if(ko || en) dst.desc = { ko: ko, en: en };
+        // 2026-07-26 — seo_translations 요약 다국어 병합(있으면 it/fr/es/ja 등 포함).
+        var _diMap = (full.description_i18n && typeof full.description_i18n==='object') ? full.description_i18n : null;
+        if(ko || en || _diMap) dst.desc = Object.assign({ ko: ko, en: en }, _diMap || {});
+        dst._i18nHydrated = true;
         // QA #231 — pass related_films through too so the "RELATED FILMS"
         // section appears when the fallback fetch is the path that hydrates
         // the editorial (otherwise the editor would see the films on a

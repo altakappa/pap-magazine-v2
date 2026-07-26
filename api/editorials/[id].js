@@ -172,6 +172,28 @@ module.exports = async function handler(req, res) {
       // per-row second fetch.
       await attachAuthorship([data]);
 
+      // 2026-07-26 — 다국어 리더: seo_translations(editorial) 의 제목·요약 번역을
+      // title_i18n/description_i18n 로 실어 리더가 활성 언어로 요약을 렌더한다.
+      // (에디토리얼 본문은 미번역 — 사진 중심. 제목 표시는 키 구조상 원본 유지.)
+      try {
+        const { data: _trs } = await supabaseAdmin
+          .from('seo_translations')
+          .select('lang, title, description')
+          .eq('kind', 'editorial')
+          .eq('content_id', data.id);
+        const _ti = {}, _di = {};
+        if (data.title) _ti.ko = data.title;
+        if (data.title_en) _ti.en = data.title_en;
+        if (data.description) _di.ko = data.description;
+        if (data.description_en) _di.en = data.description_en;
+        for (const r of (_trs || [])) {
+          if (r && r.title) _ti[r.lang] = r.title;
+          if (r && r.description) _di[r.lang] = r.description;
+        }
+        data.title_i18n = _ti;
+        data.description_i18n = _di;
+      } catch (_) { /* best-effort */ }
+
       return res.status(200).json({ data });
     } catch (err) {
       console.error('Editorial GET error:', err);
