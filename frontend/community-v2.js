@@ -24,6 +24,15 @@ function _withLang(url){
   return url + sep + 'lang=' + encodeURIComponent(l);
 }
 
+// ── 9-language UI strings (2026-07-26) ──────────────────────────────
+// Community feed UI was ko/en only. _cL(ko,en) resolves the active PAP
+// language (it/fr/es/ja/zh/ru/de) via _CV_I18N; ko/en literals at each
+// call site stay as exact fallbacks. Keyed by the Korean source string.
+var _CV_I18N = {"제목과 내용을 입력하세요":{"it":"Inserisci titolo e contenuto","fr":"Veuillez saisir le titre et le contenu","es":"Introduce el título y el contenido","ja":"タイトルと内容を入力してください","zh":"请输入标题和内容","ru":"Введите заголовок и текст","de":"Bitte Titel und Inhalt eingeben"},"링크가 복사되었습니다":{"it":"Link copiato negli appunti","fr":"Lien copié dans le presse-papiers","es":"Enlace copiado al portapapeles","ja":"リンクをコピーしました","zh":"链接已复制到剪贴板","ru":"Ссылка скопирована в буфер обмена","de":"Link in die Zwischenablage kopiert"},"신고가 접수되었습니다":{"it":"Segnalazione inviata","fr":"Signalement envoyé","es":"Reporte enviado","ja":"報告を受け付けました","zh":"举报已提交","ru":"Жалоба отправлена","de":"Meldung übermittelt"},"신고가 접수되었습니다 (데모)":{"it":"Segnalazione inviata (demo)","fr":"Signalement envoyé (démo)","es":"Reporte enviado (demo)","ja":"報告を受けけました（デモ）","zh":"举报已提交（演示）","ru":"Жалоба отправлена (демо)","de":"Meldung übermittelt (Demo)"},"수정":{"it":"Modifica","fr":"Modifier","es":"Editar","ja":"編集","zh":"编辑","ru":"Изменить","de":"Bearbeiten"},"팔로우":{"it":"Segui","fr":"Suivre","es":"Seguir","ja":"フォロー","zh":"关注","ru":"Подписаться","de":"Folgen"},"팔로잉":{"it":"Segui già","fr":"Abonné","es":"Siguiendo","ja":"フォロー中","zh":"已关注","ru":"Вы подписаны","de":"Abonniert"},"멤버 프로필에서 메시지를 보낼 수 있어요":{"it":"Puoi inviare un messaggio dal profilo di un membro","fr":"Vous pouvez envoyer un message depuis le profil d'un membre","es":"Puedes enviar un mensaje desde el perfil de un miembro","ja":"メンバーのプロフィールからメッセージを送れます","zh":"您可以从任何成员的个人资料发送消息","ru":"Вы можете отправить сообщение из профиля любого участника","de":"Sie können über jedes Mitgliedsprofil eine Nachricht senden"},"첫 메시지를 보내보세요":{"it":"Invia il tuo primo messaggio","fr":"Envoyez votre premier message","es":"Envía tu primer mensaje","ja":"最初のメッセージを送ってみましょう","zh":"发送你的第一条消息","ru":"Отправьте первое сообщение","de":"Senden Sie Ihre erste Nachricht"},"메시지가 없습니다":{"it":"Ancora nessun messaggio","fr":"Aucun message pour l'instant","es":"Aún no hay mensajes","ja":"メッセージはまだありません","zh":"暂无消息","ru":"Сообщений пока нет","de":"Noch keine Nachrichten"},"수신자 정보가 없어요":{"it":"Nessun destinatario — chiudi e riapri la chat","fr":"Aucun destinataire — fermez et rouvrez la conversation","es":"Sin destinatario — cierra y vuelve a abrir el chat","ja":"受信者がいません — チャットを閉じて再度開いてください","zh":"无收件人 — 请关闭并重新打开聊天","ru":"Нет получателя — закройте и снова откройте чат","de":"Kein Empfänger — Chat schließen und erneut öffnen"},"이 카드는 데모 데이터예요 — 디렉토리에서 회원을 찾아 메시지를 보내주세요":{"it":"Questa scheda è un dato demo — trova membri nella scheda Directory per inviare messaggi","fr":"Cette carte est une donnée de démo — trouvez des membres dans l'onglet Répertoire pour envoyer des messages","es":"Esta tarjeta es de demostración — busca miembros en la pestaña Directorio para enviar mensajes","ja":"このカードはデモデータです — ディレクトリタブでメンバーを探してメッセージを送ってください","zh":"此卡片为演示数据 — 请在目录标签中查找成员以发送消息","ru":"Эта карточка — демо-данные — найдите участников во вкладке «Каталог», чтобы отправлять сообщения","de":"Diese Karte enthält Demodaten — finden Sie Mitglieder im Tab „Verzeichnis“, um Nachrichten zu senden"},"메시지":{"it":"Messaggio","fr":"Message","es":"Mensaje","ja":"メッセージ","zh":"消息","ru":"Сообщение","de":"Nachricht"},"불러오는 중…":{"it":"Caricamento…","fr":"Chargement…","es":"Cargando…","ja":"読み込み中…","zh":"加载中…","ru":"Загрузка…","de":"Wird geladen…"},"회원":{"it":"Membro","fr":"Membre","es":"Miembro","ja":"会員","zh":"会员","ru":"Участник","de":"Mitglied"},"무드보드":{"it":"Bacheche","fr":"Tableaux","es":"Tableros","ja":"ボード","zh":"灵感板","ru":"Доски","de":"Boards"},"팔로워":{"it":"Follower","fr":"Abonnés","es":"Seguidores","ja":"フォロワー","zh":"粉丝","ru":"Подписчики","de":"Follower"},"스크랩":{"it":"Salvati","fr":"Enregistrements","es":"Guardados","ja":"スクラップ","zh":"收藏","ru":"Сохранённое","de":"Sammlungen"},"본인 프로필":{"it":"Il tuo profilo","fr":"Votre profil","es":"Tu perfil","ja":"自分のプロフィール","zh":"你的个人资料","ru":"Ваш профиль","de":"Ihr Profil"},"웹사이트 ↗":{"it":"Sito web ↗","fr":"Site web ↗","es":"Sitio web ↗","ja":"ウェブサイト ↗","zh":"网站 ↗","ru":"Сайт ↗","de":"Website ↗"},"최근 무드보드":{"it":"Bacheche recenti","fr":"Tableaux récents","es":"Tableros recientes","ja":"最近のムードボード","zh":"最近的灵感板","ru":"Недавние доски","de":"Neueste Moodboards"},"최근 스크랩":{"it":"Salvati recenti","fr":"Enregistrements récents","es":"Guardados recientes","ja":"最近のスクラップ","zh":"最近的收藏","ru":"Недавно сохранённое","de":"Neueste Sammlungen"},"아직 활동이 없어요":{"it":"Ancora nessuna attività","fr":"Aucune activité pour l'instant","es":"Aún no hay actividad","ja":"まだ活動がありません","zh":"暂无动态","ru":"Пока нет активности","de":"Noch keine Aktivität"},"새 뱃지 획득를 닭":{"it":"Nuovo badge: ","fr":"Nouveau badge : ","es":"Nueva insignia: ","ja":"新しいバッジ進: ","zh":"获得新徽章: ","ru":"Новый значок: ","de":"Neues Abzeichen: "},"제목을 입력하세요":{"it":"Inserisci un titolo","fr":"Saisissez un titre","es":"Introduce un título","ja":"タイトルを入力してください","zh":"请输入标题","ru":"Введите заголовок","de":"Titel eingeben"}," 보냜":{"it":" bacheche","fr":" tableaux","es":" tableros","ja":" ボード","zh":" 个灵感板","ru":" досок","de":" Boards"}," 스킬랩":{"it":" salvati","fr":" enregistrements","es":" guardados","ja":" スクラップ","zh":" 个收藏","ru":" сохранённых","de":" Sammlungen"},"원문 보기":{"it":"Vedi originale","fr":"Voir l'original","es":"Ver original","ja":"原文を見る","zh":"查看原文","ru":"Показать оригинал","de":"Original anzeigen"},"댓글":{"it":"Commenti","fr":"Commentaires","es":"Comentarios","ja":"コメント","zh":"评论","ru":"Комментарии","de":"Kommentare"},"댓글 불러오는 중...":{"it":"Caricamento commenti...","fr":"Chargement des commentaires...","es":"Cargando comentarios...","ja":"コメントを��み込み中...","zh":"正在加载评论...","ru":"Загрузка комментариев...","de":"Kommentare werden geladen..."},"이 보드에 대한 생각을 남겨보세요...":{"it":"Lascia un pensiero su questa bacheca...","fr":"Partagez votre avis sur ce tableau...","es":"Deja tu opinión sobre este tablero...","ja":"このボードについての考えを残してください...","zh":"分享你对这个灵感板的想法...","ru":"Оставьте мысль об этой доске...","de":"Teilen Sie Ihre Gedanken zu diesem Board..."},"등록":{"it":"Pubblica","fr":"Publier","es":"Publicar","ja":"投稿","zh":"发布","ru":"Опубликовать","de":"Posten"},"아직 댓글이 없어요. 첫 댓글을 남겨보세요.":{"it":"Ancora nessun commento. Sii il primo.","fr":"Aucun commentaire. Soyez le premier.","es":"Aún no hay comentarios. Sé el primero.","ja":"まだコメントがありません。最初のコメントを残しましょう。","zh":"还没有评论。来抢沙发吧。","ru":"Пока нет комментариев. Будьте первым.","de":"Noch keine Kommentare. Seien Sie der Erste."},"댓글을 삭제할까요?":{"it":"Eliminare questo commento?","fr":"Supprimer ce commentaire ?","es":"¿Eliminar este comentario?","ja":"このコメントを削除しますか？","zh":"删除这条评论？","ru":"Удалить этот комментарий?","de":"Diesen Kommentar löschen?"},"번역 보기":{"it":"Vedi traduzione","fr":"Voir la traduction","es":"Ver traducción","ja":"翻訳を見る","zh":"查看翻译","ru":"Показать перевод","de":"Übersetzung anzeigen"},"이미지 파일만 업로드할 수 있어요":{"it":"Sono supportati solo file immagine","fr":"Seuls les fichiers image sont pris en charge","es":"Solo se admiten archivos de imagen","ja":"画像ファイルのみアップロードできます","zh":"仅支持图片文件","ru":"Поддерживаются только изображения","de":"Nur Bilddateien werden unterstützt"},"업로드 실패":{"it":"Caricamento non riuscito","fr":"Échec du téléversement","es":"Error al subir","ja":"アップロード失敗","zh":"上传失败","ru":"Ошибка загрузки","de":"Upload fehlgeschlagen"},"이미지 URL을 입력하세요":{"it":"Inserisci un URL immagine","fr":"Saisissez une URL d'image","es":"Introduce una URL de imagen","ja":"画像URLを入力してください","zh":"请输入图片URL","ru":"Введите URL изображения","de":"Bild-URL eingeben"}};
+function _cLang(){ return (typeof lang!=='undefined'&&lang) || (function(){try{return localStorage.getItem('pap-lang')||'ko';}catch(e){return 'ko';}})(); }
+function _cL(ko,en){ var l=_cLang(); if(l==='ko') return ko; var m=_CV_I18N[ko]; if(m&&m[l]) return m[l]; return en; }
+
+
 // ── Robust login check (fixes alertLogin timing bug) ────────────────────
 // Background: the page-level alertLogin() in community.html only checks
 // SB.user, which Supabase populates ASYNCHRONOUSLY on init. If a user
@@ -93,7 +102,7 @@ window.submitPost = function(){
     var content = document.getElementById('postContent').innerHTML.trim();
     var catSel = document.getElementById('postCategory');
     var category = catSel ? catSel.value : 'free';
-    if(!title || !content){ alert(lang==='ko'?'제목과 내용을 입력하세요':'Please enter title and content'); return; }
+    if(!title || !content){ alert(_cL('제목과 내용을 입력하세요','Please enter title and content')); return; }
 
     if(SB.client){
       SB.updatePost(editId, { title: title, content: content, category: category }).then(function(updated){
@@ -137,7 +146,7 @@ window.sharePost = function(postId){
   } else {
     // Fallback: copy to clipboard
     navigator.clipboard.writeText(url).then(function(){
-      showToast(lang==='ko'?'링크가 복사되었습니다':'Link copied to clipboard');
+      showToast(_cL('링크가 복사되었습니다','Link copied to clipboard'));
     }).catch(function(){
       // Final fallback
       var inp = document.createElement('input');
@@ -146,7 +155,7 @@ window.sharePost = function(postId){
       inp.select();
       document.execCommand('copy');
       document.body.removeChild(inp);
-      showToast(lang==='ko'?'링크가 복사되었습니다':'Link copied to clipboard');
+      showToast(_cL('링크가 복사되었습니다','Link copied to clipboard'));
     });
   }
 };
@@ -194,17 +203,17 @@ window.submitReport = function(targetType, targetId){
     }).then(function(r){ return r.json(); }).then(function(data){
       document.getElementById('reportModal').remove();
       if(data.report){
-        showToast(lang==='ko'?'신고가 접수되었습니다':'Report submitted successfully');
+        showToast(_cL('신고가 접수되었습니다','Report submitted successfully'));
       } else {
         showToast(data.message || 'Error');
       }
     }).catch(function(){
       document.getElementById('reportModal').remove();
-      showToast(lang==='ko'?'신고가 접수되었습니다':'Report submitted');
+      showToast(_cL('신고가 접수되었습니다','Report submitted'));
     });
   } else {
     document.getElementById('reportModal').remove();
-    showToast(lang==='ko'?'신고가 접수되었습니다 (데모)':'Report submitted (demo)');
+    showToast(_cL('신고가 접수되었습니다 (데모)','Report submitted (demo)'));
   }
 };
 
@@ -334,7 +343,7 @@ window.openPost = function(id){
     html += '<button onclick="sharePost(\''+id+'\')">'+escHtml(L[lang].btnShare||'Share')+'</button>';
     html += '<button onclick="reportContent(\'post\',\''+id+'\')">'+escHtml(L[lang].btnReport||'Report')+'</button>';
     if(isOwner){
-      html += '<button onclick="editPost(\''+id+'\')" style="color:#2563eb">✎ '+(lang==='ko'?'수정':'Edit')+'</button>';
+      html += '<button onclick="editPost(\''+id+'\')" style="color:#2563eb">✎ '+(_cL('수정','Edit'))+'</button>';
     }
     actionBar.innerHTML = html;
   }
@@ -355,7 +364,7 @@ window.followUser = function(targetId, targetName, btn){
     fetch('/api/community/follows?targetId=' + targetId, {
       method: 'DELETE', credentials: 'include'
     }).then(function(){
-      if(btn){ btn.textContent = lang==='ko'?'팔로우':'Follow'; btn.setAttribute('data-following','false'); btn.classList.remove('following'); }
+      if(btn){ btn.textContent = _cL('팔로우','Follow'); btn.setAttribute('data-following','false'); btn.classList.remove('following'); }
     });
   } else {
     // Follow
@@ -365,7 +374,7 @@ window.followUser = function(targetId, targetName, btn){
       credentials: 'include',
       body: JSON.stringify({ targetId: targetId })
     }).then(function(r){ return r.json(); }).then(function(){
-      if(btn){ btn.textContent = lang==='ko'?'팔로잉':'Following'; btn.setAttribute('data-following','true'); btn.classList.add('following'); }
+      if(btn){ btn.textContent = _cL('팔로잉','Following'); btn.setAttribute('data-following','true'); btn.classList.add('following'); }
     });
   }
 };
@@ -486,7 +495,7 @@ function _dmShowEmptyConvList(){
   list.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--text4);font-size:12px">'
     + (L[lang]&&L[lang].dmEmpty||'No conversations')
     + '<div style="margin-top:12px;font-size:11px;color:var(--text4)">'
-    + (lang==='ko'?'멤버 프로필에서 메시지를 보낼 수 있어요':'Send a message from any member profile')
+    + (_cL('멤버 프로필에서 메시지를 보낼 수 있어요','Send a message from any member profile'))
     + '</div></div>';
 }
 
@@ -562,7 +571,7 @@ window.openConversation = function(convId, otherUserId, otherName){
 
   if(!convId){
     msgContainer.innerHTML = '<div class="dm-empty" style="text-align:center;padding:40px 20px;color:var(--text4);font-size:11px">'
-      + (lang==='ko'?'첫 메시지를 보내보세요':'Send your first message')
+      + (_cL('첫 메시지를 보내보세요','Send your first message'))
       + '</div>';
     var input = document.getElementById('dmInput');
     if(input) input.focus();
@@ -575,7 +584,7 @@ window.openConversation = function(convId, otherUserId, otherName){
     .then(function(data){
       var msgs = data.messages || [];
       if(msgs.length === 0){
-        msgContainer.innerHTML = '<div class="dm-empty" style="text-align:center;padding:20px;color:var(--text4);font-size:11px">'+(lang==='ko'?'메시지가 없습니다':'No messages yet')+'</div>';
+        msgContainer.innerHTML = '<div class="dm-empty" style="text-align:center;padding:20px;color:var(--text4);font-size:11px">'+(_cL('메시지가 없습니다','No messages yet'))+'</div>';
       } else {
         var html = '';
         msgs.forEach(function(m){
@@ -601,7 +610,7 @@ window.sendDMFromInput = function(){
   if(!chat) return;
   var recipientId = chat.dataset.recipientId;
   if(!recipientId){
-    showToast(lang==='ko'?'수신자 정보가 없어요':'No recipient — close and re-open the chat');
+    showToast(_cL('수신자 정보가 없어요','No recipient — close and re-open the chat'));
     return;
   }
   input.value = '';
@@ -641,7 +650,7 @@ window.sendDM = function(userId, userName){
     // Called from demo / placeholder data with no real user id (e.g. AI
     // matching cards). Surface a clear message instead of a confusing
     // login prompt.
-    showToast(lang==='ko'?'이 카드는 데모 데이터예요 — 디렉토리에서 회원을 찾아 메시지를 보내주세요':'This card is demo data — find members in the Directory tab to send messages');
+    showToast(_cL('이 카드는 데모 데이터예요 — 디렉토리에서 회원을 찾아 메시지를 보내주세요','This card is demo data — find members in the Directory tab to send messages'));
     return;
   }
 
@@ -709,8 +718,8 @@ function _attachLegacyProfileActions(name){
   btns.id = 'ppActionBtns';
   btns.style.cssText = 'display:flex;gap:8px;margin-top:12px;justify-content:center';
   btns.innerHTML = ''
-    + '<button onclick="followUser(null,\''+escHtml(name)+'\',this)" style="padding:8px 20px;font-size:10px;font-weight:700;letter-spacing:.1em;background:#000;color:#fff;border:1px solid #000;cursor:pointer;font-family:Montserrat,sans-serif">'+(lang==='ko'?'팔로우':'FOLLOW')+'</button>'
-    + '<button onclick="sendDM(null,\''+escHtml(name)+'\')" style="padding:8px 20px;font-size:10px;font-weight:700;letter-spacing:.1em;background:transparent;color:#000;border:1px solid #000;cursor:pointer;font-family:Montserrat,sans-serif">'+(lang==='ko'?'메시지':'MESSAGE')+'</button>';
+    + '<button onclick="followUser(null,\''+escHtml(name)+'\',this)" style="padding:8px 20px;font-size:10px;font-weight:700;letter-spacing:.1em;background:#000;color:#fff;border:1px solid #000;cursor:pointer;font-family:Montserrat,sans-serif">'+(_cL('팔로우','FOLLOW'))+'</button>'
+    + '<button onclick="sendDM(null,\''+escHtml(name)+'\')" style="padding:8px 20px;font-size:10px;font-weight:700;letter-spacing:.1em;background:transparent;color:#000;border:1px solid #000;cursor:pointer;font-family:Montserrat,sans-serif">'+(_cL('메시지','MESSAGE'))+'</button>';
   levelEl.parentNode.insertBefore(btns, levelEl.nextSibling);
 }
 
@@ -726,7 +735,7 @@ window.openMemberProfile = function(userId){
 
   // Show a tiny loading state while we fetch
   var nameEl = document.getElementById('ppName');
-  if(nameEl) nameEl.textContent = (lang==='ko' ? '불러오는 중…' : 'Loading…');
+  if(nameEl) nameEl.textContent = (_cL('불러오는 중…','Loading…'));
 
   fetch(_withLang('/api/community/members/' + encodeURIComponent(userId)), { credentials:'include' })
     .then(function(r){ return r.json().then(function(j){ return { ok:r.ok, j:j }; }); })
@@ -746,7 +755,7 @@ function _renderMemberProfile(data){
   var nameEl = document.getElementById('ppName');
   if(nameEl) nameEl.textContent = name;
   var roleEl = document.getElementById('ppRole');
-  if(roleEl) roleEl.textContent = p.role || (lang==='ko'?'회원':'Member');
+  if(roleEl) roleEl.textContent = p.role || (_cL('회원','Member'));
   var avEl = document.getElementById('ppAvatar');
   if(avEl){
     if(p.avatarUrl){ avEl.innerHTML = '<img src="'+escHtml(p.avatarUrl)+'" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover">'; }
@@ -771,9 +780,9 @@ function _renderMemberProfile(data){
   // Update labels via existing data-i18n attributes when possible
   var labels = document.querySelectorAll('.profile-popup-stat-label');
   if(labels.length >= 3){
-    labels[0].textContent = lang==='ko' ? '무드보드' : 'Boards';
-    labels[1].textContent = lang==='ko' ? '팔로워'   : 'Followers';
-    labels[2].textContent = lang==='ko' ? '스크랩'   : 'Scraps';
+    labels[0].textContent = _cL('무드보드','Boards');
+    labels[1].textContent = _cL('팔로워','Followers');
+    labels[2].textContent = _cL('스크랩','Scraps');
   }
 
   // Action buttons (real userId — Follow/DM actually work)
@@ -785,14 +794,14 @@ function _renderMemberProfile(data){
     btns.style.cssText = 'display:flex;gap:8px;margin-top:12px;justify-content:center';
     if(!data.isSelf){
       var followLabel = data.isFollowing
-        ? (lang==='ko'?'팔로잉':'FOLLOWING')
-        : (lang==='ko'?'팔로우':'FOLLOW');
+        ? (_cL('팔로잉','FOLLOWING'))
+        : (_cL('팔로우','FOLLOW'));
       var followStyle = data.isFollowing ? 'background:transparent;color:#000' : 'background:#000;color:#fff';
       btns.innerHTML = ''
         + '<button data-uid="'+escHtml(p.id)+'" data-following="'+(data.isFollowing?'true':'false')+'" onclick="followUser(this.dataset.uid,\''+escHtml(name).replace(/'/g,"")+'\',this)" style="padding:8px 20px;font-size:10px;font-weight:700;letter-spacing:.1em;'+followStyle+';border:1px solid #000;cursor:pointer;font-family:Montserrat,sans-serif">'+followLabel+'</button>'
-        + '<button onclick="sendDM(\''+escHtml(p.id)+'\',\''+escHtml(name).replace(/'/g,"")+'\')" style="padding:8px 20px;font-size:10px;font-weight:700;letter-spacing:.1em;background:transparent;color:#000;border:1px solid #000;cursor:pointer;font-family:Montserrat,sans-serif">'+(lang==='ko'?'메시지':'MESSAGE')+'</button>';
+        + '<button onclick="sendDM(\''+escHtml(p.id)+'\',\''+escHtml(name).replace(/'/g,"")+'\')" style="padding:8px 20px;font-size:10px;font-weight:700;letter-spacing:.1em;background:transparent;color:#000;border:1px solid #000;cursor:pointer;font-family:Montserrat,sans-serif">'+(_cL('메시지','MESSAGE'))+'</button>';
     } else {
-      btns.innerHTML = '<div style="font-size:11px;color:var(--text4);padding:8px">'+(lang==='ko'?'본인 프로필':'Your profile')+'</div>';
+      btns.innerHTML = '<div style="font-size:11px;color:var(--text4);padding:8px">'+(_cL('본인 프로필','Your profile'))+'</div>';
     }
     levelEl.parentNode.insertBefore(btns, levelEl.nextSibling);
   }
@@ -807,7 +816,7 @@ function _renderMemberProfile(data){
     var links = [];
     if(p.location)  links.push('<span>📍 '+escHtml(p.location)+'</span>');
     if(p.instagram) links.push('<a href="https://instagram.com/'+escHtml(p.instagram.replace(/^@/,''))+'" target="_blank" rel="noopener noreferrer" style="color:var(--text3);text-decoration:none">'+escHtml(p.instagram)+'</a>');
-    if(p.website)   links.push('<a href="'+escHtml(p.website)+'" target="_blank" rel="noopener noreferrer" style="color:var(--text3);text-decoration:none">'+(lang==='ko'?'웹사이트 ↗':'Website ↗')+'</a>');
+    if(p.website)   links.push('<a href="'+escHtml(p.website)+'" target="_blank" rel="noopener noreferrer" style="color:var(--text3);text-decoration:none">'+(_cL('웹사이트 ↗','Website ↗'))+'</a>');
     if(links.length){
       extraHtml += '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:14px;font-size:12px;color:var(--text3);padding:0 32px 16px">'+links.join('<span style="color:var(--text4)">·</span>')+'</div>';
     }
@@ -815,7 +824,7 @@ function _renderMemberProfile(data){
     // Recent moodboards section
     var boards = data.recentMoodboards || [];
     if(boards.length){
-      extraHtml += '<div class="pp-section-title" style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);padding:18px 32px 10px;border-top:1px solid var(--border);margin-top:8px">'+(lang==='ko'?'최근 무드보드':'Recent moodboards')+'</div>';
+      extraHtml += '<div class="pp-section-title" style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);padding:18px 32px 10px;border-top:1px solid var(--border);margin-top:8px">'+(_cL('최근 무드보드','Recent moodboards'))+'</div>';
       extraHtml += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:0 32px 16px">';
       boards.slice(0,6).forEach(function(b){
         var bg = b.previewImage ? 'background-image:url('+escHtml(b.previewImage)+');background-size:cover;background-position:center' : 'background:var(--surface2)';
@@ -828,7 +837,7 @@ function _renderMemberProfile(data){
     // Recent scraps section
     var scraps = data.recentScraps || [];
     if(scraps.length){
-      extraHtml += '<div class="pp-section-title" style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);padding:8px 32px 10px;border-top:1px solid var(--border)">'+(lang==='ko'?'최근 스크랩':'Recent scraps')+'</div>';
+      extraHtml += '<div class="pp-section-title" style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text3);padding:8px 32px 10px;border-top:1px solid var(--border)">'+(_cL('최근 스크랩','Recent scraps'))+'</div>';
       extraHtml += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:0 32px 24px">';
       scraps.slice(0,8).forEach(function(s){
         var click = s.sourceUrl
@@ -840,7 +849,7 @@ function _renderMemberProfile(data){
     }
 
     if(!boards.length && !scraps.length){
-      extraHtml += '<div style="text-align:center;padding:32px;font-size:12px;color:var(--text4)">'+(lang==='ko'?'아직 활동이 없어요':'No activity yet')+'</div>';
+      extraHtml += '<div style="text-align:center;padding:32px;font-size:12px;color:var(--text4)">'+(_cL('아직 활동이 없어요','No activity yet'))+'</div>';
     }
 
     ppWorks.innerHTML = extraHtml;
@@ -862,7 +871,7 @@ window.checkBadges = function(){
   }).then(function(r){ return r.json(); }).then(function(data){
     if(data.awarded && data.awarded.length > 0){
       data.awarded.forEach(function(b){
-        showToast('🏆 ' + (lang==='ko'?'새 뱃지 획득: ':'New badge: ') + b);
+        showToast('🏆 ' + (_cL('새 뱃지 획득: ','New badge: ')) + b);
       });
     }
   }).catch(function(){});
@@ -928,7 +937,7 @@ window.closeCreateMoodboard = function(){
 };
 window.submitMoodboard = function(){
   var title = (document.getElementById('cmTitle').value||'').trim();
-  if(!title){ showToast(lang==='ko'?'제목을 입력하세요':'Enter a title'); return; }
+  if(!title){ showToast(_cL('제목을 입력하세요','Enter a title')); return; }
   var description = (document.getElementById('cmDescription').value||'').trim();
   var tagsRaw = (document.getElementById('cmTags').value||'').trim();
   var imagesRaw = (document.getElementById('cmImages').value||'').trim();
@@ -1057,8 +1066,8 @@ function _renderActiveCreators(creators){
     var name = c.name || 'User';
     var av = name.split(' ').map(function(w){return w[0];}).join('').substring(0,2).toUpperCase();
     var totals = [];
-    if(c.moodboardCount) totals.push(c.moodboardCount + (lang==='ko'?' 보드':' boards'));
-    if(c.scrapCount) totals.push(c.scrapCount + (lang==='ko'?' 스크랩':' scraps'));
+    if(c.moodboardCount) totals.push(c.moodboardCount + (_cL(' 보드',' boards')));
+    if(c.scrapCount) totals.push(c.scrapCount + (_cL(' 스크랩',' scraps')));
     // Pass real userId (UUID) so openProfile takes the rich-member path
     var safeId = (c.id || '').replace(/'/g, '');
     var safeName = escHtml(name).replace(/'/g, '');
@@ -1244,7 +1253,7 @@ window.openMoodboard = function(boardId){
       // "원문 보기" / "View original" toggle — only when server actually
       // translated something (titleOriginal !== title or description differs)
       if(b.translated){
-        html += '<button class="md-orig-toggle" data-mode="translated" onclick="_toggleMoodboardOriginal(this)" style="margin-top:6px;padding:4px 10px;font-size:11px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);border-radius:999px;cursor:pointer;font-family:Montserrat,sans-serif">🌐 '+(lang==='ko'?'원문 보기':'View original')+'</button>';
+        html += '<button class="md-orig-toggle" data-mode="translated" onclick="_toggleMoodboardOriginal(this)" style="margin-top:6px;padding:4px 10px;font-size:11px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);border-radius:999px;cursor:pointer;font-family:Montserrat,sans-serif">🌐 '+(_cL('원문 보기','View original'))+'</button>';
       }
       if(b.tags && b.tags.length){
         html += '<div class="md-tags">'+b.tags.map(function(t){return '<span class="mood-tag">'+escHtml(t)+'</span>';}).join('')+'</div>';
@@ -1270,13 +1279,13 @@ window.openMoodboard = function(boardId){
       // Comment thread — list + input. Loaded asynchronously after the
       // detail body is mounted so the modal opens immediately.
       html += '<div class="md-comments-section" data-board-id="'+b.id+'">';
-      html += '  <h3 class="md-comments-title">'+(lang==='ko'?'댓글':'Comments')+'</h3>';
+      html += '  <h3 class="md-comments-title">'+(_cL('댓글','Comments'))+'</h3>';
       html += '  <div class="md-comments-list" id="mdCommentsList">'
-            +    '<div style="color:rgba(255,255,255,.4);font-size:12px;padding:10px 0">'+(lang==='ko'?'댓글 불러오는 중...':'Loading comments...')+'</div>'
+            +    '<div style="color:rgba(255,255,255,.4);font-size:12px;padding:10px 0">'+(_cL('댓글 불러오는 중...','Loading comments...'))+'</div>'
             +  '</div>';
       html += '  <div class="md-comment-input-row">';
-      html += '    <input type="text" class="md-comment-input" id="mdCommentInput" maxlength="2000" placeholder="'+(lang==='ko'?'이 보드에 대한 생각을 남겨보세요...':'Leave a thought about this board...')+'" onkeypress="if(event.key===\'Enter\')submitMoodboardComment(\''+b.id+'\')">';
-      html += '    <button class="md-comment-send" onclick="submitMoodboardComment(\''+b.id+'\')">'+(lang==='ko'?'등록':'Post')+'</button>';
+      html += '    <input type="text" class="md-comment-input" id="mdCommentInput" maxlength="2000" placeholder="'+(_cL('이 보드에 대한 생각을 남겨보세요...','Leave a thought about this board...'))+'" onkeypress="if(event.key===\'Enter\')submitMoodboardComment(\''+b.id+'\')">';
+      html += '    <button class="md-comment-send" onclick="submitMoodboardComment(\''+b.id+'\')">'+(_cL('등록','Post'))+'</button>';
       html += '  </div>';
       html += '</div>';
 
@@ -1304,7 +1313,7 @@ function _renderMoodboardComments(comments){
   var listEl = document.getElementById('mdCommentsList');
   if(!listEl) return;
   if(!comments || comments.length === 0){
-    listEl.innerHTML = '<div class="md-comments-empty" style="color:rgba(255,255,255,.4);font-size:12px;padding:10px 0">'+(lang==='ko'?'아직 댓글이 없어요. 첫 댓글을 남겨보세요.':'No comments yet. Be the first.')+'</div>';
+    listEl.innerHTML = '<div class="md-comments-empty" style="color:rgba(255,255,255,.4);font-size:12px;padding:10px 0">'+(_cL('아직 댓글이 없어요. 첫 댓글을 남겨보세요.','No comments yet. Be the first.'))+'</div>';
     return;
   }
   var html = '';
@@ -1367,7 +1376,7 @@ window.submitMoodboardComment = function(boardId){
 };
 
 window.deleteMoodboardComment = function(commentId){
-  if(!confirm(lang==='ko'?'댓글을 삭제할까요?':'Delete this comment?')) return;
+  if(!confirm(_cL('댓글을 삭제할까요?','Delete this comment?'))) return;
   fetch('/api/community/moodboard-comments?id=' + encodeURIComponent(commentId), {
     method:'DELETE', credentials:'include',
   }).then(function(r){
@@ -1377,7 +1386,7 @@ window.deleteMoodboardComment = function(commentId){
       var listEl = document.getElementById('mdCommentsList');
       if(listEl && !listEl.querySelector('.md-comment')){
         // Show empty state again
-        listEl.innerHTML = '<div class="md-comments-empty" style="color:rgba(255,255,255,.4);font-size:12px;padding:10px 0">'+(lang==='ko'?'아직 댓글이 없어요. 첫 댓글을 남겨보세요.':'No comments yet. Be the first.')+'</div>';
+        listEl.innerHTML = '<div class="md-comments-empty" style="color:rgba(255,255,255,.4);font-size:12px;padding:10px 0">'+(_cL('아직 댓글이 없어요. 첫 댓글을 남겨보세요.','No comments yet. Be the first.'))+'</div>';
       }
     } else {
       showToast('Failed to delete');
@@ -1419,8 +1428,8 @@ window._toggleMoodboardOriginal = function(btn){
   });
   // Update label
   btn.innerHTML = '🌐 ' + (nextMode === 'original'
-    ? (lang==='ko' ? '번역 보기' : 'View translation')
-    : (lang==='ko' ? '원문 보기'  : 'View original'));
+    ? (_cL('번역 보기','View translation'))
+    : (_cL('원문 보기','View original')));
 };
 
 window.closeMoodDetail = function(){
@@ -1520,7 +1529,7 @@ function _scrapSetUploading(on){
 function _scrapUploadFile(file){
   if(!file) return;
   if(!file.type || !/^image\//.test(file.type)){
-    showToast(lang==='ko'?'이미지 파일만 업로드할 수 있어요':'Only image files supported');
+    showToast(_cL('이미지 파일만 업로드할 수 있어요','Only image files supported'));
     return;
   }
   _scrapSetUploading(true);
@@ -1536,7 +1545,7 @@ function _scrapUploadFile(file){
     .then(function(out){
       _scrapSetUploading(false);
       if(!out.ok){
-        showToast(out.j.message || (lang==='ko'?'업로드 실패':'Upload failed'));
+        showToast(out.j.message || (_cL('업로드 실패','Upload failed')));
         var empty = document.getElementById('scrapDropEmpty');
         if(empty) empty.style.display = '';
         return;
@@ -1547,7 +1556,7 @@ function _scrapUploadFile(file){
       _scrapShowPreview(out.j.url);
     }).catch(function(){
       _scrapSetUploading(false);
-      showToast(lang==='ko'?'업로드 실패':'Upload failed');
+      showToast(_cL('업로드 실패','Upload failed'));
       var empty = document.getElementById('scrapDropEmpty');
       if(empty) empty.style.display = '';
     });
@@ -1623,7 +1632,7 @@ window.submitScrap = function(){
   var note     = (document.getElementById('addScrapNote').value || '').trim();
   var src      = (document.getElementById('addScrapSource').value || '').trim();
   if(!imageUrl){
-    showToast(lang==='ko'?'이미지 URL을 입력하세요':'Enter an image URL');
+    showToast(_cL('이미지 URL을 입력하세요','Enter an image URL'));
     return;
   }
   fetch('/api/community/scraps', {

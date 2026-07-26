@@ -25,7 +25,8 @@
     es:{msg:'Utilizamos cookies y herramientas de análisis (Google Analytics, Meta Pixel) para mejorar tu experiencia. Puedes aceptar o rechazar las cookies no esenciales.',accept:'Aceptar',reject:'Rechazar'},
     ja:{msg:'当ウェブサイトはユーザー体験向上のため、Cookieおよび分析ツール（Google Analytics、Meta Pixel）を使用しています。非必須Cookieを受け入れるか拒否できます。',accept:'受け入れる',reject:'拒否'},
     zh:{msg:'本网站使用 Cookie 和分析工具（Google Analytics、Meta Pixel）以提升您的体验。您可以接受或拒绝非必要 Cookie。',accept:'接受',reject:'拒绝'},
-    ru:{msg:'Мы используем файлы cookie и аналитику (Google Analytics, Meta Pixel) для улучшения вашего опыта. Вы можете принять или отклонить необязательные файлы cookie.',accept:'Принять',reject:'Отклонить'}
+    ru:{msg:'Мы используем файлы cookie и аналитику (Google Analytics, Meta Pixel) для улучшения вашего опыта. Вы можете принять или отклонить необязательные файлы cookie.',accept:'Принять',reject:'Отклонить'},
+    de:{msg:'Wir verwenden Cookies und Analysetools (Google Analytics, Meta Pixel), um Ihr Erlebnis zu verbessern. Sie können nicht notwendige Cookies akzeptieren oder ablehnen.',accept:'Akzeptieren',reject:'Ablehnen'}
   };
 
   /* Read language from pap-geo-lang.js (which runs before this script).
