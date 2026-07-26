@@ -93,6 +93,24 @@ module.exports = async function handler(req, res) {
       data = r.data;
     }
 
+    /* 5) redirect_from — 옛 슬러그 보존 301 (2026-07-26, lever ②).
+       레거시 슬러그(categoryfashion…)를 깨끗한 슬러그로 바꾸면 옛 /article/<old>
+       URL 이 404 → 순위 소실. 옛 슬러그를 articles.redirect_from(text[])에
+       담아두면 여기서 해석되고, 아래 정규-슬러그 301 블록이 새 URL 로 넘긴다.
+       컬럼 미생성 환경에서도 안전: 쿼리 에러면 r.data 가 없어 그대로 통과. */
+    if (!data) {
+      try {
+        r = await supabaseAdmin.from('articles').select('*')
+          .contains('redirect_from', [slug]).eq('status', 'published').limit(1).maybeSingle();
+        if (r && r.data) data = r.data;
+        if (!data && decoded !== slug) {
+          r = await supabaseAdmin.from('articles').select('*')
+            .contains('redirect_from', [decoded]).eq('status', 'published').limit(1).maybeSingle();
+          if (r && r.data) data = r.data;
+        }
+      } catch (_) { /* redirect_from 컬럼 미생성 — 무시하고 404 로 진행 */ }
+    }
+
     if (!data) {
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300');
