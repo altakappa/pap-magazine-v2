@@ -370,8 +370,8 @@ function _renderArticleBlocks(blocks){
       var sid = 'slide-' + Math.random().toString(36).slice(2, 8);
       html += '<div class="article-slide-block" data-slide-id="' + sid + '" data-total="' + slideImgs.length + '" style="margin:36px 0;position:relative">';
       // 좌우 네비 버튼. 첫/마지막 슬라이드에서 opacity 감소.
-      html += '<button class="slide-nav-btn slide-prev" type="button" aria-label="'+(lang==='ko'?'이전 이미지':'Previous image')+'" onclick="_papSlideNav(this,-1)" style="position:absolute;top:calc(50% - 30px);left:8px;z-index:5;width:40px;height:40px;border-radius:50%;border:none;background:rgba(0,0,0,.6);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:.3;transition:opacity .2s">‹</button>';
-      html += '<button class="slide-nav-btn slide-next" type="button" aria-label="'+(lang==='ko'?'다음 이미지':'Next image')+'" onclick="_papSlideNav(this,1)" style="position:absolute;top:calc(50% - 30px);right:8px;z-index:5;width:40px;height:40px;border-radius:50%;border:none;background:rgba(0,0,0,.6);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:1;transition:opacity .2s">›</button>';
+      html += '<button class="slide-nav-btn slide-prev" type="button" aria-label="'+(_arL9('이전 이미지','Previous image'))+'" onclick="_papSlideNav(this,-1)" style="position:absolute;top:calc(50% - 30px);left:8px;z-index:5;width:40px;height:40px;border-radius:50%;border:none;background:rgba(0,0,0,.6);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:.3;transition:opacity .2s">‹</button>';
+      html += '<button class="slide-nav-btn slide-next" type="button" aria-label="'+(_arL9('다음 이미지','Next image'))+'" onclick="_papSlideNav(this,1)" style="position:absolute;top:calc(50% - 30px);right:8px;z-index:5;width:40px;height:40px;border-radius:50%;border:none;background:rgba(0,0,0,.6);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:1;transition:opacity .2s">›</button>';
       html += '<div class="article-slide-track" style="display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding-bottom:8px;-webkit-overflow-scrolling:touch">';
       slideImgs.forEach(function(im){
         if(!im || !im.url) return;
@@ -524,7 +524,7 @@ function _renderArticleDetail(a,det){
       var _net=document.createElement('div');
       _net.setAttribute('data-network-link','1');
       _net.className='igf-sub';
-      _net.innerHTML='<a href="/network">'+(lang==='ko'?'패션·뷰티·셀럽·아트 — PAP 인스타그램 네트워크 전체 보기 →':'Fashion · Beauty · Celeb · Art — Explore the full PAP Instagram network →')+'</a>';
+      _net.innerHTML='<a href="/network">'+(_arL9('패션·뷰티·셀럽·아트 — PAP 인스타그램 네트워크 전체 보기 →','Fashion · Beauty · Celeb · Art — Explore the full PAP Instagram network →'))+'</a>';
       funnelEl.appendChild(_net);
     }
   }
@@ -777,7 +777,7 @@ window._papShareArticle=function(){
     if(navigator.share){ navigator.share({title:title,url:url}).catch(function(){}); return; }
     if(navigator.clipboard && navigator.clipboard.writeText){
       navigator.clipboard.writeText(url).then(function(){
-        alert(lang==='ko'?'링크가 복사되었습니다. 카카오톡이나 DM에 붙여넣어 공유해보세요.':'Link copied. Paste it into a chat or DM to share.');
+        alert(_arL9('링크가 복사되었습니다. 카카오톡이나 DM에 붙여넣어 공유해보세요.','Link copied. Paste it into a chat or DM to share.'));
       }).catch(function(){});
     }
   }catch(_){}
@@ -788,3 +788,10 @@ window._papShareArticle=function(){
 var artData=[];
 // 2026-07-26 — 언어 전환 시 열린 기사 상세를 새 언어로 재렌더(같은 URL→replaceState, 히스토리 무오염).
 try{ window.addEventListener('pap:langchange',function(){ try{ var ov=document.getElementById('artDetailOverlay'); if(ov&&ov.classList.contains('active')&&typeof window.__papOpenArtIdx==='number'){ _openArticleDetailInner(window.__papOpenArtIdx); } }catch(e){} }); }catch(e){}
+
+
+/* 9-language UI strings (2026-07-26) — _arL9(ko,en) resolves
+   it/fr/es/ja/zh/ru/de from _AR_TR9 (keyed by Korean source);
+   ko/en literals at each call site remain exact fallbacks. */
+var _AR_TR9 = {"이전 이미지":{"it":"Immagine precedente","fr":"Image précédente","es":"Imagen anterior","ja":"前の画像","zh":"上一张图片","ru":"Предыдущее изображение","de":"Vorheriges Bild"},"다음 이미지":{"it":"Immagine successiva","fr":"Image suivante","es":"Imagen siguiente","ja":"次の画像","zh":"下一张图片","ru":"Следующее изображение","de":"Nächstes Bild"},"패션·뷰티·셀럽·아트 — PAP 인스타그램 네트워크 전체 보기 →":{"it":"Moda · Bellezza · Celebrity · Arte — Esplora l'intera rete Instagram di PAP →","fr":"Mode · Beauté · Célébrités · Art — Explorez tout le réseau Instagram de PAP →","es":"Moda · Belleza · Celebridades · Arte — Explora toda la red de Instagram de PAP →","ja":"ファッション · ビューティー · セレブ · アート — PAP インスタグラムネットワーク全体を見る →","zh":"时尚 · 美妆 · 名人 · 艺术 — 浏览完整的 PAP Instagram 网络 →","ru":"Мода · Красота · Знаменитости · Искусство — Вся сеть PAP в Instagram →","de":"Mode · Beauty · Promis · Kunst — Das gesamte PAP-Instagram-Netzwerk entdecken →"},"링크가 복사되었습니다. 카카오톡이나 DM에 붙여넣어 공유해보세요.":{"it":"Link copiato. Incollalo in una chat o in un DM per condividerlo.","fr":"Lien copié. Collez-le dans une conversation ou un DM pour le partager.","es":"Enlace copiado. Pégalo en un chat o DM para compartirlo.","ja":"リンクをコピーしました。チャットやDMに貼り付けて共有してください。","zh":"链接已复制。粘贴到聊天或私信中即可分享。","ru":"Ссылка скопирована. Вставьте её в чат или личные сообщения, чтобы поделиться.","de":"Link kopiert. Fügen Sie ihn in einen Chat oder eine DM ein, um ihn zu teilen."}};
+function _arL9(ko,en){ var l; try{l=localStorage.getItem('pap-lang')||'ko';}catch(e){l='ko';} if(l==='ko') return ko; var m=_AR_TR9[ko]; if(m&&m[l]) return m[l]; return en; }

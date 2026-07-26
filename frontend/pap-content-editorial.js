@@ -67,7 +67,7 @@ window._papScrapFromImage = function(url, title, btn){
   try { token=localStorage.getItem('pap-token'); } catch(_){}
   if(!token){
     var lang=(localStorage.getItem('pap-lang')||'ko');
-    alert(lang==='ko' ? '로그인 후 스크랩할 수 있어요' : 'Please log in to save scraps');
+    alert(_edL9('로그인 후 스크랩할 수 있어요','Please log in to save scraps'));
     return;
   }
   if(btn) btn.disabled=true;
@@ -86,7 +86,7 @@ window._papScrapFromImage = function(url, title, btn){
       if(btn) btn.disabled=false;
       var lang=(localStorage.getItem('pap-lang')||'ko');
       if(!out.ok){
-        var msg = (out.j && out.j.message) || (lang==='ko'?'스크랩 실패':'Scrap failed');
+        var msg = (out.j && out.j.message) || (_edL9('스크랩 실패','Scrap failed'));
         if(typeof window.showToast==='function') window.showToast(msg);
         else alert(msg);
         return;
@@ -94,16 +94,16 @@ window._papScrapFromImage = function(url, title, btn){
       // Success — flip the button to "Saved" state
       if(btn){
         btn.classList.add('saved');
-        btn.innerHTML = '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>'+(lang==='ko'?'저장됨':'Saved');
+        btn.innerHTML = '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>'+(_edL9('저장됨','Saved'));
         // Keep the saved state visible — it'll reset on next page load
       }
       if(typeof window.showToast==='function'){
-        window.showToast(lang==='ko' ? '스크랩북에 저장됐어요' : 'Saved to your scrapbook');
+        window.showToast(_edL9('스크랩북에 저장됐어요','Saved to your scrapbook'));
       }
     }).catch(function(){
       if(btn) btn.disabled=false;
       var lang=(localStorage.getItem('pap-lang')||'ko');
-      var msg = lang==='ko'?'스크랩 실패':'Scrap failed';
+      var msg = _edL9('스크랩 실패','Scrap failed');
       if(typeof window.showToast==='function') window.showToast(msg);
       else alert(msg);
     });
@@ -115,7 +115,7 @@ window._papScrapFromImage = function(url, title, btn){
 function _scrapBtnHtml(url, title){
   var t = (title||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
   var lang=(localStorage.getItem('pap-lang')||'ko');
-  var label = lang==='ko' ? '스크랩' : 'Save';
+  var label = _edL9('스크랩','Save');
   return '<button class="ed-scrap-btn" onclick="event.stopPropagation();_papScrapFromImage(\''+url+'\',\''+t+'\',this)" title="Save to scrapbook"><svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>'+label+'</button>';
 }
 
@@ -416,12 +416,12 @@ function _renderEditorialDownloads(det, d){
     box.innerHTML =
       '<div style="display:flex;flex-direction:column;gap:10px">' +
         '<div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999">DOWNLOADS</div>' +
-        '<div style="font-size:13px;color:#ccc">'+(lang==='ko'?'커버 이미지 + PAP 로고 합성 갤러리 이미지 다운로드는 <strong style="color:#fff">스탠다드 멤버십</strong> 전용입니다.<br>참여 크리에이터는 본인 작품을 무료로 다운로드할 수 있어요.':'Cover + PAP-logo composite gallery downloads are for <strong style="color:#fff">Standard members</strong> only.<br>Contributing creators can download their own work for free.')+'</div>' +
+        '<div style="font-size:13px;color:#ccc">'+(_edL9('커버 이미지 + PAP 로고 합성 갤러리 이미지 다운로드는 <strong style="color:#fff">스탠다드 멤버십</strong> 전용입니다.<br>참여 크리에이터는 본인 작품을 무료로 다운로드할 수 있어요.','Cover + PAP-logo composite gallery downloads are for <strong style="color:#fff">Standard members</strong> only.<br>Contributing creators can download their own work for free.'))+'</div>' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">' +
-          '<a href="/subscribe" style="display:inline-block;padding:10px 22px;border:1px solid #fff;background:#fff;color:#000;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" onmouseover="this.style.background=\'transparent\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'#fff\';this.style.color=\'#000\'">'+(lang==='ko'?'멤버십 구독하기 →':'Subscribe →')+'</a>' +
-          '<a href="/auth" style="display:inline-block;padding:10px 22px;border:1px solid #555;color:#fff;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">'+(lang==='ko'?'로그인':'Log in')+'</a>' +
+          '<a href="/subscribe" style="display:inline-block;padding:10px 22px;border:1px solid #fff;background:#fff;color:#000;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" onmouseover="this.style.background=\'transparent\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'#fff\';this.style.color=\'#000\'">'+(_edL9('멤버십 구독하기 →','Subscribe →'))+'</a>' +
+          '<a href="/auth" style="display:inline-block;padding:10px 22px;border:1px solid #555;color:#fff;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">'+(_edL9('로그인','Log in'))+'</a>' +
         '</div>' +
-        '<div style="font-size:11px;color:#666;margin-top:4px">'+(lang==='ko'?'개인 사용 및 비상업적 용도에 한해 사용 가능':'For personal, non-commercial use only')+'</div>' +
+        '<div style="font-size:11px;color:#666;margin-top:4px">'+(_edL9('개인 사용 및 비상업적 용도에 한해 사용 가능','For personal, non-commercial use only'))+'</div>' +
       '</div>';
     return;
   }
@@ -434,7 +434,7 @@ function _renderEditorialDownloads(det, d){
   box.innerHTML =
     '<div style="display:flex;flex-direction:column;gap:10px">' +
       '<div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999">DOWNLOADS</div>' +
-      '<div style="font-size:12px;color:#666">'+(lang==='ko'?'권한 확인 중...':'Checking access...')+'</div>' +
+      '<div style="font-size:12px;color:#666">'+(_edL9('권한 확인 중...','Checking access...'))+'</div>' +
     '</div>';
 
   var edId = (d && d.id) || (det && det.id) || '';
@@ -445,11 +445,11 @@ function _renderEditorialDownloads(det, d){
       box.innerHTML =
         '<div style="display:flex;flex-direction:column;gap:10px">' +
           '<div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999">DOWNLOADS</div>' +
-          '<div style="font-size:12px;color:#bbb;line-height:1.6">'+(lang==='ko'?'<strong style="color:#fff">스탠다드 멤버십</strong>부터 커버 + PAP 로고 합성 이미지를 다운로드할 수 있습니다.<br>참여 크리에이터는 본인 작품을 무료로 받을 수 있어요 — 본인 참여작이라면 가입하신 이메일과 동일한 계정인지 확인해주세요.':'<strong style="color:#fff">Standard membership</strong> unlocks cover + PAP-logo composite image downloads.<br>Contributing creators can get their own work for free — if it is your work, make sure you are signed in with the email you contributed under.')+'</div>' +
+          '<div style="font-size:12px;color:#bbb;line-height:1.6">'+(_edL9('<strong style="color:#fff">스탠다드 멤버십</strong>부터 커버 + PAP 로고 합성 이미지를 다운로드할 수 있습니다.<br>참여 크리에이터는 본인 작품을 무료로 받을 수 있어요 — 본인 참여작이라면 가입하신 이메일과 동일한 계정인지 확인해주세요.','<strong style="color:#fff">Standard membership</strong> unlocks cover + PAP-logo composite image downloads.<br>Contributing creators can get their own work for free — if it is your work, make sure you are signed in with the email you contributed under.'))+'</div>' +
           '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">' +
-            '<a href="/subscribe" style="display:inline-block;padding:10px 22px;border:1px solid #fff;background:#fff;color:#000;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" onmouseover="this.style.background=\'transparent\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'#fff\';this.style.color=\'#000\'">'+(lang==='ko'?'스탠다드 구독하기 →':'Subscribe to Standard →')+'</a>' +
+            '<a href="/subscribe" style="display:inline-block;padding:10px 22px;border:1px solid #fff;background:#fff;color:#000;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" onmouseover="this.style.background=\'transparent\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'#fff\';this.style.color=\'#000\'">'+(_edL9('스탠다드 구독하기 →','Subscribe to Standard →'))+'</a>' +
           '</div>' +
-          '<div style="font-size:11px;color:#666;margin-top:4px">'+(lang==='ko'?'전체 권한이 필요한 경우 PAP Magazine 운영팀에 문의해주세요.':'Need full access? Contact the PAP Magazine team.')+'</div>' +
+          '<div style="font-size:11px;color:#666;margin-top:4px">'+(_edL9('전체 권한이 필요한 경우 PAP Magazine 운영팀에 문의해주세요.','Need full access? Contact the PAP Magazine team.'))+'</div>' +
         '</div>';
       return;
     }
@@ -467,7 +467,7 @@ function _renderEditorialDownloadButtons(box, coverUrl, gallery, safeTitle, perm
     coverHtml =
       '<a href="#" onclick="event.preventDefault();_papDownloadAsFile(\'' + coverUrl.replace(/'/g, "\\'") + '\',\'' + safeTitle + '-cover\');return false;" ' +
       'style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border:1px solid #555;color:#fff;font-size:11px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" ' +
-      'onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">'+(lang==='ko'?'⬇️ 커버 이미지':'⬇️ Cover image')+'</a>';
+      'onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">'+(_edL9('⬇️ 커버 이미지','⬇️ Cover image'))+'</a>';
   }
   var logoBtnHtml = '';
   if (gallery.length) {
@@ -476,15 +476,15 @@ function _renderEditorialDownloadButtons(box, coverUrl, gallery, safeTitle, perm
       '<button id="edLogoDlBtn" type="button" onclick="_papDownloadLogoZip(this)" ' +
       'data-gallery="' + galleryJson + '" data-title="' + safeTitle + '" ' +
       'style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border:1px solid #555;background:transparent;color:#fff;font-size:11px;font-weight:700;letter-spacing:.12em;cursor:pointer;transition:all .2s" ' +
-      'onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">'+(lang==='ko'?'⬇️ 로고 이미지 (':'⬇️ Logo images (')+'' + gallery.length + (lang==='ko'?'장 ZIP)':' images ZIP)')+'</button>';
+      'onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">'+(_edL9('⬇️ 로고 이미지 (','⬇️ Logo images ('))+'' + gallery.length + (_edL9('장 ZIP)',' images ZIP)'))+'</button>';
   }
   // QA #284 Phase 2 — role 배지 (어느 권한으로 노출되는지 명확하게).
   var roleBadge = '';
   if (perm && perm.reason){
-    var badgeText = (lang==='ko'?{ admin:'대표 관리자', staff:'서브 관리자', owner:'참여 크리에이터', subscriber:'멤버십 회원' }:{ admin:'Editor-in-Chief', staff:'Editor', owner:'Contributing creator', subscriber:'Member' })[perm.reason] || '';
+    var badgeText = ({ admin:_edL9('대표 관리자','Editor-in-Chief'), staff:_edL9('서브 관리자','Editor'), owner:_edL9('참여 크리에이터','Contributing creator'), subscriber:_edL9('멤버십 회원','Member') })[perm.reason] || '';
     var badgeColor = { admin:'#e74c3c', staff:'#f39c12', owner:'#27ae60', subscriber:'#3498db' }[perm.reason] || '#888';
     if (badgeText){
-      roleBadge = '<span style="display:inline-block;padding:2px 8px;background:' + badgeColor + ';color:#fff;font-size:9px;font-weight:700;letter-spacing:.1em;border-radius:2px">' + badgeText + (lang==='ko'?' 권한':' access')+'</span>';
+      roleBadge = '<span style="display:inline-block;padding:2px 8px;background:' + badgeColor + ';color:#fff;font-size:9px;font-weight:700;letter-spacing:.1em;border-radius:2px">' + badgeText + (_edL9(' 권한',' access'))+'</span>';
     }
   }
   box.innerHTML =
@@ -492,7 +492,7 @@ function _renderEditorialDownloadButtons(box, coverUrl, gallery, safeTitle, perm
       '<div style="display:flex;align-items:center;gap:8px"><div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999">DOWNLOADS</div>' + roleBadge + '</div>' +
       '<div style="display:flex;gap:10px;flex-wrap:wrap">' + coverHtml + logoBtnHtml + '</div>' +
       '<div id="edLogoDlStatus" style="font-size:11px;color:#888;min-height:14px"></div>' +
-      '<div style="font-size:11px;color:#666">'+(lang==='ko'?'개인 사용 및 비상업적 용도에 한해 사용 가능 · 다운로드 이력이 기록됩니다.':'For personal, non-commercial use only · downloads are logged.')+'</div>' +
+      '<div style="font-size:11px;color:#666">'+(_edL9('개인 사용 및 비상업적 용도에 한해 사용 가능 · 다운로드 이력이 기록됩니다.','For personal, non-commercial use only · downloads are logged.'))+'</div>' +
     '</div>';
 }
 
@@ -916,13 +916,13 @@ function _papRenderShopRow(fashion){
     var clean=h.replace(/^@+/,'');
     return '<a href="/go/'+encodeURIComponent(clean.toLowerCase())+'" target="_blank" rel="sponsored nofollow noopener" '
       +'style="display:inline-block;margin:0 8px 8px 0;padding:9px 16px;border:1px solid rgba(255,255,255,.25);font-size:12px;color:#fff;text-decoration:none;letter-spacing:.04em">'
-      +clean.replace(/</g,'&lt;')+' <span style="opacity:.55">'+(lang==='ko'?'구매 →':'Shop →')+'</span></a>';
+      +clean.replace(/</g,'&lt;')+' <span style="opacity:.55">'+(_edL9('구매 →','Shop →'))+'</span></a>';
   }).join('');
   box.innerHTML=
     '<div style="margin:36px 0 0;padding:24px;border:1px solid rgba(255,255,255,.16)">'
     +'<div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:12px">Shop the Story</div>'
     +'<div>'+chips+'</div>'
-    +'<div style="font-size:10.5px;color:#666;margin-top:8px">'+(lang==='ko'?'링크를 통해 구매 시 PAP에 수수료가 지급될 수 있습니다.':'PAP may earn a commission on purchases made through these links.')+'</div>'
+    +'<div style="font-size:10.5px;color:#666;margin-top:8px">'+(_edL9('링크를 통해 구매 시 PAP에 수수료가 지급될 수 있습니다.','PAP may earn a commission on purchases made through these links.'))+'</div>'
     +'</div>';
   box.style.display='';
 }
@@ -1697,7 +1697,7 @@ function _renderEdAllPaywall(overlay){
       + '</div>'
       + '<a href="/subscribe" style="display:inline-block;margin:4px 5px 0;background:#fff;color:#000;padding:13px 32px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;text-decoration:none">구독하기</a>'
       + (loggedIn ? '' :
-          '<a href="/auth" style="display:inline-block;margin:4px 5px 0;background:transparent;color:#ddd;border:1px solid rgba(255,255,255,.28);padding:13px 26px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;text-decoration:none">'+(lang==='ko'?'로그인':'Log in')+'</a>')
+          '<a href="/auth" style="display:inline-block;margin:4px 5px 0;background:transparent;color:#ddd;border:1px solid rgba(255,255,255,.28);padding:13px 26px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;text-decoration:none">'+(_edL9('로그인','Log in'))+'</a>')
       + '</div>';
   }
   overlay.classList.add('active');
@@ -1972,3 +1972,10 @@ function closeAllEditorials(skipHistory){
 })();
 // 2026-07-26 — 언어 전환 시 열린 에디토리얼 상세를 새 언어로 재렌더(noPush: 히스토리 무오염).
 try{ window.addEventListener('pap:langchange',function(){ try{ var ov=document.getElementById('edOverlay'); if(ov&&ov.classList.contains('active')&&window.__papOpenEd&&typeof _openEditorialInner_noPush==='function'){ _openEditorialInner_noPush(window.__papOpenEd.t,window.__papOpenEd.th); } }catch(e){} }); }catch(e){}
+
+
+/* 9-language UI strings (2026-07-26) — _edL9(ko,en) resolves
+   it/fr/es/ja/zh/ru/de from _ED_TR9 (keyed by Korean source);
+   ko/en literals at each call site remain exact fallbacks. */
+var _ED_TR9 = {"대표 관리자":{"it":"Caporedattore","fr":"Rédacteur en chef","es":"Editor jefe","ja":"編集長","zh":"主编","ru":"Главный редактор","de":"Chefredakteur"},"서브 관리자":{"it":"Redattore","fr":"Rédacteur","es":"Editor","ja":"編集者","zh":"编辑","ru":"Редактор","de":"Redakteur"},"참여 크리에이터":{"it":"Creator partecipante","fr":"Créateur participant","es":"Creador colaborador","ja":"参加クリエイター","zh":"参与创作者","ru":"Участвующий креатор","de":"Mitwirkender Kreativer"},"멤버십 회원":{"it":"Membro","fr":"Membre","es":"Miembro","ja":"会員","zh":"会员","ru":"Участник","de":"Mitglied"},"로그인 후 스크랩할 수 있어요":{"it":"Accedi per salvare gli elementi","fr":"Connectez-vous pour enregistrer","es":"Inicia sesión para guardar","ja":"ログインすると保存できます","zh":"登录后即可收藏","ru":"Войдите, чтобы сохранять","de":"Zum Speichern bitte anmelden"},"스크랩 실패":{"it":"Salvataggio non riuscito","fr":"Échec de l'enregistrement","es":"Error al guardar","ja":"保存に失敗しました","zh":"收藏失败","ru":"Не удалось сохранить","de":"Speichern fehlgeschlagen"},"저장됨":{"it":"Salvato","fr":"Enregistré","es":"Guardado","ja":"保存済み","zh":"已收藏","ru":"Сохранено","de":"Gespeichert"},"스크랩북에 저장됐어요":{"it":"Salvato nel tuo scrapbook","fr":"Enregistré dans votre carnet","es":"Guardado en tu álbum","ja":"スクラップブックに保存しました","zh":"已保存到收藏册","ru":"Сохранено в ваш альбом","de":"In Ihrem Sammelalbum gespeichert"},"스크랩":{"it":"Salva","fr":"Enregistrer","es":"Guardar","ja":"保存","zh":"收藏","ru":"Сохранить","de":"Speichern"},"멤버십 구독하기 →":{"it":"Abbonati →","fr":"S'abonner →","es":"Suscribirse →","ja":"メンバーシップに登録 →","zh":"订阅会员 →","ru":"Оформить подписку →","de":"Mitglied werden →"},"로그인":{"it":"Accedi","fr":"Se connecter","es":"Iniciar sesión","ja":"ログイン","zh":"登录","ru":"Войти","de":"Anmelden"},"개인 사용 및 비상업적 용도에 한해 사용 가능":{"it":"Solo per uso personale e non commerciale","fr":"Usage personnel et non commercial uniquement","es":"Solo para uso personal y no comercial","ja":"個人利用・非商用に限り使用可能","zh":"仅限个人及非商业用途","ru":"Только для личного некоммерческого использования","de":"Nur für den persönlichen, nicht kommerziellen Gebrauch"},"권한 확인 중...":{"it":"Verifica accesso...","fr":"Vérification de l'accès...","es":"Comprobando acceso...","ja":"アクセス権を確認中...","zh":"正在检查权限...","ru":"Проверка доступа...","de":"Zugriff wird geprüft..."},"<strong style=\"color:#fff\">스탠다드 멤버십</strong>부터 커버 + PAP 로고 합성 이미지를 다운로드할 수 있습니다.<br>참여 크리에이터는 본인 작품을 무료로 받을 수 있어요 — 본인 참여작이라면 가입하신 이메일과 동일한 계정인지 확인해주세요.":{"it":"Con l'<strong style=\"color:#fff\">abbonamento Standard</strong> puoi scaricare le immagini composite (copertina + logo PAP).<br>I creator partecipanti possono ricevere gratuitamente le proprie opere — se è opera tua, assicurati di aver effettuato l'accesso con l'email con cui hai partecipato.","fr":"L'<strong style=\"color:#fff\">abonnement Standard</strong> permet de télécharger les images composites (couverture + logo PAP).<br>Les créateurs participants peuvent obtenir leurs œuvres gratuitement — s'il s'agit de votre œuvre, vérifiez que vous êtes connecté avec l'e-mail utilisé pour votre participation.","es":"La <strong style=\"color:#fff\">membresía Standard</strong> permite descargar imágenes compuestas (portada + logo PAP).<br>Los creadores participantes pueden obtener sus obras gratis — si es tu obra, asegúrate de haber iniciado sesión con el correo con el que participaste.","ja":"<strong style=\"color:#fff\">スタンダード会員</strong>からカバー＋PAPロゴ合成画像をダウンロードできます。<br>参加クリエイターは自分の作品を無料で受け取れます — ご自身の参加作品の場合は、登録メールと同じアカウントかご確認ください。","zh":"<strong style=\"color:#fff\">标准会員</strong>起可下载封面＋PAP 徽标合成图片。<br>参与创作者可免费获取自己的作品 — 如为本人作品，请确认登录的是与参与时相同邮箱的账户。","ru":"<strong style=\"color:#fff\">Подписка Standard</strong> открывает загрузку составных изображений (обложка + логотип PAP).<br>Участвующие креаторы могут получить свои работы бесплатно — если это ваша работа, убедитесь, что вы вошли под той же почтой, с которой участвовали.","de":"Ab der <strong style=\"color:#fff\">Standard-Mitgliedschaft</strong> können Sie Composite-Bilder (Cover + PAP-Logo) herunterladen.<br>Teilnehmende Kreative erhalten ihre eigenen Werke kostenlos — wenn es Ihr Werk ist, melden Sie sich bitte mit der E-Mail an, mit der Sie teilgenommen haben."},"스탠다드 구독하기 →":{"it":"Abbonati a Standard →","fr":"S'abonner à Standard →","es":"Suscribirse a Standard →","ja":"スタンダードに登録 →","zh":"订阅标准会员 →","ru":"Подписаться на Standard →","de":"Standard abonnieren →"},"전체 권한이 필요한 경우 PAP Magazine 운영팀에 문의해주세요.":{"it":"Serve l'accesso completo? Contatta il team di PAP Magazine.","fr":"Besoin d'un accès complet ? Contactez l'équipe de PAP Magazine.","es":"¿Necesitas acceso completo? Contacta al equipo de PAP Magazine.","ja":"全権限が必要な場合は PAP Magazine 運営チームにお問い合わせください。","zh":"需要完整权限？请联系 PAP Magazine 团队。","ru":"Нужен полный доступ? Свяжитесь с командой PAP Magazine.","de":"Vollzugriff nötig? Kontaktieren Sie das PAP-Magazine-Team."},"⬇️ 커버 이미지":{"it":"⬇️ Immagine di copertina","fr":"⬇️ Image de couverture","es":"⬇️ Imagen de portada","ja":"⬇️ カバー画像","zh":"⬇️ 封面图片","ru":"⬇️ Обложка","de":"⬇️ Coverbild"},"⬇️ 로고 이미지 (":{"it":"⬇️ Immagini logo (","fr":"⬇️ Images du logo (","es":"⬇️ Imágenes de logo (","ja":"⬇️ ロゴ画像 (","zh":"⬇️ 徽标图片 (","ru":"⬇️ Логотипы (","de":"⬇️ Logobilder ("},"장 ZIP)":{"it":" immagini ZIP)","fr":" images ZIP)","es":" imágenes ZIP)","ja":"枚 ZIP)","zh":" 张 ZIP)","ru":" изобр. ZIP)","de":" Bilder ZIP)"}," 권한":{"it":" accesso","fr":" accès","es":" acceso","ja":" 権限","zh":" 权限","ru":" доступ","de":" Zugriff"},"개인 사용 및 비상업적 용도에 한해 사용 가능 · 다운로드 이력이 기록됩니다.":{"it":"Solo per uso personale e non commerciale · i download vengono registrati.","fr":"Usage personnel et non commercial uniquement · les téléchargements sont enregistrés.","es":"Solo para uso personal y no comercial · las descargas quedan registradas.","ja":"個人利用・非商用に限り使用可能 · ダウンロード履歴が記録されます。","zh":"仅限个人及非商业用途 · 下载记录将被保存。","ru":"Только для личного некоммерческого использования · загрузки фиксируются.","de":"Nur für den persönlichen, nicht kommerziellen Gebrauch · Downloads werden protokolliert."},"구매 →":{"it":"Acquista →","fr":"Acheter →","es":"Comprar →","ja":"購入 →","zh":"购买 →","ru":"Купить →","de":"Kaufen →"},"링크를 통해 구매 시 PAP에 수수료가 지급될 수 있습니다.":{"it":"PAP potrebbe ricevere una commissione sugli acquisti effettuati tramite questi link.","fr":"PAP peut percevoir une commission sur les achats effectués via ces liens.","es":"PAP puede recibir una comisión por las compras realizadas a través de estos enlaces.","ja":"リンク経由での購入により PAP に手数料が支払われる場合があります。","zh":"通过这些链接购买时，PAP 可能获得佣金。","ru":"PAP может получать комиссию за покупки по этим ссылкам.","de":"PAP kann für Käufe über diese Links eine Provision erhalten."}};
+function _edL9(ko,en){ var l; try{l=localStorage.getItem('pap-lang')||'ko';}catch(e){l='ko';} if(l==='ko') return ko; var m=_ED_TR9[ko]; if(m&&m[l]) return m[l]; return en; }

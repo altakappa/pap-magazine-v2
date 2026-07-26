@@ -186,16 +186,16 @@ function openCreatorPopup(cr){
     if(lvlEl2 && lvlEl2.parentNode) lvlEl2.parentNode.insertBefore(ratingSlot, lvlEl2.nextSibling);
   }
   if(typeof PAPSocial!=='undefined'){
-    ratingSlot.innerHTML='<div class="pap-profile-rating-empty">'+(lang==='ko'?'별점 불러오는 중...':'Loading ratings...')+'</div>';
+    ratingSlot.innerHTML='<div class="pap-profile-rating-empty">'+(_shL9('별점 불러오는 중...','Loading ratings...'))+'</div>';
     Promise.resolve(PAPSocial.getCreatorAvgRating(handle)).then(function(cav){
       if(cav && cav.count>0){
         ratingSlot.innerHTML='<div class="pap-profile-rating">'+
           '<span class="pap-profile-rating-num">'+cav.avg.toFixed(1)+'</span>'+
           '<span class="pap-profile-rating-stars">'+PAPSocial.starHTML(cav.avg,false)+'</span>'+
-          '<span class="pap-profile-rating-count">'+cav.count+(lang==='ko'?'명 평가 · ':' ratings · ')+(cav.ratedEditorials||0)+'/'+(cav.editorials||editorials.length)+(lang==='ko'?' 에디토리얼':' editorials')+'</span>'+
+          '<span class="pap-profile-rating-count">'+cav.count+(_shL9('명 평가 · ',' ratings · '))+(cav.ratedEditorials||0)+'/'+(cav.editorials||editorials.length)+(_shL9(' 에디토리얼',' editorials'))+'</span>'+
         '</div>';
       } else if(editorials.length>0){
-        ratingSlot.innerHTML='<div class="pap-profile-rating-empty">'+(lang==='ko'?'아직 별점이 등록되지 않았습니다':'No ratings yet')+'</div>';
+        ratingSlot.innerHTML='<div class="pap-profile-rating-empty">'+(_shL9('아직 별점이 등록되지 않았습니다','No ratings yet'))+'</div>';
       } else {
         ratingSlot.innerHTML='';
       }
@@ -260,7 +260,7 @@ function _openCreatorPopup_noPush(cr){
   if(ratingSlot) ratingSlot.innerHTML='';
   if(typeof PAPSocial!=='undefined' && ratingSlot){
     Promise.resolve(PAPSocial.getCreatorAvgRating(handle)).then(function(cav){
-      if(cav&&cav.count>0){ratingSlot.innerHTML='<div class="pap-profile-rating"><span class="pap-profile-rating-num">'+cav.avg.toFixed(1)+'</span><span class="pap-profile-rating-stars">'+PAPSocial.starHTML(cav.avg,false)+'</span><span class="pap-profile-rating-count">'+cav.count+(lang==='ko'?'명 평가 · ':' ratings · ')+(cav.ratedEditorials||0)+'/'+(cav.editorials||editorials.length)+' 에디토리얼</span></div>';}
+      if(cav&&cav.count>0){ratingSlot.innerHTML='<div class="pap-profile-rating"><span class="pap-profile-rating-num">'+cav.avg.toFixed(1)+'</span><span class="pap-profile-rating-stars">'+PAPSocial.starHTML(cav.avg,false)+'</span><span class="pap-profile-rating-count">'+cav.count+(_shL9('명 평가 · ',' ratings · '))+(cav.ratedEditorials||0)+'/'+(cav.editorials||editorials.length)+' 에디토리얼</span></div>';}
     }).catch(function(){});
   }
   var grid=document.getElementById('cpWorks');
@@ -433,3 +433,10 @@ if(shortsSec) shortsObserver.observe(shortsSec);
   else { window.addEventListener('load', function(){ setTimeout(_healShorts,2500); }); }
 })();
 
+
+
+/* 9-language UI strings (2026-07-26) — _shL9(ko,en) resolves
+   it/fr/es/ja/zh/ru/de from _SH_TR9 (keyed by Korean source);
+   ko/en literals at each call site remain exact fallbacks. */
+var _SH_TR9 = {"별점 불러오는 중...":{"it":"Caricamento valutazioni...","fr":"Chargement des notes...","es":"Cargando valoraciones...","ja":"評価を読み込み中...","zh":"正在加载评分...","ru":"Загрузка оценок...","de":"Bewertungen werden geladen..."},"명 평가 · ":{"it":" valutazioni · ","fr":" notes · ","es":" valoraciones · ","ja":"件の評価 · ","zh":" 条评价 · ","ru":" оценок · ","de":" Bewertungen · "}," 에디토리얼":{"it":" editoriali","fr":" éditoriaux","es":" editoriales","ja":" エディトリアル","zh":" 篇编辑内容","ru":" редакционных","de":" Editorials"},"아직 별점이 등록되지 않았습니다":{"it":"Ancora nessuna valutazione","fr":"Aucune note pour l'instant","es":"Aún no hay valoraciones","ja":"まだ評価がありません","zh":"暂无评分","ru":"Оценок пока нет","de":"Noch keine Bewertungen"}};
+function _shL9(ko,en){ var l; try{l=localStorage.getItem('pap-lang')||'ko';}catch(e){l='ko';} if(l==='ko') return ko; var m=_SH_TR9[ko]; if(m&&m[l]) return m[l]; return en; }
