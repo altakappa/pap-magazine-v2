@@ -126,23 +126,23 @@
     },
     {
       "path": "/api/cron/sync-instagram?account=celeb&backfill=365&max=6",
-      "schedule": "2-52/10 * * * *"
+      "schedule": "2 * * * *"
     },
     {
       "path": "/api/cron/sync-instagram?account=beauty&backfill=365&max=6",
-      "schedule": "3-53/10 * * * *"
+      "schedule": "3 * * * *"
     },
     {
       "path": "/api/cron/sync-instagram?account=fashion&backfill=365&max=6",
-      "schedule": "6-56/10 * * * *"
+      "schedule": "6 * * * *"
     },
     {
       "path": "/api/cron/sync-instagram?account=trends&backfill=365&max=6",
-      "schedule": "7-57/10 * * * *"
+      "schedule": "7 * * * *"
     },
     {
       "path": "/api/cron/sync-instagram?account=object&backfill=365&max=6",
-      "schedule": "8-58/10 * * * *"
+      "schedule": "8 * * * *"
     }
   ],
   "rewrites": [
