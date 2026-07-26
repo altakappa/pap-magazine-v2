@@ -52,6 +52,41 @@ async function fetchSnapshot(opts) {
   };
 }
 
+/** 숫자면 그대로, 아니면 null (0 으로 속이지 않는다). */
+function numOrNull(v) { return typeof v === 'number' ? v : null; }
+
+/** 게시물 1건의 인사이트(저장·공유·도달·재생·총상호작용)를 가져온다.
+ *  media_type 별로 유효 metric 이 달라, 실패하면 축소 세트로 재시도하고
+ *  그래도 안 되면 {} 를 돌려준다 — 좋아요·댓글 저장은 절대 막지 않는다. */
+async function fetchPostInsights(mediaId, mediaType, token) {
+  if (!mediaId || !token) return {};
+  const mt = String(mediaType || '').toUpperCase();
+  const full = (mt === 'VIDEO' || mt === 'REELS')
+    ? ['reach', 'saved', 'shares', 'total_interactions', 'plays']
+    : ['reach', 'saved', 'shares', 'total_interactions'];
+  for (const metrics of [full, ['reach', 'saved']]) {
+    try {
+      const url = `${GRAPH}/${encodeURIComponent(mediaId)}/insights`
+        + `?metric=${metrics.join(',')}&access_token=${encodeURIComponent(token)}`;
+      const r = await fetch(url, { signal: AbortSignal.timeout(12000) });
+      if (!r.ok) continue;
+      const j = await r.json();
+      const out = {};
+      for (const m of (j.data || [])) {
+        const v = m && m.values && m.values[0] ? m.values[0].value : undefined;
+        if (typeof v === 'number') out[m.name] = v;
+      }
+      // plays(릴스) → views 로 정규화해 리포트를 단순화한다.
+      if (typeof out.plays === 'number' && typeof out.views !== 'number') out.views = out.plays;
+      return {
+        saved: out.saved, shares: out.shares, reach: out.reach,
+        views: out.views, total_interactions: out.total_interactions,
+      };
+    } catch (_) { /* 다음 metric 세트로 재시도 */ }
+  }
+  return {};
+}
+
 /** Graph 응답 → ig_post_metric 행. age_hours 를 여기서 계산한다. */
 function toMetricRows(posts, now) {
   const t = now || Date.now();
@@ -68,6 +103,11 @@ function toMetricRows(posts, now) {
       like_count: typeof p.like_count === 'number' ? p.like_count : null,
       comments_count: typeof p.comments_count === 'number' ? p.comments_count : null,
       age_hours: age,
+      saved: numOrNull(p.saved),
+      shares: numOrNull(p.shares),
+      reach: numOrNull(p.reach),
+      views: numOrNull(p.views),
+      total_interactions: numOrNull(p.total_interactions),
     };
   });
 }
@@ -75,7 +115,20 @@ function toMetricRows(posts, now) {
 /** 수집 → 저장. 저장 건수를 돌려준다. */
 async function captureSnapshot(opts) {
   const snap = await fetchSnapshot(opts);
-  const rows = toMetricRows(snap.posts);
+  const token = process.env.IG_ACCESS_TOKEN;
+
+  // 게시물별 인사이트(저장·공유·도달)를 4건씩 병렬로 붙인다. best-effort —
+  // 인사이트가 실패해도 좋아요·댓글은 그대로 저장된다.
+  const posts = Array.isArray(snap.posts) ? snap.posts : [];
+  const enriched = [];
+  const CONC = 4;
+  for (let i = 0; i < posts.length; i += CONC) {
+    const batch = posts.slice(i, i + CONC);
+    const ins = await Promise.all(batch.map(p =>
+      (p && p.id) ? fetchPostInsights(p.id, p.media_type, token) : Promise.resolve({})));
+    batch.forEach((p, k) => enriched.push(Object.assign({}, p, ins[k])));
+  }
+  const rows = toMetricRows(enriched);
 
   await supabaseAdmin.from('ig_account_snapshot').insert({
     handle: snap.account.handle,
@@ -83,12 +136,14 @@ async function captureSnapshot(opts) {
     media_count: snap.account.media_count,
   });
 
-  // 같은 시(hour)에 이미 넣었으면 유니크 인덱스가 막는다 — 크론 재시도 방어.
+  // 시계열이라 실행마다 새 행을 넣는다(captured_at 기본값 now()). 예전엔
+  // onConflict:'post_id,captured_at' 로 upsert 했는데 그 유니크 제약이 DB 에
+  // 없어(일반 인덱스뿐) 매번 42P10 에러 → 게시물 metric 이 통째로 안 쌓였다
+  // (계정 스냅샷만 남던 원인, 2026-07-27 수정).
   let stored = 0;
   if (rows.length) {
-    const { error } = await supabaseAdmin.from('ig_post_metric')
-      .upsert(rows, { onConflict: 'post_id,captured_at', ignoreDuplicates: true });
-    if (error && !/duplicate|unique/i.test(error.message || '')) throw error;
+    const { error } = await supabaseAdmin.from('ig_post_metric').insert(rows);
+    if (error) throw error;
     stored = rows.length;
   }
   return { account: snap.account, posts_captured: stored };
@@ -175,6 +230,6 @@ async function buildReport(days) {
 }
 
 module.exports = {
-  fetchSnapshot, toMetricRows, captureSnapshot,
+  fetchSnapshot, fetchPostInsights, toMetricRows, captureSnapshot,
   followerGrowth, weeklyEngagement, buildReport,
 };

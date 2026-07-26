@@ -46,6 +46,15 @@ ok('타임스탬프 없으면 age_hours 는 null (0 으로 속이지 않는다)'
 ok('like_count 없으면 null (0 으로 속이지 않는다)', rows[2].like_count === null);
 ok('id 없는 항목은 버린다', toMetricRows([{ timestamp: '2026-07-21T00:00:00Z' }], NOW).length === 0);
 
+// 인사이트(저장·공유·도달·재생·총상호작용) 병합 — 2026-07-27
+ok('인사이트 없으면 saved/reach 는 null (0 으로 속이지 않는다)', rows[0].saved === null && rows[0].reach === null);
+const irows = toMetricRows([
+  { id: '9', timestamp: '2026-07-20T12:00:00Z', like_count: 10, comments_count: 1,
+    saved: 40, shares: 5, reach: 900, views: 1200, total_interactions: 56 },
+], NOW);
+ok('saved·shares·reach 가 보존된다', irows[0].saved === 40 && irows[0].shares === 5 && irows[0].reach === 900);
+ok('views·total_interactions 가 보존된다', irows[0].views === 1200 && irows[0].total_interactions === 56);
+
 /* ---------------------------------------------------------------- */
 section('followerGrowth — 일평균 증가');
 
@@ -99,6 +108,13 @@ ok('빈 입력은 빈 배열', weeklyEngagement([]).length === 0);
 ok('posted_at 없는 행은 무시', weeklyEngagement([{ like_count: 999 }]).length === 0);
 
 /* ---------------------------------------------------------------- */
+section('소스 회귀 가드 — 저장 버그 재발 방지');
+const fs = require('fs');
+const IGSRC = fs.readFileSync(path.join(__dirname, '..', 'api', '_lib', 'igSnapshot.js'), 'utf8');
+ok('깨진 upsert(rows) 를 다시 쓰지 않는다', !/\.upsert\(rows/.test(IGSRC));
+ok('ig_post_metric 은 plain insert 로 저장한다', /from\('ig_post_metric'\)\.insert\(rows\)/.test(IGSRC));
+ok('fetchPostInsights 존재 (저장·공유·도달 수집)', /async function fetchPostInsights/.test(IGSRC));
+
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) { console.error('❌ ig-snapshot tests failed'); process.exit(1); }
 console.log('✅ ig-snapshot tests passed');
