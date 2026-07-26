@@ -46,6 +46,7 @@ function buildDescription(art, url) {
 }
 
 module.exports = withCronGuard('youtube-post', async function handler(req, res) {
+  res.locals = res.locals || {};
   const auth = (req.headers && req.headers['authorization']) || '';
   const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
   if (!cronOk) {
@@ -54,7 +55,8 @@ module.exports = withCronGuard('youtube-post', async function handler(req, res) 
   }
   // 공개 전환 전 대기 모드 (관리자 수동은 private 테스트 업로드 허용)
   if (cronOk && process.env.YOUTUBE_PUBLIC !== '1') {
-    return res.status(200).json({ ok: true, note: '공개 전환 대기 — YOUTUBE_PUBLIC=1 설정 시 자동 업로드 시작' });
+    res.locals.cronNote = '공개 전환 대기 — YOUTUBE_PUBLIC=1 설정 시 자동 업로드 시작';
+    return res.status(200).json({ ok: true, note: res.locals.cronNote });
   }
 
   try {
@@ -63,13 +65,19 @@ module.exports = withCronGuard('youtube-post', async function handler(req, res) 
     // 관리자 수동 트리거는 상한을 우회한다 (cronOk 일 때만 적용).
     if (cronOk) {
       const DAILY_LIMIT = parseInt(process.env.YOUTUBE_DAILY_LIMIT || '4', 10) || 4;
-      const dayStart = new Date(); dayStart.setUTCHours(0, 0, 0, 0);
+      // 기준일은 KST(UTC+9) 자정. UTC 자정으로 잡으면 상한 리셋이 09:00 KST가 되어,
+      // 상한이 걸린 날은 한국 새벽~오전(00~09시)이 통째로 죽는다.
+      const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+      const kstMidnight = new Date(Date.now() + KST_OFFSET_MS);
+      kstMidnight.setUTCHours(0, 0, 0, 0);
+      const dayStart = new Date(kstMidnight.getTime() - KST_OFFSET_MS);
       const { count: todayCount } = await supabaseAdmin.from('youtube_posts')
         .select('id', { count: 'exact', head: true })
         .neq('status', 'failed')
         .gte('created_at', dayStart.toISOString());
       if ((todayCount || 0) >= DAILY_LIMIT) {
-        return res.status(200).json({ ok: true, note: '일일 업로드 상한 도달 (' + DAILY_LIMIT + '/일) — 내일 재개', today: todayCount });
+        res.locals.cronNote = '일일 업로드 상한 도달 (' + todayCount + '/' + DAILY_LIMIT + ', KST 기준) — 익일 00:00 KST 재개';
+        return res.status(200).json({ ok: true, note: res.locals.cronNote, today: todayCount });
       }
     }
 
@@ -89,7 +97,10 @@ module.exports = withCronGuard('youtube-post', async function handler(req, res) 
       .order('published_date', { ascending: false }).limit(200);
     const art = (arts || []).find((a) =>
       !done.has(a.id) && Array.isArray(a.videos) && a.videos.length >= 1 && a.videos[0]);
-    if (!art) return res.status(200).json({ ok: true, note: '업로드할 릴스 기사 없음 (source_media_type=VIDEO 필터)' });
+    if (!art) {
+      res.locals.cronNote = '업로드할 릴스 기사 없음 (source_media_type=VIDEO 필터)';
+      return res.status(200).json({ ok: true, note: res.locals.cronNote });
+    }
 
     const artUrl = 'https://www.pap-magazine.com/article/' + (art.custom_url || art.slug || '');
     const isPublic = process.env.YOUTUBE_PUBLIC === '1';
@@ -130,6 +141,7 @@ module.exports = withCronGuard('youtube-post', async function handler(req, res) 
     }, { onConflict: 'article_id' });
 
     if (status === 'failed') return res.status(502).json({ error: 'youtube post failed', title: art.title, detail });
+    res.locals.cronNote = '업로드 완료: ' + art.title + ' (' + videoId + ')' + (detail ? ' / ' + detail : '');
     return res.status(200).json({ ok: true, posted: art.title, video_id: videoId, url: 'https://youtube.com/shorts/' + videoId, note: detail || undefined });
   } catch (err) {
     console.error('[youtube-post] error:', err);
