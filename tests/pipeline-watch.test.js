@@ -27,7 +27,20 @@ function stub(rel, exports) {
 stub('supabase.js', { supabaseAdmin: {} });
 stub('auth.js', { requireAdmin: async () => ({ id: 'test' }) });
 stub('pushAlert.js', { pushAlert: async () => ({ ok: true }) });
-stub('instagramImport.js', { listRecentMedia: async () => [] });
+// 2026-07-26 — 9b9c0f8 이 pipeline-watch 에 _extractShortcode/isLikelyEditorialCaption
+// 사용을 추가했는데 이 스텁이 따라가지 않아 npm test 가 TypeError 로 죽었다.
+// 실제 구현과 같은 동작을 스텁에 심어 회귀를 막는다.
+stub('instagramImport.js', {
+  listRecentMedia: async () => [],
+  isLikelyEditorialCaption: () => false,
+  _extractShortcode: (input) => {
+    if (!input) return null;
+    const s = String(input).trim();
+    if (/^[A-Za-z0-9_-]{6,20}$/.test(s) && !s.includes('/')) return s;
+    const m = s.match(/instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/);
+    return m ? m[1] : null;
+  },
+});
 stub('cronGuard.js', { withCronGuard: (_name, fn) => fn });
 
 const { diagnose, buildAlert } = require('../api/cron/pipeline-watch');
