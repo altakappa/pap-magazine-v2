@@ -664,7 +664,11 @@ function _openArticleDetailInner(idx){
   // never stares at a blank overlay.
   var hasBlocks = Array.isArray(a.blocks) && a.blocks.length > 0;
   var hasDesc   = !!(a.desc && String(a.desc).trim());
-  if(!hasBlocks && !hasDesc && a._api_id){
+  // 2026-07-26 — 다국어 리더: 활성 언어가 ko가 아니고 그 언어의 번역 본문이 아직
+  // 없으면 상세 GET 으로 seo_translations 번역(content_i18n/title_i18n)을 지연 로드.
+  var _artL = (typeof _papCurLang==='function') ? _papCurLang() : 'ko';
+  var _needTr = (_artL !== 'ko' && a._api_id && !(a.desci18n && a.desci18n[_artL]));
+  if(((!hasBlocks && !hasDesc) || _needTr) && a._api_id){
     var _token = '';
     try { _token = localStorage.getItem('pap-token') || ''; } catch(_){}
     var _headers = {};
@@ -678,6 +682,9 @@ function _openArticleDetailInner(idx){
       var fullA = j && (j.data || j.article);
       if(!fullA) return;
       if(fullA.content_en && String(fullA.content_en).trim()){ a.desci18n = a.desci18n || {}; if(!a.desci18n.en){ a.desci18n.en = String(fullA.content_en).trim(); } }
+      // 2026-07-26 — seo_translations 다국어 맵 병합(기존 값 우선, 번역 언어 채움).
+      if(fullA.content_i18n && typeof fullA.content_i18n==='object'){ a.desci18n = Object.assign({}, fullA.content_i18n, a.desci18n||{}); }
+      if(fullA.title_i18n && typeof fullA.title_i18n==='object'){ a.ti18n = Object.assign({}, fullA.title_i18n, a.ti18n||{}); }
       var raw = fullA.content || '';
       var parsed = null;
       if(typeof raw === 'string' && raw){

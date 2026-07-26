@@ -40,6 +40,27 @@ module.exports = async function handler(req, res) {
       // QA #202 — denormalised authorship for the admin detail view.
       await attachAuthorship([data]);
 
+      // 2026-07-26 — 다국어 리더: seo_translations(article) 를 title_i18n/content_i18n
+      // 로 실어 SPA 리더가 활성 언어의 번역 제목·본문을 렌더한다. ko/en 은 원본 컬럼.
+      try {
+        const { data: _trs } = await supabaseAdmin
+          .from('seo_translations')
+          .select('lang, title, body')
+          .eq('kind', 'article')
+          .eq('content_id', id);
+        const _ti = {}, _ci = {};
+        if (data.title) _ti.ko = data.title;
+        if (data.title_en) _ti.en = data.title_en;
+        if (data.content) _ci.ko = data.content;
+        if (data.content_en) _ci.en = data.content_en;
+        for (const r of (_trs || [])) {
+          if (r && r.title) _ti[r.lang] = r.title;
+          if (r && r.body)  _ci[r.lang] = r.body;
+        }
+        data.title_i18n = _ti;
+        data.content_i18n = _ci;
+      } catch (_) { /* best-effort — 번역 없으면 기존 en 폴백 유지 */ }
+
       return res.status(200).json({ data });
     } catch (err) {
       console.error('Article GET error:', err);
