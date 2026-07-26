@@ -269,6 +269,7 @@ a{color:#fff;text-decoration:none}
 <script src="cookie-consent.js" defer></script>
 <script src="/pap-protect.js?v=3" defer></script>
 <style>#cookieConsent{display:none!important}</style>
+<script>window._PAP_UITR={"촬영 예정 ":{"it":"Servizio ","fr":"Séance ","es":"Sesión ","ja":"撮影予定 ","zh":"拍摄计划 ","ru":"Съёмка ","de":"Shooting "},"풀레터 PDF 다운로드":{"it":"Scarica PDF Pull-Letter","fr":"Télécharger le PDF Pull-Letter","es":"Descargar PDF Pull-Letter","ja":"プルレターPDFをダウンロード","zh":"下载 Pull-Letter PDF","ru":"Скачать PDF pull-letter","de":"Pull-Letter-PDF herunterladen"},"신청 철회":{"it":"Annulla richiesta","fr":"Annuler la demande","es":"Cancelar solicitud","ja":"申請を取り消す","zh":"撤回申请","ru":"Отменить запрос","de":"Anfrage zurückziehen"},"수정하러 가기":{"it":"Modifica ora","fr":"Modifier maintenant","es":"Editar ahora","ja":"修正する","zh":"去修改","ru":"Изменить сейчас","de":"Jetzt bearbeiten"},"결제하기":{"it":"Paga ora","fr":"Payer maintenant","es":"Pagar ahora","ja":"支払う","zh":"去支付","ru":"Оплатить","de":"Jetzt bezahlen"},"게시물 보러가기":{"it":"Vedi il post","fr":"Voir la publication","es":"Ver publicación","ja":"投稿を見る","zh":"查看帖子","ru":"Смотреть публикацию","de":"Beitrag ansehen"},"사유 확인":{"it":"Vedi motivo","fr":"Voir la raison","es":"Ver motivo","ja":"理由を確認","zh":"查看原因","ru":"Посмотреть причину","de":"Grund ansehen"}};window._papUIL=function(ko,en){var l;try{l=localStorage.getItem('pap-lang')||'ko';}catch(e){l='ko';}if(l==='ko')return ko;var m=window._PAP_UITR[ko];return (m&&m[l])||en;};</script>
 </head>
 <body>
 
@@ -480,7 +481,7 @@ a{color:#fff;text-decoration:none}
        so users get one consistent navigation surface. -->
 </div>
 
-<script src="/pap-api.js?v=12" defer></script>
+<script src="/pap-api.js?v=13" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 <script src="/pap-logos-data.js?v=1" defer></script>
 <!-- 서브미션 기본료 Paddle 결제 (구조개편 Phase 2) — submission.html 과 공용 모듈 공유.
@@ -758,9 +759,7 @@ function loadPullletterRequests(){
       var reqs = (j && j.pullLetters) || [];
       if(reqs.length === 0){
         box.innerHTML = '<div class="mp-empty" style="font-size:11px;color:rgba(255,255,255,.4);padding:18px 20px;border:1px dashed rgba(255,255,255,.08)">'
-          + (lang==='ko'
-              ? '아직 요청한 풀레터가 없습니다. 무드보드 상세에서 요청할 수 있어요. (프리미엄 회원 전용)'
-              : 'No pull-letter requests yet. Request one from any of your moodboard detail pages. (Premium only)')
+          + (_papUIL('아직 요청한 풀레터가 없습니다. 무드보드 상세에서 요청할 수 있어요. (프리미엄 회원 전용)','No pull-letter requests yet. Request one from any of your moodboard detail pages. (Premium only)'))
           + '</div>';
         return;
       }
@@ -779,7 +778,7 @@ function loadPullletterRequests(){
         var shootDate = r.shoot_date_planned;
         html += '<div class="mp-card" style="padding:18px 20px;margin-bottom:8px;cursor:pointer" onclick="mpTogglePlDetail(\'' + rid + '\')">';
         html += '<div class="mp-row" style="margin-bottom:6px"><span class="mp-value">' + esc(title) + '</span>' + _plBadge(r.status) + '</div>';
-        html += '<div style="font-size:11px;color:rgba(255,255,255,.45);margin-bottom:8px">' + _formatDate(r.created_at) + (shootDate ? ' · ' + (lang==='ko'?'촬영 예정 ':'Shoot ') + shootDate : '') + '</div>';
+        html += '<div style="font-size:11px;color:rgba(255,255,255,.45);margin-bottom:8px">' + _formatDate(r.created_at) + (shootDate ? ' · ' + (_papUIL('촬영 예정 ','Shoot ')) + shootDate : '') + '</div>';
         if(r.shoot_purpose){
           html += '<div style="font-size:12px;color:rgba(255,255,255,.7);margin-bottom:6px;line-height:1.5">' + esc(r.shoot_purpose) + '</div>';
         }
@@ -787,12 +786,12 @@ function loadPullletterRequests(){
           html += '<div style="margin-top:8px;padding:8px 10px;background:rgba(255,255,255,.03);border-left:2px solid rgba(255,255,255,.15);font-size:11px;color:rgba(255,255,255,.65)"><strong style="font-weight:700;letter-spacing:.05em">PAP:</strong> ' + esc(r.admin_notes) + '</div>';
         }
         if(r.pullLetterSignedUrl){
-          html += '<a class="mp-sub-cta" style="margin-top:10px;display:inline-block;padding:8px 14px;font-size:10px;background:#c9a86a;color:#000;font-weight:700" href="' + safeUrl(r.pullLetterSignedUrl) + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">' + (lang==='ko'?'풀레터 PDF 다운로드':'Download Pull-Letter PDF') + '</a>';
+          html += '<a class="mp-sub-cta" style="margin-top:10px;display:inline-block;padding:8px 14px;font-size:10px;background:#c9a86a;color:#000;font-weight:700" href="' + safeUrl(r.pullLetterSignedUrl) + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">' + (_papUIL('풀레터 PDF 다운로드','Download Pull-Letter PDF')) + '</a>';
         }
         // B-2 (2026-07-26 감사) — 신청자 철회. 서버가 pending + 발급 PDF 없음을
         // 다시 검사하므로, 화면 상태가 낡아 있어도 검토가 진행된 건은 지워지지 않는다.
         if(r.status === 'pending' && !r.pullLetterSignedUrl){
-          html += '<button type="button" class="mp-sub-cta" style="margin-top:10px;margin-left:8px;display:inline-block;padding:8px 14px;font-size:10px;background:transparent;border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.6);font-weight:700;cursor:pointer" onclick="event.stopPropagation();mpCancelPullletter(\'' + rid + '\')">' + (lang==='ko'?'신청 철회':'Cancel request') + '</button>';
+          html += '<button type="button" class="mp-sub-cta" style="margin-top:10px;margin-left:8px;display:inline-block;padding:8px 14px;font-size:10px;background:transparent;border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.6);font-weight:700;cursor:pointer" onclick="event.stopPropagation();mpCancelPullletter(\'' + rid + '\')">' + (_papUIL('신청 철회','Cancel request')) + '</button>';
         }
         html += '<div id="_mpPlDet_' + rid + '" style="display:none"></div>';
         html += '</div>';
@@ -887,7 +886,10 @@ function mpTogglePlDetail(rid){
   det.style.display = 'block';
 }
 
-function esc(s){ var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+/* 2026-07-26 감사 B-6 — textContent→innerHTML 직렬화는 따옴표를 남긴다.
+   그 값이 value="…" 같은 속성에 들어가면 ` onerror=` 로 속성을 빠져나온다.
+   따옴표까지 직접 이스케이프해 텍스트·속성 양쪽에서 안전하게 만든다. */
+function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 // 2026-07-26 감사 B-6 — esc() 는 textContent→innerHTML 직렬화라 따옴표를
 // 이스케이프하지 않는다. 속성 값에 쓰면 `" onerror="…` 로 탈출이 가능하다.
 // 텍스트 노드엔 esc(), 속성 값엔 escAttr(), URL 은 safeUrl() 을 쓴다.
@@ -961,22 +963,22 @@ function _mpActionBtn(ds, s){
       'font-size:11px;font-weight:700;letter-spacing:.05em;padding:6px 12px;margin-left:8px;cursor:pointer;border-radius:2px;font-family:inherit;white-space:nowrap">' + label + '</button>';
   }
   if (ds === 'revision') {
-    return btn(lang==='ko' ? '수정하러 가기' : 'Revise now',
+    return btn(_papUIL('수정하러 가기','Revise now'),
       "window.location.href='/submission?revise=" + encodeURIComponent(s.id||'') + "'");
   }
   if (ds === 'payment_required') {
     var d = {}; try { d = s.description ? JSON.parse(s.description) : {}; } catch(_){}
     var t = d.submissionType || '';
     // 공용 모듈 payBaseFee 직행(Paddle 오버레이). 모듈 미로드 시 상세 토글로 폴백.
-    return btn(lang==='ko' ? '결제하기' : 'Pay now',
+    return btn(_papUIL('결제하기','Pay now'),
       "if(typeof payBaseFee==='function'){payBaseFee('" + id + "','" + t + "');}else{mpToggleSubDetail('" + id + "');}", true);
   }
   if (ds === 'uploaded' && s.linked_editorial && s.linked_editorial.slug) {
-    return btn(lang==='ko' ? '게시물 보러가기' : 'View post',
+    return btn(_papUIL('게시물 보러가기','View post'),
       "window.open('/editorial/" + encodeURIComponent(s.linked_editorial.slug) + "','_blank')");
   }
   if (ds === 'rejected') {
-    return btn(lang==='ko' ? '사유 확인' : 'See reason', "mpToggleSubDetail('" + id + "')");
+    return btn(_papUIL('사유 확인','See reason'), "mpToggleSubDetail('" + id + "')");
   }
   return '';
 }
@@ -1112,7 +1114,8 @@ async function _mpRenderSubDetail(id, box){
     var s = j.submission || j.data || j;
     if(!s || !s.id) throw new Error('empty');
     var note = String(s.admin_notes || s.adminNotes || '').trim();
-    var esc = function(t){ return String(t).replace(/[<>&]/g,function(c){ return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c]; }); };
+    /* 2026-07-26 감사 B-6 — 속성 컨텍스트 안전을 위해 따옴표까지 이스케이프 (상단 esc 와 동일 규칙) */
+    var esc = function(t){ return String(t == null ? '' : t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); };
     var h = '<div style="border:1px solid rgba(255,255,255,.1);border-top:none;padding:16px 18px;background:rgba(255,255,255,.02);font-size:13px;line-height:1.7;color:rgba(255,255,255,.85);margin:-6px 0 6px">';
     h += '<div style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:8px">' + L.status + '</div>';
     h += '<div style="margin-bottom:14px">' + _mpDetailBadge(_mpDeriveStatus(s)) + '</div>';

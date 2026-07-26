@@ -1560,13 +1560,14 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
 <script src="/pap-content-film.js?v=11" defer></script>
 <script src="/pap-content-article.js?v=40" defer></script>
 <script src="/pap-content-creator-shorts.js?v=9" defer></script>
-<script src="/pap-content-api-sync.js?v=117" defer></script>
+<script src="/pap-content-api-sync.js?v=118" defer></script>
 <script src="/pap-content-seo.js?v=7" defer></script>
 <script src="/pap-shell-bootstrap.js?v=10" defer></script>
 <script src="/pap-app.js?v=20" defer></script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"Organization","@id":"https://www.pap-magazine.com/#organization","name":"PAP Magazine","alternateName":["PAP MAGAZINE","PAP 매거진","PAP매거진","팝매거진"],"url":"https://www.pap-magazine.com","logo":"https://www.pap-magazine.com/pap-logo.png","sameAs":["https://www.instagram.com/pap_magazine/","https://x.com/papmagazine_","https://www.youtube.com/@pap-magazine","https://blog.naver.com/pap_magazine","https://www.tiktok.com/@pap_magazine"]}
 </script>
+<script>window._PAP_UITR={"시작하기":{"it":"Inizia","fr":"Commencer","es":"Empezar","ja":"はじめる","zh":"开始","ru":"Начать","de":"Loslegen"},"다음":{"it":"Avanti","fr":"Suivant","es":"Siguiente","ja":"次へ","zh":"下一步","ru":"Далее","de":"Weiter"},"제목과 내용을 입력하세요":{"it":"Inserisci titolo e contenuto","fr":"Veuillez saisir le titre et le contenu","es":"Introduce el título y el contenido","ja":"タイトルと内容を入力してください","zh":"请输入标题和内容","ru":"Введите заголовок и текст","de":"Bitte Titel und Inhalt eingeben"}};window._papUIL=function(ko,en){var l;try{l=localStorage.getItem('pap-lang')||'ko';}catch(e){l='ko';}if(l==='ko')return ko;var m=window._PAP_UITR[ko];return (m&&m[l])||en;};</script>
 </head>
 <body>
 
@@ -2210,7 +2211,7 @@ button { cursor: pointer; font-family: var(--sans); transition: all var(--transi
   </div>
 </div>
 
-<script src="/pap-api.js?v=12" defer></script>
+<script src="/pap-api.js?v=13" defer></script>
 <script>
 // ======== HTML ESCAPE (XSS prevention) ========
 function escHtml(s){
@@ -2457,8 +2458,8 @@ function _obShow(i){
   if(next){
     var isLast = (i === _OB_TOTAL - 1);
     next.textContent = isLast
-      ? (lang==='ko' ? '시작하기' : 'Get started')
-      : (lang==='ko' ? '다음' : 'Next');
+      ? (_papUIL('시작하기','Get started'))
+      : (_papUIL('다음','Next'));
   }
 }
 
@@ -2940,7 +2941,7 @@ function submitPost(){
   var content = document.getElementById('postContent').innerHTML.trim();
   var catSel = document.getElementById('postCategory');
   var category = catSel ? catSel.value : 'free';
-  if(!title || !content){ alert(lang==='ko'?'제목과 내용을 입력하세요':'Please enter title and content'); return; }
+  if(!title || !content){ alert(_papUIL('제목과 내용을 입력하세요','Please enter title and content')); return; }
 
   if(SB.client){
     SB.createPost(title, content, category).then(function(post){

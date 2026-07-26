@@ -18,11 +18,16 @@ const PAP = (function() {
     || (window.location.hostname === 'localhost' ? 'http://localhost:3000/api' : '/api');
 
   // ======== HTML SANITIZATION ========
+  // 2026-07-26 감사 B-6 — 예전엔 textContent→innerHTML 직렬화였다. 그 방식은
+  // <, >, & 만 엔티티가 되고 **따옴표는 그대로 남는다**. PAP.sanitize 결과가
+  // value="…" / title="…" 같은 속성에 들어가면 `" onerror="` 로 속성을
+  // 빠져나올 수 있어, 텍스트·속성 양쪽에서 안전하도록 직접 이스케이프한다.
+  // (텍스트 노드에서는 &quot;/&#39; 가 따옴표로 렌더되어 표시 결과가 같다)
   function sanitize(str) {
     if (typeof str !== 'string') return '';
-    var div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+    return str
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
   // ======== TOKEN MANAGEMENT ========

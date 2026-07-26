@@ -278,6 +278,37 @@ const mypage = R('frontend/mypage.html');
 t('mypage 도 escAttr/safeUrl 을 갖추고 href·src 에 적용',
   /function escAttr\(s\)/.test(mypage) && /function safeUrl\(u\)/.test(mypage)
   && !/(?:href|src)=" \+ esc\(/.test(mypage));
+
+// ── 저장소 전체 스윕 ──────────────────────────────────────────────
+// 처음엔 pap-admin.js / mypage.html 만 고쳤는데, 같은 textContent→innerHTML
+// 이스케이퍼가 프론트 전반에 복사돼 있었다(진단 페이지 5종 · search · ops
+// 대시보드 · pap-api 의 PAP.sanitize · submission 의 _esc 등).
+// 호출부를 하나씩 고치는 대신 **이스케이퍼 자체**를 따옴표까지 처리하도록
+// 바꿨다 — 텍스트 노드에서는 &quot;/&#39; 가 따옴표로 렌더되어 표시가 같고,
+// 속성 컨텍스트에서는 탈출이 막힌다. 새 파일이 옛 패턴을 다시 들여오면
+// 아래 검사가 잡는다.
+const FRONTEND_DIR = path.join(__dirname, '..', 'frontend');
+const ESCAPER_RE = /(?:function|var|const|let)\s+(_?esc|escAttr|sanitize)\s*(?:=\s*function)?\s*\([^)]*\)\s*\{([\s\S]{0,400}?)\n?\s*\}/g;
+const weak = [];
+let escaperCount = 0;
+for(const f of fs.readdirSync(FRONTEND_DIR).filter(n => /\.(js|html)$/.test(n))){
+  const s = fs.readFileSync(path.join(FRONTEND_DIR, f), 'utf8');
+  ESCAPER_RE.lastIndex = 0;
+  let m;
+  while((m = ESCAPER_RE.exec(s))){
+    const name = m[1], body = m[2];
+    if(name === 'escAttr') continue;          // 정의상 속성 전용 — 별도 검사
+    escaperCount++;
+    const domSerialize = /textContent/.test(body) && /innerHTML/.test(body);
+    const escapesQuote = /&quot;|&#34;/.test(body);
+    if(domSerialize || !escapesQuote){
+      weak.push(f + '::' + name + (domSerialize ? '(textContent→innerHTML)' : '(따옴표 미처리)'));
+    }
+  }
+}
+t('프론트 전체 이스케이퍼(' + escaperCount + '개)가 따옴표를 이스케이프한다',
+  weak.length === 0,
+  weak.join(' | ') + ' — textContent→innerHTML 방식은 따옴표를 남겨 속성 탈출을 허용한다');
 t('숏츠 목록의 사용자 유래 값이 esc() 경유',
   /esc\(s\.title\)[\s\S]{0,200}esc\(s\.yt\)/.test(admin));
 t('배너 이미지·링크가 safeUrl\\(\\)/esc\\(\\) 경유',

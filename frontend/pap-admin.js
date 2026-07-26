@@ -25,7 +25,10 @@ async function apiPost(path,body){var r=await fetch(API_BASE+path,{method:'POST'
 async function apiPut(path,body){var r=await fetch(API_BASE+path,{method:'PUT',headers:apiHeaders(),body:JSON.stringify(body)});return r.json();}
 async function apiPatch(path,body){var r=await fetch(API_BASE+path,{method:'PATCH',headers:apiHeaders(),body:JSON.stringify(body)});return r.json();}
 async function apiDelete(path){var r=await fetch(API_BASE+path,{method:'DELETE',headers:apiHeaders()});return r.json();}
-function esc(s){var d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
+/* 2026-07-26 감사 B-6 — textContent→innerHTML 직렬화는 따옴표를 남긴다.
+   그 값이 value="…" 같은 속성에 들어가면 ` onerror=` 로 속성을 빠져나온다.
+   따옴표까지 직접 이스케이프해 텍스트·속성 양쪽에서 안전하게 만든다. */
+function esc(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 // 보안(2026-07-26 감사 B-6) — **속성 안**에 값을 넣을 때는 esc() 로 부족하다.
 // esc() 는 textContent→innerHTML 직렬화라 <, >, & 만 엔티티가 되고 따옴표는
 // 그대로 남는다. `value="'+escAttr(x)+'"` 형태에 x=`" onerror="alert(1)` 를 넣으면
@@ -302,7 +305,8 @@ function renderMembers(){
   var endIdx = Math.min(total, startIdx + _memberLimit);
   var pageSlice = filtered.slice(startIdx, endIdx);
   var h='';
-  var esc=function(s){var d=document.createElement('div');d.textContent=s||'';return d.innerHTML;};
+  /* 2026-07-26 감사 B-6 — 속성 컨텍스트 안전을 위해 따옴표까지 이스케이프 (상단 esc 와 동일) */
+  var esc=function(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); };
   // QA #217 — use the shared role-meta map so member table labels match
   // the sidebar badge and the public site exactly.
   var statusLabels={active:'활성',inactive:'비활성',suspended:'정지',cancelled:'취소'};
@@ -4957,7 +4961,8 @@ async function loadDashboardGrowth(){
   var fails=document.getElementById('dashGrowthFails');
   var fb=document.getElementById('dashGrowthFeedback');
   if(!badges||!fb) return;
-  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  /* 2026-07-26 감사 B-6 — 속성 컨텍스트 안전(따옴표) */
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
   function md(src){ // 초경량 마크다운 (##, **, 목록)
     var out=[],list=null;
     String(src||'').split('\n').forEach(function(ln){
