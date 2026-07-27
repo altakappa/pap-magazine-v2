@@ -14,7 +14,26 @@
  * 요약 메시지를 남기려면 res.locals.cronNote 에 문자열 저장:
  *   res.locals = res.locals || {};
  *   res.locals.cronNote = '1건 임포트: xxx';
+ *
+ * 옵션 (3번째 인자):
+ *   { silenceTransient: true }
+ *     — 네트워크·타임아웃 류 '일시성' 실패는 cron_runs 에 기록은 하되
+ *       텔레그램/이메일 알림은 보내지 않는다. (2026-07-27 신설)
+ *       왜: sync-instagram 의 backfill 변형은 대량 조회라 20초 타임아웃이
+ *       '정상 동작의 일부'다 — 실패해도 다음 10분 크론이 이어받고, 신규 유입은
+ *       끊기지 않는다. 그런데 매 실행 실패로 기록돼 6시간마다 "🚨 크론 실패"가
+ *       울렸다(24h 469회 실패 실측). 이건 노이즈다.
+ *       진짜 '유입 정지'(크레딧 소진·토큰 만료로 아무것도 안 들어옴)는 이미
+ *       pipeline-watch(신규 0건 감지)가 잡는다. 역할을 나눈다:
+ *         cronGuard = 예상외 크래시(스키마·토큰 401·코드 버그)만 알림
+ *         pipeline-watch = 결과(유입) 기반 정체 감지
+ *       그래서 일시성 에러는 여기서 조용히 로그만 남긴다. 로그는 대시보드·DB 에
+ *       그대로 있어 진단 가능하다.
  */
+
+// 일시성(재시도로 자연 복구되는) 실패 패턴 — 알림에서 제외 대상.
+// abort/timeout = fetch 20~45초 초과, 나머지는 소켓·DNS·순간 네트워크.
+const TRANSIENT_RE = /aborted|timeout|ETIMEDOUT|ECONNRESET|ECONNREFUSED|EAI_AGAIN|socket hang up|network|fetch failed|und_err/i;
 
 const { supabaseAdmin } = require('./supabase');
 const { sendEmail } = require('./email');
@@ -103,7 +122,8 @@ async function _logRun(cronName, ok, durationMs, note, error) {
  * @param {function} handler - 원래 크론 핸들러 (req, res) => any
  * @returns {function} wrapped handler
  */
-function withCronGuard(cronName, handler) {
+function withCronGuard(cronName, handler, opts) {
+  const silenceTransient = !!(opts && opts.silenceTransient);
   return async function guarded(req, res) {
     const start = Date.now();
     let error = null;
@@ -129,15 +149,19 @@ function withCronGuard(cronName, handler) {
         error = 'HTTP ' + res.statusCode + ' (핸들러가 예외를 자체 처리하고 5xx 반환)';
       }
 
-      // 로그는 항상 기록
+      // 로그는 항상 기록 (일시성 실패도 진단용으로 남긴다)
       await _logRun(cronName, ok, duration, note, error);
-      // 실패 알림 (쿨다운 있음)
+      // 실패 알림 (쿨다운 있음). 단, silenceTransient 크론의 일시성 실패는
+      // 로그만 남기고 알림하지 않는다 — 재시도로 자연 복구되는 노이즈.
       if (!ok) {
-        try {
-          const skip = await _hasRecentAlert(cronName);
-          if (!skip) await _sendAlert(cronName, error, duration);
-        } catch (e) {
-          console.error('[cronGuard] alert check 실패:', e && e.message);
+        const transient = silenceTransient && TRANSIENT_RE.test(error || '');
+        if (!transient) {
+          try {
+            const skip = await _hasRecentAlert(cronName);
+            if (!skip) await _sendAlert(cronName, error, duration);
+          } catch (e) {
+            console.error('[cronGuard] alert check 실패:', e && e.message);
+          }
         }
       }
     }

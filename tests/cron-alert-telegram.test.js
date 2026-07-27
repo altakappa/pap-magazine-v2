@@ -36,6 +36,20 @@ console.log('=== chat_id 조회 엔드포인트 ===');
 t('관리자 전용', /requireAdmin/.test(ep));
 t('메시지 본문 미노출 (chat 메타만)', /chat_id|type|name/.test(ep) && !/message\.text/.test(ep));
 
+console.log('=== 일시성 실패 알림 억제 (2026-07-27) ===');
+// sync-instagram backfill 의 20초 timeout 469회/일이 6시간마다 "🚨 크론 실패"를
+// 울리던 노이즈를 없앤다. 일시성 에러는 로그만, 진짜 크래시(토큰·스키마)는 알림 유지.
+t('cronGuard: silenceTransient 옵션 존재', /silenceTransient/.test(cg));
+t('cronGuard: 일시성 패턴에 timeout·abort 포함', /TRANSIENT_RE[\s\S]*aborted[\s\S]*timeout/.test(cg));
+t('cronGuard: 일시성이면 알림 스킵 (로그는 유지)',
+  /transient\s*=\s*silenceTransient && TRANSIENT_RE/.test(cg) && /if \(!transient\)/.test(cg),
+  '일시성 판정 후 !transient 일 때만 _sendAlert 경로로 가야 한다');
+t('cronGuard: 로그는 일시성이어도 항상 기록 (진단용)',
+  cg.indexOf('await _logRun(cronName, ok, duration') < cg.indexOf('const transient'),
+  '_logRun 이 알림 판정보다 먼저여야 일시성 실패도 대시보드에 남는다');
+const si = R('api/cron/sync-instagram.js');
+t('sync-instagram: silenceTransient 적용', /\}\s*,\s*\{\s*silenceTransient:\s*true\s*\}\s*\)/.test(si));
+
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if(fail){ console.log('❌ cron-alert-telegram tests FAILED'); process.exit(1); }
 console.log('✅ cron-alert-telegram tests passed');

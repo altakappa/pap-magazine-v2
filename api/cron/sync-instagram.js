@@ -428,7 +428,9 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
     return res.status(200).json(results);
   } catch (e){
     console.error('[sync-instagram] top-level failure:', e);
-    // cronGuard 가 이 예외를 잡아 이메일 알림 + cron_runs 기록.
+    // cronGuard 가 이 예외를 잡아 알림 + cron_runs 기록.
+    // 단 timeout/네트워크 류 일시성 실패는 silenceTransient 로 알림 제외
+    // (backfill 대량 조회의 20초 초과는 정상 동작의 일부 — 다음 크론이 이어받음).
     throw e;
   }
-});
+}, { silenceTransient: true });
