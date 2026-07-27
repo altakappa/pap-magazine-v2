@@ -56,6 +56,33 @@ const STOP = new Set([
   // 한국어 상용어 (2026-07-21 2차)
   '사진','영상','기사','뉴스','공연','무대','모습','현장','네이트','스타일','화보',
   '공개','발표','소식','오늘','어제','관련','이번','지난','최근','대한','통해','위해',
+  // 2026-07-27 3차 — 실측(BTS Butter 3번·정국 스포티파이 2번·NCT 티저 2번)에서
+  // 같은 사건이 반복된 원인. 조회수·순위·플랫폼·컴백 상용어가 core 에 남아
+  // 리워딩마다 '새 요소'를 만든다. 네이버 뉴스 소스 추가로 한↔영 표기 충돌 심화.
+  // 조회수·수치 (숫자는 keywords 필터가, 단위·명사는 여기서)
+  'billion','million','thousand','views','view','streams','stream','streaming',
+  'record','records','milestone','surpasses','surpass','surpassed','becomes','become',
+  'hits','hit','enters','enter','entered','tops','topped','reaches','reached',
+  // 플랫폼·차트 (사건 식별에 부차적 — 여러 플랫폼 기사가 같은 사건)
+  'spotify','billboard','youtube','melon','itunes','circle','hanteo','chart','charts',
+  'hot','200','100','album','albums','single','singles','song','songs','track','tracks',
+  // 컴백·발매 상용어 (그룹·작품명이 앵커라 이건 노이즈)
+  'comeback','teaser','trailer','announce','announces','announced','announcement',
+  'drop','drops','dropped','unveil','unveils','unveiled','reveals','revealed',
+  'full','length','mini','repackage','prerelease','title','lead',
+  // 군입대 (그룹·멤버명이 앵커)
+  'enlist','enlists','enlistment','military','service','date','dates','army',
+  // 기타 헤드라인 동사·명사
+  'sweep','sweeps','spot','spots','meme','sparks','frenzy','higher','resolved','row',
+  'tour','concert','performance','stage','win','wins','won','award','awards',
+  // 시각물 명사 — 한쪽 기사에만 붙어 가짜 새 요소를 만든다 (NCT 'Logo/Banner Teaser').
+  'logo','banner','poster','concept','visual','visuals','clip','preview','still',
+  'jacket','tracklist','schedule','spoiler','snippet','edition','version',
+  // 한국어 조회수·순위·플랫폼·컴백·군입대 상용어
+  '돌파','뷰','스트리밍','스포티파이','빌보드','유튜브','멜론','차트','순위','기록',
+  '달성','수록','활동','컴백','티저','예고','앨범','싱글','신곡','발매','공식',
+  '입대','군입대','입영','전역','현역','육군','해군','공군','병역','의무','이행','대체복무','군백기','나란히','시작',
+  '인기','독보적','최고','입찰','경매','유니폼','수상','정상','석권','올킬',
 ]);
 
 // 2026-07-21 — 한국어 대응. 기존 `length >= 3` 은 영어 기준이라 한국어 헤드라인의
@@ -64,8 +91,10 @@ const STOP = new Set([
 const CJK_RE = /[぀-ヿ㐀-䶿一-鿿가-힯]/;
 function keywords(title) {
   return norm(canonicalize(stripSource(title))).split(' ')
-    // 순수 숫자는 사건의 요소가 아니다 (연도·엔티티 코드 잔재).
-    .filter(w => !/^\d+$/.test(w))
+    // 순수 숫자·수치는 사건의 요소가 아니다. 2026-07-27 강화:
+    // 연도·엔티티코드(순수숫자) + 조회수·스트리밍 단위(15억·11억·1000만) +
+    // 서수(7th·1st) 전부 제거 — 실측 Butter '11억' vs '1.1 billion' 충돌 원인.
+    .filter(w => !/^\d+(억|만|천|백|위|th|st|nd|rd)?$/i.test(w))
     .filter(w => (CJK_RE.test(w) ? w.length >= 2 : w.length >= 3) && !STOP.has(w));
 }
 
@@ -96,6 +125,11 @@ const ENTITY_ALIASES = [
   ['아이유', /\bIU\b|아이유/g],
   ['lesserafim', /(le\s?sserafim|르세라핌)/gi],
   ['ive', /\bIVE\b|아이브/g],
+  // 2026-07-27 3차 — 실측 중복(세븐틴 군입대 4번)의 멤버 표기 통일.
+  ['dokyeom', /(dokyeom|도겸)/gi],
+  ['vernon', /(vernon|버논)/gi],
+  ['taehyung', /(taehyung|태형)/gi],
+  ['nct', /(nct\s?127|nct127)/gi],
   ['worldcup', /(world\s?cup|월드컵)/gi],
   ['superbowl', /(super\s?bowl|슈퍼볼)/gi],
   ['halftime', /(halftime|하프타임)/gi],
@@ -199,13 +233,23 @@ function sameEvent(newCore, seenCore, opts) {
   for (const w of new Set(A)) (B.has(w) ? inter++ : novel++);
   if (!inter) return false;
 
-  // 새 요소가 하나라도 있으면 다른 사건 (인물 추가·사건 전개).
-  if (novel > 0) return false;
+  // ① 새 요소가 없다 = 기존 사건의 부분집합 = 표현만 바꾼 재탕.
+  //    단, 겹침이 1개뿐이면 우연일 수 있으니(예: 'worldcup' 만 같음) 제외.
+  if (novel === 0) {
+    const minOverlap = (opts && opts.minOverlap) || 2;
+    return inter >= minOverlap || (inter === 1 && A.length === 1 && B.size === 1);
+  }
 
-  // 새 요소가 없다 = 기존 사건의 부분집합 = 표현만 바꾼 재탕.
-  // 단, 겹침이 1개뿐이면 우연일 수 있으니(예: 'worldcup' 만 같음) 제외.
-  const minOverlap = (opts && opts.minOverlap) || 2;
-  return inter >= minOverlap || (inter === 1 && A.length === 1 && B.size === 1);
+  // ② 엄격 단속 (2026-07-27, 도메니코 "중복 좀 더 엄격히 단속").
+  //    새 요소가 '딱 하나'뿐이고 공유 앵커가 2개 이상이면 같은 사건의 다른
+  //    커버리지로 본다 — 멤버 한 명 더 언급, 조회수 갱신, 표현 차이 등.
+  //    예) [seventeen,dokyeom,vernon] vs [seventeen,dokyeom] → 도겸·버논 동시
+  //        입대 발표의 커버리지 차이일 뿐, 새 사건 아님.
+  //    ⚠️ 새 요소가 둘 이상이면 사건이 실질 확장된 것(새 인물+새 맥락)이라
+  //    별개로 남긴다 — 도메니코 '정호연 규칙'(BTS 하프타임 + 정호연 동반 출연 =
+  //    다른 기사)을 보존한다. 정호연 케이스는 novel≥2 라 여기서 병합되지 않는다.
+  if (novel === 1 && inter >= 2) return true;
+  return false;
 }
 
 /* 화제성 점수 — 알림을 보낼 가치가 있는가.

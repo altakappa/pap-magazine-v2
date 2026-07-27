@@ -4,6 +4,8 @@
 //   - 한국어 헤드라인의 키워드가 살아남을 것 (기존 length>=3 은 한국어를 전멸시켰다)
 //   - 표현만 바꾼 재탕은 중복으로 잡힐 것
 //   - **새 인물이 추가되면 다른 사건으로 볼 것** (도메니코: "정호연 BTS 출연은 다른 기사")
+//     ※ 2026-07-27 축소: 도메니코 "중복 더 엄격히" 지시로, 새 요소가 '하나'만
+//        추가된 건 이제 병합한다. novel≥2(인물+새 맥락)일 때만 별개로 유지.
 //   - BTS ↔ 방탄소년단 처럼 한·영 표기가 갈려도 같은 토큰일 것
 //   - 시그니처가 클러스터 항목 순서에 흔들리지 않을 것
 //
@@ -89,11 +91,16 @@ ok('"BTS 하프타임쇼 무대 확정" 재탕은 중복',
 ok('일부만 언급한 후속(부분집합)도 중복',
   sameEvent(['bts', 'halftime'], seen));
 
-// ② 새 인물이 추가되면 다른 사건 → 알림 보냄
-ok('"정호연·BTS 하프타임쇼"는 정호연이 추가됐으므로 새 사건',
-  !sameEvent(['bts', 'halftime', 'worldcup', '정호연'], seen));
-ok('새 요소가 하나만 늘어도 새 사건',
-  !sameEvent(['bts', 'halftime', 'worldcup', '리허설공개'], seen));
+// ② 엄격 단속 (2026-07-27, 도메니코 "중복 더 엄격히"):
+//    새 요소가 '딱 하나'만 늘면 같은 사건의 다른 커버리지로 보고 병합한다.
+//    → 정호연 규칙 축소: "인물 하나 추가"만으론 부족, novel≥2(인물+새 맥락)여야 별개.
+ok('새 요소 하나만 추가는 이제 병합 (엄격 단속)',
+  sameEvent(['bts', 'halftime', 'worldcup', '정호연'], seen) === true);
+ok('새 요소 하나만 늘어도 병합',
+  sameEvent(['bts', 'halftime', 'worldcup', '리허설공개'], seen) === true);
+// 새 요소가 둘 이상이면 사건이 실질 확장된 것 → 여전히 별개 (정호연 규칙 잔존)
+ok('새 요소가 둘 이상이면 별개 (정호연 + 새 맥락)',
+  !sameEvent(['bts', 'halftime', 'worldcup', '정호연', '불꽃무대'], seen));
 
 // ③ 완전히 다른 사건
 ok('샤넬 디렉터 선임은 무관한 사건', !sameEvent(['chanel', '디렉터', '선임'], seen));
@@ -122,7 +129,8 @@ const grp2 = [
   { title: '정호연 BTS 정국 월드컵 하프타임쇼 함께 오른다' },
 ];
 ok('새 인물(정호연)이 core 에 들어간다', clusterCore(grp2).includes('정호연'));
-ok('그래서 기존 사건과 중복이 아니다', !sameEvent(clusterCore(grp2), core));
+// 2026-07-27 엄격 단속 — 정호연 하나만 추가된 클러스터(novel 1개)는 이제 병합.
+ok('정호연 하나만 추가된 클러스터는 병합 (novel 1개, 엄격)', sameEvent(clusterCore(grp2), core));
 ok('반대로 원래 사건은 여전히 중복', sameEvent(core, core));
 
 /* ---------------------------------------------------------------- */
@@ -203,6 +211,46 @@ ok('같은 헤드라인은 중복으로 판정된다', sameEvent(runA, runB) ===
 ok('새 인물이 추가되면 여전히 다른 사건 (정호연 규칙 유지)',
   sameEvent(keywords('정호연 BTS 월드컵 하프타임쇼 동반 출연'),
             keywords('BTS 월드컵 하프타임쇼 출연')) === false);
+
+/* ---------------------------------------------------------------- */
+// 2026-07-27 3차 — 도메니코 "한 뉴스는 한 번만, 중복 더 엄격히".
+// 아래는 실제 celeb_watch_seen 24h 에서 같은 사건이 반복된 케이스들.
+section('3차 실측 재현 — 한/영·조회수 표기 차이 중복');
+
+// ① 조회수 단위·서수는 키워드에서 사라진다
+ok('조회수 단위(11억) 제거', !keywords('BTS Butter 11억 뷰 돌파').includes('11억'));
+ok('billion·views 제거',
+  !keywords('BTS Butter 1.1 billion views').some(w => ['billion','views'].includes(w)));
+ok('서수(7th) 제거', !keywords("NCT 127 7th Full Album").includes('7th'));
+
+// ② BTS Butter 11억뷰 — 한/영·조회수 표기가 달라도 같은 지문 (실측 3번 발송)
+ok('Butter 11억 vs 1.1 billion 같은 지문',
+  titleKey("방탄소년단 'Butter', 11억 뷰 돌파 - bntnews.co.kr")
+  === titleKey("BTS 'Butter' MV surpasses 1.1 billion views - starnewskorea.com"));
+
+// ③ 정국 스포티파이 — 한/영 (실측 2번 발송)
+ok('정국 스포티파이 한/영 같은 지문',
+  titleKey("BTS 정국 'Standing Next to You', 스포티파이 15억 스트리밍 돌파")
+  === titleKey("Jung Kook [BTS] hits 1.5 billion Spotify streams with 'Standing Next to You'"));
+
+// ④ NCT BLINGY 티저 — Logo/Banner 노이즈 제거 후 수렴 (실측 2번 발송)
+ok('NCT BLINGY 티저 같은 지문',
+  titleKey("NCT 127 - 7th Full Album 'BLINGY' (Logo / Banner Teaser Image)")
+  === titleKey("Watch: NCT 127 Drops 1st Teaser For Comeback With Full-Length Album 'BLINGY'"));
+
+section('3차 엄격 단속 — 새 요소 하나면 병합');
+
+// ⑤ 세븐틴 도겸·버논 동시 입대: 멤버 한 명 더 언급해도 같은 사건 (실측 4번)
+ok('도겸+버논 vs 도겸만 = 중복 (novel 1개)',
+  sameEvent(keywords('세븐틴 도겸 버논 군입대'), keywords('세븐틴 도겸 입대')) === true);
+ok('도겸만 vs 도겸+버논 = 중복 (부분집합)',
+  sameEvent(keywords('세븐틴 도겸 입대'), keywords('세븐틴 도겸 버논 군입대')) === true);
+
+// ⑥ 그래도 서로 다른 작품·사건은 눌리지 않는다 (과잉 병합 방지)
+ok('같은 그룹 다른 작품은 별개 지문',
+  titleKey("BTS Butter 11억 뷰") !== titleKey("BTS Dynamite 20억 뷰"));
+ok('같은 그룹 다른 사건은 병합 안 됨 (공유 1개뿐)',
+  sameEvent(keywords('BTS Butter 뷰 기록'), keywords('BTS 정국 하프타임 무대')) === false);
 
 /* ---------------------------------------------------------------- */
 console.log('\npassed: ' + pass + '   failed: ' + fail);
