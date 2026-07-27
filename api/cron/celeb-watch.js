@@ -364,30 +364,31 @@ module.exports = withCronGuard('celeb-watch', async function handler(req, res) {
       return v && v !== t ? `${v}\n   (${stripSource(t)})` : stripSource(t);
     };
 
-    const top = picked[0];
-    const more = picked.length > 1 ? ` 외 ${picked.length - 1}건` : '';
-    const topKo = koMap[top.headlines[0].title] || stripSource(top.headlines[0].title);
-    const pushResult = await pushAlert({
-      title: `🚨 PAP 속보 감지 — ${topKo}${more}`,
-      lines: [
-        `${top.sourceCount}개 매체 교차 확인 · 화제성 ${top.score}점 · ${top.topic}`,
-        ...top.headlines.slice(0, 4).map(h => `· ${h.source}: ${ko(h.title)}`),
-        '',
-        ...picked.slice(1).map(c => {
-          const t = c.headlines[0].title;
-          return `▸ ${koMap[t] || stripSource(t)} (${c.sourceCount}개 매체)`;
-        }),
-        '',
-        '기사화할지는 직접 판단하세요.',
-      ].filter((l, i, a) => !(l === '' && a[i - 1] === '')),
-      url: top.headlines[0].link,
-      urlLabel: '원문 보기',
-    });
-    console.log('[celeb-watch] push:', JSON.stringify(pushResult));
+    /* 도메니코 원칙1 (2026-07-27): "한 메시지당 하나의 소식만 전달할 것."
+       이전에는 1등 사건 + "외 N건" + 부록 목록을 한 메시지에 묶었다 → 사건별로
+       메시지를 분리해 각자 원문 링크를 단다. MAX_PER_RUN(기본 2)이 상한. */
+    const pushResults = [];
+    for (const c of picked) {
+      const t0 = c.headlines[0].title;
+      const cKo = koMap[t0] || stripSource(t0);
+      const pushResult = await pushAlert({
+        title: `🚨 PAP 속보 감지 — ${cKo}`,
+        lines: [
+          `${c.sourceCount}개 매체 교차 확인 · 화제성 ${c.score}점 · ${c.topic}`,
+          ...c.headlines.slice(0, 4).map(h => `· ${h.source}: ${ko(h.title)}`),
+          '',
+          '기사화할지는 직접 판단하세요.',
+        ].filter((l, i, a) => !(l === '' && a[i - 1] === '')),
+        url: c.headlines[0].link,
+        urlLabel: '원문 보기',
+      });
+      pushResults.push(pushResult);
+      console.log('[celeb-watch] push:', JSON.stringify(pushResult));
+    }
 
     return res.status(200).json({
       ok: true, scanned: items.length, alerted: picked.length,
-      titles: picked.map(c => c.headlines[0].title), push: pushResult,
+      titles: picked.map(c => c.headlines[0].title), push: pushResults,
     });
   } catch (err) {
     console.error('[celeb-watch] error:', err);
