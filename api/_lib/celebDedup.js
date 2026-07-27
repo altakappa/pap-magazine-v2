@@ -233,23 +233,19 @@ function sameEvent(newCore, seenCore, opts) {
   for (const w of new Set(A)) (B.has(w) ? inter++ : novel++);
   if (!inter) return false;
 
-  // ① 새 요소가 없다 = 기존 사건의 부분집합 = 표현만 바꾼 재탕.
-  //    단, 겹침이 1개뿐이면 우연일 수 있으니(예: 'worldcup' 만 같음) 제외.
-  if (novel === 0) {
-    const minOverlap = (opts && opts.minOverlap) || 2;
-    return inter >= minOverlap || (inter === 1 && A.length === 1 && B.size === 1);
-  }
+  // 새 요소가 하나라도 있으면 다른 사건 (인물 추가·사건 전개).
+  // 2026-07-27 최종 결정 (도메니코): "A도 B도 아니다 — 문장만 살짝 바뀐 같은
+  // 뉴스가 또 오는 것만 막아라." Butter 11억뷰가 10분 간격 재발송된 원인은
+  // '11억' vs '1.1 billion' 같은 수치·플랫폼 토큰이 가짜 '새 요소'가 된 것 —
+  // 해법은 keywords 단계의 숫자 필터·STOP 강화(위 3차 추가분)이지, 진짜 새
+  // 요소(정호연 규칙: 새 인물 추가 = 다른 기사)까지 병합하는 것이 아니다.
+  // (novel===1 병합 규칙은 efb80d6 에서 도입됐다가 같은 날 이 결정으로 철회.)
+  if (novel > 0) return false;
 
-  // ② 엄격 단속 (2026-07-27, 도메니코 "중복 좀 더 엄격히 단속").
-  //    새 요소가 '딱 하나'뿐이고 공유 앵커가 2개 이상이면 같은 사건의 다른
-  //    커버리지로 본다 — 멤버 한 명 더 언급, 조회수 갱신, 표현 차이 등.
-  //    예) [seventeen,dokyeom,vernon] vs [seventeen,dokyeom] → 도겸·버논 동시
-  //        입대 발표의 커버리지 차이일 뿐, 새 사건 아님.
-  //    ⚠️ 새 요소가 둘 이상이면 사건이 실질 확장된 것(새 인물+새 맥락)이라
-  //    별개로 남긴다 — 도메니코 '정호연 규칙'(BTS 하프타임 + 정호연 동반 출연 =
-  //    다른 기사)을 보존한다. 정호연 케이스는 novel≥2 라 여기서 병합되지 않는다.
-  if (novel === 1 && inter >= 2) return true;
-  return false;
+  // 새 요소가 없다 = 기존 사건의 부분집합 = 표현만 바꾼 재탕.
+  // 단, 겹침이 1개뿐이면 우연일 수 있으니(예: 'worldcup' 만 같음) 제외.
+  const minOverlap = (opts && opts.minOverlap) || 2;
+  return inter >= minOverlap || (inter === 1 && A.length === 1 && B.size === 1);
 }
 
 /* 화제성 점수 — 알림을 보낼 가치가 있는가.
