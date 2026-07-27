@@ -83,6 +83,10 @@ const SUBMISSION_REVIEW_I18N = {
     footer: '문의 사항이 있다면 이 메일에 회신해주세요. 편집팀이 도와드립니다.',
     payTitle: '게재료 결제 요청',
     payBody: '이 에디토리얼은 유료 게재 대상으로, 게재를 확정하려면 게재료 {amt} 결제가 필요합니다. 위 MY SUBMISSIONS에서 결제를 진행해 주세요.',
+    apSubject: '축하드립니다 — "{title}" 게재가 승인되었습니다',
+    apHeading: '게재가 승인되었습니다',
+    apCongrats: '축하드립니다! 보내주신 작품 {title}의 게재가 승인되었습니다.',
+    apCongratsPaid: '축하드립니다! 보내주신 작품 {title}의 유료 게재가 승인되었습니다.',
   },
   en: {
     subject: 'Your submission review is complete — "{title}"',
@@ -95,6 +99,10 @@ const SUBMISSION_REVIEW_I18N = {
     footer: 'Questions? Reply to this email and our editorial team will respond.',
     payTitle: 'Publication Fee — Payment Requested',
     payBody: 'This editorial requires a publication fee of {amt} to confirm publication. Please complete the payment in MY SUBMISSIONS above.',
+    apSubject: 'Congratulations — your submission "{title}" has been approved',
+    apHeading: 'Your Submission Is Approved',
+    apCongrats: 'Congratulations! Your submission {title} has been approved for publication.',
+    apCongratsPaid: 'Congratulations! Your submission {title} has been approved for paid publication.',
   },
   it: {
     subject: 'La tua revisione è completa — "{title}"',
@@ -107,6 +115,10 @@ const SUBMISSION_REVIEW_I18N = {
     footer: 'Per qualsiasi domanda, rispondi a questa email — il nostro team editoriale ti risponderà.',
     payTitle: 'Tariffa di pubblicazione — Pagamento richiesto',
     payBody: 'Questo editoriale richiede una tariffa di pubblicazione di {amt} per confermare la pubblicazione. Completa il pagamento in MY SUBMISSIONS qui sopra.',
+    apSubject: 'Congratulazioni — il tuo invio "{title}" è stato approvato',
+    apHeading: 'Il tuo invio è approvato',
+    apCongrats: 'Congratulazioni! Il tuo invio {title} è stato approvato per la pubblicazione.',
+    apCongratsPaid: 'Congratulazioni! Il tuo invio {title} è stato approvato per la pubblicazione a pagamento.',
   },
   fr: {
     subject: 'Votre soumission a été examinée — "{title}"',
@@ -119,6 +131,10 @@ const SUBMISSION_REVIEW_I18N = {
     footer: 'Une question ? Répondez à cet email — notre équipe vous recontactera.',
     payTitle: 'Frais de publication — Paiement demandé',
     payBody: 'Cet éditorial nécessite des frais de publication de {amt} pour confirmer la publication. Veuillez effectuer le paiement dans MY SUBMISSIONS ci-dessus.',
+    apSubject: 'Félicitations — votre soumission "{title}" a été approuvée',
+    apHeading: 'Votre soumission est approuvée',
+    apCongrats: 'Félicitations ! Votre soumission {title} a été approuvée pour publication.',
+    apCongratsPaid: 'Félicitations ! Votre soumission {title} a été approuvée pour une publication payante.',
   },
   es: {
     subject: 'Tu envío ha sido revisado — "{title}"',
@@ -131,6 +147,10 @@ const SUBMISSION_REVIEW_I18N = {
     footer: '¿Preguntas? Responde a este email y nuestro equipo editorial te responderá.',
     payTitle: 'Tarifa de publicación — Pago solicitado',
     payBody: 'Este editorial requiere una tarifa de publicación de {amt} para confirmar la publicación. Completa el pago en MY SUBMISSIONS más arriba.',
+    apSubject: 'Enhorabuena — tu envío "{title}" ha sido aprobado',
+    apHeading: 'Tu envío ha sido aprobado',
+    apCongrats: '¡Enhorabuena! Tu envío {title} ha sido aprobado para su publicación.',
+    apCongratsPaid: '¡Enhorabuena! Tu envío {title} ha sido aprobado para su publicación de pago.',
   },
   ja: {
     subject: '審査が完了しました — "{title}"',
@@ -143,6 +163,10 @@ const SUBMISSION_REVIEW_I18N = {
     footer: 'ご不明な点があれば、このメールにご返信ください。編集部より回答いたします。',
     payTitle: '掲載料のお支払いのお願い',
     payBody: 'この作品は有料掲載の対象です。掲載を確定するには掲載料 {amt} のお支払いが必要です。上の MY SUBMISSIONS からお支払いください。',
+    apSubject: 'おめでとうございます — "{title}" の掲載が承認されました',
+    apHeading: '掲載が承認されました',
+    apCongrats: 'おめでとうございます！ご投稿いただいた作品 {title} の掲載が承認されました。',
+    apCongratsPaid: 'おめでとうございます！ご投稿いただいた作品 {title} の有料掲載が承認されました。',
   },
   zh: {
     subject: '您的投稿审核已完成 — "{title}"',
@@ -155,6 +179,10 @@ const SUBMISSION_REVIEW_I18N = {
     footer: '如有任何疑问,请直接回复本邮件,编辑部将与您联系。',
     payTitle: '刊登费 — 需要付款',
     payBody: '本作品需支付刊登费 {amt} 以确认刊登。请在上方 MY SUBMISSIONS 中完成付款。',
+    apSubject: '恭喜 — 您的投稿 "{title}" 已通过审核',
+    apHeading: '投稿已通过审核',
+    apCongrats: '恭喜！您提交的作品 {title} 已通过审核并将刊登。',
+    apCongratsPaid: '恭喜！您提交的作品 {title} 已通过审核，将进行付费刊登。',
   },
   ru: {
     subject: 'Рассмотрение вашей заявки завершено — "{title}"',
@@ -167,6 +195,10 @@ const SUBMISSION_REVIEW_I18N = {
     footer: 'Вопросы? Ответьте на это письмо — редакция свяжется с вами.',
     payTitle: 'Плата за публикацию — требуется оплата',
     payBody: 'Для подтверждения публикации этого материала требуется плата за публикацию в размере {amt}. Пожалуйста, завершите оплату в разделе MY SUBMISSIONS выше.',
+    apSubject: 'Поздравляем — ваша работа "{title}" одобрена',
+    apHeading: 'Ваша работа одобрена',
+    apCongrats: 'Поздравляем! Ваша работа {title} одобрена к публикации.',
+    apCongratsPaid: 'Поздравляем! Ваша работа {title} одобрена к платной публикации.',
   },
   de: {
     subject: 'Die Prüfung deiner Einreichung ist abgeschlossen — "{title}"',
@@ -179,6 +211,10 @@ const SUBMISSION_REVIEW_I18N = {
     footer: 'Fragen? Antworte auf diese E-Mail — unsere Redaktion meldet sich.',
     payTitle: 'Veröffentlichungsgebühr — Zahlung erforderlich',
     payBody: 'Für die Bestätigung der Veröffentlichung ist eine Gebühr von {amt} erforderlich. Bitte schließe die Zahlung oben in MY SUBMISSIONS ab.',
+    apSubject: 'Herzlichen Glückwunsch — deine Einreichung "{title}" wurde angenommen',
+    apHeading: 'Deine Einreichung ist angenommen',
+    apCongrats: 'Herzlichen Glückwunsch! Deine Einreichung {title} wurde zur Veröffentlichung angenommen.',
+    apCongratsPaid: 'Herzlichen Glückwunsch! Deine Einreichung {title} wurde zur kostenpflichtigen Veröffentlichung angenommen.',
   },
 };
 
@@ -584,12 +620,27 @@ const templates = {
          </div>`
       : '';
 
+    // 승인(approved)일 때만 축하 톤 — 제목·헤딩·첫 문단을 승인 전용 문구로 교체하고
+    // 유료/브랜디드면 "유료 게재가 승인되었습니다" 로 표기. 거절·보완요청은 결과를
+    // 수신함에 드러내지 않는 기존 설계(QA #165)를 유지해 중립 문구를 그대로 쓴다.
+    const _isApproved = status === 'approved';
+    const _titleStrong = `<strong style="color:#fff;">"${safeTitle}"</strong>`;
+    const _subject = (_isApproved && L.apSubject ? L.apSubject : L.subject).replace('{title}', safeTitle);
+    const _heading = _isApproved && L.apHeading ? L.apHeading : L.heading;
+    let _firstPara;
+    if (_isApproved && L.apCongrats) {
+      const _congrats = (_feeCents > 0 && L.apCongratsPaid) ? L.apCongratsPaid : L.apCongrats;
+      _firstPara = _congrats.replace('{title}', _titleStrong);
+    } else {
+      _firstPara = L.body1.replace('{title}', _titleStrong);
+    }
+
     return {
-      subject: L.subject.replace('{title}', safeTitle),
+      subject: _subject,
       html: wrapHtml(`
-        <h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">${L.heading}</h2>
+        <h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">${_heading}</h2>
         <p>${L.greet.replace('{name}', safeName)}</p>
-        <p>${L.body1.replace('{title}', `<strong style="color:#fff;">"${safeTitle}"</strong>`)}</p>
+        <p>${_firstPara}</p>
         <p>${L.body2}</p>
         ${_payBlock}
         <a href="${ctaUrl}" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">${L.cta}</a>
