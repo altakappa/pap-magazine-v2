@@ -128,9 +128,9 @@ function imgFit(u,w){
 }
 
 var SVC = [
-  ['01','브랜드 콘텐츠 광고','당사 플랫폼은 귀하의 브랜드에서 제공하는 컨텐츠를 홍보합니다. 관심 있는 브랜드 및 홍보 담당자들은 아래 이메일을 통해 문의해주세요.',null],
-  ['02','PAP STUDIO와 함께','PAP STUDIO는 현장 취재 및 촬영 그리고 인터뷰와 화보 제작 등 브랜드를 위한 컨텐츠 제작 합니다. 관심 있는 브랜드 및 홍보 담당자들은 아래 이메일을 통해 문의해주세요.',null],
-  ['03','촬영 가견적','촬영 프로젝트의 가견적을 지금 바로 산출해 보세요.','https://6970f1381fc42a2b4138c164--bejewelled-cheesecake-5efe26.netlify.app']
+  ['01','Brand Contents Advertising','당사 플랫폼은 귀하의 브랜드에서 제공하는 컨텐츠를 홍보합니다. 관심 있는 브랜드 및 홍보 담당자들은 아래 이메일을 통해 문의해주세요.',null],
+  ['02','Work With PAP','PAP STUDIO는 현장 취재 및 촬영 그리고 인터뷰와 화보 제작 등 브랜드를 위한 컨텐츠 제작 합니다. 관심 있는 브랜드 및 홍보 담당자들은 아래 이메일을 통해 문의해주세요.',null],
+  ['03','Shooting Cost Estimator','촬영 프로젝트의 가견적을 지금 바로 산출해 보세요.','https://6970f1381fc42a2b4138c164--bejewelled-cheesecake-5efe26.netlify.app']
 ];
 
 function landing(projects){
@@ -145,16 +145,16 @@ function landing(projects){
       '<div class="cap">'+(p.brand?'<div class="b">'+esc(p.brand)+'</div>':'')+'<div class="t">'+esc(p.title)+'</div></div></a>';
   }).join('');
   return ''+
-  '<header class="hero"><div class="kicker red">브랜드 콘텐츠 스튜디오</div>'+
+  '<header class="hero"><div class="kicker red">BRAND CONTENT STUDIO</div>'+
     '<h1 class="serif">PAP STUDIO</h1>'+
     '<p class="lede">PAP STUDIO는 현장 취재 및 촬영 그리고 인터뷰와 화보 제작 등 브랜드를 위한 컨텐츠 제작 합니다.</p></header>'+
-  '<section class="services" id="services"><div class="wrap"><div class="eyebrow">서비스</div>'+
+  '<section class="services" id="services"><div class="wrap"><div class="eyebrow">What We Do</div>'+
     '<div class="svc-grid">'+svc+'</div></div></section>'+
   '<section class="work" id="work"><div class="wrap"><div class="work-head">'+
-    '<h2 class="serif">프로젝트</h2><div class="cnt">캠페인 '+projects.length+'건</div></div>'+
+    '<h2 class="serif">Projects</h2><div class="cnt">캠페인 '+projects.length+'건</div></div>'+
     '<div class="grid">'+tiles+'</div></div></section>'+
-  '<section class="contact" id="contact"><div class="wrap"><div class="eyebrow">문의하기</div>'+
-    '<h2 class="serif">함께 일해요</h2>'+
+  '<section class="contact" id="contact"><div class="wrap"><div class="eyebrow">Let\'s Get Started</div>'+
+    '<h2 class="serif">Work With Us</h2>'+
     '<a class="mail" href="mailto:contact@pap-magazine.com?subject=PAP%20STUDIO%20문의">contact@pap-magazine.com</a>'+
     '<div class="row">'+
       '<div class="item"><div class="lbl">브랜드·광고</div><p>브랜드 콘텐츠 광고·협업 문의는 위 이메일로 프로젝트 개요와 함께 보내주세요.</p></div>'+
