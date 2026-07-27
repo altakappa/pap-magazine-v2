@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>PAP STUDIO 관리 | PAP MAGAZINE</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',-apple-system,sans-serif;background:#0e0e0e;color:#eee;font-size:14px;line-height:1.5}
+a{color:#7db3ff;text-decoration:none}
+.top{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:14px 22px;background:#141414;border-bottom:1px solid #262626}
+.top h1{font-size:15px;font-weight:800;letter-spacing:1px}
+.top .r{display:flex;gap:10px;align-items:center;font-size:12px;color:#888}
+.wrap{max-width:1100px;margin:0 auto;padding:22px}
+.btn{display:inline-block;border:1px solid #333;background:#1c1c1c;color:#eee;padding:8px 14px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+.btn:hover{background:#262626}
+.btn.p{background:#891717;border-color:#891717;color:#fff}.btn.p:hover{background:#6e1212}
+.btn.g{background:transparent;color:#888}
+.btn.sm{padding:4px 9px;font-size:12px;border-radius:5px}
+.btn.del{border-color:#5a1e1e;color:#e88}
+.msg{padding:10px 14px;border-radius:7px;margin:10px 0;font-size:13px}
+.msg.err{background:#3a1414;color:#f2a3a3}.msg.ok{background:#123319;color:#9fe3b0}
+/* list */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-top:16px}
+.card{background:#161616;border:1px solid #262626;border-radius:10px;overflow:hidden}
+.card .th{aspect-ratio:4/3;background:#222;overflow:hidden}
+.card .th img{width:100%;height:100%;object-fit:cover}
+.card .bd{padding:12px}
+.card .b{font-size:10px;letter-spacing:1px;color:#8a8a8a;text-transform:uppercase}
+.card .t{font-weight:700;margin:3px 0 8px;font-size:13.5px;line-height:1.3}
+.card .meta{font-size:11px;color:#777;display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.tag{font-size:10px;padding:2px 6px;border-radius:4px;background:#262626;color:#aaa}
+.tag.on{background:#123319;color:#9fe3b0}.tag.off{background:#3a1414;color:#f2a3a3}
+.card .row{display:flex;gap:6px}
+/* editor */
+.editor{background:#161616;border:1px solid #262626;border-radius:12px;padding:22px;margin-top:6px}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:12px;font-weight:600;color:#9a9a9a;margin-bottom:6px;letter-spacing:.3px}
+.field input,.field textarea,.field select{width:100%;background:#0e0e0e;border:1px solid #333;border-radius:7px;color:#eee;padding:9px 11px;font:inherit;font-size:13px}
+.field textarea{min-height:120px;resize:vertical;line-height:1.7}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.chk{display:flex;align-items:center;gap:8px}
+.chk input{width:auto}
+.imgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin-top:8px}
+.imgc{position:relative;border:1px solid #333;border-radius:8px;overflow:hidden;background:#222}
+.imgc.cover{border-color:#891717;box-shadow:0 0 0 1px #891717}
+.imgc img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block}
+.imgc .ov{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between;padding:5px;opacity:0;transition:.15s;background:linear-gradient(rgba(0,0,0,.5),transparent,rgba(0,0,0,.6))}
+.imgc:hover .ov{opacity:1}
+.imgc .ov .rowb{display:flex;gap:4px;justify-content:flex-end}
+.imgc .ov .rowc{display:flex;gap:4px}
+.ib{background:rgba(0,0,0,.7);border:none;color:#fff;border-radius:4px;font-size:11px;padding:3px 6px;cursor:pointer}
+.ib.c{background:rgba(137,23,23,.9)}
+.badge{position:absolute;top:5px;left:5px;background:#891717;color:#fff;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;letter-spacing:.5px}
+.up{border:1.5px dashed #3a3a3a;border-radius:8px;padding:18px;text-align:center;color:#888;cursor:pointer;margin-top:10px;font-size:13px}
+.up:hover{border-color:#555;color:#aaa}
+.actions{display:flex;gap:10px;margin-top:22px;padding-top:18px;border-top:1px solid #262626}
+.hint{font-size:11px;color:#666;margin-top:4px}
+.hidden{display:none}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid #444;border-top-color:#ccc;border-radius:50%;animation:s .7s linear infinite;vertical-align:-2px}
+@keyframes s{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>PAP STUDIO 관리</h1>
+  <div class="r"><a href="/studio" target="_blank">사이트 보기 ↗</a><span id="whoami"></span></div>
+</div>
+<div class="wrap" id="app"><div class="msg">불러오는 중… <span class="spin"></span></div></div>
+
+<script>
+var TOKEN=''; try{TOKEN=localStorage.getItem('pap-token')||'';}catch(e){}
+var app=document.getElementById('app');
+var state={list:[],editing:null};
+
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function msg(t,ok){var d=document.createElement('div');d.className='msg '+(ok?'ok':'err');d.textContent=t;app.prepend(d);setTimeout(function(){d.remove();},4000);}
+
+function api(method,qs,body){
+  var opt={method:method,headers:{'Authorization':'Bearer '+TOKEN}};
+  if(body){opt.headers['Content-Type']='application/json';opt.body=JSON.stringify(body);}
+  return fetch('/api/admin/studio'+(qs||''),opt).then(async function(r){
+    var j=await r.json().catch(function(){return{};});
+    if(r.status===401) throw new Error('관리자 세션이 만료되었어요. /admin 에서 다시 로그인해 주세요.');
+    if(!r.ok) throw new Error(j.error||('오류 '+r.status));
+    return j;
+  });
+}
+function uploadImages(files){
+  var fd=new FormData();
+  for(var i=0;i<files.length;i++) fd.append('file',files[i]);
+  return fetch('/api/media/upload',{method:'POST',headers:{'Authorization':'Bearer '+TOKEN},body:fd})
+    .then(async function(r){var j=await r.json().catch(function(){return{};});
+      if(r.status===401) throw new Error('세션 만료 — 다시 로그인');
+      if(!r.ok) throw new Error(j.error||j.detail||('업로드 실패 '+r.status));
+      return (j.data||[]).map(function(x){return x.url;});});
+}
+
+if(!TOKEN){ app.innerHTML='<div class="msg err">관리자 로그인이 필요합니다. <a href="/admin">/admin</a> 에서 로그인 후 다시 열어주세요.</div>'; }
+else loadList();
+
+function loadList(){
+  app.innerHTML='<div class="msg">불러오는 중… <span class="spin"></span></div>';
+  api('GET').then(function(j){
+    state.list=j.projects||[];
+    renderList();
+  }).catch(function(e){ app.innerHTML='<div class="msg err">'+esc(e.message)+'</div>'; });
+}
+
+function renderList(){
+  var cards=state.list.map(function(p){
+    var cover=p.cover_url||(p.images&&p.images[0])||'';
+    var mig = p.images_migrated ? '<span class="tag on">이관완료</span>' : '<span class="tag">Wix</span>';
+    return '<div class="card"><div class="th">'+(cover?'<img loading="lazy" src="'+esc(cover)+'">':'')+'</div>'+
+      '<div class="bd">'+(p.brand?'<div class="b">'+esc(p.brand)+'</div>':'')+
+      '<div class="t">'+esc(p.title||p.slug)+'</div>'+
+      '<div class="meta"><span class="tag '+(p.published?'on':'off')+'">'+(p.published?'발행':'숨김')+'</span>'+
+      '<span class="tag">'+esc(p.kind)+'</span>'+mig+'<span class="tag">'+((p.images||[]).length)+'컷</span></div>'+
+      '<div class="row"><button class="btn sm" onclick="edit(\''+esc(p.slug)+'\')">편집</button>'+
+      '<button class="btn sm del" onclick="del(\''+esc(p.id)+'\',\''+esc(p.title||p.slug)+'\')">삭제</button></div>'+
+      '</div></div>';
+  }).join('');
+  app.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center">'+
+    '<div style="color:#888;font-size:13px">전체 '+state.list.length+'개 프로젝트</div>'+
+    '<button class="btn p" onclick="edit(null)">+ 새 프로젝트</button></div>'+
+    '<div class="grid">'+(cards||'<div class="msg">프로젝트가 없습니다. 새로 추가하세요.</div>')+'</div>';
+}
+
+function edit(slug){
+  if(slug===null){ state.editing={ kind:'photo', category:'campaign', images:[], published:true, sort_order:(state.list.length) }; renderEditor(); return; }
+  api('GET','?slug='+encodeURIComponent(slug)).then(function(j){ state.editing=j.project||null; renderEditor(); })
+    .catch(function(e){msg(e.message);});
+}
+
+function renderEditor(){
+  var p=state.editing;
+  var imgs=(p.images||[]).map(function(u,i){
+    var isCover=(p.cover_url? p.cover_url===u : i===0);
+    return '<div class="imgc'+(isCover?' cover':'')+'">'+(isCover?'<span class="badge">COVER</span>':'')+
+      '<img src="'+esc(imgUrl(u))+'">'+
+      '<div class="ov"><div class="rowb">'+
+        '<button class="ib" onclick="mv('+i+',-1)" title="앞으로">◀</button>'+
+        '<button class="ib" onclick="mv('+i+',1)" title="뒤로">▶</button>'+
+        '<button class="ib" onclick="rm('+i+')" title="삭제">✕</button></div>'+
+      '<div class="rowc"><button class="ib c" onclick="cov('+i+')">커버로</button></div></div></div>';
+  }).join('');
+  app.innerHTML=
+  '<button class="btn g" onclick="loadList()">← 목록</button>'+
+  '<div class="editor">'+
+   '<div class="two">'+
+     '<div class="field"><label>제목 (Title)</label><input id="f_title" value="'+esc(p.title||'')+'" placeholder="예: 2026 PUMA KOREA, INSPIRED BY HBS"></div>'+
+     '<div class="field"><label>브랜드 (Brand)</label><input id="f_brand" value="'+esc(p.brand||'')+'" placeholder="예: PUMA"></div>'+
+   '</div>'+
+   '<div class="two">'+
+     '<div class="field"><label>위치 (Location)</label><input id="f_location" value="'+esc(p.location||'')+'" placeholder="예: Seoul, Korea"></div>'+
+     '<div class="field"><label>슬러그 (URL, 비우면 자동)</label><input id="f_slug" value="'+esc(p.slug||'')+'" '+(p.id?'readonly style="opacity:.6"':'')+' placeholder="puma-inspiredbyhbs"></div>'+
+   '</div>'+
+   '<div class="two">'+
+     '<div class="field"><label>종류</label><select id="f_kind"><option value="photo"'+(p.kind!=='film'?' selected':'')+'>사진 (Photo)</option><option value="film"'+(p.kind==='film'?' selected':'')+'>필름 (Film)</option></select></div>'+
+     '<div class="field"><label>카테고리 (메뉴)</label><input id="f_category" value="'+esc(p.category||'campaign')+'" placeholder="campaign"></div>'+
+   '</div>'+
+   '<div class="field"><label>설명 (Description)</label><textarea id="f_desc" placeholder="프로젝트 설명">'+esc(p.description||'')+'</textarea></div>'+
+   '<div class="two">'+
+     '<div class="field"><label>연결 필름 슬러그 (선택)</label><input id="f_film" value="'+esc(p.film_slug||'')+'" placeholder="puma-inspiredbyhbs-film"></div>'+
+     '<div class="field"><label>영상 URL (필름일 때, 선택)</label><input id="f_video" value="'+esc(p.video_url||'')+'" placeholder="https://youtube.com/..."></div>'+
+   '</div>'+
+   '<div class="two">'+
+     '<div class="field"><label>정렬 순서 (작을수록 앞)</label><input id="f_sort" type="number" value="'+(p.sort_order||0)+'"></div>'+
+     '<div class="field"><label>발행</label><div class="chk"><input id="f_pub" type="checkbox" '+(p.published?'checked':'')+'><span>사이트에 노출</span></div></div>'+
+   '</div>'+
+   '<div class="field"><label>이미지 ('+((p.images||[]).length)+'컷) — 호버해서 순서·커버·삭제</label>'+
+     '<div class="imgs" id="imgs">'+(imgs||'<div class="hint">아직 이미지가 없습니다. 아래에서 업로드하세요.</div>')+'</div>'+
+     '<div class="up" onclick="document.getElementById(\'fileinput\').click()" id="updrop">＋ 이미지 업로드 (여러 장 선택 가능)</div>'+
+     '<input id="fileinput" type="file" accept="image/*" multiple class="hidden" style="display:none">'+
+   '</div>'+
+   '<div class="actions"><button class="btn p" onclick="save()">저장</button>'+
+     '<button class="btn g" onclick="loadList()">취소</button>'+
+     (p.id?'<button class="btn del" style="margin-left:auto" onclick="del(\''+esc(p.id)+'\',\''+esc(p.title||p.slug)+'\')">이 프로젝트 삭제</button>':'')+
+   '</div>'+
+  '</div>';
+  document.getElementById('fileinput').addEventListener('change',function(e){ doUpload(e.target.files); });
+}
+function imgUrl(u){ // Wix 썸네일 축소 표시(관리 화면 성능)
+  if(/static\.wixstatic\.com\/media\//.test(u)&&!/\/v1\//.test(u)){var id=(u.match(/media\/([^/]+~mv2\.(?:jpg|jpeg|png))/)||[])[1]||'x.jpg';return u+'/v1/fill/w_300,h_400,al_c,q_80,enc_auto/'+id.replace(/\.(jpg|jpeg|png)$/,'.webp');}
+  return u;
+}
+function mv(i,d){var a=state.editing.images;var j=i+d;if(j<0||j>=a.length)return;var t=a[i];a[i]=a[j];a[j]=t;renderEditor();}
+function rm(i){var a=state.editing.images;var u=a[i];a.splice(i,1);if(state.editing.cover_url===u)state.editing.cover_url=a[0]||null;renderEditor();}
+function cov(i){state.editing.cover_url=state.editing.images[i];renderEditor();}
+function doUpload(files){
+  if(!files||!files.length)return;
+  var drop=document.getElementById('updrop'); drop.innerHTML='업로드 중… <span class="spin"></span>';
+  uploadImages(files).then(function(urls){
+    state.editing.images=(state.editing.images||[]).concat(urls);
+    if(!state.editing.cover_url&&state.editing.images.length)state.editing.cover_url=state.editing.images[0];
+    renderEditor();
+  }).catch(function(e){ msg(e.message); renderEditor(); });
+}
+function collect(){
+  var g=function(id){var el=document.getElementById(id);return el?el.value:'';};
+  return {
+    title:g('f_title').trim(), brand:g('f_brand').trim()||null, location:g('f_location').trim()||null,
+    slug:g('f_slug').trim(), kind:g('f_kind'), category:g('f_category').trim()||'campaign',
+    description:g('f_desc'), film_slug:g('f_film').trim()||null, video_url:g('f_video').trim()||null,
+    sort_order:parseInt(g('f_sort'),10)||0, published:document.getElementById('f_pub').checked,
+    images:state.editing.images||[], cover_url:state.editing.cover_url||((state.editing.images||[])[0])||null,
+  };
+}
+function save(){
+  var body=collect();
+  if(!body.title && !body.slug){ msg('제목 또는 슬러그를 입력하세요.'); return; }
+  var p=state.editing;
+  var req = p.id ? api('PATCH','',Object.assign({id:p.id},body)) : api('POST','',body);
+  req.then(function(){ msg('저장했습니다.',true); loadList(); }).catch(function(e){ msg(e.message); });
+}
+function del(id,name){
+  if(!confirm('“'+name+'” 프로젝트를 삭제할까요? 되돌릴 수 없습니다.')) return;
+  api('DELETE','?id='+encodeURIComponent(id)).then(function(){ msg('삭제했습니다.',true); loadList(); }).catch(function(e){ msg(e.message); });
+}
+</script>
+</body>
+</html>

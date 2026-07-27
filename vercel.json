@@ -219,6 +219,10 @@
       "destination": "/admin.html"
     },
     {
+      "source": "/admin/studio",
+      "destination": "/studio-admin.html"
+    },
+    {
       "source": "/admin/menucats",
       "destination": "/admin.html"
     },
