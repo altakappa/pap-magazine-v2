@@ -43,6 +43,6 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ projects: data || [], count: (data || []).length });
   } catch (e) {
     console.error('[studio] error', e);
-    return res.status(500).json({ error: 'Failed to load studio projects — contact@papkorea.com', code: 'studio_load_failed' });
+    return res.status(500).json({ error: 'Failed to load studio projects — contact@pap-magazine.com', code: 'studio_load_failed' });
   }
 };

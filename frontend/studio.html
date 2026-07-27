@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PAP STUDIO — 브랜드 콘텐츠 스튜디오 | PAP MAGAZINE</title>
-<meta name="description" content="PAP STUDIO는 PAP KOREA의 콘텐츠 스튜디오입니다. 현장 취재·촬영·인터뷰·화보 제작 등 브랜드를 위한 비주얼 콘텐츠를 만듭니다.">
+<meta name="description" content="PAP STUDIO는 브랜드를 위한 콘텐츠 스튜디오입니다. 현장 취재·촬영·인터뷰·화보 제작 등 브랜드를 위한 비주얼 콘텐츠를 만듭니다.">
 <link rel="canonical" href="https://www.pap-magazine.com/studio">
 <meta property="og:type" content="website">
 <meta property="og:title" content="PAP STUDIO — 브랜드 콘텐츠 스튜디오">
@@ -96,10 +96,10 @@ footer.foot a:hover{color:var(--pap-red,#891717)}
 <div class="bar">
   <a href="/studio" class="logo">PAP STUDIO</a>
   <nav>
-    <a href="/studio#work">Work</a>
-    <a href="/studio#services">Services</a>
-    <a href="/studio#contact">Contact</a>
-    <a href="https://www.pap-magazine.com">Magazine</a>
+    <a href="/studio#work">프로젝트</a>
+    <a href="/studio#services">서비스</a>
+    <a href="/studio#contact">문의</a>
+    <a href="https://www.pap-magazine.com">매거진</a>
   </nav>
 </div>
 
@@ -128,9 +128,9 @@ function imgFit(u,w){
 }
 
 var SVC = [
-  ['01','Brand Contents Advertising','당사 플랫폼은 귀하의 브랜드에서 제공하는 컨텐츠를 홍보합니다. 관심 있는 브랜드 및 홍보 담당자들은 아래 이메일을 통해 문의해주세요.',null],
-  ['02','Work With PAP','PAP KOREA는 현장 취재 및 촬영 그리고 인터뷰와 화보 제작 등 브랜드를 위한 컨텐츠 제작 합니다. 관심 있는 브랜드 및 홍보 담당자들은 아래 이메일을 통해 문의해주세요.',null],
-  ['03','Shooting Cost Estimator','촬영 프로젝트의 가견적을 지금 바로 산출해 보세요.','https://6970f1381fc42a2b4138c164--bejewelled-cheesecake-5efe26.netlify.app']
+  ['01','브랜드 콘텐츠 광고','당사 플랫폼은 귀하의 브랜드에서 제공하는 컨텐츠를 홍보합니다. 관심 있는 브랜드 및 홍보 담당자들은 아래 이메일을 통해 문의해주세요.',null],
+  ['02','PAP STUDIO와 함께','PAP STUDIO는 현장 취재 및 촬영 그리고 인터뷰와 화보 제작 등 브랜드를 위한 컨텐츠 제작 합니다. 관심 있는 브랜드 및 홍보 담당자들은 아래 이메일을 통해 문의해주세요.',null],
+  ['03','촬영 가견적','촬영 프로젝트의 가견적을 지금 바로 산출해 보세요.','https://6970f1381fc42a2b4138c164--bejewelled-cheesecake-5efe26.netlify.app']
 ];
 
 function landing(projects){
@@ -145,22 +145,22 @@ function landing(projects){
       '<div class="cap">'+(p.brand?'<div class="b">'+esc(p.brand)+'</div>':'')+'<div class="t">'+esc(p.title)+'</div></div></a>';
   }).join('');
   return ''+
-  '<header class="hero"><div class="kicker red">PAP KOREA · CONTENT STUDIO</div>'+
+  '<header class="hero"><div class="kicker red">브랜드 콘텐츠 스튜디오</div>'+
     '<h1 class="serif">PAP STUDIO</h1>'+
-    '<p class="lede">PAP KOREA는 현장 취재 및 촬영 그리고 인터뷰와 화보 제작 등 브랜드를 위한 컨텐츠 제작 합니다.</p></header>'+
-  '<section class="services" id="services"><div class="wrap"><div class="eyebrow">What We Do</div>'+
+    '<p class="lede">PAP STUDIO는 현장 취재 및 촬영 그리고 인터뷰와 화보 제작 등 브랜드를 위한 컨텐츠 제작 합니다.</p></header>'+
+  '<section class="services" id="services"><div class="wrap"><div class="eyebrow">서비스</div>'+
     '<div class="svc-grid">'+svc+'</div></div></section>'+
   '<section class="work" id="work"><div class="wrap"><div class="work-head">'+
-    '<h2 class="serif">Projects</h2><div class="cnt">'+projects.length+' Campaigns</div></div>'+
+    '<h2 class="serif">프로젝트</h2><div class="cnt">캠페인 '+projects.length+'건</div></div>'+
     '<div class="grid">'+tiles+'</div></div></section>'+
-  '<section class="contact" id="contact"><div class="wrap"><div class="eyebrow">Let\'s Get Started</div>'+
-    '<h2 class="serif">Work With Us</h2>'+
-    '<a class="mail" href="mailto:contact@papkorea.com?subject=PAP%20STUDIO%20문의">contact@papkorea.com</a>'+
+  '<section class="contact" id="contact"><div class="wrap"><div class="eyebrow">문의하기</div>'+
+    '<h2 class="serif">함께 일해요</h2>'+
+    '<a class="mail" href="mailto:contact@pap-magazine.com?subject=PAP%20STUDIO%20문의">contact@pap-magazine.com</a>'+
     '<div class="row">'+
-      '<div class="item"><div class="lbl">Brand &amp; Advertising</div><p>브랜드 콘텐츠 광고·협업 문의는 위 이메일로 프로젝트 개요와 함께 보내주세요.</p></div>'+
-      '<div class="item"><div class="lbl">Shooting</div><p>촬영 견적은 <a href="'+SVC[2][3]+'" target="_blank" rel="noopener">가견적 산출기</a>에서 바로 확인하세요.</p></div>'+
+      '<div class="item"><div class="lbl">브랜드·광고</div><p>브랜드 콘텐츠 광고·협업 문의는 위 이메일로 프로젝트 개요와 함께 보내주세요.</p></div>'+
+      '<div class="item"><div class="lbl">촬영</div><p>촬영 견적은 <a href="'+SVC[2][3]+'" target="_blank" rel="noopener">가견적 산출기</a>에서 바로 확인하세요.</p></div>'+
     '</div>'+
-    '<footer class="foot"><span>© PAP MAGAZINE (PAP KOREA)</span><span><a href="https://www.pap-magazine.com">pap-magazine.com</a></span></footer>'+
+    '<footer class="foot"><span>© PAP MAGAZINE (PAP STUDIO)</span><span><a href="https://www.pap-magazine.com">pap-magazine.com</a></span></footer>'+
   '</div></section>';
 }
 
@@ -170,12 +170,12 @@ function detail(d){
   var gal=(p.images||[]).map(function(u){ return '<img loading="lazy" src="'+imgFit(u,1400)+'" alt="'+esc(p.title)+'">'; }).join('');
   var filmUrl = (film&&film.video_url) ? film.video_url : (p.film_slug?('/studio?p='+encodeURIComponent(p.film_slug)):null);
   return '<div class="wrap detail">'+
-    '<a class="back" href="/studio#work">← All Projects</a>'+
+    '<a class="back" href="/studio#work">← 전체 프로젝트</a>'+
     (p.brand?'<div class="brand red">'+esc(p.brand)+'</div>':'')+
     '<h1 class="serif">'+esc(p.title)+'</h1>'+
     (meta.length?'<div class="metaline">'+meta.join('  ·  ')+'</div>':'')+
     (p.description?'<div class="desc">'+esc(p.description)+'</div>':'')+
-    (filmUrl?'<a class="filmcta" href="'+filmUrl+'"'+(/^http/.test(filmUrl)?' target="_blank" rel="noopener"':'')+'>▶ Watch Film</a>':'')+
+    (filmUrl?'<a class="filmcta" href="'+filmUrl+'"'+(/^http/.test(filmUrl)?' target="_blank" rel="noopener"':'')+'>▶ 필름 보기</a>':'')+
     '<div class="gal">'+gal+'</div>'+
   '</div>';
 }

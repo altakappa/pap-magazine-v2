@@ -106,6 +106,6 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'method not allowed' });
   } catch (e) {
     console.error('[admin/studio] error', e);
-    return res.status(500).json({ error: '스튜디오 프로젝트 처리 실패 — contact@papkorea.com', code: 'studio_admin_failed' });
+    return res.status(500).json({ error: '스튜디오 프로젝트 처리 실패 — contact@pap-magazine.com', code: 'studio_admin_failed' });
   }
 };
