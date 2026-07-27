@@ -16,7 +16,7 @@
 
 const {
   keywords, canonicalize, clusterEvents, clusterCore, sameEvent, hotScore, HOT_MIN,
-  decodeHtml, stripSource, titleKey, isOffTopic,
+  decodeHtml, stripSource, titleKey, isOffTopic, STOP,
 } = require('../api/_lib/celebDedup');
 
 let pass = 0, fail = 0;
@@ -304,6 +304,28 @@ ok('빈 제목 방어', !isOffTopic('') && !isOffTopic(null));
   ok('과잉 절단 없음: 스포티파이는 STOP 유지(스포티파 미생성)',
     !keywords('정국 스포티파이 스트리밍').includes('스포티파'));
 }
+
+/* === 2026-07-27 4차 — 손담비 호텔 비매너 2번 발송 재발 방지 ==========
+   실측 core (17:35 / 17:40). 같은 해명 하나를 매체가 '정색'·'침대'·'뭐가' 로
+   달리 옮겨 적어 새 요소 2개가 생겼고 '사건 확장'으로 오판됐다.
+   반응·인용 보도어를 STOP 으로 내려 같은 지문이 되어야 한다. */
+{
+  const f = a => a.filter(w => !STOP.has(w));
+  const c1 = f(['논란','뭐가','불쾌감','비매너','손담비','신발','적당히','호텔']);
+  const c2 = f(['논란','뭐가','불쾌감','비매너','손담비','신발','적당히','정색','침대','호텔']);
+  ok('손담비 17:40 건은 17:35 건과 같은 사건 → 억제', sameEvent(c2, c1) === true);
+  ok('반응 보도어 STOP: 정색·침대·뭐가 제거', c2.join('|') === c1.join('|'));
+}
+
+/* === 2026-07-27 4차 — 셀럽 무관 기업 PR 제외 (실측 코스맥스 SNS 혁신대상) === */
+ok('기업 수상 PR 거부: 코스맥스 혁신대상',
+  isOffTopic('"대표 뷰티 소통 플랫폼 인정"…코스맥스, 2년 연속 SNS \'혁신대상\''));
+ok('기업 수상 PR 거부: 소셜아이어워드',
+  isOffTopic('코스맥스, 소셜아이어워드 2년 연속 수상…K-뷰티 디지털 소통 혁신'));
+ok('기업 실적 PR 거부', isOffTopic('아모레퍼시픽, 3분기 영업이익 전년比 20% 증가'));
+ok('셀럽 시상식은 계속 통과 (그래미)', !isOffTopic('BTS 정국, 그래미 후보 지명'));
+ok('셀럽 시상식은 계속 통과 (아카데미)', !isOffTopic('블랙핑크 제니, 아카데미 시상식 참석'));
+ok('패션 하우스 인사는 계속 통과', !isOffTopic('샤넬, 신임 아티스틱 디렉터 선임'));
 
 /* ---------------------------------------------------------------- */
 console.log('\npassed: ' + pass + '   failed: ' + fail);
