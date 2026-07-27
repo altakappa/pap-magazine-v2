@@ -5,7 +5,7 @@
 <!-- CSP — 2b(2026-07-19): 승인된 유료/브랜디드 서브미션 기본료 Paddle 결제 오버레이용으로
      *.paddle.com 을 script/connect/frame-src 에 추가 (subscribe.html 과 동일 패턴).
      vercel.json 전역 헤더가 이미 *.paddle.com 을 허용하므로 이 meta 는 superset 안에 있음. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://js.stripe.com https://*.paddle.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co https://api.stripe.com https://api.pap-magazine.com https://*.paddle.com; frame-src https://js.stripe.com https://*.paddle.com;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.paddle.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co https://api.pap-magazine.com https://*.paddle.com; frame-src https://*.paddle.com;">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="PAP 매거진에 에디토리얼을 제출하세요. 서브미션 유형을 선택하고, 작품 정보·팀 크레딧·룩별 의상 크레딧·고해상도 이미지를 제출해 주세요.">
 <link rel="canonical" href="https://www.pap-magazine.com/submission">
