@@ -129,6 +129,10 @@
       "schedule": "0-50/10 * * * *"
     },
     {
+      "path": "/api/cron/pinterest-pin",
+      "schedule": "23 * * * *"
+    },
+    {
       "path": "/api/cron/studio-image-migrate",
       "schedule": "1-51/10 * * * *"
     },
