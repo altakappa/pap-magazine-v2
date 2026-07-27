@@ -1839,6 +1839,11 @@ async function doReview(status){
     alert('심사 대상 서브미션을 불러올 수 없습니다.');
     return;
   }
+  // 유료/브랜디드 미결제 서브미션의 승인(=승인 및 결제요청): 승인 후 편집화면으로
+  // 점프하지 않고 결제 대기 상태로 둔다. closeModal 이 currentReviewSubmission 을
+  // 비우므로 여기서 미리 판정값을 확보한다. (결제 완료 시 편집으로 진행)
+  var _feeReqApproval = _isFeeRequiredType(_submissionTypeOf(currentReviewSubmission))
+    && currentReviewSubmission.payment_status !== 'paid';
   var note=document.getElementById('reviewNote').value;
   var labels={approved:'승인',rejected:'거절',revision:'보완 요청'};
 
@@ -1898,6 +1903,13 @@ async function doReview(status){
     // id. Jump straight into the edit screen so the editor can polish
     // metadata while the submission's context is still fresh — beats
     // making them navigate back through 에디토리얼 관리 → 임시저장.
+    if(status==='approved' && _feeReqApproval){
+      // 승인 및 결제요청 — 편집화면으로 점프하지 않고 결제 대기. 결제 완료(payment_status
+      // ='paid', Paddle 웹훅)되면 상태가 '결제 완료'로 바뀌고, 그때 [에디토리얼 편집]으로 진행.
+      alert('승인 및 결제요청이 완료되었습니다.\n제출자 마이페이지에 게재료 결제요청이 표시됩니다.\n결제가 완료되면 상태가 "결제 완료"로 바뀌며, 이후 에디토리얼 편집으로 진행하세요.');
+      if(window.loadSubmissions) loadSubmissions();
+      return;
+    }
     if(status==='approved' && result && result.editorialId){
       try{
         await openEditorialEditor(result.editorialId);
@@ -2094,15 +2106,22 @@ async function loadSubmissions(statusFilter, opts){
         else if (s.status === 'approved') ds = 'final_approved';
         else ds = s.status;
       }
+      // 유료/브랜디드 승인 건은 결제 전까지 '최종 승인' 대신 '결제 대기'로 표기한다
+      // (승인=결제요청). payment_status='paid'(Paddle 웹훅) 시 자동으로 '최종 승인' 복귀.
+      // 이미 게재(uploaded)된 건은 제외.
+      if (ds === 'final_approved' && s.payment_status !== 'paid' && _isFeeRequiredType(_submissionTypeOf(s))) {
+        ds = 'awaiting_payment';
+      }
       // QA #183 — every stage gets its own colour so the table can be
       // scanned visually. See admin.html .b-resubmitted / .b-uploaded.
       var statusMap = {
-        pending:        { cls: 'b-pending',     label: '대기 중' },
-        resubmitted:    { cls: 'b-resubmitted', label: '보완 완료' },
-        revision:       { cls: 'b-revision',    label: '보완 요청' },
-        final_approved: { cls: 'b-approved',    label: '최종 승인' },
-        uploaded:       { cls: 'b-uploaded',    label: '업로드 완료' },
-        rejected:       { cls: 'b-declined',    label: '거절' },
+        pending:         { cls: 'b-pending',     label: '대기 중' },
+        resubmitted:     { cls: 'b-resubmitted', label: '보완 완료' },
+        revision:        { cls: 'b-revision',    label: '보완 요청' },
+        awaiting_payment:{ cls: 'b-pending',     label: '결제 대기' },
+        final_approved:  { cls: 'b-approved',    label: '최종 승인' },
+        uploaded:        { cls: 'b-uploaded',    label: '업로드 완료' },
+        rejected:        { cls: 'b-declined',    label: '거절' },
       };
       var sInfo = statusMap[ds] || { cls: 'b-pending', label: ds || '—' };
       var statusCls = sInfo.cls;
