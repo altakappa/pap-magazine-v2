@@ -17,6 +17,35 @@ const ALL_URL = WIX + '/portfolio-collections/all';
 const FETCH_TIMEOUT_MS = 20000;
 const TIME_BUDGET_MS = 90000;
 
+// /all 목록 페이지는 Wix 가 데이터센터(서버) IP 에 축소 렌더를 내려줘 일부만 잡힌다.
+// "하나도 빠짐없이" 를 보장하려고 전 프로젝트 slug 를 발견 순서대로 내장한다(2026-07-27 확인, 총 50건).
+// 상세페이지 fetch 는 서버에서도 정상이므로 slug 만 확보되면 전량 수집된다.
+// 스크랩 결과와 합집합으로 쓰이므로 Wix 에 새 프로젝트가 추가돼도 자동 반영된다.
+const SEED_SLUGS = [
+  'barrel-2026-jihyo-film', 'barrel-2026-jihyo',
+  'puma-inspiredbyhbs-film', 'puma-inspiredbyhbs',
+  'borntowin-natty-film', 'borntowin-natty',
+  'borntowin-gymbro-1', 'borntowin-gymbro',
+  'markandlona-26ss-general-film-1', 'markandlona-26ss-general-1',
+  'markandlona-26ss-t-line-film', 'markandlona-26ss-t-line',
+  'markandlona-tline-25fw-film-2', 'markandlona-25fw-tline-2',
+  'umbro-cleat-film', 'umbro-cleat',
+  'markandlona-tline-25fw-film', 'markandlona-tline-25fw',
+  'undermycarxcovernat', 'borntowin-openpace',
+  'umbro-wintercloset-film', 'umbro-wintercloset',
+  'markandlona-25fw-general', 'markandlona-25fw-ppl',
+  'nationalgeographic-25fw-ppl', 'undermycarxpuma',
+  'borntowin-nightout', 'wilson-25ss-campaign',
+  'arena-25ss-campaign-2', 'umbro-meshpack-film', 'umbro-meshpack',
+  'umbro-chillout-film', 'umbro-chillout', 'arena-25ss-campaign-1',
+  'mammut-25ss-film', 'mammut-25ss-campaign', 'psg-fw2024',
+  'lecoq-sportsdown', 'umbro-apresski-film', 'umbro-apresski',
+  'umbro-2024fw-ppl', 'hydrogen-2024fw-ppl', 'metrocity-2024fw',
+  'mammut-24fw-film', 'mammut-24fw-campaign', 'nationalgeographic-2024-ppl',
+  'markandlona-24fw-film-jp', 'markandlona-24fw-film-1',
+  'markandlona-24fw-campaign', 'markandlona-24fw-campaign-jp',
+];
+
 async function fetchText(url) {
   const ctrl = new AbortController();
   const to = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
@@ -53,6 +82,23 @@ function parseImages(html) {
   let m; while ((m = re.exec(html))) { const id = m[1]; if (!seen.has(id)) { seen.add(id); out.push('https://static.wixstatic.com/media/' + id); } }
   return out;
 }
+// HTML → 평문 (script/style 제거 후 태그 제거)
+function textOf(html) {
+  return decodeEntities(String(html || '')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' '));
+}
+// LOCATION 필드 best-effort (없으면 null — 관리자에서 수동 편집 가능). 잘못 잡느니 비운다.
+function parseLocation(html) {
+  const t = textOf(html);
+  const m = t.match(/LOCATION\s*[:\-]?\s*([A-Za-z가-힣][A-Za-z가-힣0-9,.\s'&/()\-]{1,40})/);
+  if (!m) return null;
+  let v = m[1].replace(/\b(CLIENT|BRAND|CATEGORY|CREDIT|DATE|PROJECT|PHOTOGRAPH|DIRECTOR|MODEL|STYLIST|SEE\s*MORE|ALL|PORTFOLIO)\b[\s\S]*$/i, '');
+  v = v.replace(/\s{2,}/g, ' ').replace(/[,.\s]+$/, '').trim();
+  return v.length >= 2 ? v.slice(0, 60) : null;
+}
 // 연결된 필름 프로젝트 slug (사진 프로젝트에서 "FILM → See more")
 function parseFilmSlug(html) {
   const re = /\/portfolio-collections\/all\/([a-z0-9-]+-film[a-z0-9-]*)(?:"|\?)/i;
@@ -84,6 +130,7 @@ async function importOne(slug, order) {
   const html = await fetchText(url);
   const images = parseImages(html);
   const kind = /-film/.test(slug) ? 'film' : 'photo';
+  const location = parseLocation(html);
   const row = {
     slug,
     title: meta(html, 'og:title') || slug,
@@ -99,6 +146,7 @@ async function importOne(slug, order) {
     sort_order: order,
     updated_at: new Date().toISOString(),
   };
+  if (location) row.location = location; // 파싱 실패 시 기존 값/수동 편집 보존
   const { error } = await supabaseAdmin.from('studio_projects')
     .upsert(row, { onConflict: 'slug' });
   if (error) throw error;
@@ -111,15 +159,18 @@ module.exports = withCronGuard('studio-import', async function handler(req, res)
   if (!cronOk) { const u = await requireAdmin(req, res); if (!u) return; }
 
   const q = req.query || {};
-  const perCall = Math.max(1, Math.min(20, parseInt(q.max || '6', 10) || 6));
+  const perCall = Math.max(1, Math.min(50, parseInt(q.max || '6', 10) || 6));
   const started = Date.now();
   const results = { imported: [], skipped_existing: 0, failed: [], done: false };
 
   try {
-    // 1) 전 프로젝트 slug 발견 (/all)
-    const allHtml = await fetchText(ALL_URL);
-    const slugs = parseSlugs(allHtml);
-    if (!slugs.length) return res.status(200).json({ error: 'slug 목록을 찾지 못함(Wix 렌더 변경?)', done: false });
+    // 1) 전 프로젝트 slug 발견: 내장 시드(전량 보장) ∪ /all 스크랩(신규 자동 반영).
+    //    /all 은 서버 IP 에 축소 렌더되므로 스크랩만으론 누락된다 → 시드가 바닥을 깐다.
+    let scraped = [];
+    try { scraped = parseSlugs(await fetchText(ALL_URL)); } catch (_) { /* 스크랩 실패해도 시드로 진행 */ }
+    const seen = new Set(); const slugs = [];
+    for (const s of SEED_SLUGS.concat(scraped)) { if (!seen.has(s)) { seen.add(s); slugs.push(s); } }
+    if (!slugs.length) return res.status(200).json({ error: 'slug 목록 없음', done: false });
 
     // 2) 이미 적재된 slug
     const { data: existing } = await supabaseAdmin.from('studio_projects').select('slug');
