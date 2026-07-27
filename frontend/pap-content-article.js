@@ -263,7 +263,10 @@ function _papInitSlideBlocks(root){
 //   video   → embedded YouTube/Vimeo iframe (with a graceful URL fallback)
 // Anything else (unknown type) is rendered as escaped plain text so
 // unknown content never silently disappears.
-function _renderArticleBlocks(blocks){
+function _renderArticleBlocks(blocks, altFallback){
+  // 2026-07-27 (Ahrefs missing alt 12건) — 캡션 없는 이미지 블록은 alt 가 빈 값이었다.
+  // 기사 제목을 alt 폴백으로 사용해 접근성·이미지 SEO를 채운다.
+  var _altFb = (altFallback || '').toString();
   if(!Array.isArray(blocks) || !blocks.length) return '';
   var html = '';
   blocks.forEach(function(b){
@@ -287,7 +290,7 @@ function _renderArticleBlocks(blocks){
       if(!url) return; // skip blocks that lost their upload
       // QA #282 — 이미지 블록 위/아래 여백 확대 + 캡션 line-height 보강.
       html += '<figure style="margin:36px 0">'
-        + '<img src="' + escapeHtml(url) + '" alt="' + escapeHtml(content) + '" loading="lazy" style="width:100%;display:block;border-radius:2px" onerror="edImgError && edImgError(this)">'
+        + '<img src="' + escapeHtml(url) + '" alt="' + escapeHtml(content || _altFb) + '" loading="lazy" style="width:100%;display:block;border-radius:2px" onerror="edImgError && edImgError(this)">'
         + (content ? '<figcaption style="margin-top:12px;font-size:12px;color:#888;text-align:center;letter-spacing:.04em;line-height:1.6">' + escapeHtml(content) + '</figcaption>' : '')
         + '</figure>';
     } else if(t === 'quote'){
@@ -355,7 +358,7 @@ function _renderArticleBlocks(blocks){
       galImgs.forEach(function(im){
         if(!im || !im.url) return;
         html += '<figure style="margin:0">'
-          + '<img src="' + escapeHtml(im.url) + '" alt="' + escapeHtml(im.caption || '') + '" loading="lazy" style="width:100%;aspect-ratio:4/5;object-fit:cover;display:block;border-radius:2px;cursor:zoom-in" onerror="edImgError && edImgError(this)">'
+          + '<img src="' + escapeHtml(im.url) + '" alt="' + escapeHtml(im.caption || _altFb) + '" loading="lazy" style="width:100%;aspect-ratio:4/5;object-fit:cover;display:block;border-radius:2px;cursor:zoom-in" onerror="edImgError && edImgError(this)">'
           + (im.caption ? '<figcaption style="margin-top:8px;font-size:11px;color:#888;text-align:center;line-height:1.5">' + escapeHtml(im.caption) + '</figcaption>' : '')
           + '</figure>';
       });
@@ -378,7 +381,7 @@ function _renderArticleBlocks(blocks){
         // QA #289 — 슬라이드 이미지도 갤러리와 동일한 4:5 비율로 통일.
         // max-height 제거 + aspect-ratio:4/5 명시 → 패션 화보 원본 비율에 가장 가깝게.
         html += '<figure style="margin:0;flex:0 0 88%;scroll-snap-align:center">'
-          + '<img src="' + escapeHtml(im.url) + '" alt="' + escapeHtml(im.caption || '') + '" loading="lazy" style="width:100%;aspect-ratio:4/5;object-fit:cover;display:block;border-radius:2px;cursor:zoom-in" onerror="edImgError && edImgError(this)">'
+          + '<img src="' + escapeHtml(im.url) + '" alt="' + escapeHtml(im.caption || _altFb) + '" loading="lazy" style="width:100%;aspect-ratio:4/5;object-fit:cover;display:block;border-radius:2px;cursor:zoom-in" onerror="edImgError && edImgError(this)">'
           + (im.caption ? '<figcaption style="margin-top:8px;font-size:11px;color:#888;text-align:center;letter-spacing:.04em;line-height:1.6">' + escapeHtml(im.caption) + '</figcaption>' : '')
           + '</figure>';
       });
@@ -555,7 +558,7 @@ function _renderArticleDetail(a,det){
       }
       descEl.style.display='';
     } else if(Array.isArray(a.blocks) && a.blocks.length){
-      descEl.innerHTML = _renderArticleBlocks(a.blocks);
+      descEl.innerHTML = _renderArticleBlocks(a.blocks, a.t);
       descEl.style.display='';
       // QA #283 — 슬라이드 블록 좌우 네비 + 카운터 활성화.
       try { _papInitSlideBlocks(descEl); } catch(_){}

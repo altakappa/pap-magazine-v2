@@ -433,9 +433,14 @@ function renderSeoHtml(kind, record, opts) {
   };
   const descDisplay = _stripTitleEcho(descMain);
   const descAltDisplay = _stripTitleEcho(descAlt);
+  /* 2026-07-27 (Ahrefs 7/26 크롤 — Title too long 1,398건): 제목이 길면
+     " | PAP Magazine" 브랜드 접미사가 60자 한계(≈600px)를 넘긴다. 접미사를
+     포함해 60자 이내일 때만 붙이고, 넘치면 제목만 남긴다(제목 자체는 자르지
+     않음 — 헤드라인 훼손 금지). record.seo_title(수동 지정)은 그대로 존중. */
+  const _brand = (t) => (`${t} | ${SITE_NAME}`.length <= 60 ? `${t} | ${SITE_NAME}` : t);
   const seoTitle = lang === 'ko'
-    ? (record.seo_title || (kind === 'film' ? `${titleKo} 패션 필름 | ${SITE_NAME}` : `${titleKo} | ${SITE_NAME}`))
-    : (kind === 'film' ? `${titleMain} — Fashion Film | ${SITE_NAME}` : `${titleMain} | ${SITE_NAME}`);
+    ? (record.seo_title || (kind === 'film' ? _brand(`${titleKo} 패션 필름`) : _brand(titleKo)))
+    : (kind === 'film' ? _brand(`${titleMain} — Fashion Film`) : _brand(titleMain));
   /* 2026-07-23 (Ahrefs 감사 — meta description too short 3,261건) — 온페이지
      표시(descDisplay)는 그대로 두고, <meta name="description"> 만 짧을 때
      실제 맥락(등장 패션 브랜드·카테고리)으로 보강한다. AI·크론·DB 쓰기 없이
@@ -486,7 +491,11 @@ function renderSeoHtml(kind, record, opts) {
     }
     return parts.join(' ').replace(/\s+/g, ' ').trim();
   }
-  const desc = truncate(_enrichMeta(descMain), 175);
+  /* 2026-07-27 (Ahrefs 7/26 크롤 — Meta description too long 4,544건):
+     Ahrefs·구글 스니펫 한계는 ~160자. 기존 175자 컷이 보강분을 전부
+     161~175자 구간에 앉혀 경고를 양산했다. 155자로 낮춘다(110자 최소
+     보강 목표와 양립 — 110~155 구간이 정상 범위). */
+  const desc = truncate(_enrichMeta(descMain), 155);
 
   /* Cover image: per-kind preferred fields */
   const ogImage = record.og_image
@@ -927,7 +936,7 @@ function renderSeoHtml(kind, record, opts) {
         html += c.split(/\n\n+/).map(p => `<p style="margin:0 0 22px;line-height:1.9">${escText(p).replace(/\n/g, '<br>')}</p>`).join('');
       } else if (t === 'image') {
         if (!url) continue;
-        html += `<figure style="margin:36px 0"><img src="${escAttr(url)}"${srcsetAttrs(url, '(max-width:800px) 100vw, 752px')} alt="${escAttr(c)}" loading="lazy" style="width:100%;display:block;border-radius:2px">${c ? `<figcaption style="margin-top:12px;font-size:12px;color:#888;text-align:center;letter-spacing:.04em;line-height:1.6">${escText(c)}</figcaption>` : ''}</figure>`;
+        html += `<figure style="margin:36px 0"><img src="${escAttr(url)}"${srcsetAttrs(url, '(max-width:800px) 100vw, 752px')} alt="${escAttr(c || titleMain)}" loading="lazy" style="width:100%;display:block;border-radius:2px">${c ? `<figcaption style="margin-top:12px;font-size:12px;color:#888;text-align:center;letter-spacing:.04em;line-height:1.6">${escText(c)}</figcaption>` : ''}</figure>`;
       } else if (t === 'quote') {
         const src = (b.source || '').toString();
         html += `<blockquote style="margin:36px 0;padding:20px 26px;border-left:3px solid #999;font-style:italic;color:#ddd;font-size:16px;line-height:1.85">${escText(c)}${src ? `<footer style="margin-top:14px;font-size:11px;color:#888;font-style:normal;text-align:right">— ${escText(src)}</footer>` : ''}</blockquote>`;
@@ -943,13 +952,13 @@ function renderSeoHtml(kind, record, opts) {
         const imgs = Array.isArray(b.images) ? b.images : [];
         if (!imgs.length) continue;
         html += '<div style="margin:36px 0;display:grid;grid-template-columns:1fr 1fr;gap:12px">';
-        for (const im of imgs) { if (im && im.url) html += `<figure style="margin:0"><img src="${escAttr(im.url)}"${srcsetAttrs(im.url, '(max-width:800px) 100vw, 376px')} alt="${escAttr(im.caption || '')}" loading="lazy" style="width:100%;aspect-ratio:4/5;object-fit:cover;display:block;border-radius:2px">${im.caption ? `<figcaption style="margin-top:8px;font-size:11px;color:#888;text-align:center;line-height:1.5">${escText(im.caption)}</figcaption>` : ''}</figure>`; }
+        for (const im of imgs) { if (im && im.url) html += `<figure style="margin:0"><img src="${escAttr(im.url)}"${srcsetAttrs(im.url, '(max-width:800px) 100vw, 376px')} alt="${escAttr(im.caption || titleMain)}" loading="lazy" style="width:100%;aspect-ratio:4/5;object-fit:cover;display:block;border-radius:2px">${im.caption ? `<figcaption style="margin-top:8px;font-size:11px;color:#888;text-align:center;line-height:1.5">${escText(im.caption)}</figcaption>` : ''}</figure>`; }
         html += '</div>';
       } else if (t === 'slide') {
         const imgs = Array.isArray(b.images) ? b.images : [];
         if (!imgs.length) continue;
         html += '<div style="margin:36px 0;display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch">';
-        for (const im of imgs) { if (im && im.url) html += `<figure style="margin:0;flex:0 0 88%;scroll-snap-align:center"><img src="${escAttr(im.url)}"${srcsetAttrs(im.url, '88vw')} alt="${escAttr(im.caption || '')}" loading="lazy" style="width:100%;aspect-ratio:4/5;object-fit:cover;display:block;border-radius:2px">${im.caption ? `<figcaption style="margin-top:8px;font-size:11px;color:#888;text-align:center;line-height:1.6">${escText(im.caption)}</figcaption>` : ''}</figure>`; }
+        for (const im of imgs) { if (im && im.url) html += `<figure style="margin:0;flex:0 0 88%;scroll-snap-align:center"><img src="${escAttr(im.url)}"${srcsetAttrs(im.url, '88vw')} alt="${escAttr(im.caption || titleMain)}" loading="lazy" style="width:100%;aspect-ratio:4/5;object-fit:cover;display:block;border-radius:2px">${im.caption ? `<figcaption style="margin-top:8px;font-size:11px;color:#888;text-align:center;line-height:1.6">${escText(im.caption)}</figcaption>` : ''}</figure>`; }
         html += '</div>';
       } else {
         html += `<p style="margin:0 0 22px;line-height:1.9">${escText(c)}</p>`;
