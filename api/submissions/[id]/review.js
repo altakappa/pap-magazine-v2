@@ -11,6 +11,7 @@ const { supabaseAdmin } = require('../../_lib/supabase');
 const { requireAdmin, requireMainAdmin } = require('../../_lib/auth');
 const { handleCors } = require('../../_lib/cors');
 const { sendEmail, templates } = require('../../_lib/email');
+const { feeForType } = require('../../_lib/submissionPayment');
 const { getOptimizedThumbnail, getOptimizedHero } = require('../../_lib/imageOptimize');
 const { rateLimit, RATE_LIMITS } = require('../../_lib/rateLimit');
 // 크레딧 역할 표준화 — 서브미션 라벨('Photo')을 관리자 기준값('Photographer')으로.
@@ -658,15 +659,24 @@ module.exports = async function handler(req, res) {
 
       if (profile && profile.email) {
         const lang = profile.email_language || profile.language || 'en';
+        // 유료/브랜디드 서브미션 승인 시 게재료 결제요청 문구를 메일에 포함.
+        // 금액은 서버 단일 소스(feeForType)로 산출 — 유형별 euro-cents(€345/€720).
+        // free/그 외 유형은 null → 메일에 결제 블록 미표시.
+        let _feeCents = null;
+        if (status === 'approved') {
+          try {
+            const _d = submission.description ? JSON.parse(submission.description) : {};
+            _feeCents = feeForType(_d && _d.submissionType);
+          } catch (_) { _feeCents = null; }
+        }
         const tpl = templates.submissionReviewComplete(
           { name: profile.display_name || '' },
           { title: submission.title },
           lang,
-          status
-          // No approvalDay / approvalMonth passed — the template falls
-          // back to bracketed placeholders, and the OPTIONAL editor
-          // resend will overwrite the recipient's inbox with a dated
-          // version once the publication schedule is set.
+          status,
+          // approvalDay/Month 는 여전히 미전달(발행일 확정 시 편집자 재발송이 갱신).
+          // feeCents 만 주입 → 유료/브랜디드 승인 메일에 결제요청 블록이 뜬다.
+          { feeCents: _feeCents }
         );
         sendEmail(profile.email, tpl)
           .then(async (result) => {

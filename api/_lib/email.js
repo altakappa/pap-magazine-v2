@@ -81,6 +81,8 @@ const SUBMISSION_REVIEW_I18N = {
     body2: '결과 및 편집팀의 코멘트는 PAP 플랫폼의 <strong style="color:#fff;">MY SUBMISSIONS</strong>에서 확인하실 수 있습니다.',
     cta: '결과 확인',
     footer: '문의 사항이 있다면 이 메일에 회신해주세요. 편집팀이 도와드립니다.',
+    payTitle: '게재료 결제 요청',
+    payBody: '이 에디토리얼은 유료 게재 대상으로, 게재를 확정하려면 게재료 {amt} 결제가 필요합니다. 위 MY SUBMISSIONS에서 결제를 진행해 주세요.',
   },
   en: {
     subject: 'Your submission review is complete — "{title}"',
@@ -91,6 +93,8 @@ const SUBMISSION_REVIEW_I18N = {
     body2: 'Sign in to the PAP platform to read the result and the editorial team’s notes in <strong style="color:#fff;">MY SUBMISSIONS</strong>.',
     cta: 'VIEW RESULT',
     footer: 'Questions? Reply to this email and our editorial team will respond.',
+    payTitle: 'Publication Fee — Payment Requested',
+    payBody: 'This editorial requires a publication fee of {amt} to confirm publication. Please complete the payment in MY SUBMISSIONS above.',
   },
   it: {
     subject: 'La tua revisione è completa — "{title}"',
@@ -101,6 +105,8 @@ const SUBMISSION_REVIEW_I18N = {
     body2: 'Accedi alla piattaforma PAP per leggere il risultato e i commenti del team editoriale in <strong style="color:#fff;">MY SUBMISSIONS</strong>.',
     cta: 'VEDI ESITO',
     footer: 'Per qualsiasi domanda, rispondi a questa email — il nostro team editoriale ti risponderà.',
+    payTitle: 'Tariffa di pubblicazione — Pagamento richiesto',
+    payBody: 'Questo editoriale richiede una tariffa di pubblicazione di {amt} per confermare la pubblicazione. Completa il pagamento in MY SUBMISSIONS qui sopra.',
   },
   fr: {
     subject: 'Votre soumission a été examinée — "{title}"',
@@ -111,6 +117,8 @@ const SUBMISSION_REVIEW_I18N = {
     body2: 'Connectez-vous à la plateforme PAP pour consulter le résultat et les notes de l’équipe éditoriale dans <strong style="color:#fff;">MY SUBMISSIONS</strong>.',
     cta: 'VOIR LE RÉSULTAT',
     footer: 'Une question ? Répondez à cet email — notre équipe vous recontactera.',
+    payTitle: 'Frais de publication — Paiement demandé',
+    payBody: 'Cet éditorial nécessite des frais de publication de {amt} pour confirmer la publication. Veuillez effectuer le paiement dans MY SUBMISSIONS ci-dessus.',
   },
   es: {
     subject: 'Tu envío ha sido revisado — "{title}"',
@@ -121,6 +129,8 @@ const SUBMISSION_REVIEW_I18N = {
     body2: 'Inicia sesión en la plataforma PAP para ver el resultado y los comentarios del equipo editorial en <strong style="color:#fff;">MY SUBMISSIONS</strong>.',
     cta: 'VER RESULTADO',
     footer: '¿Preguntas? Responde a este email y nuestro equipo editorial te responderá.',
+    payTitle: 'Tarifa de publicación — Pago solicitado',
+    payBody: 'Este editorial requiere una tarifa de publicación de {amt} para confirmar la publicación. Completa el pago en MY SUBMISSIONS más arriba.',
   },
   ja: {
     subject: '審査が完了しました — "{title}"',
@@ -131,6 +141,8 @@ const SUBMISSION_REVIEW_I18N = {
     body2: '結果と編集部からのコメントは、PAP プラットフォームの <strong style="color:#fff;">MY SUBMISSIONS</strong> でご確認いただけます。',
     cta: '結果を見る',
     footer: 'ご不明な点があれば、このメールにご返信ください。編集部より回答いたします。',
+    payTitle: '掲載料のお支払いのお願い',
+    payBody: 'この作品は有料掲載の対象です。掲載を確定するには掲載料 {amt} のお支払いが必要です。上の MY SUBMISSIONS からお支払いください。',
   },
   zh: {
     subject: '您的投稿审核已完成 — "{title}"',
@@ -141,6 +153,8 @@ const SUBMISSION_REVIEW_I18N = {
     body2: '请登录 PAP 平台,在 <strong style="color:#fff;">MY SUBMISSIONS</strong> 中查看审核结果与编辑部留言。',
     cta: '查看结果',
     footer: '如有任何疑问,请直接回复本邮件,编辑部将与您联系。',
+    payTitle: '刊登费 — 需要付款',
+    payBody: '本作品需支付刊登费 {amt} 以确认刊登。请在上方 MY SUBMISSIONS 中完成付款。',
   },
   ru: {
     subject: 'Рассмотрение вашей заявки завершено — "{title}"',
@@ -151,6 +165,8 @@ const SUBMISSION_REVIEW_I18N = {
     body2: 'Войдите в платформу PAP, чтобы увидеть результат и комментарии редакции в разделе <strong style="color:#fff;">MY SUBMISSIONS</strong>.',
     cta: 'СМОТРЕТЬ РЕЗУЛЬТАТ',
     footer: 'Вопросы? Ответьте на это письмо — редакция свяжется с вами.',
+    payTitle: 'Плата за публикацию — требуется оплата',
+    payBody: 'Для подтверждения публикации этого материала требуется плата за публикацию в размере {amt}. Пожалуйста, завершите оплату в разделе MY SUBMISSIONS выше.',
   },
   de: {
     subject: 'Die Prüfung deiner Einreichung ist abgeschlossen — "{title}"',
@@ -161,6 +177,8 @@ const SUBMISSION_REVIEW_I18N = {
     body2: 'Melde dich auf der PAP-Plattform an, um Ergebnis und Kommentare der Redaktion in <strong style="color:#fff;">MY SUBMISSIONS</strong> einzusehen.',
     cta: 'ERGEBNIS ANSEHEN',
     footer: 'Fragen? Antworte auf diese E-Mail — unsere Redaktion meldet sich.',
+    payTitle: 'Veröffentlichungsgebühr — Zahlung erforderlich',
+    payBody: 'Für die Bestätigung der Veröffentlichung ist eine Gebühr von {amt} erforderlich. Bitte schließe die Zahlung oben in MY SUBMISSIONS ab.',
   },
 };
 
@@ -554,6 +572,18 @@ const templates = {
     const safeTitle = submission && submission.title ? submission.title : '—';
     const ctaUrl = `${FRONTEND_URL}/submission.html#mySubsSection`;
 
+    // 유료/브랜디드 승인 시 게재료 결제요청 안내(금액만 표기, 결제 URL 은 넣지 않고
+    // MY SUBMISSIONS 로 유도 — 상업 링크를 수신함에 넣지 않는 기존 설계 유지).
+    // 금액은 서버 단일 소스(submissionPayment.feeForType)로 산출한 euro-cents 를
+    // review.js 가 _opts.feeCents 로 주입한다. 그 외 상태/무료는 블록 미표시.
+    const _feeCents = _opts && Number(_opts.feeCents) > 0 ? Number(_opts.feeCents) : 0;
+    const _payBlock = (status === 'approved' && _feeCents > 0)
+      ? `<div style="margin:20px 0;padding:16px 18px;background:#1a1a1a;border-left:3px solid #c9a86a;">
+           <span style="color:#c9a86a;font-size:11px;text-transform:uppercase;letter-spacing:1px;font-weight:700;">${L.payTitle}</span><br>
+           <span style="color:#ddd;font-size:14px;line-height:1.6;">${L.payBody.replace('{amt}', `<strong style="color:#fff;">€${Math.round(_feeCents / 100)}</strong>`)}</span>
+         </div>`
+      : '';
+
     return {
       subject: L.subject.replace('{title}', safeTitle),
       html: wrapHtml(`
@@ -561,6 +591,7 @@ const templates = {
         <p>${L.greet.replace('{name}', safeName)}</p>
         <p>${L.body1.replace('{title}', `<strong style="color:#fff;">"${safeTitle}"</strong>`)}</p>
         <p>${L.body2}</p>
+        ${_payBlock}
         <a href="${ctaUrl}" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">${L.cta}</a>
         <p style="font-size:12px;color:#888;margin-top:24px;">${L.footer}</p>
       `, lang),
