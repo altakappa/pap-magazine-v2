@@ -953,9 +953,9 @@
        이었다(QA 보고 그대로). URL 이 실제 언어이므로 URL 을 진실로 삼는다.
 
        SSR 이 실제로 렌더하는 언어만 이동 대상에 넣는다. vercel.json 의
-       rewrite 가 it|fr|es|ja 만 받으므로 zh/ru/de 로 이동하면 404 가 난다
-       — 그 언어들은 기존처럼 UI 문자열만 바꾼다. */
-    var PAP_SEO_LANGS = ['ko', 'en', 'it', 'fr', 'es', 'ja'];
+       rewrite 가 9개 언어(it|fr|es|ja|de|zh|ru + ko/en)를 받으므로 전부
+       이동 대상이다 (2026-07-27 확장 — 번역 없는 건은 서버가 /en/ 으로 302). */
+    var PAP_SEO_LANGS = ['ko', 'en', 'it', 'fr', 'es', 'ja', 'de', 'zh', 'ru'];
     function _papSeoPath() {
       // /article/{slug} | /{lang}/article/{slug} (editorial 도 동일)
       return location.pathname.match(/^\/(?:([a-z]{2})\/)?(article|editorial)\/(.+?)\/?$/);

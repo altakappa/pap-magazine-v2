@@ -51,7 +51,7 @@ module.exports = async function handler(req, res) {
       if (!handle) return '';
       const loc = SITE + '/article/' + encodeURIComponent(handle);
       // ko/en 항상, it/fr/es/ja 는 번역 존재 시 (2026-07-26 다국어 확장).
-      const langs = ['ko', 'en'].concat((trMap.get(a.id) || []).filter(l => ['it', 'fr', 'es', 'ja'].includes(l)));
+      const langs = ['ko', 'en'].concat((trMap.get(a.id) || []).filter(l => ['it', 'fr', 'es', 'ja', 'de', 'zh', 'ru'].includes(l)));
       const urlFor = (l) => l === 'ko' ? loc : SITE + '/' + l + '/article/' + encodeURIComponent(handle);
       const lastmod = fmtDate(a.updated_at || a.published_date);
       const altBlock =

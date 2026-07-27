@@ -15,8 +15,8 @@
  * 이동해 서버가 다시 렌더하게 한다.
  *
  * ⚠ SSR 이 렌더하는 언어만 이동 대상이다. vercel.json 의 rewrite 가
- *   en / it|fr|es|ja 만 받으므로 zh·ru·de 로 이동하면 404 다 —
- *   그 언어들은 기존처럼 UI 문자열만 바꾼다.
+ *   2026-07-27 부터 9개 언어(en / it|fr|es|ja|de|zh|ru)를 전부 받는다 —
+ *   번역이 없는 건은 서버가 /en/ 으로 302 (의도된 폴백).
  *
  * ── 참고: 콘텐츠 번역 보유 현황 (이 테스트 범위 밖, 데이터 문제) ──────
  *   아티클     ko / en(486건 제목·본문 완비) / it·fr·es·ja 0건
@@ -64,7 +64,7 @@ t('이동 전에 언어를 저장한다', /localStorage\.setItem\('pap-lang'/.te
 
 console.log('\n=== 3. URL 계산 로직 (실제 경로로 검산) ===');
 /* pap-header.js 와 같은 규칙을 여기서 재현해 교차검증한다. */
-const PAP_SEO_LANGS = ['ko', 'en', 'it', 'fr', 'es', 'ja'];
+const PAP_SEO_LANGS = ['ko', 'en', 'it', 'fr', 'es', 'ja', 'de', 'zh', 'ru'];
 function seoPath(p) { return p.match(/^\/(?:([a-z]{2})\/)?(article|editorial)\/(.+?)\/?$/); }
 function href(p, lang) {
   if (PAP_SEO_LANGS.indexOf(lang) === -1) return null;
@@ -81,8 +81,9 @@ const cases = [
   ['/ja/editorial/x', 'ko', '/editorial/x'],
   ['/editorial/x', 'fr', '/fr/editorial/x'],
   ['/article/a-b-c/', 'en', '/en/article/a-b-c'],  // 끝 슬래시 정리
-  ['/en/article/gym', 'zh', null],                 // SSR 미지원 → 이동 금지
-  ['/en/article/gym', 'ru', null],
+  ['/en/article/gym', 'zh', '/zh/article/gym'],    // 2026-07-27 — 9개어 전부 이동
+  ['/en/article/gym', 'ru', '/ru/article/gym'],
+  ['/en/article/gym', 'de', '/de/article/gym'],
   ['/magazine', 'en', null],                       // 상세가 아니면 이동 없음
   ['/', 'en', null],
   ['/mypage', 'en', null],
@@ -92,7 +93,7 @@ cases.forEach(([p, l, want]) => {
   t(`${p} + ${l} → ${want === null ? '이동없음' : want}`, got === want, `실제: ${got}`);
 });
 t('헬퍼의 지원 언어 목록이 코드와 같다',
-  /PAP_SEO_LANGS = \['ko', 'en', 'it', 'fr', 'es', 'ja'\]/.test(header),
+  /PAP_SEO_LANGS = \['ko', 'en', 'it', 'fr', 'es', 'ja', 'de', 'zh', 'ru'\]/.test(header),
   '여기가 바뀌면 위 검산도 함께 고쳐야 한다');
 
 console.log('\n=== 4. 이동 대상 경로가 vercel.json 에 실제로 있는가 ===');
@@ -106,7 +107,7 @@ const sources = (vercel.rewrites || []).map((r) => r.source);
   if (re) {
     const langs = (re.match(/:lang\(([^)]+)\)/) || [])[1] || '';
     // 헬퍼가 이동시키는 언어(ko·en 제외)는 전부 rewrite 가 받아야 404 가 안 난다
-    ['it', 'fr', 'es', 'ja'].forEach((l) => {
+    ['it', 'fr', 'es', 'ja', 'de', 'zh', 'ru'].forEach((l) => {
       t(`  ${kind} — ${l} 가 rewrite 에 포함`, langs.split('|').indexOf(l) > -1);
     });
   }

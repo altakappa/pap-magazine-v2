@@ -28,7 +28,7 @@ const PAP_STYLES_VERSION = 42;
 /* 같은 이유로 pap-header.js 도 버전이 어긋나 있었다(SSR v=19 vs 프론트 v=23).
    헤더 스크립트가 옛 버전이면 로고 경로·햄버거 동작 같은 수정이 상세 페이지에만
    반영되지 않는다. 위와 동일하게 테스트가 드리프트를 감시한다. */
-const PAP_HEADER_VERSION = 28;
+const PAP_HEADER_VERSION = 29;
 
 /* Instagram SEO — 홈의 Organization(@id) 와 동일 엔티티로 묶고, 모든 SSR
  * 상세 페이지의 publisher 에 sameAs 를 실어 Google 지식그래프가 사이트와
@@ -354,6 +354,9 @@ const LANG_META = {
   fr: { og: 'fr_FR', inLang: 'fr-FR' },
   es: { og: 'es_ES', inLang: 'es-ES' },
   ja: { og: 'ja_JP', inLang: 'ja-JP' },
+  de: { og: 'de_DE', inLang: 'de-DE' },
+  zh: { og: 'zh_CN', inLang: 'zh-CN' },
+  ru: { og: 'ru_RU', inLang: 'ru-RU' },
 };
 
 /* ── main render function ───────────────────────────── */
@@ -568,8 +571,32 @@ function renderSeoHtml(kind, record, opts) {
       pin: 'Pinterestに保存',
       sub: '世界中のクリエイティブチームと制作する月20本以上のエディトリアル · <a href="' + SITE + '/network" style="color:inherit">PAP Instagramネットワーク →</a>',
     },
+    de: {
+      srcCopy: 'Der Originalbeitrag ist auf <b>Instagram</b>.<br>Like und speichere ihn — und entdecke dort täglich die neuesten Editorials als Erste.',
+      srcBtn: 'Auf Instagram ansehen ↗',
+      niche: (nm) => `Diese <b>${nm.topic}</b>-Story gefallen? —<br>Mehr ${nm.topic} auf <b>@${nm.acct}</b>, und die neuesten Editorials zuerst auf <b>@pap_magazine</b>, jeden Tag.`,
+      main: 'Tägliche Editorials, Mode und Promi-News —<br>entdecke sie <b>zuerst auf Instagram</b>.',
+      pin: 'Auf Pinterest speichern',
+      sub: '20+ Editorials im Monat mit Kreativteams weltweit · <a href="' + SITE + '/network" style="color:inherit">Das Instagram-Netzwerk von PAP →</a>',
+    },
+    zh: {
+      srcCopy: '原始帖子发布在 <b>Instagram</b> 上。<br>点赞并收藏——每天第一时间发现最新的时尚大片。',
+      srcBtn: '在 Instagram 查看 ↗',
+      niche: (nm) => `喜欢这篇 <b>${nm.topic}</b> 报道吗？—<br>在 <b>@${nm.acct}</b> 查看更多 ${nm.topic} 内容，在 <b>@pap_magazine</b> 每天抢先看最新大片。`,
+      main: '每日更新的时尚大片、时装与名人资讯，<br><b>抢先在 Instagram 上</b>查看。',
+      pin: '保存到 Pinterest',
+      sub: '每月与全球创意团队合作产出 20+ 时尚大片 · <a href="' + SITE + '/network" style="color:inherit">PAP Instagram 网络 →</a>',
+    },
+    ru: {
+      srcCopy: 'Оригинальная публикация — в <b>Instagram</b>.<br>Поставьте лайк и сохраните — и открывайте там новые эдиториалы первыми, каждый день.',
+      srcBtn: 'Смотреть в Instagram ↗',
+      niche: (nm) => `Понравилась эта история <b>${nm.topic}</b>? —<br>Больше ${nm.topic} на <b>@${nm.acct}</b>, а новые эдиториалы первыми — на <b>@pap_magazine</b>, каждый день.`,
+      main: 'Ежедневные эдиториалы, мода и новости о знаменитостях —<br>открывайте их <b>первыми в Instagram</b>.',
+      pin: 'Сохранить в Pinterest',
+      sub: '20+ эдиториалов в месяц с креативными командами со всего мира · <a href="' + SITE + '/network" style="color:inherit">Instagram-сеть PAP →</a>',
+    },
   };
-  const FT = FUNNEL_T[lang] || FUNNEL_T.ko;
+  const FT = FUNNEL_T[lang] || FUNNEL_T.en;
   const published = fmtIsoDate(record.published_date);
   const modified = fmtIsoDate(record.updated_at || record.published_date);
 

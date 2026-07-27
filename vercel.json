@@ -327,7 +327,7 @@
       "destination": "/api/seo/editorial/:slug?lang=en"
     },
     {
-      "source": "/:lang(it|fr|es|ja)/editorial/:slug",
+      "source": "/:lang(it|fr|es|ja|de|zh|ru)/editorial/:slug",
       "destination": "/api/seo/editorial/:slug?lang=:lang"
     },
     {
@@ -335,7 +335,7 @@
       "destination": "/api/seo/article/:slug?lang=en"
     },
     {
-      "source": "/:lang(it|fr|es|ja)/article/:slug",
+      "source": "/:lang(it|fr|es|ja|de|zh|ru)/article/:slug",
       "destination": "/api/seo/article/:slug?lang=:lang"
     },
     {

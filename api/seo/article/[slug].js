@@ -147,7 +147,7 @@ module.exports = async function handler(req, res) {
        검색에 잡히지 않는 상태. 에디토리얼과 동일한 구조로 맞춘다.
        ko|en 은 DB 원본 필드, 그 외는 seo_translations(kind='article').
        번역이 없으면 /en/ 으로 302 — 빈 번역 페이지를 색인시키지 않는다. */
-    const VALID_LANGS = ['ko', 'en', 'it', 'fr', 'es', 'ja'];
+    const VALID_LANGS = ['ko', 'en', 'it', 'fr', 'es', 'ja', 'de', 'zh', 'ru'];
     const lang = VALID_LANGS.includes(String(req.query.lang || '')) ? String(req.query.lang) : 'ko';
 
     let translation = null;

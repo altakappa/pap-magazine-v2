@@ -65,7 +65,7 @@ module.exports = async function handler(req, res) {
       const loc = SITE + '/editorial/' + encodeURIComponent(handle);
       // 언어별 URL + hreflang alternate (2026-07-16, ja 추가 2026-07-21) —
       // ko/en 항상, it/fr/es/ja 는 번역 존재 시.
-      const langs = ['ko', 'en'].concat((trMap.get(ed.id) || []).filter(l => ['it', 'fr', 'es', 'ja'].includes(l)));
+      const langs = ['ko', 'en'].concat((trMap.get(ed.id) || []).filter(l => ['it', 'fr', 'es', 'ja', 'de', 'zh', 'ru'].includes(l)));
       const urlFor = (l) => l === 'ko' ? loc : SITE + '/' + l + '/editorial/' + encodeURIComponent(handle);
       const lastmod = fmtDate(ed.updated_at || ed.published_date);
       const altBlock =
