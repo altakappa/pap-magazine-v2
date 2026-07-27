@@ -76,6 +76,10 @@ module.exports = async function handler(req, res) {
       recentEd,
       recentSub,
       plTrend,
+      filmTotal,
+      newsTotal,
+      filmThisMonth,
+      newsThisMonth,
     ] = await Promise.all([
       supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }),
       supabaseAdmin.from('editorials').select('*', { count: 'exact', head: true }).eq('status', 'published'),
@@ -91,6 +95,11 @@ module.exports = async function handler(req, res) {
       supabaseAdmin.from('editorials').select('id, title, slug, thumbnail, cover_image, published_date, status').eq('status', 'published').order('published_date', { ascending: false }).limit(5),
       supabaseAdmin.from('submissions').select('*').order('created_at', { ascending: false }).limit(5),
       supabaseAdmin.from('pullletters').select('subscribed_at').gte('subscribed_at', trendStart),
+      // 게시된 필름/기사 (에디토리얼 카드와 동일 규칙: status='published').
+      supabaseAdmin.from('films').select('*', { count: 'exact', head: true }).eq('status', 'published'),
+      supabaseAdmin.from('articles').select('*', { count: 'exact', head: true }).eq('status', 'published'),
+      supabaseAdmin.from('films').select('*', { count: 'exact', head: true }).eq('status', 'published').gte('published_date', monthStart),
+      supabaseAdmin.from('articles').select('*', { count: 'exact', head: true }).eq('status', 'published').gte('published_date', monthStart),
     ]);
 
     // Plan breakdown + MRR
@@ -151,6 +160,8 @@ module.exports = async function handler(req, res) {
       totals: {
         members: memTotal.count || 0,
         editorialsPublished: edTotal.count || 0,
+        filmsPublished: filmTotal.count || 0,
+        newsPublished: newsTotal.count || 0,
         submissionsPending: subPending.count || 0,
         pullettersPending: plPending.count || 0,
         communityPosts: cpTotal.count || 0,
@@ -165,6 +176,8 @@ module.exports = async function handler(req, res) {
       thisMonth: {
         members: memThisMonth.count || 0,
         editorials: edThisMonth.count || 0,
+        films: filmThisMonth.count || 0,
+        news: newsThisMonth.count || 0,
         submissions: subThisMonth.count || 0,
         pullletters: plThisMonth.count || 0,
       },

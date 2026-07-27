@@ -5091,6 +5091,10 @@ async function loadDashboardStats(){
     setText('dashMembersDelta','이번 달 +'+(tm.members||0));
     setText('dashEditorials',totals.editorialsPublished||0);
     setText('dashEditorialsDelta','이번 달 +'+(tm.editorials||0));
+    setText('dashFilms',totals.filmsPublished||0);
+    setText('dashFilmsDelta','이번 달 +'+(tm.films||0));
+    setText('dashNews',totals.newsPublished||0);
+    setText('dashNewsDelta','이번 달 +'+(tm.news||0));
     setText('dashSubmissions',totals.submissionsPending||0);
     setText('dashSubmissionsDelta','이번 달 +'+(tm.submissions||0)+' 신규');
     setText('dashPullletters',totals.pullettersPending||0);
