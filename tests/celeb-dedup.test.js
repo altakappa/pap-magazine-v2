@@ -69,6 +69,14 @@ ok('구글뉴스 <source> 태그로 실제 매체명 추출', /<source\[\^>\]\*>
 ok('신디케이터(네이트 등) 제외 처리', watchSrc.includes('SYNDICATORS') && watchSrc.includes('네이트'));
 ok('KR 아티스트 쿼리 확대 (뉴진스 포함)', watchSrc.includes(encodeURIComponent('뉴진스')));
 
+// 네이버 뉴스 API (2026-07-27 2차 — 키 없으면 자동 스킵이라 배포 순서 자유)
+ok('네이버: 키 없으면 조용히 건너뜀', /NAVER_CLIENT_ID[\s\S]{0,120}return \[\]/.test(watchSrc));
+ok('네이버: 공식 검색 API 사용', watchSrc.includes('openapi.naver.com/v1/search/news.json'));
+ok('네이버: 최신순 정렬', watchSrc.includes('sort=date'));
+ok('네이버: 원문 도메인을 매체 구분으로 사용', watchSrc.includes('originallink')
+  && watchSrc.includes("hostname.replace(/^www\\./, '')"));
+ok('네이버: 수집 단계에 합류', watchSrc.includes('fetchNaverNews(), //'));
+
 /* ---------------------------------------------------------------- */
 section('sameEvent — 도메니코 규칙: 새 요소가 추가되면 다른 사건');
 

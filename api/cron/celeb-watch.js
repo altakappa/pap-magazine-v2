@@ -122,6 +122,47 @@ function decodeEntities(s) {
     .replace(/&nbsp;/g, ' ');
 }
 
+/* 네이버 뉴스 검색 API (2026-07-27 — 도메니코: "네이버가 더 빠를 것 같다").
+   한국 언론사들은 기사를 네이버에 직접 밀어 넣으므로(퍼블리셔 제휴), 한국 연예
+   속보는 네이버 등장 시점이 사실상 원본 발행과 동시다. 구글뉴스는 로봇이
+   돌아다니며 주워 오는 방식이라 몇 분 늦는다 — 그 몇 분을 여기서 줄인다.
+   키(NAVER_CLIENT_ID/SECRET)가 없으면 조용히 건너뛴다 — 기존 피드만으로 동작.
+   비밀값 입력은 도메니코 몫. 무료 한도 25,000회/일, 이 크론은 4쿼리 × 288회/일 = 1,152회. */
+const NAVER_QUERIES = ['아이돌', '배우', '가수', '걸그룹'];
+async function fetchNaverNews() {
+  const id = process.env.NAVER_CLIENT_ID, secret = process.env.NAVER_CLIENT_SECRET;
+  if (!id || !secret) return [];
+  const dedup = new Set();
+  const out = [];
+  const results = await Promise.allSettled(NAVER_QUERIES.map(async (q) => {
+    const r = await fetch('https://openapi.naver.com/v1/search/news.json?query='
+      + encodeURIComponent(q) + '&display=30&sort=date', {
+      headers: { 'X-Naver-Client-Id': id, 'X-Naver-Client-Secret': secret },
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!r.ok) throw new Error('naver ' + q + ' ' + r.status);
+    return (await r.json()).items || [];
+  }));
+  for (const r of results) {
+    if (r.status !== 'fulfilled') { console.warn('[celeb-watch] naver:', (r.reason && r.reason.message) || r.reason); continue; }
+    for (const it of r.value) {
+      const link = it.originallink || it.link || '';
+      if (!link || dedup.has(link)) continue; // 같은 기사가 여러 쿼리에 걸리는 중복 제거
+      dedup.add(link);
+      // 네이버는 검색어를 <b>태그로 감싼다 — 태그·엔티티 제거
+      const title = decodeEntities(String(it.title || '').replace(/<[^>]+>/g, '')).trim();
+      if (!title) continue;
+      // 매체 구분 = 원문 도메인 (네이버 API 는 매체명 필드를 안 준다).
+      // 서로 다른 도메인 = 서로 다른 매체 → 교차검증에 그대로 쓸 수 있다.
+      let src = 'Naver';
+      try { src = new URL(link).hostname.replace(/^www\./, ''); } catch (_e) { /* 도메인 파싱 실패 시 통칭 */ }
+      const ts = Date.parse(it.pubDate || '');
+      out.push({ title, link, source: src, topic: 'kpop', ts: isNaN(ts) ? null : ts });
+    }
+  }
+  return out;
+}
+
 const {
   keywords, clusterEvents, clusterCore, sameEvent, hotScore, HOT_MIN,
   titleKey, stripSource,
@@ -198,14 +239,17 @@ module.exports = withCronGuard('celeb-watch', async function handler(req, res) {
 
   try {
     /* 1) 수집 — 실패 피드는 건너뜀 */
-    const results = await Promise.allSettled(FEEDS.map(async (f) => {
-      const r = await fetch(f.url, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PAPCelebWatch/1.0)' },
-        signal: AbortSignal.timeout(12000),
-      });
-      if (!r.ok) throw new Error(f.source + ' ' + r.status);
-      return parseRss(await r.text(), f.source, f.topic);
-    }));
+    const results = await Promise.allSettled([
+      ...FEEDS.map(async (f) => {
+        const r = await fetch(f.url, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PAPCelebWatch/1.0)' },
+          signal: AbortSignal.timeout(12000),
+        });
+        if (!r.ok) throw new Error(f.source + ' ' + r.status);
+        return parseRss(await r.text(), f.source, f.topic);
+      }),
+      fetchNaverNews(), // 2026-07-27 — 키 없으면 빈 배열 (조용히 스킵)
+    ]);
     let items = results.flatMap(r => (r.status === 'fulfilled' ? r.value : []));
     if (!items.length) return res.status(200).json({ ok: true, note: '수집 0건' });
 
