@@ -20,7 +20,7 @@ module.exports = async function handler(req, res) {
 
     if (slug) {
       const { data, error } = await supabaseAdmin.from('studio_projects')
-        .select('slug,title,brand,location,kind,category,description,film_slug,video_url,cover_url,images,source_wix_url')
+        .select('slug,title,brand,location,kind,category,description,film_slug,video_url,video_urls,cover_url,images,source_wix_url')
         .eq('slug', slug).eq('published', true).limit(1).maybeSingle();
       if (error) throw error;
       if (!data) return res.status(404).json({ error: 'not found' });
@@ -28,7 +28,7 @@ module.exports = async function handler(req, res) {
       let film = null;
       if (data.film_slug) {
         const { data: f } = await supabaseAdmin.from('studio_projects')
-          .select('slug,title,video_url,cover_url,images').eq('slug', data.film_slug).maybeSingle();
+          .select('slug,title,video_url,video_urls,cover_url,images').eq('slug', data.film_slug).maybeSingle();
         film = f || null;
       }
       return res.status(200).json({ project: data, film });

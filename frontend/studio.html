@@ -168,14 +168,21 @@ function detail(d){
   var p=d.project, film=d.film;
   var meta=[]; if(p.location) meta.push(esc(p.location)); if(p.brand) meta.push(esc(p.brand));
   var gal=(p.images||[]).map(function(u){ return '<img loading="lazy" src="'+imgFit(u,1400)+'" alt="'+esc(p.title)+'">'; }).join('');
-  var filmUrl = (film&&film.video_url) ? film.video_url : (p.film_slug?('/studio?p='+encodeURIComponent(p.film_slug)):null);
+  // 2026-07-27: 영상 여러 개(video_urls) + 프로젝트 자체 영상(video_url) 지원
+  var filmVids = (film&&Array.isArray(film.video_urls)&&film.video_urls.length) ? film.video_urls
+               : (film&&film.video_url) ? [film.video_url]
+               : (Array.isArray(p.video_urls)&&p.video_urls.length) ? p.video_urls
+               : (p.video_url ? [p.video_url] : []);
+  var filmUrl = filmVids[0] || (p.film_slug?('/studio?p='+encodeURIComponent(p.film_slug)):null);
   return '<div class="wrap detail">'+
     '<a class="back" href="/studio#work">← 전체 프로젝트</a>'+
     (p.brand?'<div class="brand red">'+esc(p.brand)+'</div>':'')+
     '<h1 class="serif">'+esc(p.title)+'</h1>'+
     (meta.length?'<div class="metaline">'+meta.join('  ·  ')+'</div>':'')+
     (p.description?'<div class="desc">'+esc(p.description)+'</div>':'')+
-    (filmUrl?'<a class="filmcta" href="'+filmUrl+'"'+(/^http/.test(filmUrl)?' target="_blank" rel="noopener"':'')+'>▶ 필름 보기</a>':'')+
+    (filmVids.length>1
+      ? filmVids.map(function(u,i){ return '<a class="filmcta" style="margin-right:10px" href="'+u+'" target="_blank" rel="noopener">▶ 필름 '+(i+1)+'</a>'; }).join('')
+      : (filmUrl?'<a class="filmcta" href="'+filmUrl+'"'+(/^http/.test(filmUrl)?' target="_blank" rel="noopener"':'')+'>▶ 필름 보기</a>':''))+
     '<div class="gal">'+gal+'</div>'+
   '</div>';
 }
