@@ -181,6 +181,8 @@ function _applyRoleVisibility(role){
 // ======== MEMBER MANAGEMENT (Supabase) ========
 var allMembers=[];
 var memberFilter='all';
+// 통계 카드 클릭 필터 — '' | 'internal' | 'suspended' (등급 필터와 별개 축)
+var _memberSpecial='';
 var _apiBase=(window.PAP_CONFIG&&window.PAP_CONFIG.API_BASE)||'/api';
 
 // QA #325 — 회원 목록 페이지네이션 상태. `/admin/members` 는 서버측
@@ -279,11 +281,17 @@ function _computeFilteredMembers(){
   var roleVal=document.getElementById('memberRoleFilter')?document.getElementById('memberRoleFilter').value:'all';
   var statusVal=document.getElementById('memberStatusFilter')?document.getElementById('memberStatusFilter').value:'all';
   return allMembers.filter(function(m){
+    // 통계 카드 클릭 필터(내부/정지) — 등급 필터보다 우선. 카드 숫자와 목록이
+    // 정확히 일치하도록 updateMemberStats 와 같은 판정을 쓴다.
+    if(_memberSpecial==='internal'){ if(!_isInternalMember(m)) return false; }
+    else if(_memberSpecial==='suspended'){ if(_getMemberStatus(m)!=='suspended') return false; }
     // Plan filter
     if(memberFilter!=='all'){
       var plan=_getMemberPlan(m);
       if(memberFilter==='free'&&plan!=='free') return false;
       if(memberFilter!=='free'&&plan.indexOf(memberFilter)===-1) return false;
+      // 스탠다드/프리미엄 카드는 '실제 결제 회원' 기준이라 내부 계정 제외(카드 숫자와 일치).
+      if(memberFilter!=='free'&&_isInternalMember(m)) return false;
     }
     // Role filter
     if(roleVal!=='all'&&_getMemberRole(m)!==roleVal) return false;
@@ -485,10 +493,50 @@ function _renderMemberPagination(page, totalPages, total){
 
 function filterMembers(plan,btn){
   memberFilter=plan;
+  _memberSpecial=''; // 등급 버튼을 누르면 카드(내부/정지) 필터는 해제
   document.querySelectorAll('#t-users .tbl-top .tf').forEach(function(b){b.classList.remove('on');});
   if(btn) btn.classList.add('on');
   _memberPage = 1; // QA #325 — 상단 필터 변경 시 첫 페이지로 리셋
   renderMembers();
+  _syncMemberFilterNote();
+}
+
+// 통계 카드 클릭 → 해당 인원 목록으로 필터 (2026-07-27 도메니코 요청).
+// kind: all | free | standard | premium | internal | suspended
+function filterMembersByStat(kind){
+  // 카드 필터는 '그 숫자에 해당하는 인원'을 보여주는 게 목적이라
+  // 검색어·역할·상태 드롭다운은 초기화해 다른 조건이 섞이지 않게 한다.
+  var s=document.getElementById('memberSearch'); if(s) s.value='';
+  var rf=document.getElementById('memberRoleFilter'); if(rf) rf.value='all';
+  var sf=document.getElementById('memberStatusFilter'); if(sf) sf.value='all';
+
+  if(kind==='internal'||kind==='suspended'){ _memberSpecial=kind; memberFilter='all'; }
+  else { _memberSpecial=''; memberFilter=(kind==='all'?'all':kind); }
+
+  // 등급 버튼 하이라이트 동기화 (카드 필터면 '전체'로 표시)
+  var btns=document.querySelectorAll('#t-users .tbl-top .tf');
+  var wantLabel={all:'전체',free:'무료',standard:'스탠다드',premium:'프리미엄'}[_memberSpecial?'all':memberFilter]||'전체';
+  btns.forEach(function(b){
+    b.classList.remove('on');
+    if((b.textContent||'').trim()===wantLabel) b.classList.add('on');
+  });
+
+  _memberPage=1;
+  renderMembers();
+  _syncMemberFilterNote();
+  var tbl=document.getElementById('memberTableBody');
+  if(tbl&&tbl.scrollIntoView) tbl.scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+// 카드 필터가 걸렸을 때 목록 제목 옆에 안내 + 해제 버튼 표시.
+function _syncMemberFilterNote(){
+  var host=document.getElementById('memberFilterNote');
+  if(!host) return;
+  var label={internal:'내부(임직원)',suspended:'정지됨'}[_memberSpecial]||'';
+  if(!label){ host.innerHTML=''; host.style.display='none'; return; }
+  host.style.display='inline-flex';
+  host.innerHTML='<span style="font-size:11px;color:var(--text3)">'+label+' 만 보는 중</span>'
+    +'<button class="btn btn-sm" style="margin-left:6px" onclick="filterMembersByStat(\'all\')">전체 보기</button>';
 }
 
 function exportMembersCSV(){
