@@ -129,9 +129,16 @@ function decodeEntities(s) {
    키(NAVER_CLIENT_ID/SECRET)가 없으면 조용히 건너뛴다 — 기존 피드만으로 동작.
    비밀값 입력은 도메니코 몫. 무료 한도 25,000회/일, 이 크론은 4쿼리 × 288회/일 = 1,152회. */
 const NAVER_QUERIES = ['아이돌', '배우', '가수', '걸그룹'];
+// 붙여넣기 사고 방지 — 앞뒤 공백·개행·따옴표 제거 (2026-07-27 실측 401 대응.
+// IG 토큰 사고(6420a74 sanitizeCredential)와 동일 패턴: Vercel env 에 저장된 값이
+// 눈에 안 보이는 문자 하나로 통째로 거부당하는 일이 실제로 있었다.)
+const _cleanCred = (v) => String(v || '').replace(/[\r\n\t]/g, '').trim().replace(/^["']+|["']+$/g, '').trim();
 async function fetchNaverNews() {
-  const id = process.env.NAVER_CLIENT_ID, secret = process.env.NAVER_CLIENT_SECRET;
+  const id = _cleanCred(process.env.NAVER_CLIENT_ID), secret = _cleanCred(process.env.NAVER_CLIENT_SECRET);
   if (!id || !secret) return [];
+  if (id !== process.env.NAVER_CLIENT_ID || secret !== process.env.NAVER_CLIENT_SECRET) {
+    console.warn('[celeb-watch] naver: 키 값에서 공백/개행/따옴표를 제거하고 사용함');
+  }
   const dedup = new Set();
   const out = [];
   const results = await Promise.allSettled(NAVER_QUERIES.map(async (q) => {
@@ -140,7 +147,11 @@ async function fetchNaverNews() {
       headers: { 'X-Naver-Client-Id': id, 'X-Naver-Client-Secret': secret },
       signal: AbortSignal.timeout(12000),
     });
-    if (!r.ok) throw new Error('naver ' + q + ' ' + r.status);
+    if (!r.ok) {
+      // 401 = 키 거부. 값 노출 없이 길이만 남겨 재입력 판단을 돕는다.
+      if (r.status === 401) console.warn('[celeb-watch] naver 401 — Vercel 키 재확인 필요 (id ' + id.length + '자 / secret ' + secret.length + '자)');
+      throw new Error('naver ' + q + ' ' + r.status);
+    }
     return (await r.json()).items || [];
   }));
   for (const r of results) {
