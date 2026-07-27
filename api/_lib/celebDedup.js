@@ -88,6 +88,14 @@ const ENTITY_ALIASES = [
   ['straykids', /(stray\s?kids|스트레이\s?키즈)/gi],
   ['seventeen', /(seventeen|세븐틴)/gi],
   ['twice', /(twice|트와이스)/gi],
+  // 2026-07-27 한국 소스 보강 — 한국발 기사와 영문 기사가 같은 사건으로 묶이도록.
+  ['jungkook', /(jung\s?kook|정국)/gi],
+  ['jimin', /(jimin|지민)/gi],
+  ['jennie', /(jennie|제니)/gi],
+  ['gdragon', /(g[-\s]?dragon|지드래곤|권지용)/gi],
+  ['아이유', /\bIU\b|아이유/g],
+  ['lesserafim', /(le\s?sserafim|르세라핌)/gi],
+  ['ive', /\bIVE\b|아이브/g],
   ['worldcup', /(world\s?cup|월드컵)/gi],
   ['superbowl', /(super\s?bowl|슈퍼볼)/gi],
   ['halftime', /(halftime|하프타임)/gi],
@@ -203,7 +211,7 @@ function sameEvent(newCore, seenCore, opts) {
 /* 화제성 점수 — 알림을 보낼 가치가 있는가.
    도메니코 결정(2026-07-21): "5분마다 검토해서 화제성이 있는 것만 텔레그램".
    교차 매체 수가 가장 강한 신호이고, 대형 이벤트 키워드·최신성을 가산한다. */
-const HOT_RE = /(bts|blackpink|방탄|블랙핑크|월드컵|world\s?cup|super\s?bowl|halftime|met\s?gala|oscar|grammy|cannes|comeback|debut|creative\s+director|artistic\s+director|steps?\s+down|appointed|사망|은퇴|열애|결혼|입대|전역|수상|1위)/i;
+const HOT_RE = /(bts|blackpink|방탄|블랙핑크|월드컵|world\s?cup|super\s?bowl|halftime|met\s?gala|oscar|grammy|cannes|comeback|debut|creative\s+director|artistic\s+director|steps?\s+down|appointed|사망|은퇴|열애|결혼|입대|전역|수상|1위|컴백|데뷔|해체|파경)/i;
 function hotScore(c) {
   let s = c.sourceCount * 2;                              // 교차 검증 = 핵심 신호
   if (HOT_RE.test(c.headlines.map(h => h.title).join(' '))) s += 3;

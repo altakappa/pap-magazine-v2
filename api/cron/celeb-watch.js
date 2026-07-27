@@ -43,8 +43,18 @@ const FEEDS = [
   { source: 'Billboard', url: 'https://www.billboard.com/feed/', topic: 'kpop' },
   { source: 'GoogleNews-KPOP', topic: 'kpop',
     url: 'https://news.google.com/rss/search?q=(BTS+OR+blackpink+OR+%22K-pop%22)+when:1h&hl=en-US&gl=US&ceid=US:en' },
+  // 2026-07-27 한국 소스 보강 (도메니코: "한국 셀럽은 한국 매체가 더 빠르지 않나").
+  // 기존 구조는 한국발 사건을 Soompi/Allkpop 이 영어로 번역해 줄 때까지 기다렸다가
+  // 그 영문 헤드라인을 다시 한국어로 번역해 알리는, 가장 느린 경로였다.
+  // ① 아티스트명 쿼리 확대 (기존: 방탄·블랙핑크·케이팝 3개 → 12개)
   { source: 'GoogleNews-KPOP-KR', topic: 'kpop',
-    url: 'https://news.google.com/rss/search?q=(%EB%B0%A9%ED%83%84%EC%86%8C%EB%85%84%EB%8B%A8+OR+%EB%B8%94%EB%9E%99%ED%95%91%ED%81%AC+OR+%EC%BC%80%EC%9D%B4%ED%8C%9D)+when:1h&hl=ko&gl=KR&ceid=KR:ko' },
+    url: 'https://news.google.com/rss/search?q=(%EB%B0%A9%ED%83%84%EC%86%8C%EB%85%84%EB%8B%A8+OR+%EB%B8%94%EB%9E%99%ED%95%91%ED%81%AC+OR+%EC%BC%80%EC%9D%B4%ED%8C%9D+OR+%EB%89%B4%EC%A7%84%EC%8A%A4+OR+%EC%97%90%EC%8A%A4%ED%8C%8C+OR+%EC%84%B8%EB%B8%90%ED%8B%B4+OR+%EC%8A%A4%ED%8A%B8%EB%A0%88%EC%9D%B4%ED%82%A4%EC%A6%88+OR+%ED%8A%B8%EC%99%80%EC%9D%B4%EC%8A%A4+OR+%EC%95%84%EC%9D%B4%EB%B8%8C+OR+%EB%A5%B4%EC%84%B8%EB%9D%BC%ED%95%8C+OR+%EC%95%84%EC%9D%B4%EC%9C%A0+OR+%EC%A7%80%EB%93%9C%EB%9E%98%EA%B3%A4)+when:1h&hl=ko&gl=KR&ceid=KR:ko' },
+  // ② 사건 키워드 쿼리 — 특정 이름에 안 걸리는 열애·사망·논란급 속보를 잡는다
+  { source: 'GoogleNews-KR-연예', topic: 'kpop',
+    url: 'https://news.google.com/rss/search?q=(%EC%97%B4%EC%95%A0+OR+%EA%B2%B0%ED%98%BC+OR+%ED%8C%8C%EA%B2%BD+OR+%EC%82%AC%EB%A7%9D+OR+%EC%9E%85%EB%8C%80+OR+%EC%A0%84%EC%97%AD+OR+%EC%9D%80%ED%87%B4+OR+%ED%95%B4%EC%B2%B4+OR+%EC%BB%B4%EB%B0%B1+OR+%EB%8D%B0%EB%B7%94+OR+%EB%85%BC%EB%9E%80+OR+%EC%88%98%EC%83%81)+(%EC%95%84%EC%9D%B4%EB%8F%8C+OR+%EB%B0%B0%EC%9A%B0+OR+%EA%B0%80%EC%88%98+OR+%EA%B1%B8%EA%B7%B8%EB%A3%B9)+when:1h&hl=ko&gl=KR&ceid=KR:ko' },
+  // ③ 연합뉴스 연예 — 한국 매체들이 받아쓰는 원천 통신사 (가장 빠른 축)
+  { source: '연합뉴스', topic: 'kpop',
+    url: 'https://www.yna.co.kr/rss/entertainment.xml' },
   // K-pop · 셀럽 (팬덤 커뮤니티 — 매체보다 먼저 뜨는 경우가 많음)
   { source: 'Reddit-kpop', topic: 'kpop',
     url: 'https://www.reddit.com/r/kpop/new/.rss?limit=25' },
@@ -63,6 +73,10 @@ const FEEDS = [
   { source: 'Reddit-fashion', topic: 'fashion',
     url: 'https://www.reddit.com/r/fashion/new/.rss?limit=25' },
 ];
+
+// 남의 기사를 그대로 옮겨 싣는 포털·신디케이터 — 실제 취재 매체가 아니므로
+// 교차검증 매체 수를 부풀린다 (예: 데일리안 기사가 네이트에도 그대로 = 2개 매체 아님).
+const SYNDICATORS = new Set(['네이트', '다음', 'msn', 'nate', 'daum', 'zum', '줌 뉴스', '야후', 'yahoo']);
 
 // 의존성 없는 최소 피드 파서.
 // RSS(<item>/<pubDate>/<link>텍스트) 와 Atom(<entry>/<updated>/<link href=>) 둘 다 처리 —
@@ -84,9 +98,19 @@ function parseRss(xml, source, topic) {
       link = l && l[1] ? l[1].trim() : '';
     }
     if (!title || !link) continue;
+    // 2026-07-27 — 구글뉴스 항목의 <source> 태그 = 실제 매체명(디스패치·OSEN…).
+    // 이걸 안 읽으면 구글뉴스 피드 전체가 "소스 1개"로 취급돼
+    // 교차검증(서로 다른 매체 2개 이상)을 영원히 통과하지 못한다.
+    let src = source;
+    if (/^GoogleNews/.test(source)) {
+      const sm = c.match(/<source[^>]*>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/source>/);
+      const pub = sm && sm[1] ? decodeEntities(sm[1].replace(/<[^>]+>/g, '')).trim() : '';
+      if (pub && SYNDICATORS.has(pub.toLowerCase())) continue;
+      if (pub) src = pub;
+    }
     const d = c.match(isAtom ? /<updated>([\s\S]*?)<\/updated>/ : /<pubDate>([\s\S]*?)<\/pubDate>/);
     const ts = d && d[1] ? Date.parse(d[1]) : NaN;
-    items.push({ title, link, source, topic, ts: isNaN(ts) ? null : ts });
+    items.push({ title, link, source: src, topic, ts: isNaN(ts) ? null : ts });
   }
   return items;
 }

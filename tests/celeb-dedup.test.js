@@ -27,7 +27,8 @@ function section(t) { console.log('\n=== ' + t + ' ==='); }
 section('keywords — 한국어가 살아남는가');
 
 const koKw = keywords('BTS 정국, 월드컵 결승 하프타임쇼 무대 확정');
-ok('한국어 2자 단어를 버리지 않는다 (정국)', koKw.includes('정국'));
+ok('한국어 2자 단어를 버리지 않는다 (결승)', koKw.includes('결승'));
+ok('정국 → jungkook 으로 통일된다 (2026-07-27 한국 소스 보강)', koKw.includes('jungkook'));
 ok('월드컵은 정규표기 worldcup 으로 통일된다', koKw.includes('worldcup'));
 ok('영문 3자 이상은 그대로 (bts)', koKw.includes('bts'));
 ok('영문 불용어는 제외 (the)', !keywords('The New Look of the Year').includes('the'));
@@ -39,6 +40,34 @@ ok('방탄소년단 → bts 토큰', keywords('방탄소년단 월드투어').in
 ok('BTS 도 같은 토큰', keywords('BTS world tour').includes('bts'));
 ok('샤넬 → chanel', keywords('샤넬 신임 디렉터').includes('chanel'));
 ok('하프타임 → halftime', keywords('월드컵 하프타임쇼').includes('halftime'));
+
+/* ---------------------------------------------------------------- */
+section('2026-07-27 한국 소스 보강 — 한/영 표기·피드·매체명 추출');
+
+// 한국발 기사와 영문 기사가 같은 사건으로 묶이는가
+ok('아이유 ↔ IU 같은 토큰', keywords('아이유 신곡 발표').includes('아이유')
+  && keywords('IU drops surprise single tonight').includes('아이유'));
+ok('지드래곤 ↔ G-Dragon 같은 토큰', keywords('지드래곤 월드투어 확정').includes('gdragon')
+  && keywords('G-Dragon announces world tour dates').includes('gdragon'));
+ok('아이브 ↔ IVE 같은 토큰 (I\'ve 는 오인하지 않음)',
+  keywords('아이브 컴백 티저').includes('ive')
+  && keywords('IVE teases comeback stage').includes('ive')
+  && !keywords("I've never seen this trend before").includes('ive'));
+ok('한국어 사건 키워드도 화제성 가산 (컴백)', hotScore({
+  sourceCount: 2, newestTs: Date.now(),
+  headlines: [{ title: '뉴진스 컴백 확정' }, { title: '뉴진스 새 앨범 발표' }],
+}) >= HOT_MIN);
+
+// celeb-watch.js 소스 텍스트 검증 — 크론 핸들러는 env 없이 require 할 수 없어
+// 기존 관례(cron-alert-telegram.test.js)대로 소스 텍스트로 확인한다.
+const fs = require('fs');
+const path = require('path');
+const watchSrc = fs.readFileSync(path.join(__dirname, '../api/cron/celeb-watch.js'), 'utf8');
+ok('한국 피드: GoogleNews-KR-연예 등록', watchSrc.includes("source: 'GoogleNews-KR-연예'"));
+ok('한국 피드: 연합뉴스 등록', watchSrc.includes('yna.co.kr/rss/entertainment.xml'));
+ok('구글뉴스 <source> 태그로 실제 매체명 추출', /<source\[\^>\]\*>/.test(watchSrc) || watchSrc.includes('<source[^>]*>'));
+ok('신디케이터(네이트 등) 제외 처리', watchSrc.includes('SYNDICATORS') && watchSrc.includes('네이트'));
+ok('KR 아티스트 쿼리 확대 (뉴진스 포함)', watchSrc.includes(encodeURIComponent('뉴진스')));
 
 /* ---------------------------------------------------------------- */
 section('sameEvent — 도메니코 규칙: 새 요소가 추가되면 다른 사건');
@@ -75,7 +104,7 @@ const grp = [
 ];
 const core = clusterCore(grp);
 ok('공통 요소(bts)는 남는다', core.includes('bts'));
-ok('공통 요소(정국)도 남는다', core.includes('정국'));
+ok('공통 요소(정국→jungkook)도 남는다', core.includes('jungkook'));
 ok('한 곳에만 나온 표현(오른다)은 빠진다', !core.includes('오른다'));
 ok('한 곳에만 나온 표현(발표)도 빠진다', !core.includes('발표'));
 
