@@ -267,6 +267,9 @@ function clusterCore(group) {
    예) 기존: [bts, halftime, worldcup]
        "BTS 하프타임쇼 무대 오른다"     → core [bts, halftime, worldcup] → 중복 ✅
        "정호연·BTS 하프타임쇼 동반 출연" → core [+정호연]                → 새 사건 ✅ */
+// 이만큼 겹치면 새 표현이 몇 개 붙든 같은 사건으로 본다 (2026-07-27 실측 기준).
+const STRONG_OVERLAP = 4;
+
 function sameEvent(newCore, seenCore, opts) {
   const A = (newCore || []).filter(Boolean);
   const B = new Set((seenCore || []).filter(Boolean));
@@ -291,6 +294,18 @@ function sameEvent(newCore, seenCore, opts) {
   //    (7/21 정호연 규칙 '새 인물 하나 = 새 알림'은 이 원칙으로 대체됨.
   //     같은 날 af54b4d 가 novel>0 전면 알림으로 갔다가 이 원칙으로 재확정.)
   if (novel === 1 && inter >= 2) return true;
+
+  // ③ 강한 겹침 우선 (2026-07-27 18:20 도메니코 실측 지시 — "비슷한 기사가 너무
+  //    많이 와, 이건 다 걸러야 해"). 손담비 호텔 비매너 논란이 17:35·17:40·17:55·
+  //    18:10·18:20 다섯 번 발송됐다. 매번 '손담비·논란·비매너·적당히·호텔' 5~6개가
+  //    그대로 겹쳤는데도, 매체가 새로 붙인 표현(억울했다·이번엔 / sns·분노 /
+  //    대놓고·드러냈다)이 2개 이상이라 원칙2 의 '사건 확장'으로 빠져나갔다.
+  //    → 핵심어가 4개 이상 겹치면 새 표현이 몇 개든 같은 사건으로 본다.
+  //    novel 카운트보다 '겹침의 크기'가 사건 동일성의 더 강한 신호다.
+  //    (겹침 3개 이하일 때만 원칙2 의 novel 판정이 그대로 살아 있다 —
+  //     예: 앵커 3개짜리 사건에 새 인물·새 요소가 붙는 경우는 여전히 별도 알림)
+  if (inter >= STRONG_OVERLAP) return true;
+
   return false;
 }
 
