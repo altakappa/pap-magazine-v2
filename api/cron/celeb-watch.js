@@ -176,7 +176,7 @@ async function fetchNaverNews() {
 
 const {
   keywords, clusterEvents, clusterCore, sameEvent, hotScore, HOT_MIN,
-  titleKey, stripSource,
+  titleKey, stripSource, isOffTopic,
 } = require('../_lib/celebDedup');
 
 
@@ -268,6 +268,13 @@ module.exports = withCronGuard('celeb-watch', async function handler(req, res) {
     const CUTOFF = Date.now() - 3 * 3600 * 1000;
     items = items.filter(i => !i.ts || i.ts >= CUTOFF);
 
+    /* 2-1) 주제 이탈 제거 (2026-07-27 — 도메니코: "셀럽 아닌 정치뉴스 등 제외").
+       네이버·연합 소스가 정치·시사·재난 기사를 물어온다. 클러스터링 전에 버려
+       교차검증·알림 양쪽에서 아예 배제한다. */
+    const beforeTopic = items.length;
+    items = items.filter(i => !isOffTopic(i.title));
+    const droppedOffTopic = beforeTopic - items.length;
+
     /* 3) 교차 검증 클러스터링 */
     let clusters = clusterEvents(items);
     if (!clusters.length) return res.status(200).json({ ok: true, note: '교차 확인된 속보 없음', scanned: items.length });
@@ -327,7 +334,7 @@ module.exports = withCronGuard('celeb-watch', async function handler(req, res) {
       if (picked.length >= MAX_PER_RUN) break;
     }
     if (dry) {
-      return res.status(200).json({ ok: true, dry: true, scanned: items.length,
+      return res.status(200).json({ ok: true, dry: true, scanned: items.length, dropped_offtopic: droppedOffTopic,
         picked: picked.map(c => ({ score: c.score, sources: c.sourceCount, topic: c.topic,
           headlines: c.headlines.map(h => h.source + ': ' + h.title) })) });
     }

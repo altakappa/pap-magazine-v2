@@ -16,7 +16,7 @@
 
 const {
   keywords, canonicalize, clusterEvents, clusterCore, sameEvent, hotScore, HOT_MIN,
-  decodeHtml, stripSource, titleKey,
+  decodeHtml, stripSource, titleKey, isOffTopic,
 } = require('../api/_lib/celebDedup');
 
 let pass = 0, fail = 0;
@@ -254,6 +254,30 @@ ok('같은 그룹 다른 작품은 별개 지문',
   titleKey("BTS Butter 11억 뷰") !== titleKey("BTS Dynamite 20억 뷰"));
 ok('같은 그룹 다른 사건은 병합 안 됨 (공유 1개뿐)',
   sameEvent(keywords('BTS Butter 뷰 기록'), keywords('BTS 정국 하프타임 무대')) === false);
+
+/* ---------------------------------------------------------------- */
+// 2026-07-27 — 도메니코: "셀럽 뉴스 아닌 정치뉴스 등은 제외".
+// 네이버·연합 소스가 정치·시사·재난을 물어와 알림에 섞였다(실측: 윤석열 선거법 등).
+section('주제 이탈 거부 — 정치·시사·재난 제외');
+
+// 실측 celeb_watch_seen 에 실제로 나갔던 정치 기사 2건
+ok('정치: 윤석열 공직선거법 → 거부',
+  isOffTopic('[상보] 윤석열 공직선거법 1심 징역형 집유…확정 시 국힘 397억 반환'));
+ok('정치: 대선 허위발언 선고 → 거부',
+  isOffTopic("[속보] 윤석열 '대선 허위발언' 징역 1년6월 3년 집유 선고, 확정시 국힘..."));
+ok('정치: 국회·탄핵 → 거부', isOffTopic('국회 본회의 탄핵소추안 통과'));
+ok('경제: 기준금리 → 거부', isOffTopic('한국은행 기준금리 0.25%p 인상 결정'));
+ok('재난: 태풍 → 거부', isOffTopic('제6호 태풍 북상…수도권 폭우 특보'));
+
+// ⚠️ 진짜 셀럽 뉴스는 절대 안 걸려야 한다 (연예어와 겹치지 않게 설계했는지)
+ok('셀럽 입대(도겸·버논)는 통과 — 병역은 거부어 아님',
+  !isOffTopic('세븐틴 도겸·버논, 나란히 병역 의무 이행'));
+ok('셀럽 군백기·현역 입대 통과',
+  !isOffTopic('세븐틴 도겸, 9월8일 육군 현역 입대…버논은 8월20일 대체복무 시작'));
+ok('BTS Butter 통과', !isOffTopic("방탄소년단 'Butter', 11억 뷰 돌파"));
+ok('셀럽 결혼·득남 통과', !isOffTopic('남궁민♥진아름 부부, 결혼 4년 만에 부모 됐다'));
+ok('패션 디렉터 선임 통과', !isOffTopic('샤넬, 신임 아티스틱 디렉터 선임'));
+ok('빈 제목 방어', !isOffTopic('') && !isOffTopic(null));
 
 /* ---------------------------------------------------------------- */
 console.log('\npassed: ' + pass + '   failed: ' + fail);
