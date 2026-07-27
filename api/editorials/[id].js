@@ -11,6 +11,7 @@ const { requireAdmin } = require('../_lib/auth');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { embedAndStoreEditorial } = require('../_lib/embeddings');
 const { sendEmail, templates } = require('../_lib/email');
+const { feeForType } = require('../_lib/submissionPayment');
 const { recordContentChange, diffFields, attachAuthorship } = require('../_lib/audit');
 const { sendEditorialToTelegramSafe } = require('../_lib/telegram');
 
@@ -54,10 +55,19 @@ async function _maybeSendApprovalEmail(editorialRow, opts) {
   try {
     const { data: submission } = await supabaseAdmin
       .from('submissions')
-      .select('user_id, title')
+      .select('user_id, title, description, payment_status')
       .eq('id', editorialRow.source_submission_id)
       .single();
     if (!submission || !submission.user_id) return;
+
+    // 유료/브랜디드 미결제 건은 재발송에도 게재료 결제요청 블록을 포함(승인 메일과 동일).
+    let _feeCents = null;
+    if (submission.payment_status !== 'paid') {
+      try {
+        const _d = submission.description ? JSON.parse(submission.description) : {};
+        _feeCents = feeForType(_d && _d.submissionType);
+      } catch (_) { _feeCents = null; }
+    }
 
     const { data: profile } = await supabaseAdmin
       .from('profiles')
@@ -74,7 +84,7 @@ async function _maybeSendApprovalEmail(editorialRow, opts) {
       { title: editorialRow.title || submission.title },
       lang,
       'approved',
-      { approvalDay: opts.approvalDay || '', approvalMonth: opts.approvalMonth || '' }
+      { approvalDay: opts.approvalDay || '', approvalMonth: opts.approvalMonth || '', feeCents: _feeCents }
     );
     const result = await sendEmail(profile.email, tpl);
     // QA #214 — record the result in approval_email_status so the admin

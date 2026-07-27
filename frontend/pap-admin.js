@@ -1931,6 +1931,26 @@ async function doReview(status){
   }
 }
 
+// 승인/결제 안내 메일 수동 발송 — 연결된 에디토리얼로 재발송 트리거(send_approval_email).
+// 자동발송 실패분·과거 승인분(승인 메일 미발송) 보완용. 서버가 실제 전송을 await 처리하고
+// 실패 시 approval_email_status='failed' 로 기록한다.
+async function sendApprovalMailFor(editorialId){
+  if(!editorialId){ alert('연결된 에디토리얼이 없어 발송할 수 없습니다. (스테이징 실패 건은 심사에서 재승인 필요)'); return; }
+  if(!confirm('이 제출자에게 승인/결제 안내 메일을 발송할까요?')) return;
+  try{
+    var token=localStorage.getItem('pap-token');
+    var apiBase=window.PAP_CONFIG&&window.PAP_CONFIG.API_BASE||'/api';
+    var resp=await fetch(apiBase+'/editorials/'+editorialId,{
+      method:'PUT',
+      headers:{'Authorization':'Bearer '+token,'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'},
+      body:JSON.stringify({send_approval_email:true})
+    });
+    if(!resp.ok){ var e=await resp.json().catch(function(){return{};}); throw new Error(e.error||('HTTP '+resp.status)); }
+    alert('승인/결제 안내 메일을 발송 요청했습니다.\n전송 실패 시 상태 배지에 "메일 실패"로 표시됩니다.');
+    if(window.loadSubmissions) loadSubmissions();
+  }catch(err){ alert('발송 실패: '+(err&&err.message||err)); }
+}
+
 // review.js stamps approved submissions with a marker like
 // "[Staged as editorial id: <uuid>]" inside admin_notes. Pull the uuid
 // back out so the submission row + review modal can deep-link to the
@@ -2151,6 +2171,8 @@ async function loadSubmissions(statusFilter, opts){
         } else {
         actionBtns += ' <button class="btn btn-sm btn-primary" onclick="openEditorialEditor(\''+editorialId+'\')" title="연결된 에디토리얼 편집 화면으로 이동">'+btnLabel+'</button>';
         }
+        // 승인/결제 안내 메일 수동 발송(재발송). 자동발송이 실패했거나 과거 승인 건 보완용.
+        actionBtns += ' <button class="btn btn-sm" style="border-color:#c9a86a;color:#a9803a" onclick="sendApprovalMailFor(\''+editorialId+'\')" title="제출자에게 승인/결제 안내 메일 발송(재발송)">✉ 승인메일</button>';
       }
       // QA #211 — rejected rows surface days-to-auto-purge + recover button.
       // Hard delete happens 30 days after rejected_at via a daily cron;

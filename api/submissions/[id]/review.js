@@ -678,24 +678,25 @@ module.exports = async function handler(req, res) {
           // feeCents 만 주입 → 유료/브랜디드 승인 메일에 결제요청 블록이 뜬다.
           { feeCents: _feeCents }
         );
-        sendEmail(profile.email, tpl)
-          .then(async (result) => {
-            // For approved submissions, stamp the staged editorial's
-            // approval_email_sent_at so the editor's later checkbox
-            // tick acts as an explicit RESEND (idempotency clears the
-            // stamp first — see editorial PUT handler).
-            if (status === 'approved' && stagedEditorialId && result && result.sent) {
-              try {
-                await supabaseAdmin
-                  .from('editorials')
-                  .update({ approval_email_sent_at: new Date().toISOString() })
-                  .eq('id', stagedEditorialId);
-              } catch (e) {
-                console.error('[review] approval stamp failed:', e && e.message);
-              }
+        // ★ 반드시 await 한다. 예전엔 fire-and-forget(.then)이라 Vercel 서버리스가
+        // res 반환 직후 함수를 얼려 전송이 실제로 나가지 않았다(실측: approval_email_sent_at
+        // 0/35). await 로 응답 전에 전송을 완료시킨다. 발송 실패는 심사 저장을 막지 않는다(로그만).
+        try {
+          const result = await sendEmail(profile.email, tpl);
+          // 승인 건: 스테이징된 에디토리얼에 발송 시각 스탬프(재발송 판별용).
+          if (status === 'approved' && stagedEditorialId && result && result.sent) {
+            try {
+              await supabaseAdmin
+                .from('editorials')
+                .update({ approval_email_sent_at: new Date().toISOString() })
+                .eq('id', stagedEditorialId);
+            } catch (e) {
+              console.error('[review] approval stamp failed:', e && e.message);
             }
-          })
-          .catch(() => {});
+          }
+        } catch (e) {
+          console.error('[review] outcome email send failed:', e && e.message);
+        }
       }
     }
 
