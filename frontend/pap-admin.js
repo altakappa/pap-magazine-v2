@@ -233,16 +233,30 @@ async function loadMembers(){
   }
 }
 
+// 내부 계정 = 관리자·스태프 (2026-07-27 도메니코 확정).
+// 이들은 열람 권한용으로 premium 등급이 부여돼 있을 뿐 실제 결제 회원이 아니므로
+// 유료 등급(스탠다드/프리미엄) 카운트에서 제외하고 '내부(임직원)' 카드로 따로 센다.
+// 실측(2026-07-27): premium 9 = 관리자 5 + 스태프 2 + 실회원 2, 실제 활성 구독 4건과 정합.
+function _isInternalMember(m){
+  var r=String((m&&(m.role||m.userRole))||'member').toLowerCase();
+  return r==='admin' || r==='staff' || r==='superadmin' || r==='super_admin';
+}
 function updateMemberStats(){
   var total=allMembers.length;
+  var internalList=allMembers.filter(_isInternalMember);
+  var payingPool=allMembers.filter(function(m){return !_isInternalMember(m);});
+  var internal=internalList.length;
+  // 무료·정지는 전체 기준 유지(내부 계정은 어차피 유료등급이라 무료 집계에 안 잡힘).
   var free=allMembers.filter(m=>{var p=m.subscriptionPlan||m.subscription_plan||'free';return p==='free';}).length;
-  var std=allMembers.filter(m=>{var p=m.subscriptionPlan||m.subscription_plan||'';return p.indexOf('standard')>-1;}).length;
-  var prem=allMembers.filter(m=>{var p=m.subscriptionPlan||m.subscription_plan||'';return p.indexOf('premium')>-1;}).length;
+  var std=payingPool.filter(m=>{var p=m.subscriptionPlan||m.subscription_plan||'';return p.indexOf('standard')>-1;}).length;
+  var prem=payingPool.filter(m=>{var p=m.subscriptionPlan||m.subscription_plan||'';return p.indexOf('premium')>-1;}).length;
   var susp=allMembers.filter(m=>{var s=m.subscriptionStatus||m.subscription_status||'';return s==='suspended';}).length;
   document.getElementById('statTotal').textContent=total;
   document.getElementById('statFree').textContent=free;
   document.getElementById('statStandard').textContent=std;
   document.getElementById('statPremium').textContent=prem;
+  var _int=document.getElementById('statInternal');
+  if(_int) _int.textContent=internal;
   document.getElementById('statSuspended').textContent=susp;
 }
 
