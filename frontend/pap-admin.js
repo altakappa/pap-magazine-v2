@@ -1430,6 +1430,24 @@ function populateReviewModal(submission){
 
   // Pre-select cover image from description
   if(typeof desc.coverImageIndex==='number')selectedCoverImageIndex=desc.coverImageIndex;
+
+  // ── 승인 버튼 라벨: 브랜디드/유료 서브미션은 "승인 및 결제요청" ── (2026-07-27 도메니코)
+  // 심사 하단 승인 버튼을 유형에 맞춰 전환한다. 승인 처리(doReview('approved'))는 그대로 —
+  // 승인되면 제출자 마이페이지에 게재료 결제요청(pap-submission-fee.js 기본료 버튼)이 자동 노출된다.
+  // 모달은 서브미션마다 재사용되므로 비유료 유형에선 반드시 "✓ 승인" 으로 되돌린다.
+  var _apBtn=document.getElementById('reviewApproveBtn');
+  if(_apBtn){
+    var _ftKey=String(desc.submissionType||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
+    var _feeAmt={branded:'€720',paid_few_looks:'€345',few_looks:'€345',fewlooks:'€345'};
+    if(_isFeeRequiredType(desc.submissionType)){
+      var _amt=_feeAmt[_ftKey]||'';
+      _apBtn.textContent='✓ 승인 및 결제요청'+(_amt?' ('+_amt+')':'');
+      _apBtn.title='승인하면 제출자 마이페이지에 게재료 결제요청이 표시됩니다'+(_amt?' — '+_amt:'');
+    }else{
+      _apBtn.textContent='✓ 승인';
+      _apBtn.title='';
+    }
+  }
 }
 
 
