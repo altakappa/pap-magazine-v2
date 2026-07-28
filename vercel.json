@@ -5,6 +5,10 @@
   "framework": null,
   "crons": [
     {
+      "path": "/api/cron/brand-sync",
+      "schedule": "25 19 * * *"
+    },
+    {
       "path": "/api/cron/subscription-expiry-sweep",
       "schedule": "40 17 * * *"
     },
