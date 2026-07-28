@@ -37,6 +37,7 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAuth } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
+const { sendTextToTelegramSafe } = require('../_lib/telegram');
 
 const BUCKET = 'submissions';
 const MAX_FILES = 30;
@@ -176,6 +177,14 @@ module.exports = async function handler(req, res) {
     // 보안(2026-07-26 감사 A-3) — 원문 에러(err.message)를 클라이언트에 붙여
     // 내려보내지 않는다. 스토리지/DB 내부 구조가 노출된다. 상세는 서버 로그에만.
     console.error('[upload-url] error:', err);
+    // 2026-07-28 — 업로드 URL 발급 실패도 즉시 텔레그램 알림(운영자 대면이라
+    // 상세 OK). 실패해도 응답을 막지 않도록 try/catch 로 감싼다.
+    try {
+      await sendTextToTelegramSafe(
+        '🚨 업로드URL 발급 실패\nuser=' + (user && user.id || '') +
+        '\nmsg=' + String((err && err.message) || '').slice(0, 300)
+      );
+    } catch (_) { /* 알림 실패는 무시 */ }
     return res.status(500).json({
       message: 'Failed to create upload URLs. If this keeps happening, contact contact@pap-magazine.com',
       code: 'upload_url_failed',

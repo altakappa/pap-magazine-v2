@@ -3039,6 +3039,21 @@ async function submitForm(){
   })();
 
 
+  // 세션 사전검증 (2026-07-28) — 만료/무효 세션으로 업로드를 시작하면 마지막
+  // API 호출에서 401 이 터지고 pap-api.js 가 즉시 /auth 로 리다이렉트해 작성
+  // 내용·업로드가 통째로 소실된다. 오버레이를 띄우기 전에 /api/auth/me 로
+  // 세션을 먼저 확인하고, 무효면 초안을 저장한 뒤 재로그인 안내만 하고 멈춘다.
+  // (아직 오버레이·버튼 상태를 건드리기 전이라 정리할 것이 없다 → 단순 return)
+  try {
+    var _tok = localStorage.getItem('pap-token') || '';
+    var _meRes = await fetch('/api/auth/me', { headers: _tok ? {'Authorization':'Bearer '+_tok} : {} });
+    if (_meRes.status === 401 || !_tok) {
+      _savePapDraft(data);       // 텍스트 초안 저장 (이미지 File 은 저장 불가)
+      _showSessionExpired();     // 재로그인 안내 모달
+      return;
+    }
+  } catch(_) { /* 네트워크 오류면 통과시켜 기존 catch 흐름이 처리 */ }
+
   // QA #91 — surface progress through the full-screen overlay AND keep the
   // submit button disabled so a stray double-tap can't trigger a second
   // submission while the first is mid-flight.
@@ -3094,6 +3109,8 @@ async function submitForm(){
     document.getElementById('step5').style.display='none';
     document.querySelector('.step-bar').style.display='none';
     document.getElementById('submitSuccess').style.display='block';
+    // 제출 성공 → 저장된 초안 폐기 (다음 방문에서 초안 배너가 뜨지 않도록)
+    try{ localStorage.removeItem('pap-submission-draft'); }catch(_){}
     // Update timeline dates
     var today=new Date();
     document.getElementById('tlDateSubmit').textContent=today.toLocaleDateString();
@@ -3127,6 +3144,100 @@ function simulateLogin(){
   } else {
     window.location.href=(window.papLoginUrl?window.papLoginUrl('/auth'):'/auth');
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// 세션 만료 안내 · 초안 저장/복구 (2026-07-28, 서브미션 소실 재발 방지)
+// ─────────────────────────────────────────────────────────────────────
+// 세션 만료를 알리고 "다시 로그인" 버튼만 주는 커스텀 모달. confirm() 대신
+// 커스텀인 이유: 9개 언어 문구를 써야 하고, 로그인 URL 패턴을 simulateLogin
+// 과 동일하게 유지하기 위해서다. 문구는 _t() 로 조회(폴백=영어).
+function _showSessionExpired(){
+  try{ var ex=document.getElementById('_papSessionExpired'); if(ex&&ex.parentNode) ex.parentNode.removeChild(ex); }catch(_){}
+  var ov=document.createElement('div');
+  ov.id='_papSessionExpired';
+  ov.setAttribute('role','alertdialog');
+  ov.setAttribute('aria-modal','true');
+  ov.style.cssText='position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.85);padding:24px;';
+  var box=document.createElement('div');
+  box.style.cssText='max-width:420px;width:100%;background:#111;border:1px solid rgba(255,255,255,.18);padding:34px 30px;text-align:center;font-family:Montserrat,sans-serif;';
+  var h=document.createElement('h3');
+  h.textContent=_t('sessionExpiredTitle');
+  h.style.cssText='font-size:16px;font-weight:800;letter-spacing:.05em;color:#fff;margin:0 0 14px;text-transform:uppercase;';
+  var p=document.createElement('p');
+  p.textContent=_t('sessionExpiredMsg');
+  p.style.cssText='font-size:13px;line-height:1.7;color:rgba(255,255,255,.82);margin:0 0 24px;';
+  var b=document.createElement('a');
+  b.href=(window.papLoginUrl?window.papLoginUrl('/auth'):'/auth');
+  b.textContent=_t('sessionExpiredLoginBtn');
+  b.style.cssText='display:inline-block;padding:13px 34px;background:#fff;color:#000;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;text-decoration:none;cursor:pointer;';
+  box.appendChild(h);box.appendChild(p);box.appendChild(b);
+  ov.appendChild(box);
+  document.body.appendChild(ov);
+}
+
+// 텍스트 초안만 저장한다. 이미지(File 객체)는 localStorage 에 직렬화할 수
+// 없으므로 제외 — 복구 시 사용자가 다시 선택한다. data 자체가 JSON-safe
+// (모든 File 은 lookFiles/files1 전역에 따로 있고 data 에는 없음)라 그대로 담는다.
+function _savePapDraft(data){
+  try{ localStorage.setItem('pap-submission-draft', JSON.stringify({t:Date.now(), data:data})); }catch(_){}
+}
+function _papDraftGet(){
+  try{ var r=localStorage.getItem('pap-submission-draft'); if(!r) return null; var o=JSON.parse(r); return (o&&o.data)?o:null; }catch(_){ return null; }
+}
+// 단일 텍스트 필드 + 장르는 반드시 복구한다. 팀/모델/룩 크레딧은 동적 행이라
+// 복구가 복잡해 이번 범위에서는 재입력하도록 배너에서 안내한다(텍스트는 초안에
+// 저장돼 있으므로 필요 시 개발자가 확장 가능).
+function _restorePapDraft(){
+  var o=_papDraftGet(); if(!o||!o.data) return;
+  var d=o.data;
+  function setv(id,val){ var el=document.getElementById(id); if(el && typeof val==='string') el.value=val; }
+  setv('editorialTitle', d.title);
+  setv('studioName', (typeof d.studio==='string'&&d.studio) ? d.studio : d.contactName);
+  setv('contactEmail', d.contactEmail);
+  setv('studioWebsite', d.website);
+  setv('studioInsta', d.instagram);
+  setv('artistStatement', d.artistStatement);
+  setv('videoUrl', d.videoUrl);
+  if(Array.isArray(d.genre) && d.genre.length){
+    document.querySelectorAll('.genre-tag').forEach(function(g){
+      if(d.genre.indexOf(g.textContent)>-1) g.classList.add('selected');
+    });
+    selectedGenres=[];
+    document.querySelectorAll('.genre-tag.selected').forEach(function(g){ selectedGenres.push(g.textContent); });
+  }
+  try{ if(typeof _updateCharCount==='function') _updateCharCount(); }catch(_){}
+  var bar=document.getElementById('_papDraftBanner'); if(bar&&bar.parentNode) bar.parentNode.removeChild(bar);
+  try{ if(typeof window.scrollTo==='function') window.scrollTo({top:0,behavior:'smooth'}); }catch(_){}
+}
+// 초안이 있으면 폼 상단에 "이어쓰기 / 삭제" 배너를 띄운다. revise 모드에서는
+// 편집 대상과 초안이 충돌하므로 띄우지 않는다.
+function _showDraftBanner(){
+  try{ var p=new URLSearchParams(window.location.search); if(p.get('revise')) return; }catch(_){}
+  var o=_papDraftGet(); if(!o) return;
+  if(document.getElementById('_papDraftBanner')) return;
+  var bar=document.createElement('div');
+  bar.id='_papDraftBanner';
+  bar.style.cssText='max-width:800px;margin:0 auto 20px;padding:14px 18px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.06);display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;';
+  var txt=document.createElement('span');
+  txt.textContent=_t('draftBannerText');
+  txt.style.cssText='font-size:12.5px;color:rgba(255,255,255,.85);flex:1;min-width:200px;line-height:1.6;';
+  var wrap=document.createElement('div');
+  wrap.style.cssText='display:flex;gap:10px;';
+  var restore=document.createElement('button');
+  restore.type='button';
+  restore.textContent=_t('draftRestoreBtn');
+  restore.style.cssText='padding:9px 18px;background:#fff;color:#000;border:none;font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;';
+  restore.onclick=function(){ _restorePapDraft(); };
+  var discard=document.createElement('button');
+  discard.type='button';
+  discard.textContent=_t('draftDiscardBtn');
+  discard.style.cssText='padding:9px 18px;background:transparent;color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.4);font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;';
+  discard.onclick=function(){ try{localStorage.removeItem('pap-submission-draft');}catch(_){}; if(bar.parentNode) bar.parentNode.removeChild(bar); };
+  wrap.appendChild(restore);wrap.appendChild(discard);
+  bar.appendChild(txt);bar.appendChild(wrap);
+  var fa=document.getElementById('formArea');
+  if(fa && fa.parentNode) fa.parentNode.insertBefore(bar, fa);
 }
 
 // LANGUAGE (simplified - ko/en)
@@ -3356,6 +3467,25 @@ Object.keys(_PAP_TEAM_HINT_I18N).forEach(function(lang){
   if(L[lang].teamCreditsRequiredHint === undefined) L[lang].teamCreditsRequiredHint = _PAP_TEAM_HINT_I18N[lang];
 });
 
+// 세션 만료 안내 · 초안 배너 문구 (2026-07-28). _t() 로만 조회하며 data-i18n
+// 마크업을 쓰지 않으므로 9개 언어를 여기서 전부 채운다(폴백=영어, _t 내장).
+var _PAP_SESSION_DRAFT_I18N = {
+  ko:{ sessionExpiredTitle:'로그인이 만료되었어요', sessionExpiredMsg:'작성하신 내용은 저장해 두었어요. 다시 로그인하면 이어서 제출할 수 있습니다.', sessionExpiredLoginBtn:'다시 로그인', draftBannerText:'저장된 초안이 있어요 — 이어쓰기하면 텍스트가 채워집니다. 이미지와 크레딧(팀·모델·룩)은 다시 입력해 주세요.', draftRestoreBtn:'이어쓰기', draftDiscardBtn:'삭제' },
+  en:{ sessionExpiredTitle:'Your session has expired', sessionExpiredMsg:"We've saved your draft. Log in again to finish submitting.", sessionExpiredLoginBtn:'Log in again', draftBannerText:'You have a saved draft — restore it to refill the text. Please re-add images and credits (team, models, looks).', draftRestoreBtn:'Restore', draftDiscardBtn:'Discard' },
+  de:{ sessionExpiredTitle:'Ihre Sitzung ist abgelaufen', sessionExpiredMsg:'Ihr Entwurf wurde gespeichert. Melden Sie sich erneut an, um die Einreichung abzuschließen.', sessionExpiredLoginBtn:'Erneut anmelden', draftBannerText:'Sie haben einen gespeicherten Entwurf — beim Wiederherstellen werden die Texte eingefügt. Bitte Bilder und Credits (Team, Models, Looks) erneut hinzufügen.', draftRestoreBtn:'Wiederherstellen', draftDiscardBtn:'Verwerfen' },
+  it:{ sessionExpiredTitle:'La tua sessione è scaduta', sessionExpiredMsg:'Abbiamo salvato la tua bozza. Accedi di nuovo per completare l’invio.', sessionExpiredLoginBtn:'Accedi di nuovo', draftBannerText:'Hai una bozza salvata — ripristinandola verranno reinseriti i testi. Aggiungi di nuovo immagini e crediti (team, modelli, look).', draftRestoreBtn:'Ripristina', draftDiscardBtn:'Elimina' },
+  fr:{ sessionExpiredTitle:'Votre session a expiré', sessionExpiredMsg:'Nous avons enregistré votre brouillon. Reconnectez-vous pour terminer l’envoi.', sessionExpiredLoginBtn:'Se reconnecter', draftBannerText:'Vous avez un brouillon enregistré — le restaurer remplit à nouveau le texte. Veuillez rajouter les images et les crédits (équipe, mannequins, looks).', draftRestoreBtn:'Restaurer', draftDiscardBtn:'Supprimer' },
+  es:{ sessionExpiredTitle:'Tu sesión ha expirado', sessionExpiredMsg:'Hemos guardado tu borrador. Inicia sesión de nuevo para completar el envío.', sessionExpiredLoginBtn:'Iniciar sesión de nuevo', draftBannerText:'Tienes un borrador guardado — al restaurarlo se rellenará el texto. Vuelve a añadir las imágenes y los créditos (equipo, modelos, looks).', draftRestoreBtn:'Restaurar', draftDiscardBtn:'Descartar' },
+  ja:{ sessionExpiredTitle:'ログインの有効期限が切れました', sessionExpiredMsg:'下書きを保存しました。再度ログインすると続けて提出できます。', sessionExpiredLoginBtn:'再度ログイン', draftBannerText:'保存された下書きがあります — 復元するとテキストが再入力されます。画像とクレジット（チーム・モデル・ルック）は再度入力してください。', draftRestoreBtn:'復元', draftDiscardBtn:'削除' },
+  zh:{ sessionExpiredTitle:'登录已过期', sessionExpiredMsg:'我们已保存您的草稿。请重新登录以完成提交。', sessionExpiredLoginBtn:'重新登录', draftBannerText:'您有已保存的草稿 — 恢复后将重新填入文字。请重新添加图片和署名（团队、模特、造型）。', draftRestoreBtn:'恢复', draftDiscardBtn:'删除' },
+  ru:{ sessionExpiredTitle:'Сессия истекла', sessionExpiredMsg:'Мы сохранили ваш черновик. Войдите снова, чтобы завершить отправку.', sessionExpiredLoginBtn:'Войти снова', draftBannerText:'У вас есть сохранённый черновик — при восстановлении текст заполнится заново. Пожалуйста, снова добавьте изображения и кредиты (команда, модели, образы).', draftRestoreBtn:'Восстановить', draftDiscardBtn:'Удалить' }
+};
+Object.keys(_PAP_SESSION_DRAFT_I18N).forEach(function(lang){
+  if(!L[lang]) L[lang] = {};
+  var ext=_PAP_SESSION_DRAFT_I18N[lang];
+  Object.keys(ext).forEach(function(k){ if(L[lang][k] === undefined) L[lang][k] = ext[k]; });
+});
+
 function _applyTerms(){
   // Swap the Articles 1–12 body in #termsBox <ol> to match _curLang.
   // _PAPTerms lives in submission-terms.js. Silently no-op if unavailable.
@@ -3504,6 +3634,8 @@ document.addEventListener('DOMContentLoaded',function(){
     // 목록을 로드하지 않고, 안내 링크만 남긴다(_showManageLink).
     _showManageLink();
     _prefillFromMoodboard();
+    // 저장된 초안이 있으면 상단에 이어쓰기/삭제 배너 표시 (2026-07-28)
+    _showDraftBanner();
   }
   // Real-time validation: blur + input handlers
   ['editorialTitle','studioName','contactEmail','studioWebsite','studioInsta','artistStatement'].forEach(function(fid){

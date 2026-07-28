@@ -16,6 +16,7 @@ const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { normalizeGenres } = require('../_lib/submissionCategories');
 const { classifySubmissionType, looksMissingCredit } = require('../_lib/submissionType');
+const { sendTextToTelegramSafe } = require('../_lib/telegram');
 
 const BUCKET = 'submissions';
 
@@ -212,13 +213,22 @@ module.exports = async function handler(req, res) {
         });
       } catch (_) { console.error('Create submission error (raw):', error); }
 
-      const parts = [];
-      if (error && error.message) parts.push(String(error.message));
-      if (error && error.code) parts.push('code=' + error.code);
-      if (error && error.details) parts.push(String(error.details).slice(0, 120));
-      const hint = parts.join(' | ').slice(0, 300);
+      // 2026-07-28 — 제출 저장 실패를 즉시 텔레그램으로 알린다. Vercel 로그가
+      // 24h 뒤 사라지기 전에 원인(세션 만료·DB 제약 등)을 잡기 위한 운영자
+      // 대면 알림이라 상세를 실어도 된다(회원 응답에는 여전히 원문 미노출).
+      // 실패해도 응답을 막지 않도록 try/catch 로 감싼다.
+      try {
+        await sendTextToTelegramSafe(
+          '🚨 서브미션 저장 실패\nuser=' + (user && user.id || '') +
+          '\ncode=' + (error && error.code || '') +
+          '\nmsg=' + String((error && error.message) || '').slice(0, 300)
+        );
+      } catch (_) { /* 알림 실패는 무시 */ }
+
+      // 회원 응답: 원문 노출 금지 — 일반 안내 + 분류용 code 만.
       return res.status(500).json({
-        message: 'Failed to create submission' + (hint ? ` — ${hint}` : ''),
+        message: 'Failed to create submission. If this keeps happening, contact contact@pap-magazine.com',
+        code: 'create_failed',
       });
     }
   }
