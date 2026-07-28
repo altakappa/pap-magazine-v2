@@ -275,7 +275,7 @@
         }
         h += '</div>';
       } else {
-        h += '<div class="pap-rating-me pap-login-hint">'+_papSocT('loginToRate')+' · <a href="'+_loginUrl()+'">'+_papSocT('login')+'</a></div>';
+        h += '<div class="pap-rating-me pap-login-hint">'+_papSocT('loginToRate')+' · <a rel="nofollow" href="'+_loginUrl()+'">'+_papSocT('login')+'</a></div>';
       }
       h += '</div>';
 
@@ -384,7 +384,7 @@
         h += '  <button class="pap-comment-submit">'+_papSocT('submit')+'</button>';
         h += '</div>';
       } else {
-        h += '<div class="pap-login-hint">'+_papSocT('loginToComment')+' · <a href="'+_loginUrl()+'">'+_papSocT('login')+'</a></div>';
+        h += '<div class="pap-login-hint">'+_papSocT('loginToComment')+' · <a rel="nofollow" href="'+_loginUrl()+'">'+_papSocT('login')+'</a></div>';
       }
 
       h += '<div class="pap-comments-list">';

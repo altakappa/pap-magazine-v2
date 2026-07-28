@@ -3,6 +3,16 @@
 # Legacy alias www.papkorea.com 301-redirects to the canonical domain at the
 # Vercel layer, so crawlers that follow the redirect will end up here and
 # never index the alias.
+#
+# 2026-07-28 구조 수정 (GSC 'NOINDEX 제외 1,807' 원인):
+# robots.txt 규격상 크롤러는 자기 이름과 일치하는 User-agent 그룹이 있으면
+# '그 그룹만' 읽고 * 그룹의 Disallow 를 전부 무시한다. 기존 파일은
+# Googlebot/Bingbot/GPTBot 등 이름 그룹에 "Allow: /"만 있어서, 주요 봇 전부가
+# /auth·/admin·/api/ 차단을 무시하고 크롤링했다 (구글이 /auth?return=... 을
+# 1,807건 수집한 원인). 해결: 이름 그룹을 전부 제거하고 * 그룹 하나로 통일.
+# 허용(Allow: /)은 robots 기본값이라 이름 그룹 없이도 모든 봇이 허용된다.
+# AI 정책(2026-07-16, 도메니코 승인: 검색·인용·학습 봇 모두 허용)도 * 그룹이
+# 그대로 보장하며, 관리자/회원 영역 차단이 이제 '모든' 봇에 실제로 적용된다.
 
 User-agent: *
 Allow: /
@@ -25,91 +35,6 @@ Disallow: /api/
 # Backup files (legacy snapshots — exclude from index)
 Disallow: /*.backup$
 Disallow: /*.bak$
-
-# Allow major search engines explicit access (faster crawl budget allocation)
-User-agent: Googlebot
-Allow: /
-Crawl-delay: 0
-
-User-agent: Bingbot
-Allow: /
-Crawl-delay: 0
-
-User-agent: Naverbot
-Allow: /
-Crawl-delay: 0
-
-User-agent: Yeti
-Allow: /
-Crawl-delay: 0
-
-User-agent: Daumoa
-Allow: /
-Crawl-delay: 0
-
-User-agent: ZumBot
-Allow: /
-Crawl-delay: 0
-
-# ---------------------------------------------------------------
-# AI 정책 (2026-07): "검색·인용"과 "학습 수집"을 분리한다.
-# AI 검색 봇은 출처 링크와 함께 PAP 를 인용해 트래픽을 보내므로 허용.
-# 대량 학습 스크레이퍼는 계속 차단 (콘텐츠 권리 보호).
-# ---------------------------------------------------------------
-
-# AI 검색·답변 인용 (허용 — 유입 채널)
-User-agent: OAI-SearchBot
-Allow: /
-
-User-agent: ChatGPT-User
-Allow: /
-
-User-agent: PerplexityBot
-Allow: /
-
-User-agent: Perplexity-User
-Allow: /
-
-User-agent: Claude-SearchBot
-Allow: /
-
-User-agent: Claude-User
-Allow: /
-
-User-agent: DuckAssistBot
-Allow: /
-
-# Apple (Siri·Spotlight 추천)
-User-agent: Applebot
-Allow: /
-
-# AI 학습 스크레이퍼 — 2026-07-16 정책 전환 (도메니코 승인): 차단 → 허용.
-# 근거(AEO/GEO 교육자료): 차기 모델의 학습 데이터에 브랜드가 각인되는 것이
-# 생성형 검색 시대의 최대 장기 레버리지 — 링크 없는 언급도 복리로 작동한다.
-# 공개 웹 콘텐츠의 학습 활용을 허용하되, 관리자/회원 영역은 위 Disallow 로 계속 차단.
-User-agent: GPTBot
-Allow: /
-
-User-agent: ClaudeBot
-Allow: /
-
-User-agent: CCBot
-Allow: /
-
-User-agent: anthropic-ai
-Allow: /
-
-User-agent: Google-Extended
-Allow: /
-
-User-agent: Applebot-Extended
-Allow: /
-
-User-agent: Bytespider
-Allow: /
-
-User-agent: meta-externalagent
-Allow: /
 
 Sitemap: https://www.pap-magazine.com/sitemap-index.xml
 Sitemap: https://www.pap-magazine.com/sitemap.xml
