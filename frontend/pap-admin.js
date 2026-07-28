@@ -9168,8 +9168,18 @@ async function papInstaDownloadAll(){
   }
   _papInstaSetStatus('처리 중 0 / ' + urls.length + '...');
   var globalOpts = _papInstaReadOpts();
+  // 2026-07-28 (도메니코 요청) — ZIP 이름 = 에디토리얼 제목 + 날짜(DDMMYYYY).
+  // 예: "Gimme Gummy 28072026". 제목은 커버 메타(postTitle)에서 읽고, 파일시스템
+  // 금지문자만 제거(공백·한글 유지). 제목이 비면 기존 'pap-instagram' 폴백.
+  var _zMeta = (typeof _papCoverReadFormMeta === 'function') ? _papCoverReadFormMeta() : null;
+  var _zTitle = (_zMeta && _zMeta.title) ? String(_zMeta.title).replace(/[\\/:*?"<>|]/g, '').trim() : '';
+  var _zNow = new Date();
+  var _zDate = String(_zNow.getDate()).padStart(2, '0')
+             + String(_zNow.getMonth() + 1).padStart(2, '0')
+             + _zNow.getFullYear();
+  var _zipBase = (_zTitle ? _zTitle + ' ' : 'pap-instagram ') + _zDate;
   var zip = new JSZip();
-  var folder = zip.folder('pap-instagram-' + (new Date().toISOString().slice(0,10)));
+  var folder = zip.folder(_zipBase);
   var canvas = document.createElement('canvas');
   canvas.width = globalOpts.W; canvas.height = globalOpts.H;
   var ok = 0, failed = 0;
@@ -9218,7 +9228,7 @@ async function papInstaDownloadAll(){
   var url = URL.createObjectURL(zipBlob);
   var a = document.createElement('a');
   a.href = url;
-  a.download = 'pap-instagram-' + (new Date().toISOString().slice(0,10)) + '.zip';
+  a.download = _zipBase + '.zip';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(function(){ URL.revokeObjectURL(url); }, 5000);
   _papInstaSetStatus('✓ ZIP 다운로드 완료 (성공 ' + ok + '장, 실패 ' + failed + '장)');
