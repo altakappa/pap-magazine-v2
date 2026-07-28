@@ -175,33 +175,52 @@ module.exports = async function handler(req, res) {
     res.setHeader('X-Robots-Tag', 'index, follow, max-image-preview:large');
 
     /* 2026-07-23 (Ahrefs Tip #3: 내부 링크로 중요 페이지 강화) — 아티클 상세
-       본문 내 "More Articles" 내부링크 블록. 이전/다음(발행일 체인) + 같은
-       카테고리 최신 4건(없으면 전체 최신 4건). 에디토리얼과 동일 패턴,
-       렌더러가 record.more_articles 를 /article/ 링크로 렌더. best-effort. */
+       본문 내 "More Articles" 내부링크 블록. 이전/다음(발행일 체인) +
+       같은 카테고리 발행일 인접(앞 2 + 뒤 2).
+
+       2026-07-27 변경 (내부링크 그래프 개선):
+       기존 related 는 "카테고리 최신 4건 고정"이라 최신 4개 기사만 대량
+       인바운드를 받고 오래된 기사는 prev/next 2개뿐이었다 → 색인 우선순위가
+       낮아 미색인의 원인(서치콘솔 크롤됨-미색인 다수 = 오래된 기사). related 를
+       "발행일 인접(앞2+뒤2)"으로 바꿔 오래된 기사끼리도 상호 연결 →
+       토픽 클러스터 밀도↑, 오래된 기사 인바운드 2→6. 렌더러 형식(4건)은 유지. */
     try {
       const pd = data.published_date || '1970-01-01';
       const ca = data.created_at || '1970-01-01T00:00:00Z';
       const sel = 'title, slug, id, published_date, thumbnail_url, hero_image_url, category';
-      const [prevR, nextR, relR] = await Promise.all([
+      const catFilter = (q) => data.category ? q.eq('category', data.category) : q;
+      const [prevR, nextR, relPrevR, relNextR] = await Promise.all([
         supabaseAdmin.from('articles').select(sel).eq('status','published')
           .or(`published_date.lt.${pd},and(published_date.eq.${pd},created_at.lt.${ca})`)
           .order('published_date',{ascending:false}).order('created_at',{ascending:false}).limit(1),
         supabaseAdmin.from('articles').select(sel).eq('status','published')
           .or(`published_date.gt.${pd},and(published_date.eq.${pd},created_at.gt.${ca})`)
           .order('published_date',{ascending:true}).order('created_at',{ascending:true}).limit(1),
-        (data.category
-          ? supabaseAdmin.from('articles').select(sel).eq('status','published')
-              .neq('id', data.id).eq('category', data.category)
-              .order('published_date',{ascending:false}).limit(4)
-          : supabaseAdmin.from('articles').select(sel).eq('status','published')
-              .neq('id', data.id).order('published_date',{ascending:false}).limit(4)),
+        // 같은 카테고리, 발행일이 이 기사보다 앞선 최근 2건
+        catFilter(supabaseAdmin.from('articles').select(sel).eq('status','published')
+          .neq('id', data.id).lt('published_date', pd))
+          .order('published_date',{ascending:false}).limit(2),
+        // 같은 카테고리, 발행일이 이 기사보다 뒤인 가까운 2건
+        catFilter(supabaseAdmin.from('articles').select(sel).eq('status','published')
+          .neq('id', data.id).gt('published_date', pd))
+          .order('published_date',{ascending:true}).limit(2),
       ]);
       const _norm = a => a && ({ title: a.title, slug: a.slug, id: a.id,
         thumbnail: a.thumbnail_url || a.hero_image_url || '' });
+      // 인접(앞2+뒤2)을 합쳐 4건. 카테고리가 희소해 4건 미만이면 있는 만큼
+      // (prev/next 체인이 최소 연결을 보장하므로 고아는 발생하지 않는다).
+      let relAdj = [...(relPrevR.data || []), ...(relNextR.data || [])];
+      if (relAdj.length < 4) {
+        const fill = await catFilter(supabaseAdmin.from('articles').select(sel)
+          .eq('status','published').neq('id', data.id))
+          .order('published_date',{ascending:false}).limit(6);
+        const seen = new Set(relAdj.map(a => a.id));
+        for (const a of (fill.data || [])) { if (!seen.has(a.id)) { relAdj.push(a); seen.add(a.id); } }
+      }
       data.more_articles = {
         prev: _norm(prevR.data && prevR.data[0]) || null,
         next: _norm(nextR.data && nextR.data[0]) || null,
-        related: (relR.data || []).filter(a => a && a.id !== data.id).slice(0,4).map(_norm),
+        related: relAdj.filter(a => a && a.id !== data.id).slice(0,4).map(_norm),
       };
     } catch (_) { /* 내부링크 블록은 best-effort */ }
 
