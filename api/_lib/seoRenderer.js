@@ -653,13 +653,27 @@ function renderSeoHtml(kind, record, opts) {
       ? bodyForWordCount.split(' ').filter(Boolean).length
       : undefined;
     const imgCreditText = contributors.length ? contributors.join(', ') : SITE_NAME;
+    // 2026-07-28 — GSC '이미지 메타데이터' 경고 3종 해소:
+    // creator / license / acquireLicensePage 누락. 색인을 막는 오류는 아니지만
+    // 구글 이미지 검색의 '라이선스 가능' 배지와 크리에이터 크레딧 노출 기회를
+    // 놓치고 있었다(화보가 자산인 매체라 실익이 크다).
+    //   creator            — 실제 기여자(포토그래퍼 등), 없으면 매체명
+    //   license            — 이용약관(이미지 사용 조건이 명시된 페이지)
+    //   acquireLicensePage — 사용 문의 경로
+    const imgCreator = contributors.length
+      ? contributors.map(name => ({ '@type': 'Person', name }))
+      : { '@type': 'Organization', name: SITE_NAME };
     const imageObjects = allImages.map((u, i) => ({
       '@type': 'ImageObject',
       url: u,
+      contentUrl: u,
       caption: i === 0 ? `${titleKo} — Cover` : `${titleKo} — Look ${i}`,
+      creator: imgCreator,
       creditText: imgCreditText,
       copyrightNotice: `© ${SITE_NAME}`,
       copyrightHolder: { '@type': 'Organization', name: SITE_NAME },
+      license: SITE + '/terms',
+      acquireLicensePage: SITE + '/contact',
       representativeOfPage: i === 0 ? true : undefined
     }));
 
