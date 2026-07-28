@@ -742,6 +742,11 @@ function navigateWithInterstitial(url){
     <div class="form-section" id="step4">
       <div class="section-title" data-i18n="sectionLookCredits">LOOK CREDITS</div>
       <p style="font-size:11px;color:rgba(255,255,255,.55);margin-bottom:20px;line-height:1.8" data-i18n="lookCreditsDesc">Upload images for each look and enter brand/accessory credits. Each look needs at least one image; fewer than 4 looks is accepted as a paid submission (€345) — you can still submit and PAP will follow up. Drag thumbnails to reorder. You can also add additional images below.</p>
+      <!-- 2026-07-28 submission-type guidance mirrored into the LOOK step so the
+           user sees €345 few-looks / €720 branded in real time as they edit looks.
+           Same copy/logic as #submissionTypeNotice (step 5); populated by
+           _renderSubmissionTypeNotice(). Hidden when type = free. -->
+      <div id="lookTypeNotice" style="display:none;font-size:12px;line-height:1.7;color:#ffb347;margin-bottom:20px;padding:12px 14px;border:1px solid rgba(255,179,71,.4);background:rgba(255,179,71,.06);border-radius:2px"></div>
       <div class="error-summary" id="errSummary4"></div>
       <div id="lookList"></div>
       <button class="add-btn" onclick="addLook()" data-i18n="btnAddLook">+ Add Look</button>
@@ -2003,8 +2008,9 @@ function goStep(n){
   // Update cover image selector when entering look step
   if(n===4) updateCoverSelector();
   // Submission-type guidance (€345 few-looks / €720 branded) — recompute on
-  // entering the final step so the user sees it before agreeing to terms.
-  if(n===5 && typeof _renderSubmissionTypeNotice==='function') _renderSubmissionTypeNotice();
+  // entering the LOOK step (real-time #lookTypeNotice) and the final step
+  // (#submissionTypeNotice) so the user sees it before agreeing to terms.
+  if((n===4||n===5) && typeof _renderSubmissionTypeNotice==='function') _renderSubmissionTypeNotice();
 }
 
 // ADD TEAM ROW — QA #88: link column is single-select (Instagram OR Website)
@@ -2133,14 +2139,19 @@ function _papClassifySubmission(){
   return { submissionType:type, realLookCount:realLookCount, branded:branded };
 }
 function _renderSubmissionTypeNotice(){
-  var box=document.getElementById('submissionTypeNotice');
-  if(!box) return;
+  // Same classification/copy drives two boxes: the LOOK step (#lookTypeNotice,
+  // real-time as looks are edited) and the final step (#submissionTypeNotice).
   var r=_papClassifySubmission();
   var key = r.submissionType==='branded' ? 'submissionTypeBranded'
           : (r.submissionType==='paid_few_looks' ? 'submissionTypeFewLooks' : null);
-  if(!key){ box.style.display='none'; box.innerHTML=''; return; }
-  box.textContent=_t(key);
-  box.style.display='block';
+  var txt = key ? _t(key) : '';
+  ['submissionTypeNotice','lookTypeNotice'].forEach(function(id){
+    var box=document.getElementById(id);
+    if(!box) return;
+    if(!key){ box.style.display='none'; box.innerHTML=''; return; }
+    box.textContent=txt;
+    box.style.display='block';
+  });
 }
 
 // ─── PER-LOOK IMAGE AUDIT (Domenico-confirmed 2026-07-19)
@@ -2208,6 +2219,7 @@ function addLook(){
   zone.addEventListener('dragover',function(e){e.preventDefault();zone.classList.add('dragover');});
   zone.addEventListener('dragleave',function(){zone.classList.remove('dragover');});
   zone.addEventListener('drop',function(e){e.preventDefault();zone.classList.remove('dragover');addLookFiles(n,e.dataTransfer.files);});
+  if(typeof _renderSubmissionTypeNotice==='function') _renderSubmissionTypeNotice();
 }
 
 function itemOptions(){
@@ -2238,7 +2250,7 @@ async function addLookFiles(n,fl){
     queue.push(fl[i]);
     checkImageDimensions(fl[i]);
   }
-  if(queue.length===0){ renderLookThumbs(n); updateCoverSelector(); return; }
+  if(queue.length===0){ renderLookThumbs(n); updateCoverSelector(); if(typeof _renderSubmissionTypeNotice==='function') _renderSubmissionTypeNotice(); return; }
   function _accept(f){
     if(f && f.size > TARGET){
       if(typeof PAP!=='undefined') PAP.ui.toast(_t('toastLookImgTooBig2MB',{name:f.name||'image'}),'error');
@@ -2257,6 +2269,7 @@ async function addLookFiles(n,fl){
   }
   renderLookThumbs(n);
   updateCoverSelector();
+  if(typeof _renderSubmissionTypeNotice==='function') _renderSubmissionTypeNotice();
 }
 
 function checkImageDimensions(file){
@@ -2275,6 +2288,7 @@ function removeLookFile(n,idx){
   lookFiles[n].splice(idx,1);
   renderLookThumbs(n);
   updateCoverSelector();
+  if(typeof _renderSubmissionTypeNotice==='function') _renderSubmissionTypeNotice();
 }
 
 // Drag and drop reorder state
@@ -2349,6 +2363,7 @@ function removeLook(n){
   var el=document.getElementById('look'+n);
   if(el) el.remove();
   delete lookFiles[n];
+  if(typeof _renderSubmissionTypeNotice==='function') _renderSubmissionTypeNotice();
 }
 
 function addLookItem(lookNum){
@@ -2357,7 +2372,25 @@ function addLookItem(lookNum){
   item.className='look-item';
   item.innerHTML='<select class="look-select">'+itemOptions()+'</select><input class="look-input" placeholder="Brand Name"><input class="look-input" placeholder="@instagram">';
   items.appendChild(item);
+  if(typeof _renderSubmissionTypeNotice==='function') _renderSubmissionTypeNotice();
 }
+
+// Real-time submission-type notice while editing look credits. Event delegation
+// on #lookList (attached once) so brand/instagram edits re-classify live. Cheap
+// enough that no debounce is needed.
+(function(){
+  var list=document.getElementById('lookList');
+  if(!list || list._papTypeNoticeBound) return;
+  list._papTypeNoticeBound=true;
+  var handler=function(e){
+    var t=e.target;
+    if(t && t.classList && (t.classList.contains('look-input')||t.classList.contains('look-select'))){
+      if(typeof _renderSubmissionTypeNotice==='function') _renderSubmissionTypeNotice();
+    }
+  };
+  list.addEventListener('input', handler);
+  list.addEventListener('change', handler);
+})();
 
 // Initialize with 4 looks (minimum required)
 addLook();addLook();addLook();addLook();
