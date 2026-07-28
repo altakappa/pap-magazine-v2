@@ -176,7 +176,7 @@ async function fetchNaverNews() {
 
 const {
   keywords, clusterEvents, clusterCore, sameEvent, hotScore, HOT_MIN,
-  titleKey, stripSource, isOffTopic,
+  titleKey, stripSource, isOffTopic, isOnTarget,
 } = require('../_lib/celebDedup');
 
 
@@ -273,6 +273,11 @@ module.exports = withCronGuard('celeb-watch', async function handler(req, res) {
        교차검증·알림 양쪽에서 아예 배제한다. */
     const beforeTopic = items.length;
     items = items.filter(i => !isOffTopic(i.title));
+    // 2026-07-27 도메니코 지시 — "메시지가 너무 많이 오니 케이팝 셀럽 혹은
+    // 10~20대 타깃 소식으로 축소". 빼는 필터(isOffTopic)만으로는 중년 배우 예능·
+    // 기업 협업·백화점 팝업·e스포츠까지 남아 하루 수십 건이 됐다(실측 24h).
+    // 들이는 관문을 걸어 타깃 신호가 있는 소식만 남긴다.
+    items = items.filter(i => isOnTarget(i.title));
     const droppedOffTopic = beforeTopic - items.length;
 
     /* 3) 교차 검증 클러스터링 */

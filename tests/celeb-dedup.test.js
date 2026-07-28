@@ -16,7 +16,7 @@
 
 const {
   keywords, canonicalize, clusterEvents, clusterCore, sameEvent, hotScore, HOT_MIN,
-  decodeHtml, stripSource, titleKey, isOffTopic, STOP,
+  decodeHtml, stripSource, titleKey, isOffTopic, STOP, isOnTarget,
 } = require('../api/_lib/celebDedup');
 
 let pass = 0, fail = 0;
@@ -346,6 +346,33 @@ ok('기업 실적 PR 거부', isOffTopic('아모레퍼시픽, 3분기 영업이�
 ok('셀럽 시상식은 계속 통과 (그래미)', !isOffTopic('BTS 정국, 그래미 후보 지명'));
 ok('셀럽 시상식은 계속 통과 (아카데미)', !isOffTopic('블랙핑크 제니, 아카데미 시상식 참석'));
 ok('패션 하우스 인사는 계속 통과', !isOffTopic('샤넬, 신임 아티스틱 디렉터 선임'));
+
+/* === 2026-07-27 — 타깃 관문 (케이팝·10~20대 소식만) ==================
+   도메니코: "메시지가 너무 많이 오니 케이팝 셀럽 혹은 10~20대 타깃 소식으로 축소."
+   아래 케이스는 전부 지난 24시간 실제 발송분에서 뽑았다. */
+section('isOnTarget — 케이팝·10~20대 관문');
+// 통과해야 하는 것
+[
+  '아이콘 구준회, 내달 11일 현역 입대',
+  '태민, 서울·미주·남미 12개 도시 월드투어 1차 라인업',
+  '아이브 장원영, 비현실적 바비 인형 비주얼 [N화보]',
+  '“어도어가 뉴진스 하니 비자 정보 유출했다”…경찰 고발',
+  '빅뱅·블랙핑크·베이비몬스터까지…YG가 만든 K팝 공연의 역사',
+  '버추얼 아이돌 새 문법…비그릿츠, 데뷔 스케일부터 다르다!',
+].forEach(t => ok('타깃 통과: ' + t.slice(0, 18), isOnTarget(t) === true));
+// 잘라야 하는 것 (중년 배우 예능·기업 협업·e스포츠·웹툰 등)
+[
+  '‘라스’ 박지현, 홍어 손질만 6만 마리',
+  'KB국민은행, 김남길 주연 기업금융 드라마 조회수 400만 회 돌파',
+  'T1 홈그라운드, 8월 14일·16일 홈 좌석 전석 매진 달성',
+  "천계영 대표작 '언플러그드 보이'…30년 만에 웹툰으로",
+  '최수종 하희라와 결혼 33년 간 한 번도 안 싸워',
+  "신슬기, '꽃의 비밀'로 연극 데뷔…첫 무대 도전",
+  "[공식] 박정민, 이번엔 '상남자'다..김희원 연출작 컴백",
+].forEach(t => ok('타깃 제외: ' + t.slice(0, 18), isOnTarget(t) === false));
+// 부분일치 사고 방지 — '진'(매진·진아름)·'ive'(drive) 같은 짧은 토큰
+ok('부분일치 없음: 매진(진) 오탐 방지', isOnTarget('야구 경기 전석 매진 달성') === false);
+ok('부분일치 없음: drive 안의 ive 오탐 방지', isOnTarget('Test drive review') === false);
 
 /* ---------------------------------------------------------------- */
 console.log('\npassed: ' + pass + '   failed: ' + fail);
