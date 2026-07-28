@@ -71,18 +71,24 @@ async function fetchImageBuffer(url) {
 
 // 이미지 URL 목록 → (로고 합성된) JPEG 버퍼 목록.
 // 개별 이미지가 실패하면 그 이미지만 건너뛴다(전체는 계속).
-async function prepareImageBuffers(urls) {
+async function prepareImageBuffers(urls, opts) {
   const brand = BRAND_ON();
+  // 커버(첫 장)는 로고를 얹지 않는다 — 2026-07-28 도메니코 지시.
+  // 커버 이미지는 이미 매거진 표지 디자인(PAP 로고·타이틀)이 들어간 완성본이라
+  // 하단 로고를 또 합성하면 표지 디자인을 가린다. 갤러리 컷에만 로고를 얹는다.
+  const skipFirst = !!(opts && opts.skipBrandOnFirst);
   let logo = null;
   if (brand) {
     try { logo = await getTrimmedLogo(); }
     catch (e) { console.warn('[telegram] 로고 로드 실패 → 원본 전송으로 전환:', e && e.message); }
   }
   const buffers = [];
-  for (const url of urls) {
+  for (let i = 0; i < urls.length; i++) {
+    const url = urls[i];
+    const noBrand = skipFirst && i === 0;
     try {
       const raw = await fetchImageBuffer(url);
-      if (brand && logo) {
+      if (brand && logo && !noBrand) {
         try { buffers.push(await brandImageBuffer(raw, logo)); }
         catch (e) { console.warn('[telegram] 합성 실패 → 원본 사용:', url, e && e.message); buffers.push(raw); }
       } else {
@@ -132,7 +138,12 @@ async function sendEditorialToTelegram(ed) {
   const urls = collectImageUrls(ed);
   if (!urls.length) return { sent: 0, skipped: 'no_images' };
 
-  const buffers = await prepareImageBuffers(urls);
+  // collectImageUrls 는 cover_image 를 항상 맨 앞에 넣는다. 커버가 실제로 있을
+  // 때만 첫 장 로고 합성을 건너뛴다(커버가 없으면 첫 장은 갤러리 컷이므로 합성).
+  const hasCover = !!(ed && typeof ed.cover_image === 'string'
+    && /^https?:\/\//i.test(ed.cover_image.trim())
+    && urls[0] === ed.cover_image.trim());
+  const buffers = await prepareImageBuffers(urls, { skipBrandOnFirst: hasCover });
   if (!buffers.length) return { sent: 0, skipped: 'no_usable_images' };
 
   const caption = buildCaption(ed);
