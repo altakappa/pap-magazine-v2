@@ -815,8 +815,9 @@ window._papDownloadLogoZip = window._papDownloadLogoZip || async function(btn){
 
   // 2) 각 갤러리 이미지를 합성.
   // QA #278 — 원본 비율 그대로 유지. 4:5 강제 crop 제거 (피사체 잘림 방지).
-  // 캔버스 크기 = 원본 크기 (단, 너무 크면 한 변 최대 2000px로 제한).
-  var MAX_DIM = 2000;
+  // 출력 규격 — 관리자 '전체 ZIP'과 동일한 4:5 + 로고. 크기는 아래 루프에서
+  // 원본 기준으로 계산(HD, 상한 2160×2700 / 하한 1080×1350).
+  // 로고 기본값은 관리자 슬라이더 기본값과 같은 값으로 맞춰져 있다.
   var LOGO_PCT = 15, PAD_PCT = 1, ALPHA = 0.85;
   var zip = new JSZip();
   var ok = 0, failed = 0;
@@ -838,22 +839,33 @@ window._papDownloadLogoZip = window._papDownloadLogoZip || async function(btn){
         };
         im.src = url;
       });
-      // 원본 비율 유지 + 한 변 최대 2000px.
+      // 2026-07-28 (도메니코 지시) — 회원 다운로드를 관리자 '전체 ZIP'과 같은
+      // 규격으로 맞추되 해상도는 HD 로 유지한다.
+      //   · 구도: 관리자 _papInstaCompositeOne 과 동일한 4:5 cover-crop
+      //     (scale = max(W/iw, H/ih), 중앙 정렬) + 같은 로고 기본값(15%/1%/85%).
+      //   · 해상도: 관리자 ZIP 의 1080×1350 은 인스타 업로드 규격일 뿐이라
+      //     그대로 쓰면 화질이 떨어진다. 원본에서 잘라낼 수 있는 최대 4:5 영역을
+      //     구해 그 크기로 렌더하고(업스케일 금지) 상한 2160×2700, 하한
+      //     1080×1350 을 둔다 → 관리자 ZIP 과 같은 그림, 최대 2배 해상도.
+      // ※ QA #278 은 피사체 잘림을 우려해 4:5 crop 을 뺐던 이력이 있다. 이번엔
+      //   '관리자 ZIP 과 동일한 결과물' 요구가 우선이라 crop 을 되살린다.
+      //   잘림이 문제가 되면 이 블록만 되돌리면 된다.
       var iw = srcImg.naturalWidth, ih = srcImg.naturalHeight;
-      var W = iw, H = ih;
-      if (W > MAX_DIM || H > MAX_DIM){
-        var ratio = MAX_DIM / Math.max(W, H);
-        W = Math.round(W * ratio);
-        H = Math.round(H * ratio);
-      }
+      var AR = 4 / 5;                       // 가로/세로
+      // 원본에서 확보 가능한 최대 4:5 박스 (업스케일 없이).
+      var boxW = (iw / ih > AR) ? ih * AR : iw;
+      var W = Math.round(Math.max(1080, Math.min(2160, boxW)));
+      var H = Math.round(W / AR);           // = W * 1.25
       var canvas = document.createElement('canvas');
       canvas.width = W; canvas.height = H;
       var ctx = canvas.getContext('2d');
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
       ctx.clearRect(0, 0, W, H);
-      // 원본을 캔버스 전체로 그림 (비율 유지, crop 없음).
-      ctx.drawImage(srcImg, 0, 0, W, H);
+      // cover-crop — 관리자 합성과 동일 수식(중앙 정렬, 기본 배율 100%).
+      var _scale = Math.max(W / iw, H / ih);
+      var _dw = iw * _scale, _dh = ih * _scale;
+      ctx.drawImage(srcImg, (W - _dw) / 2, (H - _dh) / 2, _dw, _dh);
       // 로고 합성 (너비의 LOGO_PCT% 기준, 하단 PAD_PCT% 여백).
       var logoW = W * (LOGO_PCT / 100);
       var logoH = logoW * (logo.naturalHeight / logo.naturalWidth);
