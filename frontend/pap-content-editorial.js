@@ -505,8 +505,16 @@ window._papCheckDownloadPerm = window._papCheckDownloadPerm || function(type, id
   if (window._papDlPermCache[key]) return window._papDlPermCache[key];
   var p = new Promise(function(resolve){
     try {
-      var token = (typeof getToken === 'function') ? getToken() :
-                  (window.localStorage && localStorage.getItem('token')) || '';
+      // 2026-07-28 수정 — 토큰 조회가 깨져 있어 유료 회원도 다운로드를 못 받았다.
+      //   · getToken() 은 pap-api.js 의 클로저 내부 함수라 공개 사이트에서 전역이 아니다
+      //     (전역 getToken 은 pap-admin.js 에만 존재 → 관리자 페이지 전용).
+      //   · 폴백 키도 'token' 이었는데 실제 저장 키는 'pap-token' 이다.
+      // 결과: token 이 항상 빈 값 → 서버 권한 조회(/api/downloads/check)에 닿지도 못하고
+      // guest 로 떨어져 스탠다드·프리미엄 회원 전원에게 '구독 필요' 안내가 떴다.
+      // 실제 저장 키(pap-token)를 직접 읽고, 전역 getToken 이 있으면 그것도 존중한다.
+      var token = '';
+      try { token = (typeof getToken === 'function' && getToken()) || localStorage.getItem('pap-token') || ''; }
+      catch(_) { token = ''; }
       if (!token) return resolve({ allowed: false, role: 'guest', reason: 'guest' });
       fetch('/api/downloads/check?type=' + encodeURIComponent(type) + '&id=' + encodeURIComponent(id || ''), {
         headers: { 'Authorization': 'Bearer ' + token }
@@ -692,8 +700,11 @@ window._papEnsureDlConsent = window._papEnsureDlConsent || function(){
 // QA #277 — 다운로드 이력 로깅 (fire-and-forget).
 window._papLogDownload = window._papLogDownload || function(payload){
   try {
-    var token = (typeof getToken === 'function') ? getToken() :
-                (window.localStorage && localStorage.getItem('token')) || '';
+    // 2026-07-28 — 위 _papCheckDownloadPerm 과 동일한 토큰 조회 버그 수정
+    // ('token' → 'pap-token'). 로그가 익명으로 남던 문제도 함께 해소된다.
+    var token = '';
+    try { token = (typeof getToken === 'function' && getToken()) || localStorage.getItem('pap-token') || ''; }
+    catch(_) { token = ''; }
     fetch('/api/downloads/log', {
       method: 'POST',
       headers: {
