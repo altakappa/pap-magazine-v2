@@ -752,7 +752,7 @@ function navigateWithInterstitial(url){
         <div class="form-group">
           <label class="form-label" data-i18n="labelAdditionalImages">High-resolution images — additional images not included in looks (optional)</label>
           <div class="upload-zone" id="uploadZone">
-            <input type="file" class="upload-input" id="fileInput" multiple accept="image/*">
+            <input type="file" class="upload-input" id="fileInput" multiple accept="image/jpeg,image/png,image/webp,image/tiff,.jpg,.jpeg,.png,.webp,.tif,.tiff">
             <div class="upload-icon"><svg viewBox="0 0 32 32" fill="none"><path d="M16 24V8M16 8L10 14M16 8L22 14" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 24v2a2 2 0 002 2h20a2 2 0 002-2v-2" stroke-width="2" stroke-linecap="round"/></svg></div>
             <div class="upload-text" data-i18n-html="uploadDragText"><strong>Click</strong> or drag additional images</div>
             <div class="upload-hint" data-i18n="uploadHint">JPG · Max 25MB · 1080×1350px recommended</div>
@@ -2196,7 +2196,7 @@ function addLook(){
   var n=lookCount;
   lookFiles[n]=[];
   block.innerHTML='<div class="look-header"><div class="look-title">LOOK '+n+'</div><button class="look-remove" onclick="removeLook('+n+')">×</button></div>'
-    +'<div class="look-images"><div class="look-img-label">LOOK '+n+' IMAGES</div><div class="look-img-zone" id="liz'+n+'"><input type="file" multiple accept="image/*" onchange="addLookFiles('+n+',this.files)"><div class="liz-text"><strong>Click</strong> or drag images for Look '+n+'</div><div class="liz-hint" data-i18n="lookImgHintAuto">Auto-compressed · max 2MB per image</div></div><div class="look-thumbs" id="lookThumbs'+n+'"></div></div>'
+    +'<div class="look-images"><div class="look-img-label">LOOK '+n+' IMAGES</div><div class="look-img-zone" id="liz'+n+'"><input type="file" multiple accept="image/jpeg,image/png,image/webp,image/tiff,.jpg,.jpeg,.png,.webp,.tif,.tiff" onchange="addLookFiles('+n+',this.files)"><div class="liz-text"><strong>Click</strong> or drag images for Look '+n+'</div><div class="liz-hint" data-i18n="lookImgHintAuto">Auto-compressed · max 2MB per image</div></div><div class="look-thumbs" id="lookThumbs'+n+'"></div></div>'
     +'<div class="look-item-header"><span>ITEM TYPE</span><span>BRAND NAME</span><span>INSTAGRAM</span></div>'
     +'<div class="look-items" id="lookItems'+n+'">'
     +'<div class="look-item"><select class="look-select">'+itemOptions()+'</select><input class="look-input" placeholder="Brand Name"><input class="look-input" placeholder="@instagram"></div>'
