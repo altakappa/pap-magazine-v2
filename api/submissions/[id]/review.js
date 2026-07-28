@@ -231,6 +231,21 @@ function _normalizeRoleLabel(raw) {
 // inserts with slug=null and the editor may publish before setting one).
 // Mirrors api/seo/editorial/[slug].js' lookup which accepts decoded title
 // as a 3rd-step fallback.
+/**
+ * 에디토리얼 제목 표기 규칙 (2026-07-28 도메니코 지시) — 단어의 첫 글자는 항상
+ * 대문자. 예: 'gimme gummy' → 'Gimme Gummy'.
+ *
+ * 첫 글자만 올리고 나머지 글자는 건드리지 않는다. 이미 대문자로 쓴 제목
+ * ('THE ARCHITECTURE OF HER')이나 브랜드 표기를 강제로 소문자화하면 원작자의
+ * 의도를 훼손하기 때문. 한글·숫자로 시작하는 단어는 변화 없음.
+ *
+ * 적용 범위는 '앞으로 생성되는 에디토리얼'만 — 기존 DB 제목은 소급 변경하지 않는다.
+ */
+function _titleCaseEditorial(s) {
+  return String(s == null ? '' : s)
+    .replace(/(^|\s)(\S)/g, function (m, pre, ch) { return pre + ch.toUpperCase(); });
+}
+
 function _slugifyForUrl(title) {
   const s = String(title || '').trim();
   if (!s) return '';
@@ -525,13 +540,16 @@ module.exports = async function handler(req, res) {
           // caption is persisted to editorials.instagram_caption in the
           // INSERT that follows; running it post-INSERT would race the
           // admin opening the editorial modal immediately after approval.
+          // 제목 표기 규칙 — 에디토리얼로 올릴 때 단어 첫 글자를 대문자로.
+          // (submissions 레코드의 원본 제목은 제출자가 쓴 그대로 보존한다)
+          const editorialTitle = _titleCaseEditorial(submission.title || '');
           const editorialSlug = _slugifyForUrl(submission.title || '');
           const igDescriptions = await _generateEditorialDescriptions({
-            title: submission.title,
+            title: editorialTitle,
             artistStatement: (desc.artistStatement || '').trim(),
             imageUrls: submission.file_urls || [],
           });
-          const instagramCaption = _buildInstagramCaption(desc, submission.title, {
+          const instagramCaption = _buildInstagramCaption(desc, editorialTitle, {
             slug: editorialSlug,
             descKo: igDescriptions.kr,
             descEn: igDescriptions.en,
@@ -543,7 +561,7 @@ module.exports = async function handler(req, res) {
           const { data: editorial, error: edErr } = await supabaseAdmin
             .from('editorials')
             .insert({
-              title: submission.title,
+              title: editorialTitle,
               // QA #170 — auto-seed slug at approval so the IG caption's
               // /editorial/<slug> URL works the moment the editor copies
               // the caption. Admin can still rename the slug later (and

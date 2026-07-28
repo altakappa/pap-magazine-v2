@@ -7243,6 +7243,11 @@ var toast = _papToastImpl;
 // edit; savePost clears it on a successful round-trip. beforeunload's
 // returnValue triggers the browser's native "Leave this page?" dialog.
 var _papFormDirty = false;
+// 에디토리얼 제목 표기 — 단어 첫 글자 대문자 (api/submissions/[id]/review.js 의
+// _titleCaseEditorial 과 동일 규칙). 첫 글자만 올리고 나머지 글자는 건드리지 않는다.
+function _papTitleCaseEditorial(s){
+  return String(s == null ? '' : s).replace(/(^|\s)(\S)/g, function(m, pre, ch){ return pre + ch.toUpperCase(); });
+}
 function _papMarkDirty(){ _papFormDirty = true; }
 function _papClearDirty(){ _papFormDirty = false; }
 window._papMarkDirty = _papMarkDirty;
@@ -7286,7 +7291,12 @@ async function savePost(mode){
   }
 
   var forceDraft = (mode === 'draft');
-  var title=document.getElementById('postTitle').value.trim();
+  // 제목 표기 규칙 (2026-07-28 도메니코 지시) — 에디토리얼 제목은 단어의 첫 글자를
+  // 항상 대문자로. 'gimme gummy' → 'Gimme Gummy'. 첫 글자만 올리고 나머지는 그대로
+  // 둬서 이미 대문자로 쓴 제목·브랜드 표기를 훼손하지 않는다. 입력칸에도 되돌려
+  // 써서 저장 결과를 편집자가 바로 확인할 수 있게 한다. (기존 제목 소급 변경 없음)
+  var title=_papTitleCaseEditorial(document.getElementById('postTitle').value.trim());
+  try { document.getElementById('postTitle').value = title; } catch(_) {}
   var tags=document.getElementById('postTags')?document.getElementById('postTags').value:'';
   var catEl=document.getElementById('postCategory');
   var category=catEl?catEl.value:'editorial';
