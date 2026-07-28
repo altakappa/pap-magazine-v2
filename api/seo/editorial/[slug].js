@@ -226,19 +226,34 @@ module.exports = async function handler(req, res) {
     // 낮게 잡는다. 이 기사에 실제로 등장한 브랜드만 editorial_brands 에서 읽어
     // 렌더러가 /brand/<id> 내부 링크를 달게 한다. brands 에 실재하는 행만 조인해
     // 오므로 404 링크가 생기지 않는다(브랜드 SSR 은 없는 id 면 404).
+    // ※ editorial_brands(매핑 테이블)를 쓰지 않는다 — 실측 결과 발행 2,490건 중
+    //   798건만 있고 2026-05-04 이후 갱신이 멈춰 있어 신규 기사에는 링크가 안 붙는다.
+    //   대신 기사 자신의 fashion 크레딧에서 핸들을 뽑아 brands 에 실재하는 것만 남긴다.
+    //   → 옛 기사·새 기사 모두 자동 적용되고, 실재 확인을 거치므로 404 링크가 없다.
     try {
-      if (data.title) {
-        const { data: ebRows } = await supabaseAdmin
-          .from('editorial_brands')
-          .select('brand_id, brands!inner(brand_id, display_name, status)')
-          .eq('editorial_title', data.title)
-          .neq('brands.status', 'archived')
-          .limit(40);
-        const seenB = new Set();
-        data.linked_brands = (ebRows || [])
-          .map(r => r && r.brands)
-          .filter(b => b && b.brand_id && b.display_name)
-          .filter(b => { const k = b.brand_id.toLowerCase(); if (seenB.has(k)) return false; seenB.add(k); return true; });
+      let fashionObj = data.fashion;
+      if (typeof fashionObj === 'string') { try { fashionObj = JSON.parse(fashionObj); } catch (_) { fashionObj = null; } }
+      const arr = fashionObj && Array.isArray(fashionObj.brands) ? fashionObj.brands : [];
+      const ids = [];
+      const seenId = new Set();
+      arr.forEach((b) => {
+        const raw = b && (b.instagram || b.name);
+        if (!raw) return;
+        const id = String(raw).trim()
+          .replace(/^https?:\/\/(www\.)?instagram\.com\//i, '')
+          .replace(/^@/, '').replace(/\/+$/, '')
+          .toLowerCase();
+        if (!id || !/^[a-z0-9._-]+$/.test(id) || seenId.has(id)) return;
+        seenId.add(id);
+        ids.push(id);
+      });
+      if (ids.length) {
+        const { data: bRows } = await supabaseAdmin
+          .from('brands')
+          .select('brand_id, display_name')
+          .in('brand_id', ids.slice(0, 40))
+          .neq('status', 'archived');
+        data.linked_brands = (bRows || []).filter(b => b && b.brand_id && b.display_name);
       }
     } catch (_) { /* 브랜드 링크도 best-effort — 실패해도 페이지는 정상 렌더 */ }
 
