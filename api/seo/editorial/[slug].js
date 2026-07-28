@@ -220,6 +220,28 @@ module.exports = async function handler(req, res) {
       };
     } catch (_) { /* 내부링크 블록은 best-effort */ }
 
+    // 2026-07-28 — 브랜드 페이지 고아(orphan) 해소.
+    // Ahrefs 크롤: 에러 1,365건 중 1,359건이 'Orphan page' 였고 전부 /brand/*.
+    // 사이트맵에는 있는데 사이트 어디서도 링크되지 않아 구글이 크롤 우선순위를
+    // 낮게 잡는다. 이 기사에 실제로 등장한 브랜드만 editorial_brands 에서 읽어
+    // 렌더러가 /brand/<id> 내부 링크를 달게 한다. brands 에 실재하는 행만 조인해
+    // 오므로 404 링크가 생기지 않는다(브랜드 SSR 은 없는 id 면 404).
+    try {
+      if (data.title) {
+        const { data: ebRows } = await supabaseAdmin
+          .from('editorial_brands')
+          .select('brand_id, brands!inner(brand_id, display_name, status)')
+          .eq('editorial_title', data.title)
+          .neq('brands.status', 'archived')
+          .limit(40);
+        const seenB = new Set();
+        data.linked_brands = (ebRows || [])
+          .map(r => r && r.brands)
+          .filter(b => b && b.brand_id && b.display_name)
+          .filter(b => { const k = b.brand_id.toLowerCase(); if (seenB.has(k)) return false; seenB.add(k); return true; });
+      }
+    } catch (_) { /* 브랜드 링크도 best-effort — 실패해도 페이지는 정상 렌더 */ }
+
     return res.status(200).send(renderSeoHtml('editorial', data, { lang, translation, availableLangs }));
 
   } catch (err) {

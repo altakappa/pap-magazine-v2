@@ -804,6 +804,21 @@ function renderSeoHtml(kind, record, opts) {
       '</div></section>'
     : '';
 
+  /* 2026-07-28 — 브랜드 페이지 내부 링크 (Ahrefs orphan 1,359건 해소).
+   * 위 칩은 인스타그램(외부)·구매(sponsored nofollow)로만 나가서 우리 /brand/*
+   * 페이지에는 내부 링크가 0건이었다. 그래서 사이트맵에만 있고 크롤 우선순위가
+   * 낮은 '고아 페이지'가 됐다. record.linked_brands 는 SSR 라우트가
+   * editorial_brands ⋈ brands 로 실존 확인해 넣어주므로 404 링크가 생기지 않는다.
+   * (해당 데이터가 없으면 이 블록은 통째로 생략 — 기존 동작 유지) */
+  const linkedBrands = Array.isArray(record.linked_brands) ? record.linked_brands : [];
+  const brandLinksHtml = linkedBrands.length
+    ? '<section class="seo-brandlinks"><h2>Brands in this editorial</h2><div class="ed-brand-links">' +
+        linkedBrands.slice(0, 24).map(b =>
+          `<a class="ed-brand-link" href="/brand/${encodeURIComponent(String(b.brand_id).toLowerCase())}">${escText(b.display_name)}</a>`
+        ).join('') +
+      '</div></section>'
+    : '';
+
   /* QA #177 — optional video embed when an editorial carries a YouTube /
    * Vimeo / Instagram link in record.url. We only handle the common
    * YouTube watch / youtu.be / Vimeo formats here — anything else is
@@ -1132,6 +1147,10 @@ ${cfg.schemaType !== 'VideoObject' && ogImage ? (canOptimizeImg(ogImage)
   .ed-fashion-pair{display:inline-flex}
   .ed-buy-chip{display:inline-block;padding:6px 10px;border:1px solid rgba(255,255,255,.18);border-left:none;font-size:11px;color:#000;background:#fff;text-decoration:none;font-weight:700}
   .ed-buy-chip:hover{opacity:.85}
+  /* 브랜드 페이지 내부 링크 (2026-07-28, orphan 해소) — 기존 칩과 같은 톤 */
+  .ed-brand-links{display:flex;flex-wrap:wrap;gap:8px}
+  .ed-brand-link{display:inline-block;padding:6px 12px;border:1px solid rgba(255,255,255,.18);font-size:12px;color:rgba(255,255,255,.85);text-decoration:none;transition:background .2s}
+  .ed-brand-link:hover{background:rgba(255,255,255,.06)}
   .seo-video-section{max-width:1200px;margin:48px auto;padding:0 16px}
   .seo-embed{position:relative;width:100%;aspect-ratio:16/9;background:#111}
   .seo-embed iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
@@ -1289,6 +1308,7 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
     ${creditsHtml}
     ${downloadsHtml}
     ${fashionHtml}
+    ${brandLinksHtml}
     ${relatedEditorialHtml}
     ${relatedFilmsHtml}
     ${moreEditorialsHtml}
