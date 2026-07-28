@@ -61,7 +61,12 @@ module.exports = withCronGuard('brand-sync', async function handler(req, res) {
     data.forEach((row) => {
       parseFashion(row.fashion).forEach((b) => {
         if (!b) return;
-        const id = toBrandId(b.instagram || b.name);
+        // 인스타 핸들만 사용 — 표기명(name) 폴백 금지.
+        // brand_id 는 핸들 규격(instagram_handle 로도 저장)이라 이름으로 지어내면
+        // 크레딧에 "VINTAGE"·"VIA"·"EDITION" 이라고만 적힌 건이 브랜드 페이지가 된다
+        // (2026-07-28 실측 8건: vintage·via·edition·whistler·aflame·humanhu·
+        //  sangyexianke·sixdo). 핸들이 없는 브랜드는 등록하지 않는다.
+        const id = toBrandId(b.instagram);
         if (!id || candidates.has(id)) return;
         const label = String((b.name || '') || id).trim().replace(/^@/, '');
         candidates.set(id, (label || id).toUpperCase().slice(0, 120));
