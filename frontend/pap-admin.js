@@ -9190,6 +9190,29 @@ async function papInstaDownloadAll(){
     }
     _papInstaSetStatus('처리 중 ' + (i + 1) + ' / ' + urls.length + '...');
   }
+  // 2026-07-28 (도메니코 요청) — 전체 ZIP 에 "매거진 커버 합성 PNG" 도 함께
+  // 담는다. 커버 섹션 미리보기와 동일한 _papCoverComposite 로직을 재사용하며
+  // (papCoverDownload 와 같은 1080×1350 풀 해상도), 커버는 인스타 폴더와 구분해
+  // ZIP 루트에 '<제목>-cover.png' 로 넣는다. 제목·커버 이미지가 갖춰진 경우에만
+  // 넣고, 합성 실패는 조용히 스킵해 갤러리 이미지 ZIP 은 그대로 나가게 한다.
+  try {
+    var _cmeta = (typeof _papCoverReadFormMeta === 'function') ? _papCoverReadFormMeta() : null;
+    if (_cmeta && _cmeta.title && _cmeta.coverUrl && typeof _papCoverComposite === 'function') {
+      _papInstaSetStatus('커버 합성 중...');
+      var _ccv = document.createElement('canvas');
+      _ccv.width = _PAP_COVER_W; _ccv.height = _PAP_COVER_H;
+      await _papCoverComposite(_ccv, _cmeta);
+      var _cblob = await new Promise(function(res){ _ccv.toBlob(function(b){ res(b); }, 'image/png', 1); });
+      if (_cblob) {
+        var _cbase = (_cmeta.title || 'cover').toLowerCase()
+          .replace(/[^a-z0-9가-힯 ]+/g, '').replace(/\s+/g, '-');
+        zip.file(_cbase + '-cover.png', _cblob);
+        ok++;
+      }
+    }
+  } catch (e) {
+    console.warn('[insta zip] cover include failed:', e);
+  }
   _papInstaSetStatus('ZIP 생성 중...');
   var zipBlob = await zip.generateAsync({ type: 'blob' });
   var url = URL.createObjectURL(zipBlob);
