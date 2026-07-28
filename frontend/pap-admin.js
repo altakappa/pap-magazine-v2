@@ -996,6 +996,11 @@ function _resetNewPostForm(){
 
   // 9. Validation summary / success panels from the previous save
   if(typeof _peClearAllErrors === 'function') _peClearAllErrors();
+
+  // 10. 2026-07-28 — 인스타 합성 설정(전역 슬라이더 + 이미지별 개별 조정)을
+  //     공장 기본으로 되돌린다. 이게 없으면 직전에 편집하던 에디토리얼의
+  //     개별 조정값이 새 글 작성 화면까지 따라온다.
+  if(typeof _papInstaApplySettings === 'function') _papInstaApplySettings(null);
 }
 // Review submission tracking
 var currentReviewSubmission=null;
@@ -6753,6 +6758,10 @@ async function editEditorial(id){
   var ix = editorials.findIndex(function(e){return e.id===id;});
   if(ix >= 0) editorials[ix] = Object.assign({}, editorials[ix], ed);
   editingEditorialId=id;
+  // 2026-07-28 — 인스타 합성 로고/프레이밍 설정 복원. 값이 없으면 전역
+  // 슬라이더를 공장 기본으로 되돌리고 _papInstaPerImageOpts 를 비운다
+  // (직전에 편집하던 글의 개별 설정이 다음 글로 새던 버그도 여기서 막힌다).
+  try { _papInstaApplySettings(ed.insta_logo_settings); } catch(_e){}
   // Populate basic fields
   document.getElementById('postTitle').value=ed.title||'';
   document.getElementById('postSubtitle').value=ed.issue||'';
@@ -7528,6 +7537,15 @@ async function savePost(mode){
       // a previously failed send" without ambiguity.
       payload.send_approval_email = false;
     }
+    // 2026-07-28 — 인스타 합성 로고/프레이밍 설정을 함께 저장(에디토리얼 전용).
+    // undefined 면 아래 정리 루프가 키를 지워 서버는 컬럼을 손대지 않는다.
+    if(category==='editorial' && typeof _papInstaCollectSettings === 'function'){
+      try {
+        var _instaSettings = _papInstaCollectSettings();
+        if(_instaSettings !== undefined) payload.insta_logo_settings = _instaSettings;
+      } catch(_e){ /* 설정 수집 실패가 저장을 막지는 않는다 */ }
+    }
+
     // Remove undefined keys
     Object.keys(payload).forEach(function(k){if(payload[k]===undefined)delete payload[k];});
 
@@ -8912,6 +8930,85 @@ var _papInstaLogoLoading = null;   // in-flight Promise so concurrent
 var _papInstaPerImageOpts = {};
 var _papInstaCurrentUrls  = [];
 var _papInstaCurrentIdx   = 0;
+
+// 2026-07-28 — 편집 중인 에디토리얼이 DB 에서 들고 온 insta_logo_settings.
+// 두 가지 용도:
+//   1) editEditorial 이 복원할 원본 (있으면 슬라이더 + perImage 복원)
+//   2) 저장 시 "원래 값이 있었는데 관리자가 전부 기본값으로 되돌린" 상황을
+//      구분하기 위한 플래그. 그 경우에만 null 을 보내 컬럼을 비운다.
+var _papInstaLoadedSettings = null;
+
+// 2026-07-28 — 저장용 설정 수집. 반환값 의미:
+//   객체     → 그 값을 insta_logo_settings 로 저장
+//   null     → 컬럼을 비운다 (저장돼 있던 설정을 관리자가 기본값으로 되돌림)
+//   undefined→ 아무것도 보내지 않는다 (불필요한 쓰기 방지)
+function _papInstaCollectSettings(){
+  var aspectEl = document.getElementById('instaAspect');
+  var sizeEl   = document.getElementById('instaLogoSize');
+  var padEl    = document.getElementById('instaBottomPad');
+  var aspect   = (aspectEl && aspectEl.value) || '4:5';
+  if (aspect !== '4:5' && aspect !== '1:1') aspect = '4:5';
+  var logoPct = parseFloat((sizeEl && sizeEl.value) || '15');
+  var padPct  = parseFloat((padEl  && padEl.value)  || '1');
+  if (!isFinite(logoPct)) logoPct = 15;
+  if (!isFinite(padPct))  padPct  = 1;
+
+  var per = {}, kept = 0;
+  var NUM_KEYS = ['logoPct','padPct','imgScale','offsetX','offsetY','logoAlpha'];
+  Object.keys(_papInstaPerImageOpts || {}).forEach(function(url){
+    var o = _papInstaPerImageOpts[url];
+    if (!o || typeof o !== 'object') return;
+    // http(s) 만 저장. 아직 업로드되지 않은 새 이미지의 blob:/data: 미리보기
+    // URL 은 저장해봐야 다음 열람 때 실제 URL 과 매칭되지 않고, 서버 위생
+    // 검증도 스킴에서 거른다.
+    if (!/^https?:\/\//i.test(String(url))) return;
+    var row = {};
+    NUM_KEYS.forEach(function(k){
+      if (typeof o[k] === 'number' && isFinite(o[k])) row[k] = o[k];
+    });
+    if (typeof o.logoEnabled === 'boolean') row.logoEnabled = o.logoEnabled;
+    if (!Object.keys(row).length) return;
+    per[url] = row;
+    kept++;
+  });
+
+  // 개별 설정도 없고 전역값도 공장 기본(15 / 1 / 4:5)이면 저장할 이유가 없다.
+  var isFactoryGlobal = (logoPct === 15 && padPct === 1 && aspect === '4:5');
+  if (!kept && isFactoryGlobal) {
+    return _papInstaLoadedSettings ? null : undefined;
+  }
+  return {
+    global:   { logoPct: logoPct, padPct: padPct, aspect: aspect },
+    perImage: per,
+  };
+}
+
+// 2026-07-28 — DB 값 → 편집 화면 복원. settings 가 없으면 전부 초기화해
+// 직전 편집의 잔재가 다음 글로 새지 않게 한다(기존 버그 동반 수정).
+function _papInstaApplySettings(settings){
+  var s = (settings && typeof settings === 'object' && !Array.isArray(settings)) ? settings : null;
+  _papInstaLoadedSettings = s;
+  _papInstaPerImageOpts = (s && s.perImage && typeof s.perImage === 'object' && !Array.isArray(s.perImage))
+    ? JSON.parse(JSON.stringify(s.perImage))
+    : {};
+  var g = (s && s.global && typeof s.global === 'object') ? s.global : {};
+  var logoPct = (typeof g.logoPct === 'number' && isFinite(g.logoPct)) ? g.logoPct : 15;
+  var padPct  = (typeof g.padPct  === 'number' && isFinite(g.padPct))  ? g.padPct  : 1;
+  var aspect  = (g.aspect === '1:1') ? '1:1' : '4:5';
+  var sizeEl = document.getElementById('instaLogoSize');
+  var padEl  = document.getElementById('instaBottomPad');
+  var aspEl  = document.getElementById('instaAspect');
+  var sizeLb = document.getElementById('instaLogoSizeLabel');
+  var padLb  = document.getElementById('instaPadLabel');
+  if (sizeEl) sizeEl.value = logoPct;
+  if (padEl)  padEl.value  = padPct;
+  if (aspEl)  aspEl.value  = aspect;
+  if (sizeLb) sizeLb.textContent = logoPct + '%';
+  if (padLb)  padLb.textContent  = padPct  + '%';
+  // 모달이 열려 있던 상태로 다른 글을 열 일은 없지만, 내부 상태도 함께 초기화.
+  _papInstaCurrentUrls = [];
+  _papInstaCurrentIdx  = 0;
+}
 
 // QA #254 v2 — open the editor modal: build thumbnail strip, hydrate
 // per-image opts (falling back to globals), composite first image.

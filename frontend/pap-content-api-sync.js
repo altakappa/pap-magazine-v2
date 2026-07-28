@@ -649,6 +649,11 @@ window._papFilmAutoPlay = function(){
       // related_films; pass through unmodified so the detail overlay
       // can render a "Related Films" card section.
       related_films: Array.isArray(e.related_films) ? e.related_films : [],
+      // 2026-07-28 — 관리자가 인스타 편집 모달에서 조정한 로고/프레이밍 설정.
+      // 회원 다운로드(_papDownloadLogoZip)가 관리자 ZIP 과 같은 결과를 내려면
+      // 이 값이 상세 화면까지 흘러야 한다. 없으면 null → 기존 기본값 합성.
+      insta_logo_settings: (e.insta_logo_settings && typeof e.insta_logo_settings === 'object')
+        ? e.insta_logo_settings : null,
     };
   }
 
@@ -794,6 +799,9 @@ window._papFilmAutoPlay = function(){
       slug:   apiEd.slug || existing.slug || '',
       // 참여 증폭 2.0 — 원본 IG 게시물 permalink (detail 렌더러가 임베드).
       ig:     apiEd.ig || existing.ig || '',
+      // 2026-07-28 — 인스타 합성 로고/프레이밍 설정(관리자 저장값).
+      // 회원 다운로드 버튼이 data-logosettings 로 실어 보낸다.
+      instaLogoSettings: apiEd.insta_logo_settings || existing.instaLogoSettings || null,
       // Issue subtitle. Priority: admin-typed value (apiEd.issue) wins
       // because that's the live source of truth; curated existing.issue
       // is the static-JSON snapshot and only used as fallback. Year is

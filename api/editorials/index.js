@@ -11,6 +11,7 @@ const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { embedAndStoreEditorial } = require('../_lib/embeddings');
 const { recordContentChange, attachAuthorship } = require('../_lib/audit');
 const { normalizeCreditsArray } = require('../_lib/credits');  // QA #301
+const { sanitizeInstaLogoSettings } = require('../_lib/instaLogoSettings');  // 2026-07-28
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -79,6 +80,9 @@ module.exports = async function handler(req, res) {
         'description','description_en','description_it','gallery','credits','fashion',
         'instagram_caption','og_image','seo_title','seo_description',
         'updated_at','source_submission_id',
+        // 2026-07-28 — 인스타 합성 로고/프레이밍 설정 (관리자가 조정한 값).
+        // 관리자 편집 폼이 리스트 캐시에서 하이드레이트할 때 필요하다.
+        'insta_logo_settings',
         // QA #202 — surface authorship in the admin list so editors
         // see "who created / last edited" without a per-row lookup.
         'created_at','created_by','updated_by','admin_edited_at'
@@ -96,6 +100,10 @@ module.exports = async function handler(req, res) {
         'url','tags','issue','status','title_en',
         'description','description_en','gallery','credits','fashion',
         'source_instagram_url',
+        // 2026-07-28 — 회원 다운로드(_papDownloadLogoZip)가 관리자와 동일한
+        // 로고/프레이밍으로 합성하려면 공개 목록에도 실려야 한다. 값이 없으면
+        // NULL 이므로 페이로드 영향은 사실상 0.
+        'insta_logo_settings',
         'created_at','updated_at'
       ].join(',');
 
@@ -246,6 +254,7 @@ module.exports = async function handler(req, res) {
         description_it,  // QA #204 — IT translation slot
         instagram_caption,  // QA #170 — editor-tunable IG caption
         source_instagram_url,  // 참여 증폭 2.0 — 원본 IG 게시물 링크
+        insta_logo_settings,   // 2026-07-28 — 인스타 합성 로고/프레이밍 설정
       } = req.body;
 
       if (!title) {
@@ -285,6 +294,11 @@ module.exports = async function handler(req, res) {
           instagram_caption: instagram_caption || null,
           // 참여 증폭 2.0 — 원본 IG 게시물 permalink (SSR/SPA 깔때기 착지점)
           source_instagram_url: source_instagram_url || null,
+          // 2026-07-28 — 인스타 합성 설정. 클라이언트 JSON 이므로 반드시
+          // 위생 검증을 거친다(범위 클램프 · 화이트리스트 · URL 스킴).
+          // 유효한 값이 없으면 헬퍼가 null 을 돌려주므로 컬럼은 비어 있고
+          // 회원 다운로드는 종전 기본값(15%/1%/85%)으로 합성된다.
+          insta_logo_settings: sanitizeInstaLogoSettings(insta_logo_settings),
           // QA #202 — authorship stamps. Both columns get the same id
           // on POST because the creator IS the most recent editor for a
           // brand-new row; subsequent PUTs will bump updated_by.

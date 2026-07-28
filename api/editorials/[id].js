@@ -14,6 +14,7 @@ const { sendEmail, templates } = require('../_lib/email');
 const { feeForType } = require('../_lib/submissionPayment');
 const { recordContentChange, diffFields, attachAuthorship } = require('../_lib/audit');
 const { sendEditorialToTelegramSafe } = require('../_lib/telegram');
+const { sanitizeInstaLogoSettings } = require('../_lib/instaLogoSettings');  // 2026-07-28
 
 // QA #202 — fields we care about in the audit diff. Long opaque JSONB
 // like `embedding` is intentionally excluded so the diff stays small
@@ -241,6 +242,14 @@ module.exports = async function handler(req, res) {
       ];
       for (const key of allowed) {
         if (req.body[key] !== undefined) updates[key] = req.body[key];
+      }
+      // 2026-07-28 — 인스타 합성 로고/프레이밍 설정. allowed 배열에 넣지 않고
+      // 따로 처리하는 이유: 원본 값을 그대로 쓰면 안 되고 반드시 위생 검증을
+      // 통과한 결과만 저장해야 하기 때문. 키를 아예 안 보내면 컬럼은 손대지
+      // 않고(기존 값 유지), 명시적으로 null/빈 객체를 보내면 컬럼이 비워진다
+      // (= 관리자가 전부 기본값으로 되돌린 경우).
+      if (req.body.insta_logo_settings !== undefined) {
+        updates.insta_logo_settings = sanitizeInstaLogoSettings(req.body.insta_logo_settings);
       }
       // QA #301 — credits 에 들어온 instagram 의 @ 자동 보강 + 잘못 매핑 정정.
       // 헬퍼는 array 일 때만 작동, 비 array 면 그대로 통과.

@@ -401,6 +401,13 @@ function _renderEditorialDownloads(det, d){
               'editorial';
   var safeTitle = String(title).replace(/[^a-zA-Z0-9가-힯 ]/g, '').replace(/\s+/g, '-').toLowerCase() || 'editorial';
 
+  // 2026-07-28 — 관리자가 인스타 편집 모달에서 조정해 저장한 로고/프레이밍 설정.
+  // edDetails 엔트리(instaLogoSettings) → raw API row(insta_logo_settings) 순으로
+  // 찾는다. 없으면 null 이고, 그 경우 합성은 종전 기본값(15%/1%/85%)을 쓴다.
+  var logoSettings = (d && (d.instaLogoSettings || d.insta_logo_settings)) ||
+                     (det && (det.instaLogoSettings || det.insta_logo_settings)) || null;
+  if (logoSettings && typeof logoSettings !== 'object') logoSettings = null;
+
   console.log('[downloads] rendering', { coverUrl: !!coverUrl, galleryCount: gallery.length, title: title });
 
   // 항상 박스 표시 — 커버/갤러리 없는 에지 케이스에도 회원가입 CTA는 보여줌.
@@ -454,13 +461,13 @@ function _renderEditorialDownloads(det, d){
       return;
     }
     // 권한 OK — 다운로드 버튼 렌더링.
-    _renderEditorialDownloadButtons(box, coverUrl, gallery, safeTitle, perm);
+    _renderEditorialDownloadButtons(box, coverUrl, gallery, safeTitle, perm, logoSettings);
   });
   return;
 }
 
 // QA #284 Phase 2 — 권한 OK인 사용자에게 실제 버튼 노출.
-function _renderEditorialDownloadButtons(box, coverUrl, gallery, safeTitle, perm){
+function _renderEditorialDownloadButtons(box, coverUrl, gallery, safeTitle, perm, logoSettings){
   // 로그인 사용자 — 실제 다운로드 버튼.
   var coverHtml = '';
   if (coverUrl) {
@@ -472,9 +479,16 @@ function _renderEditorialDownloadButtons(box, coverUrl, gallery, safeTitle, perm
   var logoBtnHtml = '';
   if (gallery.length) {
     var galleryJson = encodeURIComponent(JSON.stringify(gallery));
+    // 2026-07-28 — 관리자 저장 설정을 버튼에 실어 보낸다. data-gallery 와 동일하게
+    // encodeURIComponent(JSON) 이라 따옴표·꺾쇠가 속성 밖으로 새지 않는다.
+    var logoSettingsAttr = '';
+    try {
+      if (logoSettings) logoSettingsAttr = encodeURIComponent(JSON.stringify(logoSettings));
+    } catch (_) { logoSettingsAttr = ''; }
     logoBtnHtml =
       '<button id="edLogoDlBtn" type="button" onclick="_papDownloadLogoZip(this)" ' +
       'data-gallery="' + galleryJson + '" data-title="' + safeTitle + '" ' +
+      'data-logosettings="' + logoSettingsAttr + '" ' +
       'style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border:1px solid #555;background:transparent;color:#fff;font-size:11px;font-weight:700;letter-spacing:.12em;cursor:pointer;transition:all .2s" ' +
       'onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">'+(_edL9('⬇️ 로고 이미지 (','⬇️ Logo images ('))+'' + gallery.length + (_edL9('장 ZIP)',' images ZIP)'))+'</button>';
   }
@@ -759,8 +773,9 @@ window._papDownloadAsFile = window._papDownloadAsFile || function(url, basename)
 //   • 4:5 (1080×1350) 캔버스
 //   • 갤러리 이미지 cover-fit 중앙
 //   • PAP 로고: 15% 너비, 1% 하단 여백, 85% 투명도
-// 사용자가 어드민에서 미세조정한 값은 알 수 없으므로 기본값 사용 (사용자 요청:
-// "이미지 편집할게 없다면 편집 반영되지 않은 그대로 로고이미지...").
+// 2026-07-28 — 관리자가 인스타 편집 모달에서 조정한 값을 editorials.insta_logo_settings
+// 에 영구 저장하게 되면서, 그 값이 있으면 회원 다운로드도 동일한 로고/프레이밍으로
+// 합성한다(버튼의 data-logosettings 로 전달). 값이 없는 기존 글은 위 기본값 그대로.
 window._papDownloadLogoZip = window._papDownloadLogoZip || async function(btn){
   if (!btn) return;
   var statusEl = document.getElementById('edLogoDlStatus');
@@ -817,8 +832,28 @@ window._papDownloadLogoZip = window._papDownloadLogoZip || async function(btn){
   // QA #278 — 원본 비율 그대로 유지. 4:5 강제 crop 제거 (피사체 잘림 방지).
   // 출력 규격 — 관리자 '전체 ZIP'과 동일한 4:5 + 로고. 크기는 아래 루프에서
   // 원본 기준으로 계산(HD, 상한 2160×2700 / 하한 1080×1350).
-  // 로고 기본값은 관리자 슬라이더 기본값과 같은 값으로 맞춰져 있다.
+  // 로고 기본값은 관리자 슬라이더 기본값과 같은 값이며, 저장된 설정이 있으면
+  // 아래에서 그 값으로 덮인다.
   var LOGO_PCT = 15, PAD_PCT = 1, ALPHA = 0.85;
+
+  // 2026-07-28 — 관리자가 인스타 편집 모달에서 저장한 설정(있으면) 적용.
+  // 우선순위: 이미지별 개별값 → 전역값 → 위 기본값(= 종전 동작).
+  // 설정이 없거나 파싱 실패면 아래 상수만 쓰이므로 결과는 이전과 완전히 동일하다.
+  var _ls = null;
+  try {
+    var _lsRaw = btn.getAttribute('data-logosettings') || '';
+    if (_lsRaw) _ls = JSON.parse(decodeURIComponent(_lsRaw));
+  } catch (_) { _ls = null; }
+  if (!_ls || typeof _ls !== 'object' || Array.isArray(_ls)) _ls = null;
+  var _g   = (_ls && _ls.global   && typeof _ls.global   === 'object') ? _ls.global   : {};
+  var _per = (_ls && _ls.perImage && typeof _ls.perImage === 'object') ? _ls.perImage : {};
+  // 숫자만 인정(문자열·NaN 은 폴백). 관리자 합성 함수와 같은 판정 기준.
+  function _num(v, fallback){
+    return (typeof v === 'number' && isFinite(v)) ? v : fallback;
+  }
+  // 출력 비율 — 전역 설정만 따른다(이미지별 비율 조정은 관리자 UI에도 없다).
+  var AR = (_g.aspect === '1:1') ? 1 : (4 / 5);   // 가로/세로
+
   var zip = new JSZip();
   var ok = 0, failed = 0;
 
@@ -851,28 +886,45 @@ window._papDownloadLogoZip = window._papDownloadLogoZip || async function(btn){
       //   '관리자 ZIP 과 동일한 결과물' 요구가 우선이라 crop 을 되살린다.
       //   잘림이 문제가 되면 이 블록만 되돌리면 된다.
       var iw = srcImg.naturalWidth, ih = srcImg.naturalHeight;
-      var AR = 4 / 5;                       // 가로/세로
-      // 원본에서 확보 가능한 최대 4:5 박스 (업스케일 없이).
+      // 원본에서 확보 가능한 최대 박스 (업스케일 없이). 4:5 → 최대 2160×2700,
+      // 1:1 → 최대 2160×2160, 하한은 1080 기준.
       var boxW = (iw / ih > AR) ? ih * AR : iw;
       var W = Math.round(Math.max(1080, Math.min(2160, boxW)));
-      var H = Math.round(W / AR);           // = W * 1.25
+      var H = Math.round(W / AR);           // 4:5 → W*1.25, 1:1 → W
+      // 2026-07-28 — 이 이미지의 실효 설정(개별 → 전역 → 기본값).
+      var _o = (_per && _per[url] && typeof _per[url] === 'object') ? _per[url] : {};
+      var _logoPct   = _num(_o.logoPct,   _num(_g.logoPct, LOGO_PCT));
+      var _padPct    = _num(_o.padPct,    _num(_g.padPct,  PAD_PCT));
+      var _imgScale  = _num(_o.imgScale,  100);
+      var _offsetX   = _num(_o.offsetX,   0);
+      var _offsetY   = _num(_o.offsetY,   0);
+      var _alpha     = _num(_o.logoAlpha, ALPHA * 100) / 100;
+      var _logoOn    = (_o.logoEnabled === false) ? false : true;
+      if (!(_imgScale > 0)) _imgScale = 100;
       var canvas = document.createElement('canvas');
       canvas.width = W; canvas.height = H;
       var ctx = canvas.getContext('2d');
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
       ctx.clearRect(0, 0, W, H);
-      // cover-crop — 관리자 합성과 동일 수식(중앙 정렬, 기본 배율 100%).
-      var _scale = Math.max(W / iw, H / ih);
+      // cover-crop — 관리자 _papInstaCompositeOne 과 동일 수식
+      // (배율 imgScale%, 오프셋은 캔버스 크기 대비 %).
+      var _scale = Math.max(W / iw, H / ih) * (_imgScale / 100);
       var _dw = iw * _scale, _dh = ih * _scale;
-      ctx.drawImage(srcImg, (W - _dw) / 2, (H - _dh) / 2, _dw, _dh);
-      // 로고 합성 (너비의 LOGO_PCT% 기준, 하단 PAD_PCT% 여백).
-      var logoW = W * (LOGO_PCT / 100);
-      var logoH = logoW * (logo.naturalHeight / logo.naturalWidth);
-      var prevAlpha = ctx.globalAlpha;
-      ctx.globalAlpha = ALPHA;
-      ctx.drawImage(logo, (W - logoW) / 2, H - logoH - (H * (PAD_PCT / 100)), logoW, logoH);
-      ctx.globalAlpha = prevAlpha;
+      var _dx = (W - _dw) / 2 + (_offsetX / 100) * W;
+      var _dy = (H - _dh) / 2 + (_offsetY / 100) * H;
+      ctx.drawImage(srcImg, _dx, _dy, _dw, _dh);
+      // 로고 합성 (너비의 _logoPct% 기준, 하단 _padPct% 여백).
+      // 관리자와 동일하게 logoEnabled === false 면 로고를 그리지 않는다
+      // (원본에 이미 워터마크가 박힌 이미지 대응).
+      if (_logoOn) {
+        var logoW = W * (_logoPct / 100);
+        var logoH = logoW * (logo.naturalHeight / logo.naturalWidth);
+        var prevAlpha = ctx.globalAlpha;
+        ctx.globalAlpha = Math.max(0, Math.min(1, _alpha));
+        ctx.drawImage(logo, (W - logoW) / 2, H - logoH - (H * (_padPct / 100)), logoW, logoH);
+        ctx.globalAlpha = prevAlpha;
+      }
       // PNG blob 추출 → zip 추가
       var blob = await new Promise(function(res){ canvas.toBlob(function(b){ res(b); }, 'image/png', 0.95); });
       if (!blob) throw new Error('canvas tainted by CORS');
@@ -1159,6 +1211,10 @@ function _openEditorialInner(title,thumb){
         }
         // 참여 증폭 2.0 — 원본 IG 게시물 permalink.
         if(full.source_instagram_url) dst.ig = full.source_instagram_url;
+        // 2026-07-28 — 관리자가 저장한 인스타 합성 설정(로고/프레이밍).
+        if(full.insta_logo_settings && typeof full.insta_logo_settings === 'object'){
+          dst.instaLogoSettings = full.insta_logo_settings;
+        }
         edDetails[title] = dst;
         // Re-render through the no-push path so we don't push a duplicate
         // history entry on top of the one we already pushed below.
