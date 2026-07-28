@@ -42,8 +42,14 @@ t('결과 텔레그램 보고 (정상/깨짐 모두)', /주간 이미지 점검/
 
 console.log('=== vercel.json 크론 등록 ===');
 const paths = vj.crons.map(c => c.path + ' ' + c.schedule);
-t('이관 크론 10분 주기 등록 (도메니코: 하루 반 완주)',
-  vj.crons.some(c => c.path === '/api/cron/migrate-external-images' && c.schedule === '5-55/10 * * * *'));
+// 2026-07-28: 이관 완주(외부 이미지 잔존 0건 실측) → 크론 스케줄에서 제거.
+// Vercel 크론 40개 한도 확보용이며 코드는 그대로 남아 있어, 외부 이미지가 다시
+// 유입되면 vercel.json 에 한 줄 되살리는 것으로 재가동한다. 주간 점검 크론
+// (image-link-check)이 남아 있어 재발은 계속 감시된다.
+t('이관 크론 코드는 유지 (필요 시 재가동)',
+  require('fs').existsSync(require('path').join(__dirname, '..', 'api/cron/migrate-external-images.js')));
+t('이관 완주로 스케줄에서는 제거됨',
+  !vj.crons.some(c => c.path === '/api/cron/migrate-external-images'));
 t('점검 크론 주 1회(월) 등록', vj.crons.some(c => c.path === '/api/cron/image-link-check' && /\* \* 1$/.test(c.schedule)));
 
 console.log(`\npassed: ${pass}   failed: ${fail}`);

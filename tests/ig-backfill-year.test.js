@@ -80,9 +80,19 @@ t('cron: 기본(account 없음)은 @pap_magazine env 불변', /account \? \('ig_
 t('cron: 완주 통보에 계정 라벨(acctLabel)', /acctLabel/.test(cron));
 // 2026-07-26: 토큰 재발급 없이 본계정 토큰 폴백으로 복구되어 5개 크론을 되살렸다.
 // (dry=1 실측 5계정 전부 200, token_source='main (계정 토큰 형식 불량)')
-t('vercel.json 5개 하위 계정 백필 크론 등록',
-  ['celeb','beauty','fashion','trends','object'].every(a =>
-    vj.crons.some(c => c.path.includes('account=' + a + '&backfill=365'))));
+// 2026-07-28: 백필을 완주한 계정의 크론은 스케줄에서 뺐다 (Vercel 크론 40개 한도 확보).
+//   ops_alert_state 실측 — celeb·beauty·trends·object 는 ig_backfill_done_* = true
+//   (완주 후에는 크론이 돌아도 즉시 early-return 하므로 칸만 차지했다).
+//   fashion 은 아직 미완주라 유지. 코드(api/cron/sync-instagram.js)는 그대로라
+//   완료 플래그를 지우고 크론을 되살리면 언제든 재실행할 수 있다.
+t('vercel.json fashion 백필 크론 유지 (미완주 계정)',
+  vj.crons.some(c => c.path.includes('account=fashion&backfill=365')));
+t('완주 계정(celeb·beauty·trends·object) 백필 크론은 제거됨',
+  ['celeb','beauty','trends','object'].every(a =>
+    !vj.crons.some(c => c.path.includes('account=' + a + '&backfill=365'))));
+t('본계정 정기 동기화·전체 백필은 유지',
+  vj.crons.some(c => c.path === '/api/cron/sync-instagram') &&
+  vj.crons.some(c => c.path.includes('backfill=4000')));
 
 console.log('--- 토큰 위생·본계정 폴백 (2026-07-26 OAuth 190 대응) ---');
 const II = require('../api/_lib/instagramImport');
