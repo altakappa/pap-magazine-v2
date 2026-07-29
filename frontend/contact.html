@@ -359,9 +359,10 @@ var mediaKitFiles={ko:'1gUeTUJrg-NLv8BUT1BnEzfa3oqXfFt3X',en:'1gVKLuOP2mksORuDuu
 // QA #328 — 관리자(문의하기 편집)가 저장한 링크 override. null 이면 내장 기본.
 var _contactMediaKitLinks=null;
 // 2026-07-29 — business.html 과 함께 계측 경유(/mediakit)로 통일.
+// 2026-07-29 후속: 쿼리형은 라이브에서 src 가 유실된다(전부 'other'). 경로형으로 통일.
 function downloadMediaKit(lang){
   var l=(lang==='ko')?'ko':'en';
-  window.open('/mediakit?lang='+l+'&src=contact','_blank','noopener');
+  window.open('/mediakit/'+l+'/contact','_blank','noopener');
 }
 // AUTO LANGUAGE DETECTION
 (function(){

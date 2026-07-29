@@ -67,8 +67,9 @@ t('두 판별기 OR 로 봇 차단', /isLikelyBot\(ua\) \|\| isBot\(ua\)/.test(s
 t('로그 실패는 삼킨다 (리다이렉트는 항상 완료)', /catch \(e\) \{[\s\S]{0,120}console\.warn\('\[mediakit\] insert threw/.test(src));
 
 console.log('=== 호출부가 계측을 경유 ===');
-t('business.html 이 /mediakit 경유', /\/mediakit\?lang='\+l\+'&src=business/.test(biz));
-t('contact.html 이 /mediakit 경유', /\/mediakit\?lang='\+l\+'&src=contact/.test(contact));
+t('business.html 이 경로형 계측 경유', /'\/mediakit\/'\+l\+'\/business'/.test(biz),
+  '쿼리형은 라이브에서 src 가 유실돼 전부 other 로 기록된다');
+t('contact.html 이 경로형 계측 경유', /'\/mediakit\/'\+l\+'\/contact'/.test(contact));
 t('드라이브 직링크 window.open 제거', !/window\.open\('https:\/\/drive\.google\.com/.test(biz) && !/window\.open\('https:\/\/drive\.google\.com/.test(contact));
 
 console.log('=== 동작 실측 (가짜 supabase) ===');

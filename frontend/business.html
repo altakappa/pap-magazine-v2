@@ -442,9 +442,11 @@ var _bizMediaKitLinks=null;
 // 전혀 알 수 없었고, 미디어킷 다운로드는 광고주 퍼널에서 유일하게 관측 가능한
 // 전환점이다. 목적지 결정(관리자 override 포함)은 서버가 한다 — 링크가 한 군데
 // 에서만 관리되므로 페이지마다 어긋날 일도 없어진다.
+// 2026-07-29 후속: 쿼리형(?lang=&src=)은 라이브에서 src 가 유실돼 전부 'other' 로
+// 기록됐다(실측 2회, 클라이언트를 바꿔도 동일). 경로형은 정상 기록되므로 통일한다.
 function downloadMediaKit(lang){
   var l=(lang==='ko')?'ko':'en';
-  window.open('/mediakit?lang='+l+'&src=business','_blank','noopener');
+  window.open('/mediakit/'+l+'/business','_blank','noopener');
 }
 
 // QA #321 — /api/settings?key=business_page (관리자 저장 데이터) 반영.
