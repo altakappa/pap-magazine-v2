@@ -29,14 +29,17 @@ const { isBot } = require('./_lib/botDetect');
 
 const HOME_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.com';
 
-/* 내장 기본 링크 — business.html / contact.html 과 같은 파일 ID.
-   (드라이브 uc?export=download 직링크는 권한/용량 확인 페이지로 빠져 다운로드가
-    깨진다. /file/d/<id>/view 형식이 검증된 형태 — f17fabd 교훈) */
-const FILE_IDS = {
-  ko: '1gUeTUJrg-NLv8BUT1BnEzfa3oqXfFt3X',
-  en: '1gVKLuOP2mksORuDuugV6_Ls0XAiQwo7S',
+/* 내장 기본 링크 — 관리자(site_settings.business_page)에 저장된 링크가 없을 때만 쓴다.
+   2026-07-29: 기존 폴백이던 파일 ID 2개(1gUeTUJrg…·1gVKLuOP…)는 라이브 확인 결과
+   구글 드라이브 휴지통에 들어가 있어 "파일이 소유자의 휴지통에 있습니다" 가 떴다.
+   business.html·contact.html 에 하드코딩돼 있던 그 ID 라, 사이트의 미디어킷
+   버튼도 같은 화면을 보여주고 있었다는 뜻이다(광고주 대면 경로).
+   → 관리자가 실제로 저장해 둔 폴더 링크를 기본값으로 승격한다. 파일이 바뀌어도
+     폴더는 유지되므로 이쪽이 덜 깨진다. */
+const DEFAULT_LINKS = {
+  ko: 'https://drive.google.com/drive/folders/1K_TnNEF7y1rSlc4tDwX-c2y8IPHvYYQ2',
+  en: 'https://drive.google.com/drive/folders/1gA52ZK7GVK-Dun92VkDgy1-huF7ppC42',
 };
-const driveUrl = (id) => 'https://drive.google.com/file/d/' + id + '/view';
 
 // 관리자가 settings 에 저장한 링크를 허용할 호스트. 그 외에는 내장 링크로 폴백.
 const ALLOWED_HOSTS = new Set([
@@ -98,10 +101,14 @@ module.exports = async function handler(req, res) {
   const { lang, src } = readParams(req);
 
   // 목적지 결정: 관리자 저장 링크 우선, 없거나 부적합하면 내장 링크
-  let dest = driveUrl(FILE_IDS[lang]);
+  let dest = DEFAULT_LINKS[lang];
   try {
     const { data } = await supabaseAdmin
-      .from('settings').select('value').eq('key', 'business_page').maybeSingle();
+      // ★ 테이블명은 site_settings 다 (api/settings.js 와 동일).
+      //   2026-07-29 첫 배포에서 'settings' 로 조회해 항상 실패했고, try/catch 가
+      //   경고만 남기고 삼켜서 조용히 내장 폴백으로 떨어졌다. 그 폴백이 휴지통에
+      //   들어간 옛 파일이라 라이브에서 "파일이 소유자의 휴지통에 있습니다" 가 떴다.
+      .from('site_settings').select('value').eq('key', 'business_page').maybeSingle();
     const v = data && data.value;
     const override = v && (lang === 'ko' ? v.mediakit_link_ko : v.mediakit_link_en);
     const safe = safeExternal(override);
