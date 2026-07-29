@@ -34,6 +34,28 @@ t('이미 긴 설명은 보강하지 않고 원문 유지',
   meta(renderSeoHtml('editorial', long, {lang:'ko'})).startsWith('ASIATOPIA는 Asia와 Utopia'));
 t('og:description 도 같은 보강값 사용', ogd(renderSeoHtml('editorial', bare, {lang:'ko'})).length >= 110);
 
+/* 2026-07-29 (GSC 실측) — 스니펫이 태그 나열로 시작하던 문제.
+ * 설명이 비어 있으면 보강이 태그부터 붙어 SERP 스니펫이
+ *   "waterbomb · waterbomb seoul 2026 · music festival. 제목 — PAP MAGAZINE 뉴스…"
+ * 로 나왔다(라이브 실측). 정작 본문 첫 문장은 훨씬 낫다.
+ * GSC 7월: 노출 27,646(4월 596 대비 46배)인데 클릭 826 으로 감소, CTR 12.6%→3.0%. */
+console.log('--- 본문 첫 문장 우선 (스니펫 품질) ---');
+const withBody = {
+  slug: 'w', title: '워터밤 서울 2026 최종 라인업', status: 'published',
+  content: '올여름 가장 뜨거운 음악 축제가 돌아온다. 워터밤 서울 2026이 7월 24일부터 26일까지 일산 킨텍스에서 개최되며, 최종 라인업을 공식 발표했다.<br><br>태민과 카리나 등이 출연한다.',
+  tags: ['waterbomb', 'waterbomb seoul 2026', 'music festival'],
+  cover_image: 'https://x/y.jpg', gallery: [], published_date: '2026-07-08', category: 'news',
+};
+const mBody = meta(renderSeoHtml('article', withBody, { lang: 'ko' }));
+t('본문 첫 문장으로 시작', mBody.startsWith('올여름 가장 뜨거운'));
+t('태그 나열로 시작하지 않는다', !/^waterbomb/.test(mBody));
+t('<br> 를 공백으로 처리 (단어 붙음 방지)', !/했다\.태민/.test(mBody));
+t('본문이 없으면 기존 폴백 유지 (회귀 방지)',
+  meta(renderSeoHtml('article', Object.assign({}, withBody, { content: '' }), { lang: 'ko' })).length >= 100);
+t('EN 페이지에 한국어 본문을 넣지 않는다',
+  !/올여름/.test(meta(renderSeoHtml('article', withBody, { lang: 'en' }))),
+  '언어 신호가 섞이면 EN 색인 품질이 떨어진다');
+
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if(fail){ console.log('❌ seo-meta-desc-enrich tests FAILED'); process.exit(1); }
 console.log('✅ seo-meta-desc-enrich tests passed');

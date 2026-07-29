@@ -64,6 +64,25 @@ const NICHE_IG = [
   [/\bart\b|photograph|exhibit|gallery/i, 'papstudios_', '아트'],
   [/culture|life|trend|film|movie|book/i, 'pap_trends',  '컬처·트렌드'],
 ];
+/* 본문(content) → 평문. record.content 는 세 형태로 온다:
+   (a) HTML/평문 문자열 (b) 블록 JSON 문자열 (c) 블록 배열.
+   JSON-LD articleBody 와 meta description 두 곳에서 쓰므로 모듈 스코프로 뺐다
+   (2026-07-29 — 기존엔 JSON-LD 안에만 있어서 meta 쪽이 본문을 못 썼다). */
+function _plainBody(content) {
+  let blocks = null;
+  if (typeof content === 'string' && content.trim().charAt(0) === '[') {
+    try { const p = JSON.parse(content); if (Array.isArray(p)) blocks = p; } catch { blocks = null; }
+  } else if (Array.isArray(content)) { blocks = content; }
+  let raw = '';
+  if (blocks) {
+    raw = blocks
+      .map(b => !b ? '' : (typeof b === 'string' ? b : String(b.text || b.content || b.caption || '')))
+      .join(' ');
+  } else if (typeof content === 'string') { raw = content; }
+  // <br> 는 문장 경계라 공백으로 — 안 그러면 단어가 붙는다
+  return raw.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 function nicheIg(category) {
   const c = String(category || '');
   for (const [re, acct] of NICHE_IG) if (re.test(c)) return acct;
@@ -468,6 +487,24 @@ function renderSeoHtml(kind, record, opts) {
       if (t && s === `${t} — ${SITE_NAME}`) { s = ''; break; }
     }
     if (s.length >= 110) return s;               // 이미 충분히 길면 그대로
+    /* 2026-07-29 (GSC 실측) — 본문 첫 문장을 태그 나열보다 먼저 쓴다.
+       설명이 비어 있으면 parts 가 태그부터 시작해 스니펫이
+       "waterbomb · waterbomb seoul 2026 · music festival. 제목 — PAP MAGAZINE 뉴스…"
+       처럼 키워드 나열로 나왔다(라이브 실측, 워터밤 기사). 정작 그 기사 본문
+       첫 문장은 "올여름 가장 뜨거운 음악 축제가 돌아온다…" 로 훨씬 낫다.
+       GSC 7월 — 노출 27,646(4월 대비 46배)인데 클릭은 826 로 오히려 감소,
+       CTR 12.6%→3.0%. 스니펫 품질이 유력 원인이라 본문을 우선 쓰게 한다.
+       EN 페이지에 한국어 본문을 넣지 않도록 언어별 소스를 고른다. */
+    if (!s) {
+      const srcBody = isKo ? record.content : (record.content_en || null);
+      const bt = _plainBody(srcBody);
+      if (bt.length >= 40) {
+        // 문장 경계에서 끊는다(마침표·물음표·느낌표). 없으면 그대로 자른다.
+        const cut = bt.slice(0, 200);
+        const m = cut.match(/^[\s\S]*?[.!?。？！](?=\s|$)/);
+        s = ((m && m[0].length >= 60) ? m[0] : cut).trim();
+      }
+    }
     const parts = s ? [s] : [];
     // 등장 브랜드 (record.fashion.brands[].name) — 최대 6개
     let brands = [];
@@ -645,19 +682,7 @@ function renderSeoHtml(kind, record, opts) {
     // 2026-07-12 — articleBody 를 요약문(descKo)이 아니라 실제 본문 전문으로.
     // record.content 는 (a) HTML/plain 문자열 (b) 블록 JSON 문자열 (c) 블록 배열
     // 세 형태가 오므로 전부 평문으로 정규화한다. 본문이 없으면 기존처럼 요약문 폴백.
-    const bodyPlain = (function (content) {
-      let blocks = null;
-      if (typeof content === 'string' && content.trim().charAt(0) === '[') {
-        try { const p = JSON.parse(content); if (Array.isArray(p)) blocks = p; } catch { blocks = null; }
-      } else if (Array.isArray(content)) { blocks = content; }
-      let raw = '';
-      if (blocks) {
-        raw = blocks
-          .map(b => !b ? '' : (typeof b === 'string' ? b : String(b.text || b.content || b.caption || '')))
-          .join(' ');
-      } else if (typeof content === 'string') { raw = content; }
-      return raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-    })(record.content);
+    const bodyPlain = _plainBody(record.content);
     const bodyForWordCount = bodyPlain || String(descKo || '').replace(/\s+/g, ' ').trim();
     const wordCount = bodyForWordCount
       ? bodyForWordCount.split(' ').filter(Boolean).length
