@@ -34,7 +34,15 @@
  *  - 시간 예산 90s: 초과 시 그 시점까지 저장하고 종료(다음 실행이 이어감).
  *  - 채워진 행은 description ≥120 이 되어 선별에서 자연히 빠지므로 멱등.
  *
- * 페이스: 10분당 6건 → 일 ~860건, 약 3일 완주. 비전 호출 비용 발생(도메니코 승인).
+ * 페이스: 동시 3 워커 × 10분 주기 → 실행당 9~12건, 일 ~1,500건. 비전 호출 비용
+ * 발생(도메니코 승인).
+ *
+ * 2026-07-29 라이브 실측 후속 2건:
+ *  · 선별을 '본문이 완전히 빈 행'으로 좁혔다. 짧지만 비어있지 않은 12건이
+ *    published_date 정렬 맨 앞에 있어 매 실행을 통째로 소모했는데, 쓰기 규칙이
+ *    기존 텍스트를 보존하므로 비전을 호출하고도 아무것도 쓰지 못하는 행이었다.
+ *  · longForm 비전 호출이 건당 ~28초로 늘어 직렬로는 90초에 3건이 한계였다
+ *    (1,851건 = 4일 초과). 동시 3 워커로 전환.
  */
 'use strict';
 const { supabaseAdmin } = require('../_lib/supabase');
@@ -63,8 +71,9 @@ module.exports = withCronGuard('backfill-meta-desc', async function handler(req,
   }
 
   const started = Date.now();
-  // 배치 8 (비전 호출 ~8s × 8 ≈ 64s < 90s 예산). 예산 무관 진행 지시로 상향.
-  const lim = Math.max(1, Math.min(20, parseInt((req.query && req.query.limit) || '8', 10) || 8));
+  // 배치 12 — 동시 3 워커 × 90s 예산, longForm 건당 ~28s 실측 기준 9~12건 소화.
+  // 워커가 놀지 않도록 예산으로 소화 가능한 양보다 살짝 넉넉히 잡는다(남으면 다음 실행).
+  const lim = Math.max(1, Math.min(30, parseInt((req.query && req.query.limit) || '12', 10) || 12));
 
   const { data: rows, error } = await supabaseAdmin.rpc('short_desc_editorials', { lim });
   if (error) throw new Error('selector failed: ' + error.message);
@@ -73,9 +82,24 @@ module.exports = withCronGuard('backfill-meta-desc', async function handler(req,
   }
 
   let filled = 0, empty = 0;
-  for (const row of rows) {
-    if (Date.now() - started > TIME_BUDGET_MS) break;
 
+  /* 동시 3건 워커풀 (2026-07-29 실측 후속).
+   * longForm 비전 호출이 건당 ~28초라 직렬로는 90초 예산에 3건밖에 못 넣는다
+   * (실측 12:40 실행 = 3건). 1,851건이면 4일 넘게 걸린다. 호출끼리 의존이 없고
+   * DB 업데이트도 행 단위라 동시 실행이 안전하다. 3 으로 둔 것은 Anthropic
+   * 레이트리밋과 120초 강제종료 사이의 여유를 남기기 위함. */
+  const CONCURRENCY = 3;
+  let cursor = 0;
+  async function _worker() {
+    for (;;) {
+      if (Date.now() - started > TIME_BUDGET_MS) return;
+      const i = cursor++;
+      if (i >= rows.length) return;
+      await processOne(rows[i]);
+    }
+  }
+
+  async function processOne(row) {
     const imageUrls = [row.cover_image, ...(Array.isArray(row.gallery) ? row.gallery : [])]
       .filter((u) => typeof u === 'string' && /^https?:\/\//.test(u))
       .slice(0, 3);
@@ -116,6 +140,8 @@ module.exports = withCronGuard('backfill-meta-desc', async function handler(req,
     const { error: upErr } = await supabaseAdmin.from('editorials').update(patch).eq('id', row.id);
     if (upErr) console.error('[backfill-meta-desc] update 실패', row.slug, upErr.message);
   }
+
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, rows.length) }, () => _worker()));
 
   // 완주 통보 — 이번 배치가 실제로 일했고(batch>0) 남은 게 0 이면 개인
   // 텔레그램으로 1회 알린다. idle 런은 위에서 early-return 하므로 여기 안 옴 → 중복 없음.

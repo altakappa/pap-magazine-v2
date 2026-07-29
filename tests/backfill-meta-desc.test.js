@@ -50,6 +50,14 @@ t('크레딧(브랜드·태그)을 프롬프트에 주입 — 실제 검색어�
 t('재시도는 3회로 제한 (무한 재시도 금지 유지)',
   /meta_desc_attempts: \(row\.meta_desc_attempts \|\| 0\) \+ 1/.test(c));
 
+/* 2026-07-29 라이브 실측 후속 — longForm 전환으로 건당 ~28초가 되어 직렬 처리는
+ * 90초 예산에 3건이 한계였다(실측). 1,851건이면 4일을 넘긴다. */
+t('동시 워커풀로 처리 (직렬 3건/실행 → 9~12건)',
+  /CONCURRENCY = 3/.test(c) && /Promise\.all\(Array\.from\(/.test(c) && /_worker\(\)/.test(c));
+t('워커도 시간 예산을 존중 (120s 강제종료 전 종료)',
+  /Date\.now\(\) - started > TIME_BUDGET_MS/.test(c));
+t('배치 상한을 워커가 놀지 않을 만큼 확보', /'12', 10\) \|\| 12/.test(c));
+
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if(fail){ console.log('❌ backfill-meta-desc tests FAILED'); process.exit(1); }
 console.log('✅ backfill-meta-desc tests passed');
