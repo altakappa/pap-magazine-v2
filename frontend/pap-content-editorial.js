@@ -1006,6 +1006,33 @@ function _papRenderShopRow(fashion){
 // 여기 한 곳만 갱신한다. (실시간 조회는 Graph API 호출 비용 대비 과함)
 var _PAP_IG_FOLLOWERS_KO='37만';
 var _PAP_IG_FOLLOWERS_EN='370K+';
+// ─────────────────────────────────────────────────────────────────────
+// 갤러리 중간 IG CTA (2026-07-29)
+// ─────────────────────────────────────────────────────────────────────
+// 왜: 실측(최근 10일) 결과 사람이 누르는 아웃클릭은 editorial 40 · article 23 ·
+// nav/footer 30 수준으로 원래부터 낮았다("급감"이 아니라 처음부터 약함 — ssr
+// 3,054건은 봇 스파이크였다). 원인 후보 1순위는 위치다: 기존 CTA 는 이미지
+// 12장짜리 갤러리를 전부 내려야 나오는 맨 아래에만 있어, 중간에 이탈하는
+// 독자에게는 존재하지 않는 것과 같았다.
+// 무엇: 갤러리 중간(4번째 이미지 뒤)에 얇은 CTA 한 줄을 넣는다. 원본 게시물이
+// 있는 화보에서만, 이미지가 6장 이상일 때만 — 짧은 화보는 하단 CTA 로 충분하고
+// 두 번 나오면 성가시다.
+// 카피: 도메니코 지적("너무 AI 멘트 느낌")을 존중해 새 문구를 만들지 않고
+// 하단 CTA 와 같은 라벨만 쓴다. 광고 문구 없음.
+// 측정: src=editorial_mid 로 분리 집계해 하단(editorial)과 비교 가능하게 한다.
+function _papMidIgCtaHtml(igUrl){
+  var permalink = String(igUrl || '').split('?')[0];
+  if (!/instagram\.com\/(p|reel|tv)\//.test(permalink)) return '';
+  if (!/\/$/.test(permalink)) permalink += '/';
+  var ko = (localStorage.getItem('pap-lang') || 'ko') === 'ko';
+  var label = ko ? '인스타그램에서 보기 ↗' : 'View on Instagram ↗';
+  var out = '/api/ig-out?src=editorial_mid&to=post&url=' + encodeURIComponent(permalink);
+  return '<div class="ed-gallery-item ed-mid-cta" style="display:flex;align-items:center;justify-content:center;padding:22px 16px;border-top:1px solid rgba(255,255,255,.14);border-bottom:1px solid rgba(255,255,255,.14)">'
+       + '<a href="' + out + '" target="_blank" rel="noopener" '
+       + 'style="display:inline-block;color:#fff;border:1px solid rgba(255,255,255,.4);padding:11px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none">'
+       + label + '</a></div>';
+}
+
 function _papRenderEdIg(igUrl, title){
   var box=document.getElementById('edIgPostCta');
   if(!box) return;
@@ -1370,6 +1397,10 @@ function _openEditorialInner(title,thumb){
       }
     }
     gal.innerHTML+='<div class="ed-gallery-item"><img src="'+url+'" alt="'+title+'" loading="lazy" onerror="edImgError(this)">'+_scrapBtnHtml(url,title)+'<div class="ed-img-credits">'+credits+'</div></div>';
+    // 갤러리 중간 IG CTA — 6장 이상일 때 4번째 뒤 1회만(짧은 화보는 하단 CTA로 충분).
+    if(idx===3 && det.images.length>=6){
+      try{ gal.innerHTML += _papMidIgCtaHtml(det.ig || (d && d.ig) || ''); }catch(_){}
+    }
   });
 
   // QA #206 — fall back to a.url (the API row's url field) when the
@@ -1608,6 +1639,10 @@ function _openEditorialInner_noPush(title,thumb){
       }
     }
     gal.innerHTML+='<div class="ed-gallery-item"><img src="'+url+'" alt="'+title+'" loading="lazy" onerror="edImgError(this)">'+_scrapBtnHtml(url,title)+'<div class="ed-img-credits">'+credits+'</div></div>';
+    // 갤러리 중간 IG CTA — 6장 이상일 때 4번째 뒤 1회만(짧은 화보는 하단 CTA로 충분).
+    if(idx===3 && det.images.length>=6){
+      try{ gal.innerHTML += _papMidIgCtaHtml(det.ig || (d && d.ig) || ''); }catch(_){}
+    }
   });
   // QA #206 — fall back to a.url (the API row's url field) when the
   // hardcoded edDetails entry has none. The previous code only looked
