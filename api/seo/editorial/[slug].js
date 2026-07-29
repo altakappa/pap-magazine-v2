@@ -12,6 +12,7 @@
 const { supabaseAdmin } = require('../../_lib/supabase');
 const { handleCors } = require('../../_lib/cors');
 const { renderSeoHtml, renderNotFoundHtml } = require('../../_lib/seoRenderer');
+const { parseBrandCredits } = require('../../_lib/fashionCredits');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -231,22 +232,13 @@ module.exports = async function handler(req, res) {
     //   대신 기사 자신의 fashion 크레딧에서 핸들을 뽑아 brands 에 실재하는 것만 남긴다.
     //   → 옛 기사·새 기사 모두 자동 적용되고, 실재 확인을 거치므로 404 링크가 없다.
     try {
-      let fashionObj = data.fashion;
-      if (typeof fashionObj === 'string') { try { fashionObj = JSON.parse(fashionObj); } catch (_) { fashionObj = null; } }
-      const arr = fashionObj && Array.isArray(fashionObj.brands) ? fashionObj.brands : [];
-      const ids = [];
-      const seenId = new Set();
-      arr.forEach((b) => {
-        const raw = b && (b.instagram || b.name);
-        if (!raw) return;
-        const id = String(raw).trim()
-          .replace(/^https?:\/\/(www\.)?instagram\.com\//i, '')
-          .replace(/^@/, '').replace(/\/+$/, '')
-          .toLowerCase();
-        if (!id || !/^[a-z0-9._-]+$/.test(id) || seenId.has(id)) return;
-        seenId.add(id);
-        ids.push(id);
-      });
+      /* 2026-07-29 — 크레딧 파싱을 공용 parseBrandCredits 로 교체.
+         여기서 신형 { brands:[...] } 만 읽고 있었는데, 실제 DB 는 구형 배열
+         [{ n, id }] 이 2,373건으로 다수였다. 그래서 실제 브랜드 크레딧을 가진
+         발행 기사 788건(고유 브랜드 4,970개)의 링크가 통째로 0개였다.
+         공용 파서가 두 형태와 더미 크레딧([{n:'Brand',id:'@brand'}] 1,559건)을
+         함께 처리한다. */
+      const ids = parseBrandCredits(data.fashion).map((b) => b.id);
       if (ids.length) {
         const { data: bRows } = await supabaseAdmin
           .from('brands')

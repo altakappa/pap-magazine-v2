@@ -23,24 +23,23 @@ const { withCronGuard } = require('../_lib/cronGuard');
 const PAGE = 500;
 const MAX_INSERT_PER_RUN = 300; // 한 번에 과도한 쓰기 방지 — 남으면 다음 실행이 이어감
 
-/* 인스타 핸들/이름 → brand_id (소문자, URL·@·후행슬래시 제거).
-   브랜드 페이지 라우트가 소문자 id 로 조회하므로 그 규칙에 맞춘다. */
-function toBrandId(raw) {
-  if (!raw) return '';
-  const s = String(raw).trim()
-    .replace(/^https?:\/\/(www\.)?instagram\.com\//i, '')
-    .replace(/^@/, '')
-    .replace(/\/+$/, '')
-    .toLowerCase();
-  // 계정 핸들로 성립하는 문자만 — 한글 브랜드명·공백 표기는 페이지가 없으므로 제외
-  return /^[a-z0-9._-]{2,60}$/.test(s) ? s : '';
-}
+/* 최소 등장 편수 (2026-07-29 신설).
+ * 구형 크레딧까지 읽게 되면서 미등록 브랜드가 1,475개로 늘었는데, 그중 1,246개가
+ * 딱 한 편에만 등장한다(실측). 그대로 등록하면 항목 1개짜리 얇은 페이지를 1,246개
+ * 한꺼번에 만드는 셈이고, 이는 구글의 scaled content abuse 정책이 겨냥하는 형태다
+ * (Ahrefs 도 기존 /brand/* 1,359건을 orphan 으로 잡고 있었다).
+ * 2편 이상 등장한 브랜드만 등록한다 → 이번 대상 229개.
+ * 나중에 한 편 더 실리면 다음 실행에서 자동으로 기준을 넘어 등록된다.
+ * 한 편짜리 브랜드도 기사 안의 Fashion 칩(인스타·구매 링크)으로는 계속 노출된다. */
+const MIN_EDITORIALS = 2;
 
-function parseFashion(f) {
-  let o = f;
-  if (typeof o === 'string') { try { o = JSON.parse(o); } catch (_) { return []; } }
-  return o && Array.isArray(o.brands) ? o.brands : [];
-}
+/* 2026-07-29 — 크레딧 파싱을 공용 parseBrandCredits 로 교체.
+   기존 parseFashion 은 신형 { brands:[...] } 만 읽었는데 DB 다수는 구형 배열
+   [{ n, id }] 이었다(실측 2,373건). 그래서 실제 크레딧이 있는 발행 기사 788건,
+   고유 브랜드 4,970개(미등록 1,475개)가 등록 대상에서 통째로 빠져 있었다.
+   더미 크레딧 [{n:'Brand',id:'@brand'}](1,559건)도 공용 파서가 걸러낸다 —
+   안 걸렀으면 /brand/brand 라는 가짜 페이지가 생겼다. */
+const { parseBrandCredits } = require('../_lib/fashionCredits');
 
 module.exports = withCronGuard('brand-sync', async function handler(req, res) {
   const auth = (req.headers && req.headers['authorization']) || '';
@@ -48,7 +47,8 @@ module.exports = withCronGuard('brand-sync', async function handler(req, res) {
   if (!cronOk) { const u = await requireAdmin(req, res); if (!u) return; }
 
   // 1) 발행 기사의 fashion 크레딧 수집 (페이지네이션)
-  const candidates = new Map(); // brand_id → display_name
+  //    등장 편수도 함께 센다 — 얇은 페이지 방지 게이트(MIN_EDITORIALS)에 쓴다.
+  const candidates = new Map(); // brand_id → { name, count }
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await supabaseAdmin
       .from('editorials')
@@ -59,24 +59,29 @@ module.exports = withCronGuard('brand-sync', async function handler(req, res) {
     if (error) throw error;
     if (!data || !data.length) break;
     data.forEach((row) => {
-      parseFashion(row.fashion).forEach((b) => {
-        if (!b) return;
-        // 인스타 핸들만 사용 — 표기명(name) 폴백 금지.
-        // brand_id 는 핸들 규격(instagram_handle 로도 저장)이라 이름으로 지어내면
-        // 크레딧에 "VINTAGE"·"VIA"·"EDITION" 이라고만 적힌 건이 브랜드 페이지가 된다
-        // (2026-07-28 실측 8건: vintage·via·edition·whistler·aflame·humanhu·
-        //  sangyexianke·sixdo). 핸들이 없는 브랜드는 등록하지 않는다.
-        const id = toBrandId(b.instagram);
-        if (!id || candidates.has(id)) return;
-        const label = String((b.name || '') || id).trim().replace(/^@/, '');
-        candidates.set(id, (label || id).toUpperCase().slice(0, 120));
+      // parseBrandCredits 가 두 형태·더미·핸들 규격 검사를 모두 처리한다.
+      // 표기명(name)에서 핸들을 지어내지 않는 원칙도 그 안에 있다 —
+      // 2026-07-28 실측으로 vintage·via·edition·whistler 같은 크레딧 상용어가
+      // 브랜드 페이지가 되던 문제를 막기 위한 것.
+      // parseBrandCredits 는 한 기사 안에서 이미 중복을 제거하므로,
+      // 여기서 세는 건 '몇 편에 등장했는가'가 된다.
+      parseBrandCredits(row.fashion).forEach((b) => {
+        const cur = candidates.get(b.id);
+        if (cur) cur.count += 1;
+        else candidates.set(b.id, { name: b.name, count: 1 });
       });
     });
     if (data.length < PAGE) break;
   }
 
-  const ids = [...candidates.keys()];
-  if (!ids.length) return res.status(200).json({ scanned: 0, inserted: 0, done: true });
+  // 얇은 페이지 방지 — 2편 이상 등장한 브랜드만 등록 대상으로 삼는다.
+  const scanned = candidates.size;
+  const ids = [...candidates.entries()]
+    .filter(([, v]) => v.count >= MIN_EDITORIALS)
+    .map(([id]) => id);
+  if (!ids.length) {
+    return res.status(200).json({ scanned, eligible: 0, inserted: 0, done: true });
+  }
 
   // 2) 이미 있는 것 제외 (in 절은 청크로 — URL 길이 한계 회피)
   const existing = new Set();
@@ -89,13 +94,13 @@ module.exports = withCronGuard('brand-sync', async function handler(req, res) {
 
   const missing = ids.filter((id) => !existing.has(id)).slice(0, MAX_INSERT_PER_RUN);
   if (!missing.length) {
-    return res.status(200).json({ scanned: ids.length, existing: existing.size, inserted: 0, done: true });
+    return res.status(200).json({ scanned, eligible: ids.length, existing: existing.size, inserted: 0, done: true });
   }
 
   // 3) 신규만 insert — 기존 행은 절대 덮어쓰지 않는다(수동 편집분 보존)
   const rows = missing.map((id) => ({
     brand_id: id,
-    display_name: candidates.get(id) || id.toUpperCase(),
+    display_name: (candidates.get(id) && candidates.get(id).name) || id.toUpperCase(),
     category: 'fashion',      // NOT NULL — 기본 분류. 관리자가 나중에 정정.
     status: 'pending',
     instagram_handle: id,
@@ -106,7 +111,8 @@ module.exports = withCronGuard('brand-sync', async function handler(req, res) {
 
   const remaining = ids.filter((id) => !existing.has(id)).length - missing.length;
   return res.status(200).json({
-    scanned: ids.length,
+    scanned,
+    eligible: ids.length,
     existing: existing.size,
     inserted: rows.length,
     remaining,
