@@ -28,6 +28,30 @@ function ymd(d) {
   return d.toISOString().slice(0, 10);
 }
 
+// ── KST(Asia/Seoul, UTC+9 고정 · 서머타임 없음) 경계 계산 ──────────────
+// 왜 필요한가: 아웃클릭 "오늘" 은 운영자가 보는 한국 날짜여야 한다. UTC 로
+// 자르면 09:00 KST 에 하루가 바뀌어 오전 수치가 통째로 어제로 새어 나간다.
+const KST_OFFSET_MS = 9 * 3600000;
+function kstWindows(nowMs) {
+  const shifted = new Date(nowMs + KST_OFFSET_MS);
+  // shifted 의 UTC 필드 = 실제 KST 벽시계
+  const kstMidnight = Date.UTC(shifted.getUTCFullYear(), shifted.getUTCMonth(), shifted.getUTCDate());
+  const todayStart = kstMidnight - KST_OFFSET_MS;          // 오늘 00:00 KST 의 UTC ms
+  const yesterdayStart = todayStart - 86400000;
+  const elapsed = nowMs - todayStart;                       // 오늘 경과 시간
+  const pad = n => String(n).padStart(2, '0');
+  return {
+    todayStart: new Date(todayStart).toISOString(),
+    now: new Date(nowMs).toISOString(),
+    yesterdayStart: new Date(yesterdayStart).toISOString(),
+    // "어제 같은 시각" — 어제 00:00 부터 오늘 경과분과 똑같은 길이만큼
+    yesterdaySameHour: new Date(yesterdayStart + elapsed).toISOString(),
+    yesterdayEnd: new Date(todayStart).toISOString(),
+    asOfKst: pad(shifted.getUTCHours()) + ':' + pad(shifted.getUTCMinutes()),
+    dateKst: shifted.toISOString().slice(0, 10),
+  };
+}
+
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
   const user = await requireAdmin(req, res);
@@ -92,6 +116,86 @@ module.exports = async function handler(req, res) {
         if (error || !data) return 0;
         return data.reduce((s, r) => s + (Number(r.blocked_count) || 0), 0);
       } catch (_) { return 0; }
+    })();
+
+    // ── 1-b) IG 아웃클릭 — "오늘은 아직 끝나지 않은 하루" 를 명시한다 ──
+    //
+    // 왜 이 블록이 있나 (2026-07-29 실측) —
+    //   아웃클릭이 봇 때문에 부풀었다가(7/25 907회 · 7/26 1352회) 필터가 걸리며
+    //   꺼지자 "급감" 오탐이 반복됐다. 게다가 진행 중인 오늘(예: 11시까지 23회)을
+    //   완료된 어제(113회)와 그냥 비교하면 매일 아침 "80% 급감" 처럼 보인다.
+    //   그래서 (a) 오늘은 부분일임을 플래그로 못박고, (b) 어제 '같은 시각까지'
+    //   값을 함께 내려 동일 조건 비교를 가능하게 한다.
+    //
+    // 봇 판별 보조지표 —
+    //   사람 트래픽: 고유 IP 20~60개 × 각 2.5~6회, 모바일 우세.
+    //   봇 스파이크: 고유 IP 수백~천 개 × 각 1.x회, 데스크톱 90%+.
+    //   따라서 IP당 클릭수와 데스크톱 비율을 같이 보여주면 한눈에 판별된다.
+    //   총 건수는 count(head) 로 정확히 세고(row-cap 무관), IP/디바이스 계산용
+    //   행만 페이지 단위로 최대 MAX 행까지 받는다. 초과하면 sampled=true 로
+    //   표시해 "표본 기준" 임을 숨기지 않는다.
+    const outclicks = await (async () => {
+      const W = kstWindows(Date.now());
+      const between = (from, to) => q => q.gte('clicked_at', from).lt('clicked_at', to);
+
+      const [todayCount, ySameHourCount, yFullCount] = await Promise.all([
+        countOf('ig_outclicks', between(W.todayStart, W.now)),
+        countOf('ig_outclicks', between(W.yesterdayStart, W.yesterdaySameHour)),
+        countOf('ig_outclicks', between(W.yesterdayStart, W.yesterdayEnd)),
+      ]);
+
+      // ip_hash / device_type 표본 — PostgREST row-cap(1000) 때문에 페이지로 나눠 받는다.
+      const PAGE = 1000, MAX_PAGES = 5;
+      const sample = async (from, to) => {
+        const seen = new Set();
+        let total = 0, desktop = 0, nullIp = 0, truncated = false;
+        for (let p = 0; p < MAX_PAGES; p++) {
+          let data = [];
+          try {
+            const r = await A.from('ig_outclicks')
+              .select('ip_hash,device_type')
+              .gte('clicked_at', from).lt('clicked_at', to)
+              .order('clicked_at', { ascending: true })
+              .range(p * PAGE, p * PAGE + PAGE - 1);
+            if (r.error) break;
+            data = r.data || [];
+          } catch (_) { break; }
+          for (const row of data) {
+            total += 1;
+            if (row.ip_hash) seen.add(row.ip_hash); else nullIp += 1;
+            if (row.device_type === 'desktop') desktop += 1;
+          }
+          if (data.length < PAGE) break;
+          if (p === MAX_PAGES - 1) truncated = true;
+        }
+        // ip_hash 는 PAP_IP_HASH_SALT 미설정 시 null 로 저장된다 — 그때는
+        // 고유 IP 를 셀 수 없으므로 0 이 아니라 null(=미상)로 돌려준다.
+        const uniqueIps = (nullIp === total && total > 0) ? null : seen.size;
+        return {
+          rows: total,
+          unique_ips: uniqueIps,
+          clicks_per_ip: (uniqueIps && uniqueIps > 0) ? Math.round((total / uniqueIps) * 10) / 10 : null,
+          desktop_pct: total > 0 ? Math.round((desktop / total) * 100) : null,
+          truncated,
+        };
+      };
+
+      const [todaySample, ySample] = await Promise.all([
+        sample(W.todayStart, W.now),
+        sample(W.yesterdayStart, W.yesterdaySameHour),
+      ]);
+
+      return {
+        outclicks_today: todayCount,
+        // 항상 true — 오늘은 정의상 아직 끝나지 않은 하루다. 화면은 이 플래그를
+        // 보고 "진행 중" 표기를 붙여 완료된 하루와의 착시 비교를 막는다.
+        outclicks_today_partial: true,
+        outclicks_yesterday_same_hour: ySameHourCount,
+        outclicks_yesterday_full: yFullCount,
+        outclicks_as_of_kst: W.asOfKst,
+        outclicks_date_kst: W.dateKst,
+        outclicks_detail: { today: todaySample, yesterday_same_hour: ySample },
+      };
     })();
 
     // ── 2) 투고(submissions) 상태별 ────────────────────────────────────
@@ -175,6 +279,9 @@ module.exports = async function handler(req, res) {
         views_30d: views30d,
         bot_blocked_7d: botBlocked7d,
       },
+      // IG 아웃클릭 — 부분일(오늘) 주의 지표. 키 이름은 화면(ops-dashboard.html)이
+      // 그대로 읽는다. outclicks_today_partial 를 무시하고 어제와 직접 비교하지 말 것.
+      ...outclicks,
       submissions,
       monthly: months,
       daily: days,

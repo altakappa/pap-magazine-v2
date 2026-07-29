@@ -14563,19 +14563,68 @@ async function deleteCommunityPost(id){
 }
 
 // ======== SUBSCRIPTIONS ========
+//
+// 2026-07-29 — 구독/결제 탭이 "항상 0" 이던 문제를 고친다.
+//
+// 무엇이 문제였나 —
+//   admin.html 의 구독 탭은 스탠다드 0 / 프리미엄 0 / MRR ₩0 / 갱신율 0% 가
+//   전부 하드코딩된 정적 HTML 이었고, 이 함수는 /admin/members 를 훑어
+//   앞의 두 칸만 덮어썼다. members 응답에 subscription_plan 이 없거나
+//   호출이 실패하면 화면은 그대로 0 — 실제 구독이 있어도 "0건" 으로 보였다.
+//   MRR·갱신율 칸은 아예 손대는 코드가 없었다.
+//
+// 어떻게 고쳤나 —
+//   관리자 홈 대시보드가 이미 쓰는 /admin/stats 를 그대로 재사용한다
+//   (loadDashboardStats 와 같은 단일 진실원). 응답 키:
+//     planCounts.standard / .premium            → 등급별 활성 구독 수
+//     planCounts.standard_monthly|_yearly …     → 월/연 내역
+//     monthlyRevenue                            → MRR(₩, 연납은 1/12 로 환산)
+//     totals.activeSubscriptions                → 활성 구독 총계
+//   '갱신율' 은 stats 가 계산하지 않는 지표라 카드를 아예 없앴다(0% 표시 금지).
+//   실패 시엔 모든 칸이 '—' 로 남고, 안내줄에만 사유를 적는다 — 0 은 "값이
+//   0" 이라는 뜻이라 "모른다" 를 0 으로 쓰면 이번 버그를 반복하게 된다.
+function _subSetText(id, v){
+  var el = document.getElementById(id);
+  if(el) el.textContent = v;
+}
+function _subFmtKRW(n){
+  var v = Number(n);
+  if(!isFinite(v)) return '—';
+  return '₩' + v.toLocaleString('ko-KR');
+}
 async function loadSubscriptions(){
-  var statEls=document.querySelectorAll('#t-subscriptions .stat-n');
+  // 진입 즉시 "모름" 상태로 초기화 — 이전 조회 잔상이 남지 않게.
+  _subSetText('subStdCount','—');
+  _subSetText('subPremCount','—');
+  _subSetText('subMrr','—');
+  _subSetText('subActiveCount','—');
+  _subSetText('subPlanBreakdown','플랜별 내역을 불러오는 중…');
   try{
-    // Use member data for subscription stats
-    if(!allMembers.length){
-      var resp=await apiGet('/admin/members');
-      allMembers=resp.members||resp||[];
-    }
-    var std=allMembers.filter(function(m){return m.subscription_plan&&m.subscription_plan.indexOf('standard')>-1;}).length;
-    var prem=allMembers.filter(function(m){return m.subscription_plan&&m.subscription_plan.indexOf('premium')>-1;}).length;
-    if(statEls[0])statEls[0].textContent=std;
-    if(statEls[1])statEls[1].textContent=prem;
-  }catch(e){console.error('Subscriptions load error:',e);}
+    var st = await apiGet('/admin/stats');
+    // /admin/stats 는 실패해도 200 이 아닌 JSON({message})을 줄 수 있다.
+    if(!st || !st.planCounts) throw new Error((st && st.message) || 'stats unavailable');
+
+    var pc = st.planCounts || {};
+    var totals = st.totals || {};
+    var stdM = Number(pc.standard_monthly) || 0, stdY = Number(pc.standard_yearly) || 0;
+    var prmM = Number(pc.premium_monthly) || 0,  prmY = Number(pc.premium_yearly) || 0;
+    var std  = (typeof pc.standard === 'number') ? pc.standard : (stdM + stdY);
+    var prm  = (typeof pc.premium  === 'number') ? pc.premium  : (prmM + prmY);
+
+    _subSetText('subStdCount', std.toLocaleString('ko-KR'));
+    _subSetText('subPremCount', prm.toLocaleString('ko-KR'));
+    _subSetText('subMrr', _subFmtKRW(st.monthlyRevenue));
+    _subSetText('subActiveCount', (Number(totals.activeSubscriptions) || 0).toLocaleString('ko-KR'));
+    _subSetText('subPlanBreakdown',
+      '스탠다드 월 ' + stdM + ' · 연 ' + stdY +
+      '  |  프리미엄 월 ' + prmM + ' · 연 ' + prmY +
+      '  |  무료 ' + (Number(pc.free) || 0) +
+      '  ·  MRR 은 연납 구독을 1/12 로 환산한 추정치입니다. 갱신율(리텐션)은 아직 집계하지 않습니다 — Paddle 대시보드를 확인하세요.');
+  }catch(e){
+    console.error('Subscriptions load error:', e);
+    _subSetText('subPlanBreakdown',
+      '구독 지표를 불러오지 못했습니다. 새로고침 후에도 같으면 Paddle 대시보드에서 확인하세요. (숫자는 0 이 아니라 미상 “—” 으로 표시됩니다)');
+  }
 }
 
 // ======== 목록 전량 로드 + 페이지네이션 (QA 2026-07-16) ========

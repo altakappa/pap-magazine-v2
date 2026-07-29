@@ -138,6 +138,35 @@ async function load(){
   }
 }
 
+/* IG 아웃클릭 KPI — 2026-07-29.
+   "오늘" 은 아직 끝나지 않은 하루다. 완료된 어제와 그냥 비교하면 매일 아침
+   급감처럼 보인다(7/29 11시 23회 vs 7/28 종일 113회 = -80% 오탐). 그래서
+   ① 진행 중임을 명시하고 ② 어제 '같은 시각까지' 값을 나란히 보여준다.
+   두 번째 카드는 봇 판별용 — 사람은 IP 20~60개가 각 2.5~6회(모바일 우세),
+   봇 스파이크는 IP 수백~천 개가 각 1.x회(데스크톱 90%+)로 나타난다. */
+function outclickCards(d){
+  if(d.outclicks_today==null) return '';
+  const t = (d.outclicks_detail&&d.outclicks_detail.today)||{};
+  const y = (d.outclicks_detail&&d.outclicks_detail.yesterday_same_hour)||{};
+  const asOf = esc(d.outclicks_as_of_kst||'');
+  const partial = d.outclicks_today_partial ? `오늘 진행 중 · ${asOf} KST 기준` : '';
+  const dash = v => (v==null ? '—' : nf(v));
+  const per  = v => (v==null ? '—' : v.toFixed ? v.toFixed(1) : String(v));
+  const pct  = v => (v==null ? '—' : v+'%');
+  const sampled = (t.truncated||y.truncated) ? ' · 표본 상한 도달' : '';
+  return `
+      <div class="kpi"><span class="accent" style="background:var(--blue)"></span>
+        <div class="lab">IG 아웃클릭 · 오늘(KST)</div>
+        <div class="num">${nf(d.outclicks_today)}</div>
+        <div class="fo warn">${partial}<br>어제 같은 시각 ${nf(d.outclicks_yesterday_same_hour)}건 · 어제 종일 ${nf(d.outclicks_yesterday_full)}건</div>
+      </div>
+      <div class="kpi"><span class="accent" style="background:var(--violet)"></span>
+        <div class="lab">아웃클릭 고유 IP · 오늘</div>
+        <div class="num">${dash(t.unique_ips)}</div>
+        <div class="fo">IP당 ${per(t.clicks_per_ip)}회 · 데스크톱 ${pct(t.desktop_pct)}<br>어제 같은 시각 IP ${dash(y.unique_ips)}개 · IP당 ${per(y.clicks_per_ip)}회${sampled}<br>IP당 1.x회 + 데스크톱 급증 = 봇 의심</div>
+      </div>`;
+}
+
 function render(d){
   const k=d.kpi||{}, s=d.submissions||{};
   document.getElementById('upd').textContent = new Date(d.generated_at||Date.now())
@@ -151,6 +180,7 @@ function render(d){
       <div class="kpi"><span class="accent"></span><div class="lab">커뮤니티 회원</div><div class="num">${nf(k.members)}</div><div class="fo up">이번 주 +${nf(k.members_week)} · 크리에이터 ${nf(k.creators)}</div></div>
       <div class="kpi"><span class="accent"></span><div class="lab">조회수 · 최근 7일</div><div class="num">${nf(k.views_7d)}</div><div class="fo">최근 30일 ${nf(k.views_30d)}</div></div>
       <div class="kpi"><span class="accent"></span><div class="lab">봇 조회 차단 · 최근 7일</div><div class="num">${nf(k.bot_blocked_7d)}</div><div class="fo">성장지표 오염 방지</div></div>
+      ${outclickCards(d)}
       <div class="kpi"><span class="accent" style="background:var(--gold)"></span><div class="lab">검토 대기 투고</div><div class="num">${nf(s.pending)}</div><div class="fo warn">수정요청 ${nf(s.revision)}건 진행 중</div></div>
     </div>
 

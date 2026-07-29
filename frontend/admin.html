@@ -822,7 +822,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
         <div class="pe-section">
           <div class="pe-label">제목</div>
           <input class="pe-input" id="postTitle" placeholder="제목을 입력하세요">
-          <div class="pe-hint">한국어로 작성하면 AI가 자동으로 8개 언어로 번역합니다.</div>
+          <div class="pe-hint">한국어로 작성하면 AI가 자동으로 8개 언어로 번역합니다.<br>저장할 때 <strong>단어 첫 글자가 자동으로 대문자</strong>로 바뀝니다 (예: gimme gummy → Gimme Gummy). 이미 대문자로 쓴 제목과 한글은 그대로 유지됩니다.</div>
         </div>
 
         <!-- 부제 -->
@@ -906,7 +906,7 @@ tr:hover td{background:rgba(0,0,0,.02)}
             <span>📷 인스타그램 이미지 생성 <span class="pe-opt">갤러리 이미지 + PAP 로고 + 4:5 (1080×1350)</span></span>
             <span style="display:flex;gap:6px;flex-wrap:wrap">
               <button class="btn btn-sm" type="button" onclick="papInstaOpenEditor()" title="갤러리 이미지별 로고 크기/위치 편집">🎨 편집/미리보기</button>
-              <button class="btn btn-sm btn-blue" type="button" onclick="papInstaDownloadAll()" title="모든 갤러리 이미지를 인스타용으로 합성 후 ZIP 다운로드">📦 전체 ZIP 다운로드</button>
+              <button class="btn btn-sm btn-blue" type="button" onclick="papInstaDownloadAll()" title="갤러리 인스타 합성본 + 매거진 커버 PNG 가 함께 담깁니다. 파일명은 «에디토리얼 제목 DDMMYYYY»">📦 전체 ZIP 다운로드</button>
             </span>
           </div>
 
@@ -949,6 +949,10 @@ tr:hover td{background:rgba(0,0,0,.02)}
             </div>
           </div>
           <div class="pe-hint" style="margin-top:8px">로고 PNG는 한 번 업로드하면 이 브라우저에 영구 저장됩니다. 다른 컴퓨터/브라우저에서 작업할 때는 다시 업로드해주세요. (최대 2MB · 흰색 transparent PNG 권장)<br>갤러리 이미지가 4:5 비율이 아니면 자동으로 <strong>cover crop</strong>되며, 편집 모달에서 이미지마다 위치/크기를 따로 조정할 수 있습니다.</div>
+          <!-- 2026-07-29 — 로고 개별 조정값이 에디토리얼에 함께 저장되고 회원
+               다운로드에도 반영되는 기능이 배포됐는데 어드민에 설명이 없었다. -->
+          <div class="pe-hint" style="margin-top:6px;border-left:2px solid var(--blue);padding-left:8px">💾 여기서 조정한 <strong>로고 크기 · 위치 · 투명도</strong>는 <strong>에디토리얼을 저장하면 함께 보관</strong>되며, 회원이 사이트에서 다운로드하는 이미지에도 동일하게 적용됩니다.<br>새로 업로드한 이미지는 <strong>저장 → 다시 열기 → 조정 → 저장</strong> 순서로 해야 개별 설정이 남습니다.</div>
+          <div class="pe-hint" style="margin-top:6px">📦 <strong>전체 ZIP 다운로드</strong>에는 갤러리 인스타 합성본과 매거진 커버 PNG 가 함께 담깁니다. 파일명은 «에디토리얼 제목 DDMMYYYY».</div>
           <div id="instaGenStatus" style="margin-top:8px;font-size:11px;color:var(--text3);min-height:14px"></div>
         </div>
 
@@ -2537,24 +2541,35 @@ tr:hover td{background:rgba(0,0,0,.02)}
     </div>
   </div>
 
-  <!-- SUBSCRIPTIONS -->
+  <!-- SUBSCRIPTIONS
+       2026-07-29 — 이 탭은 오랫동안 하드코딩된 0 / ₩0 / 0% 를 보여주고 있었다
+       (실제 구독이 있어도 화면은 늘 0). 이제 카드 숫자는 pap-admin.js 의
+       loadSubscriptions() 가 /api/admin/stats 응답(planCounts · monthlyRevenue ·
+       totals.activeSubscriptions)으로 채운다 — 관리자 홈 대시보드와 같은 단일 소스.
+       · '갱신율' 카드는 제거했다. stats 가 그 지표를 계산하지 않는데 0% 를
+         띄우면 "구독이 0" 이라는 잘못된 신호가 된다. 대신 실제로 존재하는
+         '활성 구독' 을 보여주고, 갱신율은 아래 안내에서 Paddle 로 넘긴다.
+       · 결제는 Paddle 단독이다(구 결제 게이트웨이 경로·안내 링크는 2026-07-27
+         c80ac8c 에서 보안상 완전 제거됐는데 이 탭의 안내만 남아 있었다).
+         결제 상세 내역 API 가 없으므로 표를 억지로 채우지 않고 Paddle 로 안내한다. -->
   <div class="tab" id="t-subscriptions">
     <div class="mn-header"><div class="mn-title">구독 / 결제</div></div>
     <div class="mn-body">
       <div class="stats" style="grid-template-columns:repeat(4,1fr)">
-        <div class="stat"><div class="stat-n">0</div><div class="stat-l">스탠다드</div></div>
-        <div class="stat"><div class="stat-n">0</div><div class="stat-l">프리미엄</div></div>
-        <div class="stat"><div class="stat-n">₩0</div><div class="stat-l">월간 반복 매출</div></div>
-        <div class="stat"><div class="stat-n">0%</div><div class="stat-l">갱신율</div></div>
+        <div class="stat"><div class="stat-n" id="subStdCount">—</div><div class="stat-l">스탠다드</div></div>
+        <div class="stat"><div class="stat-n" id="subPremCount">—</div><div class="stat-l">프리미엄</div></div>
+        <div class="stat"><div class="stat-n" id="subMrr">—</div><div class="stat-l">월간 반복 매출</div></div>
+        <div class="stat"><div class="stat-n" id="subActiveCount">—</div><div class="stat-l">활성 구독</div></div>
       </div>
+      <div class="pe-hint" id="subPlanBreakdown" style="margin:-8px 0 18px">플랜별 내역을 불러오는 중…</div>
       <div class="tbl-wrap" style="margin-bottom:20px">
         <div class="tbl-top"><h3>최근 결제 내역</h3></div>
         <table><thead><tr><th>회원</th><th>플랜</th><th>주기</th><th>금액</th><th>상태</th><th>결제일</th></tr></thead>
         <tbody>
-          <tr><td colspan="6" style="text-align:center;color:var(--text3);padding:40px 0">결제 내역이 없습니다</td></tr>
+          <tr><td colspan="6" style="text-align:center;color:var(--text3);padding:40px 0">건별 결제 내역은 이 화면에서 집계하지 않습니다. 아래 Paddle 대시보드에서 확인하세요.</td></tr>
         </tbody></table>
       </div>
-      <p style="color:var(--text3)">Stripe 대시보드에서 상세 결제 내역, 환불, 분쟁 등을 관리하세요: <a href="https://dashboard.stripe.com" target="_blank" style="color:var(--blue);text-decoration:underline">dashboard.stripe.com</a></p>
+      <p style="color:var(--text3)">결제는 <strong>Paddle</strong> 단독으로 처리됩니다. 건별 결제 내역 · 환불 · 분쟁 · 구독 갱신(리텐션) 리포트는 Paddle 판매자 대시보드에서 관리하세요: <a href="https://vendors.paddle.com" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:underline">vendors.paddle.com</a></p>
     </div>
   </div>
 
@@ -3371,6 +3386,8 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
     <button class="modal-close" onclick="closeInstaPreview()">×</button>
     <h2>📷 인스타그램 이미지 편집</h2>
     <div class="sub" id="instaPreviewSub">각 이미지를 클릭해서 개별 로고 크기 / 위치를 조정한 뒤 한 번에 ZIP으로 다운로드하세요.</div>
+    <!-- 2026-07-29 — 조정값 영구 저장 + 회원 다운로드 반영 기능 안내. -->
+    <div class="pe-hint" style="margin-top:8px;border-left:2px solid var(--blue);padding-left:8px">💾 여기서 조정한 <strong>로고 크기 · 위치 · 투명도</strong>는 <strong>에디토리얼을 저장하면 함께 보관</strong>되며, 회원이 사이트에서 다운로드하는 이미지에도 동일하게 적용됩니다.<br>새로 업로드한 이미지는 <strong>저장 → 다시 열기 → 조정 → 저장</strong> 순서로 해야 개별 설정이 남습니다.<br>📦 전체 ZIP 에는 갤러리 인스타 합성본 + 매거진 커버 PNG 가 함께 담기며, 파일명은 «에디토리얼 제목 DDMMYYYY» 입니다.</div>
 
     <!-- Thumbnail strip — built dynamically by papInstaOpenEditor() -->
     <div id="instaThumbStrip" style="display:flex;gap:6px;overflow-x:auto;margin-top:14px;padding:6px 2px;border:1px solid var(--border);background:var(--surface);min-height:74px"></div>
@@ -3543,7 +3560,7 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
     <div style="padding:8px 16px 14px;font-size:11px;color:var(--text3,#888);border-top:1px solid var(--border,#222)">지정한 영역만 픽셀화된 <strong>검열본이 새 이미지로 업로드</strong>되어 이 화보를 대체합니다. 원본 파일은 서버에서 삭제되지 않습니다. 드래그로 여러 영역 지정 가능 · 적용 후 "저장"을 눌러야 발행본에 반영됩니다.</div>
   </div>
 </div>
-<script src="/pap-admin.js?v=130" defer></script>
+<script src="/pap-admin.js?v=131" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>
