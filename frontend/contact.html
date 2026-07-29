@@ -358,13 +358,10 @@ fetch('/api/settings?key=contact_page')
 var mediaKitFiles={ko:'1gUeTUJrg-NLv8BUT1BnEzfa3oqXfFt3X',en:'1gVKLuOP2mksORuDuugV6_Ls0XAiQwo7S'};
 // QA #328 — 관리자(문의하기 편집)가 저장한 링크 override. null 이면 내장 기본.
 var _contactMediaKitLinks=null;
+// 2026-07-29 — business.html 과 함께 계측 경유(/mediakit)로 통일.
 function downloadMediaKit(lang){
-  if(_contactMediaKitLinks && _contactMediaKitLinks[lang]){
-    window.open(_contactMediaKitLinks[lang],'_blank','noopener');
-    return;
-  }
-  var fid=mediaKitFiles[lang]||mediaKitFiles.en;
-  window.open('https://drive.google.com/file/d/'+fid+'/view','_blank','noopener');
+  var l=(lang==='ko')?'ko':'en';
+  window.open('/mediakit?lang='+l+'&src=contact','_blank','noopener');
 }
 // AUTO LANGUAGE DETECTION
 (function(){

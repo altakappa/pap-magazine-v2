@@ -387,6 +387,10 @@
       "destination": "/contact.html"
     },
     {
+      "source": "/mediakit",
+      "destination": "/api/mediakit"
+    },
+    {
       "source": "/business",
       "destination": "/business.html"
     },
