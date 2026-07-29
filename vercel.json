@@ -387,6 +387,14 @@
       "destination": "/contact.html"
     },
     {
+      "source": "/mediakit/:lang(ko|en)/:src",
+      "destination": "/api/mediakit"
+    },
+    {
+      "source": "/mediakit/:src",
+      "destination": "/api/mediakit"
+    },
+    {
       "source": "/mediakit",
       "destination": "/api/mediakit"
     },

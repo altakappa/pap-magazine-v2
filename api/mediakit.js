@@ -56,7 +56,36 @@ function safeExternal(raw) {
 /** src 정규화 — 게시물별 추적을 살리되 로그 오염은 막는다. */
 function normalizeSrc(raw) {
   const s = String(raw || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40);
-  return s || 'other';
+  return s || '';
+}
+
+/* lang·src 를 경로에서 먼저 읽고, 없으면 쿼리로 폴백한다 (2026-07-29 실측 후속).
+ * 라이브 첫 검증에서 lang 은 들어오는데 src 는 계속 비어 'other' 로 기록됐다.
+ * 원인을 확정하지는 못했지만, 링크가 인스타·페북·메신저를 거치면 추적성 쿼리
+ * 파라미터가 지워지거나 재작성되는 일이 흔하다(도메니코가 보낸 드라이브 링크에도
+ * fbclid 가 붙어 있었다). 이 링크는 애초에 그런 경로로만 유통될 물건이라
+ * 쿼리에 의존하는 설계 자체가 약하다.
+ *   /mediakit/ko/ig_bio  ·  /mediakit/ig_bio  ·  /mediakit?lang=ko&src=ig_bio
+ * 경로 세그먼트는 중간 매개체가 건드리지 않으므로 이쪽을 1순위로 쓴다. */
+function readParams(req) {
+  let lang = '';
+  let src = '';
+  // 경로: /mediakit[/(ko|en)][/<src>]
+  let pathname = '';
+  try { pathname = new URL(req.url, 'https://x').pathname; } catch (_) { pathname = String(req.url || ''); }
+  const seg = pathname.split('/').filter(Boolean); // ['mediakit', ...]
+  const rest = seg[0] === 'mediakit' ? seg.slice(1) : seg.slice(0);
+  rest.forEach((raw) => {
+    const s = normalizeSrc(decodeURIComponent(raw));
+    if (!s) return;
+    if (!lang && (s === 'ko' || s === 'en')) { lang = s; return; }
+    if (!src) src = s;
+  });
+  // 쿼리 폴백
+  const q = req.query || {};
+  if (!lang) lang = normalizeSrc(q.lang);
+  if (!src) src = normalizeSrc(q.src);
+  return { lang: lang === 'ko' ? 'ko' : 'en', src: src || 'other' };
 }
 
 module.exports = async function handler(req, res) {
@@ -66,7 +95,7 @@ module.exports = async function handler(req, res) {
   // 봇/스크립트의 로그 오염 방지 (ig-out 과 동일 한도)
   if (await rateLimitStrict(req, res, { limit: 60, windowMs: 60000 }, 'mediakit')) return;
 
-  const lang = String(req.query.lang || '').toLowerCase() === 'ko' ? 'ko' : 'en';
+  const { lang, src } = readParams(req);
 
   // 목적지 결정: 관리자 저장 링크 우선, 없거나 부적합하면 내장 링크
   let dest = driveUrl(FILE_IDS[lang]);
@@ -88,7 +117,7 @@ module.exports = async function handler(req, res) {
   try {
     const { error } = await supabaseAdmin.from('mediakit_downloads').insert({
       lang,
-      src: normalizeSrc(req.query.src),
+      src,
       referrer_path: sanitizeReferrer(req.headers['referer'] || req.headers['referrer']),
       device_type: detectDeviceType(ua),
       ip_hash: hashIp(extractClientIp(req)), // salt 미설정 시 null

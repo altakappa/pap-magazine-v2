@@ -27,6 +27,17 @@ const contact = R('frontend/contact.html');
 console.log('\n=== 라우팅 ===');
 t('/mediakit → /api/mediakit 등록',
   vj.rewrites.some(r => r.source === '/mediakit' && r.destination === '/api/mediakit'));
+/* 2026-07-29 라이브 실측: lang 은 들어오는데 src 가 계속 비어 'other' 로 기록됐다.
+ * 원인은 확정하지 못했지만, 이 링크는 인스타·페북·메신저를 거쳐 유통될 물건이고
+ * 그 경로에서 추적성 쿼리가 지워지거나 재작성되는 일은 흔하다(도메니코가 보낸
+ * 드라이브 링크에도 fbclid 가 붙어 있었다). 경로 세그먼트는 중간 매개체가
+ * 건드리지 않으므로 경로형을 1순위로 둔다. */
+t('경로형 라우트 2종 등록 (쿼리 유실 대비)',
+  vj.rewrites.some(r => r.source === '/mediakit/:lang(ko|en)/:src') &&
+  vj.rewrites.some(r => r.source === '/mediakit/:src'));
+t('경로형이 /mediakit 단독보다 앞 (더 구체적인 규칙 우선)',
+  vj.rewrites.findIndex(r => r.source === '/mediakit/:src') <
+  vj.rewrites.findIndex(r => r.source === '/mediakit'));
 (function () {
   const mk = vj.rewrites.findIndex(r => r.source === '/mediakit');
   const catchAll = vj.rewrites.findIndex(r => String(r.source).startsWith('/:slug'));
@@ -66,7 +77,8 @@ console.log('=== 동작 실측 (가짜 supabase) ===');
   const handler = require('../api/mediakit.js');
   Module._load = orig;
 
-  const req = (q, ua) => ({ method: 'GET', query: q, headers: { 'user-agent': ua || 'Mozilla/5.0 iPhone' } });
+  const req = (q, ua, url) => ({ method: 'GET', url: url || '/mediakit', query: q,
+    headers: { 'user-agent': ua || 'Mozilla/5.0 iPhone' } });
   const res = () => ({ setHeader(){}, redirect(c, u){ redirected = { c, u }; }, status(){ return this; }, send(){} });
 
   return (async () => {
@@ -92,6 +104,21 @@ console.log('=== 동작 실측 (가짜 supabase) ===');
     inserted = null;
     await handler(req({}), res());
     t('lang 누락 시 en 폴백 · src 는 other', redirected.u.includes('1gVKLuOP') && inserted.row.src === 'other');
+
+    // 경로형 — 쿼리가 통째로 지워져도 귀속이 살아있어야 한다
+    inserted = null;
+    await handler(req({}, null, '/mediakit/ko/ig_bio'), res());
+    t('경로 /mediakit/ko/ig_bio → ko + ig_bio',
+      inserted.row.lang === 'ko' && inserted.row.src === 'ig_bio' && redirected.u.includes('1gUeTUJrg'));
+
+    inserted = null;
+    await handler(req({}, null, '/mediakit/ig_post_dvyq0ef'), res());
+    t('경로 /mediakit/<src> → en 기본 + 게시물 귀속',
+      inserted.row.lang === 'en' && inserted.row.src === 'ig_post_dvyq0ef');
+
+    inserted = null;
+    await handler(req({ src: 'zzz' }, null, '/mediakit/ko/ig_bio?src=zzz'), res());
+    t('경로가 쿼리보다 우선', inserted.row.src === 'ig_bio');
 
     console.log(`\npassed: ${pass}   failed: ${fail}`);
     if (fail) { console.log('❌ mediakit-tracking tests FAILED'); process.exit(1); }
