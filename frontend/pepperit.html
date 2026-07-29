@@ -239,7 +239,9 @@
   <div class="wrap">
     <span class="chip">A SISTER OF PAP MAGAZINE</span>
     <h2 style="color:#fff">PAP 매거진이 만드는 또 하나의 목소리</h2>
-    <p style="font-size:14px;opacity:.85;max-width:30em;margin:12px auto 0;line-height:1.8">아트 기반 패션·뷰티·컬쳐 매거진 <a href="/">PAP Magazine</a>과 함께, 페퍼릿은 케이팝 팬덤을 위한 데일리 셀럽 미디어로 확장하고 있습니다.</p>
+    <!-- 2026-07-29: href="/" 였는데 pepperitmag.com 에서는 자기 홈으로 돌아왔다.
+         자매지 링크가 되려면 절대 URL 이어야 한다(크로스 도메인 신호도 살린다). -->
+    <p style="font-size:14px;opacity:.85;max-width:30em;margin:12px auto 0;line-height:1.8">아트 기반 패션·뷰티·컬쳐 매거진 <a href="https://www.pap-magazine.com/">PAP Magazine</a>과 함께, 페퍼릿은 케이팝 팬덤을 위한 데일리 셀럽 미디어로 확장하고 있습니다.</p>
     <div style="margin-top:22px">
       <a href="/api/ig-out?src=pepperit-footer&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpepperitmag%2F" target="_blank" rel="noopener" style="color:var(--lemon)">@pepperitmag</a>
     </div>
@@ -250,7 +252,11 @@
   <div class="wrap">
     PEPPERIT is operated by 주식회사 알타카파 (ALTAKAPPA Co., Ltd.) — PAP Magazine.<br>
     서울특별시 강남구 논현로146길 18, 1F · 02) 547-1134 · <a href="mailto:hello@pepperitmag.com">hello@pepperitmag.com</a><br>
-    <a href="/">PAP Magazine</a> · <a href="/api/ig-out?src=pepperit-footer&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpepperitmag%2F" rel="noopener">Instagram</a> · <a href="/terms">이용약관</a> · <a href="/privacy">개인정보처리방침</a>
+    <!-- 전체 기사 링크는 정적 <a> 여야 한다 — 위 LATEST 섹션은 JS 로 채워지므로
+         크롤러가 받는 HTML 에는 기사 링크가 하나도 없고, 그래서 발행 기사 107건이
+         전부 고아 페이지가 됐다(Ahrefs 2026-07-27, 헬스 20점). 이 링크가 홈 →
+         아카이브 → 개별 기사 크롤 경로를 만든다. -->
+    <a href="/archive">전체 기사</a> · <a href="https://www.pap-magazine.com/">PAP Magazine</a> · <a href="/api/ig-out?src=pepperit-footer&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpepperitmag%2F" rel="noopener">Instagram</a> · <a href="/terms">이용약관</a> · <a href="/privacy">개인정보처리방침</a>
   </div>
 </footer>
 

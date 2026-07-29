@@ -46,11 +46,32 @@ module.exports = async function handler(req, res) {
     const pub = a.published_date || a.created_at;
     const tags = Array.isArray(a.tags) ? a.tags : [];
 
-    // 최신 기사 4개 (현재 글 제외)
-    const { data: latest } = await supabaseAdmin.from('pepperit_articles')
-      .select('title, slug, id, thumbnail_url, category, published_date')
-      .eq('status', 'published').neq('id', a.id)
-      .order('published_date', { ascending: false }).limit(4);
+    /* 관련 기사 = 발행일 인접(앞2 + 뒤2). 2026-07-29 SEO 감사에서 교체.
+       기존엔 '최신 4개 고정'이라 모든 기사가 같은 4개만 가리켰다. 그래서 최신
+       4편에만 내부 링크가 몰리고 나머지는 전부 고아가 됐다 —
+       Ahrefs 실측: pepperitmag 오류 107건이 전부 Orphan page 한 항목,
+       크롤 134페이지 중 107건(헬스 20점). PAP 아티클에 같은 이유로 적용했던
+       발행일 인접 방식(957e93c)을 그대로 가져온다. 4건이 안 차면 최신으로 채운다. */
+    const _pub = a.published_date || a.created_at;
+    const [{ data: _prev }, { data: _next }] = await Promise.all([
+      supabaseAdmin.from('pepperit_articles')
+        .select('title, slug, id, thumbnail_url, category, published_date')
+        .eq('status', 'published').neq('id', a.id).lte('published_date', _pub)
+        .order('published_date', { ascending: false }).limit(2),
+      supabaseAdmin.from('pepperit_articles')
+        .select('title, slug, id, thumbnail_url, category, published_date')
+        .eq('status', 'published').neq('id', a.id).gt('published_date', _pub)
+        .order('published_date', { ascending: true }).limit(2),
+    ]);
+    let latest = [].concat(_prev || [], _next || []);
+    if (latest.length < 4) {
+      const seen = new Set(latest.map((l) => l.id));
+      const { data: fill } = await supabaseAdmin.from('pepperit_articles')
+        .select('title, slug, id, thumbnail_url, category, published_date')
+        .eq('status', 'published').neq('id', a.id)
+        .order('published_date', { ascending: false }).limit(6);
+      (fill || []).forEach((f) => { if (latest.length < 4 && !seen.has(f.id)) { seen.add(f.id); latest.push(f); } });
+    }
 
     const ld = {
       '@context': 'https://schema.org',

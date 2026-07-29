@@ -331,6 +331,20 @@
       "destination": "/api/seo/editorial/:slug"
     },
     {
+      "source": "/archive",
+      "has": [
+        {
+          "type": "host",
+          "value": "(www\\.)?pepperitmag\\.com"
+        }
+      ],
+      "destination": "/api/seo/pepperit-archive"
+    },
+    {
+      "source": "/pepperit/archive",
+      "destination": "/api/seo/pepperit-archive"
+    },
+    {
       "source": "/article/:slug",
       "has": [
         {

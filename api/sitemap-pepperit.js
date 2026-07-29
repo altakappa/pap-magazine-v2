@@ -36,7 +36,10 @@ module.exports = async function handler(req, res) {
 
     const xml = '<?xml version="1.0" encoding="UTF-8"?>' +
       '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">' +
-      '<url><loc>' + SITE + '/pepperit</loc></url>' + urls + '</urlset>';
+      // 2026-07-29: 아카이브(전체 기사 SSR 목록)도 선언 — 크롤러 진입점이라
+      // 사이트맵에서 먼저 발견되는 편이 낫다.
+      '<url><loc>' + SITE + '/pepperit</loc></url>' +
+      '<url><loc>' + SITE + '/archive</loc></url>' + urls + '</urlset>';
 
     res.setHeader('Content-Type', 'application/xml; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=1800, stale-while-revalidate=3600');
