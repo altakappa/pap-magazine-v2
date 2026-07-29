@@ -16,10 +16,12 @@
 
 const { supabaseAdmin } = require('../../_lib/supabase');
 const { handleCors } = require('../../_lib/cors');
+const { parseBrandCredits } = require('../../_lib/fashionCredits');
 
 const SITE = 'https://www.pap-magazine.com';
 const IG = 'https://www.instagram.com/pap_magazine/';
-const MAIL = 'contact@pap-magazine.com';
+// MAIL 상수는 2026-07-29 문의 CTA 를 폼(/business)으로 옮기며 미사용이 됐다.
+// 남겨두면 다음 사람이 mailto 로 되돌릴 여지가 있어 제거한다.
 
 function esc(s) {
   return String(s == null ? '' : s)
@@ -57,25 +59,37 @@ module.exports = async function handler(req, res) {
 
     if (!brand || !brand.display_name) return notFound(res);
 
-    // 2) 이 브랜드가 등장한 에디토리얼 제목들 (distinct)
-    const { data: eb } = await supabaseAdmin
-      .from('editorial_brands')
-      .select('editorial_title')
-      .eq('brand_id', brandId)
-      .limit(600);
-    const titles = [...new Set((eb || []).map(r => r.editorial_title).filter(Boolean))];
-
-    // 3) 에디토리얼 상세 (발행분만)
+    /* 2) 이 브랜드가 등장한 발행 에디토리얼 — 기사 자신의 fashion 크레딧에서 직접 읽는다.
+     *
+     * 왜 바꿨나 (2026-07-29): 기존엔 editorial_brands 매핑 테이블을 조회했는데
+     * 그 테이블의 마지막 적재가 2026-05-04 다(실측). 즉 5월 이후 발행 화보는
+     * 브랜드 페이지에 영영 안 뜬다 — 브랜드 담당자가 들어와도 "석 달 전 게
+     * 마지막"으로 보인다. 인바운드 유입을 노리는 페이지에서 치명적이다.
+     * 에디토리얼 SSR 이 같은 이유로 이미 크레딧 직접 조회로 옮겼고(489d359),
+     * 여기도 같은 소스를 쓰면 매핑 테이블 의존이 사라져 항상 최신이 된다.
+     *
+     * 비용: 발행 기사의 fashion 만 읽어 메모리에서 필터한다. 브랜드당 전건
+     * 스캔이라 페이지 캐시(1h edge + 24h SWR)가 이 비용을 흡수한다. */
     let eds = [];
-    if (titles.length) {
-      const { data } = await supabaseAdmin
-        .from('editorials')
-        .select('title, slug, id, cover_image, og_image, thumbnail, published_date')
-        .in('title', titles.slice(0, 300))
-        .eq('status', 'published')
-        .order('published_date', { ascending: false, nullsFirst: false })
-        .limit(300);
-      eds = (data || []).filter(e => e.title);
+    {
+      const rows = [];
+      const PAGE = 1000;
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await supabaseAdmin
+          .from('editorials')
+          .select('title, slug, id, cover_image, og_image, thumbnail, published_date, fashion')
+          .eq('status', 'published')
+          .not('fashion', 'is', null)
+          .order('published_date', { ascending: false, nullsFirst: false })
+          .range(from, from + PAGE - 1);
+        if (error) break;
+        if (!data || !data.length) break;
+        rows.push(...data);
+        if (data.length < PAGE) break;
+      }
+      eds = rows
+        .filter((e) => e.title && parseBrandCredits(e.fashion).some((b) => b.id === brandId))
+        .slice(0, 300);
     }
 
     const name = esc(brand.display_name);
@@ -164,6 +178,8 @@ ${JSON.stringify(schema)}
   .cta p{font-size:13px;color:rgba(255,255,255,.7);margin-bottom:14px;max-width:640px}
   .cta a.btn{display:inline-block;background:#fff;color:#000;font-weight:700;font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding:12px 20px;border-radius:3px;text-decoration:none;margin-right:9px}
   .cta a.btn.ghost{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4)}
+  .cta p.stats{color:rgba(255,255,255,.92);font-size:13px;letter-spacing:.01em;margin:-4px 0 16px}
+  .cta p.stats b{color:#fff}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;margin-top:26px}
   .card{text-decoration:none;color:#fff;display:flex;flex-direction:column;gap:9px}
   .card .ph{aspect-ratio:3/4;background:#141414;overflow:hidden;border:1px solid rgba(255,255,255,.06)}
@@ -187,7 +203,16 @@ ${JSON.stringify(schema)}
 
   <div class="cta">
     <p>${name} 브랜드와의 협업·게재·행사 취재 문의는 PAP MAGAZINE 으로. 브랜드 콘텐츠를 @pap_magazine 에 게재하고 웹 아카이브에 함께 남깁니다.</p>
-    <a class="btn" href="mailto:${MAIL}?subject=PAP%20Magazine%20%EA%B4%91%EA%B3%A0%C2%B7%ED%8C%8C%ED%8A%B8%EB%84%88%EC%8B%AD%20%EB%AC%B8%EC%9D%98%20-%20${encodeURIComponent(brand.display_name)}">광고·파트너십 문의</a>
+    <!-- 2026-07-29 매체 지표 (인스타 인사이트 실측, 최근 30일).
+         브랜드 담당자가 "화보에 나왔네" 다음에 문의 버튼을 누를 근거가 없어
+         이탈하던 구간이다. 숫자는 분기별로 갱신할 것. -->
+    <p class="stats">월 도달 <b>430만</b> · 코어 <b>25–34세 52.6%</b> · <b>여성 58.7%</b> · 단일 도시 1위 <b>서울</b></p>
+    <!-- mailto → 문의 폼(brand_inquiries)으로. mailto 는 메일 클라이언트가 안 열리면
+         그대로 이탈이고, 어느 브랜드 페이지가 문의를 만들었는지도 남지 않는다.
+         ?brand= 로 유입 브랜드를 넘겨 리드에 출처를 남긴다. -->
+    <a class="btn" href="/business?inquiry=1&brand=${encodeURIComponent(brand.brand_id)}#inquiry">광고·파트너십 문의</a>
+    <!-- 미디어킷도 계측 경유(경로형) — 어느 브랜드 담당자가 열어봤는지가 곧 영업 우선순위다 -->
+    <a class="btn ghost" href="/mediakit/ko/brand_${encodeURIComponent(brand.brand_id)}">미디어킷 받기</a>
     <a class="btn ghost" href="/partners">전체 브랜드 보기</a>
   </div>
 

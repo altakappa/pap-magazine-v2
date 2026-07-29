@@ -352,7 +352,8 @@ function navigateWithInterstitial(url){
 #biStatus.ok{color:#4ade80}
 #biStatus.err{color:#fb923c}
 </style>
-<section class="biz-inquiry-section">
+<!-- id="inquiry" — 브랜드 허브(/brand/:id)의 문의 버튼이 #inquiry 로 착지한다 (2026-07-29) -->
+<section class="biz-inquiry-section" id="inquiry">
   <h2 class="biz-inq-title" data-fi="title">Advertising &amp; Partnership Inquiry</h2>
   <p class="biz-inq-sub" data-fi="subtitle">Tell us about your campaign.</p>
   <form id="bizInquiryForm" novalidate>
@@ -408,13 +409,36 @@ function navigateWithInterstitial(url){
   function fill(id,arr){ var s=document.getElementById(id); if(!s)return; s.innerHTML=arr.map(function(o){return '<option>'+o+'</option>';}).join(''); }
   fill('biType',T.type); fill('biBudget',T.budgets); fill('biTiming',T.timings);
   var st=document.getElementById('biStatus');
+
+  /* 브랜드 허브에서 온 유입 (2026-07-29).
+   * /brand/:id 의 문의 버튼이 /business?inquiry=1&brand=<id>#inquiry 로 온다.
+   *  - 브랜드명을 미리 채워 입력 마찰을 줄이고(이미 자기 브랜드 페이지를 보고 왔다)
+   *  - source 에 어느 브랜드 페이지였는지 남긴다 → 다음에 어느 브랜드를 화보에
+   *    넣을지의 근거가 된다. 이게 없으면 리드는 남아도 출처가 사라진다.
+   * 값은 그대로 신뢰하지 않는다 — 표시·전송 모두 정규화한 문자열만 쓴다. */
+  var inqSource='business_page';
+  (function(){
+    var q; try{ q=new URLSearchParams(location.search); }catch(_){ return; }
+    var raw=(q.get('brand')||'').toLowerCase().replace(/[^a-z0-9._-]/g,'').slice(0,60);
+    if(!raw) return;
+    inqSource='brand_page:'+raw;
+    if(!f.brand_name.value) f.brand_name.value=raw;
+    if(q.get('inquiry')==='1'){
+      // 해시 착지만으로는 폼이 화면 밖에 걸리는 경우가 있어 직접 스크롤한다
+      setTimeout(function(){
+        var s=document.getElementById('inquiry');
+        if(s&&s.scrollIntoView) s.scrollIntoView({behavior:'smooth',block:'start'});
+      },300);
+    }
+  })();
+
   f.addEventListener('submit',function(e){
     e.preventDefault();
     if(f.website.value) return;
     var email=(f.email.value||'').trim();
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ st.textContent=T.need; st.className='err'; return; }
     var btn=f.querySelector('.bi-submit'); btn.disabled=true; st.textContent=''; st.className='';
-    var payload={brand_name:f.brand_name.value,contact_name:f.contact_name.value,email:email,phone:f.phone.value,inquiry_type:f.inquiry_type.value,budget_range:f.budget_range.value,timing:f.timing.value,message:f.message.value,website:f.website.value,locale:lang};
+    var payload={brand_name:f.brand_name.value,contact_name:f.contact_name.value,email:email,phone:f.phone.value,inquiry_type:f.inquiry_type.value,budget_range:f.budget_range.value,timing:f.timing.value,message:f.message.value,website:f.website.value,locale:lang,source:inqSource};
     fetch('/api/brand-inquiry',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
       .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
       .then(function(){ f.reset(); st.textContent=T.ok; st.className='ok'; })

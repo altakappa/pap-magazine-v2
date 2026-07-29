@@ -39,6 +39,12 @@ module.exports = async function handler(req, res) {
   const timing = String(b.timing || '').trim().slice(0, 80);
   const message = String(b.message || '').trim().slice(0, 4000);
   const locale = String(b.locale || '').trim().slice(0, 10);
+  /* 유입 출처 (2026-07-29). 브랜드 허브(/brand/:id)의 문의 버튼이 여기로 오면서
+   * "어느 브랜드 페이지가 이 리드를 만들었나"가 처음으로 관측 가능해졌다.
+   * 그게 곧 다음에 어느 브랜드를 화보에 넣을지의 근거다.
+   * 클라이언트 값이므로 화이트리스트 문자로 정규화만 하고 그대로 믿지 않는다. */
+  const source = String(b.source || '').trim().toLowerCase()
+    .replace(/[^a-z0-9_:.-]/g, '').slice(0, 60) || 'business_page';
   if (!brand && !message) {
     return res.status(400).json({ error: '브랜드명 또는 문의 내용을 입력해주세요.' });
   }
@@ -48,7 +54,7 @@ module.exports = async function handler(req, res) {
     const { error } = await supabaseAdmin.from('brand_inquiries').insert({
       brand_name: brand, contact_name: contact, email, phone,
       inquiry_type: itype, budget_range: budget, timing, message,
-      locale, source: 'business_page', status: 'new',
+      locale, source, status: 'new',
     });
     if (error) throw error;
     saved = true;
@@ -71,9 +77,12 @@ module.exports = async function handler(req, res) {
       '<tr><td><b>집행 시기</b></td><td>' + (esc(timing) || '-') + '</td></tr>' +
       '<tr><td valign="top"><b>문의 내용</b></td><td>' + (esc(message).replace(/\n/g, '<br>') || '-') + '</td></tr>' +
       '</table>' +
-      '<p style="color:#888;font-size:12px;margin-top:14px">source: business_page · locale: ' + esc(locale || '-') + ' · saved: ' + saved + '</p>';
+      '<p style="color:#888;font-size:12px;margin-top:14px">source: ' + esc(source) + ' · locale: ' + esc(locale || '-') + ' · saved: ' + saved + '</p>';
     await sendEmail('contact@pap-magazine.com', {
-      subject: '[PAP] 광고 문의 — ' + (brand || contact || email),
+      // 제목에 출처를 넣는다 — 브랜드 페이지發 리드는 이미 우리를 아는 쪽이라
+      // 회신 우선순위가 다르다.
+      subject: '[PAP] 광고 문의 — ' + (brand || contact || email) +
+        (source !== 'business_page' ? ' (' + source + ')' : ''),
       html,
     });
   } catch (e) {
