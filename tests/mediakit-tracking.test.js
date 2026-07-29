@@ -101,7 +101,7 @@ console.log('=== 동작 실측 (가짜 supabase) ===');
 
     inserted = null;
     await handler(req({ lang: 'en', src: 'IG_post_DVyq0eF!!<script>' }), res());
-    t('en → 영문판 링크', redirected.u.includes('1elOsfc2'));
+    t('en → 영문판 링크', redirected.u.includes('1rjZPyD5'));
     // 게시물별 추적(ig_post_<shortcode>)은 살리되 위험문자는 제거된다.
     // 남는 문자는 [a-z0-9_-] 뿐이라 SQL·HTML 어느 쪽으로도 새지 않는다.
     t('src 정규화 — 소문자 + [a-z0-9_-] 만', inserted.row.src === 'ig_post_dvyq0efscript');
@@ -116,7 +116,7 @@ console.log('=== 동작 실측 (가짜 supabase) ===');
 
     inserted = null;
     await handler(req({}), res());
-    t('lang 누락 시 en 폴백 · src 는 other', redirected.u.includes('1elOsfc2') && inserted.row.src === 'other');
+    t('lang 누락 시 en 폴백 · src 는 other', redirected.u.includes('1rjZPyD5') && inserted.row.src === 'other');
 
     // 경로형 — 쿼리가 통째로 지워져도 귀속이 살아있어야 한다
     inserted = null;

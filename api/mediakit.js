@@ -40,8 +40,8 @@ const HOME_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.c
    같은 값을 site_settings.business_page 에도 반영했으므로 평소엔 그쪽이 쓰인다.
    여기는 설정 조회가 실패할 때만 쓰이는 최후 폴백. 링크가 또 바뀌면 두 곳을 함께 고칠 것. */
 const DEFAULT_LINKS = {
-  ko: 'https://drive.google.com/file/d/1uFbkibaSwtlODUUciieVExFZ-oWyZaCE/view',
-  en: 'https://drive.google.com/drive/folders/1elOsfc2geJpRR-CG6SZOENBL-PKHogZE',
+  ko: 'https://drive.google.com/file/d/1uFbkibaSwtlODUUciieVExFZ-oWyZaCE/view?usp=sharing',
+  en: 'https://drive.google.com/file/d/1rjZPyD5wy_amn_OMhlysuUJiN_zb_nBY/view?usp=sharing',
 };
 
 // 관리자가 settings 에 저장한 링크를 허용할 호스트. 그 외에는 내장 링크로 폴백.
