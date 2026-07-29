@@ -59,7 +59,7 @@ t('관리자 설정은 site_settings 에서 읽는다', /from\('site_settings'\)
   "'settings' 로 읽으면 항상 실패하고 조용히 폴백으로 떨어진다");
 t('휴지통에 들어간 옛 파일 ID 를 폴백으로 쓰지 않는다',
   !/file\/d\/1gUeTUJrg|file\/d\/1gVKLuOP/.test(src));
-t('폴백은 폴더 링크 (파일이 바뀌어도 안 깨진다)', /DEFAULT_LINKS/.test(src) && /drive\.google\.com\/drive\/folders\//.test(src));
+t('폴백 링크는 drive.google.com 만', /DEFAULT_LINKS/.test(src) && /drive\.google\.com/.test(src));
 
 console.log('=== 봇·레이트리밋 (ig-out 과 동일 방침) ===');
 t('레이트리밋 적용', /rateLimitStrict\(req, res, \{ limit: 60/.test(src));
@@ -96,12 +96,12 @@ console.log('=== 동작 실측 (가짜 supabase) ===');
 
   return (async () => {
     await handler(req({ lang: 'ko', src: 'ig_bio' }), res());
-    t('ko → 한글판 링크로 302', redirected.c === 302 && redirected.u.includes('1K_TnNEF'));
+    t('ko → 한글판 링크로 302', redirected.c === 302 && redirected.u.includes('1uFbkiba'));
     t('mediakit_downloads 에 기록', inserted && inserted.tb === 'mediakit_downloads' && inserted.row.lang === 'ko' && inserted.row.src === 'ig_bio');
 
     inserted = null;
     await handler(req({ lang: 'en', src: 'IG_post_DVyq0eF!!<script>' }), res());
-    t('en → 영문판 링크', redirected.u.includes('1gA52ZK7'));
+    t('en → 영문판 링크', redirected.u.includes('1elOsfc2'));
     // 게시물별 추적(ig_post_<shortcode>)은 살리되 위험문자는 제거된다.
     // 남는 문자는 [a-z0-9_-] 뿐이라 SQL·HTML 어느 쪽으로도 새지 않는다.
     t('src 정규화 — 소문자 + [a-z0-9_-] 만', inserted.row.src === 'ig_post_dvyq0efscript');
@@ -112,17 +112,17 @@ console.log('=== 동작 실측 (가짜 supabase) ===');
 
     inserted = null;
     await handler(req({ lang: 'ko' }, 'Googlebot/2.1'), res());
-    t('봇은 리다이렉트만, 로그 없음', inserted === null && redirected.u.includes('1K_TnNEF'));
+    t('봇은 리다이렉트만, 로그 없음', inserted === null && redirected.u.includes('1uFbkiba'));
 
     inserted = null;
     await handler(req({}), res());
-    t('lang 누락 시 en 폴백 · src 는 other', redirected.u.includes('1gA52ZK7') && inserted.row.src === 'other');
+    t('lang 누락 시 en 폴백 · src 는 other', redirected.u.includes('1elOsfc2') && inserted.row.src === 'other');
 
     // 경로형 — 쿼리가 통째로 지워져도 귀속이 살아있어야 한다
     inserted = null;
     await handler(req({}, null, '/mediakit/ko/ig_bio'), res());
     t('경로 /mediakit/ko/ig_bio → ko + ig_bio',
-      inserted.row.lang === 'ko' && inserted.row.src === 'ig_bio' && redirected.u.includes('1K_TnNEF'));
+      inserted.row.lang === 'ko' && inserted.row.src === 'ig_bio' && redirected.u.includes('1uFbkiba'));
 
     inserted = null;
     await handler(req({}, null, '/mediakit/ig_post_dvyq0ef'), res());

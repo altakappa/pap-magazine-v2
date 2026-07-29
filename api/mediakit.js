@@ -36,9 +36,12 @@ const HOME_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.c
    버튼도 같은 화면을 보여주고 있었다는 뜻이다(광고주 대면 경로).
    → 관리자가 실제로 저장해 둔 폴더 링크를 기본값으로 승격한다. 파일이 바뀌어도
      폴더는 유지되므로 이쪽이 덜 깨진다. */
+/* 2026-07-29(2차): 미디어킷 개편으로 파일이 교체돼 링크가 바뀌었다.
+   같은 값을 site_settings.business_page 에도 반영했으므로 평소엔 그쪽이 쓰인다.
+   여기는 설정 조회가 실패할 때만 쓰이는 최후 폴백. 링크가 또 바뀌면 두 곳을 함께 고칠 것. */
 const DEFAULT_LINKS = {
-  ko: 'https://drive.google.com/drive/folders/1K_TnNEF7y1rSlc4tDwX-c2y8IPHvYYQ2',
-  en: 'https://drive.google.com/drive/folders/1gA52ZK7GVK-Dun92VkDgy1-huF7ppC42',
+  ko: 'https://drive.google.com/file/d/1uFbkibaSwtlODUUciieVExFZ-oWyZaCE/view',
+  en: 'https://drive.google.com/drive/folders/1elOsfc2geJpRR-CG6SZOENBL-PKHogZE',
 };
 
 // 관리자가 settings 에 저장한 링크를 허용할 호스트. 그 외에는 내장 링크로 폴백.
