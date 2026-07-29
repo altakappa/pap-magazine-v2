@@ -40,7 +40,12 @@ const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { sendTextToTelegramSafe } = require('../_lib/telegram');
 
 const BUCKET = 'submissions';
-const MAX_FILES = 30;
+// 2026-07-29 — 30 → 50 (도메니코 결정). 룩 8개짜리 화보는 룩당 3장만 잡아도
+// 24장이고 여기에 커버·비하인드가 붙으면 30장을 쉽게 넘긴다. 실제로 7/21
+// 다나에 알라르콘 건이 여기 걸려 400 × 8 회를 맞았고, 최근 30일 제출 중
+// 30장 초과가 0건인데 30장이 최빈값이었다 — 상한에서 잘린 벽이 보였다.
+// 클라이언트(frontend/submission.html)의 MAX_TOTAL_IMAGES 와 반드시 같은 값.
+const MAX_FILES = 50;
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB per file (post-compression headroom)
 const ALLOWED_MIME = new Set([
   'image/jpeg',
@@ -96,12 +101,26 @@ module.exports = async function handler(req, res) {
     try { body = body ? JSON.parse(body) : {}; } catch (_) { body = {}; }
   }
 
+  // 2026-07-29 — 아래 400 분기들은 원래 code 도 로그도 없었다. 그래서 로그에는
+  // "upload-url 400" 만 남고 장수·형식·용량 중 무엇에 걸렸는지 알 수 없었으며,
+  // 프론트도 매핑할 키가 없어 회원에게는 "제출 실패" 일반 문구만 떴다.
+  // 이제 (1) code 를 붙여 프론트가 9개 언어 문구로 매핑하고
+  //     (2) console.error 로 어느 규칙에 걸렸는지 서버 로그에 남긴다.
+  // 이 값들은 회원이 스스로 고칠 수 있는 제약이므로 상세를 알려주는 것이 맞다
+  // (숨겨야 할 내부 구조가 아니다 — A-3 규칙의 대상은 DB/스토리지 원문 에러).
   const files = Array.isArray(body.files) ? body.files : [];
   if (files.length === 0) {
-    return res.status(400).json({ message: 'No files specified' });
+    console.error('[upload-url] rejected: no files, user=', user.id);
+    return res.status(400).json({ message: 'No files specified', code: 'no_files' });
   }
   if (files.length > MAX_FILES) {
-    return res.status(400).json({ message: `Too many files (max ${MAX_FILES})` });
+    console.error('[upload-url] rejected: too many files', files.length, '> ', MAX_FILES, 'user=', user.id);
+    return res.status(400).json({
+      message: `Too many files: ${files.length}. Maximum is ${MAX_FILES} images in total (looks + additional).`,
+      code: 'too_many_files',
+      count: files.length,
+      max: MAX_FILES,
+    });
   }
 
   // Validate each entry
@@ -112,15 +131,29 @@ module.exports = async function handler(req, res) {
     const category = String(f.category || '').toLowerCase();
 
     if (!ALLOWED_MIME.has(type)) {
-      return res.status(400).json({ message: `File ${i + 1}: unsupported type "${type}"` });
+      console.error('[upload-url] rejected: unsupported type', JSON.stringify(type), 'idx=', i, 'user=', user.id);
+      return res.status(400).json({
+        message: `File ${i + 1}: unsupported type "${type}"`,
+        code: 'unsupported_type',
+        index: i + 1,
+      });
     }
     if (size <= 0 || size > MAX_FILE_SIZE) {
+      console.error('[upload-url] rejected: bad size', size, 'idx=', i, 'user=', user.id);
       return res.status(400).json({
         message: `File ${i + 1}: size ${size} exceeds max ${MAX_FILE_SIZE}`,
+        code: 'file_too_large',
+        index: i + 1,
+        maxBytes: MAX_FILE_SIZE,
       });
     }
     if (category !== 'look' && category !== 'additional') {
-      return res.status(400).json({ message: `File ${i + 1}: invalid category` });
+      console.error('[upload-url] rejected: invalid category', JSON.stringify(category), 'idx=', i, 'user=', user.id);
+      return res.status(400).json({
+        message: `File ${i + 1}: invalid category`,
+        code: 'invalid_category',
+        index: i + 1,
+      });
     }
   }
 

@@ -763,6 +763,10 @@ function navigateWithInterstitial(url){
             <div class="upload-hint" data-i18n="uploadHint">JPG · Max 25MB · 1080×1350px recommended</div>
           </div>
           <div class="file-list" id="fileList"></div>
+          <!-- 2026-07-29 — 총량(룩+추가) 잔여 안내. 상한에 가까워지면 나타나고
+               넘으면 주황색으로 바뀐다. 제출 버튼을 눌러서야 알게 되던 것을
+               이미지를 넣는 순간 알려주기 위한 장치. _papRenderImageQuota() 가 갱신. -->
+          <div id="imageQuotaNotice" style="display:none;margin-top:10px;padding:10px 12px;border:1px solid rgba(255,255,255,.18);border-radius:6px;font-size:12px;line-height:1.6;color:rgba(255,255,255,.9)"></div>
           <div class="form-hint" data-i18n="additionalImagesHint">Please include cover images, behind-the-scenes shots, and other additional images not included in the looks.</div>
         </div>
       </div>
@@ -972,6 +976,55 @@ function navigateWithInterstitial(url){
 var lookCount=0;
 var files1=[];
 var selectedGenres=[];
+
+// ═══ 업로드 총량 상한 (2026-07-29) ═══════════════════════════════════
+// api/submissions/upload-url.js 의 MAX_FILES 와 **반드시 같은 값**이어야 한다.
+// 한쪽만 바꾸면 "UI는 받아줬는데 서버가 통째로 거부"하는 조용한 실패가 난다.
+//
+// 실제 사고: 서버는 룩+추가 합계 30장 상한이었는데 클라이언트는 추가 이미지만
+// 세고 있었다(files1.length). 그래서 룩 25장 + 추가 10장 = 35장이면 UI는 전부
+// 받아주고 서버가 400 을 냈고, 회원에게는 "제출 실패"만 떴다. 다나에 알라르콘이
+// 17분간 8번 재시도한 원인. 이제 합계로 세고, 넘기 전에 미리 막는다.
+var MAX_TOTAL_IMAGES = 50;
+
+/**
+ * 현재 제출본의 총 이미지 수 = 새 룩 이미지 + 유지 중인 룩 이미지(수정 모드)
+ *                            + 새 추가 이미지 + 유지 중인 추가 이미지.
+ * 상한 검사·잔여 표시 어디서든 이 하나만 쓴다(계산이 갈라지면 또 어긋난다).
+ */
+function _papTotalImageCount(){
+  var n=0;
+  try{
+    Object.keys(lookFiles||{}).forEach(function(k){ n += (lookFiles[k]||[]).length; });
+    Object.keys(existingLookUrls||{}).forEach(function(k){ n += (existingLookUrls[k]||[]).length; });
+  }catch(_){}
+  try{ n += (files1||[]).length; }catch(_){}
+  try{ n += (existingAdditionalUrls||[]).length; }catch(_){}
+  return n;
+}
+
+/** 앞으로 몇 장 더 넣을 수 있는지. 0 이면 더 못 넣는다. */
+function _papRemainingImageSlots(){
+  return Math.max(0, MAX_TOTAL_IMAGES - _papTotalImageCount());
+}
+
+/**
+ * 상한 근접/도달 안내를 화면에 갱신한다. 제출 버튼을 눌러서야 알게 되는 대신,
+ * 이미지를 넣는 순간 남은 장수가 보이도록 한다.
+ */
+function _papRenderImageQuota(){
+  var box=document.getElementById('imageQuotaNotice');
+  if(!box) return;
+  var total=_papTotalImageCount();
+  var left=MAX_TOTAL_IMAGES-total;
+  if(total===0 || left>10){ box.style.display='none'; box.textContent=''; return; }
+  box.textContent = (left<=0)
+    ? _errT('tooManyImages',{count:total,max:MAX_TOTAL_IMAGES,over:Math.max(1,total-MAX_TOTAL_IMAGES)})
+    : _errT('imgQuotaLeft',{used:total,max:MAX_TOTAL_IMAGES,left:left});
+  box.style.background = (left<=0) ? 'rgba(234,88,12,.12)' : 'rgba(255,255,255,.06)';
+  box.style.borderColor = (left<=0) ? '#ea580c' : 'rgba(255,255,255,.18)';
+  box.style.display='block';
+}
 var selectedCoverLook=0;
 var selectedCoverIdx=0;
 
@@ -1538,6 +1591,13 @@ var _ERR_I18N = {
   // 2026-07-26 — 사전을 우회해 화면에 나가던 하드코딩 문구 2건을 여기로 이전.
   photoCreditLocked:{ko:'포토그래퍼 크레딧은 삭제할 수 없습니다',en:'The photographer credit cannot be removed',de:'Der Fotografen-Credit kann nicht entfernt werden',it:'Il credito del fotografo non può essere rimosso',fr:'Le crédit du photographe ne peut pas être supprimé',es:'El crédito del fotógrafo no se puede eliminar',ja:'フォトグラファーのクレジットは削除できません',zh:'摄影师署名无法删除',ru:'Кредит фотографа нельзя удалить'},
   moodboardPrefill:{ko:'무드보드를 기반으로 제안 중입니다. 제목과 컨셉이 자동 입력되었어요.',en:'mood board is being used as the basis for this submission. The title and concept were filled in automatically.',de:'Mood Board dient als Grundlage für diese Einreichung. Titel und Konzept wurden automatisch übernommen.',it:'mood board è la base di questa submission. Titolo e concept sono stati compilati automaticamente.',fr:'mood board sert de base à cette soumission. Le titre et le concept ont été remplis automatiquement.',es:'mood board es la base de esta submission. El título y el concepto se han rellenado automáticamente.',ja:'ムードボードを基にした提案です。タイトルとコンセプトが自動入力されました。',zh:'正在以该情绪板为基础提交。标题与概念已自动填入。',ru:'мудборд использован как основа этой заявки. Название и концепция заполнены автоматически.'},
+  // 2026-07-29 — 업로드 상한 초과. 예전에는 서버가 code 없이 400 만 내려서
+  // 회원 화면에 "제출 실패" 만 떴고(다나에 알라르콘 건, 400 × 8회), 무엇을
+  // 줄여야 하는지 알 수 없었다. 이제 몇 장 초과인지까지 알려준다.
+  tooManyImages:{ko:'이미지가 너무 많습니다 — 룩과 추가 이미지를 합쳐 최대 {max}장까지 가능합니다. 현재 {count}장이므로 {over}장을 줄여 주세요.',en:'Too many images — up to {max} in total (looks + additional). You have {count}, so please remove {over}.',de:'Zu viele Bilder — insgesamt maximal {max} (Looks + zusätzliche). Aktuell {count}, bitte {over} entfernen.',it:'Troppe immagini — massimo {max} in totale (look + aggiuntive). Ne hai {count}, rimuovine {over}.',fr:'Trop d’images — {max} au maximum au total (looks + supplémentaires). Vous en avez {count}, veuillez en retirer {over}.',es:'Demasiadas imágenes — máximo {max} en total (looks + adicionales). Tienes {count}, elimina {over}.',ja:'画像が多すぎます — ルックと追加画像を合わせて最大{max}枚です。現在{count}枚なので{over}枚減らしてください。',zh:'图片过多 — 造型与附加图片合计最多 {max} 张。当前 {count} 张，请减少 {over} 张。',ru:'Слишком много изображений — максимум {max} всего (образы + дополнительные). Сейчас {count}, удалите {over}.'},
+  imgQuotaLeft:{ko:'이미지 {used} / {max}장 — {left}장 더 추가할 수 있습니다.',en:'{used} of {max} images — you can add {left} more.',de:'{used} von {max} Bildern — Sie können noch {left} hinzufügen.',it:'{used} di {max} immagini — puoi aggiungerne altre {left}.',fr:'{used} sur {max} images — vous pouvez en ajouter {left}.',es:'{used} de {max} imágenes — puedes añadir {left} más.',ja:'画像 {used} / {max}枚 — あと{left}枚追加できます。',zh:'图片 {used} / {max} 张 — 还可再添加 {left} 张。',ru:'{used} из {max} изображений — можно добавить ещё {left}.'},
+  unsupportedType:{ko:'지원하지 않는 파일 형식이 포함되어 있습니다 ({index}번째). JPG · PNG · WebP · TIFF 만 업로드할 수 있습니다.',en:'An unsupported file type was included (file {index}). Only JPG, PNG, WebP and TIFF can be uploaded.',de:'Ein nicht unterstützter Dateityp ist enthalten (Datei {index}). Nur JPG, PNG, WebP und TIFF sind möglich.',it:'È incluso un formato non supportato (file {index}). Sono ammessi solo JPG, PNG, WebP e TIFF.',fr:'Un format non pris en charge est inclus (fichier {index}). Seuls JPG, PNG, WebP et TIFF sont acceptés.',es:'Se incluyó un formato no admitido (archivo {index}). Solo se permiten JPG, PNG, WebP y TIFF.',ja:'対応していないファイル形式が含まれています（{index}番目）。JPG・PNG・WebP・TIFF のみアップロードできます。',zh:'包含不支持的文件格式（第 {index} 个）。仅支持 JPG、PNG、WebP 和 TIFF。',ru:'Включён неподдерживаемый формат (файл {index}). Допустимы только JPG, PNG, WebP и TIFF.'},
+  fileTooLarge:{ko:'파일 하나가 너무 큽니다 ({index}번째). 1장당 최대 25MB까지 가능합니다.',en:'One of the files is too large (file {index}). The maximum is 25MB per image.',de:'Eine Datei ist zu groß (Datei {index}). Maximal 25 MB pro Bild.',it:'Un file è troppo grande (file {index}). Massimo 25MB per immagine.',fr:'Un fichier est trop volumineux (fichier {index}). Maximum 25 Mo par image.',es:'Uno de los archivos es demasiado grande (archivo {index}). El máximo es 25MB por imagen.',ja:'ファイルが大きすぎます（{index}番目）。1枚あたり最大25MBです。',zh:'有文件过大（第 {index} 个）。每张图片最大 25MB。',ru:'Один из файлов слишком большой (файл {index}). Максимум 25 МБ на изображение.'},
   lookCredit:{ko:'각 룩에는 최소 1개의 크레딧(브랜드 또는 인스타그램)이 필요합니다. 누락된 룩: {looks}',en:'Each look needs at least one credit (brand or Instagram). Missing: Look {looks}',de:'Jeder Look braucht mindestens einen Credit (Marke oder Instagram). Fehlt: Look {looks}',it:'Ogni look richiede almeno un credito (brand o Instagram). Mancanti: Look {looks}',fr:'Chaque look doit avoir au moins un crédit (marque ou Instagram). Manquant : Look {looks}',es:'Cada look necesita al menos un crédito (marca o Instagram). Faltan: Look {looks}',ja:'各ルックには最低1つのクレジット（ブランドまたはInstagram）が必要です。不足：ルック {looks}',zh:'每个造型至少需要一个署名（品牌或 Instagram）。缺少：造型 {looks}',ru:'Каждому образу нужен хотя бы один кредит (бренд или Instagram). Отсутствует: образ {looks}'}
 };
 function _errT(k,p){
@@ -1558,6 +1618,15 @@ function _localizeApiError(e, fallbackKey){
     var looks=(e&&e.payload&&Array.isArray(e.payload.missingLooks))?e.payload.missingLooks.join(', '):'';
     return _errT('lookCredit',{looks:looks});
   }
+  // 2026-07-29 — upload-url 의 검증 400 3종. 서버가 code 를 붙여주므로 여기서
+  // 언어별 문구로 갈아끼운다. 이게 없으면 회원은 "제출 실패"만 보게 된다.
+  if(code==='too_many_files'){
+    var _pl=(e&&e.payload)||{};
+    var _cnt=Number(_pl.count)||0, _mx=Number(_pl.max)||MAX_TOTAL_IMAGES;
+    return _errT('tooManyImages',{count:_cnt,max:_mx,over:Math.max(1,_cnt-_mx)});
+  }
+  if(code==='unsupported_type') return _errT('unsupportedType',{index:(e&&e.payload&&e.payload.index)||1});
+  if(code==='file_too_large')  return _errT('fileTooLarge',{index:(e&&e.payload&&e.payload.index)||1});
   if(/session expired|log in again/i.test(raw)) return _errT('session');
   if(/payload too large|413|entity too large/i.test(raw)) return _errT('tooLarge');
   if(/network|failed to fetch|load failed|timeout|504|502/i.test(raw)) return _errT('network');
@@ -2247,6 +2316,12 @@ async function addLookFiles(n,fl){
       if(typeof PAP!=='undefined') PAP.ui.toast(_t('toastImgTooBig25',{name:fl[i].name}),'error');
       continue;
     }
+    // 2026-07-29 — 룩 이미지도 총량(룩+추가) 상한에 포함된다. 예전에는 룩을
+    // 아무리 넣어도 여기서 안 막혀서, 서버 400 을 맞고 나서야 알 수 있었다.
+    if(_papTotalImageCount()+queue.length >= MAX_TOTAL_IMAGES){
+      if(typeof PAP!=='undefined') PAP.ui.toast(_t('toastMaxFilesN',{max:MAX_TOTAL_IMAGES}),'error');
+      break;
+    }
     queue.push(fl[i]);
     checkImageDimensions(fl[i]);
   }
@@ -2306,6 +2381,7 @@ function renderLookThumbs(n){
     h+='<img loading="lazy" loading="lazy" src="'+url+'"><div class="lt-order">'+(i+1)+'</div><button class="lt-remove" onclick="event.stopPropagation();removeLookFile('+n+','+i+')">×</button></div>';
   }
   el.innerHTML=h;
+  if(typeof _papRenderImageQuota==='function') _papRenderImageQuota();
 }
 
 function thumbDragStart(e,n,idx){ dragLookN=n; dragIdx=idx; e.target.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; }
@@ -2719,7 +2795,9 @@ uz1.addEventListener('drop',function(e){e.preventDefault();uz1.classList.remove(
 async function addF(fl){
   var allowed=['image/jpeg','image/png','image/tiff','image/webp'];
   var maxSize=20*1024*1024;
-  var maxFiles=30;
+  // 2026-07-29 — 이전에는 여기서 files1(추가 이미지)만 세어 30장과 비교했다.
+  // 룩 이미지가 빠져 있어 서버의 '룩+추가 합계' 상한과 어긋났다. 이제
+  // _papTotalImageCount() 로 합계를 센다.
   var queue=[];
   for(var i=0;i<fl.length;i++){
     if(allowed.indexOf(fl[i].type)===-1){
@@ -2730,13 +2808,13 @@ async function addF(fl){
       if(typeof PAP!=='undefined') PAP.ui.toast(_t('toastFileTooBig20',{name:fl[i].name}),'error');
       continue;
     }
-    if(files1.length+queue.length>=maxFiles){
-      if(typeof PAP!=='undefined') PAP.ui.toast(_t('toastMaxFilesN',{max:maxFiles}),'error');
+    if(_papTotalImageCount()+queue.length>=MAX_TOTAL_IMAGES){
+      if(typeof PAP!=='undefined') PAP.ui.toast(_t('toastMaxFilesN',{max:MAX_TOTAL_IMAGES}),'error');
       break;
     }
     queue.push(fl[i]);
   }
-  if(queue.length===0){ renderF(); return; }
+  if(queue.length===0){ renderF(); if(typeof _papRenderImageQuota==='function') _papRenderImageQuota(); return; }
   try {
     var compressed = await Promise.all(queue.map(function(f){ return _compressImage(f); }));
     compressed.forEach(function(f){ files1.push(f); });
@@ -2757,6 +2835,7 @@ function renderF(){
     h+='<div class="file-item"><span class="fn">'+files1[i].name+'</span><span class="fs">'+s+'</span><button class="fr" onclick="removeF('+i+')">×</button></div>';
   }
   el.innerHTML=h;
+  if(typeof _papRenderImageQuota==='function') _papRenderImageQuota();
 }
 
 // SUBMIT
@@ -2892,6 +2971,18 @@ async function submitForm(){
   // than 4 LOOKS is allowed and classified as paid (€345) server-side.
   if(totalAllImages<1){
     if(typeof PAP!=='undefined') PAP.ui.toast(_t('toastMinOneImage'),'error');
+    return;
+  }
+
+  // 2026-07-29 — 상한 검사. 예전에는 하한(<1)만 보고 상한은 아예 안 봐서,
+  // 30장을 넘겨도 UI 는 통과시키고 서버가 400 으로 통째로 거부했다. 회원은
+  // "제출 실패"만 보고 무엇을 줄여야 할지 몰랐다(다나에 알라르콘, 8회 재시도).
+  // 여기서 미리 막고 정확히 몇 장을 빼야 하는지 알려준다.
+  if(totalAllImages>MAX_TOTAL_IMAGES){
+    var _over=totalAllImages-MAX_TOTAL_IMAGES;
+    if(typeof PAP!=='undefined') PAP.ui.toast(_errT('tooManyImages',{count:totalAllImages,max:MAX_TOTAL_IMAGES,over:_over}),'error');
+    if(typeof _papRenderImageQuota==='function') _papRenderImageQuota();
+    try{ var _q=document.getElementById('imageQuotaNotice'); if(_q) _q.scrollIntoView({behavior:'smooth',block:'center'}); }catch(_){}
     return;
   }
 
