@@ -27,6 +27,29 @@ t('vercel.json 10분 주기 등록', vj.crons.some(x => x.path === '/api/cron/ba
 
 t('완주 시 개인 텔레그램 통보(중복 방지)', /remaining === 0/.test(c) && /sendTextToTelegramPersonalSafe/.test(c));
 
+/* ── 2026-07-28 GEO 감사: '가짜 완주' 재발 방지 ────────────────────────────
+ * 선별 함수에 seo_description<110 이 AND 로 걸려 있어, meta 태그만 채워진 행이
+ * 본문 description 은 빈 채로 대상에서 빠졌다. 크론은 '남은 것 없음'을 보고했지만
+ * 실제로는 본문 텍스트 없는 발행 에디토리얼이 2,224/2,490건 남아 있었다.
+ * AI 검색엔진은 meta 가 아니라 본문을 인용하므로 GEO 성과가 통째로 막혀 있었다.
+ * (실측 Ahrefs 2026-07-28 — PAP 16건 vs W Korea 303 / Dazed 7,303)
+ * 선별 조건은 DB 함수라 여기서 직접 못 보므로, 코드 쪽 계약을 고정한다. */
+console.log('=== 본문 분량 확보 (GEO) ===');
+const ai = R('api/_lib/editorialAi.js');
+t('크론이 longForm 으로 본문 분량을 요청', /longForm: true/.test(c));
+t('생성기가 longForm 시 300자+ 를 명시', /longForm/.test(ai) && /300\+ characters/.test(ai));
+t('longForm 은 max_tokens 상향 (잘림 → JSON 파싱 실패 방지)',
+  /max_tokens: longForm \? 3000 : 1800/.test(ai));
+t('기본(짧은) 프롬프트는 그대로 — 기존 호출부 무변경',
+  /: 'Write a short, evocative 3-4 sentence description for the editorial in THREE languages\.'/.test(ai)
+  && /const _lengthRule = longForm/.test(ai));
+t('근거 없는 고유명사 생성 금지를 프롬프트에 명시',
+  /NEVER invent facts/.test(ai) && /no shoot location/.test(ai));
+t('크레딧(브랜드·태그)을 프롬프트에 주입 — 실제 검색어가 본문에 들어가게',
+  /credits: \{ brands:/.test(c) && /Brands featured \(use these exact names\)/.test(ai));
+t('재시도는 3회로 제한 (무한 재시도 금지 유지)',
+  /meta_desc_attempts: \(row\.meta_desc_attempts \|\| 0\) \+ 1/.test(c));
+
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if(fail){ console.log('❌ backfill-meta-desc tests FAILED'); process.exit(1); }
 console.log('✅ backfill-meta-desc tests passed');

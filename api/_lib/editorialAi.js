@@ -37,7 +37,16 @@ function _guessLanguage(text) {
   return 'en';
 }
 
-async function generateEditorialDescriptions({ title, artistStatement, imageUrls }) {
+/* longForm (2026-07-28, GEO 감사):
+ *   기본 비전 프롬프트는 "3-4 sentence" 라 한국어 80~110자가 나온다. 인스타 캡션엔
+ *   맞지만 AI 검색엔진이 인용할 본문으로는 너무 짧다(실측: 이 길이로 채워진 행이
+ *   120자 기준에 계속 미달해 백필이 헛돌았다). longForm=true 면 300자 이상의
+ *   서술을 요청한다. credits 를 함께 넘기면 브랜드·태그 같은 실제 고유명사를
+ *   본문에 넣어 검색·인용 대상이 되게 한다.
+ *   ★ 근거 없는 사실(촬영지·인물·시즌)은 지어내지 않는다 — 프롬프트에 명시.
+ *   기존 호출부는 두 인자를 넘기지 않으므로 동작이 바뀌지 않는다.
+ */
+async function generateEditorialDescriptions({ title, artistStatement, imageUrls, longForm, credits }) {
   const raw = (artistStatement || '').trim();
   if (!process.env.ANTHROPIC_API_KEY) {
     const slot = _guessLanguage(raw);
@@ -136,17 +145,37 @@ async function generateEditorialDescriptions({ title, artistStatement, imageUrls
     return { kr: '', en: '', it: '', hook: '', moodTag: '' };
   }
 
+  const _lengthRule = longForm
+    ? 'Write a substantial description of AT LEAST 5 sentences — the Korean version must be 300+ characters, the English 350+ characters. This text is the page body that search engines and AI assistants quote, so it must stand on its own as readable prose.'
+    : 'Write a short, evocative 3-4 sentence description for the editorial in THREE languages.';
   const visionSystem = [
     'You are the editorial copywriter for PAP Magazine — a global fashion / beauty / culture publication.',
-    'You will see an editorial title and a few of its key images. Write a short, evocative 3-4 sentence description for the editorial in THREE languages.',
+    'You will see an editorial title and a few of its key images. ' + _lengthRule + ' Produce all THREE languages.',
     'Tone: editorial, sensory, confident. Avoid generic praise; describe what is visually distinctive (palette, mood, styling references, conceptual angle).',
+    ...(longForm ? [
+      'Ground every sentence in what is actually visible in the images, or in the credits given below. NEVER invent facts you cannot see — no photographer or model names, no shoot location, no season or collection year, no brand names that are not in the credits. Inventing such facts is worse than a shorter description.',
+      'Where credits are supplied, weave those brand names naturally into the prose (they are what readers search for). Also name concrete visual specifics: colour palette, fabric and silhouette, light quality, setting type, and the styling genre.',
+    ] : []),
     'Languages: Korean (kr), English (en), Italian (it). Each version must read natively — not a literal translation. The Korean version must read like a Korean fashion editor wrote it — flowing connectives (~인데, ~하고), never translationese.',
     'Also write "hook": ONE short Korean line for the very top of the Instagram caption. It must stop the scroll with a fact or striking image from the editorial, in plain confident Korean. NO exclamation marks, NO clickbait. Good example: "인류가 사라진 지구에, 여왕이 내려왔다."',
     'Also write "moodTag": ONE Korean hashtag word (no #) Korean fashion fans would search for this mood/genre, e.g. "사이버펑크", "올드머니룩", "아방가르드".',
     'Output ONLY a JSON object: {"kr": "<korean>", "en": "<english>", "it": "<italian>", "hook": "<korean one-liner>", "moodTag": "<korean tag word>"}. No prose, no markdown fences.',
   ].join('\n');
+  const _creditLine = (function () {
+    const c = credits && typeof credits === 'object' ? credits : null;
+    if (!c) return '';
+    const brands = Array.isArray(c.brands)
+      ? c.brands.map((b) => String((b && (b.name || b.instagram)) || '').replace(/^@/, '').trim())
+          .filter(Boolean).slice(0, 20)
+      : [];
+    const tags = Array.isArray(c.tags) ? c.tags.map((t) => String(t || '').trim()).filter(Boolean).slice(0, 10) : [];
+    const parts = [];
+    if (brands.length) parts.push('Brands featured (use these exact names): ' + brands.join(', '));
+    if (tags.length) parts.push('Tags: ' + tags.join(', '));
+    return parts.length ? '\n\n' + parts.join('\n') : '';
+  })();
   const visionUser = [
-    { type: 'text', text: 'Editorial title: ' + String(title || '').trim() + '\n\nReference images:' },
+    { type: 'text', text: 'Editorial title: ' + String(title || '').trim() + _creditLine + '\n\nReference images:' },
     ...visionImages,
     { type: 'text', text: 'Write the JSON now.' },
   ];
@@ -157,7 +186,9 @@ async function generateEditorialDescriptions({ title, artistStatement, imageUrls
       headers: commonHeaders,
       body: JSON.stringify({
         model,
-        max_tokens: 1800,
+        // longForm 은 3개 언어 × 300자+ 라 1800 으로는 잘릴 수 있다(잘리면 JSON
+        // 파싱이 실패해 빈 결과가 되고, 그 행은 시도 횟수만 소진한다)
+        max_tokens: longForm ? 3000 : 1800,
         system: visionSystem,
         messages: [{ role: 'user', content: visionUser }],
       }),

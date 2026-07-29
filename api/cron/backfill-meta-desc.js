@@ -18,8 +18,19 @@
  *    · description 이 비었으면 kr, description_en 비었으면 en, description_it
  *      비었으면 it 로 채움(기존 텍스트는 보존).
  *    · seo_description = kr(155자 컷) — 렌더러가 최우선으로 읽는 필드.
- *  - 성공/실패 무관 meta_desc_attempted_at 스탬프 → 재처리 방지(무한 재시도 X).
- *    비전이 빈 결과(이미지 접근 불가 등)면 스탬프만 남기고 넘어간다.
+ *  - 성공/실패 무관 meta_desc_attempted_at 스탬프 + meta_desc_attempts 증가.
+ *    비전이 빈 결과(이미지 접근 불가 등)면 스탬프만 남기고 넘어가되, 최대 3회까지
+ *    재시도한다(무한 재시도는 여전히 금지 — 선별 함수가 attempts<3 으로 막는다).
+ *
+ * 2026-07-28 선별 조건 수정 (GEO 감사에서 '가짜 완주' 발견):
+ *   기존 선별에 `seo_description < 110` 이 AND 로 걸려 있어, seo_description 만
+ *   채워진 행이 본문 description 은 빈 채로 대상에서 빠졌다. 그래서 남은 건수가
+ *   16건으로 보였지만 실제로는 본문 텍스트가 없는 발행 에디토리얼이 2,224건
+ *   (전체 2,490 중 89%) 남아 있었다. AI 검색엔진이 인용하는 것은 meta 태그가
+ *   아니라 본문이므로 이 구멍이 GEO 성과를 통째로 막고 있었다 —
+ *   실측(Ahrefs 2026-07-28) AI 인용 16건 vs W Korea 303건 / Dazed 7,303건.
+ *   판단 기준을 본문 description 하나로 단일화했다(migration
+ *   fix_short_desc_editorials_selector). 재선별 대상 1,851건.
  *  - 시간 예산 90s: 초과 시 그 시점까지 저장하고 종료(다음 실행이 이어감).
  *  - 채워진 행은 description ≥120 이 되어 선별에서 자연히 빠지므로 멱등.
  *
@@ -72,12 +83,26 @@ module.exports = withCronGuard('backfill-meta-desc', async function handler(req,
     let gen = { kr: '', en: '', it: '' };
     try {
       // artistStatement 비움 → 비전 모드(이미지 기반 생성)
-      gen = await generateEditorialDescriptions({ title: row.title, artistStatement: '', imageUrls });
+      // longForm: 본문으로 쓸 300자+ 서술을 요청 (기본 3-4문장은 80~110자라
+      //   AI 검색엔진이 인용할 분량이 안 나오고, 120자 기준도 계속 미달했다)
+      // credits: 지어낸 고유명사 대신 DB 의 실제 브랜드·태그를 본문에 넣게 한다
+      gen = await generateEditorialDescriptions({
+        title: row.title,
+        artistStatement: '',
+        imageUrls,
+        longForm: true,
+        credits: { brands: (row.fashion && row.fashion.brands) || [], tags: row.tags || [] },
+      });
     } catch (e) {
       console.error('[backfill-meta-desc] gen 실패', row.slug, e && e.message);
     }
 
-    const patch = { meta_desc_attempted_at: new Date().toISOString() };
+    // attempts 증가 — 선별 함수가 attempts<3 으로 재시도를 3회로 묶는다.
+    // (row 는 RPC 결과라 현재 attempts 를 들고 있지 않으므로 DB 쪽에서 +1 한다)
+    const patch = {
+      meta_desc_attempted_at: new Date().toISOString(),
+      meta_desc_attempts: (row.meta_desc_attempts || 0) + 1,
+    };
     // 기존 텍스트 보존 — 빈 칸만 채운다
     if (gen.kr && !String(row.description || '').trim()) patch.description = gen.kr;
     if (gen.en && !String(row.description_en || '').trim()) patch.description_en = gen.en;
@@ -102,7 +127,8 @@ module.exports = withCronGuard('backfill-meta-desc', async function handler(req,
   } catch (_) {}
   if (remaining === 0) {
     sendTextToTelegramPersonalSafe(
-      '✅ 메타 설명 AI 백필 완주 — 짧은 에디토리얼 설명 보강이 끝났습니다. Ahrefs "too short" 잔여 0. 다음 크롤에 반영됩니다.'
+      '✅ 에디토리얼 본문 설명 AI 백필 완주 — 발행 에디토리얼의 본문 텍스트 보강이 끝났습니다. '
+      + 'AI 검색엔진(ChatGPT·Perplexity·AI Overviews)이 인용할 문장이 생겼습니다. 다음 크롤에 반영됩니다.'
     ).catch(() => {});
   }
 
