@@ -601,30 +601,6 @@
   },
   "redirects": [
     {
-      "source": "/",
-      "has": [
-        {
-          "type": "host",
-          "value": "(www\\.)?pap-studios\\.com"
-        }
-      ],
-      "destination": "https://www.pap-magazine.com/studio",
-      "statusCode": 301,
-      "permanent": true
-    },
-    {
-      "source": "/:path*",
-      "has": [
-        {
-          "type": "host",
-          "value": "(www\\.)?pap-studios\\.com"
-        }
-      ],
-      "destination": "https://www.pap-magazine.com/studio",
-      "statusCode": 301,
-      "permanent": true
-    },
-    {
       "source": "/about.html",
       "destination": "/about",
       "statusCode": 301

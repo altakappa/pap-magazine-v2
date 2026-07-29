@@ -23,18 +23,19 @@ const sm = R('api/sitemap.js');
 const renderer = R('api/_lib/seoRenderer.js');
 const sub = R('frontend/pap-subscription.js');
 
-console.log('\n=== pap-studios.com → /studio 301 ===');
+/* 도메인 처분 결정 (2026-07-29, 도메니코): pap-studios.com 은 갱신하지 않고
+ * 만료시킨다. 근거 — 이미 404 로 죽어 있고, 참조도메인·유기트래픽이 사실상 0이라
+ * 301 로 넘길 SEO 자산이 없다. 브랜드 방어 목적도 스튜디오가 PAP 본체 도메인
+ * 안으로 들어오면서 약해졌다.
+ * 따라서 리다이렉트 규칙을 두지 않는다 — 도메인이 프로젝트에 붙지 않으면
+ * 영원히 발화하지 않는 죽은 설정이고, 만료 후 제3자가 가져가면 의미도 없다.
+ * 단, '스튜디오는 /studio 하나'라는 상태는 아래 항목들로 강제한다. */
+console.log('\n=== 도메인 만료 결정 — 죽은 리다이렉트 없음 ===');
 const studioRedirects = (vj.redirects || []).filter(r =>
   (r.has || []).some(h => h.type === 'host' && /pap-studios/.test(h.value)));
-t('리다이렉트 2건 (루트 + 하위 전체 경로)', studioRedirects.length === 2);
-t('전부 301 영구 이동', studioRedirects.every(r => r.statusCode === 301 && r.permanent === true));
-t('목적지는 절대 URL /studio', studioRedirects.every(r => r.destination === 'https://www.pap-magazine.com/studio'));
-t('apex·www 양쪽 매칭', studioRedirects.every(r => /\(www\\\.\)\?pap-studios\\\.com/.test(r.has[0].value)));
-t('하위 경로 와일드카드 존재 (구 URL 전부 회수)', studioRedirects.some(r => r.source === '/:path*'));
-// 다른 규칙이 먼저 잡으면 리다이렉트가 안 걸린다 — 최상단이어야 한다
-const firstIdx = (vj.redirects || []).findIndex(r =>
-  (r.has || []).some(h => h.type === 'host' && /pap-studios/.test(h.value)));
-t('redirects 최상단에 위치 (선착순 매칭)', firstIdx === 0);
+t('pap-studios.com 리다이렉트 규칙 없음 (만료 결정)', studioRedirects.length === 0,
+  '도메인을 갱신하지 않기로 했으므로 발화하지 않을 규칙을 남기지 않는다');
+t('vercel.json 어디에도 pap-studios 없음', !JSON.stringify(vj).includes('pap-studios'));
 
 console.log('=== /studio 색인 경로 ===');
 t('사이트맵에 /studio 등재', /path: '\/studio'/.test(sm));
