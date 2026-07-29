@@ -2205,7 +2205,9 @@ async function loadSubmissions(statusFilter, opts){
         pending:         { cls: 'b-pending',     label: '대기 중' },
         resubmitted:     { cls: 'b-resubmitted', label: '보완 완료' },
         revision:        { cls: 'b-revision',    label: '보완 요청' },
-        awaiting_payment:{ cls: 'b-pending',     label: '결제 대기' },
+        // 2026-07-29 — b-pending(노랑, '대기 중')과 같은 색이라 심사 대기와
+        // 결제 대기가 구분되지 않았다. 전용 색(주황·점선)으로 분리.
+        awaiting_payment:{ cls: 'b-awaiting-pay', label: '결제 대기' },
         final_approved:  { cls: 'b-approved',    label: '최종 승인' },
         uploaded:        { cls: 'b-uploaded',    label: '업로드 완료' },
         rejected:        { cls: 'b-declined',    label: '거절' },
@@ -5233,7 +5235,23 @@ async function loadDashboardStats(){
         subTb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:40px 0">서브미션이 없습니다</td></tr>';
       }else{
         subTb.innerHTML=subs.map(function(s){
-          var statusBadge='<span class="badge b-'+(s.status||'pending')+'">'+esc(s.status||'pending')+'</span>';
+          // 2026-07-29 (도메니코 지시) — 브랜디드/유료 서브미션이 미결제인데도
+          // 'APPROVED' 로 떠서 결제 완료 건과 구분되지 않던 문제.
+          // 서브미션 목록(_renderSubmissionRows)이 이미 쓰는 판정을 그대로 재사용해
+          // 두 화면의 상태 표기를 일치시킨다. payment_status='paid'(Paddle 웹훅) 가
+          // 확인되면 자동으로 '최종 승인' 으로 돌아온다.
+          var _st=(s.status||'pending');
+          var _isAwaitingPay = (_st==='approved')
+            && s.payment_status!=='paid'
+            && (typeof _isFeeRequiredType==='function' && typeof _submissionTypeOf==='function'
+                ? _isFeeRequiredType(_submissionTypeOf(s)) : false);
+          var _map={ pending:'대기 중', approved:'최종 승인', revision:'보완 요청', rejected:'거절' };
+          var _cls=_isAwaitingPay ? 'b-awaiting-pay'
+                 : (_st==='approved' ? 'b-approved'
+                 : (_st==='rejected' ? 'b-declined'
+                 : (_st==='revision' ? 'b-revision' : 'b-pending')));
+          var _label=_isAwaitingPay ? '결제 대기' : (_map[_st]||_st);
+          var statusBadge='<span class="badge '+_cls+'">'+esc(_label)+'</span>';
           var looks=Array.isArray(s.file_urls)?s.file_urls.length:0;
           var name=esc(s.submitterName||s.submitterEmail||'—');
           var title=esc(s.title||'Untitled');
