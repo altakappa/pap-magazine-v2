@@ -1392,7 +1392,11 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
   <a href="${SITE}/">← ${escText(SITE_NAME)}</a> ·
   <a href="${SITE}/magazine">Magazine</a> ·
   <a href="${SITE}/articles">Articles</a> ·
-  <a href="${SITE}/films">Films</a>
+  <a href="${SITE}/films">Films</a> ·
+  <!-- 2026-07-29: /studio 는 사이트 어디에서도 링크되지 않아 고아였다(내부링크 0).
+       pap-studios.com 을 접고 /studio 로 일원화하는 이상, 모든 SSR 페이지에서
+       한 번은 링크되어야 크롤·권위 전달이 된다. -->
+  <a href="${SITE}/studio">Studio</a>
 </nav>
 
 <script>

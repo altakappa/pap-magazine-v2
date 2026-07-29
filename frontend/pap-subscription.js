@@ -72,7 +72,8 @@ var _INTERSTITIAL_EVERY = 3;  // N번째 클릭마다 광고 노출 (3,6,9,12...
 // admin dashboard → 인터스티셜 광고 관리). The hardcoded entry below is only a
 // fallback so the experience never breaks if the API call fails.
 var _brandAds = [
-  { type:'image', src:'pap-studio-campaign-banner.jpg', link:'https://www.pap-studios.com', brand:'PAP STUDIO', duration:4 }
+  // 2026-07-29: pap-studios.com 은 접었다(라이브 404). 스튜디오는 /studio 로 일원화.
+  { type:'image', src:'pap-studio-campaign-banner.jpg', link:'/studio', brand:'PAP STUDIO', duration:4 }
 ];
 
 // Fetch the live ads from the backend on first load. Public endpoint, no auth.
