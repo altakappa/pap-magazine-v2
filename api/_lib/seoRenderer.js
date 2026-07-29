@@ -434,8 +434,18 @@ function renderSeoHtml(kind, record, opts) {
     }
     return s;
   };
-  const descDisplay = _stripTitleEcho(descMain);
-  const descAltDisplay = _stripTitleEcho(descAlt);
+  /* 2026-07-29 — 본문 문단은 seo_description 이 아니라 description 을 우선한다.
+     seo_description 은 <meta> 전용으로 155자에서 잘린 값이라(backfill-meta-desc 가
+     그렇게 저장한다), 위의 descKo 우선순위를 그대로 쓰면 새로 채운 300자+ 서술이
+     화면에서 "…" 로 잘려 보인다(라이브 실측 the-modern-muse — 한국어만 155자에서
+     끊기고 영어는 전문 노출). meta·JSON-LD 는 기존 descMain 을 그대로 쓰므로
+     설명문 길이 정책은 건드리지 않는다. */
+  const bodyKo = record.description || record.seo_description || record.subtitle || _filmDescKo || descKo;
+  const bodyEn = record.description_en || _filmDescEn || bodyKo;
+  const bodyMain = lang === 'ko' ? bodyKo : (lang === 'en' ? bodyEn : ((tr && tr.description) || bodyEn));
+  const bodyAlt = lang === 'ko' ? bodyEn : (lang === 'en' ? bodyKo : bodyEn);
+  const descDisplay = _stripTitleEcho(bodyMain);
+  const descAltDisplay = _stripTitleEcho(bodyAlt);
   /* 2026-07-27 (Ahrefs 7/26 크롤 — Title too long 1,398건): 제목이 길면
      " | PAP Magazine" 브랜드 접미사가 60자 한계(≈600px)를 넘긴다. 접미사를
      포함해 60자 이내일 때만 붙이고, 넘치면 제목만 남긴다(제목 자체는 자르지
