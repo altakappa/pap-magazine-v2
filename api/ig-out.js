@@ -17,6 +17,11 @@
 const { supabaseAdmin } = require('./_lib/supabase');
 const { rateLimitStrict } = require('./_lib/rateLimit');
 const { extractClientIp, hashIp, detectDeviceType, sanitizeReferrer, isLikelyBot } = require('./_lib/clickGuard');
+// 2026-07-29 — 조회수 쪽에서 쓰는 강화 판별기를 아웃클릭에도 적용한다.
+// clickGuard.isLikelyBot 은 2026-07-20 판본이라 그 뒤에 정리된 크롤러 목록
+// (gptbot·claudebot·applebot·yeti·ahrefsbot·semrush 등)을 모른다. 두 판별기를
+// OR 로 묶어 한쪽만 아는 봇도 걸러낸다.
+const { isBot } = require('./_lib/botDetect');
 
 const HOME_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.com';
 // spa_fallback (2026-07-16): 원본 IG 게시물이 없는 에디토리얼(구계정 게시분 등)의
@@ -54,7 +59,13 @@ module.exports = async function handler(req, res) {
 
   // 크롤러는 리다이렉트만, 로그 제외 (2026-07-20 — 7/16 대량 발행 때 'ssr'
   // 소스 1000회 스파이크가 크롤러발 허수였던 교훈. 사람 지표만 남긴다)
-  if (isLikelyBot(req.headers['user-agent'])) {
+  // 2026-07-29 보강 — 위 필터가 있는데도 7/25~26 에 스파이크가 또 났다
+  //   (7/26 1352회 · 고유 IP 978개 · IP당 1.4회 · 데스크톱 92%).
+  //   평소 사람 트래픽은 IP 20~60개가 각 2.5~6회, 모바일 우세다. 즉 UA 목록이
+  //   낡아 새 크롤러를 놓친 것. botDetect.isBot(조회수 쪽에서 검증된 최신 목록)을
+  //   OR 로 함께 태운다.
+  const _ua = req.headers['user-agent'];
+  if (isLikelyBot(_ua) || isBot(_ua)) {
     return res.redirect(302, dest);
   }
 
@@ -74,6 +85,10 @@ module.exports = async function handler(req, res) {
       referrer_path: sanitizeReferrer(req.headers['referer'] || req.headers['referrer']),
       device_type: detectDeviceType(req.headers['user-agent']),
       ip_hash: hashIp(extractClientIp(req)), // salt 미설정 시 null
+      // 2026-07-29 — UA 를 남긴다. 브라우저 UA 로 위장한 스크래퍼는 목록 기반
+      // 필터로는 못 잡으므로, 다음에 스파이크가 나면 실제 UA 를 보고 정확한
+      // 규칙을 만들기 위한 근거를 확보한다. 200자 절단.
+      user_agent: (typeof _ua === 'string' && _ua) ? _ua.slice(0, 200) : null,
     });
     if (error) console.warn('[ig-out] click insert failed', error.message);
   } catch (e) {
