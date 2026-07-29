@@ -44,6 +44,8 @@ Full network page: https://www.pap-magazine.com/network
 
 ## Policy
 
-- AI search engines and assistants may cite PAP Magazine content with source links.
-- Bulk training-data scraping is not permitted (see robots.txt).
+- AI search engines and assistants may crawl, index and cite PAP Magazine content.
+- When citing, please link to the canonical page URL and credit "PAP Magazine".
+- robots.txt allows all user agents; only administrative and member-account paths
+  (/admin, /auth, /mypage, /api/) are disallowed.
 - Press / partnership contact: contact@pap-magazine.com
