@@ -28,6 +28,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+      # 2026-07-30 추가. 그전까지 이 잡은 node_modules 없이 npm test 를 돌렸고,
+      # 하네스 테스트가 npm 패키지를 건드리지 않는 동안은 우연히 통과했다.
+      # 그러다 크론 하나를 withCronGuard 로 감싼 순간
+      #   cronGuard → email → nodemailer / cronGuard → telegram → brandImage → sharp
+      # 체인이 생겨 CI 에서만 MODULE_NOT_FOUND 로 죽었다(로컬은 node_modules 가
+      # 있어 통과 — 가장 나쁜 종류의 차이다). 의존성을 실제로 설치해 이 유형을 없앤다.
+      # 1차 방어선은 tests/no-eager-npm-deps.test.js (커밋 전 로컬에서 걸린다).
+      - name: install deps
+        run: npm ci
       - name: run harness integration test
         run: npm test
 
