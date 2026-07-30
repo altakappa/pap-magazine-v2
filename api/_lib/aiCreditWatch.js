@@ -20,8 +20,19 @@
  *   - 비밀값(API 키)은 절대 알림에 싣지 않는다. 응답 본문도 200자로 자른다.
  */
 
-const { supabaseAdmin } = require('./supabase');
-const { pushAlert } = require('./pushAlert');
+/* supabase·pushAlert 를 함수 안에서 늦게 불러온다 (2026-07-30 CI 실패 후 수정).
+ *
+ * _lib/supabase 는 모듈 로드 시점에 createClient 를 호출하므로 env 가 없으면
+ * "supabaseUrl is required." 로 즉시 던진다. 이 파일을 editorialAi 가 require 하고
+ * editorialAi 를 테스트가 require 하는 순간, env 없는 환경(CI)에서 테스트 스위트가
+ * 통째로 죽었다. 감시 도구가 감시 대상의 import 가능성을 깨뜨리는 건 본말전도다.
+ * → 실제 알림을 보낼 때만 로드한다. 판별 함수(classifyAiFailure)는 순수하게 남는다. */
+function _deps() {
+  return {
+    supabaseAdmin: require('./supabase').supabaseAdmin,
+    pushAlert: require('./pushAlert').pushAlert,
+  };
+}
 
 const ALERT_KEY = 'anthropic-api-health';
 const COOLDOWN_H = Number(process.env.AI_ALERT_COOLDOWN_H || 3);
@@ -75,6 +86,7 @@ async function reportAiFailure(status, bodyText, where) {
   const kind = classifyAiFailure(status, bodyText);
   if (!kind) return { kind: null, alerted: false };
   try {
+    const { supabaseAdmin, pushAlert } = _deps();
     const { data: st } = await supabaseAdmin.from('ops_alert_state')
       .select('last_alert_at, last_payload').eq('key', ALERT_KEY).maybeSingle();
     const lastAt = st && st.last_alert_at ? Date.parse(st.last_alert_at) : 0;
