@@ -109,12 +109,20 @@ async function runGrowthAudit() {
       return { value: last7, compare: prev7, ...judgePace({ last7, prev7, weeklyTarget, waiting }) };
     });
 
-  /** 미발행 draft + 처리 대기 서브미션 = '만들 수 있었던 거리'. */
-  const waitingSupply = (table) => async () => {
-    const drafts = await cnt(db.from(table).select('*', CSEL).neq('status', 'published'));
-    const subs = await cnt(db.from('submissions').select('*', CSEL).in('status', ['pending', 'revision']));
-    return drafts + subs;
-  };
+  /* 대기 소재 = 그 채널의 '미발행 draft' 뿐이다 (2026-07-30 라이브 실측으로 두 번 정정).
+   *
+   * 서브미션을 여기 더하면 안 된다 — 두 번 확인했다:
+   *  ① revision(보완요청) 17건을 넣었더니 필름이 "대기 18건" 으로 여전히 fail.
+   *     revision 은 크리에이터에게 공을 넘긴 상태다. 상대의 회신 대기를
+   *     "우리가 못 냈다" 로 세면 고치려던 오탐이 그대로 남는다.
+   *  ② pending(심사 대기) 로 좁혀도 마찬가지다. 심사 전 투고는 반려될 수도 있어
+   *     아직 '발행 가능한 소재' 가 아니고, submissions 에는 채널 구분 컬럼이 없어
+   *     필름·에디토리얼이 같은 수를 공유하는 오염까지 생긴다.
+   *
+   * 승인되면 draft 로 들어오므로, 그 순간부터 여기 잡힌다 — 판정 시점이 정확하다.
+   * 심사 대기 자체는 submissions_pending 항목이 따로 보고 있어 정보 손실도 없다. */
+  const waitingSupply = (table) => async () =>
+    cnt(db.from(table).select('*', CSEL).neq('status', 'published'));
 
   sections.cadence = await Promise.all([
     pace('editorials', '에디토리얼 주간 발행', 5, waitingSupply('editorials')),

@@ -75,8 +75,14 @@ console.log('=== 결선 (감사 본체) ===');
     !/require\(/.test(pace), 'supabase 를 끌어오면 Node 20 CI 에서 죽는다');
   t('필름·에디토리얼에 공급 조회를 연결', /pace\('editorials'[^)]*waitingSupply/.test(src) && /pace\('films'[^)]*waitingSupply/.test(src));
   t('기사에는 연결하지 않는다 (자동 수입)', /pace\('articles', '기사 주간 발행', 5\)/.test(src));
-  t('대기 소재 = 미발행 draft + 처리 대기 서브미션',
-    /neq\('status', 'published'\)/.test(src) && /\['pending', 'revision'\]/.test(src));
+  t('대기 소재 = 그 채널의 미발행 draft', /neq\('status', 'published'\)/.test(src));
+  /* 2026-07-30 라이브에서 두 번 정정한 지점 — 서브미션을 대기로 세면 안 된다.
+     revision(17건)은 크리에이터에게 공을 넘긴 상태라 '우리가 못 낸 것' 이 아니고,
+     pending 도 심사 전이라 아직 발행 가능한 소재가 아니다. 게다가 submissions 에는
+     채널 구분이 없어 필름·에디토리얼이 같은 수를 공유하는 오염이 생긴다. */
+  t('waitingSupply 가 submissions 를 세지 않는다',
+    !/waitingSupply[\s\S]{0,400}from\('submissions'\)/.test(src),
+    '승인되면 draft 로 들어오므로 그때 잡으면 된다 — 판정 시점이 더 정확하다');
   t('공급 조회는 목표 미달일 때만 (정상일 때 쿼리 낭비 금지)',
     /last7 < weeklyTarget\) \? await supplyFn\(\)/.test(src));
 })();
