@@ -23,6 +23,7 @@ const { requireAdmin } = require('../_lib/auth');
 const { uploadVideo } = require('../_lib/youtube');
 const { withCronGuard } = require('../_lib/cronGuard');
 
+const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.com';
 const MAX_BYTES = 100 * 1024 * 1024; // 안전 상한 (IG 아카이브는 ≤60MB)
 
 function firstSentence(html) {
@@ -38,6 +39,14 @@ function buildDescription(art, url) {
   const fs = firstSentence(art.content);
   if (fs && fs.length <= 300) { lines.push(fs); lines.push(''); }
   lines.push('▶ 기사 전문 : ' + url);
+  /* 인스타 유입 링크 (2026-07-30 도메니코 요청).
+   * 유튜브는 설명란 외부 링크를 감점하지 않는다 — 정책상 제재 대상은
+   * 가이드라인 위반 사이트·멀웨어·스팸이다. 다만 첫 줄부터 링크로 도배하면
+   * 스팸 신호가 되므로 본문(제목·첫 문장) 뒤에만 둔다.
+   * 계측: 직링크 대신 /ig/youtube 를 태워 ig_outclicks 에 남긴다. 그래야
+   * "유튜브가 실제로 인스타 팔로워를 만들어 주는가" 를 숫자로 답할 수 있다.
+   * 경로형인 이유는 미디어킷 실측 교훈(외부 앱이 쿼리 파라미터를 지운다). */
+  lines.push('▶ 인스타그램 : ' + SITE + '/ig/youtube');
   lines.push('▶ pap-magazine.com — 아트 기반 패션·뷰티·컬쳐 매거진');
   lines.push('');
   const cat = art.category ? '#' + String(art.category).replace(/[^A-Za-z0-9가-힣]/g, '').toUpperCase() : null;

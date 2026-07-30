@@ -32,8 +32,29 @@ const HOME_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.c
 // editorial_mid (2026-07-29): 화보 갤러리 '중간'에 삽입한 CTA. 기존 'editorial'
 // 은 갤러리 맨 아래에만 있어 중간 이탈 독자에게 노출되지 않았다. 두 위치를
 // 분리 집계해야 "위치를 올린 것이 실제로 전환을 늘렸는가" 를 판정할 수 있다.
-const SRC_WHITELIST = new Set(['article', 'editorial', 'editorial_mid', 'ssr', 'ssr_niche', 'naverblog', 'footer', 'nav', 'funnel', 'spa_fallback', 'pepperit-article', 'pepperit-spa', 'pepperit-footer']);
+// youtube (2026-07-30): 유튜브 영상 설명란의 IG 링크. 사이트 밖(외부 플랫폼)에서
+// 들어오는 첫 소스라 웹 내부 유입과 반드시 분리 집계해야 한다 — "유튜브가 인스타
+// 팔로워를 실제로 만들어 주는가" 는 지금까지 측정한 적이 없는 값이다.
+const SRC_WHITELIST = new Set(['article', 'editorial', 'editorial_mid', 'ssr', 'ssr_niche', 'naverblog', 'footer', 'nav', 'funnel', 'spa_fallback', 'pepperit-article', 'pepperit-spa', 'pepperit-footer', 'youtube']);
 const IG_HOSTS = new Set(['instagram.com', 'www.instagram.com']);
+
+/* 경로형 단축 링크 /ig/:src (2026-07-30 신설).
+ *
+ * 왜 쿼리형(?to=&url=&src=) 을 그대로 쓰지 않나:
+ *  ① 유튜브 설명란·DM 처럼 사람이 눈으로 보는 자리에 들어갈 링크라 짧아야 한다.
+ *  ② 미디어킷에서 실측한 교훈 — 링크가 외부 앱을 거치면 추적성 쿼리 파라미터가
+ *     지워지거나 재작성되는 일이 흔하다(2026-07-29). 경로 세그먼트는 중간
+ *     매개체가 건드리지 않으므로 귀속이 살아남는다.
+ * url 이 없으면 PAP 공식 프로필로 보낸다 — 오픈 리다이렉터가 되지 않도록
+ * 목적지는 여기 코드에 박아 둔 값만 쓴다(쿼리로 받은 URL 은 종전대로 검증). */
+const PROFILE_URL = 'https://www.instagram.com/pap_magazine';
+function readPathSrc(req) {
+  let pathname = '';
+  try { pathname = new URL(req.url, 'https://x').pathname; } catch (_) { pathname = String(req.url || ''); }
+  const seg = pathname.split('/').filter(Boolean);      // ['ig', '<src>']
+  if (seg[0] !== 'ig' || !seg[1]) return '';
+  return String(seg[1]).toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40);
+}
 
 /** instagram.com URL만 통과. 쿼리스트링(igshid 등 추적 노이즈)은 제거. */
 function normalizeIgUrl(raw) {
@@ -55,7 +76,9 @@ module.exports = async function handler(req, res) {
   // 봇/스크립트의 로그 오염 방지 — DB 영속 rl_hit (분당 60회/IP)
   if (await rateLimitStrict(req, res, { limit: 60, windowMs: 60000 }, 'ig_out')) return;
 
-  const dest = normalizeIgUrl(req.query.url);
+  const pathSrc = readPathSrc(req);
+  // 경로형(/ig/:src)은 url 없이 오므로 공식 프로필을 기본 목적지로 쓴다.
+  const dest = normalizeIgUrl(req.query.url) || (pathSrc ? PROFILE_URL : null);
   if (!dest) {
     return res.redirect(302, HOME_URL);
   }
@@ -72,7 +95,8 @@ module.exports = async function handler(req, res) {
     return res.redirect(302, dest);
   }
 
-  const srcRaw = String(req.query.src || '').toLowerCase();
+  // 쿼리 우선, 없으면 경로 세그먼트 (외부 앱이 쿼리를 지워도 귀속이 남는다)
+  const srcRaw = String(req.query.src || pathSrc || '').toLowerCase();
   const src = SRC_WHITELIST.has(srcRaw) ? srcRaw : 'other';
 
   const toRaw = String(req.query.to || '').toLowerCase();
