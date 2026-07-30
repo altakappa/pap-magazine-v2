@@ -3185,6 +3185,8 @@ function _resetNewsEditorForm(){
   if(catEl) catEl.value = 'news';
   var tagEl = document.getElementById('newnewsTags');
   if(tagEl) tagEl.value = '';
+  var pinEl = document.getElementById('newnewsPinOk');
+  if(pinEl) pinEl.checked = false;
   var thumb = document.getElementById('newnewsThumbUpload');
   if(thumb){
     // Restore the placeholder text + clear the file input.
@@ -3263,7 +3265,14 @@ function _hydrateNewsEditorForm(a){
   var tagEl = document.getElementById('newnewsTags');
   if(tagEl){
     var tagsArr = Array.isArray(a.tags) ? a.tags : [];
-    tagEl.value = tagsArr.join(', ');
+    // 예약 태그(`pap:` 접두)는 편집 입력창에 노출하지 않는다 — 핀터레스트 체크박스로만 다룬다.
+    tagEl.value = tagsArr.filter(function(t){ return !/^pap:/i.test(String(t==null?'':t).replace(/^#/,'').trim()); }).join(', ');
+  }
+  // 핀터레스트 적합 체크박스 = tags 에 pap:pin-ok 존재 여부로 복원.
+  var pinEl = document.getElementById('newnewsPinOk');
+  if(pinEl){
+    var _tags = Array.isArray(a.tags) ? a.tags : [];
+    pinEl.checked = _tags.some(function(t){ return String(t==null?'':t).replace(/^#/,'').trim().toLowerCase() === 'pap:pin-ok'; });
   }
 
   // Pre-fill the thumbnail URL + render a visible preview thumbnail
@@ -7829,6 +7838,12 @@ async function saveNewsArticle(forceMode){
     .split(',')
     .map(function(t){ return String(t || '').trim().toLowerCase(); })
     .filter(function(t){ return t.length > 0; });
+
+  // 핀터레스트 적합 플래그 = 예약 태그 pap:pin-ok. 체크박스가 유일한 소스이므로,
+  // 입력창에서 새어 들어온 pap: 접두는 먼저 제거하고 체크 상태에 따라 다시 부여한다.
+  tags = tags.filter(function(t){ return t.indexOf('pap:') !== 0; });
+  var pinEl = document.getElementById('newnewsPinOk');
+  if(pinEl && pinEl.checked){ tags.push('pap:pin-ok'); }
 
   var payload = {
     title: titleEl.value,
