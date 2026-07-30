@@ -644,6 +644,15 @@ function renderSeoHtml(kind, record, opts) {
     },
   };
   const FT = FUNNEL_T[lang] || FUNNEL_T.en;
+
+  /* IG 아웃클릭 소스 분리 (2026-07-30).
+   *
+   * 지금까지 에디토리얼·기사·필름 SSR 이 모두 src='ssr' 로 기록돼, 30일 8,139건이
+   * 한 덩어리였다. 어느 콘텐츠 종류가 실제로 팔로워를 만드는지 판단할 수 없었고,
+   * 주간 73편이 나가는 기사 채널의 기여도는 아예 보이지 않았다.
+   * 에디토리얼만 'ssr' 로 남겨 과거 추세를 끊지 않고, 나머지를 분리한다. */
+  const IG_SRC = kind === 'article' ? 'ssr_article' : (kind === 'film' ? 'ssr_film' : 'ssr');
+
   const published = fmtIsoDate(record.published_date);
   const modified = fmtIsoDate(record.updated_at || record.published_date);
 
@@ -1370,7 +1379,7 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
     <aside class="ig-funnel" style="margin-bottom:0">
       <div class="igf-kicker">On Instagram</div>
       <p class="igf-copy">${FT.srcCopy}</p>
-      <a class="igf-btn" href="/api/ig-out?src=ssr&to=post&url=${encodeURIComponent(String(record.source_instagram_url).split('?')[0])}" target="_blank" rel="noopener">${FT.srcBtn}</a>
+      <a class="igf-btn" href="/api/ig-out?src=${IG_SRC}&to=post&url=${encodeURIComponent(String(record.source_instagram_url).split('?')[0])}" target="_blank" rel="noopener">${FT.srcBtn}</a>
     </aside>` : ''}
 
     <aside class="ig-funnel">
@@ -1380,10 +1389,10 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
         // 카테고리 매칭 시: 해당 니치 채널을 주 CTA 로 앞세우고 문구도 맞춤.
         if (nm) return `<p class="igf-copy">${FT.niche(nm)}</p>
       <a class="igf-btn" href="/api/ig-out?src=ssr_niche&to=profile&url=${encodeURIComponent('https://www.instagram.com/' + nm.acct + '/')}" target="_blank" rel="noopener">Follow @${nm.acct}</a>
-      <a class="igf-btn" style="background:transparent;color:#bbb;border:1px solid rgba(255,255,255,.25)" href="/api/ig-out?src=ssr&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener">+ @pap_magazine</a>`;
+      <a class="igf-btn" style="background:transparent;color:#bbb;border:1px solid rgba(255,255,255,.25)" href="/api/ig-out?src=${IG_SRC}&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener">+ @pap_magazine</a>`;
         // 매칭 없으면 기존 메인 채널 CTA.
         return `<p class="igf-copy">${FT.main}</p>
-      <a class="igf-btn" href="/api/ig-out?src=ssr&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener">Follow @pap_magazine</a>`;
+      <a class="igf-btn" href="/api/ig-out?src=${IG_SRC}&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener">Follow @pap_magazine</a>`;
       })()}
       ${ogImage ? `<a class="pin-btn" href="https://www.pinterest.com/pin/create/button/?url=${encodeURIComponent(canonical)}&media=${encodeURIComponent(ogImage)}&description=${encodeURIComponent(titleMain + ' — PAP Magazine editorial')}" target="_blank" rel="noopener" data-pin-do="none">${FT.pin}</a>` : ''}
       <div class="igf-sub">${FT.sub}</div>

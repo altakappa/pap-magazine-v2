@@ -35,7 +35,15 @@ const HOME_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.c
 // youtube (2026-07-30): 유튜브 영상 설명란의 IG 링크. 사이트 밖(외부 플랫폼)에서
 // 들어오는 첫 소스라 웹 내부 유입과 반드시 분리 집계해야 한다 — "유튜브가 인스타
 // 팔로워를 실제로 만들어 주는가" 는 지금까지 측정한 적이 없는 값이다.
-const SRC_WHITELIST = new Set(['article', 'editorial', 'editorial_mid', 'ssr', 'ssr_niche', 'naverblog', 'footer', 'nav', 'funnel', 'spa_fallback', 'pepperit-article', 'pepperit-spa', 'pepperit-footer', 'youtube']);
+// 2026-07-30 3종 추가 — 각각 지금까지 계측 자체가 없던 표면이다.
+//   brand           브랜드 허브 1,669페이지. 화보를 보러 온 팬과 브랜드 담당자가
+//                   함께 보는 표면인데 IG 경로가 푸터 직링크뿐이라 기여도 0으로 보였다.
+//   ssr_article     기사 SSR. 그동안 에디토리얼과 함께 'ssr' 로 뭉뚱그려져
+//                   주간 73편이 나가는 채널의 기여도가 보이지 않았다.
+//   submission_done 투고 완료 화면. 사이트에서 가장 고관여한 순간(심사 대기 중)인데
+//                   인스타로 가는 길이 없었다.
+// ssr_film 은 같은 분리 작업의 나머지 한 조각(필름 SSR).
+const SRC_WHITELIST = new Set(['article', 'editorial', 'editorial_mid', 'ssr', 'ssr_article', 'ssr_film', 'ssr_niche', 'naverblog', 'footer', 'nav', 'funnel', 'spa_fallback', 'pepperit-article', 'pepperit-spa', 'pepperit-footer', 'youtube', 'brand', 'submission_done']);
 const IG_HOSTS = new Set(['instagram.com', 'www.instagram.com']);
 
 /* 경로형 단축 링크 /ig/:src (2026-07-30 신설).

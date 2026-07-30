@@ -19,7 +19,9 @@ const { handleCors } = require('../../_lib/cors');
 const { parseBrandCredits } = require('../../_lib/fashionCredits');
 
 const SITE = 'https://www.pap-magazine.com';
-const IG = 'https://www.instagram.com/pap_magazine/';
+/* IG 직링크 상수는 제거했다 (2026-07-30) — 모든 IG 링크가 계측 경유(/ig/brand)로
+   바뀌어 참조가 사라졌다. 안 쓰는 상수를 남기면 다음 사람이 "직링크도 쓰는 곳이
+   있나" 하고 헷갈린다. */
 // MAIL 상수는 2026-07-29 문의 CTA 를 폼(/business)으로 옮기며 미사용이 됐다.
 // 남겨두면 다음 사람이 mailto 로 되돌릴 여지가 있어 제거한다.
 
@@ -213,6 +215,11 @@ ${JSON.stringify(schema)}
     <a class="btn" href="/business?inquiry=1&brand=${encodeURIComponent(brand.brand_id)}#inquiry">광고·파트너십 문의</a>
     <!-- 미디어킷도 계측 경유(경로형) — 어느 브랜드 담당자가 열어봤는지가 곧 영업 우선순위다 -->
     <a class="btn ghost" href="/mediakit/ko/brand_${encodeURIComponent(brand.brand_id)}">미디어킷 받기</a>
+    <!-- 2026-07-30 IG CTA 신설. 브랜드 허브 1,669페이지는 화보를 보러 온 팬과
+         브랜드 담당자가 함께 보는 표면인데, 지금까지 인스타로 가는 길이
+         푸터 직링크 하나뿐이었고 그마저 계측되지 않아 기여도가 0으로 보였다.
+         경로형(/ig/brand)이라 외부 앱이 쿼리를 지워도 귀속이 남는다. -->
+    <a class="btn ghost" href="/ig/brand" rel="noopener">인스타그램 팔로우</a>
     <a class="btn ghost" href="/partners">전체 브랜드 보기</a>
   </div>
 
@@ -220,7 +227,8 @@ ${JSON.stringify(schema)}
 
   <footer>
     <a href="/">Home</a><a href="/partners">Brands</a><a href="/magazine">Magazine</a><a href="/business">Business</a>
-    <a href="${IG}" rel="noopener">Instagram @pap_magazine →</a>
+    <!-- 직링크 → 계측 경유 (2026-07-30). 직링크면 이 푸터가 만든 유입이 영영 안 보인다. -->
+    <a href="/ig/brand" rel="noopener">Instagram @pap_magazine →</a>
   </footer>
 </div>
 </body>
