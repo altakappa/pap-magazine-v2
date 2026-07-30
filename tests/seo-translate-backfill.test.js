@@ -113,8 +113,12 @@ async function testHelper() {
   ok('DB 쓰기 없음', db.upserts.length === 0);
 
   console.log('\n=== 이미 번역된 항목은 재번역하지 않음 ===');
+  /* 2026-07-30 — 픽스처를 고쳤다. 예전엔 seoRows: [{content_id:'a'}] 처럼
+     '행만 있으면 완료' 를 전제했는데, 그 전제가 바로 오늘 고친 버그다.
+     실측: ja 2,450행 중 실제 내용이 있는 건 105건(4%)뿐인데도 잔여 0 으로
+     보고됐다. 이제 '내용까지 있어야 완료' 이므로 픽스처도 내용을 갖는다. */
   db = {
-    seoRows: [{ content_id: 'a' }],                       // a 는 이미 번역됨
+    seoRows: [{ content_id: 'a', description: 'Una traduzione italiana完 già presente e sufficientemente lunga.' }],
     editorials: [
       { id: 'a', title: 'A', description_it: 'gia tradotto' },
       { id: 'b', title: 'B', description_it: 'ciao' },
@@ -126,6 +130,46 @@ async function testHelper() {
   ok('미번역 b 만 저장', db.upserts.length === 1 && db.upserts[0].content_id === 'b');
   ok('저장 kind/lang 정확', db.upserts[0].kind === 'editorial' && db.upserts[0].lang === 'it');
   ok('remaining 반영', rIt.remaining === 0);
+
+  /* ── 2026-07-30 신설: '빈 껍데기' 를 완료로 세지 않는다 ──────────────
+     원본 설명이 없던 시절에 빈 값으로 저장된 행이 영구히 '완료' 로 잡혀
+     재시도되지 않았다(ja 2,345건 · fr 442 · es 315 · it 305).
+     행의 존재가 아니라 내용의 길이로 판정해야 그 행들이 되살아난다. */
+  console.log('\n=== 빈 껍데기 번역행은 재시도 대상 ===');
+  db = {
+    seoRows: [
+      { content_id: 'a', description: '' },      // 빈 행 — 완료가 아니다
+      { content_id: 'b', description: '짧음' },   // 너무 짧아도 완료가 아니다
+    ],
+    editorials: [
+      { id: 'a', title: 'A', description_it: 'testo italiano esistente' },
+      { id: 'b', title: 'B', description_it: 'altro testo italiano' },
+    ],
+    upserts: [],
+  };
+  const rEmpty = await helper.runBackfillBatch({ lang: 'it' });
+  ok('빈 행·짧은 행 모두 다시 처리한다', db.upserts.length === 2,
+    '실제=' + db.upserts.length);
+  ok('처리 건수에 반영', rEmpty.processed === 2);
+
+  /* ── 2026-07-30 신설: 원본이 없으면 아예 시도하지 않는다 ─────────────
+     번역할 게 없는데 호출하면 빈 값이 저장되고, 그 행이 다시 '완료' 로
+     잡혀 영구 제외된다 — 위의 2,345건이 정확히 그렇게 만들어졌다.
+     서술문 백필이 원본을 채우면 자연히 대상에 들어온다. */
+  console.log('\n=== 원본 없는 행은 대상에서 제외 (빈 번역 재생산 금지) ===');
+  db = {
+    seoRows: [],
+    editorials: [
+      { id: 'a', title: 'A', description: '' },                 // 원본 없음
+      { id: 'b', title: 'B', description: '짧다' },              // 30자 미만
+    ],
+    upserts: [],
+  };
+  const rNoSrc = await helper.runBackfillBatch({ lang: 'fr' });
+  ok('원본 없는 행은 저장하지 않는다', db.upserts.length === 0);
+  ok('그 사실을 숫자로 보고한다 (완주로 착각 금지)', rNoSrc.skipped_no_source === 2,
+    '실제=' + rNoSrc.skipped_no_source);
+  ok('메시지로도 구분된다', /원본\(설명\) 없는/.test(rNoSrc.message || ''));
 
   console.log('\n=== 제목 없는 에디토리얼은 대상에서 제외 ===');
   db = { seoRows: [], editorials: [{ id: 'x', title: null, description_it: 'z' }], upserts: [] };

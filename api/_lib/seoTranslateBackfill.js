@@ -42,6 +42,16 @@ const LANG_NAMES = {
    batch 가 종류마다 다른 이유: 아티클 본문이 평균 1,228자라
    에디토리얼과 같은 10개씩 묶으면 응답이 max_tokens 안에서 잘린다
    (ja 배치20 에서 이미 겪은 문제 — 아래 max_tokens 주석 참고). */
+/* 번역이 '있다' 고 인정하는 최소 길이 (2026-07-30 신설).
+ *
+ * 왜 필요했나 — 실측:
+ *   ja 2,450행 중 실제 내용이 있는 건 105건뿐이었다(4%). 나머지는 빈 껍데기인데
+ *   시스템은 "번역 완료" 로 셌다. it 305 · es 315 · fr 442 도 같은 상태.
+ *   원인은 선별이 '행이 존재하는가' 만 봤기 때문이다(doneSet.has(id)).
+ *   원본 설명이 없던 시절에 빈 값으로 저장된 행이 영구히 제외됐다.
+ *   오늘 하루 세 번 만난 '가짜 완주' 와 같은 패턴이다. */
+const MIN_TRANSLATED = { description: 40, body: 100 };
+
 const KINDS = {
   editorial: {
     table: 'editorials',
@@ -56,6 +66,15 @@ const KINDS = {
       title_en: e.title_en || null,
       description: e.description_en || e.description || '',
     }),
+    /* 번역할 원본이 실제로 있는가. 없으면 호출해봐야 빈 값만 저장되고
+       그 행이 다시 '완료' 로 잡혀 영구 제외된다 — 그게 지금 상태다.
+       단 lang=it 은 예외다: description_it(마이그레이션 039 로 들어온 기존
+       이탈리아어 설명)이 있으면 번역 없이 그대로 쓰는 fast-path 가 있다.
+       lang 을 안 보면 그 경로까지 막힌다 — 테스트가 실제로 이걸 잡았다. */
+    hasSource: (e, lang) =>
+      (lang === 'it' && String(e.description_it || '').trim().length > 0)
+      || String(e.description_en || e.description || '').trim().length >= 30,
+    doneField: 'description',
   },
   article: {
     table: 'articles',
@@ -76,6 +95,8 @@ const KINDS = {
       title_en: a.title_en || null,
       body: a.content_en || a.content || '',
     }),
+    hasSource: (a) => String(a.content_en || a.content || '').trim().length >= 80,
+    doneField: 'body',
   },
 };
 
@@ -117,15 +138,27 @@ async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 9
   }
   const size = normalizeBatch(batch, cfg.defaultBatch);
 
-  /* 1) 해당 언어 번역이 이미 있는 에디토리얼 id 집합 */
+  /* 1) 해당 언어 번역이 '내용까지' 있는 id 집합 (2026-07-30 수정)
+   *
+   * 전에는 행의 존재만 봤다(select('content_id')). 그래서 원본 설명이 없던
+   * 시절에 빈 값으로 저장된 행이 영원히 '완료' 로 잡혔다 — ja 는 2,450행 중
+   * 105건(4%)만 실제 내용이 있었는데도 잔여 0 으로 보고됐다.
+   * 이제 실제 텍스트 길이로 판정한다. 빈 껍데기는 자동으로 재시도 대상이 된다
+   * (upsert 라 새 행이 아니라 그 행이 채워진다). */
+  const doneCol = cfg.doneField || 'description';
   const { data: done, error: doneErr } = await supabaseAdmin
     .from('seo_translations')
-    .select('content_id')
+    .select('content_id, ' + doneCol)
     .eq('kind', kind)
     .eq('lang', lang)
     .limit(10000);
   if (doneErr) throw doneErr;
-  const doneSet = new Set((done || []).map(r => r.content_id));
+  const minLen = MIN_TRANSLATED[doneCol] || 40;
+  const doneSet = new Set(
+    (done || [])
+      .filter(r => String(r[doneCol] || '').trim().length >= minLen)
+      .map(r => r.content_id)
+  );
 
   /* 2) 번역 대상: 발행 에디토리얼 중 미번역분 (최신 우선)
      description_it: 039 마이그레이션으로 이미 존재하는 이탈리아어 설명 —
@@ -138,10 +171,23 @@ async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 9
     .limit(5000);
   if (edErr) throw edErr;
 
-  const pending = (eds || []).filter(e => e.title && !doneSet.has(e.id));
+  /* 원본이 없는 행은 대상에서 뺀다 (2026-07-30 신설).
+   * 이게 없으면 번역할 게 없는 행에 빈 값을 저장하고, 그 행이 다시 '완료' 로
+   * 잡혀 영구 제외된다 — 지금 ja 2,345건이 정확히 그렇게 만들어졌다.
+   * 원본(서술문 백필)이 채워지는 대로 자연히 대상에 들어온다. */
+  const hasSource = cfg.hasSource || (() => true);
+  const pending = (eds || []).filter(e => e.title && !doneSet.has(e.id) && hasSource(e, lang));
+  const skippedNoSource = (eds || []).filter(e => e.title && !doneSet.has(e.id) && !hasSource(e, lang)).length;
   const remainingTotal = pending.length;
   if (!remainingTotal) {
-      return { lang, kind, processed: 0, remaining: 0, message: '전부 번역 완료.' };
+    /* '완료' 와 '원본이 없어 못 함' 을 구분해 보고한다. 이 둘을 뭉뚱그리면
+       원본 백필이 밀려서 멈춘 상태를 '완주' 로 착각한다. */
+    return {
+      lang, kind, processed: 0, remaining: 0, skipped_no_source: skippedNoSource,
+      message: skippedNoSource
+        ? `번역 가능한 잔여 0 — 다만 원본(설명) 없는 ${skippedNoSource}건은 대기 중입니다.`
+        : '전부 번역 완료.',
+    };
   }
 
   /* 2b) fast-path — lang=it 이고 description_it 보유분은 API 호출 없이 일괄 저장 */
@@ -265,6 +311,8 @@ async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 9
     kind,
     processed,
     remaining: remainingTotal - processed,
+    // 원본(설명)이 없어 손댈 수 없는 건수. 0 이 아니면 '완주' 가 아니다.
+    skipped_no_source: skippedNoSource,
     errors: errors.length ? errors : undefined,
     hint: remainingTotal - processed > 0 ? '같은 URL 을 반복 호출해 잔여분을 처리하세요.' : '전부 번역 완료.',
   };
