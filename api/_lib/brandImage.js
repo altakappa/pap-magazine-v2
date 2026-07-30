@@ -13,7 +13,20 @@
  * 실제 결과를 보고 쉽게 미세조정할 수 있게 했다.
  */
 
-const sharp = require('sharp');
+/* sharp 는 실제로 이미지를 처리할 때만 불러온다 (2026-07-30).
+ *
+ * 두 가지 이유:
+ *  ① 이 파일은 telegram → cronGuard 체인으로 거의 모든 크론에 딸려온다.
+ *     알림 이미지를 만들지 않는 실행에서도 네이티브 모듈(sharp)을 로드하는 건
+ *     서버리스 콜드스타트 낭비다.
+ *  ② node_modules 없이 도는 하네스 테스트가 이 체인 때문에 MODULE_NOT_FOUND 로
+ *     죽었다(2026-07-30 CI). 호출 시점 로드면 그런 경로는 sharp 를 요구하지 않는다.
+ * 아래 래퍼는 호출 시그니처를 그대로 유지하므로 사용처는 손대지 않는다. */
+let _sharpMod = null;
+function sharp(...args) {
+  if (!_sharpMod) _sharpMod = require('sharp');
+  return _sharpMod(...args);
+}
 
 const LOGO_URL_DEFAULT = 'https://www.pap-magazine.com/pap-logo-white.png';
 const LOGO_W_RATIO = 0.14;         // 로고 폭 = 이미지 폭의 14%

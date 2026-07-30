@@ -3,14 +3,25 @@
  * Nodemailer-based transactional email sender
  */
 
-const nodemailer = require('nodemailer');
 const { SUPPORTED_LANGS, LANG_LABELS, emailUiStrings } = require('./emailLocale');
 
-// Create reusable transporter
+/* nodemailer 는 실제로 메일을 보낼 때만 불러온다 (2026-07-30 CI 실패 후 수정).
+ *
+ * CI(.github/workflows/test.yml)는 `npm ci` 를 하지 않는다 — 하네스 테스트는
+ * node_modules 없이 도는 것이 설계다(테스트는 supabase 등 무거운 의존을
+ * require.cache 주입으로 스텁한다). 그런데 이 파일이 최상단에서 nodemailer 를
+ * 요구하면, 이 파일을 (직접 아니라도) 체인으로 끌어오는 테스트가 CI 에서
+ * MODULE_NOT_FOUND 로 죽는다.
+ *   실제 사례: backfill-translations 크론을 withCronGuard 로 감싼 순간
+ *   cronGuard → email → nodemailer 체인이 생겨 seo-translate-backfill 테스트가
+ *   CI 에서만 죽었다(로컬은 node_modules 가 있어 통과).
+ * 지연 로드로 두면 "메일을 보내지 않는 코드 경로"는 nodemailer 를 필요로 하지
+ * 않는다. 로컬 검증은 반드시 node_modules 없는 클린 클론에서 할 것. */
 let transporter = null;
 
 function getTransporter() {
   if (!transporter) {
+    const nodemailer = require('nodemailer');
     transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'smtp.gmail.com',
       port: parseInt(process.env.SMTP_PORT || '587'),
