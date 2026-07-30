@@ -424,11 +424,24 @@ function navigateWithInterstitial(url){
     inqSource='brand_page:'+raw;
     if(!f.brand_name.value) f.brand_name.value=raw;
     if(q.get('inquiry')==='1'){
-      // 해시 착지만으로는 폼이 화면 밖에 걸리는 경우가 있어 직접 스크롤한다
-      setTimeout(function(){
-        var s=document.getElementById('inquiry');
-        if(s&&s.scrollIntoView) s.scrollIntoView({behavior:'smooth',block:'start'});
-      },300);
+      /* 폼까지 스크롤. 단발 setTimeout(300ms) 으로는 실패한다 —
+       * 2026-07-30 라이브 실측: 브랜드 페이지에서 넘어오면 scrollY 가 0 이고
+       * 폼은 1165px 아래에 있었다(=이탈 지점). 페이지의 다른 초기화 스크립트가
+       * 뒤늦게 스크롤을 0 으로 되돌리기 때문이다.
+       * → 여러 번 재시도하고, 사용자가 직접 스크롤하면 즉시 포기해 방해하지 않는다. */
+      var _userMoved=false;
+      ['wheel','touchstart','keydown'].forEach(function(ev){
+        window.addEventListener(ev,function(){_userMoved=true;},{passive:true,once:true});
+      });
+      [250,800,1500,2500].forEach(function(ms){
+        setTimeout(function(){
+          if(_userMoved) return;
+          var s=document.getElementById('inquiry'); if(!s) return;
+          var top=s.getBoundingClientRect().top+window.scrollY;
+          if(Math.abs(window.scrollY-top)<80) return;   // 이미 도착
+          window.scrollTo({top:top,behavior:'smooth'});
+        },ms);
+      });
     }
   })();
 

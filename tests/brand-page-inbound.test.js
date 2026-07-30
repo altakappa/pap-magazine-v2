@@ -60,7 +60,13 @@ t('브랜드명 프리필 (입력 마찰 제거)', /f\.brand_name\.value=raw/.te
 t('source 를 brand_page:<id> 로 전송', /inqSource='brand_page:'\+raw/.test(biz) && /source:inqSource/.test(biz));
 t('클라이언트 값은 정규화 후 사용', /replace\(\/\[\^a-z0-9\._-\]\/g,''\)/.test(biz),
   'URL 파라미터를 그대로 화면·DB 에 넣지 않는다');
-t('?inquiry=1 이면 폼으로 스크롤', /q\.get\('inquiry'\)==='1'/.test(biz) && /scrollIntoView/.test(biz));
+/* 단발 스크롤은 라이브에서 실패했다(2026-07-30 실측: scrollY 0, 폼은 1165px 아래).
+ * 페이지의 다른 초기화 스크립트가 뒤늦게 스크롤을 되돌리므로 재시도가 필수다. */
+t('?inquiry=1 이면 폼으로 스크롤 (재시도 포함)',
+  /q\.get\('inquiry'\)==='1'/.test(biz) && /window\.scrollTo/.test(biz)
+  && /\[250,800,1500,2500\]/.test(biz),
+  '단발 setTimeout 은 다른 스크립트에 밀려 무효화된다');
+t('사용자가 직접 스크롤하면 방해하지 않는다', /_userMoved/.test(biz));
 t('API 가 source 를 하드코딩하지 않는다', !/source: 'business_page'/.test(api) && /locale, source, status/.test(api),
   "'business_page' 고정이면 브랜드 페이지發 리드를 구분할 수 없다");
 t('API 도 source 를 정규화 + 기본값', /replace\(\/\[\^a-z0-9_:\.-\]\/g, ''\)[\s\S]{0,40}\|\| 'business_page'/.test(api));
