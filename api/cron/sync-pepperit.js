@@ -9,6 +9,7 @@
  * 수동: 관리자 토큰 GET (?dry=1 진단 / ?backfill=일수&max=상한 백필).
  */
 
+const { withCronGuard } = require('../_lib/cronGuard');   // 실행기록·실패알림 (2026-07-30)
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { archiveImagesToStorage, archiveVideosToStorage } = require('../_lib/instagramImport');
@@ -16,7 +17,7 @@ const { listPepperitMedia, normalizePepperitMedia, generatePepperitArticle } = r
 const { submitIndexNowPepperit, pingWebSub, PEPPERIT_SITE } = require('../_lib/pingSearch');
 const { postPepperitTweet, buildPepperitTweet, isPepperitConfigured } = require('../_lib/xPost');
 
-module.exports = async function handler(req, res) {
+module.exports = withCronGuard('sync-pepperit', async function handler(req, res) {
   const auth = (req.headers && req.headers['authorization']) || '';
   const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
   if (!cronOk) {
@@ -112,4 +113,4 @@ module.exports = async function handler(req, res) {
     console.error('[sync-pepperit] top-level failure:', e);
     return res.status(500).json({ error: (e && e.message) || String(e) });
   }
-};
+}, { silenceTransient: true });

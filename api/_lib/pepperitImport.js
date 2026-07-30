@@ -11,6 +11,8 @@
  * 소비자: api/cron/sync-pepperit.js
  */
 
+const { reportAiFailure } = require('./aiCreditWatch');   // AI 장애 알림 (2026-07-30)
+
 const _IG_API = 'https://graph.facebook.com/v25.0';
 const PEPPERIT_USERNAME = process.env.PEPPERIT_IG_USERNAME || 'pepperitmag';
 
@@ -156,6 +158,7 @@ async function generatePepperitArticle(post) {
   });
   if (!apiRes.ok) {
     const body = await apiRes.text().catch(() => '');
+    await reportAiFailure(apiRes.status, body, 'pepperitImport');
     throw new Error('Claude API 실패 (' + apiRes.status + '): ' + body.slice(0, 300));
   }
   const j = await apiRes.json();

@@ -33,6 +33,7 @@
  *   needed) and rerunning is safe.
  */
 
+const { withCronGuard } = require('../_lib/cronGuard');   // 실행기록·실패알림 (2026-07-30)
 const { supabaseAdmin } = require('../_lib/supabase');
 const { handleCors } = require('../_lib/cors');
 const { recordContentChange } = require('../_lib/audit');
@@ -120,7 +121,7 @@ async function _releaseTarget({ type, table }, nowIso){
   };
 }
 
-module.exports = async function handler(req, res) {
+module.exports = withCronGuard('release-due-scheduled', async function handler(req, res) {
   if (handleCors(req, res)) return;
 
   // Auth — Vercel passes Bearer <CRON_SECRET>. Reject anything else.
@@ -164,4 +165,4 @@ module.exports = async function handler(req, res) {
       partial: results,
     });
   }
-};
+});

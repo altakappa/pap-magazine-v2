@@ -26,8 +26,10 @@
  * editorial isn't left with nothing.
  */
 
-// Same lightweight heuristic the review handler used. Detects Korean
-// hangul / Italian-specific diacritics; everything else defaults to en.
+/* Anthropic 장애(크레딧 소진·키 오류)를 원인 단계에서 텔레그램으로 알린다.
+   2026-07-30: 크레딧이 4시간 비어 서술문 생성이 0건이었는데 아무 알림도 없었다. */
+const { reportAiResponse } = require('./aiCreditWatch');
+
 /* 이미지를 서버에서 직접 받아 base64 블록으로 만든다.
  *
  * 왜 URL 전달을 버렸나 (2026-07-30 근본원인 규명):
@@ -81,6 +83,8 @@ async function _toVisionBlocks(imageUrls) {
   return blocks.filter(Boolean);
 }
 
+// Same lightweight heuristic the review handler used. Detects Korean
+// hangul / Italian-specific diacritics; everything else defaults to en.
 function _guessLanguage(text) {
   const s = String(text || '');
   if (!s) return 'en';
@@ -162,7 +166,7 @@ async function generateEditorialDescriptions({ title, artistStatement, imageUrls
           messages: [{ role: 'user', content: raw }],
         }),
       });
-      if (!resp.ok) throw new Error('Claude ' + resp.status);
+      if (!resp.ok) { await reportAiResponse(resp, 'editorialAi.statement'); throw new Error('Claude ' + resp.status); }
       const parsed = _parseJson(_pickText(await resp.json())) || {};
       const out = {
         kr: String(parsed.kr || '').trim(),
@@ -243,7 +247,7 @@ async function generateEditorialDescriptions({ title, artistStatement, imageUrls
         messages: [{ role: 'user', content: visionUser }],
       }),
     });
-    if (!resp.ok) throw new Error('Claude ' + resp.status);
+    if (!resp.ok) { await reportAiResponse(resp, 'editorialAi.vision'); throw new Error('Claude ' + resp.status); }
     const parsed = _parseJson(_pickText(await resp.json())) || {};
     return {
       kr: String(parsed.kr || '').trim(),

@@ -30,6 +30,7 @@
  *   SEO_TRANSLATE_LANGS     : (선택) 대상 언어 CSV, 기본 "it,fr,es"
  */
 
+const { withCronGuard } = require('../_lib/cronGuard');   // 실행기록·실패알림 (2026-07-30)
 const { runBackfillBatch, normalizeBatch, LANG_NAMES, KINDS } = require('../_lib/seoTranslateBackfill');
 
 /* 함수 상한 120초 중 105초만 쓴다 — 응답 직렬화/네트워크 여유 15초. */
@@ -39,7 +40,7 @@ const MIN_PER_LANG_MS = 30000;
 /* 언어당 Claude 호출 타임아웃 상한. */
 const MAX_CALL_MS = 50000;
 
-module.exports = async function handler(req, res) {
+module.exports = withCronGuard('backfill-translations', async function handler(req, res) {
   // Vercel cron 보호 (다른 크론과 동일 규약)
   if (process.env.CRON_SECRET) {
     const auth = req.headers['authorization'] || '';
@@ -138,4 +139,4 @@ module.exports = async function handler(req, res) {
     elapsedMs: elapsed(),
     results,
   });
-};
+}, { silenceTransient: true });

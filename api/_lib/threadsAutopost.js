@@ -12,6 +12,7 @@
  * env: ANTHROPIC_API_KEY, ANTHROPIC_MODEL(기본 claude-sonnet-4-5) — 선택.
  */
 
+const { reportAiResponse } = require('./aiCreditWatch');   // AI 장애 알림 (2026-07-30)
 const { supabaseAdmin } = require('./supabase');
 const { generateConversationalPost, stripDashes } = require('./socialHook');
 const { postText } = require('./threads');
@@ -116,7 +117,7 @@ async function generateThreadsText(art, url) {
       }),
       signal: AbortSignal.timeout(25000),
     });
-    if (!r.ok) throw new Error('Claude API ' + r.status);
+    if (!r.ok) { await reportAiResponse(r, 'threadsAutopost'); throw new Error('Claude API ' + r.status); }
     const j = await r.json();
     let raw = '';
     try { raw = String(j.content[0].text || '').trim(); } catch (_) { throw new Error('응답 형식 이상'); }

@@ -15,6 +15,7 @@
  * error) if anything throws below.
  */
 
+const { withCronGuard } = require('../_lib/cronGuard');   // 실행기록·실패알림 (2026-07-30)
 const { supabaseAdmin } = require('../_lib/supabase');
 const { handleCors } = require('../_lib/cors');
 const { sendEmail, templates } = require('../_lib/email');
@@ -29,7 +30,7 @@ function chunk(arr, n) {
   return out;
 }
 
-module.exports = async function handler(req, res) {
+module.exports = withCronGuard('send-due-campaigns', async function handler(req, res) {
   if (handleCors(req, res)) return;
 
   // Auth check — Vercel cron passes Bearer <CRON_SECRET>
@@ -185,4 +186,4 @@ module.exports = async function handler(req, res) {
   }
 
   return res.status(200).json({ processed: due.length, summary });
-};
+});

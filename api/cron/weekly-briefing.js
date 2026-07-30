@@ -16,6 +16,7 @@
  * 수동 트리거: 관리자 토큰 POST 허용.
  */
 
+const { reportAiResponse } = require('../_lib/aiCreditWatch');   // AI 장애 알림 (2026-07-30)
 const { supabaseAdmin } = require('../_lib/supabase');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { requireAdmin } = require('../_lib/auth');
@@ -98,7 +99,7 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
         body: JSON.stringify({ model, max_tokens: 2500, system: SYSTEM, messages: [{ role: 'user', content: userMsg }] }),
         signal: AbortSignal.timeout(100000), // maxDuration 120s (전역 글롭 — 개별 functions 키 금지)
       });
-      if (!resp.ok) throw new Error('Claude ' + resp.status);
+      if (!resp.ok) { await reportAiResponse(resp, 'weekly-briefing'); throw new Error('Claude ' + resp.status); }
       const j = await resp.json();
       const block = Array.isArray(j.content) ? j.content.find((b) => b && typeof b.text === 'string') : null;
       briefing = block ? block.text.trim() : null;

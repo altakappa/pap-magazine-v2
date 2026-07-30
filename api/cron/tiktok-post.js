@@ -23,6 +23,7 @@
  * 수동 트리거: 관리자 토큰 GET/POST (?dry=1 로 선택 결과만 확인).
  */
 
+const { withCronGuard } = require('../_lib/cronGuard');   // 실행기록·실패알림 (2026-07-30)
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { directPostPhotos, toOwnedImageUrl } = require('../_lib/tiktok');
@@ -108,7 +109,7 @@ function buildCaption(ed) {
   return lines.join('  ').slice(0, 4000);
 }
 
-module.exports = async function handler(req, res) {
+module.exports = withCronGuard('tiktok-post', async function handler(req, res) {
   const auth = (req.headers && req.headers['authorization']) || '';
   const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
   if (!cronOk) {
@@ -253,4 +254,4 @@ module.exports = async function handler(req, res) {
     console.error('[tiktok-post] error:', err);
     return res.status(500).json({ error: 'tiktok cron failed', detail: String(err && err.message || err).slice(0, 200) });
   }
-};
+}, { silenceTransient: true });

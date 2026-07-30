@@ -13,6 +13,8 @@
  * 키가 없거나 호출이 실패하면 원문 기반의 안전한 폴백을 돌려준다(빈 값 아님).
  */
 
+const { reportAiResponse } = require('./aiCreditWatch');   // AI 장애 알림 (2026-07-30)
+
 const PLATFORMS = {
   xiaohongshu: {
     lang: 'zh',
@@ -171,7 +173,7 @@ async function generateRepurpose({ platform, title, subtitle, contentText, image
         messages: [{ role: 'user', content: userParts }],
       }),
     });
-    if (!resp.ok) throw new Error('Claude ' + resp.status);
+    if (!resp.ok) { await reportAiResponse(resp, 'socialRepurpose'); throw new Error('Claude ' + resp.status); }
     const parsed = _parseJson(_pickText(await resp.json())) || {};
     const out = {
       title: String(parsed.title || '').trim().slice(0, cfg.titleMax + 10),

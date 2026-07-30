@@ -15,6 +15,7 @@
  * 수동 트리거: 관리자 토큰으로 POST 도 허용 (대시보드의 '지금 재분석' 버튼).
  */
 
+const { reportAiResponse } = require('../_lib/aiCreditWatch');   // AI 장애 알림 (2026-07-30)
 const { supabaseAdmin } = require('../_lib/supabase');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { requireAdmin } = require('../_lib/auth');
@@ -77,7 +78,7 @@ async function generateFeedback(todayAudit, yesterdayAudit, events) {
       // 2초 만에 실패한다 (2026-07-06 배포 장애 원인) — 전역 글롭만 사용.
       signal: AbortSignal.timeout(100000),
     });
-    if (!resp.ok) throw new Error('Claude ' + resp.status);
+    if (!resp.ok) { await reportAiResponse(resp, 'daily-growth-feedback'); throw new Error('Claude ' + resp.status); }
     const j = await resp.json();
     const block = Array.isArray(j.content) ? j.content.find((b) => b && typeof b.text === 'string') : null;
     return { feedback: block ? block.text.trim() : null, model, error: null };

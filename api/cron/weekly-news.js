@@ -21,6 +21,7 @@
  * 수동 트리거: 관리자 토큰 POST 허용.
  */
 
+const { reportAiResponse } = require('../_lib/aiCreditWatch');   // AI 장애 알림 (2026-07-30)
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 
@@ -69,7 +70,7 @@ async function claude(system, userContent, maxTokens, timeoutMs) {
     }),
     signal: AbortSignal.timeout(timeoutMs),
   });
-  if (!resp.ok) throw new Error('Claude ' + resp.status);
+  if (!resp.ok) { await reportAiResponse(resp, 'weekly-news'); throw new Error('Claude ' + resp.status); }
   const j = await resp.json();
   const block = Array.isArray(j.content) ? j.content.find((b) => b && typeof b.text === 'string') : null;
   if (!block) throw new Error('Claude 응답에 텍스트 블록 없음');

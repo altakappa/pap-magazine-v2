@@ -16,6 +16,7 @@
  * 소비자: frontend/naver-blog.html (관리자 도구 페이지)
  */
 
+const { reportAiFailure } = require('../_lib/aiCreditWatch');   // AI 장애 알림 (2026-07-30)
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 
@@ -137,6 +138,7 @@ async function generateDraft(art, brand) {
   });
   if (!apiRes.ok) {
     const t = await apiRes.text().catch(() => '');
+    await reportAiFailure(apiRes.status, t, 'naver-blog-draft');
     throw new Error('Claude API ' + apiRes.status + ': ' + t.slice(0, 200));
   }
   const j = await apiRes.json();
