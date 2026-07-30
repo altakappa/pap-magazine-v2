@@ -108,6 +108,63 @@ console.log('=== cronGuard 체인 — 로드만으로 npm 패키지를 요구하
     '해당 패키지를 실제 사용 함수 안으로 옮기거나, 근거를 적어 ALLOW 에 등록할 것');
 })();
 
+/* ────────────────────────────────────────────────────────────────
+ * 2026-07-30 2차 확장 — 같은 날 두 번째 CI 실패에서 배운 것.
+ *
+ * npm ci 를 넣어 패키지는 설치되게 했는데도 CI 가 죽었다. 원인은 패키지 유무가
+ * 아니라 '무엇이 import 시점에 실행되는가' 였다:
+ *   growth-pace-supply.test.js → growthAudit.js → _lib/supabase → createClient()
+ * createClient() 는 Node 20 에 전역 WebSocket 이 없으면 즉시 던진다
+ *   "Node.js detected but native WebSocket not found."
+ * 로컬은 Node 22(전역 WebSocket 있음)라 통과하고 CI(Node 20)만 죽었다.
+ *
+ * 규칙: 테스트가 supabase 클라이언트를 만드는 경로를 끌어오려면, require.cache
+ * 주입으로 스텁을 끼워야 한다. 스텁 없이 닿으면 여기서 걸린다. */
+console.log('=== 테스트가 supabase 클라이언트를 실수로 생성하지 않는가 ===');
+(function () {
+  const TESTS = path.join(ROOT, 'tests');
+  const SUPABASE = path.join(ROOT, 'api', '_lib', 'supabase.js');
+
+  /* import 시점에 '실제로 실행되는' 경로만 따라간다.
+     지연 로드(함수 안의 require)는 부르기 전엔 실행되지 않으므로 제외한다 —
+     이걸 구분하지 않으면 aiCreditWatch 처럼 일부러 지연시킨 모듈까지 위반으로
+     잡혀 오탐이 된다. 판별은 위와 같은 들여쓰기 휴리스틱(최상단 스코프 = 무들여쓰기). */
+  function reach(absEntry) {
+    const seen = new Set(); const q = [absEntry];
+    while (q.length) {
+      const abs = q.shift();
+      if (seen.has(abs) || !fs.existsSync(abs) || !/\.js$/.test(abs)) continue;
+      seen.add(abs);
+      fs.readFileSync(abs, 'utf8').split('\n').forEach((line) => {
+        if (/^\s/.test(line)) return;                  // 함수 안 → 지연 로드
+        if (/^\s*(\/\/|\*|\/\*)/.test(line)) return;   // 주석
+        const m = line.match(/require\((['"])(\.[^'"]+)\1\)/);
+        if (!m) return;
+        let target = path.resolve(path.dirname(abs), m[2]);
+        if (!/\.js$/.test(target)) target += '.js';
+        q.push(target);
+      });
+    }
+    return seen;
+  }
+
+  const files = fs.readdirSync(TESTS).filter((f) => f.endsWith('.test.js'));
+  t('테스트 파일을 실제로 스캔했다 (10개 이상)', files.length >= 10, '스캔 대상 ' + files.length + '개');
+
+  let bad = 0;
+  for (const f of files) {
+    const abs = path.join(TESTS, f);
+    const src = fs.readFileSync(abs, 'utf8');
+    if (!reach(abs).has(SUPABASE)) continue;          // 안 닿으면 문제 없음
+    if (/require\.cache\[/.test(src)) continue;       // 스텁을 끼웠으면 정상 (검증된 패턴)
+    bad++;
+    console.log('  ✗ ' + f + ' 가 스텁 없이 _lib/supabase 에 도달한다');
+  }
+  t('스텁 없이 supabase 에 닿는 테스트 0건', bad === 0,
+    'import 시점에 createClient() 가 실행된다 — Node 20 CI 에서 WebSocket 오류로 죽는다. ' +
+    'require.cache 주입으로 스텁하거나, 검증할 순수 로직을 의존 없는 파일로 분리할 것');
+})();
+
 console.log('=== 과거 실패 지점 회귀 고정 ===');
 (function () {
   const email = fs.readFileSync(path.join(ROOT, 'api/_lib/email.js'), 'utf8');

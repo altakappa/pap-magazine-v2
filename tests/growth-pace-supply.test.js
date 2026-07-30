@@ -15,10 +15,11 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-process.env.SUPABASE_URL = process.env.SUPABASE_URL || 'https://test.supabase.co';
-process.env.SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'test-anon';
-process.env.SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || 'test-service';
-const { judgePace } = require('../api/_lib/growthAudit');
+/* 규칙은 의존 없는 api/_lib/pace.js 에서 가져온다.
+   growthAudit 을 직접 부르면 import 시점에 supabase 클라이언트가 생성되는데,
+   Node 20 에는 전역 WebSocket 이 없어 거기서 죽는다(로컬 Node 22 는 통과) —
+   2026-07-30 CI 실패의 원인이 정확히 이것이었다. */
+const { judgePace } = require('../api/_lib/pace');
 
 let pass = 0, fail = 0;
 function t(n, cond, d) { if (cond) { pass++; console.log('  ✓', n); } else { fail++; console.log('  ✗', n); if (d) console.log('     ', d); } }
@@ -68,6 +69,10 @@ console.log('=== 목표 달성은 공급과 무관하게 정상 ===');
 console.log('=== 결선 (감사 본체) ===');
 (function () {
   const src = fs.readFileSync(path.join(__dirname, '..', 'api', '_lib', 'growthAudit.js'), 'utf8');
+  t('감사가 규칙을 pace.js 에서 가져온다', /require\('\.\/pace'\)/.test(src));
+  const pace = fs.readFileSync(path.join(__dirname, '..', 'api', '_lib', 'pace.js'), 'utf8');
+  t('pace.js 는 아무것도 require 하지 않는다 (테스트가 DB 없이 돌 수 있어야 한다)',
+    !/require\(/.test(pace), 'supabase 를 끌어오면 Node 20 CI 에서 죽는다');
   t('필름·에디토리얼에 공급 조회를 연결', /pace\('editorials'[^)]*waitingSupply/.test(src) && /pace\('films'[^)]*waitingSupply/.test(src));
   t('기사에는 연결하지 않는다 (자동 수입)', /pace\('articles', '기사 주간 발행', 5\)/.test(src));
   t('대기 소재 = 미발행 draft + 처리 대기 서브미션',
