@@ -22,7 +22,21 @@ t('기존 텍스트 보존 — 빈 칸만 채움',
   /!String\(row\.description \|\| ''\)\.trim\(\)/.test(c));
 t('seo_description 155자 컷 저장', /seo_description = _clip\(seoBase, 155\)/.test(c) || /patch\.seo_description = _clip\(seoBase, 155\)/.test(c));
 t('성공·실패 무관 attempted_at 스탬프(무한 재시도 방지)', /meta_desc_attempted_at: new Date/.test(c));
-t('시간 예산 90s 가드', /TIME_BUDGET_MS = 90000/.test(c) && /Date\.now\(\) - started > TIME_BUDGET_MS/.test(c));
+/* 2026-07-30 — 상수 값을 박아두던 검사를 '관계' 검사로 바꿨다.
+   처리량을 올릴 때마다 테스트를 따라 고치는 건 테스트가 아니라 받아쓰기다.
+   지켜야 하는 건 특정 숫자가 아니라 이것들이다:
+     · 예산 + 건당 최악 소요 < maxDuration (안 그러면 Vercel 이 중간에 끊는다)
+     · 배치가 동시성보다 충분히 크다 (워커가 놀면 상향 효과가 사라진다) */
+(function () {
+  const budget = Number((c.match(/TIME_BUDGET_MS = (\d+)/) || [])[1] || 0);
+  const WORST_ITEM_MS = 28000;   // longForm 비전 호출 건당 실측
+  const MAX_DURATION_MS = Number((vj.functions && vj.functions['api/**/*.js']
+    && vj.functions['api/**/*.js'].maxDuration) || 120) * 1000;
+  t('시간 예산이 maxDuration 안에서 끝난다',
+    budget > 0 && budget + WORST_ITEM_MS <= MAX_DURATION_MS,
+    `예산 ${budget}ms + 건당 최악 ${WORST_ITEM_MS}ms > ${MAX_DURATION_MS}ms — 강제 종료로 저장이 날아간다`);
+  t('예산 가드를 매 건 확인', /Date\.now\(\) - started > TIME_BUDGET_MS/.test(c));
+})();
 t('vercel.json 10분 주기 등록', vj.crons.some(x => x.path === '/api/cron/backfill-meta-desc' && /\/10 \* \* \*/.test(x.schedule)));
 
 t('완주 시 개인 텔레그램 통보(중복 방지)', /remaining === 0/.test(c) && /sendTextToTelegramPersonalSafe/.test(c));
@@ -52,11 +66,22 @@ t('재시도는 3회로 제한 (무한 재시도 금지 유지)',
 
 /* 2026-07-29 라이브 실측 후속 — longForm 전환으로 건당 ~28초가 되어 직렬 처리는
  * 90초 예산에 3건이 한계였다(실측). 1,851건이면 4일을 넘긴다. */
-t('동시 워커풀로 처리 (직렬 3건/실행 → 9~12건)',
-  /CONCURRENCY = 3/.test(c) && /Promise\.all\(Array\.from\(/.test(c) && /_worker\(\)/.test(c));
-t('워커도 시간 예산을 존중 (120s 강제종료 전 종료)',
-  /Date\.now\(\) - started > TIME_BUDGET_MS/.test(c));
-t('배치 상한을 워커가 놀지 않을 만큼 확보', /'12', 10\) \|\| 12/.test(c));
+(function () {
+  t('동시 워커풀로 처리 (직렬이면 실행당 3건이 한계였다)',
+    /const CONCURRENCY = /.test(c) && /Promise\.all\(Array\.from\(/.test(c) && /_worker\(\)/.test(c));
+  t('워커도 시간 예산을 존중 (강제종료 전 종료)',
+    /Date\.now\(\) - started > TIME_BUDGET_MS/.test(c));
+
+  /* 배치는 '동시성 × 실행당 라운드' 보다 커야 워커가 놀지 않는다.
+     2026-07-30 상향(동시 3→6, 배치 12→24) 때 이 관계를 고정했다. */
+  const conc = Number((c.match(/BACKFILL_CONCURRENCY \|\| (\d+)/) || [])[1] || 0);
+  const batch = Number((c.match(/\|\| '(\d+)', 10\)/) || [])[1] || 0);
+  t('배치가 동시성보다 충분히 크다 (워커 유휴 방지)', conc > 0 && batch >= conc * 2,
+    `동시성 ${conc} · 배치 ${batch} — 배치가 작으면 워커를 늘려도 처리량이 안 는다`);
+  t('동시성은 상한을 둔다 (레이트리밋 폭주 방지)', /Math\.min\(10,/.test(c));
+  t('동시성을 배포 없이 되돌릴 수 있다 (429 대응)', /process\.env\.BACKFILL_CONCURRENCY/.test(c),
+    '429 가 나면 env 로 즉시 낮출 수 있어야 한다 — 롤백 배포를 기다릴 수 없다');
+})();
 
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if(fail){ console.log('❌ backfill-meta-desc tests FAILED'); process.exit(1); }

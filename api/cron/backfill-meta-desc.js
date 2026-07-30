@@ -51,7 +51,11 @@ const { withCronGuard } = require('../_lib/cronGuard');
 const { generateEditorialDescriptions } = require('../_lib/editorialAi');
 const { sendTextToTelegramPersonalSafe } = require('../_lib/telegram');
 
-const TIME_BUDGET_MS = 90000;
+/* 2026-07-30 — 90s → 80s. 동시성을 3→6 으로 올리면서 안전 여유를 벌었다.
+   예산 검사는 '다음 건을 시작하기 전' 에만 하므로, 최악의 경우
+   80s(예산 소진 직전 시작) + 28s(건당 실측) = 108s 로 끝난다.
+   vercel.json 전역 maxDuration 120s 안에 들어간다(90s 였다면 118s 로 아슬아슬). */
+const TIME_BUDGET_MS = 80000;
 
 function _clip(s, n) {
   const t = String(s || '').replace(/\s+/g, ' ').trim();
@@ -71,9 +75,11 @@ module.exports = withCronGuard('backfill-meta-desc', async function handler(req,
   }
 
   const started = Date.now();
-  // 배치 12 — 동시 3 워커 × 90s 예산, longForm 건당 ~28s 실측 기준 9~12건 소화.
-  // 워커가 놀지 않도록 예산으로 소화 가능한 양보다 살짝 넉넉히 잡는다(남으면 다음 실행).
-  const lim = Math.max(1, Math.min(30, parseInt((req.query && req.query.limit) || '12', 10) || 12));
+  /* 배치 24 — 동시 6 워커 × 80s 예산, longForm 건당 ~28s 실측 기준 실행당 18건 안팎.
+     (2026-07-30 상향. 그전 12/동시3 은 실행당 9~10건 = 시간당 ~57건이었고,
+      남은 777편에 14시간이 걸렸다. 병목은 API 도 크레딧도 아니라 '한 번에 3개'였다.)
+     워커가 놀지 않도록 소화 가능한 양보다 넉넉히 잡는다 — 남으면 다음 실행이 이어간다. */
+  const lim = Math.max(1, Math.min(40, parseInt((req.query && req.query.limit) || '24', 10) || 24));
 
   const { data: rows, error } = await supabaseAdmin.rpc('short_desc_editorials', { lim });
   if (error) throw new Error('selector failed: ' + error.message);
@@ -88,7 +94,16 @@ module.exports = withCronGuard('backfill-meta-desc', async function handler(req,
    * (실측 12:40 실행 = 3건). 1,851건이면 4일 넘게 걸린다. 호출끼리 의존이 없고
    * DB 업데이트도 행 단위라 동시 실행이 안전하다. 3 으로 둔 것은 Anthropic
    * 레이트리밋과 120초 강제종료 사이의 여유를 남기기 위함. */
-  const CONCURRENCY = 3;
+  /* 2026-07-30 3→6 상향 (도메니코 요청: "빠른 방법").
+   * 실측으로 병목이 확정됐다 — 시간당 시도 48~64건, 성공률 97%. 즉 API 도
+   * 크레딧도 막고 있지 않고, 실행당 처리량(동시 3 × 80s)이 상한이었다.
+   * 6 으로 올리면 실행당 ~18건 → 시간당 ~110건, 남은 777편이 14시간 → 7시간.
+   * 6 을 고른 이유: 그 이상은 Anthropic 레이트리밋(429) 위험이 실질적으로 커지고,
+   * 같은 키를 번역·FAQ 백필 등 다른 크론도 함께 쓴다. 429 가 나면
+   * aiCreditWatch 가 'rate' 로 분류해 텔레그램으로 알린다 — 그때 되돌린다.
+   * 크론 주기(10분)는 일부러 그대로 뒀다. 둘을 한꺼번에 바꾸면 429 가 났을 때
+   * 어느 쪽 탓인지 못 가린다. */
+  const CONCURRENCY = Math.max(1, Math.min(10, Number(process.env.BACKFILL_CONCURRENCY || 6)));
   let cursor = 0;
   async function _worker() {
     for (;;) {
