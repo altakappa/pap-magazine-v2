@@ -518,7 +518,7 @@ function renderSeoHtml(kind, record, opts) {
     let tags = [];
     try {
       tags = asArray(record.tags).map(t => String(t || '').replace(/^#/, '').trim())
-        .filter(t => t && !/^\d+$/.test(t)).slice(0, 3);
+        .filter(t => t && !/^\d+$/.test(t) && !/^pap:/i.test(t)).slice(0, 3);
     } catch (_) {}
     if (tags.length && parts.join(' ').length < 130) parts.push(tags.join(' · ') + '.');
     // 여전히 짧으면 제목(유니크) + 매체 소개 서명으로 110자 이상 확보.
@@ -647,7 +647,10 @@ function renderSeoHtml(kind, record, opts) {
   const published = fmtIsoDate(record.published_date);
   const modified = fmtIsoDate(record.updated_at || record.published_date);
 
-  const tags = asArray(record.tags);
+  // 예약 태그(`pap:` 접두)는 운영 전용 플래그(예: pap:pin-ok) — 독자 화면·keywords·
+  // article:tag meta 어디에도 노출하지 않는다. 태그 배열 원천에서 걸러 하위 전부 정합.
+  const tags = asArray(record.tags)
+    .filter(t => !/^pap:/i.test(String(t || '').replace(/^#/, '').trim()));
   const contributors = extractContributors(record);
 
   /* Gallery for editorials/articles */

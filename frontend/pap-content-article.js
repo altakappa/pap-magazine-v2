@@ -592,6 +592,8 @@ function _renderArticleDetail(a,det){
   var tagsEl=document.getElementById('artDetailTags');
   if(a.tags){
     var tagArr=Array.isArray(a.tags)?a.tags:(typeof a.tags==='string'?a.tags.split(','):[]);
+    // 예약 태그(`pap:` 접두)는 운영 전용 플래그(예: pap:pin-ok) — 독자에게 노출 금지.
+    tagArr=tagArr.filter(function(t){ return !/^pap:/i.test(String(t==null?'':t).replace(/^#/,'').trim()); });
     // QA #326 — Unified tag search. Route the click to /search?tag=<value>
     // which surfaces BOTH editorials + articles carrying that tag, so
     // discovery isn't limited to one content type. Previous /articles?tag=
@@ -602,7 +604,7 @@ function _renderArticleDetail(a,det){
       return '<a class="art-tag-chip" href="/search?tag=' +
         encodeURIComponent(tag) + '">#' + escapeHtml(tag) + '</a>';
     }).join('');
-    tagsEl.style.display='';
+    tagsEl.style.display=tagArr.length?'':'none';
   } else { tagsEl.style.display='none'; }
   var galEl=document.getElementById('artDetailGallery');
   if(galEl){
