@@ -29,7 +29,10 @@ const pa = R('api/_lib/pushAlert.js');
 const pw = R('api/cron/pipeline-watch.js');
 t('pushAlert: personalOnly 옵션 존재 (개인방 제한)', /personalOnly && personal/.test(pa));
 t('pushAlert: 개인 env 미설정 시 그룹 폴백 (유실 방지)', /TELEGRAM_CHAT_IDS \|\| process\.env\.TELEGRAM_CHAT_ID/.test(pa));
-t('pipeline-watch: 정체·복구 알림 모두 personalOnly', (pw.match(/personalOnly: true/g) || []).length === 2,
+/* 개수를 고정하지 않는다 — 감시 항목이 늘면(2026-07-30 서술문 백필 추가) 알림도
+   늘어나는 게 정상이다. 지켜야 할 원칙은 "pushAlert 호출은 빠짐없이 personalOnly". */
+t('pipeline-watch: 모든 알림이 personalOnly (개수 무관)',
+  (pw.match(/pushAlert\(/g) || []).length === (pw.match(/personalOnly: true/g) || []).length,
   '한쪽만 바꾸면 복구 알림이 여전히 그룹으로 간다');
 
 console.log('=== chat_id 조회 엔드포인트 ===');

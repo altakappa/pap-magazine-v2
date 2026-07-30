@@ -24,8 +24,12 @@ const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { pushAlert } = require('../_lib/pushAlert');
 const { listRecentMedia, isLikelyEditorialCaption, _extractShortcode } = require('../_lib/instagramImport');
+const { diagnoseBackfill, buildBackfillAlert } = require('../_lib/backfillHealth');
 
 const ALERT_KEY = 'ig-to-site-pipeline';
+/* 서술문 백필은 IG 파이프라인과 독립적인 문제라 알림 키를 분리한다 —
+   한쪽 쿨다운이 다른 쪽 알림을 삼키면 안 된다. (2026-07-30) */
+const BACKFILL_ALERT_KEY = 'editorial-backfill-health';
 const SITE = 'https://www.pap-magazine.com';
 
 /* 게시 후 이 시간이 지나도 발행되지 않으면 이상으로 본다.
@@ -164,8 +168,67 @@ module.exports = withCronGuard('pipeline-watch', async function handler(req, res
     }, { onConflict: 'key' });
   }
 
-  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed });
+  /* ── 서술문 백필 건강도 (2026-07-30 추가) ──
+   * IG 파이프라인과 같은 크론에 얹는다: 알림·쿨다운 기계가 이미 검증돼 있고
+   * 크론 슬롯(32/40)도 아낀다. 판정은 별도 키로 독립 관리한다. */
+  const backfill = await checkBackfill({ dry });
+
+  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill });
 });
+
+/** 서술문 생산이 실제로 되고 있는지 보고, 이상하면 텔레그램으로 알린다. */
+async function checkBackfill(opts) {
+  const WINDOW_H = Number(process.env.BACKFILL_WINDOW_HOURS || 3);
+  try {
+    const { data, error } = await supabaseAdmin.rpc('backfill_health_stats', { window_hours: WINDOW_H });
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) return { skipped: 'no stats' };
+
+    const d = diagnoseBackfill({
+      attempts: row.attempts,
+      successes: row.successes,
+      remaining: row.remaining,
+      lastAttemptAgoMs: row.last_attempt_ago_seconds == null
+        ? null : Number(row.last_attempt_ago_seconds) * 1000,
+    });
+    if (opts && opts.dry) return { dry: true, ...d };
+
+    const { data: st } = await supabaseAdmin.from('ops_alert_state')
+      .select('last_alert_at, last_payload').eq('key', BACKFILL_ALERT_KEY).maybeSingle();
+    const lastAt = st && st.last_alert_at ? Date.parse(st.last_alert_at) : 0;
+    const wasBroken = !!(st && st.last_payload && st.last_payload.broken);
+    const COOLDOWN_H = Number(process.env.BACKFILL_ALERT_COOLDOWN_H || 6);
+
+    let alerted = false;
+    if (!d.healthy && Date.now() - lastAt > COOLDOWN_H * 3600000) {
+      await pushAlert({ ...buildBackfillAlert(d, SITE), personalOnly: true });
+      alerted = true;
+    } else if (d.healthy && wasBroken) {
+      // 복구는 쿨다운 무시 — "고쳐졌다"는 정보는 늦으면 쓸모가 없다.
+      await pushAlert({
+        personalOnly: true,
+        title: '✅ 서술문 백필 정상화 — 성공률 ' + d.rate + '%',
+        lines: [`최근 ${WINDOW_H}시간 ${d.attempts}건 중 ${d.successes}건 생성 · 남은 ${d.remaining}건`],
+        url: `${SITE}/magazine`, urlLabel: '매거진',
+      });
+      alerted = true;
+    }
+    if (alerted || wasBroken !== !d.healthy) {
+      await supabaseAdmin.from('ops_alert_state').upsert({
+        key: BACKFILL_ALERT_KEY,
+        last_alert_at: alerted ? new Date().toISOString() : (st && st.last_alert_at) || null,
+        last_payload: { broken: !d.healthy, rate: d.rate, remaining: d.remaining },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'key' });
+    }
+    return { ...d, alerted };
+  } catch (e) {
+    // 감시가 죽어도 본 크론(IG 파이프라인 감시)은 계속 돌아야 한다.
+    console.error('[pipeline-watch] backfill health 실패', e && e.message);
+    return { error: (e && e.message) || 'unknown' };
+  }
+}
 
 module.exports.diagnose = diagnose;
 module.exports.buildAlert = buildAlert;
