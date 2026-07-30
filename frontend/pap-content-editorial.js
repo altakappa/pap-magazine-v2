@@ -1107,6 +1107,8 @@ function _renderEditorialTags(title){
     ? rawTags
     : (typeof rawTags === 'string' ? rawTags.split(',') : []);
   tagArr = tagArr.map(function(t){ return String(t).trim(); }).filter(Boolean);
+  // 예약 태그(`pap:` 접두)는 운영 전용 플래그(예: pap:pin-ok) — 독자에게 노출 금지.
+  tagArr = tagArr.filter(function(t){ return !/^pap:/i.test(String(t).replace(/^#/,'').trim()); });
   if (!tagArr.length){
     tagsEl.innerHTML = '';
     tagsEl.style.display = 'none';
@@ -1976,7 +1978,7 @@ function _renderEdAllPage(){
       var tags = Array.isArray(e.tags) ? e.tags : (typeof e.tags === 'string' ? e.tags.split(',') : []);
       var nice = tags.filter(function(t){
         var s = String(t).trim().toLowerCase();
-        return s && s !== 'editorial';
+        return s && s !== 'editorial' && s.indexOf('pap:') !== 0;
       }).map(function(t){
         return String(t).trim().toUpperCase();
       });

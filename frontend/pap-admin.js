@@ -926,6 +926,8 @@ function _resetNewPostForm(){
   });
   var tp = document.getElementById('tagPreview');
   if(tp) tp.innerHTML = '';
+  var postPinEl = document.getElementById('postPinOk');
+  if(postPinEl) postPinEl.checked = false;
 
   // 2. Thumbnail preview + file input
   var thumbPrev = document.getElementById('thumbPreview');
@@ -6797,10 +6799,15 @@ async function editEditorial(id){
   // (or savePost would auto-regenerate it from the title and silently
   // change the public URL of an already-published editorial).
   if(document.getElementById('postSlug')) document.getElementById('postSlug').value = ed.slug || '';
-  var tagsStr=Array.isArray(ed.tags)?ed.tags.join(', '):ed.tags||'';
+  var _edTags=Array.isArray(ed.tags)?ed.tags:(ed.tags?String(ed.tags).split(','):[]);
+  // 예약 태그(`pap:` 접두)는 입력창·미리보기에 노출하지 않는다 — 핀터레스트 체크박스로만.
+  var _edVisibleTags=_edTags.filter(function(t){ return !/^pap:/i.test(String(t==null?'':t).replace(/^#/,'').trim()); });
+  var tagsStr=_edVisibleTags.map(function(t){return String(t==null?'':t).trim();}).filter(Boolean).join(', ');
   document.getElementById('postTags').value=tagsStr;
   var preview=document.getElementById('tagPreview');
   if(preview&&tagsStr)preview.innerHTML=tagsStr.split(',').map(function(t){return t.trim()?'<span class="pe-tag">'+t.trim()+'</span>':'';}).join('');
+  var postPinEl=document.getElementById('postPinOk');
+  if(postPinEl){ postPinEl.checked=_edTags.some(function(t){ return String(t==null?'':t).replace(/^#/,'').trim().toLowerCase()==='pap:pin-ok'; }); }
   if(document.getElementById('postVideoUrl'))document.getElementById('postVideoUrl').value=ed.url||'';
   if(document.getElementById('postDescription'))document.getElementById('postDescription').value=ed.description||'';
   // QA #204 — hydrate EN + IT description slots so an admin opening an
@@ -7337,6 +7344,11 @@ async function savePost(mode){
   var catEl=document.getElementById('postCategory');
   var category=catEl?catEl.value:'editorial';
   var tagsArr=tags?tags.split(',').map(function(t){return t.trim();}).filter(Boolean):[];
+  // 핀터레스트 적합 플래그 = 예약 태그 pap:pin-ok. 체크박스가 유일한 소스이므로
+  // 입력창에서 새어 든 pap: 접두는 먼저 제거하고 체크 상태에 따라 다시 부여한다.
+  tagsArr=tagsArr.filter(function(t){ return String(t||'').toLowerCase().indexOf('pap:')!==0; });
+  var postPinEl=document.getElementById('postPinOk');
+  if(postPinEl&&postPinEl.checked){ tagsArr.push('pap:pin-ok'); }
 
   // QA #96 — credits are now an ARRAY of {roles[], name, instagram} so
   // a single person can hold multiple roles (e.g. Hair + Make Up) in one

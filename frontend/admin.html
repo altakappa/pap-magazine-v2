@@ -1236,6 +1236,11 @@ tr:hover td{background:rgba(0,0,0,.02)}
           <div class="pe-hint">관련 키워드를 입력하면 메인 페이지 검색과 AI 추천에 활용됩니다.</div>
           <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px" id="tagPreview"></div>
           <div id="tagsAiStatus" style="margin-top:6px;font-size:11px;color:var(--text3);min-height:14px"></div>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:10px;font-size:13px;color:var(--text2)">
+            <input type="checkbox" id="postPinOk" style="width:16px;height:16px;cursor:pointer">
+            핀터레스트 적합 (비셀럽 · 저장/재핀용)
+          </label>
+          <div class="pe-hint">대표 이미지가 셀럽 얼굴 중심이 아니면 체크. 핀터레스트 리핀 자동 선별에 사용됩니다(예약 태그 <code>pap:pin-ok</code> — 독자 화면에는 노출되지 않음).</div>
         </div>
 
         <!-- 영상 링크 -->
@@ -3573,7 +3578,7 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
     <div style="padding:8px 16px 14px;font-size:11px;color:var(--text3,#888);border-top:1px solid var(--border,#222)">지정한 영역만 픽셀화된 <strong>검열본이 새 이미지로 업로드</strong>되어 이 화보를 대체합니다. 원본 파일은 서버에서 삭제되지 않습니다. 드래그로 여러 영역 지정 가능 · 적용 후 "저장"을 눌러야 발행본에 반영됩니다.</div>
   </div>
 </div>
-<script src="/pap-admin.js?v=133" defer></script>
+<script src="/pap-admin.js?v=134" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>
