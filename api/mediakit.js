@@ -124,6 +124,31 @@ module.exports = async function handler(req, res) {
   const ua = req.headers['user-agent'];
   if (isLikelyBot(ua) || isBot(ua)) return res.redirect(302, dest);
 
+  /* 리퍼러 없는 요청은 기록하지 않는다 (2026-07-30 오염 실측 후 추가).
+   *
+   * UA 필터를 통과하는 크롤러가 있다. 브랜드 페이지가 색인되기 시작하자
+   * 21건이 들어왔는데 전부 봇이었다 — 판별 근거:
+   *   · 11:09:36~43 (7초)에 13건, 서로 다른 브랜드 페이지에서 1건씩
+   *   · IP 가 13개 전부 다름 → IP 스로틀로는 못 막는다(프록시 풀)
+   *   · UA 는 전부 동일한 평범한 Chrome 데스크톱 → UA 로도 못 막는다
+   *   · 그런데 21건 전부 referer 가 없다
+   *
+   * 사람이 /brand/:id 의 "미디어킷 받기" 를 누르면 referer 가 남는다. 반대로
+   * 링크만 수집해 직접 때리는 크롤러는 referer 가 없다. 이게 이 트래픽에서
+   * 사람과 기계를 가르는 유일하게 신뢰할 수 있는 신호였다.
+   *
+   * 대가: 북마크·카톡·QR·주소 직접 입력 등 정당한 무-리퍼러 유입도 집계에서
+   * 빠진다. 그건 감수한다 — 이 지표의 용도는 "어느 브랜드 페이지가 영업 기회를
+   * 만드는가" 판단이고, 봇 21건이 섞이면 판단 자체가 불가능해진다. 적게 세는
+   * 것이 틀리게 세는 것보다 낫다.
+   * (IG 바이오·DM 유입은 src 로 구분되므로 ALLOW_NO_REFERER_SRCS 에 둔다.) */
+  const ALLOW_NO_REFERER_SRCS = new Set(['ig_bio', 'dm', 'ig_story', 'qr']);
+  const ref = req.headers['referer'] || req.headers['referrer'];
+  if (!ref && !ALLOW_NO_REFERER_SRCS.has(src) && !src.startsWith('ig_post_')) {
+    console.log('[mediakit] no-referer skip', { src, lang });
+    return res.redirect(302, dest);
+  }
+
   try {
     const { error } = await supabaseAdmin.from('mediakit_downloads').insert({
       lang,

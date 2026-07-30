@@ -61,6 +61,18 @@ t('휴지통에 들어간 옛 파일 ID 를 폴백으로 쓰지 않는다',
   !/file\/d\/1gUeTUJrg|file\/d\/1gVKLuOP/.test(src));
 t('폴백 링크는 drive.google.com 만', /DEFAULT_LINKS/.test(src) && /drive\.google\.com/.test(src));
 
+/* 리퍼러 없는 브랜드 경유 요청 = 크롤러 (2026-07-30 실측 후 추가).
+ * UA 필터를 통과하는 크롤러가 21건을 남겼다. 7초에 13건, IP 는 13개 전부 다르고
+ * UA 는 동일한 평범한 Chrome — IP·UA 로는 못 막는다. 유일한 판별 신호가
+ * "referer 부재" 였다(21건 전부 없음). 사람이 /brand/:id 에서 누르면 남는다. */
+console.log('=== 크롤러 오염 차단 ===');
+t('리퍼러 없는 brand_* 는 기록하지 않는다', /ALLOW_NO_REFERER_SRCS/.test(src) && /no-referer skip/.test(src),
+  '봇 21건이 섞이면 "어느 브랜드가 기회를 만드는가" 판단 자체가 불가능해진다');
+t('IG 유입은 리퍼러 없어도 허용 (앱이 리퍼러를 안 준다)',
+  /'ig_bio'/.test(src) && /startsWith\('ig_post_'\)/.test(src));
+t('차단해도 리다이렉트는 정상 (방문자 경험 보존)',
+  /no-referer skip[\s\S]{0,120}res\.redirect\(302, dest\)/.test(src));
+
 console.log('=== 봇·레이트리밋 (ig-out 과 동일 방침) ===');
 t('레이트리밋 적용', /rateLimitStrict\(req, res, \{ limit: 60/.test(src));
 t('두 판별기 OR 로 봇 차단', /isLikelyBot\(ua\) \|\| isBot\(ua\)/.test(src));
@@ -90,8 +102,12 @@ console.log('=== 동작 실측 (가짜 supabase) ===');
   const handler = require('../api/mediakit.js');
   Module._load = orig;
 
-  const req = (q, ua, url) => ({ method: 'GET', url: url || '/mediakit', query: q,
-    headers: { 'user-agent': ua || 'Mozilla/5.0 iPhone' } });
+  /* referer 를 기본으로 넣는다 — 2026-07-30 부터 리퍼러 없는 brand_* 요청은
+     크롤러로 보고 기록하지 않는다(아래 '크롤러 오염 차단' 참조). 여기서 검증하려는
+     것은 정규화·귀속 로직이므로 사람 요청 조건을 갖춰 호출한다. */
+  const req = (q, ua, url, ref) => ({ method: 'GET', url: url || '/mediakit', query: q,
+    headers: { 'user-agent': ua || 'Mozilla/5.0 iPhone',
+               referer: ref === null ? undefined : (ref || 'https://www.pap-magazine.com/business') } });
   const res = () => ({ setHeader(){}, redirect(c, u){ redirected = { c, u }; }, status(){ return this; }, send(){} });
 
   return (async () => {
