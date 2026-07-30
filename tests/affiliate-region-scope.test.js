@@ -55,8 +55,22 @@ it('EU/UK/ME = 35663 · /int/en (실측 ranMID=35663·tarea=uk)', () => {
   assert.strictEqual(REGION_CONFIG.EU.mid, '35663');
   assert.strictEqual(REGION_CONFIG.EU.locale, 'int/en');
 });
-it('GLOBAL 은 43171 로 떨어진다 (배송지 무관 수수료라 안전한 기본값)', () => {
-  assert.strictEqual(REGION_CONFIG.GLOBAL.mid, '43171');
+// 2026-07-30 — 라쿠텐 실측: 43171 은 공용 베이스라인 4%, 43172·35663 은 전용 오퍼 8%.
+// GLOBAL 을 43171 로 되돌리면 같은 클릭에 요율이 절반이 된다. 근거 없이 되돌리지 못하게 못박는다.
+it('GLOBAL 은 43172(8%) 로 간다 — 43171(4%) 로 되돌리면 요율이 절반이다', () => {
+  assert.strictEqual(REGION_CONFIG.GLOBAL.mid, '43172');
+  assert.notStrictEqual(REGION_CONFIG.GLOBAL.mid, '43171');
+});
+
+it('요율이 8% 인 MID 로만 GLOBAL·US·EU 를 보낸다', () => {
+  ['US', 'EU', 'GLOBAL'].forEach((r) => {
+    assert.strictEqual(REGION_CONFIG[r].rate, 8, r + ' 가 8% MID 가 아니다');
+  });
+});
+
+it('KR 은 한국어 스토어프론트를 위해 43171(4%) 을 의도적으로 유지', () => {
+  assert.strictEqual(REGION_CONFIG.KR.mid, '43171');
+  assert.strictEqual(REGION_CONFIG.KR.locale, 'kr/ko');
 });
 
 console.log('\n=== 국가 → 지역 ===');
@@ -99,9 +113,9 @@ it('EU 방문자 → mid=35663 · /int/en', () => {
   assert.ok(/mytheresa\.com%2Fint%2Fen%2F/.test(got), '로케일이 int/en 이 아니다: ' + got);
 });
 
-it('GLOBAL 방문자 → mid=43171 · /int/en', () => {
+it('GLOBAL 방문자 → mid=43172(8%) · /int/en', () => {
   const got = pickAffiliateUrl(brand({ affiliate_url_korea: KR_LINK }), 'GLOBAL');
-  assert.ok(/[?&]mid=43171\b/.test(got), got);
+  assert.ok(/[?&]mid=43172\b/.test(got), 'GLOBAL 이 4% MID 로 갔다: ' + got);
   assert.ok(/mytheresa\.com%2Fint%2Fen%2F/.test(got), got);
 });
 
