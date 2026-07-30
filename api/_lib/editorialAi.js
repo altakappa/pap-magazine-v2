@@ -28,6 +28,59 @@
 
 // Same lightweight heuristic the review handler used. Detects Korean
 // hangul / Italian-specific diacritics; everything else defaults to en.
+/* 이미지를 서버에서 직접 받아 base64 블록으로 만든다.
+ *
+ * 왜 URL 전달을 버렸나 (2026-07-30 근본원인 규명):
+ *   Claude 의 `source:{type:'url'}` 은 "바로 이미지 바이트를 주는 URL" 만 받는다.
+ *   우리 발행분 상당수의 cover_image 는 `drive.google.com/thumbnail?id=…` 인데
+ *   이건 googleusercontent 로 리다이렉트되는 링크라 Claude 쪽에서 가져오지 못하고
+ *   호출 전체가 죽는다. 실측: 최근 12시간 실패 293건 중 269건(92%)이 드라이브 URL,
+ *   성공 21건은 전부 S3·wixstatic 직링크였다. 이미지 자체는 공개이며 브라우저에서
+ *   1600×2071 로 정상 로드된다 — 문제는 링크 형태였다.
+ *   → 서버(Vercel)는 CORS·리다이렉트 제약이 없으니 우리가 받아서 인라인으로 넘긴다.
+ *
+ * 안전장치: 지원 포맷만(jpeg/png/gif/webp) · 장당 4MB 상한 · 8초 타임아웃 ·
+ *   개별 실패는 건너뛰고 나머지로 진행(한 장도 못 받으면 호출을 아예 하지 않는다).
+ */
+const _VISION_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+const _MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+
+/** 드라이브 썸네일은 폭을 낮춰 base64 payload 를 줄인다(서술문 생성엔 충분한 해상도). */
+function _slimUrl(url) {
+  if (/drive\.google\.com\/thumbnail/i.test(url)) {
+    return url.replace(/([?&])sz=w\d+/i, '$1sz=w1024');
+  }
+  return url;
+}
+
+async function _fetchImageBlock(url) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 8000);
+  try {
+    const resp = await fetch(_slimUrl(url), { redirect: 'follow', signal: ctl.signal });
+    if (!resp.ok) return null;
+    let type = String(resp.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+    if (type === 'image/jpg') type = 'image/jpeg';           // 비표준 별칭
+    if (!_VISION_TYPES.has(type)) return null;
+    const buf = Buffer.from(await resp.arrayBuffer());
+    if (!buf.length || buf.length > _MAX_IMAGE_BYTES) return null;
+    return { type: 'image', source: { type: 'base64', media_type: type, data: buf.toString('base64') } };
+  } catch (_) {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function _toVisionBlocks(imageUrls) {
+  const urls = (Array.isArray(imageUrls) ? imageUrls : [])
+    .filter((u) => typeof u === 'string' && /^https?:\/\//.test(u))
+    .slice(0, 3);
+  if (!urls.length) return [];
+  const blocks = await Promise.all(urls.map(_fetchImageBlock));
+  return blocks.filter(Boolean);
+}
+
 function _guessLanguage(text) {
   const s = String(text || '');
   if (!s) return 'en';
@@ -136,10 +189,7 @@ async function generateEditorialDescriptions({ title, artistStatement, imageUrls
   }
 
   // ── Mode 2: no statement → vision-based generation ──
-  const visionImages = (Array.isArray(imageUrls) ? imageUrls : [])
-    .filter((u) => typeof u === 'string' && /^https?:\/\//.test(u))
-    .slice(0, 3)
-    .map((url) => ({ type: 'image', source: { type: 'url', url } }));
+  const visionImages = await _toVisionBlocks(imageUrls);
 
   if (visionImages.length === 0) {
     return { kr: '', en: '', it: '', hook: '', moodTag: '' };
