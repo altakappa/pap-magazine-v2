@@ -35,19 +35,25 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { extractClientIp, hashIp, detectDeviceType, sanitizeReferrer } = require('../_lib/clickGuard');
-const { pickAffiliateUrl } = require('../_lib/affiliateUrl');
+const { pickAffiliateUrl, regionFromCountry } = require('../_lib/affiliateUrl');
 
 const HOME_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.com';
 const DEDUP_WINDOW_MS = 24 * 60 * 60 * 1000; // 24h
 const SESSION_TTL_MS  = 24 * 60 * 60 * 1000; // 24h
 
+// 2026-07-30 — 지역이 KR/GLOBAL 둘에서 KR/US/EU/GLOBAL 넷으로 늘었다.
+// 마이테레사 MID 가 3개가 됐기 때문(APAC 43171 · US/CA 43172 · EU/UK/ME 35663).
+// 국가→지역 매핑은 _lib/affiliateUrl.js 의 regionFromCountry 하나만 쓴다.
+// affiliate_clicks.region 의 CHECK 제약도 네 값으로 함께 확장했다
+// (마이그레이션 affiliate_clicks_region_add_us_eu) — 안 늘렸으면 insert 가
+// 조용히 실패해 지표만 사라졌을 것이다.
 function pickRegion(req) {
   const country = (req.headers['x-vercel-ip-country']
     || req.headers['cf-ipcountry']
     || req.headers['x-country-code']
     || ''
-  ).toString().trim().toUpperCase();
-  return country === 'KR' ? 'KR' : 'GLOBAL';
+  ).toString();
+  return regionFromCountry(country);
 }
 
 // 지역별 어필리에이트 URL 선택 — 규칙·근거는 ../_lib/affiliateUrl.js 주석 참조.

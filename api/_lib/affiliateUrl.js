@@ -1,51 +1,86 @@
 /**
- * PAP Magazine — 어필리에이트 목적지 URL 선택 (지역 스코프)
+ * PAP Magazine — 어필리에이트 목적지 URL 선택 (지역 라우팅)
  *
  * 2026-07-26 신설. 원래 api/go/[id].js 안에 있던 pickAffiliateUrl 을 분리했다.
  * 순수 함수라 유닛 테스트가 가능해야 하는데, [id].js 는 최상단에서 supabase 클라이언트를
  * 생성하므로 (env 없으면 throw) 테스트에서 require 할 수 없기 때문이다.
  *
  * ══════════════════════════════════════════════════════════════════════════
- * 2026-07-29 — 전제가 뒤집혔다. GLOBAL 게이트를 연다.
+ * 규칙이 두 번 바뀌었다. 이력을 지우지 말 것.
  * ══════════════════════════════════════════════════════════════════════════
  *
- * 【이전 규칙과 그 근거 — 기록용으로 남긴다】
- *   7/26 감사 때 "마이테레사 AU/Asia-Pacific(MID 43171)은 APAC 한정이라
- *   지역 밖 클릭은 수수료 0원"이라고 판단했다. 그래서 GLOBAL 트래픽은 korea
- *   링크로 폴백하지 않게 막았다 — 수수료도 못 받고 인스타그램 폴백까지
- *   잃는 것이 최악이라고 봤기 때문이다.
+ * 【1차 2026-07-26 — GLOBAL 차단】
+ *   "마이테레사 MID 43171 은 APAC 한정이라 지역 밖 클릭은 수수료 0원"이라고 판단해
+ *   GLOBAL 트래픽이 korea 링크로 폴백하지 못하게 막았다.
  *
- * 【그 전제가 틀렸다】
- *   2026-07-29 Mytheresa 마리나 그레지오(Junior Online Marketing Manager)
- *   확인: "You earn a commission regardless of where the order is shipped.
- *   For example, if an order goes through the APAC MID but is shipped to
- *   Italy, South Korea, or any other country, you still receive the
- *   commission." → MID 43171 은 배송지 무관 수수료 대상이다.
+ * 【2차 2026-07-29 — 전제가 틀렸다, 차단 해제】
+ *   Mytheresa 마리나 그레지오 확인: "You earn a commission regardless of where
+ *   the order is shipped... if an order goes through the APAC MID but is shipped
+ *   to Italy, South Korea, or any other country, you still receive the commission."
+ *   그 사이 손실: 30일 /go 클릭 2,128건 중 어필리에이트 도달 2건(0.09%).
+ *   브랜드 94개 전부 korea 링크만 보유해 GLOBAL(99%)은 구조적으로 항상 null 이었다.
  *
- * 【그 사이의 손실 — 이 변경의 근거】
- *   최근 30일 /go 클릭 2,128건 중 어필리에이트 링크로 간 것은 2건(0.09%).
- *   나머지 2,126건은 전부 인스타그램 폴백으로 흘렀다. 브랜드 94개 전부
- *   affiliate_url_korea 에만 링크가 있고 affiliate_url_global 은 0개이므로,
- *   GLOBAL(전체의 99%)은 구조적으로 항상 null 이었다.
+ * 【3차 2026-07-30 — MID 3개로 지역 라우팅】
+ *   US/CA·EU/UK/ME 프로그램 제휴가 성립했다. 이제 지역별로 맞는 MID 로 보낸다.
+ *
+ * ── MID 지도 (2026-07-30 실측 검증) ────────────────────────────────────
+ *   | 지역        | MID   | 스토어프론트 | 검증                          |
+ *   |-------------|-------|-------------|-------------------------------|
+ *   | APAC/KR     | 43171 | /kr/ko/     | 기존 운영 중                    |
+ *   | US/CA       | 43172 | /us/en/     | ranMID=43172 · tarea=us 확인   |
+ *   | EU/UK/ME    | 35663 | /int/en/    | ranMID=35663 · tarea=uk 확인   |
+ *
+ *   **`id=xaC5X1voYF4` 는 세 MID 전부 동일하다** — 이 값은 퍼블리셔 계정 ID(ranEAID)
+ *   라 광고주와 무관하다. 실제 리다이렉트를 따라가 확인했다. 덕분에 DB 의 94개
+ *   브랜드 링크를 다시 만들 필요 없이 `mid=` 와 목적지 로케일만 갈아끼우면 된다.
+ *
+ *   MID 번호는 규칙적이지 않다(43171·43172 인데 EU 는 35663). 유추 금지.
  *
  * ── 현재 규칙 ──────────────────────────────────────────────────────────
  *   · 수수료 제외 브랜드 → 항상 null (인스타그램 폴백)
  *       Adidas · Nike · New Balance · On — 마리나가 명시한 non-commissionable.
- *       수수료가 0이므로 어필리에이트 링크를 태울 이유가 없다. 인스타그램으로
- *       보내면 최소한 팔로워 유입이라도 남는다. (도메니코 승인 2026-07-29)
- *   · KR      → korea 우선, 없으면 global 폴백
- *   · GLOBAL  → global 우선, 없으면 **korea 링크로 폴백**한다.
- *               단, 링크 안의 목적지(murl)가 한국어 스토어프론트(/kr/ko/)면
- *               국제판(/int/en/)으로 바꾼다 — 트래킹은 id·mid 로 이뤄지므로
- *               murl 로케일 교체는 수수료에 영향이 없고, 미국·유럽 독자가
- *               한국어 페이지에 떨어지는 것만 막는다.
- *   · 둘 다 없으면 null → 호출부가 인스타그램 프로필 폴백으로 넘어간다.
- *
- * ── 남은 일 (도메니코) ─────────────────────────────────────────────────
- *   Rakuten 대시보드에서 신규 EU·US/CA MID 의 딥링크를 뽑아
- *   affiliate_url_global 에 채우면, 위 폴백 대신 지역 전용 링크가 쓰인다.
- *   그때까지는 43171 폴백이 수수료를 받는다.
+ *       수수료가 0이면 어필리에이트로 보낼 이유가 없다. 인스타그램으로 보내면
+ *       최소한 팔로워 유입은 남는다. (도메니코 승인 2026-07-29)
+ *   · affiliate_url_global 이 따로 있으면 그것을 최우선으로 쓴다(수동 지정 존중).
+ *   · 그 외에는 저장된 링크에서 지역에 맞는 MID·로케일로 변환해 내보낸다.
+ *   · 링크가 아예 없으면 null → 호출부가 인스타그램 프로필 폴백으로 넘어간다.
  */
+
+/** 지역별 MID 와 스토어프론트 로케일. */
+const REGION_CONFIG = {
+  KR:     { mid: '43171', locale: 'kr/ko' },  // 마이테레사 AU/Asia-Pacific
+  US:     { mid: '43172', locale: 'us/en' },  // 마이테레사 US/CA
+  EU:     { mid: '35663', locale: 'int/en' }, // 마이테레사 EU/UK/ME
+  GLOBAL: { mid: '43171', locale: 'int/en' }, // 나머지 — 43171 은 배송지 무관 수수료
+};
+
+/**
+ * 국가코드 → 지역. 목록에 없으면 GLOBAL(43171) 로 떨어지는데, 43171 은 배송지와
+ * 무관하게 수수료가 나오므로 **분류를 틀려도 수수료를 잃지는 않는다.** 로케일이
+ * 덜 맞을 뿐이다. 실패 모드가 안전한 쪽이라 목록을 완벽하게 유지할 필요는 없다.
+ */
+const US_COUNTRIES = new Set(['US', 'CA']);
+const EU_COUNTRIES = new Set([
+  // EU 27
+  'AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IE','IT',
+  'LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES','SE',
+  // 영국 + EEA/인접
+  'GB','NO','CH','IS','LI','MC','AD','SM',
+  // 중동 (ME)
+  'AE','SA','QA','KW','BH','OM','IL','JO','LB',
+]);
+
+/**
+ * @param {string} country ISO 2자리 국가코드
+ * @returns {'KR'|'US'|'EU'|'GLOBAL'}
+ */
+function regionFromCountry(country) {
+  const c = String(country || '').trim().toUpperCase();
+  if (c === 'KR') return 'KR';
+  if (US_COUNTRIES.has(c)) return 'US';
+  if (EU_COUNTRIES.has(c)) return 'EU';
+  return 'GLOBAL';
+}
 
 /**
  * 수수료가 발생하지 않는 브랜드. 정규화된 이름으로 **정확히** 비교한다.
@@ -75,34 +110,53 @@ function isNonCommissionable(brand) {
 }
 
 /**
- * 마이테레사 딥링크의 murl(최종 목적지)을 국제판 로케일로 바꾼다.
+ * 저장된 마이테레사 딥링크를 대상 지역용으로 변환한다.
  *
- * 저장된 링크는 `murl=https%3A%2F%2Fwww.mytheresa.com%2Fkr%2Fko%2F…` 형태로
- * 한국어 스토어프론트를 가리킨다. 한국 독자에겐 맞지만 GLOBAL 독자에게는
- * 읽을 수 없는 페이지다. `/kr/ko/` 는 `/int/en/` 과 경로 구조가 같아
- * (예: women/designers/prada) 로케일 세그먼트만 바꾸면 그대로 열린다.
+ * 저장 형태:
+ *   click.linksynergy.com/deeplink?id=<퍼블리셔>&mid=43171&u1=<브랜드>
+ *     &murl=https%3A%2F%2Fwww.mytheresa.com%2Fkr%2Fko%2Fwomen%2F…
  *
- * 트래킹 파라미터(id·mid·u1)는 건드리지 않는다 — 수수료 귀속은 그쪽에서 난다.
+ * 바꾸는 것은 딱 두 가지:
+ *   1) `mid=` → 지역 MID (수수료 귀속이 여기서 갈린다)
+ *   2) murl 안의 로케일 세그먼트 `/kr/ko/` → 지역 로케일
+ *      (세 로케일 모두 그 뒤 경로 구조가 같아 그대로 열린다. 실측 확인)
+ *
+ * `id`(ranEAID)·`u1` 은 건드리지 않는다 — 퍼블리셔·브랜드 식별자다.
  * 마이테레사 링크가 아니거나 형태가 다르면 원본을 그대로 돌려준다(안전 우선).
  *
  * @param {string} url
+ * @param {'KR'|'US'|'EU'|'GLOBAL'} region
  * @returns {string}
  */
-function toInternationalStorefront(url) {
+function localizeAffiliateUrl(url, region) {
   const raw = String(url || '');
   if (!raw) return raw;
   if (!/mytheresa/i.test(raw)) return raw;
 
-  // murl 은 URL 인코딩되어 들어있다: %2Fkr%2Fko%2F
-  let out = raw.replace(/%2Fkr%2Fko%2F/gi, '%2Fint%2Fen%2F');
+  const cfg = REGION_CONFIG[region] || REGION_CONFIG.GLOBAL;
+  let out = raw;
+
+  // 1) mid 교체 — 우리가 쓰는 세 MID 중 하나일 때만 손댄다. 모르는 MID 는
+  //    다른 프로그램일 수 있으므로 그대로 둔다.
+  out = out.replace(/([?&]mid=)(43171|43172|35663)\b/i, '$1' + cfg.mid);
+
+  // 2) murl 로케일 교체 (URL 인코딩된 형태)
+  out = out.replace(
+    /(mytheresa\.com)%2F[a-z]{2}%2F[a-z]{2}%2F/gi,
+    '$1%2F' + cfg.locale.replace('/', '%2F') + '%2F'
+  );
   // 인코딩되지 않은 형태도 대비 (링크를 손으로 넣은 경우)
-  out = out.replace(/mytheresa\.com\/kr\/ko\//gi, 'mytheresa.com/int/en/');
+  out = out.replace(
+    /(mytheresa\.com)\/[a-z]{2}\/[a-z]{2}\//gi,
+    '$1/' + cfg.locale + '/'
+  );
+
   return out;
 }
 
 /**
  * @param {{display_name?: string, brand_id?: string, affiliate_url_korea?: string|null, affiliate_url_global?: string|null}} brand
- * @param {'KR'|'GLOBAL'} region
+ * @param {'KR'|'US'|'EU'|'GLOBAL'} region
  * @returns {string|null}
  */
 function pickAffiliateUrl(brand, region) {
@@ -114,17 +168,19 @@ function pickAffiliateUrl(brand, region) {
   const kr = brand.affiliate_url_korea || null;
   const global = brand.affiliate_url_global || null;
 
-  if (region === 'KR') return kr || global || null;
-
-  // GLOBAL — 전용 링크가 있으면 그걸 쓰고, 없으면 43171 링크를 국제판으로.
-  if (global) return global;
-  if (kr) return toInternationalStorefront(kr);
+  // 관리자가 지역용 링크를 따로 넣어뒀으면 그 의도를 존중한다.
+  // (KR 은 korea 링크가 곧 지역 링크이므로 그쪽이 우선)
+  if (region === 'KR' && kr) return kr;
+  if (global) return localizeAffiliateUrl(global, region);
+  if (kr) return localizeAffiliateUrl(kr, region);
   return null;
 }
 
 module.exports = {
   pickAffiliateUrl,
   isNonCommissionable,
-  toInternationalStorefront,
+  localizeAffiliateUrl,
+  regionFromCountry,
+  REGION_CONFIG,
   NON_COMMISSIONABLE,
 };

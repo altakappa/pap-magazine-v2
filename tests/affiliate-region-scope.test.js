@@ -1,23 +1,17 @@
 /**
- * PAP Magazine — 어필리에이트 지역 스코프 회귀 테스트
+ * PAP Magazine — 어필리에이트 지역 라우팅 회귀 테스트
  *
- * ── 이력 (지우지 말 것 — 두 번 뒤집힌 규칙이다) ─────────────────────────
+ * ── 이력 (지우지 말 것 — 규칙이 세 번 바뀌었다) ─────────────────────────
  *
- * 2026-07-26 (구): 라쿠텐 감사에서 마이테레사 AU/Asia-Pacific(MID 43171)이
- *   "APAC 한정"이라고 판단했다. 그래서 GLOBAL 방문자에게 korea 링크를 주지
- *   않도록 막고, 이 테스트가 그 누수를 0으로 강제했다.
+ * 2026-07-26: "MID 43171 은 APAC 한정"이라 판단해 GLOBAL 이 korea 링크를 못 받게 막음.
+ * 2026-07-29: **그 전제가 틀렸다.** Mytheresa 확인 — 배송지 무관 수수료.
+ *             그 사이 30일 클릭 2,128건 중 어필리에이트 도달 2건(0.09%).
+ * 2026-07-30: US/CA(43172)·EU/UK/ME(35663) 제휴 성립 → 지역별 MID 라우팅으로 전환.
  *
- * 2026-07-29 (현): **그 전제가 사실이 아니었다.** Mytheresa 마리나 그레지오
- *   확인 — "You earn a commission regardless of where the order is shipped...
- *   if an order goes through the APAC MID but is shipped to Italy, South
- *   Korea, or any other country, you still receive the commission."
- *
- *   그 사이의 실제 손실: 최근 30일 /go 클릭 2,128건 중 어필리에이트 링크로
- *   간 건 2건(0.09%). 브랜드 94개 전부 korea 링크만 있고 global 은 0개라
- *   GLOBAL(트래픽의 99%)은 구조적으로 항상 인스타그램 폴백이었다.
- *
- *   그래서 방향이 반대가 됐다. 이 테스트는 이제 **GLOBAL 이 korea 링크로
- *   폴백하는 것**과, 그때 목적지가 한국어 페이지로 가지 않는 것을 강제한다.
+ * 링크 패턴은 실제 리다이렉트를 따라가 검증했다:
+ *   mid=43172 → ranMID=43172 · tarea=us
+ *   mid=35663 → ranMID=35663 · tarea=uk
+ *   id=xaC5X1voYF4 는 세 MID 전부 동일 (퍼블리셔 ranEAID)
  *
  * 프레임워크 없음 — tests/affiliate-phase0.test.js 와 같은 스타일.
  */
@@ -30,7 +24,9 @@ const ROOT = path.resolve(__dirname, '..');
 const {
   pickAffiliateUrl,
   isNonCommissionable,
-  toInternationalStorefront,
+  localizeAffiliateUrl,
+  regionFromCountry,
+  REGION_CONFIG,
 } = require(path.join(ROOT, 'api/_lib/affiliateUrl.js'));
 
 let pass = 0, fail = 0;
@@ -40,64 +36,151 @@ function it(name, fn) {
 }
 
 const KR_LINK = 'https://click.linksynergy.com/deeplink?id=xaC5X1voYF4&mid=43171&u1=prada&murl=https%3A%2F%2Fwww.mytheresa.com%2Fkr%2Fko%2Fwomen%2Fdesigners%2Fprada';
-const KR_LINK_INT = 'https://click.linksynergy.com/deeplink?id=xaC5X1voYF4&mid=43171&u1=prada&murl=https%3A%2F%2Fwww.mytheresa.com%2Fint%2Fen%2Fwomen%2Fdesigners%2Fprada';
-const GLOBAL_LINK = 'https://example-global-network.test/click?brand=prada';
+const OTHER_NETWORK = 'https://example-global-network.test/click?brand=prada';
 
 const PRADA = { brand_id: 'prada', display_name: 'PRADA' };
 function brand(extra) { return Object.assign({}, PRADA, extra); }
 
-console.log('\n=== pickAffiliateUrl: GLOBAL 폴백 (2026-07-29 전환) ===');
+console.log('\n=== MID 지도 (계약과 코드가 어긋나면 수수료가 통째로 샌다) ===');
 
-it('핵심: GLOBAL + korea 링크만 → korea 링크로 폴백한다 (더 이상 null 이 아니다)', () => {
-  const b = brand({ affiliate_url_korea: KR_LINK, affiliate_url_global: null });
-  const got = pickAffiliateUrl(b, 'GLOBAL');
-  assert.ok(got, 'GLOBAL 이 null 을 받았다 — 2,108건이 새던 그 버그의 재발');
-  assert.ok(/mid=43171/.test(got), 'MID 43171 트래킹이 유지돼야 한다');
+it('APAC/KR = 43171 · /kr/ko', () => {
+  assert.strictEqual(REGION_CONFIG.KR.mid, '43171');
+  assert.strictEqual(REGION_CONFIG.KR.locale, 'kr/ko');
+});
+it('US/CA = 43172 · /us/en (실측 ranMID=43172·tarea=us)', () => {
+  assert.strictEqual(REGION_CONFIG.US.mid, '43172');
+  assert.strictEqual(REGION_CONFIG.US.locale, 'us/en');
+});
+it('EU/UK/ME = 35663 · /int/en (실측 ranMID=35663·tarea=uk)', () => {
+  assert.strictEqual(REGION_CONFIG.EU.mid, '35663');
+  assert.strictEqual(REGION_CONFIG.EU.locale, 'int/en');
+});
+it('GLOBAL 은 43171 로 떨어진다 (배송지 무관 수수료라 안전한 기본값)', () => {
+  assert.strictEqual(REGION_CONFIG.GLOBAL.mid, '43171');
 });
 
-it('GLOBAL 폴백 시 목적지가 국제판(/int/en/)으로 바뀐다', () => {
-  const b = brand({ affiliate_url_korea: KR_LINK, affiliate_url_global: null });
-  assert.strictEqual(pickAffiliateUrl(b, 'GLOBAL'), KR_LINK_INT);
+console.log('\n=== 국가 → 지역 ===');
+
+it('KR → KR', () => assert.strictEqual(regionFromCountry('KR'), 'KR'));
+it('US·CA → US', () => {
+  assert.strictEqual(regionFromCountry('US'), 'US');
+  assert.strictEqual(regionFromCountry('CA'), 'US');
+});
+it('유럽·영국·중동 → EU', () => {
+  ['DE', 'FR', 'IT', 'ES', 'GB', 'NL', 'AE', 'IL'].forEach((c) => {
+    assert.strictEqual(regionFromCountry(c), 'EU', c + ' 가 EU 로 안 갔다');
+  });
+});
+it('그 외 → GLOBAL', () => {
+  ['JP', 'AU', 'BR', 'ZA', 'CN', ''].forEach((c) => {
+    assert.strictEqual(regionFromCountry(c), 'GLOBAL', c + ' 가 GLOBAL 이 아니다');
+  });
+});
+it('소문자·공백을 흡수한다', () => {
+  assert.strictEqual(regionFromCountry(' us '), 'US');
+  assert.strictEqual(regionFromCountry('kr'), 'KR');
+});
+it('null·undefined 에 throw 하지 않는다', () => {
+  assert.strictEqual(regionFromCountry(null), 'GLOBAL');
+  assert.strictEqual(regionFromCountry(undefined), 'GLOBAL');
 });
 
-it('GLOBAL 폴백이 트래킹 파라미터(id·mid·u1)를 건드리지 않는다', () => {
+console.log('\n=== 링크 변환: mid 와 로케일만 바뀐다 ===');
+
+it('US 방문자 → mid=43172 · /us/en', () => {
+  const got = pickAffiliateUrl(brand({ affiliate_url_korea: KR_LINK }), 'US');
+  assert.ok(/[?&]mid=43172\b/.test(got), 'mid 가 43172 로 안 바뀌었다: ' + got);
+  assert.ok(/mytheresa\.com%2Fus%2Fen%2F/.test(got), '로케일이 us/en 이 아니다: ' + got);
+});
+
+it('EU 방문자 → mid=35663 · /int/en', () => {
+  const got = pickAffiliateUrl(brand({ affiliate_url_korea: KR_LINK }), 'EU');
+  assert.ok(/[?&]mid=35663\b/.test(got), 'mid 가 35663 으로 안 바뀌었다: ' + got);
+  assert.ok(/mytheresa\.com%2Fint%2Fen%2F/.test(got), '로케일이 int/en 이 아니다: ' + got);
+});
+
+it('GLOBAL 방문자 → mid=43171 · /int/en', () => {
   const got = pickAffiliateUrl(brand({ affiliate_url_korea: KR_LINK }), 'GLOBAL');
-  assert.ok(/id=xaC5X1voYF4/.test(got), 'id 파라미터가 사라졌다');
-  assert.ok(/mid=43171/.test(got), 'mid 파라미터가 사라졌다');
-  assert.ok(/u1=prada/.test(got), 'u1 파라미터가 사라졌다');
+  assert.ok(/[?&]mid=43171\b/.test(got), got);
+  assert.ok(/mytheresa\.com%2Fint%2Fen%2F/.test(got), got);
 });
 
-it('GLOBAL 전용 링크가 있으면 그걸 우선 쓴다 (폴백보다 먼저)', () => {
-  const b = brand({ affiliate_url_korea: KR_LINK, affiliate_url_global: GLOBAL_LINK });
-  assert.strictEqual(pickAffiliateUrl(b, 'GLOBAL'), GLOBAL_LINK);
+it('KR 방문자는 저장된 링크를 그대로 받는다 (변환 없음)', () => {
+  assert.strictEqual(pickAffiliateUrl(brand({ affiliate_url_korea: KR_LINK }), 'KR'), KR_LINK);
 });
 
-it('KR 방문자는 한국어 링크를 그대로 받는다 (로케일을 바꾸지 않는다)', () => {
-  const b = brand({ affiliate_url_korea: KR_LINK, affiliate_url_global: GLOBAL_LINK });
-  assert.strictEqual(pickAffiliateUrl(b, 'KR'), KR_LINK);
+it('핵심: 퍼블리셔 id 와 u1 은 절대 바뀌지 않는다 (귀속이 여기서 갈린다)', () => {
+  ['KR', 'US', 'EU', 'GLOBAL'].forEach((r) => {
+    const got = pickAffiliateUrl(brand({ affiliate_url_korea: KR_LINK }), r);
+    assert.ok(/id=xaC5X1voYF4/.test(got), r + ': 퍼블리셔 id 가 사라졌다');
+    assert.ok(/u1=prada/.test(got), r + ': u1 이 사라졌다');
+  });
 });
 
-it('KR + global 링크만 → global 폴백', () => {
-  const b = brand({ affiliate_url_korea: null, affiliate_url_global: GLOBAL_LINK });
-  assert.strictEqual(pickAffiliateUrl(b, 'KR'), GLOBAL_LINK);
+it('경로(women/designers/prada)는 보존된다', () => {
+  const got = pickAffiliateUrl(brand({ affiliate_url_korea: KR_LINK }), 'US');
+  assert.ok(/women%2Fdesigners%2Fprada/.test(got), got);
+});
+
+it('변환은 멱등이다 (이미 US 링크를 US 로 변환해도 그대로)', () => {
+  const once = localizeAffiliateUrl(KR_LINK, 'US');
+  assert.strictEqual(localizeAffiliateUrl(once, 'US'), once);
+});
+
+console.log('\n=== 안전 규칙 ===');
+
+it('마이테레사가 아닌 링크는 손대지 않는다 (다른 네트워크 보호)', () => {
+  ['KR', 'US', 'EU', 'GLOBAL'].forEach((r) => {
+    assert.strictEqual(localizeAffiliateUrl(OTHER_NETWORK, r), OTHER_NETWORK);
+  });
+});
+
+it('우리가 모르는 MID 는 건드리지 않는다', () => {
+  const unknown = 'https://click.linksynergy.com/deeplink?id=x&mid=99999&murl=https%3A%2F%2Fwww.mytheresa.com%2Fkr%2Fko%2Fa';
+  assert.ok(/mid=99999/.test(localizeAffiliateUrl(unknown, 'US')), '모르는 MID 를 덮어썼다');
+});
+
+it('affiliate_url_global 이 있으면 그쪽을 우선한다 (관리자 수동 지정 존중)', () => {
+  const b = brand({ affiliate_url_korea: KR_LINK, affiliate_url_global: OTHER_NETWORK });
+  assert.strictEqual(pickAffiliateUrl(b, 'US'), OTHER_NETWORK);
+});
+
+it('빈 값·null 에 throw 하지 않는다', () => {
+  assert.strictEqual(localizeAffiliateUrl('', 'US'), '');
+  assert.strictEqual(localizeAffiliateUrl(null, 'EU'), '');
+});
+
+it('링크 없음 → null (호출부가 인스타그램 폴백으로 넘어간다)', () => {
+  const b = brand({ affiliate_url_korea: null, affiliate_url_global: null });
+  ['KR', 'US', 'EU', 'GLOBAL'].forEach((r) => {
+    assert.strictEqual(pickAffiliateUrl(b, r), null);
+  });
+});
+
+it('빈 문자열은 링크 없음으로 취급', () => {
+  const b = brand({ affiliate_url_korea: '', affiliate_url_global: '' });
+  assert.strictEqual(pickAffiliateUrl(b, 'US'), null);
+});
+
+it('brand 자체가 null → null (throw 하지 않는다)', () => {
+  assert.strictEqual(pickAffiliateUrl(null, 'KR'), null);
+  assert.strictEqual(pickAffiliateUrl(undefined, 'EU'), null);
 });
 
 console.log('\n=== 수수료 제외 브랜드 → 인스타그램 폴백 ===');
 
-it('Adidas · Nike · New Balance · On 은 링크가 있어도 null', () => {
+it('Adidas · Nike · New Balance · On 은 어느 지역에서도 null', () => {
   ['ADIDAS', 'Nike', 'New Balance', 'NEWBALANCE', 'On', 'ON'].forEach((name) => {
     const b = { brand_id: name.toLowerCase(), display_name: name, affiliate_url_korea: KR_LINK };
-    assert.strictEqual(pickAffiliateUrl(b, 'GLOBAL'), null, name + ' (GLOBAL) 이 링크를 받았다');
-    assert.strictEqual(pickAffiliateUrl(b, 'KR'), null, name + ' (KR) 이 링크를 받았다');
+    ['KR', 'US', 'EU', 'GLOBAL'].forEach((r) => {
+      assert.strictEqual(pickAffiliateUrl(b, r), null, name + ' (' + r + ') 이 링크를 받았다');
+    });
   });
 });
 
 it('부분일치로 잘못 걸리지 않는다 (ONITSUKA·NIKELAB 등은 정상 브랜드)', () => {
   ['ONITSUKATIGER', 'NIKELAB', 'ADIDASORIGINALS_X', 'BALENCIAGA'].forEach((name) => {
-    assert.strictEqual(
-      isNonCommissionable({ display_name: name }), false,
-      name + ' 이 수수료 제외로 잘못 분류됐다'
-    );
+    assert.strictEqual(isNonCommissionable({ display_name: name }), false, name + ' 오분류');
   });
 });
 
@@ -107,70 +190,29 @@ it('표기 흔들림을 흡수한다 (new_balance / new-balance / New Balance)',
   });
 });
 
-console.log('\n=== toInternationalStorefront: 안전 규칙 ===');
-
-it('마이테레사 링크가 아니면 원본 그대로', () => {
-  assert.strictEqual(toInternationalStorefront(GLOBAL_LINK), GLOBAL_LINK);
-});
-
-it('이미 국제판이면 그대로 (중복 치환 없음)', () => {
-  assert.strictEqual(toInternationalStorefront(KR_LINK_INT), KR_LINK_INT);
-});
-
-it('인코딩되지 않은 형태도 처리', () => {
-  assert.strictEqual(
-    toInternationalStorefront('https://www.mytheresa.com/kr/ko/women/designers/prada'),
-    'https://www.mytheresa.com/int/en/women/designers/prada'
-  );
-});
-
-it('빈 값·null 에 throw 하지 않는다', () => {
-  assert.strictEqual(toInternationalStorefront(''), '');
-  assert.strictEqual(toInternationalStorefront(null), '');
-});
-
-console.log('\n=== 공통 안전 ===');
-
-it('링크 없음 → null (호출부가 인스타그램 폴백으로 넘어간다)', () => {
-  const b = brand({ affiliate_url_korea: null, affiliate_url_global: null });
-  assert.strictEqual(pickAffiliateUrl(b, 'KR'), null);
-  assert.strictEqual(pickAffiliateUrl(b, 'GLOBAL'), null);
-});
-
-it('빈 문자열은 링크 없음으로 취급', () => {
-  const b = brand({ affiliate_url_korea: '', affiliate_url_global: '' });
-  assert.strictEqual(pickAffiliateUrl(b, 'GLOBAL'), null);
-  assert.strictEqual(pickAffiliateUrl(b, 'KR'), null);
-});
-
-it('brand 자체가 null → null (throw 하지 않는다)', () => {
-  assert.strictEqual(pickAffiliateUrl(null, 'KR'), null);
-  assert.strictEqual(pickAffiliateUrl(undefined, 'GLOBAL'), null);
-});
-
 // ── 소스 레벨 가드 ───────────────────────────────────────────────────────
-// 누군가 [id].js 안에 pickAffiliateUrl 을 다시 인라인으로 만들어 넣는 회귀를 막는다.
 console.log('\n=== 소스 가드: api/go/[id].js ===');
 
 const goSrc = fs.readFileSync(path.join(ROOT, 'api/go/[id].js'), 'utf8');
 
-it('[id].js 는 _lib/affiliateUrl 에서 pickAffiliateUrl 을 가져온다', () => {
-  assert.ok(
-    /require\(['"]\.\.\/_lib\/affiliateUrl['"]\)/.test(goSrc),
-    "api/go/[id].js 가 require('../_lib/affiliateUrl') 를 하지 않는다"
-  );
+it('[id].js 는 _lib/affiliateUrl 에서 가져온다', () => {
+  assert.ok(/require\(['"]\.\.\/_lib\/affiliateUrl['"]\)/.test(goSrc));
 });
 
 it('[id].js 안에 pickAffiliateUrl 을 재정의하지 않는다', () => {
-  assert.ok(
-    !/function\s+pickAffiliateUrl/.test(goSrc),
-    'api/go/[id].js 안에 pickAffiliateUrl 이 다시 정의됐다 — _lib 버전만 써야 한다'
-  );
+  assert.ok(!/function\s+pickAffiliateUrl/.test(goSrc),
+    'pickAffiliateUrl 이 다시 정의됐다 — _lib 버전만 써야 한다');
+});
+
+it('국가→지역 매핑을 [id].js 안에서 다시 만들지 않는다', () => {
+  assert.ok(/regionFromCountry/.test(goSrc),
+    '_lib 의 regionFromCountry 를 쓰지 않는다 — 매핑이 두 곳으로 갈라지면 어긋난다');
+  assert.ok(!/country\s*===\s*'KR'\s*\?/.test(goSrc),
+    '구형 이분 판정(KR ? : GLOBAL)이 남아 있다');
 });
 
 it('브랜드 조회가 제외 판정에 필요한 컬럼을 가져온다', () => {
-  assert.ok(/brand_id/.test(goSrc) && /display_name/.test(goSrc),
-    'brand_id·display_name 없이는 수수료 제외 브랜드를 판정할 수 없다');
+  assert.ok(/brand_id/.test(goSrc) && /display_name/.test(goSrc));
 });
 
 console.log('\n' + pass + ' passed, ' + fail + ' failed');
