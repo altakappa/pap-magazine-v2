@@ -68,6 +68,9 @@ console.log('=== 동작 실측 (가짜 fetch) ===');
     }
     if (u.includes('broken')) return { ok: false, headers: { get: () => 'text/html' }, arrayBuffer: async () => Buffer.alloc(0) };
     if (u.includes('nothtml')) return { ok: true, headers: { get: () => 'text/html; charset=utf-8' }, arrayBuffer: async () => Buffer.alloc(10) };
+    // 레거시 S3: ContentType 없이 올라가 octet-stream 으로 내려오지만 내용은 진짜 PNG
+    if (u.includes('octetjunk')) return { ok: true, headers: { get: () => 'binary/octet-stream' }, arrayBuffer: async () => Buffer.from([1, 2, 3, 4, 5, 6, 7, 8]) };
+    if (u.includes('octet')) return { ok: true, headers: { get: () => 'binary/octet-stream' }, arrayBuffer: async () => PNG };
     return { ok: true, headers: { get: () => 'image/png' }, arrayBuffer: async () => PNG };
   };
   process.env.ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || 'test-key';
@@ -102,6 +105,46 @@ console.log('=== 동작 실측 (가짜 fetch) ===');
   });
   t('전부 실패하면 API 호출 안 함', captured === null);
   t('그 경우 빈 결과 반환', out2.kr === '' && out2.en === '');
+
+  /* ────────────────────────────────────────────────────────────
+   * 2026-07-30 2차 — Content-Type 만 믿다가 20편을 영구히 잃던 문제.
+   *
+   * 레거시 S3 버킷(pap-korea-bucket)의 오래된 이미지는 ContentType 지정 없이
+   * 업로드돼 binary/octet-stream 으로 내려온다. 브라우저는 매직바이트를 스니핑해
+   * 멀쩡히 렌더하므로 사람 눈에는 정상이고, 서버만 조용히 전부 거부했다.
+   * 그 결과 3회 시도를 다 쓰고 선별에서 영구 제외 — 로그가 없어 원인도 못 찾았다.
+   * 실패 20편 중 13편이 이 버킷이었다. */
+  console.log('=== Content-Type 이 못 미더울 때 (레거시 S3) ===');
+  const warns = [];
+  const origWarn = console.warn;
+  console.warn = (...a) => { warns.push(a.join(' ')); };
+
+  captured = null;
+  const out3 = await generateEditorialDescriptions({
+    title: 'WITCHES AIN’T SNITCHES', artistStatement: '',
+    imageUrls: ['https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com/octet.jpg'],
+    longForm: true,
+  });
+  const imgs3 = captured ? (captured.messages[0].content || []).filter(b => b.type === 'image') : [];
+  t('octet-stream 이어도 매직바이트로 살려낸다', imgs3.length === 1,
+    '이걸 못 살리면 레거시 S3 13편이 영영 서술문을 못 받는다');
+  t('media_type 은 스니핑한 실제 타입', imgs3[0] && imgs3[0].source.media_type === 'image/png');
+  t('그래서 서술문이 생성된다', out3.kr.length >= 300);
+
+  captured = null;
+  const out4 = await generateEditorialDescriptions({
+    title: 'Junk Bytes', artistStatement: '',
+    imageUrls: ['https://example.com/octetjunk.jpg'], longForm: true,
+  });
+  t('이미지가 아닌 바이트는 여전히 거부', captured === null && out4.kr === '',
+    '스니핑을 넣었다고 아무 파일이나 통과하면 안 된다');
+
+  console.log('=== 조용한 실패를 없앴는가 ===');
+  t('거부할 때 사유를 남긴다', warns.some(w => /이미지 제외/.test(w)),
+    '로그가 없으면 다음에도 원인을 못 찾는다 — 오늘 이 자리에서 실제로 겪었다');
+  t('사유에 판별 결과가 들어간다', warns.some(w => /sniff=/.test(w)));
+  t('이미지 0장이면 그것도 로그', warns.some(w => /비전 이미지 0장/.test(w)));
+  console.warn = origWarn;
 
   global.fetch = origFetch;
   console.log(`\npassed: ${pass}   failed: ${fail}`);

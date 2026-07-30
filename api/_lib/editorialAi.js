@@ -29,6 +29,8 @@
 /* Anthropic 장애(크레딧 소진·키 오류)를 원인 단계에서 텔레그램으로 알린다.
    2026-07-30: 크레딧이 4시간 비어 서술문 생성이 0건이었는데 아무 알림도 없었다. */
 const { reportAiResponse } = require('./aiCreditWatch');
+// 매직바이트 판별 — 업로드 검증에서 쓰던 것을 재사용한다(의존 없는 순수 모듈).
+const { sniffMime } = require('./fileSignature');
 
 /* 이미지를 서버에서 직접 받아 base64 블록으로 만든다.
  *
@@ -55,20 +57,45 @@ function _slimUrl(url) {
   return url;
 }
 
+/* 이미지 한 장을 비전 블록으로. 못 쓰면 null + 사유 로그.
+ *
+ * 2026-07-30 두 가지를 고쳤다. 20편이 3회 시도를 다 쓰고 영구 제외됐는데,
+ * 로그가 한 줄도 없어 원인을 못 찾던 상태였다:
+ *
+ *  ① 조용한 실패 — 여기서 null 을 반환하면 호출부(_toVisionBlocks)가 걸러내고,
+ *     전부 걸러지면 generateEditorialDescriptions 가 빈 결과를 '정상' 으로
+ *     반환한다. 예외도 로그도 없어 크론은 그냥 empty++ 만 세고 넘어갔다.
+ *     → 거부할 때마다 사유(status/type/size)를 남긴다. 오늘 세 번 반복한
+ *       교훈이다 — 관측되지 않는 실패는 존재하지 않는 것처럼 보인다.
+ *
+ *  ② Content-Type 만 믿던 것 — 레거시 S3 버킷(pap-korea-bucket)에 올라간
+ *     오래된 이미지는 ContentType 지정 없이 업로드돼 binary/octet-stream 으로
+ *     내려온다. 브라우저는 매직바이트를 스니핑해 멀쩡히 렌더하므로 사람 눈에는
+ *     정상이고, 서버만 조용히 거부했다. 실패 20편 중 13편이 이 버킷이다.
+ *     → 헤더가 쓸모없으면 매직바이트로 판별한다. 판별기는 이미 저장소에 있다
+ *       (_lib/fileSignature.sniffMime — 업로드 검증에서 검증된 코드).
+ *     헤더를 무시하는 게 아니라 '헤더가 이미지 타입이 아닐 때만' 스니핑하므로,
+ *     위장 파일이 통과하는 게 아니라 오히려 실제 바이트로 확인하는 셈이다. */
 async function _fetchImageBlock(url) {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), 8000);
+  const _skip = (why) => { console.warn('[editorialAi] 이미지 제외', why, String(url).slice(0, 120)); return null; };
   try {
     const resp = await fetch(_slimUrl(url), { redirect: 'follow', signal: ctl.signal });
-    if (!resp.ok) return null;
+    if (!resp.ok) return _skip('http=' + resp.status);
     let type = String(resp.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
     if (type === 'image/jpg') type = 'image/jpeg';           // 비표준 별칭
-    if (!_VISION_TYPES.has(type)) return null;
     const buf = Buffer.from(await resp.arrayBuffer());
-    if (!buf.length || buf.length > _MAX_IMAGE_BYTES) return null;
+    if (!buf.length) return _skip('빈 응답');
+    if (buf.length > _MAX_IMAGE_BYTES) return _skip('용량 ' + Math.round(buf.length / 1048576) + 'MB');
+    if (!_VISION_TYPES.has(type)) {
+      const sniffed = sniffMime(buf);                        // 헤더가 못 미더우면 실제 바이트로
+      if (!_VISION_TYPES.has(sniffed)) return _skip('타입 ' + (type || '없음') + '/sniff=' + (sniffed || '불명'));
+      type = sniffed;
+    }
     return { type: 'image', source: { type: 'base64', media_type: type, data: buf.toString('base64') } };
-  } catch (_) {
-    return null;
+  } catch (e) {
+    return _skip('fetch 실패: ' + String((e && e.message) || e).slice(0, 60));
   } finally {
     clearTimeout(timer);
   }
@@ -196,6 +223,11 @@ async function generateEditorialDescriptions({ title, artistStatement, imageUrls
   const visionImages = await _toVisionBlocks(imageUrls);
 
   if (visionImages.length === 0) {
+    /* 2026-07-30 — 여기가 20편을 조용히 태워먹던 자리다. 이미지가 전부 걸러지면
+       예외도 없이 빈 결과를 반환했고, 크론은 그걸 '시도했으나 못 만듦' 으로만
+       세서 3회 만에 영구 제외했다. 원인이 로그에 없으니 손쓸 방법도 없었다. */
+    console.warn('[editorialAi] 비전 이미지 0장 — 생성 불가',
+      (Array.isArray(imageUrls) ? imageUrls.slice(0, 3) : []).map((u) => String(u).slice(0, 100)));
     return { kr: '', en: '', it: '', hook: '', moodTag: '' };
   }
 
