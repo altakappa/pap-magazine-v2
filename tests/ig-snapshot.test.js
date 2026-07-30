@@ -115,6 +115,33 @@ ok('깨진 upsert(rows) 를 다시 쓰지 않는다', !/\.upsert\(rows/.test(IGS
 ok('ig_post_metric 은 plain insert 로 저장한다', /from\('ig_post_metric'\)\.insert\(rows\)/.test(IGSRC));
 ok('fetchPostInsights 존재 (저장·공유·도달 수집)', /async function fetchPostInsights/.test(IGSRC));
 
+/* ---------------------------------------------------------------- */
+/* 2026-07-30 — 팔로워 '전환' 과 '국적'.
+ *
+ * 도메니코의 목표는 "한국인 진성 팔로워"인데, 지금까지 저장한 도달·좋아요·저장은
+ * 전부 대리지표였다. 도달 2만인데 팔로우 0 인 글과 도달 5천인데 팔로우 50 인 글을
+ * 구분할 수 없었고, 국가 구성은 아예 데이터가 없어 목표 달성 여부를 판정 자체가
+ * 불가능했다. 그 두 구멍을 막은 것이 아래 계약이다. */
+section('팔로워 전환 · 국가 구성 (2026-07-30)');
+ok('게시물 인사이트에 follows 요청', /'follows'/.test(IGSRC));
+ok('게시물 인사이트에 profile_visits 요청', /'profile_visits'/.test(IGSRC));
+ok('저장 행에 두 값을 담는다',
+  /profile_visits: numOrNull\(p\.profile_visits\)/.test(IGSRC) && /follows: numOrNull\(p\.follows\)/.test(IGSRC));
+/* views 가 750건 중 0건이던 이유 — plays 만 요청했는데 Instagram 이 views 로
+   교체(v22+)했다. 세트에 미지원 metric 이 하나라도 있으면 응답 전체가 400 이라
+   릴스는 늘 축소 세트로 떨어졌고 shares 까지 함께 잃었다(461/750). */
+ok('views 를 직접 요청한다 (plays 만으로는 0건이었다)', /'views'/.test(IGSRC));
+ok('plays 폴백은 유지 (구 API 계정 대비)', /out\.plays/.test(IGSRC));
+ok('계단식 축소로 부분 수집을 살린다', /const ladder = \[/.test(IGSRC),
+  '신규 metric 이 거부돼도 기존 수집이 통째로 깨지면 안 된다');
+
+ok('국가 구성 수집 함수 존재', /async function fetchAudienceCountries/.test(IGSRC));
+ok('신형·구형 API 를 모두 시도', /follower_demographics/.test(IGSRC) && /audience_country/.test(IGSRC),
+  'Instagram 이 이 지표 API 를 두 번 바꿨다 — 한쪽만 보면 조용히 끊긴다');
+ok('하루 1행만 저장 (3시간 크론이 중복 적재하지 않게)', /captured_on/.test(IGSRC) && /onConflict: 'handle,country_code,captured_on'/.test(IGSRC));
+ok('국가 수집 실패가 본 수집을 죽이지 않는다', /국가 구성 수집 실패/.test(IGSRC));
+ok('응답이 비면 로그로 알린다 (조용한 실패 금지)', /국가 구성 응답 없음/.test(IGSRC));
+
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) { console.error('❌ ig-snapshot tests failed'); process.exit(1); }
 console.log('✅ ig-snapshot tests passed');

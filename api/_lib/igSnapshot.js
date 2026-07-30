@@ -61,10 +61,30 @@ function numOrNull(v) { return typeof v === 'number' ? v : null; }
 async function fetchPostInsights(mediaId, mediaType, token) {
   if (!mediaId || !token) return {};
   const mt = String(mediaType || '').toUpperCase();
-  const full = (mt === 'VIDEO' || mt === 'REELS')
-    ? ['reach', 'saved', 'shares', 'total_interactions', 'plays']
-    : ['reach', 'saved', 'shares', 'total_interactions'];
-  for (const metrics of [full, ['reach', 'saved']]) {
+
+  /* 2026-07-30 — profile_visits·follows·views 추가.
+   *
+   * 왜: 지금까지 저장한 도달·좋아요·저장은 전부 '대리지표' 다. 팔로워가 늘었는지
+   * 아닌지를 게시물 단위로 답할 수 없었다(도달 2만인데 팔로우 0 vs 도달 5천인데
+   * 팔로우 50 을 구분 못 함). follows 가 유일한 직접 지표다.
+   *
+   * views: 기존엔 'plays' 만 요청했는데 750건 중 0건이 수집됐다. Instagram 이
+   * plays 를 views 로 교체(v22+)했기 때문이다. 세트에 하나라도 지원 안 되는
+   * metric 이 있으면 응답 전체가 400 이라, plays 때문에 릴스는 늘 축소 세트로
+   * 떨어져 shares 까지 함께 잃고 있었다(shares 461/750 만 수집된 이유).
+   *
+   * 그래서 계단식으로 좁힌다 — 넓은 세트부터 시도해 되는 만큼 가져온다.
+   * 신규 필드가 계정 권한·미디어 타입에 따라 거부돼도 기존 수집은 안 깨진다. */
+  const CONVERSION = ['profile_visits', 'follows'];
+  const BASE = ['reach', 'saved', 'shares', 'total_interactions'];
+  const isVideo = (mt === 'VIDEO' || mt === 'REELS');
+  const ladder = [
+    isVideo ? [...BASE, 'views', ...CONVERSION] : [...BASE, ...CONVERSION],
+    isVideo ? [...BASE, 'views'] : [...BASE],
+    isVideo ? ['reach', 'saved', 'views'] : ['reach', 'saved'],
+    ['reach', 'saved'],
+  ];
+  for (const metrics of ladder) {
     try {
       const url = `${GRAPH}/${encodeURIComponent(mediaId)}/insights`
         + `?metric=${metrics.join(',')}&access_token=${encodeURIComponent(token)}`;
@@ -76,11 +96,12 @@ async function fetchPostInsights(mediaId, mediaType, token) {
         const v = m && m.values && m.values[0] ? m.values[0].value : undefined;
         if (typeof v === 'number') out[m.name] = v;
       }
-      // plays(릴스) → views 로 정규화해 리포트를 단순화한다.
+      // 구 API 는 plays, 신 API 는 views. 둘 중 오는 쪽을 views 로 통일한다.
       if (typeof out.plays === 'number' && typeof out.views !== 'number') out.views = out.plays;
       return {
         saved: out.saved, shares: out.shares, reach: out.reach,
         views: out.views, total_interactions: out.total_interactions,
+        profile_visits: out.profile_visits, follows: out.follows,
       };
     } catch (_) { /* 다음 metric 세트로 재시도 */ }
   }
@@ -108,8 +129,62 @@ function toMetricRows(posts, now) {
       reach: numOrNull(p.reach),
       views: numOrNull(p.views),
       total_interactions: numOrNull(p.total_interactions),
+      // 2026-07-30 — 팔로워 전환. 미지원이면 null 로 남는다(0 으로 속이지 않는다).
+      profile_visits: numOrNull(p.profile_visits),
+      follows: numOrNull(p.follows),
     };
   });
+}
+
+/* ── 팔로워 국가 구성 (2026-07-30 신설) ─────────────────────────────
+ *
+ * "한국인 진성 팔로워가 늘고 있는가" — 도메니코의 목표인데 이 질문에 답할
+ * 데이터가 없었다. 미디어킷의 "도달 1위 서울" 은 스크린샷 한 장이지 추이가 아니다.
+ *
+ * Instagram 은 이 지표의 API 를 두 번 바꿨다. 신형(follower_demographics,
+ * breakdown=country)을 먼저 시도하고 실패하면 구형(audience_country)으로
+ * 내려간다 — 어느 쪽이 살아 있든 수집이 끊기지 않게.
+ * 팔로워 100명 미만 계정은 프라이버시 정책상 아예 안 준다(PAP 는 해당 없음).
+ */
+async function fetchAudienceCountries(token, userId) {
+  const attempts = [
+    `${GRAPH}/${userId}/insights?metric=follower_demographics&period=lifetime`
+      + `&metric_type=total_value&breakdown=country`,
+    `${GRAPH}/${userId}/insights?metric=audience_country&period=lifetime`,
+  ];
+  for (const base of attempts) {
+    try {
+      const r = await fetch(base + `&access_token=${encodeURIComponent(token)}`,
+        { signal: AbortSignal.timeout(15000) });
+      if (!r.ok) continue;
+      const j = await r.json();
+      const row = (j.data || [])[0];
+      if (!row) continue;
+
+      // 신형: total_value.breakdowns[0].results[] = { dimension_values:['KR'], value:n }
+      const br = row.total_value && Array.isArray(row.total_value.breakdowns)
+        ? row.total_value.breakdowns[0] : null;
+      if (br && Array.isArray(br.results)) {
+        const out = br.results
+          .map((x) => ({
+            country_code: String((x.dimension_values || [])[0] || '').toUpperCase(),
+            followers: typeof x.value === 'number' ? x.value : null,
+          }))
+          .filter((x) => x.country_code && x.followers != null);
+        if (out.length) return out;
+      }
+
+      // 구형: values[0].value = { KR: 1234, US: 567, … }
+      const v = row.values && row.values[0] ? row.values[0].value : null;
+      if (v && typeof v === 'object') {
+        const out = Object.entries(v)
+          .map(([cc, n]) => ({ country_code: String(cc).toUpperCase(), followers: typeof n === 'number' ? n : null }))
+          .filter((x) => x.country_code && x.followers != null);
+        if (out.length) return out;
+      }
+    } catch (_) { /* 다음 형식으로 */ }
+  }
+  return [];
 }
 
 /** 수집 → 저장. 저장 건수를 돌려준다. */
@@ -146,7 +221,34 @@ async function captureSnapshot(opts) {
     if (error) throw error;
     stored = rows.length;
   }
-  return { account: snap.account, posts_captured: stored };
+
+  /* 팔로워 국가 구성 — 하루 1회만 (2026-07-30 신설).
+   * 크론은 3시간마다 돌지만 이 지표는 lifetime 누적이라 하루 1행이면 충분하고,
+   * 유니크 인덱스(handle, country_code, captured_on)가 중복을 막는다.
+   * 실패해도 본 수집(게시물·팔로워)은 이미 끝났으므로 삼킨다 — 부가 지표가
+   * 주 지표를 죽이면 안 된다. */
+  let audience = 0;
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: seen } = await supabaseAdmin.from('ig_audience_snapshot')
+      .select('id').eq('handle', snap.account.handle).eq('captured_on', today).limit(1);
+    if (!seen || !seen.length) {
+      const list = await fetchAudienceCountries(token, process.env.IG_USER_ID);
+      if (list.length) {
+        const { error } = await supabaseAdmin.from('ig_audience_snapshot').upsert(
+          list.map((x) => ({ handle: snap.account.handle, captured_on: today, ...x })),
+          { onConflict: 'handle,country_code,captured_on' });
+        if (error) console.warn('[igSnapshot] 국가 구성 저장 실패', error.message);
+        else audience = list.length;
+      } else {
+        console.warn('[igSnapshot] 국가 구성 응답 없음 — API 형식 변경 또는 권한 확인 필요');
+      }
+    }
+  } catch (e) {
+    console.warn('[igSnapshot] 국가 구성 수집 실패', e && e.message);
+  }
+
+  return { account: snap.account, posts_captured: stored, audience_rows: audience };
 }
 
 /* ── 집계 (순수 함수 — 테스트 대상) ───────────────────────────────── */
