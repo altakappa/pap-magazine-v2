@@ -188,6 +188,10 @@ async function checkBackfill(opts) {
     const d = diagnoseBackfill({
       attempts: row.attempts,
       successes: row.successes,
+      // 2026-07-30: 실제 생산량 기준으로 판정한다(구 successes 는 과대평가했다).
+      filled: row.filled,
+      attemptsSinceStamp: row.attempts_since_stamp,
+      everFilled: row.ever_filled,
       remaining: row.remaining,
       lastAttemptAgoMs: row.last_attempt_ago_seconds == null
         ? null : Number(row.last_attempt_ago_seconds) * 1000,
@@ -209,7 +213,7 @@ async function checkBackfill(opts) {
       await pushAlert({
         personalOnly: true,
         title: '✅ 서술문 백필 정상화 — 성공률 ' + d.rate + '%',
-        lines: [`최근 ${WINDOW_H}시간 ${d.attempts}건 중 ${d.successes}건 생성 · 남은 ${d.remaining}건`],
+        lines: [`최근 ${WINDOW_H}시간 ${d.attemptsSinceStamp || d.attempts}건 중 ${d.basis === 'filled' ? d.filled : d.successes}건 생성 · 남은 ${d.remaining}건`],
         url: `${SITE}/magazine`, urlLabel: '매거진',
       });
       alerted = true;

@@ -64,6 +64,56 @@ console.log('=== 오탐 방지 ===');
   t('수정 직후 100% 소표본도 정상', d.healthy === true);
 })();
 
+/* ────────────────────────────────────────────────────────────────
+ * 2026-07-30 2차: 감시가 실제보다 좋게 말하던 문제.
+ *
+ * 구 successes 정의는 "이 창에서 시도됐고 지금 설명이 있음" 이었다. 직접 세는
+ * 수단이 없었기 때문인데(백필은 updated_at 을 갱신하지 않는다), 그 결과
+ * 24시간 창에서 699건 성공이라 말하면서 실제 커버리지는 +102 만 늘었다.
+ * → description_filled_at 도장을 두고 filled 로 판정한다. 아래는 그 계약이다. */
+console.log('=== 실제 생산량(filled) 기준 판정 ===');
+(function () {
+  // 도장이 있으면 filled/attemptsSinceStamp 로 판정 — successes 가 부풀어 있어도 속지 않는다
+  const d = ok({ attempts: 877, successes: 699, filled: 12, attemptsSinceStamp: 120, everFilled: true, remaining: 1413 });
+  t('successes 가 부풀어도 filled 로 판정한다', d.basis === 'filled' && d.rate === 10 && d.healthy === false,
+    'basis=' + d.basis + ' rate=' + d.rate);
+  t('구 지표도 결과에 남겨 비교 가능', d.successes === 699 && d.filled === 12);
+})();
+(function () {
+  // 시도는 하는데 생산 0 — '저하' 가 아니라 '정지' 로 구분해야 문안이 맞다
+  const d = ok({ attempts: 60, successes: 58, filled: 0, attemptsSinceStamp: 60, everFilled: true, remaining: 1400 });
+  t('생산 0건은 no_output 으로 구분', d.healthy === false && d.kind === 'no_output');
+  t('사유에 시도 건수 명시', /시도 60건 중 실제 생산 0건/.test(d.reason));
+})();
+(function () {
+  // 전환기: 도장 도입 직전 시도들은 도장이 없다. 분모를 좁히지 않으면 오탐한다.
+  const d = ok({ attempts: 120, successes: 118, filled: 0, attemptsSinceStamp: 0, everFilled: false, remaining: 1400 });
+  t('도장 이전에는 구 지표로 판정 (전환기 오탐 방지)', d.basis !== 'filled' && d.healthy === true,
+    'basis=' + d.basis + ' healthy=' + d.healthy);
+})();
+(function () {
+  // 도장 이후 표본이 아직 적으면 판정 보류 — 분모는 attemptsSinceStamp 다
+  const d = ok({ attempts: 200, successes: 190, filled: 4, attemptsSinceStamp: 4, everFilled: true, remaining: 1400 });
+  t('filled 분모가 소표본이면 보류', d.healthy === true && /sample</.test(d.reason));
+})();
+(function () {
+  // 정상 가동: 04~05시(UTC) 실측 — 시도 127건 중 124건 생산
+  const d = ok({ attempts: 127, successes: 124, filled: 124, attemptsSinceStamp: 127, everFilled: true, remaining: 1413 });
+  t('실측 정상값(97.6%)은 정상', d.healthy === true && d.rate > 95);
+})();
+
+console.log('=== 도장을 실제로 찍는가 (크론·RPC 결선) ===');
+(function () {
+  const c = R('api/cron/backfill-meta-desc.js');
+  t('본문을 채울 때만 도장을 찍는다',
+    /patch\.description = gen\.kr;[\s\S]{0,900}patch\.description_filled_at/.test(c),
+    'seo_description 만 채운 경우까지 생산으로 세면 다시 과대평가가 된다');
+  t('updated_at 은 건드리지 않는다 (사람 편집 시각 보존)', !/patch\.updated_at/.test(c));
+  const w = R('api/cron/pipeline-watch.js');
+  t('감시가 filled·everFilled 를 넘긴다',
+    /filled: row\.filled/.test(w) && /everFilled: row\.ever_filled/.test(w) && /attemptsSinceStamp: row\.attempts_since_stamp/.test(w));
+})();
+
 console.log('=== 알림 문안 ===');
 (function () {
   const a = buildBackfillAlert(ok({ attempts: 88, successes: 22, remaining: 1526 }));
@@ -72,6 +122,9 @@ console.log('=== 알림 문안 ===');
     '알림만 받고 어디를 볼지 모르면 무용지물이다');
   const b = buildBackfillAlert(diagnoseBackfill({ attempts: 0, successes: 0, remaining: 1500, lastAttemptAgoMs: 9 * HOUR }));
   t('정지 알림은 확인 위치를 알려준다', /cron_runs|CRON_SECRET/.test(b.lines.join(' ')));
+  const c = buildBackfillAlert(ok({ attempts: 60, successes: 58, filled: 0, attemptsSinceStamp: 60, everFilled: true, remaining: 1400 }));
+  t('생산 0건 알림은 크레딧·키를 먼저 보라고 한다',
+    /생산 0건/.test(c.title) && /크레딧/.test(c.lines.join(' ')) && /ANTHROPIC_API_KEY/.test(c.lines.join(' ')));
 })();
 
 console.log('=== 크론 결선 ===');
