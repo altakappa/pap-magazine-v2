@@ -56,6 +56,21 @@ console.log('=== 가드의 계약 (구멍 재발 방지) ===');
   t('실패 알림에 쿨다운', /ALERT_COOLDOWN_HOURS/.test(g));
   t('일시성 실패는 알림 제외 옵션', /silenceTransient/.test(g));
   t('로그는 실패든 성공이든 항상 남긴다', /_logRun\(cronName, ok/.test(g));
+
+  /* ── 2026-07-31 · 기록이 응답보다 먼저 ──────────────────────────
+     실측: backfill-translations 가 HTTP 200 을 돌려주는데 cron_runs 에는
+     아무 기록이 없었다(02:42·02:47 두 번 모두). 같은 시각 1~4초짜리 짧은
+     크론들은 정상 기록됐다 — 차이는 실행 길이다. 응답이 나간 뒤 서버리스
+     인스턴스가 얼면 뒤따르는 INSERT 가 끝나지 못한다.
+     기록이 사라지면 '조용한 실패' 를 감지할 수단 자체가 없어진다. */
+  const logIdx = g.indexOf('await _logRun(cronName, ok');
+  const flushIdx = g.indexOf('flush();');
+  t('json 응답을 붙잡아 뒀다가 보낸다', /res\.json = function/.test(g) && flushIdx > -1,
+    '긴 실행에서 응답 후 INSERT 가 유실됐다');
+  t('기록(_logRun)이 응답 전송(flush)보다 먼저다', logIdx > -1 && flushIdx > logIdx,
+    `_logRun@${logIdx} flush@${flushIdx} — 순서가 뒤집히면 같은 유실이 재발한다`);
+  t('json 을 안 쓰는 크론은 그대로 동작', /typeof res\.json === 'function'/.test(g),
+    'res.send/res.end 를 쓰는 크론까지 건드리면 안 된다');
 })();
 
 console.log('=== AI 호출 크론은 장애 원인까지 알린다 ===');

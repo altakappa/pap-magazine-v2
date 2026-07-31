@@ -128,6 +128,32 @@ function withCronGuard(cronName, handler, opts) {
     const start = Date.now();
     let error = null;
     let ok = true;
+
+    /* 응답을 먼저 보내면 기록이 유실될 수 있다 (2026-07-31 실측).
+     *
+     * backfill-translations 가 HTTP 200 을 돌려주는데 cron_runs 에는 아무
+     * 기록이 없었다(02:42·02:47 두 번 모두). 같은 시각 짧은 크론들은 정상
+     * 기록됐다 — 차이는 실행 길이다. 응답이 나간 뒤 서버리스 인스턴스가
+     * 얼면 뒤따르는 INSERT 가 끝나지 못한다.
+     *
+     * 그래서 json 본문을 붙잡아 뒀다가 **기록을 남긴 뒤 마지막에 보낸다.**
+     * 기록이 남지 않으면 '조용한 실패' 를 감지할 방법 자체가 사라지므로,
+     * 응답이 몇십 ms 늦는 것보다 기록이 확실한 쪽이 낫다.
+     * (res.send/res.end 를 쓰는 크론은 붙잡지 않으니 동작이 그대로다.) */
+    let heldBody = null;
+    let held = false;
+    const realJson = typeof res.json === 'function' ? res.json.bind(res) : null;
+    if (realJson) {
+      res.json = function (body) { heldBody = body; held = true; return res; };
+    }
+    const flush = () => {
+      if (!held || !realJson) return;
+      held = false;
+      try { realJson(heldBody); } catch (e) {
+        console.error('[cronGuard] 응답 전송 실패:', e && e.message);
+      }
+    };
+
     try {
       await handler(req, res);
     } catch (e) {
@@ -151,6 +177,11 @@ function withCronGuard(cronName, handler, opts) {
 
       // 로그는 항상 기록 (일시성 실패도 진단용으로 남긴다)
       await _logRun(cronName, ok, duration, note, error);
+
+      /* 기록이 끝난 뒤에 응답을 내보낸다 — 이 순서가 핵심이다.
+         반대로 하면 긴 실행에서 인스턴스가 얼어 기록이 통째로 사라진다. */
+      flush();
+
       // 실패 알림 (쿨다운 있음). 단, silenceTransient 크론의 일시성 실패는
       // 로그만 남기고 알림하지 않는다 — 재시도로 자연 복구되는 노이즈.
       if (!ok) {

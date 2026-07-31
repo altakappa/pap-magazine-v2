@@ -55,7 +55,7 @@ const { runBackfillBatch, normalizeBatch, LANG_NAMES, KINDS } = require('../_lib
  * 그 대기가 쌓여 상한을 넘겼다. 이제 웨이브 단위로 병렬 처리하고, 웨이브를
  * 시작하기 전에 "이 웨이브가 끝날 시간이 남았는가"를 확인한다.
  * 함수 상한 120s 대비 25s 의 여유 — 응답 직렬화·로그 기록 몫이다. */
-const BUDGET_MS = 95000;
+const BUDGET_MS = 85000;
 
 /* 종류별 호출 타임아웃 — 하나로 묶으면 둘 다 잘못된다.
  *   에디토리얼: 설명 한 줄짜리라 12건도 10초대에 끝난다.
