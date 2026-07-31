@@ -1,11 +1,19 @@
 /**
  * PAP Magazine — 다국어 SEO 번역 백필 크론
- * Route: /api/cron/backfill-translations  (vercel.json crons 에 등록, 5분 주기)
+ * Route: /api/cron/backfill-translations  (vercel.json crons 에 등록, 2분 주기)
  *
- * 주기 (2026-07-31 10분 → 5분): 잔량이 19,600건(에디토리얼 9,499 + 아티클
- * 10,115)이고 목표가 9개 언어 100% 다. 실행당 처리량은 함수 상한(120초)에
- * 묶여 있어 더 못 늘린다 — 남은 손잡이는 실행 횟수뿐이다. 실행이 겹칠 위험은
- * 없다(최장 실행 95초 < 주기 300초).
+ * 주기 (2026-07-31 10분 → 5분 → 2분): 잔량이 19,600건(에디토리얼 9,499 +
+ * 아티클 10,115)이고 목표가 9개 언어 100% 다. 실행당 처리량은 함수 상한
+ * (120초)에 묶여 있어 더 못 늘린다 — 남은 손잡이는 실행 횟수뿐이다.
+ * 실행이 겹칠 위험은 없다(최장 실행 85초 < 주기 120초).
+ *
+ * 2분으로 올린 근거는 추정이 아니라 실측이다. 03:23 실행이 55초에 에디토리얼
+ * 32건을 에러 없이 처리했고(7개 언어 전부), 남은 30초는 아티클 웨이브 진입
+ * 조건을 못 채워 그냥 버려졌다. 즉 실행당 처리량은 이미 한계에 가깝고
+ * 실행 횟수를 늘리는 쪽이 남아 있었다.
+ *
+ * ⚠️ 한도에 닿는지는 note 로 판단한다. 429 가 보이면 주기를 되돌리거나
+ * SEO_TRANSLATE_CONCURRENCY 를 낮춘다 — 여기서 계정 등급을 알 수 없다.
  *
  * 왜 만들었나 (2026-07-21):
  *   그동안 잔량(it/fr/es 약 2,700건)을 예약 작업이 브라우저로 한 번에 20건씩
@@ -65,7 +73,7 @@ const BUDGET_MS = 85000;
  * 실제로 약 24초에 끝났다. 60s 로 잡아두면 "이 웨이브를 시작할 시간이
  * 남았는가" 검사가 과하게 보수적이 되어, 아티클은 실행의 첫 웨이브가
  * 아니면 아예 못 도는 상태가 된다. */
-const CALL_MS = { editorial: 40000, article: 45000 };
+const CALL_MS = { editorial: 40000, article: 40000 };
 
 /* 일본어·중국어는 같은 내용도 출력 토큰이 2~3배다 (2026-07-31 실측).
  *
@@ -178,7 +186,17 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
    * 429 가 나면 기존대로 남은 조합을 다음 실행으로 미룬다. 값을 env 로 뺀 이유:
    * Anthropic 의 분당 출력 토큰 한도는 계정 등급에 따라 다르고 여기서 알 수 없다.
    * 429 가 note 에 찍히면 낮추면 된다 — 추측으로 박아두지 않는다. */
-  const CONCURRENCY = Math.max(1, Math.min(8, Number(process.env.SEO_TRANSLATE_CONCURRENCY || 5)));
+  /* 종류별로 나눈다 (2026-07-31, 첫 정상 실행 실측 후).
+   *   에디토리얼 7 — 설명 한 줄짜리라 가볍다. 언어가 7개이므로 한 웨이브에
+   *     전부 담긴다(5 였을 때는 5+2 로 쪼개져 웨이브 하나를 더 썼다).
+   *   아티클 4 — 본문 번역은 건당 출력 2,000토큰대다. 7개를 동시에 던지면
+   *     한 웨이브에서만 5만 토큰이 넘어가 분당 한도를 건드릴 위험이 크다.
+   * 무거운 쪽만 낮추면 가벼운 쪽 처리량을 희생하지 않는다. */
+  const cfgConc = Number(process.env.SEO_TRANSLATE_CONCURRENCY || 0);
+  const CONCURRENCY_BY_KIND = cfgConc > 0
+    ? { editorial: cfgConc, article: cfgConc }
+    : { editorial: 7, article: 4 };
+  const concOf = (kind) => Math.max(1, Math.min(8, CONCURRENCY_BY_KIND[kind] || 4));
 
   /* 잔량이 0 이라고 보고한 조합은 이번 실행에서 다시 부르지 않는다.
      (it 에디토리얼처럼 이미 100% 인 조합이 링을 돌 때마다 자리를 잡아먹는다) */
@@ -229,8 +247,9 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
     // 커서에서 시작해 같은 kind 끼리 최대 CONCURRENCY 개를 모은다.
     const start = cursor % alive.length;
     const kindOfWave = alive[start].kind;
+    const waveMax = concOf(kindOfWave);
     const picked = [];
-    for (let n = 0; n < alive.length && picked.length < CONCURRENCY; n++) {
+    for (let n = 0; n < alive.length && picked.length < waveMax; n++) {
       const t = alive[(start + n) % alive.length];
       if (t.kind === kindOfWave && !picked.includes(t)) picked.push(t);
     }

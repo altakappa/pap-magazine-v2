@@ -442,6 +442,29 @@ async function testCron() {
     ok('종류별 호출 타임아웃이 예산 안에 들어간다',
       calls_.length >= 2 && calls_.every(c => c + slack < budget),
       '타임아웃: ' + calls_.join(','));
+
+    /* ── 2026-07-31 · 무거운 쪽만 조인다 ────────────────────────────
+       아티클 본문은 건당 출력 2,000토큰대다. 에디토리얼(설명 한 줄)과 같은
+       동시 실행 수로 던지면 한 웨이브에서만 5만 토큰이 넘어가 분당 한도를
+       건드린다. 가벼운 쪽 처리량을 희생하지 않으면서 무거운 쪽만 낮춘다. */
+    // CALL_MS 도 같은 모양이라 이름으로 범위를 좁힌다.
+    const concBlock = (cronSrc.split('CONCURRENCY_BY_KIND')[1] || '');
+    const cKind = (concBlock.match(/\{ editorial: (\d+), article: (\d+) \}/) || []);
+    ok('아티클 동시 실행이 에디토리얼보다 적다',
+      cKind.length === 3 && Number(cKind[2]) < Number(cKind[1]),
+      '동시 실행: ' + cKind.slice(1).join(' / '));
+
+    /* 크론 주기가 최장 실행보다 짧으면 실행이 겹친다. 겹치면 같은 행을
+       두 실행이 동시에 집어 같은 번역을 두 번 하거나, 함수 동시 실행 수만
+       올라간다. 주기를 올릴 때 이 관계를 잊기 쉬워 숫자로 고정한다. */
+    const cron = (vjSrc.crons || []).find(c => /backfill-translations/.test(c.path));
+    const every = (cron && /^\*\/(\d+) /.test(cron.schedule))
+      ? Number(cron.schedule.match(/^\*\/(\d+) /)[1]) * 60000
+      : (cron && /^\d+-\d+\/(\d+) /.test(cron.schedule))
+        ? Number(cron.schedule.match(/^\d+-\d+\/(\d+) /)[1]) * 60000 : 0;
+    ok('크론 주기가 최장 실행보다 길다 (실행 겹침 방지)',
+      every > 0 && every > budget + slack,
+      `주기 ${every}ms · 최장 실행 ${budget + slack}ms`);
     process.env.SEO_TRANSLATE_KINDS = 'editorial';
     process.env.SEO_TRANSLATE_LANGS = 'it,fr,es';
   }
