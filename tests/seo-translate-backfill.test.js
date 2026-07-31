@@ -229,11 +229,35 @@ async function testCron() {
   console.log('\n=== 3개 언어 순차 처리 ===');
   let res = await run();
   ok('it/fr/es 순서로 호출', calls.map(c => c.lang).join(',') === 'it,fr,es');
-  ok('언어당 batch 20', calls.every(c => c.batch === 20));
+  /* 크론의 에디토리얼 배치는 8 이다 — 20 이 아니다 (2026-07-31).
+     조합당 Claude 호출 타임아웃(35초) 안에 20건은 못 끝나고, 타임아웃이 나면
+     이미 번역된 응답까지 통째로 버려진다. 실측: 12시간 31회 실행 전부 ok 인데
+     es/fr/ja 에디토리얼 저장 0건. "20건 × 0회" 보다 "8건 × 매회" 가 크다. */
+  ok('크론 에디토리얼 batch 는 호출 타임아웃 안에 끝날 크기', calls.every(c => c.batch === 8));
   ok('언어당 타임아웃 지정됨', calls.every(c => c.timeoutMs > 0 && c.timeoutMs <= 50000));
-  ok('processed 합산 (20*3)', res.body.processed === 60);
+  ok('processed 합산 (언어별 20 × 3)', res.body.processed === 60);
   ok('remainingTotal 합산 (100*3)', res.body.remainingTotal === 300);
   ok('완주 아니면 allDone 없음', res.body.allDone === undefined);
+
+  /* ── 실행 기록 (2026-07-31 신설) ────────────────────────────────
+     cronGuard 는 res.locals.cronNote 를 cron_runs.note 에 저장한다. 이걸 안
+     채우면 ok/실패와 소요시간만 남는다 — 실제로 12시간 · 31회 실행이 전부
+     ok 로 기록되는 동안 es/fr/ja 저장이 0건인 걸 아무도 몰랐다.
+     "함수가 안 죽었다" 와 "일을 했다" 는 다르다. */
+  console.log('\n=== 실행 결과를 기록에 남긴다 ===');
+  {
+    behavior = (o) => (o.lang === 'fr'
+      ? new Error('Claude API 실패 (500): boom')
+      : { processed: 7, remaining: 42 });
+    const r = mkRes(); calls = [];
+    await handler({ headers: {} }, r);
+    const note = r.locals && r.locals.cronNote;
+    ok('note 를 남긴다', typeof note === 'string' && note.length > 0);
+    ok('저장 건수가 보인다', /it\/edi?t?:7/.test(note) || /it\/.*:7/.test(note), note);
+    ok('실패한 조합이 보인다', /fr\/.*ERR/.test(note), note);
+    ok('잔량이 보인다', /남42/.test(note), note);
+    behavior = () => ({ processed: 20, remaining: 100 });
+  }
 
   console.log('\n=== 완주 감지 ===');
   behavior = () => ({ processed: 0, remaining: 0 });
@@ -247,12 +271,17 @@ async function testCron() {
   ok('503 반환', (await run()).code === 503);
   process.env.ANTHROPIC_API_KEY = savedKey;
 
-  console.log('\n=== 429 → 남은 언어까지 즉시 중단 ===');
+  /* 429 → 그 다음 '웨이브'부터 중단 (2026-07-31, 병렬 처리 도입으로 의미 조정).
+     조합을 3개씩 동시에 던지므로, 같은 웨이브에서 이미 날아간 요청까지
+     되돌릴 수는 없다. 지켜야 할 것은 "429 를 보고도 계속 밀어넣지 않는다" 이고,
+     그건 다음 웨이브를 막는 것으로 충족된다. 같은 웨이브의 동시 실패는
+     저장 없이 error 로 보고될 뿐 rate limit 을 악화시키지 않는다. */
+  console.log('\n=== 429 → 이후 웨이브 중단 ===');
   behavior = (o) => (o.lang === 'it' ? new Error('Claude API 실패 (429): rate limited') : { processed: 20, remaining: 5 });
   res = await run();
-  ok('첫 언어에서 멈춤 (fr/es 호출 안 함)', calls.length === 1);
   ok('rateLimited 플래그', res.body.rateLimited === true);
-  ok('남은 언어 skipped 기록', res.body.results.filter(r => r.skipped === 'rate-limited-earlier').length === 2);
+  ok('429 이후 새 조합을 추가로 밀어넣지 않는다',
+    calls.length <= 3, `429 뒤에도 계속 호출하면 한도만 악화된다 (호출 ${calls.length}회)`);
   ok('잔량 미확정이면 remainingTotal 생략', res.body.remainingTotal === undefined);
 
   console.log('\n=== 일반 에러는 그 언어만 실패 ===');
@@ -269,12 +298,13 @@ async function testCron() {
   ok('유효한 언어만 처리 (fr,es)', calls.map(c => c.lang).join(',') === 'fr,es');
   delete process.env.SEO_TRANSLATE_LANGS;
 
-  process.env.SEO_TRANSLATE_BATCH = '5';
+  process.env.SEO_TRANSLATE_EDITORIAL_BATCH = '5';
   await run();
-  ok('batch 환경변수 반영', calls.every(c => c.batch === 5));
-  process.env.SEO_TRANSLATE_BATCH = '999';
+  ok('에디토리얼 batch 환경변수 반영', calls.every(c => c.batch === 5));
+  process.env.SEO_TRANSLATE_EDITORIAL_BATCH = '999';
   await run();
   ok('batch 상한 20 유지', calls.every(c => c.batch === 20));
+  delete process.env.SEO_TRANSLATE_EDITORIAL_BATCH;
 
   /* ── kind 확장 (2026-07-21) ─────────────────────────────────────
      아티클 본문 번역이 크론에도 들어왔다. 확인할 것:
@@ -304,8 +334,13 @@ async function testCron() {
        ja 가 기본 언어에서 빠져 있었다. 사이트는 9개 언어를 표방하고
        hreflang·사이트맵도 ja 를 내보내는데, 번역 크론만 손대지 않아
        2,450행 중 189건만 내용이 있었다. 껍데기만 있고 알맹이가 없는 상태. */
-    ok('기본 언어에 ja 포함 (빠져 있어 2,261건이 방치됐다)',
-      /SEO_TRANSLATE_LANGS \|\| 'it,fr,es,ja'/.test(cronSrc));
+    /* 2026-07-31 — 선택기의 9개 언어를 전부 기본 대상으로. de 3% · ru 1% ·
+       zh 0.5% 인 채로 사이트는 9개 언어를 표방하고 hreflang 을 내보내고 있었다.
+       기본값에서 빠진 언어는 운영에서 영영 안 돈다(ja 가 그랬다). */
+    const defLangs = (cronSrc.match(/SEO_TRANSLATE_LANGS \|\| '([^']+)'/) || [])[1] || '';
+    ok('기본 언어가 사이트 9개 언어(ko·en 제외 7개)를 모두 덮는다',
+      ['it', 'fr', 'es', 'ja', 'de', 'ru', 'zh'].every(l => defLangs.split(',').includes(l)),
+      '기본값: ' + defLangs);
 
     /* 예산은 함수 상한 안에서 끝나야 한다. cronGuard 는 '끝날 때' 기록하므로,
        상한에 걸려 죽으면 로그조차 없다 — 실측에서 24시간 23/144 회만 기록됐고

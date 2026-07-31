@@ -72,9 +72,16 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
    * 이게 빠져 있어서 일본어는 2,450행 중 189건만 채워져 있었다. 코드가
    * 손댈 생각조차 하지 않는 언어였는데, 사이트는 9개 언어를 표방하고
    * hreflang·사이트맵도 ja 를 내보내고 있었다 — 껍데기만 있고 내용이 없는 상태.
-   * de·ru·zh 는 아직 넣지 않는다. 조합이 늘수록 실행당 예산을 나눠 쓰게 되어
-   * 우선 4개 언어를 끝낸 뒤 확장하는 편이 완주가 빠르다. */
-  const langs = String(process.env.SEO_TRANSLATE_LANGS || 'it,fr,es,ja')
+   *
+   * 2026-07-31 — 선택기의 9개 언어 전부로 확대 (도메니코: "모든 화보의 언어도
+   * 정리"). 그동안 de·ru·zh 를 뺀 이유는 "조합이 늘면 예산을 나눠 쓴다" 였지만,
+   * 위에서 조합을 병렬로 돌리게 바꿔 그 전제가 사라졌다. 실제로 de 3% · ru 1% ·
+   * zh 0.5% 인 채로 사이트는 9개 언어를 표방하고 hreflang 을 내보내는 중이다.
+   *
+   * ⚠️ 환경변수 SEO_TRANSLATE_LANGS 가 설정돼 있으면 이 기본값은 무시된다.
+   * 실제로 그것 때문에 코드가 선언한 언어와 돌아가는 언어가 달랐고, 로그가
+   * 없어 아무도 몰랐다 — env 를 지워 코드를 단일 출처로 두는 편이 안전하다. */
+  const langs = String(process.env.SEO_TRANSLATE_LANGS || 'it,fr,es,ja,de,ru,zh')
     .split(',')
     .map(s => s.trim().toLowerCase())
     .filter(s => LANG_NAMES[s]);
@@ -97,6 +104,18 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
        거기서 잘못된 kind 는 400 으로 거부된다. */
     .filter(k => !KINDS || !!KINDS[k]);
   const CRON_ARTICLE_BATCH = 2;
+  /* 에디토리얼 배치 — 크론에서는 20 이 아니라 8 이다 (2026-07-31).
+   *
+   * 왜: 조합당 Claude 호출 타임아웃은 MAX_CALL_MS(35초)로 잘려 있다. 그런데
+   * 배치 20건은 그 안에 못 끝난다. 타임아웃이 나면 이미 번역된 응답까지
+   * 통째로 버려지고 0건이 저장된다 — 실패가 아니라 '아무 일도 없었음'으로
+   * 보였다. 실측: 12시간 31회 실행 전부 ok, es/fr/ja 에디토리얼 저장 0건
+   * (es 는 7/24, ja 는 7/22 이후 한 건도 안 늘었다). 같은 예산에서
+   * 아티클(배치 2)만 꾸준히 처리되고 있던 이유가 이것이다.
+   *
+   * 배치를 줄이면 실행당 처리량은 줄지만 **버려지지 않는다.** 20건 × 0회보다
+   * 8건 × 매회가 크다. 관리자 수동 실행은 시간 제약이 없어 기본값(20)을 쓴다. */
+  const CRON_EDITORIAL_BATCH = normalizeBatch(process.env.SEO_TRANSLATE_EDITORIAL_BATCH, 8);
 
   const tasks = [];
   for (const lang of langs) for (const kind of kinds) tasks.push({ lang, kind });
@@ -110,25 +129,32 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
   let totalProcessed = 0;
   let rateLimited = false;
 
-  for (const task of ordered) {
+  /* 조합을 CONCURRENCY 개씩 동시에 돌린다 (2026-07-31).
+   *
+   * 왜: 병목은 토큰이 아니라 **벽시계 시간**이다. 조합 하나가 Claude 응답을
+   * 기다리는 25~35초 동안 함수는 그냥 놀고 있었고, 그래서 75초 예산에
+   * 2~3개 조합밖에 못 돌렸다. 9개 언어로 늘리면 한 조합이 차례를 받는 데
+   * 몇 시간이 걸린다 — de·ru·zh 가 3개월째 1% 인 이유가 이것이다.
+   * 서로 다른 (lang,kind) 는 다른 행을 건드리므로 동시에 돌아도 충돌하지 않는다.
+   * 백필 서술문 크론에서 같은 방식으로 처리량이 두 배가 됐다.
+   *
+   * 3 으로 잡은 이유: Anthropic 동시 요청 한도에 여유를 두기 위해서다.
+   * 429 가 나면 기존대로 남은 조합을 다음 실행으로 미룬다. */
+  const CONCURRENCY = Math.max(1, Math.min(6, Number(process.env.SEO_TRANSLATE_CONCURRENCY || 3)));
+
+  async function runTask(task) {
     const { lang, kind } = task;
-    if (rateLimited) {
-      results.push({ lang, kind, skipped: 'rate-limited-earlier' });
-      continue;
-    }
-    if (left() < MIN_PER_LANG_MS) {
-      results.push({ lang, kind, skipped: 'time-budget', leftMs: left() });
-      continue;
-    }
+    if (rateLimited) return { lang, kind, skipped: 'rate-limited-earlier' };
+    if (left() < MIN_PER_LANG_MS) return { lang, kind, skipped: 'time-budget', leftMs: left() };
 
     const timeoutMs = Math.max(15000, Math.min(MAX_CALL_MS, left() - 10000));
     try {
       const r = await runBackfillBatch({
         lang, kind, timeoutMs,
-        batch: kind === 'article' ? CRON_ARTICLE_BATCH : batch,
+        batch: kind === 'article' ? CRON_ARTICLE_BATCH : CRON_EDITORIAL_BATCH,
       });
       totalProcessed += r.processed || 0;
-      results.push(r);
+      return r;
     } catch (err) {
       const msg = String((err && err.message) || err);
       // 429 = Anthropic rate limit → 남은 언어는 다음 실행으로 미룬다.
@@ -136,9 +162,31 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
         rateLimited = true;
       }
       console.error('[cron/backfill-translations]', kind, lang, msg);
-      results.push({ lang, kind, error: msg.slice(0, 300) });
+      return { lang, kind, error: msg.slice(0, 300) };
     }
   }
+
+  for (let i = 0; i < ordered.length; i += CONCURRENCY) {
+    // 예산이 바닥나면 남은 조합은 시도조차 하지 않는다(각 runTask 가 skip 을 반환).
+    const wave = ordered.slice(i, i + CONCURRENCY);
+    const done = await Promise.all(wave.map(runTask));
+    for (const r of done) results.push(r);
+  }
+
+  /* 실행 요약을 cron_runs.note 에 남긴다 (2026-07-31 신설).
+   *
+   * 이게 없어서 12시간 · 31회 실행이 전부 ok 로 기록되는 동안 저장 0건인 걸
+   * 아무도 몰랐다. ok 는 "함수가 안 죽었다" 는 뜻이지 "일을 했다" 가 아니다.
+   * 조합별로 몇 건을 저장했는지·왜 못 했는지를 한 줄로 남겨 다음 실행부터
+   * DB 만 봐도 판단할 수 있게 한다. */
+  res.locals = res.locals || {};
+  res.locals.cronNote = results.map((r) => {
+    const tag = (r.lang || '?') + '/' + (r.kind || '?').slice(0, 3);
+    if (r.error) return tag + ':ERR ' + String(r.error).slice(0, 60);
+    if (r.skipped) return tag + ':skip(' + r.skipped + ')';
+    return tag + ':' + (r.processed || 0)
+      + (typeof r.remaining === 'number' ? '/남' + r.remaining : '');
+  }).join(' · ') || '처리 대상 없음';
 
   // 이번 실행에서 실제로 확인된 언어들의 잔량 합계 (건너뛴 언어는 알 수 없음)
   const measured = results.filter(r => typeof r.remaining === 'number');
