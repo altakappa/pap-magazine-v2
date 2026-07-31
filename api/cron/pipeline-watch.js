@@ -25,11 +25,14 @@ const { withCronGuard } = require('../_lib/cronGuard');
 const { pushAlert } = require('../_lib/pushAlert');
 const { listRecentMedia, isLikelyEditorialCaption, _extractShortcode } = require('../_lib/instagramImport');
 const { diagnoseBackfill, buildBackfillAlert } = require('../_lib/backfillHealth');
+const { judgeTranslateHealth, buildTranslateAlert } = require('../_lib/translateHealth');
 
 const ALERT_KEY = 'ig-to-site-pipeline';
 /* 서술문 백필은 IG 파이프라인과 독립적인 문제라 알림 키를 분리한다 —
    한쪽 쿨다운이 다른 쪽 알림을 삼키면 안 된다. (2026-07-30) */
 const BACKFILL_ALERT_KEY = 'editorial-backfill-health';
+/* 번역도 같은 이유로 키를 분리한다 (2026-07-31). */
+const TRANSLATE_ALERT_KEY = 'translate-backfill-health';
 const SITE = 'https://www.pap-magazine.com';
 
 /* 게시 후 이 시간이 지나도 발행되지 않으면 이상으로 본다.
@@ -173,7 +176,13 @@ module.exports = withCronGuard('pipeline-watch', async function handler(req, res
    * 크론 슬롯(32/40)도 아낀다. 판정은 별도 키로 독립 관리한다. */
   const backfill = await checkBackfill({ dry });
 
-  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill });
+  /* ── 번역 백필 정체 감시 (2026-07-31 추가) ──
+   * es 는 7/24, ja 는 7/22 이후 한 건도 안 늘었는데 아무도 몰랐다. 크론은
+   * 성실히 돌았고 전부 ok 였다 — 저장만 0건이었다. 서술문 백필에서 이미
+   * 배운 교훈("돌았다 ≠ 생산했다")을 번역에는 안 붙여둔 상태였다. */
+  const translate = await checkTranslate({ dry });
+
+  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate });
 });
 
 /** 서술문 생산이 실제로 되고 있는지 보고, 이상하면 텔레그램으로 알린다. */
@@ -230,6 +239,72 @@ async function checkBackfill(opts) {
   } catch (e) {
     // 감시가 죽어도 본 크론(IG 파이프라인 감시)은 계속 돌아야 한다.
     console.error('[pipeline-watch] backfill health 실패', e && e.message);
+    return { error: (e && e.message) || 'unknown' };
+  }
+}
+
+/**
+ * 번역이 실제로 생산되고 있는지 본다. 판정 규칙은 _lib/translateHealth.js.
+ *
+ * 여기서 세는 것은 '크론이 돌았는가' 가 아니라 **'행이 실제로 채워졌는가'** 다.
+ * seo_translations 의 최근 갱신분 중 내용 길이가 기준을 넘는 것만 센다 —
+ * 빈 껍데기 행이 '완료'로 잡혀 2,450건이 방치됐던 전례가 있다.
+ */
+async function checkTranslate(opts) {
+  const WINDOW_H = Number(process.env.TRANSLATE_WINDOW_HOURS || 3);
+  try {
+    const since = new Date(Date.now() - WINDOW_H * 3600000).toISOString();
+
+    const { data, error } = await supabaseAdmin.rpc('translate_health_stats', { window_hours: WINDOW_H });
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) return { skipped: 'no stats' };
+
+    const { count: runs } = await supabaseAdmin
+      .from('cron_runs').select('*', { count: 'exact', head: true })
+      .eq('cron_name', 'backfill-translations').gte('ran_at', since);
+
+    const d = judgeTranslateHealth({
+      remaining: Number(row.remaining) || 0,
+      producedInWindow: Number(row.produced) || 0,
+      windowHours: WINDOW_H,
+      runsInWindow: typeof runs === 'number' ? runs : null,
+    });
+    if (opts && opts.dry) return { dry: true, ...d };
+
+    const { data: st } = await supabaseAdmin.from('ops_alert_state')
+      .select('last_alert_at, last_payload').eq('key', TRANSLATE_ALERT_KEY).maybeSingle();
+    const lastAt = st && st.last_alert_at ? Date.parse(st.last_alert_at) : 0;
+    const wasBroken = !!(st && st.last_payload && st.last_payload.broken);
+    const COOLDOWN_H = Number(process.env.TRANSLATE_ALERT_COOLDOWN_H || 6);
+    const broken = d.status === 'stalled';
+
+    let alerted = false;
+    if (broken && Date.now() - lastAt > COOLDOWN_H * 3600000) {
+      await pushAlert({ ...buildTranslateAlert(d, SITE), personalOnly: true });
+      alerted = true;
+    } else if (!broken && wasBroken) {
+      // 복구·완주는 쿨다운 무시 — 늦게 오면 쓸모가 없다.
+      await pushAlert({
+        personalOnly: true,
+        title: d.status === 'done' ? '✅ 번역 백필 완주 — 9개 언어 100%' : '✅ 번역 백필 재개',
+        lines: [d.reason],
+        url: `${SITE}/magazine`, urlLabel: '매거진',
+      });
+      alerted = true;
+    }
+    if (alerted || wasBroken !== broken) {
+      await supabaseAdmin.from('ops_alert_state').upsert({
+        key: TRANSLATE_ALERT_KEY,
+        last_alert_at: alerted ? new Date().toISOString() : (st && st.last_alert_at) || null,
+        last_payload: { broken, status: d.status, remaining: d.remaining, perHour: d.perHour },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'key' });
+    }
+    return { ...d, alerted };
+  } catch (e) {
+    // 감시가 죽어도 본 크론은 계속 돌아야 한다.
+    console.error('[pipeline-watch] translate health 실패', e && e.message);
     return { error: (e && e.message) || 'unknown' };
   }
 }
