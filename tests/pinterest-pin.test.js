@@ -18,7 +18,10 @@ ok('실행당 핀 상한 (스팸 판정 방지)', /PINS_PER_RUN = Math\.max\(1, 
 ok('중복 방지 로그 테이블 사용', src.includes('pinterest_pin_log'));
 ok('발행 에디토리얼만 대상', src.includes("eq('status', 'published')"));
 ok('공식 v5 API 사용', src.includes('api.pinterest.com/v5/pins'));
-ok('원문 링크 부착', src.includes("SITE + '/' + e.slug"));
+// 2026-07-31: '/slug' 는 '/editorial/slug' 로 301 된다. 핀 링크는 리디렉션 없는
+// 최종 URL 이어야 한다 (sync-pinterest 와 동일 규칙).
+ok('원문 링크 부착 (리디렉션 없는 최종 URL)', src.includes("SITE + '/editorial/' + encodeURIComponent(e.slug)"));
+ok('토큰 401 시 리프레시로 자동 갱신 후 1회 재시도', src.includes('refreshAccessToken') && src.includes("grant_type: 'refresh_token'"));
 // 2026-07-31: pinterest-pin 크론 은퇴 — sync-pinterest 와 서로 다른 추적 테이블을
 // 봐서 같은 에디토리얼을 이중 게시하는 충돌 때문. 핸들러는 수동 트리거용으로 남기되
 // 자동 스케줄에서는 빠져야 한다. sync-pinterest 만 자동 발행 담당.

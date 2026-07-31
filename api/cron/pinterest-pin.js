@@ -23,22 +23,65 @@ function cleanCred(v) {
   return String(v || '').replace(/[\r\n\t]/g, '').trim().replace(/^["']+|["']+$/g, '').trim();
 }
 
-async function createPin({ token, boardId, title, description, link, imageUrl }) {
-  const r = await fetch('https://api.pinterest.com/v5/pins', {
+/**
+ * 액세스 토큰은 30일이면 만료된다. 만료 때마다 도메니코가 OAuth 를 다시 도는 건
+ * 지속 불가능하므로, 401 이 나면 리프레시 토큰으로 새 토큰을 받아 1회 재시도한다.
+ * (리프레시 토큰은 60일 — 그건 만료 전에 수동 갱신 필요. 볼트에 기록.)
+ * 새 토큰은 이 인스턴스 메모리에만 둔다. Vercel 환경변수는 코드가 못 바꾸고,
+ * 비밀값 입력은 도메니코 직접이라는 원칙도 그대로 지킨다.
+ */
+let _memToken = null;
+
+async function refreshAccessToken() {
+  const appId = cleanCred(process.env.PINTEREST_APP_ID) || '1587332';
+  const secret = cleanCred(process.env.PINTEREST_APP_SECRET);
+  const refresh = cleanCred(process.env.PINTEREST_REFRESH_TOKEN);
+  if (!secret || !refresh) return null;
+  const r = await fetch('https://api.pinterest.com/v5/oauth/token', {
     method: 'POST',
-    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      board_id: boardId,
-      title: String(title || '').slice(0, 100),
-      description: String(description || '').slice(0, 780),
-      link,
-      media_source: { source_type: 'image_url', url: imageUrl },
-    }),
+    headers: {
+      'Authorization': 'Basic ' + Buffer.from(appId + ':' + secret).toString('base64'),
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refresh }).toString(),
     signal: AbortSignal.timeout(15000),
   });
   const body = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error('pinterest ' + r.status + ' ' + JSON.stringify(body).slice(0, 140));
-  return body && body.id;
+  if (!r.ok || !body.access_token) {
+    console.warn('[pinterest-pin] 토큰 갱신 실패:', r.status, JSON.stringify(body).slice(0, 140));
+    return null;
+  }
+  _memToken = body.access_token;
+  console.log('[pinterest-pin] 액세스 토큰 갱신 성공 (메모리)');
+  return _memToken;
+}
+
+async function postPin(token, payload) {
+  const r = await fetch('https://api.pinterest.com/v5/pins', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(15000),
+  });
+  const body = await r.json().catch(() => ({}));
+  return { status: r.status, ok: r.ok, body };
+}
+
+async function createPin({ token, boardId, title, description, link, imageUrl }) {
+  const payload = {
+    board_id: boardId,
+    title: String(title || '').slice(0, 100),
+    description: String(description || '').slice(0, 780),
+    link,
+    media_source: { source_type: 'image_url', url: imageUrl },
+  };
+  let res = await postPin(_memToken || token, payload);
+  if (res.status === 401) {
+    const fresh = await refreshAccessToken();
+    if (fresh) res = await postPin(fresh, payload);
+  }
+  if (!res.ok) throw new Error('pinterest ' + res.status + ' ' + JSON.stringify(res.body).slice(0, 140));
+  return res.body && res.body.id;
 }
 
 module.exports = withCronGuard('pinterest-pin', async function handler(req, res) {
@@ -77,7 +120,8 @@ module.exports = withCronGuard('pinterest-pin', async function handler(req, res)
 
     const results = [];
     for (const e of todo) {
-      const link = SITE + '/' + e.slug;
+      /* 2026-07-31: '/slug' 는 '/editorial/slug' 로 301 된다 — 핀 링크는 최종 URL 로. */
+      const link = SITE + '/editorial/' + encodeURIComponent(e.slug);
       const desc = [e.title, e.issue ? 'PAP MAGAZINE · ' + e.issue : 'PAP MAGAZINE',
         'Fashion editorial — full story:', link].filter(Boolean).join('\n');
       try {
