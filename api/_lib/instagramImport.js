@@ -144,6 +144,26 @@ async function fetchMediaPage(opts){
   return { rows, nextCursor };
 }
 
+// media id 로 곧장 단건 조회한다.
+//
+// fetchInstagramPost() 는 shortcode → id 변환을 위해 "최근 50개"를 훑는데,
+// 레거시 회수(2019~2023 화보)는 그 범위 밖이라 항상 실패한다. 스캔이 이미
+// media id 를 확보해 뒀으므로 검색 없이 바로 가져온다.
+// 캐러셀이면 자식까지 펼쳐 정규화된 형태로 돌려준다.
+async function fetchMediaById(mediaId, opts){
+  const { token } = _creds(opts);
+  const fields = 'id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username';
+  const url = `${_IG_API}/${mediaId}?fields=${encodeURIComponent(fields)}&access_token=${token}`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+  if (!res.ok){
+    const body = await res.text().catch(() => '');
+    throw new Error('Graph API media 조회 실패 (' + res.status + '): ' + body.slice(0, 200));
+  }
+  const m = await res.json();
+  await hydrateChildren(m, opts);
+  return _normalizeMedia(m);
+}
+
 // 단일 게시물 fetch.
 //   shortcode 또는 media id 입력 → Graph API로 미디어 정보 가져옴.
 //   Note: oEmbed는 Facebook이 2021년부터 앱 검수를 요구해서 일반 앱은 사용 불가.
@@ -507,6 +527,7 @@ module.exports = {
   listMediaPaged,
   fetchMediaPage,
   fetchInstagramPost,
+  fetchMediaById,
   generateArticleFromPost,
   buildArticleRow,
   archiveImagesToStorage,
