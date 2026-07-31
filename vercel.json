@@ -113,6 +113,10 @@
       "schedule": "3-53/10 * * * *"
     },
     {
+      "path": "/api/cron/legacy-image-recover",
+      "schedule": "1-51/10 * * * *"
+    },
+    {
       "path": "/api/cron/image-link-check",
       "schedule": "30 0 * * 1"
     },

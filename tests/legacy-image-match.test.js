@@ -81,7 +81,9 @@ console.log('=== 안전 규약 (조사와 적용의 분리) ===');
 
 console.log('=== 적용 단계 안전 규약 (2026-07-31 도메니코 승인) ===');
 (function () {
-  const src = fs.readFileSync(path.join(__dirname, '..', 'api/admin/legacy-image-apply.js'), 'utf8');
+  /* 진입점은 둘(관리자 수동 · 크론), 로직은 하나 — 안전 규약은 _lib 에서 본다.
+     복붙해두면 한쪽만 고쳐지는 사고가 난다(번역 백필에서 이미 겪은 계열). */
+  const src = fs.readFileSync(path.join(__dirname, '..', 'api/_lib/legacyImageApply.js'), 'utf8');
 
   t('matched 만 적용한다',
     /\.eq\('status',\s*'matched'\)/.test(src),
@@ -103,9 +105,31 @@ console.log('=== 적용 단계 안전 규약 (2026-07-31 도메니코 승인) ==
     'fetchInstagramPost 는 최근 50개만 훑어 2019~2023 화보를 절대 못 찾는다');
 
   t('적용 이력을 남긴다', /status:\s*'applied'/.test(src) && /applied_at/.test(src));
-  t('관리자·크론 인증', /requireAdmin/.test(src) && /CRON_SECRET/.test(src));
-  t('시간 예산 가드', /BUDGET_MS/.test(src) && /Date\.now\(\) - started > BUDGET_MS/.test(src));
+  t('시간 예산 가드', /budgetMs/.test(src) && /Date\.now\(\) - started > budgetMs/.test(src));
   t('dry 모드로 먼저 볼 수 있다', /dry/.test(src));
+
+  /* ── 2026-07-31 · 자동화 (도메니코 "자동화해줘") ────────────────────
+     사람이 엔드포인트를 반복 호출하는 방식은 그 사람이 자리를 비우면 멈춘다.
+     오늘 하루 종일 고친 문제가 정확히 그런 종류였다. */
+  const cron = fs.readFileSync(path.join(__dirname, '..', 'api/cron/legacy-image-recover.js'), 'utf8');
+  const admin = fs.readFileSync(path.join(__dirname, '..', 'api/admin/legacy-image-apply.js'), 'utf8');
+
+  t('크론이 존재하고 실행기록·실패알림에 감싸여 있다',
+    /module\.exports\s*=\s*withCronGuard\(/.test(cron));
+  t('크론이 CRON_SECRET 로 보호된다', /CRON_SECRET/.test(cron));
+  t('크론이 무엇을 했는지 기록에 남긴다', /cronNote/.test(cron),
+    "'ok' 는 함수가 안 죽었다는 뜻이지 일을 했다는 뜻이 아니다");
+
+  t('두 진입점이 같은 로직을 쓴다 (복붙 금지)',
+    /require\('\.\.\/_lib\/legacyImageApply'\)/.test(cron)
+    && /require\('\.\.\/_lib\/legacyImageApply'\)/.test(admin),
+    '복붙해두면 한쪽만 고쳐지는 사고가 난다');
+  t('진입점에는 적용 로직이 없다',
+    !/from\('editorials'\)[\s\S]{0,80}\.update\(/.test(cron)
+    && !/from\('editorials'\)[\s\S]{0,80}\.update\(/.test(admin));
+  t('관리자 진입점 인증 유지', /requireAdmin/.test(admin) && /CRON_SECRET/.test(admin));
+  t('관리자 응답에 원문 에러를 싣지 않는다 (감사 A-3)',
+    !/detail:\s*(e|err)\.message/.test(admin) && /code:/.test(admin));
 
   const ig = fs.readFileSync(path.join(__dirname, '..', 'api/_lib/instagramImport.js'), 'utf8');
   t('fetchMediaById 가 export 되어 있다', /^\s*fetchMediaById,$/m.test(ig));
