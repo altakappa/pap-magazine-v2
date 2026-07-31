@@ -100,6 +100,34 @@ const KINDS = {
   },
 };
 
+/**
+ * 응답 텍스트에서 JSON 배열만 꺼낸다 (2026-07-31 신설).
+ *
+ * 왜 필요했나 — 라이브 실측:
+ *   es/edi:0 ERR 번역 응답 JSON 파싱 실패: ```json\n[{"i":0,"title":"The Mod…
+ *   de/edi:0 ERR 번역 응답 JSON 파싱 실패: ```json\n[{"i":0,"title":"Form Do…
+ *   같은 실행에서 fr·ja 는 통과했다. 프롬프트로 "코드 펜스 쓰지 마라"고
+ *   지시해도 모델은 가끔 붙인다 — 그때마다 **배치 전체가 버려진다.**
+ *   "번역은 다 됐는데 저장은 0건" 이라는, 오늘 하루 반복해서 만난 그 패턴이다.
+ *
+ * 그래서 앞뒤 장식(코드 펜스·서두 설명문·후미 문구)을 무시하고 첫 '[' 부터
+ * 마지막 ']' 까지만 취한다. 정규식으로 특정 형태를 좇으면 다음에 또 다른
+ * 형태가 나온다 — 형태를 열거하지 말고 '배열의 경계' 라는 사실만 쓴다.
+ */
+function parseJsonArray(text) {
+  const s = String(text || '');
+  const start = s.indexOf('[');
+  const end = s.lastIndexOf(']');
+  if (start === -1 || end <= start) {
+    throw new Error('번역 응답에서 JSON 배열을 찾지 못함: ' + s.slice(0, 150));
+  }
+  try {
+    return JSON.parse(s.slice(start, end + 1));
+  } catch (e) {
+    throw new Error('번역 응답 JSON 파싱 실패: ' + s.slice(0, 150));
+  }
+}
+
 /** 배치 크기 정규화 — 1~20. Claude 1콜 max_tokens(4000) 안에 안전하게 들어가는 상한. */
 function normalizeBatch(v, fallback) {
   const n = parseInt(v, 10);
@@ -275,12 +303,14 @@ async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 9
   }
   const j = await apiRes.json();
   const text = (j.content && j.content[0] && j.content[0].text) || '';
-  let parsed;
-  try {
-    parsed = JSON.parse(text.replace(/^```json?\s*/i, '').replace(/```\s*$/, ''));
-  } catch (e) {
-    throw new Error('번역 응답 JSON 파싱 실패: ' + text.slice(0, 150));
+
+  /* 응답이 잘린 건지 포맷이 다른 건지를 구분한다 — 원인이 다르면 대응이 다르다.
+     잘렸다면 배치를 줄여야 하고, 포맷 문제라면 파싱을 관대하게 하면 된다. */
+  if (j.stop_reason === 'max_tokens') {
+    throw new Error('번역 응답이 max_tokens 에서 잘림 (배치 ' + items.length + '건) — 배치를 줄여야 한다.');
   }
+
+  const parsed = parseJsonArray(text);
   if (!Array.isArray(parsed)) throw new Error('번역 응답이 배열이 아님.');
 
   /* 4) 저장 */
@@ -318,4 +348,4 @@ async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 9
   };
 }
 
-module.exports = { runBackfillBatch, normalizeBatch, LANG_NAMES, KINDS };
+module.exports = { runBackfillBatch, normalizeBatch, parseJsonArray, LANG_NAMES, KINDS };

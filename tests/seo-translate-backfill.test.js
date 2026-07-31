@@ -74,7 +74,38 @@ async function testHelper() {
   ok('정상값 통과', nb('15', 20) === 15);
   ok('숫자 아니면 기본값', nb('abc', 20) === 20);
 
-  console.log('\n=== 입력 검증 ===');
+  /* ── 2026-07-31 · 모델 응답 파싱 ────────────────────────────────────
+   라이브 실측:
+     es/edi:0 ERR 번역 응답 JSON 파싱 실패: ```json\n[{"i":0,"title":"The Mod…
+     de/edi:0 ERR 번역 응답 JSON 파싱 실패: ```json\n[{"i":0,"title":"Form Do…
+   같은 실행에서 fr·ja 는 통과했다. 프롬프트로 "코드 펜스 금지" 를 지시해도
+   모델은 가끔 붙이고, 그때마다 배치 전체가 버려진다 — 번역은 다 됐는데
+   저장은 0건. 형태를 열거하지 말고 '배열의 경계'만 쓰는지 확인한다. */
+console.log('\n=== 모델이 뭘 덧붙여도 배열만 꺼낸다 ===');
+{
+  const P = helper.parseJsonArray;
+  const want = [{ i: 0, title: 'A', description: 'B' }];
+  const eq = (v) => JSON.stringify(v) === JSON.stringify(want);
+  const body = '[{"i":0,"title":"A","description":"B"}]';
+
+  ok('맨몸 JSON', eq(P(body)));
+  ok('```json 코드 펜스 (라이브에서 실제로 터진 형태)', eq(P('```json\n' + body + '\n```')));
+  ok('언어 없는 코드 펜스', eq(P('```\n' + body + '\n```')));
+  ok('서두 설명문이 붙어도', eq(P('Here is the translation:\n' + body)));
+  ok('후미 문구가 붙어도', eq(P(body + '\n\nLet me know if you need changes.')));
+  ok('앞뒤 공백·개행', eq(P('\n\n  ' + body + '  \n')));
+
+  let threw = false;
+  try { P('죄송합니다, 번역할 수 없습니다.'); } catch (_) { threw = true; }
+  ok('배열이 아예 없으면 조용히 넘어가지 않는다', threw,
+    '빈 배열로 처리하면 그 배치가 영구히 완료로 잡힌다');
+
+  threw = false;
+  try { P('[{"i":0,"title":"잘린'); } catch (_) { threw = true; }
+  ok('잘린 응답은 실패로 (부분 저장 금지)', threw);
+}
+
+console.log('\n=== 입력 검증 ===');
   /* 2026-07-21 — de 는 이제 지원 언어다(9개 언어 확장). 진짜 미지원 코드로 검사한다. */
   try { await helper.runBackfillBatch({ lang: 'xx' }); ok('지원 안 하는 lang 거부', false); }
   catch (e) { ok('지원 안 하는 lang → 400', e.statusCode === 400); }
