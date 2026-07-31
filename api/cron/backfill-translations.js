@@ -1,6 +1,11 @@
 /**
  * PAP Magazine — 다국어 SEO 번역 백필 크론
- * Route: /api/cron/backfill-translations  (vercel.json crons 에 등록, 10분 주기)
+ * Route: /api/cron/backfill-translations  (vercel.json crons 에 등록, 5분 주기)
+ *
+ * 주기 (2026-07-31 10분 → 5분): 잔량이 19,600건(에디토리얼 9,499 + 아티클
+ * 10,115)이고 목표가 9개 언어 100% 다. 실행당 처리량은 함수 상한(120초)에
+ * 묶여 있어 더 못 늘린다 — 남은 손잡이는 실행 횟수뿐이다. 실행이 겹칠 위험은
+ * 없다(최장 실행 95초 < 주기 300초).
  *
  * 왜 만들었나 (2026-07-21):
  *   그동안 잔량(it/fr/es 약 2,700건)을 예약 작업이 브라우저로 한 번에 20건씩
@@ -44,11 +49,23 @@ const { runBackfillBatch, normalizeBatch, LANG_NAMES, KINDS } = require('../_lib
  *
  * 실행당 처리량을 줄이더라도 **완주하는 실행 수**를 늘리는 쪽이 총량이 크다.
  * 105s × 23회 = 2,415s 대비, 75s × (완주율 개선) 쪽이 낫다는 판단. */
-const BUDGET_MS = 75000;
-/* 한 조합을 시도하려면 최소 이만큼은 남아 있어야 한다. */
-const MIN_PER_LANG_MS = 25000;
-/* 조합당 Claude 호출 타임아웃 상한. 예산을 낮췄으니 함께 낮춘다. */
-const MAX_CALL_MS = 35000;
+/* 2026-07-31 — 75s → 95s 로 재상향.
+ * 낮췄던 이유(완주율)는 유효했지만, 완주를 깨던 진짜 원인은 예산이 아니라
+ * 순차 처리였다. 조합 하나가 Claude 를 기다리는 30~60초 동안 함수가 놀았고,
+ * 그 대기가 쌓여 상한을 넘겼다. 이제 웨이브 단위로 병렬 처리하고, 웨이브를
+ * 시작하기 전에 "이 웨이브가 끝날 시간이 남았는가"를 확인한다.
+ * 함수 상한 120s 대비 25s 의 여유 — 응답 직렬화·로그 기록 몫이다. */
+const BUDGET_MS = 95000;
+
+/* 종류별 호출 타임아웃 — 하나로 묶으면 둘 다 잘못된다.
+ *   에디토리얼: 설명 한 줄짜리라 12건도 10초대에 끝난다.
+ *   아티클     : 본문 평균 1,228자 → 2건이면 출력 4,000토큰, 40~60초.
+ * 35초 하나로 묶여 있어서 아티클이 아슬아슬하게 잘리고 있었다. */
+const CALL_MS = { editorial: 30000, article: 60000 };
+/* 웨이브를 시작하려면 그 웨이브의 타임아웃 + 이만큼의 여유가 남아 있어야 한다.
+ * (응답 저장·직렬화 몫. 이게 없으면 마지막 웨이브가 함수 상한을 넘겨 죽고,
+ *  죽으면 cronGuard 기록조차 안 남아 무슨 일이 있었는지 알 수 없다.) */
+const WAVE_SLACK_MS = 12000;
 
 module.exports = withCronGuard('backfill-translations', async function handler(req, res) {
   // Vercel cron 보호 (다른 크론과 동일 규약)
@@ -138,26 +155,33 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
    * 서로 다른 (lang,kind) 는 다른 행을 건드리므로 동시에 돌아도 충돌하지 않는다.
    * 백필 서술문 크론에서 같은 방식으로 처리량이 두 배가 됐다.
    *
-   * 3 으로 잡은 이유: Anthropic 동시 요청 한도에 여유를 두기 위해서다.
-   * 429 가 나면 기존대로 남은 조합을 다음 실행으로 미룬다. */
-  const CONCURRENCY = Math.max(1, Math.min(6, Number(process.env.SEO_TRANSLATE_CONCURRENCY || 3)));
+   * 429 가 나면 기존대로 남은 조합을 다음 실행으로 미룬다. 값을 env 로 뺀 이유:
+   * Anthropic 의 분당 출력 토큰 한도는 계정 등급에 따라 다르고 여기서 알 수 없다.
+   * 429 가 note 에 찍히면 낮추면 된다 — 추측으로 박아두지 않는다. */
+  const CONCURRENCY = Math.max(1, Math.min(8, Number(process.env.SEO_TRANSLATE_CONCURRENCY || 5)));
+
+  /* 잔량이 0 이라고 보고한 조합은 이번 실행에서 다시 부르지 않는다.
+     (it 에디토리얼처럼 이미 100% 인 조합이 링을 돌 때마다 자리를 잡아먹는다) */
+  const finished = new Set();
+  const key = (t) => t.lang + '|' + t.kind;
 
   async function runTask(task) {
     const { lang, kind } = task;
-    if (rateLimited) return { lang, kind, skipped: 'rate-limited-earlier' };
-    if (left() < MIN_PER_LANG_MS) return { lang, kind, skipped: 'time-budget', leftMs: left() };
-
-    const timeoutMs = Math.max(15000, Math.min(MAX_CALL_MS, left() - 10000));
     try {
       const r = await runBackfillBatch({
-        lang, kind, timeoutMs,
+        lang, kind,
+        timeoutMs: CALL_MS[kind] || CALL_MS.editorial,
         batch: kind === 'article' ? CRON_ARTICLE_BATCH : CRON_EDITORIAL_BATCH,
       });
       totalProcessed += r.processed || 0;
-      return r;
+      if (r.remaining === 0) finished.add(key(task));
+      /* lang·kind 는 호출자가 아는 사실이다 — 반환값이 되돌려주기를 기대하지
+         않는다. 하나라도 빠지면 아래 집계에서 조합을 못 찾아 잔량이 통째로
+         'undefined' 가 된다(실제로 테스트가 이걸 잡았다). */
+      return Object.assign({}, r, { lang, kind });
     } catch (err) {
       const msg = String((err && err.message) || err);
-      // 429 = Anthropic rate limit → 남은 언어는 다음 실행으로 미룬다.
+      // 429 = Anthropic rate limit → 남은 조합은 다음 실행으로 미룬다.
       if (/Claude API 실패 \(429/.test(msg) || /rate.?limit/i.test(msg)) {
         rateLimited = true;
       }
@@ -166,12 +190,42 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
     }
   }
 
-  for (let i = 0; i < ordered.length; i += CONCURRENCY) {
-    // 예산이 바닥나면 남은 조합은 시도조차 하지 않는다(각 runTask 가 skip 을 반환).
-    const wave = ordered.slice(i, i + CONCURRENCY);
-    const done = await Promise.all(wave.map(runTask));
+  /* 링을 예산이 다할 때까지 **반복해서** 돈다 (2026-07-31).
+   *
+   * 전에는 조합 목록을 한 바퀴만 돌고 끝냈다. 조합이 14개(7언어 × 2종류)라
+   * 한 바퀴면 예산이 남아도 함수가 그냥 종료됐다 — 특히 에디토리얼은 호출이
+   * 10초대라 예산의 대부분이 그냥 버려졌다. 잔량이 19,000건이 넘는 상황에서
+   * 남은 시간을 안 쓰는 건 그만큼 완주를 미루는 것이다.
+   *
+   * 웨이브는 **종류별로 묶는다** — 타임아웃이 다르기 때문이다. 섞으면 빠른
+   * 에디토리얼이 느린 아티클을 기다리며 예산을 같이 태운다. */
+  const MAX_WAVES = 40;   // 무한 루프 방지 (정상적으로는 예산이 먼저 끝난다)
+  let cursor = 0;
+  for (let wave = 0; wave < MAX_WAVES && !rateLimited; wave++) {
+    // 아직 남은 조합만 후보로. 한 바퀴 다 끝났으면 더 할 일이 없다.
+    const alive = ordered.filter(t => !finished.has(key(t)));
+    if (!alive.length) break;
+
+    // 커서에서 시작해 같은 kind 끼리 최대 CONCURRENCY 개를 모은다.
+    const start = cursor % alive.length;
+    const kindOfWave = alive[start].kind;
+    const picked = [];
+    for (let n = 0; n < alive.length && picked.length < CONCURRENCY; n++) {
+      const t = alive[(start + n) % alive.length];
+      if (t.kind === kindOfWave && !picked.includes(t)) picked.push(t);
+    }
+    cursor = start + picked.length;
+
+    const need = (CALL_MS[kindOfWave] || CALL_MS.editorial) + WAVE_SLACK_MS;
+    if (left() < need) {
+      results.push({ kind: kindOfWave, skipped: 'time-budget', leftMs: left(), needMs: need });
+      break;
+    }
+
+    const done = await Promise.all(picked.map(runTask));
     for (const r of done) results.push(r);
   }
+  if (rateLimited) results.push({ skipped: 'rate-limited-stop' });
 
   /* 실행 요약을 cron_runs.note 에 남긴다 (2026-07-31 신설).
    *
@@ -180,18 +234,34 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
    * 조합별로 몇 건을 저장했는지·왜 못 했는지를 한 줄로 남겨 다음 실행부터
    * DB 만 봐도 판단할 수 있게 한다. */
   res.locals = res.locals || {};
-  res.locals.cronNote = results.map((r) => {
-    const tag = (r.lang || '?') + '/' + (r.kind || '?').slice(0, 3);
-    if (r.error) return tag + ':ERR ' + String(r.error).slice(0, 60);
-    if (r.skipped) return tag + ':skip(' + r.skipped + ')';
-    return tag + ':' + (r.processed || 0)
-      + (typeof r.remaining === 'number' ? '/남' + r.remaining : '');
-  }).join(' · ') || '처리 대상 없음';
+  /* 링을 여러 바퀴 도므로 같은 조합이 여러 번 나온다 — 조합 단위로 합쳐야
+     500자 안에 들어가고 읽을 수 있다. 잔량은 마지막 값이 최신이다. */
+  const perCombo = new Map();
+  const notes = [];
+  for (const r of results) {
+    if (!r.lang) { if (r.skipped) notes.push('skip(' + r.skipped + ')'); continue; }
+    const k = r.lang + '/' + String(r.kind || '?').slice(0, 3);
+    const cur = perCombo.get(k) || { processed: 0, remaining: null, err: null };
+    cur.processed += r.processed || 0;
+    if (typeof r.remaining === 'number') cur.remaining = r.remaining;
+    if (r.error && !cur.err) cur.err = String(r.error).slice(0, 50);
+    perCombo.set(k, cur);
+  }
+  res.locals.cronNote = [
+    ...Array.from(perCombo.entries()).map(([k, v]) =>
+      k + ':' + v.processed
+      + (v.remaining === null ? '' : '/남' + v.remaining)
+      + (v.err ? ' ERR ' + v.err : '')),
+    ...notes,
+  ].join(' · ') || '처리 대상 없음';
 
-  // 이번 실행에서 실제로 확인된 언어들의 잔량 합계 (건너뛴 언어는 알 수 없음)
-  const measured = results.filter(r => typeof r.remaining === 'number');
-  const remainingTotal = measured.reduce((a, r) => a + r.remaining, 0);
-  const allMeasured = measured.length === ordered.length;
+  /* 조합별 최신 잔량 합계. 전 조합을 한 번이라도 확인했을 때만 '완주' 판정한다 —
+     확인 못 한 조합이 있으면 합계는 실제보다 작아 착시가 된다. */
+  const remainingTotal = Array.from(perCombo.values())
+    .reduce((a, v) => a + (v.remaining || 0), 0);
+  const allMeasured = ordered.every(t =>
+    (perCombo.get(t.lang + '/' + String(t.kind).slice(0, 3)) || {}).remaining !== null
+    && perCombo.has(t.lang + '/' + String(t.kind).slice(0, 3)));
 
   return res.status(200).json({
     ok: true,

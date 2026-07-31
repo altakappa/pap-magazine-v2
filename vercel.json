@@ -106,7 +106,7 @@
     },
     {
       "path": "/api/cron/backfill-translations",
-      "schedule": "6-56/10 * * * *"
+      "schedule": "2-57/5 * * * *"
     },
     {
       "path": "/api/cron/backfill-faq",

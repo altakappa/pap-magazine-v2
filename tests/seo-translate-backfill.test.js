@@ -226,17 +226,27 @@ async function testCron() {
   ok('맞는 시크릿 200', (await run({ authorization: 'Bearer sekret' })).code === 200);
   delete process.env.CRON_SECRET;
 
-  console.log('\n=== 3개 언어 순차 처리 ===');
+  /* 2026-07-31 — 링을 예산이 다할 때까지 반복해서 돈다.
+     전에는 조합 목록을 한 바퀴만 돌고 끝나서, 예산이 남아도 함수가 그냥
+     종료됐다(에디토리얼 호출은 10초대라 예산 대부분이 버려졌다).
+     따라서 "각 언어가 정확히 1회 호출된다" 는 더 이상 계약이 아니다.
+     계약은 **모든 언어가 빠짐없이 다뤄진다** 이다. */
+  console.log('\n=== 모든 언어를 다룬다 (예산 안에서 반복) ===');
   let res = await run();
-  ok('it/fr/es 순서로 호출', calls.map(c => c.lang).join(',') === 'it,fr,es');
+  ok('it/fr/es 전부 호출됨',
+    ['it', 'fr', 'es'].every(l => calls.some(c => c.lang === l)),
+    calls.map(c => c.lang).join(','));
+  ok('한 언어만 독식하지 않는다', new Set(calls.map(c => c.lang)).size === 3);
   /* 크론의 에디토리얼 배치는 8 이다 — 20 이 아니다 (2026-07-31).
      조합당 Claude 호출 타임아웃(35초) 안에 20건은 못 끝나고, 타임아웃이 나면
      이미 번역된 응답까지 통째로 버려진다. 실측: 12시간 31회 실행 전부 ok 인데
      es/fr/ja 에디토리얼 저장 0건. "20건 × 0회" 보다 "8건 × 매회" 가 크다. */
   ok('크론 에디토리얼 batch 는 호출 타임아웃 안에 끝날 크기', calls.every(c => c.batch === 8));
   ok('언어당 타임아웃 지정됨', calls.every(c => c.timeoutMs > 0 && c.timeoutMs <= 50000));
-  ok('processed 합산 (언어별 20 × 3)', res.body.processed === 60);
-  ok('remainingTotal 합산 (100*3)', res.body.remainingTotal === 300);
+  ok('processed 는 실제 호출 수만큼 합산된다', res.body.processed === 20 * calls.length,
+    `processed=${res.body.processed} calls=${calls.length}`);
+  ok('remainingTotal 은 조합별 최신값 합계 (중복 계산 금지)', res.body.remainingTotal === 300,
+    '같은 조합을 여러 번 돌아도 잔량을 더하면 안 된다 — 실제=' + res.body.remainingTotal);
   ok('완주 아니면 allDone 없음', res.body.allDone === undefined);
 
   /* ── 실행 기록 (2026-07-31 신설) ────────────────────────────────
@@ -253,7 +263,10 @@ async function testCron() {
     await handler({ headers: {} }, r);
     const note = r.locals && r.locals.cronNote;
     ok('note 를 남긴다', typeof note === 'string' && note.length > 0);
-    ok('저장 건수가 보인다', /it\/edi?t?:7/.test(note) || /it\/.*:7/.test(note), note);
+    // 링을 여러 바퀴 도므로 건수는 누적된다 — 조합당 한 줄로 합쳐졌는지를 본다.
+    const itLine = (note.match(/it\/edi:(\d+)/) || []);
+    ok('저장 건수가 보인다 (조합당 한 줄로 합산)',
+      itLine.length === 2 && Number(itLine[1]) > 0 && Number(itLine[1]) % 7 === 0, note);
     ok('실패한 조합이 보인다', /fr\/.*ERR/.test(note), note);
     ok('잔량이 보인다', /남42/.test(note), note);
     behavior = () => ({ processed: 20, remaining: 100 });
@@ -287,7 +300,8 @@ async function testCron() {
   console.log('\n=== 일반 에러는 그 언어만 실패 ===');
   behavior = (o) => (o.lang === 'it' ? new Error('DB 일시 오류') : { processed: 20, remaining: 5 });
   res = await run();
-  ok('나머지 언어 계속 진행', calls.length === 3);
+  ok('나머지 언어 계속 진행',
+    calls.some(c => c.lang === 'fr') && calls.some(c => c.lang === 'es'));
   ok('실패 언어 error 로 보고', !!res.body.results.find(r => r.lang === 'it' && r.error));
   ok('rateLimited 아님', res.body.rateLimited === undefined);
 
@@ -295,7 +309,8 @@ async function testCron() {
   behavior = () => ({ processed: 3, remaining: 7 });
   process.env.SEO_TRANSLATE_LANGS = 'fr, xx ,es';
   res = await run();
-  ok('유효한 언어만 처리 (fr,es)', calls.map(c => c.lang).join(',') === 'fr,es');
+  ok('유효한 언어만 처리 (fr,es — xx 는 무시)',
+    Array.from(new Set(calls.map(c => c.lang))).sort().join(',') === 'es,fr');
   delete process.env.SEO_TRANSLATE_LANGS;
 
   process.env.SEO_TRANSLATE_EDITORIAL_BATCH = '5';
@@ -349,11 +364,25 @@ async function testCron() {
       require('path').join(__dirname, '..', 'vercel.json'), 'utf8'));
     const maxDur = ((vjSrc.functions || {})['api/**/*.js'] || {}).maxDuration || 120;
     const budget = Number((cronSrc.match(/BUDGET_MS = (\d+)/) || [])[1] || 0);
-    const maxCall = Number((cronSrc.match(/MAX_CALL_MS = (\d+)/) || [])[1] || 0);
-    ok('시간 예산이 함수 상한보다 충분히 작다 (여유 30s+)',
-      budget > 0 && budget + 30000 <= maxDur * 1000,
+    const slack = Number((cronSrc.match(/WAVE_SLACK_MS = (\d+)/) || [])[1] || 0);
+    const callMs = (cronSrc.match(/CALL_MS = \{([^}]+)\}/) || [])[1] || '';
+    const calls_ = (callMs.match(/(\d+)/g) || []).map(Number);
+    const slowest = calls_.length ? Math.max(...calls_) : 0;
+
+    ok('시간 예산이 함수 상한보다 충분히 작다 (여유 20s+)',
+      budget > 0 && budget + 20000 <= maxDur * 1000,
       `예산 ${budget}ms · 상한 ${maxDur * 1000}ms`);
-    ok('호출 타임아웃이 예산을 넘지 않는다', maxCall > 0 && maxCall < budget);
+    /* 마지막 웨이브가 예산 직전에 시작해도 함수 상한 안에서 끝나야 한다.
+       (예산) + (가장 느린 호출) + (여유) ≤ 상한. 이 관계가 깨지면 함수가
+       죽고, 죽으면 cronGuard 기록조차 안 남아 원인 추적이 불가능해진다 —
+       실측에서 24시간 23/144 회만 기록됐고 나머지는 흔적이 없었다. */
+    ok('가장 느린 호출이 예산 끝에 시작해도 상한을 안 넘는다',
+      slowest > 0 && budget + slack <= maxDur * 1000
+      && (budget - slowest - slack) > 0,
+      `예산 ${budget} · 최장호출 ${slowest} · 여유 ${slack} · 상한 ${maxDur * 1000}`);
+    ok('종류별 호출 타임아웃이 예산 안에 들어간다',
+      calls_.length >= 2 && calls_.every(c => c + slack < budget),
+      '타임아웃: ' + calls_.join(','));
     process.env.SEO_TRANSLATE_KINDS = 'editorial';
     process.env.SEO_TRANSLATE_LANGS = 'it,fr,es';
   }
