@@ -27,18 +27,28 @@
  *   ANTHROPIC_API_KEY       : 필수 (없으면 503)
  *   CRON_SECRET             : (선택) Vercel cron 보호 — 다른 크론과 동일 규약
  *   SEO_TRANSLATE_BATCH     : (선택) 언어당 실행 배치 크기, 기본 20 (상한 20)
- *   SEO_TRANSLATE_LANGS     : (선택) 대상 언어 CSV, 기본 "it,fr,es"
+ *   SEO_TRANSLATE_LANGS     : (선택) 대상 언어 CSV, 기본 "it,fr,es,ja"
  */
 
 const { withCronGuard } = require('../_lib/cronGuard');   // 실행기록·실패알림 (2026-07-30)
 const { runBackfillBatch, normalizeBatch, LANG_NAMES, KINDS } = require('../_lib/seoTranslateBackfill');
 
-/* 함수 상한 120초 중 105초만 쓴다 — 응답 직렬화/네트워크 여유 15초. */
-const BUDGET_MS = 105000;
-/* 한 언어를 시도하려면 최소 이만큼은 남아 있어야 한다. */
-const MIN_PER_LANG_MS = 30000;
-/* 언어당 Claude 호출 타임아웃 상한. */
-const MAX_CALL_MS = 50000;
+/* 시간 예산 (2026-07-30 105s → 75s 하향).
+ *
+ * 왜 낮추나 — 실측이 이상했다. 같은 10분 주기인데:
+ *     backfill-meta-desc (예산 80s) → 24시간 133/144 회 완주
+ *     backfill-translations (예산 105s) → 24시간 **23/144** 회
+ * cronGuard 는 실행이 끝날 때 기록하므로, 기록이 없다는 건 함수가 120초
+ * 상한에 걸려 죽었다는 뜻이다(로그도 못 남긴다). 예산 105s + 응답 직렬화 +
+ * 배치 20건 순차 upsert 가 겹치면 상한을 넘긴다.
+ *
+ * 실행당 처리량을 줄이더라도 **완주하는 실행 수**를 늘리는 쪽이 총량이 크다.
+ * 105s × 23회 = 2,415s 대비, 75s × (완주율 개선) 쪽이 낫다는 판단. */
+const BUDGET_MS = 75000;
+/* 한 조합을 시도하려면 최소 이만큼은 남아 있어야 한다. */
+const MIN_PER_LANG_MS = 25000;
+/* 조합당 Claude 호출 타임아웃 상한. 예산을 낮췄으니 함께 낮춘다. */
+const MAX_CALL_MS = 35000;
 
 module.exports = withCronGuard('backfill-translations', async function handler(req, res) {
   // Vercel cron 보호 (다른 크론과 동일 규약)
@@ -57,7 +67,14 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
   const elapsed = () => Date.now() - started;
   const left = () => BUDGET_MS - elapsed();
 
-  const langs = String(process.env.SEO_TRANSLATE_LANGS || 'it,fr,es')
+  /* 2026-07-30 — 기본 언어에 ja 추가 (도메니코 요청: it·es·fr·ja 우선).
+   *
+   * 이게 빠져 있어서 일본어는 2,450행 중 189건만 채워져 있었다. 코드가
+   * 손댈 생각조차 하지 않는 언어였는데, 사이트는 9개 언어를 표방하고
+   * hreflang·사이트맵도 ja 를 내보내고 있었다 — 껍데기만 있고 내용이 없는 상태.
+   * de·ru·zh 는 아직 넣지 않는다. 조합이 늘수록 실행당 예산을 나눠 쓰게 되어
+   * 우선 4개 언어를 끝낸 뒤 확장하는 편이 완주가 빠르다. */
+  const langs = String(process.env.SEO_TRANSLATE_LANGS || 'it,fr,es,ja')
     .split(',')
     .map(s => s.trim().toLowerCase())
     .filter(s => LANG_NAMES[s]);

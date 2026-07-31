@@ -299,6 +299,26 @@ async function testCron() {
       require('path').join(__dirname, '..', 'api/cron/backfill-translations.js'), 'utf8');
     ok('크론 기본 대상에 article 이 포함된다',
       /SEO_TRANSLATE_KINDS \|\| 'editorial,article'/.test(cronSrc));
+
+    /* ── 2026-07-30 ─────────────────────────────────────────────────
+       ja 가 기본 언어에서 빠져 있었다. 사이트는 9개 언어를 표방하고
+       hreflang·사이트맵도 ja 를 내보내는데, 번역 크론만 손대지 않아
+       2,450행 중 189건만 내용이 있었다. 껍데기만 있고 알맹이가 없는 상태. */
+    ok('기본 언어에 ja 포함 (빠져 있어 2,261건이 방치됐다)',
+      /SEO_TRANSLATE_LANGS \|\| 'it,fr,es,ja'/.test(cronSrc));
+
+    /* 예산은 함수 상한 안에서 끝나야 한다. cronGuard 는 '끝날 때' 기록하므로,
+       상한에 걸려 죽으면 로그조차 없다 — 실측에서 24시간 23/144 회만 기록됐고
+       나머지는 흔적이 없었다. 숫자를 박지 말고 vercel.json 과의 관계로 고정한다. */
+    const vjSrc = JSON.parse(require('fs').readFileSync(
+      require('path').join(__dirname, '..', 'vercel.json'), 'utf8'));
+    const maxDur = ((vjSrc.functions || {})['api/**/*.js'] || {}).maxDuration || 120;
+    const budget = Number((cronSrc.match(/BUDGET_MS = (\d+)/) || [])[1] || 0);
+    const maxCall = Number((cronSrc.match(/MAX_CALL_MS = (\d+)/) || [])[1] || 0);
+    ok('시간 예산이 함수 상한보다 충분히 작다 (여유 30s+)',
+      budget > 0 && budget + 30000 <= maxDur * 1000,
+      `예산 ${budget}ms · 상한 ${maxDur * 1000}ms`);
+    ok('호출 타임아웃이 예산을 넘지 않는다', maxCall > 0 && maxCall < budget);
     process.env.SEO_TRANSLATE_KINDS = 'editorial';
     process.env.SEO_TRANSLATE_LANGS = 'it,fr,es';
   }
