@@ -242,11 +242,14 @@ async function testCron() {
     ['it', 'fr', 'es'].every(l => calls.some(c => c.lang === l)),
     calls.map(c => c.lang).join(','));
   ok('한 언어만 독식하지 않는다', new Set(calls.map(c => c.lang)).size === 3);
-  /* 크론의 에디토리얼 배치는 8 이다 — 20 이 아니다 (2026-07-31).
-     조합당 Claude 호출 타임아웃(35초) 안에 20건은 못 끝나고, 타임아웃이 나면
-     이미 번역된 응답까지 통째로 버려진다. 실측: 12시간 31회 실행 전부 ok 인데
-     es/fr/ja 에디토리얼 저장 0건. "20건 × 0회" 보다 "8건 × 매회" 가 크다. */
-  ok('크론 에디토리얼 batch 는 호출 타임아웃 안에 끝날 크기', calls.every(c => c.batch === 8));
+  /* 크론의 에디토리얼 배치는 작다 — 관리자 수동 실행(20)과 다르다.
+     조합당 Claude 호출 타임아웃 안에 큰 배치는 못 끝나고, 타임아웃이 나면
+     이미 번역된 응답까지 통째로 버려진다(저장 0건). 실측으로 두 번 내렸다:
+     20 → 8 (es/fr/ja 가 12시간 동안 0건이던 원인) → 4 (동시 실행 5 에서
+     배치 8 이 다시 타임아웃, 같은 실행의 배치 4 는 통과).
+     숫자를 고정하지 않고 "관리자 기본값보다 확실히 작다"를 지킨다. */
+  ok('크론 에디토리얼 batch 는 호출 타임아웃 안에 끝날 크기',
+    calls.every(c => c.batch <= 5 && c.batch >= 1), calls.map(c => c.batch).join(','));
   ok('언어당 타임아웃 지정됨', calls.every(c => c.timeoutMs > 0 && c.timeoutMs <= 50000));
   ok('processed 는 실제 호출 수만큼 합산된다', res.body.processed === 20 * calls.length,
     `processed=${res.body.processed} calls=${calls.length}`);
