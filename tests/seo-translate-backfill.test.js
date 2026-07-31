@@ -186,6 +186,11 @@ async function testHelper() {
 let calls = [];
 let behavior = () => ({ processed: 20, remaining: 100 });
 
+/* 크론이 모듈 로드 시점에 참조를 잡으므로, 이 객체를 '갈아끼우지 말고 고쳐' 써야
+   한다. 기본 3개 언어로 두는 이유: 여기에 언어를 늘리면 기본값 경로를 쓰는
+   다른 검증들의 기대 개수가 통째로 흔들린다. CJK 검증에서만 잠시 추가한다. */
+const STUB_LANGS = { it: 'Italian', fr: 'French', es: 'Spanish' };
+
 async function testCron() {
   /* 2026-07-21 — 크론이 (lang × kind) 를 순회하도록 확장됐다.
      아래 검증들은 "언어 순차 처리" 계약을 보는 것이므로 kind 를 editorial
@@ -196,7 +201,7 @@ async function testCron() {
 
   delete require.cache[CRON];
   inject(HELPER, {
-    LANG_NAMES: { it: 'Italian', fr: 'French', es: 'Spanish' },
+    LANG_NAMES: STUB_LANGS,
     normalizeBatch: helper.normalizeBatch,
     runBackfillBatch: async (o) => {
       calls.push(o);
@@ -337,6 +342,26 @@ async function testCron() {
     const edi = seen.find(x => x.kind === 'editorial');
     ok('아티클 배치가 크론에서 더 작다', !!art && !!edi && art.batch < edi.batch);
     ok('아티클 크론 배치는 2', !!art && art.batch === 2);
+
+    /* ── 2026-07-31 · CJK 배치 축소 ──────────────────────────────────
+       라이브 로그에서 ja 에디토리얼만 매번 타임아웃이었다(fr·es 는 같은
+       배치로 통과). 일본어·중국어는 같은 내용도 출력 토큰이 2~3배다.
+       타임아웃이 나면 이미 번역된 응답까지 통째로 버려지므로, 시간을 더
+       주는 것보다 배치를 줄이는 쪽이 확실하다. */
+    {
+      STUB_LANGS.ja = 'Japanese';           // 이 블록에서만 (아래에서 되돌린다)
+      process.env.SEO_TRANSLATE_LANGS = 'it,ja';
+      await run();
+      const jaEdi = calls.find(c => c.lang === 'ja' && c.kind === 'editorial');
+      const itEdi = calls.find(c => c.lang === 'it' && c.kind === 'editorial');
+      ok('ja 에디토리얼 배치가 라틴 언어보다 작다',
+        !!jaEdi && !!itEdi && jaEdi.batch < itEdi.batch,
+        `ja=${jaEdi && jaEdi.batch} it=${itEdi && itEdi.batch}`);
+      const jaArt = calls.find(c => c.lang === 'ja' && c.kind === 'article');
+      ok('ja 아티클도 최소 1건은 보장', !!jaArt && jaArt.batch >= 1);
+      delete STUB_LANGS.ja;
+      process.env.SEO_TRANSLATE_LANGS = 'it';
+    }
     /* 위 검증들은 SEO_TRANSLATE_KINDS 를 명시로 넘기므로 "기본값"은 보호하지
        못한다(역검증에서 실제로 안 잡혔다). 기본값이 article 을 포함하는지는
        소스를 직접 확인한다 — 기본에서 빠지면 운영에서 아티클이 영영 안 돈다. */

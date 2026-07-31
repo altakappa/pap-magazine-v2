@@ -61,7 +61,19 @@ const BUDGET_MS = 95000;
  *   에디토리얼: 설명 한 줄짜리라 12건도 10초대에 끝난다.
  *   아티클     : 본문 평균 1,228자 → 2건이면 출력 4,000토큰, 40~60초.
  * 35초 하나로 묶여 있어서 아티클이 아슬아슬하게 잘리고 있었다. */
-const CALL_MS = { editorial: 30000, article: 60000 };
+const CALL_MS = { editorial: 40000, article: 60000 };
+
+/* 일본어·중국어는 같은 내용도 출력 토큰이 2~3배다 (2026-07-31 실측).
+ *
+ * 라이브 로그: `[cron/backfill-translations] editorial ja The operation was
+ * aborted due to timeout` — 같은 배치 8건에서 fr·es 는 통과하는데 ja 만
+ * 매번 타임아웃이었다. ja 에디토리얼이 7/22 이후 한 건도 안 늘어난 데는
+ * 이 이유도 겹쳐 있다.
+ *
+ * 시간을 더 주는 것보다 배치를 줄이는 쪽이 맞다 — 타임아웃이 나면 이미
+ * 번역된 응답까지 통째로 버려지기 때문에, 아슬아슬하게 맞추면 계속 0건이다. */
+const CJK_LANGS = new Set(['ja', 'zh']);
+const cjkScale = (lang, batch) => (CJK_LANGS.has(lang) ? Math.max(1, Math.ceil(batch / 2)) : batch);
 /* 웨이브를 시작하려면 그 웨이브의 타임아웃 + 이만큼의 여유가 남아 있어야 한다.
  * (응답 저장·직렬화 몫. 이게 없으면 마지막 웨이브가 함수 상한을 넘겨 죽고,
  *  죽으면 cronGuard 기록조차 안 남아 무슨 일이 있었는지 알 수 없다.) */
@@ -171,7 +183,7 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
       const r = await runBackfillBatch({
         lang, kind,
         timeoutMs: CALL_MS[kind] || CALL_MS.editorial,
-        batch: kind === 'article' ? CRON_ARTICLE_BATCH : CRON_EDITORIAL_BATCH,
+        batch: cjkScale(lang, kind === 'article' ? CRON_ARTICLE_BATCH : CRON_EDITORIAL_BATCH),
       });
       totalProcessed += r.processed || 0;
       if (r.remaining === 0) finished.add(key(task));
