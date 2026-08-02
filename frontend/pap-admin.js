@@ -5226,7 +5226,7 @@ async function loadDashboardStats(){
     setText('dashPremiumBreakdown','월 '+(pc.premium_monthly||0)+' · 연 '+(pc.premium_yearly||0));
     setText('dashCommunity',totals.communityPosts||0);
     setText('dashRevenue',fmtKRW(statsRes.monthlyRevenue));
-    setText('dashRevenueNote','활성 구독 '+(totals.activeSubscriptions||0)+'건');
+    setText('dashRevenueNote','유료 구독 '+(totals.activeSubscriptions||0)+'건'+((totals.trialingSubscriptions||0)>0?(' · 체험 중 '+totals.trialingSubscriptions+'명'):''));
 
     // Quick action badges
     setText('qaPendingSub',totals.submissionsPending||0);

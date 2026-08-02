@@ -86,7 +86,7 @@ module.exports = async function handler(req, res) {
       supabaseAdmin.from('submissions').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
       supabaseAdmin.from('pullletters').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
       supabaseAdmin.from('community_posts').select('*', { count: 'exact', head: true }),
-      supabaseAdmin.from('subscriptions').select('plan').eq('status', 'active'),
+      supabaseAdmin.from('subscriptions').select('plan, current_period_start, current_period_end').eq('status', 'active'),
       supabaseAdmin.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', monthStart),
       supabaseAdmin.from('editorials').select('*', { count: 'exact', head: true }).eq('status', 'published').gte('published_date', monthStart),
       supabaseAdmin.from('submissions').select('*', { count: 'exact', head: true }).gte('created_at', monthStart),
@@ -103,17 +103,36 @@ module.exports = async function handler(req, res) {
     ]);
 
     // Plan breakdown + MRR
+    // 2026-08-02 — 무료 체험(Paddle trialing) 구독은 매출/유료 집계에서 제외.
+    // Paddle webhook 이 trialing→'active' 로 저장(열람권한용)하므로, 현재 청구주기
+    // 길이로 구분: PAP 유료 주기는 월(~30일)·연(~365일)뿐이라 10일 미만이면 체험(7일).
     const planCounts = { free: 0, standard_monthly: 0, standard_yearly: 0, premium_monthly: 0, premium_yearly: 0 };
+    const trialCounts = { standard_monthly: 0, standard_yearly: 0, premium_monthly: 0, premium_yearly: 0 };
     let mrr = 0;
+    let payingSubs = 0;
+    let trialingSubs = 0;
     if (Array.isArray(activeSubs.data)) {
       for (const row of activeSubs.data) {
         const plan = row.plan || 'free';
+        let isTrial = false;
+        if (row.current_period_start && row.current_period_end) {
+          const days = (new Date(row.current_period_end) - new Date(row.current_period_start)) / 86400000;
+          if (days > 0 && days < 10) isTrial = true;
+        }
+        if (isTrial) {
+          trialingSubs += 1;
+          trialCounts[plan] = (trialCounts[plan] || 0) + 1;
+          continue;
+        }
+        payingSubs += 1;
         planCounts[plan] = (planCounts[plan] || 0) + 1;
         mrr += planToMonthly(plan);
       }
     }
     const standardCount = planCounts.standard_monthly + planCounts.standard_yearly;
     const premiumCount = planCounts.premium_monthly + planCounts.premium_yearly;
+    const trialStandard = trialCounts.standard_monthly + trialCounts.standard_yearly;
+    const trialPremium = trialCounts.premium_monthly + trialCounts.premium_yearly;
 
     // Hydrate recent submissions with submitter profile (mirrors list endpoint)
     let recentSubmissions = [];
@@ -165,12 +184,18 @@ module.exports = async function handler(req, res) {
         submissionsPending: subPending.count || 0,
         pullettersPending: plPending.count || 0,
         communityPosts: cpTotal.count || 0,
-        activeSubscriptions: Array.isArray(activeSubs.data) ? activeSubs.data.length : 0,
+        activeSubscriptions: payingSubs,
+        trialingSubscriptions: trialingSubs,
       },
       planCounts: {
         ...planCounts,
         standard: standardCount,
         premium: premiumCount,
+      },
+      trialing: {
+        count: trialingSubs,
+        standard: trialStandard,
+        premium: trialPremium,
       },
       monthlyRevenue: mrr,
       thisMonth: {
