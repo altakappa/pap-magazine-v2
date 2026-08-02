@@ -37,14 +37,34 @@
  *   - 처리 로직은 api/_lib/seoTranslateBackfill.js 로 관리자 엔드포인트와 공용
  *
  * 환경변수:
- *   ANTHROPIC_API_KEY       : 필수 (없으면 503)
- *   CRON_SECRET             : (선택) Vercel cron 보호 — 다른 크론과 동일 규약
- *   SEO_TRANSLATE_BATCH     : (선택) 언어당 실행 배치 크기, 기본 20 (상한 20)
- *   SEO_TRANSLATE_LANGS     : (선택) 대상 언어 CSV, 기본 "it,fr,es,ja"
+ *   ANTHROPIC_API_KEY               : 필수 (없으면 503)
+ *   CRON_SECRET                     : (선택) Vercel cron 보호 — 다른 크론과 동일 규약
+ *   SEO_TRANSLATE_LANGS             : (선택) 대상 언어 CSV, 기본 "it,fr,es,ja,de,ru,zh"
+ *   SEO_TRANSLATE_KINDS             : (선택) 대상 종류 CSV, 기본 "editorial,article"
+ *   SEO_TRANSLATE_CONCURRENCY       : (선택) 웨이브당 동시 실행 수 (1~8)
+ *   SEO_TRANSLATE_EDITORIAL_BATCH   : (선택) 에디토리얼 배치, 기본 2
+ *   SEO_TRANSLATE_ARTICLE_BATCH     : (선택) 아티클 배치, 기본 1        ← 2026-08-02 신설
+ *   SEO_TRANSLATE_BUDGET_MS         : (선택) 실행 예산 ms, 기본 100000 (상한 100000)   ← 2026-08-02 신설
+ *   SEO_TRANSLATE_CALL_MS_EDITORIAL : (선택) 에디토리얼 호출 타임아웃 ms, 기본 40000  ← 2026-08-02 신설
+ *   SEO_TRANSLATE_CALL_MS_ARTICLE   : (선택) 아티클 호출 타임아웃 ms, 기본 60000      ← 2026-08-02 신설
+ *   SEO_TRANSLATE_ROTATE            : (선택) "0" 이면 회전 없이 정의된 순서 고정(테스트용)
+ *   SEO_TRANSLATE_BATCH             : ⚠️ 이 크론에서는 동작하지 않는다(응답에만 표시).
+ *                                     실제 배치는 위 EDITORIAL/ARTICLE 두 개다.
  */
 
 const { withCronGuard } = require('../_lib/cronGuard');   // 실행기록·실패알림 (2026-07-30)
 const { runBackfillBatch, normalizeBatch, LANG_NAMES, KINDS } = require('../_lib/seoTranslateBackfill');
+
+/* 숫자형 환경변수 읽기 (2026-08-02 신설).
+ *
+ * 왜 만드나 — 이 저장소는 push 를 사람이 직접 한다. 값 하나 바꾸자고 매번
+ * 배포를 돌리면 튜닝이 사실상 멈춘다. 예산·타임아웃처럼 "실측 보고 조정해야
+ * 하는 숫자"는 env 로 빼두면 배포 없이 Redeploy 만으로 돌릴 수 있다.
+ * 상·하한을 코드가 강제하므로 오타로 함수를 죽일 수는 없다. */
+const envMs = (name, dflt, min, max) => {
+  const n = Number(process.env[name]);
+  return Number.isFinite(n) && n > 0 ? Math.max(min, Math.min(max, n)) : dflt;
+};
 
 /* 시간 예산 (2026-07-30 105s → 75s 하향).
  *
@@ -63,7 +83,25 @@ const { runBackfillBatch, normalizeBatch, LANG_NAMES, KINDS } = require('../_lib
  * 그 대기가 쌓여 상한을 넘겼다. 이제 웨이브 단위로 병렬 처리하고, 웨이브를
  * 시작하기 전에 "이 웨이브가 끝날 시간이 남았는가"를 확인한다.
  * 함수 상한 120s 대비 25s 의 여유 — 응답 직렬화·로그 기록 몫이다. */
-const BUDGET_MS = 85000;
+/* 2026-08-02 — 85s → 100s 로 재상향 (재시도를 넣기 위한 전제).
+ *
+ * 아래 runTask 에 "타임아웃이 나면 배치를 반으로 줄여 다시 시도" 를 넣었는데,
+ * 예산 85s 에서는 그 재시도가 **한 번도 못 돈다**. 첫 호출이 40s 를 쓰고
+ * 실패하면 남은 시간은 45s 인데, 재시도 진입 조건이 52s(타임아웃 40s +
+ * 여유 12s)라 항상 걸린다. 즉 예산을 안 올리면 재시도 코드는 죽은 코드다.
+ * 100s 면 남는 시간이 60s 라 재시도가 실제로 돈다(시뮬레이션 확인).
+ *
+ * 100s 가 안전한 근거는 추정이 아니라 vercel.json 이다:
+ *     "functions": { "api/**\/*.js": { "maxDuration": 120, "memory": 1024 } }
+ * 그리고 이 파일의 모든 경로는 elapsed ≤ BUDGET_MS − WAVE_SLACK_MS = 88s
+ * 안에서 끝나도록 짜여 있다(웨이브 진입 조건·재시도 진입 조건 둘 다 left()
+ * 기준). 88s + 응답 직렬화 ≪ 120s.
+ *
+ * 상한도 100000 으로 막는다. tests/seo-translate-backfill.test.js 가
+ * "예산 + 20s ≤ maxDuration" 을 지키는지 검사하는데, 환경변수로 그 위를
+ * 넣을 수 있으면 그 검사가 의미를 잃는다. 예산을 더 키우고 싶으면 먼저
+ * vercel.json 의 maxDuration 을 올리고 테스트를 함께 고칠 것. */
+const BUDGET_MS = envMs('SEO_TRANSLATE_BUDGET_MS', 100000, 30000, 100000);
 
 /* 종류별 호출 타임아웃 — 하나로 묶으면 둘 다 잘못된다.
  *   에디토리얼: 설명 한 줄짜리라 12건도 10초대에 끝난다.
@@ -73,12 +111,19 @@ const BUDGET_MS = 85000;
  * 실제로 약 24초에 끝났다. 60s 로 잡아두면 "이 웨이브를 시작할 시간이
  * 남았는가" 검사가 과하게 보수적이 되어, 아티클은 실행의 첫 웨이브가
  * 아니면 아예 못 도는 상태가 된다. */
-/* 2026-08-02 상향 (40s → 50/55s).
- * 타임아웃은 이미 번역이 끝난 응답까지 통째로 버린다 — 아슬아슬하게 잡으면
- * 실패가 아니라 '0건'이 된다. 실측: 3시간 90회 실행에 저장 8건, 대부분
- * `The operation was aborted due to timeout`. 시간을 넉넉히 주는 쪽이
- * 총량이 크다(예산 85s 안에서 여전히 두 웨이브가 가능하다). */
-const CALL_MS = { editorial: 50000, article: 55000 };
+/* 2026-08-02 — 아티클 40s → 60s, 그리고 아티클 배치를 2 → 1 로 내린다.
+ *
+ * 위 주석의 "60s 는 과하게 보수적" 은 배치 2 기준의 판단이었다. 실측 결과
+ * 배치 2 아티클은 8시간 동안 성공률 0~5% 였다 — 40s 안에 못 끝나 통째로
+ * 버려지고, 같은 2건을 다음 실행에서 또 부른다(선택 순서가 고정이라 영원히
+ * 같은 2건이다). "보수적이라 덜 돈다" 보다 "돌긴 도는데 전부 버린다" 가
+ * 훨씬 나쁘다. 배치 1 + 타임아웃 60s 면 건당 12~30s 라 확실히 끝난다.
+ * 진입 조건이 72s 로 올라가 아티클은 실행 앞부분에서만 한 웨이브 돌지만,
+ * 그 한 웨이브가 실제로 저장된다. 0건 × 여러 웨이브보다 크다. */
+const CALL_MS = {
+  editorial: envMs('SEO_TRANSLATE_CALL_MS_EDITORIAL', 40000, 10000, 90000),
+  article:   envMs('SEO_TRANSLATE_CALL_MS_ARTICLE',   60000, 10000, 90000),
+};
 
 /* 일본어·중국어는 같은 내용도 출력 토큰이 2~3배다 (2026-07-31 실측).
  *
@@ -95,6 +140,29 @@ const cjkScale = (lang, batch) => (CJK_LANGS.has(lang) ? Math.max(1, Math.ceil(b
  * (응답 저장·직렬화 몫. 이게 없으면 마지막 웨이브가 함수 상한을 넘겨 죽고,
  *  죽으면 cronGuard 기록조차 안 남아 무슨 일이 있었는지 알 수 없다.) */
 const WAVE_SLACK_MS = 12000;
+
+/* 재시도해도 되는 실패 (2026-08-02 신설).
+ *
+ * 이 셋은 전부 "입력이 너무 커서 응답이 안 끝났다" 의 다른 얼굴이다:
+ *   timeout / aborted : 제한 시간 안에 응답이 안 왔다
+ *   max_tokens        : 응답이 길이 상한에서 잘렸다 (lib 가 명시적으로 던진다)
+ *   파싱 실패 / 배열이 아님 / 배열을 찾지 못함 : 잘린 JSON 이라 배열이 안 닫혔다
+ * ↑ parseJsonArray 는 이미 ```json 펜스를 indexOf('[') / lastIndexOf(']') 로
+ *   걷어내므로, 펜스는 원인이 아니다. 잘림이 원인이다 — 그래서 답은 "작게".
+ * 반대로 400/401/404 같은 건 몇 번을 다시 불러도 같은 결과라 재시도하지 않는다.
+ *
+ * ⚠️ 이 목록은 api/_lib/seoTranslateBackfill.js 의 throw 문구와 1:1로 맞춰야 한다.
+ *    (2026-08-02 실측 로그에서 '번역 응답에서 JSON 배열을 찾지 못함' 이 관측되어 추가.
+ *     응답이 너무 일찍 잘려 여는 대괄호조차 없을 때 parseJsonArray 가 던지는 문구다.
+ *     이게 빠져 있으면 독일어(de)의 최다 실패 유형이 재시도되지 않는다.)
+ *    lib 의 문구가 바뀌면 여기도 같이 고칠 것. */
+const RETRYABLE_RE = /timeout|aborted|파싱 실패|max_tokens|배열이 아님|배열을 찾지 못함/i;
+/* 재시도 때 호출 타임아웃을 늘려주되 이 값을 넘기지 않는다.
+ * (배치를 1까지 줄였는데도 안 끝나는 '거대 한 건'을 위한 여유. 실측: fr·es
+ *  에디토리얼 큐 맨 앞에 설명 7,387자짜리가 한 건 박혀 있다.) */
+const MAX_RETRY_CALL_MS = 60000;
+/* 이보다 짧은 시간밖에 안 남았으면 재시도하지 않는다 — 어차피 또 잘린다. */
+const MIN_RETRY_CALL_MS = 20000;
 
 module.exports = withCronGuard('backfill-translations', async function handler(req, res) {
   // Vercel cron 보호 (다른 크론과 동일 규약)
@@ -126,17 +194,25 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
    *
    * ⚠️ 환경변수 SEO_TRANSLATE_LANGS 가 설정돼 있으면 이 기본값은 무시된다.
    * 실제로 그것 때문에 코드가 선언한 언어와 돌아가는 언어가 달랐고, 로그가
-   * 없어 아무도 몰랐다 — env 를 지워 코드를 단일 출처로 두는 편이 안전하다. */
+   * 없어 아무도 몰랐다 — env 를 지워 코드를 단일 출처로 두는 편이 안전하다.
+   *
+   * 2026-08-02 확인: 운영 Vercel 에는 SEO_TRANSLATE_LANGS 가 **없다**.
+   * 즉 지금 도는 언어는 이 줄의 기본값 7개가 그대로다(de 포함). */
   const langs = String(process.env.SEO_TRANSLATE_LANGS || 'it,fr,es,ja,de,ru,zh')
     .split(',')
     .map(s => s.trim().toLowerCase())
     .filter(s => LANG_NAMES[s]);
 
+  /* ⚠️ 이 값은 이 크론에서 **아무 일도 하지 않는다** (2026-08-02 확인).
+     아래 runTask 는 CRON_EDITORIAL_BATCH / CRON_ARTICLE_BATCH 만 쓴다.
+     여기 남아 있는 이유는 응답 JSON 에 그대로 실려 나가기 때문 — 응답만
+     보고 "배치 20으로 돌고 있구나" 하고 오해하기 딱 좋다. 지우지 않고
+     표시로 남겨두되, 튜닝은 반드시 아래 두 개로 한다. */
   const batch = normalizeBatch(process.env.SEO_TRANSLATE_BATCH, 20);
 
   /* 2026-07-21 — 아티클 본문 번역 추가.
      ─────────────────────────────────────────────────────────────────
-     (lang × kind) 조합을 한 바퀴 돌린다. 한 번 실행에 시간 예산(105초)
+     (lang × kind) 조합을 한 바퀴 돌린다. 한 번 실행에 시간 예산(100초)
      안에서 1~3개 조합만 처리되므로, 매번 같은 순서로 돌면 뒤쪽 조합이
      영원히 굶는다 → 실행마다 시작점을 회전시켜 공정하게 나눈다.
 
@@ -149,7 +225,14 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
        그래도 죽지 않게 하고, 최종 검증은 runBackfillBatch 에 맡긴다 —
        거기서 잘못된 kind 는 400 으로 거부된다. */
     .filter(k => !KINDS || !!KINDS[k]);
-  const CRON_ARTICLE_BATCH = 2;
+
+  /* 아티클 배치 — 2026-08-02 하드코딩 2 → env 로 빼고 기본 1.
+   *
+   * 하드코딩이었던 게 문제였다. 아티클 성공률이 0~5% 로 바닥인 걸 보고도
+   * 배포 없이는 손댈 수가 없어서, 결국 SEO_TRANSLATE_KINDS=editorial 로
+   * 아티클을 통째로 꺼버리는 것 말고는 방법이 없었다. 이제 숫자만 바꾸면 된다.
+   * 기본 1인 이유는 위 CALL_MS 주석 참고 — 2는 40s 안에 안 끝났다. */
+  const CRON_ARTICLE_BATCH = normalizeBatch(process.env.SEO_TRANSLATE_ARTICLE_BATCH, 1);
   /* 에디토리얼 배치 — 크론에서는 20 이 아니라 4 다 (2026-07-31, 실측 2회 반영).
    *
    * 왜: 조합당 Claude 호출에는 타임아웃이 걸려 있고, 배치가 크면 그 안에
@@ -164,8 +247,13 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
    * 8 은 그 경계 위에 있다 → 4 로 내려 확실히 끝나게 한다.
    *
    * 배치를 줄이면 실행당 처리량은 줄지만 **버려지지 않는다.** 20건 × 0회보다
-   * 8건 × 매회가 크다. 관리자 수동 실행은 시간 제약이 없어 기본값(20)을 쓴다. */
-  const CRON_EDITORIAL_BATCH = normalizeBatch(process.env.SEO_TRANSLATE_EDITORIAL_BATCH, 4);
+   * 8건 × 매회가 크다. 관리자 수동 실행은 시간 제약이 없어 기본값(20)을 쓴다.
+   *
+   * 2026-08-02 — 기본값을 4 → 2 로 내린다. env 로 2 를 넣어 돌려본 실측:
+   * 저장 속도가 시간당 약 34건 → 100건 이상으로 뛰었고, 8시간 내내 0건이던
+   * de 가 매 실행 2건씩 저장되기 시작했다(14:43 실행 = 41.7초에 6개 조합).
+   * env 가 지워져도 이 값으로 돌게 기본값 자체를 내려둔다. */
+  const CRON_EDITORIAL_BATCH = normalizeBatch(process.env.SEO_TRANSLATE_EDITORIAL_BATCH, 2);
 
   const tasks = [];
   for (const lang of langs) for (const kind of kinds) tasks.push({ lang, kind });
@@ -183,7 +271,7 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
    *
    * 왜: 병목은 토큰이 아니라 **벽시계 시간**이다. 조합 하나가 Claude 응답을
    * 기다리는 25~35초 동안 함수는 그냥 놀고 있었고, 그래서 75초 예산에
-   * 2~3개 조합밖에 못 돌렸다. 9개 언어로 늘리면 한 조합이 차례를 받는 데
+   * 2~3개 조합밖에 못 돌았다. 9개 언어로 늘리면 한 조합이 차례를 받는 데
    * 몇 시간이 걸린다 — de·ru·zh 가 3개월째 1% 인 이유가 이것이다.
    * 서로 다른 (lang,kind) 는 다른 행을 건드리므로 동시에 돌아도 충돌하지 않는다.
    * 백필 서술문 크론에서 같은 방식으로 처리량이 두 배가 됐다.
@@ -197,19 +285,13 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
    *   아티클 4 — 본문 번역은 건당 출력 2,000토큰대다. 7개를 동시에 던지면
    *     한 웨이브에서만 5만 토큰이 넘어가 분당 한도를 건드릴 위험이 크다.
    * 무거운 쪽만 낮추면 가벼운 쪽 처리량을 희생하지 않는다. */
+  /* 2026-08-02 실측: 동시 7 은 과했다. env 로 3 을 넣자 시간당 저장이
+   * 18건 → 34건으로 늘었다(동시에 많이 던질수록 각 호출이 느려져 타임아웃
+   * 확률이 올라간다). 운영에는 SEO_TRANSLATE_CONCURRENCY=3 이 설정돼 있다. */
   const cfgConc = Number(process.env.SEO_TRANSLATE_CONCURRENCY || 0);
-  /* 2026-08-02 하향 (7/4 → 3/2). 이틀치 실측이 내 판단이 틀렸음을 보여줬다.
-   *
-   *   7/31 03:23  동시 5 → 한 실행에 32건, 에러 0
-   *   7/31~8/1    동시 7 로 올린 뒤 시간당 약 30건에 머묾
-   *   8/02 09시~  거의 전량 타임아웃, 3시간 90회 실행에 8건
-   *
-   * 동시 실행을 올리면 호출 하나하나가 느려지고, 느려지면 타임아웃에 걸려
-   * **번역이 끝난 응답까지 통째로 버려진다.** 처리량을 올리려던 손잡이가
-   * 처리량을 0으로 만들었다. 병렬을 늘리는 대신 각 호출이 확실히 끝나게 한다. */
   const CONCURRENCY_BY_KIND = cfgConc > 0
     ? { editorial: cfgConc, article: cfgConc }
-    : { editorial: 3, article: 2 };
+    : { editorial: 7, article: 4 };
   const concOf = (kind) => Math.max(1, Math.min(8, CONCURRENCY_BY_KIND[kind] || 4));
 
   /* 잔량이 0 이라고 보고한 조합은 이번 실행에서 다시 부르지 않는다.
@@ -217,45 +299,68 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
   const finished = new Set();
   const key = (t) => t.lang + '|' + t.kind;
 
-  async function runTask(task, batchOverride) {
+  /* 실패한 배치를 반으로 줄여 다시 시도한다 (2026-08-02 신설).
+   *
+   * ── 왜 필요한가 (실측) ──────────────────────────────────────────
+   * 지금 구조는 한 번의 Claude 호출에 여러 건을 묶어 보낸다. 그 호출이
+   * 타임아웃되면 **묶인 전부가 버려진다.** 그리고 다음 실행에서 고르는
+   * 순서가 published_date desc 로 고정이라 **똑같은 건들을 또 고른다.**
+   * 즉 큐 맨 앞에 무거운 항목이 하나 박히면 그 조합은 영구히 0건이 된다.
+   * 실제로 fr·es 에디토리얼 큐 맨 앞에 설명 7,387자짜리가 한 건 있고,
+   * 3시간 성공률이 fr 2.4% / es 0.0% 였다(같은 시간 zh 15% · ru 14%).
+   *
+   * ── 무엇을 하는가 ───────────────────────────────────────────────
+   * 재시도 가능한 실패(잘림 계열)면 배치를 반으로 줄이고, 남은 예산이
+   * 허락하는 만큼 타임아웃을 늘려 다시 부른다. 배치 2 → 1 로 줄어들면
+   * 무거운 한 건만 남으므로, 그 한 건에 최대 60초를 준다.
+   * 429 는 예외 — 즉시 멈추고 다음 실행으로 미룬다(기존 동작 유지).
+   *
+   * ── 함수 상한을 넘지 않는 근거 ──────────────────────────────────
+   * 재시도 타임아웃 = min(60s, left() − 12s) 이므로, 재시도가 끝나는
+   * 시점은 항상 elapsed ≤ BUDGET_MS − WAVE_SLACK_MS = 88s 다.
+   * 웨이브 진입 조건도 같은 기준이라 어느 경로로도 88s 를 못 넘는다.
+   * vercel.json 의 maxDuration 은 120s. */
+  async function runTask(task) {
     const { lang, kind } = task;
-    const baseBatch = cjkScale(lang, kind === 'article' ? CRON_ARTICLE_BATCH : CRON_EDITORIAL_BATCH);
-    const batch = batchOverride || baseBatch;
-    try {
-      const r = await runBackfillBatch({
-        lang, kind,
-        timeoutMs: CALL_MS[kind] || CALL_MS.editorial,
-        batch,
-      });
-      totalProcessed += r.processed || 0;
-      if (r.remaining === 0) finished.add(key(task));
-      /* lang·kind 는 호출자가 아는 사실이다 — 반환값이 되돌려주기를 기대하지
-         않는다. 하나라도 빠지면 아래 집계에서 조합을 못 찾아 잔량이 통째로
-         'undefined' 가 된다(실제로 테스트가 이걸 잡았다). */
-      return Object.assign({}, r, { lang, kind });
-    } catch (err) {
-      const msg = String((err && err.message) || err);
-      // 429 = Anthropic rate limit → 남은 조합은 다음 실행으로 미룬다.
-      if (/Claude API 실패 \(429/.test(msg) || /rate.?limit/i.test(msg)) {
-        rateLimited = true;
-      }
-      console.error('[cron/backfill-translations]', kind, lang, 'batch=' + batch, msg);
+    let curBatch = cjkScale(lang, kind === 'article' ? CRON_ARTICLE_BATCH : CRON_EDITORIAL_BATCH);
+    let curTimeout = CALL_MS[kind] || CALL_MS.editorial;
+    let lastErr = null;
 
-      /* 타임아웃이면 배치를 절반으로 줄여 딱 한 번 더 시도한다 (2026-08-02).
-       *
-       * 왜: 타임아웃은 이미 번역이 끝난 응답까지 통째로 버린다. 그래서
-       * "실패"가 아니라 "0건"으로 보이고, 그 상태로 이틀을 갔다.
-       * 절반이면 대개 시간 안에 들어온다 — 전부 잃느니 절반을 건진다.
-       * 재시도는 한 번뿐이고 예산이 남아 있을 때만 한다(무한 후퇴 금지). */
-      const isTimeout = /aborted|timeout/i.test(msg);
-      const canRetry = isTimeout && !rateLimited && !batchOverride && batch > 1;
-      if (canRetry && left() > (CALL_MS[kind] || CALL_MS.editorial) + WAVE_SLACK_MS) {
-        const half = Math.max(1, Math.floor(batch / 2));
-        console.warn('[cron/backfill-translations] 배치 축소 재시도', kind, lang, batch, '→', half);
-        return runTask(task, half);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const r = await runBackfillBatch({ lang, kind, timeoutMs: curTimeout, batch: curBatch });
+        totalProcessed += r.processed || 0;
+        if (r.remaining === 0) finished.add(key(task));
+        /* lang·kind 는 호출자가 아는 사실이다 — 반환값이 되돌려주기를 기대하지
+           않는다. 하나라도 빠지면 아래 집계에서 조합을 못 찾아 잔량이 통째로
+           'undefined' 가 된다(실제로 테스트가 이걸 잡았다). */
+        return Object.assign({}, r, { lang, kind });
+      } catch (err) {
+        const msg = String((err && err.message) || err);
+        // 429 = Anthropic rate limit → 재시도 금지. 남은 조합은 다음 실행으로 미룬다.
+        if (/Claude API 실패 \(429/.test(msg) || /rate.?limit/i.test(msg)) {
+          rateLimited = true;
+          console.error('[cron/backfill-translations]', kind, lang, msg);
+          return { lang, kind, error: msg.slice(0, 300) };
+        }
+        lastErr = msg;
+        if (!RETRYABLE_RE.test(msg)) break;
+
+        const nextBatch = Math.max(1, Math.floor(curBatch / 2));
+        const nextTimeout = Math.min(MAX_RETRY_CALL_MS, left() - WAVE_SLACK_MS);
+        // 남은 시간이 없으면 포기 — 다음 실행이 이어받는다.
+        if (nextTimeout < MIN_RETRY_CALL_MS) break;
+        // 더 줄일 배치도 없고 시간도 못 늘리면 다시 불러봐야 같은 결과다.
+        if (nextBatch === curBatch && nextTimeout <= curTimeout) break;
+
+        curBatch = nextBatch;
+        curTimeout = nextTimeout;
+        console.error('[cron/backfill-translations] retry', kind, lang,
+          'batch=' + curBatch, 'timeout=' + curTimeout, msg.slice(0, 80));
       }
-      return { lang, kind, error: msg.slice(0, 300) };
     }
+    console.error('[cron/backfill-translations]', kind, lang, lastErr);
+    return { lang, kind, error: String(lastErr).slice(0, 300) };
   }
 
   /* 링을 예산이 다할 때까지 **반복해서** 돈다 (2026-07-31).
@@ -291,11 +396,7 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
       break;
     }
 
-    /* ⚠️ picked.map(runTask) 로 쓰면 안 된다 — map 이 두 번째 인자로 index 를
-       넘겨 runTask 의 batchOverride 를 덮어쓴다. 그러면 웨이브의 2번째 조합은
-       배치 1, 3번째는 배치 2 로 돌아 처리량이 조용히 무너진다.
-       (2026-08-02 재시도 인자를 추가하면서 실제로 이렇게 깨졌고 테스트가 잡았다) */
-    const done = await Promise.all(picked.map(t => runTask(t)));
+    const done = await Promise.all(picked.map(runTask));
     for (const r of done) results.push(r);
   }
   if (rateLimited) results.push({ skipped: 'rate-limited-stop' });

@@ -391,7 +391,11 @@ async function testCron() {
     const art = seen.find(x => x.kind === 'article');
     const edi = seen.find(x => x.kind === 'editorial');
     ok('아티클 배치가 크론에서 더 작다', !!art && !!edi && art.batch < edi.batch);
-    ok('아티클 크론 배치는 2', !!art && art.batch === 2);
+    /* 2026-08-02 — 2 → 1. 배치 2 아티클은 8시간 실측 성공률 0~5% 였다.
+       40s 안에 못 끝나 응답이 통째로 버려지고, 선택 순서가 고정이라 다음
+       실행에서 같은 2건을 또 부른다. 배치 1 + 타임아웃 60s 로 바꿨다.
+       이제 env(SEO_TRANSLATE_ARTICLE_BATCH)로 조정 가능 — 기본값을 고정한다. */
+    ok('아티클 크론 배치는 1', !!art && art.batch === 1);
 
     /* ── 2026-07-31 · CJK 배치 축소 ──────────────────────────────────
        라이브 로그에서 ja 에디토리얼만 매번 타임아웃이었다(fr·es 는 같은
@@ -438,10 +442,25 @@ async function testCron() {
     const vjSrc = JSON.parse(require('fs').readFileSync(
       require('path').join(__dirname, '..', 'vercel.json'), 'utf8'));
     const maxDur = ((vjSrc.functions || {})['api/**/*.js'] || {}).maxDuration || 120;
-    const budget = Number((cronSrc.match(/BUDGET_MS = (\d+)/) || [])[1] || 0);
-    const slack = Number((cronSrc.match(/WAVE_SLACK_MS = (\d+)/) || [])[1] || 0);
+    /* 2026-08-02 — 예산·호출 타임아웃이 env 로 빠졌다(envMs(이름, 기본, 하한, 상한)).
+       숫자 리터럴만 찾던 정규식은 이제 0 을 돌려주고, 그러면 아래 검사 셋이
+       "값을 못 읽어서" 실패한다 — 설계가 깨진 게 아닌데 빨간불이 켜진다.
+       기본값(두 번째 인자)을 읽도록 고치되, 옛 형태도 계속 받는다. */
+    const numOf = (re) => {
+      const m = cronSrc.match(re);
+      return m ? Number(m[1]) : 0;
+    };
+    const budget = numOf(/BUDGET_MS = envMs\('[^']*',\s*(\d+)/) ||
+                   numOf(/BUDGET_MS = (\d+)/);
+    const slack = numOf(/WAVE_SLACK_MS = envMs\('[^']*',\s*(\d+)/) ||
+                  numOf(/WAVE_SLACK_MS = (\d+)/);
     const callMs = (cronSrc.match(/CALL_MS = \{([^}]+)\}/) || [])[1] || '';
-    const calls_ = (callMs.match(/(\d+)/g) || []).map(Number);
+    /* envMs 형태면 '기본값'만 뽑는다(하한·상한 리터럴을 호출 타임아웃으로
+       착각하면 안 된다). 옛 형태면 예전처럼 숫자를 전부 본다. */
+    const calls_ = /envMs\(/.test(callMs)
+      ? (callMs.match(/envMs\('[^']*',\s*(\d+)/g) || [])
+          .map(x => Number(x.match(/,\s*(\d+)$/)[1]))
+      : (callMs.match(/(\d+)/g) || []).map(Number);
     const slowest = calls_.length ? Math.max(...calls_) : 0;
 
     ok('시간 예산이 함수 상한보다 충분히 작다 (여유 20s+)',
