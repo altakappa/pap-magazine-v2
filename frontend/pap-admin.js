@@ -14637,6 +14637,51 @@ function _subFmtKRW(n){
   if(!isFinite(v)) return '—';
   return '₩' + v.toLocaleString('ko-KR');
 }
+function _subEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function _subDate(s){ if(!s) return '—'; try{ return String(s).slice(0,10); }catch(_){ return '—'; } }
+function _subBadge(kind){
+  var m={ paying:['유료','#1b7f4d','#e6f5ec'], trialing:['체험','#9a6a00','#fff3d6'], past_due:['연체·결제실패','#b3261e','#fde8e6'], canceled:['취소','#666','#eee'], paused:['일시정지','#666','#eee'] };
+  var x=m[kind]||[String(kind||'—'),'#666','#eee'];
+  return '<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;color:'+x[1]+';background:'+x[2]+'">'+x[0]+'</span>';
+}
+async function loadSubscriptionTable(){
+  var body=document.getElementById('subTableBody');
+  var sum=document.getElementById('subHealthSummary');
+  try{
+    var r=await apiGet('/admin/subscriptions');
+    if(!r || !Array.isArray(r.rows)) throw new Error((r&&r.message)||'unavailable');
+    var s=r.summary||{};
+    if(sum){
+      sum.innerHTML='유료 <strong>'+(s.paying||0)+'</strong> · 체험 <strong>'+(s.trialing||0)+'</strong>'
+        +' · 연체 <strong style="color:#b3261e">'+(s.past_due||0)+'</strong> · 취소 '+(s.canceled||0)
+        +'  |  유료 MRR <strong>'+_subFmtKRW(s.mrr)+'</strong>'
+        +'  ·  체험은 첫 결제 전이라 매출에서 제외됩니다.';
+    }
+    if(!r.rows.length){ if(body) body.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:40px 0">구독이 없습니다.</td></tr>'; return; }
+    var html=r.rows.map(function(row){
+      var who=_subEsc(row.display_name||'—')+'<div style="color:var(--text3);font-size:11px">'+_subEsc(row.email||'')+'</div>';
+      var note='—';
+      if(row.kind==='trialing'){
+        var d=row.days_to_period_end;
+        var dd=(d==null)?'':(d<=0?'오늘 결제 시도':('D-'+d));
+        note='<span style="color:#9a6a00;font-weight:600">체험 종료 '+dd+'</span> ('+_subDate(row.current_period_end)+' 첫 결제)';
+      } else if(row.kind==='past_due'){
+        note='<span style="color:#b3261e;font-weight:700">결제 실패 — 확인 필요</span>';
+      } else if(row.kind==='paying'){
+        note='다음 결제 '+_subDate(row.current_period_end);
+      }
+      var rowStyle = row.kind==='past_due' ? ' style="background:rgba(179,38,30,.06)"' : ((row.kind==='trialing' && row.days_to_period_end!=null && row.days_to_period_end<=2) ? ' style="background:rgba(255,179,71,.08)"' : '');
+      var cyc = row.billing_cycle==='yearly'?'연':row.billing_cycle==='monthly'?'월':'—';
+      return '<tr'+rowStyle+'><td>'+who+'</td><td>'+_subEsc(row.plan_label||'—')+'</td><td>'+_subBadge(row.kind)+'</td><td>'+cyc+'</td><td>'+_subDate(row.current_period_end)+'</td><td style="font-size:12px">'+note+'</td></tr>';
+    }).join('');
+    if(body) body.innerHTML=html;
+  }catch(e){
+    console.error('subscription table load error:',e);
+    if(sum) sum.textContent='구독 현황을 불러오지 못했습니다.';
+    if(body) body.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px 0">불러오기 실패 — 새로고침 후 다시 시도하세요.</td></tr>';
+  }
+}
+
 async function loadSubscriptions(){
   // 진입 즉시 "모름" 상태로 초기화 — 이전 조회 잔상이 남지 않게.
   _subSetText('subStdCount','—');
@@ -14644,6 +14689,7 @@ async function loadSubscriptions(){
   _subSetText('subMrr','—');
   _subSetText('subActiveCount','—');
   _subSetText('subPlanBreakdown','플랜별 내역을 불러오는 중…');
+  loadSubscriptionTable();
   try{
     var st = await apiGet('/admin/stats');
     // /admin/stats 는 실패해도 200 이 아닌 JSON({message})을 줄 수 있다.
