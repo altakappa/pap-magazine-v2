@@ -976,7 +976,7 @@ function navigateWithInterstitial(url){
 
 <script src="/pap-api.js?v=13" defer></script>
 <!-- Paddle Billing SDK — 2b(2026-07-19): 승인된 유료/브랜디드 서브미션 '기본료' 오버레이 결제.
-     추가옵션(PayPal 정적 링크)은 별개 · 기본료만 Paddle. 미설정(price ID 없음) 시 버튼은 안내 토스트로 안전 처리. -->
+     추가옵션(addon)·기본료 모두 Paddle 전용 결제(2026-07-27). 상품/ SDK 미설정 시 안내 토스트로 안전 처리. -->
 <script src="https://cdn.paddle.com/paddle/v2/paddle.js" defer></script>
 <script src="/pap-name-validator.js?v=3" defer></script>
 <script src="submission-terms.js?v=1"></script>
@@ -1279,7 +1279,7 @@ function _svDetailBody(s, p, inModal){
               //   → 유형별 금액 버튼(Paddle 오버레이). price ID 미설정이면 안내 토스트로 안전 처리.
               // payment_status==='paid' → 버튼 대신 '결제 완료 · 게재 대기' 상태 표시.
               // free/구버전(값 없음)/그 외 → 미표시. 발행은 여전히 수동(도메니코).
-              // 아래 추가옵션(PayPal 정적 링크 3종)은 그대로 유지 — 기본료만 Paddle 신설.
+              // 아래 추가옵션(addon)은 Paddle 전용 결제(2026-07-27) — PayPal 제거.
               var _subType = (desc && desc.submissionType) || '';
               var _payStatus = s.payment_status || '';
               var baseFeeBlock = _baseFeeApprovalBlock(s.id, _subType, _payStatus);
@@ -1507,22 +1507,13 @@ async function viewSubmission(id){
 // SUBMISSION BASE-FEE PAYMENT — 공용 모듈로 추출됨 (pap-submission-fee.js, 2026-07-22).
 //   _PAY_I18N/_payT/_baseFeeApprovalBlock/_baseFeePaidHtml/_lockBaseFeeButton/_resolvePayUser/payBaseFee
 //   는 <script src="/pap-submission-fee.js"> 에서 전역으로 로드된다. 아래 부가서비스(addon) 코드는 그대로.
-// 2026-07-20 (도메니코 지시) — 승인 안내의 부가서비스 3종(PayPal 정적 링크)을
-// Paddle 오버레이 결제로 전환. Paddle price 미설정/SDK 부재 시 기존 PayPal 링크로
-// 폴백해 결제 경로가 끊기지 않게 한다. 웹훅은 kind:'submission_addon' 으로 수신.
-var _ADDON_FALLBACK_PAYPAL={
-  ig_collab:'https://www.paypal.com/ncp/payment/6JJQ8DFABNNCA',
-  ig_images_cover:'https://www.paypal.com/ncp/payment/JVX4FW85MPW86',
-  posting_date:'https://www.paypal.com/ncp/payment/9DPMLWNMZFTNU'
-};
+// 2026-07-27 (도메니코 지시) — 부가서비스 결제를 Paddle 전용으로 전환. PayPal 폴백 완전 제거.
+// Paddle SDK 미로드 또는 상품(price id) 미설정 시 PayPal 대신 안내 토스트만 노출한다.
+// 웹훅은 kind:'submission_addon' 으로 수신.
 async function payAddonFee(submissionId, addonKey){
-  var fallback=_ADDON_FALLBACK_PAYPAL[addonKey]||'';
+  function _addonUnavail(){ try{ if(typeof PAP!=='undefined'&&PAP.ui&&PAP.ui.toast) PAP.ui.toast(_payT('payBaseUnavailable'),'error'); }catch(_){} }
   try{
-    if(typeof Paddle==='undefined'){
-      if(fallback) window.open(fallback,'_blank','noopener');
-      return;
-    }
-    // 2026-07-21 근본수정 — 기본료 게이트와 동일하게 서버 진실(_resolvePayUser)로 판정.
+    if(typeof Paddle==='undefined'){ _addonUnavail(); return; }
     var user = await _resolvePayUser();
     if(!user){
       if(typeof PAP!=='undefined') PAP.ui.toast(_payT('payLoginFirst'),'error');
@@ -1531,15 +1522,8 @@ async function payAddonFee(submissionId, addonKey){
     var cfg=null;
     try{ cfg=await fetch('/api/subscriptions/paddle-config',{headers:{'X-Requested-With':'XMLHttpRequest'}}).then(function(r){return r.ok?r.json():null;}); }catch(_){}
     var priceId=(cfg && cfg.clientToken && (cfg.submissionAddons||{})[addonKey])||'';
-    if(!priceId){
-      // Paddle 상품 미설정 — PayPal 폴백 (도메니코가 Paddle 콘솔에 상품 생성 +
-      // Vercel env PADDLE_PRICE_ADDON_* 설정 시 자동으로 Paddle로 전환됨).
-      if(fallback){ window.open(fallback,'_blank','noopener'); }
-      else if(typeof PAP!=='undefined'){ PAP.ui.toast(_payT('payBaseUnavailable'),'error'); }
-      return;
-    }
+    if(!priceId){ _addonUnavail(); return; }
     if(!window._papPaddleInitSub){
-      // payBaseFee와 동일 초기화 경로를 태우기 위해 초기화만 위임 목적으로 재사용.
       if(cfg.environment==='sandbox'){ try{ Paddle.Environment.set('sandbox'); }catch(_){} }
       Paddle.Initialize({ token: cfg.clientToken, eventCallback: function(ev){
         if(ev && ev.name==='checkout.completed'){
@@ -1556,7 +1540,7 @@ async function payAddonFee(submissionId, addonKey){
     });
   }catch(e){
     console.error('payAddonFee error:',e);
-    if(fallback){ try{ window.open(fallback,'_blank','noopener'); }catch(_){} }
+    _addonUnavail();
   }
 }
 
