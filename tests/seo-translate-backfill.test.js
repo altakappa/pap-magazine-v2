@@ -122,7 +122,24 @@ console.log('\n=== 입력 검증 ===');
      max_tokens 안에서 잘려 통째로 실패한다. 실측 분포는 486건 중 465건이
      2,000자 이하인데 최대 12,963자가 있어 편차가 크다. */
   ok('아티클은 문자수 예산으로도 자른다', helper.KINDS.article.charBudget > 0);
-  ok('에디토리얼은 예산 불필요 (설명 평균 15자)', helper.KINDS.editorial.charBudget === 0);
+  /* 2026-08-03 회귀 방지 — 예전엔 charBudget === 0(무제한)이었다.
+     실측: 큐 선두의 7,387자짜리 설명 한 건이 es·de·ja 를 영구히 막았다
+     (배치 반감 재시도로도 못 피한다 — 배치 1이 곧 그 행이므로).
+     ① 에디토리얼도 문자수 예산으로 자를 것
+     ② 모델에 보내는 설명 길이에 상한이 있을 것 (저장은 어차피 2,000자 컷)
+     ③ 예산 계산이 description 도 볼 것 (전에는 body 만 봐서 항상 0이었다) */
+  ok('에디토리얼도 문자수 예산으로 자른다', helper.KINDS.editorial.charBudget > 0);
+  {
+    const long = 'x'.repeat(50000);
+    const srcOut = helper.KINDS.editorial.src({ title: 't', description_en: long });
+    ok('에디토리얼 원본 설명에 상한이 있다 (poison pill 방지)',
+      srcOut.description.length > 0 && srcOut.description.length <= 2000);
+    ok('상한이 저장 컷(2000자) 이하다', srcOut.description.length < long.length);
+    ok('예산 계산이 description 을 본다',
+      String(srcOut.body || srcOut.description || '').length === srcOut.description.length);
+    const short = helper.KINDS.editorial.src({ title: 't', description_en: 'abc' });
+    ok('짧은 설명은 그대로 통과', short.description === 'abc');
+  }
   ok('아티클 max_tokens 가 더 크다 (본문 번역)',
     helper.KINDS.article.maxTokens > helper.KINDS.editorial.maxTokens);
   ok('최장 아티클(12,963자)도 단독 배치로 처리 가능',

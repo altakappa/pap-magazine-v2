@@ -52,19 +52,42 @@ const LANG_NAMES = {
  *   오늘 하루 세 번 만난 '가짜 완주' 와 같은 패턴이다. */
 const MIN_TRANSLATED = { description: 40, body: 100 };
 
+/* 에디토리얼 원본 설명을 모델에 보낼 때의 상한 (2026-08-03 신설).
+ *
+ * 왜 필요했나 — 라이브 실측(2026-08-03 00:24~01:03 KST, 20 runs):
+ *   es 15콜 중 13콜 / de 8콜 중 5콜 / ja 12콜 중 4콜이
+ *   "The operation was aborted due to timeout" 으로 실패했다. 그런데 실패한
+ *   세 언어의 큐 선두(published_date DESC 기준 미번역 1건)는 전부 같은 행이었다 —
+ *   'On Now Interview Series #12' (879bec00-4ec2-44d2-81bd-fb6945506216),
+ *   description 7,387자. 반대로 큐 선두가 847~1,018자였던 fr·zh·ru 는
+ *   26콜 중 실패 2콜이었다. 무작위 API 불안정이 아니라 한 행이 세 언어를
+ *   영구히 막고 있었다(poison pill).
+ *
+ * 배치 반감 재시도(a32eef4)로도 못 푼다 — 배치가 1이 되어도 그 1건이 바로
+ * 이 행이기 때문이다. 그래서 매 실행마다 40s + 48s 를 태우고 끝났고,
+ * 그게 duration 91s / 실행당 3언어 현상의 원인이다.
+ *
+ * 저장 시 description 은 어차피 2,000자로 잘린다(아래 upsert). 그보다 긴
+ * 입력을 보내는 것은 전액 낭비다. 발행 에디토리얼 2,163건 중 1,200자 초과는
+ * 325건, 2,000자 초과는 3건뿐이라 메타 설명 품질에는 영향이 없다. */
+const EDITORIAL_SRC_MAX = 1200;
+
 const KINDS = {
   editorial: {
     table: 'editorials',
     columns: 'id, title, title_en, description, description_en, description_it',
     translateBody: false,
     defaultBatch: 10,
-    charBudget: 0,      // 설명이 평균 15자라 개수 제한만으로 충분
+    /* 2026-08-03: 0(무제한)이었다. 위 EDITORIAL_SRC_MAX 주석 참고 —
+       긴 설명 여러 건이 한 배치에 몰리면 한 콜이 타임아웃을 넘긴다.
+       예산을 넘기는 건은 자연히 혼자 처리된다(최소 1건 보장). */
+    charBudget: 3000,
     maxTokens: 8000,
     order: 'published_date',
     src: (e) => ({
       title: e.title,
       title_en: e.title_en || null,
-      description: e.description_en || e.description || '',
+      description: String(e.description_en || e.description || '').slice(0, EDITORIAL_SRC_MAX),
     }),
     /* 번역할 원본이 실제로 있는가. 없으면 호출해봐야 빈 값만 저장되고
        그 행이 다시 '완료' 로 잡혀 영구 제외된다 — 그게 지금 상태다.
@@ -249,7 +272,10 @@ async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 9
     const picked = [];
     let used = 0;
     for (const it of items) {
-      const len = String((cfg.src(it) || {}).body || '').length;
+      /* 2026-08-03: body 만 봤다. 에디토리얼 src 는 body 가 없고
+         description 이라 예산이 항상 0으로 계산돼 무력화됐다. */
+      const s_ = cfg.src(it) || {};
+      const len = String(s_.body || s_.description || '').length;
       if (picked.length && used + len > cfg.charBudget) break;
       picked.push(it);
       used += len;
