@@ -352,13 +352,29 @@ async function testCron() {
     Array.from(new Set(calls.map(c => c.lang))).sort().join(',') === 'es,fr');
   delete process.env.SEO_TRANSLATE_LANGS;
 
+  /* 아티클 배치는 별도 상수라 env 대상이 아니다 — 에디토리얼 호출만 본다.
+     (예전엔 calls 전체를 봤는데, 아티클이 섞이면서 깨졌다) */
+  const ediBatches = () => calls.filter(c => c.kind === 'editorial').map(c => c.batch);
   process.env.SEO_TRANSLATE_EDITORIAL_BATCH = '5';
   await run();
-  ok('에디토리얼 batch 환경변수 반영', calls.every(c => c.batch === 5));
+  ok('에디토리얼 batch 환경변수 반영',
+    ediBatches().length > 0 && ediBatches().every(b => b === 5), ediBatches().join(','));
   process.env.SEO_TRANSLATE_EDITORIAL_BATCH = '999';
   await run();
-  ok('batch 상한 20 유지', calls.every(c => c.batch === 20));
+  ok('batch 상한 20 유지',
+    ediBatches().length > 0 && ediBatches().every(b => b === 20), ediBatches().join(','));
   delete process.env.SEO_TRANSLATE_EDITORIAL_BATCH;
+
+  /* 2026-08-02 · picked.map(runTask) 사고 재발 방지.
+     map 은 콜백에 index 를 두 번째 인자로 넘긴다. runTask 가 2번째 인자를
+     batchOverride 로 받게 되면서, 웨이브의 2번째 조합이 배치 1, 3번째가
+     배치 2 로 돌았다 — 처리량이 조용히 무너지는 종류의 버그다. */
+  await run();
+  {
+    const ed = calls.filter(c => c.kind === 'editorial').map(c => c.batch);
+    ok('같은 종류면 언어와 무관하게 같은 배치를 쓴다',
+      ed.length >= 2 && new Set(ed).size === 1, ed.join(','));
+  }
 
   /* ── kind 확장 (2026-07-21) ─────────────────────────────────────
      아티클 본문 번역이 크론에도 들어왔다. 확인할 것:

@@ -36,7 +36,6 @@ const MUST_GUARD = {
   'threads-post.js':          '스레드 자동게시',
   'youtube-post.js':          '유튜브 자동게시',
   'pipeline-watch.js':        '파이프라인 감시 — 감시자가 죽으면 전부 눈이 먼다',
-  'legacy-image-recover.js':  '레거시 화보 이미지 회수 — 죽으면 초기 4년치가 사진 없이 남는다',
 };
 
 console.log('\n=== 핵심 크론의 실행기록·실패알림 (withCronGuard) ===');

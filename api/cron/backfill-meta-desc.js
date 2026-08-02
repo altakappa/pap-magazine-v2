@@ -81,10 +81,36 @@ module.exports = withCronGuard('backfill-meta-desc', async function handler(req,
      워커가 놀지 않도록 소화 가능한 양보다 넉넉히 잡는다 — 남으면 다음 실행이 이어간다. */
   const lim = Math.max(1, Math.min(40, parseInt((req.query && req.query.limit) || '24', 10) || 24));
 
+  /* ── 레거시 화보 이미지 회수를 여기에 얹는다 (2026-08-02) ──
+   *
+   * 원래 별도 크론(api/cron/legacy-image-recover)으로 등록했는데 Vercel 이
+   * 한 번도 호출하지 않았다(6시간 로그 0건, cron_runs 기록 없음). 다른 크론은
+   * 전부 정상 — 32번째 슬롯이 등록되지 않은 것으로 보인다.
+   *
+   * 여기에 붙이는 게 슬롯을 아끼는 것 이상으로 맞다. 순서에 의존이 있다:
+   * 이미지를 회수해야 그 화보의 서술문을 만들 수 있다. 실제로 서술문이
+   * 남은 177편은 전부 '이미지 없어서 못 만드는' 화보다 — 이 크론이 매 실행
+   * 헛돌던 이유이기도 하다. 이미지를 먼저 붙이고, 남은 예산으로 설명을 쓴다.
+   *
+   * 예산을 작게 떼는 이유: 이 크론의 본업(서술문)을 밀어내면 안 된다.
+   * 잔량 161편이라 실행당 3편 × 6회/시 = 약 9시간이면 끝난다. */
+  let legacyImages = null;
+  try {
+    const { applyLegacyImages } = require('../_lib/legacyImageApply');
+    legacyImages = await applyLegacyImages({ limit: 3, budgetMs: 25000 });
+  } catch (e) {
+    // 회수가 실패해도 서술문 백필은 계속돼야 한다.
+    console.error('[backfill-meta-desc] legacy image 회수 실패:', (e && e.message) || e);
+    legacyImages = { error: String((e && e.message) || e).slice(0, 120) };
+  }
+
   const { data: rows, error } = await supabaseAdmin.rpc('short_desc_editorials', { lim });
   if (error) throw new Error('selector failed: ' + error.message);
   if (!rows || rows.length === 0) {
-    return res.status(200).json({ ok: true, done: true, filled: 0, note: 'no short-desc editorials left' });
+    res.locals = res.locals || {};
+    res.locals.cronNote = '서술문 대상 0'
+      + (legacyImages && legacyImages.applied ? ` · 이미지 회수 ${legacyImages.applied}편 (잔여 ${legacyImages.remaining})` : '');
+    return res.status(200).json({ ok: true, done: true, filled: 0, legacyImages, note: 'no short-desc editorials left' });
   }
 
   let filled = 0, empty = 0;
@@ -186,5 +212,14 @@ module.exports = withCronGuard('backfill-meta-desc', async function handler(req,
   }
 
   console.log('[backfill-meta-desc]', { filled, empty, batch: rows.length, remaining, ms: Date.now() - started });
-  return res.status(200).json({ ok: true, filled, empty, batch: rows.length, remaining });
+
+  /* 실행 요약. 'ok' 는 함수가 안 죽었다는 뜻이지 일을 했다는 뜻이 아니다 —
+     이 구분이 없어서 번역 백필이 이틀간 사실상 멈춘 걸 놓쳤다. */
+  res.locals = res.locals || {};
+  res.locals.cronNote = `서술문 ${filled}/${rows.length} · 잔여 ${remaining == null ? '?' : remaining}`
+    + (legacyImages && typeof legacyImages.applied === 'number'
+      ? ` · 이미지 회수 ${legacyImages.applied}편 (잔여 ${legacyImages.remaining})` : '')
+    + (legacyImages && legacyImages.error ? ` · 이미지 ERR ${legacyImages.error.slice(0, 50)}` : '');
+
+  return res.status(200).json({ ok: true, filled, empty, batch: rows.length, remaining, legacyImages });
 });

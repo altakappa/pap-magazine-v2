@@ -108,25 +108,32 @@ console.log('=== 적용 단계 안전 규약 (2026-07-31 도메니코 승인) ==
   t('시간 예산 가드', /budgetMs/.test(src) && /Date\.now\(\) - started > budgetMs/.test(src));
   t('dry 모드로 먼저 볼 수 있다', /dry/.test(src));
 
-  /* ── 2026-07-31 · 자동화 (도메니코 "자동화해줘") ────────────────────
-     사람이 엔드포인트를 반복 호출하는 방식은 그 사람이 자리를 비우면 멈춘다.
-     오늘 하루 종일 고친 문제가 정확히 그런 종류였다. */
-  const cron = fs.readFileSync(path.join(__dirname, '..', 'api/cron/legacy-image-recover.js'), 'utf8');
+  /* ── 2026-08-02 · 자동화 위치 변경 ───────────────────────────────
+     처음엔 별도 크론(api/cron/legacy-image-recover)으로 등록했는데 Vercel 이
+     한 번도 호출하지 않았다(6시간 로그 0건, cron_runs 기록 없음). 다른 크론은
+     전부 정상이었다 — 32번째 슬롯이 등록되지 않은 것으로 보인다.
+
+     그래서 backfill-meta-desc(10분)에 얹었다. 슬롯을 아끼는 것 이상으로
+     순서 의존이 맞다: 이미지를 회수해야 그 화보의 서술문을 만들 수 있고,
+     실제로 서술문이 남은 177편은 전부 '이미지가 없어서 못 만드는' 화보다. */
+  const host = fs.readFileSync(path.join(__dirname, '..', 'api/cron/backfill-meta-desc.js'), 'utf8');
   const admin = fs.readFileSync(path.join(__dirname, '..', 'api/admin/legacy-image-apply.js'), 'utf8');
 
-  t('크론이 존재하고 실행기록·실패알림에 감싸여 있다',
-    /module\.exports\s*=\s*withCronGuard\(/.test(cron));
-  t('크론이 CRON_SECRET 로 보호된다', /CRON_SECRET/.test(cron));
-  t('크론이 무엇을 했는지 기록에 남긴다', /cronNote/.test(cron),
-    "'ok' 는 함수가 안 죽었다는 뜻이지 일을 했다는 뜻이 아니다");
+  t('회수가 서술문 크론에 붙어 자동으로 돈다', /applyLegacyImages\(/.test(host),
+    '사람이 엔드포인트를 반복 호출하는 방식은 그 사람이 자리를 비우면 멈춘다');
+  t('이미지 회수가 서술문 생성보다 먼저다',
+    host.indexOf('applyLegacyImages(') < host.indexOf("rpc('short_desc_editorials'"),
+    '이미지가 있어야 그 화보의 설명을 만들 수 있다');
+  t('회수 실패가 서술문 백필을 죽이지 않는다', /legacy image 회수 실패/.test(host));
+  t('회수 결과를 실행 기록에 남긴다', /이미지 회수/.test(host));
+  t('본업을 밀어내지 않게 예산을 따로 뗀다', /budgetMs:\s*\d+/.test(host));
 
   t('두 진입점이 같은 로직을 쓴다 (복붙 금지)',
-    /require\('\.\.\/_lib\/legacyImageApply'\)/.test(cron)
+    /require\('\.\.\/_lib\/legacyImageApply'\)/.test(host)
     && /require\('\.\.\/_lib\/legacyImageApply'\)/.test(admin),
     '복붙해두면 한쪽만 고쳐지는 사고가 난다');
   t('진입점에는 적용 로직이 없다',
-    !/from\('editorials'\)[\s\S]{0,80}\.update\(/.test(cron)
-    && !/from\('editorials'\)[\s\S]{0,80}\.update\(/.test(admin));
+    !/from\('editorials'\)[\s\S]{0,80}\.update\(/.test(admin));
   t('관리자 진입점 인증 유지', /requireAdmin/.test(admin) && /CRON_SECRET/.test(admin));
   t('관리자 응답에 원문 에러를 싣지 않는다 (감사 A-3)',
     !/detail:\s*(e|err)\.message/.test(admin) && /code:/.test(admin));

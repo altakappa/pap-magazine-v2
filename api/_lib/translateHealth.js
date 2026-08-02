@@ -18,6 +18,10 @@
  */
 'use strict';
 
+/* 이 횟수 이상 돌았을 때만 '실행당 생산량'으로 판정한다. 표본이 적으면
+   우연히 낮을 수 있고, 그걸 장애로 부르면 헛알림이 된다. */
+const MIN_RUNS_TO_JUDGE = 10;
+
 /**
  * @param {object}  o
  * @param {number}  o.remaining     남은 번역 건수(전 언어 합)
@@ -46,6 +50,19 @@ function judgeTranslateHealth(o) {
       ? `최근 ${hours}시간 크론 실행 기록이 없다. 크론 등록·배포를 먼저 본다.`
       : `최근 ${hours}시간 ${runs == null ? '' : runs + '회 실행했는데 '}저장 0건. 잔량 ${remaining}건.`;
     return { status: 'stalled', remaining, perHour: 0, etaHours: null, reason };
+  }
+
+  /* 생산이 0은 아니지만 실행 수에 비해 터무니없이 적으면 그것도 정체다.
+   *
+   * 2026-08-02 실측 — 이 구멍 때문에 또 놓쳤다: 3시간 90회 실행에 저장 8건.
+   * 사실상 멈춘 상태였는데 '생산 > 0' 이라는 이유로 slow 로 분류돼 조용했다.
+   * 한 번 실행해서 한 건도 못 만드는 게 대부분이면 장애로 본다 — 배치가
+   * 타임아웃에 걸려 통째로 버려질 때 정확히 이 모습이 된다. */
+  if (runs != null && runs >= MIN_RUNS_TO_JUDGE && produced < runs) {
+    return {
+      status: 'stalled', remaining, perHour, etaHours,
+      reason: `최근 ${hours}시간 ${runs}회 실행에 저장 ${produced}건 — 실행당 1건도 못 만들고 있다. 잔량 ${remaining}건.`,
+    };
   }
 
   /* 하루 안에 못 끝나면 '느림'. 알림은 안 보낸다 — 느린 건 장애가 아니라

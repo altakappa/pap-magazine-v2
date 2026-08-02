@@ -64,7 +64,8 @@ function oauthHeader(method, url, opts) {
 /**
  * 트윗 게시. 실패해도 throw 하지 않고 {ok:false} 반환 (best-effort).
  * @param {string} text
- * @param {{token:string, tokenSecret:string}} [creds] — 생략 시 PAP 계정
+ * @param {{token:string, tokenSecret:string, mediaIds?:string[]}} [creds] — 생략 시 PAP 계정
+ *   creds.mediaIds — uploadMedia() 로 받은 media_id 배열(최대 4). 있으면 미디어 트윗.
  */
 async function postTweet(text, creds) {
   const c = creds || {};
@@ -72,13 +73,18 @@ async function postTweet(text, creds) {
   if (!configured) return { ok: false, skipped: 'X env 미설정' };
   try {
     const url = 'https://api.twitter.com/2/tweets';
+    const payload = { text: String(text).slice(0, 3000) };
+    // 미디어 첨부(선택). X 는 한 트윗에 이미지 최대 4개 또는 영상 1개만 허용하며
+    // 영상+이미지 혼합은 불가 — 이 제약은 호출부(selectArticleMedia)에서 강제한다.
+    const mediaIds = Array.isArray(c.mediaIds) ? c.mediaIds.filter(Boolean).slice(0, 4) : [];
+    if (mediaIds.length) payload.media = { media_ids: mediaIds };
     const r = await fetch(url, {
       method: 'POST',
       headers: {
         'Authorization': oauthHeader('POST', url, c.token ? { token: c.token, tokenSecret: c.tokenSecret } : undefined),
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ text: String(text).slice(0, 3000) }),
+      body: JSON.stringify(payload),
       signal: AbortSignal.timeout(15000),
     });
     const j = await r.json().catch(() => ({}));
@@ -255,8 +261,210 @@ async function accessToken(oauthToken, oauthTokenSecret, pin) {
   };
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// 네이티브 미디어 업로드 (2026-07-30, 도메니코 지시 — X 게시에 영상·이미지 첨부)
+//
+// 지금까지 트윗은 텍스트+링크만 보냈고 사진은 기사 SSR 의 twitter:card 로만
+// 떴다. 여기서 X media/upload(v1.1)로 실제 파일을 올려 media_id 를 받은 뒤
+// postTweet({mediaIds}) 로 붙인다. 서버는 Supabase 스토리지·X 에 직접 닿으므로
+// (샌드박스 프록시·브라우저 10MB 상한 없음) 영상도 청크 업로드로 처리한다.
+//
+// 서명 주의: multipart/form-data 바디는 OAuth1 서명 base string 에 포함되지 않아
+// (RFC5849 §3.4.1.3 — x-www-form-urlencoded 만 포함) 기존 oauthHeader(oauth 파라미터만
+// 서명)를 그대로 재사용할 수 있다. 쿼리로 command 를 싣는 GET STATUS 만 쿼리를
+// 서명에 포함하는 별도 헬퍼(_oauthGetHeader)를 쓴다.
+// ─────────────────────────────────────────────────────────────────────────
+
+const MEDIA_UPLOAD_URL = 'https://upload.twitter.com/1.1/media/upload.json';
+const MEDIA_CHUNK = 4 * 1024 * 1024; // 4MB (X APPEND 상한 5MB 이내)
+
+/** GET 요청용 OAuth1 헤더 — 쿼리 파라미터를 서명 base 에 포함(STATUS 전용). */
+function _oauthGetHeader(baseUrl, query, opts) {
+  const o = opts || {};
+  const token = o.token !== undefined ? o.token : process.env.X_ACCESS_TOKEN;
+  const tokenSecret = o.tokenSecret !== undefined ? o.tokenSecret : process.env.X_ACCESS_TOKEN_SECRET;
+  const oauth = {
+    oauth_consumer_key: process.env.X_API_KEY,
+    oauth_nonce: crypto.randomBytes(16).toString('hex'),
+    oauth_signature_method: 'HMAC-SHA1',
+    oauth_timestamp: String(Math.floor(Date.now() / 1000)),
+    oauth_version: '1.0',
+  };
+  if (token) oauth.oauth_token = token;
+  const allParams = Object.assign({}, query || {}, oauth);
+  const paramStr = Object.keys(allParams).sort()
+    .map((k) => pctEncode(k) + '=' + pctEncode(allParams[k])).join('&');
+  const base = ['GET', pctEncode(baseUrl), pctEncode(paramStr)].join('&');
+  const signingKey = pctEncode(process.env.X_API_SECRET) + '&' + pctEncode(tokenSecret || '');
+  oauth.oauth_signature = crypto.createHmac('sha1', signingKey).update(base).digest('base64');
+  return 'OAuth ' + Object.keys(oauth).sort()
+    .map((k) => pctEncode(k) + '="' + pctEncode(oauth[k]) + '"').join(', ');
+}
+
+/** multipart/form-data 바디 조립. fields: [{name,value} | {name,filename,contentType,data:Buffer}]. */
+function _multipart(fields) {
+  const boundary = '----papx' + crypto.randomBytes(12).toString('hex');
+  const parts = [];
+  for (const f of fields) {
+    let head = '--' + boundary + '\r\nContent-Disposition: form-data; name="' + f.name + '"';
+    if (f.filename !== undefined) head += '; filename="' + f.filename + '"';
+    head += '\r\n';
+    if (f.contentType) head += 'Content-Type: ' + f.contentType + '\r\n';
+    head += '\r\n';
+    parts.push(Buffer.from(head, 'utf8'));
+    parts.push(Buffer.isBuffer(f.data) ? f.data : Buffer.from(String(f.value), 'utf8'));
+    parts.push(Buffer.from('\r\n', 'utf8'));
+  }
+  parts.push(Buffer.from('--' + boundary + '--\r\n', 'utf8'));
+  return { body: Buffer.concat(parts), boundary };
+}
+
+async function _mediaPost(fields, creds) {
+  const c = creds || {};
+  const { body, boundary } = _multipart(fields);
+  const r = await fetch(MEDIA_UPLOAD_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': oauthHeader('POST', MEDIA_UPLOAD_URL, c.token ? { token: c.token, tokenSecret: c.tokenSecret } : undefined),
+      'Content-Type': 'multipart/form-data; boundary=' + boundary,
+    },
+    body,
+    signal: AbortSignal.timeout(60000),
+  });
+  const txt = await r.text();
+  let j = {}; try { j = txt ? JSON.parse(txt) : {}; } catch (_) { /* 204 APPEND 는 바디 없음 */ }
+  return { ok: r.ok, status: r.status, json: j, raw: txt };
+}
+
+/**
+ * 바이트 버퍼를 X 에 업로드하고 media_id 를 반환. 이미지=단발 업로드,
+ * 영상=INIT/APPEND/FINALIZE + STATUS 폴링. 실패 시 {ok:false} (throw 안 함).
+ * @param {Buffer} bytes
+ * @param {string} mimeType  예: image/jpeg, video/mp4
+ * @param {{token?:string, tokenSecret?:string}} [creds]
+ */
+async function uploadMedia(bytes, mimeType, creds) {
+  const c = creds || {};
+  const configured = c.token ? !!(process.env.X_API_KEY && process.env.X_API_SECRET) : isConfigured();
+  if (!configured) return { ok: false, skipped: 'X env 미설정' };
+  const mt = String(mimeType || '').toLowerCase();
+  const isVideo = mt.startsWith('video/');
+  try {
+    if (!isVideo) {
+      // 이미지: 단발 업로드
+      const res = await _mediaPost([
+        { name: 'media_category', value: 'tweet_image' },
+        { name: 'media', filename: 'image', contentType: mt || 'image/jpeg', data: bytes },
+      ], c);
+      const id = res.json && (res.json.media_id_string || res.json.media_id);
+      if (!res.ok || !id) return { ok: false, status: res.status, detail: (res.raw || '').slice(0, 200) };
+      return { ok: true, media_id: String(id) };
+    }
+    // 영상: INIT
+    const init = await _mediaPost([
+      { name: 'command', value: 'INIT' },
+      { name: 'total_bytes', value: String(bytes.length) },
+      { name: 'media_type', value: mt || 'video/mp4' },
+      { name: 'media_category', value: 'tweet_video' },
+    ], c);
+    const mediaId = init.json && (init.json.media_id_string || init.json.media_id);
+    if (!init.ok || !mediaId) return { ok: false, status: init.status, detail: 'INIT ' + (init.raw || '').slice(0, 150) };
+    // APPEND (청크)
+    let seg = 0;
+    for (let off = 0; off < bytes.length; off += MEDIA_CHUNK, seg++) {
+      const chunk = bytes.subarray(off, Math.min(off + MEDIA_CHUNK, bytes.length));
+      const ap = await _mediaPost([
+        { name: 'command', value: 'APPEND' },
+        { name: 'media_id', value: String(mediaId) },
+        { name: 'segment_index', value: String(seg) },
+        { name: 'media', filename: 'chunk', contentType: 'application/octet-stream', data: chunk },
+      ], c);
+      if (!ap.ok) return { ok: false, status: ap.status, detail: 'APPEND ' + seg + ' ' + (ap.raw || '').slice(0, 120) };
+    }
+    // FINALIZE
+    const fin = await _mediaPost([
+      { name: 'command', value: 'FINALIZE' },
+      { name: 'media_id', value: String(mediaId) },
+    ], c);
+    if (!fin.ok) return { ok: false, status: fin.status, detail: 'FINALIZE ' + (fin.raw || '').slice(0, 120) };
+    // 인코딩 대기(STATUS 폴링) — processing_info 가 있으면 succeeded 까지
+    let info = fin.json && fin.json.processing_info;
+    let tries = 0;
+    while (info && (info.state === 'pending' || info.state === 'in_progress') && tries < 20) {
+      const waitS = Math.min(Math.max(Number(info.check_after_secs) || 3, 1), 10);
+      await new Promise((r) => setTimeout(r, waitS * 1000));
+      const q = { command: 'STATUS', media_id: String(mediaId) };
+      const sr = await fetch(MEDIA_UPLOAD_URL + '?command=STATUS&media_id=' + encodeURIComponent(String(mediaId)), {
+        method: 'GET',
+        headers: { 'Authorization': _oauthGetHeader(MEDIA_UPLOAD_URL, q, c.token ? { token: c.token, tokenSecret: c.tokenSecret } : undefined) },
+        signal: AbortSignal.timeout(15000),
+      });
+      const sj = await sr.json().catch(() => ({}));
+      info = sj.processing_info;
+      tries++;
+    }
+    if (info && info.state === 'failed') return { ok: false, detail: 'video processing failed' };
+    return { ok: true, media_id: String(mediaId) };
+  } catch (e) {
+    return { ok: false, detail: String(e && e.message || e).slice(0, 150) };
+  }
+}
+
+/** URL 에서 미디어를 받아 업로드(서버는 Supabase 스토리지에 직접 접근 가능). */
+async function uploadMediaFromUrl(url, creds) {
+  try {
+    const r = await fetch(String(url), { signal: AbortSignal.timeout(60000) });
+    if (!r.ok) return { ok: false, detail: 'fetch ' + r.status };
+    let mime = r.headers.get('content-type') || '';
+    if (!mime || mime === 'application/octet-stream') {
+      if (/\.mp4($|\?)/i.test(url)) mime = 'video/mp4';
+      else if (/\.png($|\?)/i.test(url)) mime = 'image/png';
+      else if (/\.webp($|\?)/i.test(url)) mime = 'image/webp';
+      else mime = 'image/jpeg';
+    }
+    const buf = Buffer.from(await r.arrayBuffer());
+    return uploadMedia(buf, mime, creds);
+  } catch (e) {
+    return { ok: false, detail: String(e && e.message || e).slice(0, 150) };
+  }
+}
+
+/**
+ * 소스 기준 미디어 선택(도메니코 2026-07-30 정책). 영상 소스 글은 영상 1개,
+ * 이미지/캐러셀 글은 이미지 최대 4장. X 는 영상+이미지 혼합 불가·이미지 4장 상한.
+ * @returns {{kind:'video'|'image'|'none', urls:string[]}}
+ */
+function selectArticleMedia(article) {
+  const a = article || {};
+  const videos = Array.isArray(a.videos) ? a.videos.filter(Boolean) : [];
+  const gallery = Array.isArray(a.gallery) ? a.gallery.filter(Boolean) : [];
+  const src = String(a.source_media_type || '').toUpperCase();
+  if (src === 'VIDEO' && videos.length) return { kind: 'video', urls: [videos[0]] };
+  if (gallery.length) return { kind: 'image', urls: gallery.slice(0, 4) };
+  if (videos.length) return { kind: 'video', urls: [videos[0]] };
+  return { kind: 'none', urls: [] };
+}
+
+/**
+ * 기사 미디어를 X 에 올려 media_ids 를 반환(호출부는 이 값을 postTweet 에 넘긴다).
+ * 이미지 여러 장은 순서대로 업로드. 하나라도 실패하면 성공분만 반환하고 detail 에 기록.
+ */
+async function uploadArticleMedia(article, creds) {
+  const sel = selectArticleMedia(article);
+  if (sel.kind === 'none') return { ok: true, kind: 'none', mediaIds: [] };
+  const ids = [];
+  for (const u of sel.urls) {
+    const up = await uploadMediaFromUrl(u, creds);
+    if (up.ok && up.media_id) ids.push(up.media_id);
+    else if (sel.kind === 'video') return { ok: false, kind: 'video', mediaIds: [], detail: up.detail || up.skipped };
+    // 이미지는 일부 실패해도 성공분으로 진행
+  }
+  return { ok: ids.length > 0, kind: sel.kind, mediaIds: ids };
+}
+
 module.exports = {
   buildConversationalTweet,
   postTweet, postPepperitTweet, buildArticleTweet, buildPepperitTweet,
   isConfigured, isPepperitConfigured, requestToken, accessToken,
+  uploadMedia, uploadMediaFromUrl, selectArticleMedia, uploadArticleMedia,
 };

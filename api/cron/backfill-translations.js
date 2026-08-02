@@ -73,7 +73,12 @@ const BUDGET_MS = 85000;
  * 실제로 약 24초에 끝났다. 60s 로 잡아두면 "이 웨이브를 시작할 시간이
  * 남았는가" 검사가 과하게 보수적이 되어, 아티클은 실행의 첫 웨이브가
  * 아니면 아예 못 도는 상태가 된다. */
-const CALL_MS = { editorial: 40000, article: 40000 };
+/* 2026-08-02 상향 (40s → 50/55s).
+ * 타임아웃은 이미 번역이 끝난 응답까지 통째로 버린다 — 아슬아슬하게 잡으면
+ * 실패가 아니라 '0건'이 된다. 실측: 3시간 90회 실행에 저장 8건, 대부분
+ * `The operation was aborted due to timeout`. 시간을 넉넉히 주는 쪽이
+ * 총량이 크다(예산 85s 안에서 여전히 두 웨이브가 가능하다). */
+const CALL_MS = { editorial: 50000, article: 55000 };
 
 /* 일본어·중국어는 같은 내용도 출력 토큰이 2~3배다 (2026-07-31 실측).
  *
@@ -193,9 +198,18 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
    *     한 웨이브에서만 5만 토큰이 넘어가 분당 한도를 건드릴 위험이 크다.
    * 무거운 쪽만 낮추면 가벼운 쪽 처리량을 희생하지 않는다. */
   const cfgConc = Number(process.env.SEO_TRANSLATE_CONCURRENCY || 0);
+  /* 2026-08-02 하향 (7/4 → 3/2). 이틀치 실측이 내 판단이 틀렸음을 보여줬다.
+   *
+   *   7/31 03:23  동시 5 → 한 실행에 32건, 에러 0
+   *   7/31~8/1    동시 7 로 올린 뒤 시간당 약 30건에 머묾
+   *   8/02 09시~  거의 전량 타임아웃, 3시간 90회 실행에 8건
+   *
+   * 동시 실행을 올리면 호출 하나하나가 느려지고, 느려지면 타임아웃에 걸려
+   * **번역이 끝난 응답까지 통째로 버려진다.** 처리량을 올리려던 손잡이가
+   * 처리량을 0으로 만들었다. 병렬을 늘리는 대신 각 호출이 확실히 끝나게 한다. */
   const CONCURRENCY_BY_KIND = cfgConc > 0
     ? { editorial: cfgConc, article: cfgConc }
-    : { editorial: 7, article: 4 };
+    : { editorial: 3, article: 2 };
   const concOf = (kind) => Math.max(1, Math.min(8, CONCURRENCY_BY_KIND[kind] || 4));
 
   /* 잔량이 0 이라고 보고한 조합은 이번 실행에서 다시 부르지 않는다.
@@ -203,13 +217,15 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
   const finished = new Set();
   const key = (t) => t.lang + '|' + t.kind;
 
-  async function runTask(task) {
+  async function runTask(task, batchOverride) {
     const { lang, kind } = task;
+    const baseBatch = cjkScale(lang, kind === 'article' ? CRON_ARTICLE_BATCH : CRON_EDITORIAL_BATCH);
+    const batch = batchOverride || baseBatch;
     try {
       const r = await runBackfillBatch({
         lang, kind,
         timeoutMs: CALL_MS[kind] || CALL_MS.editorial,
-        batch: cjkScale(lang, kind === 'article' ? CRON_ARTICLE_BATCH : CRON_EDITORIAL_BATCH),
+        batch,
       });
       totalProcessed += r.processed || 0;
       if (r.remaining === 0) finished.add(key(task));
@@ -223,7 +239,21 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
       if (/Claude API 실패 \(429/.test(msg) || /rate.?limit/i.test(msg)) {
         rateLimited = true;
       }
-      console.error('[cron/backfill-translations]', kind, lang, msg);
+      console.error('[cron/backfill-translations]', kind, lang, 'batch=' + batch, msg);
+
+      /* 타임아웃이면 배치를 절반으로 줄여 딱 한 번 더 시도한다 (2026-08-02).
+       *
+       * 왜: 타임아웃은 이미 번역이 끝난 응답까지 통째로 버린다. 그래서
+       * "실패"가 아니라 "0건"으로 보이고, 그 상태로 이틀을 갔다.
+       * 절반이면 대개 시간 안에 들어온다 — 전부 잃느니 절반을 건진다.
+       * 재시도는 한 번뿐이고 예산이 남아 있을 때만 한다(무한 후퇴 금지). */
+      const isTimeout = /aborted|timeout/i.test(msg);
+      const canRetry = isTimeout && !rateLimited && !batchOverride && batch > 1;
+      if (canRetry && left() > (CALL_MS[kind] || CALL_MS.editorial) + WAVE_SLACK_MS) {
+        const half = Math.max(1, Math.floor(batch / 2));
+        console.warn('[cron/backfill-translations] 배치 축소 재시도', kind, lang, batch, '→', half);
+        return runTask(task, half);
+      }
       return { lang, kind, error: msg.slice(0, 300) };
     }
   }
@@ -261,7 +291,11 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
       break;
     }
 
-    const done = await Promise.all(picked.map(runTask));
+    /* ⚠️ picked.map(runTask) 로 쓰면 안 된다 — map 이 두 번째 인자로 index 를
+       넘겨 runTask 의 batchOverride 를 덮어쓴다. 그러면 웨이브의 2번째 조합은
+       배치 1, 3번째는 배치 2 로 돌아 처리량이 조용히 무너진다.
+       (2026-08-02 재시도 인자를 추가하면서 실제로 이렇게 깨졌고 테스트가 잡았다) */
+    const done = await Promise.all(picked.map(t => runTask(t)));
     for (const r of done) results.push(r);
   }
   if (rateLimited) results.push({ skipped: 'rate-limited-stop' });
