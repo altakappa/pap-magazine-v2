@@ -106,10 +106,15 @@ t('generateThreadsText 를 찾았다', gen.length > 0);
 /* 텍스트를 만들어 돌려주는 지점이 여러 개다(대화형 / 일반 AI / 폴백 2곳).
    한 곳이라도 빠지면 그 경로로 나간 글에 줄표가 남는다. */
 const returns = (gen.match(/text:\s*[^,\n]+|const text = /g) || []).length;
-const stripped = (gen.match(/stripDashes\(/g) || []).length;
+/* 2026-08-03 — 필터가 normalize() 로 묶였다. stripDashes(줄표) + 호칭 정규화를
+   한 함수로 통과시켜, 경로마다 어느 한쪽만 걸리는 사고를 구조적으로 막는다. */
+const stripped = (gen.match(/normalize\(/g) || []).length;
 t('텍스트 반환 지점 수만큼 필터가 걸려 있다 (반환 ' + returns + ' / 필터 ' + stripped + ')',
   stripped >= 4,
-  '경로 하나만 빠져도 그쪽으로 나간 글에 줄표가 남는다');
+  '경로 하나만 빠져도 그쪽으로 나간 글에 줄표·호칭이 남는다');
+t('normalize 가 줄표 제거를 감싼다',
+  /function normalize\(s\) \{ return papVoice\.normalizeSocialAddress\(stripDashes\(s\)\); \}/.test(threads),
+  '한쪽만 걸면 지시 하나가 통째로 샌다');
 
 console.log('\n=== 4. 프롬프트가 반말을 지시하는가 ===');
 t('스레드 프롬프트가 반말을 지시한다', /반말/.test(threads));

@@ -53,7 +53,7 @@ function fallbackText(art, url) {
 }
 
 const SYSTEM_PROMPT = [
-  '너는 PAP 매거진(아트 기반 하이엔드 패션·뷰티·컬처 매거진)의 Threads(@pap_magazine) 운영 에디터야.',
+  'PAP 매거진(아트 기반 하이엔드 패션·뷰티·컬처 매거진)의 Threads(@pap_magazine) 운영 에디터로서 쓴다.',
   '기사 제목·카테고리·본문을 받아 Threads 게시글 하나를 새로 써줘.',
   '인스타그램 캡션이나 기사 문장을 그대로 복사하지 말 것. Threads 문법으로 완전히 재편집한다.',
   '',
@@ -63,7 +63,8 @@ const SYSTEM_PROMPT = [
   '  2. 전체 2~4문장, 350자 이내. 매거진 에디터가 팔로워에게 직접 말 걸듯 자연스러운 반말.',
   '     처음부터 끝까지 반말로 간다. 마지막 질문만 존댓말로 바꾸지 마.',
   '     과장·낚시 금지, 이모지는 최대 1개.',
-  '  3. 마지막은 가벼운 질문이나 여운 있는 한마디로 대화를 유도해도 좋다(선택). 이것도 반말.',
+  '  3. 질문으로 끝내는 것은 기본값이 아니다. 정말 답이 궁금한 지점이 있을 때만 묻고,',
+  '     없으면 여운 있는 한마디나 관찰로 닫는다. 어느 쪽이든 반말.',
   '  4. 해시태그·링크는 넣지 마. 링크는 코드가 붙인다.',
   '  5. 인명·브랜드명·고유명사는 원문 그대로.',
   // 2026-07-21 도메니코 지시 — 줄표는 AI 티가 난다.
@@ -76,12 +77,18 @@ const SYSTEM_PROMPT = [
   '오직 JSON 객체 하나만 출력: {"text":"..."} 다른 말·마크다운 코드블록 금지.',
 ].join('\n');
 
+/* 게시 직전 마지막 관문. 줄표 제거(2026-07-21) + 독자 호칭 '패퍼들'·
+   "어떻게 생각해" 확정(2026-08-03). 프롬프트는 확률이라 새므로 네 갈래
+   반환 경로(대화형 / 일반 AI / 폴백 2곳) 전부가 이 함수를 통과해야 한다.
+   자르기 전에 걸어야 한다 — 치환으로 글자 수가 늘기 때문. */
+function normalize(s) { return papVoice.normalizeSocialAddress(stripDashes(s)); }
+
 /**
  * Threads 네이티브 카피 생성. 실패 시 폴백 텍스트 반환 (throw 하지 않음).
  * @returns {Promise<{text: string, ai: boolean}>}
  */
 async function generateThreadsText(art, url) {
-  if (!process.env.ANTHROPIC_API_KEY) return { text: stripDashes(fallbackText(art, url)), ai: false };
+  if (!process.env.ANTHROPIC_API_KEY) return { text: normalize(fallbackText(art, url)), ai: false };
 
   /* 대화형 우선 (2026-07-21, 도메니코 요청). 기사에 "사람들이 이미 얘기하는
      거리"가 있으면 기사 소개 대신 말을 거는 글을 쓴다. 글감이 없으면 null 이
@@ -91,7 +98,7 @@ async function generateThreadsText(art, url) {
       { title: art.title, body: art.content, tags: art.tags, category: art.category },
       'threads');
     if (hook) {
-      const text = (stripDashes(hook.text).slice(0, 430) + '\n\n' + url).slice(0, 500);
+      const text = (normalize(hook.text).slice(0, 430) + '\n\n' + url).slice(0, 500);
       console.log('[threadsAutopost] 대화형 (점수 ' + hook.score + '): ' + hook.angle);
       return { text, ai: true, conversational: true, angle: hook.angle, score: hook.score };
     }
@@ -137,12 +144,12 @@ async function generateThreadsText(art, url) {
     const body = parsed && String(parsed.text || '').trim();
     if (!body) throw new Error('빈 텍스트');
     // 본문(≤430자) + 빈 줄 + URL — 첫 URL이 링크 프리뷰 카드가 된다.
-    const text = (stripDashes(body).slice(0, 430) + '\n\n' + url).slice(0, 500);
+    const text = (normalize(body).slice(0, 430) + '\n\n' + url).slice(0, 500);
     return { text, ai: true };
   } catch (e) {
     console.error('[threadsAutopost] AI 카피 실패, 폴백 사용:', e && e.message);
     // 폴백은 기사 제목·첫 문장을 그대로 쓰므로 원문에 줄표가 있으면 딸려온다.
-    return { text: stripDashes(fallbackText(art, url)), ai: false };
+    return { text: normalize(fallbackText(art, url)), ai: false };
   }
 }
 
