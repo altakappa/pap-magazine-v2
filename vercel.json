@@ -77,7 +77,11 @@
       "schedule": "2-52/10 * * * *"
     },
     {
-      "path": "/api/cron/social-digest",
+      "path": "/api/cron/social-digest?slot=am",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/social-digest?slot=pm",
       "schedule": "0 11 * * *"
     },
     {

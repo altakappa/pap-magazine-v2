@@ -194,24 +194,38 @@ console.log('\n[1] 링크는 딱 하나 — 인스타 프로필');
   t('제목 없는 항목만 → null',
     (await copy.build({ bucket: 'celeb', label: '', days: 3, items: [{ source: 'article', id: '9', title: '' }] }, 'x')) === null);
 
-  console.log('\n[8] 요일 격자 — 세 갈래가 절대 안 겹친다');
-  const grid = digest.DAY_BUCKET;
-  t('일요일 = 에디토리얼', grid[0] === 'editorial');
-  t('월·화·목·금 = 셀럽 (2026-08-03 주 4회로 증편)',
-    grid[1] === 'celeb' && grid[2] === 'celeb' && grid[4] === 'celeb' && grid[5] === 'celeb');
-  t('수·토 = 콜렉션', grid[3] === 'collection' && grid[6] === 'collection');
-  t('쉬는 날은 없다 — 일곱 요일이 모두 채워졌다',
-    Object.keys(grid).length === 7 && Object.values(grid).every(Boolean));
-  const days = Object.keys(grid);
-  t('하루에 갈래는 최대 하나', days.every((d) => grid[d] === null || typeof grid[d] === 'string'));
+  console.log('\n[8] 슬롯 격자 — 하루 두 자리, 한 자리에 갈래 하나 (2026-08-03 6차 지시)');
+  const grid = digest.SLOT_BUCKET;
+  const DOW = [0, 1, 2, 3, 4, 5, 6];
+  t('슬롯은 아침·저녁 둘', Object.keys(grid).sort().join(',') === 'am,pm');
+  t('아침 일요일 = 에디토리얼', grid.am[0] === 'editorial');
+  t('아침 월·화·목·금 = 셀럽',
+    grid.am[1] === 'celeb' && grid.am[2] === 'celeb' && grid.am[4] === 'celeb' && grid.am[5] === 'celeb');
+  t('아침 수·토는 쉰다', grid.am[3] === null && grid.am[6] === null);
+  t('저녁은 이레 내내 콜렉션', DOW.every((d) => grid.pm[d] === 'collection'));
+  t('두 슬롯에 요일 일곱 개가 모두 선언돼 있다',
+    ['am', 'pm'].every((s) => Object.keys(grid[s]).length === 7));
+  t('한 슬롯에 갈래는 하나 (문자열 아니면 null)',
+    ['am', 'pm'].every((s) => DOW.every((d) => grid[s][d] === null || typeof grid[s][d] === 'string')));
+  /* 원칙은 그대로다 — 갈래끼리 겹치지 않는다. 다만 경계가 날짜에서 시간대로
+     내려왔다. 같은 갈래가 하루에 두 번 나가는 것도 여전히 금지다. */
+  t('같은 날 아침·저녁이 같은 갈래를 쓰지 않는다',
+    DOW.every((d) => !grid.am[d] || grid.am[d] !== grid.pm[d]));
   t('세 갈래가 모두 주 1회 이상', ['editorial', 'collection', 'celeb']
-    .every((b) => days.some((d) => grid[d] === b)));
+    .every((b) => DOW.some((d) => grid.am[d] === b || grid.pm[d] === b)));
+  t('콜렉션이 주 7회 — 물량이 하루 6건대라 주 2회로는 스레드에 41% 밖에 못 실렸다',
+    DOW.filter((d) => grid.pm[d] === 'collection').length === 7);
 
   console.log('\n[9] KST 요일 계산 (크론은 UTC)');
   // 2026-08-03 은 월요일. UTC 11:00 → KST 20:00 같은 날 = 월요일.
   t('UTC 월 11:00 → KST 월', digest.kstDay(new Date('2026-08-03T11:00:00Z')) === 1);
   // UTC 일 16:00 → KST 월 01:00 — 날짜가 넘어간다.
   t('UTC 일 16:00 → KST 월', digest.kstDay(new Date('2026-08-02T16:00:00Z')) === 1);
+  // 슬롯 경계는 KST 14시. UTC 00:00 → KST 09:00 = 아침, UTC 11:00 → KST 20:00 = 저녁.
+  t('UTC 00:00 → KST 09시 (아침 슬롯)', digest.kstHour(new Date('2026-08-03T00:00:00Z')) === 9);
+  t('UTC 11:00 → KST 20시 (저녁 슬롯)', digest.kstHour(new Date('2026-08-03T11:00:00Z')) === 20);
+  t('슬롯 경계가 두 크론 시각 사이에 있다',
+    9 < digest.SLOT_BOUNDARY_HOUR && digest.SLOT_BOUNDARY_HOUR <= 20);
   t('KST 오늘 0시 = UTC 전날 15:00',
     digest.kstTodayStartIso(new Date('2026-08-03T11:00:00Z')) === '2026-08-02T15:00:00.000Z',
     digest.kstTodayStartIso(new Date('2026-08-03T11:00:00Z')));

@@ -5,9 +5,12 @@
  * 두고 그 위에 "며칠에 한 번 모아서 리뷰" 를 얹는다. 갈래 셋 —
  *   ① 지난 7일 오리지널 에디토리얼  ② 최근 4일 아트 콜렉션  ③ 최근 4일 셀럽
  *
- * 2026-08-03 3차 수정 — 셀럽을 주 2회(월·목)에서 주 4회(월·화·목·금)로 늘렸다.
- * X 는 한 글에 제목 3~4개가 한계라, 창이 길수록 넘쳐서 버려지는 기사가 늘었다.
- * 콜렉션은 수·토, 에디토리얼은 일. 겹치는 날은 여전히 없다.
+ * 2026-08-03 6차 수정 — 하루를 아침·저녁 두 슬롯으로 쪼갰다.
+ * 저녁은 콜렉션이 매일 가져가고(창 3일), 아침은 셀럽 월·화·목·금(창 4일)과
+ * 에디토리얼 일(창 7일)이 나눠 쓴다. 수·토 아침은 쉰다.
+ * "갈래끼리 겹치지 않는다"는 원칙은 그대로고, 경계만 날짜에서 시간대로
+ * 내려왔다 — 콜렉션 공급이 하루 6건대로 늘어 주 2회로는 스레드 커버리지가
+ * 41% 밖에 안 나왔기 때문이다(28일 실측 → 매일 발행 시 102%).
  *
  * ── 이 파일이 지키는 것 ─────────────────────────────────────────────
  * 1) 세 갈래가 서로 겹치지 않는다.
@@ -171,7 +174,7 @@ const titles = (r) => r.items.map((i) => i.title);
     '받은 값: ' + JSON.stringify(titles(ed)));
 
   const co = await B.collect('collection');
-  ok('콜렉션 갈래는 4일 창', co.days === 4);
+  ok('콜렉션 갈래는 3일 창 (매일 저녁 나가므로)', co.days === 3);
   ok('셀럽이 아닌 기사 + 아카이브 에디토리얼의 합집합',
     titles(co).sort().join('|') === ['패션 아카이브', '아트', '아카이브 스프레드'].sort().join('|'),
     '받은 값: ' + JSON.stringify(titles(co)));
@@ -221,33 +224,41 @@ const titles = (r) => r.items.map((i) => i.title);
   ok('인스타 원본이 없으면 ig_url 은 빈 문자열 (null 아님)',
     (await B.collect('celeb')).items.every((i) => typeof i.ig_url === 'string'));
 
-  section('발행 요일 격자 — 세 갈래가 같은 날 겹치지 않는다 (2026-08-03 3차 지시)');
+  section('발행 격자 — 아침·저녁 두 슬롯, 한 슬롯에 갈래 하나 (2026-08-03 6차 지시)');
   /* 크론 핸들러는 env 없이 require 할 수 없어 소스 텍스트로 검증한다. */
   const fs = require('fs');
   const path = require('path');
   const cronSrc = fs.readFileSync(path.join(__dirname, '../api/cron/social-digest.js'), 'utf8');
-  const gridSrc = cronSrc.match(/const DAY_BUCKET = \{([\s\S]*?)\};/);
-  ok('DAY_BUCKET 을 찾았다', !!gridSrc);
-  const grid = {};
+  const gridSrc = cronSrc.match(/const SLOT_BUCKET = \{([\s\S]*?)\n\};/);
+  ok('SLOT_BUCKET 을 찾았다', !!gridSrc);
+  const grid = { am: {}, pm: {} };
+  let cur = null;
   (gridSrc ? gridSrc[1] : '').split('\n').forEach((line) => {
+    const h = line.match(/^\s*(am|pm)\s*:\s*\{/);
+    if (h) { cur = h[1]; return; }
     const m = line.match(/^\s*(\d)\s*:\s*(?:'([a-z]+)'|null)/);
-    if (m) grid[Number(m[1])] = m[2] || null;
+    if (m && cur) grid[cur][Number(m[1])] = m[2] || null;
   });
-  ok('요일 일곱 개가 모두 선언돼 있다', Object.keys(grid).length === 7,
+  ok('두 슬롯에 요일 일곱 개가 모두 선언돼 있다',
+    Object.keys(grid.am).length === 7 && Object.keys(grid.pm).length === 7,
     '받은 값: ' + JSON.stringify(grid));
-  const dows = (name) => Object.keys(grid).filter((d) => grid[d] === name).map(Number);
-  ok('셀럽은 주 4회 — 월·화·목·금',
-    dows('celeb').join(',') === '1,2,4,5', '받은 값: ' + JSON.stringify(dows('celeb')));
-  ok('콜렉션은 주 2회 — 수·토',
-    dows('collection').join(',') === '3,6', '받은 값: ' + JSON.stringify(dows('collection')));
-  ok('에디토리얼은 주 1회 — 일',
-    dows('editorial').join(',') === '0', '받은 값: ' + JSON.stringify(dows('editorial')));
-  ok('한 요일에 갈래는 최대 하나 (겹침 금지)',
-    Object.values(grid).filter(Boolean).length === new Set(Object.keys(grid)).size);
+  const dows = (slot, name) => Object.keys(grid[slot]).filter((d) => grid[slot][d] === name).map(Number);
+  ok('아침 — 셀럽은 주 4회 월·화·목·금',
+    dows('am', 'celeb').join(',') === '1,2,4,5', '받은 값: ' + JSON.stringify(dows('am', 'celeb')));
+  ok('아침 — 에디토리얼은 주 1회 일',
+    dows('am', 'editorial').join(',') === '0', '받은 값: ' + JSON.stringify(dows('am', 'editorial')));
+  ok('아침 — 수·토는 쉰다', grid.am[3] === null && grid.am[6] === null);
+  ok('저녁 — 콜렉션이 이레 내내',
+    dows('pm', 'collection').join(',') === '0,1,2,3,4,5,6',
+    '받은 값: ' + JSON.stringify(dows('pm', 'collection')));
+  ok('같은 날 아침·저녁이 같은 갈래를 쓰지 않는다',
+    [0, 1, 2, 3, 4, 5, 6].every((d) => !grid.am[d] || grid.am[d] !== grid.pm[d]));
+  ok('콜렉션이 아침에는 안 나온다 (한 갈래는 하루 한 번)',
+    dows('am', 'collection').length === 0);
 
   /* 창이 발행 간격보다 짧으면 그 사이 기사가 영영 안 나간다. */
-  const maxGap = (name) => {
-    const d = dows(name);
+  const maxGap = (slot, name) => {
+    const d = dows(slot, name);
     if (!d.length) return 7;
     let g = 0;
     for (let i = 0; i < d.length; i++) {
@@ -256,17 +267,34 @@ const titles = (r) => r.items.map((i) => i.title);
     }
     return g;
   };
-  ok('셀럽 창(4일)이 최대 발행 간격보다 짧지 않다', 4 >= maxGap('celeb'),
-    '최대 간격 ' + maxGap('celeb') + '일');
-  ok('콜렉션 창(4일)이 최대 발행 간격보다 짧지 않다', 4 >= maxGap('collection'),
-    '최대 간격 ' + maxGap('collection') + '일');
+  ok('셀럽 창(4일)이 최대 발행 간격보다 짧지 않다', 4 >= maxGap('am', 'celeb'),
+    '최대 간격 ' + maxGap('am', 'celeb') + '일');
+  ok('콜렉션 창(3일)이 최대 발행 간격보다 짧지 않다', 3 >= maxGap('pm', 'collection'),
+    '최대 간격 ' + maxGap('pm', 'collection') + '일');
   ok('셀럽 창은 4일', (await B.collect('celeb')).days === 4);
+  ok('콜렉션 상한은 조립 천장(스레드 9건)보다 위에 있다', B.BUCKETS.collection.limit >= 9);
 
   const vercel = JSON.parse(fs.readFileSync(path.join(__dirname, '../vercel.json'), 'utf8'));
-  const cronEntry = vercel.crons.find((c) => c.path === '/api/cron/social-digest');
-  ok('vercel 크론이 매일 돈다 (쉬는 요일이 없어졌다)',
-    cronEntry && /^0 \d+ \* \* \*$/.test(cronEntry.schedule),
-    '받은 값: ' + (cronEntry && cronEntry.schedule));
+  const slotCrons = vercel.crons.filter((c) => c.path.startsWith('/api/cron/social-digest'));
+  ok('vercel 크론이 슬롯마다 하나씩, 둘이다', slotCrons.length === 2,
+    '받은 값: ' + JSON.stringify(slotCrons));
+  ok('두 크론이 ?slot=am / ?slot=pm 을 달고 있다',
+    slotCrons.map((c) => c.path).sort().join('|')
+      === '/api/cron/social-digest?slot=am|/api/cron/social-digest?slot=pm',
+    '받은 값: ' + JSON.stringify(slotCrons.map((c) => c.path)));
+  ok('둘 다 매일 돈다', slotCrons.every((c) => /^0 \d+ \* \* \*$/.test(c.schedule)),
+    '받은 값: ' + JSON.stringify(slotCrons.map((c) => c.schedule)));
+  /* 크론은 UTC 다. am=UTC 0시 → KST 09시, pm=UTC 11시 → KST 20시.
+     둘이 같은 KST 날짜 안에 들어와야 '오늘 같은 갈래' 판정이 성립한다. */
+  const kstHourOf = (c) => (Number(c.schedule.split(' ')[1]) + 9) % 24;
+  const amCron = slotCrons.find((c) => c.path.endsWith('am'));
+  const pmCron = slotCrons.find((c) => c.path.endsWith('pm'));
+  ok('아침 크론이 KST 오전, 저녁 크론이 KST 오후',
+    kstHourOf(amCron) < 12 && kstHourOf(pmCron) >= 12,
+    'am KST ' + kstHourOf(amCron) + '시 · pm KST ' + kstHourOf(pmCron) + '시');
+  ok('두 크론이 KST 같은 날에 떨어진다 (UTC 15시 전)',
+    slotCrons.every((c) => Number(c.schedule.split(' ')[1]) < 15),
+    '받은 값: ' + JSON.stringify(slotCrons.map((c) => c.schedule)));
 
   /* ---------------------------------------------------------------- */
   console.log('\npassed: ' + pass + '   failed: ' + fail);
