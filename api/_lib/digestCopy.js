@@ -22,12 +22,13 @@
  *        (빈 줄)
  *        1. 제목 · 소개말
  *        2. 제목 · 소개말
+ *        (빈 줄)
  *        더 많은 현장은 PAP 인스타그램에서 확인!
  *        https://www.instagram.com/pap_magazine/
  *
- *      머리말과 목록 사이의 빈 줄 하나 말고는 군더더기가 없다. 예전엔 모델이
- *      쓴 '오늘의 묶음을 여는 한 줄'(intro)이 머리말 밑에 또 붙고 목록과 마무리
- *      사이에도 빈 줄이 있었는데, 둘 다 걷어냈다. 머리말이 이미 그 일을 한다.
+ *      빈 줄은 머리말 밑과 마무리 앞 두 군데뿐이다. 예전엔 모델이 쓴 '오늘의
+ *      묶음을 여는 한 줄'(intro)이 머리말 밑에 또 붙었는데 그건 걷어냈다 —
+ *      머리말이 이미 그 일을 한다.
  *
  * 어미는 socialHook 의 toneFor/isPolite 를 그대로 쓴다. 채널별 말투 분기는
  * 저장소에 딱 한 군데(socialHook)만 있어야 한다 — tests/social-tone.test.js
@@ -229,14 +230,17 @@ function fitDown(items, build, fits) {
   return build(1, false);
 }
 
-/* 스레드 = 머리말 / 빈 줄 / 목록 / 마무리 / 링크. 그게 전부다.
-   빈 줄은 머리말 밑 하나뿐 — 목록과 마무리는 붙여 둔다 (4차 지시). */
+/* 스레드 = 머리말 / 빈 줄 / 목록 / 빈 줄 / 마무리 / 링크. 그게 전부다.
+   빈 줄은 두 군데 — 머리말 밑과 마무리 앞이다. 마무리는 목록의 일곱 번째
+   항목이 아니라 딴 소리이므로 눈으로도 떨어져 보여야 한다 (5차 지시).
+   X 는 그대로 붙여 쓴다. 가중 280자에 빈 줄 넣을 자리가 없다. */
 function assembleThreads(headline, copy, items) {
   const build = (n, withNotes) => {
     const lines = [headline, ''];
     for (let i = 0; i < n; i++) {
       lines.push(renderItem(i + 1, cleanTitle(items[i].title), withNotes ? copy.notes[i] : ''));
     }
+    lines.push('');
     if (copy.closing) lines.push(copy.closing);
     lines.push(IG_URL);
     return lines.join('\n');

@@ -7,14 +7,14 @@
  *   3) 한 기사는 한 줄 (제목 · 소개말), 제목은 원문 그대로
  *   4) 소재를 고르지 않는다 — 자리가 모자라면 소개말을 먼저 버린다
  *   5) 세 갈래가 같은 날 안 겹친다
- *   6) 스레드는 머리말 / 빈 줄 / 목록 / 마무리 / 링크 다섯 덩이뿐이다
+ *   6) 스레드는 머리말 / 목록 / 마무리 / 링크 네 덩이뿐이고, 사이엔 빈 줄이 하나씩
  *
  * 2026-08-03 3차 — 셀럽을 월·목에서 월·화·목·금으로 늘렸다. X 한 글에는 제목이
  * 서너 개밖에 안 들어가서(가중 280자), 창이 길수록 넘쳐 버려지는 기사가 늘었다.
  * 자주 조금씩 내보내는 쪽이 같은 글자 수로 더 많이 나간다(실측 64% → 92%).
  *
- * 2026-08-03 4차 — 스레드 본문을 더 심플하게. 모델이 쓰던 intro 한 줄을 없애고,
- * 목록과 마무리 사이 빈 줄도 지웠다. 머리말은 체언 + 마침표로 끊는다.
+ * 2026-08-03 4차 — 스레드 본문을 더 심플하게. 모델이 쓰던 intro 한 줄을 없애고
+ * 머리말을 체언 + 마침표로 끊었다. 5차 — 마무리 앞 빈 줄은 도로 살렸다.
  *
  * ANTHROPIC_API_KEY 없이 돌면 generateNotes 가 곧장 null 이라 fallback 경로만
  * 탄다. 그게 오히려 낫다 — 테스트가 모델 응답에 흔들리지 않는다.
@@ -149,7 +149,7 @@ console.log('\n[1] 링크는 딱 하나 — 인스타 프로필');
       t(b + '/' + p2 + ': 최근 으로 연다', /^최근/.test(copy.HEADLINE[b][p2]), copy.HEADLINE[b][p2]);
     }
   }
-  console.log('\n[6-5] 스레드 뼈대 — 머리말 / 빈 줄 / 목록 / 마무리 / 링크 (2026-08-03 4차 지시)');
+  console.log('\n[6-5] 스레드 뼈대 — 머리말 / 빈 줄 / 목록 / 빈 줄 / 마무리 / 링크 (2026-08-03 4차 지시)');
   {
     const head = copy.HEADLINE.celeb.threads;
     const c = {
@@ -160,11 +160,16 @@ console.log('\n[1] 링크는 딱 하나 — 인스타 프로필');
     t('첫 줄이 머리말', lines[0] === head, lines[0]);
     t('둘째 줄은 빈 줄', lines[1] === '', JSON.stringify(lines[1]));
     t('셋째 줄부터 바로 목록 (모델 intro 가 없다)', /^1\. /.test(lines[2]), lines[2]);
-    t('목록과 마무리 사이에 빈 줄이 없다',
-      lines[lines.length - 3] === '3. ' + ITEMS[2].title + copy.SEP + c.notes[2], lines[lines.length - 3]);
+    t('마지막 항목이 제자리에 있다',
+      lines[lines.length - 4] === '3. ' + ITEMS[2].title + copy.SEP + c.notes[2], lines[lines.length - 4]);
+    t('마무리 앞에 빈 줄이 있다 (2026-08-03 5차 지시)',
+      lines[lines.length - 3] === '', JSON.stringify(lines[lines.length - 3]));
     t('마무리는 끝에서 둘째 줄', lines[lines.length - 2] === c.closing, lines[lines.length - 2]);
     t('링크가 마지막 줄', lines[lines.length - 1] === copy.IG_URL, lines[lines.length - 1]);
-    t('빈 줄은 딱 하나', lines.filter((l) => l === '').length === 1, JSON.stringify(lines));
+    t('빈 줄은 딱 둘 — 머리말 밑과 마무리 앞',
+      lines.filter((l) => l === '').length === 2, JSON.stringify(lines));
+    t('X 는 빈 줄 없이 붙여 쓴다 (가중 280자)',
+      !copy.assembleX(copy.HEADLINE.celeb.x, c, ITEMS).split('\n').some((l) => l === ''));
     t('셀럽 머리말은 도메니코가 준 본보기 그대로', head === '최근 셀럽들 소식 모음.', head);
     t('세 갈래 스레드 머리말이 모두 마침표로 끝난다',
       ['editorial', 'collection', 'celeb'].every((b) => /\.$/.test(copy.HEADLINE[b].threads)),
