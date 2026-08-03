@@ -467,6 +467,7 @@ async function uploadArticleMedia(article, creds) {
 }
 
 module.exports = {
+  weightedLen, URL_PLACEHOLDER,
   buildConversationalTweet,
   postTweet, postPepperitTweet, buildArticleTweet, buildPepperitTweet,
   isConfigured, isPepperitConfigured, requestToken, accessToken,

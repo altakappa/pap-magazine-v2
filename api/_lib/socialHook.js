@@ -244,4 +244,5 @@ async function generateConversationalPost(art, platform, opts) {
 }
 
 module.exports = {
-  stripDashes, hookScore, generateConversationalPost, HOOK_MIN, SIGNALS, BLOCK };
+  stripDashes, hookScore, generateConversationalPost, HOOK_MIN, SIGNALS, BLOCK,
+  toneFor, isPolite };

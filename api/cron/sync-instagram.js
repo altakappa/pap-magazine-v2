@@ -196,7 +196,13 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
       }
       results.imported++;
       if (inserted){
-        const h = inserted.custom_url || inserted.slug || inserted.id;
+        /* 2026-08-03 — slug 우선. 사이트맵(api/sitemap-articles.js:50)은
+           slug || custom_url || id 순으로 정본 URL 을 내보내는데, 여기만
+           custom_url 을 앞에 두고 있었다. 그래서 임포트 직후 X·스레드·
+           IndexNow 로 나가는 링크가 사이트맵의 정본과 달라져 301 이 생겼다
+           (2026-07-22 Ahrefs 감사에서 잡힌 그 문제와 같은 원인, 다른 자리).
+           custom_url 은 레거시라 두 곳의 순서는 반드시 같아야 한다. */
+        const h = inserted.slug || inserted.custom_url || inserted.id;
         if (h && pubStatus === 'published'){
           const artUrl = SITE + '/article/' + encodeURIComponent(h);
           if (!backfillMode){

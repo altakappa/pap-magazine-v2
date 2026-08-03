@@ -24,6 +24,17 @@ for (const f of ['api/sitemap-articles.js','api/sitemap-news.js','api/rss.js']) 
   t(`${f}: 구(舊) custom_url 우선이 없다`, !/const handle = a\.custom_url \|\| a\.id;/.test(s));
 }
 
+/* 2026-08-03 — 같은 역전이 sync-instagram 에도 남아 있었다. 임포트 직후
+   X·스레드·IndexNow 로 나가는 링크가 여기서 만들어지는데, 사이트맵과 순서가
+   달라 정본이 아닌 URL 을 밖으로 광고하고 있었다. 자리만 다른 같은 버그다. */
+console.log('\n=== 임포트 직후 배포 URL 도 slug 우선 ===');
+{
+  const s = R('api/cron/sync-instagram.js');
+  t('sync-instagram: handle 이 slug 우선', /inserted\.slug \|\| inserted\.custom_url \|\| inserted\.id/.test(s));
+  t('sync-instagram: 구(舊) custom_url 우선이 없다', !/inserted\.custom_url \|\| inserted\.slug/.test(s));
+  t('sync-instagram: select 에 slug 포함', /select\('id, custom_url, slug'\)/.test(s));
+}
+
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if(fail){ console.log('❌ sitemap-slug-source tests FAILED'); process.exit(1); }
 console.log('✅ sitemap-slug-source tests passed');
