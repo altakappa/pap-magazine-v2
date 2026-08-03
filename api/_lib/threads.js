@@ -14,10 +14,15 @@
  */
 
 const { supabaseAdmin } = require('./supabase');
+const { pushAlert } = require('./pushAlert');
 
 const AUTH_BASE = 'https://threads.net/oauth/authorize';
 const GRAPH = 'https://graph.threads.net';
-const SCOPES = 'threads_basic,threads_content_publish';
+// 2026-08-03 — threads_manage_insights 추가. 성과 지표(views/likes/replies/
+// reposts/quotes) 조회에 필요하다. 기존 토큰에는 이 권한이 없으므로
+// /api/threads/oauth 재인증 1회가 있어야 threads-metrics 크론이 동작한다.
+// (토큰 자체가 2026-09-05 만료라 어차피 재인증이 필요한 시점이다.)
+const SCOPES = 'threads_basic,threads_content_publish,threads_manage_insights';
 const REDIRECT_URI = 'https://www.pap-magazine.com/api/threads/callback';
 
 function authorizeUrl(state) {
@@ -73,6 +78,39 @@ async function saveToken(t) {
   if (error) throw error;
 }
 
+// 토큰 이상 알림 — 같은 알림이 10분마다 울리지 않도록 6시간 쿨다운.
+// 마지막 발송 시각은 threads_auth.alerted_at 에 기록한다 (마이그레이션 097).
+const TOKEN_ALERT_COOLDOWN_MS = 6 * 3600 * 1000;
+
+async function alertTokenTrouble(kind, msLeft, row, detail) {
+  try {
+    const last = row && row.alerted_at ? new Date(row.alerted_at).getTime() : 0;
+    if (Date.now() - last < TOKEN_ALERT_COOLDOWN_MS) return;
+    const days = Math.max(0, Math.floor(msLeft / 86400000));
+    const expired = kind === 'expired';
+    await pushAlert({
+      title: expired
+        ? '\uD83D\uDD11 [PAP] Threads 토큰 만료 — 자동 게시 중단'
+        : '\uD83D\uDD11 [PAP] Threads 토큰 연장 실패 — ' + days + '일 남음',
+      lines: [
+        expired
+          ? '토큰이 만료돼 Threads 자동 게시가 멈췄다.'
+          : '자동 연장이 실패했다. 남은 기간 동안은 기존 토큰으로 계속 게시되지만, ' + days + '일 뒤 멈춘다.',
+        '조치: @pap_magazine 로그인 상태에서 아래 링크 1회 방문 → 재인증',
+        '사유: ' + String(detail || '').slice(0, 200),
+      ],
+      url: 'https://www.pap-magazine.com/api/threads/oauth',
+      urlLabel: 'Threads 재인증',
+      personalOnly: true,
+    });
+    await supabaseAdmin.from('threads_auth')
+      .update({ alerted_at: new Date().toISOString() }).eq('id', 1);
+  } catch (e) {
+    // 알림 실패가 게시를 막으면 안 된다 — 로그만 남기고 통과.
+    console.error('[threads] 토큰 알림 실패:', e && e.message);
+  }
+}
+
 // 유효 토큰 반환 — 만료 7일 전부터 th_refresh_token 으로 60일 연장
 async function getAccessToken() {
   const { data: row, error } = await supabaseAdmin.from('threads_auth').select('*').eq('id', 1).single();
@@ -83,8 +121,16 @@ async function getAccessToken() {
     + encodeURIComponent(row.access_token), { signal: AbortSignal.timeout(15000) });
   const j = await r.json();
   if (!r.ok || j.error) {
-    // 연장 실패 — 남은 기간 내면 기존 토큰으로 계속, 완전 만료면 재인증 요구
-    if (msLeft > 0) return { token: row.access_token, userId: row.user_id };
+    // 연장 실패 — 남은 기간 내면 기존 토큰으로 계속, 완전 만료면 재인증 요구.
+    // 2026-08-03 — 예전엔 여기서 조용히 기존 토큰을 돌려줬다. 연장이 계속
+    // 실패해도 아무도 모르다가 7일 뒤 전 채널이 갑자기 멎는 구조였다.
+    // 이제 알림을 보낸다 (6시간 쿨다운 — 10분 크론 스팸 방지).
+    const why = JSON.stringify(j && j.error ? j.error : j).slice(0, 200);
+    if (msLeft > 0) {
+      await alertTokenTrouble('refresh', msLeft, row, why);
+      return { token: row.access_token, userId: row.user_id };
+    }
+    await alertTokenTrouble('expired', msLeft, row, why);
     throw new Error('token refresh 실패 (만료) — /api/threads/oauth 재인증 필요: ' + JSON.stringify(j).slice(0, 150));
   }
   await saveToken({ access_token: j.access_token, expires_in: j.expires_in });
@@ -138,4 +184,50 @@ async function postText(text) {
   return pj.id;
 }
 
-module.exports = { authorizeUrl, exchangeCode, getAccessToken, postText, REDIRECT_URI };
+/**
+ * 게시물 1건의 성과 지표 조회 (Threads Insights).
+ *
+ * 엔드포인트: GET /v1.0/{thread-id}/insights?metric=views,likes,replies,reposts,quotes
+ * 필요 권한: threads_manage_insights — 2026-08-03 SCOPES 에 추가했으므로
+ * 재인증 전 토큰으로 호출하면 권한 오류가 난다. 그 경우 err.needsReauth=true
+ * 로 표시해 호출부가 '실패'가 아니라 '대기'로 처리할 수 있게 한다.
+ *
+ * 응답 형태가 지표마다 다르다 — 단일값은 values[0].value, 총계형은
+ * total_value.value 로 온다. 둘 다 받아 정규화한다.
+ *
+ * @param {string} threadId
+ * @returns {Promise<{views:number|null, likes:number|null, replies:number|null, reposts:number|null, quotes:number|null}>}
+ */
+const INSIGHT_METRICS = ['views', 'likes', 'replies', 'reposts', 'quotes'];
+
+async function getThreadInsights(threadId) {
+  if (!threadId) throw new Error('thread_id 없음');
+  const { token } = await getAccessToken();
+  const u = GRAPH + '/v1.0/' + encodeURIComponent(threadId) + '/insights'
+    + '?metric=' + INSIGHT_METRICS.join(',')
+    + '&access_token=' + encodeURIComponent(token);
+  const r = await fetch(u, { signal: AbortSignal.timeout(15000) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || j.error) {
+    const errObj = j && j.error ? j.error : j;
+    const e = new Error('insights 조회 실패: ' + JSON.stringify(errObj).slice(0, 200));
+    const code = Number(errObj && errObj.code);
+    // code 10 = permission denied, 190 = 토큰 무효, 200 = 권한 부족.
+    e.needsReauth = code === 10 || code === 190 || code === 200
+      || /permission|scope|insights/i.test(String(errObj && errObj.message || ''));
+    throw e;
+  }
+  const out = {};
+  for (const m of INSIGHT_METRICS) out[m] = null;
+  for (const row of (j.data || [])) {
+    const name = String(row && row.name || '').toLowerCase();
+    if (!INSIGHT_METRICS.includes(name)) continue;
+    let v = null;
+    if (row.total_value && row.total_value.value != null) v = Number(row.total_value.value);
+    else if (Array.isArray(row.values) && row.values.length) v = Number(row.values[0].value);
+    out[name] = Number.isFinite(v) ? v : null;
+  }
+  return out;
+}
+
+module.exports = { authorizeUrl, exchangeCode, getAccessToken, postText, getThreadInsights, INSIGHT_METRICS, REDIRECT_URI };

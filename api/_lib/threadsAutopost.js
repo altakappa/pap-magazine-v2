@@ -163,7 +163,8 @@ async function postArticleToThreads(art) {
     return { status: 'skipped', detail: '실패 ' + existing.attempts + '회 — 재시도 상한 도달' };
   }
 
-  const { text, ai } = await generateThreadsText(art, art.url);
+  const gen = await generateThreadsText(art, art.url);
+  const { text, ai } = gen;
 
   let threadId = null; let status = 'published'; let detail = null;
   try {
@@ -172,14 +173,37 @@ async function postArticleToThreads(art) {
     status = 'failed';
     detail = String(err && err.message || err).slice(0, 400);
   }
-  const { error: upErr } = await supabaseAdmin.from('threads_posts').upsert({
+
+  const base = {
     article_id: art.id, thread_id: threadId, status, detail,
     // 실패 시 시도 횟수 누적 (3회 도달 시 위의 상한 가드가 스킵)
     attempts: status === 'failed' ? ((existing && existing.attempts) || 0) + 1 : 1,
-  }, { onConflict: 'article_id' });
+  };
+  // 2026-08-03 — 카피 전략 메타를 같이 저장한다 (마이그레이션 097).
+  // generateThreadsText 는 예전부터 conversational/angle/score 를 돌려줬지만
+  // 전부 버려지고 있었다. 저장해야 "대화형 훅이 실제로 더 읽히는가"를
+  // threads-metrics 가 모은 지표와 한 행에서 대조할 수 있다.
+  const meta = {
+    ai: !!ai,
+    conversational: !!gen.conversational,
+    angle: gen.angle ? String(gen.angle).slice(0, 200) : null,
+    score: Number.isFinite(Number(gen.score)) ? Number(gen.score) : null,
+    posted_at: status === 'published' ? new Date().toISOString() : null,
+  };
+
+  let { error: upErr } = await supabaseAdmin.from('threads_posts')
+    .upsert(Object.assign({}, base, meta), { onConflict: 'article_id' });
+  if (upErr) {
+    // 097 미적용 환경 방어. 여기서 기록이 통째로 실패하면 픽커의 done set 에
+    // 안 잡혀 같은 기사가 10분 뒤 재게시된다 — 중복 발행이 지표 결손보다 나쁘다.
+    // 그래서 메타를 떼고 기본 필드만으로 한 번 더 시도한다.
+    console.error('[threadsAutopost] 메타 포함 기록 실패, 기본 필드로 재시도:', upErr.message);
+    const retry = await supabaseAdmin.from('threads_posts').upsert(base, { onConflict: 'article_id' });
+    upErr = retry.error;
+  }
   if (upErr) console.error('[threadsAutopost] threads_posts 기록 실패:', upErr.message);
 
-  return { status, thread_id: threadId, detail, text, ai };
+  return { status, thread_id: threadId, detail, text, ai, conversational: !!gen.conversational, angle: gen.angle || null };
 }
 
 module.exports = { postArticleToThreads, generateThreadsText, fallbackText, stripDashes };

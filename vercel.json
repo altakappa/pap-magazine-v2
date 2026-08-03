@@ -73,6 +73,10 @@
       "schedule": "2-52/10 * * * *"
     },
     {
+      "path": "/api/cron/threads-metrics",
+      "schedule": "17 * * * *"
+    },
+    {
       "path": "/api/cron/sync-pepperit",
       "schedule": "4-54/10 * * * *"
     },
