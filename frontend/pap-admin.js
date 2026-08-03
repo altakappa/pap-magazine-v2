@@ -14639,6 +14639,30 @@ function _subFmtKRW(n){
 }
 function _subEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function _subDate(s){ if(!s) return '—'; try{ return String(s).slice(0,10); }catch(_){ return '—'; } }
+// ── 결제일 표기 (2026-08-03) ────────────────────────────────────────────
+// 예전에는 ISO 문자열을 그대로 잘라 썼는데 그건 UTC 라 하루가 밀렸다
+// (UTC 08-07 16:44 = 한국 08-08 01:44 → 실제 결제는 8월 8일).
+// 이제 서버가 KST 로 계산한 charge_date_kst / charge_weekday_kst 를 쓴다.
+function _subKDate(row){
+  var s = row && row.charge_date_kst;
+  if(!s) return '—';
+  var p = String(s).split('-');
+  if(p.length !== 3) return String(s);
+  return Number(p[1]) + '월 ' + Number(p[2]) + '일' + (row.charge_weekday_kst ? '(' + row.charge_weekday_kst + ')' : '');
+}
+function _subUpDate(u){
+  var p = String(u && u.date_kst || '').split('-');
+  if(p.length !== 3) return '—';
+  return Number(p[1]) + '월 ' + Number(p[2]) + '일' + (u.weekday ? '(' + u.weekday + ')' : '');
+}
+// d 일 뒤를 사람 말로. 체험은 '전'(전환까지), 유료는 '후'(다음 결제까지).
+function _subWhen(d, mode){
+  if(d == null) return '';
+  if(d === 0) return '오늘';
+  if(d === 1) return (mode === 'before') ? '내일' : '내일';
+  if(d < 0) return Math.abs(d) + '일 지남';
+  return d + '일 ' + ((mode === 'before') ? '전' : '후');
+}
 function _subBadge(kind){
   var m={ paying:['유료','#1b7f4d','#e6f5ec'], trialing:['체험','#9a6a00','#fff3d6'], past_due:['연체·결제실패','#b3261e','#fde8e6'], canceled:['취소','#666','#eee'], paused:['일시정지','#666','#eee'] };
   var x=m[kind]||[String(kind||'—'),'#666','#eee'];
@@ -14652,27 +14676,67 @@ async function loadSubscriptionTable(){
     if(!r || !Array.isArray(r.rows)) throw new Error((r&&r.message)||'unavailable');
     var s=r.summary||{};
     if(sum){
-      sum.innerHTML='유료 <strong>'+(s.paying||0)+'</strong> · 체험 <strong>'+(s.trialing||0)+'</strong>'
-        +' · 연체 <strong style="color:#b3261e">'+(s.past_due||0)+'</strong> · 취소 '+(s.canceled||0)
-        +'  |  유료 MRR <strong>'+_subFmtKRW(s.mrr)+'</strong>'
-        +'  ·  체험은 첫 결제 전이라 매출에서 제외됩니다.';
+      var line1='유료 <strong>'+(s.paying||0)+'</strong>명 · 무료체험 <strong>'+(s.trialing||0)+'</strong>명'
+        +' · 연체 <strong style="color:#b3261e">'+(s.past_due||0)+'</strong>명 · 취소 '+(s.canceled||0)+'명'
+        +'  |  지금 확정된 월 매출 <strong>'+_subFmtKRW(s.mrr)+'</strong>';
+      var line2='';
+      if((s.trialing||0) > 0){
+        line2='<div style="margin-top:6px">무료체험 <strong>'+(s.trialing||0)+'</strong>명이 모두 유료로 바뀌면 '
+          +'<strong style="color:#1b7f4d">+'+_subFmtKRW(s.trialing_mrr||0)+'</strong> → 월 <strong>'
+          +_subFmtKRW(s.mrr_if_all_convert||0)+'</strong> (전환 전에는 매출에 넣지 않습니다)</div>';
+      }
+      var line3='';
+      var up = Array.isArray(s.upcoming) ? s.upcoming : [];
+      if(up.length){
+        line3='<div style="margin-top:6px">다가오는 결제 — '
+          + up.slice(0,8).map(function(u){
+              var tag = u.first_charge ? ' <span style="color:#9a6a00">첫 결제 '+u.first_charge+'건</span>' : '';
+              return '<strong>'+_subUpDate(u)+'</strong> '+_subFmtKRW(u.amount)+tag;
+            }).join(' · ')
+          + '</div>';
+      }
+      var line4='<div style="margin-top:8px;color:var(--text3);font-size:12px">'
+        + '※ 무료체험 기간에는 돈이 들어오지 않습니다. 위 날짜는 <strong>카드가 결제되는 날(한국시간)</strong>이고, '
+        + '통장에 실제로 입금되는 날은 Paddle 정산 주기에 따라 그보다 며칠 뒤입니다 — 정산 주기는 '
+        + '<a href="https://vendors.paddle.com" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:underline">Paddle 대시보드</a>에서 확인하세요.'
+        + (s.now_kst ? ' (기준 시각 ' + _subEsc(s.now_kst) + ' KST)' : '')
+        + '</div>';
+      sum.innerHTML = line1 + line2 + line3 + line4;
     }
     if(!r.rows.length){ if(body) body.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:40px 0">구독이 없습니다.</td></tr>'; return; }
     var html=r.rows.map(function(row){
       var who=_subEsc(row.display_name||'—')+'<div style="color:var(--text3);font-size:11px">'+_subEsc(row.email||'')+'</div>';
-      var note='—';
+      var d=row.days_to_period_end;
+      var amt=(row.charge_amount!=null && row.charge_amount>0) ? _subFmtKRW(row.charge_amount) : '';
+      var at=row.charge_time_kst ? (' ' + row.charge_time_kst) : '';
+      var note='—', sub='';
       if(row.kind==='trialing'){
-        var d=row.days_to_period_end;
-        var dd=(d==null)?'':(d<=0?'오늘 결제 시도':('D-'+d));
-        note='<span style="color:#9a6a00;font-weight:600">체험 종료 '+dd+'</span> ('+_subDate(row.current_period_end)+' 첫 결제)';
+        // 도메니코 요청(2026-08-03): "유료 전환 3일 전" 처럼 언제 돈이 빠져나가는지
+        // 한눈에 보이게. 무료체험 중에는 아직 입금이 없다는 것도 같이 적는다.
+        var head=(d==null) ? '유료 전환 예정'
+               : (d<0) ? '전환일 지남 — 확인 필요'
+               : (d===0) ? '오늘 유료 전환'
+               : (d===1) ? '내일 유료 전환'
+               : ('유료 전환 ' + d + '일 전');
+        note='<span style="color:#9a6a00;font-weight:700">'+head+'</span>';
+        sub='무료체험 중 · '+_subKDate(row)+at+' 첫 결제'+(amt?(' · '+amt):'');
       } else if(row.kind==='past_due'){
         note='<span style="color:#b3261e;font-weight:700">결제 실패 — 확인 필요</span>';
+        sub=_subKDate(row)+' 청구'+(amt?(' · '+amt):'')+' — Paddle 에서 재시도 상태를 확인하세요';
       } else if(row.kind==='paying'){
-        note='다음 결제 '+_subDate(row.current_period_end);
+        note='다음 결제 '+_subWhen(d,'after');
+        sub=_subKDate(row)+at+(amt?(' · '+amt):'');
+      } else if(row.kind==='paused'){
+        note='일시정지 — 청구 없음';
+      } else if(row.kind==='canceled'){
+        note='취소됨 — 청구 없음';
       }
-      var rowStyle = row.kind==='past_due' ? ' style="background:rgba(179,38,30,.06)"' : ((row.kind==='trialing' && row.days_to_period_end!=null && row.days_to_period_end<=2) ? ' style="background:rgba(255,179,71,.08)"' : '');
+      if(sub) note += '<div style="color:var(--text3);font-size:11px;margin-top:2px">'+sub+'</div>';
+      var rowStyle = row.kind==='past_due' ? ' style="background:rgba(179,38,30,.06)"' : ((row.kind==='trialing' && d!=null && d<=3) ? ' style="background:rgba(255,179,71,.08)"' : '');
       var cyc = row.billing_cycle==='yearly'?'연':row.billing_cycle==='monthly'?'월':'—';
-      return '<tr'+rowStyle+'><td>'+who+'</td><td>'+_subEsc(row.plan_label||'—')+'</td><td>'+_subBadge(row.kind)+'</td><td>'+cyc+'</td><td>'+_subDate(row.current_period_end)+'</td><td style="font-size:12px">'+note+'</td></tr>';
+      var dateCell = (row.kind==='canceled'||row.kind==='paused') ? '—'
+        : (_subKDate(row) + (d==null ? '' : '<div style="color:var(--text3);font-size:11px">D-'+d+'</div>'));
+      return '<tr'+rowStyle+'><td>'+who+'</td><td>'+_subEsc(row.plan_label||'—')+'</td><td>'+_subBadge(row.kind)+'</td><td>'+cyc+'</td><td>'+dateCell+'</td><td style="font-size:12px">'+note+'</td></tr>';
     }).join('');
     if(body) body.innerHTML=html;
   }catch(e){
