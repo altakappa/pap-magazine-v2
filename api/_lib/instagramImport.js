@@ -334,7 +334,7 @@ async function generateArticleFromPost(post, opts){
     '',
     'Output format (ONLY a JSON object, no markdown fences, no prose):',
     '{',
-    '  "title_ko": "(PAP 후킹 한 줄. 8~20자, 마침표 없이. 아래 후킹 규격을 따를 것)",',
+    '  "title_ko": "(PAP 후킹 한 줄. 10~26자, 마침표 없이. 아래 후킹 규격을 따를 것)",',
     '  "title_en": "Short impactful English title, no period",',
     '  "body_ko": "(평서체 ~다. 존댓말 절대 금지. 정확히 2단락, 총 250~450자. 단락은 <br><br>로 구분. HTML 인라인 태그만 사용 가능.)",',
     '  "body_en": "Exactly 2 paragraphs in English, mirroring body_ko, separated by <br><br>.",',
