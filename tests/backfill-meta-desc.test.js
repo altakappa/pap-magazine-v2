@@ -53,7 +53,8 @@ const ai = R('api/_lib/editorialAi.js');
 t('크론이 longForm 으로 본문 분량을 요청', /longForm: true/.test(c));
 t('생성기가 longForm 시 300자+ 를 명시', /longForm/.test(ai) && /300\+ characters/.test(ai));
 t('longForm 은 max_tokens 상향 (잘림 → JSON 파싱 실패 방지)',
-  /max_tokens: longForm \? 3000 : 1800/.test(ai));
+  /maxTokens: longForm \? 4000 : 2400/.test(ai),
+  '2026-08-03 — 호출이 _askClaudeJson 로 합쳐지며 인자명 maxTokens, 여유 3000/1800 → 4000/2400');
 t('기본(짧은) 프롬프트는 그대로 — 기존 호출부 무변경',
   /: 'Write a short, evocative 3-4 sentence description for the editorial in THREE languages\.'/.test(ai)
   && /const _lengthRule = longForm/.test(ai));

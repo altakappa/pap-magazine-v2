@@ -21,7 +21,10 @@ const { normalizeRole } = require('../../_lib/creditRoles');
 // the admin-side "🤖 자동 생성" button + bulk-fill endpoint can reuse the
 // exact same prompts. Keeps the behaviour identical to what this file
 // has been doing on submission-approval.
-const { generateEditorialDescriptions: _generateEditorialDescriptions } = require('../../_lib/editorialAi');
+const {
+  generateEditorialDescriptions: _generateEditorialDescriptions,
+  _guessLanguage: _guessLang,
+} = require('../../_lib/editorialAi');
 const { buildPapIgCaption } = require('../../_lib/igCaption');
 const { sendTextToTelegramSafe } = require('../../_lib/telegram');
 
@@ -261,7 +264,13 @@ function _buildInstagramCaption(desc, title, opts) {
   // 새 형식 (2026-07) — 조립은 api/_lib/igCaption.js 공용 빌더가 담당.
   // 여기서는 SUBMISSION shape(desc.team / desc.models / desc.looks)에서
   // 부품(크레딧 줄·스타링·브랜드)만 추출한다.
-  const descKo = (opts && opts.descKo) || (desc && desc.artistStatement) || '';
+  /* 2026-08-03 — 원문 fallback 에 언어 가드를 달았다.
+     AI 번역이 실패하면 opts.descKo 가 비고, 예전엔 그대로 artistStatement
+     (대부분 영어)을 한국어 단락 자리에 깔았다. 'Being And Becoming'(2026-07-30)
+     캡션이 정확히 그 꼴로 나갔다. 한국어가 아니면 비워둔다 — 빈 칸은
+     에디터가 바로 알아보지만, 틀린 언어로 채워진 칸은 그냥 발행된다. */
+  const _rawKo = (desc && desc.artistStatement) || '';
+  const descKo = (opts && opts.descKo) || (_guessLang(_rawKo) === 'kr' ? _rawKo : '');
   const descEn = (opts && opts.descEn) || '';
   const descIt = (opts && opts.descIt) || '';
 
@@ -600,7 +609,11 @@ module.exports = async function handler(req, res) {
               // /editorial page in KR shows Korean and the EN locale shows
               // English. Falls back to the raw text only when Claude was
               // unavailable, so the editorial isn't empty.
-              description:    igDescriptions.kr || description || null,
+              // 2026-08-03 — 언어 가드. 예전엔 kr 이 비면 무조건 원문으로
+              // 떨어졌고, 그 원문은 대개 영어라 한국어 칸에 영어가 앉았다
+              // ('Bounty Law'·'Being And Becoming'). 한국어가 아니면 NULL 로 둔다 —
+              // backfill-meta-desc 크론이 빈 description 을 다시 채워 자가복구한다.
+              description:    igDescriptions.kr || (_guessLang(description || '') === 'kr' ? description : null) || null,
               description_en: igDescriptions.en || null,
               // QA #204 — IT translation now persists in its own column
               // (migration 039), so a later admin edit / regeneration

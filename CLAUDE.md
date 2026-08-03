@@ -14,7 +14,7 @@
 ## 코드 체크리스트
 - `api/` 최상위 파일: `require('./_lib/...')` — `../_lib` 아님 (node --check는 이 오류를 못 잡는다)
 - `pap-*.js` 등 프론트 JS 수정 시: 참조하는 HTML(10개)의 `?v=` 버전 올리기 (캐시버스트)
-- 수정 후 `npm test` — 하네스 **전부** 통과해야 커밋 (개수는 계속 늘어난다. 2026-08-03 기준 94개)
+- 수정 후 `npm test` — 하네스 **전부** 통과해야 커밋 (개수는 계속 늘어난다. 2026-08-03 기준 95개)
 - OAuth 성공 랜딩은 `api/_lib/oauthSuccess.js`의 `sendOAuthSuccessHtml()` 공용 헬퍼 사용 (Safari ITP 대응)
 - 회원 등급 게이트 변경 시 3종(Free/Standard/Premium) + subscribe 9개 언어 문구 정합 확인
 

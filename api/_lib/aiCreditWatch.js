@@ -127,4 +127,50 @@ async function reportAiResponse(resp, where) {
   }
 }
 
-module.exports = { reportAiFailure, reportAiResponse, classifyAiFailure, ALERT_KEY };
+const PARSE_ALERT_KEY = 'anthropic-json-parse';
+
+/**
+ * Claude 가 200 을 돌려줬는데 응답을 JSON 으로 읽지 못한 경우 (2026-08-03 신설).
+ *
+ * classifyAiFailure 로는 안 잡힌다 — HTTP 는 200 이기 때문이다. 그런데 결과는
+ * 크레딧 소진보다 고약하다: 호출부가 '성공'으로 알고 빈 값을 저장해버려
+ * 사람이 눈치채기 전까지 그대로 발행된다. 실제로 2026-07-30·08-03 두 에디토리얼이
+ * 이탈리아어 없이·훅 없이·한국어 칸에 영어가 들어간 채로 만들어졌다.
+ *
+ * 유형 구분 없이 하나의 키로 묶고 같은 쿨다운을 쓴다 — 조치가 하나이기 때문이다
+ * (해당 에디토리얼에서 🤖 AI 자동 생성 다시 누르기).
+ */
+async function reportAiParseFailure(where, headText) {
+  try {
+    const { supabaseAdmin, pushAlert } = _deps();
+    const { data: st } = await supabaseAdmin.from('ops_alert_state')
+      .select('last_alert_at').eq('key', PARSE_ALERT_KEY).maybeSingle();
+    const lastAt = st && st.last_alert_at ? Date.parse(st.last_alert_at) : 0;
+    if (Date.now() - lastAt <= COOLDOWN_H * 3600000) return { kind: 'parse', alerted: false };
+
+    await pushAlert({
+      personalOnly: true,
+      title: '⚠️ AI 응답 JSON 파싱 실패 — 번역·캡션이 비어 저장됩니다',
+      lines: [
+        '증상: 이탈리아어(IT) 누락 · 인스타 캡션에 훅/한국어 단락 없음.',
+        '조치: 해당 에디토리얼에서 🤖 AI 자동 생성을 다시 누르면 복구됩니다.',
+        `발생 위치: ${where || 'unknown'}`,
+        `응답 앞부분: ${String(headText || '').replace(/\s+/g, ' ').slice(0, 160)}`,
+      ],
+      url: `${SITE}/admin`, urlLabel: '어드민',
+    });
+    await supabaseAdmin.from('ops_alert_state').upsert({
+      key: PARSE_ALERT_KEY,
+      last_alert_at: new Date().toISOString(),
+      last_payload: { kind: 'parse', where: String(where || '').slice(0, 60) },
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'key' });
+    return { kind: 'parse', alerted: true };
+  } catch (e) {
+    // 감시 실패가 호출부를 죽이면 안 된다.
+    console.error('[aiCreditWatch] 파싱실패 알림 실패', e && e.message);
+    return { kind: 'parse', alerted: false };
+  }
+}
+
+module.exports = { reportAiFailure, reportAiResponse, reportAiParseFailure, classifyAiFailure, ALERT_KEY, PARSE_ALERT_KEY };

@@ -30,7 +30,7 @@ const papVoice = require('./papVoice');
 
 /* Anthropic 장애(크레딧 소진·키 오류)를 원인 단계에서 텔레그램으로 알린다.
    2026-07-30: 크레딧이 4시간 비어 서술문 생성이 0건이었는데 아무 알림도 없었다. */
-const { reportAiResponse } = require('./aiCreditWatch');
+const { reportAiResponse, reportAiParseFailure } = require('./aiCreditWatch');
 // 매직바이트 판별 — 업로드 검증에서 쓰던 것을 재사용한다(의존 없는 순수 모듈).
 const { sniffMime } = require('./fileSignature');
 
@@ -123,6 +123,96 @@ function _guessLanguage(text) {
   return 'en';
 }
 
+/* ── Claude JSON 응답 파서 (2026-08-03 강화) ────────────────────────
+ *
+ * 왜 손봤나:
+ *   최근 45일 서브미션 승인 27건 중 2건('Bounty Law' 2026-08-03,
+ *   'Being And Becoming' 2026-07-30)에서 이탈리아어가 비고, 인스타 캡션이
+ *   훅·한국어 단락 없이 타이틀부터 시작했다. 두 증상의 원인은 하나였다 —
+ *   Claude 응답의 JSON.parse 가 조용히 실패했고, 그 결과 out 이 전부 비어
+ *   fallback 이 원문(영어)을 한국어 칸으로 흘려보냈다. 로그도 알림도
+ *   재시도도 없었으니 관측조차 되지 않았다(실측 실패율 7.4%).
+ *
+ *   입력 쪽엔 결정적 변수가 없었다 — 길이(478~497자)·따옴표·스마트따옴표·
+ *   개행 유무 어느 것도 성공/실패를 가르지 못했다. 즉 모델 출력 변동이다.
+ *   그래서 입력을 고치는 게 아니라 파서와 호출 방식을 튼튼하게 만든다.
+ *
+ * 3단 방어:
+ *   1) assistant prefill '{' — 서두 산문("Here is the JSON:")을 원천 차단.
+ *   2) 관대한 파싱 — 코드펜스 위치 무관 추출 → 중괄호 구간만 슬라이스 →
+ *      문자열 리터럴 안 escape 안 된 개행/탭 복구 → 그래도 안 되면 키별 회수.
+ *   3) 1회 재시도 + 최종 실패는 큰 소리로(로그·텔레그램) 알린다.
+ *
+ * 원칙: 파싱이 끝내 실패했을 때 '성공처럼 보이는 빈 결과'를 돌려주지
+ *   않는다. degraded=true 를 붙여 호출부가 구분할 수 있게 한다. */
+function _stripFences(text) {
+  const s = String(text || '').trim();
+  const fenced = s.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  return fenced ? fenced[1].trim() : s;
+}
+
+/** 앞뒤 산문을 버리고 첫 '{' ~ 마지막 '}' 만 남긴다. */
+function _sliceBraces(s) {
+  const a = s.indexOf('{');
+  const b = s.lastIndexOf('}');
+  return (a >= 0 && b > a) ? s.slice(a, b + 1) : s;
+}
+
+/* 문자열 리터럴 안에 raw 개행/탭이 들어오면 JSON.parse 는
+   "Bad control character in string literal" 로 죽는다. 문자열 안쪽만 고친다. */
+function _escapeControlCharsInStrings(s) {
+  let out = '';
+  let inStr = false;
+  let esc = false;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (esc) { out += ch; esc = false; continue; }
+    if (ch === '\\') { out += ch; esc = true; continue; }
+    if (ch === '"') { inStr = !inStr; out += ch; continue; }
+    if (inStr && ch === '\n') { out += '\\n'; continue; }
+    if (inStr && ch === '\r') { out += '\\r'; continue; }
+    if (inStr && ch === '\t') { out += '\\t'; continue; }
+    out += ch;
+  }
+  return out;
+}
+
+const _AI_KEYS = ['kr', 'en', 'it', 'hook', 'moodTag'];
+
+/* 최후의 수단 — 구조가 깨져도 5개 슬롯 값만 회수한다. 잘린 응답
+   (max_tokens 소진)에서도 앞쪽 필드는 살아 있으므로 전량 손실보다는 낫다. */
+function _salvageFields(s) {
+  const out = {};
+  _AI_KEYS.forEach((k) => {
+    const m = s.match(new RegExp('"' + k + '"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"'));
+    if (!m) return;
+    try { out[k] = JSON.parse('"' + m[1] + '"'); } catch (_) { out[k] = m[1]; }
+  });
+  return Object.keys(out).length ? out : null;
+}
+
+/** 관대한 JSON 파서. 실패하면 null (호출부가 시끄럽게 처리한다). */
+function _parseAiJson(text) {
+  if (!text) return null;
+  const body = _sliceBraces(_stripFences(text));
+  if (!body) return null;
+  try { return JSON.parse(body); } catch (_) { /* 복구 단계로 */ }
+  try { return JSON.parse(_escapeControlCharsInStrings(body)); } catch (_) { /* 회수 단계로 */ }
+  return _salvageFields(body);
+}
+
+/* AI 를 못 쓸 때의 공통 반환 모양. 원문을 '추정된 언어 슬롯에만' 넣는다 —
+   영어 원문이 한국어 칸으로 들어가서는 안 된다. degraded 로 호출부에 알린다. */
+function _rawFallback(rawText) {
+  const slot = _guessLanguage(rawText);
+  return {
+    kr: slot === 'kr' ? rawText : '',
+    en: slot === 'en' ? rawText : '',
+    it: slot === 'it' ? rawText : '',
+    hook: '', moodTag: '', degraded: true,
+  };
+}
+
 /* longForm (2026-07-28, GEO 감사):
  *   기본 비전 프롬프트는 "3-4 sentence" 라 한국어 80~110자가 나온다. 인스타 캡션엔
  *   맞지만 AI 검색엔진이 인용할 본문으로는 너무 짧다(실측: 이 길이로 채워진 행이
@@ -134,15 +224,7 @@ function _guessLanguage(text) {
  */
 async function generateEditorialDescriptions({ title, artistStatement, imageUrls, longForm, credits }) {
   const raw = (artistStatement || '').trim();
-  if (!process.env.ANTHROPIC_API_KEY) {
-    const slot = _guessLanguage(raw);
-    return {
-      kr: slot === 'kr' ? raw : '',
-      en: slot === 'en' ? raw : '',
-      it: slot === 'it' ? raw : '',
-      hook: '', moodTag: '',
-    };
-  }
+  if (!process.env.ANTHROPIC_API_KEY) return _rawFallback(raw);
 
   const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
   const apiUrl = 'https://api.anthropic.com/v1/messages';
@@ -158,10 +240,42 @@ async function generateEditorialDescriptions({ title, artistStatement, imageUrls
     return block ? block.text.trim() : '';
   }
 
-  function _parseJson(text) {
-    if (!text) return null;
-    const stripped = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
-    try { return JSON.parse(stripped); } catch (_) { return null; }
+  /* 한 번 호출 → 관대 파싱 → 실패하면 1회 재시도 → 그래도 실패하면 알린다.
+     assistant prefill '{' 로 서두 산문을 막는다(응답 본문엔 prefill 이 빠져
+     오므로 다시 붙여서 파싱한다). 재시도는 같은 요청을 다시 샘플링하는 것 —
+     원인이 모델 출력 변동이므로 두 번 연속 실패할 확률은 제곱으로 떨어진다. */
+  async function _askClaudeJson({ system, userContent, maxTokens, label }) {
+    let lastHead = '';
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const resp = await fetch(apiUrl, {
+        method: 'POST',
+        headers: commonHeaders,
+        body: JSON.stringify({
+          model,
+          max_tokens: maxTokens,
+          system,
+          messages: [
+            { role: 'user', content: userContent },
+            { role: 'assistant', content: '{' },
+          ],
+        }),
+      });
+      if (!resp.ok) { await reportAiResponse(resp, label); throw new Error('Claude ' + resp.status); }
+      const result = await resp.json();
+      const text = '{' + _pickText(result);
+      const parsed = _parseAiJson(text);
+      if (parsed) return parsed;
+      lastHead = text.slice(0, 300);
+      /* 관측되지 않는 실패는 존재하지 않는 것처럼 보인다 — stop_reason 으로
+         잘림(max_tokens)과 모델 변동을 사후에 구분할 수 있게 함께 남긴다. */
+      console.error('[editorialAi] JSON 파싱 실패', label,
+        'attempt=' + attempt + '/2',
+        'stop_reason=' + ((result && result.stop_reason) || '?'),
+        'usage=' + JSON.stringify((result && result.usage) || {}),
+        'head=' + lastHead);
+    }
+    await reportAiParseFailure(label, lastHead);
+    return null;
   }
 
   // ── Mode 1: artist statement present → auto-detect + fill 3 languages ──
@@ -188,18 +302,16 @@ async function generateEditorialDescriptions({ title, artistStatement, imageUrls
       'Output ONLY a JSON object: {"kr": "<korean>", "en": "<english>", "it": "<italian>", "hook": "<korean one-liner>", "moodTag": "<korean tag word>"}. No prose, no markdown fences.',
     ].join('\n');
     try {
-      const resp = await fetch(apiUrl, {
-        method: 'POST',
-        headers: commonHeaders,
-        body: JSON.stringify({
-          model,
-          max_tokens: 2000,
-          system,
-          messages: [{ role: 'user', content: raw }],
-        }),
+      /* max_tokens 를 2000 → 4000 으로 올렸다(2026-08-03). 잔여 마진이
+         없으면 잘림 → JSON 깨짐 → 빈 결과 순으로 조용히 번지는데, 입력이
+         길면 3개 언어 왕복에 한국어·이탈리아어 토큰이 빠르게 불어난다. */
+      const parsed = await _askClaudeJson({
+        system,
+        userContent: raw,
+        maxTokens: 4000,
+        label: 'editorialAi.statement',
       });
-      if (!resp.ok) { await reportAiResponse(resp, 'editorialAi.statement'); throw new Error('Claude ' + resp.status); }
-      const parsed = _parseJson(_pickText(await resp.json())) || {};
+      if (!parsed) return _rawFallback(raw);
       const out = {
         kr: String(parsed.kr || '').trim(),
         en: String(parsed.en || '').trim(),
@@ -208,20 +320,13 @@ async function generateEditorialDescriptions({ title, artistStatement, imageUrls
         moodTag: String(parsed.moodTag || '').trim(),
       };
       papVoice.auditKoreanBody(out.kr, { style: 'plain', structure: false, where: 'editorial' });
-      if (!out.kr && !out.en && !out.it) {
-        const slot = _guessLanguage(raw);
-        out[slot] = raw;
-      }
+      /* 파싱은 됐는데 3개 슬롯이 전부 빈 경우도 정상이 아니다 — 똑같이 degraded. */
+      if (!out.kr && !out.en && !out.it) return _rawFallback(raw);
+      out.degraded = false;
       return out;
     } catch (err) {
       console.error('[editorialAi] translate-mode failed:', err && err.message);
-      const slot = _guessLanguage(raw);
-      return {
-        kr: slot === 'kr' ? raw : '',
-        en: slot === 'en' ? raw : '',
-        it: slot === 'it' ? raw : '',
-        hook: '', moodTag: '',
-      };
+      return _rawFallback(raw);
     }
   }
 
@@ -234,7 +339,7 @@ async function generateEditorialDescriptions({ title, artistStatement, imageUrls
        세서 3회 만에 영구 제외했다. 원인이 로그에 없으니 손쓸 방법도 없었다. */
     console.warn('[editorialAi] 비전 이미지 0장 — 생성 불가',
       (Array.isArray(imageUrls) ? imageUrls.slice(0, 3) : []).map((u) => String(u).slice(0, 100)));
-    return { kr: '', en: '', it: '', hook: '', moodTag: '' };
+    return { kr: '', en: '', it: '', hook: '', moodTag: '', degraded: true };
   }
 
   const _lengthRule = longForm
@@ -276,20 +381,16 @@ async function generateEditorialDescriptions({ title, artistStatement, imageUrls
   ];
 
   try {
-    const resp = await fetch(apiUrl, {
-      method: 'POST',
-      headers: commonHeaders,
-      body: JSON.stringify({
-        model,
-        // longForm 은 3개 언어 × 300자+ 라 1800 으로는 잘릴 수 있다(잘리면 JSON
-        // 파싱이 실패해 빈 결과가 되고, 그 행은 시도 횟수만 소진한다)
-        max_tokens: longForm ? 3000 : 1800,
-        system: visionSystem,
-        messages: [{ role: 'user', content: visionUser }],
-      }),
+    // longForm 은 3개 언어 × 300자+ 라 여유를 둔다. 잘리면 JSON 이 깨지고,
+    // 그 행은 시도 횟수만 소진한다(2026-07-30 교훈). 이젠 잘려도 _salvageFields
+    // 가 앞쪽 필드를 건지만, 안 잘리는 게 먼저다.
+    const parsed = await _askClaudeJson({
+      system: visionSystem,
+      userContent: visionUser,
+      maxTokens: longForm ? 4000 : 2400,
+      label: 'editorialAi.vision',
     });
-    if (!resp.ok) { await reportAiResponse(resp, 'editorialAi.vision'); throw new Error('Claude ' + resp.status); }
-    const parsed = _parseJson(_pickText(await resp.json())) || {};
+    if (!parsed) return { kr: '', en: '', it: '', hook: '', moodTag: '', degraded: true };
     papVoice.auditKoreanBody(String(parsed.kr || '').trim(),
       { style: 'plain', structure: false, where: 'editorial-vision' });
     return {
@@ -298,13 +399,14 @@ async function generateEditorialDescriptions({ title, artistStatement, imageUrls
       it: String(parsed.it || '').trim(),
       hook: String(parsed.hook || '').trim(),
       moodTag: String(parsed.moodTag || '').trim(),
+      degraded: false,
     };
   } catch (err) {
     console.error('[editorialAi] vision-mode failed:', err && err.message);
-    return { kr: '', en: '', it: '', hook: '', moodTag: '' };
+    return { kr: '', en: '', it: '', hook: '', moodTag: '', degraded: true };
   }
 }
 
 // Re-export the language guesser too — useful for the bulk endpoint to
 // pick a fallback slot for legacy rows.
-module.exports = { generateEditorialDescriptions, _guessLanguage };
+module.exports = { generateEditorialDescriptions, _guessLanguage, _parseAiJson };
