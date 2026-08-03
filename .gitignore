@@ -61,4 +61,6 @@ PAP_한국성장_데일리브리프_*.md
 2026-*_PAP_한국성장_브리프.md
 
 _patch_tmp_quarantine/
+# Claude 작업용 임시 스크립트·로그 (커밋 대상 아님)
+outputs_scratch/
 .fuse_hidden*
