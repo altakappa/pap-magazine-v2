@@ -207,6 +207,7 @@ async function generateEditorialDescriptions({ title, artistStatement, imageUrls
         hook: String(parsed.hook || '').trim(),
         moodTag: String(parsed.moodTag || '').trim(),
       };
+      papVoice.auditKoreanBody(out.kr, { style: 'plain', structure: false, where: 'editorial' });
       if (!out.kr && !out.en && !out.it) {
         const slot = _guessLanguage(raw);
         out[slot] = raw;
@@ -289,6 +290,8 @@ async function generateEditorialDescriptions({ title, artistStatement, imageUrls
     });
     if (!resp.ok) { await reportAiResponse(resp, 'editorialAi.vision'); throw new Error('Claude ' + resp.status); }
     const parsed = _parseJson(_pickText(await resp.json())) || {};
+    papVoice.auditKoreanBody(String(parsed.kr || '').trim(),
+      { style: 'plain', structure: false, where: 'editorial-vision' });
     return {
       kr: String(parsed.kr || '').trim(),
       en: String(parsed.en || '').trim(),

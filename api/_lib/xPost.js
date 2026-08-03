@@ -16,6 +16,9 @@
  */
 
 const crypto = require('crypto');
+// 어투 문자열은 socialHook 경유로 받는다. 여기서 papVoice 를 직접 부르는 건
+// 게시 직전 검수(auditKoreanBody) 하나뿐이다 — 단일 소스 원칙을 깨지 않는다.
+const papVoice = require('./papVoice');
 
 function pctEncode(s) {
   return encodeURIComponent(s).replace(/[!'()*]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase());
@@ -183,7 +186,8 @@ async function buildConversationalTweet(art) {
   // 금지하지만 프롬프트는 확률이라 새서, 게시 직전에 기계적으로 한 번 더 거른다.
   // 길이 판정 전에 걸러야 한다. 나중에 걸면 제거로 줄어든 길이가 반영되지 않아
   // 280자를 넘는다고 잘못 판단하고 멀쩡한 트윗을 버린다.
-  const body = stripDashes(hook.text);
+  const body = papVoice.auditKoreanBody(stripDashes(hook.text),
+    { style: 'polite', structure: false, where: 'x' });
   const measured = body + '\n\n' + URL_PLACEHOLDER + '\n\n' + tagLine;
   if (weightedLen(measured) > 280) return null; // 넘치면 기존 방식으로
   return { text: body + '\n\n' + link + '\n\n' + tagLine, angle: hook.angle, score: hook.score };

@@ -403,6 +403,35 @@ function lintKoreanBody(text, opts) {
   return issues;
 }
 
+/**
+ * lintKoreanBody 를 부르고 이슈가 있으면 경고 로그만 남긴다.
+ *
+ * 왜 로그만인가: lintKoreanBody 는 자동 수정을 하지 않는 검수용이다. 여기서
+ * 발행을 막으면 오탐 하나로 자동 발행 전체가 멈춘다. 먼저 로그로 오탐률을
+ * 보고, 규칙이 안정되면 그때 차단으로 올린다.
+ *
+ * 2026-08-03: 이 함수가 생기기 전까지 lintKoreanBody 는 정의·export 만 되고
+ * 호출부가 한 곳도 없는 죽은 게이트였다. 지문 §12 는 게이트가 걸려 있다고
+ * 적고 있었으므로, 문서와 코드가 어긋나 있었다.
+ *
+ * @param {string} text
+ * @param {{style?:string, structure?:boolean, where?:string}} [opts]
+ *   where  로그에 찍을 채널 이름 (예: 'threads', 'x', 'kakao')
+ * @returns {string} 입력 텍스트 그대로 (인라인으로 감싸 쓸 수 있게)
+ */
+function auditKoreanBody(text, opts) {
+  try {
+    const issues = lintKoreanBody(text, opts);
+    if (issues.length) {
+      console.warn('[papVoice] 규격 이슈 (' + ((opts && opts.where) || '?') + '): '
+        + issues.join(', '));
+    }
+  } catch (e) {
+    console.warn('[papVoice] 검수 실패:', (e && e.message) || e);
+  }
+  return text;
+}
+
 module.exports = {
   SEPARATOR,
   SEPARATOR_EDITORIAL,
@@ -423,4 +452,5 @@ module.exports = {
   normalizeSocialAddress,
   stripLegacySeparators,
   lintKoreanBody,
+  auditKoreanBody,
 };

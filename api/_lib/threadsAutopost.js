@@ -81,7 +81,11 @@ const SYSTEM_PROMPT = [
    "어떻게 생각해" 확정(2026-08-03). 프롬프트는 확률이라 새므로 네 갈래
    반환 경로(대화형 / 일반 AI / 폴백 2곳) 전부가 이 함수를 통과해야 한다.
    자르기 전에 걸어야 한다 — 치환으로 글자 수가 늘기 때문. */
-function normalize(s) { return papVoice.normalizeSocialAddress(stripDashes(s)); }
+function normalize(s) {
+  return papVoice.auditKoreanBody(
+    papVoice.normalizeSocialAddress(stripDashes(s)),
+    { style: 'casual', structure: false, where: 'threads' });
+}
 
 /**
  * Threads 네이티브 카피 생성. 실패 시 폴백 텍스트 반환 (throw 하지 않음).

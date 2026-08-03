@@ -153,6 +153,11 @@ module.exports = async function handler(req, res) {
       title: String(n.title || ''), summary: String(n.summary || ''),
       category: String(n.category || 'CULTURE'), url: String(n.url || ''), image: '',
     }));
+    // 2026-08-03 — KO_MICRO 가 평서체에서 존댓말로 바뀐 채널이라 회귀가 여기서 먼저 보인다.
+    // 로그만 남기고 발행은 막지 않는다. 번역본은 한국어 규격 대상이 아니므로 제외.
+    papVoice.auditKoreanBody(
+      master.newsItems.map((n) => n.summary).join('\n\n'),
+      { style: 'polite', structure: false, where: 'newsletter' });
 
     // 3) 8개 로케일 병렬 번역 — 실패 로케일은 건너뜀 (템플릿이 en 폴백)
     const masterJson = JSON.stringify(master);

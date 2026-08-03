@@ -118,8 +118,11 @@ const stripped = (gen.match(/normalize\(/g) || []).length;
 t('텍스트 반환 지점 수만큼 필터가 걸려 있다 (반환 ' + returns + ' / 필터 ' + stripped + ')',
   stripped >= 4,
   '경로 하나만 빠져도 그쪽으로 나간 글에 줄표·호칭이 남는다');
+/* 2026-08-03 — normalize() 가 검수(auditKoreanBody)까지 감싸며 여러 줄이 됐다.
+   원문 한 줄을 통째로 비교하던 방식은 배선이 늘 때마다 깨지므로, 지키려던
+   것만 남긴다: 한 함수 안에서 줄표 제거와 호칭 정규화가 **함께** 걸릴 것. */
 t('normalize 가 줄표 제거를 감싼다',
-  /function normalize\(s\) \{ return papVoice\.normalizeSocialAddress\(stripDashes\(s\)\); \}/.test(threads),
+  /function normalize\(s\) \{[\s\S]{0,260}papVoice\.normalizeSocialAddress\(stripDashes\(s\)\)/.test(threads),
   '한쪽만 걸면 지시 하나가 통째로 샌다');
 
 console.log('\n=== 4. 프롬프트가 반말을 지시하는가 ===');
@@ -200,7 +203,7 @@ console.log('\n=== 7. 줄표 필터는 여전히 양쪽 공통인가 ===');
 t('X 도 줄표 필터를 거친다', /stripDashes\(hook\.text\)/.test(xpost),
   '스레드만 걸면 X 에 줄표가 남는다');
 t('X 는 길이 판정 전에 필터를 건다',
-  /const body = stripDashes\(hook\.text\);[\s\S]{0,200}weightedLen\(measured\)/.test(xpost),
+  /const body = papVoice\.auditKoreanBody\(stripDashes\(hook\.text\),[\s\S]{0,260}weightedLen\(measured\)/.test(xpost),
   '나중에 걸면 줄어든 길이가 반영 안 돼 멀쩡한 트윗을 280자 초과로 버린다');
 
 console.log(`\npassed: ${pass}   failed: ${fail}`);

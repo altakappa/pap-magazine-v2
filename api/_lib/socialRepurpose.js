@@ -188,6 +188,9 @@ async function generateRepurpose({ platform, title, subtitle, contentText, image
       image_urls: pickedImages,
       lang: cfg.lang,
     };
+    if (platform === 'kakao') {
+      papVoice.auditKoreanBody(out.body, { style: 'polite', structure: false, where: 'kakao' });
+    }
     if (!out.title && !out.body) {
       return { ...(_fallback(platform, cfg, { title, subtitle, contentText, tags })), image_urls: pickedImages };
     }
