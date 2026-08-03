@@ -137,18 +137,71 @@ const KINDS = {
  * 마지막 ']' 까지만 취한다. 정규식으로 특정 형태를 좇으면 다음에 또 다른
  * 형태가 나온다 — 형태를 열거하지 말고 '배열의 경계' 라는 사실만 쓴다.
  */
+/* 2026-08-03 Patch 4 — 잘린 응답에서 '온전한 객체' 만 골라낸다.
+ *
+ * 왜 필요한가 — Patch 3 배포 후에도 콜의 7.8%(153콜 중 12콜)가
+ * 버려졌다. 이번엔 타임아웃이 아니라 응답 '형태' 가 원인이었고, 두 가지가
+ * 관찰됐다.
+ *   1) 응답이 끝까지 오지 않아 닫는 ']' 가 없다      → '배열을 찾지 못함'
+ *   2) 설명문 안에 ']' 가 있어 마지막 ']' 까지 잘라도 JSON 이 깨진다
+ *                                                     → '파싱 실패'
+ * 어느 쪽이든 지금까지는 **배치 전체(최대 20건)를 통째로 버렸다.**
+ * 20건 중 19건이 멀쩡해도 마지막 한 건이 잘리면 19건의 토큰까지 함께 날아간다.
+ *
+ * 그래서 배열을 통째로 파싱하지 않고 최상위 '{...}' 단위로 훑어 건별로
+ * 파싱한다. 문자열 안의 괄호·따옴표는 상태를 추적해 건너뛰고, 끝까지 닫히지
+ * 않은 마지막 조각만 버린다. 파서를 관대하게 만드는 게 아니라 '건질 수 있는
+ * 만큼만 건진다' 는 뜻이다 — 깨진 JSON 을 추측해서 고치지는 않는다.
+ */
+function salvageObjects(s, start) {
+  const out = [];
+  const n = s.length;
+  let i = start + 1;
+  while (i < n) {
+    while (i < n && s[i] !== '{') {
+      if (s[i] === ']') return out;      // 배열이 정상적으로 끝났다
+      i++;
+    }
+    if (i >= n) break;
+    let depth = 0, inStr = false, esc = false, j = i;
+    for (; j < n; j++) {
+      const c = s[j];
+      if (esc) { esc = false; continue; }
+      if (c === '\\') { if (inStr) esc = true; continue; }
+      if (c === '"') { inStr = !inStr; continue; }
+      if (inStr) continue;
+      if (c === '{') depth++;
+      else if (c === '}' && --depth === 0) break;
+    }
+    // 끝까지 닫히지 않은 조각 = 잘린 지점. 여기서 멈춘다.
+    if (j >= n || depth !== 0) break;
+    try {
+      const o = JSON.parse(s.slice(i, j + 1));
+      // title 이 없는 건 저장해도 쓸모가 없다 — 호출자가 어차피 버린다.
+      if (o && typeof o === 'object' && o.title) out.push(o);
+    } catch (e) { /* 이 한 건만 버린다 */ }
+    i = j + 1;
+  }
+  return out;
+}
+
 function parseJsonArray(text) {
   const s = String(text || '');
   const start = s.indexOf('[');
-  const end = s.lastIndexOf(']');
-  if (start === -1 || end <= start) {
+  if (start === -1) {
     throw new Error('번역 응답에서 JSON 배열을 찾지 못함: ' + s.slice(0, 150));
   }
-  try {
-    return JSON.parse(s.slice(start, end + 1));
-  } catch (e) {
-    throw new Error('번역 응답 JSON 파싱 실패: ' + s.slice(0, 150));
+  // 정상 경로: 첫 '[' 부터 마지막 ']' 까지 통째로. 대부분은 여기서 끝난다.
+  const end = s.lastIndexOf(']');
+  if (end > start) {
+    try {
+      const v = JSON.parse(s.slice(start, end + 1));
+      if (Array.isArray(v)) return v;
+    } catch (e) { /* 아래에서 건별 복구를 시도한다 */ }
   }
+  const salvaged = salvageObjects(s, start);
+  if (salvaged.length) return salvaged;
+  throw new Error('번역 응답 JSON 파싱 실패(복구 0건): ' + s.slice(0, 150));
 }
 
 /** 배치 크기 정규화 — 1~20. Claude 1콜 max_tokens(4000) 안에 안전하게 들어가는 상한. */
@@ -332,12 +385,14 @@ async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 9
 
   /* 응답이 잘린 건지 포맷이 다른 건지를 구분한다 — 원인이 다르면 대응이 다르다.
      잘렸다면 배치를 줄여야 하고, 포맷 문제라면 파싱을 관대하게 하면 된다. */
-  if (j.stop_reason === 'max_tokens') {
-    throw new Error('번역 응답이 max_tokens 에서 잘림 (배치 ' + items.length + '건) — 배치를 줄여야 한다.');
-  }
-
+  /* 2026-08-03 Patch 4: 잘렸더라도 앞부분의 온전한 건은 살린다.
+     예전엔 여기서 곧장 던져 배치 전체를 버렸다 — 잘린 건 마지막 한 건뿐인데도.
+     한 건도 건지지 못하면 parseJsonArray 가 던진다(재시도가 배치를 줄인다). */
   const parsed = parseJsonArray(text);
   if (!Array.isArray(parsed)) throw new Error('번역 응답이 배열이 아님.');
+  if (j.stop_reason === 'max_tokens' && !parsed.length) {
+    throw new Error('번역 응답이 max_tokens 에서 잘림 (배치 ' + items.length + '건) — 배치를 줄여야 한다.');
+  }
 
   /* 4) 저장 */
   let processed = 0;
@@ -374,4 +429,4 @@ async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 9
   };
 }
 
-module.exports = { runBackfillBatch, normalizeBatch, parseJsonArray, LANG_NAMES, KINDS };
+module.exports = { runBackfillBatch, normalizeBatch, parseJsonArray, salvageObjects, LANG_NAMES, KINDS };

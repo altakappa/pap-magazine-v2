@@ -105,6 +105,59 @@ console.log('\n=== 모델이 뭘 덧붙여도 배열만 꺼낸다 ===');
   ok('잘린 응답은 실패로 (부분 저장 금지)', threw);
 }
 
+/* ── 2026-08-03 Patch 4 · 잘린 응답 부분 복구 ──────────────────────
+   Patch 3(독배치 해소) 배포 후에도 콜의 7.8%(153콜 중 12콜)가 버려졌다.
+   이번 원인은 타임아웃이 아니라 응답 형태였다 — 닫는 ']' 가 없거나(응답
+   절단), 설명문 안의 ']' 때문에 통째 파싱이 깨졌다. 어느 쪽이든 배치
+   전체(최대 20건)를 버렸다: 19건이 멀쩡해도 마지막 한 건 때문에 함께.
+   실측 실패 예: de 가 14:05~14:21 9회 연속, zh 가 14:33·14:35.
+   여기서 지키는 것 — "온전한 건은 살리고, 잘린 마지막 조각만 버린다". */
+console.log('\n=== 잘린 응답에서 온전한 건만 건진다 (Patch 4) ===');
+{
+  const P = helper.parseJsonArray;
+
+  // 3건 중 2건은 온전, 3번째가 문장 중간에서 끊겼다 (닫는 ']' 없음).
+  const cut = '[{"i":0,"title":"A","description":"AA"},' +
+              '{"i":1,"title":"B","description":"BB"},' +
+              '{"i":2,"title":"C","description":"CC 중간에서';
+  const r1 = P(cut);
+  ok('잘린 배열에서 온전한 2건을 건진다', Array.isArray(r1) && r1.length === 2);
+  ok('건진 건의 내용이 온전하다', r1[1] && r1[1].i === 1 && r1[1].description === 'BB');
+
+  // 코드 펜스 + 절단 조합 (라이브 실패 note 형태: ```json\n[{"i":0,"title":"…)
+  const r2 = P('```json\n' + cut);
+  ok('코드 펜스 + 절단 조합도 복구', Array.isArray(r2) && r2.length === 2);
+
+  /* 설명문 안에 ']' 가 있으면 "첫 '[' ~ 마지막 ']'" 잘라내기가 오히려
+     JSON 을 깨뜨린다 — 통째 파싱이 실패해도 건별 복구가 받아낸다. */
+  const bracketInside = '[{"i":0,"title":"A ] B","description":"CC"},' +
+                        '{"i":1,"title":"D';
+  const r3 = P(bracketInside);
+  ok("설명문 속 ']' 로 통째 파싱이 깨져도 앞 건은 살린다",
+    Array.isArray(r3) && r3.length === 1 && r3[0].title === 'A ] B');
+
+  // 이스케이프된 따옴표가 문자열 경계로 오인되지 않아야 한다.
+  const escaped = '[{"i":0,"title":"He said \\"hi\\"","description":"ok"},{"i":1,"title":"X';
+  const r4 = P(escaped);
+  ok('이스케이프 따옴표를 문자열 끝으로 착각하지 않는다',
+    Array.isArray(r4) && r4.length === 1 && r4[0].title === 'He said "hi"');
+
+  // title 이 없는 조각은 저장해도 쓸모가 없다 — 건지지 않는다.
+  const noTitle = '[{"i":0,"description":"제목 없음"},{"i":1,"title":"B"},{"i":2,"tit';
+  const r5 = P(noTitle);
+  ok('title 없는 조각은 버린다', Array.isArray(r5) && r5.length === 1 && r5[0].i === 1);
+
+  // 정상 응답은 예전 경로 그대로 (복구 로직이 정상 경로를 바꾸지 않는다).
+  const whole = '[{"i":0,"title":"A","description":"B"},{"i":1,"title":"C","description":"D"}]';
+  const r6 = P(whole);
+  ok('정상 배열은 그대로 전부 반환', Array.isArray(r6) && r6.length === 2);
+
+  // 한 건도 못 건지면 여전히 던진다 — 조용히 0건 성공으로 끝나면 안 된다.
+  let threw = false;
+  try { P('[{"i":0,"tit'); } catch (e) { threw = /복구 0건/.test(String(e.message)); }
+  ok('한 건도 못 건지면 실패로 던진다(조용한 0건 금지)', threw);
+}
+
 console.log('\n=== 입력 검증 ===');
   /* 2026-07-21 — de 는 이제 지원 언어다(9개 언어 확장). 진짜 미지원 코드로 검사한다. */
   try { await helper.runBackfillBatch({ lang: 'xx' }); ok('지원 안 하는 lang 거부', false); }
