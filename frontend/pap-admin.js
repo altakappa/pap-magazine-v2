@@ -2268,7 +2268,7 @@ async function loadSubmissions(statusFilter, opts){
       // Payment-status badge (표시 전용) — 유형 뱃지 아래에 함께 노출 (+실결제액).
       var payBadge=_paymentStatusBadge(s.payment_status, s.paid_amount, _submissionTypeOf(s));
       var badgeStack=(typeBadge||payBadge)?'<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">'+typeBadge+payBadge+'</div>':'';
-      tb.innerHTML+='<tr><td class="td-title" onclick="openModal(\''+s.id+'\')">'+esc(s.title)+'</td><td>'+esc(s.submitterName||s.submitterEmail||'—')+'</td><td><span class="badge '+planCls+'">'+planLabel+'</span></td><td>'+looks+'</td><td>'+fmtDate(s.created_at)+'</td><td><span class="badge '+statusCls+'">'+statusLabel+'</span>'+rejectedInfo+badgeStack+'</td><td>'+actionBtns+'</td></tr>';
+      tb.innerHTML+='<tr><td class="td-title" onclick="openModal(\''+s.id+'\')">'+esc(s.title)+'</td><td>'+esc(s.submitterName||s.submitterEmail||'—')+'</td><td><span class="badge '+planCls+'">'+planLabel+'</span>'+_trialBadge(s.submitterTrial)+'</td><td>'+looks+'</td><td>'+fmtDate(s.created_at)+'</td><td><span class="badge '+statusCls+'">'+statusLabel+'</span>'+rejectedInfo+badgeStack+'</td><td>'+actionBtns+'</td></tr>';
     });
     _renderSubPagination(currentSubPage, totalPages, total);
   }catch(err){
@@ -2390,6 +2390,21 @@ async function recoverRejectedSubmission(id){
 }
 window.recoverRejectedSubmission = recoverRejectedSubmission;
 
+// ── 무료체험 배지 (2026-08-03) ─────────────────────────────────
+// 서버(api/_lib/trialWindow.js)가 내려준 판정을 그대로 그린다.
+// t = { isTrial, chargeDateKst, daysToCharge, label } | null
+// 왜 필요한가: 무료 7일 체험 중인 회원은 "아직 한 푼도 안 낸 회원"이다.
+// 이 회원의 풀레터·서브미션 요청을 평소처럼 처리하면, 결과물만 받고
+// 결제 직전에 해지하는 어뷰징을 막을 수 없다. 관리자 화면에서 한눈에
+// 구분되게 배지를 붙인다.
+function _trialBadge(t){
+  if(!t || !t.isTrial) return '';
+  var label = t.label || '무료체험 중';
+  var tip = t.chargeDateKst ? ('첫 결제 예정일 ' + t.chargeDateKst + ' (KST)') : '첫 결제 예정일 미상';
+  return ' <span class="badge b-trial" style="margin-left:6px" title="' + esc(tip) + '">' + esc(label) + '</span>';
+}
+window._trialBadge = _trialBadge;
+
 // ======== PULL-LETTERS MANAGEMENT ========
 // Two flows write to the same `pullletters` table:
 //   - Legacy: /frontend/pullletter → multipart with file_urls (request_text)
@@ -2412,6 +2427,9 @@ async function loadPullLetters(statusFilter){
     pls.forEach(function(pl){
       var statusMap = {
         pending:  { cls:'b-pending',  label:'대기 중' },
+        // 2026-08-03 — 무료체험 중 접수 건은 서버가 자동으로 on_hold 로 넣는다.
+        // 첫 결제가 확인되면 관리자가 '대기 중'으로 풀고 발급 절차를 진행한다.
+        on_hold:  { cls:'b-onhold',   label:'보류(결제 확인 전)' },
         accepted: { cls:'b-approved', label:'승인' },
         approved: { cls:'b-approved', label:'승인' },
         issued:   { cls:'b-approved', label:'발급 완료' },
@@ -2426,7 +2444,7 @@ async function loadPullLetters(statusFilter){
         : ((pl.file_urls && pl.file_urls.length) ? (pl.file_urls.length+'개 파일') : '—');
       var actions = '<button class="btn btn-sm" onclick="openPullLetterReview(\''+pl.id+'\')">검토</button>';
       tb.innerHTML += '<tr>'
-        + '<td>'+esc(pl.requesterName||pl.requesterEmail||'—')+(function(g){g=String(g||'').toLowerCase();if(!g)return '';var c=g.indexOf('premium')>-1?'b-premium':g.indexOf('standard')>-1?'b-standard':'b-free';var l=g.indexOf('premium')>-1?'프리미엄':g.indexOf('standard')>-1?'스탠다드':'무료';return ' <span class="badge '+c+'" style="margin-left:6px">'+l+'</span>';})(pl.requesterPlan)+'</td>'
+        + '<td>'+esc(pl.requesterName||pl.requesterEmail||'—')+(function(g){g=String(g||'').toLowerCase();if(!g)return '';var c=g.indexOf('premium')>-1?'b-premium':g.indexOf('standard')>-1?'b-standard':'b-free';var l=g.indexOf('premium')>-1?'프리미엄':g.indexOf('standard')>-1?'스탠다드':'무료';return ' <span class="badge '+c+'" style="margin-left:6px">'+l+'</span>';})(pl.requesterPlan)+_trialBadge(pl.requesterTrial)+'</td>'
         + '<td><strong>'+esc(title||'—')+'</strong>'+(detail?'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+esc(detail)+'</div>':'')+'</td>'
         + '<td>'+(pl.mood_board_id ? '🔗 community' : (pl.file_urls?(pl.file_urls.length+'개'):'—'))+'</td>'
         + '<td>'+fmtDate(pl.created_at)+'</td>'
@@ -2524,9 +2542,26 @@ function openPullLetterReview(id){
     pdfStatusHtml = 'Not yet issued';
   }
 
+  // ── 무료체험 경고 배너 (2026-08-03) ────────────────────────────
+  // 이 회원이 아직 결제 전(무료 7일 체험)이면, 발급하기 전에 반드시 보이도록
+  // 모달 맨 위에 크게 띄운다. 풀레터 발급은 실물 대여 협조가 걸린 일이라
+  // 되돌릴 수 없다 — "결제 확인 후 발급"이 운영 원칙.
+  var _t = pl.requesterTrial;
+  var trialWarnHtml = '';
+  if(_t && _t.isTrial){
+    trialWarnHtml = '<div style="border:1px dashed rgba(234,88,12,.55);background:rgba(234,88,12,.06);padding:12px 14px;margin-bottom:16px">'
+      + '<div style="font-size:12px;font-weight:700;color:#ea580c;margin-bottom:4px">⚠️ 무료체험 중인 회원입니다 — 아직 결제 전</div>'
+      + '<div style="font-size:12px;color:var(--text2);line-height:1.6">'
+      + '첫 결제 예정일: <strong>' + esc(_t.chargeDateKst || '미상') + (_t.chargeTimeKst ? (' ' + esc(_t.chargeTimeKst)) : '') + ' (KST)</strong>'
+      + (_t.daysToCharge != null ? (' · 전환까지 <strong>' + esc(String(_t.daysToCharge)) + '일</strong>') : '')
+      + '<br>결제가 확인된 뒤에 발급해 주세요. 발급을 서두르면 체험만 받고 해지하는 경우를 막을 수 없습니다.'
+      + '</div></div>';
+  }
+
   var body = bg.querySelector('.plr-body');
   body.innerHTML = ''
-    + '<div class="plr-row"><label>Requester</label><div>'+esc(pl.requesterName||'—')+' · '+esc(pl.requesterEmail||'')+(function(g){g=String(g||'').toLowerCase();if(!g)return '';var c=g.indexOf('premium')>-1?'b-premium':g.indexOf('standard')>-1?'b-standard':'b-free';var l=g.indexOf('premium')>-1?'프리미엄':g.indexOf('standard')>-1?'스탠다드':'무료';return ' <span class="badge '+c+'" style="margin-left:8px">'+l+'</span>';})(pl.requesterPlan)+'</div></div>'
+    + trialWarnHtml
+    + '<div class="plr-row"><label>Requester</label><div>'+esc(pl.requesterName||'—')+' · '+esc(pl.requesterEmail||'')+(function(g){g=String(g||'').toLowerCase();if(!g)return '';var c=g.indexOf('premium')>-1?'b-premium':g.indexOf('standard')>-1?'b-standard':'b-free';var l=g.indexOf('premium')>-1?'프리미엄':g.indexOf('standard')>-1?'스탠다드':'무료';return ' <span class="badge '+c+'" style="margin-left:8px">'+l+'</span>';})(pl.requesterPlan)+_trialBadge(pl.requesterTrial)+'</div></div>'
     + teamHtml
     + filesHtml
     + miscHtml
@@ -2549,6 +2584,8 @@ function _createPullLetterReviewModal(){
     + '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">'
       + '<button class="btn btn-sm" onclick="doPullLetterReview(\'approved\',null)">Approve</button>'
       + '<button class="btn btn-sm" onclick="doPullLetterReview(\'issued\',null)">Mark Issued (uploads PDF)</button>'
+      + '<button class="btn btn-sm" onclick="doPullLetterReview(\'on_hold\',null)">보류(결제 확인 전)</button>'
+      + '<button class="btn btn-sm" onclick="doPullLetterReview(\'pending\',null)">보류 해제 → 대기 중</button>'
       + '<button class="btn btn-sm" onclick="doPullLetterReview(\'rejected\',null)">Reject</button>'
       + '<button class="btn btn-sm" onclick="doPullLetterReview(null,null)">Save notes only</button>'
     + '</div>';
@@ -2577,7 +2614,7 @@ async function doPullLetterReview(status){
   var bg = document.getElementById('plReviewBg');
   var id = bg ? bg.dataset.id : null;
   if(!id) return;
-  var labels = { approved:'승인', accepted:'승인', issued:'발급 완료', rejected:'거절' };
+  var labels = { approved:'승인', accepted:'승인', issued:'발급 완료', rejected:'거절', on_hold:'보류(결제 확인 전)', pending:'보류 해제 → 대기 중' };
   if(status && !confirm('이 Pull-Letter를 '+(labels[status]||status)+' 처리하시겠습니까?')) return;
   try{
     var pdfPath = null;

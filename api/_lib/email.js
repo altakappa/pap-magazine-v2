@@ -519,6 +519,81 @@ const SUBSCRIPTION_I18N = {
 
 // B-3 (2026-07-26 감사) — 발급(issued) 전용 다국어 카피. 예전엔 'accepted'
 // 템플릿을 재사용해 "승인" 문구가 나갔다. 발급 완료 = PDF 다운로드 안내가 맞다.
+const TRIAL_ENDING_I18N = {
+  "ko": {
+    "subject": "무료체험이 {days}일 후 종료됩니다",
+    "heading": "무료체험 종료 안내",
+    "body1": "{plan} 무료체험이 <strong style=\"color:#fff;\">{date}</strong>에 종료되며, 같은 날 첫 결제가 진행됩니다.",
+    "body2": "계속 이용하시려면 아무 조치도 필요하지 않습니다. 원하지 않으시면 종료일 전까지 구독 관리 페이지에서 언제든 해지하실 수 있습니다.",
+    "note": "Pull-Letter는 첫 결제가 확인된 뒤 발급되며, 신청은 월 1건까지 가능합니다.",
+    "cta": "구독 관리"
+  },
+  "en": {
+    "subject": "Your free trial ends in {days} days",
+    "heading": "Free Trial Ending Soon",
+    "body1": "Your {plan} free trial ends on <strong style=\"color:#fff;\">{date}</strong>, and the first payment will be charged the same day.",
+    "body2": "No action is needed if you wish to continue. If you would rather not, you can cancel any time before that date from your subscription page.",
+    "note": "Pull-Letters are issued after the first payment is confirmed, and requests are limited to 1 per month.",
+    "cta": "MANAGE SUBSCRIPTION"
+  },
+  "it": {
+    "subject": "La tua prova gratuita termina tra {days} giorni",
+    "heading": "La prova gratuita sta per terminare",
+    "body1": "La tua prova gratuita {plan} termina il <strong style=\"color:#fff;\">{date}</strong> e lo stesso giorno verrà addebitato il primo pagamento.",
+    "body2": "Non devi fare nulla se desideri continuare. In caso contrario, puoi disdire in qualsiasi momento prima di quella data dalla pagina abbonamento.",
+    "note": "La Pull-Letter viene emessa dopo la conferma del primo pagamento e le richieste sono limitate a 1 al mese.",
+    "cta": "GESTISCI ABBONAMENTO"
+  },
+  "fr": {
+    "subject": "Votre essai gratuit se termine dans {days} jours",
+    "heading": "Fin de l'essai gratuit",
+    "body1": "Votre essai gratuit {plan} se termine le <strong style=\"color:#fff;\">{date}</strong>, et le premier paiement sera prélevé le même jour.",
+    "body2": "Aucune action n'est requise si vous souhaitez continuer. Sinon, vous pouvez résilier à tout moment avant cette date depuis votre page d'abonnement.",
+    "note": "La Pull-Letter est émise après confirmation du premier paiement, et les demandes sont limitées à 1 par mois.",
+    "cta": "GÉRER L'ABONNEMENT"
+  },
+  "es": {
+    "subject": "Tu prueba gratuita termina en {days} días",
+    "heading": "Tu prueba gratuita está por terminar",
+    "body1": "Tu prueba gratuita {plan} termina el <strong style=\"color:#fff;\">{date}</strong> y el primer cobro se realizará ese mismo día.",
+    "body2": "No necesitas hacer nada si deseas continuar. Si prefieres no hacerlo, puedes cancelar en cualquier momento antes de esa fecha desde tu página de suscripción.",
+    "note": "La Pull-Letter se emite tras confirmarse el primer pago, y las solicitudes están limitadas a 1 al mes.",
+    "cta": "GESTIONAR SUSCRIPCIÓN"
+  },
+  "ja": {
+    "subject": "無料トライアルが{days}日後に終了します",
+    "heading": "無料トライアル終了のお知らせ",
+    "body1": "{plan}の無料トライアルは<strong style=\"color:#fff;\">{date}</strong>に終了し、同日に初回のお支払いが行われます。",
+    "body2": "継続をご希望の場合、お手続きは不要です。ご希望でない場合は、終了日までにサブスクリプションページからいつでも解約いただけます。",
+    "note": "Pull-Letterは初回のお支払い確認後に発行され、リクエストは月1件までです。",
+    "cta": "サブスクリプション管理"
+  },
+  "zh": {
+    "subject": "您的免费试用将在 {days} 天后结束",
+    "heading": "免费试用即将结束",
+    "body1": "您的 {plan} 免费试用将于 <strong style=\"color:#fff;\">{date}</strong> 结束，并于当天进行首次扣款。",
+    "body2": "如需继续，无需任何操作。如不希望继续，可在结束日前随时在订阅页面取消。",
+    "note": "Pull-Letter 在首次付款确认后发放，申请每月限 1 次。",
+    "cta": "管理订阅"
+  },
+  "ru": {
+    "subject": "Бесплатный период заканчивается через {days} дн.",
+    "heading": "Бесплатный период скоро закончится",
+    "body1": "Ваш бесплатный период {plan} заканчивается <strong style=\"color:#fff;\">{date}</strong>, и в этот же день будет списан первый платёж.",
+    "body2": "Если вы хотите продолжить, ничего делать не нужно. Если нет — вы можете отменить подписку в любой момент до этой даты на странице подписки.",
+    "note": "Pull-Letter выдаётся после подтверждения первого платежа, заявки — не более 1 в месяц.",
+    "cta": "УПРАВЛЕНИЕ ПОДПИСКОЙ"
+  },
+  "de": {
+    "subject": "Deine kostenlose Testphase endet in {days} Tagen",
+    "heading": "Kostenlose Testphase endet bald",
+    "body1": "Deine kostenlose {plan}-Testphase endet am <strong style=\"color:#fff;\">{date}</strong>, und am selben Tag wird die erste Zahlung eingezogen.",
+    "body2": "Wenn du fortfahren möchtest, ist nichts zu tun. Andernfalls kannst du jederzeit vor diesem Datum auf deiner Abo-Seite kündigen.",
+    "note": "Die Pull-Letter wird nach Bestätigung der ersten Zahlung ausgestellt, Anfragen sind auf 1 pro Monat begrenzt.",
+    "cta": "ABO VERWALTEN"
+  }
+};
+
 const PULLLETTER_ISSUED_I18N = {
   ko: { subject: 'Pull-Letter가 발급되었습니다', heading: 'Pull-Letter 발급 완료', body: '요청하신 Pull-Letter가 발급되었습니다. 마이페이지에서 PDF를 다운로드하실 수 있습니다.', cta: 'PDF 다운로드' },
   en: { subject: 'Your Pull-Letter Has Been Issued', heading: 'Pull-Letter Issued', body: 'Your pull-letter has been issued. You can download the PDF from your My Page.', cta: 'DOWNLOAD PDF' },
@@ -760,6 +835,37 @@ const templates = {
         <p>${greet}</p>
         <p>${L.body1.replace('{plan}', planHtml)}</p>
         <p>${L.body2}</p>
+        <a href="${FRONTEND_URL}/subscribe" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">${L.cta}</a>
+      `, lang),
+    };
+  },
+
+  // 2026-08-03 시윤 4단계 — 무료체험 종료 3일 전 안내 메일.
+  // 목적: 회원이 "모르는 사이에 결제됐다"고 느끼지 않게 하는 것 + 풀레터
+  // 발급 조건(첫 결제 후)과 월 1건 상한을 결제 전에 한 번 더 알리는 것.
+  // 호출: api/cron/trial-ending-reminder.js
+  trialEndingSoon(user, opts) {
+    const o = opts || {};
+    const lang = (o.lang) || (user && user.language) || 'en';
+    const L = TRIAL_ENDING_I18N[lang] || TRIAL_ENDING_I18N.en;
+    const planLabels = {
+      standard_monthly: 'Standard (Monthly)',
+      standard_yearly: 'Standard (Yearly)',
+      premium_monthly: 'Premium (Monthly)',
+      premium_yearly: 'Premium (Yearly)',
+    };
+    const greet = emailUiStrings(lang).greeting.replace('{name}', (user && user.name) || 'there');
+    const planLabel = planLabels[o.plan] || o.plan || 'PAP';
+    const days = String(o.days == null ? 3 : o.days);
+    const date = o.chargeDateKst || '-';
+    return {
+      subject: L.subject.replace('{days}', days),
+      html: wrapHtml(`
+        <h2 style="color:#fff;font-size:20px;font-weight:600;margin:0 0 16px;">${L.heading}</h2>
+        <p>${greet}</p>
+        <p>${L.body1.replace('{plan}', planLabel).replace('{date}', date)}</p>
+        <p>${L.body2}</p>
+        <p style="color:rgba(255,255,255,.55);font-size:13px;">${L.note}</p>
         <a href="${FRONTEND_URL}/subscribe" style="display:inline-block;background:#fff;color:#000;padding:12px 32px;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;margin-top:8px;">${L.cta}</a>
       `, lang),
     };

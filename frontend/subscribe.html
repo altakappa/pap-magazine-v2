@@ -494,7 +494,7 @@ function navigateWithInterstitial(url){
 window._PAP_PORTONE_STORE_ID    = 'store-7b6778d6-f24d-49d2-a939-19df4ec81381';
 window._PAP_PORTONE_CHANNEL_KEY = 'channel-key-1f8ffa8d-2039-48b1-9af1-db8421e9a058';
 </script>
-<script src="/pap-api.js?v=13" defer></script>
+<script src="/pap-api.js?v=14" defer></script>
 <script>
 var checkSvg = '<svg class="tbl-check" viewBox="0 0 16 16" width="16" height="16"><polyline points="3 8 7 12 13 4" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 var crossSvg = '<svg class="tbl-cross" viewBox="0 0 16 16" width="16" height="16"><line x1="4" y1="4" x2="12" y2="12" stroke="#fff" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="4" x2="4" y2="12" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>';
@@ -542,7 +542,7 @@ ko: {
       {on:true, text:'광고 없는 콘텐츠 이용'},
       {on:true, text:'서브미션 제출 가능'},
       {on:true, text:'서브미션 탈락 시 피드백 제공'},
-      {on:true, text:'Pull-Letter 요청 가능'},
+      {on:true, text:'Pull-Letter 요청 (월 1건)'},
       {on:true, text:'이미지 다운로드'}
     ]
   },
@@ -554,7 +554,7 @@ ko: {
       ['광고 없는 이용',false,true,true],
       ['서브미션 제출',true,true,true],
       ['서브미션 피드백',false,true,true],
-      ['Pull-Letter 요청',false,false,true],
+      ['Pull-Letter 요청 (월 1건)',false,false,true],
       ['이미지 다운로드',false,true,true]
     ]
   },
@@ -600,7 +600,7 @@ en: {
       {on:true, text:'Ad-free browsing'},
       {on:true, text:'Submit work'},
       {on:true, text:'Feedback on rejected submissions'},
-      {on:true, text:'Pull-Letter request'},
+      {on:true, text:'Pull-Letter request (1 per month)'},
       {on:true, text:'Download images with logo'}
     ]
   },
@@ -612,7 +612,7 @@ en: {
       ['Ad-free browsing',false,true,true],
       ['Submit work',true,true,true],
       ['Submission feedback',false,true,true],
-      ['Pull-Letter request',false,false,true],
+      ['Pull-Letter request (1/month)',false,false,true],
       ['Logo image download',false,true,true]
     ]
   },
@@ -658,7 +658,7 @@ ru:{
       {on:true, text:'Ad-free browsing'},
       {on:true, text:'Submit work'},
       {on:true, text:'Feedback on rejected submissions'},
-      {on:true, text:'Pull-Letter request'},
+      {on:true, text:'Pull-Letter request (1 per month)'},
       {on:true, text:'Download images with logo'}
     ]
   },
@@ -670,7 +670,7 @@ ru:{
       ['Ad-free browsing',false,true,true],
       ['Submit work',true,true,true],
       ['Submission feedback',false,true,true],
-      ['Pull-Letter request',false,false,true],
+      ['Pull-Letter request (1/month)',false,false,true],
       ['Logo image download',false,true,true]
     ]
   },
@@ -716,7 +716,7 @@ de:{
       {on:true, text:'Ad-free browsing'},
       {on:true, text:'Submit work'},
       {on:true, text:'Feedback on rejected submissions'},
-      {on:true, text:'Pull-Letter request'},
+      {on:true, text:'Pull-Letter request (1 per month)'},
       {on:true, text:'Download images with logo'}
     ]
   },
@@ -728,7 +728,7 @@ de:{
       ['Ad-free browsing',false,true,true],
       ['Submit work',true,true,true],
       ['Submission feedback',false,true,true],
-      ['Pull-Letter request',false,false,true],
+      ['Pull-Letter request (1/month)',false,false,true],
       ['Logo image download',false,true,true]
     ]
   },
@@ -774,7 +774,7 @@ it: {
       {on:true, text:'Navigazione senza pubblicità'},
       {on:true, text:'Invia lavori'},
       {on:true, text:'Feedback sulle submission rifiutate'},
-      {on:true, text:'Richiesta Pull-Letter'},
+      {on:true, text:'Richiesta Pull-Letter (1 al mese)'},
       {on:true, text:'Download immagini con logo'}
     ]
   },
@@ -786,7 +786,7 @@ it: {
       ['Senza pubblicità',false,true,true],
       ['Invia lavori',true,true,true],
       ['Feedback submission',false,true,true],
-      ['Richiesta Pull-Letter',false,false,true],
+      ['Richiesta Pull-Letter (1 al mese)',false,false,true],
       ['Download immagini con logo',false,true,true]
     ]
   },
@@ -831,7 +831,7 @@ fr: {
       {on:true, text:'Navigation sans publicité'},
       {on:true, text:'Soumettre des travaux'},
       {on:true, text:'Retours sur les soumissions refusées'},
-      {on:true, text:'Demande de Pull-Letter'},
+      {on:true, text:'Demande de Pull-Letter (1 par mois)'},
       {on:true, text:'Téléchargement d\'images avec logo'}
     ]
   },
@@ -843,7 +843,7 @@ fr: {
       ['Sans publicité',false,true,true],
       ['Soumettre des travaux',true,true,true],
       ['Retours soumission',false,true,true],
-      ['Demande de Pull-Letter',false,false,true],
+      ['Demande de Pull-Letter (1/mois)',false,false,true],
       ['Téléchargement images avec logo',false,true,true]
     ]
   },
@@ -889,7 +889,7 @@ es: {
       {on:true, text:'Navegación sin anuncios'},
       {on:true, text:'Enviar trabajos'},
       {on:true, text:'Feedback de submissions rechazadas'},
-      {on:true, text:'Solicitud de Pull-Letter'},
+      {on:true, text:'Solicitud de Pull-Letter (1 al mes)'},
       {on:true, text:'Descarga de imágenes con logo'}
     ]
   },
@@ -901,7 +901,7 @@ es: {
       ['Sin anuncios',false,true,true],
       ['Enviar trabajos',true,true,true],
       ['Feedback submission',false,true,true],
-      ['Solicitud de Pull-Letter',false,false,true],
+      ['Solicitud de Pull-Letter (1 al mes)',false,false,true],
       ['Descarga imágenes con logo',false,true,true]
     ]
   },
@@ -947,7 +947,7 @@ ja: {
       {on:true, text:'広告なしで閲覧'},
       {on:true, text:'作品提出可能'},
       {on:true, text:'サブミッション不採用時フィードバック'},
-      {on:true, text:'フルレターフィードバック'},
+      {on:true, text:'フルレターリクエスト（月1件）'},
       {on:true, text:'ロゴ入り画像ダウンロード'}
     ]
   },
@@ -959,7 +959,7 @@ ja: {
       ['広告なし',false,true,true],
       ['作品提出',true,true,true],
       ['サブミッションフィードバック',false,true,true],
-      ['フルレターフィードバック',false,false,true],
+      ['フルレターリクエスト（月1件）',false,false,true],
       ['ロゴ入り画像ダウンロード',false,true,true]
     ]
   },
@@ -1005,7 +1005,7 @@ zh: {
       {on:true, text:'无广告浏览'},
       {on:true, text:'可提交作品'},
       {on:true, text:'投稿未入选时提供反馈'},
-      {on:true, text:'Pull-Letter反馈'},
+      {on:true, text:'Pull-Letter 申请（每月1次）'},
       {on:true, text:'下载带Logo图片'}
     ]
   },
@@ -1017,7 +1017,7 @@ zh: {
       ['无广告浏览',false,true,true],
       ['提交作品',true,true,true],
       ['投稿反馈',false,true,true],
-      ['Pull-Letter反馈',false,false,true],
+      ['Pull-Letter 申请（每月1次）',false,false,true],
       ['带Logo图片下载',false,true,true]
     ]
   },
@@ -1063,7 +1063,7 @@ ru:{
       {on:true, text:'Просмотр без рекламы'},
       {on:true, text:'Возможность подачи работ'},
       {on:true, text:'Обратная связь по отклоненным подачам'},
-      {on:true, text:'Запрос Pull-Letter'},
+      {on:true, text:'Запрос Pull-Letter (1 в месяц)'},
       {on:true, text:'Загрузка изображений с логотипом'}
     ]
   },
@@ -1075,7 +1075,7 @@ ru:{
       ['Без рекламы',false,true,true],
       ['Подача работ',true,true,true],
       ['Обратная связь по подаче',false,true,true],
-      ['Запрос Pull-Letter',false,false,true],
+      ['Запрос Pull-Letter (1 в месяц)',false,false,true],
       ['Загрузка изображений с логотипом',false,true,true]
     ]
   },
@@ -1470,7 +1470,7 @@ setBilling('monthly');
 <script src="/pap-static.js?v=1"></script>
 <script src="/pap-subscription.js?v=3"></script>
 <script src="/pap-home.js?v=3"></script>
-<script src="/pap-content-editorial.js?v=44"></script>
+<script src="/pap-content-editorial.js?v=45"></script>
 <script src="/pap-content-film.js?v=11"></script>
 <script src="/pap-content-article.js?v=45"></script>
 <script src="/pap-content-creator-shorts.js?v=10"></script>

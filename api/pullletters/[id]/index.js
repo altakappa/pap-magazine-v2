@@ -72,7 +72,9 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    if (pl.status !== 'pending') {
+    // 2026-08-03 — 'on_hold'(무료체험 중 접수 자동 보류)도 아직 검토 전 상태라
+    // 회원이 스스로 취소할 수 있어야 한다.
+    if (pl.status !== 'pending' && pl.status !== 'on_hold') {
       return res.status(409).json({
         message: 'This request can no longer be cancelled (status: ' + pl.status + ')',
         code: 'not_cancellable',

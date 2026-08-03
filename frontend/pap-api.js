@@ -823,13 +823,28 @@ const PAP = (function() {
       }
       var key = plan + '_' + billing;
       var priceId = cfg.prices && cfg.prices[key];
+
+      // 2026-08-03 시윤 3단계 — 재체험 차단.
+      // 해지했다가 다시 구독하는 사람에게 또 7일 무료체험을 주지 않는다.
+      // 판정은 서버(/subscriptions/trial-eligibility)가 하고, 여기서는 price id 만
+      // '체험 없는' 쪽으로 갈아 끼운다. 판정 실패·price 미설정이면 기존 price 로
+      // 그대로 진행한다(fail-open — 어떤 경우에도 결제 자체를 막지 않는다).
+      var noTrial = false;
+      try {
+        var elig = await request('GET', '/subscriptions/trial-eligibility');
+        if (elig && elig.eligible === false) {
+          var altPrice = cfg.pricesNoTrial && cfg.pricesNoTrial[key];
+          if (altPrice) { priceId = altPrice; noTrial = true; }
+        }
+      } catch (_) { /* 판정 실패 → 기존 price 유지 */ }
+
       if (!priceId) {
         throw new Error('This plan is not available for international checkout yet.');
       }
       Paddle.Checkout.open({
         items: [{ priceId: priceId, quantity: 1 }],
         customer: user.email ? { email: user.email } : undefined,
-        customData: { user_id: user.id, plan_key: key },
+        customData: { user_id: user.id, plan_key: key, no_trial: noTrial },
         settings: { displayMode: 'overlay', theme: 'dark', locale: (localStorage.getItem('pap-lang') || 'en') },
       });
       return { opened: true };

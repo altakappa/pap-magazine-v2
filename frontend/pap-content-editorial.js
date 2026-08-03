@@ -445,6 +445,10 @@ function _renderEditorialDownloads(det, d){
     '</div>';
 
   var edId = (d && d.id) || (det && det.id) || '';
+  // 2026-08-03 — 다운로드 로그에 content_id 가 비어 있어 서버가 '본인 참여작(owner)'
+  // 판정을 못 하고, 참여 크리에이터의 정상 다운로드가 위반(consented:false)으로
+  // 기록되던 버그 수정. 현재 보고 있는 에디토리얼 id 를 전역에 보관해 둔다.
+  try { window._papDlContentId = edId || ''; } catch (_) {}
   window._papCheckDownloadPerm('editorial', edId).then(function(perm){
     if (!perm || !perm.allowed){
       // 2026-07-20 정책 개정 — 스탠다드 멤버십부터 전체 다운로드 가능.
@@ -719,13 +723,18 @@ window._papLogDownload = window._papLogDownload || function(payload){
     var token = '';
     try { token = (typeof getToken === 'function' && getToken()) || localStorage.getItem('pap-token') || ''; }
     catch(_) { token = ''; }
+    // 2026-08-03 — content_id 기본값 주입. 호출부가 빠뜨려도 서버가
+    // owner(본인 참여작) 판정을 할 수 있도록, 현재 보고 있는 콘텐츠 id 를
+    // 기본값으로 실어 보낸다. payload 에 content_id 가 있으면 그쪽이 우선한다.
+    var _base = { consented: true };
+    try { if (window._papDlContentId) _base.content_id = window._papDlContentId; } catch (_) {}
     fetch('/api/downloads/log', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': token ? ('Bearer ' + token) : '',
       },
-      body: JSON.stringify(Object.assign({ consented: true }, payload || {})),
+      body: JSON.stringify(Object.assign(_base, payload || {})),
       keepalive: true,
     }).catch(function(){});
   } catch(_) {}

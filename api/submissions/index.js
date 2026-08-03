@@ -17,6 +17,10 @@ const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { normalizeGenres } = require('../_lib/submissionCategories');
 const { classifySubmissionType, looksMissingCredit } = require('../_lib/submissionType');
 const { sendTextToTelegramSafe } = require('../_lib/telegram');
+// 2026-08-03 — 관리자 목록에 '무료체험 중 · 전환 D-N' 배지를 달기 위한 공용 판정.
+// 서브미션은 '접수 자동 보류'를 하지 않는다(무료회원 투고가 매거진의 핵심 입력이라
+// 파이프라인을 막으면 안 됨). 배지로 표시만 하고 판단은 에디터가 한다.
+const { classifyPeriod } = require('../_lib/trialWindow');
 
 const BUCKET = 'submissions';
 
@@ -379,6 +383,8 @@ module.exports = async function handler(req, res) {
 
       let profilesById = {};
       let plansById = {};
+      // 무료체험 배지용 원본 구독 행 (user_id → subscriptions row)
+      let subRowByUser = {};
 
       if (userIds.length > 0) {
         const [profRes, subRes] = await Promise.all([
@@ -388,7 +394,7 @@ module.exports = async function handler(req, res) {
             .in('id', userIds),
           supabaseAdmin
             .from('subscriptions')
-            .select('user_id, plan, status')
+            .select('user_id, plan, status, current_period_start, current_period_end')
             .in('user_id', userIds),
         ]);
 
@@ -401,6 +407,9 @@ module.exports = async function handler(req, res) {
             const existing = plansById[s.user_id];
             if (!existing || s.status === 'active') {
               plansById[s.user_id] = s.plan;
+              subRowByUser[s.user_id] = s;
+            } else if (!subRowByUser[s.user_id]) {
+              subRowByUser[s.user_id] = s;
             }
           }
         }
@@ -431,6 +440,8 @@ module.exports = async function handler(req, res) {
           submitterEmail: p.email || null,
           submitterPlan: plansById[s.user_id] || null,
           submitterGrade: (p.subscription_plan || 'free'),
+          // { isTrial, chargeDateKst, daysToCharge, label } — 없으면 null
+          submitterTrial: subRowByUser[s.user_id] ? classifyPeriod(subRowByUser[s.user_id]) : null,
           linked_editorial: le,
           display_status: _deriveDisplayStatus(s, le),
         };

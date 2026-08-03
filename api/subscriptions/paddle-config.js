@@ -48,6 +48,18 @@ module.exports = async function handler(req, res) {
     premium_yearly:   process.env.PADDLE_PRICE_PREM_Y || null,
   };
 
+  // 2026-08-03 시윤 3단계 — 재체험 차단용 '체험 없는' price id.
+  // Paddle 에서 같은 금액·같은 주기로 trial period 만 뺀 price 를 하나 더 만들어
+  // 이 env 에 넣는다. 프론트는 /subscriptions/trial-eligibility 가 eligible:false 를
+  // 주면 이 쪽 price 로 체크아웃을 연다(= 가입 즉시 결제, 체험 없음).
+  // 미설정(null)이면 프론트는 기존 price 로 폴백한다 — 기능이 멈추지 않는다.
+  const pricesNoTrial = {
+    standard_monthly: process.env.PADDLE_PRICE_STD_M_NOTRIAL || null,
+    standard_yearly:  process.env.PADDLE_PRICE_STD_Y_NOTRIAL || null,
+    premium_monthly:  process.env.PADDLE_PRICE_PREM_M_NOTRIAL || null,
+    premium_yearly:   process.env.PADDLE_PRICE_PREM_Y_NOTRIAL || null,
+  };
+
   // 서브미션 일회성 기본료 price id (구독과 별개 — one-time). 미설정 시 null →
   // 프론트는 해당 유형 결제 버튼을 비활성/안내 처리. 체크아웃 시 프론트가
   // custom_data { submission_id, submission_type, user_id, kind:'submission_fee' }
@@ -72,6 +84,7 @@ module.exports = async function handler(req, res) {
     environment: detectEnvironment(clientToken),
     clientToken,
     prices,
+    pricesNoTrial,
     submissionFees,
     submissionAddons,
   });

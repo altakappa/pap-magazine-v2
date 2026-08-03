@@ -13,6 +13,10 @@
       "schedule": "40 17 * * *"
     },
     {
+      "path": "/api/cron/trial-ending-reminder",
+      "schedule": "0 1 * * *"
+    },
+    {
       "path": "/api/cron/send-due-campaigns",
       "schedule": "0 * * * *"
     },

@@ -26,8 +26,11 @@ module.exports = async function handler(req, res) {
 
     // 'issued' added for the community-flow PDF deliverable. Existing
     // 'accepted'/'rejected' still work for legacy multipart requests.
-    if (!status || !['accepted', 'approved', 'rejected', 'issued'].includes(status)) {
-      return res.status(400).json({ message: 'Status must be one of: accepted, approved, rejected, issued' });
+    // 2026-08-03 — 'on_hold'(무료체험 중 접수 보류)와 'pending'(보류 해제 후
+    // 정상 검토 대기)을 추가. 서버가 자동으로 넣은 보류를 첫 결제 확인 뒤
+    // 관리자가 되돌릴 수 있어야 한다.
+    if (!status || !['pending', 'on_hold', 'accepted', 'approved', 'rejected', 'issued'].includes(status)) {
+      return res.status(400).json({ message: 'Status must be one of: pending, on_hold, accepted, approved, rejected, issued' });
     }
 
     const update = {
@@ -67,7 +70,10 @@ module.exports = async function handler(req, res) {
     // template until a dedicated 'issued' template is added.
     const { data: profile } = await supabaseAdmin
       .from('profiles').select('email, name, email_language, language, country').eq('id', pullLetter.user_id).single();
-    if (profile) {
+    // 2026-08-03 — 'pending'/'on_hold' 는 내부 상태 전환일 뿐이라 회원에게
+    // 메일을 보내지 않는다. (보류 사실을 매번 알리면 오히려 혼란)
+    const _silent = status === 'pending' || status === 'on_hold';
+    if (profile && !_silent) {
       const _lang = resolveEmailLang(profile);
       const isPositive = status === 'accepted' || status === 'approved' || status === 'issued';
       const tpl = status === 'issued'

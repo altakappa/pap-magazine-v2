@@ -33,6 +33,7 @@ const crypto = require('crypto');
 
 const PADDLE_WEBHOOK_SECRET = process.env.PADDLE_WEBHOOK_SECRET;
 const { sendTextToTelegramSafe } = require('./_lib/telegram');
+const { hasPriorSubscription } = require('./_lib/trialWindow');
 const PADDLE_API_KEY = process.env.PADDLE_API_KEY;
 const PADDLE_API_BASE = process.env.PADDLE_ENV === 'production'
   ? 'https://api.paddle.com'
@@ -81,7 +82,16 @@ function planFromPriceId(priceId) {
     [process.env.PADDLE_PRICE_STD_Y]: 'standard_yearly',
     [process.env.PADDLE_PRICE_PREM_M]: 'premium_monthly',
     [process.env.PADDLE_PRICE_PREM_Y]: 'premium_yearly',
+    // 2026-08-03 시윤 3단계 — 체험 없는(재구독용) price 도 같은 플랜으로 매핑한다.
+    // 빠뜨리면 재구독 결제가 plan='unknown' 으로 저장돼 등급이 안 올라간다.
+    [process.env.PADDLE_PRICE_STD_M_NOTRIAL]: 'standard_monthly',
+    [process.env.PADDLE_PRICE_STD_Y_NOTRIAL]: 'standard_yearly',
+    [process.env.PADDLE_PRICE_PREM_M_NOTRIAL]: 'premium_monthly',
+    [process.env.PADDLE_PRICE_PREM_Y_NOTRIAL]: 'premium_yearly',
   };
+  // env 미설정이면 키가 'undefined' 문자열이 되므로 그 칸은 무시한다.
+  delete map['undefined'];
+  delete map[''];
   return map[priceId] || null;
 }
 
@@ -238,7 +248,17 @@ module.exports = async function handler(req, res) {
           sendTextToTelegramSafe('🚨 Paddle 구독 생성됐으나 회원 매핑 실패 — 수동 정합 필요. sub=' + data.id + ' customer=' + data.customer_id);
           break; // 200 반환 (재시도해도 해결 안 됨) — 로그·알림 기반 수동 정합
         }
+        // 2026-08-03 시윤 3단계 — 재체험 감시(사후 탐지).
+        // upsert 는 user_id 충돌 시 기존 행을 덮으므로 '이전에 구독 이력이 있었나'는
+        // 반드시 upsert 전에 물어봐야 한다. 체험 상태로 새 구독이 들어왔는데 이력이
+        // 있으면, 프론트 가드가 뚫렸거나 price 설정이 빠진 것 -> 즉시 알림.
+        let _hadPrior = false;
+        try { _hadPrior = await hasPriorSubscription(supabaseAdmin, userId); } catch (_) {}
+
         const { plan } = await upsertSubscription(data, userId);
+        if (_hadPrior && data.status === 'trialing') {
+          sendTextToTelegramSafe('⚠️ 재체험 감지 — 과거 구독 이력이 있는 회원이 또 무료체험으로 재구독했습니다. NOTRIAL price 설정 확인 필요. sub=' + data.id + ' user=' + userId);
+        }
         if (plan === 'unknown') {
           sendTextToTelegramSafe('⚠️ Paddle 구독 plan=unknown — price ID/plan_key 매핑 확인 필요. sub=' + data.id + ' user=' + userId);
         }

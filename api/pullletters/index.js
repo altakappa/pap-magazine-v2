@@ -31,6 +31,13 @@ const { resolveEmailLang } = require('../_lib/emailLocale');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { sendTextToTelegramSafe } = require('../_lib/telegram');
 const { hasActivePremium } = require('../_lib/subscriptionAccess');
+// 2026-08-03 — 무료체험 어뷰징 방지(시윤 1·2·4단계). 체험 중 접수 건은 자동 '보류',
+// 관리자 목록에 '무료체험 중 · 전환 D-N' 배지, 월 1건 상한.
+const { trialInfoForUser, trialInfoByUserIds, kstDateStr } = require('../_lib/trialWindow');
+
+// 풀레터는 프리미엄 회원 1인당 '월 1건'. 발급은 실물 대여 협조를 동반하는
+// 고비용 서비스라 무제한이 될 수 없다. (프론트 문구도 같은 숫자를 쓴다)
+const PULLLETTER_MONTHLY_LIMIT = 1;
 const { verifySignature, SNIFF_BYTES } = require('../_lib/fileSignature');
 
 module.exports.config = { api: { bodyParser: false } };
@@ -66,6 +73,8 @@ module.exports = async function handler(req, res) {
     // 2026-07-20 — plan 뿐 아니라 subscription_status='active'도 함께 검사한다.
     // 기존엔 plan만 봐서 past_due(미납)·해지·suspended 상태의 premium 회원이
     // 게이트를 통과하던 과다부여가 있었다. (공용 헬퍼 hasActivePremium 로 통일)
+    // 2026-08-03 — 체험 여부는 게이트 통과 뒤에도 계속 필요해서 바깥 스코프에 둔다.
+    let trialInfo = null;
     try {
       const { data: prof, error: profErr } = await supabaseAdmin
         .from('profiles')
@@ -78,6 +87,38 @@ module.exports = async function handler(req, res) {
     } catch (e) {
       return res.status(403).json({ message: 'Premium subscription required' });
     }
+    // 체험 중인지 판정 (조회 실패해도 접수 자체는 막지 않는다 — null 이면 평소대로).
+    try { trialInfo = await trialInfoForUser(supabaseAdmin, user.id); } catch (_) { trialInfo = null; }
+
+    // ── 월 1건 상한 ──────────────────────────────────────────────
+    // 한국 달력 기준 '이번 달'에 이미 접수한 건이 있으면 거절한다.
+    // 거절(rejected)된 건은 횟수로 세지 않는다 — 회원 잘못이 아닐 수 있어서.
+    try {
+      const since = new Date(Date.now() - 62 * 86400000).toISOString();
+      const { data: recent } = await supabaseAdmin
+        .from('pullletters')
+        .select('id, status, created_at')
+        .eq('user_id', user.id)
+        .gte('created_at', since);
+      const thisMonth = String(kstDateStr(new Date().toISOString()) || '').slice(0, 7);
+      const used = (recent || []).filter((r) => {
+        if (String(r.status || '').toLowerCase() === 'rejected') return false;
+        return String(kstDateStr(r.created_at) || '').slice(0, 7) === thisMonth;
+      }).length;
+      if (thisMonth && used >= PULLLETTER_MONTHLY_LIMIT) {
+        const [y, m] = thisMonth.split('-').map(Number);
+        const nextY = m === 12 ? y + 1 : y;
+        const nextM = m === 12 ? 1 : m + 1;
+        return res.status(429).json({
+          message: `풀레터 요청은 한 달에 ${PULLLETTER_MONTHLY_LIMIT}건까지 신청할 수 있어요. `
+            + `${nextY}년 ${nextM}월 1일부터 다시 신청할 수 있습니다.`,
+          code: 'monthly_limit_reached',
+          limit: PULLLETTER_MONTHLY_LIMIT,
+          used,
+          resetOn: `${nextY}-${String(nextM).padStart(2, '0')}-01`,
+        });
+      }
+    } catch (_) { /* 상한 계산 실패 시에는 통과 — 접수를 막는 쪽이 더 위험하다 */ }
 
     try {
       // ── 2026-07-21 — 전송 방식 2가지를 모두 받는다 ────────────────
@@ -243,7 +284,13 @@ module.exports = async function handler(req, res) {
           file_urls: moodboardUrls,
           team_info: team,
           proposal_pdf_url: proposalPath,
-          status: 'pending',
+          // 2026-08-03 — 무료체험(7일) 기간에 접수된 건은 자동 '보류(on_hold)'.
+          // 접수는 정상적으로 받되, 실제 풀레터 발급은 첫 결제가 확인된 뒤에 한다.
+          // (체험만 받고 해지하는 어뷰징 방지 — 시윤 1·2단계)
+          status: (trialInfo && trialInfo.isTrial) ? 'on_hold' : 'pending',
+          admin_notes: (trialInfo && trialInfo.isTrial)
+            ? `[자동] 무료체험 중 접수 — 첫 결제 예정일 ${trialInfo.chargeDateKst || '미상'}(KST). 결제 확인 후 발급.`
+            : null,
         })
         .select()
         .single();
@@ -263,6 +310,9 @@ module.exports = async function handler(req, res) {
         + '포토그래퍼: ' + team.photographer.name + ' (' + team.photographer.instagram + ')\n'
         + '스타일리스트: ' + team.stylist.name + ' (' + team.stylist.instagram + ')\n'
         + (pullLetter && pullLetter.id ? ('요청 ID: ' + pullLetter.id + '\n') : '')
+        + ((trialInfo && trialInfo.isTrial)
+          ? ('⚠️ 무료체험 중 접수 → 자동 보류. 첫 결제 예정일 ' + (trialInfo.chargeDateKst || '미상') + '(KST)\n')
+          : '')
         + '검토·발급: https://www.pap-magazine.com/admin'
       );
 
@@ -321,6 +371,11 @@ module.exports = async function handler(req, res) {
         for (const p of (profs || [])) profilesById[p.id] = p;
       }
 
+      // 2026-08-03 — 관리자 목록에 '무료체험 중 · 전환 D-N' 배지를 달기 위한 정보.
+      // 회원 수만큼 쿼리하지 않도록 한 번에 조회한다(N+1 방지).
+      let trialByUser = {};
+      try { trialByUser = await trialInfoByUserIds(supabaseAdmin, userIds); } catch (_) { trialByUser = {}; }
+
       // Mint signed URLs for the two private-bucket PDFs so admin UI can
       // render direct download links without an extra round-trip.
       const SIGNED_TTL = 60 * 60; // 1 hour for admin (refreshed each list call)
@@ -344,6 +399,7 @@ module.exports = async function handler(req, res) {
           requesterName: prof.name || null,
           requesterEmail: prof.email || pl.email || null,
           requesterPlan: prof.subscription_plan || null,
+          requesterTrial: trialByUser[pl.user_id] || null,
           proposalPdfSignedUrl,
           pullLetterSignedUrl,
         };
