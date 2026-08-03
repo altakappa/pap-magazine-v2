@@ -2,16 +2,20 @@
  * PAP Magazine — 소셜 다이제스트 문안 생성 (2026-08-03, 도메니코 지시).
  *
  * digestBuckets 가 고른 소재로 X·스레드에 나갈 "모아보기" 한 글을 만든다.
- * 도메니코가 정한 규칙 네 가지가 이 파일의 뼈대다.
+ * 도메니코가 정한 규칙이 이 파일의 뼈대다.
  *
  *   1) 링크는 딱 하나. 본문엔 제목만 쓰고 맨 끝에 인스타 프로필 링크.
  *      기사별 링크를 붙이면 사람들이 사이트로 흩어진다. X·스레드는
  *      인스타로 밀어넣는 장치이므로 나가는 문은 하나여야 한다.
  *   2) 완전 자동 발행. 사람이 안 본다 → 모델이 링크를 못 쓰게 막아야 한다.
- *      그래서 모델에겐 *한두 줄 소개말만* 시키고, 제목·링크·순서는 이 파일이
- *      기계적으로 조립한다. 모델 출력에서 URL 비슷한 건 전부 지운다.
- *   3) 항목마다 기사 내용을 축약한 한두 줄.
- *   4) X 는 압축 한 글 / 스레드는 여유 있게 한 글. 답글 체인 없음.
+ *      그래서 모델에겐 *한두 줄 소개말만* 시키고, 제목·링크·순서·마무리는
+ *      이 파일이 기계적으로 조립한다. 모델 출력에서 URL 비슷한 건 전부 지운다.
+ *   3) 한 기사는 한 줄. 제목과 소개말을 두 줄로 쪼개지 않는다.
+ *      (2026-08-03 2차 지시 — 그 전엔 제목 밑에 소개말을 들여썼다.)
+ *   4) 소재를 고르지 않는다. 창(窓) 안에 있는 기사는 전부 싣는다.
+ *      자리가 모자라면 *소개말을 먼저 버리고* 그래도 안 되면 그때 항목을 던다.
+ *      항목 수가 소개말보다 우선한다 — 이것도 2026-08-03 2차 지시다.
+ *   5) X 는 압축 한 글 / 스레드는 여유 있게 한 글. 답글 체인 없음.
  *
  * 어미는 socialHook 의 toneFor/isPolite 를 그대로 쓴다. 채널별 말투 분기는
  * 저장소에 딱 한 군데(socialHook)만 있어야 한다 — tests/social-tone.test.js
@@ -33,21 +37,36 @@ const X_LINK_COST = 23 + 2;
 /* 스레드는 500자. 넘치면 잘리는 게 아니라 게시가 실패하므로 여유를 둔다. */
 const THREADS_MAX = 480;
 
-/* 소개말 길이 상한 (한글 기준). 도메니코 2026-08-03 —
-   "한두 줄이지만 내용을 좀 더 길게, 읽는 이가 더 알아보고 싶게".
-   X 는 자리가 좁아 같은 길이를 못 준다. 대신 아래 assembleX 가 소개말을
-   버리는 대신 항목 수를 줄이는 쪽을 택한다 — 제목만 다섯 줄 나열하는 것보다
-   세 줄이라도 내용이 궁금해지는 쪽이 유입 장치로서 맞다. */
-const NOTE_LEN = { x: 34, threads: 72 };
+/* 소개말 길이 상한 (한글 기준).
+   한 줄 안에 제목과 같이 들어가므로 예전보다 짧게 잡는다. 소개말이 길면
+   항목이 통째로 밀려나는데, 도메니코 지시상 항목 수가 더 중요하다. */
+const NOTE_LEN = { x: 24, threads: 56 };
+
+/* 제목과 소개말을 잇는 자리. 줄표(—, ㅡ, --)는 stripDashes 가 쉼표로 바꿔
+   버리므로 쓸 수 없다. 가운뎃점은 그 규칙에 걸리지 않는다. */
+const SEP = ' · ';
 
 const HEADLINE = {
   editorial:  { x: '이번 주 PAP 오리지널 에디토리얼', threads: '이번 주 PAP 에 새로 올라간 오리지널 에디토리얼' },
-  collection: { x: '요 며칠 소개한 아트 콜렉션',      threads: '요 며칠 소개한 아트 콜렉션' },
-  celeb:      { x: '요 며칠의 셀럽 소식',             threads: '요 며칠 셀럽들 소식 모아봤어' },
+  collection: { x: '최근 소개한 아트 콜렉션',         threads: '최근 소개한 아트 콜렉션' },
+  celeb:      { x: '최근 셀럽 소식',                  threads: '최근 셀럽들 소식 모아봤어' },
 };
 
 /* 모델이 뱉을 수 있는 링크 흔적. 자동 발행이라 사람이 못 거르니 기계로 지운다. */
 const URLISH = /(https?:\/\/\S+|www\.\S+|\b[\w-]+\.(?:com|net|org|co\.kr|kr|io|me|ly)\b\S*)/gi;
+
+/**
+ * 마무리 한 줄. 모델에게 맡기지 않는다 — 2026-08-03 에 한 번 당했다.
+ * fallbackCopy 쪽만 고쳤더니 모델이 살아있는 실제 경로에서는 제 문장을
+ * 그대로 내보냈다. 마무리는 브랜드 문구라 코드가 못 박는 게 맞다.
+ *
+ * normalizeSocialAddress 는 호칭과 "어떻게 생각해"만 손보지 어미는 못 바꾼다.
+ * 그래서 존댓말·반말 두 벌을 미리 적어 둔다. 채널 판정은 socialHook.isPolite
+ * 하나뿐이고 여기서는 그 결과(boolean)만 쓴다.
+ */
+function closingFor(polite) {
+  return polite ? '전체 기사는 인스타에서 보실 수 있어요' : '더 많은 현장은 PAP 인스타그램에서 확인!';
+}
 
 /** 소개말 한 줄 정제 — 링크·해시태그·따옴표·군더더기 제거. */
 function cleanNote(raw, opts) {
@@ -80,7 +99,7 @@ function cleanTitle(raw) {
 }
 
 /**
- * 기사 하나에 붙일 한두 줄을 모델에게 받는다.
+ * 기사 하나에 붙일 한 줄을 모델에게 받는다.
  * 실패하면 null — 소개말 없이 제목만 나가도 글은 성립한다. 자동 발행에서
  * 모델 한 번 삐끗했다고 그날 다이제스트를 통째로 날리는 건 손해다.
  */
@@ -95,16 +114,16 @@ async function generateNotes(items, bucket, platform) {
     socialHook.toneFor(platform),
     '',
     '규칙:',
-    '- 기사마다 내용을 축약하는 한두 줄. ' + noteMax + '자 안쪽.',
-    '- 제목을 그대로 되풀이하지 않는다. 제목은 따로 나간다.',
+    '- 기사마다 내용을 축약하는 한 줄. ' + noteMax + '자 안쪽.',
+    '- 제목 뒤에 가운뎃점으로 이어 붙는다. 제목을 그대로 되풀이하지 않는다.',
     '- 요약이 아니라 미끼다. 읽는 사람이 본문을 더 보고 싶어지게 쓴다.',
     '  무엇을 다뤘는지 한 겹 더 들어가서 알려준다 (누가, 어디서, 무엇이 새로운지).',
     '- URL, 링크, 해시태그, 이모지, 계정 아이디를 절대 쓰지 않는다.',
     '- 없는 사실을 지어내지 않는다. 제목에서 확실한 것만 쓴다.',
     '- 빈칸으로 두는 것이 지어내는 것보다 낫다.',
     '',
-    'JSON 으로만 답한다: {"intro":"...","notes":["...","..."],"closing":"..."}',
-    'intro 는 오늘 묶음을 여는 한 줄, closing 은 인스타로 오라는 한 줄이다.',
+    'JSON 으로만 답한다: {"intro":"...","notes":["...","..."]}',
+    'intro 는 오늘 묶음을 여는 한 줄이다. 마무리 문장은 쓰지 않는다 (코드가 붙인다).',
     'notes 배열 길이는 받은 기사 수와 정확히 같아야 한다.',
   ].join('\n');
 
@@ -118,7 +137,7 @@ async function generateNotes(items, bucket, platform) {
       },
       body: JSON.stringify({
         model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5',
-        max_tokens: 900,
+        max_tokens: 1600,
         system: sys,
         messages: [{
           role: 'user',
@@ -146,7 +165,8 @@ async function generateNotes(items, bucket, platform) {
     const notes = Array.isArray(g.notes) ? g.notes : [];
     return {
       intro: papVoice.normalizeSocialAddress(cleanNote(g.intro), { polite }),
-      closing: papVoice.normalizeSocialAddress(cleanNote(g.closing), { polite }),
+      /* 모델이 closing 을 보내와도 안 쓴다. 마무리는 코드 몫이다. */
+      closing: closingFor(polite),
       notes: items.map((_, i) => papVoice.normalizeSocialAddress(cleanNote(notes[i], { max: noteMax }), { polite })),
     };
   } catch (_) {
@@ -154,54 +174,55 @@ async function generateNotes(items, bucket, platform) {
   }
 }
 
-/* 모델이 죽었을 때 나가는 문장.
-   normalizeSocialAddress 는 호칭과 "어떻게 생각해"만 손보지 어미는 못 바꾼다.
-   그래서 존댓말·반말 두 벌을 미리 적어 둔다. 채널 판정은 socialHook.isPolite
-   하나뿐이고 여기서는 그 결과(boolean)만 쓴다. */
+/* 모델이 죽었을 때 나가는 문장. 마무리는 위와 같은 문장을 쓴다. */
 function fallbackCopy(items, polite) {
   return {
     intro: '',
-    /* 2026-08-03 도메니코 — 스레드는 반말을 쓰되 과하게 드러나지 않게.
-       '인스타에 있어'처럼 어미가 붙으면 링크 바로 위에서 말투가 튄다.
-       명사형으로 끊는 쪽이 담백하다. */
-    closing: polite ? '전체 기사는 인스타에서 보실 수 있어요' : '전체 기사는 인스타에서',
+    closing: closingFor(polite),
     notes: items.map(() => ''),
   };
 }
 
 /**
- * 한 줄 조립: "1. 제목 — 소개말" 이 아니라 두 줄로 나눈다 (대시 금지).
- * 번호는 두 채널 공통이다 (2026-08-03 도메니코 — X 도 스레드처럼 카운트).
- * indent 는 스레드에서만. X 는 공백 세 칸도 가중치라 아깝다.
+ * 한 기사 = 한 줄. "1. 제목 · 소개말" (2026-08-03 도메니코 2차 지시).
+ * 번호는 두 채널 공통이다. 소개말이 없으면 제목만 남는다.
  */
-function renderItem(n, title, note, indent) {
-  const head = n + '. ' + title;
-  return note ? head + '\n' + (indent || '') + note : head;
+function renderItem(n, title, note) {
+  return note ? n + '. ' + title + SEP + note : n + '. ' + title;
+}
+
+/**
+ * 자리에 맞을 때까지 줄여 나가는 공통 절차.
+ * 항목 수를 먼저 지키고(도메니코 — "고르지 말고 전부"), 같은 항목 수라면
+ * 소개말이 붙은 판을 택한다. 소개말은 항목보다 먼저 버린다.
+ */
+function fitDown(items, build, fits) {
+  for (let n = items.length; n >= 1; n--) {
+    const rich = build(n, true);
+    if (fits(rich)) return rich;
+    const bare = build(n, false);
+    if (fits(bare)) return bare;
+  }
+  return build(1, false);
 }
 
 function assembleThreads(headline, copy, items) {
-  const build = (n) => {
+  const build = (n, withNotes) => {
     const lines = [headline];
     if (copy.intro) lines.push(copy.intro);
     lines.push('');
-    for (let i = 0; i < n; i++) lines.push(renderItem(i + 1, cleanTitle(items[i].title), copy.notes[i], '   '));
+    for (let i = 0; i < n; i++) {
+      lines.push(renderItem(i + 1, cleanTitle(items[i].title), withNotes ? copy.notes[i] : ''));
+    }
     lines.push('');
     if (copy.closing) lines.push(copy.closing);
     lines.push(IG_URL);
     return lines.join('\n');
   };
-  /* 넘치면 뒤 항목부터 덜어낸다. 소개말을 먼저 버리면 남은 항목이 제목만
-     나열된 목록이 되어 읽을 게 없어진다 — 항목 수를 줄이는 쪽이 낫다. */
-  for (let n = items.length; n > 1; n--) {
-    const t = build(n);
-    if (t.length <= THREADS_MAX) return t;
-  }
-  return build(1);
+  return fitDown(items, build, (s) => s.length <= THREADS_MAX);
 }
 
 function assembleX(headline, copy, items) {
-  /* X 는 자리가 좁다. 소개말은 통째로 빼고 제목 + 아주 짧은 한 줄만.
-     그래도 안 들어가면 항목을 줄인다. */
   const build = (n, withNotes) => {
     const lines = [headline];
     for (let i = 0; i < n; i++) {
@@ -211,22 +232,8 @@ function assembleX(headline, copy, items) {
     lines.push(IG_URL);
     return lines.join('\n');
   };
-  const fits = (s) => weightedLen(s.replace(IG_URL, '')) + X_LINK_COST <= X_WEIGHTED_MAX;
-
-  const top = Math.min(items.length, 5);
-  /* 소개말 붙은 판을 먼저 끝까지 시도한다 (2026-08-03 도메니코 지시).
-     예전엔 n 하나마다 '소개말 있음 → 없음' 순으로 봐서, 다섯 개짜리 제목
-     나열이 세 개짜리 소개말 판을 이겨버렸다. 지금은 반대다 — 항목이 줄더라도
-     내용이 보이는 쪽을 택한다. 그래도 안 들어가면 그때 제목만 나열한다. */
-  for (let n = top; n >= 1; n--) {
-    const t = build(n, true);
-    if (fits(t)) return t;
-  }
-  for (let n = top; n >= 1; n--) {
-    const t = build(n, false);
-    if (fits(t)) return t;
-  }
-  return build(1, false);
+  /* X 는 자리가 좁다. 그래도 잘라내는 순서는 스레드와 같다 — 소개말 먼저. */
+  return fitDown(items, build, (s) => weightedLen(s.replace(IG_URL, '')) + X_LINK_COST <= X_WEIGHTED_MAX);
 }
 
 /* 조립 방식은 채널별로 다르다. 분기를 함수 안에 삼항으로 두지 않고 표로
@@ -271,7 +278,8 @@ async function build(picked, platform) {
   if (links.length !== 1 || links[0] !== IG_URL) return null;
 
   /* 길이 때문에 덜어낸 항목은 '나갔다'고 기록하면 안 된다. 기록해 버리면
-     중복 방지(social_digest_items)가 그 글을 영영 다시 안 뽑는다. */
+     중복 방지(social_digest_items)가 그 글을 영영 다시 안 뽑는다.
+     반대로 여기 안 실린 기사는 다음 회차에 다시 후보로 올라온다. */
   const used = items.filter((it) => text.includes(cleanTitle(it.title)));
 
   return { text, items: used };
@@ -282,11 +290,14 @@ module.exports = {
   X_WEIGHTED_MAX,
   THREADS_MAX,
   NOTE_LEN,
+  SEP,
   HEADLINE,
+  closingFor,
   renderItem,
   cleanNote,
   cleanTitle,
   fallbackCopy,
+  fitDown,
   assembleX,
   assembleThreads,
   ASSEMBLE,

@@ -4,8 +4,9 @@
  * 여기서 지키는 건 도메니코가 못 박은 네 가지다:
  *   1) 링크는 인스타 프로필 하나뿐 — 기사별 링크 금지
  *   2) 자동 발행이라 모델이 URL 을 못 흘리게 기계로 막는다
- *   3) 항목마다 한두 줄, 제목은 원문 그대로
- *   4) 세 갈래가 같은 날 안 겹친다
+ *   3) 한 기사는 한 줄 (제목 · 소개말), 제목은 원문 그대로
+ *   4) 소재를 고르지 않는다 — 자리가 모자라면 소개말을 먼저 버린다
+ *   5) 세 갈래가 같은 날 안 겹친다
  *
  * ANTHROPIC_API_KEY 없이 돌면 generateNotes 가 곧장 null 이라 fallback 경로만
  * 탄다. 그게 오히려 낫다 — 테스트가 모델 응답에 흔들리지 않는다.
@@ -89,36 +90,57 @@ console.log('\n[1] 링크는 딱 하나 — 인스타 프로필');
   t('X 는 존댓말 문장을 쓴다', (await copy.build(PICKED, 'x')).text.includes(fbPolite.closing));
   t('스레드는 반말 문장을 쓴다', (await copy.build(PICKED, 'threads')).text.includes(fbCasual.closing));
 
-  t('스레드 마무리는 명사형 (반말이 링크 앞에서 튀지 않게)',
-    fbCasual.closing === '전체 기사는 인스타에서', fbCasual.closing);
+  t('스레드 마무리는 도메니코가 못 박은 문장',
+    fbCasual.closing === '더 많은 현장은 PAP 인스타그램에서 확인!', fbCasual.closing);
+  t('마무리는 모델이 아니라 코드가 정한다',
+    copy.closingFor(false) === fbCasual.closing && copy.closingFor(true) === fbPolite.closing);
 
   console.log('\n[6-2] 두 채널 다 번호로 카운트한다');
   const NOTES = ITEMS.map((_, i) => '소개말 ' + (i + 1) + ' 번째 줄입니다');
   for (const platform of ['x', 'threads']) {
     const head = copy.HEADLINE.collection[platform];
-    const c = { intro: '', closing: '전체 기사는 인스타에서', notes: NOTES };
+    const c = { intro: '', closing: copy.closingFor(true), notes: NOTES };
     const text = copy.ASSEMBLE[platform](head, c, ITEMS);
     t(platform + ': 1번이 있다', /^1\. /m.test(text), text);
     t(platform + ': 2번이 있다', /^2\. /m.test(text));
     t(platform + ': 소개말이 실린다', text.includes(NOTES[0]), text);
+    t(platform + ': 제목과 소개말이 한 줄에 있다',
+      text.includes(ITEMS[0].title + copy.SEP + NOTES[0]), text);
+    t(platform + ': 소개말이 따로 줄을 차지하지 않는다',
+      !new RegExp('^\\s*' + NOTES[0], 'm').test(text), text);
   }
 
-  console.log('\n[6-3] X 는 항목 수보다 소개말을 우선한다');
+  console.log('\n[6-3] 항목 수가 소개말보다 우선한다 (2026-08-03 2차 지시)');
   {
     const five = Array.from({ length: 5 }, (_, i) => ({
       source: 'article', id: 'p' + i, title: '파리 뒷골목 빈티지 아카이브 상점 ' + i,
     }));
     const c = {
-      intro: '', closing: '전체 기사는 인스타에서',
+      intro: '', closing: copy.closingFor(true),
       notes: five.map(() => '60년대 오뜨꾸뛰르가 옷걸이째 쌓여 있는 곳'),
     };
-    const text = copy.assembleX('요 며칠의 셀럽 소식', c, five);
-    t('제목만 나열하고 끝내지 않는다', text.includes(c.notes[0]), text);
+    const text = copy.assembleX(copy.HEADLINE.celeb.x, c, five);
     const shown = (text.match(/^\d\. /gm) || []).length;
-    t('그 대신 항목이 줄었다 (' + shown + '개)', shown < five.length && shown >= 1);
+    t('다섯 개를 다 싣는다 (' + shown + '개)', shown === five.length, text);
+    t('자리가 없으면 소개말을 먼저 버린다', !text.includes(c.notes[0]), text);
     t('280 가중치 안', weightedLen(text.replace(copy.IG_URL, '')) + 23 <= 280);
+
+    /* 자리가 되면 소개말도 같이 나간다 — 무조건 버리는 게 아니다. */
+    const two = [{ source: 'article', id: 'a', title: '제니, 새 화보' },
+                 { source: 'article', id: 'b', title: '에스파, 시카고 무대' }];
+    const c2 = { intro: '', closing: copy.closingFor(true),
+      notes: ['표지컷 세 장 공개', '세트리스트와 현장 반응'] };
+    const t2 = copy.assembleX(copy.HEADLINE.celeb.x, c2, two);
+    t('자리가 되면 소개말도 같이 나간다', t2.includes(c2.notes[0]) && t2.includes(c2.notes[1]), t2);
   }
 
+  console.log('\n[6-4] 머리말은 최근 으로 연다 (2026-08-03 2차 지시)');
+  for (const b of ['collection', 'celeb']) {
+    for (const p2 of ['x', 'threads']) {
+      t(b + '/' + p2 + ': 요 며칠 이 없다', !/요 며칠/.test(copy.HEADLINE[b][p2]), copy.HEADLINE[b][p2]);
+      t(b + '/' + p2 + ': 최근 으로 연다', /^최근/.test(copy.HEADLINE[b][p2]), copy.HEADLINE[b][p2]);
+    }
+  }
   console.log('\n[7] 소재가 없으면 글을 만들지 않는다');
   t('빈 목록 → null', (await copy.build({ bucket: 'celeb', label: '', days: 3, items: [] }, 'x')) === null);
   t('제목 없는 항목만 → null',

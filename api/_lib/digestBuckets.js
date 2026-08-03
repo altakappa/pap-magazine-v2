@@ -29,10 +29,13 @@ const SITE = 'https://www.pap-magazine.com';
    (sync-instagram.js ARTICLE_CATEGORIES) 중 뉴스성인 둘이다. */
 const CELEB_CATEGORIES = ['news', 'celeb'];
 
+/* limit 0 = 상한 없음.
+   2026-08-03 도메니코 — "내용을 고르지 말고 3일 동안 셀럽 기사 전체를 다 쓸 것".
+   셀럽만 상한을 푼다. 에디토리얼·콜렉션은 아직 여덟 개까지다. */
 const BUCKETS = {
-  editorial:  { label: '오리지널 에디토리얼', days: 7 },
-  collection: { label: '아트 콜렉션',        days: 3 },
-  celeb:      { label: '셀럽 소식',          days: 3 },
+  editorial:  { label: '오리지널 에디토리얼', days: 7, limit: 8 },
+  collection: { label: '아트 콜렉션',        days: 3, limit: 8 },
+  celeb:      { label: '셀럽 소식',          days: 3, limit: 0 },
 };
 
 /** 'Fashion,Culture' → ['fashion','culture'] */
@@ -160,7 +163,7 @@ async function fetchEditorials(days, legacy) {
  * @param {'editorial'|'collection'|'celeb'} bucket
  * @param {{days?:number, limit?:number, skipDedupe?:boolean}} [opts]
  *   days        창 길이 (기본값은 BUCKETS 의 갈래별 기본)
- *   limit       최대 개수 (기본 8)
+ *   limit       최대 개수 (0 이면 무제한. 기본값은 갈래별 BUCKETS.limit)
  *   skipDedupe  true 면 발행 기록을 무시한다 (dry-run 미리보기용)
  * @returns {Promise<{bucket:string, label:string, days:number, items:Array}>}
  */
@@ -169,7 +172,8 @@ async function collect(bucket, opts) {
   if (!cfg) throw new Error('알 수 없는 갈래: ' + bucket);
   const o = opts || {};
   const days = o.days || cfg.days;
-  const limit = o.limit || 8;
+  /* 0 이면 상한 없음. o.limit 로 호출부가 덮어쓸 수 있다. */
+  const limit = o.limit != null ? o.limit : (cfg.limit != null ? cfg.limit : 8);
   const nowIso = new Date().toISOString();
 
   let items = [];
@@ -198,7 +202,7 @@ async function collect(bucket, opts) {
     items = items.filter((it) => !posted.has(it.source + ':' + it.id));
   }
 
-  return { bucket, label: cfg.label, days, items: items.slice(0, limit) };
+  return { bucket, label: cfg.label, days, items: limit > 0 ? items.slice(0, limit) : items };
 }
 
 module.exports = {
