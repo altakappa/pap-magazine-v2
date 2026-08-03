@@ -8,14 +8,26 @@
  *      기사별 링크를 붙이면 사람들이 사이트로 흩어진다. X·스레드는
  *      인스타로 밀어넣는 장치이므로 나가는 문은 하나여야 한다.
  *   2) 완전 자동 발행. 사람이 안 본다 → 모델이 링크를 못 쓰게 막아야 한다.
- *      그래서 모델에겐 *한두 줄 소개말만* 시키고, 제목·링크·순서·마무리는
- *      이 파일이 기계적으로 조립한다. 모델 출력에서 URL 비슷한 건 전부 지운다.
+ *      그래서 모델에겐 *기사마다 한 줄 소개말만* 시키고, 제목·링크·순서·머리말·
+ *      마무리는 이 파일이 기계적으로 조립한다. 모델 출력에서 URL 비슷한 건 전부 지운다.
  *   3) 한 기사는 한 줄. 제목과 소개말을 두 줄로 쪼개지 않는다.
  *      (2026-08-03 2차 지시 — 그 전엔 제목 밑에 소개말을 들여썼다.)
  *   4) 소재를 고르지 않는다. 창(窓) 안에 있는 기사는 전부 싣는다.
  *      자리가 모자라면 *소개말을 먼저 버리고* 그래도 안 되면 그때 항목을 던다.
  *      항목 수가 소개말보다 우선한다 — 이것도 2026-08-03 2차 지시다.
  *   5) X 는 압축 한 글 / 스레드는 여유 있게 한 글. 답글 체인 없음.
+ *   6) 글의 뼈대는 네 덩이뿐이다 (2026-08-03 4차 지시 — "좀 더 심플하게").
+ *
+ *        최근 셀럽들 소식 모음.
+ *        (빈 줄)
+ *        1. 제목 · 소개말
+ *        2. 제목 · 소개말
+ *        더 많은 현장은 PAP 인스타그램에서 확인!
+ *        https://www.instagram.com/pap_magazine/
+ *
+ *      머리말과 목록 사이의 빈 줄 하나 말고는 군더더기가 없다. 예전엔 모델이
+ *      쓴 '오늘의 묶음을 여는 한 줄'(intro)이 머리말 밑에 또 붙고 목록과 마무리
+ *      사이에도 빈 줄이 있었는데, 둘 다 걷어냈다. 머리말이 이미 그 일을 한다.
  *
  * 어미는 socialHook 의 toneFor/isPolite 를 그대로 쓴다. 채널별 말투 분기는
  * 저장소에 딱 한 군데(socialHook)만 있어야 한다 — tests/social-tone.test.js
@@ -39,17 +51,22 @@ const THREADS_MAX = 480;
 
 /* 소개말 길이 상한 (한글 기준).
    한 줄 안에 제목과 같이 들어가므로 예전보다 짧게 잡는다. 소개말이 길면
-   항목이 통째로 밀려나는데, 도메니코 지시상 항목 수가 더 중요하다. */
-const NOTE_LEN = { x: 24, threads: 56 };
+   항목이 통째로 밀려나는데, 도메니코 지시상 항목 수가 더 중요하다.
+   2026-08-03 4차 — 스레드도 56에서 28로 줄인다. 도메니코가 보여준 본보기
+   ("컴백 무드가 확 달라져.", "워터밤 현장 공기까지 그대로")가 다 그 언저리다.
+   길게 쓸 자리를 주면 모델은 반드시 그 자리를 다 쓴다. */
+const NOTE_LEN = { x: 24, threads: 28 };
 
 /* 제목과 소개말을 잇는 자리. 줄표(—, ㅡ, --)는 stripDashes 가 쉼표로 바꿔
    버리므로 쓸 수 없다. 가운뎃점은 그 규칙에 걸리지 않는다. */
 const SEP = ' · ';
 
+/* 머리말. 스레드 쪽은 4차 지시대로 체언 + 마침표로 짧게 끊는다
+   ("최근 셀럽들 소식 모음."). X 쪽은 가중 280자가 빠듯해 마침표도 아깝다. */
 const HEADLINE = {
-  editorial:  { x: '이번 주 PAP 오리지널 에디토리얼', threads: '이번 주 PAP 에 새로 올라간 오리지널 에디토리얼' },
-  collection: { x: '최근 소개한 아트 콜렉션',         threads: '최근 소개한 아트 콜렉션' },
-  celeb:      { x: '최근 셀럽 소식',                  threads: '최근 셀럽들 소식 모아봤어' },
+  editorial:  { x: '이번 주 PAP 오리지널 에디토리얼', threads: '이번 주 새로 올라온 PAP 오리지널 에디토리얼 모음.' },
+  collection: { x: '최근 소개한 아트 콜렉션',         threads: '최근 소개한 아트 콜렉션 모음.' },
+  celeb:      { x: '최근 셀럽 소식',                  threads: '최근 셀럽들 소식 모음.' },
 };
 
 /* 모델이 뱉을 수 있는 링크 흔적. 자동 발행이라 사람이 못 거르니 기계로 지운다. */
@@ -102,6 +119,9 @@ function cleanTitle(raw) {
  * 기사 하나에 붙일 한 줄을 모델에게 받는다.
  * 실패하면 null — 소개말 없이 제목만 나가도 글은 성립한다. 자동 발행에서
  * 모델 한 번 삐끗했다고 그날 다이제스트를 통째로 날리는 건 손해다.
+ *
+ * 모델이 만드는 건 notes 뿐이다. 머리말·마무리·순서는 코드 몫이다
+ * (2026-08-03 4차 — 모델이 쓰던 intro 를 없앴다).
  */
 async function generateNotes(items, bucket, platform) {
   if (!process.env.ANTHROPIC_API_KEY) return null;
@@ -118,12 +138,17 @@ async function generateNotes(items, bucket, platform) {
     '- 제목 뒤에 가운뎃점으로 이어 붙는다. 제목을 그대로 되풀이하지 않는다.',
     '- 요약이 아니라 미끼다. 읽는 사람이 본문을 더 보고 싶어지게 쓴다.',
     '  무엇을 다뤘는지 한 겹 더 들어가서 알려준다 (누가, 어디서, 무엇이 새로운지).',
+    '- 짧게 끊는다. 한 문장이면 충분하다. 접속사와 군더더기 부사는 뺀다.',
+    '  본보기: "워터밤 현장 공기까지 그대로", "컴백 무드가 확 달라져.",',
+    '          "뮤비 티저부터 심상치 않아."',
+    '- 지금 눈앞의 일처럼 현재형으로 쓴다. 지난 일을 되짚는 과거형은 쓰지 않는다.',
+    '- 체언으로 끝내도 좋다.',
     '- URL, 링크, 해시태그, 이모지, 계정 아이디를 절대 쓰지 않는다.',
     '- 없는 사실을 지어내지 않는다. 제목에서 확실한 것만 쓴다.',
     '- 빈칸으로 두는 것이 지어내는 것보다 낫다.',
     '',
-    'JSON 으로만 답한다: {"intro":"...","notes":["...","..."]}',
-    'intro 는 오늘 묶음을 여는 한 줄이다. 마무리 문장은 쓰지 않는다 (코드가 붙인다).',
+    'JSON 으로만 답한다: {"notes":["...","..."]}',
+    '머리말과 마무리 문장은 쓰지 않는다 (코드가 붙인다). notes 만 보낸다.',
     'notes 배열 길이는 받은 기사 수와 정확히 같아야 한다.',
   ].join('\n');
 
@@ -164,8 +189,7 @@ async function generateNotes(items, bucket, platform) {
     }
     const notes = Array.isArray(g.notes) ? g.notes : [];
     return {
-      intro: papVoice.normalizeSocialAddress(cleanNote(g.intro), { polite }),
-      /* 모델이 closing 을 보내와도 안 쓴다. 마무리는 코드 몫이다. */
+      /* 모델이 intro·closing 을 보내와도 안 쓴다. 머리말과 마무리는 코드 몫이다. */
       closing: closingFor(polite),
       notes: items.map((_, i) => papVoice.normalizeSocialAddress(cleanNote(notes[i], { max: noteMax }), { polite })),
     };
@@ -177,7 +201,6 @@ async function generateNotes(items, bucket, platform) {
 /* 모델이 죽었을 때 나가는 문장. 마무리는 위와 같은 문장을 쓴다. */
 function fallbackCopy(items, polite) {
   return {
-    intro: '',
     closing: closingFor(polite),
     notes: items.map(() => ''),
   };
@@ -206,15 +229,14 @@ function fitDown(items, build, fits) {
   return build(1, false);
 }
 
+/* 스레드 = 머리말 / 빈 줄 / 목록 / 마무리 / 링크. 그게 전부다.
+   빈 줄은 머리말 밑 하나뿐 — 목록과 마무리는 붙여 둔다 (4차 지시). */
 function assembleThreads(headline, copy, items) {
   const build = (n, withNotes) => {
-    const lines = [headline];
-    if (copy.intro) lines.push(copy.intro);
-    lines.push('');
+    const lines = [headline, ''];
     for (let i = 0; i < n; i++) {
       lines.push(renderItem(i + 1, cleanTitle(items[i].title), withNotes ? copy.notes[i] : ''));
     }
-    lines.push('');
     if (copy.closing) lines.push(copy.closing);
     lines.push(IG_URL);
     return lines.join('\n');

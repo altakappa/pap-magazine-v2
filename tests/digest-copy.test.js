@@ -7,10 +7,14 @@
  *   3) 한 기사는 한 줄 (제목 · 소개말), 제목은 원문 그대로
  *   4) 소재를 고르지 않는다 — 자리가 모자라면 소개말을 먼저 버린다
  *   5) 세 갈래가 같은 날 안 겹친다
+ *   6) 스레드는 머리말 / 빈 줄 / 목록 / 마무리 / 링크 다섯 덩이뿐이다
  *
  * 2026-08-03 3차 — 셀럽을 월·목에서 월·화·목·금으로 늘렸다. X 한 글에는 제목이
  * 서너 개밖에 안 들어가서(가중 280자), 창이 길수록 넘쳐 버려지는 기사가 늘었다.
  * 자주 조금씩 내보내는 쪽이 같은 글자 수로 더 많이 나간다(실측 64% → 92%).
+ *
+ * 2026-08-03 4차 — 스레드 본문을 더 심플하게. 모델이 쓰던 intro 한 줄을 없애고,
+ * 목록과 마무리 사이 빈 줄도 지웠다. 머리말은 체언 + 마침표로 끊는다.
  *
  * ANTHROPIC_API_KEY 없이 돌면 generateNotes 가 곧장 null 이라 fallback 경로만
  * 탄다. 그게 오히려 낫다 — 테스트가 모델 응답에 흔들리지 않는다.
@@ -103,7 +107,7 @@ console.log('\n[1] 링크는 딱 하나 — 인스타 프로필');
   const NOTES = ITEMS.map((_, i) => '소개말 ' + (i + 1) + ' 번째 줄입니다');
   for (const platform of ['x', 'threads']) {
     const head = copy.HEADLINE.collection[platform];
-    const c = { intro: '', closing: copy.closingFor(true), notes: NOTES };
+    const c = { closing: copy.closingFor(true), notes: NOTES };
     const text = copy.ASSEMBLE[platform](head, c, ITEMS);
     t(platform + ': 1번이 있다', /^1\. /m.test(text), text);
     t(platform + ': 2번이 있다', /^2\. /m.test(text));
@@ -120,7 +124,7 @@ console.log('\n[1] 링크는 딱 하나 — 인스타 프로필');
       source: 'article', id: 'p' + i, title: '파리 뒷골목 빈티지 아카이브 상점 ' + i,
     }));
     const c = {
-      intro: '', closing: copy.closingFor(true),
+      closing: copy.closingFor(true),
       notes: five.map(() => '60년대 오뜨꾸뛰르가 옷걸이째 쌓여 있는 곳'),
     };
     const text = copy.assembleX(copy.HEADLINE.celeb.x, c, five);
@@ -132,7 +136,7 @@ console.log('\n[1] 링크는 딱 하나 — 인스타 프로필');
     /* 자리가 되면 소개말도 같이 나간다 — 무조건 버리는 게 아니다. */
     const two = [{ source: 'article', id: 'a', title: '제니, 새 화보' },
                  { source: 'article', id: 'b', title: '에스파, 시카고 무대' }];
-    const c2 = { intro: '', closing: copy.closingFor(true),
+    const c2 = { closing: copy.closingFor(true),
       notes: ['표지컷 세 장 공개', '세트리스트와 현장 반응'] };
     const t2 = copy.assembleX(copy.HEADLINE.celeb.x, c2, two);
     t('자리가 되면 소개말도 같이 나간다', t2.includes(c2.notes[0]) && t2.includes(c2.notes[1]), t2);
@@ -145,6 +149,41 @@ console.log('\n[1] 링크는 딱 하나 — 인스타 프로필');
       t(b + '/' + p2 + ': 최근 으로 연다', /^최근/.test(copy.HEADLINE[b][p2]), copy.HEADLINE[b][p2]);
     }
   }
+  console.log('\n[6-5] 스레드 뼈대 — 머리말 / 빈 줄 / 목록 / 마무리 / 링크 (2026-08-03 4차 지시)');
+  {
+    const head = copy.HEADLINE.celeb.threads;
+    const c = {
+      closing: copy.closingFor(false),
+      notes: ['워터밤 현장 공기까지 그대로', '컴백 무드가 확 달라져.', '뮤비 티저부터 심상치 않아.'],
+    };
+    const lines = copy.assembleThreads(head, c, ITEMS).split('\n');
+    t('첫 줄이 머리말', lines[0] === head, lines[0]);
+    t('둘째 줄은 빈 줄', lines[1] === '', JSON.stringify(lines[1]));
+    t('셋째 줄부터 바로 목록 (모델 intro 가 없다)', /^1\. /.test(lines[2]), lines[2]);
+    t('목록과 마무리 사이에 빈 줄이 없다',
+      lines[lines.length - 3] === '3. ' + ITEMS[2].title + copy.SEP + c.notes[2], lines[lines.length - 3]);
+    t('마무리는 끝에서 둘째 줄', lines[lines.length - 2] === c.closing, lines[lines.length - 2]);
+    t('링크가 마지막 줄', lines[lines.length - 1] === copy.IG_URL, lines[lines.length - 1]);
+    t('빈 줄은 딱 하나', lines.filter((l) => l === '').length === 1, JSON.stringify(lines));
+    t('셀럽 머리말은 도메니코가 준 본보기 그대로', head === '최근 셀럽들 소식 모음.', head);
+    t('세 갈래 스레드 머리말이 모두 마침표로 끝난다',
+      ['editorial', 'collection', 'celeb'].every((b) => /\.$/.test(copy.HEADLINE[b].threads)),
+      JSON.stringify(['editorial', 'collection', 'celeb'].map((b) => copy.HEADLINE[b].threads)));
+    t('X 머리말은 건드리지 않았다 (날짜도 문안도 그대로)',
+      copy.HEADLINE.celeb.x === '최근 셀럽 소식' && !/\.$/.test(copy.HEADLINE.collection.x),
+      copy.HEADLINE.celeb.x);
+  }
+
+  console.log('\n[6-6] 모델이 쓰던 intro 는 뿌리째 없앴다 (반쪽 수정 재발 방지)');
+  {
+    const fb = copy.fallbackCopy(ITEMS, false);
+    t('fallbackCopy 에 intro 가 없다', !('intro' in fb), JSON.stringify(Object.keys(fb)));
+    const s2 = require('fs').readFileSync(path.join(__dirname, '..', 'api', '_lib', 'digestCopy.js'), 'utf8');
+    t('조립이 copy.intro 를 안 읽는다', !/copy\.intro/.test(s2));
+    t('모델에게 시키는 JSON 규격에 intro 가 없다', !/"intro"/.test(s2));
+    t('스레드 소개말 상한이 짧아졌다 (' + copy.NOTE_LEN.threads + '자)', copy.NOTE_LEN.threads <= 30);
+  }
+
   console.log('\n[7] 소재가 없으면 글을 만들지 않는다');
   t('빈 목록 → null', (await copy.build({ bucket: 'celeb', label: '', days: 3, items: [] }, 'x')) === null);
   t('제목 없는 항목만 → null',
