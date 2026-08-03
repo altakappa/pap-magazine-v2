@@ -75,8 +75,11 @@ t('papVoice 가 normalizeSocialAddress 를 export 한다',
 t('스레드가 normalize() 로 네 경로를 모두 통과시킨다',
   (threads.match(/normalize\(/g) || []).length >= 5,
   '대화형 / 일반 AI / 폴백 2곳 + 정의부');
+/* 2026-08-03 채널별 어미 개편으로 이 호출이 두 번째 인자를 받게 됐다
+   ({ polite: ... }). 이 테스트가 지키는 것은 인자 모양이 아니라 '정규화가
+   길이 판정보다 먼저'라는 순서이므로, 인자 부분은 느슨하게 두고 순서만 본다. */
 t('socialHook 이 길이 판정 전에 정규화한다',
-  /const text = papVoice\.normalizeSocialAddress\(raw2\);[\s\S]{0,120}text\.length > limit/.test(hook),
+  /const text = papVoice\.normalizeSocialAddress\(raw2[^;]*\);[\s\S]{0,120}text\.length > limit/.test(hook),
   '치환으로 글자 수가 늘기 때문에(너는→패퍼들은) 나중에 걸면 X 의 280자 판정이 어긋난다');
 t('X 는 socialHook 을 거치므로 자동 적용된다',
   /generateConversationalPost/.test(read('api/_lib/xPost.js')));

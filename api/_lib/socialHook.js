@@ -157,18 +157,28 @@ function stripDashes(input) {
   return s.replace(/%%PAPURL(\d+)%%/g, (_, i) => urls[Number(i)]).trim();
 }
 
-/* 소셜 공통 어투 규칙 (2026-07-21 도메니코 지시 "전부 반말로 통일").
-   처음엔 스레드에만 붙였다가 지시에 따라 X 포함 전 채널 공통으로 올렸다.
-   샤오홍슈·카카오톡(socialRepurpose.js)은 여기 묶지 않았다. 중국어에는
-   반말/존댓말 구분이 없고, 카톡 채널은 고객 공지 성격이라 판단이 따로 필요하다. */
-/* 2026-08-03: 인스타 실게시물 50개 역설계 결과를 papVoice.js 로 단일화했다.
-   여기서 문자열을 직접 고치지 말고 papVoice.SOCIAL_VOICE 를 고친다. */
-const SOCIAL_TONE = papVoice.SOCIAL_VOICE;
+/* 어투 규칙의 이력 — 뒤집힌 지시가 두 번이라 경위를 남겨둔다.
+   · 2026-07-21 "전부 반말로 통일" → 스레드에만 있던 규칙을 X 까지 넓혔다.
+   · 2026-08-03 "인스타는 평서체, 스레드는 반말, 나머지는 존댓말"
+     → 위 지시를 대체한다. 스레드와 X 가 여기서 다시 갈린다.
+   갈라진 것은 어미와 호칭뿐이고 문장 리듬 규칙은 papVoice 안에서 공유한다.
+   샤오홍슈·카카오톡(socialRepurpose.js)은 여기 묶지 않는다. 중국어에는
+   반말/존댓말 구분이 없고, 카톡은 처음부터 정중체 채널이었다.
+
+   2026-08-03: 어투 문자열은 papVoice.js 로 단일화돼 있다.
+   여기서 문자열을 직접 고치지 말고 papVoice 쪽을 고친다. */
+const SOCIAL_TONE = papVoice.SOCIAL_VOICE;   // 스레드 — 반말
+const X_TONE = papVoice.X_VOICE;             // X — 존댓말
+
+/* 분기는 이 한 곳에만 둔다. 호출부마다 삼항을 흩뿌리면 한 곳이 빠졌을 때
+   그 경로로 나간 글만 어미가 다르고, 그건 눈으로 안 잡힌다. */
+function toneFor(platform) { return platform === 'x' ? X_TONE : SOCIAL_TONE; }
+function isPolite(platform) { return platform === 'x'; }
 
 /**
  * 대화형 카피 생성. 기준 미달이거나 실패하면 null → 호출부가 기존 방식으로.
  * @param {object} art  {title, body, tags, category}
- * @param {'threads'|'x'} platform
+ * @param {'threads'|'x'} platform  스레드는 반말, X 는 존댓말 (2026-08-03)
  * @returns {Promise<{text:string, angle:string, score:number}|null>}
  */
 async function generateConversationalPost(art, platform, opts) {
@@ -191,10 +201,11 @@ async function generateConversationalPost(art, platform, opts) {
       body: JSON.stringify({
         model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5',
         max_tokens: 700,
-        // 2026-07-21 도메니코 지시 — 스레드·X 전 채널 반말 통일.
-        // 기존엔 본문은 반말인데 마지막 질문만 존댓말("다들 어떻게 보세요?")로
-        // 튀어 어색했다. 프롬프트의 예시 문구를 모델이 그대로 따라 쓴 결과였다.
-        system: SYSTEM + '\n' + SOCIAL_TONE,
+        // 2026-08-03 도메니코 지시 — 채널별 어미. 스레드 반말 / X 존댓말.
+        // 어느 쪽이든 본문과 마지막 문장의 어미가 갈리면 안 된다. 예전에
+        // 본문은 반말인데 끝만 존댓말로 튀던 사고가 있었고, 원인은 프롬프트에
+        // 박아둔 예시 문구였다. 그래서 예시는 지시와 같은 어미로만 적는다.
+        system: SYSTEM + '\n' + toneFor(platform),
         messages: [{
           role: 'user',
           content: JSON.stringify({
@@ -224,7 +235,7 @@ async function generateConversationalPost(art, platform, opts) {
     // 2026-08-03 — 독자 호칭('패퍼들')과 "어떻게 생각해"는 프롬프트로만 두면
     // 샌다. 길이 판정 전에 확정한다. 치환으로 글자 수가 늘기 때문에(너는 →
     // 패퍼들은) 나중에 걸면 X 의 280자 판정이 어긋난다.
-    const text = papVoice.normalizeSocialAddress(raw2);
+    const text = papVoice.normalizeSocialAddress(raw2, { polite: isPolite(platform) });
     if (!text || text.length > limit * 1.3) return null; // 길이 폭주 방어
     return { text, angle: (g.angle || '').trim(), score: gate.score };
   } catch (_) {

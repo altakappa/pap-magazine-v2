@@ -16,20 +16,26 @@
  *     지시가 쓰인 문체까지 따라한다. 그래서 프롬프트에서도 줄표를 걷어냈다.
  * → 게시 직전 stripDashes() 로 기계적으로 한 번 더 거른다. 이게 마지막 관문.
  *
- * ── 적용 범위 ───────────────────────────────────────────────────────
+ * ── 적용 범위 (2026-08-03 개정) ────────────────────────────────────
  * 1차 지시는 스레드였고, 이어진 "전부 반말로 통일" 지시로 X 까지 넓혔다.
- * 그래서 어투 규칙(SOCIAL_TONE)은 플랫폼 분기 없이 항상 붙고,
- * stripDashes 는 공용 모듈(socialHook.js)로 옮겨 스레드·X 가 함께 쓴다.
+ * 그런데 2026-08-03 지시가 그것을 뒤집었다:
+ *   인스타(기사·캡션) 평서체 / 스레드 반말 / 그 밖의 한국어 채널 존댓말.
+ * 그래서 이제 스레드와 X 의 어투는 의도적으로 갈린다. 갈리는 것은 어미와
+ * 호칭뿐이고, 문장 리듬 규칙과 줄표 필터는 여전히 양쪽 공통이다.
+ *
+ * 이 파일에서 지켜야 할 것이 하나 늘었다. 예전엔 "분기가 되살아나면 안 된다"
+ * 였고 지금은 "분기가 있되 한 곳에만 있어야 한다"다. 분기가 호출부마다
+ * 흩어지면 어느 한 경로만 어미가 달라지고, 그건 눈으로 안 잡힌다.
  *
  * 샤오홍슈·카카오톡(socialRepurpose.js)은 넣지 않았다. 중국어에는 반말/존댓말
- * 구분이 없고, 카톡 채널은 고객 공지 성격이라 별도 판단이 필요하다.
+ * 구분이 없고, 카톡은 처음부터 정중체 채널이었다.
  *
  * ── 이 테스트가 지키는 것 ──────────────────────────────────────────
  *  1. 줄표가 실제로 제거될 것 (문자열 검사 아닌 실행 검증)
  *  2. URL 은 손상되지 않을 것 (슬러그의 '--' 가 깨지면 링크 프리뷰까지 죽는다)
  *  3. 생성 경로 전부에 필터가 걸려 있을 것 (한 경로라도 새면 의미 없다)
- *  4. 프롬프트가 반말을 지시하고, 존댓말 예시가 되살아나지 않을 것
- *  5. 스레드·X 양쪽에 적용될 것 (플랫폼 분기 부활 금지)
+ *  4. 스레드 프롬프트가 반말을 지시하고, 존댓말 예시가 되살아나지 않을 것
+ *  5. 스레드=반말 / X=존댓말 로 갈리되, 분기가 한 곳에만 있을 것
  */
 const fs = require('fs');
 const path = require('path');
@@ -139,16 +145,58 @@ t('스레드 프롬프트 본문에 줄표가 없다',
   !/[—–―]/.test(promptLines.replace(/줄표\([^)]*\)/g, '')),
   '지시가 쓰인 문체까지 따라한다');
 
-console.log('\n=== 5. 전 채널(스레드+X) 공통 적용인가 ===');
-/* 2026-07-21 2차 지시 "전부 반말로 통일" — 처음엔 스레드에만 붙였다가
-   X 를 포함한 전 채널 공통으로 올렸다. 플랫폼 분기가 되살아나면 안 된다. */
-t('어투 규칙이 플랫폼 분기 없이 항상 붙는다',
-  /system: SYSTEM \+ '\\n' \+ SOCIAL_TONE/.test(hook),
-  "platform === 'threads' 분기가 되살아나면 X 가 다시 존댓말로 샌다");
-t('SOCIAL_TONE 이 papVoice 단일 소스에서 온다',
-  /const SOCIAL_TONE = papVoice\.SOCIAL_VOICE;/.test(hook) && /const SOCIAL_VOICE = \[/.test(voice),
+console.log('\n=== 5. 스레드=반말 / X=존댓말 로 갈리는가 ===');
+/* 2026-08-03 도메니코 지시. 2026-07-21 의 "전 채널 반말 통일"을 대체한다.
+   분기 자체는 이제 정상이다. 문제는 분기가 여러 곳에 생기는 것이다. */
+t('어투를 고르는 함수가 하나 있다',
+  /function toneFor\(platform\) \{ return platform === 'x' \? X_TONE : SOCIAL_TONE; \}/.test(hook),
+  '삼항을 호출부마다 흩뿌리면 한 곳이 빠졌을 때 그 경로만 어미가 달라진다');
+t('프롬프트가 그 함수를 통해서만 어투를 붙인다',
+  /system: SYSTEM \+ '\\n' \+ toneFor\(platform\)/.test(hook));
+/* 세는 것은 '어투' 분기뿐이다. 같은 파일의
+   `const limit = platform === 'x' ? 180 : 420;` 은 X 의 글자수 제한이라
+   어미와 무관한 별개의 관심사다. platform 삼항을 전부 세면 그 줄까지 걸려서,
+   테스트가 실패해도 어투가 샜다는 뜻이 아니게 된다. 그래서 어투 상수 쌍으로 센다. */
+t('어투 분기가 socialHook 안에서 한 번만 나온다',
+  (hook.match(/X_TONE : SOCIAL_TONE/g) || []).length === 1,
+  '분기가 늘어나면 어느 경로가 어떤 어미인지 추적이 안 된다');
+t('글자수 제한 분기는 어투와 별개로 남아 있다',
+  /const limit = platform === 'x' \? 180 : 420;/.test(hook),
+  '어투를 가르면서 X 의 180자 제한을 건드리지 않았는지 같이 확인한다');
+t('두 어투 모두 papVoice 단일 소스에서 온다',
+  /const SOCIAL_TONE = papVoice\.SOCIAL_VOICE;/.test(hook)
+    && /const X_TONE = papVoice\.X_VOICE;/.test(hook)
+    && /const SOCIAL_VOICE = \[/.test(voice) && /const X_VOICE = \[/.test(voice),
   '어투 문자열을 socialHook 에 다시 하드코딩하면 채널마다 문체가 갈린다');
-t('papVoice 의 반말 지시가 살아있다', /처음부터 끝까지 반말/.test(voice));
+t('papVoice 의 스레드 반말 지시가 살아있다', /처음부터 끝까지 반말/.test(voice));
+t('papVoice 의 X 존댓말 지시가 있다', /처음부터 끝까지 존댓말/.test(voice));
+
+/* papVoice 는 supabase 를 안 물어서 통째로 require 할 수 있다. 문자열 검사로
+   끝내지 않고 실제 값을 본다 — 상수 이름만 맞고 내용이 뒤바뀌는 사고가 있다. */
+const papVoice = require(path.join(ROOT, 'api/_lib/papVoice.js'));
+t('SOCIAL_VOICE 안에 존댓말 지시가 섞여 있지 않다',
+  !/존댓말로 끝/.test(papVoice.SOCIAL_VOICE) && !/처음부터 끝까지 존댓말/.test(papVoice.SOCIAL_VOICE));
+t('X_VOICE 안에 반말 지시가 섞여 있지 않다',
+  !/처음부터 끝까지 반말/.test(papVoice.X_VOICE));
+
+console.log('\n=== 6. 존댓말 채널의 후처리가 반말로 되돌리지 않는가 ===');
+/* 호칭 정규화(normalizeSocialAddress)는 원래 반말 전용이었다. X 가 존댓말이
+   된 뒤에도 반말판을 그대로 걸면 마지막 문장만 반말로 튄다 — 2026-07-21 에
+   고쳤던 사고가 방향만 뒤집혀 재발한다. */
+t('X 는 존댓말 치환표를 쓴다',
+  /normalizeSocialAddress\(raw2, \{ polite: isPolite\(platform\) \}\)/.test(hook));
+t('스레드 호출부는 인자 없이 부른다 (기존 반말 동작 유지)',
+  /papVoice\.normalizeSocialAddress\(stripDashes\(s\)\)/.test(threads));
+t('polite:true 면 물음이 존댓말로 정리된다',
+  papVoice.normalizeSocialAddress('패퍼들은 어떻게 보세요?', { polite: true }) === '패퍼들은 어떻게 생각하세요?',
+  papVoice.normalizeSocialAddress('패퍼들은 어떻게 보세요?', { polite: true }));
+t('인자 없이 부르면 예전대로 반말이다',
+  papVoice.normalizeSocialAddress('너는 어떻게 봐?') === '패퍼들은 어떻게 생각해?',
+  papVoice.normalizeSocialAddress('너는 어떻게 봐?'));
+t('호칭 통일은 어미와 무관하게 양쪽 다 걸린다',
+  papVoice.normalizeSocialAddress('너는 이 룩 어떻게 봐요?', { polite: true }).startsWith('패퍼들은'));
+
+console.log('\n=== 7. 줄표 필터는 여전히 양쪽 공통인가 ===');
 t('X 도 줄표 필터를 거친다', /stripDashes\(hook\.text\)/.test(xpost),
   '스레드만 걸면 X 에 줄표가 남는다');
 t('X 는 길이 판정 전에 필터를 건다',

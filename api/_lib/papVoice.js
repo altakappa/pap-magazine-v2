@@ -135,12 +135,18 @@ const SELF_CHECK = [
  * 짧은 한국어 카피용 축약 규격.
  * 뉴스레터 요약, 틱톡·유튜브 설명, 푸시 문구처럼 2단락 구조가 맞지 않는 곳에 쓴다.
  * 어미와 금지 목록만 남기고 분량 규격은 뺐다.
+ *
+ * 2026-08-03 도메니코 지시로 어미가 존댓말로 바뀌었다. 채널별 정책:
+ * 인스타(기사·캡션) 평서체 / 스레드 반말 / 그 밖의 한국어 채널 전부 존댓말.
+ * 여기 걸린 채널(뉴스레터·틱톡·유튜브·푸시)은 전부 "그 밖"에 해당한다.
  */
 const KO_MICRO = [
   'PAP 문체 (짧은 카피용):',
-  '- 평서체 "~다"로 끝낸다. 존댓말(~습니다/~해요) 금지.',
+  '- 정중체로 끝낸다. "~해요"를 기본으로 하고 "~합니다"는 가끔만 섞는다.',
+  '  평서체 "~다"와 반말은 쓰지 않는다.',
   '- 문장은 짧게 끊는다. 한 문장에 정보 하나.',
   '- 명사형 종결을 하나쯤 섞어 리듬을 만든다: "~것.", "~인 셈.", "~중.", "~예정."',
+  '  나머지가 정중체면 명사형 한 줄은 튀지 않고 리듬만 남는다.',
   '- 금지 어미: "~라고 할 수 있다", "~에 다름 아니다", "~라 하겠다", "~인 것이다".',
   '- 대시(—, –, ㅡ, --) 금지. 쉼표나 마침표로 대체한다.',
   '- 소제목·불릿·본문 이모지 금지.',
@@ -167,7 +173,9 @@ const EDITORIAL_VOICE = [
 ].join('\n');
 
 /**
- * 소셜(스레드/X) 전용 — 유일하게 반말을 쓰는 채널.
+ * 스레드 전용 — 유일하게 반말을 쓰는 채널.
+ * 2026-08-03 도메니코 지시로 X 를 여기서 떼어냈다(아래 X_VOICE).
+ * 2026-07-21 의 "소셜 전 채널 반말 통일"은 이 지시로 대체됐다.
  * 기존 SOCIAL_TONE을 대체한다.
  */
 const SOCIAL_VOICE = [
@@ -196,7 +204,45 @@ const SOCIAL_VOICE = [
 ].join('\n');
 
 /**
- * 카카오톡 채널 — 고객 공지 성격이라 정중체를 허용하는 유일한 한국어 채널.
+ * X 전용 — 2026-08-03 도메니코 지시로 스레드에서 분리했다.
+ * 스레드는 반말, X 는 존댓말.
+ *
+ * 왜 갈랐나: 스레드는 팔로워가 모인 안쪽 대화창이라 반말이 자연스럽다.
+ * X 는 인용·재게시로 우리를 모르는 사람에게 먼저 닿는 자리다. 첫 문장이
+ * 반말이면 초대가 아니라 반말로 읽힌다.
+ *
+ * 문장 규칙(짧게 끊기, 명사형 종결, 장면 던지기)은 스레드와 같다. 다른 것은
+ * 어미와 호칭뿐이다. 그래서 아래 '문장' 블록은 SOCIAL_VOICE 와 의도적으로
+ * 같은 문구를 쓴다 — 두 채널의 리듬까지 갈라지면 한 매체로 안 읽힌다.
+ */
+const X_VOICE = [
+  '',
+  '어투 (반드시 지킬 것):',
+  '- 처음부터 끝까지 존댓말. "~해요"를 기본으로 하고 "~합니다"는 가끔만.',
+  '  본문만 존댓말로 쓰고 끝에서 반말로 바꾸면 어색하다. 한 사람 목소리로 간다.',
+  '  ※ 하지 말라는 표현을 예시로 적지 않는다. 모델이 그 문구를 오히려 집는다.',
+  '- 독자를 부를 때는 "패퍼들"이라고 한다. 2인칭 대명사로 부르지 않는다.',
+  '  예: "패퍼들은 어떻게 생각하세요?", "패퍼들이 고른다면 어느 쪽일까요."',
+  '  굳이 부를 자리가 아니면 호칭 없이 그냥 말한다. 매 글마다 부르지 않아도 된다.',
+  '- 질문으로 끝내는 것은 기본값이 아니다. 정말 답이 궁금한 지점이 있을 때만 묻는다.',
+  '  그런 지점이 없으면 여운 있는 한 줄이나 관찰로 닫는다.',
+  '  물음표 없이 끝나는 글이 절반쯤 되는 것이 자연스럽다. 억지 질문은 대화를 만들지 못한다.',
+  '- 물을 때의 표현은 "어떻게 생각하세요?"로 쓴다.',
+  '- 정중체지만 공지문이 아니다. "안내드립니다", "확인해 보세요" 같은 고객센터 말투를 쓰지 않는다.',
+  '- 줄표(—, –, ㅡ)를 쓰지 마. 문장을 끊거나 쉼표를 쓴다.',
+  '  줄표는 AI 가 쓴 티가 확 나는 표시라 브랜드 신뢰를 깎는다.',
+  '',
+  '문장:',
+  '- 문장을 짧게 끊는다. 한 문장에 정보를 두 개 이상 넣지 않는다.',
+  '- 명사로 끝나는 문장을 하나쯤 섞으면 호흡이 산다. ("올여름 내내 이 조합.")',
+  '- 설명하지 말고 장면을 던진다. 형용사보다 구체적인 사물과 행동.',
+  '- 마무리는 요약이 아니라 상대에게 넘기는 말이다. 질문이 아니어도 넘길 수 있다.',
+].join('\n');
+
+/**
+ * 카카오톡 채널 — 고객 공지 성격의 정중체 채널.
+ * 2026-08-03 정책 개편 전까지는 정중체를 쓰는 유일한 한국어 채널이었으나,
+ * 이제 X·뉴스레터·틱톡·유튜브도 존댓말이라 '유일'하지 않다.
  * 다만 PAP 특유의 리듬(짧은 문장, 명사형 종결, 열린 마무리)은 유지한다.
  */
 const KAKAO_VOICE = [
@@ -254,11 +300,27 @@ const HOW_YOU_SEE = [
   [/어떻게 봐/g, '어떻게 생각해'],
 ];
 
+/* 같은 규칙의 존댓말판. 2026-08-03 채널 정책 개편으로 X 가 존댓말이 되면서
+   필요해졌다. 반말판을 그대로 걸면 존댓말 글의 마지막 문장만 반말로 튄다 —
+   고치려던 것과 정확히 같은 사고가 방향만 뒤집혀 재발한다. 긴 형태부터. */
+const HOW_YOU_SEE_POLITE = [
+  [/어떻게 봤어요/g, '어떻게 생각하셨어요'],
+  [/어떻게 봤어/g, '어떻게 생각하셨어요'],
+  [/어떻게 보셨어요/g, '어떻게 생각하셨어요'],
+  [/어떻게 보세요/g, '어떻게 생각하세요'],
+  [/어떻게 봐요/g, '어떻게 생각하세요'],
+  [/어떻게 보나요/g, '어떻게 생각하세요'],
+  [/어떻게 보나/g, '어떻게 생각하세요'],
+  [/어떻게 봐/g, '어떻게 생각하세요'],
+];
+
 /**
  * @param {string} input 링크를 붙이기 전의 본문
+ * @param {{polite?: boolean}} [opts] polite:true 면 존댓말 채널(X)용 치환표를 쓴다.
+ *   인자를 안 주면 예전대로 반말판이다 — 스레드 호출부를 건드리지 않기 위해서다.
  * @returns {string}
  */
-function normalizeSocialAddress(input) {
+function normalizeSocialAddress(input, opts) {
   let s = String(input == null ? '' : input);
   // URL 은 건드리지 않는다. 치환으로 슬러그가 깨지면 링크 프리뷰까지 죽는다.
   const urls = [];
@@ -266,7 +328,10 @@ function normalizeSocialAddress(input) {
     urls.push(u);
     return '%%PAPURL' + (urls.length - 1) + '%%';
   });
-  for (const [re, to] of HOW_YOU_SEE) s = s.replace(re, to);
+  const asking = (opts && opts.polite) ? HOW_YOU_SEE_POLITE : HOW_YOU_SEE;
+  for (const [re, to] of asking) s = s.replace(re, to);
+  /* 호칭('패퍼들')은 어미와 무관하게 양쪽 공통이다. 존댓말 글에 '너'가
+     나올 일은 없지만, 새더라도 여기서 한 번 더 막힌다. */
   for (const [re, to] of READER_ADDRESS) s = s.replace(re, to);
   return s.replace(/%%PAPURL(\d+)%%/g, (_, i) => urls[Number(i)]);
 }
@@ -283,16 +348,35 @@ function stripLegacySeparators(input) {
   return out;
 }
 
+/* 채널마다 맞는 어미가 다르다(2026-08-03 정책). 하나의 린터가 모든 채널을
+   보려면 기준을 인자로 받아야 한다. 예전처럼 인자 없이 부르면 'plain' —
+   인스타 기사·캡션 기준이라 기존 호출부의 판정은 그대로다. */
+const POLITE_ENDING = /(습니다|합니다|입니다|해요|이에요|예요|셨어요|네요)\s*[.!?]/;
+/* 평서체 '~다.' 만 잡고 존댓말 '~니다.' 는 비켜간다. 앞 글자가 '니'면 제외. */
+const PLAIN_ENDING = /(?<!니)다\s*[.!?]/;
+
 /**
- * 존댓말/3단락 등 규격 위반을 감지해 배열로 돌려준다.
+ * 어미·단락·길이 등 규격 위반을 감지해 배열로 돌려준다.
  * 자동 수정은 하지 않는다. 로깅·검수용.
+ *
+ * @param {string} text
+ * @param {{style?: 'plain'|'polite'|'casual', structure?: boolean}} [opts]
+ *   style     'plain'(기본, 인스타 기사·캡션) | 'polite'(X·카카오·뉴스레터)
+ *             | 'casual'(스레드). 반말은 기계로 판정하기 어려워 casual 은
+ *             존댓말이 튀었는지만 본다.
+ *   structure 단락 수·본문 길이 검사 여부. 기본 true. 소셜·짧은 카피처럼
+ *             2단락 규격이 적용되지 않는 곳에서는 false 로 끈다.
  */
-function lintKoreanBody(text) {
+function lintKoreanBody(text, opts) {
   const issues = [];
+  const style = (opts && opts.style) || 'plain';
+  const structure = !(opts && opts.structure === false);
   const s = String(text == null ? '' : text);
   const plain = s.replace(/<[^>]+>/g, ' ');
 
-  if (/(습니다|합니다|입니다|해요|이에요|예요|셨어요|네요)\s*[.!?]/.test(plain)) {
+  if (style === 'polite') {
+    if (PLAIN_ENDING.test(plain)) issues.push('평서체 감지 (존댓말 채널)');
+  } else if (POLITE_ENDING.test(plain)) {
     issues.push('존댓말 감지');
   }
   if (/[—–ㅡ]|--/.test(plain)) {
@@ -305,14 +389,16 @@ function lintKoreanBody(text) {
     issues.push('불릿/소제목 감지');
   }
 
-  const paras = s
-    .split(/<br\s*\/?>\s*<br\s*\/?>|\n{2,}/i)
-    .map((p) => p.trim())
-    .filter(Boolean);
-  if (paras.length > 2) issues.push('단락 ' + paras.length + '개 (2개 초과)');
+  if (structure) {
+    const paras = s
+      .split(/<br\s*\/?>\s*<br\s*\/?>|\n{2,}/i)
+      .map((p) => p.trim())
+      .filter(Boolean);
+    if (paras.length > 2) issues.push('단락 ' + paras.length + '개 (2개 초과)');
 
-  const len = plain.replace(/\s+/g, ' ').trim().length;
-  if (len > 520) issues.push('본문 ' + len + '자 (450자 권장 상한 초과)');
+    const len = plain.replace(/\s+/g, ' ').trim().length;
+    if (len > 520) issues.push('본문 ' + len + '자 (450자 권장 상한 초과)');
+  }
 
   return issues;
 }
@@ -332,6 +418,7 @@ module.exports = {
   ARTICLE_VOICE,
   EDITORIAL_VOICE,
   SOCIAL_VOICE,
+  X_VOICE,
   KAKAO_VOICE,
   normalizeSocialAddress,
   stripLegacySeparators,
