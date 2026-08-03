@@ -40,14 +40,52 @@
  *     distinct brands is NOT branded (trigger is "one brand") and stays
  *     paid_few_looks.
  *   • Brand comparison is over the raw brand STRING (trim + collapse spaces +
- *     lowercase). No clothing-vs-accessory distinction yet — the terms text
- *     mentions "4 clothing brands" but this first pass keys off the brand
- *     string across all item types. Refine to clothing-only if desired.
+ *     lowercase). Brand-set membership still keys off ALL item types.
+ *
+ * MULTI-BRAND EXEMPTION (도메니코 지시 2026-08-03) ─────────────────────────
+ *   공통 브랜드 A가 모든 룩에 들어가 있어도, 의상(Jacket/Top/Skirt/Pants 등)
+ *   슬롯에 B·C·D 같은 다른 브랜드들이 골고루 함께 들어가 있으면 그것은 A의
+ *   브랜디드 콘텐츠라고 볼 수 없다 → branded 해제.
+ *
+ *   판정: 실제 룩(이미지 ≥1)의 CLOTHING 슬롯에서 나온 서로 다른 브랜드 수가
+ *   MIN_CLOTHING_BRANDS(4) 이상이면 branded 를 끈다. 숫자 4는 임의값이 아니라
+ *   submission.html 약관 ①("Editorials must include a minimum of 4 different
+ *   clothing brands")과 동일한 값이다 — 판정 근거를 크리에이터에게 그대로
+ *   설명할 수 있어야 하므로 약관과 어긋나면 안 된다.
+ *
+ *   CLOTHING = 옷만. 신발·부츠·가방·모자·벨트·주얼리·안경·스카프·장갑·기타는
+ *   액세서리로 제외한다(도메니코 확정) — 액세서리는 한 브랜드로 몰리기 쉬워
+ *   포함시키면 예외가 헐거워진다.
+ *
+ *   해제 후에는 룩 수 규칙이 그대로 다시 적용된다: 실제 룩 < 4 면
+ *   paid_few_looks, 그 이상이면 free. 즉 예외는 "€720 → 무조건 무료"가 아니라
+ *   "€720 판정만 취소"다.
+ *
+ *   sharedBrands 는 해제된 뒤에도 그대로 돌려준다(관리자가 "A가 전 룩에 있긴
+ *   했다"는 사실을 볼 수 있게). branded 플래그만 false 가 된다.
  */
 
 'use strict';
 
 const MIN_LOOKS = 4;
+
+// 다중 브랜드 예외 임계값 — submission.html 약관 ①의 "minimum of 4 different
+// clothing brands" 와 같은 숫자. 약관을 바꾸면 여기도 같이 바꿔야 한다.
+const MIN_CLOTHING_BRANDS = 4;
+
+// '의상' 슬롯 화이트리스트 (frontend/submission.html 의 아이템 타입 <option> 중
+// 옷에 해당하는 것들). 여기 없는 타입(Shoes/Boots/Bag/Glasses/Sunglasses/Hat/
+// Belt/Ring/Necklace/Earrings/Watch/Scarf/Gloves/Other, 빈 값, 오타)은 전부
+// 액세서리로 취급해 예외 계산에서 제외한다 — 보수적으로(예외가 덜 터지게).
+const CLOTHING_TYPES = new Set([
+  'jacket', 'top', 'shirt', 'sweater', 'dress', 'pants', 'skirt',
+  'bodysuit', 'costume', 'coat',
+]);
+
+/** Normalize an item type for CLOTHING_TYPES membership. */
+function normItemType(s) {
+  return String(s == null ? '' : s).trim().replace(/\s+/g, ' ').toLowerCase();
+}
 
 /** Normalize a brand string for set membership: trim → collapse ws → lower. */
 function normBrand(s) {
@@ -112,12 +150,42 @@ function brandSetsFromLooks(looks) {
 }
 
 /**
+ * 실제 룩들의 CLOTHING 슬롯에서 나온 서로 다른 브랜드 집합.
+ * 브랜드명이 비어 있으면 brandSetsFromLooks 와 동일하게 '@handle' 로 대체한다
+ * (같은 핸들 = 같은 브랜드). 이미지 없는 룩은 세지 않는다.
+ *
+ * @param {Array} looks
+ * @param {Array<string>} realLookKeys  이미지가 1장 이상인 룩 번호(문자열) 목록
+ * @returns {Set<string>}
+ */
+function clothingBrandUnion(looks, realLookKeys) {
+  const out = new Set();
+  if (!Array.isArray(looks)) return out;
+  const allowed = new Set((realLookKeys || []).map(String));
+  for (const lk of looks) {
+    if (!lk || lk.n == null) continue;
+    if (!allowed.has(String(lk.n))) continue;
+    if (!Array.isArray(lk.items)) continue;
+    for (const it of lk.items) {
+      if (!it) continue;
+      if (!CLOTHING_TYPES.has(normItemType(it.type))) continue;
+      const b = normBrand(it.brand);
+      if (b) { out.add(b); continue; }
+      const h = normHandle(it.instagram);
+      if (h) out.add('@' + h);
+    }
+  }
+  return out;
+}
+
+/**
  * Classify a submission into 'free' | 'paid_few_looks' | 'branded'.
  *
  * @param {Array} looks         [{ n, items:[{ type, brand, instagram }] }]
  * @param {Array} lookImageMap  [{ lookN, imgIdxInLook }] — one per image.
  * @returns {{ submissionType:string, realLookCount:number, branded:boolean,
- *            sharedBrands:string[] }}
+ *            sharedBrands:string[], clothingBrands:string[],
+ *            clothingBrandCount:number, multiBrandExempt:boolean }}
  */
 function classifySubmissionType(looks, lookImageMap) {
   const imgCounts = imagesByLookFromMap(lookImageMap);
@@ -165,11 +233,29 @@ function classifySubmissionType(looks, lookImageMap) {
     branded = sharedBrands.length > 0;
   }
 
+  // MULTI-BRAND EXEMPTION (도메니코 2026-08-03) — 위 트리거가 걸렸더라도, 실제
+  // 룩의 의상 슬롯에 서로 다른 브랜드가 MIN_CLOTHING_BRANDS 개 이상 들어가 있으면
+  // 한 브랜드의 브랜디드 콘텐츠로 볼 수 없다 → branded 해제.
+  // sharedBrands 는 남겨둔다(관리자 참고용). 해제 뒤에는 아래 룩 수 규칙이 그대로
+  // 다시 적용되므로 4룩 미만이면 free 가 아니라 paid_few_looks 로 떨어진다.
+  const clothingBrandSet = clothingBrandUnion(looks, realLookKeys);
+  const clothingBrandCount = clothingBrandSet.size;
+  const multiBrandExempt = branded && clothingBrandCount >= MIN_CLOTHING_BRANDS;
+  if (multiBrandExempt) branded = false;
+
   let submissionType = 'free';
   if (branded) submissionType = 'branded';
   else if (realLookCount < MIN_LOOKS) submissionType = 'paid_few_looks';
 
-  return { submissionType, realLookCount, branded, sharedBrands };
+  return {
+    submissionType,
+    realLookCount,
+    branded,
+    sharedBrands,
+    clothingBrands: Array.from(clothingBrandSet),
+    clothingBrandCount,
+    multiBrandExempt,
+  };
 }
 
 /**
@@ -192,8 +278,12 @@ function looksMissingCredit(looks) {
 
 module.exports = {
   MIN_LOOKS,
+  MIN_CLOTHING_BRANDS,
+  CLOTHING_TYPES,
   normBrand,
   normHandle,
+  normItemType,
+  clothingBrandUnion,
   classifySubmissionType,
   looksMissingCredit,
 };
