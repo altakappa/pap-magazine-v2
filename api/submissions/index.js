@@ -465,8 +465,11 @@ module.exports = async function handler(req, res) {
         totalPages: finalTotalPages,
       });
     } catch (error) {
-      // Echo the underlying Supabase/Postgres error so it shows up in the
-      // admin UI — otherwise a generic message makes the next bug invisible.
+      // 2026-08-03 — 원래는 Supabase/Postgres 원문 오류를 응답 body 에 그대로
+      // 붙여 보냈다(message/code/details). 이 엔드포인트는 관리자 전용이 아니라
+      // 일반 사용자도 자기 서브미션 목록을 받아가는 경로라, 실패 시 테이블·컬럼명과
+      // Postgres 오류코드가 그대로 클라이언트로 새어나갔다. 진단 정보는 서버
+      // 로그(console.error)에만 남기고, 응답은 일반 메시지로 통일한다.
       try {
         console.error('List submissions error:', {
           name: error && error.name,
@@ -477,13 +480,8 @@ module.exports = async function handler(req, res) {
         });
       } catch (_) { console.error('List submissions error (raw):', error); }
 
-      const parts = [];
-      if (error && error.message) parts.push(String(error.message));
-      if (error && error.code) parts.push('code=' + error.code);
-      if (error && error.details) parts.push(String(error.details).slice(0, 120));
-      const hint = parts.join(' | ').slice(0, 300);
       return res.status(500).json({
-        message: 'Failed to fetch submissions' + (hint ? ` — ${hint}` : ''),
+        message: 'Failed to fetch submissions',
       });
     }
   }

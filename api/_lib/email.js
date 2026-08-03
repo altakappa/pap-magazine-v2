@@ -38,6 +38,42 @@ function getTransporter() {
 const FROM = process.env.EMAIL_FROM || 'PAP Magazine <contact@pap-magazine.com>';
 const FRONTEND_URL = process.env.NEXT_PUBLIC_URL || 'https://www.pap-magazine.com';
 
+/* 2026-08-03 — 서브미션 거절 기본 문구 (도메니코 지시, 영문 원문 그대로).
+ * 실측 배경: rejected 32건 중 30건이 admin_notes 공란이었다. 즉 거절된 작가는
+ * MY SUBMISSIONS 에서도 메일에서도 아무 설명을 못 받았다. 이제 심사자가 별도
+ * 메모를 남기지 않으면 이 편지가 자동으로 들어간다.
+ *
+ * 노출 경로는 웹 한 곳뿐이다:
+ *   submissions.admin_notes 기본값 → MY SUBMISSIONS 에 노출
+ *   (api/submissions/[id]/review.js 의 reviewPatch)
+ *
+ * 2026-08-03 도메니코 결정 — 메일에는 넣지 않는다. 심사 결과를 수신함에
+ * 드러내지 않는 기존 설계(QA #165)를 그대로 유지하고, 거절 안내는 작가가
+ * 직접 MY SUBMISSIONS 에 들어와 확인하게 한다. 그래서 REJECTION_LETTER_BODY
+ * 는 메일 템플릿이 아니라 admin_notes 조립과 회귀 테스트에서만 쓰인다.
+ *
+ * 편지 전문(DEFAULT_REJECTION_NOTE)은 도메니코 원문의 줄바꿈까지 그대로
+ * 복원한다. 본문 5줄은 REJECTION_LETTER_BODY 가 단일 소스다. */
+const REJECTION_LETTER_BODY = [
+  'Thank you for your email and for sharing your materials with us. Unfortunately, It does not quite align with our aesthetic standard.',
+  'Please rest assured that any images not selected for publication will remain private and will be promptly deleted.',
+  'We truly appreciate your kind offer and hope for the opportunity to collaborate again in the future.',
+  'All the best,',
+  'PAP Magazine Editorial Team,',
+];
+
+const DEFAULT_REJECTION_NOTE = [
+  'Dear,',
+  '',
+  REJECTION_LETTER_BODY[0],
+  REJECTION_LETTER_BODY[1],
+  '',
+  REJECTION_LETTER_BODY[2],
+  REJECTION_LETTER_BODY[3],
+  '',
+  REJECTION_LETTER_BODY[4],
+].join('\n');
+
 // ── Shared HTML wrapper ──
 function wrapHtml(content, lang) {
   const _ui = emailUiStrings(lang || 'en');
@@ -240,6 +276,7 @@ const PULLLETTER_I18N = {
       "body1": "Pull-Letter 요청이 접수되었습니다. 담당 팀이 요청하신 제품의 대여 가능 여부를 확인하고 관련 쇼룸과 조율하겠습니다.",
       "statusLabel": "상태",
       "statusValue": "처리 중",
+      "eta": "검토 결과는 영업일 기준 7일 이내에 이메일로 안내드립니다.",
       "body2": "Pull이 확정되면 다음 단계를 안내드리겠습니다."
     },
     "accepted": {
@@ -264,6 +301,7 @@ const PULLLETTER_I18N = {
       "body1": "Your pull-letter request has been received. Our team will review the availability of the requested pieces and coordinate with the relevant showrooms.",
       "statusLabel": "Status",
       "statusValue": "Processing",
+      "eta": "You will hear back from us within 7 business days.",
       "body2": "We'll reach out with next steps once the pull has been confirmed."
     },
     "accepted": {
@@ -288,6 +326,7 @@ const PULLLETTER_I18N = {
       "body1": "La tua richiesta di pull-letter è stata ricevuta. Il nostro team verificherà la disponibilità dei capi richiesti e si coordinerà con gli showroom.",
       "statusLabel": "Stato",
       "statusValue": "In elaborazione",
+      "eta": "Riceverai una risposta entro 7 giorni lavorativi.",
       "body2": "Ti contatteremo con i prossimi passi una volta confermato il pull."
     },
     "accepted": {
@@ -312,6 +351,7 @@ const PULLLETTER_I18N = {
       "body1": "Votre demande de pull-letter a bien été reçue. Notre équipe vérifiera la disponibilité des pièces demandées et se coordonnera avec les showrooms concernés.",
       "statusLabel": "Statut",
       "statusValue": "En cours",
+      "eta": "Vous recevrez une réponse sous 7 jours ouvrés.",
       "body2": "Nous vous recontacterons avec les prochaines étapes une fois le pull confirmé."
     },
     "accepted": {
@@ -336,6 +376,7 @@ const PULLLETTER_I18N = {
       "body1": "Hemos recibido tu solicitud de pull-letter. Nuestro equipo verificará la disponibilidad de las piezas solicitadas y coordinará con los showrooms correspondientes.",
       "statusLabel": "Estado",
       "statusValue": "En proceso",
+      "eta": "Recibirás una respuesta en un plazo de 7 días hábiles.",
       "body2": "Nos pondremos en contacto con los próximos pasos una vez confirmado el pull."
     },
     "accepted": {
@@ -360,6 +401,7 @@ const PULLLETTER_I18N = {
       "body1": "Pull-Letterのリクエストを受け付けました。担当チームがリクエストされたアイテムの貸出可否を確認し、関連ショールームと調整いたします。",
       "statusLabel": "ステータス",
       "statusValue": "処理中",
+      "eta": "審査結果は7営業日以内にメールでご連絡いたします。",
       "body2": "Pullが確定次第、次のステップをご案内いたします。"
     },
     "accepted": {
@@ -384,6 +426,7 @@ const PULLLETTER_I18N = {
       "body1": "我们已收到您的 pull-letter 申请。团队将确认所申请单品的可借用情况，并与相关 showroom 进行协调。",
       "statusLabel": "状态",
       "statusValue": "处理中",
+      "eta": "我们将在7个工作日内通过邮件告知审核结果。",
       "body2": "确认借调后，我们将与您沟通后续步骤。"
     },
     "accepted": {
@@ -408,6 +451,7 @@ const PULLLETTER_I18N = {
       "body1": "Ваш запрос pull-letter получен. Наша команда проверит доступность запрошенных вещей и согласует детали с соответствующими шоурумами.",
       "statusLabel": "Статус",
       "statusValue": "В обработке",
+      "eta": "Мы сообщим вам о решении в течение 7 рабочих дней.",
       "body2": "Мы свяжемся с вами и сообщим о следующих шагах после подтверждения."
     },
     "accepted": {
@@ -432,6 +476,7 @@ const PULLLETTER_I18N = {
       "body1": "Deine Pull-Letter-Anfrage ist eingegangen. Unser Team prüft die Verfügbarkeit der angefragten Teile und stimmt sich mit den entsprechenden Showrooms ab.",
       "statusLabel": "Status",
       "statusValue": "In Bearbeitung",
+      "eta": "Sie erhalten innerhalb von 7 Werktagen eine Rückmeldung.",
       "body2": "Sobald der Pull bestätigt ist, melden wir uns mit den nächsten Schritten."
     },
     "accepted": {
@@ -707,8 +752,12 @@ const templates = {
       : '';
 
     // 승인(approved)일 때만 축하 톤 — 제목·헤딩·첫 문단을 승인 전용 문구로 교체하고
-    // 유료/브랜디드면 "유료 게재가 승인되었습니다" 로 표기. 거절·보완요청은 결과를
-    // 수신함에 드러내지 않는 기존 설계(QA #165)를 유지해 중립 문구를 그대로 쓴다.
+    // 유료/브랜디드면 "유료 게재가 승인되었습니다" 로 표기. 보완요청(revision)은
+    // 결과를 수신함에 드러내지 않는 기존 설계(QA #165)를 유지해 중립 문구를 쓴다.
+    //
+    // 2026-08-03 — 거절(rejected)도 QA #165 를 그대로 따른다. 도메니코의 거절
+    // 안내 편지는 메일이 아니라 MY SUBMISSIONS(admin_notes)에만 노출한다.
+    // 즉 이 템플릿은 어떤 상태에서도 심사 사유·거절 문구를 본문에 싣지 않는다.
     const _isApproved = status === 'approved';
     const _titleStrong = `<strong style="color:#fff;">"${safeTitle}"</strong>`;
     const _subject = (_isApproved && L.apSubject ? L.apSubject : L.subject).replace('{title}', safeTitle);
@@ -738,7 +787,8 @@ const templates = {
   // Legacy aliases kept so callers that still hardcode the per-status
   // template names keep working. They all funnel into the single
   // submissionReviewComplete entry point above, passing their status so
-  // the rejection-specific courtesy block lights up for 'rejected' only.
+  // the approved-only celebratory copy lights up for 'approved' only.
+  // 어느 별칭으로 들어와도 거절 문구는 메일에 실리지 않는다(QA #165 유지).
   submissionApproved(user, submission, _note, lang, opts) {
     return templates.submissionReviewComplete(user, submission, lang, 'approved', opts);
   },
@@ -767,6 +817,9 @@ const templates = {
           </td></tr>
         </table>
         <p>${L.body2}</p>
+        <!-- 2026-08-03 — 풀레터 검토 소요기간(영업일 7일) 명시. 그 전에는 웹·메일
+             어디에도 기간 안내가 없어 신청자가 무한정 기다리는 구조였다. -->
+        <p style="font-size:13px;color:#999;">${L.eta || ''}</p>
       `, lang),
     };
   },
@@ -1116,4 +1169,4 @@ async function sendEmail(to, template) {
   }
 }
 
-module.exports = { sendEmail, templates };
+module.exports = { sendEmail, templates, DEFAULT_REJECTION_NOTE, REJECTION_LETTER_BODY };

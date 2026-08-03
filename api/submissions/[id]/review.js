@@ -10,7 +10,7 @@
 const { supabaseAdmin } = require('../../_lib/supabase');
 const { requireAdmin, requireMainAdmin } = require('../../_lib/auth');
 const { handleCors } = require('../../_lib/cors');
-const { sendEmail, templates } = require('../../_lib/email');
+const { sendEmail, templates, DEFAULT_REJECTION_NOTE } = require('../../_lib/email');
 const { feeForType } = require('../../_lib/submissionPayment');
 const { getOptimizedThumbnail, getOptimizedHero } = require('../../_lib/imageOptimize');
 const { rateLimit, RATE_LIMITS } = require('../../_lib/rateLimit');
@@ -454,12 +454,29 @@ module.exports = async function handler(req, res) {
     // 30-day auto-purge cron can find this row. Set to NULL when leaving
     // the rejected state (e.g. admin recovers via status='pending'); the
     // cron only deletes rows that still have a non-null stamp.
+    const nowIso = new Date().toISOString();
     const reviewPatch = {
       status,
-      admin_notes: reviewNote || '',
+      // 2026-08-03 — 거절인데 심사자가 사유를 안 적으면 도메니코의 기본 안내
+      // 편지를 넣는다. 실측: rejected 32건 중 30건이 공란이었다(= 작가가
+      // MY SUBMISSIONS 에서 아무 설명도 못 봤다). 심사자가 직접 쓴 메모가
+      // 있으면 그쪽이 우선한다. 거절 외 상태의 기본값은 종전대로 ''.
+      // 노출은 여기(웹) 한 곳뿐 — 심사 결과를 수신함에 드러내지 않는 QA #165
+      // 설계를 유지하기 위해 메일 본문에는 싣지 않는다(2026-08-03 도메니코 결정).
+      // 경계는 tests/submission-review-audit.test.js [2] 가 고정한다.
+      admin_notes: reviewNote || (status === 'rejected' ? DEFAULT_REJECTION_NOTE : ''),
+      // 2026-08-03 심사 감사기록 — 실측 0/100 (reviewed_at·reviewed_by·updated_at
+      // 모두 한 번도 안 찍혔다). submissions 에는 updated_at 트리거가 없으므로
+      // (pg_trigger 조회 0행) 여기서 명시적으로 찍어야 한다. 이미 정상 동작하는
+      // 풀레터(api/pullletters/[id]/review.js:39-40)와 같은 방식.
+      // reviewed_by 는 auth.users(id) FK — admin.id 는 JWT/profiles.id 이고
+      // 관리자 계정 전원이 auth.users 에 존재함을 확인했다.
+      reviewed_at: nowIso,
+      reviewed_by: admin.id,
+      updated_at: nowIso,
     };
     if (status === 'rejected') {
-      reviewPatch.rejected_at = new Date().toISOString();
+      reviewPatch.rejected_at = nowIso;
     } else {
       // Recovery path — clear stamp so a row brought back from rejection
       // doesn't get scooped up by the cron.
@@ -599,8 +616,12 @@ module.exports = async function handler(req, res) {
               published_date: null,
               // QA #206 — make the NULL explicit so a future trigger or
               // backfill can't accidentally treat the row as
-              // "admin-touched" the moment Postgres' updated_at trigger
-              // fires (which it does on every INSERT). The Drafts tab
+              // "admin-touched" at INSERT time. (2026-08-03 정정: 원래
+              // 주석은 "Postgres updated_at 트리거가 INSERT 마다 돈다"고
+              // 적혀 있었으나 사실이 아니다 — editorials 의 트리거는
+              // trg_promote_creator 하나뿐이고 updated_at 트리거는 없다.
+              // 명시적 NULL 을 유지하는 이유 자체는 아래대로 유효하다.)
+              // The Drafts tab
               // query in /api/editorials/index.js gates visibility on
               // admin_edited_at IS NOT NULL — keeping this NULL is what
               // keeps freshly-approved submissions OUT of 임시저장 until
