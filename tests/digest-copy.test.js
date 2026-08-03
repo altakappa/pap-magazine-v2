@@ -8,6 +8,10 @@
  *   4) 소재를 고르지 않는다 — 자리가 모자라면 소개말을 먼저 버린다
  *   5) 세 갈래가 같은 날 안 겹친다
  *
+ * 2026-08-03 3차 — 셀럽을 월·목에서 월·화·목·금으로 늘렸다. X 한 글에는 제목이
+ * 서너 개밖에 안 들어가서(가중 280자), 창이 길수록 넘쳐 버려지는 기사가 늘었다.
+ * 자주 조금씩 내보내는 쪽이 같은 글자 수로 더 많이 나간다(실측 64% → 92%).
+ *
  * ANTHROPIC_API_KEY 없이 돌면 generateNotes 가 곧장 null 이라 fallback 경로만
  * 탄다. 그게 오히려 낫다 — 테스트가 모델 응답에 흔들리지 않는다.
  */
@@ -149,9 +153,11 @@ console.log('\n[1] 링크는 딱 하나 — 인스타 프로필');
   console.log('\n[8] 요일 격자 — 세 갈래가 절대 안 겹친다');
   const grid = digest.DAY_BUCKET;
   t('일요일 = 에디토리얼', grid[0] === 'editorial');
-  t('월·목 = 셀럽', grid[1] === 'celeb' && grid[4] === 'celeb');
-  t('화·금 = 콜렉션', grid[2] === 'collection' && grid[5] === 'collection');
-  t('수·토 = 쉼', grid[3] === null && grid[6] === null);
+  t('월·화·목·금 = 셀럽 (2026-08-03 주 4회로 증편)',
+    grid[1] === 'celeb' && grid[2] === 'celeb' && grid[4] === 'celeb' && grid[5] === 'celeb');
+  t('수·토 = 콜렉션', grid[3] === 'collection' && grid[6] === 'collection');
+  t('쉬는 날은 없다 — 일곱 요일이 모두 채워졌다',
+    Object.keys(grid).length === 7 && Object.values(grid).every(Boolean));
   const days = Object.keys(grid);
   t('하루에 갈래는 최대 하나', days.every((d) => grid[d] === null || typeof grid[d] === 'string'));
   t('세 갈래가 모두 주 1회 이상', ['editorial', 'collection', 'celeb']

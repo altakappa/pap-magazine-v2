@@ -37,15 +37,21 @@ const xPost = require('../_lib/xPost');
 const threads = require('../_lib/threads');
 
 /* KST 요일 → 갈래. 크론은 UTC 로 돌지만 "무슨 요일에 나가나"는 도메니코가
-   보는 한국 시간 기준이어야 한다. 0=일 … 6=토. */
+   보는 한국 시간 기준이어야 한다. 0=일 … 6=토.
+
+   2026-08-03 도메니코 — 셀럽을 주 2회에서 주 4회로 늘린다.
+   이유: X 는 한 글에 제목 3~4개가 한계다(가중 280자). 창을 3일로 두면
+   한 번에 모이는 양이 천장을 넘겨 3분의 1이 영영 안 나갔다(실측 커버리지 64%).
+   창을 좁히고 자주 내보내면 같은 글자 수로 92% 가 나간다.
+   세 갈래가 같은 날 겹치지 않는다는 원칙은 그대로다. */
 const DAY_BUCKET = {
-  0: 'editorial',
-  1: 'celeb',
-  2: 'collection',
-  3: null,
-  4: 'celeb',
-  5: 'collection',
-  6: null,
+  0: 'editorial',   // 일
+  1: 'celeb',       // 월
+  2: 'celeb',       // 화
+  3: 'collection',  // 수
+  4: 'celeb',       // 목
+  5: 'celeb',       // 금
+  6: 'collection',  // 토
 };
 
 const PLATFORMS = ['x', 'threads'];

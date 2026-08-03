@@ -30,12 +30,19 @@ const SITE = 'https://www.pap-magazine.com';
 const CELEB_CATEGORIES = ['news', 'celeb'];
 
 /* limit 0 = 상한 없음.
-   2026-08-03 도메니코 — "내용을 고르지 말고 3일 동안 셀럽 기사 전체를 다 쓸 것".
-   셀럽만 상한을 푼다. 에디토리얼·콜렉션은 아직 여덟 개까지다. */
+   2026-08-03 도메니코 — "내용을 고르지 말고 셀럽 기사 전체를 다 쓸 것".
+   셀럽만 상한을 푼다. 에디토리얼·콜렉션은 아직 여덟 개까지다.
+
+   창 길이는 발행 요일 간격에 맞춘다(api/cron/social-digest.js 의 DAY_BUCKET).
+   셀럽 월·화·목·금 → 최대 간격 3일이라 창 4일이면 구멍이 없다.
+   콜렉션 수·토 → 간격 3일과 4일이 번갈아 오므로 역시 창 4일.
+   창을 간격보다 넉넉히 잡는 이유는 하나 더 있다. X 가 가중 280자에 걸려
+   못 실은 기사는 social_digest_items 에 기록되지 않으니, 창이 살아 있는
+   동안 다음 회차가 그걸 다시 줍는다(실측 X 커버리지 64% → 92%). */
 const BUCKETS = {
   editorial:  { label: '오리지널 에디토리얼', days: 7, limit: 8 },
-  collection: { label: '아트 콜렉션',        days: 3, limit: 8 },
-  celeb:      { label: '셀럽 소식',          days: 3, limit: 0 },
+  collection: { label: '아트 콜렉션',        days: 4, limit: 8 },
+  celeb:      { label: '셀럽 소식',          days: 4, limit: 0 },
 };
 
 /** 'Fashion,Culture' → ['fashion','culture'] */

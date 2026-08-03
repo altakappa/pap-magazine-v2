@@ -3,7 +3,11 @@
  *
  * 지시: X·스레드를 인스타 유입 장치로 쓰되, 기존 건별 자동 포스트는 그대로
  * 두고 그 위에 "며칠에 한 번 모아서 리뷰" 를 얹는다. 갈래 셋 —
- *   ① 지난 7일 오리지널 에디토리얼  ② 지난 3일 아트 콜렉션  ③ 지난 3일 셀럽
+ *   ① 지난 7일 오리지널 에디토리얼  ② 최근 4일 아트 콜렉션  ③ 최근 4일 셀럽
+ *
+ * 2026-08-03 3차 수정 — 셀럽을 주 2회(월·목)에서 주 4회(월·화·목·금)로 늘렸다.
+ * X 는 한 글에 제목 3~4개가 한계라, 창이 길수록 넘쳐서 버려지는 기사가 늘었다.
+ * 콜렉션은 수·토, 에디토리얼은 일. 겹치는 날은 여전히 없다.
  *
  * ── 이 파일이 지키는 것 ─────────────────────────────────────────────
  * 1) 세 갈래가 서로 겹치지 않는다.
@@ -167,7 +171,7 @@ const titles = (r) => r.items.map((i) => i.title);
     '받은 값: ' + JSON.stringify(titles(ed)));
 
   const co = await B.collect('collection');
-  ok('콜렉션 갈래는 3일 창', co.days === 3);
+  ok('콜렉션 갈래는 4일 창', co.days === 4);
   ok('셀럽이 아닌 기사 + 아카이브 에디토리얼의 합집합',
     titles(co).sort().join('|') === ['패션 아카이브', '아트', '아카이브 스프레드'].sort().join('|'),
     '받은 값: ' + JSON.stringify(titles(co)));
@@ -216,6 +220,53 @@ const titles = (r) => r.items.map((i) => i.title);
     shaped.site_url.endsWith('/article/fa') && shaped.ig_url.includes('/p/ABC/'));
   ok('인스타 원본이 없으면 ig_url 은 빈 문자열 (null 아님)',
     (await B.collect('celeb')).items.every((i) => typeof i.ig_url === 'string'));
+
+  section('발행 요일 격자 — 세 갈래가 같은 날 겹치지 않는다 (2026-08-03 3차 지시)');
+  /* 크론 핸들러는 env 없이 require 할 수 없어 소스 텍스트로 검증한다. */
+  const fs = require('fs');
+  const path = require('path');
+  const cronSrc = fs.readFileSync(path.join(__dirname, '../api/cron/social-digest.js'), 'utf8');
+  const gridSrc = cronSrc.match(/const DAY_BUCKET = \{([\s\S]*?)\};/);
+  ok('DAY_BUCKET 을 찾았다', !!gridSrc);
+  const grid = {};
+  (gridSrc ? gridSrc[1] : '').split('\n').forEach((line) => {
+    const m = line.match(/^\s*(\d)\s*:\s*(?:'([a-z]+)'|null)/);
+    if (m) grid[Number(m[1])] = m[2] || null;
+  });
+  ok('요일 일곱 개가 모두 선언돼 있다', Object.keys(grid).length === 7,
+    '받은 값: ' + JSON.stringify(grid));
+  const dows = (name) => Object.keys(grid).filter((d) => grid[d] === name).map(Number);
+  ok('셀럽은 주 4회 — 월·화·목·금',
+    dows('celeb').join(',') === '1,2,4,5', '받은 값: ' + JSON.stringify(dows('celeb')));
+  ok('콜렉션은 주 2회 — 수·토',
+    dows('collection').join(',') === '3,6', '받은 값: ' + JSON.stringify(dows('collection')));
+  ok('에디토리얼은 주 1회 — 일',
+    dows('editorial').join(',') === '0', '받은 값: ' + JSON.stringify(dows('editorial')));
+  ok('한 요일에 갈래는 최대 하나 (겹침 금지)',
+    Object.values(grid).filter(Boolean).length === new Set(Object.keys(grid)).size);
+
+  /* 창이 발행 간격보다 짧으면 그 사이 기사가 영영 안 나간다. */
+  const maxGap = (name) => {
+    const d = dows(name);
+    if (!d.length) return 7;
+    let g = 0;
+    for (let i = 0; i < d.length; i++) {
+      const next = i + 1 < d.length ? d[i + 1] : d[0] + 7;
+      g = Math.max(g, next - d[i]);
+    }
+    return g;
+  };
+  ok('셀럽 창(4일)이 최대 발행 간격보다 짧지 않다', 4 >= maxGap('celeb'),
+    '최대 간격 ' + maxGap('celeb') + '일');
+  ok('콜렉션 창(4일)이 최대 발행 간격보다 짧지 않다', 4 >= maxGap('collection'),
+    '최대 간격 ' + maxGap('collection') + '일');
+  ok('셀럽 창은 4일', (await B.collect('celeb')).days === 4);
+
+  const vercel = JSON.parse(fs.readFileSync(path.join(__dirname, '../vercel.json'), 'utf8'));
+  const cronEntry = vercel.crons.find((c) => c.path === '/api/cron/social-digest');
+  ok('vercel 크론이 매일 돈다 (쉬는 요일이 없어졌다)',
+    cronEntry && /^0 \d+ \* \* \*$/.test(cronEntry.schedule),
+    '받은 값: ' + (cronEntry && cronEntry.schedule));
 
   /* ---------------------------------------------------------------- */
   console.log('\npassed: ' + pass + '   failed: ' + fail);

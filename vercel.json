@@ -78,7 +78,7 @@
     },
     {
       "path": "/api/cron/social-digest",
-      "schedule": "0 11 * * 0,1,2,4,5"
+      "schedule": "0 11 * * *"
     },
     {
       "path": "/api/cron/threads-metrics",
