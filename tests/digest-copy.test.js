@@ -22,6 +22,7 @@ require.cache[SUPABASE].loaded = true;
 delete process.env.ANTHROPIC_API_KEY;
 
 const copy = require('../api/_lib/digestCopy');
+const { weightedLen } = require('../api/_lib/xPost');
 const digest = require('../api/cron/social-digest');
 
 let pass = 0, fail = 0;
@@ -54,7 +55,6 @@ console.log('\n[1] 링크는 딱 하나 — 인스타 프로필');
   for (const it of ITEMS) t('제목 포함: ' + it.title, th.text.includes(it.title));
 
   console.log('\n[3] X 는 280 가중치를 넘지 않는다');
-  const { weightedLen } = require('../api/_lib/xPost');
   const many = Array.from({ length: 12 }, (_, i) => ({
     source: 'article', id: 'x' + i,
     title: '아주 긴 제목을 가진 기사 ' + i + ' 번째 — 파리 뒷골목 빈티지 아카이브 상점 탐방기',
@@ -76,6 +76,11 @@ console.log('\n[1] 링크는 딱 하나 — 인스타 프로필');
   t('해시태그 제거', !/#/.test(dirty), dirty);
   t('대시 제거', !/[—–ㅡ]/.test(copy.cleanNote('앞 ㅡ 뒤')));
 
+  console.log('\n[5-2] 소개말이 너무 길면 문장 끝에서 자른다');
+  const long = copy.cleanNote('첫 문장은 이렇게 끝난다. 두 번째 문장은 상한을 한참 넘겨서 계속 이어지고 또 이어진다.', { max: 14 });
+  t('상한 근처에서 잘렸다', long.length <= 26, long.length + '자: ' + long);
+  t('문장 중간에서 안 끊긴다', /[.!?요다죠네]$/.test(long), long);
+
   console.log('\n[6] 어미 — X 존댓말 / 스레드 반말');
   const fbPolite = copy.fallbackCopy(ITEMS, true);
   const fbCasual = copy.fallbackCopy(ITEMS, false);
@@ -83,6 +88,36 @@ console.log('\n[1] 링크는 딱 하나 — 인스타 프로필');
   t('반말 마무리', !/요$/.test(fbCasual.closing), fbCasual.closing);
   t('X 는 존댓말 문장을 쓴다', (await copy.build(PICKED, 'x')).text.includes(fbPolite.closing));
   t('스레드는 반말 문장을 쓴다', (await copy.build(PICKED, 'threads')).text.includes(fbCasual.closing));
+
+  t('스레드 마무리는 명사형 (반말이 링크 앞에서 튀지 않게)',
+    fbCasual.closing === '전체 기사는 인스타에서', fbCasual.closing);
+
+  console.log('\n[6-2] 두 채널 다 번호로 카운트한다');
+  const NOTES = ITEMS.map((_, i) => '소개말 ' + (i + 1) + ' 번째 줄입니다');
+  for (const platform of ['x', 'threads']) {
+    const head = copy.HEADLINE.collection[platform];
+    const c = { intro: '', closing: '전체 기사는 인스타에서', notes: NOTES };
+    const text = copy.ASSEMBLE[platform](head, c, ITEMS);
+    t(platform + ': 1번이 있다', /^1\. /m.test(text), text);
+    t(platform + ': 2번이 있다', /^2\. /m.test(text));
+    t(platform + ': 소개말이 실린다', text.includes(NOTES[0]), text);
+  }
+
+  console.log('\n[6-3] X 는 항목 수보다 소개말을 우선한다');
+  {
+    const five = Array.from({ length: 5 }, (_, i) => ({
+      source: 'article', id: 'p' + i, title: '파리 뒷골목 빈티지 아카이브 상점 ' + i,
+    }));
+    const c = {
+      intro: '', closing: '전체 기사는 인스타에서',
+      notes: five.map(() => '60년대 오뜨꾸뛰르가 옷걸이째 쌓여 있는 곳'),
+    };
+    const text = copy.assembleX('요 며칠의 셀럽 소식', c, five);
+    t('제목만 나열하고 끝내지 않는다', text.includes(c.notes[0]), text);
+    const shown = (text.match(/^\d\. /gm) || []).length;
+    t('그 대신 항목이 줄었다 (' + shown + '개)', shown < five.length && shown >= 1);
+    t('280 가중치 안', weightedLen(text.replace(copy.IG_URL, '')) + 23 <= 280);
+  }
 
   console.log('\n[7] 소재가 없으면 글을 만들지 않는다');
   t('빈 목록 → null', (await copy.build({ bucket: 'celeb', label: '', days: 3, items: [] }, 'x')) === null);

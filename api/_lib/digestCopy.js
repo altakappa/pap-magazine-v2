@@ -33,6 +33,13 @@ const X_LINK_COST = 23 + 2;
 /* 스레드는 500자. 넘치면 잘리는 게 아니라 게시가 실패하므로 여유를 둔다. */
 const THREADS_MAX = 480;
 
+/* 소개말 길이 상한 (한글 기준). 도메니코 2026-08-03 —
+   "한두 줄이지만 내용을 좀 더 길게, 읽는 이가 더 알아보고 싶게".
+   X 는 자리가 좁아 같은 길이를 못 준다. 대신 아래 assembleX 가 소개말을
+   버리는 대신 항목 수를 줄이는 쪽을 택한다 — 제목만 다섯 줄 나열하는 것보다
+   세 줄이라도 내용이 궁금해지는 쪽이 유입 장치로서 맞다. */
+const NOTE_LEN = { x: 34, threads: 72 };
+
 const HEADLINE = {
   editorial:  { x: '이번 주 PAP 오리지널 에디토리얼', threads: '이번 주 PAP 에 새로 올라간 오리지널 에디토리얼' },
   collection: { x: '요 며칠 소개한 아트 콜렉션',      threads: '요 며칠 소개한 아트 콜렉션' },
@@ -43,7 +50,7 @@ const HEADLINE = {
 const URLISH = /(https?:\/\/\S+|www\.\S+|\b[\w-]+\.(?:com|net|org|co\.kr|kr|io|me|ly)\b\S*)/gi;
 
 /** 소개말 한 줄 정제 — 링크·해시태그·따옴표·군더더기 제거. */
-function cleanNote(raw) {
+function cleanNote(raw, opts) {
   let s = String(raw || '')
     .replace(URLISH, '')
     .replace(/#\S+/g, '')
@@ -53,6 +60,14 @@ function cleanNote(raw) {
     .replace(/^["'“”‘’]+|["'“”‘’]+$/g, '')
     .trim();
   s = socialHook.stripDashes(s);
+  /* 모델이 상한을 넘기면 문장 끝에서 자른다. 글자 수로 뚝 자르면 말이
+     중간에 끊겨 "어? 하다 만 글인가" 싶어진다 — 유입 장치에서 제일 나쁜 인상. */
+  const max = (opts && opts.max) || 0;
+  if (max && s.length > max) {
+    const cut = s.slice(0, max + 12);
+    const m = cut.match(/^[\s\S]*[.!?요다죠네]/);
+    s = (m ? m[0] : s.slice(0, max)).trim();
+  }
   return s;
 }
 
@@ -74,13 +89,16 @@ async function generateNotes(items, bucket, platform) {
   if (!items.length) return null;
 
   const polite = socialHook.isPolite(platform);
+  const noteMax = NOTE_LEN[platform] || NOTE_LEN.threads;
   const sys = [
     'PAP 매거진 에디터로서 소셜에 올릴 "모아보기" 글의 소개말을 쓴다.',
     socialHook.toneFor(platform),
     '',
     '규칙:',
-    '- 기사마다 내용을 축약하는 한두 줄. 40자 안쪽으로 짧게.',
+    '- 기사마다 내용을 축약하는 한두 줄. ' + noteMax + '자 안쪽.',
     '- 제목을 그대로 되풀이하지 않는다. 제목은 따로 나간다.',
+    '- 요약이 아니라 미끼다. 읽는 사람이 본문을 더 보고 싶어지게 쓴다.',
+    '  무엇을 다뤘는지 한 겹 더 들어가서 알려준다 (누가, 어디서, 무엇이 새로운지).',
     '- URL, 링크, 해시태그, 이모지, 계정 아이디를 절대 쓰지 않는다.',
     '- 없는 사실을 지어내지 않는다. 제목에서 확실한 것만 쓴다.',
     '- 빈칸으로 두는 것이 지어내는 것보다 낫다.',
@@ -107,6 +125,7 @@ async function generateNotes(items, bucket, platform) {
           content: JSON.stringify({
             bucket,
             platform,
+            max_note_chars: noteMax,
             titles: items.map((it) => cleanTitle(it.title)),
           }),
         }],
@@ -128,7 +147,7 @@ async function generateNotes(items, bucket, platform) {
     return {
       intro: papVoice.normalizeSocialAddress(cleanNote(g.intro), { polite }),
       closing: papVoice.normalizeSocialAddress(cleanNote(g.closing), { polite }),
-      notes: items.map((_, i) => papVoice.normalizeSocialAddress(cleanNote(notes[i]), { polite })),
+      notes: items.map((_, i) => papVoice.normalizeSocialAddress(cleanNote(notes[i], { max: noteMax }), { polite })),
     };
   } catch (_) {
     return null;
@@ -142,15 +161,22 @@ async function generateNotes(items, bucket, platform) {
 function fallbackCopy(items, polite) {
   return {
     intro: '',
-    closing: polite ? '전체 기사는 인스타에서 보실 수 있어요' : '전체 기사는 인스타에 있어',
+    /* 2026-08-03 도메니코 — 스레드는 반말을 쓰되 과하게 드러나지 않게.
+       '인스타에 있어'처럼 어미가 붙으면 링크 바로 위에서 말투가 튄다.
+       명사형으로 끊는 쪽이 담백하다. */
+    closing: polite ? '전체 기사는 인스타에서 보실 수 있어요' : '전체 기사는 인스타에서',
     notes: items.map(() => ''),
   };
 }
 
-/** 한 줄 조립: "1. 제목 — 소개말" 이 아니라 두 줄로 나눈다 (대시 금지). */
-function renderItem(n, title, note) {
+/**
+ * 한 줄 조립: "1. 제목 — 소개말" 이 아니라 두 줄로 나눈다 (대시 금지).
+ * 번호는 두 채널 공통이다 (2026-08-03 도메니코 — X 도 스레드처럼 카운트).
+ * indent 는 스레드에서만. X 는 공백 세 칸도 가중치라 아깝다.
+ */
+function renderItem(n, title, note, indent) {
   const head = n + '. ' + title;
-  return note ? head + '\n   ' + note : head;
+  return note ? head + '\n' + (indent || '') + note : head;
 }
 
 function assembleThreads(headline, copy, items) {
@@ -158,7 +184,7 @@ function assembleThreads(headline, copy, items) {
     const lines = [headline];
     if (copy.intro) lines.push(copy.intro);
     lines.push('');
-    for (let i = 0; i < n; i++) lines.push(renderItem(i + 1, cleanTitle(items[i].title), copy.notes[i]));
+    for (let i = 0; i < n; i++) lines.push(renderItem(i + 1, cleanTitle(items[i].title), copy.notes[i], '   '));
     lines.push('');
     if (copy.closing) lines.push(copy.closing);
     lines.push(IG_URL);
@@ -179,8 +205,7 @@ function assembleX(headline, copy, items) {
   const build = (n, withNotes) => {
     const lines = [headline];
     for (let i = 0; i < n; i++) {
-      const t = cleanTitle(items[i].title);
-      lines.push(withNotes && copy.notes[i] ? t + '\n' + copy.notes[i] : t);
+      lines.push(renderItem(i + 1, cleanTitle(items[i].title), withNotes ? copy.notes[i] : ''));
     }
     if (copy.closing) lines.push(copy.closing);
     lines.push(IG_URL);
@@ -188,11 +213,18 @@ function assembleX(headline, copy, items) {
   };
   const fits = (s) => weightedLen(s.replace(IG_URL, '')) + X_LINK_COST <= X_WEIGHTED_MAX;
 
-  for (let n = Math.min(items.length, 5); n >= 1; n--) {
-    const withNotes = build(n, true);
-    if (fits(withNotes)) return withNotes;
-    const bare = build(n, false);
-    if (fits(bare)) return bare;
+  const top = Math.min(items.length, 5);
+  /* 소개말 붙은 판을 먼저 끝까지 시도한다 (2026-08-03 도메니코 지시).
+     예전엔 n 하나마다 '소개말 있음 → 없음' 순으로 봐서, 다섯 개짜리 제목
+     나열이 세 개짜리 소개말 판을 이겨버렸다. 지금은 반대다 — 항목이 줄더라도
+     내용이 보이는 쪽을 택한다. 그래도 안 들어가면 그때 제목만 나열한다. */
+  for (let n = top; n >= 1; n--) {
+    const t = build(n, true);
+    if (fits(t)) return t;
+  }
+  for (let n = top; n >= 1; n--) {
+    const t = build(n, false);
+    if (fits(t)) return t;
   }
   return build(1, false);
 }
@@ -249,7 +281,9 @@ module.exports = {
   IG_URL,
   X_WEIGHTED_MAX,
   THREADS_MAX,
+  NOTE_LEN,
   HEADLINE,
+  renderItem,
   cleanNote,
   cleanTitle,
   fallbackCopy,
