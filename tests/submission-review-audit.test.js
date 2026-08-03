@@ -226,5 +226,37 @@ ok('진단 정보는 서버 로그(console.error)에는 그대로 남는다',
   listSrc.includes("console.error('List submissions error:'"));
 
 // ─────────────────────────────────────────────────────────────
+// ⑦ 9개 언어 사전 자체의 결함 (2026-08-03 추가)
+//    ㄱ. pullletter.html 의 var L 에 ru 키가 두 번 있었다. 앞 블록은 내용이
+//        절반이 영어였고 뒤엣것이 이겨서, 앞을 고치면 아무 일도 안 일어났다.
+//    ㄴ. submission.html 의 gateDesc 가 it/fr/es/ja/zh 에서 "회원 전용입니다"
+//        한 문장으로 끝났다. "로그인하거나 가입하세요"라는 다음 행동 안내가
+//        ko/en/de/ru 에만 있었다 — 5개 언어 방문자는 뭘 해야 하는지 못 들었다.
+// ─────────────────────────────────────────────────────────────
+console.log('\n[7] 9개 언어 사전 정합');
+
+const pullHtml = read('frontend/pullletter.html');
+
+// var L 을 실제로 평가해서(정규식 눈대중 금지) 중복 키·값 언어를 본다.
+const lStart = pullHtml.indexOf('var L = {');
+const lEnd = pullHtml.indexOf('\n};', lStart);
+// eslint-disable-next-line no-eval
+const PL = eval('(' + pullHtml.slice(lStart + 'var L = '.length, lEnd + 2) + ')');
+
+const ruBlockCount = (pullHtml.slice(lStart, lEnd).match(/(?:^|,)ru:\{/gm) || []).length;
+ok('pullletter var L 에 ru 블록이 하나뿐이다 (중복 제거)', ruBlockCount === 1, `발견 ${ruBlockCount}개`);
+ok('살아있는 ru 가 실제 러시아어다 (영어 잔재가 이기지 않는다)',
+  PL.ru.business === 'БИЗНЕС' && PL.ru.gateLogin === 'ВОЙТИ');
+ok('ru 키 수가 줄지 않았다 (57개 유지)', Object.keys(PL.ru).length === 57,
+  `실제 ${Object.keys(PL.ru).length}`);
+
+// subDict 는 [5] 절에서 이미 var L={...} 을 평가해 둔 것이다. 다시 파싱하지 않는다.
+for (const lang of LANGS) {
+  const v = subDict[lang] && subDict[lang].gateDesc;
+  ok(`${lang} — gateDesc 에 로그인 안내 줄이 있다`,
+    typeof v === 'string' && v.split('\\n').length === 2, JSON.stringify(v));
+}
+
+// ─────────────────────────────────────────────────────────────
 console.log(`\n${failed === 0 ? '✅' : '❌'} submission-review-audit: ${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);
