@@ -6237,7 +6237,7 @@ async function publishEditorial(id,title){
 //
 //   {한국어 훅 — AI 생성에서만}
 //
-//   'TITLE' — PAP 매거진 exclusive editorial
+//   'TITLE' — PAP 매거진 오리지널 에디토리얼
 //
 //   {KR 단락 … 전체 스토리는 프로필 링크에서.}
 //
@@ -6371,7 +6371,7 @@ function _buildIgCaptionFromEditorial(ed){
   var lines = [];
 
   // 1) 타이틀 라인
-  lines.push("'" + title + "' — PAP 매거진 exclusive editorial");
+  lines.push("'" + title + "' — PAP 매거진 오리지널 에디토리얼");
   lines.push('');
 
   // 2) KR 단락 (전체 스토리 유도는 하단 Full Story link 블록으로 이관)

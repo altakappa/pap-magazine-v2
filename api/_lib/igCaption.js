@@ -10,7 +10,7 @@
  *
  *   {한국어 훅 한 줄}                          ← AI 생성. 없으면 생략
  *
- *   '{TITLE}' — PAP 매거진 exclusive editorial
+ *   '{TITLE}' — PAP 매거진 오리지널 에디토리얼
  *
  *   {KR 단락}
  *
@@ -68,7 +68,7 @@ function buildPapIgCaption(p) {
   if (hook) { lines.push(hook); lines.push(''); }
 
   // 2) 타이틀 라인
-  lines.push(`'${title}' — PAP 매거진 exclusive editorial`);
+  lines.push(`'${title}' — PAP 매거진 오리지널 에디토리얼`);
   lines.push('');
 
   // 3) KR 단락 (전체 스토리 유도는 하단 "Full Story link" 블록으로 이관)
