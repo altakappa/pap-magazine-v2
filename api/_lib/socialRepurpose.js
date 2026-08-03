@@ -13,6 +13,8 @@
  * 키가 없거나 호출이 실패하면 원문 기반의 안전한 폴백을 돌려준다(빈 값 아님).
  */
 
+const papVoice = require('./papVoice');
+
 const { reportAiResponse } = require('./aiCreditWatch');   // AI 장애 알림 (2026-07-30)
 
 const PLATFORMS = {
@@ -105,6 +107,8 @@ function _systemPrompt(platform, cfg) {
       '     介绍这组内容的看点（造型、色调、氛围、概念），最后自然地引导「主页链接看完整故事」。避免空泛的赞美。',
       '  3. "hashtags"：' + cfg.hashtagCount + ' 个小红书用户真的会搜的中文话题词（不带 # 号），例如 "时尚大片" "编辑推荐" "穿搭灵感"。',
       '  4. 保留人名、品牌名、专有名词原样。',
+      '  5. 不要使用破折号（—、–）。用逗号或句号代替。',
+      '  6. 不要评价他人外貌，不要编造原文没有的事实。',
       '',
       '只输出一个 JSON 对象：{"title":"...","body":"...","hashtags":["...","..."]}。不要多余文字，不要 markdown 代码块。',
     ].join('\n');
@@ -120,6 +124,8 @@ function _systemPrompt(platform, cfg) {
     '     이 콘텐츠의 볼거리(무드/스타일/컨셉)를 소개하고, 마지막에 자연스럽게 "프로필 링크에서 전체 보기"로 유도. 뻔한 미사여구 금지.',
     '  3. "hashtags": 한국 사용자가 실제로 검색할 한국어 해시태그 ' + cfg.hashtagCount + '개(# 없이). 예: "패션화보" "에디토리얼" "PAP매거진".',
     '  4. 사람 이름·브랜드명·고유명사는 원문 그대로 유지.',
+    '',
+    papVoice.KAKAO_VOICE,
     '',
     '오직 JSON 객체 하나만 출력: {"title":"...","body":"...","hashtags":["...","..."]}. 다른 말·마크다운 코드블록 금지.',
   ].join('\n');

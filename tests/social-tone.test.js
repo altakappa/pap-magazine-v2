@@ -44,6 +44,12 @@ function t(name, cond, detail) {
 const threads = fs.readFileSync(path.join(ROOT, 'api/_lib/threadsAutopost.js'), 'utf8');
 const hook = fs.readFileSync(path.join(ROOT, 'api/_lib/socialHook.js'), 'utf8');
 const xpost = fs.readFileSync(path.join(ROOT, 'api/_lib/xPost.js'), 'utf8');
+/* 2026-08-03 — 어투 문자열이 papVoice.js 로 단일화됐다(인스타 실게시물 50개
+   역설계 결과). 프롬프트 검사는 "모델에게 실제로 가는 문자열"을 봐야 하므로
+   socialHook.js 원문이 아니라 papVoice 를 합쳐서 본다. 이걸 안 하면 문자열이
+   옮겨갔을 뿐인데 테스트가 빨갛게 뜬다. */
+const voice = fs.readFileSync(path.join(ROOT, 'api/_lib/papVoice.js'), 'utf8');
+const hookEffective = hook + '\n' + voice;
 
 /* 이 모듈들은 supabase 를 require 하므로 통째로 로드할 수 없다.
    함수만 떼어내 실제로 실행한다 — 정규식 검사만으로는 동작을 못 본다. */
@@ -108,13 +114,13 @@ t('텍스트 반환 지점 수만큼 필터가 걸려 있다 (반환 ' + returns
 console.log('\n=== 4. 프롬프트가 반말을 지시하는가 ===');
 t('스레드 프롬프트가 반말을 지시한다', /반말/.test(threads));
 t('마지막 질문도 반말이라고 못박는다',
-  /마지막 질문만 존댓말로 바꾸지 마/.test(threads) || /질문도 반말/.test(hook));
+  /마지막 질문만 존댓말로 바꾸지 마/.test(threads) || /질문도 반말/.test(hookEffective));
 /* 검사 대상은 "모델에게 실제로 가는 문자열"이다. 코드 주석은 전달되지 않으므로
    제외한다 — 처음엔 파일 전체를 봐서, 수정 경위를 적어둔 주석("해요체 → 반말")
    을 아직 남은 지시로 오인해 실패했다. */
 const promptOnly = (src) => (src.match(/^\s*'.*',?$/gm) || []).join('\n');
 const threadsPrompt = promptOnly(threads);
-const hookPrompt = promptOnly(hook);
+const hookPrompt = promptOnly(hookEffective);
 
 t('해요체 지시가 프롬프트에 남아있지 않다', !/해요체/.test(threadsPrompt));
 t('존댓말 예시 "다들 어떻게 보세요"가 프롬프트에서 사라졌다',
@@ -134,7 +140,10 @@ console.log('\n=== 5. 전 채널(스레드+X) 공통 적용인가 ===');
 t('어투 규칙이 플랫폼 분기 없이 항상 붙는다',
   /system: SYSTEM \+ '\\n' \+ SOCIAL_TONE/.test(hook),
   "platform === 'threads' 분기가 되살아나면 X 가 다시 존댓말로 샌다");
-t('SOCIAL_TONE 이 정의돼 있다', /const SOCIAL_TONE = \[/.test(hook));
+t('SOCIAL_TONE 이 papVoice 단일 소스에서 온다',
+  /const SOCIAL_TONE = papVoice\.SOCIAL_VOICE;/.test(hook) && /const SOCIAL_VOICE = \[/.test(voice),
+  '어투 문자열을 socialHook 에 다시 하드코딩하면 채널마다 문체가 갈린다');
+t('papVoice 의 반말 지시가 살아있다', /처음부터 끝까지 반말/.test(voice));
 t('X 도 줄표 필터를 거친다', /stripDashes\(hook\.text\)/.test(xpost),
   '스레드만 걸면 X 에 줄표가 남는다');
 t('X 는 길이 판정 전에 필터를 건다',

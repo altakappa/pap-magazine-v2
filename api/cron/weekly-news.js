@@ -21,6 +21,8 @@
  * 수동 트리거: 관리자 토큰 POST 허용.
  */
 
+const papVoice = require('../_lib/papVoice');
+
 const { reportAiResponse } = require('../_lib/aiCreditWatch');   // AI 장애 알림 (2026-07-30)
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
@@ -86,6 +88,9 @@ const MASTER_SYSTEM = [
   '구성: 아트/컬쳐 3건, 패션 3건, 뷰티 2건, 셀럽 2건 안팎의 균형. 오래되거나 시시한 항목, 단순 커머스·실적 뉴스는 제외.',
   '각 항목 summary는 한국어 3-4문장(150-250자): ① 무슨 일이 있었나 ② 어디서/누가/어떻게 ③ PAP 독자(디자이너·아트 감도 높은 20-30대)에게 왜 의미 있는가.',
   '톤: 차분하고 에디토리얼하게. 감탄사·해시태그·과장 금지. 제목/요약에 출처 매체명 금지, 날짜 표기 금지.',
+  '',
+  papVoice.KO_MICRO,
+  '',
   '캠페인 필드: subject("PAP 이주의 뉴스 — <영문 월 일>"), preheader(받은편지함 미리보기 1줄), hero_headline("PAP WEEKLY BRIEFING"), hero_body(1-2문장 에디터 코멘트).',
   'JSON만 출력 (다른 텍스트 절대 금지):',
   '{"subject":"...","preheader":"...","hero_headline":"...","hero_body":"...","newsItems":[{"title":"한국어 12-30자","summary":"한국어 3-4문장","category":"ART|FASHION|BEAUTY|CELEB|CULTURE","url":"원문 링크","image":""}, ...10개]}',

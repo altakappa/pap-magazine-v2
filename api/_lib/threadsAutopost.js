@@ -12,6 +12,8 @@
  * env: ANTHROPIC_API_KEY, ANTHROPIC_MODEL(기본 claude-sonnet-4-5) — 선택.
  */
 
+const papVoice = require('./papVoice');
+
 const { reportAiResponse } = require('./aiCreditWatch');   // AI 장애 알림 (2026-07-30)
 const { supabaseAdmin } = require('./supabase');
 const { generateConversationalPost, stripDashes } = require('./socialHook');
@@ -66,6 +68,10 @@ const SYSTEM_PROMPT = [
   '  5. 인명·브랜드명·고유명사는 원문 그대로.',
   // 2026-07-21 도메니코 지시 — 줄표는 AI 티가 난다.
   '  6. 줄표(—, –, ㅡ)를 쓰지 마. 문장을 끊거나 쉼표를 쓴다.',
+  '',
+  '',
+  // 2026-08-03 — 인스타 실게시물 50개 역설계 문체. 규격은 papVoice.js 단일 소스.
+  papVoice.SOCIAL_VOICE,
   '',
   '오직 JSON 객체 하나만 출력: {"text":"..."} 다른 말·마크다운 코드블록 금지.',
 ].join('\n');

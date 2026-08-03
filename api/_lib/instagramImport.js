@@ -14,6 +14,8 @@
  * 둘 다 없으면 oEmbed fallback (제한적 — caption + media url 정도만)을 시도.
  */
 
+const papVoice = require('./papVoice');
+
 const _IG_API = 'https://graph.facebook.com/v18.0';
 
 // URL/shortcode/media-id 등 입력을 통합해서 항상 shortcode를 반환.
@@ -332,10 +334,10 @@ async function generateArticleFromPost(post, opts){
     '',
     'Output format (ONLY a JSON object, no markdown fences, no prose):',
     '{',
-    '  "title_ko": "(짧고 강렬한 한국어 제목, 30자 이내, 마침표 없이)",',
+    '  "title_ko": "(PAP 후킹 한 줄. 8~20자, 마침표 없이. 아래 후킹 규격을 따를 것)",',
     '  "title_en": "Short impactful English title, no period",',
-    '  "body_ko": "(존댓말, 3~5단락 4~6문장. 각 단락은 두 줄 빈 줄로 구분. <br><br>로 단락 구분. HTML 인라인 태그만 사용 가능.)",',
-    '  "body_en": "Same structure as body_ko in English. 3-5 paragraphs separated by <br><br>.",',
+    '  "body_ko": "(평서체 ~다. 존댓말 절대 금지. 정확히 2단락, 총 250~450자. 단락은 <br><br>로 구분. HTML 인라인 태그만 사용 가능.)",',
+    '  "body_en": "Exactly 2 paragraphs in English, mirroring body_ko, separated by <br><br>.",',
     '  "category": "Fashion | Beauty | Culture | News | Editorial",  // 가장 적합한 것 1개',
     '',
     'IMPORTANT — category "Editorial" is reserved for fashion-editorial CREDIT posts:',
@@ -354,10 +356,15 @@ async function generateArticleFromPost(post, opts){
     '',
     'Article rules:',
     '- DO NOT just translate the caption. Expand it into a proper magazine article.',
-    '- Body must read as standalone journalism — no "this Instagram post" references.',
-    '- Body should be 400~800 characters (KR) / 250~500 words (EN).',
+    '- Body must read as standalone journalism. Never reference "this Instagram post".',
     '- Cite brand/designer names when visible in the images.',
-    '- Stay neutral-positive editorial tone, not promotional.',
+    '',
+    '==================== PAP 에디터 말투 지문 (최우선 규격) ====================',
+    'PAP 인스타그램 실게시물 50개를 역설계해 도출한 실제 에디터 문체다.',
+    '일반적인 매거진 톤 직관보다 아래 규격이 항상 우선한다.',
+    '',
+    papVoice.ARTICLE_VOICE,
+    '=========================================================================',
     '',
     'Instagram post metadata:',
     '- Author: @' + (post.author || 'pap_magazine'),
