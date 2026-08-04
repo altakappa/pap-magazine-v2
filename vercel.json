@@ -988,6 +988,21 @@
       "permanent": true
     },
     {
+      "source": "/en/filmList/:path*",
+      "destination": "/films",
+      "permanent": true
+    },
+    {
+      "source": "/en/films",
+      "destination": "/films",
+      "permanent": true
+    },
+    {
+      "source": "/en/articles",
+      "destination": "/articles",
+      "permanent": true
+    },
+    {
       "source": "/en/:slug",
       "destination": "/en/editorial/:slug",
       "permanent": true
@@ -1034,12 +1049,12 @@
     },
     {
       "source": "/ko/filmList",
-      "destination": "/",
+      "destination": "/films",
       "permanent": true
     },
     {
       "source": "/ko/filmList/",
-      "destination": "/",
+      "destination": "/films",
       "permanent": true
     },
     {
@@ -1065,6 +1080,21 @@
     {
       "source": "/business/:path*",
       "destination": "/business",
+      "permanent": true
+    },
+    {
+      "source": "/ko/filmList/:path*",
+      "destination": "/films",
+      "permanent": true
+    },
+    {
+      "source": "/ko/films",
+      "destination": "/films",
+      "permanent": true
+    },
+    {
+      "source": "/ko/articles",
+      "destination": "/articles",
       "permanent": true
     },
     {
