@@ -223,6 +223,129 @@ function normalizeBatch(v, fallback) {
  * @throws  {Error}  설정 누락·API 실패·DB 오류 — 호출자가 상태코드로 변환한다.
  *                   err.statusCode 가 있으면 그 코드를 쓴다.
  */
+/* ─── 2026-08-04 Patch 5 — 한 건의 실패가 언어 전체를 얼리지 못하게 ───
+ *
+ * 사건: 독일어가 14시간 30분 멈췄다. 원인은 두 겹이었다.
+ *   ① 대기줄이 published_date DESC 로 고정 → 실패한 건이 영원히 맨 앞에 남는다.
+ *   ② 모델이 제목의 곧은 큰따옴표를 이스케이프 없이 뱉으면 JSON 이 통째로 깨진다.
+ *      (같은 행의 it 번역이 곧은 따옴표로 저장돼 있던 것이 증거)
+ * 대응: 배치 JSON 이 깨지면 빠진 건만 1건씩, JSON 이 아닌 구분자 포맷으로
+ *       다시 받는다(따옴표가 무엇이 들어와도 깨질 수 없는 형식). 그래도 안 되면
+ *       그 건만 이번 회차에서 빼고 다음 건으로 넘어간다. */
+const MAX_PASSES = 3;
+const T_MARK = '<<<TITLE>>>';
+const D_MARK = '<<<DESC>>>';
+const B_MARK = '<<<BODY>>>';
+
+/* 개수 상한 + 문자수 예산 중 먼저 걸리는 쪽으로 자른다(최소 1건은 보장 —
+   예산보다 긴 글도 혼자서는 처리돼야 한다). */
+function pickItems(queue, size, cfg) {
+  let items = queue.slice(0, Math.max(1, size));
+  if (cfg.charBudget > 0) {
+    const picked = [];
+    let used = 0;
+    for (const it of items) {
+      /* 2026-08-03: body 만 봤다. 에디토리얼 src 는 body 가 없고
+         description 이라 예산이 항상 0으로 계산돼 무력화됐다. */
+      const s_ = cfg.src(it) || {};
+      const len = String(s_.body || s_.description || '').length;
+      if (picked.length && used + len > cfg.charBudget) break;
+      picked.push(it);
+      used += len;
+    }
+    items = picked;
+  }
+  return items;
+}
+
+async function callClaude(prompt, maxTokens, model, timeoutMs) {
+  const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': process.env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model,
+      // 2026-07-21: 4000 이었으나 batch=20 + ja(멀티바이트, 토큰 소모 큼)
+      // 조합에서 응답이 중간에 잘려 JSON 파싱 실패가 재현됨(운영 관찰,
+      // batch<=10 은 재현 안 됨). it/fr/es 는 영향 없이 여유만 늘어남.
+      max_tokens: maxTokens,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  if (!apiRes.ok) {
+    const body = await apiRes.text().catch(() => '');
+    throw new Error('Claude API 실패 (' + apiRes.status + '): ' + body.slice(0, 200));
+  }
+  const j = await apiRes.json();
+  return {
+    text: (j.content && j.content[0] && j.content[0].text) || '',
+    stopReason: j.stop_reason,
+  };
+}
+
+/* 배치 프롬프트 — kind 별로 다르다.
+   · 에디토리얼 — 제목+요약(사진 중심, 짧은 카피)
+   · 아티클     — 제목+본문. 본문은 HTML 조각이 섞여 있어 "태그는 그대로
+                  두고 텍스트만 번역"을 명시해야 마크업이 깨지지 않는다. */
+function buildBatchPrompt(items, cfg, lang) {
+  const src = items.map((e, i) => Object.assign({ i }, cfg.src(e)));
+  return cfg.translateBody
+    ? `You are translating fashion-magazine ARTICLES for PAP MAGAZINE into ${LANG_NAMES[lang]}.\n` +
+      `Rules:\n` +
+      `- Keep proper nouns, brand names, and stylized titles unchanged unless a natural localized form exists.\n` +
+      `- Translate the body faithfully into native ${LANG_NAMES[lang]} — magazine register, not literal machine translation.\n` +
+      `- The body may contain HTML tags. Keep every tag, attribute and URL EXACTLY as-is; translate only the visible text.\n` +
+      `- Do not summarize, omit, or add content. Preserve paragraph structure.\n` +
+      `- Return ONLY a JSON array, one object per input, shape: {"i":<index>,"title":"...","body":"..."}. No prose, no code fences.\n` +
+      `- Inside JSON strings, escape every double quote as \\". Prefer the target language's own quotation marks in the text.\n` +
+      `Input JSON:\n` + JSON.stringify(src)
+    : `You are translating fashion-magazine editorial metadata for PAP MAGAZINE into ${LANG_NAMES[lang]}.\n` +
+      `Rules:\n` +
+      `- Keep proper nouns, brand names, and stylized titles (e.g. "CRIMSON", "Rotten Roots") unchanged unless a natural localized form exists.\n` +
+      `- The description must read like native ${LANG_NAMES[lang]} fashion-editorial copy — elegant, concise, no literal machine translation.\n` +
+      `- Return ONLY a JSON array, one object per input, shape: {"i":<index>,"title":"...","description":"..."}. No prose, no code fences.\n` +
+      `- Inside JSON strings, escape every double quote as \\". Prefer the target language's own quotation marks in the text.\n` +
+      `Input JSON:\n` + JSON.stringify(src);
+}
+
+/* 구분자 응답 파서 — JSON 이 아니므로 따옴표·역슬래시가 섞여도 깨지지 않는다. */
+function parseSentinel(text, wantBody) {
+  const s = String(text || '');
+  const ti = s.indexOf(T_MARK);
+  if (ti === -1) return null;
+  const second = wantBody ? B_MARK : D_MARK;
+  const si = s.indexOf(second, ti + T_MARK.length);
+  const title = s.slice(ti + T_MARK.length, si === -1 ? s.length : si).trim();
+  if (!title) return null;
+  const rest = si === -1 ? '' : s.slice(si + second.length).trim();
+  if (!rest) return null;
+  return wantBody ? { title, body: rest } : { title, description: rest };
+}
+
+/* 1건 전용 재시도. 배치 JSON 이 깨진 건의 최후 수단이다. */
+async function translateOne(item, cfg, lang, model, timeoutMs) {
+  const s_ = cfg.src(item) || {};
+  const wantBody = !!cfg.translateBody;
+  const second = wantBody ? B_MARK : D_MARK;
+  const prompt =
+    `Translate this fashion-magazine ${wantBody ? 'article' : 'editorial'} for PAP MAGAZINE into ${LANG_NAMES[lang]}.\n` +
+    `- Keep proper nouns, brand names and stylized titles unchanged unless a natural localized form exists.\n` +
+    (wantBody
+      ? `- The body may contain HTML tags. Keep every tag, attribute and URL EXACTLY as-is; translate only the visible text.\n`
+      : `- The description must read like native ${LANG_NAMES[lang]} fashion-editorial copy — elegant, concise.\n`) +
+    `Output format — PLAIN TEXT, not JSON. Print exactly this, and nothing else:\n` +
+    T_MARK + `\n<translated title>\n` + second + `\n<translated ${wantBody ? 'body' : 'description'}>\n` +
+    `No code fences, no commentary, no surrounding quotes.\n\n` +
+    `TITLE: ` + String(s_.title || '') + `\n` +
+    (wantBody ? `BODY:\n` + String(s_.body || '') : `DESCRIPTION:\n` + String(s_.description || ''));
+  const { text } = await callClaude(prompt, cfg.maxTokens || 8000, model, timeoutMs);
+  return parseSentinel(text, wantBody);
+}
+
 async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 90000 } = {}) {
   if (!LANG_NAMES[lang]) {
     const e = new Error('lang 은 ' + Object.keys(LANG_NAMES).join('|') + ' 중 하나여야 합니다.');
@@ -318,103 +441,80 @@ async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 9
     }
   }
 
-  /* 개수 상한 + 문자수 예산 중 먼저 걸리는 쪽으로 자른다(최소 1건은 보장 —
-     예산보다 긴 글도 혼자서는 처리돼야 한다). */
-  let items = pending.slice(0, size);
-  if (cfg.charBudget > 0) {
-    const picked = [];
-    let used = 0;
-    for (const it of items) {
-      /* 2026-08-03: body 만 봤다. 에디토리얼 src 는 body 가 없고
-         description 이라 예산이 항상 0으로 계산돼 무력화됐다. */
-      const s_ = cfg.src(it) || {};
-      const len = String(s_.body || s_.description || '').length;
-      if (picked.length && used + len > cfg.charBudget) break;
-      picked.push(it);
-      used += len;
-    }
-    items = picked;
-  }
-
-  /* 3) Claude 번역 — 배치 전체를 한 번에 JSON 으로 */
+  /* 3) 번역 + 저장 — 실패한 한 건이 언어 전체를 얼리지 못한다 (Patch 5)
+   *   ① 배치 한 번에 JSON 으로 (기존과 동일 — 정상일 때 동작·비용 변화 없음)
+   *   ② 배치에서 빠진 건은 1건씩 구분자 포맷으로 재시도 (따옴표로 안 깨짐)
+   *   ③ 그래도 실패한 건은 이번 회차에서 제외하고 다음 건으로 (최대 3패스) */
   const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
-  const src = items.map((e, i) => Object.assign({ i }, cfg.src(e)));
-  /* 프롬프트는 kind 별로 다르다.
-     · 에디토리얼 — 제목+요약(사진 중심, 짧은 카피)
-     · 아티클     — 제목+본문. 본문은 HTML 조각이 섞여 있어 "태그는 그대로
-                    두고 텍스트만 번역"을 명시해야 마크업이 깨지지 않는다. */
-  const prompt = cfg.translateBody
-    ? `You are translating fashion-magazine ARTICLES for PAP MAGAZINE into ${LANG_NAMES[lang]}.\n` +
-      `Rules:\n` +
-      `- Keep proper nouns, brand names, and stylized titles unchanged unless a natural localized form exists.\n` +
-      `- Translate the body faithfully into native ${LANG_NAMES[lang]} — magazine register, not literal machine translation.\n` +
-      `- The body may contain HTML tags. Keep every tag, attribute and URL EXACTLY as-is; translate only the visible text.\n` +
-      `- Do not summarize, omit, or add content. Preserve paragraph structure.\n` +
-      `- Return ONLY a JSON array, one object per input, shape: {"i":<index>,"title":"...","body":"..."}. No prose, no code fences.\n` +
-      `Input JSON:\n` + JSON.stringify(src)
-    : `You are translating fashion-magazine editorial metadata for PAP MAGAZINE into ${LANG_NAMES[lang]}.\n` +
-      `Rules:\n` +
-      `- Keep proper nouns, brand names, and stylized titles (e.g. "CRIMSON", "Rotten Roots") unchanged unless a natural localized form exists.\n` +
-      `- The description must read like native ${LANG_NAMES[lang]} fashion-editorial copy — elegant, concise, no literal machine translation.\n` +
-      `- Return ONLY a JSON array, one object per input, shape: {"i":<index>,"title":"...","description":"..."}. No prose, no code fences.\n` +
-      `Input JSON:\n` + JSON.stringify(src);
-
-  const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model,
-      // 2026-07-21: 4000 이었으나 batch=20 + ja(멀티바이트, 토큰 소모 큼)
-      // 조합에서 응답이 중간에 잘려 JSON 파싱 실패가 재현됨(운영 관찰,
-      // batch<=10 은 재현 안 됨). it/fr/es 는 영향 없이 여유만 늘어남.
-      max_tokens: cfg.maxTokens || 8000,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-    signal: AbortSignal.timeout(timeoutMs),
-  });
-  if (!apiRes.ok) {
-    const body = await apiRes.text().catch(() => '');
-    throw new Error('Claude API 실패 (' + apiRes.status + '): ' + body.slice(0, 200));
-  }
-  const j = await apiRes.json();
-  const text = (j.content && j.content[0] && j.content[0].text) || '';
-
-  /* 응답이 잘린 건지 포맷이 다른 건지를 구분한다 — 원인이 다르면 대응이 다르다.
-     잘렸다면 배치를 줄여야 하고, 포맷 문제라면 파싱을 관대하게 하면 된다. */
-  /* 2026-08-03 Patch 4: 잘렸더라도 앞부분의 온전한 건은 살린다.
-     예전엔 여기서 곧장 던져 배치 전체를 버렸다 — 잘린 건 마지막 한 건뿐인데도.
-     한 건도 건지지 못하면 parseJsonArray 가 던진다(재시도가 배치를 줄인다). */
-  const parsed = parseJsonArray(text);
-  if (!Array.isArray(parsed)) throw new Error('번역 응답이 배열이 아님.');
-  if (j.stop_reason === 'max_tokens' && !parsed.length) {
-    throw new Error('번역 응답이 max_tokens 에서 잘림 (배치 ' + items.length + '건) — 배치를 줄여야 한다.');
-  }
-
-  /* 4) 저장 */
-  let processed = 0;
+  const failedIds = new Set();
   const errors = [];
-  for (const t of parsed) {
-    const srcItem = items[t.i];
-    if (!srcItem || !t.title) { errors.push({ i: t.i, reason: 'missing item or title' }); continue; }
-    const { error: upErr } = await supabaseAdmin
-      .from('seo_translations')
-      .upsert({
-        kind,
-        content_id: srcItem.id,
-        lang,
-        title: String(t.title).slice(0, 300),
-        description: t.description ? String(t.description).slice(0, 2000) : null,
-        // 본문은 아티클만. 길이 제한을 두지 않는다 — 잘린 본문을 저장하면
-        // 사용자에게 문장이 끊긴 페이지가 나간다.
-        body: cfg.translateBody && t.body ? String(t.body) : null,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'kind,content_id,lang' });
-    if (upErr) { errors.push({ i: t.i, reason: upErr.message }); continue; }
-    processed++;
+  let processed = 0;
+
+  for (let pass = 0; pass < MAX_PASSES && processed < size; pass++) {
+    const queue = pending.filter(e => !failedIds.has(e.id));
+    const items = pickItems(queue, size - processed, cfg);
+    if (!items.length) break;
+
+    /* ① 배치 */
+    let parsed = [];
+    try {
+      const r = await callClaude(buildBatchPrompt(items, cfg, lang), cfg.maxTokens || 8000, model, timeoutMs);
+      /* 2026-08-03 Patch 4: 잘렸더라도 앞부분의 온전한 건은 살린다. */
+      const v = parseJsonArray(r.text);
+      if (Array.isArray(v)) parsed = v;
+    } catch (e) {
+      errors.push({ reason: '배치 실패: ' + String((e && e.message) || e).slice(0, 80) });
+    }
+
+    const got = new Map();
+    for (const t of parsed) {
+      const srcItem = items[t.i];
+      if (srcItem && t.title) got.set(srcItem.id, t);
+    }
+
+    /* ② 빠진 건만 1건씩 재시도 */
+    for (const it of items) {
+      if (got.has(it.id)) continue;
+      try {
+        const one = await translateOne(it, cfg, lang, model, timeoutMs);
+        if (one && one.title) got.set(it.id, one);
+        else {
+          failedIds.add(it.id);
+          errors.push({ id: it.id, reason: '단건 재시도 파싱 실패' });
+        }
+      } catch (e) {
+        failedIds.add(it.id);
+        errors.push({ id: it.id, reason: '단건 재시도 실패: ' + String((e && e.message) || e).slice(0, 60) });
+      }
+    }
+
+    /* ③ 저장 */
+    for (const it of items) {
+      const t = got.get(it.id);
+      if (!t) continue;
+      const { error: upErr } = await supabaseAdmin
+        .from('seo_translations')
+        .upsert({
+          kind,
+          content_id: it.id,
+          lang,
+          title: String(t.title).slice(0, 300),
+          description: t.description ? String(t.description).slice(0, 2000) : null,
+          // 본문은 아티클만. 길이 제한을 두지 않는다 — 잘린 본문을 저장하면
+          // 사용자에게 문장이 끊긴 페이지가 나간다.
+          body: cfg.translateBody && t.body ? String(t.body) : null,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'kind,content_id,lang' });
+      if (upErr) {
+        failedIds.add(it.id);
+        errors.push({ id: it.id, reason: upErr.message });
+        continue;
+      }
+      processed++;
+    }
+
+    /* 실패가 없으면 한 패스로 끝낸다 — 정상 상황의 실행량은 기존과 같다. */
+    if (!failedIds.size) break;
   }
 
   return {
@@ -424,9 +524,11 @@ async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 9
     remaining: remainingTotal - processed,
     // 원본(설명)이 없어 손댈 수 없는 건수. 0 이 아니면 '완주' 가 아니다.
     skipped_no_source: skippedNoSource,
+    // 이번 회차에서 건너뛴 불량 건수. 0 이 아니면 그 id 를 사람이 확인해야 한다.
+    skipped_failed: failedIds.size || undefined,
     errors: errors.length ? errors : undefined,
     hint: remainingTotal - processed > 0 ? '같은 URL 을 반복 호출해 잔여분을 처리하세요.' : '전부 번역 완료.',
   };
 }
 
-module.exports = { runBackfillBatch, normalizeBatch, parseJsonArray, salvageObjects, LANG_NAMES, KINDS };
+module.exports = { runBackfillBatch, normalizeBatch, parseJsonArray, salvageObjects, parseSentinel, pickItems, buildBatchPrompt, LANG_NAMES, KINDS };
