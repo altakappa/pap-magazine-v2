@@ -27,6 +27,7 @@ const { listRecentMedia, isLikelyEditorialCaption, _extractShortcode } = require
 const { diagnoseBackfill, buildBackfillAlert } = require('../_lib/backfillHealth');
 const { judgeTranslateHealth, buildTranslateAlert } = require('../_lib/translateHealth');
 const { judgeFaqHealth, buildFaqAlert, summarizeFaqRuns } = require('../_lib/faqHealth');
+const { summarizeDurations, judgeCronDuration, buildCronDurationAlert } = require('../_lib/cronDurationHealth');
 
 const ALERT_KEY = 'ig-to-site-pipeline';
 /* 서술문 백필은 IG 파이프라인과 독립적인 문제라 알림 키를 분리한다 —
@@ -38,6 +39,8 @@ const TRANSLATE_ALERT_KEY = 'translate-backfill-health';
 const REEL_ALERT_KEY = 'reel-video-health';
 /* FAQ 백필도 같은 이유로 키를 분리한다 (2026-08-04). */
 const FAQ_ALERT_KEY = 'faq-backfill-health';
+/* 크론 실행시간 — 함수 상한에 잘려 죽는 실행을 찾는다 (2026-08-04). */
+const DURATION_ALERT_KEY = 'cron-duration-health';
 const SITE = 'https://www.pap-magazine.com';
 
 /* 게시 후 이 시간이 지나도 발행되지 않으면 이상으로 본다.
@@ -203,7 +206,14 @@ module.exports = withCronGuard('pipeline-watch', async function handler(req, res
    * 크론은 그걸 '완주' 라고 보고했다. 이제 잔여와 실제 생산량을 대조한다. */
   const faq = await checkFaq({ dry });
 
-  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels, faq });
+  /* ── 크론 실행시간 감시 (2026-08-04 추가) ──
+   * 앞의 네 감시는 모두 '생산량' 을 본다. 그런데 번역 백필은 6시간 동안
+   * 22번을 Vercel 120초 상한에 잘려 죽었는데, cron_runs 의 실패는 0건이었다 —
+   * 도중에 죽은 함수는 자기 죽음을 기록할 수 없기 때문이다. 성공률만 보면
+   * 평화롭다. 그래서 이건 성공/실패가 아니라 시간을 본다. */
+  const duration = await checkDuration({ dry });
+
+  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels, faq, duration });
 });
 
 /** 서술문 생산이 실제로 되고 있는지 보고, 이상하면 텔레그램으로 알린다. */
@@ -550,9 +560,68 @@ async function checkFaq(opts) {
   }
 }
 
+/**
+ * 크론들의 실행시간을 보고, 함수 상한에 붙기 시작하면 알린다.
+ * 판정 규칙은 _lib/cronDurationHealth.js (순수 함수).
+ *
+ * 상한에 걸려 강제종료된 실행은 이 표에 아예 남지 않는다. 그래서 남은
+ * 기록만으로도 보이는 신호 — '상한에 거의 닿은 실행의 비율' — 을 본다.
+ * 잘려 죽은 것들은 보이지 않으므로, 여기 보이는 숫자는 항상 과소평가다.
+ */
+async function checkDuration(opts) {
+  const WINDOW_H = Number(process.env.CRON_DURATION_WINDOW_HOURS || 3);
+  try {
+    const since = new Date(Date.now() - WINDOW_H * 3600000).toISOString();
+    const { data: rows, error } = await supabaseAdmin
+      .from('cron_runs').select('cron_name, duration_ms')
+      .gte('ran_at', since).limit(5000);
+    if (error) throw error;
+
+    const summary = summarizeDurations(rows || []);
+    const d = judgeCronDuration(summary, { windowHours: WINDOW_H });
+    if (opts && opts.dry) return { dry: true, ...d };
+
+    const { data: st } = await supabaseAdmin.from('ops_alert_state')
+      .select('last_alert_at, last_payload').eq('key', DURATION_ALERT_KEY).maybeSingle();
+    const lastAt = st && st.last_alert_at ? Date.parse(st.last_alert_at) : 0;
+    const wasBroken = !!(st && st.last_payload && st.last_payload.broken);
+    const COOLDOWN_H = Number(process.env.CRON_DURATION_COOLDOWN_H || 6);
+    const broken = !d.healthy;
+
+    let alerted = false;
+    if (broken && Date.now() - lastAt > COOLDOWN_H * 3600000) {
+      await pushAlert({ ...buildCronDurationAlert(d, SITE), personalOnly: true });
+      alerted = true;
+    } else if (!broken && wasBroken) {
+      await pushAlert({
+        personalOnly: true,
+        title: '✅ 크론 실행시간 정상화 — 예산 안으로 돌아옴',
+        lines: [d.reason],
+        url: `${SITE}/admin`, urlLabel: '어드민',
+      });
+      alerted = true;
+    }
+    if (alerted || wasBroken !== broken) {
+      await supabaseAdmin.from('ops_alert_state').upsert({
+        key: DURATION_ALERT_KEY,
+        last_alert_at: alerted ? new Date().toISOString() : (st && st.last_alert_at) || null,
+        last_payload: { broken, status: d.status, worst: d.worst || null, judged: d.judged },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'key' });
+    }
+    return { ...d, alerted };
+  } catch (e) {
+    console.error('[pipeline-watch] cron duration health 실패', e && e.message);
+    return { error: (e && e.message) || 'unknown' };
+  }
+}
+
 module.exports.diagnose = diagnose;
 module.exports.buildAlert = buildAlert;
 module.exports.judgeReelHealth = judgeReelHealth;
 module.exports.buildReelAlert = buildReelAlert;
 module.exports.judgeFaqHealth = judgeFaqHealth;
 module.exports.buildFaqAlert = buildFaqAlert;
+module.exports.judgeCronDuration = judgeCronDuration;
+module.exports.buildCronDurationAlert = buildCronDurationAlert;
+module.exports.summarizeDurations = summarizeDurations;

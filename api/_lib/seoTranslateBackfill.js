@@ -233,6 +233,48 @@ function normalizeBatch(v, fallback) {
  *       다시 받는다(따옴표가 무엇이 들어와도 깨질 수 없는 형식). 그래도 안 되면
  *       그 건만 이번 회차에서 빼고 다음 건으로 넘어간다. */
 const MAX_PASSES = 3;
+
+/* ─── 2026-08-04 Patch 6 — Patch 5 가 깨뜨린 시간 예산을 되돌린다 ───
+ *
+ * 사건: Patch 5 배포 후 이 크론의 평균 실행시간이 94~138초가 됐고, 시간당
+ * 27회 중 절반 가까이가 100초를 넘었다. Vercel maxDuration 이 120초라
+ * 6시간 동안 22번이 실행 도중 강제종료됐다. 그런데 cron_runs 의 실패는
+ * 0건이다 — 잘려 죽은 실행은 자기가 죽었다는 기록조차 남기지 못한다.
+ *
+ * 원인: 크론의 예산 계산은 "runBackfillBatch 한 번 = Claude 호출 한 번"
+ * 이라는 전제 위에 서 있다(그래서 웨이브 진입 조건이 CALL_MS + 여유다).
+ * Patch 5 는 그 안에 두 겹을 더 넣었다 — 배치가 깨지면 건별 단건 재시도,
+ * 그러고도 실패가 남으면 MAX_PASSES(3) 만큼 전체 반복. 사설 호출 상한이
+ * 40초이므로 한 번의 runBackfillBatch 가 40초가 아니라 240초를 쓸 수 있다.
+ * Patch 5 자체는 옳았다. 다만 바깥의 예산 약속을 안쪽이 모르고 있었다.
+ *
+ * 대응: 마감시각(절대 시각)을 인자로 받아, **모든 Claude 호출 앞에서**
+ * 남은 시간을 확인한다. 부족하면 지금까지 저장한 만큼 돌려주고 물러난다.
+ * 시간이 빠듯하면 호출 타임아웃도 남은 시간에 맞춰 줄인다.
+ * 마감을 안 주면(관리자 수동 호출) 예전과 똑같이 동작한다. */
+
+/* 호출 하나가 끝난 뒤 저장·정리에 쓸 여유. */
+const CALL_SLACK_MS = 3000;
+
+/** 마감까지 남은 ms. 마감이 없으면 Infinity — 즉 제한 없음. */
+function msLeft(deadlineAt) {
+  const d = Number(deadlineAt);
+  if (!Number.isFinite(d) || d <= 0) return Infinity;
+  return d - Date.now();
+}
+
+/** 이 호출을 시작해도 되는가 — 타임아웃만큼 쓰고도 여유가 남아야 한다. */
+function canCall(deadlineAt, timeoutMs) {
+  return msLeft(deadlineAt) >= (Number(timeoutMs) || 0) + CALL_SLACK_MS;
+}
+
+/** 실제로 줄 호출 타임아웃 — 마감이 가까우면 그만큼 줄인다. */
+function callBudget(deadlineAt, timeoutMs) {
+  const left = msLeft(deadlineAt);
+  if (!Number.isFinite(left)) return timeoutMs;
+  return Math.max(1, Math.min(timeoutMs, left - CALL_SLACK_MS));
+}
+
 const T_MARK = '<<<TITLE>>>';
 const D_MARK = '<<<DESC>>>';
 const B_MARK = '<<<BODY>>>';
@@ -346,7 +388,7 @@ async function translateOne(item, cfg, lang, model, timeoutMs) {
   return parseSentinel(text, wantBody);
 }
 
-async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 90000 } = {}) {
+async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 90000, deadlineAt = 0 } = {}) {
   if (!LANG_NAMES[lang]) {
     const e = new Error('lang 은 ' + Object.keys(LANG_NAMES).join('|') + ' 중 하나여야 합니다.');
     e.statusCode = 400;
@@ -449,16 +491,23 @@ async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 9
   const failedIds = new Set();
   const errors = [];
   let processed = 0;
+  /* 마감에 걸려 중단했는가. '할 일이 없어서 끝난 것' 과 구분해 보고한다 —
+     이걸 뭉뜽그리면 시간에 쫓겨 못 한 것을 완주로 착각한다. */
+  let ranOut = false;
 
   for (let pass = 0; pass < MAX_PASSES && processed < size; pass++) {
     const queue = pending.filter(e => !failedIds.has(e.id));
     const items = pickItems(queue, size - processed, cfg);
     if (!items.length) break;
 
+    /* 배치 호출 한 번 쓸 시간이 없으면 여기서 접는다. */
+    if (!canCall(deadlineAt, timeoutMs)) { ranOut = true; break; }
+
     /* ① 배치 */
     let parsed = [];
     try {
-      const r = await callClaude(buildBatchPrompt(items, cfg, lang), cfg.maxTokens || 8000, model, timeoutMs);
+      const r = await callClaude(buildBatchPrompt(items, cfg, lang), cfg.maxTokens || 8000, model,
+        callBudget(deadlineAt, timeoutMs));
       /* 2026-08-03 Patch 4: 잘렸더라도 앞부분의 온전한 건은 살린다. */
       const v = parseJsonArray(r.text);
       if (Array.isArray(v)) parsed = v;
@@ -475,8 +524,11 @@ async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 9
     /* ② 빠진 건만 1건씩 재시도 */
     for (const it of items) {
       if (got.has(it.id)) continue;
+      /* 재시도가 마감을 밀고 나가지 않는다. 이건 그 기사의 잘못이 아니므로
+         failedIds 에 넣지 않는다 — 다음 실행에서 그대로 다시 시도된다. */
+      if (!canCall(deadlineAt, timeoutMs)) { ranOut = true; break; }
       try {
-        const one = await translateOne(it, cfg, lang, model, timeoutMs);
+        const one = await translateOne(it, cfg, lang, model, callBudget(deadlineAt, timeoutMs));
         if (one && one.title) got.set(it.id, one);
         else {
           failedIds.add(it.id);
@@ -513,6 +565,8 @@ async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 9
       processed++;
     }
 
+    /* 마감에 걸렸으면 다음 패스로 넘어가지 않는다 (저장은 위에서 이미 끝났다). */
+    if (ranOut) break;
     /* 실패가 없으면 한 패스로 끝낸다 — 정상 상황의 실행량은 기존과 같다. */
     if (!failedIds.size) break;
   }
@@ -526,9 +580,11 @@ async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 9
     skipped_no_source: skippedNoSource,
     // 이번 회차에서 건너뛴 불량 건수. 0 이 아니면 그 id 를 사람이 확인해야 한다.
     skipped_failed: failedIds.size || undefined,
+    // 마감에 걸려 중단했다. 잔여가 남아도 '막힌 것' 이 아니라 '시간이 끝난 것'.
+    ran_out_of_time: ranOut || undefined,
     errors: errors.length ? errors : undefined,
     hint: remainingTotal - processed > 0 ? '같은 URL 을 반복 호출해 잔여분을 처리하세요.' : '전부 번역 완료.',
   };
 }
 
-module.exports = { runBackfillBatch, normalizeBatch, parseJsonArray, salvageObjects, parseSentinel, pickItems, buildBatchPrompt, LANG_NAMES, KINDS };
+module.exports = { runBackfillBatch, normalizeBatch, parseJsonArray, salvageObjects, parseSentinel, pickItems, buildBatchPrompt, msLeft, canCall, callBudget, CALL_SLACK_MS, MAX_PASSES, LANG_NAMES, KINDS };
