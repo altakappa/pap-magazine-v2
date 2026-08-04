@@ -7,6 +7,7 @@
  * the full editorial gallery (lazy-loaded).
  *
  * Lookup is 4-step: slug → decoded slug → title → UUID id.
+ * (2026-08-04 대소문자 무시 슬러그 단계 추가 — 구 Wix URL 대응)
  */
 
 const { supabaseAdmin } = require('../../_lib/supabase');
@@ -53,6 +54,24 @@ module.exports = async function handler(req, res) {
       r = await supabaseAdmin.from('editorials').select('*')
         .eq('slug', dehyphenated).eq('status', 'published').limit(1).maybeSingle();
       data = r.data;
+    }
+
+    /* 2c) 대소문자만 다른 슬러그 — 구 Wix URL 에는 대문자가 섞여 있다.
+       (/ko/balloon-Tennis-from-9to5/ → DB 는 balloon-tennis-from-9to5)
+       GSC '찾을 수 없음(404)' 표본에서 확인된 실제 패턴. 정확히 1건만
+       매칭될 때 정본 소문자 주소로 301 (200 으로 그냥 렌더하면 대소문자
+       변형 URL 이 중복 색인된다). 언어 접두어는 그대로 보존. 2026-08-04 */
+    if (!data && !/%/.test(decoded)) {
+      const safeSlugCi = decoded.replace(/[\\%_]/g, ch => '\\' + ch);
+      const ci = await supabaseAdmin.from('editorials').select('slug')
+        .ilike('slug', safeSlugCi).eq('status', 'published').limit(2);
+      if (ci.data && ci.data.length === 1 && ci.data[0].slug && ci.data[0].slug !== decoded) {
+        const ciLang = String((req.query && req.query.lang) || '');
+        const ciPrefix = /^(en|it|fr|es|ja|de|zh|ru)$/.test(ciLang) ? '/' + ciLang : '';
+        res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=3600');
+        res.setHeader('Location', ciPrefix + '/editorial/' + encodeURIComponent(ci.data[0].slug));
+        return res.status(301).end();
+      }
     }
 
     /* 3) title (legacy URLs that used title in the path slot) */
