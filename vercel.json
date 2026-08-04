@@ -73,6 +73,10 @@
       "schedule": "20 */3 * * *"
     },
     {
+      "path": "/api/cron/video-repair",
+      "schedule": "35 * * * *"
+    },
+    {
       "path": "/api/cron/threads-post",
       "schedule": "2-52/10 * * * *"
     },
