@@ -50,6 +50,8 @@ const {
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.com';
 const SKIP_KEY = 'video-repair-skip';
+/* 복구된 릴스에만 열어주는 신선도 창(일). 정기 실행의 기본 3일은 그대로 둔다. */
+const WAKE_DAYS = 7;
 const MAX_FAILS = 3; // 이 횟수부터는 포기 — 원본이 삭제/비공개된 기사로 본다
 
 /**
@@ -182,11 +184,12 @@ module.exports = withCronGuard('video-repair', async function handler(req, res) 
 
   if (skipDirty) await saveSkip(fails);
 
-  /* 1건이라도 복구했으면 유튜브 크론을 깨운다 — 신선도 창(3일)이 있으므로
-     다음 정기 실행까지 기다리다 창이 닫히면 복구가 헛수고가 된다. */
+  /* 1건이라도 복구했으면 유튜브 크론을 깨운다 — 신선도 창(기본 3일)이 있으므로
+     다음 정기 실행까지 기다리다 창이 닫히면 복구가 헛수고가 된다.
+     복구된 기사는 '수집이 늦은' 것이지 '오래된' 것이 아니므로 days=7 로 연다. */
   if (results.repaired && process.env.CRON_SECRET) {
     try {
-      await fetch(SITE + '/api/cron/youtube-post', {
+      await fetch(SITE + '/api/cron/youtube-post?days=' + WAKE_DAYS, {
         method: 'GET',
         headers: { authorization: 'Bearer ' + process.env.CRON_SECRET },
         signal: AbortSignal.timeout(15000),

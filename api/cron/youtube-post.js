@@ -97,7 +97,13 @@ module.exports = withCronGuard('youtube-post', async function handler(req, res) 
     // 신선도 창(최근 3일) 안의 릴스(원본 IG media_type = 'VIDEO') 미게시 기사 1건.
     // 캐러셀(CAROUSEL_ALBUM) 안에 영상이 섞여 있어도 스킵 — 릴스 원본만 세로 3분 이하가
     // 보장되어 Shorts 자동 분류에 적합. IMAGE 게시물도 당연히 제외.
-    const freshCutoff = new Date(Date.now() - 3 * 86400000).toISOString();
+    /* ?days=N (1~14) 으로 창을 넓힐 수 있다. 기본은 3일 그대로.
+       수집 버그로 mp4 가 비어 후보에서 탈락했던 릴스는 복구 시점엔 이미
+       창 밖인 경우가 많다 — video-repair 가 복구 직후 days=7 로 깨워
+       그 구제 통로를 연다. 기본값을 늘리지 않는 이유는 쇼츠는 '지금 것'
+       이어야 하고, 창을 상시로 넓히면 옛 릴스가 밀려 올라오기 때문이다. */
+    const freshDays = Math.max(1, Math.min(14, Number((req.query && req.query.days) || 3) || 3));
+    const freshCutoff = new Date(Date.now() - freshDays * 86400000).toISOString();
     const { data: arts } = await supabaseAdmin.from('articles')
       .select('id, title, slug, custom_url, content, videos, category, source_media_type')
       .eq('status', 'published')
@@ -107,7 +113,7 @@ module.exports = withCronGuard('youtube-post', async function handler(req, res) 
     const art = (arts || []).find((a) =>
       !done.has(a.id) && Array.isArray(a.videos) && a.videos.length >= 1 && a.videos[0]);
     if (!art) {
-      res.locals.cronNote = '업로드할 릴스 기사 없음 (source_media_type=VIDEO 필터)';
+      res.locals.cronNote = '업로드할 릴스 기사 없음 (source_media_type=VIDEO 필터, 최근 ' + freshDays + '일)';
       return res.status(200).json({ ok: true, note: res.locals.cronNote });
     }
 

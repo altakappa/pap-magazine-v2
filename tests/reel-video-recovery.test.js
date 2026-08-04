@@ -216,6 +216,21 @@ const repair = require('../api/cron/video-repair');
     '신선도 창(3일)을 넘기면 복구해도 업로드되지 않는다');
   t('dry-run 으로 대상만 확인할 수 있다', /dry/.test(s));
   t('실행기록·실패알림이 붙어 있다', /module\.exports = withCronGuard\('video-repair'/.test(s));
+
+  /* 2026-08-04: 수집 버그로 5일간 mp4 가 비었다. 복구된 시점엔 이미 3일 창
+     밖이라 "고쳤는데 여전히 안 올라간다" 가 된다. 복구 경로만 창을 넓힌다. */
+  t('복구 직후엔 넓힌 신선도 창으로 깨운다', /youtube-post\?days=' \+ WAKE_DAYS/.test(s),
+    '복구했는데 창 밖이라 영영 못 올라가는 구멍');
+  t('넓힌 창은 상수로 고정 (기본 3일은 그대로)', /const WAKE_DAYS = 7;/.test(s));
+
+  const y = R('api/cron/youtube-post.js');
+  t('youtube-post 가 ?days 를 받는다', /req\.query && req\.query\.days/.test(y));
+  t('기본값은 여전히 3일', /\|\| 3\) \|\| 3\)/.test(y),
+    '기본을 넓히면 옛 릴스가 밀려 올라와 쇼츠의 신선도가 깨진다');
+  t('days 는 1~14 로 묶는다', /Math\.max\(1, Math\.min\(14,/.test(y),
+    '창이 무한히 열리면 아카이브 백필 전체가 후보가 된다');
+  t('빈 결과 메모에 실제 창 길이를 남긴다', /최근 ' \+ freshDays \+ '일/.test(y),
+    '어느 창으로 훑었는지 모르면 로그만 보고 판단할 수 없다');
 })();
 (function () {
   const v = JSON.parse(R('vercel.json'));
