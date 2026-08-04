@@ -930,7 +930,13 @@ function renderSeoHtml(kind, record, opts) {
   const _edCard = (e, tag) => {
     if (!e || !e.title || !(e.slug || e.id)) return '';
     const th = e.thumbnail || e.cover_image || e.og_image || '';
-    return `<a class="seo-related-card" href="${_moreBase}${escAttr(e.slug || e.id)}">
+    /* 2026-08-04 — 내부링크 언어 프리픽스. /ja/editorial/x 의 카드가 /editorial/y
+       (한국어)를 가리켜 번역 페이지끼리 전혀 연결되지 않았다(GSC '발견됨 - 현재
+       색인이 생성되지 않음' 4,474건의 대부분이 ja/fr/it/es/en 번역 URL).
+       [slug].js 가 실제 번역이 존재하는 항목에만 e._lang 을 달아준다 —
+       번역이 없는데 프리픽스를 붙이면 302 체인이 생기기 때문. */
+    const _lp = (e._lang && e._lang !== 'ko') ? '/' + e._lang : '';
+    return `<a class="seo-related-card" href="${_lp}${_moreBase}${escAttr(e.slug || e.id)}">
       ${th ? `<img src="${escAttr(th)}" alt="${escAttr(e.title)} — Cover" loading="lazy" width="240" height="160">` : ''}
       <div class="seo-related-meta">
         <div class="seo-related-tagline">${tag}</div>
