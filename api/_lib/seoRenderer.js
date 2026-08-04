@@ -1295,6 +1295,15 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
     try {
       var qs = (window.location.search || '').toLowerCase();
       if (qs.indexOf('raw=1') !== -1 || qs.indexOf('no-spa=1') !== -1) return;
+      // 2026-08-04 — GSC "리디렉션이 포함된 페이지"(3,588건) 근본 원인 제거.
+      // 이 브릿지는 "실제 사용자"를 SPA 오버레이로 보내려는 것인데, JS 를
+      // 실행하는 크롤러(Googlebot WRS 등)까지 그대로 따라가 버려서 모든
+      // 에디토리얼/필름 URL 이 "리디렉션이 있는 페이지"로 분류되고 색인에서
+      // 빠졌다. 서버 HTML 은 누구에게나 동일하게 내려보내고(=클로킹 아님,
+      // CDN 캐시도 그대로) 스크립트 안에서만 크롤러를 걸러 SSR 페이지에
+      // 머무르게 한다. SSR 페이지가 곧 색인 대상 본문이다.
+      var _ua = (navigator.userAgent || '');
+      if (/bot|crawler|spider|crawling|slurp|mediapartners|inspectiontool|lighthouse|facebookexternalhit|embedly|quora link preview|outbrain|pinterest|vkshare|w3c_validator|whatsapp|telegram|discord|applebot|yeti|duckduck|baidu|yandex|petal|ia_archiver/i.test(_ua)) return;
       // 리다이렉트 루프 가드 (2026-07 교체) — 예전 영구 boolean 플래그
       // (_pap_ssr_redirect_done)는 세션당 1회만 리다이렉트해서, 다이렉트
       // 진입/새로고침이 SSR 에 갇히는 버그가 있었다. 이제 (kind/slug)별 +
@@ -1326,7 +1335,13 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
       // in pap-content-seo.js, opens the matching overlay, and pushes
       // /<kind>/<slug> as the final URL.
       var paramName = ${JSON.stringify(kind === 'film' ? 'film' : 'ed')};
-      var target = '/?' + paramName + '=' + encodeURIComponent(${JSON.stringify(slug)});
+      // 2026-08-04 — 언어 접두어 보존. 예전엔 /en/editorial/x 로 들어와도
+      // SPA 최종 URL 이 /editorial/x (한국어)로 바뀌어 canonical·hreflang 과
+      // 어긋났다. 언어를 쿼리로 넘기고 표시 언어도 미리 맞춰둔다.
+      var _lang = ${JSON.stringify(lang)};
+      if (_lang && _lang !== 'ko') { try { localStorage.setItem('pap-lang', _lang); } catch (_) {} }
+      var target = '/?' + paramName + '=' + encodeURIComponent(${JSON.stringify(slug)})
+        + (_lang && _lang !== 'ko' ? '&lang=' + encodeURIComponent(_lang) : '');
       window.location.replace(target);
     } catch(_){ /* on any error, leave the SSR page visible */ }
   })();

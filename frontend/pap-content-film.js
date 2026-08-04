@@ -258,7 +258,11 @@ function _openFilmDetailInner(idx){
   // static-snapshot rows that pre-date the slug column.
   try{
     var _fSlug = f.slug || _filmTitleToSlug(f.t||'');
-    var _fpath = '/film/' + _fSlug;
+    // 2026-08-04 — 에디토리얼과 동일한 언어 접두어 보존.
+    var _fLangM = location.pathname.match(/^\/(en|it|fr|es|ja|de|zh|ru)\//);
+    var _fPrefix = _fLangM ? '/' + _fLangM[1]
+      : (window.__papDeepLinkLang ? '/' + window.__papDeepLinkLang : '');
+    var _fpath = _fPrefix + '/film/' + _fSlug;
     var _fState = {film:true, idx:idx, slug:_fSlug, title:f.t||''};
     if(window.location.pathname === _fpath){
       history.replaceState(_fState, '', _fpath);

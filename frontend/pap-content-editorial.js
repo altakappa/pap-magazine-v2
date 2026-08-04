@@ -1552,8 +1552,12 @@ function _openEditorialInner(title,thumb){
     // 언어 접두어를 버리고 /editorial/<slug> 로 pushState 하던 탓에,
     // JS 를 렌더하는 구글봇이 이를 "리디렉션"으로 기록했다.
     // 지금 URL 의 언어 접두어를 그대로 유지한다.
+    // 2026-08-04(2차) — 1차 수정은 무력했다. SSR 브릿지가 /?ed=<slug> 로
+    // 먼저 튕겨서, 여기 도달할 땐 location.pathname 이 이미 '/' 였다.
+    // 브릿지가 넘겨준 언어(window.__papDeepLinkLang)를 폴백으로 쓴다.
     var _edLangM = location.pathname.match(/^\/(en|it|fr|es|ja|de|zh|ru)\//);
-    var _edPrefix = _edLangM ? '/' + _edLangM[1] : '';
+    var _edPrefix = _edLangM ? '/' + _edLangM[1]
+      : (window.__papDeepLinkLang ? '/' + window.__papDeepLinkLang : '');
     var _epath = _edPrefix + '/editorial/' + _edSlug;
     var _state = {editorial:true, title:title, slug:_edSlug, thumb:_edThumb};
     if(window.location.pathname === _epath){
