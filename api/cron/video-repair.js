@@ -123,21 +123,51 @@ module.exports = withCronGuard('video-repair', async function handler(req, res) 
     return res.status(200).json({ ok: true, note: res.locals.cronNote });
   }
 
+  /* 정렬 기준은 created_at 이 아니라 published_date 다.
+     created_at 은 '언제 우리 DB 에 들어왔나' 이고, published_date 는 '언제
+     세상에 나갔나' 다. 2023~2024년 아카이브 기사를 나중에 일괄 수입하면
+     created_at 이 최신이 되어 복구 예산(기본 5건)을 옛 기사가 먼저 먹는다.
+     실제로 2026-08-04 실행에서 5칸 중 2칸을 2023·2024년 기사가 차지했고,
+     그중 하나는 원본이 사라져 어차피 못 고치는 건이었다. 쇼츠 업로드는
+     신선도 창이 있으므로, 최근 기사를 먼저 손봐야 복구가 값을 한다. */
   const cutoff = new Date(Date.now() - days * 86400000).toISOString();
-  const { data: rows, error: selErr } = await supabaseAdmin.from('articles')
-    .select('id, title, videos, source_instagram_post_id, source_media_type, status, created_at')
+  const COLS = 'id, title, videos, source_instagram_post_id, source_media_type, status, created_at, published_date';
+
+  const { data: fresh, error: selErr } = await supabaseAdmin.from('articles')
+    .select(COLS)
     .eq('source_media_type', 'VIDEO')
-    .gte('created_at', cutoff)
-    .order('created_at', { ascending: false })
+    .gte('published_date', cutoff)
+    .order('published_date', { ascending: false })
     .limit(300);
   if (selErr) throw selErr;
 
   const fails = await loadSkip();
-  const targets = pickRepairTargets(rows, { skip: fails, limit });
+  const targets = pickRepairTargets(fresh, { skip: fails, limit });
+  let scanned = (fresh || []).length;
+
+  /* 최근 창에서 예산이 남으면 그때만 아카이브까지 내려간다 — 밀린 옛 기사도
+     언젠가는 고쳐야 하지만, 순서는 항상 최근이 먼저다.
+     published_date 가 null 인 행(수동 등록분)도 여기서 함께 줍는다. */
+  if (targets.length < limit) {
+    const seen = new Set(targets.map((t) => String(t.id)));
+    const { data: old, error: oldErr } = await supabaseAdmin.from('articles')
+      .select(COLS)
+      .eq('source_media_type', 'VIDEO')
+      .or('published_date.lt.' + cutoff + ',published_date.is.null')
+      .order('published_date', { ascending: false, nullsFirst: false })
+      .limit(300);
+    if (oldErr) throw oldErr;
+    scanned += (old || []).length;
+    const more = pickRepairTargets(
+      (old || []).filter((r) => r && !seen.has(String(r.id))),
+      { skip: fails, limit: limit - targets.length },
+    );
+    for (const m of more) targets.push(m);
+  }
 
   if (!targets.length) {
-    res.locals.cronNote = '복구할 릴스 기사 없음 (최근 ' + days + '일 · 전체 ' + (rows || []).length + '건 확인)';
-    return res.status(200).json({ ok: true, note: res.locals.cronNote, scanned: (rows || []).length });
+    res.locals.cronNote = '복구할 릴스 기사 없음 (최근 ' + days + '일 우선 · 전체 ' + scanned + '건 확인)';
+    return res.status(200).json({ ok: true, note: res.locals.cronNote, scanned });
   }
 
   if (dry) {

@@ -276,6 +276,24 @@ const { judgeReelHealth, buildReelAlert } = watch;
   const b = buildReelAlert(judgeReelHealth({ videoArticles: 4, withVideo: 4, uploadsInWindow: 0, zeroRuns: 200, runsInWindow: 200 }));
   t('원인이 다르면 안내 문안도 다르다', /신선도|중복|YOUTUBE_PUBLIC/.test(b.lines.join(' ')));
 })();
+/* 복구 순서 회귀 (2026-08-04) ─────────────────────────────────────────
+ * created_at 은 '언제 우리 DB 에 들어왔나', published_date 는 '언제 세상에
+ * 나갔나' 다. 아카이브 기사를 나중에 일괄 수입하면 created_at 이 최신이 되어
+ * 복구 예산(기본 5건)을 옛 기사가 먼저 먹는다. 실제로 5칸 중 2칸을 2023·2024년
+ * 기사가 차지했고 그중 하나는 원본이 사라져 어차피 못 고치는 건이었다.
+ * 쇼츠에는 신선도 창이 있으므로 최근 기사를 먼저 손봐야 복구가 값을 한다. */
+(function () {
+  const v = R('api/cron/video-repair.js');
+  t('발행일 기준으로 최근 기사를 먼저 고른다', /\.gte\('published_date', cutoff\)/.test(v));
+  t('정렬도 발행일 기준', /\.order\('published_date', \{ ascending: false \}\)/.test(v));
+  t('수집 시각으로 자르던 옛 코드가 남아 있지 않다',
+    v.indexOf(".gte('created_at', cutoff)") === -1,
+    'created_at 으로 자르면 아카이브 일괄 수입 때 최근 기사가 밀린다');
+  t('예산이 남을 때만 아카이브까지 내려간다', /targets\.length < limit/.test(v));
+  t('발행일이 빈 행도 아카이브 쪽에서 줍는다', /published_date\.is\.null/.test(v));
+  t('두 조회가 같은 기사를 두 번 세지 않는다', /new Set\(targets\.map/.test(v));
+})();
+
 (function () {
   const w = R('api/cron/pipeline-watch.js');
   t('감시 크론이 릴스 점검을 호출한다', /checkReelVideos\(/.test(w));

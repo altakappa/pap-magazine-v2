@@ -26,6 +26,7 @@ const { pushAlert } = require('../_lib/pushAlert');
 const { listRecentMedia, isLikelyEditorialCaption, _extractShortcode } = require('../_lib/instagramImport');
 const { diagnoseBackfill, buildBackfillAlert } = require('../_lib/backfillHealth');
 const { judgeTranslateHealth, buildTranslateAlert } = require('../_lib/translateHealth');
+const { judgeFaqHealth, buildFaqAlert, summarizeFaqRuns } = require('../_lib/faqHealth');
 
 const ALERT_KEY = 'ig-to-site-pipeline';
 /* 서술문 백필은 IG 파이프라인과 독립적인 문제라 알림 키를 분리한다 —
@@ -35,6 +36,8 @@ const BACKFILL_ALERT_KEY = 'editorial-backfill-health';
 const TRANSLATE_ALERT_KEY = 'translate-backfill-health';
 /* 릴스 mp4 수집 건강도 — 유튜브 쇼츠의 연료가 실제로 채워지는지 본다 (2026-08-04). */
 const REEL_ALERT_KEY = 'reel-video-health';
+/* FAQ 백필도 같은 이유로 키를 분리한다 (2026-08-04). */
+const FAQ_ALERT_KEY = 'faq-backfill-health';
 const SITE = 'https://www.pap-magazine.com';
 
 /* 게시 후 이 시간이 지나도 발행되지 않으면 이상으로 본다.
@@ -194,7 +197,13 @@ module.exports = withCronGuard('pipeline-watch', async function handler(req, res
    * 8일을 갔다. 여기서 그 둘을 갈라서, ②일 때만 울린다. */
   const reels = await checkReelVideos({ dry });
 
-  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels });
+  /* ── FAQ 백필 감시 (2026-08-04 추가) ──
+   * 서술문·번역에서 두 번 배운 "돌았다 ≠ 생산했다" 를 FAQ 에만 안 붙여둬서
+   * 세 번째로 같은 침묵을 겪었다. 10분마다 성실히 돌면서 생산은 0건이었고,
+   * 크론은 그걸 '완주' 라고 보고했다. 이제 잔여와 실제 생산량을 대조한다. */
+  const faq = await checkFaq({ dry });
+
+  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels, faq });
 });
 
 /** 서술문 생산이 실제로 되고 있는지 보고, 이상하면 텔레그램으로 알린다. */
@@ -473,7 +482,77 @@ async function checkReelVideos(opts) {
   }
 }
 
+/**
+ * FAQ 백필이 실제로 생산하고 있는지 본다. 판정 규칙은 _lib/faqHealth.js.
+ *
+ * 생산량의 근거는 cron_runs.note 다 — 크론이 남기는 요약 한 줄. 별도 도장
+ * 컬럼을 만들지 않은 이유는, 어차피 사람이 볼 기록이 그 한 줄이기 때문이다.
+ * 요약과 감시가 같은 문장을 보면 둘이 어긋날 일이 없다.
+ */
+async function checkFaq(opts) {
+  const WINDOW_H = Number(process.env.FAQ_WINDOW_HOURS || 3);
+  try {
+    const since = new Date(Date.now() - WINDOW_H * 3600000).toISOString();
+
+    const { count: remaining } = await supabaseAdmin
+      .from('articles').select('id', { count: 'exact', head: true })
+      .eq('status', 'published').is('faq', null);
+
+    const { data: runRows } = await supabaseAdmin
+      .from('cron_runs').select('note')
+      .eq('cron_name', 'backfill-faq').gte('ran_at', since)
+      .order('ran_at', { ascending: false }).limit(200);
+
+    const sum = summarizeFaqRuns((runRows || []).map(r => r && r.note));
+    const d = judgeFaqHealth({
+      remaining: typeof remaining === 'number' ? remaining : 0,
+      producedInWindow: sum.produced,
+      windowHours: WINDOW_H,
+      runsInWindow: sum.total,
+      parsedRuns: sum.parsed,
+      wallRuns: sum.wall,
+      doneRuns: sum.done,
+    });
+    if (opts && opts.dry) return { dry: true, ...d };
+
+    const { data: st } = await supabaseAdmin.from('ops_alert_state')
+      .select('last_alert_at, last_payload').eq('key', FAQ_ALERT_KEY).maybeSingle();
+    const lastAt = st && st.last_alert_at ? Date.parse(st.last_alert_at) : 0;
+    const wasBroken = !!(st && st.last_payload && st.last_payload.broken);
+    const COOLDOWN_H = Number(process.env.FAQ_ALERT_COOLDOWN_H || 6);
+    const broken = d.status === 'stalled';
+
+    let alerted = false;
+    if (broken && Date.now() - lastAt > COOLDOWN_H * 3600000) {
+      await pushAlert({ ...buildFaqAlert(d, SITE), personalOnly: true });
+      alerted = true;
+    } else if (!broken && wasBroken) {
+      await pushAlert({
+        personalOnly: true,
+        title: d.status === 'done' ? '✅ FAQ 백필 완주 — 발행 기사 전부 보유' : '✅ FAQ 백필 재개',
+        lines: [d.reason],
+        url: `${SITE}/admin`, urlLabel: '어드민',
+      });
+      alerted = true;
+    }
+    if (alerted || wasBroken !== broken) {
+      await supabaseAdmin.from('ops_alert_state').upsert({
+        key: FAQ_ALERT_KEY,
+        last_alert_at: alerted ? new Date().toISOString() : (st && st.last_alert_at) || null,
+        last_payload: { broken, status: d.status, cause: d.cause, remaining: d.remaining, perHour: d.perHour },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'key' });
+    }
+    return { ...d, alerted };
+  } catch (e) {
+    console.error('[pipeline-watch] faq health 실패', e && e.message);
+    return { error: (e && e.message) || 'unknown' };
+  }
+}
+
 module.exports.diagnose = diagnose;
 module.exports.buildAlert = buildAlert;
 module.exports.judgeReelHealth = judgeReelHealth;
 module.exports.buildReelAlert = buildReelAlert;
+module.exports.judgeFaqHealth = judgeFaqHealth;
+module.exports.buildFaqAlert = buildFaqAlert;
