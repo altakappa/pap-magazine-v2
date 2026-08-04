@@ -11,6 +11,7 @@
 
 const { supabaseAdmin } = require('./_lib/supabase');
 const { handleCors } = require('./_lib/cors');
+const { fetchAllRows } = require('./_lib/fetchAllRows');
 
 const BASE = 'https://www.pap-magazine.com';
 
@@ -73,18 +74,18 @@ module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
 
   try {
-    // Pull every published editorial. Cap at 5000 to keep XML size sane —
-    // sitemaps over 50MB / 50k URLs need to be split, and we're nowhere
-    // near that. Adjust if PAP ever crosses that threshold.
-    const { data: eds, error } = await supabaseAdmin
+    // 발행된 에디토리얼 전량. Supabase(PostgREST)는 한 응답에 최대 5,000행만
+    // 돌려주고 초과분을 에러 없이 조용히 자른다. 그래서 .limit() 이 아니라
+    // .range() 페이지네이션(fetchAllRows)을 쓴다. 페이지 경계에서 행이
+    // 중복/누락되지 않도록 정렬에 UNIQUE 컬럼(id)을 함께 넣는다.
+    const nowIso = new Date().toISOString();
+    const eds = await fetchAllRows(() => supabaseAdmin
       .from('editorials')
       .select('id, title, slug, published_date, updated_at, cover_image, og_image, thumbnail')
       .eq('status', 'published')
-      .or('scheduled_publish_at.is.null,scheduled_publish_at.lte.' + new Date().toISOString())
+      .or('scheduled_publish_at.is.null,scheduled_publish_at.lte.' + nowIso)
       .order('published_date', { ascending: false })
-      .limit(5000);
-
-    if (error) throw error;
+      .order('id', { ascending: true }), { pageSize: 500 });
 
     const urls = [];
 
