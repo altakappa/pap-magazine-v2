@@ -17,6 +17,7 @@
 - 수정 후 `npm test` — 하네스 **전부** 통과해야 커밋 (개수는 계속 늘어난다. 2026-08-03 기준 96개)
 - OAuth 성공 랜딩은 `api/_lib/oauthSuccess.js`의 `sendOAuthSuccessHtml()` 공용 헬퍼 사용 (Safari ITP 대응)
 - 회원 등급 게이트 변경 시 3종(Free/Standard/Premium) + subscribe 9개 언어 문구 정합 확인
+- **환경변수(env)를 바꾸면 — 추가·수정·삭제 모두 — 반드시 재배포한다.** Vercel은 env를 *빌드 시점*에 함수에 구워 넣는다. 설정 화면에서 지워도 이미 돌고 있는 배포는 옛 값을 그대로 쓴다. 코드가 안 바뀌었어도 Redeploy(빌드 캐시 끄기) 필요. → 2026-08-04 `SEO_TRANSLATE_KINDS` 삭제가 1시간 동안 먹지 않은 원인 (볼트 `45_Business/PAP_번역크론_독일어정지_2026-08-04.md`)
 
 ## 배포 검증 (커밋→푸시 이후)
 1. push 후 ~95초 대기 → Vercel 배포 READY 확인
@@ -24,7 +25,7 @@
 3. 중요 작업은 볼트 `45_Business/`에 날짜 파일로 기록
 
 ## 인프라 좌표
-- Vercel: project `prj_bJ4s6cgv7HbrDYYU0mu0B9xyl3n5` / team `team_EmYMio2vO29fe2ZFbeRJ2Nsi` (env 추가 시 재배포 필요, Sensitive 값은 저장 후 읽기 불가)
+- Vercel: project `prj_bJ4s6cgv7HbrDYYU0mu0B9xyl3n5` / team `team_EmYMio2vO29fe2ZFbeRJ2Nsi` (env 추가·수정·삭제 모두 재배포 필요 — 위 체크리스트 참조, Sensitive 값은 저장 후 읽기 불가)
 - Supabase: `igcazquhkwxtqsaqpznx` (서버는 service_role)
 - 결제: Paddle (plan_key는 premium_*/standard_* → base plan으로 정규화되어 profiles 저장)
 
