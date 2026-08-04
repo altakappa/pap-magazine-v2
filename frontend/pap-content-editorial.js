@@ -1547,7 +1547,14 @@ function _openEditorialInner(title,thumb){
   var _edThumb=det.thumb||thumb||'';
   var _edSlug = (d && d.slug) || _editorialTitleToSlug(title);
   try{
-    var _epath = '/editorial/' + _edSlug;
+    // 2026-08-04 — GSC "리디렉션이 포함된 페이지" 3,588건 원인 수정.
+    // /<lang>/editorial/<slug> 로 직접 들어온 방문(딥링크·구글봇)에서
+    // 언어 접두어를 버리고 /editorial/<slug> 로 pushState 하던 탓에,
+    // JS 를 렌더하는 구글봇이 이를 "리디렉션"으로 기록했다.
+    // 지금 URL 의 언어 접두어를 그대로 유지한다.
+    var _edLangM = location.pathname.match(/^\/(en|it|fr|es|ja|de|zh|ru)\//);
+    var _edPrefix = _edLangM ? '/' + _edLangM[1] : '';
+    var _epath = _edPrefix + '/editorial/' + _edSlug;
     var _state = {editorial:true, title:title, slug:_edSlug, thumb:_edThumb};
     if(window.location.pathname === _epath){
       history.replaceState(_state, '', _epath);
