@@ -57,7 +57,7 @@ module.exports = async function handler(req, res) {
   const xml =
     '<?xml version="1.0" encoding="UTF-8"?>\n' +
     '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
-    row('/sitemap.xml', edMod) +               // 정적 페이지 + 에디토리얼
+    row('/sitemap.xml', today) +               // 정적 페이지 전용 (2026-08-04 에디토리얼 분리)
     row('/sitemap-editorials.xml', edMod) +
     LANG_SITEMAPS.map(l => row('/sitemap-editorials-' + l + '.xml', edMod)).join('') +
     row('/sitemap-articles.xml', artMod) +
