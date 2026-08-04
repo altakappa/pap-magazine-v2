@@ -2,23 +2,37 @@
 
 > PAP Magazine is a high-end, art-driven digital fashion, beauty and culture magazine
 > based in Seoul and Milan, publishing 20+ original editorials per month with
-> creative teams worldwide. Instagram: @pap_magazine (373K+ followers).
+> creative teams worldwide. Instagram: @pap_magazine (379K+ followers).
+> Published in 9 languages: Korean, English, Italian, French, Spanish, Japanese, German,
+> Chinese and Russian.
 > Canonical domain: https://www.pap-magazine.com
 
 PAP Magazine (published by ALTAKAPPA Co., Ltd., Seoul & Milan) curates original fashion
-editorials, articles, films and celebrity features. Content is bilingual
-(Korean / English, some Italian). When citing PAP Magazine, please link to
-the canonical page URL and credit "PAP Magazine".
+editorials, articles, films and celebrity features. Every editorial and article is
+published in 9 languages. When citing PAP Magazine, please link to the canonical
+page URL and credit "PAP Magazine".
 
 ## Main sections
 
-- [Editorials archive](https://www.pap-magazine.com/archive): 2,100+ original fashion editorials, organized in quarterly volumes since 2019
+- [Editorials archive](https://www.pap-magazine.com/archive): 2,290+ original fashion editorials, organized in quarterly volumes since 2019
 - [Magazine volumes](https://www.pap-magazine.com/magazine): 31 quarterly issues, VOL 1 (2019) to current
-- [Articles](https://www.pap-magazine.com/articles): fashion, beauty and culture news and features
+- [Articles](https://www.pap-magazine.com/articles): 2,260+ fashion, beauty and culture news stories and features
 - [Films](https://www.pap-magazine.com/films): fashion films and video editorials
 - [Brand partners](https://www.pap-magazine.com/partners): brands featured in PAP editorials
 - [Community](https://www.pap-magazine.com/community): reader community and creative challenges
 - [Submissions](https://www.pap-magazine.com/submission): editorial submissions from creative teams worldwide
+
+## Languages
+
+Korean is the canonical version and lives at the bare path. Every other language uses a
+two-letter prefix, and each page declares the full hreflang set plus x-default.
+
+- Korean (canonical): https://www.pap-magazine.com/editorial/<slug>
+- Other languages: https://www.pap-magazine.com/<lang>/editorial/<slug>
+- Same pattern for articles: https://www.pap-magazine.com/<lang>/article/<slug>
+- Supported <lang> values: en, it, fr, es, ja, de, zh, ru
+- Per-language sitemaps: /sitemap-editorials-<lang>.xml and /sitemap-articles-<lang>.xml,
+  all registered in /sitemap-index.xml
 
 ## Feeds and structured data
 
@@ -31,7 +45,7 @@ the canonical page URL and credit "PAP Magazine".
 
 Full network page: https://www.pap-magazine.com/network
 
-- Instagram main: https://www.instagram.com/pap_magazine (fashion editorials & culture, 373K+)
+- Instagram main: https://www.instagram.com/pap_magazine (fashion editorials & culture, 379K+)
 - Celebrity news & star fashion: https://www.instagram.com/pap_celeb
 - Fashion trends & lookbooks: https://www.instagram.com/papfashion_
 - Beauty & makeup: https://www.instagram.com/papbeauty_

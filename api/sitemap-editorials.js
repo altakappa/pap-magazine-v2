@@ -1,12 +1,28 @@
 /**
  * PAP Magazine — Editorials Sitemap
  * Lists every published editorial as /editorial/<slug> with image:image entries.
+ *
+ * 2026-08-04 — 언어별 분할 + 5,000행 상한 버그 수정.
+ *   [버그] seo_translations 조회가 `.limit(20000)` 이었지만 Supabase 는 5,000행에서
+ *          조용히 자른다(에러 없음). 그 결과 언어별 URL 이 2,29x편 중 67x편만
+ *          광고돼 약 11,200개 번역 페이지가 검색엔진에 알려지지 않았다.
+ *          → fetchAllRows() 로 전량 페이지네이션.
+ *   [분할] 전량을 한 파일에 담으면 ~40MB 가 된다. 그래서
+ *          /sitemap-editorials.xml            → ko(정본) + 이미지 + hreflang
+ *          /sitemap-editorials-<lang>.xml     → 해당 언어 URL + hreflang
+ *          9개 파일 모두 sitemap-index.xml·robots.txt 에 등록.
  */
 
 const { supabaseAdmin } = require('./_lib/supabase');
 const { handleCors } = require('./_lib/cors');
+const { fetchAllRows } = require('./_lib/fetchAllRows');
 
 const SITE = 'https://www.pap-magazine.com';
+
+// ko = 정본(prefix 없음). 나머지는 /<lang>/editorial/<slug>.
+const VALID_LANGS = ['ko', 'en', 'it', 'fr', 'es', 'ja', 'de', 'zh', 'ru'];
+// 번역 테이블에 실제로 저장되는 언어(ko 원본·en 은 DB 원본 필드라 제외).
+const TRANSLATED_LANGS = ['it', 'fr', 'es', 'ja', 'de', 'zh', 'ru'];
 
 function xmlEscape(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -30,30 +46,35 @@ function safeSitemapHandle(h) {
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
 
+  // ?lang= 없으면 ko(정본) 사이트맵.
+  const q = String((req.query && req.query.lang) || '');
+  const only = VALID_LANGS.includes(q) ? q : 'ko';
+
   try {
     // QA #187 — gallery now joins so the sitemap can advertise EVERY
     // editorial image to Google Image Search, not just the cover.
     // Google caps at ~1000 images per <url>, but we cap at 30 to keep
-    // each sitemap fast to crawl + keep the file < 10MB.
-    const { data: eds } = await supabaseAdmin
+    // each sitemap fast to crawl + keep the file well under 50MB.
+    const nowIso = new Date().toISOString();
+    const eds = await fetchAllRows(() => supabaseAdmin
       .from('editorials')
       .select('id, title, slug, published_date, updated_at, cover_image, og_image, thumbnail, gallery')
       .eq('status', 'published')
-      .or('scheduled_publish_at.is.null,scheduled_publish_at.lte.' + new Date().toISOString())
+      .or('scheduled_publish_at.is.null,scheduled_publish_at.lte.' + nowIso)
       .order('published_date', { ascending: false })
-      .limit(5000);
+      .order('id', { ascending: true }), { pageSize: 500 });
 
-    // it/fr/es/ja 번역 존재 여부 (2026-07-16 다국어 2단계, ja 2026-07-21 추가) —
-    // 번역이 있는 에디토리얼만 해당 언어 URL·alternate 를 선언한다. 테이블
-    // 미생성/실패 시엔 ko/en 만으로 동작.
+    // 번역 존재 여부 — 번역이 있는 에디토리얼만 해당 언어 URL·alternate 를 선언한다.
+    // 테이블 미생성/실패 시엔 ko/en 만으로 동작.
+    // ⚠️ 반드시 fetchAllRows: 단일 조회는 5,000행에서 조용히 잘린다(위 헤더 참고).
     const trMap = new Map();
     try {
-      const { data: trs } = await supabaseAdmin
+      const trs = await fetchAllRows(() => supabaseAdmin
         .from('seo_translations')
         .select('content_id, lang')
         .eq('kind', 'editorial')
-        .limit(20000);
-      for (const t of trs || []) {
+        .order('id', { ascending: true }));
+      for (const t of trs) {
         if (!trMap.has(t.content_id)) trMap.set(t.content_id, []);
         trMap.get(t.content_id).push(t.lang);
       }
@@ -63,62 +84,55 @@ module.exports = async function handler(req, res) {
       const handle = safeSitemapHandle(ed.slug || ed.id);
       if (!handle) return '';
       const loc = SITE + '/editorial/' + encodeURIComponent(handle);
-      // 언어별 URL + hreflang alternate (2026-07-16, ja 추가 2026-07-21) —
-      // ko/en 항상, it/fr/es/ja 는 번역 존재 시.
-      const langs = ['ko', 'en'].concat((trMap.get(ed.id) || []).filter(l => ['it', 'fr', 'es', 'ja', 'de', 'zh', 'ru'].includes(l)));
+      // ko/en 항상, 나머지 7개 언어는 번역 존재 시.
+      const langs = ['ko', 'en'].concat((trMap.get(ed.id) || []).filter(l => TRANSLATED_LANGS.includes(l)));
+      if (!langs.includes(only)) return '';   // 이 언어 사이트맵엔 실릴 게 없음
       const urlFor = (l) => l === 'ko' ? loc : SITE + '/' + l + '/editorial/' + encodeURIComponent(handle);
       const lastmod = fmtDate(ed.updated_at || ed.published_date);
       const altBlock =
         langs.map(l => '    <xhtml:link rel="alternate" hreflang="' + l + '" href="' + xmlEscape(urlFor(l)) + '"/>\n').join('') +
         '    <xhtml:link rel="alternate" hreflang="x-default" href="' + xmlEscape(loc) + '"/>\n';
 
-      // Build image:image entries — cover first, then up to 29 gallery
-      // images. Dedupe so the cover doesn't repeat if it's also the
-      // first gallery slot. Each entry advertises:
-      //   • image:loc      → the URL Google crawls
-      //   • image:title    → editorial title (anchors brand search)
-      //   • image:caption  → "Editorial Title — Look N" for context
-      const seen = new Set();
-      const imgs = [];
-      const cover = ed.og_image || ed.cover_image || ed.thumbnail;
-      if (cover) {
-        seen.add(cover);
-        imgs.push({ src: cover, caption: (ed.title || '') + ' — Cover' });
+      // 이미지 블록은 ko(정본) 사이트맵에서만 선언한다 — 언어별 파일에 중복하면
+      // 같은 이미지를 9번 광고하게 되고 파일만 커진다.
+      let imgBlocks = '';
+      if (only === 'ko') {
+        // cover first, then up to 29 gallery images. Dedupe so the cover doesn't
+        // repeat if it's also the first gallery slot. Each entry advertises:
+        //   • image:loc      → the URL Google crawls
+        //   • image:title    → editorial title (anchors brand search)
+        //   • image:caption  → "Editorial Title — Look N" for context
+        const seen = new Set();
+        const imgs = [];
+        const cover = ed.og_image || ed.cover_image || ed.thumbnail;
+        if (cover) {
+          seen.add(cover);
+          imgs.push({ src: cover, caption: (ed.title || '') + ' — Cover' });
+        }
+        const gallery = Array.isArray(ed.gallery) ? ed.gallery : [];
+        gallery.forEach((src, i) => {
+          if (typeof src !== 'string' || !src || seen.has(src)) return;
+          if (imgs.length >= 30) return;
+          seen.add(src);
+          imgs.push({ src, caption: (ed.title || '') + ' — Look ' + (i + 1) });
+        });
+        imgBlocks = imgs.map(it =>
+          '    <image:image>\n' +
+          '      <image:loc>' + xmlEscape(it.src) + '</image:loc>\n' +
+          '      <image:title>' + xmlEscape(ed.title || '') + '</image:title>\n' +
+          '      <image:caption>' + xmlEscape(it.caption) + '</image:caption>\n' +
+          '    </image:image>\n'
+        ).join('');
       }
-      const gallery = Array.isArray(ed.gallery) ? ed.gallery : [];
-      gallery.forEach((src, i) => {
-        if (typeof src !== 'string' || !src || seen.has(src)) return;
-        if (imgs.length >= 30) return;
-        seen.add(src);
-        imgs.push({ src, caption: (ed.title || '') + ' — Look ' + (i + 1) });
-      });
-
-      const imgBlocks = imgs.map(it =>
-        '    <image:image>\n' +
-        '      <image:loc>' + xmlEscape(it.src) + '</image:loc>\n' +
-        '      <image:title>' + xmlEscape(ed.title || '') + '</image:title>\n' +
-        '      <image:caption>' + xmlEscape(it.caption) + '</image:caption>\n' +
-        '    </image:image>\n'
-      ).join('');
 
       return '  <url>\n' +
-        '    <loc>' + xmlEscape(loc) + '</loc>\n' +
+        '    <loc>' + xmlEscape(urlFor(only)) + '</loc>\n' +
         '    <lastmod>' + lastmod + '</lastmod>\n' +
         '    <changefreq>monthly</changefreq>\n' +
-        '    <priority>0.8</priority>\n' +
+        '    <priority>' + (only === 'ko' ? '0.8' : '0.6') + '</priority>\n' +
         altBlock +
         imgBlocks +
-        '  </url>\n' +
-        // 언어 변형 — 이미지 블록은 ko 항목이 이미 선언했으므로 생략(파일 크기 절약).
-        langs.filter(l => l !== 'ko').map(l =>
-          '  <url>\n' +
-          '    <loc>' + xmlEscape(urlFor(l)) + '</loc>\n' +
-          '    <lastmod>' + lastmod + '</lastmod>\n' +
-          '    <changefreq>monthly</changefreq>\n' +
-          '    <priority>0.6</priority>\n' +
-          altBlock +
-          '  </url>'
-        ).join('\n');
+        '  </url>';
     }).filter(Boolean);
 
     const xml =

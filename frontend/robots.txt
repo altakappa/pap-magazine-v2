@@ -44,5 +44,23 @@ Sitemap: https://www.pap-magazine.com/sitemap-films.xml
 Sitemap: https://www.pap-magazine.com/sitemap-news.xml
 Sitemap: https://www.pap-magazine.com/sitemap-brands.xml
 
+# 언어별 사이트맵 (2026-08-04) — ko 는 위 정본 파일에 포함.
+Sitemap: https://www.pap-magazine.com/sitemap-editorials-en.xml
+Sitemap: https://www.pap-magazine.com/sitemap-editorials-it.xml
+Sitemap: https://www.pap-magazine.com/sitemap-editorials-fr.xml
+Sitemap: https://www.pap-magazine.com/sitemap-editorials-es.xml
+Sitemap: https://www.pap-magazine.com/sitemap-editorials-ja.xml
+Sitemap: https://www.pap-magazine.com/sitemap-editorials-de.xml
+Sitemap: https://www.pap-magazine.com/sitemap-editorials-zh.xml
+Sitemap: https://www.pap-magazine.com/sitemap-editorials-ru.xml
+Sitemap: https://www.pap-magazine.com/sitemap-articles-en.xml
+Sitemap: https://www.pap-magazine.com/sitemap-articles-it.xml
+Sitemap: https://www.pap-magazine.com/sitemap-articles-fr.xml
+Sitemap: https://www.pap-magazine.com/sitemap-articles-es.xml
+Sitemap: https://www.pap-magazine.com/sitemap-articles-ja.xml
+Sitemap: https://www.pap-magazine.com/sitemap-articles-de.xml
+Sitemap: https://www.pap-magazine.com/sitemap-articles-zh.xml
+Sitemap: https://www.pap-magazine.com/sitemap-articles-ru.xml
+
 # PEPPERIT (자매지 · pepperitmag.com) — 별도 호스트 사이트맵
 Sitemap: https://www.pepperitmag.com/sitemap-pepperit.xml

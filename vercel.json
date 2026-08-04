@@ -303,8 +303,16 @@
       "destination": "/api/sitemap-editorials"
     },
     {
+      "source": "/sitemap-editorials-:lang(en|it|fr|es|ja|de|zh|ru).xml",
+      "destination": "/api/sitemap-editorials?lang=:lang"
+    },
+    {
       "source": "/sitemap-articles.xml",
       "destination": "/api/sitemap-articles"
+    },
+    {
+      "source": "/sitemap-articles-:lang(en|it|fr|es|ja|de|zh|ru).xml",
+      "destination": "/api/sitemap-articles?lang=:lang"
     },
     {
       "source": "/sitemap-films.xml",

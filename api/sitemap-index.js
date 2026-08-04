@@ -48,12 +48,20 @@ module.exports = async function handler(req, res) {
   const row = (path, lastmod) =>
     '  <sitemap><loc>' + SITE + path + '</loc><lastmod>' + (lastmod || today) + '</lastmod></sitemap>\n';
 
+  // 2026-08-04 — 언어별 사이트맵 등록.
+  // 이전엔 에디토리얼/기사 사이트맵 하나가 9개 언어 URL 을 전부 담으려다
+  // Supabase 5,000행 상한에 걸려 약 11,200개 번역 페이지가 누락됐다.
+  // 이제 ko(정본) 파일 + 언어별 파일로 나누고, 여기서 전부 등록한다.
+  const LANG_SITEMAPS = ['en', 'it', 'fr', 'es', 'ja', 'de', 'zh', 'ru'];
+
   const xml =
     '<?xml version="1.0" encoding="UTF-8"?>\n' +
     '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
     row('/sitemap.xml', edMod) +               // 정적 페이지 + 에디토리얼
     row('/sitemap-editorials.xml', edMod) +
+    LANG_SITEMAPS.map(l => row('/sitemap-editorials-' + l + '.xml', edMod)).join('') +
     row('/sitemap-articles.xml', artMod) +
+    LANG_SITEMAPS.map(l => row('/sitemap-articles-' + l + '.xml', artMod)).join('') +
     row('/sitemap-films.xml', filmsMod) +
     row('/sitemap-news.xml', artMod) +         // 뉴스 = 최근 48h 기사
     row('/sitemap-brands.xml', edMod) +        // 브랜드 허브는 에디토리얼 발행에 연동
