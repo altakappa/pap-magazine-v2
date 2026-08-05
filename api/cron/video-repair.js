@@ -30,6 +30,12 @@
  * 영영 못 고치는 기사(원본 삭제·비공개 전환)를 매 시간 두드리지 않도록
  * 실패 횟수를 ops_alert_state('video-repair-skip') 에 누적해 3회부터 건너뛴다.
  *
+ * 2026-08-05 추가 — 영구 실패는 3회를 기다리지 않는다.
+ * Graph 가 media_url 자체를 거부하는 릴스(인스타 음원을 얹은 경우)는 다시
+ * 물어도 답이 같다. classifyMissingVideo 가 이런 건을 '영구'로 판정하면
+ * 즉시 포기 처리하고 사유를 같은 레코드의 reasons 에 남긴다. 그래야
+ * ① 헛된 재시도가 사라지고 ② 왜 이 기사가 조용한지 나중에 설명할 수 있다.
+ *
  * 파라미터 (관리자 수동 트리거용):
  *   ?dry=1     — 대상만 보여주고 아무것도 고치지 않음
  *   ?limit=N   — 한 번에 고칠 기사 수 (기본 5, 최대 20)
@@ -79,23 +85,75 @@ function pickRepairTargets(rows, opts) {
   return out;
 }
 
+/**
+ * mp4 를 못 받은 이유를 '영구'와 '일시'로 가른다 — 2026-08-05 신설.
+ *
+ * 왜 필요한가 ─────────────────────────────────────────────────────────
+ * 2026-07-31 이후 Graph API 는 **인스타 음원(라이선스 음악)을 얹은 릴스**에
+ * media_url 을 아예 주지 않는다. 단건 재조회를 해도 답은 영원히 같다.
+ * 그런데 기존 코드는 이 경우를 네트워크 오류와 똑같이 취급해서
+ *   ① MAX_FAILS(3)회를 다 태우고 (한 시간에 한 번씩, 사흘 내내 헛수고)
+ *   ② 남는 기록은 '재조회 0/1' 한 줄뿐이라 왜 포기했는지 나중에 알 수 없었다.
+ * 실측: 아더에러·청하·프라다·규진 공항·규진 베이델리 5건이 모두 이 경우다.
+ *
+ * 영구로 판정되면 재시도 없이 즉시 포기하고 사유를 남긴다.
+ *   - attempted>0 && resolved===0 → Graph 가 media_url 을 거부 (음원 릴스)
+ *   - attempted===0               → 이 게시물에 영상 후보 자체가 없음
+ *   - 그 밖(일부는 회수됐는데 videoUrls 가 비어 있음) → 설명되지 않는 상태이므로
+ *     일시 실패로 두고 다음 회차에 다시 시도한다. 애매하면 재시도가 안전하다.
+ *
+ * @param {object} post - _normalizeMedia 결과
+ * @param {{attempted:number, resolved:number}} stat - resolveVideoUrls 반환값
+ * @returns {{permanent:boolean, reason:string, message:string}}
+ */
+function classifyMissingVideo(post, stat) {
+  const s = stat || {};
+  const attempted = Number(s.attempted) || 0;
+  const resolved = Number(s.resolved) || 0;
+  const type = String((post && post.mediaType) || '').toUpperCase();
+
+  if (attempted > 0 && resolved === 0) {
+    return {
+      permanent: true,
+      reason: 'media_url_denied',
+      message: 'Graph 가 media_url 을 주지 않음 — 인스타 음원(라이선스 음악) 릴스는 '
+        + '영구 회수 불가 (재조회 ' + resolved + '/' + attempted + ')',
+    };
+  }
+  if (attempted === 0) {
+    return {
+      permanent: true,
+      reason: type === 'VIDEO' ? 'video_without_source' : 'not_video',
+      message: '영상 후보를 찾지 못함 (media_type=' + (type || '알 수 없음') + ')',
+    };
+  }
+  return {
+    permanent: false,
+    reason: 'partial',
+    message: 'media_url 회수 실패 (재조회 ' + resolved + '/' + attempted + ')',
+  };
+}
+
 async function loadSkip() {
   try {
     const { data } = await supabaseAdmin.from('ops_alert_state')
       .select('last_payload').eq('key', SKIP_KEY).maybeSingle();
     const p = data && data.last_payload;
-    return (p && typeof p.fails === 'object' && p.fails) ? p.fails : {};
+    return {
+      fails: (p && typeof p.fails === 'object' && p.fails) ? p.fails : {},
+      reasons: (p && typeof p.reasons === 'object' && p.reasons) ? p.reasons : {},
+    };
   } catch (e) {
     console.error('[video-repair] 스킵 목록 로드 실패:', (e && e.message) || e);
-    return {};
+    return { fails: {}, reasons: {} };
   }
 }
 
-async function saveSkip(fails) {
+async function saveSkip(fails, reasons) {
   try {
     await supabaseAdmin.from('ops_alert_state').upsert({
       key: SKIP_KEY,
-      last_payload: { fails, updated: new Date().toISOString() },
+      last_payload: { fails, reasons: reasons || {}, updated: new Date().toISOString() },
       updated_at: new Date().toISOString(),
     }, { onConflict: 'key' });
   } catch (e) {
@@ -118,8 +176,8 @@ module.exports = withCronGuard('video-repair', async function handler(req, res) 
   const days = Math.max(1, Math.min(365, parseInt(q.days || '30', 10) || 30));
 
   if (String(q.reset || '') === '1') {
-    await saveSkip({});
-    res.locals.cronNote = '스킵 목록 초기화';
+    await saveSkip({}, {});
+    res.locals.cronNote = '스킵 목록 초기화 (실패 횟수·포기 사유 모두)';
     return res.status(200).json({ ok: true, note: res.locals.cronNote });
   }
 
@@ -141,7 +199,9 @@ module.exports = withCronGuard('video-repair', async function handler(req, res) 
     .limit(300);
   if (selErr) throw selErr;
 
-  const fails = await loadSkip();
+  const skipState = await loadSkip();
+  const fails = skipState.fails;
+  const reasons = skipState.reasons;
   const targets = pickRepairTargets(fresh, { skip: fails, limit });
   let scanned = (fresh || []).length;
 
@@ -166,8 +226,10 @@ module.exports = withCronGuard('video-repair', async function handler(req, res) 
   }
 
   if (!targets.length) {
-    res.locals.cronNote = '복구할 릴스 기사 없음 (최근 ' + days + '일 우선 · 전체 ' + scanned + '건 확인)';
-    return res.status(200).json({ ok: true, note: res.locals.cronNote, scanned });
+    const parked = Object.keys(reasons).length;
+    res.locals.cronNote = '복구할 릴스 기사 없음 (최근 ' + days + '일 우선 · 전체 ' + scanned + '건 확인'
+      + (parked ? ' · 영구 포기 ' + parked + '건' : '') + ')';
+    return res.status(200).json({ ok: true, note: res.locals.cronNote, scanned, parked, reasons });
   }
 
   if (dry) {
@@ -175,10 +237,12 @@ module.exports = withCronGuard('video-repair', async function handler(req, res) 
     return res.status(200).json({
       ok: true, dry: true, note: res.locals.cronNote,
       targets: targets.map((t) => ({ id: t.id, title: t.title, ig: t.source_instagram_post_id })),
+      parked: Object.keys(reasons).length,
+      reasons,
     });
   }
 
-  const results = { repaired: 0, failed: 0, detail: [] };
+  const results = { repaired: 0, failed: 0, permanent: 0, detail: [] };
   let skipDirty = false;
 
   for (const t of targets) {
@@ -187,7 +251,11 @@ module.exports = withCronGuard('video-repair', async function handler(req, res) 
       const post = await fetchMediaById(igId);
       const stat = await resolveVideoUrls(post);
       if (!post.videoUrls.length) {
-        throw new Error('media_url 회수 실패 (재조회 ' + stat.resolved + '/' + stat.attempted + ')');
+        const why = classifyMissingVideo(post, stat);
+        const err = new Error(why.message);
+        err.permanent = why.permanent;   // true 면 재시도하지 않고 즉시 포기한다
+        err.reason = why.reason;
+        throw err;
       }
       const report = {};
       const videoUrls = await archiveVideosToStorage(post, 2, undefined, report);
@@ -200,19 +268,45 @@ module.exports = withCronGuard('video-repair', async function handler(req, res) 
 
       results.repaired++;
       results.detail.push({ id: t.id, title: t.title, videos: videoUrls.length, ok: true });
-      if (fails[t.id]) { delete fails[t.id]; skipDirty = true; }
+      if (fails[t.id] || reasons[t.id]) {
+        delete fails[t.id];
+        delete reasons[t.id];
+        skipDirty = true;
+      }
       console.log('[video-repair] 복구 완료: ' + t.title + ' (' + videoUrls.length + '개)');
     } catch (e) {
       const msg = String((e && e.message) || e).slice(0, 200);
+      const permanent = !!(e && e.permanent);
+      const reason = (e && e.reason) || null;
       results.failed++;
-      fails[t.id] = (fails[t.id] || 0) + 1;
+      if (permanent) {
+        /* 다시 물어도 답이 같은 실패다 — 재시도 예산을 태우지 않고 바로 포기하고,
+           대신 '왜 포기했는지' 를 남긴다. 나중에 이 기사를 손으로 고칠 때
+           (예: 음원 릴스를 직접 내려받아 올릴 때) 이 사유가 유일한 단서다. */
+        results.permanent++;
+        fails[t.id] = MAX_FAILS;
+        reasons[t.id] = {
+          reason,
+          message: msg,
+          title: t.title || null,
+          ig: igId,
+          at: new Date().toISOString(),
+        };
+      } else {
+        fails[t.id] = (fails[t.id] || 0) + 1;
+        delete reasons[t.id];
+      }
       skipDirty = true;
-      results.detail.push({ id: t.id, title: t.title, ok: false, error: msg, fails: fails[t.id] });
-      console.error('[video-repair] 복구 실패 ' + t.id + ' (' + fails[t.id] + '회): ' + msg);
+      results.detail.push({
+        id: t.id, title: t.title, ok: false, error: msg,
+        permanent, reason, fails: fails[t.id],
+      });
+      console.error('[video-repair] 복구 ' + (permanent ? '포기(영구·' + reason + ')' : '실패')
+        + ' ' + t.id + ' (' + fails[t.id] + '회): ' + msg);
     }
   }
 
-  if (skipDirty) await saveSkip(fails);
+  if (skipDirty) await saveSkip(fails, reasons);
 
   /* 1건이라도 복구했으면 유튜브 크론을 깨운다 — 신선도 창(기본 3일)이 있으므로
      다음 정기 실행까지 기다리다 창이 닫히면 복구가 헛수고가 된다.
@@ -229,9 +323,11 @@ module.exports = withCronGuard('video-repair', async function handler(req, res) 
     }
   }
 
-  res.locals.cronNote = '릴스 mp4 복구 ' + results.repaired + '건 성공 / ' + results.failed + '건 실패';
+  res.locals.cronNote = '릴스 mp4 복구 ' + results.repaired + '건 성공 / ' + results.failed + '건 실패'
+    + (results.permanent ? ' (영구 포기 ' + results.permanent + '건)' : '');
   return res.status(200).json({ ok: true, note: res.locals.cronNote, ...results });
 });
 
 module.exports.pickRepairTargets = pickRepairTargets;
+module.exports.classifyMissingVideo = classifyMissingVideo;
 module.exports.MAX_FAILS = MAX_FAILS;

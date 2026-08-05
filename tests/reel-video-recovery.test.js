@@ -303,6 +303,66 @@ const { judgeReelHealth, buildReelAlert } = watch;
   t('릴스 점검 실패가 본 크론을 죽이지 않는다', /reel video health 실패/.test(w));
 })();
 
+/* ─────────────────────────────────────────────────────────────────────
+   ④ 영구 실패와 일시 실패를 가른다 (2026-08-05 추가)
+
+   Graph 는 인스타 음원(라이선스 음악)을 얹은 릴스에 media_url 을 아예 주지
+   않는다. 다시 물어도 답이 같으므로 재시도는 순수한 낭비다. 그런데 예전
+   코드는 이 경우를 네트워크 오류와 똑같이 세어 MAX_FAILS(3)를 다 태웠고,
+   남는 기록은 '재조회 0/1' 뿐이라 왜 포기했는지 설명할 수 없었다.
+   실측 5건(아더에러·청하·프라다·규진 공항·규진 베이델리)이 전부 이 경우.
+
+   여기서 잠그는 것: ① 영구/일시 판정이 뒤집히지 않는다 ② 영구는 즉시
+   포기한다 ③ 사유가 저장된다 ④ 복구되면 사유도 지워진다.
+   ───────────────────────────────────────────────────────────────────── */
+console.log('=== ④ 영구 실패 구분 (2026-08-05) ===');
+(function () {
+  const c = repair.classifyMissingVideo;
+
+  const denied = c({ mediaType: 'VIDEO' }, { attempted: 1, resolved: 0, failed: 1 });
+  t('재조회에도 media_url 이 없으면 영구로 본다',
+    denied.permanent === true && denied.reason === 'media_url_denied', JSON.stringify(denied));
+  t('영구 사유에 인스타 음원 맥락을 남긴다', /음원/.test(denied.message), denied.message);
+
+  const none = c({ mediaType: 'IMAGE' }, { attempted: 0, resolved: 0 });
+  t('영상 후보가 아예 없으면 not_video',
+    none.permanent === true && none.reason === 'not_video', JSON.stringify(none));
+
+  const noneVid = c({ mediaType: 'VIDEO' }, { attempted: 0, resolved: 0 });
+  t('VIDEO 인데 후보가 없는 건 따로 표시한다',
+    noneVid.reason === 'video_without_source', JSON.stringify(noneVid));
+
+  const partial = c({ mediaType: 'CAROUSEL_ALBUM' }, { attempted: 2, resolved: 1 });
+  t('일부라도 회수되면 일시 실패로 남겨 다시 시도한다',
+    partial.permanent === false, JSON.stringify(partial));
+
+  t('stat 이 없어도 죽지 않는다', c({}, undefined).permanent === true);
+
+  const s = R('api/cron/video-repair.js');
+  t('영구 실패는 재시도를 태우지 않고 즉시 포기한다', /fails\[t\.id\] = MAX_FAILS;/.test(s),
+    '3회를 기다리면 사흘간 헛되이 Graph 를 두드린다');
+  t('포기 사유를 기록한다', /reasons\[t\.id\] = \{/.test(s));
+  t('사유를 실패 횟수와 같은 레코드에 저장한다', /saveSkip\(fails, reasons\)/.test(s));
+  t('복구되면 사유 기록도 함께 지운다', /delete reasons\[t\.id\];/.test(s));
+  t('요약에 영구 포기 건수를 드러낸다', /영구 포기 ' \+ results\.permanent/.test(s),
+    '조용히 포기하면 8일 침묵이 재발한다');
+  t('reset 은 사유까지 비운다', /saveSkip\(\{\}, \{\}\)/.test(s));
+})();
+
+/* ⑤ backfill-video 의 '영상이 없음' 을 두 원인으로 가른다 (2026-08-05) */
+(function () {
+  const f = require('../api/admin/articles/backfill-video').classifyBackfillMiss;
+  t('이미지 게시물은 not_video', f({ media_type: 'IMAGE' }).reason === 'not_video');
+  t('영상인데 media_url 이 없으면 media_url_missing',
+    f({ media_type: 'VIDEO' }).reason === 'media_url_missing');
+  t('캐러셀 안의 영상도 media_url_missing 으로 본다',
+    f({ media_type: 'CAROUSEL_ALBUM', children: { data: [{ media_type: 'IMAGE' }, { media_type: 'VIDEO' }] } })
+      .reason === 'media_url_missing');
+  t('안내 문구가 원인별로 다르다',
+    f({ media_type: 'IMAGE' }).note !== f({ media_type: 'VIDEO' }).note);
+  t('원인이 응답에 실린다', /reason: why\.reason/.test(R('api/admin/articles/backfill-video.js')));
+})();
+
 }
 
 main().then(() => {

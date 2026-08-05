@@ -14,6 +14,43 @@ const { archiveVideosToStorage } = require('../../_lib/instagramImport');
 
 const _IG_API = 'https://graph.facebook.com/v25.0';
 
+/**
+ * 영상을 못 건졌을 때 '왜' 를 가른다 — 2026-08-05 신설.
+ *
+ * 예전에는 두 가지 전혀 다른 상황이 같은 문장('이 게시물에는 영상이 없음')으로
+ * 돌아왔다:
+ *   ① 진짜로 영상이 아닌 게시물 (이미지·캐러셀) — 기사 분류가 틀린 것이니
+ *      source_media_type 을 고쳐야 한다.
+ *   ② 영상 게시물인데 Graph 가 media_url 을 안 준 것 — 2026-07-31 이후
+ *      인스타 음원(라이선스 음악)을 얹은 릴스에서 계속 나오는 현상이고,
+ *      몇 번을 다시 눌러도 결과가 같다. 손으로 내려받아 올리는 수밖에 없다.
+ * 둘을 구분 못 하면 ②를 ①로 오해해서 "영상이 없는 게시물이구나" 하고
+ * 넘어가게 된다. 실제로 5건이 이렇게 조용히 묻혔다.
+ *
+ * @param {object} media - Graph 응답 (media_type, children.data[])
+ * @returns {{reason:string, note:string, media_type:(string|null)}}
+ */
+function classifyBackfillMiss(media) {
+  const m = media || {};
+  const type = m.media_type || null;
+  const kids = (m.children && Array.isArray(m.children.data)) ? m.children.data : [];
+  const hasVideo = type === 'VIDEO' || kids.some((c) => c && c.media_type === 'VIDEO');
+
+  if (hasVideo) {
+    return {
+      reason: 'media_url_missing',
+      media_type: type,
+      note: '영상 게시물인데 Graph 가 media_url 을 주지 않음 — 인스타 음원(라이선스 음악) '
+        + '릴스는 2026-07-31 이후 API 로 회수할 수 없다. 원본을 직접 내려받아 올려야 한다.',
+    };
+  }
+  return {
+    reason: 'not_video',
+    media_type: type,
+    note: '이 게시물에는 영상이 없음 (media_type=' + (type || '알 수 없음') + ')',
+  };
+}
+
 module.exports = async function handler(req, res) {
   const user = await requireAdmin(req, res);
   if (!user) return;
@@ -65,7 +102,16 @@ module.exports = async function handler(req, res) {
         if (c && c.media_type === 'VIDEO' && c.media_url) videoUrls.push(c.media_url);
       });
     }
-    if (!videoUrls.length) return res.status(200).json({ ok: true, note: '이 게시물에는 영상이 없음', title: a.title });
+    if (!videoUrls.length) {
+      const why = classifyBackfillMiss(media);
+      return res.status(200).json({
+        ok: true,
+        note: why.note,
+        reason: why.reason,
+        media_type: why.media_type,
+        title: a.title,
+      });
+    }
 
     const archived = await archiveVideosToStorage(
       { id: a.source_instagram_post_id, videoUrls }, 3, prefix);
@@ -81,3 +127,5 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: String(err && err.message || err).slice(0, 200) });
   }
 };
+
+module.exports.classifyBackfillMiss = classifyBackfillMiss;

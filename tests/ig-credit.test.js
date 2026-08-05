@@ -39,10 +39,29 @@ PAP_CAPTIONS.forEach((c, i) => {
 const OUTSIDE_CAPTIONS = [
   ['에스파', 'aespa 신곡\n🎥 Youtube / AESPA'],
   ['도시괴담', '도시괴담\n🎥 @egorkondrasov'],
+  /* 2026-08-05 추가 실측 — 게이트를 켜기 전 이미 유튜브에 올라가 있던 3건.
+     게이트가 막았어야 했던 바로 그 모양들이라 고정해 둔다.
+     'Courtesy of @xxx' 와 'Youtube / <아티스트>' 는 이번에 처음 관측된 서식이다. */
+  ['레드벨벳', 'Red Velvet 컴백\n\n🎥 Youtube / Red Velvet'],
+  ['3RACHA', 'Stray Kids 3RACHA\n\n🎥 Courtesy of @spotifykr'],
+  ['젠데이아', 'Zendaya x Prada Beauty\n\n🎥 Courtesy of @pradabeauty'],
 ];
 OUTSIDE_CAPTIONS.forEach(([label, c]) => {
   ok('외부 크레딧 차단 — ' + label, isPapOwned(c) === false, JSON.stringify(creditVerdict(c)));
 });
+
+/* 안보현 — 🎥 PAP 뒤에 다른 줄(주의 문구)이 더 붙은 실제 캡션.
+   크레딧 줄 뒤에 뭐가 오든 판정이 흔들리면 안 된다. */
+ok('크레딧 뒤에 다른 줄이 붙어도 통과 — 안보현',
+  isPapOwned('안보현 로얄살루트\n\n🎥 PAP\n\n*Drink Responsibly') === true,
+  JSON.stringify(creditVerdict('안보현 로얄살루트\n\n🎥 PAP\n\n*Drink Responsibly')));
+
+/* 실측 11건 중 🎥 줄이 아예 없는 릴스는 0건이었다 (2026-08-05 전수 확인).
+   즉 fail-closed 게이트가 '우리가 찍은 릴스'를 잘못 막는 경우는 없다.
+   이 사실이 뒤집히면 — 즉 🎥 없는 PAP 릴스가 생기면 — 게이트에 예외를
+   넣어야 하므로, 그 신호를 여기서 잡는다. */
+ok('🎥 없는 캡션은 여전히 차단 (예외 없음이 전제)',
+  isPapOwned('PAP 가 찍었지만 크레딧 줄이 없는 캡션') === false);
 
 section('fail closed — 애매하면 올리지 않는다');
 ok('크레딧 표기 없음 → 차단', isPapOwned('그냥 본문만 있는 캡션') === false);
