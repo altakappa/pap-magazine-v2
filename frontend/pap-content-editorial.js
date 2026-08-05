@@ -1009,10 +1009,23 @@ window._papDownloadLogoZip = window._papDownloadLogoZip || async function(btn){
 function _papRenderShopRow(fashion){
   var box=document.getElementById('edShopRow');
   if(!box) return;
-  var brands=(Array.isArray(fashion)?fashion:[]).map(function(h){return String(h||'').trim();}).filter(function(h){return h && h!=='@brand';});
+  // 2026-08-05 — 중복 브랜드 제거(도메니코 지적: 라이브에서 holzweiler 칩 2회).
+  // 크레딧이 룩별로 들어와 같은 브랜드가 여러 번 실리면 그대로 칩이 반복됐다.
+  // 링크 목적지가 /go/<소문자> 라 '@holzweiler' 와 'holzweiler' 는 같은 곳으로
+  // 가므로 같은 브랜드로 본다. 반드시 slice(0,12) '앞'에서 걸러야 중복이
+  // 12칸을 잡아먹지 않는다. seen 키에 '#' 를 붙이는 건 'constructor' 같은
+  // Object.prototype 이름이 브랜드로 와도 오탐하지 않게 하기 위함.
+  var _seen={}, brands=[];
+  (Array.isArray(fashion)?fashion:[]).forEach(function(h){
+    var raw=String(h||'').trim();
+    if(!raw || raw==='@brand') return;
+    var clean=raw.replace(/^@+/,'');
+    var key='#'+clean.toLowerCase();
+    if(clean==='' || _seen[key]) return;
+    _seen[key]=1; brands.push(clean);
+  });
   if(!brands.length){ box.innerHTML=''; box.style.display='none'; return; }
-  var chips=brands.slice(0,12).map(function(h){
-    var clean=h.replace(/^@+/,'');
+  var chips=brands.slice(0,12).map(function(clean){
     return '<a href="/go/'+encodeURIComponent(clean.toLowerCase())+'" target="_blank" rel="sponsored nofollow noopener" '
       +'style="display:inline-block;margin:0 8px 8px 0;padding:9px 16px;border:1px solid rgba(255,255,255,.25);font-size:12px;color:#fff;text-decoration:none;letter-spacing:.04em">'
       +clean.replace(/</g,'&lt;')+' <span style="opacity:.55">'+(_edL9('구매 →','Shop →'))+'</span></a>';
