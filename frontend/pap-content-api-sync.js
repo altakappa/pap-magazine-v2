@@ -35,6 +35,74 @@
 // ======== SUPABASE API AUTO-SYNC ========
 
 // Define render callbacks BEFORE lazy loading so they're available when JSON arrives
+
+// 2026-08-05 — 에디토리얼 카드 링크 언어 접두어 헬퍼 (다인, 3차 라운드).
+// 문제: 아래 카드 생성기들이 항상 '/editorial/<slug>' (한국어 정본) 을 써서,
+// /en·/ja 페이지에서 SSR 이 올바르게 심어 둔 <a href="/en/editorial/..."> 를
+// 클라이언트 렌더가 덮어썼다. 크롤러가 JS 실행 후 보는 내부 링크 그래프가
+// 통째로 한국어로 되돌아간다(2026-08-05 라이브 확인).
+// 제약: 무조건 접두어를 붙이면 안 된다 — api/seo/editorial/[slug].js 는
+// 번역이 없는 항목에 대해 302(→/en) 를 내므로 "리디렉션이 포함된 페이지"가
+// 다시 늘어난다. 그래서 /api/editorials/untranslated?lang=xx 로 '번역 없는
+// 예외 목록'만 받아 제외한다(실측 최대 16편 — 응답 수십 바이트).
+// 정의는 idempotent — 어느 파일이 먼저 로드돼도 안전하다.
+if (!window._papLangPrefix) {
+  window._papLangPrefix = function(){
+    try{
+      var m = String(location.pathname||'').match(/^\/(en|it|fr|es|ja|de|zh|ru)(\/|$)/);
+      if (m) return '/' + m[1];
+      if (window.__papDeepLinkLang) return '/' + window.__papDeepLinkLang;
+    }catch(_){}
+    return '';
+  };
+}
+if (!window._papEdHref) {
+  // null = 아직 미도착. 미도착일 땐 접두어를 붙이지 않는다(안전측 = 기존 동작).
+  window.__papEdMissing = window.__papEdMissing || null;
+
+  window._papEdHref = function(slugOrId){
+    var base = '/editorial/' + encodeURIComponent(slugOrId);
+    var p = window._papLangPrefix ? window._papLangPrefix() : '';
+    if (!p) return base;                 // 한국어 정본
+    if (p === '/en') return p + base;    // en 은 DB 원본 필드 — 항상 존재, 302 없음
+    var miss = window.__papEdMissing;
+    if (!miss) return base;
+    return miss.has(String(slugOrId)) ? base : p + base;
+  };
+
+  // 예외 목록이 늦게 도착하면 이미 그려진 카드의 href 를 올려준다.
+  // 대상은 우리가 심은 data-paped 앵커로 한정 — 다른 링크는 건드리지 않는다.
+  window._papEdUpgradeHrefs = function(){
+    try{
+      var list = document.querySelectorAll('a[data-paped]');
+      for (var i = 0; i < list.length; i++){
+        var s = list[i].getAttribute('data-paped');
+        if (s) list[i].setAttribute('href', window._papEdHref(s));
+      }
+    }catch(_){}
+  };
+
+  (function _papEdLoadMissing(){
+    var p = window._papLangPrefix ? window._papLangPrefix() : '';
+    if (!p || p === '/en') return;       // ko·en 은 조회 자체가 불필요
+    if (window.__papEdMissingLoading) return;
+    window.__papEdMissingLoading = true;
+    try{
+      fetch('/api/editorials/untranslated?lang=' + encodeURIComponent(p.slice(1)))
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(j){
+          if (!j) return;
+          var keys = [];
+          (j.slugs || []).forEach(function(s){ keys.push(String(s)); });
+          (j.ids   || []).forEach(function(s){ keys.push(String(s)); });
+          window.__papEdMissing = new Set(keys);
+          window._papEdUpgradeHrefs();
+        })
+        .catch(function(){ /* 실패 시 미도착 상태 유지 = 기존 동작 */ });
+    }catch(_){}
+  })();
+}
+
 window._papShortsRender = function(){ buildShortsCarousel(); };
 
 // 홈 메인 플레이어에 넣을 videoId 로 iframe 을 세팅한다(자동재생·무음·루프).
@@ -940,9 +1008,10 @@ window._papFilmAutoPlay = function(){
       var catLabel  = 'EDITORIAL' + (dateLabel ? (' - ' + dateLabel) : '');
       var tagsAttr  = Array.isArray(ed.tags) ? ed.tags.join(',') : '';
       // SEO — 실제 <a href="/editorial/<slug>"> 카드 (크롤러 링크 그래프용).
-      var latestHref = ed.slug ? '/editorial/' + encodeURIComponent(ed.slug) : '#';
+      var latestHref = ed.slug ? window._papEdHref(ed.slug) : '#';
+      var latestPed  = String(ed.slug || '').replace(/"/g, '&quot;');
       html +=
-        '<a class="ed-row-card" href="' + latestHref + '" data-tags="' + tagsAttr + '" data-api-rendered="1" ' +
+        '<a class="ed-row-card" href="' + latestHref + '" data-paped="' + latestPed + '" data-tags="' + tagsAttr + '" data-api-rendered="1" ' +
         'onclick=\'event.preventDefault();openEditorial("' + safeTitle + '","' + safeImg + '")\'>' +
           '<div class="ed-row-card-img">' +
             '<img loading="lazy" src="' + safeImg + '" alt="' + safeTitle + '" ' +
@@ -1024,10 +1093,9 @@ window._papFilmAutoPlay = function(){
             // SEO — 실제 <a href="/editorial/<slug>"> 로 렌더. 크롤러가
             // 홈 → 에디토리얼 상세 링크를 따라갈 수 있게 한다 (클릭은
             // preventDefault 후 기존 SPA 오버레이 유지).
-            var edHref = ed.slug
-              ? '/editorial/' + encodeURIComponent(ed.slug)
-              : '#';
-            h += '<a class="ed-row-card" href="' + edHref + '" data-tags="' + tagsAttr + '" data-api-rendered="1" ' +
+            var edHref = ed.slug ? window._papEdHref(ed.slug) : '#';
+            var edPed  = String(ed.slug || '').replace(/"/g, '&quot;');
+            h += '<a class="ed-row-card" href="' + edHref + '" data-paped="' + edPed + '" data-tags="' + tagsAttr + '" data-api-rendered="1" ' +
                  'onclick=\'event.preventDefault();openEditorial("' + safeTitle + '","' + safeImg + '")\'>' +
                    '<div class="ed-row-card-img">' +
                      '<img loading="lazy" src="' + safeImg + '" alt="' + safeTitle + '" ' +
@@ -1098,9 +1166,10 @@ window._papFilmAutoPlay = function(){
           var catLabel  = 'EDITORIAL' + (dateLabel ? (' - ' + dateLabel) : '');
           var tagsAttr  = Array.isArray(ed.tags) ? ed.tags.join(',') : '';
           // SEO — 실제 <a href="/editorial/<slug>"> 카드 (크롤러 링크 그래프용).
-          var trendHref = ed.slug ? '/editorial/' + encodeURIComponent(ed.slug) : '#';
+          var trendHref = ed.slug ? window._papEdHref(ed.slug) : '#';
+          var trendPed  = String(ed.slug || '').replace(/"/g, '&quot;');
           html +=
-            '<a class="ed-row-card" href="' + trendHref + '" data-tags="' + tagsAttr + '" data-api-rendered="1" ' +
+            '<a class="ed-row-card" href="' + trendHref + '" data-paped="' + trendPed + '" data-tags="' + tagsAttr + '" data-api-rendered="1" ' +
             'onclick=\'event.preventDefault();openEditorial("' + safeTitle + '","' + safeImg + '")\'>' +
               '<div class="ed-row-card-img">' +
                 '<img loading="lazy" src="' + safeImg + '" alt="' + safeTitle + '" ' +
