@@ -72,12 +72,18 @@ const MIN_TRANSLATED = { description: 40, body: 100 };
  * 325건, 2,000자 초과는 3건뿐이라 메타 설명 품질에는 영향이 없다. */
 const EDITORIAL_SRC_MAX = 1200;
 
+/* 원본이 '번역할 만큼 있다' 고 볼 최소 길이. hasSource 와 아래 RPC 인자가
+ * 같은 숫자를 써야 한다 — 두 곳에 따로 적으면 한쪽만 바뀐다(이 저장소가 이미
+ * 여러 번 겪은 패턴이라 상수로 뽑아 단일 출처를 만든다). */
+const MIN_SOURCE = { editorial: 30, article: 80 };
+
 const KINDS = {
   editorial: {
     table: 'editorials',
     columns: 'id, title, title_en, description, description_en, description_it',
     translateBody: false,
     defaultBatch: 10,
+    minSrc: MIN_SOURCE.editorial,
     /* 2026-08-03: 0(무제한)이었다. 위 EDITORIAL_SRC_MAX 주석 참고 —
        긴 설명 여러 건이 한 배치에 몰리면 한 콜이 타임아웃을 넘긴다.
        예산을 넘기는 건은 자연히 혼자 처리된다(최소 1건 보장). */
@@ -96,8 +102,14 @@ const KINDS = {
        lang 을 안 보면 그 경로까지 막힌다 — 테스트가 실제로 이걸 잡았다. */
     hasSource: (e, lang) =>
       (lang === 'it' && String(e.description_it || '').trim().length > 0)
-      || String(e.description_en || e.description || '').trim().length >= 30,
+      || String(e.description_en || e.description || '').trim().length >= MIN_SOURCE.editorial,
     doneField: 'description',
+    /* RPC 큐가 돌려준 행을 이 kind 의 표 스키마 모양으로 되돌린다.
+       이렇게 해야 아래 cfg.src / fast-path / upsert 가 경로에 상관없이 같다. */
+    fromQueueRow: (r) => ({
+      id: r.id, title: r.title, title_en: r.title_en,
+      description: r.src, description_en: r.src, description_it: r.extra,
+    }),
   },
   article: {
     table: 'articles',
@@ -118,10 +130,68 @@ const KINDS = {
       title_en: a.title_en || null,
       body: a.content_en || a.content || '',
     }),
-    hasSource: (a) => String(a.content_en || a.content || '').trim().length >= 80,
+    hasSource: (a) => String(a.content_en || a.content || '').trim().length >= MIN_SOURCE.article,
     doneField: 'body',
+    minSrc: MIN_SOURCE.article,
+    fromQueueRow: (r) => ({
+      id: r.id, title: r.title, title_en: r.title_en,
+      content: r.src, content_en: r.src,
+    }),
   },
 };
+
+/* ─── 2026-08-05 — 큐 선별을 서버로 내린다 (supabase_migrations/100) ───
+ *
+ * 사건이 아니라 낭비였다. 이 함수는 호출 한 번마다
+ *   ① articles(published) 전량 + 본문        → 6.26 MB
+ *   ② seo_translations(kind,lang) 전량 + body → 2.33 MB (it 기준)
+ * 를 내려받았다. 알고 싶은 건 길이 두 개뿐이었는데(번역이 채워졌나 / 원본이
+ * 충분히 기나) 8.5 MB 를 옮겼다. 그것도 언어마다 따로, 크론 한 번에 3~10 회.
+ * 그래서 실행 84초에 저장 1~2건, 매 실행 끝이 skip(time-budget) 이었다.
+ *
+ * 형제 크론 backfill-meta-desc 는 이미 short_desc_editorials RPC 로 같은 일을
+ * 하고 실행시간이 0.5초다. 예외였던 쪽을 규칙에 맞춘다.
+ *
+ * RPC 가 없으면(마이그레이션 미적용·테스트 스텁) 조용히 예전 경로로 돌아간다 —
+ * 배포 순서에 매이지 않게 하려는 의도적 설계다. */
+const QUEUE_RPC = { editorial: 'seo_translate_queue', article: 'seo_translate_queue_article' };
+let rpcUnavailable = false;   // 한 번 없다고 확인되면 매번 왕복하지 않는다
+
+async function fetchQueueViaRpc(kind, lang, limit, cfg) {
+  if (rpcUnavailable) return null;
+  const minDone = MIN_TRANSLATED[cfg.doneField] || 40;
+  const minSrc = cfg.minSrc || 30;
+  try {
+    const qArgs = kind === 'article'
+      ? { p_lang: lang, p_limit: limit, p_min_done: minDone, p_min_src: minSrc }
+      : { p_kind: kind, p_lang: lang, p_limit: limit, p_min_done: minDone, p_min_src: minSrc,
+          p_src_max: EDITORIAL_SRC_MAX };
+    const [q, c] = await Promise.all([
+      supabaseAdmin.rpc(QUEUE_RPC[kind], qArgs),
+      supabaseAdmin.rpc('seo_translate_counts',
+        { p_kind: kind, p_lang: lang, p_min_done: minDone, p_min_src: minSrc }),
+    ]);
+    if (q.error || c.error) throw (q.error || c.error);
+    const counts = Array.isArray(c.data) ? (c.data[0] || {}) : (c.data || {});
+    return {
+      items: (q.data || []).map(cfg.fromQueueRow),
+      remaining: Number(counts.remaining) || 0,
+      noSource: Number(counts.no_source) || 0,
+    };
+  } catch (e) {
+    const msg = String((e && e.message) || e);
+    /* 구조적 부재(함수 없음 42883 · 권한 없음 42501 · 스텁에 rpc 자체가 없음)
+       는 다시 시도해도 같은 결과다 → 래치를 걸어 매번 왕복하지 않는다.
+       반면 일시적 네트워크 오류까지 영구히 래치하면, 한 번 삐끗한 컨테이너가
+       수명이 다할 때까지 8.5MB 경로로 도는 최악이 된다 → 그건 래치하지 않는다. */
+    if (/42883|42501|does not exist|not a function|undefined function|permission denied/i.test(msg)
+        || (e && (e.code === '42883' || e.code === '42501'))) {
+      rpcUnavailable = true;
+    }
+    console.error('[seoTranslateBackfill] 큐 RPC 사용 불가 → 전량조회 폴백:', msg.slice(0, 120));
+    return null;
+  }
+}
 
 /**
  * 응답 텍스트에서 JSON 배열만 꺼낸다 (2026-07-31 신설).
@@ -407,7 +477,23 @@ async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 9
   }
   const size = normalizeBatch(batch, cfg.defaultBatch);
 
-  /* 1) 해당 언어 번역이 '내용까지' 있는 id 집합 (2026-07-30 수정)
+  /* 0) 빠른 경로 — 서버가 골라준 큐 (2026-08-05, 마이그레이션 100)
+   *
+   * 재시도(MAX_PASSES)가 다음 건으로 넘어갈 수 있도록 배치보다 조금 넉넉히
+   * 받는다. it 에디토리얼만 예외 — description_it fast-path 가 한 번에 최대
+   * 200건을 저장하던 동작을 유지한다(설명은 1,200자로 잘려 오므로 여전히 작다). */
+  const queueLimit = (lang === 'it' && kind === 'editorial')
+    ? 200
+    : Math.min(20, Math.max(size * 3, size + 2));
+  const fast = await fetchQueueViaRpc(kind, lang, queueLimit, cfg);
+  if (fast) {
+    return runOnQueue({
+      lang, kind, cfg, size, timeoutMs, deadlineAt,
+      pending: fast.items, remainingTotal: fast.remaining, skippedNoSource: fast.noSource,
+    });
+  }
+
+  /* 1) (폴백) 해당 언어 번역이 '내용까지' 있는 id 집합 (2026-07-30 수정)
    *
    * 전에는 행의 존재만 봤다(select('content_id')). 그래서 원본 설명이 없던
    * 시절에 빈 값으로 저장된 행이 영원히 '완료' 로 잡혔다 — ja 는 2,450행 중
@@ -448,6 +534,13 @@ async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 9
   const pending = (eds || []).filter(e => e.title && !doneSet.has(e.id) && hasSource(e, lang));
   const skippedNoSource = (eds || []).filter(e => e.title && !doneSet.has(e.id) && !hasSource(e, lang)).length;
   const remainingTotal = pending.length;
+  return runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, pending, remainingTotal, skippedNoSource });
+}
+
+/* 큐가 정해진 뒤의 공통 처리 — RPC 경로와 폴백 경로가 **같은 코드**를 쓴다.
+   (진입점이 둘로 갈리면 한쪽만 고쳐지는 사고가 난다. 이 파일이 _lib 로 뽑힌
+    이유와 같은 이유로, 갈림길은 '큐를 어떻게 구했나' 까지만 둔다.) */
+async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, pending, remainingTotal, skippedNoSource }) {
   if (!remainingTotal) {
     /* '완료' 와 '원본이 없어 못 함' 을 구분해 보고한다. 이 둘을 뭉뚱그리면
        원본 백필이 밀려서 멈춘 상태를 '완주' 로 착각한다. */

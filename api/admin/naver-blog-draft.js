@@ -29,6 +29,118 @@ function stripHtml(s) {
   return String(s || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+/* ─── 2026-08-05 — JSON 파싱 실패 수정 ────────────────────────────────
+ *
+ * 사건: naver-draft-sweep 이 36시간 9회 실행 중 6회 실패했다. 에러는 전부
+ *   `Expected ',' or '}' after property value in JSON at position 509`
+ * 였다. 원인은 모델 탓이 아니라 **요구한 형식 탓**이다. 우리는 HTML 을
+ * JSON 문자열 안에 넣어 달라고 했는데, HTML 은 속성값에 큰따옴표를 쓴다
+ * (`<p style="text-align:center">`). 모델이 그 따옴표를 이스케이프하지 않으면
+ * 문자열이 거기서 끊기고 JSON 이 통째로 깨진다. position 509 = body_html
+ * 안쪽이라는 것도 이 설명과 맞는다. 프롬프트로 "이스케이프하라"고 더 세게
+ * 말해봐야 확률만 조금 바뀐다 — 형식을 바꿔야 원인이 사라진다.
+ *
+ * 그래서 두 겹으로 고친다.
+ *   ① 구조화 출력(tool_use)로 받는다 — 모델이 문자열을 직접 조립하지 않으므로
+ *      따옴표로 깨질 수가 없다. API 가 이미 파싱된 객체를 준다.
+ *   ② 그래도 텍스트로 오면(모델·API 버전 문제) 필드 경계로 건져낸다.
+ *      깨진 JSON 을 추측해 고치는 게 아니라, "title/body_html/tags 의 경계는
+ *      어디인가" 라는 사실만 쓴다 — _lib/seoTranslateBackfill.js 의
+ *      salvageObjects 와 같은 원칙이다.
+ */
+const DRAFT_TOOL = {
+  name: 'emit_draft',
+  description: '네이버 블로그 초안 한 건을 구조화된 형태로 제출한다.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      title: { type: 'string', description: '최종 제목 1개 (25~35자)' },
+      body_html: { type: 'string', description: '본문 HTML. 태그 안에 큰따옴표를 써도 된다.' },
+      tags: { type: 'array', items: { type: 'string' }, description: '태그 10개 (# 없이)' },
+    },
+    required: ['title', 'body_html', 'tags'],
+  },
+};
+
+/* 깨진 JSON 에서 세 필드를 경계로 건져낸다. 못 건지면 null. */
+function salvageDraft(text) {
+  const s = String(text || '');
+  const cut = (key, nextKey) => {
+    const k = s.indexOf('"' + key + '"');
+    if (k === -1) return null;
+    const open = s.indexOf('"', s.indexOf(':', k) + 1);
+    if (open === -1) return null;
+    // 다음 필드의 시작 직전까지가 이 값의 범위다. 그 안의 마지막 따옴표가 끝.
+    const nk = nextKey ? s.indexOf('"' + nextKey + '"', open + 1) : -1;
+    const region = s.slice(open + 1, nk === -1 ? s.length : nk);
+    const end = region.lastIndexOf('"');
+    if (end <= 0) return null;
+    return region.slice(0, end)
+      .replace(/\\n/g, '\n').replace(/\\t/g, '\t')
+      .replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+  };
+  const title = cut('title', 'body_html');
+  const body_html = cut('body_html', 'tags');
+  if (!title || !body_html) return null;
+  let tags = [];
+  const ti = s.indexOf('"tags"');
+  if (ti !== -1) {
+    const a = s.indexOf('[', ti), b = s.indexOf(']', a);
+    if (a !== -1 && b !== -1) {
+      try { tags = JSON.parse(s.slice(a, b + 1)); } catch (_) { tags = []; }
+    }
+  }
+  return { title, body_html, tags: Array.isArray(tags) ? tags : [] };
+}
+
+/* 초안 1건을 모델에서 받아온다. 실패 시 throw (호출자가 문구를 붙인다). */
+async function requestDraft(prompt, maxTokens, label) {
+  const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
+  const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': process.env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: maxTokens,
+      tools: [DRAFT_TOOL],
+      tool_choice: { type: 'tool', name: DRAFT_TOOL.name },
+      messages: [{ role: 'user', content: prompt }],
+    }),
+    signal: AbortSignal.timeout(90000),
+  });
+  if (!apiRes.ok) {
+    const t = await apiRes.text().catch(() => '');
+    await reportAiFailure(apiRes.status, t, label);
+    throw new Error('Claude API ' + apiRes.status + ': ' + t.slice(0, 200));
+  }
+  const j = await apiRes.json();
+  const parts = Array.isArray(j.content) ? j.content : [];
+
+  // ① 구조화 출력 — 정상 경로. 따옴표로 깨질 수 없다.
+  const tu = parts.find(c => c && c.type === 'tool_use' && c.name === DRAFT_TOOL.name);
+  if (tu && tu.input && tu.input.title && tu.input.body_html) return tu.input;
+
+  // ② 텍스트로 왔을 때 — 예전 경로 + 건져내기
+  const text = parts.filter(c => c && c.type === 'text').map(c => c.text || '').join('');
+  const m = text.match(/\{[\s\S]*\}/);
+  if (m) {
+    try { return JSON.parse(m[0]); } catch (_) { /* 아래에서 건져낸다 */ }
+  }
+  const salvaged = salvageDraft(text);
+  if (salvaged) {
+    console.warn('[' + label + '] 구조화 출력 없음 — 텍스트에서 건져냄');
+    return salvaged;
+  }
+  if (j.stop_reason === 'max_tokens') {
+    throw new Error('Claude 응답이 max_tokens 에서 잘렸습니다 (' + label + ').');
+  }
+  throw new Error('Claude 응답에서 초안을 얻지 못함 (' + label + ').');
+}
+
 // B-5 (2026-07) — 모든 초안 하단 IG 유도 블록.
 // 링크는 /api/ig-out?src=naverblog 경유(절대 URL — 블로그 본문은 상대경로 불가)로
 // 유입을 계측한다. 네이버는 외부링크에 관대하지 않으므로 이 블록의 링크는
@@ -90,7 +202,6 @@ const FRAMEWORK_BLOCK = [
 
 async function generateDraft(art, brand) {
   if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY 환경변수 누락.');
-  const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
   const b = SITES[brand];
   const artUrl = b.site + '/article/' + encodeURIComponent(art.custom_url || art.slug || art.id);
   const gallery = (art.gallery || []).slice(0, 6);
@@ -114,38 +225,14 @@ async function generateDraft(art, brand) {
     '기사 본문: ' + stripHtml(art.content).slice(0, 3000),
     '기사 태그: ' + JSON.stringify(art.tags || []),
     '',
-    '아래 JSON 스키마로만 응답하라. 마크다운 fence 금지. 반드시 이 3개 필드만:',
-    '{',
-    '  "title": "내부 저울질을 거쳐 최종 선택한 제목 1개 (25~35자)",',
-    '  "body_html": "<p>훅 3문장</p><h3>공감/정보</h3><p>...[IMG1]...</p><h3>사례</h3><p>...[IMG2]...</p><h3>정리</h3><p>...</p><h3>오늘의 체크리스트</h3><ul><li>...</li> × 5</ul><p><em>부드러운 CTA 한 줄</em></p>",',
-    '  "tags": ["...", ... 총 10개]',
-    '}',
+    'emit_draft 도구로 제출하라. body_html 은 다음 구조를 따른다:',
+    '<p>훅 3문장</p><h3>공감/정보</h3><p>...[IMG1]...</p><h3>사례</h3><p>...[IMG2]...</p>',
+    '<h3>정리</h3><p>...</p><h3>오늘의 체크리스트</h3><ul><li>...</li> × 5</ul>',
+    '<p><em>부드러운 CTA 한 줄</em></p>',
+    'title 은 25~35자 1개, tags 는 # 없이 10개.',
   ].join('\n');
 
-  const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: 2500,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-    signal: AbortSignal.timeout(90000),
-  });
-  if (!apiRes.ok) {
-    const t = await apiRes.text().catch(() => '');
-    await reportAiFailure(apiRes.status, t, 'naver-blog-draft');
-    throw new Error('Claude API ' + apiRes.status + ': ' + t.slice(0, 200));
-  }
-  const j = await apiRes.json();
-  const text = (j.content && j.content[0] && j.content[0].text) || '';
-  const m = text.match(/\{[\s\S]*\}/);
-  if (!m) throw new Error('Claude 응답에서 JSON을 찾지 못함.');
-  const draft = JSON.parse(m[0]);
+  const draft = await requestDraft(prompt, 2500, 'naver-blog-draft');
 
   // [IMGn] 마커 → 실제 <img> 치환 + 남는 마커 제거
   let body = String(draft.body_html || '');
@@ -176,7 +263,6 @@ async function generateDraft(art, brand) {
 async function generateEditorialDraft(ed, brand) {
   if (brand !== 'pap') throw new Error('에디토리얼은 PAP만 지원합니다.');
   if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY 환경변수 누락.');
-  const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
   const b = SITES.pap;
   const url = b.site + '/editorial/' + encodeURIComponent(ed.slug);
   // 커버 + 갤러리 병합 후 최대 6장. 이후 프롬프트 [IMGn] 마커로 치환.
@@ -226,37 +312,15 @@ async function generateEditorialDraft(ed, brand) {
     creditLines.length ? creditLines.map(l => '  - ' + l).join('\n') : '  - (없음)',
     '기존 태그: ' + JSON.stringify(ed.tags || []),
     '',
-    '아래 JSON 스키마로만 응답하라. 마크다운 fence 금지. 반드시 이 3개 필드만:',
-    '{',
-    '  "title": "내부 저울질을 거쳐 최종 선택한 제목 1개 (25~35자, 브랜드·컨셉 키워드 앞배치)",',
-    '  "body_html": "<p>인트로 훅 3문장</p>[IMG1]<h3>무드와 컨셉</h3><p>...[IMG2]...</p><h3>룩과 스타일링</h3><p>...[IMG3]...</p><h3>크레딧</h3><ul><li>...</li></ul><h3>오늘의 체크리스트</h3><ul><li>...</li> × 5</ul><p><em>부드러운 CTA 한 줄</em></p>",',
-    '  "tags": ["PAP매거진", "패션에디토리얼", "패션화보", ... 총 10개]',
-    '}',
+    'emit_draft 도구로 제출하라. body_html 은 다음 구조를 따른다:',
+    '<p>인트로 훅 3문장</p>[IMG1]<h3>무드와 컨셉</h3><p>...[IMG2]...</p>',
+    '<h3>룩과 스타일링</h3><p>...[IMG3]...</p><h3>크레딧</h3><ul><li>...</li></ul>',
+    '<h3>오늘의 체크리스트</h3><ul><li>...</li> × 5</ul><p><em>부드러운 CTA 한 줄</em></p>',
+    'title 은 25~35자 1개(브랜드·컨셉 키워드 앞배치),',
+    'tags 는 # 없이 10개이며 PAP매거진 · 패션에디토리얼 · 패션화보를 반드시 포함한다.',
   ].join('\n');
 
-  const apiRes = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: 2800,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-    signal: AbortSignal.timeout(90000),
-  });
-  if (!apiRes.ok) {
-    const t = await apiRes.text().catch(() => '');
-    throw new Error('Claude API ' + apiRes.status + ': ' + t.slice(0, 200));
-  }
-  const j = await apiRes.json();
-  const text = (j.content && j.content[0] && j.content[0].text) || '';
-  const m = text.match(/\{[\s\S]*\}/);
-  if (!m) throw new Error('Claude 응답에서 JSON을 찾지 못함.');
-  const draft = JSON.parse(m[0]);
+  const draft = await requestDraft(prompt, 2800, 'naver-blog-draft-editorial');
 
   // [IMGn] 마커 → 실제 <img> 치환 + 남는 마커 제거
   let body = String(draft.body_html || '');
@@ -492,3 +556,8 @@ module.exports = async function handler(req, res) {
 
 // 크론 재사용을 위한 export (핸들러 함수 객체에 속성으로 부착)
 module.exports.generateNext = generateNext;
+// 테스트 전용 export — 2026-08-05 JSON 파싱 회귀를 DB·네트워크 없이 검증한다
+// (tests/naver-draft-json.test.js). 다른 곳에서 쓰지 말 것.
+module.exports._requestDraft = requestDraft;
+module.exports._salvageDraft = salvageDraft;
+module.exports._DRAFT_TOOL = DRAFT_TOOL;
