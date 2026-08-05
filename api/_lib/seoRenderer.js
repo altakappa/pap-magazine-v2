@@ -1367,9 +1367,13 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
 <main class="seo-content">
   <article>
     ${heroHtml}
+    <!-- 2026-08-05 — 비한국어 페이지에는 한국어 제목(.alt)·한국어 설명(.seo-desc-en)을
+         노출하지 않는다. 두 줄이 en/it/es 판에 그대로 실려 구글이 /en/article/* 를
+         /article/* 의 중복으로 보고 한국어판을 표준으로 선택했다(GSC 41건).
+         한국어 페이지에서 영문 제목·설명을 보조로 보여주는 기존 동작은 유지. -->
     <div class="seo-meta">
       <h1>${escText(titleMain)}</h1>
-      ${titleAlt !== titleMain ? `<p class="alt">${escText(titleAlt)}</p>` : ''}
+      ${!isEn && titleAlt !== titleMain ? `<p class="alt">${escText(titleAlt)}</p>` : ''}
       <time datetime="${escAttr(published)}">${(() => {
         // 2026-07-20 QA 표기통일 — 메인홈/목록/상세 SPA와 동일 포맷:
         //   "Title,Case - DD Mon YYYY" (카테고리 먼저, Title-case, ' - ' 구분).
@@ -1379,7 +1383,7 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
         return escText((_label ? _label + ' - ' : '') + _date);
       })()}</time>
       <p class="seo-desc-primary">${escText(descDisplay)}</p>
-      ${descAltDisplay && descAltDisplay !== descDisplay ? `<p class="seo-desc-en">${escText(descAltDisplay)}</p>` : ''}
+      ${!isEn && descAltDisplay && descAltDisplay !== descDisplay ? `<p class="seo-desc-en">${escText(descAltDisplay)}</p>` : ''}
     </div>
     ${bodyHtml}
     ${galleryHtml}
