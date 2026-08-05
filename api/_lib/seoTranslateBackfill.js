@@ -157,8 +157,27 @@ const KINDS = {
 const QUEUE_RPC = { editorial: 'seo_translate_queue', article: 'seo_translate_queue_article' };
 let rpcUnavailable = false;   // 한 번 없다고 확인되면 매번 왕복하지 않는다
 
-async function fetchQueueViaRpc(kind, lang, limit, cfg) {
+/* ─── 2026-08-05 계측 (2차) ────────────────────────────────────────────
+ *
+ * 왜 넣나 — 오늘 오전에 "8.5MB 전송이 병목" 이라고 판단해 큐를 RPC 로 내렸다.
+ * 전송은 실제로 사라졌는데(RPC mean 72~156ms 실측) **시간당 저장이 61건에서
+ * 43건으로 줄었고 평균 실행시간은 69초에서 80초로 늘었다.** 즉 진단이 반만
+ * 맞았다. 80초가 *어디에* 쓰이는지 한 번도 재보지 않고 큰 숫자만 보고
+ * 원인이라 결론낸 것이 잘못이었다.
+ *
+ * 이 파일의 주석들이 증언하듯 이 크론은 여러 번 추측으로 튜닝됐다. 그래서
+ * 다음 조치는 또 다른 추측이 아니라 계측이다 — 구간별 소요를 note 에 남겨
+ * 80초의 내역을 눈으로 본 뒤에 판단한다.
+ *
+ * 원칙: 계측은 공짜여야 한다. Date.now() 뺄셈과 정수 덧셈뿐이고, 실패해도
+ * 본 작업을 막지 않는다(타이밍은 항상 옵셔널 필드로만 나간다). */
+function newTiming() {
+  return { queueMs: 0, callMs: 0, saveMs: 0, calls: 0, saves: 0 };
+}
+
+async function fetchQueueViaRpc(kind, lang, limit, cfg, timing) {
   if (rpcUnavailable) return null;
+  const t0 = Date.now();
   const minDone = MIN_TRANSLATED[cfg.doneField] || 40;
   const minSrc = cfg.minSrc || 30;
   try {
@@ -172,6 +191,7 @@ async function fetchQueueViaRpc(kind, lang, limit, cfg) {
         { p_kind: kind, p_lang: lang, p_min_done: minDone, p_min_src: minSrc }),
     ]);
     if (q.error || c.error) throw (q.error || c.error);
+    if (timing) timing.queueMs += Date.now() - t0;
     const counts = Array.isArray(c.data) ? (c.data[0] || {}) : (c.data || {});
     return {
       items: (q.data || []).map(cfg.fromQueueRow),
@@ -179,6 +199,7 @@ async function fetchQueueViaRpc(kind, lang, limit, cfg) {
       noSource: Number(counts.no_source) || 0,
     };
   } catch (e) {
+    if (timing) timing.queueMs += Date.now() - t0;
     const msg = String((e && e.message) || e);
     /* 구조적 부재(함수 없음 42883 · 권한 없음 42501 · 스텁에 rpc 자체가 없음)
        는 다시 시도해도 같은 결과다 → 래치를 걸어 매번 왕복하지 않는다.
@@ -485,13 +506,15 @@ async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 9
   const queueLimit = (lang === 'it' && kind === 'editorial')
     ? 200
     : Math.min(20, Math.max(size * 3, size + 2));
-  const fast = await fetchQueueViaRpc(kind, lang, queueLimit, cfg);
+  const timing = newTiming();
+  const fast = await fetchQueueViaRpc(kind, lang, queueLimit, cfg, timing);
   if (fast) {
     return runOnQueue({
-      lang, kind, cfg, size, timeoutMs, deadlineAt,
+      lang, kind, cfg, size, timeoutMs, deadlineAt, timing,
       pending: fast.items, remainingTotal: fast.remaining, skippedNoSource: fast.noSource,
     });
   }
+  const tFallback = Date.now();
 
   /* 1) (폴백) 해당 언어 번역이 '내용까지' 있는 id 집합 (2026-07-30 수정)
    *
@@ -534,18 +557,20 @@ async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 9
   const pending = (eds || []).filter(e => e.title && !doneSet.has(e.id) && hasSource(e, lang));
   const skippedNoSource = (eds || []).filter(e => e.title && !doneSet.has(e.id) && !hasSource(e, lang)).length;
   const remainingTotal = pending.length;
-  return runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, pending, remainingTotal, skippedNoSource });
+  timing.queueMs += Date.now() - tFallback;
+  return runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing, pending, remainingTotal, skippedNoSource });
 }
 
 /* 큐가 정해진 뒤의 공통 처리 — RPC 경로와 폴백 경로가 **같은 코드**를 쓴다.
    (진입점이 둘로 갈리면 한쪽만 고쳐지는 사고가 난다. 이 파일이 _lib 로 뽑힌
     이유와 같은 이유로, 갈림길은 '큐를 어떻게 구했나' 까지만 둔다.) */
-async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, pending, remainingTotal, skippedNoSource }) {
+async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing, pending, remainingTotal, skippedNoSource }) {
+  timing = timing || newTiming();
   if (!remainingTotal) {
     /* '완료' 와 '원본이 없어 못 함' 을 구분해 보고한다. 이 둘을 뭉뚱그리면
        원본 백필이 밀려서 멈춘 상태를 '완주' 로 착각한다. */
     return {
-      lang, kind, processed: 0, remaining: 0, skipped_no_source: skippedNoSource,
+      lang, kind, processed: 0, remaining: 0, skipped_no_source: skippedNoSource, timing,
       message: skippedNoSource
         ? `번역 가능한 잔여 0 — 다만 원본(설명) 없는 ${skippedNoSource}건은 대기 중입니다.`
         : '전부 번역 완료.',
@@ -557,6 +582,7 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, pendin
     const ready = pending.filter(e => e.description_it && String(e.description_it).trim());
     if (ready.length) {
       let fastSaved = 0;
+      const tFast = Date.now();
       for (const e of ready.slice(0, 200)) {
         const { error: upErr } = await supabaseAdmin
           .from('seo_translations')
@@ -568,8 +594,9 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, pendin
           }, { onConflict: 'kind,content_id,lang' });
         if (!upErr) fastSaved++;
       }
+      timing.saveMs += Date.now() - tFast; timing.saves += fastSaved;
       return {
-        lang, processed: fastSaved, remaining: remainingTotal - fastSaved,
+        lang, processed: fastSaved, remaining: remainingTotal - fastSaved, timing,
         mode: 'fastpath-description_it',
         hint: '기존 description_it 활용분 저장. 반복 호출하면 잔여분은 Claude 번역으로 넘어갑니다.',
       };
@@ -598,6 +625,7 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, pendin
 
     /* ① 배치 */
     let parsed = [];
+    const tBatch = Date.now();
     try {
       const r = await callClaude(buildBatchPrompt(items, cfg, lang), cfg.maxTokens || 8000, model,
         callBudget(deadlineAt, timeoutMs));
@@ -607,6 +635,7 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, pendin
     } catch (e) {
       errors.push({ reason: '배치 실패: ' + String((e && e.message) || e).slice(0, 80) });
     }
+    timing.callMs += Date.now() - tBatch; timing.calls++;
 
     const got = new Map();
     for (const t of parsed) {
@@ -620,20 +649,24 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, pendin
       /* 재시도가 마감을 밀고 나가지 않는다. 이건 그 기사의 잘못이 아니므로
          failedIds 에 넣지 않는다 — 다음 실행에서 그대로 다시 시도된다. */
       if (!canCall(deadlineAt, timeoutMs)) { ranOut = true; break; }
+      const tOne = Date.now();
       try {
         const one = await translateOne(it, cfg, lang, model, callBudget(deadlineAt, timeoutMs));
+        timing.callMs += Date.now() - tOne; timing.calls++;
         if (one && one.title) got.set(it.id, one);
         else {
           failedIds.add(it.id);
           errors.push({ id: it.id, reason: '단건 재시도 파싱 실패' });
         }
       } catch (e) {
+        timing.callMs += Date.now() - tOne; timing.calls++;
         failedIds.add(it.id);
         errors.push({ id: it.id, reason: '단건 재시도 실패: ' + String((e && e.message) || e).slice(0, 60) });
       }
     }
 
     /* ③ 저장 */
+    const tSave = Date.now();
     for (const it of items) {
       const t = got.get(it.id);
       if (!t) continue;
@@ -656,7 +689,9 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, pendin
         continue;
       }
       processed++;
+      timing.saves++;
     }
+    timing.saveMs += Date.now() - tSave;
 
     /* 마감에 걸렸으면 다음 패스로 넘어가지 않는다 (저장은 위에서 이미 끝났다). */
     if (ranOut) break;
@@ -675,9 +710,11 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, pendin
     skipped_failed: failedIds.size || undefined,
     // 마감에 걸려 중단했다. 잔여가 남아도 '막힌 것' 이 아니라 '시간이 끝난 것'.
     ran_out_of_time: ranOut || undefined,
+    // 2026-08-05 계측: 이 조합이 큐조회/AI호출/저장에 각각 몇 ms 를 썼는가.
+    timing,
     errors: errors.length ? errors : undefined,
     hint: remainingTotal - processed > 0 ? '같은 URL 을 반복 호출해 잔여분을 처리하세요.' : '전부 번역 완료.',
   };
 }
 
-module.exports = { runBackfillBatch, normalizeBatch, parseJsonArray, salvageObjects, parseSentinel, pickItems, buildBatchPrompt, msLeft, canCall, callBudget, CALL_SLACK_MS, MAX_PASSES, LANG_NAMES, KINDS };
+module.exports = { runBackfillBatch, newTiming, normalizeBatch, parseJsonArray, salvageObjects, parseSentinel, pickItems, buildBatchPrompt, msLeft, canCall, callBudget, CALL_SLACK_MS, MAX_PASSES, LANG_NAMES, KINDS };

@@ -385,6 +385,21 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
    *
    * 웨이브는 **종류별로 묶는다** — 타임아웃이 다르기 때문이다. 섞으면 빠른
    * 에디토리얼이 느린 아티클을 기다리며 예산을 같이 태운다. */
+  /* ─── 2026-08-05 계측 ───────────────────────────────────────────────
+   *
+   * 왜: 오늘 오전 큐를 RPC 로 내려 DB 전송 8.5MB 를 없앴는데(실측 확인),
+   * 시간당 저장이 61→43 건으로 **줄고** 평균 실행시간은 69→80초로 늘었다.
+   * 진단이 반만 맞았던 것이다 — 80초가 어디에 쓰이는지 재보지 않고 큰 숫자만
+   * 보고 원인이라 결론냈다. 이 파일의 주석 역사가 보여주듯 이 크론은 계속
+   * 추측으로 튜닝돼 왔다. 그 고리를 끊으려면 다음 조치가 아니라 **계측**이
+   * 먼저다. note 에 내역을 남겨 눈으로 보고 판단한다.
+   *
+   * 남기는 값(초 단위): 큐조회 / AI호출 / 저장 / 웨이브 수 / 마지막에 남은 예산.
+   * 조합들이 병렬로 도니 합계는 벽시계보다 클 수 있다 — 그게 정상이고,
+   * '어디가 큰가' 를 보는 것이 목적이다. */
+  const T = { queueMs: 0, callMs: 0, saveMs: 0, calls: 0, waves: 0 };
+  let lastLeftMs = null;
+
   const MAX_WAVES = 40;   // 무한 루프 방지 (정상적으로는 예산이 먼저 끝난다)
   let cursor = 0;
   for (let wave = 0; wave < MAX_WAVES && !rateLimited; wave++) {
@@ -405,12 +420,24 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
 
     const need = (CALL_MS[kindOfWave] || CALL_MS.editorial) + WAVE_SLACK_MS;
     if (left() < need) {
+      lastLeftMs = left();
       results.push({ kind: kindOfWave, skipped: 'time-budget', leftMs: left(), needMs: need });
       break;
     }
 
+    T.waves++;
     const done = await Promise.all(picked.map(runTask));
-    for (const r of done) results.push(r);
+    for (const r of done) {
+      results.push(r);
+      const t = r && r.timing;
+      if (t) {
+        T.queueMs += t.queueMs || 0;
+        T.callMs += t.callMs || 0;
+        T.saveMs += t.saveMs || 0;
+        T.calls += t.calls || 0;
+      }
+    }
+    lastLeftMs = left();
   }
   if (rateLimited) results.push({ skipped: 'rate-limited-stop' });
 
@@ -434,13 +461,25 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
     if (r.error && !cur.err) cur.err = String(r.error).slice(0, 50);
     perCombo.set(k, cur);
   }
-  res.locals.cronNote = [
+  /* 계측 한 줄 — 항상 note 끝에 붙인다. 초 단위, 소수 1자리.
+     예) ⏱큐0.9/AI58.4/저장0.3s·콜3·웨이브2·남은21s
+     (조합이 병렬이라 합계가 벽시계보다 클 수 있다 — 비율을 보는 값이다.) */
+  const s1 = (ms) => (Math.round(ms / 100) / 10);
+  const timingNote = '⏱큐' + s1(T.queueMs) + '/AI' + s1(T.callMs) + '/저장' + s1(T.saveMs)
+    + 's·콜' + T.calls + '·웨' + T.waves
+    + (lastLeftMs === null ? '' : '·남' + s1(lastLeftMs) + 's');
+
+  /* cronGuard 가 note 를 500자로 자른다. 계측을 그냥 뒤에 붙이면 조합이 많은
+     실행에서 계측만 잘려나가 — 정작 보려던 값이 사라진다. 조합 쪽을 먼저
+     줄이고 계측은 반드시 살린다. */
+  const comboNote = [
     ...Array.from(perCombo.entries()).map(([k, v]) =>
       k + ':' + v.processed
       + (v.remaining === null ? '' : '/남' + v.remaining)
       + (v.err ? ' ERR ' + v.err : '')),
     ...notes,
   ].join(' · ') || '처리 대상 없음';
+  res.locals.cronNote = comboNote.slice(0, 500 - timingNote.length - 3) + ' · ' + timingNote;
 
   /* 조합별 최신 잔량 합계. 전 조합을 한 번이라도 확인했을 때만 '완주' 판정한다 —
      확인 못 한 조합이 있으면 합계는 실제보다 작아 착시가 된다. */
@@ -459,6 +498,8 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
     allDone: allMeasured && remainingTotal === 0 ? true : undefined,
     rateLimited: rateLimited || undefined,
     elapsedMs: elapsed(),
+    // 2026-08-05 계측 — 관리자가 응답만 봐도 80초의 내역을 알 수 있게.
+    timing: { queueMs: T.queueMs, callMs: T.callMs, saveMs: T.saveMs, calls: T.calls, waves: T.waves, lastLeftMs },
     results,
   });
 }, { silenceTransient: true });
