@@ -1148,7 +1148,7 @@
       "permanent": true
     },
     {
-      "source": "/business/:path*",
+      "source": "/business/:path+",
       "destination": "/business",
       "permanent": true
     },
