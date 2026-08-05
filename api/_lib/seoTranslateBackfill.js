@@ -175,7 +175,7 @@ function newTiming() {
   return { queueMs: 0, callMs: 0, saveMs: 0, calls: 0, saves: 0 };
 }
 
-async function fetchQueueViaRpc(kind, lang, limit, cfg, timing, since) {
+async function fetchQueueViaRpc(kind, lang, limit, cfg, timing, since, maxSrc) {
   if (rpcUnavailable) return null;
   const t0 = Date.now();
   const minDone = MIN_TRANSLATED[cfg.doneField] || 40;
@@ -184,13 +184,15 @@ async function fetchQueueViaRpc(kind, lang, limit, cfg, timing, since) {
     /* p_since — 발행 나이 컷 (2026-08-05, 마이그레이션 101). null 이면 제한 없음.
        크론만 값을 넘기고 관리자 수동 경로는 안 넘긴다(에버그린 예외). */
     const qArgs = kind === 'article'
-      ? { p_lang: lang, p_limit: limit, p_min_done: minDone, p_min_src: minSrc, p_since: since }
+      ? { p_lang: lang, p_limit: limit, p_min_done: minDone, p_min_src: minSrc, p_since: since,
+          p_max_src: maxSrc || 0 }
       : { p_kind: kind, p_lang: lang, p_limit: limit, p_min_done: minDone, p_min_src: minSrc,
           p_src_max: EDITORIAL_SRC_MAX };
     const [q, c] = await Promise.all([
       supabaseAdmin.rpc(QUEUE_RPC[kind], qArgs),
       supabaseAdmin.rpc('seo_translate_counts',
-        { p_kind: kind, p_lang: lang, p_min_done: minDone, p_min_src: minSrc, p_since: since }),
+        { p_kind: kind, p_lang: lang, p_min_done: minDone, p_min_src: minSrc, p_since: since,
+          p_max_src: maxSrc || 0 }),
     ]);
     if (q.error || c.error) throw (q.error || c.error);
     if (timing) timing.queueMs += Date.now() - t0;
@@ -199,6 +201,7 @@ async function fetchQueueViaRpc(kind, lang, limit, cfg, timing, since) {
       items: (q.data || []).map(cfg.fromQueueRow),
       remaining: Number(counts.remaining) || 0,
       noSource: Number(counts.no_source) || 0,
+      tooLong: Number(counts.too_long) || 0,
     };
   } catch (e) {
     if (timing) timing.queueMs += Date.now() - t0;
@@ -481,7 +484,7 @@ async function translateOne(item, cfg, lang, model, timeoutMs) {
   return parseSentinel(text, wantBody);
 }
 
-async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 90000, deadlineAt = 0, sinceDate = null } = {}) {
+async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 90000, deadlineAt = 0, sinceDate = null, maxSrcChars = 0 } = {}) {
   if (!LANG_NAMES[lang]) {
     const e = new Error('lang 은 ' + Object.keys(LANG_NAMES).join('|') + ' 중 하나여야 합니다.');
     e.statusCode = 400;
@@ -510,11 +513,22 @@ async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 9
     : Math.min(20, Math.max(size * 3, size + 2));
   const timing = newTiming();
   const since = sinceDate || null;
-  const fast = await fetchQueueViaRpc(kind, lang, queueLimit, cfg, timing, since);
+  /* ─── 2026-08-05 — 원문 길이 상한 (poison pill 차단) ───────────────
+   * zh 잔여 181건이 한 건도 안 줄었다. 큐 맨 앞에 9,052자·12,963자짜리가
+   * 박혀 있었고, 중국어는 출력 토큰이 2~3배라 호출 타임아웃 안에 못 끝낸다.
+   * 큐가 published_date DESC 고정이라 매 실행 같은 두 건을 다시 시도했고
+   * 뒤의 179건은 영원히 차례가 오지 않았다.
+   * 성공한 zh 번역 329건의 원문 최대는 2,293자, 6,000자 초과 성공은 0건 —
+   * 6,000 은 실측에 근거한 안전선이다. 자르지 않고 '제외'하는 이유는
+   * 잘린 본문을 저장하면 문장이 끊긴 페이지가 나가기 때문(아래 upsert 주석).
+   * 제외분은 관리자 수동 경로로 처리한다(0 = 상한 없음). */
+  const maxSrc = Number(maxSrcChars) > 0 ? Math.floor(Number(maxSrcChars)) : 0;
+  const fast = await fetchQueueViaRpc(kind, lang, queueLimit, cfg, timing, since, maxSrc);
   if (fast) {
     return runOnQueue({
       lang, kind, cfg, size, timeoutMs, deadlineAt, timing,
       pending: fast.items, remainingTotal: fast.remaining, skippedNoSource: fast.noSource,
+      skippedTooLong: fast.tooLong,
     });
   }
   const tFallback = Date.now();
@@ -561,24 +575,31 @@ async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 9
      떨어진 순간 오래된 기사를 다시 번역하기 시작한다 — 이 파일이 _lib 로
      뽑힌 이유(진입점 둘, 로직 하나)와 같은 종류의 사고다. */
   const inAge = (e) => !since || (e.published_date && String(e.published_date) >= since);
+  /* 길이 상한도 RPC 경로와 같아야 한다 — 한쪽만 걸면 폴백으로 떨어진 순간
+     다시 거대한 기사에 막힌다. */
+  const srcLenOf = (e) => String((cfg.src(e) || {}).body || (cfg.src(e) || {}).description || '').length;
+  const notTooLong = (e) => !maxSrc || kind !== 'article' || srcLenOf(e) <= maxSrc;
   const fresh = (eds || []).filter(e => e.title && !doneSet.has(e.id) && inAge(e));
-  const pending = fresh.filter(e => hasSource(e, lang));
+  const withSrc = fresh.filter(e => hasSource(e, lang));
+  const pending = withSrc.filter(notTooLong);
+  const skippedTooLong = withSrc.length - pending.length;
   const skippedNoSource = fresh.filter(e => !hasSource(e, lang)).length;
   const remainingTotal = pending.length;
   timing.queueMs += Date.now() - tFallback;
-  return runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing, pending, remainingTotal, skippedNoSource });
+  return runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing, pending, remainingTotal, skippedNoSource, skippedTooLong });
 }
 
 /* 큐가 정해진 뒤의 공통 처리 — RPC 경로와 폴백 경로가 **같은 코드**를 쓴다.
    (진입점이 둘로 갈리면 한쪽만 고쳐지는 사고가 난다. 이 파일이 _lib 로 뽑힌
     이유와 같은 이유로, 갈림길은 '큐를 어떻게 구했나' 까지만 둔다.) */
-async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing, pending, remainingTotal, skippedNoSource }) {
+async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing, pending, remainingTotal, skippedNoSource, skippedTooLong }) {
   timing = timing || newTiming();
   if (!remainingTotal) {
     /* '완료' 와 '원본이 없어 못 함' 을 구분해 보고한다. 이 둘을 뭉뚱그리면
        원본 백필이 밀려서 멈춘 상태를 '완주' 로 착각한다. */
     return {
-      lang, kind, processed: 0, remaining: 0, skipped_no_source: skippedNoSource, timing,
+      lang, kind, processed: 0, remaining: 0, skipped_no_source: skippedNoSource,
+      skipped_too_long: skippedTooLong || undefined, timing,
       message: skippedNoSource
         ? `번역 가능한 잔여 0 — 다만 원본(설명) 없는 ${skippedNoSource}건은 대기 중입니다.`
         : '전부 번역 완료.',
@@ -714,6 +735,10 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing
     remaining: remainingTotal - processed,
     // 원본(설명)이 없어 손댈 수 없는 건수. 0 이 아니면 '완주' 가 아니다.
     skipped_no_source: skippedNoSource,
+    /* 원문이 너무 길어 자동 대상에서 뺀 건수. 0 이 아니면 그만큼은 관리자
+       수동 경로로 처리해야 한다 — '잔여'와 뭉뚱그리면 큐가 막힌 상태를
+       '아직 할 일이 남았다'로 착각한다(2026-08-05 zh 사고). */
+    skipped_too_long: skippedTooLong || undefined,
     // 이번 회차에서 건너뛴 불량 건수. 0 이 아니면 그 id 를 사람이 확인해야 한다.
     skipped_failed: failedIds.size || undefined,
     // 마감에 걸려 중단했다. 잔여가 남아도 '막힌 것' 이 아니라 '시간이 끝난 것'.

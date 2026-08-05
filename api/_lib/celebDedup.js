@@ -220,6 +220,27 @@ const ENTITY_ALIASES = [
   ['다저스', /(la\s?다저스|다저스|dodgers)/gi],
   ['txt', /(투모로우바이투게더|tomorrow\s?x\s?together|\bTXT\b)/g],
   ['챌린지', /(챌린지|challenge)/gi],
+  /* 2026-08-05 6차 — 앵커 사전 확장 (도메니코 지시).
+     실측(08-05 알림 43건): 재탕 가드는 '공유 앵커가 없으면 판정 자체를 포기'하는데,
+     사전이 36개뿐이고 한글 표기가 거의 없어 한국 아티스트는 가드가 아예 안 돌았다.
+     이하이 월드투어 취소가 35분·45분 간격으로 3번 나간 게 대표 사례다.
+     짧은 이름(선미·플로·디노·연준)은 다른 단어의 일부로 잡히면 오탐이 되므로
+     한글 경계 룩어라운드를 건다 — 예: '플로'가 '플로리다·플로럴'에 걸리면 안 된다. */
+  ['이하이', /(?<![가-힣])이하이(?![가-힣])|\bLee\s?Hi\b/gi],
+  ['선미', /(?<![가-힣])선미(?![가-힣])|\bSunmi\b/gi],
+  ['에이티즈', /(?<![가-힣])에이티즈(?![가-힣])|\bATEEZ\b/gi],
+  ['아일릿', /(?<![가-힣])아일릿(?![가-힣])|\bILLIT\b/gi],
+  ['악뮤', /(?<![가-힣])(악뮤|악동뮤지션)(?![가-힣])|\bAKMU\b/gi],
+  ['우주소녀', /(?<![가-힣])우주소녀(?![가-힣])|\bWJSN\b/gi],
+  ['박재범', /(?<![가-힣])박재범(?![가-힣])|\bJay\s?Park\b/gi],
+  ['김희철', /(?<![가-힣])김희철(?![가-힣])/g],
+  ['씨스타', /(?<![가-힣])씨스타(?![가-힣])|\bSISTAR\b/gi],
+  ['제이홉', /(?<![가-힣])제이홉(?![가-힣])|\bj[-\s]?hope\b/gi],
+  ['ourbirthday', /(?<![가-힣])아워벌스데이(?![가-힣])|\bOURBIRTHDAY\b/gi],
+  ['flo', /(?<![가-힣])플로(?![가-힣])|\bFLO\b/g],
+  ['미니브', /(?<![가-힣])미니브(?![가-힣])|\bMINIV\b/gi],
+  ['디노', /(?<![가-힣])디노(?![가-힣])|\bDINO\b/g],
+  ['연준', /(?<![가-힣])연준(?![가-힣])|\bYeonjun\b/gi],
   ['출산', /(득남|득녀|첫아들|첫딸|출산|순산)/g],
   ['열애', /(열애|공개연애|교제)/g],
   ['결별', /(결별|파경|이혼)/g],
@@ -471,22 +492,30 @@ const ANCHOR_SET = new Set(
 );
 const RERUN_WINDOW_MS = 6 * 3600 * 1000;
 const RERUN_MIN_OVERLAP = 2;
+// 앵커를 못 찾았을 때의 기준 — 사전에 없는 인물·사건도 판정하되 문턱을 높인다.
+const RERUN_MIN_OVERLAP_NOANCHOR = 3;
 
 function anchorsOf(core) {
   return (core || []).filter(w => ANCHOR_SET.has(w));
 }
 
 function sameEventRecent(newCore, seenCore, opts) {
-  const minOverlap = (opts && opts.minOverlap) || RERUN_MIN_OVERLAP;
   const A = new Set((newCore || []).filter(Boolean));
   const B = new Set((seenCore || []).filter(Boolean));
   if (!A.size || !B.size) return false;
-  // 공유 앵커가 없으면 판정하지 않는다 (흔한 단어 우연 일치 배제)
   let sharedAnchor = false;
   for (const w of A) if (ANCHOR_SET.has(w) && B.has(w)) { sharedAnchor = true; break; }
-  if (!sharedAnchor) return false;
   let inter = 0;
   for (const w of A) if (B.has(w)) inter++;
+  /* 2026-08-05 6차 — 앵커가 없어도 판정한다 (도메니코 지시).
+     종전엔 공유 앵커가 없으면 여기서 false 를 반환해 **재탕 가드가 통째로
+     꺼졌다**. 앵커 사전은 사람이 채우는 목록이라 새 아이돌이 나올 때마다 같은
+     구멍이 다시 생긴다 — 구조로 막는다.
+     대신 앵커가 없을 때는 우연 일치를 피하려 겹침 기준을 3개로 올린다.
+     (앵커 있음 2개 / 없음 3개. 실측 08-05: 이하이 월드투어 취소 3건이
+      '이하이·월드투어·취소' 3개로 겹쳐 이 경로에서 잡힌다.) */
+  const minOverlap = (opts && opts.minOverlap)
+    || (sharedAnchor ? RERUN_MIN_OVERLAP : RERUN_MIN_OVERLAP_NOANCHOR);
   return inter >= minOverlap;
 }
 
@@ -569,6 +598,6 @@ module.exports = {
   sameEvent, hotScore, HOT_MIN, decodeHtml, stripSource, titleKey, STOP,
   isOffTopic, OFF_TOPIC_RE, isOnTarget, ON_TARGET_RE, STRONG_OVERLAP,
   // 2026-08-05 5차 — 같은 앵커 재탕 가드 + 페퍼릿 태깅
-  sameEventRecent, anchorsOf, ANCHOR_SET, NON_ANCHOR_KEYS, RERUN_WINDOW_MS, RERUN_MIN_OVERLAP,
+  sameEventRecent, anchorsOf, ANCHOR_SET, NON_ANCHOR_KEYS, RERUN_WINDOW_MS, RERUN_MIN_OVERLAP, RERUN_MIN_OVERLAP_NOANCHOR,
   pepBlocked, pepCategory, pepScore, PEP_BLOCK_RE, PEP_CATEGORY_RULES, PEP_CONTEXT_RE,
 };

@@ -44,6 +44,8 @@
  *                                     (2026-08-05 GSC 실측으로 editorial 제외 — 아래 주석)
  *   SEO_TRANSLATE_MAX_AGE_DAYS      : (선택) 이 일수보다 오래된 발행분은 번역하지 않는다.
  *                                     기본 90, 0 이면 제한 없음   ← 2026-08-05 신설
+ *   SEO_TRANSLATE_MAX_SRC_CHARS     : (선택) 원문이 이보다 길면 자동 번역에서 제외.
+ *                                     기본 6000, 0 이면 제한 없음   ← 2026-08-05 신설
  *   SEO_TRANSLATE_CONCURRENCY       : (선택) 웨이브당 동시 실행 수 (1~8)
  *   SEO_TRANSLATE_EDITORIAL_BATCH   : (선택) 에디토리얼 배치, 기본 2
  *   SEO_TRANSLATE_ARTICLE_BATCH     : (선택) 아티클 배치, 기본 1        ← 2026-08-02 신설
@@ -246,6 +248,36 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
     ? new Date(started - MAX_AGE_DAYS * 86400000).toISOString().slice(0, 10)
     : null;
 
+  /* ─── 2026-08-05 — 원문 길이 상한 (poison pill 차단) ────────────────
+   *
+   * 사건: 90일 컷 배포 후 zh 잔여 181건이 3시간 동안 한 건도 줄지 않았다.
+   * 매 실행 AI 호출 2회(약 80초)를 쓰고 저장 0건 — 하루 1,440회 헛호출.
+   *
+   * 원인은 큐 맨 앞에 박힌 두 건이었다:
+   *     'Acne Studios 30주년 애프터 파티'      9,052자
+   *     '밀란 패션위크 SS27 스트릿 스타일'    12,963자
+   * 중국어는 출력 토큰이 2~3배라 호출 타임아웃 안에 못 끝내는데, 큐가
+   * published_date DESC 고정이라 매 실행 같은 두 건을 다시 시도했다.
+   * 뒤의 179건은 영원히 차례가 오지 않았다.
+   *
+   * 이 저장소가 이미 겪은 패턴이다 — 에디토리얼은 EDITORIAL_SRC_MAX(1,200)
+   * 로 막아 뒀는데 아티클에는 그 상한이 없었다.
+   *
+   * 임계값 근거(실측): 성공한 zh 아티클 번역 329건의 원문 길이는
+   * 최대 2,293자 · 중앙값 1,222 · p99 1,764 이고 6,000자 초과 성공은 0건.
+   * zh 잔여 181건 중 6,000 초과는 2건뿐 — 그 2건을 빼면 179건이 풀린다.
+   *
+   * 자르지 않고 제외하는 이유: 잘린 본문을 저장하면 문장이 끊긴 페이지가
+   * 사용자에게 나간다. 제외분은 관리자 수동 엔드포인트로 처리한다
+   * (거기는 상한을 넘기지 않으므로 길이 제한이 없다). */
+  const MAX_SRC_CHARS = (() => {
+    const raw = process.env.SEO_TRANSLATE_MAX_SRC_CHARS;
+    if (raw === undefined || raw === '') return 6000;
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n < 0) return 6000;
+    return Math.floor(n);            // 0 = 제한 없음
+  })();
+
   const langs = String(process.env.SEO_TRANSLATE_LANGS || 'it,fr,es,ja,de,ru,zh')
     .split(',')
     .map(s => s.trim().toLowerCase())
@@ -415,7 +447,7 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
 
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        const r = await runBackfillBatch({ lang, kind, timeoutMs: curTimeout, batch: curBatch, deadlineAt, sinceDate });
+        const r = await runBackfillBatch({ lang, kind, timeoutMs: curTimeout, batch: curBatch, deadlineAt, sinceDate, maxSrcChars: MAX_SRC_CHARS });
         totalProcessed += r.processed || 0;
         if (r.remaining === 0) finished.add(key(task));
         /* lang·kind 는 호출자가 아는 사실이다 — 반환값이 되돌려주기를 기대하지
@@ -529,9 +561,10 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
   for (const r of results) {
     if (!r.lang) { if (r.skipped) notes.push('skip(' + r.skipped + ')'); continue; }
     const k = r.lang + '/' + String(r.kind || '?').slice(0, 3);
-    const cur = perCombo.get(k) || { processed: 0, remaining: null, err: null };
+    const cur = perCombo.get(k) || { processed: 0, remaining: null, err: null, tooLong: 0 };
     cur.processed += r.processed || 0;
     if (typeof r.remaining === 'number') cur.remaining = r.remaining;
+    if (r.skipped_too_long) cur.tooLong = r.skipped_too_long;
     if (r.error && !cur.err) cur.err = String(r.error).slice(0, 50);
     perCombo.set(k, cur);
   }
@@ -553,6 +586,9 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
     ...Array.from(perCombo.entries()).map(([k, v]) =>
       k + ':' + v.processed
       + (v.remaining === null ? '' : '/남' + v.remaining)
+      /* 길이로 뺀 건수는 '잔여'와 따로 보여야 한다 — 합치면 큐가 막힌 걸
+         '할 일이 남았다'로 착각한다(오늘 zh 사고). */
+      + (v.tooLong ? '/긴글' + v.tooLong : '')
       + (v.err ? ' ERR ' + v.err : '')),
     ...notes,
   ].join(' · ') || '처리 대상 없음';
@@ -578,6 +614,7 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
     // 2026-08-05 계측 — 관리자가 응답만 봐도 80초의 내역을 알 수 있게.
     timing: { queueMs: T.queueMs, callMs: T.callMs, saveMs: T.saveMs, calls: T.calls, waves: T.waves, lastLeftMs },
     maxAgeDays: MAX_AGE_DAYS || undefined,
+    maxSrcChars: MAX_SRC_CHARS || undefined,
     sinceDate: sinceDate || undefined,
     results,
   });

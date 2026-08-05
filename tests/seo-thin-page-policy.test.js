@@ -36,6 +36,7 @@ const HELPER = path.join(ROOT, 'api', '_lib', 'seoTranslateBackfill.js');
 const SUPABASE = path.join(ROOT, 'api', '_lib', 'supabase.js');
 const CRON = path.join(ROOT, 'api', 'cron', 'backfill-translations.js');
 const MIG = path.join(ROOT, 'supabase_migrations', '102_seo_translate_queue_since.sql');
+const MIG3 = path.join(ROOT, 'supabase_migrations', '103_seo_translate_length_cap.sql');
 
 let pass = 0, fail = 0;
 function t(n, cond, d) {
@@ -171,6 +172,49 @@ process.env.ANTHROPIC_API_KEY = 'test';
   t('DROP 후 GRANT 를 다시 준다 (DROP 하면 권한이 사라진다)',
     /drop function if exists/.test(sql) && /grant execute on function[\s\S]*to service_role/.test(sql));
   t('여전히 읽기 전용(stable) 이다', (sql.match(/language sql stable/g) || []).length === 2);
+
+  /* ── ⑦ 원문 길이 상한 (2026-08-05 zh poison pill) ────────────────── */
+  console.log('\n=== ⑦ 원문 길이 상한 — 거대한 기사가 큐를 막지 못한다 ===');
+  calls.length = 0;
+  await helper.runBackfillBatch({ lang: 'zh', kind: 'article', batch: 1, sinceDate: '2026-05-07', maxSrcChars: 6000 });
+  const q3 = calls.find(x => x.name === 'seo_translate_queue_article');
+  const c3 = calls.find(x => x.name === 'seo_translate_counts');
+  t('큐 RPC 에 p_max_src 가 실린다', q3 && q3.args.p_max_src === 6000, q3 && q3.args);
+  t('카운트에도 같은 상한이 실린다', c3 && c3.args.p_max_src === 6000, c3 && c3.args);
+  calls.length = 0;
+  await helper.runBackfillBatch({ lang: 'zh', kind: 'article', batch: 1 });
+  const q4 = calls.find(x => x.name === 'seo_translate_queue_article');
+  t('상한을 안 주면 0 = 제한 없음 (관리자 경로)', q4 && q4.args.p_max_src === 0, q4 && q4.args);
+
+  const cron2 = fs.readFileSync(CRON, 'utf8');
+  t('크론 기본 상한은 6000자', /return 6000;/.test(cron2) && /SEO_TRANSLATE_MAX_SRC_CHARS/.test(cron2));
+  t('크론이 maxSrcChars 를 넘긴다', /maxSrcChars: MAX_SRC_CHARS/.test(cron2));
+  t('note 에 길이로 뺀 건수를 따로 보여준다', /긴글/.test(cron2),
+    '잔여와 합치면 큐가 막힌 상태를 할 일이 남은 것으로 착각한다');
+  const lib2 = fs.readFileSync(HELPER, 'utf8');
+  t('폴백 경로에도 같은 상한이 걸린다', /notTooLong/.test(lib2));
+  t('제외 건수를 반환한다', /skipped_too_long/.test(lib2));
+
+  console.log('\n=== ⑧ 마이그레이션 103 · 감시 함수 정합 ===');
+  const sql3 = fs.readFileSync(MIG3, 'utf8');
+  t('queue_article 에 p_max_src 정의', /seo_translate_queue_article\([\s\S]*?p_max_src\s+int/.test(sql3));
+  t('counts 가 too_long 을 따로 돌려준다', /too_long\s+bigint/.test(sql3));
+  t('감시 함수(translate_health_stats)도 같이 고친다',
+    /create or replace function public\.translate_health_stats/.test(sql3),
+    '안 고치면 잔량 8,124 로 매일 오경보가 울린다');
+  /* 앱과 SQL 이 같은 숫자를 써야 한다 — 어긋나면 감시가 거짓말을 한다. */
+  t('감시 함수의 90일이 앱 기본값과 같다',
+    /current_date - 90/.test(sql3) && /return 90;/.test(cron2));
+  t('감시 함수의 6000자가 앱 기본값과 같다',
+    /<= 6000/.test(sql3) && /return 6000;/.test(cron2));
+  /* 함수 '본문'만 떼어 본다 — 파일 앞쪽 주석·다른 함수에도 같은 낱말이
+     나오므로 통째로 grep 하면 엉뚱한 곳이 잡힌다(처음에 그렇게 짜서 헛failed). */
+  const healthBody = (sql3.split('create or replace function public.translate_health_stats')[1] || '').split('$$;')[0];
+  t('감시 함수가 아티클만 센다 (에디토리얼은 대상 아님)',
+    /from public\.articles a/.test(healthBody) && !/public\.editorials/.test(healthBody),
+    healthBody.slice(0, 120));
+  t('감시 함수의 90일·6000자가 그 함수 본문 안에 있다',
+    /current_date - 90/.test(healthBody) && /<= 6000/.test(healthBody));
 
   console.log('\npassed: ' + pass + '   failed: ' + fail);
   if (fail) process.exit(1);
