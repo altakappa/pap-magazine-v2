@@ -587,13 +587,15 @@ button{cursor:pointer;font-family:inherit}
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"PAP Magazine","url":"https://www.pap-magazine.com","description":"High-end, art-driven digital fashion, beauty & culture magazine","publisher":{"@type":"Organization","name":"PAP Magazine","logo":{"@type":"ImageObject","url":"https://www.pap-magazine.com/pap-logo.png"}}}</script>
 <!-- Cookie Consent + GA4 (consent-gated) -->
 <script src="/pap-geo-lang.js?v=2"></script>
+<script>/* 2026-08-05 — 언어 접두어 유지 헬퍼 (다인). 하드코딩된 /editorial/ 점프가 언어 접두어를 버리지 않도록. */
+if(!window._papLangPrefix){window._papLangPrefix=function(){try{var m=String(location.pathname||'').match(/^\/(en|it|fr|es|ja|de|zh|ru)(\/|$)/);if(m)return '/'+m[1];if(window.__papDeepLinkLang)return '/'+window.__papDeepLinkLang;}catch(_){}return '';};}</script>
 <script src="/pap-img-fallback.js" defer></script>
 <script src="/pap-img-cdn.js?v=1" defer></script>
 <script src="cookie-consent.js" defer></script>
 <script src="/pap-protect.js?v=3" defer></script>
 <link rel="stylesheet" href="pap-social.css">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
-<script src="/pap-social.js?v=6" defer></script>
+<script src="/pap-social.js?v=8" defer></script>
 <!-- Print Styles -->
 <style media="print">
 @media print{
@@ -1526,7 +1528,7 @@ function openEditorial(title,thumb){
     var _slug = String(title||'').toLowerCase()
       .replace(/['"`]+/g,'').replace(/[^\w\s가-힣-]+/g,'')
       .trim().replace(/\s+/g,'-').replace(/-+/g,'-');
-    history.pushState({editorial:true,title:title,slug:_slug},'','/editorial/'+_slug);
+    history.pushState({editorial:true,title:title,slug:_slug},'',window._papLangPrefix()+'/editorial/'+_slug);
   }catch(e){}
 }
 

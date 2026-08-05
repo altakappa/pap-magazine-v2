@@ -22,9 +22,17 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { uploadVideo } = require('../_lib/youtube');
 const { withCronGuard } = require('../_lib/cronGuard');
+const { buildTitle, buildHashtags, buildTagList } = require('../_lib/youtubeMeta');
+/* 2026-08-05 도메니코 — "캡션크레딧이 PAP일 경우에만 유튜브에 업로드" +
+   "음악은 인스타에서 설정한거니 음소거해서". 두 규칙 모두 fail closed 다.  */
+const { verdictForMedia } = require('../_lib/igCredit');
+const { muteMp4 } = require('../_lib/mp4Mute');
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.com';
 const MAX_BYTES = 100 * 1024 * 1024; // 안전 상한 (IG 아카이브는 ≤60MB)
+const ART_COLS = 'id, title, slug, custom_url, content, videos, category, source_media_type, tags, source_instagram_post_id';
+// 크레딧 게이트가 한 번에 Graph 재조회할 후보 수 상한 (외부 크레딧 릴스는 건너뛴다)
+const CREDIT_SCAN_MAX = 5;
 
 function firstSentence(html) {
   return String(html || '')
@@ -34,7 +42,9 @@ function firstSentence(html) {
 
 function buildDescription(art, url) {
   const lines = [];
-  lines.push(art.title + ' — PAP MAGAZINE');
+  /* < > 는 YouTube 가 거부한다. 2026-07-19 '<오디세이>' 기사가 여기서
+     그대로 흘러들어가 upload init 400 (invalid video description) 으로 죽었다. */
+  lines.push(String(art.title || '').replace(/[<>]/g, '') + ' — PAP MAGAZINE');
   lines.push('');
   const fs = firstSentence(art.content);
   if (fs && fs.length <= 300) { lines.push(fs); lines.push(''); }
@@ -49,8 +59,9 @@ function buildDescription(art, url) {
   lines.push('▶ 인스타그램 : ' + SITE + '/ig/youtube');
   lines.push('▶ pap-magazine.com — 아트 기반 패션·뷰티·컬쳐 매거진');
   lines.push('');
-  const cat = art.category ? '#' + String(art.category).replace(/[^A-Za-z0-9가-힣]/g, '').toUpperCase() : null;
-  lines.push(['#Shorts', '#PAPMAGAZINE', '#패션뉴스', cat].filter(Boolean).join(' '));
+  /* 2026-08-04 도메니코 — 해시태그를 '기사에 관련있는 셀럽이나 내용의 단어'로.
+     articles.tags 가 이미 셀럽명·브랜드명·제품명을 담고 있어 그대로 쓴다. */
+  lines.push(buildHashtags(art).join(' '));
   return lines.join('\n').slice(0, 4900);
 }
 
@@ -97,27 +108,90 @@ module.exports = withCronGuard('youtube-post', async function handler(req, res) 
     // 신선도 창(최근 3일) 안의 릴스(원본 IG media_type = 'VIDEO') 미게시 기사 1건.
     // 캐러셀(CAROUSEL_ALBUM) 안에 영상이 섞여 있어도 스킵 — 릴스 원본만 세로 3분 이하가
     // 보장되어 Shorts 자동 분류에 적합. IMAGE 게시물도 당연히 제외.
-    const freshCutoff = new Date(Date.now() - 3 * 86400000).toISOString();
-    const { data: arts } = await supabaseAdmin.from('articles')
-      .select('id, title, slug, custom_url, content, videos, category, source_media_type')
-      .eq('status', 'published')
-      .eq('source_media_type', 'VIDEO')
-      .gte('published_date', freshCutoff)
-      .order('published_date', { ascending: false }).limit(200);
-    const art = (arts || []).find((a) =>
-      !done.has(a.id) && Array.isArray(a.videos) && a.videos.length >= 1 && a.videos[0]);
-    if (!art) {
-      res.locals.cronNote = '업로드할 릴스 기사 없음 (source_media_type=VIDEO 필터)';
-      return res.status(200).json({ ok: true, note: res.locals.cronNote });
+    /* 관리자 지정 업로드 (?article=<slug|custom_url|id>).
+     * 2026-08-04 도메니코 "이 다섯 개만 올려줘" — 신선도 창을 벗어난 기사를
+     * 지목해 올리려면 선택기를 우회할 길이 필요했다.
+     * 크론(cronOk)에는 열지 않는다. 자동 실행이 임의 기사를 집을 수 있으면
+     * 발행 통제가 무너진다 — 지목은 사람만 한다.
+     * 키는 [A-Za-z0-9-_] 로 제한한다. PostgREST .or() 필터에 그대로 들어가므로
+     * 쉼표·괄호가 섞이면 필터 구문이 깨진다(주입). */
+    const rawTarget = !cronOk && req.query && req.query.article ? String(req.query.article).trim() : '';
+    if (rawTarget && !/^[A-Za-z0-9_-]{1,120}$/.test(rawTarget)) {
+      return res.status(400).json({ ok: false, error: 'article 파라미터 형식 오류 (영숫자·하이픈·밑줄만)' });
+    }
+
+    let art = null; let credit = null;
+    if (rawTarget) {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawTarget);
+      const { data: hits } = await supabaseAdmin.from('articles')
+        .select(ART_COLS)
+        .or(isUuid ? 'id.eq.' + rawTarget : 'slug.eq.' + rawTarget + ',custom_url.eq.' + rawTarget)
+        .limit(2);
+      art = (hits || [])[0] || null;
+      if (!art) {
+        return res.status(404).json({ ok: false, error: '기사를 찾을 수 없음: ' + rawTarget });
+      }
+      if (done.has(art.id)) {
+        return res.status(409).json({ ok: false, error: '이미 업로드된 기사 — youtube_posts 에 기록 있음', article_id: art.id });
+      }
+      if (!(Array.isArray(art.videos) && art.videos.length >= 1 && art.videos[0])) {
+        return res.status(409).json({
+          ok: false,
+          error: 'videos 가 비어 있음 — IG 미디어 캡처 실패. 먼저 백필할 것',
+          backfill: '/api/admin/articles/backfill-video?slug=' + (art.slug || art.id),
+        });
+      }
+      /* 지목 업로드에도 크레딧 게이트를 건다. 사람이 지목했다는 사실이
+         권리를 만들어 주지는 않는다 — 규칙은 경로와 무관하게 같다. */
+      credit = await verdictForMedia(art.source_instagram_post_id);
+      if (!credit.owned) {
+        return res.status(409).json({
+          ok: false,
+          error: 'PAP 크레딧이 아님 — 유튜브 업로드 보류',
+          detail: credit.reason,
+          credits: credit.credits,
+        });
+      }
+    } else {
+      /* ?days=N (1~14) 으로 창을 넓힐 수 있다. 기본은 3일 그대로.
+         수집 버그로 mp4 가 비어 후보에서 탈락했던 릴스는 복구 시점엔 이미
+         창 밖인 경우가 많다 — video-repair 가 복구 직후 days=7 로 깨워
+         그 구제 통로를 연다. 기본값을 늘리지 않는 이유는 쇼츠는 '지금 것'
+         이어야 하고, 창을 상시로 넓히면 옛 릴스가 밀려 올라오기 때문이다. */
+      const freshDays = Math.max(1, Math.min(14, Number((req.query && req.query.days) || 3) || 3));
+      const freshCutoff = new Date(Date.now() - freshDays * 86400000).toISOString();
+      const { data: arts } = await supabaseAdmin.from('articles')
+        .select(ART_COLS)
+        .eq('status', 'published')
+        .eq('source_media_type', 'VIDEO')
+        .gte('published_date', freshCutoff)
+        .order('published_date', { ascending: false }).limit(200);
+      const candidates = (arts || []).filter((a) =>
+        !done.has(a.id) && Array.isArray(a.videos) && a.videos.length >= 1 && a.videos[0]);
+      /* 크레딧 게이트는 후보를 '건너뛴다'. 첫 후보가 외부 크레딧이라고 거기서
+         멈춰 버리면 그 릴스가 신선도 창에 있는 동안 쇼츠가 통째로 죽는다.
+         Graph 재조회 비용 때문에 한 번에 CREDIT_SCAN_MAX 건까지만 본다. */
+      const skipped = [];
+      for (const cand of candidates.slice(0, CREDIT_SCAN_MAX)) {
+        const v = await verdictForMedia(cand.source_instagram_post_id);
+        if (v.owned) { art = cand; credit = v; break; }
+        skipped.push({ title: cand.title, reason: v.reason });
+      }
+      if (!art) {
+        res.locals.cronNote = '업로드할 릴스 기사 없음 (source_media_type=VIDEO 필터, 최근 ' + freshDays + '일'
+          + ', 후보 ' + candidates.length + '건 / 크레딧 스킵 ' + skipped.length + '건)';
+        return res.status(200).json({ ok: true, note: res.locals.cronNote, skipped });
+      }
     }
 
     const artUrl = 'https://www.pap-magazine.com/article/' + (art.custom_url || art.slug || '');
     const isPublic = process.env.YOUTUBE_PUBLIC === '1';
-    const title = (art.title + ' | PAP MAGAZINE').slice(0, 95);
+    // 2026-08-04 도메니코 — 채널 실측 접두사 규칙([ CELEBRITY ] 등)을 코드로.
+    const title = buildTitle(art);
     const description = buildDescription(art, artUrl);
 
     if (req.query && req.query.dry === '1') {
-      return res.status(200).json({ ok: true, dry: true, pick: { title: art.title, video: art.videos[0] }, description });
+      return res.status(200).json({ ok: true, dry: true, credit, pick: { title, source_title: art.title, video: art.videos[0] }, tags: buildTagList(art), description });
     }
 
     // mp4 다운로드 (Supabase Storage 영구 보관본)
@@ -128,11 +202,21 @@ module.exports = withCronGuard('youtube-post', async function handler(req, res) 
     const buffer = Buffer.from(await vr.arrayBuffer());
     if (buffer.length > MAX_BYTES) throw new Error('영상 크기 상한 초과');
 
+    /* 음소거 — 릴스 음악은 인스타 음원 라이브러리 것이라 인스타 안에서만
+       라이선스된다. 그대로 유튜브에 올리면 Content ID 클레임 대상이다.
+       벗겨내지 못하면 올리지 않는다 (fail closed). */
+    const mute = muteMp4(buffer);
+    if (!mute.ok) {
+      res.locals.cronNote = '음소거 실패 — 업로드 보류: ' + mute.reason;
+      return res.status(409).json({ ok: false, error: '음소거 실패 — 업로드 보류', detail: mute.reason, title: art.title });
+    }
+    const uploadBuffer = mute.buffer;
+
     let videoId = null; let status = 'submitted'; let detail = null;
     try {
-      const v = await uploadVideo(buffer, {
+      const v = await uploadVideo(uploadBuffer, {
         title, description,
-        tags: ['PAP MAGAZINE', '패션', 'fashion', 'kfashion', art.category].filter(Boolean),
+        tags: buildTagList(art),
         privacyStatus: isPublic ? 'public' : 'private',
       });
       videoId = v.id;
@@ -150,8 +234,8 @@ module.exports = withCronGuard('youtube-post', async function handler(req, res) 
     }, { onConflict: 'article_id' });
 
     if (status === 'failed') return res.status(502).json({ error: 'youtube post failed', title: art.title, detail });
-    res.locals.cronNote = '업로드 완료: ' + art.title + ' (' + videoId + ')' + (detail ? ' / ' + detail : '');
-    return res.status(200).json({ ok: true, posted: art.title, video_id: videoId, url: 'https://youtube.com/shorts/' + videoId, note: detail || undefined });
+    res.locals.cronNote = '업로드 완료: ' + art.title + ' (' + videoId + ') / ' + mute.reason + (detail ? ' / ' + detail : '');
+    return res.status(200).json({ ok: true, posted: art.title, video_id: videoId, url: 'https://youtube.com/shorts/' + videoId, credit: credit && credit.reason, mute: mute.reason, note: detail || undefined });
   } catch (err) {
     console.error('[youtube-post] error:', err);
     throw err; // cronGuard 가 이메일 알림 + cron_runs 기록

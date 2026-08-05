@@ -37,6 +37,27 @@ module.exports = async function handler(req, res) {
       .eq('slug', slug).eq('status', 'published').limit(1).maybeSingle();
     data = r.data;
 
+    /* 1b) decoded slug (URL-encoded slugs) */
+    if (!data && decoded !== slug) {
+      r = await supabaseAdmin.from('films').select('*, related_editorial:editorials!related_editorial_id(id,slug,title,cover_image,thumbnail,published_date,credits)')
+        .eq('slug', decoded).eq('status', 'published').limit(1).maybeSingle();
+      data = r.data;
+    }
+
+    /* 1c) 대소문자만 다른 슬러그 → 정본 주소로 301. 에디토리얼(0a13776)과 동일 규칙.
+       films 에도 대문자 섞인 슬러그가 실재한다(예: 'Selects-bts'). 정확히 1건만
+       매칭될 때만 301 하고, 아니면 아래 title 폴백으로 넘긴다. 2026-08-05 */
+    if (!data && !/%/.test(decoded)) {
+      const safeSlugCi = decoded.replace(/[\\%_]/g, ch => '\\' + ch);
+      const ci = await supabaseAdmin.from('films').select('slug')
+        .ilike('slug', safeSlugCi).eq('status', 'published').limit(2);
+      if (ci.data && ci.data.length === 1 && ci.data[0].slug && ci.data[0].slug !== decoded) {
+        res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=3600');
+        res.setHeader('Location', '/film/' + encodeURIComponent(ci.data[0].slug));
+        return res.status(301).end();
+      }
+    }
+
     /* 2) Title match (films are commonly addressed by title) */
     if (!data) {
       r = await supabaseAdmin.from('films').select('*, related_editorial:editorials!related_editorial_id(id,slug,title,cover_image,thumbnail,published_date,credits)')

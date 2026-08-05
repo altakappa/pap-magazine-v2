@@ -26,6 +26,8 @@ const { pushAlert } = require('../_lib/pushAlert');
 const { listRecentMedia, isLikelyEditorialCaption, _extractShortcode } = require('../_lib/instagramImport');
 const { diagnoseBackfill, buildBackfillAlert } = require('../_lib/backfillHealth');
 const { judgeTranslateHealth, buildTranslateAlert } = require('../_lib/translateHealth');
+const { judgeFaqHealth, buildFaqAlert, summarizeFaqRuns } = require('../_lib/faqHealth');
+const { summarizeDurations, judgeCronDuration, buildCronDurationAlert } = require('../_lib/cronDurationHealth');
 
 const ALERT_KEY = 'ig-to-site-pipeline';
 /* 서술문 백필은 IG 파이프라인과 독립적인 문제라 알림 키를 분리한다 —
@@ -33,6 +35,12 @@ const ALERT_KEY = 'ig-to-site-pipeline';
 const BACKFILL_ALERT_KEY = 'editorial-backfill-health';
 /* 번역도 같은 이유로 키를 분리한다 (2026-07-31). */
 const TRANSLATE_ALERT_KEY = 'translate-backfill-health';
+/* 릴스 mp4 수집 건강도 — 유튜브 쇼츠의 연료가 실제로 채워지는지 본다 (2026-08-04). */
+const REEL_ALERT_KEY = 'reel-video-health';
+/* FAQ 백필도 같은 이유로 키를 분리한다 (2026-08-04). */
+const FAQ_ALERT_KEY = 'faq-backfill-health';
+/* 크론 실행시간 — 함수 상한에 잘려 죽는 실행을 찾는다 (2026-08-04). */
+const DURATION_ALERT_KEY = 'cron-duration-health';
 const SITE = 'https://www.pap-magazine.com';
 
 /* 게시 후 이 시간이 지나도 발행되지 않으면 이상으로 본다.
@@ -182,7 +190,30 @@ module.exports = withCronGuard('pipeline-watch', async function handler(req, res
    * 배운 교훈("돌았다 ≠ 생산했다")을 번역에는 안 붙여둔 상태였다. */
   const translate = await checkTranslate({ dry });
 
-  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate });
+  /* ── 릴스 mp4 수집 감시 (2026-08-04 추가) ──
+   * youtube-post 는 8일 동안 1,353회를 '성공'으로 돌면서 쇼츠를 거의
+   * 못 올렸다. 매번 남긴 말이 "업로드할 릴스 기사 없음" 이었기 때문이다.
+   * 후보가 없다는 건 두 가지 뜻이 될 수 있는데 —
+   *   ① 정말 릴스를 안 올렸다 (정상)
+   *   ② 릴스 기사는 들어왔는데 mp4 가 안 붙었다 (고장)
+   * 크론은 둘을 구분하지 못하고 똑같이 ok=true 를 남겼다. 그 침묵이
+   * 8일을 갔다. 여기서 그 둘을 갈라서, ②일 때만 울린다. */
+  const reels = await checkReelVideos({ dry });
+
+  /* ── FAQ 백필 감시 (2026-08-04 추가) ──
+   * 서술문·번역에서 두 번 배운 "돌았다 ≠ 생산했다" 를 FAQ 에만 안 붙여둬서
+   * 세 번째로 같은 침묵을 겪었다. 10분마다 성실히 돌면서 생산은 0건이었고,
+   * 크론은 그걸 '완주' 라고 보고했다. 이제 잔여와 실제 생산량을 대조한다. */
+  const faq = await checkFaq({ dry });
+
+  /* ── 크론 실행시간 감시 (2026-08-04 추가) ──
+   * 앞의 네 감시는 모두 '생산량' 을 본다. 그런데 번역 백필은 6시간 동안
+   * 22번을 Vercel 120초 상한에 잘려 죽었는데, cron_runs 의 실패는 0건이었다 —
+   * 도중에 죽은 함수는 자기 죽음을 기록할 수 없기 때문이다. 성공률만 보면
+   * 평화롭다. 그래서 이건 성공/실패가 아니라 시간을 본다. */
+  const duration = await checkDuration({ dry });
+
+  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels, faq, duration });
 });
 
 /** 서술문 생산이 실제로 되고 있는지 보고, 이상하면 텔레그램으로 알린다. */
@@ -309,5 +340,288 @@ async function checkTranslate(opts) {
   }
 }
 
+/**
+ * 릴스 → 쇼츠 연료 건강도 판정 (순수 함수, 테스트 대상).
+ *
+ * 핵심 아이디어: "후보 0건" 이라는 말 자체는 정보가 없다. 같은 문장이
+ * 정상(릴스를 안 올린 날)일 수도, 고장(mp4 수집 실패)일 수도 있다.
+ * 그래서 **기사 쪽 사실**과 대조한다 — 창 안에 릴스 기사가 있었는가,
+ * 그중 mp4 가 붙은 게 하나라도 있는가.
+ *
+ * @param {object} x
+ * @param {number} x.videoArticles   창 안 published 릴스(source_media_type='VIDEO') 기사 수
+ * @param {number} x.withVideo       그중 videos 가 실제로 채워진 기사 수
+ * @param {number} x.uploadsInWindow 창 안 유튜브 업로드 성공 수
+ * @param {number} x.zeroRuns        창 안 youtube-post 실행 중 '후보 없음' 으로 끝난 횟수
+ * @param {number} x.runsInWindow    창 안 youtube-post 총 실행 수
+ * @param {number} x.windowHours
+ * @returns {{healthy:boolean, cause:(string|null), reason:string, ...}}
+ */
+function judgeReelHealth(x) {
+  const videoArticles = Number(x && x.videoArticles) || 0;
+  const withVideo = Number(x && x.withVideo) || 0;
+  const uploadsInWindow = Number(x && x.uploadsInWindow) || 0;
+  const zeroRuns = Number(x && x.zeroRuns) || 0;
+  const runsInWindow = Number(x && x.runsInWindow) || 0;
+  const windowHours = Number(x && x.windowHours) || 72;
+  const base = { videoArticles, withVideo, uploadsInWindow, zeroRuns, runsInWindow, windowHours };
+
+  // 릴스 기사 자체가 없으면 판단하지 않는다. 릴스를 안 올린 주간에
+  // "쇼츠가 0건"인 것은 고장이 아니다 — 여기서 울리면 그게 노이즈다.
+  if (videoArticles === 0) {
+    return { ...base, healthy: true, cause: null,
+      reason: `최근 ${windowHours}시간 릴스 기사 0건 — 판단 보류(정상)` };
+  }
+
+  // ① 연료 자체가 안 채워진 경우. 기사는 릴스로 들어왔는데 mp4 가 단 하나도
+  //    없다 = archiveVideosToStorage 가 빈손으로 끝났다는 뜻이다.
+  if (withVideo === 0) {
+    return { ...base, healthy: false, cause: 'mp4-missing',
+      reason: `릴스 기사 ${videoArticles}건이 모두 mp4 없이 발행됨 (videos=[])` };
+  }
+
+  // ② 연료는 있는데 크론이 계속 "후보 없음" 만 말하는 경우. 실행이 충분히
+  //    쌓였고(≥3), 그 전부가 후보 없음이고, 업로드도 0건일 때만 고장으로 본다.
+  //    (일일 상한·공개 대기 모드는 다른 문구를 남기므로 여기 걸리지 않는다.)
+  if (uploadsInWindow === 0 && runsInWindow >= 3 && zeroRuns >= runsInWindow) {
+    return { ...base, healthy: false, cause: 'candidates-ignored',
+      reason: `mp4 있는 릴스 기사 ${withVideo}건이 있는데 ${runsInWindow}회 실행 전부 '후보 없음'` };
+  }
+
+  return { ...base, healthy: true, cause: null,
+    reason: `릴스 ${videoArticles}건 중 ${withVideo}건 mp4 보유 · 업로드 ${uploadsInWindow}건` };
+}
+
+/** 릴스 건강도 알림 문구 — 원인별로 다음 행동까지 적는다. */
+function buildReelAlert(d, site) {
+  const lines = [d.reason, ''];
+  if (d.cause === 'mp4-missing') {
+    lines.push('원인 후보: Graph API 가 VIDEO 에 media_url 을 주지 않음 (07-31 실측)');
+    lines.push('           IG 토큰 만료 / 영상 60MB 초과 / Storage 업로드 실패');
+    lines.push('');
+    lines.push('조치: /api/cron/video-repair 가 자동 복구를 시도합니다.');
+    lines.push('      Vercel 로그에서 [ig-video] 를 검색하면 실패 사유가 보입니다.');
+  } else {
+    lines.push('원인 후보: youtube-post 의 신선도 창(3일) 밖으로 밀림 /');
+    lines.push('           youtube_posts 중복 판정 / YOUTUBE_PUBLIC 미설정');
+  }
+  lines.push('');
+  lines.push('쇼츠가 멈추면 유튜브발 인스타 유입도 함께 멈춥니다.');
+  return {
+    title: '🎬 PAP 쇼츠 연료 이상 — 릴스 mp4 ' + (d.cause === 'mp4-missing' ? '수집 실패' : '적체'),
+    lines,
+    url: `${site || SITE}/admin/news`,
+    urlLabel: '어드민에서 확인',
+  };
+}
+
+/**
+ * 릴스 mp4 가 실제로 채워지고 있는지 본다.
+ *
+ * "돌았다 ≠ 생산했다" 는 서술문·번역에서 이미 두 번 배운 교훈이다.
+ * 유튜브만 그 교훈이 안 붙어 있어서 8일을 놓쳤다 — 세 번째로 같은 걸
+ * 반복하지 않기 위해 여기 붙인다.
+ */
+async function checkReelVideos(opts) {
+  const WINDOW_H = Number(process.env.REEL_WINDOW_HOURS || 72);
+  try {
+    const since = new Date(Date.now() - WINDOW_H * 3600000).toISOString();
+
+    // youtube-post 의 후보 조건과 같은 창·같은 필터로 본다 — 감시가 대상과
+    // 다른 걸 세면 "감시는 정상인데 크론은 굶는" 어긋남이 생긴다.
+    const { data: arts } = await supabaseAdmin.from('articles')
+      .select('id, videos')
+      .eq('status', 'published')
+      .eq('source_media_type', 'VIDEO')
+      .gte('published_date', since)
+      .limit(200);
+    const videoArticles = (arts || []).length;
+    const withVideo = (arts || []).filter(
+      (a) => Array.isArray(a.videos) && a.videos.length && a.videos[0]).length;
+
+    const { data: runs } = await supabaseAdmin.from('cron_runs')
+      .select('note, ok').eq('cron_name', 'youtube-post').gte('ran_at', since).limit(2000);
+    const runsInWindow = (runs || []).length;
+    const zeroRuns = (runs || []).filter(
+      (r) => r && typeof r.note === 'string' && r.note.indexOf('업로드할 릴스 기사 없음') === 0).length;
+
+    const { count: uploads } = await supabaseAdmin.from('youtube_posts')
+      .select('*', { count: 'exact', head: true })
+      .neq('status', 'failed').gte('created_at', since);
+
+    const d = judgeReelHealth({
+      videoArticles, withVideo, zeroRuns, runsInWindow,
+      uploadsInWindow: typeof uploads === 'number' ? uploads : 0,
+      windowHours: WINDOW_H,
+    });
+    if (opts && opts.dry) return { dry: true, ...d };
+
+    const { data: st } = await supabaseAdmin.from('ops_alert_state')
+      .select('last_alert_at, last_payload').eq('key', REEL_ALERT_KEY).maybeSingle();
+    const lastAt = st && st.last_alert_at ? Date.parse(st.last_alert_at) : 0;
+    const wasBroken = !!(st && st.last_payload && st.last_payload.broken);
+    const COOLDOWN_H = Number(process.env.REEL_ALERT_COOLDOWN_H || 12);
+
+    let alerted = false;
+    if (!d.healthy && Date.now() - lastAt > COOLDOWN_H * 3600000) {
+      await pushAlert({ ...buildReelAlert(d, SITE), personalOnly: true });
+      alerted = true;
+    } else if (d.healthy && wasBroken) {
+      // 복구는 쿨다운 무시 — 다른 감시들과 같은 규칙.
+      await pushAlert({
+        personalOnly: true,
+        title: '✅ PAP 쇼츠 연료 정상화 — 릴스 mp4 수집 복구',
+        lines: [d.reason],
+        url: `${SITE}/admin/news`, urlLabel: '어드민에서 확인',
+      });
+      alerted = true;
+    }
+    if (alerted || wasBroken !== !d.healthy) {
+      await supabaseAdmin.from('ops_alert_state').upsert({
+        key: REEL_ALERT_KEY,
+        last_alert_at: alerted ? new Date().toISOString() : (st && st.last_alert_at) || null,
+        last_payload: { broken: !d.healthy, cause: d.cause, videoArticles: d.videoArticles, withVideo: d.withVideo },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'key' });
+    }
+    return { ...d, alerted };
+  } catch (e) {
+    // 감시가 죽어도 본 크론은 계속 돌아야 한다.
+    console.error('[pipeline-watch] reel video health 실패', e && e.message);
+    return { error: (e && e.message) || 'unknown' };
+  }
+}
+
+/**
+ * FAQ 백필이 실제로 생산하고 있는지 본다. 판정 규칙은 _lib/faqHealth.js.
+ *
+ * 생산량의 근거는 cron_runs.note 다 — 크론이 남기는 요약 한 줄. 별도 도장
+ * 컬럼을 만들지 않은 이유는, 어차피 사람이 볼 기록이 그 한 줄이기 때문이다.
+ * 요약과 감시가 같은 문장을 보면 둘이 어긋날 일이 없다.
+ */
+async function checkFaq(opts) {
+  const WINDOW_H = Number(process.env.FAQ_WINDOW_HOURS || 3);
+  try {
+    const since = new Date(Date.now() - WINDOW_H * 3600000).toISOString();
+
+    const { count: remaining } = await supabaseAdmin
+      .from('articles').select('id', { count: 'exact', head: true })
+      .eq('status', 'published').is('faq', null);
+
+    const { data: runRows } = await supabaseAdmin
+      .from('cron_runs').select('note')
+      .eq('cron_name', 'backfill-faq').gte('ran_at', since)
+      .order('ran_at', { ascending: false }).limit(200);
+
+    const sum = summarizeFaqRuns((runRows || []).map(r => r && r.note));
+    const d = judgeFaqHealth({
+      remaining: typeof remaining === 'number' ? remaining : 0,
+      producedInWindow: sum.produced,
+      windowHours: WINDOW_H,
+      runsInWindow: sum.total,
+      parsedRuns: sum.parsed,
+      wallRuns: sum.wall,
+      doneRuns: sum.done,
+    });
+    if (opts && opts.dry) return { dry: true, ...d };
+
+    const { data: st } = await supabaseAdmin.from('ops_alert_state')
+      .select('last_alert_at, last_payload').eq('key', FAQ_ALERT_KEY).maybeSingle();
+    const lastAt = st && st.last_alert_at ? Date.parse(st.last_alert_at) : 0;
+    const wasBroken = !!(st && st.last_payload && st.last_payload.broken);
+    const COOLDOWN_H = Number(process.env.FAQ_ALERT_COOLDOWN_H || 6);
+    const broken = d.status === 'stalled';
+
+    let alerted = false;
+    if (broken && Date.now() - lastAt > COOLDOWN_H * 3600000) {
+      await pushAlert({ ...buildFaqAlert(d, SITE), personalOnly: true });
+      alerted = true;
+    } else if (!broken && wasBroken) {
+      await pushAlert({
+        personalOnly: true,
+        title: d.status === 'done' ? '✅ FAQ 백필 완주 — 발행 기사 전부 보유' : '✅ FAQ 백필 재개',
+        lines: [d.reason],
+        url: `${SITE}/admin`, urlLabel: '어드민',
+      });
+      alerted = true;
+    }
+    if (alerted || wasBroken !== broken) {
+      await supabaseAdmin.from('ops_alert_state').upsert({
+        key: FAQ_ALERT_KEY,
+        last_alert_at: alerted ? new Date().toISOString() : (st && st.last_alert_at) || null,
+        last_payload: { broken, status: d.status, cause: d.cause, remaining: d.remaining, perHour: d.perHour },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'key' });
+    }
+    return { ...d, alerted };
+  } catch (e) {
+    console.error('[pipeline-watch] faq health 실패', e && e.message);
+    return { error: (e && e.message) || 'unknown' };
+  }
+}
+
+/**
+ * 크론들의 실행시간을 보고, 함수 상한에 붙기 시작하면 알린다.
+ * 판정 규칙은 _lib/cronDurationHealth.js (순수 함수).
+ *
+ * 상한에 걸려 강제종료된 실행은 이 표에 아예 남지 않는다. 그래서 남은
+ * 기록만으로도 보이는 신호 — '상한에 거의 닿은 실행의 비율' — 을 본다.
+ * 잘려 죽은 것들은 보이지 않으므로, 여기 보이는 숫자는 항상 과소평가다.
+ */
+async function checkDuration(opts) {
+  const WINDOW_H = Number(process.env.CRON_DURATION_WINDOW_HOURS || 3);
+  try {
+    const since = new Date(Date.now() - WINDOW_H * 3600000).toISOString();
+    const { data: rows, error } = await supabaseAdmin
+      .from('cron_runs').select('cron_name, duration_ms')
+      .gte('ran_at', since).limit(5000);
+    if (error) throw error;
+
+    const summary = summarizeDurations(rows || []);
+    const d = judgeCronDuration(summary, { windowHours: WINDOW_H });
+    if (opts && opts.dry) return { dry: true, ...d };
+
+    const { data: st } = await supabaseAdmin.from('ops_alert_state')
+      .select('last_alert_at, last_payload').eq('key', DURATION_ALERT_KEY).maybeSingle();
+    const lastAt = st && st.last_alert_at ? Date.parse(st.last_alert_at) : 0;
+    const wasBroken = !!(st && st.last_payload && st.last_payload.broken);
+    const COOLDOWN_H = Number(process.env.CRON_DURATION_COOLDOWN_H || 6);
+    const broken = !d.healthy;
+
+    let alerted = false;
+    if (broken && Date.now() - lastAt > COOLDOWN_H * 3600000) {
+      await pushAlert({ ...buildCronDurationAlert(d, SITE), personalOnly: true });
+      alerted = true;
+    } else if (!broken && wasBroken) {
+      await pushAlert({
+        personalOnly: true,
+        title: '✅ 크론 실행시간 정상화 — 예산 안으로 돌아옴',
+        lines: [d.reason],
+        url: `${SITE}/admin`, urlLabel: '어드민',
+      });
+      alerted = true;
+    }
+    if (alerted || wasBroken !== broken) {
+      await supabaseAdmin.from('ops_alert_state').upsert({
+        key: DURATION_ALERT_KEY,
+        last_alert_at: alerted ? new Date().toISOString() : (st && st.last_alert_at) || null,
+        last_payload: { broken, status: d.status, worst: d.worst || null, judged: d.judged },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'key' });
+    }
+    return { ...d, alerted };
+  } catch (e) {
+    console.error('[pipeline-watch] cron duration health 실패', e && e.message);
+    return { error: (e && e.message) || 'unknown' };
+  }
+}
+
 module.exports.diagnose = diagnose;
 module.exports.buildAlert = buildAlert;
+module.exports.judgeReelHealth = judgeReelHealth;
+module.exports.buildReelAlert = buildReelAlert;
+module.exports.judgeFaqHealth = judgeFaqHealth;
+module.exports.buildFaqAlert = buildFaqAlert;
+module.exports.judgeCronDuration = judgeCronDuration;
+module.exports.buildCronDurationAlert = buildCronDurationAlert;
+module.exports.summarizeDurations = summarizeDurations;

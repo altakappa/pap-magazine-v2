@@ -73,6 +73,10 @@
       "schedule": "20 */3 * * *"
     },
     {
+      "path": "/api/cron/video-repair",
+      "schedule": "35 * * * *"
+    },
+    {
       "path": "/api/cron/threads-post",
       "schedule": "2-52/10 * * * *"
     },
@@ -984,7 +988,22 @@
     },
     {
       "source": "/en/category/:cat*",
-      "destination": "/",
+      "destination": "/articles",
+      "permanent": true
+    },
+    {
+      "source": "/en/filmList/:path*",
+      "destination": "/films",
+      "permanent": true
+    },
+    {
+      "source": "/en/films",
+      "destination": "/films",
+      "permanent": true
+    },
+    {
+      "source": "/en/articles",
+      "destination": "/articles",
       "permanent": true
     },
     {
@@ -995,6 +1014,76 @@
     {
       "source": "/en/:slug/",
       "destination": "/en/editorial/:slug",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/about",
+      "destination": "/about",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/about/",
+      "destination": "/about",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/contact",
+      "destination": "/contact",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/contact/",
+      "destination": "/contact",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/business",
+      "destination": "/business",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/business/",
+      "destination": "/business",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/filmList",
+      "destination": "/films",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/filmList/",
+      "destination": "/films",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/filmList/:path*",
+      "destination": "/films",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/films",
+      "destination": "/films",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/articles",
+      "destination": "/articles",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/category/:cat*",
+      "destination": "/articles",
       "permanent": true
     },
     {
@@ -1034,17 +1123,52 @@
     },
     {
       "source": "/ko/filmList",
-      "destination": "/",
+      "destination": "/films",
       "permanent": true
     },
     {
       "source": "/ko/filmList/",
-      "destination": "/",
+      "destination": "/films",
       "permanent": true
     },
     {
       "source": "/ko/category/:cat*",
-      "destination": "/",
+      "destination": "/articles",
+      "permanent": true
+    },
+    {
+      "source": "/category/:cat*",
+      "destination": "/articles",
+      "permanent": true
+    },
+    {
+      "source": "/filmList",
+      "destination": "/films",
+      "permanent": true
+    },
+    {
+      "source": "/filmList/:path*",
+      "destination": "/films",
+      "permanent": true
+    },
+    {
+      "source": "/business/:path+",
+      "destination": "/business",
+      "permanent": true
+    },
+    {
+      "source": "/ko/filmList/:path*",
+      "destination": "/films",
+      "permanent": true
+    },
+    {
+      "source": "/ko/films",
+      "destination": "/films",
+      "permanent": true
+    },
+    {
+      "source": "/ko/articles",
+      "destination": "/articles",
       "permanent": true
     },
     {

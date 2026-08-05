@@ -35,6 +35,7 @@ const MUST_GUARD = {
   'tiktok-post.js':           '틱톡 자동게시',
   'threads-post.js':          '스레드 자동게시',
   'youtube-post.js':          '유튜브 자동게시',
+  'video-repair.js':          '릴스 mp4 복구 — 죽으면 반쪽 기사가 영영 방치되고 쇼츠 연료가 마른다',
   'pipeline-watch.js':        '파이프라인 감시 — 감시자가 죽으면 전부 눈이 먼다',
 };
 

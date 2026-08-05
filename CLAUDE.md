@@ -25,6 +25,7 @@
 3. 중요 작업은 볼트 `45_Business/`에 날짜 파일로 기록
 
 ## 인프라 좌표
+- **작업 폴더(유일): `/Users/pap/Documents/문서/PAP_Magazine_Deploy`.** `PAP-푸시하기.command` 가 푸시하는 곳이 여기다. `~/Downloads/PAP_Magazine_Deploy` 는 맥미니 이전 때 남은 옛 사본 — 여기에 커밋하면 GitHub·Vercel 에 절대 닿지 않는다. (2026-08-04 릴스 mp4 수정본이 그 사본에 갇혀 하루를 날렸다. 작업 시작 전 `pwd` 로 확인한다.)
 - Vercel: project `prj_bJ4s6cgv7HbrDYYU0mu0B9xyl3n5` / team `team_EmYMio2vO29fe2ZFbeRJ2Nsi` (env 추가·수정·삭제 모두 재배포 필요 — 위 체크리스트 참조, Sensitive 값은 저장 후 읽기 불가)
 - Supabase: `igcazquhkwxtqsaqpznx` (서버는 service_role)
 - 결제: Paddle (plan_key는 premium_*/standard_* → base plan으로 정규화되어 profiles 저장)

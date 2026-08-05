@@ -45,6 +45,21 @@
 // `.ed-gallery-item` by the gallery-render code further down.
 // Calls /api/community/scraps with sourceType='editorial' so the API can
 // later cross-reference scraps to their PAP source content.
+// 2026-08-05 — 언어 접두어 유지 헬퍼 (다인).
+// 하드코딩된 '/editorial/<slug>' 점프가 /en, /ja 등에서 언어 접두어를 버리고
+// 한국어 경로로 튕기면 GSC 가 이를 "리디렉션이 포함된 페이지"로 집계한다.
+// 정의는 idempotent — 어느 파일이 먼저 로드돼도 안전하다.
+if (!window._papLangPrefix) {
+  window._papLangPrefix = function(){
+    try{
+      var m = String(location.pathname||'').match(/^\/(en|it|fr|es|ja|de|zh|ru)(\/|$)/);
+      if (m) return '/' + m[1];
+      if (window.__papDeepLinkLang) return '/' + window.__papDeepLinkLang;
+    }catch(_){}
+    return '';
+  };
+}
+
 (function _injectScrapBtnCss(){
   if(document.getElementById('papScrapBtnStyle')) return;
   var s=document.createElement('style');
@@ -1547,7 +1562,18 @@ function _openEditorialInner(title,thumb){
   var _edThumb=det.thumb||thumb||'';
   var _edSlug = (d && d.slug) || _editorialTitleToSlug(title);
   try{
-    var _epath = '/editorial/' + _edSlug;
+    // 2026-08-04 — GSC "리디렉션이 포함된 페이지" 3,588건 원인 수정.
+    // /<lang>/editorial/<slug> 로 직접 들어온 방문(딥링크·구글봇)에서
+    // 언어 접두어를 버리고 /editorial/<slug> 로 pushState 하던 탓에,
+    // JS 를 렌더하는 구글봇이 이를 "리디렉션"으로 기록했다.
+    // 지금 URL 의 언어 접두어를 그대로 유지한다.
+    // 2026-08-04(2차) — 1차 수정은 무력했다. SSR 브릿지가 /?ed=<slug> 로
+    // 먼저 튕겨서, 여기 도달할 땐 location.pathname 이 이미 '/' 였다.
+    // 브릿지가 넘겨준 언어(window.__papDeepLinkLang)를 폴백으로 쓴다.
+    var _edLangM = location.pathname.match(/^\/(en|it|fr|es|ja|de|zh|ru)\//);
+    var _edPrefix = _edLangM ? '/' + _edLangM[1]
+      : (window.__papDeepLinkLang ? '/' + window.__papDeepLinkLang : '');
+    var _epath = _edPrefix + '/editorial/' + _edSlug;
     var _state = {editorial:true, title:title, slug:_edSlug, thumb:_edThumb};
     if(window.location.pathname === _epath){
       history.replaceState(_state, '', _epath);
@@ -1742,7 +1768,7 @@ window._papOpenRelatedEd = function(ev, title, cover, slug){
       return false;
     }
   } catch(_){}
-  try { location.href = '/editorial/' + slug; } catch(_){}
+  try { location.href = window._papLangPrefix() + '/editorial/' + slug; } catch(_){}
   return false;
 };
 

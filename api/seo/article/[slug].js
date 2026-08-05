@@ -222,6 +222,28 @@ module.exports = async function handler(req, res) {
         next: _norm(nextR.data && nextR.data[0]) || null,
         related: relAdj.filter(a => a && a.id !== data.id).slice(0,4).map(_norm),
       };
+      /* 2026-08-04 (GSC '발견됨 - 현재 색인이 생성되지 않음' 4,474건) —
+         내부링크 언어 프리픽스. 지금까지 /ja/article/x 안의 이전·다음·관련
+         카드가 전부 /article/y (한국어)를 가리켰다. 그래서 en/ja/fr/it/es
+         번역 페이지는 사이트맵에만 있는 고아였고, 구글이 '발견'만 하고 크롤
+         우선순위를 계속 낮게 잡았다(표본 1,000건 중 914건이 번역 URL).
+         실제 번역이 있는 항목에만 프리픽스를 붙인다 — 없는데 붙이면 302
+         체인이 생겨 '리디렉션이 포함된 페이지'를 다시 키우기 때문.
+         (en 은 DB 원본 필드라 항상 존재.) */
+      if (lang !== 'ko') {
+        const _mo = data.more_articles;
+        const _items = [_mo.prev, _mo.next, ...(_mo.related || [])].filter(Boolean);
+        if (lang === 'en') {
+          _items.forEach(e => { e._lang = 'en'; });
+        } else if (_items.length) {
+          const { data: _trRows } = await supabaseAdmin
+            .from('seo_translations').select('content_id')
+            .eq('kind', 'article').eq('lang', lang)
+            .in('content_id', _items.map(e => e.id).filter(Boolean));
+          const _have = new Set((_trRows || []).map(r => r.content_id));
+          _items.forEach(e => { if (_have.has(e.id)) e._lang = lang; });
+        }
+      }
     } catch (_) { /* 내부링크 블록은 best-effort */ }
 
     return res.status(200).send(renderSeoHtml('article', data, { lang, translation, availableLangs }));

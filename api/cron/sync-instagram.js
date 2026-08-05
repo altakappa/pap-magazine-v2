@@ -38,6 +38,7 @@ const {
   buildArticleRow,
   archiveImagesToStorage,
   archiveVideosToStorage,
+  resolveVideoUrls,
   isLikelyEditorialCaption,
   normalizeMedia,
   hydrateChildren,
@@ -170,7 +171,25 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
       if (isEditorial){ results.skipped_editorial_ai++; return; }
       // IG CDN 이미지는 수일 내 만료 — Supabase Storage 영구본으로 교체.
       const archivedUrls = await archiveImagesToStorage(post, 10);
-      const videoUrls = await archiveVideosToStorage(post, 2);
+      /* 릴스 mp4 — 목록 응답에 media_url 이 없으면 media id 로 단건 재조회한다.
+         이 한 줄이 없어서 07-31~08-04 릴스 기사 6건이 videos:[] 로 발행됐고,
+         유튜브 쇼츠 자동 업로드가 통째로 멈췄다. (instagramImport.resolveVideoUrls) */
+      const resolveStat = await resolveVideoUrls(post, cred);
+      if (resolveStat.attempted) {
+        console.log('[sync-ig] video media_url 재조회: ' + resolveStat.resolved + '/' + resolveStat.attempted + ' 성공');
+      }
+      const videoReport = {};
+      const videoUrls = await archiveVideosToStorage(post, 2, undefined, videoReport);
+      /* VIDEO 인데 mp4 를 하나도 못 건졌으면 반드시 로그로 남긴다.
+         조용히 넘어가면 "발행은 됐는데 쇼츠는 안 올라가는" 상태가 되고,
+         youtube-post 는 그걸 '후보 없음' 으로만 보고해 아무도 눈치채지 못한다. */
+      if (post.mediaType === 'VIDEO' && !videoUrls.length){
+        results.video_missing = (results.video_missing || 0) + 1;
+        console.error('[sync-ig] 릴스 mp4 수집 실패 — post ' + post.id
+          + ' urls=' + (post.videoUrls || []).length
+          + ' 재조회=' + resolveStat.resolved + '/' + resolveStat.attempted
+          + ' 실패=' + JSON.stringify((videoReport.failures || []).slice(0, 2)));
+      }
       // ── 품질 게이트: 발행 상태 결정. 백필은 무조건 published(원본 게시일 유지) ──
       let pubStatus = 'published';
       if (qualityGateOn && !backfillMode){

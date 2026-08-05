@@ -200,7 +200,9 @@ async function fetchInstagramPost(input){
 // CAROUSEL_ALBUM 게시물에 대해서만 이 함수로 지연 조회한다. 반환: children.data 배열.
 async function fetchMediaChildren(mediaId, opts){
   const { token } = _creds(opts);
-  const fields = 'children{media_url,media_type,thumbnail_url}';
+  // id 를 반드시 포함한다 — 자식이 VIDEO 인데 media_url 이 누락돼 오는 경우
+  // 그 자식 id 로 단건 재조회해야 mp4 를 건질 수 있다 (resolveVideoUrls 참고).
+  const fields = 'children{id,media_url,media_type,thumbnail_url}';
   const url = `${_IG_API}/${mediaId}?fields=${encodeURIComponent(fields)}&access_token=${token}`;
   const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
   if (!res.ok){
@@ -231,6 +233,14 @@ function _normalizeMedia(m){
     caption: m.caption || '',
     mediaUrls: [],
     videoUrls: [], // 릴스/영상 원본 mp4 — 아카이브 후 기사에서 직접 재생
+    /* media_url 이 비어서 mp4 를 못 건진 VIDEO 항목의 media id.
+       2026-07-31 부터 Graph API 목록 응답이 VIDEO 에 thumbnail_url 만 주고
+       media_url 을 빼는 경우가 생겼다. 그 결과 videoUrls 가 빈 배열이 되고,
+       archiveVideosToStorage 가 0회 반복하고 조용히 [] 를 돌려주고,
+       기사에 videos:[] 로 저장돼 유튜브 쇼츠 후보에서 통째로 빠졌다.
+       (실측: 07-31~08-04 릴스 기사 6건이 mp4 없이 발행됨)
+       여기 담긴 id 로 resolveVideoUrls() 가 단건 재조회해 media_url 을 회수한다. */
+    videoResolveIds: [],
     permalink: m.permalink,
     timestamp: m.timestamp || null,
     author: m.username || 'pap_magazine',
@@ -251,6 +261,7 @@ function _normalizeMedia(m){
       if (c.media_type === 'VIDEO'){
         if (c.thumbnail_url) out.mediaUrls.push(c.thumbnail_url);
         if (c.media_url) out.videoUrls.push(c.media_url);
+        else if (c.id) out.videoResolveIds.push(String(c.id));
       } else if (c.media_url){
         out.mediaUrls.push(c.media_url);
       }
@@ -258,12 +269,74 @@ function _normalizeMedia(m){
   } else if (m.media_type === 'VIDEO'){
     if (m.thumbnail_url) out.mediaUrls.push(m.thumbnail_url);
     if (m.media_url) out.videoUrls.push(m.media_url);
+    else if (m.id) out.videoResolveIds.push(String(m.id));
   } else if (m.media_url){
     out.mediaUrls.push(m.media_url);
   } else if (m.thumbnail_url){
     out.mediaUrls.push(m.thumbnail_url);
   }
   return out;
+}
+
+/**
+ * media_url 이 빠진 VIDEO 항목을 단건 재조회해 videoUrls 를 채운다.
+ * (2026-08-04 신설 — 유튜브 쇼츠 자동 업로드가 멈춘 근본 원인 수리)
+ *
+ * 왜 필요한가 — Graph API 목록 응답(`/media?fields=...`)은 VIDEO 항목에
+ * thumbnail_url 만 주고 media_url 을 생략하는 경우가 있다(07-31 이후 실측).
+ * 목록 응답만 믿으면 릴스의 mp4 를 영영 못 받고, 기사는 videos:[] 로 발행되며,
+ * youtube-post 는 "업로드할 릴스 기사 없음" 이라고 ok=true 를 남긴다.
+ * → 아무도 모르는 채로 쇼츠 업로드가 0건이 된다. 그래서 **목록에 없으면
+ * 단건으로 다시 묻는다.** 단건 조회는 media_url 을 정상적으로 돌려준다.
+ *
+ * 실패해도 throw 하지 않는다 — 이미지/썸네일만으로도 기사는 성립한다.
+ * 다만 조용히 넘어가지는 않는다: console.error 로 남겨 로그 검색이 가능하고,
+ * 반환값의 resolved/failed 로 호출부가 판단할 수 있게 한다.
+ *
+ * @param {object} post - _normalizeMedia 결과 (videoResolveIds 를 소비, videoUrls 를 채움)
+ * @param {object} [opts] - { token, userId } (미지정 시 env)
+ * @returns {Promise<{attempted:number, resolved:number, failed:number}>}
+ */
+async function resolveVideoUrls(post, opts){
+  const ids = (post && Array.isArray(post.videoResolveIds)) ? post.videoResolveIds : [];
+  const stat = { attempted: ids.length, resolved: 0, failed: 0 };
+  if (!ids.length) return stat;
+
+  let token;
+  try { token = _creds(opts).token; }
+  catch (e){
+    console.error('[ig-video] 재조회 불가 — 토큰 없음:', (e && e.message) || e);
+    stat.failed = ids.length;
+    return stat;
+  }
+
+  const fields = 'id,media_type,media_url,thumbnail_url';
+  for (const id of ids){
+    try {
+      const url = `${_IG_API}/${id}?fields=${encodeURIComponent(fields)}&access_token=${token}`;
+      const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
+      if (!r.ok){
+        const body = await r.text().catch(() => '');
+        console.error('[ig-video] media_url 재조회 실패 ' + id + ' (' + r.status + '): ' + body.slice(0, 200));
+        stat.failed++;
+        continue;
+      }
+      const j = await r.json();
+      if (j && j.media_url){
+        post.videoUrls.push(j.media_url);
+        stat.resolved++;
+      } else {
+        console.error('[ig-video] 재조회에도 media_url 없음: ' + id);
+        stat.failed++;
+      }
+    } catch (e){
+      console.error('[ig-video] media_url 재조회 예외 ' + id + ':', (e && e.message) || e);
+      stat.failed++;
+    }
+  }
+  // 회수한 id 는 비워 둔다 — 같은 post 로 두 번 호출해도 중복 수집되지 않게.
+  post.videoResolveIds = [];
+  return stat;
 }
 
 // 캡션이 "에디토리얼 크레딧 게시물"인지 휴리스틱 판별.
@@ -467,29 +540,44 @@ async function archiveImagesToStorage(post, max, prefix){
 
 // 릴스/영상 원본을 Storage 로 영구 복사 (IG CDN 영상 URL 도 수일 내 만료).
 // 60MB 초과 파일은 서버리스 메모리·시간 한도 보호를 위해 건너뛴다.
-async function archiveVideosToStorage(post, max, prefix){
+//
+// 2026-08-04 — 4번째 인자 report 로 결과를 밖으로 흘린다.
+//   기존에는 무슨 일이 있어도 배열 하나만 돌려줘서, "영상 URL 자체가 0개"인지
+//   "받다가 실패"인지 구분할 수 없었다. 그 구분이 안 되니 videos:[] 인 기사가
+//   정상처럼 발행됐다. 이제 호출부가 report.attempted / failures 로 판별한다.
+//   console.warn → console.error 로 올린 것도 같은 이유다(Vercel 로그 검색용).
+async function archiveVideosToStorage(post, max, prefix, report){
   const { supabaseAdmin } = require('./supabase');
   const out = [];
   const dir = prefix || 'ig-articles';
   const urls = (post.videoUrls || []).slice(0, max || 2);
+  const rep = (report && typeof report === 'object') ? report : {};
+  rep.attempted = urls.length;
+  rep.succeeded = 0;
+  rep.failures = [];
+  const note = (url, reason) => {
+    rep.failures.push({ url: String(url || '').slice(0, 120), reason: String(reason).slice(0, 200) });
+    console.error('[ig-video] ' + reason);
+  };
   for (let i = 0; i < urls.length; i++){
     try {
       const r = await fetch(urls[i], { signal: AbortSignal.timeout(45000) });
-      if (!r.ok){ console.warn('[ig-video] fetch ' + r.status); continue; }
+      if (!r.ok){ note(urls[i], 'fetch ' + r.status); continue; }
       const ct = (r.headers.get('content-type') || 'video/mp4').split(';')[0];
-      if (!/^video\//.test(ct) && !/octet-stream/.test(ct)) continue;
+      if (!/^video\//.test(ct) && !/octet-stream/.test(ct)){ note(urls[i], 'content-type 불일치: ' + ct); continue; }
       const len = parseInt(r.headers.get('content-length') || '0', 10);
-      if (len > 60 * 1024 * 1024){ console.warn('[ig-video] 60MB 초과 스킵'); continue; }
+      if (len > 60 * 1024 * 1024){ note(urls[i], '60MB 초과 스킵 (' + len + 'B)'); continue; }
       const buf = Buffer.from(await r.arrayBuffer());
-      if (buf.length > 60 * 1024 * 1024) continue;
+      if (buf.length > 60 * 1024 * 1024){ note(urls[i], '60MB 초과 스킵 (본문 ' + buf.length + 'B)'); continue; }
       const path = dir + '/' + String(post.id || 'unknown') + '/v' + i + '.mp4';
       const { error } = await supabaseAdmin.storage.from('media')
         .upload(path, buf, { contentType: 'video/mp4', upsert: true });
-      if (error){ console.warn('[ig-video] upload 실패:', error.message); continue; }
+      if (error){ note(urls[i], 'upload 실패: ' + error.message); continue; }
       const { data } = supabaseAdmin.storage.from('media').getPublicUrl(path);
-      if (data && data.publicUrl) out.push(data.publicUrl);
+      if (data && data.publicUrl){ out.push(data.publicUrl); rep.succeeded++; }
+      else note(urls[i], 'publicUrl 없음');
     } catch (e){
-      console.warn('[ig-video] error:', (e && e.message) || e);
+      note(urls[i], 'error: ' + ((e && e.message) || e));
     }
   }
   return out;
@@ -539,6 +627,7 @@ module.exports = {
   buildArticleRow,
   archiveImagesToStorage,
   archiveVideosToStorage,
+  resolveVideoUrls,
   isLikelyEditorialCaption,
   fetchMediaChildren,
   hydrateChildren,

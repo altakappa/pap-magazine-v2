@@ -69,7 +69,7 @@ node --version
 
 ```bash
 # migration 폴더로 이동
-cd ~/Downloads/PAP_Magazine_Deploy/migration
+cd ~/Documents/문서/PAP_Magazine_Deploy/migration
 
 # 패키지 설치
 npm install
@@ -202,7 +202,7 @@ S3 URL이 Supabase URL로 바뀌었는지 확인.
 ## 🚢 6단계: 배포
 
 ```bash
-cd ~/Downloads/PAP_Magazine_Deploy
+cd ~/Documents/문서/PAP_Magazine_Deploy
 rm -f .git/index.lock
 git add frontend/
 git commit -m "feat: AWS S3 → Supabase Storage 이미지 마이그레이션"

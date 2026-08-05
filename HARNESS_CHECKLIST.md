@@ -515,7 +515,7 @@ window.papContent = {
 
 ```bash
 # 현재 상태 백업
-cd ~/Downloads/PAP_Magazine_Deploy
+cd ~/Documents/문서/PAP_Magazine_Deploy
 git checkout -b harness-refactor
 git tag pre-harness-2026-05-02
 ```
@@ -570,7 +570,7 @@ HARNESS_CHECKLIST.md의 Auth 섹션 참고.
 
 1. **터미널에서 Claude Code 실행**:
    ```bash
-   cd ~/Downloads/PAP_Magazine_Deploy
+   cd ~/Documents/문서/PAP_Magazine_Deploy
    claude
    ```
 

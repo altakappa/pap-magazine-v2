@@ -18,11 +18,136 @@
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
+const { getAccessToken } = require('../_lib/youtube');
+
+const YT_VIDEOS_API = 'https://www.googleapis.com/youtube/v3/videos';
+const YT_PARTS = 'status,contentDetails,snippet,processingDetails';
+
+function chunk(arr, n){
+  const out = [];
+  for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
+  return out;
+}
+
+/**
+ * 업로드된 영상이 '지금 유튜브에서 어떤 상태인지' 를 정리한다 — 2026-08-05 신설.
+ *
+ * 왜 필요한가 ─────────────────────────────────────────────────────────
+ * youtube_posts 는 '우리가 올렸다' 까지만 안다. status='submitted' 는 업로드
+ * 요청이 200 을 받았다는 뜻이지, 그 영상이 지금 사람들에게 보인다는 뜻이
+ * 아니다. 실측(2026-08-05): 업로드 52건 중 28건이 공개 URL 로 열리지 않았다.
+ * 우리 DB 안에는 그 이유를 설명할 정보가 한 글자도 없다 — detail 은 전부 null.
+ *
+ * 답은 유튜브만 안다. videos.list 가 돌려주는
+ *   status.privacyStatus   (private/unlisted/public)
+ *   status.uploadStatus    (processed/failed/rejected)
+ *   status.rejectionReason (copyright/duplicate/claim ...)
+ *   contentDetails.regionRestriction.blocked  (Content ID 로 막힌 나라)
+ * 네 값이 '왜 안 보이는지' 를 확정한다. 추측(음원 때문일 것이다)을 사실로
+ * 바꾸는 유일한 방법이므로, 진단에 이 모드를 붙인다.
+ *
+ * 순수 함수로 떼어 둔 이유: 네트워크 없이 판정 규칙만 테스트하기 위해서다.
+ *
+ * @param {Array} items - videos.list 응답의 items
+ * @param {Array<string>} requestedIds - 우리가 물어본 video id 전체
+ */
+function summarizeVideoStates(items, requestedIds){
+  const byId = new Map((items || []).filter(Boolean).map((v) => [v.id, v]));
+  const ids = (requestedIds || []).filter(Boolean);
+  const counts = { public: 0, unlisted: 0, private: 0, missing: 0, rejected: 0, failed: 0 };
+  const rows = [];
+
+  for (const id of ids){
+    const v = byId.get(id);
+    if (!v){
+      /* 우리 채널의 영상인데 목록에 없다 = 삭제됐거나 다른 채널 소유다.
+         '조용히 빠진' 것을 빈칸이 아니라 명시적 상태로 남긴다. */
+      counts.missing++;
+      rows.push({ video_id: id, found: false, privacy: null, upload: null, why: '유튜브에 없음 (삭제됨 또는 다른 채널)' });
+      continue;
+    }
+    const st = v.status || {};
+    const cd = v.contentDetails || {};
+    const sn = v.snippet || {};
+    const privacy = st.privacyStatus || null;
+    const upload = st.uploadStatus || null;
+    const rejection = st.rejectionReason || null;
+    const failure = st.failureReason || null;
+    const blocked = (cd.regionRestriction && Array.isArray(cd.regionRestriction.blocked))
+      ? cd.regionRestriction.blocked : [];
+
+    if (counts[privacy] !== undefined) counts[privacy]++;
+    if (upload === 'rejected') counts.rejected++;
+    if (upload === 'failed') counts.failed++;
+
+    let why = null;
+    if (rejection) why = '유튜브가 거절: ' + rejection;
+    else if (failure) why = '업로드 실패: ' + failure;
+    else if (privacy && privacy !== 'public') why = '공개 상태가 ' + privacy;
+    else if (blocked.length) why = '차단 국가 ' + blocked.length + '곳 (Content ID 가능성)';
+
+    rows.push({
+      video_id: id,
+      found: true,
+      title: sn.title || null,
+      published_at: sn.publishedAt || null,
+      privacy,
+      upload,
+      rejection,
+      failure,
+      licensed_content: !!cd.licensedContent,
+      blocked_regions: blocked.length,
+      embeddable: (st.embeddable === undefined) ? null : !!st.embeddable,
+      why,
+    });
+  }
+
+  const problems = rows.filter((r) => !r.found || r.privacy !== 'public' || r.upload !== 'processed' || r.rejection);
+  return { requested: ids.length, counts, problems: problems.length, rows };
+}
 
 module.exports = async function handler(req, res){
   if (handleCors(req, res)) return;
   const user = await requireAdmin(req, res);
   if (!user) return;
+
+  /* ?videos=1 — 올린 영상이 지금 유튜브에서 어떤 상태인지 실측한다.
+     기본 진단(아래)은 우리 DB 만 본다. 이 모드만 유튜브에 직접 묻는다.
+     쿼터를 쓰므로 기본 진단에 섞지 않고 요청했을 때만 호출한다.
+     (videos.list part=status 는 호출당 1 unit · 50개씩 묶어 조회) */
+  if (String((req.query && req.query.videos) || '') === '1'){
+    try {
+      const { data: rows } = await supabaseAdmin.from('youtube_posts')
+        .select('video_id, article_id, status, created_at')
+        .not('video_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(200);
+      const ids = [...new Set((rows || []).map((r) => r.video_id).filter(Boolean))];
+      if (!ids.length){
+        return res.status(200).json({ ok: true, note: '조회할 video_id 가 없음', requested: 0 });
+      }
+      const token = await getAccessToken();
+      const items = [];
+      for (const part of chunk(ids, 50)){
+        const url = YT_VIDEOS_API + '?part=' + encodeURIComponent(YT_PARTS) + '&id=' + part.join(',') + '&maxResults=50';
+        const r = await fetch(url, {
+          headers: { authorization: 'Bearer ' + token },
+          signal: AbortSignal.timeout(20000),
+        });
+        if (!r.ok){
+          const body = await r.text().catch(() => '');
+          throw new Error('videos.list 실패 (' + r.status + '): ' + body.slice(0, 300));
+        }
+        const j = await r.json();
+        for (const it of (j.items || [])) items.push(it);
+      }
+      const out = summarizeVideoStates(items, ids);
+      return res.status(200).json({ ok: true, mode: 'videos', ...out });
+    } catch (e) {
+      console.error('[youtube-diagnose] videos mode failed:', e);
+      return res.status(502).json({ ok: false, error: String((e && e.message) || e).slice(0, 300) });
+    }
+  }
 
   try {
     // 1) 환경변수 상태 (실제 값은 노출하지 않고 유무만)
@@ -153,9 +278,12 @@ module.exports = async function handler(req, res){
       diagnosis,
       recent_posts,
       candidates,
+      hint: '올린 영상이 실제로 공개돼 있는지는 ?videos=1 로 확인 (유튜브에 직접 조회)',
     });
   } catch (e) {
     console.error('[youtube-diagnose] failed:', e);
     return res.status(500).json({ error: (e && e.message) || String(e) });
   }
 };
+
+module.exports.summarizeVideoStates = summarizeVideoStates;

@@ -29,7 +29,10 @@ console.log('\n=== 설명란 문안 ===');
   t('직링크(instagram.com)를 쓰지 않는다', !/instagram\.com/.test(src),
     '직링크면 유입을 셀 수 없다 — 계측 경유가 목적이다');
   // 스팸 신호 방지: 제목·본문 뒤에 링크가 와야 한다
-  const iTitle = src.indexOf("art.title + ' — PAP MAGAZINE'");
+  /* 2026-08-04: 제목 줄에 < > 제거가 붙으면서 표현식이 바뀌었다
+     (art.title → String(art.title||'').replace(/[<>]/g,'')). 표현식 전체가 아니라
+     제목 줄의 고정 꼬리표를 기준으로 순서를 검사한다. */
+  const iTitle = src.indexOf("' — PAP MAGAZINE'");
   const iIg = src.indexOf('/ig/youtube');
   t('링크는 제목·본문 뒤에 온다 (스팸 신호 회피)', iTitle > -1 && iIg > iTitle);
   t('기사 링크도 함께 유지', /기사 전문/.test(src));

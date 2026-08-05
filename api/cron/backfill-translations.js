@@ -180,6 +180,14 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
   const started = Date.now();
   const elapsed = () => Date.now() - started;
   const left = () => BUDGET_MS - elapsed();
+  /* 이 시각을 넘겨서까지 Claude 를 부르지 않는다 (2026-08-04 Patch 6).
+   *
+   * 전에는 이 약속이 **주석에만** 있었다. 바깥에서 "웨이브에 들어가려면
+   * CALL_MS + 여유가 남아 있어야 한다" 고 지켰지만, 안쪽 runBackfillBatch 는
+   * Patch 5 이후 한 번 불릴 때 호출을 최대 6번(배치+단건 × 3패스) 할 수
+   * 있게 됐다. 약속을 지킬 책임이 있는 쪽이 약속을 모르고 있었던 셈이다.
+   * 이제 마감시각 자체를 넘겨, 호출 하나하나가 직접 확인하게 한다. */
+  const deadlineAt = started + BUDGET_MS - WAVE_SLACK_MS;
 
   /* 2026-07-30 — 기본 언어에 ja 추가 (도메니코 요청: it·es·fr·ja 우선).
    *
@@ -319,7 +327,12 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
    * 재시도 타임아웃 = min(60s, left() − 12s) 이므로, 재시도가 끝나는
    * 시점은 항상 elapsed ≤ BUDGET_MS − WAVE_SLACK_MS = 88s 다.
    * 웨이브 진입 조건도 같은 기준이라 어느 경로로도 88s 를 못 넘는다.
-   * vercel.json 의 maxDuration 은 120s. */
+   * vercel.json 의 maxDuration 은 120s.
+   *
+   * 2026-08-04 — 위 문단은 한동안 사실이 아니었다. Patch 5 가 runBackfillBatch
+   * 안에 단건 재시도와 3패스 반복을 넣으면서 "한 번 = 호출 하나" 전제가
+   * 깨졌고, 실측 평균이 94~138초, 최대 151초까지 올라가 6시간에 22번
+   * 강제종료됐다. deadlineAt 을 넘겨 안쪽이 직접 지키게 해서 되돌렸다. */
   async function runTask(task) {
     const { lang, kind } = task;
     let curBatch = cjkScale(lang, kind === 'article' ? CRON_ARTICLE_BATCH : CRON_EDITORIAL_BATCH);
@@ -328,7 +341,7 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
 
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        const r = await runBackfillBatch({ lang, kind, timeoutMs: curTimeout, batch: curBatch });
+        const r = await runBackfillBatch({ lang, kind, timeoutMs: curTimeout, batch: curBatch, deadlineAt });
         totalProcessed += r.processed || 0;
         if (r.remaining === 0) finished.add(key(task));
         /* lang·kind 는 호출자가 아는 사실이다 — 반환값이 되돌려주기를 기대하지

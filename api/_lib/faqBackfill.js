@@ -81,18 +81,82 @@ function parseFaqResponse(raw, validIds) {
   return out;
 }
 
-/** FAQ 가 비어 있는 발행 기사 조회. */
+/* 본문이 이보다 짧으면 FAQ 를 만들 근거가 없다 — 사진 한 장짜리 게시물이다. */
+const MIN_BODY_CHARS = 80;
+/* 짧은 기사가 앞줄에 몰려 있어도 뚫고 나가되, 무한정 긁지는 않는다. */
+const MAX_SCAN_PAGES = 3;
+
+/** 한 페이지에 훑을 행 수 — 배치의 8배(최소 60, 최대 200). */
+function scanSpan(size) {
+  const n = parseInt(size, 10) || 10;
+  return Math.min(200, Math.max(n * 8, 60));
+}
+
+/**
+ * 훑어온 행에서 작업 가능한 것만 골라 size 만큼 자른다 — 순수 함수.
+ *
+ * **순서가 이 함수의 전부다.** 예전에는 SQL LIMIT 을 먼저 걸고 그 결과를
+ * 이 조건으로 걸렀다. 그래서 앞쪽 N건이 전부 짧은 기사이면 매 실행이 빈손으로
+ * 돌아오면서도 ok=true 를 남겼다 — 2026-08-04 실측: 잔여 260건 중 상위 12건이
+ * 모두 본문 62~78자(스트릿 스타일·백스테이지 사진)라 뒤의 234건이 통째로
+ * 막혀 있었다. '자른 뒤에 거른다'를 '거른 뒤에 자른다'로 뒤집는다.
+ */
+function selectWorkable(rows, size) {
+  const limit = Math.max(1, parseInt(size, 10) || 10);
+  const out = [];
+  let tooShort = 0;
+  for (const a of (rows || [])) {
+    if (!a || !a.title || toPlain(a.content).length < MIN_BODY_CHARS) { tooShort++; continue; }
+    if (out.length < limit) out.push(a);
+  }
+  return { rows: out, tooShort };
+}
+
+/**
+ * FAQ 가 비어 있는 발행 기사 조회.
+ * 한 페이지가 전부 짧은 기사여도 다음 페이지까지 훑어 벽을 넘는다.
+ *
+ * @returns {Promise<{rows:Array, scanned:number, tooShort:number, exhausted:boolean}>}
+ *          exhausted=true 면 마지막 페이지까지 봤다는 뜻 — 남은 건 전부 짧은 기사다.
+ */
 async function fetchPending(size) {
-  const { data, error } = await supabaseAdmin
-    .from('articles')
-    .select('id, title, title_en, content')
-    .eq('status', 'published')
-    .is('faq', null)
-    .order('published_date', { ascending: false })
-    .order('created_at', { ascending: false })
-    .limit(size);
-  if (error) throw error;
-  return (data || []).filter(a => a.title && toPlain(a.content).length >= 80);
+  const span = scanSpan(size);
+  const want = Math.max(1, parseInt(size, 10) || 10);
+  const seen = new Set();
+  const pool = [];
+  let scanned = 0;
+  let exhausted = false;
+
+  for (let page = 0; page < MAX_SCAN_PAGES; page++) {
+    const from = page * span;
+    const { data, error } = await supabaseAdmin
+      .from('articles')
+      .select('id, title, title_en, content')
+      .eq('status', 'published')
+      .is('faq', null)
+      .order('published_date', { ascending: false })
+      .order('created_at', { ascending: false })
+      .range(from, from + span - 1);
+    if (error) throw error;
+
+    const page_rows = data || [];
+    scanned += page_rows.length;
+    for (const a of page_rows) {
+      const key = String(a && a.id);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      pool.push(a);
+    }
+
+    const picked = selectWorkable(pool, want);
+    if (picked.rows.length >= want) {
+      return { rows: picked.rows, scanned, tooShort: picked.tooShort, exhausted: false };
+    }
+    if (page_rows.length < span) { exhausted = true; break; } // 마지막 페이지였다
+  }
+
+  const picked = selectWorkable(pool, want);
+  return { rows: picked.rows, scanned, tooShort: picked.tooShort, exhausted };
 }
 
 /** 남은 건수 (진행률 보고용). */
@@ -119,9 +183,27 @@ async function runFaqBackfillBatch({ batch = 10, timeoutMs = 90000 } = {}) {
     throw e;
   }
   const size = normalizeBatch(batch, 10);
-  const rows = await fetchPending(size);
+  const scan = await fetchPending(size);
+  const rows = scan.rows;
   if (!rows.length) {
-    return { processed: 0, remaining: await countRemainingSafe(), note: '대상 없음 — 완주' };
+    /* 요약 한 줄이 곧 생산량 기록이다 — pipeline-watch 의 faqHealth 가 이 문장을
+       읽어 '돌았는데 아무것도 안 만든' 상태를 잡는다. 세 문장을 구분하는 이유:
+       완주 / 실질 완주 / 앞이 막힘 은 볼 곳이 완전히 다르다. */
+    const remaining = await countRemainingSafe();
+    const rem = remaining == null ? '?' : remaining;
+    let note;
+    if (remaining === 0) {
+      note = 'FAQ 0 · 완주';
+    } else if (scan.exhausted) {
+      note = 'FAQ 0 · 완주 (잔여 ' + rem + '건은 본문 ' + MIN_BODY_CHARS + '자 미만)';
+    } else {
+      note = 'FAQ 0 · 대상 없음 — 앞 ' + scan.scanned + '건이 전부 본문 '
+        + MIN_BODY_CHARS + '자 미만 (잔여 ' + rem + ')';
+    }
+    return {
+      processed: 0, remaining, note,
+      scanned: scan.scanned, tooShort: scan.tooShort, exhausted: scan.exhausted,
+    };
   }
 
   const payload = rows.map(a => ({
@@ -178,11 +260,18 @@ async function runFaqBackfillBatch({ batch = 10, timeoutMs = 90000 } = {}) {
     processed++;
   }
 
-  const out = { processed, remaining: await countRemainingSafe() };
+  const remaining = await countRemainingSafe();
+  const out = {
+    processed, remaining, scanned: scan.scanned, tooShort: scan.tooShort,
+    note: 'FAQ ' + processed + '/' + rows.length + ' · 잔여 '
+      + (remaining == null ? '?' : remaining)
+      + (errors.length ? ' · 실패 ' + errors.length : ''),
+  };
   if (errors.length) out.errors = errors;
   return out;
 }
 
 module.exports = {
   runFaqBackfillBatch, normalizeBatch, toPlain, parseFaqResponse,
+  selectWorkable, scanSpan, MIN_BODY_CHARS,
 };

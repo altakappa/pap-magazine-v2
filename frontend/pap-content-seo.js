@@ -292,6 +292,12 @@ function _papResolveEditorialName(input){
   var params=new URLSearchParams(window.location.search);
   var edName=params.get('ed');
   if(!edName)return;
+  // 2026-08-04 — SSR 브릿지가 넘겨준 언어를 기억해 둔다. openEditorial 이
+  // 최종 URL 을 /<lang>/editorial/<slug> 로 되돌릴 때 쓴다.
+  try{
+    var _dlLang=(params.get('lang')||'').toLowerCase();
+    if(/^(en|it|fr|es|ja|de|zh|ru)$/.test(_dlLang)) window.__papDeepLinkLang=_dlLang;
+  }catch(_){}
   // Clean ?ed= from URL immediately (before pushState from openEditorial)
   history.replaceState(null,'',window.location.pathname);
   /* Reveal body (remove the deep-link black cover injected in index.html
@@ -365,6 +371,11 @@ function _papResolveEditorialName(input){
   var params = new URLSearchParams(window.location.search);
   var filmSlug = params.get('film');
   if(!filmSlug) return;
+  // 2026-08-04 — 에디토리얼과 동일하게 SSR 브릿지의 언어를 기억한다.
+  try{
+    var _dlLangF=(params.get('lang')||'').toLowerCase();
+    if(/^(en|it|fr|es|ja|de|zh|ru)$/.test(_dlLangF)) window.__papDeepLinkLang=_dlLangF;
+  }catch(_){}
   // Clean ?film= from the URL immediately so the pushState that
   // openFilmDetail issues is the first /film/<slug> entry on the stack.
   try { history.replaceState(null, '', window.location.pathname); } catch(_){}

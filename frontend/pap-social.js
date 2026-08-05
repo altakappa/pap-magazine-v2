@@ -15,6 +15,74 @@
  *   PAPSocial.getCreatorAvgRating(creatorHandle) -> Promise<{avg,count,...}>
  *   PAPSocial.currentUser() -> {id,name,handle} | null
  */
+
+// 2026-08-05 — 에디토리얼 카드 링크 언어 접두어 헬퍼 (다인, 3차 라운드).
+// 문제: 아래 카드 생성기들이 항상 '/editorial/<slug>' (한국어 정본) 을 써서,
+// /en·/ja 페이지에서 SSR 이 올바르게 심어 둔 <a href="/en/editorial/..."> 를
+// 클라이언트 렌더가 덮어썼다. 크롤러가 JS 실행 후 보는 내부 링크 그래프가
+// 통째로 한국어로 되돌아간다(2026-08-05 라이브 확인).
+// 제약: 무조건 접두어를 붙이면 안 된다 — api/seo/editorial/[slug].js 는
+// 번역이 없는 항목에 대해 302(→/en) 를 내므로 "리디렉션이 포함된 페이지"가
+// 다시 늘어난다. 그래서 /api/editorials/untranslated?lang=xx 로 '번역 없는
+// 예외 목록'만 받아 제외한다(실측 최대 16편 — 응답 수십 바이트).
+// 정의는 idempotent — 어느 파일이 먼저 로드돼도 안전하다.
+if (!window._papLangPrefix) {
+  window._papLangPrefix = function(){
+    try{
+      var m = String(location.pathname||'').match(/^\/(en|it|fr|es|ja|de|zh|ru)(\/|$)/);
+      if (m) return '/' + m[1];
+      if (window.__papDeepLinkLang) return '/' + window.__papDeepLinkLang;
+    }catch(_){}
+    return '';
+  };
+}
+if (!window._papEdHref) {
+  // null = 아직 미도착. 미도착일 땐 접두어를 붙이지 않는다(안전측 = 기존 동작).
+  window.__papEdMissing = window.__papEdMissing || null;
+
+  window._papEdHref = function(slugOrId){
+    var base = '/editorial/' + encodeURIComponent(slugOrId);
+    var p = window._papLangPrefix ? window._papLangPrefix() : '';
+    if (!p) return base;                 // 한국어 정본
+    if (p === '/en') return p + base;    // en 은 DB 원본 필드 — 항상 존재, 302 없음
+    var miss = window.__papEdMissing;
+    if (!miss) return base;
+    return miss.has(String(slugOrId)) ? base : p + base;
+  };
+
+  // 예외 목록이 늦게 도착하면 이미 그려진 카드의 href 를 올려준다.
+  // 대상은 우리가 심은 data-paped 앵커로 한정 — 다른 링크는 건드리지 않는다.
+  window._papEdUpgradeHrefs = function(){
+    try{
+      var list = document.querySelectorAll('a[data-paped]');
+      for (var i = 0; i < list.length; i++){
+        var s = list[i].getAttribute('data-paped');
+        if (s) list[i].setAttribute('href', window._papEdHref(s));
+      }
+    }catch(_){}
+  };
+
+  (function _papEdLoadMissing(){
+    var p = window._papLangPrefix ? window._papLangPrefix() : '';
+    if (!p || p === '/en') return;       // ko·en 은 조회 자체가 불필요
+    if (window.__papEdMissingLoading) return;
+    window.__papEdMissingLoading = true;
+    try{
+      fetch('/api/editorials/untranslated?lang=' + encodeURIComponent(p.slice(1)))
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(j){
+          if (!j) return;
+          var keys = [];
+          (j.slugs || []).forEach(function(s){ keys.push(String(s)); });
+          (j.ids   || []).forEach(function(s){ keys.push(String(s)); });
+          window.__papEdMissing = new Set(keys);
+          window._papEdUpgradeHrefs();
+        })
+        .catch(function(){ /* 실패 시 미도착 상태 유지 = 기존 동작 */ });
+    }catch(_){}
+  })();
+}
+
 (function(global){
   'use strict';
 
@@ -600,7 +668,8 @@
           var slug  = escapeHTML(r.slug || '');
           // data-* 는 escapeHTML 로 인용부호가 인코딩돼 속성 안전. 클릭 시
           // getAttribute 로 원본을 복원해 _papOpenRelatedEd 에 넘긴다.
-          return '<a class="pap-related-ed-card" href="/editorial/'+encodeURIComponent(r.slug)+'"'
+          return '<a class="pap-related-ed-card" href="'+window._papEdHref(r.slug)+'"'
+            + ' data-paped="'+slug+'"'
             + ' data-title="'+t+'" data-cover="'+cover+'" data-slug="'+slug+'">'
             + '<div class="pap-related-ed-thumb"><img src="'+cover+'" alt="'+t+'" loading="lazy"></div>'
             + '<div class="pap-related-ed-title">'+t+'</div>'

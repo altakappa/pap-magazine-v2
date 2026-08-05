@@ -7,6 +7,7 @@
  * the full editorial gallery (lazy-loaded).
  *
  * Lookup is 4-step: slug → decoded slug → title → UUID id.
+ * (2026-08-04 대소문자 무시 슬러그 단계 추가 — 구 Wix URL 대응)
  */
 
 const { supabaseAdmin } = require('../../_lib/supabase');
@@ -53,6 +54,24 @@ module.exports = async function handler(req, res) {
       r = await supabaseAdmin.from('editorials').select('*')
         .eq('slug', dehyphenated).eq('status', 'published').limit(1).maybeSingle();
       data = r.data;
+    }
+
+    /* 2c) 대소문자만 다른 슬러그 — 구 Wix URL 에는 대문자가 섞여 있다.
+       (/ko/balloon-Tennis-from-9to5/ → DB 는 balloon-tennis-from-9to5)
+       GSC '찾을 수 없음(404)' 표본에서 확인된 실제 패턴. 정확히 1건만
+       매칭될 때 정본 소문자 주소로 301 (200 으로 그냥 렌더하면 대소문자
+       변형 URL 이 중복 색인된다). 언어 접두어는 그대로 보존. 2026-08-04 */
+    if (!data && !/%/.test(decoded)) {
+      const safeSlugCi = decoded.replace(/[\\%_]/g, ch => '\\' + ch);
+      const ci = await supabaseAdmin.from('editorials').select('slug')
+        .ilike('slug', safeSlugCi).eq('status', 'published').limit(2);
+      if (ci.data && ci.data.length === 1 && ci.data[0].slug && ci.data[0].slug !== decoded) {
+        const ciLang = String((req.query && req.query.lang) || '');
+        const ciPrefix = /^(en|it|fr|es|ja|de|zh|ru)$/.test(ciLang) ? '/' + ciLang : '';
+        res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=3600');
+        res.setHeader('Location', ciPrefix + '/editorial/' + encodeURIComponent(ci.data[0].slug));
+        return res.status(301).end();
+      }
     }
 
     /* 3) title (legacy URLs that used title in the path slot) */
@@ -219,6 +238,28 @@ module.exports = async function handler(req, res) {
         next: (nextR.data && nextR.data[0]) || null,
         related: (relR.data || []).filter(e => e && e.id !== data.id).slice(0,4),
       };
+      /* 2026-08-04 (GSC '발견됨 - 현재 색인이 생성되지 않음' 4,474건) —
+         내부링크 언어 프리픽스. 지금까지 /ja/editorial/x 안의 이전·다음·관련
+         카드가 전부 /editorial/y (한국어)를 가리켰다. 그래서 en/ja/fr/it/es
+         번역 페이지는 사이트맵에만 있는 고아였고, 구글이 '발견'만 하고 크롤
+         우선순위를 계속 낮게 잡았다(표본 1,000건 중 914건이 번역 URL).
+         실제 번역이 있는 항목에만 프리픽스를 붙인다 — 없는데 붙이면 302
+         체인이 생겨 '리디렉션이 포함된 페이지'를 다시 키우기 때문.
+         (en 은 DB 원본 필드라 항상 존재.) */
+      if (lang !== 'ko') {
+        const _mo = data.more_editorials;
+        const _items = [_mo.prev, _mo.next, ...(_mo.related || [])].filter(Boolean);
+        if (lang === 'en') {
+          _items.forEach(e => { e._lang = 'en'; });
+        } else if (_items.length) {
+          const { data: _trRows } = await supabaseAdmin
+            .from('seo_translations').select('content_id')
+            .eq('kind', 'editorial').eq('lang', lang)
+            .in('content_id', _items.map(e => e.id).filter(Boolean));
+          const _have = new Set((_trRows || []).map(r => r.content_id));
+          _items.forEach(e => { if (_have.has(e.id)) e._lang = lang; });
+        }
+      }
     } catch (_) { /* 내부링크 블록은 best-effort */ }
 
     // 2026-07-28 — 브랜드 페이지 고아(orphan) 해소.

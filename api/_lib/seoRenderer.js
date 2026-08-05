@@ -547,6 +547,15 @@ function renderSeoHtml(kind, record, opts) {
      보강 목표와 양립 — 110~155 구간이 정상 범위). */
   const desc = truncate(_enrichMeta(descMain), 155);
 
+  /* 2026-08-05 (GSC '중복 페이지 — Google에서 사용자와 다른 표준을 선택함' 41건):
+     JSON-LD description 이 descMain 원본을 그대로 써서, description/description_en
+     이 비어 있는 기사에선 436행 폴백("한국어제목 — PAP Magazine")이 en/it/es 등
+     모든 언어판 스키마에 똑같이 박혔다. <meta name=description> 은 _enrichMeta 가
+     그 에코를 비우고 언어별로 재조립하므로 영어인데 스키마만 한국어 → 구글이
+     /en/article/* 를 /article/* 의 중복으로 보고 한국어판을 표준으로 선택.
+     스키마도 meta 와 같은 보강값을 쓰게 한다(길이 컷은 meta 전용이라 미적용). */
+  const schemaDesc = _enrichMeta(descMain);
+
   /* Cover image: per-kind preferred fields */
   const ogImage = record.og_image
     || record.cover_image
@@ -676,7 +685,7 @@ function renderSeoHtml(kind, record, opts) {
       '@context': 'https://schema.org',
       '@type': 'VideoObject',
       name: titleMain,
-      description: descMain,
+      description: schemaDesc,
       thumbnailUrl: [ogImage].filter(Boolean),
       uploadDate: published,
       contentUrl: `https://www.youtube.com/watch?v=${record.youtube_id}`,
@@ -728,8 +737,10 @@ function renderSeoHtml(kind, record, opts) {
       '@context': 'https://schema.org',
       '@type': cfg.schemaType,
       headline: titleMain,
-      alternativeHeadline: titleAlt !== titleMain ? titleAlt : undefined,
-      description: descMain,
+      // 2026-08-05 — 비한국어 페이지에 한국어 제목을 실으면 언어 신호가 섞여
+      // 구글이 ko 판을 표준으로 고른다(articleBody 와 동일 원칙). ko 에서만 방출.
+      alternativeHeadline: (!isEn && titleAlt !== titleMain) ? titleAlt : undefined,
+      description: schemaDesc,
       image: imageObjects,
       // EN 페이지엔 한국어 본문을 articleBody 로 싣지 않는다 (언어 신호 혼선 방지)
       articleBody: !isEn && bodyForWordCount ? truncate(bodyForWordCount, 8000) : undefined,
@@ -930,7 +941,13 @@ function renderSeoHtml(kind, record, opts) {
   const _edCard = (e, tag) => {
     if (!e || !e.title || !(e.slug || e.id)) return '';
     const th = e.thumbnail || e.cover_image || e.og_image || '';
-    return `<a class="seo-related-card" href="${_moreBase}${escAttr(e.slug || e.id)}">
+    /* 2026-08-04 — 내부링크 언어 프리픽스. /ja/editorial/x 의 카드가 /editorial/y
+       (한국어)를 가리켜 번역 페이지끼리 전혀 연결되지 않았다(GSC '발견됨 - 현재
+       색인이 생성되지 않음' 4,474건의 대부분이 ja/fr/it/es/en 번역 URL).
+       [slug].js 가 실제 번역이 존재하는 항목에만 e._lang 을 달아준다 —
+       번역이 없는데 프리픽스를 붙이면 302 체인이 생기기 때문. */
+    const _lp = (e._lang && e._lang !== 'ko') ? '/' + e._lang : '';
+    return `<a class="seo-related-card" href="${_lp}${_moreBase}${escAttr(e.slug || e.id)}">
       ${th ? `<img src="${escAttr(th)}" alt="${escAttr(e.title)} — Cover" loading="lazy" width="240" height="160">` : ''}
       <div class="seo-related-meta">
         <div class="seo-related-tagline">${tag}</div>
@@ -1295,6 +1312,15 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
     try {
       var qs = (window.location.search || '').toLowerCase();
       if (qs.indexOf('raw=1') !== -1 || qs.indexOf('no-spa=1') !== -1) return;
+      // 2026-08-04 — GSC "리디렉션이 포함된 페이지"(3,588건) 근본 원인 제거.
+      // 이 브릿지는 "실제 사용자"를 SPA 오버레이로 보내려는 것인데, JS 를
+      // 실행하는 크롤러(Googlebot WRS 등)까지 그대로 따라가 버려서 모든
+      // 에디토리얼/필름 URL 이 "리디렉션이 있는 페이지"로 분류되고 색인에서
+      // 빠졌다. 서버 HTML 은 누구에게나 동일하게 내려보내고(=클로킹 아님,
+      // CDN 캐시도 그대로) 스크립트 안에서만 크롤러를 걸러 SSR 페이지에
+      // 머무르게 한다. SSR 페이지가 곧 색인 대상 본문이다.
+      var _ua = (navigator.userAgent || '');
+      if (/bot|crawler|spider|crawling|slurp|mediapartners|inspectiontool|lighthouse|facebookexternalhit|embedly|quora link preview|outbrain|pinterest|vkshare|w3c_validator|whatsapp|telegram|discord|applebot|yeti|duckduck|baidu|yandex|petal|ia_archiver/i.test(_ua)) return;
       // 리다이렉트 루프 가드 (2026-07 교체) — 예전 영구 boolean 플래그
       // (_pap_ssr_redirect_done)는 세션당 1회만 리다이렉트해서, 다이렉트
       // 진입/새로고침이 SSR 에 갇히는 버그가 있었다. 이제 (kind/slug)별 +
@@ -1326,7 +1352,13 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
       // in pap-content-seo.js, opens the matching overlay, and pushes
       // /<kind>/<slug> as the final URL.
       var paramName = ${JSON.stringify(kind === 'film' ? 'film' : 'ed')};
-      var target = '/?' + paramName + '=' + encodeURIComponent(${JSON.stringify(slug)});
+      // 2026-08-04 — 언어 접두어 보존. 예전엔 /en/editorial/x 로 들어와도
+      // SPA 최종 URL 이 /editorial/x (한국어)로 바뀌어 canonical·hreflang 과
+      // 어긋났다. 언어를 쿼리로 넘기고 표시 언어도 미리 맞춰둔다.
+      var _lang = ${JSON.stringify(lang)};
+      if (_lang && _lang !== 'ko') { try { localStorage.setItem('pap-lang', _lang); } catch (_) {} }
+      var target = '/?' + paramName + '=' + encodeURIComponent(${JSON.stringify(slug)})
+        + (_lang && _lang !== 'ko' ? '&lang=' + encodeURIComponent(_lang) : '');
       window.location.replace(target);
     } catch(_){ /* on any error, leave the SSR page visible */ }
   })();
@@ -1335,9 +1367,13 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
 <main class="seo-content">
   <article>
     ${heroHtml}
+    <!-- 2026-08-05 — 비한국어 페이지에는 한국어 제목(.alt)·한국어 설명(.seo-desc-en)을
+         노출하지 않는다. 두 줄이 en/it/es 판에 그대로 실려 구글이 /en/article/* 를
+         /article/* 의 중복으로 보고 한국어판을 표준으로 선택했다(GSC 41건).
+         한국어 페이지에서 영문 제목·설명을 보조로 보여주는 기존 동작은 유지. -->
     <div class="seo-meta">
       <h1>${escText(titleMain)}</h1>
-      ${titleAlt !== titleMain ? `<p class="alt">${escText(titleAlt)}</p>` : ''}
+      ${!isEn && titleAlt !== titleMain ? `<p class="alt">${escText(titleAlt)}</p>` : ''}
       <time datetime="${escAttr(published)}">${(() => {
         // 2026-07-20 QA 표기통일 — 메인홈/목록/상세 SPA와 동일 포맷:
         //   "Title,Case - DD Mon YYYY" (카테고리 먼저, Title-case, ' - ' 구분).
@@ -1347,7 +1383,7 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
         return escText((_label ? _label + ' - ' : '') + _date);
       })()}</time>
       <p class="seo-desc-primary">${escText(descDisplay)}</p>
-      ${descAltDisplay && descAltDisplay !== descDisplay ? `<p class="seo-desc-en">${escText(descAltDisplay)}</p>` : ''}
+      ${!isEn && descAltDisplay && descAltDisplay !== descDisplay ? `<p class="seo-desc-en">${escText(descAltDisplay)}</p>` : ''}
     </div>
     ${bodyHtml}
     ${galleryHtml}

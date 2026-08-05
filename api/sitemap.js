@@ -1,15 +1,19 @@
 /**
  * PAP Magazine - Dynamic sitemap.xml
  *
- * Generates a sitemap.xml that includes:
- *   - All main static pages (home / magazine / articles / films / etc.)
- *   - Every published editorial as `/#editorial/<title>` deep-link
+ * Generates a sitemap.xml that includes ONLY the main static pages
+ * (home / magazine / articles / films / about / legal ...).
+ *
+ * 2026-08-04 — 에디토리얼 2,293건을 여기서 빼냈다. 같은 URL 이
+ * /sitemap-editorials.xml 에 이미 전량 들어 있어서 두 파일이 통째로
+ * 중복됐고(색인 리포트 수치 왜곡 + 매 요청마다 불필요한 DB 전량 조회),
+ * 이제 역할을 나눈다: sitemap.xml = 정적 페이지, sitemap-editorials*.xml =
+ * 에디토리얼. 둘 다 /sitemap-index.xml 과 robots.txt 에 등재돼 있다.
  *
  * Served at /sitemap.xml via vercel.json rewrite. Cached at the CDN
  * for 1 hour so we don't hammer the database on every crawler hit.
  */
 
-const { supabaseAdmin } = require('./_lib/supabase');
 const { handleCors } = require('./_lib/cors');
 
 const BASE = 'https://www.pap-magazine.com';
@@ -43,49 +47,16 @@ const STATIC_PAGES = [
   { path: '/refund',      priority: '0.3', changefreq: 'yearly'  },
 ];
 
-// XML-escape special characters in URLs (mostly ampersands and Unicode)
-function xmlEscape(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
-
 function fmtDate(d) {
   if (!d) return new Date().toISOString().slice(0, 10);
   try { return new Date(d).toISOString().slice(0, 10); }
   catch (e) { return new Date().toISOString().slice(0, 10); }
 }
 
-function safeSitemapHandle(h) {
-  // SEO 2026-07 — only advertise URL-clean handles. Malformed slugs (spaces,
-  // control chars, %, apostrophes, ligatures, etc.) emit %20-encoded duplicate
-  // URLs Google flags as "duplicate / page with redirect". Skip them; the page
-  // stays reachable, it just isn't advertised until the slug is cleaned in DB.
-  if (h == null) return null;
-  const s = String(h);
-  return /^[A-Za-z0-9._~-]+$/.test(s) ? s : null;
-}
-
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
 
   try {
-    // Pull every published editorial. Cap at 5000 to keep XML size sane —
-    // sitemaps over 50MB / 50k URLs need to be split, and we're nowhere
-    // near that. Adjust if PAP ever crosses that threshold.
-    const { data: eds, error } = await supabaseAdmin
-      .from('editorials')
-      .select('id, title, slug, published_date, updated_at, cover_image, og_image, thumbnail')
-      .eq('status', 'published')
-      .or('scheduled_publish_at.is.null,scheduled_publish_at.lte.' + new Date().toISOString())
-      .order('published_date', { ascending: false })
-      .limit(5000);
-
-    if (error) throw error;
-
     const urls = [];
 
     // Static pages
@@ -97,33 +68,6 @@ module.exports = async function handler(req, res) {
         '    <lastmod>' + today + '</lastmod>\n' +
         '    <changefreq>' + p.changefreq + '</changefreq>\n' +
         '    <priority>' + p.priority + '</priority>\n' +
-        '  </url>'
-      );
-    });
-
-    // Editorial pages — server-rendered at /editorial/:slug for SEO.
-    // Using slug (stable, URL-safe) instead of title (changes, needs encoding).
-    // Falls back to id when slug is missing on legacy rows.
-    // Includes <image:image> child so Google Images can index the cover.
-    (eds || []).forEach(ed => {
-      const handle = safeSitemapHandle(ed.slug || ed.id);
-      if (!handle) return;
-      const loc = BASE + '/editorial/' + encodeURIComponent(handle);
-      const lastmod = fmtDate(ed.updated_at || ed.published_date);
-      const img = ed.og_image || ed.cover_image || ed.thumbnail;
-      const imgBlock = img
-        ? '    <image:image>\n' +
-          '      <image:loc>' + xmlEscape(img) + '</image:loc>\n' +
-          '      <image:title>' + xmlEscape(ed.title || '') + '</image:title>\n' +
-          '    </image:image>\n'
-        : '';
-      urls.push(
-        '  <url>\n' +
-        '    <loc>' + xmlEscape(loc) + '</loc>\n' +
-        '    <lastmod>' + lastmod + '</lastmod>\n' +
-        '    <changefreq>monthly</changefreq>\n' +
-        '    <priority>0.8</priority>\n' +
-        imgBlock +
         '  </url>'
       );
     });
