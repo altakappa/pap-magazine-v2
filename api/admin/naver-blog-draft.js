@@ -404,17 +404,28 @@ async function _recentPublished(brand, kind, opt) {
 // 재사용 함수 — "다음 미전환 콘텐츠 1건을 네이버 초안으로 생성·저장".
 // 관리자 generate_next 경로와 크론(naver-draft-sweep)이 공유한다.
 // 반환: { done, remaining, draft, slug } — done=true 면 미전환 콘텐츠 없음.
+/**
+ * 다음에 초안을 만들 기사 하나를 고른다.
+ *
+ * 2026-08-05 (도메니코 지시): 선정 순서를 '가장 오래된 미전환' → '최신'으로
+ * 뒤집었다. 큐에 상한을 두기로 한 이상, 살아남는 초안이 최신이어야 네이버
+ * 검색 유입에 유리하다. 예전에는 폐기될 운명의 옛 기사를 먼저 만들고 있었다.
+ * NAVER_DRAFT_ORDER=oldest 로 옛 동작(발행 순서 유지)으로 되돌릴 수 있다.
+ *
+ * 주의 — 최신부터 고르면 조회 창(NAVER_DRAFT_LOOKBACK_DAYS, 기본 3일) 안에서
+ * 가장 오래된 기사는 초안을 못 받고 창 밖으로 밀려날 수 있다. 그건 의도된
+ * 트레이드오프다(신선도 우선). 전부 챙겨야 하면 창을 늘리거나 oldest 로 둘 것.
+ */
 async function generateNext(brand, kind) {
-  // 발행 순서 유지 + 오래된 누락 백필 방지: 최근 NAVER_DRAFT_LOOKBACK_DAYS(기본 3)일
-  // 내 발행분만 대상으로, '가장 오래된 미전환' 기사부터(= 다음 발행 순서) 생성한다.
   const lookbackDays = Math.max(1, parseInt(process.env.NAVER_DRAFT_LOOKBACK_DAYS || '3', 10) || 3);
+  const oldestFirst = String(process.env.NAVER_DRAFT_ORDER || 'newest').toLowerCase() === 'oldest';
   const recent = await _recentPublished(brand, kind, { lookbackDays, limit: 120 });
   const { data: done } = await supabaseAdmin.from('naver_blog_drafts')
     .select('source_slug').eq('brand', brand).eq('kind', kind);
   const doneSet = new Set((done || []).map((d) => d.source_slug));
   const pending = recent.filter((r) => !doneSet.has(r.slug)); // 발행 오름차순 정렬됨
   if (!pending.length) return { done: true, remaining: 0, draft: null, slug: null };
-  const next = pending[0]; // 가장 오래된 미전환 = 다음 발행 순서
+  const next = oldestFirst ? pending[0] : pending[pending.length - 1];
   const { draft, sourceId } = await generateBySlug(brand, kind, next.slug);
   const { data: saved, error: sErr } = await supabaseAdmin.from('naver_blog_drafts')
     .upsert({
