@@ -23,10 +23,16 @@ const { requireAdmin } = require('../_lib/auth');
 const { uploadVideo } = require('../_lib/youtube');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { buildTitle, buildHashtags, buildTagList } = require('../_lib/youtubeMeta');
+/* 2026-08-05 도메니코 — "캡션크레딧이 PAP일 경우에만 유튜브에 업로드" +
+   "음악은 인스타에서 설정한거니 음소거해서". 두 규칙 모두 fail closed 다.  */
+const { verdictForMedia } = require('../_lib/igCredit');
+const { muteMp4 } = require('../_lib/mp4Mute');
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.com';
 const MAX_BYTES = 100 * 1024 * 1024; // 안전 상한 (IG 아카이브는 ≤60MB)
-const ART_COLS = 'id, title, slug, custom_url, content, videos, category, source_media_type, tags';
+const ART_COLS = 'id, title, slug, custom_url, content, videos, category, source_media_type, tags, source_instagram_post_id';
+// 크레딧 게이트가 한 번에 Graph 재조회할 후보 수 상한 (외부 크레딧 릴스는 건너뛴다)
+const CREDIT_SCAN_MAX = 5;
 
 function firstSentence(html) {
   return String(html || '')
@@ -114,7 +120,7 @@ module.exports = withCronGuard('youtube-post', async function handler(req, res) 
       return res.status(400).json({ ok: false, error: 'article 파라미터 형식 오류 (영숫자·하이픈·밑줄만)' });
     }
 
-    let art = null;
+    let art = null; let credit = null;
     if (rawTarget) {
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawTarget);
       const { data: hits } = await supabaseAdmin.from('articles')
@@ -135,6 +141,17 @@ module.exports = withCronGuard('youtube-post', async function handler(req, res) 
           backfill: '/api/admin/articles/backfill-video?slug=' + (art.slug || art.id),
         });
       }
+      /* 지목 업로드에도 크레딧 게이트를 건다. 사람이 지목했다는 사실이
+         권리를 만들어 주지는 않는다 — 규칙은 경로와 무관하게 같다. */
+      credit = await verdictForMedia(art.source_instagram_post_id);
+      if (!credit.owned) {
+        return res.status(409).json({
+          ok: false,
+          error: 'PAP 크레딧이 아님 — 유튜브 업로드 보류',
+          detail: credit.reason,
+          credits: credit.credits,
+        });
+      }
     } else {
       /* ?days=N (1~14) 으로 창을 넓힐 수 있다. 기본은 3일 그대로.
          수집 버그로 mp4 가 비어 후보에서 탈락했던 릴스는 복구 시점엔 이미
@@ -149,11 +166,21 @@ module.exports = withCronGuard('youtube-post', async function handler(req, res) 
         .eq('source_media_type', 'VIDEO')
         .gte('published_date', freshCutoff)
         .order('published_date', { ascending: false }).limit(200);
-      art = (arts || []).find((a) =>
+      const candidates = (arts || []).filter((a) =>
         !done.has(a.id) && Array.isArray(a.videos) && a.videos.length >= 1 && a.videos[0]);
+      /* 크레딧 게이트는 후보를 '건너뛴다'. 첫 후보가 외부 크레딧이라고 거기서
+         멈춰 버리면 그 릴스가 신선도 창에 있는 동안 쇼츠가 통째로 죽는다.
+         Graph 재조회 비용 때문에 한 번에 CREDIT_SCAN_MAX 건까지만 본다. */
+      const skipped = [];
+      for (const cand of candidates.slice(0, CREDIT_SCAN_MAX)) {
+        const v = await verdictForMedia(cand.source_instagram_post_id);
+        if (v.owned) { art = cand; credit = v; break; }
+        skipped.push({ title: cand.title, reason: v.reason });
+      }
       if (!art) {
-        res.locals.cronNote = '업로드할 릴스 기사 없음 (source_media_type=VIDEO 필터, 최근 ' + freshDays + '일)';
-        return res.status(200).json({ ok: true, note: res.locals.cronNote });
+        res.locals.cronNote = '업로드할 릴스 기사 없음 (source_media_type=VIDEO 필터, 최근 ' + freshDays + '일'
+          + ', 후보 ' + candidates.length + '건 / 크레딧 스킵 ' + skipped.length + '건)';
+        return res.status(200).json({ ok: true, note: res.locals.cronNote, skipped });
       }
     }
 
@@ -164,7 +191,7 @@ module.exports = withCronGuard('youtube-post', async function handler(req, res) 
     const description = buildDescription(art, artUrl);
 
     if (req.query && req.query.dry === '1') {
-      return res.status(200).json({ ok: true, dry: true, pick: { title, source_title: art.title, video: art.videos[0] }, tags: buildTagList(art), description });
+      return res.status(200).json({ ok: true, dry: true, credit, pick: { title, source_title: art.title, video: art.videos[0] }, tags: buildTagList(art), description });
     }
 
     // mp4 다운로드 (Supabase Storage 영구 보관본)
@@ -175,9 +202,19 @@ module.exports = withCronGuard('youtube-post', async function handler(req, res) 
     const buffer = Buffer.from(await vr.arrayBuffer());
     if (buffer.length > MAX_BYTES) throw new Error('영상 크기 상한 초과');
 
+    /* 음소거 — 릴스 음악은 인스타 음원 라이브러리 것이라 인스타 안에서만
+       라이선스된다. 그대로 유튜브에 올리면 Content ID 클레임 대상이다.
+       벗겨내지 못하면 올리지 않는다 (fail closed). */
+    const mute = muteMp4(buffer);
+    if (!mute.ok) {
+      res.locals.cronNote = '음소거 실패 — 업로드 보류: ' + mute.reason;
+      return res.status(409).json({ ok: false, error: '음소거 실패 — 업로드 보류', detail: mute.reason, title: art.title });
+    }
+    const uploadBuffer = mute.buffer;
+
     let videoId = null; let status = 'submitted'; let detail = null;
     try {
-      const v = await uploadVideo(buffer, {
+      const v = await uploadVideo(uploadBuffer, {
         title, description,
         tags: buildTagList(art),
         privacyStatus: isPublic ? 'public' : 'private',
@@ -197,8 +234,8 @@ module.exports = withCronGuard('youtube-post', async function handler(req, res) 
     }, { onConflict: 'article_id' });
 
     if (status === 'failed') return res.status(502).json({ error: 'youtube post failed', title: art.title, detail });
-    res.locals.cronNote = '업로드 완료: ' + art.title + ' (' + videoId + ')' + (detail ? ' / ' + detail : '');
-    return res.status(200).json({ ok: true, posted: art.title, video_id: videoId, url: 'https://youtube.com/shorts/' + videoId, note: detail || undefined });
+    res.locals.cronNote = '업로드 완료: ' + art.title + ' (' + videoId + ') / ' + mute.reason + (detail ? ' / ' + detail : '');
+    return res.status(200).json({ ok: true, posted: art.title, video_id: videoId, url: 'https://youtube.com/shorts/' + videoId, credit: credit && credit.reason, mute: mute.reason, note: detail || undefined });
   } catch (err) {
     console.error('[youtube-post] error:', err);
     throw err; // cronGuard 가 이메일 알림 + cron_runs 기록
