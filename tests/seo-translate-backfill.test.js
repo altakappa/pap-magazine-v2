@@ -492,21 +492,22 @@ async function testCron() {
     const cronSrc = require('fs').readFileSync(
       require('path').join(__dirname, '..', 'api/cron/backfill-translations.js'), 'utf8');
     ok('크론 기본 대상에 article 이 포함된다',
-      /SEO_TRANSLATE_KINDS \|\| 'article'/.test(cronSrc));
+      /SEO_TRANSLATE_KINDS \|\| 'editorial,article'/.test(cronSrc));
 
-    /* ── 2026-08-05 — 에디토리얼은 기본에서 뺀다 (GSC 실측) ──────────
-       색인된 /es/ 79쪽 중 클릭 있는 건 4쪽(합 12클릭), /es/editorial/* 는
-       전부 0클릭. 클릭이 난 번역 페이지는 전 언어 통틀어 예외 없이
-       /article/ 이었다. 에디토리얼은 원본 설명이 평균 15자라 번역해도
-       랭킹할 텍스트가 없고, 그 결과 구글이 주제를 못 잡아 무관한 한국어
-       쿼리('찰스엔터 얼굴 여백' 순위 52·56·88 등)에 매칭됐다.
-       같은 기간 사이트 CTR 6.7% → 2.2%.
-       되살리려면 env 로 명시한다(SEO_TRANSLATE_KINDS=editorial,article).
-       근거: 볼트 45_Business/PAP_SEO_가이드라인_2026-08-05.md */
-    ok('크론 기본 대상에서 editorial 이 빠져 있다',
-      !/SEO_TRANSLATE_KINDS \|\| '[^']*editorial/.test(cronSrc));
-    ok('그래도 editorial 을 env 로 되살릴 수 있다 (KINDS 에 정의는 남아 있다)',
-      !!(helper.KINDS && helper.KINDS.editorial));
+    /* ── 2026-08-05 — 에디토리얼을 뺐다가 같은 날 되돌렸다 ──────────
+       뺀 이유: 번역본 클릭 0 (GSC 실측).
+       되돌린 이유: 그건 검색만 본 판단이었다. 사이트 안 언어 전환과 SSR 이
+       seo_translations 를 읽어서, 번역이 없으면 비-ko/en 방문자가 /en 으로
+       302 리다이렉트된다(api/seo/editorial/[slug].js). 구독자가 신규 화보를
+       자국어로 못 보게 된다 — PAP 는 9개 언어 커뮤니티 플랫폼이 목표다.
+       → **번역은 만들되 색인은 안 한다.** 색인 차단은 seoRenderer 의
+       noindexTranslatedEditorial 이 담당하고, 그건 그대로 둔다.
+       (여기서 검증하는 건 '번역이 계속 만들어지는가' 뿐이다.) */
+    ok('크론 기본 대상에 editorial 이 다시 들어 있다 (사이트 언어 전환용)',
+      /SEO_TRANSLATE_KINDS \|\| 'editorial,article'/.test(cronSrc));
+    ok('그래도 색인은 막혀 있다 (noindex 는 유지)',
+      /noindexTranslatedEditorial/.test(require('fs').readFileSync(
+        require('path').join(__dirname, '..', 'api/_lib/seoRenderer.js'), 'utf8')));
     ok('관리자 수동 엔드포인트는 kind 를 직접 받는다 (에디토리얼 수동 실행 가능)',
       /kind/.test(require('fs').readFileSync(
         require('path').join(__dirname, '..', 'api/admin/backfill-translations.js'), 'utf8')));

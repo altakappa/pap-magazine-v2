@@ -6,10 +6,14 @@
  * ① 에디토리얼 번역본은 클릭이 0이다.
  *    색인된 /es/ 79쪽 중 클릭 있는 건 4쪽뿐이고 그중 에디토리얼은 0쪽.
  *    전 언어를 통틀어 클릭이 난 번역 페이지는 예외 없이 /article/ 이었다.
- *    에디토리얼은 사진 중심이라 원본 설명이 평균 15자 — 번역해도 랭킹할
- *    텍스트가 없다. 그래서 구글이 주제를 못 잡고 무관한 한국어 쿼리에
- *    매칭됐다('찰스엔터 얼굴 여백' 52·56·88위, '붉은 비키니 다시보기' 19·23위).
- *    같은 기간 사이트 CTR 6.7% → 2.2%.
+ *    증상: 무관한 한국어 쿼리에 매칭된다('찰스엔터 얼굴 여백' 52·56·88위,
+ *    '붉은 비키니 다시보기' 19·23위). 같은 기간 사이트 CTR 6.7% → 2.2%.
+ *    ⚠️ 원인은 미확정. 처음엔 '설명이 평균 15자'라고 적었으나 실측으로
+ *    반증됐다(1년 초과 863자 · 최근 90일 388자, 300자 초과 99%).
+ *    확정된 것은 '클릭 0' 이라는 사실뿐이고 noindex 는 그 사실에 근거한다.
+ *
+ *    ※ 번역 '생성' 은 2026-08-05 같은 날 되돌렸다 — 사이트 안 언어 전환이
+ *      seo_translations 를 읽기 때문. 만들되 색인하지 않는다.
  *
  * ② 오래된 기사는 원문조차 클릭이 0이다.
  *    한국어 원문 기사 클릭을 발행 나이로 가르면
@@ -37,6 +41,7 @@ const SUPABASE = path.join(ROOT, 'api', '_lib', 'supabase.js');
 const CRON = path.join(ROOT, 'api', 'cron', 'backfill-translations.js');
 const MIG = path.join(ROOT, 'supabase_migrations', '102_seo_translate_queue_since.sql');
 const MIG3 = path.join(ROOT, 'supabase_migrations', '103_seo_translate_length_cap.sql');
+const MIG4 = path.join(ROOT, 'supabase_migrations', '104_translate_health_include_editorial.sql');
 
 let pass = 0, fail = 0;
 function t(n, cond, d) {
@@ -209,12 +214,17 @@ process.env.ANTHROPIC_API_KEY = 'test';
     /<= 6000/.test(sql3) && /return 6000;/.test(cron2));
   /* 함수 '본문'만 떼어 본다 — 파일 앞쪽 주석·다른 함수에도 같은 낱말이
      나오므로 통째로 grep 하면 엉뚱한 곳이 잡힌다(처음에 그렇게 짜서 헛failed). */
-  const healthBody = (sql3.split('create or replace function public.translate_health_stats')[1] || '').split('$$;')[0];
-  t('감시 함수가 아티클만 센다 (에디토리얼은 대상 아님)',
-    /from public\.articles a/.test(healthBody) && !/public\.editorials/.test(healthBody),
-    healthBody.slice(0, 120));
-  t('감시 함수의 90일·6000자가 그 함수 본문 안에 있다',
-    /current_date - 90/.test(healthBody) && /<= 6000/.test(healthBody));
+  /* 감시 함수의 최신판은 104 다(103 에서 아티클만 세도록 좁혔다가, 에디토리얼
+     번역을 되돌리면서 다시 넓혔다). 최신 파일을 본다 — 함수 '본문'만 떼어서. */
+  const sql4 = fs.readFileSync(MIG4, 'utf8');
+  const healthBody = (sql4.split('create or replace function public.translate_health_stats')[1] || '').split('$$;')[0];
+  t('감시 함수가 아티클과 에디토리얼을 모두 센다',
+    /from public\.articles a/.test(healthBody) && /from public\.editorials e/.test(healthBody),
+    '한쪽만 세면 다른 쪽이 막혀도 경보가 안 울린다');
+  t('감시 함수의 90일이 앱 기본값과 같다',
+    (healthBody.match(/current_date - 90/g) || []).length === 2 && /return 90;/.test(cron2));
+  t('6000자 상한은 아티클에만 적용된다 (에디토리얼은 저장 전 1,200자로 잘림)',
+    (healthBody.match(/<= 6000/g) || []).length === 1);
 
   console.log('\npassed: ' + pass + '   failed: ' + fail);
   if (fail) process.exit(1);
