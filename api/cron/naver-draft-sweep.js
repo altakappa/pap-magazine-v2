@@ -13,7 +13,7 @@
  * 붙여넣기는 사람 손이라 생성 속도를 못 따라간다. 즉 넘치는 만큼은
  * **처음부터 돈만 쓰고 버려지는 초안**이었다(건당 Claude API 호출).
  *
- *   1) 만료   — 만든 지 NAVER_DRAFT_TTL_DAYS(기본 7)일 지난 draft 는
+ *   1) 만료   — 만든 지 NAVER_DRAFT_TTL_DAYS(기본 7일, 2026-08-12 까지는 14일)이 지난 draft 는
  *               status='expired' 로 내린다. **삭제가 아니라 상태 변경**이라
  *               되돌릴 수 있고, 관리자 목록(status='draft')에서만 빠진다.
  *   2) 상한   — 대기 큐가 NAVER_DRAFT_QUEUE_MAX(기본 30)건 이상이면 그 회차는
@@ -38,6 +38,25 @@
 const { supabaseAdmin } = require('../_lib/supabase');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { generateNext } = require('../admin/naver-blog-draft');
+
+/**
+ * TTL 기본값 — 배포 첫날 32건이 한꺼번에 만료되는 걸 피하려고 1주일 유예를 둔다.
+ *
+ * 2026-08-05 시점 대기 58건의 나이 분포: 3일 미만 10 / 3~7일 16 / 7~14일 25 / 14일+ 7.
+ * 곧바로 7일을 걸면 32건(25+7)이 한 회차에 사라진다. 되돌릴 수 있는 상태 변경이라
+ * 사고는 아니지만, 확인할 틈도 없이 절반이 없어지는 건 좋은 배포가 아니다.
+ *
+ * 그래서 RAMP_UNTIL 까지는 14일(=7건만 정리), 그 뒤 자동으로 7일이 된다.
+ * 도메니코가 나중에 손댈 일이 없다. 유예가 끝나면 이 함수를 지우고
+ * 상수 7 로 되돌려도 동작은 같다.
+ *
+ * NAVER_DRAFT_TTL_DAYS 를 넣으면 언제든 이 값을 덮어쓴다.
+ */
+const RAMP_UNTIL = Date.parse('2026-08-12T00:00:00+09:00');
+function defaultTtlDays(now) {
+  const t = typeof now === 'number' ? now : Date.now();
+  return t < RAMP_UNTIL ? 14 : 7;
+}
 
 const BRAND = 'pap';
 const KIND = 'article';
@@ -79,7 +98,7 @@ module.exports = withCronGuard('naver-draft-sweep', async function handler(req, 
   }
 
   const dailyMax = Math.max(1, Math.min(4, parseInt(process.env.NAVER_DRAFT_DAILY_MAX || '4', 10) || 4));
-  const ttlDays = Math.max(0, parseInt(process.env.NAVER_DRAFT_TTL_DAYS || '7', 10) || 0);
+  const ttlDays = Math.max(0, parseInt(process.env.NAVER_DRAFT_TTL_DAYS || String(defaultTtlDays()), 10) || 0);
   const queueMax = Math.max(0, parseInt(process.env.NAVER_DRAFT_QUEUE_MAX || '30', 10) || 0);
 
   // 1) 만료 먼저 — 자리를 비운 뒤에 상한을 재야 그 자리를 이 회차가 쓴다
@@ -138,3 +157,5 @@ module.exports = withCronGuard('naver-draft-sweep', async function handler(req, 
 // 테스트용 — 순수 로직 검증에 쓴다
 module.exports._expireStale = expireStale;
 module.exports._queueCount = queueCount;
+module.exports._defaultTtlDays = defaultTtlDays;
+module.exports._RAMP_UNTIL = RAMP_UNTIL;

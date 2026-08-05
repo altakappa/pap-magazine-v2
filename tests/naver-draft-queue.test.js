@@ -167,6 +167,30 @@ function runHandler(handler, env) {
     }
   }
 
+  console.log('[7] TTL 유예(램프) — 2026-08-12 전에는 14일, 그 뒤 7일');
+  {
+    const state = { queue: 0, expirable: 0 };
+    const cron = loadCron(state, async () => ({ done: true }));
+    const ttl = cron._defaultTtlDays;
+    const ramp = cron._RAMP_UNTIL;
+    t('램프 기준일이 2026-08-12 KST', new Date(ramp).toISOString() === '2026-08-11T15:00:00.000Z', new Date(ramp).toISOString());
+    t('기준일 하루 전 → 14일', ttl(ramp - 86400000) === 14, ttl(ramp - 86400000));
+    t('기준일 1초 전 → 14일', ttl(ramp - 1000) === 14, ttl(ramp - 1000));
+    t('기준일 당일 → 7일', ttl(ramp) === 7, ttl(ramp));
+    t('한참 뒤 → 7일', ttl(ramp + 30 * 86400000) === 7, ttl(ramp + 30 * 86400000));
+  }
+
+  console.log('[8] 환경변수는 램프를 덮어쓴다');
+  {
+    const state = { queue: 5, expirable: 2 };
+    const cron = loadCron(state, async () => ({ done: true }));
+    const r = await runHandler(cron, { NAVER_DRAFT_TTL_DAYS: '3', NAVER_DRAFT_QUEUE_MAX: '30' });
+    t('ttlDays 3 이 응답에 실린다', r.body.ttlDays === 3, r.body.ttlDays);
+    const up = state.calls.find((c) => c.op === 'update');
+    const days = up ? Math.round((Date.now() - Date.parse(up.lt.v)) / 86400000) : null;
+    t('cutoff 가 3일 전 근처', days === 3, days);
+  }
+
   console.log('\n' + (fail ? '✗' : '✓') + ' naver-draft-queue: ' + pass + ' passed / ' + fail + ' failed');
   process.exit(fail ? 1 : 0);
 })();
