@@ -1013,6 +1013,76 @@
       "permanent": true
     },
     {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/about",
+      "destination": "/about",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/about/",
+      "destination": "/about",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/contact",
+      "destination": "/contact",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/contact/",
+      "destination": "/contact",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/business",
+      "destination": "/business",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/business/",
+      "destination": "/business",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/filmList",
+      "destination": "/films",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/filmList/",
+      "destination": "/films",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/filmList/:path*",
+      "destination": "/films",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/films",
+      "destination": "/films",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/articles",
+      "destination": "/articles",
+      "permanent": true
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/category/:cat*",
+      "destination": "/articles",
+      "permanent": true
+    },
+    {
       "source": "/ko/",
       "destination": "/",
       "permanent": true
