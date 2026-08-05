@@ -4,6 +4,10 @@
  * 경쟁 매거진 5곳(@eyesmag @fastpapermag @dailyfashion_news @hipkr_
  * @newsourcemag)의 최근 게시물을 30분마다 공개 API로 스캔한다.
  *
+ * 2026-08-05 추가 — 페퍼릿 경쟁 2곳(@celeb_fashion_magazine 셀패진 ·
+ * @hypejackmag 하입잭)도 같이 스캔하되, 본지 브리핑과 섞지 않고
+ * pepperit_watch_ig 테이블로 따로 적재한다 (아래 PEPPERIT_COMPETITORS 참조).
+ *
  * 파이프라인 (전부 자동):
  *   1) 지난 24시간 게시물 중 반응 상위(팔로워 보정)를 추출
  *   2) 이미 브리핑된 게시물(최근 3일 trend_reports)은 제외 — 새 토픽이
@@ -26,6 +30,53 @@ const { discoverAccount } = require('../_lib/igDiscovery');
 const { submitIndexNow, SITE } = require('../_lib/pingSearch');
 
 const COMPETITORS = ['eyesmag', 'fastpapermag', 'dailyfashion_news', 'hipkr_', 'newsourcemag'];
+
+/* 페퍼릿(@pepperitmag) 경쟁 계정 — 2026-08-05 도메니코 지시로 추가.
+   핸들 근거: 40_Community/페퍼릿-경쟁사벤치마크-2026-07-17.md (2026-07-18 브라우저 실측)
+     · 셀패진 @celeb_fashion_magazine (82.8만 · 뉴스 속보 물량형)
+     · 하입잭 @hypejackmag (21.4만 · 페퍼릿과 성격·규모가 가장 가까운 피어)
+
+   ⚠️ 위 COMPETITORS 와 **합치지 않는다.** 아래 파이프라인(Claude 분류 프롬프트가
+   "PAP MAGAZINE 편집장 보좌" · IndexNow 재선점이 PAP articles 대상)은 전부 본지용이다.
+   케이팝 속보를 여기 섞으면 PAP 브리핑이 오염된다. 그래서 스캔만 같이 하고
+   결과는 `pepperit_watch_ig` 테이블로 따로 빼둔다 — 페퍼릿 예약작업이 소재로 읽는다. */
+const PEPPERIT_COMPETITORS = ['celeb_fashion_magazine', 'hypejackmag'];
+
+/* 페퍼릿 경쟁 계정 최근 게시물 수집 → pepperit_watch_ig 적재.
+   실패해도 본지 파이프라인을 막지 않는다(전부 try 안에서 조용히 넘어간다). */
+async function collectPepperitFeed(cutoff, dry) {
+  const rows = [];
+  for (const u of PEPPERIT_COMPETITORS) {
+    try {
+      const acc = await discoverAccount(u, 15);
+      if (acc.error) continue;
+      (acc.media || []).forEach((m) => {
+        if (!m.ts || new Date(m.ts).getTime() < cutoff) return;
+        const score = (m.likes || 0) + (m.comments || 0) * 3;
+        rows.push({
+          handle: u,
+          permalink: m.permalink,
+          caption_head: (m.caption_head || '').slice(0, 500),
+          likes: m.likes || 0,
+          comments: m.comments || 0,
+          followers: acc.followers || null,
+          // 팔로워 보정 참여도 — 계정 규모가 4배 차이라(82.8만 vs 21.4만) 원점수로는 비교가 안 된다
+          norm_score: acc.followers ? +(score / acc.followers * 1000).toFixed(3) : 0,
+          posted_at: new Date(m.ts).toISOString(),
+        });
+      });
+    } catch (_) {}
+  }
+  if (!rows.length || dry) return rows.length;
+  try {
+    // permalink 유니크 — 같은 게시물을 30분마다 다시 넣지 않는다
+    await supabaseAdmin.from('pepperit_watch_ig')
+      .upsert(rows, { onConflict: 'permalink', ignoreDuplicates: true });
+  } catch (e) {
+    console.warn('[competitor-watch] pepperit_watch_ig 적재 실패:', (e && e.message) || e);
+  }
+  return rows.length;
+}
 
 // 한국어/영어 토큰화 — 제목·키워드 매칭용 (2글자 이상)
 function tokens(s) {
@@ -56,7 +107,10 @@ module.exports = async function handler(req, res) {
         });
       } catch (_) {}
     }
-    if (!hot.length) return res.status(200).json({ message: '24시간 내 경쟁사 게시물 없음.', new_items: 0 });
+    // 페퍼릿 경쟁 계정은 본지 파이프라인과 분리해 따로 적재한다 (2026-08-05)
+    const pepCollected = await collectPepperitFeed(cutoff, dry);
+
+    if (!hot.length) return res.status(200).json({ message: '24시간 내 경쟁사 게시물 없음.', new_items: 0, pepperit_collected: pepCollected });
     hot.forEach((h) => { h.norm = h.followers ? +(h.score / h.followers * 1000).toFixed(2) : 0; });
     hot.sort((a, b) => b.norm - a.norm);
 
@@ -158,6 +212,7 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       scanned: hot.length, fresh: fresh.length, new_items: items.length,
       briefing: items, repinged: pinged, saved, dry,
+      pepperit_collected: pepCollected,
     });
   } catch (e) {
     console.error('[competitor-watch] error:', e);

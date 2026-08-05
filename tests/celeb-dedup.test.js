@@ -17,6 +17,8 @@
 const {
   keywords, canonicalize, clusterEvents, clusterCore, sameEvent, hotScore, HOT_MIN,
   decodeHtml, stripSource, titleKey, isOffTopic, STOP, isOnTarget,
+  // 2026-08-05 5차 — 같은 앵커 재탕 가드 + 페퍼릿 태깅
+  sameEventRecent, pepBlocked, pepCategory, pepScore,
 } = require('../api/_lib/celebDedup');
 
 let pass = 0, fail = 0;
@@ -373,6 +375,108 @@ section('isOnTarget — 케이팝·10~20대 관문');
 // 부분일치 사고 방지 — '진'(매진·진아름)·'ive'(drive) 같은 짧은 토큰
 ok('부분일치 없음: 매진(진) 오탐 방지', isOnTarget('야구 경기 전석 매진 달성') === false);
 ok('부분일치 없음: drive 안의 ive 오탐 방지', isOnTarget('Test drive review') === false);
+
+/* ================================================================
+   2026-08-05 5차 — 같은 앵커 재탕 가드
+   실측 사고: 블랙핑크 x 국립중앙박물관 뮷즈 협업 **하나**가 02:35 / 03:35 /
+   05:15 / 05:40 / 06:10 / 07:31 총 6번 알림으로 나갔다 (celeb_watch_seen id
+   719·720·725·727·728·730). 매체마다 어휘가 달라(굿즈 vs 컬렉션 vs 헤리티지,
+   국중박 vs 국립박물관) 겹침이 2~3개에 그치고 새 단어가 2개 이상 붙어
+   기존 sameEvent 의 '사건 확장' 분기로 매번 빠져나갔다.
+   ================================================================ */
+section('블랙핑크 6회 발송 재현 — 어휘·어미·동의어');
+
+const BP = [
+  '블랙핑크, 국중박과 협업한 \u2018굿즈\u2019 공개 - 문화일보',
+  '\u201c블랙핑크와 문화유산의 조화\u201d\u2026국립박물관·블랙핑크 \u2018뮷즈\u2019 컬렉션 공개 - v.daum.net',
+  "블랙핑크, 뮷즈와 협업하다\u20268일 '헤리티지 컬렉션' 공개 - 뉴스핌",
+  '황후 예복 입은 블랙핑크, K팝과 문화유산의 만남\u2026국립박물관과 초특급 협업 - 스포츠서울',
+  "블랙핑크, 국립박물관 뮷즈와 협업 '헤리티지 컬렉션' 공개 - 머니투데이 - 머니투데이",
+  '블랙핑크, 10주년 기념 국중박 협업 굿즈 - 아시아경제',
+];
+
+ok('국중박 / 국립박물관 이 같은 토큰으로 통일된다',
+  keywords(BP[0]).includes('국립중앙박물관') && keywords(BP[1]).includes('국립중앙박물관'));
+ok("어미가 떨어진다 (협업한 -> 협업)", keywords(BP[0]).includes('협업'));
+ok("어미가 떨어진다 (협업하다 -> 협업)", keywords(BP[2]).includes('협업'));
+ok("라틴 혼합 토큰의 조사도 떨어진다 (K팝과 -> kpop)", keywords(BP[3]).includes('kpop'));
+ok('날짜 수치는 요소가 아니다 (8일 제외)', !keywords(BP[2]).includes('8일'));
+ok('매체명 꼬리가 두 번 붙어도 제거된다 (머니투데이)',
+  !keywords(BP[4]).includes('머니투데이'));
+[ '초특급', '조화', '만남', '기념' ].forEach(w =>
+  ok('헤드라인 수식어는 사건 요소가 아니다: ' + w, STOP.has(w)));
+
+// 실제 파이프라인 재현 — 순서대로 들어올 때 몇 건이 알림으로 나가는가
+const bpKept = [];
+BP.forEach((t) => {
+  const core = keywords(t);
+  if (!bpKept.some(k => sameEventRecent(core, k))) bpKept.push(core);
+});
+ok('블랙핑크 6건이 1건으로 접힌다 (실측 6 -> 1)', bpKept.length === 1);
+
+section('같은 앵커 재탕 가드 — 진짜 다른 사건은 살린다');
+const bpComeback = keywords("블랙핑크, 새 미니앨범 'DEADLINE'으로 컴백 확정 - 스타뉴스");
+ok('같은 아티스트라도 실체가 안 겹치면 새 사건으로 통과',
+  !bpKept.some(k => sameEventRecent(bpComeback, k)));
+ok('앵커를 공유하지 않으면 판정하지 않는다',
+  sameEventRecent(['컬렉션', '협업'], ['컬렉션', '협업']) === false);
+ok('앵커는 같아도 겹침 1개면 재탕 아님',
+  sameEventRecent(['blackpink', '컴백'], ['blackpink', '컬렉션']) === false);
+ok('앵커 공유 + 겹침 2개면 재탕',
+  sameEventRecent(['blackpink', '컬렉션', '뮷즈'], ['blackpink', '컬렉션', '굿즈']) === true);
+
+section('연준 다저스 2회 발송 — 그룹 약칭·시구자 표기 통일');
+const YJ = [
+  '[문화 이슈] 투모로우바이투게더 연준, 13일 LA 다저스 시구 - 비욘드포스트',
+  'TXT 연준, 뷔·손흥민 이어 LA 다저스 마운드 입성\u2026시구자로 출격 [공식]',
+];
+ok('투모로우바이투게더 / TXT 가 같은 토큰', keywords(YJ[0]).includes('txt') && keywords(YJ[1]).includes('txt'));
+ok('시구 / 시구자 가 같은 토큰', keywords(YJ[0]).includes('시구') && keywords(YJ[1]).includes('시구'));
+const yjCores = YJ.map(keywords);
+ok('연준 2건이 중복으로 잡힌다',
+  sameEvent(yjCores[1], yjCores[0]) || sameEventRecent(yjCores[1], yjCores[0]));
+
+/* ================================================================
+   2026-08-05 — 페퍼릿 적합도 태깅
+   PAP 본지 수집은 그대로 두고 페퍼릿용 표시만 붙인다.
+   ================================================================ */
+section('페퍼릿 차단 — 다루지 않는 소재');
+[
+  '\u201c한국 걸그룹 싸움 서열 1위는 \u2018이 아이돌\u2019\u2026별명이 원펀치\u201d - 위키트리',
+  '배우 000, 음주운전 혐의로 검찰 송치',
+  '아이돌 A양 열애설\u2026소속사 "확인 중"',
+  '그룹 B, 멤버 전원 재계약 불발\u2026사실상 해체',
+  '가수 C, 학폭 논란에 직접 해명',
+].forEach(t => ok('차단: ' + t.slice(0, 20), pepBlocked(t) === true && pepCategory(t) === null && pepScore(t, 9) === 0));
+
+section('페퍼릿 카테고리 분류');
+const CAT = [
+  ['블랙핑크, 국립박물관 뮷즈와 협업 헤리티지 컬렉션 공개', 'NEWS'],
+  ['아르테미스, 두 번째 미니앨범 Hyper-Ego로 컴백', 'NEWS'],
+  ['키키, 미니 3집 WhyKiiiKiii 8월 10일 발매', 'NEWS'],
+  ['선미 포에버 줄라이 챌린지 확산', 'NEWS'],
+  ['TXT 연준, LA 다저스 시구자로 출격', 'NEWS'],
+  ['아워벌스데이, 8월 19일 첫 싱글로 정식 데뷔', 'NEW FACE'],
+  ['AEN 오늘 데뷔, 스타쉽·아뮤즈 합작 7인조', 'NEW FACE'],
+];
+CAT.forEach(([t, want]) => ok(want + ': ' + t.slice(0, 24), pepCategory(t) === want));
+
+ok("'데뷔 10주년'은 NEW FACE 가 아니다 (기념 소식)",
+  pepCategory('블랙핑크, 데뷔 10주년 기념 국립박물관 헤리티지 컬렉션') === 'NEWS');
+ok("소속사 '아뮤즈'가 '뮤즈'로 부분일치하지 않는다",
+  pepCategory('AEN 오늘 데뷔, 스타쉽·아뮤즈 합작 7인조') === 'NEW FACE');
+
+section('페퍼릿 소재가 아닌 것');
+[
+  'K-팝 아이돌 평균 활동 기간은 4.12년',
+  '스파이더맨 4 413만 돌파, BTS도 반했다',
+  '기준금리 동결에 코스피 상승 마감',
+].forEach(t => ok('제외: ' + t.slice(0, 20), pepCategory(t) === null && pepScore(t, 9) === 0));
+
+section('페퍼릿 점수 — 핵심 카테고리 가산');
+ok('NEWS 는 화제성 + 3', pepScore('키키, 미니 3집 WhyKiiiKiii 8월 10일 발매', 8) === 11);
+ok('NEW FACE 는 화제성 + 3', pepScore('아워벌스데이, 8월 19일 첫 싱글로 정식 데뷔', 8) === 11);
+ok('차단 소재는 0점', pepScore('아이돌 A양 열애설', 20) === 0);
 
 /* ---------------------------------------------------------------- */
 console.log('\npassed: ' + pass + '   failed: ' + fail);

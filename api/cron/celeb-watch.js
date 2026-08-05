@@ -177,6 +177,8 @@ async function fetchNaverNews() {
 const {
   keywords, clusterEvents, clusterCore, sameEvent, hotScore, HOT_MIN,
   titleKey, stripSource, isOffTopic, isOnTarget,
+  // 2026-08-05 — 같은 앵커 재탕 가드 + 페퍼릿 태깅
+  sameEventRecent, RERUN_WINDOW_MS, pepBlocked, pepCategory, pepScore,
 } = require('../_lib/celebDedup');
 
 
@@ -303,6 +305,13 @@ module.exports = withCronGuard('celeb-watch', async function handler(req, res) {
       .select('signature, title, kw, core, titles, created_at').gte('created_at', since).limit(500);
     const seenRows = seen || [];
     const seenSig = new Set(seenRows.map(s => s.signature));
+    /* 최근 6시간 기록만 따로 — 재탕 가드는 시간창을 좁게 둔다.
+       넓게 두면 같은 아티스트의 다음 날 새 소식까지 묶일 수 있다. */
+    const recentCutoff = Date.now() - RERUN_WINDOW_MS;
+    const recentCores = seenRows
+      .filter(s => s.created_at && new Date(s.created_at).getTime() >= recentCutoff)
+      .map(s => (Array.isArray(s.core) && s.core.length ? s.core
+        : (Array.isArray(s.kw) && s.kw.length ? s.kw : keywords(s.title || ''))));
     const seenCores = seenRows.map(s => {
       if (Array.isArray(s.core) && s.core.length) return s.core;
       if (Array.isArray(s.kw) && s.kw.length) return s.kw;
@@ -328,7 +337,13 @@ module.exports = withCronGuard('celeb-watch', async function handler(req, res) {
       .filter(c => c.headlines.length > 0)
       .filter(c => {
         if (seenSig.has(c.signature)) return false;
-        return !seenCores.some(sc => sameEvent(c.core, sc));
+        if (seenCores.some(sc => sameEvent(c.core, sc))) return false;
+        /* 2026-08-05 5차 — 같은 앵커 · 짧은 시간창 재탕 가드.
+           실측: 블랙핑크 × 국립중앙박물관 협업 하나가 5시간에 걸쳐 6번 나갔다.
+           매체마다 어휘가 달라(굿즈/컬렉션/헤리티지 · 국중박/국립박물관) 겹침이
+           2~3개에 그치고 새 단어가 2개 이상 붙어 매번 '사건 확장'으로 빠져나갔다.
+           → 최근 6시간 안에 같은 앵커로 알린 사건과 실체어가 2개 이상 겹치면 재탕. */
+        return !recentCores.some(sc => sameEventRecent(c.core, sc));
       });
     if (!clusters.length) return res.status(200).json({ ok: true, note: '신규 속보 없음 (이미 알림)', scanned: items.length });
 
@@ -358,6 +373,13 @@ module.exports = withCronGuard('celeb-watch', async function handler(req, res) {
           source_count: c.sourceCount,
           score: c.score,
           alerted: true,
+          /* 페퍼릿 태깅 (2026-08-05 도메니코 지시).
+             PAP 본지는 종전대로 전부 알림받는다 — 여기서는 **빼지 않고 표시만** 한다.
+             페퍼릿 예약작업이 `where pep_blocked=false and pep_category is not null
+             order by pep_score desc` 로 자기 몫만 골라 간다. */
+          pep_blocked: pepBlocked(c.headlines[0].title),
+          pep_category: pepCategory(c.headlines[0].title),
+          pep_score: pepScore(c.headlines[0].title, c.score),
         });
       } catch (e) { console.warn('[celeb-watch] seen 기록 실패:', (e && e.message) || e); }
     }

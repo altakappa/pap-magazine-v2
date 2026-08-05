@@ -32,10 +32,15 @@ function decodeHtml(s) {
    클러스터에 잡히느냐에 따라 core 가 달라져 중복 판정이 새어나갔다.
    중복 폭주의 2번 원인. */
 function stripSource(title) {
-  return decodeHtml(title)
-    .replace(/\s+[-–—|]\s+[^-–—|]{2,40}$/u, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  // 2026-08-05: 구글뉴스가 " - 머니투데이 - 머니투데이" 처럼 꼬리를 두 번 붙이는
+  // 경우가 있다(실측). 한 번만 떼면 매체명이 사건 요소로 남는다 → 최대 2회 제거.
+  let t = decodeHtml(title);
+  for (let i = 0; i < 2; i++) {
+    const cut = t.replace(/\s+[-–—|]\s+[^-–—|]{2,40}$/u, '');
+    if (cut === t) break;
+    t = cut;
+  }
+  return t.replace(/\s+/g, ' ').trim();
 }
 
 const STOP = new Set([
@@ -95,6 +100,13 @@ const STOP = new Set([
   '정색','침대','뭐가','결국','직접','해명','입장','심경','발끈','토로','호소',
   '부부','부모','아빠','엄마','아버지','어머니','아들','딸','품에','안았다',
   '만에','만의','앞두고','이어','역시','당시','현재','이날','최초','드디어',
+  // 2026-08-05 5차 — 헤드라인 수식어. 사건의 요소가 아니라 기사 제목을 꾸미는 말이라
+  // 매체마다 들락날락하며 가짜 새 요소를 만든다 (블랙핑크 실측: 초특급·조화·만남).
+  '초특급','조화','만남','기념','입은','선보인','선보여','맞손','손잡','눈길','화제',
+  // 따옴표·괄호 뒤에 홀로 떨어져 나온 조사 (예: 'DEADLINE'으로 → deadline + 으로)
+  '으로','에서','에게','까지','부터','이라','라며','와의','과의','대해','따르면',
+  '이슈','문화','특별','완벽','역대급','파격','깜짝','전격','단독','독점','최초공개',
+
 ]);
 
 // 2026-07-21 — 한국어 대응. 기존 `length >= 3` 은 영어 기준이라 한국어 헤드라인의
@@ -111,11 +123,21 @@ const CJK_RE = /[぀-ヿ㐀-䶿一-鿿가-힯]/;
 // 많아 과잉 절단이 난다(실측: 스포티파이 → 스포티파 로 잘려 한/영 지문이 어긋남,
 // 음악가·작곡가도 동일 위험). 이름 뒤 주격조사는 ENTITY_ALIASES 치환이 이미 분리한다.
 const PARTICLE_RE = /(으로써|으로서|에게서|이라며|라면서|에서도|으로는|에게는|이라는|라는|와의|과의|에서|에게|으로|이라|라며|께서|부터|까지|보다|처럼|만큼|조차|마저|이랑|하고|와|과|은|는|을|를|의|에|도|로|만|랑)$/;
+/* 활용 어미 분리 (2026-08-05 5차). 실측: 블랙핑크 국립중앙박물관 협업 하나가
+   6번 발송됐다. 원인 중 하나가 '협업한' vs '협업' 이 서로 다른 토큰이 된 것이다.
+   조사(PARTICLE_RE)만 떼고 관형형·서술형 어미는 그대로 뒀기 때문이다.
+   조사보다 먼저 떼야 '협업했다' 같은 형태도 어간에 도달한다. */
+const ENDING_RE = /(하는|되는|하던|했던|했다|한다|된다|하다|되다|시킨|한|된|인)$/;
+
 function stripParticle(w) {
-  // 숫자가 앞에 붙은 형태(48세에)도 대상 — 조사를 떼야 아래 수치 필터에 걸린다.
-  if (!/^[0-9]*[가-힯]+$/.test(w) || w.length < 3) return w;
-  const stem = w.replace(PARTICLE_RE, '');
-  return stem.length >= 2 ? stem : w;
+  // 숫자·라틴이 앞에 붙은 형태(48세에 · k팝과)도 대상.
+  // 2026-08-05: 기존 정규식이 `^[0-9]*[가-힯]+$` 라 'k팝과' 처럼 라틴이 섞이면
+  // 통째로 건너뛰어 조사가 안 떨어졌다(실측 core 에 'k팝과' 가 그대로 남음).
+  if (!/^[0-9a-zA-Z]*[가-힯]+$/.test(w) || w.length < 3) return w;
+  let stem = w.replace(ENDING_RE, '');
+  if (stem.length < 2) stem = w;
+  const out = stem.replace(PARTICLE_RE, '');
+  return out.length >= 2 ? out : stem;
 }
 function keywords(title) {
   return norm(canonicalize(stripSource(title))).split(' ')
@@ -131,7 +153,7 @@ function keywords(title) {
     .map(w => stripParticle(w))
     // 2026-07-27 4차 — 나이·인원 수치도 제거(48세·30대·2명). 한 매체만 나이를
     // 쓰면 그게 '새 요소'가 돼 같은 사건이 또 발송된다(남궁민 '48세에' 실측).
-    .filter(w => !/^\d+(억|만|천|백|위|세|살|대|명|주년|회|th|st|nd|rd)?$/i.test(w))
+    .filter(w => !/^\d+(억|만|천|백|위|세|살|대|명|주년|회|일|월|년|차|호|번|기|주|시|분|th|st|nd|rd)?$/i.test(w))
     .filter(w => (CJK_RE.test(w) ? w.length >= 2 : w.length >= 3) && !STOP.has(w));
 }
 
@@ -184,6 +206,20 @@ const ENTITY_ALIASES = [
   // 2026-07-27 4차 — 사건 동의어 통일. 같은 출산 사건을 매체가 득남/출산/첫아들로
   // 달리 쓰면 서로 '새 요소'가 돼 중복 발송된다(남궁민·진아름 실측 4건).
   // 아들/딸 구분은 알림 문구(원문 제목)에 그대로 남으므로 지문만 통일한다.
+  // 2026-08-05 5차 — 기관·사물·행사 동의어. 아티스트 이름만 통일돼 있어서
+  // 같은 사건을 매체가 다른 이름으로 부르면 갈라졌다. 실측(블랙핑크 6회 발송):
+  //   국중박 / 국립박물관 / 국립중앙박물관 · 뮷즈 / MU:DS · 협업 / 콜라보 가 전부 별개 토큰이었다.
+  ['국립중앙박물관', /(국립\s?중앙\s?박물관|국립\s?박물관|국중박)/g],
+  ['뮷즈', /(뮷즈|mu\s?:?\s?ds)/gi],
+  ['kpop', /(k[-\s]?pop|케이팝|k팝)/gi],
+  ['협업', /(콜라보레이션|콜라보|collaboration|collab)/gi],
+  ['컬렉션', /(콜렉션|collection)/gi],
+  ['앰배서더', /(앰배서더|앰버서더|ambassador|브랜드\s?뮤즈)/gi],
+  ['팝업', /(팝업\s?스토어|pop[-\s]?up\s?store)/gi],
+  ['시구', /(시구자|시구|first\s?pitch)/g],
+  ['다저스', /(la\s?다저스|다저스|dodgers)/gi],
+  ['txt', /(투모로우바이투게더|tomorrow\s?x\s?together|\bTXT\b)/g],
+  ['챌린지', /(챌린지|challenge)/gi],
   ['출산', /(득남|득녀|첫아들|첫딸|출산|순산)/g],
   ['열애', /(열애|공개연애|교제)/g],
   ['결별', /(결별|파경|이혼)/g],
@@ -405,8 +441,134 @@ function isOnTarget(title) {
   return ON_TARGET_RE.test(String(title || ''));
 }
 
+/* ─── 같은 앵커 · 짧은 시간창 재탕 가드 (2026-08-05 5차 신설) ──────────────
+   왜 만들었나 — 실측: 블랙핑크 × 국립중앙박물관 뮷즈 협업 **하나**가
+   02:35 · 03:35 · 05:15 · 05:40 · 06:10 · 07:31 총 6번 알림으로 나갔다.
+   기존 sameEvent 로는 못 잡았다. 매체마다 헤드라인 어휘가 워낙 달라
+   (굿즈/컬렉션/헤리티지 · 국중박/국립박물관 · 황후 예복/문화유산의 조화)
+   겹침이 2~3개에 그치고 새 단어가 2개 이상 붙어 매번 '사건 확장'으로 빠져나갔다.
+
+   판정 — **알려진 앵커(아티스트·브랜드·기관)를 공유하면서 실체 키워드가
+   2개 이상 겹치면 같은 사건.** 새 단어가 몇 개 붙든 상관하지 않는다.
+   앵커를 요구하는 이유: 흔한 단어 2개만 우연히 겹치는 경우를 배제하기 위해서다.
+
+   왜 안전한가 — 앵커만 같고 실체가 안 겹치면(예: 같은 날 블랙핑크 컴백 발표,
+   core=[blackpink, 앨범명]) 겹침이 1개라 그대로 통과한다. 같은 아티스트의
+   진짜 다른 소식은 묻히지 않는다.
+   호출부에서 **최근 6시간 이내 기록**에만 적용한다 (celeb-watch 핸들러). */
+/* 앵커 = 사건을 특정하는 **고유 존재**(인물·그룹·브랜드·기관·대회).
+   ENTITY_ALIASES 에는 표기 통일 목적의 '사건·사물 표현'도 섞여 있는데
+   (협업·컬렉션·시구·출산·열애…) 이건 앵커가 아니다. 서로 다른 두 사건이
+   '협업' 같은 흔한 말을 공유한다고 같은 사건일 수는 없다.
+   2026-08-05 회귀: 앵커 목록을 별칭 전체로 잡았더니 ['컬렉션','협업'] 두 개가
+   겹치는 무관한 두 사건이 재탕으로 묶였다. */
+const NON_ANCHOR_KEYS = new Set([
+  'kpop', '협업', '컬렉션', '앰배서더', '팝업', '시구', '챌린지',
+  '출산', '열애', '결별',
+]);
+const ANCHOR_SET = new Set(
+  ENTITY_ALIASES.map(([k]) => k).filter(k => !NON_ANCHOR_KEYS.has(k))
+);
+const RERUN_WINDOW_MS = 6 * 3600 * 1000;
+const RERUN_MIN_OVERLAP = 2;
+
+function anchorsOf(core) {
+  return (core || []).filter(w => ANCHOR_SET.has(w));
+}
+
+function sameEventRecent(newCore, seenCore, opts) {
+  const minOverlap = (opts && opts.minOverlap) || RERUN_MIN_OVERLAP;
+  const A = new Set((newCore || []).filter(Boolean));
+  const B = new Set((seenCore || []).filter(Boolean));
+  if (!A.size || !B.size) return false;
+  // 공유 앵커가 없으면 판정하지 않는다 (흔한 단어 우연 일치 배제)
+  let sharedAnchor = false;
+  for (const w of A) if (ANCHOR_SET.has(w) && B.has(w)) { sharedAnchor = true; break; }
+  if (!sharedAnchor) return false;
+  let inter = 0;
+  for (const w of A) if (B.has(w)) inter++;
+  return inter >= minOverlap;
+}
+
+/* ─── 페퍼릿 적합도 태깅 (2026-08-05 도메니코 지시) ────────────────────────
+   왜 — PAP 본지와 페퍼릿이 같은 감시망(celeb-watch)을 쓴다. PAP 은 사건사고·
+   논란도 알아야 하지만 페퍼릿(Z세대 케이팝 데일리)은 그걸 다루지 않는다.
+   그래서 **수집에서 빼지 않고 태그만 붙인다.** PAP 알림은 종전 그대로 가고,
+   페퍼릿 예약작업은 `where pep_blocked=false and pep_category is not null` 로 고른다.
+
+   ⚠️ 여기서 거른다고 기사가 안 나가는 건 아니다. 페퍼릿 에이전트가 한 번 더
+   교차검증·중복검사를 한다. 이건 '들이는 관문'이 아니라 '미리 빼두는 체'다. */
+const PEP_BLOCK_RE = new RegExp([
+  // 사생활·연애
+  '열애', '결혼', '파경', '이혼', '결별', '재혼', '임신', '출산',
+  // 사건사고·법적 분쟁
+  '사망', '별세', '빈소', '조문', '사고', '고소', '고발', '피소', '송치', '기소',
+  '구속', '영장', '재판', '법정', '벌금', '집행유예', '실형',
+  '음주운전', '마약', '도박', '학폭', '성희롱', '성추행', '성폭행', '갑질',
+  // 분쟁·부정 이슈
+  '논란', '해명', '사과문', '폭로', '저격', '루머', '탈퇴', '해체', '퇴출',
+  '계약해지', '전속계약 분쟁', '법적대응', '내홍', '왕따',
+  // 외모 평가·줄세우기 (브랜드 가이드 금지)
+  '서열', '싸움', '순위 매기', '줄세우기', '외모 평가', '성형', '다이어트',
+  '몸매', '굴욕', '민낯', '충격', '경악', '발칵',
+].join('|'));
+
+/* 카테고리 판정 — 페퍼릿 5종 중 무엇인가. 없으면 null (= 페퍼릿 소재 아님).
+   순서가 중요하다: NEWS 를 먼저 본다. '데뷔 10주년 기념 컬렉션' 을
+   NEW FACE 로 오분류하지 않기 위해서다(실측 블랙핑크 헤리티지). */
+// 순서 = 우선순위. NEW FACE 를 먼저 본다 — 데뷔 소식은 컴백·협업 어휘가 같이 나와도
+// 본질이 '새 얼굴' 이기 때문이다. 단 '데뷔 10주년' 은 신인이 아니라 기념 소식이므로
+// 아래 ANNIVERSARY_RE 로 뺀다(실측: 블랙핑크 데뷔 10주년 헤리티지 컬렉션).
+// ⚠️ '뮤즈' 를 단독으로 넣지 않는다 — 소속사 '아뮤즈' 에 부분일치해 신인 데뷔가
+//    NEWS 로 잘못 분류됐다(실측 AEN).
+const ANNIVERSARY_RE = /\d+\s*(주년|년\s*만)/;
+const PEP_CATEGORY_RULES = [
+  ['NEW FACE', /(데뷔|신인|연습생|데뷔조|첫\s?싱글|프리\s?데뷔|신인그룹|새\s?걸그룹|새\s?보이그룹)/],
+  ['NEWS', /(컴백|발매|신곡|타이틀곡|선공개|수록곡|미니앨범|정규앨범|협업|컬렉션|앰배서더|브랜드\s?뮤즈|광고\s?모델|모델\s?발탁|시상식|수상|시구|챌린지|월드투어|콘서트)/],
+  ['SCHEDULE', /(스케줄|일정|투어|팬미팅|팬콘|쇼케이스|페스티벌|팬사인회)/],
+  ["TODAY'S LOOK", /(공항\s?패션|화보|착장|패션위크|런웨이|스타일링|포토그래퍼)/],
+];
+
+function pepBlocked(title) {
+  return PEP_BLOCK_RE.test(stripSource(String(title || '')));
+}
+
+/* 페퍼릿용 타깃 관문 — isOnTarget 보다 살짝 넓다.
+   왜: isOnTarget 은 '알려진 그룹 이름'을 요구한다. 그런데 NEW FACE 는 **이름이
+   아직 안 알려진 신인**을 다루는 카테고리다(실측: '아워벌스데이 첫 싱글로 정식
+   데뷔' 가 이름이 목록에 없어 걸러졌다). 케이팝 생태계 어휘가 있으면 통과시키고,
+   최종 판정은 아래 카테고리 정규식에 맡긴다. */
+const PEP_CONTEXT_RE = /(걸그룹|보이그룹|아이돌|신인그룹|연습생|데뷔조|소속사|앨범|타이틀곡|음악방송|음원|뮤직비디오|뮤비|팬덤|컴백|데뷔|\d+\s?집|싱글|수록곡|쇼케이스)/;
+
+function pepCategory(title) {
+  const t = stripSource(String(title || ''));
+  if (!t || pepBlocked(t)) return null;
+  if (!isOnTarget(t) && !PEP_CONTEXT_RE.test(t)) return null;  // 케이팝 맥락이 없으면 제외
+  for (const [cat, re] of PEP_CATEGORY_RULES) {
+    if (!re.test(t)) continue;
+    // '데뷔 10주년' 은 신인 소식이 아니다 — NEW FACE 를 건너뛰고 다음 규칙으로.
+    if (cat === 'NEW FACE' && ANNIVERSARY_RE.test(t)) continue;
+    return cat;
+  }
+  return null;                               // 5종 어디에도 안 맞으면 페퍼릿 소재가 아니다
+}
+
+/* 페퍼릿 우선순위 점수 — 화제성(score)에 카테고리 적합도를 얹는다.
+   차단된 소식은 0. 페퍼릿 예약작업이 `order by pep_score desc` 로 쓴다. */
+function pepScore(title, baseScore) {
+  if (pepBlocked(title)) return 0;
+  const cat = pepCategory(title);
+  if (!cat) return 0;
+  let s = Number(baseScore) || 0;
+  if (cat === 'NEWS' || cat === 'NEW FACE') s += 3;   // 페퍼릿 핵심 카테고리
+  return s;
+}
+
 module.exports = {
   norm, canonicalize, keywords, clusterEvents, clusterKeywords, clusterCore,
   sameEvent, hotScore, HOT_MIN, decodeHtml, stripSource, titleKey, STOP,
   isOffTopic, OFF_TOPIC_RE, isOnTarget, ON_TARGET_RE, STRONG_OVERLAP,
+  // 2026-08-05 5차 — 같은 앵커 재탕 가드 + 페퍼릿 태깅
+  sameEventRecent, anchorsOf, ANCHOR_SET, NON_ANCHOR_KEYS, RERUN_WINDOW_MS, RERUN_MIN_OVERLAP,
+  pepBlocked, pepCategory, pepScore, PEP_BLOCK_RE, PEP_CATEGORY_RULES, PEP_CONTEXT_RE,
 };
