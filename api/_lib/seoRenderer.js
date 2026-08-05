@@ -547,6 +547,15 @@ function renderSeoHtml(kind, record, opts) {
      보강 목표와 양립 — 110~155 구간이 정상 범위). */
   const desc = truncate(_enrichMeta(descMain), 155);
 
+  /* 2026-08-05 (GSC '중복 페이지 — Google에서 사용자와 다른 표준을 선택함' 41건):
+     JSON-LD description 이 descMain 원본을 그대로 써서, description/description_en
+     이 비어 있는 기사에선 436행 폴백("한국어제목 — PAP Magazine")이 en/it/es 등
+     모든 언어판 스키마에 똑같이 박혔다. <meta name=description> 은 _enrichMeta 가
+     그 에코를 비우고 언어별로 재조립하므로 영어인데 스키마만 한국어 → 구글이
+     /en/article/* 를 /article/* 의 중복으로 보고 한국어판을 표준으로 선택.
+     스키마도 meta 와 같은 보강값을 쓰게 한다(길이 컷은 meta 전용이라 미적용). */
+  const schemaDesc = _enrichMeta(descMain);
+
   /* Cover image: per-kind preferred fields */
   const ogImage = record.og_image
     || record.cover_image
@@ -676,7 +685,7 @@ function renderSeoHtml(kind, record, opts) {
       '@context': 'https://schema.org',
       '@type': 'VideoObject',
       name: titleMain,
-      description: descMain,
+      description: schemaDesc,
       thumbnailUrl: [ogImage].filter(Boolean),
       uploadDate: published,
       contentUrl: `https://www.youtube.com/watch?v=${record.youtube_id}`,
@@ -728,8 +737,10 @@ function renderSeoHtml(kind, record, opts) {
       '@context': 'https://schema.org',
       '@type': cfg.schemaType,
       headline: titleMain,
-      alternativeHeadline: titleAlt !== titleMain ? titleAlt : undefined,
-      description: descMain,
+      // 2026-08-05 — 비한국어 페이지에 한국어 제목을 실으면 언어 신호가 섞여
+      // 구글이 ko 판을 표준으로 고른다(articleBody 와 동일 원칙). ko 에서만 방출.
+      alternativeHeadline: (!isEn && titleAlt !== titleMain) ? titleAlt : undefined,
+      description: schemaDesc,
       image: imageObjects,
       // EN 페이지엔 한국어 본문을 articleBody 로 싣지 않는다 (언어 신호 혼선 방지)
       articleBody: !isEn && bodyForWordCount ? truncate(bodyForWordCount, 8000) : undefined,
