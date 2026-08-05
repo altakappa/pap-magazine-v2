@@ -5,9 +5,16 @@
  * X·스레드는 인스타로 사람을 밀어넣는 장치다. 기사별 자동 게시(기존 경로)는
  * 그대로 두고, 그 위에 며칠에 한 번 "그동안 올라온 것 모아보기"를 얹는다.
  *
- * 갈래와 주기 (2026-08-03 6차 지시 — 하루 두 슬롯):
- *   아침(am, KST 09시)   celeb 월·화·목·금 (창 4일) · editorial 일 (창 7일) · 수·토는 쉰다
- *   저녁(pm, KST 20시)   collection 매일 (창 3일)
+ * 갈래와 주기 (2026-08-03 6차 지시 — 하루 두 슬롯 · 2026-08-05 페퍼릿 추가):
+ *   아침(am,  KST 09시)  celeb 월·화·목·금 (창 4일) · editorial 일 (창 7일) · 수·토는 쉰다
+ *   낮  (mid, KST 12시)  pepperit 수·토 (창 4일 / 3일) — 그 밖의 요일은 쉰다
+ *   저녁(pm,  KST 20시)  collection 매일 (창 3일)
+ *
+ * 페퍼릿을 왜 새 슬롯에 두나 (2026-08-05 도메니코) — PAP 과 시간대가 겹치면
+ * 안 된다. 수·토 아침이 비어 있으니 거기 끼워 넣을 수도 있었지만, 그러면
+ * 같은 KST 09시 자리를 두 브랜드가 요일로 나눠 쓰는 모양이 된다. 나중에 PAP
+ * 아침 격자를 손볼 때 페퍼릿이 딸려 움직이는 배선이라 안 그렇게 했다.
+ * KST 12시는 PAP 의 두 슬롯(09시·20시) 어느 쪽과도 안 붙는다.
  *
  * 왜 슬롯을 둘로 쪼갰나 — 콜렉션 공급이 하루 6건대로 늘어, 주 2회(수·토)
  * 발행으로는 스레드 커버리지가 41%, X 는 14% 밖에 안 됐다(28일 실측).
@@ -30,8 +37,9 @@
  * 게이트: DIGEST_CRON_ENABLED=false 로만 끈다 (기본 활성).
  * 수동 트리거: 관리자 토큰 GET/POST.
  *   ?dry=1            발행하지 않고 문안만 본다 (중복 기록도 안 남긴다)
- *   ?slot=am|pm       슬롯 지정 (크론이 붙여서 부른다. 없으면 KST 시각으로 판단)
+ *   ?slot=am|mid|pm   슬롯 지정 (크론이 붙여서 부른다. 없으면 KST 시각으로 판단)
  *   ?bucket=celeb     요일·슬롯 무시하고 갈래 지정 (미리보기·복구용)
+ *                     페퍼릿 문안 미리보기: ?dry=1&bucket=pepperit
  *   ?platform=x       한 채널만
  */
 
@@ -62,6 +70,19 @@ const SLOT_BUCKET = {
     5: 'celeb',       // 금
     6: null,          // 토 — 쉼
   },
+  /* 2026-08-05 도메니코 — 페퍼릿은 주 2회, 수·토만. 창은 요일마다 다르다
+     (수 = 지난 토·일·월·화 4일 / 토 = 지난 수·목·금 3일). 7일이 겹침 없이
+     정확히 둘로 나뉜다. 창 길이는 여기 안 적는다 — digestBuckets.windowDaysFor
+     가 갖고 있고 이 파일은 요일만 넘긴다(두 군데에 적으면 한 쪽만 고쳐진다). */
+  mid: {
+    0: null,          // 일
+    1: null,          // 월
+    2: null,          // 화
+    3: 'pepperit',    // 수
+    4: null,          // 목
+    5: null,          // 금
+    6: 'pepperit',    // 토
+  },
   pm: {
     0: 'collection',  // 일
     1: 'collection',  // 월
@@ -73,8 +94,24 @@ const SLOT_BUCKET = {
   },
 };
 
+/* 갈래별 채널. 페퍼릿은 X 계정이 없다 — 없는 계정에 보내려다 실패 기록만
+   쌓이지 않게 표로 못 박는다. 표에 없는 갈래는 예전대로 두 채널 다 나간다. */
+const BUCKET_PLATFORMS = {
+  pepperit: ['threads'],
+};
+
+/* 갈래 → threads_auth.id (1=PAP, 2=페퍼릿). 표에 없으면 1 이다.
+   토큰은 계정마다 따로라, 이 표가 틀리면 페퍼릿 글이 PAP 계정으로 나간다. */
+const BUCKET_THREADS_ACCOUNT = {
+  pepperit: 2,
+};
+
 /* 슬롯 경계는 KST 14시. 크론이 ?slot= 을 붙여서 부르지만, 수동 실행이나
-   vercel.json 오편집으로 슬롯이 빠졌을 때 시각으로라도 맞게 떨어져야 한다. */
+   vercel.json 오편집으로 슬롯이 빠졌을 때 시각으로라도 맞게 떨어져야 한다.
+   경계는 PAP 두 슬롯 사이만 가른다 — mid 는 ?slot=mid 를 명시했을 때만
+   잡힌다. 일부러 그렇게 뒀다: 페퍼릿 크론에서 ?slot 이 빠지면 KST 12시는
+   am 으로 떨어지는데, 수·토 아침은 쉬는 자리라 아무것도 안 나간다.
+   잘못된 브랜드로 나가는 것보다 안 나가는 쪽이 낫다. */
 const SLOT_BOUNDARY_HOUR = 14;
 
 const PLATFORMS = ['x', 'threads'];
@@ -150,8 +187,14 @@ async function recordDigest(row, items) {
  *   threads.postText  → 게시 id 문자열, 실패하면 throw
  * 그 차이를 여기서 하나로 눌러 담는다. skipped 는 '실패'가 아니라 '미설정'이다
  * — env 를 아직 안 넣은 채널 때문에 크론이 빨갛게 뜨면 안 된다.
+ *
+ * threadsAccountId 는 스레드 계정(threads_auth.id)이다. 안 주면 1(PAP) —
+ * 기존 호출과 완전히 같다. 미인증 판정도 그 계정 행을 봐야 한다. 예전처럼
+ * id=1 만 보면, PAP 이 인증돼 있다는 이유로 페퍼릿 글을 PAP 토큰으로 밀어
+ * 넣게 된다 (postText 는 자기 계정 토큰을 따로 읽으므로 결국 던지겠지만,
+ * 그 전에 '나갈 수 있다'고 판단하는 것 자체가 위험하다).
  */
-async function publish(platform, text) {
+async function publish(platform, text, threadsAccountId) {
   if (platform === 'x') {
     if (!xPost.isConfigured()) return { skipped: 'X env 미설정' };
     const r = await xPost.postTweet(text);
@@ -159,10 +202,13 @@ async function publish(platform, text) {
     if (r && r.skipped) return { skipped: r.skipped };
     return { ok: false, error: (r && (r.detail || r.status)) || 'unknown' };
   }
+  const accountId = threads.normalizeAccountId(threadsAccountId);
   const { data: authRow } = await supabaseAdmin
-    .from('threads_auth').select('access_token').eq('id', 1).maybeSingle();
-  if (!authRow || !authRow.access_token) return { skipped: '스레드 미인증' };
-  const id = await threads.postText(text);
+    .from('threads_auth').select('access_token').eq('id', accountId).maybeSingle();
+  if (!authRow || !authRow.access_token) {
+    return { skipped: '스레드 미인증 (' + threads.accountInfo(accountId).handle + ')' };
+  }
+  const id = await threads.postText(text, accountId);
   return { ok: !!id, id: id || null };
 }
 
@@ -214,7 +260,9 @@ module.exports = withCronGuard('social-digest', async function handler(req, res)
     }
   }
 
-  const wanted = q.platform ? [String(q.platform)] : PLATFORMS;
+  const allowed = BUCKET_PLATFORMS[bucket] || PLATFORMS;
+  const wanted = q.platform ? [String(q.platform)] : allowed;
+  const threadsAccountId = BUCKET_THREADS_ACCOUNT[bucket] || 1;
   const out = [];
 
   /* 소재는 루프 *밖에서* 한 번만 고른다.
@@ -225,7 +273,10 @@ module.exports = withCronGuard('social-digest', async function handler(req, res)
      이 기능의 전제가 깨지고, 정작 스레드에 제일 새 기사가 안 실린다.
      한 번 고른 목록을 두 채널이 같이 쓴다. 채널별 분량 차이는 문안 조립이
      알아서 자른다(X 가중 280자 / 스레드 480자). */
-  const picked = await digestBuckets.collect(bucket, { skipDedupe: dry });
+  /* 창 길이는 갈래가 요일별로 정한다 (페퍼릿 수 4일 / 토 3일). PAP 갈래는
+     요일 표가 없어 예전과 같은 고정값이 그대로 돌아온다. */
+  const windowDays = digestBuckets.windowDaysFor(bucket, day);
+  const picked = await digestBuckets.collect(bucket, { days: windowDays, skipDedupe: dry });
   if (!picked.items.length) {
     res.locals = res.locals || {};
     res.locals.cronNote = bucket + ' — 소재 없음';
@@ -234,6 +285,12 @@ module.exports = withCronGuard('social-digest', async function handler(req, res)
 
   for (const platform of wanted) {
     if (!PLATFORMS.includes(platform)) continue;
+    /* ?platform= 으로 직접 부르더라도 갈래가 안 쓰는 채널은 막는다 —
+       페퍼릿에 X 계정이 없다는 사실은 쿼리스트링이 뒤집을 수 있는 게 아니다. */
+    if (!allowed.includes(platform)) {
+      out.push({ platform, skipped: bucket + ' 갈래는 ' + platform + ' 채널을 쓰지 않는다' });
+      continue;
+    }
 
     const built = await digestCopy.build(picked, platform);
     if (!built) {
@@ -248,7 +305,7 @@ module.exports = withCronGuard('social-digest', async function handler(req, res)
 
     let result = { ok: false };
     try {
-      result = await publish(platform, built.text);
+      result = await publish(platform, built.text, threadsAccountId);
     } catch (e) {
       result = { ok: false, error: String((e && e.message) || e).slice(0, 300) };
     }
@@ -283,6 +340,8 @@ module.exports = withCronGuard('social-digest', async function handler(req, res)
 });
 
 module.exports.SLOT_BUCKET = SLOT_BUCKET;
+module.exports.BUCKET_PLATFORMS = BUCKET_PLATFORMS;
+module.exports.BUCKET_THREADS_ACCOUNT = BUCKET_THREADS_ACCOUNT;
 module.exports.SLOT_BOUNDARY_HOUR = SLOT_BOUNDARY_HOUR;
 module.exports.kstDay = kstDay;
 module.exports.kstHour = kstHour;

@@ -194,23 +194,33 @@ console.log('\n[1] 링크는 딱 하나 — 인스타 프로필');
   t('제목 없는 항목만 → null',
     (await copy.build({ bucket: 'celeb', label: '', days: 3, items: [{ source: 'article', id: '9', title: '' }] }, 'x')) === null);
 
-  console.log('\n[8] 슬롯 격자 — 하루 두 자리, 한 자리에 갈래 하나 (2026-08-03 6차 지시)');
+  console.log('\n[8] 슬롯 격자 — 하루 세 자리, 한 자리에 갈래 하나');
+  /* 2026-08-05 — 페퍼릿(수·토 KST 12시)이 mid 슬롯으로 들어왔다.
+     PAP 의 아침·저녁 격자는 한 칸도 안 바뀌었다 — 아래 검사가 그걸 지킨다. */
   const grid = digest.SLOT_BUCKET;
   const DOW = [0, 1, 2, 3, 4, 5, 6];
-  t('슬롯은 아침·저녁 둘', Object.keys(grid).sort().join(',') === 'am,pm');
+  t('슬롯은 아침·낮·저녁 셋', Object.keys(grid).sort().join(',') === 'am,mid,pm');
   t('아침 일요일 = 에디토리얼', grid.am[0] === 'editorial');
   t('아침 월·화·목·금 = 셀럽',
     grid.am[1] === 'celeb' && grid.am[2] === 'celeb' && grid.am[4] === 'celeb' && grid.am[5] === 'celeb');
   t('아침 수·토는 쉰다', grid.am[3] === null && grid.am[6] === null);
   t('저녁은 이레 내내 콜렉션', DOW.every((d) => grid.pm[d] === 'collection'));
-  t('두 슬롯에 요일 일곱 개가 모두 선언돼 있다',
-    ['am', 'pm'].every((s) => Object.keys(grid[s]).length === 7));
+  t('낮은 수·토만 페퍼릿, 나머지는 쉰다',
+    grid.mid[3] === 'pepperit' && grid.mid[6] === 'pepperit'
+      && [0, 1, 2, 4, 5].every((d) => grid.mid[d] === null));
+  t('세 슬롯에 요일 일곱 개가 모두 선언돼 있다',
+    ['am', 'mid', 'pm'].every((s) => Object.keys(grid[s]).length === 7));
   t('한 슬롯에 갈래는 하나 (문자열 아니면 null)',
-    ['am', 'pm'].every((s) => DOW.every((d) => grid[s][d] === null || typeof grid[s][d] === 'string')));
+    ['am', 'mid', 'pm'].every((s) => DOW.every((d) => grid[s][d] === null || typeof grid[s][d] === 'string')));
   /* 원칙은 그대로다 — 갈래끼리 겹치지 않는다. 다만 경계가 날짜에서 시간대로
      내려왔다. 같은 갈래가 하루에 두 번 나가는 것도 여전히 금지다. */
-  t('같은 날 아침·저녁이 같은 갈래를 쓰지 않는다',
-    DOW.every((d) => !grid.am[d] || grid.am[d] !== grid.pm[d]));
+  t('같은 날 세 슬롯이 같은 갈래를 쓰지 않는다',
+    DOW.every((d) => {
+      const used = ['am', 'mid', 'pm'].map((s) => grid[s][d]).filter(Boolean);
+      return new Set(used).size === used.length;
+    }));
+  t('페퍼릿은 PAP 슬롯(아침·저녁)에 안 들어간다',
+    DOW.every((d) => grid.am[d] !== 'pepperit' && grid.pm[d] !== 'pepperit'));
   t('세 갈래가 모두 주 1회 이상', ['editorial', 'collection', 'celeb']
     .every((b) => DOW.some((d) => grid.am[d] === b || grid.pm[d] === b)));
   t('콜렉션이 주 7회 — 물량이 하루 6건대라 주 2회로는 스레드에 41% 밖에 못 실렸다',
@@ -226,6 +236,11 @@ console.log('\n[1] 링크는 딱 하나 — 인스타 프로필');
   t('UTC 11:00 → KST 20시 (저녁 슬롯)', digest.kstHour(new Date('2026-08-03T11:00:00Z')) === 20);
   t('슬롯 경계가 두 크론 시각 사이에 있다',
     9 < digest.SLOT_BOUNDARY_HOUR && digest.SLOT_BOUNDARY_HOUR <= 20);
+  /* mid 는 시각 추론으로는 안 잡힌다(경계는 am/pm 만 가른다). 일부러 그렇다 —
+     페퍼릿 크론에서 ?slot 이 빠지면 KST 12시는 am 으로 떨어지고, 수·토 아침은
+     쉬는 자리라 아무것도 안 나간다. 잘못된 브랜드로 나가는 것보다 낫다. */
+  t('?slot 이 빠진 KST 12시는 am 으로 떨어진다 (그리고 수·토 am 은 쉼)',
+    12 < digest.SLOT_BOUNDARY_HOUR && grid.am[3] === null && grid.am[6] === null);
   t('KST 오늘 0시 = UTC 전날 15:00',
     digest.kstTodayStartIso(new Date('2026-08-03T11:00:00Z')) === '2026-08-02T15:00:00.000Z',
     digest.kstTodayStartIso(new Date('2026-08-03T11:00:00Z')));

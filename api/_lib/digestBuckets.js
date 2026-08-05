@@ -5,10 +5,16 @@
  * 기사를 모아 리뷰하는 글의 *재료*를 고르는 모듈이다. 글을 쓰거나 올리지
  * 않는다 — 고르기만 한다. 문안 생성·게시는 각 채널 모듈이 맡는다.
  *
- * 세 갈래(도메니코 지정):
+ * 갈래 (도메니코 지정):
  *   editorial   지난 7일 PAP 오리지널 에디토리얼
  *   collection  지난 3일 아트 콜렉션 (아트·패션·뷰티 등 아카이브형)
  *   celeb       지난 4일 셀럽 소식
+ *   pepperit    지난 3~4일 페퍼릿 소식 (2026-08-05 추가 · 스레드 전용)
+ *
+ * 페퍼릿은 PAP 이 아니다. 사이트도(pepperitmag.com) 표도(pepperit_articles)
+ * 인스타 계정도(@pepperitmag) 따로다. 그래서 같은 모듈 안에 있어도 URL 을
+ * 만드는 자리와 소재를 읽는 자리가 갈린다 — SITES 표와 fromPepperitArticle 이
+ * 그 경계다. 갈래 하나를 더한 것이지 PAP 갈래를 건드린 게 아니다.
  *
  * 분류 기준이 왜 이렇게 되나 —
  *   · 오리지널 vs 아카이브는 editorials.legacy 로 갈린다 (065_legacy_editorials).
@@ -23,7 +29,13 @@
 
 const { supabaseAdmin } = require('./supabase');
 
-const SITE = 'https://www.pap-magazine.com';
+/* 갈래마다 사이트가 다르다. 예전엔 SITE 상수 하나였는데, 그 값이 PAP 도메인
+   이라 페퍼릿 기사 링크가 조용히 pap-magazine.com 으로 나갈 뻔했다.
+   상수를 표로 바꿔 "어느 브랜드의 URL 인가"를 호출 지점마다 밝히게 한다. */
+const SITES = {
+  pap:      'https://www.pap-magazine.com',
+  pepperit: 'https://www.pepperitmag.com',
+};
 
 /* 셀럽 갈래로 보내는 카테고리. IG 임포트 화이트리스트
    (sync-instagram.js ARTICLE_CATEGORIES) 중 뉴스성인 둘이다. */
@@ -41,11 +53,40 @@ const CELEB_CATEGORIES = ['news', 'celeb'];
    상한이 8이면 조립이 자르기도 전에 후보가 먼저 잘렸다. 조립(fitDown)이
    글자 수로 자르게 두고, 상한은 그 천장보다 조금 위에 둔다. 무제한으로
    풀지 않는 건 소개말 생성에 후보 수만큼 토큰이 들기 때문이다. */
+/* 페퍼릿(2026-08-05 도메니코 확정) —
+   창이 요일마다 다른 유일한 갈래다. 수요일은 지난 토·일·월·화(4일), 토요일은
+   지난 수·목·금(3일). 7일이 겹침 없이 정확히 둘로 나뉜다. 그래서 days 를 한
+   값으로 못 적고 daysByDow(발행 요일 → 창 길이) 표를 함께 둔다. days 는
+   그 둘 중 넓은 쪽으로, 요일을 모르고 부를 때(수동 미리보기)의 기본값이다.
+
+   상한 14 의 근거(실측): 고정부(머리말+빈 줄+꼬리말+IG링크) 82자, 제목 평균
+   26~28자, THREADS_MAX 480 → (480 - 82) / 28 ≈ 14. 최종 컷은 조립부의
+   fitDown() 이 글자 수로 하므로, 여기 상한은 그 천장보다 조금 위에 둔다
+   (PAP collection 을 8 → 12 로 올렸을 때와 같은 사고방식). */
 const BUCKETS = {
-  editorial:  { label: '오리지널 에디토리얼', days: 7, limit: 8 },
-  collection: { label: '아트 콜렉션',        days: 3, limit: 12 },
-  celeb:      { label: '셀럽 소식',          days: 4, limit: 0 },
+  editorial:  { label: '오리지널 에디토리얼', site: 'pap',      days: 7, limit: 8 },
+  collection: { label: '아트 콜렉션',        site: 'pap',      days: 3, limit: 12 },
+  celeb:      { label: '셀럽 소식',          site: 'pap',      days: 4, limit: 0 },
+  pepperit:   { label: '페퍼릿 소식',        site: 'pepperit', days: 4, limit: 14,
+                daysByDow: { 3: 4, 6: 3 } },
 };
+
+/**
+ * 갈래·발행요일(KST, 0=일)에 맞는 창 길이.
+ *
+ * 요일별 창을 갈래 안에 두고 크론은 요일만 넘긴다. 반대로 크론이 창 길이를
+ * 직접 들고 있으면, 발행 요일을 바꿀 때 크론과 이 파일 두 군데를 같이 고쳐야
+ * 하고 그중 하나를 빼먹으면 기사가 조용히 새거나 겹친다.
+ *
+ * 요일 표가 없는 갈래(PAP 셋)는 예전 그대로 cfg.days 다.
+ */
+function windowDaysFor(bucket, dow) {
+  const cfg = BUCKETS[bucket];
+  if (!cfg) return 0;
+  const byDow = cfg.daysByDow;
+  if (byDow && byDow[dow] != null) return byDow[dow];
+  return cfg.days;
+}
 
 /** 'Fashion,Culture' → ['fashion','culture'] */
 function splitCategories(raw) {
@@ -81,10 +122,16 @@ function cutoffIso(days) {
    (api/sitemap-articles.js)이 내보내는 정본과 어긋나 301 이 생긴다
    — 2026 Ahrefs 감사에서 확인된 순서다. */
 function articleUrl(a) {
-  return SITE + '/article/' + (a.slug || a.custom_url || a.id);
+  return SITES.pap + '/article/' + (a.slug || a.custom_url || a.id);
 }
 function editorialUrl(e) {
-  return SITE + '/editorial/' + (e.slug || e.id);
+  return SITES.pap + '/editorial/' + (e.slug || e.id);
+}
+
+/* 페퍼릿 기사 URL. sitemap-pepperit.js 가 내보내는 정본과 같은 모양이어야
+   한다 — 사이트맵은 slug 없으면 id 로 떨어지고 custom_url 개념이 없다. */
+function pepperitArticleUrl(a) {
+  return SITES.pepperit + '/article/' + (a.slug || a.id);
 }
 
 function fromArticle(a) {
@@ -112,6 +159,33 @@ function fromEditorial(e) {
     site_url: editorialUrl(e),
     ig_url: e.source_instagram_url || '',
     thumb: e.thumbnail || e.cover_image || '',
+  };
+}
+
+/**
+ * 페퍼릿 기사 → 소재 항목 (2026-08-05).
+ *
+ * source 를 'pepperit' 으로 따로 둔다. 'article' 로 뭉뚱그리면 PAP articles 의
+ * id 와 pepperit_articles 의 id 가 같은 이름 공간에 섞여, 중복 방지 키
+ * ('source:id')가 서로를 오인할 수 있다. 둘 다 uuid 라 실제 충돌 확률은 낮지만
+ * 중복 방지는 확률에 기대면 안 되는 자리다.
+ * (social_digest_items.source CHECK 에 'pepperit' 을 넣는 건 마이그레이션 099.)
+ *
+ * title_en 을 빈 문자열로 두는 건 페퍼릿 표에 그 컬럼이 없어서다 — 항목 모양은
+ * PAP 과 같게 맞춰 두고, 없는 값만 비운다. 조립부가 갈래마다 다른 모양을
+ * 알아야 하는 상황을 만들지 않는다.
+ */
+function fromPepperitArticle(a) {
+  return {
+    source: 'pepperit',
+    id: String(a.id),
+    title: a.title || '',
+    title_en: '',
+    categories: splitCategories(a.category),
+    published_date: a.published_date,
+    site_url: pepperitArticleUrl(a),
+    ig_url: a.source_instagram_url || '',
+    thumb: a.thumbnail_url || '',
   };
 }
 
@@ -166,10 +240,44 @@ async function fetchEditorials(days, legacy) {
   return data || [];
 }
 
+async function fetchPepperitArticles(days) {
+  /* pepperit_articles 에는 scheduled_publish_at 이 없다 (예약 발행 기능이
+     페퍼릿에는 없다). 그래도 isLive() 를 그대로 태우는 이유는, 나중에 컬럼이
+     생겼을 때 이 자리를 다시 찾아 고쳐야 하는 상황을 안 만들기 위해서다 —
+     값이 없으면 isLive 는 status 만 본다. */
+  const { data, error } = await supabaseAdmin
+    .from('pepperit_articles')
+    .select('id, title, slug, category, status, published_date, thumbnail_url, source_instagram_url')
+    .eq('status', 'published')
+    .gte('published_date', cutoffIso(days))
+    .order('published_date', { ascending: false })
+    .limit(300);
+  if (error) throw new Error('pepperit_articles 조회 실패: ' + error.message);
+  return data || [];
+}
+
+/**
+ * 페퍼릿 소재 정렬 — **당분간 최신순(published_date desc)**.
+ *
+ * 도메니코가 원한 건 화제성 순이다. 그런데 지금은 그럴 데이터가 없다:
+ * 지표 표(`ig_post_metric`)가 아직 @pepperitmag 을 수집하지 않아서,
+ * `pepperit_articles.source_instagram_post_id` 150건과 매칭되는 지표 행이
+ * **0건**이다(2026-08-05 실측). 없는 값으로 정렬하면 순서는 사실상 무작위가
+ * 되고, 그건 최신순보다 나쁘다.
+ *
+ * 그래서 정렬만 이 함수 하나로 떼어 놓았다. **지표가 쌓이면 이 함수만
+ * 갈아끼우면 된다** — collect() 도 조립부도 건드릴 필요가 없다. 교체할 때
+ * 확인할 것은 딱 하나, ig_post_metric 이 @pepperitmag 을 수집하고 있는가다.
+ */
+function sortByRecency(items) {
+  return items.slice().sort((a, b) =>
+    String(b.published_date || '').localeCompare(String(a.published_date || '')));
+}
+
 /**
  * 한 갈래의 소재를 고른다.
  *
- * @param {'editorial'|'collection'|'celeb'} bucket
+ * @param {'editorial'|'collection'|'celeb'|'pepperit'} bucket
  * @param {{days?:number, limit?:number, skipDedupe?:boolean}} [opts]
  *   days        창 길이 (기본값은 BUCKETS 의 갈래별 기본)
  *   limit       최대 개수 (0 이면 무제한. 기본값은 갈래별 BUCKETS.limit)
@@ -188,6 +296,12 @@ async function collect(bucket, opts) {
   let items = [];
   if (bucket === 'editorial') {
     items = (await fetchEditorials(days, false)).filter((e) => isLive(e, nowIso)).map(fromEditorial);
+  } else if (bucket === 'pepperit') {
+    /* 페퍼릿은 카테고리로 가르지 않는다. 갈래가 하나뿐이라 겹칠 상대가 없다 —
+       PAP 의 CELEB_CATEGORIES 블랙리스트가 여기 필요 없는 이유다. */
+    items = sortByRecency((await fetchPepperitArticles(days))
+      .filter((a) => isLive(a, nowIso))
+      .map(fromPepperitArticle));
   } else if (bucket === 'celeb') {
     items = (await fetchArticles(days))
       .filter((a) => isLive(a, nowIso) && isCelebCategory(a.category))
@@ -216,11 +330,16 @@ async function collect(bucket, opts) {
 
 module.exports = {
   BUCKETS,
+  SITES,
   CELEB_CATEGORIES,
   splitCategories,
   isCelebCategory,
   isLive,
+  windowDaysFor,
   articleUrl,
   editorialUrl,
+  pepperitArticleUrl,
+  fromPepperitArticle,
+  sortByRecency,
   collect,
 };

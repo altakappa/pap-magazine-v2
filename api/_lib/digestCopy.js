@@ -33,14 +33,64 @@
  * 어미는 socialHook 의 toneFor/isPolite 를 그대로 쓴다. 채널별 말투 분기는
  * 저장소에 딱 한 군데(socialHook)만 있어야 한다 — tests/social-tone.test.js
  * 가 그걸 지키고 있다. 여기서 platform === 'x' 삼항을 또 쓰면 안 된다.
+ *
+ * ── 페퍼릿 갈래 (2026-08-05, 도메니코 확정) ─────────────────────────
+ * 페퍼릿은 PAP 과 톤이 완전히 다르다. **전체 존댓말**이고, 나가는 문도
+ * @pepperitmag 이며, 무엇보다 **제목만 나열한다** — 항목별 소개말이 없다.
+ *
+ * 그래서 페퍼릿 경로는 generateNotes() 를 아예 부르지 않는다. 쓰지도 않을
+ * 소개말을 만드느라 항목 수만큼 토큰을 쓰고, 자동 발행 경로에 실패할 수 있는
+ * 외부 호출을 하나 더 매다는 셈이기 때문이다. 안 쓰는 값은 안 만든다.
+ *
+ * 여기서 갈리는 축은 '채널'이 아니라 '브랜드'다. 채널(x/threads) 말투 분기는
+ * 여전히 socialHook 한 군데뿐이고, 이 파일이 더한 것은 PAP 이냐 페퍼릿이냐다.
+ * 두 축을 섞지 않으려고 브랜드 분기는 isPoliteFor/igUrlFor/isTitleOnly 세
+ * 함수에만 두었다 — 조립부·build() 는 그 결과만 받는다.
+ *
+ * papVoice 는 PAP 목소리 사전이다(호칭 '패퍼들' 치환까지 들어 있다).
+ * 페퍼릿에는 태우지 않는다.
  */
 
 const papVoice = require('./papVoice');
 const socialHook = require('./socialHook');
 const { weightedLen } = require('./xPost');
 
-/* 나가는 문은 이 하나뿐이다. */
-const IG_URL = 'https://www.instagram.com/pap_magazine/';
+/* 나가는 문은 글 하나에 하나뿐이다. 다만 그 문이 브랜드마다 다르다.
+   IG_URL 은 PAP 값으로 남겨 둔다 — 기존 호출부·테스트가 이 이름을 쓴다. */
+const IG_URLS = {
+  pap:      'https://www.instagram.com/pap_magazine/',
+  pepperit: 'https://www.instagram.com/pepperitmag/',
+};
+const IG_URL = IG_URLS.pap;
+
+/* 페퍼릿 갈래 이름. 브랜드 분기가 이 상수 하나를 보게 해서, 갈래 이름이
+   문자열로 여기저기 박히는 걸 막는다. */
+const PEPPERIT_BUCKET = 'pepperit';
+
+/** 갈래 → 나가는 문(인스타 프로필). 모르는 갈래는 PAP 이다. */
+function igUrlFor(bucket) {
+  return bucket === PEPPERIT_BUCKET ? IG_URLS.pepperit : IG_URLS.pap;
+}
+
+/**
+ * 제목만 나열하는 갈래인가 (= 소개말도, 그걸 만드는 AI 호출도 없음).
+ * 지금은 페퍼릿 하나뿐이지만, 판정을 함수로 두면 늘어날 때 한 곳만 고친다.
+ */
+function isTitleOnly(bucket) {
+  return bucket === PEPPERIT_BUCKET;
+}
+
+/**
+ * 존댓말인가.
+ *
+ * 채널 축은 socialHook.isPolite 가 정한다(스레드=반말 / X=존댓말) — 그 판정은
+ * 여기서 다시 쓰지 않고 그대로 넘겨받는다. 그 위에 브랜드 축이 하나 더 있다:
+ * 페퍼릿은 채널과 무관하게 전체 존댓말이다. PAP 갈래는 예전 그대로다.
+ */
+function isPoliteFor(bucket, platform) {
+  if (bucket === PEPPERIT_BUCKET) return true;
+  return socialHook.isPolite(platform);
+}
 
 /* X 는 280 가중치. 링크는 무조건 23 으로 계산되므로(t.co), 링크 자리를
    먼저 빼두고 본문을 채운다. 줄바꿈 여유로 2 를 더 남긴다. */
@@ -68,7 +118,15 @@ const HEADLINE = {
   editorial:  { x: '이번 주 PAP 오리지널 에디토리얼', threads: '이번 주 새로 올라온 PAP 오리지널 에디토리얼 모음.' },
   collection: { x: '최근 소개한 아트 콜렉션',         threads: '최근 소개한 아트 콜렉션 모음.' },
   celeb:      { x: '최근 셀럽 소식',                  threads: '최근 셀럽들 소식 모음.' },
+  /* 페퍼릿은 스레드만 쓴다 (X 계정이 없다) — 그래서 x 칸이 없다.
+     PAP 머리말이 체언 + 마침표로 끊는 것과 달리 문장으로 말을 건다.
+     같은 표에 있어도 말투가 다른 게 정상이다. 2026-08-05 도메니코 확정. */
+  pepperit:   { threads: '요 며칠 페퍼릿 소식 모아봤어요 🩷' },
 };
+
+/* 마무리 한 줄도 브랜드마다 다르다. PAP 은 존댓말/반말 두 벌이고(closingFor),
+   페퍼릿은 어느 채널이든 이 한 줄이다. 2026-08-05 도메니코 확정. */
+const PEPPERIT_CLOSING = '더 많은 소식은 인스타에서 확인해주세요 🩷';
 
 /* 모델이 뱉을 수 있는 링크 흔적. 자동 발행이라 사람이 못 거르니 기계로 지운다. */
 const URLISH = /(https?:\/\/\S+|www\.\S+|\b[\w-]+\.(?:com|net|org|co\.kr|kr|io|me|ly)\b\S*)/gi;
@@ -82,7 +140,8 @@ const URLISH = /(https?:\/\/\S+|www\.\S+|\b[\w-]+\.(?:com|net|org|co\.kr|kr|io|m
  * 그래서 존댓말·반말 두 벌을 미리 적어 둔다. 채널 판정은 socialHook.isPolite
  * 하나뿐이고 여기서는 그 결과(boolean)만 쓴다.
  */
-function closingFor(polite) {
+function closingFor(polite, bucket) {
+  if (bucket === PEPPERIT_BUCKET) return PEPPERIT_CLOSING;
   return polite ? '전체 기사는 인스타에서 보실 수 있어요' : '더 많은 현장은 PAP 인스타그램에서 확인!';
 }
 
@@ -191,7 +250,7 @@ async function generateNotes(items, bucket, platform) {
     const notes = Array.isArray(g.notes) ? g.notes : [];
     return {
       /* 모델이 intro·closing 을 보내와도 안 쓴다. 머리말과 마무리는 코드 몫이다. */
-      closing: closingFor(polite),
+      closing: closingFor(polite, bucket),
       notes: items.map((_, i) => papVoice.normalizeSocialAddress(cleanNote(notes[i], { max: noteMax }), { polite })),
     };
   } catch (_) {
@@ -199,10 +258,13 @@ async function generateNotes(items, bucket, platform) {
   }
 }
 
-/* 모델이 죽었을 때 나가는 문장. 마무리는 위와 같은 문장을 쓴다. */
-function fallbackCopy(items, polite) {
+/* 모델이 죽었을 때 나가는 문장. 마무리는 위와 같은 문장을 쓴다.
+   제목만 나열하는 갈래(페퍼릿)는 '모델이 죽었을 때'가 아니라 *늘* 이 경로다 —
+   notes 가 전부 빈 문자열이라 조립부가 제목만 남긴다. bucket 은 마무리 한 줄을
+   고르는 데만 쓴다. 안 주면 예전과 같이 PAP 문장이다. */
+function fallbackCopy(items, polite, bucket) {
   return {
-    closing: closingFor(polite),
+    closing: closingFor(polite, bucket),
     notes: items.map(() => ''),
   };
 }
@@ -234,7 +296,8 @@ function fitDown(items, build, fits) {
    빈 줄은 두 군데 — 머리말 밑과 마무리 앞이다. 마무리는 목록의 일곱 번째
    항목이 아니라 딴 소리이므로 눈으로도 떨어져 보여야 한다 (5차 지시).
    X 는 그대로 붙여 쓴다. 가중 280자에 빈 줄 넣을 자리가 없다. */
-function assembleThreads(headline, copy, items) {
+function assembleThreads(headline, copy, items, igUrl) {
+  const link = igUrl || IG_URL;
   const build = (n, withNotes) => {
     const lines = [headline, ''];
     for (let i = 0; i < n; i++) {
@@ -242,24 +305,25 @@ function assembleThreads(headline, copy, items) {
     }
     lines.push('');
     if (copy.closing) lines.push(copy.closing);
-    lines.push(IG_URL);
+    lines.push(link);
     return lines.join('\n');
   };
   return fitDown(items, build, (s) => s.length <= THREADS_MAX);
 }
 
-function assembleX(headline, copy, items) {
+function assembleX(headline, copy, items, igUrl) {
+  const link = igUrl || IG_URL;
   const build = (n, withNotes) => {
     const lines = [headline];
     for (let i = 0; i < n; i++) {
       lines.push(renderItem(i + 1, cleanTitle(items[i].title), withNotes ? copy.notes[i] : ''));
     }
     if (copy.closing) lines.push(copy.closing);
-    lines.push(IG_URL);
+    lines.push(link);
     return lines.join('\n');
   };
   /* X 는 자리가 좁다. 그래도 잘라내는 순서는 스레드와 같다 — 소개말 먼저. */
-  return fitDown(items, build, (s) => weightedLen(s.replace(IG_URL, '')) + X_LINK_COST <= X_WEIGHTED_MAX);
+  return fitDown(items, build, (s) => weightedLen(s.replace(link, '')) + X_LINK_COST <= X_WEIGHTED_MAX);
 }
 
 /* 조립 방식은 채널별로 다르다. 분기를 함수 안에 삼항으로 두지 않고 표로
@@ -277,31 +341,45 @@ async function build(picked, platform) {
   const items = (picked.items || []).filter((it) => it && it.title);
   if (!items.length) return null;
 
-  const polite = socialHook.isPolite(platform);
-  const headRow = HEADLINE[picked.bucket] || {};
+  const bucket = picked.bucket;
+  const polite = isPoliteFor(bucket, platform);
+  const igUrl = igUrlFor(bucket);
+  const headRow = HEADLINE[bucket] || {};
   const headline = headRow[platform] || picked.label;
 
-  const copy = (await generateNotes(items, picked.bucket, platform)) || fallbackCopy(items, polite);
+  /* 제목만 나열하는 갈래는 모델을 아예 안 부른다. fallbackCopy 가 '실패했을 때
+     쓰는 것'이 아니라 '이 갈래의 정상 경로'다 — notes 가 전부 빈 문자열이라
+     조립부가 제목만 남긴다. 여기서 generateNotes 를 부르면 쓰지도 않을 소개말에
+     항목 수만큼 토큰을 쓰고, 자동 발행 경로에 실패 지점을 하나 더 다는 셈이다. */
+  const copy = isTitleOnly(bucket)
+    ? fallbackCopy(items, polite, bucket)
+    : ((await generateNotes(items, bucket, platform)) || fallbackCopy(items, polite, bucket));
 
-  let text = (ASSEMBLE[platform] || assembleThreads)(headline, copy, items);
+  let text = (ASSEMBLE[platform] || assembleThreads)(headline, copy, items, igUrl);
 
   text = socialHook.stripDashes(text);
 
   /* 검수 게이트는 로그만 남긴다 (auditKoreanBody). 자동 발행이라 오탐 하나로
-     그날 글을 통째로 막으면 안 된다 — b2616fa 에서 정한 방침이다. */
-  try {
-    /* structure:false — 린터의 단락·길이 규칙은 기사 본문 기준이다.
-       다이제스트는 애초에 목록이라 단락이 여러 개인 게 정상이다. */
-    papVoice.auditKoreanBody(text, {
-      style: polite ? 'polite' : 'casual',
-      structure: false,
-      where: 'digest:' + picked.bucket + ':' + platform,
-    });
-  } catch (_) {}
+     그날 글을 통째로 막으면 안 된다 — b2616fa 에서 정한 방침이다.
+     페퍼릿은 태우지 않는다 — papVoice 는 PAP 목소리 사전이라, 톤이 다른 브랜드를
+     넣으면 매번 오탐만 쌓인다. 게다가 페퍼릿 본문은 제목 나열뿐이라 볼 것도 없다. */
+  if (!isTitleOnly(bucket)) {
+    try {
+      /* structure:false — 린터의 단락·길이 규칙은 기사 본문 기준이다.
+         다이제스트는 애초에 목록이라 단락이 여러 개인 게 정상이다. */
+      papVoice.auditKoreanBody(text, {
+        style: polite ? 'polite' : 'casual',
+        structure: false,
+        where: 'digest:' + bucket + ':' + platform,
+      });
+    } catch (_) {}
+  }
 
-  /* 링크는 하나여야 한다. 조립 과정에서 둘이 되면 그건 버그다. */
+  /* 링크는 하나여야 한다. 조립 과정에서 둘이 되면 그건 버그다.
+     비교 대상은 갈래의 인스타 주소다 — 페퍼릿 글에 PAP 링크가 붙으면 그것도
+     여기서 걸린다. */
   const links = text.match(/https?:\/\/\S+/g) || [];
-  if (links.length !== 1 || links[0] !== IG_URL) return null;
+  if (links.length !== 1 || links[0] !== igUrl) return null;
 
   /* 길이 때문에 덜어낸 항목은 '나갔다'고 기록하면 안 된다. 기록해 버리면
      중복 방지(social_digest_items)가 그 글을 영영 다시 안 뽑는다.
@@ -313,6 +391,12 @@ async function build(picked, platform) {
 
 module.exports = {
   IG_URL,
+  IG_URLS,
+  PEPPERIT_BUCKET,
+  PEPPERIT_CLOSING,
+  igUrlFor,
+  isTitleOnly,
+  isPoliteFor,
   X_WEIGHTED_MAX,
   THREADS_MAX,
   NOTE_LEN,

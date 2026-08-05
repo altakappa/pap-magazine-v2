@@ -1,16 +1,34 @@
 /**
- * PAP Magazine — Threads API 공유 라이브러리 (@pap_magazine)
+ * PAP Magazine — Threads API 공유 라이브러리 (@pap_magazine · @pepperitmag)
  *
  * 의존 env: THREADS_APP_ID, THREADS_APP_SECRET
  * 토큰 저장: threads_auth 테이블 (071) — 장기 토큰 60일, 만료 임박 시 자동 연장.
  *
  * 소비자:
- *   api/threads/oauth.js    — 인증 시작 (관리자 1회, @pap_magazine 로그인 상태)
+ *   api/threads/oauth.js    — 인증 시작 (관리자 1회, 해당 계정 로그인 상태)
  *   api/threads/callback.js — 코드 교환 → 장기 토큰 저장
  *   api/cron/threads-post.js — 신규 기사 자동 게시 (TEXT + 링크 프리뷰)
+ *   api/cron/social-digest.js — 모아보기 다이제스트 (PAP=1, 페퍼릿=2)
  *
  * 앱은 개발 모드 + @pap_magazine 이 Threads 테스터 — 본 계정 게시는 심사 없이
  * 즉시 실사용 가능 (테스터 계정의 게시물은 실제 공개 게시물이다).
+ *
+ * ── 계정 다중화 (2026-08-05, 도메니코 지시) ─────────────────────────
+ * threads_auth 는 원래 한 행짜리 표였다 (071 — `id INT PRIMARY KEY DEFAULT 1
+ * CHECK (id = 1)`). 페퍼릿(@pepperitmag)이 자기 다이제스트를 따로 내보내게
+ * 되면서 계정이 둘이 됐고, 행을 id 로 가른다. **1 = PAP · 2 = 페퍼릿.**
+ * `CHECK (id = 1)` 은 마이그레이션 099 에서 푼다 — 그게 안 돌면 id=2 저장이
+ * 코드가 아니라 DB 에서 막힌다. (표 구조는 이미 있었지만 제약이 남아 있었다.)
+ *
+ * 모든 함수의 accountId 는 기본값 1 이다. 기존 호출부(threadsAutopost,
+ * threads-post, threads-metrics)는 인자 없이 그대로 부르면 예전과 완전히 같은
+ * 동작을 한다 — 페퍼릿은 순수 추가지 PAP 경로 변경이 아니다.
+ *
+ * REDIRECT_URI 는 계정이 늘어도 늘리지 않는다. 콜백 도메인을 하나 더 만들면
+ * Meta 앱 콘솔의 리디렉션 URL 목록까지 같이 바꿔야 하는데, 그건 저장소 밖의
+ * 설정이라 배포로 되돌릴 수가 없다. 대신 "어느 계정을 인증하는 중인가"를
+ * OAuth state 에 실어 보내고 콜백에서 되읽는다. state 는 원래 승인 화면을
+ * 왕복하는 자유 문자열이라 이런 용도로 쓰라고 있는 자리다.
  */
 
 const { supabaseAdmin } = require('./supabase');
@@ -25,19 +43,69 @@ const GRAPH = 'https://graph.threads.net';
 const SCOPES = 'threads_basic,threads_content_publish,threads_manage_insights';
 const REDIRECT_URI = 'https://www.pap-magazine.com/api/threads/callback';
 
-function authorizeUrl(state) {
+/* threads_auth.id → 계정. 번호는 DB 행 번호 그 자체다 (1=PAP, 2=페퍼릿).
+   oauthUrl 이 둘 다 pap-magazine.com 인 것은 오타가 아니다 — 위 머리말대로
+   콜백 도메인을 하나로 묶었으므로 인증 시작점도 한 도메인에 둔다. */
+const ACCOUNTS = {
+  1: { handle: '@pap_magazine', brand: 'PAP',
+       oauthUrl: 'https://www.pap-magazine.com/api/threads/oauth' },
+  2: { handle: '@pepperitmag', brand: 'PEPPERIT',
+       oauthUrl: 'https://www.pap-magazine.com/api/threads/oauth?account=2' },
+};
+const DEFAULT_ACCOUNT_ID = 1;
+
+/**
+ * 계정 번호 정규화. 모르는 값·빈 값은 조용히 1(PAP)로 떨어뜨린다.
+ * 여기서 던지지 않는 이유: 이 값은 크론 쿼리스트링과 OAuth state 처럼 바깥에서
+ * 들어온다. 오타 하나로 PAP 자동 게시가 통째로 멎는 것보다, 기본 계정으로
+ * 떨어뜨리고 넘어가는 쪽이 덜 위험하다.
+ */
+function normalizeAccountId(accountId) {
+  const n = Number(accountId);
+  return ACCOUNTS[n] ? n : DEFAULT_ACCOUNT_ID;
+}
+
+/** 계정 메타 (handle / brand / oauthUrl). 알림 문구가 계정을 밝히는 데 쓴다. */
+function accountInfo(accountId) {
+  return ACCOUNTS[normalizeAccountId(accountId)];
+}
+
+/**
+ * OAuth state 에 계정 번호를 싣는다 — 'acct2.<타임스탬프>' 꼴.
+ * 콜백이 이 값만 보고 어느 행에 토큰을 넣을지 정한다.
+ */
+function buildState(accountId) {
+  return 'acct' + normalizeAccountId(accountId) + '.' + Date.now();
+}
+
+/**
+ * state 에서 계정 번호를 되읽는다.
+ * 형식이 안 맞거나 아예 없으면 1 이다 — 예전에 나간 'pap-<ts>' 형식 state 로
+ * 돌아오는 승인 화면이 있어도 PAP 토큰으로 정상 저장된다(하위 호환).
+ */
+function accountIdFromState(state) {
+  const m = String(state || '').match(/^acct(\d+)\./);
+  return m ? normalizeAccountId(m[1]) : DEFAULT_ACCOUNT_ID;
+}
+
+/**
+ * 승인 화면 URL.
+ * state 를 직접 주면 그대로 쓰고(기존 호출부 호환), 안 주면 accountId 로 만든다.
+ */
+function authorizeUrl(state, accountId) {
   const p = new URLSearchParams({
     client_id: process.env.THREADS_APP_ID,
     redirect_uri: REDIRECT_URI,
     scope: SCOPES,
     response_type: 'code',
-    state: state || 'pap',
+    state: state || buildState(accountId),
   });
   return AUTH_BASE + '?' + p.toString();
 }
 
 // 코드 → 단기 토큰 → 장기 토큰(60일) 교환 후 저장
-async function exchangeCode(code) {
+async function exchangeCode(code, accountId) {
+  const acct = normalizeAccountId(accountId);
   const body = new URLSearchParams({
     client_id: process.env.THREADS_APP_ID,
     client_secret: process.env.THREADS_APP_SECRET,
@@ -61,13 +129,13 @@ async function exchangeCode(code) {
   const lj = await lr.json();
   if (!lr.ok || lj.error) throw new Error('장기 토큰 교환 실패: ' + JSON.stringify(lj).slice(0, 200));
 
-  await saveToken({ user_id: String(j.user_id || ''), access_token: lj.access_token, expires_in: lj.expires_in });
-  return { user_id: j.user_id, expires_in: lj.expires_in };
+  await saveToken({ user_id: String(j.user_id || ''), access_token: lj.access_token, expires_in: lj.expires_in }, acct);
+  return { user_id: j.user_id, expires_in: lj.expires_in, account_id: acct, handle: ACCOUNTS[acct].handle };
 }
 
-async function saveToken(t) {
+async function saveToken(t, accountId) {
   const patch = {
-    id: 1,
+    id: normalizeAccountId(accountId),
     access_token: t.access_token,
     expires_at: new Date(Date.now() + (t.expires_in || 5184000) * 1000).toISOString(),
     scope: SCOPES,
@@ -82,29 +150,33 @@ async function saveToken(t) {
 // 마지막 발송 시각은 threads_auth.alerted_at 에 기록한다 (마이그레이션 097).
 const TOKEN_ALERT_COOLDOWN_MS = 6 * 3600 * 1000;
 
-async function alertTokenTrouble(kind, msLeft, row, detail) {
+async function alertTokenTrouble(kind, msLeft, row, detail, accountId) {
   try {
+    const acct = normalizeAccountId(accountId);
+    const info = ACCOUNTS[acct];
     const last = row && row.alerted_at ? new Date(row.alerted_at).getTime() : 0;
     if (Date.now() - last < TOKEN_ALERT_COOLDOWN_MS) return;
     const days = Math.max(0, Math.floor(msLeft / 86400000));
     const expired = kind === 'expired';
+    /* 알림에 계정을 밝힌다. 계정이 둘이 된 뒤로 '토큰 만료' 한 줄만 봐서는
+       어느 쪽을 재인증해야 하는지 알 수가 없다 — 재인증 링크도 계정별이다. */
     await pushAlert({
       title: expired
-        ? '\uD83D\uDD11 [PAP] Threads 토큰 만료 — 자동 게시 중단'
-        : '\uD83D\uDD11 [PAP] Threads 토큰 연장 실패 — ' + days + '일 남음',
+        ? '\uD83D\uDD11 [' + info.brand + '] Threads 토큰 만료 — 자동 게시 중단'
+        : '\uD83D\uDD11 [' + info.brand + '] Threads 토큰 연장 실패 — ' + days + '일 남음',
       lines: [
         expired
           ? '토큰이 만료돼 Threads 자동 게시가 멈췄다.'
           : '자동 연장이 실패했다. 남은 기간 동안은 기존 토큰으로 계속 게시되지만, ' + days + '일 뒤 멈춘다.',
-        '조치: @pap_magazine 로그인 상태에서 아래 링크 1회 방문 → 재인증',
+        '조치: ' + info.handle + ' 로그인 상태에서 아래 링크 1회 방문 → 재인증',
         '사유: ' + String(detail || '').slice(0, 200),
       ],
-      url: 'https://www.pap-magazine.com/api/threads/oauth',
-      urlLabel: 'Threads 재인증',
+      url: info.oauthUrl,
+      urlLabel: 'Threads 재인증 (' + info.handle + ')',
       personalOnly: true,
     });
     await supabaseAdmin.from('threads_auth')
-      .update({ alerted_at: new Date().toISOString() }).eq('id', 1);
+      .update({ alerted_at: new Date().toISOString() }).eq('id', acct);
   } catch (e) {
     // 알림 실패가 게시를 막으면 안 된다 — 로그만 남기고 통과.
     console.error('[threads] 토큰 알림 실패:', e && e.message);
@@ -112,9 +184,12 @@ async function alertTokenTrouble(kind, msLeft, row, detail) {
 }
 
 // 유효 토큰 반환 — 만료 7일 전부터 th_refresh_token 으로 60일 연장
-async function getAccessToken() {
-  const { data: row, error } = await supabaseAdmin.from('threads_auth').select('*').eq('id', 1).single();
-  if (error || !row || !row.access_token) throw new Error('Threads 미인증 — /api/threads/oauth 로 1회 인증 필요');
+// accountId 기본값 1(PAP). 계정마다 토큰·만료·알림 쿨다운이 따로 돈다.
+async function getAccessToken(accountId) {
+  const acct = normalizeAccountId(accountId);
+  const info = ACCOUNTS[acct];
+  const { data: row, error } = await supabaseAdmin.from('threads_auth').select('*').eq('id', acct).single();
+  if (error || !row || !row.access_token) throw new Error('Threads 미인증 (' + info.handle + ') — ' + info.oauthUrl + ' 로 1회 인증 필요');
   const msLeft = new Date(row.expires_at || 0).getTime() - Date.now();
   if (msLeft > 7 * 86400000) return { token: row.access_token, userId: row.user_id };
   const r = await fetch(GRAPH + '/refresh_access_token?grant_type=th_refresh_token&access_token='
@@ -127,13 +202,13 @@ async function getAccessToken() {
     // 이제 알림을 보낸다 (6시간 쿨다운 — 10분 크론 스팸 방지).
     const why = JSON.stringify(j && j.error ? j.error : j).slice(0, 200);
     if (msLeft > 0) {
-      await alertTokenTrouble('refresh', msLeft, row, why);
+      await alertTokenTrouble('refresh', msLeft, row, why, acct);
       return { token: row.access_token, userId: row.user_id };
     }
-    await alertTokenTrouble('expired', msLeft, row, why);
+    await alertTokenTrouble('expired', msLeft, row, why, acct);
     throw new Error('token refresh 실패 (만료) — /api/threads/oauth 재인증 필요: ' + JSON.stringify(j).slice(0, 150));
   }
-  await saveToken({ access_token: j.access_token, expires_in: j.expires_in });
+  await saveToken({ access_token: j.access_token, expires_in: j.expires_in }, acct);
   return { token: j.access_token, userId: row.user_id };
 }
 
@@ -147,10 +222,11 @@ async function getAccessToken() {
  * 토큰 소유자로 자동 매핑되어 안전.
  *
  * @param {string} text ≤500자
+ * @param {number} [accountId=1] threads_auth.id — 1=PAP, 2=페퍼릿
  * @returns {Promise<string>} thread id
  */
-async function postText(text) {
-  const { token } = await getAccessToken();
+async function postText(text, accountId) {
+  const { token } = await getAccessToken(accountId);
   const create = await fetch(GRAPH + '/v1.0/me/threads', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -196,13 +272,14 @@ async function postText(text) {
  * total_value.value 로 온다. 둘 다 받아 정규화한다.
  *
  * @param {string} threadId
+ * @param {number} [accountId=1] threads_auth.id — 지표는 게시한 계정의 토큰으로만 읽힌다
  * @returns {Promise<{views:number|null, likes:number|null, replies:number|null, reposts:number|null, quotes:number|null}>}
  */
 const INSIGHT_METRICS = ['views', 'likes', 'replies', 'reposts', 'quotes'];
 
-async function getThreadInsights(threadId) {
+async function getThreadInsights(threadId, accountId) {
   if (!threadId) throw new Error('thread_id 없음');
-  const { token } = await getAccessToken();
+  const { token } = await getAccessToken(accountId);
   const u = GRAPH + '/v1.0/' + encodeURIComponent(threadId) + '/insights'
     + '?metric=' + INSIGHT_METRICS.join(',')
     + '&access_token=' + encodeURIComponent(token);
@@ -230,4 +307,9 @@ async function getThreadInsights(threadId) {
   return out;
 }
 
-module.exports = { authorizeUrl, exchangeCode, getAccessToken, postText, getThreadInsights, INSIGHT_METRICS, REDIRECT_URI };
+module.exports = {
+  authorizeUrl, exchangeCode, getAccessToken, postText, getThreadInsights,
+  INSIGHT_METRICS, REDIRECT_URI,
+  /* 계정 다중화 (2026-08-05) — 호출부는 accountId 를 안 주면 예전대로 1(PAP)이다. */
+  ACCOUNTS, DEFAULT_ACCOUNT_ID, normalizeAccountId, accountInfo, buildState, accountIdFromState,
+};

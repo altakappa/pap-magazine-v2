@@ -85,6 +85,10 @@
       "schedule": "0 11 * * *"
     },
     {
+      "path": "/api/cron/social-digest?slot=mid",
+      "schedule": "0 3 * * 3,6"
+    },
+    {
       "path": "/api/cron/threads-metrics",
       "schedule": "17 * * * *"
     },

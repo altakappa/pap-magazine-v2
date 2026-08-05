@@ -224,35 +224,46 @@ const titles = (r) => r.items.map((i) => i.title);
   ok('인스타 원본이 없으면 ig_url 은 빈 문자열 (null 아님)',
     (await B.collect('celeb')).items.every((i) => typeof i.ig_url === 'string'));
 
-  section('발행 격자 — 아침·저녁 두 슬롯, 한 슬롯에 갈래 하나 (2026-08-03 6차 지시)');
+  section('발행 격자 — 아침·낮·저녁 세 슬롯, 한 슬롯에 갈래 하나');
+  /* 2026-08-05 — 페퍼릿(수·토 KST 12시)이 mid 슬롯으로 들어왔다. PAP 의
+     아침·저녁 격자는 한 칸도 안 바뀌었고, 아래 검사도 전부 그대로다. */
   /* 크론 핸들러는 env 없이 require 할 수 없어 소스 텍스트로 검증한다. */
   const fs = require('fs');
   const path = require('path');
   const cronSrc = fs.readFileSync(path.join(__dirname, '../api/cron/social-digest.js'), 'utf8');
   const gridSrc = cronSrc.match(/const SLOT_BUCKET = \{([\s\S]*?)\n\};/);
   ok('SLOT_BUCKET 을 찾았다', !!gridSrc);
-  const grid = { am: {}, pm: {} };
+  const grid = { am: {}, mid: {}, pm: {} };
   let cur = null;
   (gridSrc ? gridSrc[1] : '').split('\n').forEach((line) => {
-    const h = line.match(/^\s*(am|pm)\s*:\s*\{/);
+    const h = line.match(/^\s*(am|mid|pm)\s*:\s*\{/);
     if (h) { cur = h[1]; return; }
     const m = line.match(/^\s*(\d)\s*:\s*(?:'([a-z]+)'|null)/);
     if (m && cur) grid[cur][Number(m[1])] = m[2] || null;
   });
-  ok('두 슬롯에 요일 일곱 개가 모두 선언돼 있다',
-    Object.keys(grid.am).length === 7 && Object.keys(grid.pm).length === 7,
+  ok('세 슬롯에 요일 일곱 개가 모두 선언돼 있다',
+    ['am', 'mid', 'pm'].every((s) => Object.keys(grid[s]).length === 7),
     '받은 값: ' + JSON.stringify(grid));
   const dows = (slot, name) => Object.keys(grid[slot]).filter((d) => grid[slot][d] === name).map(Number);
   ok('아침 — 셀럽은 주 4회 월·화·목·금',
     dows('am', 'celeb').join(',') === '1,2,4,5', '받은 값: ' + JSON.stringify(dows('am', 'celeb')));
   ok('아침 — 에디토리얼은 주 1회 일',
     dows('am', 'editorial').join(',') === '0', '받은 값: ' + JSON.stringify(dows('am', 'editorial')));
-  ok('아침 — 수·토는 쉰다', grid.am[3] === null && grid.am[6] === null);
+  ok('아침 — 수·토는 쉰다 (PAP 격자는 그대로)', grid.am[3] === null && grid.am[6] === null);
+  ok('낮 — 페퍼릿은 수·토만',
+    dows('mid', 'pepperit').join(',') === '3,6', '받은 값: ' + JSON.stringify(dows('mid', 'pepperit')));
+  ok('낮 — 나머지 닷새는 쉰다',
+    [0, 1, 2, 4, 5].every((d) => grid.mid[d] === null));
+  ok('페퍼릿은 PAP 슬롯에 안 들어간다',
+    dows('am', 'pepperit').length === 0 && dows('pm', 'pepperit').length === 0);
   ok('저녁 — 콜렉션이 이레 내내',
     dows('pm', 'collection').join(',') === '0,1,2,3,4,5,6',
     '받은 값: ' + JSON.stringify(dows('pm', 'collection')));
-  ok('같은 날 아침·저녁이 같은 갈래를 쓰지 않는다',
-    [0, 1, 2, 3, 4, 5, 6].every((d) => !grid.am[d] || grid.am[d] !== grid.pm[d]));
+  ok('같은 날 세 슬롯이 같은 갈래를 쓰지 않는다',
+    [0, 1, 2, 3, 4, 5, 6].every((d) => {
+      const used = ['am', 'mid', 'pm'].map((s) => grid[s][d]).filter(Boolean);
+      return new Set(used).size === used.length;
+    }));
   ok('콜렉션이 아침에는 안 나온다 (한 갈래는 하루 한 번)',
     dows('am', 'collection').length === 0);
 
@@ -273,16 +284,28 @@ const titles = (r) => r.items.map((i) => i.title);
     '최대 간격 ' + maxGap('pm', 'collection') + '일');
   ok('셀럽 창은 4일', (await B.collect('celeb')).days === 4);
   ok('콜렉션 상한은 조립 천장(스레드 9건)보다 위에 있다', B.BUCKETS.collection.limit >= 9);
+  /* 페퍼릿은 창이 요일마다 다르다 — 수 4일 / 토 3일. 두 창을 합치면 7일이
+     겹침 없이 딱 덮인다. 어느 한쪽이 짧아지면 그 사이 기사가 영영 안 나간다. */
+  ok('페퍼릿 수요일 창 4일', B.windowDaysFor('pepperit', 3) === 4);
+  ok('페퍼릿 토요일 창 3일', B.windowDaysFor('pepperit', 6) === 3);
+  ok('두 창을 합치면 7일 (구멍도 겹침도 없다)',
+    B.windowDaysFor('pepperit', 3) + B.windowDaysFor('pepperit', 6) === 7);
+  ok('요일 표가 없는 PAP 갈래는 예전 그대로',
+    [0, 1, 2, 3, 4, 5, 6].every((d) => B.windowDaysFor('celeb', d) === 4
+      && B.windowDaysFor('collection', d) === 3 && B.windowDaysFor('editorial', d) === 7));
 
   const vercel = JSON.parse(fs.readFileSync(path.join(__dirname, '../vercel.json'), 'utf8'));
-  const slotCrons = vercel.crons.filter((c) => c.path.startsWith('/api/cron/social-digest'));
-  ok('vercel 크론이 슬롯마다 하나씩, 둘이다', slotCrons.length === 2,
-    '받은 값: ' + JSON.stringify(slotCrons));
-  ok('두 크론이 ?slot=am / ?slot=pm 을 달고 있다',
-    slotCrons.map((c) => c.path).sort().join('|')
-      === '/api/cron/social-digest?slot=am|/api/cron/social-digest?slot=pm',
-    '받은 값: ' + JSON.stringify(slotCrons.map((c) => c.path)));
-  ok('둘 다 매일 돈다', slotCrons.every((c) => /^0 \d+ \* \* \*$/.test(c.schedule)),
+  const allSlotCrons = vercel.crons.filter((c) => c.path.startsWith('/api/cron/social-digest'));
+  /* PAP 두 슬롯과 페퍼릿 한 슬롯을 나눠서 본다. 아래 검사들(매일 · KST 같은 날)은
+     PAP 격자의 계약이라, 주 2회로 도는 페퍼릿 크론까지 같이 세면 안 된다. */
+  const slotCrons = allSlotCrons.filter((c) => /slot=(am|pm)$/.test(c.path));
+  ok('vercel 크론이 슬롯마다 하나씩, 셋이다', allSlotCrons.length === 3,
+    '받은 값: ' + JSON.stringify(allSlotCrons));
+  ok('세 크론이 ?slot=am / ?slot=mid / ?slot=pm 을 달고 있다',
+    allSlotCrons.map((c) => c.path).sort().join('|')
+      === '/api/cron/social-digest?slot=am|/api/cron/social-digest?slot=mid|/api/cron/social-digest?slot=pm',
+    '받은 값: ' + JSON.stringify(allSlotCrons.map((c) => c.path)));
+  ok('PAP 두 슬롯은 매일 돈다', slotCrons.every((c) => /^0 \d+ \* \* \*$/.test(c.schedule)),
     '받은 값: ' + JSON.stringify(slotCrons.map((c) => c.schedule)));
   /* 크론은 UTC 다. am=UTC 0시 → KST 09시, pm=UTC 11시 → KST 20시.
      둘이 같은 KST 날짜 안에 들어와야 '오늘 같은 갈래' 판정이 성립한다. */
@@ -295,6 +318,17 @@ const titles = (r) => r.items.map((i) => i.title);
   ok('두 크론이 KST 같은 날에 떨어진다 (UTC 15시 전)',
     slotCrons.every((c) => Number(c.schedule.split(' ')[1]) < 15),
     '받은 값: ' + JSON.stringify(slotCrons.map((c) => c.schedule)));
+
+  /* 페퍼릿 크론 — PAP 과 시간대가 겹치면 안 된다(2026-08-05 도메니코). */
+  const midCron = allSlotCrons.find((c) => c.path.endsWith('mid'));
+  ok('페퍼릿 크론은 수·토만 돈다', !!midCron && /^0 \d+ \* \* 3,6$/.test(midCron.schedule),
+    midCron && midCron.schedule);
+  ok('페퍼릿 크론도 KST 같은 날에 떨어진다 (UTC 15시 전)',
+    !!midCron && Number(midCron.schedule.split(' ')[1]) < 15, midCron && midCron.schedule);
+  ok('페퍼릿 시각이 PAP 두 슬롯 어느 쪽과도 안 겹친다',
+    !!midCron && slotCrons.every((c) => kstHourOf(c) !== kstHourOf(midCron)),
+    'mid KST ' + (midCron ? kstHourOf(midCron) : '?') + '시 · PAP '
+      + JSON.stringify(slotCrons.map(kstHourOf)));
 
   /* ---------------------------------------------------------------- */
   console.log('\npassed: ' + pass + '   failed: ' + fail);
