@@ -45,6 +45,21 @@
 // `.ed-gallery-item` by the gallery-render code further down.
 // Calls /api/community/scraps with sourceType='editorial' so the API can
 // later cross-reference scraps to their PAP source content.
+// 2026-08-05 — 언어 접두어 유지 헬퍼 (다인).
+// 하드코딩된 '/editorial/<slug>' 점프가 /en, /ja 등에서 언어 접두어를 버리고
+// 한국어 경로로 튕기면 GSC 가 이를 "리디렉션이 포함된 페이지"로 집계한다.
+// 정의는 idempotent — 어느 파일이 먼저 로드돼도 안전하다.
+if (!window._papLangPrefix) {
+  window._papLangPrefix = function(){
+    try{
+      var m = String(location.pathname||'').match(/^\/(en|it|fr|es|ja|de|zh|ru)(\/|$)/);
+      if (m) return '/' + m[1];
+      if (window.__papDeepLinkLang) return '/' + window.__papDeepLinkLang;
+    }catch(_){}
+    return '';
+  };
+}
+
 (function _injectScrapBtnCss(){
   if(document.getElementById('papScrapBtnStyle')) return;
   var s=document.createElement('style');
@@ -1753,7 +1768,7 @@ window._papOpenRelatedEd = function(ev, title, cover, slug){
       return false;
     }
   } catch(_){}
-  try { location.href = '/editorial/' + slug; } catch(_){}
+  try { location.href = window._papLangPrefix() + '/editorial/' + slug; } catch(_){}
   return false;
 };
 

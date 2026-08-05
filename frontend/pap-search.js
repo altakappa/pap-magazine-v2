@@ -16,6 +16,21 @@
 //                        listener only fires on user typing, by which time
 //                        every script has run.
 
+// 2026-08-05 — 언어 접두어 유지 헬퍼 (다인).
+// 하드코딩된 '/editorial/<slug>' 점프가 /en, /ja 등에서 언어 접두어를 버리고
+// 한국어 경로로 튕기면 GSC 가 이를 "리디렉션이 포함된 페이지"로 집계한다.
+// 정의는 idempotent — 어느 파일이 먼저 로드돼도 안전하다.
+if (!window._papLangPrefix) {
+  window._papLangPrefix = function(){
+    try{
+      var m = String(location.pathname||'').match(/^\/(en|it|fr|es|ja|de|zh|ru)(\/|$)/);
+      if (m) return '/' + m[1];
+      if (window.__papDeepLinkLang) return '/' + window.__papDeepLinkLang;
+    }catch(_){}
+    return '';
+  };
+}
+
 function toggleSearch(){const o=document.getElementById('searchBar');if(!o)return;o.classList.toggle('active');if(o.classList.contains('active')){setTimeout(()=>{var si=document.getElementById('searchInput');if(si)si.focus();},300);}else{var dd=document.getElementById('searchDropdown');if(dd)dd.classList.remove('active');var si=document.getElementById('searchInput');if(si)si.value='';}}
 
 // QA #240 — Global delegation. The previous implementation cached
@@ -78,7 +93,7 @@ document.addEventListener('click', function(e){
   var slug = item.getAttribute('data-slug');
   if(!slug) return;
   try { toggleSearch(); } catch(_){}
-  window.location.href = '/editorial/' + slug;
+  window.location.href = window._papLangPrefix() + '/editorial/' + slug;
 });
 
 function searchEditorials(query){
@@ -154,7 +169,7 @@ function searchEditorials(query){
                 || String(ed.title||'').toLowerCase()
                      .replace(/['"`]+/g,'').replace(/[^\w\s가-힣-]+/g,'')
                      .trim().replace(/\s+/g,'-').replace(/-+/g,'-');
-              window.location.href = '/editorial/' + _slug;
+              window.location.href = window._papLangPrefix() + '/editorial/' + _slug;
             }
           };
         })(e);
