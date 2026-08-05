@@ -64,3 +64,4 @@ _patch_tmp_quarantine/
 # Claude 작업용 임시 스크립트·로그 (커밋 대상 아님)
 outputs_scratch/
 .fuse_hidden*
+_to_delete_gitlocks/
