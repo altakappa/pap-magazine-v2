@@ -867,7 +867,7 @@
      (첫 화면 심볼 오버레이 제거). 되살리려면 아래 스크립트 주석 해제.
 <script src="/pap-splash-loader.js?v=3"></script>
 -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script><script src="/pap-logos-data.js?v=1" defer></script><script src="/pap-api.js?v=14" defer></script><script src="/pap-social.js?v=8" defer></script><script src="/pap-utils.js?v=6" defer></script><script src="/pap-i18n.js?v=7" defer></script><script src="/pap-auth.js?v=3" defer></script><script src="/pap-search.js?v=5" defer></script><script src="/pap-static.js?v=1" defer></script><script src="/pap-subscription.js?v=3" defer></script><script src="/pap-home.js?v=3" defer></script><script src="/pap-content-editorial.js?v=48" defer></script><script src="/pap-content-film.js?v=13" defer></script><script src="/pap-content-article.js?v=45" defer></script><script src="/pap-content-creator-shorts.js?v=10" defer></script><script src="/pap-content-api-sync.js?v=120" defer></script><script src="/pap-content-seo.js?v=8" defer></script><script src="/pap-shell-bootstrap.js?v=10" defer></script><script src="/pap-app.js?v=20" defer></script><script src="/pap-lightbox.js?v=2" defer></script><script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=29" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script><script src="/pap-logos-data.js?v=1" defer></script><script src="/pap-api.js?v=14" defer></script><script src="/pap-social.js?v=8" defer></script><script src="/pap-utils.js?v=6" defer></script><script src="/pap-i18n.js?v=7" defer></script><script src="/pap-auth.js?v=3" defer></script><script src="/pap-search.js?v=5" defer></script><script src="/pap-static.js?v=1" defer></script><script src="/pap-subscription.js?v=3" defer></script><script src="/pap-home.js?v=3" defer></script><script src="/pap-content-editorial.js?v=49" defer></script><script src="/pap-content-film.js?v=13" defer></script><script src="/pap-content-article.js?v=45" defer></script><script src="/pap-content-creator-shorts.js?v=10" defer></script><script src="/pap-content-api-sync.js?v=120" defer></script><script src="/pap-content-seo.js?v=8" defer></script><script src="/pap-shell-bootstrap.js?v=10" defer></script><script src="/pap-app.js?v=20" defer></script><script src="/pap-lightbox.js?v=2" defer></script><script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=29" defer></script>
 <script src="/pap-protect.js?v=3" defer></script>
 <div class="creator-popup-overlay" id="creatorPopup" onclick="if(event.target===this)closeCreatorPopup()">
   <div class="creator-popup">
@@ -1261,14 +1261,13 @@
          pap-content-editorial.js#_papRenderEdIg 가 det.ig 존재 시 채움. -->
     <div id="edIgPostCta" style="display:none"></div>
     <div id="edSocialSlot"></div>
-    <!-- 검색→인스타 전환 깔때기 (2026-07) — 에디토리얼 오버레이 버전.
-         QA(2026-07) #9 — 공용 .ig-funnel 컴포넌트 사용(문구만 맥락별). -->
-    <aside class="ig-funnel">
-      <div class="igf-kicker">PAP Magazine — Instagram</div>
-      <div class="igf-copy" data-i18n-html="edIgCopy">이 에디토리얼의 비하인드와 다음 화보,<br><b>인스타그램에서 가장 먼저</b> 공개됩니다.</div>
-      <a class="igf-btn" href="/api/ig-out?src=editorial&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener">Follow @pap_magazine</a>
-      <div><button class="igf-share" data-i18n="edIgShare" onclick="_papShareStory()">이 스토리 공유 ↗</button></div>
-    </aside>
+    <!-- 2026-08-05 — 여기 있던 .ig-funnel 을 제거했다. 바로 위 #edIgPostCta 와
+         팔로우 링크(/api/ig-out)·공유 버튼이 완전히 같아 한 페이지에
+         "FOLLOW @PAP_MAGAZINE" 이 두 번 노출됐다(도메니코 지적).
+         에디토리얼의 IG 전환 CTA 는 #edIgPostCta 하나로 통일한다
+         (pap-content-editorial.js#_papRenderEdIg — IG 원본 유무에 따라
+         "On Instagram" / "Full Editorial" 두 변형을 항상 렌더한다).
+         기사(#artIgFunnel)·필름 오버레이의 .ig-funnel 은 그대로 둔다. -->
   </div>
 
   <!-- 체류시간 개선 (2026-07) — 임베딩 기반 관련 화보.
@@ -1276,15 +1275,10 @@
        화보 id)로 채운다. 결과 없으면(임베딩 미보유) 섹션 자체 숨김. -->
   <section id="edRelatedEditorials" hidden></section>
 
-  <!-- MORE CONTENT -->
-  <div class="ed-more-wrap">
-    <div class="ed-more-title">MORE CONTENT</div>
-    <div class="ed-more-carousel">
-      <button class="ed-more-arrow l" onclick="document.getElementById('edMoreTrack').scrollBy(-300,0)">‹</button>
-      <div class="ed-more-track" id="edMoreTrack"></div>
-      <button class="ed-more-arrow r" onclick="document.getElementById('edMoreTrack').scrollBy(300,0)">›</button>
-    </div>
-  </div>
+  <!-- 2026-08-05 — 여기 있던 MORE CONTENT(최신순 캐러셀, #edMoreTrack)를 제거했다.
+       바로 위 #edRelatedEditorials(임베딩 유사도 추천)와 역할이 겹쳐
+       "더 볼 것" 줄이 연달아 두 번 나왔다(도메니코 지시: 유사 추천만 남김).
+       채우던 코드도 pap-content-editorial.js 의 두 진입점에서 함께 제거했다. -->
 </div>
 
 <script src="/pap-auth-link.js?v=3" defer></script>
