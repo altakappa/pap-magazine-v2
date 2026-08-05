@@ -487,12 +487,29 @@ async function testCron() {
       process.env.SEO_TRANSLATE_LANGS = 'it';
     }
     /* 위 검증들은 SEO_TRANSLATE_KINDS 를 명시로 넘기므로 "기본값"은 보호하지
-       못한다(역검증에서 실제로 안 잡혔다). 기본값이 article 을 포함하는지는
-       소스를 직접 확인한다 — 기본에서 빠지면 운영에서 아티클이 영영 안 돈다. */
+       못한다(역검증에서 실제로 안 잡혔다). 기본값은 소스를 직접 확인한다 —
+       기본에서 빠지면 운영에서 아티클이 영영 안 돈다. */
     const cronSrc = require('fs').readFileSync(
       require('path').join(__dirname, '..', 'api/cron/backfill-translations.js'), 'utf8');
     ok('크론 기본 대상에 article 이 포함된다',
-      /SEO_TRANSLATE_KINDS \|\| 'editorial,article'/.test(cronSrc));
+      /SEO_TRANSLATE_KINDS \|\| 'article'/.test(cronSrc));
+
+    /* ── 2026-08-05 — 에디토리얼은 기본에서 뺀다 (GSC 실측) ──────────
+       색인된 /es/ 79쪽 중 클릭 있는 건 4쪽(합 12클릭), /es/editorial/* 는
+       전부 0클릭. 클릭이 난 번역 페이지는 전 언어 통틀어 예외 없이
+       /article/ 이었다. 에디토리얼은 원본 설명이 평균 15자라 번역해도
+       랭킹할 텍스트가 없고, 그 결과 구글이 주제를 못 잡아 무관한 한국어
+       쿼리('찰스엔터 얼굴 여백' 순위 52·56·88 등)에 매칭됐다.
+       같은 기간 사이트 CTR 6.7% → 2.2%.
+       되살리려면 env 로 명시한다(SEO_TRANSLATE_KINDS=editorial,article).
+       근거: 볼트 45_Business/PAP_SEO_가이드라인_2026-08-05.md */
+    ok('크론 기본 대상에서 editorial 이 빠져 있다',
+      !/SEO_TRANSLATE_KINDS \|\| '[^']*editorial/.test(cronSrc));
+    ok('그래도 editorial 을 env 로 되살릴 수 있다 (KINDS 에 정의는 남아 있다)',
+      !!(helper.KINDS && helper.KINDS.editorial));
+    ok('관리자 수동 엔드포인트는 kind 를 직접 받는다 (에디토리얼 수동 실행 가능)',
+      /kind/.test(require('fs').readFileSync(
+        require('path').join(__dirname, '..', 'api/admin/backfill-translations.js'), 'utf8')));
 
     /* ── 2026-07-30 ─────────────────────────────────────────────────
        ja 가 기본 언어에서 빠져 있었다. 사이트는 9개 언어를 표방하고

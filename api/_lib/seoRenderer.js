@@ -391,6 +391,30 @@ function renderSeoHtml(kind, record, opts) {
   const availableLangs = (opts && Array.isArray(opts.availableLangs) && opts.availableLangs.length)
     ? opts.availableLangs : ['ko', 'en'];
 
+  /* 2026-08-05 — 에디토리얼 번역본(ko/en 외)은 색인에서 뺀다.
+   *
+   * 근거는 Google Search Console 실측이다(7/1~8/4). 색인된 /es/ 페이지 79개
+   * 중 클릭이 있는 건 4개뿐이었고, 그중 에디토리얼은 0개다. 전 언어를 통틀어
+   * 클릭이 난 번역 페이지는 예외 없이 /article/ 이었다.
+   *
+   * 왜 에디토리얼만 실패하나 — 사진 중심이라 원본 설명이 평균 15자다.
+   * 번역해도 랭킹할 텍스트가 없어 구글이 페이지 주제를 못 잡고, 그 결과
+   * 무관한 한국어 쿼리에 매칭됐다('찰스엔터 얼굴 여백' 순위 52·56·88,
+   * '붉은 비키니 다시보기' 19·23 등). thin content 증상이자 브랜드 위험이다.
+   * 같은 기간 사이트 전체 CTR 은 6.7% → 2.2% 로 무너졌다.
+   *
+   * 약 17,000쪽(에디토리얼 2,293편 × 7언어)을 색인에서 빼는 결정이며
+   * 도메니코 승인 아래 진행한다. 잃는 클릭은 실측상 0이다.
+   *
+   * 되돌리는 법: 이 플래그를 false 로 만들면 몇 주에 걸쳐 재색인된다.
+   * 원본(ko/en)은 건드리지 않는다 — 그쪽은 클릭이 나오는 페이지다.
+   * 아티클 번역도 건드리지 않는다 — ja CTR 8.9%, it 순위 4.9 로 작동 중이다.
+   *
+   * follow 는 유지한다: 링크는 계속 따라가게 두어 원본(ko/en)으로 가는
+   * 내부 링크 가치가 끊기지 않게 한다.
+   * 근거 문서: 볼트 45_Business/PAP_SEO_가이드라인_2026-08-05.md */
+  const noindexTranslatedEditorial = (kind === 'editorial' && lang !== 'ko' && lang !== 'en');
+
   /* QA #308 — Film credit inheritance from a linked editorial.
    *
    * When a film is registered by linking an existing editorial (QA #229)
@@ -572,6 +596,9 @@ function renderSeoHtml(kind, record, opts) {
   const canonical = langUrl(lang);
   // hreflang: 실재하는 언어 변형만 선언 (ko/en 은 항상, it/fr/es 는 번역 존재 시)
   const hreflangLinks = availableLangs
+    /* noindex 로 뺀 언어는 hreflang 에서도 뺀다 — 색인 불가 URL 을 '대안'
+       으로 선언하면 신호가 서로 모순된다(구글 권고). ko/en 만 남는다. */
+    .filter(l => !(kind === 'editorial' && l !== 'ko' && l !== 'en'))
     .filter(l => LANG_META[l])
     .map(l => `<link rel="alternate" hreflang="${l}" href="${escAttr(langUrl(l))}">`)
     .concat([`<link rel="alternate" hreflang="x-default" href="${escAttr(koCanonical)}">`])
@@ -1107,8 +1134,8 @@ function renderSeoHtml(kind, record, opts) {
 <meta name="description" content="${escAttr(desc)}">
 ${tags.length ? `<meta name="keywords" content="${escAttr(tags.join(', '))}">` : ''}
 <meta name="author" content="${escAttr(SITE_NAME)} - ALTAKAPPA Co., Ltd.">
-<meta name="robots" content="index, follow, max-image-preview:large">
-<meta name="googlebot" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+<meta name="robots" content="${noindexTranslatedEditorial ? 'noindex, follow' : 'index, follow, max-image-preview:large'}">
+<meta name="googlebot" content="${noindexTranslatedEditorial ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1'}">
 
 <link rel="canonical" href="${escAttr(canonical)}">
 <!-- hreflang (2026-07-16): 실재하는 언어별 SSR URL 만 선언 — ko/en 항상,

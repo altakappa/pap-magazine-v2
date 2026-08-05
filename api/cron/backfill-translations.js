@@ -40,7 +40,10 @@
  *   ANTHROPIC_API_KEY               : 필수 (없으면 503)
  *   CRON_SECRET                     : (선택) Vercel cron 보호 — 다른 크론과 동일 규약
  *   SEO_TRANSLATE_LANGS             : (선택) 대상 언어 CSV, 기본 "it,fr,es,ja,de,ru,zh"
- *   SEO_TRANSLATE_KINDS             : (선택) 대상 종류 CSV, 기본 "editorial,article"
+ *   SEO_TRANSLATE_KINDS             : (선택) 대상 종류 CSV, 기본 "article"
+ *                                     (2026-08-05 GSC 실측으로 editorial 제외 — 아래 주석)
+ *   SEO_TRANSLATE_MAX_AGE_DAYS      : (선택) 이 일수보다 오래된 발행분은 번역하지 않는다.
+ *                                     기본 90, 0 이면 제한 없음   ← 2026-08-05 신설
  *   SEO_TRANSLATE_CONCURRENCY       : (선택) 웨이브당 동시 실행 수 (1~8)
  *   SEO_TRANSLATE_EDITORIAL_BATCH   : (선택) 에디토리얼 배치, 기본 2
  *   SEO_TRANSLATE_ARTICLE_BATCH     : (선택) 아티클 배치, 기본 1        ← 2026-08-02 신설
@@ -206,6 +209,43 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
    *
    * 2026-08-02 확인: 운영 Vercel 에는 SEO_TRANSLATE_LANGS 가 **없다**.
    * 즉 지금 도는 언어는 이 줄의 기본값 7개가 그대로다(de 포함). */
+  /* ─── 2026-08-05 — 발행 나이로 자른다 (GSC 실측) ────────────────────
+   *
+   * 한국어 원문 기사의 클릭을 발행 나이로 갈라 본 결과(7/1~8/4, 46쪽):
+   *     30일 이내 236클릭(81.1%) · 31~90일 53클릭(18.2%)
+   *     91일~1년 2클릭(0.7%)     · 1년 초과 **0클릭(0.0%)**
+   * 클릭의 99.3% 가 발행 90일 안에서 나온다. 1년 넘은 기사는 원문(한국어)
+   * 조차 클릭이 0이다.
+   *
+   * 그런데 남은 번역 백필이 정확히 그 구간이었다. 크론이 published_date DESC
+   * 로 돌아 최신부터 끝냈기 때문에 남은 8,282건은 전부 오래된 것들이다
+   * (de 기준: 90일 이내 0건, 1년 초과 1,038건(61%), 가장 최근 미번역 발행일
+   * 2026-04-12, 가장 오래된 2019-08-22). 원문으로도 안 팔리는 기사를
+   * 7개 언어로 번역하고 있었다.
+   *
+   * '번역하면 그 언어권엔 새 콘텐츠 아닌가' 는 성립하지 않는다 — 2023년
+   * 컴백 뉴스를 오늘 검색하는 사람은 어느 언어에도 없다. 언어가 아니라
+   * 시간의 문제다. 그래서 언어가 아니라 나이로 자른다.
+   *
+   * 신규 발행(월 230건 × 7언어)은 그대로 처리된다 — 클릭이 나는 구간이다.
+   *
+   * ⚠️ 에버그린 예외: 리스티클·인터뷰·에세이는 오래돼도 수요가 있다
+   * (7-interactive-websites… 11클릭, '사형수의 마지막 식사',
+   *  '레이 카와쿠보 vs 준야 와타나베'). 그래서 이 컷은 **크론에만** 건다.
+   * 관리자 수동 엔드포인트(api/admin/backfill-translations)는 sinceDate 를
+   * 넘기지 않으므로 나이 제한 없이 아무 기사나 골라 번역할 수 있다.
+   * 근거: 볼트 45_Business/PAP_SEO_가이드라인_2026-08-05.md (2-3절) */
+  const MAX_AGE_DAYS = (() => {
+    const raw = process.env.SEO_TRANSLATE_MAX_AGE_DAYS;
+    if (raw === undefined || raw === '') return 90;
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n < 0) return 90;
+    return Math.floor(n);            // 0 = 제한 없음
+  })();
+  const sinceDate = MAX_AGE_DAYS > 0
+    ? new Date(started - MAX_AGE_DAYS * 86400000).toISOString().slice(0, 10)
+    : null;
+
   const langs = String(process.env.SEO_TRANSLATE_LANGS || 'it,fr,es,ja,de,ru,zh')
     .split(',')
     .map(s => s.trim().toLowerCase())
@@ -227,7 +267,41 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
      아티클 배치를 작게 잡는 이유: 본문 번역은 1건에 15~20초가 걸린다
      (운영 실측: batch=5 가 약 85초). 크론 예산 안에 확실히 들어오도록
      2건으로 제한한다. 관리자 수동 실행은 기본값(5)을 그대로 쓴다. */
-  const kinds = String(process.env.SEO_TRANSLATE_KINDS || 'editorial,article')
+  /* ─── 2026-08-05 — 에디토리얼 번역을 기본 대상에서 뺀다 (GSC 실측 근거) ───
+   *
+   * 무엇을 봤나 (Google Search Console, 2026-07-01 ~ 08-04):
+   *   · 색인된 /es/ 페이지 79개 중 **클릭이 있는 건 4개**, 합계 12클릭.
+   *   · 최대 노출 페이지 /es/article/katseye-animal…: 노출 4,642 → 클릭 5 (CTR 0.11%).
+   *   · /es/editorial/ 이하는 전부 0클릭 — 예외가 하나도 없다.
+   *   · 클릭이 난 번역 페이지는 언어를 불문하고 전부 /article/ 이다
+   *     (ja 20클릭·CTR 8.9%, it 20클릭·순위 4.9).
+   *
+   * 왜 에디토리얼만 실패하나 — 구조적 이유다. 에디토리얼은 사진 중심이라
+   * 원본 설명이 평균 15자다(이 저장소가 EDITORIAL_SRC_MAX 를 1,200 으로 잡은 것도
+   * 같은 사실의 다른 면이다). 번역해도 **랭킹할 텍스트 자체가 없다.**
+   * 그래서 구글이 페이지 주제를 못 잡고 아무 쿼리에나 갖다 붙인다 — 실제로
+   * /es/editorial/* 의 top_keyword 가 '찰스엔터 얼굴 여백'(순위 52·56·88),
+   * '붉은 비키니 다시보기'(19·23), '코네 페티쉬'(2·5), '아이돌 합성 갤러리'(7)
+   * 였다. **스페인어 페이지가 한국어 성인인접 검색어에 매칭되고 있었다.**
+   * thin content 의 교과서적 증상이고 브랜드 안전에도 나쁘다.
+   *
+   * 같은 기간 사이트 전체 CTR 이 6.7% → 2.2% 로 무너졌다. 노출은 13,559 →
+   * 101,291 로 7.5배 늘었는데 클릭은 2.5배만 늘었다. 즉 **늘어난 노출의
+   * 대부분이 클릭을 못 받는 번역 페이지였다.**
+   *
+   * 그래서 기본값을 'article' 로 바꾼다. 아티클 번역은 실제로 작동하므로 유지.
+   * 되살리려면 env 로 SEO_TRANSLATE_KINDS=editorial,article (Redeploy 필수).
+   * 관리자 수동 엔드포인트(api/admin/backfill-translations)는 영향 없다 —
+   * kind 를 직접 받으므로 필요하면 언제든 에디토리얼을 돌릴 수 있다.
+   *
+   * ⚠️ 이 커밋은 '앞으로 만들지 않는다' 까지다. **이미 만들어진 약 16,000개
+   * (에디토리얼 2,293편 × 7언어) 를 색인에서 뺄지는 별도 결정이며 도메니코 몫이다.**
+   * 근거·선택지는 볼트 45_Business/PAP_SEO_가이드라인_2026-08-05.md 참조.
+   *
+   * 부수 효과: 실행마다 돌던 에디토리얼 조합 7개(전부 잔여 0)가 사라져
+   * 아티클 웨이브에 쓸 시간이 늘어난다. 오늘 오전의 처리량 하락에도 도움이
+   * 될 수 있으나, 그건 계측 결과를 보고 따로 판단한다(추측 금지). */
+  const kinds = String(process.env.SEO_TRANSLATE_KINDS || 'article')
     .split(',').map(s => s.trim().toLowerCase())
     /* KINDS 가 없을 수도 있다(테스트가 모듈을 스텁으로 갈아끼운다).
        그래도 죽지 않게 하고, 최종 검증은 runBackfillBatch 에 맡긴다 —
@@ -341,7 +415,7 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
 
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        const r = await runBackfillBatch({ lang, kind, timeoutMs: curTimeout, batch: curBatch, deadlineAt });
+        const r = await runBackfillBatch({ lang, kind, timeoutMs: curTimeout, batch: curBatch, deadlineAt, sinceDate });
         totalProcessed += r.processed || 0;
         if (r.remaining === 0) finished.add(key(task));
         /* lang·kind 는 호출자가 아는 사실이다 — 반환값이 되돌려주기를 기대하지
@@ -467,7 +541,10 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
   const s1 = (ms) => (Math.round(ms / 100) / 10);
   const timingNote = '⏱큐' + s1(T.queueMs) + '/AI' + s1(T.callMs) + '/저장' + s1(T.saveMs)
     + 's·콜' + T.calls + '·웨' + T.waves
-    + (lastLeftMs === null ? '' : '·남' + s1(lastLeftMs) + 's');
+    + (lastLeftMs === null ? '' : '·남' + s1(lastLeftMs) + 's')
+    /* 어떤 나이 컷으로 돌았는지 남긴다 — 잔여가 갑자기 줄었을 때
+       '컷 때문인가 다 끝난 건가' 를 로그만 보고 구분할 수 있어야 한다. */
+    + (sinceDate ? '·컷' + MAX_AGE_DAYS + 'd' : '·컷없음');
 
   /* cronGuard 가 note 를 500자로 자른다. 계측을 그냥 뒤에 붙이면 조합이 많은
      실행에서 계측만 잘려나가 — 정작 보려던 값이 사라진다. 조합 쪽을 먼저
@@ -500,6 +577,8 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
     elapsedMs: elapsed(),
     // 2026-08-05 계측 — 관리자가 응답만 봐도 80초의 내역을 알 수 있게.
     timing: { queueMs: T.queueMs, callMs: T.callMs, saveMs: T.saveMs, calls: T.calls, waves: T.waves, lastLeftMs },
+    maxAgeDays: MAX_AGE_DAYS || undefined,
+    sinceDate: sinceDate || undefined,
     results,
   });
 }, { silenceTransient: true });

@@ -80,7 +80,7 @@ const MIN_SOURCE = { editorial: 30, article: 80 };
 const KINDS = {
   editorial: {
     table: 'editorials',
-    columns: 'id, title, title_en, description, description_en, description_it',
+    columns: 'id, title, title_en, description, description_en, description_it, published_date',
     translateBody: false,
     defaultBatch: 10,
     minSrc: MIN_SOURCE.editorial,
@@ -113,7 +113,7 @@ const KINDS = {
   },
   article: {
     table: 'articles',
-    columns: 'id, title, title_en, content, content_en',
+    columns: 'id, title, title_en, content, content_en, published_date',
     translateBody: true,
     defaultBatch: 5,
     /* 파일럿(2026-07-21)에서 발견 — 개수만으로 묶으면 안 된다.
@@ -175,20 +175,22 @@ function newTiming() {
   return { queueMs: 0, callMs: 0, saveMs: 0, calls: 0, saves: 0 };
 }
 
-async function fetchQueueViaRpc(kind, lang, limit, cfg, timing) {
+async function fetchQueueViaRpc(kind, lang, limit, cfg, timing, since) {
   if (rpcUnavailable) return null;
   const t0 = Date.now();
   const minDone = MIN_TRANSLATED[cfg.doneField] || 40;
   const minSrc = cfg.minSrc || 30;
   try {
+    /* p_since — 발행 나이 컷 (2026-08-05, 마이그레이션 101). null 이면 제한 없음.
+       크론만 값을 넘기고 관리자 수동 경로는 안 넘긴다(에버그린 예외). */
     const qArgs = kind === 'article'
-      ? { p_lang: lang, p_limit: limit, p_min_done: minDone, p_min_src: minSrc }
+      ? { p_lang: lang, p_limit: limit, p_min_done: minDone, p_min_src: minSrc, p_since: since }
       : { p_kind: kind, p_lang: lang, p_limit: limit, p_min_done: minDone, p_min_src: minSrc,
           p_src_max: EDITORIAL_SRC_MAX };
     const [q, c] = await Promise.all([
       supabaseAdmin.rpc(QUEUE_RPC[kind], qArgs),
       supabaseAdmin.rpc('seo_translate_counts',
-        { p_kind: kind, p_lang: lang, p_min_done: minDone, p_min_src: minSrc }),
+        { p_kind: kind, p_lang: lang, p_min_done: minDone, p_min_src: minSrc, p_since: since }),
     ]);
     if (q.error || c.error) throw (q.error || c.error);
     if (timing) timing.queueMs += Date.now() - t0;
@@ -479,7 +481,7 @@ async function translateOne(item, cfg, lang, model, timeoutMs) {
   return parseSentinel(text, wantBody);
 }
 
-async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 90000, deadlineAt = 0 } = {}) {
+async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 90000, deadlineAt = 0, sinceDate = null } = {}) {
   if (!LANG_NAMES[lang]) {
     const e = new Error('lang 은 ' + Object.keys(LANG_NAMES).join('|') + ' 중 하나여야 합니다.');
     e.statusCode = 400;
@@ -507,7 +509,8 @@ async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 9
     ? 200
     : Math.min(20, Math.max(size * 3, size + 2));
   const timing = newTiming();
-  const fast = await fetchQueueViaRpc(kind, lang, queueLimit, cfg, timing);
+  const since = sinceDate || null;
+  const fast = await fetchQueueViaRpc(kind, lang, queueLimit, cfg, timing, since);
   if (fast) {
     return runOnQueue({
       lang, kind, cfg, size, timeoutMs, deadlineAt, timing,
@@ -554,8 +557,13 @@ async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 9
    * 잡혀 영구 제외된다 — 지금 ja 2,345건이 정확히 그렇게 만들어졌다.
    * 원본(서술문 백필)이 채워지는 대로 자연히 대상에 들어온다. */
   const hasSource = cfg.hasSource || (() => true);
-  const pending = (eds || []).filter(e => e.title && !doneSet.has(e.id) && hasSource(e, lang));
-  const skippedNoSource = (eds || []).filter(e => e.title && !doneSet.has(e.id) && !hasSource(e, lang)).length;
+  /* 나이 컷은 RPC 경로와 폴백 경로가 같아야 한다. 한쪽만 걸면 폴백으로
+     떨어진 순간 오래된 기사를 다시 번역하기 시작한다 — 이 파일이 _lib 로
+     뽑힌 이유(진입점 둘, 로직 하나)와 같은 종류의 사고다. */
+  const inAge = (e) => !since || (e.published_date && String(e.published_date) >= since);
+  const fresh = (eds || []).filter(e => e.title && !doneSet.has(e.id) && inAge(e));
+  const pending = fresh.filter(e => hasSource(e, lang));
+  const skippedNoSource = fresh.filter(e => !hasSource(e, lang)).length;
   const remainingTotal = pending.length;
   timing.queueMs += Date.now() - tFallback;
   return runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing, pending, remainingTotal, skippedNoSource });
