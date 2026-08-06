@@ -19,7 +19,7 @@ const {
   decodeHtml, stripSource, titleKey, isOffTopic, STOP, isOnTarget,
   // 2026-08-05 5차 — 같은 앵커 재탕 가드 + 페퍼릿 태깅
   sameEventRecent, pepBlocked, pepCategory, pepScore,
-  ANCHOR_SET, RERUN_MIN_OVERLAP_NOANCHOR, RERUN_WINDOW_MS,
+  ANCHOR_SET, RERUN_MIN_OVERLAP_NOANCHOR, RERUN_WINDOW_MS, isAdHocAnchor,
 } = require('../api/_lib/celebDedup');
 
 let pass = 0, fail = 0;
@@ -534,10 +534,14 @@ section('앵커가 없어도 재탕을 잡는다 (구조 변경)');
   ok('이하이 3번째 = 재탕', sameEventRecent(c, a) || sameEventRecent(c, b));
 })();
 ok('앵커 없을 때 문턱은 3개', RERUN_MIN_OVERLAP_NOANCHOR === 3);
-ok('앵커 없고 겹침 2개 → 재탕 아님 (우연 일치 방지)',
-  sameEventRecent(['아무개', '수상', '신곡'], ['아무개', '수상', '컴백', '투어']) === false);
-ok('앵커 없고 겹침 3개 → 재탕',
+// 2026-08-06 7차로 의미가 바뀌었다: 겹친 낱말 중 '흔한 말이 아닌 것'이 있으면
+// 즉석 앵커로 보고 문턱이 2로 내려간다. 아래 '아무개'가 그 경우다.
+ok('고유한 말이 섞여 있으면 겹침 2개로도 재탕',
+  sameEventRecent(['아무개', '수상', '신곡'], ['아무개', '수상', '컴백', '투어']) === true);
+ok('겹침 3개면 당연히 재탕',
   sameEventRecent(['아무개', '수상', '신곡'], ['아무개', '수상', '신곡', '투어']) === true);
+ok('문턱 3개는 겹친 게 전부 흔한 말일 때만 적용',
+  sameEventRecent(['걸그룹', '데뷔', '아무개'], ['걸그룹', '데뷔', '다른이']) === false);
 
 section('앵커 있으면 종전대로 2개에서 잡는다');
 ok('blackpink × 국립중앙박물관 — 표현이 달라도 재탕',
@@ -556,6 +560,41 @@ ok('BTS 아리랑 투어(11:05) vs 그래미 거부(19:10) 은 6시간 창 밖',
   (19 * 60 + 10) - (11 * 60 + 5) > RERUN_WINDOW_MS / 60000);
 ok('앵커를 공유해도 겹침 1개면 재탕 아님',
   sameEventRecent(['bts', '신곡'], ['bts', '투어']) === false);
+
+/* ================================================================
+   2026-08-06 7차 — 즉석 앵커(흔한 말이 아니면 사건을 특정하는 낱말로 본다)
+   근거: 08-06 알림 16건 실측. 6차를 켠 뒤에도 재탕 2건이 겹침 2개 + 사전 미등록
+   이라 문턱 3개에 걸려 통과했다. 그중 '튜이드'는 전날 데뷔 발표된 신인이다.
+   ================================================================ */
+section('즉석 앵커 — 흔한 말과 고유한 말을 가른다');
+[['튜이드', true], ['이찬원', true], ['옹성우', true], ['캣츠아이', true], ['홍은채', true]]
+  .forEach(([w, want]) => ok('고유한 말: ' + w, isAdHocAnchor(w) === want));
+[['걸그룹', false], ['타이틀곡', false], ['아이돌', false], ['데뷔', false], ['출신', false],
+ ['하이브', false], ['팬미팅', false], ['빌보드', false]]
+  .forEach(([w, want]) => ok('흔한 말: ' + w, isAdHocAnchor(w) === want));
+ok('숫자는 앵커가 아니다', isAdHocAnchor('2026') === false);
+ok('한 글자는 앵커가 아니다', isAdHocAnchor('진') === false);
+
+section('08-06 실제 재탕 — 사전에 없어도 잡힌다');
+ok('하이브 신인 튜이드 타이틀곡 (07:10 / 08:40)',
+  sameEventRecent(
+    keywords("[문화 이슈] 튜이드, 데뷔 타이틀곡은 'SUN KISS'…미니 1집 프로모션"),
+    keywords("하이브 걸그룹 '튜이드', 타이틀곡 공개")));
+ok('이찬원 편스토랑 황금인맥 (09:55 / 10:40)',
+  sameEventRecent(
+    keywords("이찬원, 연예계 마당발 맞네…전화 한통에 '韓 최고 걸그룹' 출격 [편스토랑]"),
+    keywords('이찬원, 배인혁→데니구→최고 걸그룹 멤버까지…황금인맥 공개 (편스토랑)')));
+
+section('흔한 말만 겹치면 여전히 3개를 요구한다 (오탐 방지)');
+// 실측 오탐: 서장훈 조언 vs 유하진 연습생 출신 — 겹침이 '출신·아이돌' 뿐이었다.
+ok('서장훈 조언 vs 유하진 연습생 — 다른 사건',
+  !sameEventRecent(
+    keywords('[단독] 강균성♥ 유하진, 대형 기획사 아이돌 연습생 출신'),
+    keywords('"배우 지망생 얼마나 많은데"…서장훈, 아이돌 출신에 뼈 있는 조언')));
+ok('흔한 말 2개만 겹치면 재탕 아님',
+  sameEventRecent(['걸그룹', '데뷔', '아무개'], ['걸그룹', '데뷔', '다른이']) === false);
+ok('흔한 말 3개 겹치면 재탕',
+  sameEventRecent(['걸그룹', '데뷔', '컴백'], ['걸그룹', '데뷔', '컴백', '앨범']) === true);
 
 /* ---------------------------------------------------------------- */
 console.log('\npassed: ' + pass + '   failed: ' + fail);

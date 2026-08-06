@@ -492,6 +492,43 @@ const NON_ANCHOR_KEYS = new Set([
 const ANCHOR_SET = new Set(
   ENTITY_ALIASES.map(([k]) => k).filter(k => !NON_ANCHOR_KEYS.has(k))
 );
+/* 2026-08-06 7차 — 앵커를 '사람이 채우는 화이트리스트'에서 '흔한 말 블랙리스트'로 뒤집는다.
+   왜: 08-06 실측에서 재탕 2건이 또 샜다.
+     · 하이브 신인 걸그룹 '튜이드' 07:10 / 08:40  (겹침 = 튜이드·타이틀곡)
+     · 이찬원 편스토랑 09:55 / 10:40             (겹침 = 이찬원·걸그룹)
+   둘 다 겹침이 정확히 2개인데 앵커 사전에 없어 문턱 3개에 걸려 통과했다.
+   '튜이드'는 **전날 데뷔 발표된 신인**이다 — 사전으로는 영원히 못 따라간다.
+   그래서 판정을 뒤집는다: 겹친 낱말 중 **흔한 말이 아닌 게 하나라도 있으면**
+   그것을 사실상 앵커로 본다(문턱 2). 전부 흔한 말이면 종전대로 3개를 요구한다.
+   흔한 말 목록은 celeb_watch_seen 741건의 토큰 빈도에서 뽑았다 — 고유명사(bts·
+   blackpink·리센느…)는 자주 나와도 '흔한 말'이 아니므로 넣지 않는다. 여기 들어가는
+   건 사건을 특정하지 못하는 일반명사뿐이다. */
+const GENERIC_TOKENS = new Set([
+  // 한국어 일반명사 — 사건을 특정하지 못하는 말
+  '아이돌','데뷔','걸그룹','보이그룹','결혼','논란','개최','글로벌','배우','콘서트','도전','효과',
+  '연습생','지망생','캐스팅','즉석','포토','통산','재진입','k팝','케이팝','보이콧','결승전',
+  '타이틀곡','앨범','신곡','컴백','공개','발매','출연','소속사','팬미팅','화보','인터뷰','예능',
+  '방송','무대','활동','최초','최고','기록','돌파','선정','수상','참여','확정','예고','티저',
+  '뮤비','뮤직비디오','스포티파이','빌보드','차트','순위','브랜드','평판','멤버','그룹','가수',
+  '신인','오픈','팝업','협업','컬렉션','시구','챌린지','월드투어','출신','소식','근황','이슈',
+  '공식','단독','영상','사진','현장','열애','결별','출산','입대','전역','해체','재계약','전속계약',
+  '스타','인기','화제','대세','국내','해외','한국','일본','미국','중국','서울','기념','발표',
+  // 회사명 — 소식이 너무 많아 사건을 못 가른다
+  '하이브','jyp','sm','yg','스타쉽',
+  // 영문 일반어
+  'show','photo','com','final','global','music','home','normal','returns','god','kick','ball',
+  'news','video','song','album','debut','single','tour','concert','star','group','member','fans',
+  'world','new','first','under','release','drops','announce','confirmed','official',
+]);
+
+/* 사전에 없어도 사건을 특정할 만한 낱말인가 (즉석 앵커).
+   숫자·한 글자·흔한 말은 제외한다. */
+function isAdHocAnchor(w) {
+  if (!w || GENERIC_TOKENS.has(w)) return false;
+  if (/^\d+$/.test(w)) return false;
+  return CJK_RE.test(w) ? w.length >= 2 : w.length >= 3;
+}
+
 const RERUN_WINDOW_MS = 6 * 3600 * 1000;
 const RERUN_MIN_OVERLAP = 2;
 // 앵커를 못 찾았을 때의 기준 — 사전에 없는 인물·사건도 판정하되 문턱을 높인다.
@@ -505,10 +542,11 @@ function sameEventRecent(newCore, seenCore, opts) {
   const A = new Set((newCore || []).filter(Boolean));
   const B = new Set((seenCore || []).filter(Boolean));
   if (!A.size || !B.size) return false;
-  let sharedAnchor = false;
-  for (const w of A) if (ANCHOR_SET.has(w) && B.has(w)) { sharedAnchor = true; break; }
-  let inter = 0;
-  for (const w of A) if (B.has(w)) inter++;
+  const shared = [];
+  for (const w of A) if (B.has(w)) shared.push(w);
+  const inter = shared.length;
+  // 2026-08-06 7차 — 사전 앵커든 즉석 앵커든, 사건을 특정하는 낱말을 공유하면 문턱 2.
+  const sharedAnchor = shared.some(w => ANCHOR_SET.has(w) || isAdHocAnchor(w));
   /* 2026-08-05 6차 — 앵커가 없어도 판정한다 (도메니코 지시).
      종전엔 공유 앵커가 없으면 여기서 false 를 반환해 **재탕 가드가 통째로
      꺼졌다**. 앵커 사전은 사람이 채우는 목록이라 새 아이돌이 나올 때마다 같은
@@ -600,6 +638,6 @@ module.exports = {
   sameEvent, hotScore, HOT_MIN, decodeHtml, stripSource, titleKey, STOP,
   isOffTopic, OFF_TOPIC_RE, isOnTarget, ON_TARGET_RE, STRONG_OVERLAP,
   // 2026-08-05 5차 — 같은 앵커 재탕 가드 + 페퍼릿 태깅
-  sameEventRecent, anchorsOf, ANCHOR_SET, NON_ANCHOR_KEYS, RERUN_WINDOW_MS, RERUN_MIN_OVERLAP, RERUN_MIN_OVERLAP_NOANCHOR,
+  sameEventRecent, anchorsOf, ANCHOR_SET, GENERIC_TOKENS, isAdHocAnchor, NON_ANCHOR_KEYS, RERUN_WINDOW_MS, RERUN_MIN_OVERLAP, RERUN_MIN_OVERLAP_NOANCHOR,
   pepBlocked, pepCategory, pepScore, PEP_BLOCK_RE, PEP_CATEGORY_RULES, PEP_CONTEXT_RE,
 };
