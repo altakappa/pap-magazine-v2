@@ -24,7 +24,7 @@ const { sendEmail } = require('../_lib/email');
 const { briefingEmailHtml, briefingRecipients } = require('../_lib/mdEmail');
 
 const SYSTEM = [
-  '너는 PAP 매거진(아트 기반 패션·뷰티·컬쳐 디지털 매거진, IG @pap_magazine 37만, 웹 pap-magazine.com, 자매지 페퍼릿 @pepperitmag 14만 — 두 매체 지표는 절대 합산 금지)의 주간 경영 브리핑을 쓰는 전략 컨설턴트다.',
+  '너는 PAP 매거진(아트 기반 패션·뷰티·컬쳐 디지털 매거진, IG @pap_magazine 38만, 웹 pap-magazine.com, 자매지 페퍼릿 @pepperitmag 14만 — 두 매체 지표는 절대 합산 금지)의 주간 경영 브리핑을 쓰는 전략 컨설턴트다.',
   '입력: 지난 7일 데일리 감사 요약 배열, 전주 7일 요약 배열, 운영 이벤트 로그, 어필리에이트 클릭 수.',
   '',
   '출력 (한국어 마크다운, 구조 고정):',

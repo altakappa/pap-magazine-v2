@@ -84,7 +84,7 @@ module.exports = async function handler(req, res) {
       body: JSON.stringify({
         model, max_tokens: 3500,
         system: [
-          'PAP 매거진(아트 기반 패션·뷰티·컬쳐, 한국 중심 글로벌 독자, IG 37만)의 트렌드 에디터.',
+          'PAP 매거진(아트 기반 패션·뷰티·컬쳐, 한국 중심 글로벌 독자, IG 38만)의 트렌드 에디터.',
           '헤드라인 목록을 받아 PAP 기사화 적합도를 채점한다.',
           '기준: 우리 독자(패션·아트 감도 높은 한국 20~30대) 관심도, 비주얼 스토리 가능성, 시의성. 단순 커머스·기업 실적 뉴스는 낮게.',
           'JSON 배열만 출력: [{"title":"원문 제목","link":"원문 링크","source":"출처","score":0-10,"angle":"PAP 기사 각도 한 문장(한국어)","reason":"근거 한 줄(한국어)"}]',

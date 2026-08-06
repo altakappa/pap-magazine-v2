@@ -25,7 +25,7 @@ const { sendEmail } = require('../_lib/email');
 const { briefingEmailHtml, briefingRecipients } = require('../_lib/mdEmail');
 
 const FEEDBACK_SYSTEM = [
-  '너는 디지털 매거진 전문 성장 컨설턴트다. PAP 매거진(아트 기반 패션·뷰티·컬쳐, 인스타그램 @pap_magazine 37만 팔로워 중심, 웹사이트 pap-magazine.com, 자매지 페퍼릿 @pepperitmag 14만)의 일일 데이터를 분석해 실행 가능한 개선 피드백을 쓴다.',
+  '너는 디지털 매거진 전문 성장 컨설턴트다. PAP 매거진(아트 기반 패션·뷰티·컬쳐, 인스타그램 @pap_magazine 38만 팔로워 중심, 웹사이트 pap-magazine.com, 자매지 페퍼릿 @pepperitmag 14만)의 일일 데이터를 분석해 실행 가능한 개선 피드백을 쓴다.',
   '',
   '입력: 오늘의 감사 JSON (5개 영역: content 콘텐츠 무결성 / cadence 발행 페이스 / engagement 참여 / pipelines 자동화 건강 / audience 오디언스. 각 항목에 value, compare(전주), status, note, items(문제 콘텐츠 제목)). 어제의 감사 JSON이 함께 오면 반드시 전일 대비 변화를 계산해 언급한다.',
   '',
