@@ -391,40 +391,39 @@ function renderSeoHtml(kind, record, opts) {
   const availableLangs = (opts && Array.isArray(opts.availableLangs) && opts.availableLangs.length)
     ? opts.availableLangs : ['ko', 'en'];
 
-  /* 2026-08-05 — 에디토리얼 번역본(ko/en 외)은 색인에서 뺀다.
+  /* 2026-08-05 — 에디토리얼 번역본 noindex 를 **같은 날 철회했다**.
+   * 색인 정책은 원상복구(index, follow). 아래는 왜 붙였다 뗐는지의 기록이다.
    *
-   * 근거는 Google Search Console 실측이다(7/1~8/4). 색인된 /es/ 페이지 79개
-   * 중 클릭이 있는 건 4개뿐이었고, 그중 에디토리얼은 0개다. 전 언어를 통틀어
-   * 클릭이 난 번역 페이지는 예외 없이 /article/ 이었다.
+   * 붙였던 근거: GSC 7/1~8/4 에서 에디토리얼 번역본 클릭이 0 이었고,
+   * 무관한 한국어 쿼리('찰스엔터 얼굴 여백' 등)에 매칭되는 게 관측됐다.
    *
-   * 관측된 증상: 무관한 한국어 쿼리에 매칭된다 — '찰스엔터 얼굴 여백'
-   * (순위 52·56·88), '붉은 비키니 다시보기'(19·23) 등. 구글이 페이지 주제를
-   * 못 잡고 있다는 뜻이고, 브랜드 안전에도 나쁘다.
+   * 철회한 이유 — 그 데이터로는 판정할 수 없었다:
+   *   1) 번역 데이터가 너무 어리다. seo_translations 실측으로 에디토리얼
+   *      번역의 최초 생성이 2026-07-16, 30일 넘은 행이 **0건**이다.
+   *      색인·랭킹이 붙기 전에 '클릭 0' 을 결론으로 쓴 셈이다.
+   *   2) 대부분 기간 사이트맵에 없었다. sitemap-editorials.js 의 5,000행
+   *      상한 버그(f74cf1c, 2026-08-04)로 약 11,200쪽이 검색엔진에 아예
+   *      알려지지 않았다. 즉 측정 창의 마지막 하루만 유효했다.
+   *   3) 비교 대상을 잘못 골랐다. 원본(한국어) 에디토리얼도 같은 증상을
+   *      **더 크게** 보인다 — /editorial/dark-girl 355노출 0클릭('ekzmrjf'),
+   *      /editorial/asdfghjkl 315노출 0클릭('연준 인스티즈'). 번역본
+   *      /fr/editorial/dark-girl 은 37노출이다. 원본이 같은 문제를 겪는데
+   *      번역본만 색인에서 빼는 건 원인 진단이 아니라 증상 회피다.
    *
-   * ⚠️ 원인은 아직 확정되지 않았다. 처음엔 '설명이 평균 15자라 랭킹할
-   * 텍스트가 없다' 고 적었는데 실측으로 반증됐다 — 실제 설명 길이는
-   * 1년 초과 평균 863자 · 최근 90일 388자이고 300자 초과가 99% 다.
-   * 남은 가설: 화보라 검색 의도와 안 맞음 / 제목이 스타일라이즈드 고유명사라
-   * 질의어와 안 겹침 / 서술적 설명이 특정 질의에 매칭되지 않음.
-   * **확정된 것은 '클릭 0' 이라는 사실뿐이며, noindex 는 그 사실에 근거한다.**
-   * 같은 기간 사이트 전체 CTR 은 6.7% → 2.2% 로 무너졌다.
+   * 남은 진짜 질문(미해결): 에디토리얼이 검색 채널이긴 한가.
+   * 5주간 전 언어·원본 포함 약 26클릭이고, 같은 기간 아티클은 2,200+ 이다.
+   * 한 단어 슬러그(suit, lily, run, tar)가 엉뚱한 질의에 걸리는 것으로
+   * 보이며, 이는 번역의 결함이 아니라 에디토리얼 페이지 전반의 성질이다.
+   * → 다음 판정은 사이트맵이 고쳐진 상태로 6~8주 재측정한 뒤에 한다.
    *
-   * 약 17,000쪽(에디토리얼 2,293편 × 7언어)을 색인에서 빼는 결정이며
-   * 도메니코 승인 아래 진행한다. 잃는 클릭은 실측상 0이다.
+   * 같은 날 만든 것 중 **90일 컷과 6,000자 상한은 유지한다** — 그 둘은
+   * 원문 기사 클릭의 나이 분포(1년 초과 0.0%)와 zh 성공 사례 길이 분포
+   * (최대 2,293자)라는 단단한 실측 위에 서 있다.
    *
-   * ⚠️ 이것은 '색인' 만 막는다. 번역 생성은 계속된다(2026-08-05 되돌림) —
-   * 사이트 안 언어 전환과 SSR 이 seo_translations 를 읽기 때문에, 번역이
-   * 없으면 비-ko/en 방문자가 /en 으로 302 리다이렉트된다. 구독자 경험을
-   * 깎아 검색 점수를 얻는 건 방향이 반대다. 만들되 색인하지 않는다.
-   *
-   * 되돌리는 법: 이 플래그를 false 로 만들면 몇 주에 걸쳐 재색인된다.
-   * 원본(ko/en)은 건드리지 않는다 — 그쪽은 클릭이 나오는 페이지다.
-   * 아티클 번역도 건드리지 않는다 — ja CTR 8.9%, it 순위 4.9 로 작동 중이다.
-   *
-   * follow 는 유지한다: 링크는 계속 따라가게 두어 원본(ko/en)으로 가는
-   * 내부 링크 가치가 끊기지 않게 한다.
+   * 다시 붙이려면: kind==='editorial' && lang!=='ko' && lang!=='en' 조건을
+   * 되살려 robots/googlebot 을 'noindex, follow' 로 바꾸고, hreflang 에서도
+   * 같은 언어를 빼면 된다(색인 불가 URL 을 대안으로 선언하면 신호가 모순).
    * 근거 문서: 볼트 45_Business/PAP_SEO_가이드라인_2026-08-05.md */
-  const noindexTranslatedEditorial = (kind === 'editorial' && lang !== 'ko' && lang !== 'en');
 
   /* QA #308 — Film credit inheritance from a linked editorial.
    *
@@ -607,9 +606,6 @@ function renderSeoHtml(kind, record, opts) {
   const canonical = langUrl(lang);
   // hreflang: 실재하는 언어 변형만 선언 (ko/en 은 항상, it/fr/es 는 번역 존재 시)
   const hreflangLinks = availableLangs
-    /* noindex 로 뺀 언어는 hreflang 에서도 뺀다 — 색인 불가 URL 을 '대안'
-       으로 선언하면 신호가 서로 모순된다(구글 권고). ko/en 만 남는다. */
-    .filter(l => !(kind === 'editorial' && l !== 'ko' && l !== 'en'))
     .filter(l => LANG_META[l])
     .map(l => `<link rel="alternate" hreflang="${l}" href="${escAttr(langUrl(l))}">`)
     .concat([`<link rel="alternate" hreflang="x-default" href="${escAttr(koCanonical)}">`])
@@ -1145,8 +1141,8 @@ function renderSeoHtml(kind, record, opts) {
 <meta name="description" content="${escAttr(desc)}">
 ${tags.length ? `<meta name="keywords" content="${escAttr(tags.join(', '))}">` : ''}
 <meta name="author" content="${escAttr(SITE_NAME)} - ALTAKAPPA Co., Ltd.">
-<meta name="robots" content="${noindexTranslatedEditorial ? 'noindex, follow' : 'index, follow, max-image-preview:large'}">
-<meta name="googlebot" content="${noindexTranslatedEditorial ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1'}">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="googlebot" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 
 <link rel="canonical" href="${escAttr(canonical)}">
 <!-- hreflang (2026-07-16): 실재하는 언어별 SSR URL 만 선언 — ko/en 항상,

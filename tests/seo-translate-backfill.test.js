@@ -494,19 +494,24 @@ async function testCron() {
     ok('크론 기본 대상에 article 이 포함된다',
       /SEO_TRANSLATE_KINDS \|\| 'editorial,article'/.test(cronSrc));
 
-    /* ── 2026-08-05 — 에디토리얼을 뺐다가 같은 날 되돌렸다 ──────────
-       뺀 이유: 번역본 클릭 0 (GSC 실측).
-       되돌린 이유: 그건 검색만 본 판단이었다. 사이트 안 언어 전환과 SSR 이
-       seo_translations 를 읽어서, 번역이 없으면 비-ko/en 방문자가 /en 으로
-       302 리다이렉트된다(api/seo/editorial/[slug].js). 구독자가 신규 화보를
-       자국어로 못 보게 된다 — PAP 는 9개 언어 커뮤니티 플랫폼이 목표다.
-       → **번역은 만들되 색인은 안 한다.** 색인 차단은 seoRenderer 의
-       noindexTranslatedEditorial 이 담당하고, 그건 그대로 둔다.
-       (여기서 검증하는 건 '번역이 계속 만들어지는가' 뿐이다.) */
+    /* ── 2026-08-05 — 에디토리얼을 뺐다가 같은 날 전부 되돌렸다 ─────
+       뺀 이유: 번역본 클릭 0 (GSC 7/1~8/4).
+       되돌린 이유 (두 번에 걸쳐):
+         ① 번역 생성 — 사이트 안 언어 전환과 SSR 이 seo_translations 를
+            읽어서, 번역이 없으면 비-ko/en 방문자가 /en 으로 302 된다
+            (api/seo/editorial/[slug].js). PAP 는 9개 언어 커뮤니티가 목표다.
+         ② 색인(noindex) — 그 '클릭 0' 은 판정 근거가 못 됐다. 에디토리얼
+            번역의 최초 생성이 07-16 이라 30일 넘은 행이 0건이고, 사이트맵
+            5,000행 버그(f74cf1c)로 측정 기간 대부분 색인 후보도 아니었다.
+            결정적으로 한국어 **원본** 에디토리얼이 같은 증상을 더 크게
+            보인다(/editorial/dark-girl 355노출 0클릭). 번역본만 빼는 건
+            원인 진단이 아니다. → 6~8주 재측정 후 다시 판단한다.
+       여기서 검증하는 건 두 가지: 번역이 계속 만들어지는가, 그리고
+       색인 차단이 되살아나지 않았는가. */
     ok('크론 기본 대상에 editorial 이 다시 들어 있다 (사이트 언어 전환용)',
       /SEO_TRANSLATE_KINDS \|\| 'editorial,article'/.test(cronSrc));
-    ok('그래도 색인은 막혀 있다 (noindex 는 유지)',
-      /noindexTranslatedEditorial/.test(require('fs').readFileSync(
+    ok('에디토리얼 번역 noindex 가 되살아나지 않았다',
+      !/const noindexTranslatedEditorial\s*=/.test(require('fs').readFileSync(
         require('path').join(__dirname, '..', 'api/_lib/seoRenderer.js'), 'utf8')));
     ok('관리자 수동 엔드포인트는 kind 를 직접 받는다 (에디토리얼 수동 실행 가능)',
       /kind/.test(require('fs').readFileSync(

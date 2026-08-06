@@ -1,29 +1,32 @@
 /**
- * 얇은 페이지 정책 (2026-08-05 신설) — GSC 실측으로 정한 두 가지 컷.
+ * 얇은 페이지 정책 (2026-08-05) — GSC 실측으로 정한 컷과, **철회한 컷 하나**.
  *
- * ── 왜 필요했나 (Google Search Console, 2026-07-01 ~ 08-04) ─────────
- *
- * ① 에디토리얼 번역본은 클릭이 0이다.
- *    색인된 /es/ 79쪽 중 클릭 있는 건 4쪽뿐이고 그중 에디토리얼은 0쪽.
- *    전 언어를 통틀어 클릭이 난 번역 페이지는 예외 없이 /article/ 이었다.
- *    증상: 무관한 한국어 쿼리에 매칭된다('찰스엔터 얼굴 여백' 52·56·88위,
- *    '붉은 비키니 다시보기' 19·23위). 같은 기간 사이트 CTR 6.7% → 2.2%.
- *    ⚠️ 원인은 미확정. 처음엔 '설명이 평균 15자'라고 적었으나 실측으로
- *    반증됐다(1년 초과 863자 · 최근 90일 388자, 300자 초과 99%).
- *    확정된 것은 '클릭 0' 이라는 사실뿐이고 noindex 는 그 사실에 근거한다.
- *
- *    ※ 번역 '생성' 은 2026-08-05 같은 날 되돌렸다 — 사이트 안 언어 전환이
- *      seo_translations 를 읽기 때문. 만들되 색인하지 않는다.
- *
- * ② 오래된 기사는 원문조차 클릭이 0이다.
+ * ── 유지되는 것 (단단한 실측 위) ────────────────────────────────────
+ * ① 오래된 기사는 원문조차 클릭이 0이다.
  *    한국어 원문 기사 클릭을 발행 나이로 가르면
  *      30일 이내 81.1% · 31~90일 18.2% · 91일~1년 0.7% · 1년 초과 0.0%
  *    그런데 남은 번역 백필 8,282건은 전부 4개월 이상 된 것들이었다.
+ *    → 크론에 90일 컷.
+ * ② zh 성공 번역 329건의 원문 길이는 최대 2,293자, 6,000자 초과 성공 0건.
+ *    9,052 / 12,963자짜리 두 건이 큐 선두에 박혀 179건을 막고 있었다.
+ *    → 6,000자 상한.
+ *
+ * ── 철회한 것 (2026-08-05 같은 날) ──────────────────────────────────
+ * 에디토리얼 번역본 noindex 는 붙였다가 뗐다. 근거가 판정에 못 미쳤다:
+ *   1) 번역이 너무 어리다 — 에디토리얼 번역 최초 생성 2026-07-16,
+ *      30일 넘은 행 0건. 색인이 붙기 전에 '클릭 0' 을 결론으로 썼다.
+ *   2) 사이트맵 5,000행 상한 버그(f74cf1c, 08-04)로 약 11,200쪽이
+ *      측정 기간 대부분 검색엔진에 알려지지도 않았다.
+ *   3) 원본(한국어) 에디토리얼이 같은 증상을 더 크게 보인다 —
+ *      /editorial/dark-girl 355노출 0클릭, /editorial/asdfghjkl 315노출 0클릭.
+ *      번역본만 색인에서 빼는 건 원인 진단이 아니라 증상 회피다.
+ * 번역 '생성' 도 같은 날 되살렸다 — 사이트 안 언어 전환이 seo_translations
+ * 를 읽기 때문에, 번역이 없으면 비-ko/en 방문자가 /en 으로 302 된다.
  *
  * ── 이 테스트가 지키는 것 ───────────────────────────────────────────
- *   ① 에디토리얼 번역본(ko/en 외)에 noindex 가 붙을 것
- *   ② 그 언어는 hreflang 에서도 빠질 것 (색인 불가 URL 을 대안으로 선언 금지)
- *   ③ 원본(ko/en)과 아티클 번역은 **건드리지 않을 것** — 여기는 클릭이 난다
+ *   ① 에디토리얼 번역본이 **색인 가능**할 것 (noindex 재발 방지)
+ *   ② hreflang 이 번역 언어를 계속 선언할 것
+ *   ③ 원본(ko/en)과 아티클 번역도 index 유지
  *   ④ 크론은 나이 컷을 걸고, 관리자 수동 경로는 안 걸 것 (에버그린 예외)
  *   ⑤ 나이 컷이 RPC 경로와 폴백 경로에서 동일하게 적용될 것
  *   ⑥ 마이그레이션 102 가 앱과 같은 인자를 정의할 것
@@ -75,26 +78,27 @@ const REC = {
 };
 const LANGS = ['it', 'fr', 'es', 'ja', 'de', 'ru', 'zh'];
 
-console.log('\n=== ① 에디토리얼 번역본에 noindex ===');
+console.log('\n=== ① 에디토리얼 번역본은 색인 가능하다 (noindex 재발 방지) ===');
 for (const l of LANGS) {
   const html = renderSeoHtml('editorial', REC, { lang: l, availableLangs: ['ko', 'en'].concat(LANGS) });
   const robots = (html.match(/<meta name="robots" content="([^"]*)"/) || [])[1];
   const gbot = (html.match(/<meta name="googlebot" content="([^"]*)"/) || [])[1];
-  t(`/${l}/editorial → noindex`, /noindex/.test(robots || '') && /noindex/.test(gbot || ''), { l, robots, gbot });
+  t(`/${l}/editorial → index`, /^index/.test(robots || '') && /^index/.test(gbot || ''), { l, robots, gbot });
 }
 {
   const html = renderSeoHtml('editorial', REC, { lang: 'it', availableLangs: ['ko', 'en'].concat(LANGS) });
-  t('follow 는 유지한다 (내부 링크 가치 보존)', /noindex, follow/.test(html));
+  t('noindex 문자열이 어디에도 없다', !/noindex/.test(html));
 }
 
-console.log('\n=== ② hreflang 에서도 빠진다 ===');
+console.log('\n=== ② hreflang 은 번역 언어를 계속 선언한다 ===');
 {
   const html = renderSeoHtml('editorial', REC, { lang: 'ko', availableLangs: ['ko', 'en'].concat(LANGS) });
   const tags = html.match(/hreflang="([a-z-]+)"/g) || [];
   const langs = tags.map(x => x.replace(/.*"([a-z-]+)"/, '$1'));
-  t('에디토리얼 hreflang 은 ko/en/x-default 만',
-    langs.every(l => ['ko', 'en', 'x-default'].includes(l)), langs.join(','));
   t('ko/en 은 그대로 선언된다', langs.includes('ko') && langs.includes('en'), langs.join(','));
+  t('번역 7개 언어가 전부 선언된다',
+    LANGS.every(l => langs.includes(l)), langs.join(','));
+  t('x-default 는 한국어 원본을 가리킨다', langs.includes('x-default'), langs.join(','));
 }
 
 console.log('\n=== ③ 원본과 아티클은 건드리지 않는다 ===');
