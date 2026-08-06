@@ -375,6 +375,93 @@ function callBudget(deadlineAt, timeoutMs) {
   return Math.max(1, Math.min(timeoutMs, left - CALL_SLACK_MS));
 }
 
+/* ── 고유명사·한글 잔존 방지 (2026-08-06 신설) ────────────────────────
+ *
+ * 실측 사고 두 건 (DB 8,030건 전수 검사):
+ *   ① 제목에 한글이 그대로 남은 번역 **356건(4.4%)** — zh 60/511(11.7%),
+ *      ja 91/1,335(6.8%). 예: ja 제목 `척추를 따라 세운 드레イ프` —
+ *      '이' 한 글자만 `イ` 로 바뀌고 나머지는 한글 그대로다.
+ *   ② 한국 인명을 억지 한자로 음차했다. ja 제목 `変愚錫が手にした…` —
+ *      변우석의 일본 매체 표기는 `ピョン・ウソク` 다. `変愚錫` 는 '愚'
+ *      (어리석을 우)가 들어가 무례하게 읽힌다. **셀럽 이름 오역은
+ *      브랜드 사고**이고, 한글 검사로는 안 잡힌다.
+ *
+ * 원인은 프롬프트였다. 기존 규칙이 이랬다:
+ *     "Keep proper nouns, brand names, and stylized titles unchanged"
+ * 한국어 제목 전체가 '고유명사' 로 읽히면 모델이 그대로 둔다. ①이 그것이다.
+ * 그리고 '자연스러운 현지형' 을 찾으라는 지시가 없으니 소리대로 한자를
+ * 만들어낸다. ②가 그것이다.
+ *
+ * 그래서 두 가지를 넣는다:
+ *   · 프롬프트에 언어별 한국 고유명사 표기 규칙을 명시한다(아래 NAME_RULE).
+ *   · 저장 전에 기계로 검증한다(hasHangul / validateTranslation).
+ *
+ * ⚠️ 검증은 '거부' 가 아니라 '재시도 1회 후 통과' 다. 거부만 하면 그 건이
+ *    큐 앞자리를 영원히 차지한다 — 2026-08-05 zh 거대 기사 2건이 179건을
+ *    막았던 poison pill 과 똑같은 구조가 된다(마이그레이션 103 참고).
+ *    대신 통과시킨 건수를 note 에 남겨 눈에 보이게 한다.
+ */
+const HANGUL_RE = /[가-힣ᄀ-ᇿ㄰-㆏]/;
+
+/** 한글이 한 글자라도 있는가. */
+function hasHangul(s) { return HANGUL_RE.test(String(s || '')); }
+
+/** HTML 태그·URL 을 뺀 '보이는 글자' 중 한글 비율(0~1). */
+function hangulRatio(s) {
+  const text = String(s || '')
+    .replace(/<[^>]*>/g, ' ')            // 태그 제거 (alt/href 안의 한글은 세지 않는다)
+    .replace(/https?:\/\/\S+/g, ' ')     // URL 제거
+    .replace(/\s+/g, '');
+  if (!text) return 0;
+  let n = 0;
+  for (const ch of text) if (HANGUL_RE.test(ch)) n++;
+  return n / text.length;
+}
+
+/* 본문 임계값 3%. 0 이 아닌 이유: 기사가 한국어 곡명·상호를 원표기로 인용하는
+   건 정상이다(예: 앨범명을 괄호 안에 한글로 병기). 실측 8,030건 중 본문에
+   한글이 남은 건 33건(0.4%)뿐이라 임계값을 낮게 잡아도 오탐이 적다.
+   제목은 짧아서 비율이 무의미하므로 '한 글자라도 있으면 실패' 로 본다. */
+const BODY_HANGUL_MAX = 0.03;
+
+/** 번역 결과가 쓸 만한가. 문제 없으면 null, 있으면 사유 문자열. */
+function validateTranslation(t, lang) {
+  if (!t || !t.title) return 'no_title';
+  if (lang === 'ko') return null;
+  if (hasHangul(t.title)) return 'hangul_title';
+  const long = t.body || t.description || '';
+  if (long && hangulRatio(long) > BODY_HANGUL_MAX) return 'hangul_body';
+  return null;
+}
+
+/** 언어별 한국 고유명사 표기 규칙 — 프롬프트에 그대로 실린다. */
+function nameRule(lang) {
+  if (lang === 'ja') {
+    return 'Korean personal and group names must be written in KATAKANA as Japanese media write them '
+      + '(변우석 → ピョン・ウソク, 아이유 → IU). NEVER invent kanji from the sound — '
+      + '"変愚錫" for 변우석 is wrong and offensive.';
+  }
+  if (lang === 'zh') {
+    return 'Korean personal and group names must use the established Chinese rendering used by Chinese media '
+      + '(변우석 → 邊佑錫 / 边佑锡). If no established form exists, use the Latin stage name. '
+      + 'Never leave Hangul and never coin characters that carry a negative meaning.';
+  }
+  if (lang === 'ru') {
+    return 'Korean personal and group names must be transliterated into Cyrillic as Russian media write them '
+      + '(변우석 → Пён У Сок). Latin stage names (BTS, aespa) stay in Latin script.';
+  }
+  return 'Korean personal and group names must use Revised Romanization or the artist\'s official Latin name '
+    + '(변우석 → Byeon Woo-seok, 아이유 → IU). Never leave Hangul.';
+}
+
+/** 모든 프롬프트가 공유하는 표기 규칙 블록. */
+function styleRules(lang) {
+  return `- The output MUST NOT contain any Hangul (Korean script) — not in the title, not in the body.\n`
+    + `- ${nameRule(lang)}\n`
+    + `- "Leave unchanged" applies ONLY to Latin-script brand names and stylized Latin titles `
+    + `(Prada, Converse, "CRIMSON"). A Korean title is NOT a proper noun to be preserved — translate it.\n`;
+}
+
 const T_MARK = '<<<TITLE>>>';
 const D_MARK = '<<<DESC>>>';
 const B_MARK = '<<<BODY>>>';
@@ -438,7 +525,7 @@ function buildBatchPrompt(items, cfg, lang) {
   return cfg.translateBody
     ? `You are translating fashion-magazine ARTICLES for PAP MAGAZINE into ${LANG_NAMES[lang]}.\n` +
       `Rules:\n` +
-      `- Keep proper nouns, brand names, and stylized titles unchanged unless a natural localized form exists.\n` +
+      styleRules(lang) +
       `- Translate the body faithfully into native ${LANG_NAMES[lang]} — magazine register, not literal machine translation.\n` +
       `- The body may contain HTML tags. Keep every tag, attribute and URL EXACTLY as-is; translate only the visible text.\n` +
       `- Do not summarize, omit, or add content. Preserve paragraph structure.\n` +
@@ -447,7 +534,7 @@ function buildBatchPrompt(items, cfg, lang) {
       `Input JSON:\n` + JSON.stringify(src)
     : `You are translating fashion-magazine editorial metadata for PAP MAGAZINE into ${LANG_NAMES[lang]}.\n` +
       `Rules:\n` +
-      `- Keep proper nouns, brand names, and stylized titles (e.g. "CRIMSON", "Rotten Roots") unchanged unless a natural localized form exists.\n` +
+      styleRules(lang) +
       `- The description must read like native ${LANG_NAMES[lang]} fashion-editorial copy — elegant, concise, no literal machine translation.\n` +
       `- Return ONLY a JSON array, one object per input, shape: {"i":<index>,"title":"...","description":"..."}. No prose, no code fences.\n` +
       `- Inside JSON strings, escape every double quote as \\". Prefer the target language's own quotation marks in the text.\n` +
@@ -475,7 +562,7 @@ async function translateOne(item, cfg, lang, model, timeoutMs) {
   const second = wantBody ? B_MARK : D_MARK;
   const prompt =
     `Translate this fashion-magazine ${wantBody ? 'article' : 'editorial'} for PAP MAGAZINE into ${LANG_NAMES[lang]}.\n` +
-    `- Keep proper nouns, brand names and stylized titles unchanged unless a natural localized form exists.\n` +
+    styleRules(lang) +
     (wantBody
       ? `- The body may contain HTML tags. Keep every tag, attribute and URL EXACTLY as-is; translate only the visible text.\n`
       : `- The description must read like native ${LANG_NAMES[lang]} fashion-editorial copy — elegant, concise.\n`) +
@@ -644,6 +731,11 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing
   const failedIds = new Set();
   const errors = [];
   let processed = 0;
+  /* 2026-08-06 품질 계측.
+     qualityRetried — 배치 결과가 표기 규칙을 어겨 단건 재시도로 넘긴 건수
+     qualityFlagged — 재시도까지 하고도 못 지켜 '그래도 저장' 한 건수 */
+  let qualityRetried = 0;
+  let qualityFlagged = 0;
   /* 마감에 걸려 중단했는가. '할 일이 없어서 끝난 것' 과 구분해 보고한다 —
      이걸 뭉뜽그리면 시간에 쫓겨 못 한 것을 완주로 착각한다. */
   let ranOut = false;
@@ -673,7 +765,14 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing
     const got = new Map();
     for (const t of parsed) {
       const srcItem = items[t.i];
-      if (srcItem && t.title) got.set(srcItem.id, t);
+      if (!srcItem || !t.title) continue;
+      /* 품질 검증 (2026-08-06). 배치에서 걸린 건은 받지 않는다 —
+         그러면 아래 ②의 '빠진 건 1건씩 재시도' 가 자동으로 다시 부른다.
+         단건 프롬프트에도 같은 표기 규칙이 실려 있어 두 번째 시도는
+         대개 통과한다. */
+      const bad = validateTranslation(t, lang);
+      if (bad) { qualityRetried++; continue; }
+      got.set(srcItem.id, t);
     }
 
     /* ② 빠진 건만 1건씩 재시도 */
@@ -686,7 +785,15 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing
       try {
         const one = await translateOne(it, cfg, lang, model, callBudget(deadlineAt, timeoutMs));
         timing.callMs += Date.now() - tOne; timing.calls++;
-        if (one && one.title) got.set(it.id, one);
+        if (one && one.title) {
+          /* 두 번째 시도도 표기 규칙을 못 지켰다면 **그래도 저장한다.**
+             거부하면 그 건이 큐 앞자리를 영원히 차지한다(poison pill —
+             2026-08-05 zh 거대 기사 2건이 179건을 막은 것과 같은 구조).
+             대신 건수를 note 에 남겨 눈에 보이게 하고, 관리자 수동 경로로
+             따로 손볼 수 있게 한다. */
+          if (validateTranslation(one, lang)) qualityFlagged++;
+          got.set(it.id, one);
+        }
         else {
           failedIds.add(it.id);
           errors.push({ id: it.id, reason: '단건 재시도 파싱 실패' });
@@ -745,6 +852,10 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing
     skipped_too_long: skippedTooLong || undefined,
     // 이번 회차에서 건너뛴 불량 건수. 0 이 아니면 그 id 를 사람이 확인해야 한다.
     skipped_failed: failedIds.size || undefined,
+    /* 표기 규칙(한글 잔존·고유명사) 위반으로 재시도한/그래도 저장한 건수.
+       flagged 가 계속 0 이 아니면 프롬프트를 다시 손봐야 한다는 신호다. */
+    quality_retried: qualityRetried || undefined,
+    quality_flagged: qualityFlagged || undefined,
     // 마감에 걸려 중단했다. 잔여가 남아도 '막힌 것' 이 아니라 '시간이 끝난 것'.
     ran_out_of_time: ranOut || undefined,
     // 2026-08-05 계측: 이 조합이 큐조회/AI호출/저장에 각각 몇 ms 를 썼는가.
@@ -754,4 +865,4 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing
   };
 }
 
-module.exports = { runBackfillBatch, newTiming, normalizeBatch, parseJsonArray, salvageObjects, parseSentinel, pickItems, buildBatchPrompt, msLeft, canCall, callBudget, CALL_SLACK_MS, MAX_PASSES, LANG_NAMES, KINDS };
+module.exports = { runBackfillBatch, newTiming, hasHangul, hangulRatio, validateTranslation, nameRule, styleRules, normalizeBatch, parseJsonArray, salvageObjects, parseSentinel, pickItems, buildBatchPrompt, msLeft, canCall, callBudget, CALL_SLACK_MS, MAX_PASSES, LANG_NAMES, KINDS };

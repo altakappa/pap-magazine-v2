@@ -44,7 +44,8 @@
  *                                     (2026-08-05 editorial 을 뺐다가 같은 날 되돌림 —
  *                                      색인은 noindex 로 막고 번역은 유지. 아래 주석)
  *   SEO_TRANSLATE_MAX_AGE_DAYS      : (선택) 이 일수보다 오래된 발행분은 번역하지 않는다.
- *                                     기본 90, 0 이면 제한 없음   ← 2026-08-05 신설
+ *                                     **기본 0(제한 없음)** — 2026-08-06 90 에서 바꿈.
+ *                                     검색이 아니라 사이트 경험이 근거다(아래 주석)
  *   SEO_TRANSLATE_MAX_SRC_CHARS     : (선택) 원문이 이보다 길면 자동 번역에서 제외.
  *                                     기본 6000, 0 이면 제한 없음   ← 2026-08-05 신설
  *   SEO_TRANSLATE_CONCURRENCY       : (선택) 웨이브당 동시 실행 수 (1~8)
@@ -238,11 +239,42 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
    * 관리자 수동 엔드포인트(api/admin/backfill-translations)는 sinceDate 를
    * 넘기지 않으므로 나이 제한 없이 아무 기사나 골라 번역할 수 있다.
    * 근거: 볼트 45_Business/PAP_SEO_가이드라인_2026-08-05.md (2-3절) */
+  /* ─── 2026-08-06 — 나이 컷을 뗀다 (기본 90 → 0) ─────────────────────
+   *
+   * 위 2026-08-05 주석의 검색 근거는 여전히 사실이다: 오래된 기사는 원문
+   * 조차 클릭이 거의 없다(91일~1년 0.7% · 1년 초과 0.0%). 07-01~26 상위
+   * 100쪽 중 90일 초과는 단 1쪽(eden-vodka, 174일, 2클릭)이었다.
+   *
+   * 그런데 **검색은 이 결정의 근거가 아니다.** 사이트 경험이 근거다.
+   *
+   *   api/seo/article/[slug].js:167 —
+   *     번역이 없으면 비-ko/en 방문자를 /en 으로 302 리다이렉트한다.
+   *
+   * 발행 기사 2,282편 중 자국어로 볼 수 있는 비율(2026-08-06 실측):
+   *     it·es 74.5% · fr 69.9% · ja 58.5% · ru 27.2% · de 24.9% · zh 22.4%
+   * **중국어 구독자는 기사 10개 중 8개가 영어로 튕긴다.** PAP 은 검색
+   * 트래픽이 아니라 9개 언어 커뮤니티 플랫폼을 지향한다. 같은 날 에디토리얼
+   * 번역을 되살린 것과 같은 이유이며, 기사에 다른 잣대를 댈 이유가 없다.
+   *
+   * 비용도 걸림돌이 아니다: 미번역 7,921쌍 · 평균 원문 1,241자 ·
+   * sonnet-4-5 기준 쌍당 약 $0.011 → 총 약 $90. 그리고 크론은 지금 놀고
+   * 있다(08-06 note: 전 조합 잔여 0, 실행당 0~2초, AI 호출 0). 남는 용량을
+   * 쓰는 것이지 새로 사는 게 아니다.
+   *
+   * 신규가 밀리지 않는 이유: 큐가 published_date DESC 라 새 기사가 항상
+   * 먼저 나간다(마이그레이션 100·103의 order by). 백로그는 그 뒤를 채운다.
+   *
+   * ⚠️ 6,000자 상한(SEO_TRANSLATE_MAX_SRC_CHARS)은 그대로 둔다 — 그건
+   * 나이가 아니라 poison pill 방지이고 근거가 다르다(마이그레이션 103).
+   * ⚠️ 이 기본값을 다시 바꾸면 마이그레이션 106 의 감시 함수와
+   * tests/seo-thin-page-policy.test.js 도 함께 바꿔야 한다. 앱과 감시가
+   * 어긋나면 2026-08-05 '잔량 8,124 오경보'가 재발한다.
+   * 근거 문서: 볼트 45_Business/PAP_기사번역_전량검토_2026-08-06.md */
   const MAX_AGE_DAYS = (() => {
     const raw = process.env.SEO_TRANSLATE_MAX_AGE_DAYS;
-    if (raw === undefined || raw === '') return 90;
+    if (raw === undefined || raw === '') return 0;
     const n = Number(raw);
-    if (!Number.isFinite(n) || n < 0) return 90;
+    if (!Number.isFinite(n) || n < 0) return 0;
     return Math.floor(n);            // 0 = 제한 없음
   })();
   const sinceDate = MAX_AGE_DAYS > 0
@@ -558,10 +590,13 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
   for (const r of results) {
     if (!r.lang) { if (r.skipped) notes.push('skip(' + r.skipped + ')'); continue; }
     const k = r.lang + '/' + String(r.kind || '?').slice(0, 3);
-    const cur = perCombo.get(k) || { processed: 0, remaining: null, err: null, tooLong: 0 };
+    const cur = perCombo.get(k) || { processed: 0, remaining: null, err: null, tooLong: 0, flagged: 0 };
     cur.processed += r.processed || 0;
     if (typeof r.remaining === 'number') cur.remaining = r.remaining;
     if (r.skipped_too_long) cur.tooLong = r.skipped_too_long;
+    /* 표기 규칙(한글 잔존·한국 고유명사)을 재시도까지 하고도 못 지켜 그대로
+       저장한 건수. 0 이 아닌 상태가 계속되면 프롬프트를 다시 손봐야 한다. */
+    cur.flagged += r.quality_flagged || 0;
     if (r.error && !cur.err) cur.err = String(r.error).slice(0, 50);
     perCombo.set(k, cur);
   }
@@ -586,6 +621,7 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
       /* 길이로 뺀 건수는 '잔여'와 따로 보여야 한다 — 합치면 큐가 막힌 걸
          '할 일이 남았다'로 착각한다(오늘 zh 사고). */
       + (v.tooLong ? '/긴글' + v.tooLong : '')
+      + (v.flagged ? '/품질' + v.flagged : '')
       + (v.err ? ' ERR ' + v.err : '')),
     ...notes,
   ].join(' · ') || '처리 대상 없음';

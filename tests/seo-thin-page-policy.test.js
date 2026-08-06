@@ -45,6 +45,7 @@ const CRON = path.join(ROOT, 'api', 'cron', 'backfill-translations.js');
 const MIG = path.join(ROOT, 'supabase_migrations', '102_seo_translate_queue_since.sql');
 const MIG3 = path.join(ROOT, 'supabase_migrations', '103_seo_translate_length_cap.sql');
 const MIG4 = path.join(ROOT, 'supabase_migrations', '104_translate_health_include_editorial.sql');
+const MIG6 = path.join(ROOT, 'supabase_migrations', '106_translate_health_no_age_cut.sql');
 
 let pass = 0, fail = 0;
 function t(n, cond, d) {
@@ -127,8 +128,13 @@ const cronSrc = fs.readFileSync(CRON, 'utf8');
 const adminSrc = fs.readFileSync(path.join(ROOT, 'api/admin/backfill-translations.js'), 'utf8');
 t('크론이 sinceDate 를 계산해 넘긴다',
   /sinceDate/.test(cronSrc) && /runBackfillBatch\(\{[^}]*sinceDate/.test(cronSrc));
-t('기본 컷은 90일', /return 90;/.test(cronSrc) && /SEO_TRANSLATE_MAX_AGE_DAYS/.test(cronSrc));
-t('0 이면 제한 없음 (되돌릴 손잡이)', /0 = 제한 없음|MAX_AGE_DAYS > 0/.test(cronSrc));
+/* 2026-08-06 — 기본값이 90 에서 0(제한 없음)으로 바뀌었다.
+   근거는 검색이 아니라 사이트 경험이다: 번역이 없으면 비-ko/en 방문자가
+   /en 으로 302 되고, 중국어는 기사 10개 중 8개가 그 상태였다(커버율 22.4%).
+   컷 자체는 손잡이로 남겨 둔다 — env 로 다시 걸 수 있어야 한다. */
+t('기본 컷 없음 (전량 번역)', /return 0;/.test(cronSrc) && /SEO_TRANSLATE_MAX_AGE_DAYS/.test(cronSrc));
+t('나이 컷 손잡이는 살아 있다 (env 로 다시 걸 수 있다)',
+  /0 = 제한 없음|MAX_AGE_DAYS > 0/.test(cronSrc) && /sinceDate/.test(cronSrc));
 t('관리자 수동 경로는 sinceDate 를 넘기지 않는다 (에버그린 예외)',
   !/sinceDate/.test(adminSrc), '관리자에서 나이 제한이 걸리면 오래된 에버그린을 못 번역한다');
 t('note 에 어떤 컷으로 돌았는지 남는다', /컷/.test(cronSrc));
@@ -212,8 +218,10 @@ process.env.ANTHROPIC_API_KEY = 'test';
     /create or replace function public\.translate_health_stats/.test(sql3),
     '안 고치면 잔량 8,124 로 매일 오경보가 울린다');
   /* 앱과 SQL 이 같은 숫자를 써야 한다 — 어긋나면 감시가 거짓말을 한다. */
-  t('감시 함수의 90일이 앱 기본값과 같다',
-    /current_date - 90/.test(sql3) && /return 90;/.test(cron2));
+  /* 103 은 90일 컷 시절의 정합을 잡아 두었다. 2026-08-06 에 컷을 떼면서
+     감시 함수의 최신판은 106 이 되었다 — 아래 ⑨에서 본다. 여기서는 103 이
+     '그 시점에는 맞았다' 는 것만 확인한다(파일은 역사 기록이다). */
+  t('103 은 당시 기준(90일)으로 감시 함수를 맞춰 두었다', /current_date - 90/.test(sql3));
   t('감시 함수의 6000자가 앱 기본값과 같다',
     /<= 6000/.test(sql3) && /return 6000;/.test(cron2));
   /* 함수 '본문'만 떼어 본다 — 파일 앞쪽 주석·다른 함수에도 같은 낱말이
@@ -225,10 +233,25 @@ process.env.ANTHROPIC_API_KEY = 'test';
   t('감시 함수가 아티클과 에디토리얼을 모두 센다',
     /from public\.articles a/.test(healthBody) && /from public\.editorials e/.test(healthBody),
     '한쪽만 세면 다른 쪽이 막혀도 경보가 안 울린다');
-  t('감시 함수의 90일이 앱 기본값과 같다',
-    (healthBody.match(/current_date - 90/g) || []).length === 2 && /return 90;/.test(cron2));
   t('6000자 상한은 아티클에만 적용된다 (에디토리얼은 저장 전 1,200자로 잘림)',
     (healthBody.match(/<= 6000/g) || []).length === 1);
+
+  /* ── ⑨ 마이그레이션 106 · 나이 컷 제거 후의 앱↔감시 정합 ──
+     2026-08-05 에 정확히 반대 방향으로 사고가 났다 — 감시가 컷을 모른 채
+     전체를 세어 '잔량 8,124' 오경보를 올렸고 실제 대상은 181건이었다.
+     앱과 감시가 어긋나면 경보를 못 믿게 되고, 못 믿는 경보는 없는 것만 못하다. */
+  console.log('\n=== ⑨ 마이그레이션 106 · 나이 컷 제거 정합 ===');
+  const sql6 = fs.readFileSync(MIG6, 'utf8');
+  const body6 = (sql6.split('create or replace function public.translate_health_stats')[1] || '').split('$$;')[0];
+  t('106 이 감시 함수를 다시 정의한다',
+    /create or replace function public\.translate_health_stats/.test(sql6));
+  t('감시 함수에 나이 컷이 없다 — 앱 기본값(0)과 같다',
+    !/current_date - 90/.test(body6) && /return 0;/.test(cron2),
+    body6.slice(0, 200));
+  t('감시 함수가 아티클과 에디토리얼을 모두 센다 (106)',
+    /from public\.articles a/.test(body6) && /from public\.editorials e/.test(body6));
+  t('6000자 상한은 유지된다 — 근거가 다르다(poison pill 방지)',
+    (body6.match(/<= 6000/g) || []).length === 1 && /return 6000;/.test(cron2));
 
   console.log('\npassed: ' + pass + '   failed: ' + fail);
   if (fail) process.exit(1);
