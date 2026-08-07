@@ -41,6 +41,46 @@
           kakao: 'Share on KakaoTalk' },
   };
 
+  /* 스타일도 부품이 직접 들고 다닌다 (2026-08-08).
+     어제 이 CSS 는 SSR(seoRenderer) 인라인 <style> 에만 있었다. 그래서 같은
+     블록이 SSR 에선 매거진 톤, SPA(index/articles.html)에선 **맨몸 버튼**으로
+     떴다 — 부품은 합쳤는데 옷은 한 벌만 만든 셈. 규칙이 두 벌이면 한쪽만
+     고쳐진다는 교훈은 CSS 에도 그대로 적용된다. (pap-header.js 와 같은
+     self-contained 방식. .pe-kko 는 SSR 시절에도 스코프 밖이라 무스타일이었다
+     — .ig-funnel .kko-btn 규칙만 있었기 때문. 여기서 처음 입힌다.) */
+  var CSS = ''
+    + '.pap-engage{max-width:720px;margin:56px auto 0;padding:0 24px}'
+    + '.pap-engage .pe-bar{display:flex;align-items:center;gap:14px;padding:18px 0;border-top:1px solid rgba(255,255,255,.14);border-bottom:1px solid rgba(255,255,255,.14);flex-wrap:wrap}'
+    + '.pap-engage .pe-like{display:inline-flex;align-items:center;gap:9px;background:transparent;border:1px solid rgba(255,255,255,.28);color:#eee;padding:11px 20px;font-size:12px;font-weight:600;letter-spacing:.06em;cursor:pointer;font-family:inherit;transition:.2s}'
+    + '.pap-engage .pe-like:hover{border-color:rgba(255,255,255,.6)}'
+    + '.pap-engage .pe-like[aria-pressed="true"]{background:#fff;color:#111;border-color:#fff}'
+    + '.pap-engage .pe-count{font-variant-numeric:tabular-nums}'
+    + '.pap-engage .pe-kko{background:#FEE500;color:#191600;border:0;padding:12px 20px;font-size:12px;font-weight:700;letter-spacing:.04em;cursor:pointer;font-family:inherit;transition:opacity .2s}'
+    + '.pap-engage .pe-kko:hover{opacity:.85}'
+    + '.pap-engage .pe-jump{margin-left:auto;color:#9a9a9a;font-size:12px;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.2)}'
+    + '.pap-engage h2{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:#9a9a9a;margin:36px 0 16px;font-weight:600}'
+    + '.pap-engage .pe-form{display:none}'
+    + '.pap-engage .pe-form textarea{width:100%;min-height:88px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.16);color:#eee;padding:13px;font:inherit;font-size:14px;line-height:1.6;resize:vertical}'
+    + '.pap-engage .pe-form textarea:focus{outline:none;border-color:rgba(255,255,255,.45)}'
+    + '.pap-engage .pe-send{margin-top:10px;background:#fff;color:#111;border:0;padding:11px 26px;font-size:12px;font-weight:700;letter-spacing:.08em;cursor:pointer;font-family:inherit}'
+    + '.pap-engage .pe-send[disabled]{opacity:.4;cursor:default}'
+    + '.pap-engage .pe-login{display:block;padding:18px;border:1px dashed rgba(255,255,255,.2);color:#bbb;font-size:13.5px;text-align:center;text-decoration:none}'
+    + '.pap-engage .pe-login:hover{color:#fff;border-color:rgba(255,255,255,.4)}'
+    + '.pap-engage .pe-list{list-style:none;padding:0;margin:22px 0 0}'
+    + '.pap-engage .pe-list li{padding:16px 0;border-bottom:1px solid rgba(255,255,255,.08)}'
+    + '.pap-engage .pe-who{font-size:12px;color:#8f8f8f;margin-bottom:6px;display:flex;gap:8px;align-items:center}'
+    + '.pap-engage .pe-body{font-size:14.5px;line-height:1.7;color:#e8e8e8;white-space:pre-wrap;word-break:break-word}'
+    + '.pap-engage .pe-del{background:none;border:0;color:#777;font-size:11px;cursor:pointer;padding:0;margin-left:auto;font-family:inherit}'
+    + '.pap-engage .pe-empty{color:#7d7d7d;font-size:13.5px;padding:14px 0}'
+    + '@media(max-width:640px){.pap-engage{padding:0 18px}}';
+  function injectCss() {
+    if (document.getElementById('pap-engage-css')) return;
+    var st = document.createElement('style');
+    st.id = 'pap-engage-css';
+    st.textContent = CSS;
+    (document.head || document.documentElement).appendChild(st);
+  }
+
   /* 카카오 키는 SSR 이면 서버가 심어 두고, SPA 면 물어서 받는다.
      한 번 받으면 재사용한다 — 기사마다 부르면 요청이 조회수만큼 늘어난다. */
   var _cfg = null;
@@ -77,6 +117,7 @@
 
   function mount(root, opts) {
     if (!root) return;
+    injectCss();
     var o = opts || {};
     var kind = String(o.kind || 'article');
     var id = String(o.id || '');

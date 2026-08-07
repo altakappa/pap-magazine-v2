@@ -145,10 +145,16 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
     <div id="artDetailDesc" style="padding:0 0 32px;font-size:16px;line-height:1.9;color:#ccc;letter-spacing:.02em"></div>
     <div id="artDetailCredits" style="padding:24px 0;border-top:1px solid rgba(255,255,255,.08);font-size:12px;line-height:1.8"></div>
     <div id="artDetailGallery" style="display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:24px 0"></div>
+    <!-- 2026-08-08 — MORE ARTICLES (SSR 에만 있던 섹션의 SPA 미러 — index.html
+         오버레이와 동일). pap-content-article.js#_renderMoreArticles 가 채운다. -->
+    <div id="artMoreArticles" style="display:none;padding:24px 0"></div>
     <!-- QA(2026-07) #5 — 해시태그를 본문 하단(콘텐츠 종료 후)으로 이동해 SSR
          (/article/<slug>)·관리자 등록 기사와 노출 위치를 통일. 기존엔 본문 설명
          바로 아래(상단)라 유형별로 위치가 어긋났다. -->
     <div id="artDetailTags" style="padding:12px 0 24px"></div>
+    <!-- 2026-08-08 — 자주 묻는 질문(FAQ). SSR seo-faq 의 SPA 미러.
+         pap-content-article.js#_renderArticleFaq 가 채운다. -->
+    <div id="artFaq" style="display:none;padding:12px 0 24px"></div>
     <div id="artDetailLink" style="display:none"></div>
     <!-- 참여 증폭 CTA — 그동안 articles.html 오버레이엔 이 노드가 없어 /articles 진입 시
          Full Story 박스가 조용히 렌더되지 않았다. index 오버레이와 동일하게 추가. -->
@@ -200,12 +206,12 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
 <script src="/pap-static.js?v=1" defer></script>
 <script src="/pap-subscription.js?v=3" defer></script>
 <script src="/pap-home.js?v=3" defer></script>
-<script src="/pap-content-editorial.js?v=51" defer></script>
-<script src="/pap-content-film.js?v=13" defer></script>
-<script src="/pap-content-article.js?v=45" defer></script>
+<script src="/pap-content-editorial.js?v=52" defer></script>
+<script src="/pap-content-film.js?v=14" defer></script>
+<script src="/pap-content-article.js?v=46" defer></script>
 <script src="/pap-content-creator-shorts.js?v=10" defer></script>
-<script src="/pap-content-api-sync.js?v=120" defer></script>
-<script src="/pap-content-seo.js?v=8" defer></script>
+<script src="/pap-content-api-sync.js?v=121" defer></script>
+<script src="/pap-content-seo.js?v=9" defer></script>
 <script src="/pap-shell-bootstrap.js?v=10" defer></script>
 <script src="/pap-app.js?v=20" defer></script>
 <script src="/pap-lightbox.js?v=2" defer></script>
@@ -487,6 +493,6 @@ document.addEventListener('DOMContentLoaded', function() {
   주소: 서울특별시 강남구 논현로146길 18, 1F | 유선번호: 02-547-1134 | 팩스: 02-547-1136 | 이메일: <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a><br>
   멤버십 구독: STANDARD ₩8,500/월 (₩85,000/년) · PREMIUM ₩13,500/월 (₩135,000/년) — <a href="/subscribe">구독 안내 및 결제</a>
 </div>
-<script src="/pap-engage.js?v=1" defer></script>
+<script src="/pap-engage.js?v=2" defer></script>
 </body>
 </html>

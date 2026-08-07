@@ -1337,32 +1337,11 @@ ${cfg.schemaType !== 'VideoObject' && ogImage ? (canOptimizeImg(ogImage)
      핀터레스트 버튼과 같은 자리에 같은 모양으로 둔다 — 브랜드 컬러만 다르다. */
   .ig-funnel .kko-btn{display:inline-block;margin-left:10px;background:#FEE500;color:#191600;padding:13px 30px;font-size:11.5px;font-weight:700;letter-spacing:.1em;text-decoration:none;border:0;cursor:pointer;font-family:inherit;transition:opacity .3s}
   .ig-funnel .kko-btn:hover{opacity:.85}
-  /* 참여 블록 (2026-08-07). 기사에서 할 수 있는 온사이트 액션이 스크랩
-     하나뿐이었다 — 커뮤니티 좋아요·댓글은 역대 0건이고, 그 이유는 기능이
-     없어서가 아니라 /community 라는 별도 섬에만 있었기 때문이다.
-     IG 퍼널 **위**에 둔다. 아래에 두면 인스타로 나간 뒤라 아무도 안 본다. */
-  .pap-engage{max-width:720px;margin:56px auto 0;padding:0 24px}
-  .pap-engage .pe-bar{display:flex;align-items:center;gap:14px;padding:18px 0;border-top:1px solid rgba(255,255,255,.14);border-bottom:1px solid rgba(255,255,255,.14)}
-  .pap-engage .pe-like{display:inline-flex;align-items:center;gap:9px;background:transparent;border:1px solid rgba(255,255,255,.28);color:#eee;padding:11px 20px;font-size:12px;font-weight:600;letter-spacing:.06em;cursor:pointer;font-family:inherit;transition:.2s}
-  .pap-engage .pe-like:hover{border-color:rgba(255,255,255,.6)}
-  .pap-engage .pe-like[aria-pressed="true"]{background:#fff;color:#111;border-color:#fff}
-  .pap-engage .pe-count{font-variant-numeric:tabular-nums}
-  .pap-engage .pe-jump{margin-left:auto;color:#9a9a9a;font-size:12px;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.2)}
-  .pap-engage h2{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:#9a9a9a;margin:36px 0 16px;font-weight:600}
-  .pap-engage .pe-form{display:none}
-  .pap-engage .pe-form textarea{width:100%;min-height:88px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.16);color:#eee;padding:13px;font:inherit;font-size:14px;line-height:1.6;resize:vertical}
-  .pap-engage .pe-form textarea:focus{outline:none;border-color:rgba(255,255,255,.45)}
-  .pap-engage .pe-send{margin-top:10px;background:#fff;color:#111;border:0;padding:11px 26px;font-size:12px;font-weight:700;letter-spacing:.08em;cursor:pointer;font-family:inherit}
-  .pap-engage .pe-send[disabled]{opacity:.4;cursor:default}
-  .pap-engage .pe-login{display:block;padding:18px;border:1px dashed rgba(255,255,255,.2);color:#bbb;font-size:13.5px;text-align:center;text-decoration:none}
-  .pap-engage .pe-login:hover{color:#fff;border-color:rgba(255,255,255,.4)}
-  .pap-engage .pe-list{list-style:none;padding:0;margin:22px 0 0}
-  .pap-engage .pe-list li{padding:16px 0;border-bottom:1px solid rgba(255,255,255,.08)}
-  .pap-engage .pe-who{font-size:12px;color:#8f8f8f;margin-bottom:6px;display:flex;gap:8px;align-items:center}
-  .pap-engage .pe-body{font-size:14.5px;line-height:1.7;color:#e8e8e8;white-space:pre-wrap;word-break:break-word}
-  .pap-engage .pe-del{background:none;border:0;color:#777;font-size:11px;cursor:pointer;padding:0;margin-left:auto;font-family:inherit}
-  .pap-engage .pe-empty{color:#7d7d7d;font-size:13.5px;padding:14px 0}
-  @media(max-width:640px){.pap-engage{padding:0 18px}}
+  /* 참여 블록 CSS 는 이제 부품(pap-engage.js)이 직접 주입한다 (2026-08-08).
+     여기 두면 SSR 만 옷을 입고 SPA(index/articles.html)는 맨몸 버튼이 떴다 —
+     부품은 합쳤는데 스타일이 두 벌 규칙으로 남아 있던 것. 배치 이유는 그대로:
+     기사에서 할 수 있는 온사이트 액션이 스크랩 하나뿐이었고(커뮤니티
+     좋아요·댓글 역대 0건), IG 퍼널 **위**에 둔다 — 아래면 아무도 안 본다. */
   /* ── 2026-07-22 (도메니코 지시) — 기사(article) SSR 을 SPA 오버레이(artDetail) 룩과 통일.
      "링크 직접 진입 시 이미지가 크게 나오고 정렬이 뒤죽박죽" 보고의 실체는 두 렌더러의
      디자인 불일치였다(frontend/rules 'SSR·SPA 불일치 금지'). 기준은 SPA:
@@ -1387,7 +1366,7 @@ ${cfg.schemaType !== 'VideoObject' && ogImage ? (canOptimizeImg(ogImage)
 </style>
 </head>
 <body class="seo-loading seo-kind-${kind}">
-${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-browser redirect bridge.
+${(kind === 'editorial' || kind === 'film' || kind === 'article') ? `<!-- QA #178 / #233 — Real-browser redirect bridge.
      The SSR HTML above + meta tags is what crawlers / social-preview
      scrapers consume (they don't run JS). Real users instead get sent to
      the SPA homepage with the kind-specific deep-link, which renders the
@@ -1395,10 +1374,16 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
      templates to keep in sync.
      Editorial → ?ed=<slug>   → /editorial/<slug> (final URL)
      Film      → ?film=<slug> → /film/<slug>      (final URL — QA #233)
+     Article   → ?art=<slug>  → /article/<slug>   (2026-08-08 — 도메니코가
+       "주소로 직접 들어갈 때와 홈에서 타고 들어갈 때 화면이 다르다" 고
+       계속 지적한 바로 그 갈래. 기사만 다리가 없어서 직접 진입자는 SSR
+       디자인을, 사이트 내 진입자는 SPA 디자인을 봤다. FAQ·MORE ARTICLES
+       를 SPA 로 옮겨 심었으므로 이제 기사도 다리를 건넌다. artid=<uuid>
+       를 같이 실어, SPA 의 전량 목록 동기화(451편·수 초)가 늦어도 단건
+       fetch 로 바로 열 수 있게 한다.)
      ?raw=1 escape hatch leaves the user on the SSR view for debugging /
      archival snapshots.
-     Articles / shorts still skip the redirect (TODO: extend the same
-     bridge once their slug-based deep-link path lands). -->
+     Shorts still skip the redirect (slug deep-link 미구현). -->
 <style>
   /* Hide the SSR body the instant we know we'll be redirecting so the
      user doesn't see a flash of the simplified SSR layout. Crawlers
@@ -1449,14 +1434,16 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
       // SPA homepage picks up the right query param via deep-link IIFEs
       // in pap-content-seo.js, opens the matching overlay, and pushes
       // /<kind>/<slug> as the final URL.
-      var paramName = ${JSON.stringify(kind === 'film' ? 'film' : 'ed')};
+      var paramName = ${JSON.stringify(kind === 'film' ? 'film' : (kind === 'article' ? 'art' : 'ed'))};
       // 2026-08-04 — 언어 접두어 보존. 예전엔 /en/editorial/x 로 들어와도
       // SPA 최종 URL 이 /editorial/x (한국어)로 바뀌어 canonical·hreflang 과
       // 어긋났다. 언어를 쿼리로 넘기고 표시 언어도 미리 맞춰둔다.
       var _lang = ${JSON.stringify(lang)};
       if (_lang && _lang !== 'ko') { try { localStorage.setItem('pap-lang', _lang); } catch (_) {} }
       var target = '/?' + paramName + '=' + encodeURIComponent(${JSON.stringify(slug)})
-        + (_lang && _lang !== 'ko' ? '&lang=' + encodeURIComponent(_lang) : '');
+        + (_lang && _lang !== 'ko' ? '&lang=' + encodeURIComponent(_lang) : '')
+        // 기사 전용 — 목록 동기화보다 먼저 도착해도 단건으로 열 수 있는 안전핀.
+        + ${JSON.stringify(kind === 'article' && UUID_RE.test(String(record.id || '')) ? '&artid=' + String(record.id) : '')};
       window.location.replace(target);
     } catch(_){ /* on any error, leave the SSR page visible */ }
   })();
@@ -1579,7 +1566,7 @@ window.__PAP_ENGAGE = ${JSON.stringify({
   image: ogImage || '',
 })};
 </script>
-<script src="/pap-engage.js?v=1" defer></script>
+<script src="/pap-engage.js?v=2" defer></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   var host = document.getElementById('papEngageMount');

@@ -642,11 +642,80 @@ function _renderArticleDetail(a,det){
   }
   var linkEl=document.getElementById('artDetailLink');
   if(linkEl){ linkEl.style.display='none'; }
-  // Social: comments
-  var socialSlot=document.getElementById('artSocialSlot');
-  if(socialSlot && typeof PAPSocial!=='undefined'){
-    PAPSocial.renderArticleSocial(socialSlot, a.slug||a.t, a.t);
+  // FAQ + MORE ARTICLES (2026-08-08) — 그동안 SSR(/article 직접 진입)에만
+  // 있던 두 섹션. 도메니코: "웹사이트에서 기사를 보면 MORE ARTICLES,
+  // 자주 묻는 질문은 뜨지 않는데" — 사이트 안에서 클릭한 화면(여기)에는
+  // 그릴 코드 자체가 없었다. 데이터는 상세 GET(위 hydrate)이 채운다.
+  try{ _renderArticleFaq(a); }catch(_){}
+  try{ _renderMoreArticles(a); }catch(_){}
+  // 2026-08-08 — 구 커뮤니티 댓글(PAPSocial.renderArticleSocial) 렌더 제거.
+  // 어제 참여 블록(pap-engage.js 댓글)이 들어오면서 한 화면에 댓글창이
+  // **두 개** 떴다. SSR 에는 참여 블록 하나뿐이라 화면도 갈라졌다.
+  // 구 시스템 기사 댓글은 역대 0건(실측)이라 잃는 데이터 없음.
+}
+
+// ======== FAQ (2026-08-08 — SSR seo-faq 의 SPA 미러) ========
+function _renderArticleFaq(a){
+  var host=document.getElementById('artFaq');
+  if(!host) return;
+  var items=Array.isArray(a.faq)?a.faq.filter(function(f){return f&&f.q&&f.a;}):[];
+  if(!items.length){ host.innerHTML=''; host.style.display='none'; return; }
+  var ko=(localStorage.getItem('pap-lang')||'ko')==='ko';
+  var html='<h2 style="font-size:14px;letter-spacing:.12em;text-transform:uppercase;opacity:.7;margin:0 0 16px;color:#fff">'+(ko?'자주 묻는 질문':'FAQ')+'</h2>';
+  items.forEach(function(f){
+    html+='<details open style="border-bottom:1px solid rgba(255,255,255,.1);padding:12px 0">'
+      +'<summary style="font-size:14.5px;font-weight:600;cursor:pointer;line-height:1.6;color:#eee">'+escapeHtml(f.q)+'</summary>'
+      +'<p style="margin:10px 0 4px;font-size:13.5px;line-height:1.75;color:rgba(255,255,255,.75)">'+escapeHtml(f.a)+'</p>'
+      +'</details>';
+  });
+  host.innerHTML=html;
+  host.style.display='';
+}
+
+// ======== MORE ARTICLES (2026-08-08 — SSR more_articles 의 SPA 미러) ========
+// 카드 모양은 SSR .seo-related-card 실측값을 그대로 옮겼다 (가로 행,
+// 좌측 썸네일 120×80, 골드 태그라인). 같은 데이터 + 같은 모양 = 한 화면.
+function _renderMoreArticles(a){
+  var host=document.getElementById('artMoreArticles');
+  if(!host) return;
+  var m=a._more;
+  function card(e,tag){
+    if(!e||!e.title||!(e.slug||e.id)) return '';
+    var slug=String(e.slug||e.id);
+    return '<a data-art-slug="'+escapeHtml(slug)+'" href="/article/'+encodeURIComponent(slug)+'"'
+      +' style="display:flex;align-items:center;gap:16px;padding:16px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.02);text-decoration:none;color:inherit;margin-bottom:10px">'
+      +(e.thumbnail?'<img src="'+escapeHtml(e.thumbnail)+'" alt="'+escapeHtml(e.title)+'" loading="lazy" style="width:120px;height:80px;object-fit:cover;background:#222;flex-shrink:0">':'')
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="font-size:9px;font-weight:700;letter-spacing:.2em;color:rgba(201,169,110,.9);text-transform:uppercase;margin-bottom:6px">'+tag+'</div>'
+      +'<div style="font-size:15px;font-weight:600;letter-spacing:.02em;line-height:1.4;color:#fff">'+escapeHtml(e.title)+'</div>'
+      +'</div></a>';
   }
+  var html='';
+  if(m){
+    html+=card(m.prev,'PREVIOUS');
+    (Array.isArray(m.related)?m.related:[]).forEach(function(e){ html+=card(e,'RELATED'); });
+    html+=card(m.next,'NEXT');
+  }
+  if(!html){ host.innerHTML=''; host.style.display='none'; return; }
+  host.innerHTML='<h2 style="font-size:14px;letter-spacing:.12em;text-transform:uppercase;opacity:.7;margin:0 0 14px;color:#fff">More Articles</h2>'+html;
+  host.style.display='';
+  // 사이트 안에서는 전체 페이지 이동 대신 오버레이 전환. 목록에 아직 없는
+  // 기사는 링크 그대로 보낸다 — /article/<slug> SSR 브릿지가 받아서 되돌아온다.
+  host.onclick=function(ev){
+    var link=ev.target && ev.target.closest ? ev.target.closest('a[data-art-slug]') : null;
+    if(!link) return;
+    var s=link.getAttribute('data-art-slug');
+    if(!s || typeof artData==='undefined') return;
+    for(var i=0;i<artData.length;i++){
+      var it=artData[i];
+      if(it && (it.slug===s || _articleTitleToSlug(it.t||'')===s)){
+        ev.preventDefault();
+        openArticleDetail(i);
+        try{ var ov=document.getElementById('artDetailOverlay'); if(ov) ov.scrollTop=0; }catch(_){}
+        return;
+      }
+    }
+  };
 }
 /* PAP API fetch removed - using local gallery data */
 function openArticleDetail(idx){
@@ -683,7 +752,11 @@ function _openArticleDetailInner(idx){
   // 없으면 상세 GET 으로 seo_translations 번역(content_i18n/title_i18n)을 지연 로드.
   var _artL = (typeof _papCurLang==='function') ? _papCurLang() : 'ko';
   var _needTr = (_artL !== 'ko' && a._api_id && !(a.desci18n && a.desci18n[_artL]));
-  if(((!hasBlocks && !hasDesc) || _needTr) && a._api_id){
+  // 2026-08-08 — FAQ·MORE ARTICLES 도 상세 GET 이 실어 온다. 목록 응답에는
+  // 두 필드가 없으므로(undefined) 첫 오픈 때 한 번 물어보고, 응답을 받으면
+  // _extrasChecked 로 표시해 재오픈 때 다시 묻지 않는다.
+  var _needExtras = !a._extrasChecked && a._api_id && (a.faq === undefined || a._more === undefined);
+  if(((!hasBlocks && !hasDesc) || _needTr || _needExtras) && a._api_id){
     var _token = '';
     try { _token = localStorage.getItem('pap-token') || ''; } catch(_){}
     var _headers = {};
@@ -723,6 +796,10 @@ function _openArticleDetailInner(idx){
       } else if(raw) {
         a.desc = String(raw);
       }
+      // 2026-08-08 — SSR 에만 있던 섹션의 데이터 병합 (화면 두 벌 통일).
+      if(fullA.faq !== undefined) a.faq = Array.isArray(fullA.faq) ? fullA.faq : null;
+      if(fullA.more_articles) a._more = fullA.more_articles;
+      a._extrasChecked = true;
       _renderArticleDetail(a, det);
     })
     .catch(function(){});

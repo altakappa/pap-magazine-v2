@@ -12,6 +12,9 @@ const { supabaseAdmin } = require('../../_lib/supabase');
 const { handleCors } = require('../../_lib/cors');
 const { renderSeoHtml, renderNotFoundHtml } = require('../../_lib/seoRenderer');
 const { logSocialInclick } = require('../../_lib/socialInclick');
+// 2026-08-08 — MORE ARTICLES 빌더를 공용 lib 로 추출. SPA 상세 API
+// (api/articles/[id].js)와 같은 규칙을 쓴다 — 규칙이 두 벌이면 한쪽만 고쳐진다.
+const { buildMoreArticles } = require('../../_lib/moreArticles');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -185,43 +188,10 @@ module.exports = async function handler(req, res) {
        "발행일 인접(앞2+뒤2)"으로 바꿔 오래된 기사끼리도 상호 연결 →
        토픽 클러스터 밀도↑, 오래된 기사 인바운드 2→6. 렌더러 형식(4건)은 유지. */
     try {
-      const pd = data.published_date || '1970-01-01';
-      const ca = data.created_at || '1970-01-01T00:00:00Z';
-      const sel = 'title, slug, id, published_date, thumbnail_url, hero_image_url, category';
-      const catFilter = (q) => data.category ? q.eq('category', data.category) : q;
-      const [prevR, nextR, relPrevR, relNextR] = await Promise.all([
-        supabaseAdmin.from('articles').select(sel).eq('status','published')
-          .or(`published_date.lt.${pd},and(published_date.eq.${pd},created_at.lt.${ca})`)
-          .order('published_date',{ascending:false}).order('created_at',{ascending:false}).limit(1),
-        supabaseAdmin.from('articles').select(sel).eq('status','published')
-          .or(`published_date.gt.${pd},and(published_date.eq.${pd},created_at.gt.${ca})`)
-          .order('published_date',{ascending:true}).order('created_at',{ascending:true}).limit(1),
-        // 같은 카테고리, 발행일이 이 기사보다 앞선 최근 2건
-        catFilter(supabaseAdmin.from('articles').select(sel).eq('status','published')
-          .neq('id', data.id).lt('published_date', pd))
-          .order('published_date',{ascending:false}).limit(2),
-        // 같은 카테고리, 발행일이 이 기사보다 뒤인 가까운 2건
-        catFilter(supabaseAdmin.from('articles').select(sel).eq('status','published')
-          .neq('id', data.id).gt('published_date', pd))
-          .order('published_date',{ascending:true}).limit(2),
-      ]);
-      const _norm = a => a && ({ title: a.title, slug: a.slug, id: a.id,
-        thumbnail: a.thumbnail_url || a.hero_image_url || '' });
-      // 인접(앞2+뒤2)을 합쳐 4건. 카테고리가 희소해 4건 미만이면 있는 만큼
-      // (prev/next 체인이 최소 연결을 보장하므로 고아는 발생하지 않는다).
-      let relAdj = [...(relPrevR.data || []), ...(relNextR.data || [])];
-      if (relAdj.length < 4) {
-        const fill = await catFilter(supabaseAdmin.from('articles').select(sel)
-          .eq('status','published').neq('id', data.id))
-          .order('published_date',{ascending:false}).limit(6);
-        const seen = new Set(relAdj.map(a => a.id));
-        for (const a of (fill.data || [])) { if (!seen.has(a.id)) { relAdj.push(a); seen.add(a.id); } }
-      }
-      data.more_articles = {
-        prev: _norm(prevR.data && prevR.data[0]) || null,
-        next: _norm(nextR.data && nextR.data[0]) || null,
-        related: relAdj.filter(a => a && a.id !== data.id).slice(0,4).map(_norm),
-      };
+      // 2026-08-08 — 빌더 본체는 api/_lib/moreArticles.js 로 이사했다
+      // (SPA 상세 API 와 공유). 언어 프리픽스 주석(_lang)은 번역 테이블을
+      // 아는 이 파일에 남긴다.
+      data.more_articles = await buildMoreArticles(data);
       /* 2026-08-04 (GSC '발견됨 - 현재 색인이 생성되지 않음' 4,474건) —
          내부링크 언어 프리픽스. 지금까지 /ja/article/x 안의 이전·다음·관련
          카드가 전부 /article/y (한국어)를 가리켰다. 그래서 en/ja/fr/it/es

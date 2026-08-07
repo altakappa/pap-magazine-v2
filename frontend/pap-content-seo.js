@@ -427,3 +427,88 @@ function _papResolveEditorialName(input){
   else window.addEventListener('load', tryOpenFilm);
 })();
 
+// ======== DEEP LINK: open article from ?art= param (2026-08-08) ========
+// 에디토리얼·필름과 같은 SSR 브릿지의 기사 판. 그동안 기사만 다리가 없어서
+// 주소로 직접 들어온 사람은 SSR 디자인을, 사이트 안에서 클릭한 사람은 SPA
+// 디자인을 봤다 — 도메니코가 "일치시켜 달라" 고 반복해서 지적한 갈래.
+// 브릿지(seoRenderer.js)가 /article/<slug> → /?art=<slug>&artid=<uuid> 로
+// 보내면, 여기서 artData 를 폴링해 카드 클릭과 똑같이 openArticleDetail 로
+// 연다. 최종 URL 은 openArticleDetail 의 pushState 가 /article/<slug> 로
+// 되돌린다. 기사 전량 동기화(451편)는 수 초 걸리므로, 2.5초 안에 목록에서
+// 못 찾으면 artid 단건 fetch(_papFetchArticleById)로 폴백한다.
+(function(){
+  var params = new URLSearchParams(window.location.search);
+  var artSlug = params.get('art');
+  if(!artSlug) return;
+  var artId = params.get('artid') || '';
+  // 에디토리얼·필름과 동일 — SSR 브릿지의 언어를 기억한다.
+  try{
+    var _dlLangA=(params.get('lang')||'').toLowerCase();
+    if(/^(en|it|fr|es|ja|de|zh|ru)$/.test(_dlLangA)) window.__papDeepLinkLang=_dlLangA;
+  }catch(_){}
+  // ?art= 를 즉시 지워 openArticleDetail 의 pushState 가 스택의 첫
+  // /article/<slug> 항목이 되게 한다.
+  try { history.replaceState(null, '', window.location.pathname); } catch(_){}
+  function revealBody(){
+    if(document.body && !document.body.classList.contains('pap-deeplink-ready')){
+      document.body.classList.add('pap-deeplink-ready');
+    }
+  }
+  function _openedOk(){
+    try{
+      var _aov=document.getElementById('artDetailOverlay');
+      if(_aov && _aov.classList.contains('active')) sessionStorage.removeItem('_pap_ssr_bounce');
+    }catch(_){}
+    setTimeout(revealBody, 60);
+  }
+  var pollStart = Date.now();
+  var fellBack = false;
+  function tryOpenArticle(){
+    if(typeof openArticleDetail !== 'function' || typeof artData === 'undefined'){
+      setTimeout(tryOpenArticle, 100);
+      return;
+    }
+    // slug → index. apiArticleToLocal 이 .slug 를 실어 주고, slug 없는
+    // 레거시 기사는 제목 하이픈 변환(_articleTitleToSlug)이 SSR 의
+    // dehyphenate 매처와 짝을 이룬다.
+    var idx = -1;
+    var slugNorm = String(artSlug || '').toLowerCase();
+    for(var i = 0; i < artData.length; i++){
+      var a = artData[i] || {};
+      if(a.slug && String(a.slug).toLowerCase() === slugNorm){ idx = i; break; }
+    }
+    if(idx < 0 && typeof _articleTitleToSlug === 'function'){
+      for(var j = 0; j < artData.length; j++){
+        var at = _articleTitleToSlug(String((artData[j] || {}).t || ''));
+        if(at && at.toLowerCase() === slugNorm){ idx = j; break; }
+      }
+    }
+    var elapsed = Date.now() - pollStart;
+    if(idx < 0){
+      // 2.5초 — 전량 동기화를 계속 기다리는 대신 uuid 단건 fetch 로 전환.
+      if(!fellBack && artId && elapsed >= 2500 && typeof window._papFetchArticleById === 'function'){
+        fellBack = true;
+        window._papFetchArticleById(artId, function(fIdx){
+          if(fIdx >= 0){
+            try { openArticleDetail(fIdx); } catch(_){}
+            _openedOk();
+          } else {
+            // 단건도 실패 — 폴링 재개 (4초 천장까지).
+            setTimeout(tryOpenArticle, 120);
+          }
+        });
+        return;
+      }
+      if(elapsed < 4000){ setTimeout(tryOpenArticle, 120); return; }
+    }
+    if(idx >= 0){
+      try { openArticleDetail(idx); } catch(_){}
+      _openedOk();
+      return;
+    }
+    setTimeout(revealBody, 60);
+  }
+  if(document.readyState === 'complete') tryOpenArticle();
+  else window.addEventListener('load', tryOpenArticle);
+})();
+

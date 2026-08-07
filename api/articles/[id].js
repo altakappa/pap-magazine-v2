@@ -12,6 +12,10 @@ const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { recordContentChange, diffFields, attachAuthorship } = require('../_lib/audit');
 // 2026-08-07 — 유니크 제약 위반을 사람이 읽는 안내로 (발행 8연속 실패 사고)
 const { describePgError } = require('../_lib/pgError');
+// 2026-08-08 — MORE ARTICLES. SSR([slug].js)과 같은 빌더를 써서 SPA 상세도
+// 같은 이전/다음/관련 기사를 받는다. 없으면 사이트 안에서 클릭해 들어온
+// 사람에게는 이 섹션이 존재하지 않았다(도메니코의 "화면이 두 벌" 지적).
+const { buildMoreArticles } = require('../_lib/moreArticles');
 
 // QA #202 — fields tracked in the audit diff for articles.
 const ARTICLE_AUDIT_FIELDS = [
@@ -62,6 +66,13 @@ module.exports = async function handler(req, res) {
         data.title_i18n = _ti;
         data.content_i18n = _ci;
       } catch (_) { /* best-effort — 번역 없으면 기존 en 폴백 유지 */ }
+
+      // 2026-08-08 — MORE ARTICLES (SSR 과 동일 규칙, 공용 빌더).
+      // 공개 기사에만 붙인다 — 관리자가 draft 를 열 때는 필요 없고 쿼리만 든다.
+      if (data.status === 'published') {
+        try { data.more_articles = await buildMoreArticles(data); }
+        catch (_) { /* best-effort — 없으면 SPA 가 섹션을 숨긴다 */ }
+      }
 
       return res.status(200).json({ data });
     } catch (err) {

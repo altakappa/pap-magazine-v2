@@ -350,6 +350,11 @@ window._papFilmAutoPlay = function(){
       _api_id: a.id,
       // 참여 증폭 (2026-07) — 원본 IG 게시물 딥링크 (좋아요·저장·보내기 CTA)
       ig: a.source_instagram_url || '',
+      // 2026-08-08 — SSR 에만 있던 FAQ·MORE ARTICLES 를 SPA 로 (화면 두 벌 통일).
+      // 목록 응답에는 faq 가 없으므로 undefined 로 남고, 상세 GET 이 채운다
+      // (undefined = 아직 안 물어봄, null = 물어봤는데 없음 — 재요청 방지 구분).
+      faq: (a.faq === undefined ? undefined : (Array.isArray(a.faq) ? a.faq : null)),
+      _more: a.more_articles || undefined,
       // Pass through any i18n fields the API exposes (varies by backend schema)
       //
       // QA(2026-07) #30 — 다국어 전환 시 제목 번역 미적용.
@@ -1205,6 +1210,28 @@ window._papFilmAutoPlay = function(){
         cb(local);
       })
       .catch(function(){ cb(null); });
+  };
+
+  // 2026-08-08 — 기사 딥링크(?art=) 안전핀. SSR 브릿지가 &artid=<uuid> 를 실어
+  // 보내므로, 전량 목록 동기화(451편·수 초)가 아직 안 끝났어도 단건 GET 으로
+  // 즉시 열 수 있다. 이미 목록에 있으면 그 인덱스를, 없으면 push 한 인덱스를
+  // 돌려준다. 실패는 -1 — 호출부(pap-content-seo.js)가 폴링으로 폴백한다.
+  window._papFetchArticleById = function(id, cb){
+    cb = (typeof cb === 'function') ? cb : function(){};
+    if(!id || typeof artData === 'undefined'){ cb(-1); return; }
+    fetch(PAP_API_BASE + '/articles/' + encodeURIComponent(id))
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){
+        var row = j && j.data;
+        if(!row || !row.id){ cb(-1); return; }
+        for(var i = 0; i < artData.length; i++){
+          if(artData[i] && artData[i]._api_id === row.id){ cb(i); return; }
+        }
+        var local = apiArticleToLocal(row);
+        artData.push(local);
+        cb(artData.length - 1);
+      })
+      .catch(function(){ cb(-1); });
   };
 
   function syncEditorials(){

@@ -1234,7 +1234,15 @@ function _openEditorialInner(title,thumb){
     var _edL2 = (function(){try{return localStorage.getItem('pap-lang')||'ko';}catch(e){return 'ko';}})();
     var _edDetC = (typeof edDetails!=='undefined' && edDetails[title]) || {};
     var _edNeedTr = (_edL2!=='ko' && d.id && !_edDetC._i18nHydrated && !(d.desc && typeof d.desc==='object' && d.desc[_edL2]));
-    if((_needsHydrate || _edNeedTr) && d.id){
+    // 2026-08-08 — IG 임베드가 에디토리얼에서 안 뜨던 진짜 이유.
+    // 임베드 코드(_papRenderEdIg)는 이미 있었지만, det.ig 를 채우는 상세 GET 이
+    // "이미지·크레딧·설명이 전부 없을 때"만 나갔다. 대부분의 화보는 로컬
+    // 카탈로그에 셋 다 있어서 fetch 자체가 안 나갔고, source_instagram_url 이
+    // 영영 병합되지 않아 임베드 대신 폴백 CTA 만 떴다. ig 가 없으면 한 번은
+    // 물어보고, 응답을 받으면 _igChecked 로 표시해 (원본 IG 가 정말 없는
+    // 화보를) 매번 다시 묻지 않는다.
+    var _edNeedIg = (!d.ig && !_edDetC._igChecked);
+    if((_needsHydrate || _edNeedTr || _edNeedIg) && d.id){
       var _t = '';
       try { _t = localStorage.getItem('pap-token') || ''; } catch(_){}
       var _h = {};
@@ -1281,6 +1289,7 @@ function _openEditorialInner(title,thumb){
         }
         // 참여 증폭 2.0 — 원본 IG 게시물 permalink.
         if(full.source_instagram_url) dst.ig = full.source_instagram_url;
+        dst._igChecked = true; // 2026-08-08 — 응답을 받았으면 (ig 유무와 무관하게) 재요청 안 함
         // 2026-07-28 — 관리자가 저장한 인스타 합성 설정(로고/프레이밍).
         if(full.insta_logo_settings && typeof full.insta_logo_settings === 'object'){
           dst.instaLogoSettings = full.insta_logo_settings;
@@ -1530,10 +1539,17 @@ function _openEditorialInner(title,thumb){
     logoSection.style.display='none';
   }
 
-  // Social: comments (별점은 아래 상단 CTA로 이전됨)
-  var socialSlot=document.getElementById('edSocialSlot');
-  if(socialSlot && typeof PAPSocial!=='undefined'){
-    PAPSocial.renderEditorialSocial(socialSlot, title);
+  // 참여 블록 (2026-08-08) — 기사와 같은 부품(pap-engage.js: 좋아요·댓글·
+  // 카카오 공유). 구 커뮤니티 댓글(renderEditorialSocial)은 여기서 렌더를
+  // 중단한다 — 한 화면에 댓글창이 두 개 뜨는 걸 막기 위해서다(기사와 동일
+  // 결정, 구 시스템 에디토리얼 댓글 역대 0건이라 잃는 데이터 없음).
+  // 별점 CTA 는 에디토리얼 고유 기능이라 그대로 둔다.
+  var _edEng=document.getElementById('edEngageMount');
+  if(_edEng && window.PapEngage){
+    window.PapEngage.mount(_edEng, {
+      kind:'editorial', id:(d && d.id)||'', lang:(localStorage.getItem('pap-lang')||'ko'),
+      title:title||'', desc:'', image:(det && det.thumb)||thumb||'',
+    });
   }
 
   // 참여율 개선 (2026-07) — 별점 CTA(본문 상단). ratings 테이블 재사용.
@@ -1731,8 +1747,14 @@ function _openEditorialInner_noPush(title,thumb){
       logoSection.style.display='';
     } else { logoSection.style.display='none'; }
   }
-  var socialSlot=document.getElementById('edSocialSlot');
-  if(socialSlot&&typeof PAPSocial!=='undefined') PAPSocial.renderEditorialSocial(socialSlot,title);
+  // 참여 블록 (2026-08-08) — push 경로와 동일 (구 커뮤니티 댓글 렌더 중단).
+  var _edEng2=document.getElementById('edEngageMount');
+  if(_edEng2 && window.PapEngage){
+    window.PapEngage.mount(_edEng2, {
+      kind:'editorial', id:(d && d.id)||'', lang:(localStorage.getItem('pap-lang')||'ko'),
+      title:title||'', desc:'', image:(det && det.thumb)||thumb||'',
+    });
+  }
   // 참여율/체류시간 개선 (2026-07) — popstate 복원 경로도 push 경로와 동일하게.
   var edRatingCta2=document.getElementById('edRatingCta');
   if(edRatingCta2&&typeof PAPSocial!=='undefined'&&PAPSocial.renderEditorialRatingCta) PAPSocial.renderEditorialRatingCta(edRatingCta2,title);

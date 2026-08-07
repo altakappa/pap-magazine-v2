@@ -210,6 +210,16 @@ function _openFilmDetailInner(idx){
   // 2026-07-21 QA(전역 통일) — 공통 papFmtMeta 사용
   var catStr=papFmtMeta(f.cat||'Film', f.d);
   document.getElementById('filmDetailCat').textContent=catStr;
+  // 참여 블록 (2026-08-08) — SSR 필름 페이지에는 있는데 SPA 오버레이에는
+  // 없었다. 필름 SSR 은 브릿지로 SPA 에 넘기므로, 여기 없으면 실사용자는
+  // 필름에서 좋아요·댓글을 영영 못 본다 (기사·에디토리얼과 동일 결정).
+  var _fEng=document.getElementById('filmEngageMount');
+  if(_fEng && window.PapEngage){
+    window.PapEngage.mount(_fEng, {
+      kind:'film', id:f._api_id||'', lang:(localStorage.getItem('pap-lang')||'ko'),
+      title:f.t||'', desc:'', image:f.th||'',
+    });
+  }
   var credEl=document.getElementById('filmDetailCredits');
   if(credEl){
     // Ensure the grid container class is applied so .ed-cred-row children

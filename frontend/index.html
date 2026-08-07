@@ -65,7 +65,9 @@
 (function(){
   try{
     var params=new URLSearchParams(window.location.search);
-    var hasEdParam=!!params.get('ed');
+    // 2026-08-08 — 필름·기사 딥링크도 커버 대상. 기사 브릿지(?art=) 신설과
+    // 함께, 그동안 빠져 있던 ?film= 도 같이 넣는다(홈 플래시 방지).
+    var hasEdParam=!!(params.get('ed')||params.get('film')||params.get('art'));
     var hasAllHash=(window.location.hash==='#all-editorials'||window.location.hash==='#all-films'||window.location.hash==='#all-articles');
     // Hash deep-link to a specific editorial (e.g. #editorial/refractions).
     // Without this branch the page paints the homepage briefly while the
@@ -867,7 +869,7 @@
      (첫 화면 심볼 오버레이 제거). 되살리려면 아래 스크립트 주석 해제.
 <script src="/pap-splash-loader.js?v=3"></script>
 -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script><script src="/pap-logos-data.js?v=1" defer></script><script src="/pap-api.js?v=14" defer></script><script src="/pap-social.js?v=8" defer></script><script src="/pap-utils.js?v=6" defer></script><script src="/pap-i18n.js?v=7" defer></script><script src="/pap-auth.js?v=3" defer></script><script src="/pap-search.js?v=5" defer></script><script src="/pap-static.js?v=1" defer></script><script src="/pap-subscription.js?v=3" defer></script><script src="/pap-home.js?v=3" defer></script><script src="/pap-content-editorial.js?v=51" defer></script><script src="/pap-content-film.js?v=13" defer></script><script src="/pap-content-article.js?v=45" defer></script><script src="/pap-content-creator-shorts.js?v=10" defer></script><script src="/pap-content-api-sync.js?v=120" defer></script><script src="/pap-content-seo.js?v=8" defer></script><script src="/pap-shell-bootstrap.js?v=10" defer></script><script src="/pap-app.js?v=20" defer></script><script src="/pap-lightbox.js?v=2" defer></script><script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=29" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script><script src="/pap-logos-data.js?v=1" defer></script><script src="/pap-api.js?v=14" defer></script><script src="/pap-social.js?v=8" defer></script><script src="/pap-utils.js?v=6" defer></script><script src="/pap-i18n.js?v=7" defer></script><script src="/pap-auth.js?v=3" defer></script><script src="/pap-search.js?v=5" defer></script><script src="/pap-static.js?v=1" defer></script><script src="/pap-subscription.js?v=3" defer></script><script src="/pap-home.js?v=3" defer></script><script src="/pap-content-editorial.js?v=52" defer></script><script src="/pap-content-film.js?v=14" defer></script><script src="/pap-content-article.js?v=46" defer></script><script src="/pap-content-creator-shorts.js?v=10" defer></script><script src="/pap-content-api-sync.js?v=121" defer></script><script src="/pap-content-seo.js?v=9" defer></script><script src="/pap-shell-bootstrap.js?v=10" defer></script><script src="/pap-app.js?v=20" defer></script><script src="/pap-lightbox.js?v=2" defer></script><script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=29" defer></script>
 <script src="/pap-protect.js?v=3" defer></script>
 <div class="creator-popup-overlay" id="creatorPopup" onclick="if(event.target===this)closeCreatorPopup()">
   <div class="creator-popup">
@@ -1031,6 +1033,9 @@
       </div>
       <span style="font-size:18px;color:rgba(255,255,255,.4);flex-shrink:0">›</span>
     </a>
+    <!-- 2026-08-08 — 참여 블록. 필름 SSR 에는 있는데 SPA 오버레이에는 없어
+         (필름은 전원 SPA 브릿지) 실사용자가 영영 못 보던 갈래. -->
+    <div class="pap-engage" id="filmEngageMount"></div>
     <!-- 검색→인스타 전환 깔때기 (2026-07) — 필름 오버레이 버전.
          QA(2026-07) #9 — 공용 .ig-funnel 컴포넌트 사용(문구만 맥락별). -->
     <aside class="ig-funnel">
@@ -1121,9 +1126,18 @@
     <div id="artDetailDesc" style="padding:0 0 32px;font-size:16px;line-height:1.9;color:#ccc;letter-spacing:.02em"></div>
     <div id="artDetailCredits" style="padding:24px 0;border-top:1px solid rgba(255,255,255,.08);font-size:12px;line-height:1.8"></div>
     <div id="artDetailGallery" style="display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:24px 0"></div>
+    <!-- 2026-08-08 — MORE ARTICLES. SSR(/article 직접 진입)에만 있던 섹션을
+         SPA 로 (도메니코: "MORE ARTICLES, 자주 묻는 질문은 뜨지 않는데").
+         SSR 과 같은 순서: 콘텐츠 → MORE → 태그 → FAQ → 참여 → IG.
+         pap-content-article.js#_renderMoreArticles 가 상세 GET 의
+         more_articles 로 채운다. -->
+    <div id="artMoreArticles" style="display:none;padding:24px 0"></div>
     <!-- QA(2026-07) #5 — 해시태그를 본문 하단(콘텐츠 종료 후)으로 이동해 SSR·관리자
          등록 기사와 노출 위치 통일. -->
     <div id="artDetailTags" style="padding:12px 0 24px"></div>
+    <!-- 2026-08-08 — 자주 묻는 질문(FAQ). SSR seo-faq 의 SPA 미러.
+         pap-content-article.js#_renderArticleFaq 가 상세 GET 의 faq 로 채운다. -->
+    <div id="artFaq" style="display:none;padding:12px 0 24px"></div>
     <div id="artDetailLink" style="display:none"></div>
     <!-- 참여 증폭 (2026-07): 기사 원본 IG 게시물 딥링크 — 좋아요·저장·
          보내기는 게시물 위에서만 일어나므로 방문자를 게시물로 보낸다.
@@ -1261,9 +1275,19 @@
     <!-- 수익화 2.0 (2026-07) — SHOP THE STORY: 착장 브랜드 구매 링크.
          pap-content-editorial.js#_papRenderShopRow 가 det.fashion 으로 채움. -->
     <div id="edShopRow" style="display:none"></div>
+    <!-- 2026-08-08 — 참여 블록(좋아요·댓글·카카오). 기사와 같은 부품
+         (pap-engage.js). SSR 에디토리얼에는 어제부터 있었지만 실사용자는
+         전원 SPA 로 브릿지되므로, 여기 없으면 아무도 못 봤다.
+         IG CTA **위**에 둔다 — 아래면 인스타로 나간 뒤라 아무도 안 본다.
+         (id 는 기사 오버레이의 papEngageMount 와 달라야 한다 — 같은 문서에
+         두 오버레이가 공존하므로 getElementById 가 엉킨다.) -->
+    <div class="pap-engage" id="edEngageMount"></div>
     <!-- 참여 증폭 2.0 (2026-07) — 원본 IG 게시물 임베드 + 보내기.
          pap-content-editorial.js#_papRenderEdIg 가 det.ig 존재 시 채움. -->
     <div id="edIgPostCta" style="display:none"></div>
+    <!-- 2026-08-08 — 구 커뮤니티 댓글 슬롯(edSocialSlot)은 더 이상 채우지
+         않는다(위 참여 블록과 댓글창이 두 개 떠서). div 는 다른 코드의
+         getElementById 방어를 위해 남겨 둔다. -->
     <div id="edSocialSlot"></div>
     <!-- 2026-08-05 — 여기 있던 .ig-funnel 을 제거했다. 바로 위 #edIgPostCta 와
          팔로우 링크(/api/ig-out)·공유 버튼이 완전히 같아 한 페이지에
@@ -1286,6 +1310,6 @@
 </div>
 
 <script src="/pap-auth-link.js?v=3" defer></script>
-<script src="/pap-engage.js?v=1" defer></script>
+<script src="/pap-engage.js?v=2" defer></script>
 </body>
 </html>

@@ -1,0 +1,175 @@
+/**
+ * SSR·SPA 화면 통일 — tests/spa-parity.test.js (2026-08-08 신설)
+ *
+ * 왜 만들었나 ────────────────────────────────────────────────────────
+ * 도메니코 (반복 지적, 오래된 미해결):
+ *   "주소경로로 바로 들어가서 보는 거랑 홈에서부터 타고 들어가는 거랑
+ *    에디토리얼과 기사페이지의 디자인과 구성이 달라. 일치시켜 달라고
+ *    지속적으로 얘기했었어."
+ *
+ * 실측한 갈래 (2026-08-08):
+ *   ① 기사만 SSR→SPA 브릿지가 없었다 — 직접 진입자는 SSR 디자인,
+ *      사이트 내 진입자는 SPA 디자인을 봤다 (에디토리얼·필름은 브릿지 有)
+ *   ② FAQ·MORE ARTICLES 는 SSR 에만 있었다 — SPA 에 그릴 코드 자체가 없음
+ *   ③ 에디토리얼 IG 임베드: 코드는 있는데 ig 를 채우는 상세 GET 이
+ *      "이미지·크레딧·설명 전부 없을 때"만 나가서 사실상 안 떴다
+ *   ④ 참여 블록 CSS 가 SSR 인라인에만 있어 SPA 에선 맨몸으로 떴다
+ *   ⑤ 에디토리얼·필름 SPA 에는 참여 블록 마운트가 아예 없었다
+ *      (실사용자는 전원 SPA 브릿지 → 아무도 못 봤다)
+ *   ⑥ 기사 SPA 에 댓글창이 두 개 (구 커뮤니티 + 새 참여 블록)
+ *
+ * 여기서 지키는 것: 위 여섯 갈래가 다시 벌어지지 않는다.
+ * 원칙: 규칙이 두 벌이면 한쪽만 고쳐진다 — 화면·데이터·스타일 전부 한 벌로.
+ */
+'use strict';
+
+const path = require('path');
+const fs = require('fs');
+const ROOT = path.resolve(__dirname, '..');
+const R = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8');
+
+let pass = 0, fail = 0;
+function t(n, cond, d) {
+  if (cond) { pass++; console.log('  ✓', n); }
+  else { fail++; console.log('  ✗', n); if (d !== undefined) console.log('     ', d); }
+}
+
+const seo = R('api/_lib/seoRenderer.js');
+const seoJs = R('frontend/pap-content-seo.js');
+const artJs = R('frontend/pap-content-article.js');
+const edJs = R('frontend/pap-content-editorial.js');
+const filmJs = R('frontend/pap-content-film.js');
+const sync = R('frontend/pap-content-api-sync.js');
+const eng = R('frontend/pap-engage.js');
+const idx = R('frontend/index.html');
+const arts = R('frontend/articles.html');
+const films = R('frontend/films.html');
+const moreLib = R('api/_lib/moreArticles.js');
+const artDetail = R('api/articles/[id].js');
+const slugSsr = R('api/seo/article/[slug].js');
+
+console.log('\n[1] 기사 브릿지 — 직접 진입도 사이트 내 클릭과 같은 화면');
+{
+  t('브릿지가 article 을 포함한다',
+    /kind === 'editorial' \|\| kind === 'film' \|\| kind === 'article'/.test(seo));
+  t("기사 파람은 'art'", /kind === 'article' \? 'art' : 'ed'/.test(seo));
+  t('artid(uuid) 안전핀을 싣는다 — 전량 동기화(수 초)보다 빨리 열기 위해',
+    /'&artid=' \+ String\(record\.id\)/.test(seo));
+  t('크롤러 UA 필터 유지 (GSC 리디렉션-페이지 3,588건 재발 방지)',
+    /bot\|crawler\|spider/.test(seo));
+  t('루프 가드(_pap_ssr_bounce) 유지', /_pap_ssr_bounce/.test(seo));
+  t('숏폼은 여전히 브릿지 없음 (딥링크 미구현 — 알고 뺀 것)',
+    /Shorts still skip the redirect/.test(seo));
+}
+
+console.log('\n[2] ?art= 딥링크 — SPA 가 받아서 오버레이로 연다');
+{
+  t('?art= IIFE 가 있다', /params\.get\('art'\)/.test(seoJs));
+  t('artData 를 폴링한다 (동기화가 비동기라 즉시는 없을 수 있다)',
+    /typeof artData === 'undefined'/.test(seoJs));
+  t('slug 뿐 아니라 제목 하이픈 변환으로도 찾는다 (레거시 기사)',
+    /_articleTitleToSlug\(String\(\(artData\[j\] \|\| \{\}\)\.t/.test(seoJs));
+  t('2.5초에 uuid 단건 fetch 로 폴백한다', /elapsed >= 2500/.test(seoJs)
+    && /_papFetchArticleById/.test(seoJs));
+  t('열리면 루프 가드를 지운다 (안 지우면 새로고침이 SSR 에 갇힌다)',
+    /artDetailOverlay[\s\S]{0,120}removeItem\('_pap_ssr_bounce'\)/.test(seoJs));
+  t('언어 파람을 기억한다 (ed·film 과 동일)', /_dlLangA/.test(seoJs));
+  t('단건 fetch 훅이 api-sync 에 있다', /window\._papFetchArticleById = function/.test(sync));
+  t('딥링크 커버가 art·film 도 가린다 (홈 플래시 방지)',
+    /params\.get\('ed'\)\|\|params\.get\('film'\)\|\|params\.get\('art'\)/.test(idx));
+}
+
+console.log('\n[3] FAQ·MORE ARTICLES — SSR 에만 있던 섹션이 SPA 에도');
+{
+  t('SPA 에 FAQ 렌더러가 있다', /function _renderArticleFaq/.test(artJs));
+  t('SPA 에 MORE ARTICLES 렌더러가 있다', /function _renderMoreArticles/.test(artJs));
+  t('상세 열 때 둘 다 그린다', /_renderArticleFaq\(a\)/.test(artJs)
+    && /_renderMoreArticles\(a\)/.test(artJs));
+  t('상세 GET 이 faq·more 를 병합한다', /fullA\.faq !== undefined/.test(artJs)
+    && /fullA\.more_articles/.test(artJs));
+  t('한 번 확인한 기사는 다시 안 묻는다 (_extrasChecked)',
+    /_extrasChecked/.test(artJs));
+  t('index.html 에 두 마운트가 있다', /id="artMoreArticles"/.test(idx) && /id="artFaq"/.test(idx));
+  t('articles.html 에도 두 마운트가 있다', /id="artMoreArticles"/.test(arts) && /id="artFaq"/.test(arts));
+  /* SSR 과 같은 순서: MORE → 태그 → FAQ → 참여 → IG */
+  t('index: MORE < 태그 < FAQ < 참여', idx.indexOf('artMoreArticles') < idx.indexOf('artDetailTags')
+    && idx.indexOf('artDetailTags') < idx.indexOf('id="artFaq"')
+    && idx.indexOf('id="artFaq"') < idx.indexOf('papEngageMount'));
+  t('articles: MORE < 태그 < FAQ < 참여', arts.indexOf('artMoreArticles') < arts.indexOf('artDetailTags')
+    && arts.indexOf('artDetailTags') < arts.indexOf('id="artFaq"')
+    && arts.indexOf('id="artFaq"') < arts.indexOf('papEngageMount'));
+}
+
+console.log('\n[4] MORE ARTICLES 데이터 — 한 빌더, 두 소비자');
+{
+  t('공용 빌더가 존재한다', /function buildMoreArticles/.test(moreLib));
+  t('SSR([slug].js)이 빌더를 쓴다', /require\('\.\.\/\.\.\/_lib\/moreArticles'\)/.test(slugSsr)
+    && /await buildMoreArticles\(data\)/.test(slugSsr));
+  t('SSR 에 인라인 복사본이 안 남았다', !/relPrevR/.test(slugSsr));
+  t('SPA 상세 API 도 빌더를 쓴다', /require\('\.\.\/_lib\/moreArticles'\)/.test(artDetail)
+    && /await buildMoreArticles\(data\)/.test(artDetail));
+  t('공개 기사에만 붙인다 (draft 관리자 조회는 쿼리 절약)',
+    /status === 'published'[\s\S]{0,120}buildMoreArticles/.test(artDetail));
+  t('규칙: prev/next 발행일 체인 + 카테고리 인접 (2026-07-27 확정)',
+    /published_date\.lt\./.test(moreLib) && /ascending: true \}\)\.limit\(2\)/.test(moreLib));
+}
+
+console.log('\n[5] 에디토리얼 IG 임베드 — 코드가 아니라 데이터가 문제였다');
+{
+  t('ig 없으면 상세 GET 을 나가는 조건이 있다', /_edNeedIg/.test(edJs));
+  t('응답 받으면 _igChecked 로 재요청 방지', /_igChecked = true/.test(edJs));
+  t('임베드 blockquote 는 그대로 (있던 코드)', /instagram-media/.test(edJs));
+  t('병합 후 재렌더 경로 유지 (_openEditorialInner_noPush)',
+    /_openEditorialInner_noPush\(title, thumb\)/.test(edJs));
+}
+
+console.log('\n[6] 참여 블록 — 세 콘텐츠 전부, 한 부품, 옷도 한 벌');
+{
+  t('부품이 CSS 를 직접 주입한다', /pap-engage-css/.test(eng) && /injectCss\(\)/.test(eng));
+  t('SSR 인라인 CSS 는 제거됐다 (두 벌 금지)', !/\.pap-engage \.pe-bar\{/.test(seo));
+  t('카카오 버튼(.pe-kko)도 이제 옷이 있다', /\.pe-kko\{background:#FEE500/.test(eng));
+  t('에디토리얼 SPA 가 마운트한다', /edEngageMount/.test(edJs)
+    && (edJs.match(/PapEngage\.mount\(_edEng/g) || []).length >= 2);
+  t('필름 SPA 가 마운트한다', /filmEngageMount/.test(filmJs));
+  t('index.html 에 에디토리얼·필름 마운트', /id="edEngageMount"/.test(idx) && /id="filmEngageMount"/.test(idx));
+  t('films.html 에도 필름 마운트 + 부품 로드', /id="filmEngageMount"/.test(films) && /pap-engage\.js/.test(films));
+  t('마운트 id 가 서로 다르다 (한 문서에 오버레이가 공존한다)',
+    idx.indexOf('id="edEngageMount"') !== idx.indexOf('id="papEngageMount"'));
+}
+
+console.log('\n[7] 댓글창은 하나 — 구 커뮤니티 렌더 중단');
+{
+  /* 주석 언급은 허용 — 실제 호출(PAPSocial.xxx( )만 금지 */
+  t('기사 SPA 가 renderArticleSocial 을 더는 안 부른다', !/PAPSocial\.renderArticleSocial\(/.test(artJs));
+  t('에디토리얼 SPA 가 renderEditorialSocial 을 더는 안 부른다', !/PAPSocial\.renderEditorialSocial\(/.test(edJs));
+  t('별점 CTA 는 유지 (에디토리얼 고유 기능)', /renderEditorialRatingCta/.test(edJs));
+  t('유사도 추천(RelatedEditorials)도 유지', /renderRelatedEditorials/.test(edJs));
+}
+
+console.log('\n[8] 캐시버스트 — 바뀐 스크립트는 전부 판을 올렸다');
+{
+  const pages = { 'index.html': idx, 'articles.html': arts, 'films.html': films,
+    'community.html': R('frontend/community.html'), 'about.html': R('frontend/about.html'),
+    'contact.html': R('frontend/contact.html'), 'submission.html': R('frontend/submission.html'),
+    'pullletter.html': R('frontend/pullletter.html'), 'subscribe.html': R('frontend/subscribe.html'),
+    'business.html': R('frontend/business.html') };
+  const olds = ['pap-content-article.js?v=45', 'pap-content-editorial.js?v=51',
+    'pap-content-seo.js?v=8"', 'pap-content-api-sync.js?v=120', 'pap-content-film.js?v=13',
+    'pap-engage.js?v=1"'];
+  let stale = [];
+  for (const [n, h] of Object.entries(pages)) {
+    for (const o of olds) if (h.indexOf(o) >= 0) stale.push(n + ':' + o);
+  }
+  t('옛 버전 참조가 한 곳도 없다', stale.length === 0, stale.join(', '));
+  t('SSR 도 pap-engage v2 를 부른다', /pap-engage\.js\?v=2/.test(seo));
+  /* index 와 articles 가 같은 스크립트를 다른 판으로 부르면 한쪽만 고쳐진다 */
+  const ver = (h, name) => { const m = h.match(new RegExp(name.replace(/[.?]/g, '\\$&') + 'v=(\\d+)')); return m ? m[1] : null; };
+  ['pap-content-article.js?', 'pap-content-editorial.js?', 'pap-content-api-sync.js?', 'pap-content-seo.js?'].forEach((n) => {
+    t(n + ' 판이 index·articles 동일 (' + ver(idx, n) + ')', ver(idx, n) === ver(arts, n),
+      ver(idx, n) + ' vs ' + ver(arts, n));
+  });
+}
+
+console.log('\npassed: ' + pass + '   failed: ' + fail);
+if (fail) { console.log('❌ spa-parity tests FAILED'); process.exit(1); }
+console.log('✅ spa-parity tests passed');

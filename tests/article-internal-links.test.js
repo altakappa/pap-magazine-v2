@@ -8,6 +8,9 @@ const path = require('path');
 const fs = require('fs');
 const { renderSeoHtml } = require(path.join(__dirname, '..', 'api', '_lib', 'seoRenderer.js'));
 const route = fs.readFileSync(path.join(__dirname, '..', 'api', 'seo', 'article', '[slug].js'), 'utf8');
+// 2026-08-08 — 빌더 본체가 api/_lib/moreArticles.js 로 이사 (SPA 상세 API 와
+// 공유 — 규칙이 두 벌이면 한쪽만 고쳐진다). 체인 규칙 검증은 lib 쪽을 본다.
+const moreLib = fs.readFileSync(path.join(__dirname, '..', 'api', '_lib', 'moreArticles.js'), 'utf8');
 function meta(h){ const m=h.match(/<meta name="description" content="([^"]*)"/); return m?m[1]:''; }
 
 let pass=0, fail=0;
@@ -33,8 +36,8 @@ const bareEd = renderSeoHtml('editorial', {title:'에디', slug:'e', status:'pub
 t('에디토리얼 메타: "에디토리얼" 표기 유지', /에디토리얼/.test(meta(bareEd)));
 
 console.log('--- 아티클 route 로더 ---');
-t('route: more_articles 탑재', /data\.more_articles = \{/.test(route));
-t('route: prev/next 발행일 체인 + 카테고리 관련', /published_date\.lt/.test(route) && /eq\('category', data\.category\)/.test(route));
+t('route: more_articles 탑재 (공용 빌더 경유)', /data\.more_articles = await buildMoreArticles\(data\)/.test(route));
+t('빌더: prev/next 발행일 체인 + 카테고리 관련', /published_date\.lt/.test(moreLib) && /eq\('category', data\.category\)/.test(moreLib));
 t('route: 실패해도 페이지 정상(try/catch)', /try \{[\s\S]*more_articles[\s\S]*\} catch/.test(route));
 
 console.log(`\npassed: ${pass}   failed: ${fail}`);
