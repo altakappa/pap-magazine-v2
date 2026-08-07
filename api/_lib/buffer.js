@@ -112,13 +112,19 @@ async function findChannelId(service) {
   return hit.id;
 }
 
+/* 오류 조각은 **인터페이스 MutationError** 로 받는다.
+ * 2026-08-07 실측: 구체 타입(VoidMutationError · RestProxyError)을 직접 펼치면
+ * Buffer 가 스키마 검증에서 거부한다 —
+ *   "Fragment cannot be spread here as objects of type PostActionPayload
+ *    can never be of type VoidMutationError"
+ * 문서 본문에는 두 구체 타입이 나열돼 있어 그대로 썼다가 첫 실게시에서 막혔다.
+ * 가이드의 예제 쿼리가 정답이었다: PostActionSuccess 와 MutationError 둘만 쓴다. */
 const CREATE_POST = [
   'mutation CreatePost($input: CreatePostInput!) {',
   '  createPost(input: $input) {',
   '    __typename',
   '    ... on PostActionSuccess { post { id status dueAt } }',
-  '    ... on VoidMutationError { message }',
-  '    ... on RestProxyError { message code }',
+  '    ... on MutationError { message }',
   '  }',
   '}',
 ].join('\n');

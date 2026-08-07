@@ -69,6 +69,12 @@ pending.push(rejects(() => bufferLib.createVideoPost({ channelId: 'c', videoUrl:
 pending.push(rejects(() => bufferLib.createVideoPost({ videoUrl: 'https://a/b.mp4' }), /channelId 없음/)
   .then((r) => t('channelId 없으면 거부', r)));
 t('영상도 automatic 고정 (notification 이면 손으로 올려야 한다)', /schedulingType: 'automatic'/.test(bsrc) && bsrc.indexOf("'notification'") === -1);
+// 2026-08-07 첫 실게시에서 막힌 지점. 구체 오류 타입을 직접 펼치면 Buffer 가
+// 스키마 검증에서 거부한다("can never be of type VoidMutationError").
+// 문서 본문의 타입 나열을 믿고 썼다가 틀렸고, 가이드 예제가 정답이었다.
+t('오류는 인터페이스 MutationError 로 받는다', /\.\.\. on MutationError \{ message \}/.test(bsrc));
+t('구체 오류 타입을 직접 펼치지 않는다', bsrc.indexOf('on VoidMutationError') === -1 && bsrc.indexOf('on RestProxyError') === -1);
+t('성공 조각은 PostActionSuccess', /\.\.\. on PostActionSuccess \{ post \{/.test(bsrc));
 
 console.log('\n[3] 스토리지 중계 — 드라이브 링크는 Buffer 가 못 읽는다');
 t('media 버킷(공개)에 올린다', /storage\.from\('media'\)/.test(src));
