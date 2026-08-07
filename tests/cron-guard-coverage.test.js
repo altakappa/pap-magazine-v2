@@ -22,19 +22,25 @@ function ok(c, m) { if (c) { pass++; console.log('  ✓ ' + m); } else { fail++;
 
 console.log('\n=== 1. 예약된 크론은 전부 cronGuard 로 감싼다 ===');
 const vercel = JSON.parse(fs.readFileSync(path.join(ROOT, 'vercel.json'), 'utf8'));
+/* /api/cron/* 뿐 아니라 예약된 모든 경로를 본다.
+   (2026-08-07 — /api/indexnow 가 여기 안 걸려서 가드 없이 지나갔다.
+    "크론 폴더에 있는 것"이 아니라 "vercel.json 이 예약한 것"이 기준이다.) */
 const scheduled = (vercel.crons || [])
   .map((c) => String(c.path || '').split('?')[0])
-  .filter((p) => p.startsWith('/api/cron/'))
-  .map((p) => p.replace('/api/cron/', ''));
-const uniq = [...new Set(scheduled)].sort();
+  .filter((p) => p.startsWith('/api/'))
+  .map((p) => ({ name: p.replace(/^\/api\//, '').replace(/\//g, '-'), file: 'api' + p.slice(4) + '.js' }));
+const seen = new Set();
+const uniq = scheduled.filter((x) => (seen.has(x.file) ? false : (seen.add(x.file), true)))
+  .sort((a, b) => a.file.localeCompare(b.file));
 ok(uniq.length > 20, `vercel.json 에서 예약 크론 ${uniq.length}개를 찾았다`);
 
 const missingFile = [];
 const missingGuard = [];
 const wrongName = [];
-for (const name of uniq) {
-  const f = path.join(ROOT, 'api/cron', name + '.js');
-  if (!fs.existsSync(f)) { missingFile.push(name); continue; }
+const guardNames = new Map();
+for (const { name, file } of uniq) {
+  const f = path.join(ROOT, file);
+  if (!fs.existsSync(f)) { missingFile.push(file); continue; }
   const src = fs.readFileSync(f, 'utf8');
   if (!/withCronGuard\s*\(/.test(src)) { missingGuard.push(name); continue; }
   /* 가드에 넘긴 이름이 파일명(=크론 경로)과 같아야 DB 조회가 맞는다.
@@ -49,14 +55,20 @@ for (const name of uniq) {
       if (decl) given = decl[1];
     }
   }
-  if (given !== name) wrongName.push(name + ' → ' + (given || '(못 읽음)'));
+  /* 이름이 파일 경로와 똑같을 필요는 없다 — editorials/backfill-ig 는
+     'editorial-ig-link' 로 등록돼 있고 그게 더 읽기 좋다.
+     진짜 위험은 (a) 이름을 못 읽는 것 (b) 두 크론이 같은 이름을 쓰는 것이다.
+     둘 다 cron_runs 조회를 어긋나게 만든다. */
+  if (!given) wrongName.push(file + ' → (이름을 못 읽음)');
+  else if (guardNames.has(given)) wrongName.push(file + ' → 이름 중복: ' + given + ' (이미 ' + guardNames.get(given) + ')');
+  else guardNames.set(given, file);
 }
 ok(missingFile.length === 0,
    missingFile.length ? `vercel.json 이 부르는데 파일이 없다: ${missingFile.join(', ')}` : '예약된 크론 파일이 전부 존재한다');
 ok(missingGuard.length === 0,
    missingGuard.length ? `가드 없음 — 조용히 죽어도 아무도 모른다: ${missingGuard.join(', ')}` : '예약 크론 전부 withCronGuard 로 감싸져 있다');
 ok(wrongName.length === 0,
-   wrongName.length ? `가드 이름이 경로와 다르다(로그 조회가 어긋난다): ${wrongName.join(', ')}` : '가드 이름이 전부 크론 경로와 일치한다');
+   wrongName.length ? `가드 이름 문제(로그 조회가 어긋난다): ${wrongName.join(', ')}` : `가드 이름 ${guardNames.size}개가 전부 읽히고 서로 겹치지 않는다`);
 
 console.log('\n=== 2. celeb-classify 는 upsert 함정을 다시 밟지 않는다 ===');
 const cc = fs.readFileSync(path.join(ROOT, 'api/cron/celeb-classify.js'), 'utf8');

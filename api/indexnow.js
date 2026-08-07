@@ -26,6 +26,25 @@
  */
 
 const { supabaseAdmin } = require('./_lib/supabase');
+/* 2026-08-07 — 가드 추가. 그전까지 이 경로는 매일 02:00 에 예약돼 있으면서도
+   cron_runs 에 아무 기록을 남기지 않았다. 제출이 되는지, 검색엔진이 받았는지,
+   아예 안 도는지 구분할 방법이 없었다. */
+const { withCronGuard } = require('./_lib/cronGuard');
+
+function note(res, msg) {
+  res.locals = res.locals || {};
+  res.locals.cronNote = msg;
+  return msg;
+}
+/* 로그에 넣을 짧은 이름 — 전체 URL 을 넣으면 note 500자를 금방 넘긴다 */
+function epLabel(url) {
+  if (/naver/i.test(url)) return '네이버';
+  if (/bing/i.test(url)) return '빙';
+  if (/api\.indexnow\.org/i.test(url)) return 'indexnow.org';
+  return String(url).slice(0, 24);
+}
+/* IndexNow 규격: 200=수락, 202=수락(키 확인 대기). 그 외는 거절이다. */
+function epAccepted(r) { return !!r && (r.status === 200 || r.status === 202); }
 
 const HOST = 'www.pap-magazine.com';
 const SITE = 'https://' + HOST;
@@ -115,7 +134,7 @@ async function submit(urlList) {
   return results;
 }
 
-module.exports = async function handler(req, res) {
+module.exports = withCronGuard('indexnow', async function handler(req, res) {
   // 보호: Vercel cron Bearer 또는 ?secret= 둘 중 하나 통과.
   // (기존 버그 수정: INDEXNOW_SECRET 만 검사해서 Vercel cron 의
   //  Bearer CRON_SECRET 호출이 401 로 튕겨 매일 크론이 조용히 실패하는 구조였음)
@@ -123,7 +142,10 @@ module.exports = async function handler(req, res) {
   const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
   if (process.env.INDEXNOW_SECRET && !cronOk) {
     const s = (req.query && req.query.secret) || '';
-    if (s !== process.env.INDEXNOW_SECRET) return res.status(401).json({ error: 'unauthorized' });
+    if (s !== process.env.INDEXNOW_SECRET) {
+      note(res, '인증 거부 — 크론 시크릿도 ?secret= 도 아님');
+      return res.status(401).json({ error: 'unauthorized' });
+    }
   }
 
   try {
@@ -149,13 +171,17 @@ module.exports = async function handler(req, res) {
       const days = Math.min(parseInt((req.query && req.query.days) || '30', 10) || 30, 90);
       const since = new Date(Date.now() - days * 86400000).toISOString();
       urlList = await recentContentUrls(since, { editorial: 500, article: 2000, film: 200 });
-      if (!urlList.length) return res.status(200).json({ submitted: 0, mode, message: '해당 기간 발행물 없음.' });
+      if (!urlList.length) {
+        note(res, 'backfill: 해당 기간 발행물 없음 — 제출 생략');
+        return res.status(200).json({ submitted: 0, mode, message: '해당 기간 발행물 없음.' });
+      }
     }
 
     if (!urlList.length && mode === 'recent') {
       const since = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
       const recent = await recentContentUrls(since, { article: 200 });
       if (!recent.length) {
+        note(res, '최근 48시간 변경 콘텐츠 없음 — 제출 생략 (정상)');
         return res.status(200).json({ submitted: 0, mode, message: '최근 48시간 변경 콘텐츠 없음 — 제출 생략.' });
       }
       urlList = [SITE + '/'].concat(recent);
@@ -170,8 +196,21 @@ module.exports = async function handler(req, res) {
     urlList = [...new Set(urlList)].slice(0, 10000);
 
     const results = await submit(urlList);
+
+    /* 2026-08-07 — 여기가 조용한 실패의 자리였다. 엔드포인트가 전부 거절해도
+       이 함수는 200 과 "submitted: 50" 을 돌려줬다. 숫자는 '보낸 개수' 지
+       '받아준 개수' 가 아니다. 수락 여부를 세어 note 에 적고, 하나도 못 받으면
+       실패로 올려 알림이 가게 한다. */
+    const detail = results.map((r) => epLabel(r.endpoint) + ' ' + (r.error ? ('오류(' + String(r.error).slice(0, 40) + ')') : r.status)).join(' · ');
+    const accepted = results.filter(epAccepted).length;
+    if (!accepted) {
+      note(res, (mode || 'full') + ': ' + urlList.length + '건 제출했으나 수락 0 — ' + detail);
+      return res.status(502).json({ submitted: urlList.length, accepted: 0, mode: mode || 'full', endpoints: results });
+    }
+    note(res, (mode || 'full') + ': ' + urlList.length + '건 제출 · 수락 ' + accepted + '/' + results.length + ' — ' + detail);
     return res.status(200).json({
       submitted: urlList.length,
+      accepted,
       mode: mode || 'full',
       keyLocation: KEY_LOCATION,
       endpoints: results,
@@ -181,4 +220,9 @@ module.exports = async function handler(req, res) {
     console.error('[indexnow] error:', err);
     return res.status(500).json({ error: 'indexnow failed', detail: String(err && err.message || err) });
   }
-};
+});
+
+/* 검증용 노출 (tests/indexnow-guard.test.js) */
+module.exports.epLabel = epLabel;
+module.exports.epAccepted = epAccepted;
+module.exports.ENDPOINTS = ENDPOINTS;
