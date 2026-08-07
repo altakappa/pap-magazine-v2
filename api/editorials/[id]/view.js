@@ -57,9 +57,21 @@ module.exports = async function handler(req, res) {
   } catch (_e) { /* 토큰 문제로 조회 기록을 잃지 않는다 */ }
 
   try {
-    const { error } = await supabaseAdmin
+    let { error } = await supabaseAdmin
       .from('editorial_views')
       .insert({ editorial_id: id, user_id: viewerId });
+
+    /* 2026-08-08 — user_id 에 FK(ON DELETE SET NULL)를 걸었더니 새 경계가
+       생겼다: 탈퇴한 계정의 아직 유효한 토큰(7일)으로 조회하면 profiles 에
+       행이 없어 FK 위반(23503)이 난다. 그 사람 조회를 잃을 이유는 없다 —
+       익명으로 강등해 다시 기록한다. editorial_id FK 위반과 구분하기 위해
+       viewerId 가 있었을 때만 재시도한다. */
+    if (error && error.code === '23503' && viewerId) {
+      viewerId = null;
+      ({ error } = await supabaseAdmin
+        .from('editorial_views')
+        .insert({ editorial_id: id, user_id: null }));
+    }
 
     if (error) {
       // FK violation on a non-existent editorial id is the most common path
