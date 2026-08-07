@@ -175,8 +175,25 @@ function withCronGuard(cronName, handler, opts) {
         error = 'HTTP ' + res.statusCode + ' (핸들러가 예외를 자체 처리하고 5xx 반환)';
       }
 
+      /* 2026-08-07 — 4xx 로 끝난 실행에 반드시 note 를 남긴다.
+       *
+       * 왜 —  예약 실행이 인증에 막히면 핸들러는 401 을 주고 조용히 끝난다.
+       * 그러면 cron_runs 에는 ok=true / note 빈칸으로 남아, 겉보기엔 매번
+       * 성공한 것처럼 보인다. '돌았다 ≠ 했다' 가 그대로 재현되는 구멍이다.
+       * (celeb-classify 가 신설 첫날 정확히 이걸로 당했다 — 버셀이
+       *  x-vercel-cron 헤더를 안 보내는 걸 몰라 전부 401 로 끝났다.)
+       *
+       * 4xx 를 '실패' 로 올리지는 않는다. /api/cron/* 는 외부 스캐너도
+       * 두드리는 공개 경로라, 그것까지 텔레그램 알림이 되면 노이즈가 된다.
+       * 알림은 그대로 두고 **로그에는 보이게** 한다 — 진단은 로그로 한다. */
+      let noteOut = note;
+      if (ok && !noteOut && res && typeof res.statusCode === 'number'
+          && res.statusCode >= 400 && res.statusCode < 500) {
+        noteOut = 'HTTP ' + res.statusCode + ' — 아무 일도 안 하고 끝남 (인증 거부일 가능성)';
+      }
+
       // 로그는 항상 기록 (일시성 실패도 진단용으로 남긴다)
-      await _logRun(cronName, ok, duration, note, error);
+      await _logRun(cronName, ok, duration, noteOut, error);
 
       /* 기록이 끝난 뒤에 응답을 내보낸다 — 이 순서가 핵심이다.
          반대로 하면 긴 실행에서 인스턴스가 얼어 기록이 통째로 사라진다. */

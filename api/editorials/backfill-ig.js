@@ -118,7 +118,23 @@ async function handler(req, res) {
     });
     ambiguousTitles.forEach(t => byTitle.delete(t));
 
-    if (!byTitle.size) {
+    /* 2026-08-08 — 짧은 제목(3~4자) 구제. 'BOYS'(4자)가 위 최소 길이 5에
+       걸려 크론이 돌아도 영영 연결되지 않았다 (8월 5편 중 유일한 실패).
+       짧은 제목의 부분문자열 매칭은 위험하지만, 캡션 관례가
+       'Title' exclusive for @pap_magazine — **따옴표로 감싼 정확한 제목**은
+       짧아도 오매칭이 없다. 그래서 짧은 제목만 원문 캡션에 대해 따옴표
+       필수 정규식으로 따로 매칭한다. */
+    const shortRx = new Map(); // norm(title) → { e, rx }
+    (eds || []).forEach(e => {
+      const t = norm(e.title);
+      if (t.length < 3 || t.length >= 5) return;
+      if (ambiguousTitles.has(t)) return;
+      if (shortRx.has(t)) { shortRx.delete(t); ambiguousTitles.add(t); return; }
+      const esc = String(e.title).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      shortRx.set(t, { e, rx: new RegExp('[\'\u2018\u2019"\u201C\u201D]\\s*' + esc + '\\s*[\'\u2018\u2019"\u201C\u201D]', 'i') });
+    });
+
+    if (!byTitle.size && !shortRx.size) {
       note('연결할 화보 없음 (미연결 0 또는 전부 모호/짧은 제목)');
       return res.status(200).json({
         done: true, matched: 0,
@@ -173,6 +189,18 @@ async function handler(req, res) {
             break; // 게시물 하나는 에디토리얼 하나에만
           }
         }
+        // 짧은 제목(3~4자) — 따옴표로 감싼 정확 매칭 (원문 캡션 기준)
+        for (const [st, s] of shortRx) {
+          if (matchedTitleSet.has('short:' + st)) continue;
+          if (s.rx.test(m.caption)) {
+            matches.push({
+              editorial_id: s.e.id, title: s.e.title, slug: s.e.slug,
+              permalink: m.permalink, post_time: m.timestamp || null,
+            });
+            matchedTitleSet.add('short:' + st);
+            break;
+          }
+        }
       }
 
       after = j.paging && j.paging.cursors && j.paging.cursors.after;
@@ -180,7 +208,7 @@ async function handler(req, res) {
       if (!hasNext || !after) { nextAfter = null; after = null; break; }
       nextAfter = after;
       // 남은 미매칭 제목이 없으면 조기 종료
-      if (matchedTitleSet.size >= titles.length) break;
+      if (matchedTitleSet.size >= titles.length + shortRx.size) break;
     }
 
     // 3) 적용 (apply=1일 때만)
@@ -197,7 +225,7 @@ async function handler(req, res) {
     }
 
     note((apply ? '연결 ' + applied + '건' : 'dry-run 매칭 ' + matches.length + '건')
-      + ' · 미연결 ' + byTitle.size + ' · 게시물 ' + scanned + '개 스캔'
+      + ' · 미연결 ' + (byTitle.size + shortRx.size) + ' · 게시물 ' + scanned + '개 스캔'
       + (matches.length ? ' — ' + matches.slice(0, 3).map(m => m.title).join(', ') : ''));
     return res.status(200).json({
       mode: apply ? 'apply' : 'dry-run',
@@ -205,7 +233,7 @@ async function handler(req, res) {
       pages_scanned: pages,
       page_limit: pageLimit, // code 1 축소 재시도 후 최종값 (시작 기본 100)
 
-      unlinked_editorials: byTitle.size,
+      unlinked_editorials: byTitle.size + shortRx.size,
       ambiguous_titles_skipped: ambiguousTitles.size,
       matched: matches.length,
       applied,

@@ -194,6 +194,11 @@ console.log('\n[9] IG 링크 자동화 — "임베드 코드는 살았는데 데
   t('vercel.json 에 스케줄이 있다', /"path": "\/api\/editorials\/backfill-ig"/.test(vj));
   t('이미 채워진 링크는 안 건드린다 (경합 이중 확인)',
     /\.is\('source_instagram_url', null\); \/\/ 경합 대비 이중 확인/.test(bf));
+  /* 실측: 'BOYS'(4자)가 최소 길이 5에 걸려 유일하게 연결 실패.
+     짧은 제목은 따옴표 감싼 정확 매칭으로만 — 부분문자열 오매칭 금지. */
+  t('짧은 제목(3~4자)은 따옴표 정확 매칭으로 구제한다', /shortRx/.test(bf)
+    && /t\.length < 3 \|\| t\.length >= 5/.test(bf));
+  t('짧은 제목도 모호(중복)하면 스킵', /shortRx\.delete\(t\); ambiguousTitles\.add\(t\)/.test(bf));
 }
 
 console.log('\npassed: ' + pass + '   failed: ' + fail);
