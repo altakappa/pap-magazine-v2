@@ -145,7 +145,11 @@ async function run() {
   console.log('\n=== ④ 임계값을 앱이 인자로 넘긴다 (SQL 에 중복 상수 금지) ===');
   const qArgs = db.rpcCalls.find(c => c.name === 'seo_translate_queue_article').args;
   const cArgs = db.rpcCalls.find(c => c.name === 'seo_translate_counts').args;
-  t('아티클 완료 임계 100 을 넘긴다', qArgs.p_min_done === 100, qArgs);
+  /* 2026-08-08 — 이 호출은 lang:'zh' 다. CJK 는 같은 내용을 절반 이하 글자로
+     쓰기 때문에 완료 임계가 100 이 아니라 40 이다(실측 평균 본문: de 1,435 vs
+     zh 414 · ja 625). 100 을 그대로 대서 ja 아티클 944건이 한 건에 막혀 있었다.
+     — 근거와 안전 확인은 tests/translate-cjk-done-threshold.test.js */
+  t('CJK(zh) 아티클 완료 임계 40 을 넘긴다', qArgs.p_min_done === 40, qArgs);
   t('아티클 원본 임계 80 을 넘긴다', qArgs.p_min_src === 80, qArgs);
   t('카운트도 같은 임계를 쓴다',
     cArgs.p_min_done === qArgs.p_min_done && cArgs.p_min_src === qArgs.p_min_src, { qArgs, cArgs });

@@ -621,7 +621,7 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
   for (const r of results) {
     if (!r.lang) { if (r.skipped) notes.push('skip(' + r.skipped + ')'); continue; }
     const k = r.lang + '/' + String(r.kind || '?').slice(0, 3);
-    const cur = perCombo.get(k) || { processed: 0, remaining: null, err: null, tooLong: 0, flagged: 0, retried: 0 };
+    const cur = perCombo.get(k) || { processed: 0, remaining: null, err: null, tooLong: 0, flagged: 0, retried: 0, failed: 0 };
     cur.processed += r.processed || 0;
     if (typeof r.remaining === 'number') cur.remaining = r.remaining;
     if (r.skipped_too_long) cur.tooLong = r.skipped_too_long;
@@ -639,7 +639,25 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
      * 만 남기고 retried 를 안 남긴 것이 어제의 계측 누락이었다.
      * 동작은 아무것도 바뀌지 않는다 — 숫자 한 개를 더 보여줄 뿐이다. */
     cur.retried += r.quality_retried || 0;
+    /* ─── 2026-08-08 — 계측의 진짜 구멍 ─────────────────────────────────
+     * ru 가 7시간째 0건인데 note 가 조용한 이유를 찾다 알아냈다:
+     * 여기서 보던 건 `r.error` 하나뿐인데, 그건 runTask 가 **예외를 던졌을
+     * 때만** 채워진다. 정작 흔한 실패는 runBackfillBatch 안에서 조용히
+     * 배열에 담긴다 —
+     *     errors[]        : 배치 호출 실패 · 단건 재시도 실패 · 저장 실패
+     *     skipped_failed  : 이번 회차에서 제외한 불량 건수
+     * 둘 다 응답에는 있는데 note 에 안 실려 화면에 안 보였다. 그래서
+     * "처리 0 · 에러 없음" 으로 보였고, 나는 어제 그걸 보고 원인을 **틀리게**
+     * 짚었다(검증이 막고 있다고 추정 → /재시도N 을 붙여 봤더니 0 이었다).
+     * 계측이 없으면 추측하게 된다. 그래서 실패를 전부 note 로 끌어올린다. */
+    cur.failed += r.skipped_failed || 0;
     if (r.error && !cur.err) cur.err = String(r.error).slice(0, 50);
+    /* 예외까지 가지 않은 내부 실패도 같은 자리에 보여 준다. 첫 건만 —
+       note 는 500자 상한이고, 원인 파악에는 종류 하나면 충분하다. */
+    if (!cur.err && Array.isArray(r.errors) && r.errors.length) {
+      const first = r.errors[0] || {};
+      cur.err = String(first.reason || first.message || first).slice(0, 50);
+    }
     perCombo.set(k, cur);
   }
   /* 계측 한 줄 — 항상 note 끝에 붙인다. 초 단위, 소수 1자리.
@@ -670,6 +688,9 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
       /* 검증에 걸려 재시도로 넘어간 건수. 저장 0 인데 이 값이 크면
          '검증이 막고 있다' 는 뜻이다 — 2026-08-08 ru 진단용. */
       + (v.retried ? '/재시도' + v.retried : '')
+      /* 불량으로 이번 회차에서 뺀 건수. 처리 0 인데 이 값이 크면
+         '시간이 없어서' 가 아니라 '계속 실패해서' 다. */
+      + (v.failed ? '/불량' + v.failed : '')
       + (v.err ? ' ERR ' + v.err : '')),
     ...notes,
   ].join(' · ') || '처리 대상 없음';

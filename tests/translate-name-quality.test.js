@@ -141,11 +141,25 @@ t('옛 문구가 프롬프트 문자열로 되살아나지 않았다',
 console.log('\n=== ⑤ poison pill 방지 설계 ===');
 
 t('배치에서 걸린 건은 재시도로 넘긴다 (qualityRetried)',
-  /if \(bad\) \{ qualityRetried\+\+; continue; \}/.test(src));
+  /if \(bad\) \{ qualityRetried\+\+;[^}]*continue; \}/.test(src));
 t('재시도 후에도 실패하면 저장은 한다 (영구 차단 금지)',
   /if \(validateTranslation\(one, lang\)\) qualityFlagged\+\+;[\s\S]{0,60}got\.set\(it\.id, one\)/.test(src));
 t('결과에 quality_retried / quality_flagged 를 보고한다',
   /quality_retried:/.test(src) && /quality_flagged:/.test(src));
+
+/* 2026-08-08 — 위 원칙("재시도 후에도 못 지키면 그래도 저장")에 구멍이 있었다.
+   **재시도 자체를 못 하는 경우**를 안 다뤄서, 시간이 없으면 검증에 걸린 건이
+   통째로 버려졌다. ru 가 그 구멍에 빠져 7시간(잔여 706건) 저장 0건이었다 —
+   웨이브 순서상 늘 마지막이라 재시도할 시간이 남지 않는다. */
+t('검증에 걸린 번역을 버리지 않고 쥐고 있는다 (rejected)',
+  /const rejected = new Map\(\);/.test(src)
+  && /if \(bad\) \{ qualityRetried\+\+; rejected\.set\(srcItem\.id, t\); continue; \}/.test(src));
+t('재시도할 시간이 없으면 쥐고 있던 것을 저장한다',
+  /if \(!canCall\(deadlineAt, timeoutMs\)\) \{[\s\S]{0,400}rejected\.get\(rest\.id\)[\s\S]{0,120}got\.set\(rest\.id, held\)/.test(src));
+t('그렇게 저장한 건도 flagged 로 센다 (눈에 보이게)',
+  /if \(held\) \{ qualityFlagged\+\+; got\.set\(rest\.id, held\); \}/.test(src));
+t('시간 부족은 여전히 ranOut 으로 보고한다',
+  /if \(!canCall\(deadlineAt, timeoutMs\)\) \{\s*\n\s*ranOut = true;/.test(src));
 
 const cronSrc = fs.readFileSync(CRON, 'utf8');
 t('크론 note 에 품질 건수를 남긴다', /'\/품질' \+ v\.flagged/.test(cronSrc));

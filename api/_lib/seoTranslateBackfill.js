@@ -56,6 +56,37 @@ const LANG_NAMES = {
  *   오늘 하루 세 번 만난 '가짜 완주' 와 같은 패턴이다. */
 const MIN_TRANSLATED = { description: 40, body: 100 };
 
+/* ─── 2026-08-08 — 이 임계값이 일본어·중국어를 영구히 막고 있었다 ────────
+ *
+ * 실측(cron_notes 08-08 00:45~01:06, 10회 연속):
+ *     ja/art:1/남944 … 매 실행 1건 처리, 그런데 **잔여가 944 에서 안 움직인다.**
+ * DB 를 봤더니 매 실행 같은 행 하나를 다시 쓰고 있었다:
+ *     article 5520e65c… (원문 155자) → ja 본문 80자, updated_at 이 2분마다 갱신.
+ * 80 < 100 이라 '완료'로 안 세고, 큐가 published_date DESC 고정이라 다음
+ * 실행에서 또 맨 앞에 온다. 한 건이 944건을 막는 poison pill 이다. zh 도 1건.
+ *
+ * 원인은 번역 품질이 아니라 **글자 수 세는 법**이다. 같은 내용을 쓰는 데
+ * 한자·가나는 알파벳의 절반도 안 쓴다. 실측 평균 본문 길이:
+ *     de 1,435 · fr 1,418 · es 1,393 · it 1,386 · ru 1,277 | ja 625 · zh 414
+ * 라틴/키릴 기준으로 만든 100자 문턱을 CJK 에 그대로 대면 짧은 기사가 통과를
+ * 못 한다. 그래서 CJK 만 40 으로 낮춘다(비율 0.4 — 위 평균에서 나온 값).
+ *
+ * 안전 확인(실측): 지금 ja·zh 아티클 번역 중 본문이 40~99자인 행은 **각 1건**
+ * (=막고 있던 그 건)이고, 1~39자·빈 값은 **0건**이다. 즉 이 변경으로 '가짜
+ * 완주' 로 넘어가는 행은 없다. 2026-07-30 의 빈 껍데기 사고와는 다른 상황이다.
+ *
+ * 에디토리얼 description 은 **일부러 손대지 않는다.** ja 에디토리얼에는
+ * 16~39자 행이 178건 있어서, 여기까지 낮추면 그게 통째로 '완료'가 된다.
+ * 그 178건이 정상인지 잘린 것인지 아직 안 재봤다 — 재보고 따로 판단한다. */
+const CJK_DONE_LANGS = new Set(['ja', 'zh']);
+const CJK_DONE_RATIO = 0.4;
+function minDoneFor(doneField, lang) {
+  const base = MIN_TRANSLATED[doneField] || 40;
+  /* 본문만 적용한다. description 은 위 주석의 이유로 그대로 둔다. */
+  if (doneField !== 'body' || !CJK_DONE_LANGS.has(lang)) return base;
+  return Math.round(base * CJK_DONE_RATIO);
+}
+
 /* 에디토리얼 원본 설명을 모델에 보낼 때의 상한 (2026-08-03 신설).
  *
  * 왜 필요했나 — 라이브 실측(2026-08-03 00:24~01:03 KST, 20 runs):
@@ -208,7 +239,7 @@ async function remainingFor(kind, lang, { since = null, maxSrcChars = 0 } = {}) 
     const { data, error } = await supabaseAdmin.rpc('seo_translate_counts', {
       p_kind: kind,
       p_lang: lang,
-      p_min_done: MIN_TRANSLATED[cfg.doneField] || 40,
+      p_min_done: minDoneFor(cfg.doneField, lang),
       p_min_src: cfg.minSrc || 30,
       p_since: since,
       p_max_src: maxSrcChars || 0,
@@ -226,7 +257,7 @@ async function remainingFor(kind, lang, { since = null, maxSrcChars = 0 } = {}) 
 async function fetchQueueViaRpc(kind, lang, limit, cfg, timing, since, maxSrc) {
   if (rpcUnavailable) return null;
   const t0 = Date.now();
-  const minDone = MIN_TRANSLATED[cfg.doneField] || 40;
+  const minDone = minDoneFor(cfg.doneField, lang);
   const minSrc = cfg.minSrc || 30;
   try {
     /* p_since — 발행 나이 컷 (2026-08-05, 마이그레이션 101). null 이면 제한 없음.
@@ -683,7 +714,9 @@ async function runBackfillBatch({ lang, kind = 'editorial', batch, timeoutMs = 9
     .eq('lang', lang)
     .limit(10000);
   if (doneErr) throw doneErr;
-  const minLen = MIN_TRANSLATED[doneCol] || 40;
+  /* RPC 경로와 같은 문턱을 써야 한다 — 한쪽만 고치면 폴백으로 떨어진 순간
+     ja·zh 가 다시 막힌다(이 파일이 _lib 로 뽑힌 이유와 같은 종류의 사고). */
+  const minLen = minDoneFor(doneCol, lang);
   const doneSet = new Set(
     (done || [])
       .filter(r => String(r[doneCol] || '').trim().length >= minLen)
@@ -807,6 +840,9 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing
     timing.callMs += Date.now() - tBatch; timing.calls++;
 
     const got = new Map();
+    /* 검증에 걸렸지만 '내용은 있는' 번역을 따로 쥐고 있는다.
+       아래 ②에서 재시도할 시간이 없을 때 이걸 쓴다 — 2026-08-08 수정. */
+    const rejected = new Map();
     for (const t of parsed) {
       const srcItem = items[t.i];
       if (!srcItem || !t.title) continue;
@@ -815,7 +851,7 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing
          단건 프롬프트에도 같은 표기 규칙이 실려 있어 두 번째 시도는
          대개 통과한다. */
       const bad = validateTranslation(t, lang);
-      if (bad) { qualityRetried++; continue; }
+      if (bad) { qualityRetried++; rejected.set(srcItem.id, t); continue; }
       got.set(srcItem.id, t);
     }
 
@@ -823,8 +859,25 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing
     for (const it of items) {
       if (got.has(it.id)) continue;
       /* 재시도가 마감을 밀고 나가지 않는다. 이건 그 기사의 잘못이 아니므로
-         failedIds 에 넣지 않는다 — 다음 실행에서 그대로 다시 시도된다. */
-      if (!canCall(deadlineAt, timeoutMs)) { ranOut = true; break; }
+         failedIds 에 넣지 않는다 — 다음 실행에서 그대로 다시 시도된다.
+         ⚠️ 2026-08-08 — 여기서 그냥 break 하면 **검증에 걸린 건이 통째로
+         버려진다.** 2026-08-06 에 세운 원칙은 "재시도 후에도 못 지키면
+         그래도 저장한다"(아래 주석)였는데, **재시도 자체를 못 하는 경우**를
+         빠뜨렸다. 그 구멍에 ru 가 빠졌다 — 웨이브 순서상 늘 마지막이라
+         재시도할 시간이 남지 않아, 08-07 17:52 이후 7시간째 저장 0건이었다.
+         잔여 706건이 통째로 멈춘 것이고, 예외도 ERR 도 없어 조용했다.
+         시간이 없으면 **가진 번역이라도 저장**한다. 원칙은 같다:
+         흠집이 있어도 진행되고 눈에 보이는 쪽이, 무한정 멈춰 있는 것보다 낫다.
+         품질은 note 의 `/품질N` 과 DB 검사로 따로 잡는다. */
+      if (!canCall(deadlineAt, timeoutMs)) {
+        ranOut = true;
+        for (const rest of items) {
+          if (got.has(rest.id)) continue;
+          const held = rejected.get(rest.id);
+          if (held) { qualityFlagged++; got.set(rest.id, held); }
+        }
+        break;
+      }
       const tOne = Date.now();
       try {
         const one = await translateOne(it, cfg, lang, model, callBudget(deadlineAt, timeoutMs));
@@ -909,4 +962,4 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing
   };
 }
 
-module.exports = { runBackfillBatch, remainingFor, newTiming, hasHangul, hangulRatio, validateTranslation, nameRule, styleRules, normalizeBatch, parseJsonArray, salvageObjects, parseSentinel, pickItems, buildBatchPrompt, msLeft, canCall, callBudget, CALL_SLACK_MS, MAX_PASSES, LANG_NAMES, KINDS };
+module.exports = { runBackfillBatch, remainingFor, minDoneFor, MIN_TRANSLATED, newTiming, hasHangul, hangulRatio, validateTranslation, nameRule, styleRules, normalizeBatch, parseJsonArray, salvageObjects, parseSentinel, pickItems, buildBatchPrompt, msLeft, canCall, callBudget, CALL_SLACK_MS, MAX_PASSES, LANG_NAMES, KINDS };
