@@ -16,7 +16,7 @@
  *   1) 만료   — 만든 지 NAVER_DRAFT_TTL_DAYS(기본 7일, 2026-08-12 까지는 14일)이 지난 draft 는
  *               status='expired' 로 내린다. **삭제가 아니라 상태 변경**이라
  *               되돌릴 수 있고, 관리자 목록(status='draft')에서만 빠진다.
- *   2) 상한   — 대기 큐가 NAVER_DRAFT_QUEUE_MAX(기본 30)건 이상이면 그 회차는
+ *   2) 상한   — 대기 큐가 NAVER_DRAFT_QUEUE_MAX(기본 0 = 무제한)건 이상이면 그 회차는
  *               생성을 건너뛴다. 버릴 초안을 미리 만들지 않는다 = 비용 절감.
  *   3) 순서   — '오래된 미전환부터' → '최신 기사부터'로 뒤집었다.
  *               큐를 줄이면 살아남는 초안이 최신이어야 검색 유입에 유리하다.
@@ -24,6 +24,19 @@
  *
  * 실행 순서가 중요하다 — 만료를 **먼저** 돌려 자리를 비운 뒤 상한을 잰다.
  * 반대로 하면 만료로 비는 자리를 그 회차가 못 쓴다.
+ *
+ * ── 2026-08-07 개정 (도메니코 지시: "상한을 최대치로") ─────────────────
+ * QUEUE_MAX 기본값 30 → 0(무제한). 08-05에 건 상한이 08-05 17:01 이후
+ * 생성을 완전히 멈춰, 하루 10건씩 들어오는 인스타 기사가 이틀간 한 건도
+ * 네이버 초안으로 전환되지 못했다(큐 draft 42 / 상한 30).
+ *
+ * 무제한이라도 폭주하지 않는다 — generateNext 가 "미전환 기사"에서만
+ * 뽑으므로 실제 생성량은 신규 기사 수(하루 약 10건)에 수렴한다.
+ * 회차당 상한 4 × 하루 6회 = 24건이 생성 능력의 천장이다.
+ *
+ * 트레이드오프(08-05 개정 사유는 여전히 유효): 발행이 하루 약 6건이라
+ * 차액 약 4건/일은 TTL 7일 뒤 expired 로 버려진다 = 그만큼 Claude API
+ * 비용이 낭비된다. 되돌리려면 NAVER_DRAFT_QUEUE_MAX 환경변수만 세팅.
  * ────────────────────────────────────────────────────────────────────────
  *
  * 발행/게시가 아니라 '초안 생성·저장'만 하므로 파괴적 작업 아님.
@@ -99,7 +112,7 @@ module.exports = withCronGuard('naver-draft-sweep', async function handler(req, 
 
   const dailyMax = Math.max(1, Math.min(4, parseInt(process.env.NAVER_DRAFT_DAILY_MAX || '4', 10) || 4));
   const ttlDays = Math.max(0, parseInt(process.env.NAVER_DRAFT_TTL_DAYS || String(defaultTtlDays()), 10) || 0);
-  const queueMax = Math.max(0, parseInt(process.env.NAVER_DRAFT_QUEUE_MAX || '30', 10) || 0);
+  const queueMax = Math.max(0, parseInt(process.env.NAVER_DRAFT_QUEUE_MAX || '0', 10) || 0);
 
   // 1) 만료 먼저 — 자리를 비운 뒤에 상한을 재야 그 자리를 이 회차가 쓴다
   const expired = await expireStale(ttlDays);
