@@ -21,7 +21,12 @@ const { supabaseAdmin } = require('./supabase');
 const AUTH_BASE = 'https://accounts.google.com/o/oauth2/v2/auth';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const UPLOAD_URL = 'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status';
-const SCOPES = 'https://www.googleapis.com/auth/youtube.upload';
+// 2026-08-07 drive.readonly 추가 — 구글 드라이브 '유튜브' 폴더의 mp4 를 읽어
+// 쇼츠로 올린다(인스타 릴스 mp4 회수가 8/3부터 69% 실패해 영구 대안이 필요했다).
+// ⚠️ 스코프를 늘렸으므로 /api/youtube/oauth 로 **1회 재인증**해야 실제로 적용된다.
+//    기존 refresh_token 은 옛 스코프만 갖고 있어 드라이브 호출이 403 난다.
+const SCOPES = 'https://www.googleapis.com/auth/youtube.upload'
+  + ' https://www.googleapis.com/auth/drive.readonly';
 const REDIRECT_URI = 'https://www.pap-magazine.com/api/youtube/callback';
 
 function authorizeUrl(state) {
