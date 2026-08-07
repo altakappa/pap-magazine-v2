@@ -14,6 +14,10 @@
 
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
+// 2026-08-07 — 가드 추가. 그전까지 이 크론은 cron_runs 에 아무 기록도
+// 남기지 않아 '도는지 안 도는지 알 수 없는' 상태였다(7일 로그 0건).
+// 실패해도 아무도 몰랐다는 뜻이다.
+const { withCronGuard } = require('../_lib/cronGuard');
 
 const FEEDS = [
   { source: 'Vogue', url: 'https://www.vogue.com/feed/rss' },
@@ -38,7 +42,7 @@ function parseRss(xml, source) {
 
 const norm = (s) => String(s || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 
-module.exports = async function handler(req, res) {
+module.exports = withCronGuard('trend-scout', async function handler(req, res) {
   const auth = (req.headers && req.headers['authorization']) || '';
   const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
   if (!cronOk) {
@@ -121,4 +125,4 @@ module.exports = async function handler(req, res) {
     console.error('[trend-scout] error:', err);
     return res.status(500).json({ error: 'trend scout failed', detail: String(err && err.message || err).slice(0, 150) });
   }
-};
+});

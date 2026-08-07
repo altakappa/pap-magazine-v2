@@ -24,6 +24,10 @@
 
 const { supabaseAdmin } = require('../_lib/supabase');
 const { handleCors } = require('../_lib/cors');
+// 2026-08-07 — 가드 추가. 그전까지 이 크론은 cron_runs 에 아무 기록도
+// 남기지 않아 '도는지 안 도는지 알 수 없는' 상태였다(7일 로그 0건).
+// 실패해도 아무도 몰랐다는 뜻이다.
+const { withCronGuard } = require('../_lib/cronGuard');
 
 // Submissions stay recoverable for this many days after rejection.
 const RETENTION_DAYS = 30;
@@ -49,7 +53,7 @@ function _storagePathFromUrl(url) {
   return qIdx === -1 ? tail : tail.slice(0, qIdx);
 }
 
-module.exports = async function handler(req, res) {
+module.exports = withCronGuard('purge-rejected-submissions', async function handler(req, res) {
   if (handleCors(req, res)) return;
 
   // Auth — Vercel cron passes Bearer <CRON_SECRET>.
@@ -142,4 +146,4 @@ module.exports = async function handler(req, res) {
       ...stats,
     });
   }
-};
+});

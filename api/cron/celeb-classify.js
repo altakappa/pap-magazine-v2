@@ -143,6 +143,28 @@ async function askClaude(rows) {
   return parseVerdicts(text);
 }
 
+/* 2026-08-07 사고 — 여기서 upsert 를 썼다가 10분마다 500 으로 죽었다.
+   실측: cron_runs 18회 중 14회 실패, 전부 같은 메시지 —
+   `null value in column "title" of relation "articles" violates not-null constraint`
+
+   왜인가 — PostgREST 의 upsert 는 INSERT ... ON CONFLICT 다. 행이 이미
+   있어도 **먼저 INSERT 를 시도**하므로, 페이로드에 없는 NOT NULL 컬럼
+   (articles.title 은 NOT NULL·기본값 없음)에서 걸린다.
+   우리가 하려던 건 처음부터 UPDATE 였다. onConflict:'id' 는 충돌 대상만
+   정할 뿐 INSERT 시도 자체를 없애지 않는다.
+
+   그래서 UPDATE 로 바꾼다. 덤으로 `.is('digest_kind', null)` 을 걸어,
+   그 사이 사람이 손으로 채운 값(kind_by='manual')을 덮어쓸 여지를 없앤다 —
+   조회 시점과 저장 시점 사이의 틈을 저장 쪽에서도 막는다. */
+async function applyKind(ids, kind, by) {
+  if (!ids || !ids.length) return null;
+  const { error } = await supabaseAdmin.from('articles')
+    .update({ digest_kind: kind, kind_by: by })
+    .in('id', ids)
+    .is('digest_kind', null);
+  return error || null;
+}
+
 module.exports = withCronGuard('celeb-classify', async (req, res) => {
   if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'method not allowed' });
@@ -192,8 +214,7 @@ module.exports = withCronGuard('celeb-classify', async (req, res) => {
 
   let savedMarker = 0;
   if (markerHits.length) {
-    const { error: e1 } = await supabaseAdmin.from('articles')
-      .upsert(markerHits.map((r) => ({ id: r.id, digest_kind: 'celeb', kind_by: 'marker' })), { onConflict: 'id' });
+    const e1 = await applyKind(markerHits.map((r) => r.id), 'celeb', 'marker');
     if (e1) {
       note(res, '마커 판정 저장 실패: ' + e1.message);
       return res.status(500).json({ ok: false, error: 'save marker failed', detail: e1.message });
@@ -216,16 +237,24 @@ module.exports = withCronGuard('celeb-classify', async (req, res) => {
       failures.push('응답 파싱 실패 (배치 ' + batches + ')');
       continue;                   // 이 배치만 버린다 — 반만 저장하지 않는다
     }
-    const rows = verdicts
-      .filter((v) => chunk[v.i])
-      .map((v) => ({ id: chunk[v.i].id, digest_kind: v.kind, kind_by: 'ai' }));
-    if (!rows.length) continue;
-    const { error: e2 } = await supabaseAdmin.from('articles').upsert(rows, { onConflict: 'id' });
-    if (e2) {
-      note(res, 'AI 판정 저장 실패: ' + e2.message);
-      return res.status(500).json({ ok: false, error: 'save ai failed', detail: e2.message });
+    /* 갈래별로 묶어 한 번씩 UPDATE 한다 — kind 는 최대 3종이라 콜도 최대 3번. */
+    const byKind = new Map();
+    verdicts.forEach((v) => {
+      if (!chunk[v.i]) return;
+      if (!byKind.has(v.kind)) byKind.set(v.kind, []);
+      byKind.get(v.kind).push(chunk[v.i].id);
+    });
+    let n = 0;
+    for (const [kind, ids] of byKind) {
+      const e2 = await applyKind(ids, kind, 'ai');
+      if (e2) {
+        note(res, 'AI 판정 저장 실패: ' + e2.message);
+        return res.status(500).json({ ok: false, error: 'save ai failed', detail: e2.message });
+      }
+      n += ids.length;
     }
-    savedAi += rows.length;
+    if (!n) continue;
+    savedAi += n;
   }
 
   const remaining = Math.max(0, askRows.length - savedAi);

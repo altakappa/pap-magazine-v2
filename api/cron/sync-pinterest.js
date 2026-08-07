@@ -21,6 +21,10 @@
  */
 
 const { supabaseAdmin } = require('../_lib/supabase');
+// 2026-08-07 — 가드 추가. 그전까지 이 크론은 cron_runs 에 아무 기록도
+// 남기지 않아 '도는지 안 도는지 알 수 없는' 상태였다(7일 로그 0건).
+// 실패해도 아무도 몰랐다는 뜻이다.
+const { withCronGuard } = require('../_lib/cronGuard');
 
 const SITE = 'https://www.pap-magazine.com';
 const PIN_API = 'https://api.pinterest.com/v5/pins';
@@ -30,7 +34,7 @@ function truncate(s, n) {
   return s.length > n ? s.slice(0, n - 1) + '…' : s;
 }
 
-module.exports = async function handler(req, res) {
+module.exports = withCronGuard('sync-pinterest', async function handler(req, res) {
   // Vercel cron 보호
   if (process.env.CRON_SECRET) {
     const auth = req.headers['authorization'] || '';
@@ -182,4 +186,4 @@ module.exports = async function handler(req, res) {
     console.error('[sync-pinterest] error:', err);
     return res.status(500).json({ error: 'sync failed', detail: String(err && err.message || err) });
   }
-};
+});
