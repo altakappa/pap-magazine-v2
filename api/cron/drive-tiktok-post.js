@@ -34,6 +34,7 @@ const { buildHashtags } = require('../_lib/youtubeMeta');
 const drive = require('../_lib/driveVideos');
 const buffer = require('../_lib/buffer');
 const { matchArticle } = require('../_lib/koMatch');
+const { claimDriveFile, finishClaim, doneIdsFrom } = require('../_lib/driveClaim');
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.com';
 const MAX_BYTES = 100 * 1024 * 1024;
@@ -108,8 +109,8 @@ module.exports = withCronGuard('drive-tiktok-post', async function handler(req, 
     }
 
     const { data: doneRows } = await supabaseAdmin.from('tiktok_posts')
-      .select('drive_file_id, status').not('drive_file_id', 'is', null).limit(5000);
-    const done = new Set((doneRows || []).filter((r) => r.status !== 'failed').map((r) => r.drive_file_id));
+      .select('drive_file_id, status, created_at').not('drive_file_id', 'is', null).limit(5000);
+    const done = doneIdsFrom(doneRows);
 
     const skipped = [];
     const candidates = [];
@@ -173,6 +174,19 @@ module.exports = withCronGuard('drive-tiktok-post', async function handler(req, 
       });
     }
 
+    /* ─── 자리 먼저 찜하기 ──────────────────────────────────────────
+     * 여기가 순서의 핵심이다. 위의 done 검사는 '읽기' 라서 50초 뒤 게시까지
+     * 아무것도 보장하지 못한다. 2026-08-07 휴닝카이가 틱톡에 두 번 올라간 게
+     * 정확히 그 틈이었다(30초 간격 두 실행). 유니크 인덱스에 INSERT 를 부딪혀
+     * 여기서 승자를 가른다. 진 쪽은 아무것도 올리지 않고 나간다. */
+    const claim = await claimDriveFile('tiktok_posts', file.id);
+    if (!claim.ok) {
+      return res.status(200).json({
+        ok: true, claimed: false, file: file.name, unmatched, skipped,
+        note: note(res, '건너뜀 — ' + claim.reason + ' (' + file.name + ')'),
+      });
+    }
+
     let post = null; let status = 'submitted'; let detail = null; let publicUrl = null;
     try {
       const channelId = await buffer.findChannelId('tiktok');
@@ -190,14 +204,15 @@ module.exports = withCronGuard('drive-tiktok-post', async function handler(req, 
 
     /* 기록 실패를 삼키지 않는다 — 2026-08-07 유튜브 경로에서 같은 영상이
      * 두 번 공개 게시된 원인이 정확히 이것이었다. 기록이 안 되면 '올렸다'고
-     * 말하지 않는다. 중복 게시가 훨씬 나쁘다. */
-    const { error: recErr } = await supabaseAdmin.from('tiktok_posts').upsert({
-      drive_file_id: file.id, article_id: art.id,
-      publish_id: post && post.id || null, status, detail,
-    }, { onConflict: 'drive_file_id' });
-    if (recErr) {
+     * 말하지 않는다. 중복 게시가 훨씬 나쁘다.
+     * 찜해 둔 줄을 갱신하는 것이므로 upsert 가 아니라 update 다 — upsert 는
+     * 덮어쓰기라 경합이 조용히 통과한다. */
+    const rec = await finishClaim('tiktok_posts', file.id, {
+      article_id: art.id, publish_id: post && post.id || null, status, detail,
+    });
+    if (!rec.ok) {
       const msg = 'DB 기록 실패 — 같은 영상이 반복 게시될 수 있음! publish_id=' + (post && post.id)
-        + ' file=' + file.name + ' :: ' + String(recErr.message || recErr).slice(0, 200);
+        + ' file=' + file.name + ' :: ' + rec.reason;
       console.error('[drive-tiktok-post]', msg);
       note(res, msg);
       return res.status(500).json({ ok: false, error: 'record failed', publish_id: post && post.id, detail: msg });

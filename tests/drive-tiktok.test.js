@@ -85,7 +85,11 @@ t('파일명을 안전한 문자로 정규화한다 (한글 경로 사고 방지
 t('드라이브 파일 id 로 경로를 나눠 충돌을 막는다', /STORAGE_DIR \+ '\/' \+ fileId/.test(src));
 
 console.log('\n[4] ⭐️ 오늘의 사고 재발 방지');
-t('기록 실패를 확인한다', /const \{ error: recErr \}/.test(src) && /if \(recErr\)/.test(src));
+t('기록 실패를 확인한다', /const rec = await finishClaim\(/.test(src) && /if \(!rec\.ok\)/.test(src));
+/* 휴닝카이가 두 번 올라간 그 사고. 순서를 코드에 못박는다. */
+t('올리기 전에 자리를 찜한다',
+  src.indexOf('claimDriveFile(') > 0 && src.indexOf('claimDriveFile(') < src.indexOf('createVideoPost('));
+t('찜에 실패하면 게시하지 않는다', /if \(!claim\.ok\)[\s\S]{0,200}return res/.test(src));
 t('기록 실패는 500 으로 떨어진다', /error: 'record failed'/.test(src));
 t('문구가 중복 게시 위험을 말한다', /반복 게시될 수 있음/.test(src));
 t('마이그레이션 109 는 부분 인덱스를 쓰지 않는다 (107 의 실수)', (() => {

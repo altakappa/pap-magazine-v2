@@ -37,6 +37,7 @@ const { withCronGuard } = require('../_lib/cronGuard');
 const { buildTitle, buildHashtags, buildTagList } = require('../_lib/youtubeMeta');
 const drive = require('../_lib/driveVideos');
 const { matchArticle } = require('../_lib/koMatch');
+const { claimDriveFile, finishClaim, doneIdsFrom } = require('../_lib/driveClaim');
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.com';
 const MAX_BYTES = 100 * 1024 * 1024;   // Vercel 120초·1GB 안에서 다룰 수 있는 선
@@ -104,9 +105,10 @@ module.exports = withCronGuard('drive-youtube-post', async function handler(req,
 
     // ── 2. 제외·중복 거르기 ─────────────────────────────────
     const { data: doneRows } = await supabaseAdmin.from('youtube_posts')
-      .select('drive_file_id, status').not('drive_file_id', 'is', null).limit(5000);
-    // 실패 기록은 재시도를 허용한다 (일시 오류로 영구 배제되면 안 된다)
-    const done = new Set((doneRows || []).filter((r) => r.status !== 'failed').map((r) => r.drive_file_id));
+      .select('drive_file_id, status, created_at').not('drive_file_id', 'is', null).limit(5000);
+    // 실패 기록은 재시도를 허용한다 (일시 오류로 영구 배제되면 안 된다).
+    // 'claiming' 은 살아 있는 동안만 제외한다 — 죽은 찜은 다시 후보로 돌아온다.
+    const done = doneIdsFrom(doneRows);
 
     const skipped = [];
     const candidates = [];
@@ -174,6 +176,19 @@ module.exports = withCronGuard('drive-youtube-post', async function handler(req,
 
     // ── 5. 내려받아 올린다 ──────────────────────────────────
     // 소리는 그대로 둔다. 드라이브 원본은 우리가 만든 것이라 인스타 음원이 아니다.
+    /* ─── 자리 먼저 찜하기 ──────────────────────────────────────────
+     * 위 done 검사와 이 지점 사이에 업로드가 통째로 들어간다. 그 사이에
+     * 시작한 실행은 done 을 다시 읽어도 아직 아무 기록을 못 본다.
+     * 2026-08-07 틱톡에서 휴닝카이가 두 번 나간 게 정확히 그 틈이었고,
+     * 이 크론도 구조가 같다. 유니크 인덱스에 INSERT 를 부딪혀 승자를 가른다. */
+    const claim = await claimDriveFile('youtube_posts', file.id);
+    if (!claim.ok) {
+      return res.status(200).json({
+        ok: true, claimed: false, file: file.name, unmatched, skipped,
+        note: note(res, '건너뜀 — ' + claim.reason + ' (' + file.name + ')'),
+      });
+    }
+
     let videoId = null; let status = 'submitted'; let detail = null;
     try {
       const buf = await drive.downloadVideo(file.id, MAX_BYTES);
@@ -197,12 +212,12 @@ module.exports = withCronGuard('drive-youtube-post', async function handler(req,
      * 크론이 2시간마다 같은 영상을 공개 채널에 다시 올릴 뻔했다.
      * 오늘 하루 종일 잡던 그 침묵 패턴을 새 코드에 그대로 심었던 셈이다.
      * 기록이 안 되면 '올렸다'고 말하지 않는다 — 중복 업로드가 훨씬 나쁘다. */
-    const { error: recErr } = await supabaseAdmin.from('youtube_posts').upsert({
-      drive_file_id: file.id, article_id: art.id, video_id: videoId, status, detail,
-    }, { onConflict: 'drive_file_id' });
-    if (recErr) {
+    const rec = await finishClaim('youtube_posts', file.id, {
+      article_id: art.id, video_id: videoId, status, detail,
+    });
+    if (!rec.ok) {
       const msg = 'DB 기록 실패 — 같은 영상이 반복 업로드될 수 있음! video_id=' + videoId
-        + ' file=' + file.name + ' :: ' + String(recErr.message || recErr).slice(0, 200);
+        + ' file=' + file.name + ' :: ' + rec.reason;
       console.error('[drive-youtube-post]', msg);
       note(res, msg);
       return res.status(500).json({ ok: false, error: 'record failed', video_id: videoId, detail: msg });

@@ -165,11 +165,22 @@ console.log('\n[9] 배선·안전장치');
 t('크론이 vercel.json 에 등록됨',
   (require(path.join(ROOT, 'vercel.json')).crons || []).some((c) => c.path === '/api/cron/drive-youtube-post'));
 t('상한 100MB (Vercel 120초·1GB 안)', require(path.join(ROOT, 'api', 'cron', 'drive-youtube-post.js')).MAX_BYTES === 100 * 1024 * 1024);
-t('drive_file_id 로 중복 업로드를 막는다', /onConflict: 'drive_file_id'/.test(src));
-t('실패 기록은 재시도를 허용한다', /status !== 'failed'/.test(src));
+/* 2026-08-07 갱신 — 중복 방지 방식이 바뀌었다.
+   예전: 올린 뒤 upsert(onConflict). upsert 는 덮어쓰기라 두 실행이 겹치면
+         **둘 다 올리고** DB 에는 한 줄만 남는다(틱톡 휴닝카이 2건 사고).
+   지금: 올리기 전에 INSERT 로 자리를 찜한다 — 두 번째는 23505 로 진다.
+   그래서 여기서 고정할 것은 'onConflict 문자열'이 아니라 **순서**다. */
+t('drive_file_id 로 중복 업로드를 막는다 (올리기 전에 찜한다)',
+  src.indexOf('claimDriveFile(') > 0 && src.indexOf('claimDriveFile(') < src.indexOf('uploadVideo('));
+t('찜에 실패하면 업로드하지 않는다', /if \(!claim\.ok\)[\s\S]{0,200}return res/.test(src));
+t('결과는 덮어쓰기(upsert)가 아니라 찜한 줄 갱신이다',
+  /finishClaim\(/.test(src) && !/onConflict: 'drive_file_id'/.test(src));
+t('실패 기록은 재시도를 허용한다', /doneIdsFrom\(/.test(src)
+  && /if \(r\.status === 'failed'\) continue;/.test(
+       fs.readFileSync(path.join(ROOT, 'api', '_lib', 'driveClaim.js'), 'utf8')));
 // 2026-08-07 사고 재발 방지: 유튜브엔 올라갔는데 DB 기록이 조용히 실패해
 // 크론이 같은 영상을 2시간마다 다시 올릴 뻔했다. 기록 실패는 반드시 시끄러워야 한다.
-t('DB 기록 실패를 삼키지 않는다', /const \{ error: recErr \}/.test(src) && /if \(recErr\)/.test(src));
+t('DB 기록 실패를 삼키지 않는다', /const rec = await finishClaim\(/.test(src) && /if \(!rec\.ok\)/.test(src));
 t('기록 실패 시 500 으로 떨어진다', /error: 'record failed'/.test(src));
 t('기록 실패 문구가 중복 업로드 위험을 말한다', /반복 업로드될 수 있음/.test(src));
 t('마이그레이션 108 이 부분 인덱스를 전체 유니크로 바꾼다', (() => {
