@@ -1479,7 +1479,6 @@ ${(kind === 'editorial' || kind === 'film' || kind === 'article') ? `<!-- QA #17
     ${brandLinksHtml}
     ${relatedEditorialHtml}
     ${relatedFilmsHtml}
-    ${moreEditorialsHtml}
     <!-- QA(2026-07) #5 — 해시태그 노출 위치 통일. record.tags 로 오는 해시태그는
          기존에 seo-meta(본문 설명 바로 아래·상단)에 렌더돼, 본문 블록 안에
          해시태그를 배치하는 관리자 등록 기사(최하단)와 위치가 어긋났다. IG
@@ -1523,6 +1522,10 @@ ${(kind === 'editorial' || kind === 'film' || kind === 'article') ? `<!-- QA #17
            여기 두면 SSR 에만 있고 SPA 에는 없어서 화면이 갈라진다. -->
       <div class="igf-sub">${FT.sub}</div>
     </aside>
+
+    <!-- 2026-08-08 도메니코 지시 — More Articles/Editorials 는 페이지 제일
+         아래. SPA(#artMoreArticles)와 같은 위치라 두 화면 순서가 일치한다. -->
+    ${moreEditorialsHtml}
   </article>
 </main>
 

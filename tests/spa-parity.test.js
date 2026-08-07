@@ -91,13 +91,18 @@ console.log('\n[3] FAQ·MORE ARTICLES — SSR 에만 있던 섹션이 SPA 에도
     /_extrasChecked/.test(artJs));
   t('index.html 에 두 마운트가 있다', /id="artMoreArticles"/.test(idx) && /id="artFaq"/.test(idx));
   t('articles.html 에도 두 마운트가 있다', /id="artMoreArticles"/.test(arts) && /id="artFaq"/.test(arts));
-  /* SSR 과 같은 순서: MORE → 태그 → FAQ → 참여 → IG */
-  t('index: MORE < 태그 < FAQ < 참여', idx.indexOf('artMoreArticles') < idx.indexOf('artDetailTags')
-    && idx.indexOf('artDetailTags') < idx.indexOf('id="artFaq"')
-    && idx.indexOf('id="artFaq"') < idx.indexOf('papEngageMount'));
-  t('articles: MORE < 태그 < FAQ < 참여', arts.indexOf('artMoreArticles') < arts.indexOf('artDetailTags')
-    && arts.indexOf('artDetailTags') < arts.indexOf('id="artFaq"')
-    && arts.indexOf('id="artFaq"') < arts.indexOf('papEngageMount'));
+  /* 순서 (2026-08-08 도메니코 지시로 변경): 태그 → FAQ → 참여 → IG →
+     MORE ARTICLES **제일 아래**. SSR 도 같은 위치라 두 화면이 일치한다. */
+  t('index: 태그 < FAQ < 참여, MORE 는 제일 아래',
+    idx.indexOf('artDetailTags') < idx.indexOf('id="artFaq"')
+    && idx.indexOf('id="artFaq"') < idx.indexOf('papEngageMount')
+    && idx.indexOf('artMoreArticles') > idx.indexOf('artSocialSlot'));
+  t('articles: 태그 < FAQ < 참여, MORE 는 제일 아래',
+    arts.indexOf('artDetailTags') < arts.indexOf('id="artFaq"')
+    && arts.indexOf('id="artFaq"') < arts.indexOf('papEngageMount')
+    && arts.indexOf('artMoreArticles') > arts.indexOf('artSocialSlot'));
+  t('SSR 도 MORE 가 마지막 IG 퍼널 뒤 (두 화면 순서 일치)',
+    seo.indexOf('${moreEditorialsHtml}') > seo.indexOf('${FT.sub}'));
 }
 
 console.log('\n[4] MORE ARTICLES 데이터 — 한 빌더, 두 소비자');
@@ -168,6 +173,27 @@ console.log('\n[8] 캐시버스트 — 바뀐 스크립트는 전부 판을 올�
     t(n + ' 판이 index·articles 동일 (' + ver(idx, n) + ')', ver(idx, n) === ver(arts, n),
       ver(idx, n) + ' vs ' + ver(arts, n));
   });
+}
+
+console.log('\n[9] IG 링크 자동화 — "임베드 코드는 살았는데 데이터가 안 들어온다"의 뿌리');
+{
+  /* 실측(2026-08-08): 8월 발행 화보 5편 전부 source_instagram_url NULL.
+     연결 도구(backfill-ig)가 관리자 수동 전용이라 아무도 안 돌렸다.
+     → 6시간마다 최근 게시물을 스캔해 자동 연결하는 크론으로. */
+  const bf = R('api/editorials/backfill-ig.js');
+  const vj = R('vercel.json');
+  t('크론 인증은 Bearer CRON_SECRET (x-vercel-cron 헤더 읽기 금지 — celeb-classify 사고)',
+    /auth === 'Bearer ' \+ process\.env\.CRON_SECRET/.test(bf)
+    && !/headers\[['"]x-vercel-cron/.test(bf));
+  t('withCronGuard 로 감싼다 (기록 없는 크론 금지 — 뉴스레터 3주 침묵 교훈)',
+    /module\.exports = withCronGuard\('editorial-ig-link', handler\)/.test(bf));
+  t('모든 종료 지점이 note 를 남긴다', (bf.match(/note\(/g) || []).length >= 5);
+  t('크론 모드는 자동 apply + 최근 2페이지', /isCron \? req\.query\.apply !== '0'/.test(bf)
+    && /isCron \? '2' : '10'/.test(bf));
+  t('수동(관리자)은 여전히 dry-run 기본', /req\.query\.apply === '1'/.test(bf));
+  t('vercel.json 에 스케줄이 있다', /"path": "\/api\/editorials\/backfill-ig"/.test(vj));
+  t('이미 채워진 링크는 안 건드린다 (경합 이중 확인)',
+    /\.is\('source_instagram_url', null\); \/\/ 경합 대비 이중 확인/.test(bf));
 }
 
 console.log('\npassed: ' + pass + '   failed: ' + fail);

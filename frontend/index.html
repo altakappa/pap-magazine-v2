@@ -1126,12 +1126,6 @@
     <div id="artDetailDesc" style="padding:0 0 32px;font-size:16px;line-height:1.9;color:#ccc;letter-spacing:.02em"></div>
     <div id="artDetailCredits" style="padding:24px 0;border-top:1px solid rgba(255,255,255,.08);font-size:12px;line-height:1.8"></div>
     <div id="artDetailGallery" style="display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:24px 0"></div>
-    <!-- 2026-08-08 — MORE ARTICLES. SSR(/article 직접 진입)에만 있던 섹션을
-         SPA 로 (도메니코: "MORE ARTICLES, 자주 묻는 질문은 뜨지 않는데").
-         SSR 과 같은 순서: 콘텐츠 → MORE → 태그 → FAQ → 참여 → IG.
-         pap-content-article.js#_renderMoreArticles 가 상세 GET 의
-         more_articles 로 채운다. -->
-    <div id="artMoreArticles" style="display:none;padding:24px 0"></div>
     <!-- QA(2026-07) #5 — 해시태그를 본문 하단(콘텐츠 종료 후)으로 이동해 SSR·관리자
          등록 기사와 노출 위치 통일. -->
     <div id="artDetailTags" style="padding:12px 0 24px"></div>
@@ -1161,6 +1155,10 @@
       <div><button class="igf-share" data-i18n="edIgShare" onclick="_papShareStory()">이 스토리 공유 ↗</button></div>
     </aside>
     <div id="artSocialSlot"></div>
+    <!-- 2026-08-08 — MORE ARTICLES. 도메니코 지시로 기사 페이지 "제일 아래".
+         (처음엔 SSR 순서를 따라 태그 위에 뒀었다.) SSR 도 같은 위치로 옮겨
+         두 화면 순서를 다시 일치시켰다. pap-content-article.js#_renderMoreArticles 가 채운다. -->
+    <div id="artMoreArticles" style="display:none;padding:24px 0"></div>
   </div>
 </div>
 <!-- 2026-07 통일 — articles.html 오버레이와 동일한 모바일 타이포 축소(패리티). -->
