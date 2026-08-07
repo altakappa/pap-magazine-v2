@@ -150,6 +150,11 @@ t('결과에 quality_retried / quality_flagged 를 보고한다',
 const cronSrc = fs.readFileSync(CRON, 'utf8');
 t('크론 note 에 품질 건수를 남긴다', /'\/품질' \+ v\.flagged/.test(cronSrc));
 t('크론이 quality_flagged 를 합산한다', /r\.quality_flagged/.test(cronSrc));
+/* 2026-08-08 — flagged(저장까지 간 것)만으로는 '검증이 막고 있다' 를 못 본다.
+   ru 가 7시간 0건인데 예외도 ERR 도 없었고, retried 를 안 남겨서 가설을
+   증명할 수 없었다. 저장 0 + 재시도 N 이 보이면 원인이 한 번에 갈린다. */
+t('크론이 quality_retried 도 합산한다', /r\.quality_retried/.test(cronSrc));
+t('크론 note 에 재시도 건수를 남긴다', /'\/재시도' \+ v\.retried/.test(cronSrc));
 
 /* 본문 임계값이 근거대로인지 (실측 0.4% → 3% 는 넉넉한 선) */
 t('본문 한글 임계값은 3%', /const BODY_HANGUL_MAX = 0\.03;/.test(src));

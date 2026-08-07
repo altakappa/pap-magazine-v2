@@ -621,13 +621,24 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
   for (const r of results) {
     if (!r.lang) { if (r.skipped) notes.push('skip(' + r.skipped + ')'); continue; }
     const k = r.lang + '/' + String(r.kind || '?').slice(0, 3);
-    const cur = perCombo.get(k) || { processed: 0, remaining: null, err: null, tooLong: 0, flagged: 0 };
+    const cur = perCombo.get(k) || { processed: 0, remaining: null, err: null, tooLong: 0, flagged: 0, retried: 0 };
     cur.processed += r.processed || 0;
     if (typeof r.remaining === 'number') cur.remaining = r.remaining;
     if (r.skipped_too_long) cur.tooLong = r.skipped_too_long;
     /* 표기 규칙(한글 잔존·한국 고유명사)을 재시도까지 하고도 못 지켜 그대로
        저장한 건수. 0 이 아닌 상태가 계속되면 프롬프트를 다시 손봐야 한다. */
     cur.flagged += r.quality_flagged || 0;
+    /* 2026-08-08 계측 — 배치 결과가 표기 검증에 걸려 단건 재시도로 넘어간 건수.
+     *
+     * 왜 남기나: ru 가 08-07 17:52 이후 7시간째 0건인데 예외도 ERR 도 없다.
+     * 코드상 '조용한 0건' 경로는 하나뿐이다 —
+     *     배치가 검증에 걸림 → got 에서 빠짐 → 단건 재시도 필요
+     *     → canCall 실패(마감 임박) → ranOut → 저장 0
+     * ru 는 웨이브 순서상 늘 마지막이라 재시도할 시간이 없다.
+     * 이 가설이 맞는지는 retried 를 눈으로 봐야 갈린다. flagged(저장까지 간 것)
+     * 만 남기고 retried 를 안 남긴 것이 어제의 계측 누락이었다.
+     * 동작은 아무것도 바뀌지 않는다 — 숫자 한 개를 더 보여줄 뿐이다. */
+    cur.retried += r.quality_retried || 0;
     if (r.error && !cur.err) cur.err = String(r.error).slice(0, 50);
     perCombo.set(k, cur);
   }
@@ -656,6 +667,9 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
          '할 일이 남았다'로 착각한다(오늘 zh 사고). */
       + (v.tooLong ? '/긴글' + v.tooLong : '')
       + (v.flagged ? '/품질' + v.flagged : '')
+      /* 검증에 걸려 재시도로 넘어간 건수. 저장 0 인데 이 값이 크면
+         '검증이 막고 있다' 는 뜻이다 — 2026-08-08 ru 진단용. */
+      + (v.retried ? '/재시도' + v.retried : '')
       + (v.err ? ' ERR ' + v.err : '')),
     ...notes,
   ].join(' · ') || '처리 대상 없음';
