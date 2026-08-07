@@ -238,8 +238,9 @@ module.exports = withCronGuard('pipeline-watch', async function handler(req, res
    * 앞의 감시들이 '안 만들어지는 것'을 본다면, 이건 '만들어놓고 사라지는 것'을
    * 본다. 게시는 끝이 아니라 시작이다. */
   const ytVideos = await checkYouTubeVideos({ dry });
+  const newsletter = await checkNewsletter({ dry });
 
-  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels, faq, duration, naver, tiktok, heartbeat, ytVideos });
+  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels, faq, duration, naver, tiktok, heartbeat, ytVideos, newsletter });
 });
 
 /** 서술문 생산이 실제로 되고 있는지 보고, 이상하면 텔레그램으로 알린다. */
@@ -1134,6 +1135,108 @@ module.exports.HEARTBEATS = HEARTBEATS;
  * 최근 14일분만 본다 — 오래된 영상은 사람이 의도적으로 내렸을 수 있다. */
 const YT_VIDEO_ALERT_KEY = 'youtube-video-health';
 
+/* ── 뉴스레터 감시 (2026-08-07 신설) ────────────────────────────────
+ *
+ * 왜 필요했나 — 뉴스레터가 **한 달간 한 통도 안 나갔는데 아무도 몰랐다.**
+ *   마지막 발송      2026-07-06 · 11통
+ *   그 이후          0통
+ *   캠페인 생성      5/12 · 5/26 · 6/02 · 6/29 · 7/06 · 7/19 → 그 뒤 없음
+ *   draft 로 방치    5건
+ *
+ * 주간 크론은 일요일에 한 번 돈다. 한 번 실패하면 다음 기회가 일주일 뒤다.
+ * 그래서 '며칠 조용하면 이상하다' 는 판단이 특히 잘 맞는 채널이다.
+ *
+ * 세 가지를 본다:
+ *   ① 캠페인이 안 만들어진다        (생성 정체)
+ *   ② 만들어졌는데 draft 로 멈췄다  (발송 크론이 안 집는다)
+ *   ③ 보냈다는데 실제 발송이 0이다  ('돌았다 ≠ 했다')
+ */
+const NEWSLETTER_ALERT_KEY = 'nl:weekly';
+
+function judgeNewsletter(rows, nowMs) {
+  const list = (rows || []).slice();
+  if (!list.length) {
+    return { healthy: true, cause: null, reason: '캠페인 기록 없음 — 판단 보류' };
+  }
+  const ms = (r) => Date.parse(r.created_at || 0) || 0;
+  list.sort((a, b) => ms(b) - ms(a));
+  const newest = list[0];
+  const daysSince = Math.floor((nowMs - ms(newest)) / 86400000);
+
+  /* ③ 보냈다는데 0통 — 가장 나쁘다. 겉으로는 완료로 보이기 때문이다. */
+  const zeroSent = list.filter((r) => r.status === 'sent' && Number(r.recipient_count) > 0
+    && Number(r.sent_count) === 0);
+  if (zeroSent.length) {
+    return { healthy: false, cause: 'zero-sent', daysSince,
+      reason: "'발송 완료' 인데 실제로 나간 게 0통인 캠페인 " + zeroSent.length + '건 — SMTP 설정을 의심할 것' };
+  }
+
+  /* ② draft 정체 — 크론이 만들었는데 status 가 draft 면 영원히 안 나간다. */
+  const staleDrafts = list.filter((r) => r.status === 'draft' && (nowMs - ms(r)) > 3 * 86400000);
+  if (staleDrafts.length) {
+    return { healthy: false, cause: 'stuck-draft', daysSince, drafts: staleDrafts.length,
+      reason: 'draft 로 3일 넘게 멈춘 캠페인 ' + staleDrafts.length + '건 — 예약해야 발송된다' };
+  }
+
+  /* ① 생성 정체 — 주간이니 10일이면 두 번 놓친 것이다. */
+  if (daysSince >= 10) {
+    return { healthy: false, cause: 'no-new', daysSince,
+      reason: '마지막 캠페인 생성이 ' + daysSince + '일 전 — 주간 크론이 두 번 이상 걸렀다' };
+  }
+
+  return { healthy: true, cause: null, daysSince,
+    reason: '최근 캠페인 ' + daysSince + '일 전 · draft 정체 없음' };
+}
+
+function buildNewsletterAlert(d, site) {
+  const map = { 'zero-sent': '보냈다는데 0통', 'stuck-draft': 'draft 로 멈춤', 'no-new': '생성이 멈춤' };
+  return {
+    title: '🚨 뉴스레터 — ' + (map[d.cause] || d.cause),
+    lines: [d.reason, '마지막 캠페인 ' + (d.daysSince == null ? '?' : d.daysSince) + '일 전'],
+    url: site + '/admin/crons', urlLabel: '크론 상태',
+  };
+}
+
+async function checkNewsletter(opts) {
+  try {
+    const { data, error } = await supabaseAdmin.from('email_campaigns')
+      .select('id, name, status, created_at, recipient_count, sent_count')
+      .order('created_at', { ascending: false }).limit(20);
+    if (error) throw error;
+
+    const d = judgeNewsletter(data, Date.now());
+    if (opts && opts.dry) return { dry: true, ...d };
+
+    const { data: st } = await supabaseAdmin.from('ops_alert_state')
+      .select('last_alert_at, last_payload').eq('key', NEWSLETTER_ALERT_KEY).maybeSingle();
+    const lastAt = st && st.last_alert_at ? Date.parse(st.last_alert_at) : 0;
+    const wasBroken = !!(st && st.last_payload && st.last_payload.broken);
+    const COOLDOWN_H = Number(process.env.NEWSLETTER_ALERT_COOLDOWN_H || 24);
+
+    let alerted = false;
+    if (!d.healthy && Date.now() - lastAt > COOLDOWN_H * 3600000) {
+      await pushAlert({ ...buildNewsletterAlert(d, SITE), personalOnly: true });
+      alerted = true;
+    } else if (d.healthy && wasBroken) {
+      await pushAlert({ personalOnly: true, title: '✅ 뉴스레터 정상',
+        lines: [d.reason], url: SITE + '/admin/crons', urlLabel: '크론 상태' });
+      alerted = true;
+    }
+    if (alerted || wasBroken !== !d.healthy) {
+      await supabaseAdmin.from('ops_alert_state').upsert({
+        key: NEWSLETTER_ALERT_KEY,
+        last_alert_at: alerted ? new Date().toISOString() : (st && st.last_alert_at) || null,
+        last_payload: { broken: !d.healthy, cause: d.cause || null },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'key' });
+    }
+    return { ...d, alerted };
+  } catch (e) {
+    console.error('[pipeline-watch] 뉴스레터 감시 실패', e && e.message);
+    return { error: (e && e.message) || 'unknown' };
+  }
+}
+
 /* 유튜브가 인정하는 나라 수는 250 남짓이다. 이 이상 막혔으면 '일부 지역'이
    아니라 사실상 전 세계 차단 — 알림 문구를 다르게 써야 사람이 안 헷갈린다. */
 const BLOCK_WORLDWIDE = Number(process.env.YT_BLOCK_WORLDWIDE_MIN || 200);
@@ -1265,4 +1368,6 @@ async function checkYouTubeVideos(opts) {
 }
 
 module.exports.judgeVideoStates = judgeVideoStates;
+module.exports.judgeNewsletter = judgeNewsletter;
+module.exports.buildNewsletterAlert = buildNewsletterAlert;
 module.exports.buildVideoStateAlert = buildVideoStateAlert;

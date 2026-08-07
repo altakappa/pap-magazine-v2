@@ -158,11 +158,18 @@ module.exports = withCronGuard('send-due-campaigns', async function handler(req,
         }));
       }
 
-      // 5) Mark campaign sent.
+      /* 5) 결과 표시.
+       *
+       * 2026-08-07 — 예전엔 무조건 'sent' 로 찍었다. 그러면 한 통도 못 나간
+       * 캠페인이 대시보드에 '발송 완료' 로 뜬다. SMTP 가 꺼져 있으면
+       * sendEmail 이 {skipped:true} 를 돌려주고 전원이 failed 로 쌓이는데,
+       * 캠페인은 'sent' 였다 — 오늘 하루 종일 쫓던 '돌았다 ≠ 했다' 그대로다.
+       * 받는 사람이 있었는데 한 통도 못 갔으면 그건 실패다. */
+      const allFailed = recipientList.length > 0 && sent === 0;
       await supabaseAdmin
         .from('email_campaigns')
         .update({
-          status: 'sent',
+          status: allFailed ? 'failed' : 'sent',
           sent_at: new Date().toISOString(),
           recipient_count: recipientList.length,
           sent_count: sent,

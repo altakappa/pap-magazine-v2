@@ -1149,8 +1149,11 @@ function wrapMarketing({ preheader, body, unsubUrl, lang }) {
 async function sendEmail(to, template) {
   // Skip if SMTP is not configured
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    console.warn('[EMAIL] SMTP not configured, skipping email to:', to);
-    return { skipped: true };
+    /* 2026-08-07 — 사유를 명시한다. 예전엔 { skipped:true } 만 돌려줘서
+       호출부가 email_log 에 error='unknown' 으로 적었다. 그러면 나중에
+       "왜 안 갔지" 를 로그만 보고는 절대 알 수 없다. */
+    console.error('[EMAIL] SMTP 미설정 — 발송 건너뜀:', to);
+    return { skipped: true, error: 'SMTP 미설정 (SMTP_USER/SMTP_PASS)' };
   }
 
   try {

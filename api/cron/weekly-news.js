@@ -22,6 +22,7 @@
  */
 
 const papVoice = require('../_lib/papVoice');
+const { withCronGuard } = require('../_lib/cronGuard');   // 실행기록·실패알림 (2026-08-07)
 
 const { reportAiResponse } = require('../_lib/aiCreditWatch');   // AI 장애 알림 (2026-07-30)
 const { supabaseAdmin } = require('../_lib/supabase');
@@ -108,14 +109,31 @@ function translateSystem(locale) {
   ].join('\n');
 }
 
-module.exports = async function handler(req, res) {
+/* 실행 기록·실패 알림 (2026-08-07 추가).
+ *
+ * 이게 없어서 뉴스레터가 3주 조용히 멈춰 있었다. 실측:
+ *     캠페인 생성일  5/12 · 5/26 · 6/02 · 6/29 · 7/06 · 7/19  → 그 뒤 없음
+ *     cron_runs 의 weekly-news 기록  **0건**
+ * 7/30 크론 관측성 감사(a4e13c1)가 12개를 훑었는데 이 크론은 감싼 5개에도,
+ * 남긴 7개에도 없었다. 그래서 "언제부터 안 돌았는지"조차 알 수 없었다.
+ * 매주 일요일에만 도는 크론은 특히 이게 치명적이다 — 한 번 놓치면 일주일이다.
+ */
+function note(res, msg) {
+  res.locals = res.locals || {};
+  res.locals.cronNote = msg;
+  return msg;
+}
+
+module.exports = withCronGuard('weekly-news', async function handler(req, res) {
   const auth = (req.headers && req.headers['authorization']) || '';
   const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
   if (!cronOk) {
     const user = await requireAdmin(req, res);
     if (!user) return;
   }
-  if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'ANTHROPIC_API_KEY 미설정' });
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(503).json({ error: 'ANTHROPIC_API_KEY 미설정', note: note(res, 'ANTHROPIC_API_KEY 미설정 — 뉴스레터 생성 불가') });
+  }
 
   try {
     // 0) 멱등성 — 이번 주 캠페인이 이미 있으면 종료
@@ -127,7 +145,11 @@ module.exports = async function handler(req, res) {
     const { data: existing } = await supabaseAdmin
       .from('email_campaigns').select('id, status').eq('name', name).maybeSingle();
     if (existing) {
-      return res.status(200).json({ ok: true, note: '이미 생성됨', campaign: existing });
+      return res.status(200).json({
+        ok: true, campaign: existing,
+        note: note(res, '이번 주 캠페인 이미 있음 (' + name + ' · ' + existing.status + ')'
+          + (existing.status === 'draft' ? ' ⚠️ draft 라 발송되지 않는다' : '')),
+      });
     }
 
     // 1) RSS 수집 (부분 실패 허용)
@@ -141,7 +163,10 @@ module.exports = async function handler(req, res) {
     }));
     const headlines = results.flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
     if (headlines.length < 10) {
-      return res.status(502).json({ error: 'RSS 수집 부족: ' + headlines.length + '건' });
+      return res.status(502).json({
+        error: 'RSS 수집 부족: ' + headlines.length + '건',
+        note: note(res, 'RSS 수집 부족 — ' + headlines.length + '건뿐이라 이번 주 뉴스레터를 못 만든다'),
+      });
     }
 
     // 2) 한국어 마스터 큐레이션
@@ -214,11 +239,14 @@ module.exports = async function handler(req, res) {
 
     return res.status(201).json({
       ok: true, campaign: data,
+      note: note(res, '주간 뉴스레터 생성: ' + data.name + ' · ' + data.status
+        + ' · 발송예정 ' + String(data.scheduled_at || '').slice(0, 16)),
       locales: Object.keys(i18n), failedLocales: failed,
       headlines: master.newsItems.map((n) => n.title),
     });
   } catch (err) {
     console.error('[cron/weekly-news]', err.message || err);
-    return res.status(500).json({ error: err.message || 'weekly-news 실패' });
+    const m = String(err && err.message || err).slice(0, 200);
+    return res.status(500).json({ error: m, note: note(res, '주간 뉴스레터 생성 실패: ' + m) });
   }
-};
+});
