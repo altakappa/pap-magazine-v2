@@ -147,9 +147,18 @@ module.exports = withCronGuard('celeb-classify', async (req, res) => {
   if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'method not allowed' });
   }
-  if (!process.env.CRON_SECRET || req.headers['x-vercel-cron'] == null) {
+  /* 2026-08-07 사고 — 처음에 `req.headers['x-vercel-cron']` 로 크론을 알아보려
+     했다. **버셀은 그 헤더를 안 보낸다.** 보내는 건 Authorization: Bearer
+     $CRON_SECRET 이다. 그래서 예약 실행이 전부 requireAdmin 에 막혀 401 로
+     끝났고, cron_runs 에는 ok=true / note 빈칸으로 남았다 —
+     '돌았다 ≠ 했다' 그 패턴을, 그걸 고치자고 만든 크론에 내가 심었다.
+     이 저장소의 다른 크론들과 같은 모양으로 되돌린다. */
+  res.locals = res.locals || {};
+  const auth = (req.headers && req.headers['authorization']) || '';
+  const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
+  if (!cronOk) {
     const admin = await requireAdmin(req, res);
-    if (!admin) return;
+    if (!admin) { note(res, '인증 거부 — 크론 시크릿도 관리자 세션도 아님'); return; }
   }
 
   if (!process.env.ANTHROPIC_API_KEY) {

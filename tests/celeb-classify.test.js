@@ -183,6 +183,15 @@ console.log('\n[7] 배선 — 다이제스트가 category 를 안 본다');
   t('세 값만 받아들인다', /KINDS\.includes\(o\.kind\)/.test(cron));
   t('마커로 잡힌 건 AI 에 안 묻고 바로 저장한다', /'marker'/.test(cron));
   t("돌았는데 못 했으면 note 에 적는다 ('돌았다 ≠ 했다')", /note\(res,/.test(cron));
+  /* 2026-08-07 실사고 — x-vercel-cron 헤더로 크론을 알아보려 했는데 버셀은
+     그 헤더를 안 보낸다. 예약 실행이 전부 401 로 끝나고 note 는 빈칸이었다.
+     저장소의 다른 크론과 같은 관문이어야 한다. */
+  t('크론 인증은 Authorization: Bearer CRON_SECRET 이다',
+    /auth === 'Bearer ' \+ process\.env\.CRON_SECRET/.test(cron));
+  t('x-vercel-cron 헤더에 기대지 않는다 (버셀은 안 보낸다)',
+    !/x-vercel-cron/.test(cron.replace(/\/\*[\s\S]*?\*\//g, '')));
+  t('인증에 막혀도 note 를 남긴다 — 빈칸이면 아무도 못 본다',
+    /인증 거부/.test(cron));
   t('크론이 vercel.json 에 등록됨',
     (require(path.join(ROOT, 'vercel.json')).crons || []).some((c) => c.path === '/api/cron/celeb-classify'));
 }
