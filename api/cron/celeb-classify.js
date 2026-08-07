@@ -80,8 +80,21 @@ const SYSTEM = [
   '"none" — 아트도 셀럽도 아닌 것. **두 모음 어디에도 안 실린다.**',
   '  · 날씨·재난·사회 일반 뉴스 (예: "서울 전역에 내려진 폭염중대경보")',
   '  · 우리 매거진의 두 모음 어느 쪽 독자에게도 소재가 안 되는 글',
-  '  · 도메니코 지시: "애매한건 억지로 포함시키지 말고 그냥 빼줘."',
-  '    아트인지 애매하다고 collection 에 억지로 넣지 말 것.',
+  '  · **none 은 마지막 수단이다. 조금이라도 걸리면 celeb 또는 collection 을 골라라.**',
+  '',
+  '2026-08-07 실측 오답 — 아래는 전부 none 이 아니다:',
+  '  ✗ "지코, 워터밤 서울 피날레 무대" → none (X) · celeb (O)',
+  '     축제·시상식 무대에 연예인이 서면 celeb 이다. 같은 워터밤 기사인',
+  '     태민·박재범은 celeb 으로 갔는데 지코만 none 으로 갔다 — 일관성이 없다.',
+  '  ✗ "자이언티·코드 쿤스트와 함께한 메종 마르지엘라 향수의 밤" → none (X) · celeb (O)',
+  '     브랜드 행사라도 그 자리의 주인공이 연예인이면 celeb 이다.',
+  '  ✗ "푸마 x 맨시티 성수 팝업" → none (X) · collection (O)  팝업은 collection 이다.',
+  '  ✗ "놀란 감독의 한글 타이, 메종 드 윤" → none (X) · collection (O)  공예·브랜드다.',
+  '  ✗ "스포츠 사진가 Geoff Lowe" → none (X) · collection (O)  사진가는 collection 이다.',
+  '',
+  '  · 도메니코 지시 "애매한건 억지로 포함시키지 말고 그냥 빼줘" 의 뜻은',
+  '    **아트가 아닌 걸 collection 에 억지로 넣지 말라**는 것이지,',
+  '    컬처 콘텐츠를 none 으로 버리라는 뜻이 아니다.',
   '',
   '판단 순서: 연예인이 주인공인가? → 아니면 아트/패션/뷰티 콘텐츠인가?',
   '→ 둘 다 아니면 none.',
@@ -165,6 +178,29 @@ async function applyKind(ids, kind, by) {
   return error || null;
 }
 
+/* 2026-08-07 (도메니코 결정) — 'none' 은 사람 확인 대기열로 보낸다.
+ *
+ * 왜 — none 은 파괴적 판정이다. 두 모음 **모두**에서 빠지고, 되돌리려면
+ * 사람이 손대야 한다. 그런데 실측 정확도가 낮았다: 첫 100건 중 none 13건을
+ * 전수 확인했더니 최소 7건이 명백한 오답이었다(지코 워터밤·마르지엘라 향수
+ * 행사 2건·맨시티 팝업 2건·메종 드 윤 공예·스포츠 사진가).
+ * celeb·collection 판정은 멀쩡했다 — 문제는 none 하나다.
+ *
+ * 그래서 none 은 이렇게 저장한다:
+ *   digest_kind = 'collection'   ← 확인 전까지는 아트 모음에 그대로 실린다
+ *   kind_by     = 'ai_none_pending'
+ *
+ * 이 조합의 뜻은 "AI 는 빼자고 했지만 아직 사람이 확인 안 했다" 다.
+ *   · 다이제스트는 digest_kind 만 보므로 글이 사라지지 않는다 (안전 쪽 실패)
+ *   · digest_kind 가 찼으니 매 실행 다시 묻지 않는다 (비용·무한루프 방지)
+ *   · 어드민에서 kind_by='ai_none_pending' 으로 한 번에 뽑아 검토한다
+ *   · 사람이 정하면 kind_by='manual' 이 되고 그건 무엇보다 우선한다
+ *
+ * 잘못 빼는 것보다 잘못 남기는 쪽이 싸다 — 남은 건 눈에 띄지만
+ * 빠진 건 아무도 못 본다. */
+const PENDING_BY = 'ai_none_pending';
+const PENDING_KIND = 'collection';
+
 module.exports = withCronGuard('celeb-classify', async (req, res) => {
   if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'method not allowed' });
@@ -185,6 +221,29 @@ module.exports = withCronGuard('celeb-classify', async (req, res) => {
 
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.status(200).json({ ok: true, note: note(res, 'ANTHROPIC_API_KEY 미설정 — 마커 판정만으로 진행') });
+  }
+
+  /* 2026-08-07 — ?recheck=none
+   *
+   * 대기열 정책을 넣기 전에 AI 가 이미 none 으로 확정해 버린 행들을 되살린다.
+   * 그 판정은 실측 정확도가 낮았다(13건 중 최소 7건 오답). digest_kind 를
+   * 비우면 다음 실행부터 새 프롬프트로 다시 묻고, 이번엔 확인 대기열로 간다.
+   *
+   * kind_by='manual' 은 건드리지 않는다 — 사람이 정한 값이 항상 우선이다.
+   * (그래서 조건에 kind_by='ai' 를 명시한다. 'ai_none_pending' 도 제외 —
+   *  그건 이미 새 정책으로 안전하게 대기 중이라 다시 물을 이유가 없다.) */
+  if (String((req.query && req.query.recheck) || '') === 'none') {
+    const { data: cleared, error: rcErr } = await supabaseAdmin.from('articles')
+      .update({ digest_kind: null, kind_by: null })
+      .eq('kind_by', 'ai').eq('digest_kind', 'none')
+      .select('id');
+    if (rcErr) {
+      note(res, 'recheck 실패: ' + rcErr.message);
+      return res.status(500).json({ ok: false, error: 'recheck failed', detail: rcErr.message });
+    }
+    const n = (cleared || []).length;
+    return res.status(200).json({ ok: true, recheck: 'none', cleared: n,
+      note: note(res, "recheck=none — 옛 none 판정 " + n + "건을 비웠다. 다음 실행부터 다시 묻는다.") });
   }
 
   const days = Number(process.env.CELEB_CLASSIFY_DAYS) || 0;
@@ -222,7 +281,7 @@ module.exports = withCronGuard('celeb-classify', async (req, res) => {
     savedMarker = markerHits.length;
   }
 
-  let savedAi = 0; let batches = 0; const failures = [];
+  let savedAi = 0; let batches = 0; let pendingNone = 0; const failures = [];
   for (let i = 0; i < askRows.length && batches < MAX_BATCHES; i += BATCH) {
     const chunk = askRows.slice(i, i + BATCH);
     batches += 1;
@@ -241,12 +300,17 @@ module.exports = withCronGuard('celeb-classify', async (req, res) => {
     const byKind = new Map();
     verdicts.forEach((v) => {
       if (!chunk[v.i]) return;
-      if (!byKind.has(v.kind)) byKind.set(v.kind, []);
-      byKind.get(v.kind).push(chunk[v.i].id);
+      // none 은 바로 빼지 않고 확인 대기열로 (위 PENDING_BY 주석 참고)
+      const key = v.kind === 'none' ? PENDING_BY : 'ai';
+      const k = key + '|' + (v.kind === 'none' ? PENDING_KIND : v.kind);
+      if (!byKind.has(k)) byKind.set(k, []);
+      byKind.get(k).push(chunk[v.i].id);
+      if (v.kind === 'none') pendingNone += 1;
     });
     let n = 0;
-    for (const [kind, ids] of byKind) {
-      const e2 = await applyKind(ids, kind, 'ai');
+    for (const [k, ids] of byKind) {
+      const [by, kind] = k.split('|');
+      const e2 = await applyKind(ids, kind, by);
       if (e2) {
         note(res, 'AI 판정 저장 실패: ' + e2.message);
         return res.status(500).json({ ok: false, error: 'save ai failed', detail: e2.message });
@@ -257,16 +321,27 @@ module.exports = withCronGuard('celeb-classify', async (req, res) => {
     savedAi += n;
   }
 
-  const remaining = Math.max(0, askRows.length - savedAi);
+  /* 2026-08-07 — 여기가 거짓말을 하고 있었다.
+     askRows 는 이번에 '가져온' 300건 중 마커를 뺀 수라, 실제 대기열이
+     1,745건일 때도 note 에 '남은 대기 199건' 이라고 적혔다. 진행률을 못 믿으면
+     언제 끝나는지 알 수 없다. 남은 총수를 DB 에 직접 묻는다(head 조회라 싸다). */
+  let remaining = Math.max(0, askRows.length - savedAi);
+  try {
+    const { count } = await supabaseAdmin.from('articles')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'published').is('digest_kind', null);
+    if (typeof count === 'number') remaining = count;
+  } catch (_e) { /* 못 세면 근사치라도 남긴다 */ }
   const msg = savedMarker + savedAi === 0
     ? (askRows.length === 0 && markerHits.length === 0
       ? '판정 대기 기사 없음 — 완주'
       : '판정 0건' + (failures.length ? ' — ' + failures[0] : ''))
     : '갈래 판정 ' + (savedMarker + savedAi) + '건 저장 (마커 ' + savedMarker + ' · AI ' + savedAi
+      + (pendingNone ? ' · 제외후보 ' + pendingNone : '')
       + ') · 남은 대기 ' + remaining + '건' + (failures.length ? ' · 실패 ' + failures.length : '');
 
   return res.status(200).json({
-    ok: true, savedMarker, savedAi, batches, remaining, failures: failures.slice(0, 3),
+    ok: true, savedMarker, savedAi, pendingNone, batches, remaining, failures: failures.slice(0, 3),
     note: note(res, msg),
   });
 });

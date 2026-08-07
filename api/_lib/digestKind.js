@@ -85,13 +85,47 @@ const COLLECTION_WORDS = [
   'atelier', 'brand', 'luxury', 'streetwear', 'menswear', 'womenswear', 'knit', 'textile',
   'tailor', 'makeup', 'nail', 'hair', 'skincare', 'fragrance', 'perfume', 'cosmetic',
   'photograph', 'sculpt', 'paint', 'illustration', 'exhibition', 'gallery', 'museum',
-  'installation', 'craft', 'ceramic', 'jewel', 'eyewear', 'footwear', 'sneaker', 'shoe',
-  'heel', 'bag', 'denim', 'vintage', 'archive', 'editorial', 'campaign', 'lookbook',
+  'installation', 'craft', 'craftsmanship', 'cultural', 'ceramic', 'jewel', 'eyewear', 'footwear', 'sneaker', 'shoe',
+  'heel', 'bag', 'denim', 'vintage', 'archive', 'archival', 'editorial', 'campaign', 'lookbook',
   'model', 'stylist', 'designer', 'creative director', 'pop-up', 'popup', 'store',
-  'flagship', 'retail', 'collab', 'culture', 'music', 'film', 'performance', 'dance',
+  'flagship', 'retail', 'collab', 'collaboration', 'culture', 'music', 'film', 'performance', 'dance',
   '패션', '뷰티', '아트', '디자인', '컬렉션', '슈즈', '메이크업', '헤어', '네일',
   '향수', '전시', '스타일', '힐', '가방', '펌프스', '주얼리', '공예',
 ];
+
+/* 2026-08-07 — 부분 일치가 단어 안에 묻힌 글자까지 잡던 버그를 막는다.
+ *
+ * 실측 오분류:
+ *   'brandenburg gate' (브란덴부르크 문)  → 'brand' 가 들어있다고 패션 콘텐츠
+ *   'brand new day'    (스파이더맨 부제)  → 같은 이유
+ * 이 판정은 celeb 마커 전체와 다이제스트 즉석 판정에도 쓰여 파급이 크다.
+ *
+ * 규칙 — 태그를 단어로 쪼갠 뒤, 그 단어가
+ *   ① 키워드와 같거나
+ *   ② 키워드로 시작하고 남은 꼬리가 4글자 이하일 때만
+ * 신호로 친다. 정상 변형은 그대로 잡힌다:
+ *   fragrances(+s) · photography(+y) · sculptural(+ural) · jewelry(+ry) ·
+ *   paintings(+ings) · 패션위크(+위크)
+ * 사고는 걸러진다: brandenburg(+enburg, 6글자) ✗
+ *
+ * 하이픈은 지운 뒤 비교한다 — 'pop-up' 과 'popup' 은 같은 말이다.
+ * 키워드에 공백이 있으면(creative director) 단어 쪼개기가 무의미하므로
+ * 태그 전체에서 부분 일치로 본다 — 길고 구체적이라 사고가 없다. */
+const SUFFIX_MAX = 4;
+
+function wordsOf(tag) {
+  return String(tag).replace(/-/g, '').split(/[^0-9a-z가-힣]+/i).filter(Boolean);
+}
+
+function wordHit(tag, keyword) {
+  const kw = String(keyword).replace(/-/g, '');
+  if (kw.includes(' ')) return String(tag).includes(keyword);
+  for (const w of wordsOf(tag)) {
+    if (w === kw) return true;
+    if (w.startsWith(kw) && w.length - kw.length <= SUFFIX_MAX) return true;
+  }
+  return false;
+}
 
 const KINDS = ['celeb', 'collection', 'none'];
 
@@ -122,7 +156,7 @@ function markerKind(article) {
   const celebHits = tags.filter((t) => DOMAIN.has(t) || ACTS.has(t));
   if (celebHits.length) return { kind: 'celeb', hits: celebHits };
 
-  const collHits = tags.filter((t) => COLLECTION_WORDS.some((w) => t.includes(w)));
+  const collHits = tags.filter((t) => COLLECTION_WORDS.some((w) => wordHit(t, w)));
   if (collHits.length) return { kind: 'collection', hits: collHits };
 
   return { kind: 'none', hits: [] };
@@ -152,5 +186,5 @@ function needsAiVerdict(article) {
 
 module.exports = {
   digestKind, markerKind, needsAiVerdict, tagList, norm,
-  DOMAIN, ACTS, COLLECTION_WORDS, KINDS,
+  DOMAIN, ACTS, COLLECTION_WORDS, KINDS, wordHit,
 };
