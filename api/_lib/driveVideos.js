@@ -35,9 +35,21 @@ async function driveFetch(url, opts) {
   });
   if (r.status === 401 || r.status === 403) {
     const body = await r.text().catch(() => '');
+    // 403 은 원인이 두 갈래인데 구글이 같은 코드로 준다. 갈라서 말해야
+    // 사람이 헛다리를 안 짚는다 (2026-08-07 실제로 여기서 시간을 버렸다):
+    //   ① 프로젝트에 Drive API 자체가 꺼져 있음 → 콘솔에서 '사용 설정'
+    //   ② 토큰에 drive.readonly 가 없음        → /api/youtube/oauth 재인증
+    if (/has not been used in project|is disabled/i.test(body)) {
+      const proj = (body.match(/project (\d+)/) || [])[1] || '';
+      throw new Error(
+        '드라이브 API 가 꺼져 있음 — 구글 클라우드 콘솔에서 Google Drive API 를 사용 설정하세요'
+        + (proj ? ' (프로젝트 번호 ' + proj + ')' : '')
+        + '. 스코프·재인증 문제가 아닙니다.'
+      );
+    }
     throw new Error(
-      '드라이브 접근 거부 (HTTP ' + r.status + ') — YouTube OAuth 에 drive.readonly 스코프가 없거나 '
-      + '재인증이 필요합니다. /api/youtube/oauth 로 1회 재승인하세요. ' + body.slice(0, 200)
+      '드라이브 접근 거부 (HTTP ' + r.status + ') — 토큰에 drive.readonly 스코프가 없습니다. '
+      + '/api/youtube/oauth 로 1회 재승인하세요. ' + body.slice(0, 200)
     );
   }
   if (!r.ok) throw new Error('드라이브 HTTP ' + r.status + ': ' + (await r.text().catch(() => '')).slice(0, 200));

@@ -141,8 +141,15 @@ t('크론이 vercel.json 에 등록됨',
 t('상한 100MB (Vercel 120초·1GB 안)', require(path.join(ROOT, 'api', 'cron', 'drive-youtube-post.js')).MAX_BYTES === 100 * 1024 * 1024);
 t('drive_file_id 로 중복 업로드를 막는다', /onConflict: 'drive_file_id'/.test(src));
 t('실패 기록은 재시도를 허용한다', /status !== 'failed'/.test(src));
-t('드라이브 403 을 사람 말로 설명한다',
-  /drive\.readonly 스코프가 없거나/.test(fs.readFileSync(path.join(ROOT, 'api', '_lib', 'driveVideos.js'), 'utf8')));
+{
+  const dsrc = fs.readFileSync(path.join(ROOT, 'api', '_lib', 'driveVideos.js'), 'utf8');
+  // 403 은 원인이 둘인데 구글이 같은 코드로 준다. 2026-08-07 실제로 이걸 안 갈라놔서
+  // "재인증하세요" 라는 틀린 안내를 보고 시간을 버렸다. 두 갈래를 강제한다.
+  t('403 중 API 미사용 설정을 따로 구분한다', /has not been used in project\|is disabled/.test(dsrc), 'API disabled 분기 없음');
+  t('API 미사용 설정일 때 재인증하라고 하지 않는다', /스코프·재인증 문제가 아닙니다/.test(dsrc));
+  t('그 경우 프로젝트 번호를 알려준다', /프로젝트 번호/.test(dsrc));
+  t('스코프 부족일 때만 재인증을 안내한다', /스코프가 없습니다[\s\S]{0,80}youtube\/oauth/.test(dsrc));
+}
 t("하위 '원본/' 폴더는 안 본다 (압축 전 카메라 원본)",
   /mimeType !== 'application\/vnd\.google-apps\.folder'/.test(fs.readFileSync(path.join(ROOT, 'api', '_lib', 'driveVideos.js'), 'utf8')));
 t('YouTube 스코프에 drive.readonly 가 추가됨',
