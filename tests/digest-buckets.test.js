@@ -140,6 +140,7 @@ function seed() {
   TABLES = {
     articles: [
       { id: 1, title: '패션 아카이브', category: 'Fashion', status: 'published',
+        tags: ['tailoring', 'archive'],
         published_date: daysAgo(1), scheduled_publish_at: null, slug: 'fa' },
       /* 2026-08-07 — 갈래를 category 가 아니라 내용으로 가른다(celebClassify).
          그래서 픽스처도 category 가 아니라 tags / is_celeb 로 뜻을 밝힌다.
@@ -149,15 +150,21 @@ function seed() {
         tags: ['aespa', 'comeback'],
         published_date: daysAgo(1), scheduled_publish_at: null, slug: 'ce' },
       { id: 3, title: '뉴스+패션', category: 'News,Fashion', status: 'published',
-        tags: ['ferragamo'], is_celeb: true, celeb_by: 'ai',
+        tags: ['ferragamo'], digest_kind: 'celeb', kind_by: 'ai',
         published_date: daysAgo(2), scheduled_publish_at: null, slug: 'nf' },
       { id: 4, title: '아트', category: 'Art,Culture', status: 'published',
+        tags: ['contemporary art'],
         published_date: daysAgo(2), scheduled_publish_at: null, slug: 'ac' },
-      { id: 5, title: '예약 미해제', category: 'Beauty', status: 'published',
+      /* 2026-08-07 도메니코 — "폭염은 아트도 셀럽도 아니야. 애매한건 억지로
+         포함시키지 말고 그냥 빼줘." 어느 모음에도 안 나와야 한다. */
+      { id: 8, title: '폭염 경보', category: 'News', status: 'published',
+        tags: ['heat wave', 'weather alert', 'climate'],
+        published_date: daysAgo(1), scheduled_publish_at: null, slug: 'heat' },
+      { id: 5, title: '예약 미해제', category: 'Beauty', status: 'published', tags: ['beauty'],
         published_date: daysAgo(1), scheduled_publish_at: inFuture(), slug: 'sc' },
-      { id: 6, title: '창 밖 기사', category: 'Fashion', status: 'published',
+      { id: 6, title: '창 밖 기사', category: 'Fashion', status: 'published', tags: ['fashion'],
         published_date: daysAgo(10), scheduled_publish_at: null, slug: 'old' },
-      { id: 7, title: '', category: 'Fashion', status: 'published',
+      { id: 7, title: '', category: 'Fashion', status: 'published', tags: ['fashion'],
         published_date: daysAgo(1), scheduled_publish_at: null, slug: 'notitle' },
     ],
     editorials: [
@@ -190,11 +197,16 @@ const titles = (r) => r.items.map((i) => i.title);
   ok('예약 미해제 기사는 안 들어온다', !titles(co).includes('예약 미해제'));
   ok('창 밖(10일 전) 기사는 안 들어온다', !titles(co).includes('창 밖 기사'));
   ok('제목 없는 행은 버린다', co.items.every((i) => i.title));
+  ok('폭염(아트도 셀럽도 아님)은 콜렉션에 안 들어온다', !titles(co).includes('폭염 경보'),
+    '받은 값: ' + JSON.stringify(titles(co)));
 
   const ce = await B.collect('celeb');
   ok('셀럽 갈래에 마커 판정과 저장된 판정이 모두 들어온다',
     titles(ce).sort().join('|') === ['셀럽 소식', '뉴스+패션'].sort().join('|'),
     '받은 값: ' + JSON.stringify(titles(ce)));
+
+  ok('폭염은 셀럽에도 안 들어온다 — 두 모음 모두에서 빠진다',
+    !titles(ce).includes('폭염 경보'), '받은 값: ' + JSON.stringify(titles(ce)));
 
   /* 겹침 없음 — 이 파일의 핵심 계약 */
   const key = (i) => i.source + ':' + i.id;

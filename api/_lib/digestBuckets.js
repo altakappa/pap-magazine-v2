@@ -24,7 +24,8 @@
  *     셋에 흩어져 있었다 — 휴닝카이는 Fashion, 정국 샤넬은 Beauty,
  *     스트레이 키즈는 Culture. 전부 아트 콜렉션으로 샜고, 반대로 셀럽 모음은
  *     News 만 받아 개수가 모자랐다(45일 54건 vs 실제 최소 121건).
- *     지금은 articles.is_celeb + 태그 마커로 가른다 → api/_lib/celebClassify.js.
+ *     지금은 articles.digest_kind + 태그 마커로 가른다 → api/_lib/digestKind.js.
+ *     갈래는 셋이다: celeb · collection · **none(두 모음 모두에서 뺀다)**.
  *     아래 CELEB_CATEGORIES / isCelebCategory 는 **더 이상 갈래를 정하지 않는다.**
  *     기존 테스트와 참고용으로 남겨 둔 것이니 새 코드에서 쓰지 말 것.
  *   · category 는 자유 텍스트에 쉼표 다중값이다 ('Fashion,Culture').
@@ -32,7 +33,7 @@
  */
 
 const { supabaseAdmin } = require('./supabase');
-const { isCeleb } = require('./celebClassify');
+const { digestKind } = require('./digestKind');
 
 /* 갈래마다 사이트가 다르다. 예전엔 SITE 상수 하나였는데, 그 값이 PAP 도메인
    이라 페퍼릿 기사 링크가 조용히 pap-magazine.com 으로 나갈 뻔했다.
@@ -223,7 +224,7 @@ async function loadPostedKeys(bucket) {
 async function fetchArticles(days) {
   const { data, error } = await supabaseAdmin
     .from('articles')
-    .select('id, title, title_en, slug, custom_url, category, tags, is_celeb, celeb_by, status, published_date, scheduled_publish_at, thumbnail_url, hero_image_url, source_instagram_url')
+    .select('id, title, title_en, slug, custom_url, category, tags, digest_kind, kind_by, status, published_date, scheduled_publish_at, thumbnail_url, hero_image_url, source_instagram_url')
     .eq('status', 'published')
     .gte('published_date', cutoffIso(days))
     .order('published_date', { ascending: false })
@@ -309,7 +310,7 @@ async function collect(bucket, opts) {
       .map(fromPepperitArticle));
   } else if (bucket === 'celeb') {
     items = (await fetchArticles(days))
-      .filter((a) => isLive(a, nowIso) && isCeleb(a))
+      .filter((a) => isLive(a, nowIso) && digestKind(a) === 'celeb')
       .map(fromArticle);
   } else {
     /* 콜렉션은 두 곳에서 온다 — 셀럽이 아닌 기사, 그리고 아카이브 에디토리얼.
@@ -318,7 +319,10 @@ async function collect(bucket, opts) {
       fetchArticles(days),
       fetchEditorials(days, true),
     ]);
-    items = arts.filter((a) => isLive(a, nowIso) && !isCeleb(a)).map(fromArticle)
+    /* 'none' 은 두 모음 어디에도 안 넣는다 — 폭염 경보처럼 아트도 셀럽도
+       아닌 기사를 '셀럽이 아니니까' 라는 이유로 여기 싣지 않기 위해서다
+       (도메니코 2026-08-07: "애매한건 억지로 포함시키지 말고 그냥 빼줘"). */
+    items = arts.filter((a) => isLive(a, nowIso) && digestKind(a) === 'collection').map(fromArticle)
       .concat(legacyEds.filter((e) => isLive(e, nowIso)).map(fromEditorial));
     items.sort((a, b) => String(b.published_date || '').localeCompare(String(a.published_date || '')));
   }
