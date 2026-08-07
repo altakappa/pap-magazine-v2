@@ -1510,18 +1510,7 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
     </section>` : ''}
 
     ${ENGAGE_KINDS.has(kind) && UUID_RE.test(String(record.id || '')) ? `
-    <section class="pap-engage" id="papEngage" data-target-type="${kind}" data-target-id="${escAttr(String(record.id))}">
-      <div class="pe-bar">
-        <button type="button" class="pe-like" id="peLike" aria-pressed="false" aria-label="${ET.likeAria}">
-          <span aria-hidden="true">\u2661</span><span class="pe-label">${ET.like}</span> <span class="pe-count" id="peCount">0</span>
-        </button>
-        <a class="pe-jump" href="#peComments">${ET.jump}</a>
-      </div>
-      <h2 id="peComments">${ET.comments}</h2>
-      <div id="peCompose"></div>
-      <ul class="pe-list" id="peList"></ul>
-      <div class="pe-empty" id="peEmpty" hidden>${ET.empty}</div>
-    </section>` : ''}
+    <div class="pap-engage" id="papEngageMount"></div>` : ''}
 
     ${record.source_instagram_url && /instagram\.com/.test(String(record.source_instagram_url)) ? `
     <aside class="ig-funnel" style="margin-bottom:0">
@@ -1543,7 +1532,8 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
       <a class="igf-btn" href="/api/ig-out?src=${IG_SRC}&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener">Follow @pap_magazine</a>`;
       })()}
       ${ogImage ? `<a class="pin-btn" href="https://www.pinterest.com/pin/create/button/?url=${encodeURIComponent(canonical)}&media=${encodeURIComponent(ogImage)}&description=${encodeURIComponent(titleMain + ' — PAP Magazine editorial')}" target="_blank" rel="noopener" data-pin-do="none">${FT.pin}</a>` : ''}
-      ${KAKAO_JS_KEY ? `<button type="button" class="kko-btn" id="papKakaoShare">카카오톡 공유</button>` : ''}
+      <!-- 카카오 공유 버튼은 2026-08-07 부터 참여 블록(pap-engage.js)이 그린다.
+           여기 두면 SSR 에만 있고 SPA 에는 없어서 화면이 갈라진다. -->
       <div class="igf-sub">${FT.sub}</div>
     </aside>
   </article>
@@ -1574,157 +1564,33 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
 <script src="/pap-header.js?v=${PAP_HEADER_VERSION}" defer></script>
 ${ENGAGE_KINDS.has(kind) && UUID_RE.test(String(record.id || '')) ? `
 <script>
-/* 참여 블록 구동 (2026-08-07).
+/* 참여 블록은 이제 공용 부품이다 (2026-08-07).
  *
- * SSR 로 뼈대만 그리고 숫자·목록은 여기서 채운다. 서버에서 미리 채우면
- * CDN 캐시(s-maxage)에 좋아요 수가 굳어 버린다 — 모든 방문자가 같은
- * 오래된 숫자를 보게 된다.
- *
- * 로그인 여부는 서버가 안다(httpOnly 쿠키). 그래서 프론트는 묻지 않고
- * 그냥 요청하고, 401 이 오면 로그인 유도를 그린다. 쿠키를 읽으려 하면
- * httpOnly 라 안 보여서 틀린 판단을 하게 된다.
- */
-(function () {
-  var root = document.getElementById('papEngage');
-  if (!root) return;
-  var TT = root.dataset.targetType, TI = root.dataset.targetId;
-  var T = ${JSON.stringify(ET)};
-  var qs = '?target_type=' + encodeURIComponent(TT) + '&target_id=' + encodeURIComponent(TI);
-  var likeBtn = document.getElementById('peLike');
-  var countEl = document.getElementById('peCount');
-  var listEl = document.getElementById('peList');
-  var emptyEl = document.getElementById('peEmpty');
-  var composeEl = document.getElementById('peCompose');
-  var busy = false;
-
-  function esc(x) { var d = document.createElement('div'); d.textContent = String(x == null ? '' : x); return d.innerHTML; }
-  function when(iso) {
-    var d = new Date(iso), diff = (Date.now() - d.getTime()) / 1000;
-    if (!isFinite(diff)) return '';
-    if (diff < 60) return T.now;
-    if (diff < 3600) return Math.floor(diff / 60) + 'm';
-    if (diff < 86400) return Math.floor(diff / 3600) + 'h';
-    return d.toISOString().slice(0, 10);
-  }
-
-  /* ── 좋아요 ── */
-  function paintLike(d) {
-    countEl.textContent = d.count || 0;
-    likeBtn.setAttribute('aria-pressed', d.mine ? 'true' : 'false');
-  }
-  fetch('/api/content/react' + qs, { credentials: 'same-origin' })
-    .then(function (r) { return r.ok ? r.json() : null; })
-    .then(function (d) { if (d) paintLike(d); })
-    .catch(function () {});
-
-  likeBtn.addEventListener('click', function () {
-    if (busy) return; busy = true;
-    /* 낙관적 반영 — 왕복을 기다리면 눌린 느낌이 안 난다. 실패하면 되돌린다. */
-    var wasOn = likeBtn.getAttribute('aria-pressed') === 'true';
-    var before = Number(countEl.textContent) || 0;
-    paintLike({ count: Math.max(0, before + (wasOn ? -1 : 1)), mine: !wasOn });
-    fetch('/api/content/react', {
-      method: 'POST', credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ target_type: TT, target_id: TI }),
-    }).then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (d) { if (d) paintLike(d); else paintLike({ count: before, mine: wasOn }); })
-      .catch(function () { paintLike({ count: before, mine: wasOn }); })
-      .then(function () { busy = false; });
-  });
-
-  /* ── 댓글 목록 ── */
-  function paintList(items) {
-    listEl.innerHTML = '';
-    if (!items.length) { emptyEl.hidden = false; return; }
-    emptyEl.hidden = true;
-    items.forEach(function (c) {
-      var li = document.createElement('li');
-      li.innerHTML = '<div class="pe-who"><strong>' + esc(c.author) + '</strong><span>' + esc(when(c.created_at)) + '</span>'
-        + (c.mine ? '<button type="button" class="pe-del" data-id="' + esc(c.id) + '">' + esc(T.del) + '</button>' : '')
-        + '</div><div class="pe-body">' + esc(c.body) + '</div>';
-      listEl.appendChild(li);
-    });
-  }
-  function load() {
-    fetch('/api/content/comments' + qs, { credentials: 'same-origin' })
-      .then(function (r) { return r.ok ? r.json() : { items: [] }; })
-      .then(function (d) { paintList(d.items || []); })
-      .catch(function () {});
-  }
-  load();
-
-  listEl.addEventListener('click', function (e) {
-    var b = e.target.closest && e.target.closest('.pe-del');
-    if (!b) return;
-    fetch('/api/content/comments?id=' + encodeURIComponent(b.dataset.id), {
-      method: 'DELETE', credentials: 'same-origin',
-    }).then(load).catch(function () {});
-  });
-
-  /* ── 작성 폼 ──
-     로그인 여부를 미리 묻지 않는다. 폼을 먼저 보여주고, 보낼 때 401 이 오면
-     그때 로그인으로 안내한다 — "쓰려고 했는데 로그인이 필요하다"는 순간이
-     가입 전환이 가장 잘 되는 지점이다. */
-  composeEl.innerHTML = '<div class="pe-form" style="display:block">'
-    + '<textarea id="peBody" maxlength="1000" placeholder="' + esc(T.placeholder) + '"></textarea>'
-    + '<button type="button" class="pe-send" id="peSend">' + esc(T.send) + '</button></div>';
-  var bodyEl = document.getElementById('peBody');
-  var sendEl = document.getElementById('peSend');
-
-  sendEl.addEventListener('click', function () {
-    var v = (bodyEl.value || '').trim();
-    if (!v) return;
-    sendEl.disabled = true;
-    fetch('/api/content/comments', {
-      method: 'POST', credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ target_type: TT, target_id: TI, body: v }),
-    }).then(function (r) {
-      if (r.status === 401) {
-        composeEl.innerHTML = '<a class="pe-login" href="/auth?next=' + encodeURIComponent(location.pathname) + '">' + esc(T.login) + '</a>';
-        return null;
-      }
-      return r.ok ? r.json() : null;
-    }).then(function (d) {
-      if (d) { bodyEl.value = ''; load(); }
-    }).catch(function () {})
-      .then(function () { sendEl.disabled = false; });
-  });
-})();
-</script>` : ''}
-${KAKAO_JS_KEY ? `
-<script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js" integrity="sha384-TiCUE00h649CAMonG018J2ujOgDKW/kVWlChEuu4jK2vxfAAD0eZxzCKakxg55G4" crossorigin="anonymous" defer></script>
+ * 예전엔 이 자리에 인라인 스크립트가 통째로 있었다. 그런데 우리 사이트에는
+ * 기사 화면이 두 벌이다 — 주소로 직접 들어오면 이 SSR, 사이트 안에서
+ * 클릭하면 SPA. 인라인으로 두니 **SPA 화면에는 좋아요·댓글이 아예 없었다.**
+ * 도메니코가 "MORE ARTICLES, 자주 묻는 질문이 안 뜬다" 고 한 게 같은 뿌리다.
+ * 규칙이 두 벌이면 한쪽만 고쳐진다 — 그래서 /pap-engage.js 로 합쳤다. */
+window.__PAP_KAKAO_JS_KEY = ${JSON.stringify(KAKAO_JS_KEY || '')};
+window.__PAP_ENGAGE = ${JSON.stringify({
+  kind, id: String(record.id || ''), lang,
+  title: String(titleMain || '').slice(0, 80),
+  desc: String(desc || '').slice(0, 110),
+  image: ogImage || '',
+})};
+</script>
+<script src="/pap-engage.js?v=1" defer></script>
 <script>
-/* 카카오톡 공유. SDK 가 defer 라 로드 완료를 기다렸다가 붙인다.
-   공유되는 건 og 태그가 아니라 여기서 넘기는 값이다 — 카카오는 자체
-   스크랩 캐시를 쓰기 때문에, 제목·설명·이미지를 명시적으로 준다. */
-(function () {
-  var btn = document.getElementById('papKakaoShare');
-  if (!btn) return;
-  function ready() {
-    if (!window.Kakao) { return setTimeout(ready, 300); }
-    try {
-      if (!window.Kakao.isInitialized()) window.Kakao.init(${JSON.stringify(KAKAO_JS_KEY)});
-    } catch (e) { btn.style.display = 'none'; return; }
-    btn.addEventListener('click', function () {
-      try {
-        window.Kakao.Share.sendDefault({
-          objectType: 'feed',
-          content: {
-            title: ${JSON.stringify(String(titleMain || '').slice(0, 80))},
-            description: ${JSON.stringify(String(desc || '').slice(0, 110))},
-            imageUrl: ${JSON.stringify(ogImage || '')},
-            link: { mobileWebUrl: ${JSON.stringify(kakaoShareUrl)}, webUrl: ${JSON.stringify(kakaoShareUrl)} },
-          },
-          buttons: [{ title: '기사 보기', link: { mobileWebUrl: ${JSON.stringify(kakaoShareUrl)}, webUrl: ${JSON.stringify(kakaoShareUrl)} } }],
-        });
-      } catch (e) { /* 공유 실패가 페이지를 망가뜨리지 않는다 */ }
-    });
-  }
-  ready();
-})();
+document.addEventListener('DOMContentLoaded', function () {
+  var host = document.getElementById('papEngageMount');
+  if (host && window.PapEngage) window.PapEngage.mount(host, window.__PAP_ENGAGE);
+});
+window.addEventListener('load', function () {
+  var host = document.getElementById('papEngageMount');
+  if (host && !host.firstChild && window.PapEngage) window.PapEngage.mount(host, window.__PAP_ENGAGE);
+});
 </script>` : ''}
+
 ${NAVER_ANALYTICS_ID ? `
 <script src="//wcs.naver.net/wcslog.js" defer></script>
 <script>

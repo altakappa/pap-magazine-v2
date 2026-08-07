@@ -460,6 +460,16 @@ function _renderArticleDetail(a,det){
   // 페이지 안에 직접 띄운다. 게시물이 눈앞에 보이면 좋아요·저장이
   // 한 클릭 거리로 줄어든다. 임베드 불가 URL(프로필 등)은 기존 링크 CTA만.
   // '친구에게 보내기' 버튼은 모바일에서 카카오톡 포함 네이티브 공유 시트.
+  /* 참여 블록 (2026-08-07) — SSR 과 같은 부품을 여기서도 붙인다.
+     이게 없어서 사이트 안에서 클릭해 들어온 사람에게는 좋아요·댓글이
+     **아예 존재하지 않았다.** SSR 에만 있었기 때문이다. */
+  var engHost=document.getElementById('papEngageMount');
+  if(engHost && window.PapEngage){
+    window.PapEngage.mount(engHost, {
+      kind:'article', id:a._api_id||'', lang:(localStorage.getItem('pap-lang')||'ko'),
+      title:(_papLocTitle?_papLocTitle(a):a.t)||'', desc:a.sub||'', image:a.img||a.th||'',
+    });
+  }
   var igCta=document.getElementById('artIgPostCta');
   if(igCta){
     if(a.ig && /instagram\.com/.test(a.ig)){

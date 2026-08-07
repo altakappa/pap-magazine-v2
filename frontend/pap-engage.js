@@ -1,0 +1,241 @@
+/**
+ * 기사 참여 블록 — 좋아요 · 댓글 · 카카오 공유 (2026-08-07 신설)
+ *
+ * 왜 파일로 뺐나 ────────────────────────────────────────────────────
+ * 도메니코: "웹사이트에서 기사를 보면 MORE ARTICLES, 자주 묻는 질문이
+ *            뜨지 않는데 이건 볼 수 없는 거야?"
+ *
+ * 확인해 보니 우리 사이트에는 기사 화면이 **두 벌** 있었다.
+ *
+ *   주소로 직접 진입 (검색·공유·새로고침)  → 서버가 그린 SSR 화면
+ *   사이트 안에서 클릭                      → 프런트가 그리는 SPA 화면
+ *
+ * 그리고 둘이 갈라져 있었다. SSR 에만 FAQ·MORE ARTICLES 가 있었고,
+ * 방금 만든 좋아요·댓글·카카오 공유도 SSR 에만 붙었다. 즉 **사이트 안에서
+ * 읽는 사람에게는 존재하지 않는 기능**이었다.
+ *
+ * 그래서 같은 부품을 두 화면이 같이 쓰게 만든다. 이 저장소가 여러 번 배운
+ * 교훈이다 — 규칙이 두 벌이면 한쪽만 고쳐진다.
+ *
+ * 쓰는 법:
+ *     PapEngage.mount(container, { kind: 'article', id: '<uuid>', lang: 'ko' })
+ *
+ * 같은 컨테이너에 두 번 부르면 앞의 것을 지우고 다시 그린다 (SPA 는 화면을
+ * 갈아끼우므로 이게 없으면 이벤트 핸들러가 겹쳐 쌓인다).
+ */
+
+(function (global) {
+  'use strict';
+
+  var TYPES = { article: 1, editorial: 1, film: 1, short: 1 };
+  var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  var T = {
+    ko: { like: '좋아요', likeAria: '이 글에 좋아요', comments: '댓글', jump: '댓글 보기',
+          empty: '첫 댓글을 남겨보세요.', placeholder: '이 기사에 대한 생각을 남겨주세요',
+          send: '등록', login: '로그인하고 댓글 남기기', del: '삭제', now: '방금',
+          kakao: '카카오톡 공유' },
+    en: { like: 'Like', likeAria: 'Like this story', comments: 'Comments', jump: 'Jump to comments',
+          empty: 'Be the first to comment.', placeholder: 'Share your thoughts on this story',
+          send: 'Post', login: 'Sign in to comment', del: 'Delete', now: 'just now',
+          kakao: 'Share on KakaoTalk' },
+  };
+
+  /* 카카오 키는 SSR 이면 서버가 심어 두고, SPA 면 물어서 받는다.
+     한 번 받으면 재사용한다 — 기사마다 부르면 요청이 조회수만큼 늘어난다. */
+  var _cfg = null;
+  function config() {
+    if (_cfg) return _cfg;
+    if (global.__PAP_KAKAO_JS_KEY) {
+      _cfg = Promise.resolve({ kakaoJsKey: global.__PAP_KAKAO_JS_KEY });
+      return _cfg;
+    }
+    _cfg = fetch('/api/content/config', { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : {}; })
+      .catch(function () { return {}; });
+    return _cfg;
+  }
+
+  /* textContent→innerHTML 방식은 **따옴표를 남긴다.** 이 함수의 결과가
+     placeholder="…" · data-id="…" 처럼 속성 안에도 들어가므로 그러면 속성
+     탈출이 가능하다. 저장소 전체 규칙이고 테스트가 지킨다
+     (tests/submission-pullletter-audit.test.js — 이스케이퍼 전수 검사). */
+  function esc(x) {
+    return String(x == null ? '' : x)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function when(iso, t) {
+    var d = new Date(iso), diff = (Date.now() - d.getTime()) / 1000;
+    if (!isFinite(diff)) return '';
+    if (diff < 60) return t.now;
+    if (diff < 3600) return Math.floor(diff / 60) + 'm';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h';
+    return d.toISOString().slice(0, 10);
+  }
+
+  function mount(root, opts) {
+    if (!root) return;
+    var o = opts || {};
+    var kind = String(o.kind || 'article');
+    var id = String(o.id || '');
+    if (!TYPES[kind] || !UUID.test(id)) { root.innerHTML = ''; return; }
+
+    var t = T[o.lang] || T.en;
+    var qs = '?target_type=' + encodeURIComponent(kind) + '&target_id=' + encodeURIComponent(id);
+
+    /* 다시 그리기 — SPA 는 같은 자리에 다른 기사를 끼우므로 매번 새로 만든다.
+       innerHTML 로 통째로 갈아치우면 예전 노드에 붙은 리스너도 같이 사라진다. */
+    root.innerHTML =
+      '<section class="pap-engage" data-target-type="' + esc(kind) + '" data-target-id="' + esc(id) + '">'
+      + '<div class="pe-bar">'
+      + '<button type="button" class="pe-like" aria-pressed="false" aria-label="' + esc(t.likeAria) + '">'
+      + '<span aria-hidden="true">♡</span><span>' + esc(t.like) + '</span> <span class="pe-count">0</span>'
+      + '</button>'
+      + '<button type="button" class="kko-btn pe-kko" hidden>' + esc(t.kakao) + '</button>'
+      + '<a class="pe-jump" href="#peComments">' + esc(t.jump) + '</a>'
+      + '</div>'
+      + '<h2 id="peComments">' + esc(t.comments) + '</h2>'
+      + '<div class="pe-compose"></div>'
+      + '<ul class="pe-list"></ul>'
+      + '<div class="pe-empty" hidden>' + esc(t.empty) + '</div>'
+      + '</section>';
+
+    var $ = function (s) { return root.querySelector(s); };
+    var likeBtn = $('.pe-like'), countEl = $('.pe-count'), listEl = $('.pe-list');
+    var emptyEl = $('.pe-empty'), composeEl = $('.pe-compose'), kkoBtn = $('.pe-kko');
+    var busy = false;
+
+    // ── 좋아요 ─────────────────────────────────────────────
+    function paint(d) {
+      countEl.textContent = d.count || 0;
+      likeBtn.setAttribute('aria-pressed', d.mine ? 'true' : 'false');
+    }
+    fetch('/api/content/react' + qs, { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { if (d) paint(d); }).catch(function () {});
+
+    likeBtn.addEventListener('click', function () {
+      if (busy) return; busy = true;
+      /* 낙관적 반영 — 왕복을 기다리면 눌린 느낌이 안 난다. 실패하면 되돌린다. */
+      var wasOn = likeBtn.getAttribute('aria-pressed') === 'true';
+      var before = Number(countEl.textContent) || 0;
+      paint({ count: Math.max(0, before + (wasOn ? -1 : 1)), mine: !wasOn });
+      fetch('/api/content/react', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target_type: kind, target_id: id }),
+      }).then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) { paint(d || { count: before, mine: wasOn }); })
+        .catch(function () { paint({ count: before, mine: wasOn }); })
+        .then(function () { busy = false; });
+    });
+
+    // ── 댓글 ───────────────────────────────────────────────
+    function paintList(items) {
+      listEl.innerHTML = '';
+      if (!items.length) { emptyEl.hidden = false; return; }
+      emptyEl.hidden = true;
+      items.forEach(function (c) {
+        var li = document.createElement('li');
+        li.innerHTML = '<div class="pe-who"><strong>' + esc(c.author) + '</strong><span>' + esc(when(c.created_at, t)) + '</span>'
+          + (c.mine ? '<button type="button" class="pe-del" data-id="' + esc(c.id) + '">' + esc(t.del) + '</button>' : '')
+          + '</div><div class="pe-body">' + esc(c.body) + '</div>';
+        listEl.appendChild(li);
+      });
+    }
+    function load() {
+      fetch('/api/content/comments' + qs, { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : { items: [] }; })
+        .then(function (d) { paintList(d.items || []); }).catch(function () {});
+    }
+    load();
+
+    listEl.addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest('.pe-del');
+      if (!b) return;
+      fetch('/api/content/comments?id=' + encodeURIComponent(b.dataset.id), {
+        method: 'DELETE', credentials: 'same-origin',
+      }).then(load).catch(function () {});
+    });
+
+    /* 로그인 여부를 미리 묻지 않는다. 폼을 먼저 보여주고 401 이 오면 그때
+       안내한다 — "쓰려고 했는데 로그인이 필요하다" 가 가입 전환이 제일 잘
+       되는 순간이다. (httpOnly 쿠키라 프런트가 로그인 여부를 못 읽기도 한다) */
+    composeEl.innerHTML = '<div class="pe-form" style="display:block">'
+      + '<textarea maxlength="1000" placeholder="' + esc(t.placeholder) + '"></textarea>'
+      + '<button type="button" class="pe-send">' + esc(t.send) + '</button></div>';
+    var bodyEl = composeEl.querySelector('textarea');
+    var sendEl = composeEl.querySelector('.pe-send');
+    sendEl.addEventListener('click', function () {
+      var v = (bodyEl.value || '').trim();
+      if (!v) return;
+      sendEl.disabled = true;
+      fetch('/api/content/comments', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target_type: kind, target_id: id, body: v }),
+      }).then(function (r) {
+        if (r.status === 401) {
+          composeEl.innerHTML = '<a class="pe-login" href="/auth?next='
+            + encodeURIComponent(location.pathname) + '">' + esc(t.login) + '</a>';
+          return null;
+        }
+        return r.ok ? r.json() : null;
+      }).then(function (d) { if (d) { bodyEl.value = ''; load(); } })
+        .catch(function () {})
+        .then(function () { sendEl.disabled = false; });
+    });
+
+    // ── 카카오 공유 ────────────────────────────────────────
+    config().then(function (c) {
+      var key = c && c.kakaoJsKey;
+      if (!key || !kkoBtn) return;          // 키 없으면 버튼을 안 보여준다
+      loadKakao(key).then(function (ok) {
+        if (!ok) return;
+        kkoBtn.hidden = false;
+        kkoBtn.addEventListener('click', function () {
+          var url = location.origin + location.pathname
+            + (location.search ? location.search + '&' : '?') + 'utm_source=kakao&utm_medium=share';
+          try {
+            global.Kakao.Share.sendDefault({
+              objectType: 'feed',
+              content: {
+                title: (o.title || document.title || '').slice(0, 80),
+                description: (o.desc || '').slice(0, 110),
+                imageUrl: o.image || '',
+                link: { mobileWebUrl: url, webUrl: url },
+              },
+              buttons: [{ title: (o.lang === 'ko' ? '기사 보기' : 'Read'), link: { mobileWebUrl: url, webUrl: url } }],
+            });
+          } catch (e) { /* 공유 실패가 페이지를 망가뜨리지 않는다 */ }
+        });
+      });
+    });
+  }
+
+  var _sdk = null;
+  function loadKakao(key) {
+    if (_sdk) return _sdk;
+    _sdk = new Promise(function (resolve) {
+      function init() {
+        try {
+          if (!global.Kakao.isInitialized()) global.Kakao.init(key);
+          resolve(true);
+        } catch (e) { resolve(false); }
+      }
+      if (global.Kakao) return init();
+      var s = document.createElement('script');
+      s.src = 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js';
+      s.integrity = 'sha384-TiCUE00h649CAMonG018J2ujOgDKW/kVWlChEuu4jK2vxfAAD0eZxzCKakxg55G4';
+      s.crossOrigin = 'anonymous';
+      s.onload = init;
+      s.onerror = function () { resolve(false); };   // CSP 차단·네트워크 실패
+      document.head.appendChild(s);
+    });
+    return _sdk;
+  }
+
+  global.PapEngage = { mount: mount, T: T };
+})(window);

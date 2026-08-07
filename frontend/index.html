@@ -1128,6 +1128,10 @@
     <!-- 참여 증폭 (2026-07): 기사 원본 IG 게시물 딥링크 — 좋아요·저장·
          보내기는 게시물 위에서만 일어나므로 방문자를 게시물로 보낸다.
          _renderArticleDetail 이 source_instagram_url 존재 시 채움. -->
+    <!-- 2026-08-07 — 참여 블록(좋아요·댓글·카카오)을 IG CTA **위**에 둔다.
+         SSR 화면과 같은 부품(/pap-engage.js)을 쓴다. 아래에 두면 인스타로
+         나간 뒤라 아무도 안 본다. -->
+    <div class="pap-engage" id="papEngageMount"></div>
     <div id="artIgPostCta" style="display:none"></div>
     <!-- 검색→인스타 전환 깔때기 (2026-07): 검색으로 들어와 기사를 읽은
          방문자를 @pap_magazine 팔로우로 전환. SSR(seoRenderer)의
@@ -1282,5 +1286,6 @@
 </div>
 
 <script src="/pap-auth-link.js?v=3" defer></script>
+<script src="/pap-engage.js?v=1" defer></script>
 </body>
 </html>

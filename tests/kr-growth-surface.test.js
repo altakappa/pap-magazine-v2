@@ -33,14 +33,41 @@ function t(n, cond, d) {
 
 const seo = R('api/_lib/seoRenderer.js');
 
-console.log('\n[1] 카카오 공유 — 키가 없으면 버튼도 없다');
+console.log('\n[1] 카카오 공유 — 공용 부품이 그린다');
 {
-  t('KAKAO_JS_KEY 를 env 에서 읽는다', /const KAKAO_JS_KEY = process\.env\.KAKAO_JS_KEY \|\| ''/.test(seo));
-  t('키가 있을 때만 버튼을 그린다', /\$\{KAKAO_JS_KEY \? `<button[^`]*papKakaoShare/.test(seo));
-  t('키가 있을 때만 SDK 를 넣는다', /\$\{KAKAO_JS_KEY \? `[\s\S]{0,200}kakao_js_sdk/.test(seo));
-  t('SDK 에 무결성 해시가 붙어 있다 (외부 스크립트)', /integrity="sha384-/.test(seo));
-  t('공유 실패가 페이지를 안 망가뜨린다', /공유 실패가 페이지를 망가뜨리지 않는다/.test(seo));
-  t('초기화 실패 시 버튼을 감춘다', /btn\.style\.display = 'none'/.test(seo));
+  /* 2026-08-07 갱신 — 예전엔 SSR 이 버튼과 SDK 를 직접 그렸다. 그러면
+     **사이트 안에서 클릭해 들어온 사람(SPA)에게는 버튼이 없다.**
+     도메니코가 "MORE ARTICLES·FAQ 가 안 뜬다" 고 한 것과 같은 뿌리다.
+     이제 두 화면이 /pap-engage.js 를 같이 쓴다. */
+  const eng = R('frontend/pap-engage.js');
+  t('공용 부품이 존재한다', eng.length > 1000);
+  t('SSR 이 공용 부품을 부른다', /\/pap-engage\.js/.test(seo));
+  t('SSR 이 인라인으로 카카오를 그리지 않는다', !/papKakaoShare/.test(seo));
+  t('키를 프런트로 넘긴다', /__PAP_KAKAO_JS_KEY/.test(seo));
+  t('키가 없으면 버튼을 안 보여준다', /if \(!key \|\| !kkoBtn\) return;/.test(eng));
+  t('SDK 무결성 해시 유지', /integrity = 'sha384-/.test(eng));
+  t('SDK 로드 실패를 삼킨다 (CSP 차단 대비)', /s\.onerror/.test(eng));
+  t('공유 실패가 페이지를 안 망가뜨린다', /공유 실패가 페이지를 망가뜨리지 않는다/.test(eng));
+
+  const cfg = R('api/content/config.js');
+  t('공개 설정 창구가 있다 (SPA 는 서버가 값을 못 심는다)', /kakaoJsKey/.test(cfg));
+  t('공개 키만 나간다 — 어드민·REST 키 금지', !/ADMIN|REST_API|SECRET/.test(cfg));
+  t('CDN 에 캐시한다 (조회수만큼 함수가 돌면 안 된다)', /s-maxage=3600/.test(cfg));
+}
+
+console.log('\n[1-2] 두 화면이 갈라지지 않는다');
+{
+  const spa = R('frontend/pap-content-article.js');
+  const arts = R('frontend/articles.html');
+  const idx = R('frontend/index.html');
+  t('SPA 렌더러가 참여 블록을 붙인다', /window\.PapEngage\.mount\(engHost/.test(spa));
+  t('SPA 가 기사 uuid 를 넘긴다', /id:a\._api_id/.test(spa));
+  for (const [n, h] of [['articles.html', arts], ['index.html', idx]]) {
+    t(n + ' 에 마운트 지점이 있다', /id="papEngageMount"/.test(h));
+    t(n + ' 이 공용 부품을 로드한다', /pap-engage\.js/.test(h));
+    /* 아래에 두면 인스타로 나간 뒤라 아무도 안 본다 */
+    t(n + ' 에서 참여가 IG CTA 보다 위', h.indexOf('papEngageMount') < h.indexOf('artIgPostCta'));
+  }
 }
 
 console.log('\n[2] 공유 링크에만 utm — canonical 은 그대로');

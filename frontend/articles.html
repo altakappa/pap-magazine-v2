@@ -152,6 +152,10 @@ body { background:#0a0a0a; color:#fff; font-family:'Montserrat',sans-serif; min-
     <div id="artDetailLink" style="display:none"></div>
     <!-- 참여 증폭 CTA — 그동안 articles.html 오버레이엔 이 노드가 없어 /articles 진입 시
          Full Story 박스가 조용히 렌더되지 않았다. index 오버레이와 동일하게 추가. -->
+    <!-- 2026-08-07 — 참여 블록(좋아요·댓글·카카오)을 IG CTA **위**에 둔다.
+         SSR 화면과 같은 부품(/pap-engage.js)을 쓴다. 아래에 두면 인스타로
+         나간 뒤라 아무도 안 본다. -->
+    <div class="pap-engage" id="papEngageMount"></div>
     <div id="artIgPostCta" style="display:none"></div>
     <!-- QA(2026-07) #9 — SSR(/article)과 동일한 .ig-funnel 공용 컴포넌트 사용.
          기존 인라인 스타일(박스 규격·자간이 SSR과 미묘하게 달랐다)을 제거. -->
@@ -483,5 +487,6 @@ document.addEventListener('DOMContentLoaded', function() {
   주소: 서울특별시 강남구 논현로146길 18, 1F | 유선번호: 02-547-1134 | 팩스: 02-547-1136 | 이메일: <a href="mailto:contact@pap-magazine.com">contact@pap-magazine.com</a><br>
   멤버십 구독: STANDARD ₩8,500/월 (₩85,000/년) · PREMIUM ₩13,500/월 (₩135,000/년) — <a href="/subscribe">구독 안내 및 결제</a>
 </div>
+<script src="/pap-engage.js?v=1" defer></script>
 </body>
 </html>
