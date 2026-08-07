@@ -59,20 +59,40 @@ async function driveFetch(url, opts) {
 /**
  * 파일명 기반 제외 규칙 (순수 함수, 테스트 대상).
  * 배포 없이 에디터가 스스로 뺄 수 있게 파일명 규칙을 먼저 본다.
- *   · '_' 로 시작       → 보류
- *   · 이름에 '보류'/'skip' 포함 → 보류
- *   · DRIVE_VIDEO_SKIP(쉼표 구분) 조각이 이름에 있으면 보류
+ *   · '_' 로 시작              → 보류 (모든 채널)
+ *   · 이름에 '보류'/'skip' 포함 → 보류 (모든 채널)
+ *   · DRIVE_VIDEO_SKIP          → 모든 채널에서 제외
+ *   · DRIVE_VIDEO_SKIP_YOUTUBE  → 유튜브에서만 제외
+ *   · DRIVE_VIDEO_SKIP_TIKTOK   → 틱톡에서만 제외
+ *
+ * ⚠️ 채널별 목록이 왜 필요한가 (2026-08-07):
+ * 도메니코의 지시는 "**유튜브에는** 휴닝카이는 빼도 돼" 였다. 그 영상은 이미
+ * 유튜브 채널에 올라가 있었기 때문이다(조회 456회). 그런데 처음 구현할 때
+ * 목록을 채널 구분 없이 전역으로 만들어, 틱톡에서까지 빠졌다.
+ * '어디서 빼라'는 말을 '전부에서 빼라'로 넓혀 읽은 것이다.
+ * @param {string} name
+ * @param {string|null} [skipListRaw] 전역 목록 오버라이드 (테스트용)
+ * @param {string} [platform] 'youtube' | 'tiktok'
  */
-function shouldSkip(name, skipListRaw) {
+function shouldSkip(name, skipListRaw, platform) {
   const n = String(name || '');
   if (!n) return '이름 없음';
   if (n.startsWith('_')) return "이름이 '_' 로 시작 (보류 표시)";
   const low = n.toLowerCase();
   if (low.indexOf('보류') !== -1 || low.indexOf('skip') !== -1) return '이름에 보류 표시';
-  const list = String(skipListRaw == null ? (process.env.DRIVE_VIDEO_SKIP || '') : skipListRaw)
-    .split(',').map((s) => s.trim()).filter(Boolean);
-  for (const frag of list) {
+
+  const parse = (raw) => String(raw || '').split(',').map((x) => x.trim()).filter(Boolean);
+  const global = parse(skipListRaw == null ? process.env.DRIVE_VIDEO_SKIP : skipListRaw);
+  for (const frag of global) {
     if (low.indexOf(frag.toLowerCase()) !== -1) return '제외 목록에 걸림: ' + frag;
+  }
+  if (platform) {
+    const key = 'DRIVE_VIDEO_SKIP_' + String(platform).toUpperCase();
+    for (const frag of parse(process.env[key])) {
+      if (low.indexOf(frag.toLowerCase()) !== -1) {
+        return platform + ' 제외 목록에 걸림: ' + frag;
+      }
+    }
   }
   return null;
 }

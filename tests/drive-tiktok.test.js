@@ -105,6 +105,8 @@ t('모든 200 반환이 note(res,…) 를 통과한다', rets.every((r) => r.ind
 console.log('\n[5] 매칭·제외는 유튜브와 같은 규칙을 쓴다');
 t('koMatch 를 공유한다 (규칙이 두 벌이 되면 갈라진다)', /require\('\.\.\/_lib\/koMatch'\)/.test(src));
 t('driveVideos 의 제외 규칙을 공유한다', /drive\.shouldSkip/.test(src));
+t("틱톡 크론이 자기 채널을 넘긴다 (유튜브 전용 제외에 안 걸리게)",
+  /shouldSkip\(f\.name, null, 'tiktok'\)/.test(src));
 t('상한 100MB', /MAX_BYTES = 100 \* 1024 \* 1024/.test(src));
 t('크론이 vercel.json 에 등록됨',
   (require(path.join(ROOT, 'vercel.json')).crons || []).some((c) => c.path === '/api/cron/drive-tiktok-post'));

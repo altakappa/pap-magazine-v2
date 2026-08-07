@@ -115,7 +115,7 @@ module.exports = withCronGuard('drive-tiktok-post', async function handler(req, 
     const candidates = [];
     for (const f of files) {
       if (done.has(f.id)) continue;
-      const why = drive.shouldSkip(f.name);
+      const why = drive.shouldSkip(f.name, null, 'tiktok');
       if (why) { skipped.push({ name: f.name, why }); continue; }
       if (f.bytes > MAX_BYTES) {
         skipped.push({ name: f.name, why: Math.round(f.bytes / 1048576) + 'MB — 상한 초과' });

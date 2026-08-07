@@ -115,6 +115,32 @@ t('제외 목록 여러 개 중 하나만 걸려도 제외', !!drive.shouldSkip(
 t('평범한 이름은 통과', drive.shouldSkip('아더에러 버켄스탁.mp4', '휴닝카이') === null);
 t('제외 사유가 사람이 읽을 수 있게 나온다', /휴닝카이/.test(drive.shouldSkip('페라가모 휴닝카이.mp4', '휴닝카이')));
 
+// 2026-08-07: 도메니코의 지시는 "**유튜브에는** 휴닝카이는 빼도 돼" 였는데
+// 전역 목록으로 만들어 틱톡에서까지 빠졌다. '어디서 빼라'를 '전부에서 빼라'로
+// 넓혀 읽은 것이다. 채널별 목록을 강제한다.
+{
+  const save = { g: process.env.DRIVE_VIDEO_SKIP, y: process.env.DRIVE_VIDEO_SKIP_YOUTUBE, k: process.env.DRIVE_VIDEO_SKIP_TIKTOK };
+  process.env.DRIVE_VIDEO_SKIP = '';
+  process.env.DRIVE_VIDEO_SKIP_YOUTUBE = '휴닝카이';
+  delete process.env.DRIVE_VIDEO_SKIP_TIKTOK;
+  t('유튜브 전용 목록은 유튜브에서만 막는다', !!drive.shouldSkip('페라가모 휴닝카이.mp4', null, 'youtube'));
+  t('유튜브 전용 목록이 틱톡을 막지 않는다', drive.shouldSkip('페라가모 휴닝카이.mp4', null, 'tiktok') === null);
+  t('채널을 안 넘기면 전용 목록은 적용되지 않는다', drive.shouldSkip('페라가모 휴닝카이.mp4', null) === null);
+  process.env.DRIVE_VIDEO_SKIP_TIKTOK = '아더에러';
+  t('틱톡 전용 목록은 틱톡에서만 막는다',
+    !!drive.shouldSkip('아더에러 버켄스탁.mp4', null, 'tiktok')
+    && drive.shouldSkip('아더에러 버켄스탁.mp4', null, 'youtube') === null);
+  process.env.DRIVE_VIDEO_SKIP = '전체제외';
+  t('전역 목록은 두 채널 모두 막는다',
+    !!drive.shouldSkip('전체제외 x.mp4', null, 'tiktok') && !!drive.shouldSkip('전체제외 x.mp4', null, 'youtube'));
+  t('사유에 어느 채널인지 적힌다', /youtube 제외 목록/.test(drive.shouldSkip('페라가모 휴닝카이.mp4', null, 'youtube')));
+  if (save.g === undefined) delete process.env.DRIVE_VIDEO_SKIP; else process.env.DRIVE_VIDEO_SKIP = save.g;
+  if (save.y === undefined) delete process.env.DRIVE_VIDEO_SKIP_YOUTUBE; else process.env.DRIVE_VIDEO_SKIP_YOUTUBE = save.y;
+  if (save.k === undefined) delete process.env.DRIVE_VIDEO_SKIP_TIKTOK; else process.env.DRIVE_VIDEO_SKIP_TIKTOK = save.k;
+}
+t('유튜브 크론이 채널을 넘긴다',
+  /shouldSkip\(f\.name, null, 'youtube'\)/.test(fs.readFileSync(path.join(ROOT, 'api', 'cron', 'drive-youtube-post.js'), 'utf8')));
+
 console.log('\n[7] 침묵 방지 — 조기 반환마다 cronNote');
 const src = fs.readFileSync(path.join(ROOT, 'api', 'cron', 'drive-youtube-post.js'), 'utf8');
 const RET = 'return res.status(200).json(';

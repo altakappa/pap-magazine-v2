@@ -98,7 +98,7 @@ module.exports = withCronGuard('drive-youtube-post', async function handler(req,
       return res.status(200).json({
         ok: true, note: note(res, '드라이브 영상 ' + files.length + '건'),
         folder: drive.folderId(),
-        files: files.map((f) => ({ name: f.name, mb: Math.round(f.bytes / 1048576), skip: drive.shouldSkip(f.name) })),
+        files: files.map((f) => ({ name: f.name, mb: Math.round(f.bytes / 1048576), skip: drive.shouldSkip(f.name, null, 'youtube') })),
       });
     }
 
@@ -112,7 +112,7 @@ module.exports = withCronGuard('drive-youtube-post', async function handler(req,
     const candidates = [];
     for (const f of files) {
       if (done.has(f.id)) continue;                    // 이미 올림 — 조용히
-      const why = drive.shouldSkip(f.name);
+      const why = drive.shouldSkip(f.name, null, 'youtube');
       if (why) { skipped.push({ name: f.name, why }); continue; }
       if (f.bytes > MAX_BYTES) {
         skipped.push({ name: f.name, why: Math.round(f.bytes / 1048576) + 'MB — 상한 초과 (맥미니 압축기 확인)' });
