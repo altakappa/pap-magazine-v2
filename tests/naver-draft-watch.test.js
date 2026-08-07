@@ -108,7 +108,8 @@ console.log('\n=== ⑤ 배선 ===');
   const fs = require('fs');
   const src = fs.readFileSync(path.join(ROOT, 'api', 'cron', 'pipeline-watch.js'), 'utf8');
   t('핸들러가 checkNaverDrafts 를 호출한다', /const naver = await checkNaverDrafts\(/.test(src));
-  t('응답에 naver 가 실린다', /faq, duration, naver \}\)/.test(src));
+  // 감시가 늘어날 때마다 깨지지 않게, 뒤에 뭐가 더 붙든 naver 만 확인한다.
+  t('응답에 naver 가 실린다', /res\.status\(200\)\.json\(\{ ok: true[^}]*\bnaver\b/.test(src));
   t('알림 키가 분리돼 있다', /NAVER_ALERT_KEY = 'naver-draft-health'/.test(src));
   t('생산량을 표에서 직접 센다', /from\('naver_blog_drafts'\)[\s\S]{0,120}count: 'exact'/.test(src));
   t('감시 실패가 본 크론을 죽이지 않는다', /naver draft health 실패/.test(src));

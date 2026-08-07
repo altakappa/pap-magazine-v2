@@ -223,7 +223,13 @@ module.exports = withCronGuard('pipeline-watch', async function handler(req, res
    * 그래서 여기서는 "막혔다" 를 3일이 되기 전에 잡는다. */
   const naver = await checkNaverDrafts({ dry });
 
-  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels, faq, duration, naver });
+  /* ── 틱톡 게시 감시 (2026-08-07 추가) ──
+   * 틱톡은 21일 동안 0건이었는데 cron_runs 는 전부 ok 였다. 조기 반환에서
+   * res.locals.cronNote 를 안 세운 탓에 기록이 통째로 비어 있었기 때문이다.
+   * 이제 크론의 자기보고 대신 tiktok_posts 행 수를 직접 센다. */
+  const tiktok = await checkTikTok({ dry });
+
+  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels, faq, duration, naver, tiktok });
 });
 
 /** 서술문 생산이 실제로 되고 있는지 보고, 이상하면 텔레그램으로 알린다. */
@@ -804,3 +810,166 @@ async function checkNaverDrafts(opts) {
 
 module.exports.judgeNaverDraftHealth = judgeNaverDraftHealth;
 module.exports.buildNaverDraftAlert = buildNaverDraftAlert;
+
+/* ── 틱톡 게시 감시 (2026-08-07 추가) ───────────────────────────
+ * 틱톡은 21일 동안 한 건도 안 올라갔는데 cron_runs 는 전부 ok=true 였다.
+ * 원인은 코드 한 줄이다 — 조기 반환에서 note 를 JSON 으로만 돌려주고
+ * res.locals.cronNote 에 안 넣어서, 기록에는 '성공·메모 없음'만 남았다.
+ * 대시보드에서 보면 완벽하게 평화로웠다.
+ *
+ * 그래서 이 감시는 크론의 자기보고(note)를 믿지 않는다. tiktok_posts
+ * 테이블에 실제로 행이 늘었는지를 센다. 그리고 "후보가 있는데 생산이 0"
+ * 일 때만 운다 — 올릴 게 없어서 조용한 것과 고장 나서 조용한 것을 가른다.
+ *
+ * 창은 30시간이다. 에디토리얼 크론은 하루 1회(02:00 UTC)뿐이라 24시간
+ * 창은 실행 경계에서 표본 0이 되는 순간이 생긴다. 6시간 여유를 준다. */
+const TIKTOK_ALERT_KEY = 'tiktok-post-health';
+
+/**
+ * 틱톡 게시 건강도 판정 (순수 함수, 테스트 대상).
+ * @param {object} x
+ * @param {number} x.candidates       아직 안 올린 게시 가능 콘텐츠 수
+ * @param {number} x.producedInWindow 창 안에 실제로 생긴 tiktok_posts 성공 행 수
+ * @param {number} x.failedInWindow   창 안 실패 행 수
+ * @param {number} x.runsInWindow     창 안 tiktok-post 크론 실행 수
+ * @param {number} x.unconfiguredRuns 그중 'BUFFER_API_KEY 미설정' 으로 건너뛴 수
+ * @param {number} x.windowHours
+ */
+function judgeTikTokHealth(x) {
+  const o = x || {};
+  const cand = Number(o.candidates || 0);
+  const made = Number(o.producedInWindow || 0);
+  const failed = Number(o.failedInWindow || 0);
+  const runs = Number(o.runsInWindow || 0);
+  const unconf = Number(o.unconfiguredRuns || 0);
+  const win = Number(o.windowHours || 30);
+  const base = { candidates: cand, producedInWindow: made, failedInWindow: failed,
+    runsInWindow: runs, unconfiguredRuns: unconf, windowHours: win };
+
+  // ① 크론이 아예 안 돌았다 — vercel.json 에 등록돼 있는데 실행 0이면 배포·스케줄 문제.
+  if (runs === 0) {
+    return { ...base, healthy: false, cause: 'no-runs',
+      reason: `최근 ${win}시간 tiktok-post 실행 0회 — 크론이 등록됐는데 안 돌고 있다` };
+  }
+  // ② 키가 없어서 매번 건너뛴다 — 이게 21일 침묵의 정확한 모양이다.
+  if (unconf >= runs) {
+    return { ...base, healthy: false, cause: 'not-configured',
+      reason: `${runs}회 전부 BUFFER_API_KEY 미설정으로 건너뜀 — Vercel 환경변수 확인` };
+  }
+  // ③ 실패가 쌓인다 — Buffer 거부·채널 해제·키 만료.
+  if (failed > 0) {
+    return { ...base, healthy: false, cause: 'failing',
+      reason: `최근 ${win}시간 게시 실패 ${failed}건 (성공 ${made}건) — tiktok_posts.detail 확인` };
+  }
+  // ④ 올릴 게 없다 — 정상. 여기서 고장을 논하면 오경보가 된다.
+  if (cand === 0) {
+    return { ...base, healthy: true, cause: null,
+      reason: `미게시 후보 0건 — 올릴 게 없어서 조용한 것 (정상)` };
+  }
+  // ⑤ 실제로 생산했다 — 정상.
+  if (made > 0) {
+    return { ...base, healthy: true, cause: null,
+      reason: `최근 ${win}시간 ${made}건 게시 — 정상` };
+  }
+  // ⑥ 표본이 너무 적다 — 판단 보류 (배포 직후 등).
+  if (runs < 2) {
+    return { ...base, healthy: true, cause: null,
+      reason: `실행 ${runs}회뿐 — 표본 부족으로 판단 보류` };
+  }
+  // ⑦ 후보가 있는데 아무것도 안 나왔다 — 이게 진짜 고장이다.
+  return { ...base, healthy: false, cause: 'stalled',
+    reason: `후보 ${cand}건이 있는데 ${win}시간 게시 0건 (실행 ${runs}회) — 조용히 멎었다` };
+}
+
+function buildTikTokAlert(d, site) {
+  const map = {
+    'no-runs': '크론 미실행',
+    'not-configured': 'BUFFER_API_KEY 미설정',
+    'failing': 'Buffer 게시 실패',
+    'stalled': '생산 정지',
+  };
+  return {
+    title: '🚨 틱톡 게시 이상 — ' + (map[d.cause] || d.cause),
+    lines: [
+      d.reason,
+      `후보 ${d.candidates}건 · 게시 ${d.producedInWindow}건 · 실패 ${d.failedInWindow}건 · 실행 ${d.runsInWindow}회`,
+      '진단: /api/cron/tiktok-post?channels=1 (Buffer 채널 확인) · ?dry=1 (후보 확인)',
+    ],
+    url: `${site}/admin/crons`,
+    urlLabel: '크론 상태',
+  };
+}
+
+async function checkTikTok(opts) {
+  try {
+    const WINDOW_H = Number(process.env.TIKTOK_WATCH_WINDOW_HOURS || 30);
+    const since = new Date(Date.now() - WINDOW_H * 3600000).toISOString();
+
+    // 실제 생산량 — 크론의 자기보고가 아니라 테이블 행을 센다.
+    const { data: recent } = await supabaseAdmin.from('tiktok_posts')
+      .select('status, created_at').gte('created_at', since).limit(500);
+    const rows = recent || [];
+    const producedInWindow = rows.filter((r) => r && r.status !== 'failed').length;
+    const failedInWindow = rows.filter((r) => r && r.status === 'failed').length;
+
+    // 후보 — 크론과 같은 기준(발행·갤러리 2장 이상·미게시)으로 센다.
+    // 감시가 대상과 다른 걸 세면 어긋난다.
+    const { data: postedAll } = await supabaseAdmin.from('tiktok_posts')
+      .select('editorial_id, status').limit(5000);
+    const doneIds = new Set((postedAll || [])
+      .filter((p) => p && p.status !== 'failed').map((p) => p.editorial_id).filter(Boolean));
+    const { data: eds } = await supabaseAdmin.from('editorials')
+      .select('id, gallery').eq('status', 'published')
+      .order('published_date', { ascending: false }).limit(400);
+    const candidates = (eds || []).filter(
+      (e) => e && !doneIds.has(e.id) && Array.isArray(e.gallery) && e.gallery.length >= 2).length;
+
+    const { data: runs } = await supabaseAdmin.from('cron_runs')
+      .select('note').eq('cron_name', 'tiktok-post').gte('ran_at', since).limit(500);
+    const runsInWindow = (runs || []).length;
+    const unconfiguredRuns = (runs || []).filter(
+      (r) => r && typeof r.note === 'string' && r.note.indexOf('BUFFER_API_KEY 미설정') !== -1).length;
+
+    const d = judgeTikTokHealth({
+      candidates, producedInWindow, failedInWindow,
+      runsInWindow, unconfiguredRuns, windowHours: WINDOW_H,
+    });
+    if (opts && opts.dry) return { dry: true, ...d };
+
+    const { data: st } = await supabaseAdmin.from('ops_alert_state')
+      .select('last_alert_at, last_payload').eq('key', TIKTOK_ALERT_KEY).maybeSingle();
+    const lastAt = st && st.last_alert_at ? Date.parse(st.last_alert_at) : 0;
+    const wasBroken = !!(st && st.last_payload && st.last_payload.broken);
+    const COOLDOWN_H = Number(process.env.TIKTOK_ALERT_COOLDOWN_H || 12);
+
+    let alerted = false;
+    if (!d.healthy && Date.now() - lastAt > COOLDOWN_H * 3600000) {
+      await pushAlert({ ...buildTikTokAlert(d, SITE), personalOnly: true });
+      alerted = true;
+    } else if (d.healthy && wasBroken) {
+      await pushAlert({
+        personalOnly: true,
+        title: '✅ 틱톡 게시 재개',
+        lines: [d.reason],
+        url: `${SITE}/admin/crons`, urlLabel: '크론 상태',
+      });
+      alerted = true;
+    }
+    if (alerted || wasBroken !== !d.healthy) {
+      await supabaseAdmin.from('ops_alert_state').upsert({
+        key: TIKTOK_ALERT_KEY,
+        last_alert_at: alerted ? new Date().toISOString() : (st && st.last_alert_at) || null,
+        last_payload: { broken: !d.healthy, cause: d.cause,
+          candidates: d.candidates, produced: d.producedInWindow },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'key' });
+    }
+    return { ...d, alerted };
+  } catch (e) {
+    console.error('[pipeline-watch] tiktok health 실패', e && e.message);
+    return { error: (e && e.message) || 'unknown' };
+  }
+}
+
+module.exports.judgeTikTokHealth = judgeTikTokHealth;
+module.exports.buildTikTokAlert = buildTikTokAlert;
