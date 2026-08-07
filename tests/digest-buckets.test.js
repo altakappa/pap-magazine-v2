@@ -92,6 +92,9 @@ ok('공백과 빈 조각을 흘린다',
   JSON.stringify(B.splitCategories(' Art , , Fashion ')) === '["art","fashion"]');
 ok('null 이어도 터지지 않는다', B.splitCategories(null).length === 0);
 
+/* ⚠️ 2026-08-07 부터 isCelebCategory 는 **갈래를 정하지 않는다**.
+   함수 자체는 남아 있으므로 계약만 그대로 고정해 둔다. 실제 갈래 판정은
+   tests/celeb-classify.test.js 가 지킨다. */
 ok("'News' 는 셀럽", B.isCelebCategory('News') === true);
 ok("'Celeb' 는 셀럽", B.isCelebCategory('Celeb') === true);
 ok("'Fashion' 은 셀럽이 아니다", B.isCelebCategory('Fashion') === false);
@@ -138,9 +141,15 @@ function seed() {
     articles: [
       { id: 1, title: '패션 아카이브', category: 'Fashion', status: 'published',
         published_date: daysAgo(1), scheduled_publish_at: null, slug: 'fa' },
-      { id: 2, title: '셀럽 소식', category: 'Celeb', status: 'published',
+      /* 2026-08-07 — 갈래를 category 가 아니라 내용으로 가른다(celebClassify).
+         그래서 픽스처도 category 가 아니라 tags / is_celeb 로 뜻을 밝힌다.
+         id 2 는 태그 마커로, id 3 은 저장된 판정으로 셀럽이 된다 —
+         두 경로가 모두 살아 있어야 방금 발행된 기사도 구제된다. */
+      { id: 2, title: '셀럽 소식', category: 'Culture', status: 'published',
+        tags: ['aespa', 'comeback'],
         published_date: daysAgo(1), scheduled_publish_at: null, slug: 'ce' },
       { id: 3, title: '뉴스+패션', category: 'News,Fashion', status: 'published',
+        tags: ['ferragamo'], is_celeb: true, celeb_by: 'ai',
         published_date: daysAgo(2), scheduled_publish_at: null, slug: 'nf' },
       { id: 4, title: '아트', category: 'Art,Culture', status: 'published',
         published_date: daysAgo(2), scheduled_publish_at: null, slug: 'ac' },
@@ -183,7 +192,7 @@ const titles = (r) => r.items.map((i) => i.title);
   ok('제목 없는 행은 버린다', co.items.every((i) => i.title));
 
   const ce = await B.collect('celeb');
-  ok('셀럽 갈래에 News 와 Celeb 이 모두 들어온다',
+  ok('셀럽 갈래에 마커 판정과 저장된 판정이 모두 들어온다',
     titles(ce).sort().join('|') === ['셀럽 소식', '뉴스+패션'].sort().join('|'),
     '받은 값: ' + JSON.stringify(titles(ce)));
 

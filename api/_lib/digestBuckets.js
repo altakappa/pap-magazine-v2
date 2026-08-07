@@ -19,15 +19,20 @@
  * 분류 기준이 왜 이렇게 되나 —
  *   · 오리지널 vs 아카이브는 editorials.legacy 로 갈린다 (065_legacy_editorials).
  *     legacy=false 가 우리가 크리에이티브팀과 새로 만든 것, true 가 아카이브.
- *   · 셀럽 vs 아트는 articles.category 로 갈린다. 'collection' 이라는 이름의
- *     카테고리는 DB 어디에도 없다 — 셀럽이 아닌 나머지 전부가 콜렉션이다.
- *     그래서 화이트리스트가 아니라 블랙리스트(CELEB_CATEGORIES)로 뺀다.
- *     새 카테고리가 생겨도 자동으로 콜렉션에 들어오는 게 맞는 동작이다.
+ *   · 셀럽 vs 아트는 **2026-08-07 부터 category 를 안 본다** (도메니코 지적).
+ *     실재하는 카테고리는 넷뿐인데(Culture·Fashion·News·Beauty) 셀럽 기사가
+ *     셋에 흩어져 있었다 — 휴닝카이는 Fashion, 정국 샤넬은 Beauty,
+ *     스트레이 키즈는 Culture. 전부 아트 콜렉션으로 샜고, 반대로 셀럽 모음은
+ *     News 만 받아 개수가 모자랐다(45일 54건 vs 실제 최소 121건).
+ *     지금은 articles.is_celeb + 태그 마커로 가른다 → api/_lib/celebClassify.js.
+ *     아래 CELEB_CATEGORIES / isCelebCategory 는 **더 이상 갈래를 정하지 않는다.**
+ *     기존 테스트와 참고용으로 남겨 둔 것이니 새 코드에서 쓰지 말 것.
  *   · category 는 자유 텍스트에 쉼표 다중값이다 ('Fashion,Culture').
  *     그래서 문자열 비교가 아니라 쪼개서 소문자로 맞춰 본다.
  */
 
 const { supabaseAdmin } = require('./supabase');
+const { isCeleb } = require('./celebClassify');
 
 /* 갈래마다 사이트가 다르다. 예전엔 SITE 상수 하나였는데, 그 값이 PAP 도메인
    이라 페퍼릿 기사 링크가 조용히 pap-magazine.com 으로 나갈 뻔했다.
@@ -218,7 +223,7 @@ async function loadPostedKeys(bucket) {
 async function fetchArticles(days) {
   const { data, error } = await supabaseAdmin
     .from('articles')
-    .select('id, title, title_en, slug, custom_url, category, status, published_date, scheduled_publish_at, thumbnail_url, hero_image_url, source_instagram_url')
+    .select('id, title, title_en, slug, custom_url, category, tags, is_celeb, celeb_by, status, published_date, scheduled_publish_at, thumbnail_url, hero_image_url, source_instagram_url')
     .eq('status', 'published')
     .gte('published_date', cutoffIso(days))
     .order('published_date', { ascending: false })
@@ -304,7 +309,7 @@ async function collect(bucket, opts) {
       .map(fromPepperitArticle));
   } else if (bucket === 'celeb') {
     items = (await fetchArticles(days))
-      .filter((a) => isLive(a, nowIso) && isCelebCategory(a.category))
+      .filter((a) => isLive(a, nowIso) && isCeleb(a))
       .map(fromArticle);
   } else {
     /* 콜렉션은 두 곳에서 온다 — 셀럽이 아닌 기사, 그리고 아카이브 에디토리얼.
@@ -313,7 +318,7 @@ async function collect(bucket, opts) {
       fetchArticles(days),
       fetchEditorials(days, true),
     ]);
-    items = arts.filter((a) => isLive(a, nowIso) && !isCelebCategory(a.category)).map(fromArticle)
+    items = arts.filter((a) => isLive(a, nowIso) && !isCeleb(a)).map(fromArticle)
       .concat(legacyEds.filter((e) => isLive(e, nowIso)).map(fromEditorial));
     items.sort((a, b) => String(b.published_date || '').localeCompare(String(a.published_date || '')));
   }
