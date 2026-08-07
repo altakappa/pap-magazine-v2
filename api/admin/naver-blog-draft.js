@@ -203,7 +203,15 @@ const FRAMEWORK_BLOCK = [
 async function generateDraft(art, brand) {
   if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY 환경변수 누락.');
   const b = SITES[brand];
-  const artUrl = b.site + '/article/' + encodeURIComponent(art.custom_url || art.slug || art.id);
+  /* 백링크에 utm 을 붙인다 (2026-08-07).
+     지금까지 이 링크에는 파라미터가 없었다. socialInclick 은 utm_source 가
+     있을 때만 기록하므로, 네이버 블로그에서 사이트로 들어온 사람이 **전부
+     집계에서 사라지고 있었다** — 화이트리스트에 'naver' 자리를 만들어 두고도
+     그 소스를 만들어 줄 링크가 코드에 없었다.
+     IG 링크는 이미 ?src=naverblog 로 재고 있었는데(naver-blog-kit.js:31)
+     정작 우리 사이트로 오는 길만 안 재고 있었다. */
+  const artUrl = b.site + '/article/' + encodeURIComponent(art.custom_url || art.slug || art.id)
+    + '?utm_source=naver&utm_medium=blog&utm_campaign=naver-blog';
   const gallery = (art.gallery || []).slice(0, 6);
 
   const toneGuide = brand === 'pepperit'

@@ -10,6 +10,17 @@
  */
 
 const SITE = 'https://www.pap-magazine.com';
+
+/* 카카오 공유 JavaScript 키 (2026-08-07 신설).
+   미설정이면 버튼 자체를 안 그린다 — 눌러도 안 되는 버튼을 보여주는 게
+   버튼이 없는 것보다 나쁘다. 키는 공개용(JavaScript 키)이라 HTML 에 나가도
+   된다. 도메인 화이트리스트가 카카오 콘솔에서 보안을 담당한다. */
+const KAKAO_JS_KEY = process.env.KAKAO_JS_KEY || '';
+
+/* 네이버 애널리틱스 (2026-08-07 신설).
+   지금까지 **네이버 유입을 측정하는 도구가 하나도 없었다.** 에이치레프스는
+   구글만 본다. 한국 매체가 네이버 유입을 모르는 건 눈을 감고 뛰는 것이다. */
+const NAVER_ANALYTICS_ID = process.env.NAVER_ANALYTICS_ID || '';
 const SITE_NAME = 'PAP Magazine';
 const DEFAULT_OG_IMAGE = 'https://igcazquhkwxtqsaqpznx.supabase.co/storage/v1/object/public/media/uploads/1782883490406_pbkv6ny169.jpg';
 const ORG_LOGO = 'https://www.pap-magazine.com/pap-logo.png';
@@ -604,6 +615,11 @@ function renderSeoHtml(kind, record, opts) {
   const koCanonical = `${SITE}${cfg.pathPrefix}${encodeURIComponent(slug)}`;
   const langUrl = (l) => l === 'ko' ? koCanonical : `${SITE}/${l}${cfg.pathPrefix}${encodeURIComponent(slug)}`;
   const canonical = langUrl(lang);
+  /* 카카오로 퍼진 링크는 utm 을 달고 돌아와야 집계된다 (2026-08-07).
+     canonical 자체에는 절대 붙이지 않는다 — 정본 URL 이 오염되면 색인이 갈린다.
+     공유 링크만 별도로 만든다. */
+  const kakaoShareUrl = canonical + (canonical.indexOf('?') >= 0 ? '&' : '?')
+    + 'utm_source=kakao&utm_medium=share';
   // hreflang: 실재하는 언어 변형만 선언 (ko/en 은 항상, it/fr/es 는 번역 존재 시)
   const hreflangLinks = availableLangs
     .filter(l => LANG_META[l])
@@ -1299,6 +1315,11 @@ ${cfg.schemaType !== 'VideoObject' && ogImage ? (canOptimizeImg(ogImage)
   .ig-funnel .igf-sub{margin-top:14px;font-size:11px;opacity:.5;letter-spacing:.04em}
   .ig-funnel .pin-btn{display:inline-block;margin-left:10px;background:#E60023;color:#fff;padding:13px 30px;font-size:11.5px;font-weight:700;letter-spacing:.1em;text-decoration:none;transition:opacity .3s}
   .ig-funnel .pin-btn:hover{opacity:.85}
+  /* 카카오 공유 (2026-08-07). 한국에서 콘텐츠가 퍼지는 1번 경로인데
+     지금까지 저장소 전체에 카카오 공유 코드가 한 줄도 없었다.
+     핀터레스트 버튼과 같은 자리에 같은 모양으로 둔다 — 브랜드 컬러만 다르다. */
+  .ig-funnel .kko-btn{display:inline-block;margin-left:10px;background:#FEE500;color:#191600;padding:13px 30px;font-size:11.5px;font-weight:700;letter-spacing:.1em;text-decoration:none;border:0;cursor:pointer;font-family:inherit;transition:opacity .3s}
+  .ig-funnel .kko-btn:hover{opacity:.85}
   /* ── 2026-07-22 (도메니코 지시) — 기사(article) SSR 을 SPA 오버레이(artDetail) 룩과 통일.
      "링크 직접 진입 시 이미지가 크게 나오고 정렬이 뒤죽박죽" 보고의 실체는 두 렌더러의
      디자인 불일치였다(frontend/rules 'SSR·SPA 불일치 금지'). 기준은 SPA:
@@ -1465,6 +1486,7 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
       <a class="igf-btn" href="/api/ig-out?src=${IG_SRC}&to=profile&url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" target="_blank" rel="noopener">Follow @pap_magazine</a>`;
       })()}
       ${ogImage ? `<a class="pin-btn" href="https://www.pinterest.com/pin/create/button/?url=${encodeURIComponent(canonical)}&media=${encodeURIComponent(ogImage)}&description=${encodeURIComponent(titleMain + ' — PAP Magazine editorial')}" target="_blank" rel="noopener" data-pin-do="none">${FT.pin}</a>` : ''}
+      ${KAKAO_JS_KEY ? `<button type="button" class="kko-btn" id="papKakaoShare">카카오톡 공유</button>` : ''}
       <div class="igf-sub">${FT.sub}</div>
     </aside>
   </article>
@@ -1493,6 +1515,55 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
      리다이렉트하지 않으므로 직접 진입 시 헤더 일치가 특히 중요.) _navGo 는
      navigateWithInterstitial 부재 시 location.href 로 폴백한다. -->
 <script src="/pap-header.js?v=${PAP_HEADER_VERSION}" defer></script>
+${KAKAO_JS_KEY ? `
+<script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js" integrity="sha384-TiCUE00h649CAMonG018J2ujOgDKW/kVWlChEuu4jK2vxfAAD0eZxzCKakxg55G4" crossorigin="anonymous" defer></script>
+<script>
+/* 카카오톡 공유. SDK 가 defer 라 로드 완료를 기다렸다가 붙인다.
+   공유되는 건 og 태그가 아니라 여기서 넘기는 값이다 — 카카오는 자체
+   스크랩 캐시를 쓰기 때문에, 제목·설명·이미지를 명시적으로 준다. */
+(function () {
+  var btn = document.getElementById('papKakaoShare');
+  if (!btn) return;
+  function ready() {
+    if (!window.Kakao) { return setTimeout(ready, 300); }
+    try {
+      if (!window.Kakao.isInitialized()) window.Kakao.init(${JSON.stringify(KAKAO_JS_KEY)});
+    } catch (e) { btn.style.display = 'none'; return; }
+    btn.addEventListener('click', function () {
+      try {
+        window.Kakao.Share.sendDefault({
+          objectType: 'feed',
+          content: {
+            title: ${JSON.stringify(String(titleMain || '').slice(0, 80))},
+            description: ${JSON.stringify(String(desc || '').slice(0, 110))},
+            imageUrl: ${JSON.stringify(ogImage || '')},
+            link: { mobileWebUrl: ${JSON.stringify(kakaoShareUrl)}, webUrl: ${JSON.stringify(kakaoShareUrl)} },
+          },
+          buttons: [{ title: '기사 보기', link: { mobileWebUrl: ${JSON.stringify(kakaoShareUrl)}, webUrl: ${JSON.stringify(kakaoShareUrl)} } }],
+        });
+      } catch (e) { /* 공유 실패가 페이지를 망가뜨리지 않는다 */ }
+    });
+  }
+  ready();
+})();
+</script>` : ''}
+${NAVER_ANALYTICS_ID ? `
+<script src="//wcs.naver.net/wcslog.js" defer></script>
+<script>
+/* 네이버 애널리틱스. wcslog 가 defer 라 로드를 기다린다.
+   쿠키 동의 전이라도 네이버는 개인식별 없는 집계라 기존 GA 처리와 같은 층에
+   두지 않았다 — 동의 연동이 필요해지면 cookie-consent.js 로 옮길 것. */
+(function () {
+  function go() {
+    if (!window.wcs) return setTimeout(go, 300);
+    if (!window.wcs_add) window.wcs_add = {};
+    window.wcs_add.wa = ${JSON.stringify(NAVER_ANALYTICS_ID)};
+    if (window.wcs.inflow) window.wcs.inflow('pap-magazine.com');
+    window.wcs_do();
+  }
+  go();
+})();
+</script>` : ''}
 </body>
 </html>`;
 }

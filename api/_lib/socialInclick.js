@@ -15,7 +15,10 @@
 const { supabaseAdmin } = require('./supabase');
 const { extractClientIp, hashIp, detectDeviceType, sanitizeReferrer, isLikelyBot } = require('./clickGuard');
 
-const SRC_WHITELIST = new Set(['x', 'ig', 'naver', 'kakao', 'newsletter']);
+/* 'threads' 추가 (2026-08-07) — 스레드 자동 게시가 링크를 달고 나가는데
+   화이트리스트에 없어 전부 'other' 로 뭉개지고 있었다. 실측: social_inclicks
+   120건이 **전부 'other'** 였다. 어디서 왔는지 모르는 데이터는 없는 것과 같다. */
+const SRC_WHITELIST = new Set(['x', 'ig', 'naver', 'kakao', 'newsletter', 'threads', 'tiktok', 'youtube']);
 
 /**
  * utm_source 쿼리가 있는 요청만 기록. 없으면 no-op (일반/검색 트래픽 제외).
