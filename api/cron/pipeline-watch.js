@@ -41,6 +41,8 @@ const REEL_ALERT_KEY = 'reel-video-health';
 const FAQ_ALERT_KEY = 'faq-backfill-health';
 /* 크론 실행시간 — 함수 상한에 잘려 죽는 실행을 찾는다 (2026-08-04). */
 const DURATION_ALERT_KEY = 'cron-duration-health';
+/* 네이버 초안 — 상한·정지로 생성이 멎었는지 본다 (2026-08-07). */
+const NAVER_ALERT_KEY = 'naver-draft-health';
 const SITE = 'https://www.pap-magazine.com';
 
 /* 게시 후 이 시간이 지나도 발행되지 않으면 이상으로 본다.
@@ -213,7 +215,15 @@ module.exports = withCronGuard('pipeline-watch', async function handler(req, res
    * 평화롭다. 그래서 이건 성공/실패가 아니라 시간을 본다. */
   const duration = await checkDuration({ dry });
 
-  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels, faq, duration });
+  /* ── 네이버 초안 생산 감시 (2026-08-07 추가) ──
+   * 08-05 에 건 큐 상한이 08-05 17:01 부터 생성을 완전히 멈췄는데, 크론은
+   * 4시간마다 ok=true 로 "큐 상한 도달" 만 남겼다. 이틀 뒤 사람이 눈으로
+   * 발견했다. 더 나쁜 건 초안 후보가 '최근 3일 발행' 로 한정된다는 점이다 —
+   * 3일 넘게 멎으면 그 구간 기사는 영영 초안이 만들어지지 않는다.
+   * 그래서 여기서는 "막혔다" 를 3일이 되기 전에 잡는다. */
+  const naver = await checkNaverDrafts({ dry });
+
+  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels, faq, duration, naver });
 });
 
 /** 서술문 생산이 실제로 되고 있는지 보고, 이상하면 텔레그램으로 알린다. */
@@ -625,3 +635,172 @@ module.exports.buildFaqAlert = buildFaqAlert;
 module.exports.judgeCronDuration = judgeCronDuration;
 module.exports.buildCronDurationAlert = buildCronDurationAlert;
 module.exports.summarizeDurations = summarizeDurations;
+
+/**
+ * 네이버 초안 생산 건강도 판정 (순수 함수, 테스트 대상).
+ *
+ * "돌았다 ≠ 생산했다" 를 네 번째로 붙이는 자리다. 다만 여기엔 앞의 감시들에
+ * 없던 함정이 하나 더 있다 — **초안 후보가 '최근 3일 발행 기사' 로 한정된다.**
+ * 그래서 3일 넘게 멎으면 밀린 기사는 나중에 고쳐도 영영 못 만든다.
+ * 정지를 '느리게' 잡으면 안 되는 이유가 이것이다.
+ *
+ * 오탐을 피하는 두 가지 전제:
+ *   ① 만들 게 없으면 판단하지 않는다 — 미전환 기사 0건에 생산 0건은 정상이다.
+ *   ② 실행 표본이 적으면 판단하지 않는다 — 크론이 4시간 간격이라 한두 번으로
+ *      "생산 0" 을 고장이라 부르면 노이즈만 남는다.
+ *
+ * @param {object} x
+ * @param {number} x.pendingSources   룩백 창 안 published 기사 중 초안이 없는 수
+ * @param {number} x.producedInWindow 창 안 새로 만들어진 초안 수
+ * @param {number} x.runsInWindow     창 안 naver-draft-sweep 실행 수
+ * @param {number} x.queueSkipRuns    그중 '큐 상한 도달' 로 끝난 실행 수
+ * @param {number} x.queueDraft       현재 대기(draft) 초안 수
+ * @param {number} x.windowHours
+ * @param {number} x.lookbackDays     초안 후보 신선도 창 (기본 3일)
+ */
+function judgeNaverDraftHealth(x) {
+  const pendingSources = Number(x && x.pendingSources) || 0;
+  const producedInWindow = Number(x && x.producedInWindow) || 0;
+  const runsInWindow = Number(x && x.runsInWindow) || 0;
+  const queueSkipRuns = Number(x && x.queueSkipRuns) || 0;
+  const queueDraft = Number(x && x.queueDraft) || 0;
+  const windowHours = Number(x && x.windowHours) || 24;
+  const lookbackDays = Number(x && x.lookbackDays) || 3;
+  const base = { pendingSources, producedInWindow, runsInWindow, queueSkipRuns,
+    queueDraft, windowHours, lookbackDays };
+
+  // ① 만들 게 없으면 정상이다. 기사가 없는 날 초안이 0건인 건 고장이 아니다.
+  if (pendingSources === 0) {
+    return { ...base, healthy: true, cause: null,
+      reason: `최근 ${lookbackDays}일 미전환 기사 0건 — 판단 보류(정상)` };
+  }
+
+  // ② 하나라도 만들었으면 파이프는 살아 있다.
+  if (producedInWindow > 0) {
+    return { ...base, healthy: true, cause: null,
+      reason: `${windowHours}시간 ${producedInWindow}건 생성 · 미전환 ${pendingSources}건 남음` };
+  }
+
+  // ③ 표본 부족 — 판단하지 않는다.
+  if (runsInWindow < 2) {
+    return { ...base, healthy: true, cause: null,
+      reason: `실행 ${runsInWindow}회 — 표본 부족으로 판단 보류` };
+  }
+
+  // ④ 상한 때문에 스스로 멈춘 경우. 고장은 아니지만 방치하면 기사가 유실된다.
+  if (queueSkipRuns >= runsInWindow) {
+    return { ...base, healthy: false, cause: 'queue-full',
+      reason: `큐 상한으로 ${runsInWindow}회 전부 생성 건너뜀 · 미전환 ${pendingSources}건이 ${lookbackDays}일 뒤 유실` };
+  }
+
+  // ⑤ 상한도 아닌데 생산이 0 — 진짜 정지다.
+  return { ...base, healthy: false, cause: 'stalled',
+    reason: `${runsInWindow}회 실행에 생성 0건 · 미전환 ${pendingSources}건 대기` };
+}
+
+/** 네이버 초안 알림 문구 — 원인별로 다음 행동까지 적는다. */
+function buildNaverDraftAlert(d, site) {
+  const lines = [d.reason, ''];
+  if (d.cause === 'queue-full') {
+    lines.push(`대기 초안 ${d.queueDraft}건이 상한에 걸려 생성이 멈춰 있습니다.`);
+    lines.push('');
+    lines.push('조치 ① 어드민에서 밀린 초안을 발행해 큐를 비우면 자동 재개');
+    lines.push('조치 ② 급하면 Vercel env NAVER_DRAFT_QUEUE_MAX=0 (무제한)');
+  } else {
+    lines.push('원인 후보: NAVER_DRAFT_SWEEP_ENABLED=false / Claude API 키·한도');
+    lines.push('           generateNext 예외 (Vercel 로그 [naver-draft-sweep])');
+  }
+  lines.push('');
+  lines.push(`⚠️ 초안 후보는 '최근 ${d.lookbackDays}일 발행' 로 한정됩니다.`);
+  lines.push(`   ${d.lookbackDays}일 안에 못 풀면 미전환 ${d.pendingSources}건은 영구 유실됩니다.`);
+  return {
+    title: `📝 네이버 초안 생성 정지 — 미전환 ${d.pendingSources}건`,
+    lines,
+    url: `${site || SITE}/naver-blog`,
+    urlLabel: '초안 목록',
+  };
+}
+
+/**
+ * 네이버 초안이 실제로 만들어지고 있는지 본다.
+ *
+ * 생산량의 근거는 naver_blog_drafts 의 created_at 이다 — 크론 note 가 아니라
+ * 표를 직접 센다. note 는 "큐 상한 도달" 처럼 성공을 말하면서 생산은 0인
+ * 문장을 남길 수 있기 때문이다. 그 어긋남 자체가 이 감시의 대상이다.
+ */
+async function checkNaverDrafts(opts) {
+  const WINDOW_H = Number(process.env.NAVER_DRAFT_WINDOW_HOURS || 24);
+  const LOOKBACK_D = Math.max(1, parseInt(process.env.NAVER_DRAFT_LOOKBACK_DAYS || '3', 10) || 3);
+  try {
+    const since = new Date(Date.now() - WINDOW_H * 3600000).toISOString();
+    const lookSince = new Date(Date.now() - LOOKBACK_D * 86400000).toISOString();
+
+    // 후보 기사 — sweep 과 같은 창·같은 필터로 본다. 감시가 대상과 다른 걸
+    // 세면 "감시는 평화로운데 크론은 굶는" 어긋남이 생긴다.
+    const { data: arts } = await supabaseAdmin.from('articles')
+      .select('slug').eq('status', 'published')
+      .gte('published_date', lookSince).limit(500);
+    const { data: made } = await supabaseAdmin.from('naver_blog_drafts')
+      .select('source_slug').eq('brand', 'pap');
+    const madeSet = new Set((made || []).map((m) => m && m.source_slug));
+    const pendingSources = (arts || []).filter((a) => a && !madeSet.has(a.slug)).length;
+
+    const { count: produced } = await supabaseAdmin.from('naver_blog_drafts')
+      .select('*', { count: 'exact', head: true }).gte('created_at', since);
+    const { count: queueDraft } = await supabaseAdmin.from('naver_blog_drafts')
+      .select('*', { count: 'exact', head: true }).eq('status', 'draft');
+
+    const { data: runs } = await supabaseAdmin.from('cron_runs')
+      .select('note').eq('cron_name', 'naver-draft-sweep').gte('ran_at', since).limit(500);
+    const runsInWindow = (runs || []).length;
+    const queueSkipRuns = (runs || []).filter(
+      (r) => r && typeof r.note === 'string' && r.note.indexOf('큐 상한 도달') !== -1).length;
+
+    const d = judgeNaverDraftHealth({
+      pendingSources,
+      producedInWindow: typeof produced === 'number' ? produced : 0,
+      queueDraft: typeof queueDraft === 'number' ? queueDraft : 0,
+      runsInWindow, queueSkipRuns,
+      windowHours: WINDOW_H, lookbackDays: LOOKBACK_D,
+    });
+    if (opts && opts.dry) return { dry: true, ...d };
+
+    const { data: st } = await supabaseAdmin.from('ops_alert_state')
+      .select('last_alert_at, last_payload').eq('key', NAVER_ALERT_KEY).maybeSingle();
+    const lastAt = st && st.last_alert_at ? Date.parse(st.last_alert_at) : 0;
+    const wasBroken = !!(st && st.last_payload && st.last_payload.broken);
+    const COOLDOWN_H = Number(process.env.NAVER_DRAFT_ALERT_COOLDOWN_H || 6);
+
+    let alerted = false;
+    if (!d.healthy && Date.now() - lastAt > COOLDOWN_H * 3600000) {
+      await pushAlert({ ...buildNaverDraftAlert(d, SITE), personalOnly: true });
+      alerted = true;
+    } else if (d.healthy && wasBroken) {
+      // 복구는 쿨다운 무시 — 다른 감시들과 같은 규칙.
+      await pushAlert({
+        personalOnly: true,
+        title: '✅ 네이버 초안 생성 재개',
+        lines: [d.reason],
+        url: `${SITE}/naver-blog`, urlLabel: '초안 목록',
+      });
+      alerted = true;
+    }
+    if (alerted || wasBroken !== !d.healthy) {
+      await supabaseAdmin.from('ops_alert_state').upsert({
+        key: NAVER_ALERT_KEY,
+        last_alert_at: alerted ? new Date().toISOString() : (st && st.last_alert_at) || null,
+        last_payload: { broken: !d.healthy, cause: d.cause,
+          pending: d.pendingSources, queueDraft: d.queueDraft },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'key' });
+    }
+    return { ...d, alerted };
+  } catch (e) {
+    // 감시가 죽어도 본 크론은 계속 돌아야 한다.
+    console.error('[pipeline-watch] naver draft health 실패', e && e.message);
+    return { error: (e && e.message) || 'unknown' };
+  }
+}
+
+module.exports.judgeNaverDraftHealth = judgeNaverDraftHealth;
+module.exports.buildNaverDraftAlert = buildNaverDraftAlert;
