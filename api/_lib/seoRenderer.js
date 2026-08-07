@@ -21,6 +21,22 @@ const KAKAO_JS_KEY = process.env.KAKAO_JS_KEY || '';
    지금까지 **네이버 유입을 측정하는 도구가 하나도 없었다.** 에이치레프스는
    구글만 본다. 한국 매체가 네이버 유입을 모르는 건 눈을 감고 뛰는 것이다. */
 const NAVER_ANALYTICS_ID = process.env.NAVER_ANALYTICS_ID || '';
+
+/* 참여 블록을 붙이는 종류. 리스팅·아카이브에는 안 붙인다 — 대상이 하나가
+   아니라 목록이라 좋아요/댓글의 대상이 모호해진다. */
+const ENGAGE_KINDS = new Set(['article', 'editorial', 'film', 'short']);
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/* 참여 블록 문구. 한국 독자가 주 대상이라 ko 를 기본으로 두고, 나머지
+   언어는 영어로 떨어뜨린다(번역 파이프라인이 UI 문자열은 안 다룬다). */
+const ENGAGE_T = {
+  ko: { like: '좋아요', likeAria: '이 글에 좋아요', comments: '댓글', jump: '댓글 보기',
+        empty: '첫 댓글을 남겨보세요.', placeholder: '이 기사에 대한 생각을 남겨주세요',
+        send: '등록', login: '로그인하고 댓글 남기기', del: '삭제', now: '방금' },
+  en: { like: 'Like', likeAria: 'Like this story', comments: 'Comments', jump: 'Jump to comments',
+        empty: 'Be the first to comment.', placeholder: 'Share your thoughts on this story',
+        send: 'Post', login: 'Sign in to comment', del: 'Delete', now: 'just now' },
+};
 const SITE_NAME = 'PAP Magazine';
 const DEFAULT_OG_IMAGE = 'https://igcazquhkwxtqsaqpznx.supabase.co/storage/v1/object/public/media/uploads/1782883490406_pbkv6ny169.jpg';
 const ORG_LOGO = 'https://www.pap-magazine.com/pap-logo.png';
@@ -703,6 +719,7 @@ function renderSeoHtml(kind, record, opts) {
     },
   };
   const FT = FUNNEL_T[lang] || FUNNEL_T.en;
+  const ET = ENGAGE_T[lang] || ENGAGE_T.en;
 
   /* IG 아웃클릭 소스 분리 (2026-07-30).
    *
@@ -1320,6 +1337,32 @@ ${cfg.schemaType !== 'VideoObject' && ogImage ? (canOptimizeImg(ogImage)
      핀터레스트 버튼과 같은 자리에 같은 모양으로 둔다 — 브랜드 컬러만 다르다. */
   .ig-funnel .kko-btn{display:inline-block;margin-left:10px;background:#FEE500;color:#191600;padding:13px 30px;font-size:11.5px;font-weight:700;letter-spacing:.1em;text-decoration:none;border:0;cursor:pointer;font-family:inherit;transition:opacity .3s}
   .ig-funnel .kko-btn:hover{opacity:.85}
+  /* 참여 블록 (2026-08-07). 기사에서 할 수 있는 온사이트 액션이 스크랩
+     하나뿐이었다 — 커뮤니티 좋아요·댓글은 역대 0건이고, 그 이유는 기능이
+     없어서가 아니라 /community 라는 별도 섬에만 있었기 때문이다.
+     IG 퍼널 **위**에 둔다. 아래에 두면 인스타로 나간 뒤라 아무도 안 본다. */
+  .pap-engage{max-width:720px;margin:56px auto 0;padding:0 24px}
+  .pap-engage .pe-bar{display:flex;align-items:center;gap:14px;padding:18px 0;border-top:1px solid rgba(255,255,255,.14);border-bottom:1px solid rgba(255,255,255,.14)}
+  .pap-engage .pe-like{display:inline-flex;align-items:center;gap:9px;background:transparent;border:1px solid rgba(255,255,255,.28);color:#eee;padding:11px 20px;font-size:12px;font-weight:600;letter-spacing:.06em;cursor:pointer;font-family:inherit;transition:.2s}
+  .pap-engage .pe-like:hover{border-color:rgba(255,255,255,.6)}
+  .pap-engage .pe-like[aria-pressed="true"]{background:#fff;color:#111;border-color:#fff}
+  .pap-engage .pe-count{font-variant-numeric:tabular-nums}
+  .pap-engage .pe-jump{margin-left:auto;color:#9a9a9a;font-size:12px;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.2)}
+  .pap-engage h2{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:#9a9a9a;margin:36px 0 16px;font-weight:600}
+  .pap-engage .pe-form{display:none}
+  .pap-engage .pe-form textarea{width:100%;min-height:88px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.16);color:#eee;padding:13px;font:inherit;font-size:14px;line-height:1.6;resize:vertical}
+  .pap-engage .pe-form textarea:focus{outline:none;border-color:rgba(255,255,255,.45)}
+  .pap-engage .pe-send{margin-top:10px;background:#fff;color:#111;border:0;padding:11px 26px;font-size:12px;font-weight:700;letter-spacing:.08em;cursor:pointer;font-family:inherit}
+  .pap-engage .pe-send[disabled]{opacity:.4;cursor:default}
+  .pap-engage .pe-login{display:block;padding:18px;border:1px dashed rgba(255,255,255,.2);color:#bbb;font-size:13.5px;text-align:center;text-decoration:none}
+  .pap-engage .pe-login:hover{color:#fff;border-color:rgba(255,255,255,.4)}
+  .pap-engage .pe-list{list-style:none;padding:0;margin:22px 0 0}
+  .pap-engage .pe-list li{padding:16px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+  .pap-engage .pe-who{font-size:12px;color:#8f8f8f;margin-bottom:6px;display:flex;gap:8px;align-items:center}
+  .pap-engage .pe-body{font-size:14.5px;line-height:1.7;color:#e8e8e8;white-space:pre-wrap;word-break:break-word}
+  .pap-engage .pe-del{background:none;border:0;color:#777;font-size:11px;cursor:pointer;padding:0;margin-left:auto;font-family:inherit}
+  .pap-engage .pe-empty{color:#7d7d7d;font-size:13.5px;padding:14px 0}
+  @media(max-width:640px){.pap-engage{padding:0 18px}}
   /* ── 2026-07-22 (도메니코 지시) — 기사(article) SSR 을 SPA 오버레이(artDetail) 룩과 통일.
      "링크 직접 진입 시 이미지가 크게 나오고 정렬이 뒤죽박죽" 보고의 실체는 두 렌더러의
      디자인 불일치였다(frontend/rules 'SSR·SPA 불일치 금지'). 기준은 SPA:
@@ -1466,6 +1509,20 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
       </details>`).join('\n')}
     </section>` : ''}
 
+    ${ENGAGE_KINDS.has(kind) && UUID_RE.test(String(record.id || '')) ? `
+    <section class="pap-engage" id="papEngage" data-target-type="${kind}" data-target-id="${escAttr(String(record.id))}">
+      <div class="pe-bar">
+        <button type="button" class="pe-like" id="peLike" aria-pressed="false" aria-label="${ET.likeAria}">
+          <span aria-hidden="true">\u2661</span><span class="pe-label">${ET.like}</span> <span class="pe-count" id="peCount">0</span>
+        </button>
+        <a class="pe-jump" href="#peComments">${ET.jump}</a>
+      </div>
+      <h2 id="peComments">${ET.comments}</h2>
+      <div id="peCompose"></div>
+      <ul class="pe-list" id="peList"></ul>
+      <div class="pe-empty" id="peEmpty" hidden>${ET.empty}</div>
+    </section>` : ''}
+
     ${record.source_instagram_url && /instagram\.com/.test(String(record.source_instagram_url)) ? `
     <aside class="ig-funnel" style="margin-bottom:0">
       <div class="igf-kicker">On Instagram</div>
@@ -1515,6 +1572,127 @@ ${(kind === 'editorial' || kind === 'film') ? `<!-- QA #178 / #233 — Real-brow
      리다이렉트하지 않으므로 직접 진입 시 헤더 일치가 특히 중요.) _navGo 는
      navigateWithInterstitial 부재 시 location.href 로 폴백한다. -->
 <script src="/pap-header.js?v=${PAP_HEADER_VERSION}" defer></script>
+${ENGAGE_KINDS.has(kind) && UUID_RE.test(String(record.id || '')) ? `
+<script>
+/* 참여 블록 구동 (2026-08-07).
+ *
+ * SSR 로 뼈대만 그리고 숫자·목록은 여기서 채운다. 서버에서 미리 채우면
+ * CDN 캐시(s-maxage)에 좋아요 수가 굳어 버린다 — 모든 방문자가 같은
+ * 오래된 숫자를 보게 된다.
+ *
+ * 로그인 여부는 서버가 안다(httpOnly 쿠키). 그래서 프론트는 묻지 않고
+ * 그냥 요청하고, 401 이 오면 로그인 유도를 그린다. 쿠키를 읽으려 하면
+ * httpOnly 라 안 보여서 틀린 판단을 하게 된다.
+ */
+(function () {
+  var root = document.getElementById('papEngage');
+  if (!root) return;
+  var TT = root.dataset.targetType, TI = root.dataset.targetId;
+  var T = ${JSON.stringify(ET)};
+  var qs = '?target_type=' + encodeURIComponent(TT) + '&target_id=' + encodeURIComponent(TI);
+  var likeBtn = document.getElementById('peLike');
+  var countEl = document.getElementById('peCount');
+  var listEl = document.getElementById('peList');
+  var emptyEl = document.getElementById('peEmpty');
+  var composeEl = document.getElementById('peCompose');
+  var busy = false;
+
+  function esc(x) { var d = document.createElement('div'); d.textContent = String(x == null ? '' : x); return d.innerHTML; }
+  function when(iso) {
+    var d = new Date(iso), diff = (Date.now() - d.getTime()) / 1000;
+    if (!isFinite(diff)) return '';
+    if (diff < 60) return T.now;
+    if (diff < 3600) return Math.floor(diff / 60) + 'm';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h';
+    return d.toISOString().slice(0, 10);
+  }
+
+  /* ── 좋아요 ── */
+  function paintLike(d) {
+    countEl.textContent = d.count || 0;
+    likeBtn.setAttribute('aria-pressed', d.mine ? 'true' : 'false');
+  }
+  fetch('/api/content/react' + qs, { credentials: 'same-origin' })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (d) { if (d) paintLike(d); })
+    .catch(function () {});
+
+  likeBtn.addEventListener('click', function () {
+    if (busy) return; busy = true;
+    /* 낙관적 반영 — 왕복을 기다리면 눌린 느낌이 안 난다. 실패하면 되돌린다. */
+    var wasOn = likeBtn.getAttribute('aria-pressed') === 'true';
+    var before = Number(countEl.textContent) || 0;
+    paintLike({ count: Math.max(0, before + (wasOn ? -1 : 1)), mine: !wasOn });
+    fetch('/api/content/react', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target_type: TT, target_id: TI }),
+    }).then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { if (d) paintLike(d); else paintLike({ count: before, mine: wasOn }); })
+      .catch(function () { paintLike({ count: before, mine: wasOn }); })
+      .then(function () { busy = false; });
+  });
+
+  /* ── 댓글 목록 ── */
+  function paintList(items) {
+    listEl.innerHTML = '';
+    if (!items.length) { emptyEl.hidden = false; return; }
+    emptyEl.hidden = true;
+    items.forEach(function (c) {
+      var li = document.createElement('li');
+      li.innerHTML = '<div class="pe-who"><strong>' + esc(c.author) + '</strong><span>' + esc(when(c.created_at)) + '</span>'
+        + (c.mine ? '<button type="button" class="pe-del" data-id="' + esc(c.id) + '">' + esc(T.del) + '</button>' : '')
+        + '</div><div class="pe-body">' + esc(c.body) + '</div>';
+      listEl.appendChild(li);
+    });
+  }
+  function load() {
+    fetch('/api/content/comments' + qs, { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : { items: [] }; })
+      .then(function (d) { paintList(d.items || []); })
+      .catch(function () {});
+  }
+  load();
+
+  listEl.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('.pe-del');
+    if (!b) return;
+    fetch('/api/content/comments?id=' + encodeURIComponent(b.dataset.id), {
+      method: 'DELETE', credentials: 'same-origin',
+    }).then(load).catch(function () {});
+  });
+
+  /* ── 작성 폼 ──
+     로그인 여부를 미리 묻지 않는다. 폼을 먼저 보여주고, 보낼 때 401 이 오면
+     그때 로그인으로 안내한다 — "쓰려고 했는데 로그인이 필요하다"는 순간이
+     가입 전환이 가장 잘 되는 지점이다. */
+  composeEl.innerHTML = '<div class="pe-form" style="display:block">'
+    + '<textarea id="peBody" maxlength="1000" placeholder="' + esc(T.placeholder) + '"></textarea>'
+    + '<button type="button" class="pe-send" id="peSend">' + esc(T.send) + '</button></div>';
+  var bodyEl = document.getElementById('peBody');
+  var sendEl = document.getElementById('peSend');
+
+  sendEl.addEventListener('click', function () {
+    var v = (bodyEl.value || '').trim();
+    if (!v) return;
+    sendEl.disabled = true;
+    fetch('/api/content/comments', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target_type: TT, target_id: TI, body: v }),
+    }).then(function (r) {
+      if (r.status === 401) {
+        composeEl.innerHTML = '<a class="pe-login" href="/auth?next=' + encodeURIComponent(location.pathname) + '">' + esc(T.login) + '</a>';
+        return null;
+      }
+      return r.ok ? r.json() : null;
+    }).then(function (d) {
+      if (d) { bodyEl.value = ''; load(); }
+    }).catch(function () {})
+      .then(function () { sendEl.disabled = false; });
+  });
+})();
+</script>` : ''}
 ${KAKAO_JS_KEY ? `
 <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js" integrity="sha384-TiCUE00h649CAMonG018J2ujOgDKW/kVWlChEuu4jK2vxfAAD0eZxzCKakxg55G4" crossorigin="anonymous" defer></script>
 <script>
