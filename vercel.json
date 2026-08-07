@@ -65,6 +65,7 @@
       "schedule": "30 */2 * * *"
     },
     { "path": "/api/cron/drive-youtube-post", "schedule": "15 */2 * * *" },
+    { "path": "/api/cron/drive-tiktok-post", "schedule": "45 */2 * * *" },
     {
       "path": "/api/cron/youtube-post",
       "schedule": "8-58/10 * * * *"

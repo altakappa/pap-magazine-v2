@@ -167,11 +167,54 @@ async function createImagePost(o) {
   return r.post;
 }
 
+/**
+ * 영상 게시 (틱톡 등).
+ * Buffer 는 파일 업로드를 받지 않는다 — **공개 HTTPS 직링크**만 받고,
+ * 게시가 끝날 때까지 그 URL 이 살아 있어야 한다. 그래서 드라이브 링크는
+ * 못 쓰고(로그인 필요·바이러스검사 페이지), 우리 스토리지에 올린 뒤 그 URL 을 준다.
+ * @param {object} o
+ * @param {string} o.channelId
+ * @param {string} o.text        캡션 + 해시태그
+ * @param {string} o.videoUrl    공개 HTTPS mp4 직링크
+ * @param {string} [o.thumbnailUrl]
+ * @param {string} [o.title]     TikTok 포토/영상 제목
+ * @param {string} [o.mode]      기본 shareNow
+ * @param {number} [o.maxText]   기본 2200
+ */
+async function createVideoPost(o) {
+  const opts = o || {};
+  if (!opts.channelId) throw new Error('channelId 없음');
+  if (!opts.videoUrl) throw new Error('videoUrl 없음');
+  if (!/^https:\/\//.test(opts.videoUrl)) throw new Error('videoUrl 은 공개 HTTPS 여야 함');
+
+  const asset = { video: { url: opts.videoUrl } };
+  if (opts.thumbnailUrl) asset.video.thumbnailUrl = opts.thumbnailUrl;
+
+  const input = {
+    channelId: opts.channelId,
+    text: String(opts.text || '').slice(0, opts.maxText || 2200),
+    assets: [asset],
+    mode: opts.mode || 'shareNow',
+    schedulingType: 'automatic',
+  };
+  if (opts.dueAt) input.dueAt = opts.dueAt;
+  if (opts.title) input.metadata = { tiktok: { title: String(opts.title).slice(0, 90) } };
+
+  const d = await graphql(CREATE_POST, { input }, 60000);
+  const r = d.createPost;
+  if (!r) throw new Error('createPost 응답 비어 있음');
+  if (r.__typename !== 'PostActionSuccess') {
+    throw new Error('Buffer 영상 게시 거부(' + r.__typename + '): ' + String(r.message || '').slice(0, 300));
+  }
+  return r.post;
+}
+
 /** 크론에서 "키가 아예 없다"를 예외 대신 조용한 스킵으로 다루기 위한 헬퍼. */
 function isConfigured() { return !!process.env.BUFFER_API_KEY; }
 
 module.exports = {
   graphql,
+  createVideoPost,
   getOrganizationId,
   listChannels,
   findChannelId,

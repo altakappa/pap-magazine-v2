@@ -25,7 +25,12 @@ const UPLOAD_URL = 'https://www.googleapis.com/upload/youtube/v3/videos?uploadTy
 // 쇼츠로 올린다(인스타 릴스 mp4 회수가 8/3부터 69% 실패해 영구 대안이 필요했다).
 // ⚠️ 스코프를 늘렸으므로 /api/youtube/oauth 로 **1회 재인증**해야 실제로 적용된다.
 //    기존 refresh_token 은 옛 스코프만 갖고 있어 드라이브 호출이 403 난다.
+// 2026-08-07 youtube.readonly 추가 — 우리가 올린 영상이 살아 있는지 서버가
+// 스스로 확인하기 위해서다. 그날 영상 하나가 사라진 것을 사람이 눈으로
+// 발견했다(중복 업로드분을 지운 것이었지만, 저작권 삭제였어도 똑같이 몰랐다).
+// 올려놓고 상태를 못 묻는 건 오늘 하루 종일 잡은 침묵과 같은 모양이다.
 const SCOPES = 'https://www.googleapis.com/auth/youtube.upload'
+  + ' https://www.googleapis.com/auth/youtube.readonly'
   + ' https://www.googleapis.com/auth/drive.readonly';
 const REDIRECT_URI = 'https://www.pap-magazine.com/api/youtube/callback';
 
@@ -153,4 +158,40 @@ async function uploadVideo(buffer, meta) {
   return j;
 }
 
-module.exports = { authorizeUrl, exchangeCode, getAccessToken, uploadVideo, REDIRECT_URI };
+/**
+ * 올린 영상들의 현재 상태를 묻는다 (youtube.readonly 필요).
+ * 응답에 없는 id = 삭제됐거나 접근 불가.
+ * @param {string[]} ids 최대 50개씩 나눠 보낸다
+ * @returns {Promise<Map<string,{privacyStatus,uploadStatus,rejectionReason,failureReason}>>}
+ */
+async function fetchVideoStates(ids) {
+  const out = new Map();
+  const list = (ids || []).filter(Boolean);
+  if (!list.length) return out;
+  const token = await getAccessToken();
+  for (let i = 0; i < list.length; i += 50) {
+    const chunk = list.slice(i, i + 50);
+    const url = 'https://www.googleapis.com/youtube/v3/videos?part=status&id=' + chunk.join(',');
+    const r = await fetch(url, {
+      headers: { Authorization: 'Bearer ' + token },
+      signal: AbortSignal.timeout(20000),
+    });
+    if (r.status === 403) {
+      throw new Error('videos.list 권한 없음 — YouTube OAuth 에 youtube.readonly 가 없습니다. /api/youtube/oauth 로 1회 재승인하세요.');
+    }
+    if (!r.ok) throw new Error('videos.list 실패 ' + r.status + ': ' + (await r.text().catch(() => '')).slice(0, 200));
+    const j = await r.json();
+    for (const v of (j.items || [])) {
+      out.set(v.id, {
+        privacyStatus: v.status && v.status.privacyStatus,
+        uploadStatus: v.status && v.status.uploadStatus,
+        rejectionReason: v.status && v.status.rejectionReason,
+        failureReason: v.status && v.status.failureReason,
+      });
+    }
+  }
+  return out;
+}
+
+module.exports = {
+  fetchVideoStates, authorizeUrl, exchangeCode, getAccessToken, uploadVideo, REDIRECT_URI };

@@ -234,7 +234,12 @@ module.exports = withCronGuard('pipeline-watch', async function handler(req, res
    * 흔적이 없다. 그래서 '기록이 안 오는 것' 자체를 신호로 읽는다. */
   const heartbeat = await checkHeartbeats({ dry });
 
-  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels, faq, duration, naver, tiktok, heartbeat });
+  /* ── 유튜브 영상 생존 감시 (2026-08-07 추가) ──
+   * 앞의 감시들이 '안 만들어지는 것'을 본다면, 이건 '만들어놓고 사라지는 것'을
+   * 본다. 게시는 끝이 아니라 시작이다. */
+  const ytVideos = await checkYouTubeVideos({ dry });
+
+  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels, faq, duration, naver, tiktok, heartbeat, ytVideos });
 });
 
 /** 서술문 생산이 실제로 되고 있는지 보고, 이상하면 텔레그램으로 알린다. */
@@ -1112,3 +1117,127 @@ async function checkHeartbeats(opts) {
 module.exports.judgeHeartbeats = judgeHeartbeats;
 module.exports.buildHeartbeatAlert = buildHeartbeatAlert;
 module.exports.HEARTBEATS = HEARTBEATS;
+
+/* ── 유튜브 영상 생존 감시 (2026-08-07 추가) ─────────────────────
+ * 우리는 영상을 올려놓고 그 뒤를 한 번도 안 봤다. 2026-08-07 에 올린 영상
+ * 하나가 사라진 것을 사람이 눈으로 발견했다(중복 업로드분을 지운 것이라
+ * 결과적으로는 정상이었지만, 저작권 삭제였어도 똑같이 몰랐을 것이다).
+ *
+ * 앞의 감시들이 '안 만들어지는 것'을 본다면 이건 '만들어놓고 사라지는 것'을 본다.
+ * 게시는 끝이 아니라 시작이다 — 올라간 뒤에 조용히 내려가는 일이 실제로 있다.
+ *
+ * 판정 대상:
+ *   gone     : videos.list 응답에 없음 = 삭제됐거나 접근 불가
+ *   private  : public 로 올렸는데 지금 public 이 아님
+ *   rejected : 저작권·정책 등으로 거부됨 (rejectionReason)
+ *   failed   : 처리 실패 (failureReason)
+ * 최근 14일분만 본다 — 오래된 영상은 사람이 의도적으로 내렸을 수 있다. */
+const YT_VIDEO_ALERT_KEY = 'youtube-video-health';
+
+function judgeVideoStates(rows, states) {
+  const bad = [];
+  const seen = [];
+  for (const r of (rows || [])) {
+    if (!r || !r.video_id) continue;
+    const st = states && states.get ? states.get(r.video_id) : null;
+    if (!st) {
+      bad.push({ video_id: r.video_id, cause: 'gone', why: '유튜브에 없음 (삭제됐거나 접근 불가)' });
+      continue;
+    }
+    if (st.rejectionReason) {
+      bad.push({ video_id: r.video_id, cause: 'rejected', why: '거부됨: ' + st.rejectionReason });
+      continue;
+    }
+    if (st.failureReason) {
+      bad.push({ video_id: r.video_id, cause: 'failed', why: '처리 실패: ' + st.failureReason });
+      continue;
+    }
+    if (st.privacyStatus && st.privacyStatus !== 'public') {
+      bad.push({ video_id: r.video_id, cause: 'private', why: '공개가 아님: ' + st.privacyStatus });
+      continue;
+    }
+    seen.push(r.video_id);
+  }
+  return {
+    healthy: bad.length === 0,
+    checked: (rows || []).filter((r) => r && r.video_id).length,
+    ok: seen.length,
+    bad,
+  };
+}
+
+function buildVideoStateAlert(d, site) {
+  const map = { gone: '영상이 사라짐', rejected: '영상이 거부됨', failed: '처리 실패', private: '비공개로 전환됨' };
+  const first = d.bad[0] || {};
+  return {
+    title: '🚨 유튜브 — ' + (map[first.cause] || first.cause),
+    lines: d.bad.slice(0, 5).map((b) => b.video_id + ' : ' + b.why).concat([
+      `최근 14일 ${d.checked}건 중 ${d.bad.length}건 이상 · 정상 ${d.ok}건`,
+      '확인: YouTube Studio → 콘텐츠 (저작권 신고 여부)',
+    ]),
+    url: `${site}/admin/crons`,
+    urlLabel: '크론 상태',
+  };
+}
+
+async function checkYouTubeVideos(opts) {
+  try {
+    const DAYS = Number(process.env.YT_VIDEO_WATCH_DAYS || 14);
+    const since = new Date(Date.now() - DAYS * 86400000).toISOString();
+    const { data: rows } = await supabaseAdmin.from('youtube_posts')
+      .select('video_id, status, created_at')
+      .eq('status', 'submitted').not('video_id', 'is', null)
+      .gte('created_at', since).limit(200);
+    const list = rows || [];
+    if (!list.length) {
+      const none = { healthy: true, checked: 0, ok: 0, bad: [], reason: '최근 ' + DAYS + '일 업로드 없음 — 판단 보류' };
+      return (opts && opts.dry) ? { dry: true, ...none } : none;
+    }
+
+    const { fetchVideoStates } = require('../_lib/youtube');
+    let states;
+    try {
+      states = await fetchVideoStates(list.map((r) => r.video_id));
+    } catch (e) {
+      // 스코프가 아직 없으면 감시를 '고장'으로 울리지 않는다 — 재인증 안내만 남긴다.
+      return { skipped: true, reason: (e && e.message) || 'videos.list 실패' };
+    }
+
+    const d = judgeVideoStates(list, states);
+    if (opts && opts.dry) return { dry: true, ...d };
+
+    const { data: st } = await supabaseAdmin.from('ops_alert_state')
+      .select('last_alert_at, last_payload').eq('key', YT_VIDEO_ALERT_KEY).maybeSingle();
+    const lastAt = st && st.last_alert_at ? Date.parse(st.last_alert_at) : 0;
+    const wasBroken = !!(st && st.last_payload && st.last_payload.broken);
+    const COOLDOWN_H = Number(process.env.YT_VIDEO_ALERT_COOLDOWN_H || 12);
+
+    let alerted = false;
+    if (!d.healthy && Date.now() - lastAt > COOLDOWN_H * 3600000) {
+      await pushAlert({ ...buildVideoStateAlert(d, SITE), personalOnly: true });
+      alerted = true;
+    } else if (d.healthy && wasBroken) {
+      await pushAlert({
+        personalOnly: true, title: '✅ 유튜브 영상 상태 정상',
+        lines: [`최근 업로드 ${d.ok}건 전부 공개 상태`],
+        url: `${SITE}/admin/crons`, urlLabel: '크론 상태',
+      });
+      alerted = true;
+    }
+    if (alerted || wasBroken !== !d.healthy) {
+      await supabaseAdmin.from('ops_alert_state').upsert({
+        key: YT_VIDEO_ALERT_KEY,
+        last_alert_at: alerted ? new Date().toISOString() : (st && st.last_alert_at) || null,
+        last_payload: { broken: !d.healthy, bad: d.bad.slice(0, 5) },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'key' });
+    }
+    return { ...d, alerted };
+  } catch (e) {
+    console.error('[pipeline-watch] youtube video health 실패', e && e.message);
+    return { error: (e && e.message) || 'unknown' };
+  }
+}
+
+module.exports.judgeVideoStates = judgeVideoStates;
+module.exports.buildVideoStateAlert = buildVideoStateAlert;
