@@ -229,7 +229,12 @@ module.exports = withCronGuard('pipeline-watch', async function handler(req, res
    * 이제 크론의 자기보고 대신 tiktok_posts 행 수를 직접 센다. */
   const tiktok = await checkTikTok({ dry });
 
-  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels, faq, duration, naver, tiktok });
+  /* ── 죽은사람 스위치 (2026-08-07 추가) ──
+   * 맥미니 영상 압축기는 서버 밖에서 돈다. 조용히 멈춰도 cron_runs 에
+   * 흔적이 없다. 그래서 '기록이 안 오는 것' 자체를 신호로 읽는다. */
+  const heartbeat = await checkHeartbeats({ dry });
+
+  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels, faq, duration, naver, tiktok, heartbeat });
 });
 
 /** 서술문 생산이 실제로 되고 있는지 보고, 이상하면 텔레그램으로 알린다. */
@@ -973,3 +978,137 @@ async function checkTikTok(opts) {
 
 module.exports.judgeTikTokHealth = judgeTikTokHealth;
 module.exports.buildTikTokAlert = buildTikTokAlert;
+
+/* ── 죽은사람 스위치: 서버 밖 작업 감시 (2026-08-07 추가) ──────────
+ * 맥미니 영상 압축기는 우리 서버 밖에서 돈다. 맥이 꺼지거나, macOS 권한이
+ * 풀리거나, 드라이브 동기화가 끊기거나, ffmpeg 이 깨져도 cron_runs 에는
+ * 아무 흔적이 안 남는다. 대시보드는 평화롭고 유튜브만 조용히 마른다.
+ *
+ * 앞의 감시들은 전부 '우리가 남긴 기록'을 읽는다. 이건 반대다 —
+ * **기록이 안 오는 것 자체를 신호로 읽는다.** 살아 있으면 신호를 보내고,
+ * 신호가 끊기면 그게 경보다.
+ *
+ * 창이 24시간이 아니라 30시간인 이유: 압축기는 5분마다 돌지만 맥미니를
+ * 하룻밤 끄는 건 흔한 일이다. 24시간이면 주말마다 울린다. 울리는 감시는
+ * 곧 무시되는 감시가 된다. */
+const HEARTBEAT_ALERT_KEY = 'heartbeat-health';
+
+/* 감시 대상 — 이름, 사람이 읽을 이름, 침묵 허용 시간(시간). */
+const HEARTBEATS = [
+  { source: 'video-compress', label: '맥미니 영상 압축기', maxSilentH: 30 },
+];
+
+/**
+ * 하트비트 침묵 판정 (순수 함수, 테스트 대상).
+ * @param {Array} beats [{source,label,maxSilentH,lastAt(ms|null),ok,note,failed}]
+ * @param {number} now
+ */
+function judgeHeartbeats(beats, now) {
+  const t = now || Date.now();
+  const rows = (beats || []).map((b) => {
+    const silentH = b.lastAt ? (t - b.lastAt) / 3600000 : null;
+    let state = 'ok';
+    let reason = '';
+    if (b.lastAt === null || b.lastAt === undefined) {
+      // 한 번도 신호가 없다 = 아직 설치를 안 했다. 고장이 아니라 '미설치'다.
+      // 여기서 울리면 설치 전까지 매번 울린다 — 그건 소음이다.
+      state = 'never';
+      reason = `${b.label}: 아직 한 번도 신호 없음 (미설치)`;
+    } else if (silentH > b.maxSilentH) {
+      state = 'silent';
+      reason = `${b.label}: ${Math.floor(silentH)}시간째 신호 없음 (허용 ${b.maxSilentH}시간)`;
+    } else if (b.ok === false) {
+      state = 'failing';
+      reason = `${b.label}: 마지막 신호가 실패 — ${b.note || '사유 없음'}`;
+    } else if (b.failed > 0) {
+      state = 'failing';
+      reason = `${b.label}: 마지막 회차에 실패 ${b.failed}건 — ${b.note || ''}`;
+    } else {
+      reason = `${b.label}: ${silentH < 1 ? '방금' : Math.floor(silentH) + '시간 전'} 신호 정상`;
+    }
+    return { ...b, silentH, state, reason };
+  });
+  const broken = rows.filter((r) => r.state === 'silent' || r.state === 'failing');
+  return {
+    healthy: broken.length === 0,
+    rows,
+    broken,
+    // 'never' 는 고장이 아니지만 응답에는 남겨서 설치 여부를 눈으로 볼 수 있게 한다.
+    pending: rows.filter((r) => r.state === 'never').map((r) => r.source),
+  };
+}
+
+function buildHeartbeatAlert(d, site) {
+  const first = d.broken[0] || {};
+  return {
+    title: '🚨 ' + (first.state === 'silent' ? '외부 작업 신호 끊김' : '외부 작업 실패'),
+    lines: d.broken.map((b) => b.reason).concat([
+      first.state === 'silent'
+        ? '확인: 맥미니가 켜져 있는지 · 시스템설정 → 개인정보보호 → 폴더 접근 허용 여부 · 구글 드라이브 동기화'
+        : '확인: 맥미니에서 tail -30 ~/Library/Logs/pap-video-compress.log',
+    ]),
+    url: `${site}/admin/crons`,
+    urlLabel: '크론 상태',
+  };
+}
+
+async function checkHeartbeats(opts) {
+  try {
+    const keys = HEARTBEATS.map((h) => 'hb:' + h.source);
+    const { data } = await supabaseAdmin.from('ops_alert_state')
+      .select('key, last_payload, updated_at').in('key', keys);
+    const byKey = new Map((data || []).map((r) => [r.key, r]));
+
+    const beats = HEARTBEATS.map((h) => {
+      const row = byKey.get('hb:' + h.source);
+      const p = (row && row.last_payload) || null;
+      const stamp = (p && p.beat_at) || (row && row.updated_at) || null;
+      return {
+        source: h.source, label: h.label, maxSilentH: h.maxSilentH,
+        lastAt: stamp ? Date.parse(stamp) : null,
+        ok: p ? p.ok !== false : undefined,
+        note: (p && p.note) || '',
+        failed: (p && p.failed) || 0,
+      };
+    });
+
+    const d = judgeHeartbeats(beats, Date.now());
+    if (opts && opts.dry) return { dry: true, ...d };
+
+    const { data: st } = await supabaseAdmin.from('ops_alert_state')
+      .select('last_alert_at, last_payload').eq('key', HEARTBEAT_ALERT_KEY).maybeSingle();
+    const lastAt = st && st.last_alert_at ? Date.parse(st.last_alert_at) : 0;
+    const wasBroken = !!(st && st.last_payload && st.last_payload.broken);
+    const COOLDOWN_H = Number(process.env.HEARTBEAT_ALERT_COOLDOWN_H || 12);
+
+    let alerted = false;
+    if (!d.healthy && Date.now() - lastAt > COOLDOWN_H * 3600000) {
+      await pushAlert({ ...buildHeartbeatAlert(d, SITE), personalOnly: true });
+      alerted = true;
+    } else if (d.healthy && wasBroken) {
+      await pushAlert({
+        personalOnly: true,
+        title: '✅ 외부 작업 신호 복구',
+        lines: d.rows.map((r) => r.reason),
+        url: `${SITE}/admin/crons`, urlLabel: '크론 상태',
+      });
+      alerted = true;
+    }
+    if (alerted || wasBroken !== !d.healthy) {
+      await supabaseAdmin.from('ops_alert_state').upsert({
+        key: HEARTBEAT_ALERT_KEY,
+        last_alert_at: alerted ? new Date().toISOString() : (st && st.last_alert_at) || null,
+        last_payload: { broken: !d.healthy, sources: d.broken.map((b) => b.source) },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'key' });
+    }
+    return { healthy: d.healthy, rows: d.rows.map((r) => r.reason), pending: d.pending, alerted };
+  } catch (e) {
+    console.error('[pipeline-watch] heartbeat 감시 실패', e && e.message);
+    return { error: (e && e.message) || 'unknown' };
+  }
+}
+
+module.exports.judgeHeartbeats = judgeHeartbeats;
+module.exports.buildHeartbeatAlert = buildHeartbeatAlert;
+module.exports.HEARTBEATS = HEARTBEATS;
