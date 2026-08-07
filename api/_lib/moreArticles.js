@@ -9,9 +9,18 @@
  * (api/articles/[id].js)가 같은 빌더를 쓴다. 규칙이 두 벌이면 한쪽만
  * 고쳐진다.
  *
+ * 2026-08-07 — related 를 '임베딩 유사도' 로 바꿨다.
+ *   그전 규칙은 '같은 카테고리 + 발행일 인접' 이었다. 카테고리가 같다는 것
+ *   말고는 내용이 닮았다는 근거가 없어서, 2019년 기사를 읽던 사람에게
+ *   2019년 기사가 붙었다. 에디토리얼은 이미 벡터 유사도(related_editorials)
+ *   로 추천하는데, 정작 **사이트→IG 아웃클릭의 94%가 나오는 SSR 기사
+ *   페이지**에 제일 약한 추천이 달려 있었다.
+ *   임베딩이 없거나 RPC 가 실패하면 예전 인접 규칙으로 그대로 내려간다 —
+ *   추천이 비는 것보다 약한 추천이라도 있는 편이 낫다.
+ *
  * 규칙 (2026-07-27 확정 — 내부링크 그래프 개선):
  *   prev/next  = 발행일 체인 (같은 날짜는 created_at 으로 타이브레이크)
- *   related    = 같은 카테고리 발행일 인접 (앞2 + 뒤2, 부족하면 최신으로 채움)
+ *   related    = 임베딩 코사인 유사도 상위 4건 (실패 시 옛 규칙으로 폴백)
  * 최신 4건 고정이 아니라 인접인 이유: 오래된 기사끼리도 상호 연결돼야
  * 토픽 클러스터 밀도가 오르고 미색인이 줄기 때문(서치콘솔 실측).
  */
@@ -57,10 +66,25 @@ async function buildMoreArticles(data) {
     const seen = new Set(relAdj.map(a => a.id));
     for (const a of (fill.data || [])) { if (!seen.has(a.id)) { relAdj.push(a); seen.add(a.id); } }
   }
+  // 1순위: 임베딩 유사도. 2순위(폴백): 위에서 구해 둔 발행일 인접.
+  let related = null;
+  try {
+    const { data: sim, error: simErr } = await supabaseAdmin
+      .rpc('related_articles', { target_id: data.id, match_count: 4 });
+    if (!simErr && Array.isArray(sim) && sim.length) {
+      related = sim
+        .filter(r => r && r.id && r.id !== data.id)
+        .map(r => ({ title: r.title, slug: r.slug, id: r.id, thumbnail: r.thumbnail || '' }));
+    }
+  } catch (_e) { /* 폴백으로 내려간다 */ }
+  if (!related || !related.length) {
+    related = relAdj.filter(a => a && a.id !== data.id).slice(0, 4).map(_norm);
+  }
+
   return {
     prev: _norm(prevR.data && prevR.data[0]) || null,
     next: _norm(nextR.data && nextR.data[0]) || null,
-    related: relAdj.filter(a => a && a.id !== data.id).slice(0, 4).map(_norm),
+    related: related.slice(0, 4),
   };
 }
 

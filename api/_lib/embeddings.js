@@ -105,4 +105,50 @@ async function embedAndStoreEditorial(ed) {
   return true;
 }
 
-module.exports = { embed, toPgVectorString, MODEL, editorialEmbeddingText, embedAndStoreEditorial };
+// ── Article-specific helpers (2026-08-07) ───────────────────────────────
+// 왜 지금 —  기사(2,300편)에는 임베딩 자체가 없었다. 'MORE ARTICLES' 추천이
+// '같은 카테고리 + 발행일 인접' 이라, 2019년 기사를 읽던 사람에게 2019년
+// 기사를 붙여 주고 있었다. 그런데 사이트→IG 아웃클릭의 94%가 SSR 기사
+// 페이지에서 나온다 — 사람이 실제로 들어오는 문에 제일 약한 추천이 달려
+// 있었다는 뜻이다. 에디토리얼에서 이미 검증된 구조를 그대로 복사한다.
+//
+// 본문(content)은 넣지 않는다. 제목+요약+태그로 충분하고(에디토리얼에서
+// 확인됨), 본문까지 넣으면 8k 자 상한에 걸려 잘리는 기사가 생긴다.
+function articleEmbeddingText(a) {
+  if (!a) return '';
+  const tags = Array.isArray(a.tags) ? a.tags.join(', ')
+    : (typeof a.tags === 'string' ? a.tags : '');
+  /* articles 에는 summary/description 컬럼이 없다(실측). 있는 것은
+     title · subtitle · category · tags · content 다. 본문은 통째로 넣지 않고
+     앞 1,200자만 쓴다 — 주제는 도입부에서 거의 결정되고, 8k 자 상한에
+     걸려 잘리는 사고도 막는다. */
+  const body = (a.content || '').toString().replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ').trim().slice(0, 1200);
+  const parts = [
+    (a.title || '').toString().trim(),
+    (a.subtitle || '').toString().trim(),
+    (a.category || '').toString().trim(),
+    tags ? 'Tags: ' + tags : '',
+    body,
+  ];
+  return parts.filter(Boolean).join('. ');
+}
+
+async function embedAndStoreArticle(a) {
+  if (!a || !a.id) return false;
+  const vec = await embed(articleEmbeddingText(a));
+  if (!vec) return false;
+  const { error } = await supabaseAdmin
+    .from('articles')
+    .update({ embedding: toPgVectorString(vec) })
+    .eq('id', a.id);
+  if (error) {
+    console.warn('[embeddings] article DB update failed', a.id, error.message);
+    return false;
+  }
+  return true;
+}
+
+module.exports = { embed, toPgVectorString, MODEL,
+  editorialEmbeddingText, embedAndStoreEditorial,
+  articleEmbeddingText, embedAndStoreArticle };

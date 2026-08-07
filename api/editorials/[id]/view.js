@@ -18,6 +18,13 @@ const { supabaseAdmin } = require('../../_lib/supabase');
 const { handleCors } = require('../../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../../_lib/rateLimit');
 const { isBot } = require('../../_lib/botDetect');
+/* 2026-08-07 (도메니코 결정) — 로그인 회원의 조회만 누가 봤는지 남긴다.
+   비회원은 지금까지처럼 익명 카운트(user_id = null).
+   왜 필요한가 — 개인화('오늘의 PAP'·이어보기·안 읽은 표시)의 전제인데,
+   이 표에는 사용자 컬럼 자체가 없었다. 회원 857명의 취향 데이터가
+   하루도 안 쌓이고 있었다는 뜻이다.
+   실패해도 조회 기록 자체를 막지 않는다 — 토큰이 없거나 깨져도 익명으로 남는다. */
+const { verifyToken } = require('../../_lib/auth');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -41,10 +48,18 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ message: 'Missing editorial id' });
   }
 
+  let viewerId = null;
+  try {
+    const claims = verifyToken(req);
+    if (claims && claims.userId) viewerId = claims.userId;
+    else if (claims && claims.id) viewerId = claims.id;
+    else if (claims && claims.sub) viewerId = claims.sub;
+  } catch (_e) { /* 토큰 문제로 조회 기록을 잃지 않는다 */ }
+
   try {
     const { error } = await supabaseAdmin
       .from('editorial_views')
-      .insert({ editorial_id: id });
+      .insert({ editorial_id: id, user_id: viewerId });
 
     if (error) {
       // FK violation on a non-existent editorial id is the most common path

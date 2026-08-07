@@ -167,6 +167,10 @@
     {
       "path": "/api/cron/celeb-classify",
       "schedule": "7-57/10 * * * *"
+    },
+    {
+      "schedule": "1-51/10 * * * *",
+      "path": "/api/cron/backfill-embeddings"
     }
   ],
   "rewrites": [
