@@ -25,6 +25,19 @@ async function apiPost(path,body){var r=await fetch(API_BASE+path,{method:'POST'
 async function apiPut(path,body){var r=await fetch(API_BASE+path,{method:'PUT',headers:apiHeaders(),body:JSON.stringify(body)});return r.json();}
 async function apiPatch(path,body){var r=await fetch(API_BASE+path,{method:'PATCH',headers:apiHeaders(),body:JSON.stringify(body)});return r.json();}
 async function apiDelete(path){var r=await fetch(API_BASE+path,{method:'DELETE',headers:apiHeaders()});return r.json();}
+/* 2026-08-07 — 저장이 실패해도 '성공' 이라고 뜨던 것을 막는다.
+   apiPut/apiPost 는 HTTP 상태와 무관하게 응답 본문을 그대로 돌려주고
+   예외를 던지지 않는다. 그래서 호출부가 결과를 안 보면 실패가 성공으로
+   보인다 — 실제로 에디토리얼 편집 저장(7631행)이 그 상태였다.
+   서버는 이제 실패 시 { error, code } 를 준다(_lib/pgError.js). 그걸 던진다. */
+function assertApiOk(resp, fallback){
+  if(resp && resp.error){
+    var e=new Error(resp.error || fallback || '요청에 실패했습니다.');
+    e.code=resp.code; e.field=resp.field; e.conflictValue=resp.conflict_value;
+    throw e;
+  }
+  return resp;
+}
 /* 2026-07-26 감사 B-6 — textContent→innerHTML 직렬화는 따옴표를 남긴다.
    그 값이 value="…" 같은 속성에 들어가면 ` onerror=` 로 속성을 빠져나온다.
    따옴표까지 직접 이스케이프해 텍스트·속성 양쪽에서 안전하게 만든다. */
@@ -6155,9 +6168,10 @@ async function editorialBulkAction(action){
       if(action === 'delete'){
         await apiDelete('/editorials/' + id);
       } else if(action === 'publish'){
-        await apiPut('/editorials/' + id, { status: 'published' });
+        // apiPut 은 예외를 안 던진다 — 확인하지 않으면 실패가 성공으로 집계된다
+        assertApiOk(await apiPut('/editorials/' + id, { status: 'published' }), '발행 실패');
       } else if(action === 'draft'){
-        await apiPut('/editorials/' + id, { status: 'draft' });
+        assertApiOk(await apiPut('/editorials/' + id, { status: 'draft' }), '초안 전환 실패');
       } else if(action === 'addTags' || action === 'removeTags'){
         var row = byId[id];
         var current = (row && Array.isArray(row.tags)) ? row.tags.slice() : [];
@@ -7628,10 +7642,11 @@ async function savePost(mode){
     if(category==='editorial'){
       var successMsg;
       if(editingEditorialId){
-        await apiPut('/editorials/'+editingEditorialId,payload);
+        // 결과를 확인한다 — 안 보면 실패도 '수정되었습니다' 로 뜬다(2026-08-07)
+        assertApiOk(await apiPut('/editorials/'+editingEditorialId,payload), '수정에 실패했습니다.');
         successMsg='에디토리얼이 수정되었습니다.';
       }else{
-        await apiPost('/editorials',payload);
+        assertApiOk(await apiPost('/editorials',payload), '등록에 실패했습니다.');
         successMsg='에디토리얼이 등록되었습니다.';
       }
       _peShowSaveSuccess(successMsg);

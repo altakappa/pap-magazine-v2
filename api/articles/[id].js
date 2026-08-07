@@ -10,6 +10,8 @@ const { handleCors } = require('../_lib/cors');
 const { requireAdmin } = require('../_lib/auth');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { recordContentChange, diffFields, attachAuthorship } = require('../_lib/audit');
+// 2026-08-07 — 유니크 제약 위반을 사람이 읽는 안내로 (발행 8연속 실패 사고)
+const { describePgError } = require('../_lib/pgError');
 
 // QA #202 — fields tracked in the audit diff for articles.
 const ARTICLE_AUDIT_FIELDS = [
@@ -162,7 +164,10 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ data });
     } catch (err) {
       console.error('Article PUT error:', err);
-      return res.status(500).json({ error: 'Failed to update article' });
+      // 2026-08-07 — 에디토리얼과 같은 처리 (_lib/pgError.js 주석 참고)
+      const known = describePgError(err);
+      if (known) return res.status(known.status).json(known.body);
+      return res.status(500).json({ error: 'Failed to update article', code: 'update_failed' });
     }
   }
 

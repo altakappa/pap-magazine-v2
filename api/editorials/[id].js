@@ -15,6 +15,8 @@ const { feeForType } = require('../_lib/submissionPayment');
 const { recordContentChange, diffFields, attachAuthorship } = require('../_lib/audit');
 const { sendEditorialToTelegramSafe } = require('../_lib/telegram');
 const { sanitizeInstaLogoSettings } = require('../_lib/instaLogoSettings');  // 2026-07-28
+// 2026-08-07 — 유니크 제약 위반을 사람이 읽는 안내로 (발행 8연속 실패 사고)
+const { describePgError } = require('../_lib/pgError');
 
 // QA #202 — fields we care about in the audit diff. Long opaque JSONB
 // like `embedding` is intentionally excluded so the diff stays small
@@ -372,7 +374,13 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ data });
     } catch (err) {
       console.error('Editorial PUT error:', err);
-      return res.status(500).json({ error: 'Failed to update editorial' });
+      /* 2026-08-07 — 유니크 제약 위반은 '고칠 방법이 있는 오류'다.
+         발행 8연속 실패 사고: 화면에 'Failed to update editorial' 만 떠서
+         원인(slug 중복)을 알 수 없었다. 제약 이름·컬럼은 여전히 숨기고
+         분류용 code + 한국어 안내만 내보낸다. 자세한 경위는 _lib/pgError.js. */
+      const known = describePgError(err);
+      if (known) return res.status(known.status).json(known.body);
+      return res.status(500).json({ error: 'Failed to update editorial', code: 'update_failed' });
     }
   }
 

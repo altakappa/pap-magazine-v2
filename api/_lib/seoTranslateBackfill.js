@@ -179,6 +179,50 @@ function newTiming() {
   return { queueMs: 0, callMs: 0, saveMs: 0, calls: 0, saves: 0 };
 }
 
+/* ─── 2026-08-08 — 잔량만 싸게 물어본다 (조합 사전 걸러내기) ──────────
+ *
+ * 사건: 08-08 00:07~00:13 크론 note 가 4회 연속 이랬다.
+ *     ru/art:0/남706 · zh/art:1/남1478 · **it/art:0/남0** · skip(time-budget)
+ *     ·콜3·웨1·남19.5s
+ * `it/art` 는 **이미 완주한 조합(남0)** 인데 매 실행 3자리 중 하나를 먹었다.
+ * 그 결과 ja(944) · de(536) 는 차례를 못 받고, 3시간 90회 실행에 저장 82건.
+ *
+ * 왜 기존 finished 로 못 걸렀나: 크론의 finished 는 `r.remaining === 0` 을
+ * 보고 채운다 — 즉 **한 번 호출해 봐야** 끝난 걸 안다. 실행이 끝나면 그
+ * 기억도 사라져서 다음 실행이 또 같은 자리를 태운다.
+ *
+ * 그래서 웨이브를 돌기 전에 counts RPC 만 따로 부른다. 큐 조회(무거움)는
+ * 하지 않고 개수만 센다 — 실측 66.9ms/콜, 14조합 병렬로 1초 미만이다.
+ * 100초 예산에서 1초를 내고 헛웨이브를 없앤다.
+ *
+ * 임계값(MIN_TRANSLATED / MIN_SOURCE)을 크론이 다시 적지 않도록 이 파일에
+ * 두는 것이 중요하다 — 두 곳에 따로 적으면 한쪽만 바뀐다(이 저장소가 이미
+ * 여러 번 겪은 패턴이라 위 MIN_SOURCE 주석이 같은 말을 하고 있다).
+ *
+ * ⚠️ 실패는 **열어 둔다**(fail-open). RPC 가 없거나 오류면 null 을 돌려주고
+ * 호출부는 그 조합을 살려 둔다. 이 최적화 때문에 일이 사라지면 안 된다. */
+async function remainingFor(kind, lang, { since = null, maxSrcChars = 0 } = {}) {
+  const cfg = KINDS[kind];
+  if (!cfg || rpcUnavailable) return null;
+  try {
+    const { data, error } = await supabaseAdmin.rpc('seo_translate_counts', {
+      p_kind: kind,
+      p_lang: lang,
+      p_min_done: MIN_TRANSLATED[cfg.doneField] || 40,
+      p_min_src: cfg.minSrc || 30,
+      p_since: since,
+      p_max_src: maxSrcChars || 0,
+    });
+    if (error) throw error;
+    const row = Array.isArray(data) ? (data[0] || {}) : (data || {});
+    return Number(row.remaining) || 0;
+  } catch (e) {
+    console.error('[seoTranslateBackfill] 잔량 조회 실패 → 조합 살려 둔다:',
+      String((e && e.message) || e).slice(0, 100));
+    return null;                       // fail-open
+  }
+}
+
 async function fetchQueueViaRpc(kind, lang, limit, cfg, timing, since, maxSrc) {
   if (rpcUnavailable) return null;
   const t0 = Date.now();
@@ -865,4 +909,4 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing
   };
 }
 
-module.exports = { runBackfillBatch, newTiming, hasHangul, hangulRatio, validateTranslation, nameRule, styleRules, normalizeBatch, parseJsonArray, salvageObjects, parseSentinel, pickItems, buildBatchPrompt, msLeft, canCall, callBudget, CALL_SLACK_MS, MAX_PASSES, LANG_NAMES, KINDS };
+module.exports = { runBackfillBatch, remainingFor, newTiming, hasHangul, hangulRatio, validateTranslation, nameRule, styleRules, normalizeBatch, parseJsonArray, salvageObjects, parseSentinel, pickItems, buildBatchPrompt, msLeft, canCall, callBudget, CALL_SLACK_MS, MAX_PASSES, LANG_NAMES, KINDS };

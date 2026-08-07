@@ -60,7 +60,7 @@
  */
 
 const { withCronGuard } = require('../_lib/cronGuard');   // 실행기록·실패알림 (2026-07-30)
-const { runBackfillBatch, normalizeBatch, LANG_NAMES, KINDS } = require('../_lib/seoTranslateBackfill');
+const { runBackfillBatch, remainingFor, normalizeBatch, LANG_NAMES, KINDS } = require('../_lib/seoTranslateBackfill');
 
 /* 숫자형 환경변수 읽기 (2026-08-02 신설).
  *
@@ -535,6 +535,37 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
   const T = { queueMs: 0, callMs: 0, saveMs: 0, calls: 0, waves: 0 };
   let lastLeftMs = null;
 
+  /* ─── 2026-08-08 — 끝난 조합을 웨이브 전에 걸러낸다 ────────────────
+   *
+   * 사건: 00:07~00:13 note 가 4회 연속 이랬다.
+   *   ru/art:0/남706 · zh/art:1/남1478 · **it/art:0/남0** · skip(time-budget)
+   *   ·콜3·웨1·남19.5s
+   * `it/art` 는 이미 완주한 조합(남0)인데 매 실행 3자리 중 하나를 먹었다.
+   * ja(944)·de(536)는 차례를 못 받았고, 3시간 90회 실행에 저장 82건이 됐다.
+   *
+   * 아래 `finished` 는 `r.remaining === 0` 을 보고 채운다 — **한 번 호출해
+   * 봐야** 끝난 걸 안다. 실행이 끝나면 그 기억도 사라져 다음 실행이 또
+   * 같은 자리를 태운다. 그래서 웨이브를 돌기 전에 개수만 물어본다.
+   *
+   * 비용: counts RPC 실측 66.9ms, 조합 전부 병렬로 1초 미만. 100초 예산의
+   * 1% 를 내고 헛웨이브를 없앤다.
+   * 안전: 조회 실패는 null → 그 조합을 **살려 둔다**(fail-open). 이 최적화
+   * 때문에 일이 사라지면 안 된다. 신규 발행분이 생기면 잔량이 다시 0 이
+   * 아니게 되므로 자동으로 링에 복귀한다 — 별도 상태 저장이 필요 없다. */
+  let preskipped = 0;
+  /* 테스트가 이 모듈을 스텁으로 갈아끼우면 remainingFor 가 없을 수 있다.
+     위 `!KINDS ||` 와 같은 이유의 방어다 — 최적화가 없다고 크론이 죽으면 안 된다. */
+  if (typeof remainingFor === 'function') {
+    const t0 = Date.now();
+    const counts = await Promise.all(
+      ordered.map(t => remainingFor(t.kind, t.lang, { since: sinceDate, maxSrcChars: MAX_SRC_CHARS })
+        .catch(() => null)));
+    ordered.forEach((t, i) => {
+      if (counts[i] === 0) { finished.add(key(t)); preskipped++; }
+    });
+    T.queueMs += Date.now() - t0;
+  }
+
   const MAX_WAVES = 40;   // 무한 루프 방지 (정상적으로는 예산이 먼저 끝난다)
   let cursor = 0;
   for (let wave = 0; wave < MAX_WAVES && !rateLimited; wave++) {
@@ -609,7 +640,10 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
     + (lastLeftMs === null ? '' : '·남' + s1(lastLeftMs) + 's')
     /* 어떤 나이 컷으로 돌았는지 남긴다 — 잔여가 갑자기 줄었을 때
        '컷 때문인가 다 끝난 건가' 를 로그만 보고 구분할 수 있어야 한다. */
-    + (sinceDate ? '·컷' + MAX_AGE_DAYS + 'd' : '·컷없음');
+    + (sinceDate ? '·컷' + MAX_AGE_DAYS + 'd' : '·컷없음')
+    /* 웨이브 전에 걸러낸 '이미 끝난' 조합 수. 이 값이 크면 링이 그만큼
+       가벼워졌다는 뜻이고, 0 이면 걸러낼 게 없었다는 뜻이다. */
+    + (preskipped ? '·완주' + preskipped : '');
 
   /* cronGuard 가 note 를 500자로 자른다. 계측을 그냥 뒤에 붙이면 조합이 많은
      실행에서 계측만 잘려나가 — 정작 보려던 값이 사라진다. 조합 쪽을 먼저
