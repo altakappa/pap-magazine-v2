@@ -141,6 +141,17 @@ t('크론이 vercel.json 에 등록됨',
 t('상한 100MB (Vercel 120초·1GB 안)', require(path.join(ROOT, 'api', 'cron', 'drive-youtube-post.js')).MAX_BYTES === 100 * 1024 * 1024);
 t('drive_file_id 로 중복 업로드를 막는다', /onConflict: 'drive_file_id'/.test(src));
 t('실패 기록은 재시도를 허용한다', /status !== 'failed'/.test(src));
+// 2026-08-07 사고 재발 방지: 유튜브엔 올라갔는데 DB 기록이 조용히 실패해
+// 크론이 같은 영상을 2시간마다 다시 올릴 뻔했다. 기록 실패는 반드시 시끄러워야 한다.
+t('DB 기록 실패를 삼키지 않는다', /const \{ error: recErr \}/.test(src) && /if \(recErr\)/.test(src));
+t('기록 실패 시 500 으로 떨어진다', /error: 'record failed'/.test(src));
+t('기록 실패 문구가 중복 업로드 위험을 말한다', /반복 업로드될 수 있음/.test(src));
+t('마이그레이션 108 이 부분 인덱스를 전체 유니크로 바꾼다', (() => {
+  const m = fs.readFileSync(path.join(ROOT, 'supabase_migrations', '108_youtube_posts_drive_file_full_unique.sql'), 'utf8');
+  return /drop index if exists youtube_posts_drive_file_id_key/.test(m)
+    && /create unique index[\s\S]*\(drive_file_id\);/.test(m)
+    && !/where drive_file_id is not null/i.test(m.split('create unique index')[1] || '');
+})());
 {
   const dsrc = fs.readFileSync(path.join(ROOT, 'api', '_lib', 'driveVideos.js'), 'utf8');
   // 403 은 원인이 둘인데 구글이 같은 코드로 준다. 2026-08-07 실제로 이걸 안 갈라놔서

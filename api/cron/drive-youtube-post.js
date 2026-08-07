@@ -190,9 +190,23 @@ module.exports = withCronGuard('drive-youtube-post', async function handler(req,
       detail = String(err && err.message || err).slice(0, 400);
     }
 
-    await supabaseAdmin.from('youtube_posts').upsert({
+    /* 기록 실패를 절대 삼키지 않는다.
+     * 2026-08-07 사고: 107 이 부분 유니크 인덱스(where … is not null)를 만들었는데
+     * PostgREST 의 onConflict 는 술어 없는 유니크 인덱스만 쓴다. upsert 가 에러를
+     * 냈고 우리는 그걸 확인하지 않았다 → 유튜브엔 올라갔는데 표에는 안 남았고,
+     * 크론이 2시간마다 같은 영상을 공개 채널에 다시 올릴 뻔했다.
+     * 오늘 하루 종일 잡던 그 침묵 패턴을 새 코드에 그대로 심었던 셈이다.
+     * 기록이 안 되면 '올렸다'고 말하지 않는다 — 중복 업로드가 훨씬 나쁘다. */
+    const { error: recErr } = await supabaseAdmin.from('youtube_posts').upsert({
       drive_file_id: file.id, article_id: art.id, video_id: videoId, status, detail,
     }, { onConflict: 'drive_file_id' });
+    if (recErr) {
+      const msg = 'DB 기록 실패 — 같은 영상이 반복 업로드될 수 있음! video_id=' + videoId
+        + ' file=' + file.name + ' :: ' + String(recErr.message || recErr).slice(0, 200);
+      console.error('[drive-youtube-post]', msg);
+      note(res, msg);
+      return res.status(500).json({ ok: false, error: 'record failed', video_id: videoId, detail: msg });
+    }
 
     if (status === 'failed') {
       note(res, '업로드 실패: ' + file.name + ' — ' + detail);
