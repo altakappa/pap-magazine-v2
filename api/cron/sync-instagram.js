@@ -28,7 +28,7 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { pingNewContent, SITE } = require('../_lib/pingSearch');
-const { postTweet, buildArticleTweet, isConfigured: xConfigured, buildConversationalTweet } = require('../_lib/xPost');
+const { postTweet, buildArticleTweet, isConfigured: xConfigured, buildConversationalTweet, uploadArticleMedia } = require('../_lib/xPost');
 const { postArticleToThreads } = require('../_lib/threadsAutopost');
 const {
   listRecentMedia,
@@ -235,8 +235,21 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
                   const conv = await buildConversationalTweet(artForX);
                   if (conv) { xText = conv.text; console.log('[sync-ig] 대화형 트윗 (점수 ' + conv.score + '): ' + conv.angle); }
                 } catch (_) { /* 실패는 삼키고 기본 빌더로 */ }
-                const tw = await postTweet(xText || buildArticleTweet(artForX));
-                results.tweets = (results.tweets || []).concat(tw.ok ? [tw.id] : ['실패:' + (tw.detail || tw.status)]);
+                /* 미디어를 붙여 올린다 (2026-08-07 도메니코 지시).
+                   "현재 글만 올라가는 방식은 더이상 올리지말고 …
+                    내가 인스타에 올리는 영상이나 이미지들을 그대로 올려줘."
+                   uploadArticleMedia 는 x-publish(수동 경로)가 쓰던 것 그대로다 —
+                   자동 경로만 텍스트로 나가고 있었다. 영상 1편 또는 이미지 ≤4장.
+                   업로드가 실패해도 트윗 자체는 내보낸다(그림 없이라도 나가는 게
+                   아무것도 안 나가는 것보다 낫다). 대신 결과에 표시를 남긴다. */
+                let xMedia = { mediaIds: [], kind: 'none' };
+                try { xMedia = await uploadArticleMedia(row, {}); }
+                catch (e) { console.error('[sync-ig] X 미디어 업로드 실패:', (e && e.message) || e); }
+                const tw = await postTweet(xText || buildArticleTweet(artForX),
+                  { mediaIds: xMedia.mediaIds });
+                const mark = xMedia.mediaIds.length ? '' : '(미디어없음)';
+                results.tweets = (results.tweets || []).concat(
+                  tw.ok ? [tw.id + mark] : ['실패:' + (tw.detail || tw.status)]);
               } catch (_) {}
             }
             // Threads 자동 게시 — 실패해도 수집 흐름 계속(스위퍼가 재시도).
@@ -245,6 +258,10 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
                 const th = await postArticleToThreads({
                   id: inserted.id, title: row.title, content: row.content,
                   category: row.category, url: artUrl,
+                  /* row 는 방금 insert 한 그 행이라 갤러리·영상이 이미 들어 있다.
+                     이걸 안 넘기면 스레드가 텍스트로만 나간다 (2026-08-07). */
+                  gallery: row.gallery, videos: row.videos,
+                  source_media_type: row.source_media_type,
                 });
                 results.threads = (results.threads || []).concat(
                   th.status === 'published' ? [th.thread_id]

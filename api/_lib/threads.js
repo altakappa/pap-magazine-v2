@@ -36,6 +36,15 @@ const { pushAlert } = require('./pushAlert');
 
 const AUTH_BASE = 'https://threads.net/oauth/authorize';
 const GRAPH = 'https://graph.threads.net';
+
+/* 스레드 캐러셀 상한은 20장이다. 우리 기사 갤러리는 최대 12장이라 실제로는
+   거의 안 걸리지만, 상한을 코드에 적어 두면 나중에 인스타가 더 많이 허용해도
+   조용히 깨지지 않는다. */
+const MAX_CAROUSEL = 20;
+/* 스레드가 받는 이미지 형식은 JPEG·PNG 뿐이다. webp 를 보내면 컨테이너가
+   ERROR 로 떨어진다. 우리 갤러리는 실측 전부 .jpg 였지만 필터는 남겨 둔다 —
+   instagramImport 의 archiveImagesToStorage 가 webp 도 저장할 수 있다. */
+const IMAGE_EXT = /\.(jpe?g|png)(\?|$)/i;
 // 2026-08-03 — threads_manage_insights 추가. 성과 지표(views/likes/replies/
 // reposts/quotes) 조회에 필요하다. 기존 토큰에는 이 권한이 없으므로
 // /api/threads/oauth 재인증 1회가 있어야 threads-metrics 크론이 동작한다.
@@ -225,6 +234,163 @@ async function getAccessToken(accountId) {
  * @param {number} [accountId=1] threads_auth.id — 1=PAP, 2=페퍼릿
  * @returns {Promise<string>} thread id
  */
+/* 컨테이너가 FINISHED 될 때까지 기다린다.
+ *
+ * 2026-07-23 — 생성 직후 바로 발행하면 컨테이너 처리(텍스트에 링크가 있으면
+ * 미리보기 페치, 이미지면 다운로드·검증 포함)가 안 끝나 "Media Not Found"
+ * (code 24) 가 난다. 텍스트 글에서 겪은 사고인데 이미지 글은 더 오래 걸린다 —
+ * 메타가 우리 URL 로 이미지를 실제로 받아 가기 때문이다. 그래서 대기 횟수를
+ * 인자로 받는다.
+ *
+ * postText 가 쓰던 로직을 그대로 뽑은 것이라 텍스트 경로의 동작은 안 변한다. */
+async function waitContainer(id, token, tries) {
+  const n = tries || 6;
+  for (let i = 0; i < n; i++) {
+    await new Promise((r) => setTimeout(r, i === 0 ? 3000 : 4000));
+    const st = await fetch(GRAPH + '/v1.0/' + id + '?fields=status,error_message&access_token=' + encodeURIComponent(token), {
+      signal: AbortSignal.timeout(10000),
+    });
+    const sj = await st.json().catch(() => ({}));
+    if (sj.status === 'FINISHED') return true;
+    if (sj.status === 'ERROR') throw new Error('컨테이너 처리 실패: ' + (sj.error_message || JSON.stringify(sj).slice(0, 200)));
+    if (i === n - 1) throw new Error('컨테이너 처리 대기 초과 (status=' + (sj.status || '?') + ')');
+  }
+  return false;
+}
+
+async function publishContainer(id, token) {
+  const pub = await fetch(GRAPH + '/v1.0/me/threads_publish', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ creation_id: id, access_token: token }),
+    signal: AbortSignal.timeout(20000),
+  });
+  const pj = await pub.json();
+  if (!pub.ok || !pj.id) throw new Error('게시 실패: ' + JSON.stringify(pj).slice(0, 300));
+  return pj.id;
+}
+
+/**
+ * 이미지·영상과 함께 게시한다 (2026-08-07, 도메니코 요청).
+ *
+ * 왜 만들었나 ────────────────────────────────────────────────────────
+ * 그동안 스레드에 이미지가 실린 건 우리 코드가 아니라 **인스타 앱의
+ * '스레드에도 공유'** 기능이었다. 그건 인스타 캡션을 글자 그대로 복사한다.
+ * 도메니코: "캡션은 인스타그램과 동일하게 올리지 않고 웹사이트 링크 태그해서
+ * 지금 자동으로 올라가는 것처럼 캡션을 써서 올리는걸로 하고싶어."
+ *
+ * 그래서 이미지도 우리가 올린다. 인스타 크로스포스트는 도메니코가 앱에서 끈다.
+ *
+ * ⚠️ 링크 미리보기 카드는 포기하는 것이다. 스레드는 이미지가 붙은 글에
+ *    카드를 안 만들어 준다 — 링크는 본문 안에 글자로 남는다. 도메니코가
+ *    알고 고른 거래다("이미지 여러 장 + 링크(텍스트)").
+ *
+ * 한 장이면 IMAGE, 두 장 이상이면 CAROUSEL 이다. 캐러셀은 자식 컨테이너를
+ * 먼저 만들고(is_carousel_item=true) 그 id 들을 children 으로 묶는다.
+ * 자식에는 text 를 넣지 않는다 — 캡션은 부모에만 붙는다.
+ *
+ * 영상도 같은 문으로 받는다. 도메니코: "내가 인스타에 올리는 영상이나
+ * 이미지들을 그대로 올려주면돼." 영상이 있으면 영상 한 편으로 나간다
+ * (X 의 selectArticleMedia 와 같은 판단 — 릴스는 영상이 본체다).
+ *
+ * @param {{images?:string[], video?:string}} media
+ * @param {string} text ≤500자
+ * @param {number} [accountId=1]
+ * @returns {Promise<{id:string, kind:'video'|'image'|'carousel', count:number}>}
+ */
+async function postMedia(media, text, accountId) {
+  const m = media || {};
+  const video = String(m.video || '').trim();
+  const urls = (Array.isArray(m.images) ? m.images : [])
+    .map((u) => String(u || '').trim())
+    .filter((u) => /^https:\/\//i.test(u) && IMAGE_EXT.test(u))
+    .slice(0, MAX_CAROUSEL);
+
+  const { token } = await getAccessToken(accountId);
+  const caption = String(text || '').slice(0, 500);
+
+  if (video && /^https:\/\//i.test(video)) {
+    const create = await fetch(GRAPH + '/v1.0/me/threads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        media_type: 'VIDEO', video_url: video, text: caption, access_token: token,
+      }),
+      signal: AbortSignal.timeout(20000),
+    });
+    const cj = await create.json();
+    if (!create.ok || !cj.id) throw new Error('영상 컨테이너 생성 실패: ' + JSON.stringify(cj).slice(0, 300));
+    /* 영상은 메타가 받아서 트랜스코딩까지 한다 — 이미지보다 훨씬 오래 걸린다. */
+    await waitContainer(cj.id, token, 20);
+    return { id: await publishContainer(cj.id, token), kind: 'video', count: 1 };
+  }
+
+  if (!urls.length) throw new Error('쓸 수 있는 이미지·영상 URL 이 없다');
+
+  if (urls.length === 1) {
+    const create = await fetch(GRAPH + '/v1.0/me/threads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        media_type: 'IMAGE', image_url: urls[0], text: caption, access_token: token,
+      }),
+      signal: AbortSignal.timeout(20000),
+    });
+    const cj = await create.json();
+    if (!create.ok || !cj.id) throw new Error('이미지 컨테이너 생성 실패: ' + JSON.stringify(cj).slice(0, 300));
+    await waitContainer(cj.id, token, 10);
+    return { id: await publishContainer(cj.id, token), kind: 'image', count: 1 };
+  }
+
+  /* 자식 컨테이너를 순서대로 만든다. 병렬로 하면 빠르지만 순서가 흐트러질 수
+     있고, 한 장이 실패했을 때 어느 장인지 알기 어렵다. 게시 순서는 매거진
+     콘텐츠에서 의미가 있으므로(첫 컷이 표지다) 순차로 간다. */
+  const children = [];
+  for (let i = 0; i < urls.length; i++) {
+    const r = await fetch(GRAPH + '/v1.0/me/threads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        media_type: 'IMAGE', image_url: urls[i], is_carousel_item: 'true', access_token: token,
+      }),
+      signal: AbortSignal.timeout(20000),
+    });
+    const j = await r.json();
+    if (!r.ok || !j.id) throw new Error('캐러셀 ' + (i + 1) + '번째 컨테이너 실패: ' + JSON.stringify(j).slice(0, 200));
+    children.push(j.id);
+  }
+
+  const create = await fetch(GRAPH + '/v1.0/me/threads', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      media_type: 'CAROUSEL', children: children.join(','), text: caption, access_token: token,
+    }),
+    signal: AbortSignal.timeout(20000),
+  });
+  const cj = await create.json();
+  if (!create.ok || !cj.id) throw new Error('캐러셀 컨테이너 생성 실패: ' + JSON.stringify(cj).slice(0, 300));
+  /* 장수만큼 처리 시간이 는다 — 대기를 넉넉히 준다(장당 2회, 최소 12회). */
+  await waitContainer(cj.id, token, Math.max(12, urls.length * 2));
+  return { id: await publishContainer(cj.id, token), kind: 'carousel', count: urls.length };
+}
+
+/**
+ * 기사 한 건에서 스레드에 올릴 미디어를 고른다.
+ * X 의 selectArticleMedia 와 **같은 판단**이어야 한다 — 두 채널이 서로 다른
+ * 그림을 올리면 어느 쪽이 맞는지 아무도 모르게 된다.
+ */
+function selectArticleMedia(article) {
+  const a = article || {};
+  const videos = Array.isArray(a.videos) ? a.videos.filter(Boolean) : [];
+  const gallery = Array.isArray(a.gallery) ? a.gallery.filter(Boolean) : [];
+  const src = String(a.source_media_type || '').toUpperCase();
+  if (src === 'VIDEO' && videos.length) return { video: videos[0], images: [] };
+  if (gallery.length) return { images: gallery.slice(0, MAX_CAROUSEL), video: '' };
+  if (videos.length) return { video: videos[0], images: [] };
+  return { images: [], video: '' };
+}
+
 async function postText(text, accountId) {
   const { token } = await getAccessToken(accountId);
   const create = await fetch(GRAPH + '/v1.0/me/threads', {
@@ -239,25 +405,8 @@ async function postText(text, accountId) {
   // 있으면 미리보기 페치 포함)가 안 끝난 상태라 "Media Not Found"(code 24)
   // 가 난다 (제니 기사 무한 재시도 사고 실측). Meta 권고대로 상태를
   // 폴링해 FINISHED 확인 후 발행하고, ERROR 면 사유를 그대로 표면화한다.
-  for (let i = 0; i < 6; i++) {
-    await new Promise((r) => setTimeout(r, i === 0 ? 3000 : 4000));
-    const st = await fetch(GRAPH + '/v1.0/' + cj.id + '?fields=status,error_message&access_token=' + encodeURIComponent(token), {
-      signal: AbortSignal.timeout(10000),
-    });
-    const sj = await st.json().catch(() => ({}));
-    if (sj.status === 'FINISHED') break;
-    if (sj.status === 'ERROR') throw new Error('컨테이너 처리 실패: ' + (sj.error_message || JSON.stringify(sj).slice(0, 200)));
-    if (i === 5) throw new Error('컨테이너 처리 대기 초과 (status=' + (sj.status || '?') + ')');
-  }
-  const pub = await fetch(GRAPH + '/v1.0/me/threads_publish', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ creation_id: cj.id, access_token: token }),
-    signal: AbortSignal.timeout(20000),
-  });
-  const pj = await pub.json();
-  if (!pub.ok || !pj.id) throw new Error('게시 실패: ' + JSON.stringify(pj).slice(0, 300));
-  return pj.id;
+  await waitContainer(cj.id, token, 6);
+  return publishContainer(cj.id, token);
 }
 
 /**
@@ -308,7 +457,8 @@ async function getThreadInsights(threadId, accountId) {
 }
 
 module.exports = {
-  authorizeUrl, exchangeCode, getAccessToken, postText, getThreadInsights,
+  authorizeUrl, exchangeCode, getAccessToken, postText, postMedia, selectArticleMedia, getThreadInsights,
+  MAX_CAROUSEL,
   INSIGHT_METRICS, REDIRECT_URI,
   /* 계정 다중화 (2026-08-05) — 호출부는 accountId 를 안 주면 예전대로 1(PAP)이다. */
   ACCOUNTS, DEFAULT_ACCOUNT_ID, normalizeAccountId, accountInfo, buildState, accountIdFromState,

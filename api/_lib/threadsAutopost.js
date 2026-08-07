@@ -6,8 +6,22 @@
  *   api/cron/threads-post.js   — 10분 주기 스위퍼 (실패 재시도 + 놓친 기사 보충)
  *
  * 콘텐츠 원칙 (2026-07-16 도메니코 결정): 인스타 캡션을 복사하지 않는다.
- * Threads 대화형 톤으로 Claude 가 재편집한 짧은 글 + 기사 링크(본문 첫 URL이
- * 링크 프리뷰 카드가 된다). AI 미설정/실패 시 결정적 폴백(제목+첫 문장+링크).
+ * Threads 대화형 톤으로 Claude 가 재편집한 짧은 글 + 기사 링크.
+ * AI 미설정/실패 시 결정적 폴백(제목+첫 문장+링크).
+ *
+ * 미디어 (2026-08-07 도메니코 결정) ───────────────────────────────────
+ * "내가 인스타에 올리는 영상이나 이미지들을 그대로 올려주면돼."
+ *
+ * 그동안 스레드에 이미지가 실린 건 우리 코드가 아니라 **인스타 앱의
+ * '스레드에도 공유'** 였다. 그건 인스타 캡션을 글자 그대로 복사한다 —
+ * 도메니코가 싫다고 한 바로 그것. 우리 크론은 반대로 캡션은 좋은데
+ * 그림이 없었다. 이제 우리가 둘 다 한다.
+ *
+ * 트레이드오프: 미디어가 붙으면 **링크 프리뷰 카드가 사라진다.** 스레드는
+ * 이미지·영상 글에 카드를 안 만들어 준다. 링크는 본문 안에 글자로 남는다.
+ * 도메니코가 알고 고른 거래다 — 인스타에 올린 그림이 그대로 나가는 쪽.
+ *
+ * 미디어가 아예 없는 기사(갤러리도 영상도 빈 경우)만 예전처럼 텍스트로 나간다.
  *
  * env: ANTHROPIC_API_KEY, ANTHROPIC_MODEL(기본 claude-sonnet-4-5) — 선택.
  */
@@ -17,7 +31,7 @@ const papVoice = require('./papVoice');
 const { reportAiResponse } = require('./aiCreditWatch');   // AI 장애 알림 (2026-07-30)
 const { supabaseAdmin } = require('./supabase');
 const { generateConversationalPost, stripDashes } = require('./socialHook');
-const { postText } = require('./threads');
+const { postText, postMedia, selectArticleMedia } = require('./threads');
 
 function htmlToText(html, cap) {
   let s = String(html || '');
@@ -183,12 +197,35 @@ async function postArticleToThreads(art) {
   const gen = await generateThreadsText(art, art.url);
   const { text, ai } = gen;
 
-  let threadId = null; let status = 'published'; let detail = null;
+  /* 미디어를 먼저 고른다. X 와 같은 판단이어야 두 채널이 같은 그림을 올린다. */
+  const media = selectArticleMedia(art);
+  const hasMedia = !!(media.video || (media.images && media.images.length));
+
+  let threadId = null; let status = 'published'; let detail = null; let mediaKind = 'text';
   try {
-    threadId = await postText(text);
+    if (hasMedia) {
+      const r = await postMedia(media, text);
+      threadId = r.id;
+      mediaKind = r.kind + (r.count > 1 ? ':' + r.count : '');
+    } else {
+      /* 그림도 영상도 없는 기사. 예전 경로 그대로 — 이 경우엔 링크 카드가
+         붙으므로 오히려 텍스트가 낫다. */
+      threadId = await postText(text);
+    }
   } catch (err) {
     status = 'failed';
     detail = String(err && err.message || err).slice(0, 400);
+    /* 미디어 때문에 실패했다면 글까지 통째로 날리지 않는다 — 스레드에 아무것도
+       안 올라가는 것보다 그림 없이라도 올라가는 게 낫다. 다만 왜 그랬는지는
+       detail 에 남겨 둔다(조용한 품질 저하가 제일 나쁘다). */
+    if (hasMedia) {
+      try {
+        threadId = await postText(text);
+        status = 'published';
+        mediaKind = 'text(미디어 실패)';
+        detail = '미디어 없이 게시함 — ' + detail;
+      } catch (_e) { /* 폴백도 실패하면 원래 실패 그대로 둔다 */ }
+    }
   }
 
   const base = {
@@ -220,7 +257,7 @@ async function postArticleToThreads(art) {
   }
   if (upErr) console.error('[threadsAutopost] threads_posts 기록 실패:', upErr.message);
 
-  return { status, thread_id: threadId, detail, text, ai, conversational: !!gen.conversational, angle: gen.angle || null };
+  return { status, thread_id: threadId, detail, text, ai, media: mediaKind, conversational: !!gen.conversational, angle: gen.angle || null };
 }
 
 module.exports = { postArticleToThreads, generateThreadsText, fallbackText, stripDashes };

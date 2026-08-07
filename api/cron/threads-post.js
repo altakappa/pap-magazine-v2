@@ -62,7 +62,9 @@ module.exports = withCronGuard('threads-post', async function handler(req, res) 
     // freshCutoff — 최근 7일 창
     const freshCutoff = new Date(Date.now() - 7 * 86400000).toISOString();
     const { data: arts, error: artsErr } = await supabaseAdmin.from('articles')
-      .select('id, title, slug, custom_url, content, category, published_date')
+      /* gallery·videos·source_media_type 은 미디어 선택에 쓴다 (2026-08-07).
+         안 읽어 오면 스위퍼로 나가는 글만 조용히 그림 없이 올라간다. */
+      .select('id, title, slug, custom_url, content, category, published_date, gallery, videos, source_media_type')
       .eq('status', 'published')
       .gte('published_date', freshCutoff)
       .order('published_date', { ascending: false }).limit(200);
@@ -85,7 +87,10 @@ module.exports = withCronGuard('threads-post', async function handler(req, res) 
       return res.status(200).json({ ok: true, dry: true, pick: { title: art.title }, text: gen.text, ai: gen.ai });
     }
 
-    const r = await postArticleToThreads({ id: art.id, title: art.title, content: art.content, category: art.category, url });
+    const r = await postArticleToThreads({
+      id: art.id, title: art.title, content: art.content, category: art.category, url,
+      gallery: art.gallery, videos: art.videos, source_media_type: art.source_media_type,
+    });
     if (r.status === 'failed') return res.status(502).json({ error: 'threads post failed', title: art.title, detail: r.detail });
     return res.status(200).json({ ok: true, posted: art.title, thread_id: r.thread_id, ai: r.ai });
   } catch (err) {
