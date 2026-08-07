@@ -91,7 +91,26 @@ console.log('\n[6] 네이버 애널리틱스');
   t('유입 도메인을 선언한다', /wcs\.inflow\('pap-magazine\.com'\)/.test(seo));
 }
 
-console.log('\n[7] 회귀 — 기존 표면이 안 깨졌다');
+console.log('\n[7] CSP — 스크립트가 실제로 로드될 수 있는가');
+{
+  /* 2026-08-07 실사고: 키를 넣고 배포까지 했는데 버튼이 안 눌렸다.
+     script 태그는 DOM 에 있었지만 window.Kakao / window.wcs 가 undefined —
+     CSP script-src 화이트리스트에 두 도메인이 없어 브라우저가 막았다.
+     '코드가 있다' 와 '코드가 돈다' 사이에 CSP 가 있다. */
+  const v = JSON.parse(R('vercel.json'));
+  const csp = (v.headers || []).flatMap((h) => h.headers || [])
+    .filter((x) => /content-security-policy/i.test(x.key)).map((x) => x.value).join(' ');
+  t('CSP 헤더가 실재한다', csp.length > 100);
+  t('script-src 에 카카오 SDK 도메인', /t1\.kakaocdn\.net/.test(csp));
+  t('script-src 에 네이버 wcslog 도메인', /wcs\.naver\.net/.test(csp));
+  t('connect-src 에 카카오 API', /kapi\.kakao\.com/.test(csp));
+  t('공유 팝업 도메인 허용', /sharer\.kakao\.com/.test(csp));
+  t('기존 결제·인스타 허용이 그대로', /portone/.test(csp) && /instagram/.test(csp));
+  t('object-src none 유지 (보안 완화 아님)', /object-src 'none'/.test(csp));
+  t('frame-ancestors none 유지', /frame-ancestors 'none'/.test(csp));
+}
+
+console.log('\n[8] 회귀 — 기존 표면이 안 깨졌다');
 {
   t('핀터레스트 버튼은 그대로', /class="pin-btn"/.test(seo));
   t('IG 퍼널 CTA 는 그대로', /api\/ig-out\?src=/.test(seo));
