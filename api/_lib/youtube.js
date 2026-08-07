@@ -161,8 +161,16 @@ async function uploadVideo(buffer, meta) {
 /**
  * 올린 영상들의 현재 상태를 묻는다 (youtube.readonly 필요).
  * 응답에 없는 id = 삭제됐거나 접근 불가.
+ *
+ * part 에 contentDetails 가 반드시 있어야 한다. 2026-08-07 사고:
+ * eBKJKbk4SjE 는 privacyStatus='public', uploadStatus='processed',
+ * rejectionReason=null 이라 status 만 보던 감시기 눈에는 멀쩡했다.
+ * 실제로는 regionRestriction.blocked 가 249개국 — 사실상 전 세계 차단이었다.
+ * Content ID 소유권 주장은 영상을 '거절'하지 않는다. 그대로 두고 '막는다'.
+ * 그래서 status 만으로는 영원히 못 본다.
+ *
  * @param {string[]} ids 최대 50개씩 나눠 보낸다
- * @returns {Promise<Map<string,{privacyStatus,uploadStatus,rejectionReason,failureReason}>>}
+ * @returns {Promise<Map<string,{privacyStatus,uploadStatus,rejectionReason,failureReason,blockedRegions,licensedContent}>>}
  */
 async function fetchVideoStates(ids) {
   const out = new Map();
@@ -171,7 +179,7 @@ async function fetchVideoStates(ids) {
   const token = await getAccessToken();
   for (let i = 0; i < list.length; i += 50) {
     const chunk = list.slice(i, i + 50);
-    const url = 'https://www.googleapis.com/youtube/v3/videos?part=status&id=' + chunk.join(',');
+    const url = 'https://www.googleapis.com/youtube/v3/videos?part=status,contentDetails&id=' + chunk.join(',');
     const r = await fetch(url, {
       headers: { Authorization: 'Bearer ' + token },
       signal: AbortSignal.timeout(20000),
@@ -182,11 +190,14 @@ async function fetchVideoStates(ids) {
     if (!r.ok) throw new Error('videos.list 실패 ' + r.status + ': ' + (await r.text().catch(() => '')).slice(0, 200));
     const j = await r.json();
     for (const v of (j.items || [])) {
+      const rr = (v.contentDetails && v.contentDetails.regionRestriction) || {};
       out.set(v.id, {
         privacyStatus: v.status && v.status.privacyStatus,
         uploadStatus: v.status && v.status.uploadStatus,
         rejectionReason: v.status && v.status.rejectionReason,
         failureReason: v.status && v.status.failureReason,
+        blockedRegions: Array.isArray(rr.blocked) ? rr.blocked.length : 0,
+        licensedContent: !!(v.contentDetails && v.contentDetails.licensedContent),
       });
     }
   }

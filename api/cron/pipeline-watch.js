@@ -1134,6 +1134,11 @@ module.exports.HEARTBEATS = HEARTBEATS;
  * 최근 14일분만 본다 — 오래된 영상은 사람이 의도적으로 내렸을 수 있다. */
 const YT_VIDEO_ALERT_KEY = 'youtube-video-health';
 
+/* 유튜브가 인정하는 나라 수는 250 남짓이다. 이 이상 막혔으면 '일부 지역'이
+   아니라 사실상 전 세계 차단 — 알림 문구를 다르게 써야 사람이 안 헷갈린다. */
+const BLOCK_WORLDWIDE = Number(process.env.YT_BLOCK_WORLDWIDE_MIN || 200);
+const BAD_RANK = ['blocked', 'rejected', 'failed', 'private', 'gone'];
+
 function judgeVideoStates(rows, states) {
   const bad = [];
   const seen = [];
@@ -1152,6 +1157,21 @@ function judgeVideoStates(rows, states) {
       bad.push({ video_id: r.video_id, cause: 'failed', why: '처리 실패: ' + st.failureReason });
       continue;
     }
+    /* Content ID 차단. 이게 privacyStatus 검사보다 먼저 와야 한다 —
+       차단된 영상은 여전히 public/processed 이고 거절 사유도 없다.
+       (2026-08-07 eBKJKbk4SjE: public·processed·거절없음인데 249개국 차단) */
+    if (st.blockedRegions > 0) {
+      const all = st.blockedRegions >= BLOCK_WORLDWIDE;
+      bad.push({
+        video_id: r.video_id,
+        cause: 'blocked',
+        why: all
+          ? '사실상 전 세계 차단 (' + st.blockedRegions + '개국) — 음원 저작권 주장 가능성'
+          : st.blockedRegions + '개국에서 차단됨 — 음원 저작권 주장 가능성',
+        blocked_regions: st.blockedRegions,
+      });
+      continue;
+    }
     if (st.privacyStatus && st.privacyStatus !== 'public') {
       bad.push({ video_id: r.video_id, cause: 'private', why: '공개가 아님: ' + st.privacyStatus });
       continue;
@@ -1162,12 +1182,17 @@ function judgeVideoStates(rows, states) {
     healthy: bad.length === 0,
     checked: (rows || []).filter((r) => r && r.video_id).length,
     ok: seen.length,
-    bad,
+    /* 알림은 앞의 5건만 보여준다. 그래서 '지금 손쓸 수 있는 것'이 앞에 와야 한다.
+       사라진 영상은 이미 끝난 일이고, 차단·거절은 아직 되돌릴 수 있다. */
+    bad: bad.slice().sort((a, b) => BAD_RANK.indexOf(a.cause) - BAD_RANK.indexOf(b.cause)),
   };
 }
 
 function buildVideoStateAlert(d, site) {
-  const map = { gone: '영상이 사라짐', rejected: '영상이 거부됨', failed: '처리 실패', private: '비공개로 전환됨' };
+  const map = {
+    gone: '영상이 사라짐', rejected: '영상이 거부됨', failed: '처리 실패',
+    private: '비공개로 전환됨', blocked: '저작권으로 차단됨',
+  };
   const first = d.bad[0] || {};
   return {
     title: '🚨 유튜브 — ' + (map[first.cause] || first.cause),
