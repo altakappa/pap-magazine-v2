@@ -21,8 +21,14 @@ DIR="$REPO/.autopush"
 REQ="$DIR/request"
 LOG="$DIR/log.txt"
 
+# 가동 증명 — 홈 폴더에도 남긴다 (문서 폴더가 TCC 로 안 보일 때 진단용).
+HLOG="$HOME/.pap-autopush.log"
+if [ ! -d "$REPO" ]; then
+  echo "$(date '+%F %T') 🚨 저장소 접근 불가 — 시스템설정>개인정보보호>전체디스크접근권한 에 /bin/bash 추가 필요" >> "$HLOG"
+  exit 1
+fi
 [ -f "$REQ" ] || exit 0
-cd "$REPO" || exit 1
+cd "$REPO" || { echo "$(date '+%F %T') 🚨 cd 실패" >> "$HLOG"; exit 1; }
 mkdir -p "$DIR"
 ts() { date "+%Y-%m-%d %H:%M:%S"; }
 
@@ -48,6 +54,7 @@ fi
 
 if git push origin main >> "$LOG" 2>&1; then
   echo "$(ts) ✅ 자동 푸시 완료: $HEAD" >> "$LOG"
+  echo "$(date '+%F %T') ✅ 자동 푸시 완료: $HEAD" >> "$HLOG"
 else
   echo "$(ts) 🚨 푸시 실패 — log 위쪽 git 출력 확인" >> "$LOG"
 fi
