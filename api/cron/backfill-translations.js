@@ -653,10 +653,16 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
     cur.failed += r.skipped_failed || 0;
     if (r.error && !cur.err) cur.err = String(r.error).slice(0, 50);
     /* 예외까지 가지 않은 내부 실패도 같은 자리에 보여 준다. 첫 건만 —
-       note 는 500자 상한이고, 원인 파악에는 종류 하나면 충분하다. */
+       note 는 500자 상한이고, 원인 파악에는 종류 하나면 충분하다.
+       ⚠️ 2026-08-08 — 처음엔 50자로 잘랐다가 하루 만에 다시 물렸다.
+       실패 문구의 앞 50자가 전부 "```json\n[{"i":0,"t" 라는 정보 없는
+       앞머리로 채워져, 78회의 실패를 보고도 원인을 못 갈랐다.
+       파서 쪽에 진단명을 앞으로 뺐고(`파싱 실패[문자열내제어문자]`),
+       그 진단명이 살아남도록 여기도 넓힌다. 조합이 많으면 아래에서
+       comboNote 가 먼저 줄어드니 계측은 그대로 보존된다. */
     if (!cur.err && Array.isArray(r.errors) && r.errors.length) {
       const first = r.errors[0] || {};
-      cur.err = String(first.reason || first.message || first).slice(0, 50);
+      cur.err = String(first.reason || first.message || first).slice(0, 90);
     }
     perCombo.set(k, cur);
   }

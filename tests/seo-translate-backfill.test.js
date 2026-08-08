@@ -152,10 +152,17 @@ console.log('\n=== 잘린 응답에서 온전한 건만 건진다 (Patch 4) ==='
   const r6 = P(whole);
   ok('정상 배열은 그대로 전부 반환', Array.isArray(r6) && r6.length === 2);
 
-  // 한 건도 못 건지면 여전히 던진다 — 조용히 0건 성공으로 끝나면 안 된다.
-  let threw = false;
-  try { P('[{"i":0,"tit'); } catch (e) { threw = /복구 0건/.test(String(e.message)); }
+  /* 한 건도 못 건지면 여전히 던진다 — 조용히 0건 성공으로 끝나면 안 된다.
+     2026-08-08: 문구가 `복구 0건` → `파싱 실패[진단명]` 으로 바뀌었다.
+     이유는 tests/translate-json-repair.test.js 머리말 참고 — 78회의 실패를
+     보고도 원인을 못 갈라서, 진단명을 문구 맨 앞으로 뺐다.
+     여기서 지키려는 것은 문구가 아니라 **던진다는 사실**이므로 그것만 본다
+     (진단명 자체는 위 전용 테스트가 지킨다). */
+  let threw = false, diagnosed = false;
+  try { P('[{"i":0,"tit'); }
+  catch (e) { threw = true; diagnosed = /파싱 실패\[[^\]]+\]/.test(String(e.message)); }
   ok('한 건도 못 건지면 실패로 던진다(조용한 0건 금지)', threw);
+  ok('실패 문구에 진단명이 붙는다', diagnosed);
 }
 
 console.log('\n=== 입력 검증 ===');

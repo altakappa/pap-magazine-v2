@@ -328,6 +328,52 @@ async function fetchQueueViaRpc(kind, lang, limit, cfg, timing, since, maxSrc) {
  * 않은 마지막 조각만 버린다. 파서를 관대하게 만드는 게 아니라 '건질 수 있는
  * 만큼만 건진다' 는 뜻이다 — 깨진 JSON 을 추측해서 고치지는 않는다.
  */
+/* ─── 2026-08-08 — 문자열 안의 '생 제어문자' 만 이스케이프한다 ──────────
+ *
+ * 실측: 최근 3시간 크론 90회 중 **78회(87%)** 가 이 오류로 배치를 통째로 버렸다.
+ *     ERR 배치 실패: 번역 응답 JSON 파싱 실패(복구 0건): ```json\n[{"i":0,"t…
+ *
+ * 코드 펜스는 원인이 **아니다**(2026-07-31 Patch 3 가 이미 처리한다).
+ * 재현해 보니 같은 오류 문구가 나오는 경우는 이 넷이었다:
+ *     ② 문자열 안에 이스케이프 안 된 개행   ← 고칠 수 있다
+ *     ⑤ 문자열 안에 이스케이프 안 된 탭     ← 고칠 수 있다
+ *     ④ 문자열 안에 이스케이프 안 된 큰따옴표 ← 못 고친다(경계를 알 수 없다)
+ *     ③ 응답이 잘려 첫 객체가 안 닫힘        ← 못 고친다(내용이 없다)
+ *
+ * 왜 CJK 만 아픈가: 아티클 배치는 1건이고 CJK 는 cjkScale 로 더 줄지 않는다.
+ * 20건짜리 배치는 한 건이 깨져도 19건이 salvage 로 살아남지만, **1건짜리는
+ * 깨지면 남는 게 없다.** 그래서 zh 만 매번 콜 하나를 통째로 버리고 있었다.
+ * (그래도 진행은 됐다 — 단건 재시도가 구분자 포맷으로 받아내고 있어서다.
+ *  즉 지금 잃고 있는 건 데이터가 아니라 **속도**다.)
+ *
+ * 원칙은 Patch 4 와 같다 — **추측해서 고치지 않는다.** 제어문자는 JSON 문자열
+ * 안에 그대로 올 수 없다는 규격상의 사실만 쓴다. 따옴표는 손대지 않는다:
+ * 어느 것이 문자열의 끝인지 알 수 없어, 고치려 들면 내용을 바꿔 버린다. */
+function escapeRawControls(s) {
+  let out = '', inStr = false, esc = false;
+  for (let k = 0; k < s.length; k++) {
+    const c = s[k];
+    if (esc) { out += c; esc = false; continue; }
+    if (c === '\\') { out += c; if (inStr) esc = true; continue; }
+    if (c === '"') { out += c; inStr = !inStr; continue; }
+    if (inStr && c < ' ') {
+      out += (c === '\n') ? '\\n' : (c === '\r') ? '\\r' : (c === '\t') ? '\\t'
+        : '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0');
+      continue;
+    }
+    out += c;
+  }
+  return out;
+}
+
+/* 고쳐서 한 번 더 파싱해 본다. 실패하면 null — 호출부는 원래 경로를 그대로 탄다. */
+function tryRepairedParse(chunk) {
+  try {
+    const v = JSON.parse(escapeRawControls(chunk));
+    return v;
+  } catch (e) { return null; }
+}
+
 function salvageObjects(s, start) {
   const out = [];
   const n = s.length;
@@ -351,7 +397,11 @@ function salvageObjects(s, start) {
     // 끝까지 닫히지 않은 조각 = 잘린 지점. 여기서 멈춘다.
     if (j >= n || depth !== 0) break;
     try {
-      const o = JSON.parse(s.slice(i, j + 1));
+      const chunk = s.slice(i, j + 1);
+      let o;
+      try { o = JSON.parse(chunk); }
+      /* 생 개행·탭 때문에 깨진 것뿐이면 살린다 (2026-08-08). */
+      catch (e1) { o = tryRepairedParse(chunk); }
       // title 이 없는 건 저장해도 쓸모가 없다 — 호출자가 어차피 버린다.
       if (o && typeof o === 'object' && o.title) out.push(o);
     } catch (e) { /* 이 한 건만 버린다 */ }
@@ -373,10 +423,36 @@ function parseJsonArray(text) {
       const v = JSON.parse(s.slice(start, end + 1));
       if (Array.isArray(v)) return v;
     } catch (e) { /* 아래에서 건별 복구를 시도한다 */ }
+    /* 생 개행·탭만 문제였다면 배열 통째로도 살아난다 (2026-08-08). */
+    const repaired = tryRepairedParse(s.slice(start, end + 1));
+    if (Array.isArray(repaired)) return repaired;
   }
   const salvaged = salvageObjects(s, start);
   if (salvaged.length) return salvaged;
-  throw new Error('번역 응답 JSON 파싱 실패(복구 0건): ' + s.slice(0, 150));
+  /* ─── 오류 문구에 '무엇이 문제였는지' 를 넣는다 (2026-08-08) ────────────
+   * 어제 나는 note 의 ERR 을 50자로 잘라놨고, 그 50자가 전부
+   * "```json\n[{"i":0,"t" 라는 **아무 정보 없는 앞머리**로 채워졌다.
+   * 87% 의 실패를 보고도 원인을 못 갈랐다 — 계측을 넣고도 못 읽은 것이다.
+   * 그래서 사람이 읽을 진단명을 **맨 앞에** 둔다. 뒤가 잘려도 종류는 남는다. */
+  throw new Error('번역 응답 JSON 파싱 실패[' + diagnoseJson(s, start, end) + ']: '
+    + s.slice(0, 150));
+}
+
+/* 파싱 실패의 종류를 한 단어로. 고치기 위한 게 아니라 **보기 위한** 것이다. */
+function diagnoseJson(s, start, end) {
+  if (end <= start) return '닫는대괄호없음';           // ③ 잘림
+  const body = s.slice(start, end + 1);
+  let inStr = false, esc = false, rawCtl = false, quotes = 0;
+  for (let k = 0; k < body.length; k++) {
+    const c = body[k];
+    if (esc) { esc = false; continue; }
+    if (c === '\\') { if (inStr) esc = true; continue; }
+    if (c === '"') { quotes++; inStr = !inStr; continue; }
+    if (inStr && c < ' ') rawCtl = true;
+  }
+  if (rawCtl) return '문자열내제어문자';                // ②⑤ — 이제 복구된다
+  if (inStr || quotes % 2) return '따옴표불균형';       // ④ — 못 고침
+  return '형태불명';
 }
 
 /** 배치 크기 정규화 — 1~20. Claude 1콜 max_tokens(4000) 안에 안전하게 들어가는 상한. */
@@ -962,4 +1038,4 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing
   };
 }
 
-module.exports = { runBackfillBatch, remainingFor, minDoneFor, MIN_TRANSLATED, newTiming, hasHangul, hangulRatio, validateTranslation, nameRule, styleRules, normalizeBatch, parseJsonArray, salvageObjects, parseSentinel, pickItems, buildBatchPrompt, msLeft, canCall, callBudget, CALL_SLACK_MS, MAX_PASSES, LANG_NAMES, KINDS };
+module.exports = { runBackfillBatch, remainingFor, minDoneFor, MIN_TRANSLATED, newTiming, hasHangul, hangulRatio, validateTranslation, nameRule, styleRules, normalizeBatch, parseJsonArray, salvageObjects, escapeRawControls, diagnoseJson, parseSentinel, pickItems, buildBatchPrompt, msLeft, canCall, callBudget, CALL_SLACK_MS, MAX_PASSES, LANG_NAMES, KINDS };
