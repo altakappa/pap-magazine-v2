@@ -28,6 +28,9 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { pingNewContent, SITE } = require('../_lib/pingSearch');
+// 2026-08-09 — 골든아워 부스트: 새 에디토리얼 IG 게시물 감지 즉시 스레드·X 가
+// 그 게시물로 트래픽을 쏜다 (실측: 첫 3시간 좋아요 ↔ 최종 도달 corr 0.94).
+const { maybeBoostEditorialPost } = require('../_lib/goldenBoost');
 const { postTweet, buildArticleTweet, isConfigured: xConfigured, buildConversationalTweet, uploadArticleMedia } = require('../_lib/xPost');
 const { postArticleToThreads } = require('../_lib/threadsAutopost');
 const {
@@ -168,7 +171,11 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
       const cat = String(generated.category || '').toLowerCase();
       const isEditorial = cat === 'editorial'
         || (backfillMode && !ARTICLE_CATEGORIES.includes(cat));
-      if (isEditorial){ results.skipped_editorial_ai++; return; }
+      if (isEditorial){
+        results.skipped_editorial_ai++;
+        if (!backfillMode){ const b = await maybeBoostEditorialPost(m, { backfillMode }); if (b.boosted) results.boosted = (results.boosted||0)+1; }
+        return;
+      }
       // IG CDN 이미지는 수일 내 만료 — Supabase Storage 영구본으로 교체.
       const archivedUrls = await archiveImagesToStorage(post, 10);
       /* 릴스 mp4 — 목록 응답에 media_url 이 없으면 media id 로 단건 재조회한다.
@@ -320,8 +327,16 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
         for (const m of rows){
           if (exSet.has(m.id)){ results.skipped_existing++; continue; }
           const shortcode = _extractShortcode(m.permalink);
-          if (shortcode && editorialShortcodes.has(shortcode)){ results.skipped_editorial_db++; continue; }
-          if (isLikelyEditorialCaption(m.caption)){ results.skipped_editorial_caption++; continue; }
+          if (shortcode && editorialShortcodes.has(shortcode)){
+            results.skipped_editorial_db++;
+            if (!backfillMode){ const b = await maybeBoostEditorialPost(m, { backfillMode }); if (b.boosted) results.boosted = (results.boosted||0)+1; }
+            continue;
+          }
+          if (isLikelyEditorialCaption(m.caption)){
+            results.skipped_editorial_caption++;
+            if (!backfillMode){ const b = await maybeBoostEditorialPost(m, { backfillMode }); if (b.boosted) results.boosted = (results.boosted||0)+1; }
+            continue;
+          }
           if (toProcess.length < perCall){ toProcess.push(m); }
           else { overflow = true; break; }
         }

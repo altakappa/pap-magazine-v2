@@ -45,7 +45,7 @@ const HOME_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.c
 // ssr_film 은 같은 분리 작업의 나머지 한 조각(필름 SSR).
 // 2026-08-08 — 'newsletter' 추가: 이메일의 FOLLOW @PAP_MAGAZINE 버튼이 ig-out 을
 // 경유하게 바꿨다 (이메일→IG 도 플라이휠 흐름이므로 계측한다 — email.js).
-const SRC_WHITELIST = new Set(['article', 'editorial', 'editorial_mid', 'ssr', 'ssr_article', 'ssr_film', 'ssr_niche', 'naverblog', 'footer', 'nav', 'funnel', 'spa_fallback', 'pepperit-article', 'pepperit-spa', 'pepperit-footer', 'youtube', 'brand', 'submission_done', 'newsletter']);
+const SRC_WHITELIST = new Set(['article', 'editorial', 'editorial_mid', 'ssr', 'ssr_article', 'ssr_film', 'ssr_niche', 'naverblog', 'footer', 'nav', 'funnel', 'spa_fallback', 'pepperit-article', 'pepperit-spa', 'pepperit-footer', 'youtube', 'brand', 'submission_done', 'newsletter', 'boost']);
 const IG_HOSTS = new Set(['instagram.com', 'www.instagram.com']);
 
 /* 경로형 단축 링크 /ig/:src (2026-07-30 신설).
