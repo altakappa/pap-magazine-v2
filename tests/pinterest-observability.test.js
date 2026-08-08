@@ -37,6 +37,13 @@ console.log('\n=== 3. 항목 잘못이 아닌 실패는 영구 마킹하지 않�
 ok(/항목은 마킹 안 함|마킹하지 않음/.test(src), '토큰 오류 시 synced_at 을 찍지 않는다 (재발행 가능)');
 ok(/netErrors\+\+;\s*\n\s*continue/.test(src), '네트워크 오류는 다음 실행에 재시도된다');
 
+console.log('\n=== 3.5 승급 대기 일시정지 스위치 ===');
+ok(/PINTEREST_PUBLISH_PAUSED/.test(src), '일시정지 환경변수가 있다 (Trial 샌드박스 핀 낭비 방지)');
+ok(/발행 일시정지/.test(src), '정지 상태도 note 로 로그에 남는다');
+ok(/status\(200\)\.json\(\{ paused: true/.test(src), '정지는 실패가 아니라 정상 종료다 (알림 노이즈 없음)');
+ok(src.indexOf('PINTEREST_PUBLISH_PAUSED') < src.indexOf('const TOKEN'),
+   '정지 검사가 토큰 검사보다 먼저다 — 토큰이 없어도 정지 상태가 우선');
+
 console.log('\n=== 4. 안전 램프는 그대로다 (스팸 정지 방지) ===');
 ok(/rampBatch/.test(src) && /if \(n < 50\) return 3/.test(src), '신규 계정 워밍업 램프 유지');
 ok(/429/.test(src) && /rateLimited = true/.test(src), '429 즉시 중단 유지');

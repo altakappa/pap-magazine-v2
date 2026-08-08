@@ -55,6 +55,21 @@ module.exports = withCronGuard('sync-pinterest', async function handler(req, res
     }
   }
 
+  /* 2026-08-08 — 승급 심사 대기용 일시정지 스위치.
+   *
+   * 왜 — Pinterest 는 Trial 등급으로 만든 핀을 '샌드박스'로 취급한다:
+   * 만든 사람에게만 보이고 공개 프로필에 안 뜬다(공식 문서 확인).
+   * 이 상태에서 크론이 돌면 112건이 아무도 못 보는 핀으로 발행되고
+   * pinterest_synced_at 이 찍혀 버린다 — 승급 후 전량 리셋·재발행해야 하는
+   * 쓰레기가 쌓인다. 그렇다고 토큰을 만료 상태로 두면 6시간마다 403 알림이
+   * 울린다. 둘 다 피하는 스위치: Standard 승급 전까지 이 변수를 켜 둔다.
+   * 승급되면 변수만 지우면 된다 — 코드 재수정 불필요. */
+  if (process.env.PINTEREST_PUBLISH_PAUSED) {
+    note(res, '발행 일시정지 (PINTEREST_PUBLISH_PAUSED) — Standard 승급 심사 대기 중. 승급 후 이 환경변수를 지울 것');
+    return res.status(200).json({ paused: true, pinned: 0,
+      message: 'Trial 등급 핀은 비공개(샌드박스)라 발행 보류 중. Standard 승급 후 재개.' });
+  }
+
   const TOKEN = process.env.PINTEREST_ACCESS_TOKEN;
   const BOARD_ID = process.env.PINTEREST_BOARD_ID;
   if (!TOKEN || !BOARD_ID) {
