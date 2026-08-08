@@ -569,7 +569,22 @@ function renderSeoHtml(kind, record, opts) {
      이게 없으면 meta description 과 리드 문단이 영어·한국어로 나간다.
      에디토리얼은 tr.description 이 있어 이 경로를 타지 않는다. */
   const _trDesc = (tr && tr.description) || (tr && tr.body ? descFromBody(tr.body) : '');
-  const descMain = lang === 'ko' ? descKo : (lang === 'en' ? descEn : (_trDesc || descEn));
+  /* ── 영어판도 같은 처지였다 (2026-08-09 실측) ──────────────────────
+   * `articles` 테이블에는 description·description_en 컬럼이 **아예 없다**
+   * (있는 건 subtitle·content·content_en). 그래서
+   *     descKo = … || subtitle || '제목 — PAP Magazine'
+   *     descEn = record.description_en(없음) || … || descKo
+   * 즉 **영어 기사 페이지의 meta 가 항상 한국어(또는 제목 에코)** 였다.
+   * 실측: 발행 2,303건 전부 content_en 이 있고, subtitle 은 302건뿐인데
+   * 그 302건이 **전부 한국어**다. 영어 본문이 멀쩡히 있는데 검색 설명만
+   * 한국어로 나가고 있었다.
+   *
+   * 여기서도 재작성하지 않는다 — content_en 에서 만든다.
+   * ⚠️ descEn 자체는 건드리지 않는다. descEn 은 한국어 페이지의 '보조 문단
+   * (descAlt)' 에도 쓰여서, 바꾸면 한국어 기사에 영어 문단이 새로 붙는다.
+   * 영어판이 자기 설명으로 쓸 때만 적용한다. */
+  const _enDesc = descFromBody(record.content_en) || descEn;
+  const descMain = lang === 'ko' ? descKo : (lang === 'en' ? _enDesc : (_trDesc || descEn));
   const descAlt = lang === 'ko' ? descEn : (lang === 'en' ? descKo : descEn);
   /* 2026-07-22 (SPA 룩 통일) — 일부 요약(desc)이 "제목 — PAP Magazine" 줄로 시작해
      화면에서 h1 바로 아래 제목이 한 번 더 보였다(백필 산출물). SPA 에는 이 줄이 없다.
@@ -595,7 +610,7 @@ function renderSeoHtml(kind, record, opts) {
   /* 화면 리드 문단도 같은 폴백을 쓴다 — 라이브에서 러시아어 기사의 리드가
      한국어로 나가고 있었다(제목·본문은 러시아어). meta 만 고치면 화면은
      그대로 남는다. */
-  const bodyMain = lang === 'ko' ? bodyKo : (lang === 'en' ? bodyEn : (_trDesc || bodyEn));
+  const bodyMain = lang === 'ko' ? bodyKo : (lang === 'en' ? _enDesc : (_trDesc || bodyEn));
   const bodyAlt = lang === 'ko' ? bodyEn : (lang === 'en' ? bodyKo : bodyEn);
   const descDisplay = _stripTitleEcho(bodyMain);
   const descAltDisplay = _stripTitleEcho(bodyAlt);

@@ -123,8 +123,44 @@ t('에디토리얼은 원래의 tr.description 을 그대로 쓴다', /ritratto 
 console.log('\n=== 폴백 순서가 코드에 그대로 있다 ===');
 t('tr.description 이 tr.body 보다 우선한다',
   /\(tr && tr\.description\) \|\| \(tr && tr\.body \? descFromBody\(tr\.body\) : ''\)/.test(SRC));
-t('meta 가 _trDesc 를 쓴다', /descMain = lang === 'ko' \? descKo : \(lang === 'en' \? descEn : \(_trDesc \|\| descEn\)\)/.test(SRC));
-t('화면 리드도 _trDesc 를 쓴다', /bodyMain = lang === 'ko' \? bodyKo : \(lang === 'en' \? bodyEn : \(_trDesc \|\| bodyEn\)\)/.test(SRC));
+t('meta 가 번역엔 _trDesc, 영어엔 _enDesc 를 쓴다',
+  /descMain = lang === 'ko' \? descKo : \(lang === 'en' \? _enDesc : \(_trDesc \|\| descEn\)\)/.test(SRC));
+t('화면 리드도 같은 두 갈래를 쓴다',
+  /bodyMain = lang === 'ko' \? bodyKo : \(lang === 'en' \? _enDesc : \(_trDesc \|\| bodyEn\)\)/.test(SRC));
+t('한국어는 어느 쪽도 타지 않는다 (descKo 그대로)', /descMain = lang === 'ko' \? descKo/.test(SRC));
+
+console.log('\n=== ⑥ 영어판도 영어 본문에서 만든다 (2026-08-09 2차) ===');
+/* `articles` 에는 description·description_en 컬럼이 없다(실측: subtitle·content·
+   content_en 만). 그래서 영어 기사 meta 가 항상 한국어(또는 제목 에코)였다.
+   발행 2,303건 전부 content_en 이 있고 subtitle 302건은 전부 한국어다. */
+const artRec = {
+  id: 'a1', slug: 'avavav-ss25-backstage-87', title: 'AVAVAV 백스테이지',
+  title_en: 'AVAVAV SS25 Backstage',
+  subtitle: '<PAP>가 아바바브 백스테이지 현장을 담아왔다',       // 한국어뿐
+  content: '<p>한국어 본문입니다. 여기에 충분히 긴 한국어 문장이 들어갑니다.</p>',
+  content_en: '<p>Backstage at the AVAVAV show during Milan Fashion Week SS25.'
+    + ' These are the moments before the show begins, as models prepare to walk.</p>',
+  status: 'published', published_date: '2025-01-02',
+};
+const hEn = renderSeoHtml('article', artRec, { lang: 'en', availableLangs: ['ko', 'en'] });
+const mEn = (hEn.match(/<meta name="description" content="([^"]*)"/) || [])[1] || '';
+const lEn = (hEn.match(/<p class="seo-desc-primary">([\s\S]*?)<\/p>/) || [])[1] || '';
+t('영어 meta 에 한글이 없다 (사고 재현 방지)', !/[가-힣]/.test(mEn), mEn.slice(0, 90));
+t('영어 meta 가 영문 본문에서 나온다', /Backstage at the AVAVAV/.test(mEn), mEn.slice(0, 90));
+t('영어 화면 리드에도 한글이 없다', !/[가-힣]/.test(lEn), lEn.slice(0, 90));
+
+console.log('\n=== ⑥ 한국어 페이지는 영향을 받지 않는다 (descAlt 보호) ===');
+const hKo2 = renderSeoHtml('article', artRec, { lang: 'ko', availableLangs: ['ko', 'en'] });
+const mKo2 = (hKo2.match(/<meta name="description" content="([^"]*)"/) || [])[1] || '';
+t('한국어 meta 는 한국어 그대로', /[가-힣]/.test(mKo2), mKo2.slice(0, 80));
+/* descEn 을 직접 바꿨다면 한국어 페이지에 영어 보조문단이 새로 붙는다.
+   _enDesc 를 영어판 전용으로 둔 이유가 이것이다. */
+const altKo = (hKo2.match(/<p class="seo-desc-en">([\s\S]*?)<\/p>/) || [])[1] || '';
+t('한국어 페이지에 영문 보조문단이 새로 생기지 않는다',
+  !/Backstage at the AVAVAV/.test(altKo), altKo.slice(0, 80));
+t('영어 전용 변수를 쓴다 (descEn 자체를 바꾸지 않았다)',
+  /const _enDesc = descFromBody\(record\.content_en\) \|\| descEn;/.test(SRC)
+  && /const descEn = record\.description_en \|\| _filmDescEn \|\| descKo;/.test(SRC));
 
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) process.exit(1);
