@@ -22,6 +22,9 @@ const { withCronGuard } = require('../_lib/cronGuard');
 const { requireAdmin } = require('../_lib/auth');
 const { sendEmail } = require('../_lib/email');
 const { briefingEmailHtml, briefingRecipients } = require('../_lib/mdEmail');
+// 2026-08-08 — 성장 가이드라인 6번: 채널 성적은 "두 도달점(IG·웹)으로 몇 명을
+// 보냈나"로만 잰다. 결정론 집계(AI 아님)라 서사 생성이 실패해도 성적표는 나간다.
+const { buildChannelScorecard, renderScorecardMd } = require('../_lib/channelScorecard');
 
 const SYSTEM = [
   '너는 PAP 매거진(아트 기반 패션·뷰티·컬쳐 디지털 매거진, IG @pap_magazine 38만, 웹 pap-magazine.com, 자매지 페퍼릿 @pepperitmag 14만 — 두 매체 지표는 절대 합산 금지)의 주간 경영 브리핑을 쓰는 전략 컨설턴트다.',
@@ -74,6 +77,11 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
         .gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()),
     ]);
 
+    // 채널 성적표 — 실패해도 브리핑 본체를 막지 않는다 (best-effort).
+    let scorecard = null;
+    try { scorecard = await buildChannelScorecard(Date.now()); }
+    catch (e) { console.warn('[weekly-briefing] scorecard failed:', e && e.message); }
+
     const rows = reports.data || [];
     const thisWeek = rows.filter((r) => r.report_date >= d7).map((r) => ({ d: r.report_date, s: r.audit && r.audit.summary }));
     const lastWeek = rows.filter((r) => r.report_date < d7).map((r) => ({ d: r.report_date, s: r.audit && r.audit.summary }));
@@ -87,6 +95,8 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
       '운영 이벤트 로그(14일):', JSON.stringify(evs),
       '검증 기한 도래한 미검증 결정:', JSON.stringify(dueDecisions),
       '어필리에이트 클릭(7일): ' + (clicks.count || 0),
+      // 성적표 원자료도 AI 서사의 근거로 넘긴다 (표 자체는 아래에서 결정론으로 붙는다).
+      '채널 성적표(7일 vs 전 7일 — 두 도달점 유입):', JSON.stringify(scorecard || {}),
     ].join('\n');
 
     const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
@@ -107,15 +117,28 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
       aiError = String(err && err.message || err);
     }
 
+    /* 성적표를 브리핑 뒤에 결정론으로 덧붙인다. AI 가 죽었으면(briefing null)
+       성적표 단독으로라도 내보낸다 — 숫자는 AI 가용성에 인질 잡히지 않는다. */
+    const aiOk = !!briefing; // model 필드의 실패 표기는 AI 기준을 유지
+    if (scorecard) {
+      const scMd = renderScorecardMd(scorecard);
+      briefing = briefing ? (briefing + '\n\n---\n\n' + scMd) : scMd;
+    }
+
     const metrics = {
       daily_reports: thisWeek.length,
       affiliate_clicks_7d: clicks.count || 0,
       events_14d: evs.length,
       decisions_due: dueDecisions.length,
+      // 2026-08-08 — 북극성·플라이휠 수치 (대시보드 시계열용)
+      inflow_7d: scorecard ? scorecard.inflow.reduce((s, r) => s + r.cur, 0) : null,
+      ig_out_7d: scorecard ? scorecard.igOut.cur : null,
+      new_members_7d: scorecard ? scorecard.newMembers.cur : null,
+      paid_total: scorecard ? scorecard.paidTotal : null,
     };
     const { error } = await supabaseAdmin.from('weekly_briefings').upsert({
       week_start: weekStart, briefing, metrics,
-      model: briefing ? model : (model + (aiError ? ' (실패: ' + aiError.slice(0, 100) + ')' : '')),
+      model: aiOk ? model : (model + (aiError ? ' (실패: ' + aiError.slice(0, 100) + ')' : '')),
     }, { onConflict: 'week_start' });
     if (error) throw error;
 
