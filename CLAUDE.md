@@ -5,6 +5,16 @@
 
 ## 절대 규칙
 1. **push 금지 — 커밋까지만.** push는 도메니코가 `PAP-푸시하기.command`로 직접 한다.
+   ▸ **유일한 예외 (2026-08-09 도메니코 명시 승인): 주간 성장 R&D 의 소형 개선.**
+     아래 조건을 **전부** 충족할 때만 자동배포가 허용된다:
+     (a) 성장 파이프라인 개선 소형 작업 — diff 300줄 이하, 주 1건
+     (b) 금지 구역 미접촉: 결제(paddle·portone)·인증(auth)·삭제성 변경·DB 마이그레이션·
+         env·발행 상태 변경·메일 실발송 로직·구독 게이트
+     (c) npm test 전체 통과 (d) 커밋 메시지에 `[auto-r&d]` 마커
+     방식: 클로드는 push 하지 않는다(작업 VM 은 GitHub 접속 불가 — 구조적 안전장치).
+     커밋 후 `.autopush/request` 에 커밋 해시를 쓰면, 맥의 LaunchAgent
+     (`scripts/autopush.sh`)가 3중 검증(해시 일치·마커·워킹트리 청결) 후 대신 push 한다.
+     이 예외 밖의 모든 작업은 종전대로 커밋까지만.
 2. 커밋 아이덴티티: `git -c user.name="ALTAKAPPA" -c user.email="contact@pap-magazine.com" commit`
    트레일러 필수:
    `Co-Authored-By: Claude <noreply@anthropic.com>` + `Claude-Session: (세션 링크)`
