@@ -15,6 +15,9 @@
      커밋 후 `.autopush/request` 에 커밋 해시를 쓰면, 맥의 LaunchAgent
      (`scripts/autopush.sh`)가 3중 검증(해시 일치·마커·워킹트리 청결) 후 대신 push 한다.
      이 예외 밖의 모든 작업은 종전대로 커밋까지만.
+     ▸ 자동 트랙(화·목)은 **`GROWTH-LEDGER.md`(성장 학습장, 저장소 루트)를 작업 전에 읽고,
+     작업 후 한 줄을 append 한다** — 세션 간 학습 승계 장치. 판정 안 난 실험 위에
+     같은 영역 실험을 쌓지 않는다.
 2. 커밋 아이덴티티: `git -c user.name="ALTAKAPPA" -c user.email="contact@pap-magazine.com" commit`
    트레일러 필수:
    `Co-Authored-By: Claude <noreply@anthropic.com>` + `Claude-Session: (세션 링크)`
