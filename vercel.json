@@ -121,6 +121,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/algo-coach",
+      "schedule": "10 * * * *"
+    },
+    {
       "path": "/api/cron/ig-snapshot",
       "schedule": "15 */3 * * *"
     },
