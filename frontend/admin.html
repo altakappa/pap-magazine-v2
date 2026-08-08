@@ -531,6 +531,13 @@ tr:hover td{background:rgba(0,0,0,.02)}
     <a href="#" onclick="go('campaigns',this)"><span>✉️</span> <span>이메일 캠페인</span></a>
   </div>
 
+  <!-- 2026-08-08 — 크론이 길이 상한(6,000자)으로 제외한 긴 글을 손으로 돌리는 자리.
+       크론은 자동으로 안 건드리므로 사람이 눌러야 채워진다. -->
+  <div class="sb-section">
+    <div class="sb-section-title">운영 도구</div>
+    <a href="#" onclick="go('longtrans',this)"><span>🌐</span> <span>긴 글 번역</span></a>
+  </div>
+
   <div class="sb-section">
     <div class="sb-section-title">회사 정보</div>
     <a href="#" onclick="go('about',this)"><span>ℹ️</span> <span>회사 소개</span></a>
@@ -1384,6 +1391,41 @@ tr:hover td{background:rgba(0,0,0,.02)}
   </div>
 
   <!-- QA #284 Phase 3 — DOWNLOAD LOGS -->
+  <!-- ─── 긴 글 번역 (2026-08-08 신설) ────────────────────────────────
+       크론(2분 주기)은 원문 6,000자가 넘는 기사를 자동 번역에서 제외한다.
+       2026-08-05 zh 사고 때문이다 — 큐가 발행일 내림차순 고정이라, 호출
+       시간 안에 못 끝내는 긴 글 한 건이 큐 맨 앞에 박히면 그 언어 전체가
+       영원히 멈춘다(당시 zh 181건). 상한은 그 poison pill 을 막는 장치라
+       풀면 안 된다. 대신 제외분은 이 화면에서 사람이 돌린다. -->
+  <div class="tab" id="t-longtrans">
+    <div class="mn-header">
+      <div class="mn-title">긴 글 번역</div>
+      <div class="mn-actions">
+        <button class="btn" id="ltRefreshBtn" onclick="longTransScan()">↻ 남은 것 세기</button>
+        <button class="btn btn-primary" id="ltRunBtn" onclick="longTransRun()">▶ 번역 시작</button>
+        <button class="btn btn-red" id="ltStopBtn" onclick="longTransStop()" style="display:none">■ 중지</button>
+      </div>
+    </div>
+    <div class="mn-body">
+      <div style="border:1px solid var(--border2);border-radius:8px;padding:14px 16px;margin-bottom:16px;background:#fafafa;font-size:12px;line-height:1.7;color:var(--text2)">
+        크론은 원문이 <b>6,000자를 넘는 기사</b>를 자동 번역에서 뺍니다.
+        한 건이 시간 안에 못 끝나면 그 언어 전체가 멈추기 때문입니다(2026-08-05 중국어 181건 사고).
+        그 제외분을 여기서 <b>한 건씩</b> 처리합니다.<br>
+        한 건에 <b>1~2분</b> 걸립니다. 시작하면 <b>이 탭을 열어 두세요</b> — 창을 닫으면 멈춥니다.
+        중간에 멈춰도 안전하고, 다시 눌러 이어서 하면 됩니다.
+      </div>
+      <div class="stats" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
+        <div class="stat"><div class="stat-n" id="ltStatRemain">—</div><div class="stat-l">남은 번역</div></div>
+        <div class="stat"><div class="stat-n" id="ltStatDone">0</div><div class="stat-l">이번에 처리</div></div>
+        <div class="stat"><div class="stat-n" id="ltStatFail">0</div><div class="stat-l">실패</div></div>
+        <div class="stat"><div class="stat-n" id="ltStatElapsed">—</div><div class="stat-l">경과</div></div>
+      </div>
+      <div id="ltLangGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-bottom:16px"></div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:6px">진행 기록</div>
+      <pre id="ltLog" style="margin:0;padding:12px 14px;border:1px solid var(--border2);border-radius:8px;background:#111;color:#d6d6d6;font-size:11px;line-height:1.65;max-height:360px;overflow:auto;white-space:pre-wrap;word-break:break-all">아직 시작하지 않았습니다. 「남은 것 세기」로 현재 상태를 먼저 확인하세요.</pre>
+    </div>
+  </div>
+
   <div class="tab" id="t-downloads">
     <div class="mn-header">
       <div class="mn-title">다운로드 이력</div>
@@ -3586,7 +3628,7 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
     <div style="padding:8px 16px 14px;font-size:11px;color:var(--text3,#888);border-top:1px solid var(--border,#222)">지정한 영역만 픽셀화된 <strong>검열본이 새 이미지로 업로드</strong>되어 이 화보를 대체합니다. 원본 파일은 서버에서 삭제되지 않습니다. 드래그로 여러 영역 지정 가능 · 적용 후 "저장"을 눌러야 발행본에 반영됩니다.</div>
   </div>
 </div>
-<script src="/pap-admin.js?v=139" defer></script>
+<script src="/pap-admin.js?v=140" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>

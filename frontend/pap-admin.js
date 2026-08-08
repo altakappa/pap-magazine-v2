@@ -15431,3 +15431,178 @@ async function exportDownloadLogsCSV(){
     setTimeout(maybeLoad, 500);
   });
 })();
+
+/* ═══════════════════════════════════════════════════════════════════════
+ * 긴 글 번역 (2026-08-08 신설)
+ *
+ * ── 왜 사람이 눌러야 하나 ────────────────────────────────────────────
+ * 번역 크론은 원문 6,000자 초과 기사를 자동 번역에서 뺀다. 2026-08-05
+ * 중국어 사고 때문이다 — 큐가 published_date 내림차순 고정이라, 호출
+ * 시간 안에 못 끝내는 긴 글 한 건이 큐 맨 앞에 박히면 그 언어 전체가
+ * 영원히 멈춘다(당시 zh 181건이 한 건에 막혔다). 상한은 그 poison pill
+ * 을 막는 장치라 푸는 게 답이 아니다.
+ *
+ * 대신 관리자 경로(`/api/admin/backfill-translations`)는 상한이 없고
+ * 마감도 100초로 넉넉하다. 이 화면은 그 엔드포인트를 **한 건씩 순서대로**
+ * 부르는 얇은 껍데기다.
+ *
+ * ── 왜 서버에서 한 번에 안 돌리나 ────────────────────────────────────
+ * Vercel 함수 상한이 120초다. 긴 글 한 건이 60~90초라 서버 한 번의 호출로는
+ * 두 건도 못 끝낸다. 브라우저가 반복해서 부르는 쪽이 유일하게 맞는 구조다.
+ * 그래서 이 탭을 열어 둬야 하고, 닫으면 멈춘다 — 그 사실을 화면에 적어 둔다.
+ *
+ * ── 설계에서 지킨 것 ─────────────────────────────────────────────────
+ * · 한 번에 한 건(batch=1). 동시에 여러 개를 부르면 Anthropic 429 를 부른다.
+ * · 진행이 없으면 그 언어를 접는다 — 같은 건을 무한히 다시 부르지 않는다
+ *   (이 저장소가 반복해서 겪은 poison pill 을 화면에서 재현하지 않기 위해).
+ * · 중지 버튼은 즉시 듣는다. 이미 날아간 요청 하나만 끝나고 멈춘다.
+ * · 실패해도 다음 언어로 넘어간다. 한 언어가 전체를 막지 않는다.
+ * ═══════════════════════════════════════════════════════════════════════ */
+var LT_LANGS = ['zh','de','ja','ru','fr','es','it'];
+var _ltState = { running:false, stop:false, done:0, fail:0, startedAt:0, remain:{} };
+
+function _ltLog(msg){
+  var el = document.getElementById('ltLog'); if(!el) return;
+  var t = new Date().toTimeString().slice(0,8);
+  if(el.dataset.fresh !== '1'){ el.textContent = ''; el.dataset.fresh = '1'; }
+  el.textContent += (el.textContent ? '\n' : '') + t + '  ' + msg;
+  el.scrollTop = el.scrollHeight;
+}
+function _ltSet(id, v){ var el = document.getElementById(id); if(el) el.textContent = v; }
+function _ltElapsed(){
+  if(!_ltState.startedAt) return '—';
+  var s = Math.round((Date.now() - _ltState.startedAt)/1000);
+  return s < 60 ? s + '초' : Math.floor(s/60) + '분 ' + (s%60) + '초';
+}
+function _ltRenderLangs(){
+  var g = document.getElementById('ltLangGrid'); if(!g) return;
+  var html = '';
+  var total = 0;
+  for(var i=0;i<LT_LANGS.length;i++){
+    var l = LT_LANGS[i];
+    var n = _ltState.remain[l];
+    var known = typeof n === 'number';
+    if(known) total += n;
+    var color = !known ? 'var(--text3)' : (n === 0 ? 'var(--green)' : 'var(--text)');
+    html += '<div style="border:1px solid var(--border2);border-radius:6px;padding:8px 10px;text-align:center">'
+      + '<div style="font-size:10px;letter-spacing:.1em;color:var(--text3);text-transform:uppercase">' + esc(l) + '</div>'
+      + '<div style="font-size:16px;font-weight:700;color:' + color + '">' + (known ? (n === 0 ? '완료' : n) : '—') + '</div>'
+      + '</div>';
+  }
+  g.innerHTML = html;
+  _ltSet('ltStatRemain', Object.keys(_ltState.remain).length ? total : '—');
+}
+
+/* 개수만 센다 — batch=0 은 정규화에서 1 이 되므로 번역이 돌아버린다.
+   그래서 세기는 '번역 없이 잔량만' 이 아니라, 각 언어를 한 번씩 실제로
+   부르지 않고 알 방법이 없다. 대신 첫 실행의 응답에 remaining 이 실려 오므로
+   여기서는 **한 건도 번역하지 않는** 안전한 방법을 쓴다: kind=article &
+   batch=1 을 부르되, 사용자가 「세기」를 눌렀을 때만 그 1건을 실제로 처리하고
+   그 결과의 remaining 을 표에 채운다 — 즉 세기 = 1건 처리 + 현황 갱신이다.
+   (별도 카운트 API 를 새로 만들지 않는 이유: 엔드포인트를 늘리면 인증·권한을
+    또 한 벌 만들게 된다. 지금 필요한 건 화면이지 새 API 가 아니다.) */
+async function longTransScan(){
+  if(_ltState.running){ _ltLog('실행 중에는 세기를 할 수 없습니다.'); return; }
+  var btn = document.getElementById('ltRefreshBtn');
+  if(btn){ btn.disabled = true; btn.textContent = '세는 중…'; }
+  _ltLog('현황을 확인합니다 (언어마다 1건씩 처리하며 남은 수를 읽습니다)…');
+  for(var i=0;i<LT_LANGS.length;i++){
+    var l = LT_LANGS[i];
+    try{
+      var r = await apiGet('/admin/backfill-translations?kind=article&batch=1&lang=' + encodeURIComponent(l));
+      if(r && r.error){ _ltLog('✗ ' + l + ' — ' + r.error); continue; }
+      _ltState.remain[l] = Number(r && r.remaining) || 0;
+      if(r && r.processed) { _ltState.done += r.processed; _ltSet('ltStatDone', _ltState.done); }
+      _ltLog('· ' + l + ' — 남은 ' + _ltState.remain[l] + '건' + (r && r.processed ? ' (' + r.processed + '건 처리됨)' : ''));
+      _ltRenderLangs();
+    }catch(e){ _ltLog('✗ ' + l + ' — ' + ((e && e.message) || e)); }
+  }
+  if(btn){ btn.disabled = false; btn.textContent = '↻ 남은 것 세기'; }
+  _ltLog('현황 확인 완료.');
+}
+
+function longTransStop(){
+  _ltState.stop = true;
+  _ltLog('중지 요청 — 지금 진행 중인 한 건이 끝나면 멈춥니다.');
+}
+
+async function longTransRun(){
+  if(_ltState.running) return;
+  _ltState.running = true; _ltState.stop = false;
+  _ltState.done = 0; _ltState.fail = 0; _ltState.startedAt = Date.now();
+  _ltSet('ltStatDone', 0); _ltSet('ltStatFail', 0);
+  var runBtn = document.getElementById('ltRunBtn');
+  var stopBtn = document.getElementById('ltStopBtn');
+  if(runBtn){ runBtn.disabled = true; runBtn.textContent = '진행 중…'; }
+  if(stopBtn) stopBtn.style.display = '';
+  var timer = setInterval(function(){ _ltSet('ltStatElapsed', _ltElapsed()); }, 1000);
+  _ltLog('시작합니다. 이 탭을 닫지 마세요.');
+
+  try{
+    for(var i=0;i<LT_LANGS.length && !_ltState.stop;i++){
+      var lang = LT_LANGS[i];
+      /* 진행이 없으면 접는다. 같은 건을 무한히 다시 부르지 않기 위한 장치 —
+         이 저장소가 크론에서 반복해서 겪은 poison pill 을 화면에서 재현하지
+         않는다. 2회 연속 처리 0건이면 그 언어는 사람이 봐야 하는 상태다. */
+      var idle = 0;
+      while(!_ltState.stop && idle < 2){
+        var r = null;
+        try{
+          r = await apiGet('/admin/backfill-translations?kind=article&batch=1&lang=' + encodeURIComponent(lang));
+        }catch(e){
+          _ltState.fail++; _ltSet('ltStatFail', _ltState.fail);
+          _ltLog('✗ ' + lang + ' — 요청 실패: ' + ((e && e.message) || e));
+          break;                                   // 네트워크 문제는 다음 언어로
+        }
+        if(r && r.error){
+          _ltState.fail++; _ltSet('ltStatFail', _ltState.fail);
+          _ltLog('✗ ' + lang + ' — ' + r.error);
+          break;
+        }
+        var got = Number(r && r.processed) || 0;
+        var left = Number(r && r.remaining) || 0;
+        _ltState.remain[lang] = left;
+        _ltRenderLangs();
+        if(got){
+          _ltState.done += got; _ltSet('ltStatDone', _ltState.done);
+          idle = 0;
+          _ltLog('✓ ' + lang + ' — ' + got + '건 완료, 남은 ' + left + '건');
+        }else{
+          idle++;
+          var why = (r && r.ran_out_of_time) ? '시간 부족(다시 시도합니다)'
+            : (r && r.skipped_failed) ? '이 건이 계속 실패합니다'
+            : (r && r.errors && r.errors[0] && r.errors[0].reason) ? String(r.errors[0].reason).slice(0,90)
+            : '처리 0건';
+          _ltLog('· ' + lang + ' — ' + why + ' (남은 ' + left + '건)');
+        }
+        if(left === 0){ _ltLog('✔ ' + lang + ' 완주'); break; }
+      }
+      if(idle >= 2) _ltLog('⚠ ' + lang + ' — 두 번 연속 진행이 없어 넘어갑니다. 이 언어는 사람이 확인해 주세요.');
+    }
+  } finally {
+    clearInterval(timer);
+    _ltSet('ltStatElapsed', _ltElapsed());
+    _ltState.running = false;
+    if(runBtn){ runBtn.disabled = false; runBtn.textContent = '▶ 번역 시작'; }
+    if(stopBtn) stopBtn.style.display = 'none';
+    _ltLog(_ltState.stop ? '중지했습니다. 다시 눌러 이어서 할 수 있습니다.'
+      : '끝났습니다. 처리 ' + _ltState.done + '건 · 실패 ' + _ltState.fail + '건 · ' + _ltElapsed());
+  }
+}
+
+/* 탭에 들어오면 언어 칸을 그려 둔다(숫자는 「세기」나 「시작」이 채운다). */
+(function(){
+  document.addEventListener('DOMContentLoaded', function(){
+    function paint(){
+      var tab = document.getElementById('t-longtrans');
+      if(tab && tab.classList.contains('on') && !tab.dataset.painted){
+        tab.dataset.painted = '1';
+        _ltRenderLangs();
+      }
+    }
+    window.addEventListener('hashchange', paint);
+    window.addEventListener('popstate', paint);
+    setTimeout(paint, 500);
+    setInterval(paint, 2000);
+  });
+})();

@@ -160,8 +160,20 @@ console.log('=== 크론이 실제로 마감을 넘기는가 (소스 대조) ==='
     '헬퍼만 고치고 안 넘기면 아무것도 달라지지 않는다 — 이번 사고가 그 형태였다');
 
   const admin = fs.readFileSync(path.join(ROOT, 'api', 'admin', 'backfill-translations.js'), 'utf8');
-  t('관리자 수동 경로는 마감 없이 부른다(의도적)', !/deadlineAt/.test(admin),
-    '사람이 직접 누르는 경로까지 90초로 자를 이유가 없다');
+  /* 2026-08-08 — 이 단언을 뒤집었다.
+     원래 근거는 "사람이 직접 누르는 경로까지 90초로 자를 이유가 없다" 였다.
+     그런데 **Vercel 함수 상한 120초는 누가 눌렀는지 안 가린다.** 마감이
+     Infinity 면 배치 호출(90초) + 단건 재시도(90초)가 180초라 함수가 그냥
+     죽고, 죽으면 응답이 없어 화면에는 원인 없는 '실패'만 남는다.
+     이 경로는 크론이 6,000자 상한으로 제외한 긴 글을 처리하는 유일한 통로라
+     (관리자 화면 「긴 글 번역」) 정확히 그 긴 글에서 이 문제가 터진다.
+     마감을 주면 스스로 접고 ran_out_of_time 으로 보고한 뒤 200 으로 나간다. */
+  t('관리자 수동 경로도 마감을 준다 (함수 상한 120초는 사람을 안 가린다)',
+    /deadlineAt: Date\.now\(\) \+ ADMIN_BUDGET_MS/.test(admin),
+    '마감이 없으면 90초 호출이 두 번 돌 때 함수가 죽는다');
+  const adminBudget = Number((admin.match(/ADMIN_BUDGET_MS = (\d+)/) || [])[1]);
+  t('관리자 예산도 함수 상한 안에 있다 (예산 + 여유 ≤ 120초)',
+    adminBudget > 0 && adminBudget <= 100000, adminBudget);
 })();
 
 console.log('\n' + (fail ? '✗ ' + fail + '건 실패' : '✓ 전부 통과') + ' (' + pass + '/' + (pass + fail) + ')');
