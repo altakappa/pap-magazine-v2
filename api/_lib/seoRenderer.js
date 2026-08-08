@@ -110,6 +110,71 @@ function _plainBody(content) {
   return raw.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+/* ─── 2026-08-09 — 번역된 본문에서 요약을 만든다 ──────────────────────
+ *
+ * ■ 왜 필요한가 (실측)
+ *
+ * 아티클 번역 16,108행을 세어 보니 이렇다:
+ *     제목 있음 16,108 · 본문 있음 16,108 · **설명 있음 0**
+ * 아티클 번역 프롬프트가 `{title, body}` 만 요청하기 때문이다(설계상 그렇다).
+ * 그런데 아래 descMain 은 `tr.description || descEn` 이라, 아티클은 **항상**
+ * 영어(없으면 한국어)로 떨어진다. 라이브 확인:
+ *
+ *     /ru/article/avavav-ss25-backstage-87
+ *       제목  «AVAVAV SS25: бэкстейдж…»            (러시아어 ✓)
+ *       본문  «Бэкстейдж показа коллекции…»        (러시아어 ✓)
+ *       리드·meta description  "<PAP>가 아바바브 백스테이지 현장을 담아왔다"  ← 한국어 ✗
+ *
+ * meta description 은 **검색 결과에 뜨는 그 한 줄**이고, 리드 문단은 화면에서
+ * 제목 바로 아래 보이는 문장이다. 7개 언어 × 2,300 기사 ≈ 16,000 페이지가
+ * 제목·본문은 자기 언어인데 그 두 곳만 남의 언어인 상태였다.
+ *
+ * ■ 왜 재번역하지 않나
+ *
+ * **본문은 이미 번역돼 있다.** 요약을 다시 AI 로 만들 이유가 없다 —
+ * 번역된 본문의 첫 문장들을 쓰면 된다. API 호출 0, DB 쓰기 0, 렌더 시점 조립.
+ * (같은 이유로 만들어진 _enrichMeta 주석 참고 — 이 저장소가 이미 쓰는 방식이다.)
+ *
+ * ■ 경계 처리
+ * · 문장 끝(. ! ? 。 ！ ？ …)에서 끊는다. 없으면 마지막 공백, 그것도 없으면 그냥 자른다.
+ * · 너무 짧으면('' 반환) 호출부가 기존 폴백(descEn)을 그대로 탄다 — 나빠지지 않는다.
+ * · 태그 제거는 _plainBody 재사용. 엔티티는 화면에 그대로 보이면 안 되니 푼다
+ *   (출력할 때 escText 가 다시 이스케이프한다).
+ */
+const _ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', hellip: '…', mdash: '—', ndash: '–' };
+function _decodeEntities(s) {
+  return String(s || '')
+    .replace(/&#(\d+);/g, (_, d) => { const n = Number(d); return n > 0 && n < 0x110000 ? String.fromCodePoint(n) : ''; })
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => { const n = parseInt(h, 16); return n > 0 && n < 0x110000 ? String.fromCodePoint(n) : ''; })
+    .replace(/&([a-z]+);/gi, (m, name) => {
+      const v = _ENTITIES[String(name).toLowerCase()];
+      return v === undefined ? m : v;
+    });
+}
+const DESC_FROM_BODY_MAX = 220;   // meta 상한(_enrichMeta 가 다시 다듬는다)
+const DESC_FROM_BODY_MIN = 40;    // 이보다 짧으면 요약 구실을 못 한다 → 폴백
+function descFromBody(body) {
+  const text = _decodeEntities(_plainBody(body)).replace(/\s+/g, ' ').trim();
+  if (text.length < DESC_FROM_BODY_MIN) return '';
+  if (text.length <= DESC_FROM_BODY_MAX) return text;
+  const head = text.slice(0, DESC_FROM_BODY_MAX);
+  /* 문장 끝에서 끊는다. 라틴은 '. ' · CJK 는 '。' 로 끝나므로 둘 다 본다. */
+  const sentence = Math.max(
+    head.lastIndexOf('. '), head.lastIndexOf('! '), head.lastIndexOf('? '),
+    head.lastIndexOf('。'), head.lastIndexOf('！'), head.lastIndexOf('？'), head.lastIndexOf('… ')
+  );
+  if (sentence >= DESC_FROM_BODY_MIN) {
+    // 구두점 자체는 남긴다(공백 앞까지). CJK 구두점은 1글자라 +1.
+    const end = /[。！？]/.test(head.charAt(sentence)) ? sentence + 1 : sentence + 1;
+    return head.slice(0, end).trim();
+  }
+  /* 문장 끝이 없으면 마지막 공백에서. 붙일 '…' 한 글자만큼 미리 줄여
+     결과가 상한을 넘지 않게 한다(상한이 상한이어야 한다). */
+  const room = head.slice(0, DESC_FROM_BODY_MAX - 1);
+  const space = room.lastIndexOf(' ');
+  return (space >= DESC_FROM_BODY_MIN ? room.slice(0, space) : room).trim() + '…';
+}
+
 function nicheIg(category) {
   const c = String(category || '');
   for (const [re, acct] of NICHE_IG) if (re.test(c)) return acct;
@@ -499,7 +564,12 @@ function renderSeoHtml(kind, record, opts) {
   // 언어 우선 표기 (본문 h1·리드·스키마 공용) — it/fr/es 는 번역본, 없으면 EN 폴백
   const titleMain = lang === 'ko' ? titleKo : (lang === 'en' ? titleEn : ((tr && tr.title) || titleEn));
   const titleAlt = lang === 'ko' ? titleEn : titleKo;
-  const descMain = lang === 'ko' ? descKo : (lang === 'en' ? descEn : ((tr && tr.description) || descEn));
+  /* 번역본에 설명이 없으면 **번역된 본문**에서 만든다 (2026-08-09).
+     아티클 번역은 설명을 아예 안 받아오므로(위 descFromBody 주석의 실측),
+     이게 없으면 meta description 과 리드 문단이 영어·한국어로 나간다.
+     에디토리얼은 tr.description 이 있어 이 경로를 타지 않는다. */
+  const _trDesc = (tr && tr.description) || (tr && tr.body ? descFromBody(tr.body) : '');
+  const descMain = lang === 'ko' ? descKo : (lang === 'en' ? descEn : (_trDesc || descEn));
   const descAlt = lang === 'ko' ? descEn : (lang === 'en' ? descKo : descEn);
   /* 2026-07-22 (SPA 룩 통일) — 일부 요약(desc)이 "제목 — PAP Magazine" 줄로 시작해
      화면에서 h1 바로 아래 제목이 한 번 더 보였다(백필 산출물). SPA 에는 이 줄이 없다.
@@ -522,7 +592,10 @@ function renderSeoHtml(kind, record, opts) {
      설명문 길이 정책은 건드리지 않는다. */
   const bodyKo = record.description || record.seo_description || record.subtitle || _filmDescKo || descKo;
   const bodyEn = record.description_en || _filmDescEn || bodyKo;
-  const bodyMain = lang === 'ko' ? bodyKo : (lang === 'en' ? bodyEn : ((tr && tr.description) || bodyEn));
+  /* 화면 리드 문단도 같은 폴백을 쓴다 — 라이브에서 러시아어 기사의 리드가
+     한국어로 나가고 있었다(제목·본문은 러시아어). meta 만 고치면 화면은
+     그대로 남는다. */
+  const bodyMain = lang === 'ko' ? bodyKo : (lang === 'en' ? bodyEn : (_trDesc || bodyEn));
   const bodyAlt = lang === 'ko' ? bodyEn : (lang === 'en' ? bodyKo : bodyEn);
   const descDisplay = _stripTitleEcho(bodyMain);
   const descAltDisplay = _stripTitleEcho(bodyAlt);
@@ -1625,4 +1698,4 @@ function renderNotFoundHtml(kind, slug) {
 // 2026-07-21 QA(표기 재발) — fmtDisplayDate/fmtTitleCat 을 내보낸다.
 // api/seo/listing.js 가 자체 ISO 포맷(dateStr)을 쓰고 있어 목록 SSR 만
 // "2025-01-05" 로 갈렸다. 서버측 표기도 이 두 함수 하나로 모은다.
-module.exports = { renderSeoHtml, renderNotFoundHtml, KIND, SITE, SITE_NAME, fmtDisplayDate, fmtTitleCat };
+module.exports = { renderSeoHtml, renderNotFoundHtml, descFromBody, KIND, SITE, SITE_NAME, fmtDisplayDate, fmtTitleCat };
