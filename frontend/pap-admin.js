@@ -15001,17 +15001,42 @@ function persistSettings(){
   try { localStorage.removeItem('pap_admin_menuCats'); } catch(_){}
   renderBanners();renderCovers();
 })();
+/* ─── 2026-08-08 — 이 블록이 파일의 나머지 절반을 죽이고 있었다 ────────
+ *
+ * 여기 있던 두 줄:
+ *     var _origAddCoverSlide = addCoverSlide;
+ *     var _origDeleteCover  = deleteCover;
+ * 이 두 함수는 **파일 어디에도 없다.** 커버 기능이 슬라이드 모델에서 그룹
+ * 모델(addCoverGroup / deleteCoverGroup / addCoverImage)로 바뀔 때 원본은
+ * 지워졌는데 이 래퍼만 남았다.
+ *
+ * 결과: 로드 시점에 `ReferenceError: addCoverSlide is not defined` 가 나고
+ * **그 아래의 최상위 실행문이 전부 안 돌았다.** 함수 선언은 hoisting 되어
+ * 존재하니 겉보기엔 멀쩡한데, `var` 로 만드는 상태값이 통째로 undefined 다.
+ * 실측으로 죽어 있던 것:
+ *     _originalGo   (새 섹션용 go() 오버라이드)
+ *     intAds · editAdId   (인터스티셜 광고)
+ *     _papDlState        (다운로드 이력)
+ *     LT_LANGS · _ltState (긴 글 번역 — 오늘 이걸로 발견했다)
+ * 버튼을 눌러도 아무 일도 안 일어나고 콘솔에만 조용히 남는 형태였다.
+ *
+ * 교훈은 이 저장소가 오늘 하루 종일 만난 것과 같다 —
+ * **조용한 실패는 없는 실패가 아니다.** 그래서 래퍼를 지우는 데서 끝내지
+ * 않고, 없는 함수를 감싸려 하면 파일을 죽이는 대신 경고만 남기게 바꾼다.
+ * (회귀 검증: tests/admin-dead-handler.test.js) */
+function _wrapWithPersist(name, wrap){
+  var orig = window[name];
+  if(typeof orig !== 'function'){
+    console.warn('[pap-admin] 래핑 대상이 없습니다: ' + name + ' — 건너뜁니다.');
+    return;
+  }
+  window[name] = wrap(orig);
+}
 // Override save functions to also persist
-var _origSaveBannerFn=saveBanner;
-saveBanner=function(){_origSaveBannerFn();persistSettings();};
-var _origSaveCat=saveCat;
-saveCat=function(){_origSaveCat();persistSettings();};
-var _origAddCoverSlide=addCoverSlide;
-addCoverSlide=function(){_origAddCoverSlide();persistSettings();};
-var _origDeleteCover=deleteCover;
-deleteCover=function(i){_origDeleteCover(i);persistSettings();};
-var _origDeleteBanner=deleteBanner;
-deleteBanner=function(i){_origDeleteBanner(i);persistSettings();};
+_wrapWithPersist('saveBanner', function(o){ return function(){ o(); persistSettings(); }; });
+_wrapWithPersist('saveCat',    function(o){ return function(){ o(); persistSettings(); }; });
+_wrapWithPersist('deleteBanner', function(o){ return function(i){ o(i); persistSettings(); }; });
+/* addCoverSlide / deleteCover 래퍼는 삭제했다 — 함수 자체가 없다(위 주석). */
 // QA #320 — addMenuCat/deleteMenuCat 는 이제 DB 저장이라 persistSettings 래퍼 불필요.
 // QA #320 — addLoadingImg persistSettings 래퍼 제거. 로딩 이미지는
 // QA #310 부터 DB/API 가 단일 진실원이므로 localStorage 지속 불필요.

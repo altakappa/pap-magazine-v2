@@ -1702,7 +1702,11 @@ tr:hover td{background:rgba(0,0,0,.02)}
 
   <!-- COVER SETTINGS -->
   <div class="tab" id="t-cover">
-    <div class="mn-header"><div class="mn-title">커버 설정</div><div class="mn-actions"><button class="btn btn-primary" onclick="addCoverSlide()">+ 슬라이드 추가</button></div></div>
+    <!-- 2026-08-08 — 「+ 슬라이드 추가」 버튼을 뺐다. 부르던 addCoverSlide()
+         가 파일 어디에도 없어(커버가 슬라이드→그룹 모델로 바뀔 때 삭제됨)
+         눌러도 ReferenceError 만 났다. 추가 버튼은 renderCovers() 가 목록
+         안에 「+ 새 배너 추가」(addCoverGroup)로 이미 그린다 — 중복이었다. -->
+    <div class="mn-header"><div class="mn-title">커버 설정</div></div>
     <div class="mn-body">
       <p style="color:var(--text3);margin-bottom:20px">메인 페이지 최상단의 커버 슬라이드를 관리합니다. 이미지, 발행호, 제목을 설정하세요.</p>
       <div id="coverList"></div>
@@ -3628,7 +3632,7 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
     <div style="padding:8px 16px 14px;font-size:11px;color:var(--text3,#888);border-top:1px solid var(--border,#222)">지정한 영역만 픽셀화된 <strong>검열본이 새 이미지로 업로드</strong>되어 이 화보를 대체합니다. 원본 파일은 서버에서 삭제되지 않습니다. 드래그로 여러 영역 지정 가능 · 적용 후 "저장"을 눌러야 발행본에 반영됩니다.</div>
   </div>
 </div>
-<script src="/pap-admin.js?v=140" defer></script>
+<script src="/pap-admin.js?v=141" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>
