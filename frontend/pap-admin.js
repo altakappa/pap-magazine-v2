@@ -15484,6 +15484,19 @@ async function exportDownloadLogsCSV(){
  * · 실패해도 다음 언어로 넘어간다. 한 언어가 전체를 막지 않는다.
  * ═══════════════════════════════════════════════════════════════════════ */
 var LT_LANGS = ['zh','de','ja','ru','fr','es','it'];
+/* ─── 2026-08-09 — 길이 구간으로 나눠 돈다 ────────────────────────────
+ * 관리자 경로는 길이 상한이 없다. 그래서 큐 맨 앞이 **늘 가장 긴 기사**다
+ * (12,963자). 그게 매번 호출 타임아웃을 넘겨 뒤에 줄 선 5,643·5,909자에
+ * 차례가 영영 안 왔다. 실측: 6분 24초 돌려 처리 0건, 전부 '시간 부족'.
+ * 상한을 없앤 것이 이 화면 안에서 같은 poison pill 을 만든 것이다.
+ *
+ * 좁은 구간부터 돈다 — 거인을 빼놓고 중간 크기를 먼저 끝낸 뒤 넓힌다.
+ * 7,000 은 실측 근거다: 지금 안 된 4건이 5,643·5,909자이고, 그다음으로
+ * 긴 기사가 8,821자라 그 사이를 가른다. */
+var LT_BANDS = [
+  { max: 7000, label: '≤7,000자' },
+  { max: 0,    label: '전체(긴 글 포함)' },
+];
 var _ltState = { running:false, stop:false, done:0, fail:0, startedAt:0, remain:{} };
 
 function _ltLog(msg){
@@ -15564,6 +15577,10 @@ async function longTransRun(){
   _ltLog('시작합니다. 이 탭을 닫지 마세요.');
 
   try{
+   for(var bi=0; bi<LT_BANDS.length && !_ltState.stop; bi++){
+    var band = LT_BANDS[bi];
+    var bandQ = band.max ? '&maxSrc=' + band.max : '';
+    _ltLog('── 구간 ' + band.label + ' 시작 ──');
     for(var i=0;i<LT_LANGS.length && !_ltState.stop;i++){
       var lang = LT_LANGS[i];
       /* 진행이 없으면 접는다. 같은 건을 무한히 다시 부르지 않기 위한 장치 —
@@ -15573,7 +15590,7 @@ async function longTransRun(){
       while(!_ltState.stop && idle < 2){
         var r = null;
         try{
-          r = await apiGet('/admin/backfill-translations?kind=article&batch=1&lang=' + encodeURIComponent(lang));
+          r = await apiGet('/admin/backfill-translations?kind=article&batch=1&lang=' + encodeURIComponent(lang) + bandQ);
         }catch(e){
           _ltState.fail++; _ltSet('ltStatFail', _ltState.fail);
           _ltLog('✗ ' + lang + ' — 요청 실패: ' + ((e && e.message) || e));
@@ -15591,19 +15608,20 @@ async function longTransRun(){
         if(got){
           _ltState.done += got; _ltSet('ltStatDone', _ltState.done);
           idle = 0;
-          _ltLog('✓ ' + lang + ' — ' + got + '건 완료, 남은 ' + left + '건');
+          _ltLog('✓ ' + lang + '(' + band.label + ') — ' + got + '건 완료, 남은 ' + left + '건');
         }else{
           idle++;
           var why = (r && r.ran_out_of_time) ? '시간 부족(다시 시도합니다)'
             : (r && r.skipped_failed) ? '이 건이 계속 실패합니다'
             : (r && r.errors && r.errors[0] && r.errors[0].reason) ? String(r.errors[0].reason).slice(0,90)
             : '처리 0건';
-          _ltLog('· ' + lang + ' — ' + why + ' (남은 ' + left + '건)');
+          _ltLog('· ' + lang + '(' + band.label + ') — ' + why + ' (남은 ' + left + '건)');
         }
-        if(left === 0){ _ltLog('✔ ' + lang + ' 완주'); break; }
+        if(left === 0){ _ltLog('✔ ' + lang + '(' + band.label + ') 완주'); break; }
       }
-      if(idle >= 2) _ltLog('⚠ ' + lang + ' — 두 번 연속 진행이 없어 넘어갑니다. 이 언어는 사람이 확인해 주세요.');
+      if(idle >= 2) _ltLog('⚠ ' + lang + '(' + band.label + ') — 두 번 연속 진행이 없어 넘어갑니다.');
     }
+   }
   } finally {
     clearInterval(timer);
     _ltSet('ltStatElapsed', _ltElapsed());

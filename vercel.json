@@ -997,6 +997,26 @@
       "permanent": true
     },
     {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/film/:slug",
+      "destination": "/en/film/:slug",
+      "permanent": false
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/film/:slug/",
+      "destination": "/en/film/:slug",
+      "permanent": false
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/short/:slug",
+      "destination": "/en/short/:slug",
+      "permanent": false
+    },
+    {
+      "source": "/:lang(ja|fr|it|es|de|ru|zh)/short/:slug/",
+      "destination": "/en/short/:slug",
+      "permanent": false
+    },
+    {
       "source": "/en/filmList",
       "destination": "/films",
       "permanent": true

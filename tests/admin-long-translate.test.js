@@ -47,8 +47,31 @@ t('timeout 쿼리로 조절할 수 있다', /req\.query\.timeout/.test(ADMIN));
 t('마감을 안 준 옛 호출이 남아 있지 않다',
   !/runBackfillBatch\(\{ lang, kind, batch \}\)/.test(ADMIN), 'deadlineAt 없는 호출 잔존');
 
-console.log('\n=== ② 길이 상한 없음을 명시한다 ===');
-t('maxSrcChars: 0 을 명시적으로 넘긴다', /maxSrcChars: 0/.test(ADMIN));
+console.log('\n=== ② 길이 상한 — 기본 없음, 구간 지정 가능 ===');
+/* 2026-08-09 — 고정 0 에서 쿼리 지정으로 바뀌었다.
+   상한을 아예 없앤 것이 이 경로 안에서 poison pill 을 만들었기 때문이다:
+   큐가 published_date 내림차순이라 맨 앞이 늘 가장 긴 기사(12,963자)고,
+   그게 매번 타임아웃 나서 뒤의 5,643·5,909자에 차례가 안 왔다
+   (실측: 6분 24초 처리 0건). 화면이 좁은 구간부터 돌 수 있어야 한다. */
+t('maxSrc 쿼리를 받는다', /req\.query\.maxSrc/.test(ADMIN));
+t('기본값은 0(제한 없음)이다', /Number\.isFinite\(n\) && n > 0 \? Math\.floor\(n\) : 0/.test(ADMIN));
+t('runBackfillBatch 에 maxSrcChars 로 넘긴다', /maxSrcChars: \(\(\) => \{/.test(ADMIN));
+
+console.log('\n=== ② 화면이 구간으로 나눠 돈다 ===');
+t('구간 정의가 있다', /var LT_BANDS = \[/.test(JS));
+t('좁은 구간(≤7,000)이 먼저다',
+  /\{ max: 7000/.test(JS) && JS.indexOf('{ max: 7000') < JS.indexOf('{ max: 0'), 'band 순서');
+t('마지막 구간은 제한 없음(0)', /\{ max: 0,/.test(JS));
+t('구간을 쿼리로 붙인다', /bandQ = band\.max \? '&maxSrc=' \+ band\.max : ''/.test(JS));
+t('호출에 구간이 실린다', /lang\) \+ bandQ\)/.test(JS));
+/* ⚠️ `for(var i=0;i<LT_LANGS.length` 는 longTransScan 에도 있다(먼저 나온다).
+   그냥 indexOf 로 비교하면 순서를 거꾸로 읽는다 — 실제로 그렇게 짰다가 걸렸다.
+   실행 루프에만 있는 형태(`&& !_ltState.stop`)로 집는다. */
+t('구간 루프가 언어 루프를 감싼다 (실행 루프 기준)',
+  JS.indexOf('for(var bi=0; bi<LT_BANDS.length')
+    < JS.indexOf('for(var i=0;i<LT_LANGS.length && !_ltState.stop;i++)')
+  && JS.indexOf('for(var bi=0; bi<LT_BANDS.length') > 0);
+t('로그에 구간 이름이 남는다', /'── 구간 ' \+ band\.label \+ ' 시작 ──'/.test(JS));
 
 console.log('\n=== ③ 크론의 상한은 그대로다 (여기 고치며 저기 풀지 않는다) ===');
 t('크론 기본 상한 6000 이 유지된다', /SEO_TRANSLATE_MAX_SRC_CHARS/.test(CRON) && /6000/.test(CRON));

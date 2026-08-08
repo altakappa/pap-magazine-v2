@@ -59,10 +59,23 @@ module.exports = async function handler(req, res) {
     const result = await runBackfillBatch({
       lang, kind, batch, timeoutMs,
       deadlineAt: Date.now() + ADMIN_BUDGET_MS,
-      /* 길이 상한 없음(0) — 이 경로의 존재 이유가 '크론이 뺀 긴 글' 이다.
-         명시적으로 적어 둔다: 기본값에 기대면 나중에 기본값이 바뀔 때 조용히
-         깨진다. */
-      maxSrcChars: 0,
+      /* 길이 상한 — 기본은 없음(0). 이 경로의 존재 이유가 '크론이 뺀 긴 글'
+         이기 때문이다. 명시적으로 적어 둔다: 기본값에 기대면 나중에 기본값이
+         바뀔 때 조용히 깨진다.
+
+         ⚠️ 2026-08-09 — 상한을 **없앤 것이 여기서 같은 poison pill 을 만들었다.**
+         큐는 published_date 내림차순이라 상한이 없으면 맨 앞이 늘 가장 긴
+         기사다(12,963자). 그게 매번 호출 타임아웃을 넘겨서, 그 뒤에 줄 서 있는
+         5,643·5,909자 기사에 **차례가 영영 안 온다.** 실측: 「긴 글 번역」 화면을
+         6분 24초 돌려 처리 0건, 전부 '시간 부족'.
+
+         그래서 호출부가 상한을 **구간으로** 줄 수 있게 연다. 화면은 좁은 구간
+         (≤7,000)부터 돌려 거인들을 빼놓고 중간 크기를 먼저 끝낸 뒤, 그다음
+         구간으로 넓힌다. 크론의 상한(env)은 그대로다 — 여기만 조절한다. */
+      maxSrcChars: (() => {
+        const n = Number(req.query.maxSrc);
+        return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+      })(),
     });
     return res.status(200).json(result);
   } catch (err) {
