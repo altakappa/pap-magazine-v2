@@ -14,8 +14,16 @@
  *
  *   ② 문자열 안에 이스케이프 안 된 개행     → 고칠 수 있다 (규격상 불법 문자)
  *   ⑤ 문자열 안에 이스케이프 안 된 탭       → 고칠 수 있다
- *   ④ 문자열 안에 이스케이프 안 된 큰따옴표 → **못 고친다** (경계를 알 수 없다)
+ *   ④ 문자열 안에 이스케이프 안 된 큰따옴표 → 1차에는 "못 고친다" 로 뒀다
  *   ③ 응답이 잘려 첫 객체가 안 닫힘         → **못 고친다** (내용이 없다)
+ *
+ * ── 2차 (같은 날 저녁): ④ 판단을 뒤집었다 ──────────────────────────
+ * 1차 배포 후 note 에 찍힌 실패가 **17종 전부 ④** 였다. 즉 나는 실패의 0%를
+ * 고치고 100%를 남겨둔 것이다. "경계를 알 수 없다"고 했지만, 이 응답의
+ * 스키마는 평평해서(`{"i":숫자,"title":"…","body":"…"}`) 문자열을 진짜로
+ * 끝내는 따옴표 뒤에는 반드시 `,` `:` `}` `]` 가 온다. 경계는 알 수 있었다.
+ * 다만 완벽하지 않아(내용이 `"…",` 로 이어지면 끊긴다) **최후의 수단**으로만
+ * 쓰고 `__repaired` 로 세어 note 에 남긴다.
  *
  * ── 왜 CJK 만 아팠나 ────────────────────────────────────────────────
  * 아티클 배치는 1건이고 CJK 는 cjkScale 로도 더 안 줄어 그대로 1이다.
@@ -53,7 +61,7 @@ m.filename = SUPABASE; m.loaded = true;
 m.exports = { supabaseAdmin: { from() { throw new Error('no'); }, rpc() { return Promise.resolve({ data: [], error: null }); } } };
 require.cache[SUPABASE] = m;
 
-const { parseJsonArray, salvageObjects, escapeRawControls, diagnoseJson } = require(HELPER);
+const { parseJsonArray, salvageObjects, escapeRawControls, escapeInnerQuotes, diagnoseJson } = require(HELPER);
 
 let pass = 0, fail = 0;
 function t(n, cond, d) {
@@ -83,8 +91,11 @@ const rawCr = '[{"i":0,"title":"T","body":"a\rb"}]';
 t('생 캐리지리턴도 복구된다', (() => { const r = tryParse(rawCr); return r.ok && r.v[0].body === 'a\rb'; })());
 
 console.log('\n=== ② 고칠 수 없는 것은 고친 척하지 않는다 ===');
+/* 2026-08-08 2차 — ④ 는 이제 최후의 수단으로 복구한다(위 머리말 참고).
+   여기서는 '복구하되 내용을 바꾸지 않는다' 를 지킨다. */
 const rq = tryParse(F + '[{"i":0,"title":"她说"你好"","body":"x"}]\n```');
-t('④ 생 큰따옴표는 실패로 둔다 (경계를 추측하지 않는다)', !rq.ok, rq.ok && JSON.stringify(rq.v));
+t('④ 생 큰따옴표는 복구하되 내용을 보존한다',
+  rq.ok && rq.v[0].title === '她说"你好"', rq.ok ? JSON.stringify(rq.v[0].title) : rq.msg);
 const rt = tryParse(F + '[{"i":0,"title":"标题","body":"<p>秀场秀场');
 t('③ 잘린 응답은 실패로 둔다', !rt.ok, rt.ok && JSON.stringify(rt.v));
 
@@ -122,6 +133,62 @@ const cron = fs.readFileSync(CRON, 'utf8');
 const w = (cron.match(/first\.reason \|\| first\.message \|\| first\)\.slice\(0, (\d+)\)/) || [])[1];
 t('errors[] 문구를 90자 이상 싣는다', Number(w) >= 90, w);
 t('50자로 되돌아가지 않았다', Number(w) !== 50, w);
+
+/* ── 2026-08-08 2차: ④ 도 고친다. 근거는 배포 후 note 에 찍힌 실패 17종 전부. ── */
+console.log('\n=== ④ 최후의 수단: 값 안의 생 큰따옴표 (실제 실패 제목) ===');
+/* cron_runs note 에서 그대로 뽑은 zh 제목들. 중국어 기사는 컬렉션·협업 이름을
+   따옴표로 감싸는 관행이 있어 모델이 프롬프트의 escape 지시를 상습적으로 어긴다. */
+const REAL_TITLES = [
+  'Off-White 2024度假系列"Homecoming"发布',
+  'Marni推出"2023兔年"纪念胶囊系列',
+  'Prada社交俱乐部"Prada Mode"首次登陆韩国',
+  'A.P.C. X ASICS 推出联名运动鞋"GEL-SONOMA"',
+  'PUMA庆祝曼彻斯特城足球俱乐部访韩，开设"PUMA CITY"',
+];
+for (const title of REAL_TITLES) {
+  const r = tryParse(F + '[{"i":0,"title":"' + title + '","body":"<p>正文</p>"}]\n```');
+  t('복구: ' + title.slice(0, 22) + '…', r.ok && r.v.length === 1 && r.v[0].title === title,
+    r.ok ? r.v[0].title : r.msg);
+}
+t('본문도 함께 살아난다', (() => {
+  const r = tryParse(F + '[{"i":0,"title":"A"B","body":"<p>正文</p>"}]');
+  return r.ok && r.v[0].body === '<p>正文</p>';
+})());
+
+console.log('\n=== ④ 복구는 조용히 하지 않는다 ===');
+const rq2 = tryParse(F + '[{"i":0,"title":"Marni推出"2023兔年"系列","body":"x"}]');
+t('복구한 건에 __repaired 표시가 붙는다', rq2.ok && rq2.v[0].__repaired === true);
+t('정상 파싱된 건에는 안 붙는다', (() => {
+  const r = tryParse('[{"i":0,"title":"보통","body":"x"}]');
+  return r.ok && r.v[0].__repaired === undefined;
+})());
+t('제어문자만으로 살아난 건에도 안 붙는다 (더 약한 복구가 먼저다)', (() => {
+  const r = tryParse('[{"i":0,"title":"T","body":"a\nb"}]');
+  return r.ok && r.v[0].__repaired === undefined;
+})());
+
+console.log('\n=== ④ escapeInnerQuotes 자체 ===');
+t('진짜 경계(뒤에 , : } ])는 안 건드린다',
+  escapeInnerQuotes('{"a":"x","b":"y"}') === '{"a":"x","b":"y"}');
+t('공백이 끼어도 경계로 본다',
+  JSON.parse(escapeInnerQuotes('{"a":"x" , "b":"y"}')).b === 'y');
+t('이미 이스케이프된 따옴표는 두 번 안 바꾼다',
+  escapeInnerQuotes('{"a":"x\\"y"}') === '{"a":"x\\"y"}');
+t('경로의 역슬래시를 문자열 종료로 오인하지 않는다',
+  JSON.parse(escapeInnerQuotes('{"a":"c:\\\\path","b":"say"hi"here"}')).a === 'c:\\path');
+/* 한계는 숨기지 않는다 — 내용이 따옴표+쉼표로 이어지면 거기서 끊긴다.
+   그래서 최후의 수단으로만 쓰고 __repaired 로 센다. */
+t('한계: 따옴표 바로 뒤 쉼표는 경계로 오인한다 (알고 쓰는 것)', (() => {
+  const r = tryParse('[{"i":0,"title":"그는 "안녕",이라 했다","body":"x"}]');
+  return !r.ok || r.v[0].title !== '그는 "안녕",이라 했다';
+})());
+
+console.log('\n=== ④ 크론이 복구 건수를 note 에 남긴다 ===');
+t('json_repaired 를 합산한다', /cur\.repaired \+= r\.json_repaired \|\| 0/.test(cron));
+t("note 에 /복구N 으로 남긴다", /'\/복구' \+ v\.repaired/.test(cron));
+t('0 이면 안 붙인다', /v\.repaired \? '\/복구'/.test(cron));
+t('헬퍼가 json_repaired 를 응답에 담는다',
+  /json_repaired: jsonRepaired \|\| undefined/.test(fs.readFileSync(path.join(ROOT,'api/_lib/seoTranslateBackfill.js'),'utf8')));
 
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) process.exit(1);

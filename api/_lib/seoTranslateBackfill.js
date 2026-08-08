@@ -367,10 +367,59 @@ function escapeRawControls(s) {
 }
 
 /* 고쳐서 한 번 더 파싱해 본다. 실패하면 null — 호출부는 원래 경로를 그대로 탄다. */
-function tryRepairedParse(chunk) {
+/* ─── 2026-08-08 (2차) — 값 안의 '생 큰따옴표' 를 이스케이프한다 ────────
+ *
+ * 어제 나는 이 경우를 "경계를 알 수 없으니 손대지 않는다" 며 남겼다.
+ * 그런데 진단명을 note 에 띄우고 나니 **실패의 전부가 이것**이었다.
+ * 배포 후 잡힌 17종 전부가 zh 제목 안의 따옴표였다:
+ *
+ *     "title":"Off-White 2024度假系列"Homecoming"发布"
+ *     "title":"Marni推出"2023兔年"纪念胶囊系列","body":"…
+ *     "title":"Prada社交俱乐部"Prada Mode"首次登陆韩国","…
+ *     "title":"A.P.C. X ASICS 推出联名运动鞋"GEL-SONO…
+ *
+ * 중국어 기사 제목은 컬렉션·협업 이름을 따옴표로 감싸는 관행이 있어서
+ * 모델이 프롬프트의 "escape every double quote" 를 자주 어긴다.
+ * 즉 이건 드문 사고가 아니라 **zh 의 상시 패턴**이다.
+ *
+ * ── 경계를 어떻게 아는가 ──────────────────────────────────────────
+ * 이 응답의 스키마는 평평하다: {"i":숫자,"title":"…","body":"…"}.
+ * 그래서 문자열을 진짜로 끝내는 따옴표 뒤에는 **반드시** `,` `:` `}` `]`
+ * (또는 공백) 중 하나가 온다. 그 밖의 글자가 오면 그 따옴표는 내용이다.
+ * 추측이 아니라 이 스키마에서 참인 규칙이다.
+ *
+ * ── 그래도 완벽하지 않다 ─────────────────────────────────────────
+ * 내용이 `…"你好",` 처럼 따옴표 바로 뒤에 쉼표로 이어지면 거기서 끊긴다.
+ * 그래서 **최후의 수단**으로만 쓴다 — 정상 파싱 → 제어문자 복구 →
+ * 건별 salvage 를 다 해 보고 그래도 0건일 때만. 그리고 그렇게 건진 건은
+ * 아래에서 `repaired` 로 세어 note 에 남긴다. 조용히 고치지 않는다. */
+function escapeInnerQuotes(s) {
+  let out = '', inStr = false, esc = false;
+  for (let k = 0; k < s.length; k++) {
+    const c = s[k];
+    if (esc) { out += c; esc = false; continue; }
+    if (c === '\\') { out += c; if (inStr) esc = true; continue; }
+    if (c !== '"') { out += c; continue; }
+    if (!inStr) { out += c; inStr = true; continue; }
+    /* 닫는 따옴표인가? 뒤의 공백을 건너뛰고 다음 글자를 본다. */
+    let n = k + 1;
+    while (n < s.length && (s[n] === ' ' || s[n] === '\n' || s[n] === '\r' || s[n] === '\t')) n++;
+    const next = n < s.length ? s[n] : '';
+    if (next === ',' || next === ':' || next === '}' || next === ']' || next === '') {
+      out += c; inStr = false;                 // 진짜 경계
+    } else {
+      out += '\\"';                            // 내용이다
+    }
+  }
+  return out;
+}
+
+/* 고쳐서 한 번 더 파싱해 본다. 실패하면 null — 호출부는 원래 경로를 그대로 탄다.
+   `deep` 이면 따옴표까지 손댄다(최후의 수단). */
+function tryRepairedParse(chunk, deep) {
   try {
-    const v = JSON.parse(escapeRawControls(chunk));
-    return v;
+    const fixed = deep ? escapeInnerQuotes(escapeRawControls(chunk)) : escapeRawControls(chunk);
+    return JSON.parse(fixed);
   } catch (e) { return null; }
 }
 
@@ -429,6 +478,17 @@ function parseJsonArray(text) {
   }
   const salvaged = salvageObjects(s, start);
   if (salvaged.length) return salvaged;
+  /* ── 최후의 수단: 값 안의 생 따옴표까지 이스케이프해 본다 (2026-08-08 2차).
+     여기까지 온 응답은 어차피 통째로 버려질 것이었다. 살아나면 이득이고,
+     못 살아나면 지금과 같다. 다만 살아난 건은 위 함수 주석의 한계를 안고
+     있으므로 `__repaired` 로 표시해 호출부가 세고 note 에 남긴다. */
+  if (end > start) {
+    const deep = tryRepairedParse(s.slice(start, end + 1), true);
+    if (Array.isArray(deep) && deep.length) {
+      for (const o of deep) { if (o && typeof o === 'object') o.__repaired = true; }
+      return deep;
+    }
+  }
   /* ─── 오류 문구에 '무엇이 문제였는지' 를 넣는다 (2026-08-08) ────────────
    * 어제 나는 note 의 ERR 을 50자로 잘라놨고, 그 50자가 전부
    * "```json\n[{"i":0,"t" 라는 **아무 정보 없는 앞머리**로 채워졌다.
@@ -889,6 +949,10 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing
      qualityFlagged — 재시도까지 하고도 못 지켜 '그래도 저장' 한 건수 */
   let qualityRetried = 0;
   let qualityFlagged = 0;
+  /* 값 안의 생 따옴표까지 손대 살려낸 건수 (2026-08-08 2차).
+     0 이 아니면 "모델이 JSON 규칙을 어기고 있고, 우리가 기워서 쓰는 중" 이라는
+     뜻이다. 계속 크면 프롬프트를 손보거나 구분자 포맷으로 옮겨야 한다. */
+  let jsonRepaired = 0;
   /* 마감에 걸려 중단했는가. '할 일이 없어서 끝난 것' 과 구분해 보고한다 —
      이걸 뭉뜽그리면 시간에 쫓겨 못 한 것을 완주로 착각한다. */
   let ranOut = false;
@@ -926,6 +990,7 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing
          그러면 아래 ②의 '빠진 건 1건씩 재시도' 가 자동으로 다시 부른다.
          단건 프롬프트에도 같은 표기 규칙이 실려 있어 두 번째 시도는
          대개 통과한다. */
+      if (t.__repaired) jsonRepaired++;
       const bad = validateTranslation(t, lang);
       if (bad) { qualityRetried++; rejected.set(srcItem.id, t); continue; }
       got.set(srcItem.id, t);
@@ -1029,6 +1094,9 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing
        flagged 가 계속 0 이 아니면 프롬프트를 다시 손봐야 한다는 신호다. */
     quality_retried: qualityRetried || undefined,
     quality_flagged: qualityFlagged || undefined,
+    /* 깨진 JSON 을 기워서 살려낸 건수. 0 이 아니면 모델이 규칙을 어기고 있다는
+       신호다 — 조용히 고치지 않고 note 로 올린다. */
+    json_repaired: jsonRepaired || undefined,
     // 마감에 걸려 중단했다. 잔여가 남아도 '막힌 것' 이 아니라 '시간이 끝난 것'.
     ran_out_of_time: ranOut || undefined,
     // 2026-08-05 계측: 이 조합이 큐조회/AI호출/저장에 각각 몇 ms 를 썼는가.
@@ -1038,4 +1106,4 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing
   };
 }
 
-module.exports = { runBackfillBatch, remainingFor, minDoneFor, MIN_TRANSLATED, newTiming, hasHangul, hangulRatio, validateTranslation, nameRule, styleRules, normalizeBatch, parseJsonArray, salvageObjects, escapeRawControls, diagnoseJson, parseSentinel, pickItems, buildBatchPrompt, msLeft, canCall, callBudget, CALL_SLACK_MS, MAX_PASSES, LANG_NAMES, KINDS };
+module.exports = { runBackfillBatch, remainingFor, minDoneFor, MIN_TRANSLATED, newTiming, hasHangul, hangulRatio, validateTranslation, nameRule, styleRules, normalizeBatch, parseJsonArray, salvageObjects, escapeRawControls, escapeInnerQuotes, diagnoseJson, parseSentinel, pickItems, buildBatchPrompt, msLeft, canCall, callBudget, CALL_SLACK_MS, MAX_PASSES, LANG_NAMES, KINDS };

@@ -621,7 +621,7 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
   for (const r of results) {
     if (!r.lang) { if (r.skipped) notes.push('skip(' + r.skipped + ')'); continue; }
     const k = r.lang + '/' + String(r.kind || '?').slice(0, 3);
-    const cur = perCombo.get(k) || { processed: 0, remaining: null, err: null, tooLong: 0, flagged: 0, retried: 0, failed: 0 };
+    const cur = perCombo.get(k) || { processed: 0, remaining: null, err: null, tooLong: 0, flagged: 0, retried: 0, failed: 0, repaired: 0 };
     cur.processed += r.processed || 0;
     if (typeof r.remaining === 'number') cur.remaining = r.remaining;
     if (r.skipped_too_long) cur.tooLong = r.skipped_too_long;
@@ -651,6 +651,9 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
      * 짚었다(검증이 막고 있다고 추정 → /재시도N 을 붙여 봤더니 0 이었다).
      * 계측이 없으면 추측하게 된다. 그래서 실패를 전부 note 로 끌어올린다. */
     cur.failed += r.skipped_failed || 0;
+    /* 깨진 JSON 을 기워서 살린 건수 (2026-08-08 2차). 0 이 아니면
+       모델이 JSON 규칙을 어기고 있다는 뜻 — 조용히 넘어가지 않는다. */
+    cur.repaired += r.json_repaired || 0;
     if (r.error && !cur.err) cur.err = String(r.error).slice(0, 50);
     /* 예외까지 가지 않은 내부 실패도 같은 자리에 보여 준다. 첫 건만 —
        note 는 500자 상한이고, 원인 파악에는 종류 하나면 충분하다.
@@ -697,6 +700,7 @@ module.exports = withCronGuard('backfill-translations', async function handler(r
       /* 불량으로 이번 회차에서 뺀 건수. 처리 0 인데 이 값이 크면
          '시간이 없어서' 가 아니라 '계속 실패해서' 다. */
       + (v.failed ? '/불량' + v.failed : '')
+      + (v.repaired ? '/복구' + v.repaired : '')
       + (v.err ? ' ERR ' + v.err : '')),
     ...notes,
   ].join(' · ') || '처리 대상 없음';

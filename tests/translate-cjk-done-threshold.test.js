@@ -122,7 +122,7 @@ const { minDoneFor, remainingFor, MIN_TRANSLATED } = require(HELPER);
     /Array\.isArray\(r\.errors\) && r\.errors\.length/.test(cron));
   t('예외(r.error)가 있으면 그쪽이 우선이다',
     cron.indexOf('if (r.error && !cur.err)') < cron.indexOf('Array.isArray(r.errors)'));
-  t('perCombo 씨앗에 failed 가 있다', /failed: 0 \}/.test(cron));
+  t('perCombo 씨앗에 failed 가 있다', /failed: 0[,}]/.test(cron));
 
   /* runOnQueue 가 실제로 그 두 값을 응답에 담고 있어야 위 배선이 의미가 있다. */
   t('헬퍼가 errors 를 응답에 담는다', /errors: errors\.length \? errors : undefined/.test(helper));
