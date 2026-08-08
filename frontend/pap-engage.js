@@ -34,11 +34,13 @@
     ko: { like: '좋아요', likeAria: '이 글에 좋아요', comments: '댓글', jump: '댓글 보기',
           empty: '첫 댓글을 남겨보세요.', placeholder: '이 기사에 대한 생각을 남겨주세요',
           send: '등록', login: '로그인하고 댓글 남기기', del: '삭제', now: '방금',
-          kakao: '카카오톡 공유' },
+          kakao: '카카오톡 공유',
+          push: '새 화보 알림 받기', pushOn: '알림 받는 중', pushAria: '새 화보 웹 알림 켜기/끄기' },
     en: { like: 'Like', likeAria: 'Like this story', comments: 'Comments', jump: 'Jump to comments',
           empty: 'Be the first to comment.', placeholder: 'Share your thoughts on this story',
           send: 'Post', login: 'Sign in to comment', del: 'Delete', now: 'just now',
-          kakao: 'Share on KakaoTalk' },
+          kakao: 'Share on KakaoTalk',
+          push: 'Get new drops', pushOn: 'Alerts on', pushAria: 'Toggle new-editorial web alerts' },
   };
 
   /* 스타일도 부품이 직접 들고 다닌다 (2026-08-08).
@@ -57,6 +59,9 @@
     + '.pap-engage .pe-count{font-variant-numeric:tabular-nums}'
     + '.pap-engage .pe-kko{background:#FEE500;color:#191600;border:0;padding:12px 20px;font-size:12px;font-weight:700;letter-spacing:.04em;cursor:pointer;font-family:inherit;transition:opacity .2s}'
     + '.pap-engage .pe-kko:hover{opacity:.85}'
+    + '.pap-engage .pe-push{display:inline-flex;align-items:center;gap:8px;background:transparent;border:1px solid rgba(255,255,255,.28);color:#eee;padding:11px 18px;font-size:12px;font-weight:600;letter-spacing:.06em;cursor:pointer;font-family:inherit;transition:.2s}'
+    + '.pap-engage .pe-push:hover{border-color:rgba(255,255,255,.6)}'
+    + '.pap-engage .pe-push[aria-pressed="true"]{background:#fff;color:#111;border-color:#fff}'
     + '.pap-engage .pe-jump{margin-left:auto;color:#9a9a9a;font-size:12px;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.2)}'
     + '.pap-engage h2{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:#9a9a9a;margin:36px 0 16px;font-weight:600}'
     + '.pap-engage .pe-form{display:none}'
@@ -135,6 +140,7 @@
       + '<span aria-hidden="true">♡</span><span>' + esc(t.like) + '</span> <span class="pe-count">0</span>'
       + '</button>'
       + '<button type="button" class="kko-btn pe-kko" hidden>' + esc(t.kakao) + '</button>'
+      + '<button type="button" class="pe-push" hidden aria-pressed="false" aria-label="' + esc(t.pushAria) + '"><span aria-hidden="true">🔔</span><span class="pe-push-label">' + esc(t.push) + '</span></button>'
       + '<a class="pe-jump" href="#peComments">' + esc(t.jump) + '</a>'
       + '</div>'
       + '<h2 id="peComments">' + esc(t.comments) + '</h2>'
@@ -229,6 +235,9 @@
         .then(function () { sendEl.disabled = false; });
     });
 
+    // ── 새 화보 알림 (웹 푸시, B-7 2026-08-09) ─────────────
+    setupPush($('.pe-push'), t);
+
     // ── 카카오 공유 ────────────────────────────────────────
     config().then(function (c) {
       var key = c && c.kakaoJsKey;
@@ -253,6 +262,90 @@
           } catch (e) { /* 공유 실패가 페이지를 망가뜨리지 않는다 */ }
         });
       });
+    });
+  }
+
+  /* ── 웹 푸시 (B-7) ──────────────────────────────────────
+     원칙: 지원 안 되는 브라우저·VAPID 공개키 미배포 상태에서는 버튼 자체가
+     안 보인다 — 눌러도 안 되는 버튼은 신뢰를 깎는다. 공개키는 공개값이라
+     설정 API 로 받아도 안전하다 (비밀키는 서버 env 에만 있고 여기 안 온다). */
+  var _vapid = null;
+  function vapidKey() {
+    if (_vapid) return _vapid;
+    _vapid = fetch('/api/content/config', { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : {}; })
+      .then(function (c) { return (c && c.vapidPublicKey) || ''; })
+      .catch(function () { return ''; });
+    return _vapid;
+  }
+
+  /* applicationServerKey 는 URL-safe base64 를 Uint8Array 로 바꿔 줘야 한다 */
+  function urlB64ToU8(s) {
+    var pad = '===='.slice(0, (4 - (s.length % 4)) % 4);
+    var b64 = (s + pad).replace(/-/g, '+').replace(/_/g, '/');
+    var raw = global.atob(b64);
+    var arr = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+    return arr;
+  }
+
+  function paintPush(btn, t, on) {
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.querySelector('.pe-push-label').textContent = on ? t.pushOn : t.push;
+  }
+
+  function setupPush(btn, t) {
+    if (!btn) return;
+    if (!('serviceWorker' in navigator) || !('PushManager' in global) || !global.Notification) return;
+    vapidKey().then(function (key) {
+      if (!key) return;
+      navigator.serviceWorker.register('/pap-push-sw.js')
+        .then(function () { return navigator.serviceWorker.ready; })
+        .then(function (reg) { return reg.pushManager.getSubscription(); })
+        .then(function (sub) {
+          btn.hidden = false;
+          paintPush(btn, t, !!sub);
+          var busy = false;
+          btn.addEventListener('click', function () {
+            if (busy) return; busy = true;
+            var done = function () { busy = false; };
+            navigator.serviceWorker.ready.then(function (reg) {
+              return reg.pushManager.getSubscription().then(function (cur) {
+                if (cur) {
+                  /* 끄기: 브라우저 구독 해지 + 서버에 알림 (실패해도 로컬은 꺼진다) */
+                  var ep = cur.endpoint;
+                  return cur.unsubscribe().then(function () {
+                    paintPush(btn, t, false);
+                    return fetch('/api/push/subscribe', {
+                      method: 'DELETE', credentials: 'same-origin',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ endpoint: ep }),
+                    }).catch(function () {});
+                  });
+                }
+                /* 켜기: 권한 → 구독 → 서버 저장. 거부하면 조용히 원상태 */
+                return global.Notification.requestPermission().then(function (perm) {
+                  if (perm !== 'granted') return;
+                  return reg.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlB64ToU8(key),
+                  }).then(function (sub2) {
+                    return fetch('/api/push/subscribe', {
+                      method: 'POST', credentials: 'same-origin',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(sub2.toJSON()),
+                    }).then(function (r) {
+                      if (r && r.ok) { paintPush(btn, t, true); return; }
+                      /* 서버 저장 실패면 죽은 구독을 남기지 않는다 */
+                      return sub2.unsubscribe().catch(function () {});
+                    });
+                  });
+                });
+              });
+            }).catch(function () {}).then(done, done);
+          });
+        })
+        .catch(function () {});   // SW 등록 실패 — 버튼 미노출
     });
   }
 

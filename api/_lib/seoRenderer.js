@@ -1657,7 +1657,7 @@ window.__PAP_ENGAGE = ${JSON.stringify({
   image: ogImage || '',
 })};
 </script>
-<script src="/pap-engage.js?v=2" defer></script>
+<script src="/pap-engage.js?v=3" defer></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   var host = document.getElementById('papEngageMount');

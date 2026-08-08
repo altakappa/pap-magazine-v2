@@ -79,6 +79,19 @@ async function maybeBoostPost(m, opts) {
     const claimed = await claimBoost(m.id, m.permalink);
     if (!claimed) return { boosted: false, reason: 'dup' };
 
+    /* 웹 푸시 (B-7, 2026-08-09) — 에디토리얼일 때만. 알림은 신뢰 자산이라
+       뉴스·draft 까지 쏘면 구독 해지 사태가 난다. 하루 상한은 webPush 가 지킨다.
+       실패는 부스트를 못 막는다. */
+    let pushSent = 0;
+    if (o.kind === 'editorial') {
+      try {
+        const { broadcastNewPost } = require('./webPush');
+        const pr = await broadcastNewPost({ postId: m.id, permalink: m.permalink,
+          title: 'PAP MAGAZINE — 새 화보' });
+        pushSent = pr.sent || 0;
+      } catch (e) { console.warn('[boost] push 실패:', (e && e.message) || e); }
+    }
+
     const text = boostText(m.permalink);
     let threadsOk = false, xOk = false;
 
@@ -102,7 +115,7 @@ async function maybeBoostPost(m, opts) {
         .update({ threads_ok: threadsOk, x_ok: xOk }).eq('post_id', String(m.id));
     } catch (_) {}
 
-    return { boosted: true, threadsOk, xOk };
+    return { boosted: true, threadsOk, xOk, pushSent };
   } catch (e) {
     return { boosted: false, reason: String((e && e.message) || e).slice(0, 120) };
   }

@@ -65,15 +65,17 @@ console.log('\n[3] 링크 — 측정 없는 발신 금지');
   t('ig-out?src=boost 경유', text.indexOf('/api/ig-out?src=boost&to=post') >= 0, text);
   t('추적 쿼리(igshid) 제거 후 인코딩', text.indexOf('igshid') === -1
     && text.indexOf(encodeURIComponent('https://www.instagram.com/p/ABC123/')) >= 0);
-  t("ig-out 화이트리스트에 'boost' 등록", /'newsletter', 'boost'\]\)/.test(igOut));
+  t("ig-out 화이트리스트에 'boost' 등록", /'newsletter', 'boost'/.test(igOut));
 }
 
 console.log('\n[4] sync-instagram 배선 — 자동 게시가 없는 모든 지점');
 {
   /* 2026-08-09 확장: 에디토리얼 스킵 3지점 + 품질 게이트 draft = 4지점.
      발행 기사형은 제외 — 기존 자동 게시와 같은 채널 이중 게시 방지. */
-  const hooks = (sync.match(/maybeBoostPost\(m, \{ backfillMode \}\)/g) || []).length;
-  t('부스트 4지점 (에디토리얼 3 + draft 1) (' + hooks + '/4)', hooks === 4);
+  /* 2026-08-09 B-7: kind 를 넘긴다 — 에디토리얼만 웹 푸시가 함께 나간다 */
+  const hooksEd = (sync.match(/maybeBoostPost\(m, \{ backfillMode, kind: 'editorial' \}\)/g) || []).length;
+  const hooksDr = (sync.match(/maybeBoostPost\(m, \{ backfillMode, kind: 'draft' \}\)/g) || []).length;
+  t('부스트 4지점 (에디토리얼 3 + draft 1) (' + hooksEd + '+' + hooksDr + '/4)', hooksEd === 3 && hooksDr === 1);
   t('lib 를 require 한다', /require\('\.\.\/_lib\/goldenBoost'\)/.test(sync));
   t('부스트 수를 결과에 센다', /results\.boosted = \(results\.boosted\|\|0\)\+1/.test(sync));
   t('draft 지점은 발행 분기 앞에 있다 (발행 기사는 부스트 안 탐)',

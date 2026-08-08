@@ -25,5 +25,7 @@ module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
   return res.status(200).json({
     kakaoJsKey: process.env.KAKAO_JS_KEY || '',
+    // 웹 푸시 (B-7) — VAPID 공개키는 이름 그대로 공개용. 개인키는 절대 서버 밖으로 안 나간다.
+    vapidPublicKey: process.env.VAPID_PUBLIC_KEY || '',
   });
 };

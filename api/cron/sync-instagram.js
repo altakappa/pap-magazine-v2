@@ -173,7 +173,7 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
         || (backfillMode && !ARTICLE_CATEGORIES.includes(cat));
       if (isEditorial){
         results.skipped_editorial_ai++;
-        if (!backfillMode){ const b = await maybeBoostPost(m, { backfillMode }); if (b.boosted) results.boosted = (results.boosted||0)+1; }
+        if (!backfillMode){ const b = await maybeBoostPost(m, { backfillMode, kind: 'editorial' }); if (b.boosted) results.boosted = (results.boosted||0)+1; }
         return;
       }
       // IG CDN 이미지는 수일 내 만료 — Supabase Storage 영구본으로 교체.
@@ -233,7 +233,7 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
            자동 게시도 없지만 IG 게시물 자체는 살아 있다. 초기 속도가 가장
            필요한 게 바로 이들이다 — 부스트가 유일한 골든아워 푸시. */
         if (pubStatus !== 'published' && !backfillMode){
-          const b = await maybeBoostPost(m, { backfillMode });
+          const b = await maybeBoostPost(m, { backfillMode, kind: 'draft' });
           if (b.boosted) results.boosted = (results.boosted||0)+1;
         }
         if (h && pubStatus === 'published'){
@@ -336,12 +336,12 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
           const shortcode = _extractShortcode(m.permalink);
           if (shortcode && editorialShortcodes.has(shortcode)){
             results.skipped_editorial_db++;
-            if (!backfillMode){ const b = await maybeBoostPost(m, { backfillMode }); if (b.boosted) results.boosted = (results.boosted||0)+1; }
+            if (!backfillMode){ const b = await maybeBoostPost(m, { backfillMode, kind: 'editorial' }); if (b.boosted) results.boosted = (results.boosted||0)+1; }
             continue;
           }
           if (isLikelyEditorialCaption(m.caption)){
             results.skipped_editorial_caption++;
-            if (!backfillMode){ const b = await maybeBoostPost(m, { backfillMode }); if (b.boosted) results.boosted = (results.boosted||0)+1; }
+            if (!backfillMode){ const b = await maybeBoostPost(m, { backfillMode, kind: 'editorial' }); if (b.boosted) results.boosted = (results.boosted||0)+1; }
             continue;
           }
           if (toProcess.length < perCall){ toProcess.push(m); }
