@@ -48,7 +48,11 @@ function buildDescription(art, url) {
   lines.push('');
   const fs = firstSentence(art.content);
   if (fs && fs.length <= 300) { lines.push(fs); lines.push(''); }
-  lines.push('▶ 기사 전문 : ' + url);
+  /* 2026-08-08 — 성장 헌법 3조: 유튜브 설명란 링크는 클릭 가능하므로 계측한다.
+     (유튜브는 링크의 쿼리 파라미터를 보존한다 — 미디어킷의 '외부 앱이 쿼리를
+     지운다' 교훈은 IG 프로필 링크(/ig/youtube 경로형) 쪽에만 해당.) */
+  lines.push('▶ 기사 전문 : ' + url + (url.indexOf('?') >= 0 ? '&' : '?')
+    + 'utm_source=youtube&utm_medium=social&utm_campaign=pap_auto');
   /* 인스타 유입 링크 (2026-07-30 도메니코 요청).
    * 유튜브는 설명란 외부 링크를 감점하지 않는다 — 정책상 제재 대상은
    * 가이드라인 위반 사이트·멀웨어·스팸이다. 다만 첫 줄부터 링크로 도배하면

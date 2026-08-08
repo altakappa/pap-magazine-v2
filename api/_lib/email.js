@@ -37,6 +37,12 @@ function getTransporter() {
 
 const FROM = process.env.EMAIL_FROM || 'PAP Magazine <contact@pap-magazine.com>';
 const FRONTEND_URL = process.env.NEXT_PUBLIC_URL || 'https://www.pap-magazine.com';
+/* 2026-08-08 — 성장 헌법 3조: 이메일→웹 링크는 전부 utm=newsletter 로 계측한다.
+   화이트리스트(socialInclick.js)에 자리만 있고 아무도 안 보내던 유령 채널이었다.
+   이메일→IG(FOLLOW 버튼)는 /api/ig-out?src=newsletter 경유 — 플라이휠 양방향 계측. */
+const UTM_MAIL = 'utm_source=newsletter&utm_medium=email';
+const withMailUtm = (u) => u + (String(u).includes('?') ? '&' : '?') + UTM_MAIL;
+const IG_FOLLOW_MAIL = FRONTEND_URL + '/api/ig-out?src=newsletter&to=profile&url=' + encodeURIComponent('https://www.instagram.com/pap_magazine/');
 
 /* 2026-08-03 — 서브미션 거절 기본 문구 (도메니코 지시, 영문 원문 그대로).
  * 실측 배경: rejected 32건 중 30건이 admin_notes 공란이었다. 즉 거절된 작가는
@@ -87,7 +93,7 @@ function wrapHtml(content, lang) {
 <table width="600" cellpadding="0" cellspacing="0" style="background:#111;border:1px solid #222;">
   <!-- Header -->
   <tr><td style="padding:32px 40px 24px;border-bottom:1px solid #222;">
-    <a href="${FRONTEND_URL}" style="color:#fff;font-size:28px;font-weight:700;letter-spacing:8px;text-decoration:none;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">PAP</a>
+    <a href="${withMailUtm(FRONTEND_URL)}" style="color:#fff;font-size:28px;font-weight:700;letter-spacing:8px;text-decoration:none;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">PAP</a>
   </td></tr>
   <!-- Content -->
   <tr><td style="padding:32px 40px;color:#ccc;font-size:14px;line-height:1.7;">
@@ -98,12 +104,12 @@ function wrapHtml(content, lang) {
   <tr><td align="center" style="padding:26px 40px;border-top:1px solid #222;">
     <div style="color:#888;font-size:10px;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;">PAP Magazine — Instagram</div>
     <div style="color:#ccc;font-size:13px;line-height:1.7;margin-bottom:16px;">${_igTag}</div>
-    <a href="https://www.instagram.com/pap_magazine/" style="display:inline-block;background:#fff;color:#000;padding:11px 28px;font-size:11px;font-weight:700;letter-spacing:2px;text-decoration:none;">FOLLOW @PAP_MAGAZINE</a>
+    <a href="${IG_FOLLOW_MAIL}" style="display:inline-block;background:#fff;color:#000;padding:11px 28px;font-size:11px;font-weight:700;letter-spacing:2px;text-decoration:none;">FOLLOW @PAP_MAGAZINE</a>
   </td></tr>
   <!-- Footer -->
   <tr><td style="padding:24px 40px;border-top:1px solid #222;color:#666;font-size:11px;line-height:1.5;">
     &copy; ${new Date().getFullYear()} PAP Magazine. All rights reserved.<br>
-    <a href="${FRONTEND_URL}" style="color:#888;text-decoration:none;">www.pap-magazine.com</a>
+    <a href="${withMailUtm(FRONTEND_URL)}" style="color:#888;text-decoration:none;">www.pap-magazine.com</a>
   </td></tr>
 </table>
 </td></tr>
@@ -937,7 +943,7 @@ const templates = {
     const eds = (campaign.payload && campaign.payload.editorials) || [];
     const cards = eds.map(ed => `
       <tr><td style="padding-bottom:24px;">
-        <a href="${FRONTEND_URL}/editorial/${encodeURIComponent(ed.slug || ed.id)}" style="text-decoration:none;color:inherit;display:block;">
+        <a href="${withMailUtm(`${FRONTEND_URL}/editorial/${encodeURIComponent(ed.slug || ed.id)}`)}" style="text-decoration:none;color:inherit;display:block;">
           <img src="${ed.image}" alt="${escapeHtml(ed.title)}" width="520" style="display:block;width:100%;max-width:520px;height:auto;border:0;">
           <div style="padding:14px 4px 0;">
             <div style="font-size:10px;font-weight:700;letter-spacing:2px;color:#888;text-transform:uppercase;">${escapeHtml(ed.tagline || 'EDITORIAL')}</div>
@@ -959,7 +965,7 @@ const templates = {
           <p style="color:#999;font-size:13px;line-height:1.7;margin:0 0 24px;">${escapeHtml(campaign.hero_body || '')}</p>
           <div style="font-size:12px;color:#aaa;margin-bottom:24px;">${L.greeting.replace('{name}', `<strong style="color:#fff;">${escapeHtml(greeting)}</strong>`)}</div>
           <table width="100%" cellpadding="0" cellspacing="0">${cards}</table>
-          <a href="${FRONTEND_URL}/" style="display:inline-block;background:#fff;color:#000;padding:14px 36px;font-size:11px;font-weight:700;letter-spacing:2px;text-decoration:none;margin-top:8px;">VIEW MORE ON PAP</a>
+          <a href="${withMailUtm(FRONTEND_URL + '/')}" style="display:inline-block;background:#fff;color:#000;padding:14px 36px;font-size:11px;font-weight:700;letter-spacing:2px;text-decoration:none;margin-top:8px;">VIEW MORE ON PAP</a>
         `,
         unsubUrl: `${FRONTEND_URL}/api/auth/unsubscribe?token=${unsubToken}`,
         lang,
@@ -1028,6 +1034,16 @@ const templates = {
     <tr><td align="center" style="background-color:#f5f0eb;padding:14px 20px;font-size:10px;font-weight:600;color:#6b1a1a;letter-spacing:4px;">ART &middot; FASHION &middot; BEAUTY &middot; CULTURE</td></tr>
     <tr><td align="center" style="background-color:#f5f0eb;padding:0 20px 18px;font-size:13px;color:#999;">${escapeHtml(issueLabel)} &mdash; ${escapeHtml(headerDate)}</td></tr>
     ${cards}
+    <!-- 2026-08-08 — 도달점 CTA. 이 다이제스트에는 그동안 PAP 로 가는 링크가
+         하나도 없었다(뉴스 카드는 텍스트, 링크는 수신거부·언어선택뿐).
+         '재방문 엔진'이 아무 데도 안 보내고 있었던 것 — 성장 헌법 1·3조 위반.
+         웹은 utm=newsletter, IG 는 ig-out?src=newsletter 로 둘 다 계측된다. -->
+    <tr><td align="center" style="padding:28px 28px 4px;">
+      <a href="${withMailUtm(FRONTEND_URL + '/')}" style="display:inline-block;background:#6b1a1a;color:#ffffff;padding:13px 32px;font-size:11px;font-weight:700;letter-spacing:2px;text-decoration:none;">VIEW PAP MAGAZINE</a>
+    </td></tr>
+    <tr><td align="center" style="padding:6px 28px 2px;font-size:11px;">
+      <a href="${IG_FOLLOW_MAIL}" style="color:#6b1a1a;text-decoration:underline;font-weight:600;letter-spacing:1px;">FOLLOW @PAP_MAGAZINE</a>
+    </td></tr>
     <tr><td style="padding:18px 28px 0;"><hr style="border:none;border-top:1px solid #eee;"></td></tr>
     <!-- Language selector: lets the recipient re-pick their newsletter
          locale without logging in. Current locale is bold/underlined. -->

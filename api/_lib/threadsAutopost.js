@@ -194,7 +194,21 @@ async function postArticleToThreads(art) {
     return { status: 'skipped', detail: '실패 ' + existing.attempts + '회 — 재시도 상한 도달' };
   }
 
-  const gen = await generateThreadsText(art, art.url);
+  /* 2026-08-08 — 성장 헌법 3조 집행: 발신 링크는 전부 계측.
+     스레드는 매일 나가는데 링크가 맨몸이라 utm=threads 가 한 번도 안 찍혔다
+     (화이트리스트에 자리만 있고 아무도 안 보내던 유령 채널). 이제 스레드발
+     유입이 social_inclicks 에 잡힌다 — "스레드가 실제로 사람을 보내는가"를
+     숫자로 답할 수 있다. */
+  const linkWithUtm = (() => {
+    try {
+      const u = new URL(String(art.url));
+      u.searchParams.set('utm_source', 'threads');
+      u.searchParams.set('utm_medium', 'social');
+      u.searchParams.set('utm_campaign', 'pap_auto');
+      return u.toString();
+    } catch (_) { return art.url; }
+  })();
+  const gen = await generateThreadsText(art, linkWithUtm);
   const { text, ai } = gen;
 
   /* 미디어를 먼저 고른다. X 와 같은 판단이어야 두 채널이 같은 그림을 올린다. */
