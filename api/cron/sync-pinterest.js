@@ -26,6 +26,18 @@ const { supabaseAdmin } = require('../_lib/supabase');
 // 실패해도 아무도 몰랐다는 뜻이다.
 const { withCronGuard } = require('../_lib/cronGuard');
 
+/* 2026-08-08 — 결과를 cron_runs note 에 남긴다.
+   가드를 붙인 뒤 첫 실측: 실행은 ok(888ms)인데 발행 0 · 마킹 0 이었다.
+   이 핸들러는 토큰 만료(401/403)를 만나면 200 으로 조용히 끝나서,
+   로그만 봐서는 '돌았는데 왜 0인지' 알 수 없었다. 모든 종료 경로에
+   사유를 적고, 토큰 문제는 503 으로 올려 알림이 가게 한다 —
+   토큰 갱신은 사람만 할 수 있는 일이라 조용히 두면 영원히 0이다. */
+function note(res, msg) {
+  res.locals = res.locals || {};
+  res.locals.cronNote = msg;
+  return msg;
+}
+
 const SITE = 'https://www.pap-magazine.com';
 const PIN_API = 'https://api.pinterest.com/v5/pins';
 
@@ -90,10 +102,11 @@ module.exports = withCronGuard('sync-pinterest', async function handler(req, res
 
     if (error) throw error;
     if (!eds || !eds.length) {
+      note(res, '미처리 에디토리얼 없음 — 전체 발행 완료');
       return res.status(200).json({ done: true, pinned: 0, message: '미처리 에디토리얼 없음 (전체 발행 완료).' });
     }
 
-    let pinned = 0, skipped = 0, rateLimited = false;
+    let pinned = 0, skipped = 0, netErrors = 0, rateLimited = false;
 
     for (const e of eds) {
       const handle = e.slug || e.id;
@@ -138,6 +151,7 @@ module.exports = withCronGuard('sync-pinterest', async function handler(req, res
       } catch (netErr) {
         // 네트워크 오류 — 이번 항목만 남겨두고 계속 (synced_at 미기록 → 다음에 재시도)
         console.error('[sync-pinterest] network error:', netErr.message);
+        netErrors++;
         continue;
       }
 
@@ -152,7 +166,11 @@ module.exports = withCronGuard('sync-pinterest', async function handler(req, res
         // 즉시 중단. (마킹하면 배치 전체가 '영구 실패'로 남아 재발행 불가)
         const txt = await resp.text().catch(() => '');
         console.error('[sync-pinterest] auth error', resp.status, txt.slice(0, 200));
-        return res.status(200).json({
+        note(res, 'Pinterest 토큰 만료/권한 오류(' + resp.status + ') — 토큰 갱신 전까지 발행 0. 항목은 마킹 안 함');
+        /* 200 이 아니라 503 — 토큰 갱신은 사람만 할 수 있다. 조용히 두면
+           "돌았는데 발행 0" 이 영원히 반복된다. 5xx 라야 가드가 실패로
+           기록하고 텔레그램 알림(6시간 쿨다운)이 간다. */
+        return res.status(503).json({
           pinned, skipped, authError: resp.status,
           message: 'PINTEREST_ACCESS_TOKEN 만료/권한 오류 — 토큰 갱신 필요. 항목은 마킹하지 않음.',
         });
@@ -181,7 +199,11 @@ module.exports = withCronGuard('sync-pinterest', async function handler(req, res
       .eq('status', 'published')
       .is('pinterest_synced_at', null);
 
-    return res.status(200).json({ pinned, skipped, rateLimited, remaining: remaining ?? null });
+    note(res, '핀 ' + pinned + '건 발행 · 스킵 ' + skipped
+      + (netErrors ? ' · 네트워크오류 ' + netErrors : '')
+      + (rateLimited ? ' · 429 중단(다음 실행 재개)' : '')
+      + ' · 남은 대기 ' + (remaining == null ? '?' : remaining) + '건');
+    return res.status(200).json({ pinned, skipped, netErrors, rateLimited, remaining: remaining ?? null });
   } catch (err) {
     console.error('[sync-pinterest] error:', err);
     return res.status(500).json({ error: 'sync failed', detail: String(err && err.message || err) });
