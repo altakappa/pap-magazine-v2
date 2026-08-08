@@ -62,11 +62,15 @@ function boostText(permalink) {
 }
 
 /**
- * 에디토리얼로 판정돼 수집은 스킵되는 새 IG 게시물에 골든아워 부스트.
+ * 자동 게시(X·스레드)가 나가지 않는 모든 새 IG 게시물에 골든아워 부스트.
+ * (2026-08-09 확장 — 도메니코: "에디토리얼뿐 아니라 모든 게시물에".
+ *  발행 기사형은 제외한다: 임포트 즉시 나가는 기존 자동 게시와 같은 채널
+ *  이중 게시가 되기 때문. 나머지 전부 — 에디토리얼 스킵 3종 + 품질 게이트
+ *  draft — 는 부스트가 유일한 골든아워 푸시다.)
  * @param m {id, permalink, timestamp} — Graph API 미디어
  * @param opts {backfillMode, now}
  */
-async function maybeBoostEditorialPost(m, opts) {
+async function maybeBoostPost(m, opts) {
   const o = opts || {};
   try {
     if (o.backfillMode) return { boosted: false, reason: 'backfill' };
@@ -104,4 +108,9 @@ async function maybeBoostEditorialPost(m, opts) {
   }
 }
 
-module.exports = { maybeBoostEditorialPost, withinGoldenWindow, boostText, BOOST_WINDOW_MIN };
+module.exports = {
+  maybeBoostPost,
+  /* 구이름 호환 (2026-08-09 이전 배선) */
+  maybeBoostEditorialPost: maybeBoostPost,
+  withinGoldenWindow, boostText, BOOST_WINDOW_MIN,
+};

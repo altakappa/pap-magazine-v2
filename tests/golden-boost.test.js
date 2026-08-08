@@ -68,14 +68,18 @@ console.log('\n[3] 링크 — 측정 없는 발신 금지');
   t("ig-out 화이트리스트에 'boost' 등록", /'newsletter', 'boost'\]\)/.test(igOut));
 }
 
-console.log('\n[4] sync-instagram 배선 — 세 스킵 지점 전부');
+console.log('\n[4] sync-instagram 배선 — 자동 게시가 없는 모든 지점');
 {
-  const hooks = (sync.match(/maybeBoostEditorialPost\(m, \{ backfillMode \}\)/g) || []).length;
-  t('에디토리얼 스킵 3지점(db·caption·ai) 모두에서 부른다 (' + hooks + '/3)', hooks === 3);
+  /* 2026-08-09 확장: 에디토리얼 스킵 3지점 + 품질 게이트 draft = 4지점.
+     발행 기사형은 제외 — 기존 자동 게시와 같은 채널 이중 게시 방지. */
+  const hooks = (sync.match(/maybeBoostPost\(m, \{ backfillMode \}\)/g) || []).length;
+  t('부스트 4지점 (에디토리얼 3 + draft 1) (' + hooks + '/4)', hooks === 4);
   t('lib 를 require 한다', /require\('\.\.\/_lib\/goldenBoost'\)/.test(sync));
   t('부스트 수를 결과에 센다', /results\.boosted = \(results\.boosted\|\|0\)\+1/.test(sync));
-  t('백필 경로에서는 안 부른다 (!backfillMode 게이트)',
-    (sync.match(/if \(!backfillMode\)\{ const b = await maybeBoostEditorialPost/g) || []).length === 3);
+  t('draft 지점은 발행 분기 앞에 있다 (발행 기사는 부스트 안 탐)',
+    sync.indexOf("pubStatus !== 'published' && !backfillMode") < sync.indexOf("if (h && pubStatus === 'published')"));
+  t('발행 기사 자동 게시는 그대로 (이중 게시 없음)', /pubStatus === 'published'/.test(sync));
+  t('구이름 호환 export 유지', /maybeBoostEditorialPost: maybeBoostPost/.test(R('api/_lib/goldenBoost.js')));
 }
 
 console.log('\n[5] 실패 격리 — 부스트가 수집을 못 막는다');

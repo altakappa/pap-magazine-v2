@@ -30,7 +30,7 @@ const { withCronGuard } = require('../_lib/cronGuard');
 const { pingNewContent, SITE } = require('../_lib/pingSearch');
 // 2026-08-09 — 골든아워 부스트: 새 에디토리얼 IG 게시물 감지 즉시 스레드·X 가
 // 그 게시물로 트래픽을 쏜다 (실측: 첫 3시간 좋아요 ↔ 최종 도달 corr 0.94).
-const { maybeBoostEditorialPost } = require('../_lib/goldenBoost');
+const { maybeBoostPost } = require('../_lib/goldenBoost');
 const { postTweet, buildArticleTweet, isConfigured: xConfigured, buildConversationalTweet, uploadArticleMedia } = require('../_lib/xPost');
 const { postArticleToThreads } = require('../_lib/threadsAutopost');
 const {
@@ -173,7 +173,7 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
         || (backfillMode && !ARTICLE_CATEGORIES.includes(cat));
       if (isEditorial){
         results.skipped_editorial_ai++;
-        if (!backfillMode){ const b = await maybeBoostEditorialPost(m, { backfillMode }); if (b.boosted) results.boosted = (results.boosted||0)+1; }
+        if (!backfillMode){ const b = await maybeBoostPost(m, { backfillMode }); if (b.boosted) results.boosted = (results.boosted||0)+1; }
         return;
       }
       // IG CDN 이미지는 수일 내 만료 — Supabase Storage 영구본으로 교체.
@@ -229,6 +229,13 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
            (2026-07-22 Ahrefs 감사에서 잡힌 그 문제와 같은 원인, 다른 자리).
            custom_url 은 레거시라 두 곳의 순서는 반드시 같아야 한다. */
         const h = inserted.slug || inserted.custom_url || inserted.id;
+        /* 2026-08-09 — 품질 게이트에 걸려 draft 로 들어간 게시물: 웹 발행도
+           자동 게시도 없지만 IG 게시물 자체는 살아 있다. 초기 속도가 가장
+           필요한 게 바로 이들이다 — 부스트가 유일한 골든아워 푸시. */
+        if (pubStatus !== 'published' && !backfillMode){
+          const b = await maybeBoostPost(m, { backfillMode });
+          if (b.boosted) results.boosted = (results.boosted||0)+1;
+        }
         if (h && pubStatus === 'published'){
           const artUrl = SITE + '/article/' + encodeURIComponent(h);
           if (!backfillMode){
@@ -329,12 +336,12 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
           const shortcode = _extractShortcode(m.permalink);
           if (shortcode && editorialShortcodes.has(shortcode)){
             results.skipped_editorial_db++;
-            if (!backfillMode){ const b = await maybeBoostEditorialPost(m, { backfillMode }); if (b.boosted) results.boosted = (results.boosted||0)+1; }
+            if (!backfillMode){ const b = await maybeBoostPost(m, { backfillMode }); if (b.boosted) results.boosted = (results.boosted||0)+1; }
             continue;
           }
           if (isLikelyEditorialCaption(m.caption)){
             results.skipped_editorial_caption++;
-            if (!backfillMode){ const b = await maybeBoostEditorialPost(m, { backfillMode }); if (b.boosted) results.boosted = (results.boosted||0)+1; }
+            if (!backfillMode){ const b = await maybeBoostPost(m, { backfillMode }); if (b.boosted) results.boosted = (results.boosted||0)+1; }
             continue;
           }
           if (toProcess.length < perCall){ toProcess.push(m); }
