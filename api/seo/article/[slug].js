@@ -115,6 +115,32 @@ module.exports = async function handler(req, res) {
     }
 
     if (!data) {
+      /* 2026-08-08 — 내려간 기사는 404 가 아니라 410 Gone.
+         GSC '찾을 수 없음(404)' 839건 분석: 표본 대부분이 발행됐다가
+         draft 로 내려간 기사·화보였다 (draft 기사 162 + draft 화보 213 ×
+         언어 프리픽스). 404 는 "일시적일 수 있음"이라 구글이 계속 재방문하며
+         집계가 늘고, 410 은 "의도적으로 제거됨" — 색인에서 더 빨리 빠지고
+         재크롤이 준다. 존재한 적 없는 URL 은 그대로 404. */
+      try {
+        let g = await supabaseAdmin.from('articles').select('id')
+          .eq('custom_url', decoded).neq('status', 'published').limit(1).maybeSingle();
+        let goneRow = g.data;
+        if (!goneRow) {
+          g = await supabaseAdmin.from('articles').select('id')
+            .eq('slug', decoded).neq('status', 'published').limit(1).maybeSingle();
+          goneRow = g.data;
+        }
+        if (!goneRow && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug)) {
+          g = await supabaseAdmin.from('articles').select('id')
+            .eq('id', slug).neq('status', 'published').limit(1).maybeSingle();
+          goneRow = g.data;
+        }
+        if (goneRow) {
+          res.setHeader('Content-Type', 'text/html; charset=utf-8');
+          res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400');
+          return res.status(410).send(renderNotFoundHtml('article', slug));
+        }
+      } catch (_) { /* 410 판별 실패 → 기존 404 로 진행 */ }
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300');
       return res.status(404).send(renderNotFoundHtml('article', slug));

@@ -50,6 +50,21 @@ module.exports = async function handler(req, res) {
       data = r.data;
     }
 
+    /* 2-b) 2026-08-08 — 슬러그에 공백이 낀 깨진 링크 관용 (GSC 실측:
+       /editorial/donde -tdo-florece 가 404 — DB 슬러그는 donde-tdo-florece).
+       공백을 걷어낸 형태가 정확히 존재하면 정규 URL 로 301. 콘텐츠를 그대로
+       주지 않는 이유: 깨진 URL 이 200 을 받으면 그 주소로 계속 색인된다. */
+    if (!data && /\s/.test(decoded)) {
+      const despaced = decoded.replace(/\s+/g, '');
+      const ds = await supabaseAdmin.from('editorials').select('slug')
+        .eq('slug', despaced).eq('status', 'published').limit(1).maybeSingle();
+      if (ds.data && ds.data.slug) {
+        res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=3600');
+        res.setHeader('Location', '/editorial/' + encodeURIComponent(ds.data.slug));
+        return res.status(301).end();
+      }
+    }
+
     /* 2b) slug match with hyphens stripped — QA #222 */
     if (!data && dehyphenated !== decoded) {
       r = await supabaseAdmin.from('editorials').select('*')
@@ -170,6 +185,24 @@ module.exports = async function handler(req, res) {
     }
 
     if (!data) {
+      /* 2026-08-08 — 내려간 화보는 404 가 아니라 410 Gone (기사와 동일 결정,
+         GSC '찾을 수 없음' 839건 — draft 화보 213편이 큰 몫). 존재한 적
+         없는 URL 은 그대로 404. */
+      try {
+        let g = await supabaseAdmin.from('editorials').select('id')
+          .eq('slug', decoded).neq('status', 'published').limit(1).maybeSingle();
+        let goneRow = g.data;
+        if (!goneRow && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug)) {
+          g = await supabaseAdmin.from('editorials').select('id')
+            .eq('id', slug).neq('status', 'published').limit(1).maybeSingle();
+          goneRow = g.data;
+        }
+        if (goneRow) {
+          res.setHeader('Content-Type', 'text/html; charset=utf-8');
+          res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=86400');
+          return res.status(410).send(renderNotFoundHtml('editorial', slug));
+        }
+      } catch (_) { /* 410 판별 실패 → 기존 404 로 진행 */ }
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
       res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300');
       return res.status(404).send(renderNotFoundHtml('editorial', slug));
