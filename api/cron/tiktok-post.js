@@ -221,9 +221,23 @@ module.exports = withCronGuard('tiktok-post', async function handler(req, res) {
         status = 'failed';
         detail = String(err && err.message || err).slice(0, 400);
       }
-      await supabaseAdmin.from('tiktok_posts').upsert({
+      /* ── 기록 실패는 게시 실패보다 위험하다 (2026-08-09 사고) ──────────
+       * article_id 의 유니크 인덱스가 **부분 인덱스**(WHERE article_id IS NOT NULL)
+       * 였다. Postgres 의 ON CONFLICT 는 부분 인덱스를 술어(predicate) 없이는
+       * 못 고른다 — PostgREST 는 술어를 못 붙이므로 이 upsert 는 **매번 42P10 으로
+       * 실패**했다. 그런데 오류를 안 봤다. 그래서 '게시는 됐는데 기록은 없는'
+       * 상태가 반복됐고, 2시간마다 같은 기사가 또 나갔다:
+       * 6편이 17번 게시(최다 5회). 인덱스는 전체 유니크로 바꿔 고쳤고,
+       * 여기서는 **두 번 다시 조용히 넘어가지 않도록** 오류를 크게 운다.
+       * 게시 실패보다 심각하게 다룬다 — 밖으로 이미 나갔기 때문이다. */
+      const { error: writeErr } = await supabaseAdmin.from('tiktok_posts').upsert({
         article_id: art.id, publish_id: post && post.id || null, status, detail,
       }, { onConflict: 'article_id' });
+      if (writeErr) {
+        const m = String(writeErr.message || writeErr).slice(0, 200);
+        note(res, '\u26a0\ufe0f 게시됐으나 기록 실패 — 중복게시 위험: ' + art.title + ' — ' + m);
+        return res.status(500).json({ error: 'tiktok article post recorded failed', title: art.title, detail: m });
+      }
 
       if (status === 'failed') {
         note(res, '기사 게시 실패: ' + art.title + ' — ' + detail);
@@ -273,9 +287,16 @@ module.exports = withCronGuard('tiktok-post', async function handler(req, res) {
       detail = String(err && err.message || err).slice(0, 400);
     }
     // upsert — 이전 실패 기록이 있는 편의 재시도 시 UNIQUE(editorial_id) 충돌 방지
-    await supabaseAdmin.from('tiktok_posts').upsert({
+    const { error: edWriteErr } = await supabaseAdmin.from('tiktok_posts').upsert({
       editorial_id: ed.id, publish_id: post && post.id || null, status, detail,
     }, { onConflict: 'editorial_id' });
+    /* 기사 모드와 같은 이유. editorial_id 는 전체 유니크라 지금은 문제가 없지만,
+       '기록 실패 = 다음 실행이 또 올린다' 는 구조는 여기도 똑같다. */
+    if (edWriteErr) {
+      const m = String(edWriteErr.message || edWriteErr).slice(0, 200);
+      note(res, '\u26a0\ufe0f 게시됐으나 기록 실패 — 중복게시 위험: ' + ed.title + ' — ' + m);
+      return res.status(500).json({ error: 'tiktok post recorded failed', title: ed.title, detail: m });
+    }
 
     if (status === 'failed') {
       note(res, '에디토리얼 게시 실패: ' + ed.title + ' — ' + detail);

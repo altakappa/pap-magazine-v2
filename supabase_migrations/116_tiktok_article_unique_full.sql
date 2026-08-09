@@ -1,0 +1,45 @@
+-- 116 — tiktok_posts.article_id 를 '부분 유니크'에서 '전체 유니크'로 (2026-08-09)
+--
+-- ■ 증상
+-- 같은 기사가 틱톡에 여러 번 올라갔다. 실측(cron_runs 기록):
+--     신인이 가장 신인답게 등장한 이유      5회
+--     아이들은 가장 솔직한 인터뷰이다        3회 (진행 중이었음)
+--     예측 불가함에서 탄생하는 아름다움      3회
+--     컴백 직전 소피아가 멈춘 이유          3회
+--     카리나를 위한 단 하나의 스니커즈 힐    2회
+--     블랙핑크의 밋앤그릿, 완전체로 만난다   1회
+--   → 기사 6편이 17번 게시됐다. 그런데 tiktok_posts 에 기사 모드 행은 **0건**이었다.
+--
+-- ■ 원인 (한 줄)
+-- 인덱스가 **부분 유니크**였다:
+--     CREATE UNIQUE INDEX ... ON tiktok_posts (article_id) WHERE (article_id IS NOT NULL)
+-- Postgres 의 ON CONFLICT 는 부분 인덱스를 **술어를 함께 적어야만** 고른다.
+-- PostgREST 의 on_conflict=article_id 는 술어를 못 붙인다. 그래서 upsert 가
+-- 매번 42P10 "there is no unique or exclusion constraint matching the
+-- ON CONFLICT specification" 으로 실패했다.
+-- 코드는 그 오류를 보지 않았다(await 만 하고 error 를 안 읽음).
+--   → 게시는 성공, 기록은 실패 → 2시간 뒤 크론이 '아직 안 올린 기사'로 다시 골라 또 게시.
+--   → 3일 신선도 창이 닫히거나 더 새 기사가 나올 때까지 무한 반복.
+--
+-- ■ 왜 '부분'이 필요 없나
+-- nullable 컬럼의 **전체** 유니크 인덱스는 Postgres 기본값(NULLS DISTINCT)에서
+-- NULL 을 서로 다른 값으로 본다. 즉 editorial 행·drive 행처럼 article_id 가
+-- NULL 인 행은 **몇 개든 공존한다.** 부분 인덱스로 얻는 이득이 없고, ON CONFLICT
+-- 를 못 쓰게 만드는 손해만 있다.
+-- 같은 테이블의 editorial_id·drive_file_id 는 원래부터 전체 유니크였고,
+-- 그래서 그 두 경로는 중복 게시가 없었다. article_id 만 예외였다.
+--
+-- ■ 함께 한 일
+--   · 이미 나간 6편을 tiktok_posts 에 소급 기록 (다시 안 올라가게)
+--   · api/cron/tiktok-post.js — upsert 오류를 읽고 500 + cronNote 로 크게 울린다.
+--     '게시는 됐는데 기록 실패' 는 게시 실패보다 위험하다. 밖으로 이미 나갔으니까.
+--   · tests/tiktok-article-dedup.test.js — 회귀 방지
+--
+-- ■ 되돌리기 (권장하지 않음 — 되돌리면 중복 게시가 재발한다)
+--   drop index public.uq_tiktok_posts_article_id;
+--   create unique index uq_tiktok_posts_article_id
+--     on public.tiktok_posts (article_id) where (article_id is not null);
+
+drop index if exists public.uq_tiktok_posts_article_id;
+create unique index uq_tiktok_posts_article_id
+  on public.tiktok_posts using btree (article_id);
