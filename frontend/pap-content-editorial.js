@@ -552,7 +552,7 @@ function _renderEditorialDownloadButtons(box, coverUrl, gallery, safeTitle, perm
   box.innerHTML =
     '<div style="display:flex;flex-direction:column;gap:10px">' +
       '<div style="display:flex;align-items:center;gap:8px"><div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999">DOWNLOADS</div>' + roleBadge + '</div>' +
-      '<div style="display:flex;gap:10px;flex-wrap:wrap">' + coverHtml + logoBtnHtml + tearsheetBtnHtml + '</div>' +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap">' + tearsheetBtnHtml + coverHtml + logoBtnHtml + '</div>' +
       '<div id="edLogoDlStatus" style="font-size:11px;color:#888;min-height:14px"></div>' +
       '<div style="font-size:11px;color:#666">'+(_edL9('개인 사용 및 비상업적 용도에 한해 사용 가능 · 다운로드 이력이 기록됩니다.','For personal, non-commercial use only · downloads are logged.'))+'</div>' +
     '</div>';
