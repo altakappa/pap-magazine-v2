@@ -480,14 +480,34 @@ function _renderEditorialDownloads(det, d){
       return;
     }
     // 권한 OK — 다운로드 버튼 렌더링.
-    _renderEditorialDownloadButtons(box, coverUrl, gallery, safeTitle, perm, logoSettings);
+    // 티어시트 메타는 det/d/title 이 보이는 여기서 만들어 넘긴다
+    // (2026-08-09 버그 수정 — 버튼 함수 안에서 det 를 참조해 조용히 실패했었다).
+    var tsMeta = null;
+    try {
+      tsMeta = {
+        title: String(title || ''),
+        issue: String((det && det.issue) || (d && d.issue) || ''),
+        cover: String(coverUrl || (gallery && gallery[0]) || ''),
+        credits: ((det && det.credits) || []).map(function(c){
+          var names = (c.h || []).map(function(h){
+            if (h && typeof h === 'object') return (typeof h.n === 'string' && h.n) ? h.n : String(h.id || '').replace(/^@/, '');
+            return String(h || '').replace(/^@/, '');
+          }).filter(Boolean).join(', ');
+          return { r: String(c.r || ''), n: names };
+        }).filter(function(x){ return x.r && x.n; }).slice(0, 12),
+      };
+    } catch (_) { tsMeta = null; }
+    _renderEditorialDownloadButtons(box, coverUrl, gallery, safeTitle, perm, logoSettings, tsMeta);
   });
   return;
 }
 
 // QA #284 Phase 2 — 권한 OK인 사용자에게 실제 버튼 노출.
-function _renderEditorialDownloadButtons(box, coverUrl, gallery, safeTitle, perm, logoSettings){
+function _renderEditorialDownloadButtons(box, coverUrl, gallery, safeTitle, perm, logoSettings, tsMeta){
   // 로그인 사용자 — 실제 다운로드 버튼.
+  // 커버 폴백 (2026-08-09) — 커버 필드가 빈 화보는 갤러리 1번이 사실상 커버다.
+  // 커버 버튼이 통째로 사라지는 것보다 낫다.
+  if (!coverUrl && gallery && gallery.length) coverUrl = gallery[0];
   var coverHtml = '';
   if (coverUrl) {
     coverHtml =
@@ -504,23 +524,6 @@ function _renderEditorialDownloadButtons(box, coverUrl, gallery, safeTitle, perm
     try {
       if (logoSettings) logoSettingsAttr = encodeURIComponent(JSON.stringify(logoSettings));
     } catch (_) { logoSettingsAttr = ''; }
-    // 티어시트 PDF 메타 (2026-08-09 도메니코: "에디토리얼마다 티어시트도 함께,
-    // 로고 이미지 다운받을 때 한 번에 · PDF 로") — 제목·이슈·커버·크레딧.
-    var tearsheetAttr = '';
-    try {
-      tearsheetAttr = encodeURIComponent(JSON.stringify({
-        title: String(title || ''),
-        issue: String((det && det.issue) || (d && d.issue) || ''),
-        cover: String(coverUrl || ''),
-        credits: ((det && det.credits) || []).map(function(c){
-          var names = (c.h || []).map(function(h){
-            if (h && typeof h === 'object') return (typeof h.n === 'string' && h.n) ? h.n : String(h.id || '').replace(/^@/, '');
-            return String(h || '').replace(/^@/, '');
-          }).filter(Boolean).join(', ');
-          return { r: String(c.r || ''), n: names };
-        }).filter(function(x){ return x.r && x.n; }).slice(0, 12),
-      }));
-    } catch (_) { tearsheetAttr = ''; }
     logoBtnHtml =
       '<button id="edLogoDlBtn" type="button" onclick="_papDownloadLogoZip(this)" ' +
       'data-gallery="' + galleryJson + '" data-title="' + safeTitle + '" ' +
@@ -531,6 +534,8 @@ function _renderEditorialDownloadButtons(box, coverUrl, gallery, safeTitle, perm
   // 티어시트 PDF 버튼 (2026-08-09 도메니코: "로고 이미지 다운로드 옆에
   // 티어시트 다운로드 버튼을 새롭게") — ZIP 동봉안을 폐기하고 별도 버튼.
   var tearsheetBtnHtml = '';
+  var tearsheetAttr = '';
+  try { if (tsMeta) tearsheetAttr = encodeURIComponent(JSON.stringify(tsMeta)); } catch (_) { tearsheetAttr = ''; }
   if (typeof tearsheetAttr === 'string' && tearsheetAttr) {
     tearsheetBtnHtml =
       '<button id="edTearsheetBtn" type="button" onclick="_papDownloadTearsheet(this)" ' +

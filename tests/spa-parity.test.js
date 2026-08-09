@@ -221,6 +221,12 @@ console.log('\n[별점 통합] 평가 장치는 한 화면에 하나 (2026-08-09
   t('티어시트는 ZIP 에 동봉하지 않는다 (별도 버튼안 확정)', !/zip\.file\(safeTitle \+ '-tearsheet/.test(edJs));
   t('버튼 순서: 티어시트 → 커버 → 로고 (2026-08-09 도메니코)',
     /tearsheetBtnHtml \+ coverHtml \+ logoBtnHtml/.test(edJs));
+  t('티어시트 메타는 호출부에서 만들어 넘긴다 (스코프 버그 재발 금지)',
+    /tsMeta\)/.test(edJs) && (function(){
+      const fn = edJs.slice(edJs.indexOf('function _renderEditorialDownloadButtons'), edJs.indexOf('// QA #284 Phase 2 — 다운로드 권한 조회 헬퍼'));
+      return !/det\b/.test(fn.replace(/\/\*[\s\S]*?\*\//g,'').replace(/\/\/[^\n]*/g,''));
+    })());
+  t('커버 버튼 폴백 — 커버 없으면 갤러리 1번', /coverUrl = gallery\[0\]/.test(edJs));
   t('jsPDF 는 CDN defer — 로드 실패 시 안내 후 중단 (ZIP 본체 무관)', /jspdf\.umd\.min\.js/.test(idx)
     && /PDF 라이브러리 로드 실패/.test(edJs));
   {
