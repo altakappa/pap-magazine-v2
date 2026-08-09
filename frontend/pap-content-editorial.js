@@ -397,8 +397,15 @@ function _renderEditorialDownloads(det, d){
   var box = document.getElementById('edDetailDownloads');
   if (!box) { console.warn('[downloads] #edDetailDownloads not found'); return; }
   // 커버 URL: det / d / DOM의 actual rendered cover img 순서로 시도
-  var coverUrl = (det && (det.coverImage || det.cover_image)) ||
-                 (d && (d.cover_image || d.thumbnail)) || '';
+  // 커버 필드 (2026-08-09 버그 수정 — 도메니코: "커버가 아닌 다른 이미지가
+  // 다운됐다"): 관리자 편집의 cover_image 는 apiEditorialToLocal 에서
+  // d.hero 로 이름이 바뀐다. 옛 이름(cover_image·thumbnail)만 찾다가 못
+  // 찾고 DOM/갤러리 폴백으로 떨어져 엉뚱한 이미지가 나갔다.
+  // 우선순위: 관리자 커버(d.hero) → 구필드 → 썸네일.
+  var coverUrl = (d && d.hero) ||
+                 (det && (det.coverImage || det.cover_image)) ||
+                 (d && (d.cover_image || d.thumbnail)) ||
+                 (d && d.img) || (det && det.thumb) || '';
   if (!coverUrl) {
     var heroImg = document.querySelector('#edDetailCover img, #edDetailHero img, .ed-cover img');
     if (heroImg && heroImg.src) coverUrl = heroImg.src;
