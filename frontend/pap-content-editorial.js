@@ -524,11 +524,22 @@ function _renderEditorialDownloadButtons(box, coverUrl, gallery, safeTitle, perm
     logoBtnHtml =
       '<button id="edLogoDlBtn" type="button" onclick="_papDownloadLogoZip(this)" ' +
       'data-gallery="' + galleryJson + '" data-title="' + safeTitle + '" ' +
-      'data-tearsheet="' + tearsheetAttr + '" ' +
       'data-logosettings="' + logoSettingsAttr + '" ' +
       'style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border:1px solid #555;background:transparent;color:#fff;font-size:11px;font-weight:700;letter-spacing:.12em;cursor:pointer;transition:all .2s" ' +
       'onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">'+(_edL9('⬇️ 로고 이미지 (','⬇️ Logo images ('))+'' + gallery.length + (_edL9('장 ZIP)',' images ZIP)'))+'</button>';
   }
+  // 티어시트 PDF 버튼 (2026-08-09 도메니코: "로고 이미지 다운로드 옆에
+  // 티어시트 다운로드 버튼을 새롭게") — ZIP 동봉안을 폐기하고 별도 버튼.
+  var tearsheetBtnHtml = '';
+  if (typeof tearsheetAttr === 'string' && tearsheetAttr) {
+    tearsheetBtnHtml =
+      '<button id="edTearsheetBtn" type="button" onclick="_papDownloadTearsheet(this)" ' +
+      'data-tearsheet="' + tearsheetAttr + '" data-title="' + safeTitle + '" ' +
+      'style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border:1px solid #555;background:transparent;color:#fff;font-size:11px;font-weight:700;letter-spacing:.12em;cursor:pointer;transition:all .2s" ' +
+      'onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">' +
+      (_edL9('📄 티어시트 (PDF)','📄 Tearsheet (PDF)')) + '</button>';
+  }
+
   // QA #284 Phase 2 — role 배지 (어느 권한으로 노출되는지 명확하게).
   var roleBadge = '';
   if (perm && perm.reason){
@@ -541,7 +552,7 @@ function _renderEditorialDownloadButtons(box, coverUrl, gallery, safeTitle, perm
   box.innerHTML =
     '<div style="display:flex;flex-direction:column;gap:10px">' +
       '<div style="display:flex;align-items:center;gap:8px"><div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999">DOWNLOADS</div>' + roleBadge + '</div>' +
-      '<div style="display:flex;gap:10px;flex-wrap:wrap">' + coverHtml + logoBtnHtml + '</div>' +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap">' + coverHtml + logoBtnHtml + tearsheetBtnHtml + '</div>' +
       '<div id="edLogoDlStatus" style="font-size:11px;color:#888;min-height:14px"></div>' +
       '<div style="font-size:11px;color:#666">'+(_edL9('개인 사용 및 비상업적 용도에 한해 사용 가능 · 다운로드 이력이 기록됩니다.','For personal, non-commercial use only · downloads are logged.'))+'</div>' +
     '</div>';
@@ -904,6 +915,64 @@ async function _papMakeTearsheetPdf(ts, logo, JsPDF){
   return doc.output('blob');
 }
 
+/* 티어시트 PDF 단독 다운로드 (2026-08-09 도메니코) — 로고 ZIP 버튼 옆.
+   같은 게이트(회원 + 약관 동의)와 같은 다운로드 이력 로깅을 쓴다. */
+window._papDownloadTearsheet = async function(btn){
+  var statusEl = document.getElementById('edLogoDlStatus');
+  function _s(msg, color){
+    if (!statusEl) return;
+    statusEl.textContent = msg || '';
+    if (color) statusEl.style.color = color;
+  }
+  var agreed = await window._papEnsureDlConsent();
+  if (!agreed) return;
+  var _JsPDF = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : null;
+  if (!_JsPDF) { _s('❌ PDF 라이브러리 로드 실패 — 페이지를 새로고침해주세요.', '#c62828'); return; }
+  var ts = null;
+  try { ts = JSON.parse(decodeURIComponent(btn.getAttribute('data-tearsheet') || '')); } catch (_) {}
+  if (!ts) { _s('❌ 티어시트 데이터가 없습니다.', '#c62828'); return; }
+  var safeTitle = btn.getAttribute('data-title') || 'editorial';
+  btn.disabled = true;
+  var originalLabel = btn.textContent;
+  btn.style.opacity = '.6';
+  btn.textContent = '📄 생성 중…';
+  _s('티어시트 PDF 생성 중…');
+  try {
+    var logo = await new Promise(function(res, rej){
+      var img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = function(){ res(img); };
+      img.onerror = function(){
+        var fb = new Image();
+        fb.onload = function(){ res(fb); };
+        fb.onerror = function(){ rej(new Error('로고 로드 실패')); };
+        fb.src = '/pap-logo-white.png';
+      };
+      img.src = '/pap-logo-white.png';
+    });
+    var blob = await _papMakeTearsheetPdf(ts, logo, _JsPDF);
+    if (!blob) throw new Error('PDF 생성 실패 (커버 CORS 가능성)');
+    var personalizedName = window._papPersonalizeFilename(safeTitle + '-tearsheet', 'pdf');
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = personalizedName;
+    document.body.appendChild(a);
+    a.click();
+    window._papLogDownload({
+      content_type: 'editorial-tearsheet',
+      content_slug: safeTitle,
+      file_name: personalizedName,
+    });
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 3000);
+    _s('✓ 티어시트 다운로드 완료', '#16a34a');
+  } catch (e) {
+    _s('❌ 티어시트 생성 실패: ' + (e && e.message || e), '#c62828');
+  }
+  btn.disabled = false;
+  btn.textContent = originalLabel;
+  btn.style.opacity = '1';
+};
+
 window._papDownloadLogoZip = window._papDownloadLogoZip || async function(btn){
   if (!btn) return;
   var statusEl = document.getElementById('edLogoDlStatus');
@@ -1071,20 +1140,6 @@ window._papDownloadLogoZip = window._papDownloadLogoZip || async function(btn){
     return;
   }
 
-  // 3) 티어시트 PDF (2026-08-09 도메니코) — A4 세로 한 장, ZIP 에 동봉.
-  //    실패해도 ZIP 은 그대로 나간다 (best-effort — 로고 이미지가 본체).
-  try {
-    var _tsRaw = btn.getAttribute('data-tearsheet') || '';
-    var _ts = _tsRaw ? JSON.parse(decodeURIComponent(_tsRaw)) : null;
-    var _JsPDF = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : null;
-    if (_ts && _JsPDF) {
-      btn.textContent = '📄 티어시트 생성 중…';
-      _s('티어시트 PDF 생성 중…');
-      var _tsBlob = await _papMakeTearsheetPdf(_ts, logo, _JsPDF);
-      if (_tsBlob) zip.file(safeTitle + '-tearsheet.pdf', _tsBlob);
-    }
-  } catch (e) { console.warn('[tearsheet] 생성 실패(스킵):', e); }
-
   btn.textContent = '📦 ZIP 생성 중…';
   _s('ZIP 생성 중…');
   try {
@@ -1176,12 +1231,22 @@ var _PAP_IG_FOLLOWERS_EN='380K+';
 // 하단 CTA 와 같은 라벨만 쓴다. 광고 문구 없음.
 // 측정: src=editorial_mid 로 분리 집계해 하단(editorial)과 비교 가능하게 한다.
 function _papMidIgCtaHtml(igUrl){
+  /* 2026-08-09 도메니코 — "필수로 모든 에디토리얼에 + 텍스트 버튼이 아니라
+     아래에 있던 인스타그램 창으로." 원본 게시물이 있으면 갤러리 중간에
+     실제 IG 임베드 창을 띄운다 (하단과 같은 창 — 하단은 중복 방지를 위해
+     임베드를 접고 퍼널 CTA 만 남김). 원본이 없는 아카이브 화보는 임베드가
+     불가능하므로 프로필로 보내는 얇은 CTA 폴백 (src=editorial_mid 계측 유지). */
   var permalink = String(igUrl || '').split('?')[0];
-  if (!/instagram\.com\/(p|reel|tv)\//.test(permalink)) return '';
-  if (!/\/$/.test(permalink)) permalink += '/';
+  var canEmbed = /instagram\.com\/(p|reel|tv)\//.test(permalink);
+  if (canEmbed) {
+    if (!/\/$/.test(permalink)) permalink += '/';
+    return '<div class="ed-gallery-item ed-mid-cta" style="display:flex;justify-content:center;padding:26px 8px">'
+         + '<blockquote class="instagram-media" data-instgrm-permalink="' + permalink.replace(/"/g,'&quot;') + '" data-instgrm-version="14" style="background:#000;border:1px solid rgba(255,255,255,.16);margin:0 auto;max-width:540px;min-width:280px;width:100%"></blockquote>'
+         + '</div>';
+  }
   var ko = (localStorage.getItem('pap-lang') || 'ko') === 'ko';
   var label = ko ? '인스타그램에서 보기 ↗' : 'View on Instagram ↗';
-  var out = '/api/ig-out?src=editorial_mid&to=post&url=' + encodeURIComponent(permalink);
+  var out = '/api/ig-out?src=editorial_mid&to=profile&url=' + encodeURIComponent('https://www.instagram.com/pap_magazine/');
   return '<div class="ed-gallery-item ed-mid-cta" style="display:flex;align-items:center;justify-content:center;padding:22px 16px;border-top:1px solid rgba(255,255,255,.14);border-bottom:1px solid rgba(255,255,255,.14)">'
        + '<a href="' + out + '" target="_blank" rel="noopener" '
        + 'style="display:inline-block;color:#fff;border:1px solid rgba(255,255,255,.4);padding:11px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none">'
@@ -1219,13 +1284,12 @@ function _papRenderEdIg(igUrl, title){
   var permalink=String(igUrl).split('?')[0];
   if(!/\/$/.test(permalink)) permalink+='/';
   var canEmbed=/instagram\.com\/(p|reel|tv)\//.test(permalink);
+  /* 2026-08-09 도메니코 — 임베드 창은 갤러리 중간(_papMidIgCtaHtml)으로
+     이동. 같은 창이 한 페이지에 두 번 뜨는 중복을 막기 위해 하단에서는
+     접고 On Instagram 퍼널(계측 CTA)만 남긴다. 아래 _papLoadIgEmbed 호출은
+     유지 — 중간 임베드가 이 시점에 함께 처리된다. */
   box.innerHTML=
-    (canEmbed
-      ? '<div style="margin:36px auto 0;max-width:540px">'
-        +'<blockquote class="instagram-media" data-instgrm-permalink="'+permalink.replace(/"/g,'&quot;')+'" data-instgrm-version="14" style="background:#000;border:1px solid rgba(255,255,255,.16);margin:0 auto;max-width:540px;min-width:280px;width:100%"></blockquote>'
-        +'</div>'
-      : '')
-    +(function(){
+    (function(){
        // 웹→IG 전환 유도 (2026-07-20, 도메니코 지시) — 이전의 "웹에 붙잡아두기"
        // 카피를 폐기. 목표는 웹 방문자를 IG 원본(좋아요·저장)과 팔로우로 보내는 것.
        // 버튼은 /api/ig-out 경유로 아웃클릭 계측(src=editorial). 언어 KO/EN.
@@ -1240,7 +1304,7 @@ function _papRenderEdIg(igUrl, title){
        var _follow=_edL9('@pap_magazine 팔로우 →','Follow @pap_magazine →');
        var _outPost='/api/ig-out?src=editorial&to=post&url='+encodeURIComponent(permalink);
        var _outProfile='/api/ig-out?src=editorial&to=profile&url='+encodeURIComponent('https://www.instagram.com/pap_magazine/');
-       return '<aside style="margin:'+(canEmbed?'14px':'36px')+' 0 0;padding:26px 24px;border:1px solid rgba(255,255,255,.16);text-align:center">'
+       return '<aside style="margin:36px 0 0;padding:26px 24px;border:1px solid rgba(255,255,255,.16);text-align:center">'
          +'<div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:10px">On Instagram</div>'
          +'<div style="font-size:13.5px;line-height:1.7;color:#ddd;margin-bottom:16px">'+_body+'</div>'
          +'<a href="'+_outPost+'" target="_blank" rel="noopener" style="display:inline-block;background:#fff;color:#000;padding:11px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;margin:0 6px 8px">'+_post+'</a>'
@@ -1567,8 +1631,9 @@ function _openEditorialInner(title,thumb){
       }
     }
     gal.innerHTML+='<div class="ed-gallery-item"><img src="'+url+'" alt="'+title+'" loading="lazy" onerror="edImgError(this)">'+_scrapBtnHtml(url,title)+'<div class="ed-img-credits">'+credits+'</div></div>';
-    // 갤러리 중간 IG CTA — 6장 이상일 때 4번째 뒤 1회만(짧은 화보는 하단 CTA로 충분).
-    if(idx===3 && det.images.length>=6){
+    // 갤러리 중간 IG 창 — 모든 에디토리얼 필수 (2026-08-09 도메니코).
+    // 6장 이상은 4번째 뒤, 짧은 화보는 중간 지점 뒤 1회.
+    if(idx === Math.min(3, Math.max(0, Math.ceil(det.images.length / 2) - 1))){
       try{ gal.innerHTML += _papMidIgCtaHtml(det.ig || (d && d.ig) || ''); }catch(_){}
     }
   });
@@ -1820,8 +1885,9 @@ function _openEditorialInner_noPush(title,thumb){
       }
     }
     gal.innerHTML+='<div class="ed-gallery-item"><img src="'+url+'" alt="'+title+'" loading="lazy" onerror="edImgError(this)">'+_scrapBtnHtml(url,title)+'<div class="ed-img-credits">'+credits+'</div></div>';
-    // 갤러리 중간 IG CTA — 6장 이상일 때 4번째 뒤 1회만(짧은 화보는 하단 CTA로 충분).
-    if(idx===3 && det.images.length>=6){
+    // 갤러리 중간 IG 창 — 모든 에디토리얼 필수 (2026-08-09 도메니코).
+    // 6장 이상은 4번째 뒤, 짧은 화보는 중간 지점 뒤 1회.
+    if(idx === Math.min(3, Math.max(0, Math.ceil(det.images.length / 2) - 1))){
       try{ gal.innerHTML += _papMidIgCtaHtml(det.ig || (d && d.ig) || ''); }catch(_){}
     }
   });

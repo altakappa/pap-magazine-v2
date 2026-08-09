@@ -215,10 +215,21 @@ console.log('\n[별점 통합] 평가 장치는 한 화면에 하나 (2026-08-09
     idx.indexOf('id="edDetailDesc"') < idx.indexOf('id="edRatingCta"')
     && idx.indexOf('id="edRatingCta"') < idx.indexOf('id="edEngageMount"'));
   t('SPA 순서: SHOP 은 다운로드 위', idx.indexOf('id="edShopRow"') < idx.indexOf('id="edDetailDownloads"'));
-  t('티어시트 PDF 가 로고 ZIP 에 동봉된다 (2026-08-09)', /_papMakeTearsheetPdf/.test(edJs)
-    && /-tearsheet\.pdf/.test(edJs) && /data-tearsheet/.test(edJs));
-  t('jsPDF 는 CDN defer — 실패해도 ZIP 본체는 동작', /jspdf\.umd\.min\.js/.test(idx)
-    && /\[tearsheet\] 생성 실패\(스킵\)/.test(edJs));
+  t('티어시트 PDF 는 별도 다운로드 버튼 (2026-08-09 도메니코 최종)',
+    /_papDownloadTearsheet/.test(edJs) && /_papMakeTearsheetPdf/.test(edJs)
+    && /edTearsheetBtn/.test(edJs) && /editorial-tearsheet/.test(edJs));
+  t('티어시트는 ZIP 에 동봉하지 않는다 (별도 버튼안 확정)', !/zip\.file\(safeTitle \+ '-tearsheet/.test(edJs));
+  t('jsPDF 는 CDN defer — 로드 실패 시 안내 후 중단 (ZIP 본체 무관)', /jspdf\.umd\.min\.js/.test(idx)
+    && /PDF 라이브러리 로드 실패/.test(edJs));
+  {
+    const midFn = edJs.slice(edJs.indexOf('function _papMidIgCtaHtml'), edJs.indexOf('function _papRenderEdIg'));
+    const bottomFn = edJs.slice(edJs.indexOf('function _papRenderEdIg'), edJs.indexOf('function _renderEditorialTags'));
+    t('갤러리 중간 = IG 임베드 창, 모든 에디토리얼 필수 (2026-08-09)',
+      /instagram-media/.test(midFn) && /Math\.ceil\(det\.images\.length \/ 2\)/.test(edJs));
+    t('중간 폴백(원본 없음)은 editorial_mid 계측 유지', /src=editorial_mid/.test(midFn));
+    t('하단은 임베드를 접고 퍼널만 (같은 창 중복 금지)', !/instagram-media/.test(bottomFn)
+      && /_papLoadIgEmbed/.test(bottomFn));
+  }
   t('SSR 순서: 크레딧 → 별점, SHOP → 다운로드 (에디토리얼)',
     seo.indexOf("kind === 'editorial' ? creditsHtml") < seo.indexOf('papRatingMount')
     && seo.indexOf("kind === 'editorial' ? fashionHtml") < seo.indexOf('${downloadsHtml}'));
