@@ -1561,11 +1561,15 @@ ${(kind === 'editorial' || kind === 'film' || kind === 'article') ? `<!-- QA #17
     ${bodyHtml}
     ${galleryHtml}
     ${videoHtml}
+    ${/* 2026-08-09 도메니코: 크레딧은 사진과 별점 사이 · SHOP 은 다운로드 위.
+        기사·필름은 종전 순서 유지. */ ''}
+    ${kind === 'editorial' ? creditsHtml : ''}
     ${kind === 'editorial' ? '<div id="papRatingMount"></div>' : ''}
     ${kind === 'editorial' && UUID_RE.test(String(record.id || '')) ? '<div class="pap-engage" id="papEngageMount"></div>' : ''}
-    ${creditsHtml}
+    ${kind !== 'editorial' ? creditsHtml : ''}
+    ${kind === 'editorial' ? fashionHtml : ''}
     ${downloadsHtml}
-    ${fashionHtml}
+    ${kind !== 'editorial' ? fashionHtml : ''}
     ${brandLinksHtml}
     ${relatedEditorialHtml}
     ${relatedFilmsHtml}

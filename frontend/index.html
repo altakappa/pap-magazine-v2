@@ -1224,18 +1224,28 @@
     <div class="ed-video-frame" id="edDetailVideoFrame"></div>
   </section>
 
-  <!-- 별점 (2026-08-09 최종) — 도메니코: "별점은 사진들 바로 아래에".
-       공용 부품 PapEngage.mountRating 이 채운다 (SSR 은 papRatingMount — 같은 부품). -->
+  <!-- 설명글 + 크레딧 (2026-08-09 도메니코: "사진과 별점 사이에") -->
+  <div class="ed-credits-wrap">
+    <div class="ed-desc" id="edDetailDesc"></div>
+    <div class="ed-credits-table" id="edDetailCredits"></div>
+  </div>
+
+  <!-- 별점 (2026-08-09 최종) — 도메니코: "별점은 사진들 바로 아래에" →
+       설명·크레딧 다음, 감상 흐름의 평가 지점. 공용 부품
+       PapEngage.mountRating 이 채운다 (SSR 은 papRatingMount — 같은 부품). -->
   <div id="edRatingCta"></div>
   <!-- 참여 블록(댓글·카카오·웹푸시 벨) — 2026-08-09 도메니코: "댓글도 별점
        아래에". 별점 직후로 이동 (id 는 기사 오버레이 papEngageMount 와
        달라야 한다 — 같은 문서에 두 오버레이 공존). -->
   <div class="pap-engage" id="edEngageMount"></div>
 
-  <!-- EDITORIAL DESCRIPTION + CREDITS -->
+  <!-- EDITORIAL DESCRIPTION + CREDITS 는 위(사진 직후)로 이동 (2026-08-09
+       도메니코: "설명글과 크레딧을 사진과 별점 사이에") -->
   <div class="ed-credits-wrap">
-    <div class="ed-desc" id="edDetailDesc"></div>
-    <div class="ed-credits-table" id="edDetailCredits"></div>
+    <!-- 수익화 2.0 (2026-07) — SHOP THE STORY. 2026-08-09 도메니코:
+         "다운로드 위로" — 구매 동선이 다운로드보다 먼저.
+         pap-content-editorial.js#_papRenderShopRow 가 det.fashion 으로 채움. -->
+    <div id="edShopRow" style="display:none"></div>
     <!-- QA #271 v5 — 커버 + PAP 로고 합성 갤러리 ZIP 다운로드 영역.
          초기값에 placeholder를 표시해 JS 로드 전이라도 자리가 비어 보이지
          않도록 함. _renderEditorialDownloads()가 hydrate 시점에 정확한
@@ -1273,9 +1283,6 @@
 
   <!-- SOCIAL (Rating + Comments) -->
   <div class="ed-credits-wrap">
-    <!-- 수익화 2.0 (2026-07) — SHOP THE STORY: 착장 브랜드 구매 링크.
-         pap-content-editorial.js#_papRenderShopRow 가 det.fashion 으로 채움. -->
-    <div id="edShopRow" style="display:none"></div>
     <!-- 참여 증폭 2.0 (2026-07) — 원본 IG 게시물 임베드 + 보내기.
          pap-content-editorial.js#_papRenderEdIg 가 det.ig 존재 시 채움. -->
     <div id="edIgPostCta" style="display:none"></div>
