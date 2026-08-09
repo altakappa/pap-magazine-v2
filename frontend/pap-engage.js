@@ -68,6 +68,8 @@
     + '.pap-engage .pe-push{display:inline-flex;align-items:center;gap:8px;background:transparent;border:1px solid rgba(255,255,255,.28);color:#eee;padding:11px 18px;font-size:12px;font-weight:600;letter-spacing:.06em;cursor:pointer;font-family:inherit;transition:.2s}'
     + '.pap-engage .pe-push:hover{border-color:rgba(255,255,255,.6)}'
     + '.pap-engage .pe-push[aria-pressed="true"]{background:#fff;color:#111;border-color:#fff}'
+    + '.pap-engage.pe-rate-solo{margin:36px auto 0;text-align:center}'
+    + '.pap-engage.pe-rate-solo .pe-rate{display:inline-flex;justify-content:center}'
     + '.pap-engage .pe-rate{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap}'
     + '.pap-engage .pe-rate-q{font-size:12.5px;color:#cfcfcf;letter-spacing:.02em}'
     + '.pap-engage .pe-star{background:none;border:0;padding:2px;font-size:20px;line-height:1;color:rgba(255,255,255,.28);cursor:pointer;font-family:inherit;transition:color .15s}'
@@ -151,19 +153,13 @@
     /* 평가 장치는 한 화면에 하나 (2026-08-09 도메니코 결정) —
        에디토리얼 = 별점: "영화 점수 주듯" 매기는 행위가 참여를 부른다는 판단.
        실측도 이 편이다 (별점 30일 11건 vs 하단 좋아요 이틀 1건).
-       기사·필름 = 무로그인 좋아요 유지 (별점이 없어 중복이 아니다). */
+       기사·필름 = 무로그인 좋아요 유지 (별점이 없어 중복이 아니다).
+       별점 위치는 이 바가 아니라 **사진 바로 아래** — mountRating() 을
+       SSR(papRatingMount)·SPA(edRatingCta) 가 따로 부른다 ("감상 직후가
+       평가의 순간" — 옛 별점 CTA 의 자리 그대로). 이 바에서는 뺀다. */
     var useRating = (kind === 'editorial');
-    var starsHtml = '';
-    if (useRating) {
-      for (var si = 1; si <= 5; si++) {
-        starsHtml += '<button type="button" class="pe-star" data-score="' + si + '" aria-label="'
-          + esc(t.rateAria.replace('{n}', si)) + '">★</button>';
-      }
-    }
     var evalHtml = useRating
-      ? '<div class="pe-rate"><span class="pe-rate-q">' + esc(t.rateQ) + '</span>'
-        + '<span class="pe-stars">' + starsHtml + '</span>'
-        + '<span class="pe-rate-stat"></span></div>'
+      ? ''
       : '<button type="button" class="pe-like" aria-pressed="false" aria-label="' + esc(t.likeAria) + '">'
         + '<span aria-hidden="true">♡</span><span>' + esc(t.like) + '</span> <span class="pe-count">0</span>'
         + '</button>';
@@ -213,9 +209,6 @@
           .then(function () { busy = false; });
       });
     }
-
-    // ── 별점 (에디토리얼) ──────────────────────────────────
-    if (useRating) setupRating(root, o, t);
 
     // ── 댓글 ───────────────────────────────────────────────
     function paintList(items) {
@@ -301,6 +294,28 @@
         });
       });
     });
+  }
+
+  /* 별점 단독 마운트 (2026-08-09 도메니코: "별점은 사진들 바로 아래에") —
+     감상이 끝난 그 순간이 평가의 순간이라는 옛 별점 CTA 의 자리 그대로.
+     SSR 은 papRatingMount, SPA 는 edRatingCta 에 이 함수를 부른다.
+     두 화면이 같은 부품 — 규칙이 두 벌이면 한쪽만 고쳐진다. */
+  function mountRating(root, opts) {
+    if (!root) return;
+    var o = opts || {};
+    if (String(o.kind || '') !== 'editorial') { root.innerHTML = ''; return; }
+    injectCss();
+    var t = T[o.lang] || T.en;
+    var starsHtml = '';
+    for (var si = 1; si <= 5; si++) {
+      starsHtml += '<button type="button" class="pe-star" data-score="' + si + '" aria-label="'
+        + esc(t.rateAria.replace('{n}', si)) + '">★</button>';
+    }
+    root.innerHTML = '<div class="pap-engage pe-rate-solo"><div class="pe-rate">'
+      + '<span class="pe-rate-q">' + esc(t.rateQ) + '</span>'
+      + '<span class="pe-stars">' + starsHtml + '</span>'
+      + '<span class="pe-rate-stat"></span></div></div>';
+    setupRating(root, o, t);
   }
 
   /* ── 별점 (에디토리얼 평가 장치, 2026-08-09) ─────────────
@@ -471,5 +486,5 @@
     return _sdk;
   }
 
-  global.PapEngage = { mount: mount, T: T };
+  global.PapEngage = { mount: mount, mountRating: mountRating, T: T };
 })(window);

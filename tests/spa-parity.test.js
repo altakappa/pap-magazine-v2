@@ -166,7 +166,7 @@ console.log('\n[8] 캐시버스트 — 바뀐 스크립트는 전부 판을 올�
     for (const o of olds) if (h.indexOf(o) >= 0) stale.push(n + ':' + o);
   }
   t('옛 버전 참조가 한 곳도 없다', stale.length === 0, stale.join(', '));
-  t('SSR 도 pap-engage v4 를 부른다 (별점 통합 캐시버스트)', /pap-engage\.js\?v=4/.test(seo));
+  t('SSR 도 pap-engage v5 를 부른다 (별점 위치 이동 캐시버스트)', /pap-engage\.js\?v=5/.test(seo));
   /* index 와 articles 가 같은 스크립트를 다른 판으로 부르면 한쪽만 고쳐진다 */
   const ver = (h, name) => { const m = h.match(new RegExp(name.replace(/[.?]/g, '\\$&') + 'v=(\\d+)')); return m ? m[1] : null; };
   ['pap-content-article.js?', 'pap-content-editorial.js?', 'pap-content-api-sync.js?', 'pap-content-seo.js?'].forEach((n) => {
@@ -205,8 +205,12 @@ console.log('\n[9] IG 링크 자동화 — "임베드 코드는 살았는데 데
 console.log('\n[별점 통합] 평가 장치는 한 화면에 하나 (2026-08-09 도메니코 결정)');
 {
   const rat = R('api/social/ratings.js');
-  t('에디토리얼 참여 바 = 별점', /useRating = \(kind === 'editorial'\)/.test(eng)
+  t('별점은 공용 부품 mountRating (사진 바로 아래)', /mountRating/.test(eng)
     && /pe-rate/.test(eng) && /pe-star/.test(eng));
+  t('참여 바에서는 에디토리얼 평가를 뺀다 (중복 금지)', /useRating\s*\?\s*''/.test(eng));
+  t('SSR 도 사진 아래에 별점 마운트', /papRatingMount/.test(seo) && seo.indexOf('${videoHtml}') < seo.indexOf('papRatingMount'));
+  t('SPA 도 같은 부품을 부른다', /mountRating\(document\.getElementById\('edRatingCta'\)/.test(edJs)
+    && /id="edRatingCta"/.test(idx));
   t('기사·필름 좋아요는 유지 (중복 아님)', /pe-like/.test(eng) && /if \(likeBtn\)/.test(eng));
   t('별점 키는 제목 80자 — SSR 절단과 일치 (두 화면 같은 키)',
     /slice\(0, 80\)/.test(eng) && /titleMain \|\| ''\)\.slice\(0, 80\)/.test(seo));

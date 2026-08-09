@@ -1561,6 +1561,7 @@ ${(kind === 'editorial' || kind === 'film' || kind === 'article') ? `<!-- QA #17
     ${bodyHtml}
     ${galleryHtml}
     ${videoHtml}
+    ${kind === 'editorial' ? '<div id="papRatingMount"></div>' : ''}
     ${creditsHtml}
     ${downloadsHtml}
     ${fashionHtml}
@@ -1657,11 +1658,14 @@ window.__PAP_ENGAGE = ${JSON.stringify({
   image: ogImage || '',
 })};
 </script>
-<script src="/pap-engage.js?v=4" defer></script>
+<script src="/pap-engage.js?v=5" defer></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   var host = document.getElementById('papEngageMount');
   if (host && window.PapEngage) window.PapEngage.mount(host, window.__PAP_ENGAGE);
+  /* 별점은 사진 바로 아래 (2026-08-09 도메니코) — mountRating 은 editorial 이 아니면 스스로 침묵 */
+  var rateHost = document.getElementById('papRatingMount');
+  if (rateHost && window.PapEngage && window.PapEngage.mountRating) window.PapEngage.mountRating(rateHost, window.__PAP_ENGAGE);
 });
 window.addEventListener('load', function () {
   var host = document.getElementById('papEngageMount');
