@@ -461,11 +461,14 @@ function _renderEditorialDownloads(det, d){
     // (2026-08-09 버그 수정 — 버튼 함수 안에서 det 를 참조해 조용히 실패했었다).
     var tsMeta = null;
     try {
+      // 문자열만 통과 — 객체가 String() 을 타면 "[object Object]" 가
+      // PDF 에 그대로 찍힌다 (2026-08-10 도메니코 실측 신고).
+      var _str = function(v){ return (typeof v === 'string') ? v : ''; };
       tsMeta = {
-        title: String(title || ''),
-        issue: String((det && det.issue) || (d && d.issue) || ''),
-        cover: String(coverUrl || (gallery && gallery[0]) || ''),
-        desc: String((det && det.desc) || (d && d.description) || ''),
+        title: _str(title),
+        issue: _str(det && det.issue) || _str(d && d.issue),
+        cover: _str(coverUrl) || _str(gallery && gallery[0]),
+        desc: _str(det && det.desc) || _str(d && d.description),
         gallery: (gallery || []).slice(0, 30),
         /* 잡지식 페이지 크레딧 — 관리자가 저장한 이미지별 패션 크레딧
            ("@handle Item, ..." → "Item: @handle") 을 갤러리 순서대로 */
@@ -482,8 +485,8 @@ function _renderEditorialDownloads(det, d){
             if (h && typeof h === 'object') return (typeof h.n === 'string' && h.n) ? h.n : String(h.id || '').replace(/^@/, '');
             return String(h || '').replace(/^@/, '');
           }).filter(Boolean).join(', ');
-          return { r: String(c.r || ''), n: names };
-        }).filter(function(x){ return x.r && x.n; }).slice(0, 12),
+          return { r: _str(c && c.r), n: names };
+        }).filter(function(x){ return x.r && x.n && x.r.indexOf('[object') < 0 && x.n.indexOf('[object') < 0; }).slice(0, 12),
       };
     } catch (_) { tsMeta = null; }
     _renderEditorialDownloadButtons(box, coverUrl, gallery, safeTitle, perm, logoSettings, tsMeta);
@@ -937,34 +940,19 @@ async function _papMakeTearsheetPdf(ts, logo, JsPDF, onProgress){
   var g = Array.isArray(ts.gallery) ? ts.gallery : [];
   var total = 2 + g.length;
 
-  // ── 1p 표지 — 커버 풀블리드, 상단 로고 없음 (2026-08-10 도메니코) ──
+  // ── 1p 표지 — 확정 커버 디자인 단독 (2026-08-10 도메니코 최종) ──
+  //    관리자 "매거진 커버 자동 생성"으로 확정한 디자인에는 PAP 마스트헤드·
+  //    제목·컨트리뷰터 라인이 이미 박혀 있다. 그래서 여기서는 아무것도
+  //    덧그리지 않는다 — 잘림 없이(contain) 적당한 여백으로 중앙 배치만.
   if (onProgress) try { onProgress(1, total); } catch(_){}
   var p1 = newPage();
   var coverImg = await loadImg(ts.cover);
   if (coverImg) {
-    // 잡지 표지처럼 페이지를 가득 채운다 (cover-crop, 중앙 정렬)
-    var csc = Math.max(W / coverImg.naturalWidth, H / coverImg.naturalHeight);
+    var cAreaTop = 110, cAreaH = H - cAreaTop - 190, cAreaW = W - 2 * M;
+    var csc = Math.min(cAreaW / coverImg.naturalWidth, cAreaH / coverImg.naturalHeight);
     var cdw = coverImg.naturalWidth * csc, cdh = coverImg.naturalHeight * csc;
-    p1.x.drawImage(coverImg, (W - cdw) / 2, (H - cdh) / 2, cdw, cdh);
-    // 하단 가독성 그라데이션 — 타이틀이 이미지 위에 올라간다
-    var grad = p1.x.createLinearGradient(0, H - 560, 0, H);
-    grad.addColorStop(0, 'rgba(0,0,0,0)');
-    grad.addColorStop(1, 'rgba(0,0,0,.78)');
-    p1.x.fillStyle = grad;
-    p1.x.fillRect(0, H - 560, W, 560);
+    p1.x.drawImage(coverImg, (W - cdw) / 2, cAreaTop + (cAreaH - cdh) / 2, cdw, cdh);
   }
-  try { p1.x.letterSpacing = '8px'; } catch(_){}
-  p1.x.fillStyle = '#ffffff';
-  p1.x.shadowColor = 'rgba(0,0,0,.55)'; p1.x.shadowBlur = 14;
-  fitTitle(p1.x, titleTxt, 72, W - 2 * M);
-  p1.x.fillText(titleTxt, W / 2, H - 210);
-  if (ts.issue) {
-    try { p1.x.letterSpacing = '5px'; } catch(_){}
-    p1.x.font = '400 27px ' + FONT;
-    p1.x.fillStyle = '#d5d5d5';
-    p1.x.fillText(String(ts.issue).toUpperCase(), W / 2, H - 158);
-  }
-  p1.x.shadowBlur = 0; p1.x.shadowColor = 'transparent';
   footer(p1.x);
   if (!commit(p1.cv)) return null;
 
@@ -991,7 +979,7 @@ async function _papMakeTearsheetPdf(ts, logo, JsPDF, onProgress){
   p2.x.beginPath(); p2.x.moveTo(W / 2 - 150, y); p2.x.lineTo(W / 2 + 150, y); p2.x.stroke();
   y += 64;
   // 설명글
-  if (ts.desc) {
+  if (ts.desc && typeof ts.desc === 'string' && ts.desc.indexOf('[object') < 0) {
     try { p2.x.letterSpacing = '0px'; } catch(_){}
     p2.x.font = '400 25px ' + FONT;
     p2.x.fillStyle = '#d8d8d8';
