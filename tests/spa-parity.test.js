@@ -237,8 +237,13 @@ console.log('\n[별점 통합] 평가 장치는 한 화면에 하나 (2026-08-09
   {
     const chk = R('api/downloads/check.js');
     const cellFn = edJs.slice(edJs.indexOf('function drawCell'), edJs.indexOf('var caps ='));
-    t('티어시트 이미지는 무로고 원본 + 셀마다 패션 크레딧 (2026-08-10)',
-      !/globalAlpha/.test(cellFn) && /imageCredits/.test(edJs) && /caps\[k\]/.test(edJs));
+    t('티어시트 이미지는 무로고 원본 + 크레딧 전부(오버레이 여러 줄)',
+      !/globalAlpha/.test(cellFn) && /imageCredits/.test(edJs) && /caps\[k\]/.test(edJs)
+      && /rgba\(0,0,0,\.55\)/.test(cellFn));
+    t('티어시트 표지 = 커버 풀블리드 + 상단 로고 없음 (2026-08-10)', (function(){
+      const p1 = edJs.slice(edJs.indexOf('1p 표지 — 커버 풀블리드'), edJs.indexOf('2p 타이틀'));
+      return p1.length > 0 && !/drawImage\(logo/.test(p1) && /createLinearGradient/.test(p1);
+    })());
     t('비회원도 다운로드 버튼 3종을 본다 — 클릭 시 유료 전용 팝업 (2026-08-10)',
       /_papDlPaywall/.test(edJs) && /locked \? '_papDlPaywall\(\)'/.test(edJs)
       && !/CTA — 회원가입 유도/.test(edJs));

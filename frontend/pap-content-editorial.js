@@ -937,24 +937,34 @@ async function _papMakeTearsheetPdf(ts, logo, JsPDF, onProgress){
   var g = Array.isArray(ts.gallery) ? ts.gallery : [];
   var total = 2 + g.length;
 
-  // ── 1p 표지 ──────────────────────────────────────────────
+  // ── 1p 표지 — 커버 풀블리드, 상단 로고 없음 (2026-08-10 도메니코) ──
   if (onProgress) try { onProgress(1, total); } catch(_){}
   var p1 = newPage();
-  var lw = W * 0.14, lhh = lw * (logo.naturalHeight / logo.naturalWidth);
-  p1.x.drawImage(logo, W / 2 - lw / 2, 96, lw, lhh);
   var coverImg = await loadImg(ts.cover);
-  var coverTop = 96 + lhh + 56;
-  if (coverImg) drawContain(p1.x, coverImg, coverTop, W - 2 * M, H - coverTop - 330);
+  if (coverImg) {
+    // 잡지 표지처럼 페이지를 가득 채운다 (cover-crop, 중앙 정렬)
+    var csc = Math.max(W / coverImg.naturalWidth, H / coverImg.naturalHeight);
+    var cdw = coverImg.naturalWidth * csc, cdh = coverImg.naturalHeight * csc;
+    p1.x.drawImage(coverImg, (W - cdw) / 2, (H - cdh) / 2, cdw, cdh);
+    // 하단 가독성 그라데이션 — 타이틀이 이미지 위에 올라간다
+    var grad = p1.x.createLinearGradient(0, H - 560, 0, H);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(1, 'rgba(0,0,0,.78)');
+    p1.x.fillStyle = grad;
+    p1.x.fillRect(0, H - 560, W, 560);
+  }
   try { p1.x.letterSpacing = '8px'; } catch(_){}
   p1.x.fillStyle = '#ffffff';
-  fitTitle(p1.x, titleTxt, 64, W - 2 * M);
-  p1.x.fillText(titleTxt, W / 2, H - 218);
+  p1.x.shadowColor = 'rgba(0,0,0,.55)'; p1.x.shadowBlur = 14;
+  fitTitle(p1.x, titleTxt, 72, W - 2 * M);
+  p1.x.fillText(titleTxt, W / 2, H - 210);
   if (ts.issue) {
     try { p1.x.letterSpacing = '5px'; } catch(_){}
-    p1.x.font = '400 26px ' + FONT;
-    p1.x.fillStyle = '#9a9a9a';
-    p1.x.fillText(String(ts.issue).toUpperCase(), W / 2, H - 168);
+    p1.x.font = '400 27px ' + FONT;
+    p1.x.fillStyle = '#d5d5d5';
+    p1.x.fillText(String(ts.issue).toUpperCase(), W / 2, H - 158);
   }
+  p1.x.shadowBlur = 0; p1.x.shadowColor = 'transparent';
   footer(p1.x);
   if (!commit(p1.cv)) return null;
 
@@ -1006,24 +1016,31 @@ async function _papMakeTearsheetPdf(ts, logo, JsPDF, onProgress){
   footer(p2.x);
   if (!commit(p2.cv)) return null;
 
-  // ── 3p~ 갤러리 — 한 페이지 4장 (2×2), 무로고 원본 + 잡지식 패션 크레딧 ──
-  //    (2026-08-10 도메니코: "로고 없는 이미지 + 매 페이지 패션 크레딧")
-  var perPage = 4, gap = 34, capH = 46;
+  // ── 3p~ 갤러리 — 한 페이지 4장 (2×2), 무로고 원본 ──
+  //    패션 크레딧 전부 표기 (2026-08-10 도메니코: "이미지 위에 일정 부분
+  //    글자가 올라가도 괜찮으니 전부 채워줘") — 이미지 하단에 가독성
+  //    배경을 깔고 여러 줄로 오버레이.
+  var perPage = 4, gap = 34;
   var cellW = (W - 2 * M - gap) / 2;
   var cellH = (H - 2 * M - gap - 40) / 2;
   function drawCell(x, img, cap, cx0, cy0){
-    var sc = Math.min(cellW / img.naturalWidth, (cellH - capH) / img.naturalHeight);
+    var sc = Math.min(cellW / img.naturalWidth, cellH / img.naturalHeight);
     var dw = img.naturalWidth * sc, dh = img.naturalHeight * sc;
-    var dx = cx0 + (cellW - dw) / 2, dy = cy0 + (cellH - capH - dh) / 2;
+    var dx = cx0 + (cellW - dw) / 2, dy = cy0 + (cellH - dh) / 2;
     x.drawImage(img, dx, dy, dw, dh);
     if (cap) {
-      try { x.letterSpacing = '1px'; } catch(_){}
-      x.font = '400 16px ' + FONT;
-      x.fillStyle = '#9a9a9a';
-      var txt = String(cap);
-      while (txt.length > 4 && x.measureText(txt).width > cellW - 8) txt = txt.slice(0, -4);
-      if (txt !== String(cap)) txt += '\u2026';
-      x.fillText(txt, cx0 + cellW / 2, cy0 + cellH - 16);
+      try { x.letterSpacing = '0.5px'; } catch(_){}
+      x.font = '400 15px ' + FONT;
+      var lines = wrapText(x, String(cap), dw - 20);
+      if (lines.length > 5) { lines = lines.slice(0, 5); lines[4] += '\u2026'; }
+      var lh = 21, pad = 10;
+      var boxH = lines.length * lh + pad * 2 - 4;
+      x.fillStyle = 'rgba(0,0,0,.55)';
+      x.fillRect(dx, dy + dh - boxH, dw, boxH);
+      x.fillStyle = '#f2f2f2';
+      for (var li = 0; li < lines.length; li++){
+        x.fillText(lines[li], dx + dw / 2, dy + dh - boxH + pad + 12 + li * lh);
+      }
     }
   }
   var caps = Array.isArray(ts.imageCredits) ? ts.imageCredits : [];
