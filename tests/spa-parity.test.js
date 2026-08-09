@@ -266,8 +266,9 @@ console.log('\n[별점 통합] 평가 장치는 한 화면에 하나 (2026-08-09
       /instagram-media/.test(midFn) && /_papMidSlots\[0\] \|\| idx === _papMidSlots\[1\]/.test(edJs)
       && /odd\(n \/ 3\)/.test(edJs));
     t('중간 폴백(원본 없음)은 editorial_mid 계측 유지', /src=editorial_mid/.test(midFn));
-    t('하단은 임베드를 접고 퍼널만 (같은 창 중복 금지)', !/instagram-media/.test(bottomFn)
-      && /_papLoadIgEmbed/.test(bottomFn));
+    t('하단 IG 박스는 완전히 접혔다 — 중간 창 처리만 남음 (2026-08-10)', !/instagram-media/.test(bottomFn)
+      && /_papLoadIgEmbed/.test(bottomFn) && /display='none'/.test(bottomFn)
+      && !/<aside/.test(bottomFn));
   }
   t('SSR 순서: 크레딧 → 별점, SHOP → 다운로드 (에디토리얼)',
     seo.indexOf("kind === 'editorial' ? creditsHtml") < seo.indexOf('papRatingMount')

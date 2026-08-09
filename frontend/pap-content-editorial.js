@@ -1424,64 +1424,14 @@ function _papMidIgCtaHtml(igUrl){
 }
 
 function _papRenderEdIg(igUrl, title){
+  /* 2026-08-10 도메니코: "에디토리얼에서는 이걸(하단 On Instagram 퍼널) 빼자."
+     IG 창은 갤러리 중간(상한 2개, 왼/오 칸)으로 옮겨졌고 하단 박스(임베드
+     + On Instagram 퍼널 / 원본 없음 폴백)는 접는다. 이 함수는 이제 중간
+     임베드 처리(스크립트 로드 + 옆 사진 높이 맞춤)만 담당한다.
+     div(#edIgPostCta)는 다른 코드의 getElementById 방어를 위해 남긴다. */
   var box=document.getElementById('edIgPostCta');
-  if(!box) return;
-  if(!igUrl || !/instagram\.com\//.test(String(igUrl))){
-    // 원본 IG 게시물이 없는 아카이브(옛 계정 게시분·미게시) — 영구 폴백.
-    // 2026-07-16 개선: ① 팔로워 수 사회적 증거 ② 주 CTA=팔로우(채움)·보조=공유(외곽선)
-    // 로 계층 역전 ③ 프로필 링크를 /api/ig-out 경유로 바꿔 아웃클릭 계측(src=spa_fallback).
-    // 2026-08-05 — KO/EN 2개 언어 하드코딩이었다. 아래 .ig-funnel(9개 언어)을
-    // 지우고 이 블록 하나로 통일했으므로, 회원 대면 9개 언어 규칙에 맞춰
-    // _edL9(+_ED_TR9)로 옮긴다. 폴백은 영어(.claude/rules/frontend.md 언어 정책).
-    var _kf=(localStorage.getItem('pap-lang')||'ko')==='ko';
-    var _bf=_edL9(
-      '이 화보의 전체 시리즈는 <b style="color:#fff">PAP에서 완전판</b>으로.<br><b style="color:#fff">{n} 팔로워</b>가 매일 만나는 새 에디토리얼은 인스타그램에서.',
-      'The complete series lives here, <b style="color:#fff">on PAP</b>.<br>Join <b style="color:#fff">{n} followers</b> for new editorials daily.'
-    ).replace('{n}', _kf?_PAP_IG_FOLLOWERS_KO:_PAP_IG_FOLLOWERS_EN);
-    var _sf=_edL9('이 화보 공유 ↗','Share this editorial ↗');
-    var _ff=_edL9('@pap_magazine 팔로우 →','Follow @pap_magazine →');
-    var _igOut='/api/ig-out?src=spa_fallback&to=profile&url='+encodeURIComponent('https://www.instagram.com/pap_magazine/');
-    box.innerHTML=
-      '<aside style="margin:36px 0 0;padding:26px 24px;border:1px solid rgba(255,255,255,.16);text-align:center">'
-      +'<div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:10px">Full Editorial</div>'
-      +'<div style="font-size:13.5px;line-height:1.7;color:#ddd;margin-bottom:16px">'+_bf+'</div>'
-      +'<a href="'+_igOut+'" target="_blank" rel="noopener" style="display:inline-block;background:#fff;color:#000;padding:11px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;margin:0 6px 8px">'+_ff+'</a>'
-      +'<button onclick="_papShareStory()" style="background:none;color:#fff;border:1px solid rgba(255,255,255,.28);padding:11px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;margin:0 6px 8px">'+_sf+'</button>'
-      +'</aside>';
-    box.style.display=''; return;
-  }
-  var safe=String(igUrl).replace(/"/g,'&quot;');
-  var permalink=String(igUrl).split('?')[0];
-  if(!/\/$/.test(permalink)) permalink+='/';
-  var canEmbed=/instagram\.com\/(p|reel|tv)\//.test(permalink);
-  /* 2026-08-09 도메니코 — 임베드 창은 갤러리 중간(_papMidIgCtaHtml)으로
-     이동. 같은 창이 한 페이지에 두 번 뜨는 중복을 막기 위해 하단에서는
-     접고 On Instagram 퍼널(계측 CTA)만 남긴다. 아래 _papLoadIgEmbed 호출은
-     유지 — 중간 임베드가 이 시점에 함께 처리된다. */
-  box.innerHTML=
-    (function(){
-       // 웹→IG 전환 유도 (2026-07-20, 도메니코 지시) — 이전의 "웹에 붙잡아두기"
-       // 카피를 폐기. 목표는 웹 방문자를 IG 원본(좋아요·저장)과 팔로우로 보내는 것.
-       // 버튼은 /api/ig-out 경유로 아웃클릭 계측(src=editorial). 언어 KO/EN.
-       // 2026-08-05 — 9개 언어화(위 폴백 변형과 동일한 이유).
-       // 카피 톤 (2026-07-21, 도메니코 지적: "너무 AI 멘트 느낌"):
-       // 광고 문구를 걷어내고 사실만 남긴다. "마음에 드셨다면" 같은 조건절 권유,
-       // "더 많은 사람에게 닿습니다" 같은 번역투 미사여구, 팔로워 수 자랑을 뺐다.
-       var _body=_edL9(
-         'PAP의 화보와 필름, 패션·셀럽 소식을<br><b style="color:#fff">인스타그램</b>에서 편하게 만나보세요.',
-         'Editorials, films, fashion and celebrity news —<br>all in one place on <b style="color:#fff">Instagram</b>.');
-       var _post=_edL9('인스타그램에서 보기 ↗','View on Instagram ↗');
-       var _follow=_edL9('@pap_magazine 팔로우 →','Follow @pap_magazine →');
-       var _outPost='/api/ig-out?src=editorial&to=post&url='+encodeURIComponent(permalink);
-       var _outProfile='/api/ig-out?src=editorial&to=profile&url='+encodeURIComponent('https://www.instagram.com/pap_magazine/');
-       return '<aside style="margin:36px 0 0;padding:26px 24px;border:1px solid rgba(255,255,255,.16);text-align:center">'
-         +'<div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:10px">On Instagram</div>'
-         +'<div style="font-size:13.5px;line-height:1.7;color:#ddd;margin-bottom:16px">'+_body+'</div>'
-         +'<a href="'+_outPost+'" target="_blank" rel="noopener" style="display:inline-block;background:#fff;color:#000;padding:11px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;margin:0 6px 8px">'+_post+'</a>'
-         +'<a href="'+_outProfile+'" target="_blank" rel="noopener" style="display:inline-block;background:none;color:#fff;border:1px solid rgba(255,255,255,.28);padding:11px 26px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;margin:0 6px 8px">'+_follow+'</a>'
-         +'</aside>';
-     })();
-  box.style.display='';
+  if(box){ box.innerHTML=''; box.style.display='none'; }
+  var canEmbed=/instagram\.com\/(p|reel|tv)\//.test(String(igUrl||'').split('?')[0]);
   if(canEmbed && typeof _papLoadIgEmbed==='function'){try{_papLoadIgEmbed();}catch(_){}}
   try{_papFitMidIg();}catch(_){}
 }
