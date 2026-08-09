@@ -35,12 +35,18 @@
           empty: '첫 댓글을 남겨보세요.', placeholder: '이 기사에 대한 생각을 남겨주세요',
           send: '등록', login: '로그인하고 댓글 남기기', del: '삭제', now: '방금',
           kakao: '카카오톡 공유',
-          push: '새 화보 알림 받기', pushOn: '알림 받는 중', pushAria: '새 화보 웹 알림 켜기/끄기' },
+          push: '새 화보 알림 받기', pushOn: '알림 받는 중', pushAria: '새 화보 웹 알림 켜기/끄기',
+          rateQ: '이 화보가 마음에 드셨나요?', rateAria: '별점 {n}점 주기', rateAvg: '평균',
+          ratePeople: '명 참여', rateMine: '내 평점', rateCancel: '취소',
+          rateLogin: '로그인하고 별점 남기기', rateNone: '첫 별점을 남겨보세요' },
     en: { like: 'Like', likeAria: 'Like this story', comments: 'Comments', jump: 'Jump to comments',
           empty: 'Be the first to comment.', placeholder: 'Share your thoughts on this story',
           send: 'Post', login: 'Sign in to comment', del: 'Delete', now: 'just now',
           kakao: 'Share on KakaoTalk',
-          push: 'Get new drops', pushOn: 'Alerts on', pushAria: 'Toggle new-editorial web alerts' },
+          push: 'Get new drops', pushOn: 'Alerts on', pushAria: 'Toggle new-editorial web alerts',
+          rateQ: 'Did you enjoy this editorial?', rateAria: 'Rate {n} stars', rateAvg: 'Avg',
+          ratePeople: ' ratings', rateMine: 'Your rating', rateCancel: 'Remove',
+          rateLogin: 'Sign in to leave a rating', rateNone: 'Be the first to rate' },
   };
 
   /* 스타일도 부품이 직접 들고 다닌다 (2026-08-08).
@@ -62,6 +68,15 @@
     + '.pap-engage .pe-push{display:inline-flex;align-items:center;gap:8px;background:transparent;border:1px solid rgba(255,255,255,.28);color:#eee;padding:11px 18px;font-size:12px;font-weight:600;letter-spacing:.06em;cursor:pointer;font-family:inherit;transition:.2s}'
     + '.pap-engage .pe-push:hover{border-color:rgba(255,255,255,.6)}'
     + '.pap-engage .pe-push[aria-pressed="true"]{background:#fff;color:#111;border-color:#fff}'
+    + '.pap-engage .pe-rate{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap}'
+    + '.pap-engage .pe-rate-q{font-size:12.5px;color:#cfcfcf;letter-spacing:.02em}'
+    + '.pap-engage .pe-star{background:none;border:0;padding:2px;font-size:20px;line-height:1;color:rgba(255,255,255,.28);cursor:pointer;font-family:inherit;transition:color .15s}'
+    + '.pap-engage .pe-star.on{color:#fff}'
+    + '.pap-engage .pe-star:hover{color:rgba(255,255,255,.75)}'
+    + '.pap-engage .pe-rate-stat{font-size:12px;color:#9a9a9a;font-variant-numeric:tabular-nums}'
+    + '.pap-engage .pe-rate-cancel{background:none;border:0;color:#777;font-size:11px;cursor:pointer;padding:0;font-family:inherit;text-decoration:underline}'
+    + '.pap-engage .pe-rate-login{color:#bbb;font-size:12.5px;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.25)}'
+    + '.pap-engage .pe-rate-login:hover{color:#fff}'
     + '.pap-engage .pe-jump{margin-left:auto;color:#9a9a9a;font-size:12px;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.2)}'
     + '.pap-engage h2{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:#9a9a9a;margin:36px 0 16px;font-weight:600}'
     + '.pap-engage .pe-form{display:none}'
@@ -133,12 +148,30 @@
 
     /* 다시 그리기 — SPA 는 같은 자리에 다른 기사를 끼우므로 매번 새로 만든다.
        innerHTML 로 통째로 갈아치우면 예전 노드에 붙은 리스너도 같이 사라진다. */
+    /* 평가 장치는 한 화면에 하나 (2026-08-09 도메니코 결정) —
+       에디토리얼 = 별점: "영화 점수 주듯" 매기는 행위가 참여를 부른다는 판단.
+       실측도 이 편이다 (별점 30일 11건 vs 하단 좋아요 이틀 1건).
+       기사·필름 = 무로그인 좋아요 유지 (별점이 없어 중복이 아니다). */
+    var useRating = (kind === 'editorial');
+    var starsHtml = '';
+    if (useRating) {
+      for (var si = 1; si <= 5; si++) {
+        starsHtml += '<button type="button" class="pe-star" data-score="' + si + '" aria-label="'
+          + esc(t.rateAria.replace('{n}', si)) + '">★</button>';
+      }
+    }
+    var evalHtml = useRating
+      ? '<div class="pe-rate"><span class="pe-rate-q">' + esc(t.rateQ) + '</span>'
+        + '<span class="pe-stars">' + starsHtml + '</span>'
+        + '<span class="pe-rate-stat"></span></div>'
+      : '<button type="button" class="pe-like" aria-pressed="false" aria-label="' + esc(t.likeAria) + '">'
+        + '<span aria-hidden="true">♡</span><span>' + esc(t.like) + '</span> <span class="pe-count">0</span>'
+        + '</button>';
+
     root.innerHTML =
       '<section class="pap-engage" data-target-type="' + esc(kind) + '" data-target-id="' + esc(id) + '">'
       + '<div class="pe-bar">'
-      + '<button type="button" class="pe-like" aria-pressed="false" aria-label="' + esc(t.likeAria) + '">'
-      + '<span aria-hidden="true">♡</span><span>' + esc(t.like) + '</span> <span class="pe-count">0</span>'
-      + '</button>'
+      + evalHtml
       + '<button type="button" class="kko-btn pe-kko" hidden>' + esc(t.kakao) + '</button>'
       + '<button type="button" class="pe-push" hidden aria-pressed="false" aria-label="' + esc(t.pushAria) + '"><span aria-hidden="true">🔔</span><span class="pe-push-label">' + esc(t.push) + '</span></button>'
       + '<a class="pe-jump" href="#peComments">' + esc(t.jump) + '</a>'
@@ -154,30 +187,35 @@
     var emptyEl = $('.pe-empty'), composeEl = $('.pe-compose'), kkoBtn = $('.pe-kko');
     var busy = false;
 
-    // ── 좋아요 ─────────────────────────────────────────────
-    function paint(d) {
-      countEl.textContent = d.count || 0;
-      likeBtn.setAttribute('aria-pressed', d.mine ? 'true' : 'false');
-    }
-    fetch('/api/content/react' + qs, { credentials: 'same-origin' })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (d) { if (d) paint(d); }).catch(function () {});
+    // ── 좋아요 (기사·필름) ─────────────────────────────────
+    if (likeBtn) {
+      var paint = function (d) {
+        countEl.textContent = d.count || 0;
+        likeBtn.setAttribute('aria-pressed', d.mine ? 'true' : 'false');
+      };
+      fetch('/api/content/react' + qs, { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) { if (d) paint(d); }).catch(function () {});
 
-    likeBtn.addEventListener('click', function () {
-      if (busy) return; busy = true;
-      /* 낙관적 반영 — 왕복을 기다리면 눌린 느낌이 안 난다. 실패하면 되돌린다. */
-      var wasOn = likeBtn.getAttribute('aria-pressed') === 'true';
-      var before = Number(countEl.textContent) || 0;
-      paint({ count: Math.max(0, before + (wasOn ? -1 : 1)), mine: !wasOn });
-      fetch('/api/content/react', {
-        method: 'POST', credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target_type: kind, target_id: id }),
-      }).then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (d) { paint(d || { count: before, mine: wasOn }); })
-        .catch(function () { paint({ count: before, mine: wasOn }); })
-        .then(function () { busy = false; });
-    });
+      likeBtn.addEventListener('click', function () {
+        if (busy) return; busy = true;
+        /* 낙관적 반영 — 왕복을 기다리면 눌린 느낌이 안 난다. 실패하면 되돌린다. */
+        var wasOn = likeBtn.getAttribute('aria-pressed') === 'true';
+        var before = Number(countEl.textContent) || 0;
+        paint({ count: Math.max(0, before + (wasOn ? -1 : 1)), mine: !wasOn });
+        fetch('/api/content/react', {
+          method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ target_type: kind, target_id: id }),
+        }).then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (d) { paint(d || { count: before, mine: wasOn }); })
+          .catch(function () { paint({ count: before, mine: wasOn }); })
+          .then(function () { busy = false; });
+      });
+    }
+
+    // ── 별점 (에디토리얼) ──────────────────────────────────
+    if (useRating) setupRating(root, o, t);
 
     // ── 댓글 ───────────────────────────────────────────────
     function paintList(items) {
@@ -263,6 +301,68 @@
         });
       });
     });
+  }
+
+  /* ── 별점 (에디토리얼 평가 장치, 2026-08-09) ─────────────
+     ratings 테이블·API 재사용 (키 = 제목 80자 — SSR 이 title 을 80자로
+     자르므로 SPA 도 같이 잘라야 SSR/SPA 가 같은 키를 본다).
+     쓰기는 로그인 필요(보안 감사 A-2) — 401 이면 로그인 링크로 바꾼다.
+     "쓰려고 했는데 로그인이 필요하다"가 가입 전환이 제일 잘 되는 순간
+     (댓글과 같은 원칙). 통계 조회는 로그인 불필요. */
+  function setupRating(root, o, t) {
+    var wrap = root.querySelector('.pe-rate');
+    if (!wrap) return;
+    var statEl = wrap.querySelector('.pe-rate-stat');
+    var stars = wrap.querySelectorAll('.pe-star');
+    var key = String(o.title || '').slice(0, 80);
+    if (!key) { wrap.hidden = true; return; }
+    var qs = '?editorial_title=' + encodeURIComponent(key);
+    var busy = false;
+
+    function paint(d) {
+      var my = d.myScore || 0;
+      var show = my || Math.round(d.avg || 0);
+      for (var i = 0; i < stars.length; i++) {
+        stars[i].className = 'pe-star' + (i < show ? ' on' : '');
+      }
+      var txt = !d.count ? t.rateNone
+        : t.rateAvg + ' ' + (d.avg || 0) + ' · ' + d.count + t.ratePeople;
+      if (my) txt = t.rateMine + ' ' + my + ' · ' + txt;
+      statEl.innerHTML = esc(txt)
+        + (my ? ' <button type="button" class="pe-rate-cancel">' + esc(t.rateCancel) + '</button>' : '');
+      var cx = statEl.querySelector('.pe-rate-cancel');
+      if (cx) cx.addEventListener('click', function () { send('DELETE', 0); });
+    }
+    function load() {
+      fetch('/api/social/ratings' + qs, { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) { if (d) paint(d); }).catch(function () {});
+    }
+    function send(method, score) {
+      if (busy) return; busy = true;
+      fetch('/api/social/ratings', {
+        method: method, credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(method === 'DELETE'
+          ? { editorial_title: key }
+          : { editorial_title: key, score: score }),
+      }).then(function (r) {
+        if (r.status === 401) {
+          wrap.innerHTML = '<a class="pe-rate-login" href="/auth?next='
+            + encodeURIComponent(location.pathname) + '">' + esc(t.rateLogin) + '</a>';
+          return null;
+        }
+        if (r.ok) load();
+        return null;
+      }).catch(function () {})
+        .then(function () { busy = false; });
+    }
+    for (var i = 0; i < stars.length; i++) (function (btn) {
+      btn.addEventListener('click', function () {
+        send('POST', Number(btn.getAttribute('data-score')) || 0);
+      });
+    })(stars[i]);
+    load();
   }
 
   /* ── 웹 푸시 (B-7) ──────────────────────────────────────

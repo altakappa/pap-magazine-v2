@@ -166,7 +166,7 @@ console.log('\n[8] 캐시버스트 — 바뀐 스크립트는 전부 판을 올�
     for (const o of olds) if (h.indexOf(o) >= 0) stale.push(n + ':' + o);
   }
   t('옛 버전 참조가 한 곳도 없다', stale.length === 0, stale.join(', '));
-  t('SSR 도 pap-engage v3 를 부른다 (B-7 벨 버튼 캐시버스트)', /pap-engage\.js\?v=3/.test(seo));
+  t('SSR 도 pap-engage v4 를 부른다 (별점 통합 캐시버스트)', /pap-engage\.js\?v=4/.test(seo));
   /* index 와 articles 가 같은 스크립트를 다른 판으로 부르면 한쪽만 고쳐진다 */
   const ver = (h, name) => { const m = h.match(new RegExp(name.replace(/[.?]/g, '\\$&') + 'v=(\\d+)')); return m ? m[1] : null; };
   ['pap-content-article.js?', 'pap-content-editorial.js?', 'pap-content-api-sync.js?', 'pap-content-seo.js?'].forEach((n) => {
@@ -199,6 +199,21 @@ console.log('\n[9] IG 링크 자동화 — "임베드 코드는 살았는데 데
   t('짧은 제목(3~4자)은 따옴표 정확 매칭으로 구제한다', /shortRx/.test(bf)
     && /t\.length < 3 \|\| t\.length >= 5/.test(bf));
   t('짧은 제목도 모호(중복)하면 스킵', /shortRx\.delete\(t\); ambiguousTitles\.add\(t\)/.test(bf));
+}
+
+
+console.log('\n[별점 통합] 평가 장치는 한 화면에 하나 (2026-08-09 도메니코 결정)');
+{
+  const rat = R('api/social/ratings.js');
+  t('에디토리얼 참여 바 = 별점', /useRating = \(kind === 'editorial'\)/.test(eng)
+    && /pe-rate/.test(eng) && /pe-star/.test(eng));
+  t('기사·필름 좋아요는 유지 (중복 아님)', /pe-like/.test(eng) && /if \(likeBtn\)/.test(eng));
+  t('별점 키는 제목 80자 — SSR 절단과 일치 (두 화면 같은 키)',
+    /slice\(0, 80\)/.test(eng) && /titleMain \|\| ''\)\.slice\(0, 80\)/.test(seo));
+  t('별점 통계 GET 은 로그인 불필요', rat.indexOf("req.method === 'GET'") < rat.indexOf('requireAuth(req, res)'));
+  t('쓰기는 여전히 로그인 필요 (보안 감사 A-2)', /requireAuth\(req, res\)/.test(rat));
+  t('401 이면 로그인 유인으로 전환 (사다리 2계단)', /pe-rate-login/.test(eng) && /\/auth\?next=/.test(eng));
+  t('통계 응답에 user_id 목록이 없다', !/user_id/.test(rat.slice(rat.indexOf('res.status(200).json({'), rat.indexOf('stats error'))));
 }
 
 console.log('\npassed: ' + pass + '   failed: ' + fail);
