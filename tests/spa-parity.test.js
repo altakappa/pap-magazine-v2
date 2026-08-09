@@ -229,6 +229,9 @@ console.log('\n[별점 통합] 평가 장치는 한 화면에 하나 (2026-08-09
   t('커버 버튼 폴백 — 커버 없으면 갤러리 1번', /coverUrl = gallery\[0\]/.test(edJs));
   t('커버 = 관리자 cover_image(d.hero) 최우선 (필드 개명 함정 재발 금지)',
     /coverUrl = \(d && d\.hero\)/.test(edJs));
+  t('티어시트 = 다중 페이지 (표지·설명글·크레딧·로고 이미지들)',
+    /ts\.gallery/.test(edJs) && /ts\.desc/.test(edJs) && /doc\.addPage\(\)/.test(edJs)
+    && /wrapText/.test(edJs));
   t('jsPDF 는 CDN defer — 로드 실패 시 안내 후 중단 (ZIP 본체 무관)', /jspdf\.umd\.min\.js/.test(idx)
     && /PDF 라이브러리 로드 실패/.test(edJs));
   {

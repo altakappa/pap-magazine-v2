@@ -495,6 +495,8 @@ function _renderEditorialDownloads(det, d){
         title: String(title || ''),
         issue: String((det && det.issue) || (d && d.issue) || ''),
         cover: String(coverUrl || (gallery && gallery[0]) || ''),
+        desc: String((det && det.desc) || (d && d.description) || ''),
+        gallery: (gallery || []).slice(0, 30),
         credits: ((det && det.credits) || []).map(function(c){
           var names = (c.h || []).map(function(h){
             if (h && typeof h === 'object') return (typeof h.n === 'string' && h.n) ? h.n : String(h.id || '').replace(/^@/, '');
@@ -841,89 +843,178 @@ window._papDownloadAsFile = window._papDownloadAsFile || function(url, basename)
 // 2026-07-28 — 관리자가 인스타 편집 모달에서 조정한 값을 editorials.insta_logo_settings
 // 에 영구 저장하게 되면서, 그 값이 있으면 회원 다운로드도 동일한 로고/프레이밍으로
 // 합성한다(버튼의 data-logosettings 로 전달). 값이 없는 기존 글은 위 기본값 그대로.
-/* 티어시트 PDF (2026-08-09 도메니코) — A4 세로 300dpi 캔버스에 잡지 지면
-   (PAP 로고 · 커버 · 제목 · 이슈 · 크레딧)을 그려 jsPDF 로 감싼다.
-   참여 크리에이터의 포트폴리오/에이전시 제출용. 로고 ZIP 에 동봉된다. */
-async function _papMakeTearsheetPdf(ts, logo, JsPDF){
-  var W = 2480, H = 3508;                       // A4 300dpi
-  var cv = document.createElement('canvas');
-  cv.width = W; cv.height = H;
-  var x = cv.getContext('2d');
-  x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
-  x.fillStyle = '#0b0b0b'; x.fillRect(0, 0, W, H);   // PAP 블랙
-  var cx = W / 2;
-  // 로고 (상단 중앙)
-  var lw = W * 0.13, lh = lw * (logo.naturalHeight / logo.naturalWidth);
-  x.drawImage(logo, cx - lw / 2, 170, lw, lh);
-  // 커버 — 원본 비율 유지(contain), 중앙 배치
-  var img = null;
-  try {
-    img = await new Promise(function(res, rej){
+/* 티어시트 PDF (2026-08-09 도메니코 최종 스펙) — "커버 이미지, 로고 이미지,
+   타이틀, 설명글, 크레딧이 들어간 몇 페이지 분량의 PDF."
+     1p  표지 — PAP 로고 · 커버 · 타이틀 · 이슈
+     2p  타이틀 · 설명글 · 크레딧
+     3p~ 로고 합성 갤러리 이미지 (한 장에 한 페이지)
+   전부 브라우저 캔버스 → jsPDF. A4 150dpi(1240×1754) — 20페이지급 화보도
+   PDF 용량이 감당되는 해상도. 페이지 캔버스는 그리는 즉시 JPEG 로 바꿔
+   버린다 (모바일 메모리 보호). */
+async function _papMakeTearsheetPdf(ts, logo, JsPDF, onProgress){
+  var W = 1240, H = 1754, M = 90;
+  var FONT = '"Helvetica Neue", Helvetica, Arial, sans-serif';
+  function newPage(){
+    var cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    var x = cv.getContext('2d');
+    x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
+    x.fillStyle = '#0b0b0b'; x.fillRect(0, 0, W, H);
+    x.textAlign = 'center';
+    return { cv: cv, x: x };
+  }
+  function footer(x){
+    try { x.letterSpacing = '3px'; } catch(_){}
+    x.font = '700 19px ' + FONT;
+    x.fillStyle = '#666666';
+    x.fillText('PAP MAGAZINE \u00b7 WWW.PAP-MAGAZINE.COM', W / 2, H - 54);
+  }
+  function loadImg(url){
+    return new Promise(function(res){
+      if (!url) return res(null);
       var im = new Image(); im.crossOrigin = 'anonymous';
       im.onload = function(){ res(im); };
       im.onerror = function(){
         var fb = new Image();
         fb.onload = function(){ res(fb); };
-        fb.onerror = function(){ rej(new Error('cover load fail')); };
-        fb.src = ts.cover;
+        fb.onerror = function(){ res(null); };
+        fb.src = url;
       };
-      im.src = ts.cover;
+      im.src = url;
     });
-  } catch(_) { img = null; }
-  var areaTop = 170 + lh + 120, areaH = 1750, areaW = W - 440;
-  if (img) {
-    var sc = Math.min(areaW / img.naturalWidth, areaH / img.naturalHeight);
+  }
+  /* 원본 비율 유지(contain)로 그리고 그린 사각형을 돌려준다 */
+  function drawContain(x, img, top, maxW, maxH){
+    var sc = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight);
     var dw = img.naturalWidth * sc, dh = img.naturalHeight * sc;
-    x.drawImage(img, cx - dw / 2, areaTop + (areaH - dh) / 2, dw, dh);
+    var dx = W / 2 - dw / 2, dy = top + (maxH - dh) / 2;
+    x.drawImage(img, dx, dy, dw, dh);
+    return { x: dx, y: dy, w: dw, h: dh };
   }
-  var y = areaTop + areaH + 150;
-  // 제목 — 길면 폭에 맞게 축소
-  var titleTxt = String(ts.title || '').toUpperCase().slice(0, 60);
-  x.textAlign = 'center'; x.fillStyle = '#ffffff';
-  try { x.letterSpacing = '14px'; } catch(_){}
-  var fpx = 118;
-  x.font = '700 ' + fpx + 'px "Helvetica Neue", Helvetica, Arial, sans-serif';
-  while (fpx > 56 && x.measureText(titleTxt).width > W - 320) {
-    fpx -= 8;
-    x.font = '700 ' + fpx + 'px "Helvetica Neue", Helvetica, Arial, sans-serif';
+  /* 한국어(공백 없는 줄)도 끊기는 글자 단위 그리디 줄바꿈 */
+  function wrapText(x, text, maxW){
+    var lines = [], line = '';
+    var chars = String(text || '').replace(/\s+/g, ' ').trim();
+    for (var i = 0; i < chars.length; i++){
+      var test = line + chars[i];
+      if (x.measureText(test).width > maxW && line) {
+        var sp = line.lastIndexOf(' ');
+        if (sp > line.length * 0.6) { lines.push(line.slice(0, sp)); line = line.slice(sp + 1) + chars[i]; }
+        else { lines.push(line); line = chars[i]; }
+      } else line = test;
+    }
+    if (line.trim()) lines.push(line);
+    return lines;
   }
-  x.fillText(titleTxt, cx, y);
-  y += 92;
-  try { x.letterSpacing = '8px'; } catch(_){}
-  if (ts.issue) {
-    x.font = '400 46px "Helvetica Neue", Helvetica, Arial, sans-serif';
-    x.fillStyle = '#9a9a9a';
-    x.fillText(String(ts.issue).toUpperCase(), cx, y);
-    y += 64;
+  function fitTitle(x, txt, maxPx, maxW){
+    var f = maxPx;
+    x.font = '700 ' + f + 'px ' + FONT;
+    while (f > 30 && x.measureText(txt).width > maxW) {
+      f -= 4; x.font = '700 ' + f + 'px ' + FONT;
+    }
+    return f;
   }
-  // 구분선
-  y += 36;
-  x.strokeStyle = 'rgba(255,255,255,.25)'; x.lineWidth = 2;
-  x.beginPath(); x.moveTo(cx - 300, y); x.lineTo(cx + 300, y); x.stroke();
-  y += 112;
-  // 크레딧 — 역할(회색) + 이름(흰색) 세로 스택
-  var creds = Array.isArray(ts.credits) ? ts.credits : [];
-  var gap = creds.length > 8 ? 78 : 100;
-  try { x.letterSpacing = '4px'; } catch(_){}
-  for (var i = 0; i < creds.length && y < H - 280; i++){
-    x.font = '700 36px "Helvetica Neue", Helvetica, Arial, sans-serif';
-    x.fillStyle = '#8a8a8a';
-    x.fillText(String(creds[i].r || '').toUpperCase(), cx, y);
-    x.font = '400 48px "Helvetica Neue", Helvetica, Arial, sans-serif';
-    x.fillStyle = '#f0f0f0';
-    x.fillText(String(creds[i].n || '').slice(0, 60), cx, y + 54);
-    y += gap + 54;
-  }
-  // 푸터
-  try { x.letterSpacing = '6px'; } catch(_){}
-  x.font = '700 40px "Helvetica Neue", Helvetica, Arial, sans-serif';
-  x.fillStyle = '#777777';
-  x.fillText('PAP MAGAZINE \u00b7 WWW.PAP-MAGAZINE.COM', cx, H - 130);
-  var dataUrl;
-  try { dataUrl = cv.toDataURL('image/jpeg', 0.9); }
-  catch(e){ console.warn('[tearsheet] canvas tainted:', e); return null; }
   var doc = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
-  doc.addImage(dataUrl, 'JPEG', 0, 0, 210, 297);
+  var pageCount = 0;
+  function commit(cv){
+    var du;
+    try { du = cv.toDataURL('image/jpeg', 0.85); }
+    catch(e){ console.warn('[tearsheet] canvas tainted:', e); return false; }
+    if (pageCount > 0) doc.addPage();
+    doc.addImage(du, 'JPEG', 0, 0, 210, 297);
+    pageCount++;
+    return true;
+  }
+  var titleTxt = String(ts.title || '').toUpperCase().slice(0, 60);
+  var g = Array.isArray(ts.gallery) ? ts.gallery : [];
+  var total = 2 + g.length;
+
+  // ── 1p 표지 ──────────────────────────────────────────────
+  if (onProgress) try { onProgress(1, total); } catch(_){}
+  var p1 = newPage();
+  var lw = W * 0.14, lhh = lw * (logo.naturalHeight / logo.naturalWidth);
+  p1.x.drawImage(logo, W / 2 - lw / 2, 96, lw, lhh);
+  var coverImg = await loadImg(ts.cover);
+  var coverTop = 96 + lhh + 56;
+  if (coverImg) drawContain(p1.x, coverImg, coverTop, W - 2 * M, H - coverTop - 330);
+  try { p1.x.letterSpacing = '8px'; } catch(_){}
+  p1.x.fillStyle = '#ffffff';
+  fitTitle(p1.x, titleTxt, 64, W - 2 * M);
+  p1.x.fillText(titleTxt, W / 2, H - 218);
+  if (ts.issue) {
+    try { p1.x.letterSpacing = '5px'; } catch(_){}
+    p1.x.font = '400 26px ' + FONT;
+    p1.x.fillStyle = '#9a9a9a';
+    p1.x.fillText(String(ts.issue).toUpperCase(), W / 2, H - 168);
+  }
+  footer(p1.x);
+  if (!commit(p1.cv)) return null;
+
+  // ── 2p 타이틀 · 설명글 · 크레딧 ──────────────────────────
+  if (onProgress) try { onProgress(2, total); } catch(_){}
+  var p2 = newPage();
+  var lw2 = W * 0.09, lh2 = lw2 * (logo.naturalHeight / logo.naturalWidth);
+  p2.x.drawImage(logo, W / 2 - lw2 / 2, 96, lw2, lh2);
+  var y = 96 + lh2 + 96;
+  try { p2.x.letterSpacing = '8px'; } catch(_){}
+  p2.x.fillStyle = '#ffffff';
+  fitTitle(p2.x, titleTxt, 54, W - 2 * M);
+  p2.x.fillText(titleTxt, W / 2, y);
+  y += 46;
+  if (ts.issue) {
+    try { p2.x.letterSpacing = '5px'; } catch(_){}
+    p2.x.font = '400 24px ' + FONT;
+    p2.x.fillStyle = '#9a9a9a';
+    p2.x.fillText(String(ts.issue).toUpperCase(), W / 2, y);
+    y += 40;
+  }
+  y += 22;
+  p2.x.strokeStyle = 'rgba(255,255,255,.25)'; p2.x.lineWidth = 1;
+  p2.x.beginPath(); p2.x.moveTo(W / 2 - 150, y); p2.x.lineTo(W / 2 + 150, y); p2.x.stroke();
+  y += 64;
+  // 설명글
+  if (ts.desc) {
+    try { p2.x.letterSpacing = '0px'; } catch(_){}
+    p2.x.font = '400 25px ' + FONT;
+    p2.x.fillStyle = '#d8d8d8';
+    var lines = wrapText(p2.x, ts.desc, W - 2 * M - 120);
+    var maxDescLines = Math.max(4, Math.floor((H - y - 620) / 42));
+    if (lines.length > maxDescLines) { lines = lines.slice(0, maxDescLines); lines[lines.length - 1] += '\u2026'; }
+    for (var li = 0; li < lines.length; li++){ p2.x.fillText(lines[li], W / 2, y); y += 42; }
+    y += 46;
+  }
+  // 크레딧
+  var creds = Array.isArray(ts.credits) ? ts.credits : [];
+  for (var ci = 0; ci < creds.length && y < H - 150; ci++){
+    try { p2.x.letterSpacing = '3px'; } catch(_){}
+    p2.x.font = '700 20px ' + FONT;
+    p2.x.fillStyle = '#8a8a8a';
+    p2.x.fillText(String(creds[ci].r || '').toUpperCase(), W / 2, y);
+    p2.x.font = '400 27px ' + FONT;
+    p2.x.fillStyle = '#f0f0f0';
+    p2.x.fillText(String(creds[ci].n || '').slice(0, 60), W / 2, y + 32);
+    y += 86;
+  }
+  footer(p2.x);
+  if (!commit(p2.cv)) return null;
+
+  // ── 3p~ 로고 합성 이미지 (한 장에 한 페이지) ─────────────
+  for (var gi = 0; gi < g.length; gi++){
+    if (onProgress) try { onProgress(3 + gi, total); } catch(_){}
+    var im = await loadImg(g[gi]);
+    if (!im) continue;
+    var pg = newPage();
+    var box = drawContain(pg.x, im, M, W - 2 * M, H - 2 * M - 30);
+    // 로고 합성 — 회원 ZIP 합성과 같은 정체성 (이미지 하단 중앙, 15%, 85%)
+    var glw = box.w * 0.15, glh = glw * (logo.naturalHeight / logo.naturalWidth);
+    var pa = pg.x.globalAlpha;
+    pg.x.globalAlpha = 0.85;
+    pg.x.drawImage(logo, W / 2 - glw / 2, box.y + box.h - glh - box.h * 0.012, glw, glh);
+    pg.x.globalAlpha = pa;
+    footer(pg.x);
+    if (!commit(pg.cv)) return null;
+  }
+  if (!pageCount) return null;
   return doc.output('blob');
 }
 
@@ -962,7 +1053,10 @@ window._papDownloadTearsheet = async function(btn){
       };
       img.src = '/pap-logo-white.png';
     });
-    var blob = await _papMakeTearsheetPdf(ts, logo, _JsPDF);
+    var blob = await _papMakeTearsheetPdf(ts, logo, _JsPDF, function(i, n){
+      btn.textContent = '\ud83d\udcc4 ' + i + '/' + n + ' \ud398\uc774\uc9c0\u2026';
+      _s('\ud2f0\uc5b4\uc2dc\ud2b8 ' + i + '/' + n + ' \ud398\uc774\uc9c0 \uc0dd\uc131 \uc911\u2026');
+    });
     if (!blob) throw new Error('PDF 생성 실패 (커버 CORS 가능성)');
     var personalizedName = window._papPersonalizeFilename(safeTitle + '-tearsheet', 'pdf');
     var a = document.createElement('a');
