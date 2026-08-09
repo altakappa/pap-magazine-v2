@@ -1364,8 +1364,11 @@ function _papMidIgCtaHtml(igUrl){
   var canEmbed = /instagram\.com\/(p|reel|tv)\//.test(permalink);
   if (canEmbed) {
     if (!/\/$/.test(permalink)) permalink += '/';
-    return '<div class="ed-gallery-item ed-mid-cta" style="display:flex;justify-content:center;padding:26px 8px">'
-         + '<blockquote class="instagram-media" data-instgrm-permalink="' + permalink.replace(/"/g,'&quot;') + '" data-instgrm-version="14" style="background:#000;border:1px solid rgba(255,255,255,.16);margin:0 auto;max-width:540px;min-width:280px;width:100%"></blockquote>'
+    /* 잘림 수정 (2026-08-09 도메니코: "아랫부분이 잘린다") — .ed-gallery-item
+       은 4:5 고정 비율 + overflow:hidden 이라 세로로 긴 IG 창의 하단을
+       잘라먹는다. 인라인으로 비율·넘침을 풀고 창 폭도 540→400 으로 줄인다. */
+    return '<div class="ed-gallery-item ed-mid-cta" style="display:flex;justify-content:center;padding:26px 8px;aspect-ratio:auto;height:auto;overflow:visible;background:transparent">'
+         + '<blockquote class="instagram-media" data-instgrm-permalink="' + permalink.replace(/"/g,'&quot;') + '" data-instgrm-version="14" style="background:#000;border:1px solid rgba(255,255,255,.16);margin:0 auto;max-width:400px;min-width:240px;width:100%"></blockquote>'
          + '</div>';
   }
   var ko = (localStorage.getItem('pap-lang') || 'ko') === 'ko';
