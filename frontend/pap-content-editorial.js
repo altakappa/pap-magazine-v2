@@ -504,9 +504,27 @@ function _renderEditorialDownloadButtons(box, coverUrl, gallery, safeTitle, perm
     try {
       if (logoSettings) logoSettingsAttr = encodeURIComponent(JSON.stringify(logoSettings));
     } catch (_) { logoSettingsAttr = ''; }
+    // 티어시트 PDF 메타 (2026-08-09 도메니코: "에디토리얼마다 티어시트도 함께,
+    // 로고 이미지 다운받을 때 한 번에 · PDF 로") — 제목·이슈·커버·크레딧.
+    var tearsheetAttr = '';
+    try {
+      tearsheetAttr = encodeURIComponent(JSON.stringify({
+        title: String(title || ''),
+        issue: String((det && det.issue) || (d && d.issue) || ''),
+        cover: String(coverUrl || ''),
+        credits: ((det && det.credits) || []).map(function(c){
+          var names = (c.h || []).map(function(h){
+            if (h && typeof h === 'object') return (typeof h.n === 'string' && h.n) ? h.n : String(h.id || '').replace(/^@/, '');
+            return String(h || '').replace(/^@/, '');
+          }).filter(Boolean).join(', ');
+          return { r: String(c.r || ''), n: names };
+        }).filter(function(x){ return x.r && x.n; }).slice(0, 12),
+      }));
+    } catch (_) { tearsheetAttr = ''; }
     logoBtnHtml =
       '<button id="edLogoDlBtn" type="button" onclick="_papDownloadLogoZip(this)" ' +
       'data-gallery="' + galleryJson + '" data-title="' + safeTitle + '" ' +
+      'data-tearsheet="' + tearsheetAttr + '" ' +
       'data-logosettings="' + logoSettingsAttr + '" ' +
       'style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border:1px solid #555;background:transparent;color:#fff;font-size:11px;font-weight:700;letter-spacing:.12em;cursor:pointer;transition:all .2s" ' +
       'onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">'+(_edL9('⬇️ 로고 이미지 (','⬇️ Logo images ('))+'' + gallery.length + (_edL9('장 ZIP)',' images ZIP)'))+'</button>';
@@ -800,6 +818,92 @@ window._papDownloadAsFile = window._papDownloadAsFile || function(url, basename)
 // 2026-07-28 — 관리자가 인스타 편집 모달에서 조정한 값을 editorials.insta_logo_settings
 // 에 영구 저장하게 되면서, 그 값이 있으면 회원 다운로드도 동일한 로고/프레이밍으로
 // 합성한다(버튼의 data-logosettings 로 전달). 값이 없는 기존 글은 위 기본값 그대로.
+/* 티어시트 PDF (2026-08-09 도메니코) — A4 세로 300dpi 캔버스에 잡지 지면
+   (PAP 로고 · 커버 · 제목 · 이슈 · 크레딧)을 그려 jsPDF 로 감싼다.
+   참여 크리에이터의 포트폴리오/에이전시 제출용. 로고 ZIP 에 동봉된다. */
+async function _papMakeTearsheetPdf(ts, logo, JsPDF){
+  var W = 2480, H = 3508;                       // A4 300dpi
+  var cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  var x = cv.getContext('2d');
+  x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
+  x.fillStyle = '#0b0b0b'; x.fillRect(0, 0, W, H);   // PAP 블랙
+  var cx = W / 2;
+  // 로고 (상단 중앙)
+  var lw = W * 0.13, lh = lw * (logo.naturalHeight / logo.naturalWidth);
+  x.drawImage(logo, cx - lw / 2, 170, lw, lh);
+  // 커버 — 원본 비율 유지(contain), 중앙 배치
+  var img = null;
+  try {
+    img = await new Promise(function(res, rej){
+      var im = new Image(); im.crossOrigin = 'anonymous';
+      im.onload = function(){ res(im); };
+      im.onerror = function(){
+        var fb = new Image();
+        fb.onload = function(){ res(fb); };
+        fb.onerror = function(){ rej(new Error('cover load fail')); };
+        fb.src = ts.cover;
+      };
+      im.src = ts.cover;
+    });
+  } catch(_) { img = null; }
+  var areaTop = 170 + lh + 120, areaH = 1750, areaW = W - 440;
+  if (img) {
+    var sc = Math.min(areaW / img.naturalWidth, areaH / img.naturalHeight);
+    var dw = img.naturalWidth * sc, dh = img.naturalHeight * sc;
+    x.drawImage(img, cx - dw / 2, areaTop + (areaH - dh) / 2, dw, dh);
+  }
+  var y = areaTop + areaH + 150;
+  // 제목 — 길면 폭에 맞게 축소
+  var titleTxt = String(ts.title || '').toUpperCase().slice(0, 60);
+  x.textAlign = 'center'; x.fillStyle = '#ffffff';
+  try { x.letterSpacing = '14px'; } catch(_){}
+  var fpx = 118;
+  x.font = '700 ' + fpx + 'px "Helvetica Neue", Helvetica, Arial, sans-serif';
+  while (fpx > 56 && x.measureText(titleTxt).width > W - 320) {
+    fpx -= 8;
+    x.font = '700 ' + fpx + 'px "Helvetica Neue", Helvetica, Arial, sans-serif';
+  }
+  x.fillText(titleTxt, cx, y);
+  y += 92;
+  try { x.letterSpacing = '8px'; } catch(_){}
+  if (ts.issue) {
+    x.font = '400 46px "Helvetica Neue", Helvetica, Arial, sans-serif';
+    x.fillStyle = '#9a9a9a';
+    x.fillText(String(ts.issue).toUpperCase(), cx, y);
+    y += 64;
+  }
+  // 구분선
+  y += 36;
+  x.strokeStyle = 'rgba(255,255,255,.25)'; x.lineWidth = 2;
+  x.beginPath(); x.moveTo(cx - 300, y); x.lineTo(cx + 300, y); x.stroke();
+  y += 112;
+  // 크레딧 — 역할(회색) + 이름(흰색) 세로 스택
+  var creds = Array.isArray(ts.credits) ? ts.credits : [];
+  var gap = creds.length > 8 ? 78 : 100;
+  try { x.letterSpacing = '4px'; } catch(_){}
+  for (var i = 0; i < creds.length && y < H - 280; i++){
+    x.font = '700 36px "Helvetica Neue", Helvetica, Arial, sans-serif';
+    x.fillStyle = '#8a8a8a';
+    x.fillText(String(creds[i].r || '').toUpperCase(), cx, y);
+    x.font = '400 48px "Helvetica Neue", Helvetica, Arial, sans-serif';
+    x.fillStyle = '#f0f0f0';
+    x.fillText(String(creds[i].n || '').slice(0, 60), cx, y + 54);
+    y += gap + 54;
+  }
+  // 푸터
+  try { x.letterSpacing = '6px'; } catch(_){}
+  x.font = '700 40px "Helvetica Neue", Helvetica, Arial, sans-serif';
+  x.fillStyle = '#777777';
+  x.fillText('PAP MAGAZINE \u00b7 WWW.PAP-MAGAZINE.COM', cx, H - 130);
+  var dataUrl;
+  try { dataUrl = cv.toDataURL('image/jpeg', 0.9); }
+  catch(e){ console.warn('[tearsheet] canvas tainted:', e); return null; }
+  var doc = new JsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+  doc.addImage(dataUrl, 'JPEG', 0, 0, 210, 297);
+  return doc.output('blob');
+}
+
 window._papDownloadLogoZip = window._papDownloadLogoZip || async function(btn){
   if (!btn) return;
   var statusEl = document.getElementById('edLogoDlStatus');
@@ -966,6 +1070,20 @@ window._papDownloadLogoZip = window._papDownloadLogoZip || async function(btn){
     btn.disabled = false; btn.textContent = originalLabel; btn.style.opacity = '1';
     return;
   }
+
+  // 3) 티어시트 PDF (2026-08-09 도메니코) — A4 세로 한 장, ZIP 에 동봉.
+  //    실패해도 ZIP 은 그대로 나간다 (best-effort — 로고 이미지가 본체).
+  try {
+    var _tsRaw = btn.getAttribute('data-tearsheet') || '';
+    var _ts = _tsRaw ? JSON.parse(decodeURIComponent(_tsRaw)) : null;
+    var _JsPDF = (window.jspdf && window.jspdf.jsPDF) ? window.jspdf.jsPDF : null;
+    if (_ts && _JsPDF) {
+      btn.textContent = '📄 티어시트 생성 중…';
+      _s('티어시트 PDF 생성 중…');
+      var _tsBlob = await _papMakeTearsheetPdf(_ts, logo, _JsPDF);
+      if (_tsBlob) zip.file(safeTitle + '-tearsheet.pdf', _tsBlob);
+    }
+  } catch (e) { console.warn('[tearsheet] 생성 실패(스킵):', e); }
 
   btn.textContent = '📦 ZIP 생성 중…';
   _s('ZIP 생성 중…');

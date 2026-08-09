@@ -215,6 +215,10 @@ console.log('\n[별점 통합] 평가 장치는 한 화면에 하나 (2026-08-09
     idx.indexOf('id="edDetailDesc"') < idx.indexOf('id="edRatingCta"')
     && idx.indexOf('id="edRatingCta"') < idx.indexOf('id="edEngageMount"'));
   t('SPA 순서: SHOP 은 다운로드 위', idx.indexOf('id="edShopRow"') < idx.indexOf('id="edDetailDownloads"'));
+  t('티어시트 PDF 가 로고 ZIP 에 동봉된다 (2026-08-09)', /_papMakeTearsheetPdf/.test(edJs)
+    && /-tearsheet\.pdf/.test(edJs) && /data-tearsheet/.test(edJs));
+  t('jsPDF 는 CDN defer — 실패해도 ZIP 본체는 동작', /jspdf\.umd\.min\.js/.test(idx)
+    && /\[tearsheet\] 생성 실패\(스킵\)/.test(edJs));
   t('SSR 순서: 크레딧 → 별점, SHOP → 다운로드 (에디토리얼)',
     seo.indexOf("kind === 'editorial' ? creditsHtml") < seo.indexOf('papRatingMount')
     && seo.indexOf("kind === 'editorial' ? fashionHtml") < seo.indexOf('${downloadsHtml}'));
