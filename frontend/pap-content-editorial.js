@@ -1354,6 +1354,25 @@ var _PAP_IG_FOLLOWERS_EN='380K+';
 // 카피: 도메니코 지적("너무 AI 멘트 느낌")을 존중해 새 문구를 만들지 않고
 // 하단 CTA 와 같은 라벨만 쓴다. 광고 문구 없음.
 // 측정: src=editorial_mid 로 분리 집계해 하단(editorial)과 비교 가능하게 한다.
+/* 중간 IG 창을 옆 사진(갤러리 칸 4:5) 높이에 맞춰 축소 (2026-08-09).
+   IG 임베드는 스크립트가 비동기로 높이를 잡고 재레이아웃도 하므로,
+   ~10초 동안 주기적으로 실측해 scale 을 다시 건다. */
+function _papFitMidIg(){
+  var tries = 0;
+  var timer = setInterval(function(){
+    tries++;
+    var wrap = document.querySelector('.ed-mid-cta');
+    if (!wrap) { if (tries > 4) clearInterval(timer); return; }
+    var em = wrap.querySelector('iframe') || wrap.querySelector('.instagram-media');
+    if (em && em.offsetHeight > 60 && wrap.clientHeight > 60) {
+      var sc = Math.min(1, (wrap.clientHeight - 6) / em.offsetHeight);
+      em.style.transformOrigin = 'center center';
+      em.style.transform = (sc < 0.995) ? 'scale(' + sc.toFixed(4) + ')' : '';
+    }
+    if (tries > 20) clearInterval(timer);
+  }, 500);
+}
+
 function _papMidIgCtaHtml(igUrl){
   /* 2026-08-09 도메니코 — "필수로 모든 에디토리얼에 + 텍스트 버튼이 아니라
      아래에 있던 인스타그램 창으로." 원본 게시물이 있으면 갤러리 중간에
@@ -1364,10 +1383,12 @@ function _papMidIgCtaHtml(igUrl){
   var canEmbed = /instagram\.com\/(p|reel|tv)\//.test(permalink);
   if (canEmbed) {
     if (!/\/$/.test(permalink)) permalink += '/';
-    /* 잘림 수정 (2026-08-09 도메니코: "아랫부분이 잘린다") — .ed-gallery-item
-       은 4:5 고정 비율 + overflow:hidden 이라 세로로 긴 IG 창의 하단을
-       잘라먹는다. 인라인으로 비율·넘침을 풀고 창 폭도 540→400 으로 줄인다. */
-    return '<div class="ed-gallery-item ed-mid-cta" style="display:flex;justify-content:center;padding:26px 8px;aspect-ratio:auto;height:auto;overflow:visible;background:transparent">'
+    /* 크기 규칙 (2026-08-09 도메니코 최종: "세로를 옆 사진 길이에 맞추고
+       가로는 줄어도 됨") — 갤러리 칸의 4:5 비율을 그대로 쓰고(옆 사진과
+       같은 높이), IG 스크립트가 창을 다 그린 뒤 _papFitMidIg 가 칸 높이에
+       맞춰 축소한다. 게시물마다(캐러셀·릴스) 창 높이가 달라 CSS 만으로는
+       못 맞춘다 — 실측 후 scale 이 유일하게 확실한 방법. */
+    return '<div class="ed-gallery-item ed-mid-cta" style="display:flex;align-items:center;justify-content:center;overflow:hidden;background:transparent">'
          + '<blockquote class="instagram-media" data-instgrm-permalink="' + permalink.replace(/"/g,'&quot;') + '" data-instgrm-version="14" style="background:#000;border:1px solid rgba(255,255,255,.16);margin:0 auto;max-width:400px;min-width:240px;width:100%"></blockquote>'
          + '</div>';
   }
@@ -1440,6 +1461,7 @@ function _papRenderEdIg(igUrl, title){
      })();
   box.style.display='';
   if(canEmbed && typeof _papLoadIgEmbed==='function'){try{_papLoadIgEmbed();}catch(_){}}
+  try{_papFitMidIg();}catch(_){}
 }
 
 function _renderEditorialTags(title){
