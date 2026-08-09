@@ -211,6 +211,9 @@ console.log('\n[별점 통합] 평가 장치는 한 화면에 하나 (2026-08-09
   t('SSR 도 사진 아래에 별점 마운트', /papRatingMount/.test(seo) && seo.indexOf('${videoHtml}') < seo.indexOf('papRatingMount'));
   t('SPA 도 같은 부품을 부른다', /mountRating\(document\.getElementById\('edRatingCta'\)/.test(edJs)
     && /id="edRatingCta"/.test(idx));
+  t('댓글(참여 블록)은 별점 바로 아래 — SPA', idx.indexOf('id="edRatingCta"') < idx.indexOf('id="edEngageMount"')
+    && idx.indexOf('id="edEngageMount"') < idx.indexOf('id="edDetailDesc"'));
+  t('댓글(참여 블록)은 별점 바로 아래 — SSR (에디토리얼)', seo.indexOf('papRatingMount') < seo.indexOf("kind !== 'editorial'"));
   t('기사·필름 좋아요는 유지 (중복 아님)', /pe-like/.test(eng) && /if \(likeBtn\)/.test(eng));
   t('별점 키는 제목 80자 — SSR 절단과 일치 (두 화면 같은 키)',
     /slice\(0, 80\)/.test(eng) && /titleMain \|\| ''\)\.slice\(0, 80\)/.test(seo));

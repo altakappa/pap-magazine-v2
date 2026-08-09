@@ -1227,6 +1227,10 @@
   <!-- 별점 (2026-08-09 최종) — 도메니코: "별점은 사진들 바로 아래에".
        공용 부품 PapEngage.mountRating 이 채운다 (SSR 은 papRatingMount — 같은 부품). -->
   <div id="edRatingCta"></div>
+  <!-- 참여 블록(댓글·카카오·웹푸시 벨) — 2026-08-09 도메니코: "댓글도 별점
+       아래에". 별점 직후로 이동 (id 는 기사 오버레이 papEngageMount 와
+       달라야 한다 — 같은 문서에 두 오버레이 공존). -->
+  <div class="pap-engage" id="edEngageMount"></div>
 
   <!-- EDITORIAL DESCRIPTION + CREDITS -->
   <div class="ed-credits-wrap">
@@ -1272,13 +1276,6 @@
     <!-- 수익화 2.0 (2026-07) — SHOP THE STORY: 착장 브랜드 구매 링크.
          pap-content-editorial.js#_papRenderShopRow 가 det.fashion 으로 채움. -->
     <div id="edShopRow" style="display:none"></div>
-    <!-- 2026-08-08 — 참여 블록(좋아요·댓글·카카오). 기사와 같은 부품
-         (pap-engage.js). SSR 에디토리얼에는 어제부터 있었지만 실사용자는
-         전원 SPA 로 브릿지되므로, 여기 없으면 아무도 못 봤다.
-         IG CTA **위**에 둔다 — 아래면 인스타로 나간 뒤라 아무도 안 본다.
-         (id 는 기사 오버레이의 papEngageMount 와 달라야 한다 — 같은 문서에
-         두 오버레이가 공존하므로 getElementById 가 엉킨다.) -->
-    <div class="pap-engage" id="edEngageMount"></div>
     <!-- 참여 증폭 2.0 (2026-07) — 원본 IG 게시물 임베드 + 보내기.
          pap-content-editorial.js#_papRenderEdIg 가 det.ig 존재 시 채움. -->
     <div id="edIgPostCta" style="display:none"></div>

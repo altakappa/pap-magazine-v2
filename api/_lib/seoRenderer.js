@@ -1562,6 +1562,7 @@ ${(kind === 'editorial' || kind === 'film' || kind === 'article') ? `<!-- QA #17
     ${galleryHtml}
     ${videoHtml}
     ${kind === 'editorial' ? '<div id="papRatingMount"></div>' : ''}
+    ${kind === 'editorial' && UUID_RE.test(String(record.id || '')) ? '<div class="pap-engage" id="papEngageMount"></div>' : ''}
     ${creditsHtml}
     ${downloadsHtml}
     ${fashionHtml}
@@ -1584,7 +1585,9 @@ ${(kind === 'editorial' || kind === 'film' || kind === 'article') ? `<!-- QA #17
       </details>`).join('\n')}
     </section>` : ''}
 
-    ${ENGAGE_KINDS.has(kind) && UUID_RE.test(String(record.id || '')) ? `
+    ${/* 2026-08-09 도메니코: "댓글도 별점 아래에" — 에디토리얼 참여 블록은
+        위(별점 직후)로 옮겼다. 기사·필름은 종전 위치 유지. */ ''}
+    ${ENGAGE_KINDS.has(kind) && kind !== 'editorial' && UUID_RE.test(String(record.id || '')) ? `
     <div class="pap-engage" id="papEngageMount"></div>` : ''}
 
     ${record.source_instagram_url && /instagram\.com/.test(String(record.source_instagram_url)) ? `
