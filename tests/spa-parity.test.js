@@ -239,6 +239,9 @@ console.log('\n[별점 통합] 평가 장치는 한 화면에 하나 (2026-08-09
     const cellFn = edJs.slice(edJs.indexOf('function drawCell'), edJs.indexOf('var caps ='));
     t('티어시트 이미지는 무로고 원본 + 셀마다 패션 크레딧 (2026-08-10)',
       !/globalAlpha/.test(cellFn) && /imageCredits/.test(edJs) && /caps\[k\]/.test(edJs));
+    t('비회원도 다운로드 버튼 3종을 본다 — 클릭 시 유료 전용 팝업 (2026-08-10)',
+      /_papDlPaywall/.test(edJs) && /locked \? '_papDlPaywall\(\)'/.test(edJs)
+      && !/CTA — 회원가입 유도/.test(edJs));
     t('참여 크리에이터 무료 다운로드 폐지 — 유료 회원만 (2026-08-10 도메니코)',
       !/reason: 'owner'/.test(chk) && /subscription_plan/.test(chk)
       && !/무료로 다운로드할 수 있어요/.test(edJs) && !/무료로 받을 수 있어요/.test(edJs));

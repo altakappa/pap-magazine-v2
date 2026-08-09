@@ -435,26 +435,9 @@ function _renderEditorialDownloads(det, d){
   // 항상 박스 표시 — 커버/갤러리 없는 에지 케이스에도 회원가입 CTA는 보여줌.
   box.style.display = '';
 
-  // QA #271 v3 — 회원 가입한 사용자만 다운로드 가능.
-  // 비로그인 → 회원가입 CTA 표시.
-  var loggedIn = (typeof isLoggedIn === 'function') ? isLoggedIn()
-              : (typeof PAP !== 'undefined' && PAP.auth && PAP.auth.isLoggedIn && PAP.auth.isLoggedIn());
-
-  if (!loggedIn){
-    // CTA — 회원가입 유도.
-    box.innerHTML =
-      '<div style="display:flex;flex-direction:column;gap:10px">' +
-        '<div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999">DOWNLOADS</div>' +
-        '<div style="font-size:13px;color:#ccc">'+(_edL9('커버 및 로고 이미지 다운로드는 <strong style="color:#fff">스탠다드 멤버십</strong> 전용입니다.','Cover & logo image downloads are for <strong style="color:#fff">Standard members</strong> only.'))+'</div>' +
-        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">' +
-          '<a href="/subscribe" style="display:inline-block;padding:10px 22px;border:1px solid #fff;background:#fff;color:#000;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" onmouseover="this.style.background=\'transparent\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'#fff\';this.style.color=\'#000\'">'+(_edL9('멤버십 구독하기 →','Subscribe →'))+'</a>' +
-          '<a href="/auth" style="display:inline-block;padding:10px 22px;border:1px solid #555;color:#fff;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">'+(_edL9('로그인','Log in'))+'</a>' +
-        '</div>' +
-        '<div style="font-size:11px;color:#666;margin-top:4px">'+(_edL9('개인 사용 및 비상업적 용도에 한해 사용 가능','For personal, non-commercial use only'))+'</div>' +
-      '</div>';
-    return;
-  }
-
+  // (2026-08-10 도메니코) 비로그인·무료 회원도 버튼 3종을 그대로 본다 —
+  // 누르는 순간 유료 전용 팝업(_papDlPaywall)이 뜬다. "쓰려는 순간이
+  // 전환의 순간" (댓글 401 → 로그인 유인과 같은 원칙).
   // QA #284 Phase 2 — 로그인 사용자라도 role에 따라 분기.
   //   admin/staff             → 다운로드 버튼 노출
   //   user + 본인 참여 editorial → 다운로드 버튼 노출
@@ -472,21 +455,8 @@ function _renderEditorialDownloads(det, d){
   // 기록되던 버그 수정. 현재 보고 있는 에디토리얼 id 를 전역에 보관해 둔다.
   try { window._papDlContentId = edId || ''; } catch (_) {}
   window._papCheckDownloadPerm('editorial', edId).then(function(perm){
-    if (!perm || !perm.allowed){
-      // 2026-07-20 정책 개정 — 스탠다드 멤버십부터 전체 다운로드 가능.
-      // 무료 회원에게는 업그레이드 CTA를 보여준다 (참여 크리에이터 안내 병기).
-      box.innerHTML =
-        '<div style="display:flex;flex-direction:column;gap:10px">' +
-          '<div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999">DOWNLOADS</div>' +
-          '<div style="font-size:12px;color:#bbb;line-height:1.6">'+(_edL9('<strong style="color:#fff">스탠다드 멤버십</strong>부터 커버 및 로고 이미지를 다운로드할 수 있습니다.','<strong style="color:#fff">Standard membership</strong> unlocks cover & logo image downloads.'))+'</div>' +
-          '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">' +
-            '<a href="/subscribe" style="display:inline-block;padding:10px 22px;border:1px solid #fff;background:#fff;color:#000;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" onmouseover="this.style.background=\'transparent\';this.style.color=\'#fff\'" onmouseout="this.style.background=\'#fff\';this.style.color=\'#000\'">'+(_edL9('스탠다드 구독하기 →','Subscribe to Standard →'))+'</a>' +
-          '</div>' +
-          '<div style="font-size:11px;color:#666;margin-top:4px">'+(_edL9('전체 권한이 필요한 경우 PAP Magazine 운영팀에 문의해주세요.','Need full access? Contact the PAP Magazine team.'))+'</div>' +
-        '</div>';
-      return;
-    }
-    // 권한 OK — 다운로드 버튼 렌더링.
+    // 권한과 무관하게 버튼 3종 렌더 — perm.allowed 가 아니면 버튼 함수가
+    // 잠금 모드(클릭 시 유료 전용 팝업)로 그린다.
     // 티어시트 메타는 det/d/title 이 보이는 여기서 만들어 넘긴다
     // (2026-08-09 버그 수정 — 버튼 함수 안에서 det 를 참조해 조용히 실패했었다).
     var tsMeta = null;
@@ -522,15 +492,43 @@ function _renderEditorialDownloads(det, d){
 }
 
 // QA #284 Phase 2 — 권한 OK인 사용자에게 실제 버튼 노출.
+/* 유료 전용 다운로드 팝업 (2026-08-10 도메니코: "비회원도 버튼은 보이게,
+   클릭할 때마다 유료 회원만 가능하다는 팝업"). 오버레이는 1회 주입 후 재사용. */
+window._papDlPaywall = window._papDlPaywall || function(){
+  var old = document.getElementById('papDlPaywall');
+  if (old) { old.style.display = 'flex'; return; }
+  var wrap = document.createElement('div');
+  wrap.id = 'papDlPaywall';
+  wrap.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.72);padding:20px';
+  wrap.innerHTML =
+    '<div style="max-width:400px;width:100%;background:#111;border:1px solid rgba(255,255,255,.2);padding:34px 28px;text-align:center" role="dialog" aria-modal="true">'
+    + '<div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:14px">Members Only</div>'
+    + '<div style="font-size:15px;line-height:1.7;color:#eee;margin-bottom:22px">'
+    + _edL9('티어시트·커버·로고 이미지 다운로드는<br><b style="color:#fff">스탠다드 멤버십</b>부터 가능합니다.',
+            'Tearsheet, cover & logo image downloads<br>require a <b style="color:#fff">Standard membership</b>.')
+    + '</div>'
+    + '<a href="/subscribe" style="display:inline-block;background:#fff;color:#000;padding:12px 28px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;margin:0 5px 10px">'
+    + _edL9('스탠다드 구독하기 →','Subscribe to Standard →') + '</a>'
+    + '<a href="/auth?next=' + encodeURIComponent(location.pathname) + '" style="display:inline-block;background:none;color:#fff;border:1px solid rgba(255,255,255,.3);padding:12px 28px;font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;margin:0 5px 10px">'
+    + _edL9('로그인','Log in') + '</a>'
+    + '<div><button type="button" onclick="document.getElementById(\'papDlPaywall\').style.display=\'none\'" style="background:none;border:0;color:#777;font-size:12px;cursor:pointer;margin-top:10px;font-family:inherit;text-decoration:underline">'
+    + _edL9('닫기','Close') + '</button></div>'
+    + '</div>';
+  wrap.addEventListener('click', function(e){ if (e.target === wrap) wrap.style.display = 'none'; });
+  document.body.appendChild(wrap);
+};
+
 function _renderEditorialDownloadButtons(box, coverUrl, gallery, safeTitle, perm, logoSettings, tsMeta){
-  // 로그인 사용자 — 실제 다운로드 버튼.
+  // 잠금 모드 (2026-08-10): 비회원·무료 회원도 버튼은 그대로 보되,
+  // 클릭하면 유료 전용 팝업이 뜬다.
+  var locked = !(perm && perm.allowed);
   // 커버 폴백 (2026-08-09) — 커버 필드가 빈 화보는 갤러리 1번이 사실상 커버다.
   // 커버 버튼이 통째로 사라지는 것보다 낫다.
   if (!coverUrl && gallery && gallery.length) coverUrl = gallery[0];
   var coverHtml = '';
   if (coverUrl) {
     coverHtml =
-      '<a href="#" onclick="event.preventDefault();_papDownloadAsFile(\'' + coverUrl.replace(/'/g, "\\'") + '\',\'' + safeTitle + '-cover\');return false;" ' +
+      '<a href="#" onclick="event.preventDefault();' + (locked ? '_papDlPaywall();' : '_papDownloadAsFile(\'' + coverUrl.replace(/'/g, "\\'") + '\',\'' + safeTitle + '-cover\');') + 'return false;" ' +
       'style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border:1px solid #555;color:#fff;font-size:11px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .2s" ' +
       'onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">'+(_edL9('⬇️ 커버 이미지','⬇️ Cover image'))+'</a>';
   }
@@ -544,7 +542,7 @@ function _renderEditorialDownloadButtons(box, coverUrl, gallery, safeTitle, perm
       if (logoSettings) logoSettingsAttr = encodeURIComponent(JSON.stringify(logoSettings));
     } catch (_) { logoSettingsAttr = ''; }
     logoBtnHtml =
-      '<button id="edLogoDlBtn" type="button" onclick="_papDownloadLogoZip(this)" ' +
+      '<button id="edLogoDlBtn" type="button" onclick="' + (locked ? '_papDlPaywall()' : '_papDownloadLogoZip(this)') + '" ' +
       'data-gallery="' + galleryJson + '" data-title="' + safeTitle + '" ' +
       'data-logosettings="' + logoSettingsAttr + '" ' +
       'style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border:1px solid #555;background:transparent;color:#fff;font-size:11px;font-weight:700;letter-spacing:.12em;cursor:pointer;transition:all .2s" ' +
@@ -557,7 +555,7 @@ function _renderEditorialDownloadButtons(box, coverUrl, gallery, safeTitle, perm
   try { if (tsMeta) tearsheetAttr = encodeURIComponent(JSON.stringify(tsMeta)); } catch (_) { tearsheetAttr = ''; }
   if (typeof tearsheetAttr === 'string' && tearsheetAttr) {
     tearsheetBtnHtml =
-      '<button id="edTearsheetBtn" type="button" onclick="_papDownloadTearsheet(this)" ' +
+      '<button id="edTearsheetBtn" type="button" onclick="' + (locked ? '_papDlPaywall()' : '_papDownloadTearsheet(this)') + '" ' +
       'data-tearsheet="' + tearsheetAttr + '" data-title="' + safeTitle + '" ' +
       'style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border:1px solid #555;background:transparent;color:#fff;font-size:11px;font-weight:700;letter-spacing:.12em;cursor:pointer;transition:all .2s" ' +
       'onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">' +
@@ -566,7 +564,7 @@ function _renderEditorialDownloadButtons(box, coverUrl, gallery, safeTitle, perm
 
   // QA #284 Phase 2 — role 배지 (어느 권한으로 노출되는지 명확하게).
   var roleBadge = '';
-  if (perm && perm.reason){
+  if (!locked && perm && perm.reason){
     var badgeText = ({ admin:_edL9('대표 관리자','Editor-in-Chief'), staff:_edL9('서브 관리자','Editor'), owner:_edL9('참여 크리에이터','Contributing creator'), subscriber:_edL9('멤버십 회원','Member') })[perm.reason] || '';
     var badgeColor = { admin:'#e74c3c', staff:'#f39c12', owner:'#27ae60', subscriber:'#3498db' }[perm.reason] || '#888';
     if (badgeText){
