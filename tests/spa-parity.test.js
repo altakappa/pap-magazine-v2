@@ -234,6 +234,8 @@ console.log('\n[별점 통합] 평가 장치는 한 화면에 하나 (2026-08-09
     && /wrapText/.test(edJs));
   t('갤러리 페이지는 4장씩 2×2 (2026-08-09 도메니코)', /perPage = 4/.test(edJs)
     && /drawCell/.test(edJs));
+  t('중간 IG 창 — 4:5 비율·overflow 해제 + 폭 400 (하단 잘림 방지)',
+    /aspect-ratio:auto;height:auto;overflow:visible/.test(edJs) && /max-width:400px/.test(edJs));
   t('jsPDF 는 CDN defer — 로드 실패 시 안내 후 중단 (ZIP 본체 무관)', /jspdf\.umd\.min\.js/.test(idx)
     && /PDF 라이브러리 로드 실패/.test(edJs));
   {
