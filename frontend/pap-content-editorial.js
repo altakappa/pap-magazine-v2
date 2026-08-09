@@ -1375,13 +1375,16 @@ function _papFitMidIg(){
   var tries = 0;
   var timer = setInterval(function(){
     tries++;
-    var wrap = document.querySelector('.ed-mid-cta');
-    if (!wrap) { if (tries > 4) clearInterval(timer); return; }
-    var em = wrap.querySelector('iframe') || wrap.querySelector('.instagram-media');
-    if (em && em.offsetHeight > 60 && wrap.clientHeight > 60) {
-      var sc = Math.min(1, (wrap.clientHeight - 6) / em.offsetHeight);
-      em.style.transformOrigin = 'center center';
-      em.style.transform = (sc < 0.995) ? 'scale(' + sc.toFixed(4) + ')' : '';
+    var wraps = document.querySelectorAll('.ed-mid-cta');
+    if (!wraps.length) { if (tries > 4) clearInterval(timer); return; }
+    for (var wi = 0; wi < wraps.length; wi++){
+      var wrap = wraps[wi];
+      var em = wrap.querySelector('iframe') || wrap.querySelector('.instagram-media');
+      if (em && em.offsetHeight > 60 && wrap.clientHeight > 60) {
+        var sc = Math.min(1, (wrap.clientHeight - 6) / em.offsetHeight);
+        em.style.transformOrigin = 'center center';
+        em.style.transform = (sc < 0.995) ? 'scale(' + sc.toFixed(4) + ')' : '';
+      }
     }
     if (tries > 20) clearInterval(timer);
   }, 500);
@@ -1794,10 +1797,15 @@ function _openEditorialInner(title,thumb){
       }
     }
     gal.innerHTML+='<div class="ed-gallery-item"><img src="'+url+'" alt="'+title+'" loading="lazy" onerror="edImgError(this)">'+_scrapBtnHtml(url,title)+'<div class="ed-img-credits">'+credits+'</div></div>';
-    // 갤러리 중간 IG 창 — 모든 에디토리얼 필수 (2026-08-09 도메니코).
-    // 6장 이상은 4번째 뒤, 짧은 화보는 중간 지점 뒤 1회.
-    if(idx === Math.min(3, Math.max(0, Math.ceil(det.images.length / 2) - 1))){
-      try{ gal.innerHTML += _papMidIgCtaHtml(det.ig || (d && d.ig) || ''); }catch(_){}
+    // 갤러리 중간 IG 창 — 3장마다 하나씩: 3/6/9… (2026-08-10 도메니코).
+    // 원본 게시물이 없는 화보는 폴백 CTA 를 첫 슬롯(3번째 뒤) 1회만 —
+    // 같은 버튼이 여러 번 반복되면 성가시다.
+    if((idx + 1) % 3 === 0){
+      var _igu = det.ig || (d && d.ig) || '';
+      var _emb = /instagram\.com\/(p|reel|tv)\//.test(String(_igu).split('?')[0]);
+      if(_emb || idx === 2){
+        try{ gal.innerHTML += _papMidIgCtaHtml(_igu); }catch(_){}
+      }
     }
   });
 
@@ -2048,10 +2056,15 @@ function _openEditorialInner_noPush(title,thumb){
       }
     }
     gal.innerHTML+='<div class="ed-gallery-item"><img src="'+url+'" alt="'+title+'" loading="lazy" onerror="edImgError(this)">'+_scrapBtnHtml(url,title)+'<div class="ed-img-credits">'+credits+'</div></div>';
-    // 갤러리 중간 IG 창 — 모든 에디토리얼 필수 (2026-08-09 도메니코).
-    // 6장 이상은 4번째 뒤, 짧은 화보는 중간 지점 뒤 1회.
-    if(idx === Math.min(3, Math.max(0, Math.ceil(det.images.length / 2) - 1))){
-      try{ gal.innerHTML += _papMidIgCtaHtml(det.ig || (d && d.ig) || ''); }catch(_){}
+    // 갤러리 중간 IG 창 — 3장마다 하나씩: 3/6/9… (2026-08-10 도메니코).
+    // 원본 게시물이 없는 화보는 폴백 CTA 를 첫 슬롯(3번째 뒤) 1회만 —
+    // 같은 버튼이 여러 번 반복되면 성가시다.
+    if((idx + 1) % 3 === 0){
+      var _igu = det.ig || (d && d.ig) || '';
+      var _emb = /instagram\.com\/(p|reel|tv)\//.test(String(_igu).split('?')[0]);
+      if(_emb || idx === 2){
+        try{ gal.innerHTML += _papMidIgCtaHtml(_igu); }catch(_){}
+      }
     }
   });
   // QA #206 — fall back to a.url (the API row's url field) when the
