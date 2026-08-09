@@ -999,7 +999,7 @@ function renderSeoHtml(kind, record, opts) {
       'style="margin-top:24px;padding:16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:6px">' +
       '<div style="display:flex;flex-direction:column;gap:10px">' +
         '<div style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999">DOWNLOADS</div>' +
-        '<div style="font-size:13px;color:#ccc">커버 이미지 + PAP 로고 합성 갤러리 이미지 다운로드는 <strong style="color:#fff">스탠다드 멤버십</strong> 전용입니다.<br>참여 크리에이터는 본인 작품을 무료로 다운로드할 수 있어요.</div>' +
+        '<div style="font-size:13px;color:#ccc">커버 및 로고 이미지 다운로드는 <strong style="color:#fff">스탠다드 멤버십</strong> 전용입니다.<br>참여 크리에이터는 본인 작품을 무료로 다운로드할 수 있어요.</div>' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">' +
           '<a href="/subscribe" style="display:inline-block;padding:10px 22px;border:1px solid #fff;background:#fff;color:#000;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none">멤버십 구독하기 →</a>' +
           '<a href="/auth.html" style="display:inline-block;padding:10px 22px;border:1px solid #555;color:#fff;font-size:10px;font-weight:700;letter-spacing:.12em;text-decoration:none">로그인</a>' +
