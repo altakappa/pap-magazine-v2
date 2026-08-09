@@ -948,7 +948,9 @@ async function _papMakeTearsheetPdf(ts, logo, JsPDF, onProgress){
   var p1 = newPage();
   var coverImg = await loadImg(ts.cover);
   if (coverImg) {
-    var cAreaTop = 110, cAreaH = H - cAreaTop - 190, cAreaW = W - 2 * M;
+    // 2026-08-10 도메니코: "적당한 크기로 줄여줘" — 여백을 넉넉히.
+    // contain 이라 어차피 잘리지 않지만, 시각적으로도 여유 있게 84% 폭.
+    var cAreaTop = 150, cAreaH = H - cAreaTop - 240, cAreaW = Math.round(W * 0.84) - 2 * M;
     var csc = Math.min(cAreaW / coverImg.naturalWidth, cAreaH / coverImg.naturalHeight);
     var cdw = coverImg.naturalWidth * csc, cdh = coverImg.naturalHeight * csc;
     p1.x.drawImage(coverImg, (W - cdw) / 2, cAreaTop + (cAreaH - cdh) / 2, cdw, cdh);
