@@ -998,19 +998,37 @@ async function _papMakeTearsheetPdf(ts, logo, JsPDF, onProgress){
   footer(p2.x);
   if (!commit(p2.cv)) return null;
 
-  // ── 3p~ 로고 합성 이미지 (한 장에 한 페이지) ─────────────
-  for (var gi = 0; gi < g.length; gi++){
-    if (onProgress) try { onProgress(3 + gi, total); } catch(_){}
-    var im = await loadImg(g[gi]);
-    if (!im) continue;
+  // ── 3p~ 로고 합성 이미지 — 한 페이지에 4장 (2×2 그리드) ──
+  //    (2026-08-09 도메니코: "한 페이지에 여러 이미지 — 네 장씩이면 적당")
+  var perPage = 4, gap = 34;
+  var cellW = (W - 2 * M - gap) / 2;
+  var cellH = (H - 2 * M - gap - 40) / 2;
+  function drawCell(x, img, cx0, cy0){
+    var sc = Math.min(cellW / img.naturalWidth, cellH / img.naturalHeight);
+    var dw = img.naturalWidth * sc, dh = img.naturalHeight * sc;
+    var dx = cx0 + (cellW - dw) / 2, dy = cy0 + (cellH - dh) / 2;
+    x.drawImage(img, dx, dy, dw, dh);
+    // 로고 합성 — 회원 ZIP 과 같은 정체성 (각 이미지 하단 중앙 15%, 85%)
+    var glw = dw * 0.15, glh = glw * (logo.naturalHeight / logo.naturalWidth);
+    var pa = x.globalAlpha;
+    x.globalAlpha = 0.85;
+    x.drawImage(logo, dx + dw / 2 - glw / 2, dy + dh - glh - dh * 0.012, glw, glh);
+    x.globalAlpha = pa;
+  }
+  var totalPages = 2 + Math.ceil(g.length / perPage);
+  for (var pi = 0; pi < g.length; pi += perPage){
+    if (onProgress) try { onProgress(3 + Math.floor(pi / perPage), totalPages); } catch(_){}
+    var imgs = [];
+    for (var k = pi; k < Math.min(pi + perPage, g.length); k++){
+      var im = await loadImg(g[k]);
+      if (im) imgs.push(im);
+    }
+    if (!imgs.length) continue;
     var pg = newPage();
-    var box = drawContain(pg.x, im, M, W - 2 * M, H - 2 * M - 30);
-    // 로고 합성 — 회원 ZIP 합성과 같은 정체성 (이미지 하단 중앙, 15%, 85%)
-    var glw = box.w * 0.15, glh = glw * (logo.naturalHeight / logo.naturalWidth);
-    var pa = pg.x.globalAlpha;
-    pg.x.globalAlpha = 0.85;
-    pg.x.drawImage(logo, W / 2 - glw / 2, box.y + box.h - glh - box.h * 0.012, glw, glh);
-    pg.x.globalAlpha = pa;
+    for (var ii = 0; ii < imgs.length; ii++){
+      var col = ii % 2, row = Math.floor(ii / 2);
+      drawCell(pg.x, imgs[ii], M + col * (cellW + gap), M + row * (cellH + gap));
+    }
     footer(pg.x);
     if (!commit(pg.cv)) return null;
   }
