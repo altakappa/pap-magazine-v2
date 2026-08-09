@@ -147,7 +147,7 @@ console.log('\n[7] 댓글창은 하나 — 구 커뮤니티 렌더 중단');
   /* 주석 언급은 허용 — 실제 호출(PAPSocial.xxx( )만 금지 */
   t('기사 SPA 가 renderArticleSocial 을 더는 안 부른다', !/PAPSocial\.renderArticleSocial\(/.test(artJs));
   t('에디토리얼 SPA 가 renderEditorialSocial 을 더는 안 부른다', !/PAPSocial\.renderEditorialSocial\(/.test(edJs));
-  t('별점 CTA 는 유지 (에디토리얼 고유 기능)', /renderEditorialRatingCta/.test(edJs));
+  t('별점 CTA 는 제거됨 (2026-08-09 좋아요로 통일 — 중복 평가 장치 금지)', !/renderEditorialRatingCta/.test(edJs));
   t('유사도 추천(RelatedEditorials)도 유지', /renderRelatedEditorials/.test(edJs));
 }
 

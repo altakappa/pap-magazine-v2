@@ -1552,11 +1552,9 @@ function _openEditorialInner(title,thumb){
     });
   }
 
-  // 참여율 개선 (2026-07) — 별점 CTA(본문 상단). ratings 테이블 재사용.
-  var edRatingCta=document.getElementById('edRatingCta');
-  if(edRatingCta && typeof PAPSocial!=='undefined' && PAPSocial.renderEditorialRatingCta){
-    PAPSocial.renderEditorialRatingCta(edRatingCta, title);
-  }
+  /* 별점 CTA 제거 (2026-08-09) — 참여 바의 무로그인 좋아요와 중복이라 통일
+     (도메니코 결정). 별점: 로그인 벽·에디토리얼 전용·editorial_title 키.
+     ratings 데이터·API 는 보존. 마운트 div 도 index.html 에서 함께 내렸다. */
   // 체류시간 개선 (2026-07) — 임베딩 기반 관련 화보. id 없거나 결과 없으면 숨김.
   var edRelated=document.getElementById('edRelatedEditorials');
   if(edRelated && typeof PAPSocial!=='undefined' && PAPSocial.renderRelatedEditorials){
@@ -1756,8 +1754,6 @@ function _openEditorialInner_noPush(title,thumb){
     });
   }
   // 참여율/체류시간 개선 (2026-07) — popstate 복원 경로도 push 경로와 동일하게.
-  var edRatingCta2=document.getElementById('edRatingCta');
-  if(edRatingCta2&&typeof PAPSocial!=='undefined'&&PAPSocial.renderEditorialRatingCta) PAPSocial.renderEditorialRatingCta(edRatingCta2,title);
   var edRelated2=document.getElementById('edRelatedEditorials');
   if(edRelated2&&typeof PAPSocial!=='undefined'&&PAPSocial.renderRelatedEditorials) PAPSocial.renderRelatedEditorials(edRelated2, d && d.id);
   // 2026-08-05 — MORE CONTENT(최신순 캐러셀) 제거. #edRelatedEditorials(유사도
