@@ -251,8 +251,9 @@ console.log('\n[별점 통합] 평가 장치는 한 화면에 하나 (2026-08-09
   {
     const midFn = edJs.slice(edJs.indexOf('function _papMidIgCtaHtml'), edJs.indexOf('function _papRenderEdIg'));
     const bottomFn = edJs.slice(edJs.indexOf('function _papRenderEdIg'), edJs.indexOf('function _renderEditorialTags'));
-    t('갤러리 중간 = IG 임베드 창, 3장마다 하나 (3/6/9… — 2026-08-10)',
-      /instagram-media/.test(midFn) && /\(idx \+ 1\) % 3 === 0/.test(edJs));
+    t('갤러리 중간 = IG 임베드 창, 상한 2개 — 1/3(왼쪽 칸)·2/3(오른쪽 칸)',
+      /instagram-media/.test(midFn) && /_papMidSlots\[0\] \|\| idx === _papMidSlots\[1\]/.test(edJs)
+      && /odd\(n \/ 3\)/.test(edJs));
     t('중간 폴백(원본 없음)은 editorial_mid 계측 유지', /src=editorial_mid/.test(midFn));
     t('하단은 임베드를 접고 퍼널만 (같은 창 중복 금지)', !/instagram-media/.test(bottomFn)
       && /_papLoadIgEmbed/.test(bottomFn));

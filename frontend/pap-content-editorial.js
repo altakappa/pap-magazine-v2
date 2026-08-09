@@ -1743,6 +1743,14 @@ function _openEditorialInner(title,thumb){
   var gal=document.getElementById('edDetailGallery');
   gal.innerHTML='';
   var imgCreditsMap = (det.imageCredits && typeof det.imageCredits === 'object') ? det.imageCredits : {};
+  // 중간 IG 창 자리 — 두 자리 모두 홀수 idx (왼쪽/오른쪽 칸 규칙은 루프 안 주석)
+  var _papMidSlots = (function(n){
+    function odd(x){ x = Math.max(1, Math.round(x)); return (x % 2 === 0) ? x - 1 : x; }
+    var a = odd(n / 3), b = odd(2 * n / 3);
+    if (b <= a) b = a + 2;
+    if (b > n - 1) b = -1;   // 자리가 모자라면 두 번째는 생략
+    return [a, b];
+  })(det.images.length);
   det.images.forEach(function(url,idx){
     var credits='';
     var perImgKey = 'img_' + (idx + 1);
@@ -1797,13 +1805,15 @@ function _openEditorialInner(title,thumb){
       }
     }
     gal.innerHTML+='<div class="ed-gallery-item"><img src="'+url+'" alt="'+title+'" loading="lazy" onerror="edImgError(this)">'+_scrapBtnHtml(url,title)+'<div class="ed-img-credits">'+credits+'</div></div>';
-    // 갤러리 중간 IG 창 — 3장마다 하나씩: 3/6/9… (2026-08-10 도메니코).
-    // 원본 게시물이 없는 화보는 폴백 CTA 를 첫 슬롯(3번째 뒤) 1회만 —
-    // 같은 버튼이 여러 번 반복되면 성가시다.
-    if((idx + 1) % 3 === 0){
+    // 갤러리 중간 IG 창 — 상한 2개 (2026-08-10 도메니코): 1/3·2/3 지점.
+    // "첫 번째는 왼쪽 칸, 두 번째는 오른쪽 칸" — 2열 그리드에서 칸은 슬롯
+    // 순번(0기준 짝수=왼쪽)으로 정해진다. 첫 창 슬롯 = idx+1 → 짝수가 되려면
+    // idx 홀수. 둘째 창은 첫 창이 흐름을 한 칸 밀어 슬롯 = idx+2 → 홀수(오른쪽)
+    // 가 되려면 역시 idx 홀수. 그래서 두 자리 모두 홀수 idx 로 뽑는다.
+    if(idx === _papMidSlots[0] || idx === _papMidSlots[1]){
       var _igu = det.ig || (d && d.ig) || '';
       var _emb = /instagram\.com\/(p|reel|tv)\//.test(String(_igu).split('?')[0]);
-      if(_emb || idx === 2){
+      if(_emb || idx === _papMidSlots[0]){
         try{ gal.innerHTML += _papMidIgCtaHtml(_igu); }catch(_){}
       }
     }
@@ -2011,6 +2021,14 @@ function _openEditorialInner_noPush(title,thumb){
   // Same per-image credit priority as the main openEditorial path:
   // admin's "이미지별 착장 크레딧" string wins, then rotating brand fallback.
   var imgCreditsMap = (det.imageCredits && typeof det.imageCredits === 'object') ? det.imageCredits : {};
+  // 중간 IG 창 자리 — 두 자리 모두 홀수 idx (왼쪽/오른쪽 칸 규칙은 루프 안 주석)
+  var _papMidSlots = (function(n){
+    function odd(x){ x = Math.max(1, Math.round(x)); return (x % 2 === 0) ? x - 1 : x; }
+    var a = odd(n / 3), b = odd(2 * n / 3);
+    if (b <= a) b = a + 2;
+    if (b > n - 1) b = -1;   // 자리가 모자라면 두 번째는 생략
+    return [a, b];
+  })(det.images.length);
   det.images.forEach(function(url,idx){
     var credits='';
     var perImgKey = 'img_' + (idx + 1);
@@ -2056,13 +2074,15 @@ function _openEditorialInner_noPush(title,thumb){
       }
     }
     gal.innerHTML+='<div class="ed-gallery-item"><img src="'+url+'" alt="'+title+'" loading="lazy" onerror="edImgError(this)">'+_scrapBtnHtml(url,title)+'<div class="ed-img-credits">'+credits+'</div></div>';
-    // 갤러리 중간 IG 창 — 3장마다 하나씩: 3/6/9… (2026-08-10 도메니코).
-    // 원본 게시물이 없는 화보는 폴백 CTA 를 첫 슬롯(3번째 뒤) 1회만 —
-    // 같은 버튼이 여러 번 반복되면 성가시다.
-    if((idx + 1) % 3 === 0){
+    // 갤러리 중간 IG 창 — 상한 2개 (2026-08-10 도메니코): 1/3·2/3 지점.
+    // "첫 번째는 왼쪽 칸, 두 번째는 오른쪽 칸" — 2열 그리드에서 칸은 슬롯
+    // 순번(0기준 짝수=왼쪽)으로 정해진다. 첫 창 슬롯 = idx+1 → 짝수가 되려면
+    // idx 홀수. 둘째 창은 첫 창이 흐름을 한 칸 밀어 슬롯 = idx+2 → 홀수(오른쪽)
+    // 가 되려면 역시 idx 홀수. 그래서 두 자리 모두 홀수 idx 로 뽑는다.
+    if(idx === _papMidSlots[0] || idx === _papMidSlots[1]){
       var _igu = det.ig || (d && d.ig) || '';
       var _emb = /instagram\.com\/(p|reel|tv)\//.test(String(_igu).split('?')[0]);
-      if(_emb || idx === 2){
+      if(_emb || idx === _papMidSlots[0]){
         try{ gal.innerHTML += _papMidIgCtaHtml(_igu); }catch(_){}
       }
     }
