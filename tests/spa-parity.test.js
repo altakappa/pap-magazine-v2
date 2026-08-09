@@ -234,6 +234,15 @@ console.log('\n[별점 통합] 평가 장치는 한 화면에 하나 (2026-08-09
     && /wrapText/.test(edJs));
   t('갤러리 페이지는 4장씩 2×2 (2026-08-09 도메니코)', /perPage = 4/.test(edJs)
     && /drawCell/.test(edJs));
+  {
+    const chk = R('api/downloads/check.js');
+    const cellFn = edJs.slice(edJs.indexOf('function drawCell'), edJs.indexOf('var caps ='));
+    t('티어시트 이미지는 무로고 원본 + 셀마다 패션 크레딧 (2026-08-10)',
+      !/globalAlpha/.test(cellFn) && /imageCredits/.test(edJs) && /caps\[k\]/.test(edJs));
+    t('참여 크리에이터 무료 다운로드 폐지 — 유료 회원만 (2026-08-10 도메니코)',
+      !/reason: 'owner'/.test(chk) && /subscription_plan/.test(chk)
+      && !/무료로 다운로드할 수 있어요/.test(edJs) && !/무료로 받을 수 있어요/.test(edJs));
+  }
   t('중간 IG 창 — 옆 사진(4:5 칸) 높이에 실측 축소로 맞춘다',
     /_papFitMidIg/.test(edJs) && /transform/.test(edJs) && /max-width:400px/.test(edJs)
     && !/aspect-ratio:auto;height:auto;overflow:visible/.test(edJs));

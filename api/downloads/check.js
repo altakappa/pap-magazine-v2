@@ -5,8 +5,8 @@
  *   • admin (Main Admin)        → 모든 콘텐츠 다운로드 가능
  *   • staff (Sub Admin)         → 모든 콘텐츠 다운로드 가능
  *   • user (일반 회원/Contributor)
- *     - 본인이 참여한 에디토리얼 → 무료 (source_submission_id → submission.user_id 매칭)
- *     - 남의 화보·기사·필름     → 스탠다드 멤버십부터 (profiles.subscription_plan ∈ standard|premium)
+ *     - 모든 콘텐츠 → 스탠다드 멤버십부터 (profiles.subscription_plan ∈ standard|premium)
+ *       (2026-08-10 도메니코 개정 — 참여 크리에이터 본인 무료 분기 폐지)
  *   • 비로그인                  → 401 (구독/로그인 CTA로 유도)
  *
  * 입력 (query):
@@ -44,29 +44,9 @@ async function checkDownloadPermission(user, contentType, contentId) {
   if (role === 'admin') return { allowed: true, role: 'admin', reason: 'admin' };
   if (role === 'staff') return { allowed: true, role: 'staff', reason: 'staff' };
 
-  // 2) 참여 크리에이터 본인 — 에디토리얼만 해당 (기사·필름은 Contributor 매칭 대상 아님).
-  if (contentType === 'editorial' && contentId) {
-    try {
-      const { data: ed, error: e1 } = await supabaseAdmin
-        .from('editorials')
-        .select('source_submission_id')
-        .eq('id', contentId)
-        .single();
-      if (!e1 && ed && ed.source_submission_id) {
-        const { data: sub, error: e2 } = await supabaseAdmin
-          .from('submissions')
-          .select('user_id')
-          .eq('id', ed.source_submission_id)
-          .single();
-        if (!e2 && sub && String(sub.user_id) === String(user.id)) {
-          return { allowed: true, role, reason: 'owner' };
-        }
-      }
-    } catch (err) {
-      console.error('[downloads/check] owner lookup error:', err && err.message || err);
-      // 본인 판정 실패는 구독 판정으로 계속 진행 (아래).
-    }
-  }
+  // 2) (2026-08-10 도메니코 개정) 참여 크리에이터 무료 다운로드 폐지 —
+  //    본인 참여작이어도 유료 회원(스탠다드 이상)만 다운로드 가능.
+  //    종전의 source_submission_id → submissions.user_id 매칭 분기를 제거했다.
 
   // 3) 스탠다드 멤버십부터 모든 콘텐츠 다운로드 가능 (2026-07-20 개정).
   //    게이트 기준은 다른 등급 게이트와 동일하게 profiles.subscription_plan.
