@@ -227,6 +227,13 @@ console.log('\n[별점 통합] 평가 장치는 한 화면에 하나 (2026-08-09
       return !/det\b/.test(fn.replace(/\/\*[\s\S]*?\*\//g,'').replace(/\/\/[^\n]*/g,''));
     })());
   t('커버 버튼 폴백 — 커버 없으면 갤러리 1번', /coverUrl = gallery\[0\]/.test(edJs));
+  {
+    const sh = R('frontend/pap-content-creator-shorts.js');
+    t('프로필 팝업 구매하기 — 패션 크레딧發만, /go 어필리에이트 경유 (2026-08-10)',
+      /cpBuyBtn/.test(idx) && /buyable\|\|isBrand/.test(sh.replace(/\s/g,''))
+      && /'\/go\/'\+encodeURIComponent/.test(sh)
+      && /openProfileByHandle\(\\''\+safe\+'\\',1\)/.test(edJs));
+  }
   t('커버 = 관리자 cover_image(d.hero) 최우선 (필드 개명 함정 재발 금지)',
     /coverUrl = \(d && d\.hero\)/.test(edJs));
   t('티어시트 = 다중 페이지 (표지·설명글·크레딧·로고 이미지들)',

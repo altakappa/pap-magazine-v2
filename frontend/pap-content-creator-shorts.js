@@ -117,7 +117,7 @@ function buildCreatorDB(){
 var creatorDB=null;
 function getCreatorDB(){if(!creatorDB)creatorDB=buildCreatorDB();return creatorDB;}
 
-function openCreatorPopup(cr){
+function openCreatorPopup(cr, buyable){
   // Save the editorial overlay's current scroll position BEFORE we push
   // a new history state. When the user closes this popup, popstate will
   // re-render the editorial via _openEditorialInner_noPush, which sets
@@ -253,6 +253,18 @@ function _openCreatorPopup_noPush(cr){
   var igBtn=document.getElementById('cpIgBtn');
   var igHandle=handle.replace('@','');
   if(igHandle){igBtn.href='https://www.instagram.com/'+igHandle+'/';igBtn.textContent='@'+igHandle;igBtn.style.display='inline-flex';}else{igBtn.style.display='none';}
+  // 구매하기 (2026-08-10 도메니코) — 패션 크레딧에서 열린 프로필(buyable)과
+  // Fashion Brand 프로필에만. 어필리에이트 리다이렉터(/go/:id — 지역 라우팅
+  // + 클릭 계측) 경유. 미등록 브랜드는 /go 가 홈으로 안전 리다이렉트한다.
+  var buyBtn=document.getElementById('cpBuyBtn');
+  if(buyBtn){
+    if((buyable||isBrand)&&igHandle){
+      buyBtn.href='/go/'+encodeURIComponent(igHandle.toLowerCase());
+      buyBtn.style.display='inline-flex';
+    } else {
+      buyBtn.style.display='none';
+    }
+  }
   document.getElementById('cpCount').textContent=editorials.length;
   document.getElementById('cpFirst').textContent=editorials.length>0?editorials[editorials.length-1].substring(0,15):'—';
   document.getElementById('cpLatest').textContent=editorials.length>0?editorials[0].substring(0,15):'—';
@@ -285,14 +297,14 @@ function closeCreatorPopup(skipHistory){
 }
 
 // Open profile by handle (from editorial credits)
-function openProfileByHandle(handle){
+function openProfileByHandle(handle, buyable){
   var db=getCreatorDB();
   var key=handle.toLowerCase();
   if(db[key]){
-    openCreatorPopup(db[key]);
+    openCreatorPopup(db[key], buyable);
   } else {
     // Create minimal profile
-    openCreatorPopup({name:handle.replace('@',''),handle:handle,role:'Contributor',editorials:[],imgs:[]});
+    openCreatorPopup({name:handle.replace('@',''),handle:handle,role:'Contributor',editorials:[],imgs:[]}, buyable);
   }
 }
 
