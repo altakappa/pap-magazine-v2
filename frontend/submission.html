@@ -2175,8 +2175,10 @@ function _papClassifySubmission(){
   var union={};
   for(var u=0;u<realLooks.length;u++){ Object.keys(brandSetByLook[realLooks[u]]||{}).forEach(function(b){ union[b]=true; }); }
   var branded=false;
+  var sharedBrands=[];
   if(Object.keys(union).length===1){
     branded=true;
+    sharedBrands=Object.keys(union);
   } else if(realLookCount>=2){
     var inter=null;
     for(var i=0;i<realLooks.length;i++){
@@ -2186,16 +2188,25 @@ function _papClassifySubmission(){
       if(Object.keys(inter).length===0) break;
     }
     branded = !!(inter && Object.keys(inter).length>0);
+    sharedBrands = inter ? Object.keys(inter) : [];
   }
   // 다중 브랜드 예외 — 의상 브랜드 ≥ 4 이면 branded 해제.
   var clothingCount=Object.keys(clothing).length;
   var multiBrandExempt = branded && clothingCount>=_PAP_MIN_CLOTHING_BRANDS;
   if(multiBrandExempt) branded=false;
+  // ACCESSORY-ONLY 예외 (도메니코 2026-08-10) — 공통 브랜드가 의상 슬롯에 한 번도
+  // 안 나오면(신발·모자 등 액세서리 전용) branded 해제. 의상 슬롯을 하나도 안 채운
+  // 제출은 제외한다(전부 'Other' 태깅 우회 방지). 서버 api/_lib/submissionType.js
+  // 와 동일 규칙 — 사전 안내(€790)가 서버 판정과 어긋나지 않게 반드시 같이 고친다.
+  var accessoryOnlyExempt = branded && sharedBrands.length>0 && clothingCount>=1
+    && !sharedBrands.some(function(b){ return !!clothing[b]; });
+  if(accessoryOnlyExempt) branded=false;
   var type='free';
   if(branded) type='branded';
   else if(realLookCount<4) type='paid_few_looks';
   return { submissionType:type, realLookCount:realLookCount, branded:branded,
-           clothingBrandCount:clothingCount, multiBrandExempt:multiBrandExempt };
+           sharedBrands:sharedBrands, clothingBrandCount:clothingCount,
+           multiBrandExempt:multiBrandExempt, accessoryOnlyExempt:accessoryOnlyExempt };
 }
 function _renderSubmissionTypeNotice(){
   // Same classification/copy drives two boxes: the LOOK step (#lookTypeNotice,

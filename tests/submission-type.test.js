@@ -1,7 +1,7 @@
 // PAP Magazine — Submission-type classification test
 //
 // Guards the 2026-07-19 DETECT + GUIDE + STORE feature: submissions are routed
-// into 'free' | 'paid_few_looks' (€345) | 'branded' (€720) buckets. Payment and
+// into 'free' | 'paid_few_looks' (€380) | 'branded' (€790) buckets. Payment and
 // email stay manual — this only classifies. The POST (api/submissions/index.js)
 // and PUT-resubmit (api/submissions/[id].js) handlers recompute the type
 // AUTHORITATIVELY from the persisted looks + lookImageMap via this shared helper,
@@ -55,7 +55,7 @@ ok('5 looks, no shared brand → free',
 ok('4 looks, ≥2 distinct brands, one look with NO brand → free (union>1, no full intersection)',
    typeOf(looksFor([['A'], ['B'], ['C'], []]), mapFor([1, 1, 1, 1])) === 'free');
 
-console.log('\n=== paid_few_looks (€345) ===');
+console.log('\n=== paid_few_looks (€380) ===');
 ok('3 looks, distinct brands → paid_few_looks',
    typeOf(looksFor([['A'], ['B'], ['C']]), mapFor([1, 1, 1])) === 'paid_few_looks');
 ok('1 real look with 2+ DISTINCT brands → paid_few_looks (trigger is "one brand", not met)',
@@ -65,7 +65,7 @@ ok('seeded-but-empty look blocks (0 images) → paid_few_looks (realLookCount 0,
 ok('3 looks, distinct brands, no single/shared brand → paid_few_looks',
    typeOf(looksFor([['Nike'], ['Adidas'], ['Puma']]), mapFor([1, 1, 1])) === 'paid_few_looks');
 
-console.log('\n=== branded (€720) — single-brand trigger (a), look count irrelevant ===');
+console.log('\n=== branded (€790) — single-brand trigger (a), look count irrelevant ===');
 ok('1 real look, single brand → branded (NEW: single brand fires at any look count)',
    typeOf(looksFor([['Solo']]), mapFor([1])) === 'branded');
 ok('2 real looks but only 1 carries images, single brand → branded (image-less look ignored, union==1)',
@@ -77,7 +77,7 @@ ok('4 looks all same brand → branded',
 ok('case/space normalization: " Prada "/prada/PRADA → branded (union==1)',
    typeOf(looksFor([[' Prada '], ['prada'], ['PRADA '], ['Prada']]), mapFor([1, 1, 1, 1])) === 'branded');
 
-console.log('\n=== branded (€720) — shared-brand trigger (b), ≥2 looks share a common brand ===');
+console.log('\n=== branded (€790) — shared-brand trigger (b), ≥2 looks share a common brand ===');
 // looksFor() 는 모든 아이템을 type:'Top'(의상)으로 만든다 → 브랜드 수 = 의상 브랜드 수.
 // 그래서 아래 두 케이스는 2026-08-03 다중 브랜드 예외 도입으로 판정이 바뀌었다.
 ok('4 looks, 공통 브랜드 + 의상 브랜드 5종 → 예외 발동, branded 아님',
@@ -228,6 +228,106 @@ console.log('\n=== 다중 브랜드 예외 (2026-08-03) ===');
      bounty.submissionType === 'free' && bounty.clothingBrandCount === 7
      && bounty.multiBrandExempt === true,
      JSON.stringify(bounty));
+})();
+
+/* ── 2026-08-10 (도메니코 지시) — ACCESSORY-ONLY 예외 ────────────────────────
+ * 기존 규칙의 비대칭: branded 로 집어넣을 때는 모든 슬롯을 보는데(신발·모자도
+ * 트리거), 빼줄 때는 의상 슬롯만 봤다. 그래서 스타일리스트가 신발 한 브랜드를
+ * 전 룩에 돌려 신기면 브랜디드 게재료가 붙었다.
+ * 새 규칙: 공통 브랜드가 실제 룩의 의상 슬롯에 단 한 번도 안 나오면 branded 해제.
+ * 단 clothingBrandCount >= 1 을 요구한다 — 의상 슬롯을 하나도 안 채운 제출까지
+ * 풀어주면 "전부 Other 로 태깅하면 브랜디드를 영영 피한다"는 우회로가 생긴다. */
+console.log('\n=== ACCESSORY-ONLY 예외 (2026-08-10) ===');
+(function () {
+  const L = (n, items) => ({ n, items });
+
+  // 실사례 회귀: REVERIE (submission 6b7bfd7a-ee0d-4c63-bc76-670bc9c29f6a)
+  // 전 룩 공통은 Somechic Studio(Shoes) 하나뿐이고 의상은 MOIRAI/Roberto Cavalli.
+  const reverie = classifySubmissionType([
+    L(1, [{ type: 'Top', brand: 'MOIRAI store' }, { type: 'Dress', brand: 'MOIRAI store' }, { type: 'Other', brand: 'Falke' }, { type: 'Shoes', brand: 'Somechic Studio' }]),
+    L(2, [{ type: 'Jacket', brand: 'Roberto Cavalli' }, { type: 'Other', brand: 'Wolford' }, { type: 'Shoes', brand: 'Somechic Studio' }, { type: 'Hat', brand: 'Massimo Dutti' }]),
+    L(3, [{ type: 'Dress', brand: 'MOIRAI store' }, { type: 'Belt', brand: 'Sezane' }, { type: 'Gloves', brand: 'Furla' }, { type: 'Other', brand: 'Falke' }, { type: 'Shoes', brand: 'Somechic Studio' }, { type: 'Hat', brand: 'Massimo Dutti' }]),
+    L(4, [{ type: 'Top', brand: 'MOIRAI store' }, { type: 'Dress', brand: 'MOIRAI store' }, { type: 'Jacket', brand: 'MOIRAI store' }, { type: 'Other', brand: 'Falke' }, { type: 'Shoes', brand: 'Somechic Studio' }, { type: 'Hat', brand: 'Massimo Dutti' }]),
+  ], mapFor([5, 4, 5, 5]));
+  ok('실사례 REVERIE → free (공통 브랜드가 신발 슬롯에만 등장)',
+     reverie.submissionType === 'free' && reverie.accessoryOnlyExempt === true
+     && reverie.clothingBrandCount === 2,
+     JSON.stringify(reverie));
+  ok('해제돼도 sharedBrands 는 남는다 (관리자가 겹침 사실을 볼 수 있게)',
+     reverie.sharedBrands.length === 1 && reverie.sharedBrands[0] === 'somechic studio',
+     JSON.stringify(reverie.sharedBrands));
+
+  // 공통 브랜드가 의상 슬롯에 한 번이라도 나오면 해제되지 않는다
+  const inClothing = classifySubmissionType([
+    L(1, [{ type: 'Dress', brand: 'A' }, { type: 'Shoes', brand: 'A' }]),
+    L(2, [{ type: 'Top', brand: 'B' }, { type: 'Shoes', brand: 'A' }]),
+    L(3, [{ type: 'Pants', brand: 'C' }, { type: 'Shoes', brand: 'A' }]),
+    L(4, [{ type: 'Skirt', brand: 'B' }, { type: 'Shoes', brand: 'A' }]),
+  ], mapFor([1, 1, 1, 1]));
+  ok('공통 브랜드가 룩1의 의상 슬롯에도 있으면 → branded 유지 (해제 안 됨)',
+     inClothing.submissionType === 'branded' && inClothing.accessoryOnlyExempt === false,
+     JSON.stringify(inClothing));
+
+  // 우회로 차단: 의상 슬롯을 하나도 안 채우면 해제되지 않는다
+  const allOther = classifySubmissionType([
+    L(1, [{ type: 'Other', brand: 'A' }, { type: 'Shoes', brand: 'S1' }]),
+    L(2, [{ type: 'Other', brand: 'A' }, { type: 'Bag', brand: 'S2' }]),
+    L(3, [{ type: 'Other', brand: 'A' }, { type: 'Hat', brand: 'S3' }]),
+    L(4, [{ type: 'Other', brand: 'A' }, { type: 'Belt', brand: 'S4' }]),
+  ], mapFor([1, 1, 1, 1]));
+  ok('전부 Other/액세서리 태깅(의상 0종) → branded 유지 (우회로 차단)',
+     allOther.submissionType === 'branded' && allOther.accessoryOnlyExempt === false
+     && allOther.clothingBrandCount === 0,
+     JSON.stringify(allOther));
+
+  // 다중 브랜드 예외가 이미 걸린 건은 이 예외를 또 타지 않는다 (플래그 분리 확인)
+  const alreadyExempt = classifySubmissionType([
+    L(1, [{ type: 'Jacket', brand: 'A' }, { type: 'Top', brand: 'B' }, { type: 'Shoes', brand: 'Z' }]),
+    L(2, [{ type: 'Jacket', brand: 'A' }, { type: 'Pants', brand: 'C' }, { type: 'Shoes', brand: 'Z' }]),
+    L(3, [{ type: 'Jacket', brand: 'A' }, { type: 'Skirt', brand: 'D' }, { type: 'Shoes', brand: 'Z' }]),
+    L(4, [{ type: 'Jacket', brand: 'A' }, { type: 'Coat', brand: 'B' }, { type: 'Shoes', brand: 'Z' }]),
+  ], mapFor([1, 1, 1, 1]));
+  ok('다중 브랜드 예외가 먼저 걸리면 accessoryOnlyExempt 는 false',
+     alreadyExempt.submissionType === 'free' && alreadyExempt.multiBrandExempt === true
+     && alreadyExempt.accessoryOnlyExempt === false,
+     JSON.stringify(alreadyExempt));
+
+  // 해제는 "무조건 무료"가 아니다 — 룩 수 규칙이 다시 적용된다
+  const fewLooks = classifySubmissionType([
+    L(1, [{ type: 'Dress', brand: 'M' }, { type: 'Shoes', brand: 'S' }]),
+    L(2, [{ type: 'Jacket', brand: 'N' }, { type: 'Shoes', brand: 'S' }]),
+  ], mapFor([1, 1]));
+  ok('액세서리 전용 공통 + 실제 룩 2개 → free 아니라 paid_few_looks',
+     fewLooks.submissionType === 'paid_few_looks' && fewLooks.accessoryOnlyExempt === true,
+     JSON.stringify(fewLooks));
+
+  // 단일 브랜드 트리거 (a): 그 브랜드가 액세서리 슬롯에만 있으면 의상 0종이라 유지
+  const soloAccessory = classifySubmissionType([
+    L(1, [{ type: 'Shoes', brand: 'Solo' }]),
+    L(2, [{ type: 'Bag', brand: 'Solo' }]),
+    L(3, [{ type: 'Hat', brand: 'Solo' }]),
+    L(4, [{ type: 'Belt', brand: 'Solo' }]),
+  ], mapFor([1, 1, 1, 1]));
+  ok('전 룩 단일 브랜드가 액세서리뿐 → branded 유지 (의상 0종 가드)',
+     soloAccessory.submissionType === 'branded' && soloAccessory.accessoryOnlyExempt === false,
+     JSON.stringify(soloAccessory));
+})();
+
+/* ── 클라이언트 미러 동기화 가드 ──────────────────────────────────────────────
+ * frontend/submission.html 의 _papClassifySubmission() 은 이 모듈의 규칙을 그대로
+ * 복제한다(제출 전 €790 사전 안내용). 서버만 고치고 미러를 안 고치면 크리에이터가
+ * 본 안내와 실제 판정이 어긋난다. 소스에 규칙이 남아 있는지만 확인한다. */
+console.log('\n=== 클라이언트 미러 동기화 ===');
+(function () {
+  const fs = require('fs');
+  const html = fs.readFileSync(
+    path.resolve(__dirname, '..', 'frontend', 'submission.html'), 'utf8');
+  ok('submission.html 미러에 accessoryOnlyExempt 규칙이 있다',
+     html.includes('accessoryOnlyExempt'));
+  ok('submission.html 미러가 sharedBrands 를 계산한다',
+     html.includes('sharedBrands'));
+  ok('submission.html 미러에 의상 0종 우회로 가드(clothingCount>=1)가 있다',
+     /accessoryOnlyExempt[\s\S]{0,200}clothingCount\s*>=\s*1/.test(html));
 })();
 
 console.log('\n=== SUMMARY ===');

@@ -1383,13 +1383,18 @@ function buildFashionLine(desc){
 // `submissionType` ('free' | 'paid_few_looks' | 'branded'). These helpers only
 // SURFACE that value in the admin UI so the editor can see the policy tier +
 // indicative price at a glance. No schema/API/gate change — pure read+display.
-//   paid_few_looks → 유료 · 소수 룩 €345 (강조: standard tone)
-//   branded        → 브랜디드 €720      (강조: premium tone)
+//   paid_few_looks → 유료 · 소수 룩 €380 (강조: standard tone)
+//   branded        → 브랜디드 €790      (강조: premium tone)
+// 금액의 단일 출처는 api/_lib/submissionPayment.js 의 SUBMISSION_FEE_CENTS
+// (38000 / 79000). 여기 문자열은 그 값을 사람이 읽는 형태로 옮겨 적은 것뿐이다.
+// 2026-08-10: 서버가 €380/€790 로 인상됐는데 이 라벨만 €345/€720 로 남아
+// 관리자 화면과 크리에이터 화면의 금액이 달랐다. tests/submission-fee-label.test.js
+// 가 두 파일의 숫자가 어긋나면 실패시킨다 — 금액을 바꿀 땐 서버부터 고칠 것.
 //   free / 값없음(구버전) / 알 수 없음 → 미표시(뱃지 없음) — 안전 처리
 function _submissionTypeBadge(submissionType){
   var map={
-    paid_few_looks: { cls:'b-standard', label:'유료 · 소수 룩 €345' },
-    branded:        { cls:'b-premium',  label:'브랜디드 €720' }
+    paid_few_looks: { cls:'b-standard', label:'유료 · 소수 룩 €380' },
+    branded:        { cls:'b-premium',  label:'브랜디드 €790' }
   };
   var info=map[submissionType];
   if(!info) return '';
@@ -1421,7 +1426,7 @@ function openEditorialEditorGuarded(editorialId){
 //   none / 값없음    → 미표시 (뱃지 없음) — 안전 처리
 // 라벨은 코드 고정값 · payment_status 는 화이트리스트로만 매핑 → innerHTML 안전.
 // paidAmount(유로 cents, 정수) 를 병기해 도메니코가 유형 뱃지의 기대금액
-// (예: 브랜디드 €720)과 실결제액을 비교, 과소결제(€345만 결제 등)를 인지할 수 있게.
+// (예: 브랜디드 €790)과 실결제액을 비교, 과소결제(€380만 결제 등)를 인지할 수 있게.
 // cents→euros 는 /100, 정수 유로로 표기. 값 없거나 비정상이면 금액 생략(기존 라벨).
 function _paymentStatusBadge(paymentStatus, paidAmount, submissionType){
   function _span(bg,bd,fg,label,title){
@@ -1520,7 +1525,7 @@ function populateReviewModal(submission){
   var _apBtn=document.getElementById('reviewApproveBtn');
   if(_apBtn){
     var _ftKey=String(desc.submissionType||'').trim().toLowerCase().replace(/[\s-]+/g,'_');
-    var _feeAmt={branded:'€720',paid_few_looks:'€345',few_looks:'€345',fewlooks:'€345'};
+    var _feeAmt={branded:'€790',paid_few_looks:'€380',few_looks:'€380',fewlooks:'€380'};
     if(_isFeeRequiredType(desc.submissionType)){
       var _amt=_feeAmt[_ftKey]||'';
       _apBtn.textContent='✓ 승인 및 결제요청'+(_amt?' ('+_amt+')':'');

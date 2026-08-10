@@ -21,6 +21,7 @@ const {
   handleSubmissionFeeTransaction,
   isSubmissionFeeEvent,
   feeForType,
+  SUBMISSION_FEE_CENTS,
 } = require(path.resolve(__dirname, '..', 'api', '_lib', 'submissionPayment'));
 
 let passed = 0;
@@ -227,6 +228,48 @@ function withSubtotal(cents) {
       feeTx({ id: 'txn_m', custom_data: { user_id: 'someone-else' } }), db);
     ok('still paid despite mismatch', r.outcome === 'paid');
     ok('userMismatch flagged', r.userMismatch === true);
+  }
+
+  /* ── 2026-08-10 (도메니코) — 관리자 화면 금액 표기 드리프트 가드 ──────────
+   * 사고: 서버 SUBMISSION_FEE_CENTS 가 €345/€720 → €380/€790 으로 인상됐는데
+   * frontend/pap-admin.js 의 뱃지 라벨과 승인 버튼 금액만 옛 값으로 남았다.
+   * 결과: 크리에이터는 제출 화면에서 €790 을 보고 동의했는데 관리자 화면은
+   * €720 을 띄웠다 — 같은 서브미션에 금액이 두 개.
+   * 이 테스트는 서버의 센트 값에서 기대 문자열을 만들어 pap-admin.js 안에
+   * 실제로 그 문자열이 있는지 본다. 금액을 바꿀 때 서버만 고치면 여기서 걸린다.
+   * (설명용 주석에는 옛 금액이 남아 있을 수 있으므로, 실행되는 코드 조각만 본다.) */
+  console.log('\n=== 관리자 금액 표기 ↔ 서버 요금표 정합 ===');
+  {
+    const fs = require('fs');
+    const pathMod = require('path');
+    const adminSrc = fs.readFileSync(
+      pathMod.resolve(__dirname, '..', 'frontend', 'pap-admin.js'), 'utf8');
+    const eur = (cents) => '€' + Math.round(cents / 100);
+    const branded = eur(SUBMISSION_FEE_CENTS.branded);
+    const fewLooks = eur(SUBMISSION_FEE_CENTS.paid_few_looks);
+
+    ok(`뱃지 라벨 branded = ${branded}`,
+       adminSrc.includes(`label:'브랜디드 ${branded}'`), branded);
+    ok(`뱃지 라벨 paid_few_looks = ${fewLooks}`,
+       adminSrc.includes(`label:'유료 · 소수 룩 ${fewLooks}'`), fewLooks);
+    ok(`승인 버튼 금액맵 branded = ${branded}`,
+       adminSrc.includes(`branded:'${branded}'`), branded);
+    ok(`승인 버튼 금액맵 few_looks = ${fewLooks}`,
+       adminSrc.includes(`paid_few_looks:'${fewLooks}'`), fewLooks);
+
+    // 실행되는 코드에 옛 금액이 남아 있으면 실패 (주석은 제외).
+    const codeOnly = adminSrc.split('\n')
+      .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+    const stale = ['€345', '€720'].filter((v) => codeOnly.includes(v));
+    ok('실행 코드에 옛 금액(€345/€720)이 남아 있지 않다',
+       stale.length === 0, stale.join(', '));
+
+    // 크리에이터 화면(pap-submission-fee.js)도 같은 숫자를 써야 한다.
+    const feeSrc = fs.readFileSync(
+      pathMod.resolve(__dirname, '..', 'frontend', 'pap-submission-fee.js'), 'utf8');
+    ok(`크리에이터 화면도 ${branded} / ${fewLooks} 를 쓴다`,
+       feeSrc.includes(`'${branded}'`) && feeSrc.includes(`'${fewLooks}'`),
+       `${branded} ${fewLooks}`);
   }
 
   console.log(`\n${failed === 0 ? '✅' : '❌'} submission-payment: ${passed} passed, ${failed} failed`);

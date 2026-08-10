@@ -63,6 +63,27 @@
  *
  *   sharedBrands 는 해제된 뒤에도 그대로 돌려준다(관리자가 "A가 전 룩에 있긴
  *   했다"는 사실을 볼 수 있게). branded 플래그만 false 가 된다.
+ *
+ * ACCESSORY-ONLY 예외 (도메니코 지시 2026-08-10) ────────────────────────────
+ *   위 다중 브랜드 예외에는 비대칭이 있었다:
+ *     • branded 로 "집어넣을 때"  → 모든 슬롯을 본다 (신발·모자도 트리거가 됨)
+ *     • branded 에서 "빼줄 때"    → 의상 슬롯만 본다 (신발·모자는 못 씀)
+ *   들어갈 때는 쓰이고 나올 때는 안 쓰이는 구조라, 스타일리스트가 신발 한
+ *   브랜드를 전 룩에 돌려 신기면 브랜디드 게재료가 붙었다.
+ *   실사례: "REVERIE"(2026-08-03) — 전 룩 공통 브랜드가 Somechic Studio(Shoes)
+ *   하나뿐이고 의상은 MOIRAI store / Roberto Cavalli 2종. 신발이 겹쳤다는 이유로
+ *   브랜디드 판정. 도메니코 판단: 이건 그 신발 브랜드의 브랜디드 콘텐츠가 아니다.
+ *
+ *   판정: branded 트리거가 걸렸더라도, 그 공통 브랜드가 실제 룩의 CLOTHING
+ *   슬롯에 단 한 번도 등장하지 않으면(= 액세서리 슬롯에만 있으면) branded 를 끈다.
+ *
+ *   단, clothingBrandCount >= 1 을 함께 요구한다. 의상 슬롯을 아예 하나도
+ *   채우지 않은 제출(전부 'Other' 로 태깅)까지 풀어주면 "전부 Other 로 넣으면
+ *   브랜디드를 영영 피한다"는 우회로가 생기기 때문이다 — 2026-08-10 실측에서
+ *   전체 116건 중 18건이 의상 슬롯 0개였다. 이 가드가 있어야 해제 대상이
+ *   11건 → 3건으로 좁혀진다(REVERIE / Wild - Kiara Jones / Cold air).
+ *
+ *   sharedBrands 는 여기서도 그대로 돌려준다. branded 플래그만 false 가 된다.
  */
 
 'use strict';
@@ -185,7 +206,8 @@ function clothingBrandUnion(looks, realLookKeys) {
  * @param {Array} lookImageMap  [{ lookN, imgIdxInLook }] — one per image.
  * @returns {{ submissionType:string, realLookCount:number, branded:boolean,
  *            sharedBrands:string[], clothingBrands:string[],
- *            clothingBrandCount:number, multiBrandExempt:boolean }}
+ *            clothingBrandCount:number, multiBrandExempt:boolean,
+ *            accessoryOnlyExempt:boolean }}
  */
 function classifySubmissionType(looks, lookImageMap) {
   const imgCounts = imagesByLookFromMap(lookImageMap);
@@ -243,6 +265,15 @@ function classifySubmissionType(looks, lookImageMap) {
   const multiBrandExempt = branded && clothingBrandCount >= MIN_CLOTHING_BRANDS;
   if (multiBrandExempt) branded = false;
 
+  // ACCESSORY-ONLY 예외 (도메니코 2026-08-10) — 공통 브랜드가 의상 슬롯에 단 한
+  // 번도 나오지 않으면(액세서리 전용) 그 브랜드의 브랜디드 콘텐츠로 볼 수 없다.
+  // 의상 슬롯을 하나도 안 채운 제출은 제외한다(전부 'Other' 태깅 우회 방지).
+  const accessoryOnlyExempt = branded
+    && sharedBrands.length > 0
+    && clothingBrandCount >= 1
+    && !sharedBrands.some((b) => clothingBrandSet.has(b));
+  if (accessoryOnlyExempt) branded = false;
+
   let submissionType = 'free';
   if (branded) submissionType = 'branded';
   else if (realLookCount < MIN_LOOKS) submissionType = 'paid_few_looks';
@@ -255,6 +286,7 @@ function classifySubmissionType(looks, lookImageMap) {
     clothingBrands: Array.from(clothingBrandSet),
     clothingBrandCount,
     multiBrandExempt,
+    accessoryOnlyExempt,
   };
 }
 
