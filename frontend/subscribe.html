@@ -6,7 +6,7 @@
      Paddle 은 script(cdn.paddle.com) + 체크아웃 오버레이 iframe(buy/
      sandbox-buy.paddle.com) + API(connect) 가 모두 필요 — *.paddle.com
      으로 커버. 누락 시 'Payment SDK not loaded' 로 해외 결제 불가. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.portone.io https://*.portone.io https://*.iamport.co https://js.tosspayments.com https://*.paddle.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co https://api.portone.io https://*.portone.io https://*.iamport.co https://api.pap-magazine.com https://*.tosspayments.com https://ipapi.co https://*.paddle.com; frame-src https://service.portone.io https://*.portone.io https://*.iamport.co https://*.tosspayments.com https://pay.tosspayments.com https://*.paddle.com;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.portone.io https://*.portone.io https://*.iamport.co https://js.tosspayments.com https://*.paddle.com https://www.paypal.com https://*.paypal.com https://*.paypalobjects.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co https://api.portone.io https://*.portone.io https://*.iamport.co https://api.pap-magazine.com https://*.tosspayments.com https://ipapi.co https://*.paddle.com https://www.paypal.com https://*.paypal.com https://*.paypalobjects.com; frame-src https://service.portone.io https://*.portone.io https://*.iamport.co https://*.tosspayments.com https://pay.tosspayments.com https://*.paddle.com https://www.paypal.com https://*.paypal.com;">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="PAP Magazine 프리미엄 멤버십 — 에디토리얼·필름·아티클·셀럽 뉴스 등 모든 콘텐츠를 가장 먼저, 광고 없이, 풀해상도로. 패션·아트·뷰티·컬쳐의 모든 깊이를 누리세요. Subscribe to PAP Magazine premium.">
 <meta name="keywords" content="PAP Magazine 구독, 디지털 매거진 멤버십, fashion magazine subscription, premium editorial access, ad-free magazine, 매거진 정기구독, K-fashion magazine, Italian fashion publication">
@@ -421,7 +421,7 @@ function navigateWithInterstitial(url){
     <div class="plan-card" id="planFree">
       <div class="plan-tier" data-i18n="tierFree">TIER 1</div>
       <div class="plan-name" data-i18n="planFreeName">FREE</div>
-      <div class="plan-price-free" data-i18n="priceFree">₩0</div>
+      <div class="plan-price-free" data-i18n="priceFree">€0</div>
       <div class="plan-desc" data-i18n="planFreeDesc">PAP의 최신 콘텐츠를 무료로 만나보세요</div>
       <ul class="plan-features" id="featuresFree"></ul>
       <button class="plan-cta" data-i18n="ctaFree" onclick="window.location.href='/'">둘러보기</button>
@@ -432,7 +432,7 @@ function navigateWithInterstitial(url){
       <div class="plan-tier" data-i18n="tierStandard">TIER 2</div>
       <div class="plan-name" data-i18n="planStdName">STANDARD</div>
       <div class="plan-original-price" id="stdOriginal"></div>
-      <div class="plan-price" id="stdPrice"><span class="currency">₩</span>8,500<span class="period" data-i18n="perMonth">/ 월</span></div>
+      <div class="plan-price" id="stdPrice"><span class="currency">€</span>5.49<span class="period" data-i18n="perMonth">/ 월</span></div>
       <div class="plan-desc" data-i18n="planStdDesc">서브미션 피드백과 이미지 다운로드 혜택</div>
       <ul class="plan-features" id="featuresStd"></ul>
       <button class="plan-cta" data-i18n="ctaStd" onclick="handleCta('standard')">구독하기</button>
@@ -443,7 +443,7 @@ function navigateWithInterstitial(url){
       <div class="plan-tier" data-i18n="tierPremium">TIER 3</div>
       <div class="plan-name" data-i18n="planPremName">PREMIUM</div>
       <div class="plan-original-price" id="premOriginal"></div>
-      <div class="plan-price" id="premPrice"><span class="currency">₩</span>13,500<span class="period" data-i18n="perMonth">/ 월</span></div>
+      <div class="plan-price" id="premPrice"><span class="currency">€</span>8.99<span class="period" data-i18n="perMonth">/ 월</span></div>
       <div class="plan-desc" data-i18n="planPremDesc">모든 혜택 + Pull-Letter 요청 + 전체 아카이브</div>
       <ul class="plan-features" id="featuresPrem"></ul>
       <button class="plan-cta" data-i18n="ctaPrem" onclick="handleCta('premium')">구독하기</button>
@@ -494,7 +494,7 @@ function navigateWithInterstitial(url){
 window._PAP_PORTONE_STORE_ID    = 'store-7b6778d6-f24d-49d2-a939-19df4ec81381';
 window._PAP_PORTONE_CHANNEL_KEY = 'channel-key-1f8ffa8d-2039-48b1-9af1-db8421e9a058';
 </script>
-<script src="/pap-api.js?v=15" defer></script>
+<script src="/pap-api.js?v=16" defer></script>
 <script>
 var checkSvg = '<svg class="tbl-check" viewBox="0 0 16 16" width="16" height="16"><polyline points="3 8 7 12 13 4" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 var crossSvg = '<svg class="tbl-cross" viewBox="0 0 16 16" width="16" height="16"><line x1="4" y1="4" x2="12" y2="12" stroke="#fff" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="4" x2="4" y2="12" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>';
@@ -509,7 +509,7 @@ ko: {
   heroDesc:'스탠다드 멤버는 최신 6개월 에디토리얼 열람과 이미지 다운로드가 가능합니다. 전체 아카이브 열람, 로고 파일 다운로드, Pull-Letter 요청 등 프리미엄 혜택이 필요하다면 프리미엄 멤버가 되어보세요.',
   tierFree:'TIER 1', tierStandard:'TIER 2', tierPremium:'TIER 3',
   planFreeName:'FREE', planStdName:'STANDARD', planPremName:'PREMIUM',
-  priceFree:'₩0',
+  priceFree:'€0',
   perMonth:'/ 월',
   planFreeDesc:'회원가입 없이 자유롭게 이용 가능',
   planStdDesc:'최신 6개월 에디토리얼 + 서브미션 피드백 + 이미지 다운로드',
@@ -563,7 +563,7 @@ ko: {
 en: {
   business:'BUSINESS', contact:'CONTACT', about:'ABOUT', subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
   monthly:'MONTHLY', yearly:'YEARLY', save2mo:'2 MONTHS FREE', perYear:'/ yr',
-  priceFree:'$0',
+  priceFree:'€0',
   heroTitle:'SUBSCRIBE',
   heroDesc:'Standard members can browse the latest 6 months of editorials and download images. For full archive access, logo file downloads, Pull-Letter requests and more, upgrade to Premium.',
   tierFree:'TIER 1', tierStandard:'TIER 2', tierPremium:'TIER 3',
@@ -621,7 +621,7 @@ en: {
 ru:{
   business:'BUSINESS', contact:'CONTACT', about:'ABOUT', subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
   monthly:'MONTHLY', yearly:'YEARLY', save2mo:'2 MONTHS FREE', perYear:'/ yr',
-  priceFree:'$0',
+  priceFree:'€0',
   heroTitle:'SUBSCRIBE',
   heroDesc:'Участники Standard могут просматривать эдиториалы за последние 6 месяцев и скачивать изображения. Для полного доступа к архиву, загрузки файлов логотипов, запросов Pull-Letter и других возможностей перейдите на Premium.',
   tierFree:'TIER 1', tierStandard:'TIER 2', tierPremium:'TIER 3',
@@ -679,7 +679,7 @@ ru:{
 de:{
   business:'BUSINESS', contact:'CONTACT', about:'ABOUT', subscribe:'SUBSCRIBE',submission:'SUBMISSION',pullletter:'PULL-LETTER',
   monthly:'MONTHLY', yearly:'YEARLY', save2mo:'2 MONTHS FREE', perYear:'/ yr',
-  priceFree:'$0',
+  priceFree:'€0',
   heroTitle:'SUBSCRIBE',
   heroDesc:'Standard-Mitglieder können die Editorials der letzten 6 Monate durchsehen und Bilder herunterladen. Für vollen Archivzugang, Logo-Datei-Downloads, Pull-Letter-Anfragen und mehr wechseln Sie zu Premium.',
   tierFree:'TIER 1', tierStandard:'TIER 2', tierPremium:'TIER 3',
@@ -914,7 +914,7 @@ ja: {
   heroDesc:'PAP Magazineのコンテンツは会員登録なしで自由にご覧いただけます。サブミッションフィードバックやフルレターコンサルティングなどのプロフェッショナルな特典が必要な方は、ぜひメンバーになってください。',
   tierFree:'TIER 1', tierStandard:'TIER 2', tierPremium:'TIER 3',
   planFreeName:'FREE', planStdName:'STANDARD', planPremName:'PREMIUM',
-  priceFree:'¥0',
+  priceFree:'€0',
   perMonth:'/ 月',
   planFreeDesc:'会員登録不要 — 自由にご覧ください',
   planStdDesc:'サブミッションフィードバックと画像ダウンロード',
@@ -972,7 +972,7 @@ zh: {
   heroDesc:'PAP Magazine的内容无需注册即可自由浏览。当您需要投稿反馈、Pull-Letter咨询等专业权益时，欢迎成为订阅会员。',
   tierFree:'等级 1', tierStandard:'等级 2', tierPremium:'等级 3',
   planFreeName:'免费', planStdName:'标准', planPremName:'高级',
-  priceFree:'¥0',
+  priceFree:'€0',
   perMonth:'/ 月',
   planFreeDesc:'无需注册 — 自由浏览',
   planStdDesc:'投稿反馈与图片下载权益',
@@ -1030,7 +1030,7 @@ ru:{
   heroDesc:'Просматривайте PAP Magazine свободно. Когда будете готовы к профессиональным преимуществам, станьте участником.',
   tierFree:'УРОВЕНЬ 1', tierStandard:'УРОВЕНЬ 2', tierPremium:'УРОВЕНЬ 3',
   planFreeName:'БЕСПЛАТНО', planStdName:'СТАНДАРТНЫЙ', planPremName:'ПРЕМИУМ',
-  priceFree:'₽0',
+  priceFree:'€0',
   perMonth:'/ мес',
   planFreeDesc:'Без регистрации - смотрите свободно',
   planStdDesc:'Обратная связь по подаче и загрузка изображений',
@@ -1128,17 +1128,17 @@ function renderComparison(comp) {
 
 // ======== BILLING TOGGLE ========
 var currentBilling = 'monthly';
-var PRICES = {
-  ko:  { symbol:'₩',  std_m:8500,  prem_m:13500, std_y:85000,  prem_y:135000 },
-  en:  { symbol:'$',  std_m:5.99,  prem_m:9.49,  std_y:49.99,  prem_y:79.99 },
-  de:  { symbol:'€',  std_m:5.49,  prem_m:8.99,  std_y:45.99,  prem_y:74.99 },
-  it:  { symbol:'€',  std_m:5.49,  prem_m:8.99,  std_y:45.99,  prem_y:74.99 },
-  fr:  { symbol:'€',  std_m:5.49,  prem_m:8.99,  std_y:45.99,  prem_y:74.99 },
-  es:  { symbol:'€',  std_m:5.49,  prem_m:8.99,  std_y:45.99,  prem_y:74.99 },
-  ja:  { symbol:'¥',  std_m:890,   prem_m:1400,  std_y:7400,   prem_y:11800 },
-  zh:  { symbol:'元', std_m:39.9,  prem_m:65.9,  std_y:339,    prem_y:549 },
-  ru:  { symbol:'₽',  std_m:599,   prem_m:949,   std_y:4999,   prem_y:7999 }
-};
+// 2026-08-10 — EUR 단일화 (도메니코 확정).
+//   · KRW 는 PayPal 지원 통화 25종에 없다. 원화 청구가 구조적으로 불가능하다
+//     (CURRENCY_NOT_SUPPORTED_FOR_RECEIVER 422 로 실측 확인).
+//   · 통화를 나누면 정산·인보이스·부가세가 통화 수만큼 갈라진다. 서브미션이 이미
+//     EUR(€380/€790)이므로 구독도 EUR 로 맞춰 한 줄로 만든다.
+//   · 표시가는 "세금 포함 최종가"다. Paddle 은 MoR 이라 세금을 대신 걷었지만
+//     PayPal 은 아니다 — 세금은 회사가 부담한다.
+//   · PayPal 체크아웃이 고객에게 자국 통화 환산액을 보여주므로 표시는 € 하나로 족하다.
+// 언어별로 나눠 두었던 표를 값 하나로 접었다. 언어를 추가해도 가격은 안 갈라진다.
+var EUR_PRICES = { symbol:'€', std_m:5.49, prem_m:8.99, std_y:45.99, prem_y:74.99 };
+var PRICES = new Proxy({}, { get: function(){ return EUR_PRICES; } });
 
 function formatPrice(n) {
   if (Number.isInteger(n)) return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -1157,7 +1157,8 @@ function _applyTrialCta(){
     var card=document.getElementById(r[4]); if(!card) return;
     var cta=card.querySelector('.plan-cta'); if(!cta) return;
     if(currentPlan===r[0]){ cta.textContent = d.ctaCurrent || 'CURRENTLY ON'; return; }
-    if(isMonthly && d[r[3]]){ cta.textContent = d[r[3]]; return; }
+    // 2026-08-10 무료 체험 폐지 — '7일 무료 체험 시작' 문구를 더 쓰지 않는다.
+    // 체험 플랜이 없는데 체험을 약속하면 결제창에서 바로 들통난다.
     if(isLoggedIn && d[r[2]]){ cta.textContent = d[r[2]]; return; }
     if(d[r[1]]) cta.textContent = d[r[1]];
   });

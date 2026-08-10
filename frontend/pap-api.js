@@ -772,93 +772,62 @@ const PAP = (function() {
     },
 
     /**
-     * 해외 결제 — Paddle Billing 오버레이 체크아웃 (EUR/USD 등 다통화 + VAT 처리).
-     * 로그인 필수: custom_data.user_id 로 웹훅이 구독을 계정에 매핑한다.
-     * 결과 반영은 paddle-webhook 이 담당 — 여기선 오버레이만 연다.
+     * 해외 결제 — PayPal 구독 체크아웃 (EUR 단일. 2026-08-10 Paddle 폐쇄 대응).
+     * 로그인 필수: custom_id 로 웹훅이 구독을 계정에 매핑한다. 그 값은 브라우저가
+     * 심는 것이라 위조가 가능하므로, 웹훅이 결제자 이메일과 대조한다.
+     * 등급 반영은 paypal-webhook 단독 — 여기서는 절대 등급을 올리지 않는다.
      */
     async checkoutIntl(plan, billing) {
-      if (typeof Paddle === 'undefined') {
-        throw new Error('Payment SDK not loaded. Please refresh the page.');
-      }
       var user = auth.getUser();
       if (!user || !user.id) {
         throw new Error('Please sign in first to subscribe with international payment.');
       }
-      var cfg = await request('GET', '/subscriptions/paddle-config');
-      // 결제 일시중단(공급사 교체) — 원인 불명 에러 대신 안내로 흘린다.
-      if (cfg && cfg.paused) {
-        var _pe = new Error('PAYMENTS_PAUSED');
-        _pe.code = 'PAYMENTS_PAUSED';
-        throw _pe;
-      }
-      if (!cfg || !cfg.clientToken) {
-        throw new Error('International payment is not available yet.');
-      }
-      if (!window._papPaddleInit) {
-        if (cfg.environment === 'sandbox') {
-          try { Paddle.Environment.set('sandbox'); } catch (_) {}
-        }
-        Paddle.Initialize({
-          token: cfg.clientToken,
-          eventCallback: function (ev) {
-            // 체크아웃 완료 → 안내 + 새로고침으로 구독 상태 반영.
-            if (ev && ev.name === 'checkout.completed') {
-              try {
-                if (window.PAP && PAP.ui && PAP.ui.toast) {
-                  PAP.ui.toast('Payment complete! Updating your membership…', 'success');
-                }
-              } catch (_) {}
-              // 2026-07-11 — Paddle 웹훅이 등급을 올릴 때까지 짧게 폴링한 뒤 이동.
-              // 곧바로 이동하면 결제 직후에도 '무료 회원'으로 보이는 문제가 있었다.
-              // 최대 8회 × 1.5초(약 12초) 대기 후에는 그냥 이동 (페이지 로드 동기화가 후속 보정).
-              var _tries = 0;
-              (function _waitUpgrade() {
-                auth.refreshUser().then(function (u) {
-                  var up = u && (u.subscription === 'standard' || u.subscription === 'premium');
-                  if (up || _tries >= 8) { window.location.href = '/mypage'; return; }
-                  _tries++; setTimeout(_waitUpgrade, 1500);
-                }).catch(function () {
-                  if (_tries >= 8) { window.location.href = '/mypage'; return; }
-                  _tries++; setTimeout(_waitUpgrade, 1500);
-                });
-              })();
-            }
-          },
-        });
-        window._papPaddleInit = true;
-      }
-      var key = plan + '_' + billing;
-      var priceId = cfg.prices && cfg.prices[key];
 
-      // 2026-08-03 시윤 3단계 — 재체험 차단.
-      // 해지했다가 다시 구독하는 사람에게 또 7일 무료체험을 주지 않는다.
-      // 판정은 서버(/subscriptions/trial-eligibility)가 하고, 여기서는 price id 만
-      // '체험 없는' 쪽으로 갈아 끼운다. 판정 실패·price 미설정이면 기존 price 로
-      // 그대로 진행한다(fail-open — 어떤 경우에도 결제 자체를 막지 않는다).
-      var noTrial = false;
+      // 2026-08-07 lia.line 사고 — 결제 버튼 이중 클릭으로 구독이 2건 생성돼
+      // €8.99 가 두 번 청구됐다. 우리 DB 에는 1건만 남아 아무도 몰랐다.
+      // 진행 중이면 두 번째 호출은 무시한다(서버 UNIQUE 인덱스와 이중 방어).
+      if (window._papCheckoutBusy) return { opened: false, busy: true };
+      window._papCheckoutBusy = true;
+
       try {
-        var elig = await request('GET', '/subscriptions/trial-eligibility');
-        if (elig && elig.eligible === false) {
-          var altPrice = cfg.pricesNoTrial && cfg.pricesNoTrial[key];
-          if (altPrice) { priceId = altPrice; noTrial = true; }
+        var cfg = await request('GET', '/subscriptions/paypal-config');
+        // 결제 일시중단(공급사 교체) — 원인 불명 에러 대신 안내로 흘린다.
+        if (cfg && cfg.paused) {
+          var _pe = new Error('PAYMENTS_PAUSED');
+          _pe.code = 'PAYMENTS_PAUSED';
+          throw _pe;
         }
-      } catch (_) { /* 판정 실패 → 기존 price 유지 */ }
+        if (!cfg || !cfg.clientId) {
+          throw new Error('International payment is not available yet.');
+        }
 
-      if (!priceId) {
-        throw new Error('This plan is not available for international checkout yet.');
+        var key = plan + '_' + billing;
+        var planId = cfg.plans && cfg.plans[key];
+        if (!planId) {
+          throw new Error('This plan is not available for international checkout yet.');
+        }
+
+        await _loadPayPalSdk(cfg);
+        _openPayPalOverlay(planId, key, user);
+        return { opened: true };
+      } catch (e) {
+        window._papCheckoutBusy = false;
+        throw e;
       }
-      Paddle.Checkout.open({
-        items: [{ priceId: priceId, quantity: 1 }],
-        customer: user.email ? { email: user.email } : undefined,
-        customData: { user_id: user.id, plan_key: key, no_trial: noTrial },
-        settings: { displayMode: 'overlay', theme: 'dark', locale: (localStorage.getItem('pap-lang') || 'en') },
-      });
-      return { opened: true };
     },
 
-    /** 해외(Paddle) 구독 해지 — 현재 결제 기간 말에 종료. */
+    /** 해외 구독 해지 — 이미 결제한 기간까지는 접근권을 유지한다.
+     *  PayPal 을 먼저 시도하고, PayPal 구독이 아니면(409 not_paypal) Paddle 로 폴백한다.
+     *  8/14 폐쇄 전까지 기존 Paddle 구독자도 해지할 수 있어야 하기 때문이다. */
     async cancelIntlSubscription() {
-      return await request('POST', '/subscriptions/paddle-portal', { action: 'cancel' });
+      try {
+        return await request('POST', '/subscriptions/paypal-portal', { action: 'cancel' });
+      } catch (e) {
+        var notPaypal = e && (e.code === 'not_paypal' || e.status === 409
+          || /not_paypal/.test(String(e.message || '')));
+        if (!notPaypal) throw e;
+        return await request('POST', '/subscriptions/paddle-portal', { action: 'cancel' });
+      }
     },
 
     async cancelSubscription() {
@@ -873,6 +842,125 @@ const PAP = (function() {
       return this.cancelSubscription();
     }
   };
+
+
+  // ======== PayPal 구독 체크아웃 (2026-08-10) ========
+  // Paddle(MoR) 폐쇄로 PayPal 로 전환. Paddle 은 Paddle.Checkout.open() 한 줄로
+  // 오버레이가 떴지만, PayPal 은 버튼을 DOM 에 렌더링하는 방식이다. 그래서
+  // 오버레이를 직접 만들어 그 안에 버튼을 그린다.
+  //
+  // 결제 확정은 웹훅(api/paypal-webhook.js)이 한다. 여기서 등급을 올리지 않는다 —
+  // 브라우저가 말하는 "결제됐다"를 신뢰하면 위조가 가능하다.
+
+  var _PP_I18N = {
+    ko:{title:'구독 결제', wait:'결제를 확인하는 중입니다… 창을 닫지 말아 주세요.', close:'닫기', fail:'결제창을 여는 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.'},
+    en:{title:'Complete your subscription', wait:'Confirming your payment… please keep this window open.', close:'Close', fail:'Something went wrong opening the checkout. Please try again shortly.'},
+    de:{title:'Abonnement abschließen', wait:'Zahlung wird bestätigt… bitte dieses Fenster geöffnet lassen.', close:'Schließen', fail:'Beim Öffnen des Checkouts ist ein Fehler aufgetreten. Bitte erneut versuchen.'},
+    it:{title:'Completa l\'abbonamento', wait:'Conferma del pagamento… tieni aperta questa finestra.', close:'Chiudi', fail:'Si è verificato un errore nell\'apertura del checkout. Riprova a breve.'},
+    fr:{title:'Finaliser votre abonnement', wait:'Confirmation du paiement… veuillez garder cette fenêtre ouverte.', close:'Fermer', fail:'Une erreur est survenue à l\'ouverture du paiement. Veuillez réessayer.'},
+    es:{title:'Completar la suscripción', wait:'Confirmando el pago… mantenga esta ventana abierta.', close:'Cerrar', fail:'Ocurrió un error al abrir el pago. Inténtelo de nuevo pronto.'},
+    ja:{title:'購読のお支払い', wait:'お支払いを確認しています… この画面を閉じないでください。', close:'閉じる', fail:'決済画面を開く際に問題が発生しました。しばらくしてから再度お試しください。'},
+    zh:{title:'完成订阅', wait:'正在确认付款… 请勿关闭此窗口。', close:'关闭', fail:'打开支付时出错。请稍后重试。'},
+    ru:{title:'Оформление подписки', wait:'Подтверждаем платёж… не закрывайте это окно.', close:'Закрыть', fail:'Произошла ошибка при открытии оплаты. Повторите попытку позже.'}
+  };
+  function _ppT(k){
+    var l; try{ l = localStorage.getItem('pap-lang') || 'en'; }catch(_){ l='en'; }
+    var d = _PP_I18N[l] || _PP_I18N.en;
+    return d[k] || _PP_I18N.en[k] || k;
+  }
+
+  /** PayPal JS SDK 를 한 번만 싣는다. client-id 가 바뀌면 다시 싣는다. */
+  function _loadPayPalSdk(cfg) {
+    if (window.paypal && window._papPayPalSdkKey === cfg.clientId) return Promise.resolve();
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      // vault=true & intent=subscription 은 구독(정기결제) 필수 조합이다.
+      // locale 은 넘기지 않는다 — 잘못된 값이 오면 SDK 자체가 안 뜬다. PayPal 이 알아서 감지한다.
+      s.src = 'https://www.paypal.com/sdk/js'
+        + '?client-id=' + encodeURIComponent(cfg.clientId)
+        + '&vault=true&intent=subscription'
+        + '&currency=' + encodeURIComponent(cfg.currency || 'EUR');
+      s.onload = function () { window._papPayPalSdkKey = cfg.clientId; resolve(); };
+      s.onerror = function () { reject(new Error('Payment SDK failed to load. Please refresh the page.')); };
+      document.head.appendChild(s);
+    });
+  }
+
+  /** 결제 후 등급 반영을 짧게 기다렸다가 마이페이지로 보낸다.
+   *  곧바로 이동하면 웹훅이 아직 안 와서 '무료 회원'으로 보인다(2026-07-11 사고). */
+  function _waitUpgradeThenGo() {
+    var tries = 0;
+    (function loop() {
+      auth.refreshUser().then(function (u) {
+        var up = u && (u.subscription === 'standard' || u.subscription === 'premium');
+        if (up || tries >= 8) { window.location.href = '/mypage'; return; }
+        tries++; setTimeout(loop, 1500);
+      }).catch(function () {
+        if (tries >= 8) { window.location.href = '/mypage'; return; }
+        tries++; setTimeout(loop, 1500);
+      });
+    })();
+  }
+
+  function _openPayPalOverlay(planId, planKey, user) {
+    var prev = document.getElementById('pap-paypal-overlay');
+    if (prev) prev.remove();
+
+    var ov = document.createElement('div');
+    ov.id = 'pap-paypal-overlay';
+    ov.setAttribute('role', 'dialog');
+    ov.setAttribute('aria-modal', 'true');
+    ov.style.cssText = 'position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto';
+    ov.innerHTML =
+      '<div style="background:#fff;color:#111;max-width:420px;width:100%;border-radius:4px;padding:26px 24px 20px;position:relative">'
+      + '<button id="pap-pp-close" aria-label="close" style="position:absolute;top:10px;right:12px;background:none;border:none;font-size:22px;line-height:1;cursor:pointer;color:#666">&times;</button>'
+      + '<div style="font-size:14px;font-weight:700;letter-spacing:.04em;margin:0 0 18px">' + _ppT('title') + '</div>'
+      + '<div id="pap-pp-buttons"></div>'
+      + '<div id="pap-pp-wait" style="display:none;font-size:13px;line-height:1.7;color:#333;padding:8px 0">' + _ppT('wait') + '</div>'
+      + '</div>';
+    document.body.appendChild(ov);
+
+    function close() {
+      window._papCheckoutBusy = false;
+      var el = document.getElementById('pap-paypal-overlay');
+      if (el) el.remove();
+    }
+    ov.querySelector('#pap-pp-close').addEventListener('click', close);
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+
+    try {
+      window.paypal.Buttons({
+        style: { layout: 'vertical', shape: 'rect', label: 'subscribe' },
+        createSubscription: function (data, actions) {
+          return actions.subscription.create({
+            plan_id: planId,
+            // custom_id 로 회원을 잇는다. 위조 가능성이 있으므로 웹훅이 결제자
+            // 이메일과 대조한다(api/paypal-webhook.js resolveUserId).
+            custom_id: user.id,
+            subscriber: user.email ? { email_address: user.email } : undefined,
+          });
+        },
+        onApprove: function () {
+          // 확정은 웹훅 몫. 여기서는 안내만 하고 등급 반영을 기다린다.
+          var b = document.getElementById('pap-pp-buttons');
+          var w = document.getElementById('pap-pp-wait');
+          if (b) b.style.display = 'none';
+          if (w) w.style.display = 'block';
+          _waitUpgradeThenGo();
+        },
+        onCancel: function () { close(); },
+        onError: function (err) {
+          try { console.error('[paypal] checkout error:', err); } catch (_) {}
+          try { if (window.PAP && PAP.ui && PAP.ui.toast) PAP.ui.toast(_ppT('fail'), 'error'); } catch (_) {}
+          close();
+        },
+      }).render('#pap-pp-buttons');
+    } catch (e) {
+      try { if (window.PAP && PAP.ui && PAP.ui.toast) PAP.ui.toast(_ppT('fail'), 'error'); } catch (_) {}
+      close();
+      throw e;
+    }
+  }
 
   // ======== UI HELPERS ========
   const ui = {
