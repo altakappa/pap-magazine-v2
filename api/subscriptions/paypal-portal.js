@@ -65,7 +65,7 @@ module.exports = async function handler(req, res) {
     if (error) throw new Error(error.message);
     if (!row || !row.paypal_subscription_id) {
       // Paddle 시절 구독이거나 구독 자체가 없음 → 프론트가 paddle-portal 로 폴백.
-      return res.status(409).json({ code: 'not_paypal', message: 'No PayPal subscription for this account.' });
+      return res.status(409).json({ code: 'not_paypal', message: 'not_paypal — no PayPal subscription for this account.' });
     }
     if (String(row.status) === 'canceled') {
       return res.status(200).json({ ok: true, alreadyCanceled: true, accessUntil: row.current_period_end });

@@ -659,6 +659,86 @@ function renderSubscriptionCard(user){
       '</div>' +
       '<div class="mp-sub-perks">' + perks + '</div>' +
     '</div>';
+
+  // 유료 등급이면 실제 구독이 있는지 물어보고, 있으면 해지 버튼을 붙인다.
+  if (plan === 'standard' || plan === 'premium') { try{ mpMaybeShowCancel(); }catch(_){ } }
+}
+
+// ───── 구독 해지 (2026-08-10) ─────────────────────────────────────
+// 약관(refund.html 제2조)은 "구독은 언제든지 마이페이지에서 해지할 수 있다"고
+// 약속하는데, 실제로는 해지 UI 가 프론트 어디에도 없었다. Paddle 시절에는
+// Paddle 이 고객 포털을 대신 제공해 그럭저럭 굴러갔지만(구독자들이 거기서
+// 해지 예약을 걸었다), PayPal 은 그런 걸 대신 해주지 않는다. 그대로 두면
+// 약관이 약속한 기능이 없는 상태가 된다.
+//
+// 백엔드는 이미 있다: paypal-portal(신규) → 실패 시 paddle-portal 폴백.
+// 여기서는 "실제 구독 레코드가 있을 때만" 버튼을 띄운다 — 수동 승급된 내부
+// 계정에는 해지할 대상이 없으므로 버튼이 뜨면 안 된다.
+var _MP_CANCEL_I18N = {
+  ko:{btn:'구독 해지', confirm:'구독을 해지할까요?\n\n이미 결제하신 기간이 끝날 때까지는 그대로 이용하실 수 있습니다.', done:'해지되었습니다.', until:'{d} 까지 이용하실 수 있습니다.', fail:'해지 처리에 실패했습니다. 잠시 후 다시 시도하시거나 contact@pap-magazine.com 으로 연락 주세요.'},
+  en:{btn:'Cancel subscription', confirm:'Cancel your subscription?\n\nYou keep full access until the end of the period you have already paid for.', done:'Your subscription has been cancelled.', until:'You have access until {d}.', fail:'Cancellation failed. Please try again shortly or email contact@pap-magazine.com.'},
+  de:{btn:'Abo kündigen', confirm:'Abonnement kündigen?\n\nSie behalten den vollen Zugang bis zum Ende des bereits bezahlten Zeitraums.', done:'Ihr Abonnement wurde gekündigt.', until:'Zugang bis {d}.', fail:'Kündigung fehlgeschlagen. Bitte später erneut versuchen oder contact@pap-magazine.com schreiben.'},
+  it:{btn:'Annulla abbonamento', confirm:"Vuoi annullare l'abbonamento?\n\nManterrai l'accesso completo fino alla fine del periodo già pagato.", done:'Abbonamento annullato.', until:'Accesso fino al {d}.', fail:'Annullamento non riuscito. Riprova a breve o scrivi a contact@pap-magazine.com.'},
+  fr:{btn:"Résilier l'abonnement", confirm:"Résilier votre abonnement ?\n\nVous conservez l'accès complet jusqu'à la fin de la période déjà payée.", done:'Votre abonnement a été résilié.', until:"Accès jusqu'au {d}.", fail:'Échec de la résiliation. Réessayez ou écrivez à contact@pap-magazine.com.'},
+  es:{btn:'Cancelar suscripción', confirm:'¿Cancelar la suscripción?\n\nMantendrá el acceso completo hasta el final del periodo ya pagado.', done:'Su suscripción ha sido cancelada.', until:'Acceso hasta el {d}.', fail:'La cancelación falló. Inténtelo de nuevo o escriba a contact@pap-magazine.com.'},
+  ja:{btn:'購読を解約', confirm:'購読を解約しますか？\n\nお支払い済みの期間が終わるまではそのままご利用いただけます。', done:'解約が完了しました。', until:'{d} までご利用いただけます。', fail:'解約に失敗しました。しばらくして再度お試しいただくか contact@pap-magazine.com までご連絡ください。'},
+  zh:{btn:'取消订阅', confirm:'要取消订阅吗？\n\n您已支付的周期结束前仍可正常使用。', done:'订阅已取消。', until:'您可使用至 {d}。', fail:'取消失败。请稍后重试或联系 contact@pap-magazine.com。'},
+  ru:{btn:'Отменить подписку', confirm:'Отменить подписку?\n\nДоступ сохранится до конца уже оплаченного периода.', done:'Подписка отменена.', until:'Доступ до {d}.', fail:'Не удалось отменить. Повторите позже или напишите на contact@pap-magazine.com.'}
+};
+function _mpCancT(k){
+  var l; try{ l=localStorage.getItem('pap-lang')||'en'; }catch(_){ l='en'; }
+  var d=_MP_CANCEL_I18N[l]||_MP_CANCEL_I18N.en;
+  return d[k]||_MP_CANCEL_I18N.en[k]||k;
+}
+var _mpSubEndsAt = null;
+
+// 구독 레코드가 실제로 살아 있을 때만 해지 버튼을 붙인다.
+async function mpMaybeShowCancel(){
+  try{
+    var token = localStorage.getItem('pap-token');
+    var r = await fetch('/api/subscriptions/portal', {
+      headers: token ? {'Authorization':'Bearer '+token,'X-Requested-With':'XMLHttpRequest'}
+                     : {'X-Requested-With':'XMLHttpRequest'},
+      credentials: 'same-origin'
+    });
+    if(!r.ok) return;                       // 404 = 해지할 구독이 없음(수동 승급 계정 등)
+    var s = await r.json();
+    if(!s) return;
+    var st = String(s.status||'').toLowerCase();
+    if(['active','past_due','trialing'].indexOf(st) < 0) return;   // 이미 해지됨
+    _mpSubEndsAt = s.current_period_end || null;
+
+    var box = document.querySelector('#mpSubCard .mp-sub-actions');
+    if(!box || document.getElementById('mpCancelSubBtn')) return;
+    var b = document.createElement('button');
+    b.id = 'mpCancelSubBtn';
+    b.type = 'button';
+    b.className = 'mp-sub-action';
+    b.style.cssText = 'background:transparent;border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.55);cursor:pointer';
+    b.textContent = _mpCancT('btn');
+    b.addEventListener('click', mpCancelSubscription);
+    box.appendChild(b);
+  }catch(_){ /* 조회 실패는 조용히 — 마이페이지 나머지를 막지 않는다 */ }
+}
+
+async function mpCancelSubscription(){
+  if(!confirm(_mpCancT('confirm'))) return;
+  var btn = document.getElementById('mpCancelSubBtn');
+  if(btn){ btn.disabled = true; btn.style.opacity = '.5'; }   // 이중 클릭 방지
+  try{
+    await PAP.subscriptions.cancelIntlSubscription();
+    var msg = _mpCancT('done');
+    if(_mpSubEndsAt){
+      var d = new Date(_mpSubEndsAt);
+      if(!isNaN(d)) msg += '\n' + _mpCancT('until').replace('{d}', d.toISOString().slice(0,10));
+    }
+    alert(msg);
+    window.location.reload();
+  }catch(e){
+    try{ console.error('cancel failed:', e); }catch(_){ }
+    alert(_mpCancT('fail'));
+    if(btn){ btn.disabled = false; btn.style.opacity = ''; }
+  }
 }
 
 // ───── Activity stats (parallel fetch) ─────
