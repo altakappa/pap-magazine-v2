@@ -24,7 +24,18 @@ const { requireAdmin } = require('../_lib/auth');
 const { withCronGuard } = require('../_lib/cronGuard');
 const { sendTextToTelegramSafe } = require('../_lib/telegram');
 
-const EXTERNAL_RE = /drive\.google\.com|pap-korea-bucket\.s3/;
+/* 이관 대상 호스트 (2026-08-09 wixstatic 추가)
+ *
+ * 실측 — published 에디토리얼 2,295건의 커버 호스트:
+ *     google drive 1,077 · supabase(자사) 958 · 구 S3 180 · wixstatic 71
+ * wixstatic 71건은 여태 **어느 크론의 대상도 아니었다.** 주간 점검이 잡아내는
+ * 403 이 바로 이들이고(위 사이트의 핫링크 차단), 해법은 재등록이 아니라 이관이다.
+ *
+ * ⚠️ 이 정규식이 곧 '완주' 의 정의다. 이 크론을 스케줄에서 뺄 때는 반드시
+ * **이 정규식에 걸리는 잔량**으로 재야 한다. 2026-07-28 커밋 64bc86d 는
+ * '인스타 CDN 잔존 0건'을 근거로 껐는데, 인스타 CDN 은 여기 없다.
+ * 그래서 드라이브 1,077건이 12일간 그대로였다(끄기 전과 정확히 같은 수). */
+const EXTERNAL_RE = /drive\.google\.com|pap-korea-bucket\.s3|static\.wixstatic\.com/;
 const MAX_BYTES = 15 * 1024 * 1024;
 const FETCH_TIMEOUT_MS = 15000;
 const TIME_BUDGET_MS = 90000;

@@ -20,28 +20,58 @@ const { sendTextToTelegramSafe } = require('../_lib/telegram');
 const CONCURRENCY = 20;
 const FETCH_TIMEOUT_MS = 8000;
 const TIME_BUDGET_MS = 90000;
+/* 신원을 밝힌다. 익명 요청은 Wix 등에서 핫링크 차단(403)에 걸린다 —
+   브라우저인 척하지는 않는다. 우리 이미지를 우리가 점검하는 것뿐이다. */
+const UA = 'PAPMagazineImageCheck/1.0 (+https://www.pap-magazine.com)';
 
+/* 이 검사기가 스스로 만들어내던 거짓 timeout (2026-08-09 실측)
+ *
+ * 「깨진 대표 이미지 19건」 경보의 6건이 **우리 Supabase 파일**이었다.
+ * storage.objects 로 확인하니 6건 전부 존재하고 크기는 0.1~1.1MB — 느릴 이유가 없다.
+ *
+ * 원인: 아래 두 return 경로(HTTP 오류 · html 판정)가 **응답 본문을 소비하지도
+ * 취소하지도 않고 빠져나갔다.** undici 는 본문이 소비되기 전까지 연결을 풀에
+ * 반납하지 않는다. 동시 20 으로 4,600개를 훑는데 Wix 403 · 드라이브 500 이
+ * 쌓일수록 연결이 고갈되고, 뒤에 줄 선 요청이 대기하다 8초를 넘긴다.
+ * 그래서 **가장 빠른 자사 파일이 timeout 으로 찍혔다.**
+ *
+ * 고침: finally 에서 무조건 본문을 취소한다. 성공·실패 경로 구분 없이. */
 async function probe(url) {
   const ctrl = new AbortController();
   const to = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+  let r = null;
   try {
     // HEAD 는 드라이브 등에서 미지원/불일치가 있어 GET + Range 로 헤더만 받는다.
-    const r = await fetch(url, {
+    r = await fetch(url, {
       signal: ctrl.signal, redirect: 'follow',
-      headers: { Range: 'bytes=0-0' },
+      headers: { Range: 'bytes=0-0', 'User-Agent': UA },
     });
     if (!(r.ok || r.status === 206)) return 'HTTP ' + r.status;
     const ct = r.headers.get('content-type') || '';
     // 드라이브는 죽은 파일에 200 + text/html 오류 페이지를 주기도 한다.
     if (/text\/html/i.test(ct)) return 'html-instead-of-image';
-    try { ctrl.abort(); } catch (_) {}
     return null; // 정상
   } catch (e) {
     if (e && e.name === 'AbortError') return 'timeout';
     return (e && e.message ? e.message : 'fetch error').slice(0, 80);
   } finally {
+    /* ★ 핵심 — 본문을 반드시 버린다. 이걸 빠뜨린 것이 위 사고의 원인이다. */
+    if (r && r.body) { try { await r.body.cancel(); } catch (_) {} }
     clearTimeout(to);
   }
+}
+
+/* timeout 은 '깨졌다'의 증거가 아니다 — 이쪽 사정일 수도 있다.
+   확정 실패(404 · html)만 실패로 세고, 나머지는 '보류'로 따로 보고한다.
+   실측: timeout 24건이 전부 자사 파일이었다. */
+function isDefiniteFailure(reason) {
+  return reason === 'html-instead-of-image'
+    || reason === 'HTTP 404'
+    || reason === 'HTTP 410';
+}
+
+function hostOf(url) {
+  try { return new URL(url).host; } catch (_) { return '(알 수 없음)'; }
 }
 
 module.exports = withCronGuard('image-link-check', async function handler(req, res) {
@@ -89,20 +119,44 @@ module.exports = withCronGuard('image-link-check', async function handler(req, r
   }
   await Promise.all(Array.from({ length: CONCURRENCY }, worker));
 
-  if (broken.length > 0) {
-    // 이관 크론이 죽은 링크를 건너뛰도록 실패 테이블에도 기록
+  /* ★ 확정 실패만 기록한다 (2026-08-09).
+   * 이 표에 오른 URL 은 이관 크론이 **영구히 건너뛴다.** 그런데 여태 timeout 까지
+   * 싸잡아 넣어서, 멀쩡한 자사 파일 24건이 '실패'로 등재돼 있었다(실측).
+   * 판정이 모호한 것을 영구 명단에 올리면 되돌릴 사람이 없다. */
+  const definite = broken.filter(b => isDefiniteFailure(b.reason));
+  if (definite.length > 0) {
     await supabaseAdmin.from('image_migration_failures')
-      .upsert(broken.map(b => ({ url: b.url, reason: 'link-check: ' + b.reason })), { onConflict: 'url' })
+      .upsert(definite.map(b => ({ url: b.url, reason: 'link-check: ' + b.reason })), { onConflict: 'url' })
       .then(() => {}, e => console.error('[image-link-check] failure log', e && e.message));
   }
 
+  /* 알림 문안 (2026-08-09 개편)
+   * 옛 문안은 전부 '깨짐'으로 묶고 "관리자에서 재등록 필요"라고 지시했다.
+   * 둘 다 틀렸다 — timeout 은 깨진 게 아니었고, 403 의 해법은 재등록이 아니라
+   * 이관이다. 원인별로 나누고 각각 맞는 행동을 적는다. */
+  const suspect = broken.filter(b => !isDefiniteFailure(b.reason));
+  const byHost = new Map();
+  for (const b of broken) {
+    const h = hostOf(b.url);
+    if (!byHost.has(h)) byHost.set(h, { n: 0, reasons: new Set() });
+    byHost.get(h).n++; byHost.get(h).reasons.add(b.reason);
+  }
+  const hostLines = Array.from(byHost.entries())
+    .sort((a, b) => b[1].n - a[1].n)
+    .map(([h, v]) => '· ' + h + ' — ' + v.n + '건 (' + Array.from(v.reasons).join(', ') + ')');
+
   const summary = broken.length === 0
     ? '🖼 주간 이미지 점검 — 대표 이미지 ' + checked + '건 전부 정상' + (timedOut ? ' (예산 내 부분 점검)' : '')
-    : '🚨 주간 이미지 점검 — 깨진 대표 이미지 ' + broken.length + '건 / ' + checked + '건 점검' +
-      (timedOut ? ' (부분)' : '') + '\n' +
-      broken.slice(0, 12).map(b => '· ' + b.where.join(', ') + ' — ' + b.reason).join('\n') +
-      (broken.length > 12 ? '\n…외 ' + (broken.length - 12) + '건' : '') +
-      '\n관리자에서 해당 에디토리얼 이미지 재등록 필요';
+    : (definite.length > 0 ? '🚨' : '⚠️') + ' 주간 이미지 점검 — 확정 ' + definite.length +
+      '건 · 판정보류 ' + suspect.length + '건 / ' + checked + '건 점검' + (timedOut ? ' (부분)' : '') + '\n' +
+      hostLines.join('\n') + '\n' +
+      (definite.length > 0
+        ? '\n확정 ' + definite.length + '건 (파일이 실제로 없음 — 관리자에서 재등록):\n' +
+          definite.slice(0, 8).map(b => '· ' + b.where.join(', ') + ' — ' + b.reason).join('\n') +
+          (definite.length > 8 ? '\n…외 ' + (definite.length - 8) + '건' : '') + '\n'
+        : '') +
+      '\n※ timeout·403 은 깨짐 확정이 아니다. 403 은 외부 호스트의 핫링크 차단이고,' +
+      ' 해법은 재등록이 아니라 Supabase 이관(migrate-external-images)이다.';
   sendTextToTelegramSafe(summary).catch(() => {});
 
   console.log('[image-link-check]', { checked, broken: broken.length, timedOut, ms: Date.now() - started });
