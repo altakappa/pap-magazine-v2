@@ -708,16 +708,29 @@ async function mpMaybeShowCancel(){
     if(['active','past_due','trialing'].indexOf(st) < 0) return;   // 이미 해지됨
     _mpSubEndsAt = s.current_period_end || null;
 
-    var box = document.querySelector('#mpSubCard .mp-sub-actions');
-    if(!box || document.getElementById('mpCancelSubBtn')) return;
+    // 2026-08-10 도메니코 지시 — 눈에 덜 띄게. 다만 넘지 않는 선이 있다:
+    //   ① 마이페이지에서 1클릭 ② 문구는 '구독 해지'로 명확 ③ 항상 표시.
+    // 독일 § 312k BGB 는 해지 버튼이 '쉽게 접근 가능'할 것을 요구하고(구독자 중
+    // DE 있음), 우리 약관(refund.html 제2조)도 "언제든지 마이페이지에서 해지"를
+    // 약속한다. 여러 단계로 파묻거나 문구를 흐리면 위법이고, 무엇보다 해지를
+    // 못 찾은 사람은 PayPal 분쟁을 건다 — Paddle 을 막 잃은 지금 그건 계정을
+    // 하나 더 잃는 길이다.
+    // 그래서 '제거'가 아니라 '위계 낮추기'로 간다: 상단 액션 줄에서 빼고
+    // 카드 맨 아래 작은 회색 텍스트로 내린다. 접근성은 그대로(1클릭).
+    var card = document.querySelector('#mpSubCard .mp-sub-card-v2');
+    if(!card || document.getElementById('mpCancelSubBtn')) return;
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'margin-top:14px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);text-align:right';
     var b = document.createElement('button');
     b.id = 'mpCancelSubBtn';
     b.type = 'button';
-    b.className = 'mp-sub-action';
-    b.style.cssText = 'background:transparent;border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.55);cursor:pointer';
+    b.style.cssText = 'background:none;border:none;padding:0;font-size:10px;letter-spacing:.04em;color:rgba(255,255,255,.32);cursor:pointer';
     b.textContent = _mpCancT('btn');
+    b.addEventListener('mouseenter', function(){ b.style.color = 'rgba(255,255,255,.6)'; });
+    b.addEventListener('mouseleave', function(){ b.style.color = 'rgba(255,255,255,.32)'; });
     b.addEventListener('click', mpCancelSubscription);
-    box.appendChild(b);
+    wrap.appendChild(b);
+    card.appendChild(wrap);
   }catch(_){ /* 조회 실패는 조용히 — 마이페이지 나머지를 막지 않는다 */ }
 }
 
