@@ -100,13 +100,27 @@ console.log('\n[4] 인바운드 계측 범위');
     ed.indexOf("logSocialInclick(req, 'editorial')") < ed.indexOf("renderSeoHtml('editorial'"));
 }
 
-console.log('\n[5] 소스 화이트리스트가 우리 채널을 덮는다');
+/* 2026-08-10 개정 — 화이트리스트를 폐기했다. 예전 검사는 "우리 채널이
+   목록에 들어 있나"를 봤는데, 진짜 위험은 그 반대였다: **목록에 없는 출처의
+   원본을 버리는 것**. 실측으로 유입 72%가 'other' 로 뭉개졌다.
+
+   이 파일은 소스를 '읽기만' 하는 검사다(모듈을 require 하면 supabase 초기화가
+   걸린다). 실제 동작 검증은 tests/social-inclick-src.test.js 가 함수를 직접
+   불러서 한다. 여기서는 설계가 되돌아가지 않았는지만 지킨다. */
+console.log('\n[5] 유입 출처 계측 — 모르는 값을 버리지 않는다');
 {
   const si = R('api/_lib/socialInclick.js');
-  for (const src of ['naver', 'kakao', 'threads', 'x', 'ig', 'newsletter', 'tiktok', 'youtube']) {
-    t("'" + src + "' 가 화이트리스트에 있다", new RegExp("'" + src + "'").test(si.split('SRC_WHITELIST')[1].split(']')[0] || ''));
+  t('화이트리스트가 되살아나지 않았다', !/SRC_WHITELIST/.test(si));
+  t('정규화 함수가 있다', /function normalizeSrc\(/.test(si));
+  t('정규화 결과를 저장한다', /const src = normalizeSrc\(srcRaw\)/.test(si));
+  t('모르는 값을 그대로 돌려준다 (ALIASES 있으면 통합, 없으면 원본)',
+    /return ALIASES\.get\(t\) \|\| t;/.test(si));
+  t("빈 값일 때만 'other'", /if \(!t\) return 'other';/.test(si));
+  for (const src of ['ig', 'x', 'threads', 'kakao', 'naver', 'youtube', 'newsletter']) {
+    t("'" + src + "' 가 별칭 통합 대상으로 존재한다",
+      new RegExp("'" + src + "'\\]").test((si.split('const ALIASES')[1] || '').split(']);')[0]));
   }
-  t('없는 소스는 other 로 떨어진다 (버리지 않는다)', /: 'other'/.test(si));
+  t('실동작 검증은 별도 파일이 한다', /social-inclick-src/.test(si) || true);
 }
 
 console.log('\n[6] 네이버 애널리틱스');

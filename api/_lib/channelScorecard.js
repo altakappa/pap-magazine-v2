@@ -20,9 +20,15 @@
 
 const { supabaseAdmin } = require('./supabase');
 
-/* 유입 채널 (socialInclick.js SRC_WHITELIST 와 동일 + other).
-   순서 = 성적표 표시 순서: 진성 한국인 전선 먼저. */
-const CHANNELS = ['naver', 'kakao', 'ig', 'threads', 'x', 'tiktok', 'youtube', 'newsletter', 'other'];
+/* 고정 채널 = 우리가 의도적으로 운영하는 곳. 순서 = 성적표 표시 순서:
+   진성 한국인 전선 먼저. 0건이어도 줄을 남긴다 — "안 하고 있다"도 정보다. */
+const CHANNELS = ['naver', 'kakao', 'ig', 'threads', 'x', 'tiktok', 'youtube', 'newsletter'];
+
+/* 고정 목록 밖의 출처를 몇 개까지 이름으로 보여줄지 (2026-08-10).
+   예전엔 목록에 없으면 전부 'other' 로 뭉갰다. socialInclick.js 가 원본을
+   보존하게 됐는데 여기서 다시 뭉개면 고친 의미가 없다. 다만 무한정 늘리면
+   표가 못 읽게 되므로 상위 N개만 이름으로 내고 나머지는 'other' 로 접는다. */
+const MAX_DISCOVERED = 5;
 
 async function _count(table, tsCol, gteIso, ltIso, extra) {
   let q = supabaseAdmin.from(table).select('*', { count: 'exact', head: true })
@@ -55,10 +61,12 @@ async function buildChannelScorecard(now) {
     .from('social_inclicks').select('src, clicked_at')
     .gte('clicked_at', d14).limit(20000);
   if (inErr) throw inErr;
+  // 실제로 들어온 값 그대로 집계한다 (고정 목록으로 미리 자르지 않는다).
   const agg = {};
   CHANNELS.forEach((c) => { agg[c] = { cur: 0, prev: 0 }; });
   (inRows || []).forEach((r) => {
-    const ch = agg[r.src] ? r.src : 'other';
+    const ch = String(r.src || 'other');
+    if (!agg[ch]) agg[ch] = { cur: 0, prev: 0 };
     if (r.clicked_at >= d7) agg[ch].cur++; else agg[ch].prev++;
   });
 
@@ -71,8 +79,25 @@ async function buildChannelScorecard(now) {
       (q) => q.in('subscription_plan', ['standard', 'premium'])),
   ]);
 
+  /* 표시 순서: 고정 채널 → 새로 발견된 출처(최근 7일 많은 순, 최대 5개) → other.
+     'other' 는 이제 "분류 실패"가 아니라 "꼬리를 접은 것"이다. */
+  const discovered = Object.keys(agg)
+    .filter((k) => !CHANNELS.includes(k) && k !== 'other')
+    .sort((a, b) => (agg[b].cur - agg[a].cur) || (agg[b].prev - agg[a].prev) || a.localeCompare(b));
+  const shown = discovered.slice(0, MAX_DISCOVERED);
+  const folded = discovered.slice(MAX_DISCOVERED);
+
+  const other = { cur: (agg.other || { cur: 0 }).cur, prev: (agg.other || { prev: 0 }).prev };
+  folded.forEach((k) => { other.cur += agg[k].cur; other.prev += agg[k].prev; });
+
+  const order = CHANNELS.concat(shown);
+  const inflow = order.map((ch) => ({ ch, cur: agg[ch].cur, prev: agg[ch].prev }));
+  if (other.cur || other.prev) inflow.push({ ch: 'other', cur: other.cur, prev: other.prev });
+
   return {
-    inflow: CHANNELS.map((ch) => ({ ch, cur: agg[ch].cur, prev: agg[ch].prev })),
+    inflow,
+    discoveredCount: discovered.length,
+    foldedIntoOther: folded,
     igOut: { cur: igOutCur, prev: igOutPrev },
     newMembers: { cur: memCur, prev: memPrev },
     paidTotal,

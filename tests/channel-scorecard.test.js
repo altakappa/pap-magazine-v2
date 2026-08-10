@@ -39,13 +39,18 @@ const libSrc = R('api/_lib/channelScorecard.js');
 const wb = R('api/cron/weekly-briefing.js');
 const si = R('api/_lib/socialInclick.js');
 
-console.log('\n[1] 채널 목록 — 계측 화이트리스트와 한 몸');
+/* 2026-08-10 개정 — socialInclick.js 의 SRC_WHITELIST 를 폐기했다(모르는
+   출처의 원본을 버리던 설계). 이 절도 "목록끼리 맞는가"에서 "계측이 모으는
+   정식 이름이 성적표에 다 있는가"로 바꾼다. 검사의 뜻은 그대로다 —
+   계측과 성적표가 따로 놀면 안 된다. */
+console.log('\n[1] 채널 목록 — 계측이 모으는 이름과 한 몸');
 {
-  const wl = (si.split('SRC_WHITELIST')[1] || '').split(']')[0];
-  const wlChannels = (wl.match(/'([a-z]+)'/g) || []).map((s) => s.replace(/'/g, ''));
-  const missing = wlChannels.filter((c) => !sc.CHANNELS.includes(c));
-  t('화이트리스트 채널이 성적표에 전부 있다', missing.length === 0, '누락: ' + missing.join(','));
-  t("미등록 소스 폴백('other')이 있다", sc.CHANNELS.includes('other'));
+  const aliasBlock = (si.split('const ALIASES')[1] || '').split(']);')[0];
+  const targets = [...new Set((aliasBlock.match(/,\s*'([a-z0-9_]+)'\]/g) || [])
+    .map((m) => m.replace(/[^a-z0-9_]/g, '')))];
+  const missing = targets.filter((c) => !sc.CHANNELS.includes(c));
+  t('별칭이 모으는 정식 이름이 성적표에 전부 있다', missing.length === 0, '누락: ' + missing.join(','));
+  t('화이트리스트가 되살아나지 않았다', !/SRC_WHITELIST/.test(si));
   t('진성 한국인 전선이 맨 앞 (네이버 → 카카오)', sc.CHANNELS[0] === 'naver' && sc.CHANNELS[1] === 'kakao');
 }
 
