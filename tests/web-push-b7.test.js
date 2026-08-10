@@ -103,7 +103,7 @@ console.log('\n[9] 캐시버스트 — pap-engage v=3');
 {
   const refs = ['frontend/index.html', 'frontend/articles.html', 'frontend/films.html', 'api/_lib/seoRenderer.js'];
   refs.forEach(function (f) {
-    t(f + ' 이 v=6 을 참조', /pap-engage\.js\?v=6/.test(R(f)));
+    t(f + ' 이 v=7 을 참조', /pap-engage\.js\?v=7/.test(R(f)));
   });
 }
 

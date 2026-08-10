@@ -73,8 +73,21 @@
     + '.pap-engage .pe-rate{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap}'
     + '.pap-engage .pe-rate-q{font-size:12.5px;color:#cfcfcf;letter-spacing:.02em}'
     + '.pap-engage .pe-star{background:none;border:0;padding:2px;font-size:20px;line-height:1;color:rgba(255,255,255,.28);cursor:pointer;font-family:inherit;transition:color .15s}'
-    + '.pap-engage .pe-star.on{color:#fff}'
-    + '.pap-engage .pe-star:hover{color:rgba(255,255,255,.75)}'
+    /* 별색 = 브랜드 딥레드 (--pap-red, 2026-08-10 도메니코). hov 는 마우스가
+       올라간 별까지 전부 칠하는 프리뷰 — "어디를 눌러야 5점인지" 모호함 제거. */
+    + '.pap-engage .pe-star.on{color:var(--pap-red,#891717)}'
+    + '.pap-engage .pe-star.hov{color:#b32424;transform:scale(1.12)}'
+    + '.pap-engage .pe-star{transition:color .15s,transform .15s}'
+    /* 유도 장치: 아직 내 별점이 없으면 빈 별이 왼→오 순서로 은은히 붉게
+       물결친다. 마우스를 올리면 멈추고 프리뷰가 이어받는다. */
+    + '.pap-engage .pe-rate.pe-nudge .pe-star:not(.on){animation:peStarWave 2.8s infinite}'
+    + '.pap-engage .pe-rate.pe-nudge .pe-star:nth-child(2){animation-delay:.14s}'
+    + '.pap-engage .pe-rate.pe-nudge .pe-star:nth-child(3){animation-delay:.28s}'
+    + '.pap-engage .pe-rate.pe-nudge .pe-star:nth-child(4){animation-delay:.42s}'
+    + '.pap-engage .pe-rate.pe-nudge .pe-star:nth-child(5){animation-delay:.56s}'
+    + '.pap-engage .pe-rate.pe-nudge .pe-stars:hover .pe-star{animation:none}'
+    + '@keyframes peStarWave{0%,30%,100%{color:rgba(255,255,255,.28)}12%{color:var(--pap-red,#891717)}}'
+    + '@media(prefers-reduced-motion:reduce){.pap-engage .pe-rate.pe-nudge .pe-star:not(.on){animation:none}}'
     + '.pap-engage .pe-rate-stat{font-size:12px;color:#9a9a9a;font-variant-numeric:tabular-nums}'
     + '.pap-engage .pe-rate-cancel{background:none;border:0;color:#777;font-size:11px;cursor:pointer;padding:0;font-family:inherit;text-decoration:underline}'
     + '.pap-engage .pe-rate-login{color:#bbb;font-size:12.5px;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.25)}'
@@ -334,12 +347,16 @@
     var qs = '?editorial_title=' + encodeURIComponent(key);
     var busy = false;
 
+    var last = null; /* 마지막 로드 상태 — 호버 프리뷰가 끝나면 되돌린다 */
     function paint(d) {
+      last = d;
       var my = d.myScore || 0;
       var show = my || Math.round(d.avg || 0);
       for (var i = 0; i < stars.length; i++) {
         stars[i].className = 'pe-star' + (i < show ? ' on' : '');
       }
+      /* 유도 웨이브는 내가 아직 별점을 안 남겼을 때만 */
+      wrap.classList.toggle('pe-nudge', !my);
       var txt = !d.count ? t.rateNone
         : t.rateAvg + ' ' + (d.avg || 0) + ' · ' + d.count + t.ratePeople;
       if (my) txt = t.rateMine + ' ' + my + ' · ' + txt;
@@ -372,11 +389,25 @@
       }).catch(function () {})
         .then(function () { busy = false; });
     }
+    /* 호버 프리뷰: n번째 별에 마우스 → 1~n번을 전부 칠한다 (클릭 결과 예고) */
+    function previewTo(n) {
+      for (var i = 0; i < stars.length; i++) {
+        stars[i].className = 'pe-star' + (i < n ? ' hov' : '');
+      }
+    }
     for (var i = 0; i < stars.length; i++) (function (btn) {
       btn.addEventListener('click', function () {
         send('POST', Number(btn.getAttribute('data-score')) || 0);
       });
+      btn.addEventListener('mouseenter', function () {
+        previewTo(Number(btn.getAttribute('data-score')) || 0);
+      });
     })(stars[i]);
+    var starsBox = wrap.querySelector('.pe-stars');
+    if (starsBox) starsBox.addEventListener('mouseleave', function () {
+      if (last) paint(last);
+      else previewTo(0);
+    });
     load();
   }
 

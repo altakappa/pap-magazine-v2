@@ -166,7 +166,7 @@ console.log('\n[8] 캐시버스트 — 바뀐 스크립트는 전부 판을 올�
     for (const o of olds) if (h.indexOf(o) >= 0) stale.push(n + ':' + o);
   }
   t('옛 버전 참조가 한 곳도 없다', stale.length === 0, stale.join(', '));
-  t('SSR 도 pap-engage v6 을 부른다 (버튼 높이 통일 캐시버스트)', /pap-engage\.js\?v=6/.test(seo));
+  t('SSR 도 pap-engage v7 을 부른다 (별점 딥레드·유도 캐시버스트)', /pap-engage\.js\?v=7/.test(seo));
   /* index 와 articles 가 같은 스크립트를 다른 판으로 부르면 한쪽만 고쳐진다 */
   const ver = (h, name) => { const m = h.match(new RegExp(name.replace(/[.?]/g, '\\$&') + 'v=(\\d+)')); return m ? m[1] : null; };
   ['pap-content-article.js?', 'pap-content-editorial.js?', 'pap-content-api-sync.js?', 'pap-content-seo.js?'].forEach((n) => {
@@ -295,6 +295,10 @@ console.log('\n[별점 통합] 평가 장치는 한 화면에 하나 (2026-08-09
   t('별점 통계 GET 은 로그인 불필요', rat.indexOf("req.method === 'GET'") < rat.indexOf('requireAuth(req, res)'));
   t('쓰기는 여전히 로그인 필요 (보안 감사 A-2)', /requireAuth\(req, res\)/.test(rat));
   t('401 이면 로그인 유인으로 전환 (사다리 2계단)', /pe-rate-login/.test(eng) && /\/auth\?next=/.test(eng));
+  t('별점 딥레드 + 호버 프리뷰 + 유도 웨이브 (2026-08-10 도메니코)',
+    /pe-star\.on\{color:var\(--pap-red/.test(eng) && /previewTo/.test(eng)
+    && /peStarWave/.test(eng) && /pe-nudge/.test(eng)
+    && /prefers-reduced-motion/.test(eng));
   t('통계 응답에 user_id 목록이 없다', !/user_id/.test(rat.slice(rat.indexOf('res.status(200).json({'), rat.indexOf('stats error'))));
 }
 
