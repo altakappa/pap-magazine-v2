@@ -230,7 +230,15 @@ console.log('\n[별점 통합] 평가 장치는 한 화면에 하나 (2026-08-09
   {
     const sh = R('frontend/pap-content-creator-shorts.js');
     t('프로필 팝업 구매하기 — 패션 크레딧發만, /go 어필리에이트 경유 (2026-08-10)',
-      /cpBuyBtn/.test(idx) && /buyable\|\|isBrand/.test(sh.replace(/\s/g,''))
+      /cpBuyBtn/.test(idx) && (function(){
+        // 2026-08-10 교훈: 팔업 렌더러가 둘이다 (openCreatorPopup / _noPush).
+        // 진짜 렌더러인 openCreatorPopup 본체에 구매 로직이 있어야 한다.
+        const main = sh.slice(sh.indexOf('function openCreatorPopup'), sh.indexOf('function _openCreatorPopup_noPush'));
+        const noPush = sh.slice(sh.indexOf('function _openCreatorPopup_noPush'));
+        return /cpBuyBtn/.test(main) && /buyable\|\|isBrand/.test(main.replace(/\s/g,''))
+          && /cr\._buyable = !!buyable/.test(main)
+          && /cr\._buyable\|\|isBrand/.test(noPush.replace(/\s/g,''));
+      })()
       && /'\/go\/'\+encodeURIComponent/.test(sh)
       && /openProfileByHandle\(\\''\+safe\+'\\',1\)/.test(edJs));
   }

@@ -171,6 +171,20 @@ function openCreatorPopup(cr, buyable){
   } else {
     igBtn.style.display='none';
   }
+
+  // 구매하기 (2026-08-10) — 패션 크레딧에서 열린 프로필(buyable)과 Fashion Brand
+  // 프로필에만. /go/:id 어필리에이트 리다이렉터 경유 (지역 라우팅 + 클릭 계측).
+  // popstate 복원(_noPush)은 buyable 인자가 없으므로 cr 에 저장해 넘긴다.
+  cr._buyable = !!buyable;
+  var buyBtn=document.getElementById('cpBuyBtn');
+  if(buyBtn){
+    if((buyable||isBrand)&&igHandle){
+      buyBtn.href='/go/'+encodeURIComponent(igHandle.toLowerCase());
+      buyBtn.style.display='inline-flex';
+    } else {
+      buyBtn.style.display='none';
+    }
+  }
   
   // Stats
   document.getElementById('cpCount').textContent=editorials.length;
@@ -258,7 +272,7 @@ function _openCreatorPopup_noPush(cr){
   // + 클릭 계측) 경유. 미등록 브랜드는 /go 가 홈으로 안전 리다이렉트한다.
   var buyBtn=document.getElementById('cpBuyBtn');
   if(buyBtn){
-    if((buyable||isBrand)&&igHandle){
+    if((cr._buyable||isBrand)&&igHandle){
       buyBtn.href='/go/'+encodeURIComponent(igHandle.toLowerCase());
       buyBtn.style.display='inline-flex';
     } else {
