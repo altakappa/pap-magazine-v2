@@ -42,14 +42,29 @@ t('결과 텔레그램 보고 (정상/깨짐 모두)', /주간 이미지 점검/
 
 console.log('=== vercel.json 크론 등록 ===');
 const paths = vj.crons.map(c => c.path + ' ' + c.schedule);
-// 2026-07-28: 이관 완주(외부 이미지 잔존 0건 실측) → 크론 스케줄에서 제거.
-// Vercel 크론 40개 한도 확보용이며 코드는 그대로 남아 있어, 외부 이미지가 다시
-// 유입되면 vercel.json 에 한 줄 되살리는 것으로 재가동한다. 주간 점검 크론
-// (image-link-check)이 남아 있어 재발은 계속 감시된다.
-t('이관 크론 코드는 유지 (필요 시 재가동)',
+/* 2026-08-10 — 핀을 되돌린다. 앞의 근거가 틀렸다.
+ *
+ * 2026-07-28 커밋 64bc86d 는 "이관 완주(외부 이미지 잔존 0건 실측)" 를 근거로
+ * 이 크론을 스케줄에서 빼고, 이 테스트를 '제거됨' 으로 뒤집었다.
+ * 그 실측은 **인스타 CDN** 잔존을 센 것이었다. 그런데 이 크론의 대상은
+ * 인스타 CDN 이 아니다:
+ *     EXTERNAL_RE = /drive\.google\.com|pap-korea-bucket\.s3|static\.wixstatic\.com/
+ * 재는 지표가 대상과 달랐다. 2026-08-10 실측 잔량은 **1,340편 / 이미지 20,398장**
+ * 으로, 끌 당시 파일 머리말에 적힌 "드라이브 1,077건" 에서 한 건도 안 줄어 있었다.
+ *
+ * 진짜 정지 원인은 따로 있었다 — 큐 맨 앞 12건이 전부 죽은 링크라 매 회차가
+ * 통째로 skip 됐다(head-of-line blocking · 691회 실행 / 진전 0).
+ * 그건 2026-08-01 마이그레이션이 고쳤는데, 크론이 3일 전에 이미 꺼져 있어
+ * 그 수정을 아무도 써보지 못했다.
+ *
+ * ▶ 다음에 이 크론을 끄려는 사람에게 — 반드시 이 쿼리로 재라:
+ *       select count(*) from external_image_editorials(100000);
+ *   0일 때만 완주다. 다른 지표(인스타 CDN 등)로 판단하지 말 것. */
+t('이관 크론 코드가 있다',
   require('fs').existsSync(require('path').join(__dirname, '..', 'api/cron/migrate-external-images.js')));
-t('이관 완주로 스케줄에서는 제거됨',
-  !vj.crons.some(c => c.path === '/api/cron/migrate-external-images'));
+t('이관 크론이 스케줄에 등록돼 있다 (잔량 0 전까지)',
+  vj.crons.some(c => c.path === '/api/cron/migrate-external-images'),
+  '잔량이 남았는데 빼면 2026-07-28 사고가 재발한다');
 t('점검 크론 주 1회(월) 등록', vj.crons.some(c => c.path === '/api/cron/image-link-check' && /\* \* 1$/.test(c.schedule)));
 
 console.log(`\npassed: ${pass}   failed: ${fail}`);

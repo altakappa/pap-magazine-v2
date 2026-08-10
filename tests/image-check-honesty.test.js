@@ -109,9 +109,38 @@ t('주간 점검 크론은 등록돼 있다',
   crons.some((c) => c.path.includes('image-link-check')));
 /* 이관 크론은 2026-07-28 에 잘못된 근거로 제거됐다. 되살릴 때 이 핀이
    '등록됨'으로 바뀌어야 한다 — 지금은 '아직 안 됨'을 기록으로 남긴다. */
-const migRegistered = crons.some((c) => c.path.includes('migrate-external-images'));
-console.log('  · 이관 크론 등록 여부: ' + (migRegistered ? '등록됨' : '미등록 (잔량 1,328건 — 슬롯 확인 후 복구 예정)'));
+/* 2026-08-10 — 이관 크론 복구. 여기부터는 '등록돼 있어야 한다' 를 강제한다.
+ *
+ * 이력: 2026-07-28 커밋 64bc86d 가 "외부(instagram CDN) 이미지 잔존 0건" 을
+ * 근거로 이 크론을 스케줄에서 뺐다. 그런데 이 크론의 대상은 인스타 CDN 이
+ * 아니라 드라이브·구 S3(+2026-08-10 wix)다. **재는 지표가 대상과 달랐다.**
+ * 실제로는 진전이 0이었고(큐 맨 앞 12건이 전부 죽은 링크 — head-of-line
+ * blocking), 그건 2026-08-01 마이그레이션이 따로 고쳤지만 크론이 이미 꺼져
+ * 있어 아무도 그 수정을 써보지 못했다.
+ *
+ * 다음에 이 크론을 끄려는 사람에게: **아래 쿼리로 재라.**
+ *     select count(*) from external_image_editorials(100000);
+ * 이 값이 0일 때만 완주다. 다른 지표로 판단하지 말 것. */
+t('이관 크론이 스케줄에 등록돼 있다',
+  crons.some((c) => c.path.includes('migrate-external-images')),
+  '잔량이 0이 아닌데 빼면 2026-07-28 사고가 재발한다');
+const migCron = crons.find((c) => c.path.includes('migrate-external-images'));
+if (migCron) {
+  t('매시 실행이다 (분 고정 + 매시간)', /^\d+ \* \* \* \*$/.test(migCron.schedule), migCron.schedule);
+}
 t('크론 엔트리 수를 기록한다 (한도 확인용)', crons.length > 0, crons.length + '개');
+
+console.log('\n=== 이관 크론이 매 실행 결과를 말한다 (침묵 방지) ===');
+const MIGSRC = fs.readFileSync(path.join(ROOT, 'api/cron/migrate-external-images.js'), 'utf8');
+const MIGSRC_C = code(MIGSRC);
+t('note 헬퍼가 있다', /function note\(res, msg\)/.test(MIGSRC_C));
+t('모든 종료 지점이 note 를 세운다',
+  (MIGSRC_C.match(/note: note\(res,/g) || []).length >= 2,
+  '691회 진전 0 이 5일간 안 보인 이유가 note 빈칸이었다');
+t('잔량을 함께 남긴다', /잔량 ' \+ left/.test(MIGSRC) && /async function remainingCount\(/.test(MIGSRC_C),
+  '잔량이 안 줄면 그게 고장 신호다');
+t('진전 0 이면 경고 문구를 붙인다', /진전 0 — 큐가 막혔는지 확인/.test(MIGSRC));
+t('잔량 조회 실패가 크론을 죽이지 않는다', /catch \(_\) \{ return null; \}/.test(MIGSRC_C));
 
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) process.exit(1);

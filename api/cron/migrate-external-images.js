@@ -83,6 +83,33 @@ async function fetchImage(url) {
   }
 }
 
+/* ─── 모든 종료 지점에 note 를 남긴다 (2026-08-10 신설) ────────────────
+ *
+ * 이 크론은 691회를 돌면서 **진전 0** 이었는데 5일간 아무도 몰랐다.
+ * 원인은 두 겹이다:
+ *   ① 큐 맨 앞 12건이 전부 죽은 링크라 매 회차가 통째로 skip 됐다
+ *      (head-of-line blocking — 2026-08-01 마이그레이션이 고쳤다)
+ *   ② **cronNote 를 한 줄도 안 남겼다.** 그래서 cron_runs 에는 note 가
+ *      전부 빈칸이었고, 대시보드에서는 '성실히 돌고 있음' 으로만 보였다.
+ *
+ * ②가 없었으면 ①은 하루 안에 보였다. 매 실행이 '무엇을 했고 얼마나 남았는지'
+ * 를 말하게 한다 — 특히 **잔량**. 잔량이 안 줄면 그게 곧 고장 신호다.
+ * (틱톡이 21일, 번역이 열흘, FAQ 가 열흘 — 전부 같은 모양이었다.) */
+function note(res, msg) {
+  res.locals = res.locals || {};
+  res.locals.cronNote = msg;
+  return msg;
+}
+
+/** 남은 대상 수 — 진전 여부를 note 로 보이게 하는 핵심 숫자. 실패해도 무시. */
+async function remainingCount() {
+  try {
+    const { data, error } = await supabaseAdmin.rpc('external_image_editorials', { lim: 100000 });
+    if (error) return null;
+    return Array.isArray(data) ? data.length : null;
+  } catch (_) { return null; }
+}
+
 module.exports = withCronGuard('migrate-external-images', async function handler(req, res) {
   const auth = (req.headers && req.headers['authorization']) || '';
   const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
@@ -97,7 +124,10 @@ module.exports = withCronGuard('migrate-external-images', async function handler
   const { data: rows, error: selErr } = await supabaseAdmin.rpc('external_image_editorials', { lim });
   if (selErr) throw new Error('selector failed: ' + selErr.message);
   if (!rows || rows.length === 0) {
-    return res.status(200).json({ ok: true, done: true, migrated: 0, note: 'no external-image editorials left' });
+    return res.status(200).json({
+      ok: true, done: true, migrated: 0,
+      note: note(res, '완주 — 외부 호스트 이미지 0건 (드라이브·구 S3·wix)'),
+    });
   }
 
   // 이전 실패 URL 은 건너뛴다 (죽은 링크 재시도 금지)
@@ -170,5 +200,15 @@ module.exports = withCronGuard('migrate-external-images', async function handler
   }
 
   console.log('[migrate-external-images]', { editorialsDone, imagesMoved, failures: newFailures.length, ms: Date.now() - started });
-  return res.status(200).json({ ok: true, editorialsDone, imagesMoved, failures: newFailures.length });
+  /* 잔량을 함께 남긴다 — 이 숫자가 안 줄면 '돌았지만 진전 없음' 이고,
+     그게 2026-07-23~28 에 5일간 안 보였던 바로 그 상태다. */
+  const left = await remainingCount();
+  return res.status(200).json({
+    ok: true, editorialsDone, imagesMoved, failures: newFailures.length, remaining: left,
+    note: note(res,
+      '이관 ' + editorialsDone + '편 · 이미지 ' + imagesMoved + '장'
+      + (newFailures.length ? ' · 죽은링크 ' + newFailures.length + '건' : '')
+      + (left === null ? '' : ' · 잔량 ' + left + '편')
+      + (editorialsDone === 0 ? ' ⚠️ 진전 0 — 큐가 막혔는지 확인' : '')),
+  });
 });

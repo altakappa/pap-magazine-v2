@@ -157,6 +157,10 @@
       "schedule": "30 0 * * 1"
     },
     {
+      "path": "/api/cron/migrate-external-images",
+      "schedule": "40 * * * *"
+    },
+    {
       "path": "/api/cron/backfill-meta-desc",
       "schedule": "9-59/10 * * * *"
     },
