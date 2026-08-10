@@ -67,6 +67,42 @@ t('이관 크론이 스케줄에 등록돼 있다 (잔량 0 전까지)',
   '잔량이 남았는데 빼면 2026-07-28 사고가 재발한다');
 t('점검 크론 주 1회(월) 등록', vj.crons.some(c => c.path === '/api/cron/image-link-check' && /\* \* 1$/.test(c.schedule)));
 
+console.log('=== 이관 순서 — wix 우선 (119) ===');
+/* 왜 테스트로 박아두나:
+ *   순서는 "돌아가긴 하니까" 조용히 원상복구되기 쉬운 종류의 결정이다.
+ *   그런데 이건 성능이 아니라 **위험 관리**다 — drive/S3 는 우리 계정이라
+ *   우리가 안 지우면 안 사라지지만, wix 는 옛 사이트라 구독이 끊기는 순간
+ *   71편 1,080장이 복구 불가로 증발한다. 날짜순으로 두면 그게 맨 마지막이었다.
+ *   (2026-08-11 실측: wix 호스트는 살아 있고 원본까지 서빙된다. 지금이 기회다.) */
+const sql119 = R('supabase_migrations/119_external_images_wix_first.sql');
+const ord = sql119.slice(sql119.lastIndexOf('order by'));
+t('119 마이그레이션이 있다', sql119.length > 0);
+/* -1 를 반드시 배제한다 — indexOf 가 없을 때 -1 을 주므로
+   `없음 < 날짜` 가 참이 되어, 정렬을 통째로 지워도 통과하는 헛테스트가 된다.
+   (2026-08-11 작성 중 실제로 이 함정에 걸렸다) */
+const iWix = ord.indexOf('static\\.wixstatic\\.com');
+const iDate = ord.indexOf('published_date');
+t('order by 첫 키가 wix 티어다 (날짜보다 먼저)',
+  iWix >= 0 && iDate >= 0 && iWix < iDate,
+  'wix 가 날짜 뒤로 밀리면 초창기 아카이브가 맨 마지막이 된다');
+t('같은 티어 안에서는 기존 날짜 역순 유지', /published_date desc nulls last/.test(ord));
+t('live CTE 를 대상판정(where)과 우선순위(order by)가 함께 쓴다',
+  /\), live as \(/.test(sql119)
+  && /where exists \(select 1 from live l where l\.id = c\.id\)/.test(sql119)
+  && /from live l where l\.id = c\.id and l\.url ~/.test(sql119),
+  '기준이 갈리면 죽은 wix URL 때문에 drive 전용 편이 wix 로 오인된다');
+t('대상 호스트 목록이 앱의 EXTERNAL_RE 와 같다',
+  (function(){
+    const js = (mig.match(/EXTERNAL_RE = \/([^/]+)\//) || [])[1];
+    if (!js) return false;
+    const hosts = js.split('|').map(h => h.replace(/\\/g, ''));
+    return hosts.every(h => sql119.includes(h.replace(/\./g, '\\.')));
+  })(),
+  '호스트 목록은 아직 JS·SQL 두 곳이다 — 늘릴 땐 반드시 함께 (107·118 교훈)');
+t('앱은 RPC 순서를 그대로 소비한다 (자체 재정렬 없음)',
+  !/rows\s*\.\s*sort|rows\s*=\s*rows\.sort/.test(mig),
+  'JS 가 다시 정렬하면 SQL 우선순위가 무의미해진다');
+
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if(fail){ console.log('❌ image-migration-cron tests FAILED'); process.exit(1); }
 console.log('✅ image-migration-cron tests passed');
