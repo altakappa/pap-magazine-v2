@@ -23,6 +23,23 @@ var _PAY_I18N = {
   zh:{ payBaseIntro:'如需确认刊登，请在下方支付基本刊登费。', payBaseFeeBtn:'支付基本刊登费 {amt}', payBasePaid:'已支付 · 等待刊登', payBasePaidHint:'您的基本刊登费已确认。PAP 将继续刊登。', payBaseUnavailable:'支付暂未开放。请稍后重试或联系 PAP。', paySdkMissing:'支付模块加载失败。请刷新页面。', payLoginFirst:'请先登录再支付。', payCompleteOptimistic:'已收到付款！确认后状态将更新。', payGenericError:'打开支付时出错。请稍后重试。' },
   ru:{ payBaseIntro:'Чтобы подтвердить публикацию, оплатите базовый сбор ниже.', payBaseFeeBtn:'Оплатить базовый сбор {amt}', payBasePaid:'Оплачено · ожидает публикации', payBasePaidHint:'Ваш базовый сбор подтверждён. PAP приступит к публикации.', payBaseUnavailable:'Оплата пока недоступна. Повторите попытку позже или свяжитесь с PAP.', paySdkMissing:'Не удалось загрузить платёжный модуль. Обновите страницу.', payLoginFirst:'Войдите, чтобы оплатить.', payCompleteOptimistic:'Платёж получен! Статус обновится после подтверждения.', payGenericError:'Произошла ошибка при открытии оплаты. Повторите попытку позже.' }
 };
+// 결제 일시중단 안내 (2026-08-10 · Paddle 폐쇄 → PayPal 전환 공백 대응).
+// _PAY_I18N 9개 블록을 건드리지 않도록 독립 사전으로 둔다.
+var _PAY_PAUSED = {
+  ko:'결제 시스템을 교체하는 중입니다. 곧 다시 열립니다 — 급하시면 contact@pap-magazine.com 으로 연락 주세요. 게재 순서는 그대로 유지됩니다.',
+  en:'We are switching payment providers. Payment will reopen shortly — email contact@pap-magazine.com if urgent. Your place in the publication queue is kept.',
+  de:'Wir wechseln unseren Zahlungsanbieter. Die Zahlung wird in Kürze wieder möglich sein — bei Dringlichkeit: contact@pap-magazine.com. Ihr Platz in der Warteschlange bleibt erhalten.',
+  it:'Stiamo cambiando fornitore di pagamento. Il pagamento riaprirà a breve — per urgenze: contact@pap-magazine.com. Il tuo posto in coda è mantenuto.',
+  fr:'Nous changeons de prestataire de paiement. Le paiement rouvrira sous peu — urgences : contact@pap-magazine.com. Votre place dans la file est conservée.',
+  es:'Estamos cambiando de proveedor de pago. El pago se reabrirá en breve — urgencias: contact@pap-magazine.com. Su lugar en la cola se mantiene.',
+  ja:'決済システムを切り替え中です。まもなく再開します — お急ぎの場合は contact@pap-magazine.com へ。掲載の順番はそのまま維持されます。',
+  zh:'我们正在更换支付服务商。支付将很快恢复 — 如有急事请联系 contact@pap-magazine.com。您的刊登排序保持不变。',
+  ru:'Мы меняем платёжного провайдера. Оплата скоро возобновится — срочные вопросы: contact@pap-magazine.com. Ваше место в очереди сохраняется.'
+};
+function _paySubPausedMsg(){
+  var l; try{ l=localStorage.getItem('pap-lang')||'en'; }catch(_){ l='en'; }
+  return _PAY_PAUSED[l] || _PAY_PAUSED.en;
+}
 // Resolve a payment i18n key against the current pap-lang (English fallback),
 // interpolating {amt}. Kept separate from _t/L so this DRAFT copy stays isolated.
 function _payT(k,amt){
@@ -140,6 +157,11 @@ async function payBaseFee(submissionId, submissionType){
     // 가정 `submissionFeePrices`가 아님). 실제 키에 맞춤. 키 없으면 안전 처리.
     var cfg=null;
     try{ cfg = await fetch('/api/subscriptions/paddle-config',{headers:{'X-Requested-With':'XMLHttpRequest'}}).then(function(r){return r.ok?r.json():null;}); }catch(_){}
+    // 결제 일시중단(공급사 교체) — 기존 payBaseUnavailable 보다 구체적인 안내.
+    if(cfg && cfg.paused){
+      if(typeof PAP!=='undefined') PAP.ui.toast(_paySubPausedMsg(),'error');
+      return;
+    }
     if(!cfg || !cfg.clientToken){
       if(typeof PAP!=='undefined') PAP.ui.toast(_payT('payBaseUnavailable'),'error');
       return;

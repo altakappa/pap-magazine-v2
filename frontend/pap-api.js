@@ -785,6 +785,12 @@ const PAP = (function() {
         throw new Error('Please sign in first to subscribe with international payment.');
       }
       var cfg = await request('GET', '/subscriptions/paddle-config');
+      // 결제 일시중단(공급사 교체) — 원인 불명 에러 대신 안내로 흘린다.
+      if (cfg && cfg.paused) {
+        var _pe = new Error('PAYMENTS_PAUSED');
+        _pe.code = 'PAYMENTS_PAUSED';
+        throw _pe;
+      }
       if (!cfg || !cfg.clientToken) {
         throw new Error('International payment is not available yet.');
       }

@@ -494,7 +494,7 @@ function navigateWithInterstitial(url){
 window._PAP_PORTONE_STORE_ID    = 'store-7b6778d6-f24d-49d2-a939-19df4ec81381';
 window._PAP_PORTONE_CHANNEL_KEY = 'channel-key-1f8ffa8d-2039-48b1-9af1-db8421e9a058';
 </script>
-<script src="/pap-api.js?v=14" defer></script>
+<script src="/pap-api.js?v=15" defer></script>
 <script>
 var checkSvg = '<svg class="tbl-check" viewBox="0 0 16 16" width="16" height="16"><polyline points="3 8 7 12 13 4" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 var crossSvg = '<svg class="tbl-cross" viewBox="0 0 16 16" width="16" height="16"><line x1="4" y1="4" x2="12" y2="12" stroke="#fff" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="4" x2="4" y2="12" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>';
@@ -1407,8 +1407,33 @@ async function handleCta(plan) {
     return;
   }
   try { await PAP.subscriptions.checkoutIntl(plan, billing); }
-  catch(e){ PAP.ui.toast(e.message || 'Checkout failed', 'error'); }
+  catch(e){
+    if (e && e.code === 'PAYMENTS_PAUSED') { PAP.ui.toast(_papPausedMsg(), 'error'); return; }
+    PAP.ui.toast(e.message || 'Checkout failed', 'error');
+  }
 }
+
+// ── 결제 일시중단 안내 (2026-08-10) ──────────────────────────────
+// Paddle 폐쇄(8/14) → PayPal 전환 사이의 공백 동안, 결제 실패를 원인 불명
+// 에러가 아니라 사람이 읽을 수 있는 안내로 바꾼다. _promptGuestInfo 와 같은
+// 독립 사전 패턴 — 기존 i18n 객체를 건드리지 않아 회귀 위험이 없다.
+var _PAP_PAUSED_MSG = {
+  ko:'결제 시스템을 교체하는 중입니다. 곧 다시 열립니다 — 급하시면 contact@pap-magazine.com 으로 연락 주세요.',
+  en:'We are switching payment providers. Checkout will reopen shortly — for anything urgent, email contact@pap-magazine.com.',
+  de:'Wir wechseln unseren Zahlungsanbieter. Die Kasse öffnet in Kürze wieder — bei dringenden Anliegen: contact@pap-magazine.com.',
+  it:'Stiamo cambiando fornitore di pagamento. Il checkout riaprirà a breve — per urgenze: contact@pap-magazine.com.',
+  fr:'Nous changeons de prestataire de paiement. Le paiement rouvrira sous peu — pour toute urgence : contact@pap-magazine.com.',
+  es:'Estamos cambiando de proveedor de pago. El pago se reabrirá en breve — para urgencias: contact@pap-magazine.com.',
+  ja:'決済システムを切り替え中です。まもなく再開します — お急ぎの場合は contact@pap-magazine.com までご連絡ください。',
+  zh:'我们正在更换支付服务商。结账将很快恢复 — 如有急事请联系 contact@pap-magazine.com。',
+  ru:'Мы меняем платёжного провайдера. Оплата скоро возобновится — по срочным вопросам: contact@pap-magazine.com.'
+};
+function _papPausedMsg(){
+  var l; try{ l = localStorage.getItem('pap-lang') || 'en'; }catch(_){ l = 'en'; }
+  return _PAP_PAUSED_MSG[l] || _PAP_PAUSED_MSG.en;
+}
+
+
 
 // ── Minimal prompt for guest email + name ──────────────────────────
 // Uses native prompts to keep this patch small. A nicer modal can be

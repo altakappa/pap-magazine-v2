@@ -33,6 +33,23 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ message: 'Method not allowed' });
   }
 
+  // ── 결제 일시중단 킬스위치 (2026-08-10) ────────────────────────────
+  // Paddle 계정이 2026-08-14 에 닫힌다. 그 이후 토큰이 죽으면 체크아웃이 원인
+  // 불명 에러로 터지고, 사용자는 "고장난 사이트"를 본다. 그건 절대 안 된다.
+  //   PAYMENTS_PAUSED=1  → 200 으로 { paused:true } 를 내려 프론트가 결제창을
+  //                        열지 않고 안내 문구를 띄우게 한다.
+  // 토큰을 지우기 전에 이 스위치를 먼저 켠다. clientToken 검사보다 앞에 두는 이유:
+  // 토큰을 Vercel 에서 삭제해도 503 이 아니라 이 안내 경로로 흐르게 하기 위함.
+  // ⚠️ env 변경 후에는 반드시 재배포한다 (Vercel 은 빌드 시점에 env 를 굽는다).
+  if (process.env.PAYMENTS_PAUSED === '1') {
+    res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+    return res.status(200).json({
+      paused: true,
+      reason: 'provider_migration',
+      contactEmail: 'contact@pap-magazine.com',
+    });
+  }
+
   const clientToken = process.env.PADDLE_CLIENT_TOKEN;
   if (!clientToken) {
     return res.status(503).json({
