@@ -166,7 +166,7 @@ console.log('\n[8] 캐시버스트 — 바뀐 스크립트는 전부 판을 올�
     for (const o of olds) if (h.indexOf(o) >= 0) stale.push(n + ':' + o);
   }
   t('옛 버전 참조가 한 곳도 없다', stale.length === 0, stale.join(', '));
-  t('SSR 도 pap-engage v5 를 부른다 (별점 위치 이동 캐시버스트)', /pap-engage\.js\?v=5/.test(seo));
+  t('SSR 도 pap-engage v6 을 부른다 (버튼 높이 통일 캐시버스트)', /pap-engage\.js\?v=6/.test(seo));
   /* index 와 articles 가 같은 스크립트를 다른 판으로 부르면 한쪽만 고쳐진다 */
   const ver = (h, name) => { const m = h.match(new RegExp(name.replace(/[.?]/g, '\\$&') + 'v=(\\d+)')); return m ? m[1] : null; };
   ['pap-content-article.js?', 'pap-content-editorial.js?', 'pap-content-api-sync.js?', 'pap-content-seo.js?'].forEach((n) => {
