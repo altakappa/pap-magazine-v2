@@ -126,7 +126,16 @@ t('이관 크론이 스케줄에 등록돼 있다',
   '잔량이 0이 아닌데 빼면 2026-07-28 사고가 재발한다');
 const migCron = crons.find((c) => c.path.includes('migrate-external-images'));
 if (migCron) {
-  t('매시 실행이다 (분 고정 + 매시간)', /^\d+ \* \* \* \*$/.test(migCron.schedule), migCron.schedule);
+  /* 2026-08-10 — 매시(40) → 30분(10,40) 으로 상향.
+     근거: 5시간 실측 안정(회당 92초 · 편차 5~8편 · 504 없음)이고,
+     매시로는 잔량 1,217편에 8~9일이 걸린다. 30분이면 4~5일.
+     분 목록형(10,40)도 허용하되 '매시간' 은 유지 — 특정 시각만 도는
+     형태(0 3 * * *)로 바뀌면 잔량 소진이 멈추므로 그건 막는다. */
+  t('30분 또는 매시 주기다 (특정 시각 1회가 아니다)',
+    /^[\d,]+ \* \* \* \*$/.test(migCron.schedule), migCron.schedule);
+  t('시간당 1회 이상 돈다',
+    (migCron.schedule.split(' ')[0] || '').split(',').filter(Boolean).length >= 1,
+    migCron.schedule);
 }
 t('크론 엔트리 수를 기록한다 (한도 확인용)', crons.length > 0, crons.length + '개');
 

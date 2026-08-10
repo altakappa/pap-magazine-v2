@@ -162,7 +162,7 @@
     },
     {
       "path": "/api/cron/migrate-external-images",
-      "schedule": "40 * * * *"
+      "schedule": "10,40 * * * *"
     },
     {
       "path": "/api/cron/backfill-meta-desc",
