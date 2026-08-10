@@ -231,7 +231,7 @@ async function upsertSubscription(sub, userId) {
 async function handleTermination(sub, userId, eventType) {
   const { data: row } = await supabaseAdmin
     .from('subscriptions')
-    .select('paypal_subscription_id, status')
+    .select('paypal_subscription_id, status, current_period_end')
     .eq('user_id', userId)
     .maybeSingle();
 
@@ -248,12 +248,34 @@ async function handleTermination(sub, userId, eventType) {
     .eq('user_id', userId);
   if (error) throw new Error('subscription status update failed: ' + error.message);
 
+  // ⚠️ 2026-08-10 — 해지했다고 접근권을 그 자리에서 끊지 않는다.
+  //    우리는 세 곳에서 정반대를 약속했다:
+  //      · refund.html 약관 "해지 후에도 해당 결제 기간이 종료될 때까지 이용 가능"
+  //      · 마이페이지 해지 확인창 "이미 결제하신 기간이 끝날 때까지 그대로 이용"
+  //      · paypal-portal.js 주석
+  //    그런데 코드는 즉시 강등하고 있었다(Paddle 시절부터의 동작을 그대로 옮겨옴).
+  //    실측으로 발견: 9/10 까지 결제된 구독을 해지하자 그 순간 게이트가 막혔다.
+  //    남은 기간의 강등은 만료 스윕(api/cron/subscription-expiry-sweep.js)이 맡는다.
+  //
+  //    EXPIRED 는 "기간이 끝났다"는 뜻이므로 예외 — 즉시 강등한다.
+  const periodEnd = (row && row.current_period_end)
+    || ((sub.billing_info || {}).next_billing_time) || null;
+  const stillWithinPaidPeriod =
+    eventType !== 'BILLING.SUBSCRIPTION.EXPIRED'
+    && periodEnd
+    && new Date(periodEnd).getTime() > Date.now();
+
+  if (stillWithinPaidPeriod) {
+    console.log('[paypal-webhook]', eventType, '— 결제한 기간이 남아 접근권 유지. user:', userId, 'until:', periodEnd);
+    return { status, accessKeptUntil: periodEnd };
+  }
+
   const { error: profErr } = await supabaseAdmin.from('profiles')
     .update({ subscription_status: 'inactive' })
     .eq('id', userId);
   if (profErr) throw new Error('profile downgrade failed: ' + profErr.message);
 
-  return { status };
+  return { status, downgraded: true };
 }
 
 // ── 핸들러 ────────────────────────────────────────────────────────

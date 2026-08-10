@@ -51,7 +51,11 @@ async function handler(req, res) {
     .from('subscriptions')
     .select('user_id, plan, status, current_period_end')
     .lt('current_period_end', cutoff)
-    .in('status', ['active', 'trialing', 'past_due', 'payment_failed'])
+    // 2026-08-10 'canceled' 추가 — 해지해도 결제한 기간까지는 접근권을 유지하도록
+    // 웹훅을 고쳤다(api/paypal-webhook.js handleTermination). 그러면 남은 기간이
+    // 지난 뒤 내려주는 주체가 필요한데, 그게 이 스윕이다. 여기에 'canceled' 가
+    // 빠져 있으면 해지자가 영원히 유료 등급으로 남는다.
+    .in('status', ['active', 'trialing', 'past_due', 'payment_failed', 'canceled'])
     .order('current_period_end', { ascending: true })
     .limit(MAX_PER_RUN);
 
