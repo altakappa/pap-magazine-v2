@@ -5,6 +5,7 @@
  */
 
 const { supabaseAdmin } = require('../_lib/supabase');
+const { cancelProviderSubscription } = require('../_lib/cancelProviderSubscription');
 const { requireMainAdmin } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
@@ -73,6 +74,24 @@ module.exports = async function handler(req, res) {
     }
 
     if (action === 'delete') {
+      // ⚠️ 2026-08-10 — 회원을 지우기 전에 결제사 구독을 먼저 끊는다.
+      // 이게 없으면 회원은 사라지는데 PayPal·Paddle 구독은 살아서 매달 계속
+      // 청구된다(결제사는 우리 DB 를 모른다). 서비스는 못 쓰는데 돈만 나가는
+      // 상태가 되고, 웹훅이 와도 회원이 없어 매칭에 실패해 조용히 지나간다.
+      //
+      // 정책: 이미 낸 기간은 환불하지 않는다. 다음 결제만 막는다.
+      // 실패하면 삭제를 진행하지 않는다 — 돈이 계속 나가는 것보다 삭제가
+      // 안 되는 편이 낫다.
+      const cancelRes = await cancelProviderSubscription(supabaseAdmin, memberId);
+      if (!cancelRes.ok) {
+        console.error('[member-delete] 구독 해지 실패 — 삭제 중단:', memberId, cancelRes.message);
+        return res.status(409).json({
+          message: '구독 해지에 실패해 삭제를 중단했습니다. 결제사 콘솔에서 먼저 해지한 뒤 다시 시도하세요.',
+          code: 'subscription_cancel_failed',
+          detail: cancelRes.message || null,
+        });
+      }
+
       // Delete profile (cascades from auth.users via ON DELETE CASCADE)
       // First delete the profile
       const { error: profileError } = await supabaseAdmin
@@ -93,6 +112,7 @@ module.exports = async function handler(req, res) {
         message: 'Member deleted successfully',
         memberId,
         action: 'deleted',
+        subscriptionCancel: cancelRes.action,
       });
     }
   } catch (error) {

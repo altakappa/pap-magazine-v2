@@ -662,6 +662,8 @@ function renderSubscriptionCard(user){
 
   // 유료 등급이면 실제 구독이 있는지 물어보고, 있으면 해지 버튼을 붙인다.
   if (plan === 'standard' || plan === 'premium') { try{ mpMaybeShowCancel(); }catch(_){ } }
+  // 탈퇴는 등급과 무관 — 무료 회원도 탈퇴한다.
+  try{ mpMountWithdrawLink(); }catch(_){ }
 }
 
 // ───── 구독 해지 (2026-08-10) ─────────────────────────────────────
@@ -751,6 +753,76 @@ async function mpCancelSubscription(){
     try{ console.error('cancel failed:', e); }catch(_){ }
     alert(_mpCancT('fail'));
     if(btn){ btn.disabled = false; btn.style.opacity = ''; }
+  }
+}
+
+// ───── 회원 탈퇴 (2026-08-10) ────────────────────────────────────
+// data-deletion.html 이 "마이페이지의 '회원 탈퇴' 메뉴" 를 안내해 왔지만 그
+// 기능은 존재한 적이 없었다. 여기서 만든다.
+//
+// ⚠️ 확인창이 반드시 알려야 하는 것 (도메니코 확정 정책):
+//    "이미 낸 한 달치는 환불되지 않는다. 다음 결제만 막힌다."
+//    그리고 탈퇴하면 **남은 유료 기간까지 함께 사라진다** — 기간을 다 쓰고
+//    싶은 사람은 탈퇴가 아니라 '구독 해지' 를 써야 한다. 그 차이를 먼저
+//    알려주지 않으면 나중에 "돈 냈는데 왜 못 쓰냐" 는 분쟁이 된다.
+var _MP_WD_I18N = {
+  ko:{link:'회원 탈퇴', c1:'정말 탈퇴하시겠습니까?\n\n· 계정과 데이터가 삭제되며 되돌릴 수 없습니다.\n· 진행 중인 구독은 다음 결제부터 중단됩니다.\n· 이미 결제하신 금액은 환불되지 않으며, 남은 이용 기간도 함께 종료됩니다.\n\n남은 기간을 끝까지 사용하고 싶으시면 탈퇴 대신 [구독 해지]를 이용해 주세요.', c2:'마지막 확인입니다.\n\n탈퇴를 진행하려면 확인을 눌러 주세요.', done:'탈퇴가 완료되었습니다. 그동안 이용해 주셔서 감사합니다.', fail:'탈퇴 처리에 실패했습니다. contact@pap-magazine.com 으로 연락 주세요.'},
+  en:{link:'Delete my account', c1:'Delete your account?\n\n· Your account and data will be removed. This cannot be undone.\n· Any active subscription stops billing from the next cycle.\n· Payments already made are not refunded, and your remaining access ends immediately.\n\nIf you want to use the time you have already paid for, use [Cancel subscription] instead.', c2:'Final confirmation.\n\nPress OK to delete your account.', done:'Your account has been deleted. Thank you for being with us.', fail:'We could not complete the deletion. Please email contact@pap-magazine.com.'},
+  de:{link:'Konto löschen', c1:'Konto wirklich löschen?\n\n· Konto und Daten werden entfernt. Nicht rückgängig zu machen.\n· Ein laufendes Abo wird ab dem nächsten Zyklus nicht mehr abgerechnet.\n· Bereits gezahlte Beträge werden nicht erstattet, der verbleibende Zugang endet sofort.\n\nWenn Sie den bereits bezahlten Zeitraum nutzen möchten, verwenden Sie stattdessen [Abo kündigen].', c2:'Letzte Bestätigung.\n\nZum Löschen auf OK klicken.', done:'Ihr Konto wurde gelöscht. Danke, dass Sie dabei waren.', fail:'Löschen fehlgeschlagen. Bitte schreiben Sie an contact@pap-magazine.com.'},
+  it:{link:'Elimina account', c1:"Eliminare l'account?\n\n· Account e dati saranno rimossi. Operazione irreversibile.\n· L'abbonamento attivo non verrà più addebitato dal ciclo successivo.\n· Gli importi già pagati non vengono rimborsati e l'accesso residuo termina subito.\n\nSe vuoi usare il periodo già pagato, usa invece [Annulla abbonamento].", c2:'Conferma finale.\n\nPremi OK per eliminare.', done:'Account eliminato. Grazie per essere stato con noi.', fail:'Eliminazione non riuscita. Scrivi a contact@pap-magazine.com.'},
+  fr:{link:'Supprimer mon compte', c1:"Supprimer votre compte ?\n\n· Compte et données supprimés. Action irréversible.\n· Tout abonnement actif cesse d'être facturé au cycle suivant.\n· Les sommes déjà payées ne sont pas remboursées et l'accès restant prend fin immédiatement.\n\nPour utiliser la période déjà payée, choisissez plutôt [Résilier l'abonnement].", c2:'Confirmation finale.\n\nCliquez sur OK pour supprimer.', done:'Votre compte a été supprimé. Merci de nous avoir suivis.', fail:'Échec de la suppression. Écrivez à contact@pap-magazine.com.'},
+  es:{link:'Eliminar mi cuenta', c1:'¿Eliminar su cuenta?\n\n· La cuenta y los datos se eliminarán. No se puede deshacer.\n· La suscripción activa dejará de cobrarse desde el siguiente ciclo.\n· Los importes ya pagados no se reembolsan y el acceso restante finaliza de inmediato.\n\nSi desea usar el periodo ya pagado, utilice [Cancelar suscripción] en su lugar.', c2:'Confirmación final.\n\nPulse Aceptar para eliminar.', done:'Su cuenta ha sido eliminada. Gracias por acompañarnos.', fail:'No se pudo eliminar. Escriba a contact@pap-magazine.com.'},
+  ja:{link:'退会する', c1:'本当に退会しますか？\n\n· アカウントとデータが削除され、元に戻せません。\n· 購読中の場合、次回請求から停止されます。\n· お支払い済みの金額は返金されず、残りの利用期間も同時に終了します。\n\n支払い済みの期間を使い切りたい場合は、退会ではなく［購読を解約］をご利用ください。', c2:'最終確認です。\n\n退会するにはOKを押してください。', done:'退会が完了しました。ご利用ありがとうございました。', fail:'退会処理に失敗しました。contact@pap-magazine.com までご連絡ください。'},
+  zh:{link:'注销账户', c1:'确定要注销账户吗？\n\n· 账户与数据将被删除，且无法恢复。\n· 如有订阅，将从下个周期起停止扣款。\n· 已支付的款项不予退还，剩余使用期限也将同时结束。\n\n若想用完已支付的期限，请改用[取消订阅]。', c2:'最后确认。\n\n点击确定以注销。', done:'账户已注销。感谢您的支持。', fail:'注销失败。请联系 contact@pap-magazine.com。'},
+  ru:{link:'Удалить аккаунт', c1:'Удалить аккаунт?\n\n· Аккаунт и данные будут удалены безвозвратно.\n· Активная подписка перестанет списываться со следующего цикла.\n· Уже оплаченные суммы не возвращаются, оставшийся доступ прекращается сразу.\n\nЕсли хотите использовать оплаченный период, выберите [Отменить подписку].', c2:'Финальное подтверждение.\n\nНажмите OK, чтобы удалить.', done:'Аккаунт удалён. Спасибо, что были с нами.', fail:'Не удалось удалить аккаунт. Напишите на contact@pap-magazine.com.'}
+};
+function _mpWdT(k){
+  var l; try{ l=localStorage.getItem('pap-lang')||'en'; }catch(_){ l='en'; }
+  var d=_MP_WD_I18N[l]||_MP_WD_I18N.en;
+  return d[k]||_MP_WD_I18N.en[k]||k;
+}
+
+function mpMountWithdrawLink(){
+  var card = document.querySelector('#mpSubCard');
+  if(!card || document.getElementById('mpWithdrawLink')) return;
+  var wrap = document.createElement('div');
+  wrap.style.cssText = 'margin-top:26px;text-align:right';
+  var a = document.createElement('button');
+  a.id = 'mpWithdrawLink';
+  a.type = 'button';
+  a.style.cssText = 'background:none;border:none;padding:0;font-size:10px;letter-spacing:.04em;color:rgba(255,255,255,.22);cursor:pointer';
+  a.textContent = _mpWdT('link');
+  a.addEventListener('mouseenter', function(){ a.style.color='rgba(255,255,255,.5)'; });
+  a.addEventListener('mouseleave', function(){ a.style.color='rgba(255,255,255,.22)'; });
+  a.addEventListener('click', mpWithdraw);
+  wrap.appendChild(a);
+  card.parentNode.insertBefore(wrap, card.nextSibling);
+}
+
+async function mpWithdraw(){
+  // 2단 확인 — 되돌릴 수 없는 작업이다.
+  if(!confirm(_mpWdT('c1'))) return;
+  if(!confirm(_mpWdT('c2'))) return;
+  var el = document.getElementById('mpWithdrawLink');
+  if(el){ el.disabled = true; el.style.opacity='.4'; }
+  try{
+    var token = localStorage.getItem('pap-token');
+    var r = await fetch('/api/auth/withdraw', {
+      method:'POST',
+      headers: Object.assign({'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'},
+                             token ? {'Authorization':'Bearer '+token} : {}),
+      credentials:'same-origin',
+      body: JSON.stringify({ confirm:'DELETE' })
+    });
+    var j = await r.json().catch(function(){ return {}; });
+    if(!r.ok){ alert(j.message || _mpWdT('fail')); if(el){ el.disabled=false; el.style.opacity=''; } return; }
+    alert(_mpWdT('done'));
+    try{ localStorage.removeItem('pap-token'); localStorage.removeItem('pap-user'); }catch(_){ }
+    window.location.href = '/';
+  }catch(e){
+    try{ console.error('withdraw failed:', e); }catch(_){ }
+    alert(_mpWdT('fail'));
+    if(el){ el.disabled=false; el.style.opacity=''; }
   }
 }
 
