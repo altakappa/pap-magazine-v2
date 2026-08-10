@@ -304,21 +304,42 @@ module.exports = async function handler(req, res) {
       case 'subscription.canceled':
       case 'subscription.paused': {
         const { data: row } = await supabaseAdmin
-          .from('subscriptions').select('user_id')
+          .from('subscriptions').select('user_id, current_period_end')
           .eq('paddle_subscription_id', data.id).maybeSingle();
         if (!row) { console.warn('[paddle-webhook]', type, '— unknown sub', data.id); break; }
         await supabaseAdmin.from('subscriptions').update({
           status: type === 'subscription.canceled' ? 'canceled' : 'paused',
           updated_at: new Date().toISOString(),
         }).eq('paddle_subscription_id', data.id);
-        // 해지/일시정지 확정 시 등급도 free로 하향 — 게이트는 subscription_plan만
-        // 보므로 status만 바꾸면 해지 회원이 영구히 premium 접근을 유지하게 된다.
-        // (resumed/updated 재활성 시 upsertSubscription이 등급을 복원한다)
+
+        // ⚠️ 2026-08-10 — 해지했다고 접근권을 그 자리에서 끊지 않는다.
+        //    api/paypal-webhook.js handleTermination 과 같은 규칙이다.
+        //    약관(refund.html)·마이페이지 확인창 모두 "이미 결제한 기간이 끝날
+        //    때까지 이용 가능" 이라고 약속했는데 코드만 즉시 강등하고 있었다.
+        //
+        //    🔴 이 경로가 특히 위험한 이유: Paddle 계정이 2026-08-14 폐쇄되면
+        //    살아 있는 구독 전건에 subscription.canceled 가 한꺼번에 날아온다.
+        //    그때 즉시 강등하면 8/31~9/8 까지 결제를 마친 유료 회원 4명의
+        //    접근권을 우리가 스스로 빼앗는다. 돈은 이미 받았고 환불도 안 한다.
+        //
+        //    남은 기간이 지난 뒤의 강등은 만료 스윕이 맡는다
+        //    (api/cron/subscription-expiry-sweep.js — status 필터에 'canceled' 포함).
+        const periodEnd = row.current_period_end
+          || (((data.current_billing_period || {}).ends_at) || null);
+        if (periodEnd && new Date(periodEnd).getTime() > Date.now()) {
+          console.log('[paddle-webhook]', type, data.id,
+            '— 결제한 기간이 남아 접근권 유지. user:', row.user_id, 'until:', periodEnd);
+          break;
+        }
+
+        // 기간이 끝났거나 알 수 없음 → 강등. 게이트는 subscription_plan 만 보므로
+        // status 만 바꾸면 해지 회원이 영구히 premium 접근을 유지하게 된다.
+        // (resumed/updated 재활성 시 upsertSubscription 이 등급을 복원한다)
         await supabaseAdmin.from('profiles').update({
           subscription_status: 'inactive',
           subscription_plan: 'free',
         }).eq('id', row.user_id);
-        console.log('[paddle-webhook]', type, data.id, '→ user', row.user_id);
+        console.log('[paddle-webhook]', type, data.id, '→ 강등 user', row.user_id);
         break;
       }
 

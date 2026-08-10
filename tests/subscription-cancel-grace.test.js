@@ -21,6 +21,8 @@ const path = require('path');
 const hook  = fs.readFileSync(path.join(__dirname, '..', 'api', 'paypal-webhook.js'), 'utf8');
 const sweep = fs.readFileSync(path.join(__dirname, '..', 'api', 'cron', 'subscription-expiry-sweep.js'), 'utf8');
 
+const p2 = (...a) => path.join(__dirname, '..', ...a);
+
 let pass = 0, fail = 0;
 function t(n, c, d){ if(c){pass++;console.log('  ✓',n);} else {fail++;console.log('  ✗',n); if(d)console.log('     ',d);} }
 
@@ -55,6 +57,24 @@ t('스윕 status 필터에 canceled 포함',
   /'canceled'/.test(inClause),
   "빠져 있으면 해지자가 기간이 지나도 영원히 유료 등급으로 남는다: " + inClause);
 t('스윕이 current_period_end 로 자른다', /current_period_end/.test(sweep));
+
+console.log('\n=== Paddle 경로도 같은 규칙이다 (8/14 폐쇄 대비) ===');
+// Paddle 계정이 폐쇄되면 살아 있는 구독 전건에 subscription.canceled 가
+// 한꺼번에 날아온다. 그때 즉시 강등하면 이미 결제를 마친 회원의 접근권을
+// 우리가 스스로 빼앗는다 — 돈은 받았고 환불은 안 하는데.
+const paddle = fs.readFileSync(p2('api','paddle-webhook.js'), 'utf8');
+const pIdxCase = paddle.indexOf("case 'subscription.canceled':");
+const pBlock = pIdxCase === -1 ? '' : paddle.slice(pIdxCase, pIdxCase + 2600);
+t('해지 처리에서 current_period_end 를 읽는다',
+  /select\('user_id,\s*current_period_end'\)/.test(pBlock));
+const pIdxGuard = pBlock.search(/new Date\(periodEnd\)\.getTime\(\)\s*>\s*Date\.now\(\)/);
+const pIdxDown  = pBlock.indexOf("subscription_plan: 'free'");
+t('남은 기간 검사가 강등보다 먼저다',
+  pIdxGuard !== -1 && pIdxDown !== -1 && pIdxGuard < pIdxDown,
+  'guard=' + pIdxGuard + ' downgrade=' + pIdxDown);
+t('남은 기간이 있으면 강등 전에 빠져나간다',
+  /getTime\(\)\s*>\s*Date\.now\(\)\)\s*\{[\s\S]{0,300}?break;/.test(pBlock),
+  'break 가 없으면 아래 강등 코드로 그대로 흘러간다');
 
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if(fail){ console.log('❌ subscription-cancel-grace tests FAILED'); process.exit(1); }
