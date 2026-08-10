@@ -240,7 +240,15 @@ module.exports = withCronGuard('pipeline-watch', async function handler(req, res
   const ytVideos = await checkYouTubeVideos({ dry });
   const newsletter = await checkNewsletter({ dry });
 
-  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels, faq, duration, naver, tiktok, heartbeat, ytVideos, newsletter });
+  /* ── 시작만 하고 안 끝난 실행 감시 (2026-08-10 추가) ──
+   * checkDuration 의 머리말은 "도중에 죽은 함수는 자기 죽음을 기록할 수 없다"
+   * 고 적어 뒀다. 맞았다 — weekly-news 는 34일간 매주 120초 상한에 죽었는데
+   * cron_runs 행이 **0건**이라 어떤 감시에도 안 잡혔다.
+   * 이제 cronGuard 가 시작할 때 먼저 한 줄을 남기므로, 죽은 실행은
+   * '안 끝난 줄'로 남는다. 그 줄을 여기서 읽는다. */
+  const deadRuns = await checkDeadRuns({ dry });
+
+  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels, faq, duration, naver, tiktok, heartbeat, ytVideos, newsletter, deadRuns });
 });
 
 /** 서술문 생산이 실제로 되고 있는지 보고, 이상하면 텔레그램으로 알린다. */
@@ -1371,3 +1379,122 @@ module.exports.judgeVideoStates = judgeVideoStates;
 module.exports.judgeNewsletter = judgeNewsletter;
 module.exports.buildNewsletterAlert = buildNewsletterAlert;
 module.exports.buildVideoStateAlert = buildVideoStateAlert;
+
+/* ─── 시작만 하고 안 끝난 실행 (2026-08-10 신설) ──────────────────────
+ *
+ * 실측 사고: weekly-news 는 2026-07-06 등록 후 **34일간 cron_runs 기록 0건**.
+ * 안 돈 게 아니라 매번 죽었다 —
+ *     GET /api/cron/weekly-news 504
+ *     Vercel Runtime Timeout Error: Task timed out after 120 seconds
+ * 기록이 finally 의 INSERT 하나뿐이라 함수가 상한에서 잘리면 그 INSERT 도
+ * 실행되지 않는다. trend-scout(월·목)도 같았다.
+ *
+ * cronGuard 가 시작 시점에 먼저 한 줄(ok=false · duration_ms=null)을 남기도록
+ * 바꿨으므로, 죽은 실행은 **끝나지 않은 줄**로 남는다. 여기서 그걸 읽는다.
+ *
+ * 판정: ran_at 이 GRACE_MIN 보다 오래됐는데 duration_ms 가 여전히 null.
+ * GRACE_MIN 은 함수 상한(120초)보다 넉넉히 크게 둔다 — 정상적으로 오래 도는
+ * 실행을 죽었다고 부르면 안 된다. 5분이면 상한의 2.5배다.
+ */
+const DEAD_RUN_ALERT_KEY = 'cron-dead-runs';
+const DEAD_RUN_GRACE_MIN = Number(process.env.CRON_DEAD_GRACE_MIN || 5);
+
+/** 순수 판정 (테스트 대상). rows: [{cron_name, ran_at}] — 이미 미완결만 걸러진 것 */
+function judgeDeadRuns(rows) {
+  const byCron = new Map();
+  for (const r of rows || []) {
+    const k = r && r.cron_name;
+    if (!k) continue;
+    if (!byCron.has(k)) byCron.set(k, { cron: k, count: 0, lastAt: null });
+    const e = byCron.get(k);
+    e.count++;
+    const t = r.ran_at ? Date.parse(r.ran_at) : null;
+    if (t && (!e.lastAt || t > e.lastAt)) e.lastAt = t;
+  }
+  const list = Array.from(byCron.values()).sort((a, b) => b.count - a.count);
+  const total = list.reduce((n, x) => n + x.count, 0);
+  return {
+    status: total === 0 ? 'ok' : 'dead',
+    healthy: total === 0,
+    total,
+    crons: list,
+    reason: total === 0
+      ? '끝나지 않은 실행 없음.'
+      : total + '건이 시작만 하고 안 끝났다 — ' +
+        list.slice(0, 4).map(x => x.cron + ' ' + x.count + '회').join(' · '),
+  };
+}
+
+function buildDeadRunAlert(d, site) {
+  return {
+    title: '🚨 크론이 도중에 죽는다 — 끝나지 않은 실행 ' + d.total + '건',
+    lines: [
+      d.reason,
+      '',
+      '무슨 뜻인가: 크론이 시작 기록은 남겼는데 종료 기록을 못 남겼다.',
+      '거의 언제나 Vercel 함수 상한(120초) 초과다. 그 경우 함수가 통째로',
+      '잘려나가므로 핸들러의 어떤 코드도 마무리를 못 한다.',
+      '',
+      '볼 곳: Vercel → Logs → 해당 경로, statusCode 504',
+      '고칠 방향: 그 크론에 시간 예산(BUDGET_MS)과 개별 fetch 타임아웃을 주고,',
+      '못 끝낸 몫은 다음 실행이 이어받게 한다 (backfill-translations 가 그 형태).',
+    ],
+    url: (site || '') + '/admin/crons',
+    urlLabel: '크론 상태',
+  };
+}
+
+async function checkDeadRuns(opts) {
+  try {
+    const cutoff = new Date(Date.now() - DEAD_RUN_GRACE_MIN * 60000).toISOString();
+    /* 창을 24시간으로 둔다 — 더 넓히면 옛 사고가 계속 울린다. */
+    const since = new Date(Date.now() - 24 * 3600000).toISOString();
+    const { data: rows, error } = await supabaseAdmin
+      .from('cron_runs')
+      .select('cron_name, ran_at')
+      .is('duration_ms', null)
+      .lt('ran_at', cutoff)
+      .gte('ran_at', since)
+      .limit(500);
+    if (error) throw error;
+
+    const d = judgeDeadRuns(rows || []);
+    if (opts && opts.dry) return { dry: true, ...d };
+
+    const { data: st } = await supabaseAdmin.from('ops_alert_state')
+      .select('last_alert_at, last_payload').eq('key', DEAD_RUN_ALERT_KEY).maybeSingle();
+    const lastAt = st && st.last_alert_at ? Date.parse(st.last_alert_at) : 0;
+    const wasBroken = !!(st && st.last_payload && st.last_payload.broken);
+    const COOLDOWN_H = Number(process.env.CRON_DEAD_COOLDOWN_H || 6);
+
+    let alerted = false;
+    if (!d.healthy && Date.now() - lastAt > COOLDOWN_H * 3600000) {
+      await pushAlert({ ...buildDeadRunAlert(d, SITE), personalOnly: true });
+      alerted = true;
+    } else if (d.healthy && wasBroken) {
+      await pushAlert({
+        personalOnly: true,
+        title: '✅ 크론 정상화 — 끝나지 않은 실행 0건',
+        lines: [d.reason],
+        url: `${SITE}/admin/crons`, urlLabel: '크론 상태',
+      });
+      alerted = true;
+    }
+    if (alerted || wasBroken !== !d.healthy) {
+      await supabaseAdmin.from('ops_alert_state').upsert({
+        key: DEAD_RUN_ALERT_KEY,
+        last_alert_at: alerted ? new Date().toISOString() : (st && st.last_alert_at) || null,
+        last_payload: { broken: !d.healthy, total: d.total,
+          crons: d.crons.slice(0, 6).map(x => x.cron + ':' + x.count) },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'key' });
+    }
+    return { ...d, alerted };
+  } catch (e) {
+    console.error('[pipeline-watch] dead-run 감시 실패', e && e.message);
+    return { error: (e && e.message) || 'unknown' };
+  }
+}
+
+module.exports.judgeDeadRuns = judgeDeadRuns;
+module.exports.buildDeadRunAlert = buildDeadRunAlert;

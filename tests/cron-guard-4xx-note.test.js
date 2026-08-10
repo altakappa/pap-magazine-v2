@@ -26,18 +26,38 @@ function ok(c, m) { if (c) { pass++; console.log('  ✓ ' + m); } else { fail++;
 function eq(a, b, m) { ok(a === b, m + `  (기대 ${JSON.stringify(b)}, 실제 ${JSON.stringify(a)})`); }
 
 // ── 의존성 갈아끼우기 ────────────────────────────────────────────────
-const inserted = [];
+/* 2026-08-10 — 기록 방식이 바뀌어 가짜 DB 도 따라간다.
+ * cronGuard 가 이제 **시작할 때 한 줄 INSERT 하고 끝날 때 그 줄을 UPDATE** 한다
+ * (weekly-news 가 34일간 120초 상한에 죽으면서 아무 기록도 못 남긴 사고).
+ * 그래서 예전처럼 insert 한 번만 가로채면 시작 행만 잡혀 검사가 헛돈다.
+ * 여기서는 행을 실제로 들고 있으면서 update 를 반영해, **최종 상태**를 본다. */
+const rows = [];
 const alerts = [];
+let nextId = 1;
 const fakeSupabase = {
   supabaseAdmin: {
     from() {
-      return {
-        insert(row) { inserted.push(row); return Promise.resolve({ error: null }); },
-        select() { return this; },
-        eq() { return this; },
-        gte() { return this; },
+      const q = {
+        _mode: null, _payload: null,
+        insert(row) { q._mode = 'insert'; q._payload = Object.assign({ id: nextId++ }, row); rows.push(q._payload); return q; },
+        update(patch) { q._mode = 'update'; q._payload = patch; return q; },
+        select() { return q; },
+        single() { return Promise.resolve({ data: { id: q._payload.id }, error: null }); },
+        eq(_col, val) {
+          if (q._mode === 'update') {
+            const r = rows.find((x) => x.id === val);
+            if (r) Object.assign(r, q._payload);
+            return Promise.resolve({ error: null });
+          }
+          return q;
+        },
+        not() { return q; },
+        gte() { return q; },
         limit() { return Promise.resolve({ data: [] }); },  // 최근 알림 없음
+        // `await from().insert({...})` (폴백 경로) 를 위해 thenable
+        then(onOk) { return Promise.resolve({ error: null }).then(onOk); },
       };
+      return q;
     },
   },
 };
@@ -49,7 +69,7 @@ Module._load = function (req, parent, isMain) {
   return orig.apply(this, arguments);
 };
 delete require.cache[require.resolve(GUARD)];
-const { withCronGuard } = require(GUARD);
+const { withCronGuard, RUNNING_MARK } = require(GUARD);
 Module._load = orig;
 
 function fakeRes() {
@@ -61,10 +81,11 @@ function fakeRes() {
   return res;
 }
 async function run(handler) {
-  inserted.length = 0; alerts.length = 0;
+  rows.length = 0; alerts.length = 0;
   const res = fakeRes();
   await withCronGuard('t-cron', handler)({ method: 'GET', headers: {} }, res);
-  return { row: inserted[0] || null, res };
+  // 행은 하나여야 한다 — 시작 INSERT 1 + 종료 UPDATE 1 (INSERT 2 가 아니다)
+  return { row: rows[0] || null, rowCount: rows.length, res };
 }
 
 (async () => {

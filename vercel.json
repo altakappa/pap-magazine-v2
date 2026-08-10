@@ -1429,6 +1429,14 @@
     }
   ],
   "functions": {
+    "api/cron/weekly-news.js": {
+      "maxDuration": 300,
+      "memory": 1024
+    },
+    "api/cron/trend-scout.js": {
+      "maxDuration": 300,
+      "memory": 1024
+    },
     "api/**/*.js": {
       "maxDuration": 120,
       "memory": 1024

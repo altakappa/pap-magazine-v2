@@ -53,6 +53,10 @@ async function _hasRecentAlert(cronName) {
     .select('id')
     .eq('cron_name', cronName)
     .eq('ok', false)
+    /* 시작 행(아직 안 끝난 실행)은 ok=false 지만 '실패 알림을 이미 보냈다'는
+       뜻이 아니다. duration_ms 가 채워진 = 끝난 실패만 쿨다운에 센다.
+       (2026-08-10 — 시작 기록 도입과 함께) */
+    .not('duration_ms', 'is', null)
     .gte('ran_at', cutoff)
     .limit(1);
   return !!(data && data.length);
@@ -102,6 +106,65 @@ function _escapeHtml(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+/* ─── 시작을 먼저 적는다 (2026-08-10 신설) ────────────────────────────
+ *
+ * 왜 필요했나 — 실측:
+ *   weekly-news 는 2026-07-06 등록 이후 **34일간 한 번도 cron_runs 에 기록이
+ *   없었다.** 안 돈 게 아니었다. Vercel 런타임 로그를 보면 매주 호출됐고
+ *   매번 이렇게 끝났다:
+ *       GET /api/cron/weekly-news 504
+ *       Vercel Runtime Timeout Error: Task timed out after 120 seconds
+ *   기록은 finally 의 INSERT 한 번뿐이라, **함수가 상한에서 죽으면 그 INSERT
+ *   자체가 실행되지 않는다.** 그래서 아무 흔적도 안 남았다.
+ *   trend-scout 도 같다(월·목, 34일간 0건).
+ *
+ * 더 나쁜 건 감시까지 눈이 멀었다는 점이다. 크론 실행시간 감시는 cron_runs 의
+ * duration 을 읽는데, **행이 없는 크론은 볼 수가 없다.** 죽은 크론일수록
+ * 안 보이는 구조였다.
+ *
+ * 그래서 순서를 바꾼다: 시작할 때 한 줄 먼저 넣고(ok=false · duration_ms=null),
+ * 끝나면 그 줄을 갱신한다.
+ *   · 정상 종료  → 갱신되어 평소와 같은 한 줄
+ *   · 도중 사망  → ok=false · duration_ms=null 인 줄이 그대로 남는다 = 증거
+ * 행 수는 그대로다(INSERT 1 + UPDATE 1). 실행당 왕복 한 번이 늘지만,
+ * '보이지 않는 죽음'을 없애는 값으로 싸다.
+ *
+ * 시작 기록에 실패해도 크론은 그대로 돈다 — 감시가 본업을 막으면 안 된다.
+ * 그때는 startId 가 null 이라 종료 시 예전처럼 INSERT 로 떨어진다. */
+const RUNNING_MARK = '⏳ 실행 중 — 아직 끝나지 않음';
+
+async function _logStart(cronName) {
+  try {
+    const { data, error } = await supabaseAdmin.from('cron_runs').insert({
+      cron_name: cronName,
+      ok: false,          // 끝나야 true 로 바뀐다. 안 바뀌면 그게 사망 증거다.
+      duration_ms: null,  // null = 아직 안 끝남 (쿨다운·통계가 이걸로 구분한다)
+      error: RUNNING_MARK,
+    }).select('id').single();
+    if (error) throw error;
+    return data && data.id ? data.id : null;
+  } catch (e) {
+    console.error('[cronGuard] 시작 기록 실패(무시하고 진행):', e && e.message);
+    return null;
+  }
+}
+
+async function _logFinish(rowId, ok, durationMs, note, error) {
+  try {
+    const { error: upErr } = await supabaseAdmin.from('cron_runs').update({
+      ok,
+      duration_ms: durationMs,
+      note: note ? String(note).slice(0, 500) : null,
+      error: error ? String(error).slice(0, 800) : null,
+    }).eq('id', rowId);
+    if (upErr) throw upErr;
+    return true;
+  } catch (e) {
+    console.error('[cronGuard] 종료 갱신 실패:', e && e.message);
+    return false;
+  }
+}
+
 async function _logRun(cronName, ok, durationMs, note, error) {
   try {
     await supabaseAdmin.from('cron_runs').insert({
@@ -128,6 +191,8 @@ function withCronGuard(cronName, handler, opts) {
     const start = Date.now();
     let error = null;
     let ok = true;
+    // 시작을 먼저 남긴다 — 함수가 상한에서 죽어도 흔적이 남게 (위 _logStart 주석)
+    const startId = await _logStart(cronName);
 
     /* 응답을 먼저 보내면 기록이 유실될 수 있다 (2026-07-31 실측).
      *
@@ -192,8 +257,11 @@ function withCronGuard(cronName, handler, opts) {
         noteOut = 'HTTP ' + res.statusCode + ' — 아무 일도 안 하고 끝남 (인증 거부일 가능성)';
       }
 
-      // 로그는 항상 기록 (일시성 실패도 진단용으로 남긴다)
-      await _logRun(cronName, ok, duration, noteOut, error);
+      /* 로그는 항상 남긴다 (일시성 실패도 진단용).
+         시작 행이 있으면 그 줄을 갱신하고, 없으면(시작 기록 실패) 예전처럼 새로 넣는다. */
+      let logged = false;
+      if (startId) logged = await _logFinish(startId, ok, duration, noteOut, error);
+      if (!logged) await _logRun(cronName, ok, duration, noteOut, error);
 
       /* 기록이 끝난 뒤에 응답을 내보낸다 — 이 순서가 핵심이다.
          반대로 하면 긴 실행에서 인스턴스가 얼어 기록이 통째로 사라진다. */
@@ -216,4 +284,4 @@ function withCronGuard(cronName, handler, opts) {
   };
 }
 
-module.exports = { withCronGuard };
+module.exports = { withCronGuard, RUNNING_MARK };

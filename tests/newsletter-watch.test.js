@@ -149,7 +149,10 @@ console.log('\n[8] 배선');
 {
   const w = R('api/cron/pipeline-watch.js');
   t('핸들러가 감시를 부른다', /const newsletter = await checkNewsletter\(\{ dry \}\)/.test(w));
-  t('응답에 실린다', /heartbeat, ytVideos, newsletter \}\)/.test(w));
+  /* 2026-08-10 — 응답 끝에 deadRuns 가 붙었다(끝나지 않은 실행 감시).
+   '마지막 항목' 을 고정하면 감시를 하나 붙일 때마다 이 핀이 깨진다.
+   newsletter 가 응답에 실려 있는지만 본다. */
+  t('응답에 실린다', /res\.status\(200\)\.json\(\{[^}]*\bnewsletter\b/.test(w));
   t('알림 키가 따로다', /NEWSLETTER_ALERT_KEY = 'nl:weekly'/.test(w));
   t('감시 실패가 본 크론을 안 죽인다', /뉴스레터 감시 실패/.test(w));
   t('회복하면 정상 알림도 보낸다', /✅ 뉴스레터 정상/.test(w));

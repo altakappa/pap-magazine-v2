@@ -42,7 +42,24 @@ function parseRss(xml, source) {
 
 const norm = (s) => String(s || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 
+/* ─── 시간 예산 (2026-08-10 신설) ─────────────────────────────────────
+ *
+ * weekly-news 와 같은 사고. 2026-07-06 등록 이후 **34일간 성공 0회**이고
+ * cron_runs 기록도 0건이라 아무에게도 안 보였다(함수가 상한에서 통째로
+ * 잘리면 기록을 남길 코드까지 같이 죽는다).
+ *
+ * 산수:  RSS 15초 + Claude 채점 100초 = 115초 + DB 쓰기  >  상한 120초
+ * Claude 호출 타임아웃 100초가 상한 120초에 너무 붙어 있었다 — 피드가
+ * 조금만 늦어도 넘는다.
+ *
+ * ① vercel.json 에서 이 경로만 maxDuration 300 (Pro 허용)
+ * ② 예산을 둬서, 모자라면 죽는 대신 이유를 남기고 끝낸다 */
+const BUDGET_MS = Number(process.env.TREND_SCOUT_BUDGET_MS || 260000);
+const SLACK_MS = 20000;
+
 module.exports = withCronGuard('trend-scout', async function handler(req, res) {
+  const started = Date.now();
+  const msLeft = () => BUDGET_MS - (Date.now() - started);
   const auth = (req.headers && req.headers['authorization']) || '';
   const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
   if (!cronOk) {
@@ -56,7 +73,7 @@ module.exports = withCronGuard('trend-scout', async function handler(req, res) {
     const results = await Promise.allSettled(FEEDS.map(async (f) => {
       const r = await fetch(f.url, {
         headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PAPTrendScout/1.0)' },
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(Math.max(5000, Math.min(15000, msLeft() - SLACK_MS))),
       });
       if (!r.ok) throw new Error(f.source + ' ' + r.status);
       return parseRss(await r.text(), f.source);
@@ -80,7 +97,14 @@ module.exports = withCronGuard('trend-scout', async function handler(req, res) {
     }).slice(0, 40);
     if (!items.length) return res.status(200).json({ ok: true, note: '신규 항목 없음' });
 
-    // 3) Claude 채점
+    // 3) Claude 채점 — 남은 예산 안에서만
+    const claudeMs = Math.min(100000, msLeft() - SLACK_MS);
+    if (claudeMs < 20000) {
+      return res.status(200).json({
+        ok: true, skipped: 'budget',
+        note: '시간 부족으로 채점 생략 (남은 ' + Math.round(msLeft() / 1000) + '초) — 다음 실행이 재시도',
+      });
+    }
     const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -96,7 +120,7 @@ module.exports = withCronGuard('trend-scout', async function handler(req, res) {
         ].join('\n'),
         messages: [{ role: 'user', content: JSON.stringify(items) }],
       }),
-      signal: AbortSignal.timeout(100000),
+      signal: AbortSignal.timeout(claudeMs),
     });
     if (!resp.ok) throw new Error('Claude ' + resp.status);
     const j = await resp.json();

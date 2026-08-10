@@ -124,7 +124,32 @@ function note(res, msg) {
   return msg;
 }
 
+/* ─── 시간 예산 (2026-08-10 신설) ─────────────────────────────────────
+ *
+ * 이 크론은 2026-07-06 등록 이후 **34일간 한 번도 성공한 적이 없다.**
+ * cron_runs 기록이 0건이라 아무도 몰랐다. Vercel 런타임 로그의 실제 모습:
+ *     GET /api/cron/weekly-news 504
+ *     Vercel Runtime Timeout Error: Task timed out after 120 seconds
+ *
+ * 산수를 해 보면 애초에 들어갈 수가 없었다:
+ *     RSS 수집        15초
+ *     마스터 큐레이션  최대 90초
+ *     8개 로케일 번역  최대 90초 (병렬이라 벽시계로 90초)
+ *     ─────────────────────
+ *     합계            최대 195초   >   함수 상한 120초
+ * 최선의 경우(마스터 60 + 번역 60)라도 135초라 넘는다. 구조적으로 불가능했다.
+ *
+ * 두 가지를 함께 고친다:
+ *   ① vercel.json 에서 이 경로만 maxDuration 300 으로 (Pro 는 허용)
+ *   ② 그래도 예산을 둔다 — 상한을 올려도 '넘으면 통째로 죽는' 성질은 그대로다.
+ *      남은 시간에 맞춰 각 호출의 타임아웃을 깎고, 모자라면 죽는 대신
+ *      이유를 남기고 끝낸다. 다음 주 실행이 다시 시도한다. */
+const BUDGET_MS = Number(process.env.WEEKLY_NEWS_BUDGET_MS || 260000);
+const SLACK_MS = 20000;   // 응답·DB 쓰기·cronGuard 기록 몫
+
 module.exports = withCronGuard('weekly-news', async function handler(req, res) {
+  const started = Date.now();
+  const msLeft = () => BUDGET_MS - (Date.now() - started);
   const auth = (req.headers && req.headers['authorization']) || '';
   const cronOk = process.env.CRON_SECRET && auth === 'Bearer ' + process.env.CRON_SECRET;
   if (!cronOk) {
@@ -156,7 +181,7 @@ module.exports = withCronGuard('weekly-news', async function handler(req, res) {
     const results = await Promise.allSettled(FEEDS.map(async (f) => {
       const r = await fetch(f.url, {
         headers: { 'User-Agent': 'Mozilla/5.0 (compatible; PAPWeeklyNews/1.0)' },
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(Math.max(5000, Math.min(15000, msLeft() - SLACK_MS))),
       });
       if (!r.ok) throw new Error(f.source + ' ' + r.status);
       return parseRss(await r.text(), f.source);
@@ -170,7 +195,15 @@ module.exports = withCronGuard('weekly-news', async function handler(req, res) {
     }
 
     // 2) 한국어 마스터 큐레이션
-    const master = await claude(MASTER_SYSTEM, JSON.stringify(headlines), 6000, 90000);
+    /* 번역 몫(최소 90초)과 마무리 여유를 남기고 남은 만큼만 쓴다. */
+    const masterMs = Math.min(90000, msLeft() - 90000 - SLACK_MS);
+    if (masterMs < 20000) {
+      return res.status(200).json({
+        ok: true, skipped: 'budget',
+        note: note(res, '시간 부족으로 마스터 큐레이션 생략 (남은 ' + Math.round(msLeft() / 1000) + '초) — 다음 실행이 재시도'),
+      });
+    }
+    const master = await claude(MASTER_SYSTEM, JSON.stringify(headlines), 6000, masterMs);
     if (!Array.isArray(master.newsItems) || master.newsItems.length < 10 || !master.subject) {
       throw new Error('마스터 큐레이션 검증 실패 (items=' + (master.newsItems || []).length + ')');
     }
@@ -186,8 +219,9 @@ module.exports = withCronGuard('weekly-news', async function handler(req, res) {
 
     // 3) 8개 로케일 병렬 번역 — 실패 로케일은 건너뜀 (템플릿이 en 폴백)
     const masterJson = JSON.stringify(master);
+    const transMs = Math.max(20000, Math.min(90000, msLeft() - SLACK_MS));
     const translations = await Promise.allSettled(
-      LOCALES.map((loc) => claude(translateSystem(loc), masterJson, 6000, 90000))
+      LOCALES.map((loc) => claude(translateSystem(loc), masterJson, 6000, transMs))
     );
     const i18n = { ko: master };
     const failed = [];
