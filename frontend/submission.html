@@ -5,7 +5,7 @@
 <!-- CSP — 2b(2026-07-19): 승인된 유료/브랜디드 서브미션 기본료 Paddle 결제 오버레이용으로
      *.paddle.com 을 script/connect/frame-src 에 추가 (subscribe.html 과 동일 패턴).
      vercel.json 전역 헤더가 이미 *.paddle.com 을 허용하므로 이 meta 는 superset 안에 있음. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.paddle.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co https://api.pap-magazine.com https://*.paddle.com; frame-src https://*.paddle.com;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.paddle.com https://www.paypal.com https://*.paypal.com https://*.paypalobjects.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://*.supabase.co https://api.pap-magazine.com https://*.paddle.com https://www.paypal.com https://*.paypal.com https://*.paypalobjects.com; frame-src https://*.paddle.com https://www.paypal.com https://*.paypal.com;">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="PAP 매거진에 에디토리얼을 제출하세요. 서브미션 유형을 선택하고, 작품 정보·팀 크레딧·룩별 의상 크레딧·고해상도 이미지를 제출해 주세요.">
 <link rel="canonical" href="https://www.pap-magazine.com/submission">
@@ -982,7 +982,7 @@ function navigateWithInterstitial(url){
 <script src="https://cdn.paddle.com/paddle/v2/paddle.js" defer></script>
 <script src="/pap-name-validator.js?v=3" defer></script>
 <script src="submission-terms.js?v=1"></script>
-<script src="/pap-submission-fee.js?v=3"></script>
+<script src="/pap-submission-fee.js?v=4"></script>
 <script>
 var lookCount=0;
 var files1=[];
@@ -1513,37 +1513,13 @@ async function viewSubmission(id){
 // Paddle SDK 미로드 또는 상품(price id) 미설정 시 PayPal 대신 안내 토스트만 노출한다.
 // 웹훅은 kind:'submission_addon' 으로 수신.
 async function payAddonFee(submissionId, addonKey){
-  function _addonUnavail(){ try{ if(typeof PAP!=='undefined'&&PAP.ui&&PAP.ui.toast) PAP.ui.toast(_payT('payBaseUnavailable'),'error'); }catch(_){} }
-  try{
-    if(typeof Paddle==='undefined'){ _addonUnavail(); return; }
-    var user = await _resolvePayUser();
-    if(!user){
-      if(typeof PAP!=='undefined') PAP.ui.toast(_payT('payLoginFirst'),'error');
-      return;
-    }
-    var cfg=null;
-    try{ cfg=await fetch('/api/subscriptions/paddle-config',{headers:{'X-Requested-With':'XMLHttpRequest'}}).then(function(r){return r.ok?r.json():null;}); }catch(_){}
-    var priceId=(cfg && cfg.clientToken && (cfg.submissionAddons||{})[addonKey])||'';
-    if(!priceId){ _addonUnavail(); return; }
-    if(!window._papPaddleInitSub){
-      if(cfg.environment==='sandbox'){ try{ Paddle.Environment.set('sandbox'); }catch(_){} }
-      Paddle.Initialize({ token: cfg.clientToken, eventCallback: function(ev){
-        if(ev && ev.name==='checkout.completed'){
-          try{ if(typeof PAP!=='undefined'&&PAP.ui&&PAP.ui.toast) PAP.ui.toast(_payT('payCompleteOptimistic'),'success'); }catch(_){}
-        }
-      }});
-      window._papPaddleInitSub=true;
-    }
-    Paddle.Checkout.open({
-      items:[{ priceId: priceId, quantity:1 }],
-      customer: user.email?{ email:user.email }:undefined,
-      customData:{ submission_id:submissionId, addon:addonKey, user_id:user.id, kind:'submission_addon' },
-      settings:{ displayMode:'overlay', theme:'dark', locale:(function(){try{return localStorage.getItem('pap-lang')||'en';}catch(_){return 'en';}})() }
-    });
-  }catch(e){
-    console.error('payAddonFee error:',e);
-    _addonUnavail();
+  // 2026-08-10 — Paddle 오버레이 → PayPal Orders. 실제 로직은 pap-submission-fee.js
+  // 의 papPayOneTime 한 곳에 모았다(기본료와 같은 경로 = 같은 방어를 공유한다).
+  if (typeof window.papPayOneTime !== 'function') {
+    try{ if(typeof PAP!=='undefined'&&PAP.ui&&PAP.ui.toast) PAP.ui.toast('Payment module not loaded. Please refresh.','error'); }catch(_){ }
+    return;
   }
+  return window.papPayOneTime({ submissionId: submissionId, kind: 'submission_addon', addon: addonKey });
 }
 
 // ADD MODEL ROW

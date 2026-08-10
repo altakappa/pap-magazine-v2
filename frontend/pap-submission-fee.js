@@ -1,13 +1,17 @@
-/* pap-submission-fee.js — 서브미션 '기본료' Paddle 결제 공용 모듈 (2026-07-22, 구조개편 Phase 2)
+/* pap-submission-fee.js — 서브미션 일회성 결제(기본료·애드온) 공용 모듈
+ * 2026-07-22 최초 · 2026-08-10 Paddle → PayPal Orders 전환
  * 예전엔 submission.html 인라인에만 있던 결제 로직을 추출해 submission.html 과 mypage.html 이
  * 함께 쓴다(단일 소스 — 두 곳에 복제하면 돈 관련 코드가 갈라져 불일치 위험). 클래식 스크립트로
- * 전역 함수(_payT, _baseFeeApprovalBlock, payBaseFee 등)를 노출한다. Paddle SDK(cdn.paddle.com)
- * 와 PAP(pap-api.js), /api/subscriptions/paddle-config 에 의존하며, 결제 확정은 웹훅 몫이다. */
+ * 전역 함수(_payT, _baseFeeApprovalBlock, payBaseFee, papPayOneTime)를 노출한다.
+ * PayPal JS SDK(www.paypal.com/sdk/js) 와 PAP(pap-api.js),
+ * /api/subscriptions/paypal-config 에 의존한다.
+ * 결제 확정은 서버(/api/submissions/paypal-capture)가 PayPal 원본을 다시 읽어
+ * 금액까지 대조한 뒤에 한다 — 브라우저의 '성공' 은 신뢰하지 않는다. */
 'use strict';
 // ═══════════════════════════════════════════════════════════════════════
-// SUBMISSION BASE-FEE PAYMENT (Paddle) — 2b (2026-07-19)
+// SUBMISSION ONE-TIME PAYMENT (PayPal Orders) — 2026-08-10
 // 승인된 유료(paid_few_looks €380) / 브랜디드(branded €790) 서브미션의 '기본료'를
-// Paddle 오버레이로 결제한다. 결제 확정은 웹훅(키퍼 담당)의 몫 — 프론트는 낙관적 안내만.
+// PayPal 버튼 오버레이로 결제한다. 확정은 서버 캡처 엔드포인트의 몫 — 프론트는 안내만.
 // 발행은 여전히 수동(도메니코). 추가옵션(PayPal 정적 링크)은 별개로 유지.
 // ─── i18n (9개 언어, 초안 / DRAFT) ──────────────────────────────────────
 //   payBaseFeeBtn / payBasePaid / payBaseUnavailable ... 문구는 도메니코 확정 전
@@ -65,7 +69,7 @@ function _baseFeeApprovalBlock(submissionId, submissionType, paymentStatus){
   if(paymentStatus==='paid' || _locallyPaid){
     return _baseFeePaidHtml();
   }
-  // 미결제 → Paddle 오버레이 버튼. onclick 인자는 UUID + 고정 유형값이라 안전.
+  // 미결제 → PayPal 결제 버튼. onclick 인자는 UUID + 고정 유형값이라 안전.
   // 컨테이너/버튼에 id 부여 → checkout.completed 콜백이 이 박스를 즉시 '결제 완료'로 교체.
   return '<div id="_baseFeeBox_'+submissionId+'" style="margin:0 0 16px;padding:16px 18px;background:rgba(201,168,106,.06);border:1px solid rgba(201,168,106,.35);border-radius:2px">'+
            '<div style="font-size:12px;color:rgba(255,255,255,.8);margin-bottom:12px">'+_payT('payBaseIntro')+'</div>'+
@@ -84,7 +88,7 @@ function _baseFeePaidHtml(){
 }
 // Lock a submission's base-fee button after a completed checkout — sets the
 // session paid flag and swaps the button box for the paid state so a second
-// click can't open a second Paddle transaction (real re-charge). Webhook
+// click can't open a second PayPal order (real re-charge). Server capture
 // idempotency protects the DB; this protects the wallet within the session.
 function _lockBaseFeeButton(submissionId){
   if(!submissionId) return;
@@ -127,83 +131,112 @@ async function _resolvePayUser(){
   }catch(_){}
   return null;
 }
-// Open the Paddle checkout overlay for a submission's base fee.
-// Mirrors pap-api.js checkoutIntl pattern: paddle-config → Paddle.Initialize →
-// Paddle.Checkout.open. customData.kind='submission_fee' 로 웹훅(키퍼)이 처리.
-async function payBaseFee(submissionId, submissionType){
-  try{
-    if(typeof Paddle==='undefined'){
-      if(typeof PAP!=='undefined') PAP.ui.toast(_payT('paySdkMissing'),'error');
-      return;
-    }
-    // 이중청구 방지 — 이번 세션에서 이미 결제 완료된 서브미션이면 오버레이를 다시 열지 않는다.
-    // (웹훅 멱등은 DB 중복만 막고 실제 2번째 tx=재청구는 못 막으므로 클릭 진입점에서 차단.)
-    try{
-      if(window._papSubFeePaidLocal && window._papSubFeePaidLocal[submissionId]){
-        if(typeof PAP!=='undefined') PAP.ui.toast(_payT('payBasePaidHint'),'success');
-        _lockBaseFeeButton(submissionId);
-        return;
-      }
-    }catch(_){}
-    // 2026-07-21 근본수정 — 로그인 판정을 서버 진실(_resolvePayUser)로 통일.
-    // 쿠키 전용 세션(토큰 유실)에서도 서버가 인증하면 결제를 막지 않는다.
-    var user = await _resolvePayUser();
-    if(!user){
-      if(typeof PAP!=='undefined') PAP.ui.toast(_payT('payLoginFirst'),'error');
-      return;
-    }
-    // paddle-config 소비 — clientToken + submissionFees{paid_few_looks,branded}.
-    // 계약 정합(2026-07-19): 키퍼 paddle-config 응답 키는 `submissionFees` (과업 지시서의
-    // 가정 `submissionFeePrices`가 아님). 실제 키에 맞춤. 키 없으면 안전 처리.
-    var cfg=null;
-    try{ cfg = await fetch('/api/subscriptions/paddle-config',{headers:{'X-Requested-With':'XMLHttpRequest'}}).then(function(r){return r.ok?r.json():null;}); }catch(_){}
-    // 결제 일시중단(공급사 교체) — 기존 payBaseUnavailable 보다 구체적인 안내.
-    if(cfg && cfg.paused){
-      if(typeof PAP!=='undefined') PAP.ui.toast(_paySubPausedMsg(),'error');
-      return;
-    }
-    if(!cfg || !cfg.clientToken){
-      if(typeof PAP!=='undefined') PAP.ui.toast(_payT('payBaseUnavailable'),'error');
-      return;
-    }
-    var fees = cfg.submissionFees || cfg.submissionFeePrices || {};
-    var priceId = fees[submissionType] || '';
-    if(!priceId){
-      // 도메니코 Paddle 미설정(price ID 없음) → 안내 후 중단 (버튼 안전 처리).
-      if(typeof PAP!=='undefined') PAP.ui.toast(_payT('payBaseUnavailable'),'error');
-      return;
-    }
-    if(!window._papPaddleInitSub){
-      if(cfg.environment==='sandbox'){ try{ Paddle.Environment.set('sandbox'); }catch(_){} }
-      Paddle.Initialize({
-        token: cfg.clientToken,
-        eventCallback: function(ev){
-          // 확정은 webhook(payment_status=paid)이 담당 — 여기선 낙관적 안내 + 세션 잠금.
-          if(ev && ev.name==='checkout.completed'){
-            // 완료된 결제의 submission_id 를 event custom_data 로 식별(폴백: 마지막 in-flight).
-            var _sid='', _kind='';
-            try{ _sid = (ev.data && ev.data.custom_data && ev.data.custom_data.submission_id) || ''; _kind = (ev.data && ev.data.custom_data && ev.data.custom_data.kind) || ''; }catch(_){}
-            if(!_sid){ try{ _sid = window._papSubFeeInFlight || ''; }catch(_){ _sid=''; } }
-            // 버튼 잠금은 기본료(submission_fee)에만 — 부가서비스(addon) 완료가
-            // 기본료 버튼을 잘못 잠그지 않게 kind 로 구분 (2026-07-20).
-            if(_sid && _kind!=='submission_addon') _lockBaseFeeButton(_sid);
-            try{ if(typeof PAP!=='undefined'&&PAP.ui&&PAP.ui.toast) PAP.ui.toast(_payT('payCompleteOptimistic'),'success'); }catch(_){}
-          }
-        }
-      });
-      window._papPaddleInitSub=true;
-    }
-    // checkout.completed 콜백이 잠글 대상을 식별할 수 있게 in-flight submission_id 기록.
-    try{ window._papSubFeeInFlight = submissionId; }catch(_){}
-    Paddle.Checkout.open({
-      items:[{ priceId: priceId, quantity:1 }],
-      customer: user.email?{ email:user.email }:undefined,
-      customData:{ submission_id:submissionId, submission_type:submissionType, user_id:user.id, kind:'submission_fee' },
-      settings:{ displayMode:'overlay', theme:'dark', locale:(function(){try{return localStorage.getItem('pap-lang')||'en';}catch(_){return 'en';}})() }
-    });
-  }catch(e){
-    console.error('payBaseFee error:',e);
-    try{ if(typeof PAP!=='undefined') PAP.ui.toast(_payT('payGenericError'),'error'); }catch(_){}
-  }
+// ── PayPal 일회성 결제 (2026-08-10) ────────────────────────────────
+// Paddle 폐쇄로 전환. 구독(Subscriptions)과 다른 API 다 — 요청마다 금액을 싣는다.
+//
+// ⚠️ 금액은 이 파일에 없다. 서버(/api/submissions/paypal-order)가 저장된
+//    submissionType 으로 산출한다. 브라우저는 "무엇을" 만 말하고 "얼마" 는 못 말한다.
+//    (Paddle 시절 클라이언트가 유형을 위조해 싼 값을 낼 수 있던 구멍을 없앤 것)
+// ⚠️ 결제 확정도 서버(/api/submissions/paypal-capture)가 PayPal 원본을 다시 읽어
+//    금액까지 대조한 뒤에 한다. 브라우저의 "성공했어요" 는 신뢰하지 않는다.
+
+var _PP_SDK_LOADED = null;
+function _loadPayPalSdkOnce(clientId){
+  if (window.paypal && window._papPPSdkKey === clientId) return Promise.resolve();
+  if (_PP_SDK_LOADED) return _PP_SDK_LOADED;
+  _PP_SDK_LOADED = new Promise(function(resolve, reject){
+    var el = document.createElement('script');
+    // 일회성 결제는 intent=capture. 구독용 vault/subscription 조합과 다르다.
+    el.src = 'https://www.paypal.com/sdk/js?client-id=' + encodeURIComponent(clientId)
+           + '&currency=EUR&intent=capture&components=buttons';
+    el.onload = function(){ window._papPPSdkKey = clientId; resolve(); };
+    el.onerror = function(){ _PP_SDK_LOADED = null; reject(new Error('sdk')); };
+    document.head.appendChild(el);
+  });
+  return _PP_SDK_LOADED;
 }
 
+/**
+ * 서브미션 일회성 결제 오버레이.
+ * @param {{submissionId:string, kind:'submission_fee'|'submission_addon', addon?:string}} opts
+ * 전역 노출 — submission.html 의 애드온 버튼도 이 함수를 쓴다.
+ */
+async function papPayOneTime(opts){
+  function fail(msgKey){ try{ if(typeof PAP!=='undefined'&&PAP.ui&&PAP.ui.toast) PAP.ui.toast(_payT(msgKey||'payGenericError'),'error'); }catch(_){ } }
+
+  // 이중 제출 방지 — 2026-08-07 lia.line 이 2분 간격 중복 결제로 €17.98 을 냈다.
+  if (window._papOneTimeBusy) return;
+  window._papOneTimeBusy = true;
+  var overlay = null;
+  function close(){ window._papOneTimeBusy = false; if(overlay){ overlay.remove(); overlay=null; } }
+
+  try{
+    var user = await _resolvePayUser();
+    if(!user){ close(); if(typeof PAP!=='undefined') PAP.ui.toast(_payT('payLoginFirst'),'error'); return; }
+
+    var cfg=null;
+    try{ cfg = await fetch('/api/subscriptions/paypal-config',{headers:{'X-Requested-With':'XMLHttpRequest'}}).then(function(r){return r.ok?r.json():null;}); }catch(_){}
+    if(cfg && cfg.paused){ close(); if(typeof PAP!=='undefined') PAP.ui.toast(_paySubPausedMsg(),'error'); return; }
+    if(!cfg || !cfg.clientId){ close(); fail('payBaseUnavailable'); return; }
+
+    await _loadPayPalSdkOnce(cfg.clientId);
+
+    overlay = document.createElement('div');
+    overlay.style.cssText='position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto';
+    overlay.innerHTML='<div style="background:#fff;color:#111;max-width:420px;width:100%;border-radius:4px;padding:26px 24px 20px;position:relative">'
+      +'<button id="_ppx" aria-label="close" style="position:absolute;top:10px;right:12px;background:none;border:none;font-size:22px;line-height:1;cursor:pointer;color:#666">&times;</button>'
+      +'<div style="font-size:14px;font-weight:700;letter-spacing:.04em;margin:0 0 18px">PAP MAGAZINE</div>'
+      +'<div id="_ppbtn"></div>'
+      +'<div id="_ppwait" style="display:none;font-size:13px;line-height:1.7;color:#333;padding:8px 0"></div>'
+      +'</div>';
+    document.body.appendChild(overlay);
+    overlay.querySelector('#_ppx').addEventListener('click', close);
+    overlay.addEventListener('click', function(e){ if(e.target===overlay) close(); });
+
+    window.paypal.Buttons({
+      style:{ layout:'vertical', shape:'rect' },
+      createOrder: function(){
+        return fetch('/api/submissions/paypal-order',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'},
+          credentials:'same-origin',
+          body:JSON.stringify({ submission_id:opts.submissionId, kind:opts.kind||'submission_fee', addon:opts.addon||null })
+        }).then(function(r){ return r.json(); }).then(function(j){
+          if(!j || !j.id) throw new Error(j && j.code ? j.code : 'order_failed');
+          return j.id;
+        });
+      },
+      onApprove: function(data){
+        var b=document.getElementById('_ppbtn'), w=document.getElementById('_ppwait');
+        if(b) b.style.display='none';
+        if(w){ w.textContent=_payT('payCompleteOptimistic'); w.style.display='block'; }
+        // 확정은 서버가 한다 — 여기서 성공을 선언하지 않는다.
+        return fetch('/api/submissions/paypal-capture',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'},
+          credentials:'same-origin',
+          body:JSON.stringify({ order_id:data.orderID })
+        }).then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
+          .then(function(res){
+            if(!res.ok){ fail('payGenericError'); close(); return; }
+            try{ if(typeof PAP!=='undefined'&&PAP.ui&&PAP.ui.toast) PAP.ui.toast(_payT('payCompleteOptimistic'),'success'); }catch(_){ }
+            if((opts.kind||'submission_fee')==='submission_fee') _lockBaseFeeButton(opts.submissionId);
+            close();
+            setTimeout(function(){ try{ window.location.reload(); }catch(_){ } }, 1200);
+          }).catch(function(){ fail('payGenericError'); close(); });
+      },
+      onCancel: function(){ close(); },
+      onError: function(err){ try{ console.error('[paypal one-time]', err); }catch(_){ } fail('payGenericError'); close(); }
+    }).render('#_ppbtn');
+  }catch(e){
+    try{ console.error('papPayOneTime error:', e); }catch(_){ }
+    close();
+    fail(e && e.message==='sdk' ? 'paySdkMissing' : 'payGenericError');
+  }
+}
+try{ window.papPayOneTime = papPayOneTime; }catch(_){ }
+
+/** 기본 게재료 결제 — 승인 블록의 버튼이 부른다. */
+async function payBaseFee(submissionId, submissionType){
+  return papPayOneTime({ submissionId: submissionId, kind: 'submission_fee' });
+}

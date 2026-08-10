@@ -30,6 +30,10 @@ console.log('\n=== 서브미션 결제 로그인 오탐 근본수정 (window.PAP
 const helper = (src.match(/async\s+function\s+_resolvePayUser\s*\([\s\S]*?\n\}/) || [''])[0];
 const base   = (src.match(/async\s+function\s+payBaseFee\s*\([\s\S]*?\n\}\n/) || [''])[0];
 const addon  = (src.match(/async\s+function\s+payAddonFee\s*\([\s\S]*?\n\}\n/) || [''])[0];
+// 2026-08-10 PayPal 전환 — 기본료·애드온이 papPayOneTime 한 곳으로 합쳐졌다.
+// 인증 판정이 두 벌로 갈라져 한쪽만 고쳐지는 사고를 막으려는 구조 변경이다.
+// 불변식은 그대로: 인증 판정은 _resolvePayUser 서버 진실로만, window.PAP&& 금지.
+const one = (src.match(/async\s+function\s+papPayOneTime\s*\([\s\S]*?\n\}\n/) || [''])[0];
 
 // 1) 헬퍼 존재 + 맨이름 PAP 를 typeof 가드로 캡처
 t('_resolvePayUser 헬퍼 존재', /async\s+function\s+_resolvePayUser\s*\(/.test(src));
@@ -44,12 +48,17 @@ t('_resolvePayUser 에 window.PAP&& 가드 없음', !/window\.PAP&&/.test(helper
   'window.PAP 는 const 라 항상 undefined → 이 가드가 있으면 재발한다');
 t('payBaseFee 에 window.PAP&& 가드 없음', !/window\.PAP&&/.test(base));
 t('payAddonFee 에 window.PAP&& 가드 없음', !/window\.PAP&&/.test(addon));
+t('papPayOneTime 에 window.PAP&& 가드 없음', !/window\.PAP&&/.test(one));
 
-// 3) 두 결제 함수가 서버-진실 헬퍼로 판정하고 !user 일 때만 차단
-t('payBaseFee 가 _resolvePayUser 로 판정', /var\s+user\s*=\s*await\s+_resolvePayUser\(\)/.test(base));
-t('payAddonFee 가 _resolvePayUser 로 판정', /var\s+user\s*=\s*await\s+_resolvePayUser\(\)/.test(addon));
-t('payBaseFee: !user 일 때만 차단', /if\(!user\)\{[\s\S]*?payLoginFirst/.test(base));
-t('payAddonFee: !user 일 때만 차단', /if\(!user\)\{[\s\S]*?payLoginFirst/.test(addon));
+// 3) 인증 판정은 papPayOneTime 한 곳에서만, 서버-진실 헬퍼로, !user 일 때만 차단
+t('papPayOneTime 존재(기본료·애드온 공용 경로)', /async\s+function\s+papPayOneTime\s*\(/.test(one));
+t('papPayOneTime 이 _resolvePayUser 로 판정', /var\s+user\s*=\s*await\s+_resolvePayUser\(\)/.test(one));
+t('papPayOneTime: !user 일 때만 차단', /if\(!user\)\{[\s\S]*?payLoginFirst/.test(one));
+// 두 진입점은 공용 경로에 위임만 한다 — 각자 인증 로직을 따로 기르면 다시 갈라진다.
+t('payBaseFee 는 papPayOneTime 에 위임', /papPayOneTime\s*\(/.test(base));
+t('payAddonFee 는 papPayOneTime 에 위임', /papPayOneTime\s*\(/.test(addon));
+t('payBaseFee 에 자체 인증 판정 없음', !/_resolvePayUser\(\)/.test(base));
+t('payAddonFee 에 자체 인증 판정 없음', !/_resolvePayUser\(\)/.test(addon));
 
 // 4) 구(舊) 토큰전용 게이트(_loggedIn=isLoggedIn())가 없어야 한다
 t('구 토큰전용 게이트(_loggedIn) 제거됨', !/_loggedIn2?\s*=\s*!!\(/.test(src));
