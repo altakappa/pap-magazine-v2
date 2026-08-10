@@ -8,9 +8,9 @@
  *
  *   'free'            — ≥ 4 looks, not brand-dominated. Standard free editorial.
  *   'paid_few_looks'  — fewer than 4 looks. Outside the free-publication policy;
- *                       treated as a paid submission (€345, handled manually).
+ *                       treated as a paid submission (€380, handled manually).
  *   'branded'         — a single brand overlaps across ALL looks (or every look
- *                       is the same brand). Branded content (€720, manual).
+ *                       is the same brand). Branded content (€790, manual).
  *
  * PRIORITY: branded > paid_few_looks > free. When a submission both has < 4
  * looks AND is brand-dominated, `branded` wins (it is the higher policy tier).
@@ -58,8 +58,8 @@
  *   포함시키면 예외가 헐거워진다.
  *
  *   해제 후에는 룩 수 규칙이 그대로 다시 적용된다: 실제 룩 < 4 면
- *   paid_few_looks, 그 이상이면 free. 즉 예외는 "€720 → 무조건 무료"가 아니라
- *   "€720 판정만 취소"다.
+ *   paid_few_looks, 그 이상이면 free. 즉 예외는 "€790 → 무조건 무료"가 아니라
+ *   "€790 판정만 취소"다.
  *
  *   sharedBrands 는 해제된 뒤에도 그대로 돌려준다(관리자가 "A가 전 룩에 있긴
  *   했다"는 사실을 볼 수 있게). branded 플래그만 false 가 된다.

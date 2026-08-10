@@ -65,17 +65,17 @@ module.exports = async function handler(req, res) {
   // custom_data { submission_id, submission_type, user_id, kind:'submission_fee' }
   // 를 심어 paddle-webhook.js 의 submission_fee 분기로 라우팅한다.
   const submissionFees = {
-    paid_few_looks: process.env.PADDLE_PRICE_SUB_FEWLOOKS || null, // €345
-    branded:        process.env.PADDLE_PRICE_SUB_BRANDED || null,  // €720
+    paid_few_looks: process.env.PADDLE_PRICE_SUB_FEWLOOKS || null, // €380
+    branded:        process.env.PADDLE_PRICE_SUB_BRANDED || null,  // €790
   };
 
   // 서브미션 부가서비스 one-time price (2026-07-20 도메니코 지시 — PayPal→Paddle 전환).
   // 미설정(null) 시 프론트는 기존 PayPal 링크로 폴백한다. env는 도메니코가 Paddle
   // 콘솔에서 상품 생성 후 Vercel에 설정 (price id는 공개값).
   const submissionAddons = {
-    ig_collab:       process.env.PADDLE_PRICE_ADDON_COLLAB || null, // €100 Instagram Collaborators
-    ig_images_cover: process.env.PADDLE_PRICE_ADDON_IMAGES || null, // €200 Specific images + cover
-    posting_date:    process.env.PADDLE_PRICE_ADDON_DATE   || null, // €100 Specifying a posting date
+    ig_collab:       process.env.PADDLE_PRICE_ADDON_COLLAB || null, // €110 Instagram Collaborators
+    ig_images_cover: process.env.PADDLE_PRICE_ADDON_IMAGES || null, // €220 Specific images + cover
+    posting_date:    process.env.PADDLE_PRICE_ADDON_DATE   || null, // €110 Specifying a posting date
   };
 
   // 설정은 배포 단위로만 바뀜 — 5분 edge cache.

@@ -101,8 +101,8 @@ function withSubtotal(cents) {
      isSubmissionFeeEvent({ id: 'txn_s', subscription_id: 'sub_123', custom_data: { user_id: 'u' } }) === false);
 
   console.log('\n=== fee mapping ===');
-  ok('paid_few_looks → 34500', feeForType('paid_few_looks') === 34500);
-  ok('branded → 72000', feeForType('branded') === 72000);
+  ok('paid_few_looks → 38000', feeForType('paid_few_looks') === 38000);
+  ok('branded → 79000', feeForType('branded') === 79000);
   ok('unknown type → null', feeForType('mystery') === null);
 
   console.log('\n=== paid transition ===');
@@ -113,7 +113,7 @@ function withSubtotal(cents) {
     ok('one update written', calls.updates.length === 1, String(calls.updates.length));
     const u = calls.updates[0] || {};
     ok('payment_status=paid written', u.payment_status === 'paid');
-    ok('paid_amount=34500 written', u.paid_amount === 34500, String(u.paid_amount));
+    ok('paid_amount=38000 written', u.paid_amount === 38000, String(u.paid_amount));
     ok('paddle_transaction_id written', u.paddle_transaction_id === 'txn_001');
     ok('does NOT write status/approved/published',
        !('status' in u) && !('approved' in u) && !('published' in u),
@@ -126,47 +126,47 @@ function withSubtotal(cents) {
     const r = await handleSubmissionFeeTransaction(
       feeTx({ id: 'txn_b', custom_data: { submission_type: 'branded' } }), db);
     ok('branded outcome=paid', r.outcome === 'paid');
-    ok('branded paid_amount=72000', (calls.updates[0] || {}).paid_amount === 72000, String((calls.updates[0] || {}).paid_amount));
+    ok('branded paid_amount=79000', (calls.updates[0] || {}).paid_amount === 79000, String((calls.updates[0] || {}).paid_amount));
   }
 
   console.log('\n=== authoritative stored type + underpayment ===');
   {
-    // Stored (authoritative) type is BRANDED (€720), but the client spoofed
-    // custom_data.submission_type=paid_few_looks and only paid €345 (34500).
+    // Stored (authoritative) type is BRANDED (€790), but the client spoofed
+    // custom_data.submission_type=paid_few_looks and only paid €380 (38000).
     const { db, calls } = makeDb(row({ storedType: 'branded' }));
     const r = await handleSubmissionFeeTransaction(
-      feeTx({ id: 'txn_under', custom_data: { submission_type: 'paid_few_looks' }, details: withSubtotal(34500) }), db);
+      feeTx({ id: 'txn_under', custom_data: { submission_type: 'paid_few_looks' }, details: withSubtotal(38000) }), db);
     ok('outcome=paid (money changed hands)', r.outcome === 'paid', r.outcome);
     ok('storedType reported as branded', r.storedType === 'branded', r.storedType);
-    ok('expectedAmount from STORED type = 72000', r.expectedAmount === 72000, String(r.expectedAmount));
-    ok('paid_amount records ACTUAL charge 34500', (calls.updates[0] || {}).paid_amount === 34500, String((calls.updates[0] || {}).paid_amount));
+    ok('expectedAmount from STORED type = 79000', r.expectedAmount === 79000, String(r.expectedAmount));
+    ok('paid_amount records ACTUAL charge 38000', (calls.updates[0] || {}).paid_amount === 38000, String((calls.updates[0] || {}).paid_amount));
     ok('underpaid=true', r.underpaid === true);
   }
   {
-    // Stored BRANDED, correct €720 charge → not underpaid.
+    // Stored BRANDED, correct €790 charge → not underpaid.
     const { db, calls } = makeDb(row({ storedType: 'branded' }));
     const r = await handleSubmissionFeeTransaction(
-      feeTx({ id: 'txn_ok', custom_data: { submission_type: 'branded' }, details: withSubtotal(72000) }), db);
+      feeTx({ id: 'txn_ok', custom_data: { submission_type: 'branded' }, details: withSubtotal(79000) }), db);
     ok('correct branded → outcome=paid', r.outcome === 'paid');
     ok('correct branded → not underpaid', r.underpaid === false);
-    ok('correct branded → expected 72000', r.expectedAmount === 72000);
-    ok('correct branded → paid_amount 72000', (calls.updates[0] || {}).paid_amount === 72000, String((calls.updates[0] || {}).paid_amount));
+    ok('correct branded → expected 79000', r.expectedAmount === 79000);
+    ok('correct branded → paid_amount 79000', (calls.updates[0] || {}).paid_amount === 79000, String((calls.updates[0] || {}).paid_amount));
   }
   {
     // storedType takes PRIORITY over the client type when they disagree.
-    // Stored few-looks (€345), client claims branded → expected keys off stored (34500).
+    // Stored few-looks (€380), client claims branded → expected keys off stored (38000).
     const { db } = makeDb(row({ storedType: 'paid_few_looks' }));
     const r = await handleSubmissionFeeTransaction(
-      feeTx({ id: 'txn_pri', custom_data: { submission_type: 'branded' }, details: withSubtotal(34500) }), db);
-    ok('expected uses STORED few-looks (34500), not client branded', r.expectedAmount === 34500, String(r.expectedAmount));
+      feeTx({ id: 'txn_pri', custom_data: { submission_type: 'branded' }, details: withSubtotal(38000) }), db);
+    ok('expected uses STORED few-looks (38000), not client branded', r.expectedAmount === 38000, String(r.expectedAmount));
     ok('paying the stored fee is not underpaid', r.underpaid === false);
   }
   {
     // No stored type on the row → falls back to client custom_data type for expected.
     const { db } = makeDb(row()); // no description
     const r = await handleSubmissionFeeTransaction(
-      feeTx({ id: 'txn_fb', custom_data: { submission_type: 'branded' }, details: withSubtotal(72000) }), db);
-    ok('fallback expected from client type = 72000', r.expectedAmount === 72000, String(r.expectedAmount));
+      feeTx({ id: 'txn_fb', custom_data: { submission_type: 'branded' }, details: withSubtotal(79000) }), db);
+    ok('fallback expected from client type = 79000', r.expectedAmount === 79000, String(r.expectedAmount));
     ok('fallback storedType is null', r.storedType == null);
   }
 
@@ -214,10 +214,10 @@ function withSubtotal(cents) {
     // Unknown submission_type → falls back to details.totals.subtotal (pre-tax).
     const { db, calls } = makeDb({ id: 'sub-abc', user_id: 'user-1', payment_status: 'none', paddle_transaction_id: null });
     const r = await handleSubmissionFeeTransaction(
-      feeTx({ id: 'txn_f', custom_data: { submission_type: 'mystery' }, details: { totals: { subtotal: '34500', tax: '6900', total: '41400' } } }),
+      feeTx({ id: 'txn_f', custom_data: { submission_type: 'mystery' }, details: { totals: { subtotal: '38000', tax: '7600', total: '45600' } } }),
       db);
     ok('fallback outcome=paid', r.outcome === 'paid');
-    ok('fallback amount = subtotal (34500, pre-tax)', (calls.updates[0] || {}).paid_amount === 34500, String((calls.updates[0] || {}).paid_amount));
+    ok('fallback amount = subtotal (38000, pre-tax)', (calls.updates[0] || {}).paid_amount === 38000, String((calls.updates[0] || {}).paid_amount));
   }
 
   console.log('\n=== user mismatch is a flag, not a block ===');

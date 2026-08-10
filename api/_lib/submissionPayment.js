@@ -4,8 +4,8 @@
  * Scope (2단계-b, Domenico-confirmed 2026-07-19):
  *   Submissions outside the free editorial policy carry a ONE-TIME base fee,
  *   charged via Paddle (NOT a subscription):
- *     • few-looks (paid_few_looks) → €345 → 34500 euro-cents
- *     • branded                    → €720 → 72000 euro-cents
+ *     • few-looks (paid_few_looks) → €380 → 38000 euro-cents (2026-08-10 인상 — 세금 포함 최종가)
+ *     • branded                    → €790 → 79000 euro-cents (2026-08-10 인상 — 세금 포함 최종가)
  *
  *   api/paddle-webhook.js routes `transaction.completed` events whose
  *   custom_data.kind === 'submission_fee' into handleSubmissionFeeTransaction()
@@ -30,10 +30,10 @@
 // Euro-cents base fee per submission type (Domenico-confirmed 2026-07-19).
 // Keys are normalized (lowercase, spaces/hyphens → underscore) — see normType.
 const SUBMISSION_FEE_CENTS = {
-  paid_few_looks: 34500,
-  few_looks: 34500,
-  fewlooks: 34500,
-  branded: 72000,
+  paid_few_looks: 38000,
+  few_looks: 38000,
+  fewlooks: 38000,
+  branded: 79000,
 };
 
 /** Normalize a submission_type string for the fee map lookup. */

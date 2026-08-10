@@ -712,7 +712,7 @@ module.exports = async function handler(req, res) {
       if (profile && profile.email) {
         const lang = profile.email_language || profile.language || 'en';
         // 유료/브랜디드 서브미션 승인 시 게재료 결제요청 문구를 메일에 포함.
-        // 금액은 서버 단일 소스(feeForType)로 산출 — 유형별 euro-cents(€345/€720).
+        // 금액은 서버 단일 소스(feeForType)로 산출 — 유형별 euro-cents(€380/€790).
         // free/그 외 유형은 null → 메일에 결제 블록 미표시.
         let _feeCents = null;
         if (status === 'approved') {

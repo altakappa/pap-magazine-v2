@@ -6,12 +6,12 @@
 'use strict';
 // ═══════════════════════════════════════════════════════════════════════
 // SUBMISSION BASE-FEE PAYMENT (Paddle) — 2b (2026-07-19)
-// 승인된 유료(paid_few_looks €345) / 브랜디드(branded €720) 서브미션의 '기본료'를
+// 승인된 유료(paid_few_looks €380) / 브랜디드(branded €790) 서브미션의 '기본료'를
 // Paddle 오버레이로 결제한다. 결제 확정은 웹훅(키퍼 담당)의 몫 — 프론트는 낙관적 안내만.
 // 발행은 여전히 수동(도메니코). 추가옵션(PayPal 정적 링크)은 별개로 유지.
 // ─── i18n (9개 언어, 초안 / DRAFT) ──────────────────────────────────────
 //   payBaseFeeBtn / payBasePaid / payBaseUnavailable ... 문구는 도메니코 확정 전
-//   초안입니다. 금액(€345/€720)은 {amt} 로 주입. 최종 카피 확정 대기.
+//   초안입니다. 금액(€380/€790)은 {amt} 로 주입. 최종 카피 확정 대기.
 var _PAY_I18N = {
   ko:{ payBaseIntro:'게재를 확정하려면 아래에서 기본 게재료를 결제해 주세요.', payBaseFeeBtn:'기본 게재료 {amt} 결제하기', payBasePaid:'결제 완료 · 게재 대기', payBasePaidHint:'기본 게재료 결제가 확인되었습니다. PAP 편집팀이 게재를 진행합니다.', payBaseUnavailable:'결제가 아직 준비되지 않았습니다. 잠시 후 다시 시도하거나 PAP에 문의해 주세요.', paySdkMissing:'결제 모듈을 불러오지 못했습니다. 페이지를 새로고침해 주세요.', payLoginFirst:'결제하려면 먼저 로그인해 주세요.', payCompleteOptimistic:'결제가 접수되었습니다! 확인되면 상태가 업데이트됩니다.', payGenericError:'결제창을 여는 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.' },
   en:{ payBaseIntro:'To confirm publication, please pay the base publication fee below.', payBaseFeeBtn:'Pay base fee {amt}', payBasePaid:'Paid · awaiting publication', payBasePaidHint:'Your base publication fee has been confirmed. PAP will proceed with publication.', payBaseUnavailable:'Payment is not available yet. Please try again shortly or contact PAP.', paySdkMissing:'Payment module failed to load. Please refresh the page.', payLoginFirst:'Please sign in first to pay.', payCompleteOptimistic:'Payment received! Your status will update once confirmed.', payGenericError:'Something went wrong opening the checkout. Please try again shortly.' },
@@ -36,10 +36,10 @@ function _payT(k,amt){
 }
 // Build the approval-block base-fee sub-block. Returns '' for free / legacy /
 // unknown types (safe no-op). Pure string builder — no side effects.
-//   paid_few_looks → €345 · branded → €720
+//   paid_few_looks → €380 · branded → €790
 function _baseFeeApprovalBlock(submissionId, submissionType, paymentStatus){
   if(submissionType!=='paid_few_looks' && submissionType!=='branded') return '';
-  var amt = submissionType==='branded' ? '€720' : '€345';
+  var amt = submissionType==='branded' ? '€790' : '€380';
   // 이미 결제됨(서버 payment_status) 또는 이번 세션에서 방금 결제 완료(로컬 잠금 플래그)
   // → 버튼 대신 '결제 완료 · 게재 대기' 상태. 로컬 플래그는 checkout.completed 시 설정되어
   //   같은 세션에서 모달을 다시 열어도 버튼이 재노출되지 않게 한다(이중청구 방지).
