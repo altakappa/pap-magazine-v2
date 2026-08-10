@@ -197,7 +197,7 @@ const IMG_OPT_HOSTS = [
   'pap-korea-bucket.s3.ap-northeast-2.amazonaws.com',
   'igcazquhkwxtqsaqpznx.supabase.co',
 ];
-const IMG_OPT_WIDTHS = [320, 640, 960, 1280, 1920]; // vercel.json images.sizes 와 동일
+const IMG_OPT_WIDTHS = [320, 960, 1920]; // 2026-08-10 비용 절감 — 생성 3종 (허용 목록은 과도기 5종, pap-img-cdn.js 주석 참조)
 function canOptimizeImg(url) {
   try { return IMG_OPT_HOSTS.indexOf(new URL(url).hostname) !== -1; } catch (_) { return false; }
 }

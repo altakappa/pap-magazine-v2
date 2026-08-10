@@ -17,7 +17,10 @@
 (function(){
   'use strict';
   var S3_HOST = 'pap-korea-bucket.s3.ap-northeast-2.amazonaws.com';
-  var SIZES = [320, 640, 960, 1280, 1920]; // vercel.json images.sizes 와 일치해야 함
+  // 2026-08-10 비용 절감(도메니코 승인): 생성 크기 5종→3종.
+  // vercel.json 허용 목록에는 640/1280 이 당분간 남아 있다 — 구글에 캐시된
+  // 옛 srcset 이 하루쯤 더 그 크기를 요청하기 때문. 다음 주 자동 트랙이 제거.
+  var SIZES = [320, 960, 1920];
   var QUALITY = 75;
 
   function pickWidth(img){

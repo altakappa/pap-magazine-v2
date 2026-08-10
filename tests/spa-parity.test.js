@@ -228,6 +228,16 @@ console.log('\n[별점 통합] 평가 장치는 한 화면에 하나 (2026-08-09
     })());
   t('커버 버튼 폴백 — 커버 없으면 갤러리 1번', /coverUrl = gallery\[0\]/.test(edJs));
   {
+    const cdn = R('frontend/pap-img-cdn.js');
+    const seoR2 = R('api/_lib/seoRenderer.js');
+    const vj = R('vercel.json');
+    t('이미지 변환 3종 동기화 + WebP 전용 (2026-08-10 비용 절감, 도메니코 승인)',
+      /SIZES = \[320, 960, 1920\]/.test(cdn)
+      && /IMG_OPT_WIDTHS = \[320, 960, 1920\]/.test(seoR2)
+      && /"formats": \["image\/webp"\]/.test(vj)
+      && !/image\/avif/.test(vj));
+  }
+  {
     const seoR = R('api/_lib/seoRenderer.js');
     const shR = R('frontend/pap-content-creator-shorts.js');
     const rob = R('frontend/robots.txt');

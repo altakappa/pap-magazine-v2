@@ -669,10 +669,7 @@
       1280,
       1920
     ],
-    "formats": [
-      "image/avif",
-      "image/webp"
-    ],
+    "formats": ["image/webp"],
     "minimumCacheTTL": 2678400
   },
   "redirects": [
