@@ -32,6 +32,11 @@ Disallow: /site-analysis
 Disallow: /data-deletion.html
 Disallow: /api/
 
+# 어필리에이트 리다이렉터 (2026-08-10) — 목적지가 어필리에이트 네트워크
+# (linksynergy 등, 자기 robots 로 봇 차단)라 크롤링해도 얻는 게 없고,
+# 봇 크롤링이 /go 클릭 계측(go_clicks)을 오염시킨다. rel=sponsored 와 한 쌍.
+Disallow: /go/
+
 # Backup files (legacy snapshots — exclude from index)
 Disallow: /*.backup$
 Disallow: /*.bak$

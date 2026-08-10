@@ -1341,6 +1341,12 @@ function _papRenderShopRow(fashion){
     _seen[key]=1; brands.push(clean);
   });
   if(!brands.length){ box.innerHTML=''; box.style.display='none'; return; }
+  /* /go 는 브랜드 IG 핸들만 받는다. "Vintage military sailor hat" 같은
+     옷 이름 크레딧이 /go/vintage%20military... 로 새어나가 GSC 에 깨진
+     URL 10건이 잡혔다 (2026-08-10). 핸들 형태(영문·숫자·._ 2~30자)가
+     아니면 SHOP THE STORY 에서 제외한다. */
+  brands=brands.filter(function(c){return /^[a-z0-9._]{2,30}$/.test(c.toLowerCase());});
+  if(!brands.length){ box.innerHTML=''; box.style.display='none'; return; }
   var chips=brands.slice(0,12).map(function(clean){
     return '<a href="/go/'+encodeURIComponent(clean.toLowerCase())+'" target="_blank" rel="sponsored nofollow noopener" '
       +'style="display:inline-block;margin:0 8px 8px 0;padding:9px 16px;border:1px solid rgba(255,255,255,.25);font-size:12px;color:#fff;text-decoration:none;letter-spacing:.04em">'

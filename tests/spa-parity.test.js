@@ -228,6 +228,16 @@ console.log('\n[별점 통합] 평가 장치는 한 화면에 하나 (2026-08-09
     })());
   t('커버 버튼 폴백 — 커버 없으면 갤러리 1번', /coverUrl = gallery\[0\]/.test(edJs));
   {
+    const seoR = R('api/_lib/seoRenderer.js');
+    const shR = R('frontend/pap-content-creator-shorts.js');
+    const rob = R('frontend/robots.txt');
+    t('/go 는 IG 핸들만 — 옷 이름 크레딧 봉쇄 3면 + robots (GSC 깨진 URL 10건, 2026-08-10)',
+      /\^\[a-z0-9\._\]\{2,30\}\$/.test(edJs)
+      && /\^\[a-z0-9\._\]\{2,30\}\$/.test(seoR)
+      && (shR.match(/\[a-z0-9\._\]\{2,30\}/g)||[]).length >= 2
+      && /Disallow: \/go\//.test(rob));
+  }
+  {
     const sh = R('frontend/pap-content-creator-shorts.js');
     t('프로필 팝업 구매하기 — 패션 크레딧發만, /go 어필리에이트 경유 (2026-08-10)',
       /cpBuyBtn/.test(idx) && (function(){

@@ -178,7 +178,7 @@ function openCreatorPopup(cr, buyable){
   cr._buyable = !!buyable;
   var buyBtn=document.getElementById('cpBuyBtn');
   if(buyBtn){
-    if((buyable||isBrand)&&igHandle){
+    if((buyable||isBrand)&&igHandle&&/^[a-z0-9._]{2,30}$/.test(igHandle.toLowerCase())){
       buyBtn.href='/go/'+encodeURIComponent(igHandle.toLowerCase());
       buyBtn.style.display='inline-flex';
     } else {
@@ -272,7 +272,7 @@ function _openCreatorPopup_noPush(cr){
   // + 클릭 계측) 경유. 미등록 브랜드는 /go 가 홈으로 안전 리다이렉트한다.
   var buyBtn=document.getElementById('cpBuyBtn');
   if(buyBtn){
-    if((cr._buyable||isBrand)&&igHandle){
+    if((cr._buyable||isBrand)&&igHandle&&/^[a-z0-9._]{2,30}$/.test(igHandle.toLowerCase())){
       buyBtn.href='/go/'+encodeURIComponent(igHandle.toLowerCase());
       buyBtn.style.display='inline-flex';
     } else {

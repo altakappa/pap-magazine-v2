@@ -1013,7 +1013,16 @@ function renderSeoHtml(kind, record, opts) {
   const fashionBrands = extractFashionBrands(record);
   const fashionHtml = fashionBrands.length
     ? '<section class="seo-fashion"><h2>Fashion</h2><div class="ed-fashion-chips">' +
-        fashionBrands.map(h => `<span class="ed-fashion-pair"><a class="ed-fashion-chip" href="https://www.instagram.com/${escAttr(h.replace(/^@/, ''))}/" target="_blank" rel="noopener noreferrer">${escText(h)}</a><a class="ed-buy-chip" href="/go/${encodeURIComponent(h.replace(/^@/, '').toLowerCase())}" target="_blank" rel="sponsored nofollow noopener">구매</a></span>`).join('') +
+        fashionBrands.map(h => {
+          /* 2026-08-10 — /go·instagram 링크는 IG 핸들 형태일 때만.
+           * 옷 이름 크레딧("jacket fursac" 등)이 깨진 /go URL 로 GSC 에
+           * 10건 잡힌 사고의 SSR 쪽 봉쇄. 핸들이 아니면 텍스트 칩만. */
+          const bare = h.replace(/^@/, '');
+          if (!/^[a-z0-9._]{2,30}$/.test(bare.toLowerCase())) {
+            return `<span class="ed-fashion-pair"><span class="ed-fashion-chip">${escText(h)}</span></span>`;
+          }
+          return `<span class="ed-fashion-pair"><a class="ed-fashion-chip" href="https://www.instagram.com/${escAttr(bare)}/" target="_blank" rel="noopener noreferrer">${escText(h)}</a><a class="ed-buy-chip" href="/go/${encodeURIComponent(bare.toLowerCase())}" target="_blank" rel="sponsored nofollow noopener">구매</a></span>`;
+        }).join('') +
       '</div></section>'
     : '';
 

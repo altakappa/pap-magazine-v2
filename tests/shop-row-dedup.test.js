@@ -94,7 +94,13 @@ t('어필리에이트 rel 속성 유지',
   /rel="sponsored nofollow noopener"/.test(render(['celine']).innerHTML),
   '수수료 링크는 sponsored 표기가 있어야 한다');
 t('수수료 고지 문구 유지', /commission/i.test(render(['celine']).innerHTML));
-t('< 는 이스케이프된다', /&lt;/.test(render(['<script>']).innerHTML));
+/* 2026-08-10 개정 — /go 는 IG 핸들 형태만 받는다. '<script>' 같은 비핸들
+   문자열은 이스케이프 이전에 아예 걸러진다 (더 강한 보장). */
+t("'<script>' 같은 비핸들은 아예 렌더되지 않는다", chips(render(['<script>', 'celine'])) === 1);
+t('옷 이름 크레딧(공백 포함)은 /go 링크가 안 생긴다',
+  chips(render(['vintage military sailor hat', 'celine'])) === 1
+  && links(render(['vintage military sailor hat', 'celine']))[0] === '/go/celine');
+t('점·언더스코어 핸들은 통과', links(render(['oscar.jacobson']))[0] === '/go/oscar.jacobson');
 
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) { console.log('❌ shop-row-dedup tests failed'); process.exit(1); }
