@@ -1399,29 +1399,72 @@ module.exports.buildVideoStateAlert = buildVideoStateAlert;
 const DEAD_RUN_ALERT_KEY = 'cron-dead-runs';
 const DEAD_RUN_GRACE_MIN = Number(process.env.CRON_DEAD_GRACE_MIN || 5);
 
-/** 순수 판정 (테스트 대상). rows: [{cron_name, ran_at}] — 이미 미완결만 걸러진 것 */
-function judgeDeadRuns(rows) {
+/* ─── 개수가 아니라 '비율' 로 판정한다 (2026-08-10 개정) ──────────────
+ *
+ * 첫 실물 포착에서 바로 드러난 문제다. 실측:
+ *     sync-instagram  24시간 311회 실행 · 죽음 1회 · 사망률 0.32%
+ *                     → 다음 회차(5분 뒤)가 정상 처리, 유입 끊김 없음
+ *     weekly-news     주 1회 실행 · 죽음 1회 · 사망률 100%
+ *                     → 34일간 단 한 번도 성공 못 함
+ * **개수로는 둘 다 '1건'이라 구분이 안 된다.**
+ *
+ * 첫 판이 개수 기준이라, 300번에 한 번 늦는 인스타 API 때문에 🚨 가 떴다.
+ * 그런 알림이 반복되면 사람은 이 경보를 무시하게 되고, 그러면 weekly-news
+ * 같은 진짜 고장을 놓친다 — 오늘 하루 종일 고친 그 함정에 새 감시가
+ * 그대로 빠졌다. 그래서 기준을 바꾼다:
+ *
+ *   울린다  — 창 안에 **성공이 0회** (그 크론은 지금 아예 못 끝내고 있다)
+ *           — 또는 같은 크론이 창 안에 **2회 이상** 죽음 (악화 중)
+ *   조용히  — 성공이 있고 죽음이 1회 (일시적 지연). 기록·응답에는 남는다.
+ *
+ * 조용한 쪽도 버리지 않는다. cron_runs 에 줄이 남아 있고 이 함수의 반환에도
+ * 실려서 필요할 때 볼 수 있다 — '안 울림' 과 '안 보임' 은 다르다. */
+
+/**
+ * 순수 판정 (테스트 대상).
+ * @param {Array}  deadRows [{cron_name, ran_at}] — 안 끝난 실행만 걸러진 것
+ * @param {Object} okCounts { 크론이름: 같은 창 안의 성공 횟수 }
+ */
+function judgeDeadRuns(deadRows, okCounts) {
+  const ok = okCounts || {};
   const byCron = new Map();
-  for (const r of rows || []) {
+  for (const r of deadRows || []) {
     const k = r && r.cron_name;
     if (!k) continue;
-    if (!byCron.has(k)) byCron.set(k, { cron: k, count: 0, lastAt: null });
+    if (!byCron.has(k)) byCron.set(k, { cron: k, count: 0, lastAt: null, okRuns: 0 });
     const e = byCron.get(k);
     e.count++;
     const t = r.ran_at ? Date.parse(r.ran_at) : null;
     if (t && (!e.lastAt || t > e.lastAt)) e.lastAt = t;
   }
+  for (const e of byCron.values()) e.okRuns = Number(ok[e.cron]) || 0;
+
   const list = Array.from(byCron.values()).sort((a, b) => b.count - a.count);
+  /* 울릴 것 — 성공 0회(아예 못 끝냄) 또는 2회 이상 죽음(악화) */
+  const alarming = list.filter((x) => x.okRuns === 0 || x.count >= 2);
+  /* 조용히 넘길 것 — 성공이 있고 1회만 죽음 */
+  const transient = list.filter((x) => x.okRuns > 0 && x.count < 2);
   const total = list.reduce((n, x) => n + x.count, 0);
+  const alarmTotal = alarming.reduce((n, x) => n + x.count, 0);
+
+  const rate = (x) => (x.okRuns + x.count) > 0
+    ? Math.round((x.count / (x.okRuns + x.count)) * 1000) / 10 : 100;
+
   return {
-    status: total === 0 ? 'ok' : 'dead',
-    healthy: total === 0,
-    total,
+    status: alarming.length ? 'dead' : (total ? 'transient' : 'ok'),
+    healthy: alarming.length === 0,
+    total, alarmTotal,
     crons: list,
-    reason: total === 0
-      ? '끝나지 않은 실행 없음.'
-      : total + '건이 시작만 하고 안 끝났다 — ' +
-        list.slice(0, 4).map(x => x.cron + ' ' + x.count + '회').join(' · '),
+    alarming, transient,
+    reason: alarming.length
+      ? alarmTotal + '건이 시작만 하고 안 끝났다 — '
+        + alarming.slice(0, 4).map((x) => x.cron + ' ' + x.count + '회'
+            + (x.okRuns === 0 ? '(창 안 성공 0)' : '(사망률 ' + rate(x) + '%)')).join(' · ')
+      : (total
+        ? '일시적 지연 ' + total + '건 — '
+          + transient.slice(0, 3).map((x) => x.cron + ' 사망률 ' + rate(x) + '%').join(' · ')
+          + ' (다른 회차는 정상이라 알리지 않는다)'
+        : '끝나지 않은 실행 없음.'),
   };
 }
 
@@ -1430,6 +1473,9 @@ function buildDeadRunAlert(d, site) {
     title: '🚨 크론이 도중에 죽는다 — 끝나지 않은 실행 ' + d.total + '건',
     lines: [
       d.reason,
+      '',
+      '이 크론들은 창(24시간) 안에 성공이 0회이거나 2회 이상 죽었다.',
+      '(성공이 있고 1회만 죽은 일시적 지연은 알리지 않는다 — 기록에는 남는다)',
       '',
       '무슨 뜻인가: 크론이 시작 기록은 남겼는데 종료 기록을 못 남겼다.',
       '거의 언제나 Vercel 함수 상한(120초) 초과다. 그 경우 함수가 통째로',
@@ -1458,7 +1504,17 @@ async function checkDeadRuns(opts) {
       .limit(500);
     if (error) throw error;
 
-    const d = judgeDeadRuns(rows || []);
+    /* 죽은 크론들의 **같은 창 안 성공 횟수**를 센다. 죽음이 있는 크론만
+       조회하므로 보통 0~2회의 가벼운 count 쿼리다. */
+    const okCounts = {};
+    for (const name of Array.from(new Set((rows || []).map((r) => r && r.cron_name).filter(Boolean)))) {
+      const { count } = await supabaseAdmin.from('cron_runs')
+        .select('*', { count: 'exact', head: true })
+        .eq('cron_name', name).eq('ok', true).gte('ran_at', since);
+      okCounts[name] = typeof count === 'number' ? count : 0;
+    }
+
+    const d = judgeDeadRuns(rows || [], okCounts);
     if (opts && opts.dry) return { dry: true, ...d };
 
     const { data: st } = await supabaseAdmin.from('ops_alert_state')
@@ -1484,8 +1540,8 @@ async function checkDeadRuns(opts) {
       await supabaseAdmin.from('ops_alert_state').upsert({
         key: DEAD_RUN_ALERT_KEY,
         last_alert_at: alerted ? new Date().toISOString() : (st && st.last_alert_at) || null,
-        last_payload: { broken: !d.healthy, total: d.total,
-          crons: d.crons.slice(0, 6).map(x => x.cron + ':' + x.count) },
+        last_payload: { broken: !d.healthy, total: d.total, alarmTotal: d.alarmTotal,
+          crons: d.alarming.slice(0, 6).map(x => x.cron + ':' + x.count + '/ok' + x.okRuns) },
         updated_at: new Date().toISOString(),
       }, { onConflict: 'key' });
     }

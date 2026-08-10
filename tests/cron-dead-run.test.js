@@ -92,24 +92,52 @@ t('startId 가 없으면 예전 INSERT 로 폴백한다',
 console.log('\n=== ④ 끝나지 않은 실행을 감시가 읽는다 ===');
 t('judgeDeadRuns 를 내보낸다', typeof watch.judgeDeadRuns === 'function');
 if (typeof watch.judgeDeadRuns === 'function') {
-  const none = watch.judgeDeadRuns([]);
+  const none = watch.judgeDeadRuns([], {});
   t('없으면 정상', none.healthy === true && none.status === 'ok' && none.total === 0, JSON.stringify(none));
-  const some = watch.judgeDeadRuns([
-    { cron_name: 'weekly-news', ran_at: '2026-08-09T21:30:00Z' },
-    { cron_name: 'weekly-news', ran_at: '2026-08-02T21:30:00Z' },
-    { cron_name: 'trend-scout', ran_at: '2026-08-06T21:00:00Z' },
-  ]);
-  t('있으면 고장으로 본다', some.healthy === false && some.status === 'dead' && some.total === 3, JSON.stringify(some));
-  t('크론별로 묶어 센다',
-    some.crons[0].cron === 'weekly-news' && some.crons[0].count === 2, JSON.stringify(some.crons));
-  t('사유에 크론 이름이 들어간다', /weekly-news/.test(some.reason), some.reason);
-  /* 이름 없는 행이 카운트를 오염시키면 안 된다 */
-  const dirty = watch.judgeDeadRuns([{ ran_at: '2026-08-09T21:30:00Z' }, null]);
+
+  /* ── 개수가 아니라 비율로 가른다 (2026-08-10 개정) ──────────────────
+   * 첫 실물 포착에서 드러난 문제. 실측:
+   *   sync-instagram  311회 실행 · 죽음 1 · 사망률 0.32% → 다음 회차 정상
+   *   weekly-news     주 1회 · 죽음 1 · 사망률 100%      → 34일 성공 0
+   * 개수로는 둘 다 '1건' 이라 구분이 안 된다. 그래서 0.32% 짜리에 🚨 가 떴고,
+   * 그런 알림이 반복되면 진짜 고장을 놓친다 — 오늘 종일 고친 그 함정이다. */
+  const noisy = watch.judgeDeadRuns(
+    [{ cron_name: 'sync-instagram', ran_at: '2026-08-10T08:20:33Z' }],
+    { 'sync-instagram': 310 });
+  t('성공이 많고 1회만 죽으면 안 울린다 (일시적)',
+    noisy.healthy === true && noisy.status === 'transient', JSON.stringify(noisy));
+  t('그래도 기록·응답에는 남는다 (안 울림 ≠ 안 보임)',
+    noisy.total === 1 && noisy.transient.length === 1 && noisy.alarming.length === 0);
+  t('사유에 사망률을 적는다', /사망률/.test(noisy.reason), noisy.reason);
+
+  const fatal = watch.judgeDeadRuns(
+    [{ cron_name: 'weekly-news', ran_at: '2026-08-09T21:30:00Z' }],
+    { 'weekly-news': 0 });
+  t('창 안 성공이 0이면 1건이라도 울린다',
+    fatal.healthy === false && fatal.status === 'dead' && fatal.alarmTotal === 1, JSON.stringify(fatal));
+  t('사유에 "창 안 성공 0" 을 밝힌다', /창 안 성공 0/.test(fatal.reason), fatal.reason);
+
+  const worsening = watch.judgeDeadRuns(
+    [{ cron_name: 'x', ran_at: '2026-08-10T01:00:00Z' },
+     { cron_name: 'x', ran_at: '2026-08-10T02:00:00Z' }],
+    { x: 500 });
+  t('성공이 많아도 2회 이상 죽으면 울린다 (악화 감지)',
+    worsening.healthy === false && worsening.alarming.length === 1, JSON.stringify(worsening));
+
+  const mixed = watch.judgeDeadRuns(
+    [{ cron_name: 'weekly-news', ran_at: '2026-08-09T21:30:00Z' },
+     { cron_name: 'sync-instagram', ran_at: '2026-08-10T08:20:33Z' }],
+    { 'weekly-news': 0, 'sync-instagram': 310 });
+  t('섞여 있으면 울릴 것만 골라 센다',
+    mixed.healthy === false && mixed.total === 2 && mixed.alarmTotal === 1
+    && mixed.alarming[0].cron === 'weekly-news', JSON.stringify(mixed));
+
+  const dirty = watch.judgeDeadRuns([{ ran_at: '2026-08-09T21:30:00Z' }, null], {});
   t('이름 없는 행은 무시한다', dirty.total === 0, JSON.stringify(dirty));
 }
 t('알림 문안이 있다', typeof watch.buildDeadRunAlert === 'function');
 if (typeof watch.buildDeadRunAlert === 'function') {
-  const a = watch.buildDeadRunAlert({ total: 2, reason: 'x', crons: [] }, 'https://s');
+  const a = watch.buildDeadRunAlert({ total: 2, alarmTotal: 2, reason: 'x', crons: [], alarming: [] }, 'https://s');
   t('제목에 건수가 들어간다', /2건/.test(a.title), a.title);
   t('504·함수 상한을 볼 곳으로 알려준다', a.lines.join(' ').includes('504'));
 }
@@ -118,6 +146,10 @@ t('감시가 배선돼 있다', /const deadRuns = await checkDeadRuns\(/.test(WA
 t('응답에 포함된다', /deadRuns \}\);/.test(WATCH_SRC));
 t('유예가 함수 상한보다 넉넉하다 (정상 실행을 죽었다고 부르지 않는다)',
   /CRON_DEAD_GRACE_MIN \|\| 5/.test(WATCH_SRC));
+t('같은 창의 성공 횟수를 세어 넘긴다',
+  /judgeDeadRuns\(rows \|\| \[\], okCounts\)/.test(WATCH_SRC)
+  && /\.eq\('ok', true\)\.gte\('ran_at', since\)/.test(WATCH_SRC),
+  '비율 판정의 분모가 없으면 개수 판정으로 되돌아간다');
 
 console.log('\n=== ⑤ 두 크론에 시간 예산 ===');
 for (const [name, src] of [['weekly-news', WN_C], ['trend-scout', TS_C]]) {
