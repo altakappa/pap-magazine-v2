@@ -194,6 +194,11 @@ module.exports = {
   handleSubmissionFeeTransaction,
   isSubmissionFeeEvent,
   feeForType,
+  // 🔴 2026-08-11 — 이게 빠져 있어서 €380/€790 기본 게재료 결제가 전부 500 이었다.
+  //    api/_lib/paypalOrders.js 가 이 이름으로 구조분해 import 하는데 undefined 였고,
+  //    resolveAmount() 에서 TypeError → catch → "Could not start payment."
+  //    애드온(€110/€220)은 이 함수를 안 써서 멀쩡했다. 그래서 더 늦게 발견됐다.
+  storedSubmissionType,
   paddleSubtotalCents,
   paddleCurrency,
   SUBMISSION_FEE_CENTS,
