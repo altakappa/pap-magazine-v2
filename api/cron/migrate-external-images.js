@@ -36,7 +36,22 @@ const { sendTextToTelegramSafe } = require('../_lib/telegram');
  * '인스타 CDN 잔존 0건'을 근거로 껐는데, 인스타 CDN 은 여기 없다.
  * 그래서 드라이브 1,077건이 12일간 그대로였다(끄기 전과 정확히 같은 수). */
 const EXTERNAL_RE = /drive\.google\.com|pap-korea-bucket\.s3|static\.wixstatic\.com/;
-const MAX_BYTES = 15 * 1024 * 1024;
+/* 상한 30MB — 2026-08-11 15MB 에서 올렸다.
+ *
+ * wix 우선 이관 첫 회차(00:10 UTC)에서 13장이 'too large' 로 **영구 제외**됐다.
+ * 실측 크기: 15.9 · 16.0 · 16.6 · 17.0 · 17.3 · 17.4 · 17.5 · 17.5 · 19.0 ·
+ *            19.1 · 19.9 · 22.8 · 24.7 MB — 전부 15MB 를 조금 넘긴 원본이다.
+ * 죽은 링크가 아니라 **멀쩡한 사진인데 상한에 걸린 것**이고, 실패로 기록되면
+ * 이 크론이 두 번 다시 시도하지 않는다. 하필 가장 위험한 wix 에서 터졌다.
+ *
+ * 30MB 인 이유: (a) 걸린 13장의 최댓값이 24.7MB 라 여유를 두면 충분하고,
+ * (b) media 버킷에는 file_size_limit 이 없어(null) 스토리지 쪽 제약이 없으며,
+ * (c) 함수 메모리 1024MB 에 버퍼는 한 번에 한 장뿐이다.
+ * 남은 구 S3 14장(58~98MB)은 이 상한으로도 못 넘는다 — 리사이즈가 답이고 별건.
+ *
+ * ⚠️ 더 올릴 때는 90초 예산을 같이 봐라. 큰 파일은 다운로드에 시간을 먹고,
+ *    한 장이 예산을 다 쓰면 그 회차 전체가 한 편도 못 끝낸다. */
+const MAX_BYTES = 30 * 1024 * 1024;
 const FETCH_TIMEOUT_MS = 15000;
 const TIME_BUDGET_MS = 90000;
 
@@ -191,11 +206,27 @@ module.exports = withCronGuard('migrate-external-images', async function handler
       .upsert(newFailures, { onConflict: 'url' })
       .then(() => {}, e => console.error('[migrate-external-images] failure log', e && e.message));
     // 이관 중 발견된 죽은 링크는 즉시 알림 — 원본 재업로드가 필요한 목록
+    /* 사유를 뭉뚱그리지 않는다 — 2026-08-11 교훈.
+       'too large' 13건을 '죽은 링크 · 재업로드 필요' 로 알렸는데, 실제로는
+       멀쩡한 원본이 상한에 걸린 것이었다. 원인이 다르면 할 일도 다르다:
+         죽은 링크 → 원본이 없다. 재업로드 말고는 답이 없다
+         용량 초과 → 원본은 살아 있다. 상한을 올리거나 줄여서 받으면 된다 */
+    const oversize = newFailures.filter(f => /^too large/.test(f.reason));
+    const dead = newFailures.filter(f => !/^too large/.test(f.reason));
+    const lines = [];
+    if (dead.length) {
+      lines.push('❌ 죽은 링크 ' + dead.length + '건 — 원본이 사라졌다(재업로드 외 방법 없음)');
+      lines.push(...dead.slice(0, 8).map(f => '· ' + f.reason + ' — editorial ' + f.editorial_id));
+    }
+    if (oversize.length) {
+      const mb = (n) => (Number(n) / 1048576).toFixed(1) + 'MB';
+      const sizes = oversize.map(f => Number(String(f.reason).split(': ')[1]) || 0);
+      lines.push('📦 용량 초과 ' + oversize.length + '건 — 원본은 멀쩡하다. 상한 '
+        + Math.round(MAX_BYTES / 1048576) + 'MB 초과 (최대 ' + mb(Math.max.apply(null, sizes)) + ')');
+      lines.push('   → 상한을 올리거나 리사이즈해서 받아야 한다. 재업로드 대상 아님');
+    }
     sendTextToTelegramSafe(
-      '🖼 이미지 이관 중 죽은 외부 링크 ' + newFailures.length + '건 발견\n' +
-      newFailures.slice(0, 10).map(f => '· ' + f.reason + ' — editorial ' + f.editorial_id).join('\n') +
-      (newFailures.length > 10 ? '\n…외 ' + (newFailures.length - 10) + '건' : '') +
-      '\n(원본 재업로드 필요 — 관리자에서 해당 에디토리얼 편집)'
+      '🖼 이미지 이관 중 실패 ' + newFailures.length + '건\n' + lines.join('\n')
     ).catch(() => {});
   }
 

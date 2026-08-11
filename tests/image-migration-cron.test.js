@@ -24,7 +24,10 @@ t('선별은 SQL 함수 external_image_editorials (gallery 배열 포함 검색)
 t('이미지 MIME 검증 (비이미지 응답 거부)', /\^image\\\//.test(mig));
 t('구 S3 octet-stream 응답은 확장자 폴백 (1차 배치 173건 전량 실패 교훈)',
   /binary\\\/octet-stream/.test(mig) && /contentTypeFromUrl/.test(mig));
-t('용량 상한 15MB + fetch 타임아웃', /MAX_BYTES = 15 \* 1024 \* 1024/.test(mig) && /FETCH_TIMEOUT_MS/.test(mig));
+/* 2026-08-11 — 15MB 핀을 뗀다. 상한값 자체는 아래 '용량 상한 · 실패 사유 구분'
+   절에서 30MB 로 고정한다. 여기서는 '상한과 타임아웃이 존재한다'만 지킨다
+   (상한은 실측에 따라 또 오를 수 있고, 그때마다 두 곳을 고치게 하지 않는다). */
+t('용량 상한과 fetch 타임아웃이 있다', /MAX_BYTES = \d+ \* 1024 \* 1024/.test(mig) && /FETCH_TIMEOUT_MS/.test(mig));
 t('media 버킷 migrated/ 경로 업로드', /storage\.from\('media'\)/.test(mig) && /'migrated\/' \+ row\.id/.test(mig));
 t('실패 URL 기록 + 재시도 건너뜀 (무한 재시도 방지)',
   /image_migration_failures/.test(mig) && /failSet\.has\(url\)/.test(mig));
@@ -111,6 +114,25 @@ t('대상 호스트 목록이 앱의 EXTERNAL_RE 와 같다',
 t('앱은 RPC 순서를 그대로 소비한다 (자체 재정렬 없음)',
   !/rows\s*\.\s*sort|rows\s*=\s*rows\.sort/.test(mig),
   'JS 가 다시 정렬하면 SQL 우선순위가 무의미해진다');
+
+console.log('=== 용량 상한 · 실패 사유 구분 (2026-08-11) ===');
+/* wix 우선 첫 회차에서 13장이 15MB 상한에 걸려 '영구 제외' 됐다.
+   전부 15.9~24.7MB 짜리 멀쩡한 원본이었다. 실패 표에 오르면 선별 함수가
+   두 번 다시 시도하지 않으므로, 우리 설정 탓의 실패는 남기면 안 된다. */
+const sql121 = R('supabase_migrations/121_image_failures_retry_oversize.sql');
+t('용량 상한이 30MB 다', /MAX_BYTES = 30 \* 1024 \* 1024/.test(mig),
+  '걸린 13장의 최댓값이 24.7MB — 15MB 로는 못 받는다');
+t('알림이 죽은 링크와 용량 초과를 구분한다',
+  /죽은 링크/.test(mig) && /용량 초과/.test(mig) && /\^too large/.test(mig),
+  '원인이 다르면 할 일이 다르다 — 재업로드 vs 상한 조정');
+t('용량 초과에는 재업로드를 시키지 않는다',
+  /재업로드 대상 아님/.test(mig),
+  '원본이 살아 있는데 재업로드하라는 안내는 헛수고를 시킨다');
+t('상한 안에 든 실패 기록을 지우는 마이그레이션이 있다',
+  /delete from public\.image_migration_failures/.test(sql121)
+  && /too large:/.test(sql121) && /30 \* 1024 \* 1024/.test(sql121));
+t('121 에 배포-후-실행 순서가 명시돼 있다', /배포 뒤에 돌려라/.test(sql121),
+  '상한이 옛날 값인 채로 재시도하면 같은 사진이 곧바로 다시 제외된다');
 
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if(fail){ console.log('❌ image-migration-cron tests FAILED'); process.exit(1); }
