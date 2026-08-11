@@ -331,7 +331,7 @@ if(!window._papLangPrefix){window._papLangPrefix=function(){try{var m=String(loc
      달아놓고도 번역기(pap-i18n.js)를 로드하지 않아, pap-header.js 가 주입한
      표준 메뉴가 영어 기본값(COMMUNITY/MAGAZINE…)으로 남아 다른 페이지(한국어)와
      달라 보였다. 다른 페이지와 동일하게 pap-i18n.js 를 로드해 라벨을 통일. -->
-<script src="/pap-i18n.js?v=3" defer></script>
+<script src="/pap-i18n.js?v=8" defer></script>
 <script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=29" defer></script>
 <!-- Print Styles -->
 <style media="print">
@@ -1175,11 +1175,11 @@ document.addEventListener('DOMContentLoaded',function(){
     <div class="sub-modal-plans">
       <div class="sub-modal-plan" onclick="location.href='/subscribe'">
         <div class="smp-name">STANDARD</div>
-        <div class="smp-price"><span id="modalStdPrice">₩8,500</span><span id="modalStdPer"> /mo</span></div>
+        <div class="smp-price"><span id="modalStdPrice">€5.49</span><span id="modalStdPer"> /mo</span></div>
       </div>
       <div class="sub-modal-plan rec" onclick="location.href='/subscribe'">
         <div class="smp-name">PREMIUM</div>
-        <div class="smp-price"><span id="modalPremPrice">₩13,500</span><span id="modalPremPer"> /mo</span></div>
+        <div class="smp-price"><span id="modalPremPrice">€8.99</span><span id="modalPremPer"> /mo</span></div>
       </div>
     </div>
     <button class="sub-modal-cta" id="modalCta" onclick="location.href='/subscribe'">SUBSCRIBE NOW</button>
@@ -1242,18 +1242,19 @@ document.addEventListener('DOMContentLoaded',function(){
   var n=document.getElementById('modalNote');if(n)n.textContent=s.note;
 
   // ---- Per-country pricing (edit these if you want to adjust) ----
-  // Base price in KRW: Standard ₩8,500, Premium ₩13,500
-  // Values below are rounded to common local prices (approx parity, no FX auto-sync)
+  // 2026-08-11 — EUR 단일가. Paddle(MoR) 폐쇄로 PayPal 전환하면서 통화를 하나로 합쳤다.
+  // PayPal 은 플랜당 통화가 하나뿐이라 국가별 현지가를 유지할 수 없다.
+  // ⚠️ subscribe.html 의 EUR_PRICES 와 반드시 같은 값을 쓸 것 (표시가 불일치 = 이탈).
   var pricing={
-    ko:{std:'₩8,500',   prem:'₩13,500', per:'/mo'},
-    en:{std:'$6.99',    prem:'$10.99',  per:'/mo'},
-    it:{std:'€5,99',    prem:'€9,99',   per:'/mese'},
-    fr:{std:'€5,99',    prem:'€9,99',   per:'/mois'},
-    es:{std:'€5,99',    prem:'€9,99',   per:'/mes'},
-    de:{std:'€5,99',    prem:'€9,99',   per:'/Monat'},
-    ja:{std:'¥780',     prem:'¥1,280',  per:'/月'},
-    zh:{std:'¥42',      prem:'¥68',     per:'/月'},
-    ru:{std:'₽549',     prem:'₽899',    per:'/мес'}
+    ko:{std:'€5.49', prem:'€8.99', per:'/월'},
+    en:{std:'€5.49', prem:'€8.99', per:'/mo'},
+    it:{std:'€5,49', prem:'€8,99', per:'/mese'},
+    fr:{std:'€5,49', prem:'€8,99', per:'/mois'},
+    es:{std:'€5,49', prem:'€8,99', per:'/mes'},
+    de:{std:'€5,49', prem:'€8,99', per:'/Monat'},
+    ja:{std:'€5.49', prem:'€8.99', per:'/月'},
+    zh:{std:'€5.49', prem:'€8.99', per:'/月'},
+    ru:{std:'€5,49', prem:'€8,99', per:'/мес'}
   };
   var pr=pricing[lang]||pricing.en;
   var sp=document.getElementById('modalStdPrice');  if(sp) sp.textContent=pr.std;
