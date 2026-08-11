@@ -131,6 +131,9 @@ t('용량 초과에는 재업로드를 시키지 않는다',
 t('상한 안에 든 실패 기록을 지우는 마이그레이션이 있다',
   /delete from public\.image_migration_failures/.test(sql121)
   && /too large:/.test(sql121) && /30 \* 1024 \* 1024/.test(sql121));
+t('121 이 일시적 storage 실패도 함께 걷는다',
+  /delete from public\.image_migration_failures\s+where reason like 'storage:%'/.test(sql121),
+  '업로드가 한 번 거절당했다고 영구 제외되면 멀쩡한 원본을 잃는다');
 t('121 에 배포-후-실행 순서가 명시돼 있다', /배포 뒤에 돌려라/.test(sql121),
   '상한이 옛날 값인 채로 재시도하면 같은 사진이 곧바로 다시 제외된다');
 

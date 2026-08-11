@@ -29,3 +29,21 @@
 delete from public.image_migration_failures
 where reason like 'too large:%'
   and (split_part(reason, ': ', 2))::bigint <= 30 * 1024 * 1024;
+
+-- ② 'storage: ...' 도 함께 지운다 — 우리 쪽(업로드) 실패이지 원본 문제가 아니다.
+--
+-- 3주간 딱 4건이다(업로드 수천 건 중). 원본이 사라진 게 아니라 스토리지 API 가
+-- 그 순간 거절한 것이고, 재시도하면 대개 통과한다. 그런데 지금 구조에서는
+-- **한 번 거절당하면 영구 제외**다. 4건 재시도 비용은 사실상 0이다.
+--
+-- ■ 이게 이 표의 구조적 문제다 (다음 사람이 볼 것)
+-- image_migration_failures 는 '다시는 시도 안 함' 이라는 뜻인데,
+-- 지금은 성격이 전혀 다른 셋을 한 칸에 넣고 있다:
+--     (a) 진짜 영구   — HTTP 404 · 410 · not an image (원본이 없다)
+--     (b) 우리 설정   — too large (상한을 올리면 된다)
+--     (c) 일시적      — storage 에러 · 네트워크 (다시 하면 된다)
+-- (b)(c) 를 영구로 굳히는 바람에 118 · 121 두 번 손으로 치웠다.
+-- 근본 해법은 사유별 재시도 정책(예: 시도 횟수 컬럼)인데, 이관이 끝난 뒤에 한다.
+-- 지금 그걸 건드리면 진행 중인 wix 구제가 늦어진다.
+delete from public.image_migration_failures
+where reason like 'storage:%';
