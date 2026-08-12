@@ -317,6 +317,87 @@ console.log('\n=== ACCESSORY-ONLY 예외 (2026-08-10) ===');
  * frontend/submission.html 의 _papClassifySubmission() 은 이 모듈의 규칙을 그대로
  * 복제한다(제출 전 €790 사전 안내용). 서버만 고치고 미러를 안 고치면 크리에이터가
  * 본 안내와 실제 판정이 어긋난다. 소스에 규칙이 남아 있는지만 확인한다. */
+/* ── 2026-08-11 (도메니코 지시) — SINGLE-CLOTHING-BRAND ─────────────────────
+ * 실제 룩의 의상 슬롯 브랜드가 정확히 1종이면 무조건 branded.
+ * 위 두 예외(multiBrand·accessoryOnly)보다 나중에 적용해 덮는다.
+ * 0종은 제외 — "옷이 한 브랜드"가 아니라 "의상 태깅을 안 했다"는 뜻이므로
+ * needsCreditReview 로 관리자에게 넘긴다. */
+console.log('\n=== SINGLE-CLOTHING-BRAND (2026-08-11) ===');
+(function () {
+  const L = (n, items) => ({ n, items });
+
+  // 실사례 회귀: insides (submission afe5cbad-ba08-4d1a-a4e2-4970702f781d)
+  // 룩3 의 유일한 크레딧이 모자라 "모든 룩 공통" 교집합이 비어 free 로 통과했었다.
+  const insides = classifySubmissionType([
+    L(1, [{ type: 'Top',   brand: 'Juana Echeguia',    instagram: '@x.jjuana' }]),
+    L(2, [{ type: 'Dress', brand: 'Juana Echeguia',    instagram: '@x.jjuana' }]),
+    L(3, [{ type: 'Hat',   brand: 'Juan El Daltonico', instagram: '@juaneldaltonico' }]),
+    L(4, [{ type: 'Other', brand: 'Juana Echeguia',    instagram: '@x.jjuana' }]),
+  ], mapFor([4, 6, 7, 3]));
+  ok('실사례 insides → branded (옷이 Juana Echeguia 1종뿐)',
+     insides.submissionType === 'branded' && insides.singleClothingBrand === true
+     && insides.clothingBrandCount === 1,
+     JSON.stringify(insides));
+  ok('공통 브랜드 교집합은 여전히 비어 있다 (옛 트리거로는 못 잡는 케이스임을 고정)',
+     insides.sharedBrands.length === 0, JSON.stringify(insides.sharedBrands));
+
+  // 의상 2종이면 이 규칙은 안 걸린다 (경계값 바로 위)
+  const two = classifySubmissionType([
+    L(1, [{ type: 'Top', brand: 'A' }]),
+    L(2, [{ type: 'Dress', brand: 'B' }]),
+    L(3, [{ type: 'Hat', brand: 'C' }]),
+    L(4, [{ type: 'Top', brand: 'B' }]),
+  ], mapFor([1, 1, 1, 1]));
+  ok('의상 2종 → 이 규칙 미발동',
+     two.singleClothingBrand === false && two.clothingBrandCount === 2,
+     JSON.stringify(two));
+
+  // 0종은 브랜디드로 만들지 않는다 — 대신 needsCreditReview
+  const zero = classifySubmissionType([
+    L(1, [{ type: 'Hat', brand: 'A' }]),
+    L(2, [{ type: 'Shoes', brand: 'B' }]),
+    L(3, [{ type: 'Bag', brand: 'C' }]),
+    L(4, [{ type: 'Other', brand: 'D' }]),
+  ], mapFor([1, 1, 1, 1]));
+  ok('의상 0종 → branded 로 만들지 않는다 (판단 불가)',
+     zero.singleClothingBrand === false && zero.clothingBrandCount === 0,
+     JSON.stringify(zero));
+  ok('의상 0종 → needsCreditReview = true (관리자 확인 대상)',
+     zero.needsCreditReview === true, JSON.stringify(zero));
+  ok('의상이 있으면 needsCreditReview = false',
+     two.needsCreditReview === false, JSON.stringify(two));
+
+  // 이 규칙은 ACCESSORY-ONLY 예외를 덮는다 (적용 순서 고정)
+  const overrides = classifySubmissionType([
+    L(1, [{ type: 'Dress', brand: 'OneLabel' }, { type: 'Shoes', brand: 'Shared' }]),
+    L(2, [{ type: 'Top',   brand: 'OneLabel' }, { type: 'Shoes', brand: 'Shared' }]),
+    L(3, [{ type: 'Coat',  brand: 'OneLabel' }, { type: 'Shoes', brand: 'Shared' }]),
+    L(4, [{ type: 'Pants', brand: 'OneLabel' }, { type: 'Shoes', brand: 'Shared' }]),
+  ], mapFor([1, 1, 1, 1]));
+  ok('액세서리 전용 공통이 있어도, 옷이 1종이면 branded 가 이긴다',
+     overrides.submissionType === 'branded' && overrides.singleClothingBrand === true,
+     JSON.stringify(overrides));
+
+  // 이미지 없는 룩의 의상은 세지 않는다 → 1종 판정에 영향
+  const ghost = classifySubmissionType([
+    L(1, [{ type: 'Dress', brand: 'Solo' }]),
+    L(2, [{ type: 'Dress', brand: 'Solo' }]),
+    L(3, [{ type: 'Top', brand: 'Other1' }, { type: 'Pants', brand: 'Other2' }]),
+    L(4, [{ type: 'Coat', brand: 'Other3' }]),
+  ], mapFor([1, 1, 0, 0]));
+  ok('이미지 0장 룩의 의상은 세지 않는다 → 옷 1종 → branded',
+     ghost.submissionType === 'branded' && ghost.clothingBrandCount === 1,
+     JSON.stringify(ghost));
+
+  // 룩 수가 모자라도 branded 가 우선 (기존 우선순위 유지)
+  const few = classifySubmissionType([
+    L(1, [{ type: 'Dress', brand: 'Solo' }]),
+    L(2, [{ type: 'Hat', brand: 'Acc' }]),
+  ], mapFor([1, 1]));
+  ok('옷 1종 + 룩 2개 → paid_few_looks 아니라 branded',
+     few.submissionType === 'branded', JSON.stringify(few));
+})();
+
 console.log('\n=== 클라이언트 미러 동기화 ===');
 (function () {
   const fs = require('fs');
@@ -328,6 +409,11 @@ console.log('\n=== 클라이언트 미러 동기화 ===');
      html.includes('sharedBrands'));
   ok('submission.html 미러에 의상 0종 우회로 가드(clothingCount>=1)가 있다',
      /accessoryOnlyExempt[\s\S]{0,200}clothingCount\s*>=\s*1/.test(html));
+  ok('submission.html 미러에 singleClothingBrand 규칙이 있다',
+     html.includes('singleClothingBrand'));
+  ok('미러의 singleClothingBrand 는 정확히 1종만 본다 (0종 제외)',
+     /singleClothingBrand\s*=\s*clothingCount\s*===\s*1/.test(html));
+  ok('미러에 needsCreditReview 가 있다', html.includes('needsCreditReview'));
 })();
 
 console.log('\n=== SUMMARY ===');

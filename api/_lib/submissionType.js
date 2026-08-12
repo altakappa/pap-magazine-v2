@@ -84,6 +84,20 @@
  *   11건 → 3건으로 좁혀진다(REVERIE / Wild - Kiara Jones / Cold air).
  *
  *   sharedBrands 는 여기서도 그대로 돌려준다. branded 플래그만 false 가 된다.
+ *
+ * SINGLE-CLOTHING-BRAND (도메니코 지시 2026-08-11) ─────────────────────────
+ *   실제 룩의 의상 슬롯 브랜드가 **정확히 1종**이면 무조건 branded 다.
+ *   위 두 예외보다 나중에 적용해 그것들을 덮는다.
+ *
+ *   실사례 "insides"(2026-08-03): 옷은 전부 Juana Echeguia 인데 룩3 의 유일한
+ *   크레딧이 모자(Juan El Daltonico)라 "모든 룩 공통" 교집합이 비어 free 로
+ *   통과했다. 모자 하나가 단일 디자이너 화보의 브랜디드 판정을 떼어낸 것이다.
+ *   ACCESSORY-ONLY 예외와 정확히 반대 방향의 같은 뿌리 — 판정이 액세서리를
+ *   의상과 동등하게 취급하는 데서 온다.
+ *
+ *   0종은 제외한다. 0종은 "옷이 한 브랜드"가 아니라 "의상 슬롯을 하나도 안
+ *   채웠다"는 뜻이라 판단이 불가능하다(헤어·뷰티 화보가 섞여 있다).
+ *   대신 needsCreditReview=true 로 관리자에게 넘긴다.
  */
 
 'use strict';
@@ -207,7 +221,8 @@ function clothingBrandUnion(looks, realLookKeys) {
  * @returns {{ submissionType:string, realLookCount:number, branded:boolean,
  *            sharedBrands:string[], clothingBrands:string[],
  *            clothingBrandCount:number, multiBrandExempt:boolean,
- *            accessoryOnlyExempt:boolean }}
+ *            accessoryOnlyExempt:boolean, singleClothingBrand:boolean,
+ *            needsCreditReview:boolean }}
  */
 function classifySubmissionType(looks, lookImageMap) {
   const imgCounts = imagesByLookFromMap(lookImageMap);
@@ -274,6 +289,29 @@ function classifySubmissionType(looks, lookImageMap) {
     && !sharedBrands.some((b) => clothingBrandSet.has(b));
   if (accessoryOnlyExempt) branded = false;
 
+  // SINGLE-CLOTHING-BRAND (도메니코 2026-08-11) — 위 트리거·예외를 모두 통과했더라도,
+  // 실제 룩의 의상 슬롯 브랜드가 정확히 1종이면 branded 로 확정한다. 마지막에 적용해
+  // 위의 두 예외를 덮는다(전부 한 디자이너 옷이면 예외가 붙을 이유가 없다).
+  //
+  // 왜 필요했나 — 실사례 "insides"(afe5cbad, 2026-08-03):
+  //   룩1 Top: Juana Echeguia · 룩2 Dress: Juana Echeguia
+  //   룩3 Hat: Juan El Daltonico  ← 이 룩의 유일한 크레딧이 모자(액세서리)
+  //   룩4 Other: Juana Echeguia
+  // 룩3 에 Juana 가 없어 "모든 룩 공통 브랜드" 교집합이 비었고 → free 로 통과했다.
+  // 화보 전체 옷이 한 디자이너인데 모자 하나가 브랜디드 판정을 떼어낸 것이다.
+  // 이는 accessoryOnlyExempt(2026-08-10)와 정확히 반대 방향의 같은 뿌리 —
+  // 판정이 액세서리를 의상과 동등하게 취급하는 데서 온다.
+  //
+  // 0종은 일부러 제외한다. 0종은 "옷이 한 브랜드"가 아니라 "의상 슬롯을 하나도
+  // 안 채웠다"는 뜻이라 판단 불가다. 2026-08-11 실측 116건 중 8건이 0종이었고
+  // Hairlog·POOLSIDE FANTASY 처럼 헤어·뷰티 화보가 섞여 있다 — 태깅 미비를
+  // €790 청구로 바꾸면 안 된다. 대신 needsCreditReview 로 관리자에게 넘긴다.
+  const singleClothingBrand = clothingBrandCount === 1;
+  if (singleClothingBrand) branded = true;
+
+  // 의상 크레딧이 아예 없어 자동 판정이 불가능한 제출 — 관리자 확인 대상 표시.
+  const needsCreditReview = clothingBrandCount === 0 && realLookCount > 0;
+
   let submissionType = 'free';
   if (branded) submissionType = 'branded';
   else if (realLookCount < MIN_LOOKS) submissionType = 'paid_few_looks';
@@ -287,6 +325,8 @@ function classifySubmissionType(looks, lookImageMap) {
     clothingBrandCount,
     multiBrandExempt,
     accessoryOnlyExempt,
+    singleClothingBrand,
+    needsCreditReview,
   };
 }
 
