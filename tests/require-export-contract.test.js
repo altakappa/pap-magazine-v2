@@ -26,7 +26,13 @@ for (const [k, v] of Object.entries({
   SUPABASE_ANON_KEY: 'test-anon-key',
   SUPABASE_SERVICE_KEY: 'test-service-key',
   SUPABASE_SERVICE_ROLE_KEY: 'test-service-key',
-})) if (!process.env[k]) process.env[k] = v;
+/* 2026-08-12 — `if (!process.env[k])` 를 뗀다. 이 가드 때문에 CI 가 10커밋 동안 빨간불이었다.
+   증상: 로컬은 26/26 통과, CI 만 `api/_lib/auth.js` · `api/_lib/supabase.js` 로드 실패로 21/23.
+   같은 커밋·같은 lock·같은 supabase-js(2.110.6) 인데 결과가 달랐다.
+   남은 차이는 '실행 환경에 그 이름의 값이 이미 있느냐' 뿐이다 — 값이 비어 있지 않으면
+   가드가 더미를 덮어쓰지 않으므로, 쓸 수 없는 값이 그대로 createClient 에 들어간다.
+   이 테스트는 require 만 하고 실제 통신을 하지 않으므로 무조건 더미로 덮는 편이 옳다. */
+})) process.env[k] = v;
 
 const fs = require('fs');
 const path = require('path');
@@ -109,8 +115,11 @@ const payPairs = [
 ];
 for (const [rel, names] of payPairs) {
   let mod = null;
-  try { mod = require(path.join(ROOT, rel)); } catch (e) { /* 아래에서 실패 처리 */ }
-  t(`${rel} 로드된다`, !!mod);
+  let loadErr = null;
+  try { mod = require(path.join(ROOT, rel)); } catch (e) { loadErr = (e && e.message) || String(e); }
+  /* 실패하면 반드시 '왜' 를 남긴다 — 이유 없는 ✗ 는 CI 로그를 봐도 알 수가 없다.
+     이번에 그것 때문에 원인 좁히는 데만 여러 번 왕복했다. */
+  t(`${rel} 로드된다`, !!mod, loadErr);
   if (mod) for (const n of names) {
     t(`  ${rel} → ${n}`, typeof mod[n] === 'function' || typeof mod[n] === 'object', `typeof=${typeof mod[n]}`);
   }
