@@ -207,8 +207,40 @@ module.exports = withCronGuard('drive-tiktok-post', async function handler(req, 
      * 말하지 않는다. 중복 게시가 훨씬 나쁘다.
      * 찜해 둔 줄을 갱신하는 것이므로 upsert 가 아니라 update 다 — upsert 는
      * 덮어쓰기라 경합이 조용히 통과한다. */
+    /* article_id 는 '비어 있을 때만' 적는다 (2026-08-12).
+     *
+     * ■ 실측 사고: 2026-08-09 16:45 ~ 08-12 00:45, 2시간마다 29회.
+     *   같은 영상(오피셜히게단디즘 내한.mp4)이 틱톡에 계속 올라갔다.
+     *     duplicate key value violates unique constraint "uq_tiktok_posts_article_id"
+     *   흐름: 찜 → 틱톡 게시 성공 → 기록(update)에서 article_id 충돌 → 500
+     *        → 다음 회차가 '죽은 찜' 으로 보고 회수 → 다시 게시 … 무한반복.
+     *   기록이 실패하면 게시했다고 말하지 않는 설계는 **옳았다**. 문제는
+     *   그 기록이 애초에 성공할 수 없는 값을 쓰고 있었다는 것이다.
+     *
+     * ■ 왜 충돌하나
+     *   tiktok_posts.article_id 에는 유니크 인덱스가 있다("한 기사는 한 번만").
+     *   그런데 그 기사는 이미 기사 경로로 게시돼 줄을 갖고 있었다.
+     *   드라이브 경로는 drive_file_id 가 이미 자기 고유키라 article_id 는
+     *   '어느 기사에 붙은 영상인가' 를 적어두는 참고값일 뿐이다.
+     *   참고값 때문에 게시 기록 자체가 실패하면 안 된다.
+     *
+     * ■ 그래서: 그 기사에 이미 다른 줄이 있으면 article_id 를 비우고
+     *   detail 에 기사 id 를 남긴다. 연결 정보는 지키고 충돌만 피한다.
+     *   (유니크 인덱스를 부분 인덱스로 되돌리는 선택지는 버렸다 —
+     *    기사 경로의 upsert(onConflict:'article_id') 가 부분 인덱스로는
+     *    동작하지 않는다. 2026-08-10 에 정확히 그 이유로 전체 인덱스로 바꿨다.) */
+    let articleIdForRow = art.id;
+    try {
+      const { data: taken } = await supabaseAdmin.from('tiktok_posts')
+        .select('drive_file_id').eq('article_id', art.id).limit(1).maybeSingle();
+      if (taken && taken.drive_file_id !== file.id) {
+        articleIdForRow = null;
+        detail = (detail ? detail + ' · ' : '') + 'article=' + art.id + '(이미 게시된 기사라 연결 생략)';
+      }
+    } catch (_) { /* 확인 실패는 무시 — 아래 update 가 실패하면 어차피 알린다 */ }
+
     const rec = await finishClaim('tiktok_posts', file.id, {
-      article_id: art.id, publish_id: post && post.id || null, status, detail,
+      article_id: articleIdForRow, publish_id: post && post.id || null, status, detail,
     });
     if (!rec.ok) {
       const msg = 'DB 기록 실패 — 같은 영상이 반복 게시될 수 있음! publish_id=' + (post && post.id)
