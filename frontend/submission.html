@@ -982,7 +982,7 @@ function navigateWithInterstitial(url){
 <script src="https://cdn.paddle.com/paddle/v2/paddle.js" defer></script>
 <script src="/pap-name-validator.js?v=3" defer></script>
 <script src="submission-terms.js?v=1"></script>
-<script src="/pap-submission-fee.js?v=5"></script>
+<script src="/pap-submission-fee.js?v=6"></script>
 <script src="/pap-submission-fee-consent.js?v=1"></script>
 <script>
 var lookCount=0;
@@ -3055,6 +3055,51 @@ async function submitForm(){
   // ESC·바깥클릭·닫기는 전부 "돌아가서 수정" 이다(취소가 기본값).
   // 판정·금액은 여기서 계산하지 않는다 — _papClassifySubmission() 결과를 그대로
   // 쓴다. 안내한 금액과 청구되는 금액이 어긋나는 것이 제일 나쁘다.
+
+// 2026-08-12 승인후결제 — 결제 승인을 마치지 않고 이탈했을 때의 화면.
+// 제출물은 이미 저장돼 있다. 지우지 않고 "이어서 승인" 을 제공한다.
+// 승인 전까지 심사에 오르지 않는다(서버가 409 로 막는다).
+var _AUTH_PENDING_I18N = {
+  ko:{t:'결제 승인이 남았습니다', d:'작품은 안전하게 저장되었습니다. 게재료 결제 승인을 마쳐야 심사가 시작됩니다.<br><strong>지금 청구되지 않습니다</strong> — 심사를 통과할 때만 결제되고, 떨어지면 청구되지 않습니다.', b:'결제 승인 이어서 하기', l:'나중에 마이페이지에서 하기'},
+  en:{t:'One step left: authorise the fee', d:'Your work is saved. Review starts once the publication fee is authorised.<br><strong>You are not charged now</strong> — the fee is taken only if your submission is accepted.', b:'Authorise now', l:'Do it later from My Page'},
+  de:{t:'Noch ein Schritt: Zahlung autorisieren', d:'Ihre Arbeit ist gespeichert. Die Prüfung beginnt nach Autorisierung der Gebühr.<br><strong>Es wird jetzt nichts abgebucht</strong> — die Gebühr fällt nur bei Annahme an.', b:'Jetzt autorisieren', l:'Später über Mein Bereich'},
+  it:{t:'Manca un passaggio: autorizza la quota', d:'Il tuo lavoro è salvato. La revisione inizia dopo l\'autorizzazione.<br><strong>Non ti viene addebitato nulla ora</strong> — la quota è presa solo se la proposta viene accettata.', b:'Autorizza ora', l:'Più tardi dalla mia pagina'},
+  fr:{t:'Une étape reste : autoriser les frais', d:'Votre travail est enregistré. L\'examen commence après autorisation.<br><strong>Rien n\'est débité maintenant</strong> — les frais ne sont prélevés qu\'en cas d\'acceptation.', b:'Autoriser maintenant', l:'Plus tard depuis Ma page'},
+  es:{t:'Queda un paso: autorizar la tarifa', d:'Tu trabajo está guardado. La revisión empieza tras la autorización.<br><strong>No se te cobra ahora</strong> — solo se cobra si se acepta tu propuesta.', b:'Autorizar ahora', l:'Más tarde desde Mi página'},
+  ja:{t:'あと一歩：お支払いの承認', d:'作品は保存されました。掲載料の承認が完了すると審査が始まります。<br><strong>今は請求されません</strong> — 審査に通った場合にのみ決済されます。', b:'承認に進む', l:'あとでマイページから'},
+  zh:{t:'还差一步：授权刊登费', d:'作品已保存。完成授权后开始审核。<br><strong>现在不会扣款</strong> — 只有通过审核才会实际收取。', b:'立即授权', l:'稍后在我的页面完成'},
+  ru:{t:'Остался один шаг: авторизация оплаты', d:'Работа сохранена. Рассмотрение начнётся после авторизации.<br><strong>Сейчас списания нет</strong> — плата взимается только при принятии.', b:'Авторизовать', l:'Позже в личном кабинете'}
+};
+function _authPendT(){
+  var l='en';
+  try{ l=(localStorage.getItem('pap-lang')||document.documentElement.lang||'en').slice(0,2).toLowerCase(); }catch(_){ }
+  return _AUTH_PENDING_I18N[l] || _AUTH_PENDING_I18N.en;
+}
+function _showAuthPendingScreen(submissionId){
+  var t=_authPendT();
+  try{ document.getElementById('step5').style.display='none'; }catch(_){ }
+  try{ document.querySelector('.step-bar').style.display='none'; }catch(_){ }
+  var host=document.getElementById('submitSuccess');
+  if(!host) return;
+  host.innerHTML =
+    '<div style="max-width:520px;margin:0 auto;text-align:center;padding:40px 20px">'
+    + '<div style="font-size:15px;font-weight:700;letter-spacing:.06em;margin-bottom:14px">'+t.t+'</div>'
+    + '<div style="font-size:13px;line-height:1.8;color:rgba(255,255,255,.72);margin-bottom:26px">'+t.d+'</div>'
+    + '<button type="button" id="_authResume" style="background:#c9a86a;color:#000;border:none;padding:14px 32px;font-size:12px;font-weight:700;letter-spacing:.08em;cursor:pointer;border-radius:2px">'+t.b+'</button>'
+    + '<div style="margin-top:16px"><a href="/mypage" style="font-size:12px;color:rgba(255,255,255,.62);text-decoration:underline">'+t.l+'</a></div>'
+    + '</div>';
+  host.style.display='block';
+  var btn=document.getElementById('_authResume');
+  if(btn) btn.addEventListener('click', function(){
+    window.papPayOneTime({
+      submissionId: submissionId, kind:'submission_fee', mode:'authorize',
+      onDone: function(ok){ if(ok){ try{ window.location.href='/mypage'; }catch(_){ } } }
+    });
+  });
+  try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(_){ }
+  try{ localStorage.removeItem('pap-submission-draft'); }catch(_){ }
+}
+  var _createdSubmissionId = null;
   if(typeof window._papFeeConsent === 'function'){
     var _feeOk = await window._papFeeConsent(_papClassifySubmission());
     if(!_feeOk){ if(typeof goStep==='function') goStep(4); return; }
@@ -3247,13 +3292,41 @@ async function submitForm(){
         existingAdditionalUrls||[],
         progressCb
       );
+      _createdSubmissionId = REVISE_ID;
     }else{
-      await PAP.submissions.create(
+      var _created = await PAP.submissions.create(
         data,
         allLookImages,
         files1||[],
         progressCb
       );
+      try{ _createdSubmissionId = _created && _created.submission && _created.submission.id; }catch(_){ }
+    }
+
+    // 🔴 2026-08-12 승인후결제 — 유료 유형은 여기서 결제 "승인" 을 받는다.
+    //    돈은 묶이기만 하고 빠지지 않는다. 심사를 통과하면 그때 청구되고,
+    //    떨어지거나 2일 안에 심사가 안 끝나면 자동으로 취소된다(청구 없음).
+    //    무료 유형은 이 블록을 통째로 건너뛴다 — 결제 API 가 닿지 않는다.
+    var _cls = (typeof _papClassifySubmission==='function') ? _papClassifySubmission() : null;
+    var _type = _cls && _cls.submissionType;
+    var _needsAuth = (_type === 'branded' || _type === 'paid_few_looks');
+    if(_needsAuth && _createdSubmissionId && typeof window.papPayOneTime === 'function'){
+      _setSubmitOverlayState('finalizing');
+      var _authOk = await new Promise(function(resolve){
+        window.papPayOneTime({
+          submissionId: _createdSubmissionId,
+          kind: 'submission_fee',
+          mode: 'authorize',
+          onDone: function(ok){ resolve(!!ok); }
+        });
+      });
+      if(!_authOk){
+        // 승인을 마치지 않았다 — 제출물은 저장돼 있고, 심사에는 오르지 않는다.
+        // 데이터를 버리지 않고 "이어서 승인하기" 화면을 보여준다.
+        _hideSubmitOverlay();
+        _showAuthPendingScreen(_createdSubmissionId);
+        return;
+      }
     }
 
     // Brief "finalizing" state so the user sees we acknowledged the upload

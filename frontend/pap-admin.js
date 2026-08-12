@@ -1473,9 +1473,47 @@ function _splitAdminNotes(notes){
 // paidAmount(유로 cents, 정수) 를 병기해 도메니코가 유형 뱃지의 기대금액
 // (예: 브랜디드 €790)과 실결제액을 비교, 과소결제(€380만 결제 등)를 인지할 수 있게.
 // cents→euros 는 /100, 정수 유로로 표기. 값 없거나 비정상이면 금액 생략(기존 라벨).
-function _paymentStatusBadge(paymentStatus, paidAmount, submissionType){
+// 2026-08-12 승인후결제 — 승인(authorize)된 건은 카드에 돈이 묶여 있고,
+// 2일(48h) 안에 심사하지 않으면 자동으로 취소된다(청구 없음).
+// 그래서 어드민에 "남은 시간" 이 보여야 한다. 안 보이면 약속을 못 지킨다.
+var _FEE_SLA_HOURS = 48;
+function _feeSlaLeftHours(authorizedAt){
+  if(!authorizedAt) return null;
+  var t = Date.parse(authorizedAt);
+  if(!isFinite(t)) return null;
+  return (t + _FEE_SLA_HOURS*3600*1000 - Date.now()) / 3600000;
+}
+function _feeSlaLabel(hoursLeft){
+  if(hoursLeft == null) return '';
+  if(hoursLeft <= 0) return '기한 초과';
+  if(hoursLeft < 1) return '남은 ' + Math.max(1, Math.round(hoursLeft*60)) + '분';
+  return '남은 ' + hoursLeft.toFixed(hoursLeft < 10 ? 1 : 0) + '시간';
+}
+function _paymentStatusBadge(paymentStatus, paidAmount, submissionType, authorizedAt){
   function _span(bg,bd,fg,label,title){
     return '<span title="'+(title||'결제 상태 (표시 전용)')+'" style="display:inline-block;font-size:10px;font-weight:700;letter-spacing:.02em;padding:2px 8px;border-radius:3px;background:'+bg+';border:1px solid '+bd+';color:'+fg+'">'+label+'</span>';
+  }
+  // 승인됨 — 돈이 묶여 있다. 승인하면 청구, 거절하면 무청구, 방치하면 자동 취소.
+  if(paymentStatus==='authorized'){
+    var _left=_feeSlaLeftHours(authorizedAt);
+    var _urgent=(_left!=null && _left<=12);
+    var _lbl='\uD83D\uDD12 승인됨(청구 전)';
+    var _t2=_feeSlaLabel(_left);
+    if(_t2) _lbl += ' \u00b7 ' + _t2;
+    return _urgent
+      ? _span('rgba(220,120,60,.18)','rgba(220,120,60,.65)','rgba(250,180,120,.98)',_lbl,
+          '카드에 금액이 묶여 있습니다. 기한이 지나면 자동 취소되고 청구되지 않습니다.')
+      : _span('rgba(90,150,220,.14)','rgba(90,150,220,.5)','rgba(150,195,245,.98)',_lbl,
+          '승인만 된 상태 — 아직 청구되지 않았습니다. 심사 승인 시 청구, 거절 시 무청구.');
+  }
+  // 승인 대기 — 크리에이터가 결제 승인을 아직 안 마쳤다. 심사 승인이 막힌다.
+  if(paymentStatus==='awaiting_authorization'){
+    return _span('rgba(255,255,255,.06)','rgba(255,255,255,.22)','rgba(255,255,255,.62)','결제 승인 대기',
+      '크리에이터가 결제 승인을 마쳐야 심사할 수 있습니다(승인 시도 시 차단됨).');
+  }
+  if(paymentStatus==='voided'){
+    return _span('rgba(255,255,255,.05)','rgba(255,255,255,.16)','rgba(255,255,255,.5)','승인 취소 · 청구 없음',
+      '결제 승인이 해제되었습니다. 청구되지 않았습니다.');
   }
   if(paymentStatus==='paid'){
     var cents=Number(paidAmount); var label='결제완료 · 게재대기';
@@ -1521,7 +1559,7 @@ function populateReviewModal(submission){
     _hdr.appendChild(_b);
   }
   // Payment-status badge (표시 전용) — 유료/브랜디드 기본료 결제 상태 + 실결제액. 옆에 나란히.
-  var _payBadge=_paymentStatusBadge(submission.payment_status, submission.paid_amount, desc.submissionType);
+  var _payBadge=_paymentStatusBadge(submission.payment_status, submission.paid_amount, desc.submissionType, submission.authorized_at);
   if(_payBadge){
     var _pb=document.createElement('span');
     _pb.style.marginLeft='8px';
@@ -2356,7 +2394,7 @@ async function loadSubmissions(statusFilter, opts){
       // / branded submissions stand out; free & 구버전(값 없음) rows show nothing.
       var typeBadge=_submissionTypeBadge(_submissionTypeOf(s));
       // Payment-status badge (표시 전용) — 유형 뱃지 아래에 함께 노출 (+실결제액).
-      var payBadge=_paymentStatusBadge(s.payment_status, s.paid_amount, _submissionTypeOf(s));
+      var payBadge=_paymentStatusBadge(s.payment_status, s.paid_amount, _submissionTypeOf(s), s.authorized_at);
       var badgeStack=(typeBadge||payBadge)?'<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">'+typeBadge+payBadge+'</div>':'';
       tb.innerHTML+='<tr><td class="td-title" onclick="openModal(\''+s.id+'\')">'+esc(s.title)+'</td><td>'+esc(s.submitterName||s.submitterEmail||'—')+'</td><td><span class="badge '+planCls+'">'+planLabel+'</span>'+_trialBadge(s.submitterTrial)+'</td><td>'+looks+'</td><td>'+fmtDate(s.created_at)+'</td><td><span class="badge '+statusCls+'">'+statusLabel+'</span>'+rejectedInfo+badgeStack+'</td><td>'+actionBtns+'</td></tr>';
     });

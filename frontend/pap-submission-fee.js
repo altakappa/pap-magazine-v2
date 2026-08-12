@@ -17,15 +17,15 @@
 //   payBaseFeeBtn / payBasePaid / payBaseUnavailable ... 문구는 도메니코 확정 전
 //   초안입니다. 금액(€380/€790)은 {amt} 로 주입. 최종 카피 확정 대기.
 var _PAY_I18N = {
-  ko:{ payCaptureUnconfirmed:'결제가 이미 처리되었을 수 있습니다. 다시 결제하지 마시고 contact@pap-magazine.com 으로 연락 주세요. 확인 후 바로 처리해 드립니다.', payBaseIntro:'게재를 확정하려면 아래에서 기본 게재료를 결제해 주세요.', payBaseFeeBtn:'기본 게재료 {amt} 결제하기', payBasePaid:'결제 완료 · 게재 대기', payBasePaidHint:'기본 게재료 결제가 확인되었습니다. PAP 편집팀이 게재를 진행합니다.', payBaseUnavailable:'결제가 아직 준비되지 않았습니다. 잠시 후 다시 시도하거나 PAP에 문의해 주세요.', paySdkMissing:'결제 모듈을 불러오지 못했습니다. 페이지를 새로고침해 주세요.', payLoginFirst:'결제하려면 먼저 로그인해 주세요.', payCompleteOptimistic:'결제가 접수되었습니다! 확인되면 상태가 업데이트됩니다.', payGenericError:'결제창을 여는 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.' },
-  en:{ payCaptureUnconfirmed:'Your payment may already have gone through. Please do not pay again. Email contact@pap-magazine.com and we will sort it out right away.', payBaseIntro:'To confirm publication, please pay the base publication fee below.', payBaseFeeBtn:'Pay base fee {amt}', payBasePaid:'Paid · awaiting publication', payBasePaidHint:'Your base publication fee has been confirmed. PAP will proceed with publication.', payBaseUnavailable:'Payment is not available yet. Please try again shortly or contact PAP.', paySdkMissing:'Payment module failed to load. Please refresh the page.', payLoginFirst:'Please sign in first to pay.', payCompleteOptimistic:'Payment received! Your status will update once confirmed.', payGenericError:'Something went wrong opening the checkout. Please try again shortly.' },
-  de:{ payCaptureUnconfirmed:'Ihre Zahlung ist möglicherweise bereits erfolgt. Bitte zahlen Sie nicht erneut. Schreiben Sie an contact@pap-magazine.com, wir klären das sofort.', payBaseIntro:'Um die Veröffentlichung zu bestätigen, zahlen Sie bitte unten die Grundgebühr.', payBaseFeeBtn:'Grundgebühr {amt} zahlen', payBasePaid:'Bezahlt · Veröffentlichung ausstehend', payBasePaidHint:'Ihre Grundgebühr wurde bestätigt. PAP wird die Veröffentlichung fortsetzen.', payBaseUnavailable:'Zahlung ist noch nicht verfügbar. Bitte versuchen Sie es später erneut oder kontaktieren Sie PAP.', paySdkMissing:'Zahlungsmodul konnte nicht geladen werden. Bitte Seite neu laden.', payLoginFirst:'Bitte zuerst anmelden, um zu zahlen.', payCompleteOptimistic:'Zahlung erhalten! Ihr Status wird nach Bestätigung aktualisiert.', payGenericError:'Beim Öffnen des Checkouts ist ein Fehler aufgetreten. Bitte erneut versuchen.' },
-  it:{ payCaptureUnconfirmed:'Il pagamento potrebbe essere già andato a buon fine. Non pagare di nuovo. Scrivi a contact@pap-magazine.com e risolviamo subito.', payBaseIntro:'Per confermare la pubblicazione, paga la tariffa base qui sotto.', payBaseFeeBtn:'Paga la tariffa base {amt}', payBasePaid:'Pagato · in attesa di pubblicazione', payBasePaidHint:'La tua tariffa base è stata confermata. PAP procederà con la pubblicazione.', payBaseUnavailable:'Il pagamento non è ancora disponibile. Riprova a breve o contatta PAP.', paySdkMissing:'Impossibile caricare il modulo di pagamento. Ricarica la pagina.', payLoginFirst:'Accedi prima di pagare.', payCompleteOptimistic:'Pagamento ricevuto! Lo stato si aggiornerà una volta confermato.', payGenericError:'Si è verificato un errore nell’apertura del checkout. Riprova a breve.' },
-  fr:{ payCaptureUnconfirmed:'Votre paiement a peut-être déjà été effectué. Ne payez pas une seconde fois. Écrivez à contact@pap-magazine.com, nous réglons cela immédiatement.', payBaseIntro:'Pour confirmer la publication, veuillez payer les frais de base ci-dessous.', payBaseFeeBtn:'Payer les frais de base {amt}', payBasePaid:'Payé · en attente de publication', payBasePaidHint:'Vos frais de base ont été confirmés. PAP procédera à la publication.', payBaseUnavailable:'Le paiement n’est pas encore disponible. Réessayez bientôt ou contactez PAP.', paySdkMissing:'Le module de paiement n’a pas pu se charger. Veuillez rafraîchir la page.', payLoginFirst:'Veuillez vous connecter pour payer.', payCompleteOptimistic:'Paiement reçu ! Votre statut sera mis à jour une fois confirmé.', payGenericError:'Une erreur est survenue à l’ouverture du paiement. Veuillez réessayer.' },
-  es:{ payCaptureUnconfirmed:'Es posible que su pago ya se haya realizado. No vuelva a pagar. Escriba a contact@pap-magazine.com y lo resolvemos enseguida.', payBaseIntro:'Para confirmar la publicación, pague la tarifa base a continuación.', payBaseFeeBtn:'Pagar tarifa base {amt}', payBasePaid:'Pagado · pendiente de publicación', payBasePaidHint:'Su tarifa base ha sido confirmada. PAP procederá con la publicación.', payBaseUnavailable:'El pago aún no está disponible. Inténtelo de nuevo pronto o contacte con PAP.', paySdkMissing:'No se pudo cargar el módulo de pago. Actualice la página.', payLoginFirst:'Inicie sesión primero para pagar.', payCompleteOptimistic:'¡Pago recibido! Su estado se actualizará una vez confirmado.', payGenericError:'Ocurrió un error al abrir el pago. Inténtelo de nuevo pronto.' },
-  ja:{ payCaptureUnconfirmed:'お支払いはすでに完了している可能性があります。重ねてのお支払いはなさらず、contact@pap-magazine.com までご連絡ください。すぐに確認いたします。', payBaseIntro:'掲載を確定するには、以下から基本掲載料をお支払いください。', payBaseFeeBtn:'基本掲載料 {amt} を支払う', payBasePaid:'支払い完了 · 掲載待ち', payBasePaidHint:'基本掲載料の支払いが確認されました。PAPが掲載を進めます。', payBaseUnavailable:'決済はまだ利用できません。しばらくしてから再度お試しいただくか、PAPにお問い合わせください。', paySdkMissing:'決済モジュールの読み込みに失敗しました。ページを再読み込みしてください。', payLoginFirst:'お支払いには先にログインしてください。', payCompleteOptimistic:'お支払いを受け付けました！確認され次第ステータスが更新されます。', payGenericError:'決済画面を開く際に問題が発生しました。しばらくしてから再度お試しください。' },
-  zh:{ payCaptureUnconfirmed:'您的付款可能已经完成。请不要重复支付，请发送邮件至 contact@pap-magazine.com，我们会立即处理。', payBaseIntro:'如需确认刊登，请在下方支付基本刊登费。', payBaseFeeBtn:'支付基本刊登费 {amt}', payBasePaid:'已支付 · 等待刊登', payBasePaidHint:'您的基本刊登费已确认。PAP 将继续刊登。', payBaseUnavailable:'支付暂未开放。请稍后重试或联系 PAP。', paySdkMissing:'支付模块加载失败。请刷新页面。', payLoginFirst:'请先登录再支付。', payCompleteOptimistic:'已收到付款！确认后状态将更新。', payGenericError:'打开支付时出错。请稍后重试。' },
-  ru:{ payCaptureUnconfirmed:'Возможно, оплата уже прошла. Пожалуйста, не платите повторно. Напишите на contact@pap-magazine.com, мы всё уладим сразу.', payBaseIntro:'Чтобы подтвердить публикацию, оплатите базовый сбор ниже.', payBaseFeeBtn:'Оплатить базовый сбор {amt}', payBasePaid:'Оплачено · ожидает публикации', payBasePaidHint:'Ваш базовый сбор подтверждён. PAP приступит к публикации.', payBaseUnavailable:'Оплата пока недоступна. Повторите попытку позже или свяжитесь с PAP.', paySdkMissing:'Не удалось загрузить платёжный модуль. Обновите страницу.', payLoginFirst:'Войдите, чтобы оплатить.', payCompleteOptimistic:'Платёж получен! Статус обновится после подтверждения.', payGenericError:'Произошла ошибка при открытии оплаты. Повторите попытку позже.' }
+  ko:{ payAuthorizedOk:'결제 승인이 완료되었습니다. 지금은 청구되지 않았습니다 — 심사를 통과하면 그때 결제됩니다.', payAuthUnconfirmed:'승인 처리 결과를 확인하지 못했습니다. 다시 시도하지 마시고 contact@pap-magazine.com 으로 연락 주세요.', payCaptureUnconfirmed:'결제가 이미 처리되었을 수 있습니다. 다시 결제하지 마시고 contact@pap-magazine.com 으로 연락 주세요. 확인 후 바로 처리해 드립니다.', payBaseIntro:'게재를 확정하려면 아래에서 기본 게재료를 결제해 주세요.', payBaseFeeBtn:'기본 게재료 {amt} 결제하기', payBasePaid:'결제 완료 · 게재 대기', payBasePaidHint:'기본 게재료 결제가 확인되었습니다. PAP 편집팀이 게재를 진행합니다.', payBaseUnavailable:'결제가 아직 준비되지 않았습니다. 잠시 후 다시 시도하거나 PAP에 문의해 주세요.', paySdkMissing:'결제 모듈을 불러오지 못했습니다. 페이지를 새로고침해 주세요.', payLoginFirst:'결제하려면 먼저 로그인해 주세요.', payCompleteOptimistic:'결제가 접수되었습니다! 확인되면 상태가 업데이트됩니다.', payGenericError:'결제창을 여는 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.' },
+  en:{ payAuthorizedOk:'Payment authorised. You have not been charged yet — the fee is taken only if your submission is accepted.', payAuthUnconfirmed:'We could not confirm the authorisation. Please do not retry; email contact@pap-magazine.com and we will check.', payCaptureUnconfirmed:'Your payment may already have gone through. Please do not pay again. Email contact@pap-magazine.com and we will sort it out right away.', payBaseIntro:'To confirm publication, please pay the base publication fee below.', payBaseFeeBtn:'Pay base fee {amt}', payBasePaid:'Paid · awaiting publication', payBasePaidHint:'Your base publication fee has been confirmed. PAP will proceed with publication.', payBaseUnavailable:'Payment is not available yet. Please try again shortly or contact PAP.', paySdkMissing:'Payment module failed to load. Please refresh the page.', payLoginFirst:'Please sign in first to pay.', payCompleteOptimistic:'Payment received! Your status will update once confirmed.', payGenericError:'Something went wrong opening the checkout. Please try again shortly.' },
+  de:{ payAuthorizedOk:'Zahlung autorisiert. Es wurde noch nichts abgebucht — die Gebühr wird nur bei Annahme eingezogen.', payAuthUnconfirmed:'Die Autorisierung konnte nicht bestätigt werden. Bitte nicht erneut versuchen, schreiben Sie an contact@pap-magazine.com.', payCaptureUnconfirmed:'Ihre Zahlung ist möglicherweise bereits erfolgt. Bitte zahlen Sie nicht erneut. Schreiben Sie an contact@pap-magazine.com, wir klären das sofort.', payBaseIntro:'Um die Veröffentlichung zu bestätigen, zahlen Sie bitte unten die Grundgebühr.', payBaseFeeBtn:'Grundgebühr {amt} zahlen', payBasePaid:'Bezahlt · Veröffentlichung ausstehend', payBasePaidHint:'Ihre Grundgebühr wurde bestätigt. PAP wird die Veröffentlichung fortsetzen.', payBaseUnavailable:'Zahlung ist noch nicht verfügbar. Bitte versuchen Sie es später erneut oder kontaktieren Sie PAP.', paySdkMissing:'Zahlungsmodul konnte nicht geladen werden. Bitte Seite neu laden.', payLoginFirst:'Bitte zuerst anmelden, um zu zahlen.', payCompleteOptimistic:'Zahlung erhalten! Ihr Status wird nach Bestätigung aktualisiert.', payGenericError:'Beim Öffnen des Checkouts ist ein Fehler aufgetreten. Bitte erneut versuchen.' },
+  it:{ payAuthorizedOk:'Pagamento autorizzato. Non è stato ancora addebitato nulla — la quota viene presa solo se la proposta viene accettata.', payAuthUnconfirmed:'Non siamo riusciti a confermare l\'autorizzazione. Non riprovare, scrivi a contact@pap-magazine.com.', payCaptureUnconfirmed:'Il pagamento potrebbe essere già andato a buon fine. Non pagare di nuovo. Scrivi a contact@pap-magazine.com e risolviamo subito.', payBaseIntro:'Per confermare la pubblicazione, paga la tariffa base qui sotto.', payBaseFeeBtn:'Paga la tariffa base {amt}', payBasePaid:'Pagato · in attesa di pubblicazione', payBasePaidHint:'La tua tariffa base è stata confermata. PAP procederà con la pubblicazione.', payBaseUnavailable:'Il pagamento non è ancora disponibile. Riprova a breve o contatta PAP.', paySdkMissing:'Impossibile caricare il modulo di pagamento. Ricarica la pagina.', payLoginFirst:'Accedi prima di pagare.', payCompleteOptimistic:'Pagamento ricevuto! Lo stato si aggiornerà una volta confermato.', payGenericError:'Si è verificato un errore nell’apertura del checkout. Riprova a breve.' },
+  fr:{ payAuthorizedOk:'Paiement autorisé. Rien n\'a encore été débité — les frais ne sont prélevés qu\'en cas d\'acceptation.', payAuthUnconfirmed:'Nous n\'avons pas pu confirmer l\'autorisation. Ne réessayez pas, écrivez à contact@pap-magazine.com.', payCaptureUnconfirmed:'Votre paiement a peut-être déjà été effectué. Ne payez pas une seconde fois. Écrivez à contact@pap-magazine.com, nous réglons cela immédiatement.', payBaseIntro:'Pour confirmer la publication, veuillez payer les frais de base ci-dessous.', payBaseFeeBtn:'Payer les frais de base {amt}', payBasePaid:'Payé · en attente de publication', payBasePaidHint:'Vos frais de base ont été confirmés. PAP procédera à la publication.', payBaseUnavailable:'Le paiement n’est pas encore disponible. Réessayez bientôt ou contactez PAP.', paySdkMissing:'Le module de paiement n’a pas pu se charger. Veuillez rafraîchir la page.', payLoginFirst:'Veuillez vous connecter pour payer.', payCompleteOptimistic:'Paiement reçu ! Votre statut sera mis à jour une fois confirmé.', payGenericError:'Une erreur est survenue à l’ouverture du paiement. Veuillez réessayer.' },
+  es:{ payAuthorizedOk:'Pago autorizado. Todavía no se ha cobrado nada — la tarifa solo se cobra si se acepta la propuesta.', payAuthUnconfirmed:'No hemos podido confirmar la autorización. No lo intente de nuevo, escriba a contact@pap-magazine.com.', payCaptureUnconfirmed:'Es posible que su pago ya se haya realizado. No vuelva a pagar. Escriba a contact@pap-magazine.com y lo resolvemos enseguida.', payBaseIntro:'Para confirmar la publicación, pague la tarifa base a continuación.', payBaseFeeBtn:'Pagar tarifa base {amt}', payBasePaid:'Pagado · pendiente de publicación', payBasePaidHint:'Su tarifa base ha sido confirmada. PAP procederá con la publicación.', payBaseUnavailable:'El pago aún no está disponible. Inténtelo de nuevo pronto o contacte con PAP.', paySdkMissing:'No se pudo cargar el módulo de pago. Actualice la página.', payLoginFirst:'Inicie sesión primero para pagar.', payCompleteOptimistic:'¡Pago recibido! Su estado se actualizará una vez confirmado.', payGenericError:'Ocurrió un error al abrir el pago. Inténtelo de nuevo pronto.' },
+  ja:{ payAuthorizedOk:'お支払いの承認が完了しました。まだ請求はされていません — 審査に通った場合にのみ決済されます。', payAuthUnconfirmed:'承認結果を確認できませんでした。再試行せず contact@pap-magazine.com までご連絡ください。', payCaptureUnconfirmed:'お支払いはすでに完了している可能性があります。重ねてのお支払いはなさらず、contact@pap-magazine.com までご連絡ください。すぐに確認いたします。', payBaseIntro:'掲載を確定するには、以下から基本掲載料をお支払いください。', payBaseFeeBtn:'基本掲載料 {amt} を支払う', payBasePaid:'支払い完了 · 掲載待ち', payBasePaidHint:'基本掲載料の支払いが確認されました。PAPが掲載を進めます。', payBaseUnavailable:'決済はまだ利用できません。しばらくしてから再度お試しいただくか、PAPにお問い合わせください。', paySdkMissing:'決済モジュールの読み込みに失敗しました。ページを再読み込みしてください。', payLoginFirst:'お支払いには先にログインしてください。', payCompleteOptimistic:'お支払いを受け付けました！確認され次第ステータスが更新されます。', payGenericError:'決済画面を開く際に問題が発生しました。しばらくしてから再度お試しください。' },
+  zh:{ payAuthorizedOk:'付款已授权。目前尚未扣款 — 只有通过审核后才会实际收取。', payAuthUnconfirmed:'我们无法确认授权结果。请勿重试，请发送邮件至 contact@pap-magazine.com。', payCaptureUnconfirmed:'您的付款可能已经完成。请不要重复支付，请发送邮件至 contact@pap-magazine.com，我们会立即处理。', payBaseIntro:'如需确认刊登，请在下方支付基本刊登费。', payBaseFeeBtn:'支付基本刊登费 {amt}', payBasePaid:'已支付 · 等待刊登', payBasePaidHint:'您的基本刊登费已确认。PAP 将继续刊登。', payBaseUnavailable:'支付暂未开放。请稍后重试或联系 PAP。', paySdkMissing:'支付模块加载失败。请刷新页面。', payLoginFirst:'请先登录再支付。', payCompleteOptimistic:'已收到付款！确认后状态将更新。', payGenericError:'打开支付时出错。请稍后重试。' },
+  ru:{ payAuthorizedOk:'Оплата авторизована. Списание пока не произошло — плата взимается только при принятии заявки.', payAuthUnconfirmed:'Не удалось подтвердить авторизацию. Не повторяйте попытку, напишите на contact@pap-magazine.com.', payCaptureUnconfirmed:'Возможно, оплата уже прошла. Пожалуйста, не платите повторно. Напишите на contact@pap-magazine.com, мы всё уладим сразу.', payBaseIntro:'Чтобы подтвердить публикацию, оплатите базовый сбор ниже.', payBaseFeeBtn:'Оплатить базовый сбор {amt}', payBasePaid:'Оплачено · ожидает публикации', payBasePaidHint:'Ваш базовый сбор подтверждён. PAP приступит к публикации.', payBaseUnavailable:'Оплата пока недоступна. Повторите попытку позже или свяжитесь с PAP.', paySdkMissing:'Не удалось загрузить платёжный модуль. Обновите страницу.', payLoginFirst:'Войдите, чтобы оплатить.', payCompleteOptimistic:'Платёж получен! Статус обновится после подтверждения.', payGenericError:'Произошла ошибка при открытии оплаты. Повторите попытку позже.' }
 };
 // 결제 일시중단 안내 (2026-08-10 · Paddle 폐쇄 → PayPal 전환 공백 대응).
 // _PAY_I18N 9개 블록을 건드리지 않도록 독립 사전으로 둔다.
@@ -169,15 +169,22 @@ async function papPayOneTime(opts){
   window._papOneTimeBusy = true;
   var overlay = null;
   function close(){ window._papOneTimeBusy = false; if(overlay){ overlay.remove(); overlay=null; } }
+  // 2026-08-12 승인후결제 — 호출부(제출 흐름)가 결과를 알아야 다음 화면을 정한다.
+  // 한 번만 부른다: 성공/실패/취소 중 하나.
+  var _doneCalled = false;
+  function done(ok, code){
+    if(_doneCalled) return; _doneCalled = true;
+    try{ if(typeof opts.onDone === 'function') opts.onDone(!!ok, code || ''); }catch(_){ }
+  }
 
   try{
     var user = await _resolvePayUser();
-    if(!user){ close(); if(typeof PAP!=='undefined') PAP.ui.toast(_payT('payLoginFirst'),'error'); return; }
+    if(!user){ done(false,'login'); close(); if(typeof PAP!=='undefined') PAP.ui.toast(_payT('payLoginFirst'),'error'); return; }
 
     var cfg=null;
     try{ cfg = await fetch('/api/subscriptions/paypal-config',{headers:{'X-Requested-With':'XMLHttpRequest'}}).then(function(r){return r.ok?r.json():null;}); }catch(_){}
-    if(cfg && cfg.paused){ close(); if(typeof PAP!=='undefined') PAP.ui.toast(_paySubPausedMsg(),'error'); return; }
-    if(!cfg || !cfg.clientId){ close(); fail('payBaseUnavailable'); return; }
+    if(cfg && cfg.paused){ done(false,'paused'); close(); if(typeof PAP!=='undefined') PAP.ui.toast(_paySubPausedMsg(),'error'); return; }
+    if(!cfg || !cfg.clientId){ done(false,'unavailable'); close(); fail('payBaseUnavailable'); return; }
 
     await _loadPayPalSdkOnce(cfg.clientId);
 
@@ -210,8 +217,11 @@ async function papPayOneTime(opts){
         var b=document.getElementById('_ppbtn'), w=document.getElementById('_ppwait');
         if(b) b.style.display='none';
         if(w){ w.textContent=_payT('payCompleteOptimistic'); w.style.display='block'; }
+        // 2026-08-12 승인후결제 — 제출 흐름에서 부르면 캡처가 아니라 "승인 확정" 이다.
+        // 돈은 묶이기만 하고, 심사를 통과할 때 review.js 가 캡처한다.
+        var _isAuth = (opts.mode === 'authorize');
         // 확정은 서버가 한다 — 여기서 성공을 선언하지 않는다.
-        return fetch('/api/submissions/paypal-capture',{
+        return fetch(_isAuth ? '/api/submissions/paypal-authorize' : '/api/submissions/paypal-capture',{
           method:'POST',
           headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'},
           credentials:'same-origin',
@@ -226,6 +236,15 @@ async function papPayOneTime(opts){
               //   paid_but_unconfirmed                               → 돈 나갔을 수 있음(재시도 금지)
               //   already_paid                                       → 이미 결제됨(청구 안 됨)
               var code = (res.j && res.j.code) || '';
+              if(_isAuth){
+                // 승인 단계 실패 — 돈은 아직 빠지지 않았다. 재시도해도 안전한
+                // 갈래와, 사람이 확인해야 하는 갈래를 나눈다.
+                var authUnsafe = (code === 'authorized_but_unconfirmed');
+                fail(authUnsafe ? 'payCaptureUnconfirmed' : 'payGenericError');
+                done(false, code || 'authorize_failed');
+                close();
+                return;
+              }
               if(code === 'already_paid'){
                 if((opts.kind||'submission_fee')==='submission_fee') _lockBaseFeeButton(opts.submissionId);
                 fail('payBasePaid'); close();
@@ -237,20 +256,31 @@ async function papPayOneTime(opts){
               close();
               return;
             }
+            if(_isAuth){
+              // 승인 완료 — 새로고침하지 않는다. 제출 흐름이 성공 화면으로 넘어간다.
+              try{ if(typeof PAP!=='undefined'&&PAP.ui&&PAP.ui.toast) PAP.ui.toast(_payT('payAuthorizedOk'),'success'); }catch(_){ }
+              done(true, 'authorized');
+              close();
+              return;
+            }
             try{ if(typeof PAP!=='undefined'&&PAP.ui&&PAP.ui.toast) PAP.ui.toast(_payT('payCompleteOptimistic'),'success'); }catch(_){ }
             if((opts.kind||'submission_fee')==='submission_fee') _lockBaseFeeButton(opts.submissionId);
+            done(true, 'paid');
             close();
             setTimeout(function(){ try{ window.location.reload(); }catch(_){ } }, 1200);
           }).catch(function(){
-            // 응답을 못 받았다 = 서버가 캡처했는지 알 수 없다. 안전한 쪽으로 말한다.
-            fail('payCaptureUnconfirmed'); close();
+            // 응답을 못 받았다 = 서버가 처리했는지 알 수 없다. 안전한 쪽으로 말한다.
+            fail(_isAuth ? 'payAuthUnconfirmed' : 'payCaptureUnconfirmed');
+            done(false, 'no_response');
+            close();
           });
       },
-      onCancel: function(){ close(); },
-      onError: function(err){ try{ console.error('[paypal one-time]', err); }catch(_){ } fail('payGenericError'); close(); }
+      onCancel: function(){ done(false,'cancelled'); close(); },
+      onError: function(err){ try{ console.error('[paypal one-time]', err); }catch(_){ } fail('payGenericError'); done(false,'sdk_error'); close(); }
     }).render('#_ppbtn');
   }catch(e){
     try{ console.error('papPayOneTime error:', e); }catch(_){ }
+    done(false,'exception');
     close();
     fail(e && e.message==='sdk' ? 'paySdkMissing' : 'payGenericError');
   }
