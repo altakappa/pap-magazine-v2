@@ -18,6 +18,17 @@
  * ■ 호출부 계약
  *   실패하면 { ok:false } 를 돌려준다. 호출부는 **삭제를 진행하지 말 것.**
  *   돈이 계속 나가는 것보다 삭제가 안 되는 편이 낫다.
+ *
+ * ■ 🔴 2026-08-12 — Paddle 폐쇄 이후 예외 (도메니코 지시)
+ *   위 계약에는 전제가 있다: "해지에 실패하면 돈이 계속 나간다."
+ *   Paddle 계정이 2026-08-14 에 닫히면 그 전제가 무너진다. 청구할 주체 자체가
+ *   사라지므로 해지 실패는 더 이상 금전 위험이 아니다. 그런데 계약을 그대로 두면
+ *   반대 방향의 사고가 난다 — Paddle 구독이 남아 있는 회원 6명이 **탈퇴 자체를
+ *   영원히 못 하게 된다.** 개인정보 파기 의무를 코드가 막는 셈이다.
+ *
+ *   그래서 폐쇄 시점 이후에는 Paddle 분기를 "성공" 으로 취급하고 탈퇴를 통과시킨다.
+ *   대신 텔레그램으로 반드시 알린다 — 조용히 넘기면 진짜로 살아 있는 구독을
+ *   놓칠 수 있다. PayPal 분기는 그대로다(그쪽은 계속 청구된다).
  */
 
 'use strict';
@@ -28,6 +39,24 @@ const PAYPAL_API_BASE = String(process.env.PAYPAL_ENV || '').toLowerCase() === '
 const PADDLE_API_BASE = process.env.PADDLE_ENV === 'production'
   ? 'https://api.paddle.com'
   : 'https://sandbox-api.paddle.com';
+
+// Paddle 계정 폐쇄 시각. 이 뒤로는 Paddle 에 청구할 주체가 없다.
+// 날짜를 코드에 박은 이유: env(PADDLE_SHUTDOWN=1)만 두면 설정을 잊었을 때
+// 회원 탈퇴가 조용히 막힌다. 잊어도 동작하게 하고, env 로 앞당길 수 있게 둔다.
+const PADDLE_SHUTDOWN_AT = Date.UTC(2026, 7, 14, 0, 0, 0); // 2026-08-14 00:00 UTC
+function paddleIsGone() {
+  if (String(process.env.PADDLE_SHUTDOWN || '') === '1') return true;
+  return Date.now() >= PADDLE_SHUTDOWN_AT;
+}
+
+// 알림은 지연 require — 이 모듈은 탈퇴·삭제 경로 양쪽에서 로드되므로
+// 로드 시점에 부수효과를 만들지 않는다.
+function alertSafe(text) {
+  try {
+    const { sendTextToTelegramSafe } = require('./telegram');
+    return sendTextToTelegramSafe(text);
+  } catch (_) { return Promise.resolve(); }
+}
 
 async function paypalToken() {
   const id = process.env.PAYPAL_CLIENT_ID;
@@ -91,22 +120,30 @@ async function cancelProviderSubscription(db, userId) {
         }
       }
     } else if (row.paddle_subscription_id) {
-      if (!process.env.PADDLE_API_KEY) {
-        return { ok: false, action: 'failed', provider: 'paddle', message: 'PADDLE_API_KEY missing' };
-      }
-      const r = await fetch(
-        `${PADDLE_API_BASE}/subscriptions/${encodeURIComponent(row.paddle_subscription_id)}/cancel`,
-        {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${process.env.PADDLE_API_KEY}`, 'Content-Type': 'application/json' },
-          // 기간 말 종료 — 이미 낸 기간은 그대로 둔다.
-          body: JSON.stringify({ effective_from: 'next_billing_period' }),
+      // 🔴 폐쇄 이후에는 Paddle 을 부르지 않는다. 부를 곳이 없고, 실패가
+      //    탈퇴를 막는 것이 유일한 결과다. 대신 반드시 알린다.
+      if (paddleIsGone()) {
+        await alertSafe('ℹ️ Paddle 폐쇄 후 탈퇴/삭제 — Paddle 해지 호출을 건너뛰었습니다.'
+          + ' user=' + userId + ' paddle_sub=' + row.paddle_subscription_id
+          + ' — 혹시 살아 있는 구독이면 수동으로 확인해 주세요.');
+      } else {
+        if (!process.env.PADDLE_API_KEY) {
+          return { ok: false, action: 'failed', provider: 'paddle', message: 'PADDLE_API_KEY missing' };
         }
-      );
-      if (!r.ok) {
-        const j = await r.json().catch(() => ({}));
-        const detail = (j.error && j.error.detail) || ('Paddle ' + r.status);
-        return { ok: false, action: 'failed', provider: 'paddle', message: detail };
+        const r = await fetch(
+          `${PADDLE_API_BASE}/subscriptions/${encodeURIComponent(row.paddle_subscription_id)}/cancel`,
+          {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${process.env.PADDLE_API_KEY}`, 'Content-Type': 'application/json' },
+            // 기간 말 종료 — 이미 낸 기간은 그대로 둔다.
+            body: JSON.stringify({ effective_from: 'next_billing_period' }),
+          }
+        );
+        if (!r.ok) {
+          const j = await r.json().catch(() => ({}));
+          const detail = (j.error && j.error.detail) || ('Paddle ' + r.status);
+          return { ok: false, action: 'failed', provider: 'paddle', message: detail };
+        }
       }
     } else {
       // 결제사 식별자가 없는 행(수동 승급 등) — 끊을 것이 없다.
