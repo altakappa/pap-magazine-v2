@@ -439,6 +439,72 @@ console.log('\n[12] 참여 사다리 1단 — 별점 무로그인 개방 (2026-0
      Number(vers[0]) > 7, 'v=' + vers[0]);
 }
 
+console.log('\n[13] 기사 조회 계측 — 참여의 분모 (2026-08-12)');
+{
+  /* 왜 ────────────────────────────────────────────────────────────────
+   * 실측: 발행 기사 2,338편(30일 신규 1,891편)인데 articles.view_count 합이 0,
+   * 조회 0인 기사 비율 100%. 컬럼은 있는데 **올려주는 코드가 없었다** —
+   * admin 정렬·ops 대시보드·growthAudit 은 읽기만 한다.
+   *
+   * 분모가 없으면 참여 개선을 판정할 수 없다. "기사 좋아요 30일 2건"이 나쁜
+   * 수치인지조차 알 수 없다 — 2,000명이 보고 2명이면 문제, 20명이 보고 2명이면
+   * 훌륭하다. 에디토리얼은 editorial_views 로 30일 11,003건이 잡히는데
+   * 기사만 깜깜했다. (오늘의 교훈 8과 같은 뿌리)
+   *
+   * 여기서 지키는 것:
+   *   ① 엔드포인트가 있고 editorial-view 와 같은 모양이다 (같은 쿼리로 비교)
+   *   ② 봇 제외 · 익명 허용 · 실패해도 화면을 막지 않는다
+   *   ③ 마이그레이션 미실행(42P01)이어도 500 이 아니라 조용히 넘어간다
+   *   ④ 프론트가 상세 열 때 부른다
+   *   ⑤ pap-content-article.js 를 고쳤으면 참조 10곳의 ?v= 가 같이 올라갔다 */
+
+  const av  = R('api/articles/[id]/view.js');
+  const ev  = R('api/editorials/[id]/view.js');
+  const art = R('frontend/pap-content-article.js');
+  const mig = R('supabase_migrations/123_article_views.sql');
+
+  // ① 엔드포인트 · editorial 과 같은 모양
+  t('기사 조회 엔드포인트가 있다', av.length > 500);
+  t('article_views 에 기록한다', /from\('article_views'\)/.test(av));
+  t('POST 만 받는다', /req\.method !== 'POST'/.test(av));
+  t('editorial-view 와 같은 기둥을 쓴다 (봇·레이트·토큰)',
+     ['isBot', 'rateLimit', 'verifyToken'].every((n) => av.includes(n) && ev.includes(n)));
+
+  // ② 봇 제외 · 익명 허용 · 조용한 실패
+  t('봇 조회는 기록하지 않는다', /isBot\(req\.headers\['user-agent'\]\)/.test(av));
+  t('로그인 없이도 기록된다 (requireAuth 없음)', !/requireAuth/.test(av));
+  t('탈퇴계정 FK 위반(23503)이면 익명으로 강등해 다시 기록',
+     /error\.code === '23503' && viewerId/.test(av));
+  t('id 가 uuid 가 아니면 400 (쓰레기 행 방지)', /UUID\.test\(id\)/.test(av));
+
+  // ③ 마이그레이션 미실행 내성 — 배포 순서 때문에 로그가 빨개지지 않는다
+  t('표가 없으면(42P01) 500 이 아니라 204', /error\.code === '42P01'/.test(av)
+     && /status\(204\)/.test(av));
+  t('마이그레이션 파일이 저장소에 있다 (도메니코 직접 실행)',
+     /create table if not exists public\.article_views/.test(mig));
+  t('마이그레이션이 RLS 를 켠다 (감사 A-2 방향)',
+     /enable row level security/.test(mig) && /admin_read_article_view/.test(mig));
+  t('마이그레이션에 되돌리기 방법이 적혀 있다', /DROP TABLE public\.article_views/i.test(mig));
+
+  // ④ 프론트 호출 — 상세를 열 때, 정적 스냅샷은 건너뛴다
+  t('기사 상세를 열 때 조회를 보낸다',
+     /\/api\/articles\/' \+ encodeURIComponent\(a\._api_id\) \+ '\/view'/.test(art));
+  t('id 없는 정적 항목은 건너뛴다', /if\(a\._api_id\)\{/.test(art));
+  t('계측 실패가 UX 를 깨지 않는다 (catch)',
+     /\/api\/articles\/[\s\S]{0,400}\.catch\(function\(\)\{/.test(art));
+
+  // ⑤ 캐시버스트 — 참조 10곳이 같은 판이어야 한다
+  const artRefs = ['about', 'articles', 'business', 'community', 'contact',
+                   'films', 'index', 'pullletter', 'submission', 'subscribe']
+    .map((n) => 'frontend/' + n + '.html');
+  const artVers = artRefs.map((f) => (R(f).match(/pap-content-article\.js\?v=(\d+)/) || [])[1]);
+  t('pap-content-article.js 참조 10곳의 판이 모두 같다',
+     artVers.every((v) => v && v === artVers[0]),
+     artRefs.map((f, i) => f + '=' + artVers[i]).join(', '));
+  t('pap-content-article.js 판이 46 보다 크다 (이번 수정분 반영)',
+     Number(artVers[0]) > 46, 'v=' + artVers[0]);
+}
+
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) { console.log('❌ kr-growth-surface tests FAILED'); process.exit(1); }
 console.log('✅ kr-growth-surface tests passed');

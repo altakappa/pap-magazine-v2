@@ -731,6 +731,21 @@ function _openArticleDetailInner(idx){
   // doesn't stack on top of editorial / film / list overlays.
   try { if(typeof _papCloseOtherOverlays === 'function') _papCloseOtherOverlays('artDetailOverlay'); } catch(_){}
   var a=artData[idx];if(!a) return;
+
+  /* 기사 조회 계측 (2026-08-12) — 에디토리얼(pap-content-editorial.js)에는
+     있었는데 기사에는 없었다. 그래서 articles.view_count 가 2,338편 전부 0이고,
+     "기사 좋아요 30일 2건"이 나쁜 수치인지조차 판정할 수 없었다.
+     분모가 없으면 참여 개선을 잴 수 없다. fire-and-forget — 실패해도 화면은 뜬다.
+     _api_id 가 없는 정적 스냅샷 항목은 건너뛴다 (에디토리얼과 같은 규칙). */
+  if(a._api_id){
+    try{
+      fetch('/api/articles/' + encodeURIComponent(a._api_id) + '/view', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      }).catch(function(){ /* 계측이 UX 를 깨지 않는다 */ });
+    }catch(e){}
+  }
+
   var overlay=document.getElementById('artDetailOverlay');
   if(!overlay) return;
   var det=null;
