@@ -477,11 +477,16 @@ module.exports = async function handler(req, res) {
     // 않고 그대로 둔다 — 기록을 잃는 것보다 메모가 안 바뀌는 편이 낫다.
     let prevNotes = null;
     let prevNotesReadOk = false;
+    // 2026-08-12 — 결제 승인 여부도 같이 읽는다. 승인 없이 게재 승인이 나가는
+    // 것을 아래에서 막는다. 읽기에 실패하면 null 로 남고, 그 경우 막지 않는다
+    // (조회 실패로 정상 심사가 멈추면 그게 더 큰 사고다).
+    let prevPaymentStatus = null;
     try {
       const { data: prevRow, error: prevErr } = await supabaseAdmin
-        .from('submissions').select('admin_notes').eq('id', id).maybeSingle();
+        .from('submissions').select('admin_notes, payment_status').eq('id', id).maybeSingle();
       if (prevErr) throw new Error(prevErr.message);
       prevNotes = prevRow ? prevRow.admin_notes : null;
+      prevPaymentStatus = prevRow ? prevRow.payment_status : null;
       prevNotesReadOk = true;
     } catch (e) {
       console.error('[review] admin_notes 사전 조회 실패 — 메모를 건드리지 않는다:', e.message);
@@ -529,6 +534,16 @@ module.exports = async function handler(req, res) {
       // 기존 값을 못 읽었다 — 메모를 아예 건드리지 않는다.
       // 기록을 잃는 것보다 메모가 안 바뀌는 편이 낫다.
       delete patchToWrite.admin_notes;
+    }
+
+    // 🔴 2026-08-12 — 결제 승인이 안 잡힌 유료 건은 승인할 수 없다.
+    // 승인해 버리면 게재는 확정되는데 청구할 수단이 사라진다(승인후결제의 핵심).
+    // 'none'(무료 유형·구 경로 66건)은 대상이 아니다 — 종전대로 통과시킨다.
+    if (status === 'approved' && String(prevPaymentStatus) === 'awaiting_authorization') {
+      return res.status(409).json({
+        code: 'authorization_missing',
+        message: '이 서브미션은 게재료 결제 승인이 아직 잡히지 않았습니다. 크리에이터가 결제 승인을 마쳐야 승인할 수 있습니다.',
+      });
     }
 
     const { data: submission, error } = await supabaseAdmin

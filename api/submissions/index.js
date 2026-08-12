@@ -16,6 +16,7 @@ const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { normalizeGenres } = require('../_lib/submissionCategories');
 const { classifySubmissionType, looksMissingCredit } = require('../_lib/submissionType');
+const { feeForType } = require('../_lib/submissionPayment');
 const { sendTextToTelegramSafe } = require('../_lib/telegram');
 // 2026-08-03 — 관리자 목록에 '무료체험 중 · 전환 D-N' 배지를 달기 위한 공용 판정.
 // 서브미션은 '접수 자동 보류'를 하지 않는다(무료회원 투고가 매거진의 핵심 입력이라
@@ -191,6 +192,11 @@ module.exports = async function handler(req, res) {
           }),
           file_urls: [...lookUrls, ...additionalUrls],
           status: 'pending',
+          // 2026-08-12 승인후결제 — 유료 유형은 결제 승인을 받아야 심사에 오른다.
+          // 무료 유형은 청구 대상이 아니므로 'none' 그대로: 결제 API 가 닿지 않는다.
+          // 'awaiting_authorization' 은 review.js 가 승인을 막는 신호이기도 하다
+          // (승인 없이 게재되면 €790 을 영영 못 받는다).
+          payment_status: feeForType(submissionType) ? 'awaiting_authorization' : 'none',
         })
         .select()
         .single();
