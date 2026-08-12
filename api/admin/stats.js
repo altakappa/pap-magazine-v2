@@ -4,7 +4,7 @@
  * Returns:
  *  - totals          : member / editorial / submission / pullletter / community counts
  *  - planCounts      : breakdown of active subscriptions by plan
- *  - monthlyRevenue  : estimated MRR (₩, monthly + amortized yearly)
+ *  - monthlyRevenue  : estimated MRR (EUR 센트, 월정액 + 연정액을 1/12 로 환산)
  *  - thisMonth       : new members / editorials / submissions / pullletters this month
  *  - recentMembers   : 5 most recently joined profiles
  *  - recentEditorials: 5 most recently published editorials
@@ -17,13 +17,21 @@ const { requireAdmin } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 
-// Plan prices in ₩ — must match api/subscriptions/checkout.js
+// 🔴 2026-08-12 — EUR 센트. 원화 가격표(8500/85000/13500/135000)를 쓰고 있었다.
+//
+// Paddle(MoR) 을 떠나 PayPal 로 오면서 구독가를 EUR 단일가로 합쳤는데, 어드민 매출
+// 계산만 원화 표에 남아 있었다. 환산 코드도 없어서 화면의 "₩8,500" 은 어떤 환율로도
+// 맞을 수 없는 숫자였다. 8/14 에 Paddle 대시보드가 닫히면 어드민이 유일한 장부다.
+//
+// ⚠️ frontend/subscribe.html 의 EUR_PRICES 와 반드시 같은 값을 쓸 것.
+//    tests/subscription-price-single-source.test.js 가 그 일치를 고정한다.
 const PLAN_PRICE = {
-  standard_monthly: 8500,
-  standard_yearly: 85000,
-  premium_monthly: 13500,
-  premium_yearly: 135000,
+  standard_monthly: 549,
+  standard_yearly: 4599,
+  premium_monthly: 899,
+  premium_yearly: 7499,
 };
+const PLAN_PRICE_CURRENCY = 'EUR';
 
 // Annualized → monthly conversion for MRR
 function planToMonthly(plan) {
@@ -197,7 +205,8 @@ module.exports = async function handler(req, res) {
         standard: trialStandard,
         premium: trialPremium,
       },
-      monthlyRevenue: mrr,
+      monthlyRevenue: mrr,                       // EUR 센트
+      monthlyRevenueCurrency: PLAN_PRICE_CURRENCY,
       thisMonth: {
         members: memThisMonth.count || 0,
         editorials: edThisMonth.count || 0,

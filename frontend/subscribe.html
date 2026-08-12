@@ -466,10 +466,9 @@ function navigateWithInterstitial(url){
       <div class="payment-logo">AMEX</div>
       <div class="payment-logo">APPLE PAY</div>
       <div class="payment-logo">GOOGLE PAY</div>
-      <div class="payment-logo">KAKAO PAY</div>
-      <div class="payment-logo">NAVER PAY</div>
+      <div class="payment-logo">PAYPAL</div>
     </div>
-    <p class="payment-note" data-i18n="paymentNote">전 세계 어디서나 안전하게 결제할 수 있습니다. 구독은 월 단위로 갱신되며, 언제든지 해지할 수 있습니다.</p>
+    <p class="payment-note" data-i18n="paymentNote">결제는 PayPal 을 통해 EUR 로 진행됩니다. PayPal 계정 또는 PayPal 이 받는 해외 결제 카드(VISA · Mastercard · AMEX)가 필요합니다. 현재 한국 발급 카드와 카카오페이 · 네이버페이는 지원하지 않습니다. 표시 가격은 세금이 포함된 최종 금액이며, 판매자는 주식회사 알타카파입니다. 구독은 자동으로 갱신되고 마이페이지에서 언제든지 해지할 수 있습니다.</p>
   </div>
 
 </main>
@@ -484,7 +483,8 @@ function navigateWithInterstitial(url){
 
 <!-- PortOne V2 Browser SDK (국내 결제 — KRW 빌링키 정기결제) -->
 <script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
-<!-- Paddle Billing SDK (해외 결제 — EUR/USD 다통화, VAT 는 Paddle 이 MoR 로 처리) -->
+<!-- 2026-08-12 — Paddle SDK. 8/14 계정 폐쇄로 더는 쓰지 않는다(호출하는 JS 없음). 제거 예정.
+       VAT 는 이제 결제사가 대신 걷어주지 않는다. 판매자는 주식회사 알타카파다. -->
 <script src="https://cdn.paddle.com/paddle/v2/paddle.js" defer></script>
 <!-- PortOne config (storeId & channelKey set from Vercel env at build, or inline) -->
 <script>
@@ -518,7 +518,7 @@ ko: {
   ctaFree:'둘러보기', ctaStd:'가입 후 구독하기', ctaPrem:'가입 후 구독하기', ctaStdLoggedIn:'구독하기', ctaPremLoggedIn:'구독하기', ctaStdTrial:'7일 무료 체험 시작', ctaPremTrial:'7일 무료 체험 시작', currentPlanBadge:'현재 이용 중', ctaCurrent:'이용 중',
   compareTitle:'플랜 비교',
   paymentTitle:'결제 수단',
-  paymentNote:'전 세계 어디서나 안전하게 결제할 수 있습니다. 구독은 월 단위로 갱신되며, 언제든지 해지할 수 있습니다.',
+  paymentNote:'결제는 PayPal 을 통해 EUR 로 진행됩니다. PayPal 계정 또는 PayPal 이 받는 해외 결제 카드(VISA · Mastercard · AMEX)가 필요합니다. 현재 한국 발급 카드와 카카오페이 · 네이버페이는 지원하지 않습니다. 표시 가격은 세금이 포함된 최종 금액이며, 판매자는 주식회사 알타카파입니다. 구독은 자동으로 갱신되고 마이페이지에서 언제든지 해지할 수 있습니다.',
   features: {
     free: [
       {on:true, text:'회원가입 없이 이용 가능'},
@@ -576,7 +576,7 @@ en: {
   ctaFree:'Browse Now', ctaStd:'Sign Up & Subscribe', ctaPrem:'Sign Up & Subscribe', ctaStdLoggedIn:'Subscribe', ctaPremLoggedIn:'Subscribe', ctaStdTrial:'Start 7-day free trial', ctaPremTrial:'Start 7-day free trial', currentPlanBadge:'CURRENTLY ON', ctaCurrent:'CURRENTLY ON',
   compareTitle:'COMPARE PLANS',
   paymentTitle:'PAYMENT METHODS',
-  paymentNote:'Pay securely from anywhere in the world . Subscriptions renew monthly and can be cancelled anytime.',
+  paymentNote:'Payments are processed through PayPal in EUR. You need a PayPal account or an internationally enabled card (VISA, Mastercard, AMEX) accepted by PayPal. Korea-issued cards, KakaoPay and NaverPay are not supported at this time. Prices shown are final, tax-inclusive amounts; ALTAKAPPA Co., Ltd. is the seller of record. Subscriptions renew automatically and can be cancelled anytime from My Page.',
   features: {
     free: [
       {on:true, text:'No sign-up required'},
@@ -634,7 +634,7 @@ ru:{
   ctaFree:'Browse Now', ctaStd:'Sign Up & Subscribe', ctaPrem:'Sign Up & Subscribe', ctaStdLoggedIn:'Subscribe', ctaPremLoggedIn:'Subscribe', ctaStdTrial:'Start 7-day free trial', ctaPremTrial:'Start 7-day free trial', currentPlanBadge:'CURRENTLY ON', ctaCurrent:'CURRENTLY ON',
   compareTitle:'COMPARE PLANS',
   paymentTitle:'PAYMENT METHODS',
-  paymentNote:'Безопасная оплата из любой точки мира. Подписка продлевается ежемесячно и может быть отменена в любое время.',
+  paymentNote:'Оплата проходит через PayPal в евро (EUR). Нужен аккаунт PayPal или карта для международных платежей (VISA, Mastercard, AMEX), которую принимает PayPal. Карты, выпущенные в Корее, KakaoPay и NaverPay сейчас не поддерживаются. Указанные цены окончательные и включают налоги; продавец: ALTAKAPPA Co., Ltd. Подписка продлевается автоматически, отменить можно в любой момент в My Page.',
   features: {
     free: [
       {on:true, text:'No sign-up required'},
@@ -692,7 +692,7 @@ de:{
   ctaFree:'Browse Now', ctaStd:'Sign Up & Subscribe', ctaPrem:'Sign Up & Subscribe', ctaStdLoggedIn:'Subscribe', ctaPremLoggedIn:'Subscribe', ctaStdTrial:'Start 7-day free trial', ctaPremTrial:'Start 7-day free trial', currentPlanBadge:'CURRENTLY ON', ctaCurrent:'CURRENTLY ON',
   compareTitle:'COMPARE PLANS',
   paymentTitle:'PAYMENT METHODS',
-  paymentNote:'Sichere Zahlung von überall auf der Welt. Abonnements verlängern sich monatlich und können jederzeit gekündigt werden.',
+  paymentNote:'Die Zahlung erfolgt über PayPal in EUR. Sie benötigen ein PayPal-Konto oder eine für Auslandszahlungen freigeschaltete Karte (VISA, Mastercard, AMEX), die PayPal akzeptiert. In Korea ausgestellte Karten sowie KakaoPay und NaverPay werden derzeit nicht unterstützt. Die angegebenen Preise sind Endpreise inklusive Steuern; Verkäufer ist ALTAKAPPA Co., Ltd. Das Abo verlängert sich automatisch und kann jederzeit unter My Page gekündigt werden.',
   features: {
     free: [
       {on:true, text:'No sign-up required'},
@@ -750,7 +750,7 @@ it: {
   ctaFree:'Esplora Ora', ctaStd:'Registrati e Abbonati', ctaPrem:'Registrati e Abbonati', ctaStdLoggedIn:'Abbonati', ctaPremLoggedIn:'Abbonati', ctaStdTrial:'Inizia la prova gratuita di 7 giorni', ctaPremTrial:'Inizia la prova gratuita di 7 giorni', currentPlanBadge:'PIANO ATTUALE', ctaCurrent:'IN USO',
   compareTitle:'CONFRONTA I PIANI',
   paymentTitle:'METODI DI PAGAMENTO',
-  paymentNote:'Paga in sicurezza da qualsiasi parte del mondo . Gli abbonamenti si rinnovano mensilmente e possono essere cancellati in qualsiasi momento.',
+  paymentNote:'Il pagamento avviene tramite PayPal in EUR. Serve un account PayPal o una carta abilitata ai pagamenti internazionali (VISA, Mastercard, AMEX) accettata da PayPal. Le carte emesse in Corea, KakaoPay e NaverPay non sono supportate al momento. I prezzi indicati sono finali e includono le imposte; il venditore è ALTAKAPPA Co., Ltd. L\'abbonamento si rinnova automaticamente e può essere annullato in qualsiasi momento da My Page.',
   features: {
     free: [
       {on:true, text:'Nessuna registrazione richiesta'},
@@ -807,7 +807,7 @@ fr: {
   ctaFree:'Explorer', ctaStd:'S\'inscrire', ctaPrem:'S\'inscrire', ctaStdLoggedIn:'S\'abonner', ctaPremLoggedIn:'S\'abonner', ctaStdTrial:'Essai gratuit de 7 jours', ctaPremTrial:'Essai gratuit de 7 jours', currentPlanBadge:'PLAN ACTUEL', ctaCurrent:'EN COURS',
   compareTitle:'COMPARER LES PLANS',
   paymentTitle:'MOYENS DE PAIEMENT',
-  paymentNote:'Payez en toute sécurité depuis n\'importe où dans le monde . Les abonnements sont renouvelés mensuellement et peuvent être annulés à tout moment.',
+  paymentNote:'Le paiement est traité par PayPal en EUR. Il vous faut un compte PayPal ou une carte activée pour les paiements internationaux (VISA, Mastercard, AMEX) acceptée par PayPal. Les cartes émises en Corée, KakaoPay et NaverPay ne sont pas prises en charge actuellement. Les prix affichés sont définitifs, taxes comprises ; le vendeur est ALTAKAPPA Co., Ltd. L\'abonnement se renouvelle automatiquement et peut être annulé à tout moment depuis My Page.',
   features: {
     free: [
       {on:true, text:'Aucune inscription requise'},
@@ -865,7 +865,7 @@ es: {
   ctaFree:'Explorar', ctaStd:'Registrarse y Suscribirse', ctaPrem:'Registrarse y Suscribirse', ctaStdLoggedIn:'Suscribirse', ctaPremLoggedIn:'Suscribirse', ctaStdTrial:'Prueba gratis de 7 días', ctaPremTrial:'Prueba gratis de 7 días', currentPlanBadge:'PLAN ACTUAL', ctaCurrent:'EN USO',
   compareTitle:'COMPARAR PLANES',
   paymentTitle:'MÉTODOS DE PAGO',
-  paymentNote:'Pague de forma segura desde cualquier parte del mundo . Las suscripciones se renuevan mensualmente y pueden cancelarse en cualquier momento.',
+  paymentNote:'El pago se realiza a través de PayPal en EUR. Necesitas una cuenta PayPal o una tarjeta habilitada para pagos internacionales (VISA, Mastercard, AMEX) aceptada por PayPal. Las tarjetas emitidas en Corea, KakaoPay y NaverPay no están soportadas por ahora. Los precios mostrados son finales e incluyen impuestos; el vendedor es ALTAKAPPA Co., Ltd. La suscripción se renueva automáticamente y puede cancelarse en cualquier momento desde My Page.',
   features: {
     free: [
       {on:true, text:'Sin registro requerido'},
@@ -923,7 +923,7 @@ ja: {
   ctaFree:'今すぐ見る', ctaStd:'登録して購読', ctaPrem:'登録して購読', ctaStdLoggedIn:'購読する', ctaPremLoggedIn:'購読する', ctaStdTrial:'7日間の無料トライアルを開始', ctaPremTrial:'7日間の無料トライアルを開始', currentPlanBadge:'現在のプラン', ctaCurrent:'利用中',
   compareTitle:'プラン比較',
   paymentTitle:'お支払い方法',
-  paymentNote:'世界中どこからでも世界中どこからでも安全にお支払いいただけます。購読は月単位で更新され、いつでもキャンセルできます。',
+  paymentNote:'お支払いは PayPal を通じてユーロ（EUR）で行われます。PayPal アカウント、または PayPal が受け付ける海外決済対応カード（VISA・Mastercard・AMEX）が必要です。韓国発行のカード、KakaoPay、NaverPay は現在ご利用いただけません。表示価格は税込みの最終金額で、販売者は株式会社アルタカッパです。購読は自動更新され、My Page からいつでも解約できます。',
   features: {
     free: [
       {on:true, text:'会員登録不要'},
@@ -981,7 +981,7 @@ zh: {
   ctaFree:'立即浏览', ctaStd:'注册并订阅', ctaPrem:'注册并订阅', ctaStdLoggedIn:'订阅', ctaPremLoggedIn:'订阅', ctaStdTrial:'开始7天免费试用', ctaPremTrial:'开始7天免费试用', currentPlanBadge:'当前方案', ctaCurrent:'当前使用中',
   compareTitle:'方案对比',
   paymentTitle:'支付方式',
-  paymentNote:'在全球任何地方安全支付。订阅按月续订，可随时取消。',
+  paymentNote:'付款通过 PayPal 以欧元（EUR）结算。需要 PayPal 账户，或 PayPal 接受的可用于国际支付的银行卡（VISA、Mastercard、AMEX）。目前不支持韩国发行的银行卡、KakaoPay 和 NaverPay。显示价格为含税最终金额，销售方为 ALTAKAPPA Co., Ltd.。订阅会自动续订，可随时在 My Page 取消。',
   features: {
     free: [
       {on:true, text:'无需注册'},
@@ -1039,7 +1039,7 @@ ru:{
   ctaFree:'Смотреть сейчас', ctaStd:'Зарегистрироваться и подписаться', ctaPrem:'Зарегистрироваться и подписаться', ctaStdLoggedIn:'Подписаться', ctaPremLoggedIn:'Подписаться', ctaStdTrial:'Начать 7-дневный бесплатный период', ctaPremTrial:'Начать 7-дневный бесплатный период', currentPlanBadge:'ТЕКУЩИЙ ПЛАН', ctaCurrent:'ИСПОЛЬЗУЕТСЯ',
   compareTitle:'СРАВНЕНИЕ ПЛАНОВ',
   paymentTitle:'СПОСОБЫ ОПЛАТЫ',
-  paymentNote:'Платите безопасно со всего мира . Подписки обновляются ежемесячно и могут быть отменены в любой момент.',
+  paymentNote:'Оплата проходит через PayPal в евро (EUR). Нужен аккаунт PayPal или карта для международных платежей (VISA, Mastercard, AMEX), которую принимает PayPal. Карты, выпущенные в Корее, KakaoPay и NaverPay сейчас не поддерживаются. Указанные цены окончательные и включают налоги; продавец: ALTAKAPPA Co., Ltd. Подписка продлевается автоматически, отменить можно в любой момент в My Page.',
   features: {
     free: [
       {on:true, text:'Регистрация не требуется'},

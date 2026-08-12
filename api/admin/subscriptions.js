@@ -1,5 +1,7 @@
 /**
- * GET /api/admin/subscriptions — 관리자 '구독 현황' 표/요약 (Paddle 단독).
+ * GET /api/admin/subscriptions — 관리자 '구독 현황' 표/요약.
+ *
+ * 2026-08-12 — 결제사는 PayPal 이다(Paddle 은 8/14 폐쇄). 금액은 전부 EUR 센트.
  *
  * subscriptions + profiles 조인. 각 구독을 유료/체험/연체/취소/일시정지로 분류.
  * 체험 판정: Paddle webhook 이 trialing→'active' 로 저장(열람권한용)하므로,
@@ -11,8 +13,8 @@
  * 자르면 하루가 밀린다(UTC 08-07 16:44 = KST 08-08 01:44 → 실제 결제일은 8/8).
  * D-N 도 '시간 차 ÷ 24h' 가 아니라 KST 달력일 번호의 차이로 센다 — 그래야 같은
  * 날 결제되는 두 사람이 D-5 / D-6 처럼 서로 다르게 보이지 않는다.
- * ⚠ 여기 날짜는 '카드가 긁히는 날' 이다. 통장에 실제로 들어오는 날은 판매자
- * 대리인(Paddle)의 정산 주기에 따라 그보다 늦다 — 화면에도 그렇게 적는다.
+ * ⚠ 여기 날짜는 '카드가 긁히는 날' 이다. 통장에 실제로 들어오는 날은 PayPal 잔액
+ * 인출 주기에 따라 그보다 늦다 — 화면에도 그렇게 적는다.
  */
 
 const { supabaseAdmin } = require('../_lib/supabase');
@@ -20,8 +22,12 @@ const { requireAdmin } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 
-// ₩ 가격 — api/admin/stats.js · api/subscriptions/checkout.js 와 일치해야 함.
-const PLAN_PRICE = { standard_monthly: 8500, standard_yearly: 85000, premium_monthly: 13500, premium_yearly: 135000 };
+// 🔴 2026-08-12 — EUR 센트. 여기만 원화 표(8500/85000/13500/135000)로 남아 있었다.
+// PayPal 은 플랜당 통화가 하나뿐이라 구독가를 EUR 단일가로 합쳤는데, 어드민 매출
+// 계산이 안 따라왔다. 환산 코드가 없어 화면의 ₩ 숫자는 어떤 환율로도 맞지 않았다.
+// ⚠️ api/admin/stats.js · frontend/subscribe.html 의 EUR_PRICES 와 같은 값일 것.
+const PLAN_PRICE = { standard_monthly: 549, standard_yearly: 4599, premium_monthly: 899, premium_yearly: 7499 };
+const PLAN_PRICE_CURRENCY = 'EUR';
 function planToMonthly(plan) {
   const p = PLAN_PRICE[plan] || 0;
   return (plan && plan.endsWith('_yearly')) ? Math.round(p / 12) : p;
@@ -146,6 +152,7 @@ module.exports = async function handler(req, res) {
       paying: 0, trialing: 0, past_due: 0, paused: 0, canceled: 0,
       mrr: 0, standard: 0, premium: 0, trialing_standard: 0, trialing_premium: 0,
       trialing_mrr: 0, mrr_if_all_convert: 0, upcoming: [], now_kst: null,
+      currency: PLAN_PRICE_CURRENCY,   // 2026-08-12 — 금액 단위는 EUR 센트다
     };
     for (const r of rows) {
       summary[r.kind] = (summary[r.kind] || 0) + 1;

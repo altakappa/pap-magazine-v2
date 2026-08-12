@@ -5252,7 +5252,9 @@ async function loadDashboardStats(){
   try{loadDashboardGrowth();}catch(_){}
 
   function setText(id,v){var el=document.getElementById(id);if(el)el.textContent=v;}
-  function fmtKRW(n){return '₩'+(n||0).toLocaleString('ko-KR');}
+  // 2026-08-12 — 구독가가 EUR 단일가가 되면서 매출도 EUR 센트로 내려온다.
+  // 예전엔 원화 가격표(₩8,500)로 계산한 값에 ₩ 를 붙였다 — 어떤 환율로도 맞지 않는 숫자였다.
+  function fmtEUR(cents){var v=Number(cents);if(!isFinite(v))return '—';return '\u20ac'+(v/100).toLocaleString('en-IE',{minimumFractionDigits:2,maximumFractionDigits:2});}
 
   try{
     var statsRes=await apiGet('/admin/stats');
@@ -5280,7 +5282,7 @@ async function loadDashboardStats(){
     setText('dashPremium',pc.premium||0);
     setText('dashPremiumBreakdown','월 '+(pc.premium_monthly||0)+' · 연 '+(pc.premium_yearly||0));
     setText('dashCommunity',totals.communityPosts||0);
-    setText('dashRevenue',fmtKRW(statsRes.monthlyRevenue));
+    setText('dashRevenue',fmtEUR(statsRes.monthlyRevenue));
     setText('dashRevenueNote','유료 구독 '+(totals.activeSubscriptions||0)+'건'+((totals.trialingSubscriptions||0)>0?(' · 체험 중 '+totals.trialingSubscriptions+'명'):''));
 
     // Quick action badges
@@ -14689,10 +14691,11 @@ function _subSetText(id, v){
   var el = document.getElementById(id);
   if(el) el.textContent = v;
 }
-function _subFmtKRW(n){
-  var v = Number(n);
+// 2026-08-12 — EUR 센트 → '€5.49'. 예전 이름은 _subFmtKRW 였고 ₩ 를 붙였다.
+function _subFmtEUR(cents){
+  var v = Number(cents);
   if(!isFinite(v)) return '—';
-  return '₩' + v.toLocaleString('ko-KR');
+  return '\u20ac' + (v/100).toLocaleString('en-IE',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
 function _subEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function _subDate(s){ if(!s) return '—'; try{ return String(s).slice(0,10); }catch(_){ return '—'; } }
@@ -14735,12 +14738,12 @@ async function loadSubscriptionTable(){
     if(sum){
       var line1='유료 <strong>'+(s.paying||0)+'</strong>명 · 무료체험 <strong>'+(s.trialing||0)+'</strong>명'
         +' · 연체 <strong style="color:#b3261e">'+(s.past_due||0)+'</strong>명 · 취소 '+(s.canceled||0)+'명'
-        +'  |  지금 확정된 월 매출 <strong>'+_subFmtKRW(s.mrr)+'</strong>';
+        +'  |  지금 확정된 월 매출 <strong>'+_subFmtEUR(s.mrr)+'</strong>';
       var line2='';
       if((s.trialing||0) > 0){
         line2='<div style="margin-top:6px">무료체험 <strong>'+(s.trialing||0)+'</strong>명이 모두 유료로 바뀌면 '
-          +'<strong style="color:#1b7f4d">+'+_subFmtKRW(s.trialing_mrr||0)+'</strong> → 월 <strong>'
-          +_subFmtKRW(s.mrr_if_all_convert||0)+'</strong> (전환 전에는 매출에 넣지 않습니다)</div>';
+          +'<strong style="color:#1b7f4d">+'+_subFmtEUR(s.trialing_mrr||0)+'</strong> → 월 <strong>'
+          +_subFmtEUR(s.mrr_if_all_convert||0)+'</strong> (전환 전에는 매출에 넣지 않습니다)</div>';
       }
       var line3='';
       var up = Array.isArray(s.upcoming) ? s.upcoming : [];
@@ -14748,14 +14751,14 @@ async function loadSubscriptionTable(){
         line3='<div style="margin-top:6px">다가오는 결제 — '
           + up.slice(0,8).map(function(u){
               var tag = u.first_charge ? ' <span style="color:#9a6a00">첫 결제 '+u.first_charge+'건</span>' : '';
-              return '<strong>'+_subUpDate(u)+'</strong> '+_subFmtKRW(u.amount)+tag;
+              return '<strong>'+_subUpDate(u)+'</strong> '+_subFmtEUR(u.amount)+tag;
             }).join(' · ')
           + '</div>';
       }
       var line4='<div style="margin-top:8px;color:var(--text3);font-size:12px">'
         + '※ 무료체험 기간에는 돈이 들어오지 않습니다. 위 날짜는 <strong>카드가 결제되는 날(한국시간)</strong>이고, '
-        + '통장에 실제로 입금되는 날은 Paddle 정산 주기에 따라 그보다 며칠 뒤입니다 — 정산 주기는 '
-        + '<a href="https://vendors.paddle.com" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:underline">Paddle 대시보드</a>에서 확인하세요.'
+        + '통장에 실제로 입금되는 날은 PayPal 잔액을 인출하는 시점에 따라 그보다 며칠 뒤입니다 — 입금 내역은 '
+        + '<a href="https://www.paypal.com/myaccount/activities" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:underline">PayPal 활동 내역</a>에서 확인하세요.'
         + (s.now_kst ? ' (기준 시각 ' + _subEsc(s.now_kst) + ' KST)' : '')
         + '</div>';
       sum.innerHTML = line1 + line2 + line3 + line4;
@@ -14764,7 +14767,7 @@ async function loadSubscriptionTable(){
     var html=r.rows.map(function(row){
       var who=_subEsc(row.display_name||'—')+'<div style="color:var(--text3);font-size:11px">'+_subEsc(row.email||'')+'</div>';
       var d=row.days_to_period_end;
-      var amt=(row.charge_amount!=null && row.charge_amount>0) ? _subFmtKRW(row.charge_amount) : '';
+      var amt=(row.charge_amount!=null && row.charge_amount>0) ? _subFmtEUR(row.charge_amount) : '';
       var at=row.charge_time_kst ? (' ' + row.charge_time_kst) : '';
       var note='—', sub='';
       if(row.kind==='trialing'){
@@ -14779,7 +14782,7 @@ async function loadSubscriptionTable(){
         sub='무료체험 중 · '+_subKDate(row)+at+' 첫 결제'+(amt?(' · '+amt):'');
       } else if(row.kind==='past_due'){
         note='<span style="color:#b3261e;font-weight:700">결제 실패 — 확인 필요</span>';
-        sub=_subKDate(row)+' 청구'+(amt?(' · '+amt):'')+' — Paddle 에서 재시도 상태를 확인하세요';
+        sub=_subKDate(row)+' 청구'+(amt?(' · '+amt):'')+' — PayPal 구독 관리에서 재시도 상태를 확인하세요';
       } else if(row.kind==='paying'){
         note='다음 결제 '+_subWhen(d,'after');
         sub=_subKDate(row)+at+(amt?(' · '+amt):'');
@@ -14825,17 +14828,17 @@ async function loadSubscriptions(){
 
     _subSetText('subStdCount', std.toLocaleString('ko-KR'));
     _subSetText('subPremCount', prm.toLocaleString('ko-KR'));
-    _subSetText('subMrr', _subFmtKRW(st.monthlyRevenue));
+    _subSetText('subMrr', _subFmtEUR(st.monthlyRevenue));
     _subSetText('subActiveCount', (Number(totals.activeSubscriptions) || 0).toLocaleString('ko-KR'));
     _subSetText('subPlanBreakdown',
       '스탠다드 월 ' + stdM + ' · 연 ' + stdY +
       '  |  프리미엄 월 ' + prmM + ' · 연 ' + prmY +
       '  |  무료 ' + (Number(pc.free) || 0) +
-      '  ·  MRR 은 연납 구독을 1/12 로 환산한 추정치입니다. 갱신율(리텐션)은 아직 집계하지 않습니다 — Paddle 대시보드를 확인하세요.');
+      '  ·  MRR 은 연납 구독을 1/12 로 환산한 EUR 추정치이며 PayPal 수수료(실측 10.7%)를 빼기 전 금액입니다. 갱신율(리텐션)은 아직 집계하지 않습니다.');
   }catch(e){
     console.error('Subscriptions load error:', e);
     _subSetText('subPlanBreakdown',
-      '구독 지표를 불러오지 못했습니다. 새로고침 후에도 같으면 Paddle 대시보드에서 확인하세요. (숫자는 0 이 아니라 미상 “—” 으로 표시됩니다)');
+      '구독 지표를 불러오지 못했습니다. 새로고침 후에도 같으면 PayPal 에서 확인하세요. (숫자는 0 이 아니라 미상 “—” 으로 표시됩니다)');
   }
 }
 
