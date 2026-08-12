@@ -17,7 +17,20 @@
  *   BILLING.SUBSCRIPTION.SUSPENDED        — 일시정지
  *   BILLING.SUBSCRIPTION.EXPIRED          — 만료
  *   BILLING.SUBSCRIPTION.PAYMENT.FAILED   — 결제 실패 → past_due
- *   PAYMENT.SALE.COMPLETED                — 갱신 결제(기간 연장). 상태는 여기서 안 바꾼다.
+ *   PAYMENT.SALE.COMPLETED                — 갱신 결제(기간 연장)
+ *   PAYMENT.CAPTURE.COMPLETED             — 서브미션 게재료·애드온 결제 확정 (복구 그물)
+ *   PAYMENT.CAPTURE.REFUNDED / .REVERSED  — 환불·역전 → payment_status 되돌림
+ *   CUSTOMER.DISPUTE.CREATED              — 분쟁 발생 알림
+ *
+ * ── 🔴 2026-08-12 — Orders(일회성 결제) 이벤트를 받는 이유 ────────────
+ *   구독은 웹훅이 500 을 던지면 PayPal 이 재시도해 자동 복구된다. 그런데
+ *   서브미션 게재료(€380/€790)는 브라우저→서버 왕복 한 번(paypal-capture.js)이
+ *   전부였다. 그 한 번이 실패하면 돈은 받았는데 DB 는 안 바뀌고, 되돌릴 방법이
+ *   없었다. PAYMENT.CAPTURE.COMPLETED 하나를 받는 것만으로 그 갈래가 전부
+ *   자동 복구된다. 가장 값싼 안전장치다.
+ *
+ *   환불도 마찬가지다. PayPal 대시보드에서 직접 환불하면 우리 DB 의
+ *   payment_status 는 영원히 'paid' 로 남아, 환불된 건이 게재 대기열에 계속 선다.
  *
  * ⚠️ 2026-08-07 사고에서 얻은 규칙 (반드시 유지)
  *   lia.line 님이 2분 간격으로 구독을 2건 만들어 €8.99 를 두 번 냈다. 중복분을
@@ -31,6 +44,8 @@
 
 const { supabaseAdmin } = require('./_lib/supabase');
 const { sendTextToTelegramSafe } = require('./_lib/telegram');
+const { downgradeToFree } = require('./_lib/subscriptionAccess');
+const { handleCaptureCompleted, handleCaptureRefunded } = require('./_lib/paypalCaptureRecovery');
 
 const PAYPAL_WEBHOOK_ID = process.env.PAYPAL_WEBHOOK_ID;
 const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID;
@@ -270,9 +285,14 @@ async function handleTermination(sub, userId, eventType) {
     return { status, accessKeptUntil: periodEnd };
   }
 
-  const { error: profErr } = await supabaseAdmin.from('profiles')
-    .update({ subscription_status: 'inactive' })
-    .eq('id', userId);
+  // 🔴 2026-08-12 — plan 까지 free 로 내린다.
+  //   예전에는 subscription_status 만 'inactive' 로 바꿨다. 서버 게이트는 status 도
+  //   보므로 유료 API 는 정상 차단되지만, **프론트 게이트는 plan 만 본다**
+  //   (frontend/pap-subscription.js:37, pap-api.js:1016 · api/auth/me.js 는 plan 만 내려준다).
+  //   그래서 해지·만료된 회원 화면에는 계속 PREMIUM 이 떠 있고, 콘텐츠를 열면
+  //   서버가 403 을 준다. "돈 냈는데 안 열린다" 는 문의와 환불 요구로 돌아온다.
+  //   Paddle 경로(api/paddle-webhook.js)는 처음부터 둘 다 내리고 있었다.
+  const { error: profErr } = await downgradeToFree(supabaseAdmin, userId);
   if (profErr) throw new Error('profile downgrade failed: ' + profErr.message);
 
   return { status, downgraded: true };
@@ -350,15 +370,43 @@ module.exports = async function handler(req, res) {
         try {
           const sub = await paypalGet(`/v1/billing/subscriptions/${subId}`);
           const bi = sub.billing_info || {};
-          await supabaseAdmin.from('subscriptions').update({
+          // 2026-08-12 — 결제가 성공했으니 past_due 표시를 되돌린다.
+          // 예전에는 기간만 늘리고 status 를 그대로 뒀다. 재시도로 결제가 성사돼도
+          // past_due 로 남아 어드민 지표(연체 N명)가 계속 틀렸다.
+          const patch = {
             current_period_start: (bi.last_payment && bi.last_payment.time) || null,
             current_period_end: bi.next_billing_time || null,
             updated_at: new Date().toISOString(),
-          }).eq('paypal_subscription_id', subId);
+          };
+          if (String(sub.status || '').toUpperCase() === 'ACTIVE') patch.status = 'active';
+          await supabaseAdmin.from('subscriptions').update(patch)
+            .eq('paypal_subscription_id', subId);
         } catch (e) {
           console.warn('[paypal-webhook] 갱신 기간 반영 실패:', e.message);
         }
         return res.status(200).json({ received: true });
+      }
+
+      case 'PAYMENT.CAPTURE.COMPLETED': {
+        const r = await handleCaptureCompleted(supabaseAdmin, resource);
+        return res.status(200).json({ received: true, ...r });
+      }
+
+      case 'PAYMENT.CAPTURE.REFUNDED':
+      case 'PAYMENT.CAPTURE.REVERSED': {
+        const r = await handleCaptureRefunded(supabaseAdmin, resource, type);
+        return res.status(200).json({ received: true, ...r });
+      }
+
+      case 'CUSTOMER.DISPUTE.CREATED':
+      case 'CUSTOMER.DISPUTE.UPDATED': {
+        // 분쟁은 자동으로 처리하지 않는다. 사람이 기한 안에 답해야 한다.
+        const amt = ((resource.dispute_amount || {}).value || '')
+          + ((resource.dispute_amount || {}).currency_code || '');
+        sendTextToTelegramSafe('⚖️ PayPal 분쟁 ' + type + ' id=' + resource.dispute_id
+          + ' 금액 ' + amt + ' 사유=' + (resource.reason || '?')
+          + ' — PayPal 해결 센터에서 기한 안에 답변해야 합니다.');
+        return res.status(200).json({ received: true, dispute: true });
       }
 
       default:

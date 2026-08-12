@@ -45,11 +45,19 @@ t('EXPIRED 는 예외로 즉시 강등한다',
   '만료는 기간이 끝났다는 뜻이므로 유예 대상이 아니다');
 
 // 강등이 유예 판정 뒤에 오는지 (순서가 뒤집히면 유예가 무의미)
+// 2026-08-12 — 강등을 공용 헬퍼 downgradeToFree() 로 바꿨다(plan 까지 free 로
+// 내려야 프론트 게이트가 맞는다). 옛 표식(subscription_status:'inactive' 직접 쓰기)도
+// 계속 인정한다 — Paddle 경로 등 다른 곳이 그 형태로 남아 있을 수 있다.
 const idxGuard = fn.indexOf('stillWithinPaidPeriod');
-const idxDown  = fn.indexOf("subscription_status: 'inactive'");
+const _down = [fn.indexOf('downgradeToFree('), fn.indexOf("subscription_status: 'inactive'")]
+  .filter((i) => i !== -1);
+const idxDown = _down.length ? Math.min.apply(null, _down) : -1;
 t('강등 코드가 유예 판정보다 뒤에 있다',
   idxGuard !== -1 && idxDown !== -1 && idxGuard < idxDown,
   'guard=' + idxGuard + ' downgrade=' + idxDown);
+t('강등은 plan 까지 free 로 내린다 (프론트 게이트는 plan 만 본다)',
+  fn.indexOf('downgradeToFree(') !== -1,
+  'status 만 내리면 해지한 회원 화면에 PREMIUM 이 계속 떠 있고, 열면 서버가 403 을 준다');
 
 console.log('\n=== 만료 스윕이 해지 건을 걷어간다 ===');
 const inClause = (sweep.match(/\.in\('status',\s*\[[^\]]*\]\)/) || [''])[0];
