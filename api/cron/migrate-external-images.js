@@ -145,6 +145,28 @@ module.exports = withCronGuard('migrate-external-images', async function handler
     });
   }
 
+  /* 우리 쪽 일시적 실패는 한 시간 뒤 자동으로 한 번 더 시도한다 (2026-08-12).
+   *
+   * image_migration_failures 는 '다시는 시도 안 함' 이라는 뜻인데, 여기에는
+   * 성격이 다른 셋이 섞여 들어온다:
+   *   (a) 진짜 영구  — HTTP 404 · 410 · not an image   (원본이 없다)
+   *   (b) 우리 설정  — too large                        (상한을 올리면 된다)
+   *   (c) 일시적     — storage 오류                     (다시 하면 대개 된다)
+   * (b)(c) 를 영구로 굳히는 바람에 118 · 121 두 번을 손으로 치웠고,
+   * 오늘 또 storage 실패 1건이 같은 자리에 박혔다. 손으로 세 번 치우지 않는다.
+   *
+   * storage 실패만, 1시간 지난 것만 지운다:
+   *  · 진짜로 계속 실패하면 매시간 한 번씩 다시 걸린다 — 한 장이라 비용은 무시할 만하고
+   *    알림에 계속 보이므로 조용히 묻히지 않는다.
+   *  · 같은 회차 안에서 무한 재시도하지는 않는다(1시간 간격).
+   * 404·too large 는 손대지 않는다 — 그건 재시도해도 결과가 같다. */
+  try {
+    await supabaseAdmin.from('image_migration_failures')
+      .delete()
+      .like('reason', 'storage:%')
+      .lt('failed_at', new Date(Date.now() - 3600000).toISOString());
+  } catch (_) { /* 정리 실패는 무시 — 본업을 막지 않는다 */ }
+
   // 이전 실패 URL 은 건너뛴다 (죽은 링크 재시도 금지)
   const { data: fails } = await supabaseAdmin.from('image_migration_failures').select('url');
   const failSet = new Set((fails || []).map(f => f.url));
@@ -212,7 +234,11 @@ module.exports = withCronGuard('migrate-external-images', async function handler
          죽은 링크 → 원본이 없다. 재업로드 말고는 답이 없다
          용량 초과 → 원본은 살아 있다. 상한을 올리거나 줄여서 받으면 된다 */
     const oversize = newFailures.filter(f => /^too large/.test(f.reason));
-    const dead = newFailures.filter(f => !/^too large/.test(f.reason));
+    /* 'storage:' 는 업로드가 거절된 것 — 원본은 멀쩡하다.
+       이걸 '원본이 사라졌다' 로 알리면 도메니코가 있지도 않은 원본을 찾으러 간다.
+       (2026-08-12 실측: storage: Bad Request 1건을 '죽은 링크' 로 알렸다.) */
+    const transient = newFailures.filter(f => /^storage:/.test(f.reason));
+    const dead = newFailures.filter(f => !/^too large/.test(f.reason) && !/^storage:/.test(f.reason));
     const lines = [];
     if (dead.length) {
       lines.push('❌ 죽은 링크 ' + dead.length + '건 — 원본이 사라졌다(재업로드 외 방법 없음)');
@@ -224,6 +250,10 @@ module.exports = withCronGuard('migrate-external-images', async function handler
       lines.push('📦 용량 초과 ' + oversize.length + '건 — 원본은 멀쩡하다. 상한 '
         + Math.round(MAX_BYTES / 1048576) + 'MB 초과 (최대 ' + mb(Math.max.apply(null, sizes)) + ')');
       lines.push('   → 상한을 올리거나 리사이즈해서 받아야 한다. 재업로드 대상 아님');
+    }
+    if (transient.length) {
+      lines.push('🔁 일시적 실패 ' + transient.length + '건 — 우리 쪽 업로드가 거절됐다. 원본은 멀쩡하다');
+      lines.push('   → 1시간 뒤 자동으로 한 번 더 시도한다. 할 일 없음');
     }
     sendTextToTelegramSafe(
       '🖼 이미지 이관 중 실패 ' + newFailures.length + '건\n' + lines.join('\n')
@@ -238,7 +268,7 @@ module.exports = withCronGuard('migrate-external-images', async function handler
     ok: true, editorialsDone, imagesMoved, failures: newFailures.length, remaining: left,
     note: note(res,
       '이관 ' + editorialsDone + '편 · 이미지 ' + imagesMoved + '장'
-      + (newFailures.length ? ' · 죽은링크 ' + newFailures.length + '건' : '')
+      + (newFailures.length ? ' · 실패 ' + newFailures.length + '건' : '')
       + (left === null ? '' : ' · 잔량 ' + left + '편')
       + (editorialsDone === 0 ? ' ⚠️ 진전 0 — 큐가 막혔는지 확인' : '')),
   });

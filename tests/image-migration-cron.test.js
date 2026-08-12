@@ -137,6 +137,30 @@ t('121 이 일시적 storage 실패도 함께 걷는다',
 t('121 에 배포-후-실행 순서가 명시돼 있다', /배포 뒤에 돌려라/.test(sql121),
   '상한이 옛날 값인 채로 재시도하면 같은 사진이 곧바로 다시 제외된다');
 
+console.log('=== 실패 사유 3분류 · 일시적 실패 자동 재시도 (2026-08-12) ===');
+/* 알림이 'storage: Bad Request' 를 「죽은 링크 — 원본이 사라졌다」 로 알렸다.
+   원본은 멀쩡하고 우리 업로드가 거절된 것이다. 원인이 다르면 할 일이 다르다:
+     죽은 링크  → 원본이 없다. 재업로드 외 방법 없음
+     용량 초과  → 상한을 올리거나 리사이즈
+     일시적     → 다시 하면 된다. 사람이 할 일 없음
+   그리고 실패 표는 '다시는 시도 안 함' 이라는 뜻이므로, 일시적 실패를 거기
+   영구로 남기면 멀쩡한 원본을 잃는다(118·121 에서 두 번 손으로 치웠다). */
+t('알림이 일시적 실패를 따로 센다', /const transient = newFailures\.filter/.test(mig)
+  && /\^storage:/.test(mig));
+t('일시적 실패를 죽은 링크에서 뺀다',
+  /const dead = newFailures\.filter\(f => !\/\^too large\/\.test\(f\.reason\) && !\/\^storage:\/\.test\(f\.reason\)\)/.test(mig),
+  '섞이면 있지도 않은 원본을 찾으러 가게 된다');
+t('일시적 실패에는 할 일이 없다고 알린다', /할 일 없음/.test(mig));
+t('storage 실패는 1시간 뒤 자동 재시도된다',
+  /like\('reason', 'storage:%'\)/.test(mig) && /lt\('failed_at'/.test(mig),
+  '손으로 세 번째 치우지 않기 위한 장치');
+t('404·용량초과 기록은 건드리지 않는다',
+  !/like\('reason', 'too large/.test(mig) && !/like\('reason', 'HTTP/.test(mig),
+  '재시도해도 결과가 같은 것을 반복하면 예산만 먹는다');
+t('정리 실패가 본업을 막지 않는다', /정리 실패는 무시/.test(mig));
+t('note 가 실패를 죽은링크로 단정하지 않는다', !/죽은링크/.test(mig),
+  '대시보드 문구도 알림과 같은 기준이어야 한다');
+
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if(fail){ console.log('❌ image-migration-cron tests FAILED'); process.exit(1); }
 console.log('✅ image-migration-cron tests passed');
