@@ -361,7 +361,13 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
       const POST_TIMEOUT_MS = 25000;
       let _qi = 0, _processed = 0;
       async function _worker(){
-        while (_qi < toProcess.length && Date.now() - startedAt < TIME_BUDGET_MS){
+        /* 착수 조건에서 POST_TIMEOUT_MS 를 미리 빼둔다 (2026-08-11).
+           예전 조건은 '79.9초에도 새 게시물을 시작'할 수 있었고, 그 게시물이
+           25초 타임아웃까지 쓰면 105초 + 오버헤드 → 120초 상한을 넘겼다.
+           실측 회차: 108s · 113s · 114s (상한 코앞) · 24시간에 2건 사망.
+           이제 마지막 착수는 55초 이전 → 최악 80초에 끝난다. */
+        while (_qi < toProcess.length
+               && Date.now() - startedAt < TIME_BUDGET_MS - POST_TIMEOUT_MS){
           const m = toProcess[_qi++];
           try {
             await Promise.race([
@@ -432,9 +438,26 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
     const existingSet = new Set((existing || []).map((r) => r.source_instagram_post_id));
     results.skipped_existing = existingSet.size;
 
-    // 3) 게시물 분류·처리.
+    /* 3) 게시물 분류·처리.
+     *
+     * ■ 시간 예산 (2026-08-11 신설) — 여기엔 예산이 **아예 없었다**.
+     * 실측(24시간 312회): 대부분 2~4초(p95 2.2초)인데, 신규 게시물이 여러 개
+     * 뜬 회차는 89~114초까지 갔다. 한 건이 Claude 생성 + 이미지·영상 아카이브
+     * + X·Threads 게시 + 검색핑을 전부 하기 때문이다. 120초 상한을 넘긴 회차는
+     * 통째로 잘려 나가 cron_runs 에 '끝나지 않음' 으로 남았다(24시간 2건).
+     *
+     * 안전하게 멈출 수 있는 이유: 아직 articles 에 INSERT 하기 전이므로
+     * 남긴 게시물은 다음 실행(10분 뒤)에도 그대로 '신규' 로 잡힌다.
+     * 즉 못 끝낸 몫은 유실이 아니라 이월이다. (backfill-translations 와 같은 형태) */
+    const SYNC_STARTED = Date.now();
+    const SYNC_BUDGET_MS = Number(process.env.IG_SYNC_BUDGET_MS || 85000);
+    const PER_POST_RESERVE_MS = 30000;  // 한 건이 최악으로 쓰는 시간(AI+미디어+소셜)
     for (const m of media){
       if (existingSet.has(m.id)) continue;
+      if (!dry && Date.now() - SYNC_STARTED > SYNC_BUDGET_MS - PER_POST_RESERVE_MS){
+        results.deferred = (results.deferred || 0) + 1;
+        continue;   // 다음 실행이 이어받는다
+      }
       const shortcode = _extractShortcode(m.permalink);
       let cls = 'article';
       if (shortcode && editorialShortcodes.has(shortcode)){
@@ -488,6 +511,19 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
       } catch (_){
         results.youtube_nudge = 'nudged (응답 대기 안 함 — 업로드는 서버에서 계속, 스위퍼가 보증)';
       }
+    }
+    /* note 에 '무엇을 했고 무엇을 미뤘는지' 를 남긴다 (2026-08-11).
+       이 크론은 지금까지 note 가 'account=… token_source=…' 뿐이라, 회차가
+       몇 건을 이월했는지 대시보드에서 볼 수 없었다. 이월이 매 회차 쌓이면
+       그건 예산이 모자란다는 신호다 — 보여야 고칠 수 있다.
+       (2026-08-10 이관 크론에서 배운 것: note 가 비면 고장도 안 보인다.) */
+    if (!dry){
+      res.locals = res.locals || {};
+      res.locals.cronNote = 'account=' + (account || 'magazine')
+        + ' · 수집 ' + (results.imported || 0) + '건'
+        + (results.deferred ? ' · 다음 회차로 이월 ' + results.deferred + '건' : '')
+        + (results.failed ? ' · 실패 ' + results.failed + '건' : '')
+        + ' · ' + Math.round((Date.now() - SYNC_STARTED) / 1000) + '초';
     }
     // (백필 완주 감지·done 플래그·텔레그램 통보는 커서 백필 브랜치에서 처리 —
     //  최근-동기화/dry 경로는 여기까지.)
