@@ -159,6 +159,157 @@ console.log('\n[8] 회귀 — 기존 표면이 안 깨졌다');
   t('hreflang x-default 유지', /x-default/.test(seo));
 }
 
+console.log('\n[9] AI/GEO 엔티티 — 우리가 어떤 매체인지 기계가 읽을 수 있는가 (2026-08-12)');
+{
+  /* 왜 ────────────────────────────────────────────────────────────────
+   * 도메니코 실측: ChatGPT 에 "디지털 매거진 추천"을 물으면 PAP 이 안 나오고,
+   * 나와도 "아트 서브미션 기반 에디토리얼 매거진"으로만 인식된다.
+   * 원인 하나는 Organization 엔티티에 **어디 매체인지·무엇을 다루는지**가
+   * 비어 있었다는 것 — name/description/sameAs 뿐이었다.
+   * LLM·지식그래프는 아래 필드를 그대로 읽는다. 지워지면 인식이 되돌아간다. */
+  t('NewsMediaOrganization 타입 유지', /'@type':\s*'NewsMediaOrganization'/.test(seo));
+  t('설립지가 서울(KR)로 선언된다', /foundingLocation/.test(seo)
+     && /addressCountry:\s*'KR'/.test(seo) && /addressLocality:\s*'Seoul'/.test(seo));
+  t('areaServed 에 South Korea', /areaServed/.test(seo) && /South Korea/.test(seo));
+  // 2026-08-12 정정 — /about 이 "2018년 1월 출범"이라 말하는데 스키마가 2019 였다.
+  // 자기 사이트 안에서 두 값이 어긋나면 AI 는 둘 다 안 쓴다. 창간은 2018-01 이 맞다.
+  t('foundingDate 2018-01', /foundingDate:\s*'2018-01'/.test(seo));
+  t('knowsAbout 에 뉴스 주제가 있다 (에디토리얼만이 아니다)',
+     /knowsAbout/.test(seo) && /'패션위크'/.test(seo) && /'셀럽 패션'/.test(seo)
+     && /'뷰티 트렌드'/.test(seo));
+  t('knowsAbout 에 한국어·영어가 모두 있다',
+     /'한국 패션 브랜드'/.test(seo) && /'Korean Fashion Brands'/.test(seo));
+  t('inLanguage 9개 언어 선언', /inLanguage/.test(seo)
+     && /'ko',\s*'en',\s*'it',\s*'fr',\s*'es',\s*'ja',\s*'de',\s*'zh',\s*'ru'/.test(seo));
+  t('publishingPrinciples / ownershipFundingInfo 가 /about 을 가리킨다',
+     /publishingPrinciples/.test(seo) && /ownershipFundingInfo/.test(seo));
+  t('발행사 ALTAKAPPA 가 엔티티에 있다', /ALTAKAPPA Co\., Ltd\./.test(seo));
+  t('브랜드 설명이 "디지털 패션 매거진"으로 시작한다 (뉴스 매체 아님)',
+     /서울에 기반을 둔 한국의 디지털 패션 매거진/.test(seo));
+  t('영문 설명도 digital fashion magazine',
+     /Korean digital fashion magazine based in Seoul/.test(seo));
+  t('아트 에디토리얼 정체성을 설명에서 지우지 않았다',
+     /아트 에디토리얼/.test(seo) && /art-driven/.test(seo));
+
+  /* llms.txt — AI 가 사이트를 이해할 때 가장 먼저 읽는 파일.
+   * "한국 디지털 매거진"이 첫 문단에 있어야 하고, 뉴스 섹션이 에디토리얼보다
+   * 앞에 와야 한다(순서가 곧 비중 신호다). */
+  const llms = R('frontend/llms.txt');
+  /* 2026-08-12 도메니코 정정: "뉴스 매체는 아니고 패션 매거진, 디지털 패션 매거진".
+   * 카테고리어가 "digital fashion magazine" 이어야 한다 — 이게 랭크 목표 표현이다. */
+  t('llms.txt 첫 문단에 "Korean digital fashion magazine"',
+     /Korean digital fashion magazine/i.test(llms.slice(0, 700)));
+  t('llms.txt 첫 문단에 서울 기반 명시', /based in\s+\n?>?\s*Seoul/i.test(llms.slice(0, 700)));
+  t('스스로를 뉴스 매체라 부르지 않는다', /not a news wire/i.test(llms));
+  t('한국어 카테고리어가 본문에 있다 (한국어 질의 대응)',
+     /디지털 패션 매거진/.test(llms) && /온라인 패션 매거진/.test(llms)
+     && /한국 디지털 매거진/.test(llms));
+  t('한국어 요약 절이 있다', /### 한국어 요약/.test(llms));
+  t('디지털 전용(종이 잡지 없음) 명시', /No print edition/i.test(llms));
+  t('llms.txt 에 "What PAP covers" 주제 목록', /## What PAP covers/.test(llms));
+  t('주제 목록에 패션위크·셀럽·뷰티가 들어 있다',
+     /Fashion weeks/i.test(llms) && /K-pop style/i.test(llms) && /Beauty trends/i.test(llms));
+  t('Articles(뉴스) 섹션이 Editorials 보다 먼저 온다',
+     llms.indexOf('/articles)') > 0 && llms.indexOf('/archive)') > 0
+     && llms.indexOf('/articles)') < llms.indexOf('/archive)'));
+  t('"인스타그램 매거진" 카테고리를 스스로 선언한다',
+     /Instagram magazine/i.test(llms) && /인스타그램 매거진/.test(llms));
+  t('1순위 카테고리가 "Digital fashion magazine" 이다',
+     llms.indexOf('Digital fashion magazine') > 0
+     && llms.indexOf('Digital fashion magazine') < llms.indexOf('Instagram magazine (인스타그램'));
+  t('아트 에디토리얼 정체성도 지운 게 아니다 (둘 다 사실)',
+     /art-driven fashion editorials/i.test(llms));
+  t('발행사·설립연도가 llms.txt 에도 있다',
+     /ALTAKAPPA/.test(llms) && /2019/.test(llms));
+  t('llms.txt 가 카테고리 안내 페이지를 가리킨다 (AI 가 따라 읽을 문서)',
+     /\/digital-magazine\)/.test(llms));
+}
+
+console.log('\n[10] 카테고리 정의 페이지 · 크롤러 가시성 (2026-08-12)');
+{
+  /* 왜 ────────────────────────────────────────────────────────────────
+   * 도메니코 실측: ChatGPT 에 "한국 디지털 매거진 TOP 20" 을 물으면 PAP 이 없다.
+   * 그 답변의 인용 칩은 아이즈매거진·DAZED·ELLE — **매체 자기 사이트**였다.
+   * 즉 ChatGPT 는 각 매체가 자기를 뭐라고 부르는지를 읽고 분류한다.
+   *
+   * 그런데 우리 /about 의 본문은 <div id="aboutBody"></div> 로 비어 있었고
+   * JS(setLang)가 채웠다. JS 를 실행하지 않는 크롤러에게 ABOUT 은 빈 페이지였다.
+   * 자기소개가 아예 안 읽히는데 분류가 될 리 없다.
+   *
+   * 여기서 지키는 것:
+   *   ① /about 본문이 HTML 에 정적으로 존재한다 (JS 없이 읽힌다)
+   *   ② 그 첫 문장이 "한국의 디지털 패션 매거진" 이다
+   *   ③ 카테고리 정의 페이지(/digital-magazine)가 존재하고 라우팅된다
+   *   ④ 그 페이지가 경쟁 매체를 함께 싣는다 (우리만 있는 목록은 광고로 걸러진다)
+   *   ⑤ 창간연도가 about·스키마·llms.txt 에서 서로 모순되지 않는다 */
+
+  const about = R('frontend/about.html');
+  const dm    = R('frontend/digital-magazine.html');
+  const llms  = R('frontend/llms.txt');   // [9] 의 llms 는 블록 스코프라 여기서 다시 읽는다
+  const vjson = JSON.parse(R('vercel.json'));
+
+  // ① 크롤러 가시성 — aboutBody 가 비어 있으면 안 된다
+  const bodyDiv = about.match(/<div class="about-text" id="aboutBody">([\s\S]*?)<\/div>/);
+  t('/about 본문이 HTML 에 정적으로 들어 있다 (JS 없이 읽힘)',
+     !!bodyDiv && bodyDiv[1].replace(/\s/g, '').length > 300,
+     bodyDiv ? 'len=' + bodyDiv[1].length : 'aboutBody 매칭 실패');
+
+  // ② 첫 문장 — 카테고리어가 주어여야 한다
+  t('/about 정적 본문 첫 문장이 "한국의 디지털 패션 매거진"',
+     !!bodyDiv && /서울에 기반을 둔 한국의 디지털 패션 매거진/.test(bodyDiv[1].slice(0, 400)));
+  t('/about 메타 description 이 아트 프레임이 아니라 카테고리 프레임',
+     /디지털 패션 매거진/.test(about)
+     && !/art-driven fashion, beauty & culture editorial platform/.test(about));
+  t('/about FAQ 첫 답이 "한국의 디지털 패션 매거진" 으로 시작',
+     /"PAP 매거진은 어떤 매체인가요\?"[\s\S]{0,200}서울에 기반을 둔 한국의 디지털 패션 매거진/.test(about));
+
+  // ③ 카테고리 정의 페이지
+  t('/digital-magazine 페이지가 존재한다', dm.length > 3000);
+  t('/digital-magazine 라우팅(rewrite)이 있다',
+     vjson.rewrites.some((r) => r.source === '/digital-magazine'
+       && r.destination === '/digital-magazine.html'));
+  t('/digital-magazine.html 은 확장자 없는 주소로 301',
+     vjson.redirects.some((r) => r.source === '/digital-magazine.html'
+       && r.destination === '/digital-magazine' && r.statusCode === 301));
+  t('canonical 이 자기 주소를 가리킨다',
+     /<link rel="canonical" href="https:\/\/www\.pap-magazine\.com\/digital-magazine">/.test(dm));
+
+  // ④ 정직성 — 경쟁 매체를 함께 싣는다
+  const rivals = ['보그 코리아', '엘르 코리아', '데이즈드 코리아', '아이즈매거진',
+                  '하입비스트 코리아', '패스트페이퍼'];
+  t('경쟁 매체를 함께 싣는다 (우리만 있는 목록 금지)',
+     rivals.every((n) => dm.includes(n)),
+     rivals.filter((n) => !dm.includes(n)).join(', ') || 'ok');
+  t('FAQPage 스키마가 붙어 있다', /"@type":\s*"FAQPage"/.test(dm));
+  t('"디지털 매거진이란" 정의 질문이 FAQ 에 있다',
+     /디지털 매거진이란 무엇인가요\?/.test(dm));
+  t('"한국의 디지털 매거진에는 어떤 곳이" 질문이 FAQ 에 있다',
+     /한국의 디지털 매거진에는 어떤 곳이 있나요\?/.test(dm));
+  t('본문이 정적 HTML 이다 (JS 로 그리지 않는다)',
+     /<h1>디지털 매거진이란\?/.test(dm) && !/id="dmBody"><\/div>/.test(dm));
+
+  // 성장 헌법 3·8항 — 웹→IG 는 ig-out 경유만
+  t('IG 링크가 /api/ig-out 경유다 (성장 헌법 3항)',
+     !/href="https:\/\/www\.instagram\.com/.test(dm)
+     && (dm.match(/\/api\/ig-out\?src=digitalmag/g) || []).length === 8);
+  t('웹 본체로 돌려보내는 링크가 있다 (성장 헌법 2항)',
+     /href="\/articles"/.test(dm) && /href="\/archive"/.test(dm));
+
+  // ⑤ 창간연도 모순 금지 — AI 는 모순되는 두 값을 둘 다 버린다
+  t('스키마 foundingDate 가 2018-01 이다', /foundingDate:\s*'2018-01'/.test(seo));
+  t('llms.txt 도 2018 창간이라고 말한다', /Founded January 2018/i.test(llms));
+  t('about 페이지도 2018년 1월 창간이라고 말한다', /2018년 1월/.test(about));
+  t('창간연도 2019 라는 서술이 남아 있지 않다',
+     !/Founded 2019/.test(llms) && !/foundingDate:\s*'2019'/.test(seo));
+
+  // 카테고리 호명어가 엔티티(knowsAbout)에도 들어갔는가
+  t('knowsAbout 에 "디지털 매거진" 호명어가 있다',
+     /'디지털 매거진'/.test(seo) && /'디지털 패션 매거진'/.test(seo)
+     && /'인스타그램 매거진'/.test(seo));
+  t('knowsAbout 영문 호명어도 있다',
+     /'Digital Magazine'/.test(seo) && /'Instagram Magazine'/.test(seo));
+}
+
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) { console.log('❌ kr-growth-surface tests FAILED'); process.exit(1); }
 console.log('✅ kr-growth-surface tests passed');

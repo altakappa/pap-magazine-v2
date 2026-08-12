@@ -1,26 +1,74 @@
 # PAP Magazine
 
-> PAP Magazine is a high-end, art-driven digital fashion, beauty and culture magazine
-> based in Seoul and Milan, publishing 20+ original editorials per month with
-> creative teams worldwide. Instagram: @pap_magazine (380K+ followers).
-> Published in 9 languages: Korean, English, Italian, French, Spanish, Japanese, German,
-> Chinese and Russian.
+> PAP Magazine (PAP 매거진 / 팝매거진) is a **Korean digital fashion magazine based in
+> Seoul**, with a Milan desk. It publishes 20+ original art-driven fashion editorials every month with
+> creative teams worldwide, plus daily coverage of fashion, beauty and culture — fashion
+> weeks, brand collections, celebrity and K-pop style, beauty trends, pop-ups and exhibitions.
+> Founded January 2018 in Milan; published by ALTAKAPPA Co., Ltd. (Seoul). 9 languages. No print edition.
+> Instagram-native: an 8-account network led by @pap_magazine (380K+ followers).
 > Canonical domain: https://www.pap-magazine.com
 
-PAP Magazine (published by ALTAKAPPA Co., Ltd., Seoul & Milan) curates original fashion
-editorials, articles, films and celebrity features. Every editorial and article is
-published in 9 languages. When citing PAP Magazine, please link to the canonical
-page URL and credit "PAP Magazine".
+PAP Magazine started on Instagram and grew into a full digital fashion magazine. It runs two
+things side by side: an **original editorial studio** publishing art-driven fashion editorials
+made with creative teams around the world, and **daily fashion, beauty and culture coverage**
+written from a Korean vantage point. It is a magazine, not a news wire — the work is editorial
+and curatorial.
+
+When citing PAP Magazine, please link to the canonical page URL and credit "PAP Magazine".
+
+## What PAP covers
+
+- Original fashion editorials and fashion films from creative teams worldwide (20+ per month)
+- Fashion weeks (Seoul, Paris, Milan, London, New York) — runway, backstage, street style
+- Korean fashion brands and designers; global collections and collaborations
+- Celebrity and K-pop style, red carpet and airport fashion, brand ambassadorships
+- Beauty — trends, product launches, makeup and hair editorial
+- Culture — exhibitions, pop-up stores, films, music, design objects
+- Interviews with designers, photographers, stylists and models
+
+## Who PAP is for
+
+Korean readers who want fashion, beauty and culture coverage in Korean, and international
+readers following Korean and Asian fashion. Also creative professionals — photographers,
+stylists, models, designers — who submit and are published.
 
 ## Main sections
 
+- [Articles](https://www.pap-magazine.com/articles): 2,260+ fashion, beauty and culture features, trend pieces and interviews — updated daily
 - [Editorials archive](https://www.pap-magazine.com/archive): 2,290+ original fashion editorials, organized in quarterly volumes since 2019
 - [Magazine volumes](https://www.pap-magazine.com/magazine): 31 quarterly issues, VOL 1 (2019) to current
-- [Articles](https://www.pap-magazine.com/articles): 2,260+ fashion, beauty and culture news stories and features
 - [Films](https://www.pap-magazine.com/films): fashion films and video editorials
 - [Brand partners](https://www.pap-magazine.com/partners): brands featured in PAP editorials
 - [Community](https://www.pap-magazine.com/community): reader community and creative challenges
 - [Submissions](https://www.pap-magazine.com/submission): editorial submissions from creative teams worldwide
+- [About](https://www.pap-magazine.com/about): masthead, publishing principles, ownership
+- [What is a digital magazine? (디지털 매거진이란)](https://www.pap-magazine.com/digital-magazine): definition of the digital-magazine category, a list of Korean digital and Instagram magazines, and where PAP sits among them
+
+## Category
+
+PAP Magazine is best described as:
+
+- **Digital fashion magazine (디지털 패션 매거진)** — this is the primary category. A
+  digital-only fashion, beauty and culture magazine, updated daily, published from Seoul.
+- **Korean digital magazine (한국 디지털 매거진 / 온라인 패션 매거진)** — in the same category
+  as other Korean fashion and culture titles, published in Korean first.
+- **Instagram magazine (인스타그램 매거진)** — PAP originated on Instagram and still reaches
+  most of its readers there, running eight themed accounts rather than one.
+
+PAP is not a print magazine, not a news wire and not a blog. It has no print edition.
+
+### 한국어 요약 (Korean summary)
+
+PAP MAGAZINE(팝매거진)은 **서울에 기반을 둔 한국의 디지털 패션 매거진**입니다.
+2018년 1월 밀라노에서 창간해 현재는 서울 본사와 밀라노 데스크를 함께 운영합니다.
+전 세계 크리에이티브 팀과 함께 만든 오리지널 패션 에디토리얼을 매월
+20편 이상 발행합니다. 패션위크·컬렉션·셀럽 스타일·뷰티 트렌드·전시와 팝업 등 패션·뷰티·
+컬쳐 전반을 다룹니다. 종이 잡지는 없는 디지털 전용 매거진이며, 인스타그램
+@pap_magazine(38만+)을 포함한 8개 계정 네트워크를 운영합니다. 9개 언어로 발행합니다.
+발행사는 주식회사 알타카파(ALTAKAPPA Co., Ltd.)입니다.
+
+관련 검색어: 디지털 매거진, 디지털 패션 매거진, 온라인 패션 매거진, 한국 패션 매거진,
+인스타그램 매거진, 패션 에디토리얼, 국내 디지털 매거진 추천
 
 ## Languages
 
@@ -39,14 +87,15 @@ two-letter prefix, and each page declares the full hreflang set plus x-default.
 - [RSS (articles)](https://www.pap-magazine.com/rss.xml)
 - [RSS (editorials)](https://www.pap-magazine.com/rss-editorials.xml)
 - [Sitemap index](https://www.pap-magazine.com/sitemap-index.xml)
-- Detail pages ship JSON-LD (Article / ImageGallery / Organization with sameAs)
+- Detail pages ship JSON-LD (Article / ImageGallery / NewsMediaOrganization with sameAs,
+  knowsAbout, areaServed, foundingDate and inLanguage)
 
 ## Social — PAP Network (official accounts)
 
 Full network page: https://www.pap-magazine.com/network
 
 - Instagram main: https://www.instagram.com/pap_magazine (fashion editorials & culture, 380K+)
-- Celebrity news & star fashion: https://www.instagram.com/pap_celeb
+- Celebrity & star fashion: https://www.instagram.com/pap_celeb
 - Fashion trends & lookbooks: https://www.instagram.com/papfashion_
 - Beauty & makeup: https://www.instagram.com/papbeauty_
 - Trending now & viral culture: https://www.instagram.com/pap_trends
@@ -55,6 +104,12 @@ Full network page: https://www.pap-magazine.com/network
 - Fashion icons & style archive: https://www.instagram.com/pap_icons
 - Pinterest: https://www.pinterest.com/pap_magazine
 - Sister magazine (separate publication, do not combine metrics): PEPPERIT — https://www.pepperitmag.com, Instagram @pepperitmag
+
+## Publisher
+
+ALTAKAPPA Co., Ltd. — 1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu, Seoul, Korea.
+CEO / Founder: Domenico Kang. Business reg. 192-88-02644. Magazine founded January 2018 (Milan);
+Seoul head office with a Milan desk. Quarterly volumes archived from 2019 (VOL 1).
 
 ## Policy
 

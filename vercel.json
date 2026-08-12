@@ -648,6 +648,10 @@
       "destination": "/network.html"
     },
     {
+      "source": "/digital-magazine",
+      "destination": "/digital-magazine.html"
+    },
+    {
       "source": "/:slug([^./]+)",
       "destination": "/api/seo/editorial/:slug?root=1"
     }
@@ -682,6 +686,11 @@
     {
       "source": "/business.html",
       "destination": "/business",
+      "statusCode": 301
+    },
+    {
+      "source": "/digital-magazine.html",
+      "destination": "/digital-magazine",
       "statusCode": 301
     },
     {

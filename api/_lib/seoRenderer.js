@@ -221,10 +221,74 @@ const ORG_PUBLISHER = {
   alternateName: ['PAP MAGAZINE', 'PAP MAG', 'PAP', 'PAP 매거진', 'PAP매거진', '팝매거진', '팹매거진'],
   // 브랜드 자기소개 한 문장 (2026-07-16 도메니코 확정) — 전 채널 통일 표기.
   // AEO/GEO: 모든 SSR 페이지가 같은 엔티티 서술을 반복해 AI 의 브랜드 인식을 일관화.
-  description: 'PAP MAGAZINE(팝매거진)은 서울·밀라노 기반, 아트를 중심으로 한 패션·뷰티·컬쳐 디지털 매거진입니다. A Seoul & Milan-based, art-driven fashion, beauty and culture magazine.',
+  // 2026-08-12 도메니코 정정: "뉴스 매체는 아니고 패션 매거진, 디지털 패션 매거진".
+  // 이전 문안(2026-07-16 확정)은 '아트를 중심으로 한'이 주어라 AI 가 PAP 을
+  // '아트 서브미션 매거진'으로만 인식했다. 카테고리어(디지털 패션 매거진)를 앞으로
+  // 내고 아트 에디토리얼은 정체성으로 뒤에 남긴다 — 둘 다 사실이다.
+  description: 'PAP MAGAZINE(팝매거진)은 서울에 기반을 둔 한국의 디지털 패션 매거진입니다. 전 세계 크리에이티브 팀과 함께 만든 오리지널 아트 에디토리얼을 매월 20편 이상 발행하고, 패션위크·컬렉션·셀럽 스타일·뷰티·컬쳐 전반을 다룹니다. 밀라노 데스크를 함께 운영하며 9개 언어로 발행합니다. A Korean digital fashion magazine based in Seoul, with a Milan desk. It publishes 20+ original art-driven fashion editorials every month with creative teams worldwide, alongside daily fashion, beauty and culture coverage.',
   url: SITE,
   logo: { '@type': 'ImageObject', url: ORG_LOGO },
-  sameAs: ORG_SAMEAS
+  sameAs: ORG_SAMEAS,
+
+  /* ── AI/GEO 엔티티 보강 (2026-08-12) ───────────────────────────────────
+   * 왜: ChatGPT 등에 "디지털 매거진 추천"을 물으면 PAP 이 안 나오고, 나와도
+   * "아트 서브미션 기반 에디토리얼 매거진"으로만 인식된다. 원인 중 하나는
+   * Organization 엔티티가 name·description·sameAs 만 있고 **무엇을 다루는
+   * 매체인지·어디 매체인지·언제부터인지**가 비어 있었다는 것이다.
+   * LLM 과 지식그래프는 이 필드들을 그대로 읽는다.
+   *
+   * 아래는 전부 사실 진술이라 브랜드 카피 결정이 필요 없다. description 문장
+   * 자체(2026-07-16 도메니코 확정)는 건드리지 않았다 — 그건 별도 승인 사항. */
+
+  // 어느 나라 매체인가 — "한국 디지털 매거진" 질의에 걸리는 핵심 신호.
+  // 창간지는 밀라노(2018-01), 본사는 서울. about.html 의 자기소개·FAQ 와 같은 값이어야 한다.
+  // 2026-08-12: foundingDate 를 2019 로 두면 /about 의 "2018년 1월 출범"과 모순되어
+  // AI 가 둘 다 신뢰하지 않는다. VOL 1(2019)은 아카이브 시작이지 창간이 아니다.
+  foundingLocation: {
+    '@type': 'Place',
+    address: { '@type': 'PostalAddress', addressLocality: 'Milan', addressCountry: 'IT' }
+  },
+  location: {
+    '@type': 'Place',
+    address: { '@type': 'PostalAddress', addressLocality: 'Seoul', addressCountry: 'KR' }
+  },
+  areaServed: [
+    { '@type': 'Country', name: 'South Korea' },
+    { '@type': 'Place', name: 'Worldwide' }
+  ],
+  foundingDate: '2018-01',
+
+  // 무엇을 다루는 매체인가 — AI 가 주제어 목록을 그대로 인용한다.
+  // 에디토리얼만이 아니라 뉴스·트렌드도 다룬다는 사실을 명시한다.
+  knowsAbout: [
+    // 카테고리 호명어 — "디지털 매거진 추천" 류 질의에 걸리는 말들. 맨 앞에 둔다.
+    '디지털 매거진', '디지털 패션 매거진', '온라인 패션 매거진', '웹 매거진',
+    '한국 패션 매거진', '인스타그램 매거진',
+    '패션', '뷰티', '컬쳐', '패션위크', '스트릿 스타일', '셀럽 패션', 'K-팝 스타일',
+    '뷰티 트렌드', '한국 패션 브랜드', '팝업스토어', '전시', '패션 필름',
+    '패션 에디토리얼', '아트 에디토리얼',
+    'Fashion', 'Beauty', 'Culture', 'Fashion Week', 'Street Style',
+    'Celebrity Fashion', 'K-pop Fashion', 'Korean Fashion Brands',
+    'Fashion Editorial', 'Fashion Film',
+    'Digital Magazine', 'Digital Fashion Magazine', 'Online Fashion Magazine',
+    'Korean Fashion Magazine', 'Instagram Magazine'
+  ],
+
+  // 발행 언어 (9개) — 다국어 매체임을 엔티티 수준에서 선언.
+  inLanguage: ['ko', 'en', 'it', 'fr', 'es', 'ja', 'de', 'zh', 'ru'],
+
+  publishingPrinciples: SITE + '/about',
+  ownershipFundingInfo: SITE + '/about',
+  publisher: {
+    '@type': 'Organization',
+    name: 'ALTAKAPPA Co., Ltd.',
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: '1F, 18, Nonhyeon-ro 146-gil, Gangnam-gu',
+      addressLocality: 'Seoul',
+      addressCountry: 'KR'
+    }
+  }
 };
 
 /* ── escape helpers ─────────────────────────────────── */
