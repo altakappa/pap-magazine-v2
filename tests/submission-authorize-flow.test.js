@@ -85,6 +85,20 @@ console.log('=== "지금 청구되지 않는다" 가 9개 언어에 있다 ===')
     '뜻이 안 맞는 언어: ' + bad.join(','));
 }
 
+console.log('=== intent 는 "심사 전인가" 로 갈린다 (기존 66건 결제 불능 방지) ===');
+{
+  const order = read('api/submissions/paypal-order.js');
+  ok('심사 전이면 AUTHORIZE, 승인된 건이면 CAPTURE',
+    /kind === 'submission_fee' && String\(sub\.status\) !== 'approved'/.test(order)
+    && /\? 'AUTHORIZE' : 'CAPTURE'/.test(order),
+    'kind 만으로 가르면 이미 승인된 건이 AUTHORIZE 주문을 만들고 capture 로 보내 실패한다 '
+    + '— 미결제 18건(€13,400) 회수 경로가 통째로 막힌다. 2026-08-12 실측으로 잡았다.');
+  ok('  → 판단에 쓰는 status 를 실제로 조회한다', /\.select\('[^']*\bstatus\b[^']*'\)/.test(order),
+    '조회하지 않으면 undefined 가 되어 항상 AUTHORIZE 로 샌다');
+  ok('  → 애드온은 CAPTURE 그대로', /kind === 'submission_fee' &&/.test(order),
+    '애드온은 게재 확정 후 사는 상품이라 묶어둘 이유가 없다');
+}
+
 console.log('=== 캐시버스트 ===');
 {
   const s1 = read('frontend/submission.html').match(/pap-submission-fee\.js\?v=(\d+)/);

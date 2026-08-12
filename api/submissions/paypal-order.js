@@ -40,7 +40,7 @@ module.exports = async function handler(req, res) {
   try {
     const { data: sub, error } = await supabaseAdmin
       .from('submissions')
-      .select('id, user_id, title, description, payment_status, paypal_authorization_id')
+      .select('id, user_id, title, description, status, payment_status, paypal_authorization_id')
       .eq('id', submissionId)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -85,10 +85,21 @@ module.exports = async function handler(req, res) {
       method: 'POST',
       headers: { 'PayPal-Request-Id': requestId },
       body: JSON.stringify({
-        // 🔴 2026-08-12 — 기본 게재료는 AUTHORIZE(돈 묶기)로 받는다.
-        //    심사 승인 시 capture(청구), 거절·보완·SLA초과 시 void(무청구).
-        //    애드온은 게재 확정 후 사는 선택 상품이라 종전대로 즉시 CAPTURE.
-        intent: kind === 'submission_fee' ? 'AUTHORIZE' : 'CAPTURE',
+        // 🔴 2026-08-12 — 게재료 intent 는 "심사 전인가" 로 갈린다.
+        //
+        //   심사 전(pending·revision) → AUTHORIZE : 돈을 묶기만 한다. 승인되면
+        //     capture(청구), 거절·보완·SLA초과면 void(무청구). 승인후결제의 본체.
+        //
+        //   이미 승인됨(approved)     → CAPTURE   : "지금 결제하기" 경로다.
+        //     심사가 이미 끝났으므로 묶어둘 이유가 없고, 묶어두면 심사 시점이
+        //     없어 영영 캡처되지 않는다. 기존 승인 66건이 여기 해당한다.
+        //
+        //   애드온                    → CAPTURE   : 게재 확정 후 사는 선택 상품.
+        //
+        // ⚠️ 이 분기를 kind 만으로 판단하면 승인된 건이 결제 불능이 된다
+        //    (AUTHORIZE 주문을 capture 엔드포인트로 보내 실패). 2026-08-12 실측.
+        intent: (kind === 'submission_fee' && String(sub.status) !== 'approved')
+          ? 'AUTHORIZE' : 'CAPTURE',
         purchase_units: [{
           custom_id: buildCustomId(kind, submissionId, addon),
           description: amt.label.slice(0, 127),
