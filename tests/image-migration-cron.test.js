@@ -145,17 +145,39 @@ console.log('=== 실패 사유 3분류 · 일시적 실패 자동 재시도 (202
      일시적     → 다시 하면 된다. 사람이 할 일 없음
    그리고 실패 표는 '다시는 시도 안 함' 이라는 뜻이므로, 일시적 실패를 거기
    영구로 남기면 멀쩡한 원본을 잃는다(118·121 에서 두 번 손으로 치웠다). */
-t('알림이 일시적 실패를 따로 센다', /const transient = newFailures\.filter/.test(mig)
-  && /\^storage:/.test(mig));
-t('일시적 실패를 죽은 링크에서 뺀다',
-  /const dead = newFailures\.filter\(f => !\/\^too large\/\.test\(f\.reason\) && !\/\^storage:\/\.test\(f\.reason\)\)/.test(mig),
+/* 판정을 한 곳에 모았다 — 오늘 하루에 세 번 다시 분류했고, 매번 알림 문구만
+   고쳤기 때문이다. 이제 알림과 재시도가 같은 함수(isTransientReason)를 쓴다.
+   그 함수를 실제로 실행해서 사유별 판정을 고정한다(정규식 눈으로 읽기 금지). */
+const _fn = (mig.match(/function isTransientReason[\s\S]*?\n}/) || [''])[0];
+t('사유 판정 함수가 하나 있다', _fn.length > 0);
+let isTransientReason = () => { throw new Error('없음'); };
+try { isTransientReason = eval('(' + _fn.replace(/^function /, 'function ') + ')'); } catch (_) {}
+const CASES = [
+  ['HTTP 404', false, '원본이 없다'],
+  ['HTTP 410', false, '영구 삭제'],
+  ['HTTP 403', false, 'wix 79장 브라우저 실측 — 진짜 사망이었다'],
+  ['HTTP 500', true,  '저쪽 서버가 흔들린 것 — 다시 하면 될 수 있다'],
+  ['HTTP 502', true,  '같은 이유'],
+  ['storage: Bad Request', true, '우리 업로드가 튕긴 것'],
+  ['not an image: text/html', true, '드라이브 오류 페이지 — 진짜 없으면 404 가 온다'],
+  ['not an image: binary/octet-stream', false, '확장자 폴백으로도 못 살린 것'],
+  ['too large: 40000000', false, '우리 설정 문제 — 재시도해도 같다'],
+];
+for (const [reason, expected, why] of CASES) {
+  t('  ' + reason + ' → ' + (expected ? '일시적' : '영구/설정'),
+    isTransientReason(reason) === expected, why);
+}
+t('알림이 같은 함수로 일시적을 가른다', /transient = newFailures\.filter\(f => isTransientReason/.test(mig));
+t('죽은 링크에서 일시적을 뺀다', /!isTransientReason\(f\.reason\)/.test(mig),
   '섞이면 있지도 않은 원본을 찾으러 가게 된다');
 t('일시적 실패에는 할 일이 없다고 알린다', /할 일 없음/.test(mig));
-t('storage 실패는 1시간 뒤 자동 재시도된다',
-  /like\('reason', 'storage:%'\)/.test(mig) && /lt\('failed_at'/.test(mig),
+t('일시적 실패는 1시간 뒤 자동 재시도된다',
+  /RETRY_AFTER_MS/.test(mig) && /filter\(f => isTransientReason\(f\.reason\)\)/.test(mig),
   '손으로 세 번째 치우지 않기 위한 장치');
-t('404·용량초과 기록은 건드리지 않는다',
-  !/like\('reason', 'too large/.test(mig) && !/like\('reason', 'HTTP/.test(mig),
+t('24시간이 지나면 재시도를 포기한다', /RETRY_GIVE_UP_MS/.test(mig),
+  '무한 재시도는 잔량이 영영 안 줄어드는 꼬리를 만든다');
+t('영구·설정 사유는 자동 삭제 대상이 아니다',
+  !/like\('reason', 'too large/.test(mig) && !/like\('reason', 'HTTP 4/.test(mig),
   '재시도해도 결과가 같은 것을 반복하면 예산만 먹는다');
 t('정리 실패가 본업을 막지 않는다', /정리 실패는 무시/.test(mig));
 t('note 가 실패를 죽은링크로 단정하지 않는다', !/죽은링크/.test(mig),

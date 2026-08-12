@@ -36,6 +36,39 @@ const { sendTextToTelegramSafe } = require('../_lib/telegram');
  * '인스타 CDN 잔존 0건'을 근거로 껐는데, 인스타 CDN 은 여기 없다.
  * 그래서 드라이브 1,077건이 12일간 그대로였다(끄기 전과 정확히 같은 수). */
 const EXTERNAL_RE = /drive\.google\.com|pap-korea-bucket\.s3|static\.wixstatic\.com/;
+
+/* ─── 실패 사유의 '성격' — 이 파일의 유일한 기준 (2026-08-12) ───────────────
+ *
+ * 오늘 하루에 세 번 다시 분류했다. 매번 알림 문구만 고쳤기 때문이다.
+ * 이번엔 판정을 한 곳에 모으고, 알림·재시도가 **같은 함수**를 쓰게 한다.
+ *
+ *   영구   HTTP 404 · 410 · 403   원본이 없거나 영영 막혔다 → 재업로드 외 방법 없음
+ *          (403: wix 79장을 브라우저로 직접 확인 — 진짜 사망이었다)
+ *   설정   too large              우리 상한 문제 → 상한 조정·리사이즈
+ *   일시적 5xx · storage · timeout · text/html
+ *                                 저쪽 서버가 잠깐 흔들렸거나 우리 업로드가 튕겼다
+ *
+ * 왜 text/html 이 일시적인가: 드라이브는 파일이 진짜 없으면 404 를 준다.
+ * 200 + HTML 은 대개 그 순간의 오류·제한 페이지다. 실측(2026-08-12): 4시간
+ * 1,000장 남짓 중 4건, 한 에디토리얼에서 500·500·html 이 같은 순간에 났다 —
+ * 파일 셋이 동시에 사라졌다기보다 그 순간 드라이브가 흔들렸다고 보는 게 맞다.
+ *
+ * ⚠️ 여기에 사유를 추가할 때는 '재시도하면 결과가 달라질 수 있는가' 만 묻는다.
+ *    달라질 수 없으면 영구다. 영구를 일시적으로 넣으면 잔량이 안 줄어드는
+ *    꼬리가 생기고, 일시적을 영구로 넣으면 멀쩡한 원본을 잃는다. */
+function isTransientReason(reason) {
+  const r = String(reason || '');
+  return /^storage:/.test(r)
+      || /^HTTP 5\d\d/.test(r)
+      || /^not an image: text\/html/.test(r)
+      || /timeout/i.test(r)
+      || /^fetch /.test(r);
+}
+/* 재시도 창 — 1시간 지난 것부터, 24시간까지만 다시 시도한다.
+   하루를 매시간 두드려도 안 되면 그건 일시적이 아니다(그때는 영구로 굳는다).
+   무한 재시도는 잔량이 영영 안 줄어드는 꼬리를 만든다. */
+const RETRY_AFTER_MS = 3600000;      // 1시간
+const RETRY_GIVE_UP_MS = 86400000;   // 24시간
 /* 상한 30MB — 2026-08-11 15MB 에서 올렸다.
  *
  * wix 우선 이관 첫 회차(00:10 UTC)에서 13장이 'too large' 로 **영구 제외**됐다.
@@ -155,16 +188,21 @@ module.exports = withCronGuard('migrate-external-images', async function handler
    * (b)(c) 를 영구로 굳히는 바람에 118 · 121 두 번을 손으로 치웠고,
    * 오늘 또 storage 실패 1건이 같은 자리에 박혔다. 손으로 세 번 치우지 않는다.
    *
-   * storage 실패만, 1시간 지난 것만 지운다:
+   * 일시적 사유(isTransientReason)만, 1시간 지난 것부터 24시간까지만 지운다:
    *  · 진짜로 계속 실패하면 매시간 한 번씩 다시 걸린다 — 한 장이라 비용은 무시할 만하고
    *    알림에 계속 보이므로 조용히 묻히지 않는다.
    *  · 같은 회차 안에서 무한 재시도하지는 않는다(1시간 간격).
    * 404·too large 는 손대지 않는다 — 그건 재시도해도 결과가 같다. */
   try {
-    await supabaseAdmin.from('image_migration_failures')
-      .delete()
-      .like('reason', 'storage:%')
-      .lt('failed_at', new Date(Date.now() - 3600000).toISOString());
+    const now = Date.now();
+    const { data: old } = await supabaseAdmin.from('image_migration_failures')
+      .select('url, reason')
+      .lt('failed_at', new Date(now - RETRY_AFTER_MS).toISOString())
+      .gt('failed_at', new Date(now - RETRY_GIVE_UP_MS).toISOString());
+    const retryUrls = (old || []).filter(f => isTransientReason(f.reason)).map(f => f.url);
+    if (retryUrls.length) {
+      await supabaseAdmin.from('image_migration_failures').delete().in('url', retryUrls);
+    }
   } catch (_) { /* 정리 실패는 무시 — 본업을 막지 않는다 */ }
 
   // 이전 실패 URL 은 건너뛴다 (죽은 링크 재시도 금지)
@@ -237,8 +275,8 @@ module.exports = withCronGuard('migrate-external-images', async function handler
     /* 'storage:' 는 업로드가 거절된 것 — 원본은 멀쩡하다.
        이걸 '원본이 사라졌다' 로 알리면 도메니코가 있지도 않은 원본을 찾으러 간다.
        (2026-08-12 실측: storage: Bad Request 1건을 '죽은 링크' 로 알렸다.) */
-    const transient = newFailures.filter(f => /^storage:/.test(f.reason));
-    const dead = newFailures.filter(f => !/^too large/.test(f.reason) && !/^storage:/.test(f.reason));
+    const transient = newFailures.filter(f => isTransientReason(f.reason));
+    const dead = newFailures.filter(f => !/^too large/.test(f.reason) && !isTransientReason(f.reason));
     const lines = [];
     if (dead.length) {
       lines.push('❌ 죽은 링크 ' + dead.length + '건 — 원본이 사라졌다(재업로드 외 방법 없음)');
@@ -252,8 +290,9 @@ module.exports = withCronGuard('migrate-external-images', async function handler
       lines.push('   → 상한을 올리거나 리사이즈해서 받아야 한다. 재업로드 대상 아님');
     }
     if (transient.length) {
-      lines.push('🔁 일시적 실패 ' + transient.length + '건 — 우리 쪽 업로드가 거절됐다. 원본은 멀쩡하다');
-      lines.push('   → 1시간 뒤 자동으로 한 번 더 시도한다. 할 일 없음');
+      lines.push('🔁 일시적 실패 ' + transient.length + '건 — 저쪽 서버가 잠깐 흔들렸거나 업로드가 튕겼다. 원본은 멀쩡하다');
+      lines.push('   ' + transient.slice(0, 4).map(f => '· ' + f.reason).join('\n   '));
+      lines.push('   → 1시간 뒤부터 자동 재시도(최대 24시간). 할 일 없음');
     }
     sendTextToTelegramSafe(
       '🖼 이미지 이관 중 실패 ' + newFailures.length + '건\n' + lines.join('\n')
