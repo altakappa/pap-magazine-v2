@@ -75,7 +75,23 @@ console.log('\n[4] sync-instagram 배선 — 자동 게시가 없는 모든 지�
   /* 2026-08-09 B-7: kind 를 넘긴다 — 에디토리얼만 웹 푸시가 함께 나간다 */
   const hooksEd = (sync.match(/maybeBoostPost\(m, \{ backfillMode, kind: 'editorial' \}\)/g) || []).length;
   const hooksDr = (sync.match(/maybeBoostPost\(m, \{ backfillMode, kind: 'draft' \}\)/g) || []).length;
-  t('부스트 4지점 (에디토리얼 3 + draft 1) (' + hooksEd + '+' + hooksDr + '/4)', hooksEd === 3 && hooksDr === 1);
+  t('부스트 3지점 (에디토리얼 2 + draft 1) (' + hooksEd + '+' + hooksDr + '/3)', hooksEd === 2 && hooksDr === 1);
+
+  /* 2026-08-12 회귀 — 개수만 세던 이 테스트는 "4지점" 을 통과시켰지만 그중 2개가
+     도달 불가 코드였다. 백필 블록(`if (backfillMode && !dry)`) 안의 `!backfillMode`
+     가드는 절대 참이 되지 않는다. ig_boosts 가 신설 후 0건이던 진짜 이유다.
+     이제 개수가 아니라 **위치**를 검증한다. */
+  const backfillStart = sync.indexOf('if (backfillMode && !dry){');
+  const backfillEnd = sync.indexOf('// ═══ 최근-동기화(backfillDays===0)');
+  t('백필 블록 경계를 찾을 수 있다', backfillStart > 0 && backfillEnd > backfillStart,
+    backfillStart + '/' + backfillEnd);
+  const insideBackfill = sync.slice(backfillStart, backfillEnd);
+  t('백필 블록 안에는 부스트 호출이 없다 (도달 불가 코드 금지)',
+    insideBackfill.indexOf('maybeBoostPost') === -1);
+  t('최근-동기화 경로의 에디토리얼 스킵에 부스트가 걸려 있다',
+    /if \(cls !== 'article'\)\{[\s\S]{0,900}?maybeBoostPost\(m, \{ backfillMode, kind: 'editorial' \}\)/.test(sync));
+  t('그 스킵 지점은 백필 블록 밖이다',
+    sync.indexOf("if (cls !== 'article'){") > backfillEnd);
   t('lib 를 require 한다', /require\('\.\.\/_lib\/goldenBoost'\)/.test(sync));
   t('부스트 수를 결과에 센다', /results\.boosted = \(results\.boosted\|\|0\)\+1/.test(sync));
   t('draft 지점은 발행 분기 앞에 있다 (발행 기사는 부스트 안 탐)',

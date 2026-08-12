@@ -83,6 +83,53 @@ console.log('\n[4] 배선');
     && /check \(verdict in \('hot','mid','cold'\)\)/.test(mig) && !/unique index[\s\S]{0,80}where/i.test(mig));
 }
 
+console.log('\n[5] 1시간령 조기 알림 (2026-08-12) — 개입할 시간이 남은 유일한 시점');
+{
+  const rows = [
+    { post_id: 'a', age_hours: 0.7, like_count: 10 },
+    { post_id: 'a', age_hours: 1.05, like_count: 40 },
+    { post_id: 'a', age_hours: 3.0, like_count: 300 },
+    { post_id: 'b', age_hours: 1.4, like_count: 9 },
+  ];
+  const picked = mod.pickClosestAge(rows, 1);
+  const a = picked.find((r) => r.post_id === 'a');
+  t('목표 나이 1시간에 가장 가까운 스냅샷 (1.05h → 40)', a && a.like_count === 40, a && a.like_count);
+  t('3시간 picker 는 같은 입력에서 3.0h 를 고른다 (기존 계약 불변)',
+    mod.pickClosest3h(rows).find((r) => r.post_id === 'a').like_count === 300);
+  t('targetH 가 없거나 깨져도 3시간으로 폴백',
+    mod.pickClosestAge(rows, undefined).find((r) => r.post_id === 'a').like_count === 300
+    && mod.pickClosestAge(rows, 'x').find((r) => r.post_id === 'a').like_count === 300);
+  t('null 입력에 안 죽는다', mod.pickClosestAge(null, 1).length === 0);
+
+  t('선점 키가 3시간 판정과 섞이지 않는다', mod.earlyAlertKey('123') === 'algo_coach_1h:123');
+  t('키가 post_id 를 문자열로 강제한다', mod.earlyAlertKey(123) === 'algo_coach_1h:123');
+
+  t('선점 후 알림 — INSERT 를 먼저 하고 23505 로 판단',
+    src.indexOf("from('ops_alert_state').insert(") < src.indexOf("claimEarlyErr.code === '23505'"));
+  t('스키마를 늘리지 않는다 (algo_coach ALTER·새 컬럼 없음)',
+    !/alter table/i.test(src) && !/likes_1h:.*column/i.test(src));
+  t('임계 미달은 침묵 — 알림도 기록도 없다', /if \(likes < p75\) continue;/.test(src));
+  t('1시간 표본 20 미만이면 보류', /hist\.length < 20[\s\S]{0,120}1시간 표본 부족/.test(src));
+  t('조기 패스 실패가 3시간 판정을 막지 않는다',
+    /try \{ early = await runEarlyPass\(\); \}[\s\S]{0,160}catch/.test(src));
+  t('note 에 1시간 결과가 남는다 (돌았다 ≠ 했다)', /earlyNote/.test(src)
+    && (src.match(/earlyNote/g) || []).length >= 4);
+  t('알림 문구가 60분 안 액션을 지시한다',
+    /앞으로 60분 안에/.test(src) && /스토리로 리샤어/.test(src));
+
+  t('ig-snapshot 이 매시 :01 — 1시간령 관측이 있어야 판정이 산다',
+    /"path": "\/api\/cron\/ig-snapshot",\s*\n\s*"schedule": "1 \* \* \* \*"/.test(vj));
+  /* 순서가 뒤집히면 코치는 최대 59분 묵은 스냅샷으로 판정한다 — 조기 알림의 의미가 사라진다 */
+  const minOf = (p) => {
+    const m = new RegExp('"path": "' + p.replace(/\//g, '\\/') + '",\\s*\\n\\s*"schedule": "(\\d+) ').exec(vj);
+    return m ? parseInt(m[1], 10) : null;
+  };
+  const snapMin = minOf('/api/cron/ig-snapshot');
+  const coachMin = minOf('/api/cron/algo-coach');
+  t('스냅샷이 코치보다 먼저 돈다 (:' + snapMin + ' < :' + coachMin + ')',
+    snapMin !== null && coachMin !== null && snapMin < coachMin);
+}
+
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) { console.log('❌ algo-coach tests FAILED'); process.exit(1); }
 console.log('✅ algo-coach tests passed');

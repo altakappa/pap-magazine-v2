@@ -131,7 +131,7 @@
     },
     {
       "path": "/api/cron/ig-snapshot",
-      "schedule": "15 */3 * * *"
+      "schedule": "1 * * * *"
     },
     {
       "path": "/api/cron/pipeline-watch",

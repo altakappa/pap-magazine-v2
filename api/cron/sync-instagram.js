@@ -335,13 +335,15 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
           if (exSet.has(m.id)){ results.skipped_existing++; continue; }
           const shortcode = _extractShortcode(m.permalink);
           if (shortcode && editorialShortcodes.has(shortcode)){
+            /* 2026-08-12 — 여기 있던 부스트 호출은 도달 불가 코드였다. 이 블록 전체가
+               `if (backfillMode && !dry)` 안이라 `!backfillMode` 가 절대 참이 되지 않는다.
+               백필은 원래 부스트 금지(소셜 스팸)이므로 스킵만 세고 넘어가는 게 맞다.
+               진짜 부스트는 아래 최근-동기화 경로에 있다. */
             results.skipped_editorial_db++;
-            if (!backfillMode){ const b = await maybeBoostPost(m, { backfillMode, kind: 'editorial' }); if (b.boosted) results.boosted = (results.boosted||0)+1; }
             continue;
           }
           if (isLikelyEditorialCaption(m.caption)){
-            results.skipped_editorial_caption++;
-            if (!backfillMode){ const b = await maybeBoostPost(m, { backfillMode, kind: 'editorial' }); if (b.boosted) results.boosted = (results.boosted||0)+1; }
+            results.skipped_editorial_caption++;   /* 백필은 부스트 금지 — 위 주석 참조 */
             continue;
           }
           if (toProcess.length < perCall){ toProcess.push(m); }
@@ -474,7 +476,17 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
         });
         continue;
       }
-      if (cls !== 'article') continue;
+      if (cls !== 'article'){
+        /* 2026-08-12 — 골든아워의 진짜 구멍이 여기였다.
+           editorial(db)·editorial(caption) 로 걸러진 게시물은 processOne 을 아예
+           타지 않아 X·스레드 자동 게시도, 부스트도 나가지 않았다. 즉 초기 속도
+           푸시가 0. 그런데 팔로우 전환은 캐러셀 에디토리얼이 사실상 전부다
+           (평균 5.3 vs 영상 0.0). ig_boosts 가 신설(08-09) 이후 0건이던 이유.
+           부스트 실패는 수집을 막지 않는다 (maybeBoostPost 는 전체 try/catch). */
+        const b = await maybeBoostPost(m, { backfillMode, kind: 'editorial' });
+        if (b.boosted) results.boosted = (results.boosted||0)+1;
+        continue;
+      }
       try { await processOne(m); }
       catch (e){
         results.failed++;
