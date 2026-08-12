@@ -272,7 +272,11 @@ async function generateEditorialDraft(ed, brand) {
   if (brand !== 'pap') throw new Error('에디토리얼은 PAP만 지원합니다.');
   if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY 환경변수 누락.');
   const b = SITES.pap;
-  const url = b.site + '/editorial/' + encodeURIComponent(ed.slug);
+  /* 2026-08-12 — 기사 경로(artUrl)는 8/7 에 utm 을 붙였는데 **에디토리얼 경로만
+     빠져 있었다.** 규칙이 두 벌이면 한쪽만 고쳐진다(GROWTH-LEDGER 교훈 2)의 재발.
+     화보 포스팅에서 사이트로 넘어온 사람은 그동안 전부 집계 밖이었다. */
+  const url = b.site + '/editorial/' + encodeURIComponent(ed.slug)
+    + '?utm_source=naver&utm_medium=blog&utm_campaign=naver-blog';
   // 커버 + 갤러리 병합 후 최대 6장. 이후 프롬프트 [IMGn] 마커로 치환.
   const galleryRaw = Array.isArray(ed.gallery) ? ed.gallery.filter(u => typeof u === 'string' && /^https?:\/\//.test(u)) : [];
   const cover = ed.cover_image && /^https?:\/\//.test(ed.cover_image) ? ed.cover_image : (galleryRaw[0] || '');

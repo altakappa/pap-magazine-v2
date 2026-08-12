@@ -310,6 +310,67 @@ console.log('\n[10] 카테고리 정의 페이지 · 크롤러 가시성 (2026-0
      /'Digital Magazine'/.test(seo) && /'Instagram Magazine'/.test(seo));
 }
 
+console.log('\n[11] 인바운드 계측 공백 (2026-08-12 실측)');
+{
+  /* 왜 ────────────────────────────────────────────────────────────────
+   * DB 실측(최근 30일): 웹→IG 아웃클릭 4,058 vs 외부→웹 인클릭 src='ig' **4건**,
+   * src='naver' **0건**. 팔로워 38만 계정에서 30일에 4명일 리가 없다.
+   *
+   * 원인: logSocialInclick 은 SSR 상세 3곳(article·editorial·pepperit)에서만
+   * 돈다. 그런데 인스타 바이오·네이버 블로그·뉴스레터가 보내는 곳은 홈과 목록
+   * 페이지이고, 그 페이지들은 사람에게 **정적 HTML** 로 나간다 — 서버 함수가
+   * 아예 실행되지 않으니 utm 을 붙여도 기록될 자리가 없었다.
+   * "채널이 죽은 것"과 "계측이 없는 것"을 구분하지 못하면 어느 쪽도 못 고친다.
+   *
+   * 여기서 지키는 것:
+   *   ① 비콘 엔드포인트·프론트 파일이 존재하고 SSR 과 같은 함수를 쓴다
+   *   ② 정적 랜딩 페이지 전부에 비콘이 붙어 있다 (한 곳이라도 빠지면 그 문은 깜깜)
+   *   ③ SSR 상세 페이지에는 붙이지 않는다 (이중 집계 금지)
+   *   ④ 네이버 블로그 백링크 두 종류 모두 utm 을 단다 (기사·에디토리얼) */
+
+  const inclickApi = R('api/inclick.js');
+  const inclickJs  = R('frontend/pap-inclick.js');
+  const naverDraft = R('api/admin/naver-blog-draft.js');
+  const archiveJs  = R('api/seo/archive.js');
+
+  // ① 엔드포인트가 SSR 과 같은 기록 함수를 쓴다 — 규칙을 두 벌로 만들지 않는다
+  t('비콘 엔드포인트가 존재한다', inclickApi.length > 200);
+  t('비콘이 SSR 과 같은 logSocialInclick 을 쓴다',
+     /require\('\.\/_lib\/socialInclick'\)/.test(inclickApi)
+     && /logSocialInclick\(/.test(inclickApi));
+  t('비콘은 착륙 경로를 path 로 남긴다 (/api/inclick 로 뭉개지지 않는다)',
+     /shim\.url\s*=\s*landing/.test(inclickApi));
+  t('비콘 실패가 화면을 막지 않는다 (항상 204)', /status\(204\)/.test(inclickApi));
+  t('프론트 비콘은 utm_source 없으면 아무것도 안 한다',
+     /utm_source/.test(inclickJs) && /if \(!src\) return;/.test(inclickJs));
+  t('세션당 1회 — 새로고침 중복 집계 방지', /sessionStorage/.test(inclickJs));
+
+  // ② 정적 랜딩 페이지 전수 — 하나라도 빠지면 그 유입 경로는 영영 0으로 보인다
+  const LANDING = ['index', 'articles', 'magazine', 'films', 'community',
+                   'subscribe', 'about', 'network', 'digital-magazine'];
+  const missing = LANDING.filter((f) => !/pap-inclick\.js/.test(R('frontend/' + f + '.html')));
+  t('정적 랜딩 페이지 9곳 전부에 비콘이 붙어 있다',
+     missing.length === 0, missing.join(', ') || 'ok');
+  t('SSR 아카이브(/archive)도 비콘을 내보낸다 (edge 캐시라 서버 집계 불가)',
+     /pap-inclick\.js/.test(archiveJs));
+
+  // ③ 이중 집계 금지 — SSR 상세 렌더러는 비콘을 넣지 않는다
+  t('SSR 상세 렌더러에는 비콘이 없다 (이중 집계 금지)',
+     !/pap-inclick\.js/.test(seo));
+
+  // 성장 헌법 3항 — 아카이브 푸터의 생 IG 링크가 ig-out 을 우회하고 있었다
+  t('/archive 의 IG 링크가 ig-out 경유다 (성장 헌법 3항)',
+     !/href="https:\/\/www\.instagram\.com/.test(archiveJs)
+     && /\/api\/ig-out\?src=archive/.test(archiveJs));
+
+  // ④ 네이버 블로그 백링크 — 기사·에디토리얼 두 경로 모두
+  const utmCount = (naverDraft.match(/utm_source=naver&utm_medium=blog/g) || []).length;
+  t('네이버 블로그 백링크 utm 이 기사·에디토리얼 두 곳 모두에 있다',
+     utmCount >= 2, 'utm 링크 ' + utmCount + '곳');
+  t('에디토리얼 백링크에 utm 이 붙는다 (8/7 에 기사만 고쳐졌던 자리)',
+     /\/editorial\/'\s*\+\s*encodeURIComponent\(ed\.slug\)[\s\S]{0,80}utm_source=naver/.test(naverDraft));
+}
+
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) { console.log('❌ kr-growth-surface tests FAILED'); process.exit(1); }
 console.log('✅ kr-growth-surface tests passed');

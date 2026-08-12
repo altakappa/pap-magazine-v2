@@ -139,9 +139,12 @@ ${JSON.stringify({
   ${section('Films', filmItems)}
   <footer>
     <a href="/">Home</a><a href="/articles">Articles</a><a href="/films">Films</a><a href="/subscribe">Subscribe</a><a href="/about">About</a><a href="/rss.xml">RSS</a>
-    <a href="https://www.instagram.com/pap_magazine/" rel="noopener">Instagram @pap_magazine →</a>
+    <a href="/api/ig-out?src=archive&amp;to=profile&amp;url=https%3A%2F%2Fwww.instagram.com%2Fpap_magazine%2F" rel="noopener">Instagram @pap_magazine →</a>
   </footer>
 </div>
+<!-- 인바운드 계측 (2026-08-12). 이 페이지는 30분 edge 캐시라 서버에서 세면
+     캐시 히트가 전부 누락된다 — 브라우저에서 재는 비콘이 맞다. -->
+<script src="/pap-inclick.js?v=1" defer></script>
 </body>
 </html>`;
 
