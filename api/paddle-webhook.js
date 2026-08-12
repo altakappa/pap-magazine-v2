@@ -174,6 +174,32 @@ async function upsertSubscription(sub, userId) {
   const period = sub.current_billing_period || {};
   const status = mapStatus(sub.status);
 
+  // 🔴 2026-08-12 — 접근권 종료일은 "절대 앞당기지 않는다".
+  //
+  // 실제로 일어난 일: 2026-08-10 11:01 UTC 에 Paddle 폐쇄 사과로 유료 5명의
+  // current_period_end 를 손으로 1개월 늘렸다. 그런데 11:22~11:26 UTC 에 Paddle 이
+  // subscription.updated 를 보냈고, 이 upsert 가 Paddle 이 아는 원래 종료일로
+  // 4명을 되돌렸다(Gianna 만 웹훅이 안 와서 살아남았다). 메일로 이미 약속한
+  // 무료 1개월이 DB 에서 조용히 사라진 상태로 이틀이 지났다.
+  //
+  // 결제사는 "우리가 청구한 기간"만 안다. 사과·보상·수동 연장처럼 결제와 무관하게
+  // 늘린 접근권은 결제사가 알 방법이 없으므로, 결제사 값으로 덮으면 항상 손해가
+  // 우리 쪽으로 온다. 그래서 더 나중 날짜가 이기게 한다.
+  //
+  // 반대 방향(결제사가 더 뒤 날짜를 주는 정상 갱신)은 그대로 반영된다.
+  const incomingEnd = period.ends_at || null;
+  let nextEnd = incomingEnd;
+  const { data: prevRow } = await supabaseAdmin
+    .from('subscriptions')
+    .select('current_period_end')
+    .eq('user_id', userId)
+    .maybeSingle();
+  const prevEnd = prevRow && prevRow.current_period_end;
+  if (prevEnd && (!incomingEnd || new Date(prevEnd).getTime() > new Date(incomingEnd).getTime())) {
+    nextEnd = prevEnd;
+    console.log('[paddle-webhook] 접근권 종료일 유지 —', sub.id, 'DB:', prevEnd, '> 웹훅:', incomingEnd);
+  }
+
   const { error } = await supabaseAdmin.from('subscriptions').upsert({
     user_id: userId,
     paddle_customer_id: sub.customer_id,
@@ -182,7 +208,7 @@ async function upsertSubscription(sub, userId) {
     billing_cycle: interval === 'year' ? 'yearly' : 'monthly',
     status,
     current_period_start: period.starts_at || null,
-    current_period_end: period.ends_at || null,
+    current_period_end: nextEnd,
     updated_at: new Date().toISOString(),
   }, { onConflict: 'user_id' });
   // 2026-07-20 감사 교정: 저장 실패를 삼키고 200을 반환하면 Paddle이 재시도하지 않아
