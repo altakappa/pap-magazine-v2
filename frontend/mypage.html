@@ -677,15 +677,15 @@ function renderSubscriptionCard(user){
 // 여기서는 "실제 구독 레코드가 있을 때만" 버튼을 띄운다 — 수동 승급된 내부
 // 계정에는 해지할 대상이 없으므로 버튼이 뜨면 안 된다.
 var _MP_CANCEL_I18N = {
-  ko:{btn:'구독 해지', confirm:'구독을 해지할까요?\n\n이미 결제하신 기간이 끝날 때까지는 그대로 이용하실 수 있습니다.', done:'해지되었습니다.', until:'{d} 까지 이용하실 수 있습니다.', fail:'해지 처리에 실패했습니다. 잠시 후 다시 시도하시거나 contact@pap-magazine.com 으로 연락 주세요.'},
-  en:{btn:'Cancel subscription', confirm:'Cancel your subscription?\n\nYou keep full access until the end of the period you have already paid for.', done:'Your subscription has been cancelled.', until:'You have access until {d}.', fail:'Cancellation failed. Please try again shortly or email contact@pap-magazine.com.'},
-  de:{btn:'Abo kündigen', confirm:'Abonnement kündigen?\n\nSie behalten den vollen Zugang bis zum Ende des bereits bezahlten Zeitraums.', done:'Ihr Abonnement wurde gekündigt.', until:'Zugang bis {d}.', fail:'Kündigung fehlgeschlagen. Bitte später erneut versuchen oder contact@pap-magazine.com schreiben.'},
-  it:{btn:'Annulla abbonamento', confirm:"Vuoi annullare l'abbonamento?\n\nManterrai l'accesso completo fino alla fine del periodo già pagato.", done:'Abbonamento annullato.', until:'Accesso fino al {d}.', fail:'Annullamento non riuscito. Riprova a breve o scrivi a contact@pap-magazine.com.'},
-  fr:{btn:"Résilier l'abonnement", confirm:"Résilier votre abonnement ?\n\nVous conservez l'accès complet jusqu'à la fin de la période déjà payée.", done:'Votre abonnement a été résilié.', until:"Accès jusqu'au {d}.", fail:'Échec de la résiliation. Réessayez ou écrivez à contact@pap-magazine.com.'},
-  es:{btn:'Cancelar suscripción', confirm:'¿Cancelar la suscripción?\n\nMantendrá el acceso completo hasta el final del periodo ya pagado.', done:'Su suscripción ha sido cancelada.', until:'Acceso hasta el {d}.', fail:'La cancelación falló. Inténtelo de nuevo o escriba a contact@pap-magazine.com.'},
-  ja:{btn:'購読を解約', confirm:'購読を解約しますか？\n\nお支払い済みの期間が終わるまではそのままご利用いただけます。', done:'解約が完了しました。', until:'{d} までご利用いただけます。', fail:'解約に失敗しました。しばらくして再度お試しいただくか contact@pap-magazine.com までご連絡ください。'},
-  zh:{btn:'取消订阅', confirm:'要取消订阅吗？\n\n您已支付的周期结束前仍可正常使用。', done:'订阅已取消。', until:'您可使用至 {d}。', fail:'取消失败。请稍后重试或联系 contact@pap-magazine.com。'},
-  ru:{btn:'Отменить подписку', confirm:'Отменить подписку?\n\nДоступ сохранится до конца уже оплаченного периода.', done:'Подписка отменена.', until:'Доступ до {d}.', fail:'Не удалось отменить. Повторите позже или напишите на contact@pap-magazine.com.'}
+  ko:{btn:'구독 해지', confirm:'구독을 해지할까요?\n\n이미 결제하신 기간이 끝날 때까지는 그대로 이용하실 수 있습니다.\n※ 해지만으로는 환불되지 않습니다. 연간 구독의 중도 환불은 contact@pap-magazine.com 으로 요청해 주세요.', done:'해지되었습니다.', until:'{d} 까지 이용하실 수 있습니다.', fail:'해지 처리에 실패했습니다. 잠시 후 다시 시도하시거나 contact@pap-magazine.com 으로 연락 주세요.'},
+  en:{btn:'Cancel subscription', confirm:'Cancel your subscription?\n\nYou keep full access until the end of the period you have already paid for.\nNote: cancelling does not issue a refund. For a pro-rated refund on a yearly plan, email contact@pap-magazine.com.', done:'Your subscription has been cancelled.', until:'You have access until {d}.', fail:'Cancellation failed. Please try again shortly or email contact@pap-magazine.com.'},
+  de:{btn:'Vertrag hier kündigen', confirm:'Abonnement kündigen?\n\nSie behalten den vollen Zugang bis zum Ende des bereits bezahlten Zeitraums.\nHinweis: Die Kündigung allein löst keine Rückerstattung aus. Für eine anteilige Rückerstattung bei Jahresabos schreiben Sie an contact@pap-magazine.com.', done:'Ihr Abonnement wurde gekündigt.', until:'Zugang bis {d}.', fail:'Kündigung fehlgeschlagen. Bitte später erneut versuchen oder contact@pap-magazine.com schreiben.'},
+  it:{btn:'Annulla abbonamento', confirm:"Vuoi annullare l'abbonamento?\n\nManterrai l'accesso completo fino alla fine del periodo già pagato.\nNota: l'annullamento da solo non comporta un rimborso. Per il rimborso proporzionale dell'abbonamento annuale scrivi a contact@pap-magazine.com.", done:'Abbonamento annullato.', until:'Accesso fino al {d}.', fail:'Annullamento non riuscito. Riprova a breve o scrivi a contact@pap-magazine.com.'},
+  fr:{btn:"Résilier l'abonnement", confirm:"Résilier votre abonnement ?\n\nVous conservez l'accès complet jusqu'à la fin de la période déjà payée.\nRemarque : la résiliation seule ne déclenche pas de remboursement. Pour un remboursement au prorata d'un abonnement annuel, écrivez à contact@pap-magazine.com.", done:'Votre abonnement a été résilié.', until:"Accès jusqu'au {d}.", fail:'Échec de la résiliation. Réessayez ou écrivez à contact@pap-magazine.com.'},
+  es:{btn:'Cancelar suscripción', confirm:'¿Cancelar la suscripción?\n\nMantendrá el acceso completo hasta el final del periodo ya pagado.\nNota: cancelar no genera un reembolso. Para el reembolso proporcional de una suscripción anual, escriba a contact@pap-magazine.com.', done:'Su suscripción ha sido cancelada.', until:'Acceso hasta el {d}.', fail:'La cancelación falló. Inténtelo de nuevo o escriba a contact@pap-magazine.com.'},
+  ja:{btn:'購読を解約', confirm:'購読を解約しますか？\n\nお支払い済みの期間が終わるまではそのままご利用いただけます。\n※ 解約だけでは返金されません。年間購読の中途返金は contact@pap-magazine.com までご依頼ください。', done:'解約が完了しました。', until:'{d} までご利用いただけます。', fail:'解約に失敗しました。しばらくして再度お試しいただくか contact@pap-magazine.com までご連絡ください。'},
+  zh:{btn:'取消订阅', confirm:'要取消订阅吗？\n\n您已支付的周期结束前仍可正常使用。\n※ 仅取消并不退款。年付订阅的中途退款请发送邮件至 contact@pap-magazine.com。', done:'订阅已取消。', until:'您可使用至 {d}。', fail:'取消失败。请稍后重试或联系 contact@pap-magazine.com。'},
+  ru:{btn:'Отменить подписку', confirm:'Отменить подписку?\n\nДоступ сохранится до конца уже оплаченного периода.\n※ Отмена сама по себе не означает возврат средств. Для пропорционального возврата по годовой подписке напишите на contact@pap-magazine.com.', done:'Подписка отменена.', until:'Доступ до {d}.', fail:'Не удалось отменить. Повторите позже или напишите на contact@pap-magazine.com.'}
 };
 function _mpCancT(k){
   var l; try{ l=localStorage.getItem('pap-lang')||'en'; }catch(_){ l='en'; }
@@ -726,10 +726,13 @@ async function mpMaybeShowCancel(){
     var b = document.createElement('button');
     b.id = 'mpCancelSubBtn';
     b.type = 'button';
-    b.style.cssText = 'background:none;border:none;padding:0;font-size:10px;letter-spacing:.04em;color:rgba(255,255,255,.32);cursor:pointer';
+    // 2026-08-12 — 10px · 흰색 32% 는 대비비 약 2.7:1 이었다. 독일 § 312k BGB 의
+    // "gut lesbar"(잘 읽히게) 요건과 WCAG AA(4.5:1) 어느 쪽도 못 넘긴다.
+    // 해지 버튼을 눈에 안 띄게 만드는 것은 그 자체가 규제 대상이다.
+    b.style.cssText = 'background:none;border:none;padding:2px 0;font-size:13px;letter-spacing:.03em;color:rgba(255,255,255,.78);text-decoration:underline;cursor:pointer';
     b.textContent = _mpCancT('btn');
-    b.addEventListener('mouseenter', function(){ b.style.color = 'rgba(255,255,255,.6)'; });
-    b.addEventListener('mouseleave', function(){ b.style.color = 'rgba(255,255,255,.32)'; });
+    b.addEventListener('mouseenter', function(){ b.style.color = 'rgba(255,255,255,1)'; });
+    b.addEventListener('mouseleave', function(){ b.style.color = 'rgba(255,255,255,.78)'; });
     b.addEventListener('click', mpCancelSubscription);
     wrap.appendChild(b);
     card.appendChild(wrap);
@@ -1657,7 +1660,7 @@ function setupMpSidebar(){
 <!-- QA(2026-07) #2 — 햄버거 메뉴 라벨 통일. nav 에 data-i18n 을 쓰면서
      pap-i18n.js(번역기)를 로드하지 않아 표준 메뉴가 영어 기본값으로 남던 문제.
      다른 페이지와 동일하게 번역기를 로드해 라벨을 통일한다. -->
-<script src="/pap-i18n.js?v=8" defer></script>
+<script src="/pap-i18n.js?v=9" defer></script>
 <script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=29"></script>
 <script src="/pap-auth-link.js?v=3" defer></script>
 
