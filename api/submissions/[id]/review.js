@@ -27,6 +27,7 @@ const {
   _guessLanguage: _guessLang,
 } = require('../../_lib/editorialAi');
 const { buildPapIgCaption } = require('../../_lib/igCaption');
+const { settleSubmissionAuthorization } = require('../../_lib/settleAuthorization');
 const { sendTextToTelegramSafe } = require('../../_lib/telegram');
 
 // (Old inline _generateEditorialDescriptions definition lived here. It is
@@ -538,6 +539,23 @@ module.exports = async function handler(req, res) {
       .single();
 
     if (error) throw error;
+
+    // 2026-08-12 — 게재료 승인후결제 정산. 상태 저장이 끝난 뒤에 돈을 움직인다.
+    //   승인 → capture(💰 여기서 처음 청구)  ·  거절/보완 → void(청구 없음)
+    // 승인이 없는 건(무료 유형·구 경로)은 skip 되므로 기존 흐름에 영향이 없다.
+    // 실패해도 심사 저장을 되돌리지 않는다 — 전부 텔레그램으로 사람에게 올린다.
+    try {
+      const settled = await settleSubmissionAuthorization(
+        supabaseAdmin, submission, status,
+        async (t) => { try { await sendTextToTelegramSafe(t); } catch (_) { /* noop */ } },
+      );
+      if (settled && settled.captured) submission.payment_status = 'paid';
+      if (settled && settled.voided) submission.payment_status = 'voided';
+    } catch (settleErr) {
+      console.error('[review] 게재료 정산 예외:', settleErr && settleErr.message);
+      await sendTextToTelegramSafe('🚨 게재료 정산 중 예외 — 수동 확인 필요 submission='
+        + id + ' err=' + (settleErr && settleErr.message));
+    }
 
     // Stage as editorial draft. The editor will polish metadata and
     // explicitly hit 발행 to expose it publicly. We deliberately skip

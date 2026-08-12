@@ -40,7 +40,7 @@ module.exports = async function handler(req, res) {
   try {
     const { data: sub, error } = await supabaseAdmin
       .from('submissions')
-      .select('id, user_id, title, description, payment_status')
+      .select('id, user_id, title, description, payment_status, paypal_authorization_id')
       .eq('id', submissionId)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -54,6 +54,12 @@ module.exports = async function handler(req, res) {
     // 기본료 중복 결제 방지 (애드온은 여러 번 살 수 있다)
     if (kind === 'submission_fee' && String(sub.payment_status) === 'paid') {
       return res.status(409).json({ code: 'already_paid', message: 'Already paid' });
+    }
+    // 2026-08-12 — 이미 승인(authorize)이 잡혀 있으면 새로 묶지 않는다.
+    // 두 번 묶으면 크리에이터 카드에 €790 이 두 번 걸린다. 청구는 아니지만
+    // 한도가 두 배로 잠기고, 문의로 돌아온다.
+    if (kind === 'submission_fee' && String(sub.payment_status) === 'authorized') {
+      return res.status(409).json({ code: 'already_authorized', message: 'Payment already authorized' });
     }
 
     const amt = resolveAmount(sub, kind, addon);
@@ -79,7 +85,10 @@ module.exports = async function handler(req, res) {
       method: 'POST',
       headers: { 'PayPal-Request-Id': requestId },
       body: JSON.stringify({
-        intent: 'CAPTURE',
+        // 🔴 2026-08-12 — 기본 게재료는 AUTHORIZE(돈 묶기)로 받는다.
+        //    심사 승인 시 capture(청구), 거절·보완·SLA초과 시 void(무청구).
+        //    애드온은 게재 확정 후 사는 선택 상품이라 종전대로 즉시 CAPTURE.
+        intent: kind === 'submission_fee' ? 'AUTHORIZE' : 'CAPTURE',
         purchase_units: [{
           custom_id: buildCustomId(kind, submissionId, addon),
           description: amt.label.slice(0, 127),
