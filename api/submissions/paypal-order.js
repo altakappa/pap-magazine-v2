@@ -59,8 +59,25 @@ module.exports = async function handler(req, res) {
     const amt = resolveAmount(sub, kind, addon);
     if (amt.error) return res.status(400).json({ code: amt.error, message: 'Cannot price this item' });
 
+    // 🔴 2026-08-12 — 서버측 멱등키. 같은 건에 대한 재시도가 새 주문을 만들지 않는다.
+    //
+    // 사고 경로: 캡처는 성공했는데 우리 쪽 반영이 실패 → 회원 화면에 "다시 시도"
+    // → 여기서 새 order 발급 → 진짜로 두 번 청구. payment_status 검사는 첫 결제가
+    // DB 에 안 적힌 상태라 통과해 버려서 이 갈래를 못 막았다.
+    //
+    // PayPal-Request-Id 를 같은 값으로 보내면 PayPal 이 같은 주문을 돌려준다.
+    // 그러면 재시도는 같은 order 를 다시 캡처하게 되고, capture 쪽의
+    // ORDER_ALREADY_CAPTURED 멱등 처리로 안전하게 수렴한다.
+    //
+    // 시간 버킷(UTC 시각 단위)을 넣는 이유: 애드온은 원래 여러 번 살 수 있다.
+    // 영구 고정하면 "같은 애드온을 나중에 한 번 더" 가 막힌다. 1시간이면 오조작
+    // 재시도는 합쳐지고 의도적 재구매는 통과한다.
+    const bucket = new Date().toISOString().slice(0, 13).replace(/[-:T]/g, '');
+    const requestId = ['pap', kind, submissionId, addon || 'base', bucket].join('-').slice(0, 108);
+
     const r = await paypalFetch('/v2/checkout/orders', {
       method: 'POST',
+      headers: { 'PayPal-Request-Id': requestId },
       body: JSON.stringify({
         intent: 'CAPTURE',
         purchase_units: [{
