@@ -13,7 +13,7 @@ const { handleCors } = require('../../_lib/cors');
 const { sendEmail, templates, DEFAULT_REJECTION_NOTE } = require('../../_lib/email');
 const { mergeAdminNotes } = require('../../_lib/adminNotes');
 const { feeForType } = require('../../_lib/submissionPayment');
-const { getOptimizedThumbnail, getOptimizedHero } = require('../../_lib/imageOptimize');
+const { getOptimizedHero } = require('../../_lib/imageOptimize');
 const { rateLimit, RATE_LIMITS } = require('../../_lib/rateLimit');
 // 크레딧 역할 표준화 — 서브미션 라벨('Photo')을 관리자 기준값('Photographer')으로.
 // 매핑 정의와 배경은 api/_lib/creditRoles.js 참조.
@@ -633,7 +633,13 @@ module.exports = async function handler(req, res) {
               // before they do).
               slug: editorialSlug || null,
               cover_image: getOptimizedHero(coverUrl),
-              thumbnail: getOptimizedThumbnail(coverUrl),
+              // 2026-08-12 — 커버 선택이 thumbnail 까지 같은 이미지로
+              // 덮어쓰던 것을 중단 (도메니코 리포트: "cover 누르면
+              // thumb·cover 둘 다 적용"). thumbnail 은 편집기의 ★
+              // (썸네일 지정)으로만 채운다. 비어 있어도 모든 노출
+              // 경로(rss·sitemap·pinterest·seoRenderer·프론트 카드)가
+              // cover_image 로 폴백함을 확인했다.
+              thumbnail: null,
               gallery: submission.file_urls || [],
               credits,
               fashion,

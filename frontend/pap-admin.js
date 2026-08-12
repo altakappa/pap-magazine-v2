@@ -4475,6 +4475,16 @@ function removeGalleryImg(num){
   updateImgCredits();
 }
 
+// 2026-08-12 — Supabase 이미지 최적화 변환 URL 과 원본 URL 을 같은
+// 이미지로 취급하기 위한 정규화. 서브미션 승인이 저장하는
+// /render/image/public/…?width=… 형태는 갤러리의 /object/public/…
+// 원본과 문자열이 절대 같을 수 없어서, 정규화 없이 비교하면 ★/◆
+// 복원이 전부 실패한다 (editPost 참조).
+function _normImgUrl(u){
+  u = String(u || '').split('?')[0];
+  return u.replace('/storage/v1/render/image/public/', '/storage/v1/object/public/');
+}
+
 // Mark the given gallery image (by data-img-num) as the homepage
 // card THUMBNAIL. Saved into the `thumbnail` field on save.
 function setGalleryThumb(num){
@@ -7111,11 +7121,22 @@ async function editEditorial(id){
     // QA — restore the ★ THUMB (`thumbnail`) by matching the saved
     // URL against the loaded gallery items, falling back to the first
     // image so an old post with no thumb saved still gets one.
+    // 2026-08-12 — 승인으로 만들어진 화보는 thumbnail 이 최적화 변환
+    // URL 이라 원본 URL 인 갤러리와 정확 일치가 항상 실패했고, 그래서
+    // ★ 가 늘 1번으로 밀린 채 저장 때마다 thumbnail 이 1번 이미지로
+    // 조용히 덮였다. 변환을 벗겨낸 뒤(_normImgUrl) 비교한다.
     var savedThumbUrl = ed.thumbnail || '';
+    var thumbMatch = null;
     if(savedThumbUrl){
-      var thumbMatch = galleryImages.find(function(g){ return g.src === savedThumbUrl; });
-      if(thumbMatch) galleryThumbNum = thumbMatch.num;
+      thumbMatch = galleryImages.find(function(g){ return _normImgUrl(g.src) === _normImgUrl(savedThumbUrl); });
     }
+    // thumbnail 이 비어 있으면(승인 단계는 이제 cover 만 기록) 커버와
+    // 같은 이미지를 ★ 기본값으로 — 사이트 폴백(썸네일 없으면 커버
+    // 노출)과 편집기 표시가 일치하게.
+    if(!thumbMatch && !savedThumbUrl && ed.cover_image){
+      thumbMatch = galleryImages.find(function(g){ return _normImgUrl(g.src) === _normImgUrl(ed.cover_image); });
+    }
+    if(thumbMatch) galleryThumbNum = thumbMatch.num;
     if(galleryImages.length && galleryThumbNum===null){
       galleryThumbNum = galleryImages[0].num;
     }
@@ -7125,8 +7146,15 @@ async function editEditorial(id){
     // the hero in the DB until the editor re-confirms a new design; we
     // never feed the (possibly already-composited) saved cover back into
     // the generator, which would double-overlay the wordmark/title.
-    galleryCoverNum = galleryImages.length ? galleryImages[0].num : null;
-    _papCoverSourceUrl = galleryImages.length ? galleryImages[0].src : '';
+    // 2026-08-12 — ◆ 를 무조건 1번이 아니라, 저장된 cover_image 와
+    // (변환 URL 무시하고) 일치하는 갤러리 이미지로 복원한다. 예전엔
+    // 승인 때 고른 커버와 무관하게 ◆ 가 1번에 붙어서, ★ 기본값(1번)
+    // 과 겹쳐 "커버를 누르면 THUMB·COVER 둘 다 붙는다"는 혼란을
+    // 만들었다. 합성(워드마크) 커버처럼 갤러리에 없는 URL 이면 기존
+    // 대로 1번 폴백 — 합성본을 생성기 소스로 되먹이지 않는 원칙 유지.
+    var _coverMatch = ed.cover_image ? galleryImages.find(function(g){ return _normImgUrl(g.src) === _normImgUrl(ed.cover_image); }) : null;
+    galleryCoverNum = _coverMatch ? _coverMatch.num : (galleryImages.length ? galleryImages[0].num : null);
+    _papCoverSourceUrl = _coverMatch ? _coverMatch.src : (galleryImages.length ? galleryImages[0].src : '');
     _papComposedCoverUrl = null;
     _renderGalleryCoverState();
     // Kick a first live render on open (always-visible preview).
