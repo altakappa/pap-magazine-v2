@@ -99,12 +99,20 @@ console.log('\n[8] 마이그레이션 — 107 교훈 (부분 유니크 인덱스
   t('부분 유니크 인덱스가 없다', !/unique index[\s\S]{0,80}where/i.test(mig));
 }
 
-console.log('\n[9] 캐시버스트 — pap-engage v=3');
+console.log('\n[9] 캐시버스트 — pap-engage 판 정합');
 {
+  /* 2026-08-12 — 여기(그리고 spa-parity)가 버전 숫자를 박아두고 있었다.
+     pap-engage.js 를 고칠 때마다 세 파일이 같이 틀리고, 그때 "테스트를 고쳤다"로
+     넘어가면 정작 캐시버스트를 빠뜨려도 아무도 못 잡는다.
+     숫자가 아니라 **네 참조처가 같은 판을 부르는가**를 본다 — 그게 진짜 규칙이다. */
   const refs = ['frontend/index.html', 'frontend/articles.html', 'frontend/films.html', 'api/_lib/seoRenderer.js'];
-  refs.forEach(function (f) {
-    t(f + ' 이 v=7 을 참조', /pap-engage\.js\?v=7/.test(R(f)));
-  });
+  const vers = refs.map(function (f) { const m = R(f).match(/pap-engage\.js\?v=(\d+)/); return m ? m[1] : null; });
+  t('네 참조처가 모두 pap-engage 를 부른다', vers.every(Boolean),
+    refs.map(function (f, i) { return f + '=' + vers[i]; }).join(', '));
+  t('네 참조처의 판이 서로 같다 (한쪽만 갱신 금지)',
+    vers.every(function (v) { return v === vers[0]; }),
+    refs.map(function (f, i) { return f + '=' + vers[i]; }).join(', '));
+  t('판이 7 이상이다 (별점 딥레드·유도 이후)', Number(vers[0]) >= 7, 'v=' + vers[0]);
 }
 
 console.log('\npassed: ' + pass + '   failed: ' + fail);

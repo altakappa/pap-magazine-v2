@@ -38,7 +38,8 @@
           push: '새 화보 알림 받기', pushOn: '알림 받는 중', pushAria: '새 화보 웹 알림 켜기/끄기',
           rateQ: '이 화보가 마음에 드셨나요?', rateAria: '별점 {n}점 주기', rateAvg: '평균',
           ratePeople: '명 참여', rateMine: '내 평점', rateCancel: '취소',
-          rateLogin: '로그인하고 별점 남기기', rateNone: '첫 별점을 남겨보세요' },
+          rateLogin: '로그인하고 별점 남기기', rateNone: '첫 별점을 남겨보세요',
+          rateNudge: '로그인하면 내 별점이 기기를 옮겨도 남아요', rateNudgeCta: '로그인' },
     en: { like: 'Like', likeAria: 'Like this story', comments: 'Comments', jump: 'Jump to comments',
           empty: 'Be the first to comment.', placeholder: 'Share your thoughts on this story',
           send: 'Post', login: 'Sign in to comment', del: 'Delete', now: 'just now',
@@ -46,7 +47,8 @@
           push: 'Get new drops', pushOn: 'Alerts on', pushAria: 'Toggle new-editorial web alerts',
           rateQ: 'Did you enjoy this editorial?', rateAria: 'Rate {n} stars', rateAvg: 'Avg',
           ratePeople: ' ratings', rateMine: 'Your rating', rateCancel: 'Remove',
-          rateLogin: 'Sign in to leave a rating', rateNone: 'Be the first to rate' },
+          rateLogin: 'Sign in to leave a rating', rateNone: 'Be the first to rate',
+          rateNudge: 'Sign in to keep your ratings across devices', rateNudgeCta: 'Sign in' },
   };
 
   /* 스타일도 부품이 직접 들고 다닌다 (2026-08-08).
@@ -92,6 +94,10 @@
     + '.pap-engage .pe-rate-cancel{background:none;border:0;color:#777;font-size:11px;cursor:pointer;padding:0;font-family:inherit;text-decoration:underline}'
     + '.pap-engage .pe-rate-login{color:#bbb;font-size:12.5px;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.25)}'
     + '.pap-engage .pe-rate-login:hover{color:#fff}'
+    /* 별점 후 로그인 권유 (2026-08-12) — 벽이 아니라 한 줄 초대. 조용해야 한다. */
+    + '.pap-engage .pe-rate-nudge{flex-basis:100%;margin-top:8px;color:#8a8a8a;font-size:11.5px;line-height:1.7}'
+    + '.pap-engage .pe-rate-nudge a{color:#c33b3b;text-decoration:none;border-bottom:1px solid rgba(195,59,59,.45);margin-left:4px}'
+    + '.pap-engage .pe-rate-nudge a:hover{color:#fff;border-color:rgba(255,255,255,.5)}'
     + '.pap-engage .pe-jump{margin-left:auto;color:#9a9a9a;font-size:12px;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.2)}'
     + '.pap-engage h2{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:#9a9a9a;margin:36px 0 16px;font-weight:600}'
     + '.pap-engage .pe-form{display:none}'
@@ -334,9 +340,13 @@
   /* ── 별점 (에디토리얼 평가 장치, 2026-08-09) ─────────────
      ratings 테이블·API 재사용 (키 = 제목 80자 — SSR 이 title 을 80자로
      자르므로 SPA 도 같이 잘라야 SSR/SPA 가 같은 키를 본다).
-     쓰기는 로그인 필요(보안 감사 A-2) — 401 이면 로그인 링크로 바꾼다.
-     "쓰려고 했는데 로그인이 필요하다"가 가입 전환이 제일 잘 되는 순간
-     (댓글과 같은 원칙). 통계 조회는 로그인 불필요. */
+     쓰기는 **로그인 불필요**(2026-08-12 도메니코 결정). 실측: 에디토리얼
+     조회 30일 11,003건 중 로그인 조회는 56건(0.5%)뿐이었다. 유일한 평가
+     장치를 로그인 뒤에 두면 99.5%에게는 누를 게 없다 — 성장 헌법 7항의
+     사다리 1단은 문턱이 0이어야 한다.
+     사다리를 없앤 게 아니라 뒤로 미뤘다: 별점을 남긴 **직후에** 로그인
+     권유를 한 줄 띄운다(벽이 아니라 권유). 서버가 anon:true 로 알려준다.
+     401 분기는 안전망으로 남긴다 — 이제 정상 경로에서는 오지 않는다. */
   function setupRating(root, o, t) {
     var wrap = root.querySelector('.pe-rate');
     if (!wrap) return;
@@ -370,6 +380,16 @@
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (d) { if (d) paint(d); }).catch(function () {});
     }
+    /* 별점을 남긴 비로그인 독자에게만, 한 번만. 다음 계단으로 가는 초대다. */
+    function showNudge() {
+      if (wrap.querySelector('.pe-rate-nudge')) return;
+      var n = document.createElement('div');
+      n.className = 'pe-rate-nudge';
+      n.innerHTML = esc(t.rateNudge) + ' <a href="/auth?next='
+        + encodeURIComponent(location.pathname) + '">' + esc(t.rateNudgeCta) + '</a>';
+      wrap.appendChild(n);
+    }
+
     function send(method, score) {
       if (busy) return; busy = true;
       fetch('/api/social/ratings', {
@@ -380,12 +400,18 @@
           : { editorial_title: key, score: score }),
       }).then(function (r) {
         if (r.status === 401) {
+          /* 안전망 — 무로그인 개방 이후 정상 경로에서는 오지 않는다 */
           wrap.innerHTML = '<a class="pe-rate-login" href="/auth?next='
             + encodeURIComponent(location.pathname) + '">' + esc(t.rateLogin) + '</a>';
           return null;
         }
-        if (r.ok) load();
-        return null;
+        if (!r.ok) return null;
+        return r.json().catch(function () { return null; }).then(function (d) {
+          load();
+          /* 사다리 2단 — 남기고 나서 권유한다. 막지 않는다. */
+          if (method === 'POST' && d && d.anon) showNudge();
+          return null;
+        });
       }).catch(function () {})
         .then(function () { busy = false; });
     }

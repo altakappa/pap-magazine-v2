@@ -371,6 +371,74 @@ console.log('\n[11] 인바운드 계측 공백 (2026-08-12 실측)');
      /\/editorial\/'\s*\+\s*encodeURIComponent\(ed\.slug\)[\s\S]{0,80}utm_source=naver/.test(naverDraft));
 }
 
+console.log('\n[12] 참여 사다리 1단 — 별점 무로그인 개방 (2026-08-12 도메니코 결정)');
+{
+  /* 왜 ────────────────────────────────────────────────────────────────
+   * DB 실측(30일): 에디토리얼 조회 11,003건, 그중 **로그인 상태 조회 56건(0.5%)**,
+   * 별점 9건(조회의 0.082%), 콘텐츠 댓글 누적 0건, 리액션 누적 2건.
+   *
+   * 원인: pap-engage.js 가 kind==='editorial' 이면 좋아요 버튼을 안 그리고
+   * (평가 장치는 한 화면에 하나 — 2026-08-09 결정), 그 유일한 장치인 별점은
+   * 쓰기에 로그인을 요구했다. 즉 주력 콘텐츠를 보는 99.5% 에게는 누를 수 있는
+   * 장치가 하나도 없었다. 성장 헌법 7항의 사다리 1단은 문턱이 0이어야 한다.
+   *
+   * 도메니코 결정(2026-08-12): 버튼은 하나로 두되 **별점 쓰기를 무로그인 개방**.
+   *
+   * 여기서 지키는 것:
+   *   ① 별점 쓰기에 로그인 벽이 없다 (requireAuth 제거)
+   *   ② 그러나 보안 감사 A-2 는 유지 — user_id 를 클라이언트에서 받지 않는다
+   *   ③ 1인 1표는 서버가 만든 키로 강제 (로그인 uuid / 비로그인 ip:<hash>)
+   *   ④ 봇은 세지 않는다
+   *   ⑤ 사다리를 없앤 게 아니라 뒤로 미뤘다 — 남긴 직후 로그인 '권유' 한 줄
+   *   ⑥ pap-engage.js 를 고쳤으면 참조 HTML 의 ?v= 를 올렸다 (캐시버스트) */
+
+  const rate   = R('api/social/ratings.js');
+  const engage = R('frontend/pap-engage.js');
+
+  // ① 로그인 벽 제거
+  t('별점 쓰기에 requireAuth 가 없다', !/requireAuth/.test(rate));
+  t('별점 POST 가 401 을 던지지 않는다', !/status\(401\)/.test(rate));
+
+  // ② 보안 감사 A-2 유지 — 키는 언제나 서버가 만든다
+  t('user_id 를 요청 body 에서 받지 않는다 (감사 A-2 유지)',
+     !/body\.user_id/.test(rate) && !/req\.query\.user_id/.test(rate));
+  t('키 생성 함수가 서버에 있다', /function actorFor\(req\)/.test(rate));
+
+  // ③ 1인 1표 — 로그인은 기존 uuid 그대로(기존 행 호환), 비로그인은 ip 해시
+  t('로그인 키는 uuid 그대로 — 기존 별점이 계속 내 것으로 잡힌다',
+     /return \{ key: String\(user\.id\), anon: false \}/.test(rate));
+  t('비로그인 키는 ip 해시 (uuid 와 충돌 불가한 형식)',
+     /'ip:' \+ hashIp\(extractClientIp\(req\)\)/.test(rate));
+  t('upsert 가 (제목,키) 유니크로 1인 1표를 강제한다',
+     /onConflict: 'editorial_title,user_id'/.test(rate));
+  t('DELETE 는 자기 키 행만 지운다',
+     /\.eq\('user_id', actor\.key\)/.test(rate));
+  t('GET myScore 도 같은 키로 본다 (비로그인도 내 별점이 보인다)',
+     /String\(r\.user_id\) === actor\.key/.test(rate));
+
+  // ④ 봇 제외
+  t('봇 별점은 기록하지 않는다', /isLikelyBot\(req\.headers\['user-agent'\]\)/.test(rate));
+
+  // ⑤ 사다리 2단 — 벽이 아니라 권유
+  t('서버가 비로그인 여부를 anon 으로 알려준다', /anon: actor\.anon/.test(rate));
+  t('별점 직후 로그인 권유가 뜬다 (POST + anon 일 때만)',
+     /method === 'POST' && d && d\.anon\) showNudge\(\)/.test(engage));
+  t('권유는 한 번만 — 중복 삽입 방지', /querySelector\('\.pe-rate-nudge'\)\) return/.test(engage));
+  t('권유 문구가 9개 언어 표에 국문·영문 모두 있다',
+     /rateNudge: '로그인하면/.test(engage) && /rateNudge: 'Sign in to keep/.test(engage));
+  t('권유 스타일이 부품 안에 있다 (SSR·SPA 한 벌)',
+     /\.pe-rate-nudge\{/.test(engage));
+
+  // ⑥ 캐시버스트 — pap-engage.js 를 고쳤으면 참조하는 곳의 ?v= 가 같이 올라야 한다
+  const engRefs = ['frontend/index.html', 'frontend/articles.html',
+                   'frontend/films.html', 'api/_lib/seoRenderer.js'];
+  const vers = engRefs.map((f) => (R(f).match(/pap-engage\.js\?v=(\d+)/) || [])[1]);
+  t('pap-engage.js 참조처의 ?v= 가 4곳 모두 같다',
+     vers.every((v) => v && v === vers[0]), engRefs.map((f, i) => f + '=' + vers[i]).join(', '));
+  t('pap-engage.js ?v= 가 7 보다 크다 (이번 수정분 반영)',
+     Number(vers[0]) > 7, 'v=' + vers[0]);
+}
+
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) { console.log('❌ kr-growth-surface tests FAILED'); process.exit(1); }
 console.log('✅ kr-growth-surface tests passed');

@@ -166,7 +166,17 @@ console.log('\n[8] 캐시버스트 — 바뀐 스크립트는 전부 판을 올�
     for (const o of olds) if (h.indexOf(o) >= 0) stale.push(n + ':' + o);
   }
   t('옛 버전 참조가 한 곳도 없다', stale.length === 0, stale.join(', '));
-  t('SSR 도 pap-engage v7 을 부른다 (별점 딥레드·유도 캐시버스트)', /pap-engage\.js\?v=7/.test(seo));
+  /* 2026-08-12 — 버전 숫자를 박아두니 pap-engage.js 를 고칠 때마다 이 테스트가
+     같이 틀리고, 그때 "테스트를 고쳤다"로 넘어가면 캐시버스트를 빠뜨려도 아무도
+     못 잡는다. 숫자 대신 **SSR 과 SPA 가 같은 판을 부르는가**를 본다. */
+  {
+    const engVer = (h) => { const m = h.match(/pap-engage\.js\?v=(\d+)/); return m ? m[1] : null; };
+    const seoV = engVer(seo), idxV = engVer(idx), artV = engVer(arts), filV = engVer(films);
+    t('SSR·index·articles·films 가 같은 pap-engage 판을 부른다 (캐시버스트 정합)',
+      !!seoV && seoV === idxV && seoV === artV && seoV === filV,
+      'seo=' + seoV + ' idx=' + idxV + ' arts=' + artV + ' films=' + filV);
+    t('pap-engage 판이 7 이상이다 (별점 딥레드·유도 이후)', Number(seoV) >= 7, 'v=' + seoV);
+  }
   /* index 와 articles 가 같은 스크립트를 다른 판으로 부르면 한쪽만 고쳐진다 */
   const ver = (h, name) => { const m = h.match(new RegExp(name.replace(/[.?]/g, '\\$&') + 'v=(\\d+)')); return m ? m[1] : null; };
   ['pap-content-article.js?', 'pap-content-editorial.js?', 'pap-content-api-sync.js?', 'pap-content-seo.js?'].forEach((n) => {
@@ -312,9 +322,19 @@ console.log('\n[별점 통합] 평가 장치는 한 화면에 하나 (2026-08-09
   t('기사·필름 좋아요는 유지 (중복 아님)', /pe-like/.test(eng) && /if \(likeBtn\)/.test(eng));
   t('별점 키는 제목 80자 — SSR 절단과 일치 (두 화면 같은 키)',
     /slice\(0, 80\)/.test(eng) && /titleMain \|\| ''\)\.slice\(0, 80\)/.test(seo));
-  t('별점 통계 GET 은 로그인 불필요', rat.indexOf("req.method === 'GET'") < rat.indexOf('requireAuth(req, res)'));
-  t('쓰기는 여전히 로그인 필요 (보안 감사 A-2)', /requireAuth\(req, res\)/.test(rat));
-  t('401 이면 로그인 유인으로 전환 (사다리 2계단)', /pe-rate-login/.test(eng) && /\/auth\?next=/.test(eng));
+  t('별점 통계 GET 은 로그인 불필요', /req\.method === 'GET'/.test(rat) && !/requireAuth/.test(rat));
+  /* 2026-08-12 도메니코 결정 — 별점 쓰기 무로그인 개방.
+     실측: 에디토리얼 조회 30일 11,003건 중 로그인 조회 56건(0.5%).
+     유일한 평가 장치를 로그인 뒤에 두면 99.5%에게는 누를 게 없다.
+     보안 감사 A-2 는 폐기가 아니라 **다른 방식으로** 지킨다 — 로그인 요구 대신
+     "키를 서버가 만든다"로. 클라이언트가 user_id 를 못 정하는 한 남의 별점엔 못 닿는다. */
+  t('별점 쓰기에 로그인 벽이 없다 (2026-08-12 결정)', !/requireAuth/.test(rat));
+  t('그래도 감사 A-2 유지 — 키는 서버가 만든다 (클라 user_id 무시)',
+    /function actorFor\(req\)/.test(rat) && !/body\.user_id/.test(rat)
+    && /onConflict: 'editorial_title,user_id'/.test(rat));
+  t('사다리 2계단은 별점을 남긴 뒤의 권유다 (벽이 아니라 초대)',
+    /showNudge\(\)/.test(eng) && /pe-rate-nudge/.test(eng) && /\/auth\?next=/.test(eng));
+  t('401 로그인 유인은 안전망으로 남아 있다', /pe-rate-login/.test(eng));
   t('별점 딥레드 + 호버 프리뷰 + 유도 웨이브 (2026-08-10 도메니코)',
     /pe-star\.on\{color:var\(--pap-red/.test(eng) && /previewTo/.test(eng)
     && /peStarWave/.test(eng) && /pe-nudge/.test(eng)
