@@ -642,6 +642,22 @@ async function saveMemberEdit(){
   // status. Compare against the currently-loaded value on allMembers.
   var origMember = allMembers.find(function(x){return x.id===id;});
   var origRole = origMember ? _getMemberRole(origMember) : null;
+
+  // 🔴 2026-08-12 — '취소됨' 은 이제 결제사 구독을 실제로 끊는다.
+  //
+  // 예전에는 profiles.subscription_status 에 글자만 썼다. 결제사는 우리 DB 를
+  // 모르므로 다음 달에도 계속 긁혔다 — 화면에는 "취소됨" 이라고 떠 있는데.
+  // 되돌릴 수 없는 동작이 됐으니 반드시 한 번 묻는다. 환불은 하지 않는다.
+  var origStatus = origMember ? _getMemberStatus(origMember) : null;
+  if(status === 'cancelled' && origStatus !== 'cancelled'){
+    var who = document.getElementById('memberEditName').textContent || '이 회원';
+    if(!confirm(who + ' 님의 결제사(PayPal) 구독을 실제로 해지합니다.\n\n'
+      + '· 다음 결제부터 중단됩니다.\n'
+      + '· 이미 결제한 기간은 환불하지 않으며, 그 기간까지는 계속 이용할 수 있습니다.\n'
+      + '· 되돌리려면 회원이 직접 다시 구독해야 합니다.\n\n'
+      + '진행할까요?')) return;
+  }
+
   var body = { memberId: id, subscriptionPlan: plan, subscriptionStatus: status };
   if (window._papIsMainAdmin === true && role && role !== origRole) {
     body.role = role;
@@ -669,6 +685,18 @@ async function saveMemberEdit(){
         + '⚠ 해당 회원은 자동 로그아웃되었으며,\n'
         + '   다시 로그인해야 새 권한이 적용됩니다.\n\n'
         + '(현재 그 회원이 보고 있는 페이지는 다음 API 요청 시 401을 받아 로그인 화면으로 이동합니다.)');
+    } else if (data && data.subscriptionCancel) {
+      // 결제사에서 실제로 무슨 일이 있었는지 그대로 말한다. "저장됨" 만으로는
+      // 결제가 멈췄는지 알 수 없다 — 그 모호함이 원래 문제였다.
+      var _cm = {
+        canceled: '결제사 구독을 해지했습니다. 다음 결제부터 중단됩니다.',
+        already:  '결제사 구독은 이미 해지되어 있었습니다.',
+        none:     '이 회원에게는 끊을 결제사 구독이 없었습니다.'
+      };
+      alert('회원 정보가 업데이트되었습니다.\n\n'
+        + (_cm[data.subscriptionCancel] || ('결제사 처리: ' + data.subscriptionCancel))
+        + (data.subscriptionCancelProvider ? (' (' + data.subscriptionCancelProvider + ')') : '')
+        + '\n환불은 하지 않았습니다.');
     } else {
       alert('회원 정보가 업데이트되었습니다.');
     }
@@ -1418,9 +1446,26 @@ function openEditorialEditorGuarded(editorialId){
   openEditorialEditor(editorialId);
 }
 
+// ─── admin_notes 분리 (2026-08-12) ───────────────────────────────────────
+// 애드온(€110/€220) 결제는 전용 컬럼이 없어 admin_notes 에 한 줄로 남는다.
+// "[YYYY-MM-DD] PayPal ..." / "[YYYY-MM-DD] Paddle ..." 로 시작하는 줄이 그것이다.
+// 심사 메모 칸에는 사람이 쓴 부분만 넣는다 — 안 그러면 심사자가 결제 기록을
+// 지우거나 고치게 된다. 서버 규칙과 반드시 같이 유지할 것:
+//   api/_lib/adminNotes.js · tests/admin-notes-preserve-payments.test.js
+var _PAY_LINE_RE = /^\[\d{4}-\d{2}-\d{2}\]\s+(PayPal|Paddle)\b/;
+function _splitAdminNotes(notes){
+  var lines = String(notes==null?'':notes).split('\n');
+  var payments=[], human=[];
+  lines.forEach(function(l){ if(_PAY_LINE_RE.test(l.trim())) payments.push(l.trim()); else human.push(l); });
+  while(human.length && human[0].trim()==='') human.shift();
+  while(human.length && human[human.length-1].trim()==='') human.pop();
+  return { human: human.join('\n'), payments: payments };
+}
+
 // ─── PAYMENT-STATUS BADGE (표시 전용 / display-only) — 2b (2026-07-19) ────────
 // 유료/브랜디드 서브미션 기본료의 결제 상태를 SURFACE 만 한다 (컬럼 payment_status).
-// 결제 확정은 Paddle 웹훅(키퍼)이 payment_status 를 갱신 — 어드민은 읽기+표시 전용.
+// 결제 확정은 api/submissions/paypal-capture.js 가 payment_status 를 갱신 — 어드민은 읽기+표시 전용.
+// (2026-08-14 Paddle 폐쇄. 옛 건은 paddle_transaction_id 로 남아 있다.)
 //   paid            → 결제완료 · €<실결제액> · 게재대기 (green)
 //   awaiting_payment→ 결제대기                          (amber)
 //   none / 값없음    → 미표시 (뱃지 없음) — 안전 처리
@@ -1482,6 +1527,33 @@ function populateReviewModal(submission){
     _pb.style.marginLeft='8px';
     _pb.innerHTML=_payBadge;
     _hdr.appendChild(_pb);
+  }
+
+  // 🔴 2026-08-12 — 심사 메모 칸을 기존 값으로 채운다.
+  //
+  // 예전에는 창을 열면 항상 빈칸이었다. 그런데 저장은 admin_notes 를 통째로
+  // 덮어썼기 때문에, 심사자가 아무것도 안 쓰고 저장만 해도 그 안에 있던
+  // 애드온 결제 기록(€110/€220)이 사라졌다. 서버(review.js)에서 결제 줄을
+  // 보존하도록 고쳤고, 화면에서도 사람 메모만 편집하게 한다.
+  var _notes=_splitAdminNotes(submission.admin_notes);
+  var _rn=document.getElementById('reviewNote');
+  if(_rn) _rn.value=_notes.human;
+  // 결제 기록은 읽기 전용으로 보여준다 — 어드민 어디에도 안 보이던 정보다.
+  var _payLog=document.getElementById('reviewPaymentLog');
+  if(!_payLog && _rn && _rn.parentNode){
+    _payLog=document.createElement('div');
+    _payLog.id='reviewPaymentLog';
+    _payLog.style.cssText='margin-top:8px;font-size:11px;line-height:1.7;color:rgba(255,255,255,.72);'
+      +'background:rgba(100,200,150,.08);border:1px solid rgba(100,200,150,.28);border-radius:3px;padding:8px 10px;white-space:pre-wrap';
+    _rn.parentNode.insertBefore(_payLog, _rn.nextSibling);
+  }
+  if(_payLog){
+    if(_notes.payments.length){
+      _payLog.textContent='💶 결제 기록 (자동 · 수정 불가)\n'+_notes.payments.join('\n');
+      _payLog.style.display='block';
+    } else {
+      _payLog.textContent=''; _payLog.style.display='none';
+    }
   }
 
   // Title

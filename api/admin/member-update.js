@@ -2,12 +2,29 @@
  * PATCH /api/admin/member-update — Update a member's role, plan, or status (admin only)
  *
  * Body: { memberId, role?, subscriptionPlan?, subscriptionStatus? }
+ *
+ * 🔴 2026-08-12 — '취소됨' 은 글자만 바꾸는 가짜 취소였다.
+ *
+ *   운영자가 회원 편집창에서 구독 상태를 '취소됨' 으로 바꾸고 저장하면,
+ *   이 파일은 profiles.subscription_status 에 문자열 'cancelled' 를 쓰는 것이
+ *   전부였다. 결제사에는 아무 일도 일어나지 않는다. PayPal 은 우리 DB 를 모르므로
+ *   다음 달에도 €5.49 / €8.99 를 그대로 긁는다. 화면에는 "취소됨" 이라고 떠 있는데.
+ *
+ *   실제로 해지를 실행하는 헬퍼(cancelProviderSubscription)는 이미 있었지만
+ *   호출하는 곳이 회원 '삭제' 와 본인 '탈퇴' 뿐이었다. 즉 운영자가 결제를 멈추려면
+ *   회원을 통째로 지우는 방법밖에 없었다. 8/14 에 Paddle 고객 포털이라는
+ *   안전망까지 사라지면 남는 수단이 없다.
+ *
+ *   이제 '취소됨' 은 결제사 해지를 먼저 실행하고, 성공했을 때만 상태를 바꾼다.
+ *   실패하면 아무것도 바꾸지 않는다 — 화면과 결제사가 어긋나는 것이 원래 문제였다.
+ *   환불은 하지 않는다(2026-08-10 도메니코 정책). 다음 결제만 멈춘다.
  */
 
 const { supabaseAdmin } = require('../_lib/supabase');
 const { requireAdmin, requireMainAdmin, invalidateTokens } = require('../_lib/auth');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
+const { cancelProviderSubscription } = require('../_lib/cancelProviderSubscription');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -115,6 +132,23 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ message: 'No valid updatable fields found', availableColumns: cols });
     }
 
+    // 🔴 '취소됨' 은 결제사에서 실제로 끊고 나서야 표시한다.
+    //    헬퍼는 멱등이다 — 이미 canceled/expired 면 결제사를 부르지 않고
+    //    action:'already' 로 돌아온다. 그래서 재저장해도 안전하다.
+    //    실패하면 profiles 를 건드리지 않는다. 화면만 '취소됨' 이 되고 결제는
+    //    계속되는 상태가 바로 이 수정이 없애려는 것이다.
+    let cancelResult = null;
+    if (subscriptionStatus === 'cancelled') {
+      cancelResult = await cancelProviderSubscription(supabaseAdmin, memberId);
+      if (!cancelResult.ok) {
+        return res.status(409).json({
+          code: 'subscription_cancel_failed',
+          message: '결제사 구독 해지에 실패해 상태를 바꾸지 않았습니다. ('
+            + (cancelResult.message || '이유 미상') + ') 결제사 대시보드에서 직접 확인해 주세요.',
+        });
+      }
+    }
+
     const { data, error } = await supabaseAdmin
       .from('profiles')
       .update(updates)
@@ -163,6 +197,10 @@ module.exports = async function handler(req, res) {
       // the target user actually got bumped off their session.
       tokenInvalidated,
       roleChanged,
+      // 2026-08-12 — 결제사 해지가 실제로 무엇을 했는지 화면에 그대로 보여준다.
+      //   'canceled' 실제로 끊었다 · 'already' 이미 끊겨 있었다 · 'none' 끊을 구독이 없다
+      subscriptionCancel: cancelResult ? cancelResult.action : null,
+      subscriptionCancelProvider: cancelResult ? (cancelResult.provider || null) : null,
     });
   } catch (error) {
     console.error('Admin member-update error:', error);

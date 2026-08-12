@@ -118,7 +118,13 @@ const reviewSrc = read('api/submissions/[id]/review.js');
 const patchStart = reviewSrc.indexOf('const nowIso = new Date().toISOString();');
 ok('reviewPatch 구간을 소스에서 찾을 수 있다', patchStart !== -1);
 
-const patchEnd = reviewSrc.indexOf('\n\n    const { data: submission, error }', patchStart);
+// 2026-08-12 — 경계를 소스의 명시적 표식으로 옮겼다. 예전에는 update 호출을
+// 기준으로 잘랐는데, 그 사이에 코드가 한 줄이라도 들어오면(결제 기록 보존 로직)
+// eval 이 못 보는 변수를 만나 테스트가 죽는다. 표식은 review.js 안에 있다.
+const PATCH_END_MARK = '\n    // \u2b07\ufe0e reviewPatch \ub05d';
+let patchEnd = reviewSrc.indexOf(PATCH_END_MARK, patchStart);
+if (patchEnd === -1) patchEnd = reviewSrc.indexOf('\n\n    const { data: submission, error }', patchStart);
+ok('reviewPatch 끝 표식을 찾았다 (review.js 의 \u2b07\ufe0e 주석)', patchEnd !== -1);
 const patchCode = reviewSrc.slice(patchStart, patchEnd);
 
 function buildPatch(status, reviewNote) {

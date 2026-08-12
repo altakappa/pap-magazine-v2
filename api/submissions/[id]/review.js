@@ -11,6 +11,7 @@ const { supabaseAdmin } = require('../../_lib/supabase');
 const { requireAdmin, requireMainAdmin } = require('../../_lib/auth');
 const { handleCors } = require('../../_lib/cors');
 const { sendEmail, templates, DEFAULT_REJECTION_NOTE } = require('../../_lib/email');
+const { mergeAdminNotes } = require('../../_lib/adminNotes');
 const { feeForType } = require('../../_lib/submissionPayment');
 const { getOptimizedThumbnail, getOptimizedHero } = require('../../_lib/imageOptimize');
 const { rateLimit, RATE_LIMITS } = require('../../_lib/rateLimit');
@@ -463,6 +464,28 @@ module.exports = async function handler(req, res) {
     // 30-day auto-purge cron can find this row. Set to NULL when leaving
     // the rejected state (e.g. admin recovers via status='pending'); the
     // cron only deletes rows that still have a non-null stamp.
+    // 🔴 2026-08-12 — 심사 저장이 애드온 결제 기록을 지우고 있었다.
+    //
+    // 애드온(€110/€220)은 전용 컬럼이 없어 paypal-capture.js 가 admin_notes 끝에
+    // "[2026-08-12] PayPal 애드온 결제: ..." 한 줄로 남긴다. 우리 DB 에 남는
+    // 유일한 기록이다. 그런데 아래 update 가 admin_notes 를 통째로 덮어썼고,
+    // 심사 의견을 안 쓰고 저장하면 빈 문자열로 덮여 더 깨끗하게 사라졌다.
+    // 8/14 에 Paddle 대시보드가 닫히면 대조할 장부도 없다.
+    //
+    // 기존 값을 먼저 읽어 결제 기록 줄만 보존한다. 읽기에 실패하면 덮어쓰지
+    // 않고 그대로 둔다 — 기록을 잃는 것보다 메모가 안 바뀌는 편이 낫다.
+    let prevNotes = null;
+    let prevNotesReadOk = false;
+    try {
+      const { data: prevRow, error: prevErr } = await supabaseAdmin
+        .from('submissions').select('admin_notes').eq('id', id).maybeSingle();
+      if (prevErr) throw new Error(prevErr.message);
+      prevNotes = prevRow ? prevRow.admin_notes : null;
+      prevNotesReadOk = true;
+    } catch (e) {
+      console.error('[review] admin_notes 사전 조회 실패 — 메모를 건드리지 않는다:', e.message);
+    }
+
     const nowIso = new Date().toISOString();
     const reviewPatch = {
       status,
@@ -492,9 +515,24 @@ module.exports = async function handler(req, res) {
       reviewPatch.rejected_at = null;
     }
 
+    // ⬇︎ reviewPatch 끝 — tests/submission-review-audit.test.js 는 여기까지만
+    //    떼어 실행한다(감사 컬럼 3종을 실제로 채우는지 확인). 이 아래는 제외.
+
+    // 2026-08-12 — 결제 기록 줄은 보존하고 사람이 쓴 메모만 교체한다.
+    // admin_notes 는 심사 메모와 애드온 결제 기록(€110/€220)이 같은 칸을 쓴다.
+    // 통째로 덮어쓰면 결제 기록이 사라진다. (api/_lib/adminNotes.js)
+    const patchToWrite = Object.assign({}, reviewPatch);
+    if (prevNotesReadOk) {
+      patchToWrite.admin_notes = mergeAdminNotes(prevNotes, reviewPatch.admin_notes);
+    } else {
+      // 기존 값을 못 읽었다 — 메모를 아예 건드리지 않는다.
+      // 기록을 잃는 것보다 메모가 안 바뀌는 편이 낫다.
+      delete patchToWrite.admin_notes;
+    }
+
     const { data: submission, error } = await supabaseAdmin
       .from('submissions')
-      .update(reviewPatch)
+      .update(patchToWrite)
       .eq('id', id)
       .select()
       .single();
