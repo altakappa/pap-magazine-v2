@@ -304,7 +304,7 @@ module.exports = async function handler(req, res) {
 
       // Premium 전용 서비스 — 운영자가 바로 검토할 수 있도록 텔레그램 즉시 알림.
       // (전송 실패해도 접수에는 영향 없음 — sendTextToTelegramSafe는 throw하지 않는다)
-      sendTextToTelegramSafe(
+      await sendTextToTelegramSafe(
         '📮 새 풀레터 요청 (PREMIUM)\n'
         + '회원: ' + ((profile && profile.name) || '이름 없음') + ' (' + ((profile && profile.email) || '') + ')\n'
         + '포토그래퍼: ' + team.photographer.name + ' (' + team.photographer.instagram + ')\n'

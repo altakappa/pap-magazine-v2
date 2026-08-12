@@ -414,7 +414,7 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
               last_payload: { done: true }, updated_at: new Date().toISOString(),
             }, { onConflict: 'key' });
             const { sendTextToTelegramPersonalSafe } = require('../_lib/telegram');
-            sendTextToTelegramPersonalSafe(
+            await sendTextToTelegramPersonalSafe(
               '✅ 인스타그램 전체 이력 백필 완주 — ' + acctLabel + ' 과거 게시물을 웹사이트 기사로 전량 가져왔습니다.'
             ).catch(() => {});
           }

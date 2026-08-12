@@ -294,7 +294,7 @@ module.exports = withCronGuard('migrate-external-images', async function handler
       lines.push('   ' + transient.slice(0, 4).map(f => '· ' + f.reason).join('\n   '));
       lines.push('   → 1시간 뒤부터 자동 재시도(최대 24시간). 할 일 없음');
     }
-    sendTextToTelegramSafe(
+    await sendTextToTelegramSafe(
       '🖼 이미지 이관 중 실패 ' + newFailures.length + '건\n' + lines.join('\n')
     ).catch(() => {});
   }

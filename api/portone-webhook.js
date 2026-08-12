@@ -269,7 +269,7 @@ module.exports = async function handler(req, res) {
             subscription_status: 'inactive',
           }).eq('id', userId);
           // 검증 통과한 실이벤트이므로 알림은 안전(위조 폭탄 위험 없음).
-          sendTextToTelegramSafe('⚠️ PortOne 정기결제 실패 — user_id: ' + userId + ' · 접근 일시중지(plan 유지). 재청구 확인 필요.');
+          await sendTextToTelegramSafe('⚠️ PortOne 정기결제 실패 — user_id: ' + userId + ' · 접근 일시중지(plan 유지). 재청구 확인 필요.');
         }
         break;
       }

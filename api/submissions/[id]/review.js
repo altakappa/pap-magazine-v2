@@ -737,7 +737,7 @@ module.exports = async function handler(req, res) {
         const _paid = _plan.indexOf('standard') === 0 || _plan.indexOf('premium') === 0;
         const _active = String(profile.subscription_status || '').toLowerCase() === 'active';
         if (_paid && _active) {
-          sendTextToTelegramSafe(
+          await sendTextToTelegramSafe(
             '💬 유료 회원 서브미션 반려 — 피드백 작성 필요\n'
             + '회원: ' + (profile.display_name || '이름 없음') + ' (' + (profile.email || '') + ') · ' + _plan.toUpperCase() + '\n'
             + '작품: ' + (submission.title || submission.id) + '\n'

@@ -45,7 +45,7 @@ async function handleCaptureCompleted(db, resource) {
     .maybeSingle();
   if (error) throw new Error('submission lookup failed: ' + error.message);
   if (!sub) {
-    sendTextToTelegramSafe('🚨 PayPal 캡처 완료 이벤트인데 서브미션을 못 찾음 submission='
+    await sendTextToTelegramSafe('🚨 PayPal 캡처 완료 이벤트인데 서브미션을 못 찾음 submission='
       + meta.submissionId + ' order=' + orderId + ' ' + value + currency);
     return { unmatched: true };
   }
@@ -59,7 +59,7 @@ async function handleCaptureCompleted(db, resource) {
     const { error: aErr } = await db.from('submissions')
       .update({ admin_notes: notes }).eq('id', sub.id);
     if (aErr) throw new Error('addon note write failed: ' + aErr.message);
-    sendTextToTelegramSafe('💶 [웹훅 복구] 애드온 결제 기록 ' + meta.addon + ' €' + value
+    await sendTextToTelegramSafe('💶 [웹훅 복구] 애드온 결제 기록 ' + meta.addon + ' €' + value
       + ' · submission=' + sub.id);
     return { recovered: 'addon' };
   }
@@ -81,7 +81,7 @@ async function handleCaptureCompleted(db, resource) {
     if (/duplicate key|unique/i.test(upErr.message)) return { already: true };
     throw new Error('submission payment write failed: ' + upErr.message);
   }
-  sendTextToTelegramSafe('💶 [웹훅 복구] 게재료 결제 반영 €' + value + currency
+  await sendTextToTelegramSafe('💶 [웹훅 복구] 게재료 결제 반영 €' + value + currency
     + ' · submission=' + sub.id + ' order=' + orderId
     + ' — 브라우저 확정이 실패했지만 웹훅이 메웠습니다.');
   return { recovered: 'submission_fee' };
@@ -107,7 +107,7 @@ async function handleCaptureRefunded(db, resource, eventType) {
   const amount = ((resource.amount || {}).value || '') + ((resource.amount || {}).currency_code || '');
   if (!sub) {
     // 구독 환불이거나 우리가 못 찾는 건이다. 조용히 넘기지 않는다.
-    sendTextToTelegramSafe('🚨 PayPal ' + eventType + ' — 대상 서브미션을 못 찾음. '
+    await sendTextToTelegramSafe('🚨 PayPal ' + eventType + ' — 대상 서브미션을 못 찾음. '
       + '금액 ' + amount + ' refund=' + resource.id + ' — 수동 확인 필요.');
     return { unmatched: true };
   }
@@ -115,7 +115,7 @@ async function handleCaptureRefunded(db, resource, eventType) {
     .update({ payment_status: 'refunded', updated_at: new Date().toISOString() })
     .eq('id', sub.id);
   if (error) throw new Error('refund write failed: ' + error.message);
-  sendTextToTelegramSafe('↩️ PayPal 환불 반영 ' + amount + ' · submission=' + sub.id
+  await sendTextToTelegramSafe('↩️ PayPal 환불 반영 ' + amount + ' · submission=' + sub.id
     + ' — 게재 대기열에서 빼야 하는지 확인해 주세요.');
   return { refunded: true };
 }

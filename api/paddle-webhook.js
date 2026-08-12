@@ -132,7 +132,7 @@ async function resolveUserId(sub) {
 
   if (claimedId && emailUserId && claimedId !== emailUserId) {
     console.error('[paddle-webhook] user_id MISMATCH — custom:', claimedId, 'email-resolved:', emailUserId, 'sub:', sub.id);
-    sendTextToTelegramSafe('🚨 Paddle 구독 user_id 불일치 — 결제자 이메일 기준으로 배정. custom=' + claimedId + ' email=' + emailUserId + ' sub=' + sub.id);
+    await sendTextToTelegramSafe('🚨 Paddle 구독 user_id 불일치 — 결제자 이메일 기준으로 배정. custom=' + claimedId + ' email=' + emailUserId + ' sub=' + sub.id);
     return emailUserId;
   }
   if (claimedId) {
@@ -168,7 +168,7 @@ async function upsertSubscription(sub, userId) {
   const plan = priceIdPlan || custom.plan_key || 'unknown';
   if (custom.plan_key && priceIdPlan && custom.plan_key !== priceIdPlan) {
     console.warn('[paddle-webhook] plan_key != price-derived plan — trusting price. plan_key:', custom.plan_key, 'price:', priceIdPlan, 'sub:', sub.id);
-    sendTextToTelegramSafe('⚠️ Paddle 결제 무결성 경고 — 요청 plan_key(' + custom.plan_key + ')와 실제 결제 price(' + priceIdPlan + ') 불일치. 실제 price로 처리함. sub=' + sub.id);
+    await sendTextToTelegramSafe('⚠️ Paddle 결제 무결성 경고 — 요청 plan_key(' + custom.plan_key + ')와 실제 결제 price(' + priceIdPlan + ') 불일치. 실제 price로 처리함. sub=' + sub.id);
   }
   const interval = item.price && item.price.billing_cycle && item.price.billing_cycle.interval;
   const period = sub.current_billing_period || {};
@@ -271,7 +271,7 @@ module.exports = async function handler(req, res) {
         if (!userId) {
           console.error('[paddle-webhook] subscription.created — user unresolved. sub:', data.id, 'customer:', data.customer_id);
           // 검증 통과한 실이벤트인데 회원 매핑 실패 = "결제됐는데 미반영" 위험 → 즉시 알림.
-          sendTextToTelegramSafe('🚨 Paddle 구독 생성됐으나 회원 매핑 실패 — 수동 정합 필요. sub=' + data.id + ' customer=' + data.customer_id);
+          await sendTextToTelegramSafe('🚨 Paddle 구독 생성됐으나 회원 매핑 실패 — 수동 정합 필요. sub=' + data.id + ' customer=' + data.customer_id);
           break; // 200 반환 (재시도해도 해결 안 됨) — 로그·알림 기반 수동 정합
         }
         // 2026-08-03 시윤 3단계 — 재체험 감시(사후 탐지).
@@ -283,10 +283,10 @@ module.exports = async function handler(req, res) {
 
         const { plan } = await upsertSubscription(data, userId);
         if (_hadPrior && data.status === 'trialing') {
-          sendTextToTelegramSafe('⚠️ 재체험 감지 — 과거 구독 이력이 있는 회원이 또 무료체험으로 재구독했습니다. NOTRIAL price 설정 확인 필요. sub=' + data.id + ' user=' + userId);
+          await sendTextToTelegramSafe('⚠️ 재체험 감지 — 과거 구독 이력이 있는 회원이 또 무료체험으로 재구독했습니다. NOTRIAL price 설정 확인 필요. sub=' + data.id + ' user=' + userId);
         }
         if (plan === 'unknown') {
-          sendTextToTelegramSafe('⚠️ Paddle 구독 plan=unknown — price ID/plan_key 매핑 확인 필요. sub=' + data.id + ' user=' + userId);
+          await sendTextToTelegramSafe('⚠️ Paddle 구독 plan=unknown — price ID/plan_key 매핑 확인 필요. sub=' + data.id + ' user=' + userId);
         }
         // 확인 메일 (실패해도 무시)
         const { data: profile } = await supabaseAdmin
@@ -299,7 +299,7 @@ module.exports = async function handler(req, res) {
           const _item = (data.items && data.items[0]) || {};
           const _up = (_item.price && _item.price.unit_price) || {};
           const _amt = _up.amount ? (_up.currency_code === 'KRW' ? '₩' + Number(_up.amount).toLocaleString('ko-KR') : _up.amount + ' ' + (_up.currency_code || '')) : '';
-          sendTextToTelegramSafe(
+          await sendTextToTelegramSafe(
             '🎉 새 유료 구독자!\n'
             + '플랜: ' + String(plan).toUpperCase().replace('_', ' ') + (_amt ? (' · ' + _amt) : '') + '\n'
             + '회원: ' + ((profile && (profile.name || profile.email)) || '알 수 없음') + ((profile && profile.name && profile.email) ? (' (' + profile.email + ')') : '') + '\n'

@@ -205,7 +205,7 @@ module.exports = withCronGuard('backfill-meta-desc', async function handler(req,
     remaining = count;
   } catch (_) {}
   if (remaining === 0) {
-    sendTextToTelegramPersonalSafe(
+    await sendTextToTelegramPersonalSafe(
       '✅ 에디토리얼 본문 설명 AI 백필 완주 — 발행 에디토리얼의 본문 텍스트 보강이 끝났습니다. '
       + 'AI 검색엔진(ChatGPT·Perplexity·AI Overviews)이 인용할 문장이 생겼습니다. 다음 크롤에 반영됩니다.'
     ).catch(() => {});

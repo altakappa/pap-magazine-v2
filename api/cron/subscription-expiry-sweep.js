@@ -106,7 +106,7 @@ async function handler(req, res) {
       : `⚠️ 만료됐는데 활성인 구독 ${flagged.length}건 (자동강등 OFF — 확인 필요)`;
     const lines = flagged.slice(0, 20).map(f =>
       `· ${f.email || f.user_id} · ${f.plan} · 만료 ${String(f.current_period_end).slice(0, 10)}`);
-    sendTextToTelegramSafe(
+    await sendTextToTelegramSafe(
       head + '\n' + lines.join('\n')
       + (flagged.length > 20 ? `\n… 외 ${flagged.length - 20}건` : '')
       + (AUTODOWNGRADE ? '' : '\n\n자동강등을 켜려면 Vercel env SUBSCRIPTION_EXPIRY_AUTODOWNGRADE=on')

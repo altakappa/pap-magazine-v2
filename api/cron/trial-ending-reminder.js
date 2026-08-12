@@ -135,7 +135,7 @@ async function handler(req, res) {
       : `🔍 무료체험 D-${REMIND_DAYS} 대상 ${targets.length}명 (발송 OFF — 드라이런)`;
     const lines = targets.slice(0, 20).map(t =>
       `· ${t.profile.email} · ${t.plan} · 첫 결제 ${t.info.chargeDateKst || '?'}(KST)`);
-    sendTextToTelegramSafe(
+    await sendTextToTelegramSafe(
       head + '\n' + lines.join('\n')
       + (targets.length > 20 ? `\n… 외 ${targets.length - 20}명` : '')
       + (SEND_ENABLED ? '' : '\n\n실제 발송을 켜려면 Vercel env TRIAL_REMINDER_SEND=on')

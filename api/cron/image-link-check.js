@@ -157,7 +157,7 @@ module.exports = withCronGuard('image-link-check', async function handler(req, r
         : '') +
       '\n※ timeout·403 은 깨짐 확정이 아니다. 403 은 외부 호스트의 핫링크 차단이고,' +
       ' 해법은 재등록이 아니라 Supabase 이관(migrate-external-images)이다.';
-  sendTextToTelegramSafe(summary).catch(() => {});
+  await sendTextToTelegramSafe(summary).catch(() => {});
 
   console.log('[image-link-check]', { checked, broken: broken.length, timedOut, ms: Date.now() - started });
   return res.status(200).json({ ok: true, checked, broken: broken.length, timedOut });

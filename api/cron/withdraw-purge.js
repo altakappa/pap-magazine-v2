@@ -65,7 +65,7 @@ async function handler(req, res) {
     }
 
     if (stats.failed || failures.length) {
-      sendTextToTelegramSafe('⚠️ 예약 탈퇴 정리 실패 ' + failures.length + '건\n' + failures.slice(0, 10).join('\n'));
+      await sendTextToTelegramSafe('⚠️ 예약 탈퇴 정리 실패 ' + failures.length + '건\n' + failures.slice(0, 10).join('\n'));
     }
     if (stats.deleted) {
       console.log('[withdraw-purge] 정리 완료:', JSON.stringify(stats));

@@ -38,7 +38,7 @@ async function hardDelete(userId) {
   if (authError) {
     // 프로필은 지워졌는데 auth 가 남으면 로그인은 되고 데이터는 없는 상태가 된다.
     console.error('[withdraw] profile 삭제됨 / auth 사용자 삭제 실패:', userId, authError.message);
-    sendTextToTelegramSafe('⚠️ 탈퇴: profiles 삭제됐으나 auth 사용자 삭제 실패 — 수동 정리 필요 user=' + userId);
+    await sendTextToTelegramSafe('⚠️ 탈퇴: profiles 삭제됐으나 auth 사용자 삭제 실패 — 수동 정리 필요 user=' + userId);
   }
 }
 
@@ -84,7 +84,7 @@ module.exports = async function handler(req, res) {
     const cancelRes = await cancelProviderSubscription(supabaseAdmin, user.id);
     if (!cancelRes.ok) {
       console.error('[withdraw] 구독 해지 실패 — 탈퇴 중단:', user.id, cancelRes.message);
-      sendTextToTelegramSafe('🚨 탈퇴 중 구독 해지 실패 — 수동 확인 필요 user=' + user.id + ' / ' + (cancelRes.message || ''));
+      await sendTextToTelegramSafe('🚨 탈퇴 중 구독 해지 실패 — 수동 확인 필요 user=' + user.id + ' / ' + (cancelRes.message || ''));
       return res.status(409).json({
         message: '결제 해지에 실패해 탈퇴를 진행하지 못했습니다. contact@pap-magazine.com 으로 연락 주시면 바로 처리해 드리겠습니다.',
         code: 'subscription_cancel_failed',

@@ -181,7 +181,7 @@ async function resolveUserId(sub) {
 
   if (claimed && emailUserId && claimed !== emailUserId) {
     console.error('[paypal-webhook] user_id MISMATCH custom:', claimed, 'email:', emailUserId, 'sub:', sub.id);
-    sendTextToTelegramSafe('🚨 PayPal 구독 user_id 불일치 — 결제자 이메일 기준 배정. custom=' + claimed + ' email=' + emailUserId + ' sub=' + sub.id);
+    await sendTextToTelegramSafe('🚨 PayPal 구독 user_id 불일치 — 결제자 이메일 기준 배정. custom=' + claimed + ' email=' + emailUserId + ' sub=' + sub.id);
     return emailUserId;
   }
   if (claimed) {
@@ -198,7 +198,7 @@ async function upsertSubscription(sub, userId) {
   if (!planKey) {
     // 등급을 추측하지 않는다. 모르는 플랜은 저장은 하되 등급은 올리지 않는다.
     console.error('[paypal-webhook] 알 수 없는 plan_id:', sub.plan_id, '— PAYPAL_PLANS_JSON 확인 필요');
-    sendTextToTelegramSafe('⚠️ PayPal 알 수 없는 plan_id=' + sub.plan_id + ' sub=' + sub.id + ' (PAYPAL_PLANS_JSON 확인)');
+    await sendTextToTelegramSafe('⚠️ PayPal 알 수 없는 plan_id=' + sub.plan_id + ' sub=' + sub.id + ' (PAYPAL_PLANS_JSON 확인)');
   }
   const plan = planKey || 'unknown';
   const status = mapStatus(sub.status);
@@ -253,7 +253,7 @@ async function handleTermination(sub, userId, eventType) {
   if (row && row.paypal_subscription_id && row.paypal_subscription_id !== sub.id) {
     console.warn('[paypal-webhook] 다른 구독의 종료 이벤트 — 강등하지 않음.',
       'event_sub:', sub.id, 'stored_sub:', row.paypal_subscription_id, 'user:', userId);
-    sendTextToTelegramSafe('ℹ️ PayPal ' + eventType + ' — 회원의 활성 구독이 따로 있어 강등하지 않음. event=' + sub.id + ' stored=' + row.paypal_subscription_id);
+    await sendTextToTelegramSafe('ℹ️ PayPal ' + eventType + ' — 회원의 활성 구독이 따로 있어 강등하지 않음. event=' + sub.id + ' stored=' + row.paypal_subscription_id);
     return { skipped: 'other_active_subscription' };
   }
 
@@ -335,7 +335,7 @@ module.exports = async function handler(req, res) {
         const userId = await resolveUserId(sub);
         if (!userId) {
           console.error('[paypal-webhook] user 미해석 — sub:', sub.id, 'email:', sub.subscriber && sub.subscriber.email_address);
-          sendTextToTelegramSafe('🚨 PayPal 구독을 회원과 못 묶음 sub=' + sub.id + ' email=' + ((sub.subscriber || {}).email_address || '?'));
+          await sendTextToTelegramSafe('🚨 PayPal 구독을 회원과 못 묶음 sub=' + sub.id + ' email=' + ((sub.subscriber || {}).email_address || '?'));
           return res.status(200).json({ received: true, unmatched: true });
         }
         const r = await upsertSubscription(sub, userId);
@@ -359,7 +359,7 @@ module.exports = async function handler(req, res) {
         await supabaseAdmin.from('subscriptions')
           .update({ status: 'past_due', updated_at: new Date().toISOString() })
           .eq('user_id', userId);
-        sendTextToTelegramSafe('⚠️ PayPal 결제 실패 sub=' + resource.id + ' — past_due 로 표시(접근권 유지)');
+        await sendTextToTelegramSafe('⚠️ PayPal 결제 실패 sub=' + resource.id + ' — past_due 로 표시(접근권 유지)');
         return res.status(200).json({ received: true, status: 'past_due' });
       }
 
@@ -403,7 +403,7 @@ module.exports = async function handler(req, res) {
         // 분쟁은 자동으로 처리하지 않는다. 사람이 기한 안에 답해야 한다.
         const amt = ((resource.dispute_amount || {}).value || '')
           + ((resource.dispute_amount || {}).currency_code || '');
-        sendTextToTelegramSafe('⚖️ PayPal 분쟁 ' + type + ' id=' + resource.dispute_id
+        await sendTextToTelegramSafe('⚖️ PayPal 분쟁 ' + type + ' id=' + resource.dispute_id
           + ' 금액 ' + amt + ' 사유=' + (resource.reason || '?')
           + ' — PayPal 해결 센터에서 기한 안에 답변해야 합니다.');
         return res.status(200).json({ received: true, dispute: true });
