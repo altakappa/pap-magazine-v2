@@ -74,19 +74,35 @@
         var id = cfg && cfg.naverAnalyticsId;
         if (!id) return;                       // 계정번호 없으면 조용히 끝
 
-        var tag = document.createElement('script');
-        tag.src = '//wcs.naver.net/wcslog.js';
-        tag.defer = true;
-        tag.onload = function () {
+        /* 호스트가 두 개다 — 2026-08-13 실측(브라우저에서 순서 바꿔 2회 확인):
+             wcs.naver.net    → 로드 성공  ✅
+             wcs.pstatic.net  → 로드 실패  ❌
+           그런데 **네이버 콘솔이 발급해 주는 스니펫은 pstatic 을 쓴다.**
+           지금 되는 쪽(naver.net)을 먼저 쓰고, 실패하면 콘솔이 안내하는
+           쪽(pstatic)으로 넘어간다. 한쪽이 죽어도 계측이 조용히 멈추지 않는다.
+           — 오늘만 "심어놨는데 아무도 안 세어지고 있었다"를 네 번 만났다. */
+        var HOSTS = ['//wcs.naver.net/wcslog.js', '//wcs.pstatic.net/wcslog.js'];
+
+        function fire() {
           try {
-            if (!window.wcs) return;
+            if (!window.wcs) return false;
             if (!window.wcs_add) window.wcs_add = {};
             window.wcs_add.wa = id;
             if (window.wcs.inflow) window.wcs.inflow('pap-magazine.com');
             if (window.wcs_do) window.wcs_do();
-          } catch (e) { /* 조용히 */ }
-        };
-        document.head.appendChild(tag);
+            return true;
+          } catch (e) { return false; }
+        }
+
+        (function load(i) {
+          if (i >= HOSTS.length) return;            // 둘 다 실패 — 조용히 포기
+          var tag = document.createElement('script');
+          tag.src = HOSTS[i];
+          tag.defer = true;
+          tag.onload = function () { if (!fire()) load(i + 1); };
+          tag.onerror = function () { load(i + 1); };
+          document.head.appendChild(tag);
+        })(0);
       })
       .catch(function () { /* 조용히 실패 */ });
   } catch (e) { /* 계측은 절대 페이지를 막지 않는다 */ }
