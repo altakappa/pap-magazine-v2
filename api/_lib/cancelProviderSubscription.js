@@ -163,4 +163,6 @@ async function cancelProviderSubscription(db, userId) {
   return { ok: true, action: 'canceled', provider: row.paypal_subscription_id ? 'paypal' : 'paddle' };
 }
 
-module.exports = { cancelProviderSubscription };
+// paddleIsGone 도 내보낸다 — 해지 엔드포인트(api/subscriptions/paddle-portal.js)가
+// 같은 시각 기준을 써야 한다. 두 곳에 날짜를 각각 박으면 한쪽만 고치는 사고가 난다.
+module.exports = { cancelProviderSubscription, paddleIsGone, PADDLE_SHUTDOWN_AT };
