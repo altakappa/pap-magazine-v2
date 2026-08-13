@@ -21,6 +21,9 @@
  *
  * Edge cache: s-maxage=300 (5분) + SWR 1h. admin 저장 시 frontend 에서
  * fetch 시 cache-buster 파라미터를 붙여 즉시 갱신.
+ *
+ * 2026-08-13 — 응답 마지막에 '이달의 에디토리얼' 합성 그룹이 붙을 수 있다.
+ *   id 가 'eom-' 으로 시작하고 cover_groups 에 실재하지 않는다. 아래 참조.
  */
 
 const { supabaseAdmin } = require('../_lib/supabase');
@@ -61,6 +64,47 @@ module.exports = async function handler(req, res) {
       });
       return Object.assign({}, g, { images: imgs });
     });
+
+    /* 2026-08-13 — '이달의 에디토리얼' 을 마지막 슬라이드로 덧붙인다.
+     *
+     * submission.html 이 크리에이터에게 약속한 것을 코드로 지키는 자리다:
+     *   "매월 최우수 에디토리얼 1편을 선정해 한 달간 홈페이지 메인에 노출"
+     *
+     * 어드민이 커버 그룹을 따로 만들 필요가 없도록, 이미지·제목·링크를
+     * 에디토리얼 레코드에서 직접 가져온다(단일 출처). 별표 한 번이면 끝이고
+     * 달이 지나면 조회 조건에서 자연히 빠진다 — 지난 달 최우수작이 계속
+     * 걸려 있는 것보다, 잊으면 조용히 사라지는 쪽이 낫다.
+     *
+     * 실패해도 커버 배너는 그대로 나가야 한다. 부수 기능이 주 기능을
+     * 막으면 그게 더 큰 사고다(2026-08-12 가드와 같은 원칙). */
+    try {
+      const monthStart = new Date();
+      monthStart.setUTCDate(1);
+      const monthKey = monthStart.toISOString().slice(0, 10);
+      const { data: eom, error: eomErr } = await supabaseAdmin
+        .from('editorials')
+        .select('id,title,slug,cover_image,featured_month')
+        .eq('featured_month', monthKey)
+        .eq('status', 'published')
+        .limit(1)
+        .maybeSingle();
+      if (eomErr) {
+        console.error('[banners GET] editorial-of-month 조회 실패(무시):', eomErr.message);
+      } else if (eom && eom.cover_image) {
+        out.push({
+          // 실제 cover_groups 행이 아니므로 id 를 접두사로 구분한다.
+          // 어드민 커버 화면이 이 id 로 저장을 시도하지 않게 하기 위함.
+          id: 'eom-' + eom.id,
+          issue: 'EDITORIAL OF THE MONTH',
+          title: eom.title || '',
+          link_url: eom.slug ? ('/editorial/' + eom.slug) : '',
+          sort_order: 9999,
+          images: [{ id: 'eom-img-' + eom.id, image_url: eom.cover_image, image_url_mobile: null, sort_order: 0 }],
+        });
+      }
+    } catch (e) {
+      console.error('[banners GET] editorial-of-month 예외(무시):', e && e.message);
+    }
 
     // QA #294 cache 패턴과 동일 ─ 5분 edge + 1시간 SWR.
     res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=3600');

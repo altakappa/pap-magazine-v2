@@ -116,7 +116,12 @@ let hSlides = document.querySelectorAll('.hero-slide');  // QA #295 — let, rep
 // QA #319 — 10000 → 5000. QA 권장 전환 시간 3~5초의 상한 채택.
 // (QA #242 에서 3s → 10s 로 늘렸으나, 운영 QA 에서 배너별 체감 전환
 // 시간이 들쭉날쭉하다는 리포트와 함께 3~5초 통일 요청.)
-const HERO_INTERVAL_MS = 5000;
+//
+// 2026-08-13 도메니코 — "지금 속도의 0.7배". 속도가 0.7배면 한 장이 머무는
+// 시간은 1/0.7 = 약 1.43배 길어진다. 5000 → 7143ms.
+// 같은 날 '이달의 에디토리얼' 슬라이드가 하나 더 붙어 총 5장이 되었으므로
+// (한 바퀴 약 36초) 체감 속도를 늦추는 편이 커버를 더 오래 보여준다.
+const HERO_INTERVAL_MS = 7143;
 let _heroTimer = null;
 let _heroPaused = false;
 // QA #319 — tick 루프 세대 토큰. 관찰된 증상 (배너별 전환 간격이

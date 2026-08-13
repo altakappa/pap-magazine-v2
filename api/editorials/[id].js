@@ -245,6 +245,37 @@ module.exports = async function handler(req, res) {
       for (const key of allowed) {
         if (req.body[key] !== undefined) updates[key] = req.body[key];
       }
+
+      /* 2026-08-13 — '이달의 에디토리얼'. allowed 배열에 넣지 않는 이유는
+       * 값을 그대로 저장하면 안 되기 때문이다:
+       *   · 반드시 그 달 1일로 정규화한다 (2026-08-17 을 보내도 2026-08-01)
+       *   · 한 달에 한 편만 — 같은 달의 다른 편을 먼저 내려놓는다
+       *     (DB 에도 unique index 가 있지만 그건 마지막 방어선이고,
+       *      여기서 안 내려놓으면 저장이 그냥 실패해 관리자가 이유를 모른다)
+       *   · null 이면 해제 */
+      if (req.body.featured_month !== undefined) {
+        const raw = req.body.featured_month;
+        if (raw === null || raw === '') {
+          updates.featured_month = null;
+        } else {
+          const d = new Date(raw);
+          if (isNaN(d.getTime())) {
+            return res.status(400).json({ error: 'featured_month 형식이 올바르지 않습니다' });
+          }
+          d.setUTCDate(1);
+          const monthKey = d.toISOString().slice(0, 10);
+          const { error: clearErr } = await supabaseAdmin
+            .from('editorials')
+            .update({ featured_month: null })
+            .eq('featured_month', monthKey)
+            .neq('id', id);
+          if (clearErr) {
+            console.error('[editorials PUT] 이달의 에디토리얼 해제 실패:', clearErr.message);
+            return res.status(500).json({ error: '이달의 에디토리얼 지정에 실패했습니다' });
+          }
+          updates.featured_month = monthKey;
+        }
+      }
       // 2026-07-28 — 인스타 합성 로고/프레이밍 설정. allowed 배열에 넣지 않고
       // 따로 처리하는 이유: 원본 값을 그대로 쓰면 안 되고 반드시 위생 검증을
       // 통과한 결과만 저장해야 하기 때문. 키를 아예 안 보내면 컬럼은 손대지

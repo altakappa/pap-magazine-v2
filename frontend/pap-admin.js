@@ -6187,6 +6187,16 @@ function renderEditorialList(){
       // editor wants to ship early.
       actions+=' <button class="btn btn-sm btn-primary" onclick="publishScheduledNow(\''+e.id+'\',\''+safeTitle+'\')" title="예약된 발행 시간을 무시하고 지금 즉시 공개합니다">즉시 발행 ▶</button>';
     }
+    // 2026-08-13 — '이달의 에디토리얼'. submission.html 이 크리에이터에게
+    // 약속한 "매월 최우수 1편을 한 달간 메인 노출" 을 여기서 실행한다.
+    // 발행된 건에만 붙인다 — 초안을 메인에 걸 수는 없다.
+    if(st==='published'){
+      var _eomOn = _edIsEomThisMonth(e.featured_month);
+      actions+=' <button class="btn btn-sm" onclick="toggleEditorialOfMonth(\''+e.id+'\',\''+safeTitle+'\','+(_eomOn?'true':'false')+')"'
+        + ' title="'+(_eomOn?'이달의 에디토리얼 해제':'이달의 에디토리얼로 지정 — 홈 메인 배너에 한 달간 노출됩니다')+'"'
+        + ' style="'+(_eomOn?'background:#c9a86a;border-color:#c9a86a;color:#000':'')+'">'
+        + (_eomOn?'★ 이달의':'☆')+'</button>';
+    }
     actions+=' <button class="btn btn-sm btn-red" onclick="deleteEditorial(\''+e.id+'\',\''+safeTitle+'\')">삭제</button>';
     // QA #208 — publish date column for live posts, scheduled date for queued ones.
     var publishedCell = st==='scheduled'
@@ -6359,6 +6369,43 @@ async function publishScheduledNow(id, title){
 // explicit click here before they show up on the public site.
 // apiPut doesn't check r.ok, so the response may be {error:'...'} on
 // failure — inspect it explicitly rather than blindly toasting success.
+/* ───── 이달의 에디토리얼 (2026-08-13) ─────────────────────────────────
+ * submission.html 이 크리에이터에게 이렇게 약속하고 있다:
+ *   "매월 최우수 에디토리얼 1편을 선정해 한 달간 홈페이지 메인에 노출하고
+ *    PAP 공식 소셜 채널에서 홍보합니다."
+ * 그런데 그 '메인 노출' 을 하는 기능이 없었다. 약속만 있고 구현이 없었다.
+ *
+ * 지정하면 api/banners 가 홈 히어로 마지막 슬라이드로 붙인다
+ * (EDITORIAL OF THE MONTH / 제목). 이미지·링크는 에디토리얼에서 그대로
+ * 가져오므로 커버 화면에 따로 업로드할 필요가 없다.
+ * 달이 지나면 자동으로 빠진다 — 지난 달 최우수작이 계속 걸려 있는 것보다,
+ * 잊으면 조용히 사라지는 쪽이 낫다.
+ */
+function _edThisMonthKey(){
+  var n = new Date();
+  return n.getUTCFullYear() + '-' + String(n.getUTCMonth()+1).padStart(2,'0') + '-01';
+}
+function _edIsEomThisMonth(v){
+  if(!v) return false;
+  return String(v).slice(0,10) === _edThisMonthKey();
+}
+async function toggleEditorialOfMonth(id, title, isOn){
+  var monthLabel = _edThisMonthKey().slice(0,7);
+  if(isOn){
+    if(!confirm('"' + title + '" 을(를) 이달의 에디토리얼에서 해제할까요?\n\n홈 메인 배너에서 즉시 사라집니다.')) return;
+  } else {
+    if(!confirm('"' + title + '" 을(를) ' + monthLabel + ' 이달의 에디토리얼로 지정할까요?\n\n· 홈 메인 배너 마지막 슬라이드로 노출됩니다\n· 한 달에 한 편만 지정됩니다 — 이번 달에 이미 지정된 편이 있으면 자동으로 해제됩니다\n· 달이 바뀌면 자동으로 내려갑니다')) return;
+  }
+  try{
+    var body = isOn ? { featured_month: null } : { featured_month: _edThisMonthKey() };
+    assertApiOk(await apiPut('/editorials/' + id, body), '이달의 에디토리얼 변경 실패');
+    alert(isOn ? '해제되었습니다.' : '이달의 에디토리얼로 지정되었습니다.\n홈 메인 배너는 최대 5분 뒤 반영됩니다(캐시).');
+    await loadEditorials();
+  }catch(err){
+    alert('실패했습니다: ' + (err && err.message || ''));
+  }
+}
+
 async function publishEditorial(id,title){
   if(!confirm('"'+(title||'이 에디토리얼')+'"을(를) 발행하시겠습니까?\n공개 사이트에 즉시 노출됩니다.')) return;
   try{

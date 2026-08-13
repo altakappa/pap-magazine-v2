@@ -122,7 +122,10 @@ module.exports = async function handler(req, res) {
         'id','title','slug','cover_image','thumbnail','published_date',
         'scheduled_publish_at','status','tags','issue','view_count',
         'created_at','created_by','updated_at','updated_by',
-        'admin_edited_at','source_submission_id'
+        'admin_edited_at','source_submission_id',
+        // 2026-08-13 — 목록에서 '이달의 에디토리얼' 별표 상태를 그리려면 필요.
+        // 날짜 한 칸이라 위 주석이 경계하는 큰 블롭과는 무관하다.
+        'featured_month'
       ].join(',');
 
       const isPublicSlim = req.query.public === '1';
