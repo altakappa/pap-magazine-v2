@@ -102,11 +102,14 @@ console.log('\n[3] postMedia — 형식별 요청이 맞게 나간다');
 console.log('\n[4] 미디어가 실패해도 글은 나간다');
 {
   const src = fs.readFileSync(path.join(ROOT, 'api', '_lib', 'threadsAutopost.js'), 'utf8');
-  t('미디어 실패 시 텍스트로 폴백한다', /if \(hasMedia\) \{[\s\S]{0,300}postText\(text\)/.test(src));
+  /* 2026-08-13 — 본문 변수명이 text -> bodyText 로 바뀌었다. 링크를 본문에서 빼
+     첫 답글로 옮겼기 때문(threads-link-reply.test.js). 의도는 그대로: 미디어가
+     실패해도 글은 올라가야 한다. */
+  t('미디어 실패 시 텍스트로 폴백한다', /if \(hasMedia\) \{[\s\S]{0,300}postText\(bodyText\)/.test(src));
   t('폴백했다는 사실을 detail 에 남긴다 (조용한 품질 저하 금지)',
     /미디어 없이 게시함/.test(src));
   t('폴백도 실패하면 원래 실패를 덮지 않는다', /폴백도 실패하면 원래 실패 그대로 둔다/.test(src));
-  t('미디어가 아예 없는 기사만 예전 텍스트 경로로 간다', /} else \{[\s\S]{0,240}postText\(text\)/.test(src));
+  t('미디어가 아예 없는 기사만 텍스트 경로로 간다', /} else \{[\s\S]{0,240}postText\(bodyText\)/.test(src));
   t('결과에 어떤 형태로 나갔는지 싣는다', /media: mediaKind/.test(src));
 }
 

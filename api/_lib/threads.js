@@ -391,12 +391,24 @@ function selectArticleMedia(article) {
   return { images: [], video: '' };
 }
 
-async function postText(text, accountId) {
+/**
+ * 텍스트 스레드 1건 게시.
+ *
+ * @param {string} text
+ * @param {number} [accountId=1]
+ * @param {{replyToId?: string}} [opts] replyToId 를 주면 그 글의 답글로 붙는다.
+ *   (2026-08-13 신설 — 링크를 본문에서 빼 첫 답글로 옮기기 위해. 스레드는
+ *    링크 달린 글의 도달을 누르고, 답글이 달린 글은 오히려 밀어준다.)
+ */
+async function postText(text, accountId, opts) {
   const { token } = await getAccessToken(accountId);
+  const params = { media_type: 'TEXT', text: String(text || '').slice(0, 500), access_token: token };
+  const replyToId = opts && opts.replyToId;
+  if (replyToId) params.reply_to_id = String(replyToId);
   const create = await fetch(GRAPH + '/v1.0/me/threads', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ media_type: 'TEXT', text: String(text || '').slice(0, 500), access_token: token }),
+    body: new URLSearchParams(params),
     signal: AbortSignal.timeout(20000),
   });
   const cj = await create.json();
