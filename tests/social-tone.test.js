@@ -190,14 +190,19 @@ t('X 는 존댓말 치환표를 쓴다',
   /normalizeSocialAddress\(raw2, \{ polite: isPolite\(platform\) \}\)/.test(hook));
 t('스레드 호출부는 인자 없이 부른다 (기존 반말 동작 유지)',
   /papVoice\.normalizeSocialAddress\(stripDashes\(s\)\)/.test(threads));
+/* 2026-08-13 — 호칭을 없앴다. 그전에는 '너' 를 '패퍼들' 로 바꿨지만, 실제
+   반응 좋은 스레드 글은 독자를 아예 부르지 않는다. 이제 주어 자리의 호칭은
+   지워진다(social-address.test.js 가 규칙 전체를 지킨다). 여기서 지키는 것은
+   '어미 갈래(반말/존댓말)가 채널별로 유지되는가' 하나다. */
 t('polite:true 면 물음이 존댓말로 정리된다',
-  papVoice.normalizeSocialAddress('패퍼들은 어떻게 보세요?', { polite: true }) === '패퍼들은 어떻게 생각하세요?',
+  papVoice.normalizeSocialAddress('패퍼들은 어떻게 보세요?', { polite: true }) === '어떻게 생각하세요?',
   papVoice.normalizeSocialAddress('패퍼들은 어떻게 보세요?', { polite: true }));
-t('인자 없이 부르면 예전대로 반말이다',
-  papVoice.normalizeSocialAddress('너는 어떻게 봐?') === '패퍼들은 어떻게 생각해?',
+t('인자 없이 부르면 반말 갈래다',
+  papVoice.normalizeSocialAddress('너는 어떻게 봐?') === '어떻게 생각해?',
   papVoice.normalizeSocialAddress('너는 어떻게 봐?'));
-t('호칭 통일은 어미와 무관하게 양쪽 다 걸린다',
-  papVoice.normalizeSocialAddress('너는 이 룩 어떻게 봐요?', { polite: true }).startsWith('패퍼들은'));
+t('호칭 제거는 어미와 무관하게 양쪽 다 걸린다',
+  papVoice.normalizeSocialAddress('너는 이 룩 어떻게 봐요?', { polite: true }) === '이 룩 어떻게 생각하세요?',
+  papVoice.normalizeSocialAddress('너는 이 룩 어떻게 봐요?', { polite: true }));
 
 console.log('\n=== 7. 줄표 필터는 여전히 양쪽 공통인가 ===');
 t('X 도 줄표 필터를 거친다', /stripDashes\(hook\.text\)/.test(xpost),
