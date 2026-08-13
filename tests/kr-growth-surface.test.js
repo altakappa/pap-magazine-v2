@@ -489,7 +489,16 @@ console.log('\n[13] 기사 조회 계측 — 참여의 분모 (2026-08-12)');
   // ④ 프론트 호출 — 상세를 열 때, 정적 스냅샷은 건너뛴다
   t('기사 상세를 열 때 조회를 보낸다',
      /\/api\/articles\/' \+ encodeURIComponent\(a\._api_id\) \+ '\/view'/.test(art));
-  t('id 없는 정적 항목은 건너뛴다', /if\(a\._api_id\)\{/.test(art));
+  t('id 없는 정적 항목은 건너뛴다', /if\(a\._api_id && !_papArtRerender\)\{/.test(art));
+  /* 2026-08-13 — 언어 변경 재렌더가 조회를 부풀리고 있었다.
+     'pap:langchange' 핸들러가 같은 기사를 다시 그리는데 그 경로도 이 함수를
+     지나므로, 한 번 읽은 기사가 언어를 바꿀 때마다 1건씩 더 쌓였다.
+     에디토리얼은 _openEditorialInner_noPush 로 분리해 막아뒀는데 기사엔 없었다. */
+  t('언어 변경 재렌더는 조회로 세지 않는다 (중복 방지)',
+     /var _papArtRerender = false;/.test(art)
+     && /_papArtRerender=true;[\s\S]{0,120}finally \{ _papArtRerender=false; \}/.test(art));
+  t('깃발이 langchange 핸들러 안에서만 켜진다',
+     /pap:langchange[\s\S]{0,220}_papArtRerender=true/.test(art));
   t('계측 실패가 UX 를 깨지 않는다 (catch)',
      /\/api\/articles\/[\s\S]{0,400}\.catch\(function\(\)\{/.test(art));
 

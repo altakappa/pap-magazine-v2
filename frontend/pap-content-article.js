@@ -718,6 +718,9 @@ function _renderMoreArticles(a){
   };
 }
 /* PAP API fetch removed - using local gallery data */
+/* 언어 변경으로 인한 재렌더인지 표시하는 깃발. true 인 동안은 조회를 세지 않는다. */
+var _papArtRerender = false;
+
 function openArticleDetail(idx){
   if(!isStandardOrAbove() && _interstitialCount < _INTERSTITIAL_MAX){
     showPremiumInterstitial(function(){ _openArticleDetailInner(idx); });
@@ -737,7 +740,13 @@ function _openArticleDetailInner(idx){
      "기사 좋아요 30일 2건"이 나쁜 수치인지조차 판정할 수 없었다.
      분모가 없으면 참여 개선을 잴 수 없다. fire-and-forget — 실패해도 화면은 뜬다.
      _api_id 가 없는 정적 스냅샷 항목은 건너뛴다 (에디토리얼과 같은 규칙). */
-  if(a._api_id){
+  /* 2026-08-13 — 언어 변경 재렌더는 조회로 세지 않는다.
+     아래 'pap:langchange' 핸들러가 같은 기사를 다시 그리는데, 그때도 이 함수를
+     통과하므로 한 번 읽은 기사가 언어를 바꿀 때마다 1건씩 더 쌓이고 있었다.
+     에디토리얼은 _openEditorialInner_noPush 로 이 경로를 분리해 막아뒀는데
+     기사에는 그 분리가 없었다 — GROWTH-LEDGER 교훈 2("규칙이 두 벌이면
+     한쪽만 고쳐진다")의 재발. 계측을 붙인 2026-08-12 에 내가 놓쳤다. */
+  if(a._api_id && !_papArtRerender){
     try{
       fetch('/api/articles/' + encodeURIComponent(a._api_id) + '/view', {
         method: 'POST',
@@ -901,7 +910,7 @@ window._papShareArticle=function(){
 // ======== ARTICLE DATABASE ========
 var artData=[];
 // 2026-07-26 — 언어 전환 시 열린 기사 상세를 새 언어로 재렌더(같은 URL→replaceState, 히스토리 무오염).
-try{ window.addEventListener('pap:langchange',function(){ try{ var ov=document.getElementById('artDetailOverlay'); if(ov&&ov.classList.contains('active')&&typeof window.__papOpenArtIdx==='number'){ _openArticleDetailInner(window.__papOpenArtIdx); } }catch(e){} }); }catch(e){}
+try{ window.addEventListener('pap:langchange',function(){ try{ var ov=document.getElementById('artDetailOverlay'); if(ov&&ov.classList.contains('active')&&typeof window.__papOpenArtIdx==='number'){ _papArtRerender=true; try{ _openArticleDetailInner(window.__papOpenArtIdx); } finally { _papArtRerender=false; } } }catch(e){} }); }catch(e){}
 
 
 /* 9-language UI strings (2026-07-26) — _arL9(ko,en) resolves
