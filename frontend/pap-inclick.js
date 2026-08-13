@@ -48,3 +48,46 @@
     }
   } catch (e) { /* 계측은 절대 페이지를 막지 않는다 */ }
 })();
+
+/* ────────────────────────────────────────────────────────────────
+ * 네이버 애널리틱스 (2026-08-13 추가)
+ *
+ * 왜 여기 붙였나 — NAVER_ANALYTICS_ID 는 seoRenderer(SSR)에만 심겨 있었다.
+ * 그런데 SSR 은 **봇에게만** 나간다. 사람은 정적 HTML 을 받는다. 즉 계정번호를
+ * 넣어도 사람은 한 명도 세어지지 않는 상태였다. 위 인클릭 비콘이 2026-08-12 에
+ * 고친 것과 **글자 그대로 같은 구멍**이다.
+ *
+ * 이 파일은 사람이 받는 정적 랜딩에만 실리고 SSR 상세에는 실리지 않는다.
+ * 그래서 여기 두면 SSR 쪽 기존 코드와 겹치지 않는다 — 이중 집계가 없다.
+ *
+ * 계정번호가 없으면(환경변수 미설정) 아무것도 하지 않는다. 네이버 스크립트도
+ * 부르지 않는다 — 쓸데없는 외부 요청을 만들지 않기 위해서.
+ * 실패는 전부 삼킨다. 계측이 페이지를 망가뜨리면 안 된다.
+ * ──────────────────────────────────────────────────────────────── */
+(function () {
+  try {
+    if (typeof window === 'undefined' || !window.fetch) return;
+
+    window.fetch('/api/content/config', { credentials: 'omit' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (cfg) {
+        var id = cfg && cfg.naverAnalyticsId;
+        if (!id) return;                       // 계정번호 없으면 조용히 끝
+
+        var tag = document.createElement('script');
+        tag.src = '//wcs.naver.net/wcslog.js';
+        tag.defer = true;
+        tag.onload = function () {
+          try {
+            if (!window.wcs) return;
+            if (!window.wcs_add) window.wcs_add = {};
+            window.wcs_add.wa = id;
+            if (window.wcs.inflow) window.wcs.inflow('pap-magazine.com');
+            if (window.wcs_do) window.wcs_do();
+          } catch (e) { /* 조용히 */ }
+        };
+        document.head.appendChild(tag);
+      })
+      .catch(function () { /* 조용히 실패 */ });
+  } catch (e) { /* 계측은 절대 페이지를 막지 않는다 */ }
+})();

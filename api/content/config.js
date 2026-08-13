@@ -27,5 +27,12 @@ module.exports = async function handler(req, res) {
     kakaoJsKey: process.env.KAKAO_JS_KEY || '',
     // 웹 푸시 (B-7) — VAPID 공개키는 이름 그대로 공개용. 개인키는 절대 서버 밖으로 안 나간다.
     vapidPublicKey: process.env.VAPID_PUBLIC_KEY || '',
+    /* 네이버 애널리틱스 계정번호 (2026-08-13 추가).
+       왜 여기냐 — NAVER_ANALYTICS_ID 는 seoRenderer(SSR)에만 심겨 있었다.
+       그런데 SSR 은 **봇에게만** 나간다. 사람은 정적 HTML 을 받으므로
+       키를 넣어도 사람은 한 명도 측정되지 않았다. 카카오 키가 이미
+       이 통로로 SPA 에 전달되고 있으니 같은 길을 쓴다.
+       계정번호는 페이지 소스에 그대로 노출되는 공개값이다(카카오 JS 키와 같은 층). */
+    naverAnalyticsId: process.env.NAVER_ANALYTICS_ID || '',
   });
 };

@@ -572,6 +572,68 @@ console.log('\n[14] 전환 깔때기 계측 — 웹의 존재 이유를 재는 �
      /\/api\/funnel\/step[\s\S]{0,400}\.catch\(function\(\)\{\}\)/.test(sub));
 }
 
+console.log('\n[15] 네이버 애널리틱스 — 사람이 받는 페이지에 붙인다 (2026-08-13)');
+{
+  /* 왜 ────────────────────────────────────────────────────────────────
+   * 실측(2026-08-13, 라이브 확인):
+   *   카카오 JS 키      ✅ 이미 설정됨 · 공유 버튼 화면에 보임 · SDK 초기화됨
+   *                        → 카카오 유입 0 은 문이 닫혀서가 아니라 아무도 안 눌러서다
+   *   네이버 애널리틱스  ❌ 사람이 받는 페이지에 스크립트 자체가 없다
+   *
+   * 원인: NAVER_ANALYTICS_ID 가 seoRenderer(SSR)에만 심겨 있었다. 그런데 SSR 은
+   * **봇에게만** 나가고 사람은 정적 HTML 을 받는다. 계정번호를 넣어도 사람은
+   * 한 명도 세어지지 않는 상태였다. 2026-08-12 인클릭 비콘이 고친 것과
+   * 글자 그대로 같은 구멍이다 (GROWTH-LEDGER 교훈 8).
+   *
+   * 여기서 지키는 것:
+   *   ① 계정번호가 공개 설정 통로로 내려온다 (카카오 키와 같은 길)
+   *   ② 사람이 받는 정적 랜딩에 로더가 실린다
+   *   ③ SSR 에도 남아 있으므로 **겹치지 않아야 한다** — 로더는 SSR 에 안 실린다
+   *   ④ 계정번호가 없으면 외부 요청조차 만들지 않는다
+   *   ⑤ 참조 10곳의 판이 같이 올라갔다 */
+
+  const cfg = R('api/content/config.js');
+  const inc = R('frontend/pap-inclick.js');
+
+  // ① 공개 설정 통로
+  t('config 가 네이버 계정번호를 내려준다', /naverAnalyticsId: process\.env\.NAVER_ANALYTICS_ID/.test(cfg));
+  t('카카오 키와 같은 통로다 (규칙을 두 벌로 만들지 않는다)', /kakaoJsKey: process\.env\.KAKAO_JS_KEY/.test(cfg));
+  t('비밀값을 흘리지 않는다 (Admin·REST·시크릿 없음)',
+     !/ADMIN_KEY|REST_API_KEY|_SECRET|SERVICE_ROLE/.test(cfg));
+
+  // ② 사람이 받는 페이지에 로더가 있다
+  t('인클릭 파일에 네이버 로더가 있다', /wcs\.naver\.net\/wcslog\.js/.test(inc));
+  t('계정번호를 config 에서 받아온다', /cfg && cfg\.naverAnalyticsId/.test(inc));
+  t('네이버 표준 호출을 한다 (inflow + wcs_do)',
+     /wcs\.inflow\('pap-magazine\.com'\)/.test(inc) && /wcs_do\(\)/.test(inc));
+
+  // ③ 이중 집계 금지 — 로더는 SSR 상세에 실리지 않는다
+  {
+    const ssr = R('api/_lib/seoRenderer.js');
+    t('SSR 은 종전대로 서버가 직접 심는다', /NAVER_ANALYTICS_ID \? `/.test(ssr));
+    t('SSR 상세에는 인클릭 파일을 싣지 않는다 (이중 집계 방지)',
+       !/pap-inclick\.js/.test(ssr));
+  }
+
+  // ④ 계정번호 없으면 외부 요청조차 안 만든다
+  t('계정번호가 없으면 조용히 끝낸다', /if \(!id\) return;/.test(inc));
+  t('계측 실패가 페이지를 막지 않는다',
+     (inc.match(/catch \(e\) \{/g) || []).length >= 2 && /\.catch\(function \(\)/.test(inc));
+
+  // ⑤ 캐시버스트 — 참조 10곳
+  {
+    const refs = ['about', 'articles', 'community', 'digital-magazine', 'films',
+                  'index', 'magazine', 'network', 'subscribe']
+      .map((n) => 'frontend/' + n + '.html').concat(['api/seo/archive.js']);
+    const vers = refs.map((f) => (R(f).match(/pap-inclick\.js\?v=(\d+)/) || [])[1]);
+    t('pap-inclick.js 참조 10곳의 판이 모두 같다',
+       vers.every((v) => v && v === vers[0]),
+       refs.map((f, i) => f + '=' + vers[i]).join(', '));
+    t('pap-inclick.js 판이 1 보다 크다 (이번 수정분 반영)',
+       Number(vers[0]) > 1, 'v=' + vers[0]);
+  }
+}
+
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) { console.log('❌ kr-growth-surface tests FAILED'); process.exit(1); }
 console.log('✅ kr-growth-surface tests passed');
