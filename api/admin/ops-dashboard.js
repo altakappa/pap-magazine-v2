@@ -256,6 +256,60 @@ module.exports = async function handler(req, res) {
       if (!c) continue;
       catMap[c] = (catMap[c] || 0) + 1;
     }
+    /* ── 유입 · 전환 (2026-08-13 신설) ──────────────────────────────────
+       왜 여기냐 — 2026-08-12~13 에 만든 계측 세 개(article_views ·
+       funnel_events · social_inclicks)가 DB 에만 쌓이고 어드민 어디에도
+       안 보였다. 숫자를 만들어 놓고 안 보면 없는 것과 같다.
+       모두 count(head) 라 가볍고, 표가 없으면(마이그레이션 전) 0 으로 떨어진다.
+       ⚠️ 네이버 애널리틱스 자체 수치는 여기 못 넣는다 — 네이버가 조회 API 를
+          일반 제공하지 않는다. 그건 analytics.naver.com 에서 봐야 한다.
+          여기 있는 naver 수치는 **우리 자체 계측**(utm 붙은 링크 클릭)이다. */
+    /* ⚠️ W(kstWindows)는 위 outclicks 블록 **안에서만** 살아 있다.
+       여기서 그대로 쓰면 ReferenceError 다 — node --check 는 이걸 못 잡는다
+       (CLAUDE.md 체크리스트의 그 함정). 그래서 여기서 따로 만든다. */
+    const WF  = kstWindows(Date.now());
+    const D7  = isoDaysAgo(7);
+    const D30 = isoDaysAgo(30);
+    const [
+      artViewsToday, artViews7d, artViews30d,
+      subViewToday, subView7d, subView30d,
+      inclickRows,
+    ] = await Promise.all([
+      countOf('article_views', q => q.gte('viewed_at', WF.todayStart)),
+      countOf('article_views', q => q.gte('viewed_at', D7)),
+      countOf('article_views', q => q.gte('viewed_at', D30)),
+      countOf('funnel_events', q => q.eq('step', 'subscribe_view').gte('created_at', WF.todayStart)),
+      countOf('funnel_events', q => q.eq('step', 'subscribe_view').gte('created_at', D7)),
+      countOf('funnel_events', q => q.eq('step', 'subscribe_view').gte('created_at', D30)),
+      rows('social_inclicks', {
+        cols: 'src, clicked_at',
+        fn: q => q.gte('clicked_at', D30).limit(5000),
+      }),
+    ]);
+
+    // 채널별 집계 — 7일/30일을 한 번의 조회로 나눈다(요청 수를 늘리지 않는다)
+    const srcMap = {};
+    for (const r of inclickRows) {
+      const key = (r.src || '기타').trim() || '기타';
+      if (!srcMap[key]) srcMap[key] = { src: key, d7: 0, d30: 0 };
+      srcMap[key].d30 += 1;
+      if (r.clicked_at && r.clicked_at >= D7) srcMap[key].d7 += 1;
+    }
+    const inflow_by_src = Object.values(srcMap).sort((a, b) => b.d30 - a.d30);
+
+    const funnel = {
+      article_views_today: artViewsToday,
+      article_views_7d: artViews7d,
+      article_views_30d: artViews30d,
+      subscribe_view_today: subViewToday,
+      subscribe_view_7d: subView7d,
+      subscribe_view_30d: subView30d,
+      active_subs: activeSubs,
+      inflow_7d: inflow_by_src.reduce((n, r) => n + r.d7, 0),
+      inflow_30d: inflow_by_src.reduce((n, r) => n + r.d30, 0),
+      inflow_by_src,
+    };
+
     const article_categories = Object.entries(catMap)
       .map(([category, count]) => ({ category, count }))
       .sort((a, b) => b.count - a.count)
@@ -291,6 +345,7 @@ module.exports = async function handler(req, res) {
       pending_submissions: pendingSubs,
       issues,
       article_categories,
+      funnel,
     });
   } catch (e) {
     console.error('[ops-dashboard] failed:', e);

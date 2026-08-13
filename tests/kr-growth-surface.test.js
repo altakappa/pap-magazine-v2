@@ -643,6 +643,54 @@ console.log('\n[15] 네이버 애널리틱스 — 사람이 받는 페이지에 
   }
 }
 
+console.log('\n[17] 어드민에서 유입·전환을 볼 수 있다 (2026-08-13 도메니코 요청)');
+{
+  /* 왜 ────────────────────────────────────────────────────────────────
+   * 2026-08-12~13 에 계측 세 개를 새로 만들었다:
+   *   article_views(기사 조회) · funnel_events(구독 페이지 도달) · social_inclicks(유입)
+   * 그런데 셋 다 DB 에만 쌓이고 어드민 어디에도 안 보였다.
+   * **숫자를 만들어 놓고 안 보면 없는 것과 같다.** 오늘 배운 것의 연장이다.
+   *
+   * 새 페이지를 만들지 않고 이미 있는 /ops-dashboard 에 한 칸을 붙인다
+   * (도메니코 선택, 2026-08-13). 관리할 화면을 늘리지 않는다.
+   *
+   * ⚠️ 네이버 애널리틱스 자체 수치는 넣을 수 없다 — 네이버가 조회 API 를
+   *    일반 제공하지 않는다. 화면이 그 사실을 사용자에게 말해야 한다.
+   *    (안 그러면 "네이버 숫자가 왜 없지" 로 또 하루를 쓴다) */
+
+  const api  = R('api/admin/ops-dashboard.js');
+  const html = R('frontend/ops-dashboard.html');
+
+  // ① API 가 세 계측을 모두 집계한다
+  t('기사 조회를 집계한다', /countOf\('article_views'/.test(api));
+  t('구독 페이지 도달을 집계한다',
+     /countOf\('funnel_events'[\s\S]{0,80}subscribe_view/.test(api));
+  t('유입 채널(social_inclicks)을 집계한다', /rows\('social_inclicks'/.test(api));
+  t('응답에 funnel 블록을 담는다', /\n\s*funnel,\n/.test(api));
+  t('오늘·7일·30일 세 창을 다 준다',
+     /article_views_today/.test(api) && /article_views_7d/.test(api) && /article_views_30d/.test(api));
+
+  // ② 스코프 함정 — W 는 outclicks 블록 안에서만 산다. node --check 가 못 잡는다.
+  t('유입 집계가 자기 시간창(WF)을 따로 만든다 (ReferenceError 방지)',
+     /const WF\s*=\s*kstWindows\(/.test(api));
+  t('유입 집계 구간에서 블록 밖 W 를 참조하지 않는다',
+     !/funnel_events[\s\S]{0,120}[^F]W\.todayStart/.test(api));
+
+  // ③ 화면이 실제로 그린다
+  t('대시보드에 유입·전환 칸이 있다', /Funnel &amp; Inflow/.test(html));
+  t('깔때기·채널 두 자리가 있다',
+     /id="funnelSteps"/.test(html) && /id="inflowSrc"/.test(html));
+  t('renderFunnel 이 정의되고 render 에서 불린다',
+     /function renderFunnel\(d\)\{/.test(html) && /\n\s*renderFunnel\(d\);/.test(html));
+  t('구독페이지/기사조회 비율을 보여준다', /pct\(f\.subscribe_view_7d, f\.article_views_7d\)/.test(html));
+
+  // ④ 한계를 화면이 말한다 — 침묵하면 또 헤맨다
+  t('네이버 수치는 여기 없다고 화면이 알린다',
+     /analytics\.naver\.com/.test(html));
+  t('utm 없는 유입은 안 잡힌다고 알린다', /utm 꼬리표가 붙은 링크만/.test(html));
+  t('기록이 없을 때 빈 화면 대신 안내를 낸다', /최근 30일 기록 없음/.test(html));
+}
+
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) { console.log('❌ kr-growth-surface tests FAILED'); process.exit(1); }
 console.log('✅ kr-growth-surface tests passed');

@@ -167,6 +167,57 @@ function outclickCards(d){
       </div>`;
 }
 
+/* 유입 · 전환 (2026-08-13) — 2026-08-12~13 에 만든 계측 세 개가 DB 에만 쌓이고
+   어드민 어디에도 안 보였다. 숫자를 만들어 놓고 안 보면 없는 것과 같다.
+   ⚠️ 네이버 애널리틱스 자체 수치는 여기 없다 — 네이버가 조회 API 를 안 연다.
+      여기 naver 는 **우리 자체 계측**(utm 붙은 링크 클릭)이다. */
+function renderFunnel(d){
+  const f = d.funnel || {};
+  const stepHost = document.getElementById('funnelSteps');
+  const srcHost  = document.getElementById('inflowSrc');
+  if (!stepHost || !srcHost) return;
+
+  const pct = (a, b) => (!b ? '—' : (a / b * 100).toFixed(2) + '%');
+  const steps = [
+    { lab: '기사 조회',        v: f.article_views_7d,   fo: '오늘 ' + nf(f.article_views_today) },
+    { lab: '구독 페이지 도달', v: f.subscribe_view_7d,  fo: '기사 대비 ' + pct(f.subscribe_view_7d, f.article_views_7d) },
+    { lab: '활성 구독',        v: f.active_subs,        fo: '누적 · 기간 무관' },
+  ];
+  stepHost.innerHTML = steps.map(function(s, i){
+    return '<div style="display:flex;align-items:baseline;gap:10px;padding:9px 0'
+      + (i ? ';border-top:1px solid rgba(0,0,0,.06)' : '') + '">'
+      + '<div style="width:112px;font-size:12px;color:var(--text3)">' + esc(s.lab) + '</div>'
+      + '<div style="font-size:22px;font-weight:700;min-width:74px">' + nf(s.v) + '</div>'
+      + '<div style="font-size:11px;color:var(--text3)">' + esc(s.fo) + '</div>'
+      + '</div>';
+  }).join('') +
+  '<div style="margin-top:10px;font-size:11px;color:var(--text3);line-height:1.6">'
+  + '기사 조회는 사이트 안에서 기사를 연 횟수입니다. 구독 페이지 도달은 그중 결제 안내까지 간 횟수입니다.<br>'
+  + '네이버 애널리틱스 수치는 여기 없습니다 — <b>analytics.naver.com</b> 에서 보세요.'
+  + '</div>';
+
+  const list = f.inflow_by_src || [];
+  srcHost.innerHTML = (!list.length
+    ? '<div style="font-size:12px;color:var(--text3)">최근 30일 기록 없음</div>'
+    : '<table style="width:100%;border-collapse:collapse;font-size:12px">'
+      + '<tr style="color:var(--text3);text-align:left">'
+      + '<th style="padding:4px 0;font-weight:500">채널</th>'
+      + '<th style="padding:4px 0;font-weight:500;text-align:right">7일</th>'
+      + '<th style="padding:4px 0;font-weight:500;text-align:right">30일</th></tr>'
+      + list.map(function(r){
+          return '<tr style="border-top:1px solid rgba(0,0,0,.06)">'
+            + '<td style="padding:6px 0">' + esc(r.src) + '</td>'
+            + '<td style="padding:6px 0;text-align:right;font-weight:600">' + nf(r.d7) + '</td>'
+            + '<td style="padding:6px 0;text-align:right;color:var(--text3)">' + nf(r.d30) + '</td>'
+            + '</tr>';
+        }).join('')
+      + '</table>')
+    + '<div style="margin-top:10px;font-size:11px;color:var(--text3)">'
+    + '합계 7일 ' + nf(f.inflow_7d) + ' · 30일 ' + nf(f.inflow_30d)
+    + ' — utm 꼬리표가 붙은 링크만 셉니다. 검색으로 그냥 들어온 사람은 안 잡힙니다.'
+    + '</div>';
+}
+
 function render(d){
   const k=d.kpi||{}, s=d.submissions||{};
   document.getElementById('upd').textContent = new Date(d.generated_at||Date.now())
@@ -182,6 +233,12 @@ function render(d){
       <div class="kpi"><span class="accent"></span><div class="lab">봇 조회 차단 · 최근 7일</div><div class="num">${nf(k.bot_blocked_7d)}</div><div class="fo">성장지표 오염 방지</div></div>
       ${outclickCards(d)}
       <div class="kpi"><span class="accent" style="background:var(--gold)"></span><div class="lab">검토 대기 투고</div><div class="num">${nf(s.pending)}</div><div class="fo warn">수정요청 ${nf(s.revision)}건 진행 중</div></div>
+    </div>
+
+    <h2><span class="bar"></span>Funnel &amp; Inflow · 유입 → 전환</h2>
+    <div class="grid cols">
+      <div class="card"><h3>깔때기 · 최근 7일</h3><div id="funnelSteps"></div></div>
+      <div class="card"><h3>외부 → 웹 유입 채널</h3><div id="inflowSrc"></div></div>
     </div>
 
     <h2><span class="bar"></span>Recent &amp; Feed · 최근 발행</h2>
@@ -259,6 +316,7 @@ function render(d){
     ch.appendChild(el(`<div class="row"><div class="t"><span class="name">${c[0]}</span></div><div class="v"><b>${nf(c[1])}</b></div></div>`));
   });
 
+  renderFunnel(d);
   drawBar(d.monthly||[]);
   drawLine(d.daily||[]);
 }
