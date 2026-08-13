@@ -1628,9 +1628,11 @@ function populateReviewModal(submission){
   // Pre-select cover image from description
   if(typeof desc.coverImageIndex==='number')selectedCoverImageIndex=desc.coverImageIndex;
 
-  // ── 승인 버튼 라벨: 브랜디드/유료 서브미션은 "승인 및 결제요청" ── (2026-07-27 도메니코)
+  // ── 승인 버튼 라벨: 브랜디드/유료 서브미션은 "승인 및 청구" ──
+  //   (2026-07-27 도메니코 / 2026-08-13 승인후결제로 전환하며 문구 교체)
   // 심사 하단 승인 버튼을 유형에 맞춰 전환한다. 승인 처리(doReview('approved'))는 그대로 —
-  // 승인되면 제출자 마이페이지에 게재료 결제요청(pap-submission-fee.js 기본료 버튼)이 자동 노출된다.
+  // 승인하는 순간 제출 시 묶어둔 승인건이 캡처된다(api/_lib/settleAuthorization.js).
+  // 청구가 실패하면 승인 자체가 409 로 막힌다 — 돈 없이 게재가 확정되지 않는다.
   // 모달은 서브미션마다 재사용되므로 비유료 유형에선 반드시 "✓ 승인" 으로 되돌린다.
   var _apBtn=document.getElementById('reviewApproveBtn');
   if(_apBtn){
@@ -1639,7 +1641,7 @@ function populateReviewModal(submission){
     if(_isFeeRequiredType(desc.submissionType)){
       var _amt=_feeAmt[_ftKey]||'';
       _apBtn.textContent='✓ 승인 및 청구'+(_amt?' ('+_amt+')':'');
-      _apBtn.title='승인하면 제출자 마이페이지에 게재료 결제요청이 표시됩니다'+(_amt?' — '+_amt:'');
+      _apBtn.title='승인하면 묶어둔 게재료가 즉시 청구됩니다'+(_amt?' — '+_amt:'');
     }else{
       _apBtn.textContent='✓ 승인';
       _apBtn.title='';
@@ -2036,7 +2038,7 @@ async function doReview(status){
     alert('심사 대상 서브미션을 불러올 수 없습니다.');
     return;
   }
-  // 유료/브랜디드 미결제 서브미션의 승인(=승인 및 결제요청): 승인 후 편집화면으로
+  // 유료/브랜디드 서브미션의 승인(=승인 및 청구): 승인 후 편집화면으로
   // 점프하지 않고 결제 대기 상태로 둔다. closeModal 이 currentReviewSubmission 을
   // 비우므로 여기서 미리 판정값을 확보한다. (결제 완료 시 편집으로 진행)
   var _feeReqApproval = _isFeeRequiredType(_submissionTypeOf(currentReviewSubmission))
@@ -2101,7 +2103,7 @@ async function doReview(status){
     // metadata while the submission's context is still fresh — beats
     // making them navigate back through 에디토리얼 관리 → 임시저장.
     if(status==='approved' && _feeReqApproval){
-      // 승인 및 결제요청 — 편집화면으로 점프하지 않고 결제 대기. 결제 완료(payment_status
+      // 승인 및 청구 — 편집화면으로 점프하지 않고 결제 확인 대기. 청구 완료(payment_status
       // ='paid', Paddle 웹훅)되면 상태가 '결제 완료'로 바뀌고, 그때 [에디토리얼 편집]으로 진행.
       alert('승인 및 청구가 완료되었습니다.\n묶어둔 게재료가 방금 청구되었습니다.\n이어서 에디토리얼 편집으로 진행하세요.');
       if(window.loadSubmissions) loadSubmissions();
@@ -2324,7 +2326,7 @@ async function loadSubmissions(statusFilter, opts){
         else ds = s.status;
       }
       // 유료/브랜디드 승인 건은 결제 전까지 '최종 승인' 대신 '결제 대기'로 표기한다
-      // (승인=결제요청). payment_status='paid'(Paddle 웹훅) 시 자동으로 '최종 승인' 복귀.
+      // (승인=청구). payment_status='paid' 가 되면 자동으로 '최종 승인' 으로 복귀.
       // 이미 게재(uploaded)된 건은 제외.
       if (ds === 'final_approved' && s.payment_status !== 'paid' && _isFeeRequiredType(_submissionTypeOf(s))) {
         ds = 'awaiting_payment';

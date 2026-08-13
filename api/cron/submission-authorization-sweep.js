@@ -34,6 +34,23 @@ const WARN_WITHIN_HOURS = 12;
 const MAX_PER_RUN = 50;
 
 module.exports = withCronGuard('submission-authorization-sweep', async function handler(req, res) {
+  // 예약 실행만 허용한다 — 돈(PayPal 보이드)을 건드리는 크론은 전부 이 검사를
+  // 한다(withdraw-purge / subscription-expiry-sweep 등). 이 크론만 빠져 있었다.
+  // 남이 불러도 SLA 넘긴 건만 처리되니 돈이 새진 않지만, 무제한 호출로 PayPal
+  // 레이트리밋·함수 비용·텔레그램 도배가 가능하다. (2026-08-13)
+  if (!process.env.CRON_SECRET) {
+    return res.status(500).json({ message: 'CRON_SECRET not configured' });
+  }
+  if ((req.headers.authorization || '') !== `Bearer ${process.env.CRON_SECRET}`) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+
+  // 🔴 Vercel 서버리스의 res 에는 locals 가 없다. 이 한 줄이 없으면 맨 아래
+  //   res.locals.cronNote 대입에서 죽는다 — 할 일을 다 끝낸 직후에. 실측:
+  //   6번 실행 6번 전부 500(2026-08-13). 돈은 안전했지만 매번 거짓 실패
+  //   알림이 나갔다. 거짓 경보가 쌓이면 진짜 고장을 아무도 안 믿는다.
+  res.locals = res.locals || {};
+
   const now = Date.now();
   const stats = { scanned: 0, warned: 0, voided: 0, failed: 0 };
 
