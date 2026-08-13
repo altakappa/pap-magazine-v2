@@ -634,6 +634,67 @@ console.log('\n[15] 네이버 애널리틱스 — 사람이 받는 페이지에 
   }
 }
 
+console.log('\n[16] 네이버 블로그 = 두 도달점으로 가는 파이프 (2026-08-13 도메니코 지시)');
+{
+  /* 도메니코 지시 (2026-08-13):
+   *   "네이버 블로그 초안은 **항상** PAP 웹사이트와 인스타그램으로 유입할 수 있는
+   *    링크를 만들어 새 파이프라인 역할을 하면 좋겠어."
+   *
+   * 성장 헌법 8항(두 도달점은 서로의 파이프)을 네이버 블로그까지 넓힌 것이다.
+   *
+   * ⚠️ 이 규칙은 **이미 한 번 깨졌다.** 2026-08-07 에 기사 경로에만 utm 을 붙이고
+   *    에디토리얼 경로를 빠뜨렸고, 2026-08-12 에야 발견됐다. 그 사이 화보 포스팅에서
+   *    넘어온 사람은 전부 집계 밖이었다. GROWTH-LEDGER 교훈 2("규칙이 두 벌이면
+   *    한쪽만 고쳐진다")의 정확한 사례다.
+   *    그래서 "항상"을 말로 두지 않고 여기서 기계가 감시한다.
+   *
+   * 지키는 것:
+   *   ① 두 초안 경로(기사·에디토리얼) 모두 **웹 링크와 IG CTA 를 둘 다** 붙인다
+   *   ② IG 는 ig-out 경유 (성장 헌법 3항) · 웹은 utm_source=naver
+   *   ③ IG CTA 는 프로필 + 원본 게시물 두 갈래
+   *   ④ 본문(AI 생성분)에는 URL 을 넣지 않는다 — 네이버는 외부링크가 많으면
+   *      저품질로 본다. 링크는 시스템이 붙이는 블록에만 존재해야 한다. */
+
+  const nb = R('api/admin/naver-blog-draft.js');
+
+  // ① 두 경로 모두 — 웹 링크
+  const webLinks = (nb.match(/utm_source=naver&utm_medium=blog/g) || []).length;
+  t('웹사이트 백링크가 두 경로(기사·에디토리얼) 모두에 있다',
+     webLinks >= 2, '웹 링크 ' + webLinks + '곳');
+
+  // ① 두 경로 모두 — IG CTA (호출부가 2곳이어야 한다)
+  const igCalls = (nb.match(/igCtaBlock\(/g) || []).length;
+  t('IG CTA 블록이 정의 1 + 호출 2 = 3회 등장한다 (한 경로도 빠지지 않았다)',
+     igCalls >= 3, 'igCtaBlock ' + igCalls + '회');
+  t('기사 초안이 IG CTA 를 붙인다',
+     /igCtaBlock\(art\.source_instagram_url/.test(nb));
+  t('에디토리얼 초안이 IG CTA 를 붙인다',
+     /igCtaBlock\(ed\.source_instagram_url/.test(nb));
+
+  // ② 계측 경유 — 성장 헌법 3항
+  t('IG 링크는 /api/ig-out 경유다 (성장 헌법 3항)',
+     /IG_OUT = 'https:\/\/www\.pap-magazine\.com\/api\/ig-out'/.test(nb));
+  t('IG 링크에 출처 표시가 붙는다 (src=naverblog)',
+     (nb.match(/src=naverblog/g) || []).length >= 2);
+  t('생 instagram.com 링크를 본문에 직접 넣지 않는다',
+     !/href="https:\/\/www\.instagram\.com/.test(nb));
+
+  // ③ 두 갈래 — 프로필 + 원본 게시물
+  t('IG CTA 가 프로필로 보낸다', /to=profile/.test(nb));
+  t('IG CTA 가 원본 게시물로도 보낸다 (있을 때만)',
+     /to=post/.test(nb) && /sourceIgUrl && \/instagram\\.com\//.test(nb));
+
+  // ④ 본문에는 URL 금지 — 네이버 저품질 방지. 링크는 시스템 블록에만.
+  /* 문구가 두 벌이다 — 기사 쪽은 "body_html 안에 URL을", 에디토리얼 쪽은
+     "body_html에 URL을". 뜻은 같으므로 코드를 고치지 않고 검사식이 둘 다 받는다.
+     (돌아가는 프롬프트 문장을 미용 목적으로 바꾸면 생성물이 흔들린다) */
+  const noUrlOrders = (nb.match(/body_html\s*(안)?에\s*URL을?\s*넣지 말/g) || []).length;
+  t('두 프롬프트 모두 "본문에 URL 넣지 말 것"을 지시한다',
+     noUrlOrders >= 2, '지시 ' + noUrlOrders + '곳');
+  t('링크 개수를 2개 이내로 유지하라는 근거가 코드에 적혀 있다',
+     /2개 이내/.test(nb));
+}
+
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) { console.log('❌ kr-growth-surface tests FAILED'); process.exit(1); }
 console.log('✅ kr-growth-surface tests passed');
