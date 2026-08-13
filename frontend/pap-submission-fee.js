@@ -140,20 +140,39 @@ async function _resolvePayUser(){
 // ⚠️ 결제 확정도 서버(/api/submissions/paypal-capture)가 PayPal 원본을 다시 읽어
 //    금액까지 대조한 뒤에 한다. 브라우저의 "성공했어요" 는 신뢰하지 않는다.
 
-var _PP_SDK_LOADED = null;
-function _loadPayPalSdkOnce(clientId){
-  if (window.paypal && window._papPPSdkKey === clientId) return Promise.resolve();
-  if (_PP_SDK_LOADED) return _PP_SDK_LOADED;
-  _PP_SDK_LOADED = new Promise(function(resolve, reject){
+// 🔴 2026-08-13 — SDK 의 intent 는 주문의 intent 와 반드시 같아야 한다.
+//   서버가 AUTHORIZE 로 만든 주문을 intent=capture 로 띄운 SDK 에 넘기면 PayPal 이
+//   거부한다: "Expected intent from order api call to be capture, got authorize".
+//   2026-08-12 승인후결제를 넣을 때 주문 생성 쪽만 고치고 여기를 안 고쳐서,
+//   브랜디드(€790)·소수룩(€380) 결제창이 실서비스에서 아예 열리지 않았다.
+//   단위 테스트 74개가 전부 통과한 채로 깨져 있었다 — SDK URL 은 브라우저에서만
+//   평가되고 거부는 PayPal 서버에서 일어나므로 로컬에서는 영원히 재현되지 않는다.
+//   (같은 계열: 2026-08-12 텔레그램 await 누락)
+//
+// 한 페이지에서 두 intent 를 다 쓴다 — 게재료는 authorize, 애드온은 capture.
+// data-namespace 로 갈라야 두 벌이 공존한다. 없으면 나중 로딩이 window.paypal 을
+// 덮어써서 먼저 뜬 쪽이 조용히 망가진다.
+var _PP_SDK = {};                      // key(clientId|intent) -> Promise<namespace>
+function _papPPNamespace(intent){ return 'papPP_' + intent; }
+function _loadPayPalSdkOnce(clientId, intent){
+  intent = (intent === 'authorize') ? 'authorize' : 'capture';
+  var ns  = _papPPNamespace(intent);
+  var key = clientId + '|' + intent;
+  if (window[ns] && window[ns].Buttons) return Promise.resolve(window[ns]);
+  if (_PP_SDK[key]) return _PP_SDK[key];
+  _PP_SDK[key] = new Promise(function(resolve, reject){
     var el = document.createElement('script');
-    // 일회성 결제는 intent=capture. 구독용 vault/subscription 조합과 다르다.
     el.src = 'https://www.paypal.com/sdk/js?client-id=' + encodeURIComponent(clientId)
-           + '&currency=EUR&intent=capture&components=buttons';
-    el.onload = function(){ window._papPPSdkKey = clientId; resolve(); };
-    el.onerror = function(){ _PP_SDK_LOADED = null; reject(new Error('sdk')); };
+           + '&currency=EUR&intent=' + intent + '&components=buttons';
+    el.setAttribute('data-namespace', ns);
+    el.onload = function(){
+      if (!window[ns] || !window[ns].Buttons) { _PP_SDK[key] = null; reject(new Error('sdk')); return; }
+      window._papPPSdkKey = key; resolve(window[ns]);
+    };
+    el.onerror = function(){ _PP_SDK[key] = null; reject(new Error('sdk')); };
     document.head.appendChild(el);
   });
-  return _PP_SDK_LOADED;
+  return _PP_SDK[key];
 }
 
 /**
@@ -186,7 +205,9 @@ async function papPayOneTime(opts){
     if(cfg && cfg.paused){ done(false,'paused'); close(); if(typeof PAP!=='undefined') PAP.ui.toast(_paySubPausedMsg(),'error'); return; }
     if(!cfg || !cfg.clientId){ done(false,'unavailable'); close(); fail('payBaseUnavailable'); return; }
 
-    await _loadPayPalSdkOnce(cfg.clientId);
+    // intent 는 주문과 SDK 가 같아야 한다 — 위 _loadPayPalSdkOnce 주석 참고.
+    var _isAuth = (opts.mode === 'authorize');
+    var _pp = await _loadPayPalSdkOnce(cfg.clientId, _isAuth ? 'authorize' : 'capture');
 
     overlay = document.createElement('div');
     overlay.style.cssText='position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto';
@@ -200,7 +221,7 @@ async function papPayOneTime(opts){
     overlay.querySelector('#_ppx').addEventListener('click', close);
     overlay.addEventListener('click', function(e){ if(e.target===overlay) close(); });
 
-    window.paypal.Buttons({
+    _pp.Buttons({
       style:{ layout:'vertical', shape:'rect' },
       createOrder: function(){
         return fetch('/api/submissions/paypal-order',{
@@ -219,7 +240,7 @@ async function papPayOneTime(opts){
         if(w){ w.textContent=_payT('payCompleteOptimistic'); w.style.display='block'; }
         // 2026-08-12 승인후결제 — 제출 흐름에서 부르면 캡처가 아니라 "승인 확정" 이다.
         // 돈은 묶이기만 하고, 심사를 통과할 때 review.js 가 캡처한다.
-        var _isAuth = (opts.mode === 'authorize');
+        // _isAuth 는 SDK 로딩 시점에 이미 정해졌다 (위쪽 선언을 그대로 쓴다).
         // 확정은 서버가 한다 — 여기서 성공을 선언하지 않는다.
         return fetch(_isAuth ? '/api/submissions/paypal-authorize' : '/api/submissions/paypal-capture',{
           method:'POST',
