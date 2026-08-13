@@ -88,8 +88,17 @@ async function claimDriveFile(table, driveFileId, opts = {}) {
      둘 다 조건부 UPDATE 한 방으로 낚아챈다. 읽고 나서 쓰면 여기서 또 같은
      경합이 생긴다 — 그게 애초에 이 파일이 존재하는 이유다. */
   const cutoff = new Date(now.getTime() - staleMs).toISOString();
-  const stamp = { status: CLAIM_STATUS, created_at: now.toISOString(), publish_id: null, video_id: undefined };
-  delete stamp.video_id;   // 표마다 칸이 달라 아예 안 건드린다
+  /* 표마다 결과 칸 이름이 다르다: tiktok_posts 는 publish_id, youtube_posts 는
+     video_id. 공통 stamp 에 없는 칸을 넣으면 PostgREST 가 UPDATE 를 통째로
+     거부한다 ("Could not find the 'publish_id' column of 'youtube_posts'").
+     2026-08-10 03:15 ~ 08-13, drive-youtube-post 가 이 이유로 43회 연속
+     '건너뜀' 했다. cron_runs 는 ok=true 라 아무도 눈치채지 못했다 —
+     "돌았다 ≠ 했다" 의 교과서 사례. 그러니 칸은 표별로 고른다.
+     재시도로 낚아챌 때 지난 실패의 결과값을 지우는 것이 원래 의도다. */
+  const RESULT_COL = { tiktok_posts: 'publish_id', youtube_posts: 'video_id' };
+  const stamp = { status: CLAIM_STATUS, created_at: now.toISOString() };
+  const resultCol = RESULT_COL[table];
+  if (resultCol) stamp[resultCol] = null;
 
   const retakeFailed = await db.from(table)
     .update({ ...stamp, detail: '재시도 (' + now.toISOString() + ')' })

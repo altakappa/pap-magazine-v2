@@ -194,6 +194,49 @@ async function main() {
     }
   }
 
+  /* ── 2026-08-13 회귀 — 표마다 결과 칸 이름이 다르다 ────────────────────
+   * 공통 stamp 에 `publish_id: null` 이 박혀 있어서 youtube_posts 재시도가
+   * PostgREST 에서 통째로 거부됐다("Could not find the 'publish_id' column").
+   * drive-youtube-post 가 08-10 03:15 부터 43회 연속 '건너뜀'. cron_runs 는
+   * ok=true 라 나흘간 아무도 몰랐다 — "돌았다 != 했다" 의 교과서 사례. */
+  console.log('\n[8] 재시도 stamp 는 그 표에 있는 칸만 건드린다');
+  {
+    const SRC = fs.readFileSync(path.join(ROOT, 'api/_lib/driveClaim.js'), 'utf8');
+    t('공통 stamp 에 publish_id 를 무조건 박지 않는다',
+      !/const stamp = \{[^}]*publish_id/.test(SRC));
+    t('표별 결과 칸 표가 있다 (tiktok=publish_id · youtube=video_id)',
+      /tiktok_posts: 'publish_id'/.test(SRC) && /youtube_posts: 'video_id'/.test(SRC));
+    t('모르는 표에는 결과 칸을 아예 안 넣는다',
+      /if \(resultCol\) stamp\[resultCol\] = null;/.test(SRC));
+
+    /* 실제 UPDATE 페이로드를 본다 — 소스 정규식만으로는 또 놓친다 */
+    const seen = [];
+    const spy = {
+      _t: null,
+      from(tb) { this._t = tb; return this; },
+      insert() { return Promise.resolve({ error: { code: '23505', message: 'duplicate key' } }); },
+      update(patch) {
+        seen.push({ table: this._t, keys: Object.keys(patch) });
+        const chain = {};
+        chain.eq = () => chain; chain.lt = () => chain;
+        chain.select = () => Promise.resolve({ data: [], error: null });
+        return chain;
+      },
+    };
+    await C.claimDriveFile('youtube_posts', 'FY', { client: spy, now: NOW });
+    t('youtube_posts UPDATE 를 실제로 보냈다', seen.length > 0, JSON.stringify(seen));
+    t('그 UPDATE 에 publish_id 가 없다',
+      seen.every((x) => x.keys.indexOf('publish_id') === -1), JSON.stringify(seen));
+    t('그 UPDATE 는 video_id 를 지운다',
+      seen.length > 0 && seen.every((x) => x.keys.indexOf('video_id') >= 0), JSON.stringify(seen));
+
+    seen.length = 0;
+    await C.claimDriveFile('tiktok_posts', 'FT', { client: spy, now: NOW });
+    t('tiktok_posts 는 반대로 publish_id 를 지운다',
+      seen.length > 0 && seen.every((x) => x.keys.indexOf('publish_id') >= 0
+        && x.keys.indexOf('video_id') === -1), JSON.stringify(seen));
+  }
+
   console.log('\npassed: ' + pass + '   failed: ' + fail);
   if (fail) { console.log('❌ drive-claim tests FAILED'); process.exit(1); }
   console.log('✅ drive-claim tests passed');
