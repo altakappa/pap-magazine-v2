@@ -75,8 +75,11 @@ console.log('=== 심사 저장이 결제 기록을 지우지 않는다 ===');
   // 2026-08-12 — 같은 조회가 payment_status 도 함께 읽도록 넓어졌다(승인후결제
   // 게이트). 컬럼 목록을 문자 그대로 고정하면 이런 확장마다 깨진다. 의도는
   // "저장 전에 기존 admin_notes 를 읽는가" 이므로 그것만 본다.
+  // 2026-08-13 — 또 넓어졌다(청구 선확인 게이트: id·paypal_authorization_id·description
+  // 추가). 이번엔 admin_notes 가 첫 컬럼이 아니게 되면서 깨졌다 — 순서 의존까지
+  // 없앤다. 이 단언이 봐야 하는 것은 컬럼 목록의 모양이 아니라 "읽는가" 뿐이다.
   ok('저장 전에 기존 admin_notes 를 읽는다',
-    /select\('admin_notes[^']*'\)/.test(src) && /prevNotes\s*=/.test(src));
+    /select\('(?:[^']*,\s*)?admin_notes(?:\s*,[^']*)?'\)/.test(src) && /prevNotes\s*=/.test(src));
   // reviewPatch 리터럴 자체는 순수하게 둔다 — submission-review-audit 이 떼어
   // 실행하는 구간이다. 결제 기록 보존은 그 뒤 patchToWrite 에서 한다.
   ok('DB 에 쓰는 값은 reviewPatch 가 아니라 patchToWrite 다',

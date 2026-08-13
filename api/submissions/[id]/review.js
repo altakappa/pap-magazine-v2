@@ -481,12 +481,19 @@ module.exports = async function handler(req, res) {
     // 것을 아래에서 막는다. 읽기에 실패하면 null 로 남고, 그 경우 막지 않는다
     // (조회 실패로 정상 심사가 멈추면 그게 더 큰 사고다).
     let prevPaymentStatus = null;
+    let prevRowFull = null;
     try {
       const { data: prevRow, error: prevErr } = await supabaseAdmin
-        .from('submissions').select('admin_notes, payment_status').eq('id', id).maybeSingle();
+        .from('submissions')
+        // 2026-08-13 — 아래 '청구 선(先)확인' 게이트가 이 행을 그대로 settle 에 넘긴다.
+        //   settle 이 읽는 것: id · payment_status · paypal_authorization_id · description
+        //   (description 에서 submissionType 을 꺼내 금액을 산출한다)
+        .select('id, admin_notes, payment_status, paypal_authorization_id, description')
+        .eq('id', id).maybeSingle();
       if (prevErr) throw new Error(prevErr.message);
       prevNotes = prevRow ? prevRow.admin_notes : null;
       prevPaymentStatus = prevRow ? prevRow.payment_status : null;
+      prevRowFull = prevRow || null;
       prevNotesReadOk = true;
     } catch (e) {
       console.error('[review] admin_notes 사전 조회 실패 — 메모를 건드리지 않는다:', e.message);
@@ -546,6 +553,58 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    // 🔴 2026-08-13 — 청구가 실패하면 게재 승인 자체를 막는다.
+    //
+    // 왜 필요했나 (2026-08-13 샌드박스 실측):
+    //   이미 void 된 승인건에 승인을 눌렀더니 청구는 실패했는데 status 는 approved 로
+    //   저장되고, 크리에이터에게 "축하드립니다 — 게재가 승인되었습니다" 메일까지 나갔다.
+    //   API 는 200 이라 어드민 화면엔 아무 경고도 없었다. 즉 **돈을 못 받은 채 게재가
+    //   확정되는 경로**가 조용히 열려 있었다. 잡아주는 건 텔레그램 알람 하나뿐이었다.
+    //   실제로 터지는 상황: 48시간 SLA 초과로 승인이 만료된 뒤 승인을 누를 때,
+    //   크리에이터가 PayPal 쪽에서 먼저 취소했을 때. 드물지 않다.
+    //
+    // 왜 '먼저 청구하고 나중에 저장' 인가:
+    //   두 실패 모드를 비교하면 방향이 정해진다.
+    //     저장 먼저 → 청구 실패 = 게재 확정됐는데 돈이 없다  (회수 불가, 사고)
+    //     청구 먼저 → 저장 실패 = 돈은 받았는데 상태만 안 바뀜 (재시도로 복구됨)
+    //   후자가 압도적으로 안전하다. settle 은 멱등이라(payment_status='paid' 면
+    //   already:'paid' 로 빠진다) 다시 눌러도 두 번 청구되지 않는다.
+    //
+    // 막는 기준은 settle 이 돌려준 error 하나뿐이다 — capture_failed / cannot_price.
+    // skipped(승인 없는 구 경로)·already(이미 결제됨)는 통과시킨다. 조회 실패로
+    // prevRowFull 이 비었을 때도 통과시킨다 (2026-08-12 가드와 같은 원칙:
+    // 부수 조회 실패가 정상 심사를 멈추면 그게 더 큰 사고다).
+    let preCaptured = false;
+    if (status === 'approved' && String(prevPaymentStatus) === 'authorized' && prevRowFull) {
+      let pre = null;
+      try {
+        pre = await settleSubmissionAuthorization(
+          supabaseAdmin, prevRowFull, 'approved',
+          async (t) => { try { await sendTextToTelegramSafe(t); } catch (_) { /* noop */ } },
+        );
+      } catch (e) {
+        // 예외 = 청구가 됐는지 안 됐는지 모른다. 모르는 채로 게재를 확정하지 않는다.
+        // 재시도는 멱등이라 안전하다.
+        console.error('[review] 청구 선확인 예외:', e && e.message);
+        await sendTextToTelegramSafe('🚨 승인 직전 청구 시도 중 예외 — 승인을 막았다\n'
+          + 'submission=' + id + ' err=' + (e && e.message));
+        return res.status(409).json({
+          code: 'capture_failed',
+          message: '게재료 청구 중 오류가 발생해 승인을 중단했습니다. 잠시 후 다시 시도해 주세요.',
+        });
+      }
+      if (pre && pre.error) {
+        return res.status(409).json({
+          code: 'capture_failed',
+          detail: pre.code || pre.error,
+          message: '게재료 청구에 실패해 승인을 중단했습니다. '
+            + '승인이 만료됐거나(2일 SLA 초과) 크리에이터가 PayPal 에서 취소했을 수 있습니다. '
+            + '크리에이터에게 재결제를 요청한 뒤 다시 승인해 주세요.',
+        });
+      }
+      preCaptured = true;
+    }
+
     const { data: submission, error } = await supabaseAdmin
       .from('submissions')
       .update(patchToWrite)
@@ -560,7 +619,9 @@ module.exports = async function handler(req, res) {
     // 승인이 없는 건(무료 유형·구 경로)은 skip 되므로 기존 흐름에 영향이 없다.
     // 실패해도 심사 저장을 되돌리지 않는다 — 전부 텔레그램으로 사람에게 올린다.
     try {
-      const settled = await settleSubmissionAuthorization(
+      // 승인 건은 위에서 이미 청구했다 — 여기서 또 부르지 않는다.
+      // (부르더라도 payment_status='paid' 라 already:'paid' 로 빠지지만, 의도를 코드로 남긴다.)
+      const settled = preCaptured ? { captured: true } : await settleSubmissionAuthorization(
         supabaseAdmin, submission, status,
         async (t) => { try { await sendTextToTelegramSafe(t); } catch (_) { /* noop */ } },
       );

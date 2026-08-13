@@ -195,8 +195,18 @@ function reset() { called.capture.length = 0; called.void.length = 0; }
     const fs = require('fs');
     const src = fs.readFileSync(path.join(ROOT, 'api/submissions/[id]/review.js'), 'utf8');
     ok('review.js 가 정산을 부른다', /settleSubmissionAuthorization\(/.test(src));
-    ok('  → 상태 저장이 끝난 뒤에 부른다',
-      src.indexOf('if (error) throw error;') < src.indexOf('settleSubmissionAuthorization('));
+    // 2026-08-13 — 이 단언은 뒤집혔다. 원래 "상태 저장이 끝난 뒤에 정산한다" 였고
+    //   근거는 "정산이 실패해도 심사 저장은 살린다" 였다.
+    //   실측으로 뒤집힌 이유(샌드박스 A판): 이미 void 된 승인건을 승인했더니 청구는
+    //   실패했는데 status=approved 가 저장되고 "게재 승인" 메일까지 나갔다. API 는
+    //   200 이라 어드민엔 경고도 없었다 = 돈 못 받고 게재가 확정되는 경로였다.
+    //   도메니코 결정(1번안): 청구 실패면 승인 자체를 막는다(409). 그래서 승인 건만
+    //   저장보다 먼저 청구한다. 거절/보완은 종전대로 저장 뒤에 void 한다.
+    ok('  -> 승인 청구 게이트가 상태 저장보다 앞에 있다',
+      src.indexOf('preCaptured = true') > -1
+      && src.indexOf('preCaptured = true') < src.indexOf('.update(patchToWrite)'));
+    ok('  -> 거절/보완 정산은 여전히 상태 저장 뒤에 있다',
+      src.indexOf('if (error) throw error;') < src.lastIndexOf('settleSubmissionAuthorization('));
     ok('  → 알림을 await 한다', /await sendTextToTelegramSafe/.test(src));
   }
 
