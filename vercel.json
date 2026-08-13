@@ -70,10 +70,6 @@
       "schedule": "0 2 * * *"
     },
     {
-      "path": "/api/cron/tiktok-post?kind=article",
-      "schedule": "30 */2 * * *"
-    },
-    {
       "path": "/api/cron/drive-youtube-post",
       "schedule": "15 */2 * * *"
     },

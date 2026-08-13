@@ -149,8 +149,22 @@ console.log('\n[9] 크론 등록 확인');
 const crons = require(path.join(ROOT, 'vercel.json')).crons || [];
 t('tiktok-post 크론이 vercel.json 에 살아 있다',
   crons.some((c) => c.path === '/api/cron/tiktok-post'), crons.filter((c) => /tiktok/.test(c.path)));
-t('기사 모드 크론도 살아 있다',
-  crons.some((c) => /tiktok-post\?kind=article/.test(c.path)));
+/* 2026-08-13 — 기사 모드 중지. 기사 갤러리는 제3자 이미지(브랜드·에이전시·타 매체)라
+   워터마크도 출처 표기도 없이 2시간마다 재게시하는 것은 TikTok 지식재산권·미오리지널
+   정책 양쪽에 걸린다. 실측 유입도 0이었다. 크론과 코드 두 곳에서 막는다 —
+   크론만 지우면 URL 직접 호출이나 스케줄 복구로 조용히 재개된다. */
+t('기사 모드 크론이 제거되어 있다',
+  !crons.some((c) => /tiktok-post\?kind=article/.test(c.path)),
+  crons.filter((c) => /tiktok/.test(c.path)));
+t('코드에서도 기사 모드를 막는다 (크론만 지우면 조용히 되살아난다)',
+  /const ARTICLE_MODE_ENABLED = false;/.test(src)
+  && /kind === 'article' && !ARTICLE_MODE_ENABLED/.test(src));
+t('차단 시에도 cron_runs 에 사유를 남긴다 (돌았다 ≠ 했다)',
+  /기사 모드 중지[\s\S]{0,120}note\(res,|note\(res, '기사 모드 중지/.test(src));
+t('영상 경로와 에디토리얼 사진 모드는 그대로 살아 있다',
+  crons.some((c) => c.path === '/api/cron/tiktok-post')
+  && crons.some((c) => c.path === '/api/cron/drive-tiktok-post')
+  && crons.some((c) => c.path === '/api/cron/drive-youtube-post'));
 
 console.log('\n' + (fail ? '❌' : '✅') + ` ${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);

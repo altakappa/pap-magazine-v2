@@ -171,6 +171,28 @@ module.exports = withCronGuard('tiktok-post', async function handler(req, res) {
 
     const kind = (req.query && req.query.kind) === 'article' ? 'article' : 'editorial';
 
+    /* ── 기사 모드 중지 (2026-08-13 도메니코 결정) ─────────────────────
+     * 왜: 기사 갤러리는 브랜드·에이전시·타 매체가 만든 제3자 이미지다.
+     * 우리가 편집한 자사 화보가 아니다. 이걸 워터마크도 출처 표기도 없이
+     * 2시간마다 자동 게시하고 있었다 (누적 45건).
+     *
+     * TikTok 정책 두 갈래에 모두 걸린다:
+     *   - 지식재산권: 권한 없는 타인 사진 게시는 삭제 대상, 반복 시 계정 정지
+     *   - 미오리지널 콘텐츠: 타 출처 재게시는 FYP 추천에서 제외
+     * 실측도 이와 일관됐다 — 30일간 social_inclicks 의 tiktok 유입 0건.
+     * 얻는 것이 0이고 걸리는 것이 계정이라 계산이 맞지 않는다.
+     *
+     * 크론(vercel.json)에서도 뺐지만, 여기서 한 번 더 막는다. 크론만 지우면
+     * 누군가 URL 을 직접 부르거나 스케줄을 되살릴 때 조용히 재개된다.
+     * 되살리려면 이 상수를 바꾸는 의도적 코드 변경이 필요하다 — 그때는
+     * 워터마크·출처 표기·재배포 권한 확인이 선행돼야 한다.
+     * 영상 경로(drive-tiktok-post)와 에디토리얼 사진 모드는 그대로 돈다. */
+    const ARTICLE_MODE_ENABLED = false;
+    if (kind === 'article' && !ARTICLE_MODE_ENABLED) {
+      return res.status(200).json({ ok: true, kind, disabled: true,
+        note: note(res, '기사 모드 중지 — 제3자 이미지 재게시 위험 (2026-08-13). 에디토리얼·영상만 게시한다.') });
+    }
+
     // 이미 게시된 콘텐츠 id 집합 — 실패(failed) 기록은 제외해 재시도 허용
     const idCol = kind === 'article' ? 'article_id' : 'editorial_id';
     const { data: posted } = await supabaseAdmin.from('tiktok_posts').select(idCol + ', status').limit(5000);
