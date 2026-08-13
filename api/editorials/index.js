@@ -178,6 +178,14 @@ module.exports = async function handler(req, res) {
         query = query.lte('published_date', req.query.to);
       }
 
+      /* 2026-08-13 — '이달의 에디토리얼' 선정 이력.
+         featured=1 이면 지정된 적 있는 편만. 어드민 전용 화면이 지난 달
+         선정을 보여주는 데 쓴다 — 같은 편을 두 번 뽑는 사고를 막는다.
+         건수가 달당 1편이라 페이지네이션 부담이 없다. */
+      if (String(req.query.featured || '') === '1') {
+        query = query.not('featured_month', 'is', null);
+      }
+
       query = query.range(offset, offset + parseInt(limit) - 1);
 
       // For the public-facing 'published' view, hide editorials whose

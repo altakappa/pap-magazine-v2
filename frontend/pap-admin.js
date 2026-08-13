@@ -855,6 +855,7 @@ function go(id,el,opts){
     editFilmId = null;
     editFilmIdx = -1;
   }
+  if(id==='eom') loadEditorialOfMonth();
   if(id==='submissions') loadSubmissions();
   if(id==='pullletters') loadPullLetters();
   if(id==='newpost'){
@@ -6389,6 +6390,93 @@ function _edIsEomThisMonth(v){
   if(!v) return false;
   return String(v).slice(0,10) === _edThisMonthKey();
 }
+/* 전용 화면 (2026-08-13) — 목록의 ☆ 만으로는 "지금 무엇이 걸려 있는지" 를
+ * 알 수 없다. 2,298편 중 별 켜진 한 줄을 찾으려면 스크롤을 내려야 하고,
+ * 매달 챙겨야 하는 일인데 화면이 상기시켜 주지 않으면 잊는다.
+ * 잊으면 크리에이터에게 한 약속이 조용히 깨진다. */
+function _eomMonthLabel(key){ return String(key || '').slice(0, 7); }
+
+function _eomCard(e, opts){
+  opts = opts || {};
+  var thumb = e.thumbnail || e.cover_image || '';
+  var img = thumb
+    ? '<img loading="lazy" src="' + safeUrl(thumb) + '" style="width:96px;height:64px;object-fit:cover;border-radius:4px;flex:none">'
+    : '<div style="width:96px;height:64px;border-radius:4px;background:var(--bg3);flex:none"></div>';
+  var safeTitle = esc(e.title || '').replace(/'/g, "\\'");
+  var btn = opts.hideButton ? ''
+    : '<button class="btn btn-sm' + (opts.on ? '' : ' btn-primary') + '"'
+      + ' onclick="toggleEditorialOfMonth(\'' + e.id + '\',\'' + safeTitle + '\',' + (opts.on ? 'true' : 'false') + ')"'
+      + (opts.on ? ' style="background:#c9a86a;border-color:#c9a86a;color:#000"' : '')
+      + '>' + (opts.on ? '해제' : '이 편으로 지정') + '</button>';
+  return '<div style="display:flex;gap:14px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:6px;margin-bottom:8px">'
+    + img
+    + '<div style="flex:1;min-width:0">'
+    +   '<div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(e.title || '') + '</div>'
+    +   '<div style="font-size:11px;color:var(--text3);margin-top:2px">발행 ' + fmtDate(e.published_date)
+    +     (opts.monthNote ? ' · <b style="color:#c9a86a">' + esc(opts.monthNote) + ' 선정</b>' : '') + '</div>'
+    + '</div>'
+    + btn
+    + '</div>';
+}
+
+async function loadEditorialOfMonth(){
+  var curEl  = document.getElementById('eomCurrent');
+  var candEl = document.getElementById('eomCandidates');
+  var histEl = document.getElementById('eomHistory');
+  if(!curEl) return;
+  curEl.innerHTML  = '<div style="color:var(--text3)">불러오는 중...</div>';
+  candEl.innerHTML = '';
+  histEl.innerHTML = '';
+
+  var monthKey = _edThisMonthKey();               // 이번 달 1일 (UTC)
+  var d = new Date(monthKey);
+  var lastDay = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0))
+    .toISOString().slice(0, 10);
+
+  try{
+    var featuredResp = await apiGet('/editorials?fields=admin&featured=1&limit=50');
+    var featured = (featuredResp && (featuredResp.data || featuredResp.editorials || featuredResp)) || [];
+    if(!Array.isArray(featured)) featured = [];
+    featured.sort(function(a,b){ return String(b.featured_month||'').localeCompare(String(a.featured_month||'')); });
+
+    var current = featured.filter(function(x){ return _edIsEomThisMonth(x.featured_month); })[0] || null;
+    var past    = featured.filter(function(x){ return !_edIsEomThisMonth(x.featured_month); });
+
+    // ── 이번 달 지정 현황
+    if(current){
+      curEl.innerHTML = '<h3 style="margin:0 0 10px">이번 달 (' + _eomMonthLabel(monthKey) + ') 지정</h3>'
+        + _eomCard(current, { on: true, monthNote: _eomMonthLabel(monthKey) });
+    } else {
+      curEl.innerHTML = '<h3 style="margin:0 0 10px">이번 달 (' + _eomMonthLabel(monthKey) + ') 지정</h3>'
+        + '<div style="padding:16px;border:1px dashed rgba(255,180,50,.6);border-radius:6px;color:rgba(255,180,50,.95);background:rgba(255,180,50,.06)">'
+        + '아직 지정하지 않았습니다. 아래에서 한 편을 고르세요.<br>'
+        + '<span style="font-size:12px;color:var(--text3)">지정 전까지 홈 메인에는 커버 슬라이드만 노출됩니다.</span>'
+        + '</div>';
+    }
+
+    // ── 이번 달 발행분 후보
+    var candResp = await apiGet('/editorials?fields=admin&status=published&from=' + monthKey + '&to=' + lastDay + '&limit=100');
+    var cands = (candResp && (candResp.data || candResp.editorials || candResp)) || [];
+    if(!Array.isArray(cands)) cands = [];
+    cands.sort(function(a,b){ return String(b.published_date||'').localeCompare(String(a.published_date||'')); });
+    var curId = current ? current.id : null;
+    var listHtml = cands.length
+      ? cands.map(function(e){ return _eomCard(e, { on: e.id === curId }); }).join('')
+      : '<div style="color:var(--text3)">이번 달에 발행된 에디토리얼이 없습니다.</div>';
+    candEl.innerHTML = '<h3 style="margin:0 0 10px">이번 달 발행분 ' + cands.length + '편</h3>' + listHtml;
+
+    // ── 지난 선정 기록
+    histEl.innerHTML = past.length
+      ? '<h3 style="margin:0 0 10px">지난 선정</h3>'
+        + past.map(function(e){
+            return _eomCard(e, { hideButton: true, monthNote: _eomMonthLabel(e.featured_month) });
+          }).join('')
+      : '';
+  }catch(err){
+    curEl.innerHTML = '<div style="color:var(--red)">불러오지 못했습니다: ' + esc(String(err && err.message || err)) + '</div>';
+  }
+}
+
 async function toggleEditorialOfMonth(id, title, isOn){
   var monthLabel = _edThisMonthKey().slice(0,7);
   if(isOn){
@@ -6400,6 +6488,9 @@ async function toggleEditorialOfMonth(id, title, isOn){
     var body = isOn ? { featured_month: null } : { featured_month: _edThisMonthKey() };
     assertApiOk(await apiPut('/editorials/' + id, body), '이달의 에디토리얼 변경 실패');
     alert(isOn ? '해제되었습니다.' : '이달의 에디토리얼로 지정되었습니다.\n홈 메인 배너는 최대 5분 뒤 반영됩니다(캐시).');
+    // 어느 화면에서 눌렀든 둘 다 최신으로. 전용 화면만 갱신하면 목록의
+    // 별표가 옛 상태로 남고, 그 반대도 마찬가지다.
+    if(document.getElementById('eomCurrent')) { try{ await loadEditorialOfMonth(); }catch(_){ } }
     await loadEditorials();
   }catch(err){
     alert('실패했습니다: ' + (err && err.message || ''));

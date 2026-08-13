@@ -488,6 +488,9 @@ tr:hover td{background:rgba(0,0,0,.02)}
     <div class="sb-section-title">Main</div>
     <a href="#" onclick="go('menucats',this)"><span>🗂️</span> <span>메뉴 카테고리 관리</span></a>
     <a href="#" onclick="go('cover',this)"><span>🎨</span> <span>커버 설정</span></a>
+    <!-- 2026-08-13 — submission.html 이 크리에이터에게 약속한 "매월 최우수
+         에디토리얼 1편을 한 달간 메인 노출" 을 챙기는 화면. -->
+    <a href="#" onclick="go('eom',this)"><span>⭐</span> <span>이달의 에디토리얼</span></a>
     <a href="#" onclick="go('categories',this)"><span>📁</span> <span>게시글 카테고리</span></a>
     <a href="#" onclick="go('loading',this)"><span>🖼️</span> <span>로딩 이미지 관리</span></a>
     <a href="#" onclick="go('magazine',this)"><span>📖</span> <span>매거진 발행호 관리</span></a>
@@ -1710,6 +1713,25 @@ tr:hover td{background:rgba(0,0,0,.02)}
     <div class="mn-body">
       <p style="color:var(--text3);margin-bottom:20px">메인 페이지 최상단의 커버 슬라이드를 관리합니다. 이미지, 발행호, 제목을 설정하세요.</p>
       <div id="coverList"></div>
+    </div>
+  </div>
+
+  <!-- EDITORIAL OF THE MONTH (2026-08-13) -->
+  <div class="tab" id="t-eom">
+    <div class="mn-header"><div class="mn-title">이달의 에디토리얼</div></div>
+    <div class="mn-body">
+      <p style="color:var(--text3);margin-bottom:8px">
+        매월 최우수 에디토리얼 1편을 선정합니다. 지정하면 <b>홈 메인 배너의 마지막 슬라이드</b>로
+        <b>EDITORIAL OF THE MONTH</b> 문구와 함께 노출됩니다.
+      </p>
+      <p style="color:var(--text3);margin-bottom:20px;font-size:12px">
+        이미지와 링크는 해당 에디토리얼에서 자동으로 가져옵니다 — 커버 설정에 따로 올릴 필요가 없습니다.
+        한 달에 한 편만 지정되며, 달이 바뀌면 자동으로 내려갑니다.
+        <b>서브미션 페이지가 크리에이터에게 약속한 항목</b>이므로 매달 챙겨 주세요.
+      </p>
+      <div id="eomCurrent" style="margin-bottom:28px"></div>
+      <div id="eomCandidates" style="margin-bottom:28px"></div>
+      <div id="eomHistory"></div>
     </div>
   </div>
 
@@ -3632,7 +3654,7 @@ PAP는 패션을 하나의 산업이나 스타일에 국한하지 않고, 예술
     <div style="padding:8px 16px 14px;font-size:11px;color:var(--text3,#888);border-top:1px solid var(--border,#222)">지정한 영역만 픽셀화된 <strong>검열본이 새 이미지로 업로드</strong>되어 이 화보를 대체합니다. 원본 파일은 서버에서 삭제되지 않습니다. 드래그로 여러 영역 지정 가능 · 적용 후 "저장"을 눌러야 발행본에 반영됩니다.</div>
   </div>
 </div>
-<script src="/pap-admin.js?v=150" defer></script>
+<script src="/pap-admin.js?v=151" defer></script>
 <script src="/pap-admin-campaigns.js?v=2" defer></script>
 </body>
 </html>

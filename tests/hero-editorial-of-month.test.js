@@ -105,6 +105,31 @@ console.log('=== 4. 어드민에서 한 번에 지정한다 ===');
     /한 편만 지정됩니다/.test(admin) && /달이 바뀌면 자동으로 내려갑니다/.test(admin));
 }
 
+console.log('=== 4b. 전용 화면이 "지금 무엇이 걸려 있는지" 를 보여준다 ===');
+{
+  const html = read('frontend/admin.html');
+  ok('사이드바에 항목이 있다', /go\('eom',this\)/.test(html));
+  ok('탭 컨테이너가 있다 (라우팅 화이트리스트는 DOM 에서 만들어진다)',
+    /class="tab" id="t-eom"/.test(html),
+    'id 가 t-eom 이어야 /admin/eom 새로고침이 동작한다');
+  ok('화면에 진입하면 데이터를 불러온다',
+    /if\(id==='eom'\) loadEditorialOfMonth\(\);/.test(admin));
+  ok('렌더 함수가 있다', /async function loadEditorialOfMonth\(/.test(admin));
+  ok('미지정 상태를 눈에 띄게 알린다',
+    /아직 지정하지 않았습니다/.test(admin),
+    '매달 챙겨야 하는 일이라 화면이 상기시켜야 한다 — 잊으면 약속이 조용히 깨진다');
+  ok('이번 달 발행분을 기간으로 잘라서 가져온다 (전량 순회 금지)',
+    /status=published&from=' \+ monthKey \+ '&to=' \+ lastDay/.test(admin),
+    '2,298편을 전부 받으면 목록 관리가 불가능해진다 — 기존 주석이 경고하는 지점');
+  ok('지난 선정 기록을 보여준다', /featured=1/.test(admin) && /지난 선정/.test(admin),
+    '같은 편을 두 번 뽑는 사고를 막는다');
+  ok('지정 후 목록과 전용 화면이 둘 다 갱신된다',
+    /loadEditorialOfMonth\(\); \}catch\(_\)\{ \} \}[\s\S]{0,60}await loadEditorials\(\);/.test(admin),
+    '한쪽만 갱신하면 다른 쪽 별표가 옛 상태로 남는다');
+  ok('목록 API 가 featured=1 필터를 지원한다',
+    /req\.query\.featured[\s\S]{0,120}\.not\('featured_month', 'is', null\)/.test(edList));
+}
+
 console.log('=== 5. 히어로 회전 속도 (도메니코 요청 0.7배) ===');
 {
   const m = shell.match(/const HERO_INTERVAL_MS = (\d+);/);
@@ -121,8 +146,8 @@ console.log('=== 6. 캐시버스트가 올라가 있다 ===');
     !!bm && parseInt(bm[1], 10) >= 11, bm ? ('현재 v' + bm[1]) : '태그 없음');
   const ah = read('frontend/admin.html');
   const am = ah.match(/pap-admin\.js\?v=(\d+)/);
-  ok('admin.html 의 pap-admin.js 가 v150 이상이다',
-    !!am && parseInt(am[1], 10) >= 150, am ? ('현재 v' + am[1]) : '태그 없음');
+  ok('admin.html 의 pap-admin.js 가 v151 이상이다',
+    !!am && parseInt(am[1], 10) >= 151, am ? ('현재 v' + am[1]) : '태그 없음');
 }
 
 console.log('\n=== SUMMARY ===');

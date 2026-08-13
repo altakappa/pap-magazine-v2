@@ -241,6 +241,9 @@ const BODY_ALLOW = new Set([
   'o.value','o.label',                // 고정 옵션 목록
   's.color','s.bg','s.label',         // 코드 고정 상태 맵
   's.id','a.id','p.id','e.id',        // DB UUID (onclick 인자)
+  // 2026-08-13 — '이달의 에디토리얼' 후보 건수. 사용자 유래 값이 아니라
+  // JS 배열의 length(숫자)다. 문자열이 될 수 없으므로 주입 경로가 없다.
+  'cands.length',
 ]);
 const bodyHits = [];
 admin.split('\n').forEach(function(ln, i){
