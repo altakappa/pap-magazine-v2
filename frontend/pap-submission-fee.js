@@ -308,7 +308,18 @@ async function papPayOneTime(opts){
 }
 try{ window.papPayOneTime = papPayOneTime; }catch(_){ }
 
-/** 기본 게재료 결제 — 승인 블록의 버튼이 부른다. */
+/** 기본 게재료 결제 — 승인 블록의 버튼이 부른다. (이미 승인된 건: 즉시 청구) */
 async function payBaseFee(submissionId, submissionType){
   return papPayOneTime({ submissionId: submissionId, kind: 'submission_fee' });
 }
+
+/**
+ * 게재료 결제 '승인'만 다시 연다 — 청구가 아니라 돈을 묶는 단계다. (2026-08-13)
+ * 제출 중 결제창을 닫아 payment_status='awaiting_authorization' 으로 남은 건을
+ * 마이페이지에서 이어서 마칠 수 있게 한다. 그게 없으면 작가는 '대기 중' 으로만
+ * 보이는 막다른 길에 갇힌다(관리자는 승인 불가, SLA 크론도 안 훑는다).
+ */
+async function authorizeBaseFee(submissionId){
+  return papPayOneTime({ submissionId: submissionId, kind: 'submission_fee', mode: 'authorize' });
+}
+try{ window.authorizeBaseFee = authorizeBaseFee; }catch(_){ }

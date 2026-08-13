@@ -1638,7 +1638,7 @@ function populateReviewModal(submission){
     var _feeAmt={branded:'€790',paid_few_looks:'€380',few_looks:'€380',fewlooks:'€380'};
     if(_isFeeRequiredType(desc.submissionType)){
       var _amt=_feeAmt[_ftKey]||'';
-      _apBtn.textContent='✓ 승인 및 결제요청'+(_amt?' ('+_amt+')':'');
+      _apBtn.textContent='✓ 승인 및 청구'+(_amt?' ('+_amt+')':'');
       _apBtn.title='승인하면 제출자 마이페이지에 게재료 결제요청이 표시됩니다'+(_amt?' — '+_amt:'');
     }else{
       _apBtn.textContent='✓ 승인';
@@ -2103,7 +2103,7 @@ async function doReview(status){
     if(status==='approved' && _feeReqApproval){
       // 승인 및 결제요청 — 편집화면으로 점프하지 않고 결제 대기. 결제 완료(payment_status
       // ='paid', Paddle 웹훅)되면 상태가 '결제 완료'로 바뀌고, 그때 [에디토리얼 편집]으로 진행.
-      alert('승인 및 결제요청이 완료되었습니다.\n제출자 마이페이지에 게재료 결제요청이 표시됩니다.\n결제가 완료되면 상태가 "결제 완료"로 바뀌며, 이후 에디토리얼 편집으로 진행하세요.');
+      alert('승인 및 청구가 완료되었습니다.\n묶어둔 게재료가 방금 청구되었습니다.\n이어서 에디토리얼 편집으로 진행하세요.');
       if(window.loadSubmissions) loadSubmissions();
       return;
     }
