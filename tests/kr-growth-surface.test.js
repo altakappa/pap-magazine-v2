@@ -505,6 +505,73 @@ console.log('\n[13] 기사 조회 계측 — 참여의 분모 (2026-08-12)');
      Number(artVers[0]) > 46, 'v=' + artVers[0]);
 }
 
+console.log('\n[14] 전환 깔때기 계측 — 웹의 존재 이유를 재는 자 (2026-08-13)');
+{
+  /* 왜 ────────────────────────────────────────────────────────────────
+   * 2026-08-12 기사 조회 계측을 붙이자 하루 661명이 사이트 안에서 기사를 연다는
+   * 사실이 드러났다(에디토리얼 141의 4.7배). 그런데 그 다음이 깜깜했다:
+   *
+   *   1 기사 조회        article_views   ✅ 하루 661
+   *   2 구독 페이지 도달  ─               ❌ 없음  ← 이번에 채운다
+   *   3 결제 시작        ─               ❌ 없음  (결제 전환 중 — 일부러 안 건드림)
+   *   4 결제 완료        subscriptions   ✅ 13건 (active 5)
+   *
+   * Vercel Web Analytics 404(꺼짐) · 페이지 분석 스크립트 0개 — 확인했다.
+   * 성장 헌법 1항이 말하는 웹의 존재 이유(유료 구독자 증식)를 재는 자가 없었다.
+   *
+   * 여기서 지키는 것:
+   *   ① 엔드포인트가 article_views 와 같은 기둥을 쓴다
+   *   ② step·source 화이트리스트 — 자유 문자열이 표를 쓰레기통으로 만들지 않는다
+   *   ③ 결제 단계는 화이트리스트에 없다 (금지 구역 불가침)
+   *   ④ 마이그레이션 미실행(42P01)이어도 500 이 아니라 204
+   *   ⑤ 구독 페이지가 실제로 부른다 · 결제 코드는 안 건드렸다 */
+
+  const fs  = R('api/funnel/step.js');
+  const av  = R('api/articles/[id]/view.js');
+  const sub = R('frontend/subscribe.html');
+  const mig = R('supabase_migrations/124_funnel_events.sql');
+
+  // ① 같은 기둥
+  t('깔때기 엔드포인트가 있다', fs.length > 500);
+  t('funnel_events 에 기록한다', /from\('funnel_events'\)/.test(fs));
+  t('POST 만 받는다', /req\.method !== 'POST'/.test(fs));
+  t('article_views 와 같은 기둥 (봇·레이트·토큰)',
+     ['isBot', 'rateLimit', 'verifyToken'].every((n) => fs.includes(n) && av.includes(n)));
+  t('봇은 세지 않는다', /isBot\(req\.headers\['user-agent'\]\)/.test(fs));
+  t('로그인 없이도 기록된다', !/requireAuth/.test(fs));
+  t('탈퇴계정 FK(23503) 익명 강등 재시도', /error\.code === '23503' && viewerId/.test(fs));
+
+  // ② 화이트리스트 — 표가 쓰레기통이 되지 않게
+  t('step 화이트리스트가 있다', /const STEPS = new Set\(/.test(fs));
+  t('모르는 step 은 400', /STEPS\.has\(step\)/.test(fs) && /400/.test(fs));
+  t('source 화이트리스트가 성장헌법 3항 utm 목록을 담는다',
+     ['x', 'ig', 'naver', 'kakao', 'newsletter', 'threads', 'tiktok', 'youtube']
+       .every((s) => new RegExp("'" + s + "'").test(fs)));
+  t('모르는 source 는 other 로 접는다', /SOURCES\.has\(rawSource\) \? rawSource : 'other'/.test(fs));
+  t('path 는 길이를 자른다 (무한 문자열 방지)', /clip\(body\.path, 200\)/.test(fs));
+
+  // ③ 금지 구역 불가침 — 이게 이 블록에서 제일 중요하다
+  t('결제 단계는 화이트리스트에 없다 (PayPal 전환 중)',
+     !/checkout_start|checkout_ok|checkout_fail|payment_/.test(
+       (fs.match(/const STEPS = new Set\(\[[^\]]*\]\)/) || [''])[0]));
+  t('결제 파일을 건드리지 않았다',
+     !/funnel\/step|funnel_events/.test(R('api/subscriptions/checkout.js'))
+     && !/funnel\/step|funnel_events/.test(R('api/subscriptions/guest-checkout.js')));
+
+  // ④ 마이그레이션 미실행 내성
+  t('표가 없으면(42P01) 500 이 아니라 204', /error\.code === '42P01'/.test(fs) && /status\(204\)/.test(fs));
+  t('마이그레이션 파일이 저장소에 있다', /create table if not exists public\.funnel_events/.test(mig));
+  t('마이그레이션이 RLS 를 켠다', /enable row level security/.test(mig) && /admin_read_funnel/.test(mig));
+  t('마이그레이션에 되돌리기 방법이 적혀 있다', /DROP TABLE public\.funnel_events/i.test(mig));
+
+  // ⑤ 구독 페이지가 실제로 부른다
+  t('구독 페이지가 깔때기를 부른다', /'\/api\/funnel\/step'/.test(sub));
+  t('subscribe_view 를 보낸다', /step:'subscribe_view'/.test(sub));
+  t('utm_source 를 읽어 붙인다', /utm_source/.test(sub));
+  t('계측 실패가 결제 화면을 깨지 않는다 (catch)',
+     /\/api\/funnel\/step[\s\S]{0,400}\.catch\(function\(\)\{\}\)/.test(sub));
+}
+
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) { console.log('❌ kr-growth-surface tests FAILED'); process.exit(1); }
 console.log('✅ kr-growth-surface tests passed');

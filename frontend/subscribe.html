@@ -1506,5 +1506,28 @@ setBilling('monthly');
 <script src="/pap-app.js?v=20"></script>
 <script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=29" defer></script><script src="/pap-inclick.js?v=1" defer></script>
 <script src="/pap-auth-link.js?v=3" defer></script>
+<script>
+/* 전환 깔때기 계측 (2026-08-13) — 구독 페이지 도달 1건.
+   왜: 기사 조회는 하루 661건인데 그중 몇 명이 여기까지 오는지 아무도 몰랐다.
+   Vercel Web Analytics 는 꺼져 있고 분석 스크립트도 없다 — 확인했다.
+   웹의 존재 이유가 유료 구독자 증식(성장 헌법 1항)인데 깔때기가 깜깜했다.
+   fire-and-forget. 실패해도 결제 화면은 그대로 뜬다. 결제 코드는 안 건드린다. */
+(function(){
+  try{
+    var KNOWN=['x','ig','naver','kakao','newsletter','threads','tiktok','youtube'];
+    var utm=(new URLSearchParams(location.search).get('utm_source')||'').toLowerCase();
+    var src;
+    if(KNOWN.indexOf(utm)>=0) src=utm;
+    else if(document.referrer&&document.referrer.indexOf(location.host)>=0) src='internal';
+    else if(!document.referrer) src='direct';
+    else src='other';
+    fetch('/api/funnel/step',{
+      method:'POST', credentials:'same-origin',
+      headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'},
+      body:JSON.stringify({step:'subscribe_view',source:src,path:location.pathname})
+    }).catch(function(){});
+  }catch(e){}
+})();
+</script>
 </body>
 </html>
