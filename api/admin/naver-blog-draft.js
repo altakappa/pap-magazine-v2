@@ -48,17 +48,49 @@ function stripHtml(s) {
  *      어디인가" 라는 사실만 쓴다 — _lib/seoTranslateBackfill.js 의
  *      salvageObjects 와 같은 원칙이다.
  */
+/* ─── 2026-08-14 — 홈판 전환 (도메니코 지시: "C로 가자") ──────────────────
+ *
+ * 실측이 이 개편의 근거다. 발행 213편의 성적:
+ *   · 블로그 전체 일 조회수 20~85 (게시물당 1~3회)
+ *   · 웹 유입 0명 — utm 링크가 붙은 50편이 7일간 살아 있었는데 0
+ *   · 인스타 유입 하루 2.4클릭 (웹 SSR 은 하루 181클릭 — 75배)
+ *   · **발행량과 조회수가 무상관**: 39편 올린 8/11 이 최저(28), 6편 올린 8/12 가 최고(85)
+ *
+ * "많이 올리면 유입이 는다" 가설은 우리 데이터로 반증됐다. 그래서 반대로 간다 —
+ * 적게, 좋게, 한 주제로. 이 파일의 변경은 전부 그 결정의 구현이다.
+ *
+ * 왜 제목이 2개인가: 네이버의 두 관문은 요구가 정반대다.
+ *   검색 = 키워드를 앞에 (정확성)  /  홈판 = 궁금해서 누르게 (호기심)
+ * 지금까지 title 하나로 둘 다 노리다 둘 다 어정쩡했다. 갈라서 둘 다 주고,
+ * 도메니코가 그 글에 맞는 쪽을 고른다.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/* 네이버 블로그 '주제' 중 PAP 가 쓰는 것만. 32종 전체를 주지 않는 게 핵심이다.
+ *
+ * 213편 전수 분류 결과 우리 콘텐츠는 패션·미용 40% / 스타·연예인 29% /
+ * 미술·디자인 23% 로 세 갈래였다. 세 갈래로 흩으면 C-Rank 가 보는 주제
+ * 일관성이 안 잡힌다. 그래서 목록 자체를 좁혀 모델이 흩을 수 없게 만든다.
+ * (프롬프트로 "몰아라" 라고 부탁하는 것보다 고를 수 없게 하는 쪽이 확실하다.)
+ *
+ * ⚠ 이 문자열은 네이버 글쓰기 화면의 '주제' 드롭다운과 **글자까지 같아야**
+ *   도메니코가 그대로 고를 수 있다. 화면에서 미확인 상태 — 다르면 여기를 고친다.
+ */
+const NAVER_TOPICS = ['패션·미용', '미술·디자인', '공연·전시', '스타·연예인', '음악'];
+
 const DRAFT_TOOL = {
   name: 'emit_draft',
   description: '네이버 블로그 초안 한 건을 구조화된 형태로 제출한다.',
   input_schema: {
     type: 'object',
     properties: {
-      title: { type: 'string', description: '최종 제목 1개 (25~35자)' },
+      title: { type: 'string', description: '검색용 제목 1개 (25~35자). 핵심 키워드를 문장 맨 앞에 둔다.' },
+      title_feed: { type: 'string', description: '홈판용 제목 1개 (25~35자). 검색어가 아니라 호기심으로 누르게 만든다. 낚시성 허위는 금지 — 본문이 실제로 답하는 궁금증만.' },
       body_html: { type: 'string', description: '본문 HTML. 태그 안에 큰따옴표를 써도 된다.' },
-      tags: { type: 'array', items: { type: 'string' }, description: '태그 10개 (# 없이)' },
+      tags: { type: 'array', items: { type: 'string' }, description: '태그 18개 (# 없이)' },
+      naver_topic: { type: 'string', enum: NAVER_TOPICS, description: '네이버 블로그 주제. 목록에서 정확히 하나.' },
+      thumb_caption: { type: 'string', description: '대표 이미지에 얹을 문구 15자 이내. 제목을 반복하지 말고 궁금증을 한 겹 더한다.' },
     },
-    required: ['title', 'body_html', 'tags'],
+    required: ['title', 'title_feed', 'body_html', 'tags', 'naver_topic', 'thumb_caption'],
   },
 };
 
@@ -173,26 +205,42 @@ const FRAMEWORK_BLOCK = [
   '너는 최종 응답에 담기 전에 아래 5가지를 머릿속으로 각각 5개씩 만들어보고,',
   '"네이버 검색 상위 노출 + 체류시간"이 가장 잘 나올 조합 1개만 골라 반환한다.',
   '',
-  '1) 제목 (title): 후보 5개를 만들어보고 그 중 최고 1개만 반환.',
-  '   • 25~35자, 핵심 키워드(브랜드·인물·이슈) 앞배치',
-  '   • 감정 트리거 4종 중 콘텐츠에 가장 맞는 것 선택: 놀라움 · 공감 · 불안 · 욕망',
-  '   • 패션·에디토리얼은 놀라움 · 욕망 · 공감이 반응 좋음. 뉴스는 놀라움 · 불안이 좋음.',
-  '   • 낚시성 과장 금지, 자연스러운 한국어',
+  '1) 제목 2종 — 후보를 각각 5개씩 만들어보고 최고 1개씩만 반환.',
+  '   ① title (검색용): 25~35자. 핵심 키워드(브랜드·인물·작가명)를 문장 맨 앞에.',
+  '      사람들이 실제로 검색창에 칠 말이어야 한다. 과장 금지.',
+  '   ② title_feed (홈판용): 25~35자. 검색어가 아니라 **호기심**으로 누르게.',
+  '      "왜", "진짜 이유", "~한 이유", 통념 뒤집기, 숫자 구체화가 잘 먹힌다.',
+  '      단 본문이 실제로 답하지 않는 궁금증은 만들지 말 것 — 낚시는 이탈을 부른다.',
+  '   • 감정 트리거 4종 중 택1: 놀라움 · 공감 · 불안 · 욕망',
+  '     패션·미술은 놀라움 · 욕망 · 공감. 뉴스성은 놀라움 · 불안.',
   '',
   '2) 도입부 훅 (body_html 첫 문단): 후보 5개를 만들어보고 최고 3문장을 첫 <p>에 배치.',
+  '   • 첫 문장에서 승부. 스크롤 이탈을 막는 구체적인 장면·수치·질문으로 시작.',
   '   • "여러분", "혹시" 같은 대화 시작어 활용 가능',
-  '   • 스크롤 이탈을 막는 강한 첫 문장',
   '',
   '3) 본문 흐름 (body_html): 공감 → 정보 → 사례 → 정리 4구간.',
-  '   • h3 소제목 2~4개, 각 문단 1~3문장으로 짧게',
+  '   • **본문 실제 글자 수 1,800~2,500자** (HTML 태그 제외). 이게 체류시간을 만든다.',
+  '     짧게 쓰지 마라 — 1,000자짜리는 40초 만에 닫힌다. 대신 문단은 짧게 끊는다.',
+  '   • h3 소제목 4~6개, 각 문단 1~3문장',
+  '   • 분량을 채우려고 같은 말을 늘리지 말 것. 배경·맥락·비교·작가의 다른 작업·',
+  '     보는 법 같은 **새 정보**로 채운다. 모르는 사실을 지어내는 것은 절대 금지.',
   '   • [IMG1] [IMG2] ... 마커를 자연스러운 위치에 (사용 가능한 이미지 수만큼)',
   '   • 이모지는 전체 최대 3개',
   '',
   '4) 마무리 체크리스트 (body_html 끝부분에 <h3>오늘의 체크리스트</h3><ul>...): 5개 항목.',
   '   • 각 30자 이내, 오늘 바로 실행할 수 있는 문장',
   '',
-  '5) 부드러운 CTA (체크리스트 아래 <p><em>...</em></p> 한 줄): 댓글 유도 톤.',
-  '   • "궁금한 점이 있다면 댓글로 남겨주세요" 같은 결. 강매·과장 X.',
+  '5) 댓글 유도 질문 (체크리스트 아래 <p><em>...</em></p> 한 줄).',
+  '   • **반드시 물음표로 끝나는 질문 1개.** 홈판은 댓글을 강한 신호로 본다.',
+  '   • "여러분은 어느 쪽이세요?" 처럼 둘 중 하나를 고르게 하는 질문이 답이 잘 달린다.',
+  '   • "궁금한 점 있으면 댓글 주세요" 같은 열린 문장은 답이 안 달린다 — 쓰지 말 것.',
+  '',
+  '6) naver_topic: 주어진 목록에서 이 글에 가장 맞는 것 하나.',
+  '   thumb_caption: 대표 이미지에 얹을 15자 이내 문구. 제목을 반복하지 말 것.',
+  '',
+  '7) 태그 18개 (# 없이) — 두 종류를 섞는다.',
+  '   • 광의 6개: 주제판이 이 글을 분류할 수 있게 하는 큰 말 (패션, 아트, 화보 등)',
+  '   • 롱테일 12개: 고유명사·작품명·기법명 등 경쟁 적은 말',
   '',
   '※ 시스템이 자동으로 뒤에 원문 링크 + 인스타 CTA + 저작권 라인을 붙이므로',
   '  body_html에는 URL을 직접 넣지 말 것.',
@@ -225,22 +273,29 @@ async function generateDraft(art, brand) {
     '1) 원문 복사 금지 — 네이버 저품질(중복 콘텐츠) 방지를 위해 문장·구성을 새로 쓸 것.',
     '2) 톤: ' + toneGuide,
     '3) 상위 노출 상위 글 패턴을 반영: 검색 친화 키워드 앞배치, 감정 트리거 활용, 스크롤 이탈을 막는 짧은 문단.',
-    '4) 본문 전체 길이 600~1000자. 사용 가능한 이미지 ' + gallery.length + '장. [IMGn] 마커 순서대로.',
-    '5) 태그 10개 (# 없이). 기사 태그 재활용 + 검색량 큰 확장 키워드.',
+    '4) 본문 실제 글자 수 1,800~2,500자 (HTML 태그 제외). 사용 가능한 이미지 ' + gallery.length + '장. [IMGn] 마커 순서대로.',
+    '5) 태그 18개 (# 없이). 기사 태그 재활용 + 광의 6 / 롱테일 12.',
     '6) 마지막 원문 링크·인스타 CTA는 시스템이 자동 삽입하므로 body_html 안에 URL을 넣지 말 것.',
+    '7) naver_topic 은 다음 중 하나: ' + NAVER_TOPICS.join(' / '),
     FRAMEWORK_BLOCK,
     '기사 제목: ' + art.title,
     '기사 본문: ' + stripHtml(art.content).slice(0, 3000),
     '기사 태그: ' + JSON.stringify(art.tags || []),
     '',
     'emit_draft 도구로 제출하라. body_html 은 다음 구조를 따른다:',
-    '<p>훅 3문장</p><h3>공감/정보</h3><p>...[IMG1]...</p><h3>사례</h3><p>...[IMG2]...</p>',
-    '<h3>정리</h3><p>...</p><h3>오늘의 체크리스트</h3><ul><li>...</li> × 5</ul>',
-    '<p><em>부드러운 CTA 한 줄</em></p>',
-    'title 은 25~35자 1개, tags 는 # 없이 10개.',
+    '<p>훅 3문장</p><h3>소제목</h3><p>...[IMG1]...</p><h3>소제목</h3><p>...[IMG2]...</p>',
+    '<h3>소제목</h3><p>...</p><h3>정리</h3><p>...</p><h3>오늘의 체크리스트</h3><ul><li>...</li> × 5</ul>',
+    '<p><em>물음표로 끝나는 댓글 유도 질문 한 줄</em></p>',
+    'title / title_feed 는 각 25~35자 1개, tags 는 # 없이 18개.',
   ].join('\n');
 
-  const draft = await requestDraft(prompt, 2500, 'naver-blog-draft');
+  /* max_tokens 2500 → 7000 (2026-08-14).
+     본문 목표를 1,000자에서 2,500자로 올렸다. 한국어는 대략 글자당 1토큰이 넘고
+     여기에 HTML 태그 + 제목 2종 + 태그 18개가 더 붙는다. 2500 으로 두면
+     stop_reason=max_tokens 로 잘려서 초안이 통째로 버려진다(기존 코드가 그때
+     throw 한다). 늘린 만큼 생성 시간도 늘어나므로 크론은 1회 1건으로 줄였다
+     (naver-draft-sweep.js 의 DAILY_MAX 기본값). */
+  const draft = await requestDraft(prompt, 7000, 'naver-blog-draft');
 
   // [IMGn] 마커 → 실제 <img> 치환 + 남는 마커 제거
   let body = String(draft.body_html || '');
@@ -256,12 +311,31 @@ async function generateDraft(art, brand) {
     ' 원문</a>에서 보실 수 있어요.</p>' +
     igCtaBlock(art.source_instagram_url, b.ig, '소식');
 
-  return {
+  return Object.assign({
     title: draft.title || art.title,
-    tags: Array.isArray(draft.tags) ? draft.tags.slice(0, 10) : [],
+    tags: Array.isArray(draft.tags) ? draft.tags.slice(0, 18) : [],
     body_html: body,
     images: gallery,
     article_url: artUrl,
+  }, draftExtras(draft));
+}
+
+/* 새 필드(2026-08-14)의 안전한 기본값.
+ *
+ * salvageDraft 경로(깨진 JSON 건져내기)는 title/body_html/tags 셋만 복구한다.
+ * 그 경로로 들어오면 새 필드가 undefined 인데, 그대로 DB 에 넣으면 NOT NULL 이
+ * 아니어도 화면에 'undefined' 가 뜬다. 여기서 한 번에 막는다.
+ *
+ * naver_topic 은 목록 밖 값이면 버린다 — 네이버 드롭다운에 없는 주제를
+ * 화면에 띄우면 도메니코가 못 고르고, 못 고르면 홈판 후보군에 못 들어간다.
+ * 비워 두는 편이 틀린 값을 주는 것보다 낫다(그때는 본인이 고른다).
+ */
+function draftExtras(draft) {
+  const topic = String((draft && draft.naver_topic) || '').trim();
+  return {
+    title_feed: String((draft && draft.title_feed) || '').trim() || null,
+    naver_topic: NAVER_TOPICS.includes(topic) ? topic : null,
+    thumb_caption: String((draft && draft.thumb_caption) || '').trim().slice(0, 40) || null,
   };
 }
 
@@ -312,10 +386,11 @@ async function generateEditorialDraft(ed, brand) {
     '2) 톤: 패션·아트에 관심 있는 20-30대 독자에게 말하듯 세련되고 친근한 해요체. 매거진의 격은 유지.',
     '3) 본문 구조는 다음 3개 h3 소제목 순서를 유지: "무드와 컨셉" → "룩과 스타일링" → "크레딧".',
     '   "크레딧" 아래에는 아래 crediting 라인을 그대로 리스트(<ul><li>)로 넣을 것 (변형 금지, 인스타 @핸들 유지).',
-    '4) 본문 전체 600~1000자. 사용 가능한 이미지 ' + gallery.length + '장. [IMGn] 마커 순서대로. 첫 이미지는 인트로 아래.',
-    '5) 태그 10개 (# 없이). 필수 포함: PAP매거진, 패션에디토리얼, 패션화보. 나머지는 검색량 큰 확장 키워드.',
+    '4) 본문 실제 글자 수 1,800~2,500자 (HTML 태그 제외). 사용 가능한 이미지 ' + gallery.length + '장. [IMGn] 마커 순서대로. 첫 이미지는 인트로 아래.',
+    '5) 태그 18개 (# 없이). 필수 포함: PAP매거진, 패션에디토리얼, 패션화보. 나머지는 광의 3 / 롱테일 12.',
     '6) 원문 링크·인스타 CTA·저작권 라인은 시스템이 자동 삽입하므로 body_html에 URL을 넣지 말 것.',
     '7) 패션 에디토리얼 특성상 심리 트리거는 놀라움 · 욕망 · 공감이 잘 먹힘 (불안 최소화).',
+    '8) naver_topic 은 다음 중 하나: ' + NAVER_TOPICS.join(' / ') + ' (화보는 보통 패션·미용)',
     FRAMEWORK_BLOCK,
     '에디토리얼 제목: ' + ed.title + (ed.title_en ? ' / ' + ed.title_en : ''),
     '발행호: ' + (ed.issue || '-'),
@@ -327,12 +402,13 @@ async function generateEditorialDraft(ed, brand) {
     'emit_draft 도구로 제출하라. body_html 은 다음 구조를 따른다:',
     '<p>인트로 훅 3문장</p>[IMG1]<h3>무드와 컨셉</h3><p>...[IMG2]...</p>',
     '<h3>룩과 스타일링</h3><p>...[IMG3]...</p><h3>크레딧</h3><ul><li>...</li></ul>',
-    '<h3>오늘의 체크리스트</h3><ul><li>...</li> × 5</ul><p><em>부드러운 CTA 한 줄</em></p>',
-    'title 은 25~35자 1개(브랜드·컨셉 키워드 앞배치),',
-    'tags 는 # 없이 10개이며 PAP매거진 · 패션에디토리얼 · 패션화보를 반드시 포함한다.',
+    '<h3>오늘의 체크리스트</h3><ul><li>...</li> × 5</ul><p><em>물음표로 끝나는 댓글 유도 질문 한 줄</em></p>',
+    'title 은 25~35자(브랜드·컨셉 키워드 앞배치), title_feed 는 25~35자(호기심형),',
+    'tags 는 # 없이 18개이며 PAP매거진 · 패션에디토리얼 · 패션화보를 반드시 포함한다.',
   ].join('\n');
 
-  const draft = await requestDraft(prompt, 2800, 'naver-blog-draft-editorial');
+  // max_tokens 2800 → 7000 — 본문 목표 상향에 따른 조정. generateDraft 의 주석 참조.
+  const draft = await requestDraft(prompt, 7000, 'naver-blog-draft-editorial');
 
   // [IMGn] 마커 → 실제 <img> 치환 + 남는 마커 제거
   let body = String(draft.body_html || '');
@@ -349,13 +425,13 @@ async function generateEditorialDraft(ed, brand) {
     igCtaBlock(ed.source_instagram_url, b.ig, '화보') +
     '<p style="color:#888;font-size:12px">ⓒ PAP MAGAZINE (PAP매거진) — 무단 전재 및 재배포 금지</p>';
 
-  return {
+  return Object.assign({
     title: draft.title || ed.title,
-    tags: Array.isArray(draft.tags) ? draft.tags.slice(0, 10) : [],
+    tags: Array.isArray(draft.tags) ? draft.tags.slice(0, 18) : [],
     body_html: body,
     images: gallery,
     article_url: url,
-  };
+  }, draftExtras(draft));
 }
 
 // slug 하나로 원본 조회 → 초안 생성 (기사/에디토리얼 자동 분기).
@@ -404,13 +480,34 @@ async function _recentPublished(brand, kind, opt) {
     return (data || []).map((r) => ({ slug: r.slug, id: r.id, published_date: r.published_date, created_at: r.created_at })).filter((r) => r.slug);
   }
   let qy = supabaseAdmin.from(b.table)
-    .select('id, slug, published_date, created_at' + (brand === 'pap' ? ', custom_url' : ''))
+    .select('id, slug, category, published_date, created_at' + (brand === 'pap' ? ', custom_url' : ''))
     .eq('status', 'published');
   if (since) qy = qy.gte('published_date', since);
   const { data } = await qy.order('published_date', { ascending: true }).order('created_at', { ascending: true }).limit(limit);
+  const skip = skipCategories();
   return (data || [])
-    .map((r) => ({ slug: brand === 'pap' ? (r.custom_url || r.slug) : r.slug, id: r.id, published_date: r.published_date, created_at: r.created_at }))
+    .filter((r) => !skip.has(String(r.category || '').toLowerCase()))
+    .map((r) => ({ slug: brand === 'pap' ? (r.custom_url || r.slug) : r.slug, id: r.id, category: r.category, published_date: r.published_date, created_at: r.created_at }))
     .filter((r) => r.slug);
+}
+
+/* 어떤 카테고리를 네이버에 안 올릴 것인가 (2026-08-14).
+ *
+ * 기본값 News. 근거는 감이 아니라 전수 분류다 — 발행 213편 중 News 43편은
+ * 38편이 연예 단신(앰버서더 발탁·컴백 예고·신곡 공개)이었다. 그 판은 언론사와
+ * 네이버뉴스가 이미 차지하고 있어 블로그 글이 낄 자리가 없고, 우리가 더할
+ * 정보도 없다(통신사 자료 재구성이다). 안 떠서 한 번 손해, 블로그의 주제
+ * 일관성을 깎아서 또 한 번 손해다.
+ *
+ * PAP 가 직접 취재·촬영한 연예 콘텐츠(워터밤 현장 등)는 Culture 로 들어와
+ * 여기 안 걸린다 — 자체 취재는 계속 올라간다.
+ *
+ * NAVER_DRAFT_SKIP_CATEGORIES 로 바꿀 수 있다. 빈 문자열이면 전부 올린다.
+ */
+function skipCategories() {
+  const raw = process.env.NAVER_DRAFT_SKIP_CATEGORIES;
+  const src = raw === undefined ? 'News' : raw;
+  return new Set(String(src).split(',').map((s) => s.trim().toLowerCase()).filter(Boolean));
 }
 
 // 재사용 함수 — "다음 미전환 콘텐츠 1건을 네이버 초안으로 생성·저장".
@@ -445,6 +542,10 @@ async function generateNext(brand, kind) {
       title: draft.title, body_html: draft.body_html,
       tags: draft.tags || [], image_urls: draft.images || [],
       article_url: draft.article_url, status: 'draft',
+      // 2026-08-14 홈판 전환 — 마이그레이션 123 에서 추가한 컬럼
+      title_feed: draft.title_feed || null,
+      naver_topic: draft.naver_topic || null,
+      thumb_caption: draft.thumb_caption || null,
     }, { onConflict: 'brand,kind,source_slug' })
     .select('id').single();
   if (sErr) throw sErr;
@@ -543,6 +644,9 @@ module.exports = async function handler(req, res) {
         brand: data.brand, kind: data.kind, id: data.id, title: data.title,
         tags: data.tags || [], body_html: data.body_html,
         images: data.image_urls || [], article_url: data.article_url,
+        title_feed: data.title_feed || null,
+        naver_topic: data.naver_topic || null,
+        thumb_caption: data.thumb_caption || null,
       });
     }
 
@@ -584,3 +688,8 @@ module.exports.generateNext = generateNext;
 module.exports._requestDraft = requestDraft;
 module.exports._salvageDraft = salvageDraft;
 module.exports._DRAFT_TOOL = DRAFT_TOOL;
+// 2026-08-14 홈판 전환 — 순수 로직 검증용 (tests/naver-draft-homefeed.test.js)
+module.exports._NAVER_TOPICS = NAVER_TOPICS;
+module.exports._draftExtras = draftExtras;
+module.exports._skipCategories = skipCategories;
+module.exports._FRAMEWORK_BLOCK = FRAMEWORK_BLOCK;

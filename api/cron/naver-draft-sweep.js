@@ -37,6 +37,26 @@
  * 트레이드오프(08-05 개정 사유는 여전히 유효): 발행이 하루 약 6건이라
  * 차액 약 4건/일은 TTL 7일 뒤 expired 로 버려진다 = 그만큼 Claude API
  * 비용이 낭비된다. 되돌리려면 NAVER_DRAFT_QUEUE_MAX 환경변수만 세팅.
+ *
+ * ── 2026-08-14 개정 (도메니코 지시: "C로 가자") — 08-07 을 되돌린다 ──────
+ * 08-07 에 "상한을 최대치로" 를 택한 근거는 "많이 전환할수록 유입이 는다"
+ * 였다. 그 가정을 처음으로 실측했고 **틀렸다**:
+ *   · 발행 213편 → 웹 유입 0명 (utm 링크 50편이 7일간 살아 있었는데 0)
+ *   · 인스타 유입 하루 2.4클릭 (웹 SSR 은 하루 181클릭 — 75배)
+ *   · 블로그 전체 일 조회수 20~85, 게시물당 1~3회
+ *   · 결정적으로 **발행량과 조회수가 무상관** — 39편 올린 8/11 이 최저(28),
+ *     6편 올린 8/12 가 최고(85). 볼륨은 지렛대가 아니었다.
+ *
+ * 그래서 반대로 간다: 1회 1건, 큐 5건.
+ *   ① 본문 목표를 1,000자 → 2,500자로 올려 생성이 느려졌다(max_tokens 7000).
+ *      4건을 한 회차에 돌리면 120s 함수 상한을 넘긴다.
+ *   ② 붙여넣기는 하루 1~2편이 상한이다(사람 손). 큐를 무제한으로 두면
+ *      그 차액만큼 **처음부터 버려질 초안에 API 비용을 쓴다**.
+ * 1회 1건 × 하루 6회 = 6건이 천장. 하루 1~2편 발행에 충분하다.
+ *
+ * 08-05 가 겪은 "상한이 생성을 완전히 멈춘다" 문제는 이번엔 의도된 동작이다 —
+ * 큐가 5건이면 더 만들 이유가 없다. 그때는 하루 10건을 전부 올리는 게
+ * 목표였고, 지금은 하루 1~2편만 올리는 게 목표다.
  * ────────────────────────────────────────────────────────────────────────
  *
  * 발행/게시가 아니라 '초안 생성·저장'만 하므로 파괴적 작업 아님.
@@ -110,9 +130,9 @@ module.exports = withCronGuard('naver-draft-sweep', async function handler(req, 
     return res.status(200).json({ ok: true, note: '비활성화 (NAVER_DRAFT_SWEEP_ENABLED=false)' });
   }
 
-  const dailyMax = Math.max(1, Math.min(4, parseInt(process.env.NAVER_DRAFT_DAILY_MAX || '4', 10) || 4));
+  const dailyMax = Math.max(1, Math.min(4, parseInt(process.env.NAVER_DRAFT_DAILY_MAX || '1', 10) || 1));
   const ttlDays = Math.max(0, parseInt(process.env.NAVER_DRAFT_TTL_DAYS || String(defaultTtlDays()), 10) || 0);
-  const queueMax = Math.max(0, parseInt(process.env.NAVER_DRAFT_QUEUE_MAX || '0', 10) || 0);
+  const queueMax = Math.max(0, parseInt(process.env.NAVER_DRAFT_QUEUE_MAX || '5', 10) || 0);
 
   // 1) 만료 먼저 — 자리를 비운 뒤에 상한을 재야 그 자리를 이 회차가 쓴다
   const expired = await expireStale(ttlDays);
@@ -137,10 +157,33 @@ module.exports = withCronGuard('naver-draft-sweep', async function handler(req, 
   const room = queueMax ? Math.max(0, queueMax - before) : dailyMax;
   const budget = Math.min(dailyMax, room);
 
+  /* 시간 예산 (2026-08-14 신설).
+   *
+   * 지금까지 이 루프에는 시계가 없었다. 건당 생성이 항상 짧아서(1,000자,
+   * max_tokens 2500) 4건을 돌려도 120s 안에 끝났기 때문이다. 본문을 2,500자로
+   * 올리면서 그 전제가 깨졌다 — max_tokens 7000 이면 한 건이 60초를 넘길 수 있다.
+   *
+   * Vercel 120s 상한을 넘기면 프로세스가 그 자리에서 죽어 cronGuard 의 종료
+   * 기록조차 안 남는다(= '끝나지 않은 실행' 알림). 그래서 **다음 한 건의
+   * 최악(90s API 타임아웃)을 미리 빼고** 남을 때만 시작한다. sync-instagram
+   * 에서 같은 사고를 이미 겪었고 같은 방식으로 고쳤다.
+   *
+   * 예산을 못 채우고 멈춘 건은 4시간 뒤 다음 회차가 그대로 이어받는다 —
+   * generateNext 가 "미전환 기사" 에서 뽑으므로 놓치는 건이 없다.
+   */
+  const SWEEP_STARTED = Date.now();
+  const SWEEP_BUDGET_MS = Number(process.env.NAVER_DRAFT_BUDGET_MS || 100000);
+  const PER_DRAFT_RESERVE_MS = 95000;   // requestDraft 의 AbortSignal.timeout(90s) + 여유
+
   const generated = [];
   let doneReason = null;
+  let deferred = 0;
   try {
     for (let i = 0; i < budget; i++) {
+      if (i > 0 && Date.now() - SWEEP_STARTED > SWEEP_BUDGET_MS - PER_DRAFT_RESERVE_MS) {
+        deferred = budget - i;
+        break;   // 다음 회차가 이어받는다
+      }
       const r = await generateNext(BRAND, KIND);
       if (r.done) { doneReason = '미전환 기사 없음 (큐 최신 상태)'; break; }
       generated.push({ slug: r.slug, title: r.draft && r.draft.title });
@@ -155,6 +198,7 @@ module.exports = withCronGuard('naver-draft-sweep', async function handler(req, 
   parts.push(generated.length
     ? generated.length + '건 초안 생성'
     : (doneReason || '생성할 신규 없음'));
+  if (deferred) parts.push('시간 예산으로 ' + deferred + '건 다음 회차 이월');
 
   res.locals = res.locals || {};
   res.locals.cronNote = parts.join(' · ') + ' · 큐 대기 ' + after + '건'
@@ -162,7 +206,7 @@ module.exports = withCronGuard('naver-draft-sweep', async function handler(req, 
 
   return res.status(200).json({
     ok: true, generated: generated.length, items: generated,
-    expired, queueDraftCount: after, queueMax, ttlDays,
+    expired, deferred, queueDraftCount: after, queueMax, ttlDays,
     note: res.locals.cronNote,
   });
 });

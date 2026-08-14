@@ -69,9 +69,15 @@ async function run() {
   t('도구 사용을 강제한다 (tool_choice)',
     lastBody.tool_choice && lastBody.tool_choice.type === 'tool'
     && lastBody.tool_choice.name === 'emit_draft', lastBody.tool_choice);
+  /* 2026-08-14 — '정확히 이 셋' → '적어도 이 셋'.
+     홈판 전환에서 title_feed / naver_topic / thumb_caption 이 required 에 추가됐다.
+     이 하네스가 지키려던 것은 "JSON 문자열 조립을 안 시키고 구조화 출력으로
+     받는다" 이지 "필드가 3개다" 가 아니다. 완전 일치로 잠가 두면 필드가 늘 때마다
+     의미 없이 깨진다 — 그래서 핵심 3종이 살아 있는지만 본다.
+     새 필드들이 required 인지는 tests/naver-draft-homefeed.test.js 가 따로 지킨다. */
+  const _req = _DRAFT_TOOL.input_schema.required;
   t('스키마가 title/body_html/tags 를 요구한다',
-    JSON.stringify(_DRAFT_TOOL.input_schema.required.slice().sort())
-    === JSON.stringify(['body_html', 'tags', 'title']), _DRAFT_TOOL.input_schema.required);
+    ['title', 'body_html', 'tags'].every((k) => _req.indexOf(k) >= 0), _req);
 
   console.log('\n=== ② tool_use 응답을 그대로 쓴다 ===');
   t('제목을 읽는다', d1.title === '제목', d1);

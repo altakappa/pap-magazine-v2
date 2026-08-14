@@ -198,11 +198,43 @@ function cpTag(btn) {
 function renderDraft(j) {
   current = j;
   const el = document.getElementById('draft');
+
+  /* 2026-08-14 홈판 전환 — 제목이 2개가 됐다.
+     네이버의 두 관문은 요구가 정반대다(검색=키워드 앞배치 / 홈판=호기심).
+     둘 다 보여주고 도메니코가 그 글에 맞는 쪽을 고른다. 자동으로 하나를
+     고르지 않는 이유: 어느 쪽이 맞는지는 그 글이 검색으로 먹힐 글인지
+     피드로 먹힐 글인지에 달렸고, 그 판단은 사람이 더 잘한다. */
+  var feed = j.title_feed ? String(j.title_feed) : '';
+  var titleBlock =
+    '<div class="field"><label>제목 — 검색용 <span class="tagcount">키워드 앞배치</span>' +
+      ' <button class="copy" onclick="cpText(this, current.title)">복사</button></label>' +
+      '<div id="dTitle">' + esc(j.title) + '</div></div>' +
+    (feed
+      ? '<div class="field"><label>제목 — 홈판용 <span class="tagcount">호기심형 · 피드 노출</span>' +
+          ' <button class="copy" onclick="cpText(this, current.title_feed)">복사</button></label>' +
+          '<div id="dTitleFeed">' + esc(feed) + '</div></div>'
+      : '');
+
+  /* 주제 분류 — 홈판·주제판 후보군에 들어가는 1차 관문.
+     네이버 글쓰기 화면의 '주제' 드롭다운에서 이 값을 그대로 고르면 된다.
+     카테고리에 주제를 미리 박아두면 이 단계가 아예 사라진다(미확인). */
+  var meta = '';
+  if (j.naver_topic || j.thumb_caption) {
+    meta = '<div class="field"><label>발행 설정</label><div class="tagwrap">' +
+      (j.naver_topic
+        ? '<button class="tagchip next" onclick="cpText(this, current.naver_topic)">주제: ' + esc(j.naver_topic) + '</button>'
+        : '') +
+      (j.thumb_caption
+        ? '<button class="tagchip" onclick="cpText(this, current.thumb_caption)">썸네일 문구: ' + esc(j.thumb_caption) + '</button>'
+        : '') +
+      '</div></div>';
+  }
+
   el.innerHTML =
-    '<div class="field"><label>제목 <button class="copy" onclick="cpText(this, current.title)">복사</button></label><div id="dTitle">' + esc(j.title) + '</div></div>' +
+    titleBlock + meta +
     '<div class="field"><label>태그 <span class="tagcount" id="tagProgress"></span> <button class="copy" onclick="cpText(this, current.tags.join(\' \'))">전체 복사</button></label><div class="tagwrap" id="dTags">' + tagChips(j.tags || []) + '</div></div>' +
-    '<div class="field"><label>본문 (체크리스트 · CTA 자동 포함) <button class="copy" onclick="cpHtml(this)">서식 포함 복사</button></label><div id="dBody">' + j.body_html + '</div></div>' +
-    '<div class="hint">사용법: ① 네이버 블로그 글쓰기 열기 → ② 제목 붙여넣기 → ③ 본문란에 <b>서식 포함 복사</b> 결과 붙여넣기 (체크리스트·CTA 이미 포함됨) → ④ 하단 태그: 칩을 하나씩 눌러 복사 → 네이버 태그란에 붙여넣기 → 엔터, 다음 칩 반복 → 발행. ' +
+    '<div class="field"><label>본문 (체크리스트 · 댓글 유도 질문 자동 포함) <button class="copy" onclick="cpHtml(this)">서식 포함 복사</button></label><div id="dBody">' + j.body_html + '</div></div>' +
+    '<div class="hint">사용법: ① 네이버 블로그 글쓰기 열기 → ② 제목 붙여넣기 (검색으로 먹힐 글이면 <b>검색용</b>, 피드에서 눌릴 글이면 <b>홈판용</b>) → ③ 본문란에 <b>서식 포함 복사</b> 결과 붙여넣기 → ④ 하단 태그: 칩을 하나씩 눌러 복사 → 네이버 태그란에 붙여넣기 → 엔터, 다음 칩 반복 → ⑤ 발행 화면에서 <b>주제</b>를 위 값으로 지정 → 발행. ' +
     '이미지가 붙지 않으면 미리보기의 이미지를 하나씩 드래그하거나, <a href="' + esc(j.article_url) + '" target="_blank">원문</a>에서 저장 후 첨부해 주세요.</div>';
 }
 
