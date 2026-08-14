@@ -85,6 +85,19 @@ const RETRY_GIVE_UP_MS = 86400000;   // 24시간
  * ⚠️ 더 올릴 때는 90초 예산을 같이 봐라. 큰 파일은 다운로드에 시간을 먹고,
  *    한 장이 예산을 다 쓰면 그 회차 전체가 한 편도 못 끝낸다. */
 const MAX_BYTES = 30 * 1024 * 1024;
+/* 리사이즈 (2026-08-14 신설 — 위 주석이 "리사이즈가 답이고 별건" 이라 미뤄둔 그 별건).
+   구 S3 에 58~98MB 원본 17장이 상한에 걸려 영구 제외돼 있었다. 원본은 멀쩡하다.
+   MAX_BYTES 를 넘더라도 HARD_MAX_BYTES 이하면 sharp 로 줄여서 받는다.
+   HARD_MAX 를 120MB 로 잡은 이유: 실측 최댓값이 98MB 이고, 함수 메모리 1024MB
+   에서 원본 버퍼 + sharp 작업분을 동시에 들고 있어야 하기 때문이다. 더 올리지 말 것.
+   ⚠️ 큰 파일은 다운로드에만 시간을 먹는다. 남은 예산이 부족하면 시도하지 않고
+      다음 회차로 넘긴다(아래 hasBudgetForBigFile). 한 장이 회차를 통째로 먹으면 안 된다. */
+const HARD_MAX_BYTES = 120 * 1024 * 1024;
+const RESIZE_MAX_DIM = 3000;      // 긴 변 기준. 화보 품질 유지 하한선
+const RESIZE_QUALITY = 88;
+/* 대용량이 몰려 있는 출처. 실측(2026-08-14): 용량초과 17건이 전부 구 S3 버킷이었다.
+   이 출처의 URL 은 회차 초반에만 시도한다(예산 보호). */
+const BIG_FILE_HOSTS = /pap-korea-bucket\.s3[.-]/i;
 const FETCH_TIMEOUT_MS = 15000;
 const TIME_BUDGET_MS = 90000;
 
@@ -124,7 +137,21 @@ async function fetchImage(url) {
     }
     const buf = Buffer.from(await r.arrayBuffer());
     if (buf.length === 0) throw new Error('empty body');
-    if (buf.length > MAX_BYTES) throw new Error('too large: ' + buf.length);
+    if (buf.length > HARD_MAX_BYTES) throw new Error('too large: ' + buf.length);
+    if (buf.length > MAX_BYTES) {
+      /* 상한 초과지만 원본은 멀쩡하다 → 줄여서 받는다.
+         gif 는 애니메이션이 깨지므로 건드리지 않고 종전대로 실패 처리한다. */
+      if (/gif/i.test(ct)) throw new Error('too large: ' + buf.length);
+      const sharp = require('sharp');
+      const out = await sharp(buf, { limitInputPixels: false })
+        .rotate()                                   // EXIF 방향 유지
+        .resize({ width: RESIZE_MAX_DIM, height: RESIZE_MAX_DIM,
+                  fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: RESIZE_QUALITY, mozjpeg: true })
+        .toBuffer();
+      if (out.length > MAX_BYTES) throw new Error('too large after resize: ' + out.length);
+      return { buf: out, contentType: 'image/jpeg', resizedFrom: buf.length };
+    }
     return { buf, contentType: ct };
   } finally {
     clearTimeout(to);
@@ -209,7 +236,7 @@ module.exports = withCronGuard('migrate-external-images', async function handler
   const { data: fails } = await supabaseAdmin.from('image_migration_failures').select('url');
   const failSet = new Set((fails || []).map(f => f.url));
 
-  let editorialsDone = 0, imagesMoved = 0;
+  let editorialsDone = 0, imagesMoved = 0, imagesResized = 0;
   const newFailures = [];
 
   for (const row of rows) {
@@ -227,8 +254,13 @@ module.exports = withCronGuard('migrate-external-images', async function handler
     for (const url of targets) {
       if (Date.now() - started > TIME_BUDGET_MS) break;
       if (failSet.has(url)) continue;
+      /* 큰 파일(리사이즈 후보)은 남은 예산이 넉넉할 때만 건드린다.
+         98MB 한 장이 90초 예산을 다 먹으면 그 회차는 한 편도 못 끝낸다.
+         건너뛴 건 실패로 기록하지 않는다 — 다음 회차에 다시 온다. */
+      if (BIG_FILE_HOSTS.test(url) && Date.now() - started > TIME_BUDGET_MS * 0.4) continue;
       try {
-        const { buf, contentType } = await fetchImage(url);
+        const { buf, contentType, resizedFrom } = await fetchImage(url);
+        if (resizedFrom) imagesResized++;
         const path = 'migrated/' + row.id + '/' + Date.now() + '_' + (idx++) + '.' + extFromContentType(contentType);
         const { error: upErr } = await supabaseAdmin.storage.from('media')
           .upload(path, buf, { contentType, upsert: true });
@@ -277,25 +309,66 @@ module.exports = withCronGuard('migrate-external-images', async function handler
        (2026-08-12 실측: storage: Bad Request 1건을 '죽은 링크' 로 알렸다.) */
     const transient = newFailures.filter(f => isTransientReason(f.reason));
     const dead = newFailures.filter(f => !/^too large/.test(f.reason) && !isTransientReason(f.reason));
+    /* 화보 제목을 붙이고 화보별로 묶는다 (2026-08-14).
+       종전에는 '· HTTP 404 — editorial ffbd8595-…' 를 8줄 반복 출력했다.
+       도메니코 실제 반응: "같은 게 8번 나오는데 이게 뭐냐".
+       ① UUID 만으로는 어느 화보인지 알 수 없다 → 제목을 붙인다
+       ② 한 화보의 12장이 12줄로 흩어져 진짜 규모가 안 보인다 → 묶는다
+       제목 조회가 실패해도 알림은 나가야 한다 — UUID 앞 8자로 대체한다. */
+    let titleOf = {};
+    try {
+      const ids = [...new Set(newFailures.map(f => f.editorial_id).filter(Boolean))];
+      if (ids.length) {
+        const { data: eds } = await supabaseAdmin
+          .from('editorials').select('id, title').in('id', ids);
+        (eds || []).forEach(e => { titleOf[e.id] = e.title; });
+      }
+    } catch (_) { /* 제목이 없어도 알림은 나간다 */ }
+    const label = (id) => titleOf[id] || ('editorial ' + String(id || '?').slice(0, 8));
+    const groupByEditorial = (list) => {
+      const m = {};
+      list.forEach(f => {
+        const k = f.editorial_id || '?';
+        if (!m[k]) m[k] = { n: 0, reasons: new Set() };
+        m[k].n += 1; m[k].reasons.add(String(f.reason).split(':')[0]);
+      });
+      return Object.entries(m)
+        .sort((a, b) => b[1].n - a[1].n)
+        .map(([id, v]) => '· ' + label(id) + ' — ' + v.n + '장 (' + [...v.reasons].join(', ') + ')');
+    };
+
     const lines = [];
     if (dead.length) {
       lines.push('❌ 죽은 링크 ' + dead.length + '건 — 원본이 사라졌다(재업로드 외 방법 없음)');
-      lines.push(...dead.slice(0, 8).map(f => '· ' + f.reason + ' — editorial ' + f.editorial_id));
+      lines.push(...groupByEditorial(dead).slice(0, 8));
     }
     if (oversize.length) {
       const mb = (n) => (Number(n) / 1048576).toFixed(1) + 'MB';
       const sizes = oversize.map(f => Number(String(f.reason).split(': ')[1]) || 0);
       lines.push('📦 용량 초과 ' + oversize.length + '건 — 원본은 멀쩡하다. 상한 '
         + Math.round(MAX_BYTES / 1048576) + 'MB 초과 (최대 ' + mb(Math.max.apply(null, sizes)) + ')');
-      lines.push('   → 상한을 올리거나 리사이즈해서 받아야 한다. 재업로드 대상 아님');
+      lines.push('   → 상한(' + Math.round(MAX_BYTES / 1048576) + 'MB) 초과분은 자동 리사이즈로 받는다. '
+        + Math.round(HARD_MAX_BYTES / 1048576) + 'MB 초과만 진짜 실패다. 재업로드 대상 아님');
+      lines.push(...groupByEditorial(oversize).slice(0, 5));
     }
     if (transient.length) {
       lines.push('🔁 일시적 실패 ' + transient.length + '건 — 저쪽 서버가 잠깐 흔들렸거나 업로드가 튕겼다. 원본은 멀쩡하다');
       lines.push('   ' + transient.slice(0, 4).map(f => '· ' + f.reason).join('\n   '));
       lines.push('   → 1시간 뒤부터 자동 재시도(최대 24시간). 할 일 없음');
     }
+    /* 누적을 함께 보여준다 (2026-08-14).
+       종전 알림은 '이번 회차 실패'만 말했다. 그래서 두 달간 쌓인 139건이
+       매일 12건짜리 알림 뒤에 가려져 있었고, 아무도 전체 규모를 몰랐다.
+       조회가 실패하면 그 줄만 빠진다 — 알림 자체를 막지 않는다. */
+    let totalLine = '';
+    try {
+      const { count } = await supabaseAdmin
+        .from('image_migration_failures').select('*', { count: 'exact', head: true });
+      if (count) totalLine = '\n\n📊 누적 미해결 ' + count + '건 — /ops-dashboard 에서 출처별로 확인';
+    } catch (_) { /* 누적 줄은 없어도 된다 */ }
+
     await sendTextToTelegramSafe(
-      '🖼 이미지 이관 중 실패 ' + newFailures.length + '건\n' + lines.join('\n')
+      '🖼 이미지 이관 중 실패 ' + newFailures.length + '건\n' + lines.join('\n') + totalLine
     ).catch(() => {});
   }
 
@@ -307,6 +380,7 @@ module.exports = withCronGuard('migrate-external-images', async function handler
     ok: true, editorialsDone, imagesMoved, failures: newFailures.length, remaining: left,
     note: note(res,
       '이관 ' + editorialsDone + '편 · 이미지 ' + imagesMoved + '장'
+      + (imagesResized ? '(리사이즈 ' + imagesResized + ')' : '')
       + (newFailures.length ? ' · 실패 ' + newFailures.length + '건' : '')
       + (left === null ? '' : ' · 잔량 ' + left + '편')
       + (editorialsDone === 0 ? ' ⚠️ 진전 0 — 큐가 막혔는지 확인' : '')),
