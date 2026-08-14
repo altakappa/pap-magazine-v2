@@ -613,6 +613,21 @@ function buildArticleRow(post, generated, opts){
     source_instagram_post_id: post.id || null,
     // 원본 IG media_type — YouTube Shorts 크론이 VIDEO(릴스)만 골라내는 데 사용.
     source_media_type:        post.mediaType || null,
+    /* 캡션 원문 보관 (2026-08-14).
+     *
+     * 지금까지 캡션은 기사 생성에만 쓰고 버렸다. 그런데 캡션에는 우리가
+     * 어디서도 복원할 수 없는 정보가 하나 들어 있다 — 크레딧 줄이다.
+     *   🎥 PAP           → 우리가 직접 찍은 것
+     *   🎥 @jamiroquaihq → 남의 소스
+     * "자체 취재냐" 는 홈판 전략의 핵심 구분인데(유일한 사진 = 유일한 콘텐츠),
+     * DB 의 다른 어떤 컬럼으로도 안 갈린다. 실측으로 확인했다:
+     * credits·is_celeb·digest_kind·source_media_type·태그가 자체 취재와
+     * 통신사 재탕에서 전부 동일했다.
+     *
+     * editorials.instagram_caption 과 같은 이름을 쓴다(규칙이 두 벌이면
+     * 한쪽만 고쳐진다). 소비자: naver-blog-draft.js 의 초안 선정.
+     */
+    instagram_caption:        post.caption || null,
     instagram_imported_at:    new Date().toISOString(),
   };
 }

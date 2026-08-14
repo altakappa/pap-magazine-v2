@@ -154,16 +154,34 @@ function runHandler(handler, env) {
   console.log('[6] 선정 순서 — 소스에서 실제 식을 꺼내 평가한다');
   {
     const src = fs.readFileSync(ADMIN, 'utf8');
-    const m = src.match(/const oldestFirst = ([^;]+);[\s\S]*?const next = ([^;]+);/);
-    t('선정 식을 찾았다', !!m, m && m[2]);
+    /* 2026-08-14 — 선정에 '자체 취재 우선'(own/pool)이 끼어들었다.
+       이 테스트의 방식(소스에서 식을 꺼내 실제로 평가)은 그대로 두되,
+       꺼내는 범위를 네 줄로 넓힌다. 식을 손으로 베껴 적으면 소스와 갈라져
+       테스트가 거짓말을 하게 되므로, 계속 소스에서 꺼내는 게 핵심이다. */
+    const m = src.match(/const oldestFirst = ([^;]+);[\s\S]*?const own = ([^;]+);\s*const pool = ([^;]+);\s*const next = ([^;]+);/);
+    t('선정 식을 찾았다', !!m, m && m[4]);
     if (m) {
       const pick = new Function('process', 'pending',
-        'const oldestFirst = ' + m[1] + '; const next = ' + m[2] + '; return next;');
+        'const oldestFirst = ' + m[1] + '; const own = ' + m[2] + '; const pool = ' + m[3]
+        + '; const next = ' + m[4] + '; return next;');
       const pending = [{ slug: 'oldest' }, { slug: 'mid' }, { slug: 'newest' }]; // 발행 오름차순
       t('기본값은 최신부터', pick({ env: {} }, pending).slug === 'newest', pick({ env: {} }, pending));
       t('ORDER=oldest 면 옛 동작', pick({ env: { NAVER_DRAFT_ORDER: 'oldest' } }, pending).slug === 'oldest');
       t('대문자도 먹는다', pick({ env: { NAVER_DRAFT_ORDER: 'OLDEST' } }, pending).slug === 'oldest');
       t('1건뿐이면 그걸 고른다', pick({ env: {} }, [{ slug: 'only' }]).slug === 'only');
+
+      // 자체 취재(🎥 PAP)가 있으면 더 최신이어도 그쪽을 먼저 고른다
+      const mixed = [{ slug: 'own-old', own: true }, { slug: 'plain-mid' }, { slug: 'plain-new' }];
+      t('자체 취재를 최신보다 먼저 고른다',
+        pick({ env: {} }, mixed).slug === 'own-old', pick({ env: {} }, mixed));
+      const twoOwn = [{ slug: 'own-old', own: true }, { slug: 'plain' }, { slug: 'own-new', own: true }];
+      t('자체 취재가 여럿이면 그 안에서 최신',
+        pick({ env: {} }, twoOwn).slug === 'own-new', pick({ env: {} }, twoOwn));
+      t('자체 취재 안에서도 ORDER=oldest 가 먹는다',
+        pick({ env: { NAVER_DRAFT_ORDER: 'oldest' } }, twoOwn).slug === 'own-old');
+      // 폴백이 없으면 캡션이 채워지는 3일 동안 생성이 통째로 멎는다
+      t('자체 취재가 없으면 전체에서 고른다',
+        pick({ env: {} }, pending).slug === 'newest');
     }
   }
 

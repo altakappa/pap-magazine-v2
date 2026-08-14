@@ -277,6 +277,16 @@ async function generateDraft(art, brand) {
     '5) 태그 18개 (# 없이). 기사 태그 재활용 + 광의 6 / 롱테일 12.',
     '6) 마지막 원문 링크·인스타 CTA는 시스템이 자동 삽입하므로 body_html 안에 URL을 넣지 말 것.',
     '7) naver_topic 은 다음 중 하나: ' + NAVER_TOPICS.join(' / '),
+    /* 자체 취재면 그 사실을 쓰게 한다 (2026-08-14).
+       홈판에서 우리를 남과 가르는 건 '우리만 가진 사진' 이다. 그런데 지금까지
+       초안은 그 사실을 한 번도 말하지 않았다 — 현장에서 직접 찍은 글과
+       보도자료를 옮긴 글이 똑같은 톤으로 나갔다. 다만 없는 취재를 지어내면
+       안 되므로, 캡션 크레딧이 실제로 PAP 인 건에만 이 문장을 붙인다. */
+    isOwnCoverage(art.instagram_caption)
+      ? '8) 이 콘텐츠는 PAP가 현장에서 직접 촬영한 자체 취재다. 본문 어딘가에 '
+        + '"PAP가 현장에서 직접 담았다"는 사실을 자연스럽게 한 번 밝혀라 '
+        + '(자랑조 금지, 사실 전달). 없는 취재 정황을 지어내지는 말 것.'
+      : '8) 이 콘텐츠는 자체 취재가 아니다. 현장에 있었던 것처럼 쓰지 말 것.',
     FRAMEWORK_BLOCK,
     '기사 제목: ' + art.title,
     '기사 본문: ' + stripHtml(art.content).slice(0, 3000),
@@ -449,7 +459,7 @@ async function generateBySlug(brand, kind, slug) {
     return { draft, sourceId: ed.id };
   }
   let sel = supabaseAdmin.from(b.table)
-    .select('id, title, slug' + (brand === 'pap' ? ', custom_url' : '') + ', content, tags, gallery, thumbnail_url, source_instagram_url')
+    .select('id, title, slug' + (brand === 'pap' ? ', custom_url' : '') + ', content, tags, gallery, thumbnail_url, source_instagram_url, instagram_caption')
     .eq('status', 'published');
   sel = brand === 'pap'
     ? sel.or('custom_url.eq.' + slug + ',slug.eq.' + slug)
@@ -480,15 +490,48 @@ async function _recentPublished(brand, kind, opt) {
     return (data || []).map((r) => ({ slug: r.slug, id: r.id, published_date: r.published_date, created_at: r.created_at })).filter((r) => r.slug);
   }
   let qy = supabaseAdmin.from(b.table)
-    .select('id, slug, category, published_date, created_at' + (brand === 'pap' ? ', custom_url' : ''))
+    .select('id, slug, category, instagram_caption, published_date, created_at' + (brand === 'pap' ? ', custom_url' : ''))
     .eq('status', 'published');
   if (since) qy = qy.gte('published_date', since);
   const { data } = await qy.order('published_date', { ascending: true }).order('created_at', { ascending: true }).limit(limit);
   const skip = skipCategories();
   return (data || [])
     .filter((r) => !skip.has(String(r.category || '').toLowerCase()))
-    .map((r) => ({ slug: brand === 'pap' ? (r.custom_url || r.slug) : r.slug, id: r.id, category: r.category, published_date: r.published_date, created_at: r.created_at }))
+    .map((r) => ({
+      slug: brand === 'pap' ? (r.custom_url || r.slug) : r.slug,
+      id: r.id, category: r.category,
+      own: isOwnCoverage(r.instagram_caption),
+      published_date: r.published_date, created_at: r.created_at,
+    }))
     .filter((r) => r.slug);
+}
+
+/* 자체 취재인가 — 인스타 캡션의 크레딧 줄로 판별한다 (2026-08-14, 도메니코 제보).
+ *
+ *   🎥 PAP            → 우리가 직접 찍었다        ← 이것만 true
+ *   🎥 @jamiroquaihq  → 남의 영상
+ *   🎥 YouTube | KATSEYE → 남의 영상
+ *
+ * 왜 캡션이어야 하나: DB 의 다른 컬럼으로는 안 갈린다. 실측했다 —
+ * 자체 취재(맨시티 성수·워터밤 라이즈)와 통신사 재탕(뷔 앰버서더·그래미)이
+ * credits(둘 다 []) · is_celeb(둘 다 true) · digest_kind(둘 다 celeb) ·
+ * source_instagram_url(둘 다 있음) · 태그에서 전부 동일했다.
+ * source_media_type 이 VIDEO 면 현장인가 싶었는데 News 61편 중 18편이
+ * VIDEO 라 우연이었다. 캡션 크레딧만이 유일한 신호다.
+ *
+ * 왜 이게 중요한가: 홈판은 클릭률로 뽑고, 클릭을 만드는 건 '남에게 없는
+ * 사진' 이다. 자체 취재는 유일하고, 통신사 재탕은 수천 개 중 하나다.
+ *
+ * 표기가 바뀌면 NAVER_DRAFT_OWN_MARK 로 배포 없이 고칠 수 있다.
+ * 캡션이 없는 옛 기사(2026-08-14 이전 수집분)는 전부 false 가 된다 —
+ * 그래서 호출부는 '자체 취재가 없으면 전체에서 고른다' 로 폴백한다.
+ */
+function ownMarkRe() {
+  const src = process.env.NAVER_DRAFT_OWN_MARK || '🎥\\s*(PAP\\b|@pap)';
+  try { return new RegExp(src, 'i'); } catch (_) { return /🎥\s*(PAP\b|@pap)/i; }
+}
+function isOwnCoverage(caption) {
+  return ownMarkRe().test(String(caption || ''));
 }
 
 /* 어떤 카테고리를 네이버에 안 올릴 것인가 (2026-08-14).
@@ -534,7 +577,21 @@ async function generateNext(brand, kind) {
   const doneSet = new Set((done || []).map((d) => d.source_slug));
   const pending = recent.filter((r) => !doneSet.has(r.slug)); // 발행 오름차순 정렬됨
   if (!pending.length) return { done: true, remaining: 0, draft: null, slug: null };
-  const next = oldestFirst ? pending[0] : pending[pending.length - 1];
+
+  /* 자체 취재 우선 (2026-08-14).
+   *
+   * 홈판은 클릭률로 뽑고, 클릭을 만드는 건 '남에게 없는 사진' 이다.
+   * 우리가 현장에서 찍은 것(워터밤·맨시티 성수·브랜드 런칭 나이트)은 유일하고,
+   * 통신사 재탕(앰버서더 발탁·컴백 예고)은 수천 개 중 하나다. 같은 연예
+   * 콘텐츠라도 이 둘은 완전히 다른 물건이라 선정에서 갈라야 한다.
+   *
+   * 폴백이 중요하다 — 자체 취재가 하나도 없으면 pending 전체에서 고른다.
+   * 캡션은 2026-08-14부터 저장되므로 그 전 기사는 전부 own=false 다.
+   * 폴백이 없으면 룩백 창(3일)이 채워질 때까지 초안 생성이 멈춘다.
+   */
+  const own = pending.filter((r) => r.own);
+  const pool = own.length ? own : pending;
+  const next = oldestFirst ? pool[0] : pool[pool.length - 1];
   const { draft, sourceId } = await generateBySlug(brand, kind, next.slug);
   const { data: saved, error: sErr } = await supabaseAdmin.from('naver_blog_drafts')
     .upsert({
@@ -692,4 +749,5 @@ module.exports._DRAFT_TOOL = DRAFT_TOOL;
 module.exports._NAVER_TOPICS = NAVER_TOPICS;
 module.exports._draftExtras = draftExtras;
 module.exports._skipCategories = skipCategories;
+module.exports._isOwnCoverage = isOwnCoverage;
 module.exports._FRAMEWORK_BLOCK = FRAMEWORK_BLOCK;

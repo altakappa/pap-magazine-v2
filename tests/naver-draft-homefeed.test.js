@@ -129,8 +129,10 @@ console.log('\n=== ⑤ News 는 기본 제외 ===');
   if (before === undefined) delete process.env.NAVER_DRAFT_SKIP_CATEGORIES;
   else process.env.NAVER_DRAFT_SKIP_CATEGORIES = before;
 
+  // 컬럼이 더 붙어도 안 깨지게 'category 를 읽는가' 만 본다 (⑩ 이 캡션을 더 붙였다).
+  // select 문자열이 + 로 이어붙여지므로 닫는 따옴표까지 잠그면 안 된다.
   t('기사 조회가 category 를 실제로 읽어온다',
-    /\.select\('id, slug, category, published_date/.test(draftSrc));
+    /\.select\('[^']*\bcategory\b[^']*'/.test(draftSrc));
   t('조회 결과에 skip 필터가 걸려 있다',
     /const skip = skipCategories\(\)[\s\S]{0,200}!skip\.has\(String\(r\.category/.test(draftSrc));
 }
@@ -208,6 +210,68 @@ console.log('\n=== ⑨ 저장·조회·화면 배선 ===');
   // 값이 없는 옛 초안(268행)을 열어도 깨지지 않아야 한다
   t('naver_topic/thumb_caption 없으면 블록 자체를 안 만든다',
     /if \(j\.naver_topic \|\| j\.thumb_caption\)/.test(html));
+}
+
+console.log('\n=== ⑩ 자체 취재 판별 (🎥 PAP) ===');
+{
+  const own = mod._isOwnCoverage;
+
+  // 실제 캡션에서 뽑은 문자열 (legacy_image_recovery 실측)
+  t('🎥 PAP → 자체 취재',
+    own('...legendary Waterbomb performance.\n\n🎥 PAP') === true);
+  t('🎥 @jamiroquaihq → 남의 것',
+    own('...first full-length release in nine years.\n\n🎥 @jamiroquaihq') === false);
+  t('🎥 YouTube | KATSEYE → 남의 것',
+    own('...what [ANIMAL] has in store.\n\n🎥 YouTube | KATSEYE') === false);
+  t('한국어 캡션에서도 잡힌다',
+    own('당신의 생각은 어떤가. \n\n🎥 PAP') === true);
+  t('크레딧 목록 뒤에 붙어도 잡힌다',
+    own('Director: @daniel.kim.official\n\n🎥 PAP') === true);
+
+  t('캡션 없음(옛 기사) → false', own(null) === false && own(undefined) === false && own('') === false);
+  t('🎥 없이 PAP 만 있으면 false (본문에 흔히 나온다)',
+    own('PAP MAGAZINE 원문에서 보실 수 있어요') === false);
+  t('이모지만 있고 크레딧이 없으면 false', own('🎥 촬영 현장 스케치') === false);
+  t('PAPARAZZI 는 오탐 아님 (단어 경계)', own('🎥 PAPARAZZI') === false);
+  t('🎥 PAP MAGAZINE 은 우리 것', own('🎥 PAP MAGAZINE') === true);
+  t('@pap_magazine 크레딧도 우리 것', own('🎥 @pap_magazine') === true);
+
+  {
+    const before = process.env.NAVER_DRAFT_OWN_MARK;
+    process.env.NAVER_DRAFT_OWN_MARK = '📷\\s*PAP';
+    t('env 로 표기를 바꿀 수 있다 (배포 없이)',
+      own('📷 PAP') === true && own('🎥 PAP') === false);
+    process.env.NAVER_DRAFT_OWN_MARK = '((((';   // 깨진 정규식
+    t('깨진 정규식이어도 안 터지고 기본값으로 돈다', own('🎥 PAP') === true);
+    if (before === undefined) delete process.env.NAVER_DRAFT_OWN_MARK;
+    else process.env.NAVER_DRAFT_OWN_MARK = before;
+  }
+
+  t('조회가 instagram_caption 을 읽어온다',
+    /\.select\('id, slug, category, instagram_caption, published_date/.test(draftSrc));
+  t('단건 조회도 instagram_caption 을 읽어온다',
+    /source_instagram_url, instagram_caption'/.test(draftSrc));
+  t('선정이 자체 취재를 먼저 고른다',
+    /const own = pending\.filter\(\(r\) => r\.own\)/.test(draftSrc));
+  // 폴백이 없으면 캡션이 없는 3일 동안 초안 생성이 통째로 멈춘다
+  t('자체 취재가 없으면 전체에서 고른다 (폴백)',
+    /const pool = own\.length \? own : pending/.test(draftSrc));
+  t('프롬프트가 자체 취재 여부를 알려준다',
+    /PAP가 현장에서 직접 촬영한 자체 취재다/.test(draftSrc));
+  t('자체 취재가 아니면 현장에 있었던 척 금지',
+    /현장에 있었던 것처럼 쓰지 말 것/.test(draftSrc));
+
+  const imp = fs.readFileSync(path.join(ROOT, 'api', '_lib', 'instagramImport.js'), 'utf8');
+  t('수집 시 캡션을 실제로 저장한다',
+    /instagram_caption:\s*post\.caption \|\| null/.test(imp));
+
+  const mig = path.join(ROOT, 'supabase_migrations', '124_articles_instagram_caption.sql');
+  t('마이그레이션 124 가 있다', fs.existsSync(mig));
+  if (fs.existsSync(mig)) {
+    const sql = fs.readFileSync(mig, 'utf8');
+    t('articles 에 instagram_caption 을 추가한다',
+      /ALTER TABLE public\.articles[\s\S]{0,80}ADD COLUMN IF NOT EXISTS instagram_caption/.test(sql));
+  }
 }
 
 console.log('\n' + (fail ? '✗' : '✓') + ' naver-draft-homefeed: ' + pass + ' passed / ' + fail + ' failed');
