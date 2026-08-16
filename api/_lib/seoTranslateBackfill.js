@@ -635,11 +635,51 @@ function hangulRatio(s) {
    제목은 짧아서 비율이 무의미하므로 '한 글자라도 있으면 실패' 로 본다. */
 const BODY_HANGUL_MAX = 0.03;
 
-/** 번역 결과가 쓸 만한가. 문제 없으면 null, 있으면 사유 문자열. */
-function validateTranslation(t, lang) {
+/* ── 2026-08-16 — 두 번째 결함: 라틴 문자 언어에 **영어가 그대로 저장됐다** ──
+ *
+ * 실측(seo_translations 전수, title 이 articles.title_en 과 완전히 동일):
+ *     es 653/2,372 (27.5%) · it 603/2,370 (25.4%) · fr 510/2,370 (21.5%)
+ *     de 139/2,369 (5.9%)  · ja 0 · zh 0 · ru 0
+ *
+ * ja/zh/ru 이 0% 인 이유가 원인을 그대로 말해준다 — **문자가 다르면 못 속인다.**
+ * es/it/fr/de 는 영어와 같은 라틴 문자라 영어를 그대로 뱉어도 아무 검사에도
+ * 안 걸렸다. 위 validateTranslation 이 제목에 대해 보는 건 '한글이 있나' 하나뿐이다.
+ *
+ * 왜 모델이 영어를 뱉나: 프롬프트에 title(한국어)과 title_en(영어)이 **둘 다**
+ * 들어가는데 어느 쪽을 번역하라는 말이 없고, 규칙에는 "Latin-script ... stylized
+ * titles 는 그대로 두라" 가 있다. 영어 제목이 눈앞에 있으니 그대로 베낀다.
+ *
+ * 실물(2026-08-16 라이브): /es/article/katseye-animal-teaser-bold-transformation
+ *   <title> KATSEYE Teases Bold Transformation with 'ANIMAL' Single   ← 영어
+ *   <meta description> El grupo global KATSEYE ha revelado…            ← 스페인어
+ *   설명만 번역되고 제목은 영어다. 스페인어 검색자가 보는 헤드라인이 영어다.
+ *
+ * ⚠️ CTR 인과는 증명하지 않았다. "영어 제목이라서 클릭이 안 나왔다" 는 아직
+ *    가설이다. 다만 **결함 자체는 실측으로 확정**이고 고칠 수 있다.
+ */
+
+/* 영어에만 있고 es/it/fr/de 에는 없는 기능어. 'on'(fr) 'in'(de,it) 'a'(it,fr,es)
+   'was'(de) 처럼 겹치는 단어는 일부러 뺐다 — 오탐이 poison pill 을 만든다. */
+const EN_MARKER_RE = /\b(the|with|and|for|from|into|of|at|by|to|is|are|his|her|its|their|this|that|new|how|what|why|when|who)\b/i;
+const LATIN_LANGS = ['es', 'it', 'fr', 'de'];
+
+/** 영어 원문을 그대로 베껴 온 제목인가. */
+function isEnglishEcho(title, srcTitleEn, lang) {
+  if (!LATIN_LANGS.includes(lang)) return false;          // 문자가 다르면 이미 안전
+  if (!title || !srcTitleEn) return false;
+  if (String(title).trim() !== String(srcTitleEn).trim()) return false;
+  /* 완전히 같아도 제목이 브랜드명뿐이면(예: "CRIMSON", "Prada") 그대로가 정답이다.
+     영어 기능어가 하나라도 있어야 '문장을 안 옮긴 것' 으로 본다. */
+  return EN_MARKER_RE.test(String(title));
+}
+
+/** 번역 결과가 쓸 만한가. 문제 없으면 null, 있으면 사유 문자열.
+ *  @param srcTitleEn 원본 영어 제목(articles.title_en). 있으면 영어 에코까지 잡는다. */
+function validateTranslation(t, lang, srcTitleEn) {
   if (!t || !t.title) return 'no_title';
   if (lang === 'ko') return null;
   if (hasHangul(t.title)) return 'hangul_title';
+  if (isEnglishEcho(t.title, srcTitleEn, lang)) return 'english_title';
   const long = t.body || t.description || '';
   if (long && hangulRatio(long) > BODY_HANGUL_MAX) return 'hangul_body';
   return null;
@@ -667,10 +707,22 @@ function nameRule(lang) {
 
 /** 모든 프롬프트가 공유하는 표기 규칙 블록. */
 function styleRules(lang) {
+  /* 2026-08-16 — `title_en` 은 참고용인데 어느 쪽을 번역하라는 말이 없어서
+     라틴 문자 언어(es/it/fr/de)에서 모델이 영어 제목을 그대로 베껴 왔다.
+     실측: es 653건(27.5%) · it 603 · fr 510 · de 139 이 영어 원문과 완전 동일.
+     ja/zh/ru 은 0건 — 문자가 다르면 베낄 수 없었기 때문이다. 명시한다. */
+  const isLatin = ['es', 'it', 'fr', 'de'].includes(lang);
   return `- The output MUST NOT contain any Hangul (Korean script) — not in the title, not in the body.\n`
     + `- ${nameRule(lang)}\n`
     + `- "Leave unchanged" applies ONLY to Latin-script brand names and stylized Latin titles `
-    + `(Prada, Converse, "CRIMSON"). A Korean title is NOT a proper noun to be preserved — translate it.\n`;
+    + `(Prada, Converse, "CRIMSON"). A Korean title is NOT a proper noun to be preserved — translate it.\n`
+    + (isLatin
+      ? `- \`title_en\` in the input is an ENGLISH REFERENCE ONLY. Never return it, or any part of it, `
+        + `as your translated title. The title you return MUST be written in ${LANG_NAMES[lang]}. `
+        + `Returning the English sentence unchanged is a failure, even though ${LANG_NAMES[lang]} `
+        + `uses the same alphabet as English — brand names inside the sentence stay in Latin script, `
+        + `but the sentence around them must be translated.\n`
+      : '');
 }
 
 const T_MARK = '<<<TITLE>>>';
@@ -991,7 +1043,8 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing
          단건 프롬프트에도 같은 표기 규칙이 실려 있어 두 번째 시도는
          대개 통과한다. */
       if (t.__repaired) jsonRepaired++;
-      const bad = validateTranslation(t, lang);
+      // 2026-08-16 — 원본 영어 제목을 넘겨 '영어 에코' 까지 잡는다 (es/it/fr/de)
+      const bad = validateTranslation(t, lang, (cfg.src(srcItem) || {}).title_en);
       if (bad) { qualityRetried++; rejected.set(srcItem.id, t); continue; }
       got.set(srcItem.id, t);
     }
@@ -1029,7 +1082,7 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing
              2026-08-05 zh 거대 기사 2건이 179건을 막은 것과 같은 구조).
              대신 건수를 note 에 남겨 눈에 보이게 하고, 관리자 수동 경로로
              따로 손볼 수 있게 한다. */
-          if (validateTranslation(one, lang)) qualityFlagged++;
+          if (validateTranslation(one, lang, (cfg.src(it) || {}).title_en)) qualityFlagged++;
           got.set(it.id, one);
         }
         else {
@@ -1106,4 +1159,4 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing
   };
 }
 
-module.exports = { runBackfillBatch, remainingFor, minDoneFor, MIN_TRANSLATED, newTiming, hasHangul, hangulRatio, validateTranslation, nameRule, styleRules, normalizeBatch, parseJsonArray, salvageObjects, escapeRawControls, escapeInnerQuotes, diagnoseJson, parseSentinel, pickItems, buildBatchPrompt, msLeft, canCall, callBudget, CALL_SLACK_MS, MAX_PASSES, LANG_NAMES, KINDS };
+module.exports = { runBackfillBatch, remainingFor, minDoneFor, MIN_TRANSLATED, newTiming, hasHangul, hangulRatio, validateTranslation, isEnglishEcho, nameRule, styleRules, normalizeBatch, parseJsonArray, salvageObjects, escapeRawControls, escapeInnerQuotes, diagnoseJson, parseSentinel, pickItems, buildBatchPrompt, msLeft, canCall, callBudget, CALL_SLACK_MS, MAX_PASSES, LANG_NAMES, KINDS };

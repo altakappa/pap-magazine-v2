@@ -143,7 +143,7 @@ console.log('\n=== ⑤ poison pill 방지 설계 ===');
 t('배치에서 걸린 건은 재시도로 넘긴다 (qualityRetried)',
   /if \(bad\) \{ qualityRetried\+\+;[^}]*continue; \}/.test(src));
 t('재시도 후에도 실패하면 저장은 한다 (영구 차단 금지)',
-  /if \(validateTranslation\(one, lang\)\) qualityFlagged\+\+;[\s\S]{0,60}got\.set\(it\.id, one\)/.test(src));
+  /if \(validateTranslation\(one, lang[\s\S]{0,60}?\) qualityFlagged\+\+;[\s\S]{0,60}got\.set\(it\.id, one\)/.test(src));
 t('결과에 quality_retried / quality_flagged 를 보고한다',
   /quality_retried:/.test(src) && /quality_flagged:/.test(src));
 
@@ -172,6 +172,74 @@ t('크론 note 에 재시도 건수를 남긴다', /'\/재시도' \+ v\.retried/
 
 /* 본문 임계값이 근거대로인지 (실측 0.4% → 3% 는 넉넉한 선) */
 t('본문 한글 임계값은 3%', /const BODY_HANGUL_MAX = 0\.03;/.test(src));
+
+
+/* ── ⑥ 라틴 문자 언어에 영어가 그대로 저장되는 것 (2026-08-16 신설) ──────
+ *
+ * 실측(seo_translations 전수 · title 이 articles.title_en 과 완전 동일):
+ *     es 653/2,372 (27.5%) · it 603/2,370 (25.4%) · fr 510/2,370 (21.5%)
+ *     de 139/2,369 (5.9%)  · ja 0 · zh 0 · ru 0
+ * ja/zh/ru 이 0 인 게 원인을 말해준다 — 문자가 다르면 베낄 수 없었다.
+ * es/it/fr/de 는 영어와 같은 알파벳이라 어떤 검사에도 안 걸렸다.
+ *
+ * 실물: /es/article/katseye-animal-teaser-bold-transformation 의 <title> 이
+ *       "KATSEYE Teases Bold Transformation with 'ANIMAL' Single" (영어),
+ *       설명만 스페인어였다.
+ */
+console.log('\n=== ⑥ 영어 에코 (라틴 문자 언어) ===');
+
+const { isEnglishEcho } = H;
+const EN = "KATSEYE Teases Bold Transformation with 'ANIMAL' Single";
+
+t('es: 영어 원문을 그대로 뱉으면 잡는다',
+  validateTranslation({ title: EN }, 'es', EN) === 'english_title');
+t('it / fr / de 도 같이 잡는다',
+  validateTranslation({ title: EN }, 'it', EN) === 'english_title'
+  && validateTranslation({ title: EN }, 'fr', EN) === 'english_title'
+  && validateTranslation({ title: EN }, 'de', EN) === 'english_title');
+
+t('제대로 번역된 스페인어 제목은 통과',
+  validateTranslation({ title: "KATSEYE anticipa una transformación audaz con el sencillo 'ANIMAL'" }, 'es', EN) === null);
+t('제대로 번역된 이탈리아어 제목은 통과',
+  validateTranslation({ title: "KATSEYE annuncia una trasformazione audace con il singolo 'ANIMAL'" }, 'it', EN) === null);
+
+t('ja / zh / ru 은 이 검사를 적용하지 않는다 (문자가 달라 애초에 불가능)',
+  !isEnglishEcho(EN, EN, 'ja') && !isEnglishEcho(EN, EN, 'zh') && !isEnglishEcho(EN, EN, 'ru'));
+
+/* 오탐 방지 — 여기서 틀리면 멀쩡한 번역이 큐를 막는다(poison pill). */
+t('브랜드명뿐인 제목은 그대로가 정답이다 — 잡지 않는다',
+  !isEnglishEcho('CRIMSON', 'CRIMSON', 'es')
+  && !isEnglishEcho('Comme des Garçons', 'Comme des Garçons', 'fr'));
+t("스페인어의 'de'·'a', 이탈리아어의 'in', 프랑스어의 'on' 을 영어로 오인하지 않는다",
+  !EN_MARKERS_LEAK(['de', 'a', 'in', 'on', 'da', 'la', 'el', 'un']));
+function EN_MARKERS_LEAK(words) {
+  // 각 단어만으로 된 '같은 제목' 이 영어 에코로 잡히면 오탐이다
+  return words.some(w => isEnglishEcho(w, w, 'es') || isEnglishEcho(w, w, 'it') || isEnglishEcho(w, w, 'fr'));
+}
+t('원본 영어 제목을 모르면(null) 아무것도 잡지 않는다 — 옛 호출과 호환',
+  validateTranslation({ title: EN }, 'es') === null
+  && validateTranslation({ title: EN }, 'es', null) === null);
+t('영어와 다르면 통과 (한 글자만 달라도)',
+  isEnglishEcho(EN, EN + '.', 'es') === false);
+
+/* 프롬프트 쪽 — 애초에 영어를 뱉지 않게 지시하는가 */
+console.log('\n=== ⑥b 프롬프트가 title_en 을 참고용이라고 못박는가 ===');
+for (const l of ['es', 'it', 'fr', 'de']) {
+  const r = styleRules(l);
+  t(`${l}: title_en 이 참고용이라고 말한다`, /title_en[\s\S]{0,80}REFERENCE ONLY/i.test(r), r.slice(-200));
+  t(`${l}: 영어 문장 그대로 반환은 실패라고 말한다`, /Returning the English sentence unchanged is a failure/i.test(r));
+}
+for (const l of ['ja', 'zh', 'ru', 'ko']) {
+  t(`${l}: 이 지시는 붙이지 않는다 (문자가 달라 불필요 — 토큰 낭비)`,
+    !/REFERENCE ONLY/i.test(styleRules(l)));
+}
+
+/* 호출부가 원본 영어 제목을 실제로 넘기는가 — 안 넘기면 가드가 죽은 코드다 */
+t('배치 검증이 원본 영어 제목을 넘긴다',
+  /validateTranslation\(t, lang, \(cfg\.src\(srcItem\) \|\| \{\}\)\.title_en\)/.test(src));
+t('단건 재시도 검증도 원본 영어 제목을 넘긴다',
+  /validateTranslation\(one, lang, \(cfg\.src\(it\) \|\| \{\}\)\.title_en\)/.test(src));
+
 
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) process.exit(1);
