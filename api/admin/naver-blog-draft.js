@@ -248,6 +248,21 @@ const FRAMEWORK_BLOCK = [
   '',
 ].join('\n');
 
+
+/* 2026-08-17 도메니코 지시 — '팝매거진' 검색에서 pop magazine 에 밀리지 않게.
+   네이버 검색은 네이버 블로그 문서를 우선하므로, 우리가 매일 쌓는 블로그
+   글 전부에 브랜드 한글 표기를 심는 것이 가장 확실한 지렛대다.
+   푸터 표기 + 태그 두 개(팝매거진·PAP매거진). pepperit 에는 적용하지 않는다. */
+function brandTags(brand, tags) {
+  const base = Array.isArray(tags) ? tags : [];
+  if (brand !== 'pap') return base.slice(0, 18);
+  const mine = ['팝매거진', 'PAP매거진'];
+  return [...mine, ...base.filter(t => !mine.includes(t))].slice(0, 18);
+}
+function brandLabel(brand, name) {
+  return brand === 'pap' ? name + '(팝매거진)' : name;
+}
+
 async function generateDraft(art, brand) {
   if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY 환경변수 누락.');
   const b = SITES[brand];
@@ -317,13 +332,13 @@ async function generateDraft(art, brand) {
   body = body.replace(/\[IMG\d+\]/g, '');
   // QA #351 — 체크리스트 + CTA는 프롬프트가 body_html 안에 직접 넣도록 지시했음.
   // 시스템은 원문 링크 + 인스타 CTA 블록만 뒤에 붙인다.
-  body += '<p>&nbsp;</p><p>전체 기사와 더 많은 이미지는 <a href="' + artUrl + '">' + b.name +
+  body += '<p>&nbsp;</p><p>전체 기사와 더 많은 이미지는 <a href="' + artUrl + '">' + brandLabel(brand, b.name) +
     ' 원문</a>에서 보실 수 있어요.</p>' +
     igCtaBlock(art.source_instagram_url, b.ig, '소식');
 
   return Object.assign({
     title: draft.title || art.title,
-    tags: Array.isArray(draft.tags) ? draft.tags.slice(0, 18) : [],
+    tags: brandTags(brand, draft.tags),
     body_html: body,
     images: gallery,
     article_url: artUrl,
@@ -430,14 +445,14 @@ async function generateEditorialDraft(ed, brand) {
   body = body.replace(/\[IMG\d+\]/g, '');
   // QA #351 — 체크리스트 + CTA는 프롬프트가 body_html 안에 직접 포함하도록 지시.
   // 시스템은 원문 링크 + 인스타 CTA + 저작권 라인만 뒤에 붙인다.
-  body += '<p>&nbsp;</p><p>전체 화보와 더 많은 컷은 <a href="' + url + '">' + b.name +
+  body += '<p>&nbsp;</p><p>전체 화보와 더 많은 컷은 <a href="' + url + '">' + brandLabel('pap', b.name) +
     ' 웹사이트</a>에서 만나보실 수 있어요.</p>' +
     igCtaBlock(ed.source_instagram_url, b.ig, '화보') +
     '<p style="color:#888;font-size:12px">ⓒ PAP MAGAZINE (PAP매거진) — 무단 전재 및 재배포 금지</p>';
 
   return Object.assign({
     title: draft.title || ed.title,
-    tags: Array.isArray(draft.tags) ? draft.tags.slice(0, 18) : [],
+    tags: brandTags('pap', draft.tags),
     body_html: body,
     images: gallery,
     article_url: url,

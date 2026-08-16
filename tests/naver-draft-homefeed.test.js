@@ -160,7 +160,11 @@ console.log('\n=== ⑦ max_tokens 가 본문 목표를 감당한다 ===');
   t('requestDraft 호출이 2곳 (기사 · 에디토리얼)', calls.length === 2, calls);
   const nums = calls.map((s) => parseInt(s.match(/(\d+)/)[1], 10));
   t('둘 다 6000 이상', nums.every((n) => n >= 6000), nums);
-  t('slice(0, 18) 로 태그 상한이 올라갔다', /draft\.tags\.slice\(0, 18\)/.test(draftSrc));
+  /* 2026-08-17: 태그 조립이 brandTags() 로 이사 (팝매거진·PAP매거진 브랜드 태그
+     주입 — 도메니코 지시). 상한 18 이라는 뜻은 그대로다. */
+  t('태그 상한 18 유지 (brandTags 경유)', /brandTags\(/.test(draftSrc) && /slice\(0, 18\)/.test(draftSrc));
+  t('브랜드 태그가 pap 에만 주입된다', /brand !== 'pap'\) return base\.slice\(0, 18\)/.test(draftSrc)
+    && /'팝매거진', 'PAP매거진'/.test(draftSrc));
   t('slice(0, 10) 태그 상한이 남아 있지 않다', !/draft\.tags\.slice\(0, 10\)/.test(draftSrc));
 }
 
