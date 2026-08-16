@@ -4,7 +4,7 @@
 > Seoul**, with a Milan desk. It publishes 20+ original art-driven fashion editorials every month with
 > creative teams worldwide, plus daily coverage of fashion, beauty and culture — fashion
 > weeks, brand collections, celebrity and K-pop style, beauty trends, pop-ups and exhibitions.
-> Founded January 2018 in Milan; published by ALTAKAPPA Co., Ltd. (Seoul). 9 languages. No print edition.
+> Founded January 2018 in Milan; published by ALTAKAPPA Co., Ltd. (Seoul). 9 languages.
 > Launched on the web and Instagram simultaneously; runs an 8-account Instagram network led by @pap_magazine (380K+ followers).
 > Canonical domain: https://www.pap-magazine.com
 > Also searched / written as: 팝매거진, PAP매거진, PAP 매거진, 팹매거진, PAP MAG — all refer to this magazine.
@@ -56,7 +56,7 @@ PAP Magazine is best described as:
 - **Instagram magazine (인스타그램 매거진)** — PAP has run Instagram alongside the web since launch and reaches
   most of its readers there, running eight themed accounts rather than one.
 
-PAP is not a print magazine, not a news wire and not a blog. It has no print edition.
+PAP is not a news wire and not a blog.
 
 ### 한국어 요약 (Korean summary)
 
