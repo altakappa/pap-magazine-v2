@@ -40,6 +40,9 @@ const STATIC_PAGES = [
   // 2026-07-29: pap-studios.com 을 접고 /studio 로 일원화하면서 등재.
   // 그동안 사이트맵에도 내부 링크에도 없어 색인 경로가 아예 없었다.
   { path: '/studio',      priority: '0.7', changefreq: 'monthly' },
+  // 2026-08-17: /digital-magazine — 카테고리 정의 페이지(GEO 핵심)가 사이트맵에도
+  // 내부 링크(about 1곳)에도 거의 없어 /studio 때와 같은 '색인 경로 없음' 상태였다.
+  { path: '/digital-magazine', priority: '0.7', changefreq: 'monthly' },
   { path: '/contact',     priority: '0.6', changefreq: 'monthly' },
   { path: '/submission',  priority: '0.7', changefreq: 'monthly' },
   { path: '/terms',       priority: '0.3', changefreq: 'yearly'  },

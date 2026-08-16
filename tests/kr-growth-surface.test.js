@@ -773,6 +773,28 @@ console.log('\n[18] 어드민이 도달이 아니라 저장율을 대표로 보�
   t('기록이 없을 때 빈 화면 대신 안내를 낸다', /최근 30일 게시물 지표 없음/.test(html));
 }
 
+
+console.log('\n[19] 카테고리 페이지(/digital-magazine)가 고아가 아니다 (2026-08-17)');
+{
+  /* AI 가 "매거진 추천" 에 답할 때 무는 건 제3자 문서지만, 우리 쪽 카테고리
+   * 정의 페이지는 그 보조 재료다. 만들어 놓고(08-12) 사이트맵에도 없고 내부
+   * 링크가 about 한 곳뿐이었다 — /studio 가 겪은 '색인 경로 없음' 재발.
+   * 그리고 도메니코가 지목한 데일리패션뉴스가 목록에 빠져 있었다. */
+  const sm  = R('api/sitemap.js');
+  const dm  = R('frontend/digital-magazine.html');
+  const seo = R('api/_lib/seoRenderer.js');
+
+  t('사이트맵에 등재됐다', /digital-magazine/.test(sm));
+  t('SSR 하단 nav 가 링크한다 (모든 봇 페이지에서 1회)', /\/digital-magazine">Digital Magazine</.test(seo));
+  t('데일리패션뉴스가 목록에 있다', /데일리패션뉴스/.test(dm));
+  t('보이는 FAQ 와 JSON-LD FAQ 가 같은 답을 말한다 (한쪽만 고치는 사고 방지)',
+    (dm.match(/인스타그램 매거진·미디어로는 PAP 매거진, 패스트페이퍼, 데일리패션뉴스/g) || []).length >= 2);
+  t('JSON-LD 가 전부 파싱된다', (function(){
+    try { for (const m of dm.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) JSON.parse(m[1]); return true; }
+    catch (e) { return false; }
+  })());
+}
+
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) { console.log('❌ kr-growth-surface tests FAILED'); process.exit(1); }
 console.log('✅ kr-growth-surface tests passed');

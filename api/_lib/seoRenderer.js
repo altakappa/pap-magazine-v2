@@ -1706,7 +1706,10 @@ ${(kind === 'editorial' || kind === 'film' || kind === 'article') ? `<!-- QA #17
   <!-- 2026-07-29: /studio 는 사이트 어디에서도 링크되지 않아 고아였다(내부링크 0).
        pap-studios.com 을 접고 /studio 로 일원화하는 이상, 모든 SSR 페이지에서
        한 번은 링크되어야 크롤·권위 전달이 된다. -->
-  <a href="${SITE}/studio">Studio</a>
+  <a href="${SITE}/studio">Studio</a> ·
+  <!-- 2026-08-17: /digital-magazine — /studio 와 같은 이유. 카테고리 정의 페이지
+       (GEO 핵심)의 내부 링크가 about 한 곳뿐이라 크롤·권위 전달이 안 됐다. -->
+  <a href="${SITE}/digital-magazine">Digital Magazine</a>
 </nav>
 
 <script>
