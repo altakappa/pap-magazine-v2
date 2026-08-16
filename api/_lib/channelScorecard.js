@@ -70,9 +70,14 @@ async function buildChannelScorecard(now) {
     if (r.clicked_at >= d7) agg[ch].cur++; else agg[ch].prev++;
   });
 
-  const [igOutCur, igOutPrev, memCur, memPrev, paidTotal] = await Promise.all([
-    _count('ig_outclicks', 'clicked_at', d7, null),
-    _count('ig_outclicks', 'clicked_at', d14, d7),
+  // 2026-08-16 — 원본이 아니라 인간필터 뷰(087+125)를 센다. 8/1~8/9 봇
+  // 함대(데스크탑 UA 10종 × IP 1,100여 개)가 원본 수치를 최대 30배
+  // 부풀렸고, 함대가 떠나자 주간 비교가 -65% "급락"으로 오독됐다.
+  // 모바일 클릭 수도 같이 세서 봇 의심 경보(아래)에 쓴다.
+  const [igOutCur, igOutPrev, igOutMobileCur, memCur, memPrev, paidTotal] = await Promise.all([
+    _count('ig_outclicks_human', 'clicked_at', d7, null),
+    _count('ig_outclicks_human', 'clicked_at', d14, d7),
+    _count('ig_outclicks_human', 'clicked_at', d7, null, (q) => q.eq('device_type', 'mobile')),
     _count('profiles', 'created_at', d7, null),
     _count('profiles', 'created_at', d14, d7),
     _count('profiles', 'created_at', '1970-01-01', null,
@@ -98,7 +103,14 @@ async function buildChannelScorecard(now) {
     inflow,
     discoveredCount: discovered.length,
     foldedIntoOther: folded,
-    igOut: { cur: igOutCur, prev: igOutPrev },
+    // 봇 의심 경보 — 진짜 사람 트래픽은 모바일이 다수(7/27 실측 91%)다.
+    // 표본이 충분한데(주 50건+) 모바일이 10% 미만이면 필터를 뚫은 새
+    // 봇 함대일 가능성이 높다. 숫자는 그대로 두고 표에 경고만 단다.
+    igOut: {
+      cur: igOutCur, prev: igOutPrev,
+      mobilePct: igOutCur ? Math.round((100 * igOutMobileCur) / igOutCur) : null,
+      botSuspect: igOutCur >= 50 && (igOutMobileCur / igOutCur) < 0.10,
+    },
     newMembers: { cur: memCur, prev: memPrev },
     paidTotal,
   };
@@ -139,7 +151,10 @@ function renderScorecardMd(sc) {
   lines.push('');
   lines.push('| 흐름 | 이번 주 | 전주 대비 |');
   lines.push('|---|---|---|');
-  lines.push('| 웹 → 인스타그램 (ig-out) | ' + sc.igOut.cur + ' | ' + _delta(sc.igOut.cur, sc.igOut.prev) + ' |');
+  const igOutWarn = sc.igOut.botSuspect
+    ? ' ⚠️ 봇 의심(모바일 ' + sc.igOut.mobilePct + '%)'
+    : '';
+  lines.push('| 웹 → 인스타그램 (ig-out)' + igOutWarn + ' | ' + sc.igOut.cur + ' | ' + _delta(sc.igOut.cur, sc.igOut.prev) + ' |');
   lines.push('| 신규 회원 가입 | ' + sc.newMembers.cur + ' | ' + _delta(sc.newMembers.cur, sc.newMembers.prev) + ' |');
   lines.push('| 유료 구독자 (누적) | ' + sc.paidTotal + ' | 북극성 ② |');
   lines.push('');

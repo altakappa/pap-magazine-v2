@@ -87,6 +87,7 @@ console.log('[4] 집계 — 새 출처를 이름으로 낸다');
             chain._head = !!(opt && opt.head); return chain;
           },
           gte() { return chain; }, lt() { return chain; }, in() { return chain; },
+          eq() { return chain; }, // 2026-08-16 — 성적표 igOut 모바일 집계(.eq)가 추가되어 스텁에도 반영
           limit() { return chain; },
           then(ok, err) {
             const r = tbl === 'social_inclicks' && !chain._head
