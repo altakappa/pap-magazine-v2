@@ -409,8 +409,13 @@ async function generateArticleFromPost(post, opts){
     '{',
     '  "title_ko": "(PAP 후킹 한 줄. 10~26자, 마침표 없이. 아래 후킹 규격을 따를 것)",',
     '  "title_en": "Short impactful English title, no period",',
-    '  "body_ko": "(평서체 ~다. 존댓말 절대 금지. 정확히 2단락, 총 250~450자. 단락은 <br><br>로 구분. HTML 인라인 태그만 사용 가능.)",',
-    '  "body_en": "Exactly 2 paragraphs in English, mirroring body_ko, separated by <br><br>.",',
+    /* 2026-08-17 — 본문 250~450자 → 800~1,200자 (도메니코 결정, 안 '나').
+       근거: GSC 30일 실측에서 노출의 89.6%가 4~10위에 갇혀 있었고, 발행 기사
+       본문 평균이 545자였다. 250~450자는 구글이 thin content 로 본다.
+       길이 규격의 정본은 papVoice.ARTICLE_VOICE 다 — 여기 숫자는 그 요약이라
+       바꿀 때 반드시 같이 바꾼다(어긋나면 모델이 짧은 쪽으로 회귀한다). */
+    '  "body_ko": "(평서체 ~다. 존댓말 절대 금지. 3~4단락, 총 800~1,200자. 단락은 <br><br>로 구분. HTML 인라인 태그만 사용 가능.)",',
+    '  "body_en": "3 to 4 paragraphs in English, same paragraph count as body_ko, separated by <br><br>.",',
     '  "category": "Fashion | Beauty | Culture | News | Editorial",  // 가장 적합한 것 1개',
     '',
     'IMPORTANT — category "Editorial" is reserved for fashion-editorial CREDIT posts:',
@@ -471,7 +476,11 @@ async function generateArticleFromPost(post, opts){
     },
     body: JSON.stringify({
       model: model,
-      max_tokens: 3000,
+      /* 3000 → 6000 (2026-08-17). 본문 목표가 250~450자에서 800~1,200자로
+         올라갔고, 출력은 한국어 본문 + 영어 본문 + 제목 2종 + 태그 + FAQ 3개를
+         한 JSON 에 담는다. 3000 으로 두면 JSON 이 중간에서 잘려 파싱이 실패하고
+         그 게시물은 통째로 유실된다(수집 크론은 실패분을 재시도하지 않는다). */
+      max_tokens: 6000,
       messages: [{ role: 'user', content: visionBlocks }],
     }),
   });

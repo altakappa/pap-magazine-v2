@@ -28,12 +28,42 @@ const LEGACY_SEPARATORS = [
  * 한국어 본문 문체 핵심 규격.
  * 웹사이트 기사 본문 · 인스타 캡션 · 뉴스레터 · 틱톡/유튜브 설명에 공통 적용.
  */
-const KO_BODY = [
+/* 길이·단락 규격만 분리한다 (2026-08-17).
+ *
+ * 왜 분리하나 — 지금까지 "2단락 / 250~450자" 가 KO_BODY 안에 박혀 있어서
+ * 인스타 캡션과 웹사이트 기사가 같은 길이를 강요받았다. 두 매체는 요구가 다르다:
+ *   인스타 캡션  스크롤 중에 읽힌다 → 짧아야 한다 (지금 규격이 맞다)
+ *   웹사이트 기사 구글이 읽는다   → 250~450자는 thin content 로 취급된다
+ *
+ * 실측(2026-08-17, GSC 30일):
+ *   · 발행 기사 본문 평균 545자, 72.5%가 600자 미만
+ *   · 노출의 89.6%가 4~10위에 갇혀 있다 (클릭은 그 구간에서 42%만 나온다)
+ *   · 1~3위 키워드는 392개(10.5%)뿐인데 클릭의 56.5%를 만든다
+ *   · 네이버는 기사 스니펫으로 본문 대신 DOWNLOADS 멤버십 안내를 긁어갔다
+ *     — 본문이 짧아 그게 페이지에서 가장 긴 텍스트 덩어리였기 때문이다
+ *
+ * 그래서 **웹 기사만** 길게 간다. 도메니코 결정(2026-08-17, 안 '나').
+ * 인스타·스레드·카카오·뉴스레터 규격은 한 글자도 바뀌지 않는다.
+ */
+const LENGTH_SHORT = [
+  '- 단락은 정확히 2개. 3단락 이상 금지.',
+  '- 전체 250~450자(공백 포함). 500자 초과 금지.',
+].join('\n');
+
+const LENGTH_ARTICLE = [
+  '- 단락은 3~4개. 5단락 이상 금지.',
+  '- 전체 800~1,200자(공백 포함). 1,400자 초과 금지.',
+  '- 분량은 새 사실로 채운다. 같은 말을 바꿔 쓰거나 형용사를 덧대 늘리지 말 것.',
+  '  캡션·이미지에서 확인되는 것만 쓴다. **없는 사실을 지어내는 것은 절대 금지다.**',
+  '  쓸 내용이 정말 없으면 800자에 못 미쳐도 된다. 지어내는 것보다 짧은 게 낫다.',
+].join('\n');
+
+function koBody(lengthSpec) {
+  return [
   '한국어 본문 문체 (PAP 에디터 실제 말투 — 실게시물 50개 기준, 반드시 지킬 것):',
   '- 문장은 전부 평서체 "~다"로 끝낸다. 존댓말(~습니다/~해요/~입니다) 절대 금지.',
   '  예외는 독자에게 직접 권하는 CTA 한 문장뿐: "~하시길", "~해보시길!".',
-  '- 단락은 정확히 2개. 3단락 이상 금지.',
-  '- 전체 250~450자(공백 포함). 500자 초과 금지.',
+  lengthSpec,
   '- 한 단락은 3~5문장. 문장은 짧게 끊는다.',
   '- 소제목, 불릿, 번호목록 금지. 본문 안에 이모지 금지.',
   '- 리듬을 위해 명사형 종결을 캡션당 1~2회 섞는다:',
@@ -49,7 +79,14 @@ const KO_BODY = [
   '- 작품명은 〈 〉 또는 《 》 또는 \' \'.',
   '- 2인칭 기본값은 "당신"이다(실측 7:2). "여러분"은 다수의 참여를 부르는 클로징에만.',
   '  한 글에 둘을 섞지 않는다.',
-].join('\n');
+  ].join('\n');
+}
+
+/** 짧은 규격 (인스타 캡션 등) — 2026-08-17 이전과 동일하다. */
+const KO_BODY = koBody(LENGTH_SHORT);
+
+/** 웹사이트 기사 본문 규격 — 길이·단락만 다르고 문체 규칙은 전부 같다. */
+const KO_BODY_ARTICLE = koBody(LENGTH_ARTICLE);
 
 /** 첫 줄(후킹) 규격 */
 const HOOK = [
@@ -96,18 +133,25 @@ const CLOSING = [
   '  "난리 날 듯.", "분위기가 심상치 않다."',
 ].join('\n');
 
-/** 영어 본문 규격 */
-const EN_BODY = [
+/** 영어 본문 규격.
+ *  단락 수는 한국어와 맞춰야 한다 — body_en 은 body_ko 를 미러링하는 값이라
+ *  한쪽만 늘리면 두 언어판의 구조가 어긋난다 (2026-08-17). */
+function enBody(paraLine) {
+  return [
   'English body rules:',
   '- Not a translation. Rewrite the piece in English so it reads native.',
   '- Mirror the Korean hook in the first sentence, and mirror the Korean closing question at the end.',
-  '- Exactly 2 paragraphs, same breathing rhythm as the Korean.',
+  paraLine,
   '- No em dash or en dash anywhere. Recast the sentence instead.',
   '- No translationese: never "It can be said that", "not other than", "In conclusion",',
   '  "It is worth noting that".',
   '- CTA verbs when needed: "Discover ... now.", "See ...", "Keep an eye on ...", "Don\'t miss ...".',
   '- No subheads, no bullets, no emoji in the body.',
-].join('\n');
+  ].join('\n');
+}
+
+const EN_BODY = enBody('- Exactly 2 paragraphs, same breathing rhythm as the Korean.');
+const EN_BODY_ARTICLE = enBody('- 3 to 4 paragraphs, matching the Korean paragraph count exactly.');
 
 /** 사실성·윤리 가드 (전 채널 공통) */
 const GUARDRAILS = [
@@ -119,17 +163,27 @@ const GUARDRAILS = [
 ].join('\n');
 
 /** 발행 전 자가검증 체크리스트 (프롬프트 말미에 붙인다) */
-const SELF_CHECK = [
+/* 자가검증도 길이 규격을 따라간다 (2026-08-17).
+   본문에는 "800~1,200자" 라고 해놓고 자가검증에 "500자를 넘는다" 를 남기면
+   모델이 상충하는 지시를 받아 짧은 쪽으로 회귀한다. 실제로 이 한 줄 때문에
+   길이 상향이 무력화되는 게 가장 흔한 실패다. */
+function selfCheck(structureLine) {
+  return [
   '출력 직전 자가검증 — 하나라도 걸리면 다시 쓴다:',
   '- 본문에 존댓말이 있다',
-  '- 단락이 3개 이상이다 / 500자를 넘는다',
+  structureLine,
   '- 소제목·불릿이 있다 / 본문에 이모지가 있다',
   '- 대시(—, –, ㅡ, --)가 하나라도 있다',
   '- 마지막 문장이 요약이다(질문·행동유도·여운 셋 중 하나가 아니다)',
   '- "~라고 할 수 있다" 류 번역투가 있다',
   '- 후킹이 손실회피·FOMO·과장형이다',
   '- 명사형 종결이 한 번도 안 나왔다(리듬이 없다)',
-].join('\n');
+  ].join('\n');
+}
+
+const SELF_CHECK = selfCheck('- 단락이 3개 이상이다 / 500자를 넘는다');
+const SELF_CHECK_ARTICLE = selfCheck(
+  '- 단락이 5개 이상이다 / 1,400자를 넘는다 / 800자에 한참 못 미치는데 더 쓸 사실이 있다');
 
 /**
  * 짧은 한국어 카피용 축약 규격.
@@ -154,8 +208,12 @@ const KO_MICRO = [
   '- 눈에 보이는 것을 나열하지 말고 트렌드·레퍼런스로 압축한다.',
 ].join('\n');
 
-/** 웹사이트 기사 / 인스타 캡션 생성기용 풀 스펙 */
-const ARTICLE_VOICE = [KO_BODY, '', HOOK, '', LEAD, '', CLOSING, '', EN_BODY, '', GUARDRAILS, '', SELF_CHECK].join('\n');
+/** 웹사이트 기사 생성기용 풀 스펙 — 본문 800~1,200자 (2026-08-17 상향).
+ *  인스타 캡션처럼 짧아야 하는 곳은 SHORT_ARTICLE_VOICE 를 쓴다. */
+const ARTICLE_VOICE = [KO_BODY_ARTICLE, '', HOOK, '', LEAD, '', CLOSING, '', EN_BODY_ARTICLE, '', GUARDRAILS, '', SELF_CHECK_ARTICLE].join('\n');
+
+/** 상향 전 규격 그대로 — 짧아야 하는 표면용. 2026-08-17 이전 ARTICLE_VOICE 와 동일. */
+const SHORT_ARTICLE_VOICE = [KO_BODY, '', HOOK, '', LEAD, '', CLOSING, '', EN_BODY, '', GUARDRAILS, '', SELF_CHECK].join('\n');
 
 /** 자체 에디토리얼(화보) 카피용 스펙 */
 const EDITORIAL_VOICE = [
@@ -420,14 +478,24 @@ function lintKoreanBody(text, opts) {
   }
 
   if (structure) {
+    /* 한도를 인자로 받는다 (2026-08-17).
+       기본값은 상향 전과 같은 2단락 / 520자라, 기존 호출부(스레드·X·카카오·
+       뉴스레터·에디토리얼)는 동작이 한 글자도 안 바뀐다. 웹 기사만
+       { maxParas: 4, maxLen: 1500 } 로 넘겨 새 규격을 쓴다.
+       520 은 450 권장 상한에 15% 여유를 준 값이었다. 기사 상한 1,400자에
+       같은 비율을 적용해 1,500 을 기본 기사 한도로 둔다. */
+    const maxParas = (opts && Number(opts.maxParas)) || 2;
+    const maxLen = (opts && Number(opts.maxLen)) || 520;
+    const softLen = (opts && Number(opts.softLen)) || Math.round(maxLen / 520 * 450);
+
     const paras = s
       .split(/<br\s*\/?>\s*<br\s*\/?>|\n{2,}/i)
       .map((p) => p.trim())
       .filter(Boolean);
-    if (paras.length > 2) issues.push('단락 ' + paras.length + '개 (2개 초과)');
+    if (paras.length > maxParas) issues.push('단락 ' + paras.length + '개 (' + maxParas + '개 초과)');
 
     const len = plain.replace(/\s+/g, ' ').trim().length;
-    if (len > 520) issues.push('본문 ' + len + '자 (450자 권장 상한 초과)');
+    if (len > maxLen) issues.push('본문 ' + len + '자 (' + softLen + '자 권장 상한 초과)');
   }
 
   return issues;
@@ -467,14 +535,20 @@ module.exports = {
   SEPARATOR_EDITORIAL,
   LEGACY_SEPARATORS,
   KO_BODY,
+  KO_BODY_ARTICLE,
+  LENGTH_SHORT,
+  LENGTH_ARTICLE,
   HOOK,
   LEAD,
   CLOSING,
   EN_BODY,
+  EN_BODY_ARTICLE,
   GUARDRAILS,
   SELF_CHECK,
   KO_MICRO,
   ARTICLE_VOICE,
+  SHORT_ARTICLE_VOICE,
+  SELF_CHECK_ARTICLE,
   EDITORIAL_VOICE,
   SOCIAL_VOICE,
   X_VOICE,
