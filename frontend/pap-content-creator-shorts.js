@@ -392,9 +392,18 @@ function updateShortsPositions(){
 
     var iframe=item.querySelector('iframe');
     if(ad<=sides){
-      var autoplay=diff===0?'&autoplay=1&mute=1':'';
-      var src='https://www.youtube.com/embed/'+shortsData[i].id+'?rel=0&loop=1&playlist='+shortsData[i].id+autoplay;
-      if(iframe.src!==src) iframe.src=src;
+      // 성능 (2026-08-17) — 쇼츠 섹션이 화면에 들어오기 전에는 유튜브
+      // iframe 을 로드하지 않는다. 예전엔 홈을 여는 순간 중앙+양옆 5개가
+      // 즉시 로드돼 (각 ~2.3초, 서드파티 JS 수 MB) 홈 체감 속도를 깎았다.
+      // IntersectionObserver 가 섹션 진입 시 updateShortsPositions() 를
+      // 다시 부르므로, 보일 때 로드해도 사용자 경험은 동일하다.
+      // 이미 로드된 iframe 은 화면을 벗어나도 유지 (재로드 낭비 방지).
+      var loaded = iframe.src && iframe.src !== '' && iframe.src !== 'about:blank';
+      if(shortsInView || loaded){
+        var autoplay=diff===0?'&autoplay=1&mute=1':'';
+        var src='https://www.youtube.com/embed/'+shortsData[i].id+'?rel=0&loop=1&playlist='+shortsData[i].id+autoplay;
+        if(iframe.src!==src) iframe.src=src;
+      }
     } else {
       if(iframe.src!=='about:blank') iframe.src='about:blank';
     }
