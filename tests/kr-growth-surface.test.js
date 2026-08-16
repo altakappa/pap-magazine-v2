@@ -825,6 +825,16 @@ console.log('\n[19] 카테고리 페이지(/digital-magazine)가 고아가 아�
     /Also searched \/ written as: 팝매거진, PAP매거진/.test(lt));
   t('SSR 스키마 alternateName 에 팝매거진·팹매거진이 있다',
     /'팝매거진', '팹매거진'/.test(R('api/_lib/seoRenderer.js')));
+  /* 2026-08-17 도메니코 — 구글 '팝매거진' 대응은 보이는 텍스트로. 그리고
+     pop 매거진과의 비교 문구는 쓰지 않는다 (도메니코 지시). */
+  t('SSR 전 페이지에 저작권 줄(팝매거진)이 있다',
+    /© PAP MAGAZINE 팝매거진/.test(R('api/_lib/seoRenderer.js')));
+  t("FAQ 에 '팝매거진은 무엇인가요' 문답이 화면·스키마 양쪽에 있다",
+    /팝매거진은 무엇인가요/.test(R('frontend/pap-faq-i18n.js'))
+    && /팝매거진은 무엇인가요/.test(ab));
+  t('pop 매거진 비교 문구를 쓰지 않는다 (도메니코 지시)',
+    !/pop magazine|팝\(POP\)|POP\) 매거진/i.test(R('frontend/pap-faq-i18n.js'))
+    && !/pop magazine/i.test(ab));
   t('JSON-LD 가 전부 파싱된다', (function(){
     try { for (const m of dm.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) JSON.parse(m[1]); return true; }
     catch (e) { return false; }

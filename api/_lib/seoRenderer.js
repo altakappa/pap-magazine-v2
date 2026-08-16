@@ -1711,6 +1711,10 @@ ${(kind === 'editorial' || kind === 'film' || kind === 'article') ? `<!-- QA #17
        (GEO 핵심)의 내부 링크가 about 한 곳뿐이라 크롤·권위 전달이 안 됐다. -->
   <a href="${SITE}/digital-magazine">Digital Magazine</a>
 </nav>
+<!-- 2026-08-17 도메니코 지시 — '팝매거진' 구글 검색 대응. 메타가 아니라 **보이는
+     본문 텍스트**로 브랜드 한글 표기를 전 SSR 페이지에 싣는다. 저작권 줄은
+     어느 매체나 있는 자연스러운 자리다 (제목 반복 = 스팸, 이건 아님). -->
+<p class="seo-copyright" style="text-align:center;font-size:11px;color:#888;margin:28px 0 20px">© PAP MAGAZINE 팝매거진 · <a href="${SITE}" style="color:#888">pap-magazine.com</a></p>
 
 <script>
   window._papServerRendered = true;
