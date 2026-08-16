@@ -807,6 +807,19 @@ console.log('\n[19] 카테고리 페이지(/digital-magazine)가 고아가 아�
   t('"인스타에서 시작해 웹으로 확장" 서사가 PAP 서술로 남아 있지 않다',
     !/PAP[^.]{0,40}인스타그램에서 (시작|창간)/.test(dm + ab)
     && !/PAP Magazine (started|originated) on Instagram/.test(lt));
+
+  /* 2026-08-17 도메니코 지시 — '팝매거진' 으로도 검색되게. 한국어 검색(네이버)은
+     제목 일치 가중이 크다. 홈·어바웃 제목 + llms.txt 별칭 줄로 고정한다.
+     SSR 기사 제목 수천 장에는 일부러 안 넣는다 — 반복은 스팸 신호이고,
+     그쪽은 전 페이지 스키마 alternateName 이 이미 커버한다. */
+  const ix = R('frontend/index.html');
+  t("홈 제목 3종(title·og·twitter)에 '팝매거진' 이 있다",
+    (ix.match(/PAP MAGAZINE 팝매거진 \(PAP 매거진\)/g) || []).length >= 3);
+  t("어바웃 제목에 '팝매거진' 이 있다", /<title>About · 소개 \| PAP MAGAZINE 팝매거진<\/title>/.test(ab));
+  t('llms.txt 가 표기 변형을 한 줄로 선언한다',
+    /Also searched \/ written as: 팝매거진, PAP매거진/.test(lt));
+  t('SSR 스키마 alternateName 에 팝매거진·팹매거진이 있다',
+    /'팝매거진', '팹매거진'/.test(R('api/_lib/seoRenderer.js')));
   t('JSON-LD 가 전부 파싱된다', (function(){
     try { for (const m of dm.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) JSON.parse(m[1]); return true; }
     catch (e) { return false; }
