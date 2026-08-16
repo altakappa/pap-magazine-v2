@@ -15,6 +15,9 @@ const { logSocialInclick } = require('../../_lib/socialInclick');
 // 2026-08-08 — MORE ARTICLES 빌더를 공용 lib 로 추출. SPA 상세 API
 // (api/articles/[id].js)와 같은 규칙을 쓴다 — 규칙이 두 벌이면 한쪽만 고쳐진다.
 const { buildMoreArticles } = require('../../_lib/moreArticles');
+// 2026-08-16 — 정규-슬러그 301 의 목적지 생성. 순수 함수라 테스트가 동작을
+// 직접 검증한다 (이 파일 자체는 supabase 때문에 env 없이 load 되지 않는다).
+const { REDIRECT_LANGS, buildCanonicalRedirect } = require('../../_lib/articleRedirect');
 
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
@@ -160,11 +163,10 @@ module.exports = async function handler(req, res) {
      */
     const canonicalSlug = (data.slug || '').trim();
     if (canonicalSlug && canonicalSlug !== decoded && canonicalSlug !== slug) {
-      // 쿼리스트링(utm 등) 보존 — X 유입 계측이 301 을 거쳐도 살아남게 (2026-07-16)
-      const qi = String(req.url || '').indexOf('?');
-      const qs = qi >= 0 ? String(req.url).slice(qi).replace(/[\r\n]/g, '') : '';
+      /* 쿼리스트링(utm 등)은 보존, 내부 라우팅 파라미터(slug·lang)는 제거.
+         이유와 실측 근거는 buildCanonicalRedirect() 주석 참조 (2026-08-16). */
       res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=86400');
-      res.setHeader('Location', '/article/' + encodeURIComponent(canonicalSlug) + qs);
+      res.setHeader('Location', buildCanonicalRedirect(req.url, canonicalSlug));
       return res.status(301).end();
     }
 
@@ -176,7 +178,7 @@ module.exports = async function handler(req, res) {
        검색에 잡히지 않는 상태. 에디토리얼과 동일한 구조로 맞춘다.
        ko|en 은 DB 원본 필드, 그 외는 seo_translations(kind='article').
        번역이 없으면 /en/ 으로 302 — 빈 번역 페이지를 색인시키지 않는다. */
-    const VALID_LANGS = ['ko', 'en', 'it', 'fr', 'es', 'ja', 'de', 'zh', 'ru'];
+    const VALID_LANGS = REDIRECT_LANGS;
     const lang = VALID_LANGS.includes(String(req.query.lang || '')) ? String(req.query.lang) : 'ko';
 
     let translation = null;
@@ -194,8 +196,14 @@ module.exports = async function handler(req, res) {
     } catch (_) { /* 테이블 미생성 등 — ko/en 만으로 렌더 */ }
 
     if (lang !== 'ko' && lang !== 'en' && !translation) {
+      /* 2026-08-16 — 여기가 두 번째 중복 URL 공장이었다.
+         custom_url 을 먼저 썼는데, 위키스 이관분 264편의 custom_url 은
+         '/category/Fashion/3130/news/' 같은 옛 경로다. 그대로 인코딩하면
+         Location 이 /en/article/%2Fcategory%2FFashion%2F3130%2Fnews%2F 가 되고
+         구글이 그 주소를 색인했다 — GSC 실측 33개가 이 모양이다.
+         정규 슬러그(data.slug)를 먼저 쓴다. 위 301 블록과 목적지가 같아진다. */
       res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=1800');
-      res.setHeader('Location', '/en/article/' + encodeURIComponent(data.custom_url || data.slug || slug));
+      res.setHeader('Location', '/en/article/' + encodeURIComponent(data.slug || data.custom_url || slug));
       return res.status(302).end();
     }
 
