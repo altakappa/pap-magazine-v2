@@ -171,10 +171,13 @@ function outclickCards(d){
    어드민 어디에도 안 보였다. 숫자를 만들어 놓고 안 보면 없는 것과 같다.
    ⚠️ 네이버 애널리틱스 자체 수치는 여기 없다 — 네이버가 조회 API 를 안 연다.
       여기 naver 는 **우리 자체 계측**(utm 붙은 링크 클릭)이다. */
-/* IG 성과 — 대표 숫자를 도달이 아니라 공유율로 둔다 (2026-08-16).
-   근거(30일 실측): 07-29 도달 1,609,308 · 팔로우 170  /  08-11 도달 616,522 ·
-   팔로우 1,091. 도달을 4배 더 한 쪽이 팔로워는 6분의 1이었다. 두 건이 갈린
-   유일한 지표가 공유였다. 그래서 도달은 참고로 내리고 공유율을 위에 둔다.
+/* IG 성과 — 대표 숫자를 도달이 아니라 저장율로 둔다 (2026-08-16).
+   근거: 전수 145편(도달 3,000+·전환 측정분)에서 팔로우'율' 과의 상관을 재봤다.
+   아웃라이어 1편 제외 n=144:  저장율 0.464 > 좋아요율 0.378 > 공유율 0.140
+                              > 도달 -0.045
+   도달은 전환을 전혀 예측하지 못한다(-0.045). 저장이 가장 잘 맞는다 —
+   저장은 "다시 보러 오겠다" 라 팔로우와 뜻이 가장 가깝다.
+   (처음엔 게시물 두 건만 보고 '공유가 답' 이라고 썼다가 전수에서 뒤집혔다.)
    그리고 '안 보이는 건수'를 반드시 같이 띄운다 — 영상 49편 전부 전환 지표가
    비어 있는 걸 한 달 동안 아무도 몰랐다. */
 function renderIgPerf(d){
@@ -197,7 +200,8 @@ function renderIgPerf(d){
     + '</div>';
 
   host.innerHTML =
-      line('공유율', g.share_rate + '%', '공유 ' + nf(g.shares_30d) + ' ÷ 도달 ' + nf(g.reach_30d), true)
+      line('저장율', g.save_rate + '%', '저장 ' + nf(g.saved_30d) + ' ÷ 도달 ' + nf(g.reach_30d), true)
+    + line('공유율', g.share_rate + '%', '공유 ' + nf(g.shares_30d) + ' ÷ 도달 ' + nf(g.reach_30d), true)
     + line('팔로우 전환율', g.follow_rate + '%', '측정된 ' + nf(g.follows_measured_posts) + '편 기준', true)
     + line('도달 중앙값', nf(g.reach_median), '평균은 아웃라이어가 끌어올린다 — 중앙값을 본다')
     + line('게시물', nf(g.posts) + '편', '최근 30일')
@@ -210,16 +214,19 @@ function renderIgPerf(d){
           + '</div>'
         : '<div style="margin-top:12px;font-size:11px;color:var(--text3)">전환 지표 공백 없음 — 전 건 측정됨.</div>')
     + '<div style="margin-top:10px;font-size:11px;color:var(--text3);line-height:1.6">'
-    + '공유율을 대표 숫자로 둔 이유: 도달 1,609,308 짜리 게시물이 팔로우 170,<br>'
-    + '도달 616,522 짜리가 팔로우 1,091 이었습니다. 갈린 지표는 공유였습니다.'
+    + '저장율을 맨 위에 둔 이유 — 145편 전수에서 팔로우율과의 상관:<br>'
+    + '<b>저장율 0.46</b> &gt; 좋아요율 0.38 &gt; 공유율 0.14 &gt; <b>도달 -0.05</b><br>'
+    + '도달은 전환을 예측하지 못합니다. 도달 1,609,308 짜리가 팔로우 170,<br>'
+    + '도달 616,522 짜리가 팔로우 1,091 이었습니다.'
     + '</div>';
 
-  const list = g.top_by_share_rate || [];
+  const list = g.top_by_save_rate || [];
   topHost.innerHTML = (!list.length
     ? '<div style="font-size:12px;color:var(--text3)">해당 게시물 없음</div>'
     : '<table style="width:100%;border-collapse:collapse;font-size:12px">'
       + '<tr style="color:var(--text3);text-align:left">'
       + '<th style="padding:4px 0;font-weight:500">게시물</th>'
+      + '<th style="padding:4px 0;font-weight:500;text-align:right">저장율</th>'
       + '<th style="padding:4px 0;font-weight:500;text-align:right">공유율</th>'
       + '<th style="padding:4px 0;font-weight:500;text-align:right">도달</th>'
       + '<th style="padding:4px 0;font-weight:500;text-align:right">팔로우</th></tr>'
@@ -231,7 +238,8 @@ function renderIgPerf(d){
             : esc(lab);
           return '<tr style="border-top:1px solid rgba(0,0,0,.06)">'
             + '<td style="padding:6px 0">' + cell + '</td>'
-            + '<td style="padding:6px 0;text-align:right;font-weight:700">' + p.share_rate + '%</td>'
+            + '<td style="padding:6px 0;text-align:right;font-weight:700">' + p.save_rate + '%</td>'
+            + '<td style="padding:6px 0;text-align:right">' + p.share_rate + '%</td>'
             + '<td style="padding:6px 0;text-align:right">' + nf(p.reach) + '</td>'
             + '<td style="padding:6px 0;text-align:right">'
             + (p.follows === null || p.follows === undefined
@@ -240,7 +248,7 @@ function renderIgPerf(d){
         }).join('')
       + '</table>'
       + '<div style="margin-top:10px;font-size:11px;color:var(--text3);line-height:1.6">'
-      + '도달이 아니라 공유율 순입니다. 무엇을 더 만들지의 근거로 보세요.<br>'
+      + '도달이 아니라 저장율 순입니다. 무엇을 더 만들지의 근거로 보세요.<br>'
       + '도달 3,000 미만은 뺐습니다 — 표본이 작으면 비율이 튑니다.'
       + '</div>');
 }
@@ -309,10 +317,10 @@ function render(d){
       <div class="kpi"><span class="accent" style="background:var(--gold)"></span><div class="lab">검토 대기 투고</div><div class="num">${nf(s.pending)}</div><div class="fo warn">수정요청 ${nf(s.revision)}건 진행 중</div></div>
     </div>
 
-    <h2><span class="bar"></span>Instagram · 도달이 아니라 공유율</h2>
+    <h2><span class="bar"></span>Instagram · 도달이 아니라 저장율</h2>
     <div class="grid cols">
       <div class="card"><h3>최근 30일 요약</h3><div id="igPerf"></div></div>
-      <div class="card"><h3>공유율 상위 게시물 · 도달 3,000+ </h3><div id="igTop"></div></div>
+      <div class="card"><h3>저장율 상위 게시물 · 도달 3,000+ </h3><div id="igTop"></div></div>
     </div>
 
     <h2><span class="bar"></span>Funnel &amp; Inflow · 유입 → 전환</h2>

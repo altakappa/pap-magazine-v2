@@ -310,15 +310,26 @@ module.exports = async function handler(req, res) {
       inflow_by_src,
     };
 
-    /* ── IG 성과 · 도달이 아니라 공유율 (2026-08-16 신설) ────────────────
+    /* ── IG 성과 · 도달이 아니라 저장율 (2026-08-16 신설) ────────────────
      *
      * 왜 도달을 대표 숫자로 두지 않나 — 30일 실측이 답한다.
      *   2026-07-29  도달 1,609,308 · 좋아요 212,260 · 공유 22,518 · 팔로우   170
      *   2026-08-11  도달   616,522 · 좋아요  34,841 · 공유 36,323 · 팔로우 1,091
-     * 도달을 4배 더 한 쪽이 팔로워는 6분의 1이었다(전환 0.011% vs 0.177%, 16배).
-     * 도달은 결과지 목표가 아니다. 두 건이 갈린 유일한 지표가 **공유**였다.
-     * 공유는 인스타가 비팔로워에게 밀어주는 신호이고, 성장 헌법 6항과도 안
-     * 부딪힌다 — 맞팔·이벤트로 좋아요는 만들 수 있어도 공유는 못 만든다.
+     * 도달을 4배 더 한 쪽이 팔로워는 6분의 1이었다(전환 0.011% vs 0.177%).
+     *
+     * ⚠️ 처음엔 이 두 건만 보고 "공유가 답" 이라고 썼다가 **틀렸다.**
+     *    전수(145편, 도달 3,000+·전환 측정된 것)로 상관을 재보니 순서가 다르다.
+     *
+     *      팔로우'율' 과의 상관 (08-11 아웃라이어 제외, n=144)
+     *        저장율   0.464   ← 가장 잘 맞는다
+     *        좋아요율 0.378
+     *        공유율   0.140
+     *        도달    -0.045   ← 사실상 무관. 도달은 전환을 예측하지 못한다.
+     *
+     *    두 건짜리 표본으로 지표를 정하면 안 된다. 저장을 맨 위에 둔다 —
+     *    저장은 "다시 보러 오겠다" 는 신호라 팔로우와 뜻이 가장 가깝다.
+     *    공유는 그다음이다(남에게 보내는 것은 계정을 기억하는 것과 다르다).
+     *    도달이 목표가 아니라는 결론만 그대로다 — 상관 -0.045 가 그 근거다.
      *
      * 그리고 평균을 쓰지 않는다. 캐러셀 도달 평균 29,270 · 중앙값 9,596 —
      * 두 편이 만든 착시다. 중앙값과 함께 보여준다.
@@ -349,7 +360,9 @@ module.exports = async function handler(req, res) {
       reach_30d: sum('reach'),
       reach_median: median(igPosts.map(r => Number(r.reach) || 0)),
       shares_30d: sum('shares'),
-      share_rate: rate(sum('shares'), sum('reach')),          // ← 이게 대표 지표다
+      saved_30d: sum('saved'),
+      save_rate: rate(sum('saved'), sum('reach')),            // ← 대표 지표 (상관 0.464)
+      share_rate: rate(sum('shares'), sum('reach')),          // 둘째 (상관 0.140)
       follow_rate: rate(
         igMeasured.reduce((n, r) => n + (Number(r.follows) || 0), 0),
         igMeasured.reduce((n, r) => n + (Number(r.reach) || 0), 0)),
@@ -357,16 +370,17 @@ module.exports = async function handler(req, res) {
       blind_posts: igPosts.length - igMeasured.length,        // ← 안 보이는 건수
       blind_reach: igPosts.filter(r => r.follows === null || r.follows === undefined)
         .reduce((n, r) => n + (Number(r.reach) || 0), 0),
-      // 도달이 아니라 공유율 순으로 줄 세운다 — 무엇을 더 만들지의 근거
-      top_by_share_rate: igPosts
+      // 도달이 아니라 저장율 순으로 줄 세운다 — 무엇을 더 만들지의 근거
+      top_by_save_rate: igPosts
         .filter(r => Number(r.reach) >= 3000)                 // 표본이 작으면 비율이 튄다
         .map(r => ({
           permalink: r.permalink, media_type: r.media_type,
           posted_at: r.posted_at, reach: Number(r.reach) || 0,
-          shares: Number(r.shares) || 0, follows: r.follows,
+          saved: Number(r.saved) || 0, shares: Number(r.shares) || 0, follows: r.follows,
+          save_rate: rate(Number(r.saved) || 0, Number(r.reach) || 0),
           share_rate: rate(Number(r.shares) || 0, Number(r.reach) || 0),
         }))
-        .sort((a, b) => b.share_rate - a.share_rate)
+        .sort((a, b) => b.save_rate - a.save_rate)
         .slice(0, 8),
     };
 
