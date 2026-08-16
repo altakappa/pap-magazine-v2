@@ -815,8 +815,11 @@ console.log('\n[19] 카테고리 페이지(/digital-magazine)가 고아가 아�
      SSR 기사 제목 수천 장에는 일부러 안 넣는다 — 반복은 스팸 신호이고,
      그쪽은 전 페이지 스키마 alternateName 이 이미 커버한다. */
   const ix = R('frontend/index.html');
-  t("홈 제목 3종(title·og·twitter)에 '팝매거진' 이 있다",
-    (ix.match(/PAP MAGAZINE 팝매거진 \(PAP 매거진\)/g) || []).length >= 3);
+  /* 2026-08-17 도메니코 확정: "PAP Magazine (팝매거진) — Art Fashion, …"
+     — 'Korean' 제외, 별칭은 괄호 표기 하나로. */
+  t("홈 제목 3종(title·og·twitter)이 확정안과 일치한다",
+    (ix.match(/PAP Magazine \(팝매거진\) — Art Fashion, Beauty & Culture Magazine/g) || []).length >= 3
+    && !/— Korean Art Fashion/.test(ix));
   t("어바웃 제목에 '팝매거진' 이 있다", /<title>About · 소개 \| PAP MAGAZINE 팝매거진<\/title>/.test(ab));
   t('llms.txt 가 표기 변형을 한 줄로 선언한다',
     /Also searched \/ written as: 팝매거진, PAP매거진/.test(lt));
