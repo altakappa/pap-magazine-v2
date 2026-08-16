@@ -1281,7 +1281,15 @@ function renderSeoHtml(kind, record, opts) {
       const c = (b.content || '').toString();
       const url = (b.url || '').toString();
       if (t === 'text') {
-        html += c.split(/\n\n+/).map(p => `<p style="margin:0 0 22px;line-height:1.9">${escText(p).replace(/\n/g, '<br>')}</p>`).join('');
+        /* 2026-08-17 — JSON 블록 본문 안에 <br><br> 가 '문자로' 들어있는 기사가 7편 있다.
+           escText 가 그걸 &lt;br&gt; 로 이스케이프해서 화면에 태그가 그대로 찍혔다.
+           월 노출 6,300 인 워터밤 기사(우리 최상위 기사 페이지)가 여기 해당했고,
+           2026-08-14 발행분에도 있어 지금도 계속 생기고 있다.
+           그래서 두 가지를 한다. <br> 두 개 이상은 단락 경계로 보고 끊고,
+           남은 홑 <br> 은 이스케이프 뒤에 줄바꿈으로 되돌린다.
+           되돌리는 대상은 <br> 패턴 하나뿐이라 다른 태그는 여전히 이스케이프된다. */
+        const paras = c.split(/\n\n+|(?:<br\s*\/?>\s*){2,}/i);
+        html += paras.map(p => `<p style="margin:0 0 22px;line-height:1.9">${escText(p).replace(/\n/g, '<br>').replace(/&lt;br\s*\/?&gt;/gi, '<br>')}</p>`).join('');
       } else if (t === 'image') {
         if (!url) continue;
         html += `<figure style="margin:36px 0"><img src="${escAttr(url)}"${srcsetAttrs(url, '(max-width:800px) 100vw, 752px')} alt="${escAttr(c || titleMain)}" loading="lazy" style="width:100%;display:block;border-radius:2px">${c ? `<figcaption style="margin-top:12px;font-size:12px;color:#888;text-align:center;letter-spacing:.04em;line-height:1.6">${escText(c)}</figcaption>` : ''}</figure>`;
