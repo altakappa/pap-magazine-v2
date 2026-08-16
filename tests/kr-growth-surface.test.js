@@ -786,12 +786,15 @@ console.log('\n[19] 카테고리 페이지(/digital-magazine)가 고아가 아�
 
   t('사이트맵에 등재됐다', /digital-magazine/.test(sm));
   t('SSR 하단 nav 가 링크한다 (모든 봇 페이지에서 1회)', /\/digital-magazine">Digital Magazine</.test(seo));
-  /* 2026-08-17: 데일리패션뉴스는 넣었다가 도메니코 지시로 뺐다 — 목록 구성은
-     편집 판단이다. 가드는 '무엇이 실려야 하나'가 아니라 '보이는 FAQ 와 스키마
-     FAQ 가 갈라지면 안 된다'만 지킨다. */
-  t('데일리패션뉴스는 싣지 않는다 (도메니코 지시)', !/데일리패션뉴스/.test(dm));
+  /* 2026-08-17: 목록 구성은 편집 판단 = 도메니코의 것. 같은 날 두 번 바뀌었다
+     (뺐다가 재포함 + PAP·아이즈매거진 양쪽 유형 병기). 가드는 최종 지시를 고정한다. */
+  t('데일리패션뉴스가 실려 있다 (도메니코 재포함 지시)', /데일리패션뉴스/.test(dm));
+  t('PAP 이 웹·인스타그램 두 표에 모두 있다',
+    /PAP 매거진 \(pap-magazine\.com\)/.test(dm) && /PAP 매거진 \(@pap_magazine\)/.test(dm));
+  t('아이즈매거진도 두 표에 모두 있다',
+    /아이즈매거진 \(eyesmag\)/.test(dm) && /아이즈매거진 \(@eyesmag\)/.test(dm));
   t('보이는 FAQ 와 JSON-LD FAQ 가 같은 답을 말한다 (한쪽만 고치는 사고 방지)',
-    (dm.match(/인스타그램 매거진으로는 PAP 매거진, 패스트페이퍼, 룩스매거진/g) || []).length >= 2);
+    (dm.match(/두 유형에 모두 속합니다/g) || []).length >= 2);
   t('JSON-LD 가 전부 파싱된다', (function(){
     try { for (const m of dm.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) JSON.parse(m[1]); return true; }
     catch (e) { return false; }
