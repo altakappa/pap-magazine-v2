@@ -795,6 +795,18 @@ console.log('\n[19] 카테고리 페이지(/digital-magazine)가 고아가 아�
     /아이즈매거진 \(eyesmag\)/.test(dm) && /아이즈매거진 \(@eyesmag\)/.test(dm));
   t('보이는 FAQ 와 JSON-LD FAQ 가 같은 답을 말한다 (한쪽만 고치는 사고 방지)',
     (dm.match(/두 유형에 모두 속합니다/g) || []).length >= 2);
+
+  /* 2026-08-17 발행인 정정 — PAP 는 웹·인스타그램 **동시 창간**이다.
+     "인스타그램에서 시작해 웹으로 확장" 서사가 llms.txt·about·digital-magazine
+     세 곳에 박혀 있었고 나까지 그걸 근거로 썼다. 재발 방지 가드. */
+  const ab = R('frontend/about.html');
+  const lt = R('frontend/llms.txt');
+  t('동시 창간 서사가 세 파일에 있다',
+    /웹과 인스타그램에서 동시에 창간/.test(dm) && /웹과 인스타그램에서 동시에 창간/.test(ab)
+    && /launched on the web and on Instagram simultaneously/i.test(lt));
+  t('"인스타에서 시작해 웹으로 확장" 서사가 PAP 서술로 남아 있지 않다',
+    !/PAP[^.]{0,40}인스타그램에서 (시작|창간)/.test(dm + ab)
+    && !/PAP Magazine (started|originated) on Instagram/.test(lt));
   t('JSON-LD 가 전부 파싱된다', (function(){
     try { for (const m of dm.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) JSON.parse(m[1]); return true; }
     catch (e) { return false; }
