@@ -55,6 +55,46 @@ async function fetchSnapshot(opts) {
 /** 숫자면 그대로, 아니면 null (0 으로 속이지 않는다). */
 function numOrNull(v) { return typeof v === 'number' ? v : null; }
 
+/* 전환 지표 — 게시물이 팔로워를 데려왔는지 말해주는 **유일한 직접 지표**다.
+   도달·좋아요·저장은 전부 대리지표다(도달 1.6M 인데 팔로우 170 인 게시물이
+   실제로 있었다 — 2026-07-29). 그래서 따로 이름을 붙여 둔다. */
+const CONVERSION_METRICS = ['profile_visits', 'follows'];
+const BASE_METRICS = ['reach', 'saved', 'shares', 'total_interactions'];
+
+/** media_type 별 인사이트 요청 계단. 순수 함수 — 테스트가 직접 검증한다. */
+function insightLadder(mediaType) {
+  const mt = String(mediaType || '').toUpperCase();
+  const isVideo = (mt === 'VIDEO' || mt === 'REELS');
+  return [
+    isVideo ? [...BASE_METRICS, 'views', ...CONVERSION_METRICS] : [...BASE_METRICS, ...CONVERSION_METRICS],
+    isVideo ? [...BASE_METRICS, 'views'] : [...BASE_METRICS],
+    isVideo ? ['reach', 'saved', 'views'] : ['reach', 'saved'],
+    ['reach', 'saved'],
+  ];
+}
+
+/** 인사이트 1세트 요청. 성공하면 {지표:숫자}, 실패하면 null.
+ *  null 과 {} 를 구분하는 게 중요하다 — {} 는 "요청은 됐는데 값이 없다" 다. */
+async function fetchInsightSet(mediaId, metrics, token) {
+  try {
+    const url = `${GRAPH}/${encodeURIComponent(mediaId)}/insights`
+      + `?metric=${metrics.join(',')}&access_token=${encodeURIComponent(token)}`;
+    const r = await fetch(url, { signal: AbortSignal.timeout(12000) });
+    if (!r.ok) return null;
+    const j = await r.json();
+    const out = {};
+    for (const m of (j.data || [])) {
+      const v = m && m.values && m.values[0] ? m.values[0].value : undefined;
+      if (typeof v === 'number') out[m.name] = v;
+    }
+    // 구 API 는 plays, 신 API 는 views. 둘 중 오는 쪽을 views 로 통일한다.
+    if (typeof out.plays === 'number' && typeof out.views !== 'number') out.views = out.plays;
+    return out;
+  } catch (_) {
+    return null;   // 타임아웃·네트워크 — 호출자가 다음 칸으로 넘어간다
+  }
+}
+
 /** 게시물 1건의 인사이트(저장·공유·도달·재생·총상호작용)를 가져온다.
  *  media_type 별로 유효 metric 이 달라, 실패하면 축소 세트로 재시도하고
  *  그래도 안 되면 {} 를 돌려준다 — 좋아요·댓글 저장은 절대 막지 않는다. */
@@ -75,37 +115,66 @@ async function fetchPostInsights(mediaId, mediaType, token) {
    *
    * 그래서 계단식으로 좁힌다 — 넓은 세트부터 시도해 되는 만큼 가져온다.
    * 신규 필드가 계정 권한·미디어 타입에 따라 거부돼도 기존 수집은 안 깨진다. */
-  const CONVERSION = ['profile_visits', 'follows'];
-  const BASE = ['reach', 'saved', 'shares', 'total_interactions'];
-  const isVideo = (mt === 'VIDEO' || mt === 'REELS');
-  const ladder = [
-    isVideo ? [...BASE, 'views', ...CONVERSION] : [...BASE, ...CONVERSION],
-    isVideo ? [...BASE, 'views'] : [...BASE],
-    isVideo ? ['reach', 'saved', 'views'] : ['reach', 'saved'],
-    ['reach', 'saved'],
-  ];
+  const ladder = insightLadder(mt);
+  let out = null;
   for (const metrics of ladder) {
-    try {
-      const url = `${GRAPH}/${encodeURIComponent(mediaId)}/insights`
-        + `?metric=${metrics.join(',')}&access_token=${encodeURIComponent(token)}`;
-      const r = await fetch(url, { signal: AbortSignal.timeout(12000) });
-      if (!r.ok) continue;
-      const j = await r.json();
-      const out = {};
-      for (const m of (j.data || [])) {
-        const v = m && m.values && m.values[0] ? m.values[0].value : undefined;
-        if (typeof v === 'number') out[m.name] = v;
-      }
-      // 구 API 는 plays, 신 API 는 views. 둘 중 오는 쪽을 views 로 통일한다.
-      if (typeof out.plays === 'number' && typeof out.views !== 'number') out.views = out.plays;
-      return {
-        saved: out.saved, shares: out.shares, reach: out.reach,
-        views: out.views, total_interactions: out.total_interactions,
-        profile_visits: out.profile_visits, follows: out.follows,
-      };
-    } catch (_) { /* 다음 metric 세트로 재시도 */ }
+    out = await fetchInsightSet(mediaId, metrics, token);
+    if (out) break;
   }
-  return {};
+  if (!out) return { __conv: 'none' };
+
+  /* ── 2026-08-16 — 계단이 통째로 떨어지면서 전환 지표를 늘 잃고 있었다 ──
+   *
+   * 실측(30일): 영상 49편 **전부** follows·profile_visits 가 NULL 이다(49/49).
+   * 캐러셀은 165편 중 20편만 NULL. 영상이 만든 도달이 1,020,469 (전체의 17%)
+   * 인데, 릴스가 팔로워를 데려오는지 아닌지를 **한 건도 모른다.**
+   * 같은 기간 팔로워는 +5,243 인데 게시물로 설명되는 건 1,906(36%)뿐이다.
+   *
+   * 원인은 계단 구조다. 세트에 하나라도 지원 안 되는 지표가 있으면 응답 전체가
+   * 400 이라 통째로 다음 칸으로 떨어지는데, 전환 지표는 **첫 칸에만** 있다.
+   * 그래서 영상은 늘 둘째 칸(전환 없음)에 안착했다. shares 가 30/49 만 모인
+   * 것도 같은 이유다(19편은 셋째 칸까지 떨어졌다).
+   *
+   * → 전환 지표만 따로 한 번 더 묻는다. 이러면 둘 중 하나가 **확정**된다:
+   *     · 값이 온다      → 우리가 못 받고 있었을 뿐. 그날부터 보인다.
+   *     · 또 실패한다    → 인스타가 릴스에 안 주는 것. **영구 사각지대로 알고** 판단한다.
+   *   지금은 이 둘조차 구분이 안 된다. 어느 쪽이든 추측이 사라진다.
+   *
+   * 비용: 전환 지표가 빠진 건에 대해서만 1콜 추가. 3시간마다 최대 25건이므로
+   * 하루 200콜 미만이다. 아래 __conv 집계가 여러 번 돌아도 계속 'unsupported'
+   * 뿐이면 그때 이 재시도를 꺼라 — 답이 나온 뒤에는 낭비다. */
+  if (out.follows === undefined && out.profile_visits === undefined) {
+    const conv = await fetchInsightSet(mediaId, CONVERSION_METRICS, token);
+    if (conv && (conv.follows !== undefined || conv.profile_visits !== undefined)) {
+      Object.assign(out, conv);
+      out.__conv = 'retry';        // 따로 물으니 왔다 — 계단이 문제였다
+    } else {
+      out.__conv = 'unsupported';  // 따로 물어도 안 온다 — API 가 안 준다
+    }
+  } else {
+    out.__conv = 'ladder';         // 첫 칸에서 정상 수집
+  }
+
+  return {
+    saved: out.saved, shares: out.shares, reach: out.reach,
+    views: out.views, total_interactions: out.total_interactions,
+    profile_visits: out.profile_visits, follows: out.follows,
+    __conv: out.__conv,
+  };
+}
+
+/** 전환 지표를 어디서 얻었는지 세어 준다. 순수 함수 — 테스트가 직접 검증한다.
+ *  ladder      첫 칸에서 정상 수집
+ *  retry       계단에선 잃었는데 따로 물으니 왔다 → 계단이 문제였다
+ *  unsupported 따로 물어도 안 온다 → API 가 안 준다 (영구 사각지대)
+ *  none        인사이트 자체가 실패 (권한·삭제·타임아웃) */
+function conversionCoverage(posts) {
+  const c = { ladder: 0, retry: 0, unsupported: 0, none: 0 };
+  for (const p of (posts || [])) {
+    const k = p && p.__conv;
+    if (k && Object.prototype.hasOwnProperty.call(c, k)) c[k]++;
+  }
+  return c;
 }
 
 /** Graph 응답 → ig_post_metric 행. age_hours 를 여기서 계산한다. */
@@ -204,6 +273,18 @@ async function captureSnapshot(opts) {
     batch.forEach((p, k) => enriched.push(Object.assign({}, p, ins[k])));
   }
   const rows = toMetricRows(enriched);
+
+  /* 2026-08-16 — 전환 지표를 어디서 얻었는지 집계한다. 조용한 사각지대를
+     만들지 않기 위해서다: 영상 49편이 전부 NULL 인 걸 한 달 동안 아무도
+     몰랐다. 로그에 한 줄 남으면 다음 실행부터는 눈에 띈다.
+     ⚠️ 여러 번 돌려도 계속 unsupported 뿐이면 → 인스타가 릴스에 안 주는 것이
+     확정이다. 그때는 위 재시도를 꺼라(그때부터는 순수한 낭비다). */
+  const conv = conversionCoverage(enriched);
+  console.log('[igSnapshot] 전환지표 수집 — 계단 ' + conv.ladder
+    + ' · 재시도로 회수 ' + conv.retry
+    + ' · 미지원 ' + conv.unsupported
+    + ' · 인사이트 실패 ' + conv.none
+    + (conv.unsupported && !conv.retry ? '  ← 미지원만 나온다면 API 가 안 주는 것' : ''));
 
   await supabaseAdmin.from('ig_account_snapshot').insert({
     handle: snap.account.handle,
@@ -334,4 +415,6 @@ async function buildReport(days) {
 module.exports = {
   fetchSnapshot, fetchPostInsights, toMetricRows, captureSnapshot,
   followerGrowth, weeklyEngagement, buildReport,
+  // 2026-08-16 — 계단·전환 집계는 순수 함수라 테스트가 동작을 직접 본다
+  insightLadder, conversionCoverage, CONVERSION_METRICS, BASE_METRICS,
 };

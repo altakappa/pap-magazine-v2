@@ -700,6 +700,68 @@ console.log('\n[17] 어드민에서 유입·전환을 볼 수 있다 (2026-08-13
   t('기록이 없을 때 빈 화면 대신 안내를 낸다', /최근 30일 기록 없음/.test(html));
 }
 
+
+console.log('\n[18] 어드민이 도달이 아니라 공유율을 대표로 보여준다 (2026-08-16 도메니코 요청)');
+{
+  /* 왜 ────────────────────────────────────────────────────────────────
+   * 30일 실측이 "도달을 목표로 삼지 말라"고 말한다:
+   *   2026-07-29  도달 1,609,308 · 좋아요 212,260 · 공유 22,518 · 팔로우   170
+   *   2026-08-11  도달   616,522 · 좋아요  34,841 · 공유 36,323 · 팔로우 1,091
+   * 도달을 4배 더 한 쪽이 팔로워는 6분의 1이었다(전환 0.011% vs 0.177%).
+   * 두 건이 갈린 유일한 지표가 **공유**다. 그래서 화면의 대표 숫자를 바꾼다.
+   *
+   * 그리고 평균을 쓰지 않는다 — 캐러셀 도달 평균 29,270 · 중앙값 9,596.
+   * 두 편이 만든 착시다.
+   *
+   * ⚠️ 이 칸의 핵심은 예쁜 숫자가 아니라 **'안 보이는 건수'** 다.
+   *    영상 49편 전부 전환 지표가 NULL 인 걸 한 달 동안 아무도 몰랐다.
+   *    화면이 그 공백을 말하지 않으면 또 같은 일이 난다. */
+
+  const api  = R('api/admin/ops-dashboard.js');
+  const html = R('frontend/ops-dashboard.html');
+
+  // ① API 가 공유율을 계산해서 내려준다
+  t('IG 게시물 지표를 읽는다', /rows\('ig_post_metric'/.test(api));
+  t('응답에 ig_perf 블록을 담는다', /\n\s*ig_perf,\n/.test(api));
+  t('공유율(share_rate)을 계산한다', /share_rate:\s*rate\(/.test(api));
+  t('팔로우 전환율도 함께 준다', /follow_rate:/.test(api));
+  t('평균이 아니라 중앙값을 쓴다', /reach_median/.test(api) && /const median =/.test(api));
+
+  // ② 같은 게시물이 3시간마다 여러 행으로 쌓인다 — 최신 1건만 세야 한다
+  t('게시물당 최신 캡처 1건만 집계한다 (중복 합산 금지)',
+     /igLatest\.has\(r\.post_id\)/.test(api) && /captured_at.*ascending:\s*false/.test(api));
+
+  // ③ 안 보이는 건수를 반드시 계산한다
+  t('전환 지표가 없는 게시물 수를 센다', /blind_posts:/.test(api));
+  t('안 보이는 게시물의 도달 합계도 센다', /blind_reach:/.test(api));
+  t('전환율은 측정된 게시물만으로 계산한다 (0 으로 속이지 않는다)',
+     /igMeasured\s*=\s*igPosts\.filter\(r => r\.follows !== null/.test(api));
+
+  // ④ 도달이 아니라 공유율 순으로 줄 세운다
+  t('상위 목록을 공유율로 정렬한다', /sort\(\(a, b\) => b\.share_rate - a\.share_rate\)/.test(api));
+  t('표본이 작은 게시물은 비율 순위에서 뺀다', /reach\) >= 3000/.test(api));
+
+  // ⑤ 화면이 실제로 그린다
+  t('대시보드에 IG 칸이 있다', /Instagram · 도달이 아니라 공유율/.test(html));
+  t('두 자리(요약·상위)가 있다', /id="igPerf"/.test(html) && /id="igTop"/.test(html));
+  t('renderIgPerf 가 정의되고 render 에서 불린다',
+     /function renderIgPerf\(d\)\{/.test(html) && /\n\s*renderIgPerf\(d\);/.test(html));
+  t('공유율이 화면 맨 위 숫자다 (도달보다 먼저)',
+     html.indexOf("line('공유율'") > 0
+     && html.indexOf("line('공유율'") < html.indexOf("line('도달 중앙값'"));
+
+  // ⑥ 한계를 화면이 말한다 — 침묵하면 또 헤맨다
+  t('안 보이는 게시물이 있으면 빨갛게 알린다',
+     /전환 지표가 안 보이는 게시물/.test(html));
+  t('"모릅니다" 라고 분명히 말한다 (0 처럼 보이게 두지 않는다)',
+     /팔로워를 데려왔는지는 <b>모릅니다/.test(html));
+  t('개별 게시물에도 안 보임을 표시한다', /안 보임<\/span>/.test(html));
+  t('왜 공유율인지 근거 숫자를 화면에 남긴다',
+     /도달 1,609,308 짜리 게시물이 팔로우 170/.test(html));
+  t('표본 하한을 화면이 설명한다', /표본이 작으면 비율이 튑니다/.test(html));
+  t('기록이 없을 때 빈 화면 대신 안내를 낸다', /최근 30일 게시물 지표 없음/.test(html));
+}
+
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) { console.log('❌ kr-growth-surface tests FAILED'); process.exit(1); }
 console.log('✅ kr-growth-surface tests passed');

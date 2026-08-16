@@ -310,6 +310,66 @@ module.exports = async function handler(req, res) {
       inflow_by_src,
     };
 
+    /* ── IG 성과 · 도달이 아니라 공유율 (2026-08-16 신설) ────────────────
+     *
+     * 왜 도달을 대표 숫자로 두지 않나 — 30일 실측이 답한다.
+     *   2026-07-29  도달 1,609,308 · 좋아요 212,260 · 공유 22,518 · 팔로우   170
+     *   2026-08-11  도달   616,522 · 좋아요  34,841 · 공유 36,323 · 팔로우 1,091
+     * 도달을 4배 더 한 쪽이 팔로워는 6분의 1이었다(전환 0.011% vs 0.177%, 16배).
+     * 도달은 결과지 목표가 아니다. 두 건이 갈린 유일한 지표가 **공유**였다.
+     * 공유는 인스타가 비팔로워에게 밀어주는 신호이고, 성장 헌법 6항과도 안
+     * 부딪힌다 — 맞팔·이벤트로 좋아요는 만들 수 있어도 공유는 못 만든다.
+     *
+     * 그리고 평균을 쓰지 않는다. 캐러셀 도달 평균 29,270 · 중앙값 9,596 —
+     * 두 편이 만든 착시다. 중앙값과 함께 보여준다.
+     *
+     * `blind` 가 이 카드의 핵심이다. 영상 49편 전부 전환 지표가 NULL 인 걸
+     * 한 달 동안 아무도 몰랐다. 안 보이는 건수를 화면에 띄운다. */
+    const igRows = await rows('ig_post_metric', {
+      cols: 'post_id, permalink, media_type, posted_at, captured_at, reach, shares, saved, follows',
+      fn: q => q.gte('posted_at', D30).order('captured_at', { ascending: false }).limit(6000),
+    });
+    // 게시물당 가장 최근 캡처 1건만 — 같은 게시물이 3시간마다 여러 행으로 쌓인다
+    const igLatest = new Map();
+    for (const r of igRows) if (r && r.post_id && !igLatest.has(r.post_id)) igLatest.set(r.post_id, r);
+    const igPosts = [...igLatest.values()].filter(r => Number(r.reach) > 0);
+
+    const median = (arr) => {
+      if (!arr.length) return 0;
+      const s = [...arr].sort((a, b) => a - b);
+      const m = Math.floor(s.length / 2);
+      return s.length % 2 ? s[m] : Math.round((s[m - 1] + s[m]) / 2);
+    };
+    const sum = (f) => igPosts.reduce((n, r) => n + (Number(r[f]) || 0), 0);
+    const rate = (a, b) => (b > 0 ? Math.round((a / b) * 10000) / 100 : 0);   // %, 소수 2자리
+
+    const igMeasured = igPosts.filter(r => r.follows !== null && r.follows !== undefined);
+    const ig_perf = {
+      posts: igPosts.length,
+      reach_30d: sum('reach'),
+      reach_median: median(igPosts.map(r => Number(r.reach) || 0)),
+      shares_30d: sum('shares'),
+      share_rate: rate(sum('shares'), sum('reach')),          // ← 이게 대표 지표다
+      follow_rate: rate(
+        igMeasured.reduce((n, r) => n + (Number(r.follows) || 0), 0),
+        igMeasured.reduce((n, r) => n + (Number(r.reach) || 0), 0)),
+      follows_measured_posts: igMeasured.length,
+      blind_posts: igPosts.length - igMeasured.length,        // ← 안 보이는 건수
+      blind_reach: igPosts.filter(r => r.follows === null || r.follows === undefined)
+        .reduce((n, r) => n + (Number(r.reach) || 0), 0),
+      // 도달이 아니라 공유율 순으로 줄 세운다 — 무엇을 더 만들지의 근거
+      top_by_share_rate: igPosts
+        .filter(r => Number(r.reach) >= 3000)                 // 표본이 작으면 비율이 튄다
+        .map(r => ({
+          permalink: r.permalink, media_type: r.media_type,
+          posted_at: r.posted_at, reach: Number(r.reach) || 0,
+          shares: Number(r.shares) || 0, follows: r.follows,
+          share_rate: rate(Number(r.shares) || 0, Number(r.reach) || 0),
+        }))
+        .sort((a, b) => b.share_rate - a.share_rate)
+        .slice(0, 8),
+    };
+
     const article_categories = Object.entries(catMap)
       .map(([category, count]) => ({ category, count }))
       .sort((a, b) => b.count - a.count)
@@ -346,6 +406,7 @@ module.exports = async function handler(req, res) {
       issues,
       article_categories,
       funnel,
+      ig_perf,
     });
   } catch (e) {
     console.error('[ops-dashboard] failed:', e);

@@ -19,7 +19,9 @@ require.cache[SUPABASE] = new Module(SUPABASE);
 require.cache[SUPABASE].exports = { supabaseAdmin: {} };
 require.cache[SUPABASE].loaded = true;
 
-const { toMetricRows, followerGrowth, weeklyEngagement } = require('../api/_lib/igSnapshot');
+const { toMetricRows, followerGrowth, weeklyEngagement,
+        insightLadder, conversionCoverage, CONVERSION_METRICS } = require('../api/_lib/igSnapshot');
+const _snapSrc = require('fs').readFileSync(require('path').join(__dirname,'..','api','_lib','igSnapshot.js'),'utf8');
 
 let pass = 0, fail = 0;
 function ok(name, cond) {
@@ -132,7 +134,10 @@ ok('저장 행에 두 값을 담는다',
    릴스는 늘 축소 세트로 떨어졌고 shares 까지 함께 잃었다(461/750). */
 ok('views 를 직접 요청한다 (plays 만으로는 0건이었다)', /'views'/.test(IGSRC));
 ok('plays 폴백은 유지 (구 API 계정 대비)', /out\.plays/.test(IGSRC));
-ok('계단식 축소로 부분 수집을 살린다', /const ladder = \[/.test(IGSRC),
+/* 2026-08-16 — 계단은 insightLadder() 로 옮겼다(순수 함수라 테스트가 동작을
+   직접 본다). 가드의 뜻은 그대로다: **계단이 사라지면 안 된다.** */
+ok('계단식 축소로 부분 수집을 살린다',
+   /function insightLadder\(/.test(IGSRC) && insightLadder('VIDEO').length >= 3,
   '신규 metric 이 거부돼도 기존 수집이 통째로 깨지면 안 된다');
 
 ok('국가 구성 수집 함수 존재', /async function fetchAudienceCountries/.test(IGSRC));
@@ -141,6 +146,66 @@ ok('신형·구형 API 를 모두 시도', /follower_demographics/.test(IGSRC) &
 ok('하루 1행만 저장 (3시간 크론이 중복 적재하지 않게)', /captured_on/.test(IGSRC) && /onConflict: 'handle,country_code,captured_on'/.test(IGSRC));
 ok('국가 수집 실패가 본 수집을 죽이지 않는다', /국가 구성 수집 실패/.test(IGSRC));
 ok('응답이 비면 로그로 알린다 (조용한 실패 금지)', /국가 구성 응답 없음/.test(IGSRC));
+
+
+/* ── 전환 지표 계측 구멍 (2026-08-16 신설) ─────────────────────────────
+ *
+ * 실측(30일): 영상 49편 **전부** follows·profile_visits 가 NULL 이다(49/49).
+ * 캐러셀은 165편 중 20편만 NULL. 영상이 만든 도달이 1,020,469(전체의 17%)인데
+ * 릴스가 팔로워를 데려오는지 아닌지를 한 건도 모른다. 같은 기간 팔로워는
+ * +5,243 인데 게시물로 설명되는 건 1,906(36%)뿐이다.
+ *
+ * 원인은 계단 구조다 — 세트에 하나라도 지원 안 되는 지표가 있으면 응답 전체가
+ * 400 이라 통째로 다음 칸으로 떨어지는데, 전환 지표는 **첫 칸에만** 있었다.
+ * shares 가 30/49 만 모인 것도 같은 이유다.
+ */
+section('전환 지표 계측 구멍');
+
+ok('영상 첫 칸에는 전환 지표가 들어 있다',
+  insightLadder('VIDEO')[0].includes('follows') && insightLadder('VIDEO')[0].includes('profile_visits'));
+ok('REELS 도 영상과 같은 계단을 쓴다',
+  JSON.stringify(insightLadder('REELS')) === JSON.stringify(insightLadder('VIDEO')));
+ok('영상 계단에는 views 가 있고 캐러셀에는 없다',
+  insightLadder('VIDEO')[0].includes('views') && !insightLadder('CAROUSEL_ALBUM')[0].includes('views'));
+ok('둘째 칸부터는 전환 지표가 빠진다 (여기 떨어지면 못 본다)',
+  !insightLadder('VIDEO')[1].includes('follows'));
+ok('마지막 칸은 최소 세트로 끝난다 (좋아요·댓글 저장을 절대 막지 않는다)',
+  JSON.stringify(insightLadder('VIDEO').slice(-1)[0]) === JSON.stringify(['reach','saved']));
+ok('media_type 이 비어도 죽지 않는다', Array.isArray(insightLadder(null)) && insightLadder(null).length === 4);
+
+ok('전환 지표만 따로 묻는 경로가 있다 (계단이 떨어져도 회수한다)',
+  /fetchInsightSet\(mediaId, CONVERSION_METRICS, token\)/.test(_snapSrc));
+ok('그 재시도는 전환 지표가 없을 때만 한다 (불필요한 콜을 늘리지 않는다)',
+  /if \(out\.follows === undefined && out\.profile_visits === undefined\)/.test(_snapSrc));
+ok('재시도해도 안 오면 unsupported 로 구분한다 (실패와 미지원은 다르다)',
+  /__conv = 'unsupported'/.test(_snapSrc) && /__conv = 'retry'/.test(_snapSrc));
+ok('요청 실패(null)와 값 없음({})을 구분한다',
+  /if \(!r\.ok\) return null;/.test(_snapSrc));
+
+ok('수집 경로를 집계한다 — 네 갈래',
+  JSON.stringify(conversionCoverage([])) === JSON.stringify({ladder:0,retry:0,unsupported:0,none:0}));
+ok('집계가 실제로 센다',
+  (function(){
+    const c = conversionCoverage([
+      {__conv:'ladder'},{__conv:'ladder'},{__conv:'retry'},
+      {__conv:'unsupported'},{__conv:'none'},{},null
+    ]);
+    return c.ladder===2 && c.retry===1 && c.unsupported===1 && c.none===1;
+  })());
+ok('모르는 값은 세지 않는다', conversionCoverage([{__conv:'wat'}]).ladder === 0);
+ok('사각지대를 로그로 남긴다 (조용히 비어 있지 않게)',
+  /\[igSnapshot\] 전환지표 수집/.test(_snapSrc));
+
+ok('__conv 는 DB 행에 새지 않는다 (컬럼이 없다)',
+  (function(){
+    const r = toMetricRows([{ id:'x', timestamp:'2026-08-01T00:00:00Z', reach:10, __conv:'retry' }])[0];
+    return !('__conv' in r) && r.reach === 10;
+  })());
+ok('전환 지표는 없으면 null 이다 (0 으로 속이지 않는다)',
+  (function(){
+    const r = toMetricRows([{ id:'x', timestamp:'2026-08-01T00:00:00Z', reach:10 }])[0];
+    return r.follows === null && r.profile_visits === null;
+  })());
 
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) { console.error('❌ ig-snapshot tests failed'); process.exit(1); }
