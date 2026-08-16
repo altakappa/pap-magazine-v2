@@ -240,6 +240,20 @@ console.log('\n=== ⑩ 자체 취재 판별 (🎥 PAP) ===');
   t('🎥 PAP MAGAZINE 은 우리 것', own('🎥 PAP MAGAZINE') === true);
   t('@pap_magazine 크레딧도 우리 것', own('🎥 @pap_magazine') === true);
 
+  /* 2026-08-17 정정 — 캡션 백필 첫 회차 57건 실측에서 나온 것.
+     영상은 🎥, 사진은 📸 를 쓴다. 둘 다 자체 취재인데 🎥 만 보고 있어서
+     📸 PAP 2건을 놓치고 있었다(8건만 잡힘). 실제 캡션 문자열로 고정한다. */
+  t('📸 PAP → 자체 취재 (사진 기사)', own('📸 PAP') === true);
+  t('📸 @pap_magazine → 자체 취재', own('📸 @pap_magazine') === true);
+  t('📸 @jennierubyjane → 남의 것', own('📸 @jennierubyjane') === false);
+  t('📸 PAPARAZZI 는 오탐 아님', own('📸 PAPARAZZI') === false);
+  // 외부가 주고 PAP 가 보조인 혼합은 자체 취재가 아니다.
+  // 이모지 '바로 뒤' 를 요구하는 규칙이라 자연히 빠진다.
+  t('📸 @esdevlin @futuraseoul , PAP → 자체 취재 아님',
+    own('📸 @esdevlin @futuraseoul , PAP') === false);
+  t('🎥 각 셀럽 인스타그램, PAP → 자체 취재 아님',
+    own('🎥 각 셀럽 인스타그램, PAP') === false);
+
   {
     const before = process.env.NAVER_DRAFT_OWN_MARK;
     process.env.NAVER_DRAFT_OWN_MARK = '📷\\s*PAP';

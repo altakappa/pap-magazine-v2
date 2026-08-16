@@ -523,9 +523,15 @@ async function _recentPublished(brand, kind, opt) {
 
 /* 자체 취재인가 — 인스타 캡션의 크레딧 줄로 판별한다 (2026-08-14, 도메니코 제보).
  *
- *   🎥 PAP            → 우리가 직접 찍었다        ← 이것만 true
- *   🎥 @jamiroquaihq  → 남의 영상
+ *   🎥 PAP  ·  📸 PAP  → 우리가 직접 찍었다        ← 이것만 true
+ *   🎥 @jamiroquaihq   → 남의 영상
  *   🎥 YouTube | KATSEYE → 남의 영상
+ *   📸 @esdevlin @futuraseoul , PAP → 외부가 주, PAP 는 보조. 자체 취재 아니다.
+ *     (이모지 '바로 뒤' 를 요구하므로 이런 혼합은 자연히 빠진다)
+ *
+ * 2026-08-17 정정 — 처음엔 🎥 만 봤다. 캡션 백필 첫 회차 57건을 실측하니
+ * 📸 PAP 가 2건 있었다. 영상은 🎥, 사진은 📸 를 쓰는데 둘 다 자체 취재다.
+ * 8건(🎥) 만 잡고 2건을 놓치고 있었다. 이모지를 둘 다 본다.
  *
  * 왜 캡션이어야 하나: DB 의 다른 컬럼으로는 안 갈린다. 실측했다 —
  * 자체 취재(맨시티 성수·워터밤 라이즈)와 통신사 재탕(뷔 앰버서더·그래미)이
@@ -542,8 +548,8 @@ async function _recentPublished(brand, kind, opt) {
  * 그래서 호출부는 '자체 취재가 없으면 전체에서 고른다' 로 폴백한다.
  */
 function ownMarkRe() {
-  const src = process.env.NAVER_DRAFT_OWN_MARK || '🎥\\s*(PAP\\b|@pap)';
-  try { return new RegExp(src, 'i'); } catch (_) { return /🎥\s*(PAP\b|@pap)/i; }
+  const src = process.env.NAVER_DRAFT_OWN_MARK || '(🎥|📸)\\s*(PAP\\b|@pap)';
+  try { return new RegExp(src, 'i'); } catch (_) { return /(🎥|📸)\s*(PAP\b|@pap)/i; }
 }
 function isOwnCoverage(caption) {
   return ownMarkRe().test(String(caption || ''));
