@@ -6,6 +6,10 @@
   "framework": null,
   "crons": [
     {
+      "path": "/api/cron/backfill-ig-captions",
+      "schedule": "47 * * * *"
+    },
+    {
       "path": "/api/cron/brand-sync",
       "schedule": "25 19 * * *"
     },

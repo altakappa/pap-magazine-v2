@@ -152,6 +152,35 @@ async function fetchMediaPage(opts){
 // 레거시 회수(2019~2023 화보)는 그 범위 밖이라 항상 실패한다. 스캔이 이미
 // media id 를 확보해 뒀으므로 검색 없이 바로 가져온다.
 // 캐러셀이면 자식까지 펼쳐 정규화된 형태로 돌려준다.
+/* 캡션만 가져오는 가벼운 조회 (2026-08-17).
+ *
+ * fetchMediaById 를 쓰지 않는 이유: 그건 hydrateChildren 으로 캐러셀 자식까지
+ * 다 받아온다. 우리가 필요한 건 caption 한 줄뿐인데 그러면 게시물 하나당
+ * API 호출이 여러 번 나가고 시간도 그만큼 든다.
+ *
+ * 왜 필요한가: instagram_caption 은 2026-08-14 부터만 저장된다(마이그레이션 124).
+ * 그 전 수집분은 캡션이 없어 두 가지를 못 한다.
+ *   · 자체 취재 판별(🎥 PAP 크레딧) — 네이버 초안 선정이 이걸 쓴다
+ *   · 본문 보강 — 근거가 없으면 형용사로 채우게 된다. 실측으로 확인했다:
+ *     캡션 없이 워터밤 기사를 보강해보니 521자에서 589자밖에 못 늘었다.
+ *
+ * 반환: { id, caption } 또는 삭제·비공개면 null (호출자가 '시도했으나 없음'으로 표시).
+ */
+async function fetchCaptionById(mediaId, opts){
+  const { token } = _creds(opts);
+  const url = `${_IG_API}/${mediaId}?fields=id,caption&access_token=${token}`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+  if (res.status === 400 || res.status === 404){
+    return null;                       // 삭제됐거나 접근 불가 — 재시도해도 같다
+  }
+  if (!res.ok){
+    const body = await res.text().catch(() => '');
+    throw new Error('Graph API caption 조회 실패 (' + res.status + '): ' + body.slice(0, 200));
+  }
+  const m = await res.json();
+  return { id: String(m.id || mediaId), caption: String(m.caption || '') };
+}
+
 async function fetchMediaById(mediaId, opts){
   const { token } = _creds(opts);
   const fields = 'id,caption,media_type,media_url,permalink,thumbnail_url,timestamp,username';
@@ -647,6 +676,7 @@ module.exports = {
   fetchMediaPage,
   fetchInstagramPost,
   fetchMediaById,
+  fetchCaptionById,
   generateArticleFromPost,
   buildArticleRow,
   archiveImagesToStorage,
