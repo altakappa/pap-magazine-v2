@@ -164,6 +164,8 @@ const KINDS = {
       title: a.title,
       title_en: a.title_en || null,
       body: a.content_en || a.content || '',
+      // 2026-08-17 — attachFaqs 가 붙인 정규화 FAQ. 없으면 프롬프트에서 빠진다.
+      faq: a.__faq || undefined,
     }),
     hasSource: (a) => String(a.content_en || a.content || '').trim().length >= MIN_SOURCE.article,
     doneField: 'body',
@@ -171,6 +173,9 @@ const KINDS = {
     fromQueueRow: (r) => ({
       id: r.id, title: r.title, title_en: r.title_en,
       content: r.src, content_en: r.src,
+      // 2026-08-17 — 큐 RPC(마이그레이션 129)가 faq 를 함께 돌려준다.
+      // 여기서 확정(null 포함)해 두면 attachFaqs 가 articles 를 다시 읽지 않는다.
+      __faq: normalizeFaq(r.faq),
     }),
   },
 };
@@ -783,6 +788,50 @@ async function callClaude(prompt, maxTokens, model, timeoutMs) {
    · 에디토리얼 — 제목+요약(사진 중심, 짧은 카피)
    · 아티클     — 제목+본문. 본문은 HTML 조각이 섞여 있어 "태그는 그대로
                   두고 텍스트만 번역"을 명시해야 마크업이 깨지지 않는다. */
+/* ─── 2026-08-17 (GEO 절충안 — 도메니코 승인) ───
+ * 기사 번역 시 FAQ({q,a} 배열)도 같은 호출에서 함께 번역한다.
+ * 왜: AIO/Gemini 는 "질문에 답하는 형태"의 페이지를 골라 인용하는데,
+ * FAQ 는 ko 전용 데이터였다 (발행 2,375편 중 2,349편 보유). 전량 소급이
+ * 아니라 "신규 번역분부터" 태우는 절충 — 소급은 추후 별도 결정.
+ * 큐 RPC 행에는 faq 가 없으므로 프롬프트 직전에 articles 에서 배치로 붙인다. */
+const FAQ_MAX_ITEMS = 5;
+function normalizeFaq(f) {
+  if (typeof f === 'string') { try { f = JSON.parse(f); } catch (_) { return null; } }
+  if (!Array.isArray(f)) return null;
+  const out = [];
+  for (const x of f) {
+    if (!x || typeof x.q !== 'string' || typeof x.a !== 'string') continue;
+    const q = x.q.trim(), a = x.a.trim();
+    if (!q || !a) continue;
+    out.push({ q: q.slice(0, 300), a: a.slice(0, 1200) });
+    if (out.length >= FAQ_MAX_ITEMS) break;
+  }
+  return out.length ? out : null;
+}
+async function attachFaqs(items) {
+  const need = items.filter(it => it && it.__faq === undefined);
+  if (!need.length) return;
+  /* 행이 faq 를 이미 들고 있으면(폴백 경로의 articles select) 그걸 쓴다.
+     DB 재조회는 정말 모르는 행뿐 — RPC 경로는 fromQueueRow 가 __faq 를
+     확정하므로 여기 오지 않는다 (translate-queue-rpc 가드 준수). */
+  const unknown = [];
+  for (const it of need) {
+    if (it.faq !== undefined) it.__faq = normalizeFaq(it.faq);
+    else unknown.push(it);
+  }
+  if (!unknown.length) return;
+  try {
+    const { data } = await supabaseAdmin
+      .from('articles').select('id, faq')
+      .in('id', unknown.map(it => it.id));
+    const map = new Map((data || []).map(r => [r.id, normalizeFaq(r.faq)]));
+    for (const it of unknown) it.__faq = map.get(it.id) || null;
+  } catch (_) {
+    /* faq 를 못 붙여도 본문 번역은 진행한다 — FAQ 는 가산 품질이지 관문이 아니다. */
+    for (const it of unknown) it.__faq = null;
+  }
+}
+
 function buildBatchPrompt(items, cfg, lang) {
   const src = items.map((e, i) => Object.assign({ i }, cfg.src(e)));
   return cfg.translateBody
@@ -792,7 +841,8 @@ function buildBatchPrompt(items, cfg, lang) {
       `- Translate the body faithfully into native ${LANG_NAMES[lang]} — magazine register, not literal machine translation.\n` +
       `- The body may contain HTML tags. Keep every tag, attribute and URL EXACTLY as-is; translate only the visible text.\n` +
       `- Do not summarize, omit, or add content. Preserve paragraph structure.\n` +
-      `- Return ONLY a JSON array, one object per input, shape: {"i":<index>,"title":"...","body":"..."}. No prose, no code fences.\n` +
+      `- If an input has "faq" (array of {"q","a"}), translate every q and a into ${LANG_NAMES[lang]} and include "faq" in your output object — same length, same order, no new items. If an input has no "faq", omit the key.\n` +
+      `- Return ONLY a JSON array, one object per input, shape: {"i":<index>,"title":"...","body":"...","faq":[{"q":"...","a":"..."}]}. No prose, no code fences.\n` +
       `- Inside JSON strings, escape every double quote as \\". Prefer the target language's own quotation marks in the text.\n` +
       `Input JSON:\n` + JSON.stringify(src)
     : `You are translating fashion-magazine editorial metadata for PAP MAGAZINE into ${LANG_NAMES[lang]}.\n` +
@@ -1013,6 +1063,8 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing
     const queue = pending.filter(e => !failedIds.has(e.id));
     const items = pickItems(queue, size - processed, cfg);
     if (!items.length) break;
+    /* 2026-08-17 — 기사면 FAQ 원문을 붙인다 (큐 RPC 행에는 없다). */
+    if (cfg.translateBody) await attachFaqs(items);
 
     /* 배치 호출 한 번 쓸 시간이 없으면 여기서 접는다. */
     if (!canCall(deadlineAt, timeoutMs)) { ranOut = true; break; }
@@ -1101,19 +1153,27 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing
     for (const it of items) {
       const t = got.get(it.id);
       if (!t) continue;
+      const upPayload = {
+        kind,
+        content_id: it.id,
+        lang,
+        title: String(t.title).slice(0, 300),
+        description: t.description ? String(t.description).slice(0, 2000) : null,
+        // 본문은 아티클만. 길이 제한을 두지 않는다 — 잘린 본문을 저장하면
+        // 사용자에게 문장이 끊긴 페이지가 나간다.
+        body: cfg.translateBody && t.body ? String(t.body) : null,
+        updated_at: new Date().toISOString(),
+      };
+      /* 2026-08-17 — 번역 FAQ. normalizeFaq 를 다시 통과시켜 모델이 형태를
+         어긴 응답(문자열·초과 항목·빈 q/a)을 걸러낸다. 유효할 때만 컬럼을
+         포함한다 — null 로 덮어써서 수동 시드분을 지우는 사고 방지. */
+      if (cfg.translateBody) {
+        const trFaq = normalizeFaq(t.faq);
+        if (trFaq) upPayload.faq = trFaq;
+      }
       const { error: upErr } = await supabaseAdmin
         .from('seo_translations')
-        .upsert({
-          kind,
-          content_id: it.id,
-          lang,
-          title: String(t.title).slice(0, 300),
-          description: t.description ? String(t.description).slice(0, 2000) : null,
-          // 본문은 아티클만. 길이 제한을 두지 않는다 — 잘린 본문을 저장하면
-          // 사용자에게 문장이 끊긴 페이지가 나간다.
-          body: cfg.translateBody && t.body ? String(t.body) : null,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'kind,content_id,lang' });
+        .upsert(upPayload, { onConflict: 'kind,content_id,lang' });
       if (upErr) {
         failedIds.add(it.id);
         errors.push({ id: it.id, reason: upErr.message });
@@ -1161,4 +1221,4 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing
 
 // 2026-08-16 — callClaude 를 노출한다. 제목 수리 경로(api/_lib/titleRepair.js)가
 // 같은 호출을 써야 한다 — API 호출 규약이 두 벌이 되면 한쪽만 고쳐진다.
-module.exports = { runBackfillBatch, remainingFor, minDoneFor, MIN_TRANSLATED, newTiming, callClaude, hasHangul, hangulRatio, validateTranslation, isEnglishEcho, nameRule, styleRules, normalizeBatch, parseJsonArray, salvageObjects, escapeRawControls, escapeInnerQuotes, diagnoseJson, parseSentinel, pickItems, buildBatchPrompt, msLeft, canCall, callBudget, CALL_SLACK_MS, MAX_PASSES, LANG_NAMES, KINDS };
+module.exports = { runBackfillBatch, normalizeFaq, attachFaqs, remainingFor, minDoneFor, MIN_TRANSLATED, newTiming, callClaude, hasHangul, hangulRatio, validateTranslation, isEnglishEcho, nameRule, styleRules, normalizeBatch, parseJsonArray, salvageObjects, escapeRawControls, escapeInnerQuotes, diagnoseJson, parseSentinel, pickItems, buildBatchPrompt, msLeft, canCall, callBudget, CALL_SLACK_MS, MAX_PASSES, LANG_NAMES, KINDS };
