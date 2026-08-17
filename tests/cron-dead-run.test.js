@@ -143,7 +143,10 @@ if (typeof watch.buildDeadRunAlert === 'function') {
 }
 const WATCH_SRC = fs.readFileSync(path.join(ROOT, 'api/cron/pipeline-watch.js'), 'utf8');
 t('감시가 배선돼 있다', /const deadRuns = await checkDeadRuns\(/.test(WATCH_SRC));
-t('응답에 포함된다', /deadRuns \}\);/.test(WATCH_SRC));
+/* 2026-08-17: 원래 /deadRuns \}\);/ 로 '응답의 맨 끝' 을 봤는데, 감시가
+   하나 더 붙자(failingCrons) 깨졌다. 지키려던 건 위치가 아니라
+   '응답 객체에 실린다' 이므로 그것만 본다. */
+t('응답에 포함된다', /return res\.status\(200\)\.json\(\{[^}]*\bdeadRuns\b/.test(WATCH_SRC));
 t('유예가 함수 상한보다 넉넉하다 (정상 실행을 죽었다고 부르지 않는다)',
   /CRON_DEAD_GRACE_MIN \|\| 5/.test(WATCH_SRC));
 t('같은 창의 성공 횟수를 세어 넘긴다',

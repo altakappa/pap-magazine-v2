@@ -248,7 +248,14 @@ module.exports = withCronGuard('pipeline-watch', async function handler(req, res
    * '안 끝난 줄'로 남는다. 그 줄을 여기서 읽는다. */
   const deadRuns = await checkDeadRuns({ dry });
 
-  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels, faq, duration, naver, tiktok, heartbeat, ytVideos, newsletter, deadRuns });
+  /* ── 연속 실패 감시 (2026-08-17 추가) ──
+   * 위 감시들은 전부 '특정 파이프라인' 또는 '안 끝난 실행' 을 본다.
+   * 그래서 drive-youtube-post 가 48회 연속 ok=false 로 **정상 종료**하는
+   * 동안 아무 데도 안 걸렸다. 가장 단순한 신호를 아무도 안 듣고 있었다.
+   * 이건 크론 이름을 가리지 않고 '연속으로 실패하는 것' 만 본다. */
+  const failingCrons = await checkFailingCrons({ dry });
+
+  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels, faq, duration, naver, tiktok, heartbeat, ytVideos, newsletter, deadRuns, failingCrons });
 });
 
 /** 서술문 생산이 실제로 되고 있는지 보고, 이상하면 텔레그램으로 알린다. */
@@ -1554,3 +1561,154 @@ async function checkDeadRuns(opts) {
 
 module.exports.judgeDeadRuns = judgeDeadRuns;
 module.exports.buildDeadRunAlert = buildDeadRunAlert;
+
+/* ═══════════════════════════════════════════════════════════════
+ * 크론 연속 실패 감시 (2026-08-17 추가)
+ *
+ * 왜 필요한가:
+ *   drive-youtube-post 가 08-09 부터 08-17 까지 **48회 연속** ok=false 로
+ *   끝났다. 매번 같은 note 를 남겼다:
+ *     "DB 기록 실패 — 같은 영상이 반복 업로드될 수 있음! video_id=… "
+ *   그 사이 같은 쇼츠가 공개 채널에 48번 올라갔다.
+ *   8일 동안 어떤 감시에도 안 걸렸고, 도메니코가 눈으로 보고 알려줬다.
+ *
+ *   기존 감시가 전부 못 본 이유는 이렇다:
+ *     · checkDeadRuns   duration_ms IS NULL(안 끝난 것)만 본다.
+ *                       이 크론은 **끝났다**. 500 을 반환하며 정상 종료했다.
+ *     · checkDuration   시간만 본다. 이 크론은 빨랐다.
+ *     · 나머지 감시     전부 특정 파이프라인 전용이다. 이 크론은 대상이 아니었다.
+ *   즉 우리 감시망에는 "그냥 실패했다" 를 보는 눈이 하나도 없었다.
+ *   가장 흔하고 가장 시끄러운 신호인데 아무도 안 듣고 있었다.
+ *
+ * 무엇을 울리나 — 연속 실패다, 실패율이 아니다:
+ *   가끔 실패하고 다음 회차에 회복되는 크론은 흔하고, 그걸로 울리면 소음이다.
+ *   연속으로 실패한다는 건 스스로 못 빠져나온다는 뜻이고, 그게 사람이 필요한
+ *   순간이다. 48회 연속은 3회째에 알렸어야 했다.
+ * ══════════════════════════════════════════════════════════════ */
+const FAILING_CRON_ALERT_KEY = 'cron-failing-streak';
+/* 몇 번 연속 실패하면 울릴지. 1~2 는 일시적 오류가 많아 소음이 된다. */
+const FAIL_STREAK_MIN = Number(process.env.CRON_FAIL_STREAK_MIN || 3);
+
+/**
+ * 순수 판정 (테스트 대상).
+ * @param {Array} rows [{cron_name, ok, ran_at, note}] — 창 안의 실행 전부.
+ *                     **최신이 먼저** 오는 순서를 기대한다.
+ * @param {number} streakMin 연속 실패 몇 회부터 울릴지
+ */
+function judgeFailingCrons(rows, streakMin) {
+  const need = Number(streakMin) || FAIL_STREAK_MIN;
+  const byCron = new Map();
+
+  for (const r of rows || []) {
+    const k = r && r.cron_name;
+    if (!k) continue;
+    if (!byCron.has(k)) {
+      byCron.set(k, { cron: k, runs: 0, fails: 0, streak: 0, streakOpen: true, lastFailAt: null, lastNote: '' });
+    }
+    const e = byCron.get(k);
+    e.runs++;
+    const failed = r.ok === false;
+    if (failed) {
+      e.fails++;
+      /* 최신부터 훑으므로, 성공을 만나기 전까지의 실패만 '지금도 진행 중인
+       * 연속 실패' 다. 성공이 하나라도 끼면 그 크론은 회복된 적이 있다. */
+      if (e.streakOpen) {
+        e.streak++;
+        const t = r.ran_at ? Date.parse(r.ran_at) : null;
+        if (t && (!e.lastFailAt || t > e.lastFailAt)) e.lastFailAt = t;
+        if (!e.lastNote) e.lastNote = String(r.note || '').slice(0, 160);
+      }
+    } else {
+      e.streakOpen = false;
+    }
+  }
+
+  const list = Array.from(byCron.values())
+    .map((e) => { delete e.streakOpen; return e; })
+    .sort((a, b) => b.streak - a.streak);
+  const alarming = list.filter((x) => x.streak >= need);
+
+  return {
+    healthy: alarming.length === 0,
+    checked: list.length,
+    crons: list,
+    alarming,
+    reason: alarming.length
+      ? alarming.slice(0, 4).map((x) => x.cron + ' ' + x.streak + '회 연속 실패'
+          + (x.lastNote ? ' — ' + x.lastNote : '')).join(' · ')
+      : '연속 ' + need + '회 이상 실패한 크론 없음.',
+  };
+}
+
+function buildFailingCronAlert(d, site) {
+  const first = d.alarming[0] || {};
+  return {
+    title: '🚨 크론이 계속 실패한다 — ' + (first.cron || '') + ' ' + (first.streak || 0) + '회 연속',
+    lines: d.alarming.slice(0, 5).map((x) =>
+      x.cron + ': 최근 ' + x.runs + '회 중 ' + x.fails + '회 실패, 지금 ' + x.streak + '회 연속'
+      + (x.lastNote ? '\n  ↳ ' + x.lastNote : '')
+    ).concat([
+      '',
+      '연속 실패는 스스로 못 빠져나온다는 뜻이다. 회차를 더 기다려도 안 낫는다.',
+      '2026-08-09~17: drive-youtube-post 가 이 모양으로 48회 연속 실패하는 동안',
+      '같은 쇼츠가 공개 채널에 48번 올라갔다. 그때 이 감시가 없었다.',
+      '',
+      '볼 곳: /admin/crons 의 해당 크론 · Vercel Logs',
+    ]),
+    url: (site || '') + '/admin/crons',
+    urlLabel: '크론 상태',
+  };
+}
+
+async function checkFailingCrons(opts) {
+  try {
+    const WINDOW_H = Number(process.env.CRON_FAIL_WINDOW_H || 24);
+    const since = new Date(Date.now() - WINDOW_H * 3600000).toISOString();
+    const { data: rows, error } = await supabaseAdmin
+      .from('cron_runs')
+      .select('cron_name, ok, ran_at, note')
+      .not('duration_ms', 'is', null)   // 안 끝난 실행은 checkDeadRuns 담당이다
+      .gte('ran_at', since)
+      .order('ran_at', { ascending: false })
+      .limit(1000);
+    if (error) throw error;
+
+    const d = judgeFailingCrons(rows || [], FAIL_STREAK_MIN);
+    if (opts && opts.dry) return { dry: true, ...d };
+
+    const { data: st } = await supabaseAdmin.from('ops_alert_state')
+      .select('last_alert_at, last_payload').eq('key', FAILING_CRON_ALERT_KEY).maybeSingle();
+    const lastAt = st && st.last_alert_at ? Date.parse(st.last_alert_at) : 0;
+    const wasBroken = !!(st && st.last_payload && st.last_payload.broken);
+    const COOLDOWN_H = Number(process.env.CRON_FAIL_COOLDOWN_H || 6);
+
+    let alerted = false;
+    if (!d.healthy && Date.now() - lastAt > COOLDOWN_H * 3600000) {
+      await pushAlert({ ...buildFailingCronAlert(d, SITE), personalOnly: true });
+      alerted = true;
+    } else if (d.healthy && wasBroken) {
+      await pushAlert({
+        personalOnly: true,
+        title: '✅ 크론 연속 실패 해소',
+        lines: [d.reason],
+        url: `${SITE}/admin/crons`, urlLabel: '크론 상태',
+      });
+      alerted = true;
+    }
+    if (alerted || wasBroken !== !d.healthy) {
+      await supabaseAdmin.from('ops_alert_state').upsert({
+        key: FAILING_CRON_ALERT_KEY,
+        last_alert_at: alerted ? new Date().toISOString() : (st && st.last_alert_at) || null,
+        last_payload: { broken: !d.healthy, crons: d.alarming.slice(0, 6).map((x) => x.cron + ':' + x.streak) },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'key' });
+    }
+    return { healthy: d.healthy, checked: d.checked, alarming: d.alarming, reason: d.reason, alerted };
+  } catch (e) {
+    console.error('[pipeline-watch] 연속 실패 감시 실패', e && e.message);
+    return { error: (e && e.message) || 'unknown' };
+  }
+}
+
+module.exports.judgeFailingCrons = judgeFailingCrons;
+module.exports.buildFailingCronAlert = buildFailingCronAlert;
