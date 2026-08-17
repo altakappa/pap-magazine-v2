@@ -73,8 +73,12 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
         .gte('report_date', d14).order('report_date', { ascending: true }).limit(20),
       supabaseAdmin.from('growth_events').select('event_date, kind, title, detail, expected, review_date, outcome')
         .gte('event_date', d14).order('event_date', { ascending: true }).limit(50),
+      // 2026-08-17 — 컬럼명 버그 수정. 이 테이블의 시각 컬럼은 clicked_at 인데
+      // created_at 으로 걸러서 쿼리가 조용히 실패 → count null → '클릭 0건'으로
+      // 브리핑에 실렸다 (실제 7일 클릭 773건). 존재하지 않는 컬럼은 에러가
+      // 나야지 0이 되면 안 된다 — 아래 error 체크도 함께 추가.
       supabaseAdmin.from('affiliate_clicks').select('*', { count: 'exact', head: true })
-        .gte('created_at', new Date(Date.now() - 7 * 86400000).toISOString()),
+        .gte('clicked_at', new Date(Date.now() - 7 * 86400000).toISOString()),
     ]);
 
     // 채널 성적표 — 실패해도 브리핑 본체를 막지 않는다 (best-effort).
@@ -94,7 +98,7 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
       '전주 데일리 요약(' + lastWeek.length + '일):', JSON.stringify(lastWeek),
       '운영 이벤트 로그(14일):', JSON.stringify(evs),
       '검증 기한 도래한 미검증 결정:', JSON.stringify(dueDecisions),
-      '어필리에이트 클릭(7일): ' + (clicks.count || 0),
+      '어필리에이트 클릭(7일): ' + (clicks.error ? '집계 실패(0 아님 — 원인 확인 필요)' : (clicks.count || 0)),
       // 성적표 원자료도 AI 서사의 근거로 넘긴다 (표 자체는 아래에서 결정론으로 붙는다).
       '채널 성적표(7일 vs 전 7일 — 두 도달점 유입):', JSON.stringify(scorecard || {}),
     ].join('\n');
@@ -127,7 +131,7 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
 
     const metrics = {
       daily_reports: thisWeek.length,
-      affiliate_clicks_7d: clicks.count || 0,
+      affiliate_clicks_7d: clicks.error ? null : (clicks.count || 0),
       events_14d: evs.length,
       decisions_due: dueDecisions.length,
       // 2026-08-08 — 북극성·플라이휠 수치 (대시보드 시계열용)

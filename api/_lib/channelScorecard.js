@@ -22,7 +22,7 @@ const { supabaseAdmin } = require('./supabase');
 
 /* 고정 채널 = 우리가 의도적으로 운영하는 곳. 순서 = 성적표 표시 순서:
    진성 한국인 전선 먼저. 0건이어도 줄을 남긴다 — "안 하고 있다"도 정보다. */
-const CHANNELS = ['naver', 'kakao', 'ig', 'threads', 'x', 'tiktok', 'youtube', 'newsletter'];
+const CHANNELS = ['naver', 'kakao', 'ig', 'threads', 'x', 'tiktok', 'youtube', 'newsletter', 'chatgpt'];
 
 /* 고정 목록 밖의 출처를 몇 개까지 이름으로 보여줄지 (2026-08-10).
    예전엔 목록에 없으면 전부 'other' 로 뭉갰다. socialInclick.js 가 원본을
