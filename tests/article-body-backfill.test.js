@@ -118,6 +118,35 @@ console.log('\n=== ⑥ 검수 실패가 자동 폐기로 이어지지 않는다 
   t('생성 실패는 failed 로 표시한다', /status: 'failed'/.test(src));
 }
 
+console.log('\n=== ⑦-0 검토 화면 (2026-08-18 추가) ===');
+{
+  /* 이 도구를 만들고 하루 반 동안 한 번도 안 돌린 이유가 여기 있었다.
+     적용 판단을 사람에게 맡겨 놓고 판단할 화면을 안 만들었다.
+     JSON 을 31번 열어 보라는 건 안 하겠다는 말과 같다. */
+  t('검토 라우트가 있다', /q\.review === '1'/.test(src));
+  t('HTML 로 응답한다', /Content-Type', 'text\/html/.test(src));
+  t('캐시하지 않는다 (적용 후 상태가 바뀐다)',
+    /res\.setHeader\('Cache-Control', 'no-store'\)/.test(src));
+  t('기존·보강을 나란히 보여준다', /<h3>기존<\/h3>/.test(src) && /<h3>보강<\/h3>/.test(src));
+  /* 검토 목록의 select 바로 뒤에 정렬이 붙어 있어야 한다. 넓게 잡으면
+     아래 generate_next 의 정렬이 잡혀서 이 검사가 헛돈다. */
+  t('노출 수로 정렬한다 (중요한 것부터)',
+    /select\('article_id, impressions, old_body[^)]*\)\s*\.order\('impressions', \{ ascending: false \}\)/.test(src));
+  /* 이슈가 있는 초안은 배경색이 다르다. 클래스 이름이 삼항으로 조립되므로
+     리터럴 class="warn" 을 찾으면 안 된다 — 조립부와 스타일 정의를 각각 본다. */
+  t('이슈를 눈에 띄게 표시한다',
+    /warn \? 'warn' : 'note'/.test(src) && /\.warn\{background:/.test(src)
+    && /const warn = \/⚠\/\.test/.test(src));
+  t('HTML 이스케이프를 한다 (본문에 태그가 들어 있다)',
+    /replace\(\/&\/g, '&amp;'\)/.test(src));
+
+  /* ★ 적용 버튼을 한 번에 다 누르는 경로를 만들지 않는다.
+     적용은 되돌릴 수 있어도 색인은 되돌릴 수 없다. */
+  t('일괄 적용 링크가 없다', !/apply_all|applyAll|apply=all/.test(src));
+  t('건별 적용 링크만 있다', /\?apply=1&amp;id=/.test(src));
+  t('적용된 건은 되돌리기만 보여준다', /applied[\s\S]{0,200}\?revert=1/.test(src));
+}
+
 console.log('\n=== ⑦ 안전 규칙 ===');
 {
   t('에러 응답에 원문 에러를 싣지 않는다 (감사 A-3)',

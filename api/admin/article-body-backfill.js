@@ -154,6 +154,90 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ queue: data || [] });
     }
 
+    /* ── 검토 화면 (2026-08-18 신설) ────────────────────────────────
+     *
+     * 왜 필요했나: 2026-08-16 에 이 도구를 만들고 하루 반 동안 **한 번도
+     * 안 돌렸다.** 오늘 31편을 생성하고 나서야 이유를 알았다 — 적용 판단은
+     * 사람이 하게 설계해 놓고, 정작 **판단할 화면을 안 만들었다.**
+     * JSON 을 31번 열어 보라는 건 안 하겠다는 말과 같다.
+     *
+     * 그래서 좌우 비교 한 장으로 만든다. 적용 버튼은 두지 않는다 —
+     * 적용은 되돌릴 수 있어도 색인은 되돌릴 수 없으므로, 링크를 눌러
+     * 한 건씩 의도적으로 하게 둔다. 실수로 31편이 한 번에 바뀌지 않는다. */
+    if (q.review === '1') {
+      const { data: rows } = await supabaseAdmin.from(TABLE)
+        .select('article_id, impressions, old_body, new_body, note, status, generated_at, applied_at')
+        .order('impressions', { ascending: false }).limit(200);
+      const list = rows || [];
+      const ids = list.map((r) => r.article_id);
+      const { data: arts } = ids.length
+        ? await supabaseAdmin.from('articles').select('id, title, slug').in('id', ids)
+        : { data: [] };
+      const byId = new Map((arts || []).map((a) => [a.id, a]));
+
+      const esc = (t) => String(t == null ? '' : t)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      const plain = (h) => String(h || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      const n = (x) => Number(x || 0).toLocaleString('ko-KR');
+
+      const done = list.filter((r) => r.status === 'applied').length;
+      const drafts = list.filter((r) => r.status === 'draft');
+      const okCount = drafts.filter((r) => !/⚠/.test(String(r.note || ''))).length;
+
+      const cards = list.map((r) => {
+        const a = byId.get(r.article_id) || {};
+        const oldT = plain(r.old_body), newT = plain(r.new_body);
+        const warn = /⚠/.test(String(r.note || ''));
+        const applied = r.status === 'applied';
+        return '<article class="c' + (applied ? ' done' : '') + '">'
+          + '<h2>' + esc(a.title || r.article_id) + '</h2>'
+          + '<div class="m">노출 ' + n(r.impressions) + ' · ' + esc(r.status)
+          + ' · ' + n(oldT.length) + '자 → <b>' + n(newT.length) + '자</b>'
+          + (newT.length >= 800 ? ' <span class="ok">목표 달성</span>' : '')
+          + '</div>'
+          + (r.note ? '<div class="' + (warn ? 'warn' : 'note') + '">' + esc(r.note) + '</div>' : '')
+          + '<div class="two"><div><h3>기존</h3><p>' + esc(oldT) + '</p></div>'
+          + '<div><h3>보강</h3><p>' + esc(newT) + '</p></div></div>'
+          + '<div class="act">'
+          + (applied
+              ? '<a class="rv" href="?revert=1&amp;id=' + esc(r.article_id) + '">되돌리기</a>'
+              : '<a class="ap" href="?apply=1&amp;id=' + esc(r.article_id) + '">이 건만 적용</a>'
+                + ' <a class="rj" href="?reject=1&amp;id=' + esc(r.article_id) + '">버리기</a>')
+          + (a.slug ? ' <a class="lk" target="_blank" href="/article/' + esc(a.slug) + '">기사 보기</a>' : '')
+          + '</div></article>';
+      }).join('');
+
+      const html = '<!doctype html><meta charset="utf-8">'
+        + '<meta name="viewport" content="width=device-width,initial-scale=1">'
+        + '<title>본문 보강 검토 · PAP</title><style>'
+        + 'body{font:15px/1.75 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;'
+        + 'margin:0;padding:24px;background:#f6f6f7;color:#16161a}'
+        + 'h1{font-size:20px;margin:0 0 4px}.sum{color:#666;font-size:13px;margin-bottom:20px}'
+        + '.c{background:#fff;border-radius:12px;padding:18px 20px;margin:0 0 16px;'
+        + 'box-shadow:0 1px 3px rgba(0,0,0,.07)}.c.done{opacity:.55}'
+        + '.c h2{font-size:16px;margin:0 0 6px}.m{font-size:12px;color:#666;margin-bottom:10px}'
+        + '.ok{color:#1a7f3c;font-weight:700}'
+        + '.note,.warn{font-size:12px;padding:8px 10px;border-radius:8px;margin-bottom:12px;line-height:1.6}'
+        + '.note{background:#f1f3f5;color:#495057}.warn{background:#fff3cd;color:#7a5b00}'
+        + '.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}'
+        + '@media(max-width:760px){.two{grid-template-columns:1fr}}'
+        + '.two h3{font-size:11px;color:#888;margin:0 0 6px;font-weight:600;letter-spacing:.04em}'
+        + '.two p{margin:0;font-size:13px;white-space:pre-wrap}'
+        + '.act{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap}'
+        + '.act a{font-size:12px;padding:6px 12px;border-radius:7px;text-decoration:none}'
+        + '.ap{background:#16161a;color:#fff}.rj{background:#eee;color:#555}'
+        + '.rv{background:#fdecec;color:#b03636}.lk{background:#eef3ff;color:#2c5bd6}'
+        + '</style>'
+        + '<h1>본문 보강 검토</h1>'
+        + '<div class="sum">' + n(list.length) + '건 · 적용됨 ' + n(done)
+        + ' · 초안 ' + n(drafts.length) + '(이슈 없음 ' + n(okCount) + ')<br>'
+        + '적용은 한 건씩 누른다. 되돌리기는 원본이 남아 있는 동안만 된다.</div>'
+        + cards;
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-store');
+      return res.status(200).send(html);
+    }
+
     if (q.stored === '1' && q.id) {
       const { data, error } = await supabaseAdmin.from(TABLE)
         .select('*').eq('article_id', String(q.id)).maybeSingle();
