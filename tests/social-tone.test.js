@@ -196,8 +196,10 @@ t('스레드 호출부는 인자 없이 부른다 (기존 반말 동작 유지)'
 t('polite:true 면 물음이 존댓말로 정리된다',
   papVoice.normalizeSocialAddress('패퍼들은 어떻게 보세요?', { polite: true }) === '다들 어떻게 생각하세요?',
   papVoice.normalizeSocialAddress('패퍼들은 어떻게 보세요?', { polite: true }));
-t('인자 없이 부르면 반말 갈래다',
-  papVoice.normalizeSocialAddress('너는 어떻게 봐?') === '다들 어떻게 생각해?',
+/* 2026-08-17 — 호칭이 채널별로 갈렸다. 스레드 "스치니들" / X "다들".
+   규칙 전체는 social-address.test.js 가 지킨다. */
+t('인자 없이 부르면 반말 갈래 + 스레드 호칭',
+  papVoice.normalizeSocialAddress('너는 어떻게 봐?') === '스치니들은 어떻게 생각해?',
   papVoice.normalizeSocialAddress('너는 어떻게 봐?'));
 t('호칭 통일은 어미와 무관하게 양쪽 다 걸린다',
   papVoice.normalizeSocialAddress('너는 이 룩 어떻게 봐요?', { polite: true }) === '다들 이 룩 어떻게 생각하세요?',
