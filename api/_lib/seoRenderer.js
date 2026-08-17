@@ -215,6 +215,10 @@ function srcsetAttrs(url, sizes) {
   return ' srcset="' + escAttr(srcset) + '" sizes="' + escAttr(sizes) + '"';
 }
 
+/* 2026-08-17 (GEO) — 기사/에디토리얼 엔티티 그라운딩. 태그·제목에서 확실한
+   엔티티만 골라 about/mentions 로 스키마에 싣는다 — 지식그래프 앵커. */
+const { matchEntities } = require('./geoEntities');
+
 const ORG_PUBLISHER = {
   // 2026-07-16: 홈(index.html)의 NewsMediaOrganization 과 동일 @id·동일 타입으로
   // 통일 — 같은 엔티티가 페이지마다 다른 @type 이면 지식그래프 신호가 갈라진다.
@@ -283,6 +287,12 @@ const ORG_PUBLISHER = {
 
   publishingPrinciples: SITE + '/about',
   ownershipFundingInfo: SITE + '/about',
+  /* 2026-08-17 (GEO) — 신뢰 신호 3종 추가. masthead 는 어바웃(발행인·데스크
+     명시), 정정·피드백은 어바웃의 정정 안내 절(#corrections, 같은 커밋에서
+     신설)로 건다. 없는 정책을 선언하지 않는다 — 실재 문구가 있는 것만. */
+  masthead: SITE + '/about',
+  correctionsPolicy: SITE + '/about#corrections',
+  actionableFeedbackPolicy: SITE + '/about#corrections',
   publisher: {
     '@type': 'Organization',
     name: 'ALTAKAPPA Co., Ltd.',
@@ -925,6 +935,12 @@ function renderSeoHtml(kind, record, opts) {
   // article:tag meta 어디에도 노출하지 않는다. 태그 배열 원천에서 걸러 하위 전부 정합.
   const tags = asArray(record.tags)
     .filter(t => !/^pap:/i.test(String(t || '').replace(/^#/, '').trim()));
+
+  /* 2026-08-17 (GEO) — 엔티티 매칭. 스키마 선언보다 먼저 계산해야 한다(TDZ).
+     제목은 표시 제목+한국어 원제를 함께 본다 — 번역 페이지에서도 원제의
+     브랜드·인물이 잡히도록. */
+  const { about: _entityAbout, mentions: _entityMentions } =
+    matchEntities({ title: String(titleMain || '') + ' ' + String(titleKo || ''), tags });
   const contributors = extractContributors(record);
 
   /* Gallery for editorials/articles */
@@ -1010,6 +1026,10 @@ function renderSeoHtml(kind, record, opts) {
       mainEntityOfPage: { '@type': 'WebPage', '@id': canonical },
       keywords: tags.length ? tags.join(', ') : undefined,
       articleSection: record.issue || record.category || cfg.sectionFallback,
+      /* 2026-08-17 (GEO) — 엔티티 그라운딩. 제목 매칭은 about(주제),
+         태그 매칭은 mentions(언급). 빈 배열이면 필드 자체를 내지 않는다. */
+      about: _entityAbout.length ? _entityAbout : undefined,
+      mentions: _entityMentions.length ? _entityMentions : undefined,
       inLanguage: LANG_META[lang].inLang,
       // QA #187 — explicit isAccessibleForFree so Google news/Discover
       // doesn't mistake the editorial for paywalled content.
