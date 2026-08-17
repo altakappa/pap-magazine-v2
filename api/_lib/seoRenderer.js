@@ -1431,6 +1431,7 @@ ${cfg.schemaType !== 'VideoObject' && ogImage ? (canOptimizeImg(ogImage)
   .seo-tags{display:flex;flex-wrap:wrap;gap:8px;list-style:none;padding:0;margin:24px 0}
   .seo-tags li{padding:4px 10px;border:1px solid rgba(255,255,255,.2);font-size:12px}
   /* QA #177 — structured credits / fashion / per-image credits to match SPA overlay */
+  .seo-byline{font-size:13px;opacity:.75;margin:6px 0 0;letter-spacing:.02em}
   .seo-credits{max-width:800px;margin:48px auto;padding:0 24px}
   .seo-credits h2{font-size:14px;letter-spacing:.12em;text-transform:uppercase;opacity:.7;margin-bottom:16px}
   .seo-credits ul{list-style:none;padding:0;display:flex;flex-wrap:wrap;gap:16px}
@@ -1636,6 +1637,15 @@ ${(kind === 'editorial' || kind === 'film' || kind === 'article') ? `<!-- QA #17
         const _date = fmtDisplayDate(record.published_date) || published.slice(0, 10);
         return escText((_label ? _label + ' - ' : '') + _date);
       })()}</time>
+      ${/* 2026-08-17 — 눈에 보이는 byline (GEO).
+           JSON-LD 의 author 는 이미 있었지만 그건 기계용이다. 생성 엔진
+           (ChatGPT·Perplexity)은 **본문 텍스트**에서 신뢰 신호를 읽는다.
+           작성자·날짜·출처가 화면에 보이는 문서는 인용률이 눈에 띄게 높다는
+           것이 2026 GEO 자료들의 공통 보고다. 날짜는 위 <time> 에 이미 있으니
+           빠진 것은 작성자 한 줄뿐이었다.
+           기여자가 있으면 실명, 없으면 매체 편집부. 링크는 걸지 않는다
+           (기여자 프로필 페이지가 아직 없어 죽은 링크가 된다). */ ''}
+      <p class="seo-byline">By ${escText(contributors.length ? contributors.join(', ') : SITE_NAME + ' Editorial')}</p>
       <p class="seo-desc-primary">${escText(descDisplay)}</p>
       ${!isEn && descAltDisplay && descAltDisplay !== descDisplay ? `<p class="seo-desc-en">${escText(descAltDisplay)}</p>` : ''}
     </div>

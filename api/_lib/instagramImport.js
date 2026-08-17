@@ -443,6 +443,13 @@ async function generateArticleFromPost(post, opts){
        본문 평균이 545자였다. 250~450자는 구글이 thin content 로 본다.
        길이 규격의 정본은 papVoice.ARTICLE_VOICE 다 — 여기 숫자는 그 요약이라
        바꿀 때 반드시 같이 바꾼다(어긋나면 모델이 짧은 쪽으로 회귀한다). */
+    /* 2026-08-17 — 첫 단락은 '리드'다 (GEO).
+       근거: ChatGPT·Perplexity 유입이 8/10 부터 하루 10~20건으로 붙기 시작했고
+       (고유 IP 87, 서로 다른 페이지 68 — 봇 아님), 인용된 페이지는 전부
+       고유명사·시점·장소가 있는 사실형 기사였다. 생성 엔진은 문서를 통째로
+       읽지 않고 **문단 단위로 뽑아** 인용한다. 첫 문장이 분위기 문장이면
+       그 문단은 인용 후보에서 밀린다. 그래서 첫 두 문장에 육하원칙을 박는다.
+       이건 문체를 바꾸라는 말이 아니다 — PAP 리듬은 둘째 단락부터 그대로다. */
     '  "body_ko": "(평서체 ~다. 존댓말 절대 금지. 3~4단락, 총 800~1,200자. 단락은 <br><br>로 구분. HTML 인라인 태그만 사용 가능.)",',
     '  "body_en": "3 to 4 paragraphs in English, same paragraph count as body_ko, separated by <br><br>.",',
     '  "category": "Fashion | Beauty | Culture | News | Editorial",  // 가장 적합한 것 1개',
@@ -465,6 +472,14 @@ async function generateArticleFromPost(post, opts){
     '- DO NOT just translate the caption. Expand it into a proper magazine article.',
     '- Body must read as standalone journalism. Never reference "this Instagram post".',
     '- Cite brand/designer names when visible in the images.',
+    /* 리드 규칙 (2026-08-17, GEO) */
+    '- 첫 단락의 처음 두 문장은 **리드**다. 누가·무엇을·언제·어디서를 여기서 끝낸다.',
+    '  브랜드명·인물명·제품명·날짜·장소 같은 고유명사를 원문 그대로 적는다.',
+    '  분위기 묘사, 수사적 질문, "요즘 ~하다" 같은 일반론으로 시작하지 않는다.',
+    '  읽는 사람이 첫 두 문장만 보고도 무슨 일인지 알아야 한다.',
+    '- 둘째 단락부터는 PAP 리듬 그대로다. 리드 규칙은 첫 두 문장에만 적용된다.',
+    '- 본문에 확인된 사실이 있으면 숫자·연도·컬렉션명을 그대로 쓴다. 뭉개지 않는다.',
+    '- body_en 의 첫 두 문장도 같은 규칙을 따른다 (영어 페이지가 한국어와 동률로 인용된다).',
     '',
     '==================== PAP 에디터 말투 지문 (최우선 규격) ====================',
     'PAP 인스타그램 실게시물 50개를 역설계해 도출한 실제 에디터 문체다.',
