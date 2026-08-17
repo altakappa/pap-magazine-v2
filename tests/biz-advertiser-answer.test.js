@@ -49,9 +49,10 @@ console.log('\n[3] 광고주 FAQ — 화면·스키마 정합');
   t('FAQPage JSON-LD 존재', !!m);
   if (m) {
     const faq = JSON.parse(m[1].replace(/\\u003c/g, '<'));
-    t('스키마 6문항', faq.mainEntity.length === 6);
+    t('스키마 7문항 (2026-08-18 디지털 매거진 문항 추가)', faq.mainEntity.length === 7);
     t('전 문항이 화면에도 있다', faq.mainEntity.every(q => biz.includes('<summary>' + q.name + '</summary>')));
     t('타깃 질의어가 문항에 있다', faq.mainEntity.some(q => /인스타그램 광고를 집행할 국내 매거진/.test(q.name)));
+    t('디지털 매거진 타깃 질의어가 문항에 있다', faq.mainEntity.some(q => /디지털 매거진/.test(q.name)));
   }
 }
 
@@ -74,9 +75,12 @@ console.log('\n[2.5] 도메니코 확정 문구 + 다국어 (2026-08-17 2차)');
 console.log('\n[4] 발견 표면');
 {
   t('제목에 광고·팝매거진', /<title>광고·미디어킷 \| PAP MAGAZINE 팝매거진/.test(biz));
+  t('제목에 디지털 매거진 카테고리', /<title>[^<]*디지털 매거진/.test(biz));
   t('메타 설명에 인스타그램 광고 질의어', /인스타그램 광고 매체를 찾는다면/.test(biz));
   t('llms.txt 에 en 광고 Q&A', /Which Korean fashion magazine is efficient for Instagram advertising/.test(llms));
   t('llms.txt 에 ko 광고 Q&A', /인스타그램 광고할 국내 매거진은/.test(llms));
+  t('llms.txt 에 en 디지털 매거진 Q&A', /Which Korean digital magazine is good for running ads/.test(llms));
+  t('llms.txt 에 ko 디지털 매거진 Q&A', /광고 집행하기 좋은 국내 디지털 매거진은/.test(llms));
   t('사이트맵에 /business', /['"]\/business['"]/.test(sitemap));
 }
 
