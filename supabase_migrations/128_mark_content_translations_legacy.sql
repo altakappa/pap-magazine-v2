@@ -1,0 +1,31 @@
+-- 128 — content_translations 를 '레거시·사용 안 함' 으로 표시 (2026-08-17)
+--
+-- [왜 이 마이그레이션이 필요했나]
+-- 2026-08-17, 나(Claude)는 이 표의 행수를 근거로 "번역 커버리지가 en 90% /
+-- 나머지 69~71% 이고, 영어만 234편이 비어 있다" 고 보고했다. **전부 틀렸다.**
+--
+-- 실제 구조는 이렇다:
+--   · 영어      → articles.title_en / articles.content_en (기사 생성 시 함께 만듦)
+--                  SSR /en/ 이 읽는 곳도 여기다 (seoRenderer 의 _enBody)
+--   · 그 외 언어 → seo_translations (kind, content_id, lang, title, description, body)
+--                  backfill-translations 크론이 2분마다 채운다
+--   · content_translations → **아무도 안 읽고 안 쓴다.** 운영 코드 전수 grep 결과
+--                  참조 0건. 마지막 갱신 2026-08-01.
+--
+-- 실측으로 다시 재면 seo_translations 의 kind='article' 본문 번역은
+-- de·es·fr·it·ja·ru·zh 7개 언어 전부 2,372~2,375행 = **100%** 다.
+-- (zh 4건이 50자 미만이라 처음엔 누락으로 보였으나, 원문 자체가 43~47자짜리
+--  스트릿 스타일 사진 모음이었다. 번역 누락이 아니라 원문이 짧은 것.)
+--
+-- 즉 번역은 이미 끝나 있었고, 나는 죽은 표를 보고 없는 일을 만들 뻔했다.
+-- 행이 24,144개나 남아 있어서 다음 사람도 똑같이 속는다. 그래서 표 자체에
+-- 경고를 박는다. 코드 주석은 그 파일을 여는 사람만 보지만, 표 코멘트는
+-- 스키마를 조회하는 누구에게나(사람이든 모델이든) 보인다.
+--
+-- [범위] COMMENT 만 단다. 데이터·스키마·권한을 건드리지 않는다.
+-- 표를 지우지 않는 이유: 과거 백필 이력이고, 지우는 것은 되돌릴 수 없다.
+--
+-- 실행: Supabase SQL Editor. Idempotent: 재실행 안전.
+
+COMMENT ON TABLE public.content_translations IS
+  '[사용 안 함 · 레거시] 2026-08-01 이후 갱신 없음. 운영 코드 어디서도 읽거나 쓰지 않는다(전수 grep 확인, 2026-08-17). 실제 다국어 본문·제목·설명은 seo_translations(kind, content_id, lang, title, description, body) 에 있고 backfill-translations 크론이 채운다. 영어는 별도 표가 없다 — articles.title_en / articles.content_en 이 원본이다. 이 표의 행수로 번역 커버리지를 판단하면 틀린다 (2026-08-17 에 실제로 그렇게 오판했다: 이 표 기준 en 90% / 기타 69~71% 였지만 실제 seo_translations 기준은 7개 언어 전부 100%). 남겨 두는 이유는 과거 백필 이력이라서일 뿐이므로, 지우기 전에 참조가 정말 없는지 다시 확인할 것.';
