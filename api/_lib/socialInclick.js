@@ -41,6 +41,9 @@ const ALIASES = new Map([
   // 2026-08-17 — AI 검색 유입이 리퍼러 도메인 그대로(chatgpt_com 등) 저장돼
   // 채널이 갈라졌다. 하나로 모은다 (주간 성적표에서 'chatgpt' 한 줄로).
   ['chatgpt_com', 'chatgpt'], ['chat_openai_com', 'chatgpt'], ['openai', 'chatgpt'],
+  // 2026-08-17 — 리퍼러 도메인 그대로 오는 경우 대비 (핀터레스트·플립보드)
+  ['pinterest_com', 'pinterest'], ['pin_it', 'pinterest'],
+  ['flipboard_com', 'flipboard'], ['flip_it', 'flipboard'],
 ]);
 
 /**

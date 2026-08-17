@@ -32,8 +32,24 @@ function cleanDesc(s) {
   return String(s || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300);
 }
 
+/* 플립보드 버스 (2026-08-17) — 같은 피드를 신디케이션처마다 구분 측정한다.
+ * /rss.xml?src=flipboard 처럼 등록하면 아이템 링크에 utm_source=<src>&
+ * utm_medium=rss 가 붙어 social_inclicks 에 채널로 잡힌다. guid 는 utm 없는
+ * 순수 링크 유지 — guid 가 흔들리면 피드 소비자가 같은 글을 새 글로 오인한다.
+ * src 미지정(네이버·구글 제출분)은 지금까지와 완전히 동일한 출력. */
+function srcParam(req) {
+  const v = String((req.query && req.query.src) || '').toLowerCase();
+  return /^[a-z][a-z0-9_-]{1,19}$/.test(v) ? v : '';
+}
+function withRssUtm(link, src) {
+  if (!src) return link;
+  return link + (link.includes('?') ? '&' : '?') +
+    'utm_source=' + encodeURIComponent(src) + '&utm_medium=rss';
+}
+
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
+  const src = srcParam(req);
 
   try {
     const [artsR, edsR] = await Promise.all([
@@ -90,7 +106,7 @@ module.exports = async function handler(req, res) {
     const itemXml = top.map(it =>
       '    <item>\n' +
       '      <title>' + xmlEscape(it.title) + '</title>\n' +
-      '      <link>' + xmlEscape(it.link) + '</link>\n' +
+      '      <link>' + xmlEscape(withRssUtm(it.link, src)) + '</link>\n' +
       '      <guid isPermaLink="true">' + xmlEscape(it.link) + '</guid>\n' +
       '      <pubDate>' + rfc822(it.date) + '</pubDate>\n' +
       '      <category>' + xmlEscape(it.category) + '</category>\n' +
