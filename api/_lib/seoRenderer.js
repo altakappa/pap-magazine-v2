@@ -1090,6 +1090,25 @@ function renderSeoHtml(kind, record, opts) {
       '</div></section>'
     : '';
 
+  /* 2026-08-18 — SHOP THE STORY 를 SSR 에도. SPA 에는 이미 있었는데
+   * (pap-content-editorial.js, 2026-08-10) 글로벌 유입(핀터레스트·AI검색·
+   * 구글)이 처음 밟는 SSR 페이지에는 작은 '구매' 칩뿐이었다. 이축 전제
+   * (2026-08-17 도메니코): 어필리에이트·구독 = 글로벌 트래픽 게임 —
+   * 글로벌 방문자의 첫 페이지에 수익 표면이 있어야 한다.
+   * /go 는 핸들 형태만 (2026-08-10 깨진 URL 사고의 같은 가드). */
+  const shopBrands = kind === 'editorial'
+    ? fashionBrands.map(h => h.replace(/^@/, '')).filter(b => /^[a-z0-9._]{2,30}$/.test(b.toLowerCase()))
+    : [];
+  const shopHtml = shopBrands.length
+    ? '<section class="seo-shop" style="margin:36px 0 0;padding:24px;border:1px solid rgba(255,255,255,.16)">' +
+      '<h2 style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin:0 0 12px;font-weight:700">Shop the Story</h2>' +
+      '<div>' + shopBrands.slice(0, 12).map(b =>
+        `<a href="/go/${encodeURIComponent(b.toLowerCase())}" target="_blank" rel="sponsored nofollow noopener" style="display:inline-block;margin:0 8px 8px 0;padding:9px 16px;border:1px solid rgba(255,255,255,.25);font-size:12px;color:#fff;text-decoration:none;letter-spacing:.04em">${escText(b)} <span style="opacity:.55">${lang === 'ko' ? '구매 →' : 'Shop →'}</span></a>`
+      ).join('') + '</div>' +
+      `<div style="font-size:10.5px;color:#666;margin-top:8px">${lang === 'ko' ? '링크를 통해 구매 시 PAP에 수수료가 지급될 수 있습니다.' : 'PAP may earn a commission on purchases made through these links.'}</div>` +
+      '</section>'
+    : '';
+
   /* 2026-07-28 — 브랜드 페이지 내부 링크 (Ahrefs orphan 1,359건 해소).
    * 위 칩은 인스타그램(외부)·구매(sponsored nofollow)로만 나가서 우리 /brand/*
    * 페이지에는 내부 링크가 0건이었다. 그래서 사이트맵에만 있고 크롤 우선순위가
@@ -1659,6 +1678,7 @@ ${(kind === 'editorial' || kind === 'film' || kind === 'article') ? `<!-- QA #17
     ${kind === 'editorial' && UUID_RE.test(String(record.id || '')) ? '<div class="pap-engage" id="papEngageMount"></div>' : ''}
     ${kind !== 'editorial' ? creditsHtml : ''}
     ${kind === 'editorial' ? fashionHtml : ''}
+    ${kind === 'editorial' ? shopHtml : ''}
     ${downloadsHtml}
     ${kind !== 'editorial' ? fashionHtml : ''}
     ${brandLinksHtml}
