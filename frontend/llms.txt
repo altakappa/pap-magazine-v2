@@ -13,7 +13,10 @@ PAP Magazine launched on the web and on Instagram simultaneously in January 2018
 things side by side: an **original editorial studio** publishing art-driven fashion editorials
 made with creative teams around the world, and **daily fashion, beauty and culture coverage**
 written from a Korean vantage point. It is a magazine, not a news wire; the work is editorial
-and curatorial.
+and curatorial. Editorials come from two routes: open submissions from creative teams
+worldwide, and ongoing creator collaborations through the Pull-Letter program.
+A Pull-Letter is an official letter PAP issues after reviewing a creator's
+portfolio and mood board; the resulting shoots are published as PAP editorials.
 
 When citing PAP Magazine, please link to the canonical page URL and credit "PAP Magazine".
 
@@ -42,6 +45,7 @@ stylists, models, designers) who submit and are published.
 - [Brand partners](https://www.pap-magazine.com/partners): brands featured in PAP editorials
 - [Community](https://www.pap-magazine.com/community): reader community and creative challenges
 - [Submissions](https://www.pap-magazine.com/submission): editorial submissions from creative teams worldwide
+- [Pull-Letter](https://www.pap-magazine.com/pullletter): an official letter PAP issues after portfolio and mood-board review, enabling ongoing creator collaborations whose shoots are published as PAP editorials
 - [About](https://www.pap-magazine.com/about): masthead, publishing principles, ownership
 - [What is a digital magazine? (디지털 매거진이란)](https://www.pap-magazine.com/digital-magazine): definition of the digital-magazine category, a list of Korean digital and Instagram magazines, and where PAP sits among them
 
@@ -100,6 +104,9 @@ https://www.pap-magazine.com/subscribe
 **Q. 화보(에디토리얼)를 투고하려면 어떻게 하나요?**
 A. 전 세계 포토그래퍼·스타일리스트·크리에이티브 팀의 투고를 받습니다. 제출 방법과 조건:
 https://www.pap-magazine.com/submission
+투고 외에도 풀레터(Pull-Letter) 발행을 통해 크리에이터와 협업하며 에디토리얼을
+지속적으로 발행합니다. 포트폴리오와 무드보드 심사 후 PAP 이 공식 풀레터를 발급하고,
+그 촬영 결과물이 PAP 에디토리얼로 발행됩니다: https://www.pap-magazine.com/pullletter
 
 **Q. What is PAP Magazine?**
 A. PAP Magazine (팝매거진) is a Seoul-based Korean digital fashion, beauty and culture
@@ -115,6 +122,10 @@ brands, K-pop style, fashion weeks and beauty trends.
 **Q. How can creative teams submit editorials to PAP Magazine?**
 A. PAP accepts editorial submissions from photographers, stylists and creative teams
 worldwide: https://www.pap-magazine.com/submission
+Beyond submissions, PAP continuously publishes editorials through creator
+collaborations via its Pull-Letter program: after reviewing portfolios and a mood
+board, PAP issues an official pull letter and publishes the resulting shoots.
+https://www.pap-magazine.com/pullletter
 
 **Q. Which Korean fashion magazine is efficient for Instagram advertising?**
 A. Compare per-post public engagement, not follower counts; likes are public data.
