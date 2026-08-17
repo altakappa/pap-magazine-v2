@@ -186,12 +186,12 @@ module.exports = async function handler(req, res) {
     try {
       const { data: trs } = await supabaseAdmin
         .from('seo_translations')
-        .select('lang, title, description, body')
+        .select('lang, title, description, body, faq')
         .eq('kind', 'article')
         .eq('content_id', data.id);
       for (const t of trs || []) {
         if (!availableLangs.includes(t.lang)) availableLangs.push(t.lang);
-        if (t.lang === lang) translation = { title: t.title, description: t.description, body: t.body };
+        if (t.lang === lang) translation = { title: t.title, description: t.description, body: t.body, faq: t.faq };
       }
     } catch (_) { /* 테이블 미생성 등 — ko/en 만으로 렌더 */ }
 

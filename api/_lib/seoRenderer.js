@@ -568,6 +568,13 @@ const LANG_META = {
 // opts.lang: 'ko'(기본)|'en'|'it'|'fr'|'es'
 // opts.translation: {title, description, body} — it/fr/es/ja 전용 (body 는 기사 SSR 본문 번역)
 // opts.availableLangs: hreflang 으로 선언할 언어 목록 (기본 ['ko','en'])
+/* 2026-08-17 — SSR FAQ 블록 제목 (9개 언어). 번역 FAQ 다국어 렌더와 세트. */
+const FAQ_HEADING = {
+  ko: '자주 묻는 질문', en: 'FAQ', ja: 'よくある質問', fr: 'FAQ',
+  es: 'Preguntas frecuentes', it: 'Domande frequenti', de: 'Häufige Fragen',
+  zh: '常见问题', ru: 'Частые вопросы',
+};
+
 function renderSeoHtml(kind, record, opts) {
   const cfg = KIND[kind] || KIND.editorial;
   const slug = record.slug || record.custom_url || record.id;
@@ -1016,11 +1023,14 @@ function renderSeoHtml(kind, record, opts) {
     };
   }
 
-  /* AEO FAQ (2026-07-16, 083) — 기사 생성 파이프라인이 만든 {q,a} 배열.
-     한국어 콘텐츠이므로 ko 페이지에서만 노출 (언어 신호 혼선 방지). */
+  /* AEO FAQ (2026-07-16, 083 · 2026-08-17 다국어 확장) — 기사 생성 파이프라인이
+     만든 {q,a} 배열. 기존엔 ko 전용이었는데, Ahrefs 실측으로 AI Overview 사정권
+     페이지(상위 20위 + AIO 존재)가 대부분 ja/fr/en 이라는 게 드러났다 — 정작
+     인용될 페이지에 답변형 블록이 없던 것. 번역 FAQ(seo_translations.faq)가
+     있으면 그 언어로 렌더한다. 원문(ko)을 다른 언어 페이지에 섞지 않으므로
+     언어 신호 혼선 없음 — 번역이 없으면 종전처럼 렌더하지 않는다. */
   const faqItems = (() => {
-    if (lang !== 'ko') return [];
-    let f = record.faq;
+    let f = (lang === 'ko') ? record.faq : ((tr && tr.faq) || null);
     if (typeof f === 'string') { try { f = JSON.parse(f); } catch (_) { f = null; } }
     return Array.isArray(f)
       ? f.filter(x => x && typeof x.q === 'string' && typeof x.a === 'string' && x.q.trim() && x.a.trim()).slice(0, 5)
@@ -1731,7 +1741,7 @@ ${(kind === 'editorial' || kind === 'film' || kind === 'article') ? `<!-- QA #17
 
     ${faqItems.length ? `
     <section class="seo-faq">
-      <h2>자주 묻는 질문</h2>
+      <h2>${escText(FAQ_HEADING[lang] || 'FAQ')}</h2>
       ${faqItems.map(f => `<details open>
         <summary>${escText(f.q)}</summary>
         <p>${escText(f.a)}</p>
