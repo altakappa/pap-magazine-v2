@@ -1322,7 +1322,30 @@ window._papDownloadLogoZip = window._papDownloadLogoZip || async function(btn){
 // 구매 링크 행으로 렌더. 링크는 /go/<핸들> 리다이렉터를 거쳐 클릭이
 // affiliate_clicks 에 기록되고, 지오 라우팅(KR 무신사/글로벌 파페치 폴백,
 // 브랜드별 어필리에이트 URL 우선)으로 착지한다.
-function _papRenderShopRow(fashion){
+// 2단계 상품매칭 (2026-08-17) — 칩에 표기하고 ?item= 으로 넘겨도 되는 품목
+// 화이트리스트. **URL 매핑의 단일 출처는 서버(api/_lib/affiliateUrl.js
+// ITEM_CATEGORY_PATHS)** 이고, 이 목록은 그 부분집합(표시 게이트)만 담당한다.
+// 서버 맵에 없는 단어는 여기 추가하지 말 것 — ?item= 이 무시돼 designer
+// 루트로 가긴 하지만 칩 표기가 거짓말이 된다.
+var _PAP_SHOP_ITEMS={dress:1,gown:1,top:1,tops:1,shirt:1,blouse:1,tshirt:1,pants:1,trousers:1,jeans:1,denim:1,skirt:1,shorts:1,jacket:1,blazer:1,coat:1,sweater:1,knitwear:1,cardigan:1,knit:1,bodysuit:1,corset:1,suit:1,swimsuit:1,swimwear:1,shoes:1,boots:1,heels:1,sneakers:1,sandals:1,pumps:1,loafers:1,bag:1,bags:1,handbag:1,clutch:1,earrings:1,necklace:1,ring:1,rings:1,bracelet:1,jewels:1,jewelry:1,hat:1,cap:1,belt:1,gloves:1,glasses:1,sunglasses:1,scarf:1,headpiece:1,tights:1,socks:1};
+// imageCredits("@ralphlauren Top, ...") → {'#핸들소문자': '품목'}. '#' 키 접두는
+// 위 _seen 과 같은 계열의 Object.prototype 이름 가드. 첫 등장 품목을 쓴다.
+function _papShopItems(imageCredits){
+  var out={};
+  if(!imageCredits || typeof imageCredits!=='object') return out;
+  Object.keys(imageCredits).forEach(function(k){
+    String(imageCredits[k]||'').split(',').forEach(function(part){
+      var m=part.match(/@([A-Za-z0-9._]+)\s+([A-Za-z-]{2,20})\s*$/);
+      if(!m) return;
+      var item=m[2].toLowerCase().replace(/[^a-z]/g,'');
+      if(!Object.prototype.hasOwnProperty.call(_PAP_SHOP_ITEMS,item)) return;
+      var key='#'+m[1].toLowerCase();
+      if(!out[key]) out[key]=item;
+    });
+  });
+  return out;
+}
+function _papRenderShopRow(fashion, imageCredits){
   var box=document.getElementById('edShopRow');
   if(!box) return;
   // 2026-08-05 — 중복 브랜드 제거(도메니코 지적: 라이브에서 holzweiler 칩 2회).
@@ -1347,10 +1370,15 @@ function _papRenderShopRow(fashion){
      아니면 SHOP THE STORY 에서 제외한다. */
   brands=brands.filter(function(c){return /^[a-z0-9._]{2,30}$/.test(c.toLowerCase());});
   if(!brands.length){ box.innerHTML=''; box.style.display='none'; return; }
+  // 2단계 상품매칭 — 크레딧에 품목이 있으면 칩에 표기하고 /go 에 ?item= 전달
+  var _items=_papShopItems(imageCredits);
   var chips=brands.slice(0,12).map(function(clean){
-    return '<a href="/go/'+encodeURIComponent(clean.toLowerCase())+'" target="_blank" rel="sponsored nofollow noopener" '
+    var item=_items['#'+clean.toLowerCase()]||'';
+    var q=item?'?item='+encodeURIComponent(item):'';
+    var tail=item?(_edL9(item+' 구매 →','Shop '+item+' →')):(_edL9('구매 →','Shop →'));
+    return '<a href="/go/'+encodeURIComponent(clean.toLowerCase())+q+'" target="_blank" rel="sponsored nofollow noopener" '
       +'style="display:inline-block;margin:0 8px 8px 0;padding:9px 16px;border:1px solid rgba(255,255,255,.25);font-size:12px;color:#fff;text-decoration:none;letter-spacing:.04em">'
-      +clean.replace(/</g,'&lt;')+' <span style="opacity:.55">'+(_edL9('구매 →','Shop →'))+'</span></a>';
+      +clean.replace(/</g,'&lt;')+' <span style="opacity:.55">'+tail+'</span></a>';
   }).join('');
   box.innerHTML=
     '<div style="margin:36px 0 0;padding:24px;border:1px solid rgba(255,255,255,.16)">'
@@ -1691,7 +1719,7 @@ function _openEditorialInner(title,thumb){
   // 참여 증폭 2.0 — 원본 IG 게시물 임베드 + 보내기 (det.ig 없으면 숨김).
   if(typeof _papRenderEdIg==='function'){try{_papRenderEdIg(det.ig,title);}catch(_){}}
   // 수익화 2.0 — SHOP THE STORY (착장 브랜드 구매 링크).
-  if(typeof _papRenderShopRow==='function'){try{_papRenderShopRow(det.fashion);}catch(_){}}
+  if(typeof _papRenderShopRow==='function'){try{_papRenderShopRow(det.fashion, det.imageCredits);}catch(_){}}
 
   // Editorial description
   var descEl=document.getElementById('edDetailDesc');
@@ -1980,7 +2008,7 @@ function _openEditorialInner_noPush(title,thumb){
   // 참여 증폭 2.0 — 원본 IG 게시물 임베드 + 보내기 (det.ig 없으면 숨김).
   if(typeof _papRenderEdIg==='function'){try{_papRenderEdIg(det.ig,title);}catch(_){}}
   // 수익화 2.0 — SHOP THE STORY (착장 브랜드 구매 링크).
-  if(typeof _papRenderShopRow==='function'){try{_papRenderShopRow(det.fashion);}catch(_){}}
+  if(typeof _papRenderShopRow==='function'){try{_papRenderShopRow(det.fashion, det.imageCredits);}catch(_){}}
   var descEl=document.getElementById('edDetailDesc');
   if(descEl){var lang=localStorage.getItem('pap-lang')||'ko';var descText=typeof det.desc==='object'?(det.desc[lang]||det.desc.en||det.desc.ko||''):det.desc;descEl.innerHTML=descText;}
   var gal=document.getElementById('edDetailGallery');

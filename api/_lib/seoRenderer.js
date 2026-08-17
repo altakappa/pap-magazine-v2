@@ -11,6 +11,10 @@
 
 const SITE = 'https://www.pap-magazine.com';
 
+/* 2단계 상품매칭 — 품목 매핑의 단일 출처는 affiliateUrl.js 다. 여기서는
+   "매핑 가능한 품목인가"의 판정에만 쓴다 (칩 표기·?item= 전달 게이트). */
+const { ITEM_CATEGORY_PATHS, normalizeItemWord } = require('./affiliateUrl');
+
 /* 카카오 공유 JavaScript 키 (2026-08-07 신설).
    미설정이면 버튼 자체를 안 그린다 — 눌러도 안 되는 버튼을 보여주는 게
    버튼이 없는 것보다 나쁘다. 키는 공개용(JavaScript 키)이라 HTML 에 나가도
@@ -472,6 +476,32 @@ function extractFashionBrands(record) {
     if (seen.has(key)) return;
     seen.add(key);
     out.push(handle);
+  });
+  return out;
+}
+
+/* 2단계 상품매칭 (2026-08-17) — imageCredits("@ralphlauren Top, ...")에서
+ * 브랜드 핸들→품목 단어를 뽑는다. 품목은 affiliateUrl.js 의
+ * ITEM_CATEGORY_PATHS 에 있는 것만 인정 (매핑 불가 단어를 칩에 노출하거나
+ * ?item= 으로 흘리지 않기 위해 — 노이즈: "other", "total look", 사람 이름 등).
+ * hasOwnProperty: 'constructor' 같은 단어가 프로토타입 함수를 매핑으로
+ * 오인하지 않게. 같은 브랜드에 품목이 여럿이면 첫 등장을 쓴다. */
+function extractBrandItems(record) {
+  const f = record.fashion;
+  let obj;
+  try { obj = typeof f === 'string' ? JSON.parse(f) : f; } catch { return {}; }
+  const credits = obj && obj.imageCredits && typeof obj.imageCredits === 'object' && !Array.isArray(obj.imageCredits)
+    ? obj.imageCredits : {};
+  const out = Object.create(null);
+  Object.keys(credits).forEach((k) => {
+    String(credits[k] || '').split(',').forEach((part) => {
+      const m = part.match(/@([A-Za-z0-9._]+)\s+([A-Za-z-]{2,20})\s*$/);
+      if (!m) return;
+      const item = normalizeItemWord(m[2]);
+      if (!Object.prototype.hasOwnProperty.call(ITEM_CATEGORY_PATHS, item)) return;
+      const h = m[1].toLowerCase();
+      if (!out[h]) out[h] = item;
+    });
   });
   return out;
 }
@@ -1099,12 +1129,20 @@ function renderSeoHtml(kind, record, opts) {
   const shopBrands = kind === 'editorial'
     ? fashionBrands.map(h => h.replace(/^@/, '')).filter(b => /^[a-z0-9._]{2,30}$/.test(b.toLowerCase()))
     : [];
+  /* 2단계 상품매칭 (2026-08-17) — 크레딧에 품목이 있으면 칩에 표기하고
+   * /go 에 ?item= 으로 넘긴다. URL 매핑은 서버(affiliateUrl.js) 한 곳에서만. */
+  const shopItems = kind === 'editorial' ? extractBrandItems(record) : {};
   const shopHtml = shopBrands.length
     ? '<section class="seo-shop" style="margin:36px 0 0;padding:24px;border:1px solid rgba(255,255,255,.16)">' +
       '<h2 style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin:0 0 12px;font-weight:700">Shop the Story</h2>' +
-      '<div>' + shopBrands.slice(0, 12).map(b =>
-        `<a href="/go/${encodeURIComponent(b.toLowerCase())}" target="_blank" rel="sponsored nofollow noopener" style="display:inline-block;margin:0 8px 8px 0;padding:9px 16px;border:1px solid rgba(255,255,255,.25);font-size:12px;color:#fff;text-decoration:none;letter-spacing:.04em">${escText(b)} <span style="opacity:.55">${lang === 'ko' ? '구매 →' : 'Shop →'}</span></a>`
-      ).join('') + '</div>' +
+      '<div>' + shopBrands.slice(0, 12).map(b => {
+        const item = shopItems[b.toLowerCase()] || '';
+        const q = item ? '?item=' + encodeURIComponent(item) : '';
+        const tail = item
+          ? (lang === 'ko' ? `${escText(item)} 구매 →` : `Shop ${escText(item)} →`)
+          : (lang === 'ko' ? '구매 →' : 'Shop →');
+        return `<a href="/go/${encodeURIComponent(b.toLowerCase())}${q}" target="_blank" rel="sponsored nofollow noopener" style="display:inline-block;margin:0 8px 8px 0;padding:9px 16px;border:1px solid rgba(255,255,255,.25);font-size:12px;color:#fff;text-decoration:none;letter-spacing:.04em">${escText(b)} <span style="opacity:.55">${tail}</span></a>`;
+      }).join('') + '</div>' +
       `<div style="font-size:10.5px;color:#666;margin-top:8px">${lang === 'ko' ? '링크를 통해 구매 시 PAP에 수수료가 지급될 수 있습니다.' : 'PAP may earn a commission on purchases made through these links.'}</div>` +
       '</section>'
     : '';

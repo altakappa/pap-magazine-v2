@@ -198,8 +198,99 @@ function pickAffiliateUrl(brand, region) {
   return null;
 }
 
+
+/**
+ * ── 2단계 상품매칭 (2026-08-17, 도메니코 승인: "지금 2단계, 최종 4단계") ──
+ *
+ * 화보 크레딧(fashion.imageCredits)에는 브랜드+품목이 이미 적혀 있다
+ * ("@ralphlauren Top"). 마이테레사 designer 페이지는 카테고리 경로를
+ * 지원한다 (2026-08-17 실측: /women/designers/acne-studios/clothing/pants
+ * 등 — clothing 하위 dresses·jackets·jeans·knitwear·pants·shorts·skirts·tops,
+ * 최상위 shoes·bags·accessories). 그래서 /go/<brand>?item=<품목> 이 오면
+ * 딥링크 murl 의 designer 경로 뒤에 카테고리를 붙여 "그 브랜드의 그 품목"
+ * 목록으로 착지시킨다.
+ *
+ * 원칙:
+ *   · 매핑은 여기 한 곳에만 둔다. SSR·SPA 칩은 품목 단어를 그대로 넘길 뿐,
+ *     URL 을 만들지 않는다. (표시용 화이트리스트는 SPA 에 사본이 있다 —
+ *     frontend/pap-content-editorial.js _PAP_SHOP_ITEMS, 이 맵의 부분집합 유지)
+ *   · 모르는 품목·마이테레사가 아닌 링크 → 원본 그대로 (designer 루트 착지,
+ *     기존 1단계 동작). 실패 모드가 안전한 쪽.
+ *   · 미검증 세부 경로는 만들지 않는다 — coat 처럼 실측 안 된 하위 경로는
+ *     상위(clothing)로만 보낸다. 브랜드가 그 카테고리 상품이 없으면 마이테레사
+ *     빈 목록/404 가 뜰 수 있는데, 핵심 품목(드레스·신발·팬츠 등)은 디자이너
+ *     브랜드 대부분이 보유해 위험을 감수한다.
+ *   · 카테고리를 붙일 때 라쿠텐 u1(서브ID)에 "-<품목>" 을 덧붙인다 —
+ *     라쿠텐 대시보드에서 품목별 전환 귀속이 공짜로 생긴다.
+ */
+const ITEM_CATEGORY_PATHS = {
+  // clothing 하위 — 2026-08-17 실측 검증된 경로만
+  dress: 'clothing/dresses', dresses: 'clothing/dresses', gown: 'clothing/dresses',
+  top: 'clothing/tops', tops: 'clothing/tops', shirt: 'clothing/tops', blouse: 'clothing/tops', tshirt: 'clothing/tops',
+  pants: 'clothing/pants', trousers: 'clothing/pants',
+  jeans: 'clothing/jeans', denim: 'clothing/jeans',
+  skirt: 'clothing/skirts', skirts: 'clothing/skirts',
+  shorts: 'clothing/shorts',
+  jacket: 'clothing/jackets', jackets: 'clothing/jackets', blazer: 'clothing/jackets',
+  sweater: 'clothing/knitwear', knitwear: 'clothing/knitwear', cardigan: 'clothing/knitwear', knit: 'clothing/knitwear',
+  // 하위 경로 미검증 → 상위로만
+  coat: 'clothing', bodysuit: 'clothing', corset: 'clothing', suit: 'clothing',
+  swimsuit: 'clothing', swimwear: 'clothing', lingerie: 'clothing',
+  // 최상위 카테고리
+  shoes: 'shoes', boots: 'shoes', heels: 'shoes', sneakers: 'shoes', sandals: 'shoes', pumps: 'shoes', loafers: 'shoes',
+  bag: 'bags', bags: 'bags', handbag: 'bags', clutch: 'bags',
+  earrings: 'accessories', necklace: 'accessories', ring: 'accessories', rings: 'accessories',
+  bracelet: 'accessories', jewels: 'accessories', jewelry: 'accessories', jewellery: 'accessories',
+  hat: 'accessories', cap: 'accessories', belt: 'accessories', gloves: 'accessories',
+  glasses: 'accessories', sunglasses: 'accessories', scarf: 'accessories', headpiece: 'accessories',
+  tights: 'accessories', socks: 'accessories',
+};
+
+/** 소문자화 + 영문만. 'Top ' / 'T-Shirt' → 'top' / 'tshirt' */
+function normalizeItemWord(s) {
+  return String(s || '').toLowerCase().replace(/[^a-z]/g, '');
+}
+
+/**
+ * 마이테레사 딥링크의 murl(designer 페이지)에 품목 카테고리 경로를 붙인다.
+ * 모르는 품목, 마이테레사가 아닌 링크, 이미 카테고리가 붙은 murl 은 그대로.
+ *
+ * hasOwnProperty 를 쓰는 이유: item='constructor' 같은 입력이 프로토타입
+ * 체인의 함수를 "매핑"으로 오인하지 않게 (SPA 쪽 '#' 키 가드와 같은 계열).
+ *
+ * @param {string} url  pickAffiliateUrl/localizeAffiliateUrl 을 거친 최종 링크
+ * @param {string} item 품목 단어 (req.query.item — 신뢰하지 않는 입력)
+ * @returns {string}
+ */
+function applyItemCategory(url, item) {
+  const raw = String(url || '');
+  const key = normalizeItemWord(item);
+  if (!raw || !key || !Object.prototype.hasOwnProperty.call(ITEM_CATEGORY_PATHS, key)) return raw;
+  if (!/mytheresa/i.test(raw)) return raw;
+  const path = ITEM_CATEGORY_PATHS[key];
+
+  // 인코딩된 murl: ...murl=...%2Fdesigners%2F<slug> 가 &/끝으로 닫힐 때만
+  // (이미 %2Fclothing 등이 붙어 있으면 lookahead 가 실패해 손대지 않는다)
+  let out = raw.replace(
+    /(murl=[^&]*%2Fdesigners%2F[a-z0-9-]+)(?=&|$)/i,
+    '$1%2F' + path.replace('/', '%2F')
+  );
+  // 손으로 넣은 비인코딩 링크 대비
+  if (out === raw) {
+    out = raw.replace(/(\/designers\/[a-z0-9-]+)(?=[?&#]|$)/i, '$1/' + path);
+  }
+  // 카테고리가 실제로 붙었을 때만 u1 에 품목 서브ID 를 덧붙인다
+  if (out !== raw) {
+    out = out.replace(/([?&]u1=)([A-Za-z0-9._-]+)/, '$1$2-' + key);
+  }
+  return out;
+}
+
 module.exports = {
   pickAffiliateUrl,
+  applyItemCategory,
+  normalizeItemWord,
+  ITEM_CATEGORY_PATHS,
   isNonCommissionable,
   localizeAffiliateUrl,
   regionFromCountry,

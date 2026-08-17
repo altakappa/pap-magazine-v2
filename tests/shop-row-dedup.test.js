@@ -24,13 +24,16 @@ function t(n, c, d){ if(c){pass++;console.log('  ✓',n);} else {fail++;console.
 
 // 실제 배포되는 소스에서 함수를 그대로 꺼내 돌린다 (문자열 검사 아님).
 const src = R('frontend/pap-content-editorial.js');
-const m = src.match(/\nfunction _papRenderShopRow\(fashion\)\{[\s\S]*?\n\}/);
+const m = src.match(/\nfunction _papRenderShopRow\(fashion, imageCredits\)\{[\s\S]*?\n\}/);
 if (!m) { console.log('  ✗ _papRenderShopRow 를 소스에서 찾지 못함'); process.exit(1); }
 
 function render(fashion){
   const box = { innerHTML: '', style: { display: '' } };
   const doc = { getElementById: id => (id === 'edShopRow' ? box : null) };
-  const fn = new Function('document', '_edL9', m[0] + '\nreturn _papRenderShopRow;')(doc, (ko, en) => en);
+  // 2단계 상품매칭(2026-08-17)으로 시그니처가 (fashion, imageCredits) 가 됐다.
+  // 이 테스트의 관심사는 중복 제거뿐이라 _papShopItems 는 빈 맵 스텁으로 준다
+  // (품목 로직 자체는 tests/affiliate-item-category.test.js 가 검증).
+  const fn = new Function('document', '_edL9', '_papShopItems', m[0] + '\nreturn _papRenderShopRow;')(doc, (ko, en) => en, function(){ return {}; });
   fn(fashion);
   return box;
 }

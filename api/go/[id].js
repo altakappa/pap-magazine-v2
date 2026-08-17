@@ -35,7 +35,7 @@ const { supabaseAdmin } = require('../_lib/supabase');
 const { handleCors } = require('../_lib/cors');
 const { rateLimit, RATE_LIMITS } = require('../_lib/rateLimit');
 const { extractClientIp, hashIp, detectDeviceType, sanitizeReferrer } = require('../_lib/clickGuard');
-const { pickAffiliateUrl, regionFromCountry } = require('../_lib/affiliateUrl');
+const { pickAffiliateUrl, applyItemCategory, regionFromCountry } = require('../_lib/affiliateUrl');
 
 const HOME_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.pap-magazine.com';
 const DEDUP_WINDOW_MS = 24 * 60 * 60 * 1000; // 24h
@@ -211,6 +211,14 @@ module.exports = async function handler(req, res) {
   if (brand && brand.status === 'active') {
     const url = pickAffiliateUrl(brand, region);
     if (url) { dest = url; destType = 'affiliate'; }
+  }
+
+  // 2단계 상품매칭 (2026-08-17) — SHOP 칩이 ?item=<품목> 을 넘기면 마이테레사
+  // designer 페이지가 아니라 그 브랜드의 해당 카테고리 목록으로 착지시킨다.
+  // 매핑·검증은 전부 applyItemCategory 안 (모르는 품목이면 원본 그대로 —
+  // 기존 1단계 동작과 동일해서 이 줄은 절대 리다이렉트를 깨지 않는다).
+  if (dest && destType === 'affiliate' && req.query.item) {
+    dest = applyItemCategory(dest, String(req.query.item));
   }
 
   if (!dest) {
