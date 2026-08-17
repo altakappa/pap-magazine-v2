@@ -89,8 +89,12 @@ console.log('\n[3] 링크 답글 배선');
 
 console.log('\n[4] 하루 상한 — 두 경로 공용');
 {
-  t('상한 기본값 3', AP.DAILY_CAP === 3, String(AP.DAILY_CAP));
-  t('env 로 바꿀 수 있다', /process\.env\.THREADS_DAILY_CAP \|\| '3'/.test(ap));
+  /* 2026-08-17 — 3 -> 7. 실측이 "게시량을 줄이면 유입이 그만큼 준다" 였다
+     (게시당 유입 4~7 로 일정). 중간값으로 2주 재판정한다. */
+  t('상한 기본값 7', AP.DAILY_CAP === 7, String(AP.DAILY_CAP));
+  t('env 로 바꿀 수 있다', /process\.env\.THREADS_DAILY_CAP \|\| '7'/.test(ap));
+  t('상한 근거가 코드에 남아 있다 (되돌릴 때 판단 근거가 된다)',
+    /게시 1건당 유입은 4~7 로 거의 일정하다/.test(ap));
   t('상한 판정이 공용 함수(threadsAutopost)에 있다 — 크론에만 두면 실시간 경로가 샌다',
     /async function publishedTodayCount/.test(ap) && /postArticleToThreads/.test(ap));
   t('published 만 센다', /\.eq\('status', 'published'\)\.gte\('posted_at'/.test(ap));
