@@ -182,7 +182,13 @@ t('실패 기록은 재시도를 허용한다', /doneIdsFrom\(/.test(src)
 // 크론이 같은 영상을 2시간마다 다시 올릴 뻔했다. 기록 실패는 반드시 시끄러워야 한다.
 t('DB 기록 실패를 삼키지 않는다', /const rec = await finishClaim\(/.test(src) && /if \(!rec\.ok\)/.test(src));
 t('기록 실패 시 500 으로 떨어진다', /error: 'record failed'/.test(src));
-t('기록 실패 문구가 중복 업로드 위험을 말한다', /반복 업로드될 수 있음/.test(src));
+/* 2026-08-17 — 문구가 바뀌었다. 예전엔 "반복 업로드될 수 있음" 이라고 경고만
+   했는데, 이제는 구제 기록으로 **실제로 막는다**. 지켜야 할 것은 특정 문구가
+   아니라 '기록 실패를 크게 알리고, 영상 정보를 잃지 않는다' 이다. */
+t('기록 실패를 cronNote 로 크게 알린다',
+  /const msg = 'DB 기록 실패[\s\S]{0,400}note\(res, msg\)/.test(src));
+t('기록 실패 시 영상 정보를 구제해 재업로드를 막는다',
+  /const salvage = await finishClaim/.test(src) && /재업로드는 막힘/.test(src));
 t('마이그레이션 108 이 부분 인덱스를 전체 유니크로 바꾼다', (() => {
   const m = fs.readFileSync(path.join(ROOT, 'supabase_migrations', '108_youtube_posts_drive_file_full_unique.sql'), 'utf8');
   return /drop index if exists youtube_posts_drive_file_id_key/.test(m)
@@ -202,6 +208,48 @@ t("하위 '원본/' 폴더는 안 본다 (압축 전 카메라 원본)",
   /mimeType !== 'application\/vnd\.google-apps\.folder'/.test(fs.readFileSync(path.join(ROOT, 'api', '_lib', 'driveVideos.js'), 'utf8')));
 t('YouTube 스코프에 drive.readonly 가 추가됨',
   /drive\.readonly/.test(fs.readFileSync(path.join(ROOT, 'api', '_lib', 'youtube.js'), 'utf8')));
+
+
+/* ─── ⑧ 같은 기사를 두 번 올리지 않는다 (2026-08-17 사고) ─────────────────
+ *
+ * 사건: 크론이 같은 쇼츠를 반복해서 채널에 올렸다. 원인은 중복 판단 기준이
+ * 두 벌이라서다.
+ *   선정(done 검사)  drive_file_id 기준
+ *   표 제약(UNIQUE)  article_id 기준
+ * 드라이브를 안 거치고 올린 기사는 drive_file_id 가 null 이라 done 에 안 잡히는데
+ * UNIQUE 에는 걸린다. 그래서 업로드는 성공하고 기록만 실패했고, 기록이 없으니
+ * 다음 회차가 같은 파일을 또 올렸다.
+ *   fbda0612 (오피셜히게단디즘 내한): 08-09 XwuhO_oqjeU → 08-17 ezayVsDK7jw
+ * 08-07 에도 같은 사고가 있었다(L3B-MNXZcZI). 두 번째 재발이라 가드로 고정한다.
+ *
+ * 핵심은 '기록을 고친다' 가 아니라 '업로드를 막는다' 이다.
+ * 유튜브에 올라간 영상은 되돌릴 수 없다. */
+{
+  const ysrc = fs.readFileSync(path.join(ROOT, 'api', 'cron', 'drive-youtube-post.js'), 'utf8');
+
+  // 사전 차단
+  t('업로드 전에 같은 기사의 기존 영상을 조회한다',
+    /\.eq\('article_id', art\.id\)[\s\S]{0,120}\.not\('video_id', 'is', null\)/.test(ysrc));
+  const preIdx = ysrc.indexOf("eq('article_id', art.id)");
+  const upIdx = ysrc.indexOf('await uploadVideo(');
+  t('그 조회가 업로드보다 먼저 나온다', preIdx > 0 && upIdx > 0 && preIdx < upIdx,
+    '조회 ' + preIdx + ' / 업로드 ' + upIdx);
+  t('이미 있으면 업로드하지 않고 건너뛴다', /skippedDuplicate: true/.test(ysrc));
+  t('건너뛴 파일도 마감해 다음 회차 후보에서 뺀다',
+    /skippedDuplicate[\s\S]{0,600}|status: 'skipped'/.test(ysrc) && /status: 'skipped'/.test(ysrc));
+  t('건너뛴 이유를 cronNote 에 남긴다', /중복 방지로 건너뜀/.test(ysrc));
+  // failed 는 video_id 가 없으므로 재시도가 계속 허용돼야 한다
+  t('실패 기록은 재업로드를 막지 않는다 (video_id 기준으로 본다)',
+    /\.not\('video_id', 'is', null\)/.test(ysrc));
+
+  // 사후 안전망
+  t('기록이 실패해도 영상 정보를 남긴다 (구제 기록)',
+    /const salvage = await finishClaim/.test(ysrc));
+  t('구제 기록은 기사 연결을 포기한다', /article_id: null, video_id: videoId/.test(ysrc));
+  t('구제 성공 여부를 응답에 담는다', /salvaged: salvage\.ok/.test(ysrc));
+  t('구제까지 실패하면 경고한다', /구제 기록도 실패/.test(ysrc));
+  t('기록 실패는 여전히 5xx 로 알린다', /error: 'record failed'/.test(ysrc));
+}
 
 console.log('\n' + (fail ? '❌' : '✅') + ` ${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);
