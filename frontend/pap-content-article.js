@@ -509,7 +509,7 @@ function _renderArticleDetail(a,det){
           })()
         +'</aside>';
       igCta.style.display='';
-      if(_canEmbed) _papLoadIgEmbed();
+      if(_canEmbed) _papLazyIgEmbed(igCta); // 2026-08-17 — 보일 때만 embed.js 로드
     } else { igCta.innerHTML=''; igCta.style.display='none'; }
   }
   // 2026-07 — 원본 게시물 CTA 와 팔로우 깔때기의 역할 중복 해소:
@@ -890,6 +890,22 @@ function _papLoadIgEmbed(){
     document.body.appendChild(s);
   }catch(_){}
 }
+// 성능 (2026-08-17) — IG 임베드 지연 로딩. embed.js 는 페이지당 ~1.4초짜리
+// 서드파티라, 임베드 블록이 뷰포트 600px 안에 들어올 때만 로드한다.
+// (임베드는 대개 본문 하단/갤러리 중간이라 첫 화면과 무관.)
+// IntersectionObserver 미지원 옛 브라우저는 예전처럼 즉시 로드로 폴백.
+function _papLazyIgEmbed(el){
+  try{
+    if(!el || !('IntersectionObserver' in window)){ _papLoadIgEmbed(); return; }
+    var io_=new IntersectionObserver(function(entries){
+      for(var i=0;i<entries.length;i++){
+        if(entries[i].isIntersecting){ io_.disconnect(); _papLoadIgEmbed(); try{_papFitMidIg&&_papFitMidIg();}catch(_){} return; }
+      }
+    },{rootMargin:'600px 0px'});
+    io_.observe(el);
+  }catch(_){ try{_papLoadIgEmbed();}catch(__){} }
+}
+
 // 네이티브 공유 시트 (모바일에서 카카오톡·인스타 DM 포함). 미지원 브라우저는
 // 링크 복사로 폴백 — 복사한 링크를 카톡/DM에 붙여넣는 한국식 공유 흐름.
 window._papShareArticle=function(){

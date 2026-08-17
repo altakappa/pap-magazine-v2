@@ -270,7 +270,10 @@ async function postArticleToThreads(art) {
       const u = new URL(String(art.url));
       u.searchParams.set('utm_source', 'threads');
       u.searchParams.set('utm_medium', 'social');
-      u.searchParams.set('utm_campaign', 'pap_auto');
+      // 2026-08-17 — campaign 을 고정값(pap_auto)에서 글 식별자(slug)로.
+      // 8월 Threads 유입 파도 때 '어느 글이 터졌는지' 답을 못 했다 —
+      // social_inclicks.campaign 이 전부 pap_auto 라 게시물 구분 불가.
+      u.searchParams.set('utm_campaign', (u.pathname.split('/').filter(Boolean).pop() || 'pap_auto').slice(0, 80));
       return u.toString();
     } catch (_) { return art.url; }
   })();

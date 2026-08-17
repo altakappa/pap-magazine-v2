@@ -107,7 +107,7 @@ console.log('[4] 집계 — 새 출처를 이름으로 낸다');
   t('zalo 가 이름으로 나온다', !!by.zalo && by.zalo.cur === 7, by.zalo);
   t('line 도 이름으로', !!by.line && by.line.cur === 4, by.line);
   t('고정 채널은 0건이어도 줄이 남는다', !!by.naver && by.naver.cur === 0, by.naver);
-  t('새 출처는 5개까지만 이름으로', sc.inflow.filter((r) => !['naver','kakao','ig','threads','x','tiktok','youtube','newsletter','other'].includes(r.ch)).length === 5,
+  t('새 출처는 5개까지만 이름으로', sc.inflow.filter((r) => !['naver','kakao','ig','threads','x','tiktok','youtube','newsletter','chatgpt','other'].includes(r.ch)).length === 5,
     sc.inflow.map((r) => r.ch));
   /* 발견된 출처 7개: zalo7 line4 discord1 a1..a4 각1.
      상위 5 = zalo, line, 그리고 1건 동률 4개 중 사전순 a1·a2·a3.

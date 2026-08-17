@@ -77,7 +77,9 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
       // created_at 으로 걸러서 쿼리가 조용히 실패 → count null → '클릭 0건'으로
       // 브리핑에 실렸다 (실제 7일 클릭 773건). 존재하지 않는 컬럼은 에러가
       // 나야지 0이 되면 안 된다 — 아래 error 체크도 함께 추가.
-      supabaseAdmin.from('affiliate_clicks').select('*', { count: 'exact', head: true })
+      // 2026-08-17 ② — 원본이 아니라 인간필터 뷰(127)를 센다. 8월 초 봇
+      // 함대가 어필리에이트 클릭의 70%를 만들었다.
+      supabaseAdmin.from('affiliate_clicks_human').select('*', { count: 'exact', head: true })
         .gte('clicked_at', new Date(Date.now() - 7 * 86400000).toISOString()),
     ]);
 

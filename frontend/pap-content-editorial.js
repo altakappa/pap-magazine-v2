@@ -1438,7 +1438,13 @@ function _papRenderEdIg(igUrl, title){
   var box=document.getElementById('edIgPostCta');
   if(box){ box.innerHTML=''; box.style.display='none'; }
   var canEmbed=/instagram\.com\/(p|reel|tv)\//.test(String(igUrl||'').split('?')[0]);
-  if(canEmbed && typeof _papLoadIgEmbed==='function'){try{_papLoadIgEmbed();}catch(_){}}
+  // 2026-08-17 성능 — 임베드는 갤러리 중간이라 첫 화면과 무관. 뷰포트에
+  // 가까워질 때만 embed.js 를 로드한다 (_papLazyIgEmbed, 폴백=즉시 로드).
+  if(canEmbed){
+    var midEl=document.querySelector('.ed-mid-cta');
+    if(typeof _papLazyIgEmbed==='function'){try{_papLazyIgEmbed(midEl||document.body);}catch(_){}}
+    else if(typeof _papLoadIgEmbed==='function'){try{_papLoadIgEmbed();}catch(_){}}
+  }
   try{_papFitMidIg();}catch(_){}
 }
 

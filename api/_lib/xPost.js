@@ -123,6 +123,15 @@ const URL_PLACEHOLDER = 'x'.repeat(23);
  * 로드맵의 X 자동게시 중단 사유가 "성과 미측정"이었다 — utm_source 가 붙으면
  * SSR 이 social_inclicks 에 기록해 X 유입을 셀 수 있다 (socialInclick.js).
  */
+// 2026-08-17 — 게시물 단위 계측: URL 경로 마지막 조각(slug)을 campaign 으로.
+// 고정 campaign(pap_auto)은 '어느 글이 사람을 보냈나'에 답하지 못한다.
+function slugCampaign(url, fallback) {
+  try {
+    const seg = new URL(String(url)).pathname.split('/').filter(Boolean).pop();
+    return (seg || fallback || '').slice(0, 80) || fallback;
+  } catch (_) { return fallback; }
+}
+
 function withUtm(url, source, campaign) {
   try {
     const u = new URL(String(url));
@@ -180,7 +189,7 @@ async function buildConversationalTweet(art) {
   const { generateConversationalPost, stripDashes } = require('./socialHook');
   const hook = await generateConversationalPost(art, 'x');
   if (!hook) return null;
-  const link = withUtm(art.url, 'x', 'pap_auto');
+  const link = withUtm(art.url, 'x', slugCampaign(art.url, 'pap_auto'));
   const tagLine = '#PAPMAGAZINE';
   // 2026-07-21 도메니코 지시 — 줄표는 AI 티가 나니 항상 뺀다. 프롬프트로도
   // 금지하지만 프롬프트는 확률이라 새서, 게시 직전에 기계적으로 한 번 더 거른다.
@@ -198,7 +207,7 @@ function buildArticleTweet(art) {
   const tags = _cleanTags(art.tags, 2);   // 실제 태그 최대 2개
   tags.push('#PAPMAGAZINE');              // + 브랜드 태그 → 총 2~3개
   const tagLine = tags.join(' ');
-  const link = withUtm(art.url, 'x', 'pap_auto'); // 유입 계측 (2026-07-16)
+  const link = withUtm(art.url, 'x', slugCampaign(art.url, 'pap_auto')); // 유입 계측 (2026-07-16, 2026-08-17 게시물 단위)
   const hook = _firstSentence(art.body);
   if (hook && hook !== title) {
     // 길이 판정은 URL=23자 규칙으로 (UTM 길이는 t.co 로 감싸져 무관)
@@ -217,7 +226,7 @@ function buildPepperitTweet(art) {
   const tags = _cleanTags(art.tags, 4);
   if (!tags.includes('#KPOP') && tags.length < 4) tags.push('#KPOP');
   tags.push('#PEPPERIT');
-  const link = withUtm(art.url, 'x', 'pepperit_auto'); // 유입 계측 (2026-07-16)
+  const link = withUtm(art.url, 'x', slugCampaign(art.url, 'pepperit_auto')); // 유입 계측 (2026-07-16, 2026-08-17 게시물 단위)
   return _clampTitle(art.title) + '\n\n' + link + '\n\n' + tags.join(' ');
 }
 

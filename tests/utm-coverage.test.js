@@ -64,7 +64,8 @@ console.log('\n[3] 이메일 — 유령 채널 2호 탈출');
 
 console.log('\n[4] 기존 계측 회귀 방지');
 {
-  t('X 는 withUtm 유지', /withUtm\(art\.url, 'x', 'pap_auto'\)/.test(x));
+  // 2026-08-17 — campaign 이 고정값에서 게시물 slug 로 바뀜 (게시물 단위 계측)
+  t('X 는 withUtm 유지 (slug campaign)', /withUtm\(art\.url, 'x', slugCampaign\(art\.url, 'pap_auto'\)\)/.test(x));
   t('카카오 공유 utm 유지 (SSR)', /utm_source=kakao&utm_medium=share/.test(seo));
   t('canonical 은 여전히 utm 무오염', !/const canonical = [^\n]*utm_/.test(seo));
 }
