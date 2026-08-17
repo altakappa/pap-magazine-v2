@@ -207,7 +207,7 @@ console.log('\n[9] AI/GEO 엔티티 — 우리가 어떤 매체인지 기계가 
   t('한국어 요약 절이 있다', /### 한국어 요약/.test(llms));
   /* 2026-08-17 도메니코 지시로 뒤집힘 — '종이 인쇄본 없음' 서사를 전 자산에서
      제거했다(어바웃 7곳 + llms.txt + digital-magazine). 가드도 반대로 지킨다. */
-  t("'종이 없음' 서사를 쓰지 않는다 (도메니코 확정)", !/no print edition|종이 인쇄본/i.test(llms));
+  t("'종이 없음' 서사를 쓰지 않는다 (도메니코 확정)", !/no print edition|종이 인쇄본|종이 잡지/i.test(llms));
   t('llms.txt 에 "What PAP covers" 주제 목록', /## What PAP covers/.test(llms));
   t('주제 목록에 패션위크·셀럽·뷰티가 들어 있다',
      /Fashion weeks/i.test(llms) && /K-pop style/i.test(llms) && /Beauty trends/i.test(llms));
