@@ -55,6 +55,22 @@ console.log('\n[3] 광고주 FAQ — 화면·스키마 정합');
   }
 }
 
+console.log('\n[2.5] 도메니코 확정 문구 + 다국어 (2026-08-17 2차)');
+{
+  t("'맞팔 팬덤으로만' 확정 문구", /이벤트·맞팔 팬덤으로만 모은 숫자가 아니라/.test(biz));
+  t("'공동 작업자 집행' 확정 문구 (섹션+FAQ 화면+스키마 3곳)", (biz.match(/공동 작업자 집행/g) || []).length >= 3);
+  t('저장·공유 문단 존재 (bwP4)', /id="bwP4"/.test(biz) && /저장과 공유/.test(biz));
+  t('저장·공유 주장은 자체 실측 근거로 한정 (타사 비교 주장 없음)',
+    /자체 30일 전수 실측/.test(biz) && !/저장[율]?[·과] 공유가 다른/.test(biz));
+  t('BIZGEO 사전 8개 언어', ['en', 'ja', 'it', 'fr', 'es', 'zh', 'ru', 'de'].every(l =>
+    biz.includes(l + ":{title:'") || biz.includes('BIZGEO.' + l + "={title:'")));
+  t('전 언어에 FAQ 6문항', (biz.match(/faq:\[\[/g) || []).length === 8);
+  t('전 언어에 p4(저장·공유)', (biz.match(/p4:'/g) || []).length === 8);
+  t('setLang 훅 배선', /_bizGeoApply\(l\)/.test(biz));
+  t('초기 로드 적용', /_bizGeoApply\(localStorage\.getItem\('pap-lang'\)/.test(biz));
+  t('비-ko 에서 en 병기 문단 숨김', /enP\.style\.display='none'/.test(biz));
+}
+
 console.log('\n[4] 발견 표면');
 {
   t('제목에 광고·팝매거진', /<title>광고·미디어킷 \| PAP MAGAZINE 팝매거진/.test(biz));
