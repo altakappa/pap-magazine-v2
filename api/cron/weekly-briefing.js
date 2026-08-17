@@ -79,7 +79,10 @@ module.exports = withCronGuard('weekly-briefing', async function handler(req, re
       // 나야지 0이 되면 안 된다 — 아래 error 체크도 함께 추가.
       // 2026-08-17 ② — 원본이 아니라 인간필터 뷰(127)를 센다. 8월 초 봇
       // 함대가 어필리에이트 클릭의 70%를 만들었다.
+      // 2026-08-17 ③ — counted=true + 리퍼러 있는 클릭만: 크롤러 직접 히트
+      // (리퍼러 없음, 7일 773건 중 731건)와 24h 중복은 유효 클릭이 아니다.
       supabaseAdmin.from('affiliate_clicks_human').select('*', { count: 'exact', head: true })
+        .eq('counted', true).not('referrer_path', 'is', null)
         .gte('clicked_at', new Date(Date.now() - 7 * 86400000).toISOString()),
     ]);
 

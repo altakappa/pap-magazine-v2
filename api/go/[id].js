@@ -101,7 +101,15 @@ async function recordClick({ brandId, region, req, now, destType }) {
 
   // 중복제거는 안정적인 salted hash 가 있을 때만 의미가 있다. ip_hash 가 null 이면
   // 서로 다른 클릭을 묶을 수 없으므로 모두 counted=true 로 집계한다.
-  const counted = ipHash ? !(await isDuplicate(ipHash, brandId, now)) : true;
+  //
+  // 2026-08-17 — 리퍼러 없는 직접 히트는 유효 클릭으로 세지 않는다.
+  // 실측: 최근 7일 클릭 773건 중 731건이 리퍼러 없음 + 모바일 1.4% =
+  // SSR 에 노출된 /go/ 링크를 크롤러가 수집해 직접 때리는 패턴.
+  // 진짜 독자는 에디토리얼/브랜드 페이지에서 넘어오므로 same-origin
+  // 리퍼러가 실려 온다 (사이트 Referrer-Policy 기준). 리다이렉트는
+  // 그대로 해주되(방문자 무해) 지표만 안 센다 — 행은 남겨 감사 가능.
+  const hasReferrer = !!referrer;
+  const counted = hasReferrer && (ipHash ? !(await isDuplicate(ipHash, brandId, now)) : true);
 
   const sessionId = require('crypto').randomBytes(16).toString('hex');
   const sessionExpiresAt = new Date(now.getTime() + SESSION_TTL_MS).toISOString();

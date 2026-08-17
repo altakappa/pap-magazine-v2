@@ -18,8 +18,14 @@ let pass = 0, fail = 0;
 function t(n, c, d){ if(c){pass++;console.log('  \u2713',n);} else {fail++;console.log('  \u2717',n); if(d)console.log('     ',d);} }
 
 console.log('\n=== \uc5b4\ud544\ub9ac\uc5d0\uc774\ud2b8 \uc9d1\uacc4 \ucef4\ub7fc ===');
+t('affiliate 유효 클릭만 센다 (counted=true + 리퍼러 존재)',
+  /\.eq\('counted', true\)\.not\('referrer_path', 'is', null\)/.test(wb),
+  '이 필터가 빠지면 크롤러 직접 히트 731건/주가 다시 실적으로 둔갑한다');
+t("go 핸들러가 리퍼러 없는 히트를 counted=false 로",
+  /const hasReferrer = !!referrer;/.test(R('api/go/[id].js')) &&
+  /const counted = hasReferrer &&/.test(R('api/go/[id].js')));
 t('affiliate 집계가 인간필터 뷰 + clicked_at 사용',
-  /affiliate_clicks_human'\)\.select\('\*', \{ count: 'exact', head: true \}\)[\s\S]{0,50}\.gte\('clicked_at'/.test(wb),
+  /affiliate_clicks_human'\)\.select\('\*', \{ count: 'exact', head: true \}\)[\s\S]{0,160}\.gte\('clicked_at'/.test(wb),
   '원본 테이블·created_at 으로 되돌리면 봇 오염·가짜 0이 재발한다');
 t('봇필터 뷰 마이그레이션 존재',
   /affiliate_clicks_human/.test(R('supabase_migrations/127_affiliate_clicks_human.sql')));
