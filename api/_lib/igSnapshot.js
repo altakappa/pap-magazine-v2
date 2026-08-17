@@ -61,6 +61,41 @@ function numOrNull(v) { return typeof v === 'number' ? v : null; }
 const CONVERSION_METRICS = ['profile_visits', 'follows'];
 const BASE_METRICS = ['reach', 'saved', 'shares', 'total_interactions'];
 
+/* ── 시청유지 지표 (2026-08-17 신설) ───────────────────────────────
+ *
+ * 도메니코: "클릭율·시청유지·인게이지먼트·반복재생을 업계 최고치로."
+ * 그 말을 듣고 지금 무엇을 재고 있는지부터 봤더니, **시청유지를 한 번도
+ * 수집한 적이 없었다.** 릴스 30편의 참여율 지표(저장·공유·좋아요·댓글)와
+ * 도달의 상관은 전부 |r| < 0.12 다. 즉 지금 가진 숫자로는 릴스가 왜 뜨고
+ * 왜 죽는지 설명이 안 된다. 설명이 안 되는 이유가 '릴스는 원래 그렇다'
+ * 인지 '우리가 정작 중요한 걸 안 재고 있다' 인지 가릴 방법이 없었다.
+ * 릴스 추천의 1차 신호는 시청유지인데 그게 데이터에 없다.
+ *
+ * 반복재생은 API 로 못 받는다. clips_replays_count 와
+ * ig_reels_aggregated_all_plays_count 는 2025-04 에 폐기됐다. 대신
+ * **조회/도달**이 대리지표가 된다(계정당 평균 재생 횟수). PAP 실측 30편:
+ * 평균 1.43 · 중앙 1.45 · 범위 0.38~1.81. 이건 이미 있는 두 컬럼으로
+ * 계산되므로 수집이 따로 필요 없다.
+ *
+ * ★ 절대 기존 계단에 넣지 않는다.
+ *   이 파일이 이미 비싸게 배운 규칙이다: 세트에 지원 안 되는 지표가 하나라도
+ *   있으면 응답 **전체**가 400 이다. plays 하나 때문에 릴스가 shares 까지
+ *   잃었었다. 그래서 시청유지는 전환 지표와 똑같이 **따로 한 번 더** 묻는다.
+ *   실패해도 기존 수집은 한 글자도 안 변한다.
+ *
+ * 이름이 살아 있는지 확신이 없으므로 계단으로 좁힌다. 둘 다 → 하나씩.
+ * 어느 이름이 유효한지 데이터가 스스로 답하게 만든다. */
+const WATCH_METRICS = ['ig_reels_avg_watch_time', 'ig_reels_video_view_total_time'];
+
+/** 시청유지 요청 계단. 순수 함수 — 테스트가 직접 검증한다. */
+function watchLadder() {
+  return [
+    WATCH_METRICS,
+    ['ig_reels_avg_watch_time'],
+    ['ig_reels_video_view_total_time'],
+  ];
+}
+
 /** media_type 별 인사이트 요청 계단. 순수 함수 — 테스트가 직접 검증한다. */
 function insightLadder(mediaType) {
   const mt = String(mediaType || '').toUpperCase();
@@ -155,11 +190,34 @@ async function fetchPostInsights(mediaId, mediaType, token) {
     out.__conv = 'ladder';         // 첫 칸에서 정상 수집
   }
 
+  /* 시청유지 — 영상에만, 그리고 반드시 별도 호출로. (2026-08-17)
+     비용: 영상 1편당 최대 3콜. 3시간마다 최대 25건 중 영상은 소수다.
+     __watch 가 계속 unsupported 뿐이면 이 블록을 꺼라 — 그때부터는 낭비다. */
+  if (mt === 'VIDEO' || mt === 'REELS') {
+    out.__watch = 'unsupported';
+    for (const metrics of watchLadder()) {
+      const w = await fetchInsightSet(mediaId, metrics, token);
+      const got = w && (typeof w.ig_reels_avg_watch_time === 'number'
+                     || typeof w.ig_reels_video_view_total_time === 'number');
+      if (got) {
+        if (typeof w.ig_reels_avg_watch_time === 'number') out.avg_watch_time_ms = w.ig_reels_avg_watch_time;
+        if (typeof w.ig_reels_video_view_total_time === 'number') out.total_watch_time_ms = w.ig_reels_video_view_total_time;
+        out.__watch = (out.avg_watch_time_ms !== undefined && out.total_watch_time_ms !== undefined)
+          ? 'full' : 'partial';
+        break;
+      }
+    }
+  } else {
+    out.__watch = 'skip';          // 영상이 아니다 — 애초에 물을 값이 없다
+  }
+
   return {
     saved: out.saved, shares: out.shares, reach: out.reach,
     views: out.views, total_interactions: out.total_interactions,
     profile_visits: out.profile_visits, follows: out.follows,
-    __conv: out.__conv,
+    avg_watch_time_ms: out.avg_watch_time_ms,
+    total_watch_time_ms: out.total_watch_time_ms,
+    __conv: out.__conv, __watch: out.__watch,
   };
 }
 
@@ -172,6 +230,22 @@ function conversionCoverage(posts) {
   const c = { ladder: 0, retry: 0, unsupported: 0, none: 0 };
   for (const p of (posts || [])) {
     const k = p && p.__conv;
+    if (k && Object.prototype.hasOwnProperty.call(c, k)) c[k]++;
+  }
+  return c;
+}
+
+/** 시청유지를 얼마나 받았는지 세어 준다. 순수 함수 — 테스트 대상.
+ *  full        평균·총 시청시간 둘 다 받음
+ *  partial     둘 중 하나만 받음 (지표 이름 하나가 폐기됐다는 뜻)
+ *  unsupported 영상인데 셋 다 실패 → 인스타가 안 준다
+ *  skip        영상이 아니다 (분모에서 빼야 한다)
+ *  전환 지표와 달리 'skip' 이 대다수다. 캐러셀이 게시물의 3/4 이기 때문에
+ *  skip 을 실패로 세면 커버리지가 늘 처참해 보이고, 그러면 아무도 안 본다. */
+function watchCoverage(posts) {
+  const c = { full: 0, partial: 0, unsupported: 0, skip: 0 };
+  for (const p of (posts || [])) {
+    const k = p && p.__watch;
     if (k && Object.prototype.hasOwnProperty.call(c, k)) c[k]++;
   }
   return c;
@@ -201,6 +275,9 @@ function toMetricRows(posts, now) {
       // 2026-07-30 — 팔로워 전환. 미지원이면 null 로 남는다(0 으로 속이지 않는다).
       profile_visits: numOrNull(p.profile_visits),
       follows: numOrNull(p.follows),
+      // 2026-08-17 — 릴스 시청유지. 밀리초 그대로 저장한다(단위 변환은 읽는 쪽에서).
+      avg_watch_time_ms: numOrNull(p.avg_watch_time_ms),
+      total_watch_time_ms: numOrNull(p.total_watch_time_ms),
     };
   });
 }
@@ -285,6 +362,16 @@ async function captureSnapshot(opts) {
     + ' · 미지원 ' + conv.unsupported
     + ' · 인사이트 실패 ' + conv.none
     + (conv.unsupported && !conv.retry ? '  ← 미지원만 나온다면 API 가 안 주는 것' : ''));
+
+  /* 2026-08-17 — 시청유지도 같은 방식으로 눈에 보이게 남긴다.
+     여기가 조용하면 "안 되는 건지 안 하는 건지" 를 또 한 달 모른다. */
+  const watch = watchCoverage(enriched);
+  console.log('[igSnapshot] 시청유지 수집 — 완전 ' + watch.full
+    + ' · 일부 ' + watch.partial
+    + ' · 미지원 ' + watch.unsupported
+    + ' · 영상아님 ' + watch.skip
+    + (watch.unsupported && !watch.full && !watch.partial
+        ? '  ← 영상에서 하나도 못 받았다. 지표 이름이 폐기됐을 수 있다' : ''));
 
   await supabaseAdmin.from('ig_account_snapshot').insert({
     handle: snap.account.handle,
@@ -417,4 +504,6 @@ module.exports = {
   followerGrowth, weeklyEngagement, buildReport,
   // 2026-08-16 — 계단·전환 집계는 순수 함수라 테스트가 동작을 직접 본다
   insightLadder, conversionCoverage, CONVERSION_METRICS, BASE_METRICS,
+  // 2026-08-17 — 시청유지 수집. 계단·집계 모두 순수 함수라 테스트가 직접 본다
+  watchLadder, watchCoverage, WATCH_METRICS,
 };
