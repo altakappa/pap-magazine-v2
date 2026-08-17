@@ -450,7 +450,11 @@ async function generateArticleFromPost(post, opts){
        읽지 않고 **문단 단위로 뽑아** 인용한다. 첫 문장이 분위기 문장이면
        그 문단은 인용 후보에서 밀린다. 그래서 첫 두 문장에 육하원칙을 박는다.
        이건 문체를 바꾸라는 말이 아니다 — PAP 리듬은 둘째 단락부터 그대로다. */
+    /* 2026-08-18 — 주류 과음 경고는 국민건강증진법이 문안까지 정해 둔 문장이라
+       평서체로 고치면 법정 문구가 아니게 된다. '존댓말 절대 금지' 의 유일한 예외다. */
     '  "body_ko": "(평서체 ~다. 존댓말 절대 금지. 3~4단락, 총 800~1,200자. 단락은 <br><br>로 구분. HTML 인라인 태그만 사용 가능.)",',
+    '  // 예외: 캡션에 법정 고지 문장(주류 과음·임신 중 음주 경고, 19세 미만 표기,',
+    '  // 음주운전 경고)이 있으면 존댓말 그대로 한 글자도 바꾸지 말고 body_ko 에 옮긴다.',
     '  "body_en": "3 to 4 paragraphs in English, same paragraph count as body_ko, separated by <br><br>.",',
     '  "category": "Fashion | Beauty | Culture | News | Editorial",  // 가장 적합한 것 1개',
     '',

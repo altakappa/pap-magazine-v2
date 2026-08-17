@@ -485,6 +485,24 @@ const POLITE_ENDING = /(습니다|합니다|입니다|해요|이에요|예요|�
 /* 평서체 '~다.' 만 잡고 존댓말 '~니다.' 는 비켜간다. 앞 글자가 '니'면 제외. */
 const PLAIN_ENDING = /(?<!니)다\s*[.!?]/;
 
+/* 법으로 문안이 정해진 고지는 우리 문체 규칙의 대상이 아니다 (2026-08-18).
+   주류 광고의 과음 경고는 국민건강증진법이 문구까지 정해 놓아서 '~합니다'
+   를 '~한다' 로 바꿀 수 없다. 그런데 린터가 이걸 '존댓말 감지' 로 잡았다.
+   본문 보강 초안 31편에서 존댓말 경보 3건 중 2건이 이 경고문이었다.
+   **거짓 경보가 진짜 위반 1건을 묻는다.** 그게 이 예외의 이유다.
+
+   문장 하나 단위로만 들어낸다. 문단이나 본문 전체를 빼면 그 옆에 있는
+   진짜 위반까지 같이 숨는다. 그리고 어미 검사에만 쓴다 — 길이·단락은
+   원문 그대로 센다. 경고문도 지면을 차지하는 건 사실이기 때문이다. */
+const LEGAL_NOTICE_MARK =
+  /(지나친 음주|과도한 음주|임신 중 음주|19세 미만|19세 이상의 법적 음주|청소년에게 (판매|판매하지)|음주운전)/;
+
+/** 법정 고지 문장만 공백으로 바꾼다. 나머지는 글자 하나 안 건드린다. */
+function stripLegalNotices(plain) {
+  return String(plain == null ? '' : plain)
+    .replace(/[^.!?]*[.!?]/g, (sent) => (LEGAL_NOTICE_MARK.test(sent) ? ' ' : sent));
+}
+
 /**
  * 어미·단락·길이 등 규격 위반을 감지해 배열로 돌려준다.
  * 자동 수정은 하지 않는다. 로깅·검수용.
@@ -504,9 +522,12 @@ function lintKoreanBody(text, opts) {
   const s = String(text == null ? '' : text);
   const plain = s.replace(/<[^>]+>/g, ' ');
 
+  /* 어미 검사만 법정 고지를 뺀 텍스트로 본다. 아래 대시·번역투·불릿·길이는
+     원문(plain) 그대로다 — 고지문은 그런 위반을 만들지 않는다. */
+  const forEnding = stripLegalNotices(plain);
   if (style === 'polite') {
-    if (PLAIN_ENDING.test(plain)) issues.push('평서체 감지 (존댓말 채널)');
-  } else if (POLITE_ENDING.test(plain)) {
+    if (PLAIN_ENDING.test(forEnding)) issues.push('평서체 감지 (존댓말 채널)');
+  } else if (POLITE_ENDING.test(forEnding)) {
     issues.push('존댓말 감지');
   }
   if (/[—–ㅡ]|--/.test(plain)) {
@@ -599,4 +620,5 @@ module.exports = {
   stripLegacySeparators,
   lintKoreanBody,
   auditKoreanBody,
+  stripLegalNotices,
 };
