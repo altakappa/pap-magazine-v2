@@ -12,8 +12,24 @@
  * 이 테스트가 막는 것:
  *   1) test 스크립트가 부르는데 디스크에 없는 파일   (CI 에서 잡힘)
  *   2) 디스크에는 있는데 git 이 모르는 파일          (푸시 전 로컬에서 잡힘)
+ *   3) 디스크에도 git 에도 있는데 **아무 스크립트도 안 부르는 파일** (2026-08-17 추가)
  *
  * 2번이 핵심이다. 1번만으로는 개발자 기계에서 절대 안 잡힌다.
+ *
+ * 3번을 왜 뒤늦게 넣었나 (2026-08-17):
+ *   c0ed073 이 package.json 을 몇 시간 전 사본 기준으로 덮어써, 그 사이 추가된
+ *   테스트 등록 4건(cron-failing-streak · faq-i18n-ssr · faq-translate-cron ·
+ *   geo-entity-grounding)이 통째로 사라졌다. 그런데 **npm test 는 통과했다** —
+ *   안 돌아가는 테스트는 실패할 수도 없기 때문이다. 1·2번은 "부르는데 없는" 쪽만
+ *   보므로 이 방향을 못 본다.
+ *   같은 날 전수로 세어 보니 그 사고와 무관하게도 5개가 파일만 있고 안 돌고
+ *   있었다(affiliate-item-category · home-video · rss-src-param ·
+ *   ssr-shop-story · submission-list-unpaid). 전부 통과하는 멀쩡한 회귀 테스트였다.
+ *   즉 이건 한 번의 사고가 아니라 **상시로 새는 구멍**이었다.
+ *
+ *   판정 기준은 'test 스크립트'가 아니라 '아무 스크립트라도'다.
+ *   production-smoke 처럼 일부러 분리한 것(smoke 스크립트)을 실패로 세면
+ *   가드가 시끄러워지고, 시끄러운 가드는 곧 무시된다.
  */
 const fs = require('fs');
 const path = require('path');
@@ -63,6 +79,20 @@ if (gitChecked) {
 } else {
   console.log('  - git 조회 불가 (체크아웃 환경) — 디스크 검사로 대체');
 }
+
+/* 3) 반대 방향 — 디스크에 있는데 아무도 안 부르는 테스트 (2026-08-17)
+      1·2번은 "부르는데 없는" 쪽만 본다. 그 반대는 아무 데도 안 걸리고,
+      실패조차 못 하므로 영원히 조용하다. 커버리지가 조용히 사라지는 경로다. */
+const onDisk = fs.readdirSync(path.join(ROOT, 'tests'))
+  .filter(f => f.endsWith('.test.js'))
+  .map(f => 'tests/' + f)
+  .sort();
+const called = new Set(list);
+const orphans = onDisk.filter(f => !called.has(f));
+ok(orphans.length === 0,
+   orphans.length
+     ? `파일만 있고 아무 스크립트도 안 부르는 테스트: ${orphans.join(', ')} — 실패조차 못 하므로 영원히 조용하다`
+     : `디스크의 테스트 ${onDisk.length}개가 전부 스크립트에 등재돼 있다`);
 
 console.log(`\npassed: ${pass} failed: ${fail}`);
 if (fail) process.exit(1);
