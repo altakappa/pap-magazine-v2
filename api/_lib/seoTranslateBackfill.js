@@ -354,79 +354,11 @@ async function fetchQueueViaRpc(kind, lang, limit, cfg, timing, since, maxSrc) {
  * 원칙은 Patch 4 와 같다 — **추측해서 고치지 않는다.** 제어문자는 JSON 문자열
  * 안에 그대로 올 수 없다는 규격상의 사실만 쓴다. 따옴표는 손대지 않는다:
  * 어느 것이 문자열의 끝인지 알 수 없어, 고치려 들면 내용을 바꿔 버린다. */
-function escapeRawControls(s) {
-  let out = '', inStr = false, esc = false;
-  for (let k = 0; k < s.length; k++) {
-    const c = s[k];
-    if (esc) { out += c; esc = false; continue; }
-    if (c === '\\') { out += c; if (inStr) esc = true; continue; }
-    if (c === '"') { out += c; inStr = !inStr; continue; }
-    if (inStr && c < ' ') {
-      out += (c === '\n') ? '\\n' : (c === '\r') ? '\\r' : (c === '\t') ? '\\t'
-        : '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0');
-      continue;
-    }
-    out += c;
-  }
-  return out;
-}
-
-/* 고쳐서 한 번 더 파싱해 본다. 실패하면 null — 호출부는 원래 경로를 그대로 탄다. */
-/* ─── 2026-08-08 (2차) — 값 안의 '생 큰따옴표' 를 이스케이프한다 ────────
- *
- * 어제 나는 이 경우를 "경계를 알 수 없으니 손대지 않는다" 며 남겼다.
- * 그런데 진단명을 note 에 띄우고 나니 **실패의 전부가 이것**이었다.
- * 배포 후 잡힌 17종 전부가 zh 제목 안의 따옴표였다:
- *
- *     "title":"Off-White 2024度假系列"Homecoming"发布"
- *     "title":"Marni推出"2023兔年"纪念胶囊系列","body":"…
- *     "title":"Prada社交俱乐部"Prada Mode"首次登陆韩国","…
- *     "title":"A.P.C. X ASICS 推出联名运动鞋"GEL-SONO…
- *
- * 중국어 기사 제목은 컬렉션·협업 이름을 따옴표로 감싸는 관행이 있어서
- * 모델이 프롬프트의 "escape every double quote" 를 자주 어긴다.
- * 즉 이건 드문 사고가 아니라 **zh 의 상시 패턴**이다.
- *
- * ── 경계를 어떻게 아는가 ──────────────────────────────────────────
- * 이 응답의 스키마는 평평하다: {"i":숫자,"title":"…","body":"…"}.
- * 그래서 문자열을 진짜로 끝내는 따옴표 뒤에는 **반드시** `,` `:` `}` `]`
- * (또는 공백) 중 하나가 온다. 그 밖의 글자가 오면 그 따옴표는 내용이다.
- * 추측이 아니라 이 스키마에서 참인 규칙이다.
- *
- * ── 그래도 완벽하지 않다 ─────────────────────────────────────────
- * 내용이 `…"你好",` 처럼 따옴표 바로 뒤에 쉼표로 이어지면 거기서 끊긴다.
- * 그래서 **최후의 수단**으로만 쓴다 — 정상 파싱 → 제어문자 복구 →
- * 건별 salvage 를 다 해 보고 그래도 0건일 때만. 그리고 그렇게 건진 건은
- * 아래에서 `repaired` 로 세어 note 에 남긴다. 조용히 고치지 않는다. */
-function escapeInnerQuotes(s) {
-  let out = '', inStr = false, esc = false;
-  for (let k = 0; k < s.length; k++) {
-    const c = s[k];
-    if (esc) { out += c; esc = false; continue; }
-    if (c === '\\') { out += c; if (inStr) esc = true; continue; }
-    if (c !== '"') { out += c; continue; }
-    if (!inStr) { out += c; inStr = true; continue; }
-    /* 닫는 따옴표인가? 뒤의 공백을 건너뛰고 다음 글자를 본다. */
-    let n = k + 1;
-    while (n < s.length && (s[n] === ' ' || s[n] === '\n' || s[n] === '\r' || s[n] === '\t')) n++;
-    const next = n < s.length ? s[n] : '';
-    if (next === ',' || next === ':' || next === '}' || next === ']' || next === '') {
-      out += c; inStr = false;                 // 진짜 경계
-    } else {
-      out += '\\"';                            // 내용이다
-    }
-  }
-  return out;
-}
-
-/* 고쳐서 한 번 더 파싱해 본다. 실패하면 null — 호출부는 원래 경로를 그대로 탄다.
-   `deep` 이면 따옴표까지 손댄다(최후의 수단). */
-function tryRepairedParse(chunk, deep) {
-  try {
-    const fixed = deep ? escapeInnerQuotes(escapeRawControls(chunk)) : escapeRawControls(chunk);
-    return JSON.parse(fixed);
-  } catch (e) { return null; }
-}
+/* escapeRawControls · escapeInnerQuotes · tryRepairedParse 는
+   2026-08-18 에 api/_lib/jsonRepair.js 로 옮겼다. weekly-news 가 같은 이유로
+   죽으면서 두 번째 사용처가 생겼고, 복사하면 규칙이 두 벌이 되기 때문이다.
+   export 표면은 그대로 둔다 — 기존 호출부와 테스트 계약을 안 깬다. */
+const { escapeRawControls, escapeInnerQuotes, tryRepairedParse } = require('./jsonRepair');
 
 function salvageObjects(s, start) {
   const out = [];

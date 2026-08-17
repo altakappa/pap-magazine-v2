@@ -26,6 +26,7 @@ const { withCronGuard } = require('../_lib/cronGuard');   // 실행기록·실�
 
 const { reportAiResponse } = require('../_lib/aiCreditWatch');   // AI 장애 알림 (2026-07-30)
 const { supabaseAdmin } = require('../_lib/supabase');
+const { parseJsonObject } = require('../_lib/jsonRepair');   // 모델 JSON 복구 (2026-08-18)
 const { requireAdmin } = require('../_lib/auth');
 
 const FEEDS = [
@@ -61,6 +62,10 @@ function parseRss(xml, source) {
   return items;
 }
 
+/* 마지막 복구 종류. note 에 실어 '조용히 고치지 않는다' 를 지킨다.
+   선언을 claude() 위에 둔다 — 이 저장소는 TDZ ReferenceError 로 한 번 데였다. */
+let lastRepair = 'none';
+
 async function claude(system, userContent, maxTokens, timeoutMs) {
   const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
   const resp = await fetch('https://api.anthropic.com/v1/messages', {
@@ -77,10 +82,28 @@ async function claude(system, userContent, maxTokens, timeoutMs) {
   const j = await resp.json();
   const block = Array.isArray(j.content) ? j.content.find((b) => b && typeof b.text === 'string') : null;
   if (!block) throw new Error('Claude 응답에 텍스트 블록 없음');
-  const m = block.text.match(/\{[\s\S]*\}/);
-  if (!m) throw new Error('Claude 응답에서 JSON을 찾지 못함');
-  return JSON.parse(m[0]);
+
+  /* 2026-08-18 — 여기서 뉴스레터가 통째로 죽고 있었다.
+   *
+   *   2026-08-16 21:31  weekly-news  ok=false
+   *   Expected ',' or '}' after property value in JSON at position 3502
+   *
+   * 옛 코드는 JSON.parse 한 번이 전부였다. 뉴스레터 본문은 한국어 3-4문장이
+   * 10건이라 문자열이 길고, 그 안에 생 개행이나 따옴표가 섞이면 응답 전체가
+   * 버려졌다. 주간 크론이라 다음 기회는 일주일 뒤다.
+   *
+   * 번역 백필이 2026-08-08 에 같은 문제를 겪고 만든 복구 계단을 그대로 쓴다
+   * (그때 실패율 87%였다). 복사하지 않고 공용 lib 으로 옮겨 규칙을 한 벌로 뒀다.
+   * 복구했으면 조용히 넘기지 않고 note 에 남긴다 — 응답 품질이 나빠지고
+   * 있다는 신호일 수 있으므로 보여야 한다. */
+  const parsed = parseJsonObject(block.text, 'Claude');
+  if (parsed.repaired !== 'none') {
+    console.warn('[weekly-news] JSON 복구함 (' + parsed.repaired + ') — 모델 출력이 규격을 벗어났다');
+    lastRepair = parsed.repaired;
+  }
+  return parsed.value;
 }
+
 
 const MASTER_SYSTEM = [
   'PAP 매거진(아트 기반 패션·뷰티·컬쳐 디지털 매거진, IG @pap_magazine 38만)의 주간 뉴스레터 에디터.',
@@ -274,7 +297,8 @@ module.exports = withCronGuard('weekly-news', async function handler(req, res) {
     return res.status(201).json({
       ok: true, campaign: data,
       note: note(res, '주간 뉴스레터 생성: ' + data.name + ' · ' + data.status
-        + ' · 발송예정 ' + String(data.scheduled_at || '').slice(0, 16)),
+        + ' · 발송예정 ' + String(data.scheduled_at || '').slice(0, 16)
+        + (lastRepair !== 'none' ? ' · ⚠️ JSON 복구함(' + lastRepair + ')' : '')),
       locales: Object.keys(i18n), failedLocales: failed,
       headlines: master.newsItems.map((n) => n.title),
     });
