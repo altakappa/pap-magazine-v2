@@ -10,7 +10,9 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
-const src = fs.readFileSync(path.join(__dirname, '..', 'api', 'rss.js'), 'utf8');
+const src = fs.readFileSync(path.join(__dirname, '..', 'api', '_lib', 'rssUtm.js'), 'utf8');
+const rssMain = fs.readFileSync(path.join(__dirname, '..', 'api', 'rss.js'), 'utf8');
+const rssEds = fs.readFileSync(path.join(__dirname, '..', 'api', 'rss-editorials.js'), 'utf8');
 
 let pass = 0, fail = 0;
 function t(n, c, d){ if(c){pass++;console.log('  ✓',n);} else {fail++;console.log('  ✗',n); if(d)console.log('     ',d);} }
@@ -36,9 +38,12 @@ t('utm 이 링크에 붙는다',
 t('이미 ?가 있으면 & 로', withRssUtm('https://x.com/a?b=1', 'flipboard').includes('?b=1&utm_source=flipboard'));
 t('src 없으면 원본 그대로', withRssUtm('https://x.com/a', '') === 'https://x.com/a');
 
-console.log('=== 배선 ===');
-t('<link> 에는 utm 이 붙는다', /<link>' \+ xmlEscape\(withRssUtm\(it\.link, src\)\)/.test(src));
-t('<guid> 는 순수 링크 유지', /<guid isPermaLink="true">' \+ xmlEscape\(it\.link\)/.test(src));
+console.log('=== 배선 (rss.js + rss-editorials.js 양쪽) ===');
+[['rss.js', rssMain], ['rss-editorials.js', rssEds]].forEach(([name, f]) => {
+  t(name + ': 공유 lib 사용', /require\('\.\/_lib\/rssUtm'\)/.test(f));
+  t(name + ': <link> 에 utm', /<link>' \+ xmlEscape\(withRssUtm\(it\.link, src\)\)/.test(f));
+  t(name + ': <guid> 순수 유지', /<guid isPermaLink="true">' \+ xmlEscape\(it\.link\)/.test(f));
+});
 
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if (fail) { console.log('❌ rss-src-param tests FAILED'); process.exit(1); }

@@ -34,8 +34,14 @@ function cleanDesc(s) {
   return String(s || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 400);
 }
 
+/* 신디케이션 utm (2026-08-17) — 도메니코 결정: 핀터레스트·플립보드에는
+ * 에디토리얼만. 그래서 플립보드 등록 주소가 바로 이 피드다:
+ * /rss-editorials.xml?src=flipboard  (규칙·이유는 _lib/rssUtm.js) */
+const { srcParam, withRssUtm } = require('./_lib/rssUtm');
+
 module.exports = async function handler(req, res) {
   if (handleCors(req, res)) return;
+  const src = srcParam(req);
 
   try {
     const { data: eds } = await supabaseAdmin
@@ -69,7 +75,7 @@ module.exports = async function handler(req, res) {
     const itemXml = items.map(it =>
       '    <item>\n' +
       '      <title>' + xmlEscape(it.title) + '</title>\n' +
-      '      <link>' + xmlEscape(it.link) + '</link>\n' +
+      '      <link>' + xmlEscape(withRssUtm(it.link, src)) + '</link>\n' +
       '      <guid isPermaLink="true">' + xmlEscape(it.link) + '</guid>\n' +
       '      <pubDate>' + rfc822(it.date) + '</pubDate>\n' +
       '      <category>Editorial</category>\n' +
