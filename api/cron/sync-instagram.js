@@ -263,8 +263,17 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
                   { mediaIds: xMedia.mediaIds });
                 const mark = xMedia.mediaIds.length ? '' : '(미디어없음)';
                 results.tweets = (results.tweets || []).concat(
-                  tw.ok ? [tw.id + mark] : ['실패:' + (tw.detail || tw.status)]);
-              } catch (_) {}
+                  tw.ok ? [tw.id + mark] : ['실패:' + (tw.status || '') + ' ' + (tw.detail || '')]);
+                /* 2026-08-17 (도메니코 지적: "X에 글이 안 올라간다") — 실측:
+                   @papmagazine_ 마지막 트윗 8/1, 이후 17일간 0건인데 아무 경보가
+                   없었다. 실패가 results.tweets 에만 담기고 로그·노트 어디에도
+                   안 남아서다. 실패는 반드시 콘솔에 찍는다 (Vercel 로그에서
+                   상태코드 401/403/429 를 봐야 원인을 가를 수 있다). */
+                if (!tw.ok) console.error('[sync-ig] X 트윗 실패:', tw.status || '', tw.detail || tw.skipped || '');
+              } catch (e) {
+                results.tweets = (results.tweets || []).concat(['실패(예외):' + String(e && e.message || e).slice(0, 80)]);
+                console.error('[sync-ig] X 트윗 예외:', e && e.message || e);
+              }
             }
             // Threads 자동 게시 — 실패해도 수집 흐름 계속(스위퍼가 재시도).
             if (process.env.THREADS_AUTOPOST !== 'false'){
@@ -531,10 +540,20 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
        (2026-08-10 이관 크론에서 배운 것: note 가 비면 고장도 안 보인다.) */
     if (!dry){
       res.locals = res.locals || {};
+      /* 2026-08-17 — X·스레드 발행 결과도 노트에 싣는다. X 가 8/1부터 조용히
+         죽어 있었는데 노트에 트윗 결과가 없어 17일간 아무도 몰랐다.
+         성공은 'X 1건', 실패는 실패 문자열 그대로 (상태코드가 보여야 한다). */
+      const twArr = results.tweets || [];
+      const twFail = twArr.filter(t => String(t).startsWith('실패'));
+      const thArr = results.threads || [];
+      const thFail = thArr.filter(t => String(t).startsWith('실패'));
       res.locals.cronNote = 'account=' + (account || 'magazine')
         + ' · 수집 ' + (results.imported || 0) + '건'
         + (results.deferred ? ' · 다음 회차로 이월 ' + results.deferred + '건' : '')
         + (results.failed ? ' · 실패 ' + results.failed + '건' : '')
+        + (twArr.length ? ' · X ' + (twArr.length - twFail.length) + '/' + twArr.length + '건'
+            + (twFail.length ? ' [' + twFail.join('; ').slice(0, 160) + ']' : '') : '')
+        + (thArr.length ? ' · 스레드 ' + (thArr.length - thFail.length) + '/' + thArr.length + '건' : '')
         + ' · ' + Math.round((Date.now() - SYNC_STARTED) / 1000) + '초';
     }
     // (백필 완주 감지·done 플래그·텔레그램 통보는 커서 백필 브랜치에서 처리 —
