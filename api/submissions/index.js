@@ -269,6 +269,16 @@ module.exports = async function handler(req, res) {
         .order('created_at', { ascending: false })
         .range(offset, offset + perPage - 1);
 
+      // 2026-08-17 (도메니코 지적) — 유료 유형(branded 등)인데 결제(승인)를
+      // 마치지 않은 서브미션이 심사 리스트에 올라왔다. 결제 미완료 상태
+      // (awaiting_authorization: 페이팔 승인 전 / awaiting_payment: 구식 값)는
+      // 리스트에서 제외한다. 'none'(무료 유형)·'authorized'·'paid'·'refunded'
+      // 는 그대로 보인다. payment_status 가 NULL 인 과거 행도 살아남도록
+      // is.null 을 or 로 함께 건다 (not.in 단독은 NULL 행을 삼킨다).
+      query = query.or(
+        'payment_status.is.null,payment_status.not.in.(awaiting_authorization,awaiting_payment)'
+      );
+
       // QA #175 — "resubmitted" is a synthetic filter that means
       // "pending AND already came back from a revision round". Maps to
       // (status='pending' AND resubmitted_at IS NOT NULL).
