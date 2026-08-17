@@ -182,6 +182,76 @@ function outclickCards(d){
    (처음엔 게시물 두 건만 보고 '공유가 답' 이라고 썼다가 전수에서 뒤집혔다.)
    그리고 '안 보이는 건수'를 반드시 같이 띄운다 — 영상 49편 전부 전환 지표가
    비어 있는 걸 한 달 동안 아무도 몰랐다. */
+/* 릴스 — 캐러셀과 다른 물건이라 따로 본다 (2026-08-17).
+   릴스는 follows 를 영구히 못 받고(영상 81건 전부 NULL), 저장·공유·좋아요·댓글
+   어느 참여율도 도달과 상관이 없다(전부 |r| < 0.12). 그래서 '얼마나 오래·몇 번
+   봤는가' 로 본다. 반복재생은 API 가 폐기해서 조회 ÷ 도달 로 대신한다. */
+function renderIgReels(d){
+  const g = d.ig_reels; if (!g) return;
+  const host = document.getElementById('igReels');
+  const topHost = document.getElementById('igReelsTop');
+  if (!host || !topHost) return;
+
+  const line = (lab, val, foot, big) =>
+    '<div style="display:flex;align-items:baseline;gap:10px;padding:9px 0;border-top:1px solid rgba(0,0,0,.06)">'
+    + '<div style="width:128px;font-size:12px;color:var(--text3)">' + esc(lab) + '</div>'
+    + '<div style="font-size:' + (big ? 24 : 17) + 'px;font-weight:700;min-width:88px">' + esc(val) + '</div>'
+    + '<div style="font-size:11px;color:var(--text3)">' + esc(foot) + '</div>'
+    + '</div>';
+
+  host.innerHTML =
+      line('평균 시청 시간', g.avg_watch_sec_median + '초',
+           '중앙값 · 측정된 ' + nf(g.watch_measured_posts) + '편 기준', true)
+    + line('반복재생', g.replay_rate_median + '회',
+           '계정당 평균 재생 · 1.0 이면 아무도 두 번 안 봤다', true)
+    + line('총 시청 시간', nf(g.total_watch_hours) + '시간', '측정된 릴스 합계')
+    + line('릴스', nf(g.posts) + '편', '최근 30일')
+    + (g.watch_blind_posts
+        ? '<div style="margin-top:12px;padding:10px;border-radius:8px;background:rgba(200,60,60,.08);'
+          + 'font-size:11px;line-height:1.7;color:var(--text2)">'
+          + '<b style="color:#b03636">시청유지가 안 보이는 릴스 ' + nf(g.watch_blind_posts) + '편</b><br>'
+          + '수집은 2026-08-17 에 시작했습니다. 그전 게시물은 값이 없습니다 — 시간이 지나야 찹니다.'
+          + '</div>'
+        : '')
+    + '<div style="margin-top:10px;font-size:11px;color:var(--text3);line-height:1.6">'
+    + '릴스를 따로 보는 이유: <b>팔로우 전환을 영구히 못 받습니다.</b><br>'
+    + '영상 81건 전부 NULL 이었고(캐러셀은 567/567 수집), 따로 물어도 안 옵니다.<br>'
+    + '게다가 릴스 30편에서 저장·공유·좋아요·댓글 <b>어느 참여율도 도달과 상관이 없습니다</b>'
+    + ' (전부 |r| &lt; 0.12).<br>'
+    + '캐러셀에서 통하던 지표가 릴스에선 안 통합니다. 그래서 시청유지로 봅니다.'
+    + '</div>';
+
+  const list = g.top_by_watch || [];
+  topHost.innerHTML = (!list.length
+    ? '<div style="font-size:12px;color:var(--text3)">아직 측정된 릴스가 없습니다 — 수집 개시 2026-08-17</div>'
+    : '<table style="width:100%;border-collapse:collapse;font-size:12px">'
+      + '<tr style="color:var(--text3);text-align:left">'
+      + '<th style="padding:4px 0;font-weight:500">게시물</th>'
+      + '<th style="padding:4px 0;font-weight:500;text-align:right">평균 시청</th>'
+      + '<th style="padding:4px 0;font-weight:500;text-align:right">반복재생</th>'
+      + '<th style="padding:4px 0;font-weight:500;text-align:right">도달</th>'
+      + '<th style="padding:4px 0;font-weight:500;text-align:right">댓글</th></tr>'
+      + list.map(function(p){
+          const dt = p.posted_at ? String(p.posted_at).slice(5,10) : '—';
+          const cell = p.permalink
+            ? '<a href="' + esc(p.permalink) + '" target="_blank" rel="noopener">' + esc(dt) + ' · 릴스</a>'
+            : esc(dt + ' · 릴스');
+          return '<tr style="border-top:1px solid rgba(0,0,0,.06)">'
+            + '<td style="padding:6px 0">' + cell + '</td>'
+            + '<td style="padding:6px 0;text-align:right;font-weight:700">' + p.avg_watch_sec + '초</td>'
+            + '<td style="padding:6px 0;text-align:right;font-weight:700">'
+            + (p.replay_rate === null ? '—' : p.replay_rate + '회') + '</td>'
+            + '<td style="padding:6px 0;text-align:right">' + nf(p.reach) + '</td>'
+            + '<td style="padding:6px 0;text-align:right">' + nf(p.comments) + '</td></tr>';
+        }).join('')
+      + '</table>'
+      + '<div style="margin-top:10px;font-size:11px;color:var(--text3);line-height:1.6">'
+      + '도달이 아니라 평균 시청 시간 순입니다.<br>'
+      + '반복재생은 조회 ÷ 도달 입니다 — 인스타가 clips_replays_count 를 2025-04 에'
+      + ' 폐기해서 직접 지표가 없습니다.'
+      + '</div>');
+}
+
 function renderIgPerf(d){
   const g = d.ig_perf || {};
   const host = document.getElementById('igPerf');
@@ -332,6 +402,12 @@ function render(d){
       <div class="card"><h3>저장율 상위 게시물 · 도달 3,000+ </h3><div id="igTop"></div></div>
     </div>
 
+    <h2><span class="bar"></span>Reels · 팔로우가 안 보이는 대신 시청유지로 본다</h2>
+    <div class="grid cols">
+      <div class="card"><h3>시청유지 · 반복재생</h3><div id="igReels"></div></div>
+      <div class="card"><h3>평균 시청 시간 상위 릴스</h3><div id="igReelsTop"></div></div>
+    </div>
+
     <h2><span class="bar"></span>Funnel &amp; Inflow · 유입 → 전환</h2>
     <div class="grid cols">
       <div class="card"><h3>깔때기 · 최근 7일</h3><div id="funnelSteps"></div></div>
@@ -414,6 +490,7 @@ function render(d){
   });
 
   renderIgPerf(d);
+  renderIgReels(d);
   renderFunnel(d);
   drawBar(d.monthly||[]);
   drawLine(d.daily||[]);

@@ -356,7 +356,7 @@ module.exports = async function handler(req, res) {
      * `blind` 가 이 카드의 핵심이다. 영상 49편 전부 전환 지표가 NULL 인 걸
      * 한 달 동안 아무도 몰랐다. 안 보이는 건수를 화면에 띄운다. */
     const igRows = await rows('ig_post_metric', {
-      cols: 'post_id, permalink, media_type, posted_at, captured_at, reach, shares, saved, follows, comments_count',
+      cols: 'post_id, permalink, media_type, posted_at, captured_at, reach, shares, saved, follows, comments_count, views, avg_watch_time_ms, total_watch_time_ms',
       fn: q => q.gte('posted_at', D30).order('captured_at', { ascending: false }).limit(6000),
     });
     // 게시물당 가장 최근 캡처 1건만 — 같은 게시물이 3시간마다 여러 행으로 쌓인다
@@ -407,6 +407,62 @@ module.exports = async function handler(req, res) {
         .slice(0, 8),
     };
 
+    /* ── 릴스 시청유지 · 반복재생 (2026-08-17 신설) ──────────────────
+     *
+     * 위 ig_perf 는 캐러셀 기준이다. 릴스는 다른 물건이라 따로 본다.
+     *
+     * 왜 따로 봐야 하나 — 실측이 둘을 갈라놓는다.
+     *   · 릴스는 follows·profile_visits 를 **영구히 못 받는다.** 2026-08-16 에
+     *     재시도를 넣고도 영상 81건 전부 NULL 이었다(캐러셀은 567/567 수집).
+     *     따로 물어도 안 온다 = 인스타가 릴스에 안 준다. 확정된 사각지대다.
+     *   · 릴스 30편에서 저장·공유·좋아요·댓글 **어느 참여율도 도달과 상관이
+     *     없다**(전부 |r| < 0.12). 캐러셀에서 통하던 지표가 릴스에선 안 통한다.
+     *
+     * 그래서 릴스는 팔로우 전환이 아니라 **얼마나 오래·몇 번 봤는가**로 본다.
+     *   평균 시청 시간   ig_reels_avg_watch_time (2026-08-17 수집 개시)
+     *   반복재생 대리지표 조회 ÷ 도달 = 계정당 평균 재생 횟수
+     *
+     * 반복재생을 왜 대리지표로 쓰나 — clips_replays_count 와
+     * ig_reels_aggregated_all_plays_count 가 2025-04 에 폐기됐다. API 로 못 받는다.
+     * 조회는 재생 횟수, 도달은 고유 계정이므로 그 비는 계정당 재생 횟수다.
+     *
+     * 평균이 아니라 **중앙값**을 쓴다. 이 파일이 이미 배운 규칙이다 —
+     * 캐러셀 도달 평균 29,270 대 중앙값 9,596 은 두 편이 만든 착시였다. */
+    const reelRows = igPosts.filter(r => String(r.media_type || '').toUpperCase() === 'VIDEO');
+    const withWatch = reelRows.filter(r => Number(r.avg_watch_time_ms) > 0);
+    const withViews = reelRows.filter(r => Number(r.views) > 0 && Number(r.reach) > 0);
+    const medianF = (arr) => {
+      const s2 = arr.filter(n => Number.isFinite(n)).sort((a, b) => a - b);
+      if (!s2.length) return 0;
+      const m = Math.floor(s2.length / 2);
+      return s2.length % 2 ? s2[m] : (s2[m - 1] + s2[m]) / 2;
+    };
+    const round1 = (n) => Math.round(n * 10) / 10;
+    const round2 = (n) => Math.round(n * 100) / 100;
+
+    const ig_reels = {
+      posts: reelRows.length,
+      // 수집이 안 된 건수를 숨기지 않는다 — ig_perf 의 blind 와 같은 원칙이다
+      watch_measured_posts: withWatch.length,
+      watch_blind_posts: reelRows.length - withWatch.length,
+      avg_watch_sec_median: round1(medianF(withWatch.map(r => Number(r.avg_watch_time_ms) / 1000))),
+      total_watch_hours: round1(
+        withWatch.reduce((n, r) => n + (Number(r.total_watch_time_ms) || 0), 0) / 3600000),
+      // 반복재생 대리지표 — 1.0 이면 아무도 두 번 안 봤다는 뜻이다
+      replay_rate_median: round2(medianF(withViews.map(r => Number(r.views) / Number(r.reach)))),
+      replay_measured_posts: withViews.length,
+      top_by_watch: withWatch
+        .map(r => ({
+          permalink: r.permalink, posted_at: r.posted_at,
+          reach: Number(r.reach) || 0, views: Number(r.views) || 0,
+          avg_watch_sec: round1(Number(r.avg_watch_time_ms) / 1000),
+          replay_rate: Number(r.reach) > 0 ? round2(Number(r.views) / Number(r.reach)) : null,
+          saved: Number(r.saved) || 0, comments: Number(r.comments_count) || 0,
+        }))
+        .sort((a, b) => b.avg_watch_sec - a.avg_watch_sec)
+        .slice(0, 8),
+    };
+
     const article_categories = Object.entries(catMap)
       .map(([category, count]) => ({ category, count }))
       .sort((a, b) => b.count - a.count)
@@ -444,6 +500,7 @@ module.exports = async function handler(req, res) {
       article_categories,
       funnel,
       ig_perf,
+      ig_reels,
     });
   } catch (e) {
     console.error('[ops-dashboard] failed:', e);
