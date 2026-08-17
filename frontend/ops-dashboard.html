@@ -174,6 +174,8 @@ function outclickCards(d){
 /* IG 성과 — 대표 숫자를 도달이 아니라 저장율로 둔다 (2026-08-16).
    근거: 전수 145편(도달 3,000+·전환 측정분)에서 팔로우'율' 과의 상관을 재봤다.
    아웃라이어 1편 제외 n=144:  저장율 0.464 > 좋아요율 0.378 > 공유율 0.140
+   2026-08-17 재측정(n=144):  저장율 0.457 · 댓글율 0.417 · 좋아요율 0.347 · 공유율 0.148
+   댓글이 애초에 비교에서 빠져 있었다. 저장과 동급이라 둘째 자리로 올린다.
                               > 도달 -0.045
    도달은 전환을 전혀 예측하지 못한다(-0.045). 저장이 가장 잘 맞는다 —
    저장은 "다시 보러 오겠다" 라 팔로우와 뜻이 가장 가깝다.
@@ -201,7 +203,8 @@ function renderIgPerf(d){
 
   host.innerHTML =
       line('저장율', g.save_rate + '%', '저장 ' + nf(g.saved_30d) + ' ÷ 도달 ' + nf(g.reach_30d), true)
-    + line('공유율', g.share_rate + '%', '공유 ' + nf(g.shares_30d) + ' ÷ 도달 ' + nf(g.reach_30d), true)
+    + line('댓글율', g.comment_rate + '%', '댓글 ' + nf(g.comments_30d) + ' ÷ 도달 ' + nf(g.reach_30d), true)
+    + line('공유율', g.share_rate + '%', '공유 ' + nf(g.shares_30d) + ' ÷ 도달 ' + nf(g.reach_30d))
     + line('팔로우 전환율', g.follow_rate + '%', '측정된 ' + nf(g.follows_measured_posts) + '편 기준', true)
     + line('도달 중앙값', nf(g.reach_median), '평균은 아웃라이어가 끌어올린다 — 중앙값을 본다')
     + line('게시물', nf(g.posts) + '편', '최근 30일')
@@ -214,8 +217,12 @@ function renderIgPerf(d){
           + '</div>'
         : '<div style="margin-top:12px;font-size:11px;color:var(--text3)">전환 지표 공백 없음 — 전 건 측정됨.</div>')
     + '<div style="margin-top:10px;font-size:11px;color:var(--text3);line-height:1.6">'
-    + '저장율을 맨 위에 둔 이유 — 145편 전수에서 팔로우율과의 상관:<br>'
-    + '<b>저장율 0.46</b> &gt; 좋아요율 0.38 &gt; 공유율 0.14 &gt; <b>도달 -0.05</b><br>'
+    + '무엇을 위에 둘지의 근거 — 캐러셀 144편에서 팔로우율과의 상관:<br>'
+    + '<b>저장율 0.46</b> &nbsp;·&nbsp; <b>댓글율 0.42</b> &nbsp;·&nbsp; 좋아요율 0.35'
+    + ' &nbsp;·&nbsp; 공유율 0.15 &nbsp;·&nbsp; <b>도달 -0.05</b><br>'
+    + '<b>댓글은 2026-08-17 에 올라왔습니다.</b> 그전까지 저장·좋아요·공유만 비교하느라'
+    + ' 빠져 있었는데, 재보니 저장과 사실상 동급입니다.<br>'
+    + '캡션으로 직접 만들 수 있는 레버라 저장 옆에 둡니다. 공유는 내려갔습니다(0.15).<br>'
     + '도달은 전환을 예측하지 못합니다. 도달 1,609,308 짜리가 팔로우 170,<br>'
     + '도달 616,522 짜리가 팔로우 1,091 이었습니다.'
     + '</div>';
@@ -227,6 +234,7 @@ function renderIgPerf(d){
       + '<tr style="color:var(--text3);text-align:left">'
       + '<th style="padding:4px 0;font-weight:500">게시물</th>'
       + '<th style="padding:4px 0;font-weight:500;text-align:right">저장율</th>'
+      + '<th style="padding:4px 0;font-weight:500;text-align:right">댓글율</th>'
       + '<th style="padding:4px 0;font-weight:500;text-align:right">공유율</th>'
       + '<th style="padding:4px 0;font-weight:500;text-align:right">도달</th>'
       + '<th style="padding:4px 0;font-weight:500;text-align:right">팔로우</th></tr>'
@@ -239,6 +247,7 @@ function renderIgPerf(d){
           return '<tr style="border-top:1px solid rgba(0,0,0,.06)">'
             + '<td style="padding:6px 0">' + cell + '</td>'
             + '<td style="padding:6px 0;text-align:right;font-weight:700">' + p.save_rate + '%</td>'
+            + '<td style="padding:6px 0;text-align:right;font-weight:700">' + p.comment_rate + '%</td>'
             + '<td style="padding:6px 0;text-align:right">' + p.share_rate + '%</td>'
             + '<td style="padding:6px 0;text-align:right">' + nf(p.reach) + '</td>'
             + '<td style="padding:6px 0;text-align:right">'

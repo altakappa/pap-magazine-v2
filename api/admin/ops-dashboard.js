@@ -326,6 +326,25 @@ module.exports = async function handler(req, res) {
      *        공유율   0.140
      *        도달    -0.045   ← 사실상 무관. 도달은 전환을 예측하지 못한다.
      *
+     * ── 2026-08-17 재측정: 댓글을 빼먹고 있었다 ──────────────────────
+     *    위 표에 **댓글이 없다.** 저장·좋아요·공유만 비교하고 끝냈기 때문이다.
+     *    캐러셀 144편(도달 1,000+·전환 측정분)으로 다시 재니:
+     *
+     *        프로필방문율 0.468
+     *        저장율       0.457
+     *        댓글율       0.417   ← 저장과 사실상 동급인데 안 보고 있었다
+     *        좋아요율     0.347
+     *        공유율       0.148
+     *
+     *    (저장율이 0.464 → 0.457 로 미세하게 다른 것은 표본 조건 차이다.
+     *     앞은 도달 3,000+ 에 아웃라이어 1편 제외, 뒤는 도달 1,000+ 전수.
+     *     순서는 두 조건 모두에서 같다 — 그게 중요한 부분이다.)
+     *
+     *    프로필방문율이 1위인 것은 당연하다. 팔로우하려면 프로필을 거쳐야 하니
+     *    거의 같은 사건을 두 번 세는 것에 가깝다. **레버가 아니다.**
+     *    반면 댓글은 캡션으로 직접 만들 수 있는 레버다. 그래서 저장 옆에 세운다.
+     *    공유는 자리를 내준다 — 0.148 은 넷 중 꼴찌이고 저장의 3분의 1이다.
+     *
      *    두 건짜리 표본으로 지표를 정하면 안 된다. 저장을 맨 위에 둔다 —
      *    저장은 "다시 보러 오겠다" 는 신호라 팔로우와 뜻이 가장 가깝다.
      *    공유는 그다음이다(남에게 보내는 것은 계정을 기억하는 것과 다르다).
@@ -337,7 +356,7 @@ module.exports = async function handler(req, res) {
      * `blind` 가 이 카드의 핵심이다. 영상 49편 전부 전환 지표가 NULL 인 걸
      * 한 달 동안 아무도 몰랐다. 안 보이는 건수를 화면에 띄운다. */
     const igRows = await rows('ig_post_metric', {
-      cols: 'post_id, permalink, media_type, posted_at, captured_at, reach, shares, saved, follows',
+      cols: 'post_id, permalink, media_type, posted_at, captured_at, reach, shares, saved, follows, comments_count',
       fn: q => q.gte('posted_at', D30).order('captured_at', { ascending: false }).limit(6000),
     });
     // 게시물당 가장 최근 캡처 1건만 — 같은 게시물이 3시간마다 여러 행으로 쌓인다
@@ -361,8 +380,10 @@ module.exports = async function handler(req, res) {
       reach_median: median(igPosts.map(r => Number(r.reach) || 0)),
       shares_30d: sum('shares'),
       saved_30d: sum('saved'),
-      save_rate: rate(sum('saved'), sum('reach')),            // ← 대표 지표 (상관 0.464)
-      share_rate: rate(sum('shares'), sum('reach')),          // 둘째 (상관 0.140)
+      comments_30d: sum('comments_count'),
+      save_rate: rate(sum('saved'), sum('reach')),            // ← 대표 지표 (상관 0.457)
+      comment_rate: rate(sum('comments_count'), sum('reach')), // 둘째 (상관 0.417, 2026-08-17 승격)
+      share_rate: rate(sum('shares'), sum('reach')),          // 셋째 (상관 0.148)
       follow_rate: rate(
         igMeasured.reduce((n, r) => n + (Number(r.follows) || 0), 0),
         igMeasured.reduce((n, r) => n + (Number(r.reach) || 0), 0)),
@@ -377,7 +398,9 @@ module.exports = async function handler(req, res) {
           permalink: r.permalink, media_type: r.media_type,
           posted_at: r.posted_at, reach: Number(r.reach) || 0,
           saved: Number(r.saved) || 0, shares: Number(r.shares) || 0, follows: r.follows,
+          comments: Number(r.comments_count) || 0,
           save_rate: rate(Number(r.saved) || 0, Number(r.reach) || 0),
+          comment_rate: rate(Number(r.comments_count) || 0, Number(r.reach) || 0),
           share_rate: rate(Number(r.shares) || 0, Number(r.reach) || 0),
         }))
         .sort((a, b) => b.save_rate - a.save_rate)
