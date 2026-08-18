@@ -1,7 +1,7 @@
 {
   "version": 2,
   "regions": ["icn1"],
-  "buildCommand": "",
+  "buildCommand": "node scripts/vercel-build.js",
   "outputDirectory": "frontend",
   "framework": null,
   "crons": [

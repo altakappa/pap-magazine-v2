@@ -34,7 +34,12 @@ jobs:
           # 그래서 api/_lib/supabase.js 를 require 하는 테스트가 CI 에서만 죽었다.
           # 라이브(Vercel)는 Node 24.x 라 영향 없었다 — CI 만 뒤처져 있었다.
           # tests/ci-node-version.test.js 가 이 값을 의존성 요구치와 맞춰 지킨다.
-          node-version: '22'
+          # 2026-08-18 — 22 → 24. vercel.json 의 buildCommand 로 배포 관문이
+          # 생기면서 npm test 가 **Vercel 빌드(Node 24.x)** 에서도 돈다.
+          # CI 가 22 에 남아 있으면 24 에서만 깨지는 것을 배포 직전에야 알게 된다.
+          # 2026-08-12 에 겪은 것과 같은 모양의 함정이다(그때는 CI 만 20 이었다).
+          # tests/deploy-gate.test.js 가 이 값이 24 미만으로 내려가는 것을 막는다.
+          node-version: '24'
           cache: 'npm'
       # 2026-07-30 추가. 그전까지 이 잡은 node_modules 없이 npm test 를 돌렸고,
       # 하네스 테스트가 npm 패키지를 건드리지 않는 동안은 우연히 통과했다.
