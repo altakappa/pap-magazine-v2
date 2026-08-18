@@ -29,9 +29,15 @@ const UPLOAD_URL = 'https://www.googleapis.com/upload/youtube/v3/videos?uploadTy
 // 스스로 확인하기 위해서다. 그날 영상 하나가 사라진 것을 사람이 눈으로
 // 발견했다(중복 업로드분을 지운 것이었지만, 저작권 삭제였어도 똑같이 몰랐다).
 // 올려놓고 상태를 못 묻는 건 오늘 하루 종일 잡은 침묵과 같은 모양이다.
+// 2026-08-18 webmasters.readonly 추가 — Search Console 을 우리 DB 로 가져온다.
+// 왜 여기에 붙이나: 구글 OAuth 앱이 이미 하나 있고, 앱을 또 만들면 도메니코가
+// 인증을 두 번 해야 한다. 스코프는 읽기 전용이라 기존 권한을 넓히지 않는다.
+// ⚠️ 스코프를 늘렸으므로 /api/youtube/oauth 로 **1회 재인증**해야 적용된다.
+//    2026-08-07 drive.readonly 때와 같다 — 옛 refresh_token 은 403 난다.
 const SCOPES = 'https://www.googleapis.com/auth/youtube.upload'
   + ' https://www.googleapis.com/auth/youtube.readonly'
-  + ' https://www.googleapis.com/auth/drive.readonly';
+  + ' https://www.googleapis.com/auth/drive.readonly'
+  + ' https://www.googleapis.com/auth/webmasters.readonly';
 const REDIRECT_URI = 'https://www.pap-magazine.com/api/youtube/callback';
 
 function authorizeUrl(state) {

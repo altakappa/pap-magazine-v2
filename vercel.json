@@ -158,6 +158,10 @@
       "schedule": "3-53/10 * * * *"
     },
     {
+      "path": "/api/cron/gsc-sync",
+      "schedule": "20 5 * * *"
+    },
+    {
       "path": "/api/cron/image-link-check",
       "schedule": "30 0 * * 1"
     },
