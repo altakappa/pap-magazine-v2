@@ -55,6 +55,48 @@ function norm(s) {
     .replace(/[^a-z0-9가-힣]/g, '');
 }
 
+/* ── 깊은 스윕 커서 (2026-08-18) ───────────────────────────────────
+ *
+ * 크론은 최근 2페이지(~200개)만 본다. 새 화보의 IG 게시물은 항상 최근에
+ * 있으니 맞는 설계다 — 실제로 8/08 이후 발행분 7편은 7편 다 연결됐다.
+ *
+ * 문제는 **옛 구간**이다. 미연결 183편은 2019-08-22 ~ 2026-07-06 구간
+ * (2026-07-06 대량 임포트분이 몸통)이라 최근 200개 안에 영영 안 들어온다.
+ * 그래서 크론은 6시간마다 정직하게 돌면서 '연결 0건' 만 36회 반복했다.
+ * 옛 구간 스캔이 '관리자 수동' 이었는데, 아무도 안 눌렀다.
+ * 사람이 눌러야 도는 자동화는 자동화가 아니다.
+ *
+ * 그래서 회차마다 아카이브를 조금씩 씹는다. 커서를 site_settings 에 남겨
+ * 다음 회차가 이어받고, 끝까지 가면 null 로 되감아 다시 최신부터 훑는다
+ * (아카이브는 계속 자라고, 그 사이 새 미연결이 생길 수 있다).
+ * 새 테이블을 만들지 않는다 — site_settings 는 key/value JSONB 로 이미 있다. */
+const DEEP_KEY = 'ig_link_deep_cursor';
+
+async function loadDeepCursor() {
+  try {
+    const { data } = await supabaseAdmin
+      .from('site_settings').select('value').eq('key', DEEP_KEY).maybeSingle();
+    const v = data && data.value;
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      return { after: v.after || null, sweeps: Number(v.sweeps) || 0, scanned: Number(v.scanned) || 0 };
+    }
+  } catch (e) { console.error('[backfill-ig] 커서 읽기 실패:', e && e.message); }
+  return { after: null, sweeps: 0, scanned: 0 };
+}
+
+async function saveDeepCursor(v) {
+  try {
+    await supabaseAdmin.from('site_settings')
+      .upsert({ key: DEEP_KEY, value: v, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    return true;
+  } catch (e) {
+    /* 커서를 못 남기면 다음 회차가 같은 구간을 또 훑는다 (손해는 시간뿐,
+       중복 연결은 update ... is null 이 막는다). 조용히 넘기지는 않는다. */
+    console.error('[backfill-ig] 커서 저장 실패:', e && e.message);
+    return false;
+  }
+}
+
 async function handler(req, res) {
   if (handleCors(req, res)) return;
   if (req.method !== 'GET') { res.setHeader('Allow', 'GET, OPTIONS'); return res.status(405).end(); }
@@ -149,66 +191,100 @@ async function handler(req, res) {
     const fields = 'caption,permalink,timestamp';
     const matches = [];
     const matchedTitleSet = new Set();
-    let scanned = 0, pages = 0, nextAfter = null;
 
-    while (pages < maxPages) {
-      const url = IG_API + '/' + process.env.IG_USER_ID + '/media'
-        + '?fields=' + encodeURIComponent(fields)
-        + '&limit=' + pageLimit
-        + (until ? '&until=' + encodeURIComponent(until) : '')
-        + (after ? '&after=' + encodeURIComponent(after) : '')
-        + '&access_token=' + process.env.IG_ACCESS_TOKEN;
-      const r = await fetch(url, { signal: AbortSignal.timeout(fetchTimeout) });
-      if (!r.ok) {
-        const body = await r.text().catch(() => '');
-        // Graph API code 1: 응답 데이터가 너무 큼 (캡션이 긴 옛 게시물 구간에서
-        // limit=100 이 초과) → 같은 커서에서 페이지 크기를 절반으로 줄여 재시도.
-        if (body.indexOf('reduce the amount of data') !== -1 && pageLimit > 10) {
-          pageLimit = Math.max(10, Math.floor(pageLimit / 2));
-          continue;
+    /* 한 구간을 훑는다. 최근 구간과 깊은 구간이 **같은 코드**를 쓴다 —
+       규칙이 두 벌이면 한쪽만 고쳐진다 (이 저장소가 반복해서 배운 것). */
+    async function scanFrom(startAfter, howMany) {
+      let after2 = startAfter || null;
+      let scanned = 0, pages = 0, endOfArchive = false;
+      while (pages < howMany) {
+        const url = IG_API + '/' + process.env.IG_USER_ID + '/media'
+          + '?fields=' + encodeURIComponent(fields)
+          + '&limit=' + pageLimit
+          + (until ? '&until=' + encodeURIComponent(until) : '')
+          + (after2 ? '&after=' + encodeURIComponent(after2) : '')
+          + '&access_token=' + process.env.IG_ACCESS_TOKEN;
+        const r = await fetch(url, { signal: AbortSignal.timeout(fetchTimeout) });
+        if (!r.ok) {
+          const body = await r.text().catch(() => '');
+          // Graph API code 1: 응답 데이터가 너무 큼 (캡션이 긴 옛 게시물 구간에서
+          // limit=100 이 초과) → 같은 커서에서 페이지 크기를 절반으로 줄여 재시도.
+          if (body.indexOf('reduce the amount of data') !== -1 && pageLimit > 10) {
+            pageLimit = Math.max(10, Math.floor(pageLimit / 2));
+            continue;
+          }
+          throw new Error('Graph API 실패 (' + r.status + '): ' + body.slice(0, 200));
         }
-        throw new Error('Graph API 실패 (' + r.status + '): ' + body.slice(0, 200));
-      }
-      const j = await r.json();
-      const media = Array.isArray(j.data) ? j.data : [];
-      scanned += media.length;
-      pages++;
+        const j2 = await r.json();
+        const media = Array.isArray(j2.data) ? j2.data : [];
+        scanned += media.length;
+        pages++;
 
-      for (const m of media) {
-        if (!m.permalink || !m.caption) continue;
-        const cap = norm(m.caption);
-        for (const t of titles) {
-          if (matchedTitleSet.has(t)) continue; // 에디토리얼당 첫(최신) 게시물 1개만
-          if (cap.indexOf(t) !== -1) {
-            const e = byTitle.get(t);
-            matches.push({
-              editorial_id: e.id, title: e.title, slug: e.slug,
-              permalink: m.permalink, post_time: m.timestamp || null,
-            });
-            matchedTitleSet.add(t);
-            break; // 게시물 하나는 에디토리얼 하나에만
+        for (const m of media) {
+          if (!m.permalink || !m.caption) continue;
+          const cap = norm(m.caption);
+          for (const t of titles) {
+            if (matchedTitleSet.has(t)) continue; // 에디토리얼당 첫(최신) 게시물 1개만
+            if (cap.indexOf(t) !== -1) {
+              const e = byTitle.get(t);
+              matches.push({
+                editorial_id: e.id, title: e.title, slug: e.slug,
+                permalink: m.permalink, post_time: m.timestamp || null,
+              });
+              matchedTitleSet.add(t);
+              break; // 게시물 하나는 에디토리얼 하나에만
+            }
+          }
+          // 짧은 제목(3~4자) — 따옴표로 감싼 정확 매칭 (원문 캡션 기준)
+          for (const [st, sh] of shortRx) {
+            if (matchedTitleSet.has('short:' + st)) continue;
+            if (sh.rx.test(m.caption)) {
+              matches.push({
+                editorial_id: sh.e.id, title: sh.e.title, slug: sh.e.slug,
+                permalink: m.permalink, post_time: m.timestamp || null,
+              });
+              matchedTitleSet.add('short:' + st);
+              break;
+            }
           }
         }
-        // 짧은 제목(3~4자) — 따옴표로 감싼 정확 매칭 (원문 캡션 기준)
-        for (const [st, s] of shortRx) {
-          if (matchedTitleSet.has('short:' + st)) continue;
-          if (s.rx.test(m.caption)) {
-            matches.push({
-              editorial_id: s.e.id, title: s.e.title, slug: s.e.slug,
-              permalink: m.permalink, post_time: m.timestamp || null,
-            });
-            matchedTitleSet.add('short:' + st);
-            break;
-          }
-        }
-      }
 
-      after = j.paging && j.paging.cursors && j.paging.cursors.after;
-      const hasNext = j.paging && j.paging.next;
-      if (!hasNext || !after) { nextAfter = null; after = null; break; }
-      nextAfter = after;
-      // 남은 미매칭 제목이 없으면 조기 종료
-      if (matchedTitleSet.size >= titles.length + shortRx.size) break;
+        const nextCur = j2.paging && j2.paging.cursors && j2.paging.cursors.after;
+        const hasNext = j2.paging && j2.paging.next;
+        if (!hasNext || !nextCur) { after2 = null; endOfArchive = true; break; }
+        after2 = nextCur;
+        // 남은 미매칭 제목이 없으면 조기 종료
+        if (matchedTitleSet.size >= titles.length + shortRx.size) break;
+      }
+      return { nextAfter: after2, scanned, pages, endOfArchive };
+    }
+
+    // 2-a) 최근 구간 — 새 화보용 (종전과 동일)
+    const recent = await scanFrom(after, maxPages);
+    let scanned = recent.scanned, pages = recent.pages;
+    let nextAfter = recent.nextAfter;
+
+    /* 2-b) 깊은 스윕 — 크론일 때만, 아직 연결 못 한 화보가 남아 있을 때만.
+       최근 구간에서 다 붙였으면 API 를 더 쓸 이유가 없다. */
+    let deep = null;
+    const deepPages = Math.max(0, Math.min(5, parseInt(req.query.deep || (isCron ? '2' : '0'), 10) || 0));
+    const remaining = () => (titles.length + shortRx.size) - matchedTitleSet.size;
+    if (deepPages > 0 && remaining() > 0) {
+      const cur = await loadDeepCursor();
+      const got = await scanFrom(cur.after, deepPages);
+      const next = { 
+        after: got.endOfArchive ? null : got.nextAfter,
+        sweeps: (cur.sweeps || 0) + (got.endOfArchive ? 1 : 0),
+        scanned: got.endOfArchive ? 0 : (cur.scanned || 0) + got.scanned,
+      };
+      const savedCursor = await saveDeepCursor(next);
+      scanned += got.scanned; pages += got.pages;
+      deep = {
+        from: cur.after ? cur.after.slice(0, 12) + '…' : '처음부터',
+        scanned: got.scanned, pages: got.pages,
+        end_of_archive: got.endOfArchive, sweeps: next.sweeps,
+        cursor_saved: savedCursor,
+      };
     }
 
     // 3) 적용 (apply=1일 때만)
@@ -224,14 +300,22 @@ async function handler(req, res) {
       }
     }
 
+    /* note 는 '돌았다' 가 아니라 '무엇을 했다' 를 적는다.
+       깊은 스윕이 어디를 씹었는지 안 적으면, 옛 구간을 훑고 있다는 사실 자체가
+       안 보여서 종전처럼 '연결 0건' 만 반복되는 것으로 오해한다. */
     note((apply ? '연결 ' + applied + '건' : 'dry-run 매칭 ' + matches.length + '건')
       + ' · 미연결 ' + (byTitle.size + shortRx.size) + ' · 게시물 ' + scanned + '개 스캔'
+      + (deep ? ' · 깊은스윕 ' + deep.scanned + '개(' + deep.from + ')'
+              + (deep.end_of_archive ? ' · 아카이브 끝 — 다음 회차부터 되감기 ' + deep.sweeps + '회차' : '')
+              + (deep.cursor_saved ? '' : ' · ⚠️커서 저장 실패')
+        : '')
       + (matches.length ? ' — ' + matches.slice(0, 3).map(m => m.title).join(', ') : ''));
     return res.status(200).json({
       mode: apply ? 'apply' : 'dry-run',
       scanned_posts: scanned,
       pages_scanned: pages,
       page_limit: pageLimit, // code 1 축소 재시도 후 최종값 (시작 기본 100)
+      deep_sweep: deep,      // 옛 구간 진행 상황 (null 이면 이번 회차엔 안 돎)
 
       unlinked_editorials: byTitle.size + shortRx.size,
       ambiguous_titles_skipped: ambiguousTitles.size,

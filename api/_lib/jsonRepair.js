@@ -118,4 +118,46 @@ function parseJsonObject(text, label) {
   throw new Error(what + ' 객체 파싱 실패 (제어문자·따옴표 복구도 실패): ' + detail);
 }
 
-module.exports = { escapeRawControls, escapeInnerQuotes, tryRepairedParse, parseJsonObject };
+/**
+ * 배열 하나를 뽑는다 — 위 parseJsonObject 의 배열판. (2026-08-18)
+ *
+ * seoTranslateBackfill 에도 같은 이름의 함수가 있지만 그건 번역 배치 전용
+ * 계약(살리기·센티넬)이 얽혀 있어 건드리지 않는다. 여기 것은 "AI 가 준
+ * 배열 하나를 계단식으로 파싱한다" 만 한다. competitor-watch 처럼 배열을
+ * 받는 크론이 각자 JSON.parse 를 한 번씩 쓰던 것을 이걸로 모은다.
+ *
+ * @returns {{value:Array, repaired:('none'|'controls'|'quotes')}}
+ * @throws  세 칸 모두 실패하면 던진다. 삼키지 않는다.
+ */
+function parseJsonArray(text, label) {
+  const s = String(text || '');
+  const start = s.indexOf('[');
+  const end = s.lastIndexOf(']');
+  const what = label || 'JSON';
+  if (start === -1 || end <= start) {
+    throw new Error(what + ' 응답에서 배열을 찾지 못함: ' + s.slice(0, 150));
+  }
+  const chunk = s.slice(start, end + 1);
+
+  try {
+    const v = JSON.parse(chunk);
+    if (Array.isArray(v)) return { value: v, repaired: 'none' };
+  } catch (e) { /* 다음 칸 */ }
+
+  const ctrl = tryRepairedParse(chunk, false);
+  if (Array.isArray(ctrl)) return { value: ctrl, repaired: 'controls' };
+
+  const deep = tryRepairedParse(chunk, true);
+  if (Array.isArray(deep)) return { value: deep, repaired: 'quotes' };
+
+  let detail = '';
+  try { JSON.parse(chunk); } catch (e) {
+    const m = /position (\d+)/.exec(String(e && e.message));
+    const pos = m ? Number(m[1]) : -1;
+    detail = String(e && e.message);
+    if (pos >= 0) detail += ' :: \u2026' + chunk.slice(Math.max(0, pos - 60), pos + 60) + '\u2026';
+  }
+  throw new Error(what + ' 배열 파싱 실패 (제어문자·따옴표 복구도 실패): ' + detail);
+}
+
+module.exports = { escapeRawControls, escapeInnerQuotes, tryRepairedParse, parseJsonObject, parseJsonArray };

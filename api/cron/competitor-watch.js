@@ -32,6 +32,7 @@ const { submitIndexNow, SITE } = require('../_lib/pingSearch');
 // 남기지 않아 '도는지 안 도는지 알 수 없는' 상태였다(7일 로그 0건).
 // 실패해도 아무도 몰랐다는 뜻이다.
 const { withCronGuard } = require('../_lib/cronGuard');
+const { parseJsonArray } = require('../_lib/jsonRepair');
 
 const COMPETITORS = ['eyesmag', 'fastpapermag', 'dailyfashion_news', 'hipkr_', 'newsourcemag'];
 
@@ -114,7 +115,8 @@ module.exports = withCronGuard('competitor-watch', async function handler(req, r
     // 페퍼릿 경쟁 계정은 본지 파이프라인과 분리해 따로 적재한다 (2026-08-05)
     const pepCollected = await collectPepperitFeed(cutoff, dry);
 
-    if (!hot.length) return res.status(200).json({ message: '24시간 내 경쟁사 게시물 없음.', new_items: 0, pepperit_collected: pepCollected });
+    if (!hot.length) return res.status(200).json({ message: '24시간 내 경쟁사 게시물 없음.', new_items: 0, pepperit_collected: pepCollected,
+      note: note('24시간 내 경쟁사 게시물 없음 · 페퍼릿 수집 ' + pepCollected + '건') });
     hot.forEach((h) => { h.norm = h.followers ? +(h.score / h.followers * 1000).toFixed(2) : 0; });
     hot.sort((a, b) => b.norm - a.norm);
 
@@ -133,6 +135,10 @@ module.exports = withCronGuard('competitor-watch', async function handler(req, r
       .order('published_date', { ascending: false }).limit(80);
     const ourArts = ours || [];
 
+    /* 2026-08-18 — 이 크론은 384회를 돌면서 note 를 한 번도 안 남겼다.
+       ok=true·빈칸이면 대시보드에서 '매번 성공' 으로 보인다. 무엇을 했는지 적는다. */
+    function note(msg) { res.locals = res.locals || {}; res.locals.cronNote = msg; return msg; }
+    let repairedNote = '';
     let items = [];
     if (fresh.length && process.env.ANTHROPIC_API_KEY) {
       // 3) 새 토픽만 Claude 분류
@@ -166,8 +172,20 @@ module.exports = withCronGuard('competitor-watch', async function handler(req, r
       if (apiRes.ok) {
         const j = await apiRes.json();
         const text = (j.content && j.content[0] && j.content[0].text) || '';
-        const m = text.match(/\[[\s\S]*\]/);
-        items = m ? JSON.parse(m[0]) : [];
+        /* 2026-08-18 — JSON.parse 한 번이 전부라 08-16 에 통째로 죽었다
+           ('Unexpected non-whitespace character after JSON at position 502').
+           번역·뉴스레터가 이미 만들어 둔 복구 계단을 여기서도 쓴다 —
+           규칙이 두 벌이면 한쪽만 고쳐진다. 복구했으면 조용히 넘기지 않는다. */
+        if (text.indexOf('[') === -1) {
+          items = [];   // 모델이 '없음' 을 산문으로 답한 경우 — 종전과 같이 빈 목록
+        } else {
+          const parsed = parseJsonArray(text, 'competitor-watch');
+          if (parsed.repaired !== 'none') {
+            console.warn('[competitor-watch] \u26a0\ufe0f JSON \ubcf5\uad6c\ud568(' + parsed.repaired + ')');
+            repairedNote = ' \u00b7 \u26a0\ufe0fJSON\ubcf5\uad6c(' + parsed.repaired + ')';
+          }
+          items = parsed.value;
+        }
         items.forEach((it) => { it.kind = 'competitor'; it.detected_at = new Date().toISOString(); });
       }
     }
@@ -213,13 +231,20 @@ module.exports = withCronGuard('competitor-watch', async function handler(req, r
       }
     }
 
+    note('스캔 ' + hot.length + ' · 신규 ' + fresh.length + ' · 브리핑 ' + items.length + '건'
+      + (pinged.length ? ' · 재핑 ' + pinged.length : '')
+      + (saved ? ' · 저장' : (items.length ? ' · 저장실패' : ''))
+      + (dry ? ' · dry' : '') + repairedNote);
     return res.status(200).json({
       scanned: hot.length, fresh: fresh.length, new_items: items.length,
       briefing: items, repinged: pinged, saved, dry,
       pepperit_collected: pepCollected,
+      note: res.locals.cronNote,
     });
   } catch (e) {
     console.error('[competitor-watch] error:', e);
+    res.locals = res.locals || {};
+    res.locals.cronNote = '실패: ' + String(e && e.message || e).slice(0, 180);
     return res.status(500).json({ error: String(e && e.message || e).slice(0, 300) });
   }
 });

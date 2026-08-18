@@ -12,6 +12,7 @@
  */
 
 const { reportAiFailure } = require('./aiCreditWatch');   // AI 장애 알림 (2026-07-30)
+const { parseJsonObject } = require('./jsonRepair');
 
 const _IG_API = 'https://graph.facebook.com/v25.0';
 const PEPPERIT_USERNAME = process.env.PEPPERIT_IG_USERNAME || 'pepperitmag';
@@ -165,12 +166,16 @@ async function generatePepperitArticle(post) {
   let raw = '';
   try { raw = String(j.content[0].text || '').trim(); } catch (_) { throw new Error('Claude 응답 형식 이상.'); }
   raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
+  /* 2026-08-18 — JSON.parse 두 번 시도가 전부였다. 실측 실패:
+     sync-pepperit 2건 · sync-instagram 1건 ('Claude 응답 JSON 파싱 실패').
+     생 개행·안 닫힌 따옴표 하나면 기사 한 편이 통째로 버려진다.
+     번역·뉴스레터가 이미 만들어 둔 복구 계단을 여기서도 쓴다.
+     복구했으면 조용히 넘기지 않는다 — 모델 출력이 나빠지는 신호일 수 있다. */
   let parsed;
-  try { parsed = JSON.parse(raw); }
-  catch (_) {
-    const m = raw.match(/\{[\s\S]*\}/);
-    if (m) { try { parsed = JSON.parse(m[0]); } catch (_) {} }
-    if (!parsed) throw new Error('Claude 응답 JSON 파싱 실패.');
+  {
+    const r = parseJsonObject(raw, 'pepperit 기사');
+    if (r.repaired !== 'none') console.warn('[pepperitImport] \u26a0\ufe0f JSON \ubcf5\uad6c\ud568(' + r.repaired + ')');
+    parsed = r.value;
   }
   const cat = String(parsed.category || 'NEWS').toUpperCase().trim();
   return {
