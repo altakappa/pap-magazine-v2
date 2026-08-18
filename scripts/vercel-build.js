@@ -34,10 +34,19 @@ const { spawnSync } = require('child_process');
 const SKIP = '[skip-tests]';
 const msg = String(process.env.VERCEL_GIT_COMMIT_MESSAGE || '');
 
-if (msg.indexOf(SKIP) !== -1) {
+/* 2026-08-18 — 제목 줄만 본다. 첫 배포에서 이 관문이 스스로 열렸다.
+   커밋 본문에 "비상구: 커밋 메시지에 [skip-tests]" 라고 **설명을 적었더니**
+   그 글자가 그대로 스위치가 됐다. 관문을 만든 커밋이 관문을 통과하지 않았고,
+   나는 그걸 '통과했다' 고 보고했다. 로그를 안 읽고 상태만 봤기 때문이다.
+
+   본문에는 이 기능을 설명하는 글이 계속 들어간다. 스위치는 사람이 의도적으로
+   제목에 박을 때만 켜져야 한다. 제목은 한 줄이라 실수로 섞이지 않는다. */
+const subject = msg.split('\n')[0];
+
+if (subject.indexOf(SKIP) !== -1) {
   console.warn('');
   console.warn('=========================================================');
-  console.warn('  ' + SKIP + ' — 테스트를 건너뛰고 배포한다.');
+  console.warn('  ' + SKIP + ' — 테스트를 건너뛰고 배포한다. (커밋 제목에서 읽음)');
   console.warn('  이 배포는 검증되지 않았다. 확인 후 정상 배포로 덮을 것.');
   console.warn('=========================================================');
   console.warn('');

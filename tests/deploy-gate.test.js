@@ -107,10 +107,23 @@ console.log("\n=== ④ '모르겠다' 를 통과로 바꾸지 않는다 ===");
 console.log('\n=== ⑤ 비상구는 있고, 조용하지 않다 ===');
 {
   const r = runGate('exit 1', { VERCEL_GIT_COMMIT_MESSAGE: 'hotfix: 결제 터짐 [skip-tests]' });
-  t('[skip-tests] 면 테스트가 깨져도 통과', r.code === 0, r.code);
+  t('제목에 있으면 테스트가 깨져도 통과', r.code === 0, r.code);
   t('npm 을 아예 안 부른다', !/FAKE_NPM_CALLED/.test(r.out), r.out);
   t('빌드 로그에 크게 남는다', /검증되지 않았다/.test(r.out), r.out);
   t('무엇을 건너뛰었는지 이름이 남는다', /\[skip-tests\]/.test(r.out), r.out);
+
+  /* ── 2026-08-18 실제 사고 ──────────────────────────────────────────
+     이 관문을 만든 커밋(1328eef)의 본문에 기능 설명으로
+     "비상구: 커밋 메시지에 [skip-tests]" 라고 적었다. 그 글자가 스위치가
+     됐고, 관문을 만든 배포가 관문을 통과하지 않고 나갔다. 나는 배포 상태만
+     보고 '통과했다' 고 보고했다. 이 절이 그 재발을 막는다. */
+  const body = 'feat(ci): 배포 관문\n\n비상구: 커밋 메시지에 [skip-tests] 를 넣으면 건너뛴다.\n로그에 크게 남는다.';
+  const rb = runGate('echo "FAKE_NPM_CALLED $@"; exit 1', { VERCEL_GIT_COMMIT_MESSAGE: body });
+  t('본문에만 있으면 열리지 않는다 (실제 사고 재현)', rb.code !== 0, 'code=' + rb.code);
+  t('그때는 테스트를 실제로 돌린다', /FAKE_NPM_CALLED/.test(rb.out), rb.out);
+
+  const multi = '[skip-tests] hotfix\n\n본문 설명';
+  t('제목이면 여러 줄이어도 열린다', runGate('exit 1', { VERCEL_GIT_COMMIT_MESSAGE: multi }).code === 0);
 }
 
 console.log('\n=== ⑥ 평범한 메시지가 비상구를 열지 않는다 ===');

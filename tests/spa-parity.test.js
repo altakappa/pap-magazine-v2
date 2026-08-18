@@ -201,7 +201,12 @@ console.log('\n[9] IG 링크 자동화 — "임베드 코드는 살았는데 데
   t('크론 모드는 자동 apply + 최근 2페이지', /isCron \? req\.query\.apply !== '0'/.test(bf)
     && /isCron \? '2' : '10'/.test(bf));
   t('수동(관리자)은 여전히 dry-run 기본', /req\.query\.apply === '1'/.test(bf));
-  t('vercel.json 에 스케줄이 있다', /"path": "\/api\/editorials\/backfill-ig"/.test(vj));
+  /* 2026-08-18 — 이 검사가 Vercel 빌드에서만 실패했다(로컬·CI 통과).
+     왜 다른지 알 수 없어 몇 시간을 태웠다. 실패할 때 무엇을 읽었는지
+     남기지 않으면 다음에도 똑같이 태운다. */
+  t('vercel.json 에 스케줄이 있다', /"path": "\/api\/editorials\/backfill-ig"/.test(vj),
+    'vercel.json ' + vj.length + '자 · crons 조각: '
+      + (vj.match(/"crons"[\s\S]{0,160}/) || ['(crons 없음)'])[0].replace(/\s+/g, ' '));
   t('이미 채워진 링크는 안 건드린다 (경합 이중 확인)',
     /\.is\('source_instagram_url', null\); \/\/ 경합 대비 이중 확인/.test(bf));
   /* 실측: 'BOYS'(4자)가 최소 길이 5에 걸려 유일하게 연결 실패.
@@ -245,7 +250,13 @@ console.log('\n[별점 통합] 평가 장치는 한 화면에 하나 (2026-08-09
       /SIZES = \[320, 960, 1920\]/.test(cdn)
       && /IMG_OPT_WIDTHS = \[320, 960, 1920\]/.test(seoR2)
       && /"formats": \["image\/webp"\]/.test(vj)
-      && !/image\/avif/.test(vj));
+      && !/image\/avif/.test(vj),
+      'cdn=' + /SIZES = \[320, 960, 1920\]/.test(cdn)
+        + ' seoR2=' + /IMG_OPT_WIDTHS = \[320, 960, 1920\]/.test(seoR2)
+        + ' webp=' + /"formats": \["image\/webp"\]/.test(vj)
+        + ' avif없음=' + !/image\/avif/.test(vj)
+        + ' · images 조각: '
+        + (vj.match(/"images"[\s\S]{0,120}/) || ['(images 없음)'])[0].replace(/\s+/g, ' '));
   }
   {
     const seoR = R('api/_lib/seoRenderer.js');
