@@ -108,10 +108,6 @@ function toRows(rows, kind) {
     const date = keys[0];
     const subject = keys[1];
     if (!date || !subject) continue;
-    /* 같은 (날짜, 대상) 이 두 번 오면 upsert 가 터진다. 앞엣것만 남긴다. */
-    const k = date + ' ' + subject;
-    if (seen.has(k)) continue;
-    seen.add(k);
     const row = {
       date,
       clicks: Number(r.clicks || 0),
@@ -120,6 +116,19 @@ function toRows(rows, kind) {
     };
     if (kind === 'page') row.page = String(subject).slice(0, 1000);
     else row.query = String(subject).slice(0, 500);
+
+    /* 중복 판정은 **저장할 값** 으로 한다 (2026-08-18 실전에서 터졌다).
+       처음엔 자르기 전 원문으로 키를 만들었다. 그런데 DB 에 들어가는 건
+       자른 값이라, 앞 500자가 같은 긴 질의 두 개가 여기서는 서로 다른
+       것으로 통과하고 Postgres 에서 같은 행이 됐다.
+
+         ON CONFLICT DO UPDATE command cannot affect row a second time
+
+       이 저장소가 이미 겪은 '선택 키 != 제약 키' 를, 그 교훈을 주석에
+       적어 놓은 파일에서 내가 다시 냈다. 키는 제약과 **같은 값** 이어야 한다. */
+    const k = date + '\u0000' + (kind === 'page' ? row.page : row.query);
+    if (seen.has(k)) continue;
+    seen.add(k);
     out.push(row);
   }
   return out;

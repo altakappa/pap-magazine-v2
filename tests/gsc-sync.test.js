@@ -129,6 +129,29 @@ console.log('\n=== ④ 덮어쓰기 키 = 기본키 ===');
   ], 'page');
   t('중복 키를 걷어낸다', dup.length === 2, dup);
   t('앞엣것이 남는다', dup[0].clicks === 1, dup[0]);
+  /* ── 2026-08-18 실전에서 터진 자리 ────────────────────────────────
+     처음엔 자르기 전 원문으로 중복을 걸렀다. DB 에 들어가는 건 자른 값이라
+     앞부분이 같은 긴 질의 두 개가 통과했고 Postgres 가 거부했다.
+       ON CONFLICT DO UPDATE command cannot affect row a second time
+     중복 판정은 저장할 값으로 해야 한다. */
+  const longA = 'ㄱ'.repeat(500) + 'AAAA';
+  const longB = 'ㄱ'.repeat(500) + 'BBBB';
+  const cut = SC.toRows([
+    { keys: ['2026-08-10', longA], clicks: 1, impressions: 1, position: 1 },
+    { keys: ['2026-08-10', longB], clicks: 2, impressions: 2, position: 2 },
+  ], 'query');
+  t('잘린 뒤 같아지는 질의는 하나로 접는다 (실전 사고)', cut.length === 1, cut.length);
+  t('저장값이 500자를 안 넘는다', cut.every((r) => r.query.length <= 500));
+
+  const longP = '/' + 'p'.repeat(1000) + 'XYZ';
+  const longQ = '/' + 'p'.repeat(1000) + 'ZYX';
+  const cutP = SC.toRows([
+    { keys: ['2026-08-10', longP], clicks: 1, impressions: 1, position: 1 },
+    { keys: ['2026-08-10', longQ], clicks: 1, impressions: 1, position: 1 },
+  ], 'page');
+  t('페이지도 같은 규칙이다', cutP.length === 1, cutP.length);
+  t('저장값이 1000자를 안 넘는다', cutP.every((r) => r.page.length <= 1000));
+
   t('날짜 없는 행은 버린다', SC.toRows([{ keys: [null, '/a'] }], 'page').length === 0);
   t('대상 없는 행도 버린다', SC.toRows([{ keys: ['2026-08-10'] }], 'page').length === 0);
 }
