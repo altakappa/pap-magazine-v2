@@ -64,8 +64,24 @@ const TOOL = {
     properties: {
       body_ko: { type: 'string', description: '보강된 한국어 본문. 단락은 <br><br> 로 구분.' },
       added: { type: 'string', description: '무엇을 근거로 무엇을 더했는지 한 줄. 검수용.' },
+      /* 2026-08-18 신설 — 사람이 무엇을 대조해야 하는지 가르는 유일한 단서다.
+         출력만 보고 자동으로 판별하려다 실패했다(마이그레이션 130 참고).
+         무엇을 근거로 썼는지는 모델만 안다. 그래서 물어본다. */
+      reads_image_text: {
+        type: 'boolean',
+        description: '사진 안에 인쇄된 글자(사람 이름·브랜드명·날짜·수치·계정명·라인업·가격 등)를 '
+          + '읽어서 본문에 옮겼으면 true. 색·소재감·실루엣·배경·포즈처럼 글자가 아닌 것만 '
+          + '묘사했으면 false. 애매하면 true 로 한다 — 사람이 한 번 더 보는 비용이 '
+          + '틀린 이름이 발행되는 비용보다 훨씬 싸다.',
+      },
+      image_text: {
+        type: 'string',
+        description: 'reads_image_text 가 true 일 때, 사진에서 읽은 글자를 **본 그대로** 적는다. '
+          + '한국어로 옮기지 말고 화면에 인쇄된 표기 그대로. (예: "NGHTMRE", "J.Y. PARK", '
+          + '"@confidenceheist", "South Korea, 1999 - 2004") false 면 빈 문자열.',
+      },
     },
-    required: ['body_ko', 'added'],
+    required: ['body_ko', 'added', 'reads_image_text', 'image_text'],
   },
 };
 
@@ -108,6 +124,16 @@ async function generateBody(art) {
     imgs.length ? '함께 준 사진 ' + imgs.length + '장은 이 기사의 실제 게시 이미지다.' : '사진 없음. 기존 본문만으로 판단하라.',
     '',
     'emit_body 도구로 제출하라. added 에는 "무엇을 근거로 무엇을 더했는지"를 한 줄로 적는다.',
+    '',
+    /* 2026-08-18 — 워터밤 초안이 라인업 포스터에서 이름 4개를 잘못 읽었다.
+       린터는 문체만 보므로 경보가 0건이었다. 사람이 무엇을 대조해야 하는지
+       가려 주는 것은 이 신고뿐이다. */
+    'reads_image_text 는 정직하게 답하라. 사진 안에 **인쇄된 글자**를 읽어 본문에',
+    '옮겼으면 true 다. 포스터의 출연진 이름, 티저의 날짜, 패키지의 제품명,',
+    '캡션 카드의 계정명·연도, 가격표의 숫자가 전부 여기 해당한다.',
+    '옷 색·소재감·실루엣·배경·포즈처럼 글자가 아닌 것만 묘사했으면 false 다.',
+    '**애매하면 true 로 하라.** 사람이 한 번 더 보는 비용이, 틀린 이름이',
+    '발행되는 비용보다 훨씬 싸다. true 면 image_text 에 읽은 글자를 본 그대로 적는다.',
   ].join('\n');
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -134,7 +160,12 @@ async function generateBody(art) {
   const j = await res.json();
   const tu = (Array.isArray(j.content) ? j.content : []).find(c => c && c.type === 'tool_use');
   if (!tu || !tu.input || !tu.input.body_ko) throw new Error('본문을 얻지 못함');
-  return { body: String(tu.input.body_ko), added: String(tu.input.added || '') };
+  return {
+    body: String(tu.input.body_ko),
+    added: String(tu.input.added || ''),
+    readsImageText: tu.input.reads_image_text === true,
+    imageText: String(tu.input.image_text || '').slice(0, 500),
+  };
 }
 
 /* 생성물이 규격을 지켰는지 기계로 본다.
@@ -174,7 +205,7 @@ module.exports = async function handler(req, res) {
      * 한 건씩 의도적으로 하게 둔다. 실수로 31편이 한 번에 바뀌지 않는다. */
     if (q.review === '1') {
       const { data: rows } = await supabaseAdmin.from(TABLE)
-        .select('article_id, impressions, old_body, new_body, note, status, generated_at, applied_at')
+        .select('article_id, impressions, old_body, new_body, note, status, generated_at, applied_at, reads_image_text, image_text_note')
         .order('impressions', { ascending: false }).limit(200);
       const list = rows || [];
       const ids = list.map((r) => r.article_id);
@@ -191,18 +222,30 @@ module.exports = async function handler(req, res) {
       const done = list.filter((r) => r.status === 'applied').length;
       const drafts = list.filter((r) => r.status === 'draft');
       const okCount = drafts.filter((r) => !/⚠/.test(String(r.note || ''))).length;
+      /* 2026-08-18 — 사람이 원본 이미지와 대조해야 하는 건수. 이 숫자가
+         검수 부담의 실제 크기다. 나머지는 색·실루엣 묘사라 빠르게 넘길 수 있다. */
+      const checkCount = drafts.filter((r) => r.reads_image_text === true).length;
 
       const cards = list.map((r) => {
         const a = byId.get(r.article_id) || {};
         const oldT = plain(r.old_body), newT = plain(r.new_body);
         const warn = /⚠/.test(String(r.note || ''));
         const applied = r.status === 'applied';
+        /* 이미지 속 글자를 읽은 초안은 사람이 원본과 대조해야 한다.
+           워터밤(노출 6,300)에서 라인업 포스터의 이름 4개가 틀렸는데
+           린터 경보는 0건이었다. 문체 경보와 다른 물건이라 따로 세운다. */
+        const src = r.reads_image_text === true;
         return '<article class="c' + (applied ? ' done' : '') + '">'
           + '<h2>' + esc(a.title || r.article_id) + '</h2>'
           + '<div class="m">노출 ' + n(r.impressions) + ' · ' + esc(r.status)
           + ' · ' + n(oldT.length) + '자 → <b>' + n(newT.length) + '자</b>'
           + (newT.length >= 800 ? ' <span class="ok">목표 달성</span>' : '')
           + '</div>'
+          + (src
+              ? '<div class="src"><b>사진 속 글자를 읽었다 — 원본과 대조할 것</b>'
+                + (r.image_text_note ? '<br>읽었다고 신고한 글자: ' + esc(r.image_text_note) : '')
+                + '</div>'
+              : '')
           + (r.note ? '<div class="' + (warn ? 'warn' : 'note') + '">' + esc(r.note) + '</div>' : '')
           + '<div class="two"><div><h3>기존</h3><p>' + esc(oldT) + '</p></div>'
           + '<div><h3>보강</h3><p>' + esc(newT) + '</p></div></div>'
@@ -227,6 +270,8 @@ module.exports = async function handler(req, res) {
         + '.ok{color:#1a7f3c;font-weight:700}'
         + '.note,.warn{font-size:12px;padding:8px 10px;border-radius:8px;margin-bottom:12px;line-height:1.6}'
         + '.note{background:#f1f3f5;color:#495057}.warn{background:#fff3cd;color:#7a5b00}'
+        + '.src{background:#fdecec;color:#96271f;font-size:12px;padding:8px 10px;'
+        + 'border-radius:8px;margin-bottom:10px;line-height:1.6;border:1px solid #f3c9c5}'
         + '.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}'
         + '@media(max-width:760px){.two{grid-template-columns:1fr}}'
         + '.two h3{font-size:11px;color:#888;margin:0 0 6px;font-weight:600;letter-spacing:.04em}'
@@ -239,6 +284,8 @@ module.exports = async function handler(req, res) {
         + '<h1>본문 보강 검토</h1>'
         + '<div class="sum">' + n(list.length) + '건 · 적용됨 ' + n(done)
         + ' · 초안 ' + n(drafts.length) + '(이슈 없음 ' + n(okCount) + ')<br>'
+        + '<b>사진 속 글자를 읽은 초안 ' + n(checkCount) + '건</b> — 이것만 원본 이미지와 '
+        + '대조하면 된다. 나머지는 색·실루엣 묘사라 틀려도 손해가 작다.<br>'
         + '적용은 한 건씩 누른다. 되돌리기는 원본이 남아 있는 동안만 된다.</div>'
         + cards;
       res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -282,6 +329,8 @@ module.exports = async function handler(req, res) {
         new_len: plain(out.body).length,
         status: 'draft',
         note: (out.added + (issues.length ? ' / ⚠ ' + issues.join(', ') : '')).slice(0, 500),
+        reads_image_text: out.readsImageText,
+        image_text_note: out.imageText || null,
         generated_at: new Date().toISOString(),
       }).eq('article_id', row.article_id);
 
@@ -291,6 +340,7 @@ module.exports = async function handler(req, res) {
         generated: true, article_id: row.article_id, title: art.title,
         old_len: plain(art.content).length, new_len: plain(out.body).length,
         added: out.added, issues, remaining: count || 0,
+        reads_image_text: out.readsImageText, image_text: out.imageText,
       });
     }
 
