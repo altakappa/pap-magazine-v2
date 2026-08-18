@@ -500,16 +500,31 @@ async function buildThreadsParityTweet(art) {
       const audited = papVoice.auditKoreanBody(stripDashes(hook.text),
         { style: 'polite', structure: false, where: 'x' });
       const body = audited + '\n\n#PAPMAGAZINE';
-      if (weightedLen(body) <= 280) return { body, url, angle: hook.angle, score: hook.score };
+      if (weightedLen(body) <= 280) {
+        return { body, url, bodyWithLink: _withLinkInBody(audited, '#PAPMAGAZINE', url, art),
+                 angle: hook.angle, score: hook.score };
+      }
     }
   } catch (_) { /* 폴백으로 */ }
   const title = _clampTitle(art.title);
   const tags = _cleanTags(art.tags, 2);
   tags.push('#PAPMAGAZINE');
   const hook2 = _firstSentence(art.body);
-  let body = title + (hook2 && hook2 !== title ? '\n\n' + hook2 : '') + '\n\n' + tags.join(' ');
+  const main = title + (hook2 && hook2 !== title ? '\n\n' + hook2 : '');
+  let body = main + '\n\n' + tags.join(' ');
   if (weightedLen(body) > 280) body = title + '\n\n' + tags.join(' ');
-  return { body, url };
+  return { body, url, bodyWithLink: _withLinkInBody(main, tags.join(' '), url, art) };
+}
+
+/* 2026-08-18 (도메니코: "글만 올라가는 게시물은 없었으면") — 미디어 업로드가
+   실패한 트윗은 답글 대신 **본문에 링크를 넣어** 나간다. 어느 경로로도
+   '이미지도 링크도 없는 글'은 나갈 수 없다. 길이는 URL=23자 규칙으로 재고,
+   넘치면 제목+링크+브랜드태그의 최소형으로 줄인다(링크가 잘리는 일은 없다). */
+function _withLinkInBody(main, tagLine, url, art) {
+  const full = main + '\n\n' + url + '\n\n' + tagLine;
+  const measured = main + '\n\n' + URL_PLACEHOLDER + '\n\n' + tagLine;
+  if (weightedLen(measured) <= 280) return full;
+  return _clampTitle(art.title) + '\n\n' + url + '\n\n#PAPMAGAZINE';
 }
 
 module.exports = {

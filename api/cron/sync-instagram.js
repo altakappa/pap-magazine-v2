@@ -259,12 +259,19 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
                 let xMedia = { mediaIds: [], kind: 'none' };
                 try { xMedia = await uploadArticleMedia(row, {}); }
                 catch (e) { console.error('[sync-ig] X 미디어 업로드 실패:', (e && e.message) || e); }
-                const tw = await postTweet(gen.body, { mediaIds: xMedia.mediaIds });
-                let mark = xMedia.mediaIds.length ? '' : '(미디어없음)';
-                /* 링크 답글 — 본글이 성공했을 때만. 실패해도 본글은 유지하되
-                   반드시 표시한다 (링크가 안 붙으면 웹 유입이 0이 된다 —
+                /* 2026-08-18 도메니코: "글만 올라가는 게시물은 없었으면" —
+                   미디어가 있으면 스레드 패리티(본문+미디어, 링크는 답글),
+                   미디어가 없으면 본문에 링크를 넣어 나간다. 어느 경로로도
+                   이미지도 링크도 없는 트윗은 불가능하다. */
+                const hasMedia = xMedia.mediaIds.length > 0;
+                const tw = hasMedia
+                  ? await postTweet(gen.body, { mediaIds: xMedia.mediaIds })
+                  : await postTweet(gen.bodyWithLink || (gen.body + '\n\n' + gen.url));
+                let mark = hasMedia ? '' : '(미디어없음→링크본문)';
+                /* 링크 답글 — 미디어 본글이 성공했을 때만. 실패해도 본글은
+                   유지하되 반드시 표시한다 (링크가 안 붙으면 웹 유입이 0 —
                    threadsAutopost 의 링크 답글 원칙과 동일). */
-                if (tw.ok && gen.url) {
+                if (hasMedia && tw.ok && gen.url) {
                   const rep = await postTweet(gen.url, { replyToId: tw.id });
                   if (!rep.ok) {
                     mark += '(링크답글실패:' + (rep.status || '') + ')';

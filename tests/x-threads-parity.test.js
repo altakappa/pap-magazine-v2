@@ -33,8 +33,15 @@ function t(n, c, d){ if(c){pass++;console.log('  ✓',n);} else {fail++;console.
   t('postTweet 이 답글(in_reply_to_tweet_id)을 지원한다',
     /in_reply_to_tweet_id: String\(c\.replyToId\)/.test(xp));
 
+  // 2026-08-18 도메니코: "글만 올라가는 게시물은 없었으면" — 무매체 시 링크 본문
+  t('bodyWithLink 는 링크를 본문에 포함한다', /https?:\/\//.test(gen.bodyWithLink), gen.bodyWithLink);
+  t('bodyWithLink 도 브랜드 태그 유지', gen.bodyWithLink.includes('#PAPMAGAZINE'));
+
   const sync = fs.readFileSync(path.join(__dirname, '..', 'api', 'cron', 'sync-instagram.js'), 'utf8');
-  t('본글 성공 시에만 링크 답글을 올린다', /if \(tw\.ok && gen\.url\) \{\s*\n\s*const rep = await postTweet\(gen\.url, \{ replyToId: tw\.id \}\)/.test(sync));
+  t('미디어 있으면 패리티, 없으면 링크 본문 (글만 트윗 불가)',
+    /const hasMedia = xMedia\.mediaIds\.length > 0/.test(sync) &&
+    /hasMedia\s*\n?\s*\? await postTweet\(gen\.body, \{ mediaIds: xMedia\.mediaIds \}\)\s*\n?\s*: await postTweet\(gen\.bodyWithLink/.test(sync));
+  t('미디어 본글 성공 시에만 링크 답글', /if \(hasMedia && tw\.ok && gen\.url\)/.test(sync));
   t('링크 답글 실패는 반드시 표시된다 (유입 0 침묵 방지)',
     /링크답글실패/.test(sync) && /console\.error\('\[sync-ig\] X 링크 답글 실패:'/.test(sync));
 
