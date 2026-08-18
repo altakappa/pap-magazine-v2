@@ -202,11 +202,17 @@ console.log('\n[9] IG 링크 자동화 — "임베드 코드는 살았는데 데
     && /isCron \? '2' : '10'/.test(bf));
   t('수동(관리자)은 여전히 dry-run 기본', /req\.query\.apply === '1'/.test(bf));
   /* 2026-08-18 — 이 검사가 Vercel 빌드에서만 실패했다(로컬·CI 통과).
-     왜 다른지 알 수 없어 몇 시간을 태웠다. 실패할 때 무엇을 읽었는지
-     남기지 않으면 다음에도 똑같이 태운다. */
-  t('vercel.json 에 스케줄이 있다', /"path": "\/api\/editorials\/backfill-ig"/.test(vj),
-    'vercel.json ' + vj.length + '자 · crons 조각: '
-      + (vj.match(/"crons"[\s\S]{0,160}/) || ['(crons 없음)'])[0].replace(/\s+/g, ' '));
+     원인: **Vercel 은 빌드 컨테이너의 vercel.json 을 압축해 둔다.**
+       저장소   "path": "/api/editorials/backfill-ig"
+       빌드     "path":"/api/editorials/backfill-ig"      ← 콜론 뒤 공백 없음
+     정규식이 공백까지 요구하고 있어 빌드에서만 깨졌다. 설정은 멀쩡했고
+     검사가 무른 것이었다. 원문 글자 대신 **파싱한 값**을 본다 —
+     서식이 바뀌어도 뜻은 안 바뀐다. */
+  const vjParsed = (() => { try { return JSON.parse(vj); } catch (e) { return null; } })();
+  t('vercel.json 이 파싱된다', !!vjParsed);
+  t('vercel.json 에 스케줄이 있다',
+    !!vjParsed && (vjParsed.crons || []).some((c) => c && c.path === '/api/editorials/backfill-ig'),
+    'crons ' + ((vjParsed && vjParsed.crons) || []).length + '개');
   t('이미 채워진 링크는 안 건드린다 (경합 이중 확인)',
     /\.is\('source_instagram_url', null\); \/\/ 경합 대비 이중 확인/.test(bf));
   /* 실측: 'BOYS'(4자)가 최소 길이 5에 걸려 유일하게 연결 실패.
@@ -246,17 +252,17 @@ console.log('\n[별점 통합] 평가 장치는 한 화면에 하나 (2026-08-09
     const cdn = R('frontend/pap-img-cdn.js');
     const seoR2 = R('api/_lib/seoRenderer.js');
     const vj = R('vercel.json');
+    /* 서식이 아니라 값을 본다 (위 vercel.json 압축 사고와 같은 이유) */
+    const vjP = (() => { try { return JSON.parse(vj); } catch (e) { return null; } })();
+    const fmts = ((vjP && vjP.images) || {}).formats || [];
     t('이미지 변환 3종 동기화 + WebP 전용 (2026-08-10 비용 절감, 도메니코 승인)',
       /SIZES = \[320, 960, 1920\]/.test(cdn)
       && /IMG_OPT_WIDTHS = \[320, 960, 1920\]/.test(seoR2)
-      && /"formats": \["image\/webp"\]/.test(vj)
-      && !/image\/avif/.test(vj),
+      && fmts.length === 1 && fmts[0] === 'image/webp'
+      && !fmts.includes('image/avif'),
       'cdn=' + /SIZES = \[320, 960, 1920\]/.test(cdn)
         + ' seoR2=' + /IMG_OPT_WIDTHS = \[320, 960, 1920\]/.test(seoR2)
-        + ' webp=' + /"formats": \["image\/webp"\]/.test(vj)
-        + ' avif없음=' + !/image\/avif/.test(vj)
-        + ' · images 조각: '
-        + (vj.match(/"images"[\s\S]{0,120}/) || ['(images 없음)'])[0].replace(/\s+/g, ' '));
+        + ' formats=' + JSON.stringify(fmts));
   }
   {
     const seoR = R('api/_lib/seoRenderer.js');

@@ -76,9 +76,20 @@ console.log('\n[3] 계약 — 소스 검사');
   t('액션 3종이 구체적이다 (스토리·공동게시·답글)', /스토리로 리샤어/.test(src) && /공동 게시/.test(src) && /답글/.test(src));
 }
 
+/* 2026-08-18 — vercel.json 검사는 원문 정규식이 아니라 값으로 본다.
+   Vercel 은 빌드 컨테이너의 vercel.json 을 압축해 둔다(콜론 뒤 공백 없음).
+   서식에 기대던 검사가 배포 관문에서만 깨져 배포를 막았다.
+   설정은 멀쩡했고 검사가 무른 것이었다. */
+const vjP = (() => { try { return JSON.parse(vj); } catch (e) { return null; } })();
+const schedOf = (p) => {
+  const c = ((vjP && vjP.crons) || []).find((x) => x && x.path === p);
+  return c ? String(c.schedule || '') : null;
+};
+
 console.log('\n[4] 배선');
 {
-  t('vercel.json 에 매시 :10 스케줄', /"path": "\/api\/cron\/algo-coach",\s*\n\s*"schedule": "10 \* \* \* \*"/.test(vj));
+  t('vercel.json 에 매시 :10 스케줄', schedOf('/api/cron/algo-coach') === '10 * * * *',
+    String(schedOf('/api/cron/algo-coach')));
   t('마이그레이션 PK + verdict 체크 (부분 인덱스 없음)', /post_id text primary key/.test(mig)
     && /check \(verdict in \('hot','mid','cold'\)\)/.test(mig) && !/unique index[\s\S]{0,80}where/i.test(mig));
 }
@@ -118,10 +129,11 @@ console.log('\n[5] 1시간령 조기 알림 (2026-08-12) — 개입할 시간이
     /앞으로 60분 안에/.test(src) && /스토리로 리샤어/.test(src));
 
   t('ig-snapshot 이 매시 :01 — 1시간령 관측이 있어야 판정이 산다',
-    /"path": "\/api\/cron\/ig-snapshot",\s*\n\s*"schedule": "1 \* \* \* \*"/.test(vj));
+    schedOf('/api/cron/ig-snapshot') === '1 * * * *', String(schedOf('/api/cron/ig-snapshot')));
   /* 순서가 뒤집히면 코치는 최대 59분 묵은 스냅샷으로 판정한다 — 조기 알림의 의미가 사라진다 */
   const minOf = (p) => {
-    const m = new RegExp('"path": "' + p.replace(/\//g, '\\/') + '",\\s*\\n\\s*"schedule": "(\\d+) ').exec(vj);
+    const sc = schedOf(p);
+    const m = sc && /^(\d+)\s/.exec(sc);
     return m ? parseInt(m[1], 10) : null;
   };
   const snapMin = minOf('/api/cron/ig-snapshot');
