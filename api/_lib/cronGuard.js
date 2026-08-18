@@ -179,6 +179,44 @@ async function _logRun(cronName, ok, durationMs, note, error) {
   }
 }
 
+/* 2026-08-18 — 핸들러가 스스로 5xx 를 반환할 때, 원인은 응답 본문에 있다.
+ *
+ * 그동안 가드는 'HTTP 500 (핸들러가 예외를 자체 처리하고 5xx 반환)' 한 문장만
+ * 남겼다. 상태코드는 알려주는데 **무엇이 죽였는지는 안 알려준다.** 실측:
+ * drive-youtube-post 가 2026-08-15~08-18 에 38회 연속 이 문장만 남기고 죽어
+ * 있었다. 로그 어디에도 사유가 없어 사흘을 눈먼 채로 보냈다.
+ *
+ * 그런데 사유는 이미 손에 있었다. 핸들러는 res.status(500).json({ error,
+ * detail }) 로 원인을 적어 보내고, 가드는 그 본문을 heldBody 로 붙잡고 있다.
+ * 붙잡아 놓고 버렸다. 여기서 꺼내 쓴다 — 새로 수집하는 게 아니라, 이미 있는
+ * 것을 안 버리는 것이다.
+ *
+ * 4xx 도 같다. 종전엔 '인증 거부일 가능성' 이라는 **추측**뿐이었다. 본문에
+ * 진짜 사유가 있으면 그 뒤에 붙여, 추측과 사실을 둘 다 보이게 한다. */
+function _bodyCause(body) {
+  if (typeof body === 'string') return body.trim() ? body.trim().slice(0, 300) : null;
+  if (!body || typeof body !== 'object') return null;
+
+  const parts = [];
+  const push = (v) => {
+    if (typeof v === 'string' && v.trim()) parts.push(v.trim());
+    else if (v && typeof v === 'object') { try { parts.push(JSON.stringify(v).slice(0, 300)); } catch (_) {} }
+  };
+  // 이 저장소 크론들이 실제로 쓰는 키 (error + detail 짝이 가장 흔하다)
+  for (const k of ['error', 'message', 'detail', 'reason']) push(body[k]);
+
+  // 아는 키가 하나도 없으면 본문을 통째로 — 그래도 없는 것보다 낫다
+  if (!parts.length) {
+    try { const s = JSON.stringify(body); if (s && s !== '{}' && s !== 'null') parts.push(s.slice(0, 300)); } catch (_) {}
+  }
+  if (!parts.length) return null;
+
+  // error 와 message 에 같은 문장이 들어오는 경우가 흔하다 — 중복 제거
+  const out = [];
+  for (const p of parts) if (!out.includes(p)) out.push(p);
+  return out.join(' \u00b7 ').slice(0, 300);
+}
+
 /**
  * 크론 핸들러를 감싸서 로깅·알림을 추가.
  * @param {string} cronName - 로그·이메일에 표시할 크론 이름
@@ -237,7 +275,10 @@ function withCronGuard(cronName, handler, opts) {
       // 예외가 밖으로 안 나와도 5xx 응답이면 실패다.
       if (ok && res && typeof res.statusCode === 'number' && res.statusCode >= 500) {
         ok = false;
-        error = 'HTTP ' + res.statusCode + ' (핸들러가 예외를 자체 처리하고 5xx 반환)';
+        // 본문에 적힌 진짜 사유까지 같이 남긴다 (위 _bodyCause 주석)
+        const cause = _bodyCause(heldBody);
+        error = 'HTTP ' + res.statusCode + ' (핸들러가 예외를 자체 처리하고 5xx 반환)'
+              + (cause ? ' — ' + cause : '');
       }
 
       /* 2026-08-07 — 4xx 로 끝난 실행에 반드시 note 를 남긴다.
@@ -254,7 +295,11 @@ function withCronGuard(cronName, handler, opts) {
       let noteOut = note;
       if (ok && !noteOut && res && typeof res.statusCode === 'number'
           && res.statusCode >= 400 && res.statusCode < 500) {
-        noteOut = 'HTTP ' + res.statusCode + ' — 아무 일도 안 하고 끝남 (인증 거부일 가능성)';
+        /* 본문에 진짜 사유가 있으면 뒤에 붙인다. 앞 문장('인증 거부일 가능성')은
+           추측이지만 그대로 둔다 — 2026-08-07 계약이고, 본문이 빈 4xx 가 더 흔하다. */
+        const cause4 = _bodyCause(heldBody);
+        noteOut = 'HTTP ' + res.statusCode + ' — 아무 일도 안 하고 끝남 (인증 거부일 가능성)'
+                + (cause4 ? ' — ' + cause4 : '');
       }
 
       /* 로그는 항상 남긴다 (일시성 실패도 진단용).
