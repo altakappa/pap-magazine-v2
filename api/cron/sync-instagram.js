@@ -31,7 +31,7 @@ const { pingNewContent, SITE } = require('../_lib/pingSearch');
 // 2026-08-09 — 골든아워 부스트: 새 에디토리얼 IG 게시물 감지 즉시 스레드·X 가
 // 그 게시물로 트래픽을 쏜다 (실측: 첫 3시간 좋아요 ↔ 최종 도달 corr 0.94).
 const { maybeBoostPost } = require('../_lib/goldenBoost');
-const { postTweet, buildArticleTweet, isConfigured: xConfigured, buildConversationalTweet, uploadArticleMedia } = require('../_lib/xPost');
+const { postTweet, isConfigured: xConfigured, buildThreadsParityTweet, uploadArticleMedia } = require('../_lib/xPost');
 const { postArticleToThreads } = require('../_lib/threadsAutopost');
 const {
   listRecentMedia,
@@ -244,11 +244,11 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
             if (xConfigured()){
               try {
                 const artForX = { title: generated.title_ko || row.title, url: artUrl, tags: generated.tags, body: generated.body_ko, category: generated.category };
-                let xText = null;
-                try {
-                  const conv = await buildConversationalTweet(artForX);
-                  if (conv) { xText = conv.text; console.log('[sync-ig] 대화형 트윗 (점수 ' + conv.score + '): ' + conv.angle); }
-                } catch (_) { /* 실패는 삼키고 기본 빌더로 */ }
+                /* 2026-08-18 (도메니코: "포맷은 스레드와 동일하게") — 본문에는
+                   링크를 넣지 않고(도달 억제 회피), 링크는 본글 성공 직후
+                   첫 답글로 붙인다. threadsAutopost 와 같은 구조, 말투만 X용. */
+                const gen = await buildThreadsParityTweet(artForX);
+                if (gen.angle) console.log('[sync-ig] 대화형 트윗 (점수 ' + gen.score + '): ' + gen.angle);
                 /* 미디어를 붙여 올린다 (2026-08-07 도메니코 지시).
                    "현재 글만 올라가는 방식은 더이상 올리지말고 …
                     내가 인스타에 올리는 영상이나 이미지들을 그대로 올려줘."
@@ -259,9 +259,18 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
                 let xMedia = { mediaIds: [], kind: 'none' };
                 try { xMedia = await uploadArticleMedia(row, {}); }
                 catch (e) { console.error('[sync-ig] X 미디어 업로드 실패:', (e && e.message) || e); }
-                const tw = await postTweet(xText || buildArticleTweet(artForX),
-                  { mediaIds: xMedia.mediaIds });
-                const mark = xMedia.mediaIds.length ? '' : '(미디어없음)';
+                const tw = await postTweet(gen.body, { mediaIds: xMedia.mediaIds });
+                let mark = xMedia.mediaIds.length ? '' : '(미디어없음)';
+                /* 링크 답글 — 본글이 성공했을 때만. 실패해도 본글은 유지하되
+                   반드시 표시한다 (링크가 안 붙으면 웹 유입이 0이 된다 —
+                   threadsAutopost 의 링크 답글 원칙과 동일). */
+                if (tw.ok && gen.url) {
+                  const rep = await postTweet(gen.url, { replyToId: tw.id });
+                  if (!rep.ok) {
+                    mark += '(링크답글실패:' + (rep.status || '') + ')';
+                    console.error('[sync-ig] X 링크 답글 실패:', rep.status || '', rep.detail || rep.skipped || '');
+                  }
+                }
                 results.tweets = (results.tweets || []).concat(
                   tw.ok ? [tw.id + mark] : ['실패:' + (tw.status || '') + ' ' + (tw.detail || '')]);
                 /* 2026-08-17 (도메니코 지적: "X에 글이 안 올라간다") — 실측:

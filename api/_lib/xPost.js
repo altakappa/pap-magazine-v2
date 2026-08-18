@@ -81,6 +81,10 @@ async function postTweet(text, creds) {
     // 영상+이미지 혼합은 불가 — 이 제약은 호출부(selectArticleMedia)에서 강제한다.
     const mediaIds = Array.isArray(c.mediaIds) ? c.mediaIds.filter(Boolean).slice(0, 4) : [];
     if (mediaIds.length) payload.media = { media_ids: mediaIds };
+    // 2026-08-18 (도메니코: "포맷은 스레드와 동일하게") — 링크를 첫 답글로
+    // 붙이기 위한 답글 지원. 스레드와 같은 이유: 링크 달린 본문은 도달이
+    // 눌리므로 본문은 링크 없이, 링크는 답글로.
+    if (c.replyToId) payload.reply = { in_reply_to_tweet_id: String(c.replyToId) };
     const r = await fetch(url, {
       method: 'POST',
       headers: {
@@ -475,9 +479,42 @@ async function uploadArticleMedia(article, creds) {
   return { ok: ids.length > 0, kind: sel.kind, mediaIds: ids };
 }
 
+/**
+ * 스레드 패리티 트윗 (2026-08-18, 도메니코: "말투만 다르고 올라가는 포맷은
+ * 스레드와 동일하게").
+ *
+ * threadsAutopost 와 같은 구조를 X 문법으로 만든다:
+ *   본문 = 대화형 글(말투는 X용, socialHook 'x' 프로필) + #PAPMAGAZINE, 링크 없음
+ *   url  = utm 붙은 기사 링크 — 호출부가 첫 답글로 올린다
+ * 이유도 스레드와 동일: 링크 달린 본문은 도달이 눌린다. 부수 효과로 비용도
+ * 준다 (X 과금: 링크 없는 본문 $0.015, 링크는 답글 1건에만 $0.20).
+ * AI 실패 시 결정적 폴백(제목+첫 문장+태그, 링크 없음) — threadsAutopost 의
+ * fallbackBody 와 같은 원칙.
+ */
+async function buildThreadsParityTweet(art) {
+  const url = withUtm(art.url, 'x', slugCampaign(art.url, 'pap_auto'));
+  try {
+    const { generateConversationalPost, stripDashes } = require('./socialHook');
+    const hook = await generateConversationalPost(art, 'x');
+    if (hook) {
+      const audited = papVoice.auditKoreanBody(stripDashes(hook.text),
+        { style: 'polite', structure: false, where: 'x' });
+      const body = audited + '\n\n#PAPMAGAZINE';
+      if (weightedLen(body) <= 280) return { body, url, angle: hook.angle, score: hook.score };
+    }
+  } catch (_) { /* 폴백으로 */ }
+  const title = _clampTitle(art.title);
+  const tags = _cleanTags(art.tags, 2);
+  tags.push('#PAPMAGAZINE');
+  const hook2 = _firstSentence(art.body);
+  let body = title + (hook2 && hook2 !== title ? '\n\n' + hook2 : '') + '\n\n' + tags.join(' ');
+  if (weightedLen(body) > 280) body = title + '\n\n' + tags.join(' ');
+  return { body, url };
+}
+
 module.exports = {
   weightedLen, URL_PLACEHOLDER,
-  buildConversationalTweet,
+  buildConversationalTweet, buildThreadsParityTweet,
   postTweet, postPepperitTweet, buildArticleTweet, buildPepperitTweet,
   isConfigured, isPepperitConfigured, requestToken, accessToken,
   uploadMedia, uploadMediaFromUrl, selectArticleMedia, uploadArticleMedia,
