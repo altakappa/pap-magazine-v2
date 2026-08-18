@@ -73,6 +73,9 @@ async function queryAll(opts) {
       startRow,
       type: 'web',
     };
+    /* 진단용 필터 (2026-08-18). 한 페이지의 질의를 볼 때만 쓴다 —
+       필터 없이 page x query 를 받으면 행이 폭발한다. */
+    if (opts.dimensionFilterGroups) body.dimensionFilterGroups = opts.dimensionFilterGroups;
     const r = await fetch(url, {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },

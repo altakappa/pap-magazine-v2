@@ -178,6 +178,25 @@ console.log('\n=== ⑥ page x query 를 곱하지 않는다 ===');
   t('왜 안 곱하는지 적어 뒀다', /행이 폭발한다|행 폭발/.test(CRON_SRC));
 }
 
+console.log('\n=== ⑧ 진단 엔드포인트 (page x query) ===');
+{
+  const PQ = fs.readFileSync(path.join(ROOT, 'api', 'admin', 'gsc-page-queries.js'), 'utf8');
+  t('한 페이지로 필터를 건다', /operator: 'equals', expression: page/.test(PQ),
+    '필터 없이 page x query 를 받으면 행이 폭발한다 — 이 엔드포인트가 피하려는 바로 그것');
+  t('라이브러리가 필터를 실어 보낸다',
+    /if \(opts\.dimensionFilterGroups\) body\.dimensionFilterGroups = opts\.dimensionFilterGroups;/.test(LIB_SRC));
+  t('저장하지 않는다 (매일 쌓을 이유가 없다)', !/upsert|insert\(/.test(PQ));
+  t('관리자만', /requireAdmin/.test(PQ));
+  t('크론이 아니다 (vercel.json 에 없다)',
+    !JSON.parse(fs.readFileSync(path.join(ROOT, 'vercel.json'), 'utf8')).crons
+      .some((c) => /gsc-page-queries/.test(c.path)));
+  t('지금 검색결과에 보이는 제목·설명을 같이 낸다', /shown_in_search/.test(PQ),
+    '질의와 제목을 다른 화면에서 보면 대조가 안 된다');
+  t('번역판이면 번역 제목을 본다', /seo_translations/.test(PQ) && /lang !== 'ko'/.test(PQ));
+  t('경로만 줘도 된다', /function toFullUrl/.test(PQ));
+  t('노출 순으로 정렬한다', /sort\(\(a, b\) => b\.impressions - a\.impressions\)/.test(PQ));
+}
+
 console.log('\n=== ⑦ 크론으로 등재되고 결과를 남긴다 ===');
 {
   const vj = JSON.parse(fs.readFileSync(path.join(ROOT, 'vercel.json'), 'utf8'));
