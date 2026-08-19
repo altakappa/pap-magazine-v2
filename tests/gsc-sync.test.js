@@ -192,7 +192,15 @@ console.log('\n=== ⑧ 진단 엔드포인트 (page x query) ===');
       .some((c) => /gsc-page-queries/.test(c.path)));
   t('지금 검색결과에 보이는 제목·설명을 같이 낸다', /shown_in_search/.test(PQ),
     '질의와 제목을 다른 화면에서 보면 대조가 안 된다');
-  t('번역판이면 번역 제목을 본다', /seo_translations/.test(PQ) && /lang !== 'ko'/.test(PQ));
+  /* 2026-08-19 — 수단이 아니라 뜻을 본다.
+     예전에는 seo_translations 를 직접 읽어 번역 제목을 만들었다. 그런데 그
+     경로는 애초에 동작한 적이 없다 — articles 에 없는 컬럼을 조회해서
+     shown_in_search 가 언제나 null 이었다. 지금은 /ja/article/... 페이지
+     자체를 가져와 렌더된 <title> 을 읽는다. 번역 제목은 그 페이지가 이미
+     갖고 있다. 지켜야 할 것은 '번역판 표기를 본다'이지 '어느 표를 읽는다'가
+     아니다. 실제 동작은 tests/gsc-report-honesty.test.js 가 검증한다. */
+  t('번역판이면 그 언어 URL 을 그대로 가져와 표기를 읽는다',
+    /fetchSearchAppearance\(page, lang\)/.test(PQ) && /parsePath\(page\)/.test(PQ));
   t('경로만 줘도 된다', /function toFullUrl/.test(PQ));
   t('노출 순으로 정렬한다', /sort\(\(a, b\) => b\.impressions - a\.impressions\)/.test(PQ));
 }

@@ -65,13 +65,33 @@ module.exports = withCronGuard('gsc-sync', async function handler(req, res) {
   const imp = pages.reduce((a, r) => a + r.impressions, 0);
   const clk = pages.reduce((a, r) => a + r.clicks, 0);
 
+  /* 요청한 창이 아니라 **실제로 받아 온 창**을 적는다 (2026-08-19).
+     2026-08-19 05:20 회차 노트가 '2026-08-13~2026-08-17' 이었는데
+     gsc_page_daily 의 최대 날짜는 08-16 이었다. GSC 가 08-17 을 아직 안 준
+     것이고 수집은 정상이었다. 그런데 노트는 요청한 끝날짜를 그대로 찍어서,
+     읽는 사람은 08-17 데이터가 있다고 믿게 된다.
+
+     '무엇을 달라고 했는가' 는 의도이고 '무엇을 받았는가' 가 사실이다.
+     노트에는 사실을 적는다. 요청보다 짧으면 그 사실도 같이 적는다 —
+     조용히 짧아지면 아무도 모른다(G-4). */
+  const dates = pages.map((r) => r.date).filter(Boolean).sort();
+  const gotStart = dates.length ? dates[0] : null;
+  const gotEnd = dates.length ? dates[dates.length - 1] : null;
+  const short = gotEnd && gotEnd < endDate;
+
   res.locals = res.locals || {};
   res.locals.cronNote = '페이지 ' + savedPages + '행 · 질의 ' + savedQueries + '행 · '
-    + startDate + '~' + endDate + ' 노출 ' + imp.toLocaleString('ko-KR')
-    + ' 클릭 ' + clk.toLocaleString('ko-KR');
+    + (dates.length ? gotStart + '~' + gotEnd : '(데이터 없음)')
+    + ' 노출 ' + imp.toLocaleString('ko-KR')
+    + ' 클릭 ' + clk.toLocaleString('ko-KR')
+    + (short ? ' · 요청 ' + endDate + ' 까지였으나 GSC 가 ' + gotEnd + ' 까지만 줬다' : '')
+    + (dates.length ? '' : ' · 요청 ' + startDate + '~' + endDate);
 
   return res.status(200).json({
-    ok: true, site: SITE, startDate, endDate, days,
+    ok: true, site: SITE,
+    requested: { startDate, endDate, days },
+    covered: { startDate: gotStart, endDate: gotEnd, short: !!short },
+    startDate, endDate, days,
     pages: savedPages, queries: savedQueries, impressions: imp, clicks: clk,
   });
 });
