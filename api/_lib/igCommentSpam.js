@@ -100,9 +100,13 @@ function score(raw) {
  * 전부 같은 지문으로 묶여 '20계정 살포'로 오인된다. 실제로 그렇게 나왔다.
  * 글자가 남지 않는 댓글은 지문을 만들지 않는다(null). 묶을 근거가 없다.
  */
+/* 우리 계정 핸들. 이것만 남는 댓글은 '우리를 태그한 것'이지 살포가 아니다. */
+const OWN_HANDLES = /^(pap_?magazine|pap_?celeb|pap_?beauty|pap_?fashion|pap_?trends|pap_?object|pepperit_?mag|papkorea)$/;
+
 function fingerprint(raw) {
   const q = squash(raw).replace(/[0-9]/g, '#');   // 숫자 자리(⑤④⑦②)는 바뀌므로 뭉갠다
   if (q.length < 6) return null;                  // 너무 짧으면 우연히 겹친다 — 묶지 않는다
+  if (OWN_HANDLES.test(q)) return null;           // 우리 핸들 멘션만 남은 것 (2026-08-19 오탐)
   let h = 5381;
   for (let i = 0; i < q.length; i++) h = ((h * 33) ^ q.charCodeAt(i)) >>> 0;
   return h.toString(36) + ':' + q.length;

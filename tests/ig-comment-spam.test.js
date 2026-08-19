@@ -92,6 +92,21 @@ t('짧은 정상 댓글도 지문을 만들지 않는다', () => {
   }
 });
 
+t('우리 계정을 태그만 한 댓글은 지문을 만들지 않는다 (2026-08-19 오탐 2차)', () => {
+  // 실전: '@pap_magazine 🤍' 류 4건이 정확히 60점(살포 가산만)으로 스팸 판정됐다.
+  // 여러 팬이 우리를 태그하면 정규화 후 같은 문자열이 된다. 그건 살포가 아니다.
+  // 그리고 이건 숨기면 가장 아까운 댓글이다.
+  for (const v of ['@pap_magazine 🤍', '🤝🏼🤍 @pap_magazine', '@pap_magazine 🥹🧡', '@pepperitmag ❤️']) {
+    assert.strictEqual(fingerprint(v), null, `지문이 생기면 안 됨: ${v}`);
+  }
+});
+
+t('멘션 댓글은 점수가 0이다', () => {
+  for (const v of ['@pap_magazine 🤍', '🤝🏼🤍 @pap_magazine', '@pap_magazine 🥹🧡']) {
+    assert.strictEqual(score(v).total, 0, `점수가 붙으면 안 됨: ${v}`);
+  }
+});
+
 t('실제 스팸 문구는 지문이 생긴다', () => {
   for (const s2 of SPAM) assert.ok(fingerprint(s2), '스팸인데 지문 없음: ' + s2.slice(0, 25));
 });
