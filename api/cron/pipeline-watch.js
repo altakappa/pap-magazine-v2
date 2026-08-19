@@ -234,6 +234,13 @@ module.exports = withCronGuard('pipeline-watch', async function handler(req, res
    * 흔적이 없다. 그래서 '기록이 안 오는 것' 자체를 신호로 읽는다. */
   const heartbeat = await checkHeartbeats({ dry });
 
+  /* IG 토큰 생존 감시 (2026-08-19 추가).
+   * 2026-07-26 에 IG 토큰 6개가 죽어 24시간 719회 실패했는데 아무 소리가 없었다.
+   * 크론은 ok=true 로 '수집 0건'을 남기고 끝났기 때문이다. 0건은 조용한 실패의
+   * 얼굴이다. 토큰은 60일마다 죽으므로 이 침묵은 반드시 반복된다.
+   * 그래서 성공/실패가 아니라 '토큰이 살아 있는가'를 따로 묻는다. */
+  const igToken = await checkIgToken({ dry });
+
   /* ── 유튜브 영상 생존 감시 (2026-08-07 추가) ──
    * 앞의 감시들이 '안 만들어지는 것'을 본다면, 이건 '만들어놓고 사라지는 것'을
    * 본다. 게시는 끝이 아니라 시작이다. */
@@ -255,7 +262,7 @@ module.exports = withCronGuard('pipeline-watch', async function handler(req, res
    * 이건 크론 이름을 가리지 않고 '연속으로 실패하는 것' 만 본다. */
   const failingCrons = await checkFailingCrons({ dry });
 
-  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels, faq, duration, naver, tiktok, heartbeat, ytVideos, newsletter, deadRuns, failingCrons });
+  return res.status(200).json({ ok: true, ...d, alerted: !!pushed, push: pushed, backfill, translate, reels, faq, duration, naver, tiktok, heartbeat, igToken, ytVideos, newsletter, deadRuns, failingCrons });
 });
 
 /** 서술문 생산이 실제로 되고 있는지 보고, 이상하면 텔레그램으로 알린다. */
@@ -1015,6 +1022,76 @@ module.exports.buildTikTokAlert = buildTikTokAlert;
 const HEARTBEAT_ALERT_KEY = 'heartbeat-health';
 
 /* 감시 대상 — 이름, 사람이 읽을 이름, 침묵 허용 시간(시간). */
+/* ── IG 토큰 생존 감시 ───────────────────────────────────────────
+ * 값은 절대 읽지 않는다. 살아 있는지만 묻는다.
+ * 만료 시각은 app_secret 없이 알 수 없으므로 '죽었는가'로 대신한다.
+ * 죽고 나서 아는 건 늦지만, 24시간 뒤에 아는 것보다는 훨씬 낫다. */
+const IG_TOKEN_ALERT_KEY = 'ig-token-health';
+
+async function checkIgToken(opts) {
+  const token = String(process.env.IG_ACCESS_TOKEN || '').replace(/[\s"'`]/g, '');
+  const userId = String(process.env.IG_USER_ID || '').replace(/[\s"'`]/g, '');
+  if (!token || !userId) return { skipped: 'IG env 미설정' };
+
+  let alive = false; let why = '';
+  try {
+    const r = await fetch(
+      'https://graph.facebook.com/v21.0/' + userId + '?fields=id&access_token=' + encodeURIComponent(token),
+      { signal: AbortSignal.timeout(12000) });
+    const j = await r.json().catch(() => ({}));
+    alive = !!(r.ok && j && j.id);
+    if (!alive) {
+      const e = (j && j.error) || {};
+      why = 'code=' + e.code + ' ' + String(e.message || '').split(token).join('[TOKEN]').slice(0, 160);
+    }
+  } catch (e) {
+    why = String((e && e.message) || e).slice(0, 160);
+  }
+
+  if (opts && opts.dry) return { dry: true, alive, why };
+
+  const { data: st } = await supabaseAdmin.from('ops_alert_state')
+    .select('last_alert_at, last_payload').eq('key', IG_TOKEN_ALERT_KEY).maybeSingle();
+  const wasDead = !!(st && st.last_payload && st.last_payload.dead);
+  const lastAt = st && st.last_alert_at ? Date.parse(st.last_alert_at) : 0;
+  const COOLDOWN_H = Number(process.env.IG_TOKEN_ALERT_COOLDOWN_H || 6);
+
+  let alerted = false;
+  if (!alive && Date.now() - lastAt > COOLDOWN_H * 3600000) {
+    await pushAlert({
+      personalOnly: true,
+      title: '⛔ 인스타그램 토큰이 죽었습니다',
+      lines: [
+        'IG API 가 응답하지 않습니다: ' + why,
+        '',
+        '지금 멈춘 것: 기사 수집 · 스레드/X 발행 · 스팸 댓글 감시 · 하위 5계정 백필',
+        '',
+        '복구: 그래프 API 탐색기에서 토큰 재발급 → 액세스 토큰 확장(60일)',
+        '→ Vercel env 6개(IG_ACCESS_TOKEN + 하위 5개) 전부 같은 값으로 → Redeploy',
+      ],
+      url: 'https://developers.facebook.com/tools/explorer/',
+      urlLabel: '그래프 API 탐색기',
+    });
+    alerted = true;
+  } else if (alive && wasDead) {
+    await pushAlert({
+      personalOnly: true,
+      title: '✅ 인스타그램 토큰 복구됨',
+      lines: ['IG API 응답 정상. 멈췄던 크론들이 다시 돕니다.'],
+    });
+    alerted = true;
+  }
+  if (alerted || wasDead !== !alive) {
+    await supabaseAdmin.from('ops_alert_state').upsert({
+      key: IG_TOKEN_ALERT_KEY,
+      last_alert_at: alerted ? new Date().toISOString() : (st && st.last_alert_at) || null,
+      last_payload: { dead: !alive, why: why || null },
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'key' });
+  }
+  return { alive, why: why || null, alerted };
+}
+
 const HEARTBEATS = [
   { source: 'video-compress', label: '맥미니 영상 압축기', maxSilentH: 30 },
 ];

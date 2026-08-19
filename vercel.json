@@ -74,6 +74,10 @@
       "schedule": "0 2 * * *"
     },
     {
+      "path": "/api/cron/ig-comment-scan",
+      "schedule": "25 * * * *"
+    },
+    {
       "path": "/api/cron/drive-youtube-post",
       "schedule": "15 */2 * * *"
     },
