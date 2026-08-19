@@ -126,6 +126,7 @@ module.exports = async function handler(req, res) {
     const fp = spam.fingerprint(c.text || '');   // 글자가 안 남는 댓글은 null
     if (fp) fpCount.set(fp, (fpCount.get(fp) || 0) + 1);
     return {
+      댓글ID: c.id,
       username: c.username || (c.from && c.from.username) || '(불명)',
       점수: sc.total,
       신호: sc.signals,
