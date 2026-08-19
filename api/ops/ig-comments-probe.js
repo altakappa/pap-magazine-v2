@@ -89,12 +89,21 @@ module.exports = async function handler(req, res) {
   const perPost = [];
   let readFail = null;
   for (const p of targets) {
-    const cUrl = `${API}/${p.id}/comments?fields=id,text,username,timestamp,hidden&limit=50&access_token=${encodeURIComponent(token)}`;
+    // 답글(replies)까지 가져온다. IG 표기 댓글 수보다 읽히는 수가 늘 적었는데
+    // 그 차이가 답글이다. 답글에 붙은 스팸을 못 보면 비율을 과소평가한다.
+    const FIELDS = 'id,text,username,timestamp,hidden,from{id,username},replies{id,text,username,timestamp,hidden,from{id,username}}';
+    const cUrl = `${API}/${p.id}/comments?fields=${encodeURIComponent(FIELDS)}&limit=50&access_token=${encodeURIComponent(token)}`;
     const r = await call(cUrl);
     if (!r.ok) { readFail = { post: p.permalink, err: r }; break; }
     const rows = (r.body && r.body.data) || [];
-    for (const c of rows) all.push({ ...c, permalink: p.permalink });
-    perPost.push({ 게시물: p.permalink, 읽은댓글: rows.length, IG표기수: p.comments_count });
+    let replyCount = 0;
+    for (const c of rows) {
+      all.push({ ...c, permalink: p.permalink, 답글: false });
+      const reps = (c.replies && c.replies.data) || [];
+      replyCount += reps.length;
+      for (const rp of reps) all.push({ ...rp, permalink: p.permalink, 답글: true });
+    }
+    perPost.push({ 게시물: p.permalink, 최상위: rows.length, 답글: replyCount, 합계: rows.length + replyCount, IG표기수: p.comments_count });
   }
 
   if (readFail) {
@@ -114,10 +123,10 @@ module.exports = async function handler(req, res) {
   const fpCount = new Map();
   const judged = all.map((c) => {
     const sc = spam.score(c.text || '');
-    const fp = spam.fingerprint(c.text || '');
-    fpCount.set(fp, (fpCount.get(fp) || 0) + 1);
+    const fp = spam.fingerprint(c.text || '');   // 글자가 안 남는 댓글은 null
+    if (fp) fpCount.set(fp, (fpCount.get(fp) || 0) + 1);
     return {
-      username: c.username || '(불명)',
+      username: c.username || (c.from && c.from.username) || '(불명)',
       점수: sc.total,
       신호: sc.signals,
       지문: fp,
@@ -128,6 +137,7 @@ module.exports = async function handler(req, res) {
   });
   // 같은 지문이 3계정 이상에서 나오면 그것만으로도 확정적이다
   for (const j of judged) {
+    if (!j.지문) continue;                        // 묶을 근거가 없는 것은 가산하지 않는다
     const n = fpCount.get(j.지문) || 0;
     if (n >= 3) { j.점수 += 60; j.신호 = [...j.신호, 'burst:' + n + '건']; }
   }
@@ -135,7 +145,7 @@ module.exports = async function handler(req, res) {
   const spamRows = judged.filter((j) => j.점수 >= THRESHOLD).sort((a, b) => b.점수 - a.점수);
   const cleanRows = judged.filter((j) => j.점수 < THRESHOLD);
   // 살포 무리 — 같은 문구가 몇 계정에서 나왔나
-  const bursts = [...fpCount.entries()].filter(([, n]) => n >= 3)
+  const bursts = [...fpCount.entries()].filter(([fp, n]) => fp && n >= 3)
     .map(([fp, n]) => ({ 지문: fp, 건수: n, 예시: (judged.find((j) => j.지문 === fp) || {}).원문 }))
     .sort((a, b) => b.건수 - a.건수);
 

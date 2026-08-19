@@ -77,6 +77,25 @@ t('정상 댓글끼리는 지문이 겹치지 않는다', () => {
   assert.strictEqual(fps.size, HAM.length);
 });
 
+t('이모지만 있는 댓글은 지문을 만들지 않는다 (2026-08-19 실전 오탐)', () => {
+  // 실전에서 '😢😢😢😢' 류 20건이 전부 빈 지문으로 묶여 '20계정 살포'로
+  // 오인됐다. 서로 무관한 팬 반응이었다. 묶을 글자가 없으면 묶지 않는다.
+  for (const v of ['😢😢😢😢', '🔥🔥🔥', '❤️', '👏🏻🎂🎱', '...', '   ']) {
+    assert.strictEqual(fingerprint(v), null, `지문이 생기면 안 됨: ${v}`);
+  }
+});
+
+t('짧은 정상 댓글도 지문을 만들지 않는다', () => {
+  // '잘생깃다', 'Anton❤️' 같은 짧은 반응이 우연히 겹쳐 살포로 몰리면 안 된다
+  for (const v of ['Anton❤️', '소희 귀여워', '멋져요']) {
+    assert.strictEqual(fingerprint(v), null);
+  }
+});
+
+t('실제 스팸 문구는 지문이 생긴다', () => {
+  for (const s2 of SPAM) assert.ok(fingerprint(s2), '스팸인데 지문 없음: ' + s2.slice(0, 25));
+});
+
 t('정규화가 이물질 문자를 걷어낸다', () => {
   assert.strictEqual(normalize('송ι하ι리'), '송하리');
   assert.strictEqual(normalize('검ιι색'), '검색');
