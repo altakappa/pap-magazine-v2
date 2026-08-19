@@ -76,54 +76,80 @@ module.exports = async function handler(req, res) {
   out.단계.게시물목록 = { 결과: '성공', 건수: posts.length };
 
   // ── 2. 본론: 댓글 본문 읽기 ────────────────────────────────
-  const target = posts.find((p) => (p.comments_count || 0) > 0) || posts[0];
-  if (!target) {
-    out.단계.댓글읽기 = { 결과: '건너뜀', 이유: '게시물이 없다' };
-    out.결론 = '판정 불가 — 게시물 없음';
+  // 최근 게시물 하나만 보면 스팸이 안 붙은 새 글이 걸려 "스팸 0건" 이 나온다.
+  // 실제 피해 규모를 보려면 댓글이 달린 게시물을 전부 훑어야 한다.
+  const targets = posts.filter((p) => (p.comments_count || 0) > 0);
+  if (!targets.length) {
+    out.단계.댓글읽기 = { 결과: '건너뜀', 이유: '댓글 달린 게시물이 없다' };
+    out.결론 = '판정 불가 — 댓글 없음';
     return res.status(200).json(out);
   }
 
-  const cUrl = `${API}/${target.id}/comments?fields=id,text,username,timestamp,hidden&limit=25&access_token=${encodeURIComponent(token)}`;
-  const comments = await call(cUrl);
+  const all = [];
+  const perPost = [];
+  let readFail = null;
+  for (const p of targets) {
+    const cUrl = `${API}/${p.id}/comments?fields=id,text,username,timestamp,hidden&limit=50&access_token=${encodeURIComponent(token)}`;
+    const r = await call(cUrl);
+    if (!r.ok) { readFail = { post: p.permalink, err: r }; break; }
+    const rows = (r.body && r.body.data) || [];
+    for (const c of rows) all.push({ ...c, permalink: p.permalink });
+    perPost.push({ 게시물: p.permalink, 읽은댓글: rows.length, IG표기수: p.comments_count });
+  }
 
-  if (!comments.ok) {
-    const err = (comments.body && comments.body.error) || {};
+  if (readFail) {
+    const err = (readFail.err.body && readFail.err.body.error) || {};
     out.ok = false;
-    out.단계.댓글읽기 = {
-      결과: '실패',
-      status: comments.status,
-      code: err.code,
-      오류: scrub(err.message, token),
-    };
-    out.결론 = comments.status === 403 || err.code === 200 || err.code === 10
+    out.단계.댓글읽기 = { 결과: '실패', status: readFail.err.status, code: err.code, 오류: scrub(err.message, token) };
+    out.결론 = readFail.err.status === 403 || err.code === 200 || err.code === 10
       ? '토큰에 instagram_manage_comments 권한이 없다 → 앱 권한 추가 + 재인증 필요'
       : '댓글 읽기 실패 — 위 오류 확인';
     return res.status(200).json(out);
   }
 
-  const rows = (comments.body && comments.body.data) || [];
-  out.단계.댓글읽기 = { 결과: '성공', 건수: rows.length, 대상게시물: target.permalink };
+  out.단계.댓글읽기 = { 결과: '성공', 게시물수: perPost.length, 총댓글: all.length, 게시물별: perPost };
 
   // ── 3. 실제 댓글에 스팸 판정기를 돌려본다 ──────────────────
   const THRESHOLD = 60;
   const fpCount = new Map();
-  const judged = rows.map((c) => {
-    const s = spam.score(c.text || '');
+  const judged = all.map((c) => {
+    const sc = spam.score(c.text || '');
     const fp = spam.fingerprint(c.text || '');
     fpCount.set(fp, (fpCount.get(fp) || 0) + 1);
-    return { username: c.username, 점수: s.total, 신호: s.signals, 지문: fp, 이미숨김: !!c.hidden, 원문: String(c.text || '').slice(0, 60) };
+    return {
+      username: c.username || '(불명)',
+      점수: sc.total,
+      신호: sc.signals,
+      지문: fp,
+      이미숨김: !!c.hidden,
+      게시물: c.permalink,
+      원문: String(c.text || '').slice(0, 70),
+    };
   });
-  // 같은 지문이 여러 계정에서 나오면 그것만으로도 확정적이다
-  for (const j of judged) if ((fpCount.get(j.지문) || 0) >= 3) { j.점수 += 60; j.신호 = [...j.신호, 'burst:' + fpCount.get(j.지문) + '계정']; }
+  // 같은 지문이 3계정 이상에서 나오면 그것만으로도 확정적이다
+  for (const j of judged) {
+    const n = fpCount.get(j.지문) || 0;
+    if (n >= 3) { j.점수 += 60; j.신호 = [...j.신호, 'burst:' + n + '건']; }
+  }
 
-  const spamRows = judged.filter((j) => j.점수 >= THRESHOLD);
+  const spamRows = judged.filter((j) => j.점수 >= THRESHOLD).sort((a, b) => b.점수 - a.점수);
+  const cleanRows = judged.filter((j) => j.점수 < THRESHOLD);
+  // 살포 무리 — 같은 문구가 몇 계정에서 나왔나
+  const bursts = [...fpCount.entries()].filter(([, n]) => n >= 3)
+    .map(([fp, n]) => ({ 지문: fp, 건수: n, 예시: (judged.find((j) => j.지문 === fp) || {}).원문 }))
+    .sort((a, b) => b.건수 - a.건수);
+
   out.판정 = {
     기준점: THRESHOLD,
     전체: judged.length,
     스팸: spamRows.length,
     스팸비율: judged.length ? Math.round((spamRows.length / judged.length) * 100) + '%' : '-',
-    표본: judged.slice(0, 15),
+    이미숨겨진것: judged.filter((j) => j.이미숨김).length,
+    살포무리: bursts,
+    스팸표본: spamRows.slice(0, 20),
+    정상표본: cleanRows.slice(0, 10),
   };
-  out.결론 = `댓글 읽기 가능. 최근 댓글 ${judged.length}건 중 ${spamRows.length}건이 스팸으로 판정됨. 다음 단계는 숨기기 권한 확인(쓰기 1회 시험 — 도메니코 승인 필요).`;
+  out.결론 = `댓글 읽기 가능. 게시물 ${perPost.length}개 · 댓글 ${judged.length}건 중 ${spamRows.length}건(${out.판정.스팸비율})이 스팸. `
+    + `다음 단계는 숨기기 권한 확인(쓰기 1회 시험 — 도메니코 승인 필요).`;
   return res.status(200).json(out);
 };
