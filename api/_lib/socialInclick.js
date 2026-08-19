@@ -14,6 +14,7 @@
 
 const { supabaseAdmin } = require('./supabase');
 const { extractClientIp, hashIp, detectDeviceType, sanitizeReferrer, isLikelyBot } = require('./clickGuard');
+const { aiReferralPlatform, refererHost, aiCrawlerInfo } = require('./aiTraffic');
 
 /* 화이트리스트 폐기 (2026-08-10) ────────────────────────────────────────
    2026-08-07 에 'threads' 를 목록에 "추가"해서 고쳤는데, 같은 사고가 또 났다.
@@ -74,18 +75,42 @@ function normalizeSrc(raw) {
 async function logSocialInclick(req, page) {
   try {
     const q = req.query || {};
+    const headers = req.headers || {};
+    const refRaw = headers['referer'] || headers['referrer'];
     const srcRaw = String(q.utm_source || '').toLowerCase();
-    if (!srcRaw) return;
-    if (isLikelyBot(req.headers['user-agent'])) return; // 크롤러 제외 (사람 지표만)
-    const src = normalizeSrc(srcRaw);
+
+    /* AI 리퍼러 폴백 (2026-08-19) ────────────────────────────────────
+       챗GPT 는 링크에 utm_source=chatgpt.com 을 붙여 준다. 그래서 8/10 부터
+       141건이 이 표에 들어와 있었다. 그런데 **퍼플렉시티·제미나이·클로드·
+       코파일럿은 utm 을 안 붙인다.** Referer 헤더만 온다.
+       'utm 없으면 무시' 규칙을 그대로 두면 그 유입은 영원히 0 으로 보인다.
+       채널이 죽은 것과 계측이 없는 것을 구분 못 하는 상태 — 2026-08-12 에
+       인클릭 비콘을 만들게 한 것과 **똑같은 구멍**이다.
+
+       utm 이 있으면 utm 이 이긴다. 챗GPT 처럼 둘 다 보내는 경우 두 번
+       세지 않기 위해서다. */
+    const aiPlatform = srcRaw ? null : aiReferralPlatform(refRaw);
+    if (!srcRaw && !aiPlatform) return;
+
+    /* 봇 제외 — 두 목록을 함께 본다 (2026-08-19 하네스가 잡은 구멍).
+       clickGuard.isLikelyBot 은 UA 에 'bot|crawl|spider…' 가 들어야 잡는다.
+       그런데 **ChatGPT-User·Perplexity-User·Claude-User 에는 그 단어가 없다.**
+       그대로 두면 "사람이 AI 에서 넘어왔다" 칸에 봇이 섞인다. 우리 AI 크롤러
+       목록으로 한 번 더 거른다. 이 봇들은 ai_crawl_daily 쪽에 따로 적힌다. */
+    if (isLikelyBot(headers['user-agent'])) return;
+    if (aiCrawlerInfo(headers['user-agent'])) return;
+    const src = srcRaw ? normalizeSrc(srcRaw) : aiPlatform;
     const path = String(req.url || '').split('?')[0].slice(0, 300);
     const { error } = await supabaseAdmin.from('social_inclicks').insert({
       src: src,
       campaign: String(q.utm_campaign || '').slice(0, 80) || null,
       page: String(page || 'other').slice(0, 40),
       path: path,
-      referrer_path: sanitizeReferrer(req.headers['referer'] || req.headers['referrer']),
-      device_type: detectDeviceType(req.headers['user-agent']),
+      referrer_path: sanitizeReferrer(refRaw),
+      // 호스트를 따로 남긴다 — sanitizeReferrer 는 경로만 남기고 호스트를 버려서
+      // "어느 AI 에서 왔나" 를 저장된 데이터로 되짚을 수 없었다 (132 마이그레이션).
+      referrer_host: refererHost(refRaw),
+      device_type: detectDeviceType(headers['user-agent']),
       ip_hash: hashIp(extractClientIp(req)),
     });
     if (error) console.warn('[social-inclick] insert failed', error.message);

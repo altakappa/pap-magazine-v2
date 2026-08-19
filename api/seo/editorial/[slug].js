@@ -14,6 +14,8 @@ const { supabaseAdmin } = require('../../_lib/supabase');
 const { handleCors } = require('../../_lib/cors');
 const { renderSeoHtml, renderNotFoundHtml } = require('../../_lib/seoRenderer');
 const { logSocialInclick } = require('../../_lib/socialInclick');
+// 2026-08-19 — AI 크롤러가 어떤 글을 읽어 갔는지 기록. 사람 유입(위)과 다른 신호다.
+const { logAiCrawl } = require('../../_lib/aiCrawlLog');
 const { parseBrandCredits } = require('../../_lib/fashionCredits');
 
 module.exports = async function handler(req, res) {
@@ -327,6 +329,7 @@ module.exports = async function handler(req, res) {
     /* 인바운드 계측 (2026-08-07 추가). 기사·페퍼릿에만 붙어 있어서
        **주력 콘텐츠인 에디토리얼로 들어오는 유입이 통째로 안 잡혔다.** */
     await logSocialInclick(req, 'editorial');
+    await logAiCrawl(req);
 
     return res.status(200).send(renderSeoHtml('editorial', data, { lang, translation, availableLangs }));
 

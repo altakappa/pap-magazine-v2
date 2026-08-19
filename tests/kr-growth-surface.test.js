@@ -112,7 +112,12 @@ console.log('\n[5] 유입 출처 계측 — 모르는 값을 버리지 않는다
   const si = R('api/_lib/socialInclick.js');
   t('화이트리스트가 되살아나지 않았다', !/SRC_WHITELIST/.test(si));
   t('정규화 함수가 있다', /function normalizeSrc\(/.test(si));
-  t('정규화 결과를 저장한다', /const src = normalizeSrc\(srcRaw\)/.test(si));
+  /* 2026-08-19 — 문장 모양이 아니라 '무엇을 저장하는가'를 본다.
+     AI 리퍼러 폴백이 들어오면서 이 줄이 삼항식이 됐는데(srcRaw 없으면
+     AI 플랫폼 이름), 지켜야 할 것은 '저장값이 normalizeSrc 를 거친다'이지
+     'const src = normalizeSrc(srcRaw) 라고 쓰여 있다'가 아니다.
+     8/18 에 vercel.json 원문 정규식으로 같은 종류의 헛발을 밟았다. */
+  t('정규화 결과를 저장한다', /const src = [^;\n]*normalizeSrc\(srcRaw\)/.test(si));
   t('모르는 값을 그대로 돌려준다 (ALIASES 있으면 통합, 없으면 원본)',
     /return ALIASES\.get\(t\) \|\| t;/.test(si));
   t("빈 값일 때만 'other'", /if \(!t\) return 'other';/.test(si));

@@ -12,6 +12,8 @@ const { supabaseAdmin } = require('../../_lib/supabase');
 const { handleCors } = require('../../_lib/cors');
 const { renderSeoHtml, renderNotFoundHtml } = require('../../_lib/seoRenderer');
 const { logSocialInclick } = require('../../_lib/socialInclick');
+// 2026-08-19 — AI 크롤러가 어떤 글을 읽어 갔는지 기록. 사람 유입(위)과 다른 신호다.
+const { logAiCrawl } = require('../../_lib/aiCrawlLog');
 // 2026-08-08 — MORE ARTICLES 빌더를 공용 lib 로 추출. SPA 상세 API
 // (api/articles/[id].js)와 같은 규칙을 쓴다 — 규칙이 두 벌이면 한쪽만 고쳐진다.
 const { buildMoreArticles } = require('../../_lib/moreArticles');
@@ -172,6 +174,7 @@ module.exports = async function handler(req, res) {
 
     // 소셜 유입 계측 (utm_source 있을 때만 기록, 실패는 삼킨다 — 2026-07-16)
     await logSocialInclick(req, 'article');
+    await logAiCrawl(req);
 
     /* 다국어 (2026-07-21): 에디토리얼은 2026-07-16 부터 it/fr/es/ja SSR 이
        있었는데 기사는 en 하나뿐이었다 — 밀라노 기반 매체가 이탈리아어 기사

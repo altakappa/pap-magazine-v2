@@ -6,6 +6,8 @@
 
 const { supabaseAdmin } = require('../../_lib/supabase');
 const { logSocialInclick } = require('../../_lib/socialInclick');
+// 2026-08-19 — AI 크롤러가 어떤 글을 읽어 갔는지 기록. 사람 유입(위)과 다른 신호다.
+const { logAiCrawl } = require('../../_lib/aiCrawlLog');
 
 const SITE = 'https://www.pepperitmag.com';
 const IG = 'https://www.instagram.com/pepperitmag/';
@@ -189,6 +191,7 @@ module.exports = async function handler(req, res) {
 
     // 소셜 유입 계측 (utm_source 있을 때만 기록, 실패는 삼킨다 — 2026-07-16)
     await logSocialInclick(req, 'pepperit');
+    await logAiCrawl(req);
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=600, stale-while-revalidate=3600');
