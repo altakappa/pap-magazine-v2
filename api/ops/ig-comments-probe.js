@@ -63,6 +63,27 @@ module.exports = async function handler(req, res) {
 
   const out = { ok: true, 단계: {} };
 
+  // ── 0. 토큰이 실제로 무슨 권한을 들고 있나 ─────────────────
+  // 2026-08-19: 댓글 읽기는 되는데 숨기기가 (#10) permission denied 로 막혔다.
+  // '읽히니까 권한이 있다'는 추정이 틀렸다. 추정 말고 목록을 본다.
+  try {
+    const pr = await call(`${API}/me/permissions?access_token=${encodeURIComponent(token)}`);
+    if (pr.ok) {
+      const rows = (pr.body && pr.body.data) || [];
+      const granted = rows.filter((x) => x.status === 'granted').map((x) => x.permission);
+      const declined = rows.filter((x) => x.status !== 'granted').map((x) => x.permission + '(' + x.status + ')');
+      out.단계.토큰권한 = {
+        승인됨: granted,
+        거부됨: declined,
+        댓글관리: granted.includes('instagram_manage_comments') ? '있음' : '❌ 없음',
+      };
+    } else {
+      out.단계.토큰권한 = { 결과: '조회 실패', status: pr.status };
+    }
+  } catch (e) {
+    out.단계.토큰권한 = { 결과: '조회 실패', 오류: String((e && e.message) || e).slice(0, 120) };
+  }
+
   // ── 1. 대조군: 게시물 목록 (기존에 되던 호출) ──────────────
   const mediaUrl = `${API}/${userId}/media?fields=id,permalink,timestamp,comments_count&limit=10&access_token=${encodeURIComponent(token)}`;
   const media = await call(mediaUrl);
