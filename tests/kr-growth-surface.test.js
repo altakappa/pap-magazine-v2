@@ -901,6 +901,76 @@ console.log('\n[19] 카테고리 페이지(/digital-magazine)가 고아가 아�
   })());
 }
 
+/* ── [20] 언어별 진입 페이지 /ja · /en (2026-08-20) ────────────────
+   기사는 9개 언어인데 홈·목록은 한국어뿐이었다. `/ja` `/en` 은 `/` 로 301 이라
+   구글 입장에서 '일본어 사이트'가 존재하지 않았다 — 기사 낱장만 있었다.
+   ja 는 GSC 유입 2위 언어다(워터밤·KATSEYE·지미로콰이 상위 페이지 다수).
+   여기서 지키는 것: ① 라우팅이 실제로 살아 있는가(옛 301 이 남아 있으면 죽는다)
+   ② hreflang 이 3방향 왕복하는가 ③ 한국어 제목이 섞여 나가지 않는가
+   ④ IG 아웃링크가 계측 경로를 타는가(성장 헌법 3항) */
+console.log('\n[20] 언어별 진입 페이지 /ja · /en');
+{
+  const vj = JSON.parse(R('vercel.json'));
+  const lh = R('api/seo/locale-home.js');
+  const idx = R('frontend/index.html');
+  const rwSrc = vj.rewrites.map((r) => r.source);
+  const rdSrc = vj.redirects.map((r) => r.source);
+
+  t('/ja · /en 이 로케일 홈으로 rewrite 된다',
+    ['/ja', '/en'].every((p_) => vj.rewrites.some((r) =>
+      r.source === p_ && /locale-home\?lang=/.test(r.destination))));
+
+  /* 옛 301 이 하나라도 남아 있으면 rewrite 는 절대 실행되지 않는다 —
+     Vercel 은 redirects 를 rewrites 보다 먼저 적용한다(2026-08-20 /en 404 사고). */
+  t('옛 `/en → /` 301 이 제거됐다', !rdSrc.includes('/en') && !rdSrc.includes('/en/'));
+  t('로케일 루트 일괄 301 에서 ja 가 빠졌다',
+    !rdSrc.some((s_) => /^\/:lang\([^)]*\bja\b[^)]*\)$/.test(s_)));
+  t('나머지 언어는 종전대로 / 로 301 유지 (열지 않은 언어를 열지 않는다)',
+    rdSrc.some((s_) => s_ === '/:lang(fr|it|es|de|ru|zh)'));
+  t('rewrite 가 편집자 캐치올(/:slug)보다 앞에 있다',
+    rwSrc.indexOf('/ja') < rwSrc.findIndex((s_) => /^\/:slug/.test(s_)));
+
+  /* hreflang — 한쪽만 걸면 구글이 짝을 못 짓는다. 문자열이 정확히 같아야 한다. */
+  for (const code of ['ko', 'ja', 'en', 'x-default']) {
+    t('한국어 홈에 hreflang ' + code + ' 이 있다',
+      new RegExp('hreflang="' + code + '" href="https://www\\.pap-magazine\\.com').test(idx));
+  }
+  t('한국어 홈의 hreflang ko 가 canonical 과 글자까지 같다 (슬래시 포함)',
+    /rel="canonical" href="https:\/\/www\.pap-magazine\.com">/.test(idx)
+    && /hreflang="ko" href="https:\/\/www\.pap-magazine\.com">/.test(idx));
+  t('로케일 홈도 ko 를 슬래시 없이 가리킨다 (양쪽 문자열 일치)',
+    /\['ko', SITE\]/.test(lh) && /\['x-default', SITE\]/.test(lh));
+  t('로케일 홈이 ja·en 을 모두 alternate 로 내보낸다',
+    /\['ja', SITE \+ '\/ja'\]/.test(lh) && /\['en', SITE \+ '\/en'\]/.test(lh));
+
+  /* 언어 신호 — 번역 제목이 없는 항목은 싣지 않는다 */
+  t('번역 제목이 없으면 목록에서 뺀다 (한국어 제목 혼입 금지)',
+    /if \(!t\) return null;/.test(lh) && /\.filter\(Boolean\)/.test(lh));
+  t('en 은 title_en, 그 외는 번역표에서 제목을 가져온다',
+    /lang === 'en'\) \? row\.title_en : map\.get\(row\.id\)/.test(lh));
+  t('en 은 seo_translations 를 조회하지 않는다 (그 언어 행이 없다)',
+    /if \(lang === 'en' \|\| !ids\.length\) return new Map\(\);/.test(lh));
+  t('html lang 과 og:locale 이 해당 언어다',
+    /<html lang="\$\{esc\(cfg\.htmlLang\)\}">/.test(lh)
+    && /og:locale" content="\$\{esc\(cfg\.htmlLang\)\}"/.test(lh));
+  t('지원하지 않는 언어는 404 다 (임의 로케일 양산 금지)',
+    /if \(!cfg\) return res\.status\(404\)/.test(lh));
+
+  /* 성장 헌법 3항 — 웹→IG 는 /api/ig-out 경유만 */
+  t('IG 아웃링크가 ig-out 계측을 탄다',
+    /\/api\/ig-out\?src=locale_home&amp;to=profile&amp;url=/.test(lh));
+  t('IG 직링크를 쓰지 않는다', !/href="https:\/\/www\.instagram\.com/.test(lh));
+  t('locale_home 이 ig-out 소스 화이트리스트에 있다',
+    /'locale_home'/.test(R('api/ig-out.js')));
+
+  t('사이트맵에 /ja · /en 이 있다', (function () {
+    const sm = R('api/sitemap.js');
+    return /path: '\/ja'/.test(sm) && /path: '\/en'/.test(sm);
+  })());
+  t('캐시 헤더가 목록 페이지와 같은 규칙이다',
+    /s-maxage=1800, stale-while-revalidate=86400/.test(lh));
+}
+
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) { console.log('❌ kr-growth-surface tests FAILED'); process.exit(1); }
 console.log('✅ kr-growth-surface tests passed');

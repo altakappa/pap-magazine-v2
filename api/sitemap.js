@@ -46,6 +46,11 @@ const STATIC_PAGES = [
   // 2026-08-20: 영문판 분리. 영어권 'korean fashion magazines' SERP 는
   // 잡지 쇼핑몰·이베이·아마존이 채우고 있고 DR11 블로그가 7위다. 문서가 없는 자리다.
   { path: '/korean-digital-magazines', priority: '0.7', changefreq: 'monthly' },
+  // 2026-08-20: 언어별 진입 페이지. 기사는 9개 언어인데 홈·목록은 한국어뿐이라
+  // 구글 입장에서 '일본어 사이트'가 존재하지 않았다(기사 낱장만 있었다).
+  // ja 는 유입 2위 언어. en 은 영어권 진입. 나머지 언어는 종전대로 / 로 301.
+  { path: '/ja',          priority: '0.9', changefreq: 'daily'   },
+  { path: '/en',          priority: '0.9', changefreq: 'daily'   },
   { path: '/contact',     priority: '0.6', changefreq: 'monthly' },
   { path: '/submission',  priority: '0.7', changefreq: 'monthly' },
   { path: '/terms',       priority: '0.3', changefreq: 'yearly'  },

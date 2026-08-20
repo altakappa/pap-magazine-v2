@@ -111,9 +111,15 @@
 <meta name="p:domain_verify" content="ad9c0791d7ea0eee30be0e57fe6b9284" />
 <link rel="canonical" href="https://www.pap-magazine.com">
 <link rel="alternate" type="application/rss+xml" title="PAP MAGAZINE — Latest" href="https://www.pap-magazine.com/rss.xml">
-<!-- hreflang 제거 (2026-07-16): 전 로케일이 같은 URL 을 가리키는 세트는
-     구글이 무시한다 (언어별 URL 이 없으면 내보내지 않는 게 정석).
-     언어별 경로가 생기면 복원. seoRenderer.js 와 동일 결정. -->
+<!-- hreflang 복원 (2026-08-20). 2026-07-16 에 뺐던 이유는 "전 로케일이 같은 URL 을
+     가리켜서" 였고, 그때 "언어별 경로가 생기면 복원" 이라고 적어 뒀다. 지금 생겼다 —
+     /ja · /en 이 각각 그 언어의 진입 페이지다(api/seo/locale-home.js).
+     세 URL 이 서로 다르고 서로를 가리키므로 이제 구글이 짝을 짓는다.
+     ⚠️ locale-home.js 의 ALTERNATES 와 이 세 줄은 항상 같이 고친다. -->
+<link rel="alternate" hreflang="ko" href="https://www.pap-magazine.com">
+<link rel="alternate" hreflang="ja" href="https://www.pap-magazine.com/ja">
+<link rel="alternate" hreflang="en" href="https://www.pap-magazine.com/en">
+<link rel="alternate" hreflang="x-default" href="https://www.pap-magazine.com">
 <meta property="og:type" content="website">
 <meta property="og:title" content="PAP Magazine (팝매거진) — Art Fashion, Beauty & Culture Magazine">
 <meta property="og:description" content="PAP 매거진은 전 세계 크리에이티브 팀과 만드는 서울·밀라노 기반 아트 패션·뷰티·컬쳐 디지털 매거진입니다. PAP is a Korean art-driven fashion, beauty & culture magazine.">

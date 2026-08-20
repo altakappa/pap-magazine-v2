@@ -378,6 +378,22 @@
       "destination": "/api/sitemap-brands"
     },
     {
+      "source": "/ja",
+      "destination": "/api/seo/locale-home?lang=ja"
+    },
+    {
+      "source": "/ja/",
+      "destination": "/api/seo/locale-home?lang=ja"
+    },
+    {
+      "source": "/en",
+      "destination": "/api/seo/locale-home?lang=en"
+    },
+    {
+      "source": "/en/",
+      "destination": "/api/seo/locale-home?lang=en"
+    },
+    {
       "source": "/en/editorial/:slug",
       "destination": "/api/seo/editorial/:slug?lang=en"
     },
@@ -1001,16 +1017,6 @@
       "permanent": true
     },
     {
-      "source": "/en",
-      "destination": "/",
-      "permanent": true
-    },
-    {
-      "source": "/en/",
-      "destination": "/",
-      "permanent": true
-    },
-    {
       "source": "/en/about",
       "destination": "/about",
       "permanent": true
@@ -1101,12 +1107,12 @@
       "permanent": true
     },
     {
-      "source": "/:lang(ja|fr|it|es|de|ru|zh)",
+      "source": "/:lang(fr|it|es|de|ru|zh)",
       "destination": "/",
       "permanent": true
     },
     {
-      "source": "/:lang(ja|fr|it|es|de|ru|zh)/",
+      "source": "/:lang(fr|it|es|de|ru|zh)/",
       "destination": "/",
       "permanent": true
     },
