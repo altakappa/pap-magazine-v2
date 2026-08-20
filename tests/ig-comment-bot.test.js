@@ -114,4 +114,34 @@ t('IG 토큰 생존 감시가 붙어 있다', () => {
   assert.ok(/IG_ACCESS_TOKEN/.test(PW) && /\[TOKEN\]/.test(PW), '토큰 마스킹이 없다');
 });
 
+/* ── 2026-08-20 실전 1회차: 38건 처리하고 함수가 죽었다 ─────────────
+ * 죽으면 알림 단계까지 못 간다. 아래 4개는 그 재발을 막는다. */
+
+t('시간 예산을 넘기면 스스로 멈춘다', () => {
+  assert.ok(/BUDGET_MS/.test(SCAN), '시간 예산 상수가 없다');
+  assert.ok(/Date\.now\(\) - startedAt > BUDGET_MS/.test(SCAN), '루프에 예산 검사가 없다');
+  assert.ok(/autoLeft = autoTargets\.length - i/.test(SCAN), '남은 건수를 기록하지 않는다');
+});
+
+t('중단되면 남은 건수를 반드시 알린다', () => {
+  assert.ok(/autoLeft > 0/.test(SCAN), '남은 건수가 알림 조건에 없다');
+  assert.ok(/cooled \|\| autoFailed\.length \|\| autoLeft/.test(SCAN), '중단이 쿨다운에 묻힌다');
+});
+
+t('자동 숨김은 한 건씩이 아니라 묶어서 처리한다', () => {
+  assert.ok(/AUTO_CONCURRENCY/.test(SCAN), '동시 처리 수 상수가 없다');
+  assert.ok(/Promise\.all\(batch\.map\(hideOne\)\)/.test(SCAN), '배치 병렬 처리가 없다');
+});
+
+t('확인 실패는 한 번 더 보고, 실패분은 다음 회차에 다시 시도한다', () => {
+  assert.ok(/verified === false/.test(SCAN) && /1500/.test(SCAN), '반영 지연 재확인이 없다');
+  assert.ok(/\['pending', 'failed'\]/.test(SCAN), '실패분 재시도가 없다');
+});
+
+t('자동 숨김 크론에 넉넉한 실행 시간이 잡혀 있다', () => {
+  const f = (VERCEL.functions || {})['api/cron/ig-comment-scan.js'];
+  assert.ok(f, 'ig-comment-scan 전용 함수 설정이 없다 — 기본 120초로는 모자란다');
+  assert.ok(f.maxDuration >= 300, 'maxDuration 이 300초 미만: ' + f.maxDuration);
+});
+
 console.log(`\n${n}개 테스트 통과`);
