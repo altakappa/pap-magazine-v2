@@ -403,33 +403,66 @@ async function generateArticleFromPost(post, opts){
   if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY 환경변수 누락.');
   const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
 
-  const visionBlocks = [];
-  // 1장만 비전 컨텍스트로 사용 (Vercel function timeout 60초 제한 + 이미지 다운로드 시간 고려).
-  // Instagram CDN이 Anthropic의 robots.txt 차단하므로 직접 fetch해서 base64로 전달.
-  for (const u of (post.mediaUrls || []).slice(0, 1)){
+  /* ── 비전 컨텍스트: 캐러셀 앞 VISION_MAX 장 (2026-08-20, 1장 → 4장) ──
+   *
+   * 왜 늘리나. 웹 본문 목표는 2026-08-17 에 800~1,200자로 올렸는데 실제 결과는
+   * 이랬다 (2026-08-12~20 임포트 53편):
+   *     800자 달성 1편. 중앙값 약 480자. 상향 전 400자에서 100자 오르고 멈췄다.
+   * 프롬프트가 무시된 게 아니다 — **재료가 없었다.** 프롬프트는 "캡션·이미지에서
+   * 확인되는 것만 쓴다 / 없으면 800자에 못 미쳐도 된다"고 못박고 있고(그게 맞다),
+   * 모델은 매번 그 안전한 쪽을 골랐다.
+   *
+   * 실측(최근 14일 130편): 갤러리 이미지 평균 7장, 3장 이상 캐러셀이 101건(78%).
+   * 그런데 모델에게 준 건 1장뿐이었다. 슬라이드에 제품명·날짜·가격·라인업이
+   * 찍혀 있는데 보지 않고 있었다. 결과 본문 438자 ≈ 캡션의 한국어 절반 —
+   * 사실상 캡션 재조판이었다.
+   *
+   * 시간 예산은 건드리지 않는다. 순차로 받으면 4배가 되므로 **병렬로 받고**,
+   * 장당 타임아웃(IMG_TIMEOUT_MS)을 걸고, 실패한 장은 조용히 버린다.
+   * 벽시계로는 여전히 '가장 느린 1장' 이다. 한 장도 못 받아도 캡션만으로 진행한다
+   * (이미지 실패가 기사 유실이 되면 안 된다).
+   *
+   * Instagram CDN 은 Anthropic 의 robots.txt 를 차단하므로 직접 fetch 해서 base64 로 넘긴다.
+   */
+  const VISION_MAX = Number(process.env.IG_VISION_IMAGES || 4);
+  const IMG_TIMEOUT_MS = Number(process.env.IG_VISION_TIMEOUT_MS || 8000);
+  const IMG_MAX_BYTES = 4 * 1024 * 1024;   // Claude image block 상한 여유분
+
+  async function fetchVisionImage(u){
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), IMG_TIMEOUT_MS);
     try {
-      const imgRes = await fetch(u);
+      const imgRes = await fetch(u, { signal: ac.signal });
       if (!imgRes.ok){
         console.warn('[ig] image fetch failed:', imgRes.status, u);
-        continue;
+        return null;
       }
       const mediaType = (imgRes.headers.get('content-type') || 'image/jpeg').split(';')[0];
-      // 안전장치: 이미지가 아니면(예: 비디오 mp4) 비전 블록에서 제외 —
-      // Claude image block 에 비 이미지 타입을 넣으면 API 400 으로 전체 실패.
+      /* 안전장치: 이미지가 아니면(예: 비디오 mp4) 비전 블록에서 제외 —
+         Claude image block 에 비 이미지 타입을 넣으면 API 400 으로 전체 실패. */
       if (!/^image\//.test(mediaType)){
         console.warn('[ig] 비 이미지 타입 제외:', mediaType, u);
-        continue;
+        return null;
       }
       const arrayBuf = await imgRes.arrayBuffer();
-      const base64 = Buffer.from(arrayBuf).toString('base64');
-      visionBlocks.push({
+      if (arrayBuf.byteLength > IMG_MAX_BYTES){
+        console.warn('[ig] 이미지 과대 제외:', arrayBuf.byteLength, u);
+        return null;
+      }
+      return {
         type: 'image',
-        source: { type: 'base64', media_type: mediaType, data: base64 },
-      });
+        source: { type: 'base64', media_type: mediaType, data: Buffer.from(arrayBuf).toString('base64') },
+      };
     } catch (e){
       console.warn('[ig] image fetch error:', (e && e.message) || e);
+      return null;
+    } finally {
+      clearTimeout(timer);
     }
   }
+
+  const visionUrls = (post.mediaUrls || []).slice(0, VISION_MAX);
+  const visionBlocks = (await Promise.all(visionUrls.map(fetchVisionImage))).filter(Boolean);
 
   const promptLines = [
     'You are a Korean fashion magazine editor at PAP Magazine.',
@@ -477,6 +510,15 @@ async function generateArticleFromPost(post, opts){
     '- DO NOT just translate the caption. Expand it into a proper magazine article.',
     '- Body must read as standalone journalism. Never reference "this Instagram post".',
     '- Cite brand/designer names when visible in the images.',
+    /* 2026-08-20 — 캐러셀 앞 4장을 넘긴다. 슬라이드마다 다른 사실이 찍혀 있는
+       경우가 많다(제품명·날짜·가격·라인업·장소). 첫 장만 보고 쓰면 그 사실들이
+       통째로 버려지고, 그게 본문이 480자에서 멈추던 이유다. */
+    '- You are given up to 4 images from this post (carousel slides), in order.',
+    '  **Read every one of them.** Slides after the first often carry different facts —',
+    '  product names, dates, prices, lineups, venues, spec lists, credits printed on the image.',
+    '  Put those facts in the body. They are the main reason the body can reach 800 characters.',
+    '  Text printed inside an image is a confirmed fact — it is not something you invented.',
+    '  If the slides genuinely add nothing, a shorter body is still correct. Never invent.',
     /* 리드 규칙 (2026-08-17, GEO) */
     '- 첫 단락의 처음 두 문장은 **리드**다. 누가·무엇을·언제·어디서를 여기서 끝낸다.',
     '  브랜드명·인물명·제품명·날짜·장소 같은 고유명사를 원문 그대로 적는다.',

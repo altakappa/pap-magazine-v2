@@ -168,6 +168,17 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
       const generated = await generateArticleFromPost(post, { strictEditorial: backfillMode });
       // ③ AI 분류 게이트: 'editorial' 이거나 (백필에서) 기사 카테고리 화이트리스트
       // 밖이면 수집하지 않는다 — "반드시 기사만" 보장.
+      /* 2026-08-20 — 본문 길이를 회차 노트에 싣는다. 목표는 800~1,200자인데
+         2026-08-17 상향 이후에도 실측 중앙값이 480자였고, 그걸 아무도 몰랐다.
+         '지시했으니 됐겠지' 를 막는 유일한 방법은 결과를 세는 것이다.
+         측정만 한다 — 짧다고 재시도하지 않는다(지어내기 압력이 생긴다). */
+      {
+        const _len = String(generated.body_ko || '').replace(/<[^>]+>/g, '').length;
+        if (_len > 0){
+          results.body_len = results.body_len || [];
+          results.body_len.push(_len);
+        }
+      }
       const cat = String(generated.category || '').toLowerCase();
       const isEditorial = cat === 'editorial'
         || (backfillMode && !ARTICLE_CATEGORIES.includes(cat));
@@ -570,6 +581,13 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
         + (twArr.length ? ' · X ' + (twArr.length - twFail.length) + '/' + twArr.length + '건'
             + (twFail.length ? ' [' + twFail.join('; ').slice(0, 160) + ']' : '') : '')
         + (thArr.length ? ' · 스레드 ' + (thArr.length - thFail.length) + '/' + thArr.length + '건' : '')
+        + (function (){
+            const L = results.body_len || [];
+            if (!L.length) return '';
+            const avg = Math.round(L.reduce((a, b) => a + b, 0) / L.length);
+            const ok = L.filter((n) => n >= 800).length;
+            return ' · 본문 평균 ' + avg + '자 (800자↑ ' + ok + '/' + L.length + ')';
+          })()
         + ' · ' + Math.round((Date.now() - SYNC_STARTED) / 1000) + '초';
     }
     // (백필 완주 감지·done 플래그·텔레그램 통보는 커서 백필 브랜치에서 처리 —

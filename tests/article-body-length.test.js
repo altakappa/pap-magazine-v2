@@ -142,5 +142,56 @@ console.log('\n=== ⑦ 생성기 배선 ===');
   t('max_tokens 가 5000 이상', mt >= 5000, mt);
 }
 
+/* ── ⑧ 재료 확보: 캐러셀 이미지 (2026-08-20) ────────────────────
+   2026-08-17 에 목표를 800~1,200자로 올렸는데 실측은 이랬다
+   (2026-08-12~20 임포트 53편): 800자 달성 1편, 중앙값 약 480자.
+   지시가 무시된 게 아니라 **재료가 없었다** — 갤러리 이미지는 평균 7장인데
+   모델에게 준 건 1장뿐이었다(slice(0, 1)). 슬라이드에 제품명·날짜·가격·
+   라인업이 찍혀 있는데 안 보고 있었다.
+   여기서 지키는 것: ① 여러 장을 넘긴다 ② 순차 다운로드로 시간예산을 태우지 않는다
+   ③ 이미지 실패가 기사 유실이 되지 않는다 ④ 지어내기 금지 문장이 살아 있다
+   ⑤ 결과 길이를 실제로 센다(안 세면 또 모른 채 지나간다) */
+console.log('\n[8] 재료 확보 — 캐러셀 이미지');
+{
+  const cronSrc = fs.readFileSync(path.join(ROOT, 'api', 'cron', 'sync-instagram.js'), 'utf8');
+
+  t('비전 이미지가 1장으로 고정돼 있지 않다', !/mediaUrls \|\| \[\]\)\.slice\(0, 1\)/.test(importSrc));
+  t('기본 4장을 넘긴다',
+    /IG_VISION_IMAGES \|\| 4/.test(importSrc)
+    && /slice\(0, VISION_MAX\)/.test(importSrc));
+
+  /* 순차로 받으면 벽시계가 4배가 되고 크론 시간예산(85s)을 태운다.
+     반드시 병렬이어야 한다 — 이게 이 변경의 유일한 성능 조건이다. */
+  t('이미지를 병렬로 받는다 (순차면 시간예산이 4배가 된다)',
+    /await Promise\.all\(visionUrls\.map\(fetchVisionImage\)\)/.test(importSrc));
+  t('장당 타임아웃이 있다 (한 장이 멈추면 회차 전체가 멈춘다)',
+    /AbortController/.test(importSrc) && /IG_VISION_TIMEOUT_MS/.test(importSrc));
+  t('실패한 장은 버리고 진행한다 (이미지 실패 = 기사 유실 금지)',
+    /\.filter\(Boolean\)/.test(importSrc) && /return null;/.test(importSrc));
+  t('비 이미지 타입은 여전히 제외한다 (API 400 방지)',
+    /비 이미지 타입 제외/.test(importSrc));
+  t('과대 이미지를 막는다', /IMG_MAX_BYTES/.test(importSrc));
+
+  /* 프롬프트가 '여러 장을 읽어라' 를 실제로 말하는가 */
+  t('프롬프트가 슬라이드를 전부 읽으라고 말한다',
+    /Read every one of them/i.test(importSrc));
+  t('프롬프트가 이미지 속 글자를 확인된 사실로 인정한다',
+    /Text printed inside an image is a confirmed fact/i.test(importSrc));
+
+  /* ⑥번(지어내기 금지)이 이 변경으로 약해지지 않았는지 다시 확인한다 */
+  t('길이를 위해 지어내지 말라는 문장이 프롬프트에 남아 있다',
+    /Never invent/i.test(importSrc));
+  t('재료가 없으면 짧아도 된다는 문장이 살아 있다',
+    /shorter body is still correct/i.test(importSrc)
+    && /800자에 못 미쳐도 된다/.test(v.LENGTH_ARTICLE));
+
+  /* 측정 — 안 세면 다음에도 '지시했으니 됐겠지' 로 넘어간다 */
+  t('생성된 본문 길이를 회차마다 센다', /results\.body_len/.test(cronSrc));
+  t('회차 노트에 평균과 800자 달성 건수를 싣는다',
+    /본문 평균 /.test(cronSrc) && /800자↑/.test(cronSrc));
+  t('짧다고 재시도하지 않는다 (지어내기 압력 방지)',
+    !/body_len[\s\S]{0,400}generateArticleFromPost/.test(cronSrc));
+}
+
 console.log('\n' + (fail ? '✗' : '✓') + ' article-body-length: ' + pass + ' passed / ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
