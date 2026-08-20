@@ -127,6 +127,20 @@ if (fs.existsSync(shPath)) {
   t('폴더를 못 찾아도 사유를 실어 보낸다', /beat 0 "드라이브 유튜브 폴더 못 찾음"/.test(sh));
   t('신호 실패가 스크립트를 죽이지 않는다', /\|\| true/.test(sh));
   t('소리를 살린다 (음소거 아님)', /-c:a aac/.test(sh) && !/-an\b(?!.*pass 1)/.test(sh.replace(/-an -f mp4/g, '')));
+
+  /* 2026-08-20 — 압축은 됐는데 배달이 안 된 사고.
+     PAP_WATCH_DIR 을 Downloads 로 두고 돌린 결과물이 Downloads 에 떨어졌고,
+     드라이브에는 34시간 동안 안 갔다. 아무도 몰랐다(압축기는 '대기'로만 셈).
+     원인: 입력 폴더와 출력 폴더가 $WATCH 하나로 묶여 있었다.
+     아래 가드가 깨지면 그 사고가 되살아난 것이다. */
+  t('입력 폴더와 배달 폴더가 분리돼 있다', /find_deliver_dir\(\)/.test(sh) && /DELIVER="\$\(find_deliver_dir\)"/.test(sh));
+  t('결과물은 배달 폴더로 쓴다 (입력 폴더 아님)',
+    /local out="\$DELIVER\/\$base\.mp4"/.test(sh) && !/local out="\$WATCH\/\$base\.mp4"/.test(sh));
+  t('PAP_WATCH_DIR 로 배달 폴더를 바꿀 수 없다 (전용 변수 필요)',
+    /PAP_DELIVER_DIR/.test(sh));
+  t('배달을 확인한다 — 압축 성공과 배달 성공은 다른 사실이다',
+    /배달 실패/.test(sh) && /\[ ! -s "\$out" \]/.test(sh));
+  t('미배달 결과물을 회수한다', /미배달 회수/.test(sh) && /_압축\.mp4/.test(sh));
 } else {
   t('tools/pap-video-compress.sh 사본이 저장소에 있다', false, '없음 — 스크립트가 저장소 밖에만 있으면 변경 추적이 안 된다');
 }

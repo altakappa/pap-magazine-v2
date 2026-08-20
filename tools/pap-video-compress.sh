@@ -75,6 +75,30 @@ find_watch_dir() {
   return 1
 }
 
+# ── 배달 폴더 찾기 (2026-08-20 신설) ─────────────────────────
+# 왜 입력과 따로 두나:
+#   2026-08-18, PAP_WATCH_DIR 을 Downloads 로 두고 돌렸다. 압축은 성공했고
+#   결과물은 Downloads 에 떨어졌다. 드라이브 '유튜브' 폴더에는 영영 안 갔다.
+#   서버는 222MB .mov 만 보고 '상한 초과 보류' 로 34시간 조용히 넘겼고,
+#   압축기는 '대기' 로만 셌다. 압축본이 이미 있는 줄 아무도 몰랐다.
+#   원인은 한 줄이다 — 입력 폴더와 출력 폴더가 변수 하나($WATCH)로 묶여 있었다.
+#   입력 위치를 바꾸면 출력도 따라간다. 그래서 분리한다.
+# 배달 폴더는 언제나 드라이브 '유튜브' 다. PAP_WATCH_DIR 로는 못 바꾼다.
+# 정말 바꿔야 하면 PAP_DELIVER_DIR 을 따로 준다 (의도가 드러나야 한다).
+find_deliver_dir() {
+  if [ -n "${PAP_DELIVER_DIR:-}" ] && [ -d "$PAP_DELIVER_DIR" ]; then
+    echo "$PAP_DELIVER_DIR"; return 0
+  fi
+  local base sub
+  for base in "$HOME/Library/CloudStorage"/GoogleDrive-* "$HOME/Google Drive"; do
+    [ -d "$base" ] || continue
+    for sub in "My Drive" "내 드라이브" "."; do
+      if [ -d "$base/$sub/유튜브" ]; then echo "$base/$sub/유튜브"; return 0; fi
+    done
+  done
+  return 1
+}
+
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG"; }
 mkdir -p "$(dirname "$LOG")"
 touch "$FAILDB" 2>/dev/null || true
@@ -133,6 +157,32 @@ WATCH="$(find_watch_dir)" || {
   exit 1
 }
 command -v ffmpeg >/dev/null 2>&1 || { log "❌ ffmpeg 없음. 'brew install ffmpeg' 먼저."; beat 0 "ffmpeg 없음"; exit 1; }
+
+# ── 배달 폴더 확정 ───────────────────────────────────────────
+# 못 찾으면 입력 폴더로 되돌린다(종전 동작). 다르면 로그에 크게 남긴다 —
+# 조용히 다른 곳에 떨어뜨리는 것이 이 스크립트가 낸 사고였다.
+DELIVER="$(find_deliver_dir)" || DELIVER="$WATCH"
+if [ "$DELIVER" != "$WATCH" ]; then
+  log "📦 입력 폴더: $WATCH"
+  log "📦 배달 폴더: $DELIVER  ← 결과 mp4 는 여기로 간다"
+fi
+
+# ── 미배달 회수 (2026-08-20 신설) ────────────────────────────
+# 입력 폴더에 남아 있는 '_압축.mp4' 는 예전 실행이 배달하지 못한 결과물이다.
+# 이름이 이 스크립트만 붙이는 형태라 남의 파일을 건드릴 위험이 없다.
+if [ "$DELIVER" != "$WATCH" ] && [ $DRY -eq 0 ]; then
+  while IFS= read -r _m; do
+    [ -e "$_m" ] || continue
+    _bn="$(basename "$_m")"
+    if [ -e "$DELIVER/$_bn" ]; then
+      log "📦 회수 건너뜀 (배달 폴더에 이미 있음): $_bn"
+    elif mv "$_m" "$DELIVER/$_bn" 2>/dev/null; then
+      log "📦 미배달 회수: $_bn → 배달 폴더"
+    else
+      log "⚠️ 미배달 회수 실패: $_bn"
+    fi
+  done < <(find "$WATCH" -maxdepth 1 -type f -iname '*_압축.mp4' 2>/dev/null)
+fi
 command -v ffprobe >/dev/null 2>&1 || { log "❌ ffprobe 없음. 'brew install ffmpeg' 먼저."; beat 0 "ffprobe 없음"; exit 1; }
 
 # 동시 실행 방지 (수동 --file 모드는 락을 쓰지 않는다)
@@ -195,9 +245,10 @@ process() {
   fi
 
   local mb=$(( size / 1024 / 1024 ))
-  local out="$WATCH/$base.mp4"
-  if [ -e "$out" ] && [ "$out" != "$src" ]; then out="$WATCH/${base}_압축.mp4"; fi
-  local tmp="$WATCH/.압축중_$$_$base.mp4"
+  # ★ 2026-08-20: 결과물은 입력 폴더가 아니라 배달 폴더로 간다.
+  local out="$DELIVER/$base.mp4"
+  if [ -e "$out" ] && [ "$out" != "$src" ]; then out="$DELIVER/${base}_압축.mp4"; fi
+  local tmp="$DELIVER/.압축중_$$_$base.mp4"
 
   if [ $DRY -eq 1 ]; then log "[dry] $name (${mb}MB) → $(basename "$out")"; return 0; fi
 
@@ -260,6 +311,13 @@ process() {
 
   local outmb=$(( outsize / 1024 / 1024 ))
   mv "$tmp" "$out"
+  # ★ 2026-08-20 배달 확인 — mv 가 조용히 실패해도 여기서 걸린다.
+  # '압축했다'와 '배달됐다'는 다른 사실이다. 후자를 확인하지 않아 34시간을 날렸다.
+  if [ ! -s "$out" ]; then
+    log "❌ 배달 실패 — 목적지에 결과물이 없다: $out"
+    LAST_REASON="배달 실패: $out 에 결과물 없음"
+    return 1
+  fi
   if [ "$src" != "$out" ]; then
     mkdir -p "$ARCHIVE"
     mv "$src" "$ARCHIVE/$name" 2>/dev/null || log "⚠️ 원본 이동 실패(무시): $name"
@@ -268,7 +326,7 @@ process() {
   if [ "$outsize" -gt "$MAX_BYTES" ]; then
     log "⚠️ 압축했지만 아직 ${outmb}MB (>${MAX_MB}MB): $(basename "$out") — 영상이 너무 길 수 있음"
   else
-    log "✅ 완료: $name (${mb}MB) → $(basename "$out") (${outmb}MB)"
+    log "✅ 완료: $name (${mb}MB) → $(basename "$out") (${outmb}MB) · 배달 $DELIVER"
   fi
   return 0
 }
