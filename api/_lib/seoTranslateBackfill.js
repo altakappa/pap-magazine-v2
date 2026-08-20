@@ -597,6 +597,20 @@ const BODY_HANGUL_MAX = 0.03;
 
 /* 영어에만 있고 es/it/fr/de 에는 없는 기능어. 'on'(fr) 'in'(de,it) 'a'(it,fr,es)
    'was'(de) 처럼 겹치는 단어는 일부러 뺐다 — 오탐이 poison pill 을 만든다. */
+/* ── 제목 길이 상한 (2026-08-20 신설) ────────────────────────────
+   구글 SERP 는 글자 수가 아니라 **폭(약 600px)** 으로 자른다. 라틴/키릴은
+   대략 60자, 일본어·중국어는 전각이라 대략 그 절반에서 잘린다.
+   실측(seo_translations 전수, 2026-08-20):
+     de 1,345건 / es 1,348 / fr 1,387 / it 1,284 / ru 1,170 이 60자를 넘고,
+     최장은 133자(독일어)다. 중앙값은 29~35자로 멀쩡하니 문제는 **꼬리**다.
+     ja(중앙 21) · zh(중앙 19) 는 사실상 문제 없음 — 그래도 상한은 둔다.
+   잘린 제목은 클릭을 잃고, 잘린 지점에 핵심어가 있으면 순위 신호도 잃는다.
+   근거 기록: 볼트 45_Business/PAP_SEO_전면진단_2026-08-20.md */
+const TITLE_MAX = { es: 60, it: 60, fr: 60, de: 60, ru: 58, en: 60, ja: 40, zh: 32 };
+/* 거부 문턱은 상한의 1.35배. 상한을 조금 넘겼다고 재시도를 돌리면 호출만 태운다 —
+   재시도는 '명백히 깨진' 것에만 쓴다(라틴 기준 81자 초과 ≈ 언어당 260~340건). */
+const TITLE_HARD = (lang) => Math.round((TITLE_MAX[lang] || 60) * 1.35);
+
 const EN_MARKER_RE = /\b(the|with|and|for|from|into|of|at|by|to|is|are|his|her|its|their|this|that|new|how|what|why|when|who)\b/i;
 const LATIN_LANGS = ['es', 'it', 'fr', 'de'];
 
@@ -617,6 +631,7 @@ function validateTranslation(t, lang, srcTitleEn) {
   if (lang === 'ko') return null;
   if (hasHangul(t.title)) return 'hangul_title';
   if (isEnglishEcho(t.title, srcTitleEn, lang)) return 'english_title';
+  if (String(t.title).length > TITLE_HARD(lang)) return 'long_title';
   const long = t.body || t.description || '';
   if (long && hangulRatio(long) > BODY_HANGUL_MAX) return 'hangul_body';
   return null;
@@ -649,7 +664,12 @@ function styleRules(lang) {
      실측: es 653건(27.5%) · it 603 · fr 510 · de 139 이 영어 원문과 완전 동일.
      ja/zh/ru 은 0건 — 문자가 다르면 베낄 수 없었기 때문이다. 명시한다. */
   const isLatin = ['es', 'it', 'fr', 'de'].includes(lang);
-  return `- The output MUST NOT contain any Hangul (Korean script) — not in the title, not in the body.\n`
+  const titleMax = TITLE_MAX[lang] || 60;
+  return `- The title MUST be at most ${titleMax} characters long, including spaces. `
+    + `Google cuts titles off at about 600 pixels; anything past that is invisible in search results. `
+    + `If the faithful translation runs longer, shorten it — drop subordinate clauses and keep the `
+    + `brand or person name plus the single most important fact. Never pad a short title to reach the limit.\n`
+    + `- The output MUST NOT contain any Hangul (Korean script) — not in the title, not in the body.\n`
     + `- ${nameRule(lang)}\n`
     + `- "Leave unchanged" applies ONLY to Latin-script brand names and stylized Latin titles `
     + `(Prada, Converse, "CRIMSON"). A Korean title is NOT a proper noun to be preserved — translate it.\n`
@@ -1153,4 +1173,4 @@ async function runOnQueue({ lang, kind, cfg, size, timeoutMs, deadlineAt, timing
 
 // 2026-08-16 — callClaude 를 노출한다. 제목 수리 경로(api/_lib/titleRepair.js)가
 // 같은 호출을 써야 한다 — API 호출 규약이 두 벌이 되면 한쪽만 고쳐진다.
-module.exports = { runBackfillBatch, normalizeFaq, attachFaqs, remainingFor, minDoneFor, MIN_TRANSLATED, newTiming, callClaude, hasHangul, hangulRatio, validateTranslation, isEnglishEcho, nameRule, styleRules, normalizeBatch, parseJsonArray, salvageObjects, escapeRawControls, escapeInnerQuotes, diagnoseJson, parseSentinel, pickItems, buildBatchPrompt, msLeft, canCall, callBudget, CALL_SLACK_MS, MAX_PASSES, LANG_NAMES, KINDS };
+module.exports = { runBackfillBatch, normalizeFaq, attachFaqs, remainingFor, minDoneFor, MIN_TRANSLATED, newTiming, callClaude, hasHangul, hangulRatio, validateTranslation, isEnglishEcho, TITLE_MAX, TITLE_HARD, nameRule, styleRules, normalizeBatch, parseJsonArray, salvageObjects, escapeRawControls, escapeInnerQuotes, diagnoseJson, parseSentinel, pickItems, buildBatchPrompt, msLeft, canCall, callBudget, CALL_SLACK_MS, MAX_PASSES, LANG_NAMES, KINDS };

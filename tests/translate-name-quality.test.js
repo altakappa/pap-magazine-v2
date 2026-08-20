@@ -52,7 +52,7 @@ m.exports = { supabaseAdmin: { from() { throw new Error('no db in test'); }, rpc
 require.cache[SUPABASE] = m;
 
 const H = require(HELPER);
-const { hasHangul, hangulRatio, validateTranslation, nameRule, styleRules, buildBatchPrompt, KINDS } = H;
+const { hasHangul, hangulRatio, validateTranslation, nameRule, styleRules, buildBatchPrompt, KINDS, TITLE_MAX, TITLE_HARD } = H;
 
 /* ── ③ 실제 사고 사례를 잡는가 ─────────────────────────────────────── */
 console.log('\n=== ③ 실제 사고 사례 (DB 실물) ===');
@@ -240,6 +240,42 @@ t('배치 검증이 원본 영어 제목을 넘긴다',
 t('단건 재시도 검증도 원본 영어 제목을 넘긴다',
   /validateTranslation\(one, lang, \(cfg\.src\(it\) \|\| \{\}\)\.title_en\)/.test(src));
 
+
+/* ── ⑦ 제목 길이 상한 (2026-08-20) ─────────────────────────────
+   구글 SERP 는 약 600px 에서 제목을 자른다. 실측(2026-08-20, seo_translations 전수):
+   60자 초과가 de 1,345 · es 1,348 · fr 1,387 · it 1,284 · ru 1,170,
+   최장 133자(독일어). 중앙값은 29~35자로 멀쩡하니 문제는 꼬리다.
+   여기서 지키는 것: ① 프롬프트가 언어별 상한을 실제 숫자로 말하는가
+   ② 명백히 깨진 길이는 검증이 잡아 재시도로 보내는가
+   ③ 살짝 넘긴 것은 잡지 않는가(호출 낭비 방지) */
+console.log('\n=== ⑦ 제목 길이 상한 ===');
+
+t('라틴 4개 언어 상한이 60자다',
+  ['es', 'it', 'fr', 'de'].every((l) => TITLE_MAX[l] === 60));
+t('키릴(ru)은 60보다 짧다 — 같은 글자 수라도 더 넓다', TITLE_HARD('ru') < TITLE_HARD('de'));
+t('전각(ja·zh)은 라틴의 절반 수준이다',
+  TITLE_MAX.ja <= 40 && TITLE_MAX.zh <= 32 && TITLE_MAX.zh < TITLE_MAX.ja);
+
+for (const l of ['es', 'it', 'fr', 'de', 'ru', 'ja', 'zh']) {
+  const r = styleRules(l);
+  t(l + ': 프롬프트가 상한을 숫자로 말한다',
+    new RegExp('at most ' + TITLE_MAX[l] + ' characters').test(r), r.slice(0, 160));
+}
+t('프롬프트가 짧은 제목을 늘리라고 하지 않는다 (반대 사고 방지)',
+  /Never pad a short title/i.test(styleRules('de')));
+
+/* 검증: 문턱은 상한의 1.35배. 실제 사고 사례로 잰다. */
+const LONG_DE = 'Mithridate präsentiert die Frühjahr/Sommer 2025 Kollektion – eine Neuinterpretation der Kultur ethnischer Minderheiten aus Yunnan';
+t('실제 사고 사례(독일어 130자)를 잡는다',
+  validateTranslation({ title: LONG_DE }, 'de') === 'long_title', String(LONG_DE.length));
+t('상한을 살짝 넘긴 65자는 잡지 않는다 (재시도 낭비 금지)',
+  validateTranslation({ title: 'x'.repeat(65) }, 'de') === null);
+t('상한 이하 40자는 당연히 통과한다',
+  validateTranslation({ title: 'Converse enthüllt seine neue Ikone' }, 'de') === null);
+t('한국어(ko)는 길이 검사 대상이 아니다 — 원본이다',
+  validateTranslation({ title: '가'.repeat(200) }, 'ko') === null);
+t('길이 검사가 한글 검사를 밀어내지 않는다 (한글이 먼저다)',
+  validateTranslation({ title: '한글'.repeat(80) }, 'de') === 'hangul_title');
 
 console.log('\npassed: ' + pass + '   failed: ' + fail);
 if (fail) process.exit(1);
