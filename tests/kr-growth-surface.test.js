@@ -847,18 +847,18 @@ console.log('\n[19] 카테고리 페이지(/digital-magazine)가 고아가 아�
   const vj = JSON.parse(R('vercel.json'));
   t('영문판 페이지가 존재한다', en.length > 3000);
   t('영문판 canonical 이 자기 주소를 가리킨다',
-    /<link rel="canonical" href="https:\/\/www\.pap-magazine\.com\/en\/korean-digital-magazines">/.test(en));
+    /<link rel="canonical" href="https:\/\/www\.pap-magazine\.com\/korean-digital-magazines">/.test(en));
   t('영문판 라우팅(rewrite)이 있다',
-    vj.rewrites.some((r) => r.source === '/en/korean-digital-magazines'
+    vj.rewrites.some((r) => r.source === '/korean-digital-magazines'
       && r.destination === '/en-korean-digital-magazines.html'));
   t('영문판 .html 은 확장자 없는 주소로 301',
     vj.redirects.some((r) => r.source === '/en-korean-digital-magazines.html'
-      && r.destination === '/en/korean-digital-magazines' && r.statusCode === 301));
+      && r.destination === '/korean-digital-magazines' && r.statusCode === 301));
   t('hreflang 이 양방향이다 (한쪽만 걸면 구글이 짝을 못 짓는다)',
-    /hreflang="en" href="https:\/\/www\.pap-magazine\.com\/en\/korean-digital-magazines"/.test(dm)
+    /hreflang="en" href="https:\/\/www\.pap-magazine\.com\/korean-digital-magazines"/.test(dm)
     && /hreflang="ko" href="https:\/\/www\.pap-magazine\.com\/digital-magazine"/.test(en));
   t('한국어 페이지에 영문 본문이 남아 있지 않다 (링크만)',
-    /\/en\/korean-digital-magazines/.test(dm)
+    /href="\/korean-digital-magazines"/.test(dm)
     && !/A <strong>digital magazine<\/strong> is a magazine published on the web/.test(dm));
   t('영문판에도 FAQPage 스키마가 있다', /"@type":\s*"FAQPage"/.test(en));
   t('영문판이 경쟁 매체를 함께 싣는다 (우리만 있는 목록 금지)',
@@ -866,7 +866,7 @@ console.log('\n[19] 카테고리 페이지(/digital-magazine)가 고아가 아�
       .every((n) => en.includes(n)));
   t('영문판도 경쟁 매체 개별 수치는 싣지 않는다 (도메니코 2026-08-19)',
     !/(Eyesmag|Dazed Korea|Fastpaper|Daily Fashion News|Hypebeast Korea)[^<]{0,80}(followers|million|만 명)/i.test(en));
-  t('영문판이 사이트맵에 등재됐다', /en\/korean-digital-magazines/.test(R('api/sitemap.js')));
+  t('영문판이 사이트맵에 등재됐다', /korean-digital-magazines/.test(R('api/sitemap.js')));
   t('영문판 IG 링크는 직링크가 아니다 (성장 헌법 3항)',
     !/href="https:\/\/www\.instagram\.com/.test(en));
 
