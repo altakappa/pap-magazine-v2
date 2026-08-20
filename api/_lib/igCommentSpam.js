@@ -112,4 +112,49 @@ function fingerprint(raw) {
   return h.toString(36) + ':' + q.length;
 }
 
-module.exports = { normalize, squash, structuralSignals, keywordHits, score, fingerprint, BAIT };
+
+/* ── 자동 숨김 판정 ────────────────────────────────────────────
+ * 2026-08-20. 도메니코: "내가 뭔가를 하지 않아도 자동으로 숨길 수 없어?"
+ *
+ * 어제는 '자동 숨김은 안 된다'고 했다. 오탐을 두 번 냈기 때문이다.
+ * 하룻밤 실전 데이터 107건으로 다시 보니 그 판단은 반만 맞았다.
+ *
+ *   오탐 1차 (이모지 20건)   60점 · 자기 신호 0개 (살포 가산만)
+ *   오탐 2차 (멘션 4건)      60점 · 자기 신호 0개 (살포 가산만)
+ *   진짜 스팸 107건         110~460점 · 신호 3~9개
+ *
+ * 겹치는 구간이 없다. 문제는 '자동이냐 아니냐'가 아니라 '선을 어디에
+ * 긋느냐'였다. 두 오탐 모두 '자기 신호 0개 + 살포 가산' 이라는 같은 모양이라,
+ * 그 모양을 배제하는 것이 임계값보다 중요하다.
+ *
+ * 그래서 두 조건을 동시에 요구한다.
+ *   ① 점수가 자동 임계값 이상 (기본 150 — 오탐 60점의 2.5배)
+ *   ② 살포 가산을 뺀 '자기 신호'가 2개 이상
+ *
+ * ②가 핵심이다. 남들이 똑같이 썼다는 사실만으로는 영원히 자동 숨김이 안 된다.
+ */
+const AUTO_MIN_SCORE = 150;
+const AUTO_MIN_OWN_SIGNALS = 2;
+
+/** 살포(burst)를 뺀, 그 댓글이 스스로 낸 신호 */
+function ownSignals(signals) {
+  return (signals || []).filter((s) => !String(s).startsWith('burst:'));
+}
+
+/**
+ * 자동으로 숨겨도 되는가.
+ * @returns {{auto:boolean, why:string}}
+ */
+function autoHidable(score, signals, opts) {
+  const minScore = Number((opts && opts.minScore) || AUTO_MIN_SCORE);
+  const minOwn = Number((opts && opts.minOwnSignals) || AUTO_MIN_OWN_SIGNALS);
+  const own = ownSignals(signals);
+  if (score < minScore) return { auto: false, why: `${score}점 < 자동 기준 ${minScore}점` };
+  if (own.length < minOwn) {
+    return { auto: false, why: `자기 신호 ${own.length}개 < ${minOwn}개 (살포 가산만으로는 자동 처리하지 않는다)` };
+  }
+  return { auto: true, why: `${score}점 · 자기 신호 ${own.length}개` };
+}
+
+module.exports = { normalize, squash, structuralSignals, keywordHits, score, fingerprint,
+  autoHidable, ownSignals, AUTO_MIN_SCORE, AUTO_MIN_OWN_SIGNALS, BAIT };

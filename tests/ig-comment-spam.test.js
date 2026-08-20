@@ -4,7 +4,7 @@
  * ③미끼 이름이 바뀌어도 '수법'만으로 잡는다 ④같은 문구 다계정 반복을 묶는다
  */
 const assert = require('assert');
-const { score, fingerprint, structuralSignals, normalize } = require('../api/_lib/igCommentSpam');
+const { score, fingerprint, structuralSignals, normalize, autoHidable, ownSignals } = require('../api/_lib/igCommentSpam');
 
 const T = 60;
 let n = 0;
@@ -122,6 +122,31 @@ t('빈 입력·null 에 터지지 않는다', () => {
     const r = score(v);
     assert.ok(typeof r.total === 'number');
   }
+});
+
+t('자동 숨김: 살포 가산만으로는 절대 자동 처리되지 않는다', () => {
+  // 2026-08-19 오탐 2건은 둘 다 '자기 신호 0개 + 살포 가산' 이었다.
+  // 점수를 아무리 올려도 이 모양은 자동 숨김이 되면 안 된다.
+  assert.strictEqual(autoHidable(60, []).auto, false);
+  assert.strictEqual(autoHidable(120, ['burst:20건']).auto, false);
+  assert.strictEqual(autoHidable(900, ['burst:99건']).auto, false, '살포만으로 자동 처리됨');
+});
+
+t('자동 숨김: 실전 표본이 올바르게 갈린다', () => {
+  // 하룻밤 실전 107건 중 최저점(110점)과 최고점(460점)
+  assert.strictEqual(autoHidable(110, ['char_spacing', 'search_bait', 'bait:밀탱크녀']).auto, false,
+    '110점은 자동 기준(150) 미만이라 사람이 봐야 한다');
+  assert.strictEqual(autoHidable(460, ['char_spacing', 'domain_bait', 'bait:19x', 'burst:5건']).auto, true);
+  assert.strictEqual(autoHidable(150, ['char_spacing', 'domain_bait']).auto, true, '경계값이 안 걸린다');
+});
+
+t('자동 숨김: 자기 신호가 1개뿐이면 자동 처리하지 않는다', () => {
+  assert.strictEqual(autoHidable(400, ['bait:19x']).auto, false);
+  assert.strictEqual(autoHidable(400, ['bait:19x', 'burst:9건']).auto, false, '살포를 자기 신호로 센다');
+});
+
+t('ownSignals 가 살포 가산을 걸러낸다', () => {
+  assert.deepStrictEqual(ownSignals(['char_spacing', 'burst:5건', 'bait:19x']), ['char_spacing', 'bait:19x']);
 });
 
 console.log(`\n${n}개 테스트 통과`);

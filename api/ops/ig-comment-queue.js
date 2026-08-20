@@ -32,11 +32,13 @@ function esc(s) {
     .replace(/"/g, '&quot;');
 }
 
-function page(rows, msg) {
+function page(rows, msg, opt) {
+  const auto = !!(opt && opt.auto);
+  const autoCount = (opt && opt.autoCount) || 0;
   const items = rows.map((r) => `
     <li>
       <label>
-        <input type="checkbox" name="id" value="${esc(r.comment_id)}">
+        ${auto ? '' : `<input type="checkbox" name="id" value="${esc(r.comment_id)}">`}
         <b>${r.score}점</b>
         <span class="sig">${esc((r.signals || []).join(' · '))}</span>
       </label>
@@ -64,18 +66,31 @@ function page(rows, msg) {
  .msg{background:#f0f7ff;border:1px solid #cde;padding:10px;border-radius:8px;margin-bottom:14px;font-size:14px}
  .empty{color:#666;padding:40px 0;text-align:center}
  .warn{color:#666;font-size:12px;margin-top:10px}
+ .tabs{display:flex;gap:14px;margin:0 0 14px;border-bottom:1px solid #eee}
+ .tabs a{padding:8px 2px;text-decoration:none;color:#888;font-size:14px;border-bottom:2px solid transparent}
+ .tabs a.on{color:#111;font-weight:600;border-bottom-color:#111}
 </style>
-<h1>IG 스팸 댓글 승인</h1>
-<div class="sub">체크한 것만 처리됩니다. <b>삭제가 아니라 숨김</b>이라 되돌릴 수 있습니다.</div>
+<h1>IG 스팸 댓글 ${auto ? '자동 숨김 이력' : '승인'}</h1>
+<div class="sub">${auto
+  ? '봇이 스스로 숨긴 것들입니다. 잘못 숨긴 게 있으면 되돌리세요.'
+  : '체크한 것만 처리됩니다. <b>삭제가 아니라 숨김</b>이라 되돌릴 수 있습니다.'}</div>
+<div class="tabs">
+  <a href="?" class="${auto ? '' : 'on'}">확인 필요</a>
+  <a href="?view=auto" class="${auto ? 'on' : ''}">자동 숨김 ${autoCount}건</a>
+</div>
 ${msg ? `<div class="msg">${esc(msg)}</div>` : ''}
-${rows.length ? `<form method="post">
+${rows.length ? (auto ? `<ul>${items}</ul>
+  <form method="post" class="bar">
+    <input type="hidden" name="id" value="${esc(rows.map((r) => r.comment_id).join(','))}">
+    <div class="warn">잘못 숨긴 것이 있으면 해당 게시물 링크로 확인 후 알려주세요. 개별 되돌리기는 목록에서 처리합니다.</div>
+  </form>` : `<form method="post">
   <ul>${items}</ul>
   <div class="bar">
     <button class="hide" formaction="?action=hide">선택 숨기기</button>
     <button class="dismiss" formaction="?action=dismiss">스팸 아님</button>
   </div>
   <div class="warn">숨기기 직전에 원문을 다시 읽어 다시 판정합니다. 기준점(${THRESHOLD}점) 미만이면 숨기지 않습니다.</div>
-</form>` : '<div class="empty">대기 중인 항목이 없습니다 👍</div>'}
+</form>`) : `<div class="empty">${auto ? '자동으로 숨긴 항목이 없습니다' : '확인할 항목이 없습니다 👍'}</div>`}
 </html>`;
 }
 
@@ -92,16 +107,21 @@ module.exports = async function handler(req, res) {
 
   // ── 목록 ────────────────────────────────────────────────
   if (req.method !== 'POST') {
+    // ?view=auto 는 자동으로 숨긴 것을 보여준다. 자동 처리한 것을 사람이
+    // 사후에 볼 수 없으면 그건 감시가 아니라 방치다.
+    const auto = q.view === 'auto';
     const { data, error } = await supabaseAdmin.from('ig_comment_queue')
-      .select('*').eq('status', 'pending')
-      .order('score', { ascending: false }).order('detected_at', { ascending: false })
+      .select('*').eq('status', auto ? 'auto_hidden' : 'pending')
+      .order(auto ? 'decided_at' : 'score', { ascending: false })
       .limit(200);
     if (error) return res.status(500).json({ ok: false, error: String(error.message).slice(0, 200) });
     const rows = data || [];
-    if (wantsJson) return res.status(200).json({ ok: true, 대기: rows.length, 항목: rows });
+    const { count: autoCount } = await supabaseAdmin.from('ig_comment_queue')
+      .select('comment_id', { count: 'exact', head: true }).eq('status', 'auto_hidden');
+    if (wantsJson) return res.status(200).json({ ok: true, 보기: auto ? '자동숨김' : '대기', 건수: rows.length, 항목: rows });
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'no-store');
-    return res.status(200).send(page(rows, q.msg || ''));
+    return res.status(200).send(page(rows, q.msg || '', { auto, autoCount: autoCount || 0 }));
   }
 
   // ── 처리 ────────────────────────────────────────────────

@@ -20,8 +20,30 @@ function t(name, fn) { fn(); n++; console.log('  ✓ ' + name); }
 
 console.log('IG 스팸 댓글 봇');
 
-t('수집 크론은 스스로 숨기거나 지우지 않는다', () => {
-  assert.ok(!/setHidden|hide=true|\.delete\s*\(/.test(SCAN), '수집 크론에 쓰기 경로가 있다');
+t('수집 크론이 지우지는 않는다 (숨김만)', () => {
+  // 2026-08-20: 자동 숨김이 들어왔다. 삭제는 여전히 없다.
+  assert.ok(!/\.delete\s*\(|method:\s*['"]DELETE['"]/i.test(SCAN), '수집 크론에 삭제 경로가 있다');
+});
+
+t('자동 숨김은 재판정을 통과해야 실행된다', () => {
+  assert.ok(/spam\.score\(cur\.text/.test(SCAN), '자동 숨김 전 재판정이 없다');
+  assert.ok(/if \(!again\.auto\)/.test(SCAN), '재판정 결과를 안 본다');
+});
+
+t('자동 숨김은 env 로 끌 수 있다', () => {
+  assert.ok(/IG_SPAM_AUTO_HIDE !== '0'/.test(SCAN), '자동 숨김 차단 스위치가 없다');
+  assert.ok(/IG_SPAM_AUTO_MAX/.test(SCAN), '한 회차 상한이 없다');
+});
+
+t('자동으로 숨긴 것은 반드시 보고된다', () => {
+  // 자동으로 뭔가를 처리하는 시스템이 조용하면 사고 난 뒤에야 보인다
+  assert.ok(/autoHidden\.length/.test(SCAN) && /pushAlert/.test(SCAN), '자동 숨김이 알림에 안 실린다');
+  assert.ok(/auto_hidden/.test(SCAN), '자동 숨김 상태를 따로 기록하지 않는다');
+  assert.ok(/view=auto|'auto_hidden'/.test(QUEUE), '자동 숨김 이력을 볼 화면이 없다');
+});
+
+t('자동 실패는 쿨다운을 무시하고 즉시 알린다', () => {
+  assert.ok(/cooled \|\| autoFailed\.length/.test(SCAN), '자동 처리 실패가 쿨다운에 묻힌다');
 });
 
 t('어디에도 삭제 경로가 없다', () => {

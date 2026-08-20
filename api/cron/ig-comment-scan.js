@@ -29,6 +29,9 @@ const SITE = process.env.SITE_URL || 'https://www.pap-magazine.com';
 const THRESHOLD = Number(process.env.IG_SPAM_THRESHOLD || 60);
 const MEDIA_LIMIT = Number(process.env.IG_SPAM_MEDIA_LIMIT || 12);
 const ALERT_KEY = 'ig-comment-spam';
+const AUTO_HIDE = process.env.IG_SPAM_AUTO_HIDE !== '0';   // 기본 켜짐, env 로 끌 수 있다
+const AUTO_MIN = Number(process.env.IG_SPAM_AUTO_MIN_SCORE || spam.AUTO_MIN_SCORE);
+const AUTO_MAX_PER_RUN = Number(process.env.IG_SPAM_AUTO_MAX || 40);
 const COOLDOWN_H = Number(process.env.IG_SPAM_ALERT_COOLDOWN_H || 6);
 
 function note(res, msg) {
@@ -134,33 +137,106 @@ module.exports = withCronGuard('ig-comment-scan', async function handler(req, re
     }
   }
 
-  // ── 4. 알림 (쿨다운) ────────────────────────────────────
+  /* ── 4. 자동 숨김 ────────────────────────────────────────
+   * 확실한 것만 사람 손 없이 처리한다. 근거는 autoHidable() 주석에 있다.
+   * 여기서 처리하지 못한 것(애매한 것)만 사람에게 남는다.
+   *
+   * 조용히 하지 않는다 — 무엇을 왜 숨겼는지 전부 기록하고 알림에 싣는다.
+   * 자동으로 뭔가를 지우는 시스템이 조용하면 그건 사고가 난 뒤에야 보인다. */
+  const autoHidden = [];
+  const autoFailed = [];
+  if (AUTO_HIDE) {
+    // 신규분만이 아니라 '아직 대기 중인 것' 전부를 본다. 배포 전에 쌓인 것도 정리된다.
+    const { data: pend } = await supabaseAdmin.from('ig_comment_queue')
+      .select('comment_id, score, signals, text')
+      .eq('status', 'pending')
+      .order('score', { ascending: false })
+      .limit(200);
+
+    const targets = (pend || [])
+      .filter((r) => spam.autoHidable(r.score, r.signals, { minScore: AUTO_MIN }).auto)
+      .slice(0, AUTO_MAX_PER_RUN);
+
+    for (const t of targets) {
+      try {
+        // 숨기기 직전 재판정 — 큐에 담긴 뒤 판정기가 바뀌었을 수 있다
+        const cur = await ig.getComment(t.comment_id);
+        const sc = spam.score(cur.text || '');
+        const again = spam.autoHidable(sc.total, sc.signals, { minScore: AUTO_MIN });
+        if (!again.auto) {
+          await supabaseAdmin.from('ig_comment_queue').update({
+            status: 'pending', detail: '자동 보류 — 재판정 ' + again.why,
+          }).eq('comment_id', t.comment_id);
+          continue;
+        }
+        const r = await ig.setHidden(t.comment_id, true);
+        if (r.verified === false) {
+          autoFailed.push({ id: t.comment_id, why: '응답 성공 · 상태 미변경' });
+          await supabaseAdmin.from('ig_comment_queue').update({
+            status: 'failed', detail: '자동 숨김 응답은 성공인데 상태가 안 바뀜',
+            decided_at: new Date().toISOString(),
+          }).eq('comment_id', t.comment_id);
+          continue;
+        }
+        autoHidden.push({ id: t.comment_id, score: sc.total, text: String(cur.text || '').slice(0, 40) });
+        await supabaseAdmin.from('ig_comment_queue').update({
+          status: 'auto_hidden', detail: '자동 숨김 · ' + again.why,
+          decided_at: new Date().toISOString(),
+        }).eq('comment_id', t.comment_id);
+      } catch (e) {
+        const why = String((e && e.message) || e).slice(0, 150);
+        autoFailed.push({ id: t.comment_id, why });
+        await supabaseAdmin.from('ig_comment_queue').update({
+          status: e && e.gone ? 'gone' : 'failed', detail: why,
+          decided_at: new Date().toISOString(),
+        }).eq('comment_id', t.comment_id);
+        if (e && e.permission) break;   // 권한 문제면 나머지도 똑같이 실패한다
+      }
+    }
+  }
+
+  // ── 5. 알림 (쿨다운) ────────────────────────────────────
   const { count: pendingCount } = await supabaseAdmin.from('ig_comment_queue')
     .select('comment_id', { count: 'exact', head: true }).eq('status', 'pending');
 
   let alerted = false;
-  if (newCount > 0) {
+  const worthTelling = newCount > 0 || autoHidden.length > 0 || autoFailed.length > 0;
+  if (worthTelling) {
     const { data: st } = await supabaseAdmin.from('ops_alert_state')
       .select('last_alert_at').eq('key', ALERT_KEY).maybeSingle();
     const lastAt = st && st.last_alert_at ? Date.parse(st.last_alert_at) : 0;
-    if (Date.now() - lastAt > COOLDOWN_H * 3600000) {
-      const top = candidates.slice().sort((a, b) => b.score - a.score).slice(0, 3);
-      await pushAlert({
-        personalOnly: true,
-        title: `🧹 IG 스팸 댓글 ${newCount}건 발견 (대기 ${pendingCount || 0}건)`,
-        lines: [
-          `최근 게시물 ${targets.length}개 · 댓글 ${scanned}건 중 ${candidates.length}건이 스팸 판정`,
-          '',
-          ...top.map((t) => `· ${t.score}점 ${String(t.text).slice(0, 40)}`),
-          '',
-          '숨기려면 아래에서 확인하고 승인하세요. 삭제가 아니라 숨김이라 되돌릴 수 있습니다.',
-        ],
-        url: `${SITE}/api/ops/ig-comment-queue`,
-        urlLabel: '승인 대기 목록',
-      }).catch((e) => errors.push('알림 실패: ' + String(e && e.message).slice(0, 100)));
+    // 실패는 쿨다운을 무시한다. 자동 처리가 막힌 것은 즉시 알아야 한다.
+    const cooled = Date.now() - lastAt > COOLDOWN_H * 3600000;
+    if (cooled || autoFailed.length) {
+      const lines = [];
+      if (autoHidden.length) {
+        lines.push(`✅ ${autoHidden.length}건은 자동으로 숨겼습니다 (${AUTO_MIN}점 이상 · 확실한 것만).`);
+        for (const a of autoHidden.slice(0, 3)) lines.push(`   · ${a.score}점 ${a.text}`);
+        lines.push('');
+      }
+      if (pendingCount) {
+        lines.push(`🙋 ${pendingCount}건은 애매해서 확인이 필요합니다. 아래에서 보고 판단해 주세요.`);
+        lines.push('');
+      }
+      if (autoFailed.length) {
+        lines.push(`⛔ 자동 숨김 실패 ${autoFailed.length}건: ${autoFailed[0].why}`);
+        lines.push('');
+      }
+      lines.push(`최근 게시물 ${targets.length}개 · 댓글 ${scanned}건 검사`);
+      lines.push('숨김은 삭제가 아닙니다. 목록에서 되돌릴 수 있습니다.');
+
+      const title = autoFailed.length
+        ? `⛔ IG 스팸 자동 처리 실패 ${autoFailed.length}건`
+        : (autoHidden.length
+          ? `🧹 IG 스팸 ${autoHidden.length}건 자동 정리${pendingCount ? ` · 확인 ${pendingCount}건` : ''}`
+          : `🙋 IG 스팸 확인 요청 ${pendingCount}건`);
+
+      await pushAlert({ personalOnly: true, title, lines,
+        url: `${SITE}/api/ops/ig-comment-queue`, urlLabel: '확인·되돌리기' })
+        .catch((e) => errors.push('알림 실패: ' + String(e && e.message).slice(0, 100)));
       await supabaseAdmin.from('ops_alert_state').upsert({
         key: ALERT_KEY, last_alert_at: new Date().toISOString(),
-        last_payload: { new: newCount, pending: pendingCount || 0 },
+        last_payload: { new: newCount, auto: autoHidden.length, pending: pendingCount || 0 },
         updated_at: new Date().toISOString(),
       }, { onConflict: 'key' });
       alerted = true;
@@ -170,10 +246,12 @@ module.exports = withCronGuard('ig-comment-scan', async function handler(req, re
   return res.status(200).json({
     ok: true,
     note: note(res, `게시물 ${targets.length}개 · 댓글 ${scanned}건 · 스팸 ${candidates.length}건`
-      + ` · 신규 ${newCount}건 · 대기 ${pendingCount || 0}건`
+      + ` · 신규 ${newCount}건 · 자동숨김 ${autoHidden.length}건 · 대기 ${pendingCount || 0}건`
+      + (autoFailed.length ? ` · ⛔자동실패 ${autoFailed.length}건(${autoFailed[0].why})` : '')
       + (alerted ? ' · 알림발송' : '')
       + (errors.length ? ' · ⚠️ ' + errors.join(' / ') : '')),
     게시물: targets.length, 댓글: scanned, 스팸: candidates.length,
-    신규: newCount, 대기: pendingCount || 0, 알림: alerted, 오류: errors,
+    신규: newCount, 자동숨김: autoHidden.length, 자동실패: autoFailed,
+    대기: pendingCount || 0, 알림: alerted, 오류: errors,
   });
 });
