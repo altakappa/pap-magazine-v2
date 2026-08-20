@@ -43,6 +43,9 @@ const STATIC_PAGES = [
   // 2026-08-17: /digital-magazine — 카테고리 정의 페이지(GEO 핵심)가 사이트맵에도
   // 내부 링크(about 1곳)에도 거의 없어 /studio 때와 같은 '색인 경로 없음' 상태였다.
   { path: '/digital-magazine', priority: '0.7', changefreq: 'monthly' },
+  // 2026-08-20: 영문판 분리. 영어권 'korean fashion magazines' SERP 는
+  // 잡지 쇼핑몰·이베이·아마존이 채우고 있고 DR11 블로그가 7위다. 문서가 없는 자리다.
+  { path: '/en/korean-digital-magazines', priority: '0.7', changefreq: 'monthly' },
   { path: '/contact',     priority: '0.6', changefreq: 'monthly' },
   { path: '/submission',  priority: '0.7', changefreq: 'monthly' },
   { path: '/terms',       priority: '0.3', changefreq: 'yearly'  },

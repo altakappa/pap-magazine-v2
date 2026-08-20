@@ -1,6 +1,8 @@
 {
   "version": 2,
-  "regions": ["icn1"],
+  "regions": [
+    "icn1"
+  ],
   "buildCommand": "node scripts/vercel-build.js",
   "outputDirectory": "frontend",
   "framework": null,
@@ -664,6 +666,10 @@
       "destination": "/digital-magazine.html"
     },
     {
+      "source": "/en/korean-digital-magazines",
+      "destination": "/en-korean-digital-magazines.html"
+    },
+    {
       "source": "/:slug([^./]+)",
       "destination": "/api/seo/editorial/:slug?root=1"
     }
@@ -686,7 +692,9 @@
       1280,
       1920
     ],
-    "formats": ["image/webp"],
+    "formats": [
+      "image/webp"
+    ],
     "minimumCacheTTL": 2678400
   },
   "redirects": [
@@ -703,6 +711,11 @@
     {
       "source": "/digital-magazine.html",
       "destination": "/digital-magazine",
+      "statusCode": 301
+    },
+    {
+      "source": "/en-korean-digital-magazines.html",
+      "destination": "/en/korean-digital-magazines",
       "statusCode": 301
     },
     {
