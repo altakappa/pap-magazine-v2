@@ -41,7 +41,14 @@
 set -uo pipefail
 
 # ── 설정 (v1 과 동일) ────────────────────────────────────────
-MAX_MB="${PAP_MAX_MB:-80}"
+# 2026-08-21 — 80 → 48. 상한을 정하는 건 유튜브가 아니라 **틱톡 경로**다.
+# 틱톡은 공개 URL 에서 영상을 당겨가므로 우리가 먼저 Supabase 스토리지에
+# 올려야 하는데, 프로젝트 전역 업로드 상한이 50MB 다. 오늘 58MB 짜리
+# '다니엘 시비 음악 취향.mp4' 가 정확히 여기서 죽었다
+# ("스토리지 업로드 실패: The object exceeded the maximum allowed size").
+# 유튜브만 보면 80MB 도 되지만, 한 파일이 두 채널에 다 가야 하므로
+# 더 낮은 쪽에 맞춘다. 87초 영상 기준 48MB 는 약 4.4Mbps — 세로 1080p 에 충분하다.
+MAX_MB="${PAP_MAX_MB:-48}"
 MAX_WIDTH="${PAP_MAX_WIDTH:-1080}"
 CRF="${PAP_CRF:-23}"
 AUDIO_KBPS="${PAP_AUDIO_KBPS:-128}"
