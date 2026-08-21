@@ -148,6 +148,46 @@ t('youtube.readonly 스코프가 추가됐다', /youtube\.readonly/.test(ysrc));
 t('403 을 재인증 안내로 바꾼다', /youtube\.readonly 가 없습니다/.test(ysrc));
 t('50개씩 나눠 묻는다 (videos.list 상한)', /slice\(i, i \+ 50\)/.test(ysrc));
 
+/* ── 틱톡 읽기 스코프 (2026-08-21) ────────────────────────────────
+   스토리 전용 영상은 웹 기사가 없어 유튜브 쇼츠 제목을 만들 데가 없다.
+   같은 영상이 틱톡에 올라가 있고 거기엔 사람이 쓴 캡션이 있으므로,
+   그 캡션을 제목의 원천으로 쓴다(첫 프레임 AI 추측보다 정확·무료).
+   여기서 지키는 것: ① 스코프가 실제로 늘어났는가 ② 캡션 필드를 한쪽만
+   보지 않는가 ③ 실패 사유를 뭉개지 않는가(스코프 미승인 vs 네트워크). */
+console.log('\n[틱톡 읽기 스코프 · 캡션 원천]');
+{
+  const tsrc = fs.readFileSync(path.join(ROOT, 'api', '_lib', 'tiktok.js'), 'utf8');
+
+  t('SCOPES 에 video.list 가 있다', /video\.list/.test(tsrc));
+  t('기존 스코프를 잃지 않았다',
+    /user\.info\.basic/.test(tsrc) && /video\.publish/.test(tsrc));
+  t('재인증이 필요하다는 사실을 코드 옆에 적어 뒀다',
+    /재인증/.test(tsrc));
+
+  t('내 영상 목록 함수를 내보낸다', /listMyVideos/.test(tsrc));
+  t('video\\/list 엔드포인트를 부른다', /\/video\/list\//.test(tsrc));
+  t('title 과 video_description 을 둘 다 요청한다',
+    /fields\s*=\s*'[^']*title[^']*video_description/.test(tsrc));
+
+  /* 캡션이 어느 필드에 들어오는지 계정·버전마다 다르다는 보고가 있다.
+     한쪽만 보면 어떤 계정에서는 제목이 통째로 빈다. */
+  const tk = (() => { try { return require(path.join(ROOT, 'api', '_lib', 'tiktok.js')); }
+                      catch (e) { return null; } })();
+  if (tk && typeof tk.captionOf === 'function') {
+    t('captionOf: title 이 있으면 title', tk.captionOf({ title: 'A' }) === 'A');
+    t('captionOf: title 이 비면 video_description',
+      tk.captionOf({ title: '  ', video_description: 'B' }) === 'B');
+    t('captionOf: 둘 다 없으면 빈 문자열', tk.captionOf({}) === '');
+    t('captionOf: null 도 죽지 않는다', tk.captionOf(null) === '');
+  } else {
+    t('captionOf 를 불러올 수 있다', false, 'require 실패');
+  }
+
+  t('실패 사유를 그대로 올린다 (권한 없음과 네트워크 오류를 구분해야 한다)',
+    /video\.list 실패 \(/.test(tsrc));
+  t('요청 건수에 상한이 있다 (한 번에 20건)', /Math\.min\(20,/.test(tsrc));
+}
+
 Promise.all(pending).then(() => {
   console.log('\n' + (fail ? '❌' : '✅') + ` ${pass} passed, ${fail} failed\n`);
   process.exit(fail ? 1 : 0);

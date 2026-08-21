@@ -17,7 +17,17 @@ const { supabaseAdmin } = require('./supabase');
 
 const AUTH_BASE = 'https://www.tiktok.com/v2/auth/authorize/';
 const API = 'https://open.tiktokapis.com/v2';
-const SCOPES = 'user.info.basic,video.publish';
+/* 2026-08-21 — video.list 추가 (도메니코 결정).
+ *
+ * 왜 필요한가: 인스타 스토리 전용 영상은 웹 기사가 없어서 유튜브 쇼츠에 올릴
+ * 제목·설명을 만들 데가 없다. 그런데 같은 영상이 틱톡에는 올라가 있고,
+ * 거기엔 **사람이 쓴 캡션**이 있다. 그 캡션을 제목의 원천으로 쓴다
+ * (첫 프레임을 AI 로 추측하는 것보다 정확하고, 비용도 안 든다).
+ *
+ * ⚠️ 스코프를 늘렸으므로 api/tiktok/oauth 로 1회 재인증해야 적용된다.
+ *    기존 토큰은 옛 스코프 그대로라 video.list 호출이 401/403 이 난다.
+ *    (2026-08-07 drive.readonly · 2026-08-18 webmasters.readonly 때와 같은 모양) */
+const SCOPES = 'user.info.basic,video.publish,video.list';
 const REDIRECT_URI = 'https://www.pap-magazine.com/api/tiktok/callback';
 
 function authorizeUrl(state) {
@@ -157,4 +167,50 @@ function toOwnedImageUrl(u, opts) {
   return 'https://www.pap-magazine.com/api/img?u=' + encodeURIComponent(u) + (logo ? '&logo=1&pad=7' : '');
 }
 
-module.exports = { authorizeUrl, exchangeCode, getAccessToken, directPostPhotos, toOwnedImageUrl, REDIRECT_URI };
+/**
+ * 내 틱톡 게시물 목록 (최신순). video.list 스코프가 필요하다.
+ *
+ * 반환 항목의 `title` 이 틱톡에서 말하는 캡션이다 (본문 문구).
+ * `video_description` 도 같이 받아 둔다 — 계정/버전에 따라 어느 쪽에 문구가
+ * 들어가는지 다르다는 보고가 있어서, 둘 중 **비어 있지 않은 쪽**을 쓴다.
+ * 추측하지 않고 둘 다 받아서 고르는 편이 싸다.
+ *
+ * @param {{max?:number, cursor?:number}} [opts]
+ * @returns {Promise<{videos:Array, cursor:number|null, hasMore:boolean}>}
+ */
+async function listMyVideos(opts) {
+  const o = opts || {};
+  const token = await getAccessToken();
+  const fields = 'id,title,video_description,create_time,duration,share_url,cover_image_url';
+  const body = { max_count: Math.max(1, Math.min(20, o.max || 20)) };
+  if (o.cursor) body.cursor = o.cursor;
+  const r = await fetch(API + '/video/list/?fields=' + encodeURIComponent(fields), {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(15000),
+  });
+  const j = await r.json().catch(() => ({}));
+  const err = j && j.error;
+  if (!r.ok || (err && err.code && err.code !== 'ok')) {
+    /* 스코프 미승인이 가장 흔한 실패다. 사유를 뭉개지 않고 그대로 올린다 —
+       '권한이 없다' 와 '네트워크가 죽었다' 는 대응이 완전히 다르다. */
+    throw new Error('video.list 실패 (' + r.status + '): '
+      + JSON.stringify(err || j).slice(0, 240));
+  }
+  const d = (j && j.data) || {};
+  return {
+    videos: Array.isArray(d.videos) ? d.videos : [],
+    cursor: (d.cursor != null) ? d.cursor : null,
+    hasMore: !!d.has_more,
+  };
+}
+
+/** 틱톡 항목에서 사람이 쓴 문구를 뽑는다. title 우선, 없으면 video_description. */
+function captionOf(v) {
+  const t = String((v && v.title) || '').trim();
+  if (t) return t;
+  return String((v && v.video_description) || '').trim();
+}
+
+module.exports = { authorizeUrl, exchangeCode, getAccessToken, directPostPhotos, toOwnedImageUrl, listMyVideos, captionOf, SCOPES, REDIRECT_URI };
