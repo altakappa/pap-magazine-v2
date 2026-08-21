@@ -111,7 +111,7 @@ module.exports = withCronGuard('ig-comment-scan', async function handler(req, re
   for (const r of rows) {
     if (!r.fingerprint || r.score <= 0) continue;
     const n = fpCount.get(r.fingerprint) || 0;
-    if (n >= 3) { r.score += 60; r.signals = [...r.signals, 'burst:' + n + '건']; }
+    if (n >= spam.BURST_MIN_COUNT) { r.score += spam.BURST_BONUS; r.signals = [...r.signals, 'burst:' + n + '건']; }
   }
 
   const candidates = rows.filter((r) => r.score >= THRESHOLD);
@@ -176,7 +176,17 @@ module.exports = withCronGuard('ig-comment-scan', async function handler(req, re
         // 숨기기 직전 재판정 — 큐에 담긴 뒤 판정기가 바뀌었을 수 있다
         const cur = await ig.getComment(t.comment_id);
         const sc = spam.score(cur.text || '');
-        const again = spam.autoHidable(sc.total, sc.signals, { minScore: AUTO_MIN });
+        /* 큐에 담을 때 점수에는 살포 가산이 들어 있는데 여기서 다시 매긴 점수에는 없다.
+         * 같은 잣대로 봐야 한다 — 글이 그대로면 그때 잰 살포 증거도 그대로다.
+         * 글이 바뀌었으면 이어받지 않는다. 그건 다른 글이다. */
+        const burst = (t.signals || []).map(String).find((x) => x.startsWith('burst:'));
+        let total = sc.total;
+        let signals = sc.signals;
+        if (burst && sc.total > 0 && spam.squash(cur.text || '') === spam.squash(t.text || '')) {
+          total += spam.BURST_BONUS;
+          signals = [...signals, burst];
+        }
+        const again = spam.autoHidable(total, signals, { minScore: AUTO_MIN });
         if (!again.auto) {
           await supabaseAdmin.from('ig_comment_queue').update({
             status: 'pending', detail: '자동 보류 — 재판정 ' + again.why,
@@ -199,7 +209,7 @@ module.exports = withCronGuard('ig-comment-scan', async function handler(req, re
           }).eq('comment_id', t.comment_id);
           return 'FAIL';
         }
-        autoHidden.push({ id: t.comment_id, score: sc.total, text: String(cur.text || '').slice(0, 40) });
+        autoHidden.push({ id: t.comment_id, score: total, text: String(cur.text || '').slice(0, 40) });
         await supabaseAdmin.from('ig_comment_queue').update({
           status: 'auto_hidden', detail: '자동 숨김 · ' + again.why,
           decided_at: new Date().toISOString(),

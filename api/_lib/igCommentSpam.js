@@ -133,6 +133,13 @@ function fingerprint(raw) {
  *
  * ②가 핵심이다. 남들이 똑같이 썼다는 사실만으로는 영원히 자동 숨김이 안 된다.
  */
+/* 살포 가산 — 같은 글이 여러 계정에서 동시에 올라온 것.
+ * 수집할 때와 숨기기 직전 재판정할 때가 같은 값을 써야 한다.
+ * (2026-08-21: 수집 점수엔 들어가고 재판정 점수엔 안 들어가서
+ *  200점짜리 스팸이 '140점'으로 재판정돼 영원히 보류됐다) */
+const BURST_BONUS = 60;
+const BURST_MIN_COUNT = 3;
+
 const AUTO_MIN_SCORE = 150;
 const AUTO_MIN_OWN_SIGNALS = 2;
 
@@ -156,5 +163,5 @@ function autoHidable(score, signals, opts) {
   return { auto: true, why: `${score}점 · 자기 신호 ${own.length}개` };
 }
 
-module.exports = { normalize, squash, structuralSignals, keywordHits, score, fingerprint,
+module.exports = { BURST_BONUS, BURST_MIN_COUNT, normalize, squash, structuralSignals, keywordHits, score, fingerprint,
   autoHidable, ownSignals, AUTO_MIN_SCORE, AUTO_MIN_OWN_SIGNALS, BAIT };

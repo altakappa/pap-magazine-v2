@@ -144,4 +144,20 @@ t('자동 숨김 크론에 넉넉한 실행 시간이 잡혀 있다', () => {
   assert.ok(f.maxDuration >= 300, 'maxDuration 이 300초 미만: ' + f.maxDuration);
 });
 
+/* 2026-08-21: 200점 스팸 18건이 '재판정 140점'으로 영원히 보류돼 있었다.
+ * 수집 점수엔 살포 가산이 있고 재판정 점수엔 없었다 — 잣대가 둘이었다. */
+
+t('수집과 재판정이 같은 살포 가산 값을 쓴다', () => {
+  const SPAM = read('api/_lib/igCommentSpam.js');
+  assert.ok(/BURST_BONUS/.test(SPAM), '살포 가산이 판정기에 상수로 없다');
+  assert.ok(/spam\.BURST_BONUS/.test(SCAN), '수집 단계가 상수를 안 쓰고 숫자를 박아 놨다');
+  assert.ok(/total \+= spam\.BURST_BONUS/.test(SCAN), '재판정이 살포 가산을 이어받지 않는다');
+});
+
+t('글이 바뀌면 살포 증거를 이어받지 않는다', () => {
+  assert.ok(/spam\.squash\(cur\.text \|\| ''\) === spam\.squash\(t\.text \|\| ''\)/.test(SCAN),
+    '원문 동일성 확인 없이 가산을 이어받는다');
+  assert.ok(/burst && sc\.total > 0/.test(SCAN), '자기 신호 0점에도 살포 가산을 준다');
+});
+
 console.log(`\n${n}개 테스트 통과`);
