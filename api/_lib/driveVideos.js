@@ -77,6 +77,16 @@ async function driveFetch(url, opts) {
 function shouldSkip(name, skipListRaw, platform) {
   const n = String(name || '');
   if (!n) return '이름 없음';
+  /* ⚠️ 2026-08-21 실사고 — 압축이 끝나지 않은 임시 파일을 유튜브에 올렸다.
+     맥미니 압축기는 결과물을 `.압축중_<pid>_<이름>.mp4` 로 쓰다가 다 되면
+     제자리 이름으로 mv 한다. 그 임시 파일이 드라이브에 동기화되는 동안
+     이 목록에 그대로 잡혔고, 11MB 짜리 반쪽 영상이 그대로 업로드됐다
+     (video_id b_4-WtPB6rA). moov 도 없는 파일이라 재생조차 안 된다.
+     '완성됐는가' 를 크기나 확장자로 판단할 수 없다 — **이름으로 판단한다.**
+     점(.)으로 시작하는 파일은 어떤 것이든 작업 중이거나 시스템 파일이다
+     (.압축중_, .DS_Store, ._AppleDouble). 전부 손대지 않는다. */
+  if (n.startsWith('.')) return "이름이 '.' 로 시작 (작업 중·시스템 파일)";
+  if (n.indexOf('압축중') !== -1) return '압축 진행 중인 임시 파일';
   if (n.startsWith('_')) return "이름이 '_' 로 시작 (보류 표시)";
   const low = n.toLowerCase();
   if (low.indexOf('보류') !== -1 || low.indexOf('skip') !== -1) return '이름에 보류 표시';

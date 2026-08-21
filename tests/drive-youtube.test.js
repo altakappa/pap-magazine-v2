@@ -251,5 +251,36 @@ t('YouTube 스코프에 drive.readonly 가 추가됨',
   t('기록 실패는 여전히 5xx 로 알린다', /error: 'record failed'/.test(ysrc));
 }
 
+/* ── 압축 중인 임시 파일은 절대 올리지 않는다 (2026-08-21 실사고) ──────
+   맥미니 압축기는 결과물을 `.압축중_<pid>_<이름>.mp4` 로 쓰다가 완성되면
+   제자리 이름으로 mv 한다. 그 임시 파일이 드라이브에 동기화되는 사이
+   크론이 목록에서 집어 **11MB 짜리 반쪽 영상을 유튜브에 올렸다**
+   (video_id b_4-WtPB6rA, 기사 '공유가 보여준 브라운 NEVO…').
+   moov 도 안 붙은 파일이라 재생이 되지도 않는다.
+
+   교훈: '완성됐는가' 는 크기·확장자로 알 수 없다. **이름으로 막는다.**
+   점(.)으로 시작하는 파일은 예외 없이 작업 중이거나 시스템 파일이다. */
+console.log('\n[압축 중 임시 파일 차단]');
+{
+  t('실제 사고 파일명을 막는다',
+    !!drive.shouldSkip('.압축중_51606_브라운 공유.mp4', '', 'youtube'));
+  t("점으로 시작하면 전부 막는다 (.DS_Store)",
+    !!drive.shouldSkip('.DS_Store', '', 'youtube'));
+  t('맥 리소스포크(._) 도 막는다',
+    !!drive.shouldSkip('._브라운 공유.mp4', '', 'youtube'));
+  t("'압축중' 이 이름 중간에 있어도 막는다",
+    !!drive.shouldSkip('브라운 공유 압축중.mp4', '', 'youtube'));
+  t('틱톡 경로에서도 똑같이 막는다',
+    !!drive.shouldSkip('.압축중_1_x.mp4', '', 'tiktok'));
+
+  /* 반대 방향 — 정상 파일까지 막으면 파이프라인이 통째로 죽는다 */
+  t('완성된 파일은 통과한다 (브라운 공유)',
+    !drive.shouldSkip('브라운 공유.mp4', '', 'youtube'));
+  t('완성된 파일은 통과한다 (다니엘 시비)',
+    !drive.shouldSkip('다니엘 시비 음악 취향.mp4', '', 'youtube'));
+  t('이름에 점이 들어간 정상 파일은 통과한다',
+    !drive.shouldSkip('0821 팔라스 vol.2.mp4', '', 'youtube'));
+}
+
 console.log('\n' + (fail ? '❌' : '✅') + ` ${pass} passed, ${fail} failed\n`);
 process.exit(fail ? 1 : 0);
