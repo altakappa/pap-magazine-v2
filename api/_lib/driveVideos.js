@@ -109,9 +109,10 @@ function shouldSkip(name, skipListRaw, platform) {
 
 const VIDEO_EXT = /\.(mp4|m4v|mov)$/i;
 
-/** 폴더 최상위의 영상 파일 목록. 하위 폴더(원본/)는 안 본다. */
-async function listVideos() {
-  const q = encodeURIComponent(`'${folderId()}' in parents and trashed=false`);
+/** 폴더 최상위의 영상 파일 목록. 하위 폴더(원본/)는 안 본다.
+ *  @param {string} [inFolder] 다른 폴더를 훑고 싶을 때 (스토리쇼츠/ 등). 기본은 유튜브 폴더. */
+async function listVideos(inFolder) {
+  const q = encodeURIComponent(`'${inFolder || folderId()}' in parents and trashed=false`);
   const fields = encodeURIComponent('files(id,name,mimeType,size,modifiedTime,createdTime)');
   const url = `${API}/files?q=${q}&fields=${fields}&pageSize=200&orderBy=modifiedTime desc`
     + '&supportsAllDrives=true&includeItemsFromAllDrives=true';
@@ -126,6 +127,30 @@ async function listVideos() {
       bytes: Number(f.size || 0),
       modifiedAt: f.modifiedTime || f.createdTime || null,
     }));
+}
+
+/**
+ * 유튜브 폴더 바로 아래의 하위 폴더 id 를 이름으로 찾는다 (2026-08-21).
+ *
+ * 왜 이름으로 찾나 — 폴더 id 를 env 에 박아 두면, 도메니코가 드라이브에서
+ * 폴더를 지웠다 다시 만드는 순간 id 가 바뀌어 조용히 죽는다. 이름은 사람이
+ * 보고 유지하는 값이라 그런 사고가 안 난다. 못 찾으면 null — 부르는 쪽이
+ * '아직 폴더가 없다' 와 '접근 실패' 를 구분할 수 있어야 한다.
+ *
+ * 맥은 한글 파일명을 NFD(자모 분리)로 저장하고 웹은 보통 NFC 다. 같은 '스토리쇼츠'
+ * 라도 바이트가 달라 === 비교가 실패한다. 양쪽을 NFC 로 정규화해서 비교한다.
+ */
+async function findSubfolderId(name) {
+  const want = String(name || '').normalize('NFC');
+  if (!want) return null;
+  const q = encodeURIComponent(
+    `'${folderId()}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  const url = `${API}/files?q=${q}&fields=${encodeURIComponent('files(id,name)')}`
+    + '&pageSize=100&supportsAllDrives=true&includeItemsFromAllDrives=true';
+  const r = await driveFetch(url);
+  const j = await r.json();
+  const hit = (j.files || []).find((f) => String(f.name || '').normalize('NFC') === want);
+  return hit ? hit.id : null;
 }
 
 /** 파일 바이트 내려받기. maxBytes 초과면 받지 않고 던진다. */
@@ -148,4 +173,4 @@ function isConfigured() {
   return !!(process.env.YOUTUBE_CLIENT_ID && process.env.YOUTUBE_CLIENT_SECRET);
 }
 
-module.exports = { listVideos, downloadVideo, shouldSkip, folderId, isConfigured, DEFAULT_FOLDER, VIDEO_EXT };
+module.exports = { listVideos, findSubfolderId, downloadVideo, shouldSkip, folderId, isConfigured, DEFAULT_FOLDER, VIDEO_EXT };
