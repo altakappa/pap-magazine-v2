@@ -158,11 +158,20 @@ console.log('\n[틱톡 읽기 스코프 · 캡션 원천]');
 {
   const tsrc = fs.readFileSync(path.join(ROOT, 'api', '_lib', 'tiktok.js'), 'utf8');
 
-  t('SCOPES 에 video.list 가 있다', /video\.list/.test(tsrc));
-  t('기존 스코프를 잃지 않았다',
-    /user\.info\.basic/.test(tsrc) && /video\.publish/.test(tsrc));
-  t('재인증이 필요하다는 사실을 코드 옆에 적어 뒀다',
-    /재인증/.test(tsrc));
+  /* 2026-08-21 — video.list 를 기본 스코프에 넣었더니 인증 화면이
+     non_sandbox_target 으로 죽었다. 되던 값을 기본으로 되돌리고 env 로 연다.
+     여기서 지키는 핵심: **쓰지도 못하는 권한 때문에 되던 인증을 막지 않는다.**
+     리프레시가 깨져 재인증이 필요한 날 기본 스코프가 인증 불가면 게시가 통째로 멈춘다. */
+  t('기본 스코프는 실제로 인증되던 값이다 (video.list 없음)',
+    /TIKTOK_SCOPES \|\| 'user\.info\.basic,video\.publish'/.test(tsrc));
+  t('기본값에 video.list 를 넣지 않았다',
+    !/\|\| 'user\.info\.basic,video\.publish,video\.list'/.test(tsrc));
+  t('env 로 켤 수 있다', /process\.env\.TIKTOK_SCOPES/.test(tsrc));
+  t('non_sandbox_target 사고를 코드 옆에 적어 뒀다',
+    /non_sandbox_target/.test(tsrc));
+  t('추정임을 명시했다 (콘솔 확인 전까지 단정하지 않는다)',
+    /이건 추정이다/.test(tsrc));
+  t('env 를 바꾸면 재배포해야 한다는 것도 적어 뒀다', /재배포/.test(tsrc));
 
   t('내 영상 목록 함수를 내보낸다', /listMyVideos/.test(tsrc));
   t('video\\/list 엔드포인트를 부른다', /\/video\/list\//.test(tsrc));

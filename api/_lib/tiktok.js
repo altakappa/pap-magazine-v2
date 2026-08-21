@@ -24,10 +24,27 @@ const API = 'https://open.tiktokapis.com/v2';
  * 거기엔 **사람이 쓴 캡션**이 있다. 그 캡션을 제목의 원천으로 쓴다
  * (첫 프레임을 AI 로 추측하는 것보다 정확하고, 비용도 안 든다).
  *
- * ⚠️ 스코프를 늘렸으므로 api/tiktok/oauth 로 1회 재인증해야 적용된다.
+ * ⚠️ video.list 는 TIKTOK_SCOPES env 로 켠 뒤 1회 재인증해야 쓸 수 있다.
  *    기존 토큰은 옛 스코프 그대로라 video.list 호출이 401/403 이 난다.
  *    (2026-08-07 drive.readonly · 2026-08-18 webmasters.readonly 때와 같은 모양) */
-const SCOPES = 'user.info.basic,video.publish,video.list';
+/* 2026-08-21 두 번째 판단 — 기본값을 되돌리고 env 로 연다.
+ *
+ * video.list 를 기본 스코프에 넣었더니 인증 화면이 이렇게 죽었다:
+ *     문제가 발생했습니다 / non_sandbox_target
+ * 7월 17일에는 같은 앱으로 user.info.basic,video.publish 인증이 됐다.
+ * 달라진 건 스코프 하나뿐이므로, 이 앱이 video.list 를 아직 쓸 수 없는
+ * 상태(샌드박스이거나, 앱에 그 권한이 추가되지 않았거나)라고 본다.
+ * — 이건 추정이다. 틱톡 콘솔에서 확인해야 확정된다.
+ *
+ * 확정 전까지 **기본값은 되던 값**으로 둔다. 이유:
+ * 지금 토큰은 리프레시로 살아 있지만, 리프레시가 언젠가 깨져 재인증이
+ * 필요해지는 날 기본 스코프가 인증 불가 상태면 **틱톡 게시가 통째로 멈춘다.**
+ * 쓰지도 못하는 권한 때문에 되던 것까지 막을 이유가 없다.
+ *
+ * 콘솔에서 video.list 가 열리면 Vercel env 에 이렇게 넣고 재인증한다:
+ *     TIKTOK_SCOPES=user.info.basic,video.publish,video.list
+ * (env 를 바꾸면 반드시 재배포 — Vercel 은 빌드 시점에 구워 넣는다) */
+const SCOPES = process.env.TIKTOK_SCOPES || 'user.info.basic,video.publish';
 const REDIRECT_URI = 'https://www.pap-magazine.com/api/tiktok/callback';
 
 function authorizeUrl(state) {
