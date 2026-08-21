@@ -40,6 +40,15 @@ function structuralSignals(raw) {
   const enclosed = (s.match(/[①-⓿０-９]/g) || []).length;
   if (enclosed >= 2) sig.push({ k: 'enclosed_digits', n: enclosed, w: 30 });
 
+  /* 3b) 한 자리 숫자를 구두점으로 끊어 놓은 것 (5,,4,,7,,2 / 3ː6ː9ː2)
+   *     ⑤,,②,,⑨,,⑦ 와 같은 수법인데 원문자를 안 쓴 판이다.
+   *     2026-08-21: 스패머가 원문자를 일반 숫자로 바꾸자 30점이 통째로 빠졌다.
+   *     원문자가 이미 잡혔으면 더하지 않는다 — 같은 수법을 두 번 세지 않는다.
+   *     날짜(2026.08.21)·금액(5,000)은 여러 자리 묶음이라 걸리지 않는다. */
+  if (enclosed < 2 && /[0-9](?:[^\w\s가-힣ㄱ-ㅎㅏ-ㅣ]{1,3}[0-9]){2,}/.test(s)) {
+    sig.push({ k: 'spaced_digits', w: 30 });
+  }
+
   // 4) 전각 구두점 도배 (。‥:::)
   const cjkPunct = (s.match(/[　-〿！-／：-＠]/g) || []).length;
   if (cjkPunct >= 3) sig.push({ k: 'cjk_punct_spam', n: cjkPunct, w: 25 });

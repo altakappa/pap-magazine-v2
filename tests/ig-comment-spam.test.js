@@ -149,4 +149,27 @@ t('ownSignals 가 살포 가산을 걸러낸다', () => {
   assert.deepStrictEqual(ownSignals(['char_spacing', 'burst:5건', 'bait:19x']), ['char_spacing', 'bait:19x']);
 });
 
+/* 2026-08-21: 스패머가 ⑤,,②,,⑨,,⑦ → 5,,4,,7,,2 로 바꿔 30점을 피해 갔다.
+ * 원문자냐 아니냐가 아니라 '숫자를 구두점으로 끊는다' 가 수법이다. */
+
+t('한 자리 숫자를 구두점으로 끊은 것을 잡는다', () => {
+  const a = score('밀′′탱′′크′′녀 5,,4,,7,,2 꾸 글 로 검ιι색 해 봐');
+  assert.ok(a.signals.includes('spaced_digits'), '일반 숫자 끊기를 못 잡는다: ' + a.signals.join(','));
+});
+
+t('같은 수법을 두 번 세지 않는다 (원문자면 더하지 않는다)', () => {
+  const b = score('밀′′탱′′크′′녀 ⑤,,②,,⑨,,⑦ 꾸 글 로 검ιι색 해 봐');
+  assert.ok(b.signals.includes('enclosed_digits'));
+  assert.ok(!b.signals.includes('spaced_digits'), '원문자와 숫자끊기가 이중 계산된다');
+});
+
+t('날짜·금액·전화번호는 숫자끊기로 걸리지 않는다', () => {
+  for (const t of ['2026.08.21 발매래요', '5,000원이면 진짜 싸다', '문의 010-1234-5678 로 주세요',
+                   '9 : 30 에 공개된대요', '키 175 몸무게 55 인데 M 사이즈 맞을까요']) {
+    const r = score(t);
+    assert.ok(!r.signals.includes('spaced_digits'), '오탐: ' + t + ' → ' + r.signals.join(','));
+    assert.ok(r.total < 60, '오탐 점수: ' + t + ' → ' + r.total);
+  }
+});
+
 console.log(`\n${n}개 테스트 통과`);
