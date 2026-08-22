@@ -135,12 +135,29 @@ if (fs.existsSync(shPath)) {
      아래 가드가 깨지면 그 사고가 되살아난 것이다. */
   t('입력 폴더와 배달 폴더가 분리돼 있다', /find_deliver_dir\(\)/.test(sh) && /DELIVER="\$\(find_deliver_dir\)"/.test(sh));
   t('결과물은 배달 폴더로 쓴다 (입력 폴더 아님)',
-    /local out="\$DELIVER\/\$base\.mp4"/.test(sh) && !/local out="\$WATCH\/\$base\.mp4"/.test(sh));
+    /local outdir="\$DELIVER"/.test(sh) && /local out="\$outdir\/\$base\.mp4"/.test(sh)
+    && !/local out="\$WATCH\/\$base\.mp4"/.test(sh));
   t('PAP_WATCH_DIR 로 배달 폴더를 바꿀 수 없다 (전용 변수 필요)',
     /PAP_DELIVER_DIR/.test(sh));
   t('배달을 확인한다 — 압축 성공과 배달 성공은 다른 사실이다',
     /배달 실패/.test(sh) && /\[ ! -s "\$out" \]/.test(sh));
   t('미배달 결과물을 회수한다', /미배달 회수/.test(sh) && /_압축\.mp4/.test(sh));
+
+  /* 2026-08-22 — 스토리쇼츠가 압축기 시야 밖이었다.
+     08-21 에 '유튜브/스토리쇼츠' 하위 폴더를 만들어 스토리 전용 영상을 넣었는데,
+     압축기의 훑기는 find -maxdepth 1 이라 하위 폴더를 아예 안 봤다.
+     그래서 '0821 팔라스.MOV'(128MB)는 압축되지 않았고, 서버 크론은 상한 초과로
+     조용히 넘겼다. 양쪽 다 조용한 정지 — 08-18 팝마트 34시간과 같은 모양이다. */
+  t('스토리쇼츠 하위 폴더도 훑는다',
+    /STORY="\$WATCH\/스토리쇼츠"/.test(sh) && /find "\$STORY" -maxdepth 1 -type f/.test(sh));
+  t('스토리 영상의 결과물은 제자리(스토리쇼츠)에 둔다',
+    /outdir="\$STORY"/.test(sh));
+  t('스토리 판별은 문자열이 아니라 아이노드로 한다 (맥은 한글을 NFD 로 쓴다)',
+    /-ef "\$STORY"/.test(sh));
+  t("'원본/' 아카이브는 다시 압축하지 않는다 (-maxdepth 1 유지)",
+    /find "\$WATCH" -maxdepth 1 -type f/.test(sh) && !/find "\$WATCH" -type f/.test(sh));
+  t('완료 로그에 실제 배달 위치를 적는다 (고정 $DELIVER 아님)',
+    /· 배달 \$outdir/.test(sh));
 } else {
   t('tools/pap-video-compress.sh 사본이 저장소에 있다', false, '없음 — 스크립트가 저장소 밖에만 있으면 변경 추적이 안 된다');
 }

@@ -174,6 +174,27 @@ if [ "$DELIVER" != "$WATCH" ]; then
   log "📦 배달 폴더: $DELIVER  ← 결과 mp4 는 여기로 간다"
 fi
 
+# ── 스토리쇼츠 하위 폴더 (2026-08-22 신설) ───────────────────
+# 왜 필요한가: 2026-08-21 에 '스토리 전용 영상 → 유튜브 쇼츠' 경로를 만들면서
+# 드라이브에 '유튜브/스토리쇼츠' 하위 폴더를 팠다. 그런데 이 스크립트의 훑기는
+#   find "$WATCH" -maxdepth 1
+# 이라 하위 폴더를 아예 안 본다. 그래서 '0821 팔라스.MOV'(128MB)는 압축되지
+# 않았고, 서버 크론은 '상한 초과'로 조용히 넘겼다. 양쪽 다 조용해서 아무도
+# 모르는 상태 — 08-18 팝마트 34시간 사고와 **같은 모양**이다.
+#
+# 배달 위치도 다르다. 스토리 영상의 결과물이 '유튜브' 최상위로 가면
+# drive-youtube-post 크론이 그걸 기사와 매칭하려다 영원히 실패한다.
+# 그래서 스토리 파일은 **제자리(스토리쇼츠)에 배달한다.**
+#
+# 폴더 비교는 문자열이 아니라 -ef(같은 아이노드)로 한다. 맥은 한글을 NFD 로
+# 저장하는데 이 스크립트 안의 글자는 NFC 라 문자열 비교는 어긋난다.
+# (-d 경로 조회는 APFS 가 정규화를 무시하고 찾아 주므로 문제없다)
+STORY=""
+if [ -d "$WATCH/스토리쇼츠" ]; then
+  STORY="$WATCH/스토리쇼츠"
+  log "📱 스토리쇼츠 폴더도 훑는다: $STORY  ← 결과물은 이 폴더에 그대로 둔다"
+fi
+
 # ── 미배달 회수 (2026-08-20 신설) ────────────────────────────
 # 입력 폴더에 남아 있는 '_압축.mp4' 는 예전 실행이 배달하지 못한 결과물이다.
 # 이름이 이 스크립트만 붙이는 형태라 남의 파일을 건드릴 위험이 없다.
@@ -253,9 +274,13 @@ process() {
 
   local mb=$(( size / 1024 / 1024 ))
   # ★ 2026-08-20: 결과물은 입력 폴더가 아니라 배달 폴더로 간다.
-  local out="$DELIVER/$base.mp4"
-  if [ -e "$out" ] && [ "$out" != "$src" ]; then out="$DELIVER/${base}_압축.mp4"; fi
-  local tmp="$DELIVER/.압축중_$$_$base.mp4"
+  # ★ 2026-08-22: 단, 스토리쇼츠 안의 파일은 제자리에 둔다.
+  #   최상위로 내보내면 drive-youtube-post 가 기사 매칭을 시도해 영원히 실패한다.
+  local outdir="$DELIVER"
+  if [ -n "${STORY:-}" ] && [ "$(dirname "$src")" -ef "$STORY" ]; then outdir="$STORY"; fi
+  local out="$outdir/$base.mp4"
+  if [ -e "$out" ] && [ "$out" != "$src" ]; then out="$outdir/${base}_압축.mp4"; fi
+  local tmp="$outdir/.압축중_$$_$base.mp4"
 
   if [ $DRY -eq 1 ]; then log "[dry] $name (${mb}MB) → $(basename "$out")"; return 0; fi
 
@@ -333,7 +358,7 @@ process() {
   if [ "$outsize" -gt "$MAX_BYTES" ]; then
     log "⚠️ 압축했지만 아직 ${outmb}MB (>${MAX_MB}MB): $(basename "$out") — 영상이 너무 길 수 있음"
   else
-    log "✅ 완료: $name (${mb}MB) → $(basename "$out") (${outmb}MB) · 배달 $DELIVER"
+    log "✅ 완료: $name (${mb}MB) → $(basename "$out") (${outmb}MB) · 배달 $outdir"
   fi
   return 0
 }
@@ -414,9 +439,17 @@ while IFS= read -r f; do
       fi
     fi
   fi
-done < <(find "$WATCH" -maxdepth 1 -type f \
-          \( -iname '*.mov' -o -iname '*.mp4' -o -iname '*.m4v' -o -iname '*.avi' -o -iname '*.mkv' \) \
-          2>/dev/null)
+done < <( { find "$WATCH" -maxdepth 1 -type f \
+            \( -iname '*.mov' -o -iname '*.mp4' -o -iname '*.m4v' -o -iname '*.avi' -o -iname '*.mkv' \) \
+            2>/dev/null
+          # 스토리쇼츠도 같은 규칙으로 훑는다 (하위 폴더는 여기 하나뿐이다.
+          # -maxdepth 1 을 걷어내지 않는 이유: '원본/' 아카이브까지 다시
+          # 압축하기 시작하면 이미 끝난 일을 영원히 되풀이한다)
+          if [ -n "${STORY:-}" ]; then
+            find "$STORY" -maxdepth 1 -type f \
+              \( -iname '*.mov' -o -iname '*.mp4' -o -iname '*.m4v' -o -iname '*.avi' -o -iname '*.mkv' \) \
+              2>/dev/null
+          fi; } )
 
 # 대기 장부를 이번 훑기 기준으로 통째로 새로 쓴다.
 # (풀린 파일과 사라진 파일은 여기서 자동으로 빠진다)
