@@ -85,6 +85,40 @@ console.log('\n=== Organization 노드는 자기 타입의 속성만 쓴다 ==='
   t('JSON-LD 가 전부 파싱된다', blocks.length >= 2);
 }
 
+/* ── LCP 히어로 preload (2026-08-22) ─────────────────────────────────
+   Search Console 코어 웹 바이탈(2026-08-21): 모바일 13,207쪽 전부 'LCP 4초 초과',
+   '좋음' 0. 히어로 img 에는 이미 eager·fetchpriority=high 가 있지만, 브라우저가
+   그 태그를 만나기 전에 렌더 차단 자원 3개(구글폰트 CSS·pap-styles.css 108KB·
+   pap-geo-lang.js)를 먼저 받는다. head 의 preload 가 그 대기를 없앤다. */
+console.log('\n=== LCP: 히어로 이미지를 head 에서 미리 받는다 ===');
+{
+  const SB = 'https://igcazquhkwxtqsaqpznx.supabase.co/storage/v1/object/public/media/x.jpg';
+  const rec = { ...base, cover_image: SB };
+  const h = renderSeoHtml('article', rec, { lang: 'ko' });
+  const pre = (h.match(/<link rel="preload" as="image"[^>]*>/) || [''])[0];
+  const hero = (h.match(/<div class="seo-hero"><img [^>]*>/) || [''])[0];
+  const cnt = (t) => (((t.match(/(?:image)?srcset="([^"]*)"/) || [])[1]) || '').split(',').filter(Boolean).length;
+  t('히어로 preload 가 head 에 있다', !!pre, pre);
+  t('preload 가 stylesheet 뒤 head 안에 있다', h.indexOf(pre) < h.indexOf('</head>') && !!pre);
+  t('fetchpriority=high', /fetchpriority="high"/.test(pre));
+  /* 후보가 다르면 브라우저가 다른 이미지를 받아 **두 번** 내려받는다 = 손해. */
+  t('preload 와 img 의 후보 목록이 같다 (이중 다운로드 방지)',
+    cnt(pre) === cnt(hero) && cnt(pre) > 0, `preload ${cnt(pre)} / img ${cnt(hero)}`);
+  t('imagesrcset/imagesizes 로 쓴다 (link 태그 규격)',
+    /imagesrcset=/.test(pre) && /imagesizes=/.test(pre));
+}
+{
+  /* 영상 페이지는 iframe 이 히어로다 — 이미지 preload 를 걸면 안 받을 것을 받는다. */
+  const vid = renderSeoHtml('short', { ...base, youtube_id: 'abcdefghijk' }, { lang: 'ko' });
+  t('영상 페이지에는 이미지 preload 를 걸지 않는다',
+    !/<link rel="preload" as="image"/.test(vid));
+}
+{
+  const h = renderSeoHtml('article', base, { lang: 'ko' });
+  t('쓰지 않는 Inter 300 을 폰트 요청에서 뺐다 (실사용 0회)',
+    !/Inter:wght@300/.test(h) && /Inter:wght@400/.test(h));
+}
+
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if (fail) { console.log('❌ seo-title-length tests FAILED'); process.exit(1); }
 console.log('✅ seo-title-length tests passed');

@@ -1562,8 +1562,22 @@ ${cfg.schemaType !== 'VideoObject' && ogImage ? (canOptimizeImg(ogImage)
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com">
 <link rel="preconnect" href="https://igcazquhkwxtqsaqpznx.supabase.co">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700;800;900&family=Montserrat:wght@700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600;700;800;900&family=Montserrat:wght@700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/pap-styles.css?v=${PAP_STYLES_VERSION}">
+${/* ── LCP 히어로 preload (2026-08-22) ─────────────────────────────────
+     [측정] Search Console 코어 웹 바이탈(2026-08-21 기준):
+       모바일 느림 13,207쪽 / 좋음 0 — 'LCP 4초 초과' 전 페이지.
+       데스크톱은 13,207쪽 전부 '개선 필요'.
+     [왜 preload 인가] 히어로 img 에는 이미 loading=eager·fetchpriority=high 가
+     있다. 그런데 브라우저가 그 태그를 **만나기 전에** 렌더 차단 자원 세 개를
+     먼저 받는다 — 구글폰트 CSS(외부), pap-styles.css(108KB),
+     pap-geo-lang.js(언어 깜빡임 방지용이라 defer 불가). 그동안 LCP 이미지는
+     요청조차 시작되지 않는다. head 의 preload 는 그 대기를 없앤다.
+     [주의] img 와 **똑같은** srcset/sizes 를 줘야 한다. 다르면 브라우저가
+     다른 후보를 받아 두 번 내려받는다(= 오히려 손해). 그래서 같은 헬퍼를 쓴다. */ ''}
+${ogImage && !(cfg.schemaType === 'VideoObject' && isValidYtId)
+  ? `<link rel="preload" as="image" href="${escAttr(ogImage)}"${srcsetAttrs(ogImage, '(max-width:1200px) 100vw, 1200px').replace(' srcset=', ' imagesrcset=').replace(' sizes=', ' imagesizes=')} fetchpriority="high">`
+  : ''}
 
 <style>
   body.seo-loading{background:#000;color:#fff;font-family:Inter,-apple-system,sans-serif;margin:0;padding:0}
