@@ -729,10 +729,53 @@ function renderSeoHtml(kind, record, opts) {
      " | PAP Magazine" 브랜드 접미사가 60자 한계(≈600px)를 넘긴다. 접미사를
      포함해 60자 이내일 때만 붙이고, 넘치면 제목만 남긴다(제목 자체는 자르지
      않음 — 헤드라인 훼손 금지). record.seo_title(수동 지정)은 그대로 존중. */
-  const _brand = (t) => (`${t} | ${SITE_NAME}`.length <= 60 ? `${t} | ${SITE_NAME}` : t);
+  /* 2026-08-22 — 브랜드 접미사도 언어별 상한을 따른다. ja(40)·zh(32) 는
+     60 보다 좁은데 접미사가 14자라, 60 기준만 보면 자른 제목에 접미사를 붙여
+     다시 상한을 넘겼다(실측: ja 잘라서 27자 → 접미사 붙여 42자). */
+  const _brand = (t, lg) => {
+    const cap = (lg && TITLE_SOFT[lg]) || 60;
+    const withBrand = `${t} | ${SITE_NAME}`;
+    return withBrand.length <= cap ? withBrand : t;
+  };
+  const TITLE_SOFT = { ja: 40, zh: 32, ru: 58 };
+  /* ── 번역 제목만 <title> 에서 줄인다 (2026-08-22) ───────────────────
+     [측정] 8월 fr·it·es·de·ru 페이지 974개 실측. **순위가 같은데 CTR 이 다르다.**
+         상한 이내  903쪽 · 노출 122,221 · 클릭 2,128 · CTR 1.74% · 순위 9.4
+         상한 초과   71쪽 · 노출   6,416 · 클릭    75 · CTR 1.17% · 순위 9.6
+     기대 클릭 112 대비 실제 75 — 3.5σ 다. 우연이 아니다.
+
+     [원인] 2026-08-20 에 번역 생성기(seoTranslateBackfill)에 제목 길이 상한을
+     넣었지만, 그 전에 만들어진 번역이 그대로 남아 있다. 상한 초과 1,590건
+     (fr 340·es 304·ru 299·de 279·it 259·zh 78·ja 31 / 전체 33,866건의 4.7%).
+     최장 133자다. 구글은 이런 제목을 잘라 보여주거나 아예 다시 쓴다.
+
+     [왜 재번역이 아니라 렌더 시점인가] 1,590건 재생성은 Claude 호출 1,590회다.
+     여기서 자르면 비용 0 이고 다음 크롤에 전편이 한 번에 고쳐진다
+     (2026-07-23 meta description 보강에서 쓴 것과 같은 방식).
+
+     [왜 한국어 원제는 안 자르나] 한국어 제목은 사람이 쓴 헤드라인이고
+     실측 평균 40자 이하라 애초에 넘치지 않는다(60자 초과 0건).
+     자르는 대상은 **기계 번역이 부풀린 제목**뿐이다.
+
+     [어떻게 자르나] 단어 경계에서 자르고 '…' 를 붙인다. 구글이 픽셀 기준으로
+     문장 한가운데를 자르는 것보다, 우리가 고유명사를 앞에 남기고 끊는 게 낫다.
+     화면 h1(titleMain)은 그대로 둔다 — 자르는 건 <title> 뿐이다. */
+  function _fitTitle(t, lg) {
+    const max = TITLE_SOFT[lg] || 60;
+    const s0 = String(t || '');
+    if (s0.length <= max) return s0;
+    const cut = s0.slice(0, max - 1);
+    const sp = cut.lastIndexOf(' ');
+    /* 공백이 없거나 너무 앞이면(한중일처럼 띄어쓰기가 드문 언어) 그냥 자른다.
+       max 의 60% 를 기준으로 둔다 — 그보다 앞에서 끊으면 제목이 뭉개진다. */
+    const body = (sp > max * 0.6) ? cut.slice(0, sp) : cut;
+    return body.replace(/[\s,;:·–—-]+$/, '') + '…';
+  }
   const seoTitle = lang === 'ko'
-    ? (record.seo_title || (kind === 'film' ? _brand(`${titleKo} 패션 필름`) : _brand(titleKo)))
-    : (kind === 'film' ? _brand(`${titleMain} — Fashion Film`) : _brand(titleMain));
+    ? (record.seo_title || (kind === 'film' ? _brand(`${titleKo} 패션 필름`, 'ko') : _brand(titleKo, 'ko')))
+    : (kind === 'film'
+        ? _brand(`${_fitTitle(titleMain, lang)} — Fashion Film`, lang)
+        : _brand(_fitTitle(titleMain, lang), lang));
   /* 2026-07-23 (Ahrefs 감사 — meta description too short 3,261건) — 온페이지
      표시(descDisplay)는 그대로 두고, <meta name="description"> 만 짧을 때
      실제 맥락(등장 패션 브랜드·카테고리)으로 보강한다. AI·크론·DB 쓰기 없이
