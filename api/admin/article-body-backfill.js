@@ -173,7 +173,7 @@ async function generateBody(art) {
  * 여기서 자동 폐기하면 오탐 하나로 큐가 멎는다. */
 function checkBody(oldBody, newBody) {
   const o = plain(oldBody), n = plain(newBody);
-  const issues = papVoice.lintKoreanBody(newBody, { style: 'plain', structure: true, maxParas: 4, maxLen: 1500 });
+  const issues = papVoice.lintKoreanBody(newBody, { style: 'plain', structure: true, maxParas: 5, maxLen: 1100 });
   if (n.length <= o.length) issues.push('보강 안 됨 (' + o.length + ' → ' + n.length + '자)');
   if (n.length < 800) issues.push('800자 미만 (' + n.length + '자)');
   return issues;

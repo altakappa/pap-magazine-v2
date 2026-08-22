@@ -405,6 +405,8 @@ async function generateArticleFromPost(post, opts){
 
   /* ── 비전 컨텍스트: 캐러셀 앞 VISION_MAX 장 (2026-08-20, 1장 → 4장) ──
    *
+   * (2026-08-22 후기: 이 진단은 틀렸다. 병목은 이미지가 아니었다 — papVoice
+   *  LENGTH_ARTICLE 주석 참조. 4장 자체는 슬라이드에 찍힌 사실을 살리므로 유지한다.)
    * 왜 늘리나. 웹 본문 목표는 2026-08-17 에 800~1,200자로 올렸는데 실제 결과는
    * 이랬다 (2026-08-12~20 임포트 53편):
    *     800자 달성 1편. 중앙값 약 480자. 상향 전 400자에서 100자 오르고 멈췄다.
@@ -473,6 +475,8 @@ async function generateArticleFromPost(post, opts){
     '  "title_ko": "(PAP 후킹 한 줄. 10~26자, 마침표 없이. 아래 후킹 규격을 따를 것)",',
     '  "title_en": "Short impactful English title, no period",',
     /* 2026-08-17 — 본문 250~450자 → 800~1,200자 (도메니코 결정, 안 '나').
+       2026-08-22 — 800~1,200 → 600~800 으로 현실화. 한국어 재료가 평균 350자뿐이라
+       800자는 지어내기 없이 도달 불가였다. 정본은 papVoice.LENGTH_ARTICLE.
        근거: GSC 30일 실측에서 노출의 89.6%가 4~10위에 갇혀 있었고, 발행 기사
        본문 평균이 545자였다. 250~450자는 구글이 thin content 로 본다.
        길이 규격의 정본은 papVoice.ARTICLE_VOICE 다 — 여기 숫자는 그 요약이라
@@ -486,10 +490,10 @@ async function generateArticleFromPost(post, opts){
        이건 문체를 바꾸라는 말이 아니다 — PAP 리듬은 둘째 단락부터 그대로다. */
     /* 2026-08-18 — 주류 과음 경고는 국민건강증진법이 문안까지 정해 둔 문장이라
        평서체로 고치면 법정 문구가 아니게 된다. '존댓말 절대 금지' 의 유일한 예외다. */
-    '  "body_ko": "(평서체 ~다. 존댓말 절대 금지. 5~6단락, 각 단락 4~5문장, 총 800~1,200자. 단락은 <br><br>로 구분. HTML 인라인 태그만 사용 가능.)",',
+    '  "body_ko": "(평서체 ~다. 존댓말 절대 금지. 4~5단락, 각 단락 5문장 안팎, 총 600~800자. 단락은 <br><br>로 구분. HTML 인라인 태그만 사용 가능.)",',
     '  // 예외: 캡션에 법정 고지 문장(주류 과음·임신 중 음주 경고, 19세 미만 표기,',
     '  // 음주운전 경고)이 있으면 존댓말 그대로 한 글자도 바꾸지 말고 body_ko 에 옮긴다.',
-    '  "body_en": "5 to 6 paragraphs in English, same paragraph count as body_ko, separated by <br><br>.",',
+    '  "body_en": "4 to 5 paragraphs in English, same paragraph count as body_ko, separated by <br><br>.",',
     '  "category": "Fashion | Beauty | Culture | News | Editorial",  // 가장 적합한 것 1개',
     '',
     'IMPORTANT — category "Editorial" is reserved for fashion-editorial CREDIT posts:',
@@ -516,7 +520,7 @@ async function generateArticleFromPost(post, opts){
     '- You are given up to 4 images from this post (carousel slides), in order.',
     '  **Read every one of them.** Slides after the first often carry different facts —',
     '  product names, dates, prices, lineups, venues, spec lists, credits printed on the image.',
-    '  Put those facts in the body. They are the main reason the body can reach 800 characters.',
+    '  Put those facts in the body. They are the main reason the body can reach 600 characters.',
     '  Text printed inside an image is a confirmed fact — it is not something you invented.',
     '  If the slides genuinely add nothing, a shorter body is still correct. Never invent.',
     /* 리드 규칙 (2026-08-17, GEO) */
@@ -567,7 +571,9 @@ async function generateArticleFromPost(post, opts){
     },
     body: JSON.stringify({
       model: model,
-      /* 3000 → 6000 (2026-08-17). 본문 목표가 250~450자에서 800~1,200자로
+      /* 3000 → 6000 (2026-08-17). 목표가 600~800자로 내려간 뒤에도 여유는 그대로
+         둔다 — 상한이 낮아 손해가 없고, 잘림 사고가 더 비싸다.
+         본문 목표가 250~450자에서 800~1,200자로
          올라갔고, 출력은 한국어 본문 + 영어 본문 + 제목 2종 + 태그 + FAQ 3개를
          한 JSON 에 담는다. 3000 으로 두면 JSON 이 중간에서 잘려 파싱이 실패하고
          그 게시물은 통째로 유실된다(수집 크론은 실패분을 재시도하지 않는다). */

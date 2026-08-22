@@ -208,15 +208,31 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
       const generated = await generateArticleFromPost(post, { strictEditorial: backfillMode });
       // ③ AI 분류 게이트: 'editorial' 이거나 (백필에서) 기사 카테고리 화이트리스트
       // 밖이면 수집하지 않는다 — "반드시 기사만" 보장.
-      /* 2026-08-20 — 본문 길이를 회차 노트에 싣는다. 목표는 800~1,200자인데
-         2026-08-17 상향 이후에도 실측 중앙값이 480자였고, 그걸 아무도 몰랐다.
+      /* 2026-08-20 — 본문 길이를 회차 노트에 싣는다. 목표를 08-17 에 올렸는데
+         실측 중앙값이 480자였고, 그걸 아무도 몰랐다.
          '지시했으니 됐겠지' 를 막는 유일한 방법은 결과를 세는 것이다.
-         측정만 한다 — 짧다고 재시도하지 않는다(지어내기 압력이 생긴다). */
+         측정만 한다 — 짧다고 재시도하지 않는다(지어내기 압력이 생긴다).
+
+         2026-08-22 — **재료도 같이 센다.**
+         결과만 세다가 08-22 에 오진을 했다. 캡션 전체 길이(평균 1,044자)를
+         한국어 재료로 착각해 "모델이 압축한다" 고 결론지었는데, 캡션은
+         이중언어라 한국어 부분은 평균 350자뿐이었다. 실제 배율은 1.49 —
+         모델은 이미 늘려 쓰고 있었다.
+         결과만 재면 '왜' 를 못 본다. 재료(한국어 캡션)와 배율을 같이 남긴다. */
       {
         const _len = String(generated.body_ko || '').replace(/<[^>]+>/g, '').length;
         if (_len > 0){
           results.body_len = results.body_len || [];
           results.body_len.push(_len);
+          /* 한글이 든 줄만 한국어 재료로 센다. 영문 번역 단락·핸들·해시태그·
+             날짜 줄은 새 사실이 아니므로 재료가 아니다. 근사지만, 캡션 전체를
+             세는 것보다 진실에 훨씬 가깝다(1,044 vs 350). */
+          const _koSrc = String((post && post.caption) || '')
+            .split('\n').filter((l) => /[가-힣]/.test(l)).join('\n').length;
+          if (_koSrc > 0){
+            results.src_len = results.src_len || [];
+            results.src_len.push(_koSrc);
+          }
         }
       }
       const cat = String(generated.category || '').toLowerCase();
@@ -625,8 +641,16 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
             const L = results.body_len || [];
             if (!L.length) return '';
             const avg = Math.round(L.reduce((a, b) => a + b, 0) / L.length);
-            const ok = L.filter((n) => n >= 800).length;
-            return ' · 본문 평균 ' + avg + '자 (800자↑ ' + ok + '/' + L.length + ')';
+            /* 목표는 2026-08-22 에 800 → 600 으로 현실화했다 (한국어 재료가
+               평균 350자뿐이라 800 은 지어내기 없이는 불가능했다). */
+            const ok = L.filter((n) => n >= 600).length;
+            const S = results.src_len || [];
+            let src = '';
+            if (S.length){
+              const savg = Math.round(S.reduce((a, b) => a + b, 0) / S.length);
+              src = ' · 재료 ' + savg + '자 · 배율 ' + (avg / (savg || 1)).toFixed(2) + '배';
+            }
+            return ' · 본문 평균 ' + avg + '자 (600자↑ ' + ok + '/' + L.length + ')' + src;
           })()
         + ' · ' + Math.round((Date.now() - SYNC_STARTED) / 1000) + '초';
     }

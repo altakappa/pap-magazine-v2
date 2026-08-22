@@ -33,12 +33,25 @@ function t(n, cond, d) {
 
 console.log('\n=== ① 웹 기사 규격이 올라갔다 ===');
 {
-  t('본문 800~1,200자', /800~1,200자/.test(v.ARTICLE_VOICE));
+  t('본문 600~800자 (2026-08-22 현실화)', /600~800자/.test(v.ARTICLE_VOICE));
   /* 2026-08-22 — 3~4단락 × 3~5문장 × 짧은 문장으로는 800자가 산술적으로
      불가능했다. 실측 27편: 단락 3개 494자 · 단락 4개 532자. 모델은 규격을
      완벽히 지키고 있었고, 도달 못 하는 총량을 요구한 쪽이 틀렸다. */
-  t('5~6단락 (800자를 낼 수 있는 구조)', /단락은 5~6개/.test(v.ARTICLE_VOICE));
-  t('단락당 문장 수를 기사 규격이 덮어쓴다', /한 단락은 4~5문장/.test(v.ARTICLE_VOICE),
+  /* 2026-08-22 밤 — 5~6단락도 틀렸다. 실제 캡션으로 써 보니 671자.
+     문장이 40자일 거라 가정했는데 PAP 문체 실측은 33자다.
+     그리고 진짜 원인은 따로 있었다 — 캡션이 이중언어라 한국어 재료는
+     평균 350자뿐이고, 본문/한국어캡션 배율은 이미 1.49 다.
+     모델은 압축한 적이 없다. 목표가 재료를 못 이겼을 뿐이다. */
+  t('4~5단락 (재료 350자로 낼 수 있는 구조)', /단락은 4~5개/.test(v.ARTICLE_VOICE));
+  t('한 단락 5문장 안팎', /한 단락은 5문장 안팎/.test(v.ARTICLE_VOICE));
+  t('목표는 600~800자', /전체 600~800자/.test(v.ARTICLE_VOICE));
+  t('1,000자 초과 금지', /1,000자 초과 금지/.test(v.ARTICLE_VOICE));
+  t('영문 단락은 번역이라 중복해 쓰지 않는다고 명시',
+    /영문 단락은 한국어 단락의 번역이다/.test(v.ARTICLE_VOICE),
+    '이걸 안 적으면 모델이 영문 문단을 새 사실로 오인해 같은 말을 두 번 쓴다');
+  t('옛 800자 목표가 규격에 남아 있지 않다',
+    !/전체 800~1,200자/.test(v.ARTICLE_VOICE));
+  t('단락당 문장 수를 기사 규격이 덮어쓴다', /한 단락은 5문장 안팎/.test(v.ARTICLE_VOICE),
     "문체 규칙의 '3~5문장' 이 남아 있으면 모델이 짧은 쪽으로 회귀한다");
   t('총량은 결과지 목표가 아니라고 못박는다', /총량은 결과지 목표가 아니다/.test(v.ARTICLE_VOICE),
     '글자 수는 모델이 세면서 쓸 수 없는 값이다');
@@ -72,7 +85,8 @@ console.log('\n=== ③ 자가검증이 본문 규격과 모순되지 않는다 =
   // 본문엔 800~1,200 이라 해놓고 자가검증에 "500자를 넘는다" 가 남으면
   // 모델이 상충 지시를 받아 짧은 쪽으로 회귀한다 — 가장 흔한 실패 모드다.
   t('기사 자가검증에 500자 조항이 없다', !/500자를 넘는다/.test(v.SELF_CHECK_ARTICLE), v.SELF_CHECK_ARTICLE);
-  t('기사 자가검증에 1,400자 상한이 있다', /1,400자를 넘는다/.test(v.SELF_CHECK_ARTICLE));
+  t('기사 자가검증 상한이 규격과 같다 (1,000자)', /1,000자를 넘는다/.test(v.SELF_CHECK_ARTICLE),
+    '자가검증 숫자가 본문 규격과 어긋나면 상향·하향이 무력화된다');
   t('ARTICLE_VOICE 안에도 500자 조항이 없다', !/500자를 넘는다/.test(v.ARTICLE_VOICE));
   t('짧은 자가검증은 그대로 500자', /500자를 넘는다/.test(v.SELF_CHECK));
   t('짧은 규격 안에도 500자 조항이 살아 있다', /500자를 넘는다/.test(v.SHORT_ARTICLE_VOICE));
@@ -80,7 +94,7 @@ console.log('\n=== ③ 자가검증이 본문 규격과 모순되지 않는다 =
 
 console.log('\n=== ④ 영어 단락 수가 한국어와 맞는다 ===');
 {
-  t('기사 영문은 5~6단락', /5 to 6 paragraphs/.test(v.ARTICLE_VOICE));
+  t('기사 영문은 4~5단락', /4 to 5 paragraphs/.test(v.ARTICLE_VOICE));
   t('기사 영문에 Exactly 2 가 안 남았다', !/Exactly 2 paragraphs/.test(v.ARTICLE_VOICE));
   t('짧은 규격 영문은 그대로 2단락', /Exactly 2 paragraphs/.test(v.SHORT_ARTICLE_VOICE));
 }
@@ -133,8 +147,8 @@ console.log('\n=== ⑥ 분량을 지어내서 채우지 못하게 막는다 ==='
 
 console.log('\n=== ⑦ 생성기 배선 ===');
 {
-  t('프롬프트 body_ko 가 800~1,200자', /"body_ko".{0,120}800~1,200자/.test(importSrc));
-  t('프롬프트 body_ko 가 5~6단락', /"body_ko".{0,80}5~6단락/.test(importSrc));
+  t('프롬프트 body_ko 가 600~800자', /"body_ko".{0,120}600~800자/.test(importSrc));
+  t('프롬프트 body_ko 가 4~5단락', /"body_ko".{0,80}4~5단락/.test(importSrc));
   /* 주석에는 "250~450자 → 800~1,200자" 라는 변경 이력이 남아 있어야 한다.
      지켜야 할 것은 "모델에게 가는 문자열"에 옛 규격이 없는 것이므로,
      따옴표로 시작하는 프롬프트 리터럴 줄만 본다. */
@@ -143,7 +157,7 @@ console.log('\n=== ⑦ 생성기 배선 ===');
     !promptLiterals.some((l) => /250~450자/.test(l)),
     promptLiterals.filter((l) => /250~450자/.test(l)));
   t('변경 이력 주석은 남아 있다', /250~450자 → 800~1,200자/.test(importSrc));
-  t('프롬프트 body_en 이 5~6단락', /"body_en".{0,80}5 to 6 paragraphs/.test(importSrc));
+  t('프롬프트 body_en 이 4~5단락', /"body_en".{0,80}4 to 5 paragraphs/.test(importSrc));
   t('프롬프트에 옛 Exactly 2 가 안 남았다', !/Exactly 2 paragraphs in English/.test(importSrc));
   t('ARTICLE_VOICE 를 그대로 주입한다', /papVoice\.ARTICLE_VOICE/.test(importSrc));
 
@@ -193,12 +207,21 @@ console.log('\n[8] 재료 확보 — 캐러셀 이미지');
     /Never invent/i.test(importSrc));
   t('재료가 없으면 짧아도 된다는 문장이 살아 있다',
     /shorter body is still correct/i.test(importSrc)
-    && /800자에 못 미쳐도 된다/.test(v.LENGTH_ARTICLE));
+    && /600자에 못 미쳐도 된다/.test(v.LENGTH_ARTICLE));
+
+  /* 2026-08-22 — 결과만 재다가 오진했다. 재료도 같이 잰다. */
+  t('회차 노트가 재료(한국어 캡션) 길이도 센다',
+    /results\.src_len/.test(cronSrc) && /재료 /.test(cronSrc),
+    '결과만 재면 왜 짧은지를 못 본다 — 그게 08-22 오진의 원인이다');
+  t('재료 계산에서 영문 줄을 뺀다 (한글 든 줄만)',
+    /\[가-힣\]/.test(cronSrc) && /split\('\\n'\)/.test(cronSrc));
+  t('노트에 배율을 싣는다', /배율 /.test(cronSrc));
+  t('달성 기준이 600자로 내려갔다', /600자↑/.test(cronSrc) && !/800자↑/.test(cronSrc));
 
   /* 측정 — 안 세면 다음에도 '지시했으니 됐겠지' 로 넘어간다 */
   t('생성된 본문 길이를 회차마다 센다', /results\.body_len/.test(cronSrc));
-  t('회차 노트에 평균과 800자 달성 건수를 싣는다',
-    /본문 평균 /.test(cronSrc) && /800자↑/.test(cronSrc));
+  t('회차 노트에 평균과 600자 달성 건수를 싣는다',
+    /본문 평균 /.test(cronSrc) && /600자↑/.test(cronSrc));
   t('짧다고 재시도하지 않는다 (지어내기 압력 방지)',
     !/body_len[\s\S]{0,400}generateArticleFromPost/.test(cronSrc));
 }
