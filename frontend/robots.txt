@@ -41,6 +41,67 @@ Disallow: /go/
 Disallow: /*.backup$
 Disallow: /*.bak$
 
+# ── AI 학습 전용 크롤러 차단 (2026-08-22) ─────────────────────────────
+# 왜: Vercel 청구가 3개월 평균 $43 → 두 사이클 연속 $107·$102 로 뛰었다.
+# 2026-08-19 에 만든 ai_crawl_daily 로 4일치를 재 보니 이렇게 나온다.
+#
+#   목적    봇                                   4일 크롤   우리가 받는 유입
+#   live    ChatGPT-User, Claude-User               3,526   있음 (인용→클릭)
+#   index   OAI-SearchBot, PerplexityBot            2,188   있음 (검색 색인)
+#   train   Amazonbot·ClaudeBot·GPTBot·Bytespider   10,548   0
+#           ·meta-externalagent
+#
+# 전체 크롤의 60%가 학습 수집이고 그 대가로 받는 유입은 0이다.
+# 아마존 봇 하나가 4일에 고유 페이지 4,974개를 긁어 갔다(카탈로그 전량).
+# 페이지 요청 1건이 SSR 서버리스 함수 1회 실행이라 그대로 청구서가 된다.
+#
+# **live·index 는 건드리지 않는다.** AI 검색 노출과 인용은 그대로 유지된다
+# (Ahrefs 실측 인용 88건은 전부 그쪽에서 나온다). 학습용만 막는다.
+#
+# ⚠️ robots.txt 규격 주의 (2026-07-28 사고의 교훈):
+# 이름 그룹이 있으면 그 봇은 '자기 그룹만' 읽고 * 그룹을 통째로 무시한다.
+# 그래서 여기 적는 이름 그룹은 전부 `Disallow: /` 여야 한다. 일부만 막으면
+# /admin·/auth·/api 차단이 그 봇에게 풀린다.
+#
+# 남겨 둔 것과 이유:
+#  · Google-Extended  — 4일간 크롤 0건. 막아도 얻을 게 없고, 제미나이 유입이
+#                       실제로 10건 잡힌다(2026-08-19~22). 위험만 있다.
+#  · Applebot-Extended — 크롤 0건. 같은 이유.
+#  · CCBot            — 크롤 0건이지만 학습 코퍼스 재배포원이라 예방적으로 막는다.
+#                       (실측이 아니라 판단임을 명시해 둔다)
+#
+# 되돌리려면 이 블록만 지우면 된다. 되돌리기 쉬운 결정이다.
+
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: Claude-Web
+Disallow: /
+
+User-agent: Amazonbot
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: meta-externalagent
+Disallow: /
+
+User-agent: Meta-ExternalAgent
+Disallow: /
+
+User-agent: meta-externalfetcher
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
 Sitemap: https://www.pap-magazine.com/sitemap-index.xml
 Sitemap: https://www.pap-magazine.com/sitemap.xml
 Sitemap: https://www.pap-magazine.com/sitemap-editorials.xml

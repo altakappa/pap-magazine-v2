@@ -37,7 +37,7 @@
     },
     {
       "path": "/api/cron/release-due-scheduled",
-      "schedule": "*/5 * * * *"
+      "schedule": "*/10 * * * *"
     },
     {
       "path": "/api/editorials/backfill-ig",
@@ -129,11 +129,11 @@
     },
     {
       "path": "/api/cron/competitor-watch",
-      "schedule": "7,37 * * * *"
+      "schedule": "7 */2 * * *"
     },
     {
       "path": "/api/cron/celeb-watch",
-      "schedule": "*/5 * * * *"
+      "schedule": "*/20 * * * *"
     },
     {
       "path": "/api/cron/algo-coach",
@@ -161,11 +161,11 @@
     },
     {
       "path": "/api/cron/backfill-translations",
-      "schedule": "*/2 * * * *"
+      "schedule": "*/15 * * * *"
     },
     {
       "path": "/api/cron/backfill-faq",
-      "schedule": "3-53/10 * * * *"
+      "schedule": "3,33 * * * *"
     },
     {
       "path": "/api/cron/gsc-sync",
@@ -196,7 +196,7 @@
       "schedule": "7-57/10 * * * *"
     },
     {
-      "schedule": "1-51/10 * * * *",
+      "schedule": "1,31 * * * *",
       "path": "/api/cron/backfill-embeddings"
     },
     {
