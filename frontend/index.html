@@ -219,7 +219,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/pap-styles.css?v=42">
+<link rel="stylesheet" href="/pap-styles.css?v=43">
 <link rel="stylesheet" href="/pap-social.css?v=2">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
 <!-- Favicon & PWA -->
@@ -815,7 +815,41 @@
 
 <section class="editorial-section" id="editorials-b">
   <div class="ed-rows-block">
-    <div id="aiThemeRows1"></div>
+    <!-- 2026-08-22 CLS 수정 — 이 컨테이너는 비어 있었다.
+         pap-content-api-sync.js#_renderThemeRows() 가 /api/editorials/themes 를
+         받아 2행을 innerHTML 로 채우는데, 그때까지 높이가 0 이라 채워지는 순간
+         아래 내용이 통째로 밀렸다. 모바일 CLS 0.4 (기사 페이지는 0.01).
+         해법은 위쪽 '최신 에디토리얼' 행과 같다 — 같은 구조의 스켈레톤을
+         정적 HTML 에 실어 첫 페인트부터 높이를 잡아 둔다. 카드 CSS 가
+         aspect-ratio:3/4 라 높이는 자동으로 실제와 같아진다(숫자 하드코딩 없음).
+         _renderThemeRows 가 innerHTML 로 통째 교체하므로 자동으로 사라지고,
+         API 가 빈 응답/실패면 같은 함수가 컨테이너를 비운다(스켈레톤 고착 방지). -->
+    <div id="aiThemeRows1" class="ed-rows-skeleton">
+      <div class="ed-row">
+        <h3 class="ed-row-label is-skeleton-label">&nbsp;</h3>
+        <div class="ed-row-wrap"><div class="ed-row-track">
+          <div class="ed-row-card is-skeleton" aria-hidden="true"><div class="ed-row-card-img"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">&nbsp;</div><div class="ed-row-card-title">&nbsp;</div></div></div>
+          <div class="ed-row-card is-skeleton" aria-hidden="true"><div class="ed-row-card-img"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">&nbsp;</div><div class="ed-row-card-title">&nbsp;</div></div></div>
+          <div class="ed-row-card is-skeleton" aria-hidden="true"><div class="ed-row-card-img"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">&nbsp;</div><div class="ed-row-card-title">&nbsp;</div></div></div>
+          <div class="ed-row-card is-skeleton" aria-hidden="true"><div class="ed-row-card-img"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">&nbsp;</div><div class="ed-row-card-title">&nbsp;</div></div></div>
+          <div class="ed-row-card is-skeleton" aria-hidden="true"><div class="ed-row-card-img"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">&nbsp;</div><div class="ed-row-card-title">&nbsp;</div></div></div>
+          <div class="ed-row-card is-skeleton" aria-hidden="true"><div class="ed-row-card-img"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">&nbsp;</div><div class="ed-row-card-title">&nbsp;</div></div></div>
+          <div class="ed-row-card is-skeleton" aria-hidden="true"><div class="ed-row-card-img"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">&nbsp;</div><div class="ed-row-card-title">&nbsp;</div></div></div>
+        </div></div>
+      </div>
+      <div class="ed-row">
+        <h3 class="ed-row-label is-skeleton-label">&nbsp;</h3>
+        <div class="ed-row-wrap"><div class="ed-row-track">
+          <div class="ed-row-card is-skeleton" aria-hidden="true"><div class="ed-row-card-img"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">&nbsp;</div><div class="ed-row-card-title">&nbsp;</div></div></div>
+          <div class="ed-row-card is-skeleton" aria-hidden="true"><div class="ed-row-card-img"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">&nbsp;</div><div class="ed-row-card-title">&nbsp;</div></div></div>
+          <div class="ed-row-card is-skeleton" aria-hidden="true"><div class="ed-row-card-img"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">&nbsp;</div><div class="ed-row-card-title">&nbsp;</div></div></div>
+          <div class="ed-row-card is-skeleton" aria-hidden="true"><div class="ed-row-card-img"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">&nbsp;</div><div class="ed-row-card-title">&nbsp;</div></div></div>
+          <div class="ed-row-card is-skeleton" aria-hidden="true"><div class="ed-row-card-img"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">&nbsp;</div><div class="ed-row-card-title">&nbsp;</div></div></div>
+          <div class="ed-row-card is-skeleton" aria-hidden="true"><div class="ed-row-card-img"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">&nbsp;</div><div class="ed-row-card-title">&nbsp;</div></div></div>
+          <div class="ed-row-card is-skeleton" aria-hidden="true"><div class="ed-row-card-img"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">&nbsp;</div><div class="ed-row-card-title">&nbsp;</div></div></div>
+        </div></div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -833,7 +867,41 @@
 
 <section class="editorial-section" id="editorials-c">
   <div class="ed-rows-block">
-    <div id="aiThemeRows2"></div>
+    <!-- 2026-08-22 CLS 수정 — 이 컨테이너는 비어 있었다.
+         pap-content-api-sync.js#_renderThemeRows() 가 /api/editorials/themes 를
+         받아 2행을 innerHTML 로 채우는데, 그때까지 높이가 0 이라 채워지는 순간
+         아래 내용이 통째로 밀렸다. 모바일 CLS 0.4 (기사 페이지는 0.01).
+         해법은 위쪽 '최신 에디토리얼' 행과 같다 — 같은 구조의 스켈레톤을
+         정적 HTML 에 실어 첫 페인트부터 높이를 잡아 둔다. 카드 CSS 가
+         aspect-ratio:3/4 라 높이는 자동으로 실제와 같아진다(숫자 하드코딩 없음).
+         _renderThemeRows 가 innerHTML 로 통째 교체하므로 자동으로 사라지고,
+         API 가 빈 응답/실패면 같은 함수가 컨테이너를 비운다(스켈레톤 고착 방지). -->
+    <div id="aiThemeRows2" class="ed-rows-skeleton">
+      <div class="ed-row">
+        <h3 class="ed-row-label is-skeleton-label">&nbsp;</h3>
+        <div class="ed-row-wrap"><div class="ed-row-track">
+          <div class="ed-row-card is-skeleton" aria-hidden="true"><div class="ed-row-card-img"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">&nbsp;</div><div class="ed-row-card-title">&nbsp;</div></div></div>
+          <div class="ed-row-card is-skeleton" aria-hidden="true"><div class="ed-row-card-img"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">&nbsp;</div><div class="ed-row-card-title">&nbsp;</div></div></div>
+          <div class="ed-row-card is-skeleton" aria-hidden="true"><div class="ed-row-card-img"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">&nbsp;</div><div class="ed-row-card-title">&nbsp;</div></div></div>
+          <div class="ed-row-card is-skeleton" aria-hidden="true"><div class="ed-row-card-img"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">&nbsp;</div><div class="ed-row-card-title">&nbsp;</div></div></div>
+          <div class="ed-row-card is-skeleton" aria-hidden="true"><div class="ed-row-card-img"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">&nbsp;</div><div class="ed-row-card-title">&nbsp;</div></div></div>
+          <div class="ed-row-card is-skeleton" aria-hidden="true"><div class="ed-row-card-img"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">&nbsp;</div><div class="ed-row-card-title">&nbsp;</div></div></div>
+          <div class="ed-row-card is-skeleton" aria-hidden="true"><div class="ed-row-card-img"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">&nbsp;</div><div class="ed-row-card-title">&nbsp;</div></div></div>
+        </div></div>
+      </div>
+      <div class="ed-row">
+        <h3 class="ed-row-label is-skeleton-label">&nbsp;</h3>
+        <div class="ed-row-wrap"><div class="ed-row-track">
+          <div class="ed-row-card is-skeleton" aria-hidden="true"><div class="ed-row-card-img"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">&nbsp;</div><div class="ed-row-card-title">&nbsp;</div></div></div>
+          <div class="ed-row-card is-skeleton" aria-hidden="true"><div class="ed-row-card-img"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">&nbsp;</div><div class="ed-row-card-title">&nbsp;</div></div></div>
+          <div class="ed-row-card is-skeleton" aria-hidden="true"><div class="ed-row-card-img"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">&nbsp;</div><div class="ed-row-card-title">&nbsp;</div></div></div>
+          <div class="ed-row-card is-skeleton" aria-hidden="true"><div class="ed-row-card-img"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">&nbsp;</div><div class="ed-row-card-title">&nbsp;</div></div></div>
+          <div class="ed-row-card is-skeleton" aria-hidden="true"><div class="ed-row-card-img"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">&nbsp;</div><div class="ed-row-card-title">&nbsp;</div></div></div>
+          <div class="ed-row-card is-skeleton" aria-hidden="true"><div class="ed-row-card-img"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">&nbsp;</div><div class="ed-row-card-title">&nbsp;</div></div></div>
+          <div class="ed-row-card is-skeleton" aria-hidden="true"><div class="ed-row-card-img"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">&nbsp;</div><div class="ed-row-card-title">&nbsp;</div></div></div>
+        </div></div>
+      </div>
+    </div>
   </div>
   </div>
 </section>
@@ -875,7 +943,7 @@
      (첫 화면 심볼 오버레이 제거). 되살리려면 아래 스크립트 주석 해제.
 <script src="/pap-splash-loader.js?v=3"></script>
 -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script><script src="/pap-logos-data.js?v=1" defer></script><script src="/pap-api.js?v=16" defer></script><script src="/pap-social.js?v=8" defer></script><script src="/pap-utils.js?v=6" defer></script><script src="/pap-i18n.js?v=8" defer></script><script src="/pap-auth.js?v=3" defer></script><script src="/pap-search.js?v=5" defer></script><script src="/pap-static.js?v=1" defer></script><script src="/pap-subscription.js?v=3" defer></script><script src="/pap-home.js?v=3" defer></script><script src="/pap-content-editorial.js?v=76" defer></script><script src="/pap-content-film.js?v=14" defer></script><script src="/pap-content-article.js?v=49" defer></script><script src="/pap-content-creator-shorts.js?v=14" defer></script><script src="/pap-content-api-sync.js?v=122" defer></script><script src="/pap-content-seo.js?v=9" defer></script><script src="/pap-shell-bootstrap.js?v=11" defer></script><script src="/pap-app.js?v=20" defer></script><script src="/pap-lightbox.js?v=2" defer></script><script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=29" defer></script><script src="/pap-inclick.js?v=3" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script><script src="/pap-logos-data.js?v=1" defer></script><script src="/pap-api.js?v=16" defer></script><script src="/pap-social.js?v=8" defer></script><script src="/pap-utils.js?v=6" defer></script><script src="/pap-i18n.js?v=8" defer></script><script src="/pap-auth.js?v=3" defer></script><script src="/pap-search.js?v=5" defer></script><script src="/pap-static.js?v=1" defer></script><script src="/pap-subscription.js?v=3" defer></script><script src="/pap-home.js?v=3" defer></script><script src="/pap-content-editorial.js?v=76" defer></script><script src="/pap-content-film.js?v=14" defer></script><script src="/pap-content-article.js?v=49" defer></script><script src="/pap-content-creator-shorts.js?v=14" defer></script><script src="/pap-content-api-sync.js?v=123" defer></script><script src="/pap-content-seo.js?v=9" defer></script><script src="/pap-shell-bootstrap.js?v=11" defer></script><script src="/pap-app.js?v=20" defer></script><script src="/pap-lightbox.js?v=2" defer></script><script src="/pap-reveal.js?v=4" defer></script><script src="/pap-header.js?v=29" defer></script><script src="/pap-inclick.js?v=3" defer></script>
 <script src="/pap-protect.js?v=3" defer></script>
 <div class="creator-popup-overlay" id="creatorPopup" onclick="if(event.target===this)closeCreatorPopup()">
   <div class="creator-popup">

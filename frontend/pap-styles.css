@@ -392,6 +392,12 @@ section.hero + .shorts-section{
 .ed-row-card.is-skeleton .ed-row-card-cat{height:10px;width:60%;margin-top:2px}
 .ed-row-card.is-skeleton .ed-row-card-title{height:14px;width:80%;margin-top:6px}
 @keyframes papSkeletonShimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+/* 2026-08-22 CLS — 테마 행 스켈레톤의 제목 자리.
+   정적 HTML 이 &nbsp; 로 높이만 잡아 두면 빈 줄로 보인다. 카드와 같은
+   shimmer 를 줘서 "로딩 중"으로 읽히게 한다. 높이는 원래 .ed-row-label
+   폰트가 정하므로 실제 제목과 어긋나지 않는다. */
+.ed-row-label.is-skeleton-label{background:linear-gradient(90deg,#161616 0%,#202020 50%,#161616 100%);background-size:200% 100%;animation:papSkeletonShimmer 1.4s ease-in-out infinite;color:transparent;border-radius:2px;width:180px;max-width:40%;margin-left:48px;padding:0}
+@media (prefers-reduced-motion: reduce){.ed-row-label.is-skeleton-label{animation:none;background:#1a1a1a}}
 @media (prefers-reduced-motion: reduce){
   .ed-row-card.is-skeleton .ed-row-card-img,
   .ed-row-card.is-skeleton .ed-row-card-cat,

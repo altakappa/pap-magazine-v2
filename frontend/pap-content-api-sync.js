@@ -1113,7 +1113,12 @@ window._papFilmAutoPlay = function(){
     })
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(json){
-        if(!json || !Array.isArray(json.rows) || json.rows.length === 0) return;
+        if(!json || !Array.isArray(json.rows) || json.rows.length === 0){
+          // 2026-08-22 — 정적 스켈레톤이 영원히 남지 않게 비운다.
+          // (스켈레톤은 CLS 때문에 넣은 자리표시자일 뿐, 콘텐츠가 아니다)
+          _clearThemeSkeleton(c1, c2);
+          return;
+        }
 
         // Unseen-first reorder. Empty set on first visit = no-op (server
         // order wins, which is published_date desc).
@@ -1174,6 +1179,9 @@ window._papFilmAutoPlay = function(){
         var rows = json.rows || [];
         c1.innerHTML = rows.slice(0, 2).map(buildRow).join('');
         if(c2) c2.innerHTML = rows.slice(2, 4).map(buildRow).join('');
+        // 스켈레톤 표시를 뗀다 (실제 데이터로 교체 완료)
+        if(c1.classList) c1.classList.remove('ed-rows-skeleton');
+        if(c2 && c2.classList) c2.classList.remove('ed-rows-skeleton');
 
         // Re-translate row labels when the language picker changes — same
         // hook the previous inline IIFE used so other modules don't need
@@ -1189,7 +1197,23 @@ window._papFilmAutoPlay = function(){
           return curLang;
         };
       })
-      .catch(function(){ /* themes are nice-to-have, never block UX */ });
+      .catch(function(){
+        /* themes are nice-to-have, never block UX — 다만 스켈레톤은 치운다 */
+        _clearThemeSkeleton(c1, c2);
+      });
+  }
+
+  /* 2026-08-22 — 테마 행 스켈레톤 정리.
+     정적 HTML 의 스켈레톤은 CLS 를 막으려고 높이만 잡아 둔 자리표시자다.
+     실제 데이터가 오면 innerHTML 통째 교체로 사라지지만, 응답이 비었거나
+     실패하면 남는다. 그때는 비운다 — 빈 컨테이너가 가짜 카드보다 낫다. */
+  function _clearThemeSkeleton(c1, c2){
+    [c1, c2].forEach(function(el){
+      if (el && el.classList && el.classList.contains('ed-rows-skeleton')) {
+        el.innerHTML = '';
+        el.classList.remove('ed-rows-skeleton');
+      }
+    });
   }
 
   // Re-renders the "인기 에디토리얼" row from /api/editorials/trending.
