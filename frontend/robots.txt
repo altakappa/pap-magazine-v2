@@ -102,6 +102,10 @@ Disallow: /
 User-agent: CCBot
 Disallow: /
 
+# 생성 엔진용 매체 소개 (2026-08-22). robots.txt 표준은 아니지만, 여기 적어 두면
+# llms.txt 를 찾는 크롤러가 한 번에 집는다. 없어도 /llms.txt 는 그대로 동작한다.
+# LLM-Content: https://www.pap-magazine.com/llms.txt
+
 Sitemap: https://www.pap-magazine.com/sitemap-index.xml
 Sitemap: https://www.pap-magazine.com/sitemap.xml
 Sitemap: https://www.pap-magazine.com/sitemap-editorials.xml
