@@ -59,6 +59,18 @@ function isStandardOrAbove(){
   }catch(e){return false;}
 }
 
+/* 스탠다드가 볼 수 있는 가장 오래된 날짜 — **서버와 같은 규칙이어야 한다**.
+ * 볼륨 = 분기. 현재 볼륨 시작에서 2볼륨(6개월) 뒤로.
+ * 서버 진실원천: api/_lib/editorialAccess.js 의 standardCutoff().
+ * 종전 목록 화면은 setMonth(-6) 짜리 '날짜 롤링 6개월' 이라 서버가 내주는
+ * 178편 중 137편만 보여줬다 — 돈 낸 회원에게 41편을 숨기고 있었다.
+ * tests/editorial-access.test.js 가 두 구현의 경계값 일치를 못박는다. */
+function _papStandardCutoff(now){
+  var d = now || new Date();
+  var q = Math.floor(d.getMonth() / 3) * 3;
+  return new Date(d.getFullYear(), q - 6, 1);
+}
+
 /* 이 화보를 열면 잠금화면이 뜨는가 — 광고를 붙일지 말지 판단용 (2026-08-21).
  * 광고를 보여준 다음 잠금화면을 띄우는 건 최악의 동선이다. 돈도 안 되고
  * (그 사람은 어차피 못 본다) 기분만 상해서 가입도 안 한다.
@@ -66,9 +78,11 @@ function isStandardOrAbove(){
 function _papWillLock(d){
   try{
     if(typeof isLoggedIn === 'function' && !isLoggedIn()) return true;   // 비회원은 전부 잠김
-    if(isStandardOrAbove()) return false;                                 // 유료는 광고 자체가 없다
-    var need = d && d.requiredTier;
-    return !!(need && need !== 'free');                                   // 무료회원: 최신 10편 밖이면 잠김
+    var need = (d && d.requiredTier) || '';
+    if(!need) return false;              // 모르면 잠그지 않는다 — 최종 판정은 서버가 한다
+    if(need === 'free') return false;    // 최신 10편
+    if(need === 'standard') return !isStandardOrAbove();
+    return !isPremium();                 // premium 전용 (스탠다드에게도 잠긴다)
   }catch(e){ return false; }
 }
 

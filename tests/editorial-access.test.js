@@ -196,4 +196,36 @@ t('다운로드 혜택 문구가 세 가지를 모두 말한다', () => {
   assert.ok(!/프리미엄 구독 시 로고/.test(MY), '옛 프리미엄 문구가 남아 있다');
 });
 
+/* 목록 화면과 서버가 같은 경계를 써야 한다 (2026-08-21)
+ * 종전 목록은 setMonth(-6) 짜리 날짜 롤링이라, 서버가 내주는 178편 중
+ * 137편만 보여줬다 — 돈 낸 스탠다드 회원에게 41편을 숨기고 있었다. */
+
+t('클라이언트와 서버의 스탠다드 경계가 같다 (실제로 실행해서 비교)', () => {
+  const SUBJS = read('frontend/pap-subscription.js');
+  const m = SUBJS.match(/function _papStandardCutoff\(now\)\{[\s\S]*?\n\}/);
+  assert.ok(m, '_papStandardCutoff 를 못 찾았다');
+  const clientCutoff = new Function('return (' + m[0] + ')')();
+  for (const iso of ['2026-08-21', '2026-09-30', '2026-10-01', '2027-01-01', '2026-01-01', '2026-06-30']) {
+    const d = new Date(iso + 'T00:00:00Z');
+    const cli = clientCutoff(new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+    const srv = A.standardCutoff(d);
+    const fmt = (x) => x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0');
+    assert.strictEqual(fmt(cli), fmt(new Date(Date.UTC(srv.getUTCFullYear(), srv.getUTCMonth(), 1))),
+      iso + ' 에서 경계가 어긋난다 — 목록이 서버와 다른 범위를 보여준다');
+  }
+});
+
+t('목록을 등급으로 잘라내지 않는다 (자물쇠만 단다)', () => {
+  const ED = read('frontend/pap-content-editorial.js');
+  assert.ok(/var visibleData = filtered;/.test(ED), '목록이 아직 등급으로 잘린다');
+  assert.ok(/visibleData\.slice\(startIdx/.test(ED), '페이지네이션이 잘린 배열을 쓴다');
+  assert.ok(/_papWillLock\(e\)/.test(ED), '카드에 자물쇠 판정이 없다');
+  assert.ok(!/_renderEdAllPaywall\(overlay\)/.test(ED), '목록을 통째로 덮는 페이월이 남아 있다');
+});
+
+t('낡은 아카이브 편수(2,400)를 화면에 박아두지 않는다', () => {
+  const ED = read('frontend/pap-content-editorial.js');
+  assert.ok(!/2,400/.test(ED), '실측 2,301편과 어긋나는 고정 숫자가 남아 있다');
+});
+
 console.log(`\n${n}개 테스트 통과`);

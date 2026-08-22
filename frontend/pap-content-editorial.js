@@ -2306,48 +2306,18 @@ function openAllEditorials(){
 //
 // 과금 정책(Standard 이상)은 그대로 두고, 목록 화면 안에서 잠금 상태 + 업셀을
 // 보여준다 → 페이지는 정상적으로 뜨고, 왜 못 보는지/무엇을 하면 되는지 전달.
-function _renderEdAllPaywall(overlay){
-  var grid=document.getElementById('edAllGrid');
-  var count=document.getElementById('edAllCount');
-  var pag=document.getElementById('edAllPagination');
-  var filt=document.getElementById('edCatFilter');
-  // 잠금 화면에서는 카테고리 필터·개수·페이지네이션을 숨긴다.
-  if(count) count.textContent='';
-  if(pag) pag.innerHTML='';
-  if(filt) filt.style.display='none';
+/* _renderEdAllPaywall 제거 (2026-08-21) — 목록을 통째로 덮는 화면은
+ * 더 이상 쓰지 않는다. 목록은 누구나 보고, 못 여는 것에만 자물쇠를 단다. */
 
-  var loggedIn=(typeof isLoggedIn==='function') && isLoggedIn();
-  if(grid){
-    grid.style.display='block';
-    grid.innerHTML=
-      '<div style="max-width:520px;margin:40px auto;padding:40px 28px;border:1px solid rgba(255,255,255,.16);text-align:center;color:#fff">'
-      + '<div style="font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:#999;margin-bottom:14px">Editorial Archive</div>'
-      + '<div style="font-size:20px;font-weight:700;letter-spacing:.02em;margin-bottom:12px">에디토리얼 전체보기는 멤버 전용입니다</div>'
-      + '<div style="font-size:13.5px;line-height:1.75;color:#bbb;margin-bottom:24px">'
-      +   'Standard 이상 멤버가 되시면 2,400편 이상의 에디토리얼 아카이브를<br>제한 없이 열람하실 수 있습니다.'
-      + '</div>'
-      + '<a href="/subscribe" style="display:inline-block;margin:4px 5px 0;background:#fff;color:#000;padding:13px 32px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;text-decoration:none">구독하기</a>'
-      + (loggedIn ? '' :
-          '<a href="/auth" style="display:inline-block;margin:4px 5px 0;background:transparent;color:#ddd;border:1px solid rgba(255,255,255,.28);padding:13px 26px;font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;text-decoration:none">'+(_edL9('로그인','Log in'))+'</a>')
-      + '</div>';
-  }
-  overlay.classList.add('active');
-  document.body.style.overflow='hidden';
-  // URL 은 /editorial 로 맞춰 둔다(뒤로가기 시 이전 페이지로 정확히 복귀).
-  try{
-    if(window.location.pathname==='/editorial') history.replaceState({allEditorials:true},'','/editorial');
-    else history.pushState({allEditorials:true},'','/editorial');
-  }catch(e){}
-}
 
 function _openAllEditorialsInner(){
   var overlay=document.getElementById('edAllOverlay');
   if(!overlay) return;
-  // 멤버십 체크 — 미달 시 alert/리다이렉트 대신 목록 화면 안에서 잠금 + 업셀.
-  if(!isStandardOrAbove()){
-    _renderEdAllPaywall(overlay);
-    return;
-  }
+  /* 2026-08-21 — 목록은 누구나 본다 (도메니코: "목록까지 막는건 아니야").
+   * 종전에는 스탠다드 미만이면 목록 화면 자체를 통째로 페이월로 덮었다.
+   * 그러면 비회원은 무엇이 있는지조차 못 보고, 가입할 이유도 안 생긴다.
+   * 이제 표지·제목은 전부 보이고, 열 수 없는 것에는 자물쇠를 단다.
+   * 실제 차단은 서버(api/editorials/:id)가 한다 — 여기는 안내일 뿐이다. */
   // 잠금 화면을 거쳤다가 권한이 생긴 경우를 대비해 필터를 되살린다.
   var _filt=document.getElementById('edCatFilter');
   if(_filt) _filt.style.display='';
@@ -2458,11 +2428,19 @@ function _renderEdAllPage(){
   // FREE·비로그인 최신 10개 — /subscribe 약속("최신 10개 에디토리얼")과 정합.
   // (2026-07-11 수정: 기존엔 free도 standard와 동일하게 6개월치가 열려
   //  Standard 구독 유인이 훼손되던 문제)
+  /* 2026-08-21 — 목록은 자르지 않는다. 전부 보여주고 못 여는 것에 자물쇠를 단다.
+   * (열람 차단은 서버가 한다. 여기서 감추면 '무엇을 놓치는지'가 안 보여
+   *  가입·구독 이유가 사라진다.)
+   * availableData = 이 사람이 실제로 열 수 있는 것 — 업셀 문구의 근거로만 쓴다. */
+  var visibleData = filtered;
   var availableData;
   if(premium){
     availableData=filtered;
   }else if(standard){
-    var _cut6=new Date(); _cut6.setMonth(_cut6.getMonth()-6); _cut6.setHours(0,0,0,0);
+    // 2026-08-21 — 서버(api/_lib/editorialAccess.js)와 같은 볼륨 경계를 쓴다.
+    // 종전 setMonth(-6) 은 날짜 롤링이라 서버가 실제로 내주는 178편 중
+    // 137편만 보여줬다. 돈 낸 회원에게 41편을 숨기던 셈이다.
+    var _cut6=_papStandardCutoff(); _cut6.setHours(0,0,0,0);
     availableData=filtered.filter(function(e){
       var d=(e&&e.date)?new Date(e.date):null;
       return (d&&!isNaN(d.getTime()))?(d>=_cut6):false;
@@ -2473,10 +2451,10 @@ function _renderEdAllPage(){
       return String(b.date||'').localeCompare(String(a.date||''));
     }).slice(0,10);
   }
-  var totalPages=Math.ceil(availableData.length/PAP_PER_PAGE);
+  var totalPages=Math.ceil(visibleData.length/PAP_PER_PAGE);
   if(edAllCurrentPage>totalPages) edAllCurrentPage=totalPages||1;
   var startIdx=(edAllCurrentPage-1)*PAP_PER_PAGE;
-  var pageItems=availableData.slice(startIdx,startIdx+PAP_PER_PAGE);
+  var pageItems=visibleData.slice(startIdx,startIdx+PAP_PER_PAGE);
   pageItems.forEach(function(e){
     var card=document.createElement('div');
     card.className='ed-row-card';
@@ -2491,7 +2469,12 @@ function _renderEdAllPage(){
       });
       return (nice.length ? 'EDITORIAL & ' + nice[0] : 'EDITORIAL');
     })();
-    card.innerHTML='<div class="ed-row-card-img"><img src="'+e.img+'" alt="'+e.title+'" onerror="edImgError(this)"></div><div class="ed-row-card-info"><div class="ed-row-card-cat">'+papFmtMeta(catLabel, e.date)+'</div><div class="ed-row-card-title">'+e.title+'</div></div>';
+    // 못 여는 화보에는 자물쇠. 표지·제목은 그대로 보인다.
+    var _lk = (typeof _papWillLock==='function') && _papWillLock(e);
+    var _lockBadge = _lk
+      ? '<div style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.66);border:1px solid rgba(255,255,255,.22);border-radius:999px;padding:3px 9px;font-size:9px;letter-spacing:.1em;color:#ddd">🔒</div>'
+      : '';
+    card.innerHTML='<div class="ed-row-card-img" style="position:relative"><img src="'+e.img+'" alt="'+e.title+'" onerror="edImgError(this)"'+(_lk?' style="opacity:.62"':'')+'>'+_lockBadge+'</div><div class="ed-row-card-info"><div class="ed-row-card-cat">'+papFmtMeta(catLabel, e.date)+'</div><div class="ed-row-card-title">'+e.title+'</div></div>';
     grid.appendChild(card);
   });
   if(!pageItems.length){
@@ -2501,21 +2484,37 @@ function _renderEdAllPage(){
     grid.appendChild(empty);
   }
   if(!premium&&edAllCurrentPage===totalPages&&filtered.length>availableData.length){
+    // (availableData = 실제로 열 수 있는 것. 목록은 전부 보이지만 업셀 숫자는 이 기준이다)
     // 소프트 페이월(2026-07 전환): 차단이 아니라 프리미엄 가치를 보여주는 카드로 설득.
     var _ko=(localStorage.getItem('pap-lang')||'ko')==='ko';
     var _more=filtered.length-availableData.length;
     var upsell=document.createElement('div');
     upsell.style.cssText='grid-column:1/-1;padding:8px 20px 48px;';
+    /* 2026-08-21 — 비회원과 무료회원을 갈라 말한다.
+     * 비회원은 이 10편조차 못 연다(서버가 막는다). 그런데 종전 문구는
+     * '무료 미리보기는 여기까지' 라서 마치 앞의 10편은 읽은 것처럼 읽힌다.
+     * 실제로 할 수 있는 다음 행동(가입)을 말해야 한다. */
+    var _anon = (typeof isLoggedIn === 'function') && !isLoggedIn();
     var _head=standard
       ? (_ko?'Premium으로 전체 아카이브 열기':'Open the full archive with Premium')
-      : (_ko?'무료 미리보기는 여기까지예요':'The free preview ends here');
+      : (_anon
+        ? (_ko?'가입하면 최신 10편이 열려요':'Sign up to open the latest 10')
+        : (_ko?'무료 미리보기는 여기까지예요':'The free preview ends here'));
     var _sub=standard
-      ? (_ko?'지금은 최근 6개월치를 보고 계세요. Premium 멤버는 2,400편 이상 전체 아카이브와 풀레터까지 이용할 수 있어요.':'You are seeing the last 6 months. Premium unlocks the full 2,400+ editorial archive and Pull-Letters.')
-      : (_ko?('멤버가 되면 '+_more+'편을 더 볼 수 있어요 — 광고 없이, 이미지 다운로드와 서브미션 피드백까지.'):('Become a member to unlock '+_more+' more editorials — ad-free, with image downloads and submission feedback.'));
+      ? (_ko?'지금은 최신 6개월치를 보고 계세요. Premium 멤버는 2019년부터의 전체 아카이브와 풀레터까지 이용할 수 있어요.':'You are seeing the latest 6 months. Premium unlocks the full archive since 2019 and Pull-Letters.')
+      : (_anon
+        ? (_ko?'무료 회원가입만 하면 최신 10편을 바로 볼 수 있어요. 그 이전 화보는 멤버십으로 열립니다.':'A free account opens the latest 10 editorials right away. Older ones open with a membership.')
+        : (_ko?('멤버가 되면 '+_more+'편을 더 볼 수 있어요 — 광고 없이, 이미지·로고 이미지·티어시트 다운로드까지.'):('Become a member to unlock '+_more+' more editorials — ad-free, with image, logo image & tearsheet downloads.')));
     var _feats=standard
-      ? [_ko?'2,400+ 전체 아카이브':'Full 2,400+ archive',_ko?'풀레터 요청':'Pull-Letter requests',_ko?'광고 없이 · 다운로드':'Ad-free · downloads']
-      : [_ko?'최근 6개월 에디토리얼':'Last 6 months of editorials',_ko?'광고 없이 감상':'Ad-free reading',_ko?'이미지 다운로드':'Image downloads',_ko?'서브미션 피드백':'Submission feedback'];
-    var _btn=standard?(_ko?'Premium 업그레이드':'Upgrade to Premium'):(_ko?'구독하고 전체 보기':'Subscribe to see all');
+      ? [_ko?'2019년부터 전체 아카이브':'Full archive since 2019',_ko?'풀레터 요청':'Pull-Letter requests',_ko?'광고 없이 · 다운로드':'Ad-free · downloads']
+      : _anon
+        ? [_ko?'최신 10편 무료':'Latest 10 free',_ko?'서브미션 제출':'Submit your work',_ko?'가입 무료':'Free to join']
+        : [_ko?'최신 6개월 에디토리얼':'Latest 6 months of editorials',_ko?'광고 없이 감상':'Ad-free reading',_ko?'이미지·로고·티어시트 다운로드':'Image, logo & tearsheet downloads'];
+    var _btn=standard
+      ? (_ko?'Premium 업그레이드':'Upgrade to Premium')
+      : _anon
+        ? (_ko?'가입하고 보기':'Sign up to read')
+        : (_ko?'구독하고 전체 보기':'Subscribe to see all');
     var _chips=_feats.map(function(f){return '<span style="display:inline-block;border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:6px 13px;font-size:11px;color:#cfcfcf;margin:4px">'+f+'</span>';}).join('');
     upsell.innerHTML=
       '<div style="max-width:560px;margin:8px auto 0;padding:34px 26px;border:1px solid rgba(255,255,255,.16);border-radius:14px;text-align:center;background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0))">'
@@ -2527,7 +2526,8 @@ function _renderEdAllPage(){
       + '</div>';
     grid.appendChild(upsell);
   }
-  count.textContent=availableData.length+' EDITORIALS'+(premium?'':' (PREMIUM: '+filtered.length+')');
+  count.textContent=visibleData.length+' EDITORIALS'
+    +(premium?'':' · '+availableData.length+' UNLOCKED');
   if(pagContainer){
     buildPagination(pagContainer,edAllCurrentPage,totalPages,function(page){
       edAllCurrentPage=page;
