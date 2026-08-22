@@ -28,13 +28,25 @@
 // During beta we treat any logged-in user (free / standard / premium) as
 // having full access — non-logged-in visitors must sign up. After beta
 // these checks resume tier-strict semantics from pap-user.subscription.
+/* 2026-08-21 — 등급만 보고 상태를 안 봤다.
+ * me.js 는 subscriptionStatus 를 같이 내려주는데 여기서 쓰지 않아서,
+ * 해지·미납 회원이 계속 '광고 없는 콘텐츠'를 받고 있었다.
+ * 상태 필드가 아예 없는 옛 세션은 참으로 본다 — 멀쩡한 유료회원에게
+ * 갑자기 광고를 띄우는 쪽이 더 나쁘다. 다음 로그인에 정확해진다. */
+function _papSubActive(user){
+  var st = user && user.subscriptionStatus;
+  if(st === undefined || st === null || st === '') return true;
+  st = String(st).toLowerCase();
+  return st === 'active' || st === 'trialing';
+}
+
 function isPremium(){
   try{
     if(isBetaActive()){
       return isLoggedIn();
     }
     var u=localStorage.getItem('pap-user');if(!u)return false;
-    var user=JSON.parse(u);return user&&user.subscription==='premium';
+    var user=JSON.parse(u);return !!(user&&user.subscription==='premium'&&_papSubActive(user));
   }catch(e){return false;}
 }
 function isStandardOrAbove(){
@@ -43,8 +55,21 @@ function isStandardOrAbove(){
       return isLoggedIn();
     }
     var u=localStorage.getItem('pap-user');if(!u)return false;
-    var user=JSON.parse(u);return user&&(user.subscription==='standard'||user.subscription==='premium');
+    var user=JSON.parse(u);return !!(user&&(user.subscription==='standard'||user.subscription==='premium')&&_papSubActive(user));
   }catch(e){return false;}
+}
+
+/* 이 화보를 열면 잠금화면이 뜨는가 — 광고를 붙일지 말지 판단용 (2026-08-21).
+ * 광고를 보여준 다음 잠금화면을 띄우는 건 최악의 동선이다. 돈도 안 되고
+ * (그 사람은 어차피 못 본다) 기분만 상해서 가입도 안 한다.
+ * 목록이 실어주는 required_tier 로 미리 안다. */
+function _papWillLock(d){
+  try{
+    if(typeof isLoggedIn === 'function' && !isLoggedIn()) return true;   // 비회원은 전부 잠김
+    if(isStandardOrAbove()) return false;                                 // 유료는 광고 자체가 없다
+    var need = d && d.requiredTier;
+    return !!(need && need !== 'free');                                   // 무료회원: 최신 10편 밖이면 잠김
+  }catch(e){ return false; }
 }
 
 // ======== INTERSTITIAL AD + PREMIUM UPSELL ========

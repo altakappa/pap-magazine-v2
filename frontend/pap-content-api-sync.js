@@ -757,6 +757,11 @@ window._papFilmAutoPlay = function(){
       credits:  Array.isArray(e.credits) ? e.credits : e.credits || [],
       fashion:  e.fashion || null,
       gallery:  Array.isArray(e.gallery) ? e.gallery : [],
+      // 2026-08-21 — 열람 게이트. 공개 목록은 이미지 세트를 싣지 않고
+      // '몇 장인지 / 어느 등급이 필요한지'만 준다. 광고를 띄울지 말지를
+      // 여기서 판단해야 '광고 보고 → 잠금화면' 이라는 최악의 동선을 피한다.
+      requiredTier: e.required_tier || '',
+      galleryCount: Number(e.gallery_count || 0),
       // QA #192 — keep KR field for backward compat + ship EN separately
       // so anything downstream that wants language switching can read it.
       description: e.description || '',
@@ -929,6 +934,8 @@ window._papFilmAutoPlay = function(){
       // Always use the latest API hero — that's where admin's ◆ COVER
       // pick lands.
       thumb:  apiEd.hero || apiEd.img || existing.thumb || '',
+      requiredTier: apiEd.requiredTier || existing.requiredTier || '',
+      galleryCount: Number(apiEd.galleryCount || existing.galleryCount || 0),
       images: apiEd.gallery && apiEd.gallery.length
                 ? apiEd.gallery
                 : (existing.images && existing.images.length

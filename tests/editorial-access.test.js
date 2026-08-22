@@ -100,4 +100,52 @@ t('published_date 가 없으면 열지 않는다 (모르면 잠근다)', () => {
   assert.strictEqual(v.allowed, false);
 });
 
+/* ── 광고 없는 콘텐츠 (2026-08-21) ────────────────────────────────
+ * 구독 페이지가 파는 혜택인데 등급만 보고 상태를 안 봐서 해지·미납 회원도
+ * 계속 광고 없이 보고 있었다. 그리고 게이트가 생기면서 '광고 보고 →
+ * 잠금화면' 이라는 동선이 새로 생겼다. 둘 다 여기서 막는다. */
+const fs = require('fs');
+const path = require('path');
+function read(rel) { return fs.readFileSync(path.join(__dirname, '..', rel), 'utf8'); }
+const SUBJS = read('frontend/pap-subscription.js');
+const EDJS = read('frontend/pap-content-editorial.js');
+const SYNC = read('frontend/pap-content-api-sync.js');
+
+t('광고 면제는 등급만이 아니라 상태도 본다', () => {
+  assert.ok(/function _papSubActive/.test(SUBJS), '상태 판정 함수가 없다');
+  const prem = SUBJS.slice(SUBJS.indexOf('function isPremium('), SUBJS.indexOf('function isStandardOrAbove('));
+  assert.ok(/_papSubActive\(user\)/.test(prem), 'isPremium 이 상태를 안 본다 — 해지 회원이 계속 면제된다');
+  const std = SUBJS.slice(SUBJS.indexOf('function isStandardOrAbove('));
+  assert.ok(/_papSubActive\(user\)/.test(std.slice(0, 400)), 'isStandardOrAbove 가 상태를 안 본다');
+});
+
+t('상태 필드가 없는 옛 세션은 광고를 띄우지 않는다', () => {
+  // 멀쩡한 유료회원에게 갑자기 광고가 뜨는 쪽이 더 나쁘다
+  assert.ok(/st === undefined \|\| st === null \|\| st === ''\) return true/.test(SUBJS),
+    '상태 미상일 때 광고를 띄우는 쪽으로 기울어 있다');
+});
+
+t('잠길 화보에는 광고를 붙이지 않는다', () => {
+  assert.ok(/function _papWillLock/.test(SUBJS), '잠금 예측 함수가 없다');
+  assert.ok(/_papWillLock/.test(EDJS), '에디토리얼 진입에서 쓰지 않는다');
+  assert.ok(/!_edWillLock && !isStandardOrAbove\(\)/.test(EDJS),
+    '광고 조건에 잠금 여부가 안 걸려 있다 — 광고 보고 잠금화면이 뜬다');
+});
+
+t('비회원은 항상 잠김으로 본다 (광고 대신 가입 안내)', () => {
+  assert.ok(/!isLoggedIn\(\)\) return true/.test(SUBJS), '비회원 판정이 없다');
+});
+
+t('목록의 required_tier 가 카탈로그까지 전달된다', () => {
+  assert.ok(/required_tier/.test(SYNC), '목록 응답의 required_tier 를 안 읽는다');
+  assert.ok(/requiredTier/.test(SYNC) && /galleryCount/.test(SYNC), '카탈로그에 안 실린다');
+});
+
+t('표지 1장짜리 카탈로그도 상세를 다시 부른다', () => {
+  // 목록이 gallery 를 안 실으면서 images 가 '표지 1장'으로 채워진다.
+  // '0장일 때만' 이면 하이드레이트가 안 돌아 표지 한 장짜리 화보가 된다.
+  assert.ok(/_imgs <= 1/.test(EDJS), '이미지 1장 이하를 하이드레이트 대상으로 안 본다');
+  assert.ok(/_galCount > _imgs/.test(EDJS), 'gallery_count 와 비교하지 않는다');
+});
+
 console.log(`\n${n}개 테스트 통과`);

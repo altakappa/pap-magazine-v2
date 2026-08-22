@@ -304,8 +304,12 @@ function getLogoFolderId(t){if(edLogoFolders[t])return edLogoFolders[t];var tL=t
 // (Interstitial state vars and functions extracted to pap-subscription.js — mission 6.)
 
 function openEditorial(title,thumb){
-  // Show interstitial for free users (session limited)
-  if(!isStandardOrAbove() && _interstitialCount < _INTERSTITIAL_MAX){
+  // Show interstitial for free users (session limited).
+  // 2026-08-21 — 단, 어차피 잠금화면이 뜰 화보에는 붙이지 않는다.
+  // '광고 보고 → 못 봄' 은 수익도 전환도 아니고 이탈만 만든다.
+  var _edWillLock = (typeof _papWillLock === 'function')
+    && _papWillLock((typeof edDetails !== 'undefined' && edDetails[title]) || {});
+  if(!_edWillLock && !isStandardOrAbove() && _interstitialCount < _INTERSTITIAL_MAX){
     showPremiumInterstitial(function(){
       _openEditorialInner(title,thumb);
     });
@@ -1576,7 +1580,12 @@ function _openEditorialInner(title,thumb){
      * 이미지를 내주는 곳은 상세 API 하나뿐인데, 종전 조건('이미지·크레딧·설명이
      * 셋 다 없을 때만')이면 크레딧이나 설명이 있는 화보는 상세를 영영 안 부르고
      * 빈 갤러리만 남는다. 잠긴 화보인지 아닌지도 알 수 없게 된다. */
-    var _needsHydrate = (!_imgs) || (_credsArr.length === 0 && !_hasDesc);
+    /* 목록이 gallery 를 안 싣게 되면서 카탈로그의 images 는 '표지 1장' 으로
+     * 채워진다. 그래서 '이미지가 0장일 때만' 으로는 부족하다 — 1장이면
+     * 하이드레이트가 안 돌아 표지 한 장짜리 화보가 되고, 잠긴 화보인지도
+     * 알 수 없다. gallery_count 를 같이 보고, 없으면 1장 이하는 무조건 부른다. */
+    var _galCount = Number((d && d.galleryCount) || 0);
+    var _needsHydrate = (_imgs <= 1) || (_galCount > _imgs) || (_credsArr.length === 0 && !_hasDesc);
     // 2026-07-26 — 다국어: 활성 언어가 ko가 아니고 해당 언어 요약이 없고 아직
     // 하이드레이트 안 했으면 상세 GET 으로 description_i18n 을 당겨온다(1회).
     var _edL2 = (function(){try{return localStorage.getItem('pap-lang')||'ko';}catch(e){return 'ko';}})();
