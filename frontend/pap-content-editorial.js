@@ -2183,7 +2183,12 @@ function _openEditorialInner_noPush(title,thumb){
   var logoSection=document.getElementById('edLogoDownload');
   if(logoSection){
     var logoFolderId=getLogoFolderId(title);
-    if(isPremium()&&logoFolderId){
+    /* 2026-08-21 — 로고 파일은 스탠다드부터다 (도메니코 결정: 이미지·로고
+     * 이미지·티어시트를 스탠다드가 전부 받는다). 서버 게이트
+     * api/downloads/check.js 도 스탠다드 이상을 허용하고 있었는데
+     * 이 화면만 프리미엄으로 잠그고 있어서, 돈 낸 스탠다드 회원에게
+     * LOGO FILES 섹션이 아예 안 보였다. */
+    if(isStandardOrAbove()&&logoFolderId){
       logoSection.innerHTML='<div style="display:flex;align-items:center;gap:12px;"><span style="font-size:10px;font-weight:700;letter-spacing:.15em;color:#999;">LOGO FILES</span><a href="https://drive.google.com/drive/folders/'+logoFolderId+'" target="_blank" rel="noopener" style="display:inline-block;padding:6px 16px;border:1px solid #555;color:#fff;font-size:9px;font-weight:700;letter-spacing:.12em;text-decoration:none;transition:all .3s;" onmouseover="this.style.borderColor=\'#fff\'" onmouseout="this.style.borderColor=\'#555\'">DOWNLOAD</a></div>';
       logoSection.style.display='';
     } else { logoSection.style.display='none'; }

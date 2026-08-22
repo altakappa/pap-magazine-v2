@@ -169,4 +169,31 @@ t('낡을 고정 숫자를 혜택 문구에 박지 않는다', () => {
     '전체 아카이브 문구에 고정 개수가 다시 박혔다');
 });
 
+/* 다운로드 등급 통일 (2026-08-21 도메니코 결정)
+ * 스탠다드부터 이미지 · 로고 이미지 · 티어시트를 전부 받는다.
+ * 서버(api/downloads/check.js)는 원래 스탠다드 이상을 허용했는데
+ * 화면 한 곳이 프리미엄으로 잠그고 있어서 돈 낸 스탠다드 회원에게
+ * LOGO FILES 섹션이 아예 안 보였다. */
+
+t('로고 파일 섹션을 프리미엄으로 잠그지 않는다', () => {
+  const ED = read('frontend/pap-content-editorial.js');
+  assert.ok(!/isPremium\(\)\s*&&\s*logoFolderId/.test(ED),
+    '로고 섹션이 다시 프리미엄 전용으로 잠겼다 — 서버 게이트(스탠다드↑)와 어긋난다');
+  assert.ok(/isStandardOrAbove\(\)&&logoFolderId/.test(ED), '스탠다드 이상 조건이 없다');
+});
+
+t('서버 다운로드 게이트는 스탠다드 이상이다', () => {
+  const DL = read('api/downloads/check.js');
+  assert.ok(/plan === 'standard' \|\| plan === 'premium'/.test(DL),
+    '서버 게이트가 스탠다드를 허용하지 않는다');
+});
+
+t('다운로드 혜택 문구가 세 가지를 모두 말한다', () => {
+  const SUB = read('frontend/subscribe.html');
+  const MY = read('frontend/mypage.html');
+  assert.ok(/이미지 · 로고 이미지 · 티어시트 다운로드/.test(SUB), '구독 페이지 ko 문구가 안 맞다');
+  assert.ok(/스탠다드 구독 시/.test(MY), '마이페이지가 아직 프리미엄이라고 말한다');
+  assert.ok(!/프리미엄 구독 시 로고/.test(MY), '옛 프리미엄 문구가 남아 있다');
+});
+
 console.log(`\n${n}개 테스트 통과`);
