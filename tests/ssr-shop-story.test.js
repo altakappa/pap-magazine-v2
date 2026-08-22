@@ -22,8 +22,10 @@ t('핸들 가드 유지 (깨진 /go URL 사고 방지)',
 t('수수료 고지 문구 (ko/en)', /수수료가 지급될 수 있습니다/.test(ssr) && /earn a commission/.test(ssr));
 t('스폰서 링크 규격 (rel=sponsored nofollow)',
   /seo-shop[\s\S]{0,900}rel="sponsored nofollow noopener"/.test(ssr));
+/* 2026-08-22 — 다운로드 블록이 에디토리얼 전용이 되면서 사이에 주석 한 덩이가
+   들어갔다. 검사할 사실은 '순서'지 '두 줄이 붙어 있느냐'가 아니다. */
 t('에디토리얼에서 다운로드 위에 배치 (SPA 원칙과 동일)',
-  /\$\{kind === 'editorial' \? shopHtml : ''\}\n    \$\{downloadsHtml\}/.test(ssr));
+  ssr.indexOf("kind === 'editorial' ? shopHtml") < ssr.indexOf("kind === 'editorial' ? downloadsHtml"));
 
 console.log('--- SPA \uc19d (\uae30\uc874 \uc720\uc9c0) ---');
 t('SPA Shop the Story 박스 존재', /Shop the Story/.test(spa));

@@ -334,7 +334,14 @@ console.log('\n[별점 통합] 평가 장치는 한 화면에 하나 (2026-08-09
   }
   t('SSR 순서: 크레딧 → 별점, SHOP → 다운로드 (에디토리얼)',
     seo.indexOf("kind === 'editorial' ? creditsHtml") < seo.indexOf('papRatingMount')
-    && seo.indexOf("kind === 'editorial' ? fashionHtml") < seo.indexOf('${downloadsHtml}'));
+    && seo.indexOf("kind === 'editorial' ? fashionHtml") < seo.indexOf("kind === 'editorial' ? downloadsHtml"));
+  /* 2026-08-22 — 다운로드 블록을 에디토리얼 전용으로 좁혔다.
+     네이버 웹문서 실측: /article/*·/film/* 의 검색 스니펫이 이 블록 문구로 나왔다.
+     '해밀턴 오디세이 영케이' 9위 /film/0419c3ba… 설명이
+       "DOWNLOADS 커버 및 로고 이미지 다운로드는 스탠다드 멤버십 전용입니다."
+     기사·필름에는 내려받을 커버·로고가 자체가 없다. */
+  t('다운로드 블록은 에디토리얼에서만 낸다 (기사·필름 스니펫 오염 방지)',
+    /kind === 'editorial' \? downloadsHtml : ''/.test(seo));
   t('댓글(참여 블록)은 별점 바로 아래 — SSR (에디토리얼)', seo.indexOf('papRatingMount') < seo.indexOf("kind !== 'editorial'"));
   t('기사·필름 좋아요는 유지 (중복 아님)', /pe-like/.test(eng) && /if \(likeBtn\)/.test(eng));
   t('별점 키는 제목 80자 — SSR 절단과 일치 (두 화면 같은 키)',

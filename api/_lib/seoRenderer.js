@@ -1747,7 +1747,15 @@ ${(kind === 'editorial' || kind === 'film' || kind === 'article') ? `<!-- QA #17
     ${kind !== 'editorial' ? creditsHtml : ''}
     ${kind === 'editorial' ? fashionHtml : ''}
     ${kind === 'editorial' ? shopHtml : ''}
-    ${downloadsHtml}
+    ${/* 2026-08-22 — 에디토리얼에서만 낸다.
+        네이버 웹문서 실측: /article/* 과 /film/* 의 검색 스니펫이 이 블록 문구로
+        나온다. 예) '해밀턴 오디세이 영케이' 9위 /film/0419c3ba… 의 설명이
+          "DOWNLOADS 커버 및 로고 이미지 다운로드는 스탠다드 멤버십 전용입니다."
+        기사·필름에는 애초에 내려받을 커버·로고가 없다. 팔 것이 없는데 결제
+        문구만 검색 결과에 실렸고, 그것도 '멤버십 전용'이라는 거절 문구였다.
+        성장 헌법 7항(첫 방문 결제 강요 UI 금지)에도 어긋난다.
+        에디토리얼은 실제로 커버·로고를 내려받으므로 그대로 둔다. */ ''}
+    ${kind === 'editorial' ? downloadsHtml : ''}
     ${kind !== 'editorial' ? fashionHtml : ''}
     ${brandLinksHtml}
     ${relatedEditorialHtml}
