@@ -436,20 +436,83 @@ window._papFilmAutoPlay = function(){
   // 그대로라 Vercel 함수 호출 비용은 동일하고, 대기 시간만 왕복 N번 → N/6번으로
   // 줄어든다. 동시 6개 상한은 이미지·폰트 대역폭을 다 빼앗지 않도록 일부러 둔 것.
   var FETCH_ALL_CONCURRENCY = 6;
+
+  /* ── 메인 스레드를 놓아주며 처리한다 (2026-08-22) ──────────────────────
+     [측정] 라이브·데스크톱·warm cache·크롬 탭 포그라운드:
+         홈       롱태스크 1개 969ms   · TBT 979ms
+         기사     롱태스크 1개 1,765ms · TBT 1,862ms · FCP 6,876ms
+     PSI 랩(에뮬레이션 Moto G Power · 느린 4G)은 **전 항목 Error!** —
+     "페이지 응답이 중지되었기 때문에 URL 을 안정적으로 로드하지 못했습니다".
+     4배 느린 CPU 면 저 블록이 4~7초다. 크롬이 페이지를 '멈춤'으로 보고
+     라이트하우스가 측정을 포기한다. 즉 지금 우리는 랩 계기가 아예 없다.
+
+     [왜 하나의 태스크로 뭉쳤나] 08-22 에 fetchAll 을 순차→병렬로 바꿨다.
+     대기 시간은 3,315ms → 891ms 로 줄었지만(성공), 6개가 거의 동시에
+     응답하니 각 응답의 .then(마이크로태스크)이 **한 태스크 안에서 연달아
+     드레인**된다. 5,000건 변환이 통째로 한 덩어리가 된 것이다.
+     즉 네트워크 대기를 줄인 대가로 블로킹을 한곳에 모았다.
+
+     [고침] 두 겹.
+       ① 각 쪽의 변환을 setTimeout(0) 으로 **자기 태스크**에 넣는다
+          (마이크로태스크 연쇄를 끊는다).
+       ② 그 안에서도 ~16ms 마다 양보한다(_sliceWork) — 한 쪽이 100건이라
+          보통 한 조각에 끝나지만, 항목이 무거워져도 블록이 안 생긴다.
+     결과적으로 총 CPU 시간은 같고, 잘게 쪼개져 프레임 사이에 들어간다. */
+  var SLICE_MS = 16;
+  function _nowMs(){
+    return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  }
+  /* requestAnimationFrame 은 백그라운드 탭에서 아예 안 돌아 동기화가 멈춘다.
+     setTimeout 은 백그라운드에서 느려질 뿐 계속 진행한다 — 그쪽이 안전하다. */
+  function _sliceWork(items, perItem, done){
+    var i = 0, n = items.length;
+    if (!n){ if (done) done(); return; }
+    (function step(){
+      var t0 = _nowMs();
+      while (i < n){
+        perItem(items[i], i);
+        i++;
+        if (_nowMs() - t0 >= SLICE_MS) break;
+      }
+      if (i < n) setTimeout(step, 0);
+      else if (done) done();
+    })();
+  }
+
+  // Fetch all pages of a collection.
+  //
+  // 2026-08-22 순차 → 병렬. 예전엔 1쪽을 받고 그 응답을 본 뒤에야 2쪽을 요청하는
+  // 재귀였다. 실측(홈 · warm cache · 데스크톱): /articles 26쪽 + /editorials 24쪽
+  // 을 하나씩 받느라 716ms → 4030ms, 3.3초가 통째로 날아갔다.
+  // 병렬로 바꾼 뒤 실측 185ms → 1076ms (891ms) — 3.7배.
+  // 요청 "횟수"는 그대로라 Vercel 함수 호출 비용은 동일하다.
+  // 동시 6개 상한은 이미지·폰트 대역폭을 다 빼앗지 않도록 일부러 둔 것.
   function fetchAll(endpoint, converter, callback){
     var limit = 100;
     function pageUrl(p){
       return PAP_API_BASE + endpoint + '?status=published&limit=' + limit + '&page=' + p;
     }
     function flatten(buckets){
+      // 여기 담기는 건 이미 변환이 끝난 배열이다 (변환은 absorb 에서 쪼개 했다).
       var all = [];
       for (var i = 0; i < buckets.length; i++){
         var b = buckets[i];
         if (!b) continue;
-        for (var j = 0; j < b.length; j++) all.push(converter(b[j]));
+        for (var j = 0; j < b.length; j++) all.push(b[j]);
       }
       return all;
     }
+    /* 한 쪽의 원본 배열을 "별도 태스크에서, 조각내어" 변환해 버킷에 넣는다. */
+    function absorb(buckets, pageNo, raw, after){
+      setTimeout(function(){
+        var out = [];
+        _sliceWork(raw, function(item){ out.push(converter(item)); }, function(){
+          buckets[pageNo - 1] = out;
+          after();
+        });
+      }, 0);
+    }
+
     fetch(pageUrl(1))
       .then(function(r){ return r.json(); })
       .then(function(res){
@@ -457,12 +520,10 @@ window._papFilmAutoPlay = function(){
         if (!first.length){ callback([]); return; }
         var pages = (res.pagination && res.pagination.pages) || 1;
         var buckets = new Array(pages);
-        buckets[0] = first;
-        if (pages <= 1){ callback(flatten(buckets)); return; }
 
         var next = 2;      // 다음에 요청할 쪽
         var running = 0;   // 진행 중인 요청 수
-        var settled = 0;   // 끝난 요청 수 (2쪽부터 셀다)
+        var settled = 0;   // 끝난 요청 수 (2쪽부터 셈)
         var doneCalled = false;
         function finish(){
           if (doneCalled) return;
@@ -477,7 +538,11 @@ window._papFilmAutoPlay = function(){
             (function(pageNo){
               fetch(pageUrl(pageNo))
                 .then(function(r){ return r.json(); })
-                .then(function(res2){ buckets[pageNo - 1] = (res2 && res2.data) || []; })
+                .then(function(res2){
+                  return new Promise(function(resolve){
+                    absorb(buckets, pageNo, (res2 && res2.data) || [], resolve);
+                  });
+                })
                 .catch(function(err){
                   // 한 쪽이 실패해도 나머지는 살린다 (순차판은 거기서 멈췄다)
                   console.warn('[PAP Sync] page fetch error:', endpoint, pageNo, err);
@@ -492,7 +557,11 @@ window._papFilmAutoPlay = function(){
             })(p);
           }
         }
-        pump();
+
+        absorb(buckets, 1, first, function(){
+          if (pages <= 1){ finish(); return; }
+          pump();
+        });
       })
       .catch(function(err){
         console.warn('[PAP Sync] Fetch error:', endpoint, err);
@@ -504,27 +573,33 @@ window._papFilmAutoPlay = function(){
   function syncFilms(){
     if(typeof filmAllData==='undefined') return;
     fetchAll('/films',apiFilmToLocal,function(apiFilms){
+      /* 2026-08-22 — 조각 처리. 렌더는 채우기가 끝난 뒤에만. */
       if(apiFilms.length>0){
-        var origLen=filmAllData.length;
         var merged=mergeData(apiFilms, filmAllData);
         // Replace filmAllData in-place (preserve reference)
         filmAllData.length=0;
-        merged.forEach(function(f){filmAllData.push(f);});
-        window._apiSynced.films = true; // 이후 늦게 도착하는 정적 films.json 이 덮어쓰지 못하게
-        /* Films synced from API */
+        _sliceWork(merged, function(f){ filmAllData.push(f); }, function(){
+          window._apiSynced.films = true; // 이후 늦게 도착하는 정적 films.json 이 덮어쓰지 못하게
+          _afterFilmsFilled();
+        });
       } else {
         /* Using hardcoded films only */
-      }
-      // Re-render film cards if the page has a renderCards function (/films)
-      if(typeof window._papFilmRenderCards==='function'){
-        window._papFilmRenderCards();
-      }
-      // FIX(2026-07-10): 홈 메인 필름 플레이어 시작 — 정적 films.json 경로에만
-      // 있던 호출이라 API 동기화가 먼저 끝나면 재생이 시작되지 않았다.
-      if(typeof window._papFilmAutoPlay==='function'){
-        window._papFilmAutoPlay();
+        _afterFilmsFilled();
       }
     });
+  }
+
+  /* syncFilms 의 후처리 — filmAllData 가 완전히 채워진 뒤에만 부른다. */
+  function _afterFilmsFilled(){
+    // Re-render film cards if the page has a renderCards function (/films)
+    if(typeof window._papFilmRenderCards==='function'){
+      window._papFilmRenderCards();
+    }
+    // FIX(2026-07-10): 홈 메인 필름 플레이어 시작 — 정적 films.json 경로에만
+    // 있던 호출이라 API 동기화가 먼저 끝나면 재생이 시작되지 않았다.
+    if(typeof window._papFilmAutoPlay==='function'){
+      window._papFilmAutoPlay();
+    }
   }
 
   // FAST PATH (2026-07-11): 홈 '최신기사' 갱신 지연 해소.
@@ -564,17 +639,26 @@ window._papFilmAutoPlay = function(){
   function syncArticles(){
     if(typeof artData==='undefined') return;
     fetchAll('/articles',apiArticleToLocal,function(apiArticles){
+      /* 2026-08-22 — 채우기를 조각내면 "다 채워진 뒤"가 비동기가 된다.
+         렌더는 반드시 그 뒤에 와야 한다(안 그러면 빈 목록을 그린다). */
       if(apiArticles.length>0){
-        var origLen=artData.length;
         // 전량 동기화이므로 authoritative — API 에 없는 시드는 여기서 정리된다
         var merged=mergeData(apiArticles, artData, true);
         artData.length=0;
-        merged.forEach(function(a){artData.push(a);});
-        window._apiSynced.articles = true; // 늦게 도착하는 정적 articles.json 이 덮어쓰지 못하게
-        /* Articles synced from API */
+        _sliceWork(merged, function(a){ artData.push(a); }, function(){
+          window._apiSynced.articles = true; // 늦게 도착하는 정적 articles.json 이 덮어쓰지 못하게
+          _afterArticlesFilled(apiArticles);
+        });
       } else {
         /* Using hardcoded articles only */
+        _afterArticlesFilled(apiArticles);
       }
+    });
+  }
+
+  /* syncArticles 의 후처리 — artData 가 완전히 채워진 뒤에만 부른다. */
+  function _afterArticlesFilled(apiArticles){
+    {
       // Re-render article cards if available (/articles)
       if(typeof window._papArticleRenderCards==='function'){
         window._papArticleRenderCards();
@@ -591,7 +675,7 @@ window._papFilmAutoPlay = function(){
       if(window.papReveal && typeof window.papReveal.refresh === 'function'){
         try { window.papReveal.refresh(); } catch(_){}
       }
-    });
+    }
   }
 
   // QA #226 — prepend home-carousel cards for any article whose slug
@@ -1330,14 +1414,21 @@ window._papFilmAutoPlay = function(){
     // anything, so a freshly published editorial took 0.5-2s to appear
     // above the static HTML cards.
 
-    function applyToEdData(items){
+    /* 2026-08-22 — 조각 처리. _populateEdDetailsFromApi 는 항목마다 객체를
+       새로 조립한다(issue 라벨 정규화·크레딧 변환·갤러리 배열 구성).
+       전량 동기화 때 2,400회가 한 태스크에 몰려 메인 스레드를 잡아먹었다.
+       ~16ms 마다 양보한다. 완료 시점이 필요하므로 콜백을 받는다.
+       (STAGE 1 은 12건이라 보통 첫 조각에서 끝나고 콜백도 동기로 불린다) */
+    function applyToEdData(items, done){
       var merged = mergeEditorials(items, edData);
       edData.length = 0;
-      merged.forEach(function(e){
+      _sliceWork(merged, function(e){
         edData.push(e);
         _populateEdDetailsFromApi(e);
+      }, function(){
+        window._apiSynced.editorials = true; // 늦게 도착하는 정적 editorials.json 이 2371로 되돌리지 못하게
+        if (done) done();
       });
-      window._apiSynced.editorials = true; // 늦게 도착하는 정적 editorials.json 이 2371로 되돌리지 못하게
     }
 
     // STAGE 1: fast-path — newest 12 only.
@@ -1346,7 +1437,7 @@ window._papFilmAutoPlay = function(){
       .then(function(res){
         if(!res || !Array.isArray(res.data) || res.data.length === 0) return;
         var quick = res.data.map(apiEditorialToLocal);
-        applyToEdData(quick);
+        applyToEdData(quick, function(){
         _renderLatestRow();
         _renderTrendingRow();
         _renderThemeRows();
@@ -1364,6 +1455,7 @@ window._papFilmAutoPlay = function(){
         if(window.papReveal && typeof window.papReveal.refresh === 'function'){
           try { window.papReveal.refresh(); } catch(_){}
         }
+        });
       })
       .catch(function(err){ console.warn('[PAP Sync] editorials fast fetch:', err); })
       .finally(function(){
@@ -1373,14 +1465,15 @@ window._papFilmAutoPlay = function(){
         _queueFullSync(function(){
         fetchAll('/editorials', apiEditorialToLocal, function(apiEds){
           if(apiEds.length === 0) return;
-          applyToEdData(apiEds);
-          if(typeof _renderEdAllPage === 'function' && typeof edAllBuilt !== 'undefined' && edAllBuilt){
-            try { _renderEdAllPage(); } catch(_){}
-          }
-          // QA #238 — same refresh hook for the full-catalog second pass.
-          if(window.papReveal && typeof window.papReveal.refresh === 'function'){
-            try { window.papReveal.refresh(); } catch(_){}
-          }
+          applyToEdData(apiEds, function(){
+            if(typeof _renderEdAllPage === 'function' && typeof edAllBuilt !== 'undefined' && edAllBuilt){
+              try { _renderEdAllPage(); } catch(_){}
+            }
+            // QA #238 — same refresh hook for the full-catalog second pass.
+            if(window.papReveal && typeof window.papReveal.refresh === 'function'){
+              try { window.papReveal.refresh(); } catch(_){}
+            }
+          });
         });
         });
       });

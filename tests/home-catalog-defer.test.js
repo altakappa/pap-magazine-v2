@@ -49,9 +49,13 @@ function t(name, cond, detail) {
 const SRC = path.join(ROOT, 'frontend/pap-content-api-sync.js');
 const src = fs.readFileSync(SRC, 'utf8');
 
-/* ── fetchAll 블록만 떼어내 진짜로 돌려본다 ───────────────────────────── */
-const faMatch = src.match(/  var FETCH_ALL_CONCURRENCY = (\d+);[\s\S]*?\n  \}\n/);
-const CONCURRENCY = faMatch ? Number(faMatch[1]) : 0;
+/* ── fetchAll(+_sliceWork) 블록만 떼어내 진짜로 돌려본다 ─────────────── */
+const faStart = src.indexOf('  var FETCH_ALL_CONCURRENCY = ');
+const faEnd = src.indexOf("        console.warn('[PAP Sync] Fetch error:', endpoint, err);");
+const faBlock = src.slice(faStart, src.indexOf('  }\n', faEnd) + 4);
+const faMatch = [faBlock];
+const CONCURRENCY = Number((src.match(/FETCH_ALL_CONCURRENCY = (\d+)/) || [])[1] || 0);
+const SLICE_MS = Number((src.match(/var SLICE_MS = (\d+)/) || [])[1] || 0);
 
 function runFetchAll({ pages, perPage = 100, failPages = [] }) {
   return new Promise((resolve) => {
@@ -70,9 +74,10 @@ function runFetchAll({ pages, perPage = 100, failPages = [] }) {
         }) });
       }, 5));
     };
-    const boot = new Function('PAP_API_BASE', 'fetch', 'console', 'done',
+    const boot = new Function('PAP_API_BASE', 'fetch', 'console', 'performance', 'done',
       faMatch[0] + "\nfetchAll('/x', function(it){ return it.id; }, function(all){ done(all); });");
-    boot('/api', fakeFetch, { warn() {} }, (all) => resolve({ all, calls, maxInflight }));
+    boot('/api', fakeFetch, { warn() {} }, { now: () => Number(process.hrtime.bigint() / 1000000n) },
+      (all) => resolve({ all, calls, maxInflight }));
   });
 }
 
@@ -103,7 +108,44 @@ function runFetchAll({ pages, perPage = 100, failPages = [] }) {
   const r0 = await runFetchAll({ pages: 3, perPage: 0 });
   t('1쪽이 비면 즉시 끝낸다', r0.calls.length === 1 && r0.all.length === 0);
 
-  console.log('\n=== 3. 홈 판정 ===');
+  console.log('\n=== 2-b. 메인 스레드를 조각내 처리한다 (2026-08-22) ===');
+  /* 실측: 병렬화 뒤 홈 969ms · 기사 1,765ms 짜리 단일 롱태스크가 남았다.
+     6개가 거의 동시에 응답하면 각 .then(마이크로태스크)이 한 태스크 안에서
+     연달아 드레인돼 5,000건 변환이 통째로 뭉친다. 그래서 두 겹으로 끊는다. */
+  t('_sliceWork 헬퍼가 있다', /function _sliceWork\(items, perItem, done\)/.test(src));
+  t('조각 길이 상한이 프레임 예산 안이다 (1~50ms)', SLICE_MS > 0 && SLICE_MS <= 50, String(SLICE_MS));
+  t('각 쪽 변환을 별도 태스크로 밀어낸다 (마이크로태스크 연쇄 차단)',
+    /function absorb\([\s\S]{0,200}?setTimeout\(function\(\)\{/.test(src));
+  t('absorb 안에서도 조각낸다', /absorb[\s\S]{0,300}?_sliceWork\(raw,/.test(src));
+  t('requestAnimationFrame 으로 양보하지 않는다 (백그라운드 탭에서 멈춘다)',
+    !/requestAnimationFrame\s*\(/.test(src));
+  t('_sliceWork 호출은 전부 완료 콜백을 받는다 (비동기인데 렌더가 먼저 도는 것 방지)',
+    (src.match(/_sliceWork\(/g) || []).length ===
+    (src.match(/_sliceWork\([\s\S]*?\}, function\(\)\{/g) || []).length + 1,
+    'sliceWork ' + (src.match(/_sliceWork\(/g) || []).length);
+  t('artData 를 채운 뒤에만 후처리한다', /_sliceWork\(merged, function\(a\)\{ artData\.push\(a\); \}, function\(\)\{[\s\S]{0,200}?_afterArticlesFilled/.test(src));
+  t('filmAllData 를 채운 뒤에만 후처리한다', /_sliceWork\(merged, function\(f\)\{ filmAllData\.push\(f\); \}, function\(\)\{[\s\S]{0,200}?_afterFilmsFilled/.test(src));
+  t('edData 채우기(_populateEdDetailsFromApi)도 조각낸다',
+    /_sliceWork\(merged, function\(e\)\{[\s\S]{0,120}?_populateEdDetailsFromApi/.test(src));
+  t('applyToEdData 는 완료 콜백을 받는다', /function applyToEdData\(items, done\)/.test(src));
+  {
+    /* 조각 처리가 실제로 여러 태스크로 나뉘는가 — 동기 완료면 실패한다 */
+    const sw = src.match(/function _sliceWork\(items, perItem, done\)\{[\s\S]*?\n  \}/)[0];
+    const helper = src.match(/function _nowMs\(\)\{[\s\S]*?\n  \}/)[0];
+    let slices = 0;
+    const run = new Function('performance', 'setTimeout', 'Date', 'report',
+      'var SLICE_MS = ' + SLICE_MS + ';\n' + helper + '\n' + sw + '\n' +
+      'var t=0; _sliceWork(new Array(500).fill(1), function(){ t++; }, function(){ report(t); });');
+    let fakeNow = 0;
+    const ticks = [];
+    run({ now: () => (fakeNow += 1) }, (cb) => { slices++; ticks.push(cb); },
+        Date, (total) => { globalThis.__sw_total = total; });
+    while (ticks.length) ticks.shift()();
+    t('500건이 여러 조각으로 나뉜다 (한 태스크에 다 하지 않는다)', slices >= 5, 'slices ' + slices);
+    t('나뉘어도 전부 처리된다', globalThis.__sw_total === 500, String(globalThis.__sw_total));
+  }
+
+console.log('\n=== 3. 홈 판정 ===');
   const hpMatch = src.match(/function _isHomePath\(\)\{[\s\S]*?\n  \}/);
   t('_isHomePath 가 존재한다', !!hpMatch);
   if (hpMatch) {
