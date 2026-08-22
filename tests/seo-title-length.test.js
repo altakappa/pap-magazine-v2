@@ -1,16 +1,26 @@
 /**
- * <title> 길이 — 번역 제목만 줄인다 (2026-08-22)
+ * <title> 은 자르지 않는다 (2026-08-22 되돌림, 도메니코 결정)
  *
- * [측정] 8월 fr·it·es·de·ru 페이지 974개. **순위가 같은데 CTR 이 다르다.**
- *     상한 이내  903쪽 · 노출 122,221 · 클릭 2,128 · CTR 1.74% · 순위 9.4
- *     상한 초과   71쪽 · 노출   6,416 · 클릭    75 · CTR 1.17% · 순위 9.6
- *   기대 클릭 112 대비 실제 75 — 3.5σ. 우연이 아니다.
+ * [무엇을 했었나] 08-21, 번역 제목을 60자(ja 40·zh 32·ru 58)에서 잘라 '…' 를
+ *   붙였다. 근거는 8월 fr·it·es·de·ru 974쪽 실측 —
+ *     상한 이내 903쪽 CTR 1.74% · 상한 초과 71쪽 CTR 1.17% (순위 9.4 vs 9.6)
+ *   기대 클릭 112 대비 실제 75, 3.5σ. "길이가 CTR 을 죽인다"고 읽었다.
  *
- * [원인] 08-20 에 번역 생성기에 길이 상한을 넣었지만 그 전 번역이 남아 있다.
- *   상한 초과 1,590건 (fr 340·es 304·ru 299·de 279·it 259·zh 78·ja 31),
- *   최장 133자. 재번역은 Claude 호출 1,590회 — 렌더 시점에 자르면 비용 0 이다.
+ * [무엇이 틀렸나] 상관을 인과로 읽었다. 긴 제목 = 기계 번역이 부풀린 제목이라
+ *   길이가 아니라 번역 품질이 원인일 수 있다. 그리고 실제 손해가 났다 —
+ *     쿼리 `quando esce animal delle katseye` (it) · 우리 순위 **1.24위**
+ *     제목 "KATSEYE annuncia una trasformazione audace con il singolo…"
+ *     → 검색어의 핵심 단어 'ANIMAL' 이 잘려 나갔다. CTR 2.33% (258노출 6클릭).
+ *   규모: 7,590편이 잘린 채 노출됐다 (fr 1,388·de 1,346·es 1,347·ru 1,302·
+ *   it 1,284·ja 462·zh 461). 유럽어 5개는 절반 이상.
  *
- * [경계] 한국어 원제는 자르지 않는다. 사람이 쓴 헤드라인이고 실측 60자 초과 0건이다.
+ * [왜 되돌리나] 자르기의 목적은 Ahrefs "Title too long" 경고를 없애는 것이었다.
+ *   그건 구글 순위 요인이 아니다 — 구글은 긴 제목을 **표시할 때만** 줄이고
+ *   태그 전체를 관련성 신호로 읽는다. 태그에서 지우면 둘 다 잃는다.
+ *
+ * [이 테스트가 지키는 것] 자르기가 다시 들어오지 못하게 막는다.
+ *   특히 "꼬리에 있는 키워드가 살아남는가" — 위 ANIMAL 사고의 회귀 고정.
+ *   브랜드 접미사는 우리가 덧붙이는 군더더기라 상한을 넘기면 안 붙인다(유지).
  */
 'use strict';
 const path = require('path');
@@ -28,19 +38,27 @@ const titleOf = (lang, tr, rec) => {
   return m ? m[1] : '';
 };
 
-console.log('\n=== 번역 제목이 상한 안으로 들어온다 ===');
-for (const [lang, cap] of [['de',60],['it',60],['fr',60],['es',60],['ru',58],['ja',40],['zh',32]]) {
+console.log('\n=== 번역 제목을 자르지 않는다 ===');
+for (const lang of ['de','it','fr','es','ru','ja','zh']) {
   const got = titleOf(lang, LONG_DE);
-  t(`${lang}: ${cap}자 이하 (실제 ${got.length}자)`, got.length <= cap, got);
+  t(`${lang}: 제목 전문이 남는다 (${got.length}자)`, got.includes(LONG_DE), got);
+  t(`${lang}: 말줄임표를 붙이지 않는다`, !/…/.test(got), got);
 }
 
-console.log('\n=== 자르는 방식 ===');
+console.log('\n=== 꼬리의 키워드가 살아남는다 (ANIMAL 사고 회귀 고정) ===');
 {
-  const de = titleOf('de', LONG_DE);
-  t('말줄임표로 끝난다 (잘렸음을 사람이 안다)', /…$/.test(de), de);
-  t('첫 고유명사가 남는다 (앞에서 자르지 않는다)', de.startsWith('Mithridate'), de);
-  t('단어 중간에서 끊지 않는다', !/\S…$/.test(de) || de.split(' ').length >= 3, de);
-  t('구두점이 말줄임표 앞에 남지 않는다', !/[\s,;:·–—-]…$/.test(de), de);
+  /* 실제 사고 재현: it 1.24위 페이지. 검색어는 'animal' 인데 그 단어가
+     제목 맨 끝에 있어서, 60자 자르기가 정확히 그것만 지웠다. */
+  const IT_REAL = "KATSEYE annuncia una trasformazione audace con il singolo 'ANIMAL'";
+  const it = titleOf('it', IT_REAL);
+  t('제목이 66자여도 ANIMAL 이 남는다', it.includes('ANIMAL'), it);
+  t('60자 컷이 부활하지 않았다', it.length >= IT_REAL.length, `${it.length}자`);
+
+  /* 상한 자체가 다시 제목 본문에 적용되지 못하게 — 소스 수준 고정 */
+  const fs = require('fs');
+  const src = fs.readFileSync(path.join(__dirname, '..', 'api', '_lib', 'seoRenderer.js'), 'utf8');
+  t('_fitTitle 이 되살아나지 않았다', !/_fitTitle/.test(src));
+  t('seoTitle 이 titleMain 을 그대로 쓴다', /_brand\(titleMain, lang\)/.test(src));
 }
 
 console.log('\n=== 자르면 안 되는 것 ===');
@@ -49,19 +67,20 @@ console.log('\n=== 자르면 안 되는 것 ===');
   t('한국어 원제는 그대로 (사람이 쓴 헤드라인)', ko.includes('짧은 한국어 제목') && !/…/.test(ko), ko);
   const short = titleOf('de', 'Kurzer Titel');
   t('짧은 번역은 브랜드 접미사를 그대로 받는다', short.includes('| PAP Magazine'), short);
-  t('짧은 번역에 말줄임표를 붙이지 않는다', !/…/.test(short), short);
   const en = titleOf('en', null);
   t('en 은 번역표가 아니라 title_en 을 쓴다 (경로 불변)', en.includes('Short EN'), en);
 }
 
-console.log('\n=== 브랜드 접미사도 언어 상한을 지킨다 ===');
+console.log('\n=== 브랜드 접미사만 언어 상한을 지킨다 ===');
 {
-  /* 08-22 실측 버그: ja 로 27자까지 자른 뒤 접미사(14자)를 붙여 42자가 됐다.
-     60 기준만 보던 _brand 가 원인. 언어별 상한을 넘기면 접미사를 안 붙인다. */
-  const ja = titleOf('ja', LONG_DE);
-  t('ja: 접미사 포함 40자 이하', ja.length <= 40, ja);
-  const zh = titleOf('zh', LONG_DE);
-  t('zh: 접미사 포함 32자 이하', zh.length <= 32, zh);
+  /* 접미사는 제목이 아니라 우리가 덧붙이는 군더더기다. 넘치면 빼는 게 맞다.
+     제목 본문은 위에서 확인했듯 절대 안 자른다. */
+  for (const [lang, cap] of [['ja',40],['zh',32],['ru',58],['de',60]]) {
+    const long = titleOf(lang, LONG_DE);
+    t(`${lang}: 긴 제목에는 접미사를 안 붙인다`, !long.includes('| PAP Magazine'), long);
+  }
+  const shortJa = titleOf('ja', 'ミニ');
+  t('ja: 짧으면 접미사를 붙이고 40자 이내', shortJa.includes('| PAP Magazine') && shortJa.length <= 40, shortJa);
 }
 
 /* ── Organization 노드 속성 타입 (2026-08-22) ────────────────────────
