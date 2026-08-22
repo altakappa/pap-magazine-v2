@@ -139,8 +139,27 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
     // (스케줄 크론이 완주 뒤에도 계속 돌며 IG API·컴퓨트를 낭비하지 않게).
     if (backfillDays > 0 && !dry){
       const { data: doneSt } = await supabaseAdmin.from('ops_alert_state')
-        .select('key').eq('key', doneKey).maybeSingle();
-      if (doneSt) return res.status(200).json({ ok: true, backfill_done: true, account: account || 'magazine', note: '백필 완주 — 재실행하려면 ops_alert_state 의 ' + doneKey + ' 삭제' });
+        .select('key, updated_at').eq('key', doneKey).maybeSingle();
+      if (doneSt) {
+        /* ── 2026-08-22 — 노트가 '한 일' 을 안 적어서 오진을 불렀다 ──────
+           이 경로는 정상이다. 백필을 완주했으니 IG 를 다시 안 부르는 게 맞다.
+           그런데 cron_runs.note 에는 위(110행)에서 찍은
+             account=fashion token_source=main (계정 토큰 형식 불량)
+           만 남았다. 읽는 사람에게는 **토큰이 깨진 채로 뭔가 돌고 있다**로
+           읽힌다. 오늘 내가 정확히 그렇게 읽고 '27일간 죽어 있었다' 고
+           오진해서 한 시간을 썼다. 조회 결과는 08-02 완주였다.
+
+           08-19 GSC 건에서 이미 같은 교훈을 적었다 — '무엇을 달라고 했는가'
+           는 의도이고 '무엇을 받았는가' 가 사실이다. 여기도 같다.
+           **한 일을 적는다.** 언제 끝났는지와 되돌리는 법까지. */
+        const doneAt = String(doneSt.updated_at || '').slice(0, 10);
+        const why = 'account=' + (account || 'magazine') + ' · 백필 완주'
+          + (doneAt ? '(' + doneAt + ')' : '') + ' — 할 일 없음'
+          + ' · 재실행하려면 ops_alert_state 의 ' + doneKey + ' 삭제';
+        res.locals = res.locals || {};
+        res.locals.cronNote = why;
+        return res.status(200).json({ ok: true, backfill_done: true, account: account || 'magazine', done_at: doneSt.updated_at || null, note: why });
+      }
     }
 
     // ── 공용 상태 (백필·일반 양 경로 공용) ──

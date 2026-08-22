@@ -85,6 +85,21 @@ t('cron: env 미설정을 200 OK 로 넘기지 않는다',
   !/ok: true, skipped: 'account/.test(cron));
 t('cron: 없는 env 이름을 그대로 알려준다', /missing\.push\('IG_'/.test(cron));
 t('cron: 고치는 법을 note 에 담는다', /크론 줄을 빼라/.test(cron));
+
+/* 2026-08-22 — 완주 조기종료가 cron_runs.note 에 아무것도 안 남겼다.
+   그래서 위(토큰 라벨) 줄만 남았고, 정상 상태가 '토큰 깨진 채로 도는 중' 으로
+   읽혔다. 실제로 그 오독으로 '27일간 죽어 있었다' 는 오진이 나왔다.
+   조회해 보니 ig_backfill_done_fashion 은 2026-08-02 에 이미 찍혀 있었다.
+   note 는 '무엇을 하려 했는가' 가 아니라 '무엇을 했는가' 를 적어야 한다
+   (08-19 GSC 건과 같은 교훈). */
+t('cron: 백필 완주 조기종료가 note 를 남긴다',
+  /백필 완주/.test(cron) && /res\.locals\.cronNote = why/.test(cron),
+  '아무것도 안 남기면 앞 단계의 노트가 그대로 남아 거짓말을 한다');
+t('cron: 완주 노트에 완주 날짜가 들어간다',
+  /updated_at/.test(cron) && /doneAt/.test(cron),
+  "'언제 끝났나' 가 없으면 정상인지 멈춘 건지 구분이 안 된다");
+t('cron: 완주 노트에 되돌리는 법이 들어간다',
+  /재실행하려면 ops_alert_state 의/.test(cron));
 t('cron: 기본(account 없음)은 @pap_magazine env 불변', /account \? \('ig_backfill_done_' \+ account\) : 'ig_backfill_done'/.test(cron));
 t('cron: 완주 통보에 계정 라벨(acctLabel)', /acctLabel/.test(cron));
 // 2026-07-26: 토큰 재발급 없이 본계정 토큰 폴백으로 복구되어 5개 크론을 되살렸다.
