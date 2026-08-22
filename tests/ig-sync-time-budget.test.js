@@ -50,6 +50,24 @@ t('note 에 이월 건수가 들어간다', /이월 /.test(src),
   '이월이 매 회차 쌓이면 예산이 모자란다는 신호다');
 t('note 에 소요 초가 들어간다', /초'/.test(src));
 
+/* ── 2026-08-22 — 조용한 스킵 금지 ──────────────────────────────
+   fashion 계정 크론이 27일간 686회 돌면서 한 건도 수집하지 않았다.
+   원인은 IG_FASHION_USER_ID 미설정. 그런데 코드가 **200 OK 로 조용히**
+   스킵해서 실패로도 안 잡혔고, cron_runs 에는 토큰 라벨 한 줄만 남아
+   '돌고는 있네' 로 읽혔다. 08-18 팝마트 34시간과 같은 모양이다.
+   env 가 없는데 크론에 등재돼 있으면 그건 설정 오류다. 시끄러워야 한다. */
+console.log('=== 설정 오류를 조용히 넘기지 않는다 ===');
+t('env 미설정을 200 OK 로 넘기지 않는다',
+  !/ok: true, skipped: 'account/.test(src),
+  '200 을 돌려주면 실패 알림도 안 뜨고 cron_runs 도 성공으로 남는다');
+t('어느 env 가 없는지 이름으로 알려준다',
+  /_USER_ID'\)/.test(src) && /missing/.test(src),
+  "'env 미설정' 만으로는 무엇을 넣어야 할지 모른다");
+t('고치는 법을 note 에 적는다 (넣거나, 크론 줄을 빼거나)',
+  /vercel\.json 에서 이 크론 줄을 빼라/.test(src));
+t('재배포가 필요하다는 것도 적는다 (Vercel 은 env 를 빌드에 굽는다)',
+  /재배포/.test(src));
+
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if(fail){ console.log('❌ ig-sync-time-budget tests FAILED'); process.exit(1); }
 console.log('✅ ig-sync-time-budget tests passed');

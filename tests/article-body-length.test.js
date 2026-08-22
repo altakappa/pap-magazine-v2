@@ -34,7 +34,17 @@ function t(n, cond, d) {
 console.log('\n=== ① 웹 기사 규격이 올라갔다 ===');
 {
   t('본문 800~1,200자', /800~1,200자/.test(v.ARTICLE_VOICE));
-  t('3~4단락', /단락은 3~4개/.test(v.ARTICLE_VOICE));
+  /* 2026-08-22 — 3~4단락 × 3~5문장 × 짧은 문장으로는 800자가 산술적으로
+     불가능했다. 실측 27편: 단락 3개 494자 · 단락 4개 532자. 모델은 규격을
+     완벽히 지키고 있었고, 도달 못 하는 총량을 요구한 쪽이 틀렸다. */
+  t('5~6단락 (800자를 낼 수 있는 구조)', /단락은 5~6개/.test(v.ARTICLE_VOICE));
+  t('단락당 문장 수를 기사 규격이 덮어쓴다', /한 단락은 4~5문장/.test(v.ARTICLE_VOICE),
+    "문체 규칙의 '3~5문장' 이 남아 있으면 모델이 짧은 쪽으로 회귀한다");
+  t('총량은 결과지 목표가 아니라고 못박는다', /총량은 결과지 목표가 아니다/.test(v.ARTICLE_VOICE),
+    '글자 수는 모델이 세면서 쓸 수 없는 값이다');
+  t('캡션의 구체 사실을 버리지 말라는 규칙이 있다',
+    /구체적 사실은 하나도 버리지 않는다/.test(v.ARTICLE_VOICE),
+    '캡션이 길수록 비율이 0.99→0.30 으로 떨어졌다 — 압축이 최대 손실원이다');
   t('옛 규격(250~450자)이 안 남아 있다', !/250~450자/.test(v.ARTICLE_VOICE));
   t('옛 규격(정확히 2개)이 안 남아 있다', !/단락은 정확히 2개/.test(v.ARTICLE_VOICE));
 }
@@ -70,7 +80,7 @@ console.log('\n=== ③ 자가검증이 본문 규격과 모순되지 않는다 =
 
 console.log('\n=== ④ 영어 단락 수가 한국어와 맞는다 ===');
 {
-  t('기사 영문은 3~4단락', /3 to 4 paragraphs/.test(v.ARTICLE_VOICE));
+  t('기사 영문은 5~6단락', /5 to 6 paragraphs/.test(v.ARTICLE_VOICE));
   t('기사 영문에 Exactly 2 가 안 남았다', !/Exactly 2 paragraphs/.test(v.ARTICLE_VOICE));
   t('짧은 규격 영문은 그대로 2단락', /Exactly 2 paragraphs/.test(v.SHORT_ARTICLE_VOICE));
 }
@@ -124,7 +134,7 @@ console.log('\n=== ⑥ 분량을 지어내서 채우지 못하게 막는다 ==='
 console.log('\n=== ⑦ 생성기 배선 ===');
 {
   t('프롬프트 body_ko 가 800~1,200자', /"body_ko".{0,120}800~1,200자/.test(importSrc));
-  t('프롬프트 body_ko 가 3~4단락', /"body_ko".{0,80}3~4단락/.test(importSrc));
+  t('프롬프트 body_ko 가 5~6단락', /"body_ko".{0,80}5~6단락/.test(importSrc));
   /* 주석에는 "250~450자 → 800~1,200자" 라는 변경 이력이 남아 있어야 한다.
      지켜야 할 것은 "모델에게 가는 문자열"에 옛 규격이 없는 것이므로,
      따옴표로 시작하는 프롬프트 리터럴 줄만 본다. */
@@ -133,7 +143,7 @@ console.log('\n=== ⑦ 생성기 배선 ===');
     !promptLiterals.some((l) => /250~450자/.test(l)),
     promptLiterals.filter((l) => /250~450자/.test(l)));
   t('변경 이력 주석은 남아 있다', /250~450자 → 800~1,200자/.test(importSrc));
-  t('프롬프트 body_en 이 3~4단락', /"body_en".{0,80}3 to 4 paragraphs/.test(importSrc));
+  t('프롬프트 body_en 이 5~6단락', /"body_en".{0,80}5 to 6 paragraphs/.test(importSrc));
   t('프롬프트에 옛 Exactly 2 가 안 남았다', !/Exactly 2 paragraphs in English/.test(importSrc));
   t('ARTICLE_VOICE 를 그대로 주입한다', /papVoice\.ARTICLE_VOICE/.test(importSrc));
 

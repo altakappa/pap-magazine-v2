@@ -78,8 +78,29 @@ module.exports = withCronGuard('sync-instagram', async function handler(req, res
       process.env.IG_ACCESS_TOKEN
     );
     if (!uid || !picked.token){
-      // env 미설정 계정은 조용히 스킵(200) — 크론이 실패 알림을 쏟지 않게.
-      return res.status(200).json({ ok: true, skipped: 'account ' + account + ' env 미설정', account, token_source: picked.source });
+      /* ── 2026-08-22 — '조용히 스킵' 을 걷어낸다 ────────────────────
+         종전 주석: "env 미설정 계정은 조용히 스킵(200) — 크론이 실패 알림을
+         쏟지 않게." 그 결과가 이거다:
+
+           account=fashion token_source=main (계정 토큰 형식 불량)
+           2026-07-26 14:39 ~ 2026-08-22 · **686회** · 수집 요약 0회
+
+         27일 동안 시간마다 돌면서 한 건도 수집하지 않았다. 매번 200 OK 라
+         실패로도 안 잡혔다. cron_runs 를 봐도 '토큰 라벨' 한 줄뿐이라
+         '돌고는 있네' 로 읽힌다. 08-18 팝마트 34시간·08-22 스토리쇼츠와
+         **정확히 같은 모양** — 양쪽이 다 조용한 정지다.
+
+         vercel.json 에 크론으로 **등재된** 계정이 env 가 없다는 건 정상 상태가
+         아니라 설정 오류다. 정상이라면 크론 줄을 빼면 된다. 그러니 시끄럽게 한다.
+         (알림 쿨다운은 cronGuard 가 이미 갖고 있다 — 시간마다 도배되지 않는다) */
+      const missing = [];
+      if (!uid) missing.push('IG_' + account.toUpperCase() + '_USER_ID');
+      if (!picked.token) missing.push('IG_' + account.toUpperCase() + '_ACCESS_TOKEN + IG_ACCESS_TOKEN(본계정)');
+      const why = 'account=' + account + ' 건너뜀 — ' + missing.join(' · ') + ' 없음'
+        + ' (Vercel env 에 넣고 재배포하거나, vercel.json 에서 이 크론 줄을 빼라)';
+      res.locals = res.locals || {};
+      res.locals.cronNote = why;
+      return res.status(500).json({ error: why, account, token_source: picked.source, missing });
     }
     cred = { userId: uid, token: picked.token };
     tokenSource = picked.source;

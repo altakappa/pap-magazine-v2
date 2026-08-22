@@ -75,7 +75,16 @@ console.log('--- 다계정 백필 ---');
 const impLib2 = R('api/_lib/instagramImport.js');
 t('임포트 함수가 계정 자격증명 파라미터화(_creds)', /function _creds\(opts\)/.test(impLib2) && /opts && opts\.userId/.test(impLib2));
 t('cron: ?account=<key> 로 하위 계정 자격증명 선택', /req\.query && req\.query\.account/.test(cron) && /IG_' \+ account\.toUpperCase\(\) \+ '_USER_ID/.test(cron));
-t('cron: account 미설정 env 는 무해 스킵(실패 알림 방지)', /env 미설정.*skipped|skipped:.*env 미설정/.test(cron));
+/* 2026-08-22 — 이 가드를 뒤집는다.
+   '무해 스킵(실패 알림 방지)' 로 만든 결과: fashion 크론이 07-26~08-22,
+   686회를 200 OK 로 돌면서 **한 건도 수집하지 않았다.** 원인은
+   IG_FASHION_USER_ID 미설정. 실패로 안 잡히니 27일간 아무도 몰랐다.
+   vercel.json 에 크론으로 등재된 계정의 env 가 없으면 그건 무해한 상태가
+   아니라 설정 오류다. 알림이 싫으면 크론 줄을 빼면 된다. */
+t('cron: env 미설정을 200 OK 로 넘기지 않는다',
+  !/ok: true, skipped: 'account/.test(cron));
+t('cron: 없는 env 이름을 그대로 알려준다', /missing\.push\('IG_'/.test(cron));
+t('cron: 고치는 법을 note 에 담는다', /크론 줄을 빼라/.test(cron));
 t('cron: 기본(account 없음)은 @pap_magazine env 불변', /account \? \('ig_backfill_done_' \+ account\) : 'ig_backfill_done'/.test(cron));
 t('cron: 완주 통보에 계정 라벨(acctLabel)', /acctLabel/.test(cron));
 // 2026-07-26: 토큰 재발급 없이 본계정 토큰 폴백으로 복구되어 5개 크론을 되살렸다.
@@ -109,7 +118,7 @@ t('pickAccountToken: 계정 토큰 없으면 본계정 토큰 폴백',
   II.pickAccountToken('', GOOD).token === GOOD && /^main /.test(II.pickAccountToken('', GOOD).source));
 t('pickAccountToken: 계정 토큰 형식 불량이면 본계정 토큰 폴백',
   II.pickAccountToken('깨진값', GOOD).token === GOOD && /형식 불량/.test(II.pickAccountToken('깨진값', GOOD).source));
-t('pickAccountToken: 둘 다 못 쓰면 빈 토큰(무해 스킵 경로로)',
+t('pickAccountToken: 둘 다 못 쓰면 빈 토큰(→ 이제는 시끄러운 실패 경로로)',
   II.pickAccountToken('x', 'y').token === '');
 t('pickAccountToken: source 라벨에 토큰 값이 새지 않는다',
   !II.pickAccountToken('', GOOD).source.includes(GOOD) && !II.pickAccountToken('깨진값', GOOD).source.includes('깨진값'));
