@@ -723,11 +723,28 @@ window._papFilmAutoPlay = function(){
         .replace(/&/g,'&amp;').replace(/"/g,'&quot;')
         .replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
-    // QA #344 — 이전에는 slice(0,8)로 최신 8개만 prepend했는데,
-    // 그러면 API에는 있고 정적 HTML에는 없는 "중간 시기" 아티클들이
-    // 홈 최신기사 캐로셀에 영원히 노출되지 않는 문제가 있었다.
-    // 이제는 전체 API 결과 중 정적 카드에 없는 것을 모두 prepend한다.
-    // /api/articles가 published_date DESC로 정렬돼 오므로 순서는 그대로.
+    // QA #344 — 이전에는 slice(0,8)로 최신 8개만 prepend했는데, 그러면 API에는
+    // 있고 정적 HTML에는 없는 "중간 시기" 아티클들이 홈 최신기사 캐로셀에
+    // 영원히 노출되지 않는 문제가 있었다. 그래서 상한을 아예 없앴다.
+    //
+    // ── 2026-08-22: 상한을 없앤 대가를 실측했다 ─────────────────────────
+    // 라이브 홈(데스크톱·warm·포그라운드):
+    //     #fashionTrack 카드 2,424장 · <img> 2,424개
+    //     그 안의 DOM 노드 14,544 = 페이지 전체 19,558 의 **74%**
+    //     롱태스크 713ms (@993ms) · TBT 726ms
+    // 가로 캐러셀은 한 번에 4~6장을 보여준다. 2,424장을 옆으로 넘기는
+    // 사람은 없다. 아무도 안 보는 카드를 그리느라 메인 스레드가 멈춘다.
+    //
+    // 상한을 되살리되 8이 아니라 100 으로 둔다.
+    //  · 8 은 QA #344 가 지적한 그 문제(중간 시기 누락)를 되살린다
+    //  · 100 이면 정적 스냅샷(현재 42장·최신 2026-03-02) 위로 최근 몇 달이
+    //    통째로 덮인다. 가로로 100장을 넘기는 사용자는 없다
+    //  · 노드는 14,544 → 약 600 (96% 감소)
+    //
+    // 전체 목록은 캐러셀의 일이 아니다 — /articles 그리드와 사이트맵이 한다.
+    // ⚠ 근본 원인은 index.html 정적 카드가 2026-03-02 에서 멈춰 있고
+    //    그보다 새 기사가 919편이라는 것이다. 스냅샷 갱신은 별건으로 남긴다.
+    var HOME_CAROUSEL_MAX = 100;
     var candidates = apiArticles.filter(function(a){
       if(!a) return false;
       var title = (a.t || '').trim();
@@ -735,7 +752,7 @@ window._papFilmAutoPlay = function(){
       if(slug && existingSlugs[slug]) return false;
       if(title && existingTitles[title]) return false;
       return !!(title);
-    });
+    }).slice(0, HOME_CAROUSEL_MAX);   // apiArticles 는 published_date DESC — 앞이 최신
     // Reverse so insertBefore(track.firstChild) yields newest-first order.
     // QA #344 — 첫 화면에 노출되는 카드 3장은 loading="eager" + fetchpriority="high"
     // 로 명시해서 lazy-load 지연으로 인한 '뒤늦게 로드' 체감을 줄인다.

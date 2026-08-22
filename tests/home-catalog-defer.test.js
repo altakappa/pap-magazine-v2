@@ -145,6 +145,27 @@ function runFetchAll({ pages, perPage = 100, failPages = [] }) {
     t('나뉘어도 전부 처리된다', globalThis.__sw_total === 500, String(globalThis.__sw_total));
   }
 
+console.log('\n=== 2-c. 홈 캐러셀이 아카이브 전량을 그리지 않는다 (2026-08-22) ===');
+{
+  /* 실측: #fashionTrack 카드 2,424장 · img 2,424개 · 노드 14,544
+     = 홈 전체 19,558 의 74%. 롱태스크 713ms 의 몸통이었다.
+     가로 캐러셀은 한 번에 4~6장을 보여준다. 2,424장은 아무도 안 넘긴다. */
+  const capM = src.match(/var HOME_CAROUSEL_MAX = (\d+);/);
+  t('홈 캐러셀 상한 상수가 있다', !!capM);
+  const CAP = capM ? Number(capM[1]) : 0;
+  t('상한이 QA #344 를 되살리지 않을 만큼 넉넉하다 (>50)', CAP > 50, String(CAP));
+  t('상한이 DOM 을 다시 터뜨릴 만큼 크지 않다 (<=300)', CAP > 0 && CAP <= 300, String(CAP));
+  t('candidates 에 실제로 slice 가 걸려 있다',
+    /\}\)\.slice\(0, HOME_CAROUSEL_MAX\)/.test(src));
+  t('상한은 dedup(정적카드 제외) 이후에 적용된다 — 정적과 겹치는 것으로 자리를 낭비하지 않는다',
+    src.indexOf('existingTitles[title]') < src.indexOf('.slice(0, HOME_CAROUSEL_MAX)'));
+
+  /* 정렬 전제: /api/articles 는 published_date DESC. 앞에서 자르는 게 '최신'이다.
+     이 전제가 깨지면 상한이 엉뚱한 기사를 남긴다. */
+  t('DESC 전제를 주석으로 남겨 뒀다 (전제가 바뀌면 상한이 틀어진다)',
+    /published_date DESC[\s\S]{0,80}?최신|앞이 최신/.test(src));
+}
+
 console.log('\n=== 3. 홈 판정 ===');
   const hpMatch = src.match(/function _isHomePath\(\)\{[\s\S]*?\n  \}/);
   t('_isHomePath 가 존재한다', !!hpMatch);
