@@ -148,4 +148,25 @@ t('표지 1장짜리 카탈로그도 상세를 다시 부른다', () => {
   assert.ok(/_galCount > _imgs/.test(EDJS), 'gallery_count 와 비교하지 않는다');
 });
 
+/* 같은 혜택이 세 곳에서 다른 숫자를 말하고 있었다 (2026-08-21)
+ *   구독 페이지 '최신 6개월' / 마이페이지 '최근 100개' / 코드 178편
+ * 표기는 '6개월' 로 통일했다. 한 곳만 고치면 또 갈라지므로 여기서 못박는다. */
+
+t('스탠다드 열람 범위 표기가 두 화면에서 어긋나지 않는다', () => {
+  const MY = read('frontend/mypage.html');
+  const SUB = read('frontend/subscribe.html');
+  assert.ok(!/perkArchive100:\s*['"][^'"]*100/.test(MY),
+    '마이페이지가 아직 100개라고 말한다 — 구독 페이지(6개월)·코드(178편)와 어긋난다');
+  assert.ok(/최신 6개월 에디토리얼 열람/.test(MY), '마이페이지 ko 표기가 6개월이 아니다');
+  assert.ok(/최신 6개월 에디토리얼 열람/.test(SUB), '구독 페이지 ko 표기가 6개월이 아니다');
+});
+
+t('낡을 고정 숫자를 혜택 문구에 박지 않는다', () => {
+  const MY = read('frontend/mypage.html');
+  // '86 이슈' 는 실측과 이미 어긋나 있었다 (이슈 라벨 94 · 볼륨 31 · 에디토리얼 2,301).
+  // 새 숫자로 바꾸면 또 낡는다. 안 낡는 사실(2019년부터)로 둔다.
+  assert.ok(!/perkArchiveFull:\s*['"][^'"]*\d{2,}\s*(이슈|issues|numeri|números|numéros|号|期|выпусков|Ausgaben)/.test(MY),
+    '전체 아카이브 문구에 고정 개수가 다시 박혔다');
+});
+
 console.log(`\n${n}개 테스트 통과`);
