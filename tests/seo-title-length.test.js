@@ -119,6 +119,30 @@ console.log('\n=== LCP: 히어로 이미지를 head 에서 미리 받는다 ==='
     !/Inter:wght@300/.test(h) && /Inter:wght@400/.test(h));
 }
 
+/* ── pap-styles.css 를 렌더 차단에서 뺀다 (2026-08-22) ────────────────
+   108KB 가 head 에서 렌더를 막고 있었다. 그런데 SSR 이 쓰는 클래스 44개 중
+   38개가 인라인 <style> 에 이미 있고, 남은 6개는 pap-styles.css 에도 없다.
+   body 바탕·글자색·폰트도 인라인의 body.seo-loading 이 준다.
+   헤더는 pap-header.js 가 자체 <style> 을 주입한다. 의존이 없다. */
+console.log('\n=== pap-styles.css 는 렌더를 막지 않는다 (SSR 전용) ===');
+{
+  const h = renderSeoHtml('article', base, { lang: 'ko' });
+  const head = h.slice(0, h.indexOf('</head>'));
+  const noNo = head.replace(/<noscript>[\s\S]*?<\/noscript>/g, '');
+  t('head 에 렌더 차단 stylesheet 가 없다',
+    !/<link rel="stylesheet" href="\/pap-styles/.test(noNo));
+  t('preload → onload 승격으로 받는다',
+    /rel="preload"[^>]*pap-styles[^>]*as="style"[^>]*onload=/.test(head));
+  t('JS 없는 환경용 noscript 폴백이 있다',
+    /<noscript><link rel="stylesheet" href="\/pap-styles/.test(head));
+  /* 인라인이 첫 페인트를 책임진다 — 이게 깨지면 배경 흰 화면이 번쩍인다. */
+  t('body 바탕·글자색·폰트를 인라인이 준다',
+    /body\.seo-loading\{background:#000;color:#fff;font-family:Inter/.test(h));
+  t('그 클래스가 body 에 실제로 붙어 있다', /<body class="seo-loading/.test(h));
+  t('히어로·제목 스타일도 인라인에 있다',
+    /\.seo-hero img\{/.test(h) && /\.seo-meta h1\{/.test(h));
+}
+
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if (fail) { console.log('❌ seo-title-length tests FAILED'); process.exit(1); }
 console.log('✅ seo-title-length tests passed');

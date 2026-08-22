@@ -1563,7 +1563,25 @@ ${cfg.schemaType !== 'VideoObject' && ogImage ? (canOptimizeImg(ogImage)
 <link rel="preconnect" href="https://pap-korea-bucket.s3.ap-northeast-2.amazonaws.com">
 <link rel="preconnect" href="https://igcazquhkwxtqsaqpznx.supabase.co">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600;700;800;900&family=Montserrat:wght@700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/pap-styles.css?v=${PAP_STYLES_VERSION}">
+${/* ── pap-styles.css 를 렌더 차단에서 뺀다 (2026-08-22) ────────────────
+     [측정] 코어 웹 바이탈 모바일 13,207쪽 전부 'LCP 4초 초과', '좋음' 0.
+     이 파일은 **108KB** 이고 head 에서 렌더를 막는다.
+
+     [확인] SSR 페이지가 이걸 실제로 얼마나 쓰나 — 세어 봤다.
+       · SSR 이 쓰는 클래스 44개 중 **38개가 아래 인라인 <style> 에 이미 있다.**
+       · 남은 6개(seo-content·seo-copyright·seo-downloads·seo-shop·
+         seo-brandlinks·pap-engage)는 pap-styles.css 에**도** 없다
+         (style= 속성으로 직접 그린다).
+       · body 바탕·글자색·폰트도 인라인의 `body.seo-loading` 이 준다.
+         그 클래스는 제거되지 않으므로 계속 유효하다.
+       · 헤더는 pap-header.js 가 **자체 <style> 을 주입**한다(6곳). 의존 없음.
+     ⇒ 이 파일은 SSR 본문의 첫 페인트에 사실상 기여하지 않는다.
+        SPA 화면(index/articles/…)은 종전대로 동기 로드다 — 여긴 안 건드린다.
+
+     [방식] preload → onload 에서 stylesheet 로 승격. JS 없는 환경은 noscript.
+     되돌리려면 이 블록을 원래 한 줄로 되돌리면 된다. */ ''}
+<link rel="preload" href="/pap-styles.css?v=${PAP_STYLES_VERSION}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="/pap-styles.css?v=${PAP_STYLES_VERSION}"></noscript>
 ${/* ── LCP 히어로 preload (2026-08-22) ─────────────────────────────────
      [측정] Search Console 코어 웹 바이탈(2026-08-21 기준):
        모바일 느림 13,207쪽 / 좋음 0 — 'LCP 4초 초과' 전 페이지.
