@@ -88,6 +88,10 @@
       "schedule": "9-59/10 * * * *"
     },
     {
+      "path": "/api/cron/tiktok-reels",
+      "schedule": "1,31 * * * *"
+    },
+    {
       "path": "/api/cron/drive-tiktok-post",
       "schedule": "6-56/10 * * * *"
     },
