@@ -51,12 +51,58 @@ function note(res, msg) {
   return msg;
 }
 
-/** 파일명 → 제목용 문자열. 확장자·압축기 접미사·군더더기만 걷어낸다. */
+/* ── 날짜 접두어 떼기 (2026-08-22 신설) ────────────────────
+   왜: 08-22 첫 자동 업로드가 `[ NEWS ] 0821 팔라스 | PAP MAGAZINE` 로 나갔다.
+   파일 정리용으로 붙인 날짜가 공개 제목에 그대로 실린 것이다. 검색으로도
+   안 걸리고 클릭도 안 나온다.
+
+   주의: 숫자로 시작한다고 무조건 떼면 `1987 컬렉션`, `2026 가을` 같은 진짜
+   제목이 잘린다. 그래서 **날짜로 말이 되는지 검사한 뒤에만** 뗀다.
+     0821      → 08/21  ✂  뗀다
+     1987      → 19/87  ✋ 월이 19 라 날짜가 아니다 — 그대로 둔다
+     2026      → 20/26  ✋ 월이 20 — 그대로 둔다
+   또 뗀 뒤에 남는 게 2글자 미만이면 되돌린다(제목이 통째로 날짜인 경우). */
+function isMonthDay(mm, dd) {
+  const m = Number(mm), d = Number(dd);
+  return m >= 1 && m <= 12 && d >= 1 && d <= 31;
+}
+function stripDatePrefix(s) {
+  const SEP = '[\\s._-]';
+  /* 뒤에 뭐가 와야 '접두어'로 인정하나:
+       구분자( ) 이거나, 문자열 끝이거나, **한글이 바로 붙은 경우**('0821팔라스').
+     한글로 좁히는 이유 — 영문·숫자까지 허용하면 '1024x768' 의 앞 네 자리를
+     10월 24일로 읽고 잘라 버린다. 우리 파일명은 한국어다. */
+  const AFTER = '(?:' + SEP + '+|$|(?=[가-힣]))';
+  /* \\d{4} 를 먼저 시도한다. \\d{2} 가 앞이면 '2026-08-21' 에서 '20','26' 을
+     집어 월이 26 이 되고, 진짜 날짜인데도 안 떼진다. (실제로 그렇게 틀렸다) */
+  const tries = [
+    // 2026-08-21 · 2026.08.21 · 20260821 · 26-08-21 · 260821
+    [new RegExp('^(\\d{4}|\\d{2})' + SEP + '?(\\d{2})' + SEP + '?(\\d{2})' + AFTER), 2, 3],
+    // 0821 · 08-21 · 08.21
+    [new RegExp('^(\\d{2})' + SEP + '?(\\d{2})' + AFTER), 1, 2],
+  ];
+  for (const [re, mi, di] of tries) {
+    const m = s.match(re);
+    if (!m) continue;
+    if (!isMonthDay(m[mi], m[di])) continue;
+    const rest = s.slice(m[0].length).trim();
+    if (rest.length >= 2) return rest;   // 남는 게 없으면 뗀 보람이 없다
+  }
+  return s;
+}
+
+/** 파일명 → 제목용 문자열. 확장자·압축기 접미사·날짜·군더더기를 걷어낸다. */
 function titleFromFilename(name) {
-  return String(name || '')
+  let s = String(name || '')
     .replace(/\.[A-Za-z0-9]{2,4}$/, '')      // 확장자
-    .replace(/_압축$/, '')                    // 맥미니 압축기가 붙이는 접미사
+    .replace(/[_\s-]*압축\d*$/, '')           // 맥미니 압축기 접미사 (_압축 · _압축2)
+    .replace(/[_\s-]*(사본|복사본|copy)$/i, '') // 파인더가 붙이는 사본 표시
+    .replace(/\s*\(\d+\)$/, '');            // '이름 (1)'
+  s = stripDatePrefix(s.trim());
+  return s
     .replace(/[<>]/g, '')                     // YouTube 제목 금지 문자
+    .replace(/[_]+/g, ' ')                    // 밑줄은 띄어쓰기로
+    .replace(/\s+-\s+/g, ' ')                // '팔라스 - 서울 팝업' → '팔라스 서울 팝업'
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -203,3 +249,9 @@ module.exports = withCronGuard('drive-story-shorts', async function handler(req,
       : '스토리 쇼츠 1건 업로드: ' + file.name + ' → ' + title),
   });
 }, { silenceTransient: true });
+
+/* 테스트가 **진짜 함수**를 부르게 한다 (2026-08-22).
+   전에는 테스트 파일이 같은 정규화 규칙을 손으로 베껴 두고 그걸 검사했다.
+   그러면 코드만 바뀌어도 테스트는 초록으로 남는다 — 오늘 압축기 사본이
+   셋이었던 것과 같은 종류의 거짓 안심이다. 규칙은 한 군데에만 있어야 한다. */
+module.exports.titleFromFilename = titleFromFilename;
