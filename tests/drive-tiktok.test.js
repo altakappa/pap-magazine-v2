@@ -169,9 +169,15 @@ console.log('\n[틱톡 읽기 스코프 · 캡션 원천]');
   t('env 로 켤 수 있다', /process\.env\.TIKTOK_SCOPES/.test(tsrc));
   t('non_sandbox_target 사고를 코드 옆에 적어 뒀다',
     /non_sandbox_target/.test(tsrc));
-  t('추정임을 명시했다 (콘솔 확인 전까지 단정하지 않는다)',
-    /이건 추정이다/.test(tsrc));
-  t('env 를 바꾸면 재배포해야 한다는 것도 적어 뒀다', /재배포/.test(tsrc));
+  /* 2026-08-22 — 08-21 에는 '추정'이었다. 도메니코가 확정해 줬다:
+     "틱톡은 api를 받을수없어서 buffer를 쓰는거야."
+     그러니 video.list 는 열릴 여지가 없다. 주석이 여지를 남기면 다음 세션이
+     같은 길을 다시 판다 (오늘 내가 콘솔 확인을 세 번 요구했다). */
+  t('프로덕션 API 를 받을 수 없다는 사실이 적혀 있다',
+    /API 를 받을 수 없다|api를 받을수없어/.test(tsrc));
+  t('게시 경로가 버퍼라는 것이 적혀 있다', /버퍼/.test(tsrc));
+  t('listMyVideos 를 새로 부르지 말라고 적혀 있다', /새로 부르지 마라/.test(tsrc));
+  t('스토리 쇼츠 제목의 원천이 파일명이라고 적혀 있다', /파일명/.test(tsrc));
 
   t('내 영상 목록 함수를 내보낸다', /listMyVideos/.test(tsrc));
   t('video\\/list 엔드포인트를 부른다', /\/video\/list\//.test(tsrc));

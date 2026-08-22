@@ -39,11 +39,24 @@ const API = 'https://open.tiktokapis.com/v2';
  * 확정 전까지 **기본값은 되던 값**으로 둔다. 이유:
  * 지금 토큰은 리프레시로 살아 있지만, 리프레시가 언젠가 깨져 재인증이
  * 필요해지는 날 기본 스코프가 인증 불가 상태면 **틱톡 게시가 통째로 멈춘다.**
- * 쓰지도 못하는 권한 때문에 되던 것까지 막을 이유가 없다.
+ * 쓰지도 못하는 권한 때문에 되던 것까지 막을 이유가 없다. */
+
+/* ── 2026-08-22 확정 — 추정이 아니라 사실 ─────────────────────
+ * 도메니코: "틱톡은 api를 받을수없어서 buffer를 쓰는거야."
  *
- * 콘솔에서 video.list 가 열리면 Vercel env 에 이렇게 넣고 재인증한다:
- *     TIKTOK_SCOPES=user.info.basic,video.publish,video.list
- * (env 를 바꾸면 반드시 재배포 — Vercel 은 빌드 시점에 구워 넣는다) */
+ * 위 08-21 주석은 '콘솔에서 확인하면 열릴 수도 있다'는 여지를 남겼다.
+ * 그 여지가 없다. **PAP 은 틱톡 프로덕션 API 를 받을 수 없다.**
+ * 그래서 게시 경로가 처음부터 버퍼다 (api/cron/drive-tiktok-post.js →
+ * _lib/buffer.js → createVideoPost). non_sandbox_target 은 오류가 아니라
+ * 그 사실을 그대로 말해 준 것이었다.
+ *
+ * 따라서:
+ *   · TIKTOK_SCOPES 로 video.list 를 켜지 마라. 인증 화면이 죽는다.
+ *   · 아래 listMyVideos()/captionOf() 는 **쓰이지 않는다.** 지우지 않는 이유는
+ *     지웠다가 누가 같은 길을 다시 파는 것보다, 여기 왜 못 쓰는지 적힌 채로
+ *     남아 있는 편이 싸기 때문이다. 새로 부르지 마라.
+ *   · 스토리 쇼츠 제목의 원천은 **파일명**이다. 대안이 없어서가 아니라,
+ *     사람이 쓴 값이 제일 정확하고 비용이 0 이라서다. */
 const SCOPES = process.env.TIKTOK_SCOPES || 'user.info.basic,video.publish';
 const REDIRECT_URI = 'https://www.pap-magazine.com/api/tiktok/callback';
 
