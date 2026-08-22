@@ -425,35 +425,79 @@ window._papFilmAutoPlay = function(){
     return merged;
   }
 
-  // Fetch all pages of a collection
+  // Fetch all pages of a collection.
+  //
+  // 2026-08-22 순차 → 병렬. 예전엔 1쪽을 받고 그 응답을 본 뒤에야 2쪽을 요청하는
+  // 재귀였다. 실측(홈 · warm cache · 데스크톱): /articles 26쪽 + /editorials 24쪽
+  // 을 하나씩 받느라 716ms → 4030ms, 3.3초가 통째로 날아갔다. 왕복이 느린
+  // 모바일 필드에서는 이 구간이 LCP 6.0초의 본체다.
+  //
+  // 이제 1쪽으로 총 쪽수를 안 뒤 나머지를 동시 6개씩 받는다. 요청 "횟수"는
+  // 그대로라 Vercel 함수 호출 비용은 동일하고, 대기 시간만 왕복 N번 → N/6번으로
+  // 줄어든다. 동시 6개 상한은 이미지·폰트 대역폭을 다 빼앗지 않도록 일부러 둔 것.
+  var FETCH_ALL_CONCURRENCY = 6;
   function fetchAll(endpoint, converter, callback){
-    var all=[];
-    var page=1;
-    var limit=100;
-    function fetchPage(){
-      fetch(PAP_API_BASE+endpoint+'?status=published&limit='+limit+'&page='+page)
-        .then(function(r){return r.json();})
-        .then(function(res){
-          if(res.data && res.data.length>0){
-            res.data.forEach(function(item){
-              all.push(converter(item));
-            });
-            if(res.pagination && page<res.pagination.pages){
-              page++;
-              fetchPage();
-            } else {
-              callback(all);
-            }
-          } else {
-            callback(all);
-          }
-        })
-        .catch(function(err){
-          console.warn('[PAP Sync] Fetch error:',endpoint,err);
-          callback(all);
-        });
+    var limit = 100;
+    function pageUrl(p){
+      return PAP_API_BASE + endpoint + '?status=published&limit=' + limit + '&page=' + p;
     }
-    fetchPage();
+    function flatten(buckets){
+      var all = [];
+      for (var i = 0; i < buckets.length; i++){
+        var b = buckets[i];
+        if (!b) continue;
+        for (var j = 0; j < b.length; j++) all.push(converter(b[j]));
+      }
+      return all;
+    }
+    fetch(pageUrl(1))
+      .then(function(r){ return r.json(); })
+      .then(function(res){
+        var first = (res && res.data) || [];
+        if (!first.length){ callback([]); return; }
+        var pages = (res.pagination && res.pagination.pages) || 1;
+        var buckets = new Array(pages);
+        buckets[0] = first;
+        if (pages <= 1){ callback(flatten(buckets)); return; }
+
+        var next = 2;      // 다음에 요청할 쪽
+        var running = 0;   // 진행 중인 요청 수
+        var settled = 0;   // 끝난 요청 수 (2쪽부터 셀다)
+        var doneCalled = false;
+        function finish(){
+          if (doneCalled) return;
+          doneCalled = true;
+          callback(flatten(buckets));
+        }
+        function pump(){
+          while (running < FETCH_ALL_CONCURRENCY && next <= pages){
+            var p = next;
+            next++;
+            running++;
+            (function(pageNo){
+              fetch(pageUrl(pageNo))
+                .then(function(r){ return r.json(); })
+                .then(function(res2){ buckets[pageNo - 1] = (res2 && res2.data) || []; })
+                .catch(function(err){
+                  // 한 쪽이 실패해도 나머지는 살린다 (순차판은 거기서 멈췄다)
+                  console.warn('[PAP Sync] page fetch error:', endpoint, pageNo, err);
+                  buckets[pageNo - 1] = [];
+                })
+                .then(function(){
+                  running--;
+                  settled++;
+                  if (settled >= pages - 1) finish();
+                  else pump();
+                });
+            })(p);
+          }
+        }
+        pump();
+      })
+      .catch(function(err){
+        console.warn('[PAP Sync] Fetch error:', endpoint, err);
+        callback([]);
+      });
   }
 
   // Sync films
@@ -1293,6 +1337,9 @@ window._papFilmAutoPlay = function(){
       .catch(function(err){ console.warn('[PAP Sync] editorials fast fetch:', err); })
       .finally(function(){
         // STAGE 2: full catalog in the background — populates search + overlay.
+        // 2026-08-22 — 예전엔 여기서 곧바로 시작해 첫 화면이 그려지는 동안
+        // 24쪽을 받았다. 이제 _queueFullSync 에 넣어 load 이후 유휴에 돈다.
+        _queueFullSync(function(){
         fetchAll('/editorials', apiEditorialToLocal, function(apiEds){
           if(apiEds.length === 0) return;
           applyToEdData(apiEds);
@@ -1303,6 +1350,7 @@ window._papFilmAutoPlay = function(){
           if(window.papReveal && typeof window.papReveal.refresh === 'function'){
             try { window.papReveal.refresh(); } catch(_){}
           }
+        });
         });
       });
   }
@@ -1318,13 +1366,88 @@ window._papFilmAutoPlay = function(){
   //     paint settles. Below-the-fold sections render skeletons in
   //     the meantime; users on slow connections actually see the
   //     editorial grid up to 2s earlier.
+  //
+  // 2026-08-22 — 그 "유휴"가 충분히 늦지 않았다. requestIdleCallback 의
+  // timeout:1500 은 DOMContentLoaded(≈350ms) 기준이라 실제로는 700ms 쯤,
+  // 즉 첫 화면이 그려지는 도중에 터졌다. 그때부터 3.3초 동안 51번의 목록
+  // 요청이 돌아 화면에 보이지도 않는 5,000건을 받아 파싱했다 — LCP·INP 를
+  // 그만큼 밀어냈고, DOM 은 19,557 노드까지 불었다.
+  //
+  // 이제 전체 카탈로그(articles·films·editorials STAGE 2)는:
+  //   • load 이벤트 이후 + 유휴(최대 3초 대기)에만 시작하고,
+  //   • 사용자가 검색을 먼저 열면 타이머를 기다리지 않고 즉시 시작한다.
+  // 화면에 보이는 최신 12건(STAGE 1 · syncArticlesFast)은 종전 그대로 즉시.
+  var _fullQueue = [];
+  var _fullFired = false;
+  function _queueFullSync(fn){
+    if(_fullFired){ try { fn(); } catch(e){ console.warn('[PAP Sync] full:', e); } return; }
+    _fullQueue.push(fn);
+  }
+  function _flushFullSyncs(){
+    if(_fullFired) return;
+    _fullFired = true;
+    var q = _fullQueue;
+    _fullQueue = [];
+    q.forEach(function(fn){ try { fn(); } catch(e){ console.warn('[PAP Sync] full:', e); } });
+  }
+  // 검색·전체목록이 완전한 카탈로그를 필요로 할 때 직접 부를 수 있는 문.
+  window.papEnsureFullCatalog = _flushFullSyncs;
+
+  // 홈인가? — 홈은 화면에 최신 12건만 보인다. 목록·상세 화면은 전체 카탈로그가
+  // 곧 화면 그 자체라서 미루면 안 된다. 그래서 미루기는 홈에서만 한다.
+  function _isHomePath(){
+    try {
+      var p = String(location.pathname || '/').replace(/\/+$/, '');
+      p = p.replace(/^\/(ko|ja|en|fr|it|es|de|ru|zh)(?=\/|$)/, '');
+      return p === '' || p === '/index.html';
+    } catch(_){ return false; }
+  }
+
+  function _scheduleFullSyncs(){
+    var idleSoon = (typeof requestIdleCallback === 'function')
+      ? function(cb){ requestIdleCallback(cb, { timeout: 1500 }); }
+      : function(cb){ setTimeout(cb, 400); };
+
+    if(!_isHomePath()){
+      idleSoon(_flushFullSyncs);   // 목록·상세는 종전 그대로
+      return;
+    }
+
+    // 홈 — load 이후 유휴까지 미룬다.
+    var go = function(){
+      if(typeof requestIdleCallback === 'function'){
+        requestIdleCallback(_flushFullSyncs, { timeout: 3000 });
+      } else {
+        setTimeout(_flushFullSyncs, 1200);
+      }
+    };
+    if(document.readyState === 'complete') go();
+    else window.addEventListener('load', go, { once: true });
+
+    // 사용자가 먼저 움직이면(검색창 열기·카드 클릭) 타이머를 기다리지 않는다.
+    var _origToggleSearch = window.toggleSearch;
+    if(typeof _origToggleSearch === 'function'){
+      window.toggleSearch = function(){
+        try { _flushFullSyncs(); } catch(_){}
+        return _origToggleSearch.apply(this, arguments);
+      };
+    }
+    try {
+      document.addEventListener('pointerdown', function(){
+        try { _flushFullSyncs(); } catch(_){}
+      }, { once: true, passive: true, capture: true });
+    } catch(_){}
+  }
+
   function _kickDeferredSyncs(){
+    _queueFullSync(function(){ syncFilms(); });
+    _queueFullSync(function(){ syncArticles(); });
+    // 커뮤니티 CTA 썸네일은 요청 1건짜리 화면 요소 — 종전대로 유휴에 바로.
     var idle = (typeof requestIdleCallback === 'function')
       ? function(cb){ requestIdleCallback(cb, { timeout: 1500 }); }
       : function(cb){ setTimeout(cb, 400); };
-    idle(function(){ try { syncFilms(); } catch(e){ console.warn(e); } });
-    idle(function(){ try { syncArticles(); } catch(e){ console.warn(e); } });
     idle(function(){ try { _renderCommunityCtaThumbs(); } catch(e){ console.warn(e); } });
+    _scheduleFullSyncs();
   }
   if(document.readyState==='loading'){
     document.addEventListener('DOMContentLoaded',function(){
