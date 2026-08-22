@@ -64,6 +64,27 @@ console.log('\n=== 브랜드 접미사도 언어 상한을 지킨다 ===');
   t('zh: 접미사 포함 32자 이하', zh.length <= 32, zh);
 }
 
+/* ── Organization 노드 속성 타입 (2026-08-22) ────────────────────────
+   Ahrefs 가 'schema.org validation error' 를 10,001페이지 **전부**에 띄웠다.
+   전 페이지에 실리는 노드는 Organization 하나뿐이라는 게 힌트였다.
+   inLanguage·publisher 는 둘 다 CreativeWork 속성이고 Organization 에는 없다.
+   → knowsLanguage · parentOrganization 으로 바꿨다. */
+console.log('\n=== Organization 노드는 자기 타입의 속성만 쓴다 ===');
+{
+  const h = renderSeoHtml('article', base, { lang: 'ko' });
+  const blocks = [...h.matchAll(/<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/g)]
+    .map((m) => { try { return JSON.parse(m[1]); } catch (_) { return null; } }).filter(Boolean);
+  const org = blocks.map((x) => x.publisher).find(Boolean);
+  t('Organization 노드를 찾았다', !!org);
+  t('inLanguage 를 쓰지 않는다 (CreativeWork 속성)', !org || org.inLanguage === undefined);
+  t('publisher 를 쓰지 않는다 (CreativeWork 속성)', !org || org.publisher === undefined);
+  t('knowsLanguage 로 9개 언어를 선언한다',
+    !!org && Array.isArray(org.knowsLanguage) && org.knowsLanguage.length === 9);
+  t('법인은 parentOrganization 으로 건다',
+    !!org && org.parentOrganization && /ALTAKAPPA/.test(org.parentOrganization.name));
+  t('JSON-LD 가 전부 파싱된다', blocks.length >= 2);
+}
+
 console.log(`\npassed: ${pass}   failed: ${fail}`);
 if (fail) { console.log('❌ seo-title-length tests FAILED'); process.exit(1); }
 console.log('✅ seo-title-length tests passed');

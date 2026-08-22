@@ -282,8 +282,11 @@ const ORG_PUBLISHER = {
     'Korean Fashion Magazine', 'Instagram Magazine'
   ],
 
-  // 발행 언어 (9개) — 다국어 매체임을 엔티티 수준에서 선언.
-  inLanguage: ['ko', 'en', 'it', 'fr', 'es', 'ja', 'de', 'zh', 'ru'],
+  /* 발행 언어 (9개) — 다국어 매체임을 엔티티 수준에서 선언.
+     2026-08-22: inLanguage → knowsLanguage. inLanguage 는 schema.org 에서
+     CreativeWork 속성이고 Organization 에는 없다. Organization 이 다루는
+     언어는 knowsLanguage 다. (아래 publisher 건과 같은 원인) */
+  knowsLanguage: ['ko', 'en', 'it', 'fr', 'es', 'ja', 'de', 'zh', 'ru'],
 
   publishingPrinciples: SITE + '/about',
   ownershipFundingInfo: SITE + '/about',
@@ -293,7 +296,26 @@ const ORG_PUBLISHER = {
   masthead: SITE + '/about',
   correctionsPolicy: SITE + '/about#corrections',
   actionableFeedbackPolicy: SITE + '/about#corrections',
-  publisher: {
+  /* ── 2026-08-22 — publisher → parentOrganization ───────────────────
+     [배경] Ahrefs 감사가 'Structured data has schema.org validation error' 를
+     **10,001페이지 전부**에 띄우고 있었다. 개별 페이지를 열면
+     jsonld_validation_kinds 가 비어 있어 한동안 실체를 못 찾았는데,
+     '전 페이지'라는 숫자가 힌트였다 — 모든 페이지에 실리는 노드는
+     이 Organization 블록 하나뿐이다.
+
+     [원인] 이 노드에 그 타입에 없는 속성 두 개가 붙어 있었다.
+       · inLanguage — CreativeWork 속성이다. Organization 에는 없다.
+       · publisher  — 역시 CreativeWork 속성이다. Organization 에는 없다.
+     둘 다 '뜻은 통하지만 타입이 틀린' 경우다. 검증기는 이걸 잡는다.
+
+     [고침] 법인(알타카파)은 PAP 매거진의 **상위 조직**이므로
+     parentOrganization 이 정확한 관계다. 언어는 knowsLanguage.
+     의미가 더 정확해지고 검증도 통과한다 — 잃는 것이 없다.
+
+     ⚠️ 이건 schema.org 정의를 읽고 내린 판단이다. Google Rich Results Test
+     로 한 번 확인하면 확정된다. 다만 두 속성 다 바꾼 쪽이 명백히 옳으므로
+     확인 전에 고쳐도 손해가 없다. */
+  parentOrganization: {
     '@type': 'Organization',
     name: 'ALTAKAPPA Co., Ltd.',
     address: {
